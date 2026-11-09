@@ -272,7 +272,7 @@ def test_resume_preserves_original_log(tmp_path, monkeypatch):
     monkeypatch.setattr(gate, 'ROOT', tmp_path)
     monkeypatch.setattr(gate, 'git', lambda *a: 'head')
     monkeypatch.setattr(gate, 'execute_parallel', lambda *a, **kw: 0)
-    assert gate.main(['--dry-run', '--resume', '--proofs-dir', str(proof)]) == 0
+    assert gate.main(['--dry-run', '--resume', '--base', 'head', '--proofs-dir', str(proof)]) == 0
     assert log.read_text().startswith('original evidence\n')
 
 

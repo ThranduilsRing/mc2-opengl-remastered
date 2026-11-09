@@ -78,13 +78,10 @@ shaders/vulkan/color_prop_tier1.frag::oGBuffer1 = vec4(normalize(treeMaterial ? 
 # StandardLit off: the geometric normal, normal-mapped for imported mechs).
 shaders/vulkan/mech_tier1.frag::oGBuffer1 = vec4(Nshade * 0.5 + 0.5, 0.0);
 
-# TERRAIN, main pass. (0.5, 0.5, 1.0, 1.0) == rc_gbuffer1_shadowHandled_flatUp()
-# (render_contract.hglsl:95-97). Matches the GL producer this island ports,
-# terrain_lod_chunk.frag, whose every attachment-1 write is flatUp (:863-2608).
-# Terrain handles its own shadow in-shader, hence a = 1.0 (> the 0.5
-# rc_pixelHandlesOwnShadow threshold).
+# TERRAIN, main pass: the encoded terrain normal with a = 1.0. Terrain handles its
+# own shadow in-shader, hence a = 1.0 (> the 0.5 rc_pixelHandlesOwnShadow threshold).
+# (The flatUp (0.5, 0.5, 1.0, 1.0) write was removed in W137.)
 shaders/vulkan/terrain_tier1.frag::GBuffer1 = vec4(gbufN * 0.5 + 0.5, 1.0);
-shaders/vulkan/terrain_tier1.frag::GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
 
 # WATER (reactive-mask class). A-only write (pipeline colour mask); 0.875 stays above every >0.5 / >0.75 consumer
 # threshold (screen_shadow, shoreline land test, impact_decal terrain class) and is the water marker read by

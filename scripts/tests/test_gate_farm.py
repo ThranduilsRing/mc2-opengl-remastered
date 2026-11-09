@@ -362,7 +362,9 @@ def _tier0(planned):
 
 @pytest.mark.parametrize('paths,want,single', [
     (['code/mission_update.cpp'], {'determinism-mc2_10', 'determinism-mc2_24', 'saveload-mc2_01', 'saveload-mc2_10'}, False),
-    (['code/logisticsdata_save.cpp'], {'player-path'}, True),
+    (['code/logisticsdata.cpp'], {'player-path'}, True),
+    # W137: logistics saves are sim/save-sensitive (forward plan P1) and still a front-end path.
+    (['code/logisticsdata_save.cpp'], {'determinism-mc2_10', 'determinism-mc2_24', 'saveload-mc2_01', 'saveload-mc2_10', 'player-path'}, False),
     (['code/mc2movie.cpp'], {'player-path'}, True),
     (['data/missions/mc2_16.fit'], {'determinism-mc2_16', 'saveload-mc2_16', 'mods'}, True),   # data/ is mod content
     (['RenderCore/vk_sync.cpp'], set(), True),

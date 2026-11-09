@@ -3,11 +3,11 @@
   "mission": "mc2_01",
   "_note": "Low shore and exposed rock poses reused from water-shore-lift/mc2_01_shallow_candidates.json. Repeated poses at settle=30 give three frames one fixed-clock second apart.",
   "bookmarks": [
-    {"name":"low_shore_t0","pos":[2880.0002,2112.0,0.0],"rot":-176.75,"proj":12.5,"alt":900.0},
-    {"name":"low_shore_t1","pos":[2880.0002,2112.0,0.0],"rot":-176.75,"proj":12.5,"alt":900.0},
-    {"name":"low_shore_t2","pos":[2880.0002,2112.0,0.0],"rot":-176.75,"proj":12.5,"alt":900.0},
-    {"name":"rock_t0","pos":[2880.0002,2112.0,0.0],"rot":3.25,"proj":12.5,"alt":900.0},
-    {"name":"rock_t1","pos":[2880.0002,2112.0,0.0],"rot":3.25,"proj":12.5,"alt":900.0},
-    {"name":"rock_t2","pos":[2880.0002,2112.0,0.0],"rot":3.25,"proj":12.5,"alt":900.0}
+    {"name":"low_shore_t0","pos":[2880.0002,2112.0,0.0],"rot":-176.75,"proj":12.5,"alt":900.0,"covers":["water","terrain_splat"]},
+    {"name":"low_shore_t1","pos":[2880.0002,2112.0,0.0],"rot":-176.75,"proj":12.5,"alt":900.0,"covers":["water","terrain_splat"]},
+    {"name":"low_shore_t2","pos":[2880.0002,2112.0,0.0],"rot":-176.75,"proj":12.5,"alt":900.0,"covers":["water","terrain_splat"]},
+    {"name":"rock_t0","pos":[2880.0002,2112.0,0.0],"rot":3.25,"proj":12.5,"alt":900.0,"covers":["water","terrain_splat"]},
+    {"name":"rock_t1","pos":[2880.0002,2112.0,0.0],"rot":3.25,"proj":12.5,"alt":900.0,"covers":["water","terrain_splat"]},
+    {"name":"rock_t2","pos":[2880.0002,2112.0,0.0],"rot":3.25,"proj":12.5,"alt":900.0,"covers":["water","terrain_splat"]}
   ]
 }

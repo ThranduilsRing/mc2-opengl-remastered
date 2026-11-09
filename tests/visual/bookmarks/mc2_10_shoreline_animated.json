@@ -3,8 +3,8 @@
   "mission": "mc2_10",
   "_note": "Verified water boundary from mc2_10_water.json, lowered for foam readability. Three repeats at settle=30 are one fixed-clock second apart.",
   "bookmarks": [
-    {"name":"night_shore_t0","pos":[-4416.0,-1984.0,0.0],"rot":73.75,"proj":25.0,"alt":650.0},
-    {"name":"night_shore_t1","pos":[-4416.0,-1984.0,0.0],"rot":73.75,"proj":25.0,"alt":650.0},
-    {"name":"night_shore_t2","pos":[-4416.0,-1984.0,0.0],"rot":73.75,"proj":25.0,"alt":650.0}
+    {"name":"night_shore_t0","pos":[-4416.0,-1984.0,0.0],"rot":73.75,"proj":25.0,"alt":650.0,"covers":["water","terrain_splat"]},
+    {"name":"night_shore_t1","pos":[-4416.0,-1984.0,0.0],"rot":73.75,"proj":25.0,"alt":650.0,"covers":["water","terrain_splat"]},
+    {"name":"night_shore_t2","pos":[-4416.0,-1984.0,0.0],"rot":73.75,"proj":25.0,"alt":650.0,"covers":["water","terrain_splat"]}
   ]
 }
