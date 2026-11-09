@@ -12,6 +12,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -30,6 +31,14 @@ std::string key(std::string_view path);
 // Value-type join of a directory and a leaf into one logical key (exactly one '/' between).
 std::string join(std::string_view dir, std::string_view leaf);
 
+// Where a candidate's bytes come from and how it ranks. M1 of the container plan (rev 4): authority is the
+// candidate's position in the resolution chain (mod priority order, loose, size-strip alias, then FST archives in
+// REGISTRATION order). Storage and provenance never reorder it: a later archive does not outrank an earlier one
+// because it is user-modified; provenance only decides whether a cooked copy of this source may be served.
+struct SourceRecord {
+	unsigned authorityRank = 0;  // 0 = the winner; strictly increasing down the chain
+};
+
 struct Entry {
 	std::string key;           // logical key
 	Provider provider = Provider::Fst;
@@ -38,6 +47,7 @@ struct Entry {
 	std::string name;          // writable basename (physical case; key leaf for FST entries)
 	unsigned shadowed = 0;     // lower-precedence candidates behind this one in the chain
 	bool viaStripAlias = false; // served by the size-stripped alias (data/tgl/128/x.tga -> loose data/tgl/x.tga)
+	SourceRecord source;        // authority of this candidate (equals its index in candidates())
 };
 
 struct Stats {
@@ -58,8 +68,12 @@ std::vector<Entry> candidates(std::string_view logicalKey);
 // First candidate that `readable` accepts (default: physical file opens; FST always accepted), so a corrupt or
 // unreadable winner falls back to the next provider without changing precedence.
 std::optional<Entry> resolve(std::string_view logicalKey, bool (*readable)(const Entry&) = nullptr);
-// TODO(cook lane): the index identifies files by path only. Content identity needs real content hashes;
-// do NOT build it on ComputeModDataSignature (file count + max mtime), a cache-staleness check.
+// Content identity: the fastHash of the bytes the winning candidate serves for `path` (0 if unreadable).
+// A physical winner is memoised by (path, size, mtime) and re-hashed on any change of either; an FST winner is
+// memoised per index generation. The memo is cleared on every rebuild, which bounds a same-size same-mtime edit to
+// the next rebuild. Hash cost: one read of the file per content change, one stat per query. Never derived from
+// ComputeModDataSignature (file count + max mtime), which is a cache-staleness hint only.
+uint64_t contentDigest(std::string_view path);
 // Direct children of dirKey ("data/missions/") whose name ends in ext (".fit", case-insensitive; empty = all),
 // one entry per key, sorted by key.
 std::vector<Entry> enumerate(std::string_view dirKey, std::string_view ext = {});
