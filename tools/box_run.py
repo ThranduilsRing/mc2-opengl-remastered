@@ -10,7 +10,7 @@ Steps (each timed, summary printed at the end): lock a GPU, git-bundle HEAD to t
 (big immutable data linked, the rest copied) + deploy_payload, run the rows, copy reports back to
 E:/mc2-archive-2026-10/proofs/box/<worktree>/<sha8>/ (MC2_BOX_PROOFS), print the DEPLOY_FINGERPRINT line, release the lock.
 
-Rows: smoke-lite | smoke-tier1 | syncval[:aa_off|aa_fxaa|aa_cmaa|cold_bake|imgui|resize|nowater|gpuav|canary] | capture:<mission>:<bookmark-stem> | determinism:<mission> | saveload[:<mission>] | unit | unit-san (doctests under ASan+UBSan, CPU-only) | build | lint | cpu:<command> | sh:<command> (no GPU lock) | gpu:<command> (takes the lock)
+Rows: ab:<before-ref> (day + night A/B against HEAD) | smoke-lite | smoke-tier1 | syncval[:aa_off|aa_fxaa|aa_cmaa|cold_bake|imgui|resize|nowater|gpuav|canary] | capture:<mission>:<bookmark-stem> | determinism:<mission> | saveload[:<mission>] | unit | unit-san (doctests under ASan+UBSan, CPU-only) | build | lint | cpu:<command> | sh:<command> (no GPU lock) | gpu:<command> (takes the lock)
 (sh runs in the lane src dir with $INSTALL, $OUT, $GPU_ENV set). GPU 3 is reserved for merge gates (--gate). GPUs 1-3 cannot
 do screenshot captures yet (VK present init fails there): capture rows are forced onto GPU 0 by `--gpu auto`.
 Windows-only behaviour (window focus, firewall, owner-test) is not covered: those rows stay on the Windows PC.
@@ -62,6 +62,32 @@ GATE_ROWS = ([f"determinism:mc2_{n}" for n in ("01", "03", "10", "16", "24")] + 
 # a retry must never reuse a row's --out dir (sim_determinism refuses an existing one and the row would be VOID): one fresh dir per attempt
 FRESH_FN = 'fresh() { local d=$1 n=0; while [ -e "$d.a$n" ]; do n=$((n+1)); done; printf %s "$d.a$n"; }'
 
+
+def write_payload_manifest(install, commit):
+    """Hash the installed Linux payload, using the production deploy CSV writer."""
+    import re
+    import deploy_payload as deploy
+    from exe_fingerprint import extract
+
+    install = Path(install)
+    fingerprint = extract(install / "mc2")
+    sha = fingerprint.get("sha") if fingerprint.get("present") else None
+    if not re.fullmatch(r"[0-9a-f]{40}", commit) or not sha or not commit.startswith(sha):
+        raise ValueError("Linux payload executable commit mismatches requested commit")
+    paths = {install / "mc2"}
+    paths.update(p for tree in ("data", "shaders") for p in (install / tree).rglob("*") if p.is_file())
+    paths.update(install.glob("*.fst"))
+    if (install / "crashpad_handler").is_file():
+        paths.add(install / "crashpad_handler")
+    hashes = {}
+    for path in sorted(paths):
+        stat = path.stat()
+        hashes[path.relative_to(install).as_posix()] = (deploy.sha256_file(path), stat.st_size, stat.st_mtime_ns)
+    if not any(p.startswith("shaders/vulkan/") and p.endswith(".spv") for p in hashes):
+        raise ValueError("Linux payload has no compiled shaders")
+    deploy.check_hardlink_isolation([(None, deploy.MANIFEST_NAME, "manifest")], str(install))
+    deploy.write_manifest(str(install), hashes, commit)
+
 REMOTE = r'''#!/bin/bash
 # box_run.py remote half: args GPU BRANCH SHA OUTDIR CAP0 ROWS_B64 (rows newline-joined, base64)
 set -uo pipefail
@@ -97,7 +123,7 @@ if [ -e $S/.git ]; then git -C $S checkout -q -f --detach $SHA; else git -C $MIR
 tick source
 ONLY_LINT=1; for r in "${ROWS[@]}"; do [ "$r" = lint ] || ONLY_LINT=""; done   # a lint-only run is pure Python + git: no configure, no build, no install
 cd $S
-if [ -z "$ONLY_LINT" ]; then
+build_install() {
 # build: shared ccache keyed without the directory so every lane hits the same objects
 export CCACHE_BASEDIR=/workspace CCACHE_NOHASHDIR=1 CCACHE_SLOPPINESS=time_macros
 cd $S
@@ -118,7 +144,22 @@ fi
 cp -f build64-ninja/mc2 $I/mc2 && chmod +x $I/mc2 || { echo "[box_run] DEPLOY FAILED"; exit 6; }
 # optional payload: only what THIS tree built (a lane without crashpad has no crashpad_handler; deploy must never require it)
 for opt in crashpad_handler; do [ -f build64-ninja/$opt ] && { cp -f build64-ninja/$opt $I/$opt && chmod +x $I/$opt || { echo "[box_run] DEPLOY FAILED: $opt"; exit 6; }; }; done
-mkdir -p $I/shaders && cp -a $S/shaders/. $I/shaders/ && cp -a build64-ninja/shaders/. $I/shaders/
+mkdir -p $I/shaders && cp -a $S/shaders/. $I/shaders/ && cp -a build64-ninja/shaders/. $I/shaders/ || { echo "[box_run] DEPLOY FAILED: shaders"; exit 6; }
+# Use the tip's tooling for both arms, including when the before revision predates it.
+git -C $S checkout -q -f --detach $SHA || exit 6
+python3 -c 'from tools.box_run import write_payload_manifest; import sys; write_payload_manifest(sys.argv[1], sys.argv[2])' "$I" "$BUILD_SHA" || { echo "[box_run] DEPLOY FAILED: manifest"; exit 6; }
+mkdir -p "$I/saved_bookmarks"
+for bookmark in mc2_01_saved_205644 mc2_10_saved_204523; do
+  cp "$S/tests/visual/bookmarks/$bookmark.json" "$I/saved_bookmarks/$bookmark.json" || exit 6
+done
+}
+AB_BEFORE=""
+for row in "${ROWS[@]}"; do case $row in ab:*) AB_BEFORE=$(git rev-parse --verify "${row#ab:}^{commit}") || exit 6;; esac; done
+[ -z "$AB_BEFORE" ] || git merge-base --is-ancestor "$AB_BEFORE" "$SHA" || { echo "[box_run] AB REFUSED: before is not an ancestor of tip"; exit 6; }
+BUILD_SHA=${AB_BEFORE:-$SHA}
+if [ -z "$ONLY_LINT" ]; then
+  git checkout -q -f --detach "$BUILD_SHA" || exit 6
+  build_install
 fi
 tick install
 export INSTALL=$I OUT
@@ -167,6 +208,25 @@ sys.exit(7 if want and want != fp["digest"] else 0)'
 RIDX=0
 for row in "${ROWS[@]}"; do
   RIDX=$((RIDX+1))
+  case $row in ab:*)
+    ABOUT=$(fresh "$OUT/ab")
+    marks=mc2_01_saved_205644,mc2_10_saved_204523
+    take_lock
+    gr timeout -k 30 600 python3 tools/visual_verify/capture.py --install "$I" --bookmarks "$marks" --out "$ABOUT/a" > "$OUT/ab_before.log" 2>&1; rc=$?
+    rm -f /workspace/locks/gpu$GOT.owner /workspace/locks/gpu$GOT.row; exec 9>&-; GOT=""; LOCKED=""
+    BUILD_SHA=$SHA; build_install
+    if [ "$rc" = 0 ]; then
+      take_lock; LOCKED=1
+      gr timeout -k 30 600 python3 tools/visual_verify/capture.py --install "$I" --bookmarks "$marks" --out "$ABOUT/b" > "$OUT/ab_after.log" 2>&1; rc=$?
+      if [ "$rc" = 0 ]; then
+        grc python3 tools/visual_verify/ab.py --compare-only "$ABOUT/a" "$ABOUT/b" --out-root "$ABOUT/compare" > "$OUT/ab_compare.log" 2>&1; rc=$?
+      fi
+    fi
+    printf "%s\t%s\n" "$row" "$rc" >> "$OUT/rows.tsv"
+    echo "[box_run] row=$row rc=$rc out=$ABOUT"
+    [ "$rc" = 0 ] || RES=1
+    continue ;;
+  esac
   name=$(printf %s "$row" | tr -c 'A-Za-z0-9._-' _); case $row in sh:*|cpu:*|gpu:*) name=row$RIDX-$(printf %s "$row" | cksum | cut -d' ' -f1);; esac; echo "[box_run] row=$row"   # free-text rows: index + hash, never the row text (File name too long)
   case $row in build|unit|unit-san|lint|cpu:*|sh:*) RUN=grc;; determinism:*|saveload*) RUN=grh;; *) RUN=gr; [ -z "$LOCKED" ] && { take_lock; LOCKED=1; };; esac
   case $row in unit-san) TMO=3000;; unit) TMO=1200;; lint) TMO=3600;; smoke*|capture:*) TMO=600;; determinism:*|saveload*) TMO=900;; *) TMO=1800;; esac   # a hung row must not hold a GPU or the lane
@@ -480,6 +540,8 @@ def main():
         a.rows = GATE_ROWS
     if not a.rows:
         ap.error("give at least one row, e.g. smoke-lite")
+    if any(r.startswith("ab:") for r in a.rows) and len(a.rows) != 1:
+        ap.error("ab:<before-ref> runs alone (builds and captures both arms)")
     if git("status", "--porcelain", "--untracked-files=no", repo=repo):
         print("[box_run] warning: uncommitted changes are NOT sent; the box runs HEAD", file=sys.stderr)
     sha = git("rev-parse", "HEAD", repo=repo)
@@ -517,7 +579,7 @@ def main():
         run([*SSH, f"mkdir -p /workspace/lanes && git -C {MIRROR} update-ref -d refs/lanes/{branch}; GIT_LFS_SKIP_SMUDGE=1 git -C {MIRROR} fetch -q -f /workspace/lanes_{branch}.bundle "
                    f"+{ref}:refs/lanes/{branch} && rm /workspace/lanes_{branch}.bundle"], check=True)
     t["bundle+push"] = time.time() - t0
-    if "lint" in a.rows:
+    if "lint" in a.rows or any(r.startswith("ab:") for r in a.rows):
         sync_nifty(repo)
     # gpu choice
     # TODO: drop cap0 (smoke/capture rows forced onto GPU 0) once claude/vk-headless-present (eac614635) is in the base

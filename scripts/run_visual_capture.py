@@ -91,6 +91,8 @@ def _reap_active() -> None:
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 import manifest_schema as ms  # noqa: E402
+sys.path.insert(0, str(ROOT / "tools" / "visual_verify"))
+from ab import payload_identity, stamp_identity  # noqa: E402
 # BACKGROUND-SMOKE-1: no agent capture may take focus / fullscreen / the cursor.
 from smoke_lib import nofocus  # noqa: E402
 from smoke_lib import capture_backend, render_options_pin, render_resolution  # noqa: E402
@@ -338,6 +340,7 @@ def smoke_capture(bookmarks, mission, out, verify=False, exe=None):
                 ms.attach(manifest, ms.identity_block(generator="tier1_shared_capture", exe_path=exe,
                                                       repo_root=str(ROOT), deploy_target=str(Path(exe).resolve().parent)))
                 path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+                stamp_identity(out, payload_identity(Path(exe).resolve().parent))
     return env
 
 
@@ -353,6 +356,7 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
             declared_env: dict | None = None, classic_assets: bool = False) -> dict:
     """Launch one capture sweep; return a result dict (never raises on engine
     failure -- records it instead)."""
+    install_identity = payload_identity(exe.parent)
     if not guard_exe(exe):
         raise RuntimeError(f"exe guard refused {exe}")
     # The engine runs with cwd = the deploy dir and resolves
@@ -573,6 +577,7 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
 
     return {
         "mission": mission_token,
+        "install_identity": install_identity,
         "gpu": gpu_rec,
         "backend": {"requested": want_backend,
                     "drew": sorted({d for d in (capture_backend.drew(sc) for _n, sc in sidecars if sc) if d}),
@@ -608,6 +613,9 @@ def fail_reasons(result: dict) -> "list[str]":
 
 def write_manifest(result: dict, exe: Path) -> Path:
     out_dir = Path(result["out_dir"])
+    identity = payload_identity(exe.parent)
+    if result.get("install_identity", identity) != identity:
+        raise ValueError("capture payload changed during capture")
     reasons = fail_reasons(result)
     verdict = "FAIL" if reasons else "PASS"
     ident = ms.identity_block(
@@ -643,6 +651,11 @@ def write_manifest(result: dict, exe: Path) -> Path:
     manifest = ms.attach({"kind": "visual-capture"}, ident, rep)
     path = out_dir / f"{result['mission']}_capture_manifest.json"
     path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    run = out_dir / "capture_run.json"
+    sidecar = json.loads(run.read_text(encoding="utf-8")) if run.exists() else {}
+    sidecar["identity"] = ident
+    run.write_text(json.dumps(sidecar, indent=2), encoding="utf-8")
+    stamp_identity(out_dir, identity)
     return path
 
 

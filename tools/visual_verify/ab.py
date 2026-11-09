@@ -40,6 +40,19 @@ THRESH = 24
 
 
 MANIFEST = ".deployed_manifest.csv"
+EXECUTABLES = {"mc2.exe", "mc2", "mc2.elf"}
+
+
+def payload_executable(files):
+    names = EXECUTABLES.intersection(files)
+    if len(names) != 1:
+        raise ValueError("payload must identify exactly one game executable")
+    return next(iter(names))
+
+
+def game_executable(install):
+    files, _ = read_manifest(install)
+    return Path(install) / payload_executable(files)
 
 
 def read_manifest(install):
@@ -50,7 +63,7 @@ def read_manifest(install):
             for row in csv.reader(f):
                 if len(row) >= 4 and row[0] not in ("manifest_version", "relpath"):
                     files[row[0]] = row[1]
-                    if row[0] == "mc2.exe":
+                    if row[0] in EXECUTABLES:
                         exe_commit = row[3] or None
     except OSError:
         pass
@@ -61,17 +74,18 @@ def payload_identity(install):
     """Verify the executable and every deployed SPIR-V byte before attributing captures."""
     install = Path(install)
     files, commit = read_manifest(install)
+    exe = payload_executable(files)
     payload = {p: sha for p, sha in files.items()
-               if p == "mc2.exe" or (p.startswith("shaders/vulkan/") and p.endswith(".spv"))}
+               if p == exe or (p.startswith("shaders/vulkan/") and p.endswith(".spv"))}
     actual = {p.relative_to(install).as_posix() for p in (install / "shaders/vulkan").rglob("*.spv")}
-    if not re.fullmatch(r"[0-9a-f]{40}", commit or "") or "mc2.exe" not in payload or not actual or actual != set(payload) - {"mc2.exe"}:
+    if not re.fullmatch(r"[0-9a-f]{40}", commit or "") or not actual or actual != set(payload) - {exe}:
         raise ValueError(f"{install}: unknown or incomplete payload manifest identity")
     for rel, expected in payload.items():
         with (install / rel).open("rb") as stream:
             got = hashlib.file_digest(stream, "sha256").hexdigest()
         if got != expected:
             raise ValueError(f"{install}: manifest mismatch for {rel}: {got} != {expected}")
-    fingerprint = exe_commit(install / "mc2.exe")
+    fingerprint = exe_commit(install / exe)
     if fingerprint and not commit.startswith(fingerprint):
         raise ValueError(f"{install}: executable commit mismatches manifest")
     return dict(commit=commit, payload=payload, manifest=files)
@@ -90,15 +104,19 @@ def captured_identity(directory):
         sidecar = json.loads((directory / "capture_run.json").read_text())
         identity = sidecar["install_identity"]
         payload = identity["payload"]
+        exe = payload_executable(payload)
         expected = {p: sha for p, sha in identity["manifest"].items()
-                    if p == "mc2.exe" or (p.startswith("shaders/vulkan/") and p.endswith(".spv"))}
-        if not re.fullmatch(r"[0-9a-f]{40}", identity["commit"]) or "mc2.exe" not in payload or len(payload) < 2:
+                    if p in EXECUTABLES or (p.startswith("shaders/vulkan/") and p.endswith(".spv"))}
+        if not re.fullmatch(r"[0-9a-f]{40}", identity["commit"]) or len(payload) < 2:
             raise ValueError("incomplete payload identity")
         if payload != expected or any(not re.fullmatch(r"[0-9a-f]{64}", sha) for sha in payload.values()):
             raise ValueError("mismatched payload identity")
         captured_exe = sidecar.get("identity", {}).get("exe", {}).get("sha256")
-        if captured_exe and captured_exe != payload["mc2.exe"]:
+        if captured_exe and captured_exe != payload[exe]:
             raise ValueError("capture executable mismatches payload identity")
+        fingerprint = sidecar.get("identity", {}).get("exe", {}).get("embedded_fingerprint", {})
+        if fingerprint.get("present") and not identity["commit"].startswith(fingerprint.get("sha") or "unknown"):
+            raise ValueError("capture executable commit mismatches payload identity")
         return identity
     except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
         raise ValueError(f"{directory}: unknown or mismatched capture install identity: {exc}") from exc
@@ -117,7 +135,10 @@ def exe_commit(exe):
 
 def install_commit(install):
     """(commit, how) of an install: its mc2.exe fingerprint, else the manifest's mc2.exe row; (None, why) when unknown."""
-    c = exe_commit(Path(install) / "mc2.exe")
+    try:
+        c = exe_commit(game_executable(install))
+    except ValueError:
+        return None, "missing or ambiguous payload executable"
     if c:
         return c, "exe fingerprint"
     c = read_manifest(install)[1]
@@ -147,7 +168,7 @@ def manifest_mismatches(ma, mb):
     (mc2.pdb pairs with mc2.exe; mc2_asset_viewer.exe is not launched by a capture).
     W135: the gate's capture-before (published exe) vs capture-after (candidate) differed only in mc2.pdb/asset viewer and
     failed; W136: a window that edits shaders/vulkan sources (.frag, include/*.glsl) failed the same way."""
-    build_outputs = {"mc2.exe", "mc2.pdb", "mc2_asset_viewer.exe"}
+    build_outputs = EXECUTABLES | {"mc2.pdb", "mc2_asset_viewer.exe", "mc2_asset_viewer"}
     skip = lambda p: p in build_outputs or p.startswith("shaders/vulkan/")
     ma = {k: v for k, v in ma.items() if not skip(k)}
     mb = {k: v for k, v in mb.items() if not skip(k)}

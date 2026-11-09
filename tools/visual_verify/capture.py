@@ -109,8 +109,8 @@ def capture_sweep(install: Path, bookmark_files: "list[Path]", out_dir: Path,
                   frame: int, settle: int, duration: int | None,
                   det_clock: bool, show_window: bool,
                   logf, declared_env: "dict | None" = None) -> dict:
-    exe = install / "mc2.exe"
-    from ab import payload_identity
+    from ab import game_executable, payload_identity
+    exe = game_executable(install)
     install_identity = payload_identity(install)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -291,7 +291,8 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
 
     install = Path(args.install).resolve()
-    exe = install / "mc2.exe"
+    from ab import game_executable
+    exe = game_executable(install)
     if not exe.exists():
         print(f"[vv-capture] ERROR mc2.exe missing: {exe}", file=sys.stderr)
         return 4
