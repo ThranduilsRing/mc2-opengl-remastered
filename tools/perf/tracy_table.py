@@ -22,7 +22,9 @@ import subprocess
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from smoke_lib import nofocus
+from tracy_capture_compare import tracy_exe
 
 
 def stats(values):
@@ -124,14 +126,14 @@ def main():
     parser.add_argument("root", type=Path)
     parser.add_argument("out", type=Path)
     args = parser.parse_args()
-    traces = sorted(args.root.glob("*/pair*/*.tracy"))
+    traces = sorted(args.root.rglob("*.tracy"))
     if not traces:
         parser.error("no captures found")
     output = {}
     for trace in traces:
         flags = {"creationflags": subprocess.BELOW_NORMAL_PRIORITY_CLASS} if sys.platform == "win32" else {}
         # background-launch: allow the windowless Tracy CSV console exporter.
-        exported = subprocess.run(["C:/Users/Joe/Downloads/TracyProfiler/tracy-csvexport.exe", "-u", str(trace)],
+        exported = subprocess.run([str(tracy_exe("tracy-csvexport.exe")), "-u", str(trace)],
                                   capture_output=True, text=True, check=True, timeout=180,
                                   **nofocus.hidden_kwargs(**flags))
         output[str(trace.relative_to(args.root))] = summarize(csv.DictReader(io.StringIO(exported.stdout)))

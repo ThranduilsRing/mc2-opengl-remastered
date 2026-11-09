@@ -10,7 +10,13 @@ W135 continuation (2026-11-08, current):
 - Trusted nifty build initially rejected `battle` (that alias exists only in
   lane tooling). Second run uses lane harness with the trusted nifty executable
   and explicit --ref-commit, preserving executable provenance.
-- Next: fetch trusted pair/pin; run box profile; commit pin and final state;
+- Trusted nifty d63c403c9 pair PASS: 301 equal frames; mission_ready at
+  25.9641 / 24.9842 s. The 300-frame chain matches the existing Linux pin;
+  its provenance now names the trusted executable, d63c403c9715.
+  Receipt: w135-box/mc2-slot05/bf922455/.tails/row1-1465214127.log.
+- Attribution CLI now accepts mission-profile capture directories and native
+  Tracy tool lookup. Targeted pytest: 52 passed. Linux sampler recognizes mc2.
+- Next: run box profile (native Tracy tools absent, build version 0.13.1);
   box build/unit/lint and one final Windows Ninja build. Proof root remains
   E:/mc2-archive-2026-10/proofs/perf-attrib, w135-* receipts.
 

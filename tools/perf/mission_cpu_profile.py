@@ -330,7 +330,7 @@ class HostSamples:
                 games = []
                 for child in children:
                     try:
-                        if child.name().lower() == "mc2.exe":
+                        if child.name().lower() in {"mc2.exe", "mc2"}:
                             if child.pid not in known:
                                 child.cpu_percent()
                                 known[child.pid] = child

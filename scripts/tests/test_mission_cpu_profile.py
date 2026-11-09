@@ -270,3 +270,23 @@ def test_attribution_rejects_missing_identity_or_phase_anchors(attribution_captu
     with pytest.raises(ValueError, match='Mission::init phase anchor'):
         table.summarize(csv.DictReader(io.StringIO(attribution_capture.replace('Mission::init', 'unknown'))))
     assert table.stats([1_000_000] * 99 + [50_000_000]) == {'mean_ms': 1.49, 'p99_ms': 1, 'worst_ms': 50}
+
+
+def test_attribution_cli_reads_mission_profile_layout(tmp_path, monkeypatch, attribution_capture):
+    module = tracy_table()
+    trace = tmp_path / 'timestamp' / 'mc2_03' / 'mc2_03.tracy'
+    trace.parent.mkdir(parents=True)
+    trace.write_bytes(b'trace')
+    tool = tmp_path / 'tracy-csvexport'
+    monkeypatch.setattr(module, 'tracy_exe', lambda name: tool)
+    def export(command, **kwargs):
+        assert command == [str(tool), '-u', str(trace)]
+        return SimpleNamespace(stdout=attribution_capture)
+    monkeypatch.setattr(module.subprocess, 'run', export)
+    summarize = module.summarize
+    monkeypatch.setattr(module, 'summarize', lambda reader: summarize(reader, first_playable_frames=2))
+    output = tmp_path / 'attribution.json'
+    monkeypatch.setattr(module.sys, 'argv', ['tracy_table.py', str(tmp_path), str(output)])
+    module.main()
+    report = json.loads(output.read_text())
+    assert 'steady_play' in report[str(trace.relative_to(tmp_path))]
