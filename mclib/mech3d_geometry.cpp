@@ -9,6 +9,7 @@
 #include "../RenderCore/axis_convert.h"
 #include <format>
 #include "mover_lamps.h"
+#include "mech_death_policy.h"
 
 // T1.15 SpotLight_ illumination diagnostic — registration probe (mech class).
 // First-hit always-on; per-summary every 600 updateGeometry calls when env=1.
@@ -28,7 +29,18 @@ void Mech3DAppearance::setObjStatus (long oStatus)
 	{
 		if (oStatus == OBJECT_STATUS_DESTROYED)
 		{
-			if (unitAnim().currentGestureId == 23)
+			// Imported actors keep their own downed/death mesh and skin palette.
+			const bool imported = mc2mechanim::ImportedGpuTypeInfo(mechType->mechShape[0].get(), nullptr, nullptr) > 0;
+			const bool forward = unitAnim().currentGestureId == 23;
+			const bool backward = unitAnim().currentGestureId == 24;
+			if (imported || !(forward ? static_cast<bool>(mechType->mechForwardDmgShape) :
+				backward && static_cast<bool>(mechType->mechBackwardDmgShape))) {
+				// Keep the original material handles too: imported textures are
+				// not stock tgl/<size> files and reloading them here erases them.
+				status = oStatus;
+				return;
+			}
+			if (forward)
 			{
 				if (mechType->mechForwardDmgShape)
 				{
@@ -41,7 +53,7 @@ void Mech3DAppearance::setObjStatus (long oStatus)
 					mechShape = mechShapeOwner_.get();
 				}
 			}
-			else if (unitAnim().currentGestureId == 24)
+			else if (backward)
 			{
 				if (mechType->mechBackwardDmgShape)
 				{
@@ -56,6 +68,8 @@ void Mech3DAppearance::setObjStatus (long oStatus)
 			}
 
 			currentLOD = 0;
+			rotationalNodeIndex = hitLeftNodeIndex = hitRightNodeIndex = -1;
+			rootNodeIndex = -1;
 
 			for (long i=0;i<mechShape->GetNumTextures();i++)
 			{
@@ -500,7 +514,8 @@ void Mech3DAppearance::updateGeometry (void)
 		// shapes, plus the shadow-shape transform conditional. Per-stage
 		// attribution for the trimodal Mech3D.UpdateGeometry histogram.
 		{ ZoneScopedN("Mech3D.UpdateGeometry.AnimPose");
-		if (status != OBJECT_STATUS_DESTROYED)
+		if (mc2wreck::animate(status == OBJECT_STATUS_DESTROYED,
+			mechShape->GetMultiType() != mechType->mechShape[currentLOD].get()))
 		{
 			mechType->setAnimation(mechShape,unitAnim().currentGestureId);
 			mechShape->SetFrameNum(unitAnim().currentFrame);
@@ -1032,7 +1047,7 @@ void Mech3DAppearance::updateSimPose (bool advanceClock)
 
 	// The same pose updateGeometry sets before its body transform; the hierarchy-only transform needs no camera and fills
 	// the per-node shapeToWorld that getWeaponNodePosition / getNodeIdPosition read.
-	if (status != OBJECT_STATUS_DESTROYED)
+	if (mc2wreck::animate(status == OBJECT_STATUS_DESTROYED, false))
 	{
 		mechType->setAnimation(mechShape,unitAnim().currentGestureId);
 		mechShape->SetFrameNum(unitAnim().currentFrame);

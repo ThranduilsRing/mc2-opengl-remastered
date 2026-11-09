@@ -1,4 +1,4 @@
-"""The compiled window path composes HDR linear light before encoding."""
+"""Compiled prop shading preserves HDR window light and padded atlas repeats."""
 from pathlib import Path
 import re
 import subprocess
@@ -9,6 +9,35 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'scripts'))
 import console_child
 import shader_common
+
+
+@pytest.mark.parametrize('regressed', [False, True])
+def test_compiled_prop_atlas_wraps_before_scaling(tmp_path, regressed):
+    # A fence repeats U three times inside a small atlas subregion. Scaling first
+    # makes repeats 2/3 sample transparent padding and appear to lose segments.
+    production = ROOT / 'shaders/vulkan/color_prop_tier1.frag'
+    src = tmp_path / 'prop.frag'
+    shader = production.read_text()
+    if regressed:
+        shader = shader.replace('fract(vUv) * vUvScale', 'fract(vUv * vUvScale)')
+    src.write_text(shader)
+    spv = tmp_path / 'prop.spv'
+    subprocess.run([shader_common.find_tool('glslangValidator'), '-V',
+                    '-I' + str(production.parent), str(src), '-o', str(spv)],
+                   check=True, capture_output=True, **console_child.child_kwargs(redirected=True))
+    text = subprocess.check_output([shader_common.find_tool('spirv-dis'), str(spv)],
+                                  text=True, **console_child.child_kwargs(redirected=True))
+    main = re.search(r'%main = OpFunction .*?OpFunctionEnd', text, re.S)[0]
+    wraps = re.findall(r'(%\w+) = OpExtInst %v2float %\w+ Fract (%\w+)', main)
+    assert len(wraps) == 2  # alpha-ON and alpha-OFF texture arrays
+    for wrapped, source in wraps:
+        from_unscaled_uv = re.search(re.escape(source) + r' = OpLoad %v2float %vUv\b', main)
+        assert bool(from_unscaled_uv) is not regressed
+        if not regressed:
+            scale = re.search(r'(%\w+) = OpLoad %v2float %vUvScale\b', main[main.index(wrapped + ' ='):])[1]
+            assert re.search(r'OpFMul %v2float ' + re.escape(wrapped) + ' ' + re.escape(scale), main)
+    # Mip derivatives must use the unwrapped coordinates on both sampling paths.
+    assert 'OpImageSampleExplicitLod' in main and ' Grad ' in main
 
 
 def test_compiled_window_emission_decodes_adds_hdr_then_encodes(tmp_path):

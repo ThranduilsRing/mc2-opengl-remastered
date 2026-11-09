@@ -1045,12 +1045,10 @@ initPartsHeader(f);
 	admitAuthoredRoutes();
 	initWeatherCamera(f);
 	initInterface(f);
-initLabTimingAndClose();
-	initFinalizeGeometry();
-	// After the static-prop geometry is finalized: a type registered before it (the VTOL, Karnov) joins the batch and changes how other props shade.
-	// Registered after, it takes the CPU-fallback path exactly as when it was first loaded in gameplay. Still behind the loading screen.
+	initLabTimingAndClose();
+	// Support craft use the native prop renderer too: register their geometry
+	// before the immutable buffers close, while still behind the loading screen.
 	preloadMissionSupportAtLoad();
-	// The warm registers mech-class types after finalizeGeometry; rebuild the shared VBO/IBO now, behind the loading screen, not at the first playable flush.
-	GpuMechBatcher::instance().finalizePending();
+	initFinalizeGeometry();
 	mc2::content::reportMission(missionName);
 }

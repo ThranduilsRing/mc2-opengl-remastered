@@ -70,6 +70,40 @@ def test_conflict_detection(lane_store, tmp_path):
     assert c["clear"]
 
 
+def test_release_worktree_matches_under_one_lock(lane_store, tmp_path, monkeypatch):
+    import contextlib
+    lr.register_lane(tmp_path, "local-a", worktree="A:/Games/slot05/")
+    lr.register_lane(tmp_path, "local-b", worktree="a:\\games\\SLOT05")
+    lr.register_lane(tmp_path, "foreign", worktree="A:/Games/slot09")
+    locks = []
+    real_lock = lr._lock
+
+    @contextlib.contextmanager
+    def locked(path):
+        with real_lock(path):
+            locks.append(path)
+            # A claim arriving before lock acquisition must also be removed.
+            data = lr._read(path)
+            data["lanes"]["late"] = {"worktree": "A:/Games/slot05"}
+            lr._write(path, data)
+            yield
+
+    monkeypatch.setattr(lr, "_lock", locked)
+    assert lr.release_worktree(tmp_path, "A:/Games/slot05")["released"] == ["late", "local-a", "local-b"]
+    assert len(locks) == 1
+    assert set(lr._read(lane_store)["lanes"]) == {"foreign"}
+
+
+def test_registry_lock_timeout_preserves_claims(lane_store, tmp_path, monkeypatch):
+    lr.register_lane(tmp_path, "local", worktree=str(tmp_path))
+    before = lane_store.read_bytes()
+    lane_store.with_suffix(".lock").write_text("busy")
+    monkeypatch.setattr(lr, "_LOCK_WAIT_SECS", 0)
+    with pytest.raises(TimeoutError, match="lock unavailable"):
+        lr.release_worktree(tmp_path, str(tmp_path))
+    assert lane_store.read_bytes() == before
+
+
 def test_second_lane_gets_warned(lane_store, tmp_path):
     lr.register_lane(tmp_path, "LANE-A", files_claimed=["mclib/bdactor.cpp"],
                      deploy_lane="0.4")

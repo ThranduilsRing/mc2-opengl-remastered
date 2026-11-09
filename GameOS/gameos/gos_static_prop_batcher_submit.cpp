@@ -4,6 +4,20 @@
 #include "gos_static_prop_batcher_internal.h"
 #include "mc2fmt.h"
 #include "../../mclib/battle_bench_sink.h"
+#include "diagnostic_trace.h"
+
+namespace {
+std::unordered_map<uint32_t, uint32_t> supportTraceTypes;
+}
+
+bool mc2SupportCraftTraceType(uint32_t typeID) {
+    static const bool enabled = mc2_diag::tagRequested("SUPPORT_CRAFT");
+    if (!enabled) return false;
+    const auto it = supportTraceTypes.find(typeID);
+    if (it == supportTraceTypes.end()) return false;
+    const auto& [id, firstFrame] = *it;
+    return g_mc2FrameCounter.load(std::memory_order_relaxed) - firstFrame < 60;
+}
 
 
 bool GpuStaticPropBatcher::submit(TG_Shape* shape,
@@ -523,6 +537,16 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
 
         // rec.shapeToWorld is LinearMatrix4D; convert to Matrix4D for submit().
         glm::mat4 xform = glm::mat4(rec.shapeToWorld);
+        if (callerName && !std::strcmp(callerName, "karnov") && mc2_diag::tagRequested("SUPPORT_CRAFT")) {
+            const auto tid = s_typeIndex.at(child->myType->stableId());
+            supportTraceTypes.try_emplace(tid, g_mc2FrameCounter.load(std::memory_order_relaxed));
+            if (mc2SupportCraftTraceType(tid)) {
+                const auto& type = s_types[tid];
+                mc2::fmt::print_err("[SUPPORT_CRAFT] event=submit frame={} type={} node={} vertices={} packets={} light={} transform={},{},{}\n",
+                    g_mc2FrameCounter.load(std::memory_order_relaxed), tid, mc2::fmt::safe(child->myType->getNodeId()),
+                    type.vertexCount, type.packetCount, lightDataIndex, xform[0][3], xform[1][3], xform[2][3]);
+            }
+        }
         const uint32_t teamPaintU32[3] = {static_cast<uint32_t>(multi->teamPaint[0]), static_cast<uint32_t>(multi->teamPaint[1]), static_cast<uint32_t>(multi->teamPaint[2])};
         if (!submit(child, xform,
                     child->aRGBHighlight, child->fogRGB, flags,

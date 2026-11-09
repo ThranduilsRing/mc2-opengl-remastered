@@ -57,8 +57,6 @@ int     g_cementCatalogTruncated    = 0;   // 1 if N>=255 cap hit (Gate A FAIL)
 uint16_t g_cementLayerIndexBySlot[MC_MAX_TERRAIN_TXMS];
 
 static constexpr uint32_t kCementTransitionBit = 0x40000000u;  // IS_TRANSITION in cementWord
-static constexpr uint32_t kCementMaskIdShift    = 24u;         // bits 29:24 = maskId
-static constexpr uint32_t kCementMaskIdMask     = 0x3Fu;       // 6 bits (14 shapes used)
 
 
 // binNumber = (c0?8:0)|(c1?4:0)|(c2?2:0)|(c3?1:0); 0 and 15 are degenerate.
@@ -496,6 +494,18 @@ bool TileRoadAdjacent8(long r, long c, long mapSide, PostcompVertexPtr blocks, b
 // is not populated until that function runs.
 // Marks all modified slots dirty so FlushDirtyRecipeSlotsToGPU uploads them.
 // ---------------------------------------------------------------------------
+// The authored transition tile owns coverage whenever its atlas cell exists.
+// Corner masks cannot reconstruct road paint or the authored pad boundary.
+uint32_t TransitionCementWord(uint16_t alphaLayer, uint16_t solidLayer, unsigned corners) {
+    if (corners == 15u && solidLayer != 0xffffu)
+        return 0x80000000u | solidLayer;
+    if (alphaLayer != 0xffffu)
+        return 0xc0800000u | alphaLayer;
+    if (corners > 0u && corners < 15u && solidLayer != 0xffffu)
+        return 0xc0000000u | ((corners - 1u) << 24u) | solidLayer;
+    return 0u;
+}
+
 void PopulateRecipeCementWords() {
     if (!Terrain::mapData) return;
     const long mapSide = Terrain::realVerticesMapSide;
@@ -587,31 +597,21 @@ void PopulateRecipeCementWords() {
                     const bool c3 = (l3 != 0xFFFFu);
                     const std::optional<int> maskId = deriveMaskIdFromCorners(c0, c1, c2, c3);
                     const uint16_t cementLayerIdx = c0 ? l0 : (c1 ? l1 : (c2 ? l2 : l3));
-                    if (c0 && c1 && c2 && c3) {
-                        // Mixed cement variants are still one opaque pad. Their
-                        // cached alpha must not expose the prelit colormap.
-                        cementWord = kCementLayerValidBit | static_cast<uint32_t>(cementLayerIdx);
-                        ++cementQuadCount;
-                    } else if (maskId && cementLayerIdx != 0xFFFFu
+                    if (!(c0 && c1 && c2 && c3) && maskId && cementLayerIdx != 0xFFFFu
                         && PadEdgeRoadFixMode() == 2
                         && TileRoadAdjacent8(my, mx, mapSide, blocks)) {
                         // Explicit road suppression precedes authored alpha coverage.
-                    } else if (maskId && cementLayerIdx != 0xFFFFu) {
-                        cementWord = kCementLayerValidBit
-                                   | kCementTransitionBit
-                                   | (static_cast<uint32_t>((*maskId & static_cast<int>(kCementMaskIdMask))) << kCementMaskIdShift)
-                                   | (static_cast<uint32_t>(cementLayerIdx) & 0xFFFFu);
-                        ++transitionQuadCount;
-                    } else if (g_cementAlphaLayerMapReady && g_cementAlphaLayerIndexBySlot[slot] != 0xFFFFu) {
-                        // Cornerless road/runway art keeps its authored alpha.
-                        cementWord = kCementLayerValidBit | kCementTransitionBit | kCementOwnAlphaBit
-                                   | (static_cast<uint32_t>(g_cementAlphaLayerIndexBySlot[slot]) & 0xFFFFu);
-                        ++transitionQuadCount;
-                        ++transitionAlphaRescued;
-                    } else if (cementLayerIdx == 0xFFFFu) {
-                        ++transitionDroppedNoLayer;   // no solid-cement corner
                     } else {
-                        ++transitionDroppedNoMask;    // maskId < 0
+                        const unsigned corners = (c0 ? 8u : 0u) | (c1 ? 4u : 0u)
+                                               | (c2 ? 2u : 0u) | (c3 ? 1u : 0u);
+                        const uint16_t alphaLayer = g_cementAlphaLayerMapReady
+                            ? g_cementAlphaLayerIndexBySlot[slot] : 0xffffu;
+                        cementWord = TransitionCementWord(alphaLayer, cementLayerIdx, corners);
+                        if (cementWord & kCementOwnAlphaBit) ++transitionAlphaRescued;
+                        if (cementWord & kCementTransitionBit) ++transitionQuadCount;
+                        else if (cementWord) ++cementQuadCount;
+                        else if (cementLayerIdx == 0xffffu) ++transitionDroppedNoLayer;
+                        else ++transitionDroppedNoMask;
                     }
                 }
             }

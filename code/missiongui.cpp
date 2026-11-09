@@ -1,4 +1,5 @@
 #include "render_view.h"
+#include "hover_name.h"
 //--------------------------------------------------------------------------------------
 //
 // MechCommander 2
@@ -32,6 +33,7 @@
 #include "tick_commit.h"
 
 extern void releaseMissionSupportPreloads();
+extern long g_hoverTipNameID; // missiongui_update.cpp; refreshed at frame extraction
 
 	const char* terrainStr[NUM_TERRAIN_TYPES] = {
 			"Blue Water",	//MC_BLUEWATER_TYPE
@@ -461,6 +463,15 @@ void HandlePlayerOrder (MoverPtr mover, TacticalOrderPtr tacOrder) {
 //--------------------------------------------------------------------------------------
 void MissionInterfaceManager::extractHudSnapshot()
 {
+    // updateTarget runs before this frame's contact extraction. Refresh the
+    // displayed name from that snapshot so acquisition/loss cannot leave a
+    // one-frame visual ID on a sensor-only or vanished contact.
+    if (target && ObjectManager && ObjectManager->getByWatchID(s_targetWatchID) == target && target->isMover()) {
+        const auto& contact = static_cast<Mover*>(target)->contactView;
+        g_hoverTipNameID = contact.tag ? mc2::hoverNameId(contact.quality,
+            target->getTonnage(), target->getDescription(), target->getObjectClass() != BATTLEMECH) : 0;
+        helpTextHeaderID = helpTextID = g_hoverTipNameID;
+    }
     controlGui.extractHudSnapshot();
     auto& rows = mc2::render_view::stagingHud().vtols;
     rows.clear();

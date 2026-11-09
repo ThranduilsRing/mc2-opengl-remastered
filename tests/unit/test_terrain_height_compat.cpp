@@ -79,6 +79,7 @@ struct Terrain {
     static inline long blocksMapSide = 1, realVerticesMapSide = 20;
     static inline float worldUnitsMapSide = 2560.0f;
     static inline float oneOverWorldUnitsMapSide = 1.0f / worldUnitsMapSide;
+    static inline float waterElevation = 0.0f;
     static inline glm::vec3 mapTopLeft3d{-1280, 1280, 0};
     static inline TerrainColorMap* terrainTextures2 = nullptr;
     static bool IsValidTerrainPosition(glm::vec3 position);
@@ -184,6 +185,58 @@ States observe(const Fixture& fixture, bool retirePhong, bool retainArt) {
     return result;
 }
 } // namespace height_compat
+
+TEST_CASE("TerrainHeightCompat/visual bake and near plane ridge") {
+    using namespace height_compat;
+    Terrain terrain;
+    terrain.height = [](const glm::vec3&) { return 7.0f; };
+    land = &terrain;
+    const auto origin = Terrain::mapTopLeft3d;
+    const glm::vec3 eye = origin + glm::vec3(0, -32, 0);
+    const glm::vec3 nearOffsets[4] = {{32, 32, -4}, {96, 32, -4}, {32, -32, 4}, {96, -32, 4}};
+    TerrainRuntime::setCpuVisualHeight(nullptr, 0);
+    CHECK(TerrainRuntime::sampleVisualHeight(eye) == 7.0f);
+    CHECK(TerrainRuntime::cameraClearanceHeight(eye, nearOffsets, 10) == 17.0f);
+    float bake[16] = {0, 0, 0, 0, 0, 20, 80, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    TerrainRuntime::setCpuVisualHeight(bake, 4);
+    const auto midpoint = origin + glm::vec3(48, -32, 0);
+    CHECK(TerrainRuntime::sampleVisualHeight(midpoint) == 50.0f);
+    CHECK(TerrainRuntime::decalElevation(midpoint) == 50.0f);
+    CHECK(TerrainRuntime::sampleGameplayHeight(midpoint) == 7.0f);
+    CHECK(TerrainRuntime::groundElevation(midpoint) == 7.0f);
+    CHECK(TerrainRuntime::sampleVisualHeight(origin + glm::vec3(96, -32, 0)) == 0.0f);
+    CHECK(TerrainRuntime::sampleVisualHeight(origin + glm::vec3(-1, 0, 0)) == 7.0f);
+    const float floor = TerrainRuntime::cameraClearanceHeight(eye, nearOffsets, 10);
+    CHECK(floor == 94.0f);
+    // The ridge at (64,-32) is between corners, and the plane slopes down 4 wu.
+    CHECK(floor - 4 >= 80 + 10);
+    Terrain::waterElevation = 120;
+    CHECK(TerrainRuntime::cameraClearanceHeight(eye, nearOffsets, 10) == 134.0f);
+    Terrain::waterElevation = 0;
+    TerrainRuntime::setCpuVisualHeight(nullptr, 0);
+    CHECK(TerrainRuntime::sampleVisualHeight(midpoint) == 7.0f);
+    land = nullptr;
+    CHECK(TerrainRuntime::sampleVisualHeight(midpoint) == 0.0f);
+}
+
+TEST_CASE("contact pick: visual sampler uses accepted 4x bake and clears on unload") {
+    using namespace height_compat;
+    Terrain terrain;
+    terrain.height = [](const glm::vec3&) { return 17.0f; };
+    land = &terrain;
+    const glm::vec3 corner = Terrain::mapTopLeft3d;
+    const glm::vec3 middle = corner + glm::vec3(16, -16, 0);
+    const float bake[4] = {20, 40, 60, 80};
+    TerrainRuntime::setCpuVisualHeight(bake, 2);
+    CHECK(TerrainRuntime::sampleVisualHeight(corner) == 20);
+    CHECK(TerrainRuntime::sampleVisualHeight(middle) == 50);
+    CHECK(TerrainRuntime::sampleGameplayHeight(middle) == 17);
+    CHECK(TerrainRuntime::sampleVisualHeight(corner + glm::vec3(-1, 0, 0)) == 17);
+    TerrainRuntime::setCpuVisualHeight(nullptr, 0);
+    CHECK(TerrainRuntime::sampleVisualHeight(middle) == 17);
+    land = nullptr;
+    CHECK(TerrainRuntime::sampleVisualHeight(middle) == 0);
+}
 
 TEST_CASE("TerrainHeightCompat/production query corpus stays bit identical") {
     using namespace height_compat;

@@ -173,7 +173,10 @@ std::shared_ptr<const SkelPlan> BuildPlan(const aiScene* scene, const std::vecto
     p->boneNode.resize(boneNames.size(), -1);
     for (size_t b = 0; b < boneNames.size(); ++b) {
         auto it = nodeByName.find(boneNames[b]);
-        if (it != nodeByName.end()) p->boneNode[b] = it->second;
+        if (it != nodeByName.end()) {
+            const auto& [name, node] = *it;
+            p->boneNode[b] = node;
+        }
     }
     p->chanByNode.resize(scene->mNumAnimations);
     for (unsigned a = 0; a < scene->mNumAnimations; ++a) {
@@ -184,7 +187,10 @@ std::shared_ptr<const SkelPlan> BuildPlan(const aiScene* scene, const std::vecto
         tbl.assign(p->nodes.size(), nullptr);
         for (size_t i = 0; i < p->nodes.size(); ++i) {
             auto it = chans.find(p->nodes[i]->mName.C_Str());
-            if (it != chans.end()) tbl[i] = it->second;
+            if (it != chans.end()) {
+                const auto& [name, channel] = *it;
+                tbl[i] = channel;
+            }
         }
     }
     return p;

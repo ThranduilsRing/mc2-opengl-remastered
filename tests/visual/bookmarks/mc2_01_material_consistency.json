@@ -1,0 +1,11 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_01",
+  "_note": "Findings 5/13/16: identical slope at two zoom levels, runway 22T relief and soft edge control.",
+  "bookmarks": [
+    {"name": "slope_near", "pos": [910.0, -2934.0, 0.0], "rot": 25.75, "proj": 35.0, "alt": 700.0, "covers": ["terrain_splat"]},
+    {"name": "slope_far", "pos": [910.0, -2934.0, 0.0], "rot": 25.75, "proj": 35.0, "alt": 1400.0, "covers": ["terrain_splat"]},
+    {"name": "runway_relief", "pos": [3392.0, -649.0, 0.0], "rot": 45.0, "proj": 30.0, "alt": 1200.0, "covers": ["terrain", "cement"]},
+    {"name": "runway_edge", "pos": [3500.0, -700.0, 0.0], "rot": 45.0, "proj": 20.0, "alt": 350.0, "covers": ["terrain", "cement"]}
+  ]
+}

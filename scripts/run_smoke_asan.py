@@ -60,7 +60,7 @@ def _running_mc2_asan() -> list[int]:
     try:
         out = subprocess.check_output(
             ["tasklist", "/FI", f"IMAGENAME eq {ASAN_EXE_NAME}", "/NH", "/FO", "CSV"],
-            text=True, stderr=subprocess.DEVNULL,
+            text=True, stderr=subprocess.DEVNULL, timeout=15,
             **nofocus.hidden_kwargs())
     except Exception:
         return []

@@ -793,6 +793,7 @@ bool BldgAppearance::recalcBounds (void)
 
 			glm::vec3 objectCenter;
 			objectCenter = position - cameraPos;
+			objectCenter.z += TerrainRuntime::sampleVisualHeight(position) - TerrainRuntime::sampleGameplayHeight(position);
 			Camera::cameraFrame.trans_to_frame(objectCenter);
 			float distanceToEye = glm::length(objectCenter);
 			float clip_distance = fabs(1.0f / objectCenter.y);

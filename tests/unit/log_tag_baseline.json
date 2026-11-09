@@ -5531,6 +5531,18 @@
    "count": 1
   },
   {
+   "tag": "MECH_WRECK",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "part",
+    "cause",
+    "hulk",
+    "salvage"
+   ],
+   "count": 2
+  },
+  {
    "tag": "MENU_CANARY",
    "ver": -1,
    "stream": "stdout",
@@ -9406,6 +9418,118 @@
     "packets",
     "verts",
     "indices"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SUPPORT_CRAFT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "frame",
+    "type",
+    "node",
+    "vertices",
+    "packets",
+    "light",
+    "transform"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SUPPORT_CRAFT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "frame",
+    "type",
+    "pipeline",
+    "indices",
+    "instances",
+    "hzb",
+    "albedo",
+    "firstIndex",
+    "baseVertex"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SUPPORT_CRAFT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "frame",
+    "type",
+    "world",
+    "clip",
+    "pixel"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SUPPORT_CRAFT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "name",
+    "gpu",
+    "static",
+    "x",
+    "y",
+    "z",
+    "frame"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SUPPORT_CRAFT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "name",
+    "x",
+    "y",
+    "z",
+    "frame"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SUPPORT_CRAFT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "turn",
+    "shape",
+    "inView",
+    "lod",
+    "anim",
+    "pos",
+    "bounds",
+    "radius"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SUPPORT_CRAFT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "vehicle",
+    "commander",
+    "name",
+    "x",
+    "y",
+    "z",
+    "appearance",
+    "shape"
    ],
    "count": 1
   },

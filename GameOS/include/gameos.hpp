@@ -2334,6 +2334,11 @@ bool  gos_GetHudScaleActive();
 void  gos_SetHudScaleExempt(bool on);
 bool  gos_GetHudScaleExempt();
 
+// Transform a complete display-only HUD panel (text and chrome) before the
+// canvas remap. End also exempts these draws from the bottom-band shrink.
+size_t gos_BeginHudPanel();
+void gos_EndHudPanel(size_t firstDraw, float scale);
+
 // Inverse of the 9-slice HUD transform. Given a screen-pixel point the user
 // clicked on, returns the "authored" pixel coord where the game logic placed
 // the HUD element. No-op when scale == 1.0. Safe to call every frame.

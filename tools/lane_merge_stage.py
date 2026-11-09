@@ -2,11 +2,15 @@
 from __future__ import annotations
 
 import json
+import csv
+import hashlib
+import io
 import os
 from pathlib import Path
 import re
 import sys
 import time
+import tarfile
 
 import _git_util
 from lane_precheck import Stop
@@ -16,9 +20,12 @@ STAGE_PREFIX = "claude/stage-"
 STAGE_HELP = """merge queue (bors-style staging; nifty only ever fast-forwards to a proven candidate):
   1. py -3 tools/lane_merge.py --stage W --batch A B C     freeze tips A B C, build claude/stage-W from nifty and merge them there
   2. py -3 scripts/merge_gate.py --full ...                gate the checked-out candidate; writes build64-ninja/gate-verdict.json
-  3. py -3 tools/lane_merge.py --promote W                 fast-forward nifty to the candidate: refused unless the verdict is a
+     py -3 tools/laptop_gate.py W --sim                   add all six sim PASS rows to the pulled window summary
+  3. py -3 tools/lane_merge.py --promote W --verdict <pulled>/gate-verdict.json
+                                                         fast-forward nifty to the candidate: refused unless the verdict is a
                                                            complete PASS for the candidate HEAD (no skipped row) and nifty is its
-                                                           ancestor and not checked out elsewhere; a red leaves nifty untouched
+                                                           ancestor and not checked out elsewhere; summary sim and payload identities must match;
+                                                           a red leaves nifty untouched
   4. on a red: py -3 tools/lane_merge.py --bisect W --red  halve the frozen tips (first half retested, rest queued) and print the
                                                            next --stage command; a red single tip is GUILTY and goes back to its lane
      after a green half: --promote W, then --bisect W --green queues the rest on the new nifty
@@ -183,6 +190,51 @@ def untriaged_nightly_fail(proofs: str, now: float | None = None, max_age_h: flo
     return why
 
 
+def sim_evidence_problems(vpath: Path, candidate: str) -> list[str]:
+    """Bind the six explicit sim PASS rows to this candidate and the pulled payload."""
+    try:
+        summary = json.loads((vpath.parent / "summary.json").read_text(encoding="utf-8"))
+        sim = summary.get("sim", {})
+        why = []
+        for label, head in (("summary", summary.get("head")), ("sim", sim.get("head"))):
+            if head != candidate:
+                why.append(f"{label} head {head or '(missing)'} is not candidate {candidate}")
+        if sim.get("verdict") != "PASS" or sim.get("rc") != 0 or sim.get("error"):
+            why.append("sim verdict must be PASS with rc=0 and no error")
+        required = [*("determinism-" + m for m in ("mc2_01", "mc2_03", "mc2_10", "mc2_24")),
+                    "saveload-mc2_03", "saveload-mc2_10"]
+        for name in required:
+            status = sim.get("rows", {}).get(name, {}).get("status")
+            # A perf_counter-only note never fails a row (lane rules; merge_gate.passed); REUSED stays refused here.
+            if status != "PASS" and not str(status).startswith("PASS (perf_counter-only WARN"):
+                why.append(f"sim row {name}: {status or 'MISSING'} (explicit PASS required)")
+        payload = vpath.parent / "payload.tar"
+        expected = (vpath.parent / "payload.sha256").read_text().split()[0]
+        with payload.open("rb") as stream:
+            digest = hashlib.file_digest(stream, "sha256").hexdigest()
+        if digest != expected:
+            why.append("payload sha256 mismatch")
+        with tarfile.open(payload) as archive:
+            manifest = archive.extractfile(".deployed_manifest.csv").read()
+            rows = list(csv.DictReader(io.StringIO(manifest.decode("utf-8-sig").split('\n', 1)[1])))
+            hashes = {r["relpath"]: r["sha256"] for r in rows}
+            for member in archive.getmembers():
+                if member.name.startswith("files/"):
+                    rel = member.name[len("files/"):]
+                    with archive.extractfile(member) as stream:
+                        actual = hashlib.file_digest(stream, "sha256").hexdigest()
+                    if actual != hashes.get(rel):
+                        why.append(f"payload byte sha256 mismatch: {rel}")
+        if hashlib.sha256(manifest).hexdigest() != sim.get("manifest_sha256"):
+            why.append("sim payload manifest sha256 mismatch or missing identity")
+        exe = next((r for r in rows if r["relpath"] == "mc2.exe"), {})
+        if exe.get("src_commit") != candidate:
+            why.append("payload mc2.exe candidate head mismatch")
+        return why
+    except (OSError, ValueError, KeyError, IndexError, AttributeError, TypeError, tarfile.TarError) as exc:
+        return [f"missing or unreadable sim/payload evidence beside {vpath}: {exc}"]
+
+
 def promote(root: str, window: str, verdict_path: str | None = None) -> int:
     """Fast-forward nifty to the staged candidate, fail-closed. Every refusal leaves nifty exactly where it was."""
     state = load_stage(root, window)
@@ -208,6 +260,7 @@ def promote(root: str, window: str, verdict_path: str | None = None) -> int:
     if verdict.get("skipped"):
         why.append("skipped rows: " + ", ".join(sorted(verdict["skipped"])))
     why.extend(missing_visual_evidence(verdict, vpath))
+    why.extend(sim_evidence_problems(vpath, cand))
     if verdict.get("head") != cand:
         why.append(f"verdict head {str(verdict.get('head'))[:9]} is not the candidate {cand[:9]}")
     if _git_util.git(root, "merge-base", "--is-ancestor", old, cand, merge_stderr=True).returncode != 0:

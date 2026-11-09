@@ -364,7 +364,7 @@ def _tier0(planned):
     (['code/mission_update.cpp'], {'determinism-mc2_10', 'determinism-mc2_24', 'saveload-mc2_01', 'saveload-mc2_10'}, False),
     (['code/logisticsdata_save.cpp'], {'player-path'}, True),
     (['code/mc2movie.cpp'], {'player-path'}, True),
-    (['data/missions/mc2_16.fit'], {'determinism-mc2_16', 'saveload-mc2_16'}, True),
+    (['data/missions/mc2_16.fit'], {'determinism-mc2_16', 'saveload-mc2_16', 'mods'}, True),   # data/ is mod content
     (['RenderCore/vk_sync.cpp'], set(), True),
 ])
 def test_diff_restores_tier_filtered_rows(paths, want, single):
@@ -386,6 +386,53 @@ def test_operator_stage_choice_is_never_widened():
     scheduled = gate.plan(6)
     steps, promoted = gate.promote_for_diff(_tier0(scheduled)[:1], scheduled, scheduled, ['code/mission_update.cpp'], ['contracts'], False)
     assert promoted == set() and len(steps) == 1
+
+
+@pytest.mark.parametrize("path", ["mclib/move.cpp", "mclib/movegrid.h", "code/movemgr.cpp", "code/warrior.h"])
+def test_movement_is_sim_sensitive(path):
+    assert gate.sim_sensitive([path]) == [path]
+
+
+@pytest.mark.parametrize("path", ["data/missions/mc2_01.fit", "mods/core_unlocks/data/foo.fit",
+                                  "examples/mods/sample_variant/data/x.csv", "tests/mods/fixture.fit",
+                                  "tools/mod_smoke.py", "tools/mc2x_import/transfer_mc2x_campaign.py",
+                                  "tools/mco_import/build_mco_compat.py", "tools/mc2mod/__init__.py",
+                                  "tools/mc2_modlint/rules.py", "tools/validate_mod_package.py",
+                                  "tools/mod_install/install.py", "tools/mod_load.cpp"])
+def test_mod_content_diff_promotes_existing_mod_battery(path):
+    scheduled = gate.plan(6)
+    steps, promoted = gate.promote_for_diff(_tier0(scheduled), scheduled, _tier0(scheduled), [path], [], False)
+    assert "mods" in promoted
+    command = next(c for n, c, _ in steps if n == "mods")
+    assert "tools/mod_smoke.py" in command
+    assert gate.stage_tier("mods") == 2
+
+
+@pytest.mark.parametrize("path", ["mclib/vfs.cpp", "mclib/ablvm.cpp", "mclib/file.cpp", "mclib/texture_assets.cpp",
+                                  "GameOS/gameos/texture_decode.cpp", "RenderCore/TextureService.h",
+                                  "RenderCore/vk_sync.cpp", "shaders/vulkan/terrain.frag"])
+def test_engine_vfs_loader_diff_never_promotes_mods(path):
+    # Owner rule 2026-11-06: engine C++, shaders, the VFS and loaders never trigger mods; the nightly gate covers them.
+    assert "mods" not in gate.promoted_stages([path])
+    assert gate.stage_tier("mods") == 2
+
+
+@pytest.mark.parametrize("base", [None, "invalid-base"])
+def test_gate_refuses_missing_or_invalid_comparison_base(tmp_path, monkeypatch, capsys, base):
+    import subprocess
+    monkeypatch.setattr(gate, "ROOT", tmp_path)
+    def git(*args):
+        if args[0] == "merge-base":
+            raise subprocess.CalledProcessError(1, args)
+        return "a" * 40
+    monkeypatch.setattr(gate, "git", git)
+    argv = ["--full", "--dry-run", "--proofs-dir", str(tmp_path / "proof")]
+    if base:
+        argv += ["--base", base]
+    with pytest.raises(SystemExit) as exc:
+        gate.main(argv)
+    assert exc.value.code == 2
+    assert "comparison base" in capsys.readouterr().err
 
 
 @pytest.mark.parametrize('weekly,paths,single', [(False, [], True), (True, [], False), (False, ['mclib/sim_overlap.h'], False)])

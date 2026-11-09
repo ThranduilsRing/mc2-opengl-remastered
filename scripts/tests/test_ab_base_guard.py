@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import subprocess
+import hashlib
+import json
 import sys
 from pathlib import Path
 
@@ -45,10 +47,19 @@ def _install(d, commit, data=None, spv="s1", exe="e1"):
     d.mkdir(parents=True)
     rows = {"mc2.exe": exe, "shaders/vulkan/x.spv": spv, **(data or {"data/a.fit": "d1"})}
     lines = ["manifest_version,v1,,,,", "relpath,sha256,bytes,src_commit,timestamp,mtime_ns"]
-    lines += [f"{k},{v},1,{commit},t,0" for k, v in rows.items()]
+    for rel, value in rows.items():
+        path = d / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(value.encode())
+    lines = lines[:2] + [f"{k},{hashlib.sha256(v.encode()).hexdigest()},{len(v)},{commit},t,0" for k, v in rows.items()]
     (d / ".deployed_manifest.csv").write_text("\n".join(lines) + "\n")
-    (d / "mc2.exe").write_bytes(b"x")   # no embedded fingerprint: identity falls back to the manifest row
     return str(d)
+
+
+def test_payload_identity_accepts_short_matching_fingerprint(tmp_path, repo, monkeypatch):
+    install = _install(tmp_path / "i", repo[0])
+    monkeypatch.setattr(ab, "exe_commit", lambda *args: repo[0][:12])
+    assert ab.payload_identity(install)["commit"] == repo[0]
 
 
 def test_ancestor_and_matching_manifests_pass(tmp_path, repo):
@@ -88,6 +99,60 @@ def test_unknown_identity_is_a_problem(tmp_path, repo):
     a.mkdir()
     (a / "mc2.exe").write_bytes(b"x")
     assert any("unknown" in m for m in ab.base_problems(install_a=str(a), install_b=str(a)))
+
+
+def test_capture_identity_ignores_shader_sources_not_data():
+    # W136: before (published) and after (candidate) carry the window's shader edits; data drift still refuses.
+    a = {"mc2.exe": "1", "shaders/vulkan/t.frag": "s1", "shaders/vulkan/include/x.glsl": "g1", "data/a.fit": "d1"}
+    b = {"mc2.exe": "2", "shaders/vulkan/t.frag": "s2", "shaders/vulkan/include/x.glsl": "g2", "data/a.fit": "d1"}
+    assert ab.manifest_mismatches(a, b) == []
+    assert ab.manifest_mismatches(a, {**b, "data/a.fit": "d2"}) == ["differs: data/a.fit (A d1 vs B d2)"]
+
+
+@pytest.mark.parametrize("rel", ["mc2.exe", "shaders/vulkan/x.spv"])
+def test_manifest_byte_mismatch_refuses_before_capture(tmp_path, repo, monkeypatch, rel):
+    install = _install(tmp_path / "install", repo[0])
+    (Path(install) / rel).write_bytes(b"drift")
+    monkeypatch.setattr(ab, "resolve_installs", lambda *args: (install, install))
+    monkeypatch.setattr(ab, "run_capture", lambda *args: pytest.fail("launched a game with stale payload"))
+    with pytest.raises(SystemExit, match="manifest mismatch"):
+        ab.main(["--bookmarks", "x", "--install-a", install, "--install-b", install,
+                 "--out-root", str(tmp_path / "out"), "--allow-base-mismatch"])
+
+
+@pytest.mark.parametrize("fault", ["missing", "payload", "base", "exe"])
+def test_compare_only_refuses_unknown_or_mismatched_identity(tmp_path, repo, fault):
+    install = _install(tmp_path / "install", repo[0])
+    identity = ab.payload_identity(install)
+    for side in ("a", "b"):
+        ab.stamp_identity(tmp_path / side, identity)
+    path = tmp_path / "b/capture_run.json"
+    data = json.loads(path.read_text())
+    if fault == "missing":
+        del data["install_identity"]
+    elif fault == "payload":
+        data["install_identity"]["payload"]["mc2.exe"] = "0" * 64
+    elif fault == "exe":
+        data["identity"] = {"exe": {"sha256": "0" * 64}}
+    else:
+        data["install_identity"]["commit"] = repo[2]
+        other = json.loads((tmp_path / "a/capture_run.json").read_text())
+        other["install_identity"]["commit"] = repo[1]
+        (tmp_path / "a/capture_run.json").write_text(json.dumps(other))
+    path.write_text(json.dumps(data))
+    with pytest.raises(SystemExit, match="identit"):
+        ab.main(["--compare-only", str(tmp_path / "a"), str(tmp_path / "b"), "--out-root", str(tmp_path / "cmp")])
+
+
+def test_capture_sweep_records_verified_payload_and_refuses_drift(tmp_path, repo, monkeypatch):
+    import capture
+    import io
+    install = Path(_install(tmp_path / "install", repo[0]))
+    manifest = capture.capture_sweep(install, [], tmp_path / "capture", 1, 1, 1, True, False, io.StringIO())
+    assert manifest["install_identity"] == ab.payload_identity(install)
+    (install / "mc2.exe").write_bytes(b"drift")
+    with pytest.raises(ValueError, match="manifest mismatch"):
+        capture.capture_sweep(install, [], tmp_path / "capture", 1, 1, 1, True, False, io.StringIO())
 
 
 def test_main_refuses_then_allows_and_stamps(tmp_path, repo, monkeypatch):

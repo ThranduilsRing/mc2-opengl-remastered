@@ -457,7 +457,9 @@ long Mech3DAppearance::render (long depthFixup)
 			: inView;
 	if (mechShouldRender)
 	{
-		if (visible)
+		// The native batch has no per-instance fade alpha. Stock hides sensor
+		// bodies via mesh alpha; do not submit a known blip as an opaque mech.
+		if (visible && contactView.model)
 		{
 			uint32_t color = SD_BLUE;
 			uint32_t highLight = 0x007f7f7f;
@@ -539,6 +541,10 @@ long Mech3DAppearance::render (long depthFixup)
 				GpuMechSubmitDesc desc{};
 				desc.mechShape      = mechShape;
 				desc.mechType       = mechType;
+				// Damaged shapes have different vertices/node counts from the living
+				// LOD. Submit their pre-registered shape record, as vehicles do.
+				if (mechShape->GetMultiType() != mechType->mechShape[currentLOD].get())
+					desc.mechType = nullptr;
 				desc.currentLOD     = static_cast<int>(currentLOD);
 				desc.slot0TexHandle = static_cast<uint32_t>(localTextureHandle);
 				// AO-1: carry the AO slot (0 when no/failed AO). HAS_AO bit (4) added
@@ -644,7 +650,8 @@ long Mech3DAppearance::render (long depthFixup)
 						// FAIL-LOUD: one line per distinct mech type, uncapped
 						// counter inline. Silence is what let this ship.
 						static std::set<const void*> s_loggedStaleMechTypes;
-						if (s_loggedStaleMechTypes.insert(static_cast<const void*>(mechType)).second) {
+						const auto [loggedType, inserted] = s_loggedStaleMechTypes.insert(static_cast<const void*>(mechType));
+						if (inserted) {
 							mc2::fmt::print_err("[LIGHTROW_FRESHNESS v1] event=mech_stale_row_detected mechType={:016X} lod={:d} staleIndex={:d} cachedFrame={:d} currentFrame={:d} stale_so_far={:d} (prior-frame light slot; submit PROCEEDS with it -- declining would not draw, see MECH-DECLINE-FIX-1)\n", mc2::fmt::as_ptr(static_cast<void*>(mechType)), mc2::fmt::as_i32(static_cast<int>(currentLOD)), mc2::fmt::as_u32(cachedLI), mc2::fmt::as_u32(cachedFR), mc2::fmt::as_u32(static_cast<unsigned>(g_mc2FrameCounter.load(std::memory_order_relaxed))), mc2::fmt::as_u64(static_cast<unsigned long long>(s_mechStaleLightRowStale)));
 							fflush(stderr);
 						}
@@ -783,15 +790,15 @@ long Mech3DAppearance::render (long depthFixup)
 				}
 			}
 
-			if (selected & DRAW_BARS)
+			if (contactView.bar && (selected & DRAW_BARS))
 			{
 				drawBars();
 			}
-			if ( selected & DRAW_BRACKETS )
+			if (contactView.model && (selected & DRAW_BRACKETS))
 			{
 				drawSelectBrackets(color);
 			}
-			if ((objectNameId != -1) && (selected & DRAW_TEXT) && !sensorLevel )
+			if (contactView.tag && (objectNameId != -1) && (selected & DRAW_TEXT))
 			{
 				drawBars();
 
@@ -1018,7 +1025,7 @@ long Mech3DAppearance::render (long depthFixup)
 				   
 		}
 		
-		if ((sensorLevel > 0) && (sensorLevel < 5))
+		if (contactView.blip && !contactView.model)
 		{
 			if (sensorLevel > 1)
 			{
@@ -1031,7 +1038,7 @@ long Mech3DAppearance::render (long depthFixup)
 		}
 	}
 
-	if (unitAnim().rightArmOff && rightArm && rightArmInView)
+	if (contactView.model && unitAnim().rightArmOff && rightArm && rightArmInView)
 	{
 		Camera::HazeFactor = rightArmHazeFactor;
 
@@ -1071,7 +1078,7 @@ long Mech3DAppearance::render (long depthFixup)
 		}
 	}
  	
- 	if (unitAnim().leftArmOff && leftArm && leftArmInView)
+	if (contactView.model && unitAnim().leftArmOff && leftArm && leftArmInView)
 	{
 		Camera::HazeFactor = leftArmHazeFactor;
 
