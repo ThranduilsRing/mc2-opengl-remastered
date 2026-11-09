@@ -590,9 +590,13 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 		const glm::mat4 worldToClip = eye ? eye->getWorldToClip() : glm::mat4{0.0f};
 		const float nightFactor = eye ? eye->nightFactor : 0.0f;
 		const bool isNight = eye && eye->isNight;
+		// A resident static holds no frame lights or effects, so the continuous nightFactor (which
+		// drifts every frame on day/night maps) cannot change it; only crossing zero (a lamp may now
+		// spawn), the isNight flip or the first frame is a full invalidation. A plain drift revisits
+		// non-residents only.
 		const bool fullInvalidate = TerrainRuntime::g_heightEpoch != terrainPresentationHeightEpoch ||
-			nightFactor != terrainPresentationNightFactor || isNight != terrainPresentationIsNight;
-		if (fullInvalidate || worldToClip != terrainPresentationWorldToClip) {
+			mc2::terrainNightFullInvalidate(terrainPresentationNightFactor, nightFactor, terrainPresentationIsNight, isNight);
+		if (fullInvalidate || nightFactor != terrainPresentationNightFactor || worldToClip != terrainPresentationWorldToClip) {
 			auto bind = [this](long h) {
 				if (objList[h] && objList[h]->getAppearance()) objList[h]->getAppearance()->terrainPresentationHandle = h;
 			};

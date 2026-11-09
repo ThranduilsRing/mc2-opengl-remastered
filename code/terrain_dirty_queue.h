@@ -77,6 +77,12 @@ public:
     }
 };
 
+// Night drift: residents hold no frame lights/effects, so only the first frame, crossing zero
+// (a lamp may now spawn) or a flip of isNight revisits them; a plain nightFactor drift does not.
+inline bool terrainNightFullInvalidate(float prevNightFactor, float nightFactor, bool prevIsNight, bool isNight) {
+    return prevNightFactor < 0.0f || (nightFactor > 0.0f) != (prevNightFactor > 0.0f) || isNight != prevIsNight;
+}
+
 inline TerrainDirtyQueue& terrainDirtyQueue() {
     static TerrainDirtyQueue queue;
     return queue;
