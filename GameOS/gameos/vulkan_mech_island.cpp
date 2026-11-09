@@ -115,7 +115,6 @@ void vlog(const char* fmt, ...) {
     va_end(ap);
 }
 
-bool mechFenceDeferEnabled() { static const bool on = mc2::gate::get<"MC2_VK_MECH_FENCE_DEFER">(); return on; }
 bool mechPerfGateRequested() { return false; }
 
 // Direct-chain only (no GL<->VK handoff); the native geometry + LightsData feed is unconditional.
@@ -1219,14 +1218,6 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     timerGuard.submitted();
     g_objectMotionWritten = true;
 
-    if (!mechFenceDeferEnabled()) {
-        ZoneScopedN("VKIsl.Mech.InlineFenceWait"); mc2::battlebench::WaitScope gpuWait2(mc2::battlebench::WaitGpuMainNs);   // VK-ISLAND-TRACY-1: killswitch-only inline retire
-        const clk::time_point tInline0 = clk::now();
-        if (!rctx.wait(s->submitted[par], 5000000000ull, "mech inline retire")) {
-            setFallback("fence_timeout"); s->disabled = true; return 0;
-        }
-        us_fence_wait = usSince(tInline0);
-    }
     g_health.drawUs = usSince(tRender0);
     if (s->gpuTimer.supported) rctx.poll();   // resolve() waits on the query results: the deferred batch holding this cb must be on the queue first
     s->gpuTimer.resolve();   // VK-DRAW-PERF-1: fence signalled -> fold GPU segment times

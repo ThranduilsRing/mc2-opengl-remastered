@@ -1006,6 +1006,13 @@ void VulkanContext::flushPrefixLocked(size_t count) const {
     }
 }
 
+void VulkanContext::kick() const {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "VulkanContext::kick");
+    if (device_ == VK_NULL_HANDLE || gfxTimeline_ == VK_NULL_HANDLE) return;
+    const auto lock = lockSubmit(submitMutex_);
+    flushPendingLocked();
+}
+
 void VulkanContext::poll() const {
     mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "VulkanContext::poll");
     if (gfxTimeline_ == VK_NULL_HANDLE) return;

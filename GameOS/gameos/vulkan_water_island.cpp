@@ -66,18 +66,6 @@ bool waterPerfGateRequested() {
     return state == 1;
 }
 
-// VK-WATER-FENCE-DEFER-1 (cluster-A pilot, ONE island): defer the island's retire
-// wait to the parity slot's next vkImageResourceBeginFrame instead of waiting the
-// submit fence inline. Default-ON (the per-parity staging pairs make it correct by
-// construction); MC2_VK_WATER_FENCE_DEFER=0 is the killswitch restoring the inline
-// wait — the staging stays per-parity either way (superset-safe).
-bool waterFenceDeferEnabled() {
-    static int state = -1;
-    if (state == -1)
-        state = mc2::gate::get<"MC2_VK_WATER_FENCE_DEFER">() ? 1 : 0;
-    return state == 1;
-}
-
 // MC2_VK_WATER_DIRECT_CHAIN -- deletion-readiness proof gate. When the prior
 // terrain/prop/mech owners have kept the shared GBuffer Vulkan-owned, water can
 // render in-place without another GL/VK semaphore round trip.
@@ -244,37 +232,6 @@ bool upload_recipes_device(WaterIsland* s, const void* recipes, uint32_t recipeC
     }
     write_descriptors(s);
     return true;
-}
-
-// RUNG-6.5: one-shot transient command submit (import-time only, fence-waited).
-bool submit_once(WaterIsland* s, const std::function<void(VkCommandBuffer)>& record) {
-    VkCommandBufferAllocateInfo cai{};
-    cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    cai.commandPool = s->cpool[0].get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 1;
-    VkCommandBuffer cb = VK_NULL_HANDLE;
-    if (vkAllocateCommandBuffers(s->device, &cai, &cb) != VK_SUCCESS) return false;
-    VkCommandBufferBeginInfo bi{};
-    bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    bool ok = (vkBeginCommandBuffer(cb, &bi) == VK_SUCCESS);
-    if (ok) { record(cb); ok = (vkEndCommandBuffer(cb) == VK_SUCCESS); }
-    if (ok) {
-        VkFenceCreateInfo fci{}; fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        mc2vk::OwnedFence fence;
-        ok = mc2vk::create(fence, s->device, [&](VkFence* h) { return vkCreateFence(s->device, &fci, nullptr, h); });
-        if (ok) {
-            VkSubmitInfo si{}; si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-            si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-            const VkFence f = fence.get();
-            ok = (mc2vk::submitGraphics(si, f) == VK_SUCCESS);
-            if (ok) {
-                mc2_hitch2::FenceWaitScope waitScope("water_one_shot");
-                ok = (vkWaitForFences(s->device, 1, &f, VK_TRUE, 5ull*1000*1000*1000) == VK_SUCCESS);
-            }
-        }
-    }
-    vkFreeCommandBuffers(s->device, s->cpool[0].get(), 1, &cb);
-    return ok;
 }
 
 }  // namespace vk_water_detail

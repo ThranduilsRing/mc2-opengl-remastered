@@ -1306,6 +1306,7 @@ extern "C" void mc2_vk_shadow_island_submit_frame() {
     s->frameTicket[s->parity] = sctx.tracker().now();
     timerGuard.submitted();
     s->bake.markSubmitted(s->recordEpoch);
+    sctx.kick();   // the CSM pass starts on the GPU now, while the CPU records the scene
 }
 
 // F1 (hitch): run the static bake (cold tiles, or the warm cache upload plus the object map) behind the load screen instead of in the first mission frames,

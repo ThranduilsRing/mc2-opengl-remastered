@@ -212,8 +212,7 @@ extern "C" int mc2_vk_water_island_run(
     // staging. The slot-fence wait inside beginFrame IS the deferred retire of the
     // submit that last used this parity slot (normally an earlier island / last
     // frame — near-free by now), and it protects everything indexed [par] below:
-    // staging buffers, descriptor set, command buffer. The inline post-submit wait
-    // this replaces is kept only under the MC2_VK_WATER_FENCE_DEFER=0 killswitch.
+    // staging buffers, descriptor set, command buffer.
     // The parameter UBOs go into the engine frame ring BEFORE beginFrame (a ring failure after it could strand the fence); the ring slot belongs to the
     // frame, not to the parity, so staging them here races nothing.
     const VkDeviceSize fsUboOff = mc2vk::alignUp(kWaterVsUboSize, slotCtx.frameAlignment());
@@ -417,15 +416,6 @@ extern "C" int mc2_vk_water_island_run(
         // rewritten before that wait. GPU-side ordering against the downstream
         // post/composite passes never depended on this CPU wait (their command
         // buffers' entry barriers cover earlier submission-order work).
-        // Killswitch MC2_VK_WATER_FENCE_DEFER=0 restores the inline wait.
-        if (!waterFenceDeferEnabled()) {
-            ZoneScopedN("VKIsl.Water.InlineFenceWait"); mc2::battlebench::WaitScope gpuWait2(mc2::battlebench::WaitGpuMainNs);   // VK-ISLAND-TRACY-1: killswitch-only inline retire
-            const clk::time_point tInline0 = clk::now();
-            if (!slotCtx.wait(s->submitted[par], 5000000000ull, "water inline retire")) {
-                setFallback("fence_timeout"); s->disabled = true; return 0;
-            }
-            us_fence_wait = usSince(tInline0);
-        }
         g_health.drawUs = usSince(tRender0);
         g_health.colorOutUs = 0.0;   // no composite in tier1
 

@@ -56,19 +56,6 @@ void vlog(const char* fmt, ...) {
     va_end(ap);
 }
 
-// VK-TERRAIN-FENCE-DEFER-1: defer the
-// island's retire wait to the parity slot's next vkImageResourceBeginFrame instead
-// of waiting the submit fence inline. Default-ON (the per-parity UBO staging +
-// per-parity descriptor sets make it correct by construction);
-// MC2_VK_TERRAIN_FENCE_DEFER=0 is the killswitch restoring the inline wait — the
-// per-parity staging holds either way (superset-safe).
-bool terrainFenceDeferEnabled() {
-    static int state = -1;
-    if (state == -1)
-        state = mc2::gate::get<"MC2_VK_TERRAIN_FENCE_DEFER">() ? 1 : 0;
-    return state == 1;
-}
-
 // MC2_VK_TERRAIN_PERF — per-frame microsecond breakdown receipt of the VK terrain
 // island ([VK_TERRAIN_PERF] line: stage/record-submit/fence-wait/total). Same
 // diagnostic class + shape as MC2_VK_WATER_PERF (additive stderr trace, default OFF).

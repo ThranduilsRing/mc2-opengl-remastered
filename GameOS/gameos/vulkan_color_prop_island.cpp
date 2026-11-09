@@ -133,19 +133,6 @@ void vlog(const char* fmt, ...) {
     va_end(ap);
 }
 
-// VK-PROP-FENCE-DEFER-1 (cluster-A, water-pilot template 61031785): defer the
-// island's retire wait to the parity slot's next vkImageResourceBeginFrame instead
-// of waiting the submit fence inline. Default-ON (per-parity inst/ubo/light staging
-// + per-parity descriptor sets make it correct by construction);
-// MC2_VK_PROP_FENCE_DEFER=0 is the killswitch restoring the inline wait — the
-// per-parity staging holds either way (superset-safe).
-bool propFenceDeferEnabled() {
-    static int state = -1;
-    if (state == -1)
-        state = mc2::gate::get<"MC2_VK_PROP_FENCE_DEFER">() ? 1 : 0;
-    return state == 1;
-}
-
 // MC2_VK_PROP_PERF — per-frame microsecond breakdown receipt ([VK_PROPS_PERF]
 // line: stage/record-submit/fence-wait/total). Same class as MC2_VK_WATER_PERF.
 bool propPerfGateRequested() {
@@ -1918,7 +1905,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     auto usSince = [](clk::time_point t0){ return std::chrono::duration<double, std::micro>(clk::now() - t0).count(); };
     const clk::time_point tTotal0 = clk::now();
     const bool perf = propPerfGateRequested();
-    double us_fence_wait = 0.0;   // deferred retire (beginFrame wait) OR inline wait under the killswitch
+    double us_fence_wait = 0.0;   // deferred retire (beginFrame wait)
 
     // Pull the per-frame color instance feed (visible buckets + world->clip + bias).
     Mc2ColorPropFeed feed{};
@@ -2272,15 +2259,6 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         s->submitted[par] = rctx.tracker().now();
         timerGuard.submitted();
 
-        // Killswitch MC2_VK_PROP_FENCE_DEFER=0 restores inline retirement.
-        if (!propFenceDeferEnabled()) {
-            ZoneScopedN("VKIsl.Props.InlineFenceWait"); mc2::battlebench::WaitScope gpuWait2(mc2::battlebench::WaitGpuMainNs);   // VK-ISLAND-TRACY-1: killswitch-only inline retire
-            const clk::time_point tInline0 = clk::now();
-            if (!rctx.wait(s->submitted[par], 5000000000ull, "prop inline retire")) {
-                setFallback("fence_timeout"); s->disabled = true; return 0;
-            }
-            us_fence_wait = usSince(tInline0);
-        }
         g_health.drawUs = usSince(tRender0);
 
         // NO composite — props were co-written in-place into the real GBuffer.

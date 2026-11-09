@@ -919,9 +919,8 @@ TEST_CASE("the VK opt-in and kill-switch rows read like the envTriState expressi
     };
     constexpr const char* kProbe[] = {nullptr, "", "0", "false", "1", "yes", "10", "2.5", "00", "0x", "01"};
     const char* exact1[] = {"MC2_TERRAIN_SOLID_WINDOW_PARITY"};
-    const char* killSwitch[] = {"MC2_VK_LIGHTFEED_DEDUP", "MC2_VK_MECH_FENCE_DEFER", "MC2_VK_POST_SCREENFX", "MC2_VK_POST_SCREENFX_CLOUD",
-                                "MC2_VK_POST_SCREENFX_SHADOW", "MC2_VK_POST_SCREENFX_SHORELINE",
-                                "MC2_VK_PROP_FENCE_DEFER", "MC2_VK_TERRAIN_FENCE_DEFER", "MC2_VK_WATER_FENCE_DEFER"};
+    const char* killSwitch[] = {"MC2_VK_LIGHTFEED_DEDUP", "MC2_VK_POST_SCREENFX", "MC2_VK_POST_SCREENFX_CLOUD",
+                                "MC2_VK_POST_SCREENFX_SHADOW", "MC2_VK_POST_SCREENFX_SHORELINE"};
     for (const char* name : exact1) {
         const gate::Row& row = g1b::rowNamed(name);
         for (const char* v : kProbe) {

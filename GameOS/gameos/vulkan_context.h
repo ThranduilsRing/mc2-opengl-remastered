@@ -174,6 +174,9 @@ public:
     VkResult submit(const VkSubmitInfo& si, VkFence fence, uint64_t* outValue = nullptr) const;
     // Present shares external queue synchronization with submit, even when both families alias.
     VkResult present(VkQueue queue, const VkPresentInfoKHR& info) const;
+    // Puts the batched plain submits on the queue now. Call it after a big pass when more CPU recording follows: the age check in submit() runs only
+    // on the next plain submit, so without a kick the GPU idles until then. Queue order is unchanged. Render owner only.
+    void kick() const;
 private:
     VkResult submitLocked(const VkSubmitInfo& si, VkFence fence, uint64_t* outValue) const;   // submitMutex_ held
     // Plain submits (command buffers only: no fence, no binary semaphores) are collected and go out as ONE vkQueueSubmit2 with one timeline
