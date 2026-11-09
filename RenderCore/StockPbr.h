@@ -6,7 +6,8 @@
 namespace RenderCore {
 inline bool stockPbrArchive(uintmax_t bytes, uint32_t crc) {
     // Shipped stock tgl.fst; standalone mod archives retain their own atlases.
-    return bytes == 25925639u && crc == 0x2620c4b9u;
+    return (bytes == 25925639u && crc == 0x2620c4b9u) ||
+           (bytes == 34295854u && crc == 0xaef6a9ddu);
 }
 // Texture names, rather than appearance names, identify the fixed stock UV atlas.
 inline std::string stockPbrStem(std::string_view texture) {
