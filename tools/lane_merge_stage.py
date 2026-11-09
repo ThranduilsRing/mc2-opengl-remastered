@@ -205,7 +205,8 @@ def sim_evidence_problems(vpath: Path, candidate: str) -> list[str]:
                     "saveload-mc2_03", "saveload-mc2_10"]
         for name in required:
             status = sim.get("rows", {}).get(name, {}).get("status")
-            if status != "PASS":
+            # A perf_counter-only note never fails a row (lane rules; merge_gate.passed); REUSED stays refused here.
+            if status != "PASS" and not str(status).startswith("PASS (perf_counter-only WARN"):
                 why.append(f"sim row {name}: {status or 'MISSING'} (explicit PASS required)")
         payload = vpath.parent / "payload.tar"
         expected = (vpath.parent / "payload.sha256").read_text().split()[0]
