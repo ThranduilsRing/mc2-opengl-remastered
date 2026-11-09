@@ -1989,6 +1989,21 @@
    "count": 1
   },
   {
+   "tag": "CINEMATIC",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "frames",
+    "avg_ms",
+    "p50_ms",
+    "p95_ms",
+    "p99_ms",
+    "max_ms",
+    "over50"
+   ],
+   "count": 1
+  },
+  {
    "tag": "COLORMAP",
    "ver": -1,
    "stream": "stdout",
@@ -2360,6 +2375,27 @@
     "fitOpen",
     "numCursors",
     "screenW"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CURSOR",
+   "ver": -1,
+   "stream": "log",
+   "keys": [
+    "shape",
+    "frame"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CURSOR",
+   "ver": -1,
+   "stream": "log",
+   "keys": [
+    "shapes",
+    "created",
+    "failed"
    ],
    "count": 1
   },
@@ -4619,6 +4655,17 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "JUMP_ORDER",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "part",
+    "goal"
+   ],
    "count": 1
   },
   {
@@ -9128,6 +9175,15 @@
    "keys": [
     "shader_error",
     "mode"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SPAWN_TREES",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "cleared"
    ],
    "count": 1
   },

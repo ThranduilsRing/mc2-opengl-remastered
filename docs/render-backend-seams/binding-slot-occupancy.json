@@ -1,6 +1,6 @@
 {
   "summary": {
-    "glsl_blocks_with_binding": 280,
+    "glsl_blocks_with_binding": 281,
     "native_pairs": 7,
     "fails": 0,
     "warns": 0
@@ -330,37 +330,40 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_bake_pcss.comp",
-        "line": 7,
+        "line": 28,
         "role": "BakeTile",
         "std": "std140",
         "type": "uniform",
         "source": "shaders/vulkan/include/shadow_bake_common.glsl",
         "branch": {
-          "1": 0
+          "1": 0,
+          "3": 1
         }
       },
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_bake_resolve.comp",
-        "line": 7,
+        "line": 28,
         "role": "BakeTile",
         "std": "std140",
         "type": "uniform",
         "source": "shaders/vulkan/include/shadow_bake_common.glsl",
         "branch": {
-          "1": 0
+          "1": 0,
+          "3": 1
         }
       },
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_bake_terrain_march.comp",
-        "line": 7,
+        "line": 28,
         "role": "BakeTile",
         "std": "std140",
         "type": "uniform",
         "source": "shaders/vulkan/include/shadow_bake_common.glsl",
         "branch": {
-          "1": 0
+          "1": 0,
+          "3": 1
         }
       },
       {
@@ -549,7 +552,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.vert",
-        "line": 53,
+        "line": 55,
         "role": "WaterVsParams",
         "std": "std140",
         "type": "uniform",
@@ -771,37 +774,40 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_bake_pcss.comp",
-        "line": 19,
+        "line": 40,
         "role": "u_windowDepth",
         "std": null,
         "type": "sampler2D",
         "source": "shaders/vulkan/include/shadow_bake_common.glsl",
         "branch": {
-          "1": 0
+          "1": 0,
+          "3": 1
         }
       },
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_bake_resolve.comp",
-        "line": 19,
+        "line": 40,
         "role": "u_windowDepth",
         "std": null,
         "type": "sampler2D",
         "source": "shaders/vulkan/include/shadow_bake_common.glsl",
         "branch": {
-          "1": 0
+          "1": 0,
+          "3": 1
         }
       },
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_bake_terrain_march.comp",
-        "line": 19,
+        "line": 40,
         "role": "u_windowDepth",
         "std": null,
         "type": "sampler2D",
         "source": "shaders/vulkan/include/shadow_bake_common.glsl",
         "branch": {
-          "1": 0
+          "1": 0,
+          "3": 1
         }
       },
       {
@@ -907,7 +913,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.vert",
-        "line": 63,
+        "line": 65,
         "role": "WaterFsParams",
         "std": "std140",
         "type": "uniform",
@@ -1145,7 +1151,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 135,
+        "line": 124,
         "role": "uTreeObjectMap",
         "std": null,
         "type": "sampler2DShadow",
@@ -1483,37 +1489,40 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_bake_pcss.comp",
-        "line": 20,
+        "line": 41,
         "role": "u_windowCompare",
         "std": null,
         "type": "sampler2DShadow",
         "source": "shaders/vulkan/include/shadow_bake_common.glsl",
         "branch": {
-          "1": 0
+          "1": 0,
+          "3": 1
         }
       },
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_bake_resolve.comp",
-        "line": 20,
+        "line": 41,
         "role": "u_windowCompare",
         "std": null,
         "type": "sampler2DShadow",
         "source": "shaders/vulkan/include/shadow_bake_common.glsl",
         "branch": {
-          "1": 0
+          "1": 0,
+          "3": 1
         }
       },
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_bake_terrain_march.comp",
-        "line": 20,
+        "line": 41,
         "role": "u_windowCompare",
         "std": null,
         "type": "sampler2DShadow",
         "source": "shaders/vulkan/include/shadow_bake_common.glsl",
         "branch": {
-          "1": 0
+          "1": 0,
+          "3": 1
         }
       },
       {
@@ -1829,7 +1838,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 70,
+        "line": 59,
         "role": "uAlbedo",
         "std": null,
         "type": "sampler2DArray",
@@ -1909,37 +1918,40 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_bake_pcss.comp",
-        "line": 21,
+        "line": 42,
         "role": "BakeHeights",
         "std": "std430",
         "type": "buffer",
         "source": "shaders/vulkan/include/shadow_bake_common.glsl",
         "branch": {
-          "1": 0
+          "1": 0,
+          "3": 1
         }
       },
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_bake_resolve.comp",
-        "line": 21,
+        "line": 42,
         "role": "BakeHeights",
         "std": "std430",
         "type": "buffer",
         "source": "shaders/vulkan/include/shadow_bake_common.glsl",
         "branch": {
-          "1": 0
+          "1": 0,
+          "3": 1
         }
       },
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_bake_terrain_march.comp",
-        "line": 21,
+        "line": 42,
         "role": "BakeHeights",
         "std": "std430",
         "type": "buffer",
         "source": "shaders/vulkan/include/shadow_bake_common.glsl",
         "branch": {
-          "1": 0
+          "1": 0,
+          "3": 1
         }
       },
       {
@@ -2063,37 +2075,40 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_bake_pcss.comp",
-        "line": 22,
+        "line": 43,
         "role": "u_props",
         "std": null,
         "type": "image2D",
         "source": "shaders/vulkan/include/shadow_bake_common.glsl",
         "branch": {
-          "1": 0
+          "1": 0,
+          "3": 1
         }
       },
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_bake_resolve.comp",
-        "line": 22,
+        "line": 43,
         "role": "u_props",
         "std": null,
         "type": "image2D",
         "source": "shaders/vulkan/include/shadow_bake_common.glsl",
         "branch": {
-          "1": 0
+          "1": 0,
+          "3": 1
         }
       },
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_bake_terrain_march.comp",
-        "line": 22,
+        "line": 43,
         "role": "u_props",
         "std": null,
         "type": "image2D",
         "source": "shaders/vulkan/include/shadow_bake_common.glsl",
         "branch": {
-          "1": 0
+          "1": 0,
+          "3": 1
         }
       },
       {
@@ -2187,37 +2202,40 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_bake_pcss.comp",
-        "line": 23,
+        "line": 44,
         "role": "u_terrain",
         "std": null,
         "type": "image2D",
         "source": "shaders/vulkan/include/shadow_bake_common.glsl",
         "branch": {
-          "1": 0
+          "1": 0,
+          "3": 1
         }
       },
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_bake_resolve.comp",
-        "line": 23,
+        "line": 44,
         "role": "u_terrain",
         "std": null,
         "type": "image2D",
         "source": "shaders/vulkan/include/shadow_bake_common.glsl",
         "branch": {
-          "1": 0
+          "1": 0,
+          "3": 1
         }
       },
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_bake_terrain_march.comp",
-        "line": 23,
+        "line": 44,
         "role": "u_terrain",
         "std": null,
         "type": "image2D",
         "source": "shaders/vulkan/include/shadow_bake_common.glsl",
         "branch": {
-          "1": 0
+          "1": 0,
+          "3": 1
         }
       },
       {
@@ -2253,7 +2271,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.vert",
-        "line": 34,
+        "line": 36,
         "role": "WaterRecipeBuf",
         "std": "std430",
         "type": "buffer",
@@ -2265,7 +2283,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 73,
+        "line": 62,
         "role": "uAlbedoOn",
         "std": null,
         "type": "sampler2DArray",
@@ -2295,37 +2313,40 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_bake_pcss.comp",
-        "line": 24,
+        "line": 45,
         "role": "u_blur",
         "std": null,
         "type": "image2D",
         "source": "shaders/vulkan/include/shadow_bake_common.glsl",
         "branch": {
-          "1": 0
+          "1": 0,
+          "3": 1
         }
       },
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_bake_resolve.comp",
-        "line": 24,
+        "line": 45,
         "role": "u_blur",
         "std": null,
         "type": "image2D",
         "source": "shaders/vulkan/include/shadow_bake_common.glsl",
         "branch": {
-          "1": 0
+          "1": 0,
+          "3": 1
         }
       },
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_bake_terrain_march.comp",
-        "line": 24,
+        "line": 45,
         "role": "u_blur",
         "std": null,
         "type": "image2D",
         "source": "shaders/vulkan/include/shadow_bake_common.glsl",
         "branch": {
-          "1": 0
+          "1": 0,
+          "3": 1
         }
       },
       {
@@ -2371,7 +2392,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.vert",
-        "line": 44,
+        "line": 46,
         "role": "WaterThinBuf",
         "std": "std430",
         "type": "buffer",
@@ -2403,37 +2424,40 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_bake_pcss.comp",
-        "line": 25,
+        "line": 46,
         "role": "u_combined",
         "std": null,
         "type": "image2D",
         "source": "shaders/vulkan/include/shadow_bake_common.glsl",
         "branch": {
-          "1": 0
+          "1": 0,
+          "3": 1
         }
       },
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_bake_resolve.comp",
-        "line": 25,
+        "line": 46,
         "role": "u_combined",
         "std": null,
         "type": "image2D",
         "source": "shaders/vulkan/include/shadow_bake_common.glsl",
         "branch": {
-          "1": 0
+          "1": 0,
+          "3": 1
         }
       },
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_bake_terrain_march.comp",
-        "line": 25,
+        "line": 46,
         "role": "u_combined",
         "std": null,
         "type": "image2D",
         "source": "shaders/vulkan/include/shadow_bake_common.glsl",
         "branch": {
-          "1": 0
+          "1": 0,
+          "3": 1
         }
       },
       {
@@ -2481,37 +2505,40 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_bake_pcss.comp",
-        "line": 26,
+        "line": 47,
         "role": "BakeMaskOut",
         "std": "std430",
         "type": "buffer",
         "source": "shaders/vulkan/include/shadow_bake_common.glsl",
         "branch": {
-          "1": 0
+          "1": 0,
+          "3": 1
         }
       },
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_bake_resolve.comp",
-        "line": 26,
+        "line": 47,
         "role": "BakeMaskOut",
         "std": "std430",
         "type": "buffer",
         "source": "shaders/vulkan/include/shadow_bake_common.glsl",
         "branch": {
-          "1": 0
+          "1": 0,
+          "3": 1
         }
       },
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_bake_terrain_march.comp",
-        "line": 26,
+        "line": 47,
         "role": "BakeMaskOut",
         "std": "std430",
         "type": "buffer",
         "source": "shaders/vulkan/include/shadow_bake_common.glsl",
         "branch": {
-          "1": 0
+          "1": 0,
+          "3": 1
         }
       },
       {
@@ -2569,37 +2596,40 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_bake_pcss.comp",
-        "line": 17,
+        "line": 38,
         "role": "BakePass",
         "std": "std140",
         "type": "uniform",
         "source": "shaders/vulkan/include/shadow_bake_common.glsl",
         "branch": {
-          "1": 0
+          "1": 0,
+          "3": 1
         }
       },
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_bake_resolve.comp",
-        "line": 17,
+        "line": 38,
         "role": "BakePass",
         "std": "std140",
         "type": "uniform",
         "source": "shaders/vulkan/include/shadow_bake_common.glsl",
         "branch": {
-          "1": 0
+          "1": 0,
+          "3": 1
         }
       },
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_bake_terrain_march.comp",
-        "line": 17,
+        "line": 38,
         "role": "BakePass",
         "std": "std140",
         "type": "uniform",
         "source": "shaders/vulkan/include/shadow_bake_common.glsl",
         "branch": {
-          "1": 0
+          "1": 0,
+          "3": 1
         }
       },
       {
@@ -2732,6 +2762,20 @@
         "branch": {
           "1": 0,
           "3": 0
+        }
+      }
+    ],
+    "set1:binding10": [
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/water_geom.frag",
+        "line": 6,
+        "role": "ShoreVisualHeight",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/include/water_shore_animation.glsl",
+        "branch": {
+          "15": 0
         }
       }
     ],
