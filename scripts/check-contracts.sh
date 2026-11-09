@@ -978,7 +978,7 @@ run_nightly "pipeline_desc"          "py -3 scripts/check-pipeline-desc.py --qui
 # measured numbers that would justify promoting it.
 run_nightly "shader_injectors"       "py -3 scripts/check-shader-injectors.py --quiet"
 run_nightly "pipeline_key"           "py -3 scripts/check-pipeline-key.py --quiet"
-run_nightly "vfx_blend_distinction"  "py -3 scripts/check-vfx-blend-distinction.py --quiet && py -3 -B -m pytest scripts/tests/test_check_vfx_blend_distinction.py -q -p no:cacheprovider"
+run_nightly "vfx_blend_distinction"  "py -3 scripts/check-vfx-blend-distinction.py --quiet && py -3 -B -m pytest scripts/tests/test_check_vfx_blend_distinction.py scripts/tests/test_vfx_scene_alpha_unread.py -q -p no:cacheprovider"
 run_nightly "fx_native_boundary"      "py -3 -B -m pytest tools/mc2fx/native_checks.py -k test_boundary -q -p no:cacheprovider"
 run_nightly "multiply_blend"         "py -3 scripts/check-multiply-blend.py --quiet && py -3 -B -m pytest scripts/tests/test_check_native_post_contracts.py -k multiply -q -p no:cacheprovider"
 run_nightly "colormask_ownership"    "py -3 scripts/check-colormask-ownership.py --quiet && py -3 -B -m pytest scripts/tests/test_check_native_post_contracts.py -k color_mask -q -p no:cacheprovider"

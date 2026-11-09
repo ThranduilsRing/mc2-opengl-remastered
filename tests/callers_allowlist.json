@@ -1,4 +1,7 @@
 {
+  "tools/box/unit_report.py": "Run on the Linux box by tools/box_run.py's unit row (python3 ../tools/box/unit_report.py unit.xml unit_out.txt inside the remote shell string; the caller scanner does not follow it).",
+  "tools/neural_mat/derisk.py": "Operator-run N2 neural-material workbench entry point: py -3 -m tools.neural_mat.derisk --work <dir> --shards <parquet...> --orm <orm.ktx2> (module docstring).",
+  "tools/neural_mat/tests/test_neural_mat.py": "Pytest-discovered module for tools/neural_mat (offline N2 workbench tests).",
   "tools/perf/tracy_table.py": "Manual Tracy capture attribution table requested by perf-attrib; CLI usage is documented in its module docstring and docs/plans/perf-attrib-state.md.",
   "tools/mc2fx/native_checks.py": "Explicit pytest artifact proof documented in tools/mc2fx/README.md; fx_native_boundary invokes its source-only case via -m pytest, which the caller scanner does not resolve. Full proof requires built mc2fx and installed catalogs and fails on missing evidence.",
   "tools/axis_swizzle_ratchet.py": "Proof-diet: gate cut from check-contracts/lane_merge; advisory manual report (py -3 tools/axis_swizzle_ratchet.py --check). Transform coverage: tests/unit/test_xform_convention.cpp.",
