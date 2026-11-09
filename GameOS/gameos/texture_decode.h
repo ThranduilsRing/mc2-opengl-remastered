@@ -39,7 +39,8 @@ struct DecodedTexture {
 bool wantsMipmaps(DWORD hints);
 
 // The per-pixel policy after decode: PNG magenta (0xFF00FF) becomes transparent black when keyMagenta is set (modder PNGs carry the
-// legacy colour key baked into opaque pixels), Detect resolves to Alpha or Solid from the alpha channel, and a Solid RGBA8 texture
+// legacy colour key baked into opaque pixels). Keyed textures also apply this policy to TGA/raw art (promoting RGB8 to RGBA8).
+// Detect resolves to Alpha or Solid from the alpha channel, and a Solid RGBA8 texture
 // gets alpha forced to 255 (zero-alpha texels of a "solid" texture would otherwise blend). Sets t.format.
 void applyFormatPolicy(DecodedTexture& t, gos_TextureFormat requested, bool keyMagenta);
 

@@ -1,6 +1,7 @@
 #include "brain_execution_policy.h"
 #include "content_error.h"
 #include "footprints.h"
+#include "../GameOS/gameos/gos_render.h"
 // Mission: Mission::init, the mission load sequence.
 // Declared in the class headers; shared names in mission_internal.h.
 #include "mission_internal.h"
@@ -1010,6 +1011,7 @@ void Mission::init (mc2::czstring missionName, MissionLoadType loadType, long dr
 	initPrologue(f);
 	initTeamRelations(loadType);
 	initCoreSystems();
+	graphics::pump_loading_events();
 	initGameSystemRanges(f);
 	initGameSystemGeneral(f);
 	initGameSystemHazards(f);
@@ -1020,12 +1022,17 @@ void Mission::init (mc2::czstring missionName, MissionLoadType loadType, long dr
 	initTeamsAndCommanders(loadType, dropZoneList, commandersToLoad, f);
 	initTriggerAndDropZone(f);
 	initMissionSettings(f);
+	graphics::pump_loading_events();
 	initTerrain(f);
+	graphics::pump_loading_events();
 	initPathfinding(f);
+	graphics::pump_loading_events();
 	initAblCoreLibs(f);
+	graphics::pump_loading_events();
 	initMissionScript(f);
 	initWarriorsHeader(f);
 	loadWarriors(f);
+	graphics::pump_loading_events();
 	soakAutowinCheck(f);
 	loadBrainParamsPhase(f);
 	loadMissionFitOpord(f);
@@ -1034,11 +1041,13 @@ void Mission::init (mc2::czstring missionName, MissionLoadType loadType, long dr
 	loadBrainDispatch(f);
 initPartsHeader(f);
 	initPartsLoad(loadType, dropZoneID, dropZoneList, commandersToLoad, numMoversPerCommander, f);
+	graphics::pump_loading_events();
 	initObjectCounts(loadType, f);
 	ObjectManager->preloadTickSpawnTypes();   // G7: the overlap worker must never load an object type
 	initGpuAndLighting();
 	initSpawnActors(loadType);
 	initTerrainObjectsLoad(commandersToLoad, f);
+	graphics::pump_loading_events();
 	initDisableAndObjectives(f);
 	initCommanders(commandersToLoad, f);
 	bindOrderRecipients(); // Commander groups finalize the actors' runtime roster IDs.
@@ -1050,5 +1059,6 @@ initPartsHeader(f);
 	// before the immutable buffers close, while still behind the loading screen.
 	preloadMissionSupportAtLoad();
 	initFinalizeGeometry();
+	graphics::pump_loading_events();
 	mc2::content::reportMission(missionName);
 }

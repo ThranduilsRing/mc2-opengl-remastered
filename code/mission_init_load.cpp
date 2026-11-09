@@ -1,4 +1,5 @@
 #include "brain_execution_policy.h"
+#include "../GameOS/gameos/gos_render.h"
 #include "../GameOS/gameos/vk_render_infra.h"
 #include <atomic>
 #include "../GameAdapters/SkyRenderAdapter.h"
@@ -57,6 +58,7 @@ void Mission::loadWarriors(MissionInitFrame& f) {
 	{
 		for (long i = 1; i <= numWarriors; i++)
 		{
+			graphics::pump_loading_events();
 			char warriorName[12];
 			mc2::fmt::to_buf(warriorName, "Warrior{:d}", mc2::fmt::as_i32(i));
 			

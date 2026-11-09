@@ -10,6 +10,8 @@
 #include "tgainfo.h"
 #include "fastfile.h"
 #include "../GameOS/gameos/texture_decode.h"
+#include "../GameOS/gameos/gos_render.h"
+#include "../RenderCore/CursorImage.h"
 #include "../GameOS/gameos/gos_profiler.h"
 #include "../GameOS/gameos/ui_texture.h"
 #include "Gates/gate.h"
@@ -176,6 +178,7 @@ std::shared_ptr<const RenderCore::KtxImage> decodeUi(UiSource source) {
             if (source.format == gos_Texture_Solid) image->pixels[i+3]=255;
         }
     }
+    if (source.format == gos_Texture_Keyed) mc2::keyCursorPixels(image->pixels);
     image->vkFormat=37; image->mipCount=1; image->mipByteOffsets={0};
     return image;
 }
@@ -201,6 +204,7 @@ void startSources() {
 
 DWORD load(mc2::czstring path, gos_TextureFormat format, DWORD hints, DWORD variant, DWORD lifetime) {
     ZoneScopedN("TextureSource.Load");
+    graphics::pump_loading_events();
     if (!RenderCore::activeTextureService || !path || !*path) return kInvalidAsset;
     if (mc2::gate::get<"MC2_TEXMGR_LOAD_TRACE">()) {
         mc2::fmt::print_out("[TEXLOAD] uniq={:d} name={}\n",mc2::fmt::as_u32(variant),path);

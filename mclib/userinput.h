@@ -29,6 +29,8 @@
 #include<string.h>
 #include<gameos.hpp>
 #include<memory>
+#include "../RenderCore/CursorImage.h"
+struct SDL_Cursor;
 
 //---------------------------------------------------------------------------
 inline constexpr int MC2_MOUSE_UP = 0;
@@ -131,6 +133,7 @@ class MouseCursorData
 		long numCursors;
 		
 		std::unique_ptr<StaticInfo[]> cursorInfos;	// gotta be pointer, so destructor is called before texmgr quits
+		mc2::CursorShapes<SDL_Cursor*> nativeCursors;
 
 		char mouseHS[MAX_MOUSE_STATES][2];
 		unsigned long numFrames[MAX_MOUSE_STATES];
@@ -581,6 +584,13 @@ class UserInput
 		void setMouseFrame (long frameNum)
 		{
 			mouseFrame = frameNum;
+			syncNativeCursor();
+		}
+
+		void syncNativeCursor();
+		bool usesNativeCursor() const
+		{
+			return cursors && cursors->nativeCursors.get(mouseState, mouseFrame);
 		}
 
 		long getMouseFrame (void)

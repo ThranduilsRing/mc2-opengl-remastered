@@ -19,6 +19,7 @@
 // FIXME: think how to make it better when different parts need window
 SDL_Window* g_sdl_window = nullptr;
 static bool g_mouse_grabbed = false;
+static SDL_threadID g_window_thread = 0;
 
 // GPU-VENDOR-DETECT-1: -1 = not yet probed, 0 = not NVIDIA, 1 = NVIDIA.
 // Set once in init_render_context after the GL context is live. Read via
@@ -179,23 +180,43 @@ void set_mouse_grab(bool grabbed)
     apply_mouse_grab(g_sdl_window, grabbed);
 }
 
-// CURSOR-TOPMOST-1: single owner of the OS-cursor visibility policy. Over the game
-// window the OS arrow is hidden (the game draws its own sprite) unless MC2_OS_CURSOR;
-// when the window loses focus the OS cursor is restored. Re-asserted on every window
-// event that can disturb it (focus, enter, size/fullscreen) and logged so the state
-// is provable from the log.
+static SDL_Cursor* s_nativeCursor = nullptr;
+static bool s_cursorVisible = false;
+
+// One owner for shape and visibility, including focus regain and software fallback.
 void apply_os_cursor_policy(std::string_view why, bool focused)
 {
     if (gos_UnattendedRunRequested() || !g_sdl_window) {
         return;
     }
-    const bool hide = focused && !mc2::gate::get<"MC2_OS_CURSOR">();
+    const bool forceArrow = mc2::gate::get<"MC2_OS_CURSOR">();
+    SDL_SetCursor(focused && s_nativeCursor && !forceArrow ? s_nativeCursor : SDL_GetDefaultCursor());
+    const bool hide = focused && !forceArrow && (!s_nativeCursor || !s_cursorVisible);
     SDL_ShowCursor(hide ? SDL_DISABLE : SDL_ENABLE);
     if (!mc2_diag::tagRequested("CURSOR")) return;
     MC2_LOG(Ui, Info, "[CURSOR] os_cursor event={} focused={:d} visible={:d} os_cursor_gate={:d}",
         mc2::fmt::safe(std::string(why).c_str()), mc2::fmt::as_i32(focused ? 1 : 0),
         mc2::fmt::as_i32(SDL_ShowCursor(SDL_QUERY) == SDL_ENABLE ? 1 : 0),
         mc2::fmt::as_i32(mc2::gate::get<"MC2_OS_CURSOR">() ? 1 : 0));
+}
+
+void set_native_cursor(SDL_Cursor* cursor, bool visible)
+{
+    if (s_nativeCursor == cursor && s_cursorVisible == visible) return;
+    s_nativeCursor = cursor;
+    s_cursorVisible = visible;
+    apply_os_cursor_policy("shape", g_sdl_window && (SDL_GetWindowFlags(g_sdl_window) & SDL_WINDOW_INPUT_FOCUS));
+}
+
+void pump_loading_events()
+{
+    if (!g_sdl_window || SDL_ThreadID() != g_window_thread) return;
+    static Uint32 lastPump = 0;
+    const Uint32 now = SDL_GetTicks();
+    if (now - lastPump < 50) return;
+    lastPump = now;
+    // Pump only: do not consume quit/focus/input events or reenter the game mid-load.
+    SDL_PumpEvents();
 }
 
 void refresh_mouse_grab()
@@ -581,6 +602,7 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
     rw->height_ = height;
 
     g_sdl_window = window;
+    g_window_thread = SDL_ThreadID();
     // CURSOR-GRAB-FIX-1: still requested unconditionally -- this records the
     // engine's INTENT to grab, which is correct for an ordinary interactive
     // launch. apply_mouse_grab() decides whether it is ALLOWED, and refuses when

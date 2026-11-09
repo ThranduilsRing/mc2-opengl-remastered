@@ -404,9 +404,8 @@ void LoadScreen::begin()
 	loadProgress = 0;
 
 	//-----------------------------------------------
-	//Turn the mouse cursor OFF until load is done.
-	// This will be keep ghost images from occuring.
-	userInput->mouseOff();	
+	// The native cursor is independent of the loading framebuffer.
+	userInput->mouseOn();
 }
 void LoadScreen::init(FitIniFile& file, DWORD neverFlush)
 {
@@ -535,7 +534,7 @@ void LoadScreen::update()
 	}
 	else
 	{
-		userInput->mouseOff();
+		userInput->mouseOn();
 	}
 }
 

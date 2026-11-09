@@ -86,6 +86,9 @@ void                get_drawable_size       (RenderWindowHandle rw_handle, int* 
 void                set_mouse_grab          (bool grabbed);
 void                refresh_mouse_grab      ();
 void                apply_os_cursor_policy  (std::string_view why, bool focused);
+void                set_native_cursor       (SDL_Cursor* cursor, bool visible);
+// Main-thread checkpoints during synchronous loads; queues input without running game logic.
+void                pump_loading_events     ();
 void                destroy_window          (RenderWindowHandle rw_handle);
 bool                set_window_fullscreen   (RenderWindowHandle rw_handle, bool fullscreen);
 // NOFOCUS-HARDEN-1: true when MC2_WINDOW_OFFSCREEN is set -- the window is

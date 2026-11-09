@@ -20,7 +20,7 @@ class StaticInfo
 {
 public:
 
-	void init( FitIniFile& file, mc2::czstring blockName, long hiResOffsetX = 0, long hiResOffsetY = 0, DWORD neverFlush = 0x2 );
+	void init( FitIniFile& file, mc2::czstring blockName, long hiResOffsetX = 0, long hiResOffsetY = 0, DWORD neverFlush = 0x2, gos_TextureFormat format = gos_Texture_Alpha );
 	void render();
 	bool isInside( int mouseX, int mouseY );
 
