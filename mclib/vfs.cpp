@@ -1393,7 +1393,9 @@ uint64_t contentDigest(std::string_view path)
 		std::lock_guard<std::mutex> dl(g_digestMutex);
 		const auto it = g_digestMemo.find(memoKey);
 		if (it != g_digestMemo.end()) {
-			const auto& [memoStamp, memoDigest] = it->second;
+			const auto& [storedKey, memo] = *it;
+			const auto& [memoStamp, memoDigest] = memo;
+			(void)storedKey;
 			if (memoStamp.physical == stamp.physical && memoStamp.size == stamp.size && memoStamp.mtime == stamp.mtime &&
 			    memoStamp.generation == stamp.generation) return memoDigest;
 		}
