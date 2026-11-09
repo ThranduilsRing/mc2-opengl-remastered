@@ -31,6 +31,8 @@
     "tools/tracy_capture_compare.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10"
   },
   "direct_spawn": {
+    "tests/fixtures/jump_command_witness.py": "Jump-command witness: spawns only sys.executable scripts/run_smoke.py --headless (the harness owns the game launch, focus and kill) with console_child, redirected stdio and a 180 s ack deadline; never mc2.exe directly.",
+    "tools/perf/tracy_table.py": "Tracy table: runs only the windowless tracy-csvexport.exe console exporter (nofocus.hidden_kwargs, BelowNormal, captured stdio, 180 s timeout) on saved .tracy captures; never the game.",
     "scripts/tests/test_prop_team_tint.py": "Shader proof test: runs only glslangValidator and spirv-dis (shader_common.find_tool) to compile and disassemble color_prop_tier1.frag; never the game.",
     "tools/mc2fx/native_checks.py": "FX proof tests: run only the built mc2fx.exe CLI (build64-ninja/out/tools/mc2fx or MC2FX_EXE) with console_child, captured stdio and a timeout; never the game.",
     "scripts/tests/test_two_gpu_lanes.py": "Reap-isolation test: spawns two windowless python sleepers (sys.executable -c time.sleep) to prove a capture reaps only its own children; never the game.",
