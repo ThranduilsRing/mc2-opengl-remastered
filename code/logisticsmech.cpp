@@ -10,6 +10,7 @@ LogisticsMech.cpp			: Implementation of the LogisticsMech component.
 #include"logisticsdata.h"
 #include"inifile.h"
 #include "mc2fmt.h"
+#include "logistics_deployment.h"
 
 LogisticsMech::LogisticsMech( LogisticsVariant* pVar, int Count ) : pVariant( pVar )
 {
@@ -46,16 +47,14 @@ void LogisticsMech::setVariant( LogisticsVariant* pVar )
 
 long LogisticsMech::save( FitIniFile& file, long counter )
 {
-	char tmp[256];
-	mc2::fmt::to_buf(tmp, "Inventory{:d}", mc2::fmt::as_i32(counter));
-
-	file.writeBlock( tmp );
-
-	file.writeIdString( "Chassis", pVariant->getFileName().c_str() );
-	file.writeIdString( "Variant", pVariant->getName().c_str() );
-	if ( pilot )
-		file.writeIdString( "Pilot", pilot->getFileName().c_str() );
-	file.writeIdBoolean( "Designer", pVariant->isDesignerMech() );
+	logistics_deployment::MechRecord record;
+	record.chassis = pVariant->getFileName();
+	record.variant = pVariant->getName();
+	if (pilot)
+		record.pilot = pilot->getFileName();
+	record.designer = pVariant->isDesignerMech();
+	record.slot = forceGroup;
+	logistics_deployment::writeMech(file, counter, record);
 
 	return 0;
 }

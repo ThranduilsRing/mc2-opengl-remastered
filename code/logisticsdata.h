@@ -104,6 +104,7 @@ public:
 	std::expected<void, int> removeMechFromForceGroup( int slot );
 
 	bool				canAddMechToForceGroup( LogisticsMech* pMech );
+	int getDeploymentCapacity() const;
 
 
 	long				save( FitIniFile& file );
@@ -122,7 +123,7 @@ public:
 	int					getCurrentDropWeight() const;
 	int					getMaxDropWeight() const;
 
-	std::expected<void, long> loadMech( FitIniFile& file, int& count );
+	std::expected<void, long> loadMech( FitIniFile& file, int& count, long version );
 
 	void				setMissionCompleted();
 	long				updateAvailability();

@@ -6,6 +6,7 @@
 #include "mc2fmt.h"
 #include "mc2str.h"
 #include "objective_text.h"
+#include "logistics_deployment.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 
 #include <optional>
@@ -180,17 +181,6 @@ void LogisticsData::clearVariants()
 
 std::expected<void, long> LogisticsData::load( FitIniFile& file )
 {
-	clearInventory();
-	resourcePoints = 0;
-	clearPilots();
-	initPilots();
-	clearVariants();
-
-	if ( !missionInfo )
-		missionInfo = std::make_unique_for_overwrite<LogisticsMissionInfo>();
-
-	missionInfo->load( file );
-
 	long result = file.seekBlock( "Version" );
 	if (result != NO_ERR)
 	{
@@ -206,7 +196,7 @@ std::expected<void, long> LogisticsData::load( FitIniFile& file )
 		return std::unexpected(-1L);
 	}
 
-	if (testVersionNum != SaveGameVersionNumber)
+	if (testVersionNum != SaveGameVersionNumber && testVersionNum != logistics_deployment::legacyVersion)
 	{
 		PAUSE(("SaveGame is not Version %d.  It was Version %d which is not valid!",SaveGameVersionNumber,testVersionNum));
 		return std::unexpected(-1L);
@@ -220,7 +210,86 @@ std::expected<void, long> LogisticsData::load( FitIniFile& file )
 	file.readIdLong( "VariantCount", variantCount );
 	file.readIdLong( "PilotCount", pilotCount );
 	file.readIdLong( "InventoryCount", inventoryCount );
+	if (testVersionNum == logistics_deployment::recordVersion &&
+		(variantCount < 0 || pilotCount < 0 || inventoryCount < 0))
+		return std::unexpected(-1L);
+	if (!logistics_deployment::compatible(file, testVersionNum, inventoryCount)) {
+		MC2_LOG(Core, Warn, "logistics: incompatible campaign deployment records; current inventory and pilots preserved");
+		return std::unexpected(-1L);
+	}
+	if (testVersionNum == logistics_deployment::recordVersion) {
+		// A missing variant under a different mod must reject before losing inventory.
+		for (long i = 0; i < inventoryCount; ++i) {
+			file.seekBlock(("Inventory" + std::to_string(i)).c_str());
+			const auto record = logistics_deployment::readMech(file, testVersionNum);
+			bool found = false;
+			for (const auto& variant : variants)
+				if (variant->isDesignerMech() && mc2::str::iequals(variant->getName(), record->variant))
+					found = true;
+			for (long j = 0; !found && j < variantCount; ++j) {
+				if (file.seekBlock(("Variant" + std::to_string(j)).c_str()) == NO_ERR) {
+					const auto name = objective_text::readPlain(file, "VariantName");
+					found = name && mc2::str::iequals(*name, record->variant);
+				}
+			}
+			if (!found) {
+				MC2_LOG(Core, Warn, "logistics: saved variant '{}' unavailable; current inventory and pilots preserved", record->variant);
+				return std::unexpected(-1L);
+			}
+		}
+	}
+	auto loadedMissionInfo = std::make_unique_for_overwrite<LogisticsMissionInfo>();
+	if (!loadedMissionInfo->load(file))
+		return std::unexpected(-1L);
+	// Keep the live owners until every new record resolves against this mod.
+	// Moving the deque preserves the pilot addresses held by the old mechs.
+	struct CampaignBackup {
+		LogisticsData& data;
+		MECH_LIST inventory;
+		PILOT_LIST pilots;
+		VARIANT_LIST variants;
+		std::unique_ptr<LogisticsMissionInfo> mission;
+		long points;
+		bool committed = false;
+		explicit CampaignBackup(LogisticsData& source) : data(source),
+			inventory(std::move(source.inventory)), pilots(std::move(source.pilots)),
+			mission(std::move(source.missionInfo)), points(source.resourcePoints)
+		{
+			for (auto iter = data.variants.begin(); iter != data.variants.end();) {
+				if (!(*iter)->isDesignerMech()) {
+					variants.push_back(std::move(*iter));
+					iter = data.variants.erase(iter);
+				} else ++iter;
+			}
+		}
+		~CampaignBackup()
+		{
+			if (committed) {
+				inventory.clear(); // Mechs release pilots before the old deque dies.
+				return;
+			}
+			data.inventory.clear();
+			data.pilots.clear();
+			data.clearVariants();
+			for (auto& variant : variants)
+				data.variants.push_back(std::move(variant));
+			data.pilots = std::move(pilots);
+			data.inventory = std::move(inventory);
+			data.missionInfo = std::move(mission);
+			data.resourcePoints = points;
+		}
+	};
+	std::optional<CampaignBackup> backup;
+	if (testVersionNum == logistics_deployment::recordVersion)
+		backup.emplace(*this);
+	file.seekBlock("General");
 	file.readIdBoolean( "FirstTimeResults", MissionResults::FirstTimeResults);
+	clearInventory();
+	resourcePoints = 0;
+	clearPilots();
+	initPilots();
+	clearVariants();
+	missionInfo = std::move(loadedMissionInfo);
 
 	char tmp[64];
 
@@ -270,10 +339,16 @@ std::expected<void, long> LogisticsData::load( FitIniFile& file )
 			gosASSERT( 0 );
 		}
 
-		loadMech( file, count );
+		auto loaded = loadMech(file, count, testVersionNum);
+		if (!loaded && backup)
+			return loaded;
 	}
 
 	updateAvailability();
+	if (backup) {
+		removeDeadWeight();
+		backup->committed = true;
+	}
 
 
 	//Start finding the Leaks
@@ -305,7 +380,7 @@ std::expected<void, long> LogisticsData::loadVariant( FitIniFile& file )
 
 	if ( !pChassis ) // we can always try and make it ourseleves, but it should have been loaded by now
 	{
-		gosASSERT( 0 );
+		MC2_LOG(Core, Warn, "logistics: saved chassis '{}' unavailable", *chassisKey);
 		return std::unexpected(INVALID_FILE_NAME);
 	}
 
@@ -359,8 +434,38 @@ std::expected<void, long> LogisticsData::loadVariant( FitIniFile& file )
 	return {};
 }
 
-std::expected<void, long> LogisticsData::loadMech( FitIniFile& file, int& count )
+std::expected<void, long> LogisticsData::loadMech( FitIniFile& file, int& count, long version )
 {
+	if (version == logistics_deployment::recordVersion) {
+		const auto record = logistics_deployment::readMech(file, version);
+		if (!record)
+			return std::unexpected(-1L);
+		for (const auto& variant : variants) {
+			if (!mc2::str::iequals(variant->getName(), record->variant))
+				continue;
+			auto mech = std::make_unique<LogisticsMech>(variant.get(), createInstanceID(variant.get()));
+			mech->setForceGroup(static_cast<int>(record->slot));
+			if (record->pilot)
+				for (auto& pilot : pilots)
+					if (mc2::str::iequals(pilot.getFileName(), *record->pilot)) {
+						mech->setPilot(&pilot);
+						break;
+					}
+			if (record->pilot && !record->pilot->empty() && !mech->getPilot()) {
+				MC2_LOG(Core, Warn, "logistics: saved pilot '{}' unavailable; campaign load rolled back", *record->pilot);
+				return std::unexpected(-1L);
+			}
+			if (record->slot > getDeploymentCapacity()) {
+				mech->setForceGroup(0);
+				mech->setPilot(nullptr);
+				MC2_LOG(Core, Warn, "logistics: saved deployment slot {} exceeds cap {}; mech returned to storage", record->slot, getDeploymentCapacity());
+			}
+			inventory.push_back(std::move(mech));
+			return {};
+		}
+		return std::unexpected(-1L);
+	}
+	// 10004: retain the original pilot-driven reconstruction verbatim.
 	const std::string variantKey = objective_text::readPlain( file, "Variant" ).value_or( std::string() );
 	for ( auto mIter = variants.begin(); mIter != variants.end(); ++mIter )
 	{
@@ -380,9 +485,7 @@ std::expected<void, long> LogisticsData::loadMech( FitIniFile& file, int& count 
 					if ( mc2::str::iequals( (*pIter).getFileName(), *pilotKey ) )
 					{
 						pMech->setPilot( &(*pIter ) );
-						count++;
-						if ( count > -1 && count < 13 )
-							pMech->setForceGroup( count );
+						pMech->setForceGroup(logistics_deployment::legacyPilotSlot(count));
 						break;
 					}
 				}

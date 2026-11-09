@@ -12,6 +12,7 @@ LogisticsMissionInfo.h			: Interface for the LogisticsMissionInfo component.
 
 #include <string>
 #include "mc2_czstring.h"
+#include "logistics_deployment.h"
 #include <optional>
 #include <expected>
 #include <functional>
@@ -67,6 +68,7 @@ class LogisticsMissionInfo
 		// The text getters return a copy and an EMPTY string for "there is none" (no group, no key, nothing assigned): every caller only asks whether
 		// there is text, and a copy can never dangle after clear().
 		long				getCurrentDropWeight() const;
+		int getMaxDeployedMechs() const;
 		std::string			getCurrentVideo() const;
 		std::string			getCurrentOperationFile() const;
 		std::string			getCurrentMissionDescription() const;
@@ -153,6 +155,7 @@ class LogisticsMissionInfo
 			long resourcePoints = 0;
 			long additionalCBills = 0;
 			long dropWeight = 0;
+			int maxDeployedMechs = logistics_deployment::singlePlayerSlots;
 			bool playLogistics = false;
 			bool playSalvage = false;
 			bool playPilotPromotion = false;
@@ -220,6 +223,7 @@ class LogisticsMissionInfo
 
 		std::unique_ptr<MissionGroup[]>			groups;
 		long					groupCount;
+		int campaignMaxDeployedMechs = logistics_deployment::singlePlayerSlots;
 
 		long					CBills;
 
