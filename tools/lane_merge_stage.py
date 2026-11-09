@@ -135,7 +135,8 @@ def nightly_unmet(verdict: dict) -> list[str]:
     if tier < 1:
         return ["(verdict records no nightly tier)"]
     executed = verdict.get("executed") or {}
-    required = [n for n, _c, _e in merge_gate.plan(1) if n == "deploy" or 1 <= merge_gate.stage_tier(n) <= tier]
+    required = [n for n, _c, _e in merge_gate.plan(1) if n not in merge_gate.NON_BLOCKING_STAGES
+                and (n == "deploy" or 1 <= merge_gate.stage_tier(n) <= tier)]
     return [n for n in required if not merge_gate.stage_passed(str((executed.get(n) or {}).get("status", "")))]
 
 

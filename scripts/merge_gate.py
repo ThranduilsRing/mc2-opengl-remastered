@@ -59,12 +59,44 @@ PREREQUISITE = "tier1"   # the validation-enabled tier1 smoke: first game row af
 WEEKLY_SAVE_MAPS = ("mc2_03", "mc2_16", "mc2_24")   # mc2_01 (day) and mc2_10 (night) saves stay nightly
 
 
+#: Owner 2026-11-08: "a SLIM mod check ... at night, but they are not critical. I'd rather let them break and do a dedicated fix."
+#: mods-slim = one short load per mod, nightly only (the weekly tier runs the full `mods` battery instead). Non-blocking: its
+#: per-mod PASS/FAIL is reported in the summary and the verdict's `executed` row, but it never fails the gate, never enters
+#: `failed`, and promotion (lane_merge_stage.nightly_unmet) does not require it. A red row gets a dedicated fix lane.
+NON_BLOCKING_STAGES = ("mods-slim",)
+MOD_BATTERY_STAGES = ("mods", "mods-slim")
+
+
 def stage_tier(name):
+    if name in NON_BLOCKING_STAGES:
+        return 1
     if name in ("mods", "video-decode"):
         return 2
     if name in ("tier1-full", "quiet", *("saveload-" + m for m in WEEKLY_SAVE_MAPS)):
         return 2   # p29 cuts 4 and 6: five-map breadth, the extra save maps and the quiet smoke are weekly
     return 1 if name.startswith(("determinism-", "saveload-")) or name in ("player-path",) else 0
+
+
+def tier_includes(name, tier):
+    """True when a scheduled `tier` run (0 per merge, 1 nightly, 2 weekly) plans `name`. The weekly tier drops mods-slim: it runs the full battery."""
+    return stage_tier(name) <= tier and not (name in NON_BLOCKING_STAGES and tier >= 2)
+
+
+#: mod_smoke's closing table row: | mod | mission | result | health | content / budget | note |
+_MOD_RESULT_RE = re.compile(r"^(PASS|FAIL|CONTENT-FAIL|HEALTH-FAIL|INFRA)")
+
+
+def mod_battery_results(output):
+    """mod -> result word from tools/mod_smoke.py output (a mod passes only when every row it ran passed; a planned mod with no
+    row is 'NO RESULT'). Reporting only: the stage status still comes from the child's exit code."""
+    per = {m: "NO RESULT" for m in re.findall(r"^\[mod_smoke\] (\S+): mission plan", output or "", re.M)}
+    for line in (output or "").splitlines():
+        cells = [c.strip() for c in line.strip().strip("|").split("|")] if line.startswith("| ") else []
+        if len(cells) != 6 or not _MOD_RESULT_RE.match(cells[2]):
+            continue
+        if per.get(cells[0]) in (None, "NO RESULT", "PASS"):
+            per[cells[0]] = cells[2]
+    return per
 
 
 #: Nightly 03/16 determinism is one pinned run (`check --single`, p29 L23); weekly and sim-sensitive diffs keep the a/b pair.
@@ -163,7 +195,7 @@ def window_reusable(window, tree, now=None):
     return (now if now is not None else time.time()) - window.get("started", 0) <= 1200
 
 # Last-measured stage seconds (W112) for worker balancing when no journal exists yet.
-DEFAULT_STAGE_SECONDS = {"mods": 876, "tier1": 120, "tier1-full": 304, "capture-after": 70, "player-path": 180, "video-decode": 250,
+DEFAULT_STAGE_SECONDS = {"mods": 876, "mods-slim": 900,"tier1": 120, "tier1-full": 304, "capture-after": 70, "player-path": 180, "video-decode": 250,
                          "determinism-mc2_03": 55, "determinism-mc2_10": 120, "determinism-mc2_16": 104, "determinism-mc2_24": 191}
 
 
@@ -627,6 +659,12 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
                        *(["--headless"] if mission in HEADLESS_SAVELOAD else [])], {}))
     # Staging has one cache writer; two isolated smoke children lease their own slots.
     steps.append(("mods", [py, "tools/mod_smoke.py", "--battery", "--workers", "2", "--exe", install + "/mc2.exe", "--build-dir", "build64-ninja"], {}))
+    # Nightly slim check (non-blocking): under MC2_IN_GATE the battery samples one mission per mod; 10 s, no front-end walk.
+    # --grace-s 480: each stage cooks its mod's models cold (CVE-G/REAP3 cook 140-280 models; 2026-11-08 they hit run_smoke's
+    # ~258 s cap before frame 0); a timeout is reported INFRA, not a mod FAIL. --ref-exe: the fingerprint reference is the exe
+    # under test, not mc2-main's HEAD (which may sit on a stage branch).
+    steps.append(("mods-slim", [py, "tools/mod_smoke.py", "--battery", "--workers", "2", "--exe", install + "/mc2.exe", "--build-dir", "build64-ninja",
+                                "--duration", "10", "--no-front-end", "--grace-s", "480", "--ref-exe", install + "/mc2.exe"], {}))
     return steps
 
 
@@ -800,12 +838,16 @@ def install_plan(steps, install):
         if name in ("tier1", "tier1-full"):
             idx = command.index("--deploy")
             command[idx:idx + 2] = ["--exe", str(install / "mc2.exe")]
-        if name == "mods":
+        if name in MOD_BATTERY_STAGES:
             # Candidate names are random and their siblings are deleted at exit.
             # Keep the existing incremental payload cache across windows, scoped
             # to this worktree; battery() still removes every disposable install.
+            # mods and mods-slim never share a scheduled plan (tier_includes), so they do not use the stage root at once.
             stage_root = Path(EROOT + '/mc2-installs') / (ROOT.name + '-mods-stage')  # persistent; gate_reuse seals/verifies _cache
-            command += ["--base-install", str(install), "--stage-root", str(stage_root), "--duration", "15"]
+            if name == "mods-slim":   # keeps its own --duration from plan()
+                command += ["--base-install", str(install), "--stage-root", str(stage_root)]
+            else:
+                command += ["--base-install", str(install), "--stage-root", str(stage_root), "--duration", "15"]
         result.append((name, command, env))
     return result
 
@@ -1454,7 +1496,7 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
         stock = []
         mods, determinism = [], []
         for step in steps:
-            (mods if step[0] == "mods" else stock).append(step)
+            (mods if step[0] in MOD_BATTERY_STAGES else stock).append(step)
         # Save fixtures share Windows' user save directory, so stay on one worker.
         # Determinism has no writes there and consumes its own named artifacts.
         # With mods scope-skipped (or absent) worker B is idle: 2 or more live determinism rows still go 2-wide on the
@@ -1538,16 +1580,16 @@ def execute_parallel(steps, head, dry_run=False, keep_going=False, farm_determin
                         remapped = []
                         for n, c, e in mods + determinism:
                             command = list(c)
-                            for option in ("--install", "--base-install", "--exe"):
+                            for option in ("--install", "--base-install", "--exe", "--ref-exe"):
                                 if option in command:
                                     i = command.index(option) + 1
                                     command[i] = command[i].replace(str(install), str(clone)).replace(install.as_posix(), clone.as_posix())
                             remapped.append((n, command, e))
                         # The clone chain runs beside the stock chain: route it to the auxiliary GPU (r7 finding 3).
-                        mod_rows = [s for s in remapped if s[0] == 'mods']
+                        mod_rows = [s for s in remapped if s[0] in MOD_BATTERY_STAGES]
                         if mod_rows:
                             result |= execute(mod_rows, head, runner=runner, completed=completed, device=aux_device())
-                        others = [s for s in remapped if s[0] != 'mods']
+                        others = [s for s in remapped if s[0] not in MOD_BATTERY_STAGES]
                         if others:
                             result |= execute(others, head, runner=runner, completed=completed, device=aux_device())
                     return result
@@ -1639,6 +1681,7 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
     if not steps:
         raise ValueError("no stages selected; gate requires at least one stage")
     results = []
+    mod_summary = {}   # mods/mods-slim: per-mod result words for the summary and the verdict row
     completed = {} if completed is None else completed
     failed = False
     for name, command, overrides in steps:
@@ -1698,6 +1741,7 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
         else:
             started = time.monotonic()
             measured = None
+            result = None
             try:
                 if git("rev-parse", "HEAD") != head:
                     raise RuntimeError("HEAD changed during gate; rerun verification and gate")
@@ -1776,7 +1820,14 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
                 kind = "INFRA: " if isinstance(exc, (OSError, subprocess.SubprocessError)) else "FAIL: "
                 status = kind + str(exc).replace("|", "/").replace("\n", " ")
             elapsed = time.monotonic() - started if measured is None else measured
-            failed |= not stage_passed(status)
+            if name in MOD_BATTERY_STAGES and (per_mod := mod_battery_results(getattr(result, "stdout", "") or "")):
+                mod_summary[name] = per_mod
+                print(f"[merge_gate] {name} per-mod: " + ", ".join(f"{m}={w}" for m, w in per_mod.items()), flush=True)
+            if name in NON_BLOCKING_STAGES and getattr(result, "returncode", None) == 3 and status.startswith("FAIL"):
+                status = "INFRA (3): every red mod timed out loading (mod_smoke rc 3)"   # host/load time, not a mod regression
+            if name in NON_BLOCKING_STAGES and not stage_passed(status):
+                status = f"ADVISORY {status} (non-blocking; needs a dedicated fix lane)".replace("|", "/")
+            failed |= not stage_passed(status) and name not in NON_BLOCKING_STAGES
             if name == 'mods':
                 gate_reuse.mods_end(status == "PASS")
             elif name == 'deploy' and status == "PASS" and '--allow-new-target' in command:
@@ -1786,6 +1837,8 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
         results.append((name, status, elapsed))
         ROW_RESULTS[name] = dict(status=status, seconds=round(elapsed, 1), wait=round(scheduler_wait + waited, 1),
                                  device=(gate_env(name, device) or {}).get("MC2_VK_DEVICE"))
+        if name in mod_summary:
+            ROW_RESULTS[name]["mods"] = mod_summary[name]
         completed[name] = status
         if not dry_run and ACTIVE_STATE:
             ACTIVE_STATE.record(name, command, overrides, status, elapsed, scheduler_wait)
@@ -1795,7 +1848,7 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
         print(f"| {name} | {status} | {elapsed:.1f} |")
         ROW_RESULTS.setdefault(name, dict(status=status, seconds=round(elapsed, 1), wait=0.0, device=None))
     for name, status, _ in results:
-        if not stage_passed(status) and not status.startswith(("DRY-RUN", "SKIP")):
+        if not stage_passed(status) and not status.startswith(("DRY-RUN", "SKIP")) and name not in NON_BLOCKING_STAGES:
             FAILED_STAGES.append((name, status))
     for name, _, overrides in steps:
         if overrides.get("MC2_GATE_COVERAGE"):
@@ -1933,7 +1986,7 @@ def main(argv=None):
         asked = [n for g in args.stages or [] for n in g.split(',')]
         if not asked:
             tier = 2 if args.weekly else 1 if args.nightly else 0
-            planned = [s for s in planned if stage_tier(s[0]) <= tier]
+            planned = [s for s in planned if tier_includes(s[0], tier)]
             planned = [(n, c + ["--nightly"] if n == "contracts" and tier else c, e) for n, c, e in planned]
         steps = select_stages(planned, args.stages, args.skip)
         omitted = [step for step in planned if step[0] not in {s[0] for s in steps}]
@@ -1993,12 +2046,12 @@ def main(argv=None):
         steps = install_plan(steps, install)
     for name, command, env in steps:
         # Rows with no output folder of their own write smoke artefacts here, so --resume has evidence to hash.
-        if (name == "mods" or name.startswith(("determinism-", "saveload-"))
+        if (name in MOD_BATTERY_STAGES or name.startswith(("determinism-", "saveload-"))
                 or (name not in ("contracts", "harnesses", "pytest", "deploy", "publish-v0.4")
                     and not any(o in command for o in ("--out", "--out-root", "--compare-only")))):
             env["MC2_SMOKE_ARTIFACT_ROOT"] = str(proof / "smokes" / name)
     for name, command, _ in steps:
-        if name == 'mods' and window_number:
+        if name in MOD_BATTERY_STAGES and window_number:
             command += ['--window', str(window_number)]
     if args.expect_head and git("rev-parse", args.expect_head + "^{commit}") != head:
         ap.error("HEAD does not match --expect-head")
@@ -2067,6 +2120,10 @@ def main(argv=None):
                     print(f"[merge_gate] CANDIDATE_ERROR (after verdict={verdict}; the gate result above is unaffected, no candidate kept): {err}")
                 if FAILED_STAGES:
                     print("[merge_gate] failed stages: " + ", ".join(f"{name} ({status})" for name, status in FAILED_STAGES))
+                for name in NON_BLOCKING_STAGES:
+                    row = ROW_RESULTS.get(name)
+                    if row and not stage_passed(row["status"]) and not row["status"].startswith(("SKIP", "DRY-RUN")):
+                        print(f"[merge_gate] advisory {name} red (verdict unaffected): {row['status']}")
                 if args.isolated_verdict and not args.install and not args.dry_run:
                     record_isolated_verdict(head, verdict)
                 if verdict != "PASS" and not args.dry_run and own_marks:
