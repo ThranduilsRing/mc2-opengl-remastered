@@ -55,6 +55,7 @@ set(editor_document_test_sources tests/test_main.cpp tests/test_document.cpp tes
     tests/test_catalog.cpp
     tests/test_brain_paths.cpp
     tests/test_placement.cpp
+    tests/test_route_geometry.cpp
     tests/test_objectives.cpp
     "${CMAKE_SOURCE_DIR}/code/brain_missionfit_oporbd.cpp")
 add_executable(editor_document_tests ${editor_document_test_sources})

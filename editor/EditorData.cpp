@@ -110,6 +110,9 @@ bool EditorData::clear()
 
 	EditorDataTrace("[EDITOR_SHUTDOWN] phase=clear_enter land=%p", land);
 
+	if ( EditorInterface::instance() )
+		EditorInterface::instance()->dropMissionBrushes();
+
 	if ( land )
 	{
 		land->destroy();

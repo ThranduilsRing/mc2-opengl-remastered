@@ -59,16 +59,18 @@ void EditorInterface::handleLeftButtonDown( int PosX, int PosY )
 		return;
 	}
 
-	// Waypoint placement mode (UnitBrainPanel "Add Waypoints"): drop a patrol/move
-	// waypoint at the SAME click world position the editor uses to place buildings
-	// (eye->inverseProject -> vector). The bridge pick returns 0,0 here, so use the
-	// building-placement coordinate; snap Z to terrain.
+	// Route mode (UnitBrainPanel "Add Waypoints"): the route tool works at the SAME
+	// click world position the editor uses to place buildings (eye->inverseProject
+	// -> vector), Z snapped to terrain. Modifiers pick the gesture (see RoutePress).
 	if ( UnitBrainPanel::WaypointPlaceActive() )
 	{
 		glm::vec3 wp = vector;
 		if ( land )
 			wp.z = land->getTerrainElevation( wp );
-		if ( UnitBrainPanel::HandlePlacementClick( wp.x, wp.y, wp.z ) )
+		const bool ctrl  = ( ::GetAsyncKeyState( VK_CONTROL ) & 0x8000 ) != 0;
+		const bool alt   = ( ::GetAsyncKeyState( VK_MENU )    & 0x8000 ) != 0;
+		const bool shift = ( ::GetAsyncKeyState( VK_SHIFT )   & 0x8000 ) != 0;
+		if ( UnitBrainPanel::RoutePress( wp.x, wp.y, wp.z, ctrl, alt, shift ) )
 			return;
 	}
 
@@ -149,11 +151,18 @@ void EditorInterface::handleMouseMove( int PosX, int PosY )
 	// One-step elevation refinement for terrain sculpting: screenToGroundPlaneApprox
 	// intersects z=0; on elevated terrain the x,y diverges from the actual brush cell.
 	// Re-intersect at the terrain z so HeightBrush paints where the cursor visually lands.
-	if ( painting && land )
+	if ( ( painting || UnitBrainPanel::RouteGestureActive() ) && land )
 	{
 		const float ze = land->getTerrainElevation( vector );
 		if ( fabsf( ze ) > 0.5f )
 			eye->screenToGroundPlaneApprox( v2.x, v2.y, vector, ze );
+	}
+
+	// Route tool drag / stroke (UnitBrainPanel::RoutePress started it).
+	if ( UnitBrainPanel::RouteGestureActive() )
+	{
+		UnitBrainPanel::RouteDrag( vector.x, vector.y, land ? land->getTerrainElevation( vector ) : vector.z );
+		return;
 	}
 
 	// Object drag-move: while an object is grabbed, follow the cursor by moving
@@ -429,6 +438,10 @@ void EditorInterface::notifyObjectDeleted( const EditorObject* pObj )
 void EditorInterface::handleLeftButtonUp( int PosX, int PosY )
 {
 	if ( !eye || !eye->active  )
+		return;
+
+	// Route tool: a drag or stroke commits as one undo step.
+	if ( UnitBrainPanel::RouteRelease() )
 		return;
 
 	// Finalize an object drag-move: commit the undo action if the object

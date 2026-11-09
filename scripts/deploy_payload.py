@@ -1410,6 +1410,19 @@ def ensure_terrain_materials(target_dir):
     return hashes
 
 
+def sibling_preset_owned(rel, exe_name):
+    """True when `rel` belongs only to the OTHER preset sharing this install (game vs editor).
+
+    Both presets deploy into one folder with one manifest; without this, an editor deploy
+    pruned mc2.exe/mc2.pdb/run-mc2.bat as "retired" and the next game deploy pruned the editor."""
+    rel = rel.replace(os.sep, "/").casefold()
+    mine, other = ("editor", "game") if exe_name.casefold() == EDITOR_EXE else ("game", "editor")
+    exe = TARGET_PRESETS[other]["exe_name"]
+    owned = {exe, os.path.splitext(exe)[0] + ".pdb"} | (set(SUPPORT_SCRIPTS[other]) - set(SUPPORT_SCRIPTS[mine]))
+    trees = EDITOR_SUPPORT_TREES if other == "editor" else []
+    return rel in {o.casefold() for o in owned} or any(rel.startswith(t.casefold() + "/") for t in trees)
+
+
 def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
            full_verify=False, code_only=False, verified=None):
     """Copy + verify the payload.
@@ -1549,8 +1562,11 @@ def retire_unowned(target_dir, keep, preserve=(), own_shaders=False):
     merge_gate.stage_published copies v0.4's shaders/ and _forget_swapped_rows drops their rows, so dead .spv slipped past the
     manifest loop and verify_published_identity failed the shader inventory)."""
     root = Path(target_dir).resolve()
+    deployed_exe = next((rel for _src, rel, kind in items if kind == "exe"), None)
     for rel, (digest, _size, _mtime) in read_manifest(target_dir).items():
         if rel in keep or rel in preserve:
+            continue
+        if deployed_exe and sibling_preset_owned(rel, deployed_exe):
             continue
         retired = root / rel
         resolved = retired.resolve()
