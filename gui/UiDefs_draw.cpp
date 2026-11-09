@@ -157,7 +157,7 @@ void ensureTexture(UiElement& e)
     }
     const char* loadPath = loadName.c_str();
     // Generated PNGs and their TGA siblings are base-game exports. A mod's
-    // authored atlas (including one packed in its FST) must win over those.
+    // authored atlas must win over those.
     const std::string legacyName = legacyKey.empty() ? std::string() :
         std::string("data/art/") + std::filesystem::path(legacyKey).stem().string() + ".tga";
     auto sibling = std::filesystem::path(e.texturePath);

@@ -71,3 +71,14 @@ would move continents beneath mission markers. No planet replacement is shipped.
 Initial offline pixel checks and deploy papercut tests: 6 passed. Final-tip
 build/test/capture verdicts and exact SHA will be retained in the proof directory
 (results.md), so proof bookkeeping does not change the tip being proved.
+
+Research retained with proofs: campaign_planet_inventory.py,
+register_campaign_planet.py, registration-initial.json and registration.log,
+reconstruct_campaign_planet.py, surface-projection-DRAFT.png,
+cloud-projection-DRAFT.png and surface-coverage-DRAFT.png. The first projection
+covers 93.4% of the sphere, excluding ambiguous op2_3, but contains baked
+lighting, clouds and seams. It is a registration diagnostic, NOT source art
+ready for regeneration. Next: constrain all rotations to a consistent spin
+axis, refine projection model / disc centre and radius, mask the screen grid,
+and solve pose loop closure. Do not reuse bad match edges merely to connect
+the graph. Separate illumination/clouds only after registration is sound.
