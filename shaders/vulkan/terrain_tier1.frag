@@ -105,7 +105,7 @@ vec4 mv_sampleAntiTileArr(int layer, vec2 uv, float scale, vec2 dx, vec2 dy, flo
 // chunkParallaxView): more layers at grazing view, an epsilon guard on the denominator of the final blend (AMD yields inf/nan
 // silently), a hard 16-step cap. Displacement = matNormalArray alpha channel (VK's copy-once RGBA8 import), read with
 // textureLod base level so it is valid in any control flow. No self-shadow term.
-const float MATV_POM_SCALE      = 0.02;     // GL u_pomScale
+const float MATV_POM_SCALE      = 0.002;    // subtle terrain relief; 1/10 of the old scale
 const float MATV_POM_MIN_LAYERS = 8.0;
 const float MATV_POM_MAX_LAYERS = 16.0;
 float mv_pomDisplacement(vec2 uv, vec4 w) {
@@ -115,29 +115,42 @@ float mv_pomDisplacement(vec2 uv, vec4 w) {
     if (w.w > 0.01) d += w.w * textureLod(u_matNormalArray, vec3(uv, float(MAT_LAYER_CONCRETE)), 0.0).a;
     return 1.0 - d;
 }
-vec2 mv_parallax(vec2 uv, float scale, vec4 w, vec3 viewDirTS) {
-    float numLayers = mix(MATV_POM_MAX_LAYERS, MATV_POM_MIN_LAYERS, max(viewDirTS.y, 0.0));
-    numLayers = clamp(numLayers, 4.0, 16.0);
+// Returns an OFFSET, avoiding cancellation when subtracting large world UVs.
+vec2 mv_parallax(vec2 uv, float scale, vec4 w, vec3 viewDirTS, vec2 dx, vec2 dy) {
+    float numLayers = ceil(mix(MATV_POM_MAX_LAYERS, MATV_POM_MIN_LAYERS, clamp(viewDirTS.y, 0.0, 1.0)));
     float layerDepth = 1.0 / numLayers;
     float curLayer = 0.0;
-    vec2 P = viewDirTS.xz / max(viewDirTS.y, 0.001) * scale;
+    // The caller supplies east,UP,north. Bound the complete ray before
+    // sampling heights, so a grazing camera cannot march over distant features.
+    vec2 P = viewDirTS.xz / max(viewDirTS.y, 0.35) * scale;
+    float texel = 1.0 / float(textureSize(u_matNormalArray, 0).x);
+    float footprint = max(texel, min(length(dx), length(dy)));
+    P *= min(1.0, 0.25 * footprint / max(length(P), 1e-12));
+    // Anisotropic footprints: also cap the projected offset at 1/4 pixel.
+    float det = dx.x * dy.y - dx.y * dy.x;
+    if (abs(det) > 1e-12) {
+        vec2 pixels = vec2(dy.y * P.x - dy.x * P.y, dx.x * P.y - dx.y * P.x) / det;
+        P *= min(1.0, 0.25 / max(length(pixels), 1e-12));
+    } else {
+        P = vec2(0.0);
+    }
     vec2 dUV = P / numLayers;
-    vec2 curUV = uv;
-    float curD = mv_pomDisplacement(curUV, w);
+    vec2 curOffset = vec2(0.0);
+    float curD = mv_pomDisplacement(uv, w);
     float prevD = curD;
     for (int i = 0; i < 16; ++i) {
         if (curLayer >= curD) break;
         prevD = curD;
-        curUV -= dUV;
-        curD = mv_pomDisplacement(curUV, w);
+        curOffset -= dUV;
+        curD = mv_pomDisplacement(uv + curOffset, w);
         curLayer += layerDepth;
     }
-    vec2 prevUV = curUV + dUV;
+    vec2 prevOffset = curOffset + dUV;
     float after  = curD - curLayer;
     float before = prevD - curLayer + layerDepth;
     float denominator = after - before;
     float blend = abs(denominator) > 1.0e-6 ? clamp(after / denominator, 0.0, 1.0) : 0.0;
-    return mix(curUV, prevUV, blend);
+    return mix(curOffset, prevOffset, blend);
 }
 
 #include "include/terrain_cliff_material.glsl"   // MATV_CLIFF_*, mv_cliffMaterial, crApply
@@ -467,6 +480,13 @@ void main() {
         else if (kCsmDebugMode == 8) { fragColor = vec4(N * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }   // surface normal (GL ...=normal)
         else if (kCsmDebugMode == 9) { fragColor = vec4(dbgBaseN * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
         else if (kCsmDebugMode == 10) { fragColor = vec4(dbgDN * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
+        else if (kCsmDebugMode >= 30 && kCsmDebugMode <= 39) {
+            float threshold = exp2(2.0 * float(kCsmDebugMode - 30));
+            fragColor = vec4(step(threshold, mv_pomOffsetMeasure.x),
+                             step(0.25 * threshold, mv_pomOffsetMeasure.y),
+                             float(mv_pomOffsetMeasure.x > 0.0), 1.0);
+            GBuffer1 = vec4(0.5,0.5,1.0,1.0); return;
+        }
 
         float normalSize = float(textureSize(u_matNormalArray, 0).x);
         float lampLod = resolveLampNormal ? 0.5 * log2(max(max(dot(detailUvDx, detailUvDx), dot(detailUvDy, detailUvDy))

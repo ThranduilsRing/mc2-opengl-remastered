@@ -1,3 +1,7 @@
+// Debug modes 30..39 show whether |pomOff| exceeds 4^(mode-30) world
+// units (red) or 0.25 * 4^(mode-30) pixels (green); blue marks POM.
+// Thresholds survive presentation/tonemapping; mode 0 removes these taps.
+vec2 mv_pomOffsetMeasure = vec2(0.0);
 vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float macroNz, vec2 uvDx, vec2 uvDy) {
     vec2 uv = worldXY * (uT.detailTiling / MATV_WU_PER_TILE);
     vec2 uvRock     = uv * (MATV_TILING.x / 3.0);
@@ -17,8 +21,7 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float macroNz, vec2
     // POM follows the continuous material footprint, not eye altitude. Fade to
     // zero before skipping the march; zoom must not introduce a contour band.
     if (fwRock > 0.4) {
-        const vec4 pomScaleMat = vec4(1.0, 1.0, 2.5, 1.0);
-        float pomScale = MATV_POM_SCALE * dot(pomScaleMat, w) * fwRock;
+        float pomScale = MATV_POM_SCALE * fwRock;
         vec2  pomUV    = uv * dot(MATV_TILING, w);
         vec2  pomOff   = vec2(0.0);
         vec3  camW     = mc2ToRender(uT.cameraPosMC2.xyz);   // the eye in the MC2 world frame (the feed is the Stuff frame)
@@ -32,7 +35,16 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float macroNz, vec2
             vec3 Vw = normalize(camW - v_worldPos);                 // fragment -> eye, MC2 world
             // The detail UVs are top-down planar with no y flip: tangent u = east, bitangent v = north, normal = up.
             vec3 viewDirTS = vec3(Vw.x, Vw.z, Vw.y);
-            pomOff = (mv_parallax(pomUV, pomScale, w, viewDirTS) - pomUV) * fwRock * pomStrength;
+            pomOff = mv_parallax(pomUV, pomScale, w, viewDirTS,
+                                 uvDx * (MATV_TILING.x / 3.0), uvDy * (MATV_TILING.x / 3.0)) * fwRock * pomStrength;
+        }
+        if (kCsmDebugMode >= 30 && kCsmDebugMode <= 39) {
+            float rockScale = MATV_TILING.x / 3.0;
+            vec2 dx = uvDx * rockScale, dy = uvDy * rockScale;
+            float det = dx.x * dy.y - dx.y * dy.x;
+            vec2 pixels = abs(det) > 1e-12 ? vec2(dy.y * pomOff.x - dy.x * pomOff.y,
+                                                                dx.x * pomOff.y - dx.y * pomOff.x) / det : vec2(0.0);
+            mv_pomOffsetMeasure = vec2(length(pomOff) * MATV_WU_PER_TILE / (uT.detailTiling * rockScale), length(pixels));
         }
         uvRock += pomOff; uvGrass += pomOff; uvDirt += pomOff; uvConcrete += pomOff;
     }
