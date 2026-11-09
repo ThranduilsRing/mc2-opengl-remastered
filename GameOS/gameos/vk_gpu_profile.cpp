@@ -81,9 +81,12 @@ State g;
 
 // present-tail-cut: the frame-end work (read-back, query reset, Tracy collect) recorded into the present tail instead of a second
 // vkQueueSubmit. tailFrame is the frame it was recorded for; frameEnd() of that frame only finishes the bookkeeping.
-uint64_t tailFrame = ~0ull;
-uint32_t tailFirst = 0, tailCount = 0;
-bool     tailSubmitted = false;
+// recordFrameEnd/frameEndSubmitted/frameEnd all run inside EnginePresentVk::presentFrame (the Render owner's thread, asserted there), so
+// they are ordered by program order; the owner can move between main and the present worker, so the hand-off is atomic anyway: the
+// payload is written before the release store of tailFrame and read after its acquire load.
+std::atomic<uint64_t> tailFrame{~0ull};
+std::atomic<uint32_t> tailFirst{0}, tailCount{0};
+std::atomic<bool>     tailSubmitted{false};
 
 #ifdef TRACY_ENABLE
 const tracy::SourceLocationData* locFor(std::string_view nameSv, std::string_view fileSv, uint32_t line) {
@@ -327,7 +330,7 @@ void shutdown(VulkanContext& ctx) {
     for (OwnedCommandPool& p : g.endPool) p.reset();
     g.endPoolsReady = false;
     for (uint32_t i = 0; i < kRing; ++i) { g.endCb[i] = VK_NULL_HANDLE; g.endTicket[i] = {}; }
-    tailFrame = ~0ull;
+    tailFrame.store(~0ull, std::memory_order_release);
     g.timers = false;
     g.labels = false;
     g.device = VK_NULL_HANDLE;
@@ -352,27 +355,28 @@ bool recordFrameEnd(VkCommandBuffer cb) {
 #ifdef TRACY_ENABLE
     if (tracyLive) TracyVkCollect(g.tracy, cb);
 #endif
-    tailFrame = f;
-    tailFirst = rslot * kQueriesPerSlot;
-    tailCount = used * 2;
-    tailSubmitted = false;
+    tailFirst.store(rslot * kQueriesPerSlot, std::memory_order_relaxed);
+    tailCount.store(used * 2, std::memory_order_relaxed);
+    tailSubmitted.store(false, std::memory_order_relaxed);
+    tailFrame.store(f, std::memory_order_release);   // publishes the three stores above
     return true;
 }
 
 void frameEndSubmitted() {
-    if (tailFrame == g.frame.load(std::memory_order_relaxed)) tailSubmitted = true;
+    if (tailFrame.load(std::memory_order_acquire) == g.frame.load(std::memory_order_relaxed))
+        tailSubmitted.store(true, std::memory_order_release);
 }
 
 void frameEnd() {
     if (g.device == VK_NULL_HANDLE) return;
-    if (tailFrame == g.frame.load(std::memory_order_relaxed)) {
+    if (tailFrame.load(std::memory_order_acquire) == g.frame.load(std::memory_order_relaxed)) {
         // Recorded into this frame's present tail. A refused submit never ran the reset: issue it now so the slot does not read stale.
-        if (!tailSubmitted && tailCount != 0) {
+        const uint32_t first = tailFirst.load(std::memory_order_relaxed), count = tailCount.load(std::memory_order_relaxed);
+        if (!tailSubmitted.load(std::memory_order_acquire) && count != 0) {
             const VkQueryPool pool = g.pool;
-            const uint32_t first = tailFirst, count = tailCount;
             submitOneShot(*g.ctx, [&](VkCommandBuffer one) { vkCmdResetQueryPool(one, pool, first, count); }, "gpuprof_reset_late");
         }
-        tailFrame = ~0ull;
+        tailFrame.store(~0ull, std::memory_order_release);
         g.frame.fetch_add(1, std::memory_order_relaxed);
         return;
     }
