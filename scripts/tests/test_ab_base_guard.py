@@ -101,6 +101,14 @@ def test_unknown_identity_is_a_problem(tmp_path, repo):
     assert any("unknown" in m for m in ab.base_problems(install_a=str(a), install_b=str(a)))
 
 
+def test_capture_identity_ignores_shader_sources_not_data():
+    # W136: before (published) and after (candidate) carry the window's shader edits; data drift still refuses.
+    a = {"mc2.exe": "1", "shaders/vulkan/t.frag": "s1", "shaders/vulkan/include/x.glsl": "g1", "data/a.fit": "d1"}
+    b = {"mc2.exe": "2", "shaders/vulkan/t.frag": "s2", "shaders/vulkan/include/x.glsl": "g2", "data/a.fit": "d1"}
+    assert ab.manifest_mismatches(a, b) == []
+    assert ab.manifest_mismatches(a, {**b, "data/a.fit": "d2"}) == ["differs: data/a.fit (A d1 vs B d2)"]
+
+
 @pytest.mark.parametrize("rel", ["mc2.exe", "shaders/vulkan/x.spv"])
 def test_manifest_byte_mismatch_refuses_before_capture(tmp_path, repo, monkeypatch, rel):
     install = _install(tmp_path / "install", repo[0])

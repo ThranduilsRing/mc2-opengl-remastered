@@ -501,9 +501,9 @@ void ControlGui::extractHudSnapshot()
         auto* sensor = m->getSensorSystem();
         row.sensorRange = sensor ? sensor->getRange() : 0;
         row.sensorBroken = !sensor || sensor->broken;
-        const long contact = m->getContactStatus(Team::home->getId(), true);
-        row.detected = contact != CONTACT_NONE;
-        row.enemyMarker = row.detected && !row.shutdown && !m->hasNullSignature() && m->getEcmRange() <= 0;
+        row.detected = m->contactView.blip;
+        row.enemyMarker = row.detected && (m->contactView.model
+            || (!row.shutdown && !m->hasNullSignature() && m->getEcmRange() <= 0));
         m->getWeaponBandsPresent(row.weaponBands);
         glm::vec3 destination;
         row.moving = m->getMoveDestination(destination);

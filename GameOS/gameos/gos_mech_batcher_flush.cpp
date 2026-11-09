@@ -320,7 +320,8 @@ void MechFlushFrame::buildMaterialTable() {
             uint32_t mIdx;
             auto it = s_mechHandleToMaterialIdx.find(texHandle);
             if (it != s_mechHandleToMaterialIdx.end()) {
-                mIdx = it->second;
+                const auto& [handle, index] = *it;
+                mIdx = index;
             } else {
                 mIdx = static_cast<uint32_t>(s_mechMaterialTable.size());
                 RenderCore::MaterialGpu entry{};
@@ -547,8 +548,11 @@ static void persistExtraction() {
             // in Step 2.5 earlier this flush(). Sentinel when disabled or handle absent.
             if (s_mechMaterialGpuEnabled) {
                 auto it = s_mechHandleToMaterialIdx.find(ps.desc.slot0TexHandle);
-                pkt.materialIdx = (it != s_mechHandleToMaterialIdx.end())
-                    ? it->second : 0xFFFFFFFFu;
+                pkt.materialIdx = 0xFFFFFFFFu;
+                if (it != s_mechHandleToMaterialIdx.end()) {
+                    const auto& [handle, index] = *it;
+                    pkt.materialIdx = index;
+                }
             } else {
                 pkt.materialIdx = 0xFFFFFFFFu;
             }

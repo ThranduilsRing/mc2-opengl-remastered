@@ -1,20 +1,17 @@
 //******************************************************************************
 // terrain_runtime.h — TERRAIN-RUNTIME-API-1
 //
-// Compatibility seam for the Terrain 2.0 arc. PURE PASS-THROUGH over the legacy
-// `Terrain* land` global today: every accessor forwards to an existing Terrain
-// method and returns the identical value. No behavior change; nothing in the
-// engine calls these yet (foundation slice).
+// Terrain query seam: gameplay reads the legacy sim surface; rendering reads
+// the accepted 4x bake, with a sim fallback for maps/mods without one.
 //
 // Recon / design: docs/recon/terrain-runtime-api-recon-1.md (+ -datamodel,
 // -render-consumers, -pak-format, -landmines sub-docs).
 //
 // THE DIVERGENCE TRAP (why two heights):
 //   gameplay height (pathing/LOS/grounding) and visual height (render surface)
-//   are the SAME buffer today, but a future slice may diverge them. Each is a
-//   distinct entry point so every call site is forced to pick. NEVER collapse
-//   to a single height() accessor — silent default-equality is the bug we are
-//   building this API to prevent.
+//   are distinct entry points so every call site must pick its surface. NEVER
+//   collapse them to a single height() accessor: visual placement must not
+//   change gameplay grounding, movement, passability or LOS.
 //******************************************************************************
 #ifndef TERRAIN_RUNTIME_H
 #define TERRAIN_RUNTIME_H
@@ -53,16 +50,14 @@ namespace TerrainRuntime
 	float visualHeightDelta(const glm::vec3& worldPos);
 	void setCpuVisualHeight(const float* vh, int V);   // nullptr clears (mission start / bake rejected)
 
-	// Render/visual surface height. == gameplay height today; may diverge later.
+	// Bilinear accepted 4x bake, falling back to gameplay outside it or without a bake.
 	float sampleVisualHeight(const glm::vec3& worldPos);
 
-	// Decal chokepoint: terrain decals (footprints, contact blobs) sit ON the rendered
-	// surface, so they belong on VISUAL height — unlike grounding, which stays on
-	// gameplay height (TERRAIN-RUNTIME-CONSUMER-DECALS-1). Gate
-	// MC2_TERRAIN_RUNTIME_DECALS (default-OFF). Byte-identical today
-	// (sampleVisualHeight == gameplay); the future split is exactly where decals
-	// (visual) and units (gameplay) must diverge to avoid z-fight.
+	// Footprints/contact blobs follow the same visual surface as the terrain.
 	float decalElevation(const glm::vec3& worldPos);
+	// Minimum eye Z covering the eye and near-plane footprint, including ridges
+	// between corners. No bake preserves the legacy eye-only sim/water clamp.
+	float cameraClearanceHeight(const glm::vec3& eye, const glm::vec3 (&nearOffsets)[4], float minimum);
 
 	// Flat water plane level. == land->getWaterElevation() (position ignored today).
 	float sampleWaterLevel(const glm::vec3& worldPos);

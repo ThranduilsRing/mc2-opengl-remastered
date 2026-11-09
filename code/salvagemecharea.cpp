@@ -163,7 +163,7 @@ void SalvageMechScreen::init(FitIniFile* file)
 	for (int i = 0; i < ObjectManager->numMechs; i++ )
 	{
 		BattleMech* pMech = ObjectManager->getMech( i );
-		if ( pMech->moveLevel != 2 && ( cheatSalvageAll() ? ( pMech->isDisabled() || pMech->isDestroyed() ) : ( pMech->isDisabled() && !pMech->isDestroyed() ) ) )
+		if (pMech->moveLevel != 2 && mc2wreck::salvageable(pMech->isDisabled(), pMech->isDestroyed(), pMech->causeOfDeath, cheatSalvageAll()))
 			pSortedMechs[count++] = pMech;
 	}
 
@@ -172,7 +172,7 @@ void SalvageMechScreen::init(FitIniFile* file)
 	for (int i = 0; i < count; i++ )
 	{
 		BattleMech* pMech = pSortedMechs[i];
-		if ( pMech->moveLevel != 2 && ( cheatSalvageAll() ? ( pMech->isDisabled() || pMech->isDestroyed() ) : ( pMech->isDisabled() && !pMech->isDestroyed() ) ) ) // don't put copters in the list
+		if (pMech->moveLevel != 2 && mc2wreck::salvageable(pMech->isDisabled(), pMech->isDestroyed(), pMech->causeOfDeath, cheatSalvageAll())) // don't put copters in the list
 		{
 			SalvageListItem* pItem = new SalvageListItem( pMech );
 			salvageListBox.AddItem( pItem );

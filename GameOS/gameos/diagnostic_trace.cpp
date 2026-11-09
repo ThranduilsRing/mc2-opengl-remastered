@@ -33,6 +33,7 @@ const std::unordered_set<std::string>& knownTags() {
     static const auto* tags = std::make_unique<std::unordered_set<std::string>>(std::initializer_list<std::string>{
         "ABL_NEWPOWER_PART",
         "SUPPORT_PRELOAD_LATE", // late mech-class types registered by the support warm and the shared-buffer rebuild that absorbs them. Opt-in.
+        "SUPPORT_CRAFT", // Bounded recovery-craft appearance, geometry and native draw trace. Opt-in.
         "GPU_CULL",
         "LIGHTBAKE_PROOF",
         "ANIM_GATE",

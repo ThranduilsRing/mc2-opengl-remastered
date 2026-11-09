@@ -42,7 +42,7 @@ layout(set = 0, binding = 14) uniform sampler2D u_shorelineMask;
 
 // GL default tuning (terrain_lod_chunk.frag uniforms; ImGui-driven, values are the
 // gameos_graphics.cpp member defaults). Baked const for the parity oracle.
-const vec4  MATV_NORMAL_BOOST = vec4(0.9, 0.5, 1.1, 2.5);  // rock,grass,dirt,conc
+const vec4  MATV_NORMAL_BOOST = vec4(0.9, 0.5, 1.1, CD_CONCRETE_RELIEF_STRENGTH);  // rock,grass,dirt,conc
 const vec4  MATV_TILING       = vec4(3.0, 2.0, 1.0, 6.0);  // rock,grass,dirt,conc
 const float MATV_TILING_SNOW  = 1.0;
 const float MATV_WU_PER_TILE  = 768.0;  // MAT_WORLD_UNITS_PER_TILE (terrain_lod_chunk.frag:240)
@@ -86,7 +86,7 @@ vec2 mv_hash22(vec2 p) {
     p3 += dot(p3, p3.yzx + 33.33);
     return fract((p3.xx + p3.yz) * p3.zy);
 }
-vec4 mv_sampleAntiTileArr(int layer, vec2 uv, float scale, vec2 dx, vec2 dy) {
+vec4 mv_sampleAntiTileArr(int layer, vec2 uv, float scale, vec2 dx, vec2 dy, float fw) {
     vec4 s0 = textureGrad(u_matNormalArray, vec3(uv,        float(layer)), dx, dy);
     vec2 f = fract(uv / scale);
     float w1 = smoothstep(0.2, 0.5, f.x) * smoothstep(0.2, 0.5, f.y);
@@ -97,7 +97,8 @@ vec4 mv_sampleAntiTileArr(int layer, vec2 uv, float scale, vec2 dx, vec2 dy) {
     vec4 s1 = textureGrad(u_matNormalArray, vec3(uv + off1, float(layer)), dx, dy);
     vec2 off2 = mv_hash22(floor(uv / scale) + vec2(7.0, 13.0)) * scale;
     vec4 s2 = textureGrad(u_matNormalArray, vec3(uv + off2, float(layer)), dx, dy);
-    return (s0 + s1 * w1 + s2 * w2) / (1.0 + w1 + w2);
+    vec4 antiTile = (s0 + s1 * w1 + s2 * w2) / (1.0 + w1 + w2);
+    return mix(s0, antiTile, smoothstep(0.4, 0.6, fw));
 }
 
 // Terrain parallax-occlusion march with the REAL per-fragment tangent-space view vector (GL terrain_lod_chunk.frag
@@ -107,8 +108,6 @@ vec4 mv_sampleAntiTileArr(int layer, vec2 uv, float scale, vec2 dx, vec2 dy) {
 const float MATV_POM_SCALE      = 0.02;     // GL u_pomScale
 const float MATV_POM_MIN_LAYERS = 8.0;
 const float MATV_POM_MAX_LAYERS = 16.0;
-const float MATV_POM_FADE_NEAR  = 1500.0;   // world units; one tile is 384
-const float MATV_POM_FADE_FAR   = 3500.0;
 float mv_pomDisplacement(vec2 uv, vec4 w) {
     float d = 0.0;
     if (w.x > 0.01) d += w.x * textureLod(u_matNormalArray, vec3(uv, float(MAT_LAYER_ROCK)),     0.0).a;
@@ -146,8 +145,8 @@ vec2 mv_parallax(vec2 uv, float scale, vec4 w, vec3 viewDirTS) {
 // --- GL detail-normal accumulation (terrain_lod_chunk.frag chunkDetailNormal,
 // :341-419). NOW PORTED (this sub-slice): per-layer weighted tangent-space normals
 // (rock /3 boost, grass, dirt, ★concrete, snow) + ★per-layer fwidth sub-pixel fades
-// (fwRock..fwSnow, GL :353-357) + ★anti-tile resample gated by `fw* > 0.5 && ats* >
-// 0.01` EXACTLY as GL :392-415. Concrete layer (MAT_LAYER_CONCRETE, matTiling.w) was
+// (fwRock..fwSnow, GL :353-357) + anti-tile resampling blended over fw 0.4..0.6.
+// Concrete layer (MAT_LAYER_CONCRETE, matTiling.w) was
 // previously omitted — now included to match GL. POM is the real-view march
 // (see mv_parallax below). DEFERRED vs GL: LOD-tier fade, painted-concrete normal, cliff
 // albedo re-projection (VK-PARITY-GAPS row 14).
@@ -186,11 +185,7 @@ vec3 mv_lampPoolNormal(vec3 wp, vec3 macroN, float lod) {
 
 void main() {
     vec3 roadColor;
-    if (shadeRoadArtTile(roadColor)) {
-        fragColor = vec4(roadColor, 1.0);
-        GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
-        return;
-    }
+    float roadCoverage = shadeRoadArtTile(roadColor);
     float cdRoad = 0.0;   // CONCRETE-ROAD-PBR-DETAIL: the cement atlas texel is asphalt (roads, runway)
     vec3 base;
     float cookedBreakup = 0.5;
@@ -537,6 +532,10 @@ void main() {
         }
     }
 
+    // Shade the receiver before compositing the authored road shoulder. Keeping
+    // uniform flow also preserves derivatives across partially covered edges.
+    lit = mix(lit, roadColor, roadCoverage);
+    gbufN = normalize(mix(gbufN, vec3(0.0, 0.0, 1.0), roadCoverage));
     fragColor = vec4(lit, 1.0);   // opaque in-place (a=1, NOT premult)
 
     // ★TERRAIN GBuffer1: the real shading normal in rgb (guide buffer for temporal/denoise consumers) and

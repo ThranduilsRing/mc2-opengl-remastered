@@ -48,6 +48,7 @@ extern uint32_t g_mc2RenderFrame;   // mclib/tgl.cpp
 #include "vulkan_shadow_island_live.h"   // geometry and color feed contracts
 #include "gos_postprocess.h"
 #include "gos_static_prop_registry.h"   // OBJECT-ID-1: getRecipeIndexForType
+#include "gos_static_prop_batcher.h"
 #include "../../RenderWorld/RenderWorld.h"   // OBJECT-ID-1: IsObjectIdBufferEnabled, objectIdRawForStaticPropRecipe
 #include "vulkan_color_prop_island.h"
 #include "vk_rt_scene.h"
@@ -1732,6 +1733,9 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut) {
                         typeObjectId,
                     };
                     const PropDrawCmd cmd{pkt.indexCount, instCount, pkt.firstIndex, static_cast<int32_t>(pkt.baseVertex), i};
+                    if (mc2_diag::tagRequested("SUPPORT_CRAFT") && mc2SupportCraftTraceType(tid))
+                        mc2::fmt::print_err("[SUPPORT_CRAFT] event=packet frame={} type={} pipeline=prop indices={} instances={} hzb={} albedo={} firstIndex={} baseVertex={}\n",
+                            g_mc2RenderFrame, tid, pkt.indexCount, instCount, hzbCulled, row.layerOff, pkt.firstIndex, pkt.baseVertex);
                     // The core pass draws every packet (alpha-tested ones cut at the coverage threshold).
                     const bool alphaTestable = row.layerOn >= 0 || row.alphaTest != 0;
                     opaquePrefix = opaquePrefix && !alphaTestable;
@@ -1920,6 +1924,23 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     Mc2ColorPropFeed feed{};
     if (!mc2_color_prop_island_get_frame_feed(&feed)) { setFallback("no_color_feed"); return 0; }
     if (!feed.instances112 || feed.count == 0) { setFallback("no_color_instances"); return 0; }
+    if (mc2_diag::tagRequested("SUPPORT_CRAFT")) {
+        const auto* instances = static_cast<const GpuStaticPropInstance*>(feed.instances112);
+        for (uint32_t i = 0; i < feed.count; ++i) {
+            const auto& inst = instances[i];
+            if (!mc2SupportCraftTraceType(inst.typeID)) continue;
+            // Match the production vertex shader's row-vector matrix and axis swap.
+            const float world[4] = {-inst.modelMatrix[3], inst.modelMatrix[11], inst.modelMatrix[7], 1};
+            float clip[4] = {};
+            for (int a = 0; a < 4; ++a)
+                for (int k = 0; k < 4; ++k) clip[a] += feed.worldToClipGL[k*4+a] * world[k];
+            if (mc2_diag::tagRequested("SUPPORT_CRAFT")) {
+                mc2::fmt::print_err("[SUPPORT_CRAFT] event=projection frame={} type={} world={},{},{} clip={},{},{},{} pixel={},{}\n",
+                    g_mc2RenderFrame, inst.typeID, world[0], world[1], world[2], clip[0], clip[1], clip[2], clip[3],
+                    (clip[0]/clip[3]+1)*0.5f*w, (1-clip[1]/clip[3])*0.5f*h);
+            }
+        }
+    }
     // MC2_VK_SHADOW_MATRIX_DIAG: the object matrix the props are projected with next to the live camera matrix, so a light-space leak into the colour pass shows.
 
 

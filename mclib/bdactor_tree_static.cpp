@@ -184,7 +184,7 @@ void TreeAppearance::registerStatic() {
 	rot = mc2::math::quatFromEuler(mc2::math::Euler(pitchAngle, yawAngle, 0.0f));
 	glm::vec3 xlatPosition;
 	xlatPosition.x = -position.x;
-	xlatPosition.y = TerrainRuntime::groundElevation(position);
+	xlatPosition.y = TerrainRuntime::sampleVisualHeight(position);
 	xlatPosition.z = position.y;
 
 	// TREE-OVERRIDE-LOD-MVP M-A (load-bearing): build the recipe AND capture the
@@ -470,6 +470,7 @@ bool TreeAppearance::prewarmStaticLightBake(Camera* cam)
 	// is overridden in touchSerialCommit (registerStatic path uses position directly).
 	glm::vec3 xlatPosition;
 	mc2ToRender(xlatPosition, position);
+	xlatPosition.y += TerrainRuntime::sampleVisualHeight(position) - TerrainRuntime::sampleGameplayHeight(position);
 
 	float yawAngle   = (rotation * DEGREES_TO_RADS) + (yaw * DEGREES_TO_RADS);
 	float pitchAngle = (pitch    * DEGREES_TO_RADS);

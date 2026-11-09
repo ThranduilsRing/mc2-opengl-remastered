@@ -545,6 +545,10 @@ bool BattleMechType::handleDestruction (GameObjectPtr collidee, GameObjectPtr co
 	else {
 		if (!mech->startDisabled)
 			mech->timeLeft = 0.8f;
+		if (mech->causeOfDeath != SELF_DESTRUCT_DEATH)
+			mech->causeOfDeath = CORE_EXPLOSION_DEATH;
+		mc2::fmt::print_out("[MECH_WRECK] part={} cause={} hulk=retained salvage=0\n",
+			mc2::fmt::as_i32(mech->getPartId()), mech->causeOfDeath);
 		mech->getPilot()->handleAlarm(PILOT_ALARM_VEHICLE_DESTROYED, collider ? collider->getWatchID() : 0);
 
 		//ONLY the server may DESTROY a mech.  All other clients must await the statusChunk!!
