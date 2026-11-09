@@ -197,7 +197,6 @@ Split commit: `9af8c3f04`.
 |---|---|
 | `logistics.cpp` | keeps the Logistics start / stop / update / render |
 | `logistics_begin.cpp` | Logistics: beginMission, DoBeginMission, initializeLogData, the full-screen video player and the results host-left dialog. |
-| `logistics_deployment.cpp` | Logistics deployment: campaign save mech records (write/read, legacy 10004 and 10005), load compatibility and the slot cap. |
 | `logistics_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
 ## `code/logisticsdata.cpp`
