@@ -46,7 +46,8 @@ float moverVisibility(vec3 worldPos, vec3 N) {
     float worldToUV = moverFrame.params.w / moverFrame.params.x;
     // Movers need a dense local blocker search. Spacing the taps for a 480-wu
     // building missed short mech penumbras and returned lit before PCF ran.
-    float search = max(64.0 * tanT, 1.5 * moverFrame.params.x);
+    // 128 * tan(0.75 deg) keeps the 1.68-wu spacing of the old 64 * tan(1.5 deg).
+    float search = max(128.0 * tanT, 1.5 * moverFrame.params.x);
     float sumD = 0.0, found = 0.0;
     for (int y = -1; y <= 1; ++y) {
         for (int x = -1; x <= 1; ++x) {
