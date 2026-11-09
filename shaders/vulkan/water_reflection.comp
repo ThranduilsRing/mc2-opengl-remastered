@@ -83,7 +83,11 @@ void main() {
             vec3 rayPoint=mix(q0,q1,hi)/mix(k0,k1,hi);
             // Reject the underside, lakebed and depth discontinuities. A miss
             // remains transparent rather than stretching an edge texel.
-            if (hit.z>U.p0.x+1.0 && length(hit-rayPoint)<max(12.0,length(hit-origin)*0.005)) {
+            // TREE-REFL-SOLID: the depth buffer holds only an object's camera-facing
+            // surface, so a ray through a canopy crosses it up to a crown's depth
+            // behind that surface. A 12 wu shell accepted only the rays that grazed it
+            // and reflected trees as see-through dots; accept an object-sized shell.
+            if (hit.z>U.p0.x+1.0 && length(hit-rayPoint)<max(64.0,length(hit-origin)*0.03)) {
                 vec2 edge=min(hitUV,1.0-hitUV);
                 float confidence=smoothstep(0.0,0.04,min(edge.x,edge.y));
                 imageStore(reflectionOut,pixel,vec4(textureLod(sceneColor,hitUV,0).rgb*confidence,confidence));
