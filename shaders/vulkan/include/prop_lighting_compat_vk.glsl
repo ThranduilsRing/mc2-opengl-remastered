@@ -22,8 +22,18 @@ vec3 propAuthoredColor(SurfaceMaterial s, vec3 poolLight) {
     // AO occludes indirect only. Sun shadows and scene tonemap remain in the
     // common downstream passes, exactly once, with the existing GBuffer class.
     vec3 F0 = mix(vec3(0.04),s.baseColor,s.metallic);
-    vec3 diffuseWeight = (vec3(1)-F0)*(1.0-s.metallic);
+    float nv = clamp(dot(N,V),0.0,1.0);
+    vec3 F = F0 + (max(vec3(1.0-s.roughness),F0)-F0)*pow(1.0-nv,5.0);
+    vec3 diffuseWeight = (vec3(1)-F)*(1.0-s.metallic);
     vec3 color = s.baseColor * diffuseWeight * max(ibl,vec3(0)) * s.ao / 3.14159265;
+    // The mission supplies diffuse SH, not a prefiltered specular cubemap. For
+    // these rough surfaces use its broad reflected lobe as the environment
+    // approximation, fading toward diffuse irradiance with roughness. Metals
+    // retain environment reflection even when their diffuse response is zero.
+    vec3 reflected = uFrame.iblShStrength > 0.0
+        ? evalShL2(renderToMc2(reflect(-V,N)),sh)*uFrame.iblShStrength : vec3(0);
+    color += mix(max(reflected,vec3(0)),max(ibl,vec3(0)),s.roughness*s.roughness)
+           * F * s.ao / 3.14159265;
     LsvkPbrOut sun = computePBR(N,V,L,s.baseColor,s.metallic,s.roughness,
                               propDecodeColor(vMaterialSun));
     color += (s.baseColor*sun.diffuse + sun.specular) * propNightDirectShare();

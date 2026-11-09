@@ -11,8 +11,10 @@ Authored prop lighting still stacks baked seed on SH and imposes an alpha floor.
 In progress: stock default rows, shared GGX direct lighting, per-fragment prop
 composition with SH only and no baked fill; inspector labels.
 Baseline box capture job 62 at base (day/night and mc2_03 building faces).
-Next: compile/contracts/default-table doctest; box build/unit/smoke; create base
-bookmark and compare captures, inspect montages; final PC compile/lint; cleanup.
+Next: compile/contracts/default-table doctest; box build/unit/smoke; compare
+base/day/night captures and inspect montages; final PC compile/lint; cleanup.
+Base bookmark added; PBR indirect uses a broad SH reflection approximation
+(there is no prefiltered specular environment in the native prop feed).
 Shader validation: all 79 production GLSL stages compiled clean (check_vk_shaders).
 Baseline capture rows all exit 0, but box wrapper task 62 exits 1; images fetched.
 First ratchet caught pair .second use; replaced by structured bindings.
