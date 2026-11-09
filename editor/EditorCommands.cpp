@@ -1,6 +1,7 @@
 // Editor command facade (see EditorCommands.h).
 #include "stdafx.h"
 #include "EditorCommands.h"
+#include "EditorRouteGeometry.h"
 #include "EditorObjects.h"
 #include "EditorInterface.h"
 #include "Action.h"
@@ -88,40 +89,10 @@ bool EditorCommands::setTeam( EditorObject* obj, int team )
 
 int EditorCommands::nearestWaypoint( const std::vector<glm::vec3>& wps, float x, float y, float radius )
 {
-	int best = -1;
-	float bestD2 = radius * radius;
-	for ( size_t i = 0; i < wps.size(); ++i )
-	{
-		const float dx = wps[i].x - x, dy = wps[i].y - y, d2 = dx * dx + dy * dy;
-		if ( d2 <= bestD2 )
-		{
-			bestD2 = d2;
-			best = (int)i;
-		}
-	}
-	return best;
+	return EditorRouteGeometry::nearestWaypoint( wps, x, y, radius );
 }
 
 int EditorCommands::insertIndexFor( const std::vector<glm::vec3>& wps, float x, float y, bool loop )
 {
-	if ( wps.size() < 2 )
-		return (int)wps.size();
-	const size_t segs = loop ? wps.size() : wps.size() - 1;
-	int best = (int)wps.size();
-	float bestD2 = 1e30f;
-	for ( size_t i = 0; i < segs; ++i )
-	{
-		const glm::vec3& a = wps[i];
-		const glm::vec3& b = wps[( i + 1 ) % wps.size()];
-		const float ex = b.x - a.x, ey = b.y - a.y, len2 = ex * ex + ey * ey;
-		float t = len2 > 1e-6f ? ( ( x - a.x ) * ex + ( y - a.y ) * ey ) / len2 : 0.0f;
-		t = t < 0.0f ? 0.0f : ( t > 1.0f ? 1.0f : t );
-		const float dx = a.x + t * ex - x, dy = a.y + t * ey - y, d2 = dx * dx + dy * dy;
-		if ( d2 < bestD2 )
-		{
-			bestD2 = d2;
-			best = (int)i + 1;
-		}
-	}
-	return best;
+	return EditorRouteGeometry::insertIndexFor( wps, x, y, loop );
 }
