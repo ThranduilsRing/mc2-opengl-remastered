@@ -82,6 +82,8 @@ def test_run_deploy_logs_stock_receipts_and_kit_cook(tmp_path, monkeypatch, caps
                  "ensure_engine_normal_cooks", "write_manifest"):
         monkeypatch.setattr(dp, name, lambda *a, **kw: None)
     monkeypatch.setattr(dp, "git_head", lambda *a: "head")
+    monkeypatch.setattr(dp, "deploy_inputs", lambda *a: {})
+    monkeypatch.setattr(dp, "record_deploy_inputs", lambda *a: None)
     monkeypatch.setattr(dp, "require_head_exe", lambda *a: {"dirty": False})
     monkeypatch.setattr(dp, "check_install_complete", lambda *a: [])
     monkeypatch.setattr(dp, "ensure_terrain_materials", lambda *a: {})
