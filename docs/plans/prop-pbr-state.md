@@ -13,4 +13,10 @@ composition with SH only and no baked fill; inspector labels.
 Baseline box capture job 62 at base (day/night and mc2_03 building faces).
 Next: compile/contracts/default-table doctest; box build/unit/smoke; create base
 bookmark and compare captures, inspect montages; final PC compile/lint; cleanup.
-No proof is green yet.
+Shader validation: all 79 production GLSL stages compiled clean (check_vk_shaders).
+Baseline capture rows all exit 0, but box wrapper task 62 exits 1; images fetched.
+First ratchet caught pair .second use; replaced by structured bindings.
+Local contracts hit WSL insufficient-system-resources (HCS 0x800705aa), not a
+shader failure. Windows Ninja compile started at fb96db293, still pending.
+Box combined proof submission at fb96db293 pending; must repeat build/unit/lint
+at the next tip after the ratchet fix. No runtime pass claimed yet.

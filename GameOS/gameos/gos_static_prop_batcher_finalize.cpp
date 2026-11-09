@@ -648,7 +648,8 @@ void GpuStaticPropBatcher::buildAuthoredMaterials() {
         const auto stockClass = RenderCore::stockPropClass(textureName);
         auto [stock, newClass] = stockIds.try_emplace(stockClass, static_cast<int32_t>(materialSources_.table.size()));
         if (newClass) materialSources_.table.push_back(RenderCore::stockPropMaterial(stockClass));
-        materialSources_.packetIds[pi] = stock->second;
+        const auto& [defaultClass, defaultId] = *stock;
+        materialSources_.packetIds[pi] = defaultId;
         const auto* owner = type.isOverride ? type.materialSource : nullptr;
         if (!owner) continue;
         for (const auto& input : owner->materials) {
