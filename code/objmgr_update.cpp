@@ -958,19 +958,57 @@ void GameObjectManager::extractRenderList (mc2::render_view::RenderList& list)
 	if (renderObjects)
 	{
 		const mc2::battlebench::ScopeNs walkNs{mc2::battlebench::WalkExtractNs};   // D2 census
+		// Residents (static-world-s2) are skipped: their last render visit settled in the registry. A height or
+		// light-environment change drops them all; a mark, a destroy or a cull change drops the one it concerns.
+		extern uint64_t mc2StaticLightEnvironmentGeneration(const Camera* eye);
+		extern uint32_t mc2LightSlotBakedHighWater();
+		const uint64_t residencyKey = (static_cast<uint64_t>(TerrainRuntime::g_heightEpoch) * 1000003ull) ^
+			(mc2StaticLightEnvironmentGeneration(eye) * 998244353ull) ^ (static_cast<uint64_t>(mc2LightSlotBakedHighWater()) << 40);
+		staticResident.validate(residencyKey, [](long, int32_t) { return true; },
+			[](long, int32_t recipe) { GpuStaticPropRegistry::clearResident(recipe); });
+		auto& dirty = mc2::terrainDirtyQueue();
+		long residentSkipped = 0;
+		if (blockWasActive.size() != static_cast<size_t>(Terrain::numObjBlocks)) blockWasActive.assign(Terrain::numObjBlocks, 0);
 		for (long terrainBlock = 0; terrainBlock < Terrain::numObjBlocks; terrainBlock++)
 		{
-			if (!Terrain::objBlockInfo[terrainBlock].active)
-				continue;
 			long numObjs = Terrain::objBlockInfo[terrainBlock].numObjects;
 			long objIndex = Terrain::objBlockInfo[terrainBlock].firstHandle;
+			if (!Terrain::objBlockInfo[terrainBlock].active)
+			{
+				if (blockWasActive[terrainBlock] && staticResident.size())   // left the view: its residents stop drawing
+					for (long terrainObj = 0; terrainObj < numObjs; terrainObj++)
+						if (const int32_t recipe = staticResident.recipe(objIndex + terrainObj); recipe >= 0)
+						{
+							GpuStaticPropRegistry::clearResident(recipe);
+							staticResident.drop(objIndex + terrainObj);
+						}
+				blockWasActive[terrainBlock] = 0;
+				continue;
+			}
+			blockWasActive[terrainBlock] = 1;
 			for (long terrainObj = 0; terrainObj < numObjs; terrainObj++, objIndex++)
 			{
 					// One load of the slot: the virtual calls stop the compiler reusing objList[objIndex].
 					GameObjectPtr obj = objList[objIndex];
-					if (obj && obj->getExists() && Terrain::objVertexActive[obj->getVertexNum()])
+					const bool admitted = obj && obj->getExists() && Terrain::objVertexActive[obj->getVertexNum()];
+					if (const int32_t recipe = staticResident.recipe(objIndex); recipe >= 0)
+					{
+						if (admitted && dirty.isRenderResidentQuiescent(objIndex) && GpuStaticPropRegistry::isResident(recipe))
+						{
+							++residentSkipped;
+							continue;
+						}
+						GpuStaticPropRegistry::clearResident(recipe);
+						staticResident.drop(objIndex);
+					}
+					if (admitted)
 						add(list.terrain, obj);
 			}
+		}
+		{
+			static long s_calls = 0;
+			if (++s_calls % 600 == 0)
+				mc2::fmt::print_err("[STATIC_RESIDENT v1] extracts={:d} resident={:d} skipped_last={:d} registry_resident={:d}\n", mc2::fmt::as_i64(s_calls), mc2::fmt::as_i64(static_cast<long>(staticResident.size())), mc2::fmt::as_i64(residentSkipped), mc2::fmt::as_i64(static_cast<long>(GpuStaticPropRegistry::residentCount())));
 		}
 	}
 

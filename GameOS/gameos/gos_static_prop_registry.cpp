@@ -330,7 +330,36 @@ void destroy() {
 }
 
 void frameBegin() {
-    s_liveRangeIndices.clear();
+    // Residents stay in the live set (their object is not revisited); everything else is re-added by its visit.
+    size_t kept = 0;
+    for (uint32_t regIdx : s_liveRangeIndices) {
+        RecipeRange& rng = s_recipeRanges[regIdx];
+        if (rng.resident && rng.count > 0) s_liveRangeIndices[kept++] = regIdx;
+        else rng.inLive = false;
+    }
+    s_liveRangeIndices.resize(kept);
+}
+
+bool setResident(int32_t regIdx) {
+    if (regIdx < 0 || static_cast<uint32_t>(regIdx) >= s_recipeRanges.size()) return false;
+    RecipeRange& rng = s_recipeRanges[static_cast<uint32_t>(regIdx)];
+    if (rng.count == 0 || !rng.inLive) return false;   // only a range visited this frame
+    rng.resident = true;
+    return true;
+}
+
+void clearResident(int32_t regIdx) {
+    if (regIdx >= 0 && static_cast<uint32_t>(regIdx) < s_recipeRanges.size()) s_recipeRanges[static_cast<uint32_t>(regIdx)].resident = false;
+}
+
+bool isResident(int32_t regIdx) {
+    return regIdx >= 0 && static_cast<uint32_t>(regIdx) < s_recipeRanges.size() && s_recipeRanges[static_cast<uint32_t>(regIdx)].resident;
+}
+
+uint32_t residentCount() {
+    uint32_t n = 0;
+    for (uint32_t regIdx : s_liveRangeIndices) n += s_recipeRanges[regIdx].resident ? 1u : 0u;
+    return n;
 }
 
 int32_t registerRecipe(TG_MultiShape* multi,
@@ -358,6 +387,7 @@ int32_t registerRecipe(TG_MultiShape* multi,
     if (s_recipeRecycle && !s_recipeRangeFreeList.empty()) {
         regIdx = static_cast<int32_t>(s_recipeRangeFreeList.back());
         s_recipeRangeFreeList.pop_back();
+        rng.inLive = s_recipeRanges[static_cast<size_t>(regIdx)].inLive;   // a stale live entry may still exist
         s_recipeRanges[static_cast<size_t>(regIdx)] = rng;          // overwrite tombstone
     } else {
         regIdx = static_cast<int32_t>(s_recipeRanges.size());
@@ -434,7 +464,8 @@ void markVisible(int32_t regIdx, uint32_t lightDataIndex, float extentRadius) {
         }
         ++s_registryGeneration;   // 2b Stage 2: immutable-field (light/extent) write
     }
-    s_liveRangeIndices.push_back(static_cast<uint32_t>(regIdx));
+    rng.resident = false;   // a visit re-establishes residency explicitly
+    if (!rng.inLive) { rng.inLive = true; s_liveRangeIndices.push_back(static_cast<uint32_t>(regIdx)); }
 }
 
 // STATIC-PROP REGISTRATION CONTRACT (v1). Validate the registration BEFORE accepting
@@ -484,6 +515,7 @@ void invalidate(int32_t regIdx) {
     }
     SP_TRACE("invalidate regIdx=%d (was count=%u)", regIdx, rng.count);
     rng.count = 0;
+    rng.resident = false;
     rng.multiId = {};
     rng.lightDataIndex = 0xFFFFFFFFu;  // 2026-05-11 reset capture on invalidate
     rng.extentRadius   = 0.0f;         // 2026-05-22 F4 T3 reset extent radius

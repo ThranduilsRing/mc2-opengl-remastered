@@ -81,6 +81,13 @@ enum class StaticSubmitResult {
     Tombstoned,     // range.count == 0 (invalidated/destroyed but handle still held)
     InvalidRecipe,  // range.multi == null (would be skipped at the flush tombstone guard)
 };
+// static-world-s2: residency. setResident is valid only for a range visited this frame; a resident stays in the
+// live set across frames and flush skips its cachedFrame_ check. Any markVisible, invalidate or clearResident ends it.
+bool setResident(int32_t regIdx);
+void clearResident(int32_t regIdx);
+bool isResident(int32_t regIdx);
+uint32_t residentCount();
+
 StaticSubmitResult markVisibleChecked(int32_t regIdx,
                                       uint32_t lightDataIndex = 0xFFFFFFFFu,
                                       float extentRadius = 0.0f);

@@ -48,6 +48,12 @@ bool flushRangeCurrentness(uint32_t currentFrame, uint64_t& s_diag_ranges_stale_
     // frame; the next frame after it returns to view will refresh the
     // cache and the static path resumes correctly.
     const bool isFirstFlush = !rng.firstFlushSeen;
+    // A resident's object is not revisited, so its stamp is not refreshed; it was admitted when it settled.
+    if (rng.resident) {
+        rng.firstFlushSeen = true;
+        ++s_diag_ranges_drawn;
+        return false;
+    }
     if (rng.multi()->getCachedFrame() != currentFrame) {
         if (isFirstFlush) {
             ++s_firstFrameSkipCount;

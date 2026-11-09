@@ -14,11 +14,15 @@ class TerrainDirtyQueue {
     std::vector<long> pending_;
     // Settled statics whose presentation does not depend on the camera; any mark drops the flag.
     std::vector<unsigned char> resident_;
+    // The last render visit submitted this handle to the static registry and nothing has marked it since;
+    // the render extract may skip it. Implies resident_; any mark drops it.
+    std::vector<unsigned char> renderResident_;
 public:
     void reset(std::size_t handleCount) {
         const std::lock_guard lock(mutex_);
         marked_.assign(handleCount, 0);
         resident_.assign(handleCount, 0);
+        renderResident_.assign(handleCount, 0);
         pending_.clear();
     }
     void mark(long handle) {
@@ -26,6 +30,7 @@ public:
         const std::lock_guard lock(mutex_);
         if (handle < 0 || static_cast<std::size_t>(handle) >= marked_.size()) return;
         resident_[handle] = 0;
+        renderResident_[handle] = 0;
         if (marked_[handle]) return;
         marked_[handle] = 1;
         pending_.push_back(handle);
@@ -51,6 +56,21 @@ public:
         if (handle < 0 || static_cast<std::size_t>(handle) >= marked_.size() || marked_[handle]) return;
         resident_[handle] = 1;
     }
+    // Called from a render visit; true when the handle is presentation-settled and not re-marked.
+    bool setRenderResident(long handle) {
+        const std::lock_guard lock(mutex_);
+        if (handle < 0 || static_cast<std::size_t>(handle) >= marked_.size() || marked_[handle] || !resident_[handle]) return false;
+        renderResident_[handle] = 1;
+        return true;
+    }
+    bool isRenderResident(long handle) {
+        const std::lock_guard lock(mutex_);
+        return handle >= 0 && static_cast<std::size_t>(handle) < renderResident_.size() && renderResident_[handle] && !marked_[handle];
+    }
+    // Render extract only: the sim is quiescent there, so the flag needs no lock.
+    bool isRenderResidentQuiescent(long handle) const {
+        return handle >= 0 && static_cast<std::size_t>(handle) < renderResident_.size() && renderResident_[handle] && !marked_[handle];
+    }
     bool isResident(long handle) {
         const std::lock_guard lock(mutex_);
         return handle >= 0 && static_cast<std::size_t>(handle) < resident_.size() && resident_[handle];
@@ -70,6 +90,7 @@ public:
         const std::lock_guard lock(mutex_);
         for (std::size_t i = 1; i < marked_.size(); ++i) {
             resident_[i] = 0;
+            renderResident_[i] = 0;
             if (marked_[i]) continue;
             marked_[i] = 1;
             pending_.push_back(static_cast<long>(i));

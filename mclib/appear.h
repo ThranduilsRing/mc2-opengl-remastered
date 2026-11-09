@@ -285,6 +285,13 @@ public:
 			return false;
 		}
 
+		// static-world-s2: registry recipe whose render visit this frame settled (submitted to the static registry
+		// with a baked light slot and nothing per-frame to redo), else -1. The render extract may then skip the object.
+		virtual int32_t residentRenderRecipe (void) const
+		{
+			return -1;
+		}
+
 		// Stage 3.C: stamp-advance path for static registry. Default no-op.
 		// Override in TreeAppearance calls TG_MultiShape::Touch() without
 		// running the full vertex transform.

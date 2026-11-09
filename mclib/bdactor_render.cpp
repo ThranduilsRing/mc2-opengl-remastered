@@ -231,6 +231,7 @@ long BldgAppearance::render (long depthFixup)
 							staticReg.lightDataIndex,
 							bldgShape ? bldgShape->GetExtentRadius() : 0.0f);
 					if (bldgRes == GpuStaticPropRegistry::StaticSubmitResult::Submitted) {
+						submittedFrame_ = g_mc2FrameCounter.load(std::memory_order_relaxed);
 						++s_diag_markVisible;
 						submittedToGpu = true;
 					} else {
@@ -482,6 +483,32 @@ long BldgAppearance::renderShadows (void)
 	return NO_ERR;
 }
 
+// static-world-s2: a settled static building: this frame's render submitted it through the registry with a baked light
+// slot, and none of the other things render() does per frame (highlight, shadow capture, effects) is in play.
+extern uint32_t mc2LightSlotBakedHighWater();
+int32_t BldgAppearance::residentRenderRecipe() const
+{
+	if (submittedFrame_ != g_mc2FrameCounter.load(std::memory_order_relaxed)) return -1;
+	if (!bldgShape || !staticReg.registered || staticReg.recipeIndex < 0 || needsFullBakeNextFrame) return -1;
+	if (!IsStaticNow() || !isStaticEligible()) return -1;
+	if (!staticReg.hasValidStaticLight || staticReg.lightDataIndex == 0xFFFFFFFFu ||
+		staticReg.lightDataIndex >= mc2LightSlotBakedHighWater() ||
+		staticReg.lastLightEnvGen != mc2StaticLightEnvironmentGeneration(eye)) return -1;
+	if (drawFlash || (selected & DRAW_COLORED) || captureForcedBuildingHighlight() || destructFX || activity || activity1) return -1;
+	if (appearType && mc2WorldMarkerAppearance(appearType->name)) return -1;
+	if (mc2shadow::staticCasterSet().isMoverOwner(static_cast<const Appearance*>(this))) return -1;
+	return staticReg.recipeIndex;
+}
+
+int32_t TreeAppearance::residentRenderRecipe() const
+{
+	if (submittedFrame_ != g_mc2FrameCounter.load(std::memory_order_relaxed)) return -1;
+	const StaticRegistration& reg = staticReg[activeLOD];
+	if (!treeShape || !reg.registered || reg.recipeIndex < 0 || needsFullBakeNextFrame || shadowIsMoving()) return -1;
+	if (!IsStaticNow() || reg.lightDataIndex == 0xFFFFFFFFu || reg.lightDataIndex >= mc2LightSlotBakedHighWater()) return -1;
+	return reg.recipeIndex;
+}
+
 long TreeAppearance::render (long depthFixup)
 {
 	if (!eye) return 0;
@@ -588,6 +615,7 @@ long TreeAppearance::render (long depthFixup)
 							staticReg[activeLOD].lightDataIndex,
 							treeShape ? treeShape->GetExtentRadius() : 0.0f);
 					if (treeRes == GpuStaticPropRegistry::StaticSubmitResult::Submitted) {
+						submittedFrame_ = g_mc2FrameCounter.load(std::memory_order_relaxed);
 						// [LIGHTSLOT v1] Task 0: registered static-replay trees record
 						// their per-frame slot here (the steady-state path) so the
 						// distinct-slot set captures the whole forest, not just frame-1
