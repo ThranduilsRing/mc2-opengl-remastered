@@ -359,7 +359,7 @@ def _set_affinity(handle, pid, mask) -> None:
             raise RuntimeError(f"engine affinity mismatch: requested {mask:#x}, applied {actual.value:#x}")
     elif hasattr(os, "sched_setaffinity"):
         os.sched_setaffinity(pid, {i for i in range(16) if mask & (1 << i)})
-    priority = "ABOVE_NORMAL" if sys.platform == "win32" else "inherited"
+    priority = "BELOW_NORMAL" if sys.platform == "win32" else "inherited"
     print(f"[host-affinity] pid={pid} mask={mask:#x} logical_cpus={mask.bit_count()} priority={priority}", file=sys.stderr, flush=True)
 
 
@@ -396,7 +396,7 @@ def _refresh_game_affinity() -> None:
 def apply_affinity(proc) -> None:
     """Pin an engine or its launcher and remember its identity for lease transitions."""
     if os.environ.get("MC2_NO_CPU_PIN"):
-        print(f"[host-affinity] pid={proc.pid} mask=unrestricted priority=ABOVE_NORMAL pin=off", file=sys.stderr, flush=True)
+        print(f"[host-affinity] pid={proc.pid} mask=unrestricted priority=BELOW_NORMAL pin=off", file=sys.stderr, flush=True)
         return
     with _queue_lock():
         live = [(p, r) for p, r in _records() if _holder_alive(r)]

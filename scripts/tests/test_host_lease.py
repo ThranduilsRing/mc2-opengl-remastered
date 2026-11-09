@@ -40,23 +40,26 @@ def test_running_game_narrows_and_expands_without_touching_reused_pid(monkeypatc
     records = []
     monkeypatch.setattr(host_lease, "_records", lambda: records)
     proc = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"],
-                            **console_child.child_kwargs(redirected=True, creationflags=subprocess.ABOVE_NORMAL_PRIORITY_CLASS,
+                            **console_child.child_kwargs(redirected=True, creationflags=subprocess.BELOW_NORMAL_PRIORITY_CLASS,
                                                          stdout=subprocess.PIPE, stderr=subprocess.PIPE))
     try:
         rec = {"affinity_mask": 3, "engines": [{"pid": proc.pid, "created": host_lease.child_registry.process_create_time(proc.pid)}]}
         records.append((None, rec))
         kernel = ctypes.WinDLL("kernel32", use_last_error=True)
         kernel.GetProcessAffinityMask.argtypes = [wintypes.HANDLE, ctypes.POINTER(ctypes.c_size_t), ctypes.POINTER(ctypes.c_size_t)]
+        kernel.GetPriorityClass.argtypes = [wintypes.HANDLE]
+        kernel.GetPriorityClass.restype = wintypes.DWORD
         for neighbour, expected in [(False, 0xF), (True, 0x3), (False, 0xF)]:
             records[:] = [(None, rec)] + ([(None, {"affinity_mask": 0xC})] if neighbour else [])
             host_lease._refresh_game_affinity()
             actual, system = ctypes.c_size_t(), ctypes.c_size_t()
             assert kernel.GetProcessAffinityMask(int(proc._handle), ctypes.byref(actual), ctypes.byref(system))
             assert actual.value == expected
+            assert kernel.GetPriorityClass(int(proc._handle)) == subprocess.BELOW_NORMAL_PRIORITY_CLASS
         rec["engines"][0]["created"] += 1
         monkeypatch.setattr(host_lease, "_set_affinity", lambda *a: pytest.fail("touched reused PID"))
         host_lease._refresh_game_affinity()
-        assert "mask=0xf logical_cpus=4 priority=ABOVE_NORMAL" in capsys.readouterr().err
+        assert "mask=0xf logical_cpus=4 priority=BELOW_NORMAL" in capsys.readouterr().err
         monkeypatch.setenv("MC2_NO_CPU_PIN", "1")
         host_lease.apply_affinity(proc)
         host_lease._refresh_game_affinity()
@@ -68,7 +71,8 @@ def test_running_game_narrows_and_expands_without_touching_reused_pid(monkeypatc
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows creation flags")
 @pytest.mark.parametrize("engine", [False, True])
-def test_only_engine_launch_gets_above_normal_priority(monkeypatch, engine):
+@pytest.mark.parametrize("priority", [0, subprocess.BELOW_NORMAL_PRIORITY_CLASS, subprocess.ABOVE_NORMAL_PRIORITY_CLASS] if sys.platform == "win32" else [0])
+def test_engine_launch_stays_below_normal_priority(monkeypatch, engine, priority):
     from types import SimpleNamespace
     from scripts.smoke_lib import exe_guard
 
@@ -83,9 +87,9 @@ def test_only_engine_launch_gets_above_normal_priority(monkeypatch, engine):
     monkeypatch.setattr(host_lease, "held_device", lambda: None)
     monkeypatch.setattr(host_lease, "apply_affinity", lambda p: calls.append(p))
     monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: calls.append(k) or proc)
-    flags = subprocess.CREATE_NO_WINDOW | subprocess.BELOW_NORMAL_PRIORITY_CLASS
+    flags = subprocess.CREATE_NO_WINDOW | priority
     assert nofocus.spawn(["mc2.exe" if engine else "helper.exe"], creationflags=flags) is proc
-    assert calls[0]["creationflags"] == (subprocess.CREATE_NO_WINDOW | subprocess.ABOVE_NORMAL_PRIORITY_CLASS if engine else flags)
+    assert calls[0]["creationflags"] == (subprocess.CREATE_NO_WINDOW | subprocess.BELOW_NORMAL_PRIORITY_CLASS if engine else flags)
     assert (proc in calls) == engine
 
 

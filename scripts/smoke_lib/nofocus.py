@@ -483,7 +483,7 @@ def spawn(argv: Sequence[str], *, show_window: bool = False,
         engine = any(exe_guard.engine_kind(a) is not None for a in argv)
         if engine and sys.platform == "win32":
             # Replace any inherited/caller priority class; console/window flags remain intact.
-            kw["creationflags"] = (kw.get("creationflags", 0) & ~0x0000C3E0) | subprocess.ABOVE_NORMAL_PRIORITY_CLASS
+            kw["creationflags"] = (kw.get("creationflags", 0) & ~0x0000C3E0) | subprocess.BELOW_NORMAL_PRIORITY_CLASS
         proc = subprocess.Popen(list(argv), env=child_env, **popen_kwargs(show_window=show_window, **kw))
         _record_child(proc, argv)
         if engine:
