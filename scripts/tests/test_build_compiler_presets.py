@@ -390,6 +390,7 @@ def test_compile_cache_never_restarts_during_another_build(monkeypatch, active):
 
 def test_compile_cache_restarts_when_idle_and_location_changed(monkeypatch):
     cn = bat.cn
+    monkeypatch.setattr(cn, "pin_cache_server", lambda: None)
     calls = []
     def child(cmd, **kw):
         calls.append(cmd)
@@ -397,6 +398,61 @@ def test_compile_cache_restarts_when_idle_and_location_changed(monkeypatch):
     monkeypatch.setattr(cn.subprocess, "run", child)
     cn.ensure_cache_server("A:/Games/test", {"SCCACHE_DIR": "G:/mc2-build/compile-cache"})
     assert calls[-2:] == [[cn.SCCACHE_EXE, "--stop-server"], [cn.SCCACHE_EXE, "--start-server"]]
+
+
+@pytest.mark.parametrize("failure", ["timeout", "oserror"])
+def test_compile_cache_defers_restart_when_inventory_unavailable(monkeypatch, capsys, failure):
+    cn = bat.cn
+    if cn.os.name != "nt":
+        pytest.skip("Windows process inventory")
+    calls = []
+    def child(cmd, **kw):
+        calls.append(cmd)
+        if cmd[0] == "tasklist":
+            assert kw["timeout"] == 15
+            if failure == "timeout":
+                raise cn.subprocess.TimeoutExpired(cmd, kw["timeout"])
+            raise OSError("inventory unavailable")
+        return SimpleNamespace(stdout="old cache", returncode=0)
+    monkeypatch.setattr(cn.subprocess, "run", child)
+    cn.ensure_cache_server("A:/Games/mc2-slot10", cn.compile_cache_env("A:/Games/mc2-slot10"))
+    assert len(calls) == 2
+    assert "restart deferred" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("mismatch", [None, "roots", "cache"])
+def test_compile_cache_real_pc_stats(monkeypatch, mismatch):
+    # Captured on this PC with sccache 0.18.0, 2026-11-08.
+    cn = bat.cn
+    shown = (ROOT / "scripts/tests/fixtures/sccache-stats-tasklist-timeout.txt").read_text()
+    assert cn.server_base_dirs(shown.lower()) == {cn._norm_root(r) for r in cn.SCCACHE_FIXED_ROOTS}
+    if mismatch == "roots":
+        shown = shown.replace("a:/games/mc2-slot12/", "a:/games/old-slot/")
+    elif mismatch == "cache":
+        shown = shown.replace("G:/mc2-build/compile-cache", "G:/old-cache")
+    calls = []
+    def child(cmd, **kw):
+        calls.append(cmd)
+        return SimpleNamespace(stdout=shown if cmd[-1] == "-s" else "", returncode=0)
+    monkeypatch.setattr(cn.subprocess, "run", child)
+    monkeypatch.setattr(cn, "pin_cache_server", lambda: None)
+    cn.ensure_cache_server("A:/Games/mc2-slot10", cn.compile_cache_env("A:/Games/mc2-slot10"))
+    if mismatch:
+        assert calls[-2:] == [[cn.SCCACHE_EXE, "--stop-server"], [cn.SCCACHE_EXE, "--start-server"]]
+    else:
+        assert calls == [[cn.SCCACHE_EXE, "-s"]]
+
+
+def test_cache_server_pinning_bounds_tasklist_timeout(monkeypatch):
+    import lint_slots
+    import subprocess
+    if lint_slots.os.name != "nt":
+        pytest.skip("Windows process inventory")
+    def timeout(cmd, **kw):
+        assert cmd[0] == "tasklist" and kw["timeout"] == 15
+        raise subprocess.TimeoutExpired(cmd, kw["timeout"])
+    monkeypatch.setattr(subprocess, "run", timeout)
+    assert lint_slots.sccache_server_pids() == []
 
 
 def test_python_contract_selection_never_rebuilds_native_units(monkeypatch):

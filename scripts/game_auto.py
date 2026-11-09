@@ -111,7 +111,7 @@ def running() -> bool:
         out = subprocess.check_output(
             ["tasklist", "/FI", f"PID eq {pid}", "/NH"],
             stderr=subprocess.DEVNULL,
-            text=True, **nofocus.hidden_kwargs(),
+            text=True, timeout=15, **nofocus.hidden_kwargs(),
         )
         return "mc2.exe" in out
     except Exception:
