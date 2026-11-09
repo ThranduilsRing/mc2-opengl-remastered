@@ -178,8 +178,8 @@ def test_tree_diff_both_ways_and_sha_mode_touches_equal_content(tmp_path):
     assert laptop_gate.tree_problems(rows(pc, sha=True), rows(pc)) == []
     assert laptop_gate.chunks(["a", "b", "c"], {"a": 3, "b": 3, "c": 9}, limit=6) == [["a", "b"], ["c"]]
     # runtime outputs a game run rewrites mid-sync are not compared (W129 run 4)
-    _tree(lap, {"cache/vulkan/pipe.bin": (b"p", 5), "veg_diag.txt": (b"v", 5)})
-    assert not any(r.startswith(("cache/", "veg_diag.txt")) for r in rows(lap))
+    _tree(lap, {"cache/vulkan/pipe.bin": (b"p", 5), "veg_diag.txt": (b"v", 5), "debug_state/crash_content.jsonl": (b"c", 5)})
+    assert not any(r.startswith(("cache/", "veg_diag.txt", "debug_state/")) for r in rows(lap))
 
 
 def test_extract_payload_clears_the_previous_payload(tmp_path):

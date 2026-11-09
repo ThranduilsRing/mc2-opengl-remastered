@@ -381,8 +381,9 @@ def r_pack(window):
 EVIDENCE_DIRS = ("before", "after", "ab")   # merge_gate proof subdirs holding the day/night captures and montages
 SYNC_SKIP = {".seeded", ".tree-synced"}   # laptop-only markers (seed() and the first sha-mode sync)
 # Runtime outputs any game run on either side rewrites (pipeline cache, vegetation diag), not inputs to a capture: W129 run 4's
-# preflight failed because a PC run touched them between sync_tree's listing and its tar.
-SYNC_SKIP_RUNTIME = ("cache/", "veg_diag.txt")
+# preflight failed because a PC run touched them between sync_tree's listing and its tar. debug_state/ holds per-session
+# diagnostics (crash_content.jsonl is rewritten by every launch): W138's preflight failed on a v0.4 game started mid-sync.
+SYNC_SKIP_RUNTIME = ("cache/", "veg_diag.txt", "debug_state/")
 
 
 def tree_rows(root, sha=False):
