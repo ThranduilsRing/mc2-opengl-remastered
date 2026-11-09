@@ -278,6 +278,13 @@ public:
 			return false;
 		}
 
+		// True when the drawn LOD can change with camera distance alone; such
+		// objects must keep their per-camera-change presentation visit.
+		virtual bool lodFollowsCamera (void) const
+		{
+			return false;
+		}
+
 		// Stage 3.C: stamp-advance path for static registry. Default no-op.
 		// Override in TreeAppearance calls TG_MultiShape::Touch() without
 		// running the full vertex transform.
