@@ -8,8 +8,17 @@
 #include <span>
 
 namespace mc2hzb {
+// Small-instance rejection (mirrors hzb_cull.comp): the unwidened screen box is snapped outward to a 1/256 px grid; a box with zero
+// area in either axis, or under kTinyExtentPx in both axes, cannot cover a visible pixel and is culled without a pyramid fetch.
+constexpr float kSnapGrid = 256.0f;
+constexpr float kTinyExtentPx = 1.0f;
+inline bool tiny_box(float x0, float y0, float x1, float y1) {
+    const float w = std::ceil(x1 * kSnapGrid) / kSnapGrid - std::floor(x0 * kSnapGrid) / kSnapGrid;
+    const float h = std::ceil(y1 * kSnapGrid) / kSnapGrid - std::floor(y0 * kSnapGrid) / kSnapGrid;
+    return w <= 0.0f || h <= 0.0f || ((std::max)(w, h) < kTinyExtentPx);
+}
 struct PropBounds { float lo[3], hi[3]; bool valid = false; };
-struct alignas(16) ProjectedProp { float pixels[4]; float nearest; uint32_t lod, keep, pad; };
+struct alignas(16) ProjectedProp { float pixels[4]; float nearest; uint32_t lod, keep, tiny; };
 static_assert(sizeof(ProjectedProp) == 32);
 static_assert(offsetof(ProjectedProp, nearest) == 16 && offsetof(ProjectedProp, lod) == 20 && offsetof(ProjectedProp, keep) == 24);
 
@@ -41,6 +50,7 @@ inline ProjectedProp project_prop(const GpuStaticPropInstance& inst, const float
         y0 = (std::min)(y0, (y+1)*0.5f*h); y1 = (std::max)(y1, (y+1)*0.5f*h);
         nearest = (std::max)(nearest, z);
     }
+    out.tiny = tiny_box(x0, y0, x1, y1) ? 1u : 0u;
     // +-0.5 px: the pyramid depth was drawn with sub-pixel TAA jitter (mirrors hzb_cull.comp).
     out.pixels[0] = (std::max)(0.0f, std::floor(x0-0.5f)-1); out.pixels[1] = (std::max)(0.0f, std::floor(y0-0.5f)-1);
     out.pixels[2] = (std::min)(static_cast<float>(w-1), std::ceil(x1+0.5f)+1); out.pixels[3] = (std::min)(static_cast<float>(h-1), std::ceil(y1+0.5f)+1);
@@ -57,6 +67,7 @@ inline ProjectedProp project_prop(const GpuStaticPropInstance& inst, const float
 template <class Fetch>
 inline bool hzb_hidden(const ProjectedProp& p, int baseW, int baseH, Fetch&& fetch) {
     if (p.keep != 0) return false;
+    if (p.tiny != 0) return true;
     int lw = baseW, lh = baseH;
     for (uint32_t l = 0; l < p.lod; ++l) { lw = (std::max)(1, (lw + 1) / 2); lh = (std::max)(1, (lh + 1) / 2); }
     const float scale = static_cast<float>(1u << p.lod);

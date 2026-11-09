@@ -58,6 +58,18 @@ inline bool sweptShadowInView(MoverSphere s, Vec3 sun, float ground, const float
     return sweptShadowInView(s, sun, ground, makeViewPlanes(rows));
 }
 
+// True when the swept shadow of a static caster (its sphere dragged along the sun ray to the ground) comes within reach of a mover sphere. A caster
+// that fails this for every mover in view cannot shadow any mover; the baked static mask already carries its shadow on the ground.
+inline bool propShadowReachesMover(MoverSphere prop, MoverSphere mover, Vec3 sun, float ground) {
+    const Vec3 a = prop.center, b = shadowEnd(prop, sun, ground);
+    const Vec3 ab{b.x - a.x, b.y - a.y, b.z - a.z}, am{mover.center.x - a.x, mover.center.y - a.y, mover.center.z - a.z};
+    const float len2 = ab.x * ab.x + ab.y * ab.y + ab.z * ab.z;
+    const float t = len2 > 1e-6f ? (std::clamp)((am.x * ab.x + am.y * ab.y + am.z * ab.z) / len2, 0.0f, 1.0f) : 0.0f;
+    const Vec3 d{am.x - ab.x * t, am.y - ab.y * t, am.z - ab.z * t};
+    const float reach = prop.radius + mover.radius;
+    return d.x * d.x + d.y * d.y + d.z * d.z <= reach * reach;
+}
+
 // Only the extent has hysteresis; the image is cleared and redrawn every frame.
 // No accumulated samples, reprojection, history texture or temporal filtering.
 inline float stabilizedMoverExtent(float required, float previous) {

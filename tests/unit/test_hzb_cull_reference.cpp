@@ -186,7 +186,9 @@ TEST_CASE("hzb ref: tiny objects (sub-pixel to a few pixels)") {
         CAPTURE(px);
         CHECK(p.keep == 0);
         CHECK(hidden(p, wall));          // expected keep=0
-        CHECK_FALSE(hidden(p, sky));     // expected keep=1
+        // Sub-pixel and zero-area boxes are rejected outright (small-instance cull); one pixel and up still reach the pyramid.
+        if (px < 1.0f) CHECK(hidden(p, sky));
+        else CHECK_FALSE(hidden(p, sky));     // expected keep=1
     }
     // A hole far outside a tiny footprint must not rescue it: the per-object LOD reads only its own texels.
     Pyramid py(0.9f);
@@ -234,4 +236,23 @@ TEST_CASE("hzb ref: depth bias moves nearest, margin is 2e-5") {
     const auto far = project(boxPixels(6.0f), flatMatrix(), -0.1f);
     CHECK(far.nearest == doctest::Approx(0.4f));
     CHECK(hidden(far, py));                                      // 0.4 < 0.5 - 2e-5
+}
+
+TEST_CASE("hzb ref: sub-pixel and zero-area boxes are rejected without a pyramid fetch") {
+    Pyramid empty(0.0f);   // nothing occludes: only the small-instance predicate can hide
+    CHECK(hidden(project(boxPixels(0.0f)), empty));            // zero area (a point)
+    CHECK(hidden(project(boxPixels(0.4f)), empty));            // under one pixel in both axes
+    CHECK_FALSE(hidden(project(boxPixels(1.0f)), empty));      // exactly one pixel stays
+    CHECK_FALSE(hidden(project(boxPixels(5.0f)), empty));
+    CHECK(hidden(project(boxNdc(0.0f, 0.0f, 0.0f, 0.5f)), empty));      // edge-on: zero width, tall
+    CHECK_FALSE(hidden(project(boxNdc(0.0f, 0.5f, 0.0f, 0.01f)), empty));   // thin but a pixel wide: stays
+}
+
+TEST_CASE("hzb ref: the 1/256 px grid rounds outward and tiny rejection never applies to unprojectable boxes") {
+    CHECK(mc2hzb::tiny_box(10.0f, 10.0f, 10.0f, 10.0f));
+    CHECK(mc2hzb::tiny_box(10.001f, 10.0f, 10.5f, 10.5f));
+    CHECK_FALSE(mc2hzb::tiny_box(10.0f, 10.0f, 11.0f, 10.5f));
+    CHECK_FALSE(mc2hzb::tiny_box(10.0f, 10.0f, 10.9999f, 10.9999f));   // 10.9999 snaps up to 11: exactly one pixel wide, stays
+    Pyramid empty(0.0f);
+    CHECK_FALSE(hidden(project(boxNdc(0.5f, 1.5f, 0.0f, 0.001f)), empty));   // crosses x = 1: kept whole, never tiny-culled
 }

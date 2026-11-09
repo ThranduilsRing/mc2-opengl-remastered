@@ -54,6 +54,13 @@ float farthestAtLod(vec4 pixels, uint lod) {
     }
 }
 
+// Small-instance rejection (mirrors RenderCore/hzb_prop_bounds.h tiny_box): snap the box outward to a 1/256 px grid; zero area in either
+// axis, or under one pixel in both axes, cannot cover a visible pixel.
+bool tinyBox(vec2 lo, vec2 hi) {
+    vec2 ext = ceil(hi * 256.0) / 256.0 - floor(lo * 256.0) / 256.0;
+    return ext.x <= 0.0 || ext.y <= 0.0 || max(ext.x, ext.y) < 1.0;
+}
+
 // Preserves the CPU reference's keep rules: any unprojectable corner keeps the prop.
 bool propHidden(uint id) {
     GpuStaticPropInstance inst = instances[id];
@@ -81,6 +88,7 @@ bool propHidden(uint id) {
         lo = min(lo, pixels); hi = max(hi, pixels);
         nearest = max(nearest, ndc.z);
     }
+    if (tinyBox(lo, hi)) return true;
     // The pyramid was built from depth drawn with the frame's sub-pixel TAA jitter (<= 0.5 px) while this
     // projection is unjittered: widen the box by that jitter plus the one texel of conservatism.
     vec4 box = vec4(max(vec2(0), floor(lo - 0.5) - 1), min(params.viewportDepth.xy - 1, ceil(hi + 0.5) + 1));
