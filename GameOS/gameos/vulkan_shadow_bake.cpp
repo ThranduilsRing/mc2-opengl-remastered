@@ -652,9 +652,10 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
     // Casters: the gameplay set resolved to registry leaves, each with its world box and light-space box.
     const clk::time_point tResolve = clk::now();
     // Snapshot only on the first mask of this set; subsequent rebakes key and render the live state.
-    const auto& casters=mc2shadow::staticCasterSet();
+    mc2shadow::StaticCasterSet& casters=mc2shadow::staticCasterSet();
+    if (recordedMask_) casters.logDriftSinceLoad(6);   // what changed since the load snapshot; settled into it below
+    if (recordedMask_ && bakedSetVersion_ != casters.version()) casters.settleLoadSnapshot();   // load-time damage/shape swaps land during the first frames
     const uint64_t casterHash=recordedMask_?casters.resolveForBake(bakedSetVersion_, leaves_):casters.resolve(leaves_);
-    if (recordedMask_) casters.logDriftSinceLoad(6);
     cpuStage_[0] = std::chrono::duration<double, std::milli>(clk::now() - tResolve).count();
     std::vector<mc2shadow::LightBox> boxes;
     std::vector<float> tops;

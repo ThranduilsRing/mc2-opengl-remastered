@@ -75,17 +75,26 @@ public:
         return bakedSetVersion != version() ? loadSnapshot(leaves) : resolve(leaves);
     }
     // Logs the entries whose leaves differ from the load snapshot ([SHADOW_BAKE] caster drift): what moved between load and the bake.
-    void logDriftSinceLoad(uint32_t maxLines) const;
+    uint32_t logDriftSinceLoad(uint32_t maxLines) const;   // returns the number of drifted entries
+    // Re-takes the load snapshot from the live set and drops the events queued since endRebuild(). The first mask of a set calls it: the presentation
+    // pass applies load-time damage/destroyed status and shape swaps during the first frames, after the set was built, and a snapshot taken before them
+    // leaves the cooked mask stale on arrival (hundreds of drifted entries -> ~1000 dirty sub-tiles drained at 2 a frame). Nothing is baked yet, so
+    // those changes are not edits.
+    void settleLoadSnapshot();
+    // A static owner that keeps changing its leaves (a moving body registered as a static prop) is demoted to a mover after this many real changes.
+    static constexpr uint8_t kDemoteAfterChanges = 3;
 
 private:
     struct OwnerIndex { uint32_t index; bool mover; };
     StaticCasterEntry& entryAt(OwnerIndex index) { return index.mover ? movers_[index.index] : entries_[index.index]; }
     std::vector<uint32_t> resolveOrder() const;
+    void takeLoadSnapshot();
     std::vector<StaticCasterEntry> entries_;
     std::vector<StaticCasterEntry> movers_;
     std::vector<uint8_t> recipeMask_;
     // Pointer identity is used only for lookup; event emission follows gameplay handle order.
     std::unordered_map<const void*, OwnerIndex> byOwner_;
+    std::unordered_map<const void*, uint8_t> churn_;   // real (non-cancelling) re-registrations per static owner since the last settle
     std::unordered_map<const void*, std::vector<GpuStaticPropInstance>> removed_;   // leaves an owner lost and may get back unchanged
     std::vector<CasterEvent> events_;
     std::vector<GpuStaticPropInstance> loadLeaves_;
