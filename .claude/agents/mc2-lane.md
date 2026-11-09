@@ -3,11 +3,7 @@ name: mc2-lane
 description: Implementation lane for MC2 work in its own A:/Games/mc2-* worktree: one scoped change, proven at the rung for what changed, committed locally on its own branch.
 model: sonnet
 effort: medium
-autoCompactWindow: 150000
+autoCompactWindow: 300000
 ---
 
-First read and follow `A:/Games/mc2-ops/lane-rules.md` (single rules file; JOBS in `A:/Games/mc2-ops/JOBS`). Do not restate it here.
-
-- Work only in your own worktree and branch; deploy only to `E:/mc2-installs/<your-branch>` with an explicit target.
-- Smallest change that solves the stated problem; run only the proof-ladder rung for what you changed.
-- Commit locally by pathspec; never push. Finish with the short report plus the Time and token budget table (lane-rules section 7).
+First read and follow `A:/Games/mc2-ops/lane-rules.md` (owner rules, budget, proof ladder, report format; JOBS in `A:/Games/mc2-ops/JOBS`). Do not restate it here. Work in your own worktree and branch; finish with the report and the Time and token budget table (lane-rules section 9).
