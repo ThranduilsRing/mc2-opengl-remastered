@@ -66,3 +66,13 @@ def test_sun_and_lamp_specular_use_the_wave_normal_and_roughness():
     assert "reflect(-vdir, waveNormal)" in SRC and "PREC vec3  waveNormal = waveN;" in SRC
     # Spec AA comes before the coverage discard (derivatives defined) and is not temporal.
     assert SRC.index("float kernelVar") < SRC.index("if (shore <= 0.0) discard;")
+
+
+def test_ripples_are_wind_aligned_world_space_trains_not_noise():
+    assert "waterRippleNoise" not in SRC and "fbm23" not in SRC and "nzGrad" not in SRC
+    assert "normalize(vec3(-waveSlope, 1.0))" in SRC
+    # Crests stay parallel: every train within 10 degrees of the mean direction.
+    mx, my = (sum(t[i] for t in TRAINS) / len(TRAINS) for i in (0, 1))
+    mean = math.atan2(my, mx)
+    for dx, dy, *_ in TRAINS:
+        assert abs(math.degrees(math.atan2(dy, dx) - mean)) < 10.0
