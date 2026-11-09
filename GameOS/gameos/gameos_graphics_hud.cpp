@@ -7,6 +7,26 @@
 #include "utils/mc2log.h"
 
 
+size_t gos_BeginHudPanel() {
+    return g_gos_renderer->beginHudPanel();
+}
+
+void gos_EndHudPanel(size_t firstDraw, float scale) {
+    g_gos_renderer->endHudPanel(firstDraw, scale);
+}
+
+void gosRenderer::endHudPanel(size_t firstDraw, float scale) {
+    for (size_t i = firstDraw; i < hudBatch_.size(); ++i) {
+        auto& call = hudBatch_[i];
+        for (auto& vertex : call.vertices) {
+            vertex.x *= scale;
+            vertex.y *= scale;
+        }
+        call.scaleExempt = true;
+        call.canvasExempt = false;
+    }
+}
+
 static int get_next_break(const char* text) {
     const char* start = text;
     do {

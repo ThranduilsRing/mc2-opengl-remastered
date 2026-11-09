@@ -191,6 +191,7 @@ add_executable(mc2_tests
     test_pilot_pick.cpp  # getBestPilot out-of-pool kernel (offline)
     test_ui_defs_lockstep.cpp  # UI-DEFS-LOCKSTEP-HARDEN-1: defs/ui package version + zero-element/zero-draw fail-soft (offline)
     test_hud_tab_registry.cpp  # HUD-IMGUI slice C: tab registry order/cycle invariants (offline)
+    test_objectives_panel.cpp
     test_input_capture_policy.cpp  # I3: pure input capture/focus/modal policy + press/release edge kernel (offline)
     test_infowindow_model.cpp  # HUD-IMGUI slice D: info-window component aggregation kernel (offline)
     test_terrain_material.cpp  # TERRAIN-MATERIAL-SINGLE-SOURCE: terrain type -> material table (type 20 = Concrete)
@@ -659,6 +660,13 @@ function(mc2_height_slice output source begin end)
     set(${output} "${body}" PARENT_SCOPE)
     set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${MC2_WORKTREE_ROOT}/${source}")
 endfunction()
+mc2_height_slice(objectives_canvas GameOS/gameos/gameos_graphics_params.cpp
+    "static bool computeUiCanvas16x9(" "bool __stdcall gos_ComputeUiCanvasBox(")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/objectives_canvas.inc" CONTENT "${objectives_canvas}")
+mc2_height_slice(objectives_batch GameOS/gameos/gameos_graphics_hud.cpp
+    "void gosRenderer::endHudPanel(" "static int get_next_break(")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/objectives_batch.inc" CONTENT "${objectives_batch}")
+set_source_files_properties(test_objectives_panel.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
 mc2_height_slice(camera_world_lights mclib/camera.h
     "long addWorldLight (" "glm::vec3 getScreenRes (")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/camera_world_lights.inc" CONTENT "${camera_world_lights}")
