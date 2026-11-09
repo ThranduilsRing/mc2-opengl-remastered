@@ -790,10 +790,12 @@ void Mission::initTerrain(MissionInitFrame& f) {
 #endif
 
 	long terrainInitResult;
+	mission_phase_mark("mission_settings_ready");
 	{
 		ZoneScopedN("Mission::init land->init");
 		terrainInitResult = land->init(&pakFile, 0, GameVisibleVertices, loadProgress, 20.0 );
 	}
+	mission_phase_mark("terrain_data_ready");
 
 	if (terrainInitResult != NO_ERR)
 	{
@@ -808,6 +810,7 @@ void Mission::initTerrain(MissionInitFrame& f) {
 #endif
 
 	{ ZoneScopedN("Mission::init land->load"); land->load( missionFile ); }
+	mission_phase_mark("terrain_config_ready");
 
 	loadProgress = 36.0f;
 	{ ZoneScopedN("Mission::init land->primeMissionTerrainCache"); land->primeMissionTerrainCache(loadProgress, 4.0f); }
@@ -1058,6 +1061,7 @@ initPartsHeader(f);
 	// Support craft use the native prop renderer too: register their geometry
 	// before the immutable buffers close, while still behind the loading screen.
 	preloadMissionSupportAtLoad();
+	mission_phase_mark("mission_support_ready");
 	initFinalizeGeometry();
 	graphics::pump_loading_events();
 	mc2::content::reportMission(missionName);

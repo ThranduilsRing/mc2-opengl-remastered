@@ -3,6 +3,7 @@
 //=============================================================================
 #include "mc2_czstring.h"
 #include <memory>
+#include <string_view>
 #include "mc2video.h"
 #include "gos_crashbundle.h"
 
@@ -22,6 +23,7 @@ extern char moviePath[80];  // defined in mclib/paths.cpp
 // SoundSystem methods are callable via the subclass pointer.
 class GameSoundSystem;
 extern GameSoundSystem* soundSystem;
+extern void startup_phase(std::string_view name);
 
 #if defined(_WIN32)
 #  include <windows.h>
@@ -631,6 +633,8 @@ static void bufferAudio(VideoSession* s)
                     samples[i] = static_cast<int16_t>(samples[i] * gain);
             }
             snd->pushVideoPCMSamples(reinterpret_cast<int16_t*>(pcm), frames);
+            if (frames > 0 && s->audioFramesQueued == 0)
+                startup_phase("first_audio_queued");
             s->audioFramesQueued += frames;
             av_free(pcm);
             if (draining && frames == 0) { s->audioEOF = true; return; }
@@ -725,6 +729,8 @@ bool video_update(VideoSession* s)
             s->eof = true;
             return true;
         }
+        if (s->decodedPTS < 0.0)
+            VIDEO_LOG("first_frame_decoded path={}", mc2::fmt::safe(s->fmt->url));
         s->objectiveReceipt.decoded();
 
         double pts = (s->vFrame->best_effort_timestamp == AV_NOPTS_VALUE)

@@ -21,8 +21,11 @@
 #include <cstring>
 #include <filesystem>
 #include <string>
+#include <string_view>
 #include <system_error>
 #include "../GameOS/gameos/utils/mc2log.h"
+
+extern void startup_phase(std::string_view name);
 
 #ifndef VERSION_H
 #include"version.h"
@@ -530,6 +533,7 @@ void __stdcall InitializeGameEngine()
 			// MC2Strings may have already fired Load() before this point (with
 			// an empty mod index); LoadModFits() bypasses the one-shot guard.
 			MC2Strings::LoadModFits();
+			startup_phase("archives_mods_ready");
 			// Warm the OS file cache for the archives and mod files while init, the intro and the menu run.
 			if (!justStartMission)
 				startStartupPreload();
@@ -1018,6 +1022,7 @@ void __stdcall InitializeGameEngine()
 		soundSystem = ownedSoundSystem.get();
 		soundSystem->init();
 		(static_cast<SoundSystem *>(soundSystem))->init("sound");
+		startup_phase("sound_catalog_ready");
 		}
 		
 		//-----------------------------------------------

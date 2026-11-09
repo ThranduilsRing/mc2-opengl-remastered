@@ -52,6 +52,8 @@ struct KtxImage {
     uint32_t vkFormat       = 0;   // raw VK_FORMAT value from the file header
     bool     isCompressed   = false; // true for BC6H (143/144) or BC7 (145/146); false for RGBA8
     uint32_t blockSizeBytes = 0;   // 16 for BC6H/BC7; 0 for uncompressed RGBA8
+    bool hasSunMetadata = false;
+    std::optional<float> sunAzimuth;
 };
 
 // The outcome of parsing a KTX2 container: `image` on success, otherwise `error` names the first check that failed.

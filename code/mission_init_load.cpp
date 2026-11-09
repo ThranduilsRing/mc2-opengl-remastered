@@ -736,6 +736,7 @@ void Mission::initTerrainObjectsLoad(char (*commandersToLoad)[3], MissionInitFra
 	mission_phase_mark("actor_spawn_ready"); // LOAD-PHASE-FACTS-1: mover/vehicle/part object init done
 
 	{ ZoneScopedN("Mission::init ObjectManager::loadTerrainObjects"); ObjectManager->loadTerrainObjects(&pakFile, loadProgress, 30); }
+	mission_phase_mark("terrain_objects_ready");
 	{ ZoneScopedN("Mission::init ObjectManager::primeTerrainObjectsForMissionLoad"); ObjectManager->primeTerrainObjectsForMissionLoad(loadProgress, 2.0f); }
 	// Movers were placed before trees existed. Do the same tree contact as
 	// walking, before static registration can retain an intact spawn tree.
@@ -1050,5 +1051,6 @@ void Mission::initFinalizeGeometry() {
     // The load barrier bakes the static shadows (F1); they key on the terrain sun, which the first frame's camera sets. Set the same one now.
     { const glm::vec3 sun = eye->sunDirection(); gos_SetTerrainLightDir(sun.x, sun.y, sun.z); }
     mc2PrewarmMissionPipelines();
+	mission_phase_mark("render_prewarm_ready");
 }
 

@@ -1,11 +1,13 @@
 #include "mc2_czstring.h"
 #include "gameos.hpp"
 #include "gameos_music_cache.h"
+#define DR_WAV_IMPLEMENTATION
+#include "music_stream.h"
 #include "gos_profiler.h"
 #include <memory>
 #include <utility>
 #include <string>
-#include <unordered_map>
+#include <unordered_set>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mixer.h>
 #include <vector>
@@ -59,21 +61,17 @@ class gosAudio {
     public:
         const std::shared_ptr<uint8_t[]>& data() const { return pdata_; }
         Mix_Chunk mix_chunk_;
+        std::unique_ptr<MusicStream> stream;
+        std::string musicPath;
 
 };
 
 class SoundEngine {
 
     public:
-        struct CachedMusic {
-            std::shared_ptr<uint8_t[]> data;
-            uint32_t size;
-        };
-        // Only configured music is retained; voices and arbitrary streams keep their existing lifetime.
-        static constexpr size_t MUSIC_CACHE_LIMIT = 256u * 1024u * 1024u;
-        std::unordered_map<std::string, CachedMusic> musicCache;
-        size_t musicCacheBytes = 0;
-        bool musicCacheFull = false;
+        // Catalog entries are paths only; only active slots own bounded PCM queues.
+        std::unordered_set<std::string> musicPaths;
+        std::array<std::unique_ptr<MusicStream>, 32> channelStreams;
         SoundEngine():frequency_(0), format_(0), channels_(0), chunksize_(0), is_initialized_(false) {} 
         bool init(int frequency, bool b_fmt_16_bit, bool b_fmt_signed, bool b_stereo);
         void destroy();
@@ -183,6 +181,7 @@ void SoundEngine::destroy() {
 
     for(int i=0; i<NUM_CHANNELS;++i) {
         Mix_HaltChannel(i);
+        channelStreams[i].reset();
     }
 
     std::vector<gosAudio*>::iterator it = audioList_.begin();
@@ -190,9 +189,7 @@ void SoundEngine::destroy() {
             gosAudio::destroyAudio(*it);
     }
     audioList_.clear();
-    musicCache.clear();
-    musicCacheBytes = 0;
-    musicCacheFull = false;
+    musicPaths.clear();
 
     Mix_CloseAudio();
     Mix_Quit();
@@ -260,9 +257,14 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
     if(res_type == gosAudio_StreamedFile) {
         ZoneScopedN("Audio.Stream.LoadFile");
 
-        if (auto cached = g_sound_engine->musicCache.find(file_name); cached != g_sound_engine->musicCache.end()) {
-            const auto& [path, music] = *cached;
-            auto* audio = gosAudio::makeAudio(dst_fmt, dst_channels, dst_freq, music.data, music.size);
+        if (g_sound_engine->musicPaths.contains(file_name)) {
+            auto stream = MusicStream::open(file_name, dst_freq, dst_channels);
+            if (!stream) { *hgosaudio = nullptr; return; }
+            // A silent carrier lets SDL keep per-channel volume, pause and pan.
+            auto silence = std::make_shared<uint8_t[]>(4096);
+            auto* audio = gosAudio::makeAudio(dst_fmt, dst_channels, dst_freq, std::move(silence), 4096);
+            audio->stream = std::move(stream);
+            audio->musicPath = file_name;
             g_sound_engine->addAudio(audio);
             *hgosaudio = audio;
             return;
@@ -406,35 +408,15 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
 }
 
 bool gosAudio_PreloadMusic(std::string_view path) {
-    ZoneScopedN("Audio.Music.Predecode");
     if (!g_sound_engine || path.empty()) return false;
-    const std::string file_name(path);
-    if (g_sound_engine->musicCache.contains(file_name)) return true;
-    if (g_sound_engine->musicCacheFull) return false;
-    HGOSAUDIO handle = nullptr;
-    gosAudio_CreateResource(&handle, gosAudio_StreamedFile, file_name.c_str());
-    if (!handle) return false;
-    const auto size = handle->mix_chunk_.alen;
-    const bool fits = size <= SoundEngine::MUSIC_CACHE_LIMIT - g_sound_engine->musicCacheBytes;
-    if (fits) {
-        g_sound_engine->musicCache.emplace(file_name, SoundEngine::CachedMusic{handle->data(), size});
-        g_sound_engine->musicCacheBytes += size;
-    } else {
-        // Large mod catalogs exceed the bounded PCM cache. Stop predecoding at
-        // capacity instead of decoding and discarding the rest of the catalog.
-        // Uncached tracks retain the normal streamed-file playback path.
-        g_sound_engine->musicCacheFull = true;
-        MC2_LOG(Audio, Info, "music predecode cache full: {} tracks, {} bytes", g_sound_engine->musicCache.size(), g_sound_engine->musicCacheBytes);
-    }
-    gosAudio_DestroyResource(&handle);
-    return fits;
+    g_sound_engine->musicPaths.emplace(path);
+    return true;
 }
 
 void gosAudio_ClearMusicCache() {
     if (!g_sound_engine) return;
-    g_sound_engine->musicCache.clear();
-    g_sound_engine->musicCacheBytes = 0;
-    g_sound_engine->musicCacheFull = false;
+    // Live streams own their decoders and survive catalog release.
+    g_sound_engine->musicPaths.clear();
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -453,6 +435,7 @@ void __stdcall gosAudio_DestroyResource(HGOSAUDIO* handle)
     for (int i = 0; i < SoundEngine::NUM_CHANNELS; ++i) {
         if (channels[i].hAudio == audio) {
             Mix_HaltChannel(i);
+            g_sound_engine->channelStreams[i].reset();
             channels[i].hAudio = nullptr;
             channels[i].ePlayMode = gosAudio_Stop;
         }
@@ -579,8 +562,22 @@ void __stdcall gosAudio_SetChannelPlayMode( int Channel, enum gosAudio_PlayMode 
         {
             gosAudio* audio = static_cast<gosAudio*>(ci->hAudio);
             if(audio) {
-                int loops = ci->ePlayMode == gosAudio_Loop  ? -1 : 0;
+                Mix_HaltChannel(Channel);
+                auto& stream = g_sound_engine->channelStreams[Channel];
+                stream.reset();
+                if (!audio->musicPath.empty()) {
+                    stream = audio->stream ? std::move(audio->stream) :
+                        MusicStream::open(audio->musicPath.c_str(),
+                            g_sound_engine->getFrequency(), g_sound_engine->getNumChannels());
+                    if (!stream) { ci->ePlayMode = gosAudio_Stop; break; }
+                }
+                int loops = stream || ci->ePlayMode == gosAudio_Loop ? -1 : 0;
+                if (stream) stream->setLoop(ci->ePlayMode == gosAudio_Loop);
                 Mix_PlayChannel(Channel, &audio->mix_chunk_, loops);
+                if (stream) Mix_RegisterEffect(Channel,
+                    [](int, void* bytes, int length, void* context) {
+                        static_cast<MusicStream*>(context)->read({static_cast<std::byte*>(bytes), static_cast<size_t>(length)});
+                    }, nullptr, stream.get());
                 // SDL removes effects when a chunk finishes or is halted; GOS sliders persist.
                 gosAudio_SetChannelSlider(Channel, gosAudio_Panning, ci->fPanning);
             }
@@ -599,6 +596,7 @@ void __stdcall gosAudio_SetChannelPlayMode( int Channel, enum gosAudio_PlayMode 
         case gosAudio_Stop:
         {
             Mix_HaltChannel(Channel);
+            g_sound_engine->channelStreams[Channel].reset();
             break;
         }
     }
@@ -615,6 +613,8 @@ gosAudio_PlayMode __stdcall gosAudio_GetChannelPlayMode( int Channel )
         return gosAudio_PlayOnce;
     }
     int playing = Mix_Playing(Channel);
+    const auto& stream = g_sound_engine->channelStreams[Channel];
+    if (stream && stream->ended()) return gosAudio_Stop;
     return playing ? ci->ePlayMode : gosAudio_Stop;
 }
 

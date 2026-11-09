@@ -19,6 +19,8 @@
 
 // HDRI-BC6H-1: BC6H sidecar upload via KtxLoader (GL-free loader, BC6H blocks).
 #include "../../RenderCore/KtxLoader.h"
+#include "../../mclib/texture_assets.h"
+#include "../../mclib/file.h"
 #include "../../3rdparty/bcdec/bcdec.h"
 #include "Gates/gate.h"
 #include "Gates/render_options.h"
@@ -92,6 +94,18 @@ static bool hdriBc6hOn()
 {
     static const bool on = true;
     return on;
+}
+
+// Use the same overlay/FST provider as the cooked-sidecar decision.
+static int loadSourceExr(float** pixels, int* w, int* h, mc2::czstring path, const char** error)
+{
+    File source;
+    if (source.open(path) != NO_ERR) return TINYEXR_ERROR_CANT_OPEN_FILE;
+    const long size = source.fileSize();
+    if (size <= 0 || size > 512 * 1024 * 1024) return TINYEXR_ERROR_INVALID_DATA;
+    std::vector<unsigned char> bytes(static_cast<size_t>(size));
+    if (source.read(bytes.data(), size) != size) return TINYEXR_ERROR_INVALID_DATA;
+    return LoadEXRFromMemory(pixels, w, h, bytes.data(), bytes.size(), error);
 }
 
 // Derive sidecar path: replace trailing ".exr" with ".ktx2".
@@ -203,10 +217,10 @@ bool decodeHdriSource(mc2::czstring path, float* outSunAzGL, bool* outSunValid, 
     };
     if (hdriBc6hOn()) {
         char sidecarPath[1024];
-        RenderCore::KtxImage img;
-        if (deriveSidecarKtx2(path, sidecarPath, sizeof(sidecarPath)) &&
-            RenderCore::ktxLoadRgba8(sidecarPath, img) && img.isCompressed &&
-            (img.vkFormat == 143 || img.vkFormat == 144)) {
+        auto cooked = mc2::textures::loadCookedSidecar(path);
+        if (deriveSidecarKtx2(path, sidecarPath, sizeof(sidecarPath)) && cooked && cooked->isCompressed &&
+            (cooked->vkFormat == 143 || cooked->vkFormat == 144)) {
+            auto& img = *cooked;
             const size_t count = img.mipCount > 1 && img.mipByteOffsets.size() > 1
                 ? static_cast<size_t>(img.mipByteOffsets[1]) : img.pixels.size();
             const int cap = mc2::options::current().baseQuality == 0 ? 512 : 1024;
@@ -242,9 +256,14 @@ bool decodeHdriSource(mc2::czstring path, float* outSunAzGL, bool* outSunValid, 
                 outCpu->levels.emplace_back(img.pixels.begin(), img.pixels.begin() + static_cast<std::ptrdiff_t>(count));
                 outCpu->dims.emplace_back(img.width, img.height);
             }
-            if (outSunAzGL) {
+            if (outSunAzGL && img.hasSunMetadata) {
+                if (img.sunAzimuth) {
+                    *outSunAzGL = *img.sunAzimuth;
+                    if (outSunValid) *outSunValid = true;
+                }
+            } else if (outSunAzGL) {
                 float* pixels = nullptr; int w = 0, h = 0; const char* error = nullptr;
-                if (LoadEXR(&pixels, &w, &h, path, &error) == TINYEXR_SUCCESS) scanSun(pixels, w, h);
+                if (loadSourceExr(&pixels, &w, &h, path, &error) == TINYEXR_SUCCESS) scanSun(pixels, w, h);
                 if (pixels) free(pixels);
                 if (error) FreeEXRErrorMessage(error);
             }
@@ -253,7 +272,7 @@ bool decodeHdriSource(mc2::czstring path, float* outSunAzGL, bool* outSunValid, 
         }
     }
     float* pixels = nullptr; int w = 0, h = 0; const char* error = nullptr;
-    const int result = LoadEXR(&pixels, &w, &h, path, &error);
+    const int result = loadSourceExr(&pixels, &w, &h, path, &error);
     if (result != TINYEXR_SUCCESS || !pixels || w <= 0 || h <= 0 ||
         w > static_cast<int>(RenderCore::kKtxMaxEdge) || h > static_cast<int>(RenderCore::kKtxMaxEdge)) {
         MC2_DIAGFE(stderr, "[HDRI_SKY v1] enabled=0 reason=decode_failed path=%s error=%s\n", path, error ? error : "invalid_extent");

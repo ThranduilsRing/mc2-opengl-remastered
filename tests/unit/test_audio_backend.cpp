@@ -2,6 +2,7 @@
 #include "doctest.h"
 #include "gameos.hpp"
 #include "gameos_music_cache.h"
+#include "../../GameOS/gameos/music_stream.h"
 #include "alloc_probe.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mixer.h>
@@ -145,7 +146,7 @@ TEST_CASE("AudioBackend/mixed PCM preserves center volume and pans independently
                 left[0], right[0], left[1], right[1], left[2], right[2], left[3], right[3]);
 }
 
-TEST_CASE("AudioBackend/predecoded music owns PCM across handles and cache release") {
+TEST_CASE("AudioBackend/two music slots stream independently across catalog release") {
     AudioDevice device;
     REQUIRE(gos_CreateAudio());
     const auto path = std::filesystem::temp_directory_path() /
@@ -155,7 +156,7 @@ TEST_CASE("AudioBackend/predecoded music owns PCM across handles and cache relea
         ~RemoveFile() { std::error_code error; std::filesystem::remove(path, error); }
     } cleanup{path};
     const auto name = path.string();
-    CHECK_FALSE(gosAudio_PreloadMusic(name.c_str())); // Failed loads must be retryable.
+    REQUIRE(gosAudio_PreloadMusic(name.c_str())); // Registration does no file IO.
     Clip original;
     SDL_RWops* file = SDL_RWFromFile(name.c_str(), "wb");
     REQUIRE(file != nullptr);
@@ -167,7 +168,6 @@ TEST_CASE("AudioBackend/predecoded music owns PCM across handles and cache relea
     SDL_RWwrite(file, original.pcm.data(), sizeof(original.pcm), 1); SDL_RWclose(file);
     REQUIRE(gosAudio_PreloadMusic(name.c_str()));
     REQUIRE(gosAudio_PreloadMusic(name.c_str()));
-    REQUIRE(std::filesystem::remove(path)); // Subsequent resource creation must perform no file I/O.
     HGOSAUDIO first = nullptr, second = nullptr;
     gosAudio_CreateResource(&first, gosAudio_StreamedFile, name.c_str());
     gosAudio_CreateResource(&second, gosAudio_StreamedFile, name.c_str());
@@ -177,15 +177,151 @@ TEST_CASE("AudioBackend/predecoded music owns PCM across handles and cache relea
     gosAudio_SetChannelSlider(1, gosAudio_Volume, 1.0f);
     gosAudio_SetChannelSlider(1, gosAudio_Panning, 0.0f);
     gosAudio_SetChannelPlayMode(1, gosAudio_Loop);
+    gosAudio_SetChannelSlider(0, gosAudio_Volume, 1.0f);
+    gosAudio_SetChannelSlider(0, gosAudio_Panning, -1.0f);
+    gosAudio_SetChannelPlayMode(0, gosAudio_Loop);
+    gosAudio_SetChannelSlider(1, gosAudio_Panning, 1.0f);
+    Capture both;
+    REQUIRE(both.record());
+    CHECK(both.mean(0) > 1000);
+    CHECK(both.mean(1) > 1000);
     gosAudio_DestroyResource(&first);
     gosAudio_ClearMusicCache();
     CHECK(gosAudio_GetChannelPlayMode(1) == gosAudio_Loop);
     Capture capture;
     REQUIRE(capture.record());
-    CHECK(capture.mean(0) > 1000);
-    CHECK(capture.mean(0) == doctest::Approx(capture.mean(1)).epsilon(0.03));
+    CHECK(capture.mean(0) < 1);
+    CHECK(capture.mean(1) > 1000);
+    // GOS resources may be shared by channels too. Starting the same handle
+    // again must not destroy a decoder still used by the other callback.
+    gosAudio_AssignResourceToChannel(0, second);
+    gosAudio_SetChannelPlayMode(0, gosAudio_Loop);
+    Capture shared;
+    REQUIRE(shared.record());
+    CHECK(shared.mean(0) > 1000);
+    CHECK(shared.mean(1) > 1000);
     gosAudio_DestroyResource(&second);
+    CHECK(gosAudio_GetChannelPlayMode(0) == gosAudio_Stop);
+    CHECK(gosAudio_GetChannelPlayMode(1) == gosAudio_Stop);
+    REQUIRE(std::filesystem::remove(path));
     HGOSAUDIO missing = nullptr;
     gosAudio_CreateResource(&missing, gosAudio_StreamedFile, name.c_str());
     CHECK(missing == nullptr);
+}
+
+TEST_CASE("AudioBackend/stream prebuffers bounded chunks and loops without a gap") {
+    AudioDevice device;
+    REQUIRE(gos_CreateAudio());
+    const auto path = std::filesystem::temp_directory_path() /
+        ("mc2-stream-loop-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + ".wav");
+    struct Cleanup { std::filesystem::path path; ~Cleanup() { std::filesystem::remove(path); } } cleanup{path};
+    // Three stereo frames force multiple EOF boundaries inside one mixer buffer.
+    const std::array<short, 6> samples{1000,2000,3000,4000,5000,6000};
+    SDL_RWops* file = SDL_RWFromFile(path.string().c_str(), "wb");
+    REQUIRE(file != nullptr);
+    SDL_RWwrite(file, "RIFF", 1, 4); SDL_WriteLE32(file, 36 + sizeof(samples));
+    SDL_RWwrite(file, "WAVEfmt ", 1, 8); SDL_WriteLE32(file, 16);
+    SDL_WriteLE16(file, 1); SDL_WriteLE16(file, 2); SDL_WriteLE32(file, 22050);
+    SDL_WriteLE32(file, 88200); SDL_WriteLE16(file, 4); SDL_WriteLE16(file, 16);
+    SDL_RWwrite(file, "data", 1, 4); SDL_WriteLE32(file, sizeof(samples));
+    SDL_RWwrite(file, samples.data(), sizeof(samples), 1); SDL_RWclose(file);
+    auto stream = MusicStream::open(path.string().c_str(), 22050, 2);
+    REQUIRE(stream);
+    auto other = MusicStream::open(path.string().c_str(), 22050, 2);
+    REQUIRE(other);
+    std::array<short, 2> frame{};
+    REQUIRE(stream->read(std::as_writable_bytes(std::span(frame))) == sizeof(frame));
+    CHECK(frame[0] == 1000);
+    std::array<short, 6> independent{};
+    REQUIRE(other->read(std::as_writable_bytes(std::span(independent))) == sizeof(independent));
+    CHECK(independent == samples);
+    REQUIRE(stream->read(std::as_writable_bytes(std::span(frame))) == sizeof(frame));
+    CHECK(frame[0] == 3000);
+    other.reset();
+    stream = MusicStream::open(path.string().c_str(), 22050, 2);
+    REQUIRE(stream);
+    stream->setLoop(true);
+    // Exactly the prebuffered cycles: no dependency on scheduling the worker.
+    std::array<short, 6 * MusicStream::PrebufferChunks> out{};
+    CHECK(stream->read(std::as_writable_bytes(std::span(out))) == sizeof(out));
+    for (size_t i = 0; i < out.size(); ++i) CHECK(out[i] == samples[i % samples.size()]);
+    CHECK_FALSE(stream->ended());
+    stream.reset();
+    stream = MusicStream::open(path.string().c_str(), 22050, 2);
+    REQUIRE(stream);
+    CHECK(stream->read(std::as_writable_bytes(std::span(out))) == sizeof(samples));
+    CHECK(stream->ended());
+    for (size_t i = samples.size(); i < out.size(); ++i) CHECK(out[i] == 0);
+}
+
+TEST_CASE("AudioBackend/catalog beyond old PCM cache never decodes at registration") {
+    AudioDevice device;
+    REQUIRE(gos_CreateAudio());
+    // None of these files exists. A full-decode fallback would fail immediately.
+    for (int i = 0; i < 4096; ++i)
+        REQUIRE(gosAudio_PreloadMusic("missing-music-" + std::to_string(i) + ".wav"));
+    HGOSAUDIO missing = nullptr;
+    gosAudio_CreateResource(&missing, gosAudio_StreamedFile, "missing-music-4095.wav");
+    CHECK(missing == nullptr);
+    gosAudio_ClearMusicCache();
+}
+
+TEST_CASE("AudioBackend/music prebuffer does not decode the declared full track") {
+    AudioDevice device;
+    REQUIRE(gos_CreateAudio());
+    const auto path = std::filesystem::temp_directory_path() /
+        ("mc2-stream-bounded-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + ".wav");
+    struct Cleanup { std::filesystem::path path; ~Cleanup() { std::filesystem::remove(path); } } cleanup{path};
+    SDL_RWops* file = SDL_RWFromFile(path.string().c_str(), "wb");
+    REQUIRE(file);
+    constexpr Uint32 declaredBytes = 1024u * 1024u * 1024u;
+    SDL_RWwrite(file, "RIFF", 1, 4); SDL_WriteLE32(file, 36 + declaredBytes);
+    SDL_RWwrite(file, "WAVEfmt ", 1, 8); SDL_WriteLE32(file, 16);
+    SDL_WriteLE16(file, 1); SDL_WriteLE16(file, 2); SDL_WriteLE32(file, 22050);
+    SDL_WriteLE32(file, 88200); SDL_WriteLE16(file, 4); SDL_WriteLE16(file, 16);
+    SDL_RWwrite(file, "data", 1, 4); SDL_WriteLE32(file, declaredBytes);
+    // A sparse one-GiB catalog track: bounded startup only touches the first queue.
+    std::array<short, 32768> pcm;
+    pcm.fill(2345);
+    SDL_RWwrite(file, pcm.data(), sizeof(pcm), 1);
+    REQUIRE(SDL_RWseek(file, 44 + declaredBytes - 1, RW_SEEK_SET) > 0);
+    SDL_RWwrite(file, "\0", 1, 1); SDL_RWclose(file);
+    const ScopedLeakCheck allocations;
+    auto stream = MusicStream::open(path.string().c_str(), 22050, 2);
+    REQUIRE(stream);
+    // The complete PCM would require 1 GiB; all queue and decoder allocations
+    // together must stay below 1 MiB, regardless of catalog/track length.
+    CHECK(allocations.bytesDelta() < 1024 * 1024);
+    std::array<short, MusicStream::ChunkBytes / 2 * MusicStream::PrebufferChunks> out{};
+    CHECK(stream->read(std::as_writable_bytes(std::span(out))) == sizeof(out));
+    for (short sample : out) CHECK(sample == 2345);
+}
+
+TEST_CASE("AudioBackend/Microsoft ADPCM music decodes and loops as resident PCM") {
+    AudioDevice device;
+    REQUIRE(gos_CreateAudio());
+    const auto path = std::filesystem::temp_directory_path() /
+        ("mc2-stream-adpcm-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + ".wav");
+    struct Cleanup { std::filesystem::path path; ~Cleanup() { std::filesystem::remove(path); } } cleanup{path};
+    SDL_RWops* file = SDL_RWFromFile(path.string().c_str(), "wb");
+    REQUIRE(file);
+    SDL_RWwrite(file, "RIFF", 1, 4); SDL_WriteLE32(file, 90);
+    SDL_RWwrite(file, "WAVEfmt ", 1, 8); SDL_WriteLE32(file, 50);
+    SDL_WriteLE16(file, 2); SDL_WriteLE16(file, 1); SDL_WriteLE32(file, 22050);
+    SDL_WriteLE32(file, 44100); SDL_WriteLE16(file, 8); SDL_WriteLE16(file, 4);
+    SDL_WriteLE16(file, 32); SDL_WriteLE16(file, 4); SDL_WriteLE16(file, 7);
+    const std::array<short, 14> coefficients{256,0, 512,-256, 0,0, 192,64, 240,0, 460,-208, 392,-232};
+    for (short coefficient : coefficients) SDL_WriteLE16(file, static_cast<Uint16>(coefficient));
+    SDL_RWwrite(file, "fact", 1, 4); SDL_WriteLE32(file, 4); SDL_WriteLE32(file, 4);
+    SDL_RWwrite(file, "data", 1, 4); SDL_WriteLE32(file, 8);
+    const Uint8 predictor = 0, codes = 0;
+    SDL_RWwrite(file, &predictor, 1, 1); SDL_WriteLE16(file, 16);
+    SDL_WriteLE16(file, 1000); SDL_WriteLE16(file, 1000); SDL_RWwrite(file, &codes, 1, 1);
+    SDL_RWclose(file);
+    auto stream = MusicStream::open(path.string().c_str(), 22050, 2);
+    REQUIRE(stream);
+    stream->setLoop(true);
+    std::array<short, 8 * MusicStream::PrebufferChunks> out{};
+    CHECK(stream->read(std::as_writable_bytes(std::span(out))) == sizeof(out));
+    for (short sample : out) CHECK(sample == 1000);
 }

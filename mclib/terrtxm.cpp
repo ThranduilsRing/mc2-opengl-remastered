@@ -308,6 +308,10 @@ long TerrainTextures::init (mc2::czstring fileName, mc2::czstring baseName)
 	// (it has the most hits at the preferred size, or none anywhere). One probe per type, load time only.
 	{
 		static const int kEdges[] = { 16, 32, 64, 128, 256, 512, 1024 };
+		int terrainTypeCount = 0;
+		for (int i = 0; i < numTypes; ++i)
+			if (types[i].terrainName && (!i || types[i].terrainId != types[0].terrainId))
+				++terrainTypeCount;
 		auto hitsAt = [&](int edge) {
 			int hits = 0;
 			for (int i=0;i<numTypes;i++)
@@ -318,20 +322,20 @@ long TerrainTextures::init (mc2::czstring fileName, mc2::czstring baseName)
 				mc2::fmt::to_buf(probePath,"{}{:d}" PATH_SEPARATOR "",mc2::fmt::safe(texturePath),mc2::fmt::as_i32(edge));
 				FullPathFileName probeName;
 				probeName.init(probePath,types[i].terrainName,".tga");
-				File probe;
-				if (probe.open(probeName) == NO_ERR)
-				{
-					probe.close();
+				// Availability uses the same mod/loose/FST ladder without inflating
+				// packed textures that this resolution may never use.
+				if (fileExists(probeName))
 					++hits;
-				}
 			}
 			return hits;
 		};
 		int bestEdge = TERRAIN_TXM_SIZE;
 		int bestHits = hitsAt(TERRAIN_TXM_SIZE);
+		// A complete preferred set cannot be beaten; ties retain the preference.
+		const bool preferredComplete = bestHits == terrainTypeCount;
 		for (int edge : kEdges)
 		{
-			if (edge == TERRAIN_TXM_SIZE)
+			if (preferredComplete || edge == TERRAIN_TXM_SIZE)
 				continue;
 			const int hits = hitsAt(edge);
 			if (hits > bestHits || (hits == bestHits && hits > 0 && bestEdge != TERRAIN_TXM_SIZE))
