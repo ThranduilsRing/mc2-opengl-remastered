@@ -6,7 +6,7 @@
 #
 # Rule 1 — CONFINEMENT: FastFileFind( / elfHash( call sites may exist ONLY in
 #   the chokepoint surface {mclib/file.cpp, mclib/fastfile.cpp/.h,
-#   mclib/ffile.cpp, mclib/fst_hash.cpp/.h} (tests/unit/ and tools/ are not
+#   mclib/ffile.cpp, mclib/vfs.cpp, mclib/fst_hash.cpp/.h} (tests/unit/ and tools/ are not
 #   scanned). A new game-code caller bypassing the normalized funnel is red.
 #
 # Rule 2 — PER-FILE COUNT RATCHET: raw read-mode opens (fopen "r*",
@@ -50,7 +50,7 @@ rule1_confinement() {
     grep -rEn '(FastFileFind|elfHash)[[:space:]]*\(' $dirs \
         --include='*.cpp' --include='*.h' --include='*.hpp' 2>/dev/null \
         | grep -Ev '^[^:]*:[0-9]+:[[:space:]]*(//|\*)' \
-        | grep -Ev 'mclib/(file|fastfile|ffile|fst_hash)\.(cpp|h):' \
+        | grep -Ev 'mclib/(file|fastfile|ffile|vfs|fst_hash)\.(cpp|h):' \
         || true
 }
 

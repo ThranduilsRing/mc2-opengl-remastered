@@ -812,13 +812,13 @@ fi
 # costs seconds instead of ~340s. The rows below are NOT re-indented on purpose:
 # indenting 640 lines would bury a four-line change in a 640-line diff on the
 # most contended file in this repo.
-if [ "$SELFTEST_RENDER" -eq 1 ]; then
-    _selftest_rows
-else
 [ -n "$JOBS" ] || JOBS="$(_default_jobs)"
 if [ "$JOBS" -gt 1 ]; then PARALLEL=1; fi
 # The outer board owns the host budget; each active row gets one worker.
 export MC2_TEST_JOBS=1
+if [ "$SELFTEST_RENDER" -eq 1 ]; then
+    _selftest_rows
+else
 # A --selftest child must never re-enter the FULL board. One dropped flag on the
 # fail_reason_selftest row below turns this file into a fork bomb, so it is
 # refused structurally rather than by remembering.

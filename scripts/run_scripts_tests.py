@@ -120,6 +120,9 @@ def main() -> int:
             continue
         bad += 1
         print(f"FAIL: {mod} (rc={rc}) {' '.join(failed[:5])}")
+        if rc == 124:
+            print(tail)
+            continue  # a bounded timeout is already a verdict, not a reason to run the hang again
         p = subprocess.run([sys.executable, "-B", "-m", "pytest", "-q", "-p", "no:cacheprovider", "--tb=short", mod],
                            cwd=rtt.ROOT, capture_output=True, text=True, timeout=rtt.TIMEOUT_S,
                            **console_child.child_kwargs(redirected=True))

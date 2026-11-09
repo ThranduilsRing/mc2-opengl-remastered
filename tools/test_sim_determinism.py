@@ -97,7 +97,7 @@ def test_cli_selects_install_for_runner_and_fingerprint(monkeypatch, tmp_path, c
     assert launched == [expected]
     assert deployed == ([] if command == "pairs-until-fail" else [expected])
     assert fingerprints == ([] if command == "pairs-until-fail" else [expected])
-    assert baselines == ([] if command == "pairs-until-fail" else [{"digest": expected}])
+    assert baselines == ([] if command == "pairs-until-fail" else [{"digest": expected}] * 2)  # both streams are pinned
 
 
 @pytest.mark.parametrize("install,target", [

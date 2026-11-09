@@ -18,3 +18,4 @@
 8	mclib/terrain_init.cpp
 1	mclib/terrtxm2_bake.cpp
 1	mclib/terrtxm2_load.cpp
+6	mclib/vfs.cpp

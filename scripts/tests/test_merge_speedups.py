@@ -144,6 +144,7 @@ def test_contained_batch_refreshes_window_receipt(tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize('jobs', [1, 6])
+@pytest.mark.timeout(120)
 def test_contract_board_owns_inner_worker_budget(tmp_path, jobs):
     from pathlib import Path
     script = Path(ROOT, 'scripts/check-contracts.sh').read_text()
@@ -306,6 +307,7 @@ def test_deploy_clean_refusal_explains_rebuild(monkeypatch, tmp_path, capsys):
 
 
 @pytest.mark.parametrize("jobs", [1, 6])
+@pytest.mark.timeout(120)
 def test_contracts_collect_all_red_rows(jobs):
     result = subprocess.run([lm.git_bash(), "scripts/check-contracts.sh", "--selftest-render", f"-j{jobs}"],
                             cwd=ROOT, capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
@@ -796,10 +798,10 @@ def test_parallel_gate_respects_inherited_batch_and_failed_deploy(monkeypatch):
 
 
 @pytest.mark.parametrize("fail", [False, True])
-def test_stock_copy_is_private_and_always_removed(tmp_path, fail):
+def test_stock_copy_is_private_and_always_removed(deploy_tmp_path, fail):
     import merge_gate as gate
     import tempfile
-    with tempfile.TemporaryDirectory(prefix="stock-copy-test-", dir=tmp_path) as work:
+    with tempfile.TemporaryDirectory(prefix="stock-copy-test-", dir=deploy_tmp_path) as work:
         tmp_path = gate.Path(work)
         install = tmp_path / "install"
         (install / "data").mkdir(parents=True)
@@ -933,6 +935,7 @@ def test_resolution_proof_uses_effective_capture_size_and_keeps_unpinned_window(
 
 @pytest.mark.parametrize("generator,failure", [("Ninja", ""), ("Visual Studio", ""), ("missing", ""),
                                                ("Ninja-fallback", ""), ("Ninja-fallback", "build"), ("Ninja-fallback", "native")])
+@pytest.mark.timeout(120)
 def test_unit_runner_engine_cache_layout_and_required_coverage(tmp_path, generator, failure):
     from pathlib import Path
     root = tmp_path / "repo"

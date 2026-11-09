@@ -129,13 +129,13 @@ def load_ledger() -> dict[str, str]:
 def run_module(mod: str, env=None) -> tuple[str, int, list[str], str]:
     """Run one module; retry ONCE when it failed without naming a test.
 
-    A non-zero exit with no FAILED/ERROR node id is an infrastructure hiccup
+    A non-zero exit with no FAILED/ERROR node id (except a timeout) is an infrastructure hiccup
     (measured: a transient WinError 2 during collection while ~16 contract rows
     ran in parallel), not a test verdict. A real test failure is deterministic
     and is never retried.
     """
     res = _run_module_once(mod, env)
-    if res[1] != 0 and not res[2]:
+    if res[1] not in (0, 124) and not res[2]:
         res = _run_module_once(mod, env)
     return res
 

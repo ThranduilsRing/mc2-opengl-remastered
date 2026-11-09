@@ -72,12 +72,13 @@ def test_isolated_run_revokes_before_executing_so_a_crash_keeps_publish_refused(
 
     def run():  # off the main thread, so main() installs no watchdog / atexit lease hooks in the test process
         try:
-            gate.main(["--isolated-verdict", "--proofs-dir", str(tmp_path / "proof")])
+            gate.main(["--isolated-verdict", "--base", HEAD, "--proofs-dir", str(tmp_path / "proof")])
         except RuntimeError:
             crashed.append(True)
     t = threading.Thread(target=run)
     t.start()
-    t.join()
+    t.join(timeout=10)
+    assert not t.is_alive(), "isolated gate did not reach the injected crash"
     assert crashed
     assert json.loads((tmp_path / gate.ISOLATED_MARK).read_text())["verdict"] == "RUNNING"
     assert gate.publish(HEAD) == 1 and not ran

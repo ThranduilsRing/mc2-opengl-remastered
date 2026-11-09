@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
@@ -104,6 +105,7 @@ def test_split_path_selftest():
     _assert_pass(subprocess.run([sys.executable, "scripts/check-split-path-contracts.py", "--self-test"], **OPTS, **console_child.child_kwargs(redirected=True)))
 
 
+@pytest.mark.timeout(120)
 def test_path_norm_selftest():
     # Fork-heavy sh pipeline: 2.7 s idle, 231 s at Idle priority under full CPU load.
     _assert_pass(subprocess.run(["sh", "scripts/check-path-normalization.sh", "--self-test"], **OPTS, **console_child.child_kwargs(redirected=True)))
@@ -174,6 +176,7 @@ def test_review_pack_registry_guard():
     _assert_pass(subprocess.run([sys.executable, "scripts/build_review_pack.py", "--selftest"], **OPTS, **console_child.child_kwargs(redirected=True)))
 
 
+@pytest.mark.timeout(120)
 def test_fail_reason_selftest():
     _assert_pass(subprocess.run([git_bash(), "scripts/check-contracts.sh", "--selftest"], **OPTS, **console_child.child_kwargs(redirected=True)))
 

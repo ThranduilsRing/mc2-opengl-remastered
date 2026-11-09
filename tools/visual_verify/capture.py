@@ -53,6 +53,7 @@ from pathlib import Path
 
 _THIS = Path(__file__).resolve()
 ROOT = _THIS.parents[2]  # repo root (tools/visual_verify/capture.py -> up 2)
+sys.path.insert(0, str(_THIS.parent))  # sibling ab also resolves when capture is imported by a driver
 sys.path.insert(0, str(ROOT / "scripts"))
 import run_visual_capture as rvc  # noqa: E402  (the hardened launcher we build on)
 import mc2_env_pin as env_pin  # noqa: E402  (CAPTURE-ENV-PIN-1 declared-env parsing)

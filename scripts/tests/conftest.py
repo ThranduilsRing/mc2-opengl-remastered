@@ -26,6 +26,19 @@ os.environ.setdefault("MC2_HOST_LEASE_PATH", os.path.join(tempfile.gettempdir(),
 import pytest  # noqa: E402
 
 
+@pytest.fixture
+def deploy_tmp_path(tmp_path):
+    """Deploy fixtures must exercise permitted installs, never the system-drive refusal."""
+    if os.name == "nt" and tmp_path.drive.casefold() == os.environ.get("SystemDrive", "C:").casefold():
+        from pathlib import Path
+        scratch = Path("G:/mc2-tmp")
+        scratch.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix="deploy-test-", dir=scratch) as work:
+            yield Path(work)
+    else:
+        yield tmp_path
+
+
 @pytest.fixture(autouse=True)
 def _no_inherited_gate_flag(monkeypatch):
     monkeypatch.delenv("MC2_IN_GATE", raising=False)
