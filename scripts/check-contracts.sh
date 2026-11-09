@@ -168,7 +168,14 @@ REASONS=()
 # Report timing overruns without turning the runtime budget into a gate.
 BUDGET_SEC=5
 
-_now_ms() { date +%s%N 2>/dev/null | cut -c1-13; }
+_now_ms() {
+    if [ -n "${EPOCHREALTIME:-}" ]; then
+        local stamp=${EPOCHREALTIME/./}
+        printf '%s' "${stamp:0:13}"
+    else
+        date +%s%N 2>/dev/null | cut -c1-13
+    fi
+}
 
 # ---------------------------------------------------------------------------
 # DUPLICATE REGISTRATION GUARD (PROVENANCE-FORGERY-CLOSE-1)
@@ -260,19 +267,22 @@ FAILLOG_DIR=""
 # heuristic and says so: the bounded block below the table always carries the
 # rest, so a bad guess costs a glance, never the diagnosis.
 _reason_digest() {          # $1 = captured output, $2 = rc  -> one line on stdout
-    local out="$1" rc="$2" line=""
-    if printf '%s\n' "$out" | grep -q '^Traceback'; then
-        # A CRASHED checker. "Traceback (most recent call last):" is not the
-        # reason; the exception on the last line is.
-        line="$(printf '%s\n' "$out" | grep -vE '^[[:space:]]*$' | tail -n 1)" || true
-    else
-        line="$(printf '%s\n' "$out" \
-            | grep -m1 -E '(^|[^[:alnum:]_])(FAIL|ERROR|VIOLATION|MISMATCH|Traceback)')" || true
-        if [ -z "$line" ]; then
-            line="$(printf '%s\n' "$out" | grep -vE '^[[:space:]]*$' | tail -n 1)" || true
+    local out="$1" rc="$2" line="" last="" first="" traceback=0
+    # Built-ins keep synthetic shell fixtures bounded on Windows, where each
+    # grep/sed/date process costs far more than the formatting work itself.
+    while IFS= read -r line; do
+        [[ "$line" =~ [^[:space:]] ]] || continue
+        last=$line
+        [[ "$line" == Traceback* ]] && traceback=1
+        if [ -z "$first" ] && [[ "$line" =~ (^|[^[:alnum:]_])(FAIL|ERROR|VIOLATION|MISMATCH|Traceback) ]]; then
+            first=$line
         fi
-    fi
-    line="$(printf '%s' "$line" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+    done <<< "$out"
+    line=${first:-$last}
+    # A traceback's final exception is more useful than its header.
+    [ "$traceback" -eq 0 ] || line=$last
+    line=${line#"${line%%[![:space:]]*}"}
+    line=${line%"${line##*[![:space:]]}"}
     if [ -z "$line" ]; then
         # Not a cosmetic case. A check that fails and says NOTHING is a defect in
         # that check, and this line is the only place anyone would ever see it.
@@ -812,13 +822,13 @@ fi
 # costs seconds instead of ~340s. The rows below are NOT re-indented on purpose:
 # indenting 640 lines would bury a four-line change in a 640-line diff on the
 # most contended file in this repo.
-if [ "$SELFTEST_RENDER" -eq 1 ]; then
-    _selftest_rows
-else
 [ -n "$JOBS" ] || JOBS="$(_default_jobs)"
 if [ "$JOBS" -gt 1 ]; then PARALLEL=1; fi
 # The outer board owns the host budget; each active row gets one worker.
 export MC2_TEST_JOBS=1
+if [ "$SELFTEST_RENDER" -eq 1 ]; then
+    _selftest_rows
+else
 # A --selftest child must never re-enter the FULL board. One dropped flag on the
 # fail_reason_selftest row below turns this file into a fork bomb, so it is
 # refused structurally rather than by remembering.

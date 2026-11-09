@@ -73,8 +73,10 @@ def test_the_capture_driver_env_carries_the_declared_backend(tmp_path):
 
 
 @pytest.mark.parametrize("drew,fails", [("vulkan", False), ("gl", True)])
-def test_the_sweep_fails_on_a_backend_mismatch(tmp_path, drew, fails):
+def test_the_sweep_fails_on_a_backend_mismatch(tmp_path, monkeypatch, drew, fails):
     capture = _load("tools/visual_verify/capture.py", "vv_capture_backend_under_test")
+    import ab
+    monkeypatch.setattr(ab, "payload_identity", lambda install: {"commit": "a" * 40, "payload": {}})
     cap_rvc = capture.rvc
     sidecar = VK_SIDECAR if drew == "vulkan" else GL_SIDECAR
     problems = cb.check("vulkan", [("pose", sidecar)])

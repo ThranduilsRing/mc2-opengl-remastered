@@ -777,6 +777,7 @@ int main() {
 #include <string_view>
 #include <vector>
 #include "mclib/mc2format.h"
+#include "mclib/mc2_czstring.h"
 #define gosASSERT(x) assert(x)
 #define PAUSE(x) assert(false)
 constexpr int NO_ERR = 0;

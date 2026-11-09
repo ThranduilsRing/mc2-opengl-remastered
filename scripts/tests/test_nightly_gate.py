@@ -102,7 +102,9 @@ def test_promote_refuses_a_partial_that_skipped_a_required_nightly_stage(tmp_pat
     (d / "gate-verdict.json").write_text(json.dumps(dict(verdict="PARTIAL", failed=[], written=time.time(), tier=1, executed=ran)))
     assert any("player-path" in w for w in f(str(tmp_path)))
     (d / "gate-verdict.json").write_text(json.dumps(dict(verdict="PARTIAL", failed=[], written=time.time())))
-    assert f(str(tmp_path))   # no recorded tier
+    assert f(str(tmp_path)) == []   # legacy verdicts without a tier retain pre-p31 acceptance
+    (d / "gate-verdict.json").write_text(json.dumps(dict(verdict="PARTIAL", failed=[], written=time.time(), tier=0)))
+    assert f(str(tmp_path))   # a modern verdict explicitly recording no nightly tier is refused
 
 
 def test_nightly_passes_the_window_and_weekly_refuses_without_one(monkeypatch, capsys):

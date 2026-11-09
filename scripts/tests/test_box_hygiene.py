@@ -11,6 +11,8 @@ import time
 
 import pytest
 
+pytestmark = pytest.mark.timeout(120)  # bound shell fixtures and reap their descendants via the repo watchdog
+
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools"))
 sys.path.insert(0, str(ROOT / "tools" / "box" / "filler"))

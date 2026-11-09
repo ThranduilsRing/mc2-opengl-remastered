@@ -10,6 +10,30 @@ import module_test_cache as mtc  # noqa: E402
 import pytest  # noqa: E402
 
 
+def test_timed_out_module_is_not_retried(monkeypatch):
+    import run_tools_tests as runner
+    calls = []
+    def timed_out(module, env):
+        calls.append(module)
+        return module, 124, [], "timed out"
+    monkeypatch.setattr(runner, "_run_module_once", timed_out)
+    assert runner.run_module("test_hang.py")[1] == 124
+    assert calls == ["test_hang.py"]
+
+
+def test_scripts_timeout_reports_without_diagnostic_rerun(monkeypatch, capsys):
+    import run_scripts_tests as runner
+    monkeypatch.setattr(sys, "argv", ["run_scripts_tests.py"])
+    monkeypatch.setattr(runner, "discover", lambda: ["test_hang.py"])
+    monkeypatch.setattr(runner, "load_ownership", lambda: {"aggregate_owner": "scripts_tests", "tests": []})
+    monkeypatch.setattr(runner.rtt, "run_all", lambda *a: [("test_hang.py", 124, [], "timed out after 600s")])
+    def unexpected(*a, **k):
+        pytest.fail("a timed-out module must not be run again for diagnostics")
+    monkeypatch.setattr(runner.subprocess, "run", unexpected)
+    assert runner.main() == 1
+    assert "timed out after 600s" in capsys.readouterr().out
+
+
 @pytest.fixture(autouse=True)
 def _private_cache_dir(tmp_path, monkeypatch):
     """The cache file is shared across worktrees by default; these tests must not read or write the real one."""
