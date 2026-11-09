@@ -1,0 +1,14 @@
+[
+  {"name": "acg_asphalt_021", "category": 1,
+   "metadata": {"authors": [], "license": "CC0", "source": "ambientcg", "link": "https://ambientcg.com/view?id=Asphalt021", "name": "Asphalt 021", "maps": ["basecolor", "metallic", "roughness"]}},
+  {"name": "cc0_metal_fixture", "category": 6,
+   "metadata": {"authors": ["fixture"], "license": "CC0", "source": "texturecan", "link": "", "name": "Fixture Metal", "maps": ["basecolor", "metallic", "roughness"]}},
+  {"name": "2136_basic_steel", "category": 6,
+   "metadata": {"authors": [], "license": "CC BY-NC-ND 2.0", "source": "deschaintre_2020", "link": "", "name": "2136 Basic Steel", "maps": ["basecolor"]}},
+  {"name": "deschaintre_cc0_trap", "category": 6,
+   "metadata": {"authors": [], "license": "CC0", "source": "deschaintre_2018", "link": "", "name": "Excluded subset even if labelled CC0", "maps": ["basecolor"]}},
+  {"name": "ccby_concrete", "category": 1,
+   "metadata": {"authors": ["someone"], "license": "CC-BY 4.0", "source": "sharetextures", "link": "", "name": "CC-BY concrete", "maps": ["basecolor"]}},
+  {"name": "no_license_wood", "category": 12,
+   "metadata": {"authors": [], "license": "", "source": "texturecan", "link": "", "name": "unlabelled", "maps": []}}
+]

@@ -652,3 +652,30 @@ def test_truncation_collision_flagged():
     b = "x" * 23 + "_right"
     assert any(c == "RUNTIME_NODE_NAME_TRUNC" for _, c, _ in validate._truncation_collisions([a, b]))
     assert not validate._truncation_collisions([a, "other"])
+
+
+def test_neural_latent_role_is_linear_bc7_box_mips_and_leaves_other_roles_alone(tmp_path):
+    r = texcook.ROLES["neural_latent"]
+    assert (r.srgb, r.vk_format, r.texconv_format, r.mip) == (False, texcook.VK_BC7_UNORM, "BC7_UNORM", "linear")
+    assert texcook.ROLES["orm"] == r and set(texcook.ROLES) == {"base_color", "emissive", "normal", "orm", "neural_latent"}
+    rng = np.random.default_rng(5)
+    img = rng.integers(0, 256, (16, 16, 4), dtype=np.uint8)
+    a, b = texcook.mip_chain(img, "neural_latent"), texcook.mip_chain(img, "orm")
+    assert len(a) == 5 and all(np.array_equal(x, y) for x, y in zip(a, b))
+    assert a[1].shape == (8, 8, 4) and a[-1].shape == (1, 1, 4)
+    # raw (uncompressed) cook is deterministic; alpha is a latent channel, never coverage-adjusted
+    d1 = texcook.cook_ktx2(img, "neural_latent", compress=False, cache_dir=None)
+    assert d1 == texcook.cook_ktx2(img, "neural_latent", compress=False, cache_dir=None)
+    out = tmp_path / "lat.ktx2"
+    out.write_bytes(d1)
+    texcook.record_cook(out, "00", {"role": "neural_latent"}, compress=False)
+    rec = json.loads((tmp_path / "cook.json").read_text())["assets"]["lat.ktx2"]
+    assert rec["params"]["role"] == "neural_latent" and rec["outputHash"] == texcook.provenance.sha256(d1)
+
+
+@pytest.mark.skipif(not texcook.TEXCONV.is_file(), reason="texconv not installed")
+def test_neural_latent_bc7_is_deterministic_nogpu():
+    img = np.random.default_rng(6).integers(0, 256, (8, 8, 4), dtype=np.uint8)
+    d1 = texcook.cook_ktx2(img, "neural_latent", compress=True, cache_dir=None)
+    assert d1 == texcook.cook_ktx2(img, "neural_latent", compress=True, cache_dir=None)
+    assert texcook.read_ktx2(d1)[0] == texcook.VK_BC7_UNORM

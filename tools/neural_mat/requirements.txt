@@ -1,0 +1,5 @@
+numpy
+torch
+Pillow
+pyarrow
+flip-evaluator
