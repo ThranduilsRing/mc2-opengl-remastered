@@ -330,38 +330,90 @@ def _exclusive(value=None):
     return os.environ.get("MC2_HOST_LEASE_EXCLUSIVE") == "1" if value is None else value
 
 
-def apply_affinity(proc) -> None:
-    """Pin an engine or its launcher; descendants inherit the core reservation."""
-    records = [rec for _, rec in _records() if _ours(rec)]
-    if not records:
-        return
+def _game_mask(records, ours) -> int:
+    """Borrow both game cores only while no other live lease holds one."""
     mask = 0
-    for rec in records:
+    for rec in ours:
         mask |= rec.get("affinity_mask", 3 << (4 + rec.get("slot", 0) * 2))
     if not redirected() and sys.platform == 'win32':
         reserved = sum(1 << c for c in game_cores())
-        mask = (mask & reserved) or reserved
+        mask = ((mask & reserved) or reserved) if any(r not in ours for r in records) else reserved
+    return mask
+
+
+def _set_affinity(handle, pid, mask) -> None:
     if sys.platform == "win32":
         import ctypes
         from ctypes import wintypes
         kernel = ctypes.WinDLL("kernel32", use_last_error=True)
         kernel.SetProcessAffinityMask.argtypes = [wintypes.HANDLE, ctypes.c_size_t]
         kernel.SetProcessAffinityMask.restype = wintypes.BOOL
-        if not kernel.SetProcessAffinityMask(int(proc._handle), mask):
-            proc.kill()
+        if not kernel.SetProcessAffinityMask(handle, mask):
             raise ctypes.WinError(ctypes.get_last_error())
         kernel.GetProcessAffinityMask.argtypes = [wintypes.HANDLE, ctypes.POINTER(ctypes.c_size_t), ctypes.POINTER(ctypes.c_size_t)]
         kernel.GetProcessAffinityMask.restype = wintypes.BOOL
         actual, system = ctypes.c_size_t(), ctypes.c_size_t()
-        if not kernel.GetProcessAffinityMask(int(proc._handle), ctypes.byref(actual), ctypes.byref(system)):
-            proc.kill()
+        if not kernel.GetProcessAffinityMask(handle, ctypes.byref(actual), ctypes.byref(system)):
             raise ctypes.WinError(ctypes.get_last_error())
         if actual.value != mask:
-            proc.kill()
             raise RuntimeError(f"engine affinity mismatch: requested {mask:#x}, applied {actual.value:#x}")
     elif hasattr(os, "sched_setaffinity"):
-        os.sched_setaffinity(proc.pid, {i for i in range(16) if mask & (1 << i)})
-    print(f"[host-affinity] pid={proc.pid} mask={mask:#x} logical_cpus={mask.bit_count()}", file=sys.stderr, flush=True)
+        os.sched_setaffinity(pid, {i for i in range(16) if mask & (1 << i)})
+    priority = "BELOW_NORMAL" if sys.platform == "win32" else "inherited"
+    print(f"[host-affinity] pid={pid} mask={mask:#x} logical_cpus={mask.bit_count()} priority={priority}", file=sys.stderr, flush=True)
+
+
+def _refresh_game_affinity() -> None:
+    """Called under the queue lock: narrow a running sole game before admitting a neighbour."""
+    if redirected() or sys.platform != "win32" or os.environ.get("MC2_NO_CPU_PIN"):
+        return
+    import ctypes
+    from ctypes import wintypes
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    kernel.OpenProcess.restype = wintypes.HANDLE
+    kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+    live = [(p, r) for p, r in _records() if _holder_alive(r)]
+    for path, rec in live:
+        mask = _game_mask([r for _, r in live], [rec])
+        for child in rec.get("engines", []):
+            pid = child["pid"]
+            if child.get("created") is None or child_registry.process_create_time(pid) != child["created"]:
+                continue
+            handle = kernel.OpenProcess(0x1200, False, pid)  # SET_INFORMATION | QUERY_LIMITED_INFORMATION
+            if not handle:
+                if child_registry.pid_alive(pid):
+                    raise ctypes.WinError(ctypes.get_last_error())
+                continue
+            try:
+                # Recheck after opening: never change a reused PID's affinity.
+                if child_registry.process_create_time(pid) == child["created"]:
+                    _set_affinity(handle, pid, mask)
+            finally:
+                kernel.CloseHandle(handle)
+
+
+def apply_affinity(proc) -> None:
+    """Pin an engine or its launcher and remember its identity for lease transitions."""
+    if os.environ.get("MC2_NO_CPU_PIN"):
+        print(f"[host-affinity] pid={proc.pid} mask=unrestricted priority=BELOW_NORMAL pin=off", file=sys.stderr, flush=True)
+        return
+    with _queue_lock():
+        live = [(p, r) for p, r in _records() if _holder_alive(r)]
+        ours = [(p, r) for p, r in live if _ours(r)]
+        if not ours:
+            return
+        try:
+            _set_affinity(int(proc._handle) if sys.platform == "win32" else None, proc.pid,
+                          _game_mask([r for _, r in live], [r for _, r in ours]))
+            if not redirected() and sys.platform == "win32":
+                path, rec = ours[0]
+                children = [c for c in rec.get("engines", []) if child_registry.process_create_time(c["pid"]) == c.get("created")]
+                children.append({"pid": proc.pid, "created": child_registry.process_create_time(proc.pid)})
+                _write_record(path, dict(rec, engines=children))
+        except BaseException:
+            proc.kill()
+            raise
 
 
 class HostLeaseBusy(RuntimeError):
@@ -555,6 +607,7 @@ def release() -> None:
     """Give the lease back if this process holds it."""
     with _queue_lock():
         _remove_records([(p, r) for p, r in _records() if r and r.get("pid") == os.getpid()])
+        _refresh_game_affinity()
 
 
 _registered = False
@@ -703,6 +756,11 @@ def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None,
                                                        affinity_mask=sum(affinity_mask(j) for j in range(slot_count())) if exclusive else affinity_mask(i)))
                         allocated.append((slot_path(i), _read(slot_path(i))))
                     if eligible:
+                        try:
+                            _refresh_game_affinity()
+                        except BaseException:
+                            _remove_records(allocated)
+                            raise
                         queue.pop(0)
                 _write_record(path, {"tickets": queue})
                 if eligible:
@@ -861,6 +919,7 @@ def release_batch(tag: str) -> Tuple[bool, Optional[dict]]:
         records = _records()
         matched = [(p, r) for p, r in records if r and r.get("batch") == tag]
         _remove_records(matched)
+        _refresh_game_affinity()
         return bool(matched), matched[0][1] if matched else records[0][1]
 
 

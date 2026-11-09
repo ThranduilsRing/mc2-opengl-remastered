@@ -18,6 +18,81 @@ from scripts.smoke_lib import host_lease, nofocus  # noqa: E402
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
 
 
+@pytest.mark.parametrize("slot", [0, 1])
+def test_sole_game_borrows_both_cores_and_two_games_split(monkeypatch, slot):
+    monkeypatch.setattr(host_lease, "redirected", lambda: False)
+    monkeypatch.setattr(host_lease.sys, "platform", "win32")
+    monkeypatch.setattr(host_lease, "game_masks", lambda: [0x3, 0xC])
+    records = [{"slot": i, "affinity_mask": m} for i, m in enumerate([0x3, 0xC])]
+    assert host_lease._game_mask([records[slot]], [records[slot]]) == 0xF
+    assert host_lease._game_mask(records, [records[slot]]) == [0x3, 0xC][slot]
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows live affinity and priority")
+def test_running_game_narrows_and_expands_without_touching_reused_pid(monkeypatch, capsys):
+    import ctypes
+    from ctypes import wintypes
+
+    monkeypatch.delenv("MC2_NO_CPU_PIN", raising=False)
+    monkeypatch.setattr(host_lease, "redirected", lambda: False)
+    monkeypatch.setattr(host_lease, "game_masks", lambda: [0x3, 0xC])
+    monkeypatch.setattr(host_lease, "_holder_alive", lambda r: bool(r))
+    records = []
+    monkeypatch.setattr(host_lease, "_records", lambda: records)
+    proc = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"],
+                            **console_child.child_kwargs(redirected=True, creationflags=subprocess.BELOW_NORMAL_PRIORITY_CLASS,
+                                                         stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+    try:
+        rec = {"affinity_mask": 3, "engines": [{"pid": proc.pid, "created": host_lease.child_registry.process_create_time(proc.pid)}]}
+        records.append((None, rec))
+        kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel.GetProcessAffinityMask.argtypes = [wintypes.HANDLE, ctypes.POINTER(ctypes.c_size_t), ctypes.POINTER(ctypes.c_size_t)]
+        kernel.GetPriorityClass.argtypes = [wintypes.HANDLE]
+        kernel.GetPriorityClass.restype = wintypes.DWORD
+        for neighbour, expected in [(False, 0xF), (True, 0x3), (False, 0xF)]:
+            records[:] = [(None, rec)] + ([(None, {"affinity_mask": 0xC})] if neighbour else [])
+            host_lease._refresh_game_affinity()
+            actual, system = ctypes.c_size_t(), ctypes.c_size_t()
+            assert kernel.GetProcessAffinityMask(int(proc._handle), ctypes.byref(actual), ctypes.byref(system))
+            assert actual.value == expected
+            assert kernel.GetPriorityClass(int(proc._handle)) == subprocess.BELOW_NORMAL_PRIORITY_CLASS
+        rec["engines"][0]["created"] += 1
+        monkeypatch.setattr(host_lease, "_set_affinity", lambda *a: pytest.fail("touched reused PID"))
+        host_lease._refresh_game_affinity()
+        assert "mask=0xf logical_cpus=4 priority=BELOW_NORMAL" in capsys.readouterr().err
+        monkeypatch.setenv("MC2_NO_CPU_PIN", "1")
+        host_lease.apply_affinity(proc)
+        host_lease._refresh_game_affinity()
+        assert "pin=off" in capsys.readouterr().err
+    finally:
+        proc.kill()
+        proc.communicate(timeout=10)
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows creation flags")
+@pytest.mark.parametrize("engine", [False, True])
+@pytest.mark.parametrize("priority", [0, subprocess.BELOW_NORMAL_PRIORITY_CLASS, subprocess.ABOVE_NORMAL_PRIORITY_CLASS] if sys.platform == "win32" else [0])
+def test_engine_launch_stays_below_normal_priority(monkeypatch, engine, priority):
+    from types import SimpleNamespace
+    from scripts.smoke_lib import exe_guard
+
+    calls = []
+    proc = SimpleNamespace(pid=123)
+    monkeypatch.setattr(nofocus, "_vet_engine_exe", lambda *a: None)
+    monkeypatch.setattr(nofocus, "_hold_host_lease", lambda *a: None)
+    monkeypatch.setattr(nofocus, "_record_child", lambda *a: None)
+    monkeypatch.setattr(nofocus, "apply_env", lambda *a, **k: {})
+    monkeypatch.setattr(nofocus, "popen_kwargs", lambda **k: {key: val for key, val in k.items() if key != "show_window"})
+    monkeypatch.setattr(exe_guard, "engine_kind", lambda a: "game" if engine else None)
+    monkeypatch.setattr(host_lease, "held_device", lambda: None)
+    monkeypatch.setattr(host_lease, "apply_affinity", lambda p: calls.append(p))
+    monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: calls.append(k) or proc)
+    flags = subprocess.CREATE_NO_WINDOW | priority
+    assert nofocus.spawn(["mc2.exe" if engine else "helper.exe"], creationflags=flags) is proc
+    assert calls[0]["creationflags"] == (subprocess.CREATE_NO_WINDOW | subprocess.BELOW_NORMAL_PRIORITY_CLASS if engine else flags)
+    assert (proc in calls) == engine
+
+
 def test_real_host_partition_never_assigns_build_cores(monkeypatch):
     """The real PC: slot 0 = CPUs 0-1 (one physical core), slot 1 = CPUs 2-3; compiles get the other 12 CPUs."""
     monkeypatch.setattr(host_lease, 'redirected', lambda: False)
@@ -541,6 +616,7 @@ def test_slot_affinity_reaches_child_process(lease, monkeypatch, width, exclusiv
     import ctypes
     from ctypes import wintypes
 
+    monkeypatch.delenv("MC2_NO_CPU_PIN", raising=False)
     monkeypatch.setenv("MC2_HOST_CORES_PER_SLOT", str(width))
     host_lease.acquire("affinity", exclusive=exclusive)
     proc = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(20)"],
@@ -721,8 +797,8 @@ def test_gate_quiet_passes_the_gate_itself_and_its_children(lease, monkeypatch):
 
 def test_gpu_split_parse_and_one_lease_set(lease, monkeypatch):
     assert host_lease._parse_gpu_split("# c\nslot0=NVIDIA\nslot1 = AMD\n") == ("NVIDIA", "AMD")
-    with pytest.raises(ValueError, match="unknown key 'bogus'"):                         # p31: an unknown key is a hard error
-        host_lease._parse_gpu_split("slot0=NVIDIA\nbogus=1\n")
+    with pytest.raises(ValueError, match="unknown key 'bogus'"):
+        host_lease._parse_gpu_split("bogus=1\n")
     assert host_lease._parse_gpu_split("") == host_lease.GPU_SPLIT_DEFAULT == ("AMD", "NVIDIA")
     assert host_lease._parse_gpu_split("lane=NVIDIA\ngate=AMD\n") == ("NVIDIA", "AMD")        # old keys: lane = slot 0, gate = slot 1
     assert host_lease._parse_gpu_split("lane=NVIDIA\nslot0=AMD\n") == ("AMD", "NVIDIA")       # an explicit slotN wins
