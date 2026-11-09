@@ -690,3 +690,9 @@ endif()
 
 target_sources(mc2_tests PRIVATE test_tgl_registry.cpp)
 target_sources(mc2_tests PRIVATE test_content_error.cpp ${MC2_WORKTREE_ROOT}/mclib/content_error.cpp)
+
+mc2_height_slice(radio_playback code/gamesound.cpp
+    "void GameSoundSystem::playNoiseClip (void)" "// End of radio playback")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/radio_playback.inc" CONTENT "${radio_playback}")
+target_sources(mc2_tests PRIVATE test_radio_playback.cpp)
+set_source_files_properties(test_radio_playback.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
