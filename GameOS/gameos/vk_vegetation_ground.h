@@ -3,6 +3,7 @@
 #include "vk_frame_ring.h"
 #include "vulkan_ground_lighting.h"
 #include "vk_desc_write_cache.h"
+#include "ground_lighting_bindings.h"
 namespace mc2veg {
 // Fragment-only subset of the terrain layout: FS uses four SSBOs, VS stays at
 // three. Shadows use the shared VFX set 0; this set carries lighting only.
@@ -13,17 +14,18 @@ class GroundLighting {
     VkDescriptorSet sets_[mc2vk::kMaxFramesInFlight]{};
     mc2vk::DescWriteStamp stamps_[mc2vk::kMaxFramesInFlight]{};
     // 19 = LOCAL-LIGHTS-2 local-light shadow atlas, read by the pool loop.
-    static constexpr uint32_t bindings_[]{0, 2, 3, 4, 11, 12, 13, 16, 19};
-    static constexpr size_t kN = sizeof(bindings_) / sizeof(bindings_[0]);
+    std::array<uint32_t, 9> bindings_ = groundLightingBindings(false);
+    static constexpr size_t kN = groundLightingBindings(false).size();
 public:
     VkDescriptorSetLayout layout() const { return layout_.get(); }
     VkDescriptorSet set(uint32_t parity) const { return sets_[parity]; }
-    bool init(VkDevice device) {
+    bool init(VkDevice device, bool waterBake = false) {
+        bindings_ = groundLightingBindings(waterBake);
         VkDescriptorSetLayoutBinding bindings[kN]{};
         for (size_t k = 0; k < kN; ++k) {
             const uint32_t b = bindings_[k];
             const auto type = b == 0 ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC :
-                b == 4 ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER :
+                (b == 4 || b == 10) ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER :
                 b >= 11 && b <= 13 ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC :
                 VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             bindings[k] = {b, type, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr};
