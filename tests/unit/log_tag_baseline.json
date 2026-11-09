@@ -5113,6 +5113,16 @@
    "count": 1
   },
   {
+   "tag": "LOAD_TIMING",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "load",
+    "elapsed_ms"
+   ],
+   "count": 2
+  },
+  {
    "tag": "LOCAL_LIGHT_BEAM",
    "ver": 1,
    "stream": "stderr",
@@ -9336,6 +9346,16 @@
    "count": 1
   },
   {
+   "tag": "STARTUP",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "first_present_s",
+    "first_audio_queued_s"
+   ],
+   "count": 1
+  },
+  {
    "tag": "STARTUP_PRELOAD",
    "ver": -1,
    "stream": "stdout",
@@ -9418,16 +9438,6 @@
    "ver": -1,
    "stream": "stdout",
    "keys": [],
-   "count": 1
-  },
-  {
-   "tag": "STATIC_PROP_BAKE",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "note"
-   ],
    "count": 1
   },
   {
@@ -12629,6 +12639,7 @@
   "GPUPROPS",
   "GRAVEYARD",
   "HEARTBEAT",
+  "HOST_INFRA_ROWS",
   "INSTR",
   "ISO_DEPLOY",
   "LIGHT_CONTRACT",
