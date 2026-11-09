@@ -733,3 +733,8 @@ file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/repair_vehicle_acquire.inc" CO
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/repair_sensor_remove.inc" CONTENT "${repair_sensor_remove}")
 target_sources(mc2_tests PRIVATE test_repair_deploy.cpp)
 set_source_files_properties(test_repair_deploy.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
+mc2_height_slice(radio_playback code/gamesound.cpp
+    "void GameSoundSystem::playNoiseClip (void)" "// End of radio playback")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/radio_playback.inc" CONTENT "${radio_playback}")
+target_sources(mc2_tests PRIVATE test_radio_playback.cpp)
+set_source_files_properties(test_radio_playback.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")

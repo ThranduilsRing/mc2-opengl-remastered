@@ -411,6 +411,7 @@ void GameSoundSystem::update (void)
 		}
 #endif
 
+		wholeMsgDone = FALSE;
 		if (currentMessage->noise[currentFragment].requested)
 		{
 			playNoiseClip();
@@ -419,12 +420,12 @@ void GameSoundSystem::update (void)
 		else
 		{
 			playingNoise = FALSE;
-			if (currentMessage->data[currentFragment].playable())
-				playClip(currentMessage->data[currentFragment]);
+			// Consume the first speech fragment just as after an opening noise clip.
+			playNextDataClip();
+			currentFragment++;
 		}
-			
-		wholeMsgDone = FALSE;
 	}
 }
+// End of radio playback
 
 
