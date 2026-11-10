@@ -272,6 +272,11 @@ def main(argv=None) -> int:
                          "(suppress HUD + movie-mode letterbox/fade on BOTH backends) "
                          "so GL and VK captures are pixel-comparable. Default OFF "
                          "keeps GL captures byte-identical to before.")
+    ap.add_argument("--live-settle-sec", type=float, default=0.0, metavar="N",
+                    help="CAPTURE-LIVE-CLOCK: at each bookmark pose keep the sim clock running for N "
+                         "sim-seconds, then freeze and capture (time-driven effects such as water-reactive "
+                         "ripples get age > 0). Default 0 = sim frozen at the trigger, captures unchanged. "
+                         "Raise --duration for large N.")
     ap.add_argument("--no-fixed-clock", action="store_true",
                     help="disable the deterministic clock (captures NOT byte-stable)")
     ap.add_argument("--show-window", action="store_true")
@@ -345,6 +350,8 @@ def main(argv=None) -> int:
 
     if args.clean:
         args.env_declare.append("MC2_VISUAL_CAPTURE_CLEAN=1")
+    if args.live_settle_sec > 0:
+        args.env_declare.append(f"MC2_VISUAL_LIVE_SETTLE_SEC={args.live_settle_sec:g}")
     try:
         args.env_declare = list(args.env_declare) + env_pin.focus_declarations(args.focus, args.focus_zoom)
         declared_env = env_pin.parse_declarations(args.env_declare)
