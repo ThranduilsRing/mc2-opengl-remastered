@@ -75,8 +75,6 @@ PREC vec4 cameraPos;
 const float SKY_AMBIENT   = 0.18;
 const float WAVE_FREQ     = 0.030;
 const float WAVE_SPEED    = 6.0;
-const vec3  GLINT_TINT    = vec3(0.82, 0.88, 0.94);
-const float GLINT_THRESH  = 0.36;
 const float WAVE_FADE_NEAR = 9000.0;
 const float WAVE_FADE_FAR  = 40000.0;
 
@@ -150,12 +148,22 @@ PREC float vnoise(PREC vec2 uv){
 // Analytic sine slopes animated by time only (no history). Each train: (wind dir x, y, wavelength wu, slope amplitude
 // A*k); a train's slope variance is slope^2 / 2. Trains below the pixel footprint fade out of the normal and their
 // variance moves into the GGX roughness (LEAN-style), so distant water keeps a wide highlight instead of sparkling.
-const int   WAVE_TRAINS = 4;
+const int   WAVE_TRAINS = 12;
+// Two low-amplitude swells (420/640 wu, also carried by the vertex displacement) then ten short-crested components
+// (15-55 wu). Directions spread about +-45 degrees around the wind (22 deg), phase i * 2.39996 rad: all deterministic.
 const vec4  kWaveTrain[WAVE_TRAINS] = vec4[WAVE_TRAINS](
-    vec4(0.927, 0.375, 600.0, 0.055),   // all within +-8 degrees of the wind so crests stay parallel and readable
-    vec4(0.809, 0.588, 330.0, 0.06),
-    vec4(0.883, 0.469, 190.0, 0.07),
-    vec4(0.839, 0.545, 110.0, 0.07));
+    vec4(0.985, 0.174, 420.0, 0.030),
+    vec4(0.857, 0.515, 640.0, 0.030),
+    vec4(0.921, -0.391, 23.1, 0.050),
+    vec4(0.842, 0.539, 15.5, 0.050),
+    vec4(1.000, -0.031, 52.4, 0.050),
+    vec4(0.590, 0.808, 35.3, 0.050),
+    vec4(0.943, 0.334, 23.8, 0.050),
+    vec4(0.966, -0.257, 16.0, 0.050),
+    vec4(0.758, 0.653, 54.0, 0.050),
+    vec4(0.994, 0.111, 36.4, 0.050),
+    vec4(0.470, 0.883, 24.6, 0.050),
+    vec4(0.886, 0.463, 16.5, 0.050));
 const float WAVE_G           = 30.0;    // deep-water dispersion in wu/s^2: 760 wu swell ~60 wu/s, 150 wu chop ~27 wu/s
 const float WAVE_RESOLVE_LO  = 2.0;     // pixels per wavelength: at or below -> roughness only
 const float WAVE_RESOLVE_HI  = 6.0;     // pixels per wavelength: at or above -> fully in the normal
@@ -164,11 +172,9 @@ const float RIPPLE_SLOPE_VAR = 0.004;   // slope variance of the fine ripples on
 const float SUN_SPEC_GAIN    = 3.0;     // sun/moon specular scale at the default glint gain (0.30)
 const float LAMP_SPEC_GAIN   = 1.5;     // lamp/weapon pool-light specular scale at the default glint gain
 
-// crestOut: resolved crest ridge in 0..1 (sharpened wave height), for the crest shading, glint and foam breakup.
-PREC vec2 waterWaveSlope(PREC vec2 p, float t, float footprint, float gain, out float unresolvedVar, out float crestOut){
+PREC vec2 waterWaveSlope(PREC vec2 p, float t, float footprint, float gain, out float unresolvedVar){
     PREC vec2 s = vec2(0.0);
     unresolvedVar = 0.0;
-    float crestSum = 0.0, crestW = 0.0;
     for (int i = 0; i < WAVE_TRAINS; ++i) {
         vec4  w = kWaveTrain[i];
         float k = 6.2831853 / w.z;
@@ -176,13 +182,10 @@ PREC vec2 waterWaveSlope(PREC vec2 p, float t, float footprint, float gain, out 
         float a = w.w * gain;
         unresolvedVar += 0.5 * a * a * (1.0 - r * r);
         if (r > 0.0) {
-            PREC float ph = k * dot(w.xy, p) - sqrt(WAVE_G * k) * t + float(i) * 1.7;
+            PREC float ph = k * dot(w.xy, p) - sqrt(WAVE_G * k) * t + float(i) * 2.39996;
             s += w.xy * (a * r * cos(ph));
-            crestSum += r * pow(0.5 + 0.5 * sin(ph), 4.0);
         }
-        crestW += 1.0;
     }
-    crestOut = crestSum / crestW;
     return s;
 }
 
@@ -286,8 +289,8 @@ void main(void)
     // (default 0.22) and the glint strength follows the glint gain (default 0.30). Low/Potato keeps flat geometry:
     // every train goes to roughness. Before the coverage discard so the normal's derivatives stay defined.
     float      footprint = (uT._lightPad1 != 0) ? 1e9 : max(length(shoreDx), length(shoreDy));
-    float      waveVar, waveCrest;
-    PREC vec2  waveSlope = waterWaveSlope(WorldPos.xy, time, footprint, RIPPLE_GAIN / 0.22, waveVar, waveCrest);
+    float      waveVar;
+    PREC vec2  waveSlope = waterWaveSlope(WorldPos.xy, time, footprint, RIPPLE_GAIN / 0.22, waveVar);
     PREC vec3  waveN     = normalize(vec3(-waveSlope, 1.0));  // world-XZ wave trains only: no screen-space or noise gradient
     PREC vec3  vdir      = normalize(cameraPos.xyz - WorldPos);  // MC2 Z-up
     // Specular AA: the normal's own screen-space variance (Kaplanyan-Hoffman) on top of the unresolved train variance.
@@ -322,10 +325,7 @@ void main(void)
     PREC vec3  vertexLightRGB = Color.bgra.rgb * nightSky;
     PREC vec3  col = waterCol * max(vertexLightRGB, vec3(SKY_AMBIENT * nightSky))
                    + waterCol * SKY_AMBIENT * 0.5 * nightSky;
-    PREC float crest = waveCrest * 0.35;
-    col *= 1.0 + RIPPLE_GAIN * waveLOD * crest;
-    PREC float glint = smoothstep(0.22, 0.45, waveCrest);
-    col += glint * GLINT_GAIN * waveLOD * GLINT_TINT * nightSky;
+    // No crest or glint brightening: highlights come only from the sun/lamp specular on the perturbed normal.
     //PORT-END:waterBaseColor
     // A shallow wash rolls toward the coast and recedes in the SAME water draw.
     // Coverage and depth stay owned by the existing shore field: no new surface to z-fight.
@@ -336,7 +336,7 @@ void main(void)
         float coastPhase = dot(WorldPos.xy, vec2(0.003, 0.002));
         washReach = 12.0 + 30.0 * (0.5 + 0.5 * sin(time * 1.25 + coastPhase));
         shoreRipple = sin(shoreDistance * 0.18 + time * 1.8 + coastPhase) * 0.045;
-        foamBreakup = clamp(0.8 + (waveCrest - 0.2) * 0.6, 0.45, 1.0);
+        foamBreakup = 0.8;
     }
     float nearShore = 1.0 - smoothstep(36.0, 100.0, shoreDistance);
     float foam = 1.0 - smoothstep(2.0, 6.0 + foamAA, abs(shoreDistance - washReach));
