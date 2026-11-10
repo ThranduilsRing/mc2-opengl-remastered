@@ -309,6 +309,19 @@ def test_discard_archives_notes_and_acquire_writes_no_common_exclude(slot, tmp_p
         assert "notes/lane-state.md" in tar.getnames()
 
 
+def test_stale_excludes_are_stripped_on_acquire_idempotently(slot):
+    rc, p, _ = lane_slot.git(slot, "rev-parse", "--git-path", "info/exclude")
+    exclude = Path(p) if os.path.isabs(p) else Path(slot, p)
+    exclude.parent.mkdir(parents=True, exist_ok=True)
+    exclude.write_text("/sniff.dat\n.claude/agents/mc2-lane.md\nnotes/\n/keep/\n")
+    lane_slot.acquire("claude/lane-y", no_warm=True)
+    assert exclude.read_text() == "/sniff.dat\n/keep/\n"
+    assert lane_slot.strip_stale_excludes() is False
+    Path(slot, "notes").mkdir()
+    Path(slot, "notes", "x.md").write_text("n")
+    assert "notes/" in lane_slot.git(slot, "status", "--porcelain")[1]
+
+
 def test_acquire_refuses_when_registration_fails(slot, monkeypatch):
     monkeypatch.setattr(lane_registry, "register_lane", lambda *a, **k: (_ for _ in ()).throw(OSError("registry unavailable")))
     with pytest.raises(SystemExit, match="registration failed"):

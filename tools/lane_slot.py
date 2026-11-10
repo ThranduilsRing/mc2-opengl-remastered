@@ -49,6 +49,28 @@ def git(root, *args):
     return r.returncode, r.stdout.strip(), r.stderr.strip()
 
 
+STALE_EXCLUDES = (".claude/agents/mc2-lane.md", "notes/")   # hid notes-only worktrees (clean/free) and notes from untracked.tar
+
+
+def strip_stale_excludes(root=None):
+    """Remove STALE_EXCLUDES from the shared .git/info/exclude (idempotent). -> True when the file changed."""
+    rc, common, _ = git(root or MAIN_ROOT, "rev-parse", "--git-common-dir")
+    if rc:
+        return False
+    p = os.path.join(root or MAIN_ROOT, common, "info", "exclude")
+    try:
+        with open(p, newline="") as f:
+            lines = f.read().splitlines(keepends=True)
+    except OSError:
+        return False
+    keep = [ln for ln in lines if ln.strip() not in STALE_EXCLUDES]
+    if len(keep) == len(lines):
+        return False
+    with open(p, "w", newline="") as f:
+        f.writelines(keep)
+    return True
+
+
 def norm(p):
     return p.replace("\\", "/").rstrip("/").lower()
 
@@ -181,6 +203,7 @@ HOOK_SEEDED_FILE = ".claude/agents/mc2-lane.md"   # seeded into every worktree b
 
 
 def acquire(branch, base=None, reset_branch=False, no_warm=False):
+    strip_stale_excludes()
     claimed = claimed_worktrees()
     picked = pick_slot([slot_info(p, claimed) for p in SLOT_PATHS])
     if not picked:
@@ -355,6 +378,7 @@ def _gc(entries, hours):
 
 
 def status():
+    strip_stale_excludes()
     held = claims()
     print(f"{'slot':<8}{'branch':<44}{'clean':<7}{'claimed':<9}{'merged':<7}{'free':<6}claim")
     for p in SLOT_PATHS:
