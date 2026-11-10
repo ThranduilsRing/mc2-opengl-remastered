@@ -6,11 +6,76 @@
 
 #include "gameos.hpp"
 
+#include "mc2_czstring.h"
+#include "Gates/gate.h"
+#include "mc2fmt.h"
+#include "utils/mc2log.h"
+
+#include <cassert>
 #include <SDL2/SDL.h>
 #include "gos_input.h"
 
+// The one SDL window, owned by gos_render (gos_render.cpp / EditorGosRender.cpp). Platform reads it through
+// window() below and never stores a copy.
+extern SDL_Window* g_sdl_window;
+
+static bool g_gos_exit_game_os = false;
+
+// sebi 2026-04-22: when ExitGameOS/gos_TerminateApplication fires, the game
+// quietly stops at the top of the next frame with no visible error. This
+// shim logs the caller's stack so silent exits are debuggable. Gated on
+// env var MC2_TRACE_EXIT so release builds stay quiet by default.
+// (R1-window: moved unchanged from GameOS/gameos/gameos.cpp.)
+#ifdef _WIN32
+#include <windows.h>
+#include <dbghelp.h>
+static void mc2_log_exit_caller(mc2::czstring fn)
+{
+    static const bool s_trace = mc2::gate::get<"MC2_TRACE_EXIT">();
+    static bool s_once = false;
+    if (!s_trace) {
+        if (!s_once) mc2::fmt::print_err("[EXIT] {} called\n", mc2::fmt::safe(fn));
+        s_once = true;
+        return;
+    }
+    s_once = true;
+
+    ZoneScopedN("Shutdown.ExitStack");
+    mc2::fmt::print_err("[EXIT] {} called. Stack:\n", mc2::fmt::safe(fn));
+    HANDLE proc = GetCurrentProcess();
+    SymSetOptions(SYMOPT_LOAD_LINES | SYMOPT_DEFERRED_LOADS | SYMOPT_UNDNAME);
+    static bool s_sym_initialized = false;
+    if (!s_sym_initialized) { SymInitialize(proc, nullptr, TRUE); s_sym_initialized = true; }
+
+    void* frames[32];
+    USHORT n = CaptureStackBackTrace(1, 32, frames, nullptr);
+    for (USHORT i = 0; i < n; ++i) {
+        char symBuf[sizeof(SYMBOL_INFO) + 512];
+        SYMBOL_INFO* sym = reinterpret_cast<SYMBOL_INFO*>(symBuf);
+        sym->SizeOfStruct = sizeof(SYMBOL_INFO);
+        sym->MaxNameLen = 512;
+        DWORD64 disp64 = 0;
+        const char* symName = "?";
+        IMAGEHLP_LINE64 line{}; line.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
+        DWORD dispL = 0;
+        const char* fileName = "?"; DWORD lineNum = 0;
+        if (SymFromAddr(proc, (DWORD64)frames[i], &disp64, sym))
+            symName = sym->Name;
+        if (SymGetLineFromAddr64(proc, (DWORD64)frames[i], &dispL, &line)) {
+            fileName = line.FileName; lineNum = line.LineNumber;
+        }
+        mc2::fmt::print_err("  #{:02d}  {}  ({}:{:d})\n", mc2::fmt::as_i32(i), mc2::fmt::safe(symName), mc2::fmt::safe(fileName), mc2::fmt::as_u32(lineNum));
+    }
+    fflush(stderr);
+}
+#else
+static void mc2_log_exit_caller(const char*) {}
+#endif
+
 namespace mc2::platform {
 namespace {
+
+SDL_Window* window() { return g_sdl_window; }
 
 // loks like KEY_* enum contains everything, from scancodes to localized keys, e.g. it has GRAVE and APOSTROPHE but those are usually on the same physical button and valuse depends on localization
 // let's keep it like this for now and see later
@@ -329,6 +394,78 @@ int GetKeyStatus(int keyIndex)
 
     return static_cast<int>(KEY_FREE);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// R1-window: termination flag (was the static in gameos.cpp shared by ExitGameOS / gos_TerminateApplication /
+// gosExitGameOS).
+void RequestExit(const char* caller)
+{
+    g_gos_exit_game_os = true;
+    mc2_log_exit_caller(caller);
+}
+
+bool ExitRequested()
+{
+    return g_gos_exit_game_os;
+}
+
+void TerminateApplication()
+{
+    RequestExit("gos_TerminateApplication");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// R1-window: display queries (bodies unchanged from gos_render.cpp graphics::get_*; the window comes from g_sdl_window,
+// which is the window the renderer's handle wraps).
+int GetWindowDisplayIndex()
+{
+    SDL_Window* w = window();
+    assert(w);
+    return SDL_GetWindowDisplayIndex(w);
+}
+
+int GetNumDisplayModes(int displayIndex)
+{
+    return SDL_GetNumDisplayModes(displayIndex);
+}
+
+bool GetDisplayModeByIndex(int displayIndex, int modeIndex, int* width, int* height, int* bpp)
+{
+    assert(width && height && bpp);
+
+    SDL_DisplayMode dm;
+    if (SDL_GetDisplayMode(displayIndex, modeIndex, &dm) != 0) {
+        MC2_LOG(Render, Error, "SDL_GetDisplayMode failed: {}", mc2::fmt::safe(SDL_GetError()));
+        return false;
+    }
+
+    *width = dm.w;
+    *height = dm.h;
+    *bpp = SDL_BITSPERPIXEL(dm.format);
+    return true;
+}
+
+// gos_ProbeDrawableSize body (was renderer probeDrawableSize -> graphics::get_drawable_size): fresh SDL drawable size.
+bool ProbeDrawableSize(int* w, int* h)
+{
+    SDL_Window* win = window();
+    if (!win)
+        return false;
+    assert(w && h);
+    SDL_GetWindowSizeInPixels(win, w, h);
+    return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// R1-window: IME. The engine never implemented these; they are empty by design (the appearance struct is a GameOS
+// type, so it crosses this header as an opaque pointer).
+void EnableIME(bool) {}
+void ToggleIME(bool) {}
+void GetIMEAppearance(void*) {}
+void SetIMEAppearance(const void*) {}
+void PositionIME(std::uint32_t, std::uint32_t) {}
+void SetIMELevel(std::uint32_t) {}
+void FinalizeStringIME() {}
 
 
 } // namespace mc2::platform

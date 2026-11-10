@@ -11,6 +11,7 @@
 #include "vulkan_context.h"
 #include "vk_texture_residency.h"
 #include "utils/mc2log.h"
+#include "WindowInput.hpp"
 
 
 
@@ -400,9 +401,9 @@ bool __stdcall gos_GetHudResClampEnabled()
 // META-FIX design D: fresh drawable probe for the audit's staleness check.
 bool __stdcall gos_ProbeDrawableSize( int* w, int* h )
 {
-    if (!g_gos_renderer)
+    if (!g_gos_renderer || !g_gos_renderer->getRenderWindowHandle())
         return false;
-    return g_gos_renderer->probeDrawableSize(w, h);
+    return mc2::platform::ProbeDrawableSize(w, h);
 }
 
 void __stdcall gos_SetScreenMode( DWORD Width, DWORD Height, DWORD bitDepth/*=16*/, DWORD Device/*=0*/, bool disableZBuffer/*=0*/, bool AntiAlias/*=0*/, bool RenderToVram/*=0*/, bool GotoFullScreen/*=0*/, int DirtyRectangle/*=0*/, bool GotoWindowMode/*=0*/, bool EnableStencil/*=0*/, DWORD Renderer/*=0*/)
@@ -533,18 +534,18 @@ size_t __stdcall gos_GetMachineInformation( MachineInfo mi, int Param1/*=0*/, in
 int gos_GetWindowDisplayIndex()
 {   
     gosASSERT(g_gos_renderer);
-    
-    return graphics::get_window_display_index(g_gos_renderer->getRenderWindowHandle());
+
+    return mc2::platform::GetWindowDisplayIndex();
 }
 
 int gos_GetNumDisplayModes(int DisplayIndex)
 {
-    return graphics::get_num_display_modes(DisplayIndex);
+    return mc2::platform::GetNumDisplayModes(DisplayIndex);
 }
 
 bool gos_GetDisplayModeByIndex(int DisplayIndex, int ModeIndex, int* XRes, int* YRes, int* BitDepth)
 {
-    return graphics::get_display_mode_by_index(DisplayIndex, ModeIndex, XRes, YRes, BitDepth);
+    return mc2::platform::GetDisplayModeByIndex(DisplayIndex, ModeIndex, XRes, YRes, BitDepth);
 }
 
 

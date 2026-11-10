@@ -10,18 +10,20 @@
 // gos_GetResourceData, gos_OpenMemoryMappedFile/Close (only tool stubs), gos_ReadFileInBackground, gos_CloseBackgroundFile,
 // gos_SaveStringToRegistry, gos_CheckValidTGA.
 //
-// R1 would move (design table, domain Window/input and File, fate R; none of these moved in R0):
-//   Window/input: gos_GetMouseInfo, gos_SetMousePosition, gos_TestSetRawMouse, gos_SetScreenMode,
-//                 gos_ProbeDrawableSize, gos_GetWindowDisplayIndex, gos_GetNumDisplayModes,
-//                 gos_GetDisplayModeByIndex, gos_TerminateApplication, gos_UserExit, gos_AbortTermination,
-//                 gos_RunMainLoop, gos_EnableIME / ToggleIME / PositionIME / FinalizeStringIME /
-//                 SetIMELevel / SetIMEAppearance / GetIMEAppearance / SetIMEInsertMode
-//                 (mouse needs the UI canvas box from RenderCore first; window calls need g_sdl_window ownership)
-//   File:         gos_OpenResourceDLL, gos_CloseResourceDLL, gos_GetResourceString, gos_GetResourceData,
-//                 gos_GetFile, gos_OpenMemoryMappedFile, gos_CloseMemoryMappedFile, gos_ReadFileInBackground,
-//                 gos_CloseBackgroundFile, gos_LoadDataFromRegistry, gos_SaveDataToRegistry,
-//                 gos_SaveStringToRegistry, gos_GetUserDataDirectory, gos_CheckValidTGA
-//   Frozen network quarantine (N, not an input API): gos_Net*.
+// R1-window moved here (gos_* wrappers forward; window access goes through the extern g_sdl_window that gos_render owns,
+// read in one place, never copied):
+//   termination:  gos_TerminateApplication (RequestExit / ExitRequested also back ExitGameOS / gosExitGameOS, the exit-trace shim moved too)
+//   display:      gos_GetWindowDisplayIndex, gos_GetNumDisplayModes, gos_GetDisplayModeByIndex, gos_ProbeDrawableSize (the SDL part)
+//   IME:          gos_EnableIME / ToggleIME / PositionIME / FinalizeStringIME / SetIMELevel / SetIMEAppearance / GetIMEAppearance
+//                 (empty by design, as before)
+// R1-window left in place:
+//   gos_GetMouseInfo / gos_SetMousePosition / gos_TestSetRawMouse: they normalize by the UI canvas box (gos_Compute43Box,
+//     gos_render.h cursor policy), which is RenderCore state; moving them would pull RenderCore into Platform.
+//   gos_SetScreenMode: HUD-RES-CLAMP policy plus g_gos_renderer->setScreenMode (RenderCore); not a window primitive.
+//   gos_UserExit, gos_AbortTermination, gos_RunMainLoop, gos_SetIMEInsertMode: declared in gameos.hpp, no definition anywhere in
+//     the tree (nothing to move).
+//   gos_Net*: frozen (N).
+// R1-file moved to Platform/FileSystem.hpp (see above); gos_Net* stays frozen.
 #pragma once
 
 #include <cstdint>
@@ -36,5 +38,26 @@ const char* DescribeKey(std::uint32_t key);
 void KeyboardFlush();
 // gos_GetKeyStatus: gosEnum_KeyStatus value for a gosEnum_KeyIndex (mouse buttons are keys 1..5).
 int GetKeyStatus(int keyIndex);
+
+// Termination: sets the exit flag and logs the caller (MC2_TRACE_EXIT adds a stack).
+void RequestExit(const char* caller);
+bool ExitRequested();
+void TerminateApplication();
+
+// Display queries on the game window / desktop displays. GetWindowDisplayIndex needs the window to exist.
+int GetWindowDisplayIndex();
+int GetNumDisplayModes(int displayIndex);
+bool GetDisplayModeByIndex(int displayIndex, int modeIndex, int* width, int* height, int* bpp);
+// Fresh drawable size in pixels; false when there is no window yet.
+bool ProbeDrawableSize(int* w, int* h);
+
+// IME (no-ops). The appearance struct is a GameOS type and crosses as an opaque pointer.
+void EnableIME(bool enabledDisabled);
+void ToggleIME(bool activeInactive);
+void GetIMEAppearance(void* appearance);
+void SetIMEAppearance(const void* appearance);
+void PositionIME(std::uint32_t x, std::uint32_t y);
+void SetIMELevel(std::uint32_t imeLevel);
+void FinalizeStringIME();
 
 } // namespace mc2::platform

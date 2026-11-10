@@ -37,6 +37,7 @@
 #include "det_rng.h"          // DETERMINISTIC-RNG-1: GL-free LCG kernel
 #include "diagnostic_trace.h" // DETERMINISTIC-RNG-1: optional "RNG" JSONL trace
 #include "Gates/gate.h"
+#include "WindowInput.hpp"
 #include "mc2fmt.h"
 #include "FileSystem.hpp"
 #include "utils/mc2log.h"
@@ -74,66 +75,14 @@ void EnterWindowMode(void)
     Environment.fullScreen = false;
 }
 
-static bool g_gos_exit_game_os = false;
-
-// sebi 2026-04-22: when ExitGameOS/gos_TerminateApplication fires, the game
-// quietly stops at the top of the next frame with no visible error. This
-// shim logs the caller's stack so silent exits are debuggable. Gated on
-// env var MC2_TRACE_EXIT so release builds stay quiet by default.
-#ifdef _WIN32
-#include <windows.h>
-#include <dbghelp.h>
-static void mc2_log_exit_caller(mc2::czstring fn)
-{
-    static const bool s_trace = mc2::gate::get<"MC2_TRACE_EXIT">();
-    static bool s_once = false;
-    if (!s_trace) {
-        if (!s_once) mc2::fmt::print_err("[EXIT] {} called\n", mc2::fmt::safe(fn));
-        s_once = true;
-        return;
-    }
-    s_once = true;
-
-    ZoneScopedN("Shutdown.ExitStack");
-    mc2::fmt::print_err("[EXIT] {} called. Stack:\n", mc2::fmt::safe(fn));
-    HANDLE proc = GetCurrentProcess();
-    SymSetOptions(SYMOPT_LOAD_LINES | SYMOPT_DEFERRED_LOADS | SYMOPT_UNDNAME);
-    static bool s_sym_initialized = false;
-    if (!s_sym_initialized) { SymInitialize(proc, nullptr, TRUE); s_sym_initialized = true; }
-
-    void* frames[32];
-    USHORT n = CaptureStackBackTrace(1, 32, frames, nullptr);
-    for (USHORT i = 0; i < n; ++i) {
-        char symBuf[sizeof(SYMBOL_INFO) + 512];
-        SYMBOL_INFO* sym = reinterpret_cast<SYMBOL_INFO*>(symBuf);
-        sym->SizeOfStruct = sizeof(SYMBOL_INFO);
-        sym->MaxNameLen = 512;
-        DWORD64 disp64 = 0;
-        const char* symName = "?";
-        IMAGEHLP_LINE64 line{}; line.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
-        DWORD dispL = 0;
-        const char* fileName = "?"; DWORD lineNum = 0;
-        if (SymFromAddr(proc, (DWORD64)frames[i], &disp64, sym))
-            symName = sym->Name;
-        if (SymGetLineFromAddr64(proc, (DWORD64)frames[i], &dispL, &line)) {
-            fileName = line.FileName; lineNum = line.LineNumber;
-        }
-        mc2::fmt::print_err("  #{:02d}  {}  ({}:{:d})\n", mc2::fmt::as_i32(i), mc2::fmt::safe(symName), mc2::fmt::safe(fileName), mc2::fmt::as_u32(lineNum));
-    }
-    fflush(stderr);
-}
-#else
-static void mc2_log_exit_caller(const char*) {}
-#endif
-
+// R1-window: the exit flag and the MC2_TRACE_EXIT caller-stack shim live in Platform/WindowInput.cpp.
 void __stdcall ExitGameOS()
 {
-    g_gos_exit_game_os = true;
-    mc2_log_exit_caller("ExitGameOS");
+    mc2::platform::RequestExit("ExitGameOS");
 }
 
 bool gosExitGameOS() {
-    return g_gos_exit_game_os;
+    return mc2::platform::ExitRequested();
 }
 
 float frameRate = 30.0f; // apparently tiny geometry needs this
@@ -382,24 +331,31 @@ int __stdcall gos_rand()
 ////////////////////////////////////////////////////////////////////////////////
 void __stdcall gos_EnableIME(bool enabledDisabled)
 {
+    mc2::platform::EnableIME(enabledDisabled);
 }
 void _stdcall gos_ToggleIME(bool activeInactive)
 {
+    mc2::platform::ToggleIME(activeInactive);
 }
 void _stdcall gos_GetIMEAppearance(gosIME_Appearance* pia)
 {
+    mc2::platform::GetIMEAppearance(pia);
 }
 void _stdcall gos_SetIMEAppearance(const gosIME_Appearance* pia)
 {
+    mc2::platform::SetIMEAppearance(pia);
 }
 void _stdcall gos_PositionIME(DWORD x, DWORD y)
 {
+    mc2::platform::PositionIME(x, y);
 }
 void _stdcall gos_SetIMELevel(DWORD dwImeLevel)
 {
+    mc2::platform::SetIMELevel(dwImeLevel);
 }
 void _stdcall gos_FinalizeStringIME()
 {
+    mc2::platform::FinalizeStringIME();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -521,8 +477,7 @@ char* __stdcall gos_GetFormattedTime( WORD Hour/*=-1*/, WORD Minute/*=-1*/, WORD
 
 void __stdcall gos_TerminateApplication()
 {
-    g_gos_exit_game_os = true;
-    mc2_log_exit_caller("gos_TerminateApplication");
+    mc2::platform::TerminateApplication();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

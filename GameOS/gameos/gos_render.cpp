@@ -716,18 +716,7 @@ bool is_mode_supported(int width, int height, int bpp) {
 }
 
 //==============================================================================
-int get_window_display_index(RenderWindowHandle window)
-{
-    RenderWindow* rw = window;
-    assert(rw && rw->window_);
-    return SDL_GetWindowDisplayIndex(rw->window_);
-}
-
-//==============================================================================
-int get_num_display_modes(int display_index)
-{
-    return SDL_GetNumDisplayModes(display_index);
-}
+// get_window_display_index / get_num_display_modes / get_display_mode_by_index moved to Platform/WindowInput.cpp (R1-window).
 
 //==============================================================================
 bool get_desktop_display_mode(int display_index, int* width, int* height, int* bpp)
@@ -737,23 +726,6 @@ bool get_desktop_display_mode(int display_index, int* width, int* height, int* b
     SDL_DisplayMode dm;
     if (SDL_GetDesktopDisplayMode(display_index, &dm) != 0) {
         MC2_LOG(Render, Error, "SDL_GetDesktopDisplayMode failed: {}", mc2::fmt::safe(SDL_GetError()));
-        return false;
-    }
-
-    *width = dm.w;
-    *height = dm.h;
-    *bpp = SDL_BITSPERPIXEL(dm.format);
-    return true;
-}
-
-//==============================================================================
-bool get_display_mode_by_index(int display_index, int mode_index, int* width, int* height, int* bpp)
-{
-    assert(width && height && bpp);
-
-    SDL_DisplayMode dm;
-    if (SDL_GetDisplayMode(display_index, mode_index, &dm) != 0) {
-        MC2_LOG(Render, Error, "SDL_GetDisplayMode failed: {}", mc2::fmt::safe(SDL_GetError()));
         return false;
     }
 
