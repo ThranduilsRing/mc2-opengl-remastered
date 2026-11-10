@@ -321,7 +321,7 @@ struct Mc2VkOverlayFrame {         // GL-side per-frame overlay inputs (gameos_g
     float   artFlatExempt;         // always 0 (stock flat-pad multiply); kept for the push-constant layout
     float   mapHalfExtent;         // pp->getMapHalfExtent()
     int32_t biasLegacy;            // MC2_OVERLAY_BIAS_LEGACY
-    int32_t cementAdopt;           // MC2_OVERLAY_CEMENT_ADOPT (default 1)
+    int32_t cementAdopt;           // concrete adopt: 1 unless options.cfg StockOverlayConcrete
     int32_t seamFix;               // MC2_CEMENT_ATLAS_SEAM_FIX (default 1)
 };
 // True when the terrain island is armed (MC2_VK_TERRAIN_TIER1 family) and not declined.
