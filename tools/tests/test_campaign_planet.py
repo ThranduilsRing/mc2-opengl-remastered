@@ -40,3 +40,18 @@ def test_both_loader_formats_are_in_the_deploy_payload(monkeypatch):
     assert "data/art/gui/mcl_cm_5.tga" in GAME_DATA_PAYLOAD
     assert "data/art/gui/mcl_mn_4.png" in GAME_DATA_PAYLOAD
     assert "data/art/gui/mcl_mn_4.tga" in GAME_DATA_PAYLOAD
+
+
+def test_chrome_repack_of_the_marker_atlas_keeps_black_padding_transparent():
+    # The manifest re-packs this sheet at load from per-widget PNGs. RGB widgets with opaque black
+    # padding drew a translucent grey square behind the triangle (r1 capture); the sheet is RGBA
+    # and no widget carries opaque pure black.
+    import json
+    manifest = json.loads((ROOT / "data/art/ui/manifest.json").read_text(encoding="utf-8"))
+    assert manifest["sheets"]["mcl_cm_5"]["mode"] == "RGBA"
+    widgets = sorted((ROOT / "data/art/ui/mcl_cm_5").glob("*.png"))
+    assert len(widgets) == manifest["sheets"]["mcl_cm_5"]["rects"]
+    for path in widgets:
+        with Image.open(path) as im:
+            assert im.mode == "RGBA", path.name
+            assert all(a == 0 for r, g, b, a in im.getdata() if r == g == b == 0), path.name
