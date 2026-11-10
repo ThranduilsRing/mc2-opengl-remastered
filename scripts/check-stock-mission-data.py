@@ -104,6 +104,12 @@ PATH_EXEMPTIONS: dict[str, list[tuple[str, str]]] = {
          "deploy-tree cook destination, sibling of the ktx.exe tool path -- "
          "the external-tool / deploy-lane class this gate excludes on purpose"),
     ],
+    "tools/tree_retexture/gen_stock_trees.py": [
+        ("A:/Games/mc2-opengl/mc2-win64-v0.4c/data/tgl/128",
+         "PC-only cook INPUT (stock tree TGAs in the golden install, --stock-dir overrides); every output is checked "
+         "against the sha256 pins in data/kit/tree-upscale.json and deploy_payload.ensure_tree_upscale deletes a "
+         "non-matching one, so a wrong source tree cannot ship -- the deploy-lane cook class this gate excludes"),
+    ],
     "scripts/deploy_payload.py": [
         ("A:/Games/mc2-opengl-src/mc2srcdata",
          "deploy-lane payload source probe. KNOWN OPEN ITEM, not a clean "
