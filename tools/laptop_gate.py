@@ -390,7 +390,7 @@ def candidate_install(head=None):
 def r_pack(window):
     """tar of every file in the candidate's manifest that differs from the PC's v0.4 manifest (in/<W>/pc.manifest.csv)."""
     out = Path(G, "out", window)
-    cand = candidate_install(subprocess.run(["git", "-C", REPO, "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip() or None)
+    cand = candidate_install(subprocess.run(["git", "-C", REPO, "rev-parse", "HEAD"], capture_output=True, text=True, **console_child.child_kwargs(redirected=True)).stdout.strip() or None)
     delta = manifest_delta(manifest_rows(cand / ".deployed_manifest.csv"), manifest_rows(Path(G, "in", window, "pc.manifest.csv")))
     tarp = out / "payload.tar"
     with tarfile.open(tarp, "w") as tar:
