@@ -148,3 +148,16 @@ TEST_CASE("WaterReactive/rings are strong enough to read at the play camera, bou
     // Everything stays zero beyond the CPU tile footprint (no seams at tile borders).
     CHECK(glm::length(wr_profile({224.5f, 0}, {0, 0}, 40, 0.6f, 0, 1)) == 0);
 }
+
+#include "../../shaders/include/water_shallow.hglsl"
+TEST_CASE("WaterShallow/opacity follows the water column: wading stays clear, deep water keeps the full veil") {
+    using mc2::watershallow::ws_column_veil;
+    CHECK(ws_column_veil(0) == doctest::Approx(0.18f));
+    CHECK(ws_column_veil(-5) == doctest::Approx(0.18f));       // land side of the field never exceeds the floor
+    CHECK(ws_column_veil(5) * 0.87f < 0.45f);                   // a 5 wu wade: legs/floor mostly visible
+    CHECK(ws_column_veil(16) * 0.87f < 0.75f);                  // a 16 wu wade is still not the old flat 0.87
+    CHECK(ws_column_veil(30) > 0.9f);                           // deep water is as opaque as before
+    CHECK(ws_column_veil(5) < ws_column_veil(10));              // monotonic
+    CHECK(ws_column_veil(10) < ws_column_veil(30));
+    CHECK(ws_column_veil(1000) <= 1.0f);
+}
