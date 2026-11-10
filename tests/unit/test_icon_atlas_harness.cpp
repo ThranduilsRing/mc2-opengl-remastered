@@ -1,5 +1,7 @@
 #include "doctest.h"
 #include "icon_registry.h"
+#include <filesystem>
+#include <format>
 #include <numeric>
 #include <set>
 
@@ -89,4 +91,40 @@ TEST_CASE("icon_atlas_harness/loose_images_and_sheets_do_not_collide") {
     CHECK(r.find("MECH/MARAUDER"));
     CHECK_FALSE(r.add("bad", 0, 0, {}));
     CHECK_FALSE(r.add("bad", 25, 30, {}));
+}
+
+TEST_CASE("icon_atlas_harness/single_source_hud_wins_and_tiered_mod_sheet_still_resolves") {
+    Registry r;
+    r.add("hud/front/anubis", 42, 50, std::vector<uint32_t>(2100, 0xff111111));
+    r.sheet("data/art/mcui_low4.tga", std::vector<uint32_t>(25 * 30 * 2, 0xff222222), 25, 60, 25, 30, true);
+    const auto legacy = legacyKey("data/art/mcui_low4.tga", 0);
+    // Stock: the single-source icon resolves at every resolution; no tier lookup is needed.
+    for (const char* tier : {"hud/mcui_low4/front/anubis", "hud/mcui_med4/front/anubis", "hud/mcui_high7/front/anubis"})
+        CHECK(r.lookupHud("hud/front/anubis", tier, 1000, 1000001, legacy, 1000) == r.find("hud/front/anubis"));
+    // A mod tiered file with a better VFS rank wins; a worse rank loses to the single source.
+    r.add("hud/mcui_low4/front/anubis", 25, 30, std::vector<uint32_t>(750, 0xff333333));
+    CHECK(r.lookupHud("hud/front/anubis", "hud/mcui_low4/front/anubis", 1000, 10, legacy, 1000)->width == 25);
+    CHECK(r.lookupHud("hud/front/anubis", "hud/mcui_low4/front/anubis", 10, 1000, legacy, 1000)->width == 42);
+    // A mech with no single file falls back to the tiered mod sheet.
+    CHECK(r.lookupHud("hud/front/ghost", "hud/mcui_low4/front/ghost", 1000001, 1000001, legacy, 1000) == r.find(legacy));
+}
+
+TEST_CASE("icon_atlas_harness/stock_data_one_file_per_mech_side_and_pilot") {
+    namespace fs = std::filesystem;
+    const fs::path art = fs::path(__FILE__).parent_path().parent_path().parent_path() / "data" / "art";
+    if (!fs::exists(art / "mechicons")) return; // source tree without data/
+    CHECK_FALSE(fs::exists(art / "mechicons" / "hud" / "mcui_low4"));
+    CHECK_FALSE(fs::exists(art / "mechicons" / "hud" / "mcui_med4"));
+    CHECK_FALSE(fs::exists(art / "mechicons" / "hud" / "mcui_high7"));
+    size_t front = 0, back = 0;
+    for (const auto& e : fs::directory_iterator(art / "mechicons" / "hud" / "front"))
+        if (e.path().extension() == ".png") {
+            ++front;
+            CHECK_MESSAGE(fs::exists(art / "mechicons" / "hud" / "back" / e.path().filename()), e.path().filename().string());
+        }
+    for (const auto& e : fs::directory_iterator(art / "mechicons" / "hud" / "back")) back += e.path().extension() == ".png";
+    CHECK(front == back);
+    CHECK(front >= 80);
+    for (int i = 0; i < 28; ++i)
+        CHECK_MESSAGE(fs::exists(art / "pilots" / std::format("{:02}.png", i)), i);
 }

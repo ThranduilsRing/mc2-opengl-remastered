@@ -1233,7 +1233,7 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
         items.append((p, rel, "support"))
 
     # Optional cooked logistics overrides; missing art retains the original PAK/atlas.
-    for folder in ("data/art/mechicons", "data/art/missionmaps"):
+    for folder in ("data/art/mechicons", "data/art/missionmaps", "data/art/pilots"):
         for path in sorted((Path(src_root) / folder).rglob("*.png")):
             items.append((str(path), path.relative_to(src_root).as_posix(), "support"))
 

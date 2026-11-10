@@ -54,6 +54,9 @@ public:
 
 private:
 
+	static const char* legacySheetPath();
+	static void loadLegacySheet();
+
 	unsigned long pilotTextureIndex;
 	
 	static float			pilotIconX;

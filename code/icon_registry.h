@@ -80,6 +80,13 @@ public:
         return find(std::move(legacy));
     }
 
+    // Single-source HUD icon first; a mod's tiered file wins only with a better (lower) VFS rank.
+    const Icon* lookupHud(const std::string& single, const std::string& tiered, int singleRank, int tieredRank,
+                          std::string legacy, int sheetRank) const {
+        return lookup(tieredRank < singleRank ? tiered : single, std::move(legacy),
+                      std::min(singleRank, tieredRank), sheetRank);
+    }
+
     bool pack() {
         std::vector<Icon*> ordered;
         size_t area = 0;
@@ -127,6 +134,11 @@ namespace unit_icons {
 void apply(aObject& widget, const aObject& source, long index, std::string chassis);
 void blit(std::string sheet, long index, bool back, uint32_t* dest, int stride, int width, int height,
           std::string chassis = {});
+// Single-file pilot portrait (data/art/pilots/NN.png). Null when absent or when a mod's replacement
+// of `legacySheet` (the old portrait grid) outranks it; the caller then uses the grid.
+const Icon* pilotIcon(long index, const char* legacySheet);
+bool pilotUV(long index, const char* legacySheet, unsigned long& sourceId, float& u0, float& v0, float& u1, float& v1);
+bool applyPilot(aObject& widget, long index);
 const Icon& damageRect(long slot);
 unsigned long damageTexture(long slot);
 void shutdown();
