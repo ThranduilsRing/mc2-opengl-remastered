@@ -146,7 +146,7 @@ void flushWindow(uint64_t frame) {
             const Row& r = g.rows[i];
             if (r.frames < 30 || std::strcmp(r.name, kReflectScope) != 0) continue;   // wait for a settled window
             const uint32_t w = static_cast<uint32_t>(res >> 32), h = static_cast<uint32_t>(res & 0xFFFFFFFFu);
-            std::fprintf(stderr, "[WATER_REFLECT_COST v1] res=%ux%u mpix=%.2f gpu_ms=%.3f frames=%u\n", w, h, static_cast<double>(w) * h / 1.0e6, r.sumMs / r.frames, r.frames);
+            if (mc2_diag::tagRequested("WATER")) std::fprintf(stderr, "[WATER_REFLECT_COST v1] res=%ux%u mpix=%.2f gpu_ms=%.3f frames=%u\n", w, h, static_cast<double>(w) * h / 1.0e6, r.sumMs / r.frames, r.frames);
             reflectCostDone.store(true, std::memory_order_relaxed);
             break;
         }
