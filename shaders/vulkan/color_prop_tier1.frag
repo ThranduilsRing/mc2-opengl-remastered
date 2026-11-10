@@ -277,6 +277,8 @@ void main() {
         vec3 direct = propDecodeColor(vMaterialSun) * (propNightSunWeight(wrap, N) + transmission * propNightDirectShare());
         // SH already contains linear irradiance. Preserve the stock albedo exposure ceiling.
         vec3 irradiance = max(ambient,vec3(0))*vTree.x*materialAO + direct*treeVisibility(N);
+        // Night moonlight/sky fill for foliage (zero by day): shape-giving hemisphere + leaf wrap, not brighter albedo.
+        irradiance += propFoliageNightAmbient(normalize(outputNormalStuff), alphaTestClass) * materialAO;
         // Thin leaves retain sky fill through canopy self-occlusion. Fade it
         // with the night profile rather than making dark forests emissive. Full night keeps 0.35*0.35 (was 0.35*0.2: stock-dark
         // leaf albedo read near-black on night maps such as mc2_10).

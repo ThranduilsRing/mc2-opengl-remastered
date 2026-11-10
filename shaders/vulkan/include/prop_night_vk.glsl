@@ -18,4 +18,18 @@ float propNightSunWeight(float ndl, vec3 nMC2) {
     float fill = kNightDiffuseShare * uFrame.nightDarkness * (0.5 + 0.5 * nMC2.z);
     return ndl * propNightDirectShare() + fill;
 }
+
+// Foliage night ambient (tree props only): a cool moonlit-sky hemisphere term so night crowns read
+// as dark green-blue masses with shape, not black silhouettes. Linear irradiance, scaled by
+// nightDarkness, so it is exactly zero by day. Leaves also scatter a share of the sky light
+// through to their underside (wrap), which keeps the shaded side of a crown off pure black.
+const vec3  kFoliageNightSky    = vec3(0.20, 0.27, 0.36);   // sky-up, cool blue-grey
+const vec3  kFoliageNightGround = vec3(0.03, 0.035, 0.04);  // ground-down, dim
+const float kFoliageNightWrap   = 0.35;                     // leaf cards: sky share reaching the underside
+vec3 propFoliageNightAmbient(vec3 nMC2, bool leaf) {
+    float up = 0.5 + 0.5 * nMC2.z;
+    vec3 hemi = mix(kFoliageNightGround, kFoliageNightSky, up);
+    if (leaf) hemi += kFoliageNightSky * (kFoliageNightWrap * (1.0 - up));
+    return hemi * uFrame.nightDarkness;
+}
 #endif
