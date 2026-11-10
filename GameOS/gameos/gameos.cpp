@@ -38,6 +38,7 @@
 #include "diagnostic_trace.h" // DETERMINISTIC-RNG-1: optional "RNG" JSONL trace
 #include "Gates/gate.h"
 #include "mc2fmt.h"
+#include "FileSystem.hpp"
 #include "utils/mc2log.h"
 #include <tracy/Tracy.hpp>
 
@@ -582,160 +583,21 @@ DWORD __stdcall gos_EnableSetting( gosSetting Setting, DWORD Value )
 }
 ////////////////////////////////////////////////////////////////////////////////
 // registry read/write
-static const char* g_user_reg_file = ".registry";
-static const char* g_user_base_config_dir = ".config";
-static const char* g_user_config_dir = ".mechcommander2";
-
-// TODO: use inifile.h functionality for this
 void __stdcall gos_LoadDataFromRegistry( mc2::czstring keyName, void* pData, DWORD* szData, bool HKLM/*=false*/)
 {
-    // this code can be useful to get registry file location
-    
-    const char* home_dir = getenv("HOME");
-    if(home_dir == nullptr)
-    {
-        MC2_LOG(Io, Debug, "gos_Registry: home directory is not set");
-        *szData = 0;
-        return;
-    }
-
-    const int cfg_dir_size = 1024;
-    char cfg_dir[cfg_dir_size] = {0};
-
-    const char* config_dir = getenv("XDG_CONFIG_HOME");
-    if(config_dir == nullptr) {
-        mc2::fmt::to_buf(cfg_dir, "{}/{}", mc2::fmt::safe(home_dir), mc2::fmt::safe(g_user_base_config_dir));
-    } else {
-        strncpy(cfg_dir, config_dir, 1023);
-        cfg_dir[cfg_dir_size-1] = '\0';
-    }
-
-    struct stat st;
-    if(-1 == stat(cfg_dir, &st)) {
-        MC2_LOG(Core, Debug, "stat: {}", mc2::fmt::safe(strerror(errno)));
-        *szData = 0;
-        return;
-    }
-    if(!S_ISDIR(st.st_mode)) {
-        MC2_LOG(Core, Debug, "gos_LoadDataFromRegistry: {} is not directory", mc2::fmt::safe(cfg_dir));
-        *szData = 0;
-        return;
-    }
-
-    // 1 + 1 =  for \0 and /
-    const size_t confDirBytes = strlen(cfg_dir) + strlen(g_user_config_dir) + 1 + 1;
-    auto mc2ConfDir = std::make_unique<char[]>(confDirBytes);
-    char* mc2_conf_dir = mc2ConfDir.get();
-    mc2::fmt::to_buf_n(mc2_conf_dir, confDirBytes, "{}/{}", cfg_dir, g_user_config_dir);
-
-    // if directory does not exist create it
-#ifndef PLATFORM_WINDOWS
-    int permissions = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH;
-#endif
-	if(-1 == stat(mc2_conf_dir, &st)) {
-#ifdef PLATFORM_WINDOWS
-        if(-1 == _mkdir(mc2_conf_dir)) {
-#else
-        if(-1 == mkdir(mc2_conf_dir, permissions)) {
-#endif
-            MC2_LOG(Core, Debug, "stat: {}", mc2::fmt::safe(strerror(errno)));
-            *szData = 0;
-            return;
-        }
-    }
-
-    const size_t regFileBytes = strlen(mc2_conf_dir) + 1 + strlen(g_user_reg_file) + 1;
-    auto regFile = std::make_unique<char[]>(regFileBytes);
-    char* reg_file = regFile.get();
-    mc2::fmt::to_buf_n(reg_file, regFileBytes, "{}/{}", mc2_conf_dir, g_user_reg_file);
-
-    // check if reg file exists
-    if(-1 == stat(reg_file, &st)) {
-        *szData = 0;
-        return;
-    } else {
-        *szData = 0;
-        // open file and read value
-    }
+    std::uint32_t size = 0;
+    mc2::platform::LoadDataFromRegistry(keyName, pData, &size, HKLM);
+    *szData = size;
 }
 
 void __stdcall gos_SaveDataToRegistry( mc2::czstring keyName,  void* pData,  DWORD szData )
 {
-    // TODO:
+    mc2::platform::SaveDataToRegistry(keyName, pData, szData);
 }
-
 
 bool __stdcall gos_GetUserDataDirectory(std::span<char> user_dir)
 {
-    const int len = static_cast<int>(user_dir.size());
-	const int cfg_dir_size = 1024;
-    char cfg_dir[cfg_dir_size] = {0};
-    struct stat st;
-
-#ifdef PLATFORM_WINDOWS
-	PWSTR homeDir = nullptr;
-	SHGetKnownFolderPath(FOLDERID_Profile, 0, nullptr, &homeDir);
-	wcstombs(cfg_dir, homeDir, cfg_dir_size-1);
-	cfg_dir[cfg_dir_size-1] = '\0';
-	CoTaskMemFree(homeDir);
-#else
-    const char* home_dir = getenv("HOME");
-    if(home_dir == nullptr)
-    {
-        MC2_LOG(Io, Debug, "gos_Registry: home directory is not set");
-        return false;
-    }
-
-    const char* config_dir = getenv("XDG_CONFIG_HOME");
-    if(config_dir != nullptr) {
-        strncpy(cfg_dir, config_dir, cfg_dir_size-1);
-        cfg_dir[cfg_dir_size-1] = '\0';
-
-        if(-1 == stat(cfg_dir, &st)) {
-            MC2_LOG(Core, Debug, "stat: {}", mc2::fmt::safe(strerror(errno)));
-            return false;
-        }
-
-        if(!S_ISDIR(st.st_mode)) {
-            MC2_LOG(Io, Debug, "gos_GetUserDataDirectory: {} is not directory", mc2::fmt::safe(cfg_dir));
-            return false;
-        }
-    } else {
-        strncpy(cfg_dir, home_dir, cfg_dir_size-1);
-        cfg_dir[cfg_dir_size-1] = '\0';
-    }
-#endif
-
-    // 1 + 1 =  for \0 and /
-    const size_t confDirBytes = strlen(cfg_dir) + strlen(g_user_config_dir) + 1 + 1;
-    auto mc2_conf_dirOwner = std::make_unique_for_overwrite<char[]>(confDirBytes);
-    char* mc2_conf_dir = mc2_conf_dirOwner.get();
-    mc2::fmt::to_buf_n(mc2_conf_dir, confDirBytes, "{}/{}", cfg_dir, g_user_config_dir);
-
-    // if directory does not exist create it
-#ifndef PLATFORM_WINDOWS
-	int permissions = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH | S_IXUSR | S_IXGRP;      
-#endif
-
-    if(-1 == stat(mc2_conf_dir, &st)) {
-#ifdef PLATFORM_WINDOWS
-        if(-1 == _mkdir(mc2_conf_dir)) {
-#else
-        if(-1 == mkdir(mc2_conf_dir, permissions)) {
-#endif
-            MC2_LOG(Core, Debug, "stat: {}", mc2::fmt::safe(strerror(errno)));
-            mc2_conf_dirOwner.reset();
-            return false;
-        }
-    }
-    
-    size_t conf_len = strlen(mc2_conf_dir);
-    conf_len = len - 1 < conf_len ? len - 1 : conf_len;
-
-    strncpy(user_dir.data(), mc2_conf_dir, conf_len);
-    user_dir[conf_len] = '\0';
-    mc2_conf_dirOwner.reset();
-    return true;
+    return mc2::platform::GetUserDataDirectory(user_dir);
 }
 
 

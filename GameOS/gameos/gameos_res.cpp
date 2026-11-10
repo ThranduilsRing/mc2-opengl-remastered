@@ -8,42 +8,13 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
-#include <SDL2/SDL_loadso.h>
+#include "FileSystem.hpp"
 #include "mc2fmt.h"
 
-#ifdef PLATFORM_WINDOWS
-static void* DL_Open(mc2::czstring name) {
-	return SDL_LoadObject(name);
-}
-static void DL_Close(void* handle) {
-	SDL_UnloadObject(handle);
-}
-static void* DL_LoadFunction(void* handle, mc2::czstring name) {
-	return SDL_LoadFunction(handle, name);
-}
-// mimic dlerror
-static const char* DL_GetError() {
-	const char* err = SDL_GetError();
-	SDL_ClearError();
-	return strlen(err)==0 ? nullptr : err;
-}
-#else
-#include <dlfcn.h>
-
-static void* DL_Open(mc2::czstring name) {
-    return dlopen(name, RTLD_LAZY);
-}
-static void DL_Close(void* handle) {
-	dlclose(handle);
-}
-static void* DL_LoadFunction(void* handle, mc2::czstring name) {
-	return dlsym(handle, name);
-}
-static const char* DL_GetError() {
-	 const char* err = dlerror();
-	 return err;
-}
-#endif
+static void* DL_Open(mc2::czstring name) { return mc2::platform::OpenSharedLibrary(name); }
+static void DL_Close(void* handle) { mc2::platform::CloseSharedLibrary(handle); }
+static void* DL_LoadFunction(void* handle, mc2::czstring name) { return mc2::platform::LoadSharedFunction(handle, name); }
+static const char* DL_GetError() { return mc2::platform::SharedLibraryError(); }
 
 
 static int MC2_IsMC2ResDLL(mc2::czstring fileName)

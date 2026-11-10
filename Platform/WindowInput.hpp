@@ -4,6 +4,12 @@
 // R0 moved (implementation lives in Platform/WindowInput.cpp, gos_* wrappers forward here):
 //   keyboard / key status:  GetKey, DescribeKey, KeyboardFlush, GetKeyStatus
 //
+// R1-file moved to Platform/FileSystem.hpp: shared-library primitives (resource DLL), registry load/save, user data dir.
+// R1-file left in place (not clean moves): gos_GetFile (STOP stub in gameos_fileio.cpp, which the unit-test target compiles
+// alone), gos_GetResourceString/gos_OpenResourceDLL string-catalog logic (MC2Strings, game layer). Not present in the tree:
+// gos_GetResourceData, gos_OpenMemoryMappedFile/Close (only tool stubs), gos_ReadFileInBackground, gos_CloseBackgroundFile,
+// gos_SaveStringToRegistry, gos_CheckValidTGA.
+//
 // R1 would move (design table, domain Window/input and File, fate R; none of these moved in R0):
 //   Window/input: gos_GetMouseInfo, gos_SetMousePosition, gos_TestSetRawMouse, gos_SetScreenMode,
 //                 gos_ProbeDrawableSize, gos_GetWindowDisplayIndex, gos_GetNumDisplayModes,
