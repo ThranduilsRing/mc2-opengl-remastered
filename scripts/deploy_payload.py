@@ -2358,13 +2358,17 @@ def prepare_seed_delta(items, target, full_verify=False, allow_legacy=False):
     spec.loader.exec_module(iso)
     shared = json.loads(receipt.read_text(encoding='utf-8'))['shared'] if receipt.is_file() else {}
     verified = {}
+    import kit_payload
+    source_rx = kit_payload.HashReceipts(kit_payload.cook_cache_root() / 'source-receipts.json')
     for src, rel, kind in items:
         dst = Path(target) / rel
         if not dst.is_file() or dst.stat().st_nlink <= 1:
             continue
         row = shared.get(rel)
-        if (not full_verify and src is not None and row and iso.content_stamp(dst) == row['stamp']
-                and Path(src).is_file() and sha256_file(src) == row['sha256']):
+        # Seed files are shared hardlinks: every other install linking or unlinking one bumps its NTFS ChangeTime, so
+        # identity is volume+inode+size+mtime (the receipt's first four fields). The source side keeps full stamps.
+        if (not full_verify and src is not None and row and iso.content_stamp(dst)[:4] == row['stamp'][:4]
+                and Path(src).is_file() and source_rx.digest(src) == row['sha256']):
             verified[rel] = row['sha256']
             continue
         # The normal deploy still checks the source and copied hash. Privatize
@@ -2375,6 +2379,7 @@ def prepare_seed_delta(items, target, full_verify=False, allow_legacy=False):
             os.replace(tmp, dst)
         finally:
             tmp.unlink(missing_ok=True)
+    source_rx.save(merge=True)
     log(f'lane seed delta: {len(verified)} unchanged shared payload files retained')
     return verified
 

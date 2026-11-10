@@ -282,8 +282,14 @@ class HashReceipts:
             if isinstance(other, list) and other[:-1] == stamp:
                 self.rows[key] = other
                 return other[-1]
-        value = (hasher or sha)(path)
-        if self.stamp(path) != stamp:
+        for _ in range(4):
+            # A hardlink another install adds to this inode mid-hash moves its ChangeTime without touching the bytes:
+            # re-stamp and hash again; only a file that never settles is an error.
+            value = (hasher or sha)(path)
+            if self.stamp(path) == stamp:
+                break
+            stamp = self.stamp(path)
+        else:
             raise ValueError(f"file changed during hash verification: {path}")
         self.rows[key] = [*stamp, value]
         if self.shared is not None and hasher is None and not variant:
