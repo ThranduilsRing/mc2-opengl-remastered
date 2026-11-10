@@ -346,3 +346,39 @@ TEST_CASE("CPU sequence retains published values independently of display frame"
 }
 
 }  // TEST_SUITE
+
+TEST_CASE("R1 double buffer: extract of N+1 and N+2 never touch the frame N a recorder still reads") {
+    using namespace mc2::render_view;
+    stagingList().clear();
+    stagingHud() = {};
+    stagingClock() = {};
+    auto extract = [](int turn, uint32_t watch) {   // what extractRenderFrame writes, minus the engine
+        stagingClock().turn = turn;
+        stagingList().movers.emplace_back().watchId = watch;
+        stagingHud().movers.emplace_back().name = "m" + std::to_string(turn);
+    };
+    extract(1, 100);
+    auto n = freezeDrawFrame(201);
+    const RenderView* nMover = n->list.movers.data();
+    DrawFrameScope recordN(*n);                  // frame N is being recorded ...
+    extract(2, 200);                             // ... while N+1 is extracted into the other slot
+    CHECK(mc2::render_view::clock().turn == 1);
+    REQUIRE(list().movers.size() == 1);
+    CHECK(list().movers[0].watchId == 100);
+    CHECK(list().movers.data() == nMover);       // N's storage was not reallocated or aliased by the extract
+    CHECK(hud().movers[0].name == "m1");
+    auto n1 = freezeDrawFrame(202);              // hand-off: the flip. Staging is empty again, N is unchanged
+    CHECK(stagingList().movers.empty());
+    CHECK(stagingHud().movers.empty());
+    extract(3, 300);                             // N+2 extracted while both N and N+1 are alive
+    CHECK(n->list.movers[0].watchId == 100);
+    REQUIRE(n1->list.movers.size() == 1);
+    CHECK(n1->list.movers[0].watchId == 200);
+    CHECK(n1->hud.movers[0].name == "m2");
+    CHECK(n1->list.movers.data() != n->list.movers.data());
+    CHECK(mc2::render_view::clock().turn == 1);  // the recorder's clock is N's
+    CHECK(n1->clock.turn == 2);
+    stagingList().clear();
+    stagingHud() = {};
+    stagingClock() = {};
+}

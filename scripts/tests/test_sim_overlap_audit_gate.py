@@ -42,3 +42,15 @@ def test_static_light_row_out_of_range_is_a_red_marker():
     assert [(h.bucket, h.severity) for h in hits] == [("static_light_row_out_of_range", "red")]
     assert not [b for b in logparse.MARKER_BUCKETS
                 if b.pattern.search("[STATIC_LIGHT_ROW v1] event=census flushes=300 out_of_range=0")]
+
+
+def test_audit_env_respects_a_caller_level_and_only_audited_missions():
+    assert sim.overlap_audit_env("mc2_10", {}) == {"MC2_SIM_OVERLAP_AUDIT": "1"}
+    assert sim.overlap_audit_env("mc2_10", {"MC2_SIM_OVERLAP_AUDIT": "12"}) == {"MC2_SIM_OVERLAP_AUDIT": "12"}
+    assert sim.overlap_audit_env("mc2_02", {"MC2_SIM_OVERLAP_AUDIT": "12"}) == {}
+
+
+def test_box_run_has_the_audit_determinism_arm():
+    text = (ROOT / "tools" / "box_run.py").read_text(encoding="utf-8")
+    assert "*:audit) m=${m%:audit}; ae=\"MC2_SIM_OVERLAP_AUDIT=12\"" in text
+    assert "fpm=${fpm%:audit}" in text

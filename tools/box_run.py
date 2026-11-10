@@ -10,7 +10,7 @@ Steps (each timed, summary printed at the end): lock a GPU, git-bundle HEAD to t
 (big immutable data linked, the rest copied) + deploy_payload, run the rows, copy reports back to
 E:/mc2-archive-2026-10/proofs/box/<worktree>/<sha8>/ (MC2_BOX_PROOFS), print the DEPLOY_FINGERPRINT line, release the lock.
 
-Rows: ab:<before-ref> (day + night A/B against HEAD, plus the gpu-passes ratio table) | gpu-passes (per-pass GPU table, mc2_01/mc2_10/mc2_24; refuses a dirty worktree) | smoke-lite | smoke-tier1 | syncval[:aa_off|aa_fxaa|aa_cmaa|cold_bake|imgui|resize|nowater|gpuav|canary] | capture:<mission>:<bookmark-stem> | screen:<id>[@N] (logistics, campaign_missions, mechbay: front-end screenshot) | determinism:<mission> | saveload[:<mission>] | unit | unit-san (doctests under ASan+UBSan, CPU-only) | build | lint | cpu:<command> | sh:<command> (no GPU lock) | gpu:<command> (takes the lock)
+Rows: ab:<before-ref> (day + night A/B against HEAD, plus the gpu-passes ratio table) | gpu-passes (per-pass GPU table, mc2_01/mc2_10/mc2_24; refuses a dirty worktree) | smoke-lite | smoke-tier1 | syncval[:aa_off|aa_fxaa|aa_cmaa|cold_bake|imgui|resize|nowater|gpuav|canary] | capture:<mission>:<bookmark-stem> | screen:<id>[@N] (logistics, campaign_missions, mechbay: front-end screenshot) | determinism:<mission>[:audit] | saveload[:<mission>] | unit | unit-san (doctests under ASan+UBSan, CPU-only) | build | lint | cpu:<command> | sh:<command> (no GPU lock) | gpu:<command> (takes the lock)
 (sh runs in the lane src dir with $INSTALL, $OUT, $GPU_ENV set). Merge gates share the discovered GPUs.
 Legacy capture rows are forced onto GPU 0 by `--gpu auto`.
 Windows-only behaviour (window focus, firewall, owner-test) is not covered: those rows stay on the Windows PC.
@@ -263,8 +263,9 @@ for row in "${ROWS[@]}"; do
     smoke-tier1) cmd="python3 scripts/run_smoke.py --tier tier1 --keep-logs --exe $I/mc2" ;;
     screen:*)    sc=${row#screen:}; cmd="python3 scripts/screen_shot.py --screen $sc --exe $I/mc2 --out-dir $(fresh $OUT/$name)" ;;
     capture:*)   IFS=: read -r _ m b <<< "$row"; cmd="python3 scripts/run_visual_capture.py --mission $m --bookmarks tests/visual/bookmarks/$b.json --exe $I/mc2 --classic-assets --out-dir $(fresh $OUT/$name)" ;;
-    determinism:*) m=${row#*:}; extra=""; [ "$m" = mc2_24 ] && extra="--ticks 2600"   # mc2_24: the finale spawns infantry after tick 2404 (as the PC gate)
-                   cmd="python3 tools/sim_determinism.py check $m --install $I --headless-both $extra --out $(fresh $OUT/$name)" ;;
+    determinism:*) m=${row#*:}; extra=""; ae=""; case $m in *:audit) m=${m%:audit}; ae="MC2_SIM_OVERLAP_AUDIT=12";; esac   # :audit = R0 overlap-audit arm: level 2 (render-owns fence) + 10 ms jitter; any [SIM_OVERLAP v1] VIOLATION line fails the row
+                   [ "$m" = mc2_24 ] && extra="--ticks 2600"   # mc2_24: the finale spawns infantry after tick 2404 (as the PC gate)
+                   cmd="$ae python3 tools/sim_determinism.py check $m --install $I --headless-both $extra --out $(fresh $OUT/$name)" ;;
     saveload*)   m=${row#saveload}; m=${m#:}; m=${m:-mc2_01}   # headless: a gate GPU has no present-capable surface; the save bytes equal the windowed ones
                  cmd="python3 tools/saveload_roundtrip.py check --mission $m --install $I --mask tools/save_noise_mask.json --first-save-only --headless --out $(fresh $OUT/$name) --save-dir $(fresh $OUT/$name.savegame)" ;;
     unit)        # doctest tier (tests/unit): its own configure with the box clang toolchain (a bare cmake finds no default compiler: "CMAKE_CXX_COMPILER not set")
@@ -306,7 +307,7 @@ for row in "${ROWS[@]}"; do
   esac
   case $row in determinism:*|saveload*)
     # data-fingerprint precheck: refuse up front when the install's stock data is not the data the baseline pins (a full run would only reach that verdict at the end)
-    fpm=${row#*:}; [ "$row" = saveload ] && fpm=mc2_01
+    fpm=${row#*:}; fpm=${fpm%:audit}; [ "$row" = saveload ] && fpm=mc2_01
     fpl=$(cd $S && python3 -c "$FPPY" "$I" "$fpm" 2>&1); fprc=$?
     echo "[box_run] data_fp row=$row $fpl"
     printf "%s\t%s\t%s\n" "$row" "$(sha256sum $I/mc2 | cut -c1-16)" "$fpl" >> $OUT/fingerprints.tsv
