@@ -1,4 +1,4 @@
-"""sim_determinism.data_fingerprint leaves the deploy-cooked render-only tree sidecars out of the stock part (W138h)."""
+"""sim_determinism.data_fingerprint counts a deploy-cooked render-only tree sidecar at its stock cook size (W138h)."""
 from __future__ import annotations
 
 import json
@@ -9,27 +9,45 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools"))
 import sim_determinism as sim  # noqa: E402
 
+STOCK = b"s" * 22
+UPSCALED = b"u" * 140
 
-def _install(tmp_path):
+
+def _install(tmp_path, ktx2=None):
     inst = tmp_path / "inst"
     (inst / "data" / "tgl" / "128").mkdir(parents=True)
     (inst / "data" / "tgl" / "128" / "a_palm.tga").write_bytes(b"stock")
+    if ktx2 is not None:
+        (inst / "data" / "tgl" / "128" / "a_palm.ktx2").write_bytes(ktx2)
     return inst
 
 
-def test_pinned_tree_sidecar_does_not_move_the_stock_digest(tmp_path, monkeypatch):
+def _pins(tmp_path, monkeypatch, **row):
     pins = tmp_path / "tree-upscale.json"
-    pins.write_text(json.dumps({"a_palm": {"ktx2_sha256": "00" * 32}}))
+    pins.write_text(json.dumps({"a_palm": dict({"ktx2_sha256": "00" * 32}, **row)}))
     monkeypatch.setattr(sim, "TREE_UPSCALE_PINS", str(pins))
-    inst = _install(tmp_path)
-    manifest = {"overlay": {}, "stock_digest": ""}
-    before = sim.data_fingerprint(str(inst), manifest)
-    (inst / "data" / "tgl" / "128" / "a_palm.ktx2").write_bytes(b"cooked sidecar")
-    after = sim.data_fingerprint(str(inst), manifest)
-    assert after["stock_digest"] == before["stock_digest"]
-    # Anything else loose in the tree still moves it: only the pinned stems are render-only.
+
+
+def _digest(inst):
+    return sim.data_fingerprint(str(inst), {"overlay": {}, "stock_digest": ""})["stock_digest"]
+
+
+def test_deploy_upscale_leaves_the_stock_digest_where_the_stock_cook_put_it(tmp_path, monkeypatch):
+    _pins(tmp_path, monkeypatch, bytes=len(UPSCALED), stock_bytes=len(STOCK))
+    stock = _digest(_install(tmp_path / "a", STOCK))
+    assert _digest(_install(tmp_path / "b", UPSCALED)) == stock
+    # The stock entry stays counted: an install without the sidecar, or with another size, is a different stock part.
+    assert _digest(_install(tmp_path / "c")) != stock
+    assert _digest(_install(tmp_path / "d", b"x" * 7)) != stock
+    # Anything else loose in the tree still moves it: only the pinned stems are exempt.
+    inst = _install(tmp_path / "e", UPSCALED)
     (inst / "data" / "tgl" / "128" / "a_oak.ktx2").write_bytes(b"not pinned")
-    assert sim.data_fingerprint(str(inst), manifest)["stock_digest"] != before["stock_digest"]
+    assert _digest(inst) != stock
+
+
+def test_pin_without_stock_size_counts_the_file_as_it_is(tmp_path, monkeypatch):
+    _pins(tmp_path, monkeypatch, bytes=len(UPSCALED))
+    assert _digest(_install(tmp_path / "a", STOCK)) != _digest(_install(tmp_path / "b", UPSCALED))
 
 
 def test_missing_pin_file_exempts_nothing(tmp_path):
@@ -40,4 +58,6 @@ def test_missing_pin_file_exempts_nothing(tmp_path):
 
 
 def test_repo_pins_cover_the_shipped_sidecars():
+    sizes = sim.render_only_sidecar_sizes()
     assert "data/tgl/128/a_palm.ktx2" in sim.render_only_sidecars()
+    assert all(up and stock for up, stock in sizes.values()), "every shipped pin names its upscaled and stock cook sizes"

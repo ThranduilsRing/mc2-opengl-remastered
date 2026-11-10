@@ -104,19 +104,27 @@ OVERLAY_MANIFEST = os.path.join(BASELINE_DIR, "data_overlay.json")
 
 
 #: Deploy-cooked render-only texture sidecars (deploy_payload.ensure_tree_upscale): data/tgl/128/<stem>.ktx2 for each stem pinned here.
-#: The simulation never reads a texture, so like the .cookstamp receipts they stay out of the stock part (W138h: the five upscaled tree
-#: atlases moved the stock digest and failed every determinism and saveload baseline on unchanged simulation data).
+#: The simulation never reads a texture, but the stock install already holds a stock-cooked data/tgl/128/<stem>.ktx2 at each of these paths
+#: and the baselines' stock digest counts it (path and size). The deploy overwrites it with the 1024 upscale, so the fingerprint counts a
+#: sidecar of the pinned upscale size at the pin's `stock_bytes` (the stock cook's size): the digest is the same before and after the
+#: deploy (W138h: the upscale moved the stock digest on unchanged simulation data; leaving the path out altogether moved it too).
 TREE_UPSCALE_PINS = os.path.join(ROOT, "data", "kit", "tree-upscale.json")
+
+
+def render_only_sidecar_sizes(pins_path: str = TREE_UPSCALE_PINS) -> dict:
+    """{install-relative path: (upscaled bytes, stock-cook bytes)} of the deploy-cooked render-only sidecars; empty when the pin file is
+    absent or unreadable. A pin without both sizes maps to (None, None): the file is counted at its own size."""
+    try:
+        with open(pins_path, encoding="utf-8") as fh:
+            pins = json.load(fh)
+        return {f"data/tgl/128/{stem}.ktx2": (row.get("bytes"), row.get("stock_bytes")) for stem, row in pins.items()}
+    except (OSError, ValueError, TypeError, AttributeError):
+        return {}
 
 
 def render_only_sidecars(pins_path: str = TREE_UPSCALE_PINS) -> frozenset:
     """Install-relative paths of the deploy-cooked render-only sidecars; empty when the pin file is absent or unreadable."""
-    try:
-        with open(pins_path, encoding="utf-8") as fh:
-            pins = json.load(fh)
-        return frozenset(f"data/tgl/128/{stem}.ktx2" for stem in pins)
-    except (OSError, ValueError, TypeError):
-        return frozenset()
+    return frozenset(render_only_sidecar_sizes(pins_path))
 
 
 def baseline_path(mission: str) -> str:
@@ -145,13 +153,13 @@ def data_fingerprint(install: str = INSTALL_DIR, manifest: dict | None = None) -
     """-> {"digest", "inputs", "stock_digest", "overlay", "problems"}: a digest of the install data the simulation reads.
 
     The digest covers two parts. STOCK: the archives by content and the loose trees by relative path and size, leaving out the declared
-    overlay, `*.beauty` presentation sidecars, texture cook receipts and the deploy-cooked tree sidecars (render-only). OVERLAY: the
+    overlay, `*.beauty` presentation sidecars, texture cook receipts, and counting a deploy-cooked tree sidecar at its stock cook size. OVERLAY: the
     files tests/smoke/sim_determinism/data_overlay.json declares, by content. `problems` names a declared overlay file that is missing or
     changed and a stock part that no longer equals the manifest's `stock_digest`, so a dirty install says why instead of only differing.
     """
     manifest = load_overlay_manifest() if manifest is None else manifest
     declared = manifest.get("overlay", {})
-    render_only = render_only_sidecars(TREE_UPSCALE_PINS)
+    render_only = render_only_sidecar_sizes(TREE_UPSCALE_PINS)
     stock = hashlib.sha256()
     inputs = []
     for name in FINGERPRINT_ARCHIVES:
@@ -171,10 +179,13 @@ def data_fingerprint(install: str = INSTALL_DIR, manifest: dict | None = None) -
                     continue  # Texture provenance receipts do not affect simulation data.
                 full = os.path.join(dp, fn)
                 rel = os.path.relpath(full, install).replace(os.sep, "/")
+                size = os.path.getsize(full)
                 if rel in render_only:
-                    continue  # Cooked texture sidecars are render-only.
+                    upscaled, stock_size = render_only[rel]
+                    if stock_size is not None and size == upscaled:
+                        size = stock_size  # the deploy-cooked upscale counts as the stock cook it replaced
                 if rel not in declared:
-                    entries.append(f"{rel} {os.path.getsize(full)}")
+                    entries.append(f"{rel} {size}")
         for e in sorted(entries):
             stock.update(e.encode("utf-8", "replace"))
             stock.update(b"\n")
