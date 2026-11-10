@@ -896,6 +896,11 @@ def lint_rows(py: list[str], base_ref: str, ref: str) -> list[tuple[str, list[st
     rows += [(label, py + [script, *args], "see the row's own output") for label, script, args in EARLY_ROWS]
     rows.append(("ungated_tags", py + ["tools/ungated_log_tags.py", "--base", base_ref, "--head", ref],
                  "gate the new log tag or register it as the check says"))
+    # W138d: both passed lint and failed on merged HEAD (pre_gate / the laptop gate). Same background-launch row pre_gate runs.
+    rows.append(("background_launch", py + ["scripts/check-background-launch.py", "--quiet"],
+                 "pass **console_child.child_kwargs() to the spawn, add the program to scripts/background-launch-allow.json, or `# background-launch: allow <why>`"))
+    rows.append(("new_drive_paths", py + ["tools/new_drive_paths.py", "--base", base_ref, "--head", ref],
+                 "the laptop gate has no E: drive: read the path from an env var default, or add `# drive-path: ok <why>`"))
     return rows
 
 

@@ -15,6 +15,7 @@ def test_lint_rows_share_precheck_tables():
     for label, _s, _a in lm.RATCHETS + lm.EARLY_ROWS:
         assert label in labels
     assert "callers" in labels and "ungated_tags" in labels
+    assert "background_launch" in labels and "new_drive_paths" in labels   # W138d: the merge gate caught both after lint passed
     assert not any("--tighten" in r[1] for r in rows)
 
 
