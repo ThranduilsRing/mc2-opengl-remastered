@@ -104,6 +104,7 @@ inline Clump makeClump(int x, int y, uint32_t seed, const ClumpRecipe& recipe,
 // isolated tufts. Atlas frame bit 3 marks a field blade (low bits keep the
 // grass layer 0-3); the shader leans it downwind and rolls gust bands over it.
 inline constexpr unsigned kFieldBladeBit = 8u;
+inline constexpr unsigned kFieldFlowerBit = 4u;   // with kFieldBladeBit: white wildflower heads (low 2 bits = grass layer)
 struct FieldRecipe { float spacing = 6.0f, height = 4.5f; };
 // Absent "field" = no carpet (mods and other biomes keep their clumps only).
 inline std::optional<FieldRecipe> readFieldRecipe(const nlohmann::json& doc) {

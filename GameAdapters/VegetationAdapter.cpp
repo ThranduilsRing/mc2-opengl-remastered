@@ -282,7 +282,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
 
     // Meadow field: a stratified carpet of blades over open temperate ground,
     // after the clumps so its budget is exactly the capacity they left.
-    int fieldBlades = 0, fieldSide = 0;
+    int fieldBlades = 0, fieldSide = 0, fieldGaps = 0, fieldFlowers = 0;
     const auto fieldT0 = std::chrono::steady_clock::now();
     if (fieldRecipe) {
         constexpr float kBeachMarginWU = 8.0f;   // keep the shoreline sand bare
@@ -316,6 +316,14 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                 const float bx = originX+static_cast<float>(col)*gridStep+blade.x;
                 const float by = originY-static_cast<float>(row)*gridStep+blade.y;
                 const glm::vec3 bpos(bx,by,0);
+                // Owner ref 2 (2026-11-10): tufted meadow with bare dirt gaps (~25% of the
+                // area) and white wildflower clusters. A 14 WU tuft field opens the gaps and
+                // shapes each tuft tall in the middle, short at its edge.
+                const float tuft = macroZone(bx+static_cast<float>(seed&1023u), by, 14.0f);
+                if (tuft < 0.33f) { ++fieldGaps; continue; }
+                const float tuftHeight = 0.6f + 0.7f*std::clamp((tuft-0.33f)/0.4f, 0.0f, 1.0f);
+                const bool flower = macroZone(bx+911.0f, by-377.0f+static_cast<float>(seed&2047u), 45.0f) > 0.74f &&
+                                    blade.seed < 0.4f;
                 int ir=0,ic=0,isr=0,isc=0;
                 land->worldToTileCell(bpos,ir,ic,isr,isc);
                 if (ir<0 || ic<0 || ir>=mapSide || ic>=mapSide ||
@@ -335,8 +343,10 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                 inst.y = by-originY+mapSpan*0.5f;
                 inst.z = elevation+0.25f;
                 inst.yaw = blade.yaw;
-                inst.scale = blade.scale;
-                inst.atlasFrame = blade.frame;   // role 0: the shader bends field blades downwind
+                inst.scale = blade.scale * (flower ? 0.55f : tuftHeight);   // flowers sit on short stalks
+                // role 0: the shader bends field blades downwind; bit 2 = white wildflower heads.
+                inst.atlasFrame = blade.frame | (flower ? kFieldFlowerBit : 0u);
+                fieldFlowers += flower ? 1 : 0;
                 inst.seed = blade.seed;
                 instances.push_back(inst);
                 ++fieldBlades;
@@ -344,8 +354,9 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
         }
     }
     const double fieldMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - fieldT0).count();
-    mc2::fmt::print_err("[VEG v3] field blades={:d} side={:d} ms={:.1f} shrubs_placed={:d} shrubs_moved_off_meadow={:d} clumps_gated={:d}\n",
-                        mc2::fmt::as_i32(fieldBlades), mc2::fmt::as_i32(fieldSide), fieldMs,
+    mc2::fmt::print_err("[VEG v3] field blades={:d} side={:d} gaps={:d} flowers={:d} ms={:.1f} shrubs_placed={:d} shrubs_moved_off_meadow={:d} clumps_gated={:d}\n",
+                        mc2::fmt::as_i32(fieldBlades), mc2::fmt::as_i32(fieldSide), mc2::fmt::as_i32(fieldGaps),
+                        mc2::fmt::as_i32(fieldFlowers), fieldMs,
                         mc2::fmt::as_i32(woodyPlaced), mc2::fmt::as_i32(woodyGated), mc2::fmt::as_i32(clumpsGated));
 
     GosVegetation::uploadInstances(instances.data(),

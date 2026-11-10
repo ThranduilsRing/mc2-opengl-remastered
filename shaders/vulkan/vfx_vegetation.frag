@@ -65,8 +65,21 @@ void main() {
     float tip = 1.0 - v_vegData.y;
     bool grass = v_atlasLayer < 4u && (v_flags & 192u) == 0u;
     if (grass) {
+        // Owner ref 2 (2026-11-10): olive to mid-dark green tufts with dry tan blades
+        // and tips mixed in, soft and slightly desaturated. Value comes from the card.
+        float value = dot(albedo, vec3(0.299, 0.587, 0.114));
+        float pick = fract(v_vegData.x * 13.71);
+        vec3 green = mix(vec3(0.40, 0.46, 0.22), vec3(0.27, 0.36, 0.17), fract(v_vegData.x * 5.3));
+        green *= value / dot(green, vec3(0.299, 0.587, 0.114));
+        float dry = pick < 0.28 ? 1.0 : smoothstep(0.72, 1.0, tip) * 0.8;   // dry blades, dry tips
+        albedo = mix(green, albedo, dry);
         albedo *= mix(vec3(0.62, 0.68, 0.52), vec3(1.0), smoothstep(0.0, 0.55, tip));
         albedo *= 1.0 + v_vegAux.y * (0.10 + 0.22 * tip);
+        // Field wildflowers: white heads (a few yellow) on the tops of short stalks.
+        if ((v_flags & 12u) == 12u && tip > 0.70) {
+            float exposure = clamp(groundValue / kPaletteGround, 0.45, 1.6);
+            albedo = (pick < 0.15 ? vec3(0.78, 0.62, 0.16) : vec3(0.86, 0.86, 0.80)) * exposure;
+        }
     }
     vec3 rootN = rootNormal();
     vec3 cardN = normalize(gl_FrontFacing ? v_cardNormal : -v_cardNormal);
