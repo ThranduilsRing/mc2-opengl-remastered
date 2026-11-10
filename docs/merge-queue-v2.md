@@ -29,6 +29,10 @@ schtasks /Create /TN "\mc2-nightly-gate" /XML %TEMP%\mc2-nightly-gate.task.xml /
 schtasks /Delete /TN "\mc2-smoke-overnight" /F
 ```
 
+## Conflict preview (merge windows)
+
+`py -3 tools/lane_merge.py --batch A B C --dry-run --conflict-dir <dir>` previews every conflict before the real batch, so nobody hand-merges to see them. Each tip, in batch order, is merged virtually (`git merge-tree --write-tree`) against the running virtual head; nothing in any worktree, index or ref changes. For each conflicted path it writes `<dir>/<NN>-<tipname>/<path>` (the file with conflict markers) plus `summary.txt` (tip, sha, conflicted paths with hunk counts, which earlier tip touched the same file). The summary also lists "same file, both tips" pairs: a heuristic (same path edited by two tips, generated files excluded) that flags possible duplicate fixes such as W138f's two empty-diff refusals; it also lists unrelated edits. The run prints one `CONFLICT-PREVIEW` line and exits 0; the merger reads the folder. Tips already contained in the running head get no folder.
+
 ## Manual smoke (orchestrator / merge gate)
 
 ```bash
