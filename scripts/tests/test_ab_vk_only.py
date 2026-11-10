@@ -48,6 +48,8 @@ def test_exe_mode_stages_installs_and_runs_both(tmp_path, monkeypatch):
     (inst / "data.bin").write_bytes(b"d")
     (inst / "shaders/vulkan").mkdir(parents=True)
     (inst / "shaders/vulkan/x.spv").write_bytes(b"spv")
+    (inst / "saved_bookmarks").mkdir()
+    (inst / "saved_bookmarks" / "x.json").write_text("{}")
     (inst / ab.MANIFEST).write_text("manifest_version,v1\nrelpath,sha256,bytes,src_commit\n" +
         "\n".join(f"{p},{sha},1,{'a' * 40}" for p, sha in _identity()["payload"].items()))
     monkeypatch.setattr(ab, "exe_commit", lambda *args: "a" * 40)
@@ -91,6 +93,105 @@ def test_seed_install_copies_from_reference_and_fails_clearly(tmp_path):
     with pytest.raises(SystemExit) as e:
         ab.seed_install(inst, "bm1", ref)
     assert "burnin" in str(e.value)
+
+
+def test_ensure_saved_bookmarks_copies_when_missing(tmp_path):
+    inst = tmp_path / "inst"
+    inst.mkdir()
+    ref = tmp_path / "ref"
+    (ref / "saved_bookmarks").mkdir(parents=True)
+    (ref / "saved_bookmarks" / "a.json").write_text("{}")
+    (ref / "saved_bookmarks" / "b.json").write_text("{}")
+    ab.ensure_saved_bookmarks(inst, ref)
+    assert (inst / "saved_bookmarks" / "a.json").is_file() and (inst / "saved_bookmarks" / "b.json").is_file()
+    # the reference is read-only: it keeps exactly its own bookmarks
+    assert sorted(p.name for p in (ref / "saved_bookmarks").glob("*.json")) == ["a.json", "b.json"]
+
+
+def test_ensure_saved_bookmarks_noop_when_present(tmp_path):
+    inst = tmp_path / "inst"
+    (inst / "saved_bookmarks").mkdir(parents=True)
+    (inst / "saved_bookmarks" / "own.json").write_text("{}")
+    ref = tmp_path / "ref"
+    (ref / "saved_bookmarks").mkdir(parents=True)
+    (ref / "saved_bookmarks" / "other.json").write_text("{}")
+    ab.ensure_saved_bookmarks(inst, ref)
+    assert sorted(p.name for p in (inst / "saved_bookmarks").glob("*.json")) == ["own.json"]
+
+
+def test_ensure_saved_bookmarks_fails_when_reference_empty(tmp_path):
+    inst = tmp_path / "inst"
+    inst.mkdir()
+    ref = tmp_path / "ref"
+    (ref / "saved_bookmarks").mkdir(parents=True)
+    with pytest.raises(SystemExit) as e:
+        ab.ensure_saved_bookmarks(inst, ref)
+    assert "has none either" in str(e.value)
+
+
+def test_stage_exe_swap_replaces_exe_pdb_and_shaders(tmp_path, monkeypatch):
+    b = tmp_path / "b"
+    b.mkdir()
+    (b / "mc2.exe").write_bytes(b"Bexe")
+    (b / "mc2.pdb").write_bytes(b"Bpdb")
+    (b / "data.bin").write_bytes(b"d")
+    (b / "shaders/vulkan").mkdir(parents=True)
+    (b / "shaders/vulkan/x.spv").write_bytes(b"Bspv")
+    (b / "shaders/include").mkdir(parents=True)
+    (b / "shaders/include/y.glsl").write_bytes(b"By")
+    (b / ab.MANIFEST).write_text("manifest_version,v1\nrelpath,sha256,bytes,src_commit\n" +
+        "\n".join(f"{p},{hashlib.sha256((b / p).read_bytes()).hexdigest()},{(b / p).stat().st_size},{'b' * 40}"
+                  for p in ["mc2.exe", "shaders/vulkan/x.spv", "shaders/include/y.glsl"]))
+    aexe_dir = tmp_path / "aexe"
+    (aexe_dir / "shaders/vulkan").mkdir(parents=True)
+    (aexe_dir / "mc2.exe").write_bytes(b"Aexe")
+    (aexe_dir / "mc2.pdb").write_bytes(b"Apdb")
+    (aexe_dir / "shaders/vulkan/x.spv").write_bytes(b"Aspv")
+    (aexe_dir / "shaders/vulkan/z.spv").write_bytes(b"Zspv")  # a shader the B install did not ship
+    monkeypatch.setattr(ab, "exe_commit", lambda *args: "c" * 40)
+    dest = tmp_path / "a"
+    ab.stage_exe_swap(b, aexe_dir / "mc2.exe", dest)
+    assert (dest / "mc2.exe").read_bytes() == b"Aexe" and (dest / "mc2.pdb").read_bytes() == b"Apdb"
+    assert (dest / "shaders/vulkan/x.spv").read_bytes() == b"Aspv"
+    assert (dest / "shaders/vulkan/z.spv").read_bytes() == b"Zspv"
+    assert not (dest / "shaders/include/y.glsl").exists()  # B's shader the swapped build does not ship
+    assert (dest / "data.bin").read_bytes() == b"d"        # data stays B's (hardlinked)
+    ident = ab.payload_identity(dest)  # the rewritten manifest verifies the swapped bytes
+    assert ident["payload"]["mc2.exe"] == hashlib.sha256(b"Aexe").hexdigest()
+    assert set(ident["payload"]) == {"mc2.exe", "shaders/vulkan/x.spv", "shaders/vulkan/z.spv"}
+
+
+def test_exe_a_swap_mode_stages_and_records(tmp_path, monkeypatch):
+    b = tmp_path / "b"
+    b.mkdir()
+    (b / "mc2.exe").write_bytes(b"Bexe")
+    (b / "data.bin").write_bytes(b"d")
+    (b / "shaders/vulkan").mkdir(parents=True)
+    (b / "shaders/vulkan/x.spv").write_bytes(b"Bspv")
+    (b / "saved_bookmarks").mkdir()
+    (b / "saved_bookmarks" / "x.json").write_text("{}")
+    (b / ab.MANIFEST).write_text("manifest_version,v1\nrelpath,sha256,bytes,src_commit\n" +
+        "\n".join(f"{p},{hashlib.sha256((b / p).read_bytes()).hexdigest()},{(b / p).stat().st_size},{'c' * 40}"
+                  for p in ["mc2.exe", "shaders/vulkan/x.spv"]))
+    aexe_dir = tmp_path / "aexe"
+    (aexe_dir / "shaders/vulkan").mkdir(parents=True)
+    (aexe_dir / "mc2.exe").write_bytes(b"Aexe")
+    (aexe_dir / "shaders/vulkan/x.spv").write_bytes(b"Aspv")
+    monkeypatch.setattr(ab, "exe_commit", lambda *args: "c" * 40)
+    monkeypatch.setattr(ab, "run_capture", lambda install, bms, out, env: None)
+    captured = {}
+    monkeypatch.setattr(ab, "compare", lambda *a, **k: captured.update(k))
+    monkeypatch.setattr(ab, "base_problems", lambda *a, **k: [])
+    with pytest.raises(SystemExit) as ex:
+        ab.main(["--bookmarks", "x", "--exe-a", str(aexe_dir / "mc2.exe"), "--install-b", str(b),
+                 "--out-root", str(tmp_path / "o")])
+    assert ex.value.code == 0
+    assert captured["exe_a_swap"]["exe"] == str(aexe_dir / "mc2.exe")
+    assert captured["exe_a_swap"]["b_install"] == str(b)
+    a_install = tmp_path / "o" / "install_a"
+    assert (a_install / "mc2.exe").read_bytes() == b"Aexe"
+    assert (a_install / "shaders/vulkan/x.spv").read_bytes() == b"Aspv"
+    assert (a_install / "data.bin").read_bytes() == b"d"
 
 
 def _run_compare_only(tmp_path):
