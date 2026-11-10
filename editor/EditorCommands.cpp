@@ -15,8 +15,7 @@ class UnitOrderGroupAction : public Action
 {
 public:
 	UnitOrderGroupAction() : Action( "Assign Unit Routes" ) {}
-	~UnitOrderGroupAction() override { for ( Action* a : m_actions ) delete a; }
-	bool redo() override { bool ok = true; for ( Action* a : m_actions ) ok = a->redo() && ok; return ok; }
+	bool redo() override { bool ok = true; for ( auto& a : m_actions ) ok = a->redo() && ok; return ok; }
 	bool undo() override
 	{
 		bool ok = true;
@@ -24,7 +23,7 @@ public:
 			ok = ( *it )->undo() && ok;
 		return ok;
 	}
-	std::vector<Action*> m_actions;
+	std::vector<std::unique_ptr<Action>> m_actions;
 };
 
 bool sameRoute( const Unit* unit, int orderType, const std::vector<glm::vec3>& wps )
@@ -32,10 +31,10 @@ bool sameRoute( const Unit* unit, int orderType, const std::vector<glm::vec3>& w
 	return unit->isOrderAuthored() && unit->getOrderType() == orderType && unit->getWaypoints() == wps;
 }
 
-// Apply the route to the unit with before/after snapshots; caller owns the action.
-ModifyUnitOrderAction* applyRoute( Unit* unit, int orderType, const std::vector<glm::vec3>& wps )
+// Apply the route to the unit with before/after snapshots; the caller owns the action.
+std::unique_ptr<ModifyUnitOrderAction> applyRoute( Unit* unit, int orderType, const std::vector<glm::vec3>& wps )
 {
-	auto* act = new ModifyUnitOrderAction();
+	auto act = std::make_unique<ModifyUnitOrderAction>();
 	act->capture( unit );
 	unit->setOrderType( orderType );
 	unit->clearWaypoints();
@@ -46,12 +45,11 @@ ModifyUnitOrderAction* applyRoute( Unit* unit, int orderType, const std::vector<
 	return act;
 }
 
-void addAction( Action* act )
+// The undo manager takes ownership; without one the action is dropped here.
+void addAction( std::unique_ptr<Action> act )
 {
 	if ( ActionUndoMgr::instance )
-		ActionUndoMgr::instance->AddAction( act );
-	else
-		delete act;
+		ActionUndoMgr::instance->AddAction( act.release() );
 }
 } // namespace
 
@@ -77,7 +75,7 @@ int EditorCommands::assignRoute( const Unit* source, const std::vector<Unit*>& t
 			group->m_actions.push_back( applyRoute( t, type, wps ) );
 	const int changed = (int)group->m_actions.size();
 	if ( changed )
-		addAction( group.release() );
+		addAction( std::move( group ) );
 	return changed;
 }
 

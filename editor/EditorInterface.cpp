@@ -11,6 +11,7 @@
 #include "EditorInterface_internal.h"
 #include "../RenderCore/axis_convert.h"
 #include "Gates/gate.h"
+#include <memory>
 
 
 // ---------------------------------------------------------------------------
@@ -387,9 +388,9 @@ void EditorInterface::dropMissionBrushes()
 {
 	if ( !bThisIsInitialized )
 		return;
-	delete prevBrush;
+	std::unique_ptr<Brush> dropped( prevBrush ); // freed at scope end
 	prevBrush = nullptr;
-	setActiveBrush( new SelectionBrush( false, -1 ), IDS_SELECT, ID_OTHER_SELECT );
+	setActiveBrush( std::make_unique<SelectionBrush>( false, -1 ).release(), IDS_SELECT, ID_OTHER_SELECT ); // setActiveBrush owns it
 }
 
 void EditorInterface::setActiveBrush( Brush* newBrush, int brushId, int menuId )
