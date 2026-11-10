@@ -156,6 +156,34 @@ def disk(floor, problems, warnings):
             "lanes_gb": st.get("lanes_gb"), "ccache": cc}
 
 
+def build_queue(now, warnings):
+    """The box-wide build semaphore (box_run's bq_acquire): tickets <ns>.<lane>.<pid> in locks/buildq, oldest first. Holders are the first
+    `slots` live tickets; orphans are lane scripts (.box_lane_<lane>.sh) reparented to init: their ssh client is gone and nothing is waiting for them."""
+    qdir = os.environ.get("MC2_BOX_BUILDQ", sup.LOCKS + "/build.queue")
+    tickets = []
+    for name in sorted(os.listdir(qdir)) if os.path.isdir(qdir) else []:
+        pid = sup.read_pidfile(f"{qdir}/{name}")
+        if not sup.alive(pid):
+            continue
+        try:
+            age = int(now - os.stat(f"{qdir}/{name}").st_mtime)
+        except OSError:
+            age = 0
+        tickets.append({"lane": name.split(".")[1] if name.count(".") >= 2 else name, "pid": pid, "age_s": age})
+    slots = int(os.environ.get("MC2_BOX_BUILDS") or 1)   # one build at a time (box_run bq_acquire)
+    holders, waiters = tickets[:slots], tickets[slots:]
+    orphans = []
+    for pid in sup.all_pids():
+        cl = sup.cmdline(pid)
+        if ".box_lane_" in cl and os.path.basename(cl.split(" ")[0]) == "bash" and sup.ppid(pid) == 1:
+            orphans.append({"lane": cl.split(".box_lane_", 1)[1].split(".sh", 1)[0], "pid": pid})
+    if len(waiters) and holders and holders[0]["age_s"] > 3600:
+        warnings.append(f"build holder {holders[0]['lane']} has held the build slot {holders[0]['age_s'] // 60} min ({len(waiters)} waiting)")
+    if orphans:
+        warnings.append("orphan lane builds (client gone, still running): " + ", ".join(f"{o['lane']} pid {o['pid']}" for o in orphans))
+    return {"slots": slots, "holders": holders, "waiters": waiters, "orphans": orphans}
+
+
 def cpu(warnings):
     n = os.cpu_count() or 0
     mx = read(f"{CGROUP}/cpu.max").split()
@@ -221,6 +249,7 @@ def build(floor=15.0, nrows=12, now=None):
     doc["disk"] = disk(floor, problems, warnings)
     doc["cpu"] = cpu(warnings)
     doc["toolchain"] = toolchain(problems)
+    doc["build_queue"] = build_queue(now, warnings)
     doc["rows"] = rows(nrows)
     doc["filler_rows"] = filler_rows(nrows)
     doc["problems"] = list(dict.fromkeys(problems))
