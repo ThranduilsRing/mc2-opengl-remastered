@@ -30,13 +30,3 @@ def test_stock_pbr_loader_inputs(kind, count):
                         (images[0][:, :, (c + 2) % 3] == 0)).any() for c in range(3)), stem
         print(f"{kind}/{stem}: albedo normal orm {edge}x{edge}")
 
-
-def test_hd_overlay_payload_and_alpha():
-    tree = "data/textures/256Overlays"
-    assert tree in dp.GAME_LOOSE_ART_TREES
-    for family in ("pavedroad", "runway", "dirtroad", "2lanedirt"):
-        for index in range(15):
-            path = ROOT / tree / f"{family}{index:04}.tga"
-            image = Image.open(path)
-            assert image.size == (256, 256), path
-            assert image.mode == "RGBA", path

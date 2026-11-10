@@ -82,8 +82,12 @@ std::string stockPbrOverride(std::string_view legacy, bool vehicle, StockPbrText
         };
         detail("_normal.png", maps.normal);
         detail("_orm.png", maps.orm);
-        mc2::fmt::print_out("[STOCK_PBR] atlas={} albedo={} normal={} orm={}\n", stem,
-            albedo, static_cast<bool>(maps.normal), static_cast<bool>(maps.orm));
+        // Distinct stock atlases bound this session (each further actor reuses its atlas).
+        static std::unordered_set<std::string> mechAtlases, vehicleAtlases;
+        if ((vehicle ? vehicleAtlases : mechAtlases).insert(stem).second)
+            mc2::fmt::print_out("[ACTOR_PBR] atlas={} kind={} normal={} orm={} mechs={} vehicles={} loaded\n", stem,
+                vehicle ? "vehicle" : "mech", static_cast<bool>(maps.normal), static_cast<bool>(maps.orm),
+                mechAtlases.size(), vehicleAtlases.size());
     }
     return albedo;
 }
