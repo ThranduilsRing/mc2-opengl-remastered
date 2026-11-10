@@ -339,7 +339,7 @@ extern "C" int mc2_vk_water_island_run(
                     for (uint32_t i = 0; i < live; ++i)
                         maxRadius = std::max(maxRadius, reactive.stamps[i].positionRadiusAge[2]);
                 }
-                mc2::fmt::print_err("[WATER_REACTIVE v1] stamps={:d} litTiles={:d} submits={:d} wet={:d} vis={:d} wetVisible={:d} emitted={:d} maxRadius={:.1f} stamp0=({:.1f},{:.1f}) age0={:.2f} tileUnderStamp0={:d} firstVxy=({:.1f},{:.1f})\n",
+                if (mc2_diag::tagRequested("WATER_REACTIVE")) mc2::fmt::print_err("[WATER_REACTIVE v1] stamps={:d} litTiles={:d} submits={:d} wet={:d} vis={:d} wetVisible={:d} emitted={:d} maxRadius={:.1f} stamp0=({:.1f},{:.1f}) age0={:.2f} tileUnderStamp0={:d} firstVxy=({:.1f},{:.1f})\n",
                     mc2::fmt::as_u32(live), mc2::fmt::as_u32(litTiles),
                     mc2::fmt::as_u32(st.submits), mc2::fmt::as_u32(st.wet), mc2::fmt::as_u32(st.vis), mc2::fmt::as_u32(st.wetVisible), mc2::fmt::as_u32(st.emitted), maxRadius,
                     p0[0], p0[1], p0[3], mc2::fmt::as_u32(tileCount), st.vx, st.vy);
