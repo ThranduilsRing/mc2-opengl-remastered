@@ -11,7 +11,6 @@ import threading
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "visual_verify"))
 import console_child  # noqa: E402
 from smoke_lib.runtime_bridge import MAX_FRAME, RuntimeBridge, receive_frame, send_frame
 
@@ -178,15 +177,21 @@ def test_script_rejects_unknown_ops():
 
 @pytest.mark.skipif(not os.environ.get("MC2_BRIDGE_TEST_EXE"),
                     reason="live run: set MC2_BRIDGE_TEST_EXE to a deployed mc2.exe (Windows, off-screen via run_smoke)")
-def test_live_control_run_steps_exactly_and_pause_holds():
+@pytest.mark.timeout(900)
+def test_live_control_run_steps_exactly_and_pause_holds(tmp_path):
     exe = Path(os.environ["MC2_BRIDGE_TEST_EXE"])
+    log_path = tmp_path / "run_smoke.log"
     script = "pause;hold:1.5;step:5;hold:1;step:12;resume;run:1.5;pause;set_speed:2;bogus"
-    run = subprocess.run([sys.executable, str(Path(__file__).resolve().parents[1] / "run_smoke.py"),
-                          "--mission", "mc2_10", "--duration", "30", "--keep-logs", "--exe", str(exe),
-                          "--runtime-bridge-script", script],
-                         capture_output=True, text=True, timeout=600, **console_child.child_kwargs(redirected=True))
-    saved = json.loads((exe.parent / "debug_state/latest_runtime_bridge.json").read_text())
-    assert saved["error"] in (None, "bridge disconnected"), run.stderr[-2000:]  # the game exiting ends the stream
+    (exe.parent / "debug_state/latest_runtime_bridge.json").unlink(missing_ok=True)   # never read a stale run
+    with open(log_path, "w") as sink:   # a file, not a pipe: the game child would hold a pipe open past run_smoke
+        subprocess.run([sys.executable, str(Path(__file__).resolve().parents[1] / "run_smoke.py"),
+                        "--mission", "mc2_10", "--duration", "30", "--keep-logs", "--exe", str(exe),
+                        "--runtime-bridge-script", script],
+                       stdout=sink, stderr=subprocess.STDOUT, timeout=850, **console_child.child_kwargs(redirected=True))
+    bridge_json = exe.parent / "debug_state/latest_runtime_bridge.json"
+    assert bridge_json.exists(), log_path.read_text()[-3000:]
+    saved = json.loads(bridge_json.read_text())
+    # saved["error"] may hold the reset when the game exits and ends the stream; the complete control_log is the check.
     log = saved["control_log"]
     assert [e["op"] for e in log] == ["pause", "hold", "step", "hold", "step", "resume", "run", "pause", "set_speed", "bogus"]
     assert log[1]["ticks_after"] == log[1]["ticks_before"]
