@@ -296,6 +296,13 @@ public:
 			return std::nullopt;
 		}
 
+		// perf-terrain-walk: true when render() would draw and capture nothing with the current presentation state, so
+		// the render extract may leave the object out of the frame's walk. Conservative default: it always draws.
+		virtual bool renderIsNoOp (void) const
+		{
+			return false;
+		}
+
 		// Stage 3.C: stamp-advance path for static registry. Default no-op.
 		// Override in TreeAppearance calls TG_MultiShape::Touch() without
 		// running the full vertex transform.
