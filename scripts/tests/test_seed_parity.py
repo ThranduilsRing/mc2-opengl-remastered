@@ -105,3 +105,14 @@ def test_lean_install_is_built_with_the_parity_set_and_checked(tmp_path, monkeyp
     (dst / "data/textures/1.2.txm").write_bytes(b"regenerated")
     with pytest.raises(SystemExit):
         sp.require_parity(dst, seed)
+
+
+def test_saved_bookmarks_are_a_mutated_root_and_leftovers_do_not_seed():
+    spec = importlib.util.spec_from_file_location("lean_iso_bookmarks", ROOT / "scripts/make-isolated-deploy.py")
+    iso = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(iso)
+    guard = iso._load_guard()
+    assert "saved_bookmarks" in guard.MUTATED_ROOTS
+    assert iso.seed_member("saved_bookmarks/mc2_01.json", guard, {})
+    for leftover in ("saved_bookmarks/a.bak", "saved_bookmarks/a.tmp", "saved_bookmarks/run.log"):
+        assert not iso.seed_member(leftover, guard, {}), leftover

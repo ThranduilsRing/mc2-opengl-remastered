@@ -158,7 +158,7 @@ MUTATED_ROOTS = (
     "mods/sample_new_variant", "mods/sample_variant",
     "data/defs", "data/kit", "data/model_overrides",
     "data/vegetation", "data/terrain_layers", "data/textures",
-    "data/art/mechicons", "data/art/missionmaps",
+    "data/art/mechicons", "data/art/missionmaps", "saved_bookmarks",
     "cache/content-model",
 )
 MUTATED_FILES = (
