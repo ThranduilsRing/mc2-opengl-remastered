@@ -165,21 +165,86 @@ def commit_order_problem(older, newer, what_older, what_newer):
 SHADER_BUILD_DIRS = ("shaders/vulkan/", "shaders/include/", "shaders/spv/")
 
 
-def manifest_mismatches(ma, mb):
-    """Data manifest differences ignoring the build under test: mc2.exe, everything under shaders/vulkan/ (the .spv and the
-    sources they compile from ship together with the exe) and the build outputs that never change a capture's pixels
-    (mc2.pdb pairs with mc2.exe; mc2_asset_viewer.exe is not launched by a capture).
-    W135: the gate's capture-before (published exe) vs capture-after (candidate) differed only in mc2.pdb/asset viewer and
-    failed; W136: a window that edits shaders/vulkan sources (.frag, include/*.glsl) failed the same way."""
+def _data_mismatch_entries(ma, mb):
+    """[(relpath, line)] for every data file that differs between manifests A and B, ignoring the build under test: mc2.exe,
+    everything under shaders/vulkan/ (the .spv and the sources they compile from ship together with the exe) and the build
+    outputs that never change a capture's pixels (mc2.pdb pairs with mc2.exe; mc2_asset_viewer.exe is not launched by a
+    capture). W135: the gate's capture-before (published exe) vs capture-after (candidate) differed only in mc2.pdb/asset
+    viewer and failed; W136: a window that edits shaders/vulkan sources (.frag, include/*.glsl) failed the same way.
+    W137: shaders/include (*.hglsl) and shaders/spv (prebuilt packages) ship with the exe the same way. Only these three
+    deployed shader dirs are exempt; any other file under shaders/ (data, fixtures) still refuses."""
     build_outputs = EXECUTABLES | {"mc2.pdb", "mc2_asset_viewer.exe", "mc2_asset_viewer"}
-    # W137: shaders/include (*.hglsl) and shaders/spv (prebuilt packages) ship with the exe the same way. Only these three
-    # deployed shader dirs are exempt; any other file under shaders/ (data, fixtures) still refuses.
     skip = lambda p: p in build_outputs or p.startswith(SHADER_BUILD_DIRS)
     ma = {k: v for k, v in ma.items() if not skip(k)}
     mb = {k: v for k, v in mb.items() if not skip(k)}
-    out = [f"only in A: {k}" for k in sorted(ma.keys() - mb.keys())] + [f"only in B: {k}" for k in sorted(mb.keys() - ma.keys())]
-    out += [f"differs: {k} (A {ma[k][:12]} vs B {mb[k][:12]})" for k in sorted(ma.keys() & mb.keys()) if ma[k] != mb[k]]
-    return out
+    entries = [(k, f"only in A: {k}") for k in sorted(ma.keys() - mb.keys())]
+    entries += [(k, f"only in B: {k}") for k in sorted(mb.keys() - ma.keys())]
+    entries += [(k, f"differs: {k} (A {ma[k][:12]} vs B {mb[k][:12]})") for k in sorted(ma.keys() & mb.keys()) if ma[k] != mb[k]]
+    return entries
+
+
+def manifest_mismatches(ma, mb):
+    """The human-readable lines of _data_mismatch_entries (one per differing data file)."""
+    return [line for _, line in _data_mismatch_entries(ma, mb)]
+
+
+def manifest_diff_files(ma, mb):
+    """The set of data relpaths that differ between manifests A and B (same scope as manifest_mismatches)."""
+    return {path for path, _ in _data_mismatch_entries(ma, mb)}
+
+
+def git_diff_files(older, newer):
+    """Relpaths changed between commits older and newer (`git diff --name-only older newer`); None when the diff cannot be
+    computed (unknown commit, git failure) so callers fail closed instead of accepting an unverified payload."""
+    try:
+        out = subprocess.run(["git", "-C", str(ROOT), "diff", "--name-only", older, newer],
+                             capture_output=True, text=True,
+                             **console_child.child_kwargs(redirected=True))
+    except OSError:
+        return None
+    if out.returncode != 0:
+        return None
+    return {line for line in out.stdout.splitlines() if line}
+
+
+LANE_BASE_BRANCH = "claude/nifty-mendeleev"
+
+
+def git_merge_base(a, b):
+    """merge-base of commits a and b, or None when it cannot be computed (unknown commit, git failure)."""
+    try:
+        out = subprocess.run(["git", "-C", str(ROOT), "merge-base", a, b],
+                             capture_output=True, text=True,
+                             **console_child.child_kwargs(redirected=True))
+    except OSError:
+        return None
+    if out.returncode != 0:
+        return None
+    return out.stdout.strip() or None
+
+
+def lane_base_ref():
+    """The tip of the lane base branch (claude/nifty-mendeleev), or None when it cannot be resolved."""
+    try:
+        out = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "refs/heads/" + LANE_BASE_BRANCH],
+                             capture_output=True, text=True,
+                             **console_child.child_kwargs(redirected=True))
+    except OSError:
+        return None
+    if out.returncode != 0:
+        return None
+    return out.stdout.strip() or None
+
+
+def exe_a_base_check(commit_a, commit_b):
+    """(warning line or None, {exe_a, lane_base} or None) when the A exe is not built from the lane base (the merge-base of
+    B and the lane base branch). A clean A/B has the A exe built exactly at the lane base; anything else may be cross-base."""
+    base_ref = lane_base_ref()
+    lane_base = git_merge_base(commit_b, base_ref) if (commit_b and base_ref) else None
+    if commit_a and lane_base and commit_a != lane_base:
+        return (f"exe A is {commit_a}, lane base is {lane_base}: differences may be cross-base",
+                {"exe_a": commit_a, "lane_base": lane_base})
+    return None, None
 
 
 def base_problems(install_a=None, install_b=None, exe_a=None, exe_b=None, install=None):
@@ -336,7 +401,8 @@ def stamp_cross_base(img: Image.Image) -> Image.Image:
     return img
 
 
-def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None, cross_base=False):
+def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None, cross_base=False, data_delta_accepted=None,
+            exe_a_base_mismatch=None, exe_a_swap=None):
     """Returns the compared rows; compare.problems lists missing/empty evidence (callers exit nonzero on it)."""
     if not bookmarks:
         bookmarks = discover_bookmarks(gl_dir, vk_dir)
@@ -409,7 +475,10 @@ def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None, cross_
     if problems:
         print("[ab] FAIL: " + "; ".join(problems))
     (out / "summary.json").write_text(json.dumps(
-        {"gl": str(gl_dir), "vk": str(vk_dir), "threshold": THRESH, "cross_base": cross_base, "rows": rows, "problems": problems,
+        {"gl": str(gl_dir), "vk": str(vk_dir), "threshold": THRESH, "cross_base": cross_base,
+         "data_delta_accepted": list(data_delta_accepted or []), "exe_a_base_mismatch": exe_a_base_mismatch,
+         "exe_a_swap": exe_a_swap,
+         "rows": rows, "problems": problems,
          "gpu": {"a": gpu_a, "b": gpu_b, "same": gpu_a == gpu_b}}, indent=2))
     print(f"[ab] wrote {out}")
     compare.problems = problems
@@ -451,6 +520,73 @@ def stage_install(install: Path, exe: Path, dest: Path) -> Path:
     return dest
 
 
+def stage_exe_swap(install: Path, exe: Path, dest: Path) -> Path:
+    """A hardlink copy of `install` (the B side) whose mc2.exe/pdb and whole shaders/ dir come from `exe`'s install dir: the A
+    side runs the other build's executable against B's data, so a diff isolates the executable. The manifest is rewritten from
+    the swapped bytes so the payload identity check still verifies what actually runs -- an explicit, logged exemption for this
+    staged side only, never a global weakening of the check for other callers."""
+    def link(src, dst):
+        try:
+            os.link(src, dst)
+        except OSError:
+            shutil.copy2(src, dst)
+    install, exe, dest = Path(install), Path(exe), Path(dest)
+    exe_dir = exe.parent
+    if dest.exists():
+        shutil.rmtree(dest)
+    shutil.copytree(install, dest, copy_function=link)
+    target = dest / exe.name
+    if target.exists():
+        target.unlink()
+    shutil.copy2(exe, target)
+    pdb_src = exe_dir / (exe.stem + ".pdb")
+    pdb_dst = dest / (exe.stem + ".pdb")
+    if pdb_src.is_file():
+        if pdb_dst.exists():
+            pdb_dst.unlink()
+        shutil.copy2(pdb_src, pdb_dst)
+    shaders_src = exe_dir / "shaders"
+    shaders_dst = dest / "shaders"
+    if shaders_src.is_dir():
+        if shaders_dst.exists():
+            shutil.rmtree(shaders_dst)
+        shutil.copytree(shaders_src, shaders_dst)
+    manifest = dest / MANIFEST
+    with manifest.open(newline="", encoding="utf-8") as stream:
+        rows = list(csv.reader(stream))
+    commit = exe_commit(exe)
+    if not commit:
+        sys.exit(f"ab.py: unknown executable identity: {exe}")
+    if len(commit) != 40:
+        commit = subprocess.check_output(["git", "-C", str(ROOT), "rev-parse", commit + "^{commit}"], text=True,
+                                         **console_child.child_kwargs(redirected=True)).strip()
+    # The swapped shaders/vulkan/*.spv are the payload: rewrite their manifest rows from the swapped bytes (and drop rows for
+    # shaders the swapped build no longer ships) so payload_identity verifies exactly what runs.
+    spv = {p.relative_to(dest).as_posix(): p for p in (dest / "shaders" / "vulkan").rglob("*.spv")}
+    new_rows = []
+    for row in rows:
+        if not row:
+            continue
+        if row[0] == target.name:
+            row[1:4] = [hashlib.sha256(target.read_bytes()).hexdigest(), str(target.stat().st_size), commit]
+        elif row[0] in spv:
+            src = spv[row[0]]
+            row[1:4] = [hashlib.sha256(src.read_bytes()).hexdigest(), str(src.stat().st_size), commit]
+        elif row[0].startswith("shaders/") and not (exe_dir / row[0]).is_file():
+            continue
+        new_rows.append(row)
+    have = {row[0] for row in new_rows if row}
+    for rel, src in sorted(spv.items()):
+        if rel not in have:
+            new_rows.append([rel, hashlib.sha256(src.read_bytes()).hexdigest(), str(src.stat().st_size), commit])
+    manifest.unlink()  # copied installs may share this inode with their source
+    with manifest.open("w", newline="", encoding="utf-8") as stream:
+        csv.writer(stream).writerows(new_rows)
+    print(f"[ab] staged A side {dest.name}: mc2.exe/pdb + shaders/ swapped from {exe_dir} "
+          f"(manifest rewritten; payload identity re-verified on the swapped bytes)", flush=True)
+    return dest
+
+
 def seed_install(install, bookmarks, reference=DEFAULT_INSTALL):
     """A fresh lane install lacks saved_bookmarks/<bm>.json and data/textures/*.burnin.*: copy what is missing from the reference
     install (as the gate's stage step does); exit naming what is still missing so a capture never runs on the wrong data."""
@@ -476,11 +612,42 @@ def seed_install(install, bookmarks, reference=DEFAULT_INSTALL):
                  + "\n  fix: use --install DIR to name a reference install that has them, or copy them in.")
 
 
+def ensure_saved_bookmarks(install, reference=DEFAULT_INSTALL):
+    """If the (staged or used) install has no saved_bookmarks/*.json at all, copy the reference's bookmarks (read-only) so a
+    capture never runs on an empty bookmark set; fail clearly only if the reference has none either. Never writes to the
+    reference."""
+    install, reference = Path(install), Path(reference)
+    bookmark_dir = install / "saved_bookmarks"
+    if any(bookmark_dir.glob("*.json")):
+        return
+    sources = sorted((reference / "saved_bookmarks").glob("*.json"))
+    if not sources:
+        sys.exit(f"ab.py: {install} has no saved_bookmarks/*.json and the reference {reference} has none either; "
+                 f"copy bookmarks into {bookmark_dir} before capturing")
+    bookmark_dir.mkdir(parents=True, exist_ok=True)
+    for src in sources:
+        shutil.copy2(src, bookmark_dir / src.name)
+    print(f"[ab] {install.name}: no saved_bookmarks; copied {len(sources)} from {reference}", flush=True)
+
+
 def resolve_installs(a, out: Path):
-    """-> (install_a, install_b) from --install-a/--install-b or --exe-a/--exe-b (+ --install); exits on a bad combination."""
+    """-> (install_a, install_b) from --install-a/--install-b, --exe-a/--exe-b (+ --install), or --exe-a + --install-b; exits on a bad combination."""
+    if a.exe_a and not a.exe_b:
+        # --exe-a alone: A is a hardlink copy of the B install (--install-b) with A's mc2.exe/pdb + shaders/ swapped in from the
+        # exe's install dir, so a diff isolates the executable.
+        if not a.install_b or a.install_a:
+            sys.exit("use --exe-a with --install-b (the B install); A is staged as a hardlink copy of B with the exe swapped")
+        try:
+            payload_identity(a.install_b)
+        except (OSError, ValueError) as exc:
+            sys.exit(f"ab.py: refusing B install: {exc}")
+        exe = Path(a.exe_a)
+        if not exe.is_file():
+            sys.exit(f"exe not found: {exe}")
+        return (str(stage_exe_swap(Path(a.install_b), exe, out / "install_a")), a.install_b)
     if a.install_a or a.install_b:
         if not (a.install_a and a.install_b) or a.exe_a or a.exe_b:
-            sys.exit("use --install-a with --install-b, or --exe-a with --exe-b, not a mix")
+            sys.exit("use --install-a with --install-b, or --exe-a with --exe-b, or --exe-a with --install-b, not a mix")
         for d in (a.install_a, a.install_b):
             seed_install(d, a.bookmarks or "", a.install)
         return a.install_a, a.install_b
@@ -494,7 +661,7 @@ def resolve_installs(a, out: Path):
                 sys.exit(f"exe not found: {e}")
         return (str(stage_install(Path(a.install), Path(a.exe_a), out / "install_a")),
                 str(stage_install(Path(a.install), Path(a.exe_b), out / "install_b")))
-    sys.exit("need --install-a/--install-b or --exe-a/--exe-b (or --compare-only DIR_A DIR_B)")
+    sys.exit("need --install-a/--install-b, or --exe-a/--exe-b, or --exe-a/--install-b (or --compare-only DIR_A DIR_B)")
 
 
 def main(argv=None):
@@ -502,7 +669,9 @@ def main(argv=None):
     ap.add_argument("--bookmarks")
     ap.add_argument("--install-a", metavar="DIR")
     ap.add_argument("--install-b", metavar="DIR")
-    ap.add_argument("--exe-a", metavar="EXE")
+    ap.add_argument("--exe-a", metavar="EXE",
+                    help="A's mc2.exe; with --exe-b it stages both exes on --install's data, alone with --install-b it stages A "
+                         "as a hardlink copy of B with A's mc2.exe/pdb + shaders/ swapped in from the exe's install dir")
     ap.add_argument("--exe-b", metavar="EXE")
     ap.add_argument("--install", default=DEFAULT_INSTALL, help="data/DLL source for --exe-a/--exe-b")
     ap.add_argument("--focus", metavar="mech[:N]", default=None,
@@ -517,8 +686,9 @@ def main(argv=None):
     ap.add_argument("--allow-base-mismatch", action="store_true",
                     help="deliberate cross-base comparison: print the base/data mismatch, stamp CROSS-BASE on the montage, go on")
     ap.add_argument("--allow-data-delta", action="store_true",
-                    help="--compare-only: when capture B's commit descends from A's, list data-manifest differences (the window's "
-                         "payload) instead of refusing; the commit order and payload identity checks still apply")
+                    help="--compare-only: when capture B's commit descends from A's, accept only the data files the window "
+                         "changed (`git diff --name-only A B`) instead of refusing; any other differing data file still refuses; "
+                         "the commit order and payload identity checks still apply")
     a = ap.parse_args(argv)
     os.environ["MC2_CURSOR_NO_PARK"] = "1"
     crops = [tuple(float(x) for x in c.split(",")) for c in a.crop]
@@ -533,17 +703,29 @@ def main(argv=None):
         except ValueError as exc:
             sys.exit(f"ab.py: {exc}")
         bad = [p for p in [commit_order_problem(ia["commit"], ib["commit"], "capture A", "capture B")] if p]
-        delta = manifest_mismatches(ia["manifest"], ib["manifest"])
+        entries = _data_mismatch_entries(ia["manifest"], ib["manifest"])
+        accepted_delta = []
         if a.allow_data_delta and not bad:
             # the merge gate's before (published v0.4) vs after (candidate): B descends from A, so a data difference is the
-            # window's own payload; list it next to the MAD table instead of refusing (W138: logistics-art shipped 574 icons)
-            for line in delta:
-                print("[ab] data delta (window payload): " + line, flush=True)
+            # window's own payload (W138: logistics-art shipped 574 icons). P1: accept only the files the window actually
+            # changed (`git diff --name-only A B`); any other differing data file still refuses.
+            diff_files = git_diff_files(ia["commit"], ib["commit"])
+            if diff_files is None:
+                bad.append("cannot compute `git diff --name-only` between the two capture commits; refusing --allow-data-delta")
+            else:
+                accepted = manifest_diff_files(ia["manifest"], ib["manifest"]) & diff_files
+                accepted_delta = sorted(accepted)
+                for path, line in entries:
+                    if path in accepted:
+                        print("[ab] data delta (window payload): " + line, flush=True)
+                    else:
+                        bad.append(line)
         else:
-            bad += delta
+            bad += [line for _, line in entries]
         if bad and not a.allow_base_mismatch:
             sys.exit("ab.py: mismatched capture identities: " + "; ".join(bad))
-        compare(Path(a.compare_only[0]), Path(a.compare_only[1]), out, crops, cross_base=bool(bad))
+        compare(Path(a.compare_only[0]), Path(a.compare_only[1]), out, crops,
+                cross_base=bool(bad), data_delta_accepted=accepted_delta)
         sys.exit(1 if getattr(compare, "problems", None) else 0)
     if not a.bookmarks:
         sys.exit("--bookmarks required")
@@ -556,16 +738,27 @@ def main(argv=None):
         print("[ab] CROSS-BASE (allowed): " + b, flush=True)
     out.mkdir(parents=True, exist_ok=True)
     ia, ib = resolve_installs(a, out)
+    ensure_saved_bookmarks(ia, a.install)
+    ensure_saved_bookmarks(ib, a.install)
+    exe_a_swap = None
+    if a.exe_a and not a.exe_b:
+        exe_a_swap = {"exe": a.exe_a, "exe_dir": str(Path(a.exe_a).parent), "b_install": a.install_b}
     try:
         identities = [payload_identity(d) for d in (ia, ib)]
     except (OSError, ValueError) as exc:
         sys.exit(f"ab.py: refusing capture: {exc}")
+    # Warn (never refuse) when the A exe was not built from the lane base: the A/B then mixes the lane's changes with
+    # cross-base ones, so a nonzero diff is not a clean signal of the window.
+    base_line, exe_a_base_mismatch = exe_a_base_check(identities[0]["commit"], identities[1]["commit"])
+    if base_line:
+        print("[ab] WARNING: " + base_line, flush=True)
     env = ["MC2_RENDER_BACKEND=vulkan", "MC2_VK_SHARED_GBUFFER=1"] + a.env + env_pin.focus_declarations(a.focus, a.focus_zoom)
     run_capture(ia, a.bookmarks, out / "a", env)
     stamp_identity(out / "a", identities[0])
     run_capture(ib, a.bookmarks, out / "b", env)
     stamp_identity(out / "b", identities[1])
-    compare(out / "a", out / "b", out / "cmp", crops, [s.strip() for s in a.bookmarks.split(",") if s.strip()], cross_base=bool(bad))
+    compare(out / "a", out / "b", out / "cmp", crops, [s.strip() for s in a.bookmarks.split(",") if s.strip()],
+            cross_base=bool(bad), exe_a_base_mismatch=exe_a_base_mismatch, exe_a_swap=exe_a_swap)
     sys.exit(1 if getattr(compare, "problems", None) else 0)
 
 

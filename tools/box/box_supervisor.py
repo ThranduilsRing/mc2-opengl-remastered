@@ -5,9 +5,10 @@ Every 30 s (one tick; `--once` runs one tick and exits):
   workers   restart a dead filler worker (/workspace/filler/worker.sh 0-2) unless /workspace/filler/STOP exists; >5 restarts in 10 min = backoff
   reap      gpuN.sK.owner / .row (and the legacy gpuN.owner / .row) naming a dead pid (older than 60 s), *.want older than 10 min, a quiet file of a dead pid, filler .run markers
             of dead pids. The gpuN lock files themselves are never removed; a live lock or a live pid is never touched
-  gpu3      GPU 3 belongs to gate rows: any process on its bus that does not descend from the live gpu3.owner pid is an intruder. While a gate
-            holds the lock, intruders get SIGSTOP (recorded in /workspace/locks/gpu3.stopped) and SIGCONT when the gate ends or this starts.
-            BOX_GPU3_ENFORCE=log only logs. A gpu3 lock held by anything but a box_run lane script is a problem
+  gate GPU  the gate GPU (GATE_GPU in cores.env; the one-GPU box's only GPU 0) belongs to gate rows: any process on its bus that does not
+            descend from the live gpu<N>.owner pid is an intruder. While a gate holds the lock, intruders get SIGSTOP (recorded in
+            /workspace/locks/gpu<N>.stopped) and SIGCONT when the gate ends or this starts. BOX_GPU3_ENFORCE=log only logs. A gate-GPU lock
+            held by anything but a box_run lane script is a problem
   repin     Blender / asset scripts (blender-5, scene2.py, micro.py) onto BUILD_CPUS (cores.env), off the game cores
   status    /workspace/STATUS.json (filler/status.py), /workspace/supervisor.heartbeat, /workspace/supervisor.state.json
   autosync  when the mirror's nifty tip is ahead of the filler's current_sha: queue `bash /workspace/filler/sync.sh --mirror` in pueue group build
@@ -31,7 +32,6 @@ PUEUE = W + "/toolchains/pueue/pueue"
 NIFTY = "refs/heads/claude/nifty-mendeleev"
 INTERVAL = 30
 FILLER_GPUS = (0, 1, 2)
-GATE_GPU = 3
 STALE_OWNER_S = 60
 STALE_WANT_S = 600
 FLAP_N, FLAP_WINDOW_S = 5, 600
@@ -257,7 +257,7 @@ def reap(now, holders=None):
     return gone
 
 
-# --- GPU 3 guard ---------------------------------------------------------------------------------------------------
+# --- gate GPU guard -------------------------------------------------------------------------------------------------
 
 def nvidia_query():
     """({index: bus}, [(bus, pid, name, mem_mb)]) or (None, None) when nvidia-smi fails"""
@@ -283,15 +283,16 @@ def nvidia_query():
 
 
 def gate_holder(holders=None):
-    """(owner pid if alive, /proc/locks pid, lock held?) for gpu3. The /proc/locks pid is the flock(1) child that took the lock (it has
+    """(owner pid if alive, /proc/locks pid, lock held?) for the gate GPU. The /proc/locks pid is the flock(1) child that took the lock (it has
     exited), so the identity check uses the owner pid that box_run's lane script writes ($$ of .box_lane_<key>.sh)."""
     holders = status.lock_holders() if holders is None else holders
+    gg = gate_gpu()
     try:
-        ino = os.stat(f"{LOCKS}/gpu{GATE_GPU}").st_ino
+        ino = os.stat(f"{LOCKS}/gpu{gg}").st_ino
     except OSError:
         ino = None
     held = ino is not None and ino in holders
-    own = read_pidfile(f"{LOCKS}/gpu{GATE_GPU}.owner")
+    own = read_pidfile(f"{LOCKS}/gpu{gg}.owner")
     return (own if alive(own) else None), (holders.get(ino) if held else None), held
 
 
@@ -301,7 +302,7 @@ def classify_gpu3(apps, bus, owner):
 
 
 def _stopped_path():
-    return f"{LOCKS}/gpu{GATE_GPU}.stopped"
+    return f"{LOCKS}/gpu{gate_gpu()}.stopped"
 
 
 def _read_stopped():
@@ -328,24 +329,26 @@ def resume_stopped(why, kill=os.kill):
 
 def guard_gpu3(state, now, query=nvidia_query, holders=None, kill=os.kill):
     buses, apps = query()
-    g = {"nvidia_smi_ok": buses is not None}
+    gg = gate_gpu()
+    g = {"nvidia_smi_ok": buses is not None, "gate_gpu": gg}
     problems = []
     if buses is None:
-        problems.append("nvidia-smi failed: GPU 3 cannot be guarded (fail closed: box unhealthy)")
+        problems.append(f"nvidia-smi failed: GPU {gg} cannot be guarded (fail closed: box unhealthy)")
         state["gpu3"] = {**g, "problems": problems}
         return problems
-    if len(buses) < 4:
-        problems.append(f"nvidia-smi sees {len(buses)} GPUs (want 4)")
-    bus = buses.get(GATE_GPU)
+    want = gpu_count()
+    if want and len(buses) < want:
+        problems.append(f"nvidia-smi sees {len(buses)} GPUs (configured {want})")
+    bus = buses.get(gg)
     owner, lk, held = gate_holder(holders)
     gate = bool(held and owner and ".box_lane_" in cmdline(owner))
     g.update(bus=bus, gate_active=gate, owner=owner, lock_pid=lk)
     if held and owner and not gate:
-        problems.append(f"gpu3 lock held by pid {owner} ({cmdline(owner)[:80]}), not a box_run gate script")
+        problems.append(f"gpu{gg} lock held by pid {owner} ({cmdline(owner)[:80]}), not a box_run gate script")
     if held and not owner:   # flock and the owner write are a few ms apart; only a lasting orphan is a problem
         state.setdefault("gpu3_orphan_since", now)
         if now - state["gpu3_orphan_since"] > STALE_OWNER_S:
-            problems.append(f"gpu3 locked for {int(now - state['gpu3_orphan_since'])}s with no live gpu3.owner")
+            problems.append(f"gpu{gg} locked for {int(now - state['gpu3_orphan_since'])}s with no live gpu{gg}.owner")
     else:
         state.pop("gpu3_orphan_since", None)
     intr = classify_gpu3(apps, bus, owner) if bus else []
@@ -356,23 +359,23 @@ def guard_gpu3(state, now, query=nvidia_query, holders=None, kill=os.kill):
         k = str(pid)
         e = known.get(k) or {"name": name, "since": now, "stopped": False}
         if k not in known:
-            log(f"gpu3 guard: intruder pid {pid} {name} (gate={'yes' if gate else 'no'}, mode={mode})")
+            log(f"gpu{gg} guard: intruder pid {pid} {name} (gate={'yes' if gate else 'no'}, mode={mode})")
         if gate and mode == "stop" and not e["stopped"]:
             try:
                 kill(pid, signal.SIGSTOP)
                 with open(_stopped_path(), "a") as f:
                     f.write(f"{pid} {starttime(pid)} {name}\n")
                 e["stopped"] = True
-                log(f"gpu3 guard: SIGSTOP {pid} {name} while the gate holds GPU 3")
+                log(f"gpu{gg} guard: SIGSTOP {pid} {name} while the gate holds GPU {gg}")
             except (OSError, AttributeError) as ex:
-                problems.append(f"gpu3 intruder {pid} could not be stopped: {ex}")
+                problems.append(f"gpu{gg} intruder {pid} could not be stopped: {ex}")
         cur[k] = e
     if not gate and os.path.exists(_stopped_path()):
         resume_stopped("gate ended", kill)
         for e in cur.values():
             e["stopped"] = False
     if gate and mode != "stop" and cur:
-        problems.append(f"gpu3: {len(cur)} non-gate process(es) on the gate GPU during a gate (BOX_GPU3_ENFORCE={mode})")
+        problems.append(f"gpu{gg}: {len(cur)} non-gate process(es) on the gate GPU during a gate (BOX_GPU3_ENFORCE={mode})")
     state["intruders"] = cur
     g["problems"] = problems
     state["gpu3"] = g
@@ -390,6 +393,33 @@ def build_cpus():
     except OSError:
         pass
     return "32-63"
+
+
+def gpu_count():
+    """Number of GPUs in the one core map: the GPU<n>_CPUS lines of locks/cores.env (0 when unreadable)."""
+    n = 0
+    try:
+        with open(f"{LOCKS}/cores.env") as f:
+            for ln in f:
+                key = ln.split("=", 1)[0].strip()
+                if key.startswith("GPU") and key.endswith("_CPUS") and key[3:-5].isdigit():
+                    n += 1
+    except OSError:
+        pass
+    return n
+
+
+def gate_gpu():
+    """The gate GPU from the one core map (GATE_GPU in locks/cores.env); 0 when unset or unreadable (the one-GPU box's only GPU)."""
+    try:
+        with open(f"{LOCKS}/cores.env") as f:
+            for ln in f:
+                if ln.startswith("GATE_GPU="):
+                    v = ln.split("=", 1)[1].strip()
+                    return int(v) if v.isdigit() else 0
+    except OSError:
+        pass
+    return 0
 
 
 def repin():

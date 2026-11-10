@@ -4,7 +4,7 @@
 usage: box-health [--floor-gb 15] [--rows 12]     exit 0 = healthy, 1 = at least one problem (the JSON says which)
   gpus        per GPU: util, memory, lock holder pid + alive, the row it runs, compute processes
   filler      STOP flag, current/mirror sha, per-worker alive + script version, results/failures at the current sha
-  supervisor  heartbeat age, restarts, backoff, GPU 3 guard state, the problems of its last tick
+  supervisor  heartbeat age, restarts, backoff, gate GPU guard state, the problems of its last tick
   disk        free GB vs the floor, diskwatch state, lane dir sizes, ccache size/max
   cpu         nproc, the cgroup quota (cpu.max), load and load / quota, throttling
   toolchain   clang-20 / cmake / ninja / driver versions, VVL dir
@@ -76,8 +76,9 @@ def gpus(now, problems):
         if e.get("idle_waiter_s") and e["idle_waiter_s"] > 60:
             problems.append(f"gpu{n}: a lane has waited {e['idle_waiter_s']}s while a slot was free ({e['held']}/{e['k']} held)")
         res.append(e)
-    if len(res) < 4:
-        problems.append(f"nvidia-smi sees {len(res)} GPUs (want 4)")
+    want = sup.gpu_count()   # the one core map (locks/cores.env GPU<n>_CPUS), not a hardcoded count
+    if want and len(res) < want:
+        problems.append(f"nvidia-smi sees {len(res)} GPUs (configured {want})")
     return res
 
 
@@ -106,7 +107,7 @@ def supervisor(now, problems):
     if age is None or age > HEARTBEAT_MAX_S:
         problems.append("box-supervisor heartbeat " + ("missing" if age is None else f"{age}s old") + " (supervisorctl status box-supervisor)")
     st = read_json(sup.STATE) or {}
-    for p in st.get("problems", []):   # GPU 3 guard (fail closed when nvidia-smi fails), worker restart backoff
+    for p in st.get("problems", []):   # gate GPU guard (fail closed when nvidia-smi fails), worker restart backoff
         problems.append(f"supervisor: {p}")
     recent = {k: len([t for t in v if now - t < 3600]) for k, v in (st.get("restarts") or {}).items()}
     return {"heartbeat_age_s": age, "pid": pid, "alive": sup.alive(pid), "workers": st.get("workers"), "restarts_1h": recent,

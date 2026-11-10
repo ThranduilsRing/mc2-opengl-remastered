@@ -1075,15 +1075,23 @@ def test_art_selection_handles_git_quoted_unicode_paths(tmp_path, monkeypatch):
     assert tt.art_changed(base)
 
 
-def test_gate_without_window_receipt_keeps_full_current_coverage(tmp_path, monkeypatch):
+def test_gate_without_window_receipt_keeps_full_current_coverage(tmp_path, monkeypatch, capsys):
     import merge_gate as gate
     monkeypatch.delenv("MC2_IN_GATE", raising=False)
     monkeypatch.setattr(gate, "ROOT", tmp_path)
-    monkeypatch.setattr(gate, "git", lambda *a: "head")
+    def git(*a):
+        if a[:2] == ("rev-parse", "claude/nifty-mendeleev"):
+            return "niftytip"
+        return "head"
+    monkeypatch.setattr(gate, "git", git)
+    # W139: no window receipt and no --base now defaults to the nifty tip (the lane base), not a refusal.
+    seen_default = []
+    monkeypatch.setattr(gate, "execute", lambda steps, *a: seen_default.extend(steps) or 0)
+    assert gate.main(["--dry-run", "--nightly", "--proofs-dir", str(tmp_path / "proof")]) == 0
+    assert "defaulting to the claude/nifty-mendeleev tip niftytip" in capsys.readouterr().out
+    assert seen_default
     seen = []
     monkeypatch.setattr(gate, "execute", lambda steps, *a: seen.extend(steps) or 0)
-    with pytest.raises(SystemExit):   # W135: no window receipt and no --base is refused, never silently full
-        gate.main(["--dry-run", "--nightly", "--proofs-dir", str(tmp_path / "proof")])
     assert gate.main(["--dry-run", "--nightly", "--full", "--base", "head", "--proofs-dir", str(tmp_path / "proof")]) == 0
     assert [n for n, _, _ in seen if n.startswith("saveload-")] == ["saveload-mc2_01", "saveload-mc2_10"]   # p29 cut 6: 03/16/24 are weekly
     assert "capture-before" in {n for n, _, _ in seen}
@@ -1092,6 +1100,21 @@ def test_gate_without_window_receipt_keeps_full_current_coverage(tmp_path, monke
                if name.startswith(("capture-", "saveload-", "determinism-")))
     assert all(e["MC2_SMOKE_ARTIFACT_ROOT"] == str(tmp_path / "proof/smokes" / n)
                for n, _, e in seen if n == "mods" or n.startswith(("determinism-", "saveload-")))
+
+
+def test_gate_base_refused_when_nifty_unresolvable(tmp_path, monkeypatch):
+    import merge_gate as gate
+    monkeypatch.delenv("MC2_IN_GATE", raising=False)
+    monkeypatch.setattr(gate, "ROOT", tmp_path)
+    def git(*a):
+        if a[:2] == ("rev-parse", "claude/nifty-mendeleev"):
+            raise subprocess.CalledProcessError(1, "git")
+        return "head"
+    monkeypatch.setattr(gate, "git", git)
+    monkeypatch.setattr(gate, "execute", lambda steps, *a: 0)
+    # W139: no --base, no verified window, and the nifty tip can't be resolved: still refused, never a silent full sweep.
+    with pytest.raises(SystemExit):
+        gate.main(["--dry-run", "--nightly", "--proofs-dir", str(tmp_path / "proof")])
 
 
 def test_blocked_capture_reports_missing_proof_without_launching(monkeypatch, capsys):

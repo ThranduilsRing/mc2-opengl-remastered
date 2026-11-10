@@ -137,6 +137,64 @@ def test_lean_projection_is_private_and_has_no_runtime_cache(tmp_path):
     assert copied_bytes < iso.plan(src, guard)[3]
 
 
+def test_lean_seed_copies_saved_bookmarks_privately(tmp_path):
+    iso = lean_tool()
+    src, dst = tmp_path / 'source', tmp_path / 'dest'
+    lean_fixture(src)
+    bm = src / 'saved_bookmarks/mc2_01.json'
+    bm.parent.mkdir(parents=True)
+    bm.write_text('{"mission": "mc2_01", "bookmarks": []}')
+    seed = iso.verified_seed(src)
+    guard = iso._load_guard()
+    links, copies, _, _ = iso.plan(src, guard, seed)
+    assert 'saved_bookmarks/mc2_01.json' in {r for r, _ in copies}
+    assert 'saved_bookmarks/mc2_01.json' not in {r for r, _ in links}
+    iso.build(src, dst, links, copies)
+    got = dst / 'saved_bookmarks/mc2_01.json'
+    assert got.read_text() == bm.read_text()
+    assert not bm.samefile(got)  # private byte copy, never a hardlink into the source
+    # A lane writing a new bookmark must not reach the source install.
+    got.write_text('{"mission": "mc2_01", "bookmarks": [{"name": "new"}]}')
+    assert bm.read_text() == '{"mission": "mc2_01", "bookmarks": []}'
+    assert guard.run_check(str(dst), payload_rels=['saved_bookmarks/mc2_01.json'])[0] == 'OK'
+    assert guard.run_check(str(dst), deep=True)[0] == 'OK'
+
+
+def test_snapshot_plan_copies_saved_bookmarks_privately(tmp_path):
+    iso = lean_tool()
+    src = tmp_path / 'source'
+    lean_fixture(src)
+    bm = src / 'saved_bookmarks/mc2_01.json'
+    bm.parent.mkdir(parents=True)
+    bm.write_text('{"mission": "mc2_01"}')
+    guard = iso._load_guard()
+    links, copies, _, _ = iso.plan(src, guard)
+    assert 'saved_bookmarks/mc2_01.json' in {r for r, _ in copies}
+    assert 'saved_bookmarks/mc2_01.json' not in {r for r, _ in links}
+
+
+def test_stale_inventory_still_copies_saved_bookmarks(tmp_path, monkeypatch):
+    iso = lean_tool()
+    src = tmp_path / 'source'
+    lean_fixture(src)
+    bm = src / 'saved_bookmarks/mc2_01.json'
+    bm.parent.mkdir(parents=True)
+    bm.write_text('{"mission": "mc2_01"}')
+    seed = iso.verified_seed(src)
+    guard = iso._load_guard()
+    links, copies, _, _ = iso.plan(src, guard, seed)
+    # Simulate an inventory written before the bookmark rule existed.
+    cache = src / '.lane-seed-inventory.json'
+    cache.write_text(json.dumps(dict(
+        identity=iso.file_sha(src / '.deployed_manifest.csv'),
+        links=[r for r in links if not r[0].startswith('saved_bookmarks/')],
+        copies=[r for r in copies if not r[0].startswith('saved_bookmarks/')])))
+    monkeypatch.setattr(iso, 'plan', lambda *a: pytest.fail('stale seed re-walked'))
+    links2, copies2, _, _ = iso.seed_plan(src, guard, seed)
+    assert ('saved_bookmarks/mc2_01.json', bm.stat().st_size) in copies2
+    assert not any(r.startswith('saved_bookmarks/') for r, _ in links2)
+
+
 def test_seed_rejects_tampered_payload_and_missing_manifest(tmp_path):
     iso = lean_tool()
     lean_fixture(tmp_path)

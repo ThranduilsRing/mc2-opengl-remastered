@@ -48,8 +48,12 @@ def test_deploy_repairs_missing_and_wrong_materials_then_noop(tmp_path, material
         assert hashlib.sha1((target / rel).read_bytes()).hexdigest() == expected
         assert (source / rel).read_bytes() == before[rel]
     stamps = {rel: (target / rel).stat().st_mtime_ns for rel in manifest}
-    def no_copy(*args):
-        pytest.fail('correct normals must not be rewritten')
+    def no_copy(src, dst, *args):
+        # The hash-receipts cache is rewritten (os.replace) on every deploy, no-op or not;
+        # it is metadata, not a material. Any other os.replace would be a material rewrite.
+        if Path(dst).name == '.deploy-receipts.json':
+            return
+        pytest.fail(f'correct normals must not be rewritten: {dst}')
     monkeypatch.setattr(dp.os, 'replace', no_copy)
     dp.deploy([], target, False)
     assert stamps == {rel: (target / rel).stat().st_mtime_ns for rel in manifest}

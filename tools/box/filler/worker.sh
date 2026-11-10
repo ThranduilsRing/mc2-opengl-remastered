@@ -7,7 +7,7 @@
 # failure (no pipefail).
 set -u
 G=$1
-case "$G" in 0|1|2) ;; *) echo "worker.sh: GPU $G is not a filler GPU (0-2; GPU 3 is the gate's)"; exit 2 ;; esac
+case "$G" in 0|1|2) ;; *) echo "worker.sh: GPU $G is not a filler GPU (0-2; the gate GPU is the gate's)"; exit 2 ;; esac
 F=/workspace/filler
 [ -f /workspace/locks/cores.env ] && . /workspace/locks/cores.env
 KS=${MC2_BOX_GPU_SLOTS:-${GPU_SLOTS:-3}}; case $KS in ''|*[!0-9]*|0) KS=1;; esac   # same K as box_run

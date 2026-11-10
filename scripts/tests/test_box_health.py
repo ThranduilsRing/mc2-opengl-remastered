@@ -79,6 +79,34 @@ def test_remote_health_parsers(tmp_path, monkeypatch):
     assert bhr.filler_rows(5) == {"ok": ["mc2_10-wolfman-2-1"], "failed": ["mc2_01-cross_map_view-1-1"]}
 
 
+def test_gpu_count_comes_from_cores_env(box):
+    # The expected GPU count is the number of GPU<n>_CPUS lines in the one core map, never a hardcoded 4.
+    (box.locks / "cores.env").write_text("BUILD_CPUS=32-63\nGPU0_CPUS=0-7\n")
+    assert sup.gpu_count() == 1
+    (box.locks / "cores.env").write_text(
+        "BUILD_CPUS=32-63\nGPU0_CPUS=0-7\nGPU1_CPUS=8-15\nGPU2_CPUS=16-23\nGPU3_CPUS=24-31\n")
+    assert sup.gpu_count() == 4
+    (box.locks / "cores.env").unlink()
+    assert sup.gpu_count() == 0
+
+
+def test_gpu_count_problem_reports_configured_vs_visible(box, monkeypatch):
+    import box_health_remote as bhr
+    monkeypatch.setattr(bhr, "sh", lambda cmd, timeout=10: (0, "0, 00000000:01:00.0, 5, 100, 8192"))
+    monkeypatch.setattr(sup, "nvidia_query", lambda: (None, []))
+    monkeypatch.setattr(bhr.status, "lock_holders", lambda: {})
+    monkeypatch.setattr(bhr.status, "gpu_entry", lambda n, now, inodes: {})
+    monkeypatch.setattr(bhr.status, "slot_names", lambda n: [])
+    (box.locks / "cores.env").write_text("BUILD_CPUS=32-63\nGPU0_CPUS=0-7\n")
+    problems = []
+    assert len(bhr.gpus(0.0, problems)) == 1 and problems == []   # 1 visible, 1 configured: healthy
+    (box.locks / "cores.env").write_text(
+        "BUILD_CPUS=32-63\nGPU0_CPUS=0-7\nGPU1_CPUS=8-15\nGPU2_CPUS=16-23\nGPU3_CPUS=24-31\n")
+    problems = []
+    bhr.gpus(0.0, problems)
+    assert problems == ["nvidia-smi sees 1 GPUs (configured 4)"]   # 1 visible, 4 configured: a GPU is missing
+
+
 def test_client_ssh_fails_fast():
     cmd = box_health.ssh_cmd("x")
     s = " ".join(cmd)
@@ -91,6 +119,7 @@ def test_client_ssh_fails_fast():
 
 @pytest.fixture
 def box(tmp_path, monkeypatch):
+    import status
     d = types.SimpleNamespace(proc=tmp_path / "proc", locks=tmp_path / "locks", filler=tmp_path / "filler", log=tmp_path / "sup.log")
     for p in (d.proc, d.locks, d.filler):
         p.mkdir()
@@ -98,6 +127,7 @@ def box(tmp_path, monkeypatch):
     monkeypatch.setattr(sup, "LOCKS", str(d.locks))
     monkeypatch.setattr(sup, "FILLER", str(d.filler))
     monkeypatch.setattr(sup, "LOG", str(d.log))
+    monkeypatch.setattr(status, "LOCKS", str(d.locks))   # the gate GPU / GPU count come from the same core map
     monkeypatch.setattr(sup, "signal", types.SimpleNamespace(SIGSTOP=19, SIGCONT=18))   # Windows has neither
 
     def proc(pid, cmd, parent=1, start="777"):
@@ -161,6 +191,8 @@ def test_reap_only_dead_and_stale(box):
 
 
 def test_reap_reaps_dead_slot_owner_files(box):
+    # GPU 0 is a game GPU (the gate GPU is 3 in this test), so it has the K slot files.
+    (box.locks / "cores.env").write_text("BUILD_CPUS=32-63\nGATE_GPU=3\nGPU0_CPUS=0-7\nGPU1_CPUS=8-15\nGPU2_CPUS=16-23\nGPU3_CPUS=24-31\n")
     L = box.locks
     (L / "gpu0.s2.owner").write_text("99999 claude/x abcdef12 t\n"); aged(L / "gpu0.s2.owner", 300)
     (L / "gpu0.s2.row").write_text("smoke-lite\n"); aged(L / "gpu0.s2.row", 300)
@@ -169,6 +201,8 @@ def test_reap_reaps_dead_slot_owner_files(box):
 
 
 def test_gpu3_guard_stops_intruders_and_fails_closed(box):
+    # The gate GPU is GPU 3 in this test (the one core map drives it; the one-GPU box sets GATE_GPU=0).
+    (box.locks / "cores.env").write_text("BUILD_CPUS=32-63\nGATE_GPU=3\nGPU0_CPUS=0-7\nGPU1_CPUS=8-15\nGPU2_CPUS=16-23\nGPU3_CPUS=24-31\n")
     (box.locks / "gpu3").write_text("")
     ino = os.stat(box.locks / "gpu3").st_ino
     box.add(100, "bash /workspace/lanes/.box_lane_claude_x.sh")
@@ -197,11 +231,12 @@ def test_gpu3_guard_stops_intruders_and_fails_closed(box):
     assert p and "not a box_run gate script" in p[0]
 
 
-def test_env_sh_refuses_gpu3_without_gate():
+def test_env_sh_refuses_gate_gpu_without_gate():
     txt = (BOX / "env.sh").read_text()
-    assert "GPU 3 is reserved for gate rows" in txt and "gpu3.owner" in txt
+    # The gate GPU (GATE_GPU in cores.env) is reserved for gate rows: the owner check and the refusal use the dynamic gpu<N>.
+    assert "is reserved for gate rows" in txt and "gpu$GG.owner" in txt and "GATE_GPU" in txt
     w = (BOX / "filler" / "worker.sh").read_text()
-    assert "case \"$G\" in 0|1|2)" in w      # filler never runs on GPU 3
+    assert "case \"$G\" in 0|1|2)" in w      # filler never runs on the gate GPU
 
 
 # --- quiet slot and the filler result checks -------------------------------------------------------------------------
