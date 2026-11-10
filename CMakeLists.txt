@@ -714,6 +714,8 @@ if(MC2_SIM_TRACE)
     target_compile_definitions(mc2_sim PRIVATE MC2_SIM_TRACE=1)
 endif()
 mc2_enable_pch(mc2_sim)
+# Header-only usage requirements (Gates/ include dir) of the one non-mclib library the sim headers reach; mc2_sim links nothing else.
+target_link_libraries(mc2_sim PUBLIC mc2_gate)
 target_link_libraries(mc2 mc2_sim)
 if(MC2_ALLOC_STATS)
     set_source_files_properties("code/mechcmd2_frame.cpp" "code/artlry.cpp" PROPERTIES COMPILE_DEFINITIONS MC2_ALLOC_STATS=1)
