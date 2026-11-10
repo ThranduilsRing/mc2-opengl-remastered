@@ -448,8 +448,9 @@ def test_gpu_lock_is_a_counting_semaphore_of_slot_files():
     assert 'echo "$row" > /workspace/locks/$SB.row' in r
     assert "gpu=$GPU slot=$SLOT locked lock_wait_secs=" in r                    # the old grep key survives
     assert "timeout 1 tail -f /dev/null" in r and "timeout 3 tail" not in r      # 1 s poll
-    assert "SB=gpu3" in r                                                         # the gate GPU keeps its one exclusive legacy lock
-    assert "GPU_SLOTS=3" in (Path(box_run.__file__).parent / "box" / "cores.env").read_text()
+    assert "SB=gpu${GATE_GPU:-0}" in r                                            # the gate GPU (GATE_GPU in cores.env) keeps its one exclusive legacy lock
+    ce = (Path(box_run.__file__).parent / "box" / "cores.env").read_text()
+    assert "GPU_SLOTS=3" in ce and "GATE_GPU=0" in ce                             # the one-GPU box's gate GPU is its only GPU
 
 
 def _slot_harness(tmp_path, k, name):

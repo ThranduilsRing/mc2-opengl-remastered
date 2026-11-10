@@ -183,12 +183,12 @@ if [ "$GPU" = auto ]; then cand="$AVAILABLE"
 elif [ "${MC2_GPU_STRICT:-0}" = 1 ]; then cand=$GPU
 else cand=$GPU; for o in $AVAILABLE; do [ "$o" = "$GPU" ] && continue; [ "$CAP0" = 1 ] && [ "$o" != 0 ] && continue; cand="$cand $o"; done; fi
 GOT=""
-KS=${MC2_BOX_GPU_SLOTS:-${GPU_SLOTS:-3}}   # game slots per GPU (a counting semaphore of K flock files gpu<g>.s<k>; cores.env GPU_SLOTS, env MC2_BOX_GPU_SLOTS overrides); the gate GPU 3 stays one exclusive slot (legacy file gpu3)
+KS=${MC2_BOX_GPU_SLOTS:-${GPU_SLOTS:-3}}   # game slots per GPU (a counting semaphore of K flock files gpu<g>.s<k>; cores.env GPU_SLOTS, env MC2_BOX_GPU_SLOTS overrides); the gate GPU (GATE_GPU in cores.env) stays one exclusive slot (legacy file gpu<N>)
 case $KS in ''|*[!0-9]*|0) KS=1;; esac
 try_slot() {   # first free (gpu, slot) among the candidates: non-blocking, fd 9 keeps the winner's flock
   local c k
   for c in $cand; do
-    if [ "$c" = 3 ]; then exec 9>>/workspace/locks/gpu3; flock -n 9 && { GOT=3; SLOT=0; SB=gpu3; return 0; }; continue; fi
+    if [ "$c" = "${GATE_GPU:-0}" ]; then exec 9>>/workspace/locks/gpu${GATE_GPU:-0}; flock -n 9 && { GOT=${GATE_GPU:-0}; SLOT=0; SB=gpu${GATE_GPU:-0}; return 0; }; continue; fi
     for k in $(seq 0 $((KS-1))); do exec 9>>/workspace/locks/gpu$c.s$k; flock -n 9 && { GOT=$c; SLOT=$k; SB=gpu$c.s$k; return 0; }; done
   done; return 1
 }
@@ -258,7 +258,7 @@ for row in "${ROWS[@]}"; do
   case $row in build|unit|unit-san|lint|cpu:*|sh:*) RUN=grc;; determinism:*|saveload*) RUN=grh;; *) RUN=gr; [ -z "$LOCKED" ] && { take_lock; LOCKED=1; };; esac
   case $row in unit-san) TMO=3000;; unit) TMO=1200;; lint) TMO=3600;; smoke*|capture:*|screen:*) TMO=600;; gpu-passes) TMO=1500;; determinism:*|saveload*) TMO=900;; *) TMO=1800;; esac   # a hung row must not hold a GPU or the lane
   case $row in
-    smoke-lite)  QS=""; [ "$GOT" = 3 ] && [ -x /workspace/bin/quiet-slot ] && QS="/workspace/bin/quiet-slot --gpu 3 --"   # gate GPU: pause and drain the idle filler first (its mc2 jobs are foreign engines that hold the game lease)
+    smoke-lite)  QS=""; [ "$GOT" = "${GATE_GPU:-0}" ] && [ -x /workspace/bin/quiet-slot ] && QS="/workspace/bin/quiet-slot --gpu ${GATE_GPU:-0} --"   # gate GPU: pause and drain the idle filler first (its mc2 jobs are foreign engines that hold the game lease)
                  cmd="$QS python3 scripts/run_smoke.py --lite --keep-logs --exe $I/mc2" ;;
     smoke-tier1) cmd="python3 scripts/run_smoke.py --tier tier1 --keep-logs --exe $I/mc2" ;;
     screen:*)    sc=${row#screen:}; cmd="python3 scripts/screen_shot.py --screen $sc --exe $I/mc2 --out-dir $(fresh $OUT/$name)" ;;

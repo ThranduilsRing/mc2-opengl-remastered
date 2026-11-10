@@ -10,7 +10,6 @@ import json, os, shutil, sys, time
 LOCKS = os.environ.get("MC2_BOX_LOCKS", "/workspace/locks")
 FILLER = os.environ.get("MC2_BOX_FILLER", "/workspace/filler")
 OUT = os.environ.get("MC2_BOX_STATUS", "/workspace/STATUS.json")
-GATE_GPU = 3
 
 
 def gpu_slots():
@@ -28,12 +27,40 @@ def gpu_slots():
     return max(1, int(v)) if v.isdigit() else 3
 
 
+def gpu_count():
+    """Number of GPUs in the one core map: the GPU<n>_CPUS lines of locks/cores.env (0 when unreadable)."""
+    n = 0
+    try:
+        with open(os.path.join(LOCKS, "cores.env")) as f:
+            for ln in f:
+                key = ln.split("=", 1)[0].strip()
+                if key.startswith("GPU") and key.endswith("_CPUS") and key[3:-5].isdigit():
+                    n += 1
+    except OSError:
+        pass
+    return n
+
+
+def gate_gpu():
+    """The gate GPU from the one core map (GATE_GPU in locks/cores.env); 0 when unset or unreadable (the one-GPU box's only GPU)."""
+    try:
+        with open(os.path.join(LOCKS, "cores.env")) as f:
+            for ln in f:
+                if ln.startswith("GATE_GPU="):
+                    v = ln.split("=", 1)[1].strip()
+                    return int(v) if v.isdigit() else 0
+    except OSError:
+        pass
+    return 0
+
+
 def slot_names(n):
     """lock-file base names of GPU n: gpu<n>.s<k> for k < K; the gate GPU keeps the one legacy name gpu<n>"""
-    return [f"gpu{n}"] if n == GATE_GPU else [f"gpu{n}.s{k}" for k in range(gpu_slots())]
+    return [f"gpu{n}"] if n == gate_gpu() else [f"gpu{n}.s{k}" for k in range(gpu_slots())]
 
 
-def all_slot_names(gpus=range(4)):
+def all_slot_names(gpus=None):
+    gpus = range(gpu_count()) if gpus is None else gpus
     return [b for n in gpus for b in slot_names(n)]
 
 
@@ -79,7 +106,7 @@ def gpu_entry(n, now, inodes):
     (how long a waiter has had a free slot: should stay ~0; a growing number means the queue is stuck while the GPU idles)"""
     filler = os.path.exists(os.path.join(FILLER, f"active.{n}"))
     slots = [slot_entry(b, now, inodes, filler) for b in slot_names(n)]
-    if n != GATE_GPU:   # a lane still on the old exclusive-lock script holds the legacy gpu<n> file: show it while it is held
+    if n != gate_gpu():   # a lane still on the old exclusive-lock script holds the legacy gpu<n> file: show it while it is held
         legacy = slot_entry(f"gpu{n}", now, inodes, filler)
         if legacy["locked"]:
             slots.append(legacy)

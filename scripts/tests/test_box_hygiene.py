@@ -223,6 +223,8 @@ def test_game_cpus_come_from_cores_env_with_old_formula_fallback(tmp_path):
 
 def test_status_build_reads_locks(tmp_path, monkeypatch):
     import status
+    # The one core map: 4 GPUs, the gate GPU is 3 (one exclusive slot); GPUs 0-2 have K=3 game slots.
+    (tmp_path / "cores.env").write_text("BUILD_CPUS=32-63\nGATE_GPU=3\nGPU0_CPUS=0-7\nGPU1_CPUS=8-15\nGPU2_CPUS=16-23\nGPU3_CPUS=24-31\n")
     (tmp_path / "gpu1.s0.owner").write_text(f"{os.getpid()} claude_x abcdef0123 2026-11-05T00:00:00+00:00")
     (tmp_path / "gpu1.s0.row").write_text("smoke-lite\n")
     (tmp_path / "gpu2.s1.owner").write_text("999999 gone deadbeef00 t")
@@ -244,8 +246,9 @@ def test_status_build_reads_locks(tmp_path, monkeypatch):
 
 def test_status_counts_held_slots_and_waiters(tmp_path, monkeypatch):
     import status
+    # GPU 0 is a game GPU (the gate GPU is 3 in this test), so it has the K slot files (K=2 via MC2_BOX_GPU_SLOTS).
+    (tmp_path / "cores.env").write_text("BUILD_CPUS=32-63\nGATE_GPU=3\nGPU0_CPUS=0-7\n")
     monkeypatch.setattr(status, "LOCKS", str(tmp_path))
-    monkeypatch.setattr(status, "FILLER", str(tmp_path / "f"))
     monkeypatch.setenv("MC2_BOX_GPU_SLOTS", "2")
     for k in range(2):
         (tmp_path / f"gpu0.s{k}").write_text("")
