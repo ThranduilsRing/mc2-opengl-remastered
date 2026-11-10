@@ -88,6 +88,12 @@ std::atomic<uint64_t> tailFrame{~0ull};
 std::atomic<uint32_t> tailFirst{0}, tailCount{0};
 std::atomic<bool>     tailSubmitted{false};
 
+// WATER-REFLECT-TIER: the water reflection pass cost per resolution, logged once per mission. The island publishes the target size each
+// reflecting frame; flushWindow (same thread as frameEnd) logs the window mean of its scope once, only while timestamps are armed.
+std::atomic<uint64_t> reflectRes{0};       // (w << 32) | h of the live reflection target, 0 = none
+std::atomic<bool>     reflectCostDone{false};
+constexpr const char* kReflectScope = "VKIsl.Water.Reflection";
+
 #ifdef TRACY_ENABLE
 const tracy::SourceLocationData* locFor(std::string_view nameSv, std::string_view fileSv, uint32_t line) {
     const char* name = nameSv.data();
@@ -135,6 +141,16 @@ void flushWindow(uint64_t frame) {
         std::fprintf(stderr, " %s=%.3f(x%.1f)", r.name, r.sumMs / n, r.frames ? static_cast<double>(r.calls) / r.frames : 0.0);
     }
     std::fprintf(stderr, "\n");
+    if (const uint64_t res = reflectRes.load(std::memory_order_relaxed); res != 0 && !reflectCostDone.load(std::memory_order_relaxed)) {
+        for (uint32_t i = 0; i < g.rowCount; ++i) {
+            const Row& r = g.rows[i];
+            if (r.frames < 30 || std::strcmp(r.name, kReflectScope) != 0) continue;   // wait for a settled window
+            const uint32_t w = static_cast<uint32_t>(res >> 32), h = static_cast<uint32_t>(res & 0xFFFFFFFFu);
+            std::fprintf(stderr, "[WATER_REFLECT_COST v1] res=%ux%u mpix=%.2f gpu_ms=%.3f frames=%u\n", w, h, double(w) * h / 1.0e6, r.sumMs / r.frames, r.frames);
+            reflectCostDone.store(true, std::memory_order_relaxed);
+            break;
+        }
+    }
     std::fflush(stderr);
     for (uint32_t i = 0; i < g.rowCount; ++i) { g.rows[i].sumMs = 0; g.rows[i].calls = 0; g.rows[i].frames = 0; }
     g.spanSumMs = g.sumSumMs = 0;
@@ -241,6 +257,12 @@ bool active() {
 #endif
         ;
 }
+
+void noteWaterReflection(uint32_t w, uint32_t h) {
+    const uint64_t v = (static_cast<uint64_t>(w) << 32) | h;
+    if (reflectRes.exchange(v, std::memory_order_relaxed) != v) reflectCostDone.store(false, std::memory_order_relaxed);   // new tier: log again
+}
+void rearmWaterReflectionCost() { reflectRes.store(0, std::memory_order_relaxed); reflectCostDone.store(false, std::memory_order_relaxed); }
 
 uint32_t snapshot(PassStat* out, uint32_t maxRows, float* spanMs) {
     if (spanMs) *spanMs = static_cast<float>(g.spanEma);

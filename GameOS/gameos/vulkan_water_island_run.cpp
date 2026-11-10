@@ -72,6 +72,7 @@ bool prepareNative(WaterIsland* s, mc2vk::VulkanContext& ctx) {
     // GetNativeCapacity adds 4096 records of slack after counting eligible quads.
     // A dry map skips the reflection pass, including its attachment transitions.
     s->mapHasWater = capacity->eligibleBound > 4096u;
+    mc2vk::gpuprof::rearmWaterReflectionCost();   // WATER-REFLECT-TIER: one cost line per mission
     ZoneScopedN("VKIsl.Water.PrepareNative");
     if (!s->recipeUploaded) {
         if (!upload_recipes_device(s, WaterStream::GetRecipes(), WaterStream::GetRecipeCount())) return false;
@@ -354,9 +355,10 @@ extern "C" int mc2_vk_water_island_run(
             wf.frameCos = nat->frameCos; wf.waterElevation = nat->waterElevation; wf.shoreExt = nat->shoreExt;
             wf.mapSide = nat->mapSide; wf.biasLegacy = nat->biasLegacy;
             if (reflectThisFrame) {
-                wf.reflectionHalfW=static_cast<uint32_t>(w); wf.reflectionHalfH=static_cast<uint32_t>(h);   // full-res reflection target
-                wf.reflectionGroupsX=(wf.reflectionHalfW+7)/8;
-                wf.reflectionGroupsY=(wf.reflectionHalfH+7)/8;
+                wf.reflectionW=static_cast<uint32_t>(w); wf.reflectionH=static_cast<uint32_t>(h);   // full-res reflection target
+                wf.reflectionGroupsX=(wf.reflectionW+7)/8;
+                wf.reflectionGroupsY=(wf.reflectionH+7)/8;
+                mc2vk::gpuprof::noteWaterReflection(wf.reflectionW, wf.reflectionH);
             }
             if (!s->native->record(cb, par, snap, wf, false)) {
                 // record() fails only before it records a command: close the begun buffer so it is never left open, then fail soft.

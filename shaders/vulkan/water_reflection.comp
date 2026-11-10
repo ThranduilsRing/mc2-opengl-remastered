@@ -13,7 +13,8 @@ layout(set=0,binding=1,std140) uniform WaterFsParams {
 layout(set=0,binding=9) uniform sampler2D sceneColor;
 layout(set=0,binding=10) uniform sampler2D sceneDepth;
 layout(set=0,binding=11,rgba16f) writeonly uniform image2D reflectionOut;
-// 8x8 half-res tiles that contain admitted water (water_cull_pack); one workgroup per entry (indirect dispatch).
+// 8x8 tiles (full-res reflection image) that contain admitted water (water_cull_pack); one workgroup per entry (indirect 2-D dispatch,
+// ROW_TILES wide: water_draw_args pads the last row with 0xFFFFFFFF).
 layout(set=0,binding=12,std430) readonly buffer WaterTiles { uint tiles[]; };
 
 vec3 unproject(mat4 inv, vec2 uv, float depth) {
@@ -54,7 +55,9 @@ vec3 coverageColour(mat4 inv, vec3 hit, vec2 nuv) {
 void main() {
     ivec2 size=imageSize(reflectionOut);
     int tilesX=(size.x+7)/8;
-    uint tile=tiles[gl_WorkGroupID.x];
+    const uint ROW_TILES=1024u;   // keep equal to water_reflect_dispatch.h kReflectRowTiles
+    uint tile=tiles[gl_WorkGroupID.y*ROW_TILES+gl_WorkGroupID.x];
+    if (tile==0xFFFFFFFFu) return;
     ivec2 pixel=ivec2(int(tile)%tilesX,int(tile)/tilesX)*8+ivec2(gl_LocalInvocationID.xy);
     if (any(greaterThanEqual(pixel,size))) return;
     imageStore(reflectionOut,pixel,vec4(0));
