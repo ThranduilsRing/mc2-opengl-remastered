@@ -57,15 +57,16 @@ def test_exe_mode_stages_installs_and_runs_both(tmp_path, monkeypatch):
     ea.write_bytes(b"A")
     eb.write_bytes(b"B")
     runs = []
-    monkeypatch.setattr(ab, "run_capture", lambda install, bms, out, env: runs.append((install, Path(out).name, env)))
+    def fake_capture(install, bms, out, env):  # the staged install exists only while the run is live
+        runs.append((install, Path(out).name, env, (Path(install) / "mc2.exe").read_bytes(), (Path(install) / "data.bin").exists()))
+    monkeypatch.setattr(ab, "run_capture", fake_capture)
     monkeypatch.setattr(ab, "compare", lambda *a, **k: None)
     monkeypatch.setattr(ab, "base_problems", lambda *a, **k: [])  # fake exes carry no fingerprint; the guard has its own tests
     with pytest.raises(SystemExit) as ex:
         ab.main(["--bookmarks", "x", "--exe-a", str(ea), "--exe-b", str(eb), "--install", str(inst), "--out-root", str(tmp_path / "o")])
     assert ex.value.code == 0
     assert [Path(r[0]).name for r in runs] == ["install_a", "install_b"] and [r[1] for r in runs] == ["a", "b"]
-    assert (Path(runs[0][0]) / "mc2.exe").read_bytes() == b"A" and (Path(runs[1][0]) / "mc2.exe").read_bytes() == b"B"
-    assert (Path(runs[0][0]) / "data.bin").exists() and (inst / "mc2.exe").read_bytes() == b"orig"
+    assert runs[0][3] == b"A" and runs[1][3] == b"B" and runs[0][4] and (inst / "mc2.exe").read_bytes() == b"orig"
     assert "MC2_RENDER_BACKEND=vulkan" in runs[0][2]
 
 
@@ -178,7 +179,14 @@ def test_exe_a_swap_mode_stages_and_records(tmp_path, monkeypatch):
     (aexe_dir / "mc2.exe").write_bytes(b"Aexe")
     (aexe_dir / "shaders/vulkan/x.spv").write_bytes(b"Aspv")
     monkeypatch.setattr(ab, "exe_commit", lambda *args: "c" * 40)
-    monkeypatch.setattr(ab, "run_capture", lambda install, bms, out, env: None)
+    seen = {}
+
+    def fake_capture(install, bms, out, env):  # the staged A install exists only while the run is live
+        if Path(out).name == "a":
+            a_install = Path(install)
+            seen.update(exe=(a_install / "mc2.exe").read_bytes(), spv=(a_install / "shaders/vulkan/x.spv").read_bytes(),
+                        data=(a_install / "data.bin").read_bytes(), a_install=a_install)
+    monkeypatch.setattr(ab, "run_capture", fake_capture)
     captured = {}
     monkeypatch.setattr(ab, "compare", lambda *a, **k: captured.update(k))
     monkeypatch.setattr(ab, "base_problems", lambda *a, **k: [])
@@ -188,10 +196,8 @@ def test_exe_a_swap_mode_stages_and_records(tmp_path, monkeypatch):
     assert ex.value.code == 0
     assert captured["exe_a_swap"]["exe"] == str(aexe_dir / "mc2.exe")
     assert captured["exe_a_swap"]["b_install"] == str(b)
-    a_install = tmp_path / "o" / "install_a"
-    assert (a_install / "mc2.exe").read_bytes() == b"Aexe"
-    assert (a_install / "shaders/vulkan/x.spv").read_bytes() == b"Aspv"
-    assert (a_install / "data.bin").read_bytes() == b"d"
+    assert seen["exe"] == b"Aexe" and seen["spv"] == b"Aspv" and seen["data"] == b"d"
+    assert not seen["a_install"].exists()  # deleted when the run ended
 
 
 def _run_compare_only(tmp_path):
