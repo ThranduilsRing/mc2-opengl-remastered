@@ -109,7 +109,9 @@ def payload_identity(install):
         with (install / rel).open("rb") as stream:
             got = hashlib.file_digest(stream, "sha256").hexdigest()
         if got != expected:
-            raise ValueError(f"{install}: manifest mismatch for {rel}: {got} != {expected}")
+            raise ValueError(f"{install}: manifest mismatch for {rel}: {got} != {expected} "
+                             "(stale manifest: the file was replaced after the manifest was written; redeploy through box_run "
+                             "build, which rewrites .deployed_manifest.csv from the installed files, instead of editing the install)")
     fingerprint = exe_commit(install / exe)
     if fingerprint and not commit.startswith(fingerprint):
         raise ValueError(f"{install}: executable commit mismatches manifest")
