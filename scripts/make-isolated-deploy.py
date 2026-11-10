@@ -249,15 +249,18 @@ def verified_seed(src, use_cache=False):
             fail(f'seed manifest path escapes source: {rel}', 2)
         if not candidate.is_file():
             fail(f'seed manifest file missing: {rel}', 2)
-        stamp = content_stamp(candidate)
-        old = cached.get(rel, {})
-        if old.get('stamp') == stamp and old.get('sha256') == row['sha256']:
-            digest = old['sha256']
+        for _ in range(4):  # another lane linking/unlinking this seed file moves ChangeTime, not the bytes: re-hash
+            stamp = content_stamp(candidate)
+            old = cached.get(rel, {})
+            if old.get('stamp') == stamp and old.get('sha256') == row['sha256']:
+                digest = old['sha256']
+            else:
+                digest = file_sha(candidate)
+            if digest != row['sha256']:
+                fail(f'seed manifest hash mismatch: {rel}', 2)
+            if content_stamp(candidate) == stamp:
+                break
         else:
-            digest = file_sha(candidate)
-        if digest != row['sha256']:
-            fail(f'seed manifest hash mismatch: {rel}', 2)
-        if content_stamp(candidate) != stamp:
             fail(f'seed changed during verification: {rel}', 2)
         return rel, {'stamp': stamp, 'sha256': digest}
 
@@ -384,11 +387,16 @@ def kit_seed_members(src, seed, use_cache=False):
             if rel in seen:
                 raise ValueError(f'duplicate kit member: {rel}')
             seen.add(rel)
-            stamp = content_stamp(path)
-            prior = cached.get(rel, {})
-            if prior.get('stamp') != stamp or prior.get('sha256') != row['sha256']:
-                kit_payload.checked_files(root, [row])
-            if path.stat().st_size != row['bytes'] or content_stamp(path) != stamp:
+            # Another lane hardlinking this seed file bumps its NTFS ChangeTime mid-check: re-hash and
+            # re-stamp (a few tries) instead of failing; real content changes still fail the hash.
+            for attempt in range(4):
+                stamp = content_stamp(path)
+                prior = cached.get(rel, {})
+                if prior.get('stamp') != stamp or prior.get('sha256') != row['sha256']:
+                    kit_payload.checked_files(root, [row])
+                if path.stat().st_size == row['bytes'] and content_stamp(path) == stamp:
+                    break
+            else:
                 raise ValueError(f'kit changed during verification: {rel}')
             updated[rel] = {'stamp': stamp, 'sha256': row['sha256']}
     for name in ('industrial', 'vehicle'):

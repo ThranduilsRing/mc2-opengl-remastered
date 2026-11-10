@@ -11,6 +11,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import kit_payload as kit
 
 
+@pytest.fixture(autouse=True)
+def _private_cook_cache(tmp_path, monkeypatch):
+    monkeypatch.setenv("MC2_COOK_CACHE", str(tmp_path / "cook-cache"))
+
+
 def package(tmp_path, monkeypatch):
     store = tmp_path / "store"
     store.mkdir()
@@ -306,7 +311,7 @@ def test_changed_package_is_recooked(cook_install):
     path.write_bytes(b"changed asset")
     row.update(bytes=path.stat().st_size, sha256=kit.sha(path))
     kit.finish(target, manifest, tool, cook)
-    assert len(calls) == 6
+    assert len(calls) == 4  # only the changed model recooks
 
 
 def test_second_full_payload_deploy_copies_nothing_and_cooks_nothing(cook_install, monkeypatch):
@@ -328,21 +333,20 @@ def test_recook_detaches_shared_outputs_before_in_place_writes(cook_install):
     target, manifest, tool, cook, calls = cook_install
     kit.finish(target, manifest, tool, cook)
     recipe = next((target / 'cache/content-model').glob('*.mci'))
-    recipe.write_bytes(b'broken')
-    kit.finish(target, manifest, tool, cook)  # restore as a hardlink
-    shared = next((target.parent / '.cooked-kit').glob('*/' + recipe.name))
+    shared = next(kit.cook_cache_root().glob('models/*/*/' + recipe.name))
+    recipe.unlink()
+    kit.finish(target, manifest, tool, cook)  # restored from the shared cache as a link
     assert recipe.samefile(shared)
     before = shared.read_bytes()
-    tool.write_bytes(b'new importer')
-    def overwrite(command, **kwargs):
-        result = cook(command, **kwargs)
-        recipe.write_bytes(b'new recipe')
-        return result
-    kit.finish(target, manifest, tool, overwrite)
+    row = manifest["files"][0]
+    path = target / kit.KIT_REL / row["path"]
+    path.write_bytes(b"changed")
+    row.update(bytes=path.stat().st_size, sha256=kit.sha(path))
+    kit.finish(target, manifest, tool, cook)
     assert shared.read_bytes() == before
 
 
-def test_recipe_evicted_by_a_later_write_in_the_same_cook_is_recooked(cook_install, monkeypatch):
+def test_recipe_evicted_by_a_later_write_in_the_same_cook_is_restored(cook_install, monkeypatch):
     # A full native cache (LRU by mtime, hits never refreshed) can evict a recipe this cook already got (W138b laptop gate).
     target, manifest, tool, cook, calls = cook_install
     class Sequential:
@@ -358,7 +362,7 @@ def test_recipe_evicted_by_a_later_write_in_the_same_cook_is_recooked(cook_insta
             (cache / f"model-{hashlib.sha256(calls[0].encode()).hexdigest()[:16]}.mci").unlink()
         return result
     kit.finish(target, manifest, tool, evicting)
-    assert calls == [*calls[:3], calls[0]]   # only the evicted recipe is cooked again
+    assert len(calls) == 3   # the evicted recipe is relinked from the shared cook cache, not cooked again
     rows = json.loads((cache / "industrial-cook.json").read_text())["files"]
     assert len(rows) == 3 and all((cache / r["path"]).is_file() for r in rows)
 

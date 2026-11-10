@@ -2218,6 +2218,7 @@ def main():
         check_locks(target, exe_name, wait_s)
         lease_held = take_folder_lease(target, wait_s)
     try:
+        clean_private_leftovers(target)
         if args.from_payload:
             head = args.payload_head or subprocess.check_output(['git', '-C', src_root, 'rev-parse', 'HEAD'],
                                                                 text=True, **console_child.child_kwargs(redirected=True)).strip()
@@ -2254,13 +2255,13 @@ def require_head_exe(exe, head, root=None):
     return fp
 
 
-def viewer_payload(build_dir, build64_root, head):
+def viewer_payload(build_dir, build64_root, head, root=None):
     """Ship the rebuilt viewer and its complete runtime closure, never an install's old exe."""
     b64 = find_build_root(build_dir, build64_root)
     cfg = "" if is_single_config(build_dir, b64) else os.path.basename(build_dir)
     directory = os.path.join(b64, "out", "tools", "asset_viewer", cfg)
     exe = os.path.join(directory, "mc2_asset_viewer.exe")
-    if require_head_exe(exe, head)["dirty"]:
+    if require_head_exe(exe, head, root)["dirty"]:
         fail(f"REFUSING dirty viewer build: {exe}; commit first and rebuild")
     # Include loader-library objects too: a partial build must not ship an old link.
     for root, _dirs, files in os.walk(os.path.join(b64, "out", "tools", "asset_viewer")):
@@ -2357,13 +2358,16 @@ def prepare_seed_delta(items, target, full_verify=False, allow_legacy=False):
     spec.loader.exec_module(iso)
     shared = json.loads(receipt.read_text(encoding='utf-8'))['shared'] if receipt.is_file() else {}
     verified = {}
+    import kit_payload
+    source_rx = kit_payload.HashReceipts(kit_payload.cook_cache_root() / 'source-receipts.json')
     for src, rel, kind in items:
         dst = Path(target) / rel
         if not dst.is_file() or dst.stat().st_nlink <= 1:
             continue
         row = shared.get(rel)
+        # Full stamp incl. NTFS ChangeTime (pinned by the restored-mtime corruption test); the source side uses receipts.
         if (not full_verify and src is not None and row and iso.content_stamp(dst) == row['stamp']
-                and Path(src).is_file() and sha256_file(src) == row['sha256']):
+                and Path(src).is_file() and source_rx.digest(src) == row['sha256']):
             verified[rel] = row['sha256']
             continue
         # The normal deploy still checks the source and copied hash. Privatize
@@ -2374,8 +2378,39 @@ def prepare_seed_delta(items, target, full_verify=False, allow_legacy=False):
             os.replace(tmp, dst)
         finally:
             tmp.unlink(missing_ok=True)
+    source_rx.save(merge=True)
     log(f'lane seed delta: {len(verified)} unchanged shared payload files retained')
     return verified
+
+
+_PRIVATE_LEFTOVER = re.compile(r'\.private-(\d+)$')
+
+
+def _pid_alive(pid):
+    try:
+        import psutil
+        return psutil.pid_exists(pid)
+    except ImportError:
+        return True
+
+
+def clean_private_leftovers(target):
+    """Remove `<file>.private-<pid>` copies left by a killed deploy (the privatize step in detach_lane_write_set)."""
+    removed = 0
+    for root, _dirs, files in os.walk(target):
+        for name in files:
+            m = _PRIVATE_LEFTOVER.search(name)
+            if not m or int(m.group(1)) == os.getpid() or _pid_alive(int(m.group(1))):
+                continue
+            path = os.path.join(root, name)
+            try:
+                os.unlink(path)
+            except OSError as exc:
+                log(f'WARNING: could not remove leftover {path}: {exc}')
+                continue
+            removed += 1
+            log(f'removed leftover from a killed deploy: {path}')
+    return removed
 
 
 def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
@@ -2425,7 +2460,7 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
                                   build64_root=args.build64_root, code_only=reuse)
     if exe_name != "mc2":
         with deploy_phase("viewer payload", 120):
-            items.extend(viewer_payload(build_dir, args.build64_root, source_head))
+            items.extend(viewer_payload(build_dir, args.build64_root, source_head, src_root))
     import kit_payload
     from smoke_lib import render_options_pin
     kit_manifest = None
@@ -2436,7 +2471,10 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     if not args.classic_assets and not getattr(args, "skip_kit", False) and not reuse and remastered:
         try:
             with deploy_phase("kit preparation and importer", 600):
-                kit_receipts = kit_payload.HashReceipts(Path(target) / '.deploy-receipts.json')
+                # The kit stores are read-only reference trees: their stamped hashes are shared by every install.
+                kit_receipts = kit_payload.HashReceipts(
+                    Path(target) / '.deploy-receipts.json',
+                    shared=kit_payload.HashReceipts(kit_payload.cook_cache_root() / 'store-receipts.json'))
                 kit_manifest, kit_items = kit_payload.payload(src_root, receipts=kit_receipts)
                 items.extend(kit_items)
                 vehicle_manifest, vehicle_items = kit_payload.payload(src_root,
@@ -2494,9 +2532,11 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
             log(f"phase stock receipts seconds={time.perf_counter() - phase_started:.3f}")
             phase_started = time.perf_counter()
             with deploy_phase("kit cook", 900):
-                kit_payload.finish(target, kit_manifest, kit_tool)
+                importer_key = kit_payload.importer_source_key(src_root, Path(kit_tool).parent)
+                kit_payload.finish(target, kit_manifest, kit_tool, importer_key=importer_key)
                 if vehicle_manifest:
-                    kit_payload.finish(target, vehicle_manifest, kit_tool, kit_rel=Path("mods/mc2-vehicle-kit"))
+                    kit_payload.finish(target, vehicle_manifest, kit_tool, kit_rel=Path("mods/mc2-vehicle-kit"),
+                                       importer_key=importer_key)
             log(f"phase kit cook seconds={kit_prepare_seconds + time.perf_counter() - phase_started:.3f}")
         except (OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
             fail(f"pinned industrial kit deploy failed: {exc}")
