@@ -1552,7 +1552,10 @@ bool guardWrite(std::string_view path)
 	if (mod.empty() || mod == "mc2-industrial-kit" || mod == "mc2-vehicle-kit") return false;   // same "no user layer" rule as the mount
 	{
 		std::lock_guard<std::mutex> lk(g_writeGuardMutex);
-		if (g_writeGuardSeen.size() >= 64 || !g_writeGuardSeen.insert(k).second) return false;
+		if (g_writeGuardSeen.size() >= 64) return false;
+		const auto [pos, added] = g_writeGuardSeen.insert(k);
+		(void)pos;
+		if (!added) return false;
 	}
 	mc2::fmt::print_out("[MOD_WRITE_GUARD] path={} mod={} action=warn\n", k.c_str(), mod.c_str());
 	fflush(stdout);
