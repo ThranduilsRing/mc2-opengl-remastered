@@ -139,8 +139,7 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
                 const float dx = o.x - cx, dy = o.y - cy, dz = o.z - cz;
                 const float d = std::sqrt(dx * dx + dy * dy + dz * dz);
                 uint8_t& lod = s_lodState[propLodKey(*b)];
-                while (lod + 1 < g.count && d > g.dist[lod + 1] * (1.0f + kBand)) ++lod;
-                while (lod > 0 && d < g.dist[lod] * (1.0f - kBand)) --lod;
+                propLodAdvance(lod, d, std::span<const float>(g.dist, static_cast<size_t>(g.count)), kBand);
                 GpuStaticPropInstance inst = *b;
                 inst.typeID = g.target[lod];
                 s_lodOut[inst.typeID].push_back(inst);
