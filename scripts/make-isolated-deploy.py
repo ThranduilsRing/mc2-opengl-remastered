@@ -235,13 +235,8 @@ def write_receipt(path, rows):
     pending = path.with_suffix(f'.{os.getpid()}.{threading.get_ident()}.tmp')
     try:
         pending.write_text(json.dumps(rows), encoding='utf-8')
-        for attempt in range(8):
-            try:
-                pending.replace(path)
-                return True
-            except PermissionError:
-                time.sleep(0.05 * (attempt + 1))
-        return False
+        import kit_payload
+        return kit_payload.replace_retry(pending, path)
     except OSError:
         return False
     finally:
