@@ -23,8 +23,10 @@ float propNightSunWeight(float ndl, vec3 nMC2) {
 // as dark green-blue masses with shape, not black silhouettes. Linear irradiance, scaled by
 // nightDarkness, so it is exactly zero by day. Leaves also scatter a share of the sky light
 // through to their underside (wrap), which keeps the shaded side of a crown off pure black.
-const vec3  kFoliageNightSky    = vec3(0.20, 0.27, 0.36);   // sky-up, cool blue-grey
-const vec3  kFoliageNightGround = vec3(0.03, 0.035, 0.04);  // ground-down, dim
+// Sized for stock-dark leaf albedo (mc2_10 pines): the fill multiplies that albedo, so the crowns stay
+// well below lamp-lit mechs and buildings.
+const vec3  kFoliageNightSky    = vec3(0.70, 0.95, 1.25);   // sky-up, cool blue-grey
+const vec3  kFoliageNightGround = vec3(0.06, 0.07, 0.08);   // ground-down, dim
 const float kFoliageNightWrap   = 0.35;                     // leaf cards: sky share reaching the underside
 vec3 propFoliageNightAmbient(vec3 nMC2, bool leaf) {
     float up = 0.5 + 0.5 * nMC2.z;

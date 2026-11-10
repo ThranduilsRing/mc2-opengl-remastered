@@ -40,14 +40,16 @@ def test_night_is_cool_shaped_and_dim():
     assert top[2] > top[1] > top[0]                      # cool blue-grey sky
     assert sum(top) > sum(side) > sum(under) > 0.0      # crown shape: lit top, darker underside
     assert sum(_ambient(-1.0, False, 1.0)) < sum(under)  # leaves wrap sky to their underside
-    assert max(top) < 0.5                                # a fill, not a glow (min(albedo, ...) caps at 1)
+    assert max(top) < 1.5                                # a fill on stock-dark albedo, not a glow
 
 
-def test_tree_branch_adds_ambient_before_the_cap():
+def test_tree_branch_adds_ambient_outside_the_cap():
     src = FRAG.read_text()
     tree = src[src.index('if (kBaseQuality == 2 && treeMaterial)'):]
-    tree = tree[:tree.index('rgb = propEncodeColor(min(albedo, albedo*irradiance));')]
-    assert 'irradiance += propFoliageNightAmbient(' in tree
+    tree = tree[:tree.index('rgb = propEncodeColor(min(albedo, albedo*irradiance)')]
+    assert 'nightFill = propFoliageNightAmbient(' in tree
+    # Light on top of the capped term: inside min(albedo, ...) the dark leaves stayed black (first try, 09539fec1).
+    assert 'rgb = propEncodeColor(min(albedo, albedo*irradiance) + albedo*nightFill);' in src
     # Grass clumps and terrain are not prop materials; only the prop shader calls it.
     users = [p for p in (ROOT / 'shaders').rglob('*') if p.is_file() and 'propFoliageNightAmbient(' in p.read_text(errors='ignore')]
     assert sorted(p.name for p in users) == ['color_prop_tier1.frag', 'prop_night_vk.glsl']
