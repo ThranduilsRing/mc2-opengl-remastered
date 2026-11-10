@@ -1262,11 +1262,8 @@ void gosFX::Tube::Draw(DrawInfo *info) const
 				//
 				Stuff::Scalar age = profile->m_age;
 				Stuff::Scalar seed = profile->m_seed;
-				// Curve evaluators (ComputeValue) are pure reads but declared non-const; Draw
-				// stays const, so evaluate through a non-const view of the spec (no write happens).
-				Tube__Specification *mspec = const_cast<Tube__Specification*>(spec);
-				Stuff::Scalar scale = mspec->m_pScale.ComputeValue(age, seed);
-				Stuff::Scalar disp = mspec->m_pDisplacement.ComputeValue(age, seed);
+				Stuff::Scalar scale = spec->m_pScale.ComputeValue(age, seed);
+				Stuff::Scalar disp = spec->m_pDisplacement.ComputeValue(age, seed);
 				glm::vec3 offset_in_profile;
 				offset_in_profile = profile->m_direction * disp;
 
