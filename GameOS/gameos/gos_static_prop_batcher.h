@@ -177,12 +177,14 @@ private:
     void buildPerPacketDrawTables(StaticPropFinalizeFrame& f);
     bool reportMaterialCache(StaticPropFinalizeFrame& f);
     void armCoalesce(StaticPropFinalizeFrame& f);
-    std::array<mc2tex::TextureArrayCpu, 2> albedoArrays_;
+    // Per group: its size-bucket arrays (prop_array_buckets.h; up to kMaxBuckets each).
+    std::array<std::vector<mc2tex::TextureArrayCpu>, 2> albedoArrays_;
     // Per group: 0 until the group array of this map is built, then a serial that is new for every build (the change key of the island's copy).
     std::array<uint32_t, 2> albedoKey_{};
 public:
     uint32_t albedoKey(uint32_t group) const { return albedoKey_[group & 1u]; }
-    const mc2tex::TextureArrayCpu& albedoArray(uint32_t group) const { return albedoArrays_[group & 1u]; }
+    // Kept for the map: a colour island rebuilt on a resolution change re-imports from this copy.
+    const std::vector<mc2tex::TextureArrayCpu>& albedoArrays(uint32_t group) const { return albedoArrays_[group & 1u]; }
     bool packetAlphaTest(uint32_t packet) const;
 
     // Per-frame submission. shape->listOfColors must be fresh (set by

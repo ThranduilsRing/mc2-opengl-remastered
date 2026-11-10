@@ -31,6 +31,7 @@
 #include "static_caster_set.h"
 #include "vk_shared_gbuffer_gate.h"
 #include "local_light_shadow.h"
+#include "prop_array_buckets.h"
 
 #include <tracy/Tracy.hpp>   // VK-ISLAND-TRACY-1: per-frame CPU attribution zones
 
@@ -160,7 +161,7 @@ struct ShadowIsland : mc2vk::IslandState {
     using PacketAlpha = mc2vk::CasterPacketAlpha;
     std::vector<PacketAlpha> packetAlpha;
     bool        alphaTableBuilt = false;
-    VkImageView alphaBoundView = VK_NULL_HANDLE;
+    std::array<VkImageView, mc2::prop_buckets::kMaxBuckets> alphaBoundViews{};
     uint32_t    alphaBoundGen = 0;   // the colour island's map generation the set was written for
     bool        alphaReady = false;   // this frame: the array is bound and the table is built
     // The single dynamic map is only the fallback of a receiver that has no cascades, so its pass is held until the frame's cascades are known: it is recorded
@@ -560,12 +561,12 @@ bool init_island(ShadowIsland* s, int size) {
 
         // Set 1: the alpha-ON albedo array the colour island imported (bound later, when it exists).
         VkDescriptorSetLayoutBinding ab{};
-        ab.binding = 0; ab.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; ab.descriptorCount = 1; ab.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        ab.binding = 0; ab.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; ab.descriptorCount = mc2::prop_buckets::kMaxBuckets; ab.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         VkDescriptorSetLayoutCreateInfo alci{};
         alci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         alci.bindingCount = 1; alci.pBindings = &ab;
         if (!mc2vk::create(s->alphaDsl, s->device, [&](auto* h) { return vkCreateDescriptorSetLayout(s->device, &alci, nullptr, h); })) { vlog("alpha descriptor layout failed."); return false; }
-        VkDescriptorPoolSize aps{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1};
+        VkDescriptorPoolSize aps{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, mc2::prop_buckets::kMaxBuckets};
         VkDescriptorPoolCreateInfo apci{};
         apci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         apci.maxSets = 1; apci.poolSizeCount = 1; apci.pPoolSizes = &aps;
@@ -788,19 +789,23 @@ static bool stage_instances(ShadowIsland* s, const void* instances, uint32_t ins
 // Makes this frame's alpha-tested casters possible: binds the colour island's alpha-ON array when it has one (a new view idles the device first, as the set
 // may still be read by a frame in flight; that is once per map) and builds the per-packet table from its material feed.
 static void refresh_alpha_casters(ShadowIsland* s) {
-    void* view = nullptr;
+    void* views[mc2::prop_buckets::kMaxBuckets]{};
     uint32_t generation = 0;
     s->alphaReady = false;
-    if (!mc2_color_prop_island_get_alpha_array(&view, &generation) || !view) return;
-    const VkImageView arrayView = reinterpret_cast<VkImageView>(view);
-    if (arrayView != s->alphaBoundView || generation != s->alphaBoundGen) {
+    if (!mc2_color_prop_island_get_alpha_arrays(views, &generation) || !views[0]) return;
+    // PROP-ARRAY-BUCKETS: binding 0 is the array of the group's size buckets (packet layers carry the bucket).
+    std::array<VkImageView, mc2::prop_buckets::kMaxBuckets> arrayViews{};
+    for (uint32_t b = 0; b < mc2::prop_buckets::kMaxBuckets; ++b) arrayViews[b] = reinterpret_cast<VkImageView>(views[b]);
+    if (arrayViews != s->alphaBoundViews || generation != s->alphaBoundGen) {
         mc2vk::getOrCreateEngineVulkanContext().waitIdle("shadow_alpha_array");
-        VkDescriptorImageInfo info{s->alphaSampler.get(), arrayView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+        VkDescriptorImageInfo info[mc2::prop_buckets::kMaxBuckets]{};
+        for (uint32_t b = 0; b < mc2::prop_buckets::kMaxBuckets; ++b)
+            info[b] = {s->alphaSampler.get(), arrayViews[b], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
         VkWriteDescriptorSet w{};
-        w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w.dstSet = s->alphaSet; w.dstBinding = 0; w.descriptorCount = 1;
-        w.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w.pImageInfo = &info;
+        w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w.dstSet = s->alphaSet; w.dstBinding = 0; w.descriptorCount = mc2::prop_buckets::kMaxBuckets;
+        w.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w.pImageInfo = info;
         vkUpdateDescriptorSets(s->device, 1, &w, 0, nullptr);
-        s->alphaBoundView = arrayView;
+        s->alphaBoundViews = arrayViews;
         s->alphaBoundGen = generation;
     }
     if (!s->alphaTableBuilt) {
@@ -1333,8 +1338,8 @@ extern "C" int mc2_vk_shadow_island_load_bake(int, int) {
     }
     // Both parity fences signalled: the last submit retired and its products are final.
     for (auto& t : s->frameTicket) mc2vk::getOrCreateEngineVulkanContext().wait(t, 2000000000ull, "shadow load bake retire");
-    void* av = nullptr; uint32_t ag = 0; Mc2ColorPropMaterialFeed mf{};
-    const int arr = mc2_color_prop_island_get_alpha_array(&av, &ag);
+    void* av[mc2::prop_buckets::kMaxBuckets]{}; uint32_t ag = 0; Mc2ColorPropMaterialFeed mf{};
+    const int arr = mc2_color_prop_island_get_alpha_arrays(av, &ag);
     const int feed = mc2_color_prop_island_get_material_feed(&mf);
     if (mc2_diag::tagRequested("HITCH"))   // opt-in with the other hitch diagnostics (MC2_DIAG_TAGS=HITCH)
     std::fprintf(stderr, "[SHADOW_BAKE] load_bake steps=%d submits=%d ready=%d ms=%.1f alpha_array=%d feed=%d bucketed=%d key_on=%d layers=%d alpha_ready=%d\n",

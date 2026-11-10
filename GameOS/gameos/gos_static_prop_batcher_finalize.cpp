@@ -9,6 +9,7 @@
 #include "vulkan_color_prop_island.h"   // mc2_static_prop_geometry_cpu
 #include "mc2fmt.h"
 #include "diagnostic_trace.h"
+#include "prop_array_buckets.h"
 
 // Does a packet alpha-test: its own flag, or its texture slot carrying alpha on the type source (null/released texture list reads as no alpha).
 bool GpuStaticPropBatcher::packetHasAlpha(const GpuStaticPropPacket& pkt, const TG_TypeShape* src) {
@@ -609,7 +610,7 @@ void GpuStaticPropBatcher::armCoalesce(StaticPropFinalizeFrame& f) {
             const uint32_t typeID = s_sortedTypeOrder[i];
             const auto& t = s_types[typeID];
             if (layerForType[typeID] < 0) continue;
-            const uint32_t layer = static_cast<uint32_t>(layerForType[typeID]);
+            const uint32_t layer = static_cast<uint32_t>(mc2::prop_buckets::layerOf(layerForType[typeID]));   // peak layer within a size bucket
             if (t.alphaClass == 0u) {
                 uniqueTexOff = std::max(uniqueTexOff, layer + 1u);
             } else {

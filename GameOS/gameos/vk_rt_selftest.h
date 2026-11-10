@@ -7,6 +7,8 @@
 #include <cstdint>
 #include <span>
 
+#include "prop_array_buckets.h"
+
 namespace mc2vk {
 class VulkanContext;
 namespace rt {
@@ -23,8 +25,8 @@ struct SceneProbeInputs {
     VkBuffer uvIndex = VK_NULL_HANDLE;
     uint64_t vbo = 0;
     uint32_t stride = 0;
-    VkImageView alphaOff = VK_NULL_HANDLE;
-    VkImageView alphaOn = VK_NULL_HANDLE;
+    VkImageView alphaOff[mc2::prop_buckets::kMaxBuckets]{};  // the alpha-OFF group's size buckets (bindings 5, 10..12)
+    VkImageView alphaOn[mc2::prop_buckets::kMaxBuckets]{};   // the alpha-ON group's size buckets (bindings 6..9)
 };
 bool traceSceneRays(const VulkanContext& ctx, const SceneProbeInputs& in, std::span<const float> rays, std::span<float> out, bool forceOpaque);
 }  // namespace rt

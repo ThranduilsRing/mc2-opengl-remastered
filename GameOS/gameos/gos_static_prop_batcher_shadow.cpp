@@ -245,8 +245,13 @@ extern "C" int mc2_color_prop_island_get_material_feed(Mc2ColorPropMaterialFeed*
     out->arrayKeyOn      = GpuStaticPropBatcher::instance().albedoKey(1);
     {
         const auto& batcher = GpuStaticPropBatcher::instance();
-        out->albedoOff = batcher.albedoArray(0).levels.empty() ? nullptr : &batcher.albedoArray(0);
-        out->albedoOn  = batcher.albedoArray(1).levels.empty() ? nullptr : &batcher.albedoArray(1);
+        // PROP-ARRAY-BUCKETS: each group is albedoOffCount / albedoOnCount size buckets.
+        const auto& off = batcher.albedoArrays(0);
+        const auto& on = batcher.albedoArrays(1);
+        out->albedoOff = off.empty() || off[0].levels.empty() ? nullptr : off.data();
+        out->albedoOffCount = out->albedoOff ? static_cast<uint32_t>(off.size()) : 0u;
+        out->albedoOn  = on.empty() || on[0].levels.empty() ? nullptr : on.data();
+        out->albedoOnCount = out->albedoOn ? static_cast<uint32_t>(on.size()) : 0u;
     }
     // BC7-bucketed: per-bucket sibling arrays with bucket-relative layers. The
     // single-array (group-relative) import + layer table below do not describe that
