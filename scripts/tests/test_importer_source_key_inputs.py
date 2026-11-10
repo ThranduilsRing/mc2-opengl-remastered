@@ -11,7 +11,7 @@ import kit_payload as kit
 
 def _git(root, *args):
     subprocess.run(["git", "-C", str(root), "-c", "user.name=t", "-c", "user.email=t@t", *args], check=True,
-                   capture_output=True)
+                   capture_output=True, **kit.console_child.child_kwargs(redirected=True))
 
 
 @pytest.fixture

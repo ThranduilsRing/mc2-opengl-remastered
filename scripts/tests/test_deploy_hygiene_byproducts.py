@@ -7,9 +7,12 @@ in no git index: a whole-.beauty-dir copy from a clean checkout must be unable t
 them locally they are untracked regenerable output, and re-adding them to git fails this pin."""
 import importlib.util
 import subprocess
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "scripts"))
+import console_child  # noqa: E402
 
 
 def _hygiene():
@@ -22,7 +25,7 @@ def _hygiene():
 
 def _tracked(*pathspecs):
     out = subprocess.run(["git", "-C", str(ROOT), "ls-files", *pathspecs],
-                         capture_output=True, text=True)
+                         capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     assert out.returncode == 0, out.stderr
     return [line for line in out.stdout.splitlines() if line.strip()]
 
@@ -52,6 +55,6 @@ def test_cook_byproducts_are_gitignored_so_a_cook_cannot_retrack_them():
                  "tests/terrain/beautify/mc2_01.beauty/visual_delta_heatmap.png",
                  "tests/terrain/beautify/mc2_01.beauty/visual_height_report.json"):
         out = subprocess.run(["git", "-C", str(ROOT), "check-ignore", path],
-                             capture_output=True, text=True)
+                             capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
         assert out.returncode == 0 and out.stdout.strip() == path, \
             f"cook byproduct not gitignored (a cook + git add -A would re-track it): {path} (rc={out.returncode})"
