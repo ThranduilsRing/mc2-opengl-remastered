@@ -1562,12 +1562,13 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
 
     retire_unowned(target_dir, src_hashes, preserve,
                    own_shaders=any(kind == "shader" and rel.startswith("shaders/vulkan/") and rel.endswith(".spv")
-                                   for _src, rel, kind in items))
+                                   for _src, rel, kind in items),
+                   deployed_exe=next((rel for _src, rel, kind in items if kind == "exe"), None))
     receipts.save()
     return src_hashes
 
 
-def retire_unowned(target_dir, keep, preserve=(), own_shaders=False):
+def retire_unowned(target_dir, keep, preserve=(), own_shaders=False, deployed_exe=None):
     """Retire files the new payload (`keep`, its relpaths) no longer carries.
 
     Manifest rows of the previous deploy are retired only when unchanged. Paths are resolved before unlinking so a malformed
@@ -1576,7 +1577,6 @@ def retire_unowned(target_dir, keep, preserve=(), own_shaders=False):
     merge_gate.stage_published copies v0.4's shaders/ and _forget_swapped_rows drops their rows, so dead .spv slipped past the
     manifest loop and verify_published_identity failed the shader inventory)."""
     root = Path(target_dir).resolve()
-    deployed_exe = next((rel for _src, rel, kind in items if kind == "exe"), None)
     for rel, (digest, _size, _mtime) in read_manifest(target_dir).items():
         if rel in keep or rel in preserve:
             continue
