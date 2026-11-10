@@ -9,7 +9,7 @@
   "tools/axis_swizzle_ratchet.py": "Proof-diet: gate cut from check-contracts/lane_merge; advisory manual report (py -3 tools/axis_swizzle_ratchet.py --check). Transform coverage: tests/unit/test_xform_convention.cpp.",
   "tools/dup_check.py": "Run by tools/lane_merge.py --lint (python import, not a shell row); manual: py -3 tools/dup_check.py.",
   "scripts/crashpad_proof.py": "Run on the Linux box through a box_run sh: row (sh:python3 scripts/crashpad_proof.py): deliberate crash plus symbolized minidump proof.",
-  "tools/box_run.py":"Manual orchestrator entry point: runs the Linux box gate (py -3 tools/box_run.py --gate); documented in A:/Games/mc2-ops/box-game-runs.md.",
+  "tools/box_run.py": "Manual orchestrator entry point: runs the Linux box gate (py -3 tools/box_run.py --gate); documented in A:/Games/mc2-ops/box-game-runs.md.",
   "tools/test_tree_hash.py": "Pytest-discovered by the tools_tests precheck stage; guards tools/tree_hash_baseline.json (TreeIsland S0).",
   "tools/smoke/stall_inject.py": "Manual dev harness: proves the smoke sim-time extension by suspending mc2 mid-run; run by hand.",
   "tools/perf/_census_v3.py": "Operator-run census driver (python tools/perf/_census_v3.py run|walk|battle|analyze); documented in docs/perf/2026-11-02-census-v3.md.",
@@ -210,7 +210,7 @@
   "tools/test_crash_bundle_summary.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/test_estring_callsites.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/test_git_util.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
-  "tools/test_lane_merge.py":"Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
+  "tools/test_lane_merge.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/test_log_identity.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/test_log_tag_census.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/test_montage_compact.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
@@ -229,7 +229,7 @@
   "tools/tidy/printf_sites.py": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
   "tools/tidy/run_tidy.py": "Run on the box through tools/box_run.py rows ('sh:python3 tools/tidy/run_tidy.py ...'); the row string names it only inside a shell command the scanner does not resolve.",
   "tools/tidy/test_run_tidy.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
-  "tools/tidy/test_batch_run.py":"Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
+  "tools/tidy/test_batch_run.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/tidy/test_canonical_obj.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/tidy/test_check_batch_allowed.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/tidy/test_cxx_calls.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
@@ -312,5 +312,6 @@
   "tools/box/filler/run_job.py": "Linux box maintenance script: run on the box by hand or by tools/box_run.py remote shell (box-hygiene lane); not called from Python.",
   "tools/box/filler/sync.sh": "Linux box maintenance script: run on the box by hand or by tools/box_run.py remote shell (box-hygiene lane); not called from Python.",
   "tools/box/lane_cleanup.sh": "Linux box maintenance script: run on the box by hand or by tools/box_run.py remote shell (box-hygiene lane); not called from Python.",
-  "tools/box/mc2-diskwatch.sh": "Linux box maintenance script: run on the box by hand or by tools/box_run.py remote shell (box-hygiene lane); not called from Python."
+  "tools/box/mc2-diskwatch.sh": "Linux box maintenance script: run on the box by hand or by tools/box_run.py remote shell (box-hygiene lane); not called from Python.",
+  "tools/queue_append.py": "Orchestrator CLI run by hand to append a real-clock-stamped line to the ops queue file (py -3 tools/queue_append.py \"text\"); exercised by scripts/tests/test_queue_append.py via import only."
 }
