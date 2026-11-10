@@ -96,6 +96,7 @@
     {"module": "scripts/tests/test_deploy_coherence.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_deploy_disk_space.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_deploy_fast_path.py", "owners": ["scripts_tests"]},
+    {"module": "scripts/tests/test_deploy_private_sweep.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_deploy_folder_lease.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_deploy_staleness.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_dup_check.py", "owners": ["scripts_tests"]},
