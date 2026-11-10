@@ -1,0 +1,29 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_01",
+  "_note": "VK-PARITY-MECH-1 close-up of the mc2_01 start mechs (alt 900, else = saved_205644). Saved in-game via Save Camera Bookmark button. Duplicate entry keeps >=2 bookmarks (single-pose files silently fail).",
+  "bookmarks": [
+    {
+      "name": "saved_parEclose",
+      "pos": [
+        2453.333,
+        -1984.0001,
+        411.1892
+      ],
+      "rot": -176.75,
+      "proj": 12.5,
+      "alt": 900.0
+    },
+    {
+      "name": "saved_parEclose_dup",
+      "pos": [
+        2453.333,
+        -1984.0001,
+        411.1892
+      ],
+      "rot": -176.75,
+      "proj": 12.5,
+      "alt": 900.0
+    }
+  ]
+}
