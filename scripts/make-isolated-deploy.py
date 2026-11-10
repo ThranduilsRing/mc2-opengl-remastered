@@ -233,15 +233,18 @@ def verified_seed(src, use_cache=False):
             fail(f'seed manifest path escapes source: {rel}', 2)
         if not candidate.is_file():
             fail(f'seed manifest file missing: {rel}', 2)
-        stamp = content_stamp(candidate)
-        old = cached.get(rel, {})
-        if old.get('stamp') == stamp and old.get('sha256') == row['sha256']:
-            digest = old['sha256']
+        for _ in range(4):  # another lane linking/unlinking this seed file moves ChangeTime, not the bytes: re-hash
+            stamp = content_stamp(candidate)
+            old = cached.get(rel, {})
+            if old.get('stamp') == stamp and old.get('sha256') == row['sha256']:
+                digest = old['sha256']
+            else:
+                digest = file_sha(candidate)
+            if digest != row['sha256']:
+                fail(f'seed manifest hash mismatch: {rel}', 2)
+            if content_stamp(candidate) == stamp:
+                break
         else:
-            digest = file_sha(candidate)
-        if digest != row['sha256']:
-            fail(f'seed manifest hash mismatch: {rel}', 2)
-        if content_stamp(candidate) != stamp:
             fail(f'seed changed during verification: {rel}', 2)
         return rel, {'stamp': stamp, 'sha256': digest}
 
