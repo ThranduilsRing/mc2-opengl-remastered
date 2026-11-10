@@ -2,7 +2,7 @@
 'Smoke every supported mod against the current mc2.exe: py -3 tools/mod_smoke.py --battery'
 #
 # Uses isolated disposable installs and persistent, incrementally updated payload
-# layers under E:/mc2-installs/mod_smoke-stage. Each game takes its own host lease.
+# layers under E:/mc2-installs/mod_smoke-stage. One host lease is held for the whole battery.
 #
 #     py -3 tools/mod_smoke.py --battery [--mod NAME[,NAME]] [--mission STEM]
 #
@@ -46,7 +46,7 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parent.parent / "scripts"))
 import console_child  # noqa: E402  (windowless console children)
-from smoke_lib import nofocus  # noqa: E402
+from smoke_lib import host_lease, nofocus  # noqa: E402
 import stage_root as stages  # noqa: E402  (default staging roots on E:, free-space preflight)
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -1134,7 +1134,7 @@ def battery(args) -> int:
               f'elapsed={time.monotonic() - engine_started:.1f}s', flush=True)
         layer_cache = {}
         # Staging stays serial: shared extraction/cache writes have one owner.
-        # Each child acquires its own normal FIFO game-worker lease.
+        # The children run under the battery's one host lease (MC2_HOST_LEASE_BATCH, see battery_leased).
         with ThreadPoolExecutor(max_workers=workers) as pool:
             for entry in plan:
                 display, folder, layers, picks = entry
@@ -1180,6 +1180,25 @@ def battery(args) -> int:
     return 3 if rows and all(w == 'PASS' or w.startswith('INFRA') for w in words) else 1
 
 
+def battery_leased(args) -> int:
+    """Hold ONE host lease across the whole battery. run_smoke/capture children join it through MC2_HOST_LEASE_BATCH
+    (host_lease.holds), so they never queue again. A lease that is never obtained is NOT RUN, not a per-mission FAIL."""
+    if os.environ.get(host_lease.BATCH_ENV) or host_lease.disabled():
+        return battery(args)    # an outer batch (the gate) already holds it, or the owner switched leasing off
+    tag = f'mod-smoke-{os.getpid()}'
+    try:
+        host_lease.hold(tag, timeout_s=float(os.environ.get('MC2_HOST_LEASE_TIMEOUT') or 1200))
+    except host_lease.HostLeaseBusy as exc:
+        print(f'[mod_smoke] NOT RUN: battery host lease never obtained ({exc})', flush=True)
+        return 3
+    os.environ[host_lease.BATCH_ENV] = tag
+    try:
+        return battery(args)
+    finally:
+        os.environ.pop(host_lease.BATCH_ENV, None)
+        host_lease.release_batch(tag)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description='Smoke every supported mod against current mc2.exe')
     ap.add_argument('--battery', action='store_true', help='run all six mods across leased game workers')
@@ -1211,7 +1230,7 @@ def main() -> int:
     if not args.battery and not args.mod:
         ap.error('pass --battery or --mod NAME')
     try:
-        return battery(args)
+        return battery_leased(args)
     except (OSError, ValueError) as exc:
         print(f'[mod_smoke] ERROR: {exc}', file=sys.stderr)
         return 2
