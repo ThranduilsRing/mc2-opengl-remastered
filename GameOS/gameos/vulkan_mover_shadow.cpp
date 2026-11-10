@@ -240,7 +240,7 @@ bool MoverShadowState::prepare(int mapSide, const float cameraRows[16], Vec3 sun
     if (!active_) return false;
     std::memcpy(active_.ptr,&frame_,sizeof(frame_)); // the engine ring is host coherent
     activeFrame_=ctx.frameContext().frame;
-    if (false && activeFrame_%60==0 && !spheres_.empty()) {
+    if (mc2_diag::tagRequested("SHADOW_BAKE") && activeFrame_%60==0 && !spheres_.empty()) {   // MC2_DIAG_TAGS=SHADOW_BAKE
         const auto c=spheres_.front().center;
         const auto p=applyMatrix(frame_.matrix,c);
         mc2::fmt::print_err("[SHADOW_BAKE] mover_diag frame={} center={:.1f},{:.1f},{:.1f} ground={:.1f} projected={:.3f},{:.3f},{:.3f} sun={:.3f},{:.3f},{:.3f} texel_wu={:.3f} extent={:.1f} spheres={} mech_radius={:.1f}\n",
