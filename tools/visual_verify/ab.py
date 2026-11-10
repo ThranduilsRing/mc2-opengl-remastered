@@ -515,6 +515,13 @@ GAME_WRITTEN_SUFFIXES = {".cfg", ".ini", ".txt", ".log", ".csv", ".json", ".json
 MAPPED_SUFFIXES = {".dll", ".exe", ".fst"}
 GAME_WRITTEN_COPY_PREFIXES = ("saved_bookmarks/", "cache/vulkan/")
 GAME_WRITTEN_EMPTY_DIRS = ("debug_state", "crashes")
+# Data caches the game truncates in place via File::create (a hardlink writes through into the source install):
+#   data/textures/*.lst, *.txm   mclib/terrtxm.cpp:1496 (.lst) and :1673 (.txm) when quickLoad is false (empty .lst / missing .txm, :133-155)
+#   data/tgl/*.agl               mclib/msl_anim.cpp:568 SaveBinaryCopy (File::create) on an .agl version mismatch or when the .ase exists
+# Other File::create sites under data/ are not reachable by a staged run: editor-only (terrtxm2.cpp:374 saveWaterDetail via
+# editor/EditorData_save.cpp:573; terrtxm2_bake.cpp:139,198 height-map regen), a never-called msl_load.cpp:437 SaveBinaryCopy, and
+# texture_assets.cpp:331 save (caller-supplied path).
+GAME_REWRITTEN_DATA = (("data/textures/", {".lst", ".txm"}), ("data/tgl/", {".agl"}))
 DISK_GUARD_FREE_GB = 30
 GB = 1 << 30
 
@@ -525,6 +532,9 @@ def stage_kind(rel: str) -> str:
     if rel.split("/", 1)[0] in GAME_WRITTEN_EMPTY_DIRS:
         return "skip"
     if rel.startswith(GAME_WRITTEN_COPY_PREFIXES) or ("/" not in rel and Path(rel).suffix.lower() in GAME_WRITTEN_SUFFIXES | MAPPED_SUFFIXES):
+        return "copy"
+    low = rel.lower()
+    if any(low.startswith(prefix) and Path(low).suffix in suffixes for prefix, suffixes in GAME_REWRITTEN_DATA):
         return "copy"
     return "link"
 
