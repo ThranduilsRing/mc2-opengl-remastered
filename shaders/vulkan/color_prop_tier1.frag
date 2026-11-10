@@ -278,8 +278,9 @@ void main() {
         // SH already contains linear irradiance. Preserve the stock albedo exposure ceiling.
         vec3 irradiance = max(ambient,vec3(0))*vTree.x*materialAO + direct*treeVisibility(N);
         // Thin leaves retain sky fill through canopy self-occlusion. Fade it
-        // with the night profile rather than making dark forests emissive.
-        if (alphaTestClass) irradiance = max(irradiance, vec3(0.35 * (1.0 - 0.8*uFrame.nightDarkness)));
+        // with the night profile rather than making dark forests emissive. Full night keeps 0.35*0.35 (was 0.35*0.2: stock-dark
+        // leaf albedo read near-black on night maps such as mc2_10).
+        if (alphaTestClass) irradiance = max(irradiance, vec3(0.35 * (1.0 - 0.65*uFrame.nightDarkness)));
         rgb = propEncodeColor(min(albedo, albedo*irradiance));
         rgb += propEncodeColor(albedo) * poolLight + vHighlight.rgb*vHighlight.a;
     }

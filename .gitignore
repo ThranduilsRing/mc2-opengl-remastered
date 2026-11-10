@@ -221,3 +221,6 @@ tests/smoke/editor/playtest-*/
 
 # tools/callers.py computes the caller inventory at check time (--output dumps it)
 /tests/callers.json
+
+# stock-tree-upscale: generated 1024 tree sidecars (tools/tree_retexture/gen_stock_trees.py, pins data/kit/tree-upscale.json)
+data/tgl/128/*.ktx2

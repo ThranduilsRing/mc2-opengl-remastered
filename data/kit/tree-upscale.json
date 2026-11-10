@@ -1,0 +1,50 @@
+{
+ "a_mapledead": {
+  "bytes": 1398528,
+  "coverage": 0.1934,
+  "ktx2_sha256": "f76c591d5b9b19716a38206e2cb5f186d136539476c93bce72c46b0c7f62851a",
+  "size": 1024,
+  "source_sha256": "49260b47747a793d7be37c7484d92448c9b2794d6c51f39190deaa6ff7e734f5",
+  "stock_coverage": 0.1934
+ },
+ "a_oak1dead": {
+  "bytes": 1398528,
+  "coverage": 0.1338,
+  "ktx2_sha256": "e249b708b734824146ed136c2eb14c624a39ef2c1f9b607ce64428287db295b4",
+  "size": 1024,
+  "source_sha256": "b12748076d56e47a8003b64e7ff0fd53d804e1ff0d867b9b01b1568854422bdb",
+  "stock_coverage": 0.1338
+ },
+ "a_palm": {
+  "bytes": 1398528,
+  "coverage": 0.4446,
+  "ktx2_sha256": "b8ad4c3a3054d911bcc1df25b2d6f6bad8bb6965f5c35daa5d22543dd9326d1e",
+  "size": 1024,
+  "source_sha256": "ff8baef14469d5045add62d4ac7e6601f9585147e71b7f14abdb27c85632d2e3",
+  "stock_coverage": 0.4321
+ },
+ "a_pine&palm&birch": {
+  "bytes": 1398528,
+  "coverage": 0.3003,
+  "ktx2_sha256": "fc656fb7add5d94b3eebee7c0929dbf8a084389d41ec8e2a8c99aa800b30507c",
+  "size": 1024,
+  "source_sha256": "15245ce4c36004f01e4918f5fcdc71a40a2df3a02560d4f83415baef6023f278",
+  "stock_coverage": 0.2612
+ },
+ "a_treeclump1": {
+  "bytes": 1398528,
+  "coverage": 0.4804,
+  "ktx2_sha256": "0c8335f2796c14f95bd55cfe7208c8dc9c39e58602b91c4138cc0a1d9ced7541",
+  "size": 1024,
+  "source_sha256": "6016acf5974bbaac768410de8e67dc91483cf4858c9485dba64d15f7ecbf9c0f",
+  "stock_coverage": 0.4412
+ },
+ "a_treeclump1l1": {
+  "bytes": 1398528,
+  "coverage": 0.4186,
+  "ktx2_sha256": "3514551d533f0703266cc61d0ea7cb52e8104953f1229ff62a89d01f7b7640f6",
+  "size": 1024,
+  "source_sha256": "397363ae7f33dce9e9141f53f5a32b2a6e8de492a7189959b8e67bf616b0b22c",
+  "stock_coverage": 0.3845
+ }
+}
