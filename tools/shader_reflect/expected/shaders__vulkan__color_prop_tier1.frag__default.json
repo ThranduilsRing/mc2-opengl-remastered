@@ -316,7 +316,7 @@
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "cementGridSide",
+          "name": "cementLayerCount",
           "offset": 100,
           "type": "int"
         },
@@ -897,7 +897,7 @@
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "cementAtlasSeamFix",
+          "name": "reserved776",
           "offset": 776,
           "type": "int"
         },

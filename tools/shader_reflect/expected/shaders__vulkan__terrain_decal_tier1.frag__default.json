@@ -35,7 +35,7 @@
           "matrix_stride": null,
           "name": "poolLights",
           "offset": 0,
-          "type": "_746"
+          "type": "_749"
         }
       ],
       "name": "TerrainLightPoolVK"
@@ -145,7 +145,7 @@
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "cementGridSide",
+          "name": "cementLayerCount",
           "offset": 100,
           "type": "int"
         },
@@ -726,7 +726,7 @@
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "cementAtlasSeamFix",
+          "name": "reserved776",
           "offset": 776,
           "type": "int"
         },
