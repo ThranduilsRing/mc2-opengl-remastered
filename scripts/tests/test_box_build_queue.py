@@ -1,5 +1,6 @@
 """Box build semaphore (box_run BUILD_SEM), client tie and the box_health build-queue report. Fakes only; nothing touches the box."""
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -53,9 +54,10 @@ echo "after-grant:$(ls "$BQ" | wc -l)"
 bq_release
 '''
     r = run_sem(tmp_path, body)
-    assert "[box_run] build queued: position 1 of 1, holder holder " in r.stdout, r.stdout + r.stderr
+    assert "[box_run] waiting: position 1, holder holder since " in r.stdout, r.stdout + r.stderr
     assert "build slot granted" in r.stdout
-    assert r.stdout.index("queued") < r.stdout.index("granted")
+    assert r.stdout.index("waiting") < r.stdout.index("granted")
+    assert "reclaimed stale build ticket 0000000000000000000.deadlane.999999" in r.stdout   # the dead-pid ticket is reclaimed and announced
     assert "after-grant:1" in r.stdout          # only our own ticket remained (holder died, dead ticket pruned)
 
 
@@ -69,7 +71,7 @@ echo $W > "$BQ/0000000000000000002.earlier.$W"
 bq_acquire
 '''
     r = run_sem(tmp_path, body)
-    assert "position 2 of 2, holder holder" in r.stdout, r.stdout + r.stderr
+    assert "waiting: position 2, holder holder since " in r.stdout, r.stdout + r.stderr
 
 
 def test_remote_script_uses_the_semaphore_and_client_tie():
@@ -169,3 +171,70 @@ def test_remote_exports_install_and_out_and_wires_the_game_check():
     rs = box_run.REMOTE
     assert "export I OUT S" in rs and rs.index("export I OUT S") < rs.index("game_not_run \"$cmd\"")
     assert "GAME_NOT_RUN" in rs and "rc=81" in rs and subprocess.run([BASH, "-n"], input=rs.encode(), capture_output=True).returncode == 0
+
+
+def test_waiting_line_parse_names_position_holder_and_progress_age(tmp_path):
+    """The waiting line is the one signal a lane uses to tell queued from hung: position, holder lane, time since its last progress."""
+    body = r"""
+mkdir -p "$BQ"
+sleep 30 & H=$!; sleep 30 & W=$!
+echo $H > "$BQ/1700000000000000000.holder.$H"; touch -d @1700000100 "$BQ/1700000000000000000.holder.$H"
+echo $W > "$BQ/1700000000000000001.me.$W"
+bq_scan 1700000000000000001.me.$W
+echo "POS=$QPOS M=$QM HOLD=$QHOLD"
+bq_waiting_line "$((QPOS - 1))" "$QHOLD" 1700000130
+kill $H $W
+"""
+    r = run_sem(tmp_path, body)
+    assert "POS=2 M=2 HOLD=1700000000000000000.holder." in r.stdout, r.stdout + r.stderr
+    line = next(ln for ln in r.stdout.splitlines() if ln.startswith("[box_run] waiting:"))
+    assert re.fullmatch(r"\[box_run\] waiting: position 1, holder holder since \S+, last progress 30s ago", line), line   # 130 - 100
+
+
+def test_stale_holder_is_flagged_but_not_killed_from_the_waiter(tmp_path):
+    body = r"""
+mkdir -p "$BQ"
+sleep 30 & H=$!
+echo $H > "$BQ/1700000000000000000.holder.$H"; touch -d @1700000000 "$BQ/1700000000000000000.holder.$H"
+bq_waiting_line 1 1700000000000000000.holder.$H 1700000700
+kill -0 $H && echo "holder-still-alive"
+kill $H
+"""
+    r = run_sem(tmp_path, body)
+    assert "last progress 700s ago (HOLDER STALE" in r.stdout and "holder-still-alive" in r.stdout, r.stdout + r.stderr
+
+
+def test_stall_timer_with_a_fake_clock(tmp_path):
+    body = r"""
+bq_stalled 1700000599 1700000000 && echo "599:stalled" || echo "599:ok"
+bq_stalled 1700000600 1700000000 && echo "600:stalled" || echo "600:ok"
+MC2_BOX_STALL_SECS=30 bq_stalled 1700000029 1700000000 && echo "30s-at-29:stalled" || echo "30s-at-29:ok"
+MC2_BOX_NOW=1700000123 bq_now
+"""
+    r = run_sem(tmp_path, body)
+    out = r.stdout.split()
+    assert out[:4] == ["599:ok", "600:stalled", "30s-at-29:ok", "1700000123"], r.stdout + r.stderr
+
+
+def test_guard_reports_stalled_with_last_log_line_and_ends_only_its_own_child(tmp_path):
+    body = r"""
+LOG="$BQ.log"; MARK="$BQ.mark"; mkdir -p "$BQ"; echo "compiling a.o" > "$LOG"
+sleep 60 & OTHER=$!        # another lane's process: must survive
+bq_acquire
+export MC2_BOX_STALL_SECS=2
+bq_guard "$LOG" "$MARK" &
+GP=$!
+wait $GP 2>/dev/null
+kill -0 $OTHER 2>/dev/null && echo "other-alive"; kill $OTHER 2>/dev/null
+echo "mark:$(cat "$MARK")"
+"""
+    r = run_sem(tmp_path, body, timeout=40)
+    assert "[box_run] STALLED: no log progress for" in r.stdout and "last line: compiling a.o" in r.stdout, r.stdout + r.stderr
+    assert "mark:[box_run] STALLED" in r.stdout
+
+
+def test_stalled_has_its_own_verdict_and_exit_code():
+    assert box_run.RC_STALLED == 79
+    assert box_run.verdict(79, []) == ("STALLED", 79)
+    assert box_run.verdict(1, ["0", "79"]) == ("STALLED", 79)
+    assert "bq_guard" in box_run.REMOTE and "exit 79" in box_run.REMOTE

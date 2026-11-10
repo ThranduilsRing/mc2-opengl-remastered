@@ -50,6 +50,7 @@ SSH_STDIN = ["ssh", *_SSH_OPTS]        # the two calls that pipe the remote scri
 # verdicts beyond PASS/FAIL; every one of them is NOT green (exit code != 0), and none is ever retried by this tool
 RC_LOCK_TIMEOUT = 76    # waited 30 min for a GPU lock (was 75, the same code as other failures)
 RC_BOX_INFRA = 77       # the box refused to start: /workspace has less than the free-disk floor (MC2_BOX_MIN_FREE_GB, default 15)
+RC_STALLED = 79         # a build/unit row held the box build ticket with no log progress for 10 min (own child ended, ticket released)
 RC_NO_BASELINE = 78    # determinism/saveload row refused: no Linux baseline file recorded
 NEWEST_BOX_CLANG_FIX = "ee183497d"   # last nifty commit that kept the Linux clang build green (BRIDGE diag tag); older tips cannot build on the box
 SCP = ["scp", "-q", "-i", KEY, "-P", PORT]
@@ -107,27 +108,52 @@ bq_ncpu() { local n=0 r a b; for r in ${1//,/ }; do a=${r%-*}; b=${r#*-}; n=$((n
 bq_quota() { if [ -n "${MC2_BOX_QUOTA_CPUS:-}" ]; then echo "$MC2_BOX_QUOTA_CPUS"; return; fi   # cgroup CPU quota (cpu.max), else unlimited
   awk '$1 ~ /^[0-9]+$/ && $2 > 0 { printf "%d", $1 / $2; found = 1 } END { exit !found }' /sys/fs/cgroup/cpu.max 2>/dev/null || echo 9999; }
 bq_j() { local n q; n=$(bq_ncpu "$1"); q=$(bq_quota); [ "$q" -ge 1 ] 2>/dev/null || q=1; [ "$n" -le "$q" ] || n=$q; [ "$n" -ge 1 ] || n=1; echo "$n"; }   # -j = BUILD_CPUS count, capped at the quota
+bq_now() { echo "${MC2_BOX_NOW:-$(date +%s)}"; }   # the clock; a test sets MC2_BOX_NOW (fake clock)
+bq_stalled() { [ $(( $1 - $2 )) -ge "${MC2_BOX_STALL_SECS:-600}" ]; }   # bq_stalled <now> <last-progress>: true after 10 min (default) without progress
 bq_alive() { local p; p=$(cat "$1" 2>/dev/null); [ -n "$p" ] && kill -0 "$p" 2>/dev/null; }
+# bq_scan: prune dead tickets (a reclaimed ticket is announced), set QPOS (my position, 0 if absent), QM (live tickets), QHOLD (first live ticket name)
+bq_scan() {
+  local t; QPOS=0; QM=0; QHOLD=""
+  for t in $(ls "$BQ" 2>/dev/null | sort); do
+    if ! bq_alive "$BQ/$t"; then rm -f "$BQ/$t"; echo "[box_run] reclaimed stale build ticket $t (its pid is dead)"; continue; fi
+    QM=$((QM + 1)); [ -z "$QHOLD" ] && QHOLD=$t; [ "$t" = "$1" ] && QPOS=$QM
+  done
+}
+# bq_waiting_line <position> <holder ticket> <now>: the one status line a waiting lane sees (holder lane, queued-at time, seconds since its last progress heartbeat)
+bq_waiting_line() {
+  local lane ns prog line; lane=$(echo "$2" | cut -d. -f2); ns=${2%%.*}
+  prog=$(( $3 - $(stat -c %Y "$BQ/$2" 2>/dev/null || echo "$3") ))
+  line="[box_run] waiting: position $1, holder $lane since $(date -d "@$((ns / 1000000000))" +%H:%M:%S 2>/dev/null || echo "$ns"), last progress ${prog}s ago"
+  bq_stalled "$3" "$(( $3 - prog ))" && line="$line (HOLDER STALE: its own watchdog ends it, nothing is killed from here)"
+  echo "$line"
+}
 bq_acquire() {
-  local n t me last=0 pos m now hold k
+  local n me last=0 now
   n=${MC2_BOX_BUILDS:-1}; [ "$n" -ge 1 ] || n=1
   mkdir -p "$BQ"; TK="$BQ/$(date +%s%N).$BR.$$"; echo $$ > "$TK"; me=$(basename "$TK")
   while :; do
-    pos=0; m=0
-    for t in $(ls "$BQ" 2>/dev/null | sort); do
-      if ! bq_alive "$BQ/$t"; then rm -f "$BQ/$t"; continue; fi
-      m=$((m + 1)); [ "$t" = "$me" ] && pos=$m
-    done
-    if [ "$pos" -le "$n" ] && [ "$pos" -ge 1 ]; then touch "$TK"; echo "[box_run] build slot granted (n=$n)"; return 0; fi
-    now=$(date +%s)
-    if [ $((now - last)) -ge 60 ]; then
-      hold=$(ls "$BQ" | sort | head -1); k=$((pos - n))
-      echo "[box_run] build queued: position $k of $((m - n)), holder $(echo "$hold" | cut -d. -f2) $((now - $(stat -c %Y "$BQ/$hold" 2>/dev/null || echo "$now")))s"
-      last=$now
-    fi
+    bq_scan "$me"
+    if [ "$QPOS" -le "$n" ] && [ "$QPOS" -ge 1 ]; then touch "$TK"; echo "[box_run] build slot granted (n=$n)"; return 0; fi
+    now=$(bq_now)
+    if [ $((now - last)) -ge 60 ]; then bq_waiting_line "$((QPOS - n))" "$QHOLD" "$now"; last=$now; fi
     sleep "${MC2_BOX_BUILDQ_POLL:-5}"
   done
 }
+# Stall watchdog (STALLED rc 79): while this lane holds the ticket, build/test log growth is the heartbeat (it also touches the ticket for waiters).
+# No growth for MC2_BOX_STALL_SECS (600) -> write the marker, print the last log line and end THIS lane's own child (pkill -P $$). Never another lane's process.
+bq_guard() {   # bq_guard <log> <marker>; run in the background, stop with bq_unguard
+  local log=$1 mark=$2 last=-1 lt now sz
+  lt=$(bq_now)
+  while :; do
+    sleep "${MC2_BOX_BUILDQ_POLL:-5}"; sz=$(stat -c %s "$log" 2>/dev/null || echo 0); now=$(bq_now)
+    if [ "$sz" != "$last" ]; then last=$sz; lt=$now; [ -n "$TK" ] && touch "$TK"; continue; fi
+    if bq_stalled "$now" "$lt"; then
+      echo "[box_run] STALLED: no log progress for $((now - lt))s while holding the build ticket; last line: $(tail -c 300 "$log" 2>/dev/null | tail -n 1 | cut -c1-200)" | tee "$mark"
+      pkill -TERM -P $$ 2>/dev/null; return 0
+    fi
+  done
+}
+bq_unguard() { [ -n "${WD:-}" ] && { kill "$WD" 2>/dev/null; wait "$WD" 2>/dev/null; }; WD=""; }
 bq_release() { [ -n "$TK" ] && rm -f "$TK"; TK=""; }
 '''
 
@@ -193,7 +219,9 @@ grep -q "^MC2_IMGUI:BOOL=ON" build64-ninja/CMakeCache.txt 2>/dev/null || rm -f b
  -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_FLAGS=-stdlib=libc++ -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld \
  -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DMC2_IMGUI=ON \
  -DVulkan_INCLUDE_DIR=/workspace/toolchains/vulkan/include -DMC2_DXC=/workspace/toolchains/dxc/bin/dxc -DMC2_SLANGC=/workspace/toolchains/slang/bin/slangc -DMC2_SPIRV_OPT=/workspace/toolchains/gfxr-1.4.350.0/bin/spirv-opt > $OUT/configure.log 2>&1 || { tail -20 $OUT/configure.log; exit 4; }
-nice -n 19 taskset -c "$BCPUS" ninja -C build64-ninja -j$BUILD_J mc2 > $OUT/build.log 2>&1; rc=$?; bq_release; tail -2 $OUT/build.log
+rm -f $OUT/.stalled; : > $OUT/build.log; bq_guard $OUT/build.log $OUT/.stalled & WD=$!
+nice -n 19 taskset -c "$BCPUS" ninja -C build64-ninja -j$BUILD_J mc2 > $OUT/build.log 2>&1; rc=$?; bq_unguard; bq_release; tail -2 $OUT/build.log
+[ -s $OUT/.stalled ] && exit 79   # STALLED already printed by bq_guard
 [ $rc = 0 ] || { echo "[box_run] BUILD FAILED rc=$rc (log: $OUT/build.log)"; exit 5; }
 tick build
 # install: link the big immutable data from the golden install, copy everything else, then deploy the lane build over it
@@ -378,9 +406,9 @@ for row in "${ROWS[@]}"; do
   esac
   [ -n "$GOT" ] && [ "$RUN" = gr ] && echo "$row" > /workspace/locks/$SB.row   # STATUS.json shows the row the GPU is on
   RMARK=$OUT/.rowmark; touch $RMARK
-  case $row in unit|unit-san) bq_acquire;; esac   # unit builds queue behind every other build on the box
+  case $row in unit|unit-san) bq_acquire; rm -f $OUT/.stalled; : > $OUT/$name.log; bq_guard $OUT/$name.log $OUT/.stalled & WD=$!;; esac   # unit builds queue behind every other build on the box (and are stall-watched)
   $RUN timeout -k 30 $TMO bash -c 'cd "$1" && eval "$2"' _ "$S" "$cmd" > $OUT/$name.log 2>&1; rc=$?
-  case $row in unit|unit-san) bq_release;; esac
+  case $row in unit|unit-san) bq_unguard; bq_release; [ -s $OUT/.stalled ] && rc=79;; esac
   case $row in gpu:*|sh:*|cpu:*) game_not_run "$cmd" $rc "$OUT" "$RMARK" && { echo "[box_run] row=$row GAME_NOT_RUN: the command names mc2 but no engine log (VK_ENGINE_CONTEXT) was written; is \$I set and ./mc2 launched?"; rc=81; };; esac   # eval from argv: a row may carry spaces, quotes, slashes
   case $row in determinism:*|saveload*) [ $rc != 0 ] && grep -aq "baseline FAIL no baseline at\|check: no baseline for" $OUT/$name.log && rc=78;; esac   # NO_BASELINE: own verdict, never a plain FAIL
   echo "[box_run] row=$row rc=$rc"; grep -a "^| mc2_\|result=\|DEPLOY_FINGERPRINT\|FAIL\|PASS" $OUT/$name.log | head -8 | cut -c1-220
@@ -511,6 +539,8 @@ def verdict(rc, codes=()):
     """(name, exit code). PASS only for rc 0 with every row 0; LOCK_TIMEOUT and NO_BASELINE are distinct and NEVER green."""
     if rc == RC_LOCK_TIMEOUT:
         return "LOCK_TIMEOUT", RC_LOCK_TIMEOUT
+    if rc == RC_STALLED or str(RC_STALLED) in codes:
+        return "STALLED", RC_STALLED
     if rc == RC_BOX_INFRA:
         return "BOX_INFRA", RC_BOX_INFRA
     if not codes or (rc != 0 and all(c == "0" for c in codes)):
