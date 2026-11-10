@@ -352,22 +352,36 @@ def manifest_delta(mine, theirs):
     return sorted(rel for rel, r in mine.items() if theirs.get(rel, {}).get("sha256") != r["sha256"])
 
 
-def candidate_install():
+def candidate_install(head=None):
     """The gate's deployed candidate: a kept stock copy (<seed>-stock-*), --keep-candidate's merge-gate-candidate, else the
     pristine deployed seed gate_reuse snapshots right after the candidate deploy (the stock copy is removed at cleanup).
-    Never INSTALL: that is the published v0.4 the candidate is diffed against."""
+    Never INSTALL: that is the published v0.4 the candidate is diffed against. With `head`, an install whose mc2.exe row was
+    built from another commit is skipped (W138e: a merge-gate-candidate kept from an older run, src 6063ca51a, was packed as
+    the payload of the 2247a9a73 gate; W138d hit the same leftover and moved it aside by hand)."""
     base = Path(G, "drv/E/mc2-installs")
     stock = sorted(base.glob("*-stock-*"), key=lambda p: p.stat().st_mtime, reverse=True) if base.is_dir() else []
     for p in (*stock, base / "merge-gate-candidate", base / "_gate-reuse/deployed"):
         if (p / ".deployed_manifest.csv").is_file():
+            src = manifest_rows(p / ".deployed_manifest.csv").get("mc2.exe", {}).get("src_commit") or ""
+            if head and not (src and (head.startswith(src) or src.startswith(head))):
+                print(f"laptop_gate pack: skipping {p}: mc2.exe src_commit {src or '(none)'} is not the gate head {head[:9]}")
+                continue
             return p
-    sys.exit(f"laptop_gate pack: no candidate install with a .deployed_manifest.csv under {base}")
+    sys.exit(f"laptop_gate pack: no candidate install with a .deployed_manifest.csv under {base}"
+             + (f" built from {head[:9]}" if head else ""))
+
+
+def clone_head():
+    """The laptop clone's HEAD (the stage tip the gate built), or None when it cannot be read."""
+    r = subprocess.run(["git", "-C", REPO, "rev-parse", "HEAD"], capture_output=True, text=True,
+                       **console_child.child_kwargs(redirected=True))
+    return r.stdout.strip() or None if r.returncode == 0 else None
 
 
 def r_pack(window):
     """tar of every file in the candidate's manifest that differs from the PC's v0.4 manifest (in/<W>/pc.manifest.csv)."""
     out = Path(G, "out", window)
-    cand = candidate_install()
+    cand = candidate_install(clone_head())
     delta = manifest_delta(manifest_rows(cand / ".deployed_manifest.csv"), manifest_rows(Path(G, "in", window, "pc.manifest.csv")))
     tarp = out / "payload.tar"
     with tarfile.open(tarp, "w") as tar:

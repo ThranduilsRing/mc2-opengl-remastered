@@ -152,6 +152,23 @@ def test_pack_falls_back_to_the_deployed_seed_once_the_stock_copy_is_gone(tmp_pa
         laptop_gate.candidate_install()
 
 
+def test_pack_skips_a_kept_candidate_built_from_another_commit(tmp_path, monkeypatch):
+    # W138e: a merge-gate-candidate left by an older --keep-candidate run (src 6063ca51a) became the 2247a9a73 payload.
+    monkeypatch.setattr(laptop_gate, "G", tmp_path.as_posix())
+    base = tmp_path / "drv/E/mc2-installs"
+    stale, seed = base / "merge-gate-candidate", base / "_gate-reuse/deployed"
+    for p in (stale, seed):
+        p.mkdir(parents=True)
+    _manifest(stale / ".deployed_manifest.csv", {"mc2.exe": b"old"})   # src_commit "abc"
+    _manifest(seed / ".deployed_manifest.csv", {"mc2.exe": b"new"})
+    rows = (seed / ".deployed_manifest.csv").read_text(encoding="utf-8").replace(",abc,", ",def0123,")
+    (seed / ".deployed_manifest.csv").write_text(rows, encoding="utf-8")
+    assert laptop_gate.candidate_install() == stale            # no head: first present candidate, as before
+    assert laptop_gate.candidate_install("def0123456789") == seed
+    with pytest.raises(SystemExit):
+        laptop_gate.candidate_install("0000000")
+
+
 def _tree(root, files):
     import os
     for rel, (data, mtime) in files.items():
