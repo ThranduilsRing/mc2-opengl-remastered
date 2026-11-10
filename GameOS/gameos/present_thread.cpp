@@ -196,6 +196,9 @@ void waitIdle() {
 }
 void enqueue(uint32_t width, uint32_t height, bool verify, uint32_t renderFrame, uint32_t fireFrame) {
     mc2::overlap::assertMainThread("present_thread::enqueue");
+    // Recorded islands still reserved record here, on main, before the worker can queue anything: the worker's composite submit must never overtake an
+    // unrecorded entry (it only ever queues a prefix, VulkanContext::flushPendingLocked).
+    if (engineVulkanContextValid()) getOrCreateEngineVulkanContext().resolveRecorded();
     std::lock_guard lock(mutex);
     assert(!pending && sealed);
     packet = {width, height, renderFrame, fireFrame, verify, paceFps, std::move(retiredTextures)};

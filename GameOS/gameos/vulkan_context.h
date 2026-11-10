@@ -27,6 +27,7 @@
 #include "vk_render_infra.h"
 
 #include "vk_completion_tracker.h"
+#include "deferred_submit_batch.h"
 #include "vk_deferred_destroy.h"
 #include "vk_device_profile.h"
 #include "vk_frame_ring.h"
@@ -182,7 +183,7 @@ private:
     // Plain submits (command buffers only: no fence, no binary semaphores) are collected and go out as ONE vkQueueSubmit2 with one timeline
     // signal (the newest value) at the next flush point: a submit that carries a fence or a semaphore, present, poll (so isComplete/wait),
     // waitIdle and endFrame. Queue order equals call order; the older tickets complete with the batch.
-    void flushPendingLocked() const;   // submitMutex_ held; resolves reserved recordings first (not on the present worker: that one queues the prefix before the first)
+    void flushPendingLocked() const;   // submitMutex_ held; resolves reserved recordings first (never on the present worker: the present enqueue resolves on main; a reservation left on the worker is flagged and only the prefix before it is queued)
     void flushPrefixLocked(size_t count) const;   // submitMutex_ held: queue the first `count` pending entries (signals the value of the last)
     void resolveRecordsLocked() const;            // submitMutex_ held
     GpuTicket flushUploadsLocked() const;
@@ -299,13 +300,9 @@ private:
     mutable DeferredDestroy deferred_;   // after the allocator's owners are gone: destroy() drains it first
     // timed: main pumps window messages while the present worker holds it in WSI
     mutable std::timed_mutex submitMutex_;
-    struct PendingEntry { VkCommandBuffer cb = VK_NULL_HANDLE; uint64_t value = 0; };   // cb null = a reserved record not resolved yet (or one that failed)
-    struct PendingRecord { size_t entry = 0; RecordFn rec; RecordDoneFn done; VkCommandBuffer cb = VK_NULL_HANDLE; bool ok = false; std::chrono::steady_clock::time_point reservedAt{}; };
-    mutable std::vector<PendingEntry> pending_;          // submitMutex_: the deferred batch in submit order; the batch signals the last entry's value
-    mutable std::vector<PendingRecord> pendingRecs_;     // submitMutex_: reserved recordings, in entry order
+    mutable DeferredSubmitBatch<VkCommandBuffer> batch_;   // submitMutex_: the deferred batch in submit order (the submit signals its last entry's value) and the reserved recordings
     RecordExecutor recordExecutor_;
     mutable bool pendingFailed_ = false;                 // submitMutex_: a batched submit failed after its callers were told VK_SUCCESS; the next submit() reports it
-    mutable std::chrono::steady_clock::time_point pendingSince_{};   // submitMutex_: when the pending batch got its first command buffer
     uint8_t          luid_[8]           = {0, 0, 0, 0, 0, 0, 0, 0};
     bool             luidValid_         = false;
     bool             temporalFeatures_  = false;   // see temporalFeaturesEnabled()
