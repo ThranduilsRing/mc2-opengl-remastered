@@ -4439,6 +4439,13 @@
    "tag": "ICON_REGISTRY",
    "ver": -1,
    "stream": "stdout",
+   "keys": [],
+   "count": 2
+  },
+  {
+   "tag": "ICON_REGISTRY",
+   "ver": -1,
+   "stream": "stdout",
    "keys": [
     "icons",
     "atlas"
@@ -10142,6 +10149,13 @@
    "count": 1
   },
   {
+   "tag": "UI_CHROME",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 4
+  },
+  {
    "tag": "UI_DEFS",
    "ver": -1,
    "stream": "stderr",
@@ -12439,6 +12453,38 @@
     "thickness_min",
     "thickness_max",
     "waterElevation"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_REACTIVE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "stamps",
+    "litTiles",
+    "submits",
+    "wet",
+    "vis",
+    "wetVisible",
+    "emitted",
+    "maxRadius",
+    "stamp0",
+    "age0",
+    "tileUnderStamp0",
+    "firstVxy"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_REFLECT_COST",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "res",
+    "mpix",
+    "gpu_ms",
+    "frames"
    ],
    "count": 1
   },

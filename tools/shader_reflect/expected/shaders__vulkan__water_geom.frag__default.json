@@ -35,7 +35,7 @@
           "matrix_stride": null,
           "name": "poolLights",
           "offset": 0,
-          "type": "_1239"
+          "type": "_1273"
         }
       ],
       "name": "TerrainLightPoolVK"
@@ -65,6 +65,33 @@
         }
       ],
       "name": "TerrainLightGridIndicesVK"
+    },
+    {
+      "binding": 13,
+      "members": [
+        {
+          "array_stride": 32,
+          "matrix_stride": null,
+          "name": "stamps",
+          "offset": 0,
+          "type": "_2242"
+        },
+        {
+          "array_stride": 4,
+          "matrix_stride": null,
+          "name": "counts",
+          "offset": 4096,
+          "type": "uint"
+        },
+        {
+          "array_stride": 4,
+          "matrix_stride": null,
+          "name": "indices",
+          "offset": 8192,
+          "type": "uint"
+        }
+      ],
+      "name": "WaterReactive"
     }
   ],
   "stage": "frag",

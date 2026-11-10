@@ -1,6 +1,6 @@
 {
   "summary": {
-    "glsl_blocks_with_binding": 282,
+    "glsl_blocks_with_binding": 283,
     "native_pairs": 7,
     "fails": 0,
     "warns": 1
@@ -1093,7 +1093,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_reflection.comp",
-        "line": 17,
+        "line": 18,
         "role": "WaterTiles",
         "std": "std430",
         "type": "buffer",
@@ -1147,6 +1147,16 @@
         "branch": {
           "3": 0
         }
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/water_geom.frag",
+        "line": 69,
+        "role": "WaterReactive",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/water_geom.frag",
+        "branch": {}
       }
     ],
     "set0:binding14": [
