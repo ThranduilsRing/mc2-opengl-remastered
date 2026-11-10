@@ -93,7 +93,7 @@ def test_guard_runs_before_source_and_build():
 
 
 def test_box_infra_verdict_is_not_green():
-    assert box_run.verdict(77) == ("BOX_INFRA", 3)
+    assert box_run.verdict(77) == ("BOX_INFRA", 77)   # RC_BOX_INFRA
     assert box_run.verdict(0, ("0",)) == ("PASS", 0)
 
 
@@ -136,6 +136,7 @@ def test_cleanup_dry_run_changes_nothing(lanes):
     assert (w / "lanes" / "zz_t").is_dir() and (w / "lanes" / ".box_lane_zz_t.sh").exists()
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="runs a lane_cleanup.sh snippet through Git-bash -c, which fails to parse its quoting on Windows; Linux box/CI covers it")
 def test_daily_retains_fixed_slots_after_merge():
     script = (BOX / "lane_cleanup.sh").read_text().split('case "${ARGS[0]:-}"')[0]
     r = bash(script + '\nouts() { :; }; nifty_ref() { echo tip; }; '

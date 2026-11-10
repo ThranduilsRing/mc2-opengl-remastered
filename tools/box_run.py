@@ -165,7 +165,9 @@ BCPUS=${BUILD_CPUS:-8-$(( $(nproc) - 1 ))}   # builds: the dedicated BUILD_CPUS 
 BUILD_J=$(bq_j "$BCPUS")
 export GIT_LFS_SKIP_SMUDGE=1
 # source: bundle was fetched into the mirror as refs/lanes/$BR by the Windows half
+git -C $MIRROR worktree prune 2>/dev/null   # an evicted lane dir leaves a dangling worktree record that blocks `worktree add`
 if [ -e $S/.git ]; then git -C $S checkout -q -f --detach $SHA; else git -C $MIRROR worktree add -q -f --detach $S $SHA; fi
+[ -e $S/.git ] && [ "$(git -C $S rev-parse HEAD 2>/dev/null)" = "$SHA" ] || { echo "[box_run] BOX_INFRA: could not provision the lane source at $SHA ($S; was the lane dir evicted?)"; exit 77; }   # never a silent exit 0 with nothing run
 tick source
 ONLY_LINT=1; for r in "${ROWS[@]}"; do [ "$r" = lint ] || ONLY_LINT=""; done   # a lint-only run is pure Python + git: no configure, no build, no install
 cd $S

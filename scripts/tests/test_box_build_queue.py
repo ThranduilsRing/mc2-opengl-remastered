@@ -129,3 +129,9 @@ def test_filler_gpus_and_device_name_come_from_cores_env(tmp_path, monkeypatch):
     import run_job
     assert run_job.gpu_name(str(tmp_path / "cores.env")) == "RTX 4060"
     assert run_job.device_verdict('device_name="NVIDIA GeForce RTX 3060" api=1', want="RTX 4060")[1]
+
+
+def test_an_unprovisioned_lane_source_is_box_infra_not_a_silent_exit():
+    rs = box_run.REMOTE
+    i = rs.index("worktree prune")
+    assert "exit 77" in rs[i:i + 700] and rs.index("tick source") > i
