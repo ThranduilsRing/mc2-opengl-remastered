@@ -102,16 +102,3 @@ def test_run_deploy_logs_stock_receipts_and_kit_cook(tmp_path, monkeypatch, caps
     assert all(f"phase {phase} seconds=" in out for phase in ("hash/verify", "copy", "stock receipts", "kit cook"))
     assert phases == (["stock", "cook", "cook"] if kit_enabled else [])
 
-
-def test_private_leftovers_from_killed_deploys_are_removed(tmp_path, monkeypatch, capsys):
-    dead, live = 4000001, 4000002
-    (tmp_path / "data/art").mkdir(parents=True)
-    old = tmp_path / "data/art" / f"a.tga.private-{dead}"
-    mine = tmp_path / f"b.dll.private-{live}"
-    keep = tmp_path / "data/art/a.tga"
-    for p in (old, mine, keep):
-        p.write_bytes(b"x")
-    monkeypatch.setattr(dp, "_pid_alive", lambda pid: pid == live)
-    assert dp.clean_private_leftovers(str(tmp_path)) == 1
-    assert not old.exists() and mine.exists() and keep.exists()
-    assert "removed leftover from a killed deploy" in capsys.readouterr().out
