@@ -37,6 +37,7 @@
   "scripts/check-deploy-target.py": "Sol game-slots helper (claude/game-slots 5f22725c0); caller wiring or board row owed by the Sol track.",
   "scripts/check-worktree-context.sh": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
   "scripts/check_shader_bom.py": "Sol game-slots helper (claude/game-slots 5f22725c0); caller wiring or board row owed by the Sol track.",
+  "scripts/clean_install_byproducts.py": "Operator-run one-time install byproduct cleaner (py -3 scripts/clean_install_byproducts.py <install> [--apply]); dry-run by default, refuses the golden/owner-test/remastered/archive roots; pinned by scripts/tests/test_clean_install_byproducts.py.",
   "scripts/configure_analysis.py": "Manual compile-database setup, documented in CLAUDE.md:66.",
   "scripts/conftest.py": "Implicit pytest configuration for descendant tests; pytest auto-loads this file, so no explicit script operand/import names it.",
   "scripts/deploy-editor.sh": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
