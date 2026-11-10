@@ -99,8 +99,12 @@ TEST_CASE("ui_chrome stored PNG decodes to the same pixels") {
     REQUIRE(dec.has_value());
     CHECK(dec->width == 70);
     CHECK(dec->height == 40);
-    CHECK(dec->layout == mc2tex::PixelLayout::RGB8);
-    CHECK(dec->pixels == p.data);
+    // the platform decoder may widen RGB to RGBA (alpha 255); the colour channels must be exact
+    const int dch = dec->layout == mc2tex::PixelLayout::RGB8 ? 3 : 4;
+    bool same = dec->pixels.size() == size_t(70) * 40 * dch;
+    for (size_t i = 0; same && i < size_t(70) * 40; ++i)
+        for (int c = 0; c < 3; ++c) same = same && dec->pixels[i * dch + c] == p.data[i * 3 + c];
+    CHECK(same);
     Pixels q = solid(5, 4, 4, 0);
     for (size_t i = 0; i < q.data.size(); ++i) q.data[i] = uint8_t(i * 13 + 1);
     const auto png4 = encodePngStored(q);
