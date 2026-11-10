@@ -216,3 +216,42 @@ TEST_CASE("VegCards/a missing card degrades per layer, not all-or-nothing") {
     const bool none[8] = {};
     CHECK(cardLayerSources(none).empty());
 }
+
+TEST_CASE("prop alpha-ON mips: solid canopy keeps coverage at the shader cut, lattice stays see-through") {
+    using namespace mc2::vegetation;
+    const uint32_t N = 128;
+    std::vector<uint8_t> canopy(N * N * 4, 0), lattice(N * N * 4, 0);
+    for (uint32_t y = 0; y < N; ++y)
+        for (uint32_t x = 0; x < N; ++x) {
+            const float dx = float(x) - 63.5f, dy = float(y) - 63.5f;
+            if (dx * dx + dy * dy < 50.0f * 50.0f) canopy[(y * N + x) * 4 + 3] = 255;
+            if (x % 16 < 2 || y % 16 < 2) lattice[(y * N + x) * 4 + 3] = 255;   // 2-texel wire on a 16 pitch
+        }
+    CHECK(isSolidCutout(canopy, N, N));
+    CHECK_FALSE(isSolidCutout(lattice, N, N));
+    CHECK(propCutThreshold(0) == 128);
+    CHECK(propCutThreshold(1) == 179);
+    CHECK(propCutThreshold(2) == 230);
+    CHECK(propCutThreshold(9) == 230);
+
+    // box-filter the canopy to mip 3 (16x16): edge texels average to mid alpha, so coverage at the mip-3 cut drops
+    const float target = cutoutCoverage(canopy);
+    std::vector<uint8_t> mip = canopy;
+    uint32_t w = N;
+    for (int m = 0; m < 3; ++m, w /= 2) {
+        std::vector<uint8_t> next((w / 2) * (w / 2) * 4);
+        for (uint32_t y = 0; y < w / 2; ++y)
+            for (uint32_t x = 0; x < w / 2; ++x)
+                for (int c = 0; c < 4; ++c) {
+                    int sum = 0;
+                    for (int j = 0; j < 4; ++j) sum += mip[((2 * y + j / 2) * w + 2 * x + j % 2) * 4 + c];
+                    next[(y * (w / 2) + x) * 4 + c] = uint8_t(sum / 4);
+                }
+        mip.swap(next);
+    }
+    const long cut = propCutThreshold(3);
+    const float plain = cutoutCoverage(mip, 1.0f, cut);
+    CHECK(plain < target - 0.02f);
+    preserveCutoutAlpha(mip, target, cut);
+    CHECK(cutoutCoverage(mip, 1.0f, cut) == doctest::Approx(target).epsilon(0.08));
+}

@@ -5,6 +5,7 @@
 #include "../../mclib/texture_assets.h"
 #include "gos_static_prop_finalize_frame.h"
 #include "mc2fmt.h"
+#include "vegetation_cutout.h"
 
 #include <cstring>
 
@@ -212,6 +213,16 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
             pixelBuf.assign(u.rgba->begin(), u.rgba->end());
             blitRows(layerTexels[k], cpuArray.width, pixelBuf.data(), static_cast<uint32_t>(u.w), static_cast<uint32_t>(u.h));
         }
+        // PROP-ALPHA-MIP-1: a solid cutout layer of the alpha-ON group (canopy, alpha-mixed wall) keeps its coverage at the
+        // shader's per-mip cut instead of box-filtering down to mid alpha, which the rising cut sends to the thin blended fringe
+        // (far trees read see-through). Thin lattice (isSolidCutout false) keeps the plain box mips so fences stay see-through.
+        std::vector<float> keepCoverage(uniques.size(), -1.0f);
+        if (group == 1u)
+            for (size_t k = 0; k < layerTexels.size(); ++k)
+                if (mc2::vegetation::isSolidCutout(layerTexels[k], cpuArray.width, cpuArray.height)) {
+                    keepCoverage[k] = mc2::vegetation::cutoutCoverage(layerTexels[k]);
+                    mc2::vegetation::dilateCutoutRgb(layerTexels[k], cpuArray.width, cpuArray.height);
+                }
 
         int maxLevel = 0;
         {
@@ -231,7 +242,12 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
             level.resize(layerBytes * layerTexels.size());
             for (size_t k = 0; k < layerTexels.size(); ++k) std::memcpy(level.data() + k * layerBytes, layerTexels[k].data(), layerBytes);
             if (lvl + 1u < levelCount)
-                for (auto& layer : layerTexels) layer = mc2tex::boxDownsampleRgba8(layer, lw, lh);
+                for (size_t k = 0; k < layerTexels.size(); ++k) {
+                    layerTexels[k] = mc2tex::boxDownsampleRgba8(layerTexels[k], lw, lh);
+                    if (keepCoverage[k] < 0.0f) continue;
+                    mc2::vegetation::preserveCutoutAlpha(layerTexels[k], keepCoverage[k], mc2::vegetation::propCutThreshold(lvl + 1u));
+                    mc2::vegetation::dilateCutoutRgb(layerTexels[k], mc2tex::mipExtent(cpuArray.width, lvl + 1u), mc2tex::mipExtent(cpuArray.height, lvl + 1u));
+                }
         }
         albedoKey_[group] = ++s_albedoKeySerial;
         // 2026-05-11 per-packet rework: uvScale is per-PACKET, derived from
