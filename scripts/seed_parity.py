@@ -8,8 +8,10 @@ transition textures at load (127 s on mc2_01, and the concrete/shore areas then 
 smoke look differed from v0.4 for data reasons, not code reasons.
 
 The seed is "v0.4 data minus the exe": PARITY below names that data. `--refresh-seed` copies it from v0.4 (read only) into
-the seed; `make-isolated-deploy.py` admits it into every lane install and then fails the install if any of it differs
-from v0.4 (`require_parity`). Not parity (deploy-managed or per-install): the exe/dll/shader payload, mods, cache/, the
+the seed and records a parity snapshot (SNAPSHOT_NAME, {relpath: sha256}) beside it. `make-isolated-deploy.py` checks the
+SEED against its own snapshot BEFORE the build (`require_seed`), never against live v0.4, so v0.4 drifting after a refresh does
+not block lanes. The merge-gate v0.4 deploy (deploy_payload --target game / --from-payload) refreshes the seed and snapshot
+afterwards (`after_v04_deploy`) or prints the exact command. Not parity (deploy-managed or per-install): the exe/dll/shader payload, mods, cache/, the
 runtime-written dirs.
 
   py -3 scripts/seed_parity.py --check E:/mc2-installs/<install>
@@ -19,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import os
 import shutil
 import sys
@@ -31,6 +34,11 @@ def default_ref() -> Path:
 
 
 DEFAULT_REF = default_ref()
+SNAPSHOT_NAME = ".parity-snapshot.json"
+
+
+def default_seed() -> Path:
+    return Path(os.environ.get("MC2_LEAN_SEED", "E:/mc2-installs/_lean-seed"))
 
 ROOT_FILES = ("options.cfg", "system.cfg", "prefs.cfg", "minprefs.cfg", "orgprefs.cfg")
 # (prefix, excluded subdirectories under it). Backups and the random-map picker art are never read by a mission.
@@ -115,7 +123,73 @@ def refresh_seed(seed: Path, ref: Path, dry_run: bool = False) -> int:
                 dst.unlink()          # a hardlinked seed file must not be rewritten through its inode
             shutil.copy2(ref / rel, dst)
     print(f"{PREFIX} {'would copy' if dry_run else 'copied'} {len(todo)} parity file(s) {ref} -> {seed}")
+    if not dry_run:
+        print(f"{PREFIX} snapshot: {write_snapshot(seed)} parity file hash(es) recorded in {seed / SNAPSHOT_NAME}")
     return len(todo)
+
+
+def write_snapshot(seed: Path, workers: int = 6) -> int:
+    """Record {relpath: sha256} of the seed's parity files (what a lane install must carry), atomically."""
+    files = sorted(reference_files(seed))
+    with ThreadPoolExecutor(workers) as pool:
+        hashes = dict(zip(files, pool.map(lambda rel: _sha(seed / rel), files)))
+    tmp = seed / (SNAPSHOT_NAME + ".tmp")
+    tmp.write_text(json.dumps({"files": hashes}, sort_keys=True), encoding="utf-8")
+    os.replace(tmp, seed / SNAPSHOT_NAME)
+    return len(hashes)
+
+
+def read_snapshot(seed: Path) -> dict[str, str] | None:
+    try:
+        return json.loads((seed / SNAPSHOT_NAME).read_text(encoding="utf-8"))["files"]
+    except (OSError, ValueError, KeyError):
+        return None
+
+
+def snapshot_differing(install: Path, snapshot: dict[str, str], workers: int = 6) -> list[tuple[str, str]]:
+    """(kind, relpath) of snapshot files missing from `install` or with another sha256."""
+    present = [rel for rel in snapshot if (install / rel).is_file()]
+    have = set(present)
+    problems = [("missing", rel) for rel in snapshot if rel not in have]
+    with ThreadPoolExecutor(workers) as pool:
+        problems += [("content", rel) for rel, got in zip(present, pool.map(lambda r: _sha(install / r), present)) if got != snapshot[rel]]
+    return sorted(problems, key=lambda kr: kr[1])
+
+
+def refresh_command(seed: Path) -> str:
+    return f"py -3 scripts/seed_parity.py --refresh-seed {Path(seed).as_posix()}"
+
+
+def require_seed(seed: Path) -> None:
+    """Pre-build check (SystemExit 3): the seed matches the parity snapshot recorded when it was last refreshed. Live v0.4 is not
+    consulted. A seed with no snapshot (refreshed before snapshots existed) is checked against live v0.4, with the command to fix it."""
+    seed = Path(seed)
+    snapshot = read_snapshot(seed)
+    if snapshot is None:
+        print(f"{PREFIX} NOTE: {seed} has no {SNAPSHOT_NAME}; checking against live {default_ref()} (record one with: {refresh_command(seed)})")
+        require_parity(seed, None)
+        return
+    problems = [f"{kind} {rel}" for kind, rel in snapshot_differing(seed, snapshot)]
+    if problems:
+        shown = "\n  ".join(problems[:20])
+        raise SystemExit(f"{PREFIX} FAIL: {len(problems)} parity file(s) of seed {seed} differ from its own snapshot:\n  {shown}"
+                         + ("\n  ..." if len(problems) > 20 else "") + f"\n  fix: {refresh_command(seed)}")
+    print(f"{PREFIX} OK: seed {seed} matches its parity snapshot ({len(snapshot)} files)")
+
+
+def after_v04_deploy(target, seed: Path | None = None, ref: Path | None = None) -> bool:
+    """After a merge-gate deploy into v0.4: refresh the seed (and its snapshot) from it, or print the exact command. True when refreshed."""
+    ref, seed = Path(ref) if ref else default_ref(), Path(seed) if seed else default_seed()
+    if os.path.normcase(os.path.abspath(target)) != os.path.normcase(os.path.abspath(ref)):
+        return False
+    try:
+        if not seed.is_dir():
+            raise OSError(f"seed {seed} not found")
+        refresh_seed(seed, ref)
+        return True
+    except (OSError, SystemExit) as exc:
+        print(f"{PREFIX} seed NOT refreshed after the v0.4 deploy ({exc}); run: {refresh_command(seed)}")
+        return False
 
 
 def require_parity(install: Path, ref: Path | None = None) -> None:

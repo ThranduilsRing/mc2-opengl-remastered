@@ -2226,6 +2226,8 @@ def main():
                 deploy_from_payload(args.from_payload, target, src_root, head)
         else:
             run_deploy(args, src_root, build_dir, target, exe_name, pdb_name)
+        import seed_parity  # a v0.4 publish moves the parity reference: refresh the lane seed and its snapshot, or print the command
+        seed_parity.after_v04_deploy(target)
     finally:
         if lease_held:
             release_folder_lease(target)

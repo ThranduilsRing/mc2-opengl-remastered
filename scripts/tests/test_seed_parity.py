@@ -105,3 +105,57 @@ def test_lean_install_is_built_with_the_parity_set_and_checked(tmp_path, monkeyp
     (dst / "data/textures/1.2.txm").write_bytes(b"regenerated")
     with pytest.raises(SystemExit):
         sp.require_parity(dst, seed)
+
+
+def test_v04_drift_after_the_snapshot_does_not_fail_a_lane_install_but_seed_drift_does(tmp_path, capsys):
+    ref = tree(tmp_path / "v04", {**SHARED, **NOT_SHARED})
+    seed = tree(tmp_path / "seed", {"mc2.exe": b"seed exe"})
+    sp.refresh_seed(seed, ref)
+    assert sp.read_snapshot(seed) and set(sp.read_snapshot(seed)) == set(SHARED)
+    sp.require_seed(seed)
+    (ref / "options.cfg").write_bytes(b"v0.4 drifted after the refresh")      # live v0.4 moves on: not a lane's problem
+    (ref / "data/textures/new.txm").write_bytes(b"new")
+    sp.require_seed(seed)
+    assert "matches its parity snapshot" in capsys.readouterr().out
+    (seed / "data/textures/1.2.txm").write_bytes(b"corrupt")                  # the seed differs from its own snapshot
+    (seed / "orgprefs.cfg").unlink()
+    with pytest.raises(SystemExit) as exc:
+        sp.require_seed(seed)
+    msg = str(exc.value)
+    assert "content data/textures/1.2.txm" in msg and "missing orgprefs.cfg" in msg and f"--refresh-seed {seed.as_posix()}" in msg
+
+
+def test_seed_without_a_snapshot_falls_back_to_live_v04_and_names_the_refresh(tmp_path, monkeypatch, capsys):
+    ref = tree(tmp_path / "v04", SHARED)
+    seed = tree(tmp_path / "seed", {**SHARED, "options.cfg": b"old"})
+    monkeypatch.setenv("MC2_SEED_PARITY_REF", str(ref))
+    with pytest.raises(SystemExit) as exc:
+        sp.require_seed(seed)
+    assert "--refresh-seed" in str(exc.value) and "no .parity-snapshot.json" in capsys.readouterr().out
+
+
+def test_v04_deploy_refreshes_seed_and_snapshot_or_prints_the_command(tmp_path, capsys):
+    ref = tree(tmp_path / "v04", SHARED)
+    seed = tree(tmp_path / "seed", {"mc2.exe": b"x"})
+    assert not sp.after_v04_deploy(tmp_path / "some-lane", seed, ref)          # only a v0.4 target refreshes
+    assert sp.read_snapshot(seed) is None
+    assert sp.after_v04_deploy(ref, seed, ref) and set(sp.read_snapshot(seed)) == set(SHARED)
+    assert not sp.after_v04_deploy(ref, tmp_path / "no-seed", ref)
+    assert f"run: py -3 scripts/seed_parity.py --refresh-seed {(tmp_path / 'no-seed').as_posix()}" in capsys.readouterr().out
+
+
+def test_lane_install_build_checks_the_seed_before_building(tmp_path, monkeypatch):
+    spec = importlib.util.spec_from_file_location("lean_iso_pre", ROOT / "scripts/make-isolated-deploy.py")
+    iso = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(iso)
+    seen = []
+    monkeypatch.setattr(iso.seed_parity, "require_seed", lambda s: seen.append(("seed", s)) or (_ for _ in ()).throw(SystemExit(3)))
+    monkeypatch.setattr(iso, "verified_seed", lambda *a, **k: seen.append("verified") or {})
+    monkeypatch.setattr(iso, "same_volume", lambda *a: True)
+    monkeypatch.setattr(iso, "check_not_system_drive", lambda *a: None)
+    src = tmp_path / "seed"
+    src.mkdir()
+    with pytest.raises(SystemExit):
+        iso.main(["--from", str(src), "--to", str(tmp_path / "lane")])
+    assert seen == [("seed", src.resolve())]           # failed before the seed was even verified, nothing built
+    assert not (tmp_path / "lane").exists()

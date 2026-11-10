@@ -951,6 +951,8 @@ def main(argv=None) -> int:
 
     started = time.perf_counter()
     out(f"planning: {src}  ->  {dst}")
+    if not args.snapshot:
+        seed_parity.require_seed(src)   # before any build work: the seed against its own parity snapshot, not live v0.4
     seed = None if args.snapshot else verified_seed(src, use_cache=not args.dry_run)
     out(f'timing manifest verification: {time.perf_counter() - started:.3f}s')
     kit_started = time.perf_counter()
@@ -1028,8 +1030,6 @@ def main(argv=None) -> int:
         fail(f'post-build isolation: {verdict}', 5)
     out(f'timing isolation verification: {time.perf_counter() - checking:.3f}s')
     out(f'timing total: {time.perf_counter() - started:.3f}s')
-    if seed is not None:
-        seed_parity.require_parity(dst)
 
     out("")
     out(f"ISOLATED INSTALL READY: {dst}")
