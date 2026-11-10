@@ -2552,6 +2552,15 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     if gaps:
         fail("INSTALL INCOMPLETE (game would die with 0xC0000135 / missing assets): " + ", ".join(gaps) +
              f"; copy them from a full install (e.g. {GOLDEN_MATERIAL_ROOT})", 7)
+    if os.path.isdir(os.path.join(build_dir, "shaders", "vulkan")) and os.path.isdir(os.path.join(target, "shaders", "vulkan")):
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
+        import check_deployed_spv
+        spv_fails, spv_warns, spv_n = check_deployed_spv.audit(target, build_dir)
+        for m in spv_warns:
+            log(f"WARNING deployed SPIR-V: {m}")
+        if spv_fails:
+            fail("deployed SPIR-V is not the build's SPIR-V:\n  " + "\n  ".join(spv_fails), 4)
+        log(f"deployed SPIR-V audit OK: {spv_n} .spv identical to the build, descriptor/push ABI matches")
     write_manifest(target, hashes, src_commit)
     if reuse:
         # Preserve the verified external source inventory across code-only deploys.
