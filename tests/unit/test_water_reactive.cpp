@@ -124,3 +124,27 @@ TEST_CASE("WaterReactive/frozen clock keeps stamps at age zero where the profile
     CHECK(st.emitted == 1);
     CHECK(buffer.takeStats().submits == 0);
 }
+
+TEST_CASE("WaterReactive/rings are strong enough to read at the play camera, bounded, and fade out") {
+    // Owner 2026-11-10: slope 0.035 / crest 0.028 were barely visible. Scan a radial cut through a standing mech's ring.
+    const auto peak = [](float age, float pixel) {
+        glm::vec2 best(0.0f);
+        for (float r = 0.0f; r < 223.0f; r += 0.25f) {
+            const auto v = wr_profile({r, 0}, {0, 0}, 13, age, 0, pixel);
+            best = glm::max(best, glm::vec2(std::abs(v.x), v.z));
+        }
+        return best;
+    };
+    const auto fresh = peak(0.6f, 1.0f);
+    CHECK(fresh.x >= 0.15f);   // at least 4x the old 0.035 peak slope
+    CHECK(fresh.y >= 0.15f);   // visible foam weight, was 0.028
+    CHECK(fresh.x <= kSlopeMax);
+    CHECK(fresh.y <= kCrestMax);
+    // Physically plausible: older rings are weaker, and the ring is gone at the lifetime.
+    CHECK(peak(2.0f, 1.0f).x < fresh.x * 0.6f);
+    CHECK(peak(2.99f, 1.0f).x < fresh.x * 0.02f);
+    // Wider rings at the RTS zoom limit fade rather than alias.
+    CHECK(peak(0.6f, 18.0f).x == 0);
+    // Everything stays zero beyond the CPU tile footprint (no seams at tile borders).
+    CHECK(glm::length(wr_profile({224.5f, 0}, {0, 0}, 40, 0.6f, 0, 1)) == 0);
+}

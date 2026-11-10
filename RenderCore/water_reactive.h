@@ -108,7 +108,7 @@ public:
         }
         source->x = x; source->y = y; source->seen = now;
         if (discontinuity) source->emitted = now; // No connecting wake on teleport/reappearance.
-        if (now - source->emitted < (vehicle ? 0.30f : 0.65f)) return;
+        if (now - source->emitted < (vehicle ? 0.25f : 0.55f)) return;
         source->emitted = now;
         ++emitted_; firstX_ = x; firstY_ = y; firstVx_ = vx; firstVy_ = vy;
         if (count_ == kCapacity) {
