@@ -393,6 +393,42 @@ TEST_CASE("mod.json not found or without an id: the folder name becomes the id")
 	_putenv_s(kEnvRebuildCache, "");
 }
 
+TEST_CASE("write guard: CREATE under data/ with a mod active logs once; no mod, savegame and absolute paths stay silent")
+{
+	_mkdir("data");
+	_mkdir("data/mvh_scratch_data");
+	const char *rel = "data/mvh_scratch_data/guard.bin";
+	const char *save = "data/savegame/mvh_guard_nonexistent.fit";
+	mc2::vfs::resetWriteGuard();
+
+	// no mod: nothing logged, the file is still created
+	setActiveMod(nullptr);
+	std::string out = captureStdout([&] { File f; CHECK(f.create(rel) == NO_ERR); f.close(); });
+	CHECK(out.find("MOD_WRITE_GUARD") == std::string::npos);
+	remove(rel);
+
+	setActiveMod(kModId);
+	out = captureStdout([&] { File f; CHECK(f.create(rel) == NO_ERR); f.close(); });
+	CHECK(out.find("[MOD_WRITE_GUARD] path=data/mvh_scratch_data/guard.bin mod=testmod action=warn") != std::string::npos);
+	{
+		std::FILE *fp = fopen(rel, "rb");   // warn only: the write still lands
+		CHECK(fp != nullptr);
+		if (fp) fclose(fp);
+	}
+	remove(rel);
+	// the same path again is rate-limited
+	out = captureStdout([&] { File f; CHECK(f.create(rel) == NO_ERR); f.close(); });
+	CHECK(out.find("MOD_WRITE_GUARD") == std::string::npos);
+	remove(rel);
+	// exempt: savegame subtree and absolute paths
+	CHECK_FALSE(mc2::vfs::guardWrite(save));
+	CHECK_FALSE(mc2::vfs::guardWrite("C:/somewhere/data/x.bin"));
+
+	setActiveMod(nullptr);
+	mc2::vfs::resetWriteGuard();
+	_rmdir("data/mvh_scratch_data");
+}
+
 TEST_CASE("mod-index cache: a missing or malformed cache is a clean miss")
 {
 	removeJsonTree();

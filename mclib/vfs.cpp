@@ -1534,6 +1534,31 @@ void noteWrite(std::string_view path)
 	g_index.st.entries = g_index.entries.size();
 }
 
+static std::mutex g_writeGuardMutex;
+static std::set<std::string> g_writeGuardSeen;
+
+void resetWriteGuard()
+{
+	std::lock_guard<std::mutex> lk(g_writeGuardMutex);
+	g_writeGuardSeen.clear();
+}
+
+bool guardWrite(std::string_view path)
+{
+	if (!ShouldSearchMods(path)) return false;   // only the relative data/ tree is stock data
+	const std::string k = key(path);
+	if (k.compare(0, 13, "data/savegame") == 0) return false;
+	const std::string mod = mc2::gate::str<"MC2_ACTIVE_MOD">();
+	if (mod.empty() || mod == "mc2-industrial-kit" || mod == "mc2-vehicle-kit") return false;   // same "no user layer" rule as the mount
+	{
+		std::lock_guard<std::mutex> lk(g_writeGuardMutex);
+		if (g_writeGuardSeen.size() >= 64 || !g_writeGuardSeen.insert(k).second) return false;
+	}
+	mc2::fmt::print_out("[MOD_WRITE_GUARD] path={} mod={} action=warn\n", k.c_str(), mod.c_str());
+	fflush(stdout);
+	return true;
+}
+
 std::vector<Entry> enumerate(std::string_view dirKey, std::string_view ext)
 {
 	std::lock_guard<std::mutex> lk(g_indexMutex);

@@ -249,6 +249,7 @@ long File::open (mc2::czstring fName, FileMode _mode, long numChild, bool doNotL
 
 	if (fileMode == CREATE)
 	{
+		mc2::vfs::guardWrite(m_fileName);
 		// sebi: changed _creat to this, because otherwise non binary file is created which is wrong
 		handle = _open(m_fileName.c_str(), _O_CREAT | _O_TRUNC | _O_BINARY | _O_RDWR, _S_IREAD | _S_IWRITE);
 		if (handle == INVALID_HANDLE_VALUE)
@@ -570,6 +571,7 @@ long File::createWithCase(mc2::czstring fName )
 	fileMode = CREATE;
 	//_fmode = _O_BINARY;
 
+	mc2::vfs::guardWrite(m_fileName);
 	handle = _creat(m_fileName.c_str(),_S_IWRITE);
 	if (handle == INVALID_HANDLE_VALUE)
 	{

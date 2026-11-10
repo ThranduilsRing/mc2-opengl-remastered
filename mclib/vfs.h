@@ -93,6 +93,13 @@ struct OpenedFile {
 OpenedFile openRead(const char* path, const char* req = nullptr);
 // A file created under data/ after the index was built joins the loose mount (writes stay physical).
 void noteWrite(std::string_view path);
+// Write guard (mod VFS design section 6.3, always on): a CREATE under the stock data/ tree while MC2_ACTIVE_MOD is set logs one
+// `[MOD_WRITE_GUARD] path=... mod=... action=warn` line per path (at most 64 paths). The design defines no engine redirect into
+// the scratch layer, so the write itself is never changed. data/savegame/ is the known runtime save path and is exempt.
+// Returns true when a line was logged; with no active mod it does nothing.
+bool guardWrite(std::string_view path);
+// Test hook: forget the paths already reported.
+void resetWriteGuard();
 
 } // namespace mc2::vfs
 
