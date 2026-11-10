@@ -473,7 +473,7 @@ long Mech3DAppearance::update (bool animate)
 		// when killswitch is off; cheap (one hash lookup + dedup-cache
 		// slot write) when on. Source: msl.cpp.
 		if (mechShape) {
-			mechShape->CacheGpuLightData();
+			mechShape->CacheGpuLightData(eye->lightContext());
 		}
 	}
 
@@ -545,7 +545,6 @@ long Mech3DAppearance::update (bool animate)
 		leftArm->SetTextureHandle(0,localTextureHandle);
 
 		leftArm->SetFogRGB(0xffffffff);
-		leftArm->SetLightList(eye->getWorldLights(),eye->getNumLights());
 		leftArm->TransformMultiShape_HierarchyOnly(&xlatPosition,&qRotation);
 		leftArm->ReserveCpuDraw();
 			
@@ -623,7 +622,6 @@ long Mech3DAppearance::update (bool animate)
 		rightArm->SetTextureHandle(0,localTextureHandle);
 
 		rightArm->SetFogRGB(0xffffffff);
-		rightArm->SetLightList(eye->getWorldLights(),eye->getNumLights());
 		rightArm->TransformMultiShape_HierarchyOnly(&xlatPosition,&qRotation);
 		rightArm->ReserveCpuDraw();
 		

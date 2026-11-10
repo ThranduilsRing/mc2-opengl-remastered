@@ -461,7 +461,6 @@ bool BldgAppearance::prewarmStaticLightBake(Camera* cam)
 		return false;
 
 	// Populate shapeToWorld hierarchy (no full pool bake — mirrors gpuEligible branch).
-	bldgShape->SetLightList(cam->getWorldLights(), cam->getNumLights());
 
 	// Build xlatPosition/rot from the appearance world position/rotation.
 	// Same coordinate transform as BldgAppearance::update (line ~3281):
@@ -478,7 +477,7 @@ bool BldgAppearance::prewarmStaticLightBake(Camera* cam)
 	bldgShape->TransformMultiShape_HierarchyOnly(&xlatPosition, &rot);
 
 	// Bake light into permanent SSBO slot (MISS path: CacheGpuLightData + mc2WriteStaticLightSlot).
-	mc2CacheOrBakeStaticGpuLight(bldgShape, staticReg.registered, staticReg.recipeIndex);
+	mc2CacheOrBakeStaticGpuLight(bldgShape, staticReg.registered, staticReg.recipeIndex, cam->lightContext());
 	staticReg.lightDataIndex = bldgShape->getCachedGpuLightIndex();
 	if (staticReg.lightDataIndex != 0xFFFFFFFFu && staticReg.registered)
 		GpuStaticPropRegistry::staticPropSetActorTint(staticReg.recipeIndex, mc2::prop_light::packWord(mc2PropSlotI(staticReg.lightDataIndex, land && eye ? land->getTerrainLight(position) : 1.0f), 0));

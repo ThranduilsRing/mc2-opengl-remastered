@@ -532,7 +532,7 @@ uint32_t mc2::vkLights::addLightDataStructure(TG_HWLightsData* light_data)
     return rv;
 }
 
-uint32_t mc2::vkLights::addLightDataStructureWithPerActorColor(TG_HWLightsData* light_data)
+uint32_t mc2::vkLights::addLightDataStructureWithPerActorColor(TG_HWLightsData* light_data, const TG_LightContext& lightCtx)
 {
     gosASSERT(light_data);
     mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "vkLights::addLightDataStructureWithPerActorColor");
@@ -542,8 +542,7 @@ uint32_t mc2::vkLights::addLightDataStructureWithPerActorColor(TG_HWLightsData* 
 
     auto& packet = writablePacket();
 
-    // R2 item 1: one snapshot of the pass's light list serves the index, the key and the gather.
-    const TG_LightContext lightCtx = TG_Shape::lightContext();
+    // R2 item 1: the caller's pass context serves the index, the key and the gather.
     const auto actorLightSource = firstActiveLightSourceIndex(lightCtx);
     if (!actorLightSource) {
         ++s_lbFrameNo;  // [LIGHTBRIDGE v1] no per-actor light (direct passthrough)

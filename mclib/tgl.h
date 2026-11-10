@@ -908,11 +908,7 @@ class TG_Shape
 		DWORD					lastTurnTransformed;
 
 	public:
-		//Matrices used to transform the shapes.
-		static TG_LightPtr				*s_listOfLights;		//List passed in a transform time
-		static DWORD					s_numLights;
-		// The pair as one value for the gather (TG_LightContext, above).
-		static TG_LightContext			lightContext() { TG_LightContext c; c.list = s_listOfLights; c.count = s_numLights; return c; }
+		// RENDER-THREAD-R2 item 1: no light-list statics. Every gather takes the pass's TG_LightContext explicitly.
 
 
 	//-----------------
@@ -978,12 +974,6 @@ class TG_Shape
 		// instead of emitting for a leaf the renderer already rejected.
 		DWORD GetLastTurnTransformed (void) const { return lastTurnTransformed; }
 
-		//This function sets the list of lights used by the TransformShape function
-		//to light the shape.
-		//Function returns 0 if lightList entries are all OK.  -1 otherwise.
-		//
-		long SetLightList (TG_LightPtr *lightList, DWORD nLights);
-		
 		//This function sets the fog values for the shape.  Straight fog right now.
 		void SetFogRGB (DWORD fRGB);
 
@@ -993,7 +983,7 @@ class TG_Shape
 		// index into per-leaf GpuStaticPropInstance.lightDataIndex
 		// (Recon Section 9 Item 5: all leaves of one multi-shape see identical
 		// lightData_, so this is per-actor not per-leaf).
-		uint32_t GatherGpuObjectLightDataOnly();
+		uint32_t GatherGpuObjectLightDataOnly(const TG_LightContext& lights);
 
 		// Stage 3.C: re-submit the already-populated lightData_ to get a fresh
 		// UBO slot index for this frame, without re-gathering from s_listOfLights.

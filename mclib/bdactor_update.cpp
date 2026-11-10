@@ -653,7 +653,6 @@ long BldgAppearance::update (bool animate)
 		bldgShape->SetUseShadow(false);
 
 
-		bldgShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
 		// Slice 2 (object-offload) — Stage 2.B: eligibility hoist.
 		// Branch lives INSIDE the existing inView cull
 		// gate to preserve slice 1's R1 invariant (no cull bypass).
@@ -685,7 +684,7 @@ long BldgAppearance::update (bool animate)
 			// By the time submitMultiShape() runs (during renderLists()), later
 			// actors have overwritten worldLights[0]->aRGB for their positions.
 			{
-				mc2CacheOrBakeStaticGpuLight(bldgShape, staticReg.registered, staticReg.recipeIndex);
+				mc2CacheOrBakeStaticGpuLight(bldgShape, staticReg.registered, staticReg.recipeIndex, eye->lightContext());
 				mc2PropLightContractCheck(bldgShape, mc2PropSlotI(bldgShape->getCachedGpuLightIndex(), land ? land->getTerrainLight(position) : 1.0f), (lightLatchStamp != mc2CameraLightChangedCount()) ? mc2::prop_light::kLatchStale : 0u);
 				// 2026-05-11 per-instance capture: snapshot the multi's just-written
 				// cache slot for THIS actor before sibling actors of the same
@@ -726,7 +725,7 @@ long BldgAppearance::update (bool animate)
 			// through update() seeds the light index. Cheap: same call
 			// already runs unconditionally in submitMultiShape; here we
 			// just hoist its effect to be visible to render() this frame.
-			mc2CacheOrBakeStaticGpuLight(bldgShape, staticReg.registered, staticReg.recipeIndex);
+			mc2CacheOrBakeStaticGpuLight(bldgShape, staticReg.registered, staticReg.recipeIndex, eye->lightContext());
 			mc2PropLightContractCheck(bldgShape, mc2PropSlotI(bldgShape->getCachedGpuLightIndex(), land ? land->getTerrainLight(position) : 1.0f), (lightLatchStamp != mc2CameraLightChangedCount()) ? mc2::prop_light::kLatchStale : 0u);
 			// 2026-05-11 per-instance capture: see gpuEligible branch above.
 			staticReg.lightDataIndex = bldgShape->getCachedGpuLightIndex();

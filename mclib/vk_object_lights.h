@@ -49,5 +49,5 @@ bool active();
         // (the byte source of the GL SSBO upload). Defined in vk_object_lights.cpp
         // (needs complete TG_HWLightsData for sizeof).
 uint32_t addLightDataStructure(TG_HWLightsData* lightData);
-uint32_t addLightDataStructureWithPerActorColor(TG_HWLightsData* lightData);
+uint32_t addLightDataStructureWithPerActorColor(TG_HWLightsData* lightData, const struct TG_LightContext& lights);
 }

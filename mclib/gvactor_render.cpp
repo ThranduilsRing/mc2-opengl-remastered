@@ -126,12 +126,12 @@ long GVAppearance::render (long depthFixup)
 			bool submitted = false;
 			if (renderShape) {
 				if (s_vehicleLitPath)
-					drawShape->CacheGpuLightDataAllLeaves();
+					drawShape->CacheGpuLightDataAllLeaves(eye->lightContext());
 				renderShape->SetTeamPaint(psRed, psGreen, psBlue);
 				static int s_paintLogs = 0;
 				if (s_paintLogs < 6 && ++s_paintLogs) mc2::fmt::print_err("[VEHICLE_PAINT] {} lod={} team={} paint={:08x}/{:08x}/{:08x}\n", appearType->name, renderLOD, teamId, psRed, psGreen, psBlue);
 				submitted = GpuStaticPropBatcher::instance().submitMultiShape(
-					drawShape, GpuStaticPropPopulation::Generic, appearType->name,
+					drawShape, GpuStaticPropPopulation::Generic, eye->lightContext(), appearType->name,
 					mc2::prop_light::packWord(land && eye ? land->getTerrainLight(position) : 1.0f, 0));
 			}
 			else if (gpuPose_) {

@@ -98,11 +98,6 @@ static void lightRowCensusEmit(mc2::czstring tag, unsigned t) {
 }
 }
 
-void GatherLightsParameters(TG_HWLightsData* lights)
-{
-	GatherLightsParameters(TG_Shape::lightContext(), lights);
-}
-
 void GatherLightsParameters(const TG_LightContext& ctx, TG_HWLightsData* lights)
 {
 	gosASSERT(lights);

@@ -1381,6 +1381,15 @@ class Camera
 			return numActiveLights;
 		}
 
+		// RENDER-THREAD-R2 item 1: the pass's light list as one value (what SetLightList(getWorldLights(), getNumLights()) used to leave in TG_Shape's statics).
+		TG_LightContext lightContext (void)
+		{
+			TG_LightContext c;
+			c.list = activeLights;
+			c.count = static_cast<DWORD>(numActiveLights);
+			return c;
+		}
+
 		// STATIC-REG-PREWARM-QUEUE-1: populate activeLights before any render frame.
 		// updateLights() is private; this wrapper allows mission-load callers to prime
 		// the active light list so SetLightList receives non-zero lights at prewarm time.

@@ -172,12 +172,11 @@ void GVAppearance::updateGeometry (void)
 		poseXlat_ = xlatPosition;
 		poseLightRGB_ = lightRGB;
 		poseFog_ = useFog ? 1.0f - static_cast<float>(fogRGB >> 24) / 255.0f : 0.0f;
-		gvShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
 		gpuPose_ = g_mechPreviewRenderDepth == 0 && gvShape->GetAlphaValue() == 0xff
 			&& GpuMechBatcher::instance().isVehicleTypeRegistered(gvShape->GetMultiType());
 		// The light row carries this actor's own terrain light colour; gather it now, while light 0 holds it.
 		if (gpuPose_ && !renderShape)
-			gvShape->CacheGpuLightData();
+			gvShape->CacheGpuLightData(eye->lightContext());
 		gvShape->TransformMultiShape_HierarchyOnly (&xlatPosition,&totalRotation);
 		if (!renderShape)
 		{
@@ -531,7 +530,6 @@ void GVAppearance::transformSensorShapes()
 	TG_MultiShape* marker = sensorLevel > 1 ? sensorCircleShape : sensorTriangleShape;
 	auto spin = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,sensorSpin * DEGREES_TO_RADS,0.0f));
 	marker->SetFogRGB(0xffffffff);
-	marker->SetLightList(eye->getWorldLights(),eye->getNumLights());
 	marker->TransformMultiShape_HierarchyOnly (&poseXlat_,&spin);
 	marker->ReserveCpuDraw();
 }

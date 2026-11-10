@@ -749,7 +749,6 @@ class RenderSubmissions
 RenderSubmissions& renderSubmissions();
 } // namespace mc2
 
-void GatherLightsParameters(TG_HWLightsData* lights);
 
 // RENDERER-INPUT-READBACK-1: the probe wrapper around the function above is
 // declared in mclib/tgl.h, not here -- its signature needs TG_LightPtr, whose

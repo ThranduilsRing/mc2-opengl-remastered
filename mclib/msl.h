@@ -419,14 +419,13 @@ class TG_MultiShape
 		//to light the shape.
 		//Function returns 0 if lightList entries are all OK.  -1 otherwise.
 		//
-		long SetLightList (TG_LightPtr *lightList, DWORD nLights);
 
 		// Slice 2 (object-offload) — Stage 2.D.2 fix: cache GPU light-data index
 		// while worldLights[0]->aRGB is per-actor-correct (during update()).
 		// Must be called AFTER SetLightList and BEFORE other actors overwrite
 		// worldLights[0]->aRGB. submitMultiShape() reads cachedGpuLightIndex_
 		// instead of calling GatherGpuObjectLightDataOnly() at render time.
-		void CacheGpuLightData();
+		void CacheGpuLightData(const TG_LightContext& lights);
 
 		// VEHICLE-LIGHTING-PATH-1: gather a light row into EVERY SHAPE_NODE
 		// leaf, not just the first.
@@ -445,7 +444,7 @@ class TG_MultiShape
 		// fixes, just narrowed from "whole vehicle" to "all but one leaf".
 		// Measured: with only CacheGpuLightData(), deterministic A/B poses showed
 		// ZERO pixel change despite the CPU gather demonstrably running.
-		void CacheGpuLightDataAllLeaves();
+		void CacheGpuLightDataAllLeaves(const TG_LightContext& lights);
 
 		// Stage 3.C: re-submit cached light data each frame on update()-skipped frames.
 		// Finds the first SHAPE_NODE leaf and calls ResubmitCachedLightData() on it,

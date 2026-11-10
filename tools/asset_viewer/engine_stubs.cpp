@@ -215,7 +215,6 @@ namespace gos_terrain_indirect {
 // ===========================================================================
 // (11) Lighting / shadow / draw helpers referenced by TG render methods.
 // ===========================================================================
-void GatherLightsParameters(TG_HWLightsData*) {}
 void addShadowShape(HGOSBUFFER, HGOSBUFFER, HGOSVERTEXDECLARATION, const float*) {}
 
 // GPU static-prop eligibility predicate (defined in gos_static_prop_batcher.cpp,
@@ -249,7 +248,7 @@ float Terrain::getTerrainElevation(const glm::vec3&) { return 0.0f; }
 // legacy texture manager / MC_TextureNode (GPU texture bind; render only).
 
 unsigned int mc2::vkLights::addLightDataStructure(TG_HWLightsData*) { return 0; }
-unsigned int mc2::vkLights::addLightDataStructureWithPerActorColor(TG_HWLightsData*) { return 0; }
+unsigned int mc2::vkLights::addLightDataStructureWithPerActorColor(TG_HWLightsData*, const TG_LightContext&) { return 0; }
 namespace mc2::textures { DWORD sourceId(DWORD) { return 0; } const char* name(DWORD) { return nullptr; } }
 // No sim tick in the viewer: TG_TypeShape::SetTextureHandle resolves inline.
 namespace mc2::tick { enum class Queue; bool defer(Queue, std::function<void()>) { return false; } }

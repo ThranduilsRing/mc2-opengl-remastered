@@ -32,34 +32,6 @@ TEST_CASE("TG_Light/source color and intensity stay separate") {
 // TG_Shape the records destroy (the fake-node tests release their dummies before any record goes, so it never runs for them).
 namespace { int g_shapeDestroys = 0; }
 void TG_Shape::destroy (void) { ++g_shapeDestroys; }
-TG_LightPtr* TG_Shape::s_listOfLights = nullptr; // Render state (tgl.cpp is not linked).
-DWORD TG_Shape::s_numLights = 0;
-
-TEST_CASE("TG_Shape/init preserves the render light list during sim shape creation")
-{
-    TG_Light light;
-    light.init(TG_LIGHT_AMBIENT);
-    light.SetaRGB(0xff804020);
-    TG_LightPtr lights[] = { &light };
-    auto* const savedLights = TG_Shape::s_listOfLights;
-    const auto savedCount = TG_Shape::s_numLights;
-    TG_Shape::s_listOfLights = lights;
-    TG_Shape::s_numLights = 1;
-
-    // Interleave sim-side CreateFrom's leaf construction with a render gather
-    // that has already selected light 0. Construction must not clear its source.
-    {
-        TG_Shape simulationLeaf;
-        CHECK(TG_Shape::s_listOfLights == lights);
-        CHECK(TG_Shape::s_numLights == 1);
-        simulationLeaf.init();
-        CHECK(TG_Shape::s_listOfLights == lights);
-        CHECK(TG_Shape::s_numLights == 1);
-    }
-    CHECK(light.GetaRGB() == 0xff804020);
-    TG_Shape::s_listOfLights = savedLights;
-    TG_Shape::s_numLights = savedCount;
-}
 
 namespace {
 // The node is only moved, never dereferenced, by transferFrom: an aligned dummy stands in for a TG_Shape. Since B7o.6b the record
@@ -299,42 +271,35 @@ TEST_CASE("TG_ShapeRec: detach immediately borrows the destination texture slots
     CHECK_FALSE(from.node);
 }
 
-// RENDER-THREAD-R2 item 1: a gather reads its own TG_LightContext. Two contexts never alias each other or the TG_Shape
-// statics, and building one (what the light_row probe does) writes nothing shared.
-TEST_CASE("TG_LightContext/contexts do not alias and building one leaves the TG_Shape statics alone")
+// RENDER-THREAD-R2 item 1: a gather reads its own TG_LightContext. TG_Shape carries no light-list statics, two
+// contexts never alias, and building or editing one writes nothing shared.
+template <class T> concept HasLightStatics = requires { T::s_listOfLights; } || requires { T::s_numLights; };
+static_assert(!HasLightStatics<TG_Shape>, "the record path must not read mutable TG_Shape light statics");
+
+TEST_CASE("TG_LightContext/contexts do not alias and editing one leaves the other alone")
 {
     TG_Light a, b;
     a.init(TG_LIGHT_AMBIENT);
     b.init(TG_LIGHT_AMBIENT);
     TG_LightPtr listA[] = { &a };
     TG_LightPtr listB[] = { &b, &a };
-    auto* const savedLights = TG_Shape::s_listOfLights;
-    const auto savedCount = TG_Shape::s_numLights;
-    TG_Shape::s_listOfLights = listA;
-    TG_Shape::s_numLights = 1;
 
-    const TG_LightContext live = TG_Shape::lightContext();
-    TG_LightContext probe = TG_LightContext::make(std::span<TG_LightPtr>(listB, 2));
-    CHECK(live.list == listA);
-    CHECK(live.count == 1);
-    CHECK(probe.list == listB);
-    CHECK(probe.count == 2);
-    CHECK(&live != &probe);
-    CHECK(live.list != probe.list);
+    const TG_LightContext passA = TG_LightContext::make(std::span<TG_LightPtr>(listA, 1));
+    TG_LightContext passB = TG_LightContext::make(std::span<TG_LightPtr>(listB, 2));
+    CHECK(passA.list == listA);
+    CHECK(passA.count == 1);
+    CHECK(passB.list == listB);
+    CHECK(passB.count == 2);
+    CHECK(&passA != &passB);
+    CHECK(passA.list != passB.list);
 
-    // Editing a copy does not reach the statics; the statics are untouched by make().
-    probe.count = 0;
-    CHECK(TG_Shape::s_listOfLights == listA);
-    CHECK(TG_Shape::s_numLights == 1);
-    // A snapshot taken before the pass moves on is unaffected by the move.
-    TG_Shape::s_listOfLights = listB;
-    CHECK(live.list == listA);
+    passB.count = 0;
+    passB.list = nullptr;
+    CHECK(passA.list == listA);
+    CHECK(passA.count == 1);
 
-    // Null list normalises to a zero count, like SetLightList.
+    // A null list normalises to a zero count.
     const TG_LightContext none = TG_LightContext::make(std::span<TG_LightPtr>());
     CHECK(none.list == nullptr);
     CHECK(none.count == 0);
-
-    TG_Shape::s_listOfLights = savedLights;
-    TG_Shape::s_numLights = savedCount;
 }

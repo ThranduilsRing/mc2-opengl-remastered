@@ -148,6 +148,7 @@ void GpuStaticPropBatcher::recordCpuFallback(GpuStaticPropPopulation pop) {
 
 bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
                                             GpuStaticPropPopulation pop,
+                                            const TG_LightContext& lights,
                                             const char* callerName,
                                             uint32_t actorTint) {
     initTraceOnce();
@@ -410,7 +411,7 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
                 std::fflush(stderr);
             }
         }
-        lightDataIndex   = firstShapeNodeLeaf->GatherGpuObjectLightDataOnly();
+        lightDataIndex   = firstShapeNodeLeaf->GatherGpuObjectLightDataOnly(lights);
         lightRowResolved = true;
     }
 
