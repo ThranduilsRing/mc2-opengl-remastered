@@ -341,6 +341,18 @@ def _game_mask(records, ours) -> int:
     return mask
 
 
+def frame_jobs_workers():
+    """MC2_FRAME_JOBS_WORKERS for an engine on the held cores: one worker per logical CPU of the game mask beyond main's.
+    The engine default (hw/2, clamped 2..6) assumes a whole machine; a lane game owns the slot's logical CPUs (both game
+    slots while it is the sole game, see _game_mask). None when no lease is held."""
+    live = [r for _, r in _records() if _holder_alive(r)]
+    ours = [r for r in live if _ours(r)]
+    if not ours:
+        return None
+    mask = _game_mask(live, ours)
+    return max(1, mask.bit_count() - 1) if mask else None
+
+
 def _set_affinity(handle, pid, mask) -> None:
     if sys.platform == "win32":
         import ctypes

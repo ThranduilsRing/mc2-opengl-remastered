@@ -56,6 +56,7 @@ bool FrameRing::grow(VulkanContext& ctx, VkDeviceSize perSlot) {
 }
 
 VkBuffer FrameRing::ensureBuffer(VulkanContext& ctx) {
+    std::lock_guard<std::mutex> lock(mu_);
     if (!buffer_ && !grow(ctx, initialPerSlot())) return VK_NULL_HANDLE;
     return buffer_.get();
 }
@@ -63,6 +64,7 @@ VkBuffer FrameRing::ensureBuffer(VulkanContext& ctx) {
 FrameAlloc FrameRing::alloc(VulkanContext& ctx, VkDeviceSize size, VkDeviceSize align) {
     FrameAlloc out;
     if (size == 0) size = 1;
+    std::lock_guard<std::mutex> lock(mu_);
     if (!buffer_ && !grow(ctx, initialPerSlot() > size * 2 ? initialPerSlot() : size * 2)) return out;
     uint64_t off = 0;
     if (!core_.alloc(size, align, &off)) {

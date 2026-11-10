@@ -31,6 +31,7 @@
 #include "vk_device_profile.h"
 #include "vk_frame_ring.h"
 #include "vk_readback.h"
+#include "vk_record_pools.h"
 #include "vk_shared_light_feed.h"
 #include "vk_upload.h"
 
@@ -223,6 +224,11 @@ public:
     const UploadBatch& uploads() const { return uploads_; }
     GpuTicket flushUploads() const;   // submitted batch's ticket; empty on failure or no queued uploads
     VkBuffer frameRingBuffer() { return frameRing_.ensureBuffer(*this); }
+
+    // Parallel recording: the next primary command buffer of the CALLING thread's lane (one command pool per participant per frame-in-flight), in its
+    // initial state and valid until the frame slot restarts. Any thread while a frame records; VK_NULL_HANDLE when the thread has no lane or the pool
+    // failed (record on main instead). The caller keeps the buffers in its own canonical order and appends them to the submit batch from main.
+    VkCommandBuffer acquireRecordCommandBuffer();
     VkDeviceSize frameAlignment() const { return frameAlign_; }
     VkDeviceSize frameRingRange() const { return frameRing_.bindRange(); }
 
@@ -258,6 +264,8 @@ private:
     mutable CompletionTracker tracker_;
     mutable uint64_t hostSyncedGfx_ = 0;   // highest graphics value the host reached through vkWaitSemaphores / vkDeviceWaitIdle (see hostSynced)
     FrameRing        frameRing_;
+    RecordPools<VkCommandBuffer> recordPools_;
+    std::array<std::array<OwnedCommandPool, kMaxRecordParticipants>, kMaxFramesInFlight> recordCmdPools_;   // [slot][participant]; a lane's pool is touched by its owner thread only
     uint32_t         framesInFlight_ = 1;
     mutable UploadBatch uploads_;
     ReadbackRing     readbacks_;

@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <limits>
 #include <memory>
+#include <mutex>   // vk_frame_ring.h (included inside the anonymous namespace below) needs it already declared
 #include <vector>
 #include "../../GameOS/gameos/gos_terrain_lighting.h"
 #include "../../mclib/mc2fmt.h"   // the sliced stage() logs through mc2::fmt (LG12a)

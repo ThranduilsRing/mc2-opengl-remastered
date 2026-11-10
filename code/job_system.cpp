@@ -1,12 +1,7 @@
 // code/job_system.cpp
-// MC2-JOBS-CORE-1 — implementation of both the legacy FRAME-JOBS-1 free-function
-// API (parallelForRange / frameJobsInit / ... — evolved verbatim from the old
-// code/frame_jobs.cpp, ZERO behavior change) and the new domain-tagged
-// `mc2::jobs` API. Sim LOS and presentation bounds/touch use separate domains.
-//
-// Both share the same proven epoch-bump / shared-cursor fork/join idiom. The
-// legacy pool is created by frameJobsInit() (gate MC2_FRAME_JOBS); the new pool
-// is created only by mc2::jobs::startPool() (harness / future adoption wiring).
+// MC2-JOBS-CORE-1 — the domain-tagged `mc2::jobs` fork/join API (Sim and Render domains) plus the engine
+// entry points frameJobsInit() / frameJobsShutdown(), which size and start the pool. The old private
+// FRAME-JOBS-1 pool and parallelForRange are gone: every dispatch runs on the mc2::jobs pool.
 #include "frame_jobs.h"
 #include "sim_overlap.h"
 #include "job_system.h"
@@ -34,7 +29,8 @@
 #endif
 
 // ===========================================================================
-//  LEGACY FRAME-JOBS-1 API  (verbatim behavior — do not change the OFF path)
+//  ENGINE ENTRY POINTS  (frameJobsInit / frameJobsShutdown and the bounds
+//  prepass switch; the work itself runs on the mc2::jobs pool below)
 // ===========================================================================
 
 // FRAME-JOBS-2D: thread-local flag — set true on workers during touchWorkerPrepass.
@@ -42,167 +38,39 @@ thread_local bool g_isFrameJobsWorker = false;
 
 namespace {
 
-struct Chunk { int begin, end; };
-
-struct Pool {
-    std::vector<Chunk>            chunks;
-    std::function<void(int,int)>  fn;
-    std::atomic<int>              nextChunk{0};
-    int                           totalChunks{0};
-
-    std::mutex                    mu;
-    std::condition_variable       cvWork;
-    std::condition_variable       cvDone;
-    int                           epoch{0};
-    std::vector<int>              workerEpoch;
-    std::atomic<int>              workersDone{0};
-    int                           numWorkers{0};
-    bool                          quit{false};
-
-    std::vector<std::thread>      threads;
-};
-
-// Explicit shutdown joins workers; direct process exits must not destroy live threads.
-Pool* g_pool      = nullptr;
-bool  g_enabled   = false;
+bool  g_enabled      = false;   // the Tier-B recalcBounds prepass (objmgr_update.cpp) runs on the Render domain
 bool  g_touchEnabled = false;
-int   g_batch     = 64;
-bool  g_trace     = false;
+int   g_batch        = 64;
+bool  g_trace        = false;
 
-std::atomic<int> g_chunksThisFrame{0};
-std::atomic<int> g_workersCount{0};
-bool             g_serialFallback = false;
-
-void workerFn(Pool* pool, int workerId) {
-    MC2_JOBS_THREAD_NAME("FrameJobs ", workerId);
-    while (true) {
-        {
-            std::unique_lock<std::mutex> lk(pool->mu);
-            pool->cvWork.wait(lk, [&] {
-                return pool->quit || pool->workerEpoch[workerId] != pool->epoch;
-            });
-            if (pool->quit) return;
-            pool->workerEpoch[workerId] = pool->epoch;
-        }
-
-        {
-            MC2_JOBS_ZONE("FrameJobs.Worker");
-            while (true) {
-                int idx = pool->nextChunk.fetch_add(1, std::memory_order_relaxed);
-                if (idx >= pool->totalChunks) break;
-                pool->fn(pool->chunks[idx].begin, pool->chunks[idx].end);
-                g_chunksThisFrame.fetch_add(1, std::memory_order_relaxed);
-            }
-        }
-
-        int done = pool->workersDone.fetch_add(1, std::memory_order_acq_rel) + 1;
-        if (done == pool->numWorkers) {
-            std::lock_guard<std::mutex> lk(pool->mu);
-            pool->cvDone.notify_one();
-        }
-    }
+// Pool width. Sim batches (LOS rays) publish in original order, so a result never depends on the width.
+// Default clamp(hw/2, 2, 6): half the logical CPUs (SMT siblings share a core), at least 2, at most 6; the
+// lane host passes MC2_FRAME_JOBS_WORKERS for its two-CPU game cores (scripts/smoke_lib/nofocus.py).
+int resolveWorkers(int hw, bool overrideSet, int overrideValue) {
+    hw = std::max(1, hw);
+    if (overrideSet) return std::clamp(overrideValue, 1, hw);
+    return std::clamp(hw / 2, 2, 6);
 }
 
 } // namespace
 
-static void startSimPool() {
-    // Sim batches (LOS rays) publish in original order, so the result never depends on the width. Default: up to 3
-    // workers (the host budget), never more than hardware allows.
-    const int hw = std::max(1, static_cast<int>(std::thread::hardware_concurrency()));
-    int nw = std::min(3, hw - 1);
-    if (mc2::gate::isSet<"MC2_FRAME_JOBS_WORKERS">())
-        nw = std::clamp(mc2::gate::get<"MC2_FRAME_JOBS_WORKERS">(), 1, hw);
-    mc2::jobs::startPool(nw);
-}
-
 void frameJobsInit() {
-    startSimPool();
-    g_enabled = mc2::gate::get<"MC2_FRAME_JOBS">();
+    const int hw = static_cast<int>(std::thread::hardware_concurrency());
+    const bool set = mc2::gate::isSet<"MC2_FRAME_JOBS_WORKERS">();
+    const int nw = resolveWorkers(hw, set, set ? mc2::gate::get<"MC2_FRAME_JOBS_WORKERS">() : 0);
+    mc2::jobs::startPool(nw);
 
     if (mc2::gate::isSet<"MC2_FRAME_JOBS_BATCH">())
         g_batch = std::max(1, mc2::gate::get<"MC2_FRAME_JOBS_BATCH">());
     g_trace = false;
-
-    g_touchEnabled = g_enabled && false;
-
-    if (!g_enabled) return;
-
-    int hw = static_cast<int>(std::thread::hardware_concurrency());
-    int nw = (hw > 1) ? (hw - 1) : 1;
-    if (mc2::gate::isSet<"MC2_FRAME_JOBS_WORKERS">())
-        nw = mc2::gate::get<"MC2_FRAME_JOBS_WORKERS">();
-    const int hwMax = std::max(1, static_cast<int>(std::thread::hardware_concurrency()));
-    nw = std::clamp(nw, 1, hwMax);
-
-    if (nw <= 1) { g_enabled = false; return; } // serial fallback
-
-    g_pool = new Pool();
-    g_pool->numWorkers = nw;
-    // Startup must not count as a completed dispatch.
-    g_pool->workerEpoch.assign(nw, g_pool->epoch);
-    for (int i = 0; i < nw; ++i)
-        g_pool->threads.emplace_back(workerFn, g_pool, i);
-
-    g_workersCount.store(nw, std::memory_order_relaxed);
-
-    if (g_touchEnabled && g_trace) {
-        mc2::fmt::print_out("FRAME_JOBS_TOUCH: enabled workers={:d} batch={:d}\n", mc2::fmt::as_i32(nw), mc2::fmt::as_i32(g_batch));
-    }
+    g_touchEnabled = false;
+    // MC2_FRAME_JOBS is a kill-switch for the bounds prepass; a one-worker pool has nothing to overlap.
+    g_enabled = mc2::gate::get<"MC2_FRAME_JOBS">() && nw > 1;
 }
 
 void frameJobsShutdown() {
     mc2::jobs::stopPool();
-    if (!g_pool) return;
-    {
-        std::lock_guard<std::mutex> lk(g_pool->mu);
-        g_pool->quit = true;
-    }
-    g_pool->cvWork.notify_all();
-    for (auto& t : g_pool->threads) t.join();
-    delete g_pool;
-    g_pool = nullptr;
     g_enabled = false;
-}
-
-void parallelForRange(int count, int batchSize,
-                      const std::function<void(int, int)>& fn) {
-    mc2::overlap::assertSimQuiescent("jobs::parallelForRange");
-    if (count <= 0) return;
-
-    if (!g_enabled || !g_pool) {
-        fn(0, count);
-        g_serialFallback = true;
-        return;
-    }
-
-    g_pool->chunks.clear();
-    for (int i = 0; i < count; i += batchSize)
-        g_pool->chunks.push_back({i, std::min(i + batchSize, count)});
-    g_pool->fn           = fn;
-    g_pool->totalChunks  = static_cast<int>(g_pool->chunks.size());
-    g_pool->nextChunk.store(0, std::memory_order_relaxed);
-
-    {
-        std::lock_guard<std::mutex> lk(g_pool->mu);
-        g_pool->workersDone.store(0, std::memory_order_relaxed);
-        ++g_pool->epoch;
-    }
-    g_pool->cvWork.notify_all();
-
-    while (true) {
-        int idx = g_pool->nextChunk.fetch_add(1, std::memory_order_relaxed);
-        if (idx >= g_pool->totalChunks) break;
-        fn(g_pool->chunks[idx].begin, g_pool->chunks[idx].end);
-        g_chunksThisFrame.fetch_add(1, std::memory_order_relaxed);
-    }
-
-    {
-        std::unique_lock<std::mutex> lk(g_pool->mu);
-        g_pool->cvDone.wait(lk, [pool = g_pool] {
-            return pool->workersDone.load(std::memory_order_acquire)
-                   >= pool->numWorkers;
-        });
-    }
 }
 
 bool frameJobsEnabled()      { return g_enabled;      }
@@ -211,17 +79,10 @@ int  frameJobsBatch()        { return g_batch;        }
 bool frameJobsTrace()        { return g_trace;        }
 
 FrameJobsFrameStats frameJobsGetFrameStats() {
-    return {
-        g_chunksThisFrame.load(std::memory_order_relaxed),
-        g_workersCount.load(std::memory_order_relaxed),
-        g_serialFallback
-    };
+    return { 0, mc2::jobs::workerCount(), false };
 }
 
-void frameJobsResetFrameStats() {
-    g_chunksThisFrame.store(0, std::memory_order_relaxed);
-    g_serialFallback = false;
-}
+void frameJobsResetFrameStats() {}
 
 // ===========================================================================
 //  NEW mc2::jobs API  (DORMANT — no engine caller; harness-driven)

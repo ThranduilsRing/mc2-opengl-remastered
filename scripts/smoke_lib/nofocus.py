@@ -485,6 +485,10 @@ def spawn(argv: Sequence[str], *, show_window: bool = False,
             # Games must not inherit the lane harness's Idle priority. Replace
             # any caller priority bits while preserving window/console flags.
             kw["creationflags"] = (kw.get("creationflags", 0) & ~0xC1E0) | 0x4000
+        if engine and not child_env.get("MC2_FRAME_JOBS_WORKERS"):
+            width = host_lease.frame_jobs_workers()   # the lane host's game cores, not the whole machine
+            if width:
+                child_env["MC2_FRAME_JOBS_WORKERS"] = str(width)
         proc = subprocess.Popen(list(argv), env=child_env, **popen_kwargs(show_window=show_window, **kw))
         _record_child(proc, argv)
         if engine:
