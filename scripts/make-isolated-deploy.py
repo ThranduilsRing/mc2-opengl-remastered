@@ -155,7 +155,7 @@ def plan(src: Path, guard, seed=None) -> tuple[list, list, int, int]:
             base = Path(dirpath).relative_to(src).as_posix()
             prefix = '' if base == '.' else base + '/'
             _dirs[:] = [d for d in _dirs if
-                        (prefix + d).casefold() in ('data', 'assets') or
+                        (prefix + d).casefold() in ('data', 'assets', 'saved_bookmarks') or
                         (prefix + d).casefold().startswith(('data/', 'assets/')) or
                         (prefix + d).casefold() in parents]
             _dirs[:] = [d for d in _dirs if (prefix + d).casefold() not in ('cache', 'mods')]
@@ -168,13 +168,22 @@ def plan(src: Path, guard, seed=None) -> tuple[list, list, int, int]:
                 size = p.stat().st_size
             except OSError:
                 continue          # vanished mid-walk; nothing to reproduce
-            if guard.classify(rel) == "mutated":
+            if guard.classify(rel) == "mutated" or private_copy_rel(rel):
                 to_copy.append((rel, size))
                 copy_bytes += size
             else:
                 to_link.append((rel, size))
                 link_bytes += size
     return to_link, to_copy, link_bytes, copy_bytes
+
+
+def private_copy_rel(rel: str) -> bool:
+    """Files that must land as private byte copies, never hardlinks.
+
+    Camera bookmarks: the game writes new ones at runtime, and a shared
+    inode would let a lane's writes reach the source install (v0.4).
+    """
+    return rel.casefold().startswith('saved_bookmarks/')
 
 
 def seed_member(rel, guard, manifest):
@@ -190,7 +199,11 @@ def seed_member(rel, guard, manifest):
         # first-run options/orgprefs defaults. Neither is deployed payload.
         return low.endswith(('.fst', '.pak')) or low in (
             'options.cfg', 'system.cfg', 'prefs.cfg', 'minprefs.cfg', 'orgprefs.cfg')
-    if low.startswith(('cache/', 'crashes/', 'debug_state/', 'saved_bookmarks/', 'mods/')):
+    if low.startswith('saved_bookmarks/'):
+        # Camera bookmarks seed the first ab.py capture on a fresh lane;
+        # they enter as private copies (private_copy_rel), never hardlinks.
+        return True
+    if low.startswith(('cache/', 'crashes/', 'debug_state/', 'mods/')):
         return False
     if low.startswith('data/') and low.endswith('.cookstamp'):
         return True  # private mutable receipt paired with the stock cooked texture
@@ -426,8 +439,21 @@ def seed_plan(src, guard, seed, use_cache=True):
                     raise ValueError('unsafe seed inventory')
             # Reclassify, rather than trust a persisted isolation decision.
             rows = links + copies
-            links = [(r, n) for r, n in rows if guard.classify(r) == 'data']
-            copies = [(r, n) for r, n in rows if guard.classify(r) != 'data']
+            links = [(r, n) for r, n in rows
+                     if guard.classify(r) == 'data' and not private_copy_rel(r)]
+            copies = [(r, n) for r, n in rows
+                      if guard.classify(r) != 'data' or private_copy_rel(r)]
+            # Bookmarks are runtime fixtures, not manifested payload, so an
+            # inventory written before this rule knew them cannot carry them:
+            # pick up whatever the source has, as private copies.
+            known = {r.casefold() for r, _ in links + copies}
+            bm_root = src / 'saved_bookmarks'
+            if bm_root.is_dir():
+                for p in sorted(bm_root.rglob('*')):
+                    if p.is_file():
+                        rel = p.relative_to(src).as_posix()
+                        if rel.casefold() not in known:
+                            copies.append((rel, p.stat().st_size))
             out('reusing stock inventory for this seed manifest')
             return links, copies, sum(n for _, n in links), sum(n for _, n in copies)
     except (OSError, ValueError, KeyError, TypeError):
