@@ -245,15 +245,22 @@ TEST_CASE("prop alpha-ON mips: solid canopy keeps coverage at the shader cut, la
         }
     CHECK(isSolidCutout(canopy, N, N));
     CHECK_FALSE(isSolidCutout(lattice, N, N));
-    {   // The same 128 canopy in the corner of a 1024 array layer (a 1024 tree atlas shares the array): the erosion
-        // radius follows the image, so it stays solid; with the array radius (16 texels) it would not.
+    {   // A 128 image with a small crown (radius 20) in the corner of a 1024 array layer (a 1024 tree atlas shares the
+        // array): the erosion radius follows the image (2 texels), so it stays solid; with the array radius (16 texels)
+        // its core would shrink to radius 4 and read as lattice.
         const uint32_t L = 1024;
+        std::vector<uint8_t> small(N * N * 4, 0);
+        for (uint32_t y = 0; y < N; ++y)
+            for (uint32_t x = 0; x < N; ++x) {
+                const float dx = float(x) - 63.5f, dy = float(y) - 63.5f;
+                if (dx * dx + dy * dy < 20.0f * 20.0f) small[(y * N + x) * 4 + 3] = 255;
+            }
         std::vector<uint8_t> layer(size_t(L) * L * 4, 0);
         for (uint32_t y = 0; y < N; ++y)
-            std::memcpy(&layer[size_t(y) * L * 4], &canopy[size_t(y) * N * 4], N * 4);
-        std::vector<uint8_t> holey = canopy;                     // stock-like pin holes on a 6-texel pitch
-        for (uint32_t y = 0; y < N; y += 6)
-            for (uint32_t x = 0; x < N; x += 6) holey[(y * N + x) * 4 + 3] = 0;
+            std::memcpy(&layer[size_t(y) * L * 4], &small[size_t(y) * N * 4], N * 4);
+        std::vector<uint8_t> holey = canopy;                     // stock-like pin holes on a 4-texel pitch
+        for (uint32_t y = 0; y < N; y += 4)
+            for (uint32_t x = 0; x < N; x += 4) holey[(y * N + x) * 4 + 3] = 0;
         std::vector<uint8_t> holeyLayer(size_t(L) * L * 4, 0);
         for (uint32_t y = 0; y < N; ++y)
             std::memcpy(&holeyLayer[size_t(y) * L * 4], &holey[size_t(y) * N * 4], N * 4);
