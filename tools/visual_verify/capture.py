@@ -106,6 +106,30 @@ def _running_mc2_from(install: Path) -> "list[tuple[int, str]]":
     return hits
 
 
+def engine_bookmark_load_failed(result: dict) -> bool:
+    """True when the engine log says it could not open the bookmark file (ab.py side B on mc2_10, 11-10: the sweep read the file
+    fine, then the engine's fopen of the same staged path failed once and the pose came back MISSING)."""
+    if any(b.get("present") for b in result.get("bookmarks", [])):
+        return False
+    try:
+        return "bookmark load FAILED" in Path(result["log"]).read_text(encoding="utf-8", errors="replace")
+    except (KeyError, TypeError, OSError):
+        return False
+
+
+def run_pose(log=print, retries: int = 1, run_one=None, **kw) -> dict:
+    """rvc.run_one, run again (up to `retries` times) when the engine reports 'bookmark load FAILED' for a file this process can read."""
+    run_one = run_one or rvc.run_one
+    bmk = Path(kw["bookmarks_path"])
+    result = run_one(**kw)
+    for attempt in range(1, retries + 1):
+        if not engine_bookmark_load_failed(result):
+            break
+        log(f"    engine could not load {bmk} (readable here: {bmk.is_file()}); retry {attempt}/{retries}")
+        result = run_one(**kw)
+    return result
+
+
 def capture_sweep(install: Path, bookmark_files: "list[Path]", out_dir: Path,
                   frame: int, settle: int, duration: int | None,
                   det_clock: bool, show_window: bool,
@@ -134,7 +158,7 @@ def capture_sweep(install: Path, bookmark_files: "list[Path]", out_dir: Path,
         t0 = time.time()
         # Reuse the hardened, own-PID-safe in-engine capture. One JSON = one
         # sequential launch; run_one blocks until the child exits.
-        result = rvc.run_one(
+        result = run_pose(
             exe=exe,
             mission=stem,               # informational; runner reads mission from JSON
             bookmarks_path=bmk,
@@ -145,6 +169,7 @@ def capture_sweep(install: Path, bookmark_files: "list[Path]", out_dir: Path,
             deterministic_clock=det_clock,
             show_window=show_window,
             declared_env=declared_env,
+            log=log,
         )
         dt = time.time() - t0
         # Pick the PRIMARY pose PNG (the non-dup one) for grading.

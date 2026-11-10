@@ -109,6 +109,25 @@ DEFAULT_OUT = ROOT / "tests" / "visual" / "captures"
 GOLDENS_DIR = ROOT / "tests" / "visual" / "goldens"
 
 
+def resolve_bookmarks(spec, mission, exe):
+    """(path or None, directories searched). `spec` is --bookmarks: an existing path, or a bare name (with or without .json,
+    any case) looked up in the bookmark dir and in the exe's install saved_bookmarks/ (the in-game save location, where
+    ab.py/capture.py bookmarks live). Without `spec` the mission name is looked up the same way. A name that is only listed
+    under the install used to be refused with 'bookmarks missing' because only tests/visual/bookmarks was searched."""
+    name = spec or mission
+    p = Path(name)
+    if spec and p.is_file():
+        return p, []
+    dirs = [BOOKMARK_DIR, Path(exe).parent / "saved_bookmarks"]
+    stem = p.name[:-5] if p.name.lower().endswith(".json") else p.name
+    for d in dirs:
+        if d.is_dir():  # the on-disk spelling wins (the filesystem may be case-insensitive)
+            for c in sorted(d.glob("*.json")):
+                if c.stem.lower() == stem.lower():
+                    return c, dirs
+    return None, dirs
+
+
 def _safe_name(name: str) -> str:
     out = []
     for c in name:
@@ -846,12 +865,13 @@ def main() -> int:
         return 4
     if not guard_exe(exe):
         return 7
-    bookmarks_path = (Path(args.bookmarks) if args.bookmarks
-                      else BOOKMARK_DIR / f"{args.mission}.json")
-    if not bookmarks_path.exists():
-        print(f"[viscap] ERROR bookmarks missing: {bookmarks_path}", file=sys.stderr)
-        print(f"[viscap] available: "
-              f"{[p.name for p in BOOKMARK_DIR.glob('*.json')]}", file=sys.stderr)
+    bookmarks_path, searched = resolve_bookmarks(args.bookmarks, args.mission, exe)
+    if bookmarks_path is None:
+        print(f"[viscap] ERROR bookmarks missing: {args.bookmarks or args.mission}", file=sys.stderr)
+        print(f"[viscap] searched: {[str(d) for d in searched]}", file=sys.stderr)
+        for d in searched:
+            if d.is_dir():
+                print(f"[viscap] available in {d}: {sorted(p.name for p in d.glob('*.json'))}", file=sys.stderr)
         return 4
 
     base_out = Path(args.out_dir) if args.out_dir else (DEFAULT_OUT / args.mission)

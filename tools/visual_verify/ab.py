@@ -312,7 +312,16 @@ def run_capture(install, bookmarks, out, env_extra, hud=False):
     cmd = capture_argv(install, bookmarks, out, env_extra, hud)
     print("[ab] " + " ".join(cmd), flush=True)
     # background-launch: allow streams capture.py progress to the caller's console; inherits it (no new window when the parent has one)
-    rc = subprocess.call(cmd, env=dict(os.environ, MC2_CURSOR_NO_PARK="1"))
+    proc = subprocess.Popen(cmd, env=dict(os.environ, MC2_CURSOR_NO_PARK="1"))
+    try:
+        rc = proc.wait()
+    except BaseException:
+        # Interrupted: end only the capture.py this call launched (and its tree), never another lane's game.
+        if sys.platform == "win32":
+            subprocess.call(["taskkill", "/F", "/T", "/PID", str(proc.pid)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        else:
+            proc.kill()
+        raise
     if rc != 0:
         sys.exit(f"[ab] capture failed rc={rc}: {out}")
 
@@ -625,10 +634,28 @@ def stage_tree(install: Path, dest: Path) -> dict:
                 if not stats["fallback"]:
                     stats["fallback"] = True
                     print(f"[ab] stage: hardlink failed ({exc}); staging by copy", flush=True)
-        shutil.copy2(src, dst)
+        copy_writable(src, dst)
         stats["copied"] += 1
         stats["bytes_copied"] += dst.stat().st_size
     return stats
+
+
+def copy_writable(src, dst, tries: int = 5, delay: float = 0.5) -> None:
+    """shutil.copy2 that retries a locked file (PermissionError while an exe or scanner still holds it) with backoff and
+    leaves the copy writable: copy2 keeps the source's read-only bit and the game rewrites its own files in a stage."""
+    src, dst = Path(src), Path(dst)
+    for attempt in range(1, tries + 1):
+        try:
+            if dst.exists():
+                os.chmod(dst, 0o700)
+            shutil.copy2(src, dst)
+            os.chmod(dst, 0o700)
+            return
+        except PermissionError as exc:
+            if attempt == tries:
+                raise
+            print(f"[ab] stage: {dst.name} locked ({exc}); retry {attempt}/{tries - 1}", flush=True)
+            time.sleep(delay * attempt)
 
 
 def cleanup_stage(staged, keep=False) -> None:
@@ -861,12 +888,51 @@ def ensure_saved_bookmarks(install, reference, staged):
     print(f"[ab] {install.name}: no saved_bookmarks; copied {len(sources)} from {reference}", flush=True)
 
 
+def bookmark_parity_problems(ia, ib, bookmarks: str) -> list:
+    """One line per requested bookmark that side A and side B do not carry byte-identically (on one side only, or different
+    content): the two sides must replay the same pose files or the diff is not about the exe."""
+    problems = []
+    for bm in [b.strip() for b in bookmarks.split(",") if b.strip()]:
+        shas = {}
+        for side, inst in (("A", ia), ("B", ib)):
+            f = Path(inst) / "saved_bookmarks" / (bm + ".json")
+            shas[side] = hashlib.sha256(f.read_bytes()).hexdigest() if f.is_file() else None
+        if shas["A"] is None and shas["B"] is None:
+            continue  # on neither side: the capture itself names it
+        for side, inst in (("A", ia), ("B", ib)):
+            if shas[side] is None:
+                problems.append(f"{bm}: side {side} has no {Path(inst) / 'saved_bookmarks' / (bm + '.json')}")
+        if shas["A"] and shas["B"] and shas["A"] != shas["B"]:
+            problems.append(f"{bm}: side A and side B bookmark files differ")
+    return problems
+
+
 def _stage_root(a, out: Path, install: Path, count: int) -> Path:
     """Where the staged installs go: --stage-root, else <install>/../_ab-stage/<run> on the install's own volume (hardlinks need
     one volume). Runs the DISK_GUARD for `count` stages before anything is written."""
     root = Path(a.stage_root) / out.name if a.stage_root else Path(install).resolve().parent / "_ab-stage" / out.name
+    if not a.stage_root:
+        root = shorten_stage_root(root, Path(install))
     disk_guard(root, count * estimate_stage_bytes(Path(install), root))
     return root
+
+
+MAX_STAGE_PATH = 240  # headroom under Windows MAX_PATH (260) for the files the game writes in the stage
+
+
+def longest_install_rel(install: Path) -> int:
+    return max((len(f"install_a/{rel}") for rel, _ in _walk_files(install)), default=0)
+
+
+def shorten_stage_root(root: Path, install: Path) -> Path:
+    """The default stage root, or <drive>/_ab-stage/<short> when the deepest staged file would pass MAX_PATH (same volume, so
+    hardlinks still work). A long default made hzb-subpixel-cull pass only with --stage-root."""
+    if len(str(root)) + 1 + longest_install_rel(install) <= MAX_STAGE_PATH:
+        return root
+    anchor = Path(install).resolve().anchor or str(root.parent)
+    short = Path(anchor) / "_ab-stage" / hashlib.sha1(str(root).encode()).hexdigest()[:6]
+    print(f"[ab] stage root {root} would pass MAX_PATH; using {short}", flush=True)
+    return short
 
 
 def _staged(a, dest) -> str:
@@ -1000,6 +1066,9 @@ def main(argv=None):
         ia, ib = resolve_installs(a, out)
         ensure_saved_bookmarks(ia, a.install, a.staged)
         ensure_saved_bookmarks(ib, a.install, a.staged)
+        parity = bookmark_parity_problems(ia, ib, a.bookmarks)
+        if parity:
+            sys.exit("ab.py: bookmarks are not seeded identically on both sides:\n  " + "\n  ".join(parity))
         exe_a_swap = None
         if a.exe_a and not a.exe_b:
             exe_a_swap = {"exe": a.exe_a, "exe_dir": str(Path(a.exe_a).parent), "b_install": a.install_b}
