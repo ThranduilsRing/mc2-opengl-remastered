@@ -10,6 +10,11 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools"))
 sys.path.insert(0, str(ROOT / "tools" / "box"))
 sys.path.insert(0, str(ROOT / "tools" / "box" / "filler"))
+import types
+try:
+    import fcntl  # noqa: F401
+except ImportError:
+    sys.modules["fcntl"] = types.ModuleType("fcntl")   # run_job is a Linux script; a stub lets its pure helpers be tested
 import box_run
 import box_health
 import box_health_remote as bhr
