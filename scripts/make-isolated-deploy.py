@@ -83,6 +83,7 @@ import time
 import threading
 import json
 from pathlib import Path
+import seed_parity  # noqa: E402  (scripts/seed_parity.py: the data a lane install shares with v0.4)
 import console_child  # noqa: E402  (stdio-inheriting children keep their output; scripts/console_child.py)
 
 PREFIX = "[ISO_DEPLOY]"
@@ -155,7 +156,7 @@ def plan(src: Path, guard, seed=None) -> tuple[list, list, int, int]:
             base = Path(dirpath).relative_to(src).as_posix()
             prefix = '' if base == '.' else base + '/'
             _dirs[:] = [d for d in _dirs if
-                        (prefix + d).casefold() in ('data', 'assets') or
+                        (prefix + d).casefold() in ('data', 'assets', 'saved_bookmarks') or
                         (prefix + d).casefold().startswith(('data/', 'assets/')) or
                         (prefix + d).casefold() in parents]
             _dirs[:] = [d for d in _dirs if (prefix + d).casefold() not in ('cache', 'mods')]
@@ -185,6 +186,8 @@ def seed_member(rel, guard, manifest):
     if low in manifest or low == '.deployed_manifest.csv':
         # PDBs are deploy/debug outputs, never runtime seed inputs.
         return not low.endswith('.pdb')
+    if seed_parity.is_parity(low):
+        return True  # v0.4 data the seed carries (terrain transition cache, option files, bookmarks); checked in main()
     if '/' not in low:
         # Startup reads prefs.cfg unconditionally; minprefs.cfg supplies the
         # first-run options/orgprefs defaults. Neither is deployed payload.
@@ -978,6 +981,8 @@ def main(argv=None) -> int:
         fail(f'post-build isolation: {verdict}', 5)
     out(f'timing isolation verification: {time.perf_counter() - checking:.3f}s')
     out(f'timing total: {time.perf_counter() - started:.3f}s')
+    if seed is not None:
+        seed_parity.require_parity(dst)
 
     out("")
     out(f"ISOLATED INSTALL READY: {dst}")

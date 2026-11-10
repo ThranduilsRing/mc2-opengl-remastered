@@ -15,6 +15,12 @@ import kit_payload
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def _no_v04_reference(monkeypatch, tmp_path):
+    # fixture installs are not v0.4-shaped; the parity check has its own tests (test_seed_parity.py)
+    monkeypatch.setenv("MC2_SEED_PARITY_REF", str(tmp_path / "no-v04"))
+
+
 def test_fresh_install_covers_deploy_payload(tmp_path, monkeypatch):
     spec = importlib.util.spec_from_file_location(
         "isolated_deploy", ROOT / "scripts/make-isolated-deploy.py")
@@ -78,7 +84,7 @@ def lean_fixture(src):
     payload = ['mc2.exe', 'runtime.dll', 'shaders_vk/a.spv', 'data/terrain_materials.json', 'mc2.pdb',
                'mods/deployed/mod.json']
     junk = ['debug_state/state.json', 'cache/content-model/temp.mci', 'harness.log',
-            'data/textures/123.456.ktx2', 'tools/authoring.exe', 'mods/custom/mod.json']
+            'data/textures/_txm_cache_bak/123.456.txm', 'tools/authoring.exe', 'mods/custom/mod.json']
     for rel in payload + junk + ['textures.fst', 'data/missions/a.fit', 'options.cfg', 'system.cfg',
                                'prefs.cfg', 'minprefs.cfg', 'orgprefs.cfg']:
         path = src / rel
