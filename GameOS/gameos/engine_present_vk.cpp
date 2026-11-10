@@ -1195,12 +1195,23 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
     uint32_t lineDraws = 0;
     uint32_t texDraws = 0;
     uint32_t textureUploads = 0;
+    // present-tail-cut: runs of draws on one (handle, serial) -- glyph strings on the font atlas -- resolve the mirror once. Mirrors are
+    // only evicted above, before this loop, and unordered_map nodes are stable across inserts, so the memoized pointer stays valid.
+    int texObjectsReady = -1;   // ensureHudTexObjects, resolved on the first textured draw
+    uint64_t memoKey = 0;
+    EnginePresentVk::Impl::HudTextureMirror* memoMirror = nullptr;
     for (const VkHudDraw& d : s.pendingHudDraws) {
         const bool hasTexture = d.textureHandle != 0 && d.textureHandle != 0xffffffffu;
         if (hasTexture) {
-            if (!ensureHudTexObjects(s))
+            if (texObjectsReady < 0)
+                texObjectsReady = ensureHudTexObjects(s) ? 1 : 0;
+            if (!texObjectsReady)
                 continue;
-            auto* mirror = ensureHudTextureMirror(s, d, &textureUploads);
+            const uint64_t key = (static_cast<uint64_t>(d.textureHandle) << 32) | static_cast<uint64_t>(d.textureSerial);
+            auto* mirror = (memoMirror && key == memoKey && d.textureWidth == memoMirror->width && d.textureHeight == memoMirror->height)
+                ? memoMirror : ensureHudTextureMirror(s, d, &textureUploads);
+            memoKey = key;
+            memoMirror = mirror;
             if (!mirror || !mirror->set)
                 continue;
             HudNativeCmd td;
@@ -1214,8 +1225,15 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
             td.opaque = (d.alphaMode == 1);
             td.oneInvAlpha = (d.alphaMode == 4); // VK-FIELD-VFX-3: additive-glow effect blend
             td.oneOne = (d.alphaMode == 2);      // VK-FIELD-VFX-7: pure-additive sprite blend
+            // present-tail-cut: size once, then write in place (no per-vertex capacity check).
+            const size_t texCount = (d.kind == 0 && d.vertices.size() >= 4 && (d.vertices.size() % 4) == 0)
+                ? (d.vertices.size() / 4u) * 6u
+                : ((d.kind == 2 || d.kind == 3) ? d.vertices.size() : 0u);
+            const size_t texBase = texVerts.size();
+            texVerts.resize(texBase + texCount);
+            HudTexGpuVertex* texOut = texVerts.data() + texBase;
             auto addTex = [&](const VkHudVertex& v) {
-                texVerts.push_back({v.x, v.y, v.argb, v.u, v.v});
+                *texOut++ = {v.x, v.y, v.argb, v.u, v.v};
             };
             // VK-HUD-GLYPH-CORRUPTION ROUND-4 (REAL ROOT CAUSE): the draw KIND, not a
             // vertex-count heuristic, determines the primitive layout. kHudTextQuadBatch
@@ -1247,23 +1265,27 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
         std::vector<HudColorGpuVertex>& dst = (d.kind == 1) ? lineVerts : triVerts;
         const size_t before = dst.size();
         if (d.kind == 0 && d.vertices.size() >= 4) {
-            dst.reserve(dst.size() + (d.vertices.size() / 4u) * 6u);
+            // present-tail-cut: size once, write in place.
+            dst.resize(before + (d.vertices.size() / 4u) * 6u);
+            HudColorGpuVertex* out = dst.data() + before;
             for (size_t i = 0; i + 3 < d.vertices.size(); i += 4) {
                 const VkHudVertex& v0 = d.vertices[i + 0];
                 const VkHudVertex& v1 = d.vertices[i + 1];
                 const VkHudVertex& v2 = d.vertices[i + 2];
                 const VkHudVertex& v3 = d.vertices[i + 3];
-                dst.push_back({v0.x, v0.y, v0.argb});
-                dst.push_back({v1.x, v1.y, v1.argb});
-                dst.push_back({v2.x, v2.y, v2.argb});
-                dst.push_back({v0.x, v0.y, v0.argb});
-                dst.push_back({v2.x, v2.y, v2.argb});
-                dst.push_back({v3.x, v3.y, v3.argb});
+                out[0] = {v0.x, v0.y, v0.argb};
+                out[1] = {v1.x, v1.y, v1.argb};
+                out[2] = {v2.x, v2.y, v2.argb};
+                out[3] = {v0.x, v0.y, v0.argb};
+                out[4] = {v2.x, v2.y, v2.argb};
+                out[5] = {v3.x, v3.y, v3.argb};
+                out += 6;
             }
         } else {
-            dst.reserve(dst.size() + d.vertices.size());
+            dst.resize(before + d.vertices.size());
+            HudColorGpuVertex* out = dst.data() + before;
             for (const VkHudVertex& v : d.vertices)
-                dst.push_back({v.x, v.y, v.argb});
+                *out++ = {v.x, v.y, v.argb};
             // VK-FIELD-VFX-2 tail trace: log untextured tri-batch (kind==2) bbox+argb so we
             // can see the ACTUAL geometry the tail rasterizes (bars vs weapon beams).
             static const bool s_vfxTailTrace = false;
@@ -1344,6 +1366,9 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
     VkDeviceSize offset = 0;
     VkPipeline boundPipe = VK_NULL_HANDLE;
     int boundStream = -1;   // 0 = color vertices bound, 1 = textured vertices bound
+    VkDescriptorSet texSetBound = VK_NULL_HANDLE;
+    HudTexPush texPushLast{};
+    bool texPushValid = false;
     for (const HudNativeCmd& td : commands) {
         if (td.stream == 0 || td.stream == 1) {
             const VkPipeline pipe = (td.stream == 0)
@@ -1365,6 +1390,8 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
                 ? static_cast<uint32_t>(triVerts.size()) + td.firstVertex
                 : td.firstVertex;
             vkCmdDraw(cb, td.count, 1, first, 0);
+            texSetBound = VK_NULL_HANDLE;
+            texPushValid = false;
         } else {
             const VkPipeline pipe = td.opaque ? s.hudTexOpaquePipe.get()
                                   : (td.oneOne ? s.hudTexOneOnePipe.get()
@@ -1386,11 +1413,20 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
             pc.texH = td.height;
             pc.textMode = td.textMode;
             pc.foreground = td.foreground;
-            vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s.hudTexLayout.get(),
-                                    0, 1, &td.set, 0, nullptr);
-            vkCmdPushConstants(cb, s.hudTexLayout.get(),
-                               VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                               0, sizeof(pc), &pc);
+            // present-tail-cut: within a run of textured commands the set and push state persist (one layout), so rebind/re-push only on
+            // change. Any color command in between resets the tracking (it pushes through the color layout).
+            if (texSetBound != td.set) {
+                vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s.hudTexLayout.get(),
+                                        0, 1, &td.set, 0, nullptr);
+                texSetBound = td.set;
+            }
+            if (!texPushValid || std::memcmp(&texPushLast, &pc, sizeof(pc)) != 0) {
+                vkCmdPushConstants(cb, s.hudTexLayout.get(),
+                                   VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                                   0, sizeof(pc), &pc);
+                texPushLast = pc;
+                texPushValid = true;
+            }
             vkCmdDraw(cb, td.count, 1, td.firstVertex, 0);
         }
     }
@@ -2331,6 +2367,8 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
             VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
             VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
     blitScope.end();
+    // present-tail-cut: the GPU-profile read-back reset + Tracy collect ride this submit instead of a second vkQueueSubmit in frameEnd().
+    gpuprof::recordFrameEnd(s.curCbuf());
     vkEndCommandBuffer(s.curCbuf());
     }
 
@@ -2366,6 +2404,7 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
         plog("%s. fail-soft.", health_.fallback_reason.c_str());
         return false;
     }
+    gpuprof::frameEndSubmitted();
 
     s.spatialAA.submitted();
     VkPresentInfoKHR pi{VK_STRUCTURE_TYPE_PRESENT_INFO_KHR};

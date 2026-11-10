@@ -30,6 +30,11 @@ void init(VulkanContext& ctx);
 void shutdown(VulkanContext& ctx);
 // Main thread, once per frame (just before the swap): Tracy collect, timestamp read-back + reset, the periodic log line.
 void frameEnd();
+// Present tail (same thread as frameEnd, before its vkEndCommandBuffer, outside a render pass): records this frame's read-back reset and
+// Tracy collect into cb so frameEnd() needs no submit of its own. Call frameEndSubmitted() once cb's submit succeeded; frameEnd() still
+// runs every frame and re-issues the reset if the submit was refused. False when nothing was recorded.
+bool recordFrameEnd(VkCommandBuffer cb);
+void frameEndSubmitted();
 
 // True when any sink would record (cheap; lets a caller skip building a name).
 bool active();

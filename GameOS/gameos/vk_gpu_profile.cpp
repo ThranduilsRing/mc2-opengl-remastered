@@ -79,6 +79,15 @@ struct State {
 
 State g;
 
+// present-tail-cut: the frame-end work (read-back, query reset, Tracy collect) recorded into the present tail instead of a second
+// vkQueueSubmit. tailFrame is the frame it was recorded for; frameEnd() of that frame only finishes the bookkeeping.
+// recordFrameEnd/frameEndSubmitted/frameEnd all run inside EnginePresentVk::presentFrame (the Render owner's thread, asserted there), so
+// they are ordered by program order; the owner can move between main and the present worker, so the hand-off is atomic anyway: the
+// payload is written before the release store of tailFrame and read after its acquire load.
+std::atomic<uint64_t> tailFrame{~0ull};
+std::atomic<uint32_t> tailFirst{0}, tailCount{0};
+std::atomic<bool>     tailSubmitted{false};
+
 #ifdef TRACY_ENABLE
 const tracy::SourceLocationData* locFor(std::string_view nameSv, std::string_view fileSv, uint32_t line) {
     const char* name = nameSv.data();
@@ -149,12 +158,14 @@ void readSlot(uint32_t slot, uint32_t& used) {
     bool any = false;
     struct Iv { uint64_t b, e; uint32_t name; } iv[kMaxScopes];
     uint32_t ivN = 0;
+    // present-tail-cut: one vkGetQueryPoolResults for the slot's contiguous used*2 queries instead of one call per scope (Finish.Collect).
+    // Same flags (no WAIT): an unavailable query reports availability 0 and is dropped exactly as before.
+    uint64_t all[kMaxScopes * 4] = {};   // per scope: (begin, avail, end, avail)
+    const VkResult batchRes = vkGetQueryPoolResults(g.device, g.pool, slot * kMaxScopes * 2, used * 2, sizeof(uint64_t) * 4 * used, all,
+                                                    2 * sizeof(uint64_t), VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WITH_AVAILABILITY_BIT);
     for (uint32_t i = 0; i < used; ++i) {
-        uint64_t r[4] = {};   // (begin, avail, end, avail)
-        const uint32_t q = (slot * kMaxScopes + i) * 2;
-        const VkResult res = vkGetQueryPoolResults(g.device, g.pool, q, 2, sizeof(r), r, 2 * sizeof(uint64_t),
-                                                   VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WITH_AVAILABILITY_BIT);
-        if ((res != VK_SUCCESS && res != VK_NOT_READY) || r[1] == 0 || r[3] == 0) { ++g.windowDropped; continue; }
+        const uint64_t* r = all + i * 4;
+        if ((batchRes != VK_SUCCESS && batchRes != VK_NOT_READY) || r[1] == 0 || r[3] == 0) { ++g.windowDropped; continue; }
         const uint64_t b = r[0] & g.validMask, e = r[2] & g.validMask;
         if (!haveBase) { base = b; haveBase = true; }
         const uint64_t rb = (b - base) & g.validMask, re = (e - base) & g.validMask;
@@ -319,14 +330,56 @@ void shutdown(VulkanContext& ctx) {
     for (OwnedCommandPool& p : g.endPool) p.reset();
     g.endPoolsReady = false;
     for (uint32_t i = 0; i < kRing; ++i) { g.endCb[i] = VK_NULL_HANDLE; g.endTicket[i] = {}; }
+    tailFrame.store(~0ull, std::memory_order_release);
     g.timers = false;
     g.labels = false;
     g.device = VK_NULL_HANDLE;
     g.ctx = nullptr;
 }
 
+bool recordFrameEnd(VkCommandBuffer cb) {
+    if (g.device == VK_NULL_HANDLE || cb == VK_NULL_HANDLE) return false;
+    bool tracyLive = false;
+#ifdef TRACY_ENABLE
+    tracyLive = g.tracy && tracy::GetProfiler().IsConnected();
+#endif
+    if (!g.timers && !tracyLive) return false;
+    const uint64_t f = g.frame.load(std::memory_order_relaxed);
+    uint32_t used = 0;
+    const uint32_t rslot = static_cast<uint32_t>((f + kRing - 2) % kRing);   // recorded two frames ago, as in frameEnd()
+    if (g.timers && f >= 2) {
+        readSlot(rslot, used);
+        if (g.windowFrames >= kLogEvery) flushWindow(f);
+    }
+    if (used) vkCmdResetQueryPool(cb, g.pool, rslot * kQueriesPerSlot, used * 2);
+#ifdef TRACY_ENABLE
+    if (tracyLive) TracyVkCollect(g.tracy, cb);
+#endif
+    tailFirst.store(rslot * kQueriesPerSlot, std::memory_order_relaxed);
+    tailCount.store(used * 2, std::memory_order_relaxed);
+    tailSubmitted.store(false, std::memory_order_relaxed);
+    tailFrame.store(f, std::memory_order_release);   // publishes the three stores above
+    return true;
+}
+
+void frameEndSubmitted() {
+    if (tailFrame.load(std::memory_order_acquire) == g.frame.load(std::memory_order_relaxed))
+        tailSubmitted.store(true, std::memory_order_release);
+}
+
 void frameEnd() {
     if (g.device == VK_NULL_HANDLE) return;
+    if (tailFrame.load(std::memory_order_acquire) == g.frame.load(std::memory_order_relaxed)) {
+        // Recorded into this frame's present tail. A refused submit never ran the reset: issue it now so the slot does not read stale.
+        const uint32_t first = tailFirst.load(std::memory_order_relaxed), count = tailCount.load(std::memory_order_relaxed);
+        if (!tailSubmitted.load(std::memory_order_acquire) && count != 0) {
+            const VkQueryPool pool = g.pool;
+            submitOneShot(*g.ctx, [&](VkCommandBuffer one) { vkCmdResetQueryPool(one, pool, first, count); }, "gpuprof_reset_late");
+        }
+        tailFrame.store(~0ull, std::memory_order_release);
+        g.frame.fetch_add(1, std::memory_order_relaxed);
+        return;
+    }
     bool tracyLive = false;
 #ifdef TRACY_ENABLE
     tracyLive = g.tracy && tracy::GetProfiler().IsConnected();
