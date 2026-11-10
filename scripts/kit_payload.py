@@ -410,7 +410,7 @@ def importer_source_key(src_root, tree=None):
             if not line.startswith("    "):
                 continue
             try:
-                rel = Path(line.strip()).resolve().relative_to(root)
+                rel = (Path(tree) / line.strip()).resolve().relative_to(root)  # deps paths are relative to the ninja dir
             except (ValueError, OSError):
                 continue
             if rel.parts and rel.parts[0] != "3rdparty" and (root / rel).is_file():
