@@ -355,6 +355,45 @@ def ensure_cliff_rock(src_root, cooker=subprocess.run):
     if r.returncode:
         log("[DEPLOY] WARN: cliff rock cook failed (skipped): " + (r.stdout + r.stderr).strip()[-300:])
 
+# STOCK-TREE-UPSCALE: 1024 stock tree atlases, generated from the stock 128 TGAs (tools/tree_retexture/gen_stock_trees.py,
+# pins in data/kit/tree-upscale.json; about 1.4 MB each, so not tracked). They land as loose same-stem sidecars that the
+# texture loader prefers over the stock 128 KTX2; a missing one renders stock.
+TREE_UPSCALE_COOK = "tools/tree_retexture/gen_stock_trees.py"
+TREE_UPSCALE_PINS = "data/kit/tree-upscale.json"
+
+
+def tree_upscale_payload(src_root):
+    with open(os.path.join(src_root, TREE_UPSCALE_PINS), encoding="utf-8") as f:
+        pins = json.load(f)
+    return {f"data/tgl/128/{stem}.ktx2": row["ktx2_sha256"] for stem, row in sorted(pins.items())}
+
+
+def ensure_tree_upscale(src_root, cooker=subprocess.run):
+    """Generate the upscaled tree sidecars when absent or not the pinned bytes (soft: stock trees render without them)."""
+    rows = tree_upscale_payload(src_root)
+
+    def current():
+        def sha(rel):
+            with open(os.path.join(src_root, rel), "rb") as f:
+                return hashlib.sha256(f.read()).hexdigest()
+        return all(os.path.isfile(os.path.join(src_root, r)) and sha(r) == want for r, want in rows.items())
+    if current():
+        return
+    log("tree upscale KTX2s absent or stale: generating them (a few minutes)")
+    try:
+        r = cooker([sys.executable, os.path.join(src_root, TREE_UPSCALE_COOK), "--out", os.path.join(src_root, "data", "tgl", "128")],
+                   capture_output=True, text=True, timeout=1800, env=dict(os.environ, OMP_NUM_THREADS="1"), **console_child.child_kwargs(redirected=True))
+    except subprocess.TimeoutExpired:
+        log("[DEPLOY] WARN: tree upscale cook timed out after 1800 s (stock trees ship)")
+        return
+    if r.returncode or not current():
+        log("[DEPLOY] WARN: tree upscale cook failed or does not match the pins (stock trees ship): " + (r.stdout + r.stderr).strip()[-300:])
+        for rel in rows:
+            p = os.path.join(src_root, rel)
+            if os.path.isfile(p):
+                os.remove(p)
+
+
 # EXAMPLE-MODS-1: worked example checkbox mods, source-tracked under
 # examples/mods/. Ship to <target>/mods/<id>/ so the launcher enumerates them
 # as add-on checkboxes (a mods/ folder needs mod.json AND a data/ overlay dir
@@ -1280,6 +1319,11 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
     # cook can never reach the payload silently. Re-cook, then re-deploy.
     ensure_concrete_detail(src_root)
     ensure_cliff_rock(src_root)
+    ensure_tree_upscale(src_root)
+    for rel in tree_upscale_payload(src_root):
+        p = os.path.join(src_root, rel)
+        if os.path.isfile(p):
+            items.append((p, rel, "support"))
     for rel in TERRAIN_LAYER_PAYLOAD:
         p = os.path.join(src_root, rel)
         if not os.path.isfile(p):
