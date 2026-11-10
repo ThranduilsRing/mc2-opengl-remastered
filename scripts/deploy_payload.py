@@ -1237,6 +1237,11 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
         for path in sorted((Path(src_root) / folder).rglob("*.png")):
             items.append((str(path), path.relative_to(src_root).as_posix(), "support"))
 
+    # UI-CHROME-SPLIT-1: per-widget UI chrome sources + manifest (mclib/ui_chrome_sheets.cpp re-packs them at load).
+    for path in sorted((Path(src_root) / "data/art/ui").rglob("*")):
+        if path.suffix in (".png", ".json"):
+            items.append((str(path), path.relative_to(src_root).as_posix(), "support"))
+
     # UI-DEFS-LOCKSTEP-HARDEN-1 (BLACK-MENU-BISECT-1): data/defs/** ships in
     # lockstep with the exe, exactly like shaders/. Since the ui-phase1 merge
     # the front-end menus ARE defs/ui pages; an exe running against a

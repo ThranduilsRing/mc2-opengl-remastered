@@ -15,12 +15,15 @@
 #include "../GameOS/gameos/gos_profiler.h"
 #include "../GameOS/gameos/ui_texture.h"
 #include "Gates/gate.h"
+#include "ui_chrome_sheets.h"
 #include "mc2fmt.h"
 #include <algorithm>
 #include <cctype>
 #include <filesystem>
 #include <cstring>
 #include <limits>
+#include <mutex>
+#include <string>
 #include <string_view>
 #include <unordered_set>
 
@@ -40,6 +43,63 @@ std::shared_ptr<const Bytes> readBytes(File& file) {
     auto bytes = std::make_shared<Bytes>(static_cast<size_t>(count));
     file.seek(0);
     return file.read(bytes->data(), count) == count ? bytes : nullptr;
+}
+// UI-CHROME-SPLIT-1: the legacy UI sheets are re-packed at load from the per-widget PNGs under data/art/ui.
+// A sheet a mod ships (or any sheet the manifest does not list) keeps loading as authored; the mod case is logged once.
+std::shared_ptr<const Bytes> uiChromeSheetBytes(mc2::czstring path, std::string_view modOwner) {
+    const std::string key = ui_chrome::sheetKeyFromPath(path);
+    if (key.empty()) return {};
+    static std::once_flag once;
+    static ui_chrome::Manifest manifest;
+    std::call_once(once, [] {
+        File mf;
+        if (mf.open("data/art/ui/manifest.json") != NO_ERR) return;
+        const auto bytes = readBytes(mf);
+        if (!bytes) return;
+        std::string err;
+        if (!ui_chrome::parseManifest(std::string_view(reinterpret_cast<const char*>(bytes->data()), bytes->size()), manifest, &err))
+            mc2::fmt::print_out("[UI_CHROME v1] manifest rejected, sheets load as authored: {}\n", err.c_str());
+    });
+    const auto found = manifest.find(key);
+    if (!found) return {};
+    const ui_chrome::Sheet* sheet = &found->get();
+    static std::mutex logMutex;
+    static std::unordered_set<std::string> logged;
+    auto firstTime = [&](std::string_view tag) {
+        std::lock_guard<std::mutex> g(logMutex);
+        const auto [pos, inserted] = logged.emplace(tag);
+        return inserted;
+    };
+    if (!modOwner.empty()) {
+        if (firstTime("mod:" + key))
+            mc2::fmt::print_out("[UI_CHROME v1] sheet {} comes from mod {}: loading it as authored (FIT rects)\n", key.c_str(), std::string(modOwner).c_str());
+        return {};
+    }
+    ui_chrome::Pixels packed;
+    std::string err;
+    auto loader = [](const ui_chrome::Sheet& s, const ui_chrome::Widget& w, ui_chrome::Pixels& px) {
+        File wf;
+        const std::string wp = (std::filesystem::path("data/art/ui") / s.key / (w.name + ".png")).generic_string();
+        if (wf.open(wp.c_str()) != NO_ERR) return false;
+        const auto wb = readBytes(wf);
+        if (!wb) return false;
+        auto dec = mc2tex::decodeMemory(wb->data(), wb->size(), wp.c_str(), gos_Texture_Alpha, 0);
+        if (!dec) return false;
+        px.w = dec->width; px.h = dec->height;
+        px.channels = dec->layout == mc2tex::PixelLayout::RGB8 ? 3 : 4;
+        px.data = std::move(dec->pixels);
+        return true;
+    };
+    if (!ui_chrome::composeSheet(*sheet, loader, packed, &err)) {
+        if (firstTime("fail:" + key))
+            mc2::fmt::print_out("[UI_CHROME v1] sheet {} not re-packed ({}): loading it as authored\n", key.c_str(), err.c_str());
+        return {};
+    }
+    auto png = ui_chrome::encodePngStored(packed);
+    if (png.empty()) return {};
+    if (firstTime("ok:" + key))
+        mc2::fmt::print_out("[UI_CHROME v1] sheet {} re-packed from {} widgets\n", key.c_str(), static_cast<unsigned>(sheet->widgets.size()));
+    return std::make_shared<const Bytes>(std::move(png));
 }
 static bool tryReadTgaLogicalSize(File& textureFile, mc2::czstring name, DWORD& uvScale, DWORD& logicalWidth, DWORD& logicalHeight)
 {
@@ -248,6 +308,7 @@ DWORD load(mc2::czstring path, gos_TextureFormat format, DWORD hints, DWORD vari
         source->bytes=readBytes(file);
         if (!source->bytes) return kInvalidAsset;
         const auto* mod=LookupModOwner(path);
+        if (auto packed=uiChromeSheetBytes(path,mod ? mod : "")) source->bytes=std::move(packed);
         provider=mod ? std::string("mod:")+mod : file.isLoadedFromDisk() ? "base-loose" : "fst";
     }
     source->key.source=RenderCore::makeTextureSourceId(provider,path,RenderCore::textureContentHash(source->bytes->data(),source->bytes->size()));

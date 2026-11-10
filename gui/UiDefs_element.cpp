@@ -306,6 +306,16 @@ UiElement makeElement(const Block& b)
     // gos_FilterNone + alpha-test rendering instead of the default bilinear blur.
     e.pixelPerfect = parseBool(b.fields, "pixelPerfect", false);
     e.alphaTest = parseBool(b.fields, "alphaTest", false);
+    // Nine-slice (UI-CHROME-SPLIT-1): nineSlice = "l,t,r,b" insets in texels of the image's uvXYWH rect.
+    {
+        const std::string ns = field(b.fields, "nineSlice", "");
+        int v[4] = {0, 0, 0, 0};
+        if (!ns.empty() && std::sscanf(ns.c_str(), "%d , %d , %d , %d", &v[0], &v[1], &v[2], &v[3]) == 4 &&
+            v[0] >= 0 && v[1] >= 0 && v[2] >= 0 && v[3] >= 0) {
+            e.hasNineSlice = true;
+            for (int i = 0; i < 4; ++i) e.nineSlice[i] = v[i];
+        }
+    }
     // Slider: full-scale value (e.g. 255 for a 0..255 volume).
     parseInt(field(b.fields, "maxValue", "255"), e.sliderMax);
     if (e.sliderMax <= 0)
