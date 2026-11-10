@@ -537,3 +537,72 @@ def test_delete_of_linked_install_then_restamp_avoids_rehash(tmp_path, monkeypat
     os.utime(victim, ns=(stat.st_atime_ns, stat.st_mtime_ns))
     with pytest.raises(SystemExit):
         iso.verified_seed(tmp_path, use_cache=True)
+
+
+def test_link_bump_during_seed_verification_is_not_a_change(tmp_path, monkeypatch):
+    # Another lane hardlinking a seed file mid-verification bumps ChangeTime only.
+    iso = lean_tool()
+    lean_fixture(tmp_path)
+    sha = iso.file_sha
+    bumps = []
+    def linking_sha(path):
+        if path.name == 'runtime.dll' and not bumps:
+            bumps.append(os.link(path, tmp_path / 'other-lane-link.dll'))
+        return sha(path)
+    monkeypatch.setattr(iso, 'file_sha', linking_sha)
+    assert iso.verified_seed(tmp_path)
+    assert bumps
+
+
+def test_receipt_replace_contention_is_not_fatal_and_leaves_no_temp(tmp_path, monkeypatch):
+    iso = lean_tool()
+    lean_fixture(tmp_path)
+    real, denied = Path.replace, []
+    def flaky(self, target):
+        if self.suffix == '.tmp' and len(denied) < 2:
+            denied.append(1)
+            raise PermissionError(5, 'receipt is open in another verifier')
+        return real(self, target)
+    monkeypatch.setattr(Path, 'replace', flaky)
+    iso.verified_seed(tmp_path, use_cache=True)
+    assert len(denied) == 2
+    assert json.loads((tmp_path / '.lane-seed-verification.json').read_text())
+    # Permanent denial never fails the install; the receipt is only a cache.
+    monkeypatch.setattr(Path, 'replace', lambda self, target: (_ for _ in ()).throw(PermissionError(5, 'x')))
+    assert iso.verified_seed(tmp_path, use_cache=True)
+    assert not list(tmp_path.glob('.lane-seed-verification.*.tmp'))
+
+
+def test_concurrent_seed_verifiers_share_one_receipt(tmp_path):
+    from concurrent.futures import ThreadPoolExecutor
+    iso = lean_tool()
+    lean_fixture(tmp_path)
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        runs = [pool.submit(iso.verified_seed, tmp_path, True) for _ in range(8)]
+        assert all(run.result() for run in runs)
+    assert json.loads((tmp_path / '.lane-seed-verification.json').read_text())
+    assert not list(tmp_path.glob('.lane-seed-verification.*.tmp'))
+
+
+def test_hash_receipts_survive_link_bump_but_catch_real_change(tmp_path, monkeypatch):
+    target = tmp_path / 'kit.glb'
+    target.write_bytes(b'kit')
+    receipts = kit_payload.HashReceipts(tmp_path / 'r.json')
+    real_stamp, bumped = receipts.stamp, []
+    def hasher(path):
+        bumped[:] = [1]  # the next stamp sees a ChangeTime-only difference once
+        return kit_payload.sha(path)
+    monkeypatch.setattr(receipts, 'stamp', lambda p: [*real_stamp(p)[:-1], len(bumped)])
+    assert receipts.digest(target, hasher=hasher) == kit_payload.sha(target)
+
+
+def test_hash_receipts_still_catch_real_change(tmp_path):
+    target = tmp_path / 'kit.glb'
+    target.write_bytes(b'kit')
+    receipts = kit_payload.HashReceipts(tmp_path / 'r.json')
+    def rewriting(path):
+        with open(path, 'ab') as stream:
+            stream.write(b'x')
+        return 'stale'
+    with pytest.raises(ValueError):
+        receipts.digest(target, hasher=rewriting)
