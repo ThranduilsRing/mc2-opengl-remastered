@@ -312,13 +312,13 @@ def run_capture(install, bookmarks, out, env_extra, hud=False):
     cmd = capture_argv(install, bookmarks, out, env_extra, hud)
     print("[ab] " + " ".join(cmd), flush=True)
     # background-launch: allow streams capture.py progress to the caller's console; inherits it (no new window when the parent has one)
-    proc = subprocess.Popen(cmd, env=dict(os.environ, MC2_CURSOR_NO_PARK="1"))
+    proc = subprocess.Popen(cmd, env=dict(os.environ, MC2_CURSOR_NO_PARK="1"))  # background-launch: allow same console stream as the subprocess.call it replaces
     try:
         rc = proc.wait()
     except BaseException:
         # Interrupted: end only the capture.py this call launched (and its tree), never another lane's game.
         if sys.platform == "win32":
-            subprocess.call(["taskkill", "/F", "/T", "/PID", str(proc.pid)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.call(["taskkill", "/F", "/T", "/PID", str(proc.pid)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)  # background-launch: allow console tool, output discarded
         else:
             proc.kill()
         raise
