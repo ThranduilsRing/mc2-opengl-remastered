@@ -227,7 +227,7 @@ void blit(std::string sheet, long index, bool back, uint32_t* dest, int stride, 
     const std::string side = back ? "back" : "front";
     const std::string single = std::format("hud/{}/{}", side, stem);
     const std::string tiered = std::format("hud/{}/{}/{}", canonical(std::filesystem::path(sheet).stem().string()), side, stem);
-    const auto rankOf = [](const std::string& k) {
+    const auto rankOf = [](std::string k) {
         return namedPriority.contains(k) && registry.find(k) ? namedPriority.at(k) : 1000001;
     };
     const int singleRank = rankOf(single), tieredRank = rankOf(tiered);
