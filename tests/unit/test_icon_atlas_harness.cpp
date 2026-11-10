@@ -153,7 +153,8 @@ TEST_CASE("icon_atlas_harness/stock_chassis_have_art_for_every_hud_size") {
             int w = 0, h = 0;
             pngSize(e.path(), w, h);
             CHECK_MESSAGE((w == 42 && h == 50), stem); // the high7 source is itself the 42x50 tier
-            for (Size s : {Size{34, 40}, Size{27, 32}}) {
+            // The HUD cell sizes (ForceGroupIcon::setIconVariables): 1024+, 800 and 640 wide screens.
+            for (Size s : {Size{40, 48}, Size{32, 38}, Size{25, 30}}) {
                 const fs::path sized = hud / side / (stem + std::format("@{}x{}.png", s.w, s.h));
                 CHECK_MESSAGE(fs::exists(sized), sized.string());
                 if (fs::exists(sized)) {

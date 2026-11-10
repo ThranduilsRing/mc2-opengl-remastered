@@ -1,23 +1,29 @@
 #!/usr/bin/env python3
-"""Restore the hand-pixeled HUD icon tiers as per-size files next to the single source.
+"""Restore v0.4's hand-pixeled HUD icons as per-draw-size files next to the single source.
 
-The legacy tree shipped data/art/mechicons/hud/mcui_{med4,low4}/{front,back}/<stem>.png. The
-single-res branch dropped them and box-filtered the 42x50 art, which blurs. unit_icons::blit prefers
-hud/<side>/<stem>@<W>x<H>.png when the HUD draws exactly that size.
+The legacy tree shipped data/art/mechicons/hud/mcui_{high7,med4,low4}/{front,back}/<stem>.png
+(42x50, 34x40, 27x32) and the HUD drew them into 40x48 / 32x38 / 25x30 cells with nearest sampling
+(ForceGroupIcon::setIconVariables). The single-res branch dropped the tiers and box-filtered the
+42x50 art, which blurs. unit_icons::blit prefers hud/<side>/<stem>@<W>x<H>.png when the HUD draws
+exactly that cell size, so this script writes the v0.4 result for each cell size: the tier art
+nearest-sampled to the cell, the same pixels v0.4 drew.
 
-  py -3 tools/extract_hud_tier_icons.py [--ref adc4b73fc^] [--check]
+  py -3 tools/extract_hud_tier_icons.py [--ref 7d2b1b189^] [--check]
 
---check only verifies every stem has every size (no writes). Files are copied byte for byte.
+--check only verifies every stem has every size with the right dimensions (no writes).
 """
 import argparse
-import struct
+import io
 import subprocess
 import sys
 from pathlib import Path
 
+from PIL import Image
+
 ROOT = Path(__file__).resolve().parent.parent
 HUD = ROOT / "data" / "art" / "mechicons" / "hud"
-TIERS = {"mcui_med4": (34, 40), "mcui_low4": (27, 32)}
+# legacy tier -> HUD cell (width, height) it was drawn into
+TIERS = {"mcui_high7": (40, 48), "mcui_med4": (32, 38), "mcui_low4": (25, 30)}
 DEFAULT_REF = "7d2b1b189^"  # last commit with the tiered tree
 
 
@@ -25,9 +31,15 @@ def git(*args):
     return subprocess.run(["git", "-C", str(ROOT), *args], check=True, capture_output=True).stdout
 
 
-def png_size(data):
-    assert data[:8] == b"\x89PNG\r\n\x1a\n", "not a PNG"
-    return struct.unpack(">II", data[16:24])
+def nearest(img, w, h):
+    sw, sh = img.size
+    src = img.load()
+    out = Image.new("RGBA", (w, h))
+    dst = out.load()
+    for y in range(h):
+        for x in range(w):
+            dst[x, y] = src[x * sw // w, y * sh // h]
+    return out
 
 
 def main():
@@ -42,16 +54,12 @@ def main():
             for stem in stems:
                 dst = HUD / side / f"{stem}@{w}x{h}.png"
                 if a.check:
-                    if not dst.is_file() or png_size(dst.read_bytes()) != (w, h):
+                    if not dst.is_file() or Image.open(dst).size != (w, h):
                         print(f"MISSING/WRONG {dst.relative_to(ROOT)}")
                         bad += 1
                     continue
                 data = git("show", f"{a.ref}:data/art/mechicons/hud/{tier}/{side}/{stem}.png")
-                if png_size(data) != (w, h):
-                    print(f"size mismatch {tier}/{side}/{stem}: {png_size(data)}")
-                    bad += 1
-                    continue
-                dst.write_bytes(data)
+                nearest(Image.open(io.BytesIO(data)).convert("RGBA"), w, h).save(dst)
         print(f"{side}: {len(stems)} stems x {len(TIERS)} sizes")
     return 1 if bad else 0
 
