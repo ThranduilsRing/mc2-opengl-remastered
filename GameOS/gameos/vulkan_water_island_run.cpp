@@ -355,7 +355,7 @@ extern "C" int mc2_vk_water_island_run(
             wf.frameCos = nat->frameCos; wf.waterElevation = nat->waterElevation; wf.shoreExt = nat->shoreExt;
             wf.mapSide = nat->mapSide; wf.biasLegacy = nat->biasLegacy;
             if (reflectThisFrame) {
-                wf.reflectionHalfW=static_cast<uint32_t>((w+1)/2); wf.reflectionHalfH=static_cast<uint32_t>((h+1)/2);
+                wf.reflectionHalfW=static_cast<uint32_t>(w); wf.reflectionHalfH=static_cast<uint32_t>(h);   // full-res reflection target
                 wf.reflectionGroupsX=(wf.reflectionHalfW+7)/8;
                 wf.reflectionGroupsY=(wf.reflectionHalfH+7)/8;
             }

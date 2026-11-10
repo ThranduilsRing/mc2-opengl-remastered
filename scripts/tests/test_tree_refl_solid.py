@@ -32,6 +32,6 @@ def test_lookup_takes_no_wave_offset():
 def test_foliage_depth_is_dilated_and_colour_follows():
     assert "nearestDepth" in SRC
     assert "textureLod(sceneDepth" in SRC.split("float nearestDepth")[1].split("void main")[0]
-    assert "sceneColor,nuv" in SRC          # colour from the nearest texel, not the leaf-hole texel
+    assert "coverageColour(inv,hit,nuv)" in SRC   # colour from texels around the nearest texel, not the leaf-hole texel
     assert "const int STEPS=64" in SRC
     assert "smoothstep(0.0,0.04" not in SRC  # no wide screen-edge fade

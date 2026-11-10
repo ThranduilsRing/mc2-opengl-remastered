@@ -94,7 +94,7 @@ public:
     VkBuffer drawArgs(uint32_t par) const noexcept { return drawArgs_[par % kSlots].get(); }
     // Tiles (8x8 half-res) that contain admitted water: the reflection compute runs one workgroup per entry (count in drawArgs words 4..6).
     VkBuffer tileList(uint32_t par) const noexcept { return tileList_[par % kSlots].get(); }
-    static constexpr uint32_t kMaxTiles = 1u << 18;   // 8K half-res is 138240 tiles; the tile grid is clamped to this
+    static constexpr uint32_t kMaxTiles = 1u << 20;   // 8K full-res is 518400 tiles; the tile grid is clamped to this
     uint32_t maxThin() const noexcept { return maxThin_; }
     // Tiles one frame may dispatch: kMaxTiles capped by maxComputeWorkGroupCount[0] (the reflection dispatch is 1-D, one group per tile).
     uint32_t maxTiles() const noexcept { return maxTiles_; }

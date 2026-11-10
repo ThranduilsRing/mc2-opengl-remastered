@@ -10,7 +10,7 @@ namespace vk_water_detail {
 bool init_reflection(WaterIsland* s) {
     VkImageCreateInfo image{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
     image.imageType=VK_IMAGE_TYPE_2D; image.format=VK_FORMAT_R16G16B16A16_SFLOAT;
-    image.extent={static_cast<uint32_t>((s->w+1)/2),static_cast<uint32_t>((s->h+1)/2),1};
+    image.extent={static_cast<uint32_t>(s->w),static_cast<uint32_t>(s->h),1};   // full resolution
     image.mipLevels=1; image.arrayLayers=1; image.samples=VK_SAMPLE_COUNT_1_BIT;
     image.tiling=VK_IMAGE_TILING_OPTIMAL;
     image.usage=VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;

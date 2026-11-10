@@ -29,13 +29,27 @@ vec2 gSceneTexel;
 float nearestDepth(vec2 uv, out vec2 nearUV) {
     nearUV=uv;
     float z=textureLod(sceneDepth,uv,0).r;
-    const vec2 k[4]=vec2[4](vec2(-3,-3),vec2(3,-3),vec2(-3,3),vec2(3,3));
-    for (int j=0;j<4;++j) {
+    // WATER-REFLECT-SMOOTH: a round 8-tap ring; the 4 square corners made the stair steps.
+    const vec2 k[8]=vec2[8](vec2(-3,0),vec2(3,0),vec2(0,-3),vec2(0,3),vec2(-2,-2),vec2(2,-2),vec2(-2,2),vec2(2,2));
+    for (int j=0;j<8;++j) {
         vec2 u=uv+k[j]*gSceneTexel;
         float d=textureLod(sceneDepth,u,0).r;
         if (d>z) { z=d; nearUV=u; }
     }
     return z;
+}
+// Coverage-weighted colour: mean of the texels around the hit that sit on the same object (within
+// 24 wu of the hit in world space), so the reflected colour is a smooth leaf mean, not one texel.
+vec3 coverageColour(mat4 inv, vec3 hit, vec2 nuv) {
+    vec3 sum=vec3(0); float wsum=0.0;
+    for (int y=-1;y<=1;++y) for (int x=-1;x<=1;++x) {
+        vec2 u=nuv+vec2(x,y)*1.5*gSceneTexel;
+        float d=textureLod(sceneDepth,u,0).r;
+        vec3 p=unproject(inv,u,d);
+        float w=(x==0&&y==0)?2.0:1.0;
+        if (length(p-hit)<24.0) { sum+=textureLod(sceneColor,u,0).rgb*w; wsum+=w; }
+    }
+    return wsum>0.0?sum/wsum:textureLod(sceneColor,nuv,0).rgb;
 }
 void main() {
     ivec2 size=imageSize(reflectionOut);
@@ -91,7 +105,7 @@ void main() {
         // crossing direction; a one-sided test loses high-angle reflections.
         if ((gap>=0.0)!=(previousGap>=0.0)) {
             float lo=previous, hi=t;
-            for (int refine=0;refine<5;++refine) {
+            for (int refine=0;refine<8;++refine) {
                 float mid=(lo+hi)*0.5;
                 vec2 midUV=beginUV+delta*mid;
                 float midGap=nearestDepth(midUV,nuv)-mix(start.z/start.w,finish.z/finish.w,mid);
@@ -112,7 +126,7 @@ void main() {
                 // thinned the reflected canopy toward the left edge; only the last texel row is feathered.
                 vec2 edge=min(hitUV,1.0-hitUV);
                 float confidence=smoothstep(0.0,0.004,min(edge.x,edge.y));
-                imageStore(reflectionOut,pixel,vec4(textureLod(sceneColor,nuv,0).rgb*confidence,confidence));
+                imageStore(reflectionOut,pixel,vec4(coverageColour(inv,hit,nuv)*confidence,confidence));
                 return;
             }
         }
