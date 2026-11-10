@@ -197,6 +197,13 @@ tests/visual/*.png
 tests/terrain/gaea/
 tests/terrain/workbench/
 
+# Offline-cook byproducts in .beauty dirs (regenerable authoring aids, no engine loader): a cook + `git add -A`
+# must not re-track them. visual_height_16x.r32 is deliberately NOT ignored -- it is a tracked runtime file
+# (tests/terrain/beautify/mc2_17.beauty and mc2_24.beauty).
+tests/terrain/beautify/*.beauty/visual_*_preview.png
+tests/terrain/beautify/*.beauty/visual_delta_heatmap.png
+tests/terrain/beautify/*.beauty/visual_height_report.json
+
 # mapgen: full generated layouts are large and deterministic (regenerate with tools/mapgen/generate.py); the small
 # *.render.json sidecars, PNGs and ASCII previews stay tracked (2026-10-23 repo-bloat cleanup)
 docs/mapgen/raster/generated/*.json

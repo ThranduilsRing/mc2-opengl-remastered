@@ -441,7 +441,7 @@ void main() {
         float staticS=uT.enableShadows!=0?terrainStaticShadow(v_worldPos):1.0;
         float dynS=terrainDynamicShadow(v_worldPos,shadowN);
         float shadow = min(staticS, dynS);
-        // CSM-BLACKOUT-RECON-1: one-shot debug viz (env MC2_VK_TERRAIN_CSM_DEBUG=N).
+        // CSM-BLACKOUT-RECON-1: one-shot debug viz (env MC2_SHADOW_DEBUG_MODE=N).
         // Resolve before local lighting so the debug inputs do not stay live through its loop. Bypasses the normal composite so each channel can be inspected in
         // isolation on a live capture. No effect when kCsmDebugMode==0.
         if (kCsmDebugMode == 1)      { fragColor = vec4(vec3(normalLight), 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
