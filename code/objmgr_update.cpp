@@ -982,6 +982,7 @@ void GameObjectManager::extractRenderList (mc2::render_view::RenderList& list)
 			[](long, int32_t recipe) { GpuStaticPropRegistry::clearResident(recipe); });
 		auto& dirty = mc2::terrainDirtyQueue();
 		long residentSkipped = 0, offViewSkipped = 0;
+		long offViewByClass[64] = {};   // diag: the skipped views by object class
 		if (blockWasActive.size() != static_cast<size_t>(Terrain::numObjBlocks)) blockWasActive.assign(Terrain::numObjBlocks, 0);
 		for (long terrainBlock = 0; terrainBlock < Terrain::numObjBlocks; terrainBlock++)
 		{
@@ -1020,10 +1021,13 @@ void GameObjectManager::extractRenderList (mc2::render_view::RenderList& list)
 						add(list.terrain, obj);
 						// perf-terrain-walk: the extract (selection reset, bar/dust capture) still ran; a tree or terrain
 						// object outside the view with no bars or dust would render nothing, so the walk skips it.
+						// perf-building-resident: so does a building, turret or gate whose extract left Visible clear.
 						const mc2::render_view::RenderView& v = list.terrain.back();
-						if (mc2::terrainWalkSkips(v.objClass, v.has(mc2::render_view::Bars), v.effects[0] != nullptr,
+						if (mc2::visibleFlagWalkSkips(v.objClass, v.has(mc2::render_view::Visible)) ||
+							mc2::terrainWalkSkips(v.objClass, v.has(mc2::render_view::Bars), v.effects[0] != nullptr,
 								obj->getAppearance() && obj->getAppearance()->renderIsNoOp()))
 						{
+							if (v.objClass < std::size(offViewByClass)) ++offViewByClass[v.objClass];
 							list.terrain.pop_back();
 							++offViewSkipped;
 						}
@@ -1040,7 +1044,10 @@ void GameObjectManager::extractRenderList (mc2::render_view::RenderList& list)
 				char hist[512]; size_t n = 0; hist[0] = 0;
 				for (int c = 0; c < 256 && n + 24 < sizeof(hist); ++c)
 					if (byClass[c]) n += static_cast<size_t>(std::snprintf(hist + n, sizeof(hist) - n, "%s%d:%ld", n ? "," : "", c, byClass[c]));
-				mc2::fmt::print_err("[STATIC_RESIDENT v1] extracts={:d} resident={:d} skipped_last={:d} registry_resident={:d} views={:d} offview_skipped={:d} by_class={}\n", mc2::fmt::as_i64(s_calls), mc2::fmt::as_i64(static_cast<long>(staticResident.size())), mc2::fmt::as_i64(residentSkipped), mc2::fmt::as_i64(static_cast<long>(GpuStaticPropRegistry::residentCount())), mc2::fmt::as_i64(static_cast<long>(list.terrain.size())), mc2::fmt::as_i64(offViewSkipped), mc2::fmt::safe(hist));
+				char skipHist[256]; size_t m = 0; skipHist[0] = 0;
+				for (int c = 0; c < static_cast<int>(std::size(offViewByClass)) && m + 24 < sizeof(skipHist); ++c)
+					if (offViewByClass[c]) m += static_cast<size_t>(std::snprintf(skipHist + m, sizeof(skipHist) - m, "%s%d:%ld", m ? "," : "", c, offViewByClass[c]));
+				mc2::fmt::print_err("[STATIC_RESIDENT v1] extracts={:d} resident={:d} skipped_last={:d} registry_resident={:d} views={:d} offview_skipped={:d} by_class={} offview_by_class={}\n", mc2::fmt::as_i64(s_calls), mc2::fmt::as_i64(static_cast<long>(staticResident.size())), mc2::fmt::as_i64(residentSkipped), mc2::fmt::as_i64(static_cast<long>(GpuStaticPropRegistry::residentCount())), mc2::fmt::as_i64(static_cast<long>(list.terrain.size())), mc2::fmt::as_i64(offViewSkipped), mc2::fmt::safe(hist), mc2::fmt::safe(skipHist));
 			}
 		}
 	}
