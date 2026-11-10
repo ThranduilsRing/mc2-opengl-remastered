@@ -8,10 +8,12 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools"))
 sys.path.insert(0, str(ROOT / "scripts"))
 import box_run
+import console_child
 
 
 def git(repo, *args):
-    return subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True, text=True).stdout.strip()
+    return subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True, text=True,
+                          **console_child.child_kwargs(redirected=True)).stdout.strip()
 
 
 def put(path, text):
