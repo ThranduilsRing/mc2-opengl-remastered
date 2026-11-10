@@ -45,6 +45,13 @@ def _make_repo(root):
             f.write(content)
     _git(repo, "add", "-A")
     _git(repo, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "x")
+    # the tests cite the tip's 9-hex prefix as a sha; brief_check ignores all-letter hex runs,
+    # so re-commit (a new timestamp changes the sha) until the prefix carries a digit
+    while not any(c.isdigit() for c in _git(repo, "rev-parse", "HEAD")[:9]):
+        with open(os.path.join(repo, "docs", "bar.md"), "a", encoding="utf-8") as f:
+            f.write("x\n")
+        _git(repo, "add", "-A")
+        _git(repo, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "x")
     return repo
 
 
@@ -80,6 +87,15 @@ def test_extract_dedupes_first_seen_order():
     assert [c for _k, c in got] == ["tools/foo.py", "tools/bar.py"]
 
 
+def test_extract_ignores_all_letter_hex_words():
+    # "feedbac" (in "feedback") and "deadbeef" are all-letter hex runs: English, not shas
+    got = bc.extract("the feedback loop and deadbeef in tools/foo.py")
+    assert [c for _k, c in got] == ["tools/foo.py"]
+    # a hex run with at least one digit is still a sha candidate
+    got = bc.extract("tip cafe1234 in tools/foo.py")
+    assert ("sha", "cafe1234") in got
+
+
 def test_check_brief_statuses(tmp_path):
     repo = _make_repo(tmp_path)
     sha = _git(repo, "rev-parse", "HEAD")
@@ -87,7 +103,7 @@ def test_check_brief_statuses(tmp_path):
     with open(brief, "w", encoding="utf-8") as f:
         f.write(f"work in {_drive(repo)} and tools/foo.py; the tip is {sha[:9]}; "
                 f"also {_drive(os.path.join(repo, 'nope', 'x.md'))}, tools/nope.py, "
-                f"G:/mc2-tmp/<slot>/x.md and deadbeef.\n")
+                f"G:/mc2-tmp/<slot>/x.md and deadbee1.\n")
     findings = bc.check_brief(open(brief, encoding="utf-8").read(), repo)
     by_cite = {cite: status for status, cite in findings}
     assert by_cite[_drive(repo)] == "OK"
@@ -96,7 +112,7 @@ def test_check_brief_statuses(tmp_path):
     assert by_cite[_drive(os.path.join(repo, "nope", "x.md"))] == "MISSING"
     assert by_cite["tools/nope.py"] == "MISSING"
     assert by_cite["G:/mc2-tmp/<slot>/x.md"] == "SKIP"
-    assert by_cite["deadbeef"] == "UNKNOWN"
+    assert by_cite["deadbee1"] == "UNKNOWN"
 
 
 def test_cli_exit_codes(tmp_path, capsys):
@@ -111,10 +127,10 @@ def test_cli_exit_codes(tmp_path, capsys):
 
     bad = os.path.join(str(tmp_path), "bad.md")
     with open(bad, "w", encoding="utf-8") as f:
-        f.write("tools/nope.py and deadbeef and G:/mc2-tmp/<slot>/x.md\n")
+        f.write("tools/nope.py and deadbee1 and G:/mc2-tmp/<slot>/x.md\n")
     assert bc.main([bad, "--repo", repo]) == 1
     out = capsys.readouterr().out
-    for line in ("MISSING tools/nope.py", "UNKNOWN deadbeef", "SKIP G:/mc2-tmp/<slot>/x.md"):
+    for line in ("MISSING tools/nope.py", "UNKNOWN deadbee1", "SKIP G:/mc2-tmp/<slot>/x.md"):
         assert line in out.splitlines()
     assert bc.main([os.path.join(str(tmp_path), "absent.md"), "--repo", repo]) == 2
 

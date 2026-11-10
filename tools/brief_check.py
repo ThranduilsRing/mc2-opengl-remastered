@@ -6,7 +6,8 @@ from a brief's markdown and checks each one:
 
   * Windows drive paths (A:/, E:/, G:/, ...) and relative repo paths (a / and an extension)
       OK when the path exists, MISSING when it does not.
-  * 7-12 hex shas (maximal runs; a full 40-hex sha is not one)
+  * 7-12 hex shas (maximal runs with at least one digit; a full 40-hex sha and an all-letter
+      hex word like "feedbac" in "feedback" are not one)
       OK when `git cat-file -e <sha>^{commit}` accepts it in --repo, UNKNOWN when it does not.
   * Paths with placeholders (<...>, NN, *)
       SKIP (a template, not a citation).
@@ -29,6 +30,7 @@ import sys
 #: A drive path (a lone letter, / or \; the lookbehind keeps "https:" from reading as a drive),
 #: a relative repo path (segments with a / and a file extension; the lookbehind keeps URL hosts out),
 #: or a maximal 7-12 lowercase-hex run (a git short sha; longer runs are not extracted).
+#: An all-letter run is dropped in extract: a hex word with no digit ("feedbac") is English, not a sha.
 CITE_RE = re.compile(
     r"(?P<drive>(?<![A-Za-z])[A-Za-z]:[\\/][^\s`'\"(){}\[\],;|]*)"
     r"|(?P<rel>(?<![\w./\\-])(?:[A-Za-z0-9_.\-*]+/)+[A-Za-z0-9_.\-*]+\.[A-Za-z0-9]{1,8})"
@@ -46,7 +48,10 @@ def extract(text: str) -> list[tuple[str, str]]:
     out: list[tuple[str, str]] = []
     for m in CITE_RE.finditer(text):
         if m.lastgroup == "sha":
-            kind, cite = "sha", m.group("sha")
+            cite = m.group("sha")
+            if not any(c.isdigit() for c in cite):
+                continue   # an all-letter hex run is a word ("feedbac" in "feedback"), not a sha
+            kind, cite = "sha", cite
         else:
             kind = "path"
             cite = (m.group("drive") or m.group("rel")).rstrip(TRAILING)
