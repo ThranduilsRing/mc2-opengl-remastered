@@ -245,13 +245,17 @@ TEST_CASE("hzb ref: sub-pixel and zero-area boxes are rejected without a pyramid
     CHECK_FALSE(hidden(project(boxPixels(1.0f)), empty));      // exactly one pixel stays
     CHECK_FALSE(hidden(project(boxPixels(5.0f)), empty));
     CHECK(hidden(project(boxNdc(0.0f, 0.0f, 0.0f, 0.5f)), empty));      // edge-on: zero width, tall
-    CHECK_FALSE(hidden(project(boxNdc(0.0f, 0.5f, 0.0f, 0.01f)), empty));   // thin but a pixel wide: stays
+    // Thin boxes on the 64 px test viewport (y = 32 + 32*ndcY): 0.32 px tall between the centres 31.5 and 32.5 rasterizes nothing,
+    // 1.28 px tall over the centre 32.5 stays (5075a0770 pixel-centre rule; the old 1 px extent rule kept both).
+    CHECK(hidden(project(boxNdc(0.0f, 0.5f, 0.0f, 0.01f)), empty));
+    CHECK_FALSE(hidden(project(boxNdc(0.0f, 0.5f, 0.0f, 0.04f)), empty));
 }
 
 TEST_CASE("hzb ref: the 1/256 px grid rounds outward and tiny rejection never applies to unprojectable boxes") {
     CHECK(mc2hzb::tiny_box(10.0f, 10.0f, 10.0f, 10.0f));
     CHECK(mc2hzb::tiny_box(10.001f, 10.0f, 10.5f, 10.5f));
-    CHECK_FALSE(mc2hzb::tiny_box(10.0f, 10.0f, 11.0f, 10.5f));
+    CHECK(mc2hzb::tiny_box(10.0f, 10.0f, 11.0f, 10.5f));               // y [10, 10.5) holds no centre (half-open)
+    CHECK_FALSE(mc2hzb::tiny_box(10.0f, 10.0f, 11.0f, 10.6f));         // y reaches past the centre 10.5: stays
     CHECK_FALSE(mc2hzb::tiny_box(10.0f, 10.0f, 10.9999f, 10.9999f));   // 10.9999 snaps up to 11: exactly one pixel wide, stays
     // Sub-pixel boxes: culled only when no pixel centre (k+0.5) lies inside; one that straddles a centre still draws and stays.
     CHECK_FALSE(mc2hzb::tiny_box(10.3f, 10.3f, 10.7f, 10.7f));          // 0.4 px box over the centre (10.5, 10.5)
