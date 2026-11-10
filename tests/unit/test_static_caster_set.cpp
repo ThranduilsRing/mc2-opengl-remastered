@@ -272,12 +272,9 @@ TEST_CASE("static caster set: an owner that keeps moving becomes a mover and emi
     REQUIRE(leaves.size() == 1);
 }
 
-// Investigation (w138e-review-p2 item 4): a building walking intact -> damaged -> destroyed -> rubble makes three real (non-cancelling) shape changes,
-// which is exactly kDemoteAfterChanges. This pins what happens today: the rubble registration is the third change, so the building is demoted to a
-// mover, its rubble leaves are dropped from the static bake (ev.after cleared) and it never casts a static rubble shadow. A tree that fell and landed
-// is the same shape. Proposed fix (not applied here): count only changes that happen while the leaves keep MOVING (same typeID, matrix differs), or
-// reset churn_ on a typeID change; shape swaps of a stationary owner are not the every-frame emitter the demotion exists to stop.
-TEST_CASE("static caster set: a building that goes intact, damaged, destroyed, rubble is demoted on the third shape change (known issue)") {
+// A building going intact -> damaged -> destroyed -> rubble makes three shape changes (= kDemoteAfterChanges). A typeID change resets the churn count,
+// so only same-shape matrix moves demote an owner and the rubble keeps its static shadow.
+TEST_CASE("static caster set: a building that goes intact, damaged, destroyed, rubble stays static") {
     RecipeFeed feed;
     feed.add(1, 10); feed.add(2, 20); feed.add(3, 30); feed.add(4, 40);
     int building = 0;
@@ -295,7 +292,28 @@ TEST_CASE("static caster set: a building that goes intact, damaged, destroyed, r
     set.ownerRegistered(&building, 4);   // rubble
     const auto events = set.takeEvents();
     REQUIRE(events.size() == 1);
-    CHECK(set.isMoverOwner(&building));      // the permanent demotion
-    CHECK(events[0].after.empty());          // the rubble shadow is not baked as static
-    CHECK(set.recipeMask()[4] == 0);
+    CHECK_FALSE(set.isMoverOwner(&building));   // appearance swaps reset the churn count: rubble stays static
+    CHECK_FALSE(events[0].after.empty());       // the rubble shadow is baked as static
+    CHECK(set.recipeMask()[4] == 1);
+}
+
+TEST_CASE("static caster set: a shape swap resets the churn count but a moving owner is still demoted") {
+    RecipeFeed feed;
+    feed.add(1, 10); feed.add(2, 20);
+    for (int r = 3; r <= 6; ++r) { feed.add(r, 20); recipes[r][0].modelMatrix[3] = 43.0f * static_cast<float>(r); }
+    int obj = 0;
+    mc2shadow::StaticCasterSet set;
+    set.beginRebuild();
+    set.add({&obj, 1, 1, mc2shadow::CasterKind::Building});
+    set.endRebuild();
+    set.ownerInvalidated(&obj, 1);
+    set.ownerRegistered(&obj, 2);   // swap: typeID 10 -> 20
+    set.takeEvents();
+    CHECK_FALSE(set.isMoverOwner(&obj));
+    for (int r = 3; r <= 6; ++r) {   // same typeID, matrix moves each time
+        set.ownerInvalidated(&obj, r - 1);
+        set.ownerRegistered(&obj, r);
+        set.takeEvents();
+    }
+    CHECK(set.isMoverOwner(&obj));
 }
