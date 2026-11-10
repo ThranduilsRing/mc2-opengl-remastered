@@ -78,7 +78,7 @@ def lean_fixture(src):
     payload = ['mc2.exe', 'runtime.dll', 'shaders_vk/a.spv', 'data/terrain_materials.json', 'mc2.pdb',
                'mods/deployed/mod.json']
     junk = ['debug_state/state.json', 'cache/content-model/temp.mci', 'harness.log',
-            'data/textures/123.456.ktx2', 'tools/authoring.exe', 'mods/custom/mod.json']
+            'data/textures/_txm_cache_bak/123.456.txm', 'tools/authoring.exe', 'mods/custom/mod.json']
     for rel in payload + junk + ['textures.fst', 'data/missions/a.fit', 'options.cfg', 'system.cfg',
                                'prefs.cfg', 'minprefs.cfg', 'orgprefs.cfg']:
         path = src / rel
