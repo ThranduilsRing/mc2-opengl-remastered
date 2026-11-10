@@ -352,22 +352,45 @@ def manifest_delta(mine, theirs):
     return sorted(rel for rel, r in mine.items() if theirs.get(rel, {}).get("sha256") != r["sha256"])
 
 
-def candidate_install():
+def manifest_src_commit(install):
+    """src_commit of the mc2.exe row in the install's .deployed_manifest.csv ('' when absent)."""
+    try:
+        for r in manifest_rows(Path(install, ".deployed_manifest.csv")).values():
+            if r.get("relpath") == "mc2.exe":
+                return (r.get("src_commit") or "").removesuffix("-dirty")
+    except OSError:
+        pass
+    return ""
+
+
+def candidate_install(head=None):
     """The gate's deployed candidate: a kept stock copy (<seed>-stock-*), --keep-candidate's merge-gate-candidate, else the
     pristine deployed seed gate_reuse snapshots right after the candidate deploy (the stock copy is removed at cleanup).
-    Never INSTALL: that is the published v0.4 the candidate is diffed against."""
+    Never INSTALL: that is the published v0.4 the candidate is diffed against.
+    With `head` (the gated HEAD) the install whose mc2.exe src_commit matches it wins; a stale kept candidate (W138c, W138d)
+    is never chosen silently: when none matches, the pick falls back to the order above and says so."""
     base = Path(G, "drv/E/mc2-installs")
     stock = sorted(base.glob("*-stock-*"), key=lambda p: p.stat().st_mtime, reverse=True) if base.is_dir() else []
-    for p in (*stock, base / "merge-gate-candidate", base / "_gate-reuse/deployed"):
-        if (p / ".deployed_manifest.csv").is_file():
+    found = [p for p in (*stock, base / "merge-gate-candidate", base / "_gate-reuse/deployed") if (p / ".deployed_manifest.csv").is_file()]
+    if not found:
+        sys.exit(f"laptop_gate pack: no candidate install with a .deployed_manifest.csv under {base}")
+    if not head:
+        return found[0]
+    commits = {p: manifest_src_commit(p) for p in found}
+    for p in found:
+        c = commits[p]
+        if len(c) >= 7 and (head.startswith(c) or c.startswith(head)):
+            print(f"candidate_install: {p} (src_commit {c[:12]} matches HEAD {head[:12]})", flush=True)
             return p
-    sys.exit(f"laptop_gate pack: no candidate install with a .deployed_manifest.csv under {base}")
+    print(f"candidate_install: WARNING no candidate matches HEAD {head[:12]}: " + ", ".join(f"{p.name}={commits[p][:12] or '?'}" for p in found)
+          + f"; using {found[0]} (first in preference order, STALE)", flush=True)
+    return found[0]
 
 
 def r_pack(window):
     """tar of every file in the candidate's manifest that differs from the PC's v0.4 manifest (in/<W>/pc.manifest.csv)."""
     out = Path(G, "out", window)
-    cand = candidate_install()
+    cand = candidate_install(subprocess.run(["git", "-C", REPO, "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip() or None)
     delta = manifest_delta(manifest_rows(cand / ".deployed_manifest.csv"), manifest_rows(Path(G, "in", window, "pc.manifest.csv")))
     tarp = out / "payload.tar"
     with tarfile.open(tarp, "w") as tar:
