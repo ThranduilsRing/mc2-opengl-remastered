@@ -95,7 +95,7 @@ def test_promotion_does_not_require_the_slim_row():
     assert lane_merge_stage.nightly_unmet(dict(tier=1, executed=executed)) == []
 
 
-def test_nightly_without_a_window_drops_the_slim_row(monkeypatch, capsys, tmp_path):
+def test_nightly_without_a_window_keeps_the_slim_row(monkeypatch, capsys, tmp_path):
     import datetime
     monday = datetime.date(2026, 11, 9)
     monkeypatch.setattr(nightly_gate, "datetime", types.SimpleNamespace(date=types.SimpleNamespace(today=lambda: monday)))
@@ -105,7 +105,7 @@ def test_nightly_without_a_window_drops_the_slim_row(monkeypatch, capsys, tmp_pa
     monkeypatch.setattr(nightly_gate, "git", lambda *a: "no window here")
     assert nightly_gate.main(["--dry-run"]) == 0
     out = capsys.readouterr().out
-    assert "mods-slim dropped" in out and "mods-slim" not in out.split("--stages", 1)[1]
+    assert "mods-slim dropped" not in out and "mods-slim" in out.split("--stages", 1)[1] and "--window" not in out.split("--stages", 1)[0]
     monkeypatch.setattr(nightly_gate, "git", lambda *a: "merge w136: x")
     assert nightly_gate.main(["--dry-run"]) == 0
     head, stages = capsys.readouterr().out.split("--stages", 1)

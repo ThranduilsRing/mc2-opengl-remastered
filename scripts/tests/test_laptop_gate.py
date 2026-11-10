@@ -573,6 +573,12 @@ def test_window_number_takes_the_leading_digits(name, num):
 
 
 @pytest.mark.parametrize("name", ["abc", "w138", "", None])
-def test_window_number_without_leading_digits_is_an_error(name):
-    with pytest.raises(ValueError, match="no leading digits"):
-        laptop_gate.window_number(name)
+def test_window_number_without_leading_digits_is_none(name):
+    assert laptop_gate.window_number(name) is None
+
+
+def test_merge_gate_window_arg_accepts_lettered_names():
+    import merge_gate
+    assert merge_gate.window_arg("138f") == 138 and merge_gate.window_arg("138") == 138
+    with pytest.raises(Exception):
+        merge_gate.window_arg("abc")

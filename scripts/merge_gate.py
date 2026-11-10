@@ -1941,11 +1941,19 @@ class Tee:
         self.log.flush()
 
 
+def window_arg(text):
+    """argparse type: a window name like 138f -> 138 (leading digits)."""
+    m = re.match(r"\d+", text or "")
+    if not m:
+        raise argparse.ArgumentTypeError(f"window {text!r} has no leading digits (use 138 or 138f)")
+    return int(m.group())
+
+
 def build_parser():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--base", help="pre-window ancestor commit (required unless a verified window records it)")
     ap.add_argument("--preflight", action="store_true", help="offline input checks only; no leases, copies or launches")
-    ap.add_argument("--window", type=int, help="merge-window number for known-failure expiry")
+    ap.add_argument("--window", type=window_arg, help="merge-window name (138 or 138f; the leading digits are the number)")
     ap.add_argument("--full", action="store_true", help="all domains; orchestrator runs at least daily")
     ap.add_argument("--nightly", action="store_true", help="implies --full; adds determinism (all maps), saveload (all maps) and player-path to the per-merge set")
     ap.add_argument("--weekly", action="store_true", help="implies --nightly; adds mods and video-decode")
@@ -2053,7 +2061,7 @@ def main(argv=None):
     if args.isolated_verdict and not args.install and not args.dry_run:
         # Revoke first, then execute (p31): a crash before the final verdict must not leave an older green publishable.
         record_isolated_verdict(head, "RUNNING")
-    match = re.search(r'merge(\d+)(?:\D|$)', str(proof))
+    match = re.search(r'merge-?(\d+)(?:\D|$)', str(proof))
     window_number = args.window or (int(match[1]) if match else None)
     window = {}
     try:

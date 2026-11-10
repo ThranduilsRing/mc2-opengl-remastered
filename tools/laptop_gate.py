@@ -194,11 +194,9 @@ FARM_QUEUE_LOCK = "C:/mc2farm/queue.lock"   # the runner's lock: perf timing nev
 
 
 def window_number(window):
-    """Merge-window number from a window name: the leading digits ("138f" -> 138, "138g2" -> 138). A name without leading digits is an error."""
+    """Merge-window number from a window name: the leading digits ("138f" -> 138, "138g2" -> 138), None without any (the gate needs no number)."""
     m = re.match(r"\d+", window or "")
-    if not m:
-        raise ValueError(f"window name {window!r} has no leading digits: mod_smoke needs a numeric --window (name it like 138 or 138f)")
-    return int(m.group())
+    return int(m.group()) if m else None
 
 
 def r_run(window, extra):
@@ -247,11 +245,8 @@ def _r_run(window, extra):
         proof =G + "/drv/E/mc2-archive-2026-10/proofs/merge-gate/" + window
         cmd = [sys.executable, "scripts/merge_gate.py", "--full",
                "--proofs-dir", proof, "--expect-head", head]
-        try:
+        if window_number(window) is not None:
             cmd += ["--window", str(window_number(window))]
-        except ValueError as exc:
-            sm["error"] = str(exc)
-    if "error" not in sm:
         rc, s = run(cmd + extra, out / "gate.console.log", env=e)
         sm["gate_seconds"], sm["gate_rc"] = s, rc
         for name, dst in (("gate-verdict.json", "gate-verdict.json"), ("gate.log", "gate.log")):

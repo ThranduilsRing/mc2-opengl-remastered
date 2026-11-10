@@ -628,7 +628,8 @@ def test_old_cooked_cache_is_discarded_and_not_reused(tmp_path):
 
 @pytest.mark.parametrize('asset_mode', [None, 'fail', 'pass'])
 @pytest.mark.parametrize('in_gate', [False, True])
-def test_single_worker_waits_for_cold_run_and_collects_later_failures(tmp_path, monkeypatch, asset_mode, in_gate):
+@pytest.mark.parametrize('window', [90, None])   # None: a lettered window (138f) passes no number; the battery still runs
+def test_single_worker_waits_for_cold_run_and_collects_later_failures(tmp_path, monkeypatch, asset_mode, in_gate, window):
     from types import SimpleNamespace
     import threading
     source, base, stages = tmp_path / 'source', tmp_path / 'base', tmp_path / 'stages'
@@ -679,7 +680,7 @@ def test_single_worker_waits_for_cold_run_and_collects_later_failures(tmp_path, 
     monkeypatch.setattr(ms, 'asset_precheck', precheck)
     args = SimpleNamespace(install_root=source, stage_root=stages, base_install=base,
                            exe=None, build_dir=None, mod='', mission=None, keep_stages=False,
-                           workers=1, fail_fast=False, duration=15, timeout=300, window=90, front_end=False)
+                           workers=1, fail_fast=False, duration=15, timeout=300, window=window, front_end=False)
     if asset_mode:
         args.asset_load_exe = base / 'probe.exe'
     assert ms.battery(args) == 1
