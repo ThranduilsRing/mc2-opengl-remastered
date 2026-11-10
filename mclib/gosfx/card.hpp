@@ -126,6 +126,9 @@ namespace gosFX
 						Cast_Object(Specification*, m_specification);
 				}
 
+		const Specification*
+			GetSpecification() const
+				{ return Cast_Object(const Specification*, m_specification); }
 		static ClassData
 			*DefaultData;
 
@@ -145,7 +148,7 @@ namespace gosFX
 		bool
 			Execute(ExecuteInfo *info);
 		void
-			Draw(DrawInfo *info);
+			Draw(DrawInfo *info) const;
 		void
 			Kill();
 	};

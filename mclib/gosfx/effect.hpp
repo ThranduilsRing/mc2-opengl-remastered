@@ -295,7 +295,7 @@ namespace gosFX
 		void Stop();
 		virtual bool Execute(ExecuteInfo *info);
 		virtual void Kill();
-		virtual void Draw(DrawInfo *info);
+		virtual void Draw(DrawInfo *info) const;
 		virtual bool HasFinished();
 
 		static constexpr int ExecuteFlag = 1;

@@ -783,7 +783,7 @@ void gosFX::Effect::Kill()
 
 //------------------------------------------------------------------------------
 //
-void gosFX::Effect::Draw(DrawInfo *info)
+void gosFX::Effect::Draw(DrawInfo *info) const
 {
 	Check_Object(this);
 	Check_Pointer(info);
@@ -844,3 +844,12 @@ void
 {
 	Verify(IsDerivedFrom(gosFX::Effect::DefaultData));
 }
+
+// Execute/Draw split step 1: Draw must stay const on every effect type so it
+// cannot write effect state (mutation belongs in Execute).
+static_assert(std::is_same_v<decltype(&gosFX::Effect::Draw), void (gosFX::Effect::*)(gosFX::Effect::DrawInfo*) const>,
+	"gosFX::Effect::Draw must be const");
+static_assert(std::is_same_v<decltype(&gosFX::Tube::Draw), void (gosFX::Tube::*)(gosFX::Effect::DrawInfo*) const>,
+	"gosFX::Tube::Draw must be const");
+static_assert(std::is_same_v<decltype(&gosFX::Shape::Draw), void (gosFX::Shape::*)(gosFX::Effect::DrawInfo*) const>,
+	"gosFX::Shape::Draw must be const");

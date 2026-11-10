@@ -458,7 +458,7 @@ void
 
 //------------------------------------------------------------------------------
 //
-void gosFX::Card::Draw(DrawInfo *info)
+void gosFX::Card::Draw(DrawInfo *info) const
 {
 	Check_Object(this);
 	Check_Object(info);
@@ -469,7 +469,7 @@ void gosFX::Card::Draw(DrawInfo *info)
 	//----------------------------
 	//
 	MidLevelRenderer::MLRState state;
-	Specification *spec = GetSpecification();
+	const Specification *spec = GetSpecification();
 	Check_Object(spec);
 	state.Combine(info->m_state, spec->m_state);
 	glm::mat4 local_to_world;

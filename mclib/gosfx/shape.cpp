@@ -419,7 +419,7 @@ gosFX::Shape*
 
 //------------------------------------------------------------------------------
 //
-void gosFX::Shape::Draw(DrawInfo *info)
+void gosFX::Shape::Draw(DrawInfo *info) const
 {
 	Check_Object(this);
 	Check_Object(info);
@@ -434,7 +434,7 @@ void gosFX::Shape::Draw(DrawInfo *info)
 	MidLevelRenderer::MLRShape *shape = GetSpecification()->m_shape;
 	dinfo.clippingFlags.SetClippingState(0x3f);
 	dinfo.worldToShape = nullptr;
-	Specification *spec = GetSpecification();
+	const Specification *spec = GetSpecification();
 	Check_Object(spec);
 	dinfo.state.Combine(info->m_state, spec->m_state);
 	dinfo.activeLights = nullptr;

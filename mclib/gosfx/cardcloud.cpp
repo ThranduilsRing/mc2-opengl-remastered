@@ -466,7 +466,7 @@ void gosFX::CardCloud::DestroyParticle(unsigned index)
 
 //------------------------------------------------------------------------------
 //
-void gosFX::CardCloud::Draw(DrawInfo *info)
+void gosFX::CardCloud::Draw(DrawInfo *info) const
 {
 	if (!mc2::particles::Batcher::is_log_enabled())
 	{
@@ -483,7 +483,7 @@ void gosFX::CardCloud::Draw(DrawInfo *info)
 		legacyBefore.draws, legacyAfter.draws, (legacyBefore == legacyAfter) ? 1 : 0);
 }
 
-void gosFX::CardCloud::DrawState(DrawInfo *info)
+void gosFX::CardCloud::DrawState(DrawInfo *info) const
 {
 	Check_Object(this);
 	Check_Object(info);
@@ -495,7 +495,7 @@ void gosFX::CardCloud::DrawState(DrawInfo *info)
 	//
 	if (m_activeParticleCount)
 	{
-		Specification *spec = GetSpecification();
+		const Specification *spec = GetSpecification();
 		Check_Object(spec);
 		const auto local_to_world = m_localToParent * *info->m_parentToWorld;
 
@@ -527,7 +527,7 @@ void gosFX::CardCloud::DrawState(DrawInfo *info)
 				//
 				for (i = 0; i < m_activeParticleCount; i++)
 				{
-					Particle *particle = GetParticle(i);
+					const Particle *particle = GetParticle(i);
 					Check_Object(particle);
 					if (particle->m_age < 1.0f)
 					{
@@ -600,7 +600,7 @@ void gosFX::CardCloud::DrawState(DrawInfo *info)
 				//
 				for (i = 0; i < m_activeParticleCount; i++)
 				{
-					Particle *particle = GetParticle(i);
+					const Particle *particle = GetParticle(i);
 					Check_Object(particle);
 					if (particle->m_age < 1.0f)
 					{
@@ -674,7 +674,7 @@ void gosFX::CardCloud::DrawState(DrawInfo *info)
 			//
 			for (i = 0; i < m_activeParticleCount; i++)
 			{
-				Particle *particle = GetParticle(i);
+				const Particle *particle = GetParticle(i);
 				Check_Object(particle);
 				if (particle->m_age < 1.0f)
 				{
@@ -733,7 +733,7 @@ void gosFX::CardCloud::DrawState(DrawInfo *info)
 		{
 			for (i = 0; i < m_activeParticleCount; i++)
 			{
-				Particle *particle = GetParticle(i);
+				const Particle *particle = GetParticle(i);
 				Check_Object(particle);
 				if (particle->m_age < 1.0f)
 				{

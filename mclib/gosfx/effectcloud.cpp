@@ -295,7 +295,7 @@ void gosFX::EffectCloud::DestroyParticle(unsigned index)
 
 //------------------------------------------------------------------------------
 //
-void gosFX::EffectCloud::Draw(DrawInfo *info)
+void gosFX::EffectCloud::Draw(DrawInfo *info) const
 {
 	Check_Object(this);
 	Check_Object(info);
@@ -309,7 +309,7 @@ void gosFX::EffectCloud::Draw(DrawInfo *info)
 	{
 		for (int i=0; i < m_activeParticleCount; i++)
 		{
-			Particle *particle = GetParticle(i);
+			const Particle *particle = GetParticle(i);
 			Check_Object(particle);
 
 			//

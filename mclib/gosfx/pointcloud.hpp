@@ -66,6 +66,12 @@ namespace gosFX
 		static void PrepareOracle();
 		static void	TerminateClass();
 
+		const PointCloud__Specification*
+			GetSpecification() const
+				{ return Cast_Object(const PointCloud__Specification*, m_specification); }
+		const Particle*
+			GetParticle(unsigned index) const
+				{ return const_cast<PointCloud*>(this)->GetParticle(index); }
 		static ClassData
 			*DefaultData;
 
@@ -144,6 +150,6 @@ namespace gosFX
 		bool
 			Execute(ExecuteInfo *info);
 		void
-			Draw(DrawInfo *info);
+			Draw(DrawInfo *info) const;
 	};
 }

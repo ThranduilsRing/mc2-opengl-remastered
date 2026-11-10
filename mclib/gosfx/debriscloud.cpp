@@ -788,7 +788,7 @@ void
 
 //------------------------------------------------------------------------------
 //
-void gosFX::DebrisCloud::Draw(DrawInfo *info)
+void gosFX::DebrisCloud::Draw(DrawInfo *info) const
 {
 	Check_Object(this);
 	Check_Object(info);
@@ -799,7 +799,7 @@ void gosFX::DebrisCloud::Draw(DrawInfo *info)
 	// Set up the common draw info
 	//----------------------------
 	//
-	Specification *spec = GetSpecification();
+	const Specification *spec = GetSpecification();
 	Check_Object(spec);
 
 	int i, nrOfParticle = static_cast<int>(debrisPieces.size());
@@ -812,7 +812,7 @@ void gosFX::DebrisCloud::Draw(DrawInfo *info)
 		// issue the draw command
 		//-----------------------------------------------------------------
 		//
-		Particle *particle = GetParticle(i);
+		const Particle *particle = GetParticle(i);
 		Check_Object(particle);
 
 		if (particle->m_age < 1.0f)

@@ -430,7 +430,7 @@ bool
 
 //------------------------------------------------------------------------------
 //
-void gosFX::PointCloud::Draw(DrawInfo *info)
+void gosFX::PointCloud::Draw(DrawInfo *info) const
 {
 	Check_Object(this);
 	Check_Object(info);
@@ -439,7 +439,7 @@ void gosFX::PointCloud::Draw(DrawInfo *info)
 
 	if (m_activeParticleCount)
 	{
-		Specification *spec = GetSpecification();
+		const Specification *spec = GetSpecification();
 		Check_Object(spec);
         if (mc2::gate::get<"MC2_GPU_PARTICLES_LOG">() && mc2_diag::tagRequested("VFX_PRIMITIVE")) {
             static bool reported = false;
