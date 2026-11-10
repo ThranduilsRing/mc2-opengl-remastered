@@ -334,7 +334,7 @@ class BattleMech : public Mover {
 		int32_t             chassisBR;						// chassis Battle Rating
 
 		int32_t             variantID;						// need to store this for logistics
-		char				variantName[64];				// user defined
+		char				variantName[64] = {};			// user defined; zeroed: CopyTo memcpys all 64 bytes into the save (an uninitialised tail made the MechData packet differ per build)
 
 
 		//------------------
