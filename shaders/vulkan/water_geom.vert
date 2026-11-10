@@ -104,6 +104,25 @@ vec4 unpackARGB(uint bits) {
                 float((bits >> 24u) & 0xFFu) / 255.0);
 }
 
+// WATER-RIPPLE-DISPLACE: a tiny vertical swell from the two long wind trains of water_geom.frag (same direction, wavelength,
+// dispersion and phase as kWaveTrain[0..1], so height and normal agree in phase). The mesh is one terrain cell (128 wu)
+// per vertex, so only wavelengths of 2.5 cells and up are carried; the shorter trains stay normal-only. Heights are
+// 0.9 wu total at most. Faded to zero in shallow water (the shore keeps its depth fudge and cannot z-fight) and at grazing views.
+const int   SWELL_TRAINS = 2;
+const vec4  kSwell[SWELL_TRAINS] = vec4[SWELL_TRAINS](
+    vec4(0.985, 0.174, 420.0, 0.5),    // dir x, y, wavelength wu, height amplitude wu
+    vec4(0.857, 0.515, 640.0, 0.4));
+const float SWELL_G = 30.0;            // keep equal to WAVE_G in water_geom.frag
+float swellHeight(vec2 p, float t) {
+    float h = 0.0;
+    for (int i = 0; i < SWELL_TRAINS; ++i) {
+        vec4  w = kSwell[i];
+        float k = 6.2831853 / w.z;
+        h += w.w * sin(k * dot(w.xy, p) - sqrt(SWELL_G * k) * t + float(i) * 2.39996);
+    }
+    return h;
+}
+
 void main() {
     float waterElevation = U.p0.x;
     float alphaDepth     = U.p0.y;
@@ -173,6 +192,12 @@ void main() {
              : (WaterThickness >= 0.0)
                ? waveCos + waterElevation
                : min(velev, waterElevation + shoreBlendVS);
+    float swell = swellHeight(vxy, F.f0.x) * smoothstep(8.0, 40.0, WaterThickness);
+    if (shoreFlat || WaterThickness >= 0.0) {
+        vec3  toV = vec3(vxy, waterElevation) - F.f0.yzw;
+        swell *= smoothstep(0.03, 0.12, abs(toV.z) / max(length(toV), 1.0));
+        wz += swell;
+    }
     vec3 worldPos = vec3(vxy, wz);
     WorldPos = worldPos;
 
