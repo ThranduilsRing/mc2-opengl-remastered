@@ -15,6 +15,7 @@ With MC2_SIM_IDENTITY_TRACE_DETAIL=1 the first divergent frame is explained move
   py -3 tools/saveload_roundtrip.py --baseline [--mission mc2_01]   # record the digest of the round-trip save (tests/saveload/baselines/)
   py -3 tools/saveload_roundtrip.py --check [--mission mc2_01]      # run again and compare with the recorded digest
   py -3 tools/saveload_roundtrip.py --baseline --mission mc2_01 --mask tools/save_noise_mask.json --first-save-only   # the masked digest of the first save; the lossy re-save is no gate
+  py -3 tools/saveload_roundtrip.py camera-pose --mission mc2_01 [--moved-pose 0,0,0,60,800@300]   # quicksave under the saved and a moved/zoomed camera: save bytes identical?
   py -3 tools/saveload_roundtrip.py analyze path/to/mission.log [--frames 60]
   py -3 tools/saveload_roundtrip.py selftest
 """
@@ -305,7 +306,7 @@ def resave_env(save_at: int, load_at: int) -> dict:
 
 def run_fixture(mission: str, save_at: int, load_at: int, deploy: bool, out: str | None, duration: int = 28, plant: str | None = None,
                 install: str = sd.INSTALL_DIR, save_dir: str | None = None, ref_exe: str | None = None, ref_commit: str | None = None,
-                sim_speed: int = 1, headless: bool = False, continuation: bool = False):
+                sim_speed: int = 1, headless: bool = False, continuation: bool = False, extra_env: dict | None = None):
     """Run `mission` with the save, load, re-save fixtures. -> (out dir, first save path, second save path or None, fingerprint dict or None).
     With `plant` (a save written by another exe, e.g. by tools/campaign_save_roundtrip.py) that file is put where the quickload reads it;
     `save_at` must be 0 (a quicksave would overwrite it), so the quickload loads it and it comes back as the first save, but the engine writes
@@ -317,7 +318,7 @@ def run_fixture(mission: str, save_at: int, load_at: int, deploy: bool, out: str
     os.makedirs(dest, exist_ok=True)
     sdir = save_dir or savegame_backup.default_dir()
     second_src = os.path.join(sdir, "testgame_resave.ims")
-    env = dict(os.environ, **resave_env(save_at, load_at))
+    env = dict(os.environ, **resave_env(save_at, load_at), **(extra_env or {}))
     if save_dir:
         # A private dir is also the engine's save path (MC2_SAVE_DIR), so concurrent gate rows never share quicksave names.
         os.makedirs(save_dir, exist_ok=True)
@@ -731,6 +732,47 @@ def cmd_fixture(args) -> int:
     return 0 if ok else 1
 
 
+DEFAULT_MOVED_POSE = "0,0,0,60,800@300"   # MC2_CAMERA_PARK x,y,rotation,pitch,altitude@frame: the map centre, zoomed out, parked at frame 300
+
+
+def camera_pose_envs(moved: str) -> list[tuple[str, dict]]:
+    """The two camera poses of a camera-pose run: 'saved' (the mission's own camera, nothing parked) and 'moved' (MC2_CAMERA_PARK)."""
+    return [("saved", {}), ("moved", {"MC2_CAMERA_PARK": moved})]
+
+
+def camera_pose_verdict(first: str | None, moved: str | None):
+    """-> (identical, report lines): are the quicksaves of the two camera poses the same bytes? Reuses the packet-level comparison of resave_verdict
+    (names the first differing packet and offset); a missing, empty or unreadable save is a FAIL, never 'identical'."""
+    ok, lines = resave_verdict(first, moved)
+    lines = [ln.replace("quicksave", "saved-camera save").replace("re-save", "moved-camera save") for ln in lines]
+    return ok, lines
+
+
+def cmd_camera_pose(args) -> int:
+    """Run the save fixture twice (saved camera, moved/zoomed camera) and compare the quicksave bytes."""
+    out = args.out or tempfile.mkdtemp(prefix="camera_pose_")
+    saves: dict[str, str | None] = {}
+    rcs: dict[str, int] = {}
+    for name, extra in camera_pose_envs(args.moved_pose):
+        try:
+            # Quickload fixture off (load_at past any run): only the quicksave of each pose is compared.
+            dest, first, _second, _fp, rc = run_fixture(args.mission, args.save_at, args.save_at + 100, args.deploy, os.path.join(out, name), args.duration,
+                                                        None, args.install, args.save_dir, args.ref_exe, args.ref_commit,
+                                                        sim_speed=args.sim_speed or 1, headless=args.headless, extra_env=extra)
+        except subprocess.TimeoutExpired:
+            print(f"saveload_roundtrip camera-pose: the {name} run exceeded --timeout and was stopped")
+            return 2
+        saves[name], rcs[name] = first, rc
+        print(f"{name}: save={first} rc={rc}")
+    if any(rcs.values()):
+        print("saveload_roundtrip camera-pose: FAIL (a run exited non-zero)")
+        return 2
+    ok, lines = camera_pose_verdict(saves["saved"], saves["moved"])
+    print(f"files kept in {out}")
+    print(f"saveload_roundtrip camera-pose {args.mission}: {'IDENTICAL' if ok else 'DIFFERENT'} (moved pose {args.moved_pose})\n" + "\n".join(lines))
+    return 0 if ok else 1
+
+
 def main(argv=None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv and argv[0] in ("--baseline", "--check"):
@@ -762,6 +804,19 @@ def main(argv=None) -> int:
                        help="baseline/check with --mask: judge only the first save against the baseline and do not fail because the re-save leaves the mask "
                             "(the quickload is lossy: any save and its re-save differ in about 1159 of 20000 packets, so the re-save gate cannot pass); "
                             "the re-save verdict is still printed and recorded as information")
+    c = sub.add_parser("camera-pose", help="quicksave under the saved camera and under a moved/zoomed camera (MC2_CAMERA_PARK); compare the save bytes")
+    c.add_argument("--mission", default="mc2_01")
+    c.add_argument("--moved-pose", default=DEFAULT_MOVED_POSE, metavar="X,Y,ROT,PITCH,ALT@FRAME", help="the moved camera, MC2_CAMERA_PARK syntax")
+    c.add_argument("--save-at", type=int, default=DEFAULT_SAVE_AT, help="fixed tick of the quicksave (after the park frame)")
+    c.add_argument("--duration", type=int, default=28)
+    c.add_argument("--deploy", action="store_true")
+    c.add_argument("--timeout", type=float)
+    c.add_argument("--out")
+    c.add_argument("--install", type=sd.resolve_install, default=sd.INSTALL_DIR, metavar="NAME_OR_PATH")
+    c.add_argument("--save-dir")
+    c.add_argument("--headless", action="store_true")
+    sd.add_ref_args(c)
+    add_speed_arg(c)
     r = sub.add_parser("run")
     r.add_argument("--mission", default="mc2_03")
     r.add_argument("--frames", type=int, default=60, help="post-load fixed ticks that must match (1..60)")
@@ -786,6 +841,8 @@ def main(argv=None) -> int:
         return selftest()
     if args.cmd in ("resave", "baseline", "check"):
         return cmd_fixture(args)
+    if args.cmd == "camera-pose":
+        return cmd_camera_pose(args)
     if args.cmd == "analyze":
         with open(args.log, encoding="utf-8", errors="replace") as fh:
             ok, rep = analyze(fh.read().splitlines(), args.frames)
