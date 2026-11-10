@@ -24,6 +24,6 @@ float terrainStaticShadow(vec3 worldPos) {
 }
 float terrainDynamicShadow(vec3 worldPos,vec3 N) {
     float shadow = moverVisibility(worldPos, N);
-    return mix(sunShadowFloor(0.4), 1.0, shadow);
+    return mix(moverShadowFloor(0.4), 1.0, shadow);
 }
 #endif

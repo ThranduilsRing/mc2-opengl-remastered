@@ -16,7 +16,7 @@ struct alignas(16) MoverShadowFrame {
     float sun[4]{};
     float mask[4]{};   // west, north, reciprocal world span, ready
     int32_t flags[4]{}; // active, coverage enabled, quality, union path
-    float light[4]{};   // x: night fade; y: spatial filter sample count; zw reserved
+    float light[4]{};   // x: night fade (static); y: spatial filter sample count; z: mover night fade; w reserved
     std::array<uint32_t, 2048> coverage{}; // two (min,max) UNORM8 intervals per word
 };
 static_assert(sizeof(MoverShadowFrame) == 8336);

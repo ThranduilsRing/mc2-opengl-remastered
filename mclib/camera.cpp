@@ -183,6 +183,19 @@ float mc2NightLightFactor()
 	return eye && !eye->missionLightName.empty() ? mc2_mission_light::darkness(eye->lightPitch) : 0.0f;
 }
 
+// Night fade of the mover (mech/prop) sun shadow from the mission's current moon and ambient strength
+// (mission_light_profile.h moverNightFade); 0 by day. Also reports the inputs for the diag line.
+float mc2MoverShadowNightFade(float* darknessOut, float* moonLumOut, float* ambientLumOut)
+{
+	const float d = mc2NightLightFactor();
+	const float moon = eye ? 0.299f*eye->lightRed + 0.587f*eye->lightGreen + 0.114f*eye->lightBlue : 0.0f;
+	const float amb = eye ? 0.299f*eye->ambientRed + 0.587f*eye->ambientGreen + 0.114f*eye->ambientBlue : 0.0f;
+	if (darknessOut) *darknessOut = d;
+	if (moonLumOut) *moonLumOut = moon;
+	if (ambientLumOut) *ambientLumOut = amb;
+	return mc2_mission_light::moverNightFade(d, moon, amb);
+}
+
 //---------------------------------------------------------------------------
 // Camera Class
 //---------------------------------------------------------------------------

@@ -361,7 +361,7 @@ void main(void)
     // Beyond the ripple fade distance a mover shadow is sub-pixel on water: skip the blocker search + PCF there.
     if (waveLOD > 0.0) {
         float moverLit = moverVisibility(WorldPos,vec3(0.0,0.0,1.0));
-        col *= mix(sunShadowFloor(0.4),1.0,moverLit);
+        col *= mix(moverShadowFloor(0.4),1.0,moverLit);
         sunVis *= moverLit;
     }
     col = mix(col, F.f9.xyz * nightSky, clamp(F.f8.w, 0.0, 1.0));

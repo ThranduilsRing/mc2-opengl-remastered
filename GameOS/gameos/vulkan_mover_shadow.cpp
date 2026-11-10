@@ -17,6 +17,7 @@
 
 extern void gos_GetTerrainChunkGridInfo(int* mapSide, float* halfMap);
 float mc2NightLightFactor();   // mclib/camera.cpp: 0 day .. 1 full night
+float mc2MoverShadowNightFade(float* darkness, float* moonLum, float* ambientLum);   // mclib/camera.cpp
 
 namespace mc2vk {
 using namespace mc2shadow;
@@ -25,6 +26,19 @@ namespace {
 // Night fade of every directional sun shadow: none by day, a faint moon shadow (15% of the day
 // darkening) at full night; evening missions keep a soft low-sun shadow in between.
 float nightShadowFade() { return 0.85f * std::clamp(mc2NightLightFactor(), 0.0f, 1.0f); }
+// Mover (mech/prop) shadows fade by the moon's share of the light, not the static shadows' flat 0.85.
+float moverShadowFade() {
+    float d=0, moon=0, amb=0;
+    const float fade=mc2MoverShadowNightFade(&d,&moon,&amb);
+    static float lastFade=-1.0f;
+    if (fade!=lastFade) {
+        lastFade=fade;
+        const float oldFade=nightShadowFade();
+        mc2::fmt::print_err("[SHADOW_BAKE] mover_night darkness={:.3f} moon_lum={:.1f} ambient_lum={:.1f} static_fade={:.3f} mover_fade={:.3f} ground_floor_old={:.3f} ground_floor_new={:.3f} mech_floor_old={:.3f} mech_floor_new={:.3f}\n",
+            d,moon,amb,oldFade,fade,0.4f+0.6f*oldFade,0.4f+0.6f*fade,0.55f+0.45f*oldFade,0.55f+0.45f*fade);
+    }
+    return fade;
+}
 }
 
 bool MoverShadowState::init(VulkanContext& ctx, bool unionPath) {
@@ -226,7 +240,7 @@ bool MoverShadowState::prepare(int mapSide, const float cameraRows[16], Vec3 sun
     frame_.flags[0]=spheres_.empty()?0:1; frame_.flags[1]=shadowQuality().level==0?0:1; frame_.flags[2]=shadowQuality().level; frame_.flags[3]=1;
     frame_.sun[0]=sun.x; frame_.sun[1]=sun.y; frame_.sun[2]=sun.z;
     frame_.sun[3]=std::tan(kMoverSunAngularRadiusDeg * 0.01745329252f);
-    frame_.light[0]=nightShadowFade();
+    frame_.light[0]=nightShadowFade(); frame_.light[2]=moverShadowFade();
     frame_.light[1]=static_cast<float>(mc2::gate::get<"MC2_SHADOW_MOVER_SAMPLES">());
     int side=0; float halfMap=0; gos_GetTerrainChunkGridInfo(&side,&halfMap);
     frame_.mask[0]=-halfMap; frame_.mask[1]=halfMap;
@@ -281,7 +295,7 @@ bool MoverShadowState::bind(VkDevice device, VkDescriptorSet set, VkImageView de
         if (auto slice=ctx.frameAlloc(sizeof(MoverShadowFrame))) {
             MoverShadowFrame idle{};
             idle.flags[3]=frame_.flags[3];
-            idle.light[0]=nightShadowFade();
+            idle.light[0]=nightShadowFade(); idle.light[2]=moverShadowFade();
             std::memcpy(slice.ptr,&idle,sizeof(idle));
             buffer={slice.buffer,slice.offset,sizeof(MoverShadowFrame)};
         }
