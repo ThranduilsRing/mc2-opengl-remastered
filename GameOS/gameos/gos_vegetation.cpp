@@ -46,7 +46,7 @@ void reportMissingCards(std::string_view kind, const std::array<bool, 8>& presen
     for (size_t i = 0; i < present.size(); ++i)
         if (!present[i]) missing += std::string(missing.empty() ? "" : ",") + names[i] + "->" + names[static_cast<size_t>(source[i])];
     if (!missing.empty())
-        mc2::fmt::print_err("[VEG_GPU] {} cards unavailable, layers reuse a neighbour: {}\n", kind, missing);
+        mc2::fmt::print_err("[VK_RESIDENCY v1] vegetation {} cards unavailable, layers reuse a neighbour: {}\n", kind, missing);
 }
 
 // The old private vegetation_atlas_v2.png was never part of the payload. Build
