@@ -1021,7 +1021,15 @@ void GameObjectManager::extractRenderList (mc2::render_view::RenderList& list)
 		{
 			static long s_calls = 0;
 			if (++s_calls % 600 == 0 && mc2_diag::tagRequested("STATIC_RESIDENT"))
-				mc2::fmt::print_err("[STATIC_RESIDENT v1] extracts={:d} resident={:d} skipped_last={:d} registry_resident={:d}\n", mc2::fmt::as_i64(s_calls), mc2::fmt::as_i64(static_cast<long>(staticResident.size())), mc2::fmt::as_i64(residentSkipped), mc2::fmt::as_i64(static_cast<long>(GpuStaticPropRegistry::residentCount())));
+			{
+				// The views the render walk still visits this frame (the non-resident remainder of RenderObjects.Terrain), by object class.
+				long byClass[256] = {};
+				for (const mc2::render_view::RenderView& v : list.terrain) ++byClass[v.objClass];
+				char hist[512]; size_t n = 0; hist[0] = 0;
+				for (int c = 0; c < 256 && n + 24 < sizeof(hist); ++c)
+					if (byClass[c]) n += static_cast<size_t>(std::snprintf(hist + n, sizeof(hist) - n, "%s%d:%ld", n ? "," : "", c, byClass[c]));
+				mc2::fmt::print_err("[STATIC_RESIDENT v1] extracts={:d} resident={:d} skipped_last={:d} registry_resident={:d} views={:d} by_class={}\n", mc2::fmt::as_i64(s_calls), mc2::fmt::as_i64(static_cast<long>(staticResident.size())), mc2::fmt::as_i64(residentSkipped), mc2::fmt::as_i64(static_cast<long>(GpuStaticPropRegistry::residentCount())), mc2::fmt::as_i64(static_cast<long>(list.terrain.size())), mc2::fmt::safe(hist));
+			}
 		}
 	}
 
