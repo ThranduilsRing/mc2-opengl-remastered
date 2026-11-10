@@ -15,6 +15,7 @@
 #include "../../mclib/battle_bench_wait.h"
 #include "vk_island_fail_policy.h"
 #include "vk_rt_scene.h"
+#include "vk_dynamic_rendering.h"
 
 
 
@@ -313,6 +314,32 @@ struct TerrainRecordState {
     unsigned long skirtN = 0;
     uint64_t uploadedGen[mc2vk::kMaxFramesInFlight] = {UINT64_MAX, UINT64_MAX, UINT64_MAX};
 };
+// The scene pass: CLEAR+STORE on color0, normal and depth (+ stencil), clear values as the GL frame-entry clear plus clearGBuffer1 sentinel
+// (FAR-BAND-BLACK-1: terrain is the first writer of scene depth, so it clears to reverse-Z far instead of loading). The memory barrier is the
+// external dependency of the VkRenderPass this replaced (previous frame's attachment writes -> this pass's attachment reads/writes).
+static void terrain_begin_scene_pass(TerrainIsland* s, mc2vk::VulkanContext& ctx, VkCommandBuffer cb, int w, int h) {
+    namespace dr = mc2vk::dynrender;
+    VkClearValue clears[3]{};
+    for (int k = 0; k < 4; ++k) clears[0].color.float32[k] = g_prefixClearColor[k];
+    clears[1].color.float32[0] = 0.5f; clears[1].color.float32[1] = 0.5f; clears[1].color.float32[2] = 1.0f; clears[1].color.float32[3] = 0.0f;
+    clears[2].depthStencil = {0.0f, 0u};
+    dr::memoryBarrier(ctx, cb, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+                      VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                      VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,
+                      VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT |
+                      VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
+    dr::Pass p;
+    p.area = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
+    p.colorCount = 2;
+    p.color[0] = dr::attachment(s->colorRes->view.get(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_CLEAR,
+                                VK_ATTACHMENT_STORE_OP_STORE, &clears[0]);
+    p.color[1] = dr::attachment(s->normalRes->view.get(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_CLEAR,
+                                VK_ATTACHMENT_STORE_OP_STORE, &clears[1]);
+    p.setDepth(dr::attachment(s->depthRes->view.get(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_CLEAR,
+                              VK_ATTACHMENT_STORE_OP_STORE, &clears[2]), s->depthRes->format);
+    dr::begin(ctx, cb, p);
+}
+
 static bool record_terrain(TerrainIsland* s, mc2vk::VulkanContext& rctx, VkCommandBuffer cb, uint32_t par, int w, int h,
                            const uint32_t (&dynOffs)[4], TerrainRecordState& st,
                            unsigned long& drawnOut, unsigned long& skirtDrawnOut) {
@@ -334,24 +361,8 @@ static bool record_terrain(TerrainIsland* s, mc2vk::VulkanContext& rctx, VkComma
     // FAR-BAND-BLACK-1 FIX: attachment 2 clears to reverse-Z far. The native prefix
     // clear path also clears color0 and normal here, matching the GL frame-entry
     // clear plus clearGBuffer1 sentinel before terrain draws into the shared GBuffer.
-    VkClearValue clears[3]{};
-    clears[0].color.float32[0] = g_prefixClearColor[0];
-    clears[0].color.float32[1] = g_prefixClearColor[1];
-    clears[0].color.float32[2] = g_prefixClearColor[2];
-    clears[0].color.float32[3] = g_prefixClearColor[3];
-    clears[1].color.float32[0] = 0.5f;
-    clears[1].color.float32[1] = 0.5f;
-    clears[1].color.float32[2] = 1.0f;
-    clears[1].color.float32[3] = 0.0f;
-    clears[2].depthStencil = {0.0f, 0u};
-
-    VkRenderPassBeginInfo rbi{};
-    rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
-    rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
-    rbi.clearValueCount = 3; rbi.pClearValues = clears;
     MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Terrain");
-    vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+    terrain_begin_scene_pass(s, rctx, cb, w, h);
 
     float jpx[2];
     RenderCore::temporal::sceneJitterPixels(g_mc2RenderFrame, jpx);   // temporal AA: sub-pixel viewport offset, zero with no consumer
@@ -456,7 +467,7 @@ static bool record_terrain(TerrainIsland* s, mc2vk::VulkanContext& rctx, VkComma
         }
     }
 
-    vkCmdEndRenderPass(cb);
+    mc2vk::dynrender::end(rctx, cb);
     gpuScope.end();
     // VK-DRAW-PERF-1: stamp pass-end (gap 1->2 = all patch/skirt draws).
     s->gpuTimer.write(cb, 2);
@@ -773,18 +784,9 @@ extern "C" int mc2_vk_scene_clear(int w, int h) {
         vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, nullptr, 0, nullptr, 1, &ib);
     }
 
-    VkClearValue clears[3]{};
-    for (int k = 0; k < 4; ++k) clears[0].color.float32[k] = g_prefixClearColor[k];
-    clears[1].color.float32[0] = 0.5f; clears[1].color.float32[1] = 0.5f; clears[1].color.float32[2] = 1.0f; clears[1].color.float32[3] = 0.0f;
-    clears[2].depthStencil = {0.0f, 0u};
-    VkRenderPassBeginInfo rbi{};
-    rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
-    rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
-    rbi.clearValueCount = 3; rbi.pClearValues = clears;
     MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.SceneClear");
-    vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
-    vkCmdEndRenderPass(cb);
+    terrain_begin_scene_pass(s, cctx, cb, w, h);
+    mc2vk::dynrender::end(cctx, cb);
     gpuScope.end();
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("clear_record_failed"); s->disabled = true; return 0; }
     VkSubmitInfo si{};

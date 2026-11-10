@@ -55,6 +55,7 @@ float mc2ShadowMinSunAltDeg();
 
 #include "vulkan_shadow_island_state.h"
 #include "vk_island_fail_policy.h"
+#include "vk_dynamic_rendering.h"
 
 namespace {
 
@@ -172,9 +173,7 @@ struct ShadowIsland : mc2vk::IslandState {
     mc2vk::OwnedBuffer instBuf[mc2vk::kMaxFramesInFlight];   // per-parity instance SSBO (memcpy of the GpuStaticPropInstance vector)
     mc2vk::OwnedBuffer ubo;          // kMaxPassesPerFrame slices per parity, one light-space matrix each
     mc2vk::OwnedImageView   depthAttView;   // depth-attachment view of the shared image
-    mc2vk::OwnedRenderPass  rpass;
-    mc2vk::OwnedFramebuffer fb;
-    mc2vk::GpuTicket        frameTicket[mc2vk::kMaxFramesInFlight];  // timeline ticket of the parity-p submit; default ticket is already complete
+    mc2vk::GpuTicket       frameTicket[mc2vk::kMaxFramesInFlight];  // timeline ticket of the parity-p submit; default ticket is already complete
     mc2vk::OwnedDescriptorSetLayout dsl;
     mc2vk::OwnedDescriptorSetLayout alphaDsl;   // set 1 of the caster layout: the colour island's alpha-ON albedo array
     mc2vk::OwnedDescriptorPool      pool;
@@ -189,7 +188,7 @@ struct ShadowIsland : mc2vk::IslandState {
     mc2vk::OwnedPipeline            pipe;
     mc2vk::OwnedPipeline            alphaPipe;   // foliage and fence casters: discards the texels the colour pass discards
     mc2vk::OwnedCommandPool         cpool[mc2vk::kMaxFramesInFlight];   // one pool per parity: vkResetCommandPool instead of per-cb reset
-    // The mech casters share the render pass and the UBO above, the static map the render pass and the geometry; declared last so they are released first.
+    // The mech casters share the depth format and the UBO above, the static map the depth format and the geometry; declared last so they are released first.
     mc2vk::ShadowMechCasters        mech;
     mc2vk::ShadowBake               bake;   // borrows the alpha layout and the caster geometry above, so it is released first
     mc2vk::MoverShadowState         mover;
@@ -203,8 +202,6 @@ struct ShadowIsland : mc2vk::IslandState {
         bool layoutsReady = false; // the first-use transitions were recorded
         bool ready = false;        // liveAtlas has been through a recorded frame
         VkImageResource staticAtlas{}, liveAtlas{};   // their depth-aspect views serve as attachment and sampled view
-        mc2vk::OwnedRenderPass bakePass, livePass;
-        mc2vk::OwnedFramebuffer bakeFb, liveFb;
         mc2vk::OwnedBuffer inst[mc2vk::kMaxFramesInFlight];
         VkDeviceSize instCap[mc2vk::kMaxFramesInFlight] = {0, 0};
         mc2vk::OwnedDescriptorPool pool;
@@ -220,8 +217,7 @@ struct ShadowIsland : mc2vk::IslandState {
     // The views and framebuffers over the two image resources go first; the resources hold their images with raw allocations and are released here.
     ~ShadowIsland() override {
         debugArrayView.reset();
-        fb.reset(); depthAttView.reset();
-        local.bakeFb.reset(); local.liveFb.reset();
+        depthAttView.reset();
         if (device != VK_NULL_HANDLE) {
             vkImageResourceDestroy(&depthResource, device);
             vkImageResourceDestroy(&local.staticAtlas, device);
@@ -314,7 +310,7 @@ bool create_caster_pipeline(ShadowIsland* s, mc2vk::OwnedPipeline& out, VkShader
     VkVertexInputAttributeDescription via[2]{};
     via[0].location = 0; via[0].binding = 0; via[0].format = VK_FORMAT_R32G32B32_SFLOAT; via[0].offset = 0;
     via[1].location = 2; via[1].binding = 0; via[1].format = VK_FORMAT_R32G32_SFLOAT;    via[1].offset = 24;   // the UV of the shared static-prop vertex
-    if (!mc2vk::createDepthCasterPipeline(out, s->device, s->rpass.get(), s->playout.get(), s->vert.get(), frag, vib, via)) {
+    if (!mc2vk::createDepthCasterPipeline(out, s->device, s->depthFormat, s->playout.get(), s->vert.get(), frag, vib, via)) {
         vlog("vkCreateGraphicsPipelines failed.");
         return false;
     }
@@ -336,43 +332,7 @@ static bool init_local_shadow(ShadowIsland* s) {
     }
     // bake: static tiles stay TRANSFER_SRC between frames (the live atlas copies them every frame).
     // live: the copied tiles arrive TRANSFER_DST and leave DEPTH_STENCIL_READ_ONLY for the pool receivers.
-    // The subpass dependencies must equal the caster pipelines' pass (render-pass compatibility), so the transfer
-    // hazards are ordered by explicit barriers in record_local_shadows that chain into these dependencies.
-    const auto makePass = [&](mc2vk::OwnedRenderPass& out, VkImageLayout initial, VkImageLayout final) {
-        const VkPipelineStageFlags srcStage = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-        const VkAccessFlags srcAccess = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT;
-        const VkPipelineStageFlags dstStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-        const VkAccessFlags dstAccess = VK_ACCESS_SHADER_READ_BIT;
-        VkAttachmentDescription att{};
-        att.format = s->depthFormat; att.samples = VK_SAMPLE_COUNT_1_BIT;
-        att.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        att.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        att.initialLayout = initial; att.finalLayout = final;
-        VkAttachmentReference ref{0, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
-        VkSubpassDescription sub{}; sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS; sub.pDepthStencilAttachment = &ref;
-        const VkPipelineStageFlags testStages = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-        VkSubpassDependency deps[2]{
-            {VK_SUBPASS_EXTERNAL, 0, srcStage, testStages, srcAccess,
-             VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, 0},
-            {0, VK_SUBPASS_EXTERNAL, VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, dstStage,
-             VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, dstAccess, 0}};
-        VkRenderPassCreateInfo rpci{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
-        rpci.attachmentCount = 1; rpci.pAttachments = &att; rpci.subpassCount = 1; rpci.pSubpasses = &sub;
-        rpci.dependencyCount = 2; rpci.pDependencies = deps;
-        return mc2vk::create(out, s->device, [&](auto* h) { return vkCreateRenderPass(s->device, &rpci, nullptr, h); });
-    };
-    const auto makeFb = [&](mc2vk::OwnedFramebuffer& out, VkRenderPass pass, VkImageView view) {
-        VkFramebufferCreateInfo fci{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
-        fci.renderPass = pass; fci.attachmentCount = 1; fci.pAttachments = &view;
-        fci.width = kAtlasW; fci.height = kAtlasH; fci.layers = 1;
-        return mc2vk::create(out, s->device, [&](auto* h) { return vkCreateFramebuffer(s->device, &fci, nullptr, h); });
-    };
-    if (!makePass(L.bakePass, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) ||
-        !makePass(L.livePass, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL) ||
-        !makeFb(L.bakeFb, L.bakePass.get(), L.staticAtlas.view.get()) ||
-        !makeFb(L.liveFb, L.livePass.get(), L.liveAtlas.view.get())) {
-        vlog("local light shadow passes unavailable."); return false;
-    }
+    // Both passes are dynamic rendering passes: record_local_shadows records the layout moves (image barriers) around them.
     VkDescriptorPoolSize sizes[2]{{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, mc2vk::kMaxFramesInFlight}, {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, mc2vk::kMaxFramesInFlight}};
     VkDescriptorPoolCreateInfo pci{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
     pci.maxSets = mc2vk::kMaxFramesInFlight; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
@@ -463,59 +423,9 @@ bool init_island(ShadowIsland* s, int size) {
     // ---- Instance SSBO + UBO. ----
     if (!make_buffer(s, s->ubo, mc2vk::kMaxFramesInFlight * kMaxPassesPerFrame * kUboSliceBytes, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, true, "shadow.ubo")) return false;
 
-    // ---- Depth-only render pass (single depth attachment; CLEAR to 1.0 forward-Z,
-    // STORE). Interop layout: GL never writes this image, VK is sole producer; we
-    // acquire in UNDEFINED (contents don't survive — we CLEAR every frame) and leave
-    // in DEPTH_STENCIL_READ_ONLY so GL samples it. External deps serialize the
-    // cross-frame WAW (the vk2gl/GL semaphore round-trip functionally serializes it,
-    // but sync-val can't see across the GL boundary — the water WAW-fix pattern). ----
-    {
-        VkAttachmentDescription att{};
-        att.format = s->depthFormat; att.samples = VK_SAMPLE_COUNT_1_BIT;
-        att.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR; att.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        att.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        // Cleared every frame -> prior contents irrelevant -> UNDEFINED initial (also
-        // avoids a layout-transition write across the GL sampling that just happened).
-        att.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        att.finalLayout   = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL; // GL samples next
-        VkAttachmentReference depthRef{0, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
-        VkSubpassDescription sub{};
-        sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        sub.colorAttachmentCount = 0;
-        sub.pDepthStencilAttachment = &depthRef;
-
-        // No CPU wait follows a submit, so the render pass itself orders the depth image against its neighbours on the one queue. deps[0]: this pass's depth
-        // writes come after the previous frame's depth writes AND after its fragment-shader reads (terrain, the screen shadow, the debug overlay). deps[1]: the
-        // fragment shaders of those consumers see this pass's depth writes.
-        VkSubpassDependency deps[2]{};
-        deps[0].srcSubpass = VK_SUBPASS_EXTERNAL; deps[0].dstSubpass = 0;
-        deps[0].srcStageMask  = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-        deps[0].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT;
-        deps[0].dstStageMask  = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-        deps[0].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        deps[1].srcSubpass = 0; deps[1].dstSubpass = VK_SUBPASS_EXTERNAL;
-        deps[1].srcStageMask  = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-        deps[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        deps[1].dstStageMask  = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-        deps[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-        VkRenderPassCreateInfo rpci{};
-        rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        rpci.attachmentCount = 1; rpci.pAttachments = &att;
-        rpci.subpassCount = 1; rpci.pSubpasses = &sub;
-        rpci.dependencyCount = 2; rpci.pDependencies = deps;
-        if (!mc2vk::create(s->rpass, s->device, [&](auto* h) { return vkCreateRenderPass(s->device, &rpci, nullptr, h); })) {
-            vlog("vkCreateRenderPass failed."); return false;
-        }
-        VkFramebufferCreateInfo fci{};
-        fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        const VkImageView attView = s->depthAttView.get();
-        fci.renderPass = s->rpass.get(); fci.attachmentCount = 1; fci.pAttachments = &attView;
-        fci.width = static_cast<uint32_t>(size); fci.height = static_cast<uint32_t>(size); fci.layers = 1;
-        if (!mc2vk::create(s->fb, s->device, [&](auto* h) { return vkCreateFramebuffer(s->device, &fci, nullptr, h); })) {
-            vlog("vkCreateFramebuffer failed."); return false;
-        }
-    }
+    // ---- Depth-only dynamic rendering pass (single depth attachment; CLEAR to 1.0 forward-Z, STORE). Interop layout: VK is the sole producer; the
+    // pass acquires the image in UNDEFINED (contents don't survive: it CLEARs every frame) and leaves it in DEPTH_STENCIL_READ_ONLY for the samplers.
+    // record_pass records both layout moves and the stage/access dependencies (the VkSubpassDependency pair this pass used to carry). ----
 
     // ---- Descriptor layout/pool/set (UBO binding0 VS, instance SSBO binding1 VS). ----
     {
@@ -595,7 +505,7 @@ bool init_island(ShadowIsland* s, int size) {
     }
 
     // ---- Mech casters: a failure leaves the island with static-prop casters only (logged by the casters). ----
-    if (!s->mech.init(s->device, s->allocator, s->rpass.get(), s->ubo.get(), sizeof(ShadowFrameUBO), spv_dir()))
+    if (!s->mech.init(s->device, s->allocator, s->depthFormat, s->ubo.get(), sizeof(ShadowFrameUBO), spv_dir()))
         vlog("mech casters unavailable: the cascades carry static-prop casters only.");
     // ---- Static sun shadow map: a failure leaves terrain and objects without building and terrain shadows (logged by the map). ----
     // ---- Static shadow bake (mask + object map): a failure leaves the bake off (logged by the bake). ----
@@ -881,9 +791,9 @@ static uint32_t draw_static_runs(ShadowIsland* s, VkCommandBuffer cb, const std:
     return s->drawRing.record(cb, s->playout.get(), s->pipe.get(), s->alphaPipe.get(), s->alphaSet, draws);
 }
 
-// Appends one depth-only render pass to the frame's command buffer: the static-prop casters, then the mech casters, into `fb`. The light-space matrix goes to
+// Appends one depth-only render pass to the frame's command buffer: the static-prop casters, then the mech casters, into the shared depth map. The light-space matrix goes to
 // this pass's own slice of the frame UBO, so no pass reads a matrix a later pass overwrote. Nothing here waits for the GPU.
-static bool record_pass(ShadowIsland* s, VkFramebuffer fb, int size, const float* lightSpace16, float biasFactor, float biasUnits, bool drawCasters = true) {
+static bool record_pass(ShadowIsland* s, int size, const float* lightSpace16, float biasFactor, float biasUnits, bool drawCasters = true) {
     if (s->passCount >= kMaxPassesPerFrame) { setFallback("too_many_passes"); return false; }
     const VkDeviceSize uboOffset = (static_cast<VkDeviceSize>(s->parity) * kMaxPassesPerFrame + s->passCount) * kUboSliceBytes;
     {
@@ -899,17 +809,19 @@ static bool record_pass(ShadowIsland* s, VkFramebuffer fb, int size, const float
     const uint32_t dynamicOffset = static_cast<uint32_t>(uboOffset);
     VkCommandBuffer cb = s->cbuf[s->parity];
 
-    VkClearValue clear{};
-    clear.depthStencil = {1.0f, 0};   // forward-Z clear to 1.0 (GL glClearDepth(1.0))
-    VkRenderPassBeginInfo rbi{};
-    rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    rbi.renderPass = s->rpass.get();
-    rbi.framebuffer = fb;
-    rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(size), static_cast<uint32_t>(size)}};
-    rbi.clearValueCount = 1;
-    rbi.pClearValues = &clear;
+    // No CPU wait follows a submit, so the barriers order the depth image against its neighbours on the one queue. Before: this pass's depth writes come
+    // after the previous frame's depth writes AND after its fragment-shader reads (terrain, the screen shadow, the debug overlay); the image arrives
+    // UNDEFINED because the pass CLEARs it (forward-Z 1.0, GL glClearDepth(1.0)). After: those fragment shaders see this pass's depth writes.
+    namespace dr = mc2vk::dynrender;
+    mc2vk::VulkanContext& dctx = mc2vk::getOrCreateEngineVulkanContext();
+    const VkImage depthImage = s->depthResource.image.get();
+    dr::depthImageBarrier(dctx, cb, depthImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                          VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                          VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_SHADER_READ_BIT,
+                          VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+                          VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
     MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Shadow.Dyn");
-    vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+    dr::beginDepthOnly(dctx, cb, s->depthAttView.get(), s->depthFormat, static_cast<uint32_t>(size), static_cast<uint32_t>(size), VK_ATTACHMENT_LOAD_OP_CLEAR);
 
     // A NON-flipped viewport: a flipped one Y-mirrors the depth and streaks terrain (checked against the GL depth dump); the live consumer is
     // shaders/vulkan/screen_shadow_csm.frag.
@@ -934,7 +846,10 @@ static bool record_pass(ShadowIsland* s, VkFramebuffer fb, int size, const float
     s->mover.runMaskView(s->mech.runs(), viewMask);
     s->mech.record(cb, s->parity, dynamicOffset, viewMask.data());
     }
-    vkCmdEndRenderPass(cb);
+    dr::end(dctx, cb);
+    dr::depthImageBarrier(dctx, cb, depthImage, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+                          VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT, VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                          VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT);
     gpuScope.end();
     ++s->passCount;
     ++g_health.usedVulkan;
@@ -1088,11 +1003,16 @@ static void record_local_shadows(ShadowIsland* s) {
         // them; the dst stages chain into the pass's external dependency.
         local_barrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
                       VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0);
-        VkRenderPassBeginInfo rbi{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
-        rbi.renderPass = L.bakePass.get(); rbi.framebuffer = L.bakeFb.get();
-        rbi.renderArea = {{0, 0}, {kAtlasW, kAtlasH}};
+        // The static atlas is TRANSFER_SRC between frames: the pass moves it to the attachment layout (the render pass's initial layout did that) and back.
+        namespace dr = mc2vk::dynrender;
+        mc2vk::VulkanContext& dctx = mc2vk::getOrCreateEngineVulkanContext();
+        dr::depthImageBarrier(dctx, cb, L.staticAtlas.image.get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                              VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                              VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_SHADER_READ_BIT,
+                              VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+                              VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
         MC2_VK_GPU_SCOPE(bakeScope, cb, "VKIsl.Shadow.LocalBake");
-        vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+        dr::beginDepthOnly(dctx, cb, L.staticAtlas.view.get(), s->depthFormat, kAtlasW, kAtlasH, VK_ATTACHMENT_LOAD_OP_LOAD);
         for (uint32_t bi = 0; bi < bakeCount; ++bi) {
             const uint32_t t = bake[bi];
             float m[16];
@@ -1109,7 +1029,10 @@ static void record_local_shadows(ShadowIsland* s) {
             ++L.bakesTotal;
             s->bake.countLocalTileRebakes(1);
         }
-        vkCmdEndRenderPass(cb);
+        dr::end(dctx, cb);
+        dr::depthImageBarrier(dctx, cb, L.staticAtlas.image.get(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                              VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT, VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                              VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT);
         bakeScope.end();
         // The copy below reads what the bake wrote (the pass's exit dependency ends at FRAGMENT_SHADER).
         local_barrier(cb, VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
@@ -1140,11 +1063,16 @@ static void record_local_shadows(ShadowIsland* s) {
     local_barrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
                   VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
                   VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
-    VkRenderPassBeginInfo rbi{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
-    rbi.renderPass = L.livePass.get(); rbi.framebuffer = L.liveFb.get();
-    rbi.renderArea = {{0, 0}, {kAtlasW, kAtlasH}};
+    // The live atlas arrives TRANSFER_DST (the tile copies) and leaves DEPTH_STENCIL_READ_ONLY for the pool receivers: the pass's layout moves.
+    namespace dr = mc2vk::dynrender;
+    mc2vk::VulkanContext& dctx = mc2vk::getOrCreateEngineVulkanContext();
+    dr::depthImageBarrier(dctx, cb, L.liveAtlas.image.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                          VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                          VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                          VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+                          VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
     MC2_VK_GPU_SCOPE(liveScope, cb, "VKIsl.Shadow.LocalLive");
-    vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+    dr::beginDepthOnly(dctx, cb, L.liveAtlas.view.get(), s->depthFormat, kAtlasW, kAtlasH, VK_ATTACHMENT_LOAD_OP_LOAD);
     for (uint32_t i = 0; i < usedCount; ++i) {
         const uint32_t t = used[i];
         if (!tiles[t].mover) continue;
@@ -1167,7 +1095,10 @@ static void record_local_shadows(ShadowIsland* s) {
             s->mech.record(cb, s->parity, dyn, tileMask.data(), true);
         }
     }
-    vkCmdEndRenderPass(cb);
+    dr::end(dctx, cb);
+    dr::depthImageBarrier(dctx, cb, L.liveAtlas.image.get(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+                          VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT, VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                          VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT);
     liveScope.end();
     L.tilesDrawn = usedCount;
     ++s->passCount;
@@ -1253,7 +1184,7 @@ extern "C" void mc2_vk_shadow_island_run_movers(const float cameraRows[16], cons
     const auto& selected=s->mover.props();
     if (!stage_instances(s,selected.data(),static_cast<uint32_t>(selected.size()))) return;
     const auto& frame=s->mover.frame();
-    if (!record_pass(s,s->fb.get(),s->size,frame.matrix,1.0f,2.0f,frame.flags[0]!=0)) return;
+    if (!record_pass(s,s->size,frame.matrix,1.0f,2.0f,frame.flags[0]!=0)) return;
     g_dynShadowReadyThisFrame=true;
     static uint64_t frames=0;
     if (++frames%600==1) {

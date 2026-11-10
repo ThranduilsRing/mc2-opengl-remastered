@@ -130,9 +130,7 @@ struct OvlState {
     int w = 0, h = 0;
     bool inited = false, disabled = false;
     int  waitStrikes = 0;
-    // OWNED objects in creation order, released in reverse (pipelines before their layout, framebuffer before its render pass, textures first).
-    mc2vk::OwnedRenderPass rpass;
-    mc2vk::OwnedFramebuffer fb;
+    // OWNED objects in creation order, released in reverse (pipelines before their layout, textures first).
     mc2vk::OwnedShaderModule vert[2], frag[2];
     mc2vk::OwnedPipeline pipe[2];
     mc2vk::OwnedPipelineLayout playout;
@@ -173,9 +171,7 @@ struct TerrainIsland : mc2vk::IslandState {
     // VK-RUNG8-ITEM5: shared scene is VK-only (no GL interop view). Terrain is the
     // direct-chain first-owner; the former colorView/normalView/depthView are gone.
 
-    // LOAD-preserve co-write renderpass + framebuffer (over the 3 shared views).
-    mc2vk::OwnedRenderPass  rpass;
-    mc2vk::OwnedFramebuffer fb;
+    // The scene pass is a dynamic rendering pass over the 3 shared views (vk_dynamic_rendering.h): no render pass or framebuffer object.
 
     // Pipeline (2 GBuffer outputs, reverse-Z GEQUAL depth-write, cull NONE, no blend).
     mc2vk::OwnedDescriptorSetLayout dsl;

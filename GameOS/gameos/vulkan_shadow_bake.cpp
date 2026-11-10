@@ -16,6 +16,7 @@
 #include "static_caster_set.h"
 #include "terrain_field_store.h"
 #include "vk_depth_caster_pipeline.h"
+#include "vk_dynamic_rendering.h"
 #include "vk_gpu_profile.h"
 #include "vk_island_util.h"
 #include "hitch_stats.h"
@@ -63,7 +64,6 @@ bool ShadowBake::init(VkDevice device, VmaAllocator allocator, VkPhysicalDevice 
         std::fclose(file);
         if (failed) return false;
     }
-    if (!makeDepthPass(windowPass_, device_, kWindowFmt) || !makeDepthPass(objectPass_, device_, kObjectFmt)) { blog("render pass creation failed: no bake."); return false; }
     // The caster layout: set 0 = the per-pass matrix (dynamic UBO) + the instances, set 1 = the island's alpha-ON array, a per-packet push constant.
     VkDescriptorSetLayoutBinding b[2]{};
     b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
@@ -100,7 +100,7 @@ bool ShadowBake::init(VkDevice device, VmaAllocator allocator, VkPhysicalDevice 
     vib.binding = 0; vib.stride = 12; vib.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
     VkVertexInputAttributeDescription tvia[1]{};
     tvia[0].location = 0; tvia[0].binding = 0; tvia[0].format = VK_FORMAT_R32G32B32_SFLOAT; tvia[0].offset = 0;
-    if (!createDepthCasterPipeline(objectTerrain_, device_, objectPass_.get(), casterLayout_.get(), terrainVert_.get(), opaqueFrag_.get(), vib, tvia)) { blog("object terrain pipeline failed."); return false; }
+    if (!createDepthCasterPipeline(objectTerrain_, device_, kObjectFmt, casterLayout_.get(), terrainVert_.get(), opaqueFrag_.get(), vib, tvia)) { blog("object terrain pipeline failed."); return false; }
     // Static-prop casters: the shared static-prop vertex (position at 0, UV at 24 for the alpha cut).
     propVert_ = OwnedShaderModule(device_, vk_island_util::loadSpv(device_, dir + "shadow_prop.vert.spv", nullptr));
     if (!propVert_) { blog("shadow_prop.vert SPIR-V missing: no bake."); return false; }
@@ -109,10 +109,10 @@ bool ShadowBake::init(VkDevice device, VmaAllocator allocator, VkPhysicalDevice 
     VkVertexInputAttributeDescription pvia[2]{};
     pvia[0].location = 0; pvia[0].binding = 0; pvia[0].format = VK_FORMAT_R32G32B32_SFLOAT; pvia[0].offset = 0;
     pvia[1].location = 2; pvia[1].binding = 0; pvia[1].format = VK_FORMAT_R32G32_SFLOAT;    pvia[1].offset = 24;
-    if (!createDepthCasterPipeline(windowOpaque_, device_, windowPass_.get(), casterLayout_.get(), propVert_.get(), opaqueFrag_.get(), pvib, pvia) ||
-        !createDepthCasterPipeline(windowAlpha_, device_, windowPass_.get(), casterLayout_.get(), propVert_.get(), alphaFrag_.get(), pvib, pvia) ||
-        !createDepthCasterPipeline(objectOpaque_, device_, objectPass_.get(), casterLayout_.get(), propVert_.get(), opaqueFrag_.get(), pvib, pvia) ||
-        !createDepthCasterPipeline(objectAlpha_, device_, objectPass_.get(), casterLayout_.get(), propVert_.get(), alphaFrag_.get(), pvib, pvia)) {
+    if (!createDepthCasterPipeline(windowOpaque_, device_, kWindowFmt, casterLayout_.get(), propVert_.get(), opaqueFrag_.get(), pvib, pvia) ||
+        !createDepthCasterPipeline(windowAlpha_, device_, kWindowFmt, casterLayout_.get(), propVert_.get(), alphaFrag_.get(), pvib, pvia) ||
+        !createDepthCasterPipeline(objectOpaque_, device_, kObjectFmt, casterLayout_.get(), propVert_.get(), opaqueFrag_.get(), pvib, pvia) ||
+        !createDepthCasterPipeline(objectAlpha_, device_, kObjectFmt, casterLayout_.get(), propVert_.get(), alphaFrag_.get(), pvib, pvia)) {
         blog("caster pipelines failed: no bake.");
         return false;
     }
@@ -218,7 +218,7 @@ bool ShadowBake::prewarmTypeBounds(const ShadowBakeInputs& in) {
 
 void ShadowBake::releaseTransients() {
     ZoneScopedN("ShadowBake.ReleaseTransients");
-    windowFb_.reset(); windowView_.reset(); windowImage_.reset();
+    windowView_.reset(); windowImage_.reset();
     for (int i = 0; i < 4; ++i) { scratchView_[i].reset(); scratch_[i].reset(); }
     staging_.reset(); tileParams_.reset(); passParams_.reset(); casterUbo_.reset(); instances_.reset(); heightBuf_.reset();
     tileR8View_.reset(); tileR8_.reset(); tileGeneral_ = false; blockStaging_.reset(); bc4Params_.reset(); transfer_.reset();
@@ -237,7 +237,7 @@ void ShadowBake::invalidate() {
     cacheLoad_ = {};
     cacheLoadKey_ = 0; cacheLoadInputKey_ = 0;
     releaseTransients();
-    objectFb_.reset(); objectView_.reset(); objectImage_.reset();
+    objectView_.reset(); objectImage_.reset();
     maskView_.reset(); maskImage_.reset();
     topR8View_.reset(); topR8_.reset();
     mc2vk::bumpDescEpoch();
@@ -322,7 +322,6 @@ bool ShadowBake::ensureProducts(int maskTexels) {
     if (maskImage_ && maskTexels_ == maskTexels) return true;
     OwnedImage mask, top, object;
     OwnedImageView maskView, topView, objectView;
-    OwnedFramebuffer objectFb;
     // A new size happens at a map boundary, after the island's idle; within a map the mask is rebaked in place.
     uint32_t mips = 1;
     while ((maskTexels >> mips) >= 1 && mips < 16) ++mips;
@@ -342,15 +341,13 @@ bool ShadowBake::ensureProducts(int maskTexels) {
     }
     if (!objectImage_) {
         if (!makeImage(object, objectView, allocator_, device_, kObjectFmt, objectMapSize(), 1,
-                       VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, "shadow.bake.objectMap") ||
-            !makeFramebuffer(objectFb, device_, objectPass_.get(), objectView.get(), objectMapSize())) {
+                       VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, "shadow.bake.objectMap")) {
             blog("object map creation failed.");
             return false;
         }
     }
     // Publish only a complete set; a refused allocation leaves the old size usable.
     if (object) {
-        objectFb_ = std::move(objectFb);
         objectView_ = std::move(objectView);
         objectImage_ = std::move(object);
         objectInitialized_ = false;
@@ -374,11 +371,9 @@ bool ShadowBake::ensureTransients() {
     if (!windowImage_) {
         OwnedImage window, scratch[4], tile;
         OwnedImageView windowView, scratchView[4], tileView;
-        OwnedFramebuffer windowFb;
         OwnedBuffer staging;
         if (!makeImage(window, windowView, allocator_, device_, kWindowFmt, mc2shadow::shadowQuality().windowSide, 1,
-                       VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, "shadow.bake.window") ||
-            !makeFramebuffer(windowFb, device_, windowPass_.get(), windowView.get(), mc2shadow::shadowQuality().windowSide)) {
+                       VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, "shadow.bake.window")) {
             blog("caster window creation failed.");
             return false;
         }
@@ -399,7 +394,6 @@ bool ShadowBake::ensureTransients() {
             blog("tile level image creation failed.");
             return false;
         }
-        windowFb_ = std::move(windowFb);
         windowView_ = std::move(windowView);
         windowImage_ = std::move(window);
         for (int i = 0; i < 4; ++i) {
@@ -954,13 +948,15 @@ void ShadowBake::recordRegion(VkCommandBuffer cb, const ShadowBakeInputs& in, co
     const uint32_t header[4] = {0, 1, 1, 0};
     vkCmdUpdateBuffer(cb, staging_.get(), static_cast<VkDeviceSize>(mc2shadow::kTileTexels) * mc2shadow::kTileTexels, sizeof(header), header);   // empty penumbra list: indirect args {0,1,1}, count 0
     cmdBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
-    VkClearValue clear{};
-    clear.depthStencil = {1.0f, 0};
-    VkRenderPassBeginInfo rbi{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
-    rbi.renderPass = windowPass_.get(); rbi.framebuffer = windowFb_.get();
-    rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(mc2shadow::shadowQuality().windowSide), static_cast<uint32_t>(mc2shadow::shadowQuality().windowSide)}};
-    rbi.clearValueCount = 1; rbi.pClearValues = &clear;
-    vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+    // Dynamic rendering pass: the window map arrives UNDEFINED (it is cleared) and leaves DEPTH_STENCIL_READ_ONLY; the barriers are the dependencies and
+    // layout moves of the render pass this replaced (writes after the earlier compute/fragment reads; the bake's readers see the depth writes).
+    mc2vk::VulkanContext& dctx = mc2vk::getOrCreateEngineVulkanContext();
+    const uint32_t windowSide = static_cast<uint32_t>(mc2shadow::shadowQuality().windowSide);
+    mc2vk::dynrender::depthImageBarrier(dctx, cb, windowImage_.get(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                        VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, 0,
+                                        VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+                                        VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
+    mc2vk::dynrender::beginDepthOnly(dctx, cb, windowView_.get(), kWindowFmt, windowSide, windowSide, VK_ATTACHMENT_LOAD_OP_CLEAR);
     if (!runs.empty()) {
         const float side = static_cast<float>(mc2shadow::shadowQuality().windowSide);
         const VkViewport vp{0.0f, 0.0f, side, side, 0.0f, 1.0f};
@@ -974,7 +970,11 @@ void ShadowBake::recordRegion(VkCommandBuffer cb, const ShadowBakeInputs& in, co
         vkCmdBindIndexBuffer(cb, in.ibo, 0, VK_INDEX_TYPE_UINT32);
         drawRuns(cb, in, runs, windowOpaque_.get(), windowAlpha_.get());
     }
-    vkCmdEndRenderPass(cb);
+    mc2vk::dynrender::end(dctx, cb);
+    mc2vk::dynrender::depthImageBarrier(dctx, cb, windowImage_.get(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+                                        VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                                        VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT);
     stamp(1);
     const uint32_t offs0[2] = {paramOff, passBase};
     pcss_.bind(cb, computeSet, offs0);
@@ -1455,13 +1455,14 @@ bool ShadowBake::recordObjectMap(VkCommandBuffer cb, const ShadowBakeInputs& in,
     }
     if (queryCount_) vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queries_.get(), queryBase);
     MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Shadow.BakeObjectMap");
-    VkClearValue clear{};
-    clear.depthStencil = {1.0f, 0};
-    VkRenderPassBeginInfo rbi{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
-    rbi.renderPass = objectPass_.get(); rbi.framebuffer = objectFb_.get();
-    rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(objectMapSize()), static_cast<uint32_t>(objectMapSize())}};
-    rbi.clearValueCount = 1; rbi.pClearValues = &clear;
-    vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+    // Dynamic rendering pass over the object map (same layout moves and dependencies as the window map above).
+    mc2vk::VulkanContext& dctx = mc2vk::getOrCreateEngineVulkanContext();
+    mc2vk::dynrender::depthImageBarrier(dctx, cb, objectImage_.get(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                        VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, 0,
+                                        VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+                                        VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
+    mc2vk::dynrender::beginDepthOnly(dctx, cb, objectView_.get(), kObjectFmt, static_cast<uint32_t>(objectMapSize()),
+                                     static_cast<uint32_t>(objectMapSize()), VK_ATTACHMENT_LOAD_OP_CLEAR);
     const VkViewport vp{0.0f, 0.0f, static_cast<float>(objectMapSize()), static_cast<float>(objectMapSize()), 0.0f, 1.0f};
     const VkRect2D sc{{0, 0}, {static_cast<uint32_t>(objectMapSize()), static_cast<uint32_t>(objectMapSize())}};
     vkCmdSetViewport(cb, 0, 1, &vp);
@@ -1482,7 +1483,11 @@ bool ShadowBake::recordObjectMap(VkCommandBuffer cb, const ShadowBakeInputs& in,
         vkCmdBindIndexBuffer(cb, in.ibo, 0, VK_INDEX_TYPE_UINT32);
         drawRuns(cb, in, objectRuns_, objectOpaque_.get(), objectAlpha_.get());
     }
-    vkCmdEndRenderPass(cb);
+    mc2vk::dynrender::end(dctx, cb);
+    mc2vk::dynrender::depthImageBarrier(dctx, cb, objectImage_.get(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+                                        VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                                        VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT);
     gpuScope.end();
     if (queryCount_) vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queries_.get(), queryBase + 1);
     objectInitialized_ = true;

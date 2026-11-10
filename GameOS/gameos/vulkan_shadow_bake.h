@@ -203,7 +203,6 @@ private:
     VkDeviceSize transientBytes_ = 0;
 
     // Declared in creation order (released in reverse).
-    OwnedRenderPass windowPass_, objectPass_;
     OwnedDescriptorSetLayout casterDsl_;
     OwnedPipelineLayout casterLayout_;
     OwnedShaderModule propVert_, terrainVert_, opaqueFrag_, alphaFrag_;
@@ -273,7 +272,6 @@ private:
     bool topInitialized_ = false;
     OwnedImage objectImage_;
     OwnedImageView objectView_;
-    OwnedFramebuffer objectFb_;
     bool objectInitialized_ = false;
     OwnedBuffer terrainVbo_, terrainIbo_;
     uint32_t terrainIndexCount_ = 0;
@@ -283,7 +281,6 @@ private:
     // Transients (one bake).
     OwnedImage windowImage_;
     OwnedImageView windowView_;
-    OwnedFramebuffer windowFb_;
     OwnedImage scratch_[4];   // props, terrain, blur, combined
     OwnedImageView scratchView_[4];
     OwnedBuffer staging_, tileParams_, passParams_, casterUbo_, instances_, heightBuf_;

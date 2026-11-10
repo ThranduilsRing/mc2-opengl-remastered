@@ -54,39 +54,7 @@ inline VkImageMemoryBarrier imageBarrier(VkImage image, VkImageAspectFlags aspec
     return b;
 }
 
-// A depth-only pass: cleared, stored, left read-only for sampling. The dependencies order it after earlier reads of the image (compute or fragment) and
-// its writes before later reads.
-inline bool makeDepthPass(OwnedRenderPass& out, VkDevice device, VkFormat format) {
-    VkAttachmentDescription a{};
-    a.format = format;
-    a.samples = VK_SAMPLE_COUNT_1_BIT;
-    a.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    a.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    a.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    a.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    a.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    a.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-    VkAttachmentReference ref{0, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
-    VkSubpassDescription sp{};
-    sp.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    sp.pDepthStencilAttachment = &ref;
-    VkSubpassDependency deps[2]{};
-    deps[0].srcSubpass = VK_SUBPASS_EXTERNAL; deps[0].dstSubpass = 0;
-    deps[0].srcStageMask = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    deps[0].srcAccessMask = 0;   // write-after-read: an execution dependency is enough
-    deps[0].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-    deps[0].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-    deps[1].srcSubpass = 0; deps[1].dstSubpass = VK_SUBPASS_EXTERNAL;
-    deps[1].srcStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-    deps[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-    deps[1].dstStageMask = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    deps[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    VkRenderPassCreateInfo rci{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
-    rci.attachmentCount = 1; rci.pAttachments = &a;
-    rci.subpassCount = 1; rci.pSubpasses = &sp;
-    rci.dependencyCount = 2; rci.pDependencies = deps;
-    return create(out, device, [&](auto* h) { return vkCreateRenderPass(device, &rci, nullptr, h); });
-}
+// The depth-only bake passes are dynamic rendering passes (vulkan_shadow_bake.cpp records their layout moves and dependencies with vk_dynamic_rendering.h).
 
 inline bool makeImage(OwnedImage& image, OwnedImageView& view, VmaAllocator allocator, VkDevice device, VkFormat format, uint32_t side, uint32_t mips,
                VkImageUsageFlags usage, VkImageAspectFlags aspect, std::string_view name) {
@@ -111,13 +79,6 @@ inline bool makeImage(OwnedImage& image, OwnedImageView& view, VmaAllocator allo
     vci.format = format;
     vci.subresourceRange = {aspect, 0, mips, 0, 1};
     return create(view, device, [&](auto* h) { return vkCreateImageView(device, &vci, nullptr, h); });
-}
-
-inline bool makeFramebuffer(OwnedFramebuffer& fb, VkDevice device, VkRenderPass pass, VkImageView view, uint32_t side) {
-    VkFramebufferCreateInfo fci{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
-    fci.renderPass = pass; fci.attachmentCount = 1; fci.pAttachments = &view;
-    fci.width = side; fci.height = side; fci.layers = 1;
-    return create(fb, device, [&](auto* h) { return vkCreateFramebuffer(device, &fci, nullptr, h); });
 }
 
 inline bool makeHostBuffer(OwnedBuffer& buf, VmaAllocator allocator, VkDevice device, VkDeviceSize bytes, VkBufferUsageFlags usage, std::string_view name) {
