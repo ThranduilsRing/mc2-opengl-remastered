@@ -202,10 +202,6 @@ def seed_member(rel, guard, manifest):
         # first-run options/orgprefs defaults. Neither is deployed payload.
         return low.endswith(('.fst', '.pak')) or low in (
             'options.cfg', 'system.cfg', 'prefs.cfg', 'minprefs.cfg', 'orgprefs.cfg')
-    if low.startswith('saved_bookmarks/'):
-        # Camera bookmarks seed the first ab.py capture on a fresh lane;
-        # they enter as private copies (private_copy_rel), never hardlinks.
-        return True
     if low.startswith(('cache/', 'crashes/', 'debug_state/', 'mods/')):
         return False
     if low.startswith('data/') and low.endswith('.cookstamp'):
@@ -235,13 +231,8 @@ def write_receipt(path, rows):
     pending = path.with_suffix(f'.{os.getpid()}.{threading.get_ident()}.tmp')
     try:
         pending.write_text(json.dumps(rows), encoding='utf-8')
-        for attempt in range(8):
-            try:
-                pending.replace(path)
-                return True
-            except PermissionError:
-                time.sleep(0.05 * (attempt + 1))
-        return False
+        import kit_payload
+        return kit_payload.replace_retry(pending, path)
     except OSError:
         return False
     finally:

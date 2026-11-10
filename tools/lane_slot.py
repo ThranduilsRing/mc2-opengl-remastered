@@ -129,9 +129,11 @@ def slot_info(path, claimed):
     info = {"path": path, "exists": os.path.isdir(path), "clean": False, "branch": None, "claimed": norm(path) in claimed, "merged": False}
     if not info["exists"]:
         return info
-    rc, status, err = git(path, "status", "--porcelain")
+    rc, status, err = git(path, "status", "--porcelain", "--", ".", f":(exclude){HOOK_SEEDED_FILE}")
     if rc:
         sys.exit("lane_slot: could not inspect slot status: " + err)
+    # Only the hook-seeded agent file is ignored. The lane's notes/ count as work: a worktree holding just its state note is
+    # a live lane, not a free slot (an exclude in the shared .git/info/exclude hid them in every worktree).
     info["clean"] = status == ""
     rc, branch, _ = git(path, "symbolic-ref", "--short", "-q", "HEAD")
     info["branch"] = branch if rc == 0 and branch else None
@@ -175,22 +177,7 @@ def branch_plan(branch, base, reset_branch, root=None):
     return ["switch", branch], branch
 
 
-LANE_LOCAL_FILES = (".claude/agents/mc2-lane.md", "notes/")   # hook-seeded agent file and the lane's state notes: never "dirty"
-
-
-def exclude_lane_files(path):
-    """Add LANE_LOCAL_FILES to the worktree's git info/exclude (idempotent; not .gitignore), so release's clean check ignores them."""
-    rc, rel, err = git(path, "rev-parse", "--git-path", "info/exclude")
-    if rc:
-        print("[lane_slot] WARNING: could not locate info/exclude: " + err, file=sys.stderr)
-        return
-    exclude = rel if os.path.isabs(rel) else os.path.join(path, rel)
-    os.makedirs(os.path.dirname(exclude), exist_ok=True)
-    text = open(exclude, encoding="utf-8").read() if os.path.exists(exclude) else ""
-    add = [f for f in LANE_LOCAL_FILES if f not in text.splitlines()]
-    if add:
-        with open(exclude, "a", encoding="utf-8", newline="\n") as f:
-            f.write(("" if not text or text.endswith("\n") else "\n") + "\n".join(add) + "\n")
+HOOK_SEEDED_FILE = ".claude/agents/mc2-lane.md"   # seeded into every worktree by a hook: not the lane's work, never "dirty"
 
 
 def acquire(branch, base=None, reset_branch=False, no_warm=False):
@@ -207,14 +194,14 @@ def acquire(branch, base=None, reset_branch=False, no_warm=False):
     rc, _, err = git(path, *switch_args)
     if rc:
         sys.exit(f"acquire: git {' '.join(switch_args)} failed: " + err)
-    exclude_lane_files(path)
     print(f"[lane_slot] {branch} HEAD {git(path, 'rev-parse', 'HEAD')[1]}")
     try:
         from pathlib import Path  # noqa: PLC0415
         import lane_registry  # noqa: PLC0415
         lane_registry.register_lane(Path(MAIN_ROOT), branch, worktree=path, deploy_lane=slot_install(path))
     except Exception as e:  # noqa: BLE001
-        print(f"[lane_slot] WARNING: lane registration failed: {e}", file=sys.stderr)
+        sys.exit(f"acquire: lane registration failed: {e}; the slot is unclaimed, so another acquire could take it. "
+                 f"Fix the registry and re-run `acquire --branch {branch}`")
     print(f"[lane_slot] install {slot_install(path)} (deploy with --allow-new-target)")
     # Warm the slot's own tree at the branch tip (no --base: that would detach the branch we just created). The warm build holds
     # the tree's build lock (scripts/ninja_build.py), so the lane's own build waits for it; its PID is recorded in <tree>/warm.pid.

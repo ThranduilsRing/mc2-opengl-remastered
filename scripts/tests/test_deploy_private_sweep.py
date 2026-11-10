@@ -19,3 +19,13 @@ def test_sweep(tmp_path, capsys):
     assert dp.sweep_stale_private_temps(tmp_path) == 1
     assert not stale.exists() and live.exists() and other.exists()
     assert "removed 1 stale .private-<pid> temp files" in capsys.readouterr().out
+
+
+def test_main_sweeps_before_either_deploy_path():
+    """The sweep runs once under the lease, ahead of both the --from-payload and the build-tree deploy."""
+    import inspect
+    src = inspect.getsource(dp.main)
+    sweep = src.index("sweep_stale_private_temps(target)")
+    assert sweep < src.index("if args.from_payload:")
+    assert sweep < src.index("deploy_from_payload(")
+    assert sweep < src.index("run_deploy(")

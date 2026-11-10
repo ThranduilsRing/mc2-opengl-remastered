@@ -240,6 +240,31 @@ def sha(path):
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
+def replace_retry(pending, path, attempts=8):
+    """Publish `pending` over `path`; False when a concurrent deploy keeps the target open.
+
+    Windows os.replace raises PermissionError while another process has the destination open. The tables
+    and receipts this publishes are hash caches (a miss only re-hashes), so retry briefly and let the caller skip."""
+    for attempt in range(attempts):
+        try:
+            Path(pending).replace(path)
+            return True
+        except PermissionError:
+            time.sleep(0.05 * (attempt + 1))
+    return False
+
+
+def write_table(path, rows):
+    """Per-pid temp file plus replace_retry for a machine-wide receipt table; never fatal."""
+    pending = path.with_name(path.name + f'.{os.getpid()}.tmp')
+    try:
+        pending.write_text(json.dumps(rows, separators=(',', ':')))
+        if not replace_retry(pending, path):
+            print(f"[kit_payload] receipt table {path.name} busy (concurrent deploy); skipped, the next run re-hashes")
+    finally:
+        pending.unlink(missing_ok=True)
+
+
 class HashReceipts:
     """Private, disposable hash cache; metadata drift forces byte verification."""
     def __init__(self, path, shared=None):
@@ -305,12 +330,7 @@ class HashReceipts:
             except (OSError, ValueError):
                 pass
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        pending = self.path.with_name(self.path.name + f'.{os.getpid()}.tmp')
-        try:
-            pending.write_text(json.dumps(self.rows, separators=(',', ':')))
-            os.replace(pending, self.path)
-        finally:
-            pending.unlink(missing_ok=True)
+        write_table(self.path, self.rows)
         if self.shared is not None:
             self.shared.save(merge=True)
 
@@ -362,12 +382,7 @@ class InodeSums:
         except (OSError, ValueError):
             pass
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        pending = self.path.with_name(self.path.name + f'.{os.getpid()}.tmp')
-        try:
-            pending.write_text(json.dumps(self.rows, separators=(',', ':')))
-            os.replace(pending, self.path)
-        finally:
-            pending.unlink(missing_ok=True)
+        write_table(self.path, self.rows)
 
 
 def contained_path(root, rel, *, parents=None):

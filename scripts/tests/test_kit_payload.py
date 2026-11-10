@@ -402,3 +402,48 @@ def test_cook_cache_root_follows_the_gate_e_root(monkeypatch):
     assert kit.cook_cache_root() == Path("C:/mc2gate/drv/E/mc2-cook-cache")
     monkeypatch.setenv("MC2_COOK_CACHE", "D:/cc")
     assert kit.cook_cache_root() == Path("D:/cc")
+
+
+def _flaky_replace(monkeypatch, failures):
+    real = kit.os.replace
+    calls = {"n": 0}
+
+    def replace(src, dst):
+        calls["n"] += 1
+        if failures is None or calls["n"] <= failures:
+            raise PermissionError("held by another deploy")
+        return real(src, dst)
+
+    monkeypatch.setattr(kit.os, "replace", replace)
+    monkeypatch.setattr(kit.time, "sleep", lambda _s: None)
+    return calls
+
+
+@pytest.mark.parametrize("make", [
+    lambda p: kit.HashReceipts(p),
+    lambda p: kit.InodeSums(p),
+])
+def test_receipt_save_retries_a_held_replace(tmp_path, monkeypatch, make):
+    table = make(tmp_path / "t.json")
+    table.rows["k"] = [1, 2, "v"]
+    table.dirty = True
+    calls = _flaky_replace(monkeypatch, 3)
+    table.save(merge=True) if isinstance(table, kit.HashReceipts) else table.save()
+    assert json.loads((tmp_path / "t.json").read_text())["k"] == [1, 2, "v"]
+    assert calls["n"] == 4
+    assert not list(tmp_path.glob("*.tmp"))
+
+
+@pytest.mark.parametrize("make", [
+    lambda p: kit.HashReceipts(p),
+    lambda p: kit.InodeSums(p),
+])
+def test_receipt_save_skips_when_replace_never_succeeds(tmp_path, monkeypatch, make, capsys):
+    table = make(tmp_path / "t.json")
+    table.rows["k"] = [1, 2, "v"]
+    table.dirty = True
+    _flaky_replace(monkeypatch, None)
+    table.save(merge=True) if isinstance(table, kit.HashReceipts) else table.save()
+    assert not (tmp_path / "t.json").exists()
+    assert not list(tmp_path.glob("*.tmp"))
+    assert "receipt" in capsys.readouterr().out.lower()

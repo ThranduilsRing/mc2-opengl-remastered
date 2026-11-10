@@ -129,8 +129,10 @@ def sha(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def audit(install, build, strict_orphans=False):
-    """Returns (fails, warns, checked). Messages are strings naming shader and binding."""
+def audit(install, build, strict_orphans=False, baked=None):
+    """Returns (fails, warns, checked). Messages are strings naming shader and binding.
+
+    `baked`: the .spv names the deploy ships (deploy_payload.baked_spv_files); a retired .spv left in the build tree is not audited."""
     inst_dir = Path(install) / "shaders" / "vulkan"
     build_dir = Path(build) / "shaders" / "vulkan"
     fails, warns = [], []
@@ -138,7 +140,7 @@ def audit(install, build, strict_orphans=False):
         return [f"build shader dir missing: {build_dir}"], warns, 0
     if not inst_dir.is_dir():
         return [f"install shader dir missing: {inst_dir}"], warns, 0
-    build_spv = {p.name: p for p in build_dir.glob("*.spv")}
+    build_spv = {p.name: p for p in build_dir.glob("*.spv") if baked is None or p.name in baked}
     inst_spv = {p.name: p for p in inst_dir.glob("*.spv")}
     for name, bp in sorted(build_spv.items()):
         ip = inst_spv.get(name)
