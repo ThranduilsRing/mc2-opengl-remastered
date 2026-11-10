@@ -670,6 +670,28 @@ def shaders_parent_of(path) -> Path:
     sys.exit(f"ab.py: --shaders-a {path}: no shaders/ directory there")
 
 
+def spv_digest(shaders_dir) -> dict:
+    """{relative path: sha256} of every .spv under a shaders dir (empty when it does not exist)."""
+    root = Path(shaders_dir)
+    if not root.is_dir():
+        return {}
+    return {p.relative_to(root).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(root.rglob("*.spv"))}
+
+
+def default_shaders_a(install: Path, exe_a: Path):
+    """Side A's shaders when --shaders-a is not given: the exe swap stages A on the B install's data, so A's old exe would load
+    B's new .spv (e.g. water init fails). If the exe's own install dir carries a shaders/ whose .spv set differs from the data
+    install's, A defaults to that (as --shaders-a would); else None. Logs which it chose."""
+    own = Path(exe_a).parent
+    if (own / "shaders").is_dir() and spv_digest(own / "shaders") != spv_digest(Path(install) / "shaders"):
+        print(f"[ab] side A shaders: the data install's .spv set differs from {own}/shaders; A defaults to its own "
+              "(an explicit --shaders-a overrides)", flush=True)
+        return own
+    print("[ab] side A shaders: same .spv set as the data install (or the exe has no shaders/ beside it); A uses the install's",
+          flush=True)
+    return None
+
+
 def stage_install(install: Path, exe: Path, dest: Path, shaders_from=None) -> Path:
     """An install clone whose mc2.exe is `exe`: shared data and DLLs are hard-linked from `install` (see stage_tree).
     `shaders_from` (an install dir or its shaders/ dir) also swaps in that build's shaders/, manifest rows rewritten."""
@@ -862,7 +884,8 @@ def resolve_installs(a, out: Path):
             if not Path(e).is_file():
                 sys.exit(f"exe not found: {e}")
         root = _stage_root(a, out, Path(a.install), 2)
-        return (_staged(a, stage_install(Path(a.install), Path(a.exe_a), root / "install_a", getattr(a, "shaders_a", None))),
+        shaders_a = getattr(a, "shaders_a", None) or default_shaders_a(Path(a.install), Path(a.exe_a))
+        return (_staged(a, stage_install(Path(a.install), Path(a.exe_a), root / "install_a", shaders_a)),
                 _staged(a, stage_install(Path(a.install), Path(a.exe_b), root / "install_b")))
     sys.exit("need --install-a/--install-b, or --exe-a/--exe-b, or --exe-a/--install-b (or --compare-only DIR_A DIR_B)")
 
