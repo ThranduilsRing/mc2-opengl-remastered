@@ -20,6 +20,20 @@ inline float darkness(float pitch)
     return t * t * (3.0f - 2.0f * t);
 }
 
+// Night fade of the MOVER (mech/prop) sun shadow: 0 by day, easing toward 1 (no shadow) as the night
+// takes the sun. The old flat 0.85*night left a 0.4-floor ground only 9% darker under a mech. A moon
+// shadow removes the moon's share of the light, so the fade is the ambient share of (moon + ambient).
+inline float moverNightFade(float darkness, float moonLum, float ambientLum)
+{
+    const float total = moonLum + ambientLum;
+    const float ambientShare = total > 1e-4f ? ambientLum / total : 0.5f;
+    // Half: the ground's lamp/prelit terms ignore the sun shadow, so a floor of 1-moonShare shows only about
+    // half its darkening on screen (measured mc2_10: predicted 31% -> seen 18%).
+    return 0.5f * std::clamp(darkness, 0.0f, 1.0f) * std::clamp(ambientShare, 0.35f, 0.65f);
+}
+// Receiver floor of a sun shadow with day floor `dayFloor` under that fade (mirrors mover_shadow.glsl moverShadowFloor).
+inline float moverShadowFloor(float dayFloor, float fade) { return dayFloor + (1.0f - dayFloor) * fade; }
+
 // Base name (no directory, no extension) equals `profile`, or starts with it followed by '_' (a save of that
 // mission, "mc2_10_saved_204523"); ASCII case-insensitive. "mc2_100" does not match "mc2_10".
 inline bool matches(std::string_view missionFileName, std::string_view profile)

@@ -222,3 +222,18 @@ TEST_CASE("mission profiles keep frontend colors ground and save markers camera 
     day.lightPitch = 270;
     CHECK(sceneScale(day) == doctest::Approx(0.8f));
 }
+
+TEST_CASE("mover night shadow keeps a readable floor and leaves the day alone") {
+    using namespace mc2_mission_light;
+    // mc2_10 full night: the ground under a mech must be at least 25% darker than the lit ground beside it.
+    const float night = moverNightFade(darkness(270.0f), 0.45f, 0.40f);
+    CHECK(moverShadowFloor(0.4f, night) <= 0.60f);
+    CHECK(moverShadowFloor(0.4f, night) >= 0.50f);   // never lighter than a soft shadow, never below the day floor
+    // day and evening: the fade is exactly 0, so the day floor is untouched
+    CHECK(moverNightFade(darkness(90.0f), 0.45f, 0.40f) == 0.0f);
+    CHECK(moverShadowFloor(0.4f, 0.0f) == 0.4f);
+    // a dim ambient or a missing profile cannot leave [day floor, 1]
+    CHECK(moverNightFade(1.0f, 1.0f, 0.0f) == doctest::Approx(0.175f));
+    CHECK(moverNightFade(1.0f, 0.0f, 0.0f) == doctest::Approx(0.25f));
+    CHECK(moverNightFade(2.0f, 0.0f, 1.0f) == doctest::Approx(0.325f));
+}

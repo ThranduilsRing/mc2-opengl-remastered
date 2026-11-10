@@ -44,7 +44,7 @@ void main() {
         if (!prop && u.mechSoft>0.0)
             v=mix(1.0,v,smoothstep(0.0,0.15+0.30*u.mechSoft,max(dot(N,moverFrame.sun.xyz),0.0)));
         float moverShadow = v;
-        shadow = min(shadow, mix(sunShadowFloor(prop ? 0.4 : 0.55), 1.0, moverShadow));
+        shadow = min(shadow, mix(moverShadowFloor(prop ? 0.4 : 0.55), 1.0, moverShadow));
     }
     FragColor=vec4(vec3(shadow),1.0);
 }
