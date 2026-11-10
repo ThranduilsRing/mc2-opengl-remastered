@@ -253,6 +253,11 @@ TEST_CASE("hzb ref: the 1/256 px grid rounds outward and tiny rejection never ap
     CHECK(mc2hzb::tiny_box(10.001f, 10.0f, 10.5f, 10.5f));
     CHECK_FALSE(mc2hzb::tiny_box(10.0f, 10.0f, 11.0f, 10.5f));
     CHECK_FALSE(mc2hzb::tiny_box(10.0f, 10.0f, 10.9999f, 10.9999f));   // 10.9999 snaps up to 11: exactly one pixel wide, stays
+    // Sub-pixel boxes: culled only when no pixel centre (k+0.5) lies inside; one that straddles a centre still draws and stays.
+    CHECK_FALSE(mc2hzb::tiny_box(10.3f, 10.3f, 10.7f, 10.7f));          // 0.4 px box over the centre (10.5, 10.5)
+    CHECK(mc2hzb::tiny_box(10.6f, 10.3f, 10.9f, 10.7f));                // x gap: 10.6..10.9 holds no centre
+    CHECK(mc2hzb::tiny_box(10.3f, 10.6f, 10.7f, 10.9f));                // y gap
+    CHECK_FALSE(mc2hzb::tiny_box(10.9f, 10.9f, 11.6f, 11.6f));          // 0.7 px box over (11.5, 11.5)
     Pyramid empty(0.0f);
     CHECK_FALSE(hidden(project(boxNdc(0.5f, 1.5f, 0.0f, 0.001f)), empty));   // crosses x = 1: kept whole, never tiny-culled
 }
