@@ -73,7 +73,8 @@ bool ShadowBake::ensureEncoder() {
     if (!params.upload(p.data(), p.size())) return false;
     const VkDescriptorBufferInfo par{params.get(), 0, 16};
     const VkDescriptorBufferInfo out{blocks.get(), 0, VK_WHOLE_SIZE};
-    const VkDescriptorImageInfo tileSrc{depthRawSampler_.get(), tileR8View_ ? tileR8View_.get() : topR8View_.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+    const VkDescriptorImageInfo tileSrc{depthRawSampler_.get(), tileR8View_ ? tileR8View_.get() : topR8View_.get(),
+                                        tileR8View_ ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
     const VkDescriptorImageInfo topSrc{depthRawSampler_.get(), topR8View_.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
     VkWriteDescriptorSet w[6]{};
     const std::array<VkDescriptorSet, 2> sets = {bc4TileSet_, bc4TopSet_};
@@ -98,40 +99,43 @@ void ShadowBake::encodeLevel(VkCommandBuffer cb, VkDescriptorSet set, uint32_t s
 
 // One tile's (or sub-tile's) resolved texels (the staging words) become its levels 0..5 in the tile image, those levels become BC4 blocks at its place
 // in the mask, and its level 5 (4 texels a sub-tile) goes to the top image.
+// The tile image lives in GENERAL (one transition at first use): the per-level copy/blit/sample hand-offs are global memory barriers, not image
+// barriers, so a region costs no read-to-read layout change and no per-level image barriers.
 void ShadowBake::recordTileEncode(VkCommandBuffer cb, int originX, int originY, uint32_t T, uint32_t sliceBase) {
-    VkImageMemoryBarrier toDst = imageBarrier(tileR8_.get(), VK_IMAGE_ASPECT_COLOR_BIT, 0, kTileLevels, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                              0, VK_ACCESS_TRANSFER_WRITE_BIT);
-    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &toDst);
+    if (!tileGeneral_) {
+        VkImageMemoryBarrier toGeneral = imageBarrier(tileR8_.get(), VK_IMAGE_ASPECT_COLOR_BIT, 0, kTileLevels, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,
+                                                      0, VK_ACCESS_TRANSFER_WRITE_BIT);
+        vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1,
+                             &toGeneral);
+        tileGeneral_ = true;
+    }
+    // The previous region's sampling and copies of the tile finish before this region's copy overwrites it.
+    cmdBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT,
+               VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT);
     VkBufferImageCopy copy{};
     copy.bufferRowLength = T;
     copy.bufferImageHeight = T;
     copy.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
     copy.imageExtent = {T, T, 1};
-    vkCmdCopyBufferToImage(cb, staging_.get(), tileR8_.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
+    vkCmdCopyBufferToImage(cb, staging_.get(), tileR8_.get(), VK_IMAGE_LAYOUT_GENERAL, 1, &copy);
     for (uint32_t m = 1; m < kTileLevels; ++m) {
-        VkImageMemoryBarrier toSrc = imageBarrier(tileR8_.get(), VK_IMAGE_ASPECT_COLOR_BIT, m - 1, 1, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                                  VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT);
-        vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &toSrc);
+        cmdBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_READ_BIT);
         VkImageBlit blit{};
         blit.srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, m - 1, 0, 1};
         blit.srcOffsets[1] = {static_cast<int32_t>(T >> (m - 1)), static_cast<int32_t>(T >> (m - 1)), 1};
         blit.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, m, 0, 1};
         blit.dstOffsets[1] = {static_cast<int32_t>(T >> m), static_cast<int32_t>(T >> m), 1};
-        vkCmdBlitImage(cb, tileR8_.get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, tileR8_.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_LINEAR);
+        vkCmdBlitImage(cb, tileR8_.get(), VK_IMAGE_LAYOUT_GENERAL, tileR8_.get(), VK_IMAGE_LAYOUT_GENERAL, 1, &blit, VK_FILTER_LINEAR);
     }
-    VkImageMemoryBarrier lastSrc = imageBarrier(tileR8_.get(), VK_IMAGE_ASPECT_COLOR_BIT, kTileLevels - 1, 1, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT);
-    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &lastSrc);
+    cmdBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+               VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_SHADER_READ_BIT);
     const uint32_t q = T >> kTopLevel;
     VkImageCopy ic{};
     ic.srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, kTopLevel, 0, 1};
     ic.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
     ic.dstOffset = {originX >> kTopLevel, originY >> kTopLevel, 0};
     ic.extent = {q, q, 1};
-    vkCmdCopyImage(cb, tileR8_.get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, topR8_.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &ic);
-    VkImageMemoryBarrier toRead = imageBarrier(tileR8_.get(), VK_IMAGE_ASPECT_COLOR_BIT, 0, kTileLevels, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_SHADER_READ_BIT);
-    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &toRead);
+    vkCmdCopyImage(cb, tileR8_.get(), VK_IMAGE_LAYOUT_GENERAL, topR8_.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &ic);
     for (uint32_t m = 0; m < kTileLevels; ++m) encodeLevel(cb, bc4TileSet_, sliceBase + m, T >> m);
     cmdBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT,
                VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT);
