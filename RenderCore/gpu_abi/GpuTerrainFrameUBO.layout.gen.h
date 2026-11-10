@@ -15,7 +15,7 @@ static_assert(offsetof(TerrainFrameUBO, atlasTopLeftY) == 84, "atlasTopLeftY off
 static_assert(offsetof(TerrainFrameUBO, atlasOneOverWorldUnits) == 88, "atlasOneOverWorldUnits offset");
 static_assert(offsetof(TerrainFrameUBO, colormapReady) == 92, "colormapReady offset");
 static_assert(offsetof(TerrainFrameUBO, useCement) == 96, "useCement offset");
-static_assert(offsetof(TerrainFrameUBO, cementGridSide) == 100, "cementGridSide offset");
+static_assert(offsetof(TerrainFrameUBO, cementLayerCount) == 100, "cementLayerCount offset");
 static_assert(offsetof(TerrainFrameUBO, cementWUPT) == 104, "cementWUPT offset");
 static_assert(offsetof(TerrainFrameUBO, useTransitionMask) == 108, "useTransitionMask offset");
 static_assert(offsetof(TerrainFrameUBO, cementDiagConnect) == 112, "cementDiagConnect offset");
@@ -88,7 +88,7 @@ static_assert(offsetof(TerrainFrameUBO, tintSnow) == 752, "tintSnow offset");
 static_assert(offsetof(TerrainFrameUBO, tintStrengthScale) == 764, "tintStrengthScale offset");
 static_assert(offsetof(TerrainFrameUBO, snowBrightnessDampen) == 768, "snowBrightnessDampen offset");
 static_assert(offsetof(TerrainFrameUBO, edgeFeatherStrength) == 772, "edgeFeatherStrength offset");
-static_assert(offsetof(TerrainFrameUBO, cementAtlasSeamFix) == 776, "cementAtlasSeamFix offset");
+static_assert(offsetof(TerrainFrameUBO, reserved776) == 776, "reserved776 offset");
 static_assert(offsetof(TerrainFrameUBO, shorelineOn) == 780, "shorelineOn offset");
 static_assert(offsetof(TerrainFrameUBO, shorelineHasMask) == 784, "shorelineHasMask offset");
 static_assert(offsetof(TerrainFrameUBO, shorelineWaterElev) == 788, "shorelineWaterElev offset");

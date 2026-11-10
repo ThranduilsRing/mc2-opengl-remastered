@@ -697,6 +697,7 @@ float  gos_terrain_indirect_getAtlasMapTopLeftY()      { return g_atlasMapTopLef
 float  gos_terrain_indirect_getAtlasOneOverWorldUnits(){ return g_atlasOneOverWorldUnits; }
 
 int    gos_terrain_indirect_getCementAtlasGridSide() { return g_cementAtlasGridSide; }
+int    gos_terrain_indirect_getCementAtlasTileCount() { return g_cementAtlasTileCount; }
 bool   gos_terrain_indirect_isCementAtlasReady()     { return g_cementLayerMapReady && g_cementAtlasTileCount > 0; }
 float  gos_terrain_indirect_getWorldUnitsPerVertex() { return Terrain::worldUnitsPerVertex; }
 

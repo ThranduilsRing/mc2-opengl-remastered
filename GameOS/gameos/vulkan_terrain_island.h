@@ -87,7 +87,8 @@ struct Mc2TerrainTier1Feed {
     const uint8_t*              cementAtlasRgba;       // the field store's CPU atlas (RGBA8, side^2 texels); null = none
     int32_t                     cementAtlasSide;
     uint64_t                    cementAtlasVersion;    // changes on every rebuild; the island re-imports on a change
-    int32_t                     cementGridSide;        // gos_terrain_indirect_getCementAtlasGridSide()
+    int32_t                     cementGridSide;        // gos_terrain_indirect_getCementAtlasGridSide(): the CPU atlas grid the importer slices into layers
+    int32_t                     cementLayerCount;      // catalog tile count == texture array layers
     float                       cementWUPT;            // world units per cement tile (== 128)
     int32_t                     useCement;             // 1 iff cement atlas ready AND cement SSBO live
     int32_t                     useTransitionMask;     // gos_terrain_indirect_isTransitionMaskReady()
@@ -203,8 +204,6 @@ struct Mc2TerrainTier1Feed {
     float                       snowBrightnessDampen;
     // TERRAIN-EDGE-FEATHER-1: the GL map-edge haze strength, 0 when the feather is off.
     float                       edgeFeatherStrength;
-    // CEMENT-ATLAS-SEAM-1: the GL half-texel cement sampling inset is on (MC2_CEMENT_ATLAS_SEAM_FIX).
-    bool                        cementAtlasSeamFix;
     // TERRAIN-SHORELINE-V3/V4: band knobs (gos_TerrainShorelineKnobs) and the optional mask sidecar (RGBA8: G wet, B foam,
     // A valid) from the terrain field store; null mask = pure elevation bands, as GL without a sidecar.
     bool                        shorelineOn;

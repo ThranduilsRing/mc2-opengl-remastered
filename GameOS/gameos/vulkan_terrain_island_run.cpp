@@ -172,7 +172,7 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     // the VK cement atlas image and the cement-word snapshot are live (fail-soft
     // if only one of them is ready -> colormap base, no hole).
     u.useCement         = (feed.useCement && s->cementReady && s->cementWordsReady) ? 1 : 0;
-    u.cementGridSide    = feed.cementGridSide;
+    u.cementLayerCount  = feed.cementLayerCount;
     u.cementWUPT        = feed.cementWUPT;
     u.useTransitionMask = feed.useTransitionMask;
     u.cementDiagConnect = feed.cementDiagConnect;
@@ -278,7 +278,6 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     u.tintStrengthScale    = feed.tintStrengthScale;
     u.snowBrightnessDampen = feed.snowBrightnessDampen;
     u.edgeFeatherStrength  = feed.edgeFeatherStrength;
-    u.cementAtlasSeamFix   = feed.cementAtlasSeamFix ? 1 : 0;
     u.shorelineOn           = feed.shorelineOn ? 1 : 0;
     u.shorelineHasMask      = s->shoreMaskReady ? 1 : 0;
     u.shorelineWaterElev    = feed.shorelineWaterElev;

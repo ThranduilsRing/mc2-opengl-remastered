@@ -33,12 +33,9 @@ vec3 rootMacro() {
         ivec2 cell = clamp(ivec2(floor(vec2(v_rootPos.x+uT.halfMap, uT.halfMap-v_rootPos.y)/128.0)), ivec2(0), ivec2(uT.mapSide-1));
         uint word = uC.cementWordsF[cell.x+cell.y*uT.mapSide];
         if ((word & 0x80000000u) != 0u) {
-            uint side = uint(max(uT.cementGridSide, 1));
             uint layer = word & 0xffffu;
             vec2 local = fract(vec2(v_rootPos.x, -v_rootPos.y)/max(uT.cementWUPT, 1.0));
-            float inset = 0.5*float(side)/float(textureSize(u_cementAtlas, 0).x);
-            vec2 atlas = (vec2(layer%side, layer/side)+clamp(local, vec2(inset), vec2(1.0-inset)))/float(side);
-            macro = textureLod(u_cementAtlas, atlas, 0.0).rgb * vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);
+            macro = textureLod(u_cementArt, vec3(local, float(layer)), 0.0).rgb * vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);
         }
     }
     return macro;

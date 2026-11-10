@@ -16,8 +16,6 @@
 // Resolved-once cached mirrors of the per-frame terrain-uniform env gates.
 
 extern const int kTglcDiag = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_DIAG">();
-// CEMENT-ATLAS-SEAM-1: default ON (killswitch MC2_CEMENT_ATLAS_SEAM_FIX=0).
-extern const bool kTglcCementAtlasSeamFix = true;
 // NIGHT-LIGHT-POOLS-2: soft falloff tail (default ON; =0 exact legacy
 // GetFalloff linear ramp) + mover-light dim factor (default 0.5; 1.0 = off).
 extern const bool kTglcLightPoolSoft = true;

@@ -41,7 +41,7 @@ struct TerrainFrameUBO {
     // CEMENT/ROAD atlas sub-slice: cement uniforms (mirror the GL LOD-chunk frag's
     // u_useCement/u_cementGridSide/u_cementWUPT/u_useTransitionMask/u_cementDiagConnect).
     int32_t useCement;
-    int32_t cementGridSide;
+    int32_t cementLayerCount;      // CEMENT-ARRAY-1: layers in the u_cementArt texture array (== catalog tile count)
     float   cementWUPT;
     int32_t useTransitionMask;
     int32_t cementDiagConnect;
@@ -141,7 +141,7 @@ struct TerrainFrameUBO {
     float   tintStrengthScale;
     float   snowBrightnessDampen;
     float   edgeFeatherStrength;   // TERRAIN-EDGE-FEATHER-1: map-edge haze amount (0 = off)
-    int32_t cementAtlasSeamFix;    // CEMENT-ATLAS-SEAM-1: 1 = half-texel inset on cement atlas samples (gutter-less atlas bleed)
+    int32_t reserved776;           // was the cement atlas seam-fix flag; the cement texture array has no cell borders to inset
     // TERRAIN-SHORELINE-V3/V4 (LOCKSTEP with terrain_tier1.frag); producer gos_TerrainShorelineKnobs().
     int32_t shorelineOn;           // MC2_TERRAIN_SHORELINE: wet / foam elevation bands drawn
     int32_t shorelineHasMask;      // the mask sidecar (binding 14) is real, not the dummy

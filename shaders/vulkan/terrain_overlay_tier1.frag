@@ -49,21 +49,11 @@ uint overlayCementWord(vec2 wp) {
     return uC.cementWordsF[cx + cy * uT.mapSide];
 }
 
-// Cement atlas sample: same UV math + half-texel inset as terrain_lod_chunk.frag / GL overlay.
+// Cement art sample: one texture-array layer per catalog cell (CEMENT-ARRAY-1).
 vec3 overlayCementAlbedo(uint cw, vec2 wp) {
     uint cLayerIdx = cw & 0xFFFFu;
-    int  cGridSide = max(uT.cementGridSide, 1);
-    int  cCol = int(cLayerIdx) % cGridSide;
-    int  cRow = int(cLayerIdx) / cGridSide;
     vec2 cTileUV   = fract(vec2(wp.x, -wp.y) / uT.cementWUPT);
-    vec2 cSampleUV = cTileUV;
-    if (pc.seamFix != 0) {
-        float cCellPx = float(textureSize(u_cementAtlas, 0).x) / float(cGridSide);
-        float cInset  = 0.5 / max(cCellPx, 1.0);
-        cSampleUV = clamp(cTileUV, vec2(cInset), vec2(1.0 - cInset));
-    }
-    vec2 cAtlasUV = (vec2(float(cCol), float(cRow)) + cSampleUV) / float(cGridSide);
-    return texture(u_cementAtlas, cAtlasUV).rgb * vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);
+    return texture(u_cementArt, vec3(cTileUV, float(cLayerIdx))).rgb * vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);
 }
 
 void main() {
@@ -83,7 +73,7 @@ void main() {
     uint ovCw          = overlayCementWord(WorldPos.xy);
     bool ovCementTile  = (ovCw & 0x80000000u) != 0u;          // bit 31 valid
     bool ovAuthoredArt = (ovCw & 0x00200000u) != 0u;          // bit 21: authored art on this tile
-    bool ovAdoptAlbedo = ovCementTile && !ovAuthoredArt && uT.cementGridSide > 0;
+    bool ovAdoptAlbedo = ovCementTile && !ovAuthoredArt && uT.cementLayerCount > 0;
 
     vec4 c;
     c.a = tex_color.a;                                         // shape always from the decal texture

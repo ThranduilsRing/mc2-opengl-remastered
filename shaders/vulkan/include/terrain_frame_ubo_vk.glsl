@@ -18,7 +18,7 @@ layout(set = TERRAIN_RESOURCE_SET, binding = 0, std140) uniform TerrainFrameUBO 
     float atlasOneOverWorldUnits;  // off 88
     int   colormapReady;  // off 92
     int   useCement;  // off 96
-    int   cementGridSide;  // off 100
+    int   cementLayerCount;  // off 100
     float cementWUPT;  // off 104
     int   useTransitionMask;  // off 108
     int   cementDiagConnect;  // off 112
@@ -101,7 +101,7 @@ layout(set = TERRAIN_RESOURCE_SET, binding = 0, std140) uniform TerrainFrameUBO 
     float tintStrengthScale;  // off 764
     float snowBrightnessDampen;  // off 768
     float edgeFeatherStrength;  // off 772
-    int   cementAtlasSeamFix;  // off 776
+    int   reserved776;  // off 776
     int   shorelineOn;  // off 780
     int   shorelineHasMask;  // off 784
     float shorelineWaterElev;  // off 788
