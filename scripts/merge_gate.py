@@ -44,6 +44,7 @@ from lane_merge import git_bash, run_logged  # noqa: E402
 # The gate takes and drops the exclusive hold per stage, so a window never holds it for more than a stage (TTL 1200 s).
 EXCLUSIVE_PREFIXES = ("capture-before", "capture-after")
 EXCLUSIVE_TTL_S = 1200
+NIGHTLY_ROOT = Path(os.environ.get("MC2_NIGHTLY_ROOT", "A:/Games/mc2-nightly"))   # scripts/nightly_gate.py runs the gate here, detached at nifty
 EXCLUSIVE_SECONDS = []
 FAILED_STAGES = []
 ACTIVE_STATE = None
@@ -1916,15 +1917,8 @@ class Tee:
         self.log.flush()
 
 
-def main(argv=None):
-    FAILED_STAGES.clear()
-    ROW_RESULTS.clear()
-    TIMINGS.clear()
-    CLEANUP_ERRORS.clear()
-    CANDIDATE_ERRORS.clear()
+def build_parser():
     ap = argparse.ArgumentParser(description=__doc__)
-    if "MC2_IN_GATE" in os.environ:
-        ap.error("MC2_IN_GATE is set: nested merge gates are forbidden")
     ap.add_argument("--base", help="pre-window ancestor commit (required unless a verified window records it)")
     ap.add_argument("--preflight", action="store_true", help="offline input checks only; no leases, copies or launches")
     ap.add_argument("--window", type=int, help="merge-window number for known-failure expiry")
@@ -1957,6 +1951,18 @@ def main(argv=None):
     except OSError:
         jobs = "2"
     ap.add_argument("-j", type=int, default=int(jobs))
+    return ap
+
+
+def main(argv=None):
+    FAILED_STAGES.clear()
+    ROW_RESULTS.clear()
+    TIMINGS.clear()
+    CLEANUP_ERRORS.clear()
+    CANDIDATE_ERRORS.clear()
+    ap = build_parser()
+    if "MC2_IN_GATE" in os.environ:
+        ap.error("MC2_IN_GATE is set: nested merge gates are forbidden")
     args = ap.parse_args(argv)
     args.nightly = args.nightly or args.weekly
     args.full = args.full or args.nightly
@@ -2093,7 +2099,8 @@ def main(argv=None):
         ap.error("HEAD does not match --expect-head")
     if not args.dry_run:
         branch = git("branch", "--show-current")
-        if not args.install and (ROOT.resolve() != Path("A:/Games/mc2-main").resolve()
+        nightly_tree = args.isolated_verdict and ROOT.resolve() == NIGHTLY_ROOT.resolve()   # nightly_gate's own detached worktree
+        if not args.install and not nightly_tree and (ROOT.resolve() != Path("A:/Games/mc2-main").resolve()
                 or not (branch == "claude/nifty-mendeleev" or branch.startswith("claude/stage-"))):
             ap.error("real merge gates are orchestrator-only in mc2-main on claude/nifty-mendeleev or a claude/stage-<window> candidate; use --dry-run in lanes")
         if git("status", "--porcelain", "--untracked-files=no"):

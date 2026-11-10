@@ -9,13 +9,81 @@ import nightly_gate  # noqa: E402
 import lane_merge_stage  # noqa: E402
 
 
-def test_refuses_off_nifty_or_dirty(monkeypatch):
-    monkeypatch.setattr(nightly_gate, "git", lambda *a: "other" if a[0] == "branch" else "")
-    assert "not on" in nightly_gate.refusal()
-    monkeypatch.setattr(nightly_gate, "git", lambda *a: nightly_gate.NIFTY if a[0] == "branch" else " M x")
-    assert nightly_gate.refusal() == "mc2-main is dirty"
-    monkeypatch.setattr(nightly_gate, "git", lambda *a: nightly_gate.NIFTY if a[0] == "branch" else "")
+def test_refuses_only_when_the_nightly_worktree_is_dirty(monkeypatch, tmp_path):
+    """The gate runs in its own worktree: mc2-main's branch and dirty state never refuse the night."""
+    monkeypatch.setattr(nightly_gate, "ROOT", str(tmp_path))
+    monkeypatch.setattr(nightly_gate, "git", lambda *a, cwd=None: " M x" if cwd == str(tmp_path) else "other")
+    assert "nightly worktree" in nightly_gate.refusal()
+    monkeypatch.setattr(nightly_gate, "git", lambda *a, cwd=None: "" if cwd == str(tmp_path) else "other or dirty")
     assert nightly_gate.refusal() is None
+
+
+def test_plan_is_non_none_with_mc2_main_on_another_branch(monkeypatch):
+    import datetime
+
+    def fake_git(*a, cwd=None):
+        if a[:2] == ("tag", "-l"):
+            return "nifty-green-137-1d968ffd3\nnifty-green-138-aaaaaaaaa"
+        if a[0] == "rev-parse":
+            return "b" * 40
+        if a[0] == "branch":
+            return "claude/stage-139"   # mc2-main sits on a stage branch
+        if a[0] == "status":
+            return " M dirty-in-main"
+        return "merge fix W138: x"
+    monkeypatch.setattr(nightly_gate, "git", fake_git)
+    plan, why = nightly_gate.make_plan(False, datetime.date(2026, 11, 10))
+    assert plan and why is None and plan["base"] == "b" * 40 and plan["window"] == 138
+    assert plan["cmd"][-len(plan["names"]):] == plan["names"]
+    assert nightly_gate.ROOT == nightly_gate.NIGHTLY_ROOT != nightly_gate.MAIN_ROOT
+
+
+def _base_for(monkeypatch, tags):
+    shas = {t: t.rsplit("-", 1)[1] * 4 for t in tags}
+    monkeypatch.setattr(nightly_gate, "git", lambda *a, cwd=None: "\n".join(tags) if a[:2] == ("tag", "-l")
+                        else shas.get(a[-1][:-len("^{commit}")], "") if a[0] == "rev-parse" else "")
+    return shas
+
+
+def test_lettered_window_tags_order_by_number_then_suffix(monkeypatch):
+    tags = ["nifty-green-137-1111", "nifty-green-138-2222", "nifty-green-138b-3333"]
+    shas = _base_for(monkeypatch, tags)
+    assert nightly_gate.nightly_base() == shas["nifty-green-138-2222"]   # newest is 138b, so the base is 138
+    tags = ["nifty-green-138b-3333", "nifty-green-138c-4444"]
+    shas = _base_for(monkeypatch, tags)
+    assert nightly_gate.nightly_base() == shas["nifty-green-138b-3333"]
+
+
+def test_built_argv_parses_under_merge_gates_own_parser(monkeypatch):
+    import datetime
+    import merge_gate
+    monkeypatch.setattr(nightly_gate, "git", lambda *a, cwd=None: "nifty-green-137-1111\nnifty-green-138-2222" if a[:2] == ("tag", "-l")
+                        else "c" * 40 if a[0] == "rev-parse" else "merge W138: x")
+    plan, why = nightly_gate.make_plan(False, datetime.date(2026, 11, 10))
+    assert why is None
+    tail = plan["cmd"][plan["cmd"].index(next(c for c in plan["cmd"] if c.endswith("merge_gate.py"))) + 1:]
+    args = merge_gate.build_parser().parse_args(tail)
+    assert args.nightly and args.isolated_verdict and args.base == "c" * 40 and args.window == 138 and args.stages == plan["names"]
+
+
+def test_a_held_host_lease_runs_the_cpu_rows_only():
+    from smoke_lib import host_lease
+
+    def busy(label, timeout_s=None):
+        raise host_lease.HostLeaseBusy("held")
+    assert nightly_gate.wait_for_lease(5, acquire=busy, release=lambda: None) is False
+    got = []
+    assert nightly_gate.wait_for_lease(5, acquire=lambda label, timeout_s=None: got.append(timeout_s), release=lambda: got.append("rel")) is True
+    assert got == [5, "rel"]
+    cpu, game = nightly_gate.cpu_only(["deploy", "player-path", "determinism-mc2_01", "contracts"])
+    assert cpu == ["deploy", "contracts"] and game == ["player-path", "determinism-mc2_01"]
+    assert nightly_gate.LEASE_WAIT_S == 3600
+
+
+def test_merge_gate_and_nightly_agree_on_the_worktree():
+    import merge_gate
+    from pathlib import Path
+    assert merge_gate.NIGHTLY_ROOT == Path(nightly_gate.NIGHTLY_ROOT)
 
 
 def test_stage_selection_is_tier1_plus_deploy():
