@@ -135,3 +135,32 @@ def test_an_unprovisioned_lane_source_is_box_infra_not_a_silent_exit():
     rs = box_run.REMOTE
     i = rs.index("worktree prune")
     assert "exit 77" in rs[i:i + 700] and rs.index("tick source") > i
+
+
+def run_check(tmp_path, cmd, rc, logtext):
+    out = tmp_path / "out"
+    out.mkdir(exist_ok=True)
+    mark = out / ".rowmark"
+    mark.write_text("")
+    import os
+    os.utime(mark, (1000, 1000))
+    if logtext is not None:
+        (out / "diag.log").write_text(logtext)
+    script = tmp_path / "g.sh"
+    script.write_text(box_run.GAME_CHECK + 'game_not_run "$1" "$2" "$3" "$4" && echo NOT_RUN || echo OK\n', newline="\n")
+    r = subprocess.run([BASH, str(script), cmd, str(rc), str(out).replace("\\", "/"), str(mark).replace("\\", "/")], capture_output=True, text=True)
+    return r.stdout.strip()
+
+
+def test_a_row_that_never_launched_mc2_is_not_a_pass(tmp_path):
+    cmd = 'cd $I && for m in mc2_10; do ./mc2 --mission $m > $OUT/diag_$m.log 2>&1; done'
+    assert run_check(tmp_path, cmd, 0, None) == "NOT_RUN"                         # the perf-next case: rc 0, no game log
+    assert run_check(tmp_path, cmd, 0, "[VK_ENGINE_CONTEXT] device_name=x\n") == "OK"   # the engine logged: it ran
+    assert run_check(tmp_path, cmd, 3, None) == "OK"                              # a nonzero rc is already a FAIL
+    assert run_check(tmp_path, "echo hi", 0, None) == "OK"                        # rows that do not name mc2 are untouched
+
+
+def test_remote_exports_install_and_out_and_wires_the_game_check():
+    rs = box_run.REMOTE
+    assert "export I OUT S" in rs and rs.index("export I OUT S") < rs.index("game_not_run \"$cmd\"")
+    assert "GAME_NOT_RUN" in rs and "rc=81" in rs and subprocess.run([BASH, "-n"], input=rs.encode(), capture_output=True).returncode == 0

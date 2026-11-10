@@ -91,6 +91,16 @@ def write_payload_manifest(install, commit):
 # Box-wide build semaphore (owner P0 2026-11-10: 10 lanes ran `ninja -j16` at once on a ~17-CPU quota). A FIFO of ticket files in
 # $BQ named <ns-timestamp>.<lane>.<pid>; the first N live tickets build, the rest wait and print their position every 60 s.
 # One build at a time (MC2_BOX_BUILDS overrides) on the dedicated BUILD_CPUS of locks/cores.env, -j = how many cores that list holds, capped at the cgroup quota. Dead tickets (pid gone) are pruned by whoever looks.
+GAME_CHECK = r'''
+# A free-text row (gpu:/sh:/cpu:) that names the game binary but produced no engine log did not run the game: rc 0 must not become PASS.
+# game_not_run <cmd> <rc> <outdir> <marker>: 0 (true) when cmd mentions ./mc2 or $I/mc2, rc is 0 and no file under outdir newer than marker holds VK_ENGINE_CONTEXT.
+game_not_run() {
+  case "$1" in *'./mc2'*|*'$I/mc2'*|*'${I}/mc2'*) ;; *) return 1 ;; esac
+  [ "$2" = 0 ] || return 1
+  [ -z "$(find "$3" -type f -newer "$4" -exec grep -la 'VK_ENGINE_CONTEXT' {} + 2>/dev/null)" ]
+}
+'''
+
 BUILD_SEM = r'''
 BQ=${MC2_BOX_BUILDQ:-/workspace/locks/build.queue}; TK=""
 bq_ncpu() { local n=0 r a b; for r in ${1//,/ }; do a=${r%-*}; b=${r#*-}; n=$((n + b - a + 1)); done; echo "$n"; }   # "8-35" -> 28, "0-3,8" -> 5
@@ -151,6 +161,7 @@ T0=$(date +%s); tick() { echo "[box_run] stage=$1 secs=$(( $(date +%s) - T0 )) t
 }
 #@@END_LANE_FLOOR@@
 mkdir -p /workspace/locks $L $OUT
+export I OUT S   # free-text rows (sh:/cpu:/gpu:) run in a child bash and use $I (the install) and $OUT (this run's report dir): unexported they were empty and `cd $I` went home
 GOT=""; SB=""; WANTF=""; LWANT=/workspace/locks/$BR.want; trap '[ -n "${TK:-}" ] && rm -f "$TK"; rm -f "$LWANT"; [ -n "$WANTF" ] && rm -f "$WANTF"; [ -n "$SB" ] && rm -f /workspace/locks/$SB.owner /workspace/locks/$SB.row' EXIT   # a dead run must not leave a stale owner file
 exec 8>$L/.lane.lock; flock 8   # one run per lane at a time: src, install and out are shared (fd 8 is not passed on to rows)
 #@@DISK_GUARD@@
@@ -366,9 +377,11 @@ for row in "${ROWS[@]}"; do
     fi ;;
   esac
   [ -n "$GOT" ] && [ "$RUN" = gr ] && echo "$row" > /workspace/locks/$SB.row   # STATUS.json shows the row the GPU is on
+  RMARK=$OUT/.rowmark; touch $RMARK
   case $row in unit|unit-san) bq_acquire;; esac   # unit builds queue behind every other build on the box
   $RUN timeout -k 30 $TMO bash -c 'cd "$1" && eval "$2"' _ "$S" "$cmd" > $OUT/$name.log 2>&1; rc=$?
-  case $row in unit|unit-san) bq_release;; esac   # eval from argv: a row may carry spaces, quotes, slashes
+  case $row in unit|unit-san) bq_release;; esac
+  case $row in gpu:*|sh:*|cpu:*) game_not_run "$cmd" $rc "$OUT" "$RMARK" && { echo "[box_run] row=$row GAME_NOT_RUN: the command names mc2 but no engine log (VK_ENGINE_CONTEXT) was written; is \$I set and ./mc2 launched?"; rc=81; };; esac   # eval from argv: a row may carry spaces, quotes, slashes
   case $row in determinism:*|saveload*) [ $rc != 0 ] && grep -aq "baseline FAIL no baseline at\|check: no baseline for" $OUT/$name.log && rc=78;; esac   # NO_BASELINE: own verdict, never a plain FAIL
   echo "[box_run] row=$row rc=$rc"; grep -a "^| mc2_\|result=\|DEPLOY_FINGERPRINT\|FAIL\|PASS" $OUT/$name.log | head -8 | cut -c1-220
   [ "$row" = lint ] && grep -a "LINT FAIL" $OUT/$name.log | head -30 | cut -c1-300   # every red lint line comes back in the row summary
@@ -385,7 +398,7 @@ exit $RES
 
 _STDIO_KW = {"input", "stdin", "stdout", "stderr", "capture_output"}
 
-REMOTE = REMOTE.replace("#@@FRESH_FN@@", FRESH_FN + BUILD_SEM).replace("#@@CLIENT_TIE@@", CLIENT_TIE).replace("#@@BUILD_SEM_USE@@", "bq_acquire")
+REMOTE = REMOTE.replace("#@@FRESH_FN@@", FRESH_FN + BUILD_SEM + GAME_CHECK).replace("#@@CLIENT_TIE@@", CLIENT_TIE).replace("#@@BUILD_SEM_USE@@", "bq_acquire")
 
 
 def run(cmd, **kw):
