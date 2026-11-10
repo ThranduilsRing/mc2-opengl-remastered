@@ -39,14 +39,14 @@ bool trimCards = false;
 
 // One log line when a card cannot be loaded: its layer reuses a neighbouring card instead of
 // switching every card off (a lean install without the newer cards still draws vegetation).
-void reportMissingCards(const char* kind, const std::array<bool, 8>& present, const std::vector<int>& source) {
+void reportMissingCards(std::string_view kind, const std::array<bool, 8>& present, const std::vector<int>& source) {
     static constexpr std::array<const char*, 8> names{"grass_01", "grass_02", "grass_03", "grass_04",
         "bush_round", "bush_heath", "sapling_leaf", "sapling_pine"};
     std::string missing;
     for (size_t i = 0; i < present.size(); ++i)
         if (!present[i]) missing += std::string(missing.empty() ? "" : ",") + names[i] + "->" + names[static_cast<size_t>(source[i])];
     if (!missing.empty())
-        mc2::fmt::print_err("[VEG_CARDS] {} cards unavailable, layers reuse a neighbour: {}\n", kind, missing);
+        mc2::fmt::print_err("[VEG_GPU] {} cards unavailable, layers reuse a neighbour: {}\n", kind, missing);
 }
 
 // The old private vegetation_atlas_v2.png was never part of the payload. Build
