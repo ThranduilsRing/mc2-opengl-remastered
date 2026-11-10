@@ -136,12 +136,15 @@ def test_cleanup_dry_run_changes_nothing(lanes):
     assert (w / "lanes" / "zz_t").is_dir() and (w / "lanes" / ".box_lane_zz_t.sh").exists()
 
 
-def test_daily_retains_fixed_slots_after_merge():
+def test_daily_retains_fixed_slots_after_merge(tmp_path):
+    # run from a file: the script text has quotes/backslashes that Windows argv quoting breaks on `bash -c`
     script = (BOX / "lane_cleanup.sh").read_text().split('case "${ARGS[0]:-}"')[0]
-    r = bash(script + '\nouts() { :; }; nifty_ref() { echo tip; }; '
+    f = tmp_path / "daily.sh"
+    f.write_text(script + '\nouts() { :; }; nifty_ref() { echo tip; }; '
              'lane_dirs() { printf "box-lane-02\\nlegacy\\n"; }; '
              'hard_busy() { :; }; find() { :; }; merged() { return 0; }; '
-             'one() { echo "removed $1"; }; daily')
+             'one() { echo "removed $1"; }; daily', newline="\n")
+    r = bash(f'bash "{f.as_posix()}"')
     assert r.returncode == 0 and r.stdout.strip() == "removed legacy", r.stdout + r.stderr
 
 
