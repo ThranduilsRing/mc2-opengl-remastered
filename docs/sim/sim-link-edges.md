@@ -9,7 +9,7 @@ definitions, include directories and PCH are those of mc2. It names only `mc2_ga
 
 A static archive links nothing, so the measurable boundary is its undefined symbols. Measured on the box (Linux clang, `nm -A --undefined-only
 libmc2_sim.a`, symbols defined inside the archive removed, each remainder assigned to the library or object set that defines it; raw output in
-E:/mc2-archive-2026-10/proofs/sim-kernel-lib-s1/edges.txt). 280 external symbols:
+E:/mc2-archive-2026-10/proofs/sim-kernel-lib-s1/edges.txt). 372 external symbols:
 
 | Owner of the symbol | Count | Meaning |
 |---|---|---|
