@@ -39,6 +39,8 @@ import console_child
 
 REPO = Path(__file__).resolve().parents[1]
 COOK_ROOT = "tests/terrain/beautify"
+sys.path.insert(0, str(REPO / "tools"))
+import fs_links  # noqa: E402
 
 # The byproduct patterns live in check-deploy-hygiene.py; import them so the two
 # tools can never drift apart.
@@ -48,26 +50,6 @@ HYGIENE = importlib.util.module_from_spec(_hygiene_spec)
 _hygiene_spec.loader.exec_module(HYGIENE)
 
 REFUSED_ABS_ROOTS = ("a:/games/mc2 opengl remastered", "e:/mc2-archive-2026-10")
-
-REPARSE_POINT = 0x400  # FILE_ATTRIBUTE_REPARSE_POINT
-
-
-def _is_link(path):
-    """Symlink or Windows junction/mount point.
-
-    Since Python 3.13 islink()/is_symlink() report S_IFLNK for symbolic links
-    only, so a junction (reparse point, not S_IFLNK) slips through and
-    os.walk(followlinks=False) descends into it; the raw attribute catches it.
-    """
-    if os.path.islink(path):
-        return True
-    if os.name == "nt":
-        try:
-            attrs = os.stat(path, follow_symlinks=False).st_file_attributes
-        except (OSError, AttributeError):
-            return False
-        return bool(attrs & REPARSE_POINT)
-    return False
 
 
 def refusal_reason(install):
@@ -104,15 +86,14 @@ def find_byproducts(install, tracked_names):
     if not missions.is_dir():
         return found
     for beauty in sorted(missions.iterdir()):
-        if _is_link(beauty) or not beauty.is_dir():
+        if fs_links.is_link_or_junction(beauty) or not beauty.is_dir():
             continue
         if not beauty.name.casefold().endswith(".beauty"):
             continue
-        for dirpath, dirs, files in os.walk(beauty, followlinks=False):
-            dirs[:] = [d for d in dirs if not _is_link(os.path.join(dirpath, d))]
+        for dirpath, dirs, files in fs_links.walk_no_links(beauty):
             for fn in sorted(files):
                 full = os.path.join(dirpath, fn)
-                if _is_link(full) or not os.path.isfile(full):
+                if not os.path.isfile(full):
                     continue
                 if fn.casefold() in tracked_names:
                     continue

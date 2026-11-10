@@ -267,3 +267,41 @@ def test_file_link_failure_falls_back_to_independent_copy(tmp_path, monkeypatch)
     monkeypatch.setattr(os, "symlink", denied)
     assert mod_smoke.place_file(source, dest) == "copy"
     assert dest.read_bytes() == b"asset" and not os.path.samefile(source, dest)
+
+
+def _make_junction(link, target):
+    import subprocess
+    r = subprocess.run(["cmd", "/c", "mklink", "/J", str(link), str(target)],
+                       capture_output=True, text=True)
+    if r.returncode != 0:
+        pytest.skip(f"cannot create junction: {r.stderr.strip() or r.stdout.strip()}")
+
+
+def test_place_tree_does_not_follow_junction_dirs(tmp_path):
+    source, staged, outside = (tmp_path / n for n in ("source", "staged", "outside"))
+    source.mkdir()
+    (source / "real.fit").write_bytes(b"real")
+    outside.mkdir()
+    (outside / "victim.fit").write_bytes(b"outside")
+    _make_junction(source / "linked", outside)
+    stats = mod_smoke.place_tree(source, staged)
+    assert stats["files"] == 1
+    assert (staged / "real.fit").read_bytes() == b"real"
+    assert not (staged / "linked").exists()
+    assert (outside / "victim.fit").is_file()
+
+
+def test_refresh_layer_does_not_unlink_through_junctions(tmp_path):
+    layer, target, outside = (tmp_path / n for n in ("layer", "target", "outside"))
+    (layer / "data").mkdir(parents=True)
+    (layer / "data/keep.fit").write_bytes(b"keep")
+    (target / "data").mkdir(parents=True)
+    (target / "data/keep.fit").write_bytes(b"stale")
+    (target / "data/stale.fit").write_bytes(b"stale")
+    outside.mkdir()
+    (outside / "victim.fit").write_bytes(b"outside")
+    _make_junction(target / "data" / "linked", outside)
+    mod_smoke.refresh_layer(layer, target)
+    assert (outside / "victim.fit").is_file()
+    assert (target / "data/keep.fit").read_bytes() == b"keep"
+    assert not (target / "data/stale.fit").exists()
