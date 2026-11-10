@@ -91,8 +91,11 @@ def test_nested_junction_in_scratch_is_refused(mod, tmp_path):
     (outside / "data" / "stolen.txt").write_text("outside")
     link = mod / ".scratch" / "data" / "linked"
     link.parent.mkdir(parents=True)
+    import sys
+    sys.path.append(str(Path(__file__).resolve().parents[2] / "scripts"))
+    import console_child
     r = subprocess.run(["cmd", "/c", "mklink", "/J", str(link), str(outside)],
-                       capture_output=True, text=True)
+                       capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     if r.returncode != 0:
         pytest.skip(f"cannot create junction: {r.stderr.strip() or r.stdout.strip()}")
     with pytest.raises(ValueError, match="scratch must not contain"):

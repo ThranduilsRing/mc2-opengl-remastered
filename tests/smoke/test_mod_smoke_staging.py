@@ -271,8 +271,10 @@ def test_file_link_failure_falls_back_to_independent_copy(tmp_path, monkeypatch)
 
 def _make_junction(link, target):
     import subprocess
+    sys.path.append(str(Path(__file__).resolve().parents[2] / "scripts"))
+    import console_child
     r = subprocess.run(["cmd", "/c", "mklink", "/J", str(link), str(target)],
-                       capture_output=True, text=True)
+                       capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     if r.returncode != 0:
         pytest.skip(f"cannot create junction: {r.stderr.strip() or r.stdout.strip()}")
 

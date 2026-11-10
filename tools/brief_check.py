@@ -27,6 +27,9 @@ import re
 import subprocess
 import sys
 
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts"))
+import console_child  # noqa: E402  (git children without a console window)
+
 #: A drive path (a lone letter, / or \; the lookbehind keeps "https:" from reading as a drive),
 #: a relative repo path (segments with a / and a file extension; the lookbehind keeps URL hosts out),
 #: or a maximal 7-12 lowercase-hex run (a git short sha; longer runs are not extracted).
@@ -77,14 +80,15 @@ def check_path(cite: str, repo: str) -> str:
 
 def check_sha(cite: str, repo: str) -> str:
     r = subprocess.run(["git", "-C", repo, "cat-file", "-e", cite + "^{commit}"],
-                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE, **console_child.child_kwargs(redirected=True))
     return "OK" if r.returncode == 0 else "UNKNOWN"
 
 
 def default_repo() -> str:
     try:
         r = subprocess.run(["git", "rev-parse", "--show-toplevel"], cwd=os.getcwd(),
-                           stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                           stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                           **console_child.child_kwargs(redirected=True))
         if r.returncode == 0 and r.stdout.strip():
             return r.stdout.strip()
     except OSError:

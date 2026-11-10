@@ -82,12 +82,13 @@ def test_dead_waiter_ticket_does_not_block(tmp_path):
 
 def test_sweep_stale_scratch_skips_junctions(tmp_path):
     import subprocess
+    import console_child
     outside = tmp_path / "outside"
     (outside / "tree").mkdir(parents=True)
     (outside / "tree" / "f.txt").write_text("x")
     link = tmp_path / "lane-lint-junc0001"
     r = subprocess.run(["cmd", "/c", "mklink", "/J", str(link), str(outside)],
-                       capture_output=True, text=True)
+                       capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     if r.returncode != 0:
         pytest.skip(f"cannot create junction: {r.stderr.strip() or r.stdout.strip()}")
     old = time.time() - 3 * 3600

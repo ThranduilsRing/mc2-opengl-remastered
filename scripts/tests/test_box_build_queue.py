@@ -20,6 +20,8 @@ import box_run
 import box_health
 import box_health_remote as bhr
 import box_supervisor as sup
+sys.path.append(str(ROOT / "scripts"))
+import console_child  # noqa: E402  (no console window for the bash children)
 
 BASH = shutil.which("bash") or "bash"
 
@@ -29,7 +31,8 @@ def run_sem(tmp_path, body, cpus="8-35", extra_env=None, timeout=60):
     script.write_text("set -u\nBR=lane-a\n" + box_run.BUILD_SEM + body, newline="\n")
     env = {"MC2_BOX_BUILDQ": str(tmp_path / "q").replace("\\", "/"), "BUILD_CPUS": cpus, "MC2_BOX_BUILDQ_POLL": "0.2", "PATH": __import__("os").environ["PATH"]}
     env.update(extra_env or {})
-    return subprocess.run([BASH, str(script)], capture_output=True, text=True, timeout=timeout, env=env)
+    return subprocess.run([BASH, str(script)], capture_output=True, text=True, timeout=timeout, env=env,
+                          **console_child.child_kwargs(redirected=True))
 
 
 def test_j_is_the_build_cpu_count_capped_at_the_quota_and_one_build_at_a_time(tmp_path):
@@ -79,7 +82,7 @@ def test_remote_script_uses_the_semaphore_and_client_tie():
     assert "#@@CLIENT_TIE@@" not in rs and "#@@BUILD_SEM_USE@@" not in rs and "#@@FRESH_FN@@" not in rs
     assert "bq_acquire" in rs and "bq_release" in rs and "-j$BUILD_J mc2" in rs and "-j16" not in rs and "-j$BUILD_J -k 0" in rs and "32-63" not in rs
     assert "client gone" in rs and "grep -q '^sshd'" in rs
-    assert subprocess.run([BASH, "-n"], input=rs.encode(), capture_output=True).returncode == 0
+    assert subprocess.run([BASH, "-n"], input=rs.encode(), capture_output=True, **console_child.child_kwargs(redirected=True)).returncode == 0
     # the lane trap releases a held ticket on any exit
     assert '[ -n "${TK:-}" ] && rm -f "$TK"' in rs
 
@@ -155,7 +158,8 @@ def run_check(tmp_path, cmd, rc, logtext):
         (out / "diag.log").write_text(logtext)
     script = tmp_path / "g.sh"
     script.write_text(box_run.GAME_CHECK + 'game_not_run "$1" "$2" "$3" "$4" && echo NOT_RUN || echo OK\n', newline="\n")
-    r = subprocess.run([BASH, str(script), cmd, str(rc), str(out).replace("\\", "/"), str(mark).replace("\\", "/")], capture_output=True, text=True)
+    r = subprocess.run([BASH, str(script), cmd, str(rc), str(out).replace("\\", "/"), str(mark).replace("\\", "/")], capture_output=True, text=True,
+                       **console_child.child_kwargs(redirected=True))
     return r.stdout.strip()
 
 
@@ -170,7 +174,8 @@ def test_a_row_that_never_launched_mc2_is_not_a_pass(tmp_path):
 def test_remote_exports_install_and_out_and_wires_the_game_check():
     rs = box_run.REMOTE
     assert "export I OUT S" in rs and rs.index("export I OUT S") < rs.index("game_not_run \"$cmd\"")
-    assert "GAME_NOT_RUN" in rs and "rc=81" in rs and subprocess.run([BASH, "-n"], input=rs.encode(), capture_output=True).returncode == 0
+    assert "GAME_NOT_RUN" in rs and "rc=81" in rs and subprocess.run([BASH, "-n"], input=rs.encode(), capture_output=True,
+                                                                     **console_child.child_kwargs(redirected=True)).returncode == 0
 
 
 def test_waiting_line_parse_names_position_holder_and_progress_age(tmp_path):

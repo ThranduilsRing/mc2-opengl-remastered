@@ -176,7 +176,11 @@
     "tools/mc2texcook/repack_ktx2.py": "Runs only the KTX-Software ktx console tool (captured) to repack and validate textures; never launches the engine.",
     "tools/rga_census.py": "Runs only the Radeon GPU Analyzer offline compiler (rga, captured, console_child) on SPIR-V; never launches the engine.",
     "tools/texcook/cook_bc7enc.py": "Runs only the bc7enc console encoder (captured) on source textures; never launches the engine.",
-    "tools/terrain_export/render_matched.py": "Starts only headless Blender (-b, CREATE_NO_WINDOW, stdout to DEVNULL) for offline proof renders; never launchesthe game."
+    "tools/terrain_export/render_matched.py": "Starts only headless Blender (-b, CREATE_NO_WINDOW, stdout to DEVNULL) for offline proof renders; never launchesthe game.",
+    "scripts/tests/test_box_build_queue.py": "Runs only Git bash (shutil.which('bash')) on generated box_run shell snippets and `bash -n` syntax checks, captured, console_child; never the game.",
+    "scripts/tests/test_foliage_night_ambient.py": "Runs only the shader tools glslangValidator, spirv-opt and spirv-dis (shader_common.find_tool), captured; never the game.",
+    "scripts/tests/test_tree_retexture.py": "Runs only texconv (texcook.TEXCONV) to decode a cooked KTX2 back to PNG, captured; never the game.",
+    "tools/test_brief_check.py": "Runs only the Python interpreter on tools/brief_check.py and git on a throwaway repo, captured; never the game."
   },
   "input_injection": {
     "scripts/game_auto.py": "synthetic-input driver; keys, chords and clicks gated by keys_allowed()/allow_foreground()",

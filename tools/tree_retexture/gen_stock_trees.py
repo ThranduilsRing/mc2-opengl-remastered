@@ -33,7 +33,7 @@ REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "tools"))
 from content_pipeline import texcook  # noqa: E402
 
-STOCK_DIR = Path("A:/Games/mc2-opengl/mc2-win64-v0.4c/data/tgl/128")   # golden install, read only
+STOCK_DIR = Path("A:/Games/mc2-opengl/mc2-win64-v0.4c/data/tgl/128")   # golden install, read only  # drive-path: ok PC-only cook source; laptop_gate provisions the cooked sidecars
 PALETTE = REPO / "data/vegetation/palettes/mc2_01.json"
 PINS = REPO / "data/kit/stock-textures.json"
 SIZE = 1024
