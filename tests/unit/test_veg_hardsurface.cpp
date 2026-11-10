@@ -85,6 +85,43 @@ TEST_CASE("VegClumps/load shipped biome recipes and reject unsafe mod recipes") 
     CHECK(wet.count>dry.count);
 }
 
+TEST_CASE("VegField/grasslands carpets its ground; other biomes and bad mod recipes do not") {
+    const auto root=std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
+    for (const char* name : {"grasslands","grasslands_dense"}) {
+        std::ifstream input(root/"data/vegetation/schemas"/(std::string(name)+".json"));
+        CHECK(readFieldRecipe(nlohmann::json::parse(input,nullptr,false)).has_value());
+    }
+    for (const char* name : {"snow","desert","swamp"}) {
+        std::ifstream input(root/"data/vegetation/schemas"/(std::string(name)+".json"));
+        CHECK_FALSE(readFieldRecipe(nlohmann::json::parse(input,nullptr,false)).has_value());
+    }
+    for (const char* bad : {"{\"field\":{\"spacing\":1,\"height\":4}}", "{\"field\":{\"spacing\":6,\"height\":99}}",
+                            "{\"field\":{\"spacing\":\"x\",\"height\":4}}", "{\"field\":[]}"})
+        CHECK_FALSE(readFieldRecipe(nlohmann::json::parse(bad)).has_value());
+}
+
+TEST_CASE("VegField/even stratified carpet that always fits the remaining budget") {
+    // Authored density when it fits; coarsened (never truncated mid-scan) when it does not.
+    CHECK(fieldBladeSide(33.0f, 6.0f, 10'000'000, 100'000) == 6);
+    CHECK(fieldBladeSide(33.0f, 6.0f, 2'000'000, 100'000) == 4);
+    CHECK(fieldBladeSide(33.0f, 6.0f, 50, 100'000) == 0);
+    CHECK(fieldBladeSide(33.0f, 6.0f, 0, 0) == 6);
+    const FieldRecipe recipe{6.0f, 4.5f};
+    const int k = 6;
+    int cellsHit[36] = {};
+    for (int j = 0; j < k*k; ++j) {
+        const auto a = fieldBlade(7,9,mapSeed("mc2_01"),j,k,33.0f,recipe);
+        const auto b = fieldBlade(7,9,mapSeed("mc2_01"),j,k,33.0f,recipe);
+        CHECK(a.x == b.x); CHECK(a.y == b.y); CHECK(a.frame == b.frame);       // deterministic per map
+        REQUIRE(a.x >= 0.0f); REQUIRE(a.x < 33.0f); REQUIRE(a.y <= 0.0f); REQUIRE(a.y > -33.0f);
+        CHECK((a.frame & kFieldBladeBit) != 0u); CHECK((a.frame & 7u) < 4u);  // grass layers only
+        CHECK((a.frame >> 4u) == 0u);                                           // role/weed/snow bits clear
+        CHECK(a.scale >= 0.7f*4.5f); CHECK(a.scale <= 1.3f*4.5f);
+        ++cellsHit[static_cast<int>(a.x/5.5f) + k*static_cast<int>(-a.y/5.5f)];
+    }
+    for (int hit : cellsHit) CHECK(hit == 1);   // one blade per sub-cell: no clumps, no bare patches
+}
+
 TEST_SUITE("VegHardSurface") {
 
 TEST_CASE("cover density falls smoothly and monotonically with coverage") {

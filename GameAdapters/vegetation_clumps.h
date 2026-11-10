@@ -93,6 +93,42 @@ inline Clump makeClump(int x, int y, uint32_t seed, const ClumpRecipe& recipe,
     }
     return result;
 }
+// Meadow field (grass-field 2026-11-10): an even carpet of single grass blades
+// under the clumps, so open grass reads as one continuous field instead of
+// isolated tufts. Atlas frame bit 3 marks a field blade (low bits keep the
+// grass layer 0-3); the shader leans it downwind and rolls gust bands over it.
+inline constexpr unsigned kFieldBladeBit = 8u;
+struct FieldRecipe { float spacing = 6.0f, height = 4.5f; };
+// Absent "field" = no carpet (mods and other biomes keep their clumps only).
+inline std::optional<FieldRecipe> readFieldRecipe(const nlohmann::json& doc) {
+    if (!doc.is_object() || !doc.contains("field") || !doc["field"].is_object()) return std::nullopt;
+    const auto& f = doc["field"];
+    for (const char* key : {"spacing", "height"})
+        if (!f.contains(key) || !f[key].is_number()) return std::nullopt;
+    const float spacing = f["spacing"].get<float>(), height = f["height"].get<float>();
+    if (!(spacing >= 3 && spacing <= 32 && height >= 1 && height <= 12)) return std::nullopt;
+    return FieldRecipe{spacing, height};
+}
+// Blades per placement cell on a k x k stratified grid. The authored spacing is
+// coarsened until every candidate cell fits the budget, so the cap never cuts
+// the scan short (an empty south half) and density stays even across the map.
+inline int fieldBladeSide(float gridStep, float spacing, long budget, long fieldCells) {
+    int k = std::clamp(static_cast<int>(std::lround(gridStep / spacing)), 0, 8);
+    while (k > 0 && static_cast<long>(k) * k * fieldCells > budget) --k;
+    return k;
+}
+struct FieldBlade { float x, y, scale, yaw, seed; unsigned frame; };
+// Blade j of a k x k cell grid, offsets from the cell origin in world units.
+inline FieldBlade fieldBlade(int col, int row, uint32_t seed, int j, int k,
+                             float gridStep, const FieldRecipe& recipe) {
+    const auto roll = [&](uint32_t salt) { return clumpRoll(col,row,seed,salt + static_cast<uint32_t>(j)*8u); };
+    const float sub = gridStep / static_cast<float>(k);
+    const float x = (static_cast<float>(j % k) + roll(300)) * sub;
+    const float y = (static_cast<float>(j / k) + roll(301)) * sub;
+    const float scale = recipe.height * (0.7f + 0.6f * roll(302));
+    return {x, -y, scale, roll(303) * 6.2831853f, roll(304),
+            kFieldBladeBit | static_cast<unsigned>(roll(305) * 4.0f)};
+}
 // MOVE overlay value 3 is ordinary ground in stock maps. The road flag is
 // authoritative; build-only flags overlap runtime pathlocks and are not masks.
 template<class Cell> inline bool clumpStaticOccupied(Cell cell) {
