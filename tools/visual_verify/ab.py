@@ -498,6 +498,10 @@ def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None, cross_
 # Saves live under the user data dir (code/mechcmd2.cpp:445), not the install. cache/content-model (5 GB) is content-addressed and
 # only written on a miss, so it stays hardlinked.
 GAME_WRITTEN_SUFFIXES = {".cfg", ".ini", ".txt", ".log", ".csv", ".json", ".jsonl", ".old", ".tmp", ".bak"}
+# Top-level binaries/archives are memory-mapped by any running game; Windows refuses to delete ANY hardlink of a mapped file
+# (WinError 5), so a hardlinked stage could not be removed while another lane's game ran (11-10: avcodec-61.dll, textures.fst).
+# Copied instead (~400 MB per side).
+MAPPED_SUFFIXES = {".dll", ".exe", ".fst"}
 GAME_WRITTEN_COPY_PREFIXES = ("saved_bookmarks/", "cache/vulkan/")
 GAME_WRITTEN_EMPTY_DIRS = ("debug_state", "crashes")
 DISK_GUARD_FREE_GB = 30
@@ -509,7 +513,7 @@ def stage_kind(rel: str) -> str:
     rel = rel.replace("\\", "/")
     if rel.split("/", 1)[0] in GAME_WRITTEN_EMPTY_DIRS:
         return "skip"
-    if rel.startswith(GAME_WRITTEN_COPY_PREFIXES) or ("/" not in rel and Path(rel).suffix.lower() in GAME_WRITTEN_SUFFIXES):
+    if rel.startswith(GAME_WRITTEN_COPY_PREFIXES) or ("/" not in rel and Path(rel).suffix.lower() in GAME_WRITTEN_SUFFIXES | MAPPED_SUFFIXES):
         return "copy"
     return "link"
 
@@ -588,16 +592,22 @@ def stage_tree(install: Path, dest: Path) -> dict:
 
 def cleanup_stage(staged, keep=False) -> None:
     """Delete the staged install dirs this run created (never a user-supplied install) and their now-empty stage root."""
+    stuck = []
+
     def onexc(func, path, _exc):
-        os.chmod(path, 0o700)
-        func(path)
+        try:
+            os.chmod(path, 0o700)
+            func(path)
+        except OSError as exc:
+            stuck.append(f"{path}: {exc}")
     for d in map(Path, staged):
         if keep:
             print(f"[ab] --keep-stage: leaving {d}", flush=True)
             continue
         if d.exists():
             shutil.rmtree(d, onexc=onexc)
-            print(f"[ab] stage removed: {d}", flush=True)
+            print(f"[ab] stage removed: {d}" if not stuck else
+                  f"[ab] !!! stage NOT fully removed: {d} ({len(stuck)} files, first: {stuck[0]}); delete it by hand", flush=True)
         for level, parent in enumerate((d.parent, d.parent.parent)):  # the run dir, then the default _ab-stage root, each only when empty
             if level and parent.name != "_ab-stage":
                 break

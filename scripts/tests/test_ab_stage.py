@@ -14,7 +14,7 @@ import ab  # noqa: E402
 
 def _install(root: Path) -> Path:
     for rel, data in {
-        "mc2.exe": b"exe", "shaders/vulkan/x.spv": b"spv", "data/big.fst": b"shared data", "cache/content-model/m.bin": b"cooked",
+        "mc2.exe": b"exe", "top.fst": b"fst", "shaders/vulkan/x.spv": b"spv", "data/big.fst": b"shared data", "cache/content-model/m.bin": b"cooked",
         "options.cfg": b"cfg", "imgui.ini": b"ini", "run.log": b"log", "saved_bookmarks/x.json": b"{}",
         "cache/vulkan/p.bin": b"pipe", "debug_state/trace.jsonl": b"t", "crashes/d.dmp": b"dump",
     }.items():
@@ -28,7 +28,7 @@ def test_stage_hardlinks_shared_data_and_copies_game_written(tmp_path):
     src = _install(tmp_path / "inst")
     stats = ab.stage_tree(src, tmp_path / "stage")
     assert not stats["fallback"]
-    for rel in ("data/big.fst", "cache/content-model/m.bin", "mc2.exe"):
+    for rel in ("data/big.fst", "cache/content-model/m.bin"):
         assert os.stat(tmp_path / "stage" / rel).st_nlink > 1, rel
         assert os.path.samestat(os.stat(src / rel), os.stat(tmp_path / "stage" / rel)), rel
 
@@ -36,7 +36,7 @@ def test_stage_hardlinks_shared_data_and_copies_game_written(tmp_path):
 def test_game_written_files_are_real_copies(tmp_path):
     src = _install(tmp_path / "inst")
     ab.stage_tree(src, tmp_path / "stage")
-    for rel in ("options.cfg", "imgui.ini", "run.log", "saved_bookmarks/x.json", "cache/vulkan/p.bin"):
+    for rel in ("mc2.exe", "top.fst", "options.cfg", "imgui.ini", "run.log", "saved_bookmarks/x.json", "cache/vulkan/p.bin"):
         staged = tmp_path / "stage" / rel
         assert staged.read_bytes() == (src / rel).read_bytes() and not os.path.samestat(os.stat(src / rel), os.stat(staged)), rel
     # output-only dirs are staged empty
@@ -132,7 +132,7 @@ def test_disk_guard_counts_stage_size_and_blocks_main(tmp_path, monkeypatch):
 def test_estimate_is_only_the_copied_files_on_one_volume(tmp_path):
     inst = _install(tmp_path / "inst")
     est = ab.estimate_stage_bytes(inst, tmp_path / "stage")
-    assert est == len(b"cfg") + len(b"ini") + len(b"log") + len(b"{}") + len(b"pipe")
+    assert est == len(b"exe") + len(b"fst") + len(b"cfg") + len(b"ini") + len(b"log") + len(b"{}") + len(b"pipe")
 
 
 def test_shaders_a_stages_side_a_with_the_other_shaders_and_fixes_the_manifest(tmp_path, monkeypatch):
@@ -177,3 +177,14 @@ def test_main_prints_commit_report_after_capture(tmp_path, monkeypatch, capsys):
         ab.main(["--bookmarks", "x", "--exe-a", str(ea), "--exe-b", str(eb), "--install", str(inst), "--out-root", str(tmp_path / "o")])
     out = capsys.readouterr().out
     assert "CAPTURE src_commit A=" in out and "STALE" in out
+
+
+def test_cleanup_reports_a_stuck_file_instead_of_raising(tmp_path, monkeypatch, capsys):
+    d = tmp_path / "_ab-stage" / "ab_x" / "install_a"
+    d.mkdir(parents=True)
+
+    def stuck_rmtree(path, onexc):  # Windows refuses to delete a file mapped by another running game
+        onexc(lambda p: (_ for _ in ()).throw(PermissionError("mapped")), str(path / "f.dll"), None)
+    monkeypatch.setattr(ab.shutil, "rmtree", stuck_rmtree)
+    ab.cleanup_stage([d])
+    assert "NOT fully removed" in capsys.readouterr().out
