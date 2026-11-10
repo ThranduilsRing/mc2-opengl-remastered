@@ -16,6 +16,7 @@
 #include "vk_island_util.h"
 #include "vk_one_shot.h"
 #include "vulkan_context.h"
+#include "vk_dynamic_rendering.h"
 #include "vk_barrier_batch_vk.h"
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "vulkan_sky_island.h"
@@ -84,8 +85,7 @@ struct Island : mc2vk::IslandState {
 
     mc2vk::OwnedCommandPool cpool[mc2vk::kMaxFramesInFlight];   // per-slot pools: vkResetCommandPool per frame; cpool[0] also serves the synchronous one-shot
     mc2vk::OwnedSampler samp;
-    mc2vk::OwnedRenderPass rpass;
-    mc2vk::OwnedFramebuffer fb;
+    VkFormat sceneFmt = VK_FORMAT_UNDEFINED, depthFmt = VK_FORMAT_UNDEFINED;   // the pass is dynamic rendering: pipelines carry these formats
     mc2vk::OwnedDescriptorSetLayout dsl;
     mc2vk::OwnedDescriptorPool pool;
     mc2vk::OwnedShaderModule vert, frag;
@@ -272,45 +272,9 @@ bool init_island(Island* s, int w, int h) {
         sci.maxLod = VK_LOD_CLAMP_NONE;
         if (!mc2vk::create(s->samp, s->device, [&](VkSampler* h) { return vkCreateSampler(s->device, &sci, nullptr, h); })) { setFallback("sampler_failed"); return false; }
     }
-    {   // render pass: LOAD color0 + depth (depth is read-only in use; stored unchanged)
-        VkImageResource* colorRes = s->colorRes;
-        VkImageResource* depthRes = reinterpret_cast<VkImageResource*>(s->depthRes);
-        VkAttachmentDescription att[2]{};
-        att[0].format = colorRes->format; att[0].samples = VK_SAMPLE_COUNT_1_BIT;
-        att[0].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        att[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        att[0].initialLayout = att[0].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        att[1].format = depthRes->format; att[1].samples = VK_SAMPLE_COUNT_1_BIT;
-        att[1].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        att[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
-        att[1].initialLayout = att[1].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-        VkAttachmentReference colorRef{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
-        VkAttachmentReference depthRef{1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
-        VkSubpassDescription sub{};
-        sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        sub.colorAttachmentCount = 1; sub.pColorAttachments = &colorRef; sub.pDepthStencilAttachment = &depthRef;
-        VkSubpassDependency deps[2]{};
-        deps[0].srcSubpass = VK_SUBPASS_EXTERNAL; deps[0].dstSubpass = 0;
-        deps[0].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-        deps[0].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        deps[0].dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        deps[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
-                                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        deps[1].srcSubpass = 0; deps[1].dstSubpass = VK_SUBPASS_EXTERNAL;
-        deps[1].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-        deps[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        deps[1].dstStageMask  = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT; deps[1].dstAccessMask = 0;
-        VkRenderPassCreateInfo rpci{};
-        rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        rpci.attachmentCount = 2; rpci.pAttachments = att; rpci.subpassCount = 1; rpci.pSubpasses = &sub;
-        rpci.dependencyCount = 2; rpci.pDependencies = deps;
-        if (!mc2vk::create(s->rpass, s->device, [&](VkRenderPass* h) { return vkCreateRenderPass(s->device, &rpci, nullptr, h); })) { setFallback("renderpass_failed"); return false; }
-        VkImageView fbViews[2] = { colorRes->view.get(), depthRes->view.get() };
-        VkFramebufferCreateInfo fci{};
-        fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        fci.renderPass = s->rpass.get(); fci.attachmentCount = 2; fci.pAttachments = fbViews;
-        fci.width = static_cast<uint32_t>(w); fci.height = static_cast<uint32_t>(h); fci.layers = 1;
-        if (!mc2vk::create(s->fb, s->device, [&](VkFramebuffer* h) { return vkCreateFramebuffer(s->device, &fci, nullptr, h); })) { setFallback("framebuffer_failed"); return false; }
+    {   // scene pass formats: colour0 + depth LOAD/STORE (depth is read-only in use, stored unchanged); recorded with dynamic rendering, no VkRenderPass/VkFramebuffer
+        s->sceneFmt = s->colorRes->format;
+        s->depthFmt = reinterpret_cast<VkImageResource*>(s->depthRes)->format;
     }
     {   // descriptor: binding 0 = HDRI sampler
         VkDescriptorSetLayoutBinding b{};
@@ -370,7 +334,9 @@ bool init_island(Island* s, int w, int h) {
         gp.stageCount = 2; gp.pStages = stages; gp.pVertexInputState = &vin; gp.pInputAssemblyState = &ia;
         gp.pViewportState = &vps; gp.pRasterizationState = &rs; gp.pMultisampleState = &ms;
         gp.pDepthStencilState = &ds; gp.pColorBlendState = &cb; gp.pDynamicState = &dsci;
-        gp.layout = s->playout.get(); gp.renderPass = s->rpass.get(); gp.subpass = 0;
+        const VkPipelineRenderingCreateInfo prci = mc2vk::dynrender::pipelineInfo(1, &s->sceneFmt, s->depthFmt);
+        gp.pNext = &prci;
+        gp.layout = s->playout.get(); gp.renderPass = VK_NULL_HANDLE; gp.subpass = 0;
         if (!mc2vk::create(s->pipe, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) { setFallback("pipeline_failed"); return false; }
         mc2vk::nameObject(s->device, s->pipe.get(), "sky.pipe");
     }
@@ -442,20 +408,20 @@ extern "C" int mc2_vk_sky_island_run(int w, int h) {
     std::memcpy(pc.invProj, p.invProj, sizeof(pc.invProj));
     for (int i = 0; i < 3; ++i) { pc.rotC0[i] = p.rot[i]; pc.rotC1[i] = p.rot[3 + i]; pc.rotC2[i] = p.rot[6 + i]; }
     pc.skyYaw = p.yaw;
-    const VkRenderPass rpass = s->rpass.get();
-    const VkFramebuffer fb = s->fb.get();
+    const VkImageView colorView = s->colorRes->view.get();
+    const VkImageView depthView = reinterpret_cast<VkImageResource*>(s->depthRes)->view.get();
+    const VkFormat depthFmt = s->depthFmt;
+    mc2vk::VulkanContext* const dctx = &rctx;
     const VkPipeline pipe = s->pipe.get();
     const VkPipelineLayout playout = s->playout.get();
     const VkDescriptorSet set = s->set;
-    auto record = [pc, rpass, fb, pipe, playout, set, w, h](VkCommandBuffer cb) -> bool {
+    auto record = [pc, dctx, colorView, depthView, depthFmt, pipe, playout, set, w, h](VkCommandBuffer cb) -> bool {
         VkCommandBufferBeginInfo bi{};
         bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO; bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
         if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) return false;
-        VkRenderPassBeginInfo rbi{};
-        rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO; rbi.renderPass = rpass; rbi.framebuffer = fb;
-        rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
         MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Sky");
-        vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+        mc2vk::dynrender::sceneLoadBarrier(*dctx, cb);
+        mc2vk::dynrender::beginLoad(*dctx, cb, static_cast<uint32_t>(w), static_cast<uint32_t>(h), 1, &colorView, depthView, depthFmt);
         VkViewport vp{0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
         VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
         vkCmdSetViewport(cb, 0, 1, &vp);
@@ -464,7 +430,7 @@ extern "C" int mc2_vk_sky_island_run(int w, int h) {
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, playout, 0, 1, &set, 0, nullptr);
         vkCmdPushConstants(cb, playout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
         mc2::battlebench::add(mc2::battlebench::DrawSky), vkCmdDraw(cb, 3, 1, 0, 0);
-        vkCmdEndRenderPass(cb);
+        mc2vk::dynrender::end(*dctx, cb);
         gpuScope.end();
         return vkEndCommandBuffer(cb) == VK_SUCCESS;
     };

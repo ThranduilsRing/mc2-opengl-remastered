@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in vulkan_water_island_internal.h.
 #include "vk_owned.h"
 #include "vulkan_water_island_internal.h"
+#include "vk_dynamic_rendering.h"
 
 
 
@@ -73,83 +74,10 @@ bool init_island(WaterIsland* s, int w, int h) {
     // Thin SSBOs (per parity slot) — start with a small ring; grows in run().
     if (!ensure_thin_capacity(s, 0, 64 * 1024)) return false; // ~1365 records to start
     if (!ensure_thin_capacity(s, 1, 64 * 1024)) return false;
-
-    // ---- Render pass: color0 (shared, LOAD scene color, alpha-blend, STORE) +
-    // color1 (gbuffer1, CLEAR, STORE local) + depth (LOAD imported, GEQUAL, write). ----
-    {
-        VkAttachmentDescription att[3]{};
-        // RUNG 6 tier1: LOAD-preserve pass over the shared scene GBuffer. Water
-        // runs after terrain/props/mechs wrote scene depth and must GEQUAL-test
-        // against it, exactly like the GL water draw does.
-        att[0].format = s->sColorRes->format; att[0].samples = VK_SAMPLE_COUNT_1_BIT;
-        att[0].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        att[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        att[0].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        att[0].finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        att[1].format = s->sNormalRes->format; att[1].samples = VK_SAMPLE_COUNT_1_BIT;
-        att[1].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        att[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        att[1].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        att[1].finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        att[2].format = s->sDepthRes->format; att[2].samples = VK_SAMPLE_COUNT_1_BIT;
-        att[2].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[2].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        att[2].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[2].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
-        att[2].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-        att[2].finalLayout   = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-        VkAttachmentReference colorRefs[2]{
-            {0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL},
-            {1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}};
-        VkAttachmentReference depthRef{2, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
-        VkSubpassDescription sub{};
-        sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        sub.colorAttachmentCount = 2; sub.pColorAttachments = colorRefs;
-        sub.pDepthStencilAttachment = &depthRef;
-
-        // Incoming + outgoing external deps — interop cross-frame WAW serialize (SSAO
-        // P1.5 pattern). WAW FIX: the shared color image is written every frame (CLEAR +
-        // water draw + STORE) across two parity slots; without an INCOMING external dep
-        // sync-val flags a WRITE_AFTER_WRITE between frame N's storeOp and frame N+1's
-        // color write (the GL semaphore serializes it functionally, but sync-val can't
-        // see across the GL boundary). deps[0]: order THIS frame's color+depth writes
-        // AFTER any prior color/depth write on the shared/local images. srcAccessMask
-        // includes COLOR_ATTACHMENT_WRITE so the prior store is a visible hazard source.
-        VkSubpassDependency deps[2]{};
-        deps[0].srcSubpass = VK_SUBPASS_EXTERNAL; deps[0].dstSubpass = 0;
-        deps[0].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-        deps[0].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        deps[0].dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        deps[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
-                                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        deps[0].dependencyFlags = 0;
-        // deps[1]: OUTGOING — the color store completes before the cross-API signal
-        // hands the image back to GL (dst = BOTTOM_OF_PIPE, no dstAccess).
-        deps[1].srcSubpass = 0; deps[1].dstSubpass = VK_SUBPASS_EXTERNAL;
-        deps[1].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        deps[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        deps[1].dstStageMask  = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-        deps[1].dstAccessMask = 0;
-
-        VkRenderPassCreateInfo rpci{};
-        rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        rpci.attachmentCount = 3; rpci.pAttachments = att;
-        rpci.subpassCount = 1; rpci.pSubpasses = &sub;
-        rpci.dependencyCount = 2; rpci.pDependencies = deps;
-        if (!mc2vk::create(s->rpass, s->device, [&](VkRenderPass* h) { return vkCreateRenderPass(s->device, &rpci, nullptr, h); })) {
-            vlog("vkCreateRenderPass failed."); return false;
-        }
-        VkImageView fbViews[3] = {
-            s->sColorRes->view.get(),   // shared scene color0 (MRT0)
-            s->sNormalRes->view.get(),  // shared scene normal (MRT1)
-            s->sDepthRes->view.get()    // shared scene depth
-        };
-        VkFramebufferCreateInfo fci{};
-        fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        fci.renderPass = s->rpass.get(); fci.attachmentCount = 3; fci.pAttachments = fbViews;
-        fci.width = static_cast<uint32_t>(w); fci.height = static_cast<uint32_t>(h); fci.layers = 1;
-        if (!mc2vk::create(s->fb, s->device, [&](VkFramebuffer* h) { return vkCreateFramebuffer(s->device, &fci, nullptr, h); })) {
-            vlog("vkCreateFramebuffer failed."); return false;
-        }
-    }
+    // ---- Scene pass (VK_KHR_dynamic_rendering, no VkRenderPass/VkFramebuffer): color0 (shared, LOAD scene color, alpha-blend, STORE) + normal (LOAD,
+    // STORE) + depth (LOAD, GEQUAL, write). Water runs after terrain/props/mechs wrote scene depth. The incoming WAW dependency of the old render pass
+    // (this frame's colour/depth writes after the prior frame's stores) is the memory barrier recorded by beginSceneLoad. ----
+    s->sceneFmts[0] = s->sColorRes->format; s->sceneFmts[1] = s->sNormalRes->format; s->sceneDepthFmt = s->sDepthRes->format;
 
     // ---- Descriptor layout/pool/set (2 UBO + 2 SSBO), both stages. ----
     {
@@ -302,7 +230,9 @@ bool init_island(WaterIsland* s, int w, int h) {
         gp.pDynamicState = &dyns;
         gp.pViewportState = &vps; gp.pRasterizationState = &rs;
         gp.pMultisampleState = &ms; gp.pDepthStencilState = &ds; gp.pColorBlendState = &cb;
-        gp.layout = s->playout.get(); gp.renderPass = s->rpass.get(); gp.subpass = 0;
+        gp.layout = s->playout.get(); gp.renderPass = VK_NULL_HANDLE; gp.subpass = 0;
+        const VkPipelineRenderingCreateInfo sceneRendering = mc2vk::dynrender::pipelineInfo(2, s->sceneFmts, s->sceneDepthFmt);
+        gp.pNext = &sceneRendering;
         if (!mc2vk::create(s->pipe, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
             vlog("vkCreateGraphicsPipelines failed."); return false;
         }
