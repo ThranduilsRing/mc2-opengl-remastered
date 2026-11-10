@@ -838,16 +838,15 @@ VkResult VulkanContext::submitLocked(const VkSubmitInfo& si, VkFence fence, uint
     if (fence == VK_NULL_HANDLE && si.waitSemaphoreCount == 0 && si.signalSemaphoreCount == 0 && si.commandBufferCount > 0) {
         const uint64_t deferred = tracker_.noteSubmit(QueueKind::Graphics);
         const auto now = std::chrono::steady_clock::now();
-        if (pending_.empty()) pendingSince_ = now;
-        for (uint32_t i = 0; i < si.commandBufferCount; ++i) pending_.push_back({si.pCommandBuffers[i], deferred});
+        for (uint32_t i = 0; i < si.commandBufferCount; ++i) batch_.addPlain(si.pCommandBuffers[i], deferred, now);
         if (outValue) *outValue = deferred;
         // A batch older than 0.4 ms goes to the queue now: held until a wait or the present, the GPU idled while the CPU recorded the rest of the frame.
         // Reserved recordings are not recorded for that: the prefix before the first goes out, and the recordings resolve together once the oldest has
         // waited 1 ms (or at a flush point), so one batch of islands records in parallel.
-        if (pending_.size() >= 64 || now - pendingSince_ > std::chrono::microseconds(400)) {
-            if (pendingRecs_.empty()) flushPendingLocked();
-            else if (now - pendingRecs_.front().reservedAt > std::chrono::microseconds(1000)) flushPendingLocked();
-            else flushPrefixLocked(pendingRecs_.front().entry);
+        if (batch_.size() >= 64 || now - batch_.since() > std::chrono::microseconds(400)) {
+            if (!batch_.hasRecords()) flushPendingLocked();
+            else if (now - batch_.firstRecordReservedAt() > std::chrono::microseconds(1000)) flushPendingLocked();
+            else flushPrefixLocked(batch_.firstRecordEntry());
         }
         return VK_SUCCESS;
     }
@@ -901,34 +900,30 @@ VkResult VulkanContext::queueSubmit2(VkQueue q, const VkSubmitInfo2& si, VkFence
 }
 
 void VulkanContext::flushPendingLocked() const {
-    if (!pendingRecs_.empty()) {
-        // The render thread resolves the recordings (their done() callbacks belong to it); the present worker queues what precedes the first one,
-        // which keeps queue order.
-        if (present_thread::onWorker()) { flushPrefixLocked(pendingRecs_.front().entry); return; }
-        resolveRecordsLocked();
+    const auto plan = batch_.planFlush(present_thread::onWorker());
+    if (plan.violation) {
+        // The present enqueue resolves every reservation on main before the worker runs (present_thread::enqueue). Queueing past an unresolved one
+        // would present a frame missing its islands and signal the timeline out of order, so only the prefix goes: loud once, never a crash.
+        static bool s_logged = false;
+        if (!s_logged) {
+            s_logged = true;
+            ctxlog("SUBMIT_ORDER FAIL: the present worker found unresolved recorded islands (batch %zu entries, first reservation at %zu); only the prefix is queued.",
+                   batch_.size(), batch_.firstRecordEntry());
+        }
     }
-    flushPrefixLocked(pending_.size());
+    if (plan.resolveFirst) resolveRecordsLocked();   // the render thread resolves the recordings (their done() callbacks belong to it)
+    flushPrefixLocked(plan.count);
 }
 
 void VulkanContext::resolveRecordsLocked() const {
-    if (pendingRecs_.empty()) return;
+    if (!batch_.hasRecords()) return;
     ZoneScopedN("VKContext.ResolveRecords");
     VulkanContext* self = const_cast<VulkanContext*>(this);
-    const int n = static_cast<int>(pendingRecs_.size());
-    const auto recordOne = [self, this](int i) {
-        PendingRecord& r = pendingRecs_[static_cast<size_t>(i)];
-        r.cb = self->acquireRecordCommandBuffer();
-        r.ok = r.cb != VK_NULL_HANDLE && r.rec(r.cb);
-    };
-    if (n >= 2 && recordExecutor_.run && recordExecutor_.active && recordExecutor_.active()) recordExecutor_.run(n, recordOne);
-    else for (int i = 0; i < n; ++i) recordOne(i);
-    // A thread without a lane (more threads than lanes) records on main.
-    for (PendingRecord& r : pendingRecs_)
-        if (r.cb == VK_NULL_HANDLE) { r.cb = self->acquireRecordCommandBuffer(); r.ok = r.cb != VK_NULL_HANDLE && r.rec(r.cb); }
-    std::vector<PendingRecord> recs = std::move(pendingRecs_);
-    pendingRecs_.clear();
-    for (PendingRecord& r : recs) pending_[r.entry].cb = r.ok ? r.cb : VK_NULL_HANDLE;   // a failed recording leaves its value to be signalled by the batch
-    for (PendingRecord& r : recs) if (r.done) r.done(r.ok);
+    batch_.resolve([self] { return self->acquireRecordCommandBuffer(); },
+        [this](int n, const std::function<void(int)>& body) {
+            if (n >= 2 && recordExecutor_.run && recordExecutor_.active && recordExecutor_.active()) recordExecutor_.run(n, body);
+            else for (int i = 0; i < n; ++i) body(i);
+        });
 }
 
 void VulkanContext::resolveRecorded() {
@@ -957,32 +952,22 @@ VkResult VulkanContext::submitRecorded(RecordFn rec, RecordDoneFn done, uint64_t
     if (pendingFailed_) { pendingFailed_ = false; return fail(VK_ERROR_UNKNOWN); }
     const uint64_t value = tracker_.noteSubmit(QueueKind::Graphics);
     const auto now = std::chrono::steady_clock::now();
-    if (pending_.empty()) pendingSince_ = now;
-    pending_.push_back({VK_NULL_HANDLE, value});
-    PendingRecord r;
-    r.entry = pending_.size() - 1;
-    r.rec = std::move(rec);
-    r.done = std::move(done);
-    r.reservedAt = now;
-    pendingRecs_.push_back(std::move(r));
+    batch_.reserve(value, std::move(rec), std::move(done), now);
     if (outValue) *outValue = value;
     return VK_SUCCESS;
 }
 
 void VulkanContext::flushPrefixLocked(size_t count) const {
-    count = (std::min)(count, pending_.size());
-    if (count == 0) return;
-    const uint64_t value = pending_[count - 1].value;
-    std::vector<VkCommandBufferSubmitInfo> cbs;
-    cbs.reserve(count);
-    for (size_t i = 0; i < count; ++i) {
-        if (pending_[i].cb == VK_NULL_HANDLE) continue;   // a recording that failed: only its value is signalled
+    const auto flush = batch_.takePrefix(count);
+    if (flush.count == 0) return;
+    const uint64_t value = flush.value;
+    std::vector<VkCommandBufferSubmitInfo> cbs;   // a recording that failed has no buffer: only its value is signalled
+    cbs.reserve(flush.cbs.size());
+    for (VkCommandBuffer cb : flush.cbs) {
         VkCommandBufferSubmitInfo c{VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO};
-        c.commandBuffer = pending_[i].cb;
+        c.commandBuffer = cb;
         cbs.push_back(c);
     }
-    pending_.erase(pending_.begin(), pending_.begin() + static_cast<std::ptrdiff_t>(count));
-    for (PendingRecord& r : pendingRecs_) r.entry -= count;
     if (infra::deviceLostLatched()) return;   // no queue work on a lost device
     VkSemaphoreSubmitInfo sig{VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO};
     sig.semaphore = gfxTimeline_;

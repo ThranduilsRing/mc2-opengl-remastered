@@ -1060,7 +1060,6 @@ int main(int argc, char** argv)
         vkCtx.setRecordExecutor({
             [] { return mc2::jobs::enabled() && frameJobsEnabled(); },
             [](int count, const std::function<void(int)>& body) {
-                vk_render_pass_timer::Arm();
                 mc2::jobs::parallel_for(mc2::jobs::Domain::Render, count, 1, 100000, [&body](int begin, int end) { for (int i = begin; i < end; ++i) body(i); });
             }});
         vkCtx.beginFrame();   // frame 1 of the completion tracker
@@ -1128,6 +1127,9 @@ int main(int argc, char** argv)
             ZoneScopedN("DrawScreen");
             mc2_hitch::HitchScope _hitchRender(mc2_hitch::HitchSpanKind::PhaseRender);
 
+#ifdef MC2_VULKAN
+            vk_render_pass_timer::Arm();   // frame top, outside every submit lock (see Arm)
+#endif
             draw_screen();
         }
         // The frame's batched plain submits (scene, post) go to the queue now, not after the sim join and the worker's acquire.

@@ -94,12 +94,14 @@ bool Active() {
 }
 
 void Arm() {
-    if (Active()) (void)state(true);   // the query pool is born on the render thread, never by a worker's first Begin
+    // The query pool is born at the top of the frame on the render thread, outside every lock: its reset submit (submitOneShot) takes submitMutex_, which
+    // a recording resolve holds. Begin never creates it (a first Begin under that lock self-deadlocked); a timer switched on mid-frame starts next frame.
+    if (Active()) (void)state(true);
 }
 
 void Begin(VkCommandBuffer cb, gos_render_pass_timer::Pass p) {
     if (cb == VK_NULL_HANDLE || !Active()) return;
-    TimerState* t = state(true);
+    TimerState* t = state(false);
     if (!t) return;
     int64_t q;
     { std::lock_guard<std::mutex> lock(s_ringMutex); q = t->ring.begin(p); }
