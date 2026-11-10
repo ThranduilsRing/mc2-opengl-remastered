@@ -1279,12 +1279,10 @@ TEST_CASE("StockOverlayConcrete defaults to the new concrete and the stock overl
     REQUIRE(opt);
     CHECK(opt->kind == mo::Kind::Bool);
     mo::RenderOptions loaded{};
-    CHECK(mo::cfg::loadFromText(loaded, "[MechCommander2]
-b StockOverlayConcrete = TRUE
-") == 1);
+    CHECK(mo::cfg::loadFromText(loaded, "[MechCommander2]\nb StockOverlayConcrete = TRUE\n") == 1);
     CHECK(loaded.stockOverlayConcrete);
     mo::RenderOptions pinned{};
-    std::vector<std::string> rej;
+    std::vector<mo::Reject> rej;
     CHECK(mo::applyOverrides(pinned, "StockOverlayConcrete=1", rej) == 1);
     CHECK(pinned.stockOverlayConcrete);
     CHECK(rej.empty());
