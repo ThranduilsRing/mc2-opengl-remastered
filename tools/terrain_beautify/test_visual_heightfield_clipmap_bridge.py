@@ -25,7 +25,11 @@ These tests pin that claim down two ways:
      tests/terrain/beautify/<mission>.beauty/ sidecar (all 24 campaign maps
      as of this slice) — byte-size / grid-math self-consistency, so a bad
      future bake (wrong factor, decimated mips, mismatched mapSide) fails
-     here instead of silently mis-loading in the engine.
+     here instead of silently mis-loading in the engine. The coarse side N
+     is read from the tracked gameplay_height.sig ("<mapSide> <fnv1a64>",
+     the same grid identity the engine re-verifies at load); the untracked
+     visual_height_report.json cook byproduct is deliberately NOT used, so
+     these proofs run on a clean checkout.
 
 Deliberately NOT tested here (see docs/terrain-clipmap-bridge.md §2 for why):
 VALUE equality at corner indices for --reauth bakes (mc2_01/17/24 intentionally
@@ -33,7 +37,6 @@ unpin corner values; only the INDEX mapping is invariant, not the value).
 """
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 
@@ -185,14 +188,27 @@ def test_ssbo_blob_layout_matches_python_concatenation():
 # 5. Real committed bakes: every tests/terrain/beautify/<mission>.beauty/
 #    sidecar (all 24 campaign maps as of this slice) must satisfy the same
 #    byte-size grid math the engine loader enforces at load time.
+#
+#    Discovery + coarse side N come from the tracked gameplay_height.sig
+#    ("<mapSide> <fnv1a64>" over the gameplay height grid, written by
+#    height_sig.py and re-verified by mclib/terrain_init.cpp at load), NOT
+#    from visual_height_report.json: the report is an offline-cook byproduct,
+#    untracked since 2585af79f, and absent on a clean checkout. N from the
+#    sig is independent of the fine file's own byte size, so the size checks
+#    below are real cross-checks, exactly as the engine's loader performs
+#    them.
 # ---------------------------------------------------------------------------
+
+def _coarse_side(beauty_dir: Path) -> int:
+    return int((beauty_dir / "gameplay_height.sig").read_text().split()[0])
+
 
 def _discover_real_bakes():
     if not BEAUTY_ROOT.is_dir():
         return []
     out = []
     for d in sorted(BEAUTY_ROOT.iterdir()):
-        if d.is_dir() and d.name.endswith(".beauty") and (d / "visual_height_report.json").is_file():
+        if d.is_dir() and d.name.endswith(".beauty") and (d / "gameplay_height.sig").is_file():
             out.append(d)
     return out
 
@@ -203,32 +219,30 @@ REAL_BAKES = _discover_real_bakes()
 @pytest.mark.skipif(not REAL_BAKES, reason="no committed .beauty bakes found")
 @pytest.mark.parametrize("beauty_dir", REAL_BAKES, ids=lambda d: d.name)
 def test_real_bake_fine_file_size_matches_grid_math(beauty_dir):
-    report = json.loads((beauty_dir / "visual_height_report.json").read_text())
-    N = report["coarse_side"]
-    factor = report["factor"]
+    N = _coarse_side(beauty_dir)
+    factor = FACTOR
     V_expected = (N - 1) * factor + 1
-    assert report["visual_side"] == V_expected, (
-        f"{beauty_dir.name}: report's visual_side disagrees with the "
-        f"(N-1)*factor+1 grid sizing law"
-    )
 
-    r32_path = beauty_dir / report["visual_height_file"]
-    if not r32_path.is_file():
-        pytest.skip(f"{r32_path} not present on disk (sidecar not checked in)")
+    r32_path = beauty_dir / f"visual_height_{factor}x.r32"
+    assert r32_path.is_file(), (
+        f"{beauty_dir.name}: {r32_path.name} missing -- the tracked fine "
+        f"bake is gone (test_all_24_campaign_maps_have_a_fine_bake says "
+        f"which maps lost it)"
+    )
     size = r32_path.stat().st_size
     want = V_expected * V_expected * 4
     assert size == want, (
         f"{beauty_dir.name}: {r32_path.name} is {size} bytes, expected "
-        f"{want} (V={V_expected} squared x 4-byte float) -- this is exactly "
-        f"the SIZE MISMATCH check mclib/terrain.cpp's loader performs"
+        f"{want} (V={V_expected} squared x 4-byte float, N={N} from "
+        f"gameplay_height.sig) -- this is exactly the SIZE MISMATCH check "
+        f"mclib/terrain.cpp's loader performs"
     )
 
 
 @pytest.mark.skipif(not REAL_BAKES, reason="no committed .beauty bakes found")
 @pytest.mark.parametrize("beauty_dir", REAL_BAKES, ids=lambda d: d.name)
 def test_real_bake_mips_file_size_matches_grid_math_if_present(beauty_dir):
-    report = json.loads((beauty_dir / "visual_height_report.json").read_text())
-    N = report["coarse_side"]
+    N = _coarse_side(beauty_dir)
     mips_path = beauty_dir / "visual_height_mips.r32"
     if not mips_path.is_file():
         pytest.skip(f"{beauty_dir.name}: no mips sidecar baked")
