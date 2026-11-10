@@ -73,6 +73,8 @@
   "tools/assets/__init__.py": "Package marker for tools.assets (imported as a package by replace.py/catalog.py and tests/assets); no executable caller by design.",
   "tools/assets/examples.py": "Owner-run CLI that rebuilds the hangar/fence selection evidence (docs/assets/README.md); no automated caller.",
   "tools/battery.py": "Operator-run battery tool (py -3 tools/battery.py), no in-repo caller by design; merge window 27.",
+  "tools/brief_check.py": "Operator-run brief citation checker (py -3 tools/brief_check.py <brief.md> [--repo DIR]); verifies the paths and shas a lane brief cites before the lane starts; no in-repo caller by design.",
+  "tools/test_brief_check.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/blender_pipeline/asset_edit_open.py": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
   "tools/blender_pipeline/recipes/decimate_lods.py": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
   "tools/blender_pipeline/recipes/rebake_pbr.py": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
