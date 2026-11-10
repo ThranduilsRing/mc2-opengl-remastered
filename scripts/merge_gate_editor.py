@@ -22,6 +22,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 import run_editor_smoke as smoke  # noqa: E402
 
 EXE = "Mission Editor.exe"
@@ -36,7 +37,7 @@ def stage_editor(build: Path, clone: Path) -> None:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--install", type=Path, default=Path("A:/Games/mc2-opengl/mc2-win64-v0.4"))
+    ap.add_argument("--install", type=Path, default=Path("A:/Games/mc2-opengl/mc2-win64-v0.4"))  # drive-path: ok PC gate default; the laptop gate passes --install
     ap.add_argument("--build-dir", type=Path, default=REPO / "build64-ninja")
     ap.add_argument("--out", type=Path, default=REPO / "scratch" / "editor-smoke")
     ap.add_argument("--case", action="append", help=f"editor smoke case (default: {', '.join(CASES)})")
@@ -50,7 +51,7 @@ def main(argv=None) -> int:
         return 2
     # Offline first: the document model (FitReader, MissionDocument, packets, catalog) with no engine or window.
     tests = build / "editor_document_tests.exe"
-    rc = subprocess.run([str(tests)], cwd=str(REPO)).returncode if tests.is_file() else 2
+    rc = subprocess.run([str(tests)], cwd=str(REPO), **console_child.child_kwargs()).returncode if tests.is_file() else 2
     if rc != 0:
         print(f"[EDITOR_GATE] FAIL: editor_document_tests rc={rc} ({tests})")
         return rc
@@ -62,7 +63,7 @@ def main(argv=None) -> int:
                    "--prepare-stock-scratch", "--keep-logs", "--out", str(args.out)]
         for case in args.case or CASES:
             command += ["--case", case]
-        rc = subprocess.run(command, cwd=str(REPO)).returncode
+        rc = subprocess.run(command, cwd=str(REPO), **console_child.child_kwargs()).returncode
     finally:
         shutil.rmtree(clone, ignore_errors=True)
     print(f"[EDITOR_GATE] {'PASS' if rc == 0 else 'FAIL'} rc={rc}")
