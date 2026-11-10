@@ -175,3 +175,30 @@ def test_executable_swap_preserves_platform_and_source_install(tmp_path, exe):
     assert ab.game_executable(staged).name == exe
     assert ab.payload_identity(staged)["payload"][exe] != ab.payload_identity(install)["payload"][exe]
     assert (install / exe).read_bytes() == original
+
+
+def test_data_delta_scope_maps_repo_paths_to_install_paths(tmp_path, monkeypatch):
+    """P2: git names examples/mods/<id>/... but the install manifest says mods/<id>/...: the scope check must compare one
+    namespace. An example-mod file inside the window is accepted; a differing file outside the window is still refused."""
+    identity = ab.payload_identity(install_payload(tmp_path / "install"))
+    inside, outside = "mods/demo/data/a.json", "data/art/mechicons/other.png"
+    monkeypatch.setattr(ab, "git_ok", lambda *args: True)
+    monkeypatch.setattr(ab, "git_diff_files", lambda older, newer: {"examples/mods/demo/data/a.json"})
+    for arm, extra in (("a", {}), ("b", {inside: "c" * 64}), ("c", {inside: "c" * 64, outside: "d" * 64})):
+        after = dict(identity, manifest=dict(identity["manifest"], **extra))
+        (tmp_path / arm / "day").mkdir(parents=True)
+        Image.new("RGB", (32, 32)).save(tmp_path / arm / "day/day.png")
+        ab.stamp_identity(tmp_path / arm, after)
+    with pytest.raises(SystemExit) as verdict:
+        ab.main(["--compare-only", str(tmp_path / "a"), str(tmp_path / "b"), "--out-root", str(tmp_path / "cmp1"),
+                 "--allow-data-delta"])
+    assert verdict.value.code == 0
+    with pytest.raises(SystemExit) as verdict:
+        ab.main(["--compare-only", str(tmp_path / "a"), str(tmp_path / "c"), "--out-root", str(tmp_path / "cmp2"),
+                 "--allow-data-delta"])
+    assert "mismatched capture identities" in str(verdict.value.code) and outside in str(verdict.value.code)
+
+
+def test_example_mods_src_matches_deploy_payload():
+    import deploy_payload
+    assert ab.EXAMPLE_MODS_SRC == deploy_payload.EXAMPLE_MODS_SRC

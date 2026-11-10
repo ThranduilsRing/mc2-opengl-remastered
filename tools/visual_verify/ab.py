@@ -207,6 +207,17 @@ def git_diff_files(older, newer):
     return {line for line in out.stdout.splitlines() if line}
 
 
+EXAMPLE_MODS_SRC = "examples/mods"  # scripts/deploy_payload.py EXAMPLE_MODS_SRC: ships to <install>/mods/<id>/
+
+
+def repo_path_to_install(path):
+    """A repo-relative git path -> the install-relative manifest path deploy_payload ships it as. Payload paths are the repo
+    paths themselves except example mods (examples/mods/<id>/... -> mods/<id>/...); the rest is unchanged."""
+    if path.startswith(EXAMPLE_MODS_SRC + "/"):
+        return "mods/" + path[len(EXAMPLE_MODS_SRC) + 1:]
+    return path
+
+
 LANE_BASE_BRANCH = "claude/nifty-mendeleev"
 
 
@@ -905,7 +916,7 @@ def main(argv=None):
             if diff_files is None:
                 bad.append("cannot compute `git diff --name-only` between the two capture commits; refusing --allow-data-delta")
             else:
-                accepted = manifest_diff_files(ia["manifest"], ib["manifest"]) & diff_files
+                accepted = manifest_diff_files(ia["manifest"], ib["manifest"]) & {repo_path_to_install(f) for f in diff_files}
                 accepted_delta = sorted(accepted)
                 for path, line in entries:
                     if path in accepted:
