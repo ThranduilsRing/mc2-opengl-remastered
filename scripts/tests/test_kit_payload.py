@@ -346,7 +346,7 @@ def test_recook_detaches_shared_outputs_before_in_place_writes(cook_install):
     assert shared.read_bytes() == before
 
 
-def test_recipe_evicted_by_a_later_write_in_the_same_cook_is_recooked(cook_install, monkeypatch):
+def test_recipe_evicted_by_a_later_write_in_the_same_cook_is_restored(cook_install, monkeypatch):
     # A full native cache (LRU by mtime, hits never refreshed) can evict a recipe this cook already got (W138b laptop gate).
     target, manifest, tool, cook, calls = cook_install
     class Sequential:
@@ -362,7 +362,7 @@ def test_recipe_evicted_by_a_later_write_in_the_same_cook_is_recooked(cook_insta
             (cache / f"model-{hashlib.sha256(calls[0].encode()).hexdigest()[:16]}.mci").unlink()
         return result
     kit.finish(target, manifest, tool, evicting)
-    assert calls == [*calls[:3], calls[0]]   # only the evicted recipe is cooked again
+    assert len(calls) == 3   # the evicted recipe is relinked from the shared cook cache, not cooked again
     rows = json.loads((cache / "industrial-cook.json").read_text())["files"]
     assert len(rows) == 3 and all((cache / r["path"]).is_file() for r in rows)
 
