@@ -77,6 +77,7 @@ def test_the_sweep_fails_on_a_backend_mismatch(tmp_path, monkeypatch, drew, fail
     capture = _load("tools/visual_verify/capture.py", "vv_capture_backend_under_test")
     import ab
     monkeypatch.setattr(ab, "payload_identity", lambda install: {"commit": "a" * 40, "payload": {}})
+    monkeypatch.setattr(ab, "game_executable", lambda install: Path(install) / "mc2.exe")   # tmp_path has no deployed manifest
     cap_rvc = capture.rvc
     sidecar = VK_SIDECAR if drew == "vulkan" else GL_SIDECAR
     problems = cb.check("vulkan", [("pose", sidecar)])

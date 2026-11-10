@@ -167,6 +167,10 @@ MUTATED_FILES = (
     "scripts/console_child.py",
     "data/terrain_materials.json", "data/visual_tuning.json",
     "data/tgl/spotlight.ini", "data/tgl/marblecliff.ini", "data/tgl/MarbleCliffGLB.glb",
+    # stock-tree-upscale: deploy-cooked 1024 sidecars beside the stock 128 TGAs (deploy_payload.tree_upscale_payload, pins in
+    # data/kit/tree-upscale.json); every deploy may rewrite them, so they are never a shared seed inode.
+    "data/tgl/128/a_mapledead.ktx2", "data/tgl/128/a_oak1dead.ktx2", "data/tgl/128/a_palm.ktx2",
+    "data/tgl/128/a_treeclump1.ktx2", "data/tgl/128/a_treeclump1l1.ktx2",
 )
 _MUTATED_FILES_FOLDED = frozenset(rel.casefold() for rel in MUTATED_FILES)
 
