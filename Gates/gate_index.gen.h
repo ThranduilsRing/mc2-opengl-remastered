@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 425;
+inline constexpr std::size_t kGateCount = 421;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -395,7 +395,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_VK_GPU_TIMESTAMPS", Kind::Bool, Rule::Std, {}},
     {"MC2_VK_LIGHTFEED_DEDUP", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VK_MECH_FEED_NATIVE", Kind::Bool, Rule::Is01, {}},
-    {"MC2_VK_MECH_FENCE_DEFER", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VK_POST_SCREENFX", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VK_POST_SCREENFX_CLOUD", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VK_POST_SCREENFX_SHADOW", Kind::Bool, Rule::Lead0Kill, {}},
@@ -405,7 +404,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_VK_PRESENT_DUMP_PPM", Kind::String, Rule::Std, {}},
     {"MC2_VK_PRESENT_NATIVE_STRICT", Kind::Bool, Rule::Lead1, {}},
     {"MC2_VK_PRESENT_VERIFY", Kind::Bool, Rule::Presence, {}},
-    {"MC2_VK_PROP_FENCE_DEFER", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VK_PROP_LIGHT_PROBE", Kind::Bool, Rule::Presence, {}},
     {"MC2_VK_PROP_LIGHT_VERTEX_PROBE", Kind::Bool, Rule::Presence, {}},
     {"MC2_VK_PROP_LOD", Kind::Bool, Rule::Lead0Kill, {}},
@@ -416,8 +414,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_VK_SHADOW_MATRIX_DIAG", Kind::Bool, Rule::Lead0, {}},
     {"MC2_VK_SHARED_GBUFFER", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VK_TERRAIN_COPY_STATS", Kind::Bool, Rule::Presence, {}},
-    {"MC2_VK_TERRAIN_FENCE_DEFER", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_VK_WATER_FENCE_DEFER", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VPL_CULL", Kind::Bool, Rule::Presence, {}},
     {"MC2_VSYNC", Kind::Bool, Rule::Lead1, {}},
     {"MC2_VULKAN_SPV_DIR", Kind::String, Rule::Std, {}},

@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 425
+gate_count: 421
 registry_entry_count: 124
-verified_count: 405
+verified_count: 401
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -3038,14 +3038,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_VK_MECH_FENCE_DEFER
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: vk
-    doc: ""
-    smoke_passthrough: true
-    verified: true
   - name: MC2_VK_POST_SCREENFX
     kind: Bool
     default: true
@@ -3116,14 +3108,6 @@ flags:
     default: false
     rule: Presence
     owner: gameos
-    doc: ""
-    smoke_passthrough: true
-    verified: true
-  - name: MC2_VK_PROP_FENCE_DEFER
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: vk
     doc: ""
     smoke_passthrough: true
     verified: true
@@ -3202,22 +3186,6 @@ flags:
     owner: vk
     doc: ""
     smoke_passthrough: true
-  - name: MC2_VK_TERRAIN_FENCE_DEFER
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: vk
-    doc: ""
-    smoke_passthrough: true
-    verified: true
-  - name: MC2_VK_WATER_FENCE_DEFER
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: vk
-    doc: ""
-    smoke_passthrough: true
-    verified: true
   - name: MC2_VPL_CULL
     kind: Bool
     default: false
