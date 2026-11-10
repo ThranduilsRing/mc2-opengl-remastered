@@ -194,6 +194,13 @@ const float WATER_ALPHA0     = 0.06;    // GGX alpha of the calm surface
 const float RIPPLE_SLOPE_VAR = 0.004;   // slope variance of the fine ripples once they fade with distance
 const float SUN_SPEC_GAIN    = 3.0;     // sun/moon specular scale at the default glint gain (0.30)
 const float LAMP_SPEC_GAIN   = 1.5;     // lamp/weapon pool-light specular scale at the default glint gain
+// WATER-GLOSS-NEAR: water near the camera is seen steeply, where water's 0.02 Schlick reflectance leaves it a matte
+// body colour. By day, within NEAR_GLOSS_END of the camera, the reflectance gets a floor (only steep views fall below
+// it, so grazing far water keeps its Schlick value) and the calm-surface roughness tightens. Night is untouched.
+const float NEAR_GLOSS_START = 6000.0;  // wu from the camera: full near gloss inside
+const float NEAR_GLOSS_END   = 12000.0; // wu: no near gloss beyond (far water unchanged)
+const float NEAR_REFL_FLOOR  = 0.12;    // reflectance floor for close, steeply viewed water
+const float NEAR_ALPHA0      = 0.04;    // GGX alpha of the calm surface close to the camera
 
 PREC vec2 waterWaveSlope(PREC vec2 p, float t, float footprint, float gain, out float unresolvedVar){
     PREC vec2 s = vec2(0.0);
@@ -319,7 +326,10 @@ void main(void)
     // Specular AA: the normal's own screen-space variance (Kaplanyan-Hoffman) on top of the unresolved train variance.
     vec3  dNx = dFdx(waveN), dNy = dFdy(waveN);
     float kernelVar = 0.25 * (dot(dNx, dNx) + dot(dNy, dNy));
-    float specAlpha2 = clamp(WATER_ALPHA0 * WATER_ALPHA0
+    float nearGloss = (1.0 - smoothstep(NEAR_GLOSS_START, NEAR_GLOSS_END, length(viewVec)))
+                    * (1.0 - clamp(F.f3.z / 0.6, 0.0, 1.0));
+    float alpha0 = mix(WATER_ALPHA0, NEAR_ALPHA0, nearGloss);
+    float specAlpha2 = clamp(alpha0 * alpha0
                              + 2.0 * (waveVar + RIPPLE_SLOPE_VAR * (1.0 - waveLOD) * (RIPPLE_GAIN / 0.22))
                              + min(2.0 * kernelVar, 0.18), 0.0, 0.36);
     PREC float trans   = clamp(exp(-tintThick * ABSORPTION_DENSITY), 0.0, 1.0);
@@ -427,6 +437,7 @@ void main(void)
         }
         //PORT-BEGIN:waterReflMix
         PREC float fres = REFL_F0 + (1.0 - REFL_F0) * pow(1.0 - max(dot(waveN, vdir), 0.0), 5.0);
+        fres = max(fres, NEAR_REFL_FLOOR * nearGloss);   // WATER-GLOSS-NEAR
         // WATER-GRAZE-REFL-1: grazing fragments keep full reflection at distance.
         reflMix = clamp(fres * u_waterReflStrength * max(waveLOD, fres), 0.0, REFL_MAX);
         // Ripple LOD fades only the legacy sky treatment. Geometry retains
