@@ -49,6 +49,18 @@ inline void resampleIcon(const Icon& icon, uint32_t* dest, int stride, int w, in
     }
 }
 
+// Hand-pixeled art for one draw size (hud/front/<stem>@34x40) beats the single high-res source
+// at that size; the box filter above only serves sizes with no authored art (mods, odd resolutions).
+// A better (lower) VFS rank still wins, so a mod's single-source replacement is not shadowed.
+struct HudPick { std::string key; int rank; };
+inline HudPick pickHudSingle(std::string single, int singleRank, std::string exact, int exactRank) {
+    if (exactRank <= singleRank) return {std::move(exact), exactRank};
+    return {std::move(single), singleRank};
+}
+inline std::string hudSizedKey(std::string_view side, std::string_view stem, int w, int h) {
+    return std::format("hud/{}/{}@{}x{}", side, stem, w, h);
+}
+
 // Source keys survive packing. Only this load-time cache owns atlas coordinates.
 class Registry {
 public:

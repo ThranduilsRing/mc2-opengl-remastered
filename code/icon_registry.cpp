@@ -230,12 +230,15 @@ void blit(std::string sheet, long index, bool back, uint32_t* dest, int stride, 
     const auto rankOf = [](std::string k) {
         return namedPriority.contains(k) && registry.find(k) ? namedPriority.at(k) : 1000001;
     };
-    const int singleRank = rankOf(single), tieredRank = rankOf(tiered);
+    // Authored art for exactly this draw size (hud/<side>/<stem>@WxH) beats resampling the single source.
+    const std::string exact = hudSizedKey(side, stem, width, height);
+    const auto pick = pickHudSingle(single, rankOf(single), exact, rankOf(exact));
+    const int singleRank = pick.rank, tieredRank = rankOf(tiered);
     if (tieredRank < singleRank && !warned.contains("tiered-hud:" + tiered)) {
         warned.insert("tiered-hud:" + tiered);
         mc2::fmt::print_out("[ICON_REGISTRY] tiered mod HUD icon {} overrides the single-source icon\n", tiered);
     }
-    const Icon* found = registry.lookupHud(single, tiered, singleRank, tieredRank, key, LookupModPriority(sheet.c_str()));
+    const Icon* found = registry.lookupHud(pick.key, tiered, singleRank, tieredRank, key, LookupModPriority(sheet.c_str()));
     // MC2X transport indices also name bay pictures; MCO supplies loose chassis pictures.
     if (!found && !back) {
         const std::string bay = "mech/" + stem;

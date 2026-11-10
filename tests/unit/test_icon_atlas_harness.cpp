@@ -2,6 +2,7 @@
 #include "icon_registry.h"
 #include <filesystem>
 #include <format>
+#include <fstream>
 #include <numeric>
 #include <set>
 
@@ -107,6 +108,61 @@ TEST_CASE("icon_atlas_harness/single_source_hud_wins_and_tiered_mod_sheet_still_
     CHECK(r.lookupHud("hud/front/anubis", "hud/mcui_low4/front/anubis", 10, 1000, legacy, 1000)->width == 42);
     // A mech with no single file falls back to the tiered mod sheet.
     CHECK(r.lookupHud("hud/front/ghost", "hud/mcui_low4/front/ghost", 1000001, 1000001, legacy, 1000) == r.find(legacy));
+}
+
+TEST_CASE("icon_atlas_harness/exact_size_hud_art_beats_resampling") {
+    CHECK(hudSizedKey("front", "anubis", 34, 40) == "hud/front/anubis@34x40");
+    // Stock: the exact-size file shares the single source's rank and wins.
+    auto pick = pickHudSingle("hud/front/anubis", 1000, "hud/front/anubis@34x40", 1000);
+    CHECK(pick.key == "hud/front/anubis@34x40");
+    // No art for this size (rank 1000001): the single source is resampled.
+    pick = pickHudSingle("hud/front/anubis", 1000, "hud/front/anubis@30x36", 1000001);
+    CHECK(pick.key == "hud/front/anubis");
+    // A mod's better-ranked single source is not shadowed by stock exact-size art.
+    pick = pickHudSingle("hud/front/anubis", 10, "hud/front/anubis@34x40", 1000);
+    CHECK(pick.key == "hud/front/anubis");
+    // Through the registry: the exact asset resolves with its own dimensions, untouched.
+    Registry r;
+    r.add("hud/front/anubis", 42, 50, std::vector<uint32_t>(2100, 0xff111111));
+    r.add("hud/front/anubis@34x40", 34, 40, std::vector<uint32_t>(1360, 0xff444444));
+    const auto legacy = legacyKey("data/art/mcui_low4.tga", 0);
+    pick = pickHudSingle("hud/front/anubis", 1000, "hud/front/anubis@34x40", 1000);
+    const Icon* icon = r.lookupHud(pick.key, "hud/mcui_med4/front/anubis", pick.rank, 1000001, legacy, 1000);
+    REQUIRE(icon);
+    CHECK((icon->width == 34 && icon->height == 40));
+}
+
+TEST_CASE("icon_atlas_harness/stock_chassis_have_art_for_every_hud_size") {
+    namespace fs = std::filesystem;
+    const fs::path hud = fs::path(__FILE__).parent_path().parent_path().parent_path() / "data" / "art" / "mechicons" / "hud";
+    if (!fs::exists(hud / "front")) return; // source tree without data/
+    struct Size { int w, h; };
+    const auto pngSize = [](const fs::path& p, int& w, int& h) {
+        std::ifstream f(p, std::ios::binary);
+        unsigned char b[24] = {};
+        f.read(reinterpret_cast<char*>(b), 24);
+        w = (b[16] << 24) | (b[17] << 16) | (b[18] << 8) | b[19];
+        h = (b[20] << 24) | (b[21] << 16) | (b[22] << 8) | b[23];
+    };
+    size_t stems = 0;
+    for (const char* side : {"front", "back"})
+        for (const auto& e : fs::directory_iterator(hud / side)) {
+            const std::string stem = e.path().stem().string();
+            if (e.path().extension() != ".png" || stem.find('@') != std::string::npos) continue;
+            ++stems;
+            int w = 0, h = 0;
+            pngSize(e.path(), w, h);
+            CHECK_MESSAGE((w == 42 && h == 50), stem); // the high7 source is itself the 42x50 tier
+            for (Size s : {Size{34, 40}, Size{27, 32}}) {
+                const fs::path sized = hud / side / (stem + std::format("@{}x{}.png", s.w, s.h));
+                CHECK_MESSAGE(fs::exists(sized), sized.string());
+                if (fs::exists(sized)) {
+                    pngSize(sized, w, h);
+                    CHECK_MESSAGE((w == s.w && h == s.h), sized.string());
+                }
+            }
+        }
+    CHECK(stems >= 160);
 }
 
 TEST_CASE("icon_atlas_harness/stock_data_one_file_per_mech_side_and_pilot") {
