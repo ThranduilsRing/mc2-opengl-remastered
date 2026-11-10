@@ -211,10 +211,14 @@ bool MoverShadowState::prepare(int mapSide, const float cameraRows[16], Vec3 sun
     actorsFresh_ = false;   // the next frame refreshes again
     props_.clear(); spheres_.clear();
     const ViewPlanes view=makeViewPlanes(cameraRows);
+    // With the baked static mask ready, a prop that cannot shadow any mover in view is left to the mask (its shadow is already baked on the ground).
+    std::vector<MoverSphere> movers;
+    if (maskReady) for (const MechActor& a : actors_) if (a.inView) movers.push_back(a.sphere);
     for (const auto& prop:props) {
         if (prop.typeID >= bounds_.size() || !bounds_[prop.typeID].valid) continue;
         const auto sphere=propSphere(prop,bounds_[prop.typeID]);
         if (!sweptShadowInView(sphere,sun,ground_,view)) continue;
+        if (maskReady && std::none_of(movers.begin(),movers.end(),[&](const MoverSphere& m){ return propShadowReachesMover(sphere,m,sun,ground_); })) continue;
         props_.push_back(prop); spheres_.push_back(sphere);
     }
     appendMechs(cameraRows,sun,ground_);

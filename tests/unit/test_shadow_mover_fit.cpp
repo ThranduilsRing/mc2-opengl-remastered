@@ -105,3 +105,15 @@ TEST_CASE("mover fit: a hundred spread movers use one count independent window")
     buildMoverCoverage(frame,spheres,basis,window);
     CHECK(frame.coverage.size()==2048);
 }
+
+TEST_CASE("mover fit: a caster reaches a mover only when its swept shadow passes within their combined radii") {
+    const Vec3 sun = normalized({1, 0, 1});   // shadow runs toward -x on the ground (z = 0)
+    const MoverSphere prop{{10, 0, 4}, 1.0f};
+    const Vec3 end = shadowEnd(prop, sun, 0);
+    CHECK(end.x < prop.center.x);
+    CHECK(propShadowReachesMover(prop, {{prop.center.x, 0, 4}, 0.5f}, sun, 0));                           // mover at the caster
+    CHECK(propShadowReachesMover(prop, {{(prop.center.x + end.x) * 0.5f, 0, 2}, 0.5f}, sun, 0));          // inside the shadow
+    CHECK_FALSE(propShadowReachesMover(prop, {{end.x - 20.0f, 0, 0}, 1.0f}, sun, 0));                     // past the shadow tip
+    CHECK_FALSE(propShadowReachesMover(prop, {{10, 30, 0}, 1.0f}, sun, 0));                               // off to the side
+    CHECK_FALSE(propShadowReachesMover(prop, {{20, 0, 4}, 1.0f}, sun, 0));                                // sun side of the caster
+}
