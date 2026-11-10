@@ -46,15 +46,15 @@ class Buffer {
     std::array<Source, kCapacity> sources_{};
     uint32_t count_ = 0;
     float time_ = -1;
-    uint32_t submits_ = 0, wetVisible_ = 0, emitted_ = 0;
+    uint32_t submits_ = 0, wetVisible_ = 0, emitted_ = 0, wet_ = 0, vis_ = 0;
     float firstX_ = 0, firstY_ = 0, firstVx_ = 0, firstVy_ = 0;
 
 public:
     void clear() { count_ = 0; time_ = -1; sources_ = {}; }
     uint32_t size() const { return count_; }
     // Diagnostics for the once-per-second [WATER_REACTIVE v1] log; reset by takeStats.
-    struct Stats { uint32_t submits, wetVisible, emitted; float x, y, vx, vy; };
-    Stats takeStats() { Stats s{submits_, wetVisible_, emitted_, firstX_, firstY_, firstVx_, firstVy_}; submits_ = wetVisible_ = emitted_ = 0; return s; }
+    struct Stats { uint32_t submits, wetVisible, emitted, wet, vis; float x, y, vx, vy; };
+    Stats takeStats() { Stats s{submits_, wetVisible_, emitted_, wet_, vis_, firstX_, firstY_, firstVx_, firstVy_}; submits_ = wetVisible_ = emitted_ = wet_ = vis_ = 0; return s; }
     void advance(float now) {
         if (!std::isfinite(now)) return;
         if (time_ >= 0 && (now < time_ || now - time_ > 5.0f)) clear();
@@ -74,7 +74,7 @@ public:
         if (!key || !std::isfinite(now) || !std::isfinite(x) || !std::isfinite(y)
             || !std::isfinite(radius)) return;
         advance(now);
-        ++submits_;
+        ++submits_; wet_ += wet; vis_ += visible;
         auto source = std::find_if(sources_.begin(), sources_.end(),
             [key](const Source& s) { return s.key == key; });
         if (!visible) {
