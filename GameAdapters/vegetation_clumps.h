@@ -138,6 +138,18 @@ inline int fieldBladeSide(float gridStep, float spacing, long budget, long field
 inline float understoryChance(int forestCells) {
     return forestCells > 0 ? 1.0f : 0.06f;
 }
+// Owner 2026-11-10: "still like 10x too many" shrubs. Clustered thinning, not uniform culling:
+// each woody member survives with this chance. cluster is a low-frequency world mask (0..1,
+// ~220 WU); shrubs gather where it is high. Forest edges (1..30 of the 7x7 window) keep the
+// most, deep forest little (the stock trees already cover it), open meadow only sparse singles;
+// slopes and rocky ground (> 18 degrees) add some back. Averages about 1/10 of the old count.
+inline float shrubKeepChance(int forestCells, float cluster, float slopeDeg) {
+    const float clustered = std::clamp((cluster - 0.55f) / 0.20f, 0.0f, 1.0f);
+    const bool edge = forestCells > 0 && forestCells <= 30;
+    float base = edge ? 0.28f : forestCells > 30 ? 0.08f : 0.25f;
+    if (slopeDeg > 18.0f) base += 0.15f;
+    return std::min(base * (0.12f + 0.88f * clustered), 1.0f);
+}
 struct FieldBlade { float x, y, scale, yaw, seed; unsigned frame; };
 // Blade j of a k x k cell grid, offsets from the cell origin in world units.
 inline FieldBlade fieldBlade(int col, int row, uint32_t seed, int j, int k,

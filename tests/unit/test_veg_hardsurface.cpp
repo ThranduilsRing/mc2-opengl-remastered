@@ -148,6 +148,20 @@ TEST_CASE("VegField/owner ref 3: even sward with only small gaps and a gentle he
     CHECK(fieldTuftHeight(0.9f) > fieldTuftHeight(0.2f));           // monotone swell
 }
 
+TEST_CASE("VegField/owner: shrubs ~10x fewer, clustered not uniform") {
+    float edgeMean = 0.0f, deepMean = 0.0f;
+    for (int k = 0; k < 100; ++k) {
+        const float c = (static_cast<float>(k) + 0.5f) / 100.0f;
+        edgeMean += shrubKeepChance(10, c, 5.0f) / 100.0f;
+        deepMean += shrubKeepChance(45, c, 5.0f) / 100.0f;
+    }
+    CHECK(edgeMean > 0.05f); CHECK(edgeMean < 0.15f);               // ~1/10 kept at forest edges
+    CHECK(deepMean < 0.04f);                                          // stock trees already cover deep forest
+    CHECK(shrubKeepChance(10, 0.9f, 5.0f) > 4.0f * shrubKeepChance(10, 0.2f, 5.0f));   // clustered
+    CHECK(shrubKeepChance(10, 0.5f, 25.0f) > shrubKeepChance(10, 0.5f, 5.0f));          // rocks/slopes keep more
+    CHECK(shrubKeepChance(0, 0.9f, 5.0f) <= 0.25f);                  // open meadow: sparse singles
+}
+
 TEST_CASE("VegField/shrubs gather at the stock treelines, open meadow keeps few") {
     CHECK(understoryChance(1) == 1.0f);
     CHECK(understoryChance(25) == 1.0f);

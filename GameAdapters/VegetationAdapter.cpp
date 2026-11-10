@@ -182,7 +182,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
         "data/vegetation/schemas/grasslands.json", "data/vegetation/schemas/snow.json",
         "data/vegetation/schemas/desert.json", "data/vegetation/schemas/swamp.json"};
     std::optional<FieldRecipe> fieldRecipe;
-    int woodyPlaced = 0, woodyGated = 0, clumpsGated = 0;   // shrub/sapling counts for the owner sheet
+    int woodyPlaced = 0, woodyGated = 0, clumpsGated = 0, woodyThinned = 0;   // shrub/sapling counts for the owner sheet
     for (size_t i = 0; i < paths.size(); ++i) {
         std::ifstream input(paths[i]);
         if (input) {
@@ -224,11 +224,14 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
             // Where the meadow field carpets the ground, shrubs and saplings gather under
             // and around the stock trees (owner 2026-11-10); open meadow keeps a rare one.
             // Every biome but snow: mc2_01's stock tile codes put most clumps in other biomes.
-            if (fieldRecipe && biome != Biome::Snow && !single && gameMap) {
-                int cr=0,cc=0, forestCells=0;
+            int forestCells = 0;
+            if (gameMap) {
+                int cr=0,cc=0;
                 land->worldToCell(pos,cr,cc);
                 for (int dr=-3; dr<=3; ++dr) for (int dc=-3; dc<=3; ++dc)
                     if (gameMap->inBounds(cr+dr,cc+dc) && gameMap->cellAt(cr+dr,cc+dc).getForest()) ++forestCells;
+            }
+            if (fieldRecipe && biome != Biome::Snow && !single && gameMap) {
                 if (clumpRoll(col,row,seed,113) > understoryChance(forestCells)) {
                     for (int i=0; i<clump.count; ++i) woodyGated += clump.members[static_cast<size_t>(i)].woody ? 1 : 0;
                     ++clumpsGated; continue;
@@ -263,6 +266,11 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                     continue;
                 }
                 const auto salt = static_cast<uint32_t>(150+i*3);
+                // Clustered shrub thinning (owner: ~10x fewer); grass members are untouched.
+                if (member.woody && biome != Biome::Snow) {
+                    const float cluster = macroZone(instWx+371.0f+static_cast<float>(seed&511u), instWy-529.0f, 220.0f);
+                    if (clumpRoll(col,row,seed,salt+1000) >= shrubKeepChance(forestCells,cluster,slope)) { ++woodyThinned; continue; }
+                }
                 GosVegetation::Instance inst;
                 inst.x = instWx-originX-mapSpan*0.5f;
                 inst.y = instWy-originY+mapSpan*0.5f;
@@ -356,8 +364,8 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
     }
     const double fieldMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - fieldT0).count();
     MC2_DIAGFE(stderr,
-        "[VEG v3] field blades=%d side=%d gaps=%d flowers=%d ms=%.1f shrubs_placed=%d shrubs_moved_off_meadow=%d clumps_gated=%d\n",
-        fieldBlades, fieldSide, fieldGaps, fieldFlowers, fieldMs, woodyPlaced, woodyGated, clumpsGated);
+        "[VEG v3] field blades=%d side=%d gaps=%d flowers=%d ms=%.1f shrubs_placed=%d shrubs_moved_off_meadow=%d clumps_gated=%d shrubs_thinned=%d\n",
+        fieldBlades, fieldSide, fieldGaps, fieldFlowers, fieldMs, woodyPlaced, woodyGated, clumpsGated, woodyThinned);
 
     GosVegetation::uploadInstances(instances.data(),
                                    static_cast<uint32_t>(instances.size()));
