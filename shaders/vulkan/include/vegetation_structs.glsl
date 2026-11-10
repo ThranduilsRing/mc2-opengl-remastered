@@ -27,6 +27,13 @@ uint vegBlockIndex(VegInstance i, VegParamsData p) {
     return uint(row * side + col);
 }
 
+// Field carpet share kept by distance: full near the camera, thinning by rank to 20% by 2000 WU so a low,
+// long view stays inside the visible list. The vertex stage widens the survivors by 1/sqrt of it, so the
+// gameplay-camera sward keeps its cover (owner ref 3) instead of opening onto bare ground.
+float vegFieldThin(VegInstance i, VegParamsData p) {
+    return mix(1.0, 0.2, smoothstep(500.0, 2000.0, length(i.pos - p.cam.xyz)));
+}
+
 // One rank and one continuous scale, shared by the cull and draw. No alpha
 // fade, frame-dependent noise or separate binary distance/population tests.
 float vegLodScale(VegInstance i, VegParamsData p) {
@@ -38,11 +45,9 @@ float vegLodScale(VegInstance i, VegParamsData p) {
     float pixels = height * p.misc.y / clipW;
     float distanceFade = 1.0 - smoothstep(p.misc.x, p.cam.w, length(i.pos - p.cam.xyz));
     // Terrain LOD is discrete; only the continuous cover metric controls density.
-    // Meadow-field blades (atlas bit 3) are the carpet: they stay down to ~1.5 px so the RTS view keeps a continuous field.
+    // Meadow-field blades (atlas bit 3) are the carpet: they stay down to ~0.5 px so the RTS view keeps a continuous sward (owner ref 3).
     bool field = (i.atlasFrame & 8u) != 0u;
-    // Full carpet near the camera, thinning by rank to 20% by 2000 WU so a low, long view stays inside the visible list.
-    float fieldNear = mix(1.0, 0.2, smoothstep(500.0, 2000.0, length(i.pos - p.cam.xyz)));
-    float density = field ? min(min(distanceFade, fieldNear), smoothstep(1.0, 4.0, pixels))
+    float density = field ? min(min(distanceFade, vegFieldThin(i, p)), smoothstep(0.5, 2.0, pixels))
                           : min(distanceFade, smoothstep(3.0, 12.0, pixels));
     float rank = fract(i.seed * 17.371 + 0.137);
     return clamp((density - rank) / 0.15, 0.0, 1.0);

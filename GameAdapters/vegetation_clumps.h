@@ -105,6 +105,14 @@ inline Clump makeClump(int x, int y, uint32_t seed, const ClumpRecipe& recipe,
 // grass layer 0-3); the shader leans it downwind and rolls gust bands over it.
 inline constexpr unsigned kFieldBladeBit = 8u;
 inline constexpr unsigned kFieldFlowerBit = 4u;   // with kFieldBladeBit: white wildflower heads (low 2 bits = grass layer)
+// Owner ref 3 (2026-11-10): the gameplay-camera sward is continuous and even. tuft is the
+// 14 WU tuft noise (0..1) at a blade: below kFieldGapBelow is a small soft dirt gap (0 = no
+// blade); above it the blade height swells gently from 0.85x to 1.1x instead of tall tufts.
+inline constexpr float kFieldGapBelow = 0.14f;
+inline float fieldTuftHeight(float tuft) {
+    if (tuft < kFieldGapBelow) return 0.0f;
+    return 0.85f + 0.25f * std::clamp((tuft - kFieldGapBelow) / 0.5f, 0.0f, 1.0f);
+}
 struct FieldRecipe { float spacing = 6.0f, height = 4.5f; };
 // Absent "field" = no carpet (mods and other biomes keep their clumps only).
 inline std::optional<FieldRecipe> readFieldRecipe(const nlohmann::json& doc) {

@@ -317,12 +317,12 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                 const float bx = originX+static_cast<float>(col)*gridStep+blade.x;
                 const float by = originY-static_cast<float>(row)*gridStep+blade.y;
                 const glm::vec3 bpos(bx,by,0);
-                // Owner ref 2 (2026-11-10): tufted meadow with bare dirt gaps (~25% of the
-                // area) and white wildflower clusters. A 14 WU tuft field opens the gaps and
-                // shapes each tuft tall in the middle, short at its edge.
+                // Owner ref 3 (2026-11-10, gameplay camera) over ref 2: a fine, even, continuous
+                // sward. The 14 WU tuft field keeps only small soft dirt gaps (close-up flavour)
+                // and a gentle height swell instead of tall tufts.
                 const float tuft = macroZone(bx+static_cast<float>(seed&1023u), by, 14.0f);
-                if (tuft < 0.33f) { ++fieldGaps; continue; }
-                const float tuftHeight = 0.6f + 0.7f*std::clamp((tuft-0.33f)/0.4f, 0.0f, 1.0f);
+                const float tuftHeight = fieldTuftHeight(tuft);
+                if (tuftHeight <= 0.0f) { ++fieldGaps; continue; }
                 const bool flower = macroZone(bx+911.0f, by-377.0f+static_cast<float>(seed&2047u), 45.0f) > 0.74f &&
                                     blade.seed < 0.4f;
                 int ir=0,ic=0,isr=0,isc=0;

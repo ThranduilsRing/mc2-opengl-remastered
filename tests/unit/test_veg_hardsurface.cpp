@@ -137,6 +137,17 @@ TEST_CASE("VegField/even stratified carpet that always fits the remaining budget
     for (int hit : cellsHit) CHECK(hit == 1);   // one blade per sub-cell: no clumps, no bare patches
 }
 
+TEST_CASE("VegField/owner ref 3: even sward with only small gaps and a gentle height swell") {
+    CHECK(fieldTuftHeight(0.0f) == 0.0f);                          // gap: no blade
+    CHECK(fieldTuftHeight(kFieldGapBelow - 0.01f) == 0.0f);
+    CHECK(kFieldGapBelow < 0.2f);                                   // gaps stay a small share (ref 2 had 0.33)
+    for (float t = kFieldGapBelow; t <= 1.0f; t += 0.01f) {
+        CHECK(fieldTuftHeight(t) >= 0.85f);                         // no stubby tuft edges
+        CHECK(fieldTuftHeight(t) <= 1.1f);                          // no tall tuft crowns
+    }
+    CHECK(fieldTuftHeight(0.9f) > fieldTuftHeight(0.2f));           // monotone swell
+}
+
 TEST_CASE("VegField/shrubs gather at the stock treelines, open meadow keeps few") {
     CHECK(understoryChance(1) == 1.0f);
     CHECK(understoryChance(25) == 1.0f);

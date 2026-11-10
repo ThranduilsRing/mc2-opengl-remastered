@@ -34,6 +34,13 @@ void main() {
     float fadeStart = D.misc.x;
     float windFade = 1.0 - smoothstep(fadeStart * 0.8, fadeStart, dist3);
     float shrink = vegLodScale(i, D);
+    uint frame = i.atlasFrame;
+    // Owner ref 3: no white specks at gameplay zoom. Wildflower heads (field bit 2) thin out by a
+    // stable per-blade rank between 350 and 800 WU from the camera; the blade stays.
+    if ((frame & 12u) == 12u && fract(i.seed * 31.7 + 0.29) < smoothstep(350.0, 800.0, dist3)) frame &= ~4u;
+    // Field blades are a short, wide sward card; survivors of the distance thinning widen by
+    // 1/sqrt(kept share) so the carpet's cover holds at the gameplay camera.
+    float widthScale = (frame & 8u) != 0u ? 1.6 * inversesqrt(vegFieldThin(i, D)) : 1.0;
     v_color = vec4(0.0);
-    mc2VegetationVertex(i.pos, i.yaw, i.scale * shrink, i.seed, i.atlasFrame, shrink, windFade, D.misc.z, D.misc.w);
+    mc2VegetationVertex(i.pos, i.yaw, i.scale * shrink, i.seed, frame, shrink, windFade, D.misc.z, D.misc.w, widthScale);
 }

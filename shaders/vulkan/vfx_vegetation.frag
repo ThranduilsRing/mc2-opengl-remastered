@@ -41,6 +41,15 @@ vec3 rootMacro() {
     }
     return macro;
 }
+// Smooth value noise for the world-space sward colour patches (spatial, frame-stable).
+float vegHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float vegPatchNoise(vec2 p) {
+    vec2 c = floor(p), f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(vegHash(c), vegHash(c + vec2(1.0, 0.0)), f.x),
+               mix(vegHash(c + vec2(0.0, 1.0)), vegHash(c + vec2(1.0, 1.0)), f.x), f.y);
+}
+const float kVegShoreDryWU = 70.0;   // the sward is driest at the beach and greens over this height above water
 void main() {
     vec4 texel = texture(uAtlas, vec3(v_uv, float(v_atlasLayer)));
     if (texel.a < 0.5) discard;
@@ -65,14 +74,20 @@ void main() {
     float tip = 1.0 - v_vegData.y;
     bool grass = v_atlasLayer < 4u && (v_flags & 192u) == 0u;
     if (grass) {
-        // Owner ref 2 (2026-11-10): olive to mid-dark green tufts with dry tan blades
-        // and tips mixed in, soft and slightly desaturated. Value comes from the card.
+        // Owner ref 3 (2026-11-10, gameplay camera): the sward is one mottled carpet whose
+        // colour comes in large soft world-space patches (olive green, yellow-green, dry
+        // straw), drier toward the shore. Per-blade picks only add close-up grain (refs 1/2).
         float value = dot(albedo, vec3(0.299, 0.587, 0.114));
         float pick = fract(v_vegData.x * 13.71);
-        vec3 green = mix(vec3(0.40, 0.46, 0.22), vec3(0.27, 0.36, 0.17), fract(v_vegData.x * 5.3));
-        green *= value / dot(green, vec3(0.299, 0.587, 0.114));
-        float dry = pick < 0.28 ? 1.0 : smoothstep(0.72, 1.0, tip) * 0.8;   // dry blades, dry tips
-        albedo = mix(green, albedo, dry);
+        float patchTone = 0.62 * vegPatchNoise(v_rootPos.xy / 170.0) + 0.38 * vegPatchNoise(v_rootPos.xy / 48.0 + 17.3);
+        float shore = 1.0 - smoothstep(6.0, kVegShoreDryWU, v_rootPos.z - uT.shorelineWaterElev);
+        float dryness = clamp((patchTone - 0.30) * 1.6 + 0.55 * shore + (pick - 0.5) * 0.25, 0.0, 1.0);
+        const vec3 kOlive = vec3(0.34, 0.38, 0.17), kYellowGreen = vec3(0.47, 0.49, 0.21), kStraw = vec3(0.60, 0.52, 0.32);
+        vec3 hue = dryness < 0.5 ? mix(kOlive, kYellowGreen, dryness * 2.0) : mix(kYellowGreen, kStraw, dryness * 2.0 - 1.0);
+        // The card keeps blade-to-blade value; straw reads lighter than olive as in the reference.
+        vec3 sward = hue * (value / 0.40);
+        float dry = pick < 0.10 ? 0.8 : smoothstep(0.80, 1.0, tip) * 0.5;      // a few dry blades and tips up close
+        albedo = mix(sward, kStraw * (value / 0.40) * 1.08, dry);
         albedo *= mix(vec3(0.62, 0.68, 0.52), vec3(1.0), smoothstep(0.0, 0.55, tip));
         albedo *= 1.0 + v_vegAux.y * (0.10 + 0.22 * tip);
         // Field wildflowers: white heads (a few yellow) on the tops of short stalks.

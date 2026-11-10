@@ -1,6 +1,6 @@
 // Native crossed-card geometry. Instance culling uses the same CPU block/distance inputs.
 #include "vegetation_card_trim.glsl"
-void mc2VegetationVertex(vec3 i_worldPos, float i_yaw, float i_scale, float i_seed, uint i_atlasFrame, float lodFade, float windFade, float lightZ, float time) {
+void mc2VegetationVertex(vec3 i_worldPos, float i_yaw, float i_scale, float i_seed, uint i_atlasFrame, float lodFade, float windFade, float lightZ, float time, float widthScale) {
     uint vi = uint(gl_VertexIndex);
     uint row = (vi%8u)/2u;
     // Bit 3 marks a meadow-field blade (vegetation_clumps.h kFieldBladeBit); its low bits keep the grass layer.
@@ -37,8 +37,8 @@ void mc2VegetationVertex(vec3 i_worldPos, float i_yaw, float i_scale, float i_se
     float cy = cos(totalYaw), sy = sin(totalYaw);
 
     // Horizontal spread: a_card.x rotated by totalYaw.
-    float eastFromX  = a_card.x * cy;
-    float northFromX = a_card.x * sy;
+    float eastFromX  = a_card.x * cy * widthScale;
+    float northFromX = a_card.x * sy * widthScale;
     // Vertical component: a_card.y rises if vertFactor>0, spreads outward if flatFactor>0.
     // Outward direction = perpendicular to card face = (−sy, cy).
     float eastFromY  = -a_card.y * sy * flatFactor;

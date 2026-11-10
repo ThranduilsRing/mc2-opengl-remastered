@@ -3,5 +3,5 @@
   "cards_full": ["grass_01", "grass_02", "grass_03", "grass_04"],
   "cards_sparse": ["grass_01", "grass_02"],
   "clump": {"radius": 9, "tree_chance": 0.30, "moisture_bias": 0.0, "grass": 12},
-  "field": {"spacing": 4.0, "height": 5.5}
+  "field": {"spacing": 4.0, "height": 2.8}
 }
