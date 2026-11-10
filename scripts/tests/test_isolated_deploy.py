@@ -19,6 +19,8 @@ import pytest
 def _no_v04_reference(monkeypatch, tmp_path):
     # fixture installs are not v0.4-shaped; the parity check has its own tests (test_seed_parity.py)
     monkeypatch.setenv("MC2_SEED_PARITY_REF", str(tmp_path / "no-v04"))
+    # pytest --basetemp / %TEMP% may sit on C:; the system-drive refusal is for real installs
+    monkeypatch.setenv("MC2_ISO_ALLOW_SYSTEM_DRIVE", "1")
 
 
 def test_fresh_install_covers_deploy_payload(tmp_path, monkeypatch):
