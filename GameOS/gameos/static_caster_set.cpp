@@ -46,25 +46,39 @@ void StaticCasterSet::add(const StaticCasterEntry& entry) {
 
 void StaticCasterSet::endRebuild() {
     building_ = false;
+    settled_ = false;
     version_ = g_nextVersion++;
-    loadHash_ = resolve(loadLeaves_);
-    // per-entry ranges of the snapshot, for the drift log
-    loadRanges_.assign(entries_.size(), {0u, 0u});
-    {
-        std::vector<GpuStaticPropInstance> one;
-        uint32_t at = 0;
-        for (uint32_t i : resolveOrder()) {
-            one.clear();
-            const uint32_t n = static_cast<uint32_t>(GpuStaticPropRegistry::getRecipeShadowLeaves(entries_[i].recipeIndex, one));
-            loadRanges_[i] = {at, n};
-            at += n;
-        }
-    }
+    takeLoadSnapshot();
     std::array<uint32_t, 4> byKind = {0, 0, 0, 0};
     for (const StaticCasterEntry& e : entries_) ++byKind[static_cast<uint8_t>(e.kind) & 3u];
     mc2::fmt::print_err("[SHADOW_BAKE] caster_set version={} entries={} terrain_objects={} buildings={} turrets={} gates={} load_leaves={} load_hash={:016x}\n",
                         mc2::fmt::as_u64(version_), mc2::fmt::as_size(entries_.size()), byKind[0], byKind[1], byKind[2], byKind[3],
                         mc2::fmt::as_size(loadLeaves_.size()), mc2::fmt::as_u64(loadHash_));
+}
+
+void StaticCasterSet::takeLoadSnapshot() {
+    loadHash_ = resolve(loadLeaves_);
+    // per-entry ranges of the snapshot, for the drift log
+    loadRanges_.assign(entries_.size(), {0u, 0u});
+    std::vector<GpuStaticPropInstance> one;
+    uint32_t at = 0;
+    for (uint32_t i : resolveOrder()) {
+        one.clear();
+        const uint32_t n = static_cast<uint32_t>(GpuStaticPropRegistry::getRecipeShadowLeaves(entries_[i].recipeIndex, one));
+        loadRanges_[i] = {at, n};
+        at += n;
+    }
+}
+
+void StaticCasterSet::settleLoadSnapshot() {
+    // Once per set: the bake re-enters recordBake after its async cache read; a second settle would drop events queued since the first while the
+    // mask (keyed by the first snapshot) still shows the object intact.
+    if (building_ || version_ == 0 || settled_) return;
+    settled_ = true;
+    takeLoadSnapshot();
+    events_.clear();
+    removed_.clear();
+    churn_.clear();
 }
 
 void StaticCasterSet::clear() {
@@ -74,11 +88,13 @@ void StaticCasterSet::clear() {
     recipeMask_.clear();
     byOwner_.clear();
     removed_.clear();
+    churn_.clear();
     events_.clear();
     loadLeaves_.clear();
     loadRanges_.clear();
     loadHash_ = 0;
     version_ = 0;
+    settled_ = false;
     nextGameHandle_ = 1;
     building_ = false;
     admitNewOwners_ = false;
@@ -153,6 +169,19 @@ void StaticCasterSet::ownerRegistered(const void* owner, int32_t newRecipe) {
     if (recipeMask_.size() <= r) recipeMask_.resize(r + 1, 0);
     recipeMask_[r] = 1;
     if (sameLeaves(ev.before, ev.after)) return;   // a re-registration of the same leaves: nothing to rebake
+    if (!ev.before.empty() && ++churn_[owner] >= kDemoteAfterChanges) {
+        // A moving owner must not be a static caster: it would emit a removed/added pair, and dirty its footprint, every frame. The entry stays in
+        // place as a tombstone (load ranges keep their indices); the owner continues as a mover and its old static leaves are removed once.
+        StaticCasterEntry mover = e;
+        e.recipeIndex = -1;
+        if (static_cast<size_t>(newRecipe) < recipeMask_.size()) recipeMask_[static_cast<size_t>(newRecipe)] = 0;
+        byOwner_[owner] = {static_cast<uint32_t>(movers_.size()), true};
+        movers_.push_back(mover);
+        ev.after.clear();
+        ++deltaVersion_;
+        events_.push_back(std::move(ev));
+        return;
+    }
     ++deltaVersion_;
     events_.push_back(std::move(ev));
 }
@@ -188,7 +217,7 @@ std::vector<uint32_t> StaticCasterSet::resolveOrder() const {
     return order;
 }
 
-void StaticCasterSet::logDriftSinceLoad(uint32_t maxLines) const {
+uint32_t StaticCasterSet::logDriftSinceLoad(uint32_t maxLines) const {
     std::vector<GpuStaticPropInstance> one;
     uint32_t drifted = 0, logged = 0;
     for (uint32_t i = 0; i < entries_.size(); ++i) {
@@ -212,6 +241,7 @@ void StaticCasterSet::logDriftSinceLoad(uint32_t maxLines) const {
                                 mc2::fmt::as_size(one.size()), maxDelta);
     }
     mc2::fmt::print_err("[SHADOW_BAKE] caster drift since load: {} of {} entries\n", drifted, mc2::fmt::as_size(entries_.size()));
+    return drifted;
 }
 
 bool StaticCasterSet::isMoverOwner(const void* owner) const {

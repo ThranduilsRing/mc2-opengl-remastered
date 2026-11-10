@@ -202,3 +202,72 @@ TEST_CASE("static caster set: a second full bake uses live casters after events 
     CHECK(second != first);
     CHECK(second == set.resolve(leaves));
 }
+
+TEST_CASE("static caster set: load-time damage applied before the first mask settles into the snapshot with zero drift") {
+    RecipeFeed feed;
+    feed.add(1, 10); feed.add(2, 20); feed.add(3, 30);
+    int tree = 0, bldg = 0;
+    mc2shadow::StaticCasterSet set;
+    set.beginRebuild();
+    set.add({&tree, 1, 1});
+    set.add({&bldg, 2, 2, mc2shadow::CasterKind::Building});
+    set.endRebuild();
+    // the presentation pass applies the destroyed status after the build: the tree swaps shape, the building loses its shadow
+    set.ownerInvalidated(&tree, 1); recipes[3][0].typeID = 31; set.ownerRegistered(&tree, 3);
+    set.ownerInvalidated(&bldg, 2);
+    CHECK(set.hasEvents());
+    CHECK(set.logDriftSinceLoad(0) == 2);
+    set.settleLoadSnapshot();
+    CHECK(set.logDriftSinceLoad(0) == 0);
+    CHECK_FALSE(set.hasEvents());
+    std::vector<GpuStaticPropInstance> leaves;
+    const uint64_t hash = set.resolveForBake(0, leaves);   // the first mask keys on the settled set
+    CHECK(hash == set.resolve(leaves));
+    REQUIRE(leaves.size() == 1); CHECK(leaves[0].typeID == 31);
+    // a real destruction after the settle is still an event
+    set.ownerInvalidated(&tree, 3);
+    CHECK(set.takeEvents().size() == 1);
+}
+
+TEST_CASE("static caster set: an object destroyed between a bake attempt and its retry is replayed, not dropped") {
+    RecipeFeed feed;
+    feed.add(1, 10); feed.add(2, 20);
+    int tree = 0, bldg = 0;
+    mc2shadow::StaticCasterSet set;
+    set.beginRebuild();
+    set.add({&tree, 1, 1});
+    set.add({&bldg, 2, 2, mc2shadow::CasterKind::Building});
+    set.endRebuild();
+    set.settleLoadSnapshot();   // first bake attempt (the cooked-mask read is pending, so it returns false)
+    std::vector<GpuStaticPropInstance> leaves;
+    const uint64_t key = set.resolveForBake(0, leaves);
+    CHECK(leaves.size() == 2);
+    set.ownerInvalidated(&bldg, 2);   // destroyed before the first mask completes
+    set.settleLoadSnapshot();         // the retry settles again: must not forget the destruction
+    CHECK(set.resolveForBake(0, leaves) == key);   // the mask keys and renders the snapshot the cache lookup used
+    CHECK(leaves.size() == 2);
+    CHECK(set.hasEvents());           // and the destruction reaches the dirty path once the mask lands
+    CHECK(set.takeEvents().size() == 1);
+}
+
+TEST_CASE("static caster set: an owner that keeps moving becomes a mover and emits no more static events") {
+    RecipeFeed feed;
+    for (int r = 1; r <= 6; ++r) { feed.add(r, 10); recipes[r][0].modelMatrix[3] = 43.0f * static_cast<float>(r); }
+    int walker = 0;
+    mc2shadow::StaticCasterSet set;
+    set.beginRebuild();
+    set.add({&walker, 1, 1});
+    set.endRebuild();
+    int events = 0;
+    for (int r = 2; r <= 6; ++r) {
+        set.ownerInvalidated(&walker, r - 1);
+        set.ownerRegistered(&walker, r);
+        events += static_cast<int>(set.takeEvents().size());
+    }
+    CHECK(set.isMoverOwner(&walker));
+    CHECK(events == mc2shadow::StaticCasterSet::kDemoteAfterChanges);   // the last one removes its static leaves; nothing after it is an event
+    CHECK_FALSE(set.hasEvents());
+    std::vector<GpuStaticPropInstance> leaves;
+    set.appendMoverLeaves(leaves);
+    REQUIRE(leaves.size() == 1);
+}
