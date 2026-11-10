@@ -177,7 +177,7 @@ enum { VK_IMAGE_USAGE_SAMPLED_BIT = 1, VK_IMAGE_USAGE_TRANSFER_DST_BIT = 2,
        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT = 1, VK_BUFFER_USAGE_TRANSFER_SRC_BIT = 2,
        VMA_MEMORY_USAGE_AUTO = 1, VK_FORMAT_R16G16B16A16_SFLOAT = 1, VK_FORMAT_R32_SFLOAT = 2,
        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT = 4, VK_BUFFER_USAGE_TRANSFER_DST_BIT = 8, VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT = 16, VK_WHOLE_SIZE = -1,
-       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL = 1, VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET = 1,
+       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL = 1, VK_IMAGE_LAYOUT_GENERAL = 2, VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET = 1,
        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC = 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER = 2,
        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER = 3 };
 using VkDescriptorSet = int;
@@ -214,6 +214,7 @@ struct ShadowBake {
     int maskTexels_ = 0;
     uint32_t maskMips_ = 0, topSide_ = 0, topMips_ = 0;
     bool maskInitialized_ = true, topInitialized_ = true, objectInitialized_ = true;
+    bool tileGeneral_ = false;
     uint64_t transientBytes_ = 0;
     OwnedImage maskImage_, topR8_, objectImage_, windowImage_, scratch_[4], tileR8_;
     OwnedImageView maskView_, topR8View_, objectView_, windowView_, scratchView_[4], tileR8View_;
