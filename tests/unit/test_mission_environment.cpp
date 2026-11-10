@@ -2,6 +2,7 @@
 #include "../../GameOS/gameos/visual_tuning_profile.h"
 #include "Gates/gate_cold.h"
 #include "file.h"
+#include "vfs.h"
 #include "../../GameAdapters/MissionEnvironmentAdapter.h"
 #include <chrono>
 #include <filesystem>
