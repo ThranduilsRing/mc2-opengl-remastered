@@ -2,7 +2,7 @@
 """Run game rows for the CURRENT worktree HEAD on the rented Linux box (RTX 4060; GPUs discovered at submission).
 
     py -3 tools/box_run.py --gpu auto -- smoke-lite
-    py -3 tools/box_run.py --gpu 1 -- smoke-lite capture:mc2_01:mc2_01_saved_205644 determinism:mc2_10
+    py -3 tools/box_run.py --gpu 0 -- smoke-lite capture:mc2_01:mc2_01_saved_205644 determinism:mc2_10
     py -3 tools/box_run.py --seed          # once: build the golden install on the box (needs the Windows golden)
 
 Steps (each timed, summary printed at the end): lock a GPU, git-bundle HEAD to the box mirror, clang build in
@@ -50,6 +50,7 @@ SSH_STDIN = ["ssh", *_SSH_OPTS]        # the two calls that pipe the remote scri
 # verdicts beyond PASS/FAIL; every one of them is NOT green (exit code != 0), and none is ever retried by this tool
 RC_LOCK_TIMEOUT = 76    # waited 30 min for a GPU lock (was 75, the same code as other failures)
 RC_BOX_INFRA = 77       # the box refused to start: /workspace has less than the free-disk floor (MC2_BOX_MIN_FREE_GB, default 15)
+RC_STALLED = 79         # a build/unit row held the box build ticket with no log progress for 10 min (own child ended, ticket released)
 RC_NO_BASELINE = 78    # determinism/saveload row refused: no Linux baseline file recorded
 NEWEST_BOX_CLANG_FIX = "ee183497d"   # last nifty commit that kept the Linux clang build green (BRIDGE diag tag); older tips cannot build on the box
 SCP = ["scp", "-q", "-i", KEY, "-P", PORT]
@@ -88,9 +89,87 @@ def write_payload_manifest(install, commit):
     deploy.check_hardlink_isolation([(None, deploy.MANIFEST_NAME, "manifest")], str(install))
     deploy.write_manifest(str(install), hashes, commit)
 
+# Box-wide build semaphore (owner P0 2026-11-10: 10 lanes ran `ninja -j16` at once on a ~17-CPU quota). A FIFO of ticket files in
+# $BQ named <ns-timestamp>.<lane>.<pid>; the first N live tickets build, the rest wait and print their position every 60 s.
+# One build at a time (MC2_BOX_BUILDS overrides) on the dedicated BUILD_CPUS of locks/cores.env, -j = how many cores that list holds, capped at the cgroup quota. Dead tickets (pid gone) are pruned by whoever looks.
+GAME_CHECK = r'''
+# A free-text row (gpu:/sh:/cpu:) that names the game binary but produced no engine log did not run the game: rc 0 must not become PASS.
+# game_not_run <cmd> <rc> <outdir> <marker>: 0 (true) when cmd mentions ./mc2 or $I/mc2, rc is 0 and no file under outdir newer than marker holds VK_ENGINE_CONTEXT.
+game_not_run() {
+  case "$1" in *'./mc2'*|*'$I/mc2'*|*'${I}/mc2'*) ;; *) return 1 ;; esac
+  [ "$2" = 0 ] || return 1
+  [ -z "$(find "$3" -type f -newer "$4" -exec grep -la 'VK_ENGINE_CONTEXT' {} + 2>/dev/null)" ]
+}
+'''
+
+BUILD_SEM = r'''
+BQ=${MC2_BOX_BUILDQ:-/workspace/locks/build.queue}; TK=""
+bq_ncpu() { local n=0 r a b; for r in ${1//,/ }; do a=${r%-*}; b=${r#*-}; n=$((n + b - a + 1)); done; echo "$n"; }   # "8-35" -> 28, "0-3,8" -> 5
+bq_quota() { if [ -n "${MC2_BOX_QUOTA_CPUS:-}" ]; then echo "$MC2_BOX_QUOTA_CPUS"; return; fi   # cgroup CPU quota (cpu.max), else unlimited
+  awk '$1 ~ /^[0-9]+$/ && $2 > 0 { printf "%d", $1 / $2; found = 1 } END { exit !found }' /sys/fs/cgroup/cpu.max 2>/dev/null || echo 9999; }
+bq_j() { local n q; n=$(bq_ncpu "$1"); q=$(bq_quota); [ "$q" -ge 1 ] 2>/dev/null || q=1; [ "$n" -le "$q" ] || n=$q; [ "$n" -ge 1 ] || n=1; echo "$n"; }   # -j = BUILD_CPUS count, capped at the quota
+bq_now() { echo "${MC2_BOX_NOW:-$(date +%s)}"; }   # the clock; a test sets MC2_BOX_NOW (fake clock)
+bq_stalled() { [ $(( $1 - $2 )) -ge "${MC2_BOX_STALL_SECS:-600}" ]; }   # bq_stalled <now> <last-progress>: true after 10 min (default) without progress
+bq_alive() { local p; p=$(cat "$1" 2>/dev/null); [ -n "$p" ] && kill -0 "$p" 2>/dev/null; }
+# bq_scan: prune dead tickets (a reclaimed ticket is announced), set QPOS (my position, 0 if absent), QM (live tickets), QHOLD (first live ticket name)
+bq_scan() {
+  local t; QPOS=0; QM=0; QHOLD=""
+  for t in $(ls "$BQ" 2>/dev/null | sort); do
+    if ! bq_alive "$BQ/$t"; then rm -f "$BQ/$t"; echo "[box_run] reclaimed stale build ticket $t (its pid is dead)"; continue; fi
+    QM=$((QM + 1)); [ -z "$QHOLD" ] && QHOLD=$t; [ "$t" = "$1" ] && QPOS=$QM
+  done
+}
+# bq_waiting_line <position> <holder ticket> <now>: the one status line a waiting lane sees (holder lane, queued-at time, seconds since its last progress heartbeat)
+bq_waiting_line() {
+  local lane ns prog line; lane=$(echo "$2" | cut -d. -f2); ns=${2%%.*}
+  prog=$(( $3 - $(stat -c %Y "$BQ/$2" 2>/dev/null || echo "$3") ))
+  line="[box_run] waiting: position $1, holder $lane since $(date -d "@$((ns / 1000000000))" +%H:%M:%S 2>/dev/null || echo "$ns"), last progress ${prog}s ago"
+  bq_stalled "$3" "$(( $3 - prog ))" && line="$line (HOLDER STALE: its own watchdog ends it, nothing is killed from here)"
+  echo "$line"
+}
+bq_acquire() {
+  local n me last=0 now
+  n=${MC2_BOX_BUILDS:-1}; [ "$n" -ge 1 ] || n=1
+  mkdir -p "$BQ"; TK="$BQ/$(date +%s%N).$BR.$$"; echo $$ > "$TK"; me=$(basename "$TK")
+  while :; do
+    bq_scan "$me"
+    if [ "$QPOS" -le "$n" ] && [ "$QPOS" -ge 1 ]; then touch "$TK"; echo "[box_run] build slot granted (n=$n)"; return 0; fi
+    now=$(bq_now)
+    if [ $((now - last)) -ge 60 ]; then bq_waiting_line "$((QPOS - n))" "$QHOLD" "$now"; last=$now; fi
+    sleep "${MC2_BOX_BUILDQ_POLL:-5}"
+  done
+}
+# Stall watchdog (STALLED rc 79): while this lane holds the ticket, build/test log growth is the heartbeat (it also touches the ticket for waiters).
+# No growth for MC2_BOX_STALL_SECS (600) -> write the marker, print the last log line and end THIS lane's own child (pkill -P $$). Never another lane's process.
+bq_guard() {   # bq_guard <log> <marker>; run in the background, stop with bq_unguard
+  local log=$1 mark=$2 last=-1 lt now sz
+  lt=$(bq_now)
+  while :; do
+    sleep "${MC2_BOX_BUILDQ_POLL:-5}"; sz=$(stat -c %s "$log" 2>/dev/null || echo 0); now=$(bq_now)
+    if [ "$sz" != "$last" ]; then last=$sz; lt=$now; [ -n "$TK" ] && touch "$TK"; continue; fi
+    if bq_stalled "$now" "$lt"; then
+      echo "[box_run] STALLED: no log progress for $((now - lt))s while holding the build ticket; last line: $(tail -c 300 "$log" 2>/dev/null | tail -n 1 | cut -c1-200)" | tee "$mark"
+      pkill -TERM -P $$ 2>/dev/null; return 0
+    fi
+  done
+}
+bq_unguard() { [ -n "${WD:-}" ] && { kill "$WD" 2>/dev/null; wait "$WD" 2>/dev/null; }; WD=""; }
+bq_release() { [ -n "$TK" ] && rm -f "$TK"; TK=""; }
+'''
+
+# Client tie (owner P0): a foreground run is a child of its ssh session. When the local box_run dies the session's sshd exits and this
+# script would run on as an orphan; the watchdog ends the whole session group. A queued (pueue) task is detached by design: no tie.
+CLIENT_TIE = r'''
+_pp=$(ps -o ppid= -p $PPID 2>/dev/null | tr -d ' ')
+if [ -n "$_pp" ] && [ "$_pp" != 1 ] && ps -o comm= -p "$_pp" 2>/dev/null | grep -q '^sshd'; then
+  ( while kill -0 "$_pp" 2>/dev/null; do sleep 5; done; echo "[box_run] client gone: ending this lane run" >&2; pkill -TERM -g "$(ps -o pgid= -p $$ | tr -d ' ')" ) >/dev/null 2>&1 &
+fi
+'''
+
 REMOTE = r'''#!/bin/bash
 # box_run.py remote half: args GPU BRANCH SHA OUTDIR CAP0 ROWS_B64 (rows newline-joined, base64)
 set -uo pipefail
+#@@CLIENT_TIE@@
 GPU=$1; BR=$2; SHA=$3; OUT=$4; mapfile -t ROWS < <(printf %s "$6" | base64 -d); ROWS=("${ROWS[@]%$'\r'}")   # $5 = cap0, $6 = base64 of the rows
 echo "[box_run] lane=$BR branch=${7:-$BR} sha=$SHA"
 L=/workspace/lanes/$BR; S=$L/src; I=$L/install; GOLD=/workspace/golden-install; MIRROR=/workspace/toolchains/mirror.git
@@ -108,7 +187,8 @@ T0=$(date +%s); tick() { echo "[box_run] stage=$1 secs=$(( $(date +%s) - T0 )) t
 }
 #@@END_LANE_FLOOR@@
 mkdir -p /workspace/locks $L $OUT
-GOT=""; SB=""; WANTF=""; LWANT=/workspace/locks/$BR.want; trap 'rm -f "$LWANT"; [ -n "$WANTF" ] && rm -f "$WANTF"; [ -n "$SB" ] && rm -f /workspace/locks/$SB.owner /workspace/locks/$SB.row' EXIT   # a dead run must not leave a stale owner file
+export I OUT S   # free-text rows (sh:/cpu:/gpu:) run in a child bash and use $I (the install) and $OUT (this run's report dir): unexported they were empty and `cd $I` went home
+GOT=""; SB=""; WANTF=""; LWANT=/workspace/locks/$BR.want; trap '[ -n "${TK:-}" ] && rm -f "$TK"; rm -f "$LWANT"; [ -n "$WANTF" ] && rm -f "$WANTF"; [ -n "$SB" ] && rm -f /workspace/locks/$SB.owner /workspace/locks/$SB.row' EXIT   # a dead run must not leave a stale owner file
 exec 8>$L/.lane.lock; flock 8   # one run per lane at a time: src, install and out are shared (fd 8 is not passed on to rows)
 #@@DISK_GUARD@@
 FREE_GB=$(df -BG --output=avail /workspace | tail -1 | tr -dc 0-9)
@@ -118,14 +198,18 @@ if [ "${FREE_GB:-0}" -lt "${MC2_BOX_MIN_FREE_GB:-15}" ]; then echo "[box_run] BO
 rm -f "$OUT"/rows.tsv "$OUT"/fingerprints.tsv   # both are append-only: a stale PASS from an earlier run at this sha must never come back
 printf '%s\n' "${ROWS[@]}" > "$OUT/requested.tsv"
 [ -d $GOLD ] || { echo "[box_run] no golden install: run 'py -3 tools/box_run.py --seed' once"; exit 3; }
-BCPUS=${BUILD_CPUS:-32-63}   # builds: cores 32-63 at nice 19, no GPU lock held (the lock only wraps game rows)
+BCPUS=${BUILD_CPUS:-8-$(( $(nproc) - 1 ))}   # builds: the dedicated BUILD_CPUS of cores.env at nice 19, one build at a time (bq_acquire), no GPU lock held (the lock only wraps game rows)
+BUILD_J=$(bq_j "$BCPUS")
 export GIT_LFS_SKIP_SMUDGE=1
 # source: bundle was fetched into the mirror as refs/lanes/$BR by the Windows half
+git -C $MIRROR worktree prune 2>/dev/null   # an evicted lane dir leaves a dangling worktree record that blocks `worktree add`
 if [ -e $S/.git ]; then git -C $S checkout -q -f --detach $SHA; else git -C $MIRROR worktree add -q -f --detach $S $SHA; fi
+[ -e $S/.git ] && [ "$(git -C $S rev-parse HEAD 2>/dev/null)" = "$SHA" ] || { echo "[box_run] BOX_INFRA: could not provision the lane source at $SHA ($S; was the lane dir evicted?)"; exit 77; }   # never a silent exit 0 with nothing run
 tick source
 ONLY_LINT=1; for r in "${ROWS[@]}"; do [ "$r" = lint ] || ONLY_LINT=""; done   # a lint-only run is pure Python + git: no configure, no build, no install
 cd $S
 build_install() {
+#@@BUILD_SEM_USE@@
 # build: shared ccache keyed without the directory so every lane hits the same objects
 export CCACHE_BASEDIR=/workspace CCACHE_NOHASHDIR=1 CCACHE_SLOPPINESS=time_macros
 cd $S
@@ -135,7 +219,9 @@ grep -q "^MC2_IMGUI:BOOL=ON" build64-ninja/CMakeCache.txt 2>/dev/null || rm -f b
  -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_FLAGS=-stdlib=libc++ -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld \
  -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DMC2_IMGUI=ON \
  -DVulkan_INCLUDE_DIR=/workspace/toolchains/vulkan/include -DMC2_DXC=/workspace/toolchains/dxc/bin/dxc -DMC2_SLANGC=/workspace/toolchains/slang/bin/slangc -DMC2_SPIRV_OPT=/workspace/toolchains/gfxr-1.4.350.0/bin/spirv-opt > $OUT/configure.log 2>&1 || { tail -20 $OUT/configure.log; exit 4; }
-nice -n 19 taskset -c "$BCPUS" ninja -C build64-ninja -j16 mc2 > $OUT/build.log 2>&1; rc=$?; tail -2 $OUT/build.log
+rm -f $OUT/.stalled; : > $OUT/build.log; bq_guard $OUT/build.log $OUT/.stalled & WD=$!
+nice -n 19 taskset -c "$BCPUS" ninja -C build64-ninja -j$BUILD_J mc2 > $OUT/build.log 2>&1; rc=$?; bq_unguard; bq_release; tail -2 $OUT/build.log
+[ -s $OUT/.stalled ] && exit 79   # STALLED already printed by bq_guard
 [ $rc = 0 ] || { echo "[box_run] BUILD FAILED rc=$rc (log: $OUT/build.log)"; exit 5; }
 tick build
 # install: link the big immutable data from the golden install, copy everything else, then deploy the lane build over it
@@ -168,7 +254,7 @@ fi
 tick install
 export INSTALL=$I OUT
 export TMPDIR=$L/tmp; mkdir -p $TMPDIR
-grc() { nice -n 19 taskset -c "$BCPUS" "$@" 8>&-; }   # CPU rows (build, unit, cpu:, sh:): cores 32-63, no GPU lock
+grc() { nice -n 19 taskset -c "$BCPUS" "$@" 8>&-; }   # CPU rows (build, unit, cpu:, sh:): BUILD_CPUS, no GPU lock
 take_lock() {   # taken lazily, just before the first row that runs the game
 CAP0=${5:-0}; LW0=$SECONDS   # the 30 min wait is measured from here (the build already ran)
 AVAILABLE=$(nvidia-smi -L | sed -n 's/^GPU \([0-9][0-9]*\):.*/\1/p' | tr '\n' ' ')
@@ -209,8 +295,10 @@ echo "[box_run] gpu=$GPU slot=$SLOT locked lock_wait_secs=$((SECONDS - LW0))"
 N=$GPU; bus=$(nvidia-smi --query-gpu=pci.bus_id --format=csv,noheader -i "$N"); bus=${bus: -12}
 export DRI_PRIME="pci-$(echo "$bus" | tr ':.' '__')" MESA_VK_DEVICE_SELECT_FORCE_DEFAULT_DEVICE=1
 export MC2_VK_DEVICE=NVIDIA SDL_VIDEODRIVER=x11 SDL_AUDIODRIVER=dummy OMP_NUM_THREADS=1 MC2_LOG=1 TMPDIR=$L/tmp
-mkdir -p $TMPDIR; cv=GPU${N}_CPUS; CPUS=${!cv:-"$((4*N))-$((4*N+3))"}   # cores.env GPU<n>_CPUS, else the old 4-per-GPU formula; box quota is ~30.7 CPUs and a game uses ~1 core: rows get 4 cores of their GPU; builds use cores 16-63 at nice 19 (-j24)
-gr() { taskset -c "$CPUS" xvfb-run -a -s "-screen 0 1920x1080x24" "$@" 9>&- 8>&-; }   # -a: free display picked per run, fd 9 (GPU lock) not inherited
+mkdir -p $TMPDIR; cv=GPU${N}_CPUS; CPUS=${!cv:-"$((4*N))-$((4*N+3))"}   # cores.env GPU<n>_CPUS, else 4 per GPU
+CORES=(); for r in ${CPUS//,/ }; do for c in $(seq "${r%-*}" "${r#*-}"); do CORES+=("$c"); done; done
+CORE=${CORES[$(( ${SLOT:-0} % ${#CORES[@]} ))]}   # one core per actual game run: the slot index picks it from this GPU's cores (owner 2026-11-10)
+gr() { taskset -c "$CORE" xvfb-run -a -s "-screen 0 1920x1080x24" "$@" 9>&- 8>&-; }   # -a: free display picked per run, fd 9 (GPU lock) not inherited
 }
 # CPU rows first, then game rows: the GPU lock is only ever held around the game rows
 # determinism:* and saveload* run the engine with --headless (no window, no device: gameos_graphics.cpp), so they are CPU rows too (r7 finding 3)
@@ -269,13 +357,13 @@ for row in "${ROWS[@]}"; do
     saveload*)   m=${row#saveload}; m=${m#:}; m=${m:-mc2_01}   # headless: a gate GPU has no present-capable surface; the save bytes equal the windowed ones
                  cmd="python3 tools/saveload_roundtrip.py check --mission $m --install $I --mask tools/save_noise_mask.json --first-save-only --headless --out $(fresh $OUT/$name) --save-dir $(fresh $OUT/$name.savegame)" ;;
     unit)        # doctest tier (tests/unit): its own configure with the box clang toolchain (a bare cmake finds no default compiler: "CMAKE_CXX_COMPILER not set")
-                 cmd="grep -q '^CMAKE_HOME_DIRECTORY:INTERNAL=/' build64-tests/CMakeCache.txt 2>/dev/null || rm -rf build64-tests; cmake -S \$PWD/tests/unit -B \$PWD/build64-tests -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_FLAGS=-stdlib=libc++ -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache && nice -n 19 ninja -C build64-tests -j16 -k 0 mc2_tests && cd build64-tests && { ./mc2_tests --no-breaks --test-case-exclude=\"\$(grep -v '^#' ../tests/unit/box_exclude.txt | sed 's/ *#.*//' | paste -sd,)\" -r=xml -o=unit.xml > unit_out.txt 2>&1; python3 ../tools/box/unit_report.py unit.xml unit_out.txt; }" ;;   # verdict = doctest XML (should_fail controls are counted as controls, never as red)
+                 cmd="grep -q '^CMAKE_HOME_DIRECTORY:INTERNAL=/' build64-tests/CMakeCache.txt 2>/dev/null || rm -rf build64-tests; cmake -S \$PWD/tests/unit -B \$PWD/build64-tests -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_FLAGS=-stdlib=libc++ -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache && nice -n 19 ninja -C build64-tests -j$BUILD_J -k 0 mc2_tests && cd build64-tests && { ./mc2_tests --no-breaks --test-case-exclude=\"\$(grep -v '^#' ../tests/unit/box_exclude.txt | sed 's/ *#.*//' | paste -sd,)\" -r=xml -o=unit.xml > unit_out.txt 2>&1; python3 ../tools/box/unit_report.py unit.xml unit_out.txt; }" ;;   # verdict = doctest XML (should_fail controls are counted as controls, never as red)
                  # cwd = the build dir: cmake emits sources relative to it, so a __FILE__-relative test finds its files only from there.
                  # tests/unit/box_exclude.txt: the cases that are data- or ABI-dependent on this box, each with its reason (tracked, not a ratchet row)
     lint)        cmd="python3 tools/lane_merge.py --lint HEAD" ;;   # CPU-only: lane_merge's own lint (exit code = verdict) against the mirror's claude/nifty-mendeleev
     unit-san)    # same doctest tier under clang ASan+UBSan in its OWN tree (build64-tests-san); UBSan recovers (all findings listed) and is counted from log_path files
                  SANF="-fsanitize=address,undefined -fno-sanitize=vptr -fsanitize-recover=address -fno-omit-frame-pointer"   # vptr off: the harness links stub subsets of the engine, so typeinfo for Mover/Appearance is never emitted and a vptr check only fails the link
-                 cmd="cmake -S tests/unit -B build64-tests-san -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_FLAGS='-stdlib=libc++ $SANF' -DCMAKE_C_FLAGS='$SANF' -DCMAKE_EXE_LINKER_FLAGS='-fuse-ld=lld $SANF' -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache && nice -n 19 ninja -C build64-tests-san -j16 -k 0 mc2_tests && cd build64-tests-san && rm -f \$OUT/ubsan.* \$OUT/asan.* && ASAN_OPTIONS=detect_leaks=0:halt_on_error=0:log_path=\$OUT/asan UBSAN_OPTIONS=print_stacktrace=1:log_path=\$OUT/ubsan ./mc2_tests --no-breaks; rc=\$?; n=\$(cat \$OUT/ubsan.* 2>/dev/null | grep -c 'runtime error'); a=\$(cat \$OUT/asan.* 2>/dev/null | grep -c 'ERROR: AddressSanitizer'); echo \"[san] rc=\$rc ubsan_findings=\$n asan_findings=\$a\"; [ \$rc = 0 ] && [ \$n = 0 ] && [ \$a = 0 ]" ;;
+                 cmd="cmake -S tests/unit -B build64-tests-san -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_FLAGS='-stdlib=libc++ $SANF' -DCMAKE_C_FLAGS='$SANF' -DCMAKE_EXE_LINKER_FLAGS='-fuse-ld=lld $SANF' -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache && nice -n 19 ninja -C build64-tests-san -j$BUILD_J -k 0 mc2_tests && cd build64-tests-san && rm -f \$OUT/ubsan.* \$OUT/asan.* && ASAN_OPTIONS=detect_leaks=0:halt_on_error=0:log_path=\$OUT/asan UBSAN_OPTIONS=print_stacktrace=1:log_path=\$OUT/ubsan ./mc2_tests --no-breaks; rc=\$?; n=\$(cat \$OUT/ubsan.* 2>/dev/null | grep -c 'runtime error'); a=\$(cat \$OUT/asan.* 2>/dev/null | grep -c 'ERROR: AddressSanitizer'); echo \"[san] rc=\$rc ubsan_findings=\$n asan_findings=\$a\"; [ \$rc = 0 ] && [ \$n = 0 ] && [ \$a = 0 ]" ;;
     gpu-passes)  cmd="python3 tools/box_gpu_passes.py run --install $I --out $OUT --name gpu_passes; rc=\$?; cat $OUT/gpu_passes.txt 2>/dev/null; exit \$rc" ;;   # fixed poses (mc2_01 day, mc2_10 night, mc2_24 battle) off-screen; its own fresh log dir; table in this row's log + $OUT/gpu_passes.json
     build)       cmd="true" ;;   # build-only: the build/install above already ran with no GPU lock; this row just records it
     sh:*|cpu:*)  cmd="${row#*:}" ;;   # CPU-only command: no GPU lock
@@ -300,7 +388,7 @@ for row in "${ROWS[@]}"; do
                               cmd="cd $I && $wm env $sv $envx ./mc2 --profile stock --mission mc2_01 --duration 18 > $OUT/syncval_$arm.game.log 2>&1; g=\$?; grep -a 'VK_VALIDATION v1' $OUT/syncval_$arm.game.log | grep -c 'severity=error' | sed 's/^/[syncval] errors=/'; grep -aq 'id=layer_enabled' $OUT/syncval_$arm.game.log || { echo '[syncval] layer not live'; exit 1; }; ! grep -a 'VK_VALIDATION v1' $OUT/syncval_$arm.game.log | grep -aq 'severity=error' && [ \$g = 0 ]" ;;
                    nowater)   cmd="$sv python3 scripts/run_smoke.py --mission gaea_peaks_01 --allow-any-mission --keep-logs --exe $I/mc2" ;;
                    gpuav)     cmd="MC2_VULKAN_VALIDATION=gpu-assisted $vlp python3 scripts/run_smoke.py --mission mc2_01 --duration 30 --grace-s 900 --keep-logs --exe $I/mc2" ;;   # GPU-assisted validation run mode (slow: one mission; only this row raises the walltime cap, duration+grace)
-                   canary)    cmd="git apply tests/syncval/canary_producer_handoff_barrier.patch && { ninja -C build64-ninja -j16 mc2 > $OUT/canary_build.log 2>&1; b=\$?; git checkout -q -- GameOS/gameos/vk_native_producers.cpp; [ \$b = 0 ] || exit 9; cp -f build64-ninja/mc2 $I/mc2; $sv python3 scripts/run_smoke.py --lite --keep-logs --exe $I/mc2 > $OUT/canary_smoke.log 2>&1; grep -qa 'SYNC-HAZARD' $OUT/canary_smoke.log && { echo '[syncval] canary: hazard reported, as required'; exit 0; }; echo '[syncval] canary: NO hazard reported (validation is not live or the canary is stale)'; exit 1; }" ;;
+                   canary)    cmd="git apply tests/syncval/canary_producer_handoff_barrier.patch && { ninja -C build64-ninja -j${BUILD_J:-16} mc2 > $OUT/canary_build.log 2>&1; b=\$?; git checkout -q -- GameOS/gameos/vk_native_producers.cpp; [ \$b = 0 ] || exit 9; cp -f build64-ninja/mc2 $I/mc2; $sv python3 scripts/run_smoke.py --lite --keep-logs --exe $I/mc2 > $OUT/canary_smoke.log 2>&1; grep -qa 'SYNC-HAZARD' $OUT/canary_smoke.log && { echo '[syncval] canary: hazard reported, as required'; exit 0; }; echo '[syncval] canary: NO hazard reported (validation is not live or the canary is stale)'; exit 1; }" ;;
                    *) echo "[box_run] unknown syncval arm $arm"; RES=2; continue ;;
                  esac ;;
     *) echo "[box_run] unknown row $row"; RES=2; continue ;;
@@ -317,7 +405,11 @@ for row in "${ROWS[@]}"; do
     fi ;;
   esac
   [ -n "$GOT" ] && [ "$RUN" = gr ] && echo "$row" > /workspace/locks/$SB.row   # STATUS.json shows the row the GPU is on
-  $RUN timeout -k 30 $TMO bash -c 'cd "$1" && eval "$2"' _ "$S" "$cmd" > $OUT/$name.log 2>&1; rc=$?   # eval from argv: a row may carry spaces, quotes, slashes
+  RMARK=$OUT/.rowmark; touch $RMARK
+  case $row in unit|unit-san) bq_acquire; rm -f $OUT/.stalled; : > $OUT/$name.log; bq_guard $OUT/$name.log $OUT/.stalled & WD=$!;; esac   # unit builds queue behind every other build on the box (and are stall-watched)
+  $RUN timeout -k 30 $TMO bash -c 'cd "$1" && eval "$2"' _ "$S" "$cmd" > $OUT/$name.log 2>&1; rc=$?
+  case $row in unit|unit-san) bq_unguard; bq_release; [ -s $OUT/.stalled ] && rc=79;; esac
+  case $row in gpu:*|sh:*|cpu:*) game_not_run "$cmd" $rc "$OUT" "$RMARK" && { echo "[box_run] row=$row GAME_NOT_RUN: the command names mc2 but no engine log (VK_ENGINE_CONTEXT) was written; is \$I set and ./mc2 launched?"; rc=81; };; esac   # eval from argv: a row may carry spaces, quotes, slashes
   case $row in determinism:*|saveload*) [ $rc != 0 ] && grep -aq "baseline FAIL no baseline at\|check: no baseline for" $OUT/$name.log && rc=78;; esac   # NO_BASELINE: own verdict, never a plain FAIL
   echo "[box_run] row=$row rc=$rc"; grep -a "^| mc2_\|result=\|DEPLOY_FINGERPRINT\|FAIL\|PASS" $OUT/$name.log | head -8 | cut -c1-220
   [ "$row" = lint ] && grep -a "LINT FAIL" $OUT/$name.log | head -30 | cut -c1-300   # every red lint line comes back in the row summary
@@ -334,7 +426,7 @@ exit $RES
 
 _STDIO_KW = {"input", "stdin", "stdout", "stderr", "capture_output"}
 
-REMOTE = REMOTE.replace("#@@FRESH_FN@@", FRESH_FN)
+REMOTE = REMOTE.replace("#@@FRESH_FN@@", FRESH_FN + BUILD_SEM + GAME_CHECK).replace("#@@CLIENT_TIE@@", CLIENT_TIE).replace("#@@BUILD_SEM_USE@@", "bq_acquire")
 
 
 def run(cmd, **kw):
@@ -447,6 +539,8 @@ def verdict(rc, codes=()):
     """(name, exit code). PASS only for rc 0 with every row 0; LOCK_TIMEOUT and NO_BASELINE are distinct and NEVER green."""
     if rc == RC_LOCK_TIMEOUT:
         return "LOCK_TIMEOUT", RC_LOCK_TIMEOUT
+    if rc == RC_STALLED or str(RC_STALLED) in codes:
+        return "STALLED", RC_STALLED
     if rc == RC_BOX_INFRA:
         return "BOX_INFRA", RC_BOX_INFRA
     if not codes or (rc != 0 and all(c == "0" for c in codes)):
@@ -701,7 +795,7 @@ def main():
             grp = "build"   # build-only / unit-only: never touches a GPU, so it queues in the build group and holds no gpuN slot
         label = f"box_run:{branch}:{sha[:8]}:{grp}" + (f":{identity}" if identity != branch else "")
         after = ""
-        if grp != "build":   # GPU rows: build first in the build group (cores 32-63), then the GPU task, which finds the tree built and only takes the lock for the rows
+        if grp != "build":   # GPU rows: build first in the build group (BUILD_CPUS), then the GPU task, which finds the tree built and only takes the lock for the rows
             rb = run([*SSH_STDIN, f"cat > {script}.new.$$ && mv -f {script}.new.$$ {script} && {PUEUE} add -g build --print-task-id -l box_run:{branch}:{sha[:8]}:build:{identity} -- bash {script} {gpu} {branch} {sha} {out_remote} {cap0} {rows_b64(['build'])} {identity}"],
                      input=REMOTE.encode(), capture_output=True)
             bt = (rb.stdout.decode(errors="replace") if isinstance(rb.stdout, bytes) else rb.stdout).strip().splitlines()

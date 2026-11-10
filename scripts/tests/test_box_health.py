@@ -151,6 +151,7 @@ def test_worker_restart_and_backoff(box):
     def start(g):
         started.append(g)
         return 9000 + g
+    (box.locks / "cores.env").write_text("BUILD_CPUS=8-35\nGPU0_CPUS=0-7\nGPU1_CPUS=8-15\nGPU2_CPUS=16-23\n")   # filler GPUs come from the core map
     state = sup.load_state()
     box.add(500, "bash /workspace/filler/worker.sh 0")
     (box.filler / "worker0.pid").write_text("500")
@@ -236,7 +237,7 @@ def test_env_sh_refuses_gate_gpu_without_gate():
     # The gate GPU (GATE_GPU in cores.env) is reserved for gate rows: the owner check and the refusal use the dynamic gpu<N>.
     assert "is reserved for gate rows" in txt and "gpu$GG.owner" in txt and "GATE_GPU" in txt
     w = (BOX / "filler" / "worker.sh").read_text()
-    assert "case \"$G\" in 0|1|2)" in w      # filler never runs on the gate GPU
+    assert "GPU${G}_CPUS" in w and "case \"$G\" in 0|1|2)" not in w   # a worker needs its GPU in cores.env; no hardcoded ids
 
 
 # --- quiet slot and the filler result checks -------------------------------------------------------------------------
@@ -262,11 +263,11 @@ def test_quiet_slot_live_and_device_verdict(tmp_path):
     assert not run_job.quiet_slot_live(str(q))
     q.write_text("1 2 t\n")
     assert run_job.quiet_slot_live(str(q)) == os.path.isdir("/proc/1")
-    good = '[VK_ENGINE_CONTEXT] engine Vulkan device created: device_name="NVIDIA GeForce RTX 3060" api=1.4'
-    assert run_job.device_verdict(good) == ("NVIDIA GeForce RTX 3060", None)
-    name, why = run_job.device_verdict(good.replace("NVIDIA GeForce RTX 3060", "llvmpipe (LLVM 19.1.1, 256 bits)"))
+    good = '[VK_ENGINE_CONTEXT] engine Vulkan device created: device_name="NVIDIA GeForce RTX 4060" api=1.4'
+    assert run_job.device_verdict(good) == ("NVIDIA GeForce RTX 4060", None)
+    name, why = run_job.device_verdict(good.replace("NVIDIA GeForce RTX 4060", "llvmpipe (LLVM 19.1.1, 256 bits)"))
     assert why.startswith("device=cpu-fallback") and name.startswith("llvmpipe")
-    assert run_job.device_verdict(good.replace("RTX 3060", "RTX 4090"))[1].startswith("device=wrong")
+    assert run_job.device_verdict(good.replace("RTX 4060", "RTX 4090"))[1].startswith("device=wrong")
     assert run_job.device_verdict("no device here")[1].startswith("device=missing")
 
 

@@ -3,7 +3,7 @@
 The filler only ever syncs from a bundle this tool sends: nothing on the box polls git, so without a push it stays pinned to its
 last sha (the cause of the stale-filler rc=3 failures). Run it after every merge window:  py -3 tools/box_filler_push.py
 It sends an incremental bundle of the tip (minus what /workspace/filler/src already has), then runs /workspace/filler/sync.sh in the
-pueue `build` group (cores 32-63, no GPU lock) and waits for it; current_sha is written last by sync.sh.
+pueue `build` group (BUILD_CPUS of cores.env, no GPU lock) and waits for it; current_sha is written last by sync.sh.
 """
 import argparse, subprocess, sys, tempfile
 from pathlib import Path

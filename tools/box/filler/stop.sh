@@ -4,7 +4,8 @@
 set -euo pipefail
 F=/workspace/filler
 touch $F/STOP
-for g in 0 1 2; do
+GPUS=$(sed -n 's/^GPU\([0-9][0-9]*\)_CPUS=.*/\1/p' /workspace/locks/cores.env)
+for g in $GPUS; do
   p=$(cat $F/worker$g.pid 2>/dev/null || true)
   if [ -n "$p" ] && [ -d "/proc/$p" ] && grep -q worker.sh "/proc/$p/cmdline" 2>/dev/null; then
     kill -TERM -- "-$p" 2>/dev/null || kill -TERM "$p" 2>/dev/null || true

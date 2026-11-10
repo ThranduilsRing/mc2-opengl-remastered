@@ -2,7 +2,7 @@
 """Box idle filler: one perf job on GPU <gpu> (caller holds every slot /workspace/locks/gpu<gpu>.s<k>). usage: run_job.py <gpu>
 Picks the pose with the fewest runs for the current nifty sha, runs the game 20 s (GPU timestamps off), writes
 /workspace/filler/results/<sha>/<pose>-<gpu>-<n>.json (frame/MAIN_BUSY/wait_sim/tick stats + the last [PERF_COUNTERS v1] line).
-A run whose engine log shows no RTX 3060 device (missing line, llvmpipe/lavapipe/CPU fallback, another GPU) is a failure, never a result.
+A run whose engine log shows no device named GPU_NAME (locks/cores.env) (missing line, llvmpipe/lavapipe/CPU fallback, another GPU) is a failure, never a result.
 Exits 2 at once while a quiet-slot perf row runs (/workspace/locks/quiet names a live pid)."""
 import fcntl, json, os, shutil, subprocess, sys, time
 from pathlib import Path
@@ -65,7 +65,20 @@ def quiet_slot_live(path="/workspace/locks/quiet"):
 BAD_DEVICE = ("llvmpipe", "lavapipe", "softpipe", "swiftshader")
 
 
-def device_verdict(log_text, want="RTX 3060"):
+def gpu_name(path="/workspace/locks/cores.env"):
+    """GPU_NAME from the one core map (the box's actual GPU), else the current box's RTX 4060"""
+    try:
+        with open(path) as f:
+            for ln in f:
+                if ln.startswith("GPU_NAME="):
+                    return ln.split("=", 1)[1].strip().strip('"' + "'")
+    except OSError:
+        pass
+    return "RTX 4060"
+
+
+def device_verdict(log_text, want=None):
+    want = want or gpu_name()
     """(device name or None, reason or None) from the engine log: the result is only valid on the real GPU, never a CPU fallback"""
     name = None
     for ln in log_text.splitlines():

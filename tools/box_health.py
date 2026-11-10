@@ -47,6 +47,11 @@ def summary(doc):
     w = (doc.get("filler") or {}).get("workers") or {}
     lines = [f"[box_health] {'OK' if doc['ok'] else 'UNHEALTHY'} {doc.get('time', '')} free={d.get('free_gb')}GB (floor {d.get('floor_gb')}) "
              f"load={(c.get('load') or ['?'])[0]}/{c.get('quota_cpus')} {g} workers={sum(1 for v in w.values() if v.get('alive'))}/{len(w)}"]
+    q = doc.get("build_queue")
+    if q:
+        fmt = lambda t: f"{t['lane']} {t['age_s'] // 60}m"
+        lines.append(f"  builds  slots={q.get('slots')} holders=[{', '.join(fmt(t) for t in q.get('holders') or [])}] "
+                     f"waiting={len(q.get('waiters') or [])}[{', '.join(fmt(t) for t in q.get('waiters') or [])}] orphans={len(q.get('orphans') or [])}")
     lines += [f"  PROBLEM {p}" for p in doc.get("problems") or []]
     lines += [f"  warn    {p}" for p in doc.get("warnings") or []]
     return "\n".join(lines)
