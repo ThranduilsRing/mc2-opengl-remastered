@@ -216,6 +216,12 @@ def acquire(branch, base=None, reset_branch=False, no_warm=False):
     except Exception as e:  # noqa: BLE001
         print(f"[lane_slot] WARNING: lane registration failed: {e}", file=sys.stderr)
     print(f"[lane_slot] install {slot_install(path)} (deploy with --allow-new-target)")
+    if re.fullmatch(r"mc2-slot\d\d", os.path.basename(norm(path))):
+        import scratch_reap  # noqa: PLC0415
+        dirs = scratch_reap.ensure_slot_scratch(os.path.basename(norm(path)))
+        os.environ["MC2_LANE_SCRATCH"] = dirs[0]
+        print(f"[lane_slot] scratch (ALL lane scratch goes here; no new top-level E:/mc2-tmp-* dirs): {dirs[0]} and {dirs[1]}")
+        print(f"export MC2_LANE_SCRATCH={dirs[0]}")
     # Warm the slot's own tree at the branch tip (no --base: that would detach the branch we just created). The warm build holds
     # the tree's build lock (scripts/ninja_build.py), so the lane's own build waits for it; its PID is recorded in <tree>/warm.pid.
     if no_warm:
@@ -273,7 +279,13 @@ def release(path, discard=False):
     if rc:
         sys.exit("release: detach at nifty failed: " + err)
     dropped = drop_claims(path)
-    print(f"released {path} (was {info['branch']}); registry claims dropped: {dropped or 'none'}; install, scratch and build tree kept")
+    print(f"released {path} (was {info['branch']}); registry claims dropped: {dropped or 'none'}; install and build tree kept")
+    if re.fullmatch(r"mc2-slot\d\d", os.path.basename(norm(path))):  # the slot's own scratch roots go with the release
+        try:
+            import scratch_reap  # noqa: PLC0415
+            scratch_reap.reap_slot(os.path.basename(norm(path)), apply=True, released=True, size=False)
+        except Exception as e:  # noqa: BLE001 -- a failed reap never blocks a release
+            print(f"[lane_slot] WARNING: scratch reap failed: {e}", file=sys.stderr)
     return []
 
 
