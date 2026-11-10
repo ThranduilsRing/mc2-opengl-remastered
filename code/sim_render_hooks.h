@@ -3,6 +3,7 @@
 // where it used to call gos_* / gpu_cull:: directly, at the same points and in the same order.
 #pragma once
 #include <cstdint>
+#include "../mclib/mc2_czstring.h"
 
 namespace mc2::sim {
 
@@ -19,7 +20,7 @@ struct RenderHooks {
 	bool  (*visualDampWanted)() = nullptr;
 	void  (*updateVisualDampMovers)(const float* cellXY, int count, float radiusCells, float innerCells) = nullptr;
 	// Debug-overlay text measure with the shared HUD font (sets the font attributes, then measures).
-	void  (*measureDebugText)(const char* text, uint32_t* width, uint32_t* height) = nullptr;
+	void  (*measureDebugText)(mc2::czstring text, uint32_t* width, uint32_t* height) = nullptr;
 	// Smoke/headless tick driver (SmokeMode). Null fixedTimestepEnabled means "not enabled".
 	bool  (*smokeFixedTimestepEnabled)() = nullptr;
 	void  (*smokeFixedTimestepOnSimFrame)(double scenarioTimeSeconds) = nullptr;

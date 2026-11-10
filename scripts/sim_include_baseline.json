@@ -1382,6 +1382,17 @@
     },
     {
       "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp"
+      ],
+      "rule": "camera",
+      "subject": "eye",
+      "evidence": "const glm::mat4 w2c = eye->worldToClipGL();",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
       "file": "code/abl_trace.h",
       "chain": [
         "code/mission_update.cpp",
@@ -1632,28 +1643,6 @@
     },
     {
       "tu": "code/mission_update.cpp",
-      "file": "code/mission_update.cpp",
-      "chain": [
-        "code/mission_update.cpp"
-      ],
-      "rule": "gameos",
-      "subject": "gos_GetTerrainShadowSoftness",
-      "evidence": "float s = max(gos_GetTerrainShadowSoftness() - 0.1f, 0.1f);",
-      "occurrence": 1
-    },
-    {
-      "tu": "code/mission_update.cpp",
-      "file": "code/mission_update.cpp",
-      "chain": [
-        "code/mission_update.cpp"
-      ],
-      "rule": "gameos",
-      "subject": "gos_GetTerrainShadowSoftness",
-      "evidence": "float s = min(gos_GetTerrainShadowSoftness() + 0.1f, 10.0f);",
-      "occurrence": 1
-    },
-    {
-      "tu": "code/mission_update.cpp",
       "file": "code/tacordr.h",
       "chain": [
         "code/mission_update.cpp",
@@ -1741,83 +1730,6 @@
       "occurrence": 5
     },
     {
-      "tu": "code/mission_update.cpp",
-      "file": "code/mission_update.cpp",
-      "chain": [
-        "code/mission_update.cpp"
-      ],
-      "rule": "gameos",
-      "subject": "gos_SetTerrainShadowSoftness",
-      "evidence": "gos_SetTerrainShadowSoftness(s);",
-      "occurrence": 1
-    },
-    {
-      "tu": "code/mission_update.cpp",
-      "file": "code/mission_update.cpp",
-      "chain": [
-        "code/mission_update.cpp"
-      ],
-      "rule": "gameos",
-      "subject": "gos_SetTerrainShadowSoftness",
-      "evidence": "gos_SetTerrainShadowSoftness(s);",
-      "occurrence": 2
-    },
-    {
-      "tu": "code/mission_update.cpp",
-      "file": "code/mission_update.cpp",
-      "chain": [
-        "code/mission_update.cpp"
-      ],
-      "rule": "camera",
-      "subject": "eye",
-      "evidence": "gos_SetWorldToClipGL(eye->worldToClipGL());",
-      "occurrence": 1
-    },
-    {
-      "tu": "code/mission_update.cpp",
-      "file": "code/mission_update.cpp",
-      "chain": [
-        "code/mission_update.cpp"
-      ],
-      "rule": "gameos",
-      "subject": "gos_SetWorldToClipGL",
-      "evidence": "gos_SetWorldToClipGL(eye->worldToClipGL());",
-      "occurrence": 1
-    },
-    {
-      "tu": "code/mission_update.cpp",
-      "file": "code/mission_update.cpp",
-      "chain": [
-        "code/mission_update.cpp"
-      ],
-      "rule": "gameos",
-      "subject": "gos_TerrainLodChunk_UpdateVisualDampMovers",
-      "evidence": "gos_TerrainLodChunk_UpdateVisualDampMovers(",
-      "occurrence": 1
-    },
-    {
-      "tu": "code/mission_update.cpp",
-      "file": "code/mission_update.cpp",
-      "chain": [
-        "code/mission_update.cpp"
-      ],
-      "rule": "gameos",
-      "subject": "gos_TextSetAttributes",
-      "evidence": "gos_TextSetAttributes (gosFontHandle, 0, gosFontScale, false, true, false, false);",
-      "occurrence": 1
-    },
-    {
-      "tu": "code/mission_update.cpp",
-      "file": "code/mission_update.cpp",
-      "chain": [
-        "code/mission_update.cpp"
-      ],
-      "rule": "gameos",
-      "subject": "gos_TextStringLength",
-      "evidence": "gos_TextStringLength(&width,&height,text);",
-      "occurrence": 1
-    },
-    {
       "tu": "code/tacordr.cpp",
       "file": "code/tacordr.cpp",
       "chain": [
@@ -1826,39 +1738,6 @@
       "rule": "wall-clock",
       "subject": "time",
       "evidence": "if ((scenarioTime > time + 3) && myGroup) {",
-      "occurrence": 1
-    },
-    {
-      "tu": "code/mission_update.cpp",
-      "file": "code/mission_update.cpp",
-      "chain": [
-        "code/mission_update.cpp"
-      ],
-      "rule": "gameos",
-      "subject": "gos_GetKeyStatus",
-      "evidence": "if (gos_GetKeyStatus(KEY_LBRACKET) == KEY_PRESSED) {",
-      "occurrence": 1
-    },
-    {
-      "tu": "code/mission_update.cpp",
-      "file": "code/mission_update.cpp",
-      "chain": [
-        "code/mission_update.cpp"
-      ],
-      "rule": "gameos",
-      "subject": "gos_GetKeyStatus",
-      "evidence": "if (gos_GetKeyStatus(KEY_RBRACKET) == KEY_PRESSED) {",
-      "occurrence": 1
-    },
-    {
-      "tu": "code/mission_update.cpp",
-      "file": "code/mission_update.cpp",
-      "chain": [
-        "code/mission_update.cpp"
-      ],
-      "rule": "gameos",
-      "subject": "gos_TerrainLodChunk_VisualDampWanted",
-      "evidence": "if (gos_TerrainLodChunk_VisualDampWanted())",
       "occurrence": 1
     },
     {

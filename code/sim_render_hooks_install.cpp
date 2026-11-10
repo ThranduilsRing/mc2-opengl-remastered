@@ -21,7 +21,7 @@ void hookSetWorldToClip(const float* m16)
 	gos_SetWorldToClipGL(m);
 }
 
-void hookMeasureDebugText(const char* text, uint32_t* width, uint32_t* height)
+void hookMeasureDebugText(mc2::czstring text, uint32_t* width, uint32_t* height)
 {
 	DWORD w = 0, h = 0;
 	gos_TextSetAttributes(gosFontHandle, 0, gosFontScale, false, true, false, false);
