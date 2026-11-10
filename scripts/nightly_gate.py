@@ -210,12 +210,7 @@ def required_stages(names):
 def make_plan(weekly, today, names=None):
     """-> (plan, None) or (None, reason). plan = names, base, window, proof, cmd. Reads refs only (mc2-main's branch and state are irrelevant)."""
     window = current_window()
-    if weekly and window is None:   # the mods battery refuses without --window; say so up front instead of failing hours in
-        return None, "the weekly run needs the merge-window number and nifty's log names none"
     names = list(stage_names(weekly) if names is None else names)
-    if window is None and "mods-slim" in names:   # the battery refuses without --window; the slim check is advisory, so drop it
-        names.remove("mods-slim")
-        print("[nightly_gate] mods-slim dropped tonight: nifty's log names no merge window (mod_smoke needs --window)")
     base = nightly_base()
     if base is None:
         return None, f"no previous nifty-green-<W> tag on {NIFTY}'s history (merge_gate needs --base)"

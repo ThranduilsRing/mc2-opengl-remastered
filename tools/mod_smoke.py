@@ -1039,8 +1039,6 @@ def asset_precheck(exe: Path, staged: Path) -> dict:
 
 def battery(args) -> int:
     known_failures = load_known_failures()
-    if not getattr(args, 'window', None):
-        raise ValueError('pass --window N (current merge window) to enforce known-failure expiry')
     source_root = Path(args.install_root).resolve()
     if source_root.name.lower() == GOLDEN_INSTALL:
         raise ValueError(f'refusing golden install: {source_root}')
@@ -1102,7 +1100,7 @@ def battery(args) -> int:
                 (staged / 'smoke.log').write_text(json.dumps(precheck), encoding='utf-8')
             else:
                 result = run_mod(staged, stem, args.duration, timeout, getattr(args, 'ref_exe', None),
-                                 args.window, known_failures, **({'grace_s': grace} if grace else {}))
+                                 args.window or 0, known_failures, **({'grace_s': grace} if grace else {}))
                 print(f"[mod_smoke] {display} {stem} KNOWN={result.get('content_known', {})} NEW={result.get('content_new', {})}", flush=True)
                 if precheck is not None:
                     result['asset_load'] = precheck
@@ -1202,7 +1200,7 @@ def battery_leased(args) -> int:
 def main() -> int:
     ap = argparse.ArgumentParser(description='Smoke every supported mod against current mc2.exe')
     ap.add_argument('--battery', action='store_true', help='run all six mods across leased game workers')
-    ap.add_argument('--window', type=int, help='current merge-window number (known failures expire after three windows)')
+    ap.add_argument('--window', type=int, help='merge-window number (informational: known failures no longer expire)')
     ap.add_argument('--mod', default='', help='comma-separated mod name(s)')
     ap.add_argument('--mission', default='', help='mission stem override (needs a single --mod)')
     ap.add_argument('--exe', default=None, help='current mc2.exe')

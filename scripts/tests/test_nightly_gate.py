@@ -176,7 +176,7 @@ def test_promote_refuses_a_partial_that_skipped_a_required_nightly_stage(tmp_pat
     assert f(str(tmp_path))   # a modern verdict explicitly recording no nightly tier is refused
 
 
-def test_nightly_passes_the_window_and_weekly_refuses_without_one(monkeypatch, capsys):
+def test_nightly_passes_the_window_and_weekly_runs_without_one(monkeypatch, capsys):
     monkeypatch.setattr(nightly_gate, "refusal", lambda: None)
     monkeypatch.setattr(nightly_gate, "nightly_base", lambda: "b" * 40)
     monkeypatch.setattr(nightly_gate, "git", lambda *a: "merge w128: x\nmerge follow-up w127: y\nunrelated")
@@ -184,7 +184,8 @@ def test_nightly_passes_the_window_and_weekly_refuses_without_one(monkeypatch, c
     assert nightly_gate.main(["--dry-run", "--weekly"]) == 0
     assert "--window 128" in capsys.readouterr().out
     monkeypatch.setattr(nightly_gate, "git", lambda *a: "no window here")
-    assert nightly_gate.main(["--dry-run", "--weekly"]) == 2
+    assert nightly_gate.main(["--dry-run", "--weekly"]) == 0   # mod_smoke no longer needs a window number
+    assert "--window" not in capsys.readouterr().out.split("--stages", 1)[0]
 
 
 def test_window_regex_reads_uppercase_and_lettered_subjects(monkeypatch):

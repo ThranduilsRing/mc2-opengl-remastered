@@ -121,6 +121,11 @@ bool sameLeaves(const std::vector<GpuStaticPropInstance>& a, const std::vector<G
     }
     return true;
 }
+bool sameLeafTypes(const std::vector<GpuStaticPropInstance>& a, const std::vector<GpuStaticPropInstance>& b) {
+    if (a.size() != b.size()) return false;
+    for (size_t i = 0; i < a.size(); ++i) if (a[i].typeID != b[i].typeID) return false;
+    return true;
+}
 }  // namespace
 
 void StaticCasterSet::ownerInvalidated(const void* owner, int32_t oldRecipe) {
@@ -169,7 +174,9 @@ void StaticCasterSet::ownerRegistered(const void* owner, int32_t newRecipe) {
     if (recipeMask_.size() <= r) recipeMask_.resize(r + 1, 0);
     recipeMask_[r] = 1;
     if (sameLeaves(ev.before, ev.after)) return;   // a re-registration of the same leaves: nothing to rebake
-    if (!ev.before.empty() && ++churn_[owner] >= kDemoteAfterChanges) {
+    // An appearance swap (different typeIDs/leaf count: damage, destroyed, rubble) is not motion; only moves of the same shape count toward demotion.
+    if (!ev.before.empty() && !sameLeafTypes(ev.before, ev.after)) churn_.erase(owner);
+    else if (!ev.before.empty() && ++churn_[owner] >= kDemoteAfterChanges) {
         // A moving owner must not be a static caster: it would emit a removed/added pair, and dirty its footprint, every frame. The entry stays in
         // place as a tombstone (load ranges keep their indices); the owner continues as a mover and its old static leaves are removed once.
         StaticCasterEntry mover = e;

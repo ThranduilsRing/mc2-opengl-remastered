@@ -565,3 +565,20 @@ def test_candidate_install_prefers_the_install_deployed_from_head(tmp_path, monk
     with pytest.raises(SystemExit):   # none matches: refuse (W138f kept 7455a0502's fail-closed pick, no stale fallback)
         laptop_gate.candidate_install("3333333333cc")
     assert "skipping" in capsys.readouterr().out and stale.is_dir()
+
+
+@pytest.mark.parametrize("name,num", [("138", 138), ("138f", 138), ("138g2", 138)])
+def test_window_number_takes_the_leading_digits(name, num):
+    assert laptop_gate.window_number(name) == num
+
+
+@pytest.mark.parametrize("name", ["abc", "w138", "", None])
+def test_window_number_without_leading_digits_is_none(name):
+    assert laptop_gate.window_number(name) is None
+
+
+def test_merge_gate_window_arg_accepts_lettered_names():
+    import merge_gate
+    assert merge_gate.window_arg("138f") == 138 and merge_gate.window_arg("138") == 138
+    with pytest.raises(Exception):
+        merge_gate.window_arg("abc")

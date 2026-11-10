@@ -24,7 +24,7 @@ Every run (and --sim) also mirrors the PC's E:/mc2-ref/campaign-mods (MechComman
   mods and of merge_gate's MC2_GATE_MODS_SOURCE default) into the laptop's drv/E/mc2-ref/campaign-mods, size+mtime-synced and idempotent.
   It only reads the PC folder; nothing is written under A:/Games/mc2-opengl.
 """
-import argparse, csv, hashlib, json, os, shutil, subprocess, sys, tarfile, time
+import argparse, csv, hashlib, json, os, re, shutil, subprocess, sys, tarfile, time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
@@ -193,6 +193,12 @@ def fast_red(log, e):
 FARM_QUEUE_LOCK = "C:/mc2farm/queue.lock"   # the runner's lock: perf timing never overlaps this build + gate (p31)
 
 
+def window_number(window):
+    """Merge-window number from a window name: the leading digits ("138f" -> 138, "138g2" -> 138), None without any (the gate needs no number)."""
+    m = re.match(r"\d+", window or "")
+    return int(m.group()) if m else None
+
+
 def r_run(window, extra):
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import queue_lock   # uploaded next to this file by pc_main (tools/farm/queue_lock.py)
@@ -239,8 +245,8 @@ def _r_run(window, extra):
         proof =G + "/drv/E/mc2-archive-2026-10/proofs/merge-gate/" + window
         cmd = [sys.executable, "scripts/merge_gate.py", "--full",
                "--proofs-dir", proof, "--expect-head", head]
-        if window.isdigit():
-            cmd += ["--window", window]
+        if window_number(window) is not None:
+            cmd += ["--window", str(window_number(window))]
         rc, s = run(cmd + extra, out / "gate.console.log", env=e)
         sm["gate_seconds"], sm["gate_rc"] = s, rc
         for name, dst in (("gate-verdict.json", "gate-verdict.json"), ("gate.log", "gate.log")):
