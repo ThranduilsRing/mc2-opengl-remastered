@@ -1,5 +1,7 @@
 #include "runtime_bridge_protocol.h"
 #include "../../3rdparty/include/nlohmann/json.hpp"
+#include <iterator>
+#include <string>
 
 namespace mc2::bridge {
 std::optional<Subscription> subscribe(std::string_view text, std::string_view session) {
@@ -21,13 +23,9 @@ std::optional<Subscription> subscribe(std::string_view text, std::string_view se
 }
 
 std::string_view commandName(CommandKind kind) {
-    switch (kind) {
-    case CommandKind::Pause: return "pause";
-    case CommandKind::Resume: return "resume";
-    case CommandKind::Step: return "step";
-    case CommandKind::SetSpeed: return "set_speed";
-    }
-    return "?";
+    constexpr std::string_view names[] = {"pause", "resume", "step", "set_speed"};
+    const auto index = static_cast<size_t>(kind);
+    return index < std::size(names) ? names[index] : "?";
 }
 
 CommandParse parseCommand(std::string_view text, std::string_view session) {
@@ -57,15 +55,14 @@ CommandParse parseCommand(std::string_view text, std::string_view session) {
 }
 
 bool Control::apply(const Command& command) {
-    switch (command.kind) {
-    case CommandKind::Pause: paused_ = true; return true;
-    case CommandKind::Resume: paused_ = false; steps_ = 0; return true;
-    case CommandKind::Step:
+    if (command.kind == CommandKind::Pause) { paused_ = true; return true; }
+    if (command.kind == CommandKind::Resume) { paused_ = false; steps_ = 0; return true; }
+    if (command.kind == CommandKind::Step) {
         if (!paused_) return false;
         steps_ += static_cast<uint32_t>(command.steps);
         return true;
-    case CommandKind::SetSpeed: speed_ = command.speed; return true;
     }
+    if (command.kind == CommandKind::SetSpeed) { speed_ = command.speed; return true; }
     return false;
 }
 bool Control::paused() const { return paused_.load(); }

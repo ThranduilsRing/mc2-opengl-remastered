@@ -11,6 +11,8 @@ import threading
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "visual_verify"))
+import console_child  # noqa: E402
 from smoke_lib.runtime_bridge import MAX_FRAME, RuntimeBridge, receive_frame, send_frame
 
 
@@ -182,7 +184,7 @@ def test_live_control_run_steps_exactly_and_pause_holds():
     run = subprocess.run([sys.executable, str(Path(__file__).resolve().parents[1] / "run_smoke.py"),
                           "--mission", "mc2_10", "--duration", "45", "--keep-logs", "--exe", str(exe),
                           "--runtime-bridge-script", script],
-                         capture_output=True, text=True, timeout=600)
+                         capture_output=True, text=True, timeout=600, **console_child.child_kwargs(redirected=True))
     saved = json.loads((exe.parent / "debug_state/latest_runtime_bridge.json").read_text())
     assert saved["error"] is None, run.stderr[-2000:]
     log = saved["control_log"]

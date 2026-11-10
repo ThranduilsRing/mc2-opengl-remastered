@@ -5,6 +5,7 @@
 #include "mc2fmt.h"
 #include "runtime_observation_scope.h"
 #include "../GameOS/gameos/runtime_observation.h"
+#include "../GameOS/gameos/runtime_bridge_protocol.h"
 #include <chrono>
 
 namespace mc2::observation {
@@ -19,6 +20,10 @@ PhaseScope::~PhaseScope() {
         std::chrono::steady_clock::now().time_since_epoch()).count());
     recordZone(index_, name_, now - startNs_);
 }
+bool bridgePaused() { return bridge::control().paused(); }
+int bridgeTakeSteps(int most) { return bridge::control().takeSteps(most); }
+bool bridgeTakeSpeed(float& speed) { return bridge::control().takeSpeed(speed); }
+void bridgeNoteTicks(int count) { bridge::control().noteTicks(count); }
 void observeFrame(bool active) {
     if (!enabled()) return;
     beginFrame();

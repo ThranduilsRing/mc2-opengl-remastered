@@ -120,8 +120,9 @@ struct Transport {
                         reply["type"] = done ? "ack" : "nack";
                         if (parsed.command) reply["command"] = std::string(commandName(parsed.command->kind));
                         if (!done) reply["error"] = std::string(parsed.command ? "not_paused" : parsed.error);
-                        std::printf("[BRIDGE v0] ev=command.%s cmd=%s\n", done ? "ack" : "nack",
-                                    parsed.command ? std::string(commandName(parsed.command->kind)).c_str() : "?");
+                        if (mc2_diag::tagRequested("BRIDGE"))
+                            std::printf("[BRIDGE v0] ev=command.%s cmd=%s\n", done ? "ack" : "nack",
+                                        parsed.command ? std::string(commandName(parsed.command->kind)).c_str() : "?");
                     } else {
                         const auto next = subscribe(message.dump(), session);
                         const bool accepted = next.has_value();
