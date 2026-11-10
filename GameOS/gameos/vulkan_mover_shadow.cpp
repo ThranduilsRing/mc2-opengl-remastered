@@ -31,7 +31,7 @@ float moverShadowFade() {
     float d=0, moon=0, amb=0;
     const float fade=mc2MoverShadowNightFade(&d,&moon,&amb);
     static float lastFade=-1.0f;
-    if (fade!=lastFade) {
+    if (fade!=lastFade && mc2_diag::tagRequested("SHADOW_BAKE")) {
         lastFade=fade;
         const float oldFade=nightShadowFade();
         mc2::fmt::print_err("[SHADOW_BAKE] mover_night darkness={:.3f} moon_lum={:.1f} ambient_lum={:.1f} static_fade={:.3f} mover_fade={:.3f} ground_floor_old={:.3f} ground_floor_new={:.3f} mech_floor_old={:.3f} mech_floor_new={:.3f}\n",
