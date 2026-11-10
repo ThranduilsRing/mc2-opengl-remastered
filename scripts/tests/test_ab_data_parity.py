@@ -101,3 +101,12 @@ def test_montage_banner_and_summary_record_cross_data(tmp_path):
     import json
     summ = json.loads((tmp_path / "xd" / "summary.json").read_text())
     assert summ["cross_data"] is True and summ["data_parity"]["sha_b"] == "b"
+
+
+def test_shader_set_difference_is_reported_separately(tmp_path):
+    a, b = _install(tmp_path / "a"), _install(tmp_path / "b")
+    assert ab.data_parity(a, b)["shaders_same"]
+    (b / "shaders/vulkan/x.spv").write_bytes(b"newer")
+    dp = ab.data_parity(a, b)
+    assert dp["same"] and not dp["shaders_same"]
+    assert any(ln.startswith("[ab] SHADERS: differ") for ln in ab.data_parity_lines(dp))

@@ -637,15 +637,21 @@ def data_parity(install_a, install_b, full_install_a=False) -> dict:
     """Compare the data trees the two sides will render -> {sha_a, sha_b, files_a, files_b, same, differing, cross_data, ...}."""
     fa, fb = data_tree_files(install_a), data_tree_files(install_b)
     differing = sorted(r for r in set(fa) | set(fb) if fa.get(r) != fb.get(r))
-    return {"sha_a": data_fingerprint(fa), "sha_b": data_fingerprint(fb), "files_a": len(fa), "files_b": len(fb),
+    sa, sb = spv_digest(Path(install_a) / "shaders"), spv_digest(Path(install_b) / "shaders")
+    sdiff = sorted(r for r in set(sa) | set(sb) if sa.get(r) != sb.get(r))
+    return {"shaders_same": not sdiff, "shaders_differing_count": len(sdiff), "shaders_differing": sdiff[:200],
+            "sha_a": data_fingerprint(fa), "sha_b": data_fingerprint(fb), "files_a": len(fa), "files_b": len(fb),
             "same": not differing, "differing": differing[:200], "differing_count": len(differing),
             "full_install_a": bool(full_install_a), "cross_data": bool(differing)}
 
 
 def data_parity_lines(dp: dict) -> list:
+    sh = ("[ab] SHADERS: same .spv set" if dp.get("shaders_same", True) else
+          f"[ab] SHADERS: differ ({dp['shaders_differing_count']} .spv; side A runs its own exe's shaders, e.g. v0.4's; first: "
+          + ", ".join(dp["shaders_differing"][:5]) + ") -- shader-driven looks (vegetation, water) will differ even with the same exe")
     if dp["same"]:
-        return [f"[ab] DATA: same ({dp['files_a']} files, fingerprint {dp['sha_a'][:12]})"]
-    lines = [f"[ab] DATA: differs ({dp['differing_count']} files); first {min(10, len(dp['differing']))}:"]
+        return [f"[ab] DATA: same ({dp['files_a']} files, fingerprint {dp['sha_a'][:12]})", sh]
+    lines = [sh, f"[ab] DATA: differs ({dp['differing_count']} files); first {min(10, len(dp['differing']))}:"]
     lines += ["[ab]   " + r for r in dp["differing"][:10]]
     if dp["full_install_a"]:
         lines.append("[ab] !!! CROSS-DATA: side A renders its own install's data (--full-install-a); the diff mixes exe AND data changes !!!")
