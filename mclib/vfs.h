@@ -58,6 +58,8 @@ struct Stats {
 // Explicit (re)build, e.g. after a mod reload or in tests.
 void rebuild();
 void invalidate();             // the next lookup/enumerate rebuilds
+// Bumped by every invalidate()/rebuild(); callers that cache a rank derived from the index drop the cache when it changes.
+uint64_t generation();
 Stats stats();
 
 // First candidate of the ladder: mod -> loose -> size-stripped alias -> FST (File::open order).

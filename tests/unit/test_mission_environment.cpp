@@ -268,7 +268,9 @@ TEST_CASE("MissionEnvironment/loose building and texture overlays beat bundled k
     files.put("mods/mc2-industrial-kit/mod.json", R"({"id":"mc2-industrial-kit"})");
     files.put("mods/mc2-industrial-kit/data/tgl/1024/cp_test.ktx2", "kit cooked texture");
     files.put("data/tgl/1024/cp_test.tga", "legacy source texture");
+    const auto genBefore = mc2::vfs::generation();
     InitModSearchPaths("mods");
+    CHECK(mc2::vfs::generation() != genBefore);   // rank caches (icon_registry pilot sheet rank) key on this
     CHECK(LookupModPriority("data/tgl/1024/cp_test.tga") < LookupModPriority("data/tgl/1024/cp_test.ktx2"));
     CHECK(LookupModPriority("data/tgl/1024/cp_test.ktx2") < LookupModPriority("data/tgl/packed_stock.tga"));
     for (const char* key : {"data/tgl/chemicalplant.tgl", "data/tgl/1024/cp_chemicalplant_0.ktx2"}) {

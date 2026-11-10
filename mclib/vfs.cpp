@@ -23,6 +23,7 @@
 #include "fst_hash.h"
 #include "mod_conflict.h"
 #include "../GameOS/gameos/crash_content.h"
+#include <atomic>
 #include <unordered_map>
 #include <string>
 #include <vector>
@@ -1183,6 +1184,7 @@ void buildLocked()
 		g_digestMemo.clear();
 		++g_digestGeneration;
 	}
+	g_generation.fetch_add(1, std::memory_order_relaxed);
 
 	// 1. base FST archives, in registration order; the earlier archive wins (FastFileFind order),
 	//    so the chain keeps registration order (earliest first).
@@ -1307,10 +1309,14 @@ void rebuild()
 	buildLocked();
 }
 
+static std::atomic<uint64_t> g_generation{1};
+uint64_t generation() { return g_generation.load(std::memory_order_relaxed); }
+
 void invalidate()
 {
 	std::lock_guard<std::mutex> lk(g_indexMutex);
 	g_index.built = false;
+	g_generation.fetch_add(1, std::memory_order_relaxed);
 }
 
 Stats stats()
