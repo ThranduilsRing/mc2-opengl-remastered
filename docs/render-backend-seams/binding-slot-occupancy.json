@@ -1960,9 +1960,9 @@
         "side": "glsl",
         "file": "shaders/vulkan/terrain_decal_tier1.frag",
         "line": 20,
-        "role": "u_cementAtlas",
+        "role": "u_cementArt",
         "std": null,
-        "type": "sampler2D",
+        "type": "sampler2DArray",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
           "2": 0
@@ -1972,9 +1972,9 @@
         "side": "glsl",
         "file": "shaders/vulkan/terrain_overlay_tier1.frag",
         "line": 20,
-        "role": "u_cementAtlas",
+        "role": "u_cementArt",
         "std": null,
-        "type": "sampler2D",
+        "type": "sampler2DArray",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
           "2": 0
@@ -1984,9 +1984,9 @@
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
         "line": 20,
-        "role": "u_cementAtlas",
+        "role": "u_cementArt",
         "std": null,
-        "type": "sampler2D",
+        "type": "sampler2DArray",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
           "3": 0
@@ -2995,9 +2995,9 @@
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
         "line": 20,
-        "role": "u_cementAtlas",
+        "role": "u_cementArt",
         "std": null,
-        "type": "sampler2D",
+        "type": "sampler2DArray",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
           "3": 0
@@ -3007,9 +3007,9 @@
         "side": "glsl",
         "file": "shaders/vulkan/mech_tier1.frag",
         "line": 20,
-        "role": "u_cementAtlas",
+        "role": "u_cementArt",
         "std": null,
-        "type": "sampler2D",
+        "type": "sampler2DArray",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
           "2": 0,
@@ -3020,9 +3020,9 @@
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
         "line": 20,
-        "role": "u_cementAtlas",
+        "role": "u_cementArt",
         "std": null,
-        "type": "sampler2D",
+        "type": "sampler2DArray",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
           "1": 0
@@ -3206,9 +3206,9 @@
         "side": "glsl",
         "file": "shaders/vulkan/vfx_vegetation.frag",
         "line": 20,
-        "role": "u_cementAtlas",
+        "role": "u_cementArt",
         "std": null,
-        "type": "sampler2D",
+        "type": "sampler2DArray",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
           "2": 0

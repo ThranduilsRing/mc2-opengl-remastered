@@ -31,7 +31,7 @@
           "matrix_stride": null,
           "name": "instances",
           "offset": 0,
-          "type": "_281"
+          "type": "_323"
         }
       ],
       "name": "Instances"
@@ -44,7 +44,7 @@
           "matrix_stride": null,
           "name": "types",
           "offset": 0,
-          "type": "_317"
+          "type": "_359"
         }
       ],
       "name": "TypeBounds"

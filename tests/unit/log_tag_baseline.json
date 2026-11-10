@@ -9475,6 +9475,18 @@
    "count": 1
   },
   {
+   "tag": "STATIC_RESIDENT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "extracts",
+    "resident",
+    "skipped_last",
+    "registry_resident"
+   ],
+   "count": 1
+  },
+  {
    "tag": "STATIC_UPDATE",
    "ver": 1,
    "stream": "buffer",

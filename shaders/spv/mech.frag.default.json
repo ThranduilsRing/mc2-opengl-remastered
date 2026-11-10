@@ -6,8 +6,8 @@
   "specializationParams": [],
   "artifact": "mech.frag.default.dbbae7d3.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "5c7868d560d2841b10abed0646de6bff2541c8d1d241709d32cb8855787dc247",
-  "spirv_sha256": "8d043f62fb77a174a0d64fa1d042bf262426ac03037c8e37cd47575822aed8eb",
+  "source_sha256": "33bde3476b322a07b77b97d252bbc84d747b03f4f39e98f52cb44e54cbf6e164",
+  "spirv_sha256": "11798129bb8ed5a1c0cb258fd6997f85827919cce3b30e46696bbefa1cffe063",
   "bindings": {
     "ubos": [
       {
@@ -58,7 +58,7 @@
         "binding": 13
       },
       {
-        "type": "_1486",
+        "type": "_1489",
         "name": "TerrainCementBuf",
         "readonly": true,
         "block_size": 0,
@@ -110,8 +110,8 @@
         "set": 1
       },
       {
-        "name": "u_cementAtlas",
-        "type": "sampler2D",
+        "name": "u_cementArt",
+        "type": "sampler2DArray",
         "location": null,
         "binding": 3,
         "set": 1
@@ -274,7 +274,7 @@
           "offset": 96
         },
         {
-          "name": "cementGridSide",
+          "name": "cementLayerCount",
           "type": "int",
           "offset": 100
         },
@@ -699,7 +699,7 @@
           "offset": 772
         },
         {
-          "name": "cementAtlasSeamFix",
+          "name": "reserved776",
           "type": "int",
           "offset": 776
         },
@@ -994,7 +994,7 @@
         }
       ]
     },
-    "_1486": {
+    "_1489": {
       "name": "TerrainCementBuf",
       "members": [
         {
