@@ -103,6 +103,22 @@ FINGERPRINT_TREES = ("data/tgl", "data/objects", "data/effects", "data/missions"
 OVERLAY_MANIFEST = os.path.join(BASELINE_DIR, "data_overlay.json")
 
 
+#: Deploy-cooked render-only texture sidecars (deploy_payload.ensure_tree_upscale): data/tgl/128/<stem>.ktx2 for each stem pinned here.
+#: The simulation never reads a texture, so like the .cookstamp receipts they stay out of the stock part (W138h: the five upscaled tree
+#: atlases moved the stock digest and failed every determinism and saveload baseline on unchanged simulation data).
+TREE_UPSCALE_PINS = os.path.join(ROOT, "data", "kit", "tree-upscale.json")
+
+
+def render_only_sidecars(pins_path: str = TREE_UPSCALE_PINS) -> frozenset:
+    """Install-relative paths of the deploy-cooked render-only sidecars; empty when the pin file is absent or unreadable."""
+    try:
+        with open(pins_path, encoding="utf-8") as fh:
+            pins = json.load(fh)
+        return frozenset(f"data/tgl/128/{stem}.ktx2" for stem in pins)
+    except (OSError, ValueError, TypeError):
+        return frozenset()
+
+
 def baseline_path(mission: str) -> str:
     directory = os.path.join(BASELINE_DIR, "linux") if sys.platform == "linux" else BASELINE_DIR
     return os.path.join(directory, mission + ".json")
@@ -129,12 +145,13 @@ def data_fingerprint(install: str = INSTALL_DIR, manifest: dict | None = None) -
     """-> {"digest", "inputs", "stock_digest", "overlay", "problems"}: a digest of the install data the simulation reads.
 
     The digest covers two parts. STOCK: the archives by content and the loose trees by relative path and size, leaving out the declared
-    overlay, `*.beauty` presentation sidecars and texture cook receipts (render-only). OVERLAY: the
+    overlay, `*.beauty` presentation sidecars, texture cook receipts and the deploy-cooked tree sidecars (render-only). OVERLAY: the
     files tests/smoke/sim_determinism/data_overlay.json declares, by content. `problems` names a declared overlay file that is missing or
     changed and a stock part that no longer equals the manifest's `stock_digest`, so a dirty install says why instead of only differing.
     """
     manifest = load_overlay_manifest() if manifest is None else manifest
     declared = manifest.get("overlay", {})
+    render_only = render_only_sidecars(TREE_UPSCALE_PINS)
     stock = hashlib.sha256()
     inputs = []
     for name in FINGERPRINT_ARCHIVES:
@@ -154,6 +171,8 @@ def data_fingerprint(install: str = INSTALL_DIR, manifest: dict | None = None) -
                     continue  # Texture provenance receipts do not affect simulation data.
                 full = os.path.join(dp, fn)
                 rel = os.path.relpath(full, install).replace(os.sep, "/")
+                if rel in render_only:
+                    continue  # Cooked texture sidecars are render-only.
                 if rel not in declared:
                     entries.append(f"{rel} {os.path.getsize(full)}")
         for e in sorted(entries):
