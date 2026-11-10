@@ -694,11 +694,11 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 			for (long i = 0; i < numMechs; i++)
 				if (mechs[i] && mechs[i]->getExists())
 				{
-					{ ZoneScopedN("Presentation.Mechs.PushFlush");
+					{
 					mechs[i]->applyAppearancePush();
 					mechs[i]->getAppearance()->flushSimEvents(); }
 					bool inView;
-					{ ZoneScopedN("Presentation.Mechs.Bounds");
+					{
 					inView = mechs[i]->getAppearance()->recalcBounds();
 					if (inView)
 						mechs[i]->windowsVisible = turn; }
@@ -708,7 +708,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 					float rot = mechs[i]->getRotation();
 					{ ZoneScopedN("Presentation.Mechs.Pose");
 					presentationPose(mechs[i], pos, rot); }
-					{ ZoneScopedN("Presentation.Mechs.Params");
+					{
 					int teamID = mechs[i]->getTeamId();
 					mechs[i]->getAppearance()->setObjectParameters(pos,rot,mechs[i]->drawFlags,teamID,Team::getRelation(teamID, Team::home->getId())); }
 
@@ -717,7 +717,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 
 					{ ZoneScopedN("Presentation.Mechs.Update");
 					mechs[i]->getAppearance()->update( false ); }
-					{ ZoneScopedN("Presentation.Mechs.Tail");
+					{
                     mechs[i]->getAppearance()->updateFootprints();
 					mechs[i]->getAppearance()->setVisibility(inView,true); }
 				}
