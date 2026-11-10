@@ -42,6 +42,22 @@ TEST_CASE("WaterReactive/capacity drops oldest and tile lists keep newest") {
     CHECK(gpu.counts[tile(10, 10)] == 0);
 }
 
+TEST_CASE("WaterReactive/three standing mechs keep every live ring in every tile they touch (no tile-edge cut)") {
+    // Owner 2026-11-10: the outer rings ended in a straight line along a tile edge. Three standing mechs emit a stamp every
+    // 0.55 s for 3 s each (~6 per mech); with 8 slots per tile the oldest were dropped per tile, differently per neighbour.
+    Buffer b;
+    const float ys[3] = {4015.0f, 4050.0f, 4096.0f};
+    for (int step = 0; step <= 30; ++step)
+        for (int m = 0; m < 3; ++m)
+            b.submit(m + 1, 1.0f + step * 0.1f, 256.0f, ys[m], 13, true, true, false);
+    GpuFrame gpu;
+    b.snapshot(4.0f, gpu);
+    const uint32_t live = b.size();
+    CHECK(live >= 15);
+    for (int ty = 15; ty <= 16; ++ty)
+        CHECK(gpu.counts[tile(1, ty)] == live); // every live stamp reaches both tile rows around y=4096
+}
+
 TEST_CASE("WaterReactive/cadence velocity reset invalid input and stationary rings") {
     Buffer b;
     b.submit(1, 1, 0, 0, 20, true, true, true);

@@ -69,15 +69,15 @@ struct ReactiveStamp { vec4 positionRadiusAge; vec4 velocityType; };
 layout(set = 0, binding = 13, std430) readonly buffer WaterReactive {
     ReactiveStamp stamps[128];
     uint counts[1024];
-    uint indices[8192];
+    uint indices[32768];   // 1024 tiles x kPerTile (RenderCore/water_reactive.h)
 } R;
 
 vec3 reactiveWater(vec2 worldXY, float pixelWidth) {
     ivec2 cell = ivec2(floor(worldXY / 256.0));
     uint tile = (uint(cell.y) & 31u) * 32u + (uint(cell.x) & 31u);
     vec3 result = vec3(0.0);
-    for (uint i = 0u; i < min(R.counts[tile], 8u); ++i) {
-        ReactiveStamp s = R.stamps[R.indices[tile * 8u + i]];
+    for (uint i = 0u; i < min(R.counts[tile], 32u); ++i) {
+        ReactiveStamp s = R.stamps[R.indices[tile * 32u + i]];
         vec2 delta = worldXY - s.positionRadiusAge.xy;
         if (dot(delta, delta) < 224.0 * 224.0)
             result += wr_profile(delta, s.velocityType.xy, s.positionRadiusAge.z,
