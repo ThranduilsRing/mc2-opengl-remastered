@@ -2365,9 +2365,8 @@ def prepare_seed_delta(items, target, full_verify=False, allow_legacy=False):
         if not dst.is_file() or dst.stat().st_nlink <= 1:
             continue
         row = shared.get(rel)
-        # Seed files are shared hardlinks: every other install linking or unlinking one bumps its NTFS ChangeTime, so
-        # identity is volume+inode+size+mtime (the receipt's first four fields). The source side keeps full stamps.
-        if (not full_verify and src is not None and row and iso.content_stamp(dst)[:4] == row['stamp'][:4]
+        # Full stamp incl. NTFS ChangeTime (pinned by the restored-mtime corruption test); the source side uses receipts.
+        if (not full_verify and src is not None and row and iso.content_stamp(dst) == row['stamp']
                 and Path(src).is_file() and source_rx.digest(src) == row['sha256']):
             verified[rel] = row['sha256']
             continue
