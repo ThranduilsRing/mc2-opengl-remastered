@@ -198,9 +198,9 @@ TEST_CASE("terrain_walk_skip/only off-view trees and terrain objects with nothin
 }
 
 // perf-building-resident: buildings, turrets and gates leave the walk only when their extract found them out of view
-// (Visible clear: renderView returns at once). Building-appearance terrain objects leave it only when render() off view
-// would neither mark a world marker's shadow nor capture a moving shadow, and the visibility flags are already set.
-TEST_CASE("terrain_walk_skip/off-view buildings and building-appearance terrain objects with nothing to draw leave the walk")
+// (Visible clear: renderView returns at once). Building-appearance terrain objects are still visited (an off-view skip
+// of them lost two contact shadows in the mc2_01 exe-swap A/B).
+TEST_CASE("terrain_walk_skip/off-view buildings, turrets and gates leave the walk")
 {
     // Out of view (Visible clear): renderView is a no-op, skipped.
     CHECK(mc2::visibleFlagWalkSkips(BUILDING, false));
@@ -215,18 +215,4 @@ TEST_CASE("terrain_walk_skip/off-view buildings and building-appearance terrain 
     CHECK(!mc2::visibleFlagWalkSkips(TERRAINOBJECT, false));
     CHECK(!mc2::visibleFlagWalkSkips(BRIDGE, false));
     CHECK(!mc2::visibleFlagWalkSkips(BATTLEMECH, false));
-
-    // A settled building-appearance terrain object off view: render() draws nothing.
-    CHECK(mc2::bldgRenderIsNoOp(false, false, false, true));
-    CHECK(mc2::terrainWalkSkips(TERRAINOBJECT, false, false, mc2::bldgRenderIsNoOp(false, false, false, true)));
-    // It enters the view: drawn the same frame.
-    CHECK(!mc2::bldgRenderIsNoOp(true, false, false, true));
-    // A world marker keeps the visit (NoShadow on its nodes); so does a moving shadow (destroyed, animated, mover-owned).
-    CHECK(!mc2::bldgRenderIsNoOp(false, true, false, true));
-    CHECK(!mc2::bldgRenderIsNoOp(false, false, true, true));
-    // Never yet marked visible: renderView's setVisibility(true, true) still matters, visited.
-    CHECK(!mc2::bldgRenderIsNoOp(false, false, false, false));
-    // Bars (selected) or dust still force the visit.
-    CHECK(!mc2::terrainWalkSkips(TERRAINOBJECT, true, false, mc2::bldgRenderIsNoOp(false, false, false, true)));
-    CHECK(!mc2::terrainWalkSkips(TERRAINOBJECT, false, true, mc2::bldgRenderIsNoOp(false, false, false, true)));
 }

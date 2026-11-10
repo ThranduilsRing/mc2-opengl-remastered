@@ -500,16 +500,6 @@ std::optional<int32_t> BldgAppearance::residentRenderRecipe() const
 	return staticReg.recipeIndex;
 }
 
-// perf-building-resident: the same conditions render() tests outside the view (marker NoShadow, moving-shadow capture).
-bool BldgAppearance::renderIsNoOp() const
-{
-	if (inView || !visible || !seen) return false;
-	const bool marker = appearType && mc2WorldMarkerAppearance(appearType->name);
-	const bool capturesMoverShadow = !marker && gos_IsModernShadowPathActive() &&
-		(mc2shadow::staticCasterSet().isMoverOwner(static_cast<const Appearance*>(this)) || !isStaticEligible());
-	return mc2::bldgRenderIsNoOp(inView, marker, capturesMoverShadow, visible && seen);
-}
-
 std::optional<int32_t> TreeAppearance::residentRenderRecipe() const
 {
 	if (submittedFrame_ != g_mc2FrameCounter.load(std::memory_order_relaxed)) return std::nullopt;
