@@ -23,7 +23,7 @@ layout(push_constant) uniform OverlayPC {
     float artFlatExempt;   // off 16: always 0 (stock flat-pad multiply); slot kept for the layout
     float mapHalfExtent;   // off 20
     int   biasLegacy;      // off 24: MC2_OVERLAY_BIAS_LEGACY
-    int   cementAdopt;     // off 28: MC2_OVERLAY_CEMENT_ADOPT (default 1)
+    int   cementAdopt;     // off 28: concrete adopt, 1 unless options.cfg StockOverlayConcrete
     int   seamFix;         // off 32: MC2_CEMENT_ATLAS_SEAM_FIX (default 1)
     int   _pad0;           // off 36
     int   _pad1;           // off 40

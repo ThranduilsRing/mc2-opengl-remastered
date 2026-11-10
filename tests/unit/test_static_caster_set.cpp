@@ -271,3 +271,31 @@ TEST_CASE("static caster set: an owner that keeps moving becomes a mover and emi
     set.appendMoverLeaves(leaves);
     REQUIRE(leaves.size() == 1);
 }
+
+// Investigation (w138e-review-p2 item 4): a building walking intact -> damaged -> destroyed -> rubble makes three real (non-cancelling) shape changes,
+// which is exactly kDemoteAfterChanges. This pins what happens today: the rubble registration is the third change, so the building is demoted to a
+// mover, its rubble leaves are dropped from the static bake (ev.after cleared) and it never casts a static rubble shadow. A tree that fell and landed
+// is the same shape. Proposed fix (not applied here): count only changes that happen while the leaves keep MOVING (same typeID, matrix differs), or
+// reset churn_ on a typeID change; shape swaps of a stationary owner are not the every-frame emitter the demotion exists to stop.
+TEST_CASE("static caster set: a building that goes intact, damaged, destroyed, rubble is demoted on the third shape change (known issue)") {
+    RecipeFeed feed;
+    feed.add(1, 10); feed.add(2, 20); feed.add(3, 30); feed.add(4, 40);
+    int building = 0;
+    mc2shadow::StaticCasterSet set;
+    set.beginRebuild();
+    set.add({&building, 1, 1, mc2shadow::CasterKind::Building});
+    set.endRebuild();
+    for (int r = 2; r <= 3; ++r) {
+        set.ownerInvalidated(&building, r - 1);
+        set.ownerRegistered(&building, r);
+        REQUIRE(set.takeEvents().size() == 1);
+        CHECK_FALSE(set.isMoverOwner(&building));   // damaged, destroyed: still static
+    }
+    set.ownerInvalidated(&building, 3);
+    set.ownerRegistered(&building, 4);   // rubble
+    const auto events = set.takeEvents();
+    REQUIRE(events.size() == 1);
+    CHECK(set.isMoverOwner(&building));      // the permanent demotion
+    CHECK(events[0].after.empty());          // the rubble shadow is not baked as static
+    CHECK(set.recipeMask()[4] == 0);
+}
