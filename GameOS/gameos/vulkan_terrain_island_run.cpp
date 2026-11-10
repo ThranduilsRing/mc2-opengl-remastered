@@ -5,6 +5,7 @@
 #include "vulkan_mover_shadow.h"
 #include "../../RenderCore/TemporalInputs.h"
 #include "hitch_stats.h"
+#include "terrain_record_cache.h"
 #include "vk_render_pass_timer.h"
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "mc2fmt.h"
@@ -299,8 +300,22 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
 // GPU-FRONTIER-1: pure command recording for the terrain pass. Mesh lookups, the distance sort and the dynamic offsets are prepared by
 // mc2_vk_terrain_island_run on the main thread; this touches only the command buffer and the island timers.
 struct TerrainDraw { TerrainPatchConstants patch; const PatchMesh* pm; const SkirtMesh* sm; uint32_t skirtMask; };
+struct TerrainCmd { uint32_t indexCount, instanceCount, firstIndex; int32_t baseVertex; uint32_t firstInstance; };
+struct TerrainRun { const void* mesh; uint32_t firstRec, count; };
+// H8: the island's cached terrain records. `cache` re-resolves only changed patches and bumps its generation only when the ordered
+// draws change; recs/cmds/runs are rebuilt on a new generation and each engine slot re-uploads only when its copy is older.
+struct TerrainRecordState {
+    mc2::terrain::RecordCache<Mc2TerrainTier1Patch, TerrainDraw> cache;
+    uint64_t builtGen = UINT64_MAX;
+    std::vector<TerrainPatchConstants> recs;           // patches, then skirt edges
+    std::vector<TerrainCmd> cmds;                      // same indexing as recs
+    std::vector<TerrainRun> patchRuns, skirtRuns;
+    uint32_t patchN = 0;
+    unsigned long skirtN = 0;
+    uint64_t uploadedGen[mc2vk::kMaxFramesInFlight] = {UINT64_MAX, UINT64_MAX, UINT64_MAX};
+};
 static bool record_terrain(TerrainIsland* s, mc2vk::VulkanContext& rctx, VkCommandBuffer cb, uint32_t par, int w, int h,
-                           const uint32_t (&dynOffs)[4], const std::vector<TerrainDraw>& draws,
+                           const uint32_t (&dynOffs)[4], TerrainRecordState& st,
                            unsigned long& drawnOut, unsigned long& skirtDrawnOut) {
     vkResetCommandPool(s->device, s->slotPool[par].get(), 0);   // cb is s->cbuf[par]
     VkCommandBufferBeginInfo bi{};
@@ -359,39 +374,57 @@ static bool record_terrain(TerrainIsland* s, mc2vk::VulkanContext& rctx, VkComma
     // stay in distance order; a run of consecutive draws that share a mesh is one vkCmdDrawIndexedIndirect (the vertex/index buffers are bound
     // per run, the push constant carries the run's first record). All patches draw first, then all skirt strips: they are opaque, depth-tested
     // and write depth, so the order between the two kinds only moves early-Z efficiency.
-    struct Cmd { uint32_t indexCount, instanceCount, firstIndex; int32_t baseVertex; uint32_t firstInstance; };
-    struct Run { const void* mesh; uint32_t firstRec, count; };
-    std::vector<TerrainPatchConstants> recs;           // patches, then skirt edges
-    std::vector<Cmd> cmds;                             // same indexing as recs
-    std::vector<const SkirtMesh*> skirtMeshOf;         // per skirt record
-    recs.reserve(draws.size() * 2); cmds.reserve(draws.size() * 2);
-    for (const TerrainDraw& d : draws) { recs.push_back(d.patch); cmds.push_back({d.pm->indexCount, 1, 0, 0, 0}); }
-    const uint32_t patchN = static_cast<uint32_t>(recs.size());
-    for (const TerrainDraw& d : draws) {
-        if (!d.sm) continue;
-        for (int e = 0; e < 4; ++e) {
-            if (((d.skirtMask >> e) & 1u) == 0u || d.sm->edgeCount[e] == 0) continue;
-            recs.push_back(d.patch); cmds.push_back({d.sm->edgeCount[e], 1, d.sm->edgeOffset[e], 0, 0});
-            skirtMeshOf.push_back(d.sm);
+    // H8: records, commands and runs are rebuilt only when the cached draw sequence changed (a new generation); each engine slot
+    // re-uploads only when its copy is older than the cached records.
+    if (st.builtGen != st.cache.generation()) {
+        const std::vector<TerrainDraw>& draws = st.cache.draws();
+        std::vector<const SkirtMesh*> skirtMeshOf;         // per skirt record
+        st.recs.clear(); st.cmds.clear(); st.patchRuns.clear(); st.skirtRuns.clear();
+        st.recs.reserve(draws.size() * 2); st.cmds.reserve(draws.size() * 2);
+        for (const TerrainDraw& d : draws) { st.recs.push_back(d.patch); st.cmds.push_back({d.pm->indexCount, 1, 0, 0, 0}); }
+        st.patchN = static_cast<uint32_t>(st.recs.size());
+        for (const TerrainDraw& d : draws) {
+            if (!d.sm) continue;
+            for (int e = 0; e < 4; ++e) {
+                if (((d.skirtMask >> e) & 1u) == 0u || d.sm->edgeCount[e] == 0) continue;
+                st.recs.push_back(d.patch); st.cmds.push_back({d.sm->edgeCount[e], 1, d.sm->edgeOffset[e], 0, 0});
+                skirtMeshOf.push_back(d.sm);
+            }
         }
+        st.skirtN = static_cast<unsigned long>(skirtMeshOf.size());
+        uint32_t i = 0;
+        for (const TerrainDraw& d : draws) {
+            if (!st.patchRuns.empty() && st.patchRuns.back().mesh == d.pm) ++st.patchRuns.back().count; else st.patchRuns.push_back({d.pm, i, 1});
+            ++i;
+        }
+        for (uint32_t k = 0; k < static_cast<uint32_t>(skirtMeshOf.size()); ++k) {
+            if (!st.skirtRuns.empty() && st.skirtRuns.back().mesh == skirtMeshOf[k]) ++st.skirtRuns.back().count;
+            else st.skirtRuns.push_back({skirtMeshOf[k], st.patchN + k, 1});
+        }
+        st.builtGen = st.cache.generation();
     }
-    const uint32_t totalN = static_cast<uint32_t>(recs.size());
+    const uint32_t patchN = st.patchN;
+    const uint32_t totalN = static_cast<uint32_t>(st.recs.size());
     if (totalN != 0) {
         const VkDeviceSize recBytes = static_cast<VkDeviceSize>(totalN) * sizeof(TerrainPatchConstants);
-        const VkDeviceSize need = recBytes + static_cast<VkDeviceSize>(totalN) * sizeof(Cmd);
+        const VkDeviceSize need = recBytes + static_cast<VkDeviceSize>(totalN) * sizeof(TerrainCmd);
         if (s->drawBufCap[par] < need || !s->drawBuf[par]) {
             const VkDeviceSize cp = std::max<VkDeviceSize>(need + need / 2, 4096);
             s->drawBuf[par].reset();
+            st.uploadedGen[par] = UINT64_MAX;
             if (!make_buffer(s, s->drawBuf[par], cp, VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, true, "terrain.drawRecs", static_cast<int>(par))) return false;
             s->drawBufCap[par] = cp;
         }
-        if (!s->drawBuf[par].upload(recs.data(), recBytes, 0) || !s->drawBuf[par].upload(cmds.data(), totalN * sizeof(Cmd), recBytes)) return false;
+        if (st.uploadedGen[par] != st.builtGen) {
+            if (!s->drawBuf[par].upload(st.recs.data(), recBytes, 0) || !s->drawBuf[par].upload(st.cmds.data(), totalN * sizeof(TerrainCmd), recBytes)) return false;
+            st.uploadedGen[par] = st.builtGen;
+        }
     }
     const VkBuffer drawBuf = s->drawBuf[par].get();
     const VkDeviceAddress recBase = s->drawBuf[par].deviceAddress();
     const VkDeviceSize cmdBase = static_cast<VkDeviceSize>(totalN) * sizeof(TerrainPatchConstants);
-    auto drawRuns = [&](const std::vector<Run>& runs, bool skirt) {
-        for (const Run& r : runs) {
+    auto drawRuns = [&](const std::vector<TerrainRun>& runs, bool skirt) {
+        for (const TerrainRun& r : runs) {
             const PatchMesh* pm = skirt ? nullptr : static_cast<const PatchMesh*>(r.mesh);
             const SkirtMesh* sm = skirt ? static_cast<const SkirtMesh*>(r.mesh) : nullptr;
             const VkBuffer vb = skirt ? sm->vbo.get() : pm->vbo.get();
@@ -404,34 +437,23 @@ static bool record_terrain(TerrainIsland* s, mc2vk::VulkanContext& rctx, VkComma
                 const uint64_t addr = recBase + static_cast<uint64_t>(r.firstRec + done) * sizeof(TerrainPatchConstants);
                 vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(addr), &addr);
                 mc2::battlebench::add(mc2::battlebench::DrawTerrain);
-                vkCmdDrawIndexedIndirect(cb, drawBuf, cmdBase + static_cast<VkDeviceSize>(r.firstRec + done) * sizeof(Cmd), n, sizeof(Cmd));
+                vkCmdDrawIndexedIndirect(cb, drawBuf, cmdBase + static_cast<VkDeviceSize>(r.firstRec + done) * sizeof(TerrainCmd), n, sizeof(TerrainCmd));
                 done += n;
             }
         }
     };
     {
-        std::vector<Run> runs;
-        uint32_t i = 0;
-        for (const TerrainDraw& d : draws) {
-            if (!runs.empty() && runs.back().mesh == d.pm) ++runs.back().count; else runs.push_back({d.pm, i, 1});
-            ++i;
-        }
-        mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
-        drawRuns(runs, false);
+        // The patch pipeline is already bound above (once per pass); only the skirt pass switches it.
+        drawRuns(st.patchRuns, false);
         drawnOut = patchN;
-        const size_t patchRuns = runs.size();
-        runs.clear();
-        for (uint32_t k = 0; k < static_cast<uint32_t>(skirtMeshOf.size()); ++k) {
-            if (!runs.empty() && runs.back().mesh == skirtMeshOf[k]) ++runs.back().count; else runs.push_back({skirtMeshOf[k], patchN + k, 1});
-        }
-        if (!runs.empty()) mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->skirtPipe.get());
-        drawRuns(runs, true);
-        skirtDrawnOut = skirtMeshOf.size();
+        if (!st.skirtRuns.empty()) mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->skirtPipe.get());
+        drawRuns(st.skirtRuns, true);
+        skirtDrawnOut = st.skirtN;
         static bool s_logged = false;
         if (!s_logged && patchN != 0) {
             s_logged = true;
             vlog("terrain indirect draws (first frame): patches=%u skirtEdges=%lu (was %lu vkCmdDrawIndexed) -> %zu patch runs + %zu skirt runs.",
-                 patchN, skirtDrawnOut, patchN + skirtDrawnOut, patchRuns, runs.size());
+                 patchN, skirtDrawnOut, patchN + skirtDrawnOut, st.patchRuns.size(), st.skirtRuns.size());
         }
     }
 
@@ -612,18 +634,6 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
 
     const clk::time_point tRender0 = clk::now();
     ZoneNamedN(zTerrRec, "VK-terrain-record-submit", true);   // VK-FLIP-FIELD-REPORT-1: CPU record+queue-submit (to fn return)
-    // Distance keys are computed once per patch (not twice per comparison); (distance, index) is a strict total order, so the result is unchanged.
-    static std::vector<std::pair<float, uint32_t>> drawOrder;
-    drawOrder.clear();
-    drawOrder.reserve(patchCount);
-    for (uint32_t i = 0; i < patchCount; ++i) {
-        const auto& p = feed.patches[i];
-        const float x = (p.blockOriginX + p.quadCountX * 0.5f) * 128.0f - feed.halfMap + feed.cameraPosMC2[0];
-        const float y = feed.halfMap - (p.blockOriginY + p.quadCountY * 0.5f) * 128.0f - feed.cameraPosMC2[2];
-        drawOrder.emplace_back(x * x + y * y, i);
-    }
-    std::sort(drawOrder.begin(), drawOrder.end());
-
     // TERRAIN-HIRES-NEAR-DIAG: diagonal-fitted mode-1 meshes are keyed to one bake; a rebake (rare) drops them.
     const bool diagLive = feed.visualHeightCpu && feed.visualSide > 1 && s->visualHeightReady
         && static_cast<uint64_t>(feed.visualHeightBytes) >= static_cast<uint64_t>(feed.visualSide) * feed.visualSide * sizeof(float);
@@ -631,33 +641,46 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
         if (!s->diagPatchCache.empty()) { mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_diag_patch_rebake"); s->diagPatchCache.clear(); }
         s->diagPatchVersion = feed.visualHeightVersion;
     }
-    std::vector<TerrainDraw> draws;
-    draws.reserve(patchCount);
-    for (const auto& [dist, i] : drawOrder) {
-        (void)dist;
-        const Mc2TerrainTier1Patch& pr = feed.patches[i];
-        // TERRAIN-HIRES-NEAR-1: mode 1 (LOD0) draws a 4x-density mesh whose local offsets are
-        // in bake (fine) units; uint16 indices cap it at 255x255 verts, else fall back to mode 2.
-        const int32_t mode = resolveVisualMode(pr, s->visualHeightReady && feed.visualSide > 1);
-        const int32_t meshQX = mode == 1 ? pr.quadCountX * 4 : pr.quadCountX;
-        const int32_t meshQY = mode == 1 ? pr.quadCountY * 4 : pr.quadCountY;
-        const PatchMesh* pm = (mode == 1 && diagLive)
-            ? getOrBuildPatch(s, meshQX, meshQY, pr.lodStep, feed.visualHeightCpu, feed.visualSide, pr.blockOriginX, pr.blockOriginY)
-            : getOrBuildPatch(s, meshQX, meshQY, pr.lodStep);
-        if (!pm || pm->indexCount == 0) continue;
-        TerrainDraw d{};
-        d.patch = TerrainPatchConstants{pr.blockOriginX, pr.blockOriginY, pr.quadCountX, pr.quadCountY,
-            static_cast<int32_t>(pr.edgeStitch), mode, pr.skirtDepth, static_cast<int32_t>(pr.morph)};
-        d.pm = pm;
-        if (pr.skirtDepth > 0.0f && pr.skirtEdgeMask != 0u) { d.sm = getOrBuildSkirtMesh(s, meshQX, meshQY, pr.lodStep); d.skirtMask = pr.skirtEdgeMask; }
-        draws.push_back(d);
+    // H8: cached per-patch records. A patch is re-resolved only when its feed record changed or the external key below changed
+    // (the inputs resolveVisualMode and the mesh lookups read besides the patch itself); the order is rebuilt only when the camera
+    // or a patch changed. (distance, index) is a strict total order, so the result equals a full rebuild.
+    if (!s->recordCache) s->recordCache = std::make_shared<TerrainRecordState>();
+    TerrainRecordState& rec = *static_cast<TerrainRecordState*>(s->recordCache.get());
+    const bool visualReady = s->visualHeightReady && feed.visualSide > 1;
+    const uint64_t cacheKey = (visualReady ? 1ull : 0ull) | (diagLive ? 2ull : 0ull)
+        | (diagLive ? (static_cast<uint64_t>(feed.visualHeightVersion) << 2) : 0ull);
+    {
+        ZoneScopedN("VKIsl.Terrain.RecordCache");
+        rec.cache.update(std::span<const Mc2TerrainTier1Patch>(feed.patches, patchCount), cacheKey, feed.cameraPosMC2[0], feed.cameraPosMC2[2],
+            [&](const Mc2TerrainTier1Patch& pr, TerrainDraw& d) {
+                // TERRAIN-HIRES-NEAR-1: mode 1 (LOD0) draws a 4x-density mesh whose local offsets are
+                // in bake (fine) units; uint16 indices cap it at 255x255 verts, else fall back to mode 2.
+                const int32_t mode = resolveVisualMode(pr, visualReady);
+                const int32_t meshQX = mode == 1 ? pr.quadCountX * 4 : pr.quadCountX;
+                const int32_t meshQY = mode == 1 ? pr.quadCountY * 4 : pr.quadCountY;
+                const PatchMesh* pm = (mode == 1 && diagLive)
+                    ? getOrBuildPatch(s, meshQX, meshQY, pr.lodStep, feed.visualHeightCpu, feed.visualSide, pr.blockOriginX, pr.blockOriginY)
+                    : getOrBuildPatch(s, meshQX, meshQY, pr.lodStep);
+                if (!pm || pm->indexCount == 0) return false;
+                d = TerrainDraw{};
+                d.patch = TerrainPatchConstants{pr.blockOriginX, pr.blockOriginY, pr.quadCountX, pr.quadCountY,
+                    static_cast<int32_t>(pr.edgeStitch), mode, pr.skirtDepth, static_cast<int32_t>(pr.morph)};
+                d.pm = pm;
+                if (pr.skirtDepth > 0.0f && pr.skirtEdgeMask != 0u) { d.sm = getOrBuildSkirtMesh(s, meshQX, meshQY, pr.lodStep); d.skirtMask = pr.skirtEdgeMask; }
+                return true;
+            },
+            [&](const Mc2TerrainTier1Patch& p) {
+                const float x = (p.blockOriginX + p.quadCountX * 0.5f) * 128.0f - feed.halfMap + feed.cameraPosMC2[0];
+                const float y = feed.halfMap - (p.blockOriginY + p.quadCountY * 0.5f) * 128.0f - feed.cameraPosMC2[2];
+                return x * x + y * y;
+            });
     }
     const uint32_t dynOffs[4] = {static_cast<uint32_t>(uboSpan.offset), static_cast<uint32_t>(lpSpans[0].offset),
                                  static_cast<uint32_t>(lpSpans[1].offset), static_cast<uint32_t>(lpSpans[2].offset)};
     g_sceneClearedRenderFrame = g_mc2RenderFrame + 1u;   // the recorded pass CLEARs color0 / normal / depth (see mc2_vk_scene_clear)
     unsigned long drawn = 0, skirtDrawn = 0;
     vk_render_pass_timer::CancelUnlessSubmitted timerGuard(gos_render_pass_timer::Pass_TerrainChunk);
-    if (!record_terrain(s, rctx, cb, par, w, h, dynOffs, draws, drawn, skirtDrawn)) { setFallback("record_failed"); s->disabled = true; return 0; }
+    if (!record_terrain(s, rctx, cb, par, w, h, dynOffs, rec, drawn, skirtDrawn)) { setFallback("record_failed"); s->disabled = true; return 0; }
 
     // Item-4 submit: wait/signal NO GL<->VK semaphores. The fence orders CPU access;
     // downstream native islands (prop/mech/water/post) chain Vulkan-owned resources.
@@ -678,11 +701,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     // islands/post/composite never depended on this CPU wait (same-queue submission
     // order + their command buffers' entry barriers).
     g_health.drawUs = usSince(tRender0);
-    // VK-DRAW-PERF-1 note under the deferred retire: resolve() uses
-    // VK_QUERY_RESULT_WAIT_BIT, so with MC2_VK_GPU_TIMESTAMPS armed it blocks until
-    // this frame's pass completes (diagnostic-only stall; gate is default-OFF and
-    // resolve() is a no-op without it).
-    if (s->gpuTimer.supported) rctx.poll();   // resolve() waits on the query results: the deferred batch holding this cb must be on the queue first
+    // VK-DRAW-PERF-1: resolve() is non-blocking (ring of pools, read >= 2 frames late, no WAIT_BIT).
     s->gpuTimer.resolve();
 
     // HARD assert: no COLOR-side readback fired on the co-write path (the height

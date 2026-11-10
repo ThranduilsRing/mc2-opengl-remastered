@@ -17,8 +17,8 @@
 //   ... draw loop ...
 //   vkCmdEndRenderPass(cb);
 //   t.write(cb, 2);                       // stamp 2 (all GPU work done)
-//   ... vkQueueSubmit + vkWaitForFences ...
-//   t.resolve();                          // AFTER the fence is signalled
+//   ... vkQueueSubmit ...
+//   t.resolve();                          // after submit; folds frames recorded >= 2 frames ago, never blocks
 //   // then t.avgTotalUs(), t.avgGapUs(1) etc. for the breakdown.
 #pragma once
 
@@ -37,8 +37,15 @@ inline bool timestampsEnabled() {
 }
 
 struct GpuTimer {
+    // H8: a ring of pools. resolve() reads a pool kLag frames after it was recorded, without VK_QUERY_RESULT_WAIT_BIT, so it never
+    // blocks the CPU on the GPU (the old WAIT_BIT read forced a deferred-batch flush and a stall on the frame just submitted).
+    static constexpr uint32_t kRing = 4;
+    static constexpr uint64_t kLag  = 2;
     VkDevice    device   = VK_NULL_HANDLE;
-    VkQueryPool pool     = VK_NULL_HANDLE;
+    VkQueryPool pools[kRing] = {};
+    uint64_t    seqOf[kRing] = {};        // 0 = not recorded / already folded; else the frame sequence that recorded it
+    uint64_t    seq      = 0;             // frames recorded so far
+    uint32_t    cur      = 0;             // pool the current frame records into
     float       periodNs = 0.0f;      // props.limits.timestampPeriod (ns per tick)
     uint32_t    count    = 0;         // number of timestamps in the pool
     bool        supported = false;
@@ -67,16 +74,21 @@ struct GpuTimer {
         qpci.sType      = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
         qpci.queryType  = VK_QUERY_TYPE_TIMESTAMP;
         qpci.queryCount = count;
-        if (vkCreateQueryPool(device, &qpci, nullptr, &pool) != VK_SUCCESS) {
-            supported = false; return false;
+        for (uint32_t i = 0; i < kRing; ++i) {
+            if (vkCreateQueryPool(device, &qpci, nullptr, &pools[i]) != VK_SUCCESS) {
+                destroy(); return false;
+            }
         }
         supported = true;
         return true;
     }
 
-    // Reset the whole pool — MUST be called OUTSIDE any render pass (before Begin).
+    // Take the next ring pool for this frame and reset it — MUST be called OUTSIDE any render pass (before Begin).
     void reset(VkCommandBuffer cb) {
-        if (supported) vkCmdResetQueryPool(cb, pool, 0, count);
+        if (!supported) return;
+        cur = static_cast<uint32_t>((seq) % kRing);
+        seqOf[cur] = ++seq;
+        vkCmdResetQueryPool(cb, pools[cur], 0, count);
     }
 
     // All stamps use BOTTOM_OF_PIPE so each gap = execution time of the work recorded
@@ -84,17 +96,26 @@ struct GpuTimer {
     // per-segment GPU cost breakdown.
     void write(VkCommandBuffer cb, uint32_t idx) {
         if (supported && idx < count)
-            vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, pool, idx);
+            vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, pools[cur], idx);
     }
 
-    // Fetch results (fence for this frame must already be signalled) and fold into EMA.
+    // Fold every ring pool recorded at least kLag frames ago that the GPU has finished (never waits; VK_NOT_READY just retries
+    // next frame). Call once per frame after the submit.
     void resolve() {
         if (!supported) return;
-        uint64_t ts[8] = {0};
-        VkResult r = vkGetQueryPoolResults(
-            device, pool, 0, count, sizeof(uint64_t) * count, ts, sizeof(uint64_t),
-            VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT);
-        if (r != VK_SUCCESS) return;
+        for (uint32_t k = 0; k < kRing; ++k) {
+            const uint32_t i = static_cast<uint32_t>((seq + k) % kRing);   // oldest recorded pool first
+            if (seqOf[i] == 0 || seqOf[i] + kLag > seq) continue;
+            uint64_t ts[8] = {0};
+            const VkResult r = vkGetQueryPoolResults(
+                device, pools[i], 0, count, sizeof(uint64_t) * count, ts, sizeof(uint64_t), VK_QUERY_RESULT_64_BIT);
+            if (r != VK_SUCCESS) continue;   // VK_NOT_READY: leave it for the next call
+            seqOf[i] = 0;
+            fold(ts);
+        }
+    }
+
+    void fold(const uint64_t (&ts)[8]) {
         ++samples;
         const double a = 0.05;   // EMA weight for the newest sample
         for (uint32_t i = 1; i < count; ++i) {
@@ -109,7 +130,7 @@ struct GpuTimer {
     double avgGapUs(uint32_t i)  const { return (i < count) ? gapAvgUs[i] : 0.0; }
 
     void destroy() {
-        if (pool) { vkDestroyQueryPool(device, pool, nullptr); pool = VK_NULL_HANDLE; }
+        for (auto& p : pools) if (p) { vkDestroyQueryPool(device, p, nullptr); p = VK_NULL_HANDLE; }
         supported = false;
     }
 };
