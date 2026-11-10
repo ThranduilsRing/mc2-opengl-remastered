@@ -11,7 +11,7 @@
 //   b2  RWStructuredBuffer<WaterThinRecord>        packed output (48 B)
 //   b3  ConstantBuffer<WaterCullParams>
 //   b4  RWStructuredBuffer<uint>                   header; [0] = visibleCount, [1] = reflection tile count
-//   b5  RWStructuredBuffer<uint>                   tileMask: one bit per 8x8 half-res tile (cleared each frame)
+//   b5  RWStructuredBuffer<uint>                   tileMask: one bit per 8x8 reflection tile (cleared each frame)
 //   b6  RWStructuredBuffer<uint>                   tileList: tiles that contain admitted water (the reflection dispatch list)
 // Struct layouts are LOCKSTEP with gos_terrain_water_stream.h (WaterRecipe 64 B, WaterThinRecord 48 B) and
 // gos_terrain_lighting.h (GpuTerrainLightingOutput 8 B).
@@ -51,7 +51,7 @@ struct WaterCullParams {
     float4 c3;
     float4 misc0;   // x waterElevation, y frameCos, z shoreExt, w unused
     int4   misc1;   // x recipeCount, y maxThinRecords, z mapSide, w biasLegacy
-    int4   misc2;   // x,y half-res reflection image size (0 = reflection off this frame: no tile marking)
+    int4   misc2;   // x,y reflection image size (full-res) (0 = reflection off this frame: no tile marking)
 };
 
 [[vk::binding(0, 0)]] StructuredBuffer<WaterRecipe> recipes;
@@ -103,7 +103,7 @@ bool triangleVisible(float4 a, float4 b, float4 c)
     return true;
 }
 
-// Marks (and appends once) every 8x8 half-res tile the quad's projected bounds touch, plus a one-tile margin for the
+// Marks (and appends once) every 8x8 reflection tile the quad's projected bounds touch, plus a one-tile margin for the
 // water FS's bilinear/normal-offset reflection taps. Corners behind the eye are clipped to w = eps before the bound.
 void markReflectionTiles(float4 a, float4 b, float4 c, float4 d)
 {

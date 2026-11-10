@@ -16,6 +16,7 @@
 #include "gos_terrain_lighting.h"
 #include "vk_compute_pipeline.h"
 #include "vk_owned.h"
+#include "water_reflect_dispatch.h"
 #include "vk_frame_ring.h"
 #include "../../mclib/terrain_vertex_dirty.h"
 
@@ -43,7 +44,7 @@ struct VkWaterCullParams {
     float   clip[16];       // the four columns of u_worldToClipGL: the raw 16 floats the GL path uploads with GL_FALSE
     float   misc0[4];       // waterElevation, frameCos, shoreExt, unused
     int32_t misc1[4];       // recipeCount, maxThinRecords, mapSide, biasLegacy
-    int32_t misc2[4];       // half-res reflection image width, height (0 = reflection off), unused x2
+    int32_t misc2[4];       // reflection image width, height (0 = reflection off), unused x2
 };
 static_assert(sizeof(VkWaterCullParams) == 112, "WaterCullParams std140 size (water_cull_pack.comp.slang)");
 
@@ -59,8 +60,8 @@ struct WaterCullFrame {
     float    shoreExt;
     uint32_t mapSide;
     int32_t  biasLegacy;
-    uint32_t reflectionGroupsX = 0, reflectionGroupsY = 0;   // 8x8 tile grid of the half-res reflection image (0 = reflection off)
-    uint32_t reflectionHalfW = 0, reflectionHalfH = 0;       // half-res reflection image size in pixels
+    uint32_t reflectionGroupsX = 0, reflectionGroupsY = 0;   // 8x8 tile grid of the reflection image (0 = reflection off)
+    uint32_t reflectionW = 0, reflectionH = 0;               // reflection image size in pixels (full-res)
 };
 
 // Result of one GL-vs-VK comparison (parity frames only).
@@ -92,11 +93,11 @@ public:
 
     VkBuffer thin(uint32_t par) const noexcept { return thin_[par % kSlots].get(); }
     VkBuffer drawArgs(uint32_t par) const noexcept { return drawArgs_[par % kSlots].get(); }
-    // Tiles (8x8 half-res) that contain admitted water: the reflection compute runs one workgroup per entry (count in drawArgs words 4..6).
+    // Tiles (8x8 pixels of the full-res reflection image) that contain admitted water: the reflection compute runs one workgroup per entry (count in drawArgs words 4..6).
     VkBuffer tileList(uint32_t par) const noexcept { return tileList_[par % kSlots].get(); }
     static constexpr uint32_t kMaxTiles = 1u << 20;   // 8K full-res is 518400 tiles; the tile grid is clamped to this
     uint32_t maxThin() const noexcept { return maxThin_; }
-    // Tiles one frame may dispatch: kMaxTiles capped by maxComputeWorkGroupCount[0] (the reflection dispatch is 1-D, one group per tile).
+    // Tiles one frame may dispatch: kMaxTiles capped by maxComputeWorkGroupCount[1] x kReflectRowTiles (2-D dispatch, one group per tile).
     uint32_t maxTiles() const noexcept { return maxTiles_; }
     // Health of the last slot read back: the visible-quad and tile counts the GPU cull produced (valid once a slot completed a frame).
     uint32_t lastVisible() const noexcept { return lastVisible_; }

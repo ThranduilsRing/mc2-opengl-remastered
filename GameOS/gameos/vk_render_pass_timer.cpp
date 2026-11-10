@@ -87,7 +87,7 @@ TimerState* state(bool create) {
 }  // namespace
 
 // Recorded islands bracket their passes from worker threads: the ring is one shared structure.
-std::mutex s_ringMutex;
+static std::mutex s_ringMutex;
 
 bool Active() {
     return gos_render_pass_timer::Enabled();

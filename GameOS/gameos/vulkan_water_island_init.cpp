@@ -184,7 +184,7 @@ bool init_island(WaterIsland* s, int w, int h) {
             b[10+k].descriptorCount=1;
             b[10+k].stageFlags=k==0 ? VK_SHADER_STAGE_FRAGMENT_BIT : VK_SHADER_STAGE_COMPUTE_BIT;
         }
-        // The reflection compute's list of 8x8 half-res tiles that contain water (water_cull_pack).
+        // The reflection compute's list of 8x8 reflection tiles that contain water (water_cull_pack).
         b[14].binding=12; b[14].descriptorType=VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         b[14].descriptorCount=1; b[14].stageFlags=VK_SHADER_STAGE_COMPUTE_BIT;
         b[15].binding=13; b[15].descriptorType=VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;

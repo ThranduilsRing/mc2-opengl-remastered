@@ -36,6 +36,11 @@ void frameEnd();
 bool recordFrameEnd(VkCommandBuffer cb);
 void frameEndSubmitted();
 
+// WATER-REFLECT-TIER: the water island publishes its reflection target size each frame the pass runs; with MC2_VK_GPU_TIMESTAMPS armed the
+// next settled [VK_GPU_PASSES] window also logs "[WATER_REFLECT_COST v1] res=WxH ..." once per size. rearm at mission load.
+void noteWaterReflection(uint32_t w, uint32_t h);
+void rearmWaterReflectionCost();
+
 // True when any sink would record (cheap; lets a caller skip building a name).
 bool active();
 
