@@ -6,7 +6,8 @@ bool mv_needDetail(vec3 baseN, vec3 lightDir, vec4 materialW, float materialSnow
     if (uT.csmDebugMode != 0 || lightDir.z >= 0.0 || abs(baseN.z) < 0.85) return true;
     // UNORM detail taps and anti-tile blends stay in [-1,1].
     // Bound every possible perturbed normal before its texture walk.
-    float amplitude = dot(max(materialW, vec4(0)), MATV_NORMAL_BOOST * vec4(1.0 / 3.0, 1, 1, 1))
+    // Grass: the base tap plus the 0.6x macro turf tap (terrain_detail_normal.glsl).
+    float amplitude = dot(max(materialW, vec4(0)), MATV_NORMAL_BOOST * vec4(1.0 / 3.0, 1.6, 1, 1))
                     + max(materialSnow, 0.0) * 0.9;
     vec2 macroTilt = baseN.xy / max(baseN.z, 0.2) * uT.nfhStrength;
     float tilt = length(abs(macroTilt) + vec2(amplitude * abs(uT.detailStrength)));

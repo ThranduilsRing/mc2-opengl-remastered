@@ -30,9 +30,9 @@ TEST_CASE("TerrainNormalLoad/displacement files never gate normals or change CPU
 }
 
 TEST_CASE("TerrainNormalLoad/grass slot takes the turf normal unless modded or rejected") {
-    constexpr int kTurf = 100;
+    static constexpr int kTurf = 100;
     const auto run = [](bool turfPresent, bool modded, bool acceptTurf, std::array<int, 6>& out, std::vector<std::pair<int, bool>>& loads) {
-        return mc2::terrain::loadCookedNormals(std::span(out), modded,
+        return mc2::terrain::loadCookedNormals(std::span<int>(out), modded,
             [&](int mat, bool turf) -> std::optional<int> {
                 loads.emplace_back(mat, turf);
                 if (turf) return turfPresent ? std::optional<int>(kTurf) : std::nullopt;
@@ -61,7 +61,7 @@ TEST_CASE("TerrainNormalLoad/grass slot takes the turf normal unless modded or r
     CHECK(out[1] == 1);
     CHECK(loads.back() == std::pair<int, bool>{1, false});
 
-    CHECK_FALSE(mc2::terrain::loadCookedNormals(std::span(out), false,
+    CHECK_FALSE(mc2::terrain::loadCookedNormals(std::span<int>(out), false,
         [](int mat, bool) -> std::optional<int> { return mat == 3 ? std::nullopt : std::optional<int>(mat); },
         [](std::span<const int>) { return true; }));    // a missing layer fails the cooked array
 }
