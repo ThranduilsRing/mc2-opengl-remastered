@@ -25,6 +25,30 @@ struct Icon {
     std::vector<uint32_t> samplingBorder; // authored neighbors for legacy filtering
 };
 
+// Draw an icon into a w x h BGRA rect. Shrinking averages every source pixel under the destination
+// pixel (premultiplied alpha); nearest sampling skipped rows/columns and mangled the single-source art
+// when it is drawn below its authored size. Enlarging stays nearest.
+inline void resampleIcon(const Icon& icon, uint32_t* dest, int stride, int w, int h) {
+    for (int y = 0; y < h; ++y) {
+        const int y0 = y * icon.height / h, y1 = std::max(y0 + 1, ((y + 1) * icon.height + h - 1) / h);
+        for (int x = 0; x < w; ++x) {
+            const int x0 = x * icon.width / w, x1 = std::max(x0 + 1, ((x + 1) * icon.width + w - 1) / w);
+            uint64_t sum[4] = {}; // premultiplied b, g, r, a
+            for (int sy = y0; sy < y1; ++sy)
+                for (int sx = x0; sx < x1; ++sx) {
+                    const uint32_t p = icon.pixels[static_cast<size_t>(sy) * icon.width + sx], a = p >> 24;
+                    for (int c = 0; c < 3; ++c) sum[c] += ((p >> (8 * c)) & 0xff) * a;
+                    sum[3] += a;
+                }
+            const uint64_t n = static_cast<uint64_t>(y1 - y0) * (x1 - x0);
+            const uint64_t a = sum[3];
+            uint32_t out = static_cast<uint32_t>((a + n / 2) / n) << 24;
+            if (a) for (int c = 0; c < 3; ++c) out |= static_cast<uint32_t>((sum[c] + a / 2) / a) << (8 * c);
+            dest[static_cast<size_t>(y) * stride + x] = out;
+        }
+    }
+}
+
 // Source keys survive packing. Only this load-time cache owns atlas coordinates.
 class Registry {
 public:

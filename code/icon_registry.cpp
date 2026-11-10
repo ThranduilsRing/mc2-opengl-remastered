@@ -235,7 +235,6 @@ void blit(std::string sheet, long index, bool back, uint32_t* dest, int stride, 
         warned.insert("tiered-hud:" + tiered);
         mc2::fmt::print_out("[ICON_REGISTRY] tiered mod HUD icon {} overrides the single-source icon\n", tiered);
     }
-    { static std::set<std::string> dbgSeen; if (dbgSeen.insert(single + (back ? "B" : "F") + std::to_string(index)).second) mc2::fmt::print_out("[ICONDBG] sheet={} stem={} idx={} back={} single={} sR={} tiered={} tR={} sheetRank={} legacyKey={} legacyFound={} singleFound={} tieredFound={}\n", sheet, stem, index, back, single, singleRank, tiered, tieredRank, LookupModPriority(sheet.c_str()), key, registry.find(key) != nullptr, registry.find(single) != nullptr, registry.find(tiered) != nullptr); }
     const Icon* found = registry.lookupHud(single, tiered, singleRank, tieredRank, key, LookupModPriority(sheet.c_str()));
     // MC2X transport indices also name bay pictures; MCO supplies loose chassis pictures.
     if (!found && !back) {
@@ -246,9 +245,7 @@ void blit(std::string sheet, long index, bool back, uint32_t* dest, int stride, 
         if (!found) found = registry.find(legacyKey("data/art/mc2x_mechicons.tga", index));
     }
     const auto& icon = found ? *found : resolve(key);
-    for (int y = 0; y < height; ++y)
-        for (int x = 0; x < width; ++x)
-            dest[static_cast<size_t>(y) * stride + x] = icon.pixels[static_cast<size_t>(y * icon.height / height) * icon.width + x * icon.width / width];
+    resampleIcon(icon, dest, stride, width, height);
 }
 
 const Icon* pilotIcon(long index, std::string_view legacySheet) {

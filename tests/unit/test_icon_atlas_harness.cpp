@@ -128,3 +128,23 @@ TEST_CASE("icon_atlas_harness/stock_data_one_file_per_mech_side_and_pilot") {
     for (int i = 0; i < 28; ++i)
         CHECK_MESSAGE(fs::exists(art / "pilots" / std::format("{:02}.png", i)), i);
 }
+
+TEST_CASE("icon_atlas_harness/hud_shrink_averages_instead_of_skipping_pixels") {
+    // 4x4 source drawn at 2x2: a one-pixel-wide bright column that nearest sampling would drop.
+    Icon icon{4, 4, 0, 0, std::vector<uint32_t>(16, 0xff000000)};
+    for (int y = 0; y < 4; ++y) icon.pixels[static_cast<size_t>(y) * 4 + 1] = 0xffffffff;
+    uint32_t out[4] = {};
+    resampleIcon(icon, out, 2, 2, 2);
+    CHECK(out[0] == 0xff808080); // (0 + 255) / 2, rounded up
+    CHECK(out[1] == 0xff000000);
+    // Enlarging and same-size draws are exact copies.
+    uint32_t same[16] = {};
+    resampleIcon(icon, same, 4, 4, 4);
+    CHECK(std::equal(icon.pixels.begin(), icon.pixels.end(), same));
+    // Transparent pixels do not bleed their colour into the average.
+    Icon edge{2, 1, 0, 0, {0xff0000ff, 0x00ffffff}};
+    uint32_t one[1] = {};
+    resampleIcon(edge, one, 1, 1, 1);
+    CHECK((one[0] & 0x00ffffff) == 0x0000ff);
+    CHECK((one[0] >> 24) == 128);
+}
