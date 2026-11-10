@@ -185,7 +185,7 @@ def test_missing_vegetation_card_refuses_deploy(tmp_path, monkeypatch, capsys):
     # A clean deploy must carry the native atlas inputs rather than silently
     # enabling vegetation against the old absent private atlas PNG.
     b = _ninja_tree(tmp_path)
-    missing = os.path.normcase(os.path.abspath(ROOT / "data/vegetation/cards/fern_04.png"))
+    missing = os.path.normcase(os.path.abspath(ROOT / "data/vegetation/cards/sapling_pine.png"))
     isfile = os.path.isfile
     monkeypatch.setattr(dp.os.path, "isfile", lambda p:
         False if os.path.normcase(os.path.abspath(p)) == missing else isfile(p))

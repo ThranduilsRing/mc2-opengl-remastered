@@ -4,8 +4,86 @@
 #include "GameAdapters/vegetation_hardsurface.h"
 #include "GameOS/gameos/vegetation_cutout.h"
 #include "GameAdapters/vegetation_budget.h"
+#include "GameAdapters/vegetation_clumps.h"
+#include <filesystem>
+#include <fstream>
 
 using namespace mc2::vegetation;
+
+TEST_CASE("VegClumps/deterministic per-map blue-noise centres") {
+    const auto seed = mapSeed("mc2_01");
+    CHECK(seed != mapSeed("mc2_02"));
+    int accepted=0, changed=0;
+    for (int y=-12;y<12;++y) for (int x=-12;x<12;++x) {
+        const auto a = clumpCandidate(x,y,seed), b = clumpCandidate(x,y,mapSeed("mc2_01"));
+        CHECK(a.x==b.x); CHECK(a.y==b.y); CHECK(a.priority==b.priority);
+        changed += a.x != clumpCandidate(x,y,mapSeed("mc2_02")).x;
+        if (!clumpCentreAccepted(x,y,seed)) continue;
+        ++accepted;
+        for (int dy=-1;dy<=1;++dy) for (int dx=-1;dx<=1;++dx) {
+            if ((!dx&&!dy) || !clumpCentreAccepted(x+dx,y+dy,seed)) continue;
+            const auto n=clumpCandidate(x+dx,y+dy,seed);
+            CHECK((n.x-a.x)*(n.x-a.x)+(n.y-a.y)*(n.y-a.y) >= 0.65f*0.65f);
+        }
+    }
+    CHECK(accepted>200); CHECK(accepted<576); CHECK(changed>550);
+}
+
+TEST_CASE("VegClumps/layered composition and sparse singles") {
+    for (int x=0;x<256;++x) {
+        const ClumpRecipe recipe{9,1,0,12};
+        const auto a=makeClump(x,4,mapSeed("mc2_01"),recipe,0.5f,0,false);
+        const auto b=makeClump(x,4,mapSeed("mc2_01"),recipe,0.5f,0,false);
+        CHECK(a.count==b.count);
+        int trees=0,bushes=0,grass=0;
+        for (int i=0;i<a.count;++i) {
+            const auto& m=a.members[static_cast<size_t>(i)];
+            const auto& n=b.members[static_cast<size_t>(i)];
+            CHECK(m.x==n.x); CHECK(m.y==n.y); CHECK(m.frame==n.frame); CHECK(m.scale==n.scale);
+            const float r=std::sqrt(m.x*m.x+m.y*m.y);
+            if (m.frame>=6) { ++trees; CHECK(r==0); CHECK(m.scale>=15); }
+            else if (m.woody) { ++bushes; CHECK(r<=9*0.36f); CHECK(m.scale>=5); CHECK(m.scale<9); }
+            else { ++grass; CHECK(r>=9*0.3f); CHECK(r<=9); CHECK(m.scale<5); }
+        }
+        CHECK(trees==1); CHECK(bushes>=2); CHECK(bushes<=5); CHECK(grass>=6);
+        CHECK(a.count<=22);
+        const auto single=makeClump(x,4,42,recipe,0.5f,0,true);
+        REQUIRE(single.count==1); CHECK_FALSE(single.members[0].woody);
+        const auto steep=makeClump(x,4,42,recipe,0.5f,40,false);
+        for (int i=0;i<steep.count;++i) CHECK(steep.members[static_cast<size_t>(i)].frame<6);
+    }
+}
+
+TEST_CASE("VegClumps/member masks reject roads water buildings stock trees and slope") {
+    for (bool woody : {false,true}) {
+        CHECK(clumpSurfaceAllowed(true,false,false,0,0,woody));
+        CHECK_FALSE(clumpSurfaceAllowed(false,false,false,0,0,woody));
+        CHECK_FALSE(clumpSurfaceAllowed(true,true,false,0,0,woody));
+        CHECK_FALSE(clumpSurfaceAllowed(true,false,true,0,0,woody));
+        CHECK_FALSE(clumpSurfaceAllowed(true,false,false,1,0,woody));
+        CHECK_FALSE(clumpSurfaceAllowed(true,false,false,0.15f,0,woody));
+        CHECK_FALSE(clumpSurfaceAllowed(true,false,false,0,60,woody));
+    }
+    CHECK_FALSE(clumpSurfaceAllowed(true,false,false,0,36,true));
+    CHECK(clumpSurfaceAllowed(true,false,false,0,36,false));
+}
+
+TEST_CASE("VegClumps/load shipped biome recipes and reject unsafe mod recipes") {
+    const auto root=std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
+    for (const char* name : {"grasslands","grasslands_dense","snow","desert","swamp"}) {
+        std::ifstream input(root/"data/vegetation/schemas"/(std::string(name)+".json"));
+        REQUIRE(input.good());
+        CHECK(readClumpRecipe(nlohmann::json::parse(input,nullptr,false)).has_value());
+    }
+    for (const char* bad : {"null", "{}", "{\"clump\":[]}",
+         "{\"clump\":{\"radius\":999,\"tree_chance\":1,\"moisture_bias\":0,\"grass\":12}}",
+         "{\"clump\":{\"radius\":9,\"tree_chance\":\"oops\",\"moisture_bias\":0,\"grass\":12}}"}) {
+        CHECK_FALSE(readClumpRecipe(nlohmann::json::parse(bad)).has_value());
+    }
+    const ClumpRecipe recipeWet{9,0,0,16};
+    const auto dry=makeClump(1,2,3,recipeWet,0,0,false), wet=makeClump(1,2,3,recipeWet,1,0,false);
+    CHECK(wet.count>dry.count);
+}
 
 TEST_SUITE("VegHardSurface") {
 

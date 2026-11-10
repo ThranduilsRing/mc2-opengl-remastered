@@ -1,0 +1,6 @@
+{
+  "name": "desert",
+  "cards_full": ["grass_01", "grass_02", "bush_heath", "bush_round", "sapling_leaf", "sapling_pine"],
+  "cards_sparse": ["grass_01", "bush_heath"],
+  "clump": {"radius": 7, "tree_chance": 0.10, "moisture_bias": -0.3, "grass": 8}
+}
