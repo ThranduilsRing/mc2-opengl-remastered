@@ -174,7 +174,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
         instRejOverlay = 0, instRejSlope = 0;
 
     using namespace mc2::vegetation;
-    const uint32_t seed = mapSeed(Terrain::terrainName);
+    const uint32_t seed = mapSeed(Terrain::terrainName ? std::string_view(Terrain::terrainName) : std::string_view());
     std::array<ClumpRecipe,4> recipes{{{9,0.30f,0,12},{8,0.25f,-0.15f,8},
                                       {7,0.10f,-0.3f,8},{11,0.4f,0.2f,14}}};
     constexpr std::array<const char*,4> paths{

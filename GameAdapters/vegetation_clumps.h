@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <array>
 #include <optional>
+#include <string_view>
 #include "../3rdparty/include/nlohmann/json.hpp"
 
 namespace mc2::vegetation {
@@ -24,9 +25,9 @@ inline std::optional<ClumpRecipe> readClumpRecipe(const nlohmann::json& doc) {
           moisture >= -1 && moisture <= 1 && grass >= 6 && grass <= 16)) return std::nullopt;
     return ClumpRecipe{radius, tree, moisture, static_cast<int>(grass)};
 }
-inline uint32_t mapSeed(const char* name) {
+inline uint32_t mapSeed(std::string_view name) {
     uint32_t seed = 2166136261u;
-    if (name) for (; *name; ++name) seed = (seed ^ static_cast<uint8_t>(*name)) * 16777619u;
+    for (const char ch : name) seed = (seed ^ static_cast<uint8_t>(ch)) * 16777619u;
     return seed;
 }
 inline uint32_t clumpHash(int x, int y, uint32_t seed, uint32_t salt = 0) {
