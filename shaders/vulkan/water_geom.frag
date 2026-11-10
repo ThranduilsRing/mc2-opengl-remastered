@@ -63,26 +63,27 @@ layout(set = 0, binding = 7) uniform sampler2D u_staticMask;
 layout(set = 0, binding = 8) uniform sampler2D u_waterReflection;
 #include "../include/water_shore_edge.hglsl"
 #include "../include/water_reactive.hglsl"
+#include "../include/water_shallow.hglsl"
 
 struct ReactiveStamp { vec4 positionRadiusAge; vec4 velocityType; };
 layout(set = 0, binding = 13, std430) readonly buffer WaterReactive {
     ReactiveStamp stamps[128];
     uint counts[1024];
-    uint indices[8192];
+    uint indices[32768];   // 1024 tiles x kPerTile (RenderCore/water_reactive.h)
 } R;
 
 vec3 reactiveWater(vec2 worldXY, float pixelWidth) {
     ivec2 cell = ivec2(floor(worldXY / 256.0));
     uint tile = (uint(cell.y) & 31u) * 32u + (uint(cell.x) & 31u);
     vec3 result = vec3(0.0);
-    for (uint i = 0u; i < min(R.counts[tile], 8u); ++i) {
-        ReactiveStamp s = R.stamps[R.indices[tile * 8u + i]];
+    for (uint i = 0u; i < min(R.counts[tile], 32u); ++i) {
+        ReactiveStamp s = R.stamps[R.indices[tile * 32u + i]];
         vec2 delta = worldXY - s.positionRadiusAge.xy;
         if (dot(delta, delta) < 224.0 * 224.0)
             result += wr_profile(delta, s.velocityType.xy, s.positionRadiusAge.z,
                                  s.positionRadiusAge.w, s.velocityType.z, pixelWidth);
     }
-    return vec3(clamp(result.xy, vec2(-0.12), vec2(0.12)), min(result.z, 0.08));
+    return wr_combine(result);
 }
 #include "../include/edge_haze.hglsl"   // VK-PARITY-F3: WATER-EDGE-FEATHER-1 (EDGE_HAZE_SKY, edgeHazeAmount)
 
@@ -461,7 +462,8 @@ void main(void)
     if (F.fog_color.x > 0.0 || F.fog_color.y > 0.0 || F.fog_color.z > 0.0 || F.fog_color.w > 0.0)
         col = mix(F.fog_color.rgb, col, FogValue);
 
-    PREC float waterA = shore * WATER_MAX_ALPHA;
+    // WATER-SHALLOW-1: opacity follows the water column (shaders/include/water_shallow.hglsl); deep water is unchanged.
+    PREC float waterA = shore * WATER_MAX_ALPHA * ws_column_veil(tintThick);
     // WATER-EDGE-FEATHER-1 (default ON in GL): tint + dissolve the map-edge rim.
     if (F.f8.x != 0.0 && F.f8.z > 0.0) {
         float h = clamp(edgeHazeAmount(WorldPos.xy, F.f8.z) * F.f8.y, 0.0, 1.0);

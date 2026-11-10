@@ -1,0 +1,30 @@
+#ifndef WATER_SHALLOW_VEIL
+#define WATER_SHALLOW_VEIL
+
+// WATER-SHALLOW-1. Opacity of the water sheet as a function of the water column under it. A flat 0.87 veiled
+// everything in a 5-15 wu wade (a mech's legs, the floor) as if it stood deep ("buried", owner 2026-11-10); a thin
+// column now stays clear and the full veil is reached by ~25 wu (a floor of 0.40 keeps shore shelves and the coast rim legible). The offline regression compiles this exact function.
+#ifdef __cplusplus
+#include <glm/glm.hpp>
+namespace mc2::watershallow {
+using glm::mix;
+using glm::exp;
+using glm::max;
+#define WS_INLINE inline
+constexpr float kVeilMin = 0.40f;  // opacity fraction of a zero-thickness column
+constexpr float kVeilWu = 9.0f;    // e-fold depth (wu) of the ramp
+#else
+#define WS_INLINE
+const float kVeilMin = 0.40;
+const float kVeilWu = 9.0;
+#endif
+
+WS_INLINE float ws_column_veil(float thickness) {
+    return mix(kVeilMin, 1.0f, 1.0f - exp(-max(thickness, 0.0f) / kVeilWu));
+}
+
+#ifdef __cplusplus
+} // namespace mc2::watershallow
+#endif
+#undef WS_INLINE
+#endif

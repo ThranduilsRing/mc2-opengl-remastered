@@ -42,6 +42,22 @@ TEST_CASE("WaterReactive/capacity drops oldest and tile lists keep newest") {
     CHECK(gpu.counts[tile(10, 10)] == 0);
 }
 
+TEST_CASE("WaterReactive/three standing mechs keep every live ring in every tile they touch (no tile-edge cut)") {
+    // Owner 2026-11-10: the outer rings ended in a straight line along a tile edge. Three standing mechs emit a stamp every
+    // 0.55 s for 3 s each (~6 per mech); with 8 slots per tile the oldest were dropped per tile, differently per neighbour.
+    Buffer b;
+    const float ys[3] = {4015.0f, 4050.0f, 4096.0f};
+    for (int step = 0; step <= 30; ++step)
+        for (int m = 0; m < 3; ++m)
+            b.submit(m + 1, 1.0f + step * 0.1f, 256.0f, ys[m], 13, true, true, false);
+    GpuFrame gpu;
+    b.snapshot(4.0f, gpu);
+    const uint32_t live = b.size();
+    CHECK(live >= 15);
+    for (int ty = 15; ty <= 16; ++ty)
+        CHECK(gpu.counts[tile(1, ty)] == live); // every live stamp reaches both tile rows around y=4096
+}
+
 TEST_CASE("WaterReactive/cadence velocity reset invalid input and stationary rings") {
     Buffer b;
     b.submit(1, 1, 0, 0, 20, true, true, true);
@@ -123,4 +139,63 @@ TEST_CASE("WaterReactive/frozen clock keeps stamps at age zero where the profile
     CHECK(st.wetVisible == 120);
     CHECK(st.emitted == 1);
     CHECK(buffer.takeStats().submits == 0);
+}
+
+TEST_CASE("WaterReactive/rings are strong enough to read at the play camera, bounded, and fade out") {
+    // Owner 2026-11-10: slope 0.035 / crest 0.028 were barely visible. Scan a radial cut through a standing mech's ring.
+    const auto peak = [](float age, float pixel) {
+        glm::vec2 best(0.0f);
+        for (float r = 0.0f; r < 223.0f; r += 0.25f) {
+            const auto v = wr_profile({r, 0}, {0, 0}, 13, age, 0, pixel);
+            best = glm::max(best, glm::vec2(std::abs(v.x), v.z));
+        }
+        return best;
+    };
+    const auto fresh = peak(0.6f, 1.0f);
+    CHECK(fresh.x >= 0.15f);   // at least 4x the old 0.035 peak slope
+    CHECK(fresh.y >= 0.15f);   // visible foam weight, was 0.028
+    CHECK(fresh.x <= kSlopeMax);
+    CHECK(fresh.y <= kCrestMax);
+    // Physically plausible: older rings are weaker, and the ring is gone at the lifetime.
+    CHECK(peak(2.0f, 1.0f).x < fresh.x * 0.6f);
+    CHECK(peak(2.99f, 1.0f).x < fresh.x * 0.02f);
+    // Wider rings at the RTS zoom limit fade rather than alias.
+    CHECK(peak(0.6f, 18.0f).x == 0);
+    // Everything stays zero beyond the CPU tile footprint (no seams at tile borders).
+    CHECK(glm::length(wr_profile({224.5f, 0}, {0, 0}, 40, 0.6f, 0, 1)) == 0);
+}
+
+TEST_CASE("WaterReactive/overlap saturates smoothly (no flat plateaus) and the crest is thin") {
+    // Owner 2026-11-10: posterized milky bands and a blob lattice where neighbouring mechs' rings overlap. A hard clamp made
+    // plateaus; the combine must stay strictly increasing and below the cap, and the foam crest must be thinner than the wave.
+    float prev = -1.0f;
+    for (float s = 0.0f; s <= 3.0f; s += 0.05f) {
+        const auto c = wr_combine(glm::vec3(s * 0.3f, -s * 0.3f, s * 0.4f));
+        CHECK(c.z > prev);
+        CHECK(c.z < kCrestMax);
+        CHECK(std::abs(c.x) < kSlopeMax);
+        prev = c.z;
+    }
+    CHECK(wr_combine(glm::vec3(0.05f, 0.0f, 0.05f)).x == doctest::Approx(0.05f).epsilon(0.01));
+    int crestSamples = 0, slopeSamples = 0;
+    for (float r = 0.0f; r < 223.0f; r += 0.25f) {
+        const auto v = wr_profile({r, 0}, {0, 0}, 13, 0.6f, 0, 1);
+        crestSamples += v.z > 0.5f * 0.55f * 0.5f;
+        slopeSamples += std::abs(v.x) > 0.5f * 0.3f * 0.5f;
+    }
+    CHECK(crestSamples > 0);
+    CHECK(crestSamples < slopeSamples);
+}
+
+#include "../../shaders/include/water_shallow.hglsl"
+TEST_CASE("WaterShallow/opacity follows the water column: wading stays clear, deep water keeps the full veil") {
+    using mc2::watershallow::ws_column_veil;
+    CHECK(ws_column_veil(0) == doctest::Approx(0.40f));
+    CHECK(ws_column_veil(-5) == doctest::Approx(0.40f));       // land side of the field never exceeds the floor
+    CHECK(ws_column_veil(3) * 0.87f < 0.55f);                   // a 3 wu wade: legs/floor clearly visible (the flat sheet was 0.87)
+    CHECK(ws_column_veil(16) < 0.95f);                           // a 16 wu wade is still not fully opaque
+    CHECK(ws_column_veil(30) > 0.95f);                           // deep water is as opaque as before
+    CHECK(ws_column_veil(5) < ws_column_veil(10));              // monotonic
+    CHECK(ws_column_veil(10) < ws_column_veil(30));
+    CHECK(ws_column_veil(1000) <= 1.0f);
 }

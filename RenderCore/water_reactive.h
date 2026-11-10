@@ -11,7 +11,9 @@ namespace mc2::waterreactive {
 constexpr uint32_t kCapacity = 128;
 constexpr uint32_t kTileSide = 32;
 constexpr uint32_t kTiles = kTileSide * kTileSide;
-constexpr uint32_t kPerTile = 8;
+// 3 standing mechs put ~18 live stamps into one tile. With 8 slots the oldest (widest) rings were dropped per tile, so a
+// ring ended in a straight line along the tile edge where the neighbouring tile still had it (owner 2026-11-10).
+constexpr uint32_t kPerTile = 32;
 constexpr float kTileWidth = 256.0f;
 constexpr float kReach = 224.0f;
 constexpr float kLifetime = 3.0f;
@@ -28,7 +30,7 @@ struct alignas(16) GpuFrame {
 };
 static_assert(sizeof(Stamp) == 32 && offsetof(Stamp, velocityType) == 16);
 static_assert(offsetof(GpuFrame, counts) == 4096 && offsetof(GpuFrame, indices) == 8192);
-static_assert(sizeof(GpuFrame) == 40960);
+static_assert(sizeof(GpuFrame) == 8192 + kTiles * kPerTile * 4);
 
 inline uint32_t tile(int x, int y) {
     return (static_cast<uint32_t>(y) & (kTileSide - 1)) * kTileSide
@@ -108,7 +110,7 @@ public:
         }
         source->x = x; source->y = y; source->seen = now;
         if (discontinuity) source->emitted = now; // No connecting wake on teleport/reappearance.
-        if (now - source->emitted < (vehicle ? 0.30f : 0.65f)) return;
+        if (now - source->emitted < (vehicle ? 0.25f : 0.55f)) return;
         source->emitted = now;
         ++emitted_; firstX_ = x; firstY_ = y; firstVx_ = vx; firstVy_ = vy;
         if (count_ == kCapacity) {
