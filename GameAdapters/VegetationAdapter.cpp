@@ -355,10 +355,9 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
         }
     }
     const double fieldMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - fieldT0).count();
-    mc2::fmt::print_err("[VEG v3] field blades={:d} side={:d} gaps={:d} flowers={:d} ms={:.1f} shrubs_placed={:d} shrubs_moved_off_meadow={:d} clumps_gated={:d}\n",
-                        mc2::fmt::as_i32(fieldBlades), mc2::fmt::as_i32(fieldSide), mc2::fmt::as_i32(fieldGaps),
-                        mc2::fmt::as_i32(fieldFlowers), fieldMs,
-                        mc2::fmt::as_i32(woodyPlaced), mc2::fmt::as_i32(woodyGated), mc2::fmt::as_i32(clumpsGated));
+    MC2_DIAGFE(stderr,
+        "[VEG v3] field blades=%d side=%d gaps=%d flowers=%d ms=%.1f shrubs_placed=%d shrubs_moved_off_meadow=%d clumps_gated=%d\n",
+        fieldBlades, fieldSide, fieldGaps, fieldFlowers, fieldMs, woodyPlaced, woodyGated, clumpsGated);
 
     GosVegetation::uploadInstances(instances.data(),
                                    static_cast<uint32_t>(instances.size()));
