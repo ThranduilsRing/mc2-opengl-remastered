@@ -118,7 +118,7 @@ if [ "${FREE_GB:-0}" -lt "${MC2_BOX_MIN_FREE_GB:-15}" ]; then echo "[box_run] BO
 rm -f "$OUT"/rows.tsv "$OUT"/fingerprints.tsv   # both are append-only: a stale PASS from an earlier run at this sha must never come back
 printf '%s\n' "${ROWS[@]}" > "$OUT/requested.tsv"
 [ -d $GOLD ] || { echo "[box_run] no golden install: run 'py -3 tools/box_run.py --seed' once"; exit 3; }
-BCPUS=${BUILD_CPUS:-32-63}   # builds: cores 32-63 at nice 19, no GPU lock held (the lock only wraps game rows)
+BCPUS=${BUILD_CPUS:-8-35}   # builds: cores 8-35 at nice 19, no GPU lock held (the lock only wraps game rows)
 export GIT_LFS_SKIP_SMUDGE=1
 # source: bundle was fetched into the mirror as refs/lanes/$BR by the Windows half
 if [ -e $S/.git ]; then git -C $S checkout -q -f --detach $SHA; else git -C $MIRROR worktree add -q -f --detach $S $SHA; fi
@@ -168,7 +168,7 @@ fi
 tick install
 export INSTALL=$I OUT
 export TMPDIR=$L/tmp; mkdir -p $TMPDIR
-grc() { nice -n 19 taskset -c "$BCPUS" "$@" 8>&-; }   # CPU rows (build, unit, cpu:, sh:): cores 32-63, no GPU lock
+grc() { nice -n 19 taskset -c "$BCPUS" "$@" 8>&-; }   # CPU rows (build, unit, cpu:, sh:): cores 8-35, no GPU lock
 take_lock() {   # taken lazily, just before the first row that runs the game
 CAP0=${5:-0}; LW0=$SECONDS   # the 30 min wait is measured from here (the build already ran)
 AVAILABLE=$(nvidia-smi -L | sed -n 's/^GPU \([0-9][0-9]*\):.*/\1/p' | tr '\n' ' ')
@@ -209,7 +209,7 @@ echo "[box_run] gpu=$GPU slot=$SLOT locked lock_wait_secs=$((SECONDS - LW0))"
 N=$GPU; bus=$(nvidia-smi --query-gpu=pci.bus_id --format=csv,noheader -i "$N"); bus=${bus: -12}
 export DRI_PRIME="pci-$(echo "$bus" | tr ':.' '__')" MESA_VK_DEVICE_SELECT_FORCE_DEFAULT_DEVICE=1
 export MC2_VK_DEVICE=NVIDIA SDL_VIDEODRIVER=x11 SDL_AUDIODRIVER=dummy OMP_NUM_THREADS=1 MC2_LOG=1 TMPDIR=$L/tmp
-mkdir -p $TMPDIR; cv=GPU${N}_CPUS; CPUS=${!cv:-"$((4*N))-$((4*N+3))"}   # cores.env GPU<n>_CPUS, else the old 4-per-GPU formula; box quota is ~30.7 CPUs and a game uses ~1 core: rows get 4 cores of their GPU; builds use cores 16-63 at nice 19 (-j24)
+mkdir -p $TMPDIR; cv=GPU${N}_CPUS; CPUS=${!cv:-"$((4*N))-$((4*N+3))"}   # cores.env GPU<n>_CPUS, else the old 4-per-GPU formula; box quota is ~30.7 CPUs and a game uses ~1 core: rows get 4 cores of their GPU; builds use cores 8-35 at nice 19 (-j16)
 gr() { taskset -c "$CPUS" xvfb-run -a -s "-screen 0 1920x1080x24" "$@" 9>&- 8>&-; }   # -a: free display picked per run, fd 9 (GPU lock) not inherited
 }
 # CPU rows first, then game rows: the GPU lock is only ever held around the game rows
@@ -701,7 +701,7 @@ def main():
             grp = "build"   # build-only / unit-only: never touches a GPU, so it queues in the build group and holds no gpuN slot
         label = f"box_run:{branch}:{sha[:8]}:{grp}" + (f":{identity}" if identity != branch else "")
         after = ""
-        if grp != "build":   # GPU rows: build first in the build group (cores 32-63), then the GPU task, which finds the tree built and only takes the lock for the rows
+        if grp != "build":   # GPU rows: build first in the build group (cores 8-35), then the GPU task, which finds the tree built and only takes the lock for the rows
             rb = run([*SSH_STDIN, f"cat > {script}.new.$$ && mv -f {script}.new.$$ {script} && {PUEUE} add -g build --print-task-id -l box_run:{branch}:{sha[:8]}:build:{identity} -- bash {script} {gpu} {branch} {sha} {out_remote} {cap0} {rows_b64(['build'])} {identity}"],
                      input=REMOTE.encode(), capture_output=True)
             bt = (rb.stdout.decode(errors="replace") if isinstance(rb.stdout, bytes) else rb.stdout).strip().splitlines()

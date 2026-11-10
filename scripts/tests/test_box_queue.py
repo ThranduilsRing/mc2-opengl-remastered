@@ -375,10 +375,10 @@ def test_build_and_unit_rows_queue_in_the_build_group_and_hold_no_gpu_slot(monke
     assert rc == 0 and len(pueue) == 1 and "-g build --print-task-id" in pueue[0][0] and "-g gpu" not in pueue[0][0]
 
 
-def test_build_runs_before_the_gpu_lock_and_on_cores_32_63():
+def test_build_runs_before_the_gpu_lock_and_on_cores_8_35():
     r = box_run.REMOTE
     assert r.index("ninja -C build64-ninja") < r.index("take_lock; LOCKED=1") < r.index("$RUN timeout -k 30")   # build, then lazy lock, then rows
-    assert "BCPUS=${BUILD_CPUS:-32-63}" in r and "-j16 mc2" in r
+    assert "BCPUS=${BUILD_CPUS:-8-35}" in r and "-j16 mc2" in r
     assert "    build)" in r
 
 
