@@ -14,6 +14,7 @@ vec3 mv_lampPoolNormal(vec3 wp, vec3 macroN, float lod);
 #undef TLP_LAMP_NORMAL
 #include "include/ground_lighting.glsl"
 #include "include/concrete_detail_vk.glsl"
+#include "include/world_patch_noise.glsl"   // GROUND-MOTTLE-REF3: shared world patch field (vegetation colours from it too)
 #include "../include/axis.hglsl"   // mc2ToRender: the POM view vector is built in the MC2 world frame
 #include "../include/edge_haze.hglsl"   // edgeHazeAmount + EDGE_HAZE_SKY, shared with GL
 
@@ -45,6 +46,10 @@ layout(set = 0, binding = 14) uniform sampler2D u_shorelineMask;
 const vec4  MATV_NORMAL_BOOST = vec4(0.9, 0.5, 1.1, CD_CONCRETE_RELIEF_STRENGTH);  // rock,grass,dirt,conc
 const vec4  MATV_TILING       = vec4(3.0, 2.0, 1.0, 6.0);  // rock,grass,dirt,conc
 const float MATV_TILING_SNOW  = 1.0;
+const float GM_STRENGTH       = 1.0;    // ground mottle (world_patch_noise.glsl) blend on full natural ground
+const float GM_LUMA_KEEP      = 0.5;    // share of the colormap brightness the mottle keeps
+const float GM_BEACH_WU       = 40.0;   // horizontal run above the waterline that stays clean beach (~10 m)
+const float GM_COAST_DRY_WU   = 400.0;  // straw fades out to the inland sward over this run (~100 m)
 const float MATV_WU_PER_TILE  = 768.0;  // MAT_WORLD_UNITS_PER_TILE (terrain_lod_chunk.frag:240)
 #include "include/terrain_detail_clamp.glsl"
 
@@ -379,6 +384,31 @@ void main() {
         float breakup = mix(0.78, 1.18, noiseBlend);
         baseColor *= mix(1.0, breakup, (1.0 - f3Snow) * (1.0 - F3pc));
         baseColor *= mix(1.0, uT.snowBrightnessDampen, f3Snow);
+    }
+    // GROUND-MOTTLE-REF3 (owner ref 3): a world-space olive / yellow-green sward mottled with dry straw patches
+    // (5-30 m) on natural ground, straw toward the coast, never on concrete/roads/runway, rock, cliffs, snow or
+    // the beach band. The field is shared with the vegetation shaders (include/world_patch_noise.glsl).
+    {
+        float natural = materialW.y + materialW.z;   // grass + dirt: the natural-ground weight
+        float slopeClean = smoothstep(0.80, 0.92, abs(baseNormal.z));   // steep ground keeps the cliff/rock look
+        float wMottle = clamp(natural, 0.0, 1.0) * (1.0 - materialSnow) * (1.0 - F3pc) * (cementHit ? 0.0 : 1.0) * slopeClean;
+        float coastDry = 0.0;
+        if (uT.shorelineOn != 0) {
+            float aboveW = v_worldPos.z - uT.shorelineWaterElev;
+            float nzm = clamp(abs(baseNormal.z), 0.0, 0.9995);
+            float horiz = max(aboveW, 0.0) * (nzm / max(sqrt(max(1.0 - nzm * nzm, 1e-6)), 0.03));
+            wMottle *= smoothstep(GM_BEACH_WU * 0.5, GM_BEACH_WU, horiz);   // the beach sand band stays clean
+            coastDry = 1.0 - smoothstep(GM_BEACH_WU, GM_COAST_DRY_WU, horiz);
+        }
+        if (wMottle > 0.001) {
+            vec2 gmField = worldPatchField(v_worldPos.xy);
+            vec3 gmCol = worldPatchColor(gmField, coastDry * 0.7);
+            // Keep part of the authored colormap brightness variation (luma transfer), take the palette hue.
+            float lb = dot(baseColor, vec3(0.299, 0.587, 0.114));
+            float lt = dot(gmCol, vec3(0.299, 0.587, 0.114));
+            gmCol *= mix(1.0, clamp(lb / max(lt, 1e-3), 0.6, 1.5), GM_LUMA_KEEP);
+            baseColor = mix(baseColor, gmCol, wMottle * GM_STRENGTH);
+        }
     }
 
     // Uniform flow, close to use: avoid keeping the footprint live through cement/tint work.
