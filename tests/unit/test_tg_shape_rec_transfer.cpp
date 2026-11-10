@@ -314,7 +314,7 @@ TEST_CASE("TG_LightContext/contexts do not alias and building one leaves the TG_
     TG_Shape::s_numLights = 1;
 
     const TG_LightContext live = TG_Shape::lightContext();
-    TG_LightContext probe = TG_LightContext::make(listB, 2);
+    TG_LightContext probe = TG_LightContext::make(std::span<TG_LightPtr>(listB, 2));
     CHECK(live.list == listA);
     CHECK(live.count == 1);
     CHECK(probe.list == listB);
@@ -331,7 +331,7 @@ TEST_CASE("TG_LightContext/contexts do not alias and building one leaves the TG_
     CHECK(live.list == listA);
 
     // Null list normalises to a zero count, like SetLightList.
-    const TG_LightContext none = TG_LightContext::make(nullptr, 7);
+    const TG_LightContext none = TG_LightContext::make(std::span<TG_LightPtr>());
     CHECK(none.list == nullptr);
     CHECK(none.count == 0);
 

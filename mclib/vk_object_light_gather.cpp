@@ -414,5 +414,5 @@ void ProbeGatherLightsForList(TG_LightPtr* lights, unsigned long nLights,
 
 	// R2 item 1: the probe's list rides in its own context; TG_Shape's statics are never written (null list =
 	// zero count, same normalisation as SetLightList).
-	GatherLightsParameters(TG_LightContext::make(lights, static_cast<DWORD>(nLights)), out);
+	GatherLightsParameters(TG_LightContext::make(lights ? std::span<TG_LightPtr>(lights, nLights) : std::span<TG_LightPtr>()), out);
 }

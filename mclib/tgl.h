@@ -10,6 +10,7 @@
 
 #ifndef TGL_H
 #define TGL_H
+#include <span>
 #include "mc2_czstring.h"
 #include "tgl_registry.h"
 //-------------------------------------------------------------------------------
@@ -354,7 +355,7 @@ struct TG_LightContext
 	TG_LightPtr*	list  = nullptr;
 	DWORD			count = 0;
 	// Mirrors TG_Shape::SetLightList's null normalisation: a null list is a zero count.
-	static TG_LightContext make(TG_LightPtr* l, DWORD n) { TG_LightContext c; if (l) { c.list = l; c.count = n; } return c; }
+	static TG_LightContext make(std::span<TG_LightPtr> l) { TG_LightContext c; if (l.data()) { c.list = l.data(); c.count = static_cast<DWORD>(l.size()); } return c; }
 };
 void GatherLightsParameters(const TG_LightContext& ctx, TG_HWLightsData* lights);
 
