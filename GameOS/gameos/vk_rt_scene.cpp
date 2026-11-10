@@ -558,10 +558,10 @@ void probeMaterials(VulkanContext& ctx, State& s) {
     for (const MaterialRow& r : s.propRows)
         if (r.albedoLayer >= 0) ((r.flags & kMatAlphaOn) ? needOn : needOff) = true;
     void* offView = nullptr;
-    void* onView = nullptr;
+    void* onViews[mc2::prop_buckets::kMaxBuckets]{};
     uint32_t gen = 0;
     const bool off = mc2_color_prop_island_get_albedo_off_array(&offView, &gen) != 0;
-    const bool on = mc2_color_prop_island_get_alpha_array(&onView, &gen) != 0;
+    const bool on = mc2_color_prop_island_get_alpha_arrays(onViews, &gen) != 0;
     const uint32_t rowCount = static_cast<uint32_t>(1 + s.propRows.size() + s.terrainBlas.size());
     if ((needOff && !off) || (needOn && !on) || (!off && !on)) {
         if (++s.matProbeWait < kMatProbeWaitCalls) return;
@@ -665,7 +665,8 @@ void probeMaterials(VulkanContext& ctx, State& s) {
     in.vbo = s.propVbo;
     in.stride = s.propStride;
     in.alphaOff = off ? reinterpret_cast<VkImageView>(offView) : VK_NULL_HANDLE;
-    in.alphaOn = on ? reinterpret_cast<VkImageView>(onView) : VK_NULL_HANDLE;
+    for (uint32_t b = 0; b < mc2::prop_buckets::kMaxBuckets; ++b)
+        in.alphaOn[b] = on ? reinterpret_cast<VkImageView>(onViews[b]) : VK_NULL_HANDLE;
     if (n == 0 || !traceSceneRays(ctx, in, rays, outA, false) || !traceSceneRays(ctx, in, rays, outO, true)) {
         MC2_EVENT(Vk, "VK_RT_SCENE", 1, "material result=FAIL reason=trace rays={} rows={}", n, rowCount);
         return;

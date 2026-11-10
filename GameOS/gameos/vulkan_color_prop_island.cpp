@@ -83,6 +83,7 @@ float mc2NightLightFactor();   // mclib/camera.cpp: 0 day/evening .. 1 full nigh
 #include <tracy/Tracy.hpp>   // VK-FLIP-FIELD-REPORT-1: coarse per-region frame zones
 #include "mc2fmt.h"
 #include "vk_island_fail_policy.h"
+#include "prop_array_buckets.h"
 
 
 namespace {
@@ -320,7 +321,7 @@ struct ColorPropIsland : mc2vk::IslandState {
     mc2vk::OwnedDescriptorPool pool;
     mc2vk::ResidentTextureRef albedoTexture;
     bool descriptorsDirty[mc2vk::kMaxFramesInFlight]={};
-    std::array<VkImageView,2> boundTextures[mc2vk::kMaxFramesInFlight]{};
+    std::array<VkImageView,1 + mc2::prop_buckets::kMaxBuckets> boundTextures[mc2vk::kMaxFramesInFlight]{};   // binding 3, binding 6[]
     struct MaskBinding {
         VkDescriptorSet set = VK_NULL_HANDLE;
         VkDescriptorBufferInfo info{};
@@ -334,7 +335,9 @@ struct ColorPropIsland : mc2vk::IslandState {
     mc2vk::DescWriteStamp copy14Stamp[mc2vk::kMaxFramesInFlight]{};  // binding 14 copied from 24 (no object view)
     mc2vk::OwnedSampler albedoSamp;
     mc2vk::OwnedBuffer  layerBuf;         // per-type int layer SSBO
-    mc2vk::ResidentTextureRef albedoOnTexture;
+    // PROP-ARRAY-BUCKETS: the alpha-ON group's size buckets (binding 6 is an array of kMaxBuckets; an unused slot names bucket 0).
+    std::array<mc2vk::ResidentTextureRef, mc2::prop_buckets::kMaxBuckets> albedoOnTexture;
+    uint32_t albedoOnBuckets = 1;   // buckets of this map's alpha-ON group (slot 0 is the dummy before the import)
     mc2vk::OwnedSampler albedoOnSamp;
     mc2vk::OwnedBuffer  layerOnBuf;       // per-type int layer SSBO (class 1)
     mc2vk::OwnedBuffer  hotBuf;           // per-type hot-colour night emission colours (3 vec4 per type)
@@ -416,6 +419,11 @@ void sync_ring_bindings(ColorPropIsland* s, uint32_t par, const mc2vk::FrameAllo
     }
 }
 
+// PROP-ARRAY-BUCKETS: the view binding 6 names in slot b (bucket 0 for a slot this map does not use).
+VkImageView cp_alpha_on_view(const ColorPropIsland* s, uint32_t b) {
+    return b < s->albedoOnBuckets && s->albedoOnTexture[b] ? s->albedoOnTexture[b].view() : s->albedoOnTexture[0].view();
+}
+
 void write_descriptors(ColorPropIsland* s, int parity = -1) {
     if (parity<0) { for (auto& dirty : s->descriptorsDirty) dirty = true; return; }
     for (int i=parity;i<=parity;++i) {
@@ -435,14 +443,14 @@ void write_descriptors(ColorPropIsland* s, int parity = -1) {
     VkDescriptorBufferInfo layerInfo{};
     VkDescriptorImageInfo  albInfo{};
     VkDescriptorBufferInfo layerOnInfo{};
-    VkDescriptorImageInfo  albOnInfo{};
+    VkDescriptorImageInfo  albOnInfo[mc2::prop_buckets::kMaxBuckets]{};
     VkDescriptorBufferInfo hotInfo{};
     VkWriteDescriptorSet   wm[5]{};   // alpha-OFF (2/3) + alpha-ON (5/6) material writes
     uint32_t m = 0;
     if (s->wantMaterial && s->tier1 && s->layerBuf &&
         s->albedoTexture && s->albedoSamp &&
         s->layerOnBuf &&
-        s->albedoOnTexture && s->albedoOnSamp) {
+        s->albedoOnTexture[0] && s->albedoOnSamp) {
         layerInfo = VkDescriptorBufferInfo{ s->layerBuf.get(), 0, VK_WHOLE_SIZE };
         wm[m].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; wm[m].dstSet = s->set[i];
         wm[m].dstBinding = 2; wm[m].descriptorCount = 1;
@@ -457,11 +465,11 @@ void write_descriptors(ColorPropIsland* s, int parity = -1) {
         wm[m].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; wm[m].dstSet = s->set[i];
         wm[m].dstBinding = 5; wm[m].descriptorCount = 1;
         wm[m].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; wm[m].pBufferInfo = &layerOnInfo; ++m;
-        albOnInfo.sampler = s->albedoOnSamp.get(); albOnInfo.imageView = s->albedoOnTexture.view();
-        albOnInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        for (uint32_t b = 0; b < mc2::prop_buckets::kMaxBuckets; ++b)
+            albOnInfo[b] = {s->albedoOnSamp.get(), cp_alpha_on_view(s, b), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
         wm[m].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; wm[m].dstSet = s->set[i];
-        wm[m].dstBinding = 6; wm[m].descriptorCount = 1;
-        wm[m].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; wm[m].pImageInfo = &albOnInfo; ++m;
+        wm[m].dstBinding = 6; wm[m].descriptorCount = mc2::prop_buckets::kMaxBuckets;
+        wm[m].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; wm[m].pImageInfo = albOnInfo; ++m;
     }
     // Hot-colour table (binding 7, VS): declared in every tier-1 layout, bound to a one-entry placeholder until the real table lands.
     if (s->tier1 && s->hotBuf) {
@@ -609,8 +617,8 @@ AlbedoTarget cp_target_off(ColorPropIsland* s) {
     return AlbedoTarget{ &s->albedoTexture, &s->albedoSamp,
                          &s->albedoLayers, &s->albedoGlTexImported, &s->materialReady, "alpha-OFF" };
 }
-AlbedoTarget cp_target_on(ColorPropIsland* s) {
-    return AlbedoTarget{ &s->albedoOnTexture, &s->albedoOnSamp,
+AlbedoTarget cp_target_on(ColorPropIsland* s, uint32_t bucket = 0) {
+    return AlbedoTarget{ &s->albedoOnTexture[bucket], &s->albedoOnSamp,
                          &s->albedoOnLayers, &s->albedoOnGlTexImported, &s->materialReadyOn, "alpha-ON" };
 }
 
@@ -648,11 +656,12 @@ bool cp_upload_albedo_array(ColorPropIsland* s, const AlbedoTarget& tgt,
     key.format=static_cast<uint32_t>(fmt); key.hints=mips>1 ? gosHint_MipmapFilter0 : 0;
     auto texture=mc2vk::getOrCreateEngineVulkanContext().textures().acquire(key,image,{w,h,w,h},layers,true);
     if (!texture) return false;
-    if (tgt.texture == &s->albedoOnTexture) {
-        // Bytes plus their interpretation identify the actual alpha-ON upload across installs/mods.
+    if (tgt.texture >= &s->albedoOnTexture.front() && tgt.texture <= &s->albedoOnTexture.back()) {
+        // Bytes plus their interpretation identify the actual alpha-ON upload across installs/mods; the buckets are
+        // imported in order, so bucket 0 restarts the hash and every later bucket folds into it.
         const uint32_t shape[] = {static_cast<uint32_t>(fmt), w, h, layers, mips};
         for (uint32_t v : shape) { hash ^= v; hash *= 1099511628211ull; }
-        s->alphaContentHash = hash;
+        s->alphaContentHash = tgt.texture == &s->albedoOnTexture[0] ? hash : (s->alphaContentHash ^ hash) * 1099511628211ull;
     }
     *tgt.texture=std::move(texture); *tgt.layers=layers;
     return true;
@@ -1088,7 +1097,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
             b[nb].binding = 5; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
             b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_VERTEX_BIT; ++nb;
             b[nb].binding = 6; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
+            b[nb].descriptorCount = mc2::prop_buckets::kMaxBuckets; b[nb].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;   // PROP-ARRAY-BUCKETS
         }
         if (s->tier1) {   // the hot-colour table is read by the tier-1 vertex shader in every mode
             b[nb].binding = 7; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
@@ -1142,7 +1151,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         sizes[nsz++] = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, mc2vk::kMaxFramesInFlight};
         sizes[nsz++] = {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, mc2vk::kMaxFramesInFlight * (1u + (lightBinding ? 1u : 0u))};
         sizes[nsz++] = {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, mc2vk::kMaxFramesInFlight * ((materialBindings ? 2u : 0u) + (s->tier1 ? 5u : 0u) + 2u)};
-        sizes[nsz++] = {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, mc2vk::kMaxFramesInFlight * ((materialBindings ? 2u : 0u) + 4u + s->propTexSlots)};
+        sizes[nsz++] = {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, mc2vk::kMaxFramesInFlight * ((materialBindings ? 1u + mc2::prop_buckets::kMaxBuckets : 0u) + 4u + s->propTexSlots)};
         sizes[nsz++] = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, mc2vk::kMaxFramesInFlight};
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -1509,11 +1518,13 @@ extern "C" uint64_t mc2_color_prop_island_alpha_content_hash() {
     return s && s->materialReadyOn ? s->alphaContentHash : 0;
 }
 
-extern "C" int mc2_color_prop_island_get_alpha_array(void** view, uint32_t* generation) {
+extern "C" int mc2_color_prop_island_get_alpha_arrays(void** views, uint32_t* generation) {
     const ColorPropIsland* s = parkedIsland();
-    if (!view || !generation || !s || !s->materialReadyOn || !s->albedoOnTexture) return 0;
-    if (!mc2vk::getOrCreateEngineVulkanContext().textures().ready(s->albedoOnTexture.get())) return 0;
-    *view = reinterpret_cast<void*>(s->albedoOnTexture.view());
+    if (!views || !generation || !s || !s->materialReadyOn || !s->albedoOnTexture[0]) return 0;
+    auto& textures = mc2vk::getOrCreateEngineVulkanContext().textures();
+    for (uint32_t b = 0; b < s->albedoOnBuckets; ++b)
+        if (!s->albedoOnTexture[b] || !textures.ready(s->albedoOnTexture[b].get())) return 0;
+    for (uint32_t b = 0; b < mc2::prop_buckets::kMaxBuckets; ++b) views[b] = reinterpret_cast<void*>(cp_alpha_on_view(s, b));
     *generation = s->mapGeneration;
     return 1;
 }
@@ -1618,7 +1629,18 @@ static bool prepare_mission_resources(ColorPropIsland* s) {
                     if (mf.typeAlphaClass[t] == 1 && mf.typeAlbedoLayer[t] >= 0)
                         layerOnTbl[t] = mf.typeAlbedoLayer[t];
                 }
-                if (cp_import_albedo_array(s, cp_target_on(s), mf.arrayKeyOn, mf.albedoOn)) {
+                // PROP-ARRAY-BUCKETS: every size bucket must land before the group is ready (each import marks it
+                // ready and keyed, so clear the latch between buckets).
+                const uint32_t buckets = std::min(mf.albedoOn ? mf.albedoOnCount : 0u, mc2::prop_buckets::kMaxBuckets);
+                bool imported = buckets > 0;
+                for (uint32_t b = 0; imported && b < buckets; ++b) {
+                    s->materialReadyOn = false;
+                    imported = cp_import_albedo_array(s, cp_target_on(s, b), mf.arrayKeyOn, &mf.albedoOn[b]);
+                }
+                s->materialReadyOn = imported;
+                if (imported) {
+                    s->albedoOnBuckets = buckets;
+                    for (uint32_t b = buckets; b < mc2::prop_buckets::kMaxBuckets; ++b) s->albedoOnTexture[b] = {};
                     cp_upload_layer_table_on(s, layerOnTbl.data(), mf.typeCount);
                     changed = true;
                     vlog("material feed active: alpha-ON %u types textured (alpha-test 0.5).",
@@ -2031,7 +2053,8 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
             mc2vk::noteDescWrites(1,0);
         } else mc2vk::noteDescWrites(0,1);
     }
-    const std::array<VkImageView,2> views{s->albedoTexture.view(),s->albedoOnTexture.view()};
+    std::array<VkImageView,1 + mc2::prop_buckets::kMaxBuckets> views{s->albedoTexture.view()};
+    for (uint32_t b = 0; b < mc2::prop_buckets::kMaxBuckets; ++b) views[1 + b] = cp_alpha_on_view(s, b);
     if (s->descriptorsDirty[par] || s->boundTextures[par]!=views) {
         write_descriptors(s,static_cast<int>(par)); s->boundTextures[par]=views;
     }
@@ -2146,7 +2169,10 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         // import having landed (Tier-1 only). material-disabled paths leave these zero (the shaders
         // never read them).
         u.materialReady = (s->wantMaterial && s->tier1 && s->materialReady && rctx.textures().ready(s->albedoTexture.get())) ? 1 : 0;
-        u.materialReadyOn = (s->wantMaterial && s->tier1 && s->materialReadyOn && rctx.textures().ready(s->albedoOnTexture.get())) ? 1 : 0;
+        bool onBucketsReady = s->albedoOnTexture[0] && rctx.textures().ready(s->albedoOnTexture[0].get());
+        for (uint32_t b = 1; onBucketsReady && b < s->albedoOnBuckets; ++b)
+            onBucketsReady = s->albedoOnTexture[b] && rctx.textures().ready(s->albedoOnTexture[b].get());
+        u.materialReadyOn = (s->wantMaterial && s->tier1 && s->materialReadyOn && onBucketsReady) ? 1 : 0;
         u.terrainSunMC2[0] = s->terrainSunMC2[0];
         u.terrainSunMC2[1] = s->terrainSunMC2[1];
         u.terrainSunMC2[2] = s->terrainSunMC2[2];

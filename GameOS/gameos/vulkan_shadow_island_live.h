@@ -116,7 +116,8 @@ struct Mc2ColorPropMaterialFeed {
     // The CPU copies of the two group arrays (every level, the bytes GL uploaded); null when a group has none. The island imports
     // these; the keys above tell it the arrays were rebuilt.
     const mc2tex::TextureArrayCpu* albedoOff;
-    const mc2tex::TextureArrayCpu* albedoOn;
+    const mc2tex::TextureArrayCpu* albedoOn;   // [albedoOnCount] size buckets (PROP-ARRAY-BUCKETS); packet layers encode the bucket
+    uint32_t        albedoOnCount;
 
     // VK-FLIP-FIELD-REPORT-2 BLACK-FENCE FIX: per-PACKET (not per-type) albedo layer.
     // A single typeID can own multiple packets (sub-mesh ranges) that each target a

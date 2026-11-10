@@ -30,7 +30,9 @@ int mc2_vk_color_prop_island_enabled();
 // The alpha-ON albedo array view (a VkImageView in SHADER_READ_ONLY layout, opaque here) the island imported for the alpha-tested props, or 0 while the island
 // has none. `generation` changes at every map change, so a caller that bound the view re-binds even when a new array comes back with the same handle value. Owned by the island: the caller reads it within the frame and re-queries each frame (a new map brings a new array).
 uint64_t mc2_color_prop_island_alpha_content_hash();
-int mc2_color_prop_island_get_alpha_array(void** view, uint32_t* generation);
+// PROP-ARRAY-BUCKETS: `views` receives mc2::prop_buckets::kMaxBuckets entries, one per size bucket of the alpha-ON group
+// (a slot the map does not use repeats bucket 0); a packet layer names its bucket (prop_array_buckets.h).
+int mc2_color_prop_island_get_alpha_arrays(void** views, uint32_t* generation);
 // The alpha-OFF albedo array view (same contract), or 0 while the island has none.
 int mc2_color_prop_island_get_albedo_off_array(void** view, uint32_t* generation);
 

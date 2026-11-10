@@ -6,6 +6,7 @@
 #include "gos_static_prop_finalize_frame.h"
 #include "mc2fmt.h"
 #include "vegetation_cutout.h"
+#include "prop_array_buckets.h"
 
 #include <cstring>
 
@@ -174,53 +175,57 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
             continue;
         }
 
-        // 5.10.d — find max dimensions across the group's uniques.
-        // The texture array is allocated at maxW × maxH; smaller
-        // textures get blitted into upper-left sub-region of their
-        // layer; per-type uvScale maps [0,1] UV → sub-region.
-        int maxW = 0, maxH = 0;
-        for (const auto& u : uniques) {
-            maxW = std::max(maxW, u.w);
-            maxH = std::max(maxH, u.h);
-        }
-        if (maxW <= 0 || maxH <= 0) {
-            // Defensive — shouldn't happen because skip-path filtered W/H<=0.
-            MC2_DIAGFE(stderr, "[COALESCE v1] event=disarmed reason=alloc_failed "
-                         "(group=%s maxDims=%dx%d after skip-no-dims pass)\n",
-                         group == 0u ? "off" : "on", maxW, maxH);
-            coalesceRollbackTexBuild(newlyPinnedThisBuild); albedoKey_ = {};
-            s_coalesceLayoutReady = false;
-            s_coalesceEnabled     = false;
-            s_coalesceArmed       = false;
-            return true;
+        // PROP-ARRAY-BUCKETS: one array per size bucket (prop_array_buckets.h). alpha-OFF keeps a single array
+        // (bucket 0, plain layers); alpha-ON splits by size class so a 1024 atlas does not inflate its 128 layers.
+        // Within a bucket the array is the members' max W x H; a smaller member sits in the upper-left of its layer
+        // and its per-packet uvScale maps [0,1] UV to that sub-region (as for the whole group before).
+        std::vector<mc2::prop_buckets::Dims> memberDims;
+        memberDims.reserve(uniques.size());
+        for (const auto& u : uniques) memberDims.push_back({u.w, u.h});
+        const auto plan = mc2::prop_buckets::planBuckets(memberDims, group == 1u ? mc2::prop_buckets::kMaxBuckets : 1u);
+        for (const auto& d : plan.bucketDims) {
+            if (d.w <= 0 || d.h <= 0) {
+                // Defensive — shouldn't happen because skip-path filtered W/H<=0.
+                MC2_DIAGFE(stderr, "[COALESCE v1] event=disarmed reason=alloc_failed "
+                             "(group=%s maxDims=%dx%d after skip-no-dims pass)\n",
+                             group == 0u ? "off" : "on", d.w, d.h);
+                coalesceRollbackTexBuild(newlyPinnedThisBuild); albedoKey_ = {};
+                s_coalesceLayoutReady = false;
+                s_coalesceEnabled     = false;
+                s_coalesceArmed       = false;
+                return true;
+            }
         }
 
-        mc2tex::TextureArrayCpu& cpuArray = albedoArrays_[group];
-        cpuArray = {};
+        auto& bucketArrays = albedoArrays_[group];
+        bucketArrays.assign(plan.bucketDims.size(), {});
+        for (uint32_t b = 0; b < plan.bucketDims.size(); ++b) {
+        std::vector<size_t> members;
+        for (size_t k = 0; k < uniques.size(); ++k) if (plan.bucket[k] == b) members.push_back(k);
+        const int maxW = plan.bucketDims[b].w, maxH = plan.bucketDims[b].h;
+        mc2tex::TextureArrayCpu& cpuArray = bucketArrays[b];
         cpuArray.width = static_cast<uint32_t>(maxW);
         cpuArray.height = static_cast<uint32_t>(maxH);
-        cpuArray.layers = static_cast<uint32_t>(uniques.size());
+        cpuArray.layers = static_cast<uint32_t>(members.size());
         cpuArray.vkFormat = mc2tex::kVkFormatRgba8Unorm;
         const size_t layerBytes0 = static_cast<size_t>(maxW) * static_cast<size_t>(maxH) * 4u;
-        std::vector<std::vector<uint8_t>> layerTexels(uniques.size(), std::vector<uint8_t>(layerBytes0, 0));
+        std::vector<std::vector<uint8_t>> layerTexels(members.size(), std::vector<uint8_t>(layerBytes0, 0));
         auto blitRows = [](std::vector<uint8_t>& layer, uint32_t layerW, const uint8_t* src, uint32_t w, uint32_t h) {
             for (uint32_t y = 0; y < h; ++y)
                 std::memcpy(layer.data() + static_cast<size_t>(y) * layerW * 4u, src + static_cast<size_t>(y) * w * 4u, static_cast<size_t>(w) * 4u);
         };
-        std::vector<uint8_t> pixelBuf;
-        for (size_t k = 0; k < uniques.size(); ++k) {
-            const auto& u = uniques[k];
-            pixelBuf.assign(u.rgba->begin(), u.rgba->end());
-            blitRows(layerTexels[k], cpuArray.width, pixelBuf.data(), static_cast<uint32_t>(u.w), static_cast<uint32_t>(u.h));
+        for (size_t k = 0; k < members.size(); ++k) {
+            const auto& u = uniques[members[k]];
+            blitRows(layerTexels[k], cpuArray.width, u.rgba->data(), static_cast<uint32_t>(u.w), static_cast<uint32_t>(u.h));
         }
         // PROP-ALPHA-MIP-1: a solid cutout layer of the alpha-ON group (canopy, alpha-mixed wall) keeps its coverage at the
         // shader's per-mip cut instead of box-filtering down to mid alpha, which the rising cut sends to the thin blended fringe
         // (far trees read see-through). Thin lattice (isSolidCutout false) keeps the plain box mips so fences stay see-through.
-        std::vector<float> keepCoverage(uniques.size(), -1.0f);
+        std::vector<float> keepCoverage(members.size(), -1.0f);
         if (group == 1u)
             for (size_t k = 0; k < layerTexels.size(); ++k)
                 if (mc2::vegetation::isSolidCutout(layerTexels[k], cpuArray.width, cpuArray.height,
-                                                   static_cast<uint32_t>(std::min(uniques[k].w, uniques[k].h)))) {
+                                                   static_cast<uint32_t>(std::min(uniques[members[k]].w, uniques[members[k]].h)))) {
                     keepCoverage[k] = mc2::vegetation::cutoutCoverage(layerTexels[k]);
                     mc2::vegetation::dilateCutoutRgb(layerTexels[k], cpuArray.width, cpuArray.height);
                 }
@@ -250,21 +255,31 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                     mc2::vegetation::dilateCutoutRgb(layerTexels[k], mc2tex::mipExtent(cpuArray.width, lvl + 1u), mc2tex::mipExtent(cpuArray.height, lvl + 1u));
                 }
         }
+        COALESCE_TRACE("group_built group=%s bucket=%u layers=%zu maxDims=%dx%d",
+                       group == 0u ? "off" : "on", b, members.size(), maxW, maxH);
+        }
         albedoKey_[group] = ++s_albedoKeySerial;
         // 2026-05-11 per-packet rework: uvScale is per-PACKET, derived from
-        // each packet's unique texture dimensions vs the array max dims.
-        const float invMaxW = 1.0f / static_cast<float>(maxW);
-        const float invMaxH = 1.0f / static_cast<float>(maxH);
+        // each packet's unique texture dimensions vs its bucket array's max dims.
+        // PROP-ARRAY-BUCKETS: the packet's (and the type's) layer becomes (bucket, layer-in-bucket).
         for (const auto& [globalPktIdx, layer] : packetsInGroup) {
             if (layer < 0) continue;
-            const auto& u = uniques[static_cast<size_t>(layer)];
-            uvScaleXByPacket[globalPktIdx] = static_cast<float>(u.w) * invMaxW;
-            uvScaleYByPacket[globalPktIdx] = static_cast<float>(u.h) * invMaxH;
+            const size_t k = static_cast<size_t>(layer);
+            const auto& u = uniques[k];
+            const auto& d = plan.bucketDims[plan.bucket[k]];
+            uvScaleXByPacket[globalPktIdx] = static_cast<float>(u.w) / static_cast<float>(d.w);
+            uvScaleYByPacket[globalPktIdx] = static_cast<float>(u.h) / static_cast<float>(d.h);
+            layerForPacket[globalPktIdx] = mc2::prop_buckets::encodeLayer(plan.bucket[k], plan.layer[k]);
+        }
+        for (const uint32_t typeID : s_sortedTypeOrder) {
+            if (s_types[typeID].alphaClass != group || layerForType[typeID] < 0) continue;
+            const size_t k = static_cast<size_t>(layerForType[typeID]);
+            layerForType[typeID] = mc2::prop_buckets::encodeLayer(plan.bucket[k], plan.layer[k]);
         }
 
-        COALESCE_TRACE("group_built group=%s uniques=%zu maxDims=%dx%d",
+        COALESCE_TRACE("group_built group=%s uniques=%zu buckets=%zu",
                        group == 0u ? "off" : "on",
-                       uniques.size(), maxW, maxH);
+                       uniques.size(), plan.bucketDims.size());
 
         s_coalescePinnedNodes.insert(s_coalescePinnedNodes.end(),
                                       newlyPinnedThisBuild.begin(),

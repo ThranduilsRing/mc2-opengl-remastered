@@ -70,7 +70,9 @@ layout(constant_id = 2) const int kOpaqueOnly = 0;
 layout(set = 0, binding = 3) uniform sampler2DArray uAlbedo;
 // VK-P11 STATIC-PROP MATERIAL alpha-ON: alpha-MIXED prop array (copy-once import of
 // s_texArrayOn). Sampled with a 0.5 alpha-test discard, matching GL static_prop.frag.
-layout(set = 0, binding = 6) uniform sampler2DArray uAlbedoOn;
+// PROP-ARRAY-BUCKETS: one array per size bucket; vLayerOn carries the bucket.
+#include "include/prop_array_bucket.glsl"
+layout(set = 0, binding = 6) uniform sampler2DArray uAlbedoOn[PROP_ALPHA_ON_BUCKETS];
 
 layout(location = 0) in vec2 vUv;
 layout(location = 1) in vec3 vNormalStuff;
@@ -189,12 +191,13 @@ void main() {
         // `fract(v_uv) * vec2(uvScaleX, uvScaleY)`.
         vec2  uvContinuousOn = vUv * vUvScale;
         vec2  uvSampledOn = fract(vUv) * vUvScale;
-        vec2  tsOn = vec2(textureSize(uAlbedoOn, 0).xy);
+        const int bucketOn = propBucketOf(vLayerOn);
+        vec2  tsOn = vec2(textureSize(uAlbedoOn[nonuniformEXT(bucketOn)], 0).xy);
         vec2  duv1 = dFdx(uvContinuousOn) * tsOn;
         vec2  duv2 = dFdy(uvContinuousOn) * tsOn;
         float lodOn = 0.5 * log2(max(max(dot(duv1, duv1), dot(duv2, duv2)), 1e-12));
         lodOn = max(lodOn, 0.0);
-        vec4 texc = textureLod(uAlbedoOn, vec3(uvSampledOn, float(vLayerOn)), lodOn);
+        vec4 texc = textureLod(uAlbedoOn[nonuniformEXT(bucketOn)], vec3(uvSampledOn, float(propBucketLayer(vLayerOn))), lodOn);
         cover = propCoverage(texc.a, lodOn);   // PROP-COVERAGE-1 (replaces the Bayer screen-door dither)
         // ★VK-FLIP-FIELD-REPORT-1 BLACK-FENCE FIX: the alpha-ON group is the ALPHA_TEST
         // class (tree cards / fences / foliage). GL static_prop.frag:339 floors their lit

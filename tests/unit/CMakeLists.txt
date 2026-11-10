@@ -138,6 +138,7 @@ add_executable(mc2_tests
     test_msl_node_walk.cpp  # MSL-NODE-WALK-1: keyed node rebuild equals a full rebuild bit for bit (header-only, mclib/msl_node_walk.h)
     test_vulkan_contract.cpp  # VULKAN-CONTRACT-COVERAGE-1: descriptor-class coverage/consistency (offline)
     test_veg_hardsurface.cpp  # VEG-CEMENT-1: cement coverage -> vegetation falloff curve, crack weeds, class-3 union (offline)
+    test_prop_array_buckets.cpp  # PROP-ARRAY-BUCKETS: alpha-ON prop albedo size buckets + (bucket, layer) encoding (offline)
     test_startup_work.cpp  # PC night startup: bounded dedup, appearance noise, TGA scratch reuse
     test_hardpoint.cpp        # HARDPOINT-ID-SCHEMA-1: HardpointId join key + weapon-tag/damage-location link (offline)
     test_package_chassis.cpp  # BT2018-FIRST-CLASS P3/P7: package chassis regions/mounts/payload + type-number allocation (offline)

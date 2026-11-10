@@ -138,7 +138,7 @@ bool traceRays(const VulkanContext& ctx, VkAccelerationStructureKHR tlas, std::s
 
 bool traceSceneRays(const VulkanContext& ctx, const SceneProbeInputs& in, std::span<const float> rays, std::span<float> out, bool forceOpaque) {
     const size_t count = rays.size() / 8;
-    const VkImageView off = in.alphaOff ? in.alphaOff : in.alphaOn, on = in.alphaOn ? in.alphaOn : in.alphaOff;   // a missing array: bind the other
+    const VkImageView off = in.alphaOff ? in.alphaOff : in.alphaOn[0], on = in.alphaOn[0] ? in.alphaOn[0] : in.alphaOff;   // a missing array: bind the other
     if (!ctx.rt().rayQuery || in.tlas == VK_NULL_HANDLE || !in.materials || !in.uvIndex || in.vbo == 0 || !off || count == 0 || out.size() < count * 8)
         return false;
     const VkDevice dev = ctx.device();
@@ -157,7 +157,8 @@ bool traceSceneRays(const VulkanContext& ctx, const SceneProbeInputs& in, std::s
     b.set.writeBuffer(dev, 3, in.materials);
     b.set.writeBuffer(dev, 4, in.uvIndex);
     b.set.writeImage(dev, 5, samp.get(), off);
-    b.set.writeImage(dev, 6, samp.get(), on);
+    for (uint32_t k = 0; k < mc2::prop_buckets::kMaxBuckets; ++k)   // PROP-ARRAY-BUCKETS: bindings 6..9, one per alpha-ON size bucket
+        b.set.writeImage(dev, 6 + k, samp.get(), in.alphaOn[k] ? in.alphaOn[k] : on);
     const uint32_t push[4] = {static_cast<uint32_t>(in.vbo), static_cast<uint32_t>(in.vbo >> 32), in.stride, forceOpaque ? 1u : 0u};
     const bool ok = submitOneShot(ctx, [&](VkCommandBuffer cmd) {
         recordBarrier(ctx, cmd, Phase::Tlas, Phase::Consumer);

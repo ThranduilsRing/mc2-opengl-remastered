@@ -157,11 +157,10 @@ TEST_CASE("rt layout: the ray-query binding table is valid and starts with the T
 
 TEST_CASE("rt layout: the scene material probe table matches rt_scene_probe.comp") {
     CHECK(bindingsAreValid(kSceneProbeBindings.data(), static_cast<uint32_t>(kSceneProbeBindings.size())));
-    REQUIRE(kSceneProbeBindings.size() == 7);
+    REQUIRE(kSceneProbeBindings.size() == 10);   // 6..9: the alpha-ON size buckets (PROP-ARRAY-BUCKETS)
     CHECK(kSceneProbeBindings[0].kind == BindingKind::AccelerationStructure);
     for (uint32_t b = 1; b <= 4; ++b) CHECK(kSceneProbeBindings[b].kind == BindingKind::StorageBuffer);
-    CHECK(kSceneProbeBindings[5].kind == BindingKind::SampledImage);
-    CHECK(kSceneProbeBindings[6].kind == BindingKind::SampledImage);
+    for (uint32_t b = 5; b <= 9; ++b) CHECK(kSceneProbeBindings[b].kind == BindingKind::SampledImage);
     for (uint32_t b = 0; b < kSceneProbeBindings.size(); ++b) CHECK(kSceneProbeBindings[b].binding == b);
     CHECK(kSceneProbePushBytes == 16);   // uvec2 vbo, uint stride, uint mode
 }
