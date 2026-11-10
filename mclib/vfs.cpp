@@ -1123,6 +1123,7 @@ struct DigestStamp { uint64_t size = 0; int64_t mtime = 0; uint64_t generation =
 std::mutex g_digestMutex;
 std::map<std::string, std::pair<DigestStamp, uint64_t>> g_digestMemo;
 uint64_t g_digestGeneration = 1;
+static std::atomic<uint64_t> g_generation{1};
 
 void put(Index& ix, const std::string& k, Provider p, const std::string& mount,
          const std::string& phys, const std::string& name)
@@ -1309,7 +1310,6 @@ void rebuild()
 	buildLocked();
 }
 
-static std::atomic<uint64_t> g_generation{1};
 uint64_t generation() { return g_generation.load(std::memory_order_relaxed); }
 
 void invalidate()
