@@ -103,3 +103,67 @@ TEST_CASE("terrain_dirty_queue/night drift does not invalidate residents")
     CHECK(mc2::terrainNightFullInvalidate(0.4f, 0.0f, false, false));         // lamps may drop
     CHECK(mc2::terrainNightFullInvalidate(0.5f, 0.5f, false, true));          // isNight flip
 }
+
+#include "static_resident_set.h"
+
+// static-world-s2: the residency state machine. A resident's object is skipped by the render extract only while
+// the queue says render-resident and the set still holds it.
+TEST_CASE("static_resident/mark, epoch, light generation, destroy and cull each end residency")
+{
+    mc2::TerrainDirtyQueue queue;
+    mc2::StaticResidentSet set;
+    queue.reset(8);
+    set.reset(8);
+    auto settle = [&](long h, int32_t recipe) {   // presentation settles, then the render visit settles
+        queue.setResident(h);
+        if (queue.setRenderResident(h)) set.add(h, recipe);
+    };
+    std::vector<int32_t> cleared;
+    bool exists[8] = {true, true, true, true, true, true, true, true};
+    bool culled[8] = {};
+    auto run = [&](uint64_t key) {
+        set.validate(key,
+            [&](long h, int32_t) { return exists[h] && !culled[h] && queue.isRenderResidentQuiescent(h); },
+            [&](long, int32_t r) { cleared.push_back(r); });
+    };
+
+    settle(1, 11); settle(2, 12); settle(3, 13); settle(4, 14); settle(5, 15);
+    CHECK(set.size() == 5);
+    run(7);   // first pass fixes the epoch key (nothing was recorded before: all dropped)
+    CHECK(set.size() == 0);
+    cleared.clear();
+    settle(1, 11); settle(2, 12); settle(3, 13); settle(4, 14); settle(5, 15);
+    run(7);
+    CHECK(set.size() == 5);
+    CHECK(cleared.empty());
+
+    queue.mark(1);                       // damage / selection / status
+    exists[2] = false;                   // destroy
+    culled[3] = true;                    // cull-state change
+    run(7);
+    CHECK(set.size() == 2);
+    CHECK(!set.contains(1)); CHECK(!set.contains(2)); CHECK(!set.contains(3));
+    CHECK(set.recipe(4) == 14);
+
+    queue.drain();                       // object 1 revisited; it may settle again only after its presentation visit
+    CHECK(!queue.setRenderResident(1));  // presentation has not re-settled it yet
+    queue.setResident(1);
+    CHECK(queue.setRenderResident(1));
+    set.add(1, 11);
+    CHECK(set.size() == 3);
+
+    run(8);                              // height epoch / light generation change drops every resident
+    CHECK(set.size() == 0);
+    CHECK(cleared.size() >= 5);
+
+    // a mark during the same frame as the render visit wins
+    queue.setResident(6);
+    queue.mark(6);
+    CHECK(!queue.setRenderResident(6));
+    // markAll (power change) clears render residency too
+    queue.drain();
+    queue.setResident(7);
+    CHECK(queue.setRenderResident(7));
+    queue.markAll();
+    CHECK(!queue.isRenderResidentQuiescent(7));
+}

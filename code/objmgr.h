@@ -23,6 +23,7 @@
 #include "world/entity_registry.h"
 #include "world/spatial_grid.h"
 #include "objmgr_watch_policy.h"  // OBJMGR-WATCH-POLICY-EXTRACT-1: shared watch bounds/index policy
+#include "static_resident_set.h"   // static-world-s2
 // Pooled actor ownership (turrets and gates); see spawnTurret and spawnGate.
 #include "world/actor_pool.h"
 
@@ -180,6 +181,8 @@ struct _RemovedMoverRec {
 #include "object_manager_save_data.h"
 
 class GameObjectManager {
+	mc2::StaticResidentSet staticResident;
+	std::vector<unsigned char> blockWasActive;
 
 	public:
 		glm::mat4 terrainPresentationWorldToClip{0.0f};
@@ -499,6 +502,11 @@ class GameObjectManager {
 
 		// G7b K3: render() draws the list built at the quiescent render extract.
 		void extractRenderList (mc2::render_view::RenderList& list);
+
+		// static-world-s2: a render visit that settled a static in the registry (recipe >= 0) makes its object
+		// resident; the next extracts skip it until a mark, a cull change or an epoch change.
+		void noteRenderResident (GameObjectPtr obj, int32_t recipe);
+		long residentObjectCount (void) const { return static_cast<long>(staticResident.size()); }
 
 		void render (bool terrain, bool movers, bool other);
 

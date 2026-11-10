@@ -91,6 +91,10 @@ struct RecipeRange {
     // shadow casting (flat alpha cards otherwise cast solid blob shadows; the
     // shadow depth pass has no alpha discard). Set via setRecipeNoShadow().
     bool               noShadow;
+    // static-world-s2: the render extract skips this range's object; it stays in the live set across frames and
+    // flush skips the cachedFrame_ check. Cleared by any markVisible (a visit), invalidate, or the caller.
+    bool               resident = false;
+    bool               inLive   = false;   // an entry for this range is in s_liveRangeIndices
 };
 
 // Registry gates (read once at program start).

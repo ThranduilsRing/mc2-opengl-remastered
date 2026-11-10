@@ -228,6 +228,8 @@ void GameObjectManager::setNumObjects (long nMechs,
 	// First element in list is NULL (handle of 0 is always NULL)
 	objList = entities.reset(getMaxObjects() + 1);
 	mc2::terrainDirtyQueue().reset(getMaxObjects() + 1);
+	staticResident.reset(getMaxObjects() + 1);
+	blockWasActive.assign(Terrain::numObjBlocks, 0);
 	terrainPresentationWorldToClip = glm::mat4{0.0f};
 	terrainPresentationHeightEpoch = ~uint64_t{0};
 	terrainPresentationNightFactor = -1.0f;
