@@ -78,7 +78,7 @@ public:
         lockedQuiescentReads_ = simActive;
         if (simActive) {
             if (quiescentViolations_.fetch_add(1, std::memory_order_relaxed) == 0)
-                std::fputs("[TERRAIN_DIRTY_QUEUE] quiescent read while the sim job is in flight; falling back to locked reads\n", stderr);
+                std::fputs("TerrainDirtyQueue: quiescent read while the sim job is in flight; falling back to locked reads\n", stderr);
         }
     }
     unsigned quiescentViolations() const { return quiescentViolations_.load(std::memory_order_relaxed); }
