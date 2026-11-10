@@ -92,8 +92,31 @@ def test_concrete_cook_timeout_and_missing_source_are_loud(tmp_path, monkeypatch
     monkeypatch.setattr(dp, "CONCRETE_DETAIL_SRC", str(tmp_path))
     def slow(cmd, **kw):
         raise subprocess.TimeoutExpired(cmd, 300)
-    dp.ensure_concrete_detail(str(tmp_path), slow)
-    assert "timed out" in capsys.readouterr().out
+    with pytest.raises(SystemExit) as ex:
+        dp.ensure_concrete_detail(str(tmp_path), slow)
+    assert ex.value.code != 0 and "timed out" in capsys.readouterr().err
+
+
+def _failing_cooker(cmd, **kw):
+    return type("R", (), {"returncode": 3, "stdout": "", "stderr": "boom"})()
+
+
+def test_failed_cooks_exit_nonzero_instead_of_shipping_stock_data(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(dp, "CONCRETE_DETAIL_SRC", str(tmp_path))
+    monkeypatch.setattr(dp, "CLIFF_ROCK_SRC", str(tmp_path))
+    for call in (lambda: dp.ensure_concrete_detail(str(tmp_path), _failing_cooker),
+                 lambda: dp.ensure_cliff_rock(str(tmp_path), _failing_cooker)):
+        with pytest.raises(SystemExit) as ex:
+            call()
+        assert ex.value.code != 0
+    tex = tmp_path / "data" / "textures"
+    tex.mkdir(parents=True)
+    for i in range(6):
+        (tex / f"mat{i}_normal.tga").write_bytes(b"t")
+    with pytest.raises(SystemExit) as ex:
+        dp.ensure_engine_normal_cooks(str(tmp_path), _failing_cooker)
+    assert ex.value.code != 0 and not (tex / "engine_normals.cookver").exists()
+    assert "boom" in capsys.readouterr().err
 
 
 def test_engine_normal_sidecars_are_cooked_only_when_absent_or_stale(tmp_path):

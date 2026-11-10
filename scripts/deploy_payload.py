@@ -323,10 +323,9 @@ def ensure_concrete_detail(src_root, cooker=subprocess.run):
         r = cooker([sys.executable, os.path.join(src_root, CONCRETE_DETAIL_COOK), "--src", CONCRETE_DETAIL_SRC, "--out", out],
                    capture_output=True, text=True, timeout=300, env=dict(os.environ, OMP_NUM_THREADS="1"), **console_child.child_kwargs(redirected=True))
     except subprocess.TimeoutExpired:
-        log("[DEPLOY] WARN: concrete detail cook timed out after 300 s (skipped)")
-        return
+        fail("concrete detail cook timed out after 300 s (a failed cook must not ship stock data)")
     if r.returncode:
-        log("[DEPLOY] WARN: concrete detail cook failed (skipped): " + (r.stdout + r.stderr).strip()[-300:])
+        fail("concrete detail cook failed rc=%s: %s" % (r.returncode, (r.stdout + r.stderr).strip()[-300:]))
 
 
 # TERRAIN-CLIFF-ROCK: the cliff rock pair is generated too (CC0 Poly Haven sets; licences in tools/mc2texcook/cliff_rock_provenance.json).
@@ -350,10 +349,9 @@ def ensure_cliff_rock(src_root, cooker=subprocess.run):
                     "--sets", CLIFF_ROCK_SET, "--select", CLIFF_ROCK_SET],
                    capture_output=True, text=True, timeout=300, env=dict(os.environ, OMP_NUM_THREADS="1"), **console_child.child_kwargs(redirected=True))
     except subprocess.TimeoutExpired:
-        log("[DEPLOY] WARN: cliff rock cook timed out after 300 s (skipped)")
-        return
+        fail("cliff rock cook timed out after 300 s (a failed cook must not ship stock data)")
     if r.returncode:
-        log("[DEPLOY] WARN: cliff rock cook failed (skipped): " + (r.stdout + r.stderr).strip()[-300:])
+        fail("cliff rock cook failed rc=%s: %s" % (r.returncode, (r.stdout + r.stderr).strip()[-300:]))
 
 # EXAMPLE-MODS-1: worked example checkbox mods, source-tracked under
 # examples/mods/. Ship to <target>/mods/<id>/ so the launcher enumerates them
@@ -1367,11 +1365,9 @@ def ensure_engine_normal_cooks(target_dir, cooker=subprocess.run):
         r = cooker([sys.executable, str(ENGINE_NORMAL_COOK), "--engine-normals", tex] + ([] if current else ["--force"]),
                    capture_output=True, text=True, timeout=900, env=dict(os.environ, OMP_NUM_THREADS="1"), **console_child.child_kwargs(redirected=True))
     except subprocess.TimeoutExpired:
-        log("[DEPLOY] WARN: detail-normal cook timed out after 900 s (skipped; the engine imports the TGAs)")
-        return
+        fail("detail-normal cook timed out after 900 s (a failed cook must not ship stock data)")
     if r.returncode:
-        log("[DEPLOY] WARN: detail-normal cook failed (skipped; the engine imports the TGAs): " + (r.stdout + r.stderr).strip()[-300:])
-        return
+        fail("detail-normal cook failed rc=%s: %s" % (r.returncode, (r.stdout + r.stderr).strip()[-300:]))
     with open(stamp, "w", encoding="utf-8") as f:
         f.write(ENGINE_NORMAL_COOK_VERSION + "\n")
 
