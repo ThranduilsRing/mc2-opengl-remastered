@@ -97,34 +97,63 @@ def procedural_woody_cards(source: Path, sheet: Path, palette: dict) -> None:
     result.save(sheet)
 
 
-def recolour_card(image: Image.Image, ramp: list[str]) -> Image.Image:
-    """Gradient-map a card's own luminance (blade detail, rank-normalised) onto a palette ramp; alpha unchanged.
+def mix(a: tuple, b: tuple, t: float) -> tuple[int, int, int]:
+    return tuple(int(round(a[k] + (b[k] - a[k]) * t)) for k in range(3))
 
-    >>> img = Image.new("RGBA", (2, 1)); img.putpixel((0, 0), (10, 10, 10, 255)); img.putpixel((1, 0), (200, 200, 200, 255))
-    >>> out = recolour_card(img, ["#000000", "#ffffff"]); out.getpixel((0, 0))[0] < out.getpixel((1, 0))[0]
-    True
+
+def procedural_grass_cards(source: Path, palette: dict) -> None:
+    """Original seeded blade fields (owner grass-field reference, 2026-11-10).
+
+    Long thin tapering blades, each with its own tone: olive at the root, the
+    blade's straw/green/rust colour up the stem and a light backlit tip; some
+    blades carry seed heads. Per-card weights come from the palette's
+    `grass_cards`; tones come from `grass_tones`. Drawn at 2x and downsampled.
     """
-    rgba = np.array(image.convert("RGBA"))
-    luma = rgba[:, :, :3].astype(np.float32) @ np.array([0.299, 0.587, 0.114], dtype=np.float32)
-    opaque = rgba[:, :, 3] >= 128
-    if not opaque.any():
-        return image.convert("RGBA")
-    lo, hi = np.percentile(luma[opaque], [3, 97])
-    t = np.clip((luma - lo) / max(hi - lo, 1.0), 0.0, 1.0)
-    stops = np.array([hex_rgb(c) for c in ramp], dtype=np.float32)
-    pos = t * (len(stops) - 1)
-    i = np.minimum(pos.astype(int), len(stops) - 2)
-    f = (pos - i)[..., None]
-    rgba[:, :, :3] = np.clip(stops[i] * (1 - f) + stops[i + 1] * f + 0.5, 0, 255).astype(np.uint8)
-    return Image.fromarray(rgba)
+    import math
+    import random
+    from PIL import ImageDraw
+
+    tones = {k: [hex_rgb(c) for c in v] if isinstance(v, list) else hex_rgb(v) for k, v in palette["grass_tones"].items()}
+    for index, name in enumerate(CARDS[:4]):
+        spec = palette["grass_cards"][name]
+        rng = random.Random(20261110 + index)
+        size = 1024
+        image = Image.new("RGBA", (size, size))
+        draw = ImageDraw.Draw(image)
+        kinds, weights = zip(*spec["mix"].items())
+        for _ in range(spec["blades"]):
+            kind = rng.choices(kinds, weights)[0]
+            colour = rng.choice(tones[kind])
+            colour = mix(colour, (0, 0, 0), rng.uniform(0.0, 0.25))
+            x = size / 2 + rng.gauss(0, size * 0.20)
+            length = size * rng.uniform(0.45, 0.97)
+            lean = rng.gauss(0, 0.35) + spec.get("lean", 0.0)
+            width = rng.uniform(5, 11)
+            steps = 14
+            points = []
+            for s in range(steps + 1):
+                t = s / steps
+                points.append((x + lean * length * t * t * 0.6 + math.sin(t * 3 + x) * 4, size - 2 - length * t * (1 - 0.15 * abs(lean) * t)))
+            for s in range(steps):
+                t = (s + 0.5) / steps
+                c = mix(tones["root"], colour, min(1.0, t / 0.35))
+                if t > 0.8:
+                    c = mix(c, tones["tip"], (t - 0.8) / 0.2 * 0.7)
+                draw.line([points[s], points[s + 1]], fill=c + (255,), width=max(2, int(round(width * (1 - t) + 2))))
+            if rng.random() < spec["seed_heads"]:
+                head = rng.choice(tones["seed"])
+                tx, ty = points[-1]
+                for k in range(7):
+                    hx = tx + rng.gauss(0, 5) + lean * k * 3
+                    hy = ty + k * 9
+                    draw.ellipse((hx - 4, hy - 7, hx + 4, hy + 7), fill=head + (255,))
+        image.resize((512, 512), Image.Resampling.LANCZOS).save(source / f"{name}.png")
 
 
 def paint_cards(source: Path, palette_path: Path, sheet: Path) -> None:
-    """Repaint all eight shipped cards into a mission palette (grass recoloured, woody regenerated)."""
+    """Repaint all eight shipped cards into a mission palette (grass blades and woody cards regenerated)."""
     palette = load_palette(palette_path)
-    for name in CARDS[:4]:
-        path = source / f"{name}.png"
-        recolour_card(Image.open(path), palette["species"][name]).save(path)
+    procedural_grass_cards(source, palette)
     procedural_woody_cards(source, sheet, palette)
 
 

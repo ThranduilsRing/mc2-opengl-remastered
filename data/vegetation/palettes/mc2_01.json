@@ -15,6 +15,21 @@
     {"name": "treeline lit",      "hex": "#333527", "source": "stock treeline p85"}
   ],
   "bark": "#3a2e1e",
+  "grass_reference": "Owner 2026-11-10 grass-field reference (E:/mc2-archive-2026-10/proofs/grass-field/owner_reference.jpg): straw/gold dominant, olive-green near the roots, scattered rust blades and seed heads, backlit tips. Its bright saturated gold is pulled toward mc2_01's overcast khaki (palm frond khaki #6d613d .. light sand #706040 family, lifted for contrast); its green toward the palm-frond olive; rust kept but darkened.",
+  "grass_tones": {
+    "root":  "#3a3d22",
+    "tip":   "#d8c896",
+    "straw": ["#9c8a58", "#ae9a64", "#b8a46e", "#a08c56", "#8a7a4c"],
+    "green": ["#5b6136", "#6a7440", "#4a5733"],
+    "rust":  ["#7e4a2c", "#8f5a34", "#6e4228"],
+    "seed":  ["#a8986a", "#8f5a34", "#c0ae7a"]
+  },
+  "grass_cards": {
+    "grass_01": {"blades": 150, "mix": {"straw": 0.75, "green": 0.15, "rust": 0.10}, "seed_heads": 0.25},
+    "grass_02": {"blades": 150, "mix": {"straw": 0.50, "green": 0.40, "rust": 0.10}, "seed_heads": 0.15, "lean": 0.15},
+    "grass_03": {"blades": 130, "mix": {"straw": 0.40, "green": 0.55, "rust": 0.05}, "seed_heads": 0.05, "lean": -0.2},
+    "grass_04": {"blades": 140, "mix": {"straw": 0.45, "green": 0.15, "rust": 0.40}, "seed_heads": 0.40}
+  },
   "species": {
     "grass_01":     ["#3d3624", "#6d613d", "#8f7f52", "#a8986a"],
     "grass_02":     ["#2c3320", "#4a5733", "#667345", "#808a58"],
