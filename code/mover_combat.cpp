@@ -312,6 +312,7 @@ glm::vec3 Mover::getLOSPosition(void)
         return committedLosPosition;
     SimulationPoseRead read;
     float height = 15.0f;
+    if (appearance) appearance->settleSimPose();
     if (appearance && appearance->simPose->ready) {
         const long node = appearance->getLowestWeaponNode();
         if (node >= 0) {

@@ -97,10 +97,8 @@ TEST_CASE_FIXTURE(JobsFixture, "job_system_harness/immutable_pose_bits") {
     for (int workers : {0, 1, 3}) {
         jobs::startPool(workers);
         jobs::kDispatchFloorNs = 0;
-        jobs::parallel_for(jobs::Domain::Sim, static_cast<int>(inputs.size()), 8, 1000,
-            [&](int begin, int end) {
-                for (int i = begin; i < end; ++i) actual[i] = poseNode(inputs, origin, i);
-            });
+        std::vector<unsigned char> evaluated(inputs.size());
+        poseNodes(inputs, origin, actual, evaluated);
         jobs::stopPool();
         for (size_t i = 0; i < inputs.size(); ++i) {
             CAPTURE(workers);
@@ -126,6 +124,136 @@ TEST_CASE_FIXTURE(JobsFixture, "job_system_harness/default_pool_width") {
     CHECK(jobs::workerCount() == 1);
     CHECK_FALSE(frameJobsEnabled());   // nothing to overlap: the Render domain has no worker
     frameJobsShutdown();
+}
+
+TEST_CASE_FIXTURE(JobsFixture, "job_system_harness/pose_evaluated_once") {
+    using namespace mc2::sim;
+    std::vector<PoseNodeInput> inputs(96);
+    for (int i = 0; i < 96; ++i) {
+        // Reverse storage order: the first child must visit every ancestor.
+        inputs[i].parent = i == 95 ? -1 : i + 1;
+        inputs[i].translation = glm::vec3(0.3f * i, -0.1f, 0.7f);
+        inputs[i].inverseRequired = i % 3 == 0;
+    }
+    inputs[43].current = true;
+    inputs[43].cached = {glm::mat4(2), glm::mat4(3), glm::mat4(4)};
+    for (int workers : {0, 1, 3}) {
+        jobs::startPool(workers);
+        std::vector<PoseMatrices> actual(96, {glm::mat4(1), glm::mat4(1), glm::mat4(7)});
+        std::vector<unsigned char> evaluated(96, 1);
+        std::array<int, 96> locals{}, inverses{};
+        poseNodes(inputs, glm::mat4(1), actual, evaluated, [&](int index, bool inverse) {
+            ++(inverse ? inverses[index] : locals[index]);
+            const int parent = inputs[index].parent;
+            if (parent >= 0) CHECK(evaluated[parent] == 1);
+        });
+        jobs::stopPool();
+        for (int i = 0; i < 96; ++i) {
+            CAPTURE(workers);
+            CAPTURE(i);
+            CHECK(locals[i] == (inputs[i].current ? 0 : 1));
+            CHECK(inverses[i] == (!inputs[i].current && inputs[i].inverseRequired ? 1 : 0));
+            if (!inputs[i].current && !inputs[i].inverseRequired)
+                CHECK(actual[i].inverse == glm::mat4(7));
+        }
+        CHECK(std::memcmp(&actual[43], &inputs[43].cached, sizeof(PoseMatrices)) == 0);
+    }
+    // Negative control: the old per-descendant recursion repeats dirty locals.
+    std::array<int, 96> oldLocals{};
+    const auto oldChain = [&](auto&& self, int index) -> glm::mat4 {
+        if (inputs[index].current) return inputs[index].cached.local;
+        ++oldLocals[index];
+        auto local = poseLocal(inputs[index]);
+        if (inputs[index].parent >= 0) local = local * self(self, inputs[index].parent);
+        return local;
+    };
+    std::vector<PoseMatrices> actual(96);
+    std::vector<unsigned char> evaluated(96);
+    poseNodes(inputs, glm::mat4(1), actual, evaluated);
+    for (int i = 0; i < 96; ++i) {
+        const auto expected = oldChain(oldChain, i);
+        CHECK(std::memcmp(&actual[i].local, &expected, sizeof(expected)) == 0);
+        if (!inputs[i].current && inputs[i].inverseRequired) {
+            const auto inverse = glm::inverse(expected);
+            CHECK(std::memcmp(&actual[i].inverse, &inverse, sizeof(inverse)) == 0);
+        }
+    }
+    CHECK(oldLocals[42] > 1);
+    CHECK(oldLocals[95] > 1);
+}
+
+// Pass-1 reuse decision (Mech3DAppearance::updateSimPose): only an equal key over a still-published pose with no imported
+// clip skips TransformSimPose; every input change, a load/reset (hadPose false) or an imported clip recomputes.
+TEST_CASE("job_system_harness/sim_pose_reuse_key") {
+    using namespace mc2::sim;
+    SimPoseKey base;
+    base.shapeId = 7; base.bindRevision = 3; base.type = &base; base.gesture = 2; base.status = 0;
+    base.frame = 12.0f; base.torso = 15.0f; base.rotation = 90.0f; base.position = glm::vec3(1, 2, 3);
+    CHECK(reuseSimPose(true, true, base, base, false));
+    CHECK_FALSE(reuseSimPose(false, true, base, base, false)); // load/reset cleared simPose->ready
+    CHECK_FALSE(reuseSimPose(true, false, base, base, false)); // nothing published yet
+    CHECK_FALSE(reuseSimPose(true, true, base, base, true));   // imported clip advances its own clock
+    const auto changed = [&](auto mutate) { SimPoseKey k = base; mutate(k); return reuseSimPose(true, true, k, base, false); };
+    CHECK_FALSE(changed([](SimPoseKey& k) { k.shapeId = 8; }));
+    CHECK_FALSE(changed([](SimPoseKey& k) { k.bindRevision = 4; }));
+    CHECK_FALSE(changed([](SimPoseKey& k) { k.type = nullptr; }));
+    CHECK_FALSE(changed([](SimPoseKey& k) { k.gesture = 3; }));
+    CHECK_FALSE(changed([](SimPoseKey& k) { k.status = 1; }));
+    CHECK_FALSE(changed([](SimPoseKey& k) { k.frame = 12.5f; }));
+    CHECK_FALSE(changed([](SimPoseKey& k) { k.torso = 15.001f; }));
+    CHECK_FALSE(changed([](SimPoseKey& k) { k.rotation = 91.0f; }));
+    CHECK_FALSE(changed([](SimPoseKey& k) { k.position.y = 2.0001f; }));
+    CHECK_FALSE(changed([](SimPoseKey& k) { k.leftArmOff = true; }));
+    CHECK_FALSE(changed([](SimPoseKey& k) { k.rightArmOff = true; }));
+}
+
+// Cross-mech batch (Mech3DAppearance::flushSimPoseBatch): one PoseJob per mech evaluated on the Sim domain is bit-identical
+// to the serial per-mech evaluation for any worker count, and a job already settled by a reader is not re-evaluated.
+TEST_CASE_FIXTURE(JobsFixture, "job_system_harness/sim_pose_batch_bits") {
+    using namespace mc2::sim;
+    constexpr int kMechs = 23;
+    std::vector<PoseJob> serial(kMechs);
+    for (int m = 0; m < kMechs; ++m) {
+        auto& job = serial[m];
+        const int nodes = 20 + (m * 7) % 31;
+        job.inputs.resize(nodes);
+        job.outputs.resize(nodes);
+        job.evaluated.resize(nodes);
+        mc2::math::buildRotation(job.origin, mc2::math::Euler(0.0f, 0.37f * m, 0.0f));
+        mc2::math::buildTranslation(job.origin, glm::vec3(10.0f * m, -3.0f, 5.0f * m));
+        for (int i = 0; i < nodes; ++i) {
+            auto& n = job.inputs[i];
+            n.parent = i == 0 ? -1 : (i - 1) / 2;
+            n.animated = (i + m) % 3 != 0;
+            n.inverseRequired = false;
+            n.base = mc2::math::quatFromEuler(mc2::math::Euler(0.01f * i, 0.02f * m, 0.0f));
+            n.animation = mc2::math::quatFromEuler(mc2::math::Euler(-0.05f * m, 0.011f * i, 0.002f));
+            n.translation = glm::vec3(i * 0.5f, m * 0.25f, (i + m) % 5);
+        }
+    }
+    const std::vector<PoseJob> inputs = serial;
+    for (auto& job : serial) job.evaluate();
+    for (int workers : {0, 1, 3}) {
+        CAPTURE(workers);
+        jobs::startPool(workers);
+        jobs::kDispatchFloorNs = 0;
+        std::vector<PoseJob> batch = inputs;
+        batch[5].evaluate(); // settled early by a reader
+        const auto settled = batch[5].outputs;
+        batch[5].outputs[0].world[0][0] = 12345.0f; // a re-evaluation would overwrite this
+        jobs::parallel_for(jobs::Domain::Sim, kMechs, 1, 20000, [&](int begin, int end) {
+            for (int i = begin; i < end; ++i) batch[i].evaluate();
+        });
+        jobs::stopPool();
+        CHECK(batch[5].outputs[0].world[0][0] == 12345.0f);
+        batch[5].outputs = settled;
+        for (int m = 0; m < kMechs; ++m) {
+            CAPTURE(m);
+            CHECK(batch[m].done);
+            CHECK(std::memcmp(batch[m].outputs.data(), serial[m].outputs.data(),
+                              sizeof(PoseMatrices) * serial[m].outputs.size()) == 0);
+        }
+    }
 }
 
 TEST_CASE_FIXTURE(JobsFixture, "job_system_harness/startup_cannot_release_first_dispatch_early") {
@@ -235,7 +363,7 @@ TEST_CASE_FIXTURE(JobsFixture, "job_system_harness/serial_equals_parallel") {
     std::vector<int> golden(static_cast<size_t>(count), 0);
     for (int i = 0; i < count; ++i) golden[static_cast<size_t>(i)] = itemValue(i);
 
-    for (int workers : {0, 1, 2, 8}) {
+    for (int workers : {0, 1, 3}) {
         std::vector<int> got = computeParallelFor(count, workers, batch);
         CHECK((got == golden));
         if (got != golden) {

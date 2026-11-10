@@ -183,6 +183,10 @@ bool oneMechPlease = false;
 
 void Mech3DAppearance::destroy (void)
 {
+    if (simPosePending_) {
+        simPosePending_ = false;
+        std::erase(s_simPosePending, this);
+    }
     mc2mechanim::UnregisterImportedActor(simulationShape_.get());
     simulationShape_.reset();
 
@@ -445,6 +449,7 @@ void Mech3DAppearance::flashBuilding (float dur, float fDuration, DWORD color)
 
 glm::vec3 Mech3DAppearance::getHitNodeLeft (void)
 {
+    settleSimPose();
     if (!simPresentationPass && simPose->ready) return simPose->hitLeft;
 
 	POSE_VIEW_LOCALS
@@ -492,6 +497,7 @@ glm::vec3 Mech3DAppearance::getHitNodeLeft (void)
 
 glm::vec3 Mech3DAppearance::getHitNodeRight (void)
 {
+    settleSimPose();
     if (!simPresentationPass && simPose->ready) return simPose->hitRight;
 
 	POSE_VIEW_LOCALS

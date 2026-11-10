@@ -485,6 +485,7 @@ void TG_TypeMultiShape::destroy (void)
 //-------------------------------------------------------------------------------
 void TG_MultiShape::destroy (void)
 {
+    animationBinding_.invalidate();
     stableIdentity_.renew(this);
 	// Each record owns its node (B7o.6b): releasing the records releases the nodes.
 	std::vector<TG_ShapeRec>().swap(shapeRecStore);

@@ -91,6 +91,7 @@ bool _TG_Animation::LoadBinaryCopy (File *binFile)
 //-------------------------------------------------------------------------------
 long TG_AnimateShape::LoadBinaryCopy (mc2::czstring fileName)
 {
+	bindingId_ = nextAnimationBindingId();
 	File binFile;
 	long result = binFile.open(fileName);
 	if (result != NO_ERR)
@@ -165,6 +166,7 @@ void TG_AnimateShape::SaveBinaryCopy (mc2::czstring fileName)
 //This function frees all of the RAM allocated by this class and resets vars to initial state.
 void TG_AnimateShape::destroy (void)
 {
+	bindingId_ = nextAnimationBindingId();
 	std::vector<TG_Animation>().swap(animationStore);
 	listOfAnimation = nullptr;
 	count = actualCount = 0;
@@ -179,6 +181,7 @@ FilePtr tglLogFile = static_cast<FilePtr>(nullptr);
 //It mallocs memory.
 long TG_AnimateShape::LoadTGMultiShapeAnimationFromASE (mc2::czstring fileName, TG_TypeMultiShapePtr shape, bool skipIfBinary, bool forceMakeBinary)
 {
+	bindingId_ = nextAnimationBindingId();
 	//------------------------------------------------------
 	// New!  Checks for Binary file to load instead.
 	//
@@ -589,22 +592,13 @@ const char* TG_AnimateShape::MissingAnimationNode(TG_TypeMultiShape* shape) cons
 
 void TG_AnimateShape::SetAnimationState (TG_MultiShapePtr shape)
 {
-	long i=0;
-	shape->ClearAnimation();
-
-	// Animation objects are shared by stock simulation shapes and imported render
-	// LODs. Their node order differs, so bind names on the destination shape.
+	const auto& indices = shape->animationBinding_.bind(bindingId_, count, shape->GetNumShapes(),
+		[&](long track, long node) { return S_stricmp(listOfAnimation[track].nodeId, shape->GetNodeId(node)) == 0; });
+	// Clear pointers without invalidating the map. Public ClearAnimation invalidates.
+	for (long i = 0; i < shape->GetNumShapes(); ++i)
+		shape->SetCurrentAnimation(i, nullptr);
 	for (long j = 0; j < count; ++j)
-	{
-		for (i = 0; i < shape->GetNumShapes(); ++i)
-		{
-			if (S_stricmp(listOfAnimation[j].nodeId, shape->GetNodeId(i)) == 0)
-			{
-				shape->SetCurrentAnimation(i, &listOfAnimation[j]);
-				break;
-			}
-		}
-	}
+		shape->SetCurrentAnimation(indices[j], &listOfAnimation[j]);
 }	
 
 

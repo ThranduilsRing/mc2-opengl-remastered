@@ -17,6 +17,7 @@
 #define MSL_H
 #include "../RenderCore/MaterialRegistry.h"
 #include "content_socket.h"
+#include "anim_binding.h"
 #include "mc2_czstring.h"
 //-------------------------------------------------------------------------------
 // Include Files
@@ -51,6 +52,7 @@ namespace Microsoft
 // Structs used by layer.
 //
 
+namespace mc2::sim { struct PoseJob; }
 class TG_MultiShape;
 class TG_AnimateShape;
 namespace mc2::content { struct Asset; }
@@ -369,6 +371,7 @@ class TG_MultiShape
 		void init (void)
 		{
             instanceTextures_.clear(); instanceMaterials_.clear(); materialSet_={};
+			animationBinding_.invalidate();
 			myMultiType = nullptr;
 			numTG_Shapes = 0;
 			listOfShapes = nullptr;
@@ -473,6 +476,10 @@ class TG_MultiShape
 		long TransformMultiShape_BuildRecipe (glm::vec3 *pos, glm::quat *rot);
 		// Simulation-only immutable capture, fork/join, then node-order publish.
 		long TransformSimPose (glm::vec3 *pos, glm::quat *rot);
+		// TransformSimPose split for cross-mech batching: capture (sim thread), PoseJob::evaluate (any thread), publish
+		// (sim thread). Capture + evaluate + publish is exactly TransformSimPose.
+		void CaptureSimPose (glm::vec3 *pos, glm::quat *rot, mc2::sim::PoseJob& job);
+		void PublishSimPose (const mc2::sim::PoseJob& job);
 
 		// Slice D-leaf-skip-v2 (2026-05-09): runtime alias of _BuildRecipe for the
 		// GPU mech body callsite. Reuses s_buildRecipeOnly mechanism to skip
@@ -641,9 +648,12 @@ class TG_MultiShape
 		//As such, the shape will stop animating and return to base pose.
 		void ClearAnimation (void)
 		{
+			animationBinding_.invalidate();
 			for (int i=0;i<numTG_Shapes;i++)
 				listOfShapes[i].currentAnimation = nullptr;
 		}
+
+		AnimBindingCache animationBinding_;
 
 		void SetARGBHighLight (DWORD argb)
 		{
@@ -748,6 +758,7 @@ class TG_AnimateShape
 		int                 count;
 		int                 actualCount;
 		bool				shapeIdsSet;
+		std::uint64_t bindingId_ = nextAnimationBindingId();
 
 	public:
 		void init (void)

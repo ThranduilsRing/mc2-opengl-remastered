@@ -131,6 +131,7 @@ add_executable(mc2_tests
     test_fit_number.cpp     # FIT-NUMBER-1: the FIT number readers shared with the editor keep the game's quirks
     test_save_pointer_pins.cpp  # SAVE-PTR-PIN-1: Gate closestObject and QueuedTacOrder marker are written as null (source pins)
     test_sim_identity.cpp   # SIM-IDENTITY-HASH-1: world-hash order/quantum kernel
+    test_anim_binding_cache.cpp
     test_vulkan_contract.cpp  # VULKAN-CONTRACT-COVERAGE-1: descriptor-class coverage/consistency (offline)
     test_veg_hardsurface.cpp  # VEG-CEMENT-1: cement coverage -> vegetation falloff curve, crack weeds, class-3 union (offline)
     test_startup_work.cpp  # PC night startup: bounded dedup, appearance noise, TGA scratch reuse

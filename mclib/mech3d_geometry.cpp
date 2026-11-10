@@ -10,6 +10,7 @@
 #include <format>
 #include "mover_lamps.h"
 #include "mech_death_policy.h"
+#include "../code/job_system.h"
 
 // T1.15 SpotLight_ illumination diagnostic — registration probe (mech class).
 // First-hit always-on; per-summary every 600 updateGeometry calls when env=1.
@@ -1025,6 +1026,7 @@ void Mech3DAppearance::updateSimPose (bool advanceClock)
 	// Built entirely from the sim copies (simulationShape_, simPosition_/simRotation_/simStatus_, the sim node indices): the
 	// draw-side mechShape, position, rotation, status and node indices are never touched here, so presentation and render can
 	// use them while a tick runs. The locals shadow the draw members of the same names so the body below is unchanged.
+	if (simPosePending_) finishSimPose();
 	if (!mechType || !mechType->mechShape[0])
 		return;
 
@@ -1035,12 +1037,54 @@ void Mech3DAppearance::updateSimPose (bool advanceClock)
     const long status = simStatus_;
     const long currentLOD = 0;
     long& rotationalNodeIndex = simRotationalNodeIndex_;
-    rotationalNodeIndex = simHitLeftNodeIndex_ = simHitRightNodeIndex_ = -1;
+    const bool hadPose = simPose->ready;
     buildingSimPose_ = true;
     simPose->ready = false;
     if (unitAnim().leftArmOff) mechShape->StopUsing("joint_luarm");
     if (unitAnim().rightArmOff) mechShape->StopUsing("joint_ruarm");
 
+    // The sim shape owns its node order. Refresh on replacement/load, animation
+    // clearing, detach or arm loss, not on every tick. Missing nodes stay -1.
+    if (simNodeShapeId_ != mechShape->stableId().value
+        || simNodeRevision_ != mechShape->animationBinding_.revision()) {
+        simNodeShapeId_ = mechShape->stableId().value;
+        simNodeRevision_ = mechShape->animationBinding_.revision();
+        rotationalNodeIndex = mechShape->GetNodeNameId("joint_torso");
+        simHitLeftNodeIndex_ = mechShape->GetNodeNameId("hit_left");
+        simHitRightNodeIndex_ = mechShape->GetNodeNameId("hit_right");
+        simCockpitNodeIndex_ = mechShape->GetNodeNameId("cockpit");
+        simAnchorNodeIndices_.resize(mechType->getTotalNodes());
+        for (long i = 0; i < mechType->getTotalNodes(); ++i)
+            simAnchorNodeIndices_[i] = mechShape->GetNodeNameId(mechType->nodeData[i].nodeId);
+    }
+
+	glm::quat qRotation;
+	qRotation = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, rotation * DEGREES_TO_RADS, 0.0f));
+	glm::vec3 xlatPosition;
+	mc2ToRender(xlatPosition, position);
+
+	// Unchanged pose: same shape/binding, gesture, frame, torso, root transform, status and arm state as the pose already
+	// published (every input of the evaluation below), so its matrices and every simPose field are bit-identical. Imported
+	// clips advance their own clock in TickImportedMechs and are never reused.
+	SimPoseKey key;
+	key.shapeId = mechShape->stableId().value;
+	key.bindRevision = mechShape->animationBinding_.revision();
+	key.type = mechType;
+	key.gesture = unitAnim().currentGestureId;
+	key.status = status;
+	key.frame = unitAnim().currentFrame;
+	key.torso = unitAnim().torsoRotation;
+	key.rotation = rotation;
+	key.position = position;
+	key.leftArmOff = unitAnim().leftArmOff;
+	key.rightArmOff = unitAnim().rightArmOff;
+	const bool reusePose = mc2::sim::reuseSimPose(hadPose, simPoseKeyValid_, key, simPoseKey_, mc2mechanim::AnyImportedAnim());
+	if (reusePose) ++s_simPoseReused;
+	// Imported clips tick (and are read back) inside this call, so only stock poses join the cross-mech batch.
+	const bool deferPose = !reusePose && s_simPoseBatching && advanceClock && !mc2mechanim::AnyImportedAnim();
+	if (!reusePose)
+	{
+	simPoseKeyValid_ = false;
 	// The same pose updateGeometry sets before its body transform; the hierarchy-only transform needs no camera and fills
 	// the per-node shapeToWorld that getWeaponNodePosition / getNodeIdPosition read.
 	if (mc2wreck::animate(status == OBJECT_STATUS_DESTROYED, false))
@@ -1055,11 +1099,14 @@ void Mech3DAppearance::updateSimPose (bool advanceClock)
 		rotationalNodeIndex = mechShape->SetNodeRotation("joint_torso",&torsoRot);
 	mechShape->SetNodeRotation(rotationalNodeIndex,&torsoRot);
 
-	glm::quat qRotation;
-	qRotation = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, rotation * DEGREES_TO_RADS, 0.0f));
-	glm::vec3 xlatPosition;
-	mc2ToRender(xlatPosition, position);
-	mechShape->TransformSimPose(&xlatPosition, &qRotation);
+	if (deferPose) {
+		mechShape->CaptureSimPose(&xlatPosition, &qRotation, simPoseJob_);
+		++s_simPoseBatched;
+	} else {
+		mechShape->TransformSimPose(&xlatPosition, &qRotation);
+		++s_simPoseEager;
+	}
+	}
 	{
 		mc2mechanim::MechMotion _mm;
 		_mm.gestureId = static_cast<int>(unitAnim().currentGestureId);
@@ -1090,20 +1137,79 @@ void Mech3DAppearance::updateSimPose (bool advanceClock)
 	}
 
 
+    if (deferPose) {
+        // simPose stays not-ready until finishSimPose publishes it (flush, or the first read of this mech's pose).
+        pendingSimPoseKey_ = key;
+        pendingSimXlat_ = xlatPosition;
+        pendingSimRot_ = qRotation;
+        simPosePending_ = true;
+        s_simPosePending.push_back(this);
+    } else if (!reusePose) {
+        publishSimPose(xlatPosition, qRotation, key);
+    }
+    if (!deferPose) simPose->ready = true;
+    buildingSimPose_ = false;
+}
+
+std::uint64_t Mech3DAppearance::s_simPoseEager = 0, Mech3DAppearance::s_simPoseBatched = 0, Mech3DAppearance::s_simPoseReused = 0;
+bool Mech3DAppearance::s_simPoseBatching = false;
+std::vector<Mech3DAppearance*> Mech3DAppearance::s_simPosePending;
+
+// Writes every simPose field from the posed simulationShape_ (the getters take the sim view while buildingSimPose_).
+void Mech3DAppearance::publishSimPose (const glm::vec3& xlatPosition, const glm::quat& qRotation, const SimPoseKey& key)
+{
+    TG_MultiShapePtr const mechShape = simulationShape_.get();
+    const glm::vec3 position = key.position;
     simPose->root = position;
-    simPose->heading = rotation;
+    simPose->heading = key.rotation;
     simPose->nodes.resize(mechType->getTotalNodes());
     for (long i = 0; i < mechType->getTotalNodes(); ++i) simPose->nodes[i] = (i >= mechType->numSmokeNodes && i < mechType->numSmokeNodes + mechType->numWeaponNodes) ? getWeaponNodePosition(i) : getNodePosition(i);
     simPose->hitLeft = getHitNodeLeft();
     simPose->hitRight = getHitNodeRight();
     simPose->cockpit = getNodeNamePosition("cockpit");
     simPose->shapeNodes.resize(mechShape->GetNumShapes());
+    glm::vec3 xlat = xlatPosition;
+    glm::quat rot = qRotation;
     for (long i = 0; i < mechShape->GetNumShapes(); ++i) {
-        auto node = mechShape->GetTransformedNodePosition(&xlatPosition, &qRotation, i);
+        auto node = mechShape->GetTransformedNodePosition(&xlat, &rot, i);
         simPose->shapeNodes[i] = (node.x == 0 && node.y == 0 && node.z == 0) ? position : node;
     }
+    simPoseKey_ = key;
+    simPoseKeyValid_ = true;
+}
+
+void Mech3DAppearance::finishSimPose (void)
+{
+    simPosePending_ = false;
+    simPoseJob_.evaluate();
+    simulationShape_->PublishSimPose(simPoseJob_);
+    buildingSimPose_ = true;
+    publishSimPose(pendingSimXlat_, pendingSimRot_, pendingSimPoseKey_);
     simPose->ready = true;
     buildingSimPose_ = false;
+}
+
+void Mech3DAppearance::beginSimPoseBatch (void)
+{
+    s_simPoseBatching = true;
+}
+
+void Mech3DAppearance::flushSimPoseBatch (void)
+{
+    s_simPoseBatching = false;
+    auto& list = s_simPosePending;
+    if (!list.empty()) {
+        ZoneScopedN("GameLogic.SimPose.Batch");
+        // Each job reads only its own captured inputs and writes only its own outputs; publication below runs serially in
+        // mech-walk order, so the result is identical for any worker count. Jobs a reader already settled are skipped.
+        mc2::jobs::parallel_for(mc2::jobs::Domain::Sim, static_cast<int>(list.size()), 1, 20000, [&](int begin, int end) {
+            for (int i = begin; i < end; ++i)
+                if (list[i]->simPosePending_) list[i]->simPoseJob_.evaluate();
+        });
+        for (auto* appearance : list)
+            if (appearance->simPosePending_) appearance->finishSimPose();
+        list.clear();
+    }
 }
 
 bool Mech3DAppearance::setJumpParameters (glm::vec3 &end)
