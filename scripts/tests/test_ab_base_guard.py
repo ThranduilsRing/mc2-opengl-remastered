@@ -134,7 +134,7 @@ def test_manifest_byte_mismatch_refuses_before_capture(tmp_path, repo, monkeypat
     install = _install(tmp_path / "install", repo[0])
     (Path(install) / rel).write_bytes(b"drift")
     monkeypatch.setattr(ab, "resolve_installs", lambda *args: (install, install))
-    monkeypatch.setattr(ab, "run_capture", lambda *args: pytest.fail("launched a game with stale payload"))
+    monkeypatch.setattr(ab, "run_capture", lambda *args, **kw: pytest.fail("launched a game with stale payload"))
     with pytest.raises(SystemExit, match="manifest mismatch"):
         ab.main(["--bookmarks", "x", "--install-a", install, "--install-b", install,
                  "--out-root", str(tmp_path / "out"), "--allow-base-mismatch"])
@@ -183,7 +183,7 @@ def test_main_refuses_then_allows_and_stamps(tmp_path, repo, monkeypatch):
         ab.main(argv)
     seen = {}
     monkeypatch.setattr(ab, "resolve_installs", lambda args, out: (a, b))
-    monkeypatch.setattr(ab, "run_capture", lambda *x: None)
+    monkeypatch.setattr(ab, "run_capture", lambda *x, **kw: None)
     monkeypatch.setattr(ab, "compare", lambda *x, **k: seen.update(k))
     with pytest.raises(SystemExit) as ex:
         ab.main(argv + ["--allow-base-mismatch"])

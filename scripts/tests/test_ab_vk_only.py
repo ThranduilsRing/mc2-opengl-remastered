@@ -57,7 +57,7 @@ def test_exe_mode_stages_installs_and_runs_both(tmp_path, monkeypatch):
     ea.write_bytes(b"A")
     eb.write_bytes(b"B")
     runs = []
-    def fake_capture(install, bms, out, env):  # the staged install exists only while the run is live
+    def fake_capture(install, bms, out, env, hud=False):  # the staged install exists only while the run is live
         runs.append((install, Path(out).name, env, (Path(install) / "mc2.exe").read_bytes(), (Path(install) / "data.bin").exists()))
     monkeypatch.setattr(ab, "run_capture", fake_capture)
     monkeypatch.setattr(ab, "compare", lambda *a, **k: None)
@@ -181,7 +181,7 @@ def test_exe_a_swap_mode_stages_and_records(tmp_path, monkeypatch):
     monkeypatch.setattr(ab, "exe_commit", lambda *args: "c" * 40)
     seen = {}
 
-    def fake_capture(install, bms, out, env):  # the staged A install exists only while the run is live
+    def fake_capture(install, bms, out, env, hud=False):  # the staged A install exists only while the run is live
         if Path(out).name == "a":
             a_install = Path(install)
             seen.update(exe=(a_install / "mc2.exe").read_bytes(), spv=(a_install / "shaders/vulkan/x.spv").read_bytes(),
