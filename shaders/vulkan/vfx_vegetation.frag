@@ -78,7 +78,7 @@ void main() {
     vec3 albedo = mix(groundTone, painted, kVegOwnHue);
     // Stable per-instance value and warm/cool jitter, so a patch is not one flat tone.
     float jitter = fract(v_vegData.x * 7.31);
-    albedo *= mix(0.80, 1.16, jitter) * mix(woody ? vec3(1.05,1.02,0.86) : vec3(1.05,0.98,0.88), vec3(0.93,1.03,1.01), v_vegData.x);
+    albedo *= mix(0.80, 1.16, jitter) * mix(woody ? vec3(1.08,1.04,0.78) : vec3(1.05,0.98,0.88), vec3(0.93,1.03,1.01), v_vegData.x);
     if ((v_flags & 128u) != 0u) albedo = mix(albedo,macro*vec3(1.03,1.03,1.08),0.65);
     // Grass blades: olive-dark roots under the canopy, light straw tips, and the
     // gust band brightens bent blades (their sheen faces up) so waves read from above.
@@ -92,9 +92,9 @@ void main() {
         float pick = fract(v_vegData.x * 13.71);
         float patchTone = worldSwardPatch(v_rootPos.xy);
         float shore = 1.0 - smoothstep(6.0, kVegShoreDryWU, v_rootPos.z - uT.shorelineWaterElev);
-        float dryness = clamp((patchTone - 0.40) * 2.4 + 0.25 + 0.50 * shore + (pick - 0.5) * 0.20, 0.0, 1.0);
+        float dryness = clamp((patchTone - 0.40) * 2.4 + 0.12 + 0.50 * shore + (pick - 0.5) * 0.20, 0.0, 1.0);
         // Ref 3 tones are muted: dusky olive, dull yellow-green, dry straw.
-        const vec3 kOlive = vec3(0.30, 0.32, 0.16), kYellowGreen = vec3(0.42, 0.42, 0.20), kStraw = vec3(0.58, 0.49, 0.31);
+        const vec3 kOlive = vec3(0.27, 0.33, 0.14), kYellowGreen = vec3(0.41, 0.44, 0.19), kStraw = vec3(0.58, 0.49, 0.31);
         vec3 hue = dryness < 0.5 ? mix(kOlive, kYellowGreen, dryness * 2.0) : mix(kYellowGreen, kStraw, dryness * 2.0 - 1.0);
         // The card keeps blade-to-blade value; straw reads lighter than olive as in the reference.
         vec3 sward = hue * (value / 0.46);
