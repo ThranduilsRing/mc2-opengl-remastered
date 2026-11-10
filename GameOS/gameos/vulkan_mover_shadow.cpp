@@ -27,18 +27,7 @@ namespace {
 // darkening) at full night; evening missions keep a soft low-sun shadow in between.
 float nightShadowFade() { return 0.85f * std::clamp(mc2NightLightFactor(), 0.0f, 1.0f); }
 // Mover (mech/prop) shadows fade by the moon's share of the light, not the static shadows' flat 0.85.
-float moverShadowFade() {
-    float d=0, moon=0, amb=0;
-    const float fade=mc2MoverShadowNightFade(&d,&moon,&amb);
-    static float lastFade=-1.0f;
-    if (fade!=lastFade && mc2_diag::tagRequested("SHADOW_BAKE")) {
-        lastFade=fade;
-        const float oldFade=nightShadowFade();
-        mc2::fmt::print_err("[SHADOW_BAKE] mover_night darkness={:.3f} moon_lum={:.1f} ambient_lum={:.1f} static_fade={:.3f} mover_fade={:.3f} ground_floor_old={:.3f} ground_floor_new={:.3f} mech_floor_old={:.3f} mech_floor_new={:.3f}\n",
-            d,moon,amb,oldFade,fade,0.4f+0.6f*oldFade,0.4f+0.6f*fade,0.55f+0.45f*oldFade,0.55f+0.45f*fade);
-    }
-    return fade;
-}
+float moverShadowFade() { float d,m,a; return mc2MoverShadowNightFade(&d,&m,&a); }
 }
 
 bool MoverShadowState::init(VulkanContext& ctx, bool unionPath) {
