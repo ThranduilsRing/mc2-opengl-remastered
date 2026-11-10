@@ -6,9 +6,10 @@ namespace RenderCore {
 inline constexpr uint64_t gpuMiB = 1024ull * 1024;
 // Vegetation's packed population model, shared by the upload admission, the stride thinning and the placer's capacity:
 // 16 B instances, 32 B regions plus a 16 B per-region cull word pair, the dense visible list (8 B per slot, capped) and the
-// card array. The q2 ceiling is the 80 MiB the vegetation design budgets, so a dense mod thins by stride instead of refusing.
+// card array. The q2 ceiling is 160 MiB (owner 2026-11-10: meadow grass density "way up", ~9M blades on mc2_01), so a
+// denser mod thins by stride instead of refusing. Distance and pixel LOD keep the visible list inside its capacity.
 inline constexpr uint32_t vegetationVisibleCapacity = 512u * 1024u;
-inline constexpr uint64_t vegetationResidentCeiling = 80 * gpuMiB;
+inline constexpr uint64_t vegetationResidentCeiling = 160 * gpuMiB;
 // Logical residency includes host-visible staging, flight copies and retired resources.
 struct GpuResidencyPolicy {
     uint64_t total, textureUpload, vegetation;

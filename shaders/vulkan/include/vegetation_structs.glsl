@@ -40,7 +40,10 @@ float vegLodScale(VegInstance i, VegParamsData p) {
     // Terrain LOD is discrete; only the continuous cover metric controls density.
     // Meadow-field blades (atlas bit 3) are the carpet: they stay down to ~1.5 px so the RTS view keeps a continuous field.
     bool field = (i.atlasFrame & 8u) != 0u;
-    float density = min(distanceFade, field ? smoothstep(1.0, 4.0, pixels) : smoothstep(3.0, 12.0, pixels));
+    // Full carpet near the camera, thinning by rank to 20% by 2000 WU so a low, long view stays inside the visible list.
+    float fieldNear = mix(1.0, 0.2, smoothstep(500.0, 2000.0, length(i.pos - p.cam.xyz)));
+    float density = field ? min(min(distanceFade, fieldNear), smoothstep(1.0, 4.0, pixels))
+                          : min(distanceFade, smoothstep(3.0, 12.0, pixels));
     float rank = fract(i.seed * 17.371 + 0.137);
     return clamp((density - rank) / 0.15, 0.0, 1.0);
 }

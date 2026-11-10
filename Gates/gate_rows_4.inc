@@ -47,7 +47,7 @@ L(Lead0, "MC2_UNIT_PROFILE_DATA", Bool, false, "unclassified", "", "UNIT-PROFILE
 G("MC2_VEGETATION_ATLAS", String, "", "gameos", "", "Allow env-var override at runtime too.", passthrough | verified),
 L(DefOnLead0, "MC2_VEGETATION_CARDS", Bool, true, "gameos", "", "", passthrough | verified),
 P("MC2_VEGETATION_DENSITY", Int, 25, "code", "", "", verified),
-P("MC2_VEGETATION_MAX", Int, 5000000, "code", "", "", verified),
+P("MC2_VEGETATION_MAX", Int, 10000000,"code", "", "", verified),
 P("MC2_VEG_MAX_DIST", Float, 4096.0, "gameos", "", "", verified),
 // VehicleAmbientFloor (VEHICLE-AMBIENT-FLOOR-1)
 // history: docs/gate-history.md#MC2_VEHICLE_AMBIENT_FLOOR

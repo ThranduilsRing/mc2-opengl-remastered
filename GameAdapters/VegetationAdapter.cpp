@@ -151,8 +151,9 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
     const float originX = Terrain::mapTopLeft3d.x;
     const float originY = Terrain::mapTopLeft3d.y;   // max world-Y
     const float mapSpan = Terrain::worldUnitsMapSide;
+    // The clump grid keeps the 5M-era step: the raised cap is the meadow field's, not more shrubs.
     const float gridStep = mc2::vegetation::placementStep(mapSpan, kGridStep * 1.5f,
-                                                        (std::max)(density,44), maxInst);
+                                                        (std::max)(density,44), (std::min)(maxInst, 4750000));
 
     std::vector<GosVegetation::Instance> instances;
     instances.reserve(static_cast<size_t>(maxInst));
@@ -181,6 +182,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
         "data/vegetation/schemas/grasslands.json", "data/vegetation/schemas/snow.json",
         "data/vegetation/schemas/desert.json", "data/vegetation/schemas/swamp.json"};
     std::optional<FieldRecipe> fieldRecipe;
+    int woodyPlaced = 0, woodyGated = 0, clumpsGated = 0;   // shrub/sapling counts for the owner sheet
     for (size_t i = 0; i < paths.size(); ++i) {
         std::ifstream input(paths[i]);
         if (input) {
@@ -216,13 +218,21 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
             const float moisture = macroZone(wx+static_cast<float>(seed&4095u),wy,512);
             if (clumpRoll(col,row,seed,112) > (tier == VegDensity::kFull ? 0.9f : 0.4f)*(0.5f+moisture))
                 { ++diagNotGreen; continue; }
-            // Where the meadow field carpets the ground, shrubs and saplings gather in
-            // groves on the wetter half of the moisture field; dry ground stays open grass.
-            if (fieldRecipe && biome == Biome::Temperate && !single &&
-                clumpRoll(col,row,seed,113) > groveChance(moisture)) { ++diagNotGreen; continue; }
             glm::vec3 normal;
             const auto clump = makeClump(col,row,seed,recipes[static_cast<size_t>(biome)],
                                           moisture,land->getTerrainAngle(pos,&normal),single);
+            // Where the meadow field carpets the ground, shrubs and saplings gather under
+            // and around the stock trees (owner 2026-11-10); open meadow keeps a rare one.
+            if (fieldRecipe && biome == Biome::Temperate && !single && gameMap) {
+                int cr=0,cc=0, forestCells=0;
+                land->worldToCell(pos,cr,cc);
+                for (int dr=-3; dr<=3; ++dr) for (int dc=-3; dc<=3; ++dc)
+                    if (gameMap->inBounds(cr+dr,cc+dc) && gameMap->cellAt(cr+dr,cc+dc).getForest()) ++forestCells;
+                if (clumpRoll(col,row,seed,113) > understoryChance(forestCells)) {
+                    for (int i=0; i<clump.count; ++i) woodyGated += clump.members[static_cast<size_t>(i)].woody ? 1 : 0;
+                    ++clumpsGated; continue;
+                }
+            }
             for (int i=0; i<clump.count; ++i) {
                 if (static_cast<int>(instances.size()) >= maxInst) break;
                 const auto& member = clump.members[static_cast<size_t>(i)];
@@ -241,7 +251,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                     land->worldToCell(instPos,cr,cc);
                     // Read-only static masks: never alter movement, LOS or RNG.
                     occupied = !gameMap->inBounds(cr,cc) ||
-                        clumpStaticOccupied(gameMap->cellAt(cr,cc));
+                        clumpStaticOccupied(gameMap->cellAt(cr,cc), fieldRecipe.has_value() && biome == Biome::Temperate);
                 }
                 const float coverage = gos_terrain_indirect_HardSurfaceCoverage(instWx,instWy);
                 const float slope = land->getTerrainAngle(instPos,&normal);
@@ -265,6 +275,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                 inst.atlasFrame = frame | (role<<4u) | (biome==Biome::Snow ? 128u : 0u);
                 inst.seed = clumpRoll(col,row,seed,salt+2);
                 instances.push_back(inst);
+                woodyPlaced += member.woody ? 1 : 0;
             }
         }
     }
@@ -314,7 +325,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                 if (gameMap) {
                     int cr=0,cc=0;
                     land->worldToCell(bpos,cr,cc);
-                    occupied = !gameMap->inBounds(cr,cc) || clumpStaticOccupied(gameMap->cellAt(cr,cc));
+                    occupied = !gameMap->inBounds(cr,cc) || clumpStaticOccupied(gameMap->cellAt(cr,cc), true);
                 }
                 const float coverage = gos_terrain_indirect_HardSurfaceCoverage(bx,by);
                 if (!clumpSurfaceAllowed(true,elevation<=Terrain::waterElevation+kBeachMarginWU,
@@ -333,8 +344,9 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
         }
     }
     const double fieldMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - fieldT0).count();
-    mc2::fmt::print_err("[VEG v3] field blades={:d} side={:d} ms={:.1f}\n",
-                        mc2::fmt::as_i32(fieldBlades), mc2::fmt::as_i32(fieldSide), fieldMs);
+    mc2::fmt::print_err("[VEG v3] field blades={:d} side={:d} ms={:.1f} shrubs_placed={:d} shrubs_moved_off_meadow={:d} clumps_gated={:d}\n",
+                        mc2::fmt::as_i32(fieldBlades), mc2::fmt::as_i32(fieldSide), fieldMs,
+                        mc2::fmt::as_i32(woodyPlaced), mc2::fmt::as_i32(woodyGated), mc2::fmt::as_i32(clumpsGated));
 
     GosVegetation::uploadInstances(instances.data(),
                                    static_cast<uint32_t>(instances.size()));

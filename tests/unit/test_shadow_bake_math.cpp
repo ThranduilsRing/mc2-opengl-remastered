@@ -267,13 +267,14 @@ TEST_CASE("GPU residency: vegetation thins by stride instead of refusing") {
     using namespace RenderCore;
     // mc2_03 at the default quality: 2.5M instances, ~30k regions in the packed model (16 B instances): about 48 MiB resident.
     const auto q2 = gpuResidencyPolicy(2);
-    CHECK(q2.vegetation == vegetationResidentCeiling);   // the upload's own 80 MiB ceiling is the policy
+    CHECK(q2.vegetation == vegetationResidentCeiling);   // the upload's own 160 MiB ceiling is the policy
     CHECK(vegetationBytes(2512462, 30000) < 60 * gpuMiB);
     CHECK(vegetationStride(2512462, 30000, q2.vegetation, 2000 * gpuMiB) == 1);
-    // a dense mod past the 80 MiB ceiling thins by stride instead of losing every instance
-    const uint32_t sDense = vegetationStride(9000000, 40000, q2.vegetation, 2000 * gpuMiB);
+    CHECK(vegetationStride(9000000, 40000, q2.vegetation, 2000 * gpuMiB) == 1);   // mc2_01 meadow field fits whole
+    // a dense mod past the 160 MiB ceiling thins by stride instead of losing every instance
+    const uint32_t sDense = vegetationStride(14000000, 40000, q2.vegetation, 2000 * gpuMiB);
     CHECK(sDense > 1);
-    CHECK(vegetationBytes((9000000 + sDense - 1) / sDense, 40000) <= q2.vegetation);
+    CHECK(vegetationBytes((14000000 + sDense - 1) / sDense, 40000) <= q2.vegetation);
     // quality 1 (32 MiB ceiling) thins rather than refuses; the thinned population fits.
     const auto q1 = gpuResidencyPolicy(1);
     const uint32_t s1 = vegetationStride(2512462, 30000, q1.vegetation, 2000 * gpuMiB);

@@ -137,13 +137,11 @@ TEST_CASE("VegField/even stratified carpet that always fits the remaining budget
     for (int hit : cellsHit) CHECK(hit == 1);   // one blade per sub-cell: no clumps, no bare patches
 }
 
-TEST_CASE("VegField/shrub groves on wet ground, open meadow on dry") {
-    CHECK(groveChance(0.0f) == 0.0f);
-    CHECK(groveChance(0.42f) == 0.0f);
-    CHECK(groveChance(0.64f) == 1.0f);
-    CHECK(groveChance(1.0f) == 1.0f);
-    float last = 0.0f;
-    for (int i = 0; i <= 100; ++i) { const float g = groveChance(i / 100.0f); CHECK(g >= last); last = g; }
+TEST_CASE("VegField/shrubs gather at the stock treelines, open meadow keeps few") {
+    CHECK(understoryChance(1) == 1.0f);
+    CHECK(understoryChance(25) == 1.0f);
+    CHECK(understoryChance(0) < 0.1f);
+    CHECK(understoryChance(0) > 0.0f);
 }
 
 TEST_SUITE("VegHardSurface") {
