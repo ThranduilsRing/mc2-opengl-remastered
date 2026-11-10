@@ -38,7 +38,7 @@ def test_different_data_reports_paths(tmp_path):
     assert not dp["same"] and dp["cross_data"] and dp["sha_a"] != dp["sha_b"]
     assert dp["differing"] == ["data/extra.ktx2", "data/veg/shrub.ktx2"]
     lines = ab.data_parity_lines(dp)
-    assert lines[0].startswith("[ab] DATA: differs (2 files)")
+    assert lines[1].startswith("[ab] DATA: differs (2 files)")
     assert any("data/veg/shrub.ktx2" in ln for ln in lines) and "CROSS-DATA" in lines[-1]
 
 
@@ -47,7 +47,7 @@ def test_differing_list_capped_at_ten_in_print(tmp_path):
     for i in range(15):
         (b / f"data/n{i:02}.bin").write_bytes(b"x")
     lines = ab.data_parity_lines(ab.data_parity(a, b))
-    assert "15 files" in lines[0] and len([ln for ln in lines if ln.startswith("[ab]   ")]) == 10
+    assert "15 files" in lines[1] and len([ln for ln in lines if ln.startswith("[ab]   ")]) == 10
 
 
 def test_exe_and_shader_changes_are_not_data(tmp_path):
