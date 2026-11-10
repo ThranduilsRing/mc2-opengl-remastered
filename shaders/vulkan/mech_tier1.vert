@@ -122,8 +122,8 @@ vec3 calc_light(int idx, vec3 normal, vec3 wpos, vec3 base_light, int sunAxisMc2
         // TG_LIGHT_TERRAIN: ignored (spec R2, matches GL calc_light).
     }
     if (fillMode >= 1 && !legacyVehicle) {
-        // Hemispheric fill sized from the sun: shade side ~40% of the sun-facing side, sky above, ground bounce below (render space: y = up).
-        float up = clamp(normal.y * 0.5 + 0.5, 0.0, 1.0);
+        // Hemispheric fill sized from the sun: shade side ~40% of the sun-facing side, sky above, ground bounce below (normal is in the MC2 world frame: z = up, y = north; tests/unit/test_mech_up_axis.cpp).
+        float up = clamp(normal.z * 0.5 + 0.5, 0.0, 1.0);
         vec3 fill = sunLc * 0.60 * mix(0.65, 1.0, up);
         final += max(fill - base_light, vec3(0.0));
     }
@@ -194,11 +194,11 @@ void main() {
     gl_Position = clip;
 
     // Per-vertex lighting — mech.vert:204-235 (u_lightingMode=1, lightsOut branch).
-    // Render space is y-up; the original look weighted by .z (a sideways axis). MC2_MECH_FILL>=1 uses the real up axis.
+    // worldNormal is mc2ToRender(Y-up bone-space normal) = MC2 world frame: .z is up, .y is north (tests/unit/test_mech_up_axis.cpp).
     // Ground vehicles keep their legacy lighting: the row's ambient and sun, no environment ambient; point and spot lights apply (stock vehicles were lit by them).
     bool legacyVehicle = (inst.renderFlags & MECH_RENDER_FLAG_LEGACY_VEHICLE) != 0u;
     bool mechFill = !legacyVehicle && uFrame.miscI.y >= 1;   // MC2_MECH_FILL applies to mechs only
-    float ambUp = mechFill ? worldNormal.y : worldNormal.z;
+    float ambUp = worldNormal.z;
     vec3 environmentAmbient = uFrame.environmentAmbient.rgb
         * mix(0.5, 1.0, clamp(ambUp * 0.5 + 0.5, 0.0, 1.0));
     const uint  kRenderFlagLightsOut = 0x2u;
