@@ -461,7 +461,12 @@ COOK_LOCK_WAIT = 900
 
 
 def cook_cache_root():
-    return Path(os.environ.get("MC2_COOK_CACHE", COOK_CACHE_DEFAULT))
+    """MC2_COOK_CACHE, else the cache under the gate's E: root (the farm laptop has no E: drive; laptop_gate sets
+    MC2_GATE_EROOT), else E:/mc2-cook-cache."""
+    if os.environ.get("MC2_COOK_CACHE"):
+        return Path(os.environ["MC2_COOK_CACHE"])
+    eroot = os.environ.get("MC2_GATE_EROOT", "").rstrip("/\\")
+    return Path(eroot + "/mc2-cook-cache") if eroot else Path(COOK_CACHE_DEFAULT)
 
 
 def importer_source_key(src_root, tree=None):
