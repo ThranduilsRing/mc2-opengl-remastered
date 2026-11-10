@@ -323,7 +323,8 @@ extern "C" int mc2_vk_water_island_run(
         std::memcpy(base + reactiveOff, &reactive, sizeof(reactive));
         {
             static auto lastLog = clk::now() - std::chrono::seconds(2);
-            if (usSince(lastLog) >= 1.0e6) {
+            static const bool logStats = mc2_diag::tagRequested("WATER_REACTIVE");   // MC2_DIAG_TAGS=WATER_REACTIVE
+            if (logStats && usSince(lastLog) >= 1.0e6) {
                 lastLog = clk::now();
                 const auto st = mc2::waterreactive::buffer().takeStats();
                 uint32_t litTiles = 0, tileCount = 0;
