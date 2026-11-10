@@ -1,0 +1,63 @@
+#ifndef WATER_REACTIVE_PROFILE
+#define WATER_REACTIVE_PROFILE
+
+// The offline regression compiles this exact material arithmetic as C++.
+#ifdef __cplusplus
+#include <glm/glm.hpp>
+#include <glm/gtc/constants.hpp>
+namespace mc2::waterreactive {
+using glm::vec2;
+using glm::vec3;
+using glm::dot;
+using glm::length;
+using glm::smoothstep;
+using glm::clamp;
+using glm::max;
+using glm::min;
+using glm::exp;
+using glm::sin;
+using glm::abs;
+#define WR_INLINE inline
+#else
+#define WR_INLINE
+#endif
+
+// Compact support also bounds the CPU tile footprint (224 world units).
+// XY = normal slope, Z = restrained crest foam; no displacement or history image.
+WR_INLINE vec3 wr_profile(vec2 d, vec2 velocity, float radius, float age,
+                          float vehicle, float pixelWidth) {
+    float dist = length(d);
+    if (dist >= 224.0f || age < 0.0f || age >= 3.0f) return vec3(0.0f);
+    float fade = smoothstep(0.0f, 0.12f, age) * (1.0f - smoothstep(0.4f, 3.0f, age));
+    fade *= 1.0f - smoothstep(160.0f, 224.0f, dist);
+    // Fade subpixel rings rather than aliasing them at the RTS zoom limit.
+    fade *= 1.0f - smoothstep(5.0f, 18.0f, pixelWidth);
+    float width = max(7.0f, pixelWidth * 1.5f);
+    float ring = dist - (radius + age * 28.0f);
+    float envelope = exp(-ring * ring / (2.0f * width * width));
+    float wave = sin(ring / width);
+    vec2 slope = d / max(dist, 0.001f) * (wave * envelope * 0.035f);
+    float crest = envelope * max(0.0f, 1.0f - abs(ring) / width) * 0.028f;
+    float speed = length(velocity);
+    if (vehicle > 0.5f && speed > 3.0f) {
+        vec2 heading = velocity / speed;
+        float behind = -dot(d, heading);
+        vec2 side = vec2(-heading.y, heading.x);
+        float across = dot(d, side);
+        float extent = min(180.0f, radius * 2.0f + speed * 0.7f);
+        float wakeFade = smoothstep(0.0f, 12.0f, behind)
+                       * (1.0f - smoothstep(extent * 0.55f, extent, behind));
+        float edge = abs(across) - (radius * 0.35f + behind * 0.38f);
+        float wake = exp(-edge * edge / (2.0f * width * width)) * wakeFade;
+        float signAcross = across < 0.0f ? -1.0f : 1.0f;
+        slope += (side * signAcross + heading * 0.38f) * (sin(edge / width) * wake * 0.04f);
+        crest += wake * max(0.0f, 1.0f - abs(edge) / width) * 0.018f;
+    }
+    return vec3(slope * fade, crest * fade);
+}
+
+#ifdef __cplusplus
+} // namespace mc2::waterreactive
+#endif
+#undef WR_INLINE
+#endif

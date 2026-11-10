@@ -85,6 +85,7 @@ public:
     // Generation of the type registry that issued this holder's appearance type (stamped by init(tree)); 0 = none.
     unsigned registryGeneration = 0;
     bool simulationOwned() const { return simulationOwned_; }
+    const mc2::sim::UnitAnimState& presentedAnimation() const { return renderAnim_; }
     mc2::sim::UnitAnimState& unitAnim() { if (!simPresentationPass) markTerrainPresentationDirty(); animSettled_.store(false, std::memory_order_relaxed); return simPresentationPass ? renderAnim_ : *simAnim_; }
     const mc2::sim::UnitAnimState& unitAnim() const { return simPresentationPass ? renderAnim_ : *simAnim_; }
     auto simulationAnimation() const { markTerrainPresentationDirty(); animSettled_.store(false, std::memory_order_relaxed); return simAnim_; }

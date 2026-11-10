@@ -6,6 +6,7 @@
 #include "Gates/gate.h"
 #include "prop_light_contract.h"
 #include "../RenderCore/axis_convert.h"
+#include "../RenderCore/water_reactive.h"
 
 extern std::atomic<uint32_t> g_mc2FrameCounter;
 
@@ -44,6 +45,10 @@ long GVAppearance::render (long depthFixup)
 	const bool gvShouldRender = s_gpuCullLifecycle
 		? gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(actorHandle_))
 		: inView;
+	// The render gate (GPU-lagged when the cull lifecycle is on), not the CPU inView, says whether the body is drawn.
+	mc2::waterreactive::buffer().submit(reinterpret_cast<uintptr_t>(this), scenarioTime,
+		position.x, position.y, getRadius() * 0.35f, presentedAnimation().wakeRequested,
+		visible && gvShouldRender && mc2_vis::meshDrawn(visibility), true);
 	if (gvShouldRender)
 	{
 		uint32_t color = SD_BLUE;
@@ -223,42 +228,7 @@ long GVAppearance::render (long depthFixup)
 			
 			if (!sensorLevel)
 			{
-				if (waterWake && isWaking)
-				{
-					gosFX::Effect::DrawInfo drawInfo;
-					drawInfo.m_clipper = theClipper;
-	
-					MidLevelRenderer::MLRState mlrState;
-					mlrState.SetDitherOn();
-					mlrState.SetTextureCorrectionOn();
-					mlrState.SetZBufferCompareOn();
-					mlrState.SetZBufferWriteOn();
-			
-					drawInfo.m_state = mlrState;
-					drawInfo.m_clippingFlags = 0x0;
-
-					glm::mat4 	shapeOrigin;
-					glm::mat4	localToWorld;
-					glm::mat4	localResult;
-							
-					glm::vec3 wakePos;
-					wakePos.x = -position.x;
-					wakePos.y = Terrain::waterElevation;
-					wakePos.z = position.y;
-					
-					mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
-					mc2::math::buildTranslation(shapeOrigin, wakePos);
-							
-					glm::quat effectRot;
-					effectRot = mc2::math::quatFromEuler(mc2::math::Euler(90.0f * DEGREES_TO_RADS,rotation * DEGREES_TO_RADS,0.0f));
-					localToWorld = mc2::math::multiply(gosFX::Effect_Against_Motion, effectRot);
-					localResult = localToWorld * shapeOrigin;
-		
-					drawInfo.m_parentToWorld = &localResult;
-					if (!MLRVertexLimitReached)
-						waterWake->Draw(&drawInfo);
-				}
-				else if (dustCloud)
+				if (!presentedAnimation().wakeRequested && dustCloud)
 				{
 					gosFX::Effect::DrawInfo drawInfo;
 					drawInfo.m_clipper = theClipper;

@@ -13,6 +13,7 @@
 // Spec: docs/superpowers/specs/2026-04-29-renderwater-fastpath-design.md.
 
 #include "gos_terrain_water_stream.h"
+#include "../../RenderCore/water_reactive.h"
 #include "../../mclib/terrain_material.h"  // single-sourced terrain type -> material
 extern int gos_WaterShoreMode();
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
@@ -223,6 +224,7 @@ inline uint8_t terrainTypeToMaterialLocal(uint32_t terrainType) {
 } // namespace
 
 void Reset() {
+    mc2::waterreactive::buffer().clear();
     g_waterChunks.clear();
     g_waterChunkMapSide=0;
     g_recipes.clear();
