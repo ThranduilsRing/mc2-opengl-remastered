@@ -223,7 +223,8 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                                           moisture,land->getTerrainAngle(pos,&normal),single);
             // Where the meadow field carpets the ground, shrubs and saplings gather under
             // and around the stock trees (owner 2026-11-10); open meadow keeps a rare one.
-            if (fieldRecipe && biome == Biome::Temperate && !single && gameMap) {
+            // Every biome but snow: mc2_01's stock tile codes put most clumps in other biomes.
+            if (fieldRecipe && biome != Biome::Snow && !single && gameMap) {
                 int cr=0,cc=0, forestCells=0;
                 land->worldToCell(pos,cr,cc);
                 for (int dr=-3; dr<=3; ++dr) for (int dc=-3; dc<=3; ++dc)
@@ -251,7 +252,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                     land->worldToCell(instPos,cr,cc);
                     // Read-only static masks: never alter movement, LOS or RNG.
                     occupied = !gameMap->inBounds(cr,cc) ||
-                        clumpStaticOccupied(gameMap->cellAt(cr,cc), fieldRecipe.has_value() && biome == Biome::Temperate);
+                        clumpStaticOccupied(gameMap->cellAt(cr,cc), fieldRecipe.has_value() && biome != Biome::Snow);
                 }
                 const float coverage = gos_terrain_indirect_HardSurfaceCoverage(instWx,instWy);
                 const float slope = land->getTerrainAngle(instPos,&normal);
