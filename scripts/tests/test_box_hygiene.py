@@ -207,8 +207,8 @@ def test_box_run_cleanup_calls_the_remote_script(monkeypatch):
 def test_cores_env_is_the_one_map():
     env = dict(ln.split("=", 1) for ln in (BOX / "cores.env").read_text().splitlines() if re.match(r"^[A-Z0-9_]+=", ln))
     gpus = {k: v for k, v in env.items() if re.match(r"^GPU\d+_CPUS$", k)}
-    assert env["BUILD_CPUS"] == "32-63" and gpus == {"GPU0_CPUS": "0-7"}   # one GPU (RTX 4060) since 2026-11-08
-    assert ". /workspace/locks/cores.env" in box_run.REMOTE and "${BUILD_CPUS:-32-63}" in box_run.REMOTE
+    assert env["BUILD_CPUS"] == "8-35" and gpus == {"GPU0_CPUS": "0-7"}   # one GPU (RTX 4060), 36 cores: games on 0-7, builds on 8-35
+    assert ". /workspace/locks/cores.env" in box_run.REMOTE and "BUILD_CPUS:-8-" in box_run.REMOTE
     assert "cores.env" in (BOX / "env.sh").read_text() and "cores.env" in (BOX / "filler" / "sync.sh").read_text()
 
 

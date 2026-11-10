@@ -88,7 +88,7 @@ def filler(problems):
     sha = read(f"{F}/current_sha")
     rc, tip = sh(["git", "--git-dir", sup.MIRROR, "rev-parse", "-q", "--verify", sup.NIFTY + "^{commit}"])
     workers = {}
-    for g in sup.FILLER_GPUS:
+    for g in sup.filler_gpus():
         ok = sup.worker_alive(g)
         workers[str(g)] = {"alive": ok, "pid": sup.read_pidfile(f"{F}/worker{g}.pid"), "ver": read(f"{F}/worker{g}.ver"),
                            "active": os.path.exists(f"{F}/active.{g}")}
@@ -111,7 +111,7 @@ def supervisor(now, problems):
         problems.append(f"supervisor: {p}")
     recent = {k: len([t for t in v if now - t < 3600]) for k, v in (st.get("restarts") or {}).items()}
     return {"heartbeat_age_s": age, "pid": pid, "alive": sup.alive(pid), "workers": st.get("workers"), "restarts_1h": recent,
-            "backoff": sorted((st.get("backoff") or {}).keys()), "gpu3": st.get("gpu3"), "intruders": st.get("intruders"),
+            "backoff": sorted((st.get("backoff") or {}).keys()), "gpu3": st.get("gpu3"), "gate_gpu": st.get("gate_gpu"), "intruders": st.get("intruders"),
             "autosync": st.get("autosync"), "reaped_last": st.get("reaped_last")}
 
 
@@ -154,6 +154,26 @@ def disk(floor, problems, warnings):
         warnings.append(f"ccache {cc['size_gb']} GB of {cc['max']} (full: evicting)")
     return {"free_gb": free, "used_pct": used, "floor_gb": floor, "headroom_gb": round(free - floor, 1), "diskwatch": dw,
             "lanes_gb": st.get("lanes_gb"), "ccache": cc}
+
+
+def cores_check(problems, gpu_indices, nproc=None, path=None):
+    """cores.env is the one map: every core range must exist (below nproc) and every GPU it names (GPU<n>_CPUS, GATE_GPU) must be listed by nvidia-smi."""
+    nproc = nproc or os.cpu_count() or 0
+    txt = read(path or f"{sup.LOCKS}/cores.env")
+    have = set(gpu_indices)
+    for ln in txt.splitlines():
+        if "=" not in ln or ln.lstrip().startswith("#"):
+            continue
+        k, v = (x.strip().strip('"') for x in ln.split("=", 1))
+        if k == "BUILD_CPUS" or (k.startswith("GPU") and k.endswith("_CPUS")):
+            for part in v.split(","):
+                hi = part.split("-")[-1]
+                if hi.isdigit() and nproc and int(hi) >= nproc:
+                    problems.append(f"cores.env {k}={v}: core {hi} does not exist (nproc {nproc})")
+            if k != "BUILD_CPUS" and k[3:-5].isdigit() and int(k[3:-5]) not in have:
+                problems.append(f"cores.env names GPU {k[3:-5]} ({k}) but nvidia-smi lists {sorted(have)}")
+        elif k == "GATE_GPU" and v.isdigit() and int(v) not in have:
+            problems.append(f"cores.env GATE_GPU={v} but nvidia-smi lists {sorted(have)}")
 
 
 def build_queue(now, warnings):
@@ -244,6 +264,7 @@ def build(floor=15.0, nrows=12, now=None):
     problems, warnings = [], []
     doc = {"time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now))}
     doc["gpus"] = gpus(now, problems)
+    cores_check(problems, [g["index"] for g in doc["gpus"]])
     doc["filler"] = filler(problems)
     doc["supervisor"] = supervisor(now, problems)
     doc["disk"] = disk(floor, problems, warnings)

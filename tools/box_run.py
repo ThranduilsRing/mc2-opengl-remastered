@@ -2,7 +2,7 @@
 """Run game rows for the CURRENT worktree HEAD on the rented Linux box (RTX 4060; GPUs discovered at submission).
 
     py -3 tools/box_run.py --gpu auto -- smoke-lite
-    py -3 tools/box_run.py --gpu 1 -- smoke-lite capture:mc2_01:mc2_01_saved_205644 determinism:mc2_10
+    py -3 tools/box_run.py --gpu 0 -- smoke-lite capture:mc2_01:mc2_01_saved_205644 determinism:mc2_10
     py -3 tools/box_run.py --seed          # once: build the golden install on the box (needs the Windows golden)
 
 Steps (each timed, summary printed at the end): lock a GPU, git-bundle HEAD to the box mirror, clang build in
@@ -750,7 +750,7 @@ def main():
             grp = "build"   # build-only / unit-only: never touches a GPU, so it queues in the build group and holds no gpuN slot
         label = f"box_run:{branch}:{sha[:8]}:{grp}" + (f":{identity}" if identity != branch else "")
         after = ""
-        if grp != "build":   # GPU rows: build first in the build group (cores 32-63), then the GPU task, which finds the tree built and only takes the lock for the rows
+        if grp != "build":   # GPU rows: build first in the build group (BUILD_CPUS), then the GPU task, which finds the tree built and only takes the lock for the rows
             rb = run([*SSH_STDIN, f"cat > {script}.new.$$ && mv -f {script}.new.$$ {script} && {PUEUE} add -g build --print-task-id -l box_run:{branch}:{sha[:8]}:build:{identity} -- bash {script} {gpu} {branch} {sha} {out_remote} {cap0} {rows_b64(['build'])} {identity}"],
                      input=REMOTE.encode(), capture_output=True)
             bt = (rb.stdout.decode(errors="replace") if isinstance(rb.stdout, bytes) else rb.stdout).strip().splitlines()

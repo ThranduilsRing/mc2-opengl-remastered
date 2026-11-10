@@ -107,3 +107,25 @@ def test_health_reports_holders_waiters_and_orphans(tmp_path, monkeypatch):
     assert any("orphan lane builds" in w and "lost" in w for w in warns)
     text = box_health.summary({"ok": True, "time": "t", "build_queue": bq})
     assert "builds  slots=1 holders=[holder 0m] waiting=1[waiter 0m] orphans=1" in text
+
+
+def test_cores_env_must_match_the_hardware(tmp_path):
+    env = tmp_path / "cores.env"
+    env.write_text("BUILD_CPUS=32-63\nGPU0_CPUS=0-7\nGPU3_CPUS=24-31\nGATE_GPU=3\n# GPU9_CPUS=1-2\n")
+    probs = []
+    bhr.cores_check(probs, [0], nproc=36, path=str(env))
+    assert any("BUILD_CPUS=32-63" in p and "core 63" in p for p in probs)
+    assert any("GPU 3" in p for p in probs) and any("GATE_GPU=3" in p for p in probs)
+    assert not any("GPU 9" in p for p in probs)          # a comment is not config
+    probs = []
+    bhr.cores_check(probs, [0], nproc=36, path=str(ROOT / "tools/box/cores.env"))
+    assert probs == []                                    # the tracked map fits this box (36 cores, GPU 0)
+
+
+def test_filler_gpus_and_device_name_come_from_cores_env(tmp_path, monkeypatch):
+    monkeypatch.setattr(sup, "LOCKS", str(tmp_path))
+    (tmp_path / "cores.env").write_text('GPU0_CPUS=0-7\nGPU_NAME="RTX 4060"\n')
+    assert sup.filler_gpus() == (0,)
+    import run_job
+    assert run_job.gpu_name(str(tmp_path / "cores.env")) == "RTX 4060"
+    assert run_job.device_verdict('device_name="NVIDIA GeForce RTX 3060" api=1', want="RTX 4060")[1]

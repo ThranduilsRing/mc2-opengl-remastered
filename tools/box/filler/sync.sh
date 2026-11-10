@@ -35,7 +35,8 @@ if [ ! -f build64-ninja/build.ninja ]; then
 fi
 export CCACHE_BASEDIR=/workspace CCACHE_NOHASHDIR=1 CCACHE_SLOPPINESS=time_macros
 [ -f /workspace/locks/cores.env ] && . /workspace/locks/cores.env   # the one core map
-build() { nice -n 19 taskset -c "${BUILD_CPUS:-32-63}" ninja -C build64-ninja -j16 mc2 > $F/logs/build.log 2>&1; }
+BC=${BUILD_CPUS:-8-$(( $(nproc) - 1 ))}; BJ=0; for r in ${BC//,/ }; do BJ=$((BJ + ${r#*-} - ${r%-*} + 1)); done   # -j = the BUILD_CPUS count
+build() { nice -n 19 taskset -c "$BC" ninja -C build64-ninja -j$BJ mc2 > $F/logs/build.log 2>&1; }
 PORT=none
 if ! build; then
   echo "[filler-sync] RED: nifty $SHA does not build on Linux (no patch fallback; fix nifty)"; grep -m5 -A3 "error:" $F/logs/build.log; exit 1

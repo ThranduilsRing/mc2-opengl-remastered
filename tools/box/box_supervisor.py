@@ -31,7 +31,6 @@ MIRROR = W + "/toolchains/mirror.git"
 PUEUE = W + "/toolchains/pueue/pueue"
 NIFTY = "refs/heads/claude/nifty-mendeleev"
 INTERVAL = 30
-FILLER_GPUS = (0, 1, 2)
 STALE_OWNER_S = 60
 STALE_WANT_S = 600
 FLAP_N, FLAP_WINDOW_S = 5, 600
@@ -155,8 +154,8 @@ def start_worker(g):
 def check_workers(state, now, start=start_worker):
     out = {}
     if os.path.exists(f"{FILLER}/STOP") or not os.path.exists(f"{FILLER}/worker.sh"):
-        return {str(g): "stopped" for g in FILLER_GPUS}
-    for g in FILLER_GPUS:
+        return {str(g): "stopped" for g in filler_gpus()}
+    for g in filler_gpus():
         k = str(g)
         if worker_alive(g):
             out[k] = "alive"
@@ -352,7 +351,7 @@ def guard_gpu3(state, now, query=nvidia_query, holders=None, kill=os.kill):
     else:
         state.pop("gpu3_orphan_since", None)
     intr = classify_gpu3(apps, bus, owner) if bus else []
-    mode = os.environ.get("BOX_GPU3_ENFORCE", "stop")
+    mode = os.environ.get("BOX_GATE_GPU_ENFORCE") or os.environ.get("BOX_GPU3_ENFORCE", "stop")   # BOX_GPU3_ENFORCE: old name, kept as an alias
     known = state["intruders"]
     cur = {}
     for pid, name in intr:
@@ -378,7 +377,7 @@ def guard_gpu3(state, now, query=nvidia_query, holders=None, kill=os.kill):
         problems.append(f"gpu{gg}: {len(cur)} non-gate process(es) on the gate GPU during a gate (BOX_GPU3_ENFORCE={mode})")
     state["intruders"] = cur
     g["problems"] = problems
-    state["gpu3"] = g
+    state["gpu3"] = state["gate_gpu"] = g   # "gpu3": old key, kept as an alias
     return problems
 
 
@@ -392,7 +391,21 @@ def build_cpus():
                     return ln.split("=", 1)[1].strip()
     except OSError:
         pass
-    return "32-63"
+    return f"8-{(os.cpu_count() or 9) - 1}"
+
+
+def filler_gpus():
+    """The GPUs of the one core map (GPU<n>_CPUS in locks/cores.env); the filler runs on each, the gate GPU's guard stops it during a gate."""
+    out = []
+    try:
+        with open(f"{LOCKS}/cores.env") as f:
+            for ln in f:
+                key = ln.split("=", 1)[0].strip()
+                if key.startswith("GPU") and key.endswith("_CPUS") and key[3:-5].isdigit():
+                    out.append(int(key[3:-5]))
+    except OSError:
+        pass
+    return tuple(out) or (0,)
 
 
 def gpu_count():
