@@ -472,6 +472,17 @@ def finish(target_dir, manifest, tool, cooker=subprocess.run, *, kit_rel=KIT_REL
     jobs = max(1, int(Path("A:/Games/mc2-ops/JOBS").read_text()))
     with ThreadPoolExecutor(max_workers=jobs) as pool:
         recipes_by_sha.update(pool.map(cook_model, unique.items()))
+    # The native cache keeps only the newest model-*.mci by mtime (content_ir.cpp kind maxFiles) and a hit never refreshes
+    # its entry, so in a full cache another model's write in this same cook can evict a recipe reported as a hit. Mark
+    # every recipe this cook needs as newest, then re-cook only the evicted ones: their writes now sweep stale entries.
+    for _ in range(3):
+        missing = [item for item in unique.items() if not (cache / recipes_by_sha[item[0]]).is_file()]
+        if not missing:
+            break
+        for name in set(recipes_by_sha.values()):
+            if (cache / name).is_file():
+                os.utime(cache / name)
+        recipes_by_sha.update(map(cook_model, missing))
     for rel in models:
         recipes[rel] = recipes_by_sha[model_shas[rel]]
         outputs.add(cache / recipes[rel])
