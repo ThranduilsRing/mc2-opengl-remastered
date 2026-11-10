@@ -660,6 +660,53 @@ def _swap_spv_rows(rows, dest, shaders_parent, commit, exe_name, exe_path):
     return new_rows
 
 
+def spv_digests(parent) -> dict:
+    """{name: sha256} of <parent>/shaders/vulkan/*.spv (empty when the dir has none)."""
+    d = Path(parent) / "shaders" / "vulkan"
+    return {f.name: hashlib.sha256(f.read_bytes()).hexdigest() for f in sorted(d.glob("*.spv"))} if d.is_dir() else {}
+
+
+def shader_side_plan(install, exe_a, exe_b, shaders_a=None, shaders_b=None, commit_shaders_differ=None):
+    """(shaders dir for side A or None, for B or None, log lines) for an --exe-a/--exe-b A/B. A side with no explicit
+    --shaders-a/--shaders-b uses the shaders/ beside its exe when that dir holds .spv files that differ from --install's (an exe
+    is built and deployed with its shaders, so they are the right ones); otherwise it loads --install's. Exits when the two sides
+    would load ONE shader set although the exes' commits differ in shaders/ (`commit_shaders_differ` True): that A/B would show
+    a diff of exactly 0 whatever the shaders do. REFUSED rather than guessed, since a wrong set looks like a pass."""
+    inst = spv_digests(install)
+    notes, picked = [], []
+    for side, exe, explicit in (("A", exe_a, shaders_a), ("B", exe_b, shaders_b)):
+        chosen = None
+        if explicit:
+            chosen = shaders_parent_of(explicit)
+            notes.append(f"[ab] shaders {side}: --shaders-{side.lower()} {chosen}")
+        else:
+            beside = Path(exe).parent
+            theirs = spv_digests(beside)
+            if theirs and theirs != inst:
+                chosen = beside
+                notes.append(f"[ab] shaders {side}: the shaders/ beside {exe} differ from {install}'s; using them")
+        picked.append(chosen)
+    sa, sb = picked
+    da, db = (spv_digests(x) if x else inst for x in (sa, sb))
+    if da == db and commit_shaders_differ:
+        sys.exit("ab.py: both A/B sides would load the SAME shader set, but the two exes' commits differ in shaders/ "
+                 "(the diff would be exactly 0 whatever the shaders do). Deploy each exe with its own shaders next to it, or pass "
+                 "--shaders-a DIR and --shaders-b DIR (an install dir or its shaders/ dir) so each side loads its build's shaders.")
+    if not notes:
+        notes.append(f"[ab] shaders: both sides load {install}'s shaders/ (the exes' commits do not differ in shaders/)")
+    return sa, sb, notes
+
+
+def commits_differ_in_shaders(commit_a, commit_b):
+    """True/False when `git diff --name-only A B` has/has no file under shaders/; None when it cannot be computed."""
+    if not commit_a or not commit_b:
+        return None
+    files = git_diff_files(commit_a, commit_b)
+    if files is None:
+        return None
+    return any(f.replace(chr(92), "/").startswith("shaders/") for f in files)
+
+
 def shaders_parent_of(path) -> Path:
     """--shaders-a accepts an install dir (has shaders/) or the shaders dir itself; returns the dir that holds shaders/."""
     path = Path(path)
@@ -865,9 +912,13 @@ def resolve_installs(a, out: Path):
         for e in (a.exe_a, a.exe_b):
             if not Path(e).is_file():
                 sys.exit(f"exe not found: {e}")
+        sa, sb, notes = shader_side_plan(a.install, a.exe_a, a.exe_b, getattr(a, "shaders_a", None), getattr(a, "shaders_b", None),
+                                         commits_differ_in_shaders(exe_commit(a.exe_a), exe_commit(a.exe_b)))
+        for line in notes:
+            print(line, flush=True)
         root = _stage_root(a, out, Path(a.install), 2)
-        return (_staged(a, stage_install(Path(a.install), Path(a.exe_a), root / "install_a", getattr(a, "shaders_a", None))),
-                _staged(a, stage_install(Path(a.install), Path(a.exe_b), root / "install_b")))
+        return (_staged(a, stage_install(Path(a.install), Path(a.exe_a), root / "install_a", sa)),
+                _staged(a, stage_install(Path(a.install), Path(a.exe_b), root / "install_b", sb)))
     sys.exit("need --install-a/--install-b, or --exe-a/--exe-b, or --exe-a/--install-b (or --compare-only DIR_A DIR_B)")
 
 
@@ -886,6 +937,9 @@ def main(argv=None):
     ap.add_argument("--shaders-a", metavar="DIR",
                     help="with --exe-a/--exe-b: stage side A with the shaders/ of this install (e.g. v0.4) and rewrite A's manifest "
                          "rows from the swapped bytes")
+    ap.add_argument("--shaders-b", metavar="DIR",
+                    help="with --exe-a/--exe-b: stage side B with the shaders/ of this install (default: the shaders/ beside B's exe "
+                         "when they differ from --install's, else --install's)")
     ap.add_argument("--keep-stage", action="store_true",
                     help="leave the staged install_a/install_b dirs after the run (default: deleted when it ends, pass or fail)")
     ap.add_argument("--install", default=DEFAULT_INSTALL, help="data/DLL source for --exe-a/--exe-b")

@@ -94,3 +94,58 @@ def test_flag_knob_the_exe_lacks_is_fatal_and_an_env_knob_warns(tmp_path):
 def test_all_registered_is_quiet(tmp_path):
     exe = _exe(tmp_path, ["MC2_VISUAL_LIVE_SETTLE_SEC"])
     assert capture.env_registration_problems(exe, {"MC2_VISUAL_LIVE_SETTLE_SEC": "5"}, {"MC2_VISUAL_LIVE_SETTLE_SEC"}) == ([], [])
+
+
+# ---- 2. shader sides --------------------------------------------------------------------------------------------------
+def _tree(root: Path, spv: bytes, exe="mc2.exe"):
+    (root / "shaders" / "vulkan").mkdir(parents=True, exist_ok=True)
+    (root / "shaders" / "vulkan" / "x.comp.spv").write_bytes(spv)
+    (root / exe).write_bytes(b"exe")
+    return root / exe
+
+
+def test_exe_with_its_own_differing_shaders_gets_them(tmp_path):
+    inst, other = tmp_path / "inst", tmp_path / "other"
+    _tree(inst, b"base")
+    exe_a = _tree(other, b"changed")            # A's exe was deployed with other shaders; B's exe has none beside it
+    exe_b = tmp_path / "build" / "mc2.exe"
+    exe_b.parent.mkdir()
+    exe_b.write_bytes(b"exe")
+    sa, sb, notes = ab.shader_side_plan(inst, exe_a, exe_b, commit_shaders_differ=True)
+    assert sa == other and sb is None and any("beside" in n for n in notes)
+
+
+def test_same_shaders_both_sides_with_differing_commits_is_refused(tmp_path):
+    inst = tmp_path / "inst"
+    exe_a = _tree(inst, b"base")
+    exe_b = tmp_path / "build" / "mc2.exe"
+    exe_b.parent.mkdir()
+    exe_b.write_bytes(b"exe")
+    with pytest.raises(SystemExit) as exc:
+        ab.shader_side_plan(inst, exe_a, exe_b, commit_shaders_differ=True)
+    assert "SAME shader set" in str(exc.value) and "--shaders-a" in str(exc.value)
+
+
+def test_same_shaders_is_fine_when_the_commits_do_not_differ_in_shaders(tmp_path):
+    inst = tmp_path / "inst"
+    exe_a = _tree(inst, b"base")
+    sa, sb, notes = ab.shader_side_plan(inst, exe_a, exe_a, commit_shaders_differ=False)
+    assert (sa, sb) == (None, None) and notes
+
+
+def test_explicit_shaders_on_both_sides_pass_the_guard(tmp_path):
+    inst, da, db = tmp_path / "inst", tmp_path / "da", tmp_path / "db"
+    exe = _tree(inst, b"base")
+    _tree(da, b"one")
+    _tree(db, b"two")
+    sa, sb, _ = ab.shader_side_plan(inst, exe, exe, shaders_a=da, shaders_b=db / "shaders", commit_shaders_differ=True)
+    assert (sa, sb) == (da, db)
+
+
+def test_commits_differ_in_shaders_reads_the_diff(monkeypatch):
+    monkeypatch.setattr(ab, "git_diff_files", lambda a, b: {"code/x.cpp", "shaders/vulkan/y.frag"})
+    assert ab.commits_differ_in_shaders("a", "b") is True
+    monkeypatch.setattr(ab, "git_diff_files", lambda a, b: {"code/x.cpp"})
+    assert ab.commits_differ_in_shaders("a", "b") is False
+    monkeypatch.setattr(ab, "git_diff_files", lambda a, b: None)
+    assert ab.commits_differ_in_shaders("a", "b") is None and ab.commits_differ_in_shaders(None, "b") is None
