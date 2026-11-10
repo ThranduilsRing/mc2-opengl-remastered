@@ -38,6 +38,7 @@
     "tools/perf/tracy_table.py": "Tracy table: runs only the windowless tracy-csvexport.exe console exporter (nofocus.hidden_kwargs, BelowNormal, captured stdio, 180 s timeout) on saved .tracy captures; never the game.",
     "scripts/tests/test_prop_team_tint.py": "Shader proof test: runs only glslangValidator and spirv-dis (shader_common.find_tool) to compile and disassemble color_prop_tier1.frag; never the game.",
     "scripts/tests/test_check_vk_pipeline_layout.py": "Shader reflection test: runs only glslc and spirv-cross (vkpl.find_tool from the Vulkan SDK) with console_child and captured stdio; never the game.",
+    "scripts/tests/test_box_queue.py": "Runs box_run's REMOTE try_slot() flock function in bash against a temp lock dir (shutil.which bash, console_child, piped stdio) to prove the N-slot GPU semaphore; never the game.",
     "scripts/tests/test_box_gpu_passes.py": "Syntax-checks box_run's remote script with `bash -n` (shutil.which bash, console_child, captured stdio); never the game.",
     "scripts/tests/test_host_infra_rows.py": "Runs check-contracts.sh's _host_need function in bash -c (console_child, captured stdio) to prove the HOST_INFRA 77 exit; never the game.",
     "tools/box_gpu_passes.py": "gpu-passes box row: spawns only sys.executable scripts/run_smoke.py (the harness owns the game launch through nofocus, focus and kill) with console_child and captured stdio; never mc2.exe directly.",

@@ -472,7 +472,8 @@ def test_try_slot_hands_out_k_slots_then_refuses(tmp_path):
     try:
         got = []
         for _ in range(3):
-            p = subprocess.Popen([bash, str(script)], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, env={**os.environ, "HOLD": "1"})
+            p = subprocess.Popen([bash, str(script)], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, env={**os.environ, "HOLD": "1"},
+                                 **console_child.child_kwargs(redirected=True))
             got.append(p.stdout.readline().strip()); procs.append(p)   # each holder keeps its flock until stdin closes
         assert got[:2] == ["0 0", "0 1"] and got[2] == "none"
     finally:
