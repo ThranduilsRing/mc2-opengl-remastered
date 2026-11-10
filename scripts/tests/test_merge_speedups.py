@@ -1265,3 +1265,18 @@ def test_preflight_names_the_exact_rebuild_for_a_stale_viewer_and_main_exe(monke
     out = capsys.readouterr().out
     assert "mc2_asset_viewer.exe stale or dirty" in out and "mc2.exe stale" not in out   # the viewer needs the exact HEAD
     assert "fix: cd " in out and out.split("fix: cd ")[1].splitlines()[0].endswith("&& py -3 scripts/ninja_build.py")
+
+
+def test_gate_refuses_an_empty_diff_without_full(tmp_path, monkeypatch, capsys):
+    """base == HEAD (the default base on nifty itself) made a non --full run green with nothing run."""
+    import merge_gate as gate
+    monkeypatch.delenv("MC2_IN_GATE", raising=False)
+    monkeypatch.setattr(gate, "ROOT", tmp_path)
+    monkeypatch.setattr(gate, "git", lambda *a: "" if a[0] == "diff" else "tip")
+    ran = []
+    monkeypatch.setattr(gate, "execute", lambda steps, *a: ran.extend(steps) or 0)
+    with pytest.raises(SystemExit):
+        gate.main(["--dry-run", "--proofs-dir", str(tmp_path / "proof")])
+    assert "equals HEAD" in capsys.readouterr().err and not ran
+    assert gate.main(["--dry-run", "--full", "--proofs-dir", str(tmp_path / "proof2")]) == 0
+    assert ran

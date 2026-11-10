@@ -45,6 +45,22 @@ def test_game_written_files_are_real_copies(tmp_path):
     assert (src / "options.cfg").read_bytes() == b"cfg"
 
 
+def test_rewritten_data_caches_are_copies_not_links(tmp_path):
+    """terrtxm.cpp:1496/1673 File::create (truncate) the .lst/.txm in data/textures; msl_anim.cpp:568 rewrites data/tgl/*.agl."""
+    src = _install(tmp_path / "inst")
+    rewritten = ("data/textures/terrain.lst", "data/textures/00000001.00000002.txm", "data/tgl/mech.agl")
+    for rel in rewritten:
+        (src / rel).parent.mkdir(parents=True, exist_ok=True)
+        (src / rel).write_bytes(b"orig")
+    ab.stage_tree(src, tmp_path / "stage")
+    for rel in rewritten:
+        staged = tmp_path / "stage" / rel
+        assert staged.read_bytes() == b"orig" and not os.path.samestat(os.stat(src / rel), os.stat(staged)), rel
+        staged.write_bytes(b"")
+        assert (src / rel).read_bytes() == b"orig", rel
+    assert os.path.samestat(os.stat(src / "data/big.fst"), os.stat(tmp_path / "stage" / "data/big.fst"))
+
+
 def test_link_failure_falls_back_to_copy(tmp_path, monkeypatch, capsys):
     src = _install(tmp_path / "inst")
     monkeypatch.setattr(os, "link", lambda *a: (_ for _ in ()).throw(OSError("no links")))
