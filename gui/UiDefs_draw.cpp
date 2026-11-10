@@ -3,6 +3,8 @@
 // UiDefs: page scaling and per-element drawing.
 // Declared in UiDefs_internal.h.
 #include "UiDefs_internal.h"
+#include "../mclib/ui_chrome_sheets.h"
+#include <array>
 #include "Gates/gate.h"
 
 namespace uidefs_detail {
@@ -295,6 +297,23 @@ bool drawUiImageElement(UiElement& e, int xOffset, int yOffset, const PageScale&
             const float fitW = r.h * texAspect;
             r.x += (r.w - fitW) * 0.5f;
             r.w = fitW;
+        }
+    }
+    if (e.hasNineSlice && e.uvW > 0 && e.uvH > 0) {
+        // Corners keep their (page-scaled) texel size; edges and centre stretch. Falls through to one quad when the
+        // rect is smaller than its corners.
+        std::array<mc2::ui_chrome::Quad, 9> q;
+        if (mc2::ui_chrome::nineSliceQuads(e.uvW, e.uvH,
+                                           {e.nineSlice[0], e.nineSlice[1], e.nineSlice[2], e.nineSlice[3]},
+                                           r.x, r.y, r.w, r.h, q, s.sx, s.sy)) {
+            const float du = (u2 - u1) / static_cast<float>(e.uvW);
+            const float dv = (v2 - v1) / static_cast<float>(e.uvH);
+            bool ok = true;
+            for (const auto& c : q)
+                ok = GuiRuntime::DrawUiImage(glTexture, c.dx0, c.dy0, c.dx1 - c.dx0, c.dy1 - c.dy0,
+                                             u1 + c.sx0 * du, v1 + c.sy0 * dv, u1 + c.sx1 * du, v1 + c.sy1 * dv,
+                                             tint, e.pixelPerfect, e.alphaTest) && ok;
+            return ok;
         }
     }
     return GuiRuntime::DrawUiImage(glTexture,

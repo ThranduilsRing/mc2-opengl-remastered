@@ -43,6 +43,7 @@ set(SOURCES ${SOURCES}
     vk_scene_renderer_overlays.cpp
     texture_sources.cpp
     texture_assets.cpp
+    ui_chrome_sheets.cpp
     ../code/tick_commit.cpp
     ../code/render_view_store.cpp
     tex_resolve_table.cpp

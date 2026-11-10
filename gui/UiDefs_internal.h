@@ -110,6 +110,8 @@ struct UiElement {
     bool pixelPerfect = false;  // nearest-filter this sprite (crisp; matches OG gos_FilterNone)
     bool alphaTest = false;     // binary alpha-test this sprite (solid/crisp; matches OG gos_AlphaTest)
     bool fitContain = false;    // image: letterbox-fit (preserve aspect, centered) vs stretch
+    bool hasNineSlice = false;  // image: nineSlice="l,t,r,b" insets in uvXYWH texels (UI-CHROME-SPLIT-1)
+    int nineSlice[4] = {0, 0, 0, 0};
     unsigned int gosTexture = 0;
     unsigned int gosTextureOverride = 0; // raw gos handle (e.g. live video frame); bypasses the texture manager
     int textureWidth = 0;

@@ -216,6 +216,8 @@ add_executable(mc2_tests
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/utils/mc2log.cpp  # LOGGING-FACADE-P0: leaf TU (no engine deps)
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/render_backend_select.cpp  # the MC2_RENDER_BACKEND reporter (backendRequestFromText)
     test_texture_decode.cpp  # backend-neutral texture decode + upload policy (no GL)
+    test_ui_chrome_sheets.cpp  # UI-CHROME-SPLIT-1: manifest, sheet re-pack, stored PNG, nine-slice geometry, checked-in manifest
+    ${MC2_WORKTREE_ROOT}/mclib/ui_chrome_sheets.cpp
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/texture_decode.cpp
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/utils/Image.cpp     # the TGA / PNG decoders texture_decode wraps (WIC for PNG)
     test_terrain_field_store.cpp  # the CPU terrain fields both backends draw from (no GL)

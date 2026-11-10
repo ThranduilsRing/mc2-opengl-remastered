@@ -70,6 +70,7 @@ the running game writes:
     data/textures/**              generated terrain material sidecars
     data/{kit,model_overrides,vegetation,terrain_layers}/**  renderer assets
     data/art/{mechicons,missionmaps}/**  cooked logistics art overrides
+    data/art/ui/**                per-widget UI chrome sources
     3rdparty/{smaa,cmaa2}/**       shipped notices
     cache/content-model/**        kit receipt / temporary writes; model-*.mci
                                   recipes publish by atomic replacement
@@ -158,7 +159,7 @@ MUTATED_ROOTS = (
     "mods/sample_new_variant", "mods/sample_variant",
     "data/defs", "data/kit", "data/model_overrides",
     "data/vegetation", "data/terrain_layers", "data/textures",
-    "data/art/mechicons", "data/art/missionmaps",
+    "data/art/mechicons", "data/art/missionmaps", "data/art/ui",
     "cache/content-model",
 )
 MUTATED_FILES = (
