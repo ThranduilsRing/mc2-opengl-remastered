@@ -442,6 +442,7 @@ set(SOURCES
     "code/mechcmd2.cpp"
     "code/mechcmd2_cmdline.cpp"
     "code/mechcmd2_debugwins.cpp"
+    "code/sim_render_hooks_install.cpp"
     "code/mechcmd2_frame.cpp"
     "code/artlry.cpp"
     "code/bldng.cpp"
