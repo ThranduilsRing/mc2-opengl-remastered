@@ -43,7 +43,7 @@ vec3 rootMacro() {
     return macro;
 }
 const float kVegShoreDryWU = 70.0;   // the sward is driest at the beach and greens over this height above water
-const float kBladeLift = 1.15;       // blades read a little lighter than the ground patch under them
+const float kBladeLift = 1.05;       // blades read a little lighter than the ground patch under them (1.15 bleached the field)
 void main() {
     vec4 texel = texture(uAtlas, vec3(v_uv, float(v_atlasLayer)));
     // Coarse mips average thin blades toward zero alpha, so a fixed 0.5 cut erases distant grass
@@ -89,7 +89,8 @@ void main() {
         // The card keeps blade-to-blade value; straw reads lighter than olive as in the reference.
         float bladeValue = kBladeLift * (value / 0.46);
         vec3 sward = worldPatchColor(field, 0.50 * shore) * bladeValue;
-        float dry = pick < 0.08 ? 0.7 : smoothstep(0.85, 1.0, tip) * 0.3;      // a few dry blades and tips up close
+        // A few dry blades and tips up close; kept light so the shared patch field, not per-blade straw, sets the look.
+        float dry = pick < 0.05 ? 0.6 : smoothstep(0.85, 1.0, tip) * 0.15;
         albedo = mix(groundTone, mix(sward, WPN_STRAW * bladeValue, dry), kVegOwnHue);   // 15% ground, as for every card
         albedo *= mix(vec3(0.62, 0.68, 0.52), vec3(1.0), smoothstep(0.0, 0.55, tip));
         albedo *= 1.0 + v_vegAux.y * (0.05 + 0.10 * tip);
