@@ -10,6 +10,7 @@ LogisticsPilotListBox.cpp			: Implementation of the LogisticsPilotListBox compon
 #include"logisticspilotlistbox.h"
 #include "../mclib/texture_assets.h"
 #include"logisticspilot.h"
+#include "icon_registry.h"
 #include "../resource.h"
 #include"pilotreadyscreen.h"
 #include"mc2str.h"
@@ -262,6 +263,10 @@ void LogisticsPilotListBox::makeUVs( LogisticsPilot* pPilot, aObject& icon )
 	icon = LogisticsPilotListBoxItem::s_templateItem->icon;
 	// need to set the UV's
 	int index = pPilot->getPhotoIndex();
+
+	// Single-file portrait (data/art/pilots); the grid math below is the mod fallback.
+	if ( unit_icons::applyPilot( icon, index ) )
+		return;
 
 	long xIndex = index % 12;
 	long yIndex = index / 12;

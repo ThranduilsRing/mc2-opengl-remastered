@@ -105,7 +105,8 @@ void layoutSheet(std::string layout, std::string block) {
 
 void collect(mc2::czstring key, void* data) {
     auto path = canonical(key);
-    if ((path.ends_with(".tga") || path.ends_with(".png")) && path.starts_with("data/art/mechicons/"))
+    if ((path.ends_with(".tga") || path.ends_with(".png")) &&
+        (path.starts_with("data/art/mechicons/") || path.starts_with("data/art/pilots/")))
         static_cast<std::set<std::string>*>(data)->insert(std::move(path));
 }
 
@@ -133,18 +134,22 @@ void init(std::string first = {}, int cw = 25, int ch = 30) {
     std::error_code ec;
     for (std::filesystem::recursive_directory_iterator it("data/art/mechicons", ec), end; !ec && it != end; it.increment(ec))
         if (it->is_regular_file()) collect(it->path().generic_string().c_str(), &loose);
+    for (std::filesystem::directory_iterator it("data/art/pilots", ec), end; !ec && it != end; it.increment(ec))
+        if (it->is_regular_file()) collect(it->path().generic_string().c_str(), &loose);
     EnumerateModFiles("data/art/mechicons/", collect, &loose);
+    EnumerateModFiles("data/art/pilots/", collect, &loose);
     for (long i = 0; i < numFastFiles; ++i) {
         const auto* info = fastFiles[i]->getFilesInfo();
         for (long j = 0; j < fastFiles[i]->getNumFiles(); ++j) collect(info[j].pfe->name, &loose);
     }
     for (const auto& path : loose) {
-        auto relative = path.substr(std::string("data/art/mechicons/").size());
+        const bool pilot = path.starts_with("data/art/pilots/");
+        auto relative = path.substr(std::string(pilot ? "data/art/pilots/" : "data/art/mechicons/").size());
         relative = relative.substr(0, relative.find_last_of('.'));
-        const std::string key = relative.starts_with("hud/") ? relative : "mech/" + relative;
+        const std::string key = pilot ? "pilot/" + relative : relative.starts_with("hud/") ? relative : "mech/" + relative;
         const int priority = LookupModPriority(path.c_str());
         if (namedPriority.contains(key) && namedPriority[key] <= priority) continue;
-        auto src = load(path, key.starts_with("hud/"));
+        auto src = load(path, key.starts_with("hud/") || pilot);
         if (!src.data.empty()) {
             registry.add(key, src.w, src.h, src.data);
             namedPriority[key] = priority;
@@ -217,11 +222,23 @@ void blit(std::string sheet, long index, bool back, uint32_t* dest, int stride, 
     init();
     const std::string key = legacyKey(canonical(sheet) + (back ? "/back" : ""), index);
     const auto stem = canonical(std::filesystem::path(chassis).stem().string());
-    const std::string named = "hud/" + canonical(std::filesystem::path(sheet).stem().string()) +
-                              (back ? "/back/" : "/front/") + stem;
-    const auto priority = namedPriority.find(named);
-    const Icon* found = registry.lookup(named, key, priority == namedPriority.end() ? 1000001 : namedPriority.at(named),
-                                       LookupModPriority(sheet.c_str()));
+    // Stock ships one source per mech side (hud/front, hud/back); the draw size is picked below.
+    // A mod that still ships tiered hud/<sheet>/... files keeps working; the better VFS rank wins.
+    const std::string side = back ? "back" : "front";
+    const std::string single = std::format("hud/{}/{}", side, stem);
+    const std::string tiered = std::format("hud/{}/{}/{}", canonical(std::filesystem::path(sheet).stem().string()), side, stem);
+    const auto rankOf = [](std::string k) {
+        return namedPriority.contains(k) && registry.find(k) ? namedPriority.at(k) : 1000001;
+    };
+    // Authored art for exactly this draw size (hud/<side>/<stem>@WxH) beats resampling the single source.
+    const std::string exact = hudSizedKey(side, stem, width, height);
+    const auto pick = pickHudSingle(single, rankOf(single), exact, rankOf(exact));
+    const int singleRank = pick.rank, tieredRank = rankOf(tiered);
+    if (tieredRank < singleRank && !warned.contains("tiered-hud:" + tiered)) {
+        warned.insert("tiered-hud:" + tiered);
+        mc2::fmt::print_out("[ICON_REGISTRY] tiered mod HUD icon {} overrides the single-source icon\n", tiered);
+    }
+    const Icon* found = registry.lookupHud(pick.key, tiered, singleRank, tieredRank, key, LookupModPriority(sheet.c_str()));
     // MC2X transport indices also name bay pictures; MCO supplies loose chassis pictures.
     if (!found && !back) {
         const std::string bay = "mech/" + stem;
@@ -231,9 +248,46 @@ void blit(std::string sheet, long index, bool back, uint32_t* dest, int stride, 
         if (!found) found = registry.find(legacyKey("data/art/mc2x_mechicons.tga", index));
     }
     const auto& icon = found ? *found : resolve(key);
-    for (int y = 0; y < height; ++y)
-        for (int x = 0; x < width; ++x)
-            dest[static_cast<size_t>(y) * stride + x] = icon.pixels[static_cast<size_t>(y * icon.height / height) * icon.width + x * icon.width / width];
+    resampleIcon(icon, dest, stride, width, height);
+}
+
+const Icon* pilotIcon(long index, std::string_view legacySheet) {
+    init();
+    const std::string key = std::format("pilot/{:02}", index);
+    const Icon* icon = namedPriority.contains(key) ? registry.find(key) : nullptr;
+    if (!icon) return nullptr;
+    // Lower VFS rank wins: a mod that replaces the old portrait grid keeps drawing through it.
+    if (!legacySheet.empty() && namedPriority.at(key) > LookupModPriority(std::string(legacySheet).c_str())) {
+        if (!warned.contains("legacy-pilot-grid")) {
+            warned.insert("legacy-pilot-grid");
+            mc2::fmt::print_out("[ICON_REGISTRY] mod pilot sheet {} overrides single-file portraits (legacy grid)\n", legacySheet);
+        }
+        return nullptr;
+    }
+    return icon;
+}
+
+bool pilotUV(long index, std::string_view legacySheet, unsigned long& sourceId, float& u0, float& v0, float& u1, float& v1) {
+    const Icon* icon = pilotIcon(index, legacySheet);
+    if (!icon || !texture || registry.edge <= 0) return false;
+    const float edge = static_cast<float>(registry.edge);
+    u0 = icon->x / edge; u1 = (icon->x + icon->width) / edge;
+    v0 = icon->y / edge; v1 = (icon->y + icon->height) / edge;
+    sourceId = mc2::textures::sourceId(texture);
+    return true;
+}
+
+bool applyPilot(aObject& widget, long index) {
+    const char* name = mc2::textures::name(widget.getTextureHandle());
+    init();
+    const std::string legacy = name ? canonical(name) : std::string{};
+    const Icon* icon = pilotIcon(index, legacy);
+    if (!icon) return false;
+    if (widget.getTextureHandle() != texture) widget.setTexture(mc2::textures::retain(texture));
+    widget.setFileWidth(static_cast<float>(registry.edge)); widget.setFileHeight(static_cast<float>(registry.edge));
+    widget.setUVs(static_cast<float>(icon->x), static_cast<float>(icon->y),
+                  static_cast<float>(icon->x + icon->width), static_cast<float>(icon->y + icon->height));
+    return true;
 }
 
 const Icon& damageRect(long slot) {

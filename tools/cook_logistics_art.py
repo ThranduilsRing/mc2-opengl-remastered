@@ -135,7 +135,8 @@ def split_icons(assets, out):
     except FileNotFoundError:
         pass
     sheets = {}
-    for name, width, height in (("mcui_low4", 25, 30), ("mcui_med4", 32, 38), ("mcui_high7", 40, 48)):
+    # One source per mech side: the largest HUD strip. The draw size is picked at runtime.
+    for name, width, height in (("mcui_high7", 40, 48),):
         try:
             sheets[name] = (assets.image(f"data/art/{name}.tga"), width, height)
         except FileNotFoundError:
@@ -171,7 +172,7 @@ def split_icons(assets, out):
             for row, side in enumerate(("front", "back")):
                 tile = image.crop((round(index*w*scale), round(row*h*scale),
                                    round((index+1)*w*scale), round((row+1)*h*scale)))
-                dest = out / f"data/art/mechicons/hud/{sheet}/{side}/{name}.png"
+                dest = out / f"data/art/mechicons/hud/{side}/{name}.png"
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 hud_icon = transparent_border(tile, hud=True)
                 hud_icon.save(dest)

@@ -1,5 +1,8 @@
 #include "doctest.h"
 #include "icon_registry.h"
+#include <filesystem>
+#include <format>
+#include <fstream>
 #include <numeric>
 #include <set>
 
@@ -89,4 +92,116 @@ TEST_CASE("icon_atlas_harness/loose_images_and_sheets_do_not_collide") {
     CHECK(r.find("MECH/MARAUDER"));
     CHECK_FALSE(r.add("bad", 0, 0, {}));
     CHECK_FALSE(r.add("bad", 25, 30, {}));
+}
+
+TEST_CASE("icon_atlas_harness/single_source_hud_wins_and_tiered_mod_sheet_still_resolves") {
+    Registry r;
+    r.add("hud/front/anubis", 42, 50, std::vector<uint32_t>(2100, 0xff111111));
+    r.sheet("data/art/mcui_low4.tga", std::vector<uint32_t>(25 * 30 * 2, 0xff222222), 25, 60, 25, 30, true);
+    const auto legacy = legacyKey("data/art/mcui_low4.tga", 0);
+    // Stock: the single-source icon resolves at every resolution; no tier lookup is needed.
+    for (const char* tier : {"hud/mcui_low4/front/anubis", "hud/mcui_med4/front/anubis", "hud/mcui_high7/front/anubis"})
+        CHECK(r.lookupHud("hud/front/anubis", tier, 1000, 1000001, legacy, 1000) == r.find("hud/front/anubis"));
+    // A mod tiered file with a better VFS rank wins; a worse rank loses to the single source.
+    r.add("hud/mcui_low4/front/anubis", 25, 30, std::vector<uint32_t>(750, 0xff333333));
+    CHECK(r.lookupHud("hud/front/anubis", "hud/mcui_low4/front/anubis", 1000, 10, legacy, 1000)->width == 25);
+    CHECK(r.lookupHud("hud/front/anubis", "hud/mcui_low4/front/anubis", 10, 1000, legacy, 1000)->width == 42);
+    // A mech with no single file falls back to the tiered mod sheet.
+    CHECK(r.lookupHud("hud/front/ghost", "hud/mcui_low4/front/ghost", 1000001, 1000001, legacy, 1000) == r.find(legacy));
+}
+
+TEST_CASE("icon_atlas_harness/exact_size_hud_art_beats_resampling") {
+    CHECK(hudSizedKey("front", "anubis", 34, 40) == "hud/front/anubis@34x40");
+    // Stock: the exact-size file shares the single source's rank and wins.
+    auto pick = pickHudSingle("hud/front/anubis", 1000, "hud/front/anubis@34x40", 1000);
+    CHECK(pick.key == "hud/front/anubis@34x40");
+    // No art for this size (rank 1000001): the single source is resampled.
+    pick = pickHudSingle("hud/front/anubis", 1000, "hud/front/anubis@30x36", 1000001);
+    CHECK(pick.key == "hud/front/anubis");
+    // A mod's better-ranked single source is not shadowed by stock exact-size art.
+    pick = pickHudSingle("hud/front/anubis", 10, "hud/front/anubis@34x40", 1000);
+    CHECK(pick.key == "hud/front/anubis");
+    // Through the registry: the exact asset resolves with its own dimensions, untouched.
+    Registry r;
+    r.add("hud/front/anubis", 42, 50, std::vector<uint32_t>(2100, 0xff111111));
+    r.add("hud/front/anubis@34x40", 34, 40, std::vector<uint32_t>(1360, 0xff444444));
+    const auto legacy = legacyKey("data/art/mcui_low4.tga", 0);
+    pick = pickHudSingle("hud/front/anubis", 1000, "hud/front/anubis@34x40", 1000);
+    const Icon* icon = r.lookupHud(pick.key, "hud/mcui_med4/front/anubis", pick.rank, 1000001, legacy, 1000);
+    REQUIRE(icon);
+    CHECK((icon->width == 34 && icon->height == 40));
+}
+
+TEST_CASE("icon_atlas_harness/stock_chassis_have_art_for_every_hud_size") {
+    namespace fs = std::filesystem;
+    const fs::path hud = fs::path(__FILE__).parent_path().parent_path().parent_path() / "data" / "art" / "mechicons" / "hud";
+    if (!fs::exists(hud / "front")) return; // source tree without data/
+    struct Size { int w, h; };
+    const auto pngSize = [](const fs::path& p, int& w, int& h) {
+        std::ifstream f(p, std::ios::binary);
+        unsigned char b[24] = {};
+        f.read(reinterpret_cast<char*>(b), 24);
+        w = (b[16] << 24) | (b[17] << 16) | (b[18] << 8) | b[19];
+        h = (b[20] << 24) | (b[21] << 16) | (b[22] << 8) | b[23];
+    };
+    size_t stems = 0;
+    for (const char* side : {"front", "back"})
+        for (const auto& e : fs::directory_iterator(hud / side)) {
+            const std::string stem = e.path().stem().string();
+            if (e.path().extension() != ".png" || stem.find('@') != std::string::npos) continue;
+            ++stems;
+            int w = 0, h = 0;
+            pngSize(e.path(), w, h);
+            CHECK_MESSAGE((w == 42 && h == 50), stem); // the high7 source is itself the 42x50 tier
+            // The HUD cell sizes (ForceGroupIcon::setIconVariables): 1024+, 800 and 640 wide screens.
+            for (Size s : {Size{40, 48}, Size{32, 38}, Size{25, 30}}) {
+                const fs::path sized = hud / side / (stem + std::format("@{}x{}.png", s.w, s.h));
+                CHECK_MESSAGE(fs::exists(sized), sized.string());
+                if (fs::exists(sized)) {
+                    pngSize(sized, w, h);
+                    CHECK_MESSAGE((w == s.w && h == s.h), sized.string());
+                }
+            }
+        }
+    CHECK(stems >= 160);
+}
+
+TEST_CASE("icon_atlas_harness/stock_data_one_file_per_mech_side_and_pilot") {
+    namespace fs = std::filesystem;
+    const fs::path art = fs::path(__FILE__).parent_path().parent_path().parent_path() / "data" / "art";
+    if (!fs::exists(art / "mechicons")) return; // source tree without data/
+    CHECK_FALSE(fs::exists(art / "mechicons" / "hud" / "mcui_low4"));
+    CHECK_FALSE(fs::exists(art / "mechicons" / "hud" / "mcui_med4"));
+    CHECK_FALSE(fs::exists(art / "mechicons" / "hud" / "mcui_high7"));
+    size_t front = 0, back = 0;
+    for (const auto& e : fs::directory_iterator(art / "mechicons" / "hud" / "front"))
+        if (e.path().extension() == ".png") {
+            ++front;
+            CHECK_MESSAGE(fs::exists(art / "mechicons" / "hud" / "back" / e.path().filename()), e.path().filename().string());
+        }
+    for (const auto& e : fs::directory_iterator(art / "mechicons" / "hud" / "back")) back += e.path().extension() == ".png";
+    CHECK(front == back);
+    CHECK(front >= 80);
+    for (int i = 0; i < 28; ++i)
+        CHECK_MESSAGE(fs::exists(art / "pilots" / std::format("{:02}.png", i)), i);
+}
+
+TEST_CASE("icon_atlas_harness/hud_shrink_averages_instead_of_skipping_pixels") {
+    // 4x4 source drawn at 2x2: a one-pixel-wide bright column that nearest sampling would drop.
+    Icon icon{4, 4, 0, 0, std::vector<uint32_t>(16, 0xff000000)};
+    for (int y = 0; y < 4; ++y) icon.pixels[static_cast<size_t>(y) * 4 + 1] = 0xffffffff;
+    uint32_t out[4] = {};
+    resampleIcon(icon, out, 2, 2, 2);
+    CHECK(out[0] == 0xff808080); // (0 + 255) / 2, rounded up
+    CHECK(out[1] == 0xff000000);
+    // Enlarging and same-size draws are exact copies.
+    uint32_t same[16] = {};
+    resampleIcon(icon, same, 4, 4, 4);
+    CHECK(std::equal(icon.pixels.begin(), icon.pixels.end(), same));
+    // Transparent pixels do not bleed their colour into the average.
+    Icon edge{2, 1, 0, 0, {0xff0000ff, 0x00ffffff}};
+    uint32_t one[1] = {};
+    resampleIcon(edge, one, 1, 1, 1);
+    CHECK((one[0] & 0x00ffffff) == 0x0000ff);
+    CHECK((one[0] >> 24) == 128);
 }

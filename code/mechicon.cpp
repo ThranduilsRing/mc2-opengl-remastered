@@ -977,6 +977,15 @@ bool ForceGroupIcon::getPilotIconTexUV( uint64_t& glTex, float& u0, float& v0, f
 // mirrored verbatim for pixel parity).
 bool PilotIcon::getTexUV( uint64_t& glTex, float& u0, float& v0, float& u1, float& v1 ) const
 {
+	unsigned long single = 0;
+	if ( unit_icons::pilotUV( pilotTextureIndex, legacySheetPath(), single, u0, v0, u1, v1 ) )
+	{
+		if ( single == 0 || single == 0xffffffff )
+			return false;
+		glTex = gos_GetUiTextureId( static_cast<DWORD>(single) );
+		return glTex != 0;
+	}
+	loadLegacySheet();
 	if ( !s_pilotTextureHandle || !s_pilotTextureWidth || pilotIconX <= 0.f )
 		return false;
 
@@ -1329,42 +1338,40 @@ void ForceGroupIcon::setIconVariables()
 	curScreenWidth = Environment.screenWidth;
 }
 
+const char* PilotIcon::legacySheetPath()
+{
+	if ( Environment.screenWidth == 640 )
+		return "data" PATH_SEPARATOR "art" PATH_SEPARATOR "mcui_low2.tga";
+	if ( Environment.screenWidth == 800 )
+		return "data" PATH_SEPARATOR "art" PATH_SEPARATOR "mcui_med2.tga";
+	return "data" PATH_SEPARATOR "art" PATH_SEPARATOR "mcui_high2.tga";
+}
+
 PilotIcon::PilotIcon()
 {
 	pilotTextureIndex = 0;
+	// Portraits are single files (unit_icons::pilotUV); the legacy grid sheet loads only on demand.
+}
 
-	if ( !s_pilotTextureHandle )
+// Legacy portrait grid: a mod's own mcui_*2 sheet, or art without data/art/pilots.
+void PilotIcon::loadLegacySheet()
+{
+	if ( s_pilotTextureHandle )
+		return;
+	const char* path = legacySheetPath();
+
+	s_pilotTexturesKey = AssetScale::key(path);
+	s_pilotTextureHandle = mc2::textures::load( path, gos_Texture_Alpha, 0, 0, 0x2);
+
+	// Find its logical width without forcing texture realization when metadata is available.
+	DWORD logicalWidth = 0;
+	DWORD logicalHeight = 0;
+	if ( mc2::textures::logicalSize( s_pilotTextureHandle, logicalWidth, logicalHeight ) )
+		s_pilotTextureWidth = logicalWidth;
+	else
 	{
-		// find proper file based on resolution
-		char path[256];
-		strcpy( path, "data" PATH_SEPARATOR "art" PATH_SEPARATOR);
-		if ( Environment.screenWidth == 640 )
-		{
-			strcat( path, "mcui_low2.tga" );
-		}
-		else if ( Environment.screenWidth == 800 )
-		{
-			strcat( path, "mcui_med2.tga" );
-		}
-		else
-		{
-			strcat( path, "mcui_high2.tga" );
-		}
-
-		s_pilotTexturesKey = AssetScale::key(path);
-		s_pilotTextureHandle = mc2::textures::load( path, gos_Texture_Alpha, 0, 0, 0x2);
-
-		// Find its logical width without forcing texture realization when metadata is available.
-		DWORD logicalWidth = 0;
-		DWORD logicalHeight = 0;
-		if ( mc2::textures::logicalSize( s_pilotTextureHandle, logicalWidth, logicalHeight ) )
-			s_pilotTextureWidth = logicalWidth;
-		else
-		{
             s_pilotTextureWidth=RenderCore::textureService().dimensions(RenderCore::textureService().handleOfNode(s_pilotTextureHandle)).logicalWidth;
-		}
 	}
-
 }
 
 void PilotIcon::render( float left, float top, float right, float bottom ) 
@@ -1383,20 +1390,34 @@ void PilotIcon::render( float left, float top, float right, float bottom )
 	pilotLocation[1].y = pilotLocation[2].y = bottom;
 	pilotLocation[4] = pilotLocation[0];
 
-	int iconsPerRow = s_pilotTextureWidth / pilotIconX;
-	int xIndex = pilotTextureIndex % iconsPerRow;
-	int yIndex = pilotTextureIndex / iconsPerRow;
+	unsigned long single = 0;
+	float su0, sv0, su1, sv1;
+	int gosID;
+	if ( unit_icons::pilotUV( pilotTextureIndex, legacySheetPath(), single, su0, sv0, su1, sv1 ) )
+	{
+		pilotLocation[0].u = pilotLocation[1].u = su0;
+		pilotLocation[3].u = pilotLocation[2].u = su1;
+		pilotLocation[0].v = pilotLocation[3].v = sv0;
+		pilotLocation[1].v = pilotLocation[2].v = sv1;
+		gosID = static_cast<int>(single);
+	}
+	else
+	{
+		loadLegacySheet();
+		int iconsPerRow = s_pilotTextureWidth / pilotIconX;
+		int xIndex = pilotTextureIndex % iconsPerRow;
+		int yIndex = pilotTextureIndex / iconsPerRow;
 
-	float xLocation = xIndex * pilotIconX;
-	float yLocation = yIndex * pilotIconY;
-	pilotLocation[0].u = pilotLocation[1].u = xLocation/s_pilotTextureWidth + (.1f/s_pilotTextureWidth);
-	pilotLocation[3].u = pilotLocation[2].u = (xLocation + pilotIconX)/s_pilotTextureWidth+ (.1f/s_pilotTextureWidth);
-	pilotLocation[0].v = pilotLocation[3].v = yLocation/s_pilotTextureWidth+ (.1f/s_pilotTextureWidth);
-	pilotLocation[1].v = pilotLocation[2].v = (yLocation + pilotIconY)/s_pilotTextureWidth+ (.1f/s_pilotTextureWidth);
+		float xLocation = xIndex * pilotIconX;
+		float yLocation = yIndex * pilotIconY;
+		pilotLocation[0].u = pilotLocation[1].u = xLocation/s_pilotTextureWidth + (.1f/s_pilotTextureWidth);
+		pilotLocation[3].u = pilotLocation[2].u = (xLocation + pilotIconX)/s_pilotTextureWidth+ (.1f/s_pilotTextureWidth);
+		pilotLocation[0].v = pilotLocation[3].v = yLocation/s_pilotTextureWidth+ (.1f/s_pilotTextureWidth);
+		pilotLocation[1].v = pilotLocation[2].v = (yLocation + pilotIconY)/s_pilotTextureWidth+ (.1f/s_pilotTextureWidth);
+		gosID = mc2::textures::sourceId( s_pilotTextureHandle );
+	}
 	pilotLocation[4] = pilotLocation[0];
 
-
-	int gosID = mc2::textures::sourceId( s_pilotTextureHandle );
 	gos_SetRenderState( gos_State_Texture, gosID );
 	// here I need to draw the pilot icon
 	gos_DrawTriangles( pilotLocation, 3 );
@@ -1412,44 +1433,12 @@ void PilotIcon::setPilot( MechWarrior* pWarrior )
 
 void PilotIcon::swapResolutions( bool bForce)
 {
+	// The legacy grid (if a mod needs it) reloads for the new resolution on next use.
 	if ( s_pilotTextureHandle )
 	{
 		mc2::textures::release( s_pilotTextureHandle );
 	}
 	s_pilotTextureHandle = 0;
-
-	if ( !s_pilotTextureHandle )
-	{
-		// find proper file based on resolution
-		char path[256];
-		strcpy( path, "data" PATH_SEPARATOR "art" PATH_SEPARATOR);
-		if ( Environment.screenWidth == 640 )
-		{
-			strcat( path, "mcui_low2.tga" );
-		}
-		else if ( Environment.screenWidth == 800 )
-		{
-			strcat( path, "mcui_med2.tga" );
-		}
-		else
-		{
-			strcat( path, "mcui_high2.tga" );
-		}
-
-		s_pilotTexturesKey = AssetScale::key(path);
-		s_pilotTextureHandle = mc2::textures::load( path, gos_Texture_Alpha, 0, 0, 0x2);
-
-		// Find its logical width without forcing texture realization when metadata is available.
-		DWORD logicalWidth = 0;
-		DWORD logicalHeight = 0;
-		if  ( mc2::textures::logicalSize( s_pilotTextureHandle, logicalWidth, logicalHeight ) )
-			s_pilotTextureWidth = logicalWidth;
-		else
-		{
-            s_pilotTextureWidth=RenderCore::textureService().dimensions(RenderCore::textureService().handleOfNode(s_pilotTextureHandle)).logicalWidth;
-		}
-	}
-
 }
 
 //*************************************************************************************************
