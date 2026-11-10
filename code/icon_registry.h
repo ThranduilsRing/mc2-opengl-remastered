@@ -4,6 +4,7 @@
 #include <map>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 #include <format>
 #include "../mclib/fst_hash.h"
@@ -81,9 +82,9 @@ public:
     }
 
     // Single-source HUD icon first; a mod's tiered file wins only with a better (lower) VFS rank.
-    const Icon* lookupHud(const std::string& single, const std::string& tiered, int singleRank, int tieredRank,
+    const Icon* lookupHud(std::string single, std::string tiered, int singleRank, int tieredRank,
                           std::string legacy, int sheetRank) const {
-        return lookup(tieredRank < singleRank ? tiered : single, std::move(legacy),
+        return lookup(tieredRank < singleRank ? std::move(tiered) : std::move(single), std::move(legacy),
                       std::min(singleRank, tieredRank), sheetRank);
     }
 
@@ -136,8 +137,8 @@ void blit(std::string sheet, long index, bool back, uint32_t* dest, int stride, 
           std::string chassis = {});
 // Single-file pilot portrait (data/art/pilots/NN.png). Null when absent or when a mod's replacement
 // of `legacySheet` (the old portrait grid) outranks it; the caller then uses the grid.
-const Icon* pilotIcon(long index, const char* legacySheet);
-bool pilotUV(long index, const char* legacySheet, unsigned long& sourceId, float& u0, float& v0, float& u1, float& v1);
+const Icon* pilotIcon(long index, std::string_view legacySheet);
+bool pilotUV(long index, std::string_view legacySheet, unsigned long& sourceId, float& u0, float& v0, float& u1, float& v1);
 bool applyPilot(aObject& widget, long index);
 const Icon& damageRect(long slot);
 unsigned long damageTexture(long slot);

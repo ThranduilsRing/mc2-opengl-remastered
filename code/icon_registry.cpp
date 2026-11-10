@@ -225,15 +225,16 @@ void blit(std::string sheet, long index, bool back, uint32_t* dest, int stride, 
     // Stock ships one source per mech side (hud/front, hud/back); the draw size is picked below.
     // A mod that still ships tiered hud/<sheet>/... files keeps working; the better VFS rank wins.
     const std::string side = back ? "back" : "front";
-    const std::string single = "hud/" + side + "/" + stem;
-    const std::string tiered = "hud/" + canonical(std::filesystem::path(sheet).stem().string()) + "/" + side + "/" + stem;
+    const std::string single = std::format("hud/{}/{}", side, stem);
+    const std::string tiered = std::format("hud/{}/{}/{}", canonical(std::filesystem::path(sheet).stem().string()), side, stem);
     const auto rankOf = [](const std::string& k) {
-        const auto it = namedPriority.find(k);
-        return it == namedPriority.end() || !registry.find(k) ? 1000001 : it->second;
+        return namedPriority.contains(k) && registry.find(k) ? namedPriority.at(k) : 1000001;
     };
     const int singleRank = rankOf(single), tieredRank = rankOf(tiered);
-    if (tieredRank < singleRank && warned.insert("tiered-hud:" + tiered).second)
+    if (tieredRank < singleRank && !warned.contains("tiered-hud:" + tiered)) {
+        warned.insert("tiered-hud:" + tiered);
         mc2::fmt::print_out("[ICON_REGISTRY] tiered mod HUD icon {} overrides the single-source icon\n", tiered);
+    }
     const Icon* found = registry.lookupHud(single, tiered, singleRank, tieredRank, key, LookupModPriority(sheet.c_str()));
     // MC2X transport indices also name bay pictures; MCO supplies loose chassis pictures.
     if (!found && !back) {
@@ -249,22 +250,23 @@ void blit(std::string sheet, long index, bool back, uint32_t* dest, int stride, 
             dest[static_cast<size_t>(y) * stride + x] = icon.pixels[static_cast<size_t>(y * icon.height / height) * icon.width + x * icon.width / width];
 }
 
-const Icon* pilotIcon(long index, const char* legacySheet) {
+const Icon* pilotIcon(long index, std::string_view legacySheet) {
     init();
     const std::string key = std::format("pilot/{:02}", index);
-    const auto it = namedPriority.find(key);
-    const Icon* icon = it == namedPriority.end() ? nullptr : registry.find(key);
+    const Icon* icon = namedPriority.contains(key) ? registry.find(key) : nullptr;
     if (!icon) return nullptr;
     // Lower VFS rank wins: a mod that replaces the old portrait grid keeps drawing through it.
-    if (legacySheet && it->second > LookupModPriority(legacySheet)) {
-        if (warned.insert("legacy-pilot-grid").second)
+    if (!legacySheet.empty() && namedPriority.at(key) > LookupModPriority(std::string(legacySheet).c_str())) {
+        if (!warned.contains("legacy-pilot-grid")) {
+            warned.insert("legacy-pilot-grid");
             mc2::fmt::print_out("[ICON_REGISTRY] mod pilot sheet {} overrides single-file portraits (legacy grid)\n", legacySheet);
+        }
         return nullptr;
     }
     return icon;
 }
 
-bool pilotUV(long index, const char* legacySheet, unsigned long& sourceId, float& u0, float& v0, float& u1, float& v1) {
+bool pilotUV(long index, std::string_view legacySheet, unsigned long& sourceId, float& u0, float& v0, float& u1, float& v1) {
     const Icon* icon = pilotIcon(index, legacySheet);
     if (!icon || !texture || registry.edge <= 0) return false;
     const float edge = static_cast<float>(registry.edge);
@@ -278,7 +280,7 @@ bool applyPilot(aObject& widget, long index) {
     const char* name = mc2::textures::name(widget.getTextureHandle());
     init();
     const std::string legacy = name ? canonical(name) : std::string{};
-    const Icon* icon = pilotIcon(index, legacy.empty() ? nullptr : legacy.c_str());
+    const Icon* icon = pilotIcon(index, legacy);
     if (!icon) return false;
     if (widget.getTextureHandle() != texture) widget.setTexture(mc2::textures::retain(texture));
     widget.setFileWidth(static_cast<float>(registry.edge)); widget.setFileHeight(static_cast<float>(registry.edge));
