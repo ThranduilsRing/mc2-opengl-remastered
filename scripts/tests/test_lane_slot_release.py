@@ -278,16 +278,38 @@ def test_status_shows_claimer_and_age(slot, capsys):
     assert lane_slot.fmt_age(5 * 3600 + 120) == "5h02m" and lane_slot.fmt_age(90) == "1m"
 
 
-def test_acquire_excludes_hook_seeded_files_idempotently(slot):
-    r = slot
-    Path(r, ".claude", "agents").mkdir(parents=True)
-    Path(r, ".claude", "agents", "mc2-lane.md").write_text("seeded\n")
-    Path(r, "notes").mkdir()
-    Path(r, "notes", "lane-state.md").write_text("n\n")
-    assert lane_slot.git(r, "status", "--porcelain")[1] != ""
-    lane_slot.exclude_lane_files(r)
-    lane_slot.exclude_lane_files(r)
-    assert lane_slot.git(r, "status", "--porcelain")[1] == ""          # release's clean check now passes
+def _exclude_text(r):
     rc, p, _ = lane_slot.git(r, "rev-parse", "--git-path", "info/exclude")
-    lines = Path(r, p).read_text().splitlines() if not os.path.isabs(p) else Path(p).read_text().splitlines()
-    assert lines.count(".claude/agents/mc2-lane.md") == 1 and lines.count("notes/") == 1
+    f = Path(p) if os.path.isabs(p) else Path(r, p)
+    return f.read_text() if f.exists() else ""
+
+
+def test_hook_seeded_agent_file_alone_is_clean(slot):
+    Path(slot, ".claude", "agents").mkdir(parents=True)
+    Path(slot, ".claude", "agents", "mc2-lane.md").write_text("seeded")
+    assert lane_slot.slot_info(slot, set())["clean"]
+
+
+def test_notes_only_worktree_is_not_free(slot):
+    Path(slot, "notes").mkdir()
+    Path(slot, "notes", "lane-state.md").write_text("n")
+    info = lane_slot.slot_info(slot, set())
+    assert not info["clean"] and not lane_slot.is_free(info)
+
+
+def test_discard_archives_notes_and_acquire_writes_no_common_exclude(slot, tmp_path):
+    lane_slot.acquire("claude/lane-y", no_warm=True)
+    assert "notes/" not in _exclude_text(slot).splitlines()
+    Path(slot, "notes").mkdir()
+    Path(slot, "notes", "lane-state.md").write_text("keep me")
+    lane_slot.release(slot, discard=True)
+    archives = list(Path(lane_slot.STRAY_DIR).rglob("untracked.tar"))
+    assert archives
+    with tarfile.open(archives[0]) as tar:
+        assert "notes/lane-state.md" in tar.getnames()
+
+
+def test_acquire_refuses_when_registration_fails(slot, monkeypatch):
+    monkeypatch.setattr(lane_registry, "register_lane", lambda *a, **k: (_ for _ in ()).throw(OSError("registry unavailable")))
+    with pytest.raises(SystemExit, match="registration failed"):
+        lane_slot.acquire("claude/lane-z", no_warm=True)
