@@ -93,7 +93,7 @@ def test_guard_runs_before_source_and_build():
 
 
 def test_box_infra_verdict_is_not_green():
-    assert box_run.verdict(77) == ("BOX_INFRA", 3)
+    assert box_run.verdict(77) == ("BOX_INFRA", 77)   # the exit code is the rc (275646b64: was 3)
     assert box_run.verdict(0, ("0",)) == ("PASS", 0)
 
 
