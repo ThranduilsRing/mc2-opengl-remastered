@@ -276,3 +276,18 @@ def test_status_shows_claimer_and_age(slot, capsys):
     out = capsys.readouterr().out
     assert "some-lane (" in out and "claim" in out
     assert lane_slot.fmt_age(5 * 3600 + 120) == "5h02m" and lane_slot.fmt_age(90) == "1m"
+
+
+def test_acquire_excludes_hook_seeded_files_idempotently(slot):
+    r = slot
+    Path(r, ".claude", "agents").mkdir(parents=True)
+    Path(r, ".claude", "agents", "mc2-lane.md").write_text("seeded\n")
+    Path(r, "notes").mkdir()
+    Path(r, "notes", "lane-state.md").write_text("n\n")
+    assert lane_slot.git(r, "status", "--porcelain")[1] != ""
+    lane_slot.exclude_lane_files(r)
+    lane_slot.exclude_lane_files(r)
+    assert lane_slot.git(r, "status", "--porcelain")[1] == ""          # release's clean check now passes
+    rc, p, _ = lane_slot.git(r, "rev-parse", "--git-path", "info/exclude")
+    lines = Path(r, p).read_text().splitlines() if not os.path.isabs(p) else Path(p).read_text().splitlines()
+    assert lines.count(".claude/agents/mc2-lane.md") == 1 and lines.count("notes/") == 1
