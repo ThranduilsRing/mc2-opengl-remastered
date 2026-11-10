@@ -395,12 +395,20 @@ def _refresh_game_affinity() -> None:
             handle = kernel.OpenProcess(0x1200, False, pid)  # SET_INFORMATION | QUERY_LIMITED_INFORMATION
             if not handle:
                 if child_registry.pid_alive(pid):
-                    raise ctypes.WinError(ctypes.get_last_error())
+                    err = ctypes.WinError(ctypes.get_last_error())
+                    if isinstance(err, PermissionError):
+                        print(f"[host-affinity] pid={pid} not re-pinned ({err}); continuing", file=sys.stderr, flush=True)
+                        continue
+                    raise err
                 continue
             try:
                 # Recheck after opening: never change a reused PID's affinity.
                 if child_registry.process_create_time(pid) == child["created"]:
                     _set_affinity(handle, pid, mask)
+            except PermissionError as exc:
+                # Narrowing a neighbour is best effort: an engine that is exiting (or another account's) answers
+                # ACCESS_DENIED, which must not abort the launch that is waiting on the lease (ab.py side B, 11-10).
+                print(f"[host-affinity] pid={pid} not re-pinned ({exc}); continuing", file=sys.stderr, flush=True)
             finally:
                 kernel.CloseHandle(handle)
 

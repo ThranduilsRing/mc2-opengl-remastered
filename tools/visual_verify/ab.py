@@ -55,16 +55,29 @@ MANIFEST = ".deployed_manifest.csv"
 EXECUTABLES = {"mc2.exe", "mc2", "mc2.elf"}
 
 
-def payload_executable(files):
+def payload_executable(files, install=None, windows=None):
+    """The game executable a manifest names. Exactly one of EXECUTABLES -> it. Zero or several (a Windows-seeded box install can
+    list mc2.exe and mc2, or a manifest can omit it): prefer the platform's name, and with `install` the one that exists on disk."""
     names = EXECUTABLES.intersection(files)
-    if len(names) != 1:
+    if len(names) == 1:
+        return next(iter(names))
+    if not names and install is None:
         raise ValueError("payload must identify exactly one game executable")
-    return next(iter(names))
+    windows = (os.name == "nt") if windows is None else windows
+    cands = sorted(names or EXECUTABLES)
+    if install is not None:
+        cands = [n for n in cands if (Path(install) / n).is_file()]
+    pref = "mc2.exe" if windows else "mc2"
+    if pref in cands:
+        return pref
+    if len(cands) == 1:
+        return cands[0]
+    raise ValueError("payload must identify exactly one game executable")
 
 
 def game_executable(install):
     files, _ = read_manifest(install)
-    return Path(install) / payload_executable(files)
+    return Path(install) / payload_executable(files, install)
 
 
 def read_manifest(install):
@@ -86,8 +99,8 @@ def payload_identity(install):
     """Verify the executable and every deployed SPIR-V byte before attributing captures."""
     install = Path(install)
     files, commit = read_manifest(install)
-    exe = payload_executable(files)
-    payload = {p: sha for p, sha in files.items()
+    exe = payload_executable(files, install)
+    payload ={p: sha for p, sha in files.items()
                if p == exe or (p.startswith("shaders/vulkan/") and p.endswith(".spv"))}
     actual = {p.relative_to(install).as_posix() for p in (install / "shaders/vulkan").rglob("*.spv")}
     if not re.fullmatch(r"[0-9a-f]{40}", commit or "") or not actual or actual != set(payload) - {exe}:
@@ -96,7 +109,9 @@ def payload_identity(install):
         with (install / rel).open("rb") as stream:
             got = hashlib.file_digest(stream, "sha256").hexdigest()
         if got != expected:
-            raise ValueError(f"{install}: manifest mismatch for {rel}: {got} != {expected}")
+            raise ValueError(f"{install}: manifest mismatch for {rel}: {got} != {expected} "
+                             "(stale manifest: the file was replaced after the manifest was written; redeploy through box_run "
+                             "build, which rewrites .deployed_manifest.csv from the installed files, instead of editing the install)")
     fingerprint = exe_commit(install / exe)
     if fingerprint and not commit.startswith(fingerprint):
         raise ValueError(f"{install}: executable commit mismatches manifest")
@@ -314,7 +329,16 @@ def run_capture(install, bookmarks, out, env_extra, hud=False):
     cmd = capture_argv(install, bookmarks, out, env_extra, hud)
     print("[ab] " + " ".join(cmd), flush=True)
     # background-launch: allow streams capture.py progress to the caller's console; inherits it (no new window when the parent has one)
-    rc = subprocess.call(cmd, env=dict(os.environ, MC2_CURSOR_NO_PARK="1"))
+    proc = subprocess.Popen(cmd, env=dict(os.environ, MC2_CURSOR_NO_PARK="1"))  # background-launch: allow same console stream as the subprocess.call it replaces
+    try:
+        rc = proc.wait()
+    except BaseException:
+        # Interrupted: end only the capture.py this call launched (and its tree), never another lane's game.
+        if sys.platform == "win32":
+            subprocess.call(["taskkill", "/F", "/T", "/PID", str(proc.pid)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)  # background-launch: allow console tool, output discarded
+        else:
+            proc.kill()
+        raise
     if rc != 0:
         sys.exit(f"[ab] capture failed rc={rc}: {out}")
 
@@ -420,22 +444,22 @@ def discover_bookmarks(a_dir: Path, b_dir: Path) -> list:
     return sorted(names)
 
 
-def stamp_cross_base(img: Image.Image) -> Image.Image:
-    """Burn a red CROSS-BASE banner into the top-left of a montage (the two sides are not a same-base A/B)."""
+def stamp_cross_base(img: Image.Image, text: str = "CROSS-BASE") -> Image.Image:
+    """Burn a red banner (CROSS-BASE and/or CROSS-DATA) into the top-left of a montage (not a same-base/same-data A/B)."""
     from PIL import ImageDraw, ImageFont
     d = ImageDraw.Draw(img)
     try:
         font = ImageFont.load_default(size=max(16, img.width // 40))
     except TypeError:
         font = ImageFont.load_default()
-    box = d.textbbox((8, 8), "CROSS-BASE", font=font)
+    box = d.textbbox((8, 8), text, font=font)
     d.rectangle((box[0] - 4, box[1] - 4, box[2] + 4, box[3] + 4), fill=(200, 0, 0))
-    d.text((8, 8), "CROSS-BASE", fill=(255, 255, 255), font=font)
+    d.text((8, 8), text, fill=(255, 255, 255), font=font)
     return img
 
 
 def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None, cross_base=False, data_delta_accepted=None,
-            exe_a_base_mismatch=None, exe_a_swap=None, hud=False):
+            exe_a_base_mismatch=None, exe_a_swap=None, hud=False, data_parity=None):
     """Returns the compared rows; compare.problems lists missing/empty evidence (callers exit nonzero on it)."""
     if not bookmarks:
         bookmarks = discover_bookmarks(gl_dir, vk_dir)
@@ -477,8 +501,9 @@ def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None, cross_
             mm.paste(fi, (0, m.height))
             m = mm
             flip_image(fm).save(bd / "flip.jpg", quality=85)
-        if cross_base:
-            m = stamp_cross_base(m)
+        cross_data = bool(data_parity and data_parity.get("cross_data"))
+        if cross_base or cross_data:
+            m = stamp_cross_base(m, " + ".join(t for t, on in (("CROSS-BASE", cross_base), ("CROSS-DATA", cross_data)) if on))
         m.save(bd / "montage.jpg", quality=85)
         h = heat(D.astype(np.uint8))
         if h.width > 1200:
@@ -510,7 +535,8 @@ def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None, cross_
     (out / "summary.json").write_text(json.dumps(
         {"gl": str(gl_dir), "vk": str(vk_dir), "threshold": THRESH, "cross_base": cross_base, "hud": hud,
          "data_delta_accepted": list(data_delta_accepted or []), "exe_a_base_mismatch": exe_a_base_mismatch,
-         "exe_a_swap": exe_a_swap,
+         "exe_a_swap": exe_a_swap, "data_parity": data_parity,
+         "cross_data": bool(data_parity and data_parity.get("cross_data")),
          "rows": rows, "problems": problems,
          "gpu": {"a": gpu_a, "b": gpu_b, "same": gpu_a == gpu_b}}, indent=2))
     print(f"[ab] wrote {out}")
@@ -604,6 +630,51 @@ def disk_guard(target: Path, need_bytes: int, min_free_gb: float | None = None) 
     print(f"[ab] {line} -> ok", flush=True)
 
 
+def data_tree_files(install) -> dict:
+    """rel -> (size, mtime seconds) for the shared data a run renders: every staged 'link' file except the exe/pdb, the
+    manifest and shaders/ (those are the exe side of an A/B and are compared elsewhere)."""
+    out = {}
+    for rel, path in _walk_files(Path(install)):
+        low = rel.lower()
+        if stage_kind(rel) != "link" or low.startswith("shaders/") or rel == MANIFEST or ("/" not in low and low.endswith((".exe", ".pdb"))):
+            continue
+        st = os.stat(path)
+        out[rel] = (st.st_size, int(st.st_mtime))
+    return out
+
+
+def data_fingerprint(files: dict) -> str:
+    h = hashlib.sha256()
+    for rel in sorted(files):
+        h.update(f"{rel}\t{files[rel][0]}\t{files[rel][1]}\n".encode("utf-8"))
+    return h.hexdigest()
+
+
+def data_parity(install_a, install_b, full_install_a=False) -> dict:
+    """Compare the data trees the two sides will render -> {sha_a, sha_b, files_a, files_b, same, differing, cross_data, ...}."""
+    fa, fb = data_tree_files(install_a), data_tree_files(install_b)
+    differing = sorted(r for r in set(fa) | set(fb) if fa.get(r) != fb.get(r))
+    sa, sb = spv_digest(Path(install_a) / "shaders"), spv_digest(Path(install_b) / "shaders")
+    sdiff = sorted(r for r in set(sa) | set(sb) if sa.get(r) != sb.get(r))
+    return {"shaders_same": not sdiff, "shaders_differing_count": len(sdiff), "shaders_differing": sdiff[:200],
+            "sha_a": data_fingerprint(fa), "sha_b": data_fingerprint(fb), "files_a": len(fa), "files_b": len(fb),
+            "same": not differing, "differing": differing[:200], "differing_count": len(differing),
+            "full_install_a": bool(full_install_a), "cross_data": bool(differing)}
+
+
+def data_parity_lines(dp: dict) -> list:
+    sh = ("[ab] SHADERS: same .spv set" if dp.get("shaders_same", True) else
+          f"[ab] SHADERS: differ ({dp['shaders_differing_count']} .spv; side A runs its own exe's shaders, e.g. v0.4's; first: "
+          + ", ".join(dp["shaders_differing"][:5]) + ") -- shader-driven looks (vegetation, water) will differ even with the same exe")
+    if dp["same"]:
+        return [f"[ab] DATA: same ({dp['files_a']} files, fingerprint {dp['sha_a'][:12]})", sh]
+    lines = [sh, f"[ab] DATA: differs ({dp['differing_count']} files); first {min(10, len(dp['differing']))}:"]
+    lines += ["[ab]   " + r for r in dp["differing"][:10]]
+    if dp["full_install_a"]:
+        lines.append("[ab] !!! CROSS-DATA: side A renders its own install's data (--full-install-a); the diff mixes exe AND data changes !!!")
+    return lines
+
+
 def stage_tree(install: Path, dest: Path) -> dict:
     """Clone `install` into `dest`: shared data hard-linked, game-written files real copies, output-only dirs empty. Falls back
     to a plain copy (one printed line) when the volumes differ or a link fails. Returns counts."""
@@ -627,10 +698,28 @@ def stage_tree(install: Path, dest: Path) -> dict:
                 if not stats["fallback"]:
                     stats["fallback"] = True
                     print(f"[ab] stage: hardlink failed ({exc}); staging by copy", flush=True)
-        shutil.copy2(src, dst)
+        copy_writable(src, dst)
         stats["copied"] += 1
         stats["bytes_copied"] += dst.stat().st_size
     return stats
+
+
+def copy_writable(src, dst, tries: int = 5, delay: float = 0.5) -> None:
+    """shutil.copy2 that retries a locked file (PermissionError while an exe or scanner still holds it) with backoff and
+    leaves the copy writable: copy2 keeps the source's read-only bit and the game rewrites its own files in a stage."""
+    src, dst = Path(src), Path(dst)
+    for attempt in range(1, tries + 1):
+        try:
+            if dst.exists():
+                os.chmod(dst, 0o700)
+            shutil.copy2(src, dst)
+            os.chmod(dst, 0o700)
+            return
+        except PermissionError as exc:
+            if attempt == tries:
+                raise
+            print(f"[ab] stage: {dst.name} locked ({exc}); retry {attempt}/{tries - 1}", flush=True)
+            time.sleep(delay * attempt)
 
 
 def cleanup_stage(staged, keep=False) -> None:
@@ -863,12 +952,51 @@ def ensure_saved_bookmarks(install, reference, staged):
     print(f"[ab] {install.name}: no saved_bookmarks; copied {len(sources)} from {reference}", flush=True)
 
 
+def bookmark_parity_problems(ia, ib, bookmarks: str) -> list:
+    """One line per requested bookmark that side A and side B do not carry byte-identically (on one side only, or different
+    content): the two sides must replay the same pose files or the diff is not about the exe."""
+    problems = []
+    for bm in [b.strip() for b in bookmarks.split(",") if b.strip()]:
+        shas = {}
+        for side, inst in (("A", ia), ("B", ib)):
+            f = Path(inst) / "saved_bookmarks" / (bm + ".json")
+            shas[side] = hashlib.sha256(f.read_bytes()).hexdigest() if f.is_file() else None
+        if shas["A"] is None and shas["B"] is None:
+            continue  # on neither side: the capture itself names it
+        for side, inst in (("A", ia), ("B", ib)):
+            if shas[side] is None:
+                problems.append(f"{bm}: side {side} has no {Path(inst) / 'saved_bookmarks' / (bm + '.json')}")
+        if shas["A"] and shas["B"] and shas["A"] != shas["B"]:
+            problems.append(f"{bm}: side A and side B bookmark files differ")
+    return problems
+
+
 def _stage_root(a, out: Path, install: Path, count: int) -> Path:
     """Where the staged installs go: --stage-root, else <install>/../_ab-stage/<run> on the install's own volume (hardlinks need
     one volume). Runs the DISK_GUARD for `count` stages before anything is written."""
     root = Path(a.stage_root) / out.name if a.stage_root else Path(install).resolve().parent / "_ab-stage" / out.name
+    if not a.stage_root:
+        root = shorten_stage_root(root, Path(install))
     disk_guard(root, count * estimate_stage_bytes(Path(install), root))
     return root
+
+
+MAX_STAGE_PATH = 240  # headroom under Windows MAX_PATH (260) for the files the game writes in the stage
+
+
+def longest_install_rel(install: Path) -> int:
+    return max((len(f"install_a/{rel}") for rel, _ in _walk_files(install)), default=0)
+
+
+def shorten_stage_root(root: Path, install: Path) -> Path:
+    """The default stage root, or <drive>/_ab-stage/<short> when the deepest staged file would pass MAX_PATH (same volume, so
+    hardlinks still work). A long default made hzb-subpixel-cull pass only with --stage-root."""
+    if len(str(root)) + 1 + longest_install_rel(install) <= MAX_STAGE_PATH:
+        return root
+    anchor = Path(install).resolve().anchor or str(root.parent)
+    short = Path(anchor) / "_ab-stage" / hashlib.sha1(str(root).encode()).hexdigest()[:6]
+    print(f"[ab] stage root {root} would pass MAX_PATH; using {short}", flush=True)
+    return short
 
 
 def _staged(a, dest) -> str:
@@ -929,6 +1057,11 @@ def main(argv=None):
     ap.add_argument("--shaders-a", metavar="DIR",
                     help="with --exe-a/--exe-b: stage side A with the shaders/ of this install (e.g. v0.4) and rewrite A's manifest "
                          "rows from the swapped bytes")
+    ap.add_argument("--full-install-a", action="store_true",
+                    help="with --install-a/--install-b: side A renders ITS OWN install's data (v0.4 look vs tip look). The sides then "
+                         "differ in data as well as exe: CROSS-DATA is printed, stamped on the montage and recorded in summary.json. "
+                         "Without it a data difference between --install-a and --install-b is refused; the default exe-swap "
+                         "(--exe-a/--exe-b or --exe-a + --install-b) runs both exes on ONE data tree")
     ap.add_argument("--keep-stage", action="store_true",
                     help="leave the staged install_a/install_b dirs after the run (default: deleted when it ends, pass or fail)")
     ap.add_argument("--install", default=DEFAULT_INSTALL, help="data/DLL source for --exe-a/--exe-b")
@@ -1002,6 +1135,15 @@ def main(argv=None):
         ia, ib = resolve_installs(a, out)
         ensure_saved_bookmarks(ia, a.install, a.staged)
         ensure_saved_bookmarks(ib, a.install, a.staged)
+        parity = bookmark_parity_problems(ia, ib, a.bookmarks)
+        if parity:
+            sys.exit("ab.py: bookmarks are not seeded identically on both sides:\n  " + "\n  ".join(parity))
+        dpar = data_parity(ia, ib, a.full_install_a)
+        for line in data_parity_lines(dpar):
+            print(line, flush=True)
+        if dpar["cross_data"] and not a.full_install_a:
+            sys.exit("ab.py: the two sides render different data trees; an exe A/B must use one data tree. Use --exe-a/--exe-b or "
+                     "--exe-a with --install-b (both run the B data), or pass --full-install-a for a deliberate v0.4-vs-tip look sheet")
         exe_a_swap = None
         if a.exe_a and not a.exe_b:
             exe_a_swap = {"exe": a.exe_a, "exe_dir": str(Path(a.exe_a).parent), "b_install": a.install_b}
@@ -1022,7 +1164,7 @@ def main(argv=None):
         for line in capture_commit_report(identities[0]["commit"], identities[1]["commit"], worktree_head()):
             print(line, flush=True)
         compare(out / "a", out / "b", out / "cmp", crops, [s.strip() for s in a.bookmarks.split(",") if s.strip()],
-                cross_base=bool(bad), exe_a_base_mismatch=exe_a_base_mismatch, exe_a_swap=exe_a_swap, hud=a.hud)
+                cross_base=bool(bad), exe_a_base_mismatch=exe_a_base_mismatch, exe_a_swap=exe_a_swap, hud=a.hud, data_parity=dpar)
         rc = 1 if getattr(compare, "problems", None) else 0
     finally:
         cleanup_stage(a.staged, keep=a.keep_stage)  # a/, b/ and cmp/ stay; the 13 GB stage goes, pass or fail

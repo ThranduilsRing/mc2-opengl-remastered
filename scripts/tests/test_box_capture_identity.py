@@ -124,8 +124,10 @@ def test_linux_payload_refuses_drift(tmp_path, fault):
         if fault == "ambiguous":
             with (install / ab.MANIFEST).open("a") as stream:
                 stream.write(f"mc2.exe,{'0' * 64},5,{COMMIT},t,0\n")
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as err:
         ab.payload_identity(install)
+    if fault in ("exe", "shader"):
+        assert "stale manifest" in str(err.value) and "box_run" in str(err.value)
 
 
 def test_visual_capture_stamps_and_preserves_sweep_metadata(tmp_path):
