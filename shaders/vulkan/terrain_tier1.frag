@@ -47,7 +47,7 @@ const vec4  MATV_NORMAL_BOOST = vec4(0.9, 0.5, 1.1, CD_CONCRETE_RELIEF_STRENGTH)
 const vec4  MATV_TILING       = vec4(3.0, 2.0, 1.0, 6.0);  // rock,grass,dirt,conc
 const float MATV_TILING_SNOW  = 1.0;
 const float GM_STRENGTH       = 1.0;    // ground mottle (world_patch_noise.glsl) blend on full natural ground
-const float GM_LUMA_KEEP      = 0.5;    // share of the colormap brightness the mottle keeps
+const float GM_LUMA_KEEP      = 0.25;   // share of the colormap brightness the mottle keeps (dark soil keeps all of it)
 const float GM_BEACH_WU       = 40.0;   // horizontal run above the waterline that stays clean beach (~10 m)
 const float GM_COAST_DRY_WU   = 400.0;  // straw fades out to the inland sward over this run (~100 m)
 const float MATV_WU_PER_TILE  = 768.0;  // MAT_WORLD_UNITS_PER_TILE (terrain_lod_chunk.frag:240)
@@ -406,7 +406,9 @@ void main() {
             // Keep part of the authored colormap brightness variation (luma transfer), take the palette hue.
             float lb = dot(baseColor, vec3(0.299, 0.587, 0.114));
             float lt = dot(gmCol, vec3(0.299, 0.587, 0.114));
-            gmCol *= mix(1.0, clamp(lb / max(lt, 1e-3), 0.6, 1.5), GM_LUMA_KEEP);
+            // Dark soil (night maps, scorched or shaded colormap) keeps its own brightness: the mottle never lightens it.
+            float keep = mix(1.0, GM_LUMA_KEEP, smoothstep(0.12, 0.26, lb));
+            gmCol *= mix(1.0, clamp(lb / max(lt, 1e-3), 0.3, 1.5), keep);
             baseColor = mix(baseColor, gmCol, wMottle * GM_STRENGTH);
         }
     }

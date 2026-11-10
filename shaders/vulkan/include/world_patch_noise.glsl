@@ -17,7 +17,7 @@
 const float WPN_BASE_WU = 120.0;                         // largest patch wavelength, world units
 const vec3  WPN_OLIVE        = vec3(0.260, 0.270, 0.140);   // olive green sward
 const vec3  WPN_YELLOW_GREEN = vec3(0.330, 0.330, 0.160);   // yellow-green sward
-const vec3  WPN_STRAW        = vec3(0.540, 0.460, 0.290);   // dry straw patch
+const vec3  WPN_STRAW        = vec3(0.530, 0.480, 0.330);   // dry straw patch
 
 float wpn_hash(vec2 p) {
     // Integer-lattice hash, sin-free (stable across drivers at large world coordinates).
@@ -41,13 +41,13 @@ vec2 worldPatchField(vec2 worldXY) {
     vec2 p = worldXY / WPN_BASE_WU;
     // Rotate each octave so the value-noise lattice never lines up with the terrain grid.
     const mat2 R = mat2(0.80, 0.60, -0.60, 0.80);
-    float n = 0.5 * wpn_value(p);
+    float n = 0.45 * wpn_value(p);
     p = R * p * 2.03 + vec2(17.1, 3.7);
-    n += 0.30 * wpn_value(p);
+    n += 0.32 * wpn_value(p);
     p = R * p * 2.01 + vec2(-5.3, 11.9);
-    n += 0.20 * wpn_value(p);
-    // Contrast shape: connected straw patches and connected green, with soft (not hard) edges.
-    float dry = smoothstep(0.46, 0.60, n);
+    n += 0.23 * wpn_value(p);
+    // Contrast shape: connected straw patches and connected green; the finer octaves rag the edges.
+    float dry = smoothstep(0.47, 0.56, n);
     float hue = wpn_value(R * worldXY / (WPN_BASE_WU * 0.55) + vec2(41.0, -23.0));
     return vec2(dry, hue);
 }
