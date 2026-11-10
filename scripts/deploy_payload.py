@@ -2345,6 +2345,18 @@ def verdict_exe_refusal(src_root, exe_src, head):
     return None
 
 
+def seed_receipt_rows():
+    """The seed's own verification rows ({casefolded rel: {stamp, sha256}}); {} when the seed is absent."""
+    seed = Path(os.environ.get('MC2_LEAN_SEED', 'E:/mc2-installs/_lean-seed'))
+    rows = {}
+    for name in ('.lane-seed-verification.json', '.lane-kit-verification.json'):
+        try:
+            rows.update(json.loads((seed / name).read_text(encoding='utf-8')))
+        except (OSError, ValueError):
+            pass
+    return rows
+
+
 def prepare_seed_delta(items, target, full_verify=False, allow_legacy=False):
     """Keep verified shared lane bytes; detach changed writes before the guard.
 
@@ -2363,22 +2375,34 @@ def prepare_seed_delta(items, target, full_verify=False, allow_legacy=False):
     import kit_payload
     from concurrent.futures import ThreadPoolExecutor
     source_rx = kit_payload.HashReceipts(kit_payload.cook_cache_root() / 'source-receipts.json')
-    counts = {'hashed': 0, 'privatized': 0}
+    counts = {'hashed': 0, 'privatized': 0, 'seed_confirmed': 0}
+    seed_rows = seed_receipt_rows()
+    restamped = {}
 
     def settle(item):
         src, rel, _kind = item
         dst = Path(target) / rel
         if not dst.is_file() or dst.stat().st_nlink <= 1:
             return None
-        row = shared.get(rel)
+        peer = seed_rows.get(rel.casefold())
+        row = shared.get(rel) or peer  # a legacy install (no receipt) is proven by the seed's row when the stamp is identical
         # Full stamp incl. NTFS ChangeTime (pinned by the restored-mtime corruption test); the source side uses receipts.
         if not full_verify and src is not None and row and Path(src).is_file() and source_rx.digest(src) == row['sha256']:
-            if iso.content_stamp(dst) == row['stamp']:
+            stamp = iso.content_stamp(dst)
+            if stamp == row['stamp']:
+                return rel, row['sha256']
+            # Other installs linking/unlinking the shared inode bump its ChangeTime on every lane; the seed's own receipt is
+            # re-stamped after each of those. The same (dev, ino, size, mtime, ChangeTime) as the seed's verified entry means
+            # no write reached the inode since the seed bytes were hashed, so the cold re-read of the file is not needed.
+            if peer and peer.get('sha256') == row['sha256'] and peer.get('stamp') == stamp:
+                counts['seed_confirmed'] += 1
+                restamped[rel] = stamp
                 return rel, row['sha256']
             # Any link or unlink of the shared inode by another install bumps its ChangeTime without touching the bytes;
             # re-reading is far cheaper than copying every shared file. Equal bytes stay shared (deploy then writes nothing).
             counts['hashed'] += 1
             if kit_payload.sha(dst) == row['sha256']:
+                restamped[rel] = stamp
                 return rel, row['sha256']
         # The normal deploy still checks the source and copied hash. Privatize
         # first so its in-place write cannot reach the seed or another lane.
@@ -2397,8 +2421,22 @@ def prepare_seed_delta(items, target, full_verify=False, allow_legacy=False):
             if done:
                 verified[done[0]] = done[1]
     source_rx.save(merge=True)
+    restamped = {r: st for r, st in restamped.items() if r in shared}
+    if restamped and receipt.is_file():
+        # Remember the proven stamps so this lane's next deploy takes the exact-stamp path (receipt is private: replace, never write through).
+        for rel, stamp in restamped.items():
+            shared[rel]['stamp'] = stamp
+        tmp = receipt.with_name(receipt.name + f'.tmp-{os.getpid()}')
+        try:
+            tmp.write_text(json.dumps({'shared': shared}), encoding='utf-8')
+            os.replace(tmp, receipt)
+        except OSError as exc:
+            log(f'[DEPLOY] WARN: could not refresh {receipt.name}: {exc}')
+        finally:
+            tmp.unlink(missing_ok=True)
     log(f'lane seed delta: {len(verified)} unchanged shared payload files retained '
-        f'({counts["hashed"]} re-hashed after a link-count change, {counts["privatized"]} detached)')
+        f'({counts["seed_confirmed"]} confirmed by the seed receipt, '
+        f'{counts["hashed"]} re-hashed after a link-count change, {counts["privatized"]} detached)')
     return verified
 
 

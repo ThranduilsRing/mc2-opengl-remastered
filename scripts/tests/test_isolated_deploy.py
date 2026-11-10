@@ -614,3 +614,61 @@ def test_hash_receipts_still_catch_real_change(tmp_path):
         return 'stale'
     with pytest.raises(ValueError):
         receipts.digest(target, hasher=rewriting)
+
+
+def _churned_lane(tmp_path, monkeypatch, receipt=True):
+    """A seed, a lane projected from it, then another install linking/unlinking every shared inode (ChangeTime drift)."""
+    iso = lean_tool()
+    seed, lane, repo = (tmp_path / p for p in ('seed', 'lane', 'repo'))
+    lean_fixture(seed)
+    monkeypatch.setattr(iso, 'check_space', lambda *a: None)
+    monkeypatch.setenv('MC2_LEAN_SEED', str(seed))
+    assert iso.main(['--from', str(seed), '--to', str(lane)]) == 0
+    iso.verified_seed(seed, use_cache=True)
+    rels = ['mc2.exe', 'runtime.dll', 'shaders_vk/a.spv']
+    for rel in rels:
+        (repo / rel).parent.mkdir(parents=True, exist_ok=True)
+        (repo / rel).write_bytes(b'fixture')
+        os.link(lane / rel, lane / (rel + '.pl'))
+        (lane / (rel + '.pl')).unlink()
+    if not receipt:
+        (lane / '.lane-seed.json').unlink()
+    items = [(str(repo / rel), rel, 'support') for rel in rels]
+    return iso, seed, lane, repo, rels, items
+
+
+@pytest.mark.parametrize('receipt', [True, False])
+def test_churned_link_stamps_are_confirmed_by_the_seed_receipt_without_hashing(tmp_path, monkeypatch, receipt):
+    iso, seed, lane, _repo, rels, items = _churned_lane(tmp_path, monkeypatch, receipt)
+    iso.restamp_seed(seed)  # the seed's receipt is re-stamped after churn; the lane's own receipt is not
+    sha = kit_payload.sha
+    monkeypatch.setattr(kit_payload, 'sha', lambda p, *a: pytest.fail('lane file re-hashed') if lane in Path(p).parents else sha(p, *a))
+    monkeypatch.setattr(dp.shutil, 'copy2', lambda *a, **k: pytest.fail('a seed-confirmed file was copied'))
+    verified = dp.prepare_seed_delta(items, str(lane), allow_legacy=True)
+    assert set(verified) == set(rels)
+    for rel in rels:
+        assert (lane / rel).samefile(seed / rel)
+
+
+def test_seed_receipt_does_not_excuse_a_same_size_write_with_restored_mtime(tmp_path, monkeypatch):
+    iso, seed, lane, _repo, rels, items = _churned_lane(tmp_path, monkeypatch)
+    iso.restamp_seed(seed)
+    victim = lane / 'runtime.dll'
+    old = victim.stat()
+    victim.write_bytes(b'FIXTURE')  # same size, through the shared inode
+    os.utime(victim, ns=(old.st_atime_ns, old.st_mtime_ns))
+    verified = dp.prepare_seed_delta(items, str(lane), allow_legacy=True)
+    assert 'runtime.dll' not in verified and {'mc2.exe', 'shaders_vk/a.spv'} <= set(verified)
+    assert not (lane / 'runtime.dll').samefile(seed / 'runtime.dll')
+
+
+def test_unconfirmed_churn_rehashes_once_and_remembers_the_stamp(tmp_path, monkeypatch):
+    iso, seed, lane, _repo, rels, items = _churned_lane(tmp_path, monkeypatch)
+    calls = []
+    sha = kit_payload.sha
+    monkeypatch.setattr(kit_payload, 'sha', lambda p, *a: (calls.append(p) if lane in Path(p).parents else None, sha(p, *a))[1])
+    assert set(dp.prepare_seed_delta(items, str(lane))) == set(rels)
+    assert len(calls) == len(rels)  # seed receipt stale (not restamped): one re-hash each
+    calls.clear()
+    assert set(dp.prepare_seed_delta(items, str(lane))) == set(rels)
+    assert calls == []  # the lane receipt now carries the proven stamps
