@@ -2218,6 +2218,7 @@ def main():
         check_locks(target, exe_name, wait_s)
         lease_held = take_folder_lease(target, wait_s)
     try:
+        clean_private_leftovers(target)
         if args.from_payload:
             head = args.payload_head or subprocess.check_output(['git', '-C', src_root, 'rev-parse', 'HEAD'],
                                                                 text=True, **console_child.child_kwargs(redirected=True)).strip()
@@ -2376,6 +2377,36 @@ def prepare_seed_delta(items, target, full_verify=False, allow_legacy=False):
             tmp.unlink(missing_ok=True)
     log(f'lane seed delta: {len(verified)} unchanged shared payload files retained')
     return verified
+
+
+_PRIVATE_LEFTOVER = re.compile(r'\.private-(\d+)$')
+
+
+def _pid_alive(pid):
+    try:
+        import psutil
+        return psutil.pid_exists(pid)
+    except ImportError:
+        return True
+
+
+def clean_private_leftovers(target):
+    """Remove `<file>.private-<pid>` copies left by a killed deploy (the privatize step in detach_lane_write_set)."""
+    removed = 0
+    for root, _dirs, files in os.walk(target):
+        for name in files:
+            m = _PRIVATE_LEFTOVER.search(name)
+            if not m or int(m.group(1)) == os.getpid() or _pid_alive(int(m.group(1))):
+                continue
+            path = os.path.join(root, name)
+            try:
+                os.unlink(path)
+            except OSError as exc:
+                log(f'WARNING: could not remove leftover {path}: {exc}')
+                continue
+            removed += 1
+            log(f'removed leftover from a killed deploy: {path}')
+    return removed
 
 
 def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
