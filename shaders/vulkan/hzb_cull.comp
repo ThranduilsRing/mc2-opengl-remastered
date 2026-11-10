@@ -54,11 +54,14 @@ float farthestAtLod(vec4 pixels, uint lod) {
     }
 }
 
-// Small-instance rejection (mirrors RenderCore/hzb_prop_bounds.h tiny_box): snap the box outward to a 1/256 px grid; zero area in either
-// axis, or under one pixel in both axes, cannot cover a visible pixel.
+// Small-instance rejection (mirrors RenderCore/hzb_prop_bounds.h tiny_box): snap the box outward to a 1/256 px grid; a box covering no
+// pixel centre (k+0.5, half-open [lo,hi)) in either axis cannot rasterize a fragment. Sub-pixel boxes that straddle a centre are kept.
 bool tinyBox(vec2 lo, vec2 hi) {
-    vec2 ext = ceil(hi * 256.0) / 256.0 - floor(lo * 256.0) / 256.0;
-    return ext.x <= 0.0 || ext.y <= 0.0 || max(ext.x, ext.y) < 1.0;
+    vec2 slo = floor(lo * 256.0) / 256.0;
+    vec2 shi = ceil(hi * 256.0) / 256.0;
+    vec2 ext = shi - slo;
+    bvec2 covers = lessThan(ceil(slo - 0.5) + 0.5, shi);
+    return ext.x <= 0.0 || ext.y <= 0.0 || !covers.x || !covers.y;
 }
 
 // Preserves the CPU reference's keep rules: any unprojectable corner keeps the prop.

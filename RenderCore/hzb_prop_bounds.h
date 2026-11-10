@@ -8,14 +8,17 @@
 #include <span>
 
 namespace mc2hzb {
-// Small-instance rejection (mirrors hzb_cull.comp): the unwidened screen box is snapped outward to a 1/256 px grid; a box with zero
-// area in either axis, or under kTinyExtentPx in both axes, cannot cover a visible pixel and is culled without a pyramid fetch.
+// Small-instance rejection (mirrors hzb_cull.comp): the unwidened screen box is snapped outward to a 1/256 px grid; a box that covers
+// no pixel centre (centres at k+0.5, half-open [lo,hi)) in either axis cannot rasterize a fragment and is culled without a pyramid
+// fetch. A sub-pixel box that does straddle a centre is kept (it still draws), so far props no longer blink on the 1 px threshold.
 constexpr float kSnapGrid = 256.0f;
-constexpr float kTinyExtentPx = 1.0f;
+inline bool covers_pixel_centre(float lo, float hi) {
+    return std::ceil(lo - 0.5f) + 0.5f < hi;
+}
 inline bool tiny_box(float x0, float y0, float x1, float y1) {
-    const float w = std::ceil(x1 * kSnapGrid) / kSnapGrid - std::floor(x0 * kSnapGrid) / kSnapGrid;
-    const float h = std::ceil(y1 * kSnapGrid) / kSnapGrid - std::floor(y0 * kSnapGrid) / kSnapGrid;
-    return w <= 0.0f || h <= 0.0f || ((std::max)(w, h) < kTinyExtentPx);
+    const float sx0 = std::floor(x0 * kSnapGrid) / kSnapGrid, sx1 = std::ceil(x1 * kSnapGrid) / kSnapGrid;
+    const float sy0 = std::floor(y0 * kSnapGrid) / kSnapGrid, sy1 = std::ceil(y1 * kSnapGrid) / kSnapGrid;
+    return sx1 - sx0 <= 0.0f || sy1 - sy0 <= 0.0f || !covers_pixel_centre(sx0, sx1) || !covers_pixel_centre(sy0, sy1);
 }
 struct PropBounds { float lo[3], hi[3]; bool valid = false; };
 struct alignas(16) ProjectedProp { float pixels[4]; float nearest; uint32_t lod, keep, tiny; };
