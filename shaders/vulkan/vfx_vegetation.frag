@@ -78,7 +78,7 @@ void main() {
     vec3 albedo = mix(groundTone, painted, kVegOwnHue);
     // Stable per-instance value and warm/cool jitter, so a patch is not one flat tone.
     float jitter = fract(v_vegData.x * 7.31);
-    albedo *= mix(0.80, 1.16, jitter) * mix(woody ? vec3(1.0,1.0,0.94) : vec3(1.05,0.98,0.88), vec3(0.93,1.03,1.01), v_vegData.x);
+    albedo *= mix(0.80, 1.16, jitter) * mix(woody ? vec3(1.05,1.02,0.86) : vec3(1.05,0.98,0.88), vec3(0.93,1.03,1.01), v_vegData.x);
     if ((v_flags & 128u) != 0u) albedo = mix(albedo,macro*vec3(1.03,1.03,1.08),0.65);
     // Grass blades: olive-dark roots under the canopy, light straw tips, and the
     // gust band brightens bent blades (their sheen faces up) so waves read from above.
@@ -92,15 +92,16 @@ void main() {
         float pick = fract(v_vegData.x * 13.71);
         float patchTone = worldSwardPatch(v_rootPos.xy);
         float shore = 1.0 - smoothstep(6.0, kVegShoreDryWU, v_rootPos.z - uT.shorelineWaterElev);
-        float dryness = clamp((patchTone - 0.30) * 1.6 + 0.55 * shore + (pick - 0.5) * 0.25, 0.0, 1.0);
-        const vec3 kOlive = vec3(0.34, 0.38, 0.17), kYellowGreen = vec3(0.47, 0.49, 0.21), kStraw = vec3(0.60, 0.52, 0.32);
+        float dryness = clamp((patchTone - 0.40) * 2.4 + 0.25 + 0.50 * shore + (pick - 0.5) * 0.20, 0.0, 1.0);
+        // Ref 3 tones are muted: dusky olive, dull yellow-green, dry straw.
+        const vec3 kOlive = vec3(0.30, 0.32, 0.16), kYellowGreen = vec3(0.42, 0.42, 0.20), kStraw = vec3(0.58, 0.49, 0.31);
         vec3 hue = dryness < 0.5 ? mix(kOlive, kYellowGreen, dryness * 2.0) : mix(kYellowGreen, kStraw, dryness * 2.0 - 1.0);
         // The card keeps blade-to-blade value; straw reads lighter than olive as in the reference.
-        vec3 sward = hue * (value / 0.40);
-        float dry = pick < 0.10 ? 0.8 : smoothstep(0.80, 1.0, tip) * 0.5;      // a few dry blades and tips up close
-        albedo = mix(groundTone, mix(sward, kStraw * (value / 0.40) * 1.08, dry), kVegOwnHue);   // 15% ground, as for every card
+        vec3 sward = hue * (value / 0.46);
+        float dry = pick < 0.08 ? 0.7 : smoothstep(0.85, 1.0, tip) * 0.3;      // a few dry blades and tips up close
+        albedo = mix(groundTone, mix(sward, kStraw * (value / 0.46), dry), kVegOwnHue);   // 15% ground, as for every card
         albedo *= mix(vec3(0.62, 0.68, 0.52), vec3(1.0), smoothstep(0.0, 0.55, tip));
-        albedo *= 1.0 + v_vegAux.y * (0.10 + 0.22 * tip);
+        albedo *= 1.0 + v_vegAux.y * (0.05 + 0.10 * tip);
         // Field wildflowers: white heads (a few yellow) on the tops of short stalks.
         if ((v_flags & 12u) == 12u && tip > 0.70) {
             float exposure = clamp(groundValue / kPaletteGround, 0.45, 1.6);
@@ -116,7 +117,7 @@ void main() {
     // Thin-leaf transmission, bounded and shadowed with direct light once.
     normalLight += 0.08 * max(dot(-cardN, uT.terrainLightDir.xyz), 0.0) * (1.0-v_vegData.y);
     // Grass tips are thin enough to glow when backlit (either card face).
-    if (grass) normalLight += 0.22 * tip * tip * abs(dot(cardN, uT.terrainLightDir.xyz));
+    if (grass) normalLight += 0.10 * tip * tip * abs(dot(cardN, uT.terrainLightDir.xyz));
     vec3 lit = uT.lightingEnabled != 0 ? shadeGround(albedo, rootN, normalLight, shadow, 0.0, v_worldPos, rootN, false, 0.0) : albedo;
     o_color = vec4(lit, 1.0);
     o_normal = rc_gbuffer1_shadowHandled(N);
