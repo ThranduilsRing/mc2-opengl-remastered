@@ -109,7 +109,7 @@ Split commit: `bc6deb13f`.
 
 | Piece | What it holds |
 |---|---|
-| `vulkan_water_island.cpp` | keeps the health / interop counters, the env gates, setFallback / vlog / load_spv, the buffer and descriptor helpers, submit_once and the health / enabled / destroy entry points |
+| `vulkan_water_island.cpp` | keeps the health / interop counters, the env gates, setFallback / vlog / load_spv, the buffer and descriptor helpers and the health / enabled / destroy entry points |
 | `vulkan_water_island_images.cpp` | VK water island: the HDRI environment and shore height / mask texture imports. |
 | `vulkan_water_island_init.cpp` | VK water island: init_island: the shared-device borrow, the GBuffer / depth images, buffers, render pass and pipeline. |
 | `vulkan_water_island_run.cpp` | VK water island: mc2_vk_water_island_run: the per-frame feed staging, draw and fence handling. |

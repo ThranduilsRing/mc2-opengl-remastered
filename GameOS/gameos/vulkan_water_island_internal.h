@@ -1,7 +1,7 @@
 // Shared surface of the vulkan_water_island.cpp translation units (vulkan_water_island.cpp, vulkan_water_island_{images,init,run}.cpp).
 //
 // vulkan_water_island.cpp keeps the health / interop counters, the env gates, setFallback / vlog / load_spv, the buffer and descriptor
-// helpers, submit_once and the health / enabled / destroy entry points; the rest is split by responsibility (see DOC in each piece).
+// helpers and the health / enabled / destroy entry points; the rest is split by responsibility (see DOC in each piece).
 // Every piece, and this header, compiles to nothing without MC2_VULKAN_ISLAND.
 #ifndef VULKAN_WATER_ISLAND_INTERNAL_H
 #define VULKAN_WATER_ISLAND_INTERNAL_H
@@ -254,7 +254,6 @@ WaterIsland* parkedIsland();
 void setFallback(std::string_view reason);
 void vlog(const char* fmt, ...);
 bool waterPerfGateRequested();
-bool waterFenceDeferEnabled();
 bool waterDirectChainRequested();
 std::string spv_dir();
 VkShaderModule load_spv(VkDevice device, std::string_view path);
@@ -264,7 +263,6 @@ void write_descriptors(WaterIsland* s, int only = -1);
 void refresh_hdri_sampler(WaterIsland* s);   // rebuild the mip-biased sampler when the effective resolve state changed
 bool ensure_thin_capacity(WaterIsland* s, uint32_t par, VkDeviceSize bytes);
 bool upload_recipes_device(WaterIsland* s, const void* recipes, uint32_t recipeCount);
-bool submit_once(WaterIsland* s, const std::function<void(VkCommandBuffer)>& record);
 bool ensure_hdri(WaterIsland* s, uint64_t hdriGeneration);
 bool import_shore_tex(WaterIsland* s, const void* texels, int texelsW, int texelsH, bool isFloat, mc2vk::ResidentTextureRef& texture, bool* real);
 bool ensure_shore(WaterIsland* s);

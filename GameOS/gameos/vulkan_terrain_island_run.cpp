@@ -550,8 +550,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     // BEFORE the per-frame UBO staging. The slot-fence wait inside beginFrame IS the
     // deferred retire of the submit that last used this parity slot, and it protects
     // everything indexed [par] below: the dynamic UBO, the descriptor set, and the
-    // command buffer. The inline post-submit wait this replaces is kept only under
-    // the MC2_VK_TERRAIN_FENCE_DEFER=0 killswitch.
+    // command buffer.
     const clk::time_point tFence0 = clk::now();
     // GPU-FRONTIER-1: engine frame slot; the wait covers the previous terrain run AND the previous overlay at this slot (both draw through set[par],
     // which is rewritten below). The scene clear and the overlay keep their own tickets.
@@ -678,15 +677,6 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     // nothing is rewritten before that wait. GPU-side ordering against downstream
     // islands/post/composite never depended on this CPU wait (same-queue submission
     // order + their command buffers' entry barriers).
-    // Killswitch MC2_VK_TERRAIN_FENCE_DEFER=0 restores the inline wait.
-    if (!terrainFenceDeferEnabled()) {
-        ZoneScopedN("VKIsl.Terrain.InlineFenceWait"); mc2::battlebench::WaitScope gpuWait2(mc2::battlebench::WaitGpuMainNs);   // VK-ISLAND-TRACY-1: killswitch-only inline retire
-        const clk::time_point tInline0 = clk::now();
-        if (!rctx.wait(s->submitted[par], 5000000000ull, "terrain inline retire")) {
-            setFallback("fence_timeout"); s->disabled = true; return 0;
-        }
-        us_fence_wait = usSince(tInline0);
-    }
     g_health.drawUs = usSince(tRender0);
     // VK-DRAW-PERF-1 note under the deferred retire: resolve() uses
     // VK_QUERY_RESULT_WAIT_BIT, so with MC2_VK_GPU_TIMESTAMPS armed it blocks until

@@ -147,19 +147,24 @@ struct gosPostProcess::VkPostHzbNative {
     uint64_t visibilityBytes = 0;   // size `visibility` was made with (cullCapacity is bumped, or zeroed by a bounds rebuild, before the old buffer retires)
     uint64_t visibilityGeneration = 0;
     uint64_t measuredFrames = 0, totalCulled = 0, totalTested = 0;
-    mc2vk::OwnedBuffer visibility, instances, localBounds;
+    // `instances` is written by the host every run, so it is per frame slot (with the set that binds it): the slot's own ticket covers it.
+    mc2vk::OwnedBuffer visibility, localBounds;
+    mc2vk::OwnedBuffer instances[mc2vk::kMaxFramesInFlight];
     mc2vk::OwnedDescriptorSetLayout cullDsl;
     mc2vk::OwnedDescriptorPool cullPool;
     mc2vk::OwnedShaderModule cullShader;
     mc2vk::OwnedPipelineLayout cullLayout;
     mc2vk::OwnedPipeline cullPipe;
-    VkDescriptorSet cullSet = VK_NULL_HANDLE;   // sampler[16] + visibility + instances + type bounds
+    VkDescriptorSet cullSet[mc2vk::kMaxFramesInFlight] = {};   // per slot: sampler[16] + visibility + the slot's instances + type bounds
     // [CULL_PARITY v1] counter-only check: a sampled subset of one frame's instances, with the matrix/bias/bounds that produced the GPU mask, compared
-    // with the CPU reference once that frame's mask is readable (next run, after the ticket wait; never an extra wait). Mips are copied on check frames only.
+    // with the CPU reference once that frame's submit has completed (polled, never waited). Check frames copy the mips and the mask into `parityMips`
+    // (the mask at `visOffset`), so later frames may rewrite the live mask before the check runs.
     struct ParityPending {
         bool valid = false;
         uint64_t generation = 0;
         int w = 0, h = 0, mips = 0;
+        uint64_t ticket = 0;            // the check frame's submit
+        VkDeviceSize visOffset = 0;     // byte offset of the mask copy in parityMips
         float worldToClip[16] = {};
         float bias = 0;
         std::vector<uint32_t> ids;
@@ -168,7 +173,9 @@ struct gosPostProcess::VkPostHzbNative {
     } parity;
     mc2vk::OwnedBuffer parityMips;
     VkDeviceSize parityMipBytes = 0;
-    uint64_t ticket = 0;   // timeline value of this pass's last submit (0 = never): waited at the NEXT run, not inline after the submit
+    // Timeline value of each frame slot's last submit (0 = never): a run waits only for its own slot's previous use (frame N-3), not frame N-1.
+    uint64_t ticket[mc2vk::kMaxFramesInFlight] = {};
+    uint64_t lastTicket = 0;   // the newest submit: the [CULL] counter is read only once it has completed (polled)
 };
 
 namespace {
@@ -216,14 +223,14 @@ void parity_log(std::string_view tag) {
 // Compares the GPU keep mask of the pending check frame with the CPU reference on the same bounds and the same pyramid copy.
 void parity_check(gosPostProcess::VkPostHzbNative* s) {
     auto& pc = s->parity;
-    if (!pc.valid) return;
+    if (!pc.valid || !mc2vk::getOrCreateEngineVulkanContext().isComplete(mc2vk::GpuTicket{pc.ticket, 0})) return;   // not done yet: a later run checks
     pc.valid = false;
     if (pc.generation != s->visibilityGeneration || pc.w != s->width || pc.h != s->height || pc.mips != s->mipCount || !s->parityMips) return;
     ZoneScopedN("HZB.ParityCheck");
-    vmaInvalidateAllocation(s->allocator, s->visibility.allocation(), 0, VK_WHOLE_SIZE);
     vmaInvalidateAllocation(s->allocator, s->parityMips.allocation(), 0, VK_WHOLE_SIZE);
-    const uint32_t* vis = static_cast<const uint32_t*>(s->visibility.map());
-    const float* mips = static_cast<const float*>(s->parityMips.map());
+    void* const mapped = s->parityMips.map();
+    const float* mips = static_cast<const float*>(mapped);
+    const uint32_t* vis = mapped ? static_cast<const uint32_t*>(static_cast<const void*>(static_cast<const uint8_t*>(mapped) + pc.visOffset)) : nullptr;
     if (vis && mips) {
         std::vector<size_t> offset(static_cast<size_t>(s->mipCount));
         size_t at = 0;
@@ -247,7 +254,6 @@ void parity_check(gosPostProcess::VkPostHzbNative* s) {
         }
     }
     if (mips) s->parityMips.unmap();
-    if (vis) s->visibility.unmap();
 }
 
 // Geometry is cached per map; all eight corners of the actual local mesh AABB
@@ -291,7 +297,7 @@ bool cache_prop_bounds(gosPostProcess::VkPostHzbNative* s, uint32_t generation) 
     for (const auto& b : s->propBounds)
         gpuBounds.push_back({b.lo[0], b.lo[1], b.lo[2], b.valid ? 1.0f : 0.0f,
                              b.hi[0], b.hi[1], b.hi[2], 0.0f});
-    s->localBounds.reset();
+    if (s->localBounds) mc2vk::getOrCreateEngineVulkanContext().retire(std::move(s->localBounds));   // older slots' culls may still read it
     const size_t bytes = gpuBounds.size() * sizeof(gpuBounds[0]);
     if (!make_buffer(s, (std::max)(bytes, static_cast<size_t>(32)), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
                      s->localBounds, "hzb.local_bounds") ||
@@ -312,12 +318,13 @@ bool build_prop_cull(gosPostProcess::VkPostHzbNative& state, uint32_t count) {
     s->cullCapacity = (std::max)(1024u, std::bit_ceil(count));
     if (s->cullPool) ectx.retire(std::move(s->cullPool));
     if (s->visibility) ectx.retire(std::move(s->visibility), s->visibilityBytes);
-    if (s->instances) ectx.retire(std::move(s->instances));
-    s->cullSet = VK_NULL_HANDLE;
+    for (auto& b : s->instances) if (b) ectx.retire(std::move(b));
+    for (auto& set : s->cullSet) set = VK_NULL_HANDLE;
     // The shader samples a fixed 16-slot level array; a deeper pyramid cannot be addressed.
     if (s->mipCount < 1 || s->mipCount > static_cast<int>(kCullMaxLevels)) return false;
-    if (!make_buffer(s, static_cast<uint64_t>(s->cullCapacity)*sizeof(GpuStaticPropInstance), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, s->instances, "hzb.instances") ||
-        !make_buffer(s, static_cast<uint64_t>(s->cullCapacity+1)*sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, s->visibility, "hzb.visibility")) return false;
+    for (int i = 0; i < static_cast<int>(mc2vk::kMaxFramesInFlight); ++i)
+        if (!make_buffer(s, static_cast<uint64_t>(s->cullCapacity)*sizeof(GpuStaticPropInstance), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, s->instances[i], "hzb.instances", i)) return false;
+    if (!make_buffer(s, static_cast<uint64_t>(s->cullCapacity+1)*sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, s->visibility, "hzb.visibility")) return false;
     s->visibilityBytes = static_cast<uint64_t>(s->cullCapacity+1)*sizeof(uint32_t);
     // A recycled Vulkan handle must not leave consumers bound to the old mask.
     static uint64_t nextVisibilityGeneration = 0;
@@ -343,27 +350,30 @@ bool build_prop_cull(gosPostProcess::VkPostHzbNative& state, uint32_t count) {
         pi.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT; pi.stage.module = s->cullShader.get(); pi.stage.pName = "main"; pi.layout = s->cullLayout.get();
         if (!mc2vk::create(s->cullPipe,s->device,[&](VkPipeline* p){return mc2vk::infra::compute(s->device,VK_NULL_HANDLE,1,&pi,nullptr,p);})) return false;
     }
-    VkDescriptorPoolSize sizes[] = {{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, kCullMaxLevels}, {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3}};
+    VkDescriptorPoolSize sizes[] = {{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, kCullMaxLevels * mc2vk::kMaxFramesInFlight}, {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3 * mc2vk::kMaxFramesInFlight}};
     VkDescriptorPoolCreateInfo pci{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
-    pci.maxSets = 1; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
+    pci.maxSets = mc2vk::kMaxFramesInFlight; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
     if (!mc2vk::create(s->cullPool,s->device,[&](VkDescriptorPool* p){return vkCreateDescriptorPool(s->device,&pci,nullptr,p);})) return false;
-    const VkDescriptorSetLayout layout = s->cullDsl.get();
+    VkDescriptorSetLayout layouts[mc2vk::kMaxFramesInFlight];
+    for (auto& l : layouts) l = s->cullDsl.get();
     VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
-    ai.descriptorPool = s->cullPool.get(); ai.descriptorSetCount = 1; ai.pSetLayouts = &layout;
-    if (MC2_VK_ALLOC_SETS(s->device,&ai,&s->cullSet) != VK_SUCCESS) return false;
+    ai.descriptorPool = s->cullPool.get(); ai.descriptorSetCount = mc2vk::kMaxFramesInFlight; ai.pSetLayouts = layouts;
+    if (MC2_VK_ALLOC_SETS(s->device,&ai,s->cullSet) != VK_SUCCESS) return false;
     // Slots past the real mip count repeat the last level (the shader never selects them).
     VkDescriptorImageInfo images[kCullMaxLevels];
     for (uint32_t i = 0; i < kCullMaxLevels; ++i)
         images[i] = {s->depthSampler.get(), s->levels[(std::min)(i, static_cast<uint32_t>(s->mipCount) - 1)].view.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
-    VkDescriptorBufferInfo buffers[] = {{s->visibility.get(),0,VK_WHOLE_SIZE},{s->instances.get(),0,VK_WHOLE_SIZE},{s->localBounds.get(),0,VK_WHOLE_SIZE}};
-    VkWriteDescriptorSet writes[4] = {};
-    for (uint32_t j = 0; j < 4; ++j) {
-        writes[j].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; writes[j].dstSet = s->cullSet; writes[j].dstBinding = j;
-        writes[j].descriptorCount = j == 0 ? kCullMaxLevels : 1;
-        writes[j].descriptorType = j==0 ? VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        if (j==0) writes[j].pImageInfo = images; else writes[j].pBufferInfo = &buffers[j-1];
+    for (uint32_t slot = 0; slot < mc2vk::kMaxFramesInFlight; ++slot) {
+        VkDescriptorBufferInfo buffers[] = {{s->visibility.get(),0,VK_WHOLE_SIZE},{s->instances[slot].get(),0,VK_WHOLE_SIZE},{s->localBounds.get(),0,VK_WHOLE_SIZE}};
+        VkWriteDescriptorSet writes[4] = {};
+        for (uint32_t j = 0; j < 4; ++j) {
+            writes[j].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; writes[j].dstSet = s->cullSet[slot]; writes[j].dstBinding = j;
+            writes[j].descriptorCount = j == 0 ? kCullMaxLevels : 1;
+            writes[j].descriptorType = j==0 ? VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            if (j==0) writes[j].pImageInfo = images; else writes[j].pBufferInfo = &buffers[j-1];
+        }
+        vkUpdateDescriptorSets(s->device,4,writes,0,nullptr);
     }
-    vkUpdateDescriptorSets(s->device,4,writes,0,nullptr);
     return true;
 }
 
@@ -795,13 +805,14 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
     }
     if (s->disabled) return false;
 
-    // The previous submit of this pass must have completed before its command buffer is reused. A timeline ticket waited here (a frame after the submit,
-    // normally already complete) replaces the fence the pass used to wait inline right after every submit.
+    // This frame slot's previous submit (frame N-3) must have completed before its command buffer, instance buffer and set are reused. Waiting for the
+    // slot's own ticket, not the newest one, keeps this mid-frame point from capping the CPU lead at one frame.
+    const uint32_t slot = mc2vk::getOrCreateEngineVulkanContext().frameContext().slot % mc2vk::kMaxFramesInFlight;
     {
         const std::chrono::steady_clock::time_point tWait0 = std::chrono::steady_clock::now();
         mc2::battlebench::WaitScope gpuWait(mc2::battlebench::WaitGpuMainNs);
         ZoneScopedN("HZB.WaitPreviousSubmit");
-        if (!mc2vk::getOrCreateEngineVulkanContext().wait(mc2vk::GpuTicket{s->ticket, 0}, 5ull * 1000 * 1000 * 1000, "post_prev_submit")) {
+        if (!mc2vk::getOrCreateEngineVulkanContext().wait(mc2vk::GpuTicket{s->ticket[slot], 0}, 5ull * 1000 * 1000 * 1000, "post_prev_submit")) {
             setFallback("fence_timeout"); s->disabled = true; return false;
         }
         g_health.waitUsLast = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - tWait0).count();
@@ -826,7 +837,8 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
     if (!cache_prop_bounds(s, generation) || !build_prop_cull(*s, feed.count)) {
         setFallback("cull_resources_failed"); s->disabled = true; return false;
     }
-    if (s->previousCount) {
+    // The [CULL] counter is the newest run's: read it only once that submit has completed (polled), else skip this sample.
+    if (s->previousCount && mc2vk::getOrCreateEngineVulkanContext().isComplete(mc2vk::GpuTicket{s->lastTicket, 0})) {
         vmaInvalidateAllocation(s->allocator, s->visibility.allocation(), 0, sizeof(uint32_t));
         if (const void* p = s->visibility.map()) {
             const uint32_t culled = *static_cast<const uint32_t*>(p);
@@ -838,21 +850,25 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
                     static_cast<unsigned long long>(s->totalTested), static_cast<unsigned long long>(s->totalCulled), static_cast<unsigned long long>(s->measuredFrames));
         }
     }
-    parity_check(s);   // the previous check frame's mask is readable now (ticket waited above)
-    if (!s->instances.upload(feed.instances112, static_cast<uint64_t>(feed.count)*sizeof(GpuStaticPropInstance))) {
+    parity_check(s);   // runs once the pending check frame has completed
+    if (!s->instances[slot].upload(feed.instances112, static_cast<uint64_t>(feed.count)*sizeof(GpuStaticPropInstance))) {
         setFallback("instances_upload_failed"); s->disabled = true; return false;
     }
 
     // Check frame: one in kParityEvery. Needs a host-readable copy of every pyramid level (recorded below, after the cull).
-    const bool parityFrame = (g_parity.runs++ % kParityEvery) == 0;
+    // A pending check still owns `parityMips`: no new check frame until it has run.
+    const bool parityFrame = (g_parity.runs++ % kParityEvery) == 0 && !s->parity.valid;
     bool parityRecord = false;
     VkDeviceSize parityOffset[64] = {};
+    VkDeviceSize visOffset = 0;
     if (parityFrame && s->mipCount <= 64) {
         VkDeviceSize bytes = 0;
         for (int l = 0; l < s->mipCount; ++l) {
             parityOffset[l] = bytes;
             bytes += static_cast<VkDeviceSize>(s->levels[static_cast<size_t>(l)].w) * static_cast<VkDeviceSize>(s->levels[static_cast<size_t>(l)].h) * sizeof(float);
         }
+        visOffset = bytes;   // the mask copy follows the mips (4-byte aligned: float levels)
+        bytes += static_cast<VkDeviceSize>(feed.count + 1) * sizeof(uint32_t);
         if (!s->parityMips || s->parityMipBytes < bytes) {
             s->parityMips.reset();
             s->parityMipBytes = make_buffer(s, bytes, VK_BUFFER_USAGE_TRANSFER_DST_BIT, s->parityMips, "hzb.parity_mips") ? bytes : 0;
@@ -867,7 +883,7 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
 
     // VK-RUNG8 item-4: direct-chain only — engage only when upstream is direct-chain,
     // else decline to the GL HZB pass. No GL<->VK semaphore handoff.
-    VkCommandBuffer cb = s->cbuf[mc2vk::getOrCreateEngineVulkanContext().frameContext().slot % mc2vk::kMaxFramesInFlight];   // one command buffer per frame slot
+    VkCommandBuffer cb = s->cbuf[slot];   // one command buffer per frame slot
 
     vkResetCommandBuffer(cb, 0);
     VkCommandBufferBeginInfo bi{};
@@ -927,7 +943,7 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
         VkMemoryBarrier m{VK_STRUCTURE_TYPE_MEMORY_BARRIER}; m.srcAccessMask = from; m.dstAccessMask = to;
         vkCmdPipelineBarrier(cb,src,dst,0,1,&m,0,nullptr,0,nullptr);
     };
-    memoryBarrier(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+    memoryBarrier(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT,
                   VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_TRANSFER_WRITE_BIT);
     vkCmdFillBuffer(cb,s->visibility.get(),0,sizeof(uint32_t),0);
     memoryBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
@@ -945,7 +961,7 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
         push.viewportDepth[0] = static_cast<float>(width_);
         push.viewportDepth[1] = static_cast<float>(height_);
         push.viewportDepth[2] = feed.objectDepthBias;
-        vkCmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_COMPUTE,s->cullLayout.get(),0,1,&s->cullSet,0,nullptr);
+        vkCmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_COMPUTE,s->cullLayout.get(),0,1,&s->cullSet[slot],0,nullptr);
         vkCmdPushConstants(cb,s->cullLayout.get(),VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof(push),&push);
         vkCmdDispatch(cb,(feed.count+63)/64,1,1);   // the barrier below orders the mask for the color pass and the host
     }
@@ -972,6 +988,9 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_SHADER_READ_BIT,
                     VK_PIPELINE_STAGE_TRANSFER_BIT,
                     VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+        memoryBarrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT);
+        const VkBufferCopy maskCopy{0, visOffset, static_cast<VkDeviceSize>(feed.count + 1) * sizeof(uint32_t)};
+        vkCmdCopyBuffer(cb, s->visibility.get(), s->parityMips.get(), 1, &maskCopy);
         memoryBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_HOST_BIT, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_HOST_READ_BIT);
     }
 
@@ -993,7 +1012,7 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1;
     si.pCommandBuffers = &cb;
-    if (mc2vk::getOrCreateEngineVulkanContext().submit(si, VK_NULL_HANDLE, &s->ticket) != VK_SUCCESS) {
+    if (mc2vk::getOrCreateEngineVulkanContext().submit(si, VK_NULL_HANDLE, &s->ticket[slot]) != VK_SUCCESS) {
         setFallback("submit_failed");
         s->disabled = true;
         return false;
@@ -1013,8 +1032,11 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
         pc.bounds = s->propBounds;
         pc.generation = s->visibilityGeneration;
         pc.w = width_; pc.h = height_; pc.mips = s->mipCount;
+        pc.ticket = s->ticket[slot];
+        pc.visOffset = visOffset;
         pc.valid = true;
     }
+    s->lastTicket = s->ticket[slot];
     s->previousCount = feed.count;
     *maskBuffer = reinterpret_cast<void*>(s->visibility.get());
     *maskGeneration = s->visibilityGeneration;

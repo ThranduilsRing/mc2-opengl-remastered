@@ -1130,6 +1130,8 @@ int main(int argc, char** argv)
 
             draw_screen();
         }
+        // The frame's batched plain submits (scene, post) go to the queue now, not after the sim join and the worker's acquire.
+        if (mc2vk::engineVulkanContextValid()) mc2vk::getOrCreateEngineVulkanContext().kick();
         // Release copied containers and marker holders on Main before retiring
         // their CPU sequence and draining typed resource destruction.
         snap.draws.reset();
