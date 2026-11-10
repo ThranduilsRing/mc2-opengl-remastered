@@ -4,6 +4,7 @@
   "mcl_cm_1": {
    "file": "MCL_CM_1.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 19,
    "screens": [
     "mcl_cm_layout"
@@ -227,6 +228,7 @@
   "mcl_cm_2": {
    "file": "MCL_CM_2.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 15,
    "screens": [
     "mcl_cm_layout"
@@ -412,6 +414,7 @@
   "mcl_cm_4": {
    "file": "MCL_CM_4.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 2,
    "screens": [
     "mcl_cm_layout"
@@ -448,6 +451,7 @@
   "mcl_cm_5": {
    "file": "MCL_CM_5.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 7,
    "screens": [
     "mcl_cm_layout",
@@ -683,6 +687,7 @@
   "mcl_dialog_2": {
    "file": "MCL_Dialog_2.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 4,
    "screens": [
     "mcl_dialog"
@@ -741,6 +746,7 @@
   "mcl_dialog_3": {
    "file": "MCL_Dialog_3.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 10,
    "screens": [
     "mcl_dialog",
@@ -873,6 +879,7 @@
   "mcl_dialog_edit_2": {
    "file": "MCL_Dialog_edit_2.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 4,
    "screens": [
     "mcl_dialog_edit"
@@ -931,6 +938,7 @@
   "mcl_dialog_edit_3": {
    "file": "MCL_Dialog_edit_3.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 8,
    "screens": [
     "mcl_dialog_edit"
@@ -1045,6 +1053,7 @@
   "mcl_dialog_onebutton_2": {
    "file": "MCL_Dialog_onebutton_2.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 3,
    "screens": [
     "mcl_dialog_onebutton"
@@ -1092,6 +1101,7 @@
   "mcl_dialog_onebutton_3": {
    "file": "MCL_Dialog_onebutton_3.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 8,
    "screens": [
     "mcl_dialog_onebutton"
@@ -1194,6 +1204,7 @@
   "mcl_dialog_onebutton_4": {
    "file": "MCL_Dialog_onebutton_4.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 2,
    "screens": [
     "mcl_dialog_onebutton"
@@ -1230,6 +1241,7 @@
   "mcl_en_1": {
    "file": "MCL_EN_1.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 22,
    "screens": [
     "mcl_en"
@@ -1486,6 +1498,7 @@
   "mcl_en_2": {
    "file": "MCL_EN_2.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 21,
    "screens": [
     "mcl_en",
@@ -1747,6 +1760,7 @@
   "mcl_en_3": {
    "file": "MCL_EN_3.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 8,
    "screens": [
     "mcl_en",
@@ -1850,6 +1864,7 @@
   "mcl_en_4": {
    "file": "MCL_EN_4.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 9,
    "screens": [
     "mcl_en",
@@ -1964,6 +1979,7 @@
   "mcl_m$_1": {
    "file": "MCL_M$_1.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 25,
    "screens": [
     "mcl_m$",
@@ -2254,6 +2270,7 @@
   "mcl_m$_2": {
    "file": "MCL_M$_2.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 17,
    "screens": [
     "mcl_m$",
@@ -2456,6 +2473,7 @@
   "mcl_m$_3": {
    "file": "MCL_M$_3.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 6,
    "screens": [
     "mcl_m$",
@@ -2537,6 +2555,7 @@
   "mcl_m$_4": {
    "file": "MCL_M$_4.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 6,
    "screens": [
     "mcl_m$",
@@ -2626,6 +2645,7 @@
   "mcl_mb_1": {
    "file": "MCL_MB_1.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 11,
    "screens": [
     "mcl_gn_deploymentteams",
@@ -2777,6 +2797,7 @@
   "mcl_mb_2": {
    "file": "MCL_MB_2.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 2,
    "screens": [
     "mcl_mb_layout"
@@ -2815,6 +2836,7 @@
   "mcl_mb_3": {
    "file": "MCL_MB_3.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 23,
    "screens": [
     "mcl_mb_layout"
@@ -3082,6 +3104,7 @@
   "mcl_mb_4": {
    "file": "MCL_MB_4.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 25,
    "screens": [
     "mcl_mb_layout",
@@ -3375,6 +3398,7 @@
   "mcl_mb_5": {
    "file": "MCL_MB_5.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 2,
    "screens": [
     "mcl_mb_layout"
@@ -3411,6 +3435,7 @@
   "mcl_mb_6": {
    "file": "MCL_MB_6.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 7,
    "screens": [
     "mcl_mb_layout"
@@ -3504,6 +3529,7 @@
   "mcl_mc_1": {
    "file": "MCL_MC_1.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 21,
    "screens": [
     "mcl_mc"
@@ -3749,6 +3775,7 @@
   "mcl_mc_2": {
    "file": "MCL_MC_2.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 28,
    "screens": [
     "mcl_mc"
@@ -4073,6 +4100,7 @@
   "mcl_mc_3": {
    "file": "MCL_MC_3.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 16,
    "screens": [
     "mcl_mc"
@@ -4267,6 +4295,7 @@
   "mcl_mm_1": {
    "file": "MCL_MM_1.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 2,
    "screens": [
     "mcl_mm"
@@ -4303,6 +4332,7 @@
   "mcl_mm_12": {
    "file": "MCL_MM_12.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 7,
    "screens": [
     "mcl_mm",
@@ -4438,6 +4468,7 @@
   "mcl_mm_2": {
    "file": "MCL_MM_2.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 2,
    "screens": [
     "mcl_mm"
@@ -4474,6 +4505,7 @@
   "mcl_mm_3": {
    "file": "MCL_MM_3.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 8,
    "screens": [
     "mcl_mm"
@@ -4576,6 +4608,7 @@
   "mcl_mn_1": {
    "file": "MCL_MN_1.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 18,
    "screens": [
     "mcl_mn"
@@ -4788,6 +4821,7 @@
   "mcl_mn_2": {
    "file": "MCL_MN_2.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 12,
    "screens": [
     "mcl_mn"
@@ -4934,6 +4968,7 @@
   "mcl_mn_3": {
    "file": "MCL_MN_3.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 12,
    "screens": [
     "mcl_mn"
@@ -5090,6 +5125,7 @@
   "mcl_mp_addai_1": {
    "file": "MCL_MP_AddAI_1.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 12,
    "screens": [
     "mcl_dialoglegal",
@@ -5261,6 +5297,7 @@
   "mcl_mp_addai_2": {
    "file": "MCL_MP_AddAI_2.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 14,
    "screens": [
     "mcl_dialoglegal",
@@ -5436,6 +5473,7 @@
   "mcl_mp_addai_3": {
    "file": "MCL_MP_AddAI_3.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 5,
    "screens": [
     "mcl_dialoglegal",
@@ -5514,6 +5552,7 @@
   "mcl_mp_addai_4": {
    "file": "MCL_MP_AddAI_4.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 10,
    "screens": [
     "mcl_dialoglegal",
@@ -5647,6 +5686,7 @@
   "mcl_mp_addai_5": {
    "file": "MCL_MP_AddAI_5.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 4,
    "screens": [
     "mcl_dialoglegal",
@@ -5720,6 +5760,7 @@
   "mcl_mp_chatwidget_01": {
    "file": "mcl_mp_chatwidget_01.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 13,
    "screens": [
     "mcl_mp_chatwidget",
@@ -5878,6 +5919,7 @@
   "mcl_mp_connectiontype_1": {
    "file": "mcl_mp_connectiontype_1.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 13,
    "screens": [
     "mcl_mp_connectiontype"
@@ -6035,6 +6077,7 @@
   "mcl_mp_connectiontype_2": {
    "file": "mcl_mp_connectiontype_2.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 9,
    "screens": [
     "mcl_mp_connectiontype"
@@ -6148,6 +6191,7 @@
   "mcl_mp_connectiontype_3": {
    "file": "mcl_mp_connectiontype_3.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 7,
    "screens": [
     "mcl_mp_connectiontype",
@@ -6258,6 +6302,7 @@
   "mcl_mp_connectiontype_4": {
    "file": "mcl_mp_connectiontype_4.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 6,
    "screens": [
     "mcl_mp_connectiontype",
@@ -6347,6 +6392,7 @@
   "mcl_mp_connectiontype_5": {
    "file": "mcl_mp_connectiontype_5.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 4,
    "screens": [
     "mcl_mp_connectiontype"
@@ -6405,6 +6451,7 @@
   "mcl_mp_lanbrowser_1": {
    "file": "MCL_MP_LANBrowser_1.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 12,
    "screens": [
     "mcl_mp_lanbrowser",
@@ -6575,6 +6622,7 @@
   "mcl_mp_lanbrowser_2": {
    "file": "MCL_MP_LANBrowser_2.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 14,
    "screens": [
     "mcl_mp_lanbrowser",
@@ -6773,6 +6821,7 @@
   "mcl_mp_lanbrowser_3": {
    "file": "MCL_MP_LANBrowser_3.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 5,
    "screens": [
     "mcl_mp_lanbrowser",
@@ -6854,6 +6903,7 @@
   "mcl_mp_lanbrowser_4": {
    "file": "MCL_MP_LANBrowser_4.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 11,
    "screens": [
     "mcl_mp_lanbrowser",
@@ -7009,6 +7059,7 @@
   "mcl_mp_lanbrowser_5": {
    "file": "MCL_MP_LANBrowser_5.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 6,
    "screens": [
     "mcl_mp_lanbrowser",
@@ -7092,6 +7143,7 @@
   "mcl_mp_param_1": {
    "file": "mcl_mp_param_1.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 20,
    "screens": [
     "mcl_mp_param",
@@ -7327,6 +7379,7 @@
   "mcl_mp_param_2": {
    "file": "mcl_mp_param_2.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 23,
    "screens": [
     "mcl_dialoglegal",
@@ -7641,6 +7694,7 @@
   "mcl_mp_param_3": {
    "file": "mcl_mp_param_3.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 8,
    "screens": [
     "mcl_mp_param"
@@ -7745,6 +7799,7 @@
   "mcl_mp_param_4": {
    "file": "mcl_mp_param_4.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 3,
    "screens": [
     "mcl_mp_param"
@@ -7792,6 +7847,7 @@
   "mcl_mp_paramplay_1": {
    "file": "mcl_mp_paramplay_1.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 20,
    "screens": [
     "mcl_mp_paramplay"
@@ -8026,6 +8082,7 @@
   "mcl_mp_paramplay_2": {
    "file": "mcl_mp_paramplay_2.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 24,
    "screens": [
     "mcl_mp_paramplay"
@@ -8326,6 +8383,7 @@
   "mcl_mp_paramplay_3": {
    "file": "mcl_mp_paramplay_3.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 3,
    "screens": [
     "mcl_mp_paramplay"
@@ -8373,6 +8431,7 @@
   "mcl_mp_paramplay_4": {
    "file": "mcl_mp_paramplay_4.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 5,
    "screens": [
     "mcl_mp_paramplay"
@@ -8442,6 +8501,7 @@
   "mcl_mp_playerprefs_1": {
    "file": "mcl_mp_playerprefs_1.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 13,
    "screens": [
     "mcl_mp_playerprefs"
@@ -8599,6 +8659,7 @@
   "mcl_mp_playerprefs_4": {
    "file": "mcl_mp_playerprefs_4.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 2,
    "screens": [
     "mcl_mp_playerprefs"
@@ -8635,6 +8696,7 @@
   "mcl_mp_playerprefs_6": {
    "file": "mcl_mp_playerprefs_6.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 2,
    "screens": [
     "mcl_mp_playerprefs"
@@ -8671,6 +8733,7 @@
   "mcl_mp_playerprefs_7": {
    "file": "mcl_mp_playerprefs_7.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 10,
    "screens": [
     "mcl_mp_hostgamedialog_combobox0",
@@ -8817,6 +8880,7 @@
   "mcl_mp_setup1": {
    "file": "MCL_MP_Setup1.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 19,
    "screens": [
     "mcl_mp_setuplayout"
@@ -9046,6 +9110,7 @@
   "mcl_mp_setup2": {
    "file": "MCL_MP_Setup2.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 11,
    "screens": [
     "mcl_mp_setuplayout"
@@ -9188,6 +9253,7 @@
   "mcl_mp_setup3": {
    "file": "MCL_MP_Setup3.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 5,
    "screens": [
     "mcl_mp_setuplayout"
@@ -9281,6 +9347,7 @@
   "mcl_mp_stats_1": {
    "file": "mcl_mp_stats_1.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 17,
    "screens": [
     "mcl_mp_stats"
@@ -9482,6 +9549,7 @@
   "mcl_mp_stats_2": {
    "file": "mcl_mp_stats_2.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 3,
    "screens": [
     "mcl_mp_stats"
@@ -9529,6 +9597,7 @@
   "mcl_mp_stats_3": {
    "file": "mcl_mp_stats_3.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 7,
    "screens": [
     "mcl_mp_stats"
@@ -9620,6 +9689,7 @@
   "mcl_mp_stats_4": {
    "file": "mcl_mp_stats_4.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 9,
    "screens": [
     "mcl_mp_stats",
@@ -9734,6 +9804,7 @@
   "mcl_options_1": {
    "file": "mcl_options_1.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 32,
    "screens": [
     "mcl_options",
@@ -10164,6 +10235,7 @@
   "mcl_options_3": {
    "file": "mcl_options_3.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 4,
    "screens": [
     "mcl_options"
@@ -10223,6 +10295,7 @@
   "mcl_options_4": {
    "file": "mcl_options_4.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 8,
    "screens": [
     "mcl_options"
@@ -10346,6 +10419,7 @@
   "mcl_options_5": {
    "file": "mcl_options_5.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 3,
    "screens": [
     "mcl_options"
@@ -10393,6 +10467,7 @@
   "mcl_options_6": {
    "file": "mcl_options_6.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 6,
    "screens": [
     "mcl_options",
@@ -10484,6 +10559,7 @@
   "mcl_sm_1": {
    "file": "MCL_SM_1.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 9,
    "screens": [
     "mcl_choosecampaign",
@@ -10642,6 +10718,7 @@
   "mcl_sm_2": {
    "file": "MCL_SM_2.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 8,
    "screens": [
     "mcl_choosecampaign",
@@ -10793,6 +10870,7 @@
   "mcl_sm_3": {
    "file": "MCL_SM_3.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 3,
    "screens": [
     "mcl_choosecampaign",
@@ -10858,6 +10936,7 @@
   "mcl_sm_4": {
    "file": "MCL_SM_4.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 5,
    "screens": [
     "mcl_choosecampaign",
@@ -10969,6 +11048,7 @@
   "mcui_high1": {
    "file": "MCUI_High1.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 18,
    "screens": [
     "buttonlayout1024",
@@ -11228,6 +11308,7 @@
   "mcui_high10": {
    "file": "MCUI_High10.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 12,
    "screens": [
     "buttonlayout1024",
@@ -11400,6 +11481,7 @@
   "mcui_high11": {
    "file": "MCUI_High11.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 2,
    "screens": [
     "buttonlayout1280",
@@ -11439,6 +11521,7 @@
   "mcui_high2": {
    "file": "MCUI_High2.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 7,
    "screens": [
     "buttonlayout1024",
@@ -11546,6 +11629,7 @@
   "mcui_high3": {
    "file": "MCUI_High3.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 28,
    "screens": [
     "buttonlayout1024",
@@ -11926,6 +12010,7 @@
   "mcui_high4": {
    "file": "MCUI_High4.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 40,
    "screens": [
     "buttonlayout1024",
@@ -12450,6 +12535,7 @@
   "mcui_high6": {
    "file": "MCUI_High6.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 3,
    "screens": [
     "buttonlayout1024",
@@ -12505,6 +12591,7 @@
   "mcui_high9": {
    "file": "MCUI_High9.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 5,
    "screens": [
     "buttonlayout1024",
@@ -12586,6 +12673,7 @@
   "mcui_jumpjets": {
    "file": "MCUI_JumpJets.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 3,
    "screens": [
     "buttonlayout1024",
@@ -12639,6 +12727,7 @@
   "mcui_low1": {
    "file": "MCUI_Low1.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 68,
    "screens": [
     "buttonlayout640"
@@ -13404,6 +13493,7 @@
   "mcui_low2": {
    "file": "MCUI_Low2.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 42,
    "screens": [
     "buttonlayout640"
@@ -13880,6 +13970,7 @@
   "mcui_med1": {
    "file": "MCUI_Med1.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 30,
    "screens": [
     "buttonlayout800"
@@ -14227,6 +14318,7 @@
   "mcui_med2": {
    "file": "MCUI_Med2.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 23,
    "screens": [
     "buttonlayout800",
@@ -14509,6 +14601,7 @@
   "mcui_med3": {
    "file": "MCUI_Med3.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 49,
    "screens": [
     "buttonlayout800"
@@ -15062,6 +15155,7 @@
   "mcui_med6": {
    "file": "MCUI_Med6.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 9,
    "screens": [
     "buttonlayout800"
@@ -15175,6 +15269,7 @@
   "mcui_mr_1": {
    "file": "MCUI_MR_1.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 14,
    "screens": [
     "mcui_mr_layout",
@@ -15345,6 +15440,7 @@
   "mcui_mr_10": {
    "file": "MCUI_MR_10.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 16,
    "screens": [
     "mcui_mr_layout"
@@ -15535,6 +15631,7 @@
   "mcui_mr_2": {
    "file": "MCUI_MR_2.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 24,
    "screens": [
     "mcui_mr_layout",
@@ -15861,6 +15958,7 @@
   "mcui_mr_3": {
    "file": "MCUI_MR_3.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 3,
    "screens": [
     "mcui_mr_layout"
@@ -15908,6 +16006,7 @@
   "mcui_mr_4": {
    "file": "MCUI_MR_4.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 2,
    "screens": [
     "mcui_mr_layout"
@@ -15944,6 +16043,7 @@
   "mcui_mr_5": {
    "file": "MCUI_MR_5.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 14,
    "screens": [
     "mcui_mr_layout",
@@ -16119,6 +16219,7 @@
   "mcui_mr_6": {
    "file": "MCUI_MR_6.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 8,
    "screens": [
     "mcui_mr_layout"
@@ -16221,6 +16322,7 @@
   "mcui_mr_7": {
    "file": "MCUI_MR_7.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 7,
    "screens": [
     "mcui_mr_layout"
@@ -16313,6 +16415,7 @@
   "mcui_mr_8": {
    "file": "MCUI_MR_8.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 7,
    "screens": [
     "mcui_mr_layout"
@@ -16404,6 +16507,7 @@
   "mcui_mr_9": {
    "file": "MCUI_MR_9.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 8,
    "screens": [
     "mcl_mb_layout",
@@ -16516,6 +16620,7 @@
   "mcui_universal1": {
    "file": "MCUI_Universal1.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 7,
    "screens": [
     "buttonlayout1024",
@@ -16793,6 +16898,7 @@
   "mcui_universal2": {
    "file": "MCUI_Universal2.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 12,
    "screens": [
     "buttonlayout1024",
@@ -16997,6 +17103,7 @@
   "mcui_universal3": {
    "file": "MCUI_Universal3.png",
    "mode": "RGB",
+   "pad": 1,
    "rects": 11,
    "screens": [
     "buttonlayout1024",
