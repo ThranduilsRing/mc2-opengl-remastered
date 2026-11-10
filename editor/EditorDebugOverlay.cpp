@@ -524,9 +524,15 @@ static void drawOnePatrol( Camera* eye, Unit* unit )
 			patrolArrow( ( sx[a] + sx[b] ) * 0.5f, ( sy[a] + sy[b] ) * 0.5f, dx / len, dy / len, col );
 	}
 
+	// The route tool's selected waypoint is drawn larger, with a white core.
+	const int selWp = UnitBrainPanel::SelectedWaypoint( unit->getID() );
 	for ( size_t i = 0; i < wps.size(); ++i )
 		if ( ok[i] )
-			patrolDot( sx[i], sy[i], sel ? 6.0f : 5.0f, col );
+		{
+			patrolDot( sx[i], sy[i], (int)i == selWp ? 9.0f : ( sel ? 6.0f : 5.0f ), col );
+			if ( (int)i == selWp )
+				patrolDot( sx[i], sy[i], 4.0f, 0xffffffffu );
+		}
 
 	// Connector: tie the path to its unit (unit position -> first waypoint), so it
 	// is obvious which unit owns which path even with every path drawn at once.

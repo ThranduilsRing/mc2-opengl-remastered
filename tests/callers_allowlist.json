@@ -5,6 +5,7 @@
   "tools/neural_mat/derisk.py": "Operator-run N2 neural-material workbench entry point: py -3 -m tools.neural_mat.derisk --work <dir> --shards <parquet...> --orm <orm.ktx2> (module docstring).",
   "tools/neural_mat/tests/test_neural_mat.py": "Pytest-discovered module for tools/neural_mat (offline N2 workbench tests).",
   "tools/perf/tracy_table.py": "Manual Tracy capture attribution table requested by perf-attrib; CLI usage is documented in its module docstring and docs/plans/perf-attrib-state.md.",
+  "scripts/merge_gate_editor.py": "Run by scripts/merge_gate.py plan() as the 'editor' stage (a step-list literal executed later; the caller scanner does not follow it). Doctests + run_editor_smoke.py GATE_CASES on a private install clone.",
   "tools/mc2fx/native_checks.py": "Explicit pytest artifact proof documented in tools/mc2fx/README.md; fx_native_boundary invokes its source-only case via -m pytest, which the caller scanner does not resolve. Full proof requires built mc2fx and installed catalogs and fails on missing evidence.",
   "tools/axis_swizzle_ratchet.py": "Proof-diet: gate cut from check-contracts/lane_merge; advisory manual report (py -3 tools/axis_swizzle_ratchet.py --check). Transform coverage: tests/unit/test_xform_convention.cpp.",
   "tools/dup_check.py": "Run by tools/lane_merge.py --lint (python import, not a shell row); manual: py -3 tools/dup_check.py.",

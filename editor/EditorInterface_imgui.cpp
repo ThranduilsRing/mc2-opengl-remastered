@@ -609,6 +609,43 @@ void EditorInterface::renderToolbarImGui()
 
 	renderObjectCompanionPanel();
 	renderObjectInfoPanel();
+	renderObjectContextMenu();
+}
+
+void EditorInterface::renderObjectContextMenu()
+{
+	if (m_contextMenuPending)
+	{
+		ImGui::OpenPopup("##ObjectContext");
+		m_contextMenuPending = false;
+	}
+	if (!ImGui::BeginPopup("##ObjectContext"))
+		return;
+	EditorObject* obj = contextMenuObject();
+	if (!obj)
+	{
+		ImGui::CloseCurrentPopup();
+		ImGui::EndPopup();
+		return;
+	}
+	ImGui::TextDisabled("%s", obj->getDisplayName());
+	ImGui::Separator();
+	if (ImGui::BeginMenu("Team"))
+	{
+		const int cur = obj->getAlignment();
+		for (int team = -1; team <= 7; ++team)
+		{
+			char label[16];
+			if (team < 0)
+				std::snprintf(label, sizeof(label), "Neutral");
+			else
+				std::snprintf(label, sizeof(label), "Team %d", team);
+			if (ImGui::MenuItem(label, nullptr, cur == team) && team != cur)
+				applyObjectAlignment(obj, team);
+		}
+		ImGui::EndMenu();
+	}
+	ImGui::EndPopup();
 }
 
 // Companion panel for object placement: when a BuildingBrush is active, show the
@@ -1220,6 +1257,7 @@ void EditorInterface::renderMissionToolsImGui()
 #else
 void EditorInterface::renderToolbarImGui() {}
 void EditorInterface::renderObjectCompanionPanel() {}
+void EditorInterface::renderObjectContextMenu() {}
 void EditorInterface::renderPlacePanelImGui() {}
 void EditorInterface::renderMissionToolsImGui() {}
 #endif
