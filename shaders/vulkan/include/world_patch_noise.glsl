@@ -16,8 +16,8 @@
 
 const float WPN_BASE_WU = 120.0;                         // largest patch wavelength, world units
 const vec3  WPN_OLIVE        = vec3(0.260, 0.270, 0.140);   // olive green sward
-const vec3  WPN_YELLOW_GREEN = vec3(0.330, 0.330, 0.160);   // yellow-green sward
-const vec3  WPN_STRAW        = vec3(0.530, 0.480, 0.330);   // dry straw patch
+const vec3  WPN_YELLOW_GREEN = vec3(0.310, 0.310, 0.155);   // yellow-green sward
+const vec3  WPN_STRAW        = vec3(0.500, 0.450, 0.310);   // dry straw patch
 
 float wpn_hash(vec2 p) {
     // Integer-lattice hash, sin-free (stable across drivers at large world coordinates).
@@ -47,7 +47,7 @@ vec2 worldPatchField(vec2 worldXY) {
     p = R * p * 2.01 + vec2(-5.3, 11.9);
     n += 0.23 * wpn_value(p);
     // Contrast shape: connected straw patches and connected green; the finer octaves rag the edges.
-    float dry = smoothstep(0.47, 0.56, n);
+    float dry = smoothstep(0.48, 0.57, n);
     float hue = wpn_value(R * worldXY / (WPN_BASE_WU * 0.55) + vec2(41.0, -23.0));
     return vec2(dry, hue);
 }

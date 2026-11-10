@@ -46,7 +46,7 @@ layout(set = 0, binding = 14) uniform sampler2D u_shorelineMask;
 const vec4  MATV_NORMAL_BOOST = vec4(0.9, 0.5, 1.1, CD_CONCRETE_RELIEF_STRENGTH);  // rock,grass,dirt,conc
 const vec4  MATV_TILING       = vec4(3.0, 2.0, 1.0, 6.0);  // rock,grass,dirt,conc
 const float MATV_TILING_SNOW  = 1.0;
-const float GM_STRENGTH       = 1.0;    // ground mottle (world_patch_noise.glsl) blend on full natural ground
+const float GM_STRENGTH       = 0.9;   // ground mottle (world_patch_noise.glsl) blend on full natural ground
 const float GM_LUMA_KEEP      = 0.25;   // share of the colormap brightness the mottle keeps (dark soil keeps all of it)
 const float GM_BEACH_WU       = 40.0;   // horizontal run above the waterline that stays clean beach (~10 m)
 const float GM_COAST_DRY_WU   = 400.0;  // straw fades out to the inland sward over this run (~100 m)
