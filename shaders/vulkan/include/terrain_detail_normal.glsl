@@ -68,6 +68,14 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float macroNz, vec2
                ? mv_sampleAntiTileArr(MAT_LAYER_GRASS, uvGrass, atsGrass, uvDx * MATV_TILING.y, uvDy * MATV_TILING.y, fwGrass)
                : textureGrad(u_matNormalArray, vec3(uvGrass, float(MAT_LAYER_GRASS)), uvDx * MATV_TILING.y, uvDy * MATV_TILING.y);
         dN += w.y * MATV_NORMAL_BOOST.y * fwGrass * (s.rgb * 2.0 - 1.0);
+        // GRASS-GROUND-NORMAL: a second, larger-scale tap of the turf (0.29x, rotated ~37 deg) so the
+        // tuft/dirt-gap clumps vary over ~1300 wu and the 384 wu tile does not repeat. Its own fade.
+        const mat2 kGrassMacroRot = mat2(0.8, 0.6, -0.6, 0.8) * 0.29;
+        vec2 gmDx = kGrassMacroRot * (uvDx * MATV_TILING.y), gmDy = kGrassMacroRot * (uvDy * MATV_TILING.y);
+        float fwGrassMacro = clamp(1.0 - (length(uvWidth * MATV_TILING.y * 0.29) - 0.5) * 2.0, 0.0, 1.0);
+        vec2 gm = textureGrad(u_matNormalArray, vec3(kGrassMacroRot * uvGrass, float(MAT_LAYER_GRASS)), gmDx, gmDy).rg * 2.0 - 1.0;
+        // Rotate the sampled slope back into terrain space.
+        dN.xy += w.y * MATV_NORMAL_BOOST.y * 0.6 * fwGrassMacro * (transpose(mat2(0.8, 0.6, -0.6, 0.8)) * gm);
     }
     if (w.z > 0.01 && fwDirt != 0.0) {
         vec4 s = (atsDirt > 0.01 && fwDirt > 0.4)
