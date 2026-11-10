@@ -568,10 +568,25 @@ def headless_exit_ok(returncode: int, text: str) -> bool:
 WINDOWED_TOLERATED_BUCKETS = ("perf_counter",)
 
 
+def autowin_exit_ok(returncode: int, text: str) -> bool:
+    """A fixture that sets MC2_SOAK_AUTOWIN ends the mission on purpose: the engine fires [SOAK] autowin, dismisses the results screens and
+    calls gos_TerminateApplication before the smoke duration elapses, so the runner reports rc=1 with the single summary reason early_exit.
+    That exit is clean only with all of: rc=1, the autowin line, the terminate marker, early_exit as the only failure reason, no hard marker
+    (crash, fingerprint, shader, invalid run, ORDER-LIVENESS) and only engine_reported_fail rows. Enough frames is judged later (INCONCLUSIVE)."""
+    if returncode != 1 or "[SOAK] autowin " not in text or "[EXIT] gos_TerminateApplication called" not in text:
+        return False
+    if "Crash Report" in text or "HARD FAIL" in text or "RUN INVALID" in text or "[DEPLOY_FINGERPRINT] MISMATCH" in text             or "DEPLOY_FINGERPRINT:** FAIL" in text or re.search(r"shader_error|SHADER_ERROR|shader compile", text):
+        return False
+    if {m.group(1) for m in re.finditer(r"\[SMOKE v1\] event=summary result=fail reason=(\S+)", text)} != {"early_exit"}:
+        return False
+    rows = _SMOKE_FAIL_ROW.findall(text)
+    return bool(rows) and all({b.strip() for b in buckets.split(",") if b.strip()} == {"engine_reported_fail"} for _stem, buckets in rows)
+
+
 def windowed_exit_ok(returncode: int, text: str) -> bool:
     """rc=0 is clean; rc=1 is tolerated only when the engine summary passed, no hard failure was printed (fingerprint, shader,
     invalid run) and every FAIL row lists only WINDOWED_TOLERATED_BUCKETS. Any other nonzero exit is red."""
-    if returncode == 0:
+    if returncode == 0 or autowin_exit_ok(returncode, text):
         return True
     if returncode != 1 or "[SMOKE v1] event=summary result=pass" not in text or "Crash Report" in text:
         return False

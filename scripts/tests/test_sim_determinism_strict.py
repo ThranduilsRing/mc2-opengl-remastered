@@ -404,3 +404,21 @@ def test_single_run_is_held_to_the_pin_alone(monkeypatch, tmp_path, case, rc):
 def test_single_needs_headless_both():
     with pytest.raises(SystemExit):
         sim.main(["check", "mc2_03", "--single"])
+
+
+_AUTOWIN_EXIT = ("[SOAK] autowin mission=mc2_16 t=40.0\n[SOAK] results dismiss screen=pilot\n[EXIT] gos_TerminateApplication called\n"
+                 "[SMOKE v1] event=summary result=fail reason=early_exit stage=atexit\n"
+                 "| mc2_16  | FAIL   | engine_reported_fail   | 0      | -       | -   | 24096   | +0        |\n")
+
+
+@pytest.mark.parametrize("rc,text,ok", [
+    (1, _AUTOWIN_EXIT, True),                                                   # clean autowin end: the mission ended on purpose
+    (1, _AUTOWIN_EXIT.replace("[SOAK] autowin mission=mc2_16 t=40.0\n", ""), False),  # no autowin line: a real early exit
+    (1, _AUTOWIN_EXIT.replace("[EXIT] gos_TerminateApplication called\n", ""), False),  # no clean terminate marker: crash/abort
+    (1, _AUTOWIN_EXIT + "Crash Report\n", False),
+    (1, _AUTOWIN_EXIT + "[ORDER-LIVENESS] HARD FAIL moved=0\n", False),
+    (1, _AUTOWIN_EXIT.replace("engine_reported_fail", "engine_reported_fail, shader_error"), False),
+    (2, _AUTOWIN_EXIT, False),
+])
+def test_windowed_exit_ok_accepts_only_a_clean_autowin_end(rc, text, ok):
+    assert sim.windowed_exit_ok(rc, text) is ok
