@@ -31,6 +31,7 @@
 #include <cstring>  // strcmp (rebuildShapeRecParents)
 #include <memory>   // the per-frame pools own their storage
 #include <vector>   // an animation owns its key tracks
+#include "msl_node_walk.h"  // the keyed hierarchy evaluation state each record carries
 #include "../RenderCore/gpu_abi/GpuObjectLights.h"  // single-source per-object light record
 
 //-------------------------------------------------------------------------------
@@ -433,6 +434,7 @@ struct _TG_ShapeRec
 	TG_AnimationPtr				currentAnimation;		//Animation data being applied to this shape.  OK if NULL
 	_TG_ShapeRec				*parentNode;			//Parent Node.  OK if NULL but only for ROOT node!
 	glm::quat		baseRotation;			//Always ZERO unless set by appearance controlling this shape.
+	mc2::msl::NodeKey	walkKey;			//What the matrices above were last evaluated from (TransformMultiShape_BuildRecipe).
 	
 	// A record owns its node, so it is never copied (B7o.6b: the old copy assignment duplicated the owner).
 	_TG_ShapeRec (void) = default;
@@ -1078,6 +1080,7 @@ inline void _TG_ShapeRec::transferFrom (_TG_ShapeRec &rec)
 	currentAnimation	= nullptr;
 	parentNode			= rec.parentNode;
 	baseRotation		= rec.baseRotation;
+	walkKey.valid		= false;
 }
 
 

@@ -694,26 +694,32 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 			for (long i = 0; i < numMechs; i++)
 				if (mechs[i] && mechs[i]->getExists())
 				{
+					{ ZoneScopedN("Presentation.Mechs.PushFlush");
 					mechs[i]->applyAppearancePush();
-					mechs[i]->getAppearance()->flushSimEvents();
-					bool inView = mechs[i]->getAppearance()->recalcBounds();
+					mechs[i]->getAppearance()->flushSimEvents(); }
+					bool inView;
+					{ ZoneScopedN("Presentation.Mechs.Bounds");
+					inView = mechs[i]->getAppearance()->recalcBounds();
 					if (inView)
-						mechs[i]->windowsVisible = turn;
+						mechs[i]->windowsVisible = turn; }
 					
 					// Must force here as well.
 					glm::vec3 pos = mechs[i]->getPosition();
 					float rot = mechs[i]->getRotation();
-					presentationPose(mechs[i], pos, rot);
-					bool selected = mechs[i]->isSelected();
+					{ ZoneScopedN("Presentation.Mechs.Pose");
+					presentationPose(mechs[i], pos, rot); }
+					{ ZoneScopedN("Presentation.Mechs.Params");
 					int teamID = mechs[i]->getTeamId();
-					mechs[i]->getAppearance()->setObjectParameters(pos,rot,mechs[i]->drawFlags,teamID,Team::getRelation(teamID, Team::home->getId()));
+					mechs[i]->getAppearance()->setObjectParameters(pos,rot,mechs[i]->drawFlags,teamID,Team::getRelation(teamID, Team::home->getId())); }
 
 					MC2_WORLD_UPDATE("appearance_mechs", mechs[i]);
 
 
-					mechs[i]->getAppearance()->update( false );
+					{ ZoneScopedN("Presentation.Mechs.Update");
+					mechs[i]->getAppearance()->update( false ); }
+					{ ZoneScopedN("Presentation.Mechs.Tail");
                     mechs[i]->getAppearance()->updateFootprints();
-					mechs[i]->getAppearance()->setVisibility(inView,true);
+					mechs[i]->getAppearance()->setVisibility(inView,true); }
 				}
 		}
 

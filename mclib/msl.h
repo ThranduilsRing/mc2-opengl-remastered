@@ -340,6 +340,12 @@ class TG_MultiShape
 		TG_ShapeRecPtr			listOfShapes;			//Memory holding all TG_ShapeRecs; a view of shapeRecStore
 		std::vector<TG_ShapeRec>	shapeRecStore;		//Owns the records; parent pointers point into it, so it is sized once per list
 		float					frameNum;				//Frame number of animation
+		glm::mat4				walkOrigin_{1.0f};		//Shape origin the node world matrices were last built for
+		std::uint32_t			walkOriginGen_ = 0;		//Bumped when walkOrigin_ changes; nodes compare against it
+		std::uint32_t			walkGenCounter_ = 0;	//Source of per-node local generations
+		bool					walkOriginValid_ = false;
+		std::vector<int>		walkOrder_;				//Node indices, parents before children (rebuilt when parent links change)
+		std::vector<int>		walkParent_;			//Parent index per node the order was built from
 		bool					d_useShadows;
 		bool					isHudElement;
 		BYTE					alphaValue;				//To fade shapes in and out

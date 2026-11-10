@@ -3,6 +3,7 @@
 #include <atomic>
 #include "msl_internal.h"
 #include "sim_overlap.h"
+#include "msl_node_walk.h"
 //-------------------------------------------------------------------------------
 // Walks the node hierarchy and publishes shapeToWorld / worldToShape per node. No vertex is touched: the GPU batchers
 // transform and light, and the CPU fallback draw (TG_Shape::CpuDraw) projects from these matrices. Each walked leaf is
@@ -11,195 +12,81 @@
 long TG_MultiShape::TransformMultiShape_BuildRecipe (glm::vec3 *pos, glm::quat *rot)
 {
     glm::mat4 	shapeOrigin;
-    glm::mat4 	localShapeOrigin;
 
     mc2::math::buildRotation(shapeOrigin, *rot);
     mc2::math::buildTranslation(shapeOrigin, *pos);
 
     BindMaterials();
-    long i=0;
-
-    TG_ShapeRecPtr childChain[MAX_NODES];
-
+    // Hierarchy order cached per shape (parents before children). It is rebuilt only when a parent link no longer matches the
+    // snapshot the order was built from (shape compaction rebuilds the links).
+    const auto parentIndexOf = [&](long n) {
+        const _TG_ShapeRec* p = listOfShapes[n].parentNode;
+        const long d = p ? static_cast<long>(p - listOfShapes) : -1L;
+        gosASSERT(d < numTG_Shapes);
+        return static_cast<int>(d);
+    };
+    bool orderOk = static_cast<long>(walkOrder_.size()) == numTG_Shapes && static_cast<long>(walkParent_.size()) == numTG_Shapes;
+    for (long n = 0; orderOk && n < numTG_Shapes; ++n)
+        orderOk = walkParent_[n] == parentIndexOf(n);
+    if (!orderOk)
     {
-    for (i=0;i<numTG_Shapes;i++)
-    {
-        //----------------------------------------------
-        // Must set each transform!  Animating Textures!
-
-
-        //-----------------------------------------------------------------
-        // Heirarchy Animation Code.
-        //
-        // Simple, really.  For each shape in list, traverse back UP
-        // the heirarchy and store the traversal pointers in a temp list.
-        // Starting at the TOP of the heirarchy and for each shape, 
-        // check if matrix set for that shape. If so, next node down.  If
-        // not, copy above matrix into node and apply animation data.
-        // Do this until at end of this heirarchy.
-        long curChild = 0;
-        childChain[curChild] = &listOfShapes[i];
-        while (childChain[curChild]->parentNode)
+        walkParent_.assign(numTG_Shapes, -1);
+        walkOrder_.clear();
+        walkOrder_.reserve(numTG_Shapes);
+        std::vector<unsigned char> placed(numTG_Shapes, 0);
+        for (long n = 0; n < numTG_Shapes; ++n) walkParent_[n] = parentIndexOf(n);
+        for (long n = 0; n < numTG_Shapes; ++n)
         {
-            curChild++;
-
-            gosASSERT(curChild < MAX_NODES);
-
-            childChain[curChild] = childChain[curChild-1]->parentNode;
-        }
-
-        long fNum = float2long(frameNum);
-
-        glm::vec3 zero;
-        zero.x = zero.y = zero.z = 0.0f;
-        for (int j=curChild;j>=0;j--)
-        {
-            if (childChain[j]->calcedThisFrame != turn)
+            int chain[MAX_NODES];
+            long depth = 0;
+            for (int c = static_cast<int>(n); c >= 0 && !placed[c]; c = walkParent_[c])
             {
-                if (j == curChild)		//This is the ROOT Node.
-                {
-                    //----------------------------------------------------
-                    // Top O the hierarchy.  Used passed in shapeMatrices
-                    // Apply any animation data, if data is non-NULL
-                    if (childChain[j]->currentAnimation)
-                    {
-                        //--------------------------------------
-                        // Slerp between current and next frame
-                        glm::quat slerpQuat;
-                        slerpQuat.x = slerpQuat.y = slerpQuat.z = 0.0f;
-                        slerpQuat.w = 1.0f;
-
-                        if (childChain[j]->currentAnimation->quat)
-                            slerpQuat = childChain[j]->currentAnimation->quat[fNum];
-
-                        //--------------------------------------
-                        //First Apply Animation to this local piece of heirarchy.
-                        // If piece had base rotation, apply it.  Otherwise, no.
-                        glm::quat totalRotation = slerpQuat;
-                        if ((childChain[j]->baseRotation.w == 1.0f) && 
-                                (childChain[j]->baseRotation.x == 0.0f) &&
-                                (childChain[j]->baseRotation.y == 0.0f) && 
-                                (childChain[j]->baseRotation.z == 0.0f))
-                        {
-                        }
-                        else
-                        {
-                            totalRotation = mc2::math::composeQuat(slerpQuat, childChain[j]->baseRotation);
-                            totalRotation = glm::normalize(totalRotation);
-                        }
-
-                        mc2::math::buildRotation(localShapeOrigin, totalRotation);
-
-                        if (childChain[j]->currentAnimation->pos)
-                            mc2::math::buildTranslation(localShapeOrigin, childChain[j]->currentAnimation->pos[fNum]);		//SPECIAL.  ROOT HAS ITS OWN OFFSETS!
-                        else
-                            mc2::math::buildTranslation(localShapeOrigin, childChain[j]->node->myType->GetNodeCenter());
-
-                        childChain[j]->localShapeToWorld = localShapeOrigin;
-
-                        //------------------------------------------------------------------
-                        //Then move the piece of the heirarchy into the frame of the parent
-                        childChain[j]->shapeToWorld = childChain[j]->localShapeToWorld * shapeOrigin;
-
-                        childChain[j]->worldToShape = glm::inverse(childChain[j]->shapeToWorld);
-                        childChain[j]->calcedThisFrame = turn;
-                    }
-                    else
-                    {
-                        mc2::math::buildRotation(localShapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
-                        mc2::math::buildTranslation(localShapeOrigin, childChain[j]->node->myType->GetNodeCenter());
-
-                        childChain[j]->localShapeToWorld = localShapeOrigin;
-
-                        childChain[j]->shapeToWorld = childChain[j]->localShapeToWorld * shapeOrigin;
-
-                        childChain[j]->worldToShape = glm::inverse(childChain[j]->shapeToWorld);
-                        childChain[j]->calcedThisFrame = turn;
-                    }
-                }
-                else
-                {
-                    //----------------------------------------------------------------------
-                    // Not Top O the Heirarchy.  Figure out matrix based on Animation data.
-                    if (childChain[j]->currentAnimation)
-                    {
-                        //--------------------------------------
-                        // Slerp between current and next frame
-                        glm::quat slerpQuat;
-                        slerpQuat.x = slerpQuat.y = slerpQuat.z = 0.0f;
-                        slerpQuat.w = 1.0f;
-
-                        if (childChain[j]->currentAnimation->quat)
-                            slerpQuat = childChain[j]->currentAnimation->quat[fNum];
-
-                        //--------------------------------------
-                        //First Apply Animation to this local piece of heirarchy.
-                        // If piece had base rotation, apply it.  Otherwise, no.
-                        glm::quat totalRotation = slerpQuat;
-                        if ((childChain[j]->baseRotation.w == 1.0f) && 
-                                (childChain[j]->baseRotation.x == 0.0f) &&
-                                (childChain[j]->baseRotation.y == 0.0f) && 
-                                (childChain[j]->baseRotation.z == 0.0f))
-                        {
-                        }
-                        else
-                        {
-                            totalRotation = mc2::math::composeQuat(slerpQuat, childChain[j]->baseRotation);
-                            totalRotation = glm::normalize(totalRotation);
-                        }
-
-                        mc2::math::buildRotation(localShapeOrigin, totalRotation);
-
-                        if (childChain[j]->currentAnimation->pos)
-                            mc2::math::buildTranslation(localShapeOrigin, childChain[j]->currentAnimation->pos[fNum]);
-                        else
-                            mc2::math::buildTranslation(localShapeOrigin, childChain[j]->node->myType->GetRelativeNodeCenter());
-
-                        childChain[j]->localShapeToWorld = localShapeOrigin;
-
-                        //------------------------------------------------------------------
-                        //Then move the piece of the heirarchy into the frame of the parent
-                        childChain[j]->localShapeToWorld = localShapeOrigin * childChain[j+1]->localShapeToWorld;
-
-                        //------------------------------------------------------------------
-                        // Then deal with global translation.
-                        childChain[j]->shapeToWorld = childChain[j]->localShapeToWorld * shapeOrigin;
-
-                        childChain[j]->worldToShape = glm::inverse(childChain[j]->shapeToWorld);
-                        childChain[j]->calcedThisFrame = turn;
-                    }
-                    else
-                    {
-                        //--------------------------------------
-                        // NO Animation if we are here.
-                        //
-                        // Apply Base Rotation.  If it is Zero, no problem!
-                        glm::quat totalRotation = childChain[j]->baseRotation;
-                        mc2::math::buildRotation(localShapeOrigin, totalRotation);
-                        mc2::math::buildTranslation(localShapeOrigin, childChain[j]->node->myType->GetRelativeNodeCenter());
-
-                        childChain[j]->localShapeToWorld = localShapeOrigin;
-
-                        //------------------------------------------------------------------
-                        //Then move the piece of the heirarchy into the frame of the parent
-                        localShapeOrigin = childChain[j]->localShapeToWorld;
-                        childChain[j]->localShapeToWorld = localShapeOrigin * childChain[j+1]->localShapeToWorld;
-
-                        //------------------------------------------------------------------
-                        // Then deal with global translation.
-                        childChain[j]->shapeToWorld = childChain[j]->localShapeToWorld * shapeOrigin;
-
-                        childChain[j]->worldToShape = glm::inverse(childChain[j]->shapeToWorld);
-                        childChain[j]->calcedThisFrame = turn;
-                    }
-                }
+                gosASSERT(depth < MAX_NODES);
+                chain[depth++] = c;
+            }
+            while (depth > 0)
+            {
+                const int c = chain[--depth];
+                placed[c] = 1;
+                walkOrder_.push_back(c);
             }
         }
-
-
-        if (listOfShapes[i].node)
-            listOfShapes[i].node->lastTurnTransformed = turn;
     }
+
+    if (!walkOriginValid_ || std::memcmp(&walkOrigin_, &shapeOrigin, sizeof(shapeOrigin)) != 0)
+    {
+        walkOrigin_ = shapeOrigin;
+        walkOriginValid_ = true;
+        ++walkOriginGen_;
+    }
+
+    const long fNum = float2long(frameNum);
+    for (const int idx : walkOrder_)
+    {
+        TG_ShapeRec& rec = listOfShapes[idx];
+        if (rec.calcedThisFrame != turn)
+        {
+            const bool isRoot = rec.parentNode == nullptr;
+            mc2::msl::NodeInput in;
+            in.base = rec.baseRotation;
+            if (rec.currentAnimation)
+            {
+                in.animated = true;
+                if (rec.currentAnimation->quat)
+                    in.animation = rec.currentAnimation->quat[fNum];
+                in.translation = rec.currentAnimation->pos ? rec.currentAnimation->pos[fNum]
+                    : (isRoot ? rec.node->myType->GetNodeCenter() : rec.node->myType->GetRelativeNodeCenter());
+            }
+            else
+                in.translation = isRoot ? rec.node->myType->GetNodeCenter() : rec.node->myType->GetRelativeNodeCenter();
+
+            const _TG_ShapeRec* parent = rec.parentNode;
+            mc2::msl::evalNode(in, parent ? &parent->localShapeToWorld : nullptr, parent ? parent->walkKey.localGen : 0u,
+                shapeOrigin, walkOriginGen_, walkGenCounter_, rec.walkKey, rec.localShapeToWorld, rec.shapeToWorld, rec.worldToShape);
+            rec.calcedThisFrame = turn;
+        }
+        if (rec.node)
+            rec.node->lastTurnTransformed = turn;
     }
     return(0);
 }
