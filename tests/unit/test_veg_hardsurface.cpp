@@ -30,6 +30,8 @@ TEST_CASE("VegClumps/deterministic per-map blue-noise centres") {
 }
 
 TEST_CASE("VegClumps/layered composition and sparse singles") {
+    int dominant=0, grassTotal=0;
+    std::array<int,2> bushSpecies{};
     for (int x=0;x<256;++x) {
         const ClumpRecipe recipe{9,1,0,12};
         const auto a=makeClump(x,4,mapSeed("mc2_01"),recipe,0.5f,0,false);
@@ -46,12 +48,25 @@ TEST_CASE("VegClumps/layered composition and sparse singles") {
             else { ++grass; CHECK(r>=9*0.3f); CHECK(r<=9); CHECK(m.scale<5); }
         }
         CHECK(trees==1); CHECK(bushes>=2); CHECK(bushes<=5); CHECK(grass>=6);
+        // Species patches: one shrub species per clump, a dominant grass card.
+        std::array<int,4> grassFrames{};
+        unsigned bushFrame = 0;
+        for (int i=0;i<a.count;++i) {
+            const auto& m=a.members[static_cast<size_t>(i)];
+            if (m.woody && m.frame<6) { if (!bushFrame) bushFrame=m.frame; CHECK(m.frame==bushFrame); }
+            else if (!m.woody) { REQUIRE(m.frame<4); ++grassFrames[m.frame]; }
+        }
+        dominant += *std::max_element(grassFrames.begin(),grassFrames.end());
+        grassTotal += grass;
+        bushSpecies[bushFrame-4] += 1;
         CHECK(a.count<=22);
         const auto single=makeClump(x,4,42,recipe,0.5f,0,true);
         REQUIRE(single.count==1); CHECK_FALSE(single.members[0].woody);
         const auto steep=makeClump(x,4,42,recipe,0.5f,40,false);
         for (int i=0;i<steep.count;++i) CHECK(steep.members[static_cast<size_t>(i)].frame<6);
     }
+    CHECK(dominant*10 > grassTotal*7);                 // patches: most grass is the clump's card
+    CHECK(bushSpecies[0] > 64); CHECK(bushSpecies[1] > 64);  // both shrub species still appear
 }
 
 TEST_CASE("VegClumps/member masks reject roads water buildings stock trees and slope") {

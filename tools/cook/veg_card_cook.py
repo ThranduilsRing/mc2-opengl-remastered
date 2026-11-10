@@ -22,11 +22,30 @@ import console_child
 CARDS = [f"grass_{i:02d}" for i in range(1, 5)] + ["bush_round", "bush_heath", "sapling_leaf", "sapling_pine"]
 
 
-def procedural_woody_cards(source: Path, sheet: Path) -> None:
+def hex_rgb(value: str) -> tuple[int, int, int]:
+    return tuple(int(value[i:i+2], 16) for i in (1, 3, 5))
+
+
+def ramp_colour(ramp: list[str], t: float) -> tuple[int, int, int]:
+    """Linear interpolation along a dark-to-light list of palette swatches."""
+    t = min(max(t, 0.0), 1.0) * (len(ramp) - 1)
+    i = min(int(t), len(ramp) - 2)
+    a, b = hex_rgb(ramp[i]), hex_rgb(ramp[i + 1])
+    f = t - i
+    return tuple(int(round(a[k] + (b[k] - a[k]) * f)) for k in range(3))
+
+
+def load_palette(path: Path) -> dict:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def procedural_woody_cards(source: Path, sheet: Path, palette: dict) -> None:
     """Original seeded branch/leaf silhouettes; no source photography or licences.
 
-    Four species share the existing eight-layer BC7 array with the grass.
-    Runtime ground colour supplies biome/season hues without extra textures.
+    Four species share the existing eight-layer BC7 array with the grass. Leaves
+    are painted from the mission palette's per-species ramps (dark at the inner
+    and lower crown, light at the sunlit top) so each species keeps its own hue
+    and value; the runtime only sets exposure from the ground.
     """
     import random
     import math
@@ -34,32 +53,34 @@ def procedural_woody_cards(source: Path, sheet: Path) -> None:
 
     source.mkdir(parents=True, exist_ok=True)
     samples = []
+    bark = hex_rgb(palette["bark"])
     for species, name in enumerate(CARDS[4:]):
         rng = random.Random(20261108 + species)
+        ramp = palette["species"][name]
         image = Image.new("RGBA", (512, 512))
         draw = ImageDraw.Draw(image)
         tree = species >= 2
         base = (256, 504)
         top = (250, 50 if tree else 230)
-        draw.line([base, top], fill=(90, 72, 43, 255), width=9 if tree else 5)
+        draw.line([base, top], fill=bark + (255,), width=9 if tree else 5)
         for branch in range(18 if tree else 28):
             t = 0.28 + 0.70*(branch + 1) / (19 if tree else 29)
             y = base[1] + (top[1] - base[1])*t
             side = -1 if branch % 2 else 1
-            span = (1-t)*250+15 if species == 3 else 190*math.sin(t*math.pi)
+            # Ragged tiers instead of a clean cone for the conifer.
+            span = ((1-t)*250+15)*(0.6+0.55*rng.random()) if species == 3 else 190*math.sin(t*math.pi)
             if not tree:
                 span = 65 + rng.random()*155
                 y = 455 - rng.random()*155
             end = (256+side*span, y-25-rng.random()*60)
-            draw.line([(256,y), end], fill=(94,80,48,255), width=4 if tree else 3)
+            draw.line([(256,y), end], fill=bark + (255,), width=4 if tree else 3)
             for leaf in range(100 if tree else 110):
                 u = 0.20 + rng.random()*0.8
                 px = 256+(end[0]-256)*u+rng.gauss(0,20)
                 py = y+(end[1]-y)*u+rng.gauss(0,14 if species == 3 else 25)
                 r = rng.uniform(5,12) if species != 1 else rng.uniform(3,8)
-                tone = rng.uniform(0.7,1.25)
-                colour = tuple(int(c*tone) for c in ((69,105,43) if species != 1 else (102,111,62)))+(255,)
-                draw.ellipse((px-r,py-r*0.65,px+r,py+r*0.65), fill=colour)
+                light = 0.55*(1.0 - py/512.0) + 0.35*u + rng.uniform(-0.25, 0.25)
+                draw.ellipse((px-r,py-r*0.65,px+r,py+r*0.65), fill=ramp_colour(ramp, light)+(255,))
         # Scale shrubs to the full card height while preserving the root.
         if not tree:
             bounds = image.getbbox()
@@ -74,6 +95,37 @@ def procedural_woody_cards(source: Path, sheet: Path) -> None:
         result.paste(sample, ((i%2)*512,(i//2)*552))
     sheet.parent.mkdir(parents=True, exist_ok=True)
     result.save(sheet)
+
+
+def recolour_card(image: Image.Image, ramp: list[str]) -> Image.Image:
+    """Gradient-map a card's own luminance (blade detail, rank-normalised) onto a palette ramp; alpha unchanged.
+
+    >>> img = Image.new("RGBA", (2, 1)); img.putpixel((0, 0), (10, 10, 10, 255)); img.putpixel((1, 0), (200, 200, 200, 255))
+    >>> out = recolour_card(img, ["#000000", "#ffffff"]); out.getpixel((0, 0))[0] < out.getpixel((1, 0))[0]
+    True
+    """
+    rgba = np.array(image.convert("RGBA"))
+    luma = rgba[:, :, :3].astype(np.float32) @ np.array([0.299, 0.587, 0.114], dtype=np.float32)
+    opaque = rgba[:, :, 3] >= 128
+    if not opaque.any():
+        return image.convert("RGBA")
+    lo, hi = np.percentile(luma[opaque], [3, 97])
+    t = np.clip((luma - lo) / max(hi - lo, 1.0), 0.0, 1.0)
+    stops = np.array([hex_rgb(c) for c in ramp], dtype=np.float32)
+    pos = t * (len(stops) - 1)
+    i = np.minimum(pos.astype(int), len(stops) - 2)
+    f = (pos - i)[..., None]
+    rgba[:, :, :3] = np.clip(stops[i] * (1 - f) + stops[i + 1] * f + 0.5, 0, 255).astype(np.uint8)
+    return Image.fromarray(rgba)
+
+
+def paint_cards(source: Path, palette_path: Path, sheet: Path) -> None:
+    """Repaint all eight shipped cards into a mission palette (grass recoloured, woody regenerated)."""
+    palette = load_palette(palette_path)
+    for name in CARDS[:4]:
+        path = source / f"{name}.png"
+        recolour_card(Image.open(path), palette["species"][name]).save(path)
+    procedural_woody_cards(source, sheet, palette)
 
 
 def preserve_coverage(alpha: np.ndarray, target: float) -> np.ndarray:
@@ -190,5 +242,9 @@ if __name__ == "__main__":
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--ktx", type=Path, default=Path("A:/Games/mc2-tools/ktx/ktx.exe"))
     parser.add_argument("--trim-output", type=Path)
+    parser.add_argument("--paint", type=Path, help="repaint the source cards into this palette JSON first")
+    parser.add_argument("--sheet", type=Path, help="woody contact sheet written by --paint")
     args = parser.parse_args()
+    if args.paint:
+        paint_cards(args.source, args.paint, args.sheet or Path(tempfile.gettempdir()) / "veg_woody_sheet.png")
     cook(args.source, args.output, args.ktx, args.trim_output)
