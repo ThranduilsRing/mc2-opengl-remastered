@@ -129,6 +129,19 @@ def test_git_diff_files_lists_changed_paths(tmp_path, repo):
     assert ab.git_diff_files("no-such-commit", repo[0]) is None
 
 
+def test_git_diff_files_lists_both_sides_of_a_rename(tmp_path, repo):
+    # W138g: hud/mcui_high7/x.png -> hud/x.png was a rename; the removed old path is part of the window's payload too.
+    r = ab.ROOT
+    (r / "old").mkdir()
+    (r / "old" / "icon.png").write_text("same bytes, long enough to be detected as a rename" * 4)
+    _git(r, "add", "old")
+    _git(r, "commit", "-q", "-m", "add")
+    before = _git(r, "rev-parse", "HEAD")
+    _git(r, "mv", "old/icon.png", "icon.png")
+    _git(r, "commit", "-q", "-m", "move")
+    assert ab.git_diff_files(before, _git(r, "rev-parse", "HEAD")) == {"old/icon.png", "icon.png"}
+
+
 @pytest.mark.parametrize("rel", ["mc2.exe", "shaders/vulkan/x.spv"])
 def test_manifest_byte_mismatch_refuses_before_capture(tmp_path, repo, monkeypatch, rel):
     install = _install(tmp_path / "install", repo[0])

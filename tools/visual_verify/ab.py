@@ -206,10 +206,12 @@ def manifest_diff_files(ma, mb):
 
 
 def git_diff_files(older, newer):
-    """Relpaths changed between commits older and newer (`git diff --name-only older newer`); None when the diff cannot be
-    computed (unknown commit, git failure) so callers fail closed instead of accepting an unverified payload."""
+    """Relpaths changed between commits older and newer (`git diff --name-only --no-renames older newer`); None when the diff
+    cannot be computed (unknown commit, git failure) so callers fail closed instead of accepting an unverified payload.
+    --no-renames: a moved file must list its old path too (W138g: icon-sharp moved hud/mcui_high7/* to hud/*, and rename
+    detection hid the removed paths, so the window's own payload was refused)."""
     try:
-        out = subprocess.run(["git", "-C", str(ROOT), "diff", "--name-only", older, newer],
+        out = subprocess.run(["git", "-C", str(ROOT), "diff", "--name-only", "--no-renames", older, newer],
                              capture_output=True, text=True,
                              **console_child.child_kwargs(redirected=True))
     except OSError:
