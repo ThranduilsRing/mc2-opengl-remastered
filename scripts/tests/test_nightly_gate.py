@@ -1,4 +1,5 @@
 import json
+import pytest
 import os
 import sys
 
@@ -263,3 +264,19 @@ def test_only_the_green_stages_get_a_receipt_when_one_stage_is_skipped(tmp_path,
     (tmp_path / "gate-verdict.json").write_text("{}")
     (tmp_path / "receipt.json").unlink()
     assert nightly_gate.write_receipts(str(tmp_path), False, stages) == [] and not (tmp_path / "receipt.json").exists()
+
+
+def test_task_xml_template_resolves_the_launcher_at_registration(tmp_path):
+    import nightly_gate_task as t
+    raw = open(os.path.join(ROOT, "scripts", "nightly_gate.task.xml"), encoding="utf-8").read()
+    assert "<Command>py</Command>" not in raw and "<Command>@PY@</Command>" in raw   # bare `py` is not on the task's PATH
+    out = t.render(raw, r"C:\Windows\py.exe")
+    assert "<Command>C:\Windows\py.exe</Command>" in out and "<Arguments>-3 A:" in out and "@PY@" not in out
+    assert "<Arguments>A:" in t.render(raw, r"C:\Py\python.exe")   # python.exe takes no -3
+    which = lambda n: {"py": r"C:\L\py.exe"}.get(n)   # noqa: E731
+    assert t.resolve_launcher(which) == os.path.normpath(r"C:\L\py.exe")
+    with pytest.raises(SystemExit):
+        t.resolve_launcher(lambda n: None)
+    dest = tmp_path / "x.xml"
+    t.main(["--out", str(dest), "--py", os.path.abspath(sys.executable)])
+    assert "@PY@" not in dest.read_text(encoding="utf-8")

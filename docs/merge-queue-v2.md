@@ -24,7 +24,8 @@ Diff promotions at a per-merge gate (`promoted_stages`): a sim-sensitive diff ad
 `scripts/nightly_gate.py` runs the nightly (Sundays: weekly) gate against the published nifty in its own worktree `A:/Games/mc2-nightly` (`MC2_NIGHTLY_ROOT`; created on first run with `git worktree add --detach`, `git checkout --detach claude/nifty-mendeleev` and a build in its own `build64-ninja` each night), with `--isolated-verdict` into `E:/mc2-archive-2026-10/proofs/merge-gate/nightly-<date>/`. mc2-main's branch and dirty state do not matter; it refuses only when the nightly worktree has tracked changes. A host lease still held after 60 min at start drops the game rows (printed `NOT RUN`) and runs the CPU rows. The Windows task is defined in `scripts/nightly_gate.task.xml` (daily 04:30). Only the orchestrator registers it:
 
 ```
-schtasks /Create /TN "\mc2-nightly-gate" /XML A:\Games\mc2-main\scripts\nightly_gate.task.xml /F
+py -3 A:\Games\mc2-main\scripts\nightly_gate_task.py   # renders the template with the full py.exe path (the task's PATH has no py); prints the line below
+schtasks /Create /TN "\mc2-nightly-gate" /XML %TEMP%\mc2-nightly-gate.task.xml /F
 schtasks /Delete /TN "\mc2-smoke-overnight" /F
 ```
 
