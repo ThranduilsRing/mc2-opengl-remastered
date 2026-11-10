@@ -607,8 +607,43 @@ def cleanup_stage(staged, keep=False) -> None:
                 break
 
 
-def stage_install(install: Path, exe: Path, dest: Path) -> Path:
-    """An install clone whose mc2.exe is `exe`: shared data and DLLs are hard-linked from `install` (see stage_tree)."""
+def _swap_spv_rows(rows, dest, shaders_parent, commit, exe_name, exe_path):
+    """Manifest rows for a stage whose shaders/ was replaced from `shaders_parent`/shaders: the exe row and every shaders/vulkan
+    *.spv row come from the staged bytes (rows for shaders the new set no longer ships are dropped, new ones added) so
+    payload_identity verifies exactly what runs."""
+    spv = {p.relative_to(dest).as_posix(): p for p in (dest / "shaders" / "vulkan").rglob("*.spv")}
+    new_rows = []
+    for row in rows:
+        if not row:
+            continue
+        if row[0] == exe_name:
+            row[1:4] = [hashlib.sha256(exe_path.read_bytes()).hexdigest(), str(exe_path.stat().st_size), commit]
+        elif row[0] in spv:
+            src = spv[row[0]]
+            row[1:4] = [hashlib.sha256(src.read_bytes()).hexdigest(), str(src.stat().st_size), commit]
+        elif row[0].startswith("shaders/") and not (Path(shaders_parent) / row[0]).is_file():
+            continue
+        new_rows.append(row)
+    have = {row[0] for row in new_rows if row}
+    for rel, src in sorted(spv.items()):
+        if rel not in have:
+            new_rows.append([rel, hashlib.sha256(src.read_bytes()).hexdigest(), str(src.stat().st_size), commit])
+    return new_rows
+
+
+def shaders_parent_of(path) -> Path:
+    """--shaders-a accepts an install dir (has shaders/) or the shaders dir itself; returns the dir that holds shaders/."""
+    path = Path(path)
+    if (path / "shaders").is_dir():
+        return path
+    if path.name == "shaders" and path.is_dir():
+        return path.parent
+    sys.exit(f"ab.py: --shaders-a {path}: no shaders/ directory there")
+
+
+def stage_install(install: Path, exe: Path, dest: Path, shaders_from=None) -> Path:
+    """An install clone whose mc2.exe is `exe`: shared data and DLLs are hard-linked from `install` (see stage_tree).
+    `shaders_from` (an install dir or its shaders/ dir) also swaps in that build's shaders/, manifest rows rewritten."""
     if dest.exists():
         shutil.rmtree(dest)
     print(f"[ab] stage {dest.name}: {stage_tree(install, dest)}", flush=True)
@@ -626,13 +661,41 @@ def stage_install(install: Path, exe: Path, dest: Path) -> Path:
     if len(commit) != 40:
         commit = subprocess.check_output(["git", "-C", str(ROOT), "rev-parse", commit + "^{commit}"], text=True,
                                          **console_child.child_kwargs(redirected=True)).strip()
-    for row in rows[2:]:
-        if row and row[0] == target.name:
-            row[1:4] = [hashlib.sha256(target.read_bytes()).hexdigest(), str(target.stat().st_size), commit]
+    if shaders_from:
+        sp = shaders_parent_of(shaders_from)
+        if (dest / "shaders").exists():
+            shutil.rmtree(dest / "shaders")
+        shutil.copytree(sp / "shaders", dest / "shaders")
+        rows = _swap_spv_rows(rows, dest, sp, commit, target.name, target)
+        print(f"[ab] staged {dest.name}: shaders/ swapped from {sp} (manifest rewritten from the swapped bytes)", flush=True)
+    else:
+        for row in rows[2:]:
+            if row and row[0] == target.name:
+                row[1:4] = [hashlib.sha256(target.read_bytes()).hexdigest(), str(target.stat().st_size), commit]
     manifest.unlink()  # copied installs may share this inode with their source
     with manifest.open("w", newline="", encoding="utf-8") as stream:
         csv.writer(stream).writerows(rows)
     return dest
+
+
+def worktree_head():
+    """HEAD of the worktree this tool runs from, or None when git cannot say."""
+    try:
+        out = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"], capture_output=True, text=True,
+                             **console_child.child_kwargs(redirected=True))
+    except OSError:
+        return None
+    return (out.stdout.strip() or None) if out.returncode == 0 else None
+
+
+def capture_commit_report(commit_a, commit_b, head):
+    """Lines printed after capture: each side's CAPTURE src_commit, and a loud warning when side B (the build under test) is not
+    the worktree HEAD (a stale exe makes the whole A/B meaningless)."""
+    lines = [f"[ab] CAPTURE src_commit A={commit_a} B={commit_b} (worktree HEAD {head})"]
+    if head and commit_b != head:
+        lines.append(f"[ab] !!! WARNING: side B src_commit {commit_b} != worktree HEAD {head} -- the B exe is STALE (not built "
+                     "and deployed from this HEAD); this A/B does not test your change !!!")
+    return lines
 
 
 def stage_exe_swap(install: Path, exe: Path, dest: Path) -> Path:
@@ -670,25 +733,7 @@ def stage_exe_swap(install: Path, exe: Path, dest: Path) -> Path:
     if len(commit) != 40:
         commit = subprocess.check_output(["git", "-C", str(ROOT), "rev-parse", commit + "^{commit}"], text=True,
                                          **console_child.child_kwargs(redirected=True)).strip()
-    # The swapped shaders/vulkan/*.spv are the payload: rewrite their manifest rows from the swapped bytes (and drop rows for
-    # shaders the swapped build no longer ships) so payload_identity verifies exactly what runs.
-    spv = {p.relative_to(dest).as_posix(): p for p in (dest / "shaders" / "vulkan").rglob("*.spv")}
-    new_rows = []
-    for row in rows:
-        if not row:
-            continue
-        if row[0] == target.name:
-            row[1:4] = [hashlib.sha256(target.read_bytes()).hexdigest(), str(target.stat().st_size), commit]
-        elif row[0] in spv:
-            src = spv[row[0]]
-            row[1:4] = [hashlib.sha256(src.read_bytes()).hexdigest(), str(src.stat().st_size), commit]
-        elif row[0].startswith("shaders/") and not (exe_dir / row[0]).is_file():
-            continue
-        new_rows.append(row)
-    have = {row[0] for row in new_rows if row}
-    for rel, src in sorted(spv.items()):
-        if rel not in have:
-            new_rows.append([rel, hashlib.sha256(src.read_bytes()).hexdigest(), str(src.stat().st_size), commit])
+    new_rows = _swap_spv_rows(rows, dest, exe_dir, commit, target.name, target)
     manifest.unlink()  # copied installs may share this inode with their source
     with manifest.open("w", newline="", encoding="utf-8") as stream:
         csv.writer(stream).writerows(new_rows)
@@ -785,7 +830,7 @@ def resolve_installs(a, out: Path):
             if not Path(e).is_file():
                 sys.exit(f"exe not found: {e}")
         root = _stage_root(a, out, Path(a.install), 2)
-        return (_staged(a, stage_install(Path(a.install), Path(a.exe_a), root / "install_a")),
+        return (_staged(a, stage_install(Path(a.install), Path(a.exe_a), root / "install_a", getattr(a, "shaders_a", None))),
                 _staged(a, stage_install(Path(a.install), Path(a.exe_b), root / "install_b")))
     sys.exit("need --install-a/--install-b, or --exe-a/--exe-b, or --exe-a/--install-b (or --compare-only DIR_A DIR_B)")
 
@@ -802,6 +847,9 @@ def main(argv=None):
     ap.add_argument("--stage-root", metavar="DIR",
                     help="where --exe-a/--exe-b stage their install copies (default <install>/../_ab-stage/<run>, the install's own "
                          "volume so shared files are hardlinked)")
+    ap.add_argument("--shaders-a", metavar="DIR",
+                    help="with --exe-a/--exe-b: stage side A with the shaders/ of this install (e.g. v0.4) and rewrite A's manifest "
+                         "rows from the swapped bytes")
     ap.add_argument("--keep-stage", action="store_true",
                     help="leave the staged install_a/install_b dirs after the run (default: deleted when it ends, pass or fail)")
     ap.add_argument("--install", default=DEFAULT_INSTALL, help="data/DLL source for --exe-a/--exe-b")
@@ -890,6 +938,8 @@ def main(argv=None):
         stamp_identity(out / "a", identities[0])
         run_capture(ib, a.bookmarks, out / "b", env)
         stamp_identity(out / "b", identities[1])
+        for line in capture_commit_report(identities[0]["commit"], identities[1]["commit"], worktree_head()):
+            print(line, flush=True)
         compare(out / "a", out / "b", out / "cmp", crops, [s.strip() for s in a.bookmarks.split(",") if s.strip()],
                 cross_base=bool(bad), exe_a_base_mismatch=exe_a_base_mismatch, exe_a_swap=exe_a_swap)
         rc = 1 if getattr(compare, "problems", None) else 0

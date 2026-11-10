@@ -133,3 +133,47 @@ def test_estimate_is_only_the_copied_files_on_one_volume(tmp_path):
     inst = _install(tmp_path / "inst")
     est = ab.estimate_stage_bytes(inst, tmp_path / "stage")
     assert est == len(b"cfg") + len(b"ini") + len(b"log") + len(b"{}") + len(b"pipe")
+
+
+def test_shaders_a_stages_side_a_with_the_other_shaders_and_fixes_the_manifest(tmp_path, monkeypatch):
+    import hashlib
+    inst, ea, eb = _stage_setup(tmp_path, monkeypatch)
+    v04 = tmp_path / "v04"
+    (v04 / "shaders/vulkan").mkdir(parents=True)
+    (v04 / "shaders/vulkan/x.spv").write_bytes(b"v04 spv")
+    seen = {}
+
+    def capture(install, bms, out, env):
+        if Path(out).name == "a":
+            ident = ab.payload_identity(install)  # the rewritten manifest verifies the swapped bytes
+            seen.update(spv=(Path(install) / "shaders/vulkan/x.spv").read_bytes(), sha=ident["payload"]["shaders/vulkan/x.spv"])
+        else:
+            seen["b_spv"] = (Path(install) / "shaders/vulkan/x.spv").read_bytes()
+    monkeypatch.setattr(ab, "run_capture", capture)
+    with pytest.raises(SystemExit):
+        ab.main(["--bookmarks", "x", "--exe-a", str(ea), "--exe-b", str(eb), "--install", str(inst),
+                 "--shaders-a", str(v04), "--out-root", str(tmp_path / "o")])
+    assert seen["spv"] == b"v04 spv" and seen["sha"] == hashlib.sha256(b"v04 spv").hexdigest()
+    assert seen["b_spv"] == b"spv" and (inst / "shaders/vulkan/x.spv").read_bytes() == b"spv"  # B and the source are untouched
+
+
+def test_shaders_a_without_shaders_dir_refuses(tmp_path):
+    with pytest.raises(SystemExit, match="no shaders"):
+        ab.shaders_parent_of(tmp_path / "nothing")
+
+
+def test_capture_commit_report_warns_when_b_is_not_head():
+    ok = ab.capture_commit_report("a" * 40, "b" * 40, "b" * 40)
+    assert len(ok) == 1 and "A=" + "a" * 40 in ok[0] and "B=" + "b" * 40 in ok[0]
+    bad = ab.capture_commit_report("a" * 40, "c" * 40, "b" * 40)
+    assert len(bad) == 2 and "WARNING" in bad[1] and "STALE" in bad[1]
+
+
+def test_main_prints_commit_report_after_capture(tmp_path, monkeypatch, capsys):
+    inst, ea, eb = _stage_setup(tmp_path, monkeypatch)
+    monkeypatch.setattr(ab, "run_capture", lambda *a: None)
+    monkeypatch.setattr(ab, "worktree_head", lambda: "f" * 40)
+    with pytest.raises(SystemExit):
+        ab.main(["--bookmarks", "x", "--exe-a", str(ea), "--exe-b", str(eb), "--install", str(inst), "--out-root", str(tmp_path / "o")])
+    out = capsys.readouterr().out
+    assert "CAPTURE src_commit A=" in out and "STALE" in out
