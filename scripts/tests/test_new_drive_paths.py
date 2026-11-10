@@ -10,7 +10,7 @@ import new_drive_paths as ndp  # noqa: E402
 
 
 def _git(repo, *a):
-    subprocess.run(["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t", *a], check=True, capture_output=True)
+    subprocess.run(["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t", *a], check=True, capture_output=True)  # background-launch: allow test fixture git on a tmp repo
 
 
 def _repo(tmp_path, old, new, rel="scripts/x.py"):
