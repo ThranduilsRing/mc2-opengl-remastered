@@ -53,6 +53,8 @@ def _install(d, commit, data=None, spv="s1", exe="e1"):
         path.write_bytes(value.encode())
     lines = lines[:2] + [f"{k},{hashlib.sha256(v.encode()).hexdigest()},{len(v)},{commit},t,0" for k, v in rows.items()]
     (d / ".deployed_manifest.csv").write_text("\n".join(lines) + "\n")
+    (d / "saved_bookmarks").mkdir()  # ab.py never writes bookmarks into a non-staged install
+    (d / "saved_bookmarks" / "bm.json").write_text("{}")
     return str(d)
 
 

@@ -777,14 +777,17 @@ def seed_install(install, bookmarks, reference=DEFAULT_INSTALL):
                  + "\n  fix: use --install DIR to name a reference install that has them, or copy them in.")
 
 
-def ensure_saved_bookmarks(install, reference=DEFAULT_INSTALL):
-    """If the (staged or used) install has no saved_bookmarks/*.json at all, copy the reference's bookmarks (read-only) so a
-    capture never runs on an empty bookmark set; fail clearly only if the reference has none either. Never writes to the
-    reference."""
+def ensure_saved_bookmarks(install, reference, staged):
+    """If the install has no saved_bookmarks/*.json at all, copy the reference's bookmarks (read-only) so a capture never runs on
+    an empty bookmark set; fail clearly if the reference has none either. Writes only into an install this run staged (`staged`:
+    the stage dirs main recorded); a user-supplied install without bookmarks is refused, never written into."""
     install, reference = Path(install), Path(reference)
     bookmark_dir = install / "saved_bookmarks"
     if any(bookmark_dir.glob("*.json")):
         return
+    if str(install) not in {str(d) for d in staged}:
+        sys.exit(f"ab.py: {install} has no saved_bookmarks/*.json and is not a staged copy, so ab.py will not write into it; "
+                 f"copy bookmarks into {bookmark_dir} first")
     sources = sorted((reference / "saved_bookmarks").glob("*.json"))
     if not sources:
         sys.exit(f"ab.py: {install} has no saved_bookmarks/*.json and the reference {reference} has none either; "
@@ -929,8 +932,8 @@ def main(argv=None):
     a.staged = []  # install dirs this run staged (never a user-supplied --install-a/--install-b): deleted when the run ends
     try:
         ia, ib = resolve_installs(a, out)
-        ensure_saved_bookmarks(ia, a.install)
-        ensure_saved_bookmarks(ib, a.install)
+        ensure_saved_bookmarks(ia, a.install, a.staged)
+        ensure_saved_bookmarks(ib, a.install, a.staged)
         exe_a_swap = None
         if a.exe_a and not a.exe_b:
             exe_a_swap = {"exe": a.exe_a, "exe_dir": str(Path(a.exe_a).parent), "b_install": a.install_b}
