@@ -31,9 +31,6 @@ long GVAppearance::render (long depthFixup)
 	if (!eye) return 0;
 	TG_MultiShape* drawShape = renderShape ? renderShape.get() : gvShape;
 	const auto visibility = buildVisState();
-    mc2::waterreactive::buffer().submit(reinterpret_cast<uintptr_t>(this), scenarioTime,
-        position.x, position.y, getRadius() * 0.35f, presentedAnimation().wakeRequested,
-        visible && inView && mc2_vis::meshDrawn(visibility), true);
 	mc2_vis::trace("vehicle-shadow", static_cast<const void*>(this), visibility);
 	// Sensor contacts keep visible=true while the body fades to alpha zero.
 	// Retain offscreen casters, but never reveal a fog-hidden body through its shadow.
@@ -48,6 +45,10 @@ long GVAppearance::render (long depthFixup)
 	const bool gvShouldRender = s_gpuCullLifecycle
 		? gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(actorHandle_))
 		: inView;
+	// The render gate (GPU-lagged when the cull lifecycle is on), not the CPU inView, says whether the body is drawn.
+	mc2::waterreactive::buffer().submit(reinterpret_cast<uintptr_t>(this), scenarioTime,
+		position.x, position.y, getRadius() * 0.35f, presentedAnimation().wakeRequested,
+		visible && gvShouldRender && mc2_vis::meshDrawn(visibility), true);
 	if (gvShouldRender)
 	{
 		uint32_t color = SD_BLUE;

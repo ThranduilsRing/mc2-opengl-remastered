@@ -413,10 +413,6 @@ bool Mech3DAppearance::recalcBounds (void)
 long Mech3DAppearance::render (long depthFixup)
 {
 	if (!eye) return 0;
-    mc2::waterreactive::buffer().submit(reinterpret_cast<uintptr_t>(this), scenarioTime,
-        position.x, position.y, getRadius() * 0.35f,
-        presentedAnimation().wakeRequested && !isHelicopter && presentedAnimation().currentGestureId != 20,
-        visible && inView && mc2_vis::meshDrawn(buildVisState()), false);
 	// FX_COUNT one-time init: register the shutdown emit from a code path that
 	// is guaranteed to run (a discardable anon-namespace static can be elided
 	// by /OPT:REF). Unconditional init print proves render() runs + flag state.
@@ -460,6 +456,11 @@ long Mech3DAppearance::render (long depthFixup)
 	const bool mechShouldRender = s_gpuCullLifecycle
 			? (gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(actorHandle_)))
 			: inView;
+	// The render gate (GPU-lagged when the cull lifecycle is on), not the CPU inView, says whether the body is drawn.
+	mc2::waterreactive::buffer().submit(reinterpret_cast<uintptr_t>(this), scenarioTime,
+		position.x, position.y, getRadius() * 0.35f,
+		presentedAnimation().wakeRequested && !isHelicopter && presentedAnimation().currentGestureId != 20,
+		visible && mechShouldRender && mc2_vis::meshDrawn(buildVisState()), false);
 	if (mechShouldRender)
 	{
 		// The native batch has no per-instance fade alpha. Stock hides sensor
