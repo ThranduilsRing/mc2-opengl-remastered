@@ -236,6 +236,31 @@ def git_diff_files(older, newer):
     return {line for line in out.stdout.splitlines() if line}
 
 
+# Deploy-cooked payload: untracked files deploy_payload generates and pins by sha256 in a tracked pin file. When the window
+# changed the pin file, the pinned outputs are the window's payload too, but only at the pinned bytes (W138h: stock-tree-upscale
+# cooks data/tgl/128/<stem>.ktx2 from data/kit/tree-upscale.json; gitignored, so `git diff` never lists them).
+COOKED_PAYLOAD_PINS = {
+    "data/kit/tree-upscale.json": lambda pins: {f"data/tgl/128/{stem}.ktx2": row["ktx2_sha256"] for stem, row in pins.items()},
+}
+
+
+def cooked_payload(diff_files, commit):
+    """{install relpath: pinned sha256} of the deploy-cooked outputs whose pin file changed in the window, read at `commit`.
+    An unreadable or malformed pin file yields nothing for it (fail closed: its outputs keep refusing)."""
+    out = {}
+    for pin, expand in COOKED_PAYLOAD_PINS.items():
+        if pin not in diff_files:
+            continue
+        try:
+            r = subprocess.run(["git", "-C", str(ROOT), "show", f"{commit}:{pin}"], capture_output=True, text=True,
+                               **console_child.child_kwargs(redirected=True))
+            if r.returncode == 0:
+                out.update(expand(json.loads(r.stdout)))
+        except (OSError, ValueError, KeyError, TypeError, AttributeError):
+            continue
+    return out
+
+
 EXAMPLE_MODS_SRC = "examples/mods"  # scripts/deploy_payload.py EXAMPLE_MODS_SRC: ships to <install>/mods/<id>/
 
 
@@ -1166,6 +1191,8 @@ def main(argv=None):
                 bad.append("cannot compute `git diff --name-only` between the two capture commits; refusing --allow-data-delta")
             else:
                 accepted = manifest_diff_files(ia["manifest"], ib["manifest"]) & {repo_path_to_install(f) for f in diff_files}
+                accepted |= {path for path, sha in cooked_payload(diff_files, ib["commit"]).items()
+                             if ib["manifest"].get(path) == sha}
                 accepted_delta = sorted(accepted)
                 for path, line in entries:
                     if path in accepted:

@@ -244,3 +244,28 @@ def test_compare_writes_exe_a_base_mismatch(tmp_path):
     assert json.loads((tmp_path / "cmp/summary.json").read_text())["exe_a_base_mismatch"] == mm
     ab.compare(tmp_path / "a", tmp_path / "b", tmp_path / "cmp2", [], ["bm"])
     assert json.loads((tmp_path / "cmp2/summary.json").read_text())["exe_a_base_mismatch"] is None
+
+
+def test_cooked_payload_accepts_pinned_outputs_only_when_the_pin_changed(tmp_path, repo):
+    # W138h: deploy cooks data/tgl/128/<stem>.ktx2 (gitignored) from data/kit/tree-upscale.json; the window that adds or changes
+    # the pins ships them, so --allow-data-delta accepts them at the pinned bytes. Without a pin change they keep refusing.
+    r = ab.ROOT
+    (r / "data" / "kit").mkdir(parents=True)
+    (r / "data" / "kit" / "tree-upscale.json").write_text(json.dumps({"a_palm": {"ktx2_sha256": "ab" * 32}}))
+    _git(r, "add", "data")
+    _git(r, "commit", "-q", "-m", "pins")
+    head = _git(r, "rev-parse", "HEAD")
+    diff = ab.git_diff_files(repo[1], head)
+    assert ab.cooked_payload(diff, head) == {"data/tgl/128/a_palm.ktx2": "ab" * 32}
+    assert ab.cooked_payload(diff - {"data/kit/tree-upscale.json"}, head) == {}
+    assert ab.cooked_payload(diff, repo[1]) == {}   # pin file unreadable at that commit: fail closed
+
+
+def test_cooked_payload_malformed_pins_fail_closed(tmp_path, repo):
+    r = ab.ROOT
+    (r / "data" / "kit").mkdir(parents=True)
+    (r / "data" / "kit" / "tree-upscale.json").write_text("{not json")
+    _git(r, "add", "data")
+    _git(r, "commit", "-q", "-m", "bad pins")
+    head = _git(r, "rev-parse", "HEAD")
+    assert ab.cooked_payload({"data/kit/tree-upscale.json"}, head) == {}

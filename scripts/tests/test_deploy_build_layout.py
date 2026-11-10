@@ -109,6 +109,7 @@ def test_enumerate_payload_needs_only_game(tmp_path):
     assert "mc2-launcher.exe" not in rel
     assert {"tools/mc2_import/import_tool.py", "tools/mc2x_import/manifest.py",
             "tools/mco_import/build_object2.py", "scripts/console_child.py"} <= rel
+    assert not any("__pycache__" in r or r.endswith((".pyc", ".pyo")) for r in rel)
 
 
 def test_missing_baked_shaders_refuses_deploy(tmp_path):

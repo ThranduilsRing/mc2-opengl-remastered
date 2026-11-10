@@ -1377,8 +1377,11 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
         if os.path.isfile(entry_abs):
             items.append((entry_abs, entry.replace(os.sep, "/"), "support"))
         elif os.path.isdir(entry_abs):
-            for dirpath, _dirs, files in os.walk(entry_abs):
+            for dirpath, dirs, files in os.walk(entry_abs):
+                dirs[:] = [d for d in dirs if d != "__pycache__"]   # W138h: the tree cook imports tools/examples; bytecode is not payload
                 for fn in sorted(files):
+                    if fn.endswith((".pyc", ".pyo")):
+                        continue
                     sp = os.path.join(dirpath, fn)
                     rel = os.path.relpath(sp, src_root).replace(os.sep, "/")
                     items.append((sp, rel, "support"))
