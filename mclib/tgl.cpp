@@ -18,8 +18,6 @@
 
 //-------------------------------------------------------------------------------
 // Statics
-TG_LightPtr				*TG_Shape::s_listOfLights = nullptr;
-DWORD					TG_Shape::s_numLights = 0;
 
 
 
@@ -110,24 +108,6 @@ void mc2::tgl::ViewUniforms::SetViewport(float mulX, float mulY, float addX, flo
 	viewAddY = addY;
 }
 
-//This function sets the list of lights used to light the shape (the CPU fallback draw reads them).
-long TG_Shape::SetLightList (TG_LightPtr *lightList, DWORD nLights)
-{
-	mc2::overlap::assertMainThread("TG_Shape::SetLightList");
-	if (lightList)
-	{
-		s_listOfLights = lightList;
-		s_numLights = nLights;
-	}
-	else
-	{
-		s_listOfLights = nullptr;
-		s_numLights = 0;
-	}
-
-	return 0;
-}
-
 void TG_Shape::SetFogRGB (DWORD fRGB)
 {
 	fogRGB = fRGB;
@@ -143,10 +123,10 @@ void TG_TypeShape::movePosRelativeCenterNode (void)
 
 // Per-actor light-data gather for the GPU batchers: uses the texture manager's per-frame scene template cache, then
 // patches the current actor's terrain-scaled light color and submits through addLightDataStructure.
-uint32_t TG_Shape::GatherGpuObjectLightDataOnly()
+uint32_t TG_Shape::GatherGpuObjectLightDataOnly(const TG_LightContext& lights)
 {
 	LcsScope<LcsBucket::C5> _lcs;
-	return mc2::vkLights::addLightDataStructureWithPerActorColor(&lightData_);
+	return mc2::vkLights::addLightDataStructureWithPerActorColor(&lightData_, lights);
 }
 
 // Re-submit the already-populated lightData_ to get a fresh UBO slot index without re-gathering from s_listOfLights.

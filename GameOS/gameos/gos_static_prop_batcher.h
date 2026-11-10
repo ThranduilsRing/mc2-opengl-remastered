@@ -227,6 +227,7 @@ public:
     // type so the allowlist / registration walk can be repaired.
     [[nodiscard]] bool submitMultiShape(TG_MultiShape* multi,
                                         GpuStaticPropPopulation pop,
+                                        const TG_LightContext& lights,
                                         const char* callerName = nullptr,
                                         uint32_t actorTint = 0x0002ffffu /*kNeutral|I=1: prop_light_contract.h*/);
 

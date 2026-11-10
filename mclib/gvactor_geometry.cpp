@@ -170,7 +170,6 @@ void GVAppearance::updateRenderShape()
 	renderShape->SetAlphaValue(gvShape->GetAlphaValue());
 	renderShape->SetFogRGB(0xffffffff);
 	renderShape->SetLightsOut(!eye->isNight);
-	renderShape->SetLightList(eye->getWorldLights(), eye->getNumLights());
 	auto rotation = poseRotation();
 	// The static-prop batcher draws a type-material body from its node matrices; a declined submit falls back to the
 	// CPU draw from the same matrices.

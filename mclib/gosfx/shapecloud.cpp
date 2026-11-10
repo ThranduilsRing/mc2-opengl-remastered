@@ -302,11 +302,11 @@ bool
 
 //------------------------------------------------------------------------------
 //
-void gosFX::ShapeCloud::Draw(DrawInfo *info)
+void gosFX::ShapeCloud::Draw(DrawInfo *info) const
 {
     Check_Object(this);
     Check_Object(info);
-    auto* spec = GetSpecification();
+    const auto* spec = GetSpecification();
     const auto localToWorld = m_localToParent * *info->m_parentToWorld;
     const auto camera = mc2::math::transformPoint(
         mc2::math::getTranslation(info->m_clipper->GetCameraToWorldMatrix()), glm::inverse(localToWorld));
@@ -314,7 +314,7 @@ void gosFX::ShapeCloud::Draw(DrawInfo *info)
     draw.shape = spec->m_shape;
     draw.state.Combine(info->m_state, spec->m_state);
     for (unsigned i = 0; i < m_activeParticleCount; ++i) {
-        auto* particle = GetParticle(i);
+        const auto* particle = GetParticle(i);
         if (particle->m_age >= 1.0f) continue;
         glm::mat4 model;
         mc2::math::buildRotation(model, particle->m_localRotation);

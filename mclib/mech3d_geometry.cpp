@@ -545,7 +545,6 @@ void Mech3DAppearance::updateGeometry (void)
 			mechShadowShape->SetNodeRotation(rotationalNodeIndex,&torsoRot);
 
  			mechShadowShape->SetNodeRotation("joint_torso",&torsoRot);
-			mechShadowShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
 		}
 		} // end AnimPose zone
 
@@ -553,7 +552,6 @@ void Mech3DAppearance::updateGeometry (void)
 		// TransformMultiShape* dispatch. The dominant per-mech work; will be
 		// further broken down by zones inside TransformMultiShape itself.
 		{ ZoneScopedN("Mech3D.UpdateGeometry.BodyXform");
-		mechShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
 		// The GPU mech batcher reads the node matrices only (vertex transform and lighting run in its shaders).
 		mechShape->TransformMultiShape_HierarchyOnly(&xlatPosition, &qRotation);
 		} // end BodyXform zone
@@ -755,12 +753,10 @@ void Mech3DAppearance::updateGeometry (void)
 
 	xlatPosition.y += baseRootNodeDifference;
 	sensorTriangleShape->SetFogRGB(0xffffffff);
-	sensorTriangleShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
 	sensorTriangleShape->TransformMultiShape_HierarchyOnly(&xlatPosition,&totalRotation);
 	sensorTriangleShape->ReserveCpuDraw();
 
 	sensorSquareShape->SetFogRGB(0xffffffff);
-	sensorSquareShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
 	sensorSquareShape->TransformMultiShape_HierarchyOnly(&xlatPosition,&totalRotation);
 	sensorSquareShape->ReserveCpuDraw();
 	} // end !skipSensors

@@ -1174,7 +1174,7 @@ void gosFX::Tube::DestroyProfile(unsigned index)
 
 //------------------------------------------------------------------------------
 //
-void gosFX::Tube::Draw(DrawInfo *info)
+void gosFX::Tube::Draw(DrawInfo *info) const
 {
 	Check_Object(this);
 	Check_Object(info);
@@ -1189,7 +1189,7 @@ void gosFX::Tube::Draw(DrawInfo *info)
 	if (m_activeProfileCount>1)
 	{
 		MidLevelRenderer::DrawEffectInformation dInfo;
-		Specification *spec = GetSpecification();
+		const Specification *spec = GetSpecification();
 
 		// MC2_TUBE_PROFILE_LOG=1: log each tube spec's PEAK m_activeProfileCount.
 		// Placed BEFORE the oracle/legacy split so the count is path-independent â€”
@@ -1249,7 +1249,7 @@ void gosFX::Tube::Draw(DrawInfo *info)
 			Verify(i >= 0);
 			do
 			{
-				Profile *profile = GetProfile(i);
+				const Profile *profile = GetProfile(i);
 				Check_Object(profile);
 				glm::vec3 camera_in_profile;
 				camera_in_profile = (mc2::math::transformPoint(camera_in_world, glm::inverse(profile->m_profileToWorld)));
@@ -1262,8 +1262,11 @@ void gosFX::Tube::Draw(DrawInfo *info)
 				//
 				Stuff::Scalar age = profile->m_age;
 				Stuff::Scalar seed = profile->m_seed;
-				Stuff::Scalar scale = spec->m_pScale.ComputeValue(age, seed);
-				Stuff::Scalar disp = spec->m_pDisplacement.ComputeValue(age, seed);
+				// Curve evaluators (ComputeValue) are pure reads but declared non-const; Draw
+				// stays const, so evaluate through a non-const view of the spec (no write happens).
+				Tube__Specification *mspec = const_cast<Tube__Specification*>(spec);
+				Stuff::Scalar scale = mspec->m_pScale.ComputeValue(age, seed);
+				Stuff::Scalar disp = mspec->m_pDisplacement.ComputeValue(age, seed);
 				glm::vec3 offset_in_profile;
 				offset_in_profile = profile->m_direction * disp;
 

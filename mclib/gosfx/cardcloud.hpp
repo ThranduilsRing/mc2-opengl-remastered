@@ -149,6 +149,13 @@ namespace gosFX
 						);
 				}
 
+		const Specification*
+			GetSpecification() const
+				{ return Cast_Object(const Specification*, m_specification); }
+		const Particle*
+			GetParticle(unsigned index) const
+				{ return const_cast<CardCloud*>(this)->GetParticle(index); }
+
 		static ClassData
 			*DefaultData;
 
@@ -181,8 +188,8 @@ namespace gosFX
 		void
 			Start(ExecuteInfo *info);
 		void
-			Draw(DrawInfo *info);
+			Draw(DrawInfo *info) const;
 	private:
-		void DrawState(DrawInfo *info);
+		void DrawState(DrawInfo *info) const;
 	};
 }

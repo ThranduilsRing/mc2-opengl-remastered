@@ -464,7 +464,6 @@ bool TreeAppearance::prewarmStaticLightBake(Camera* cam)
 	if (!cam || cam->getNumLights() == 0)
 		return false;
 
-	treeShape->SetLightList(cam->getWorldLights(), cam->getNumLights());
 
 	// xlatPosition/rot: same transform as TreeAppearance::update (line ~6129-6132).
 	// Trees use pitch + yaw combined; position.y is world-Y but terrain height
@@ -480,7 +479,7 @@ bool TreeAppearance::prewarmStaticLightBake(Camera* cam)
 
 	treeShape->TransformMultiShape_HierarchyOnly(&xlatPosition, &rot);
 
-	mc2CacheOrBakeStaticGpuLight(treeShape, staticReg[lod].registered, staticReg[lod].recipeIndex);
+	mc2CacheOrBakeStaticGpuLight(treeShape, staticReg[lod].registered, staticReg[lod].recipeIndex, cam->lightContext());
 	const uint32_t lightIdx = treeShape->getCachedGpuLightIndex();
 	// Share light slot across all LODs (matches update() K×M fix).
 	for (auto & staticRegElem : staticReg)

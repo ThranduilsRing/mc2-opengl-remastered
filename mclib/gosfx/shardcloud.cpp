@@ -278,7 +278,7 @@ void
 
 //------------------------------------------------------------------------------
 //
-void gosFX::ShardCloud::Draw(DrawInfo *info)
+void gosFX::ShardCloud::Draw(DrawInfo *info) const
 {
 	Check_Object(this);
 	Check_Object(info);
@@ -292,7 +292,7 @@ void gosFX::ShardCloud::Draw(DrawInfo *info)
 	//
 	if (m_activeParticleCount)
 	{
-		Specification *spec = GetSpecification();
+		const Specification *spec = GetSpecification();
 		Check_Object(spec);
         if (mc2::gate::get<"MC2_GPU_PARTICLES_LOG">() && mc2_diag::tagRequested("VFX_PRIMITIVE")) {
             static bool reported = false;
@@ -333,7 +333,7 @@ void gosFX::ShardCloud::Draw(DrawInfo *info)
 				//
 				for (i = 0; i < m_activeParticleCount; i++)
 				{
-					Particle *particle = GetParticle(i);
+					const Particle *particle = GetParticle(i);
 					Check_Object(particle);
 					if (particle->m_age < 1.0f)
 					{
@@ -401,7 +401,7 @@ void gosFX::ShardCloud::Draw(DrawInfo *info)
 				//
 				for (i = 0; i < m_activeParticleCount; i++)
 				{
-					Particle *particle = GetParticle(i);
+					const Particle *particle = GetParticle(i);
 					Check_Object(particle);
 					if (particle->m_age < 1.0f)
 					{
@@ -470,7 +470,7 @@ void gosFX::ShardCloud::Draw(DrawInfo *info)
 			//
 			for (i = 0; i < m_activeParticleCount; i++)
 			{
-				Particle *particle = GetParticle(i);
+				const Particle *particle = GetParticle(i);
 				Check_Object(particle);
 				if (particle->m_age < 1.0f)
 				{
@@ -524,7 +524,7 @@ void gosFX::ShardCloud::Draw(DrawInfo *info)
 		{
 			for (i = 0; i < m_activeParticleCount; i++)
 			{
-				Particle *particle = GetParticle(i);
+				const Particle *particle = GetParticle(i);
 				Check_Object(particle);
 				if (particle->m_age < 1.0f)
 				{

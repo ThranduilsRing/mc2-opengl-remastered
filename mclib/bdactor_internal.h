@@ -170,7 +170,7 @@ bool mc2StableLightSkipTouchEnabled();
 void lbssRecordTree(bool taken, bool blk_idx);
 bool mc2FrameJobsTouchDiagEnabled();
 void touchEntryDiagRollFrame(uint32_t frame);
-void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape, bool registered, int32_t recipeIndex);
+void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape, bool registered, int32_t recipeIndex, const TG_LightContext& lights);
 // [LIGHT_CONTRACT v1] parity: the leaf row first infinite light vs contractSun for this actor.
 unsigned mc2CameraLightChangedCount();
 void mc2PropLightContractCheck(TG_MultiShape* shape, float terrainLight, uint32_t policy);

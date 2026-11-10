@@ -42,7 +42,7 @@ long GenericAppearance::render (long depthFixup)
 					// Stage 2.C+: see BldgAppearance::render for callerName intent.
 					const char* callerName = (appearType ? appearType->name : nullptr);
 					submittedToGpu = GpuStaticPropBatcher::instance().submitMultiShape(
-						genShape.get(), GpuStaticPropPopulation::Generic, callerName);
+						genShape.get(), GpuStaticPropPopulation::Generic, TG_LightContext{}, callerName);
 					// Slice 2 (object-offload) — Stage 2.B: see BldgAppearance::render
 					// for full rationale on the late-reg recovery flag.
 					if (!submittedToGpu &&
@@ -429,7 +429,6 @@ long GenericAppearance::update (bool animate)
 	if (inView)
 	{
 		genShape->SetIsClamped(true);
-		genShape->SetLightList(nullptr,0);
 		// Slice 2 (object-offload) — Stage 2.B: eligibility hoist.
 		// See BldgAppearance::update for the full rationale; same shape.
 		// Branch lives INSIDE the existing inView cull
@@ -446,7 +445,7 @@ long GenericAppearance::update (bool animate)
 			// this actor's value. The resulting safe-by-accident invariant
 			// (GenericAppearance::SetLightList(NULL, 0) zaps s_listOfLights)
 			// is brittle — explicit caching removes the fragility.
-			genShape->CacheGpuLightData();
+			genShape->CacheGpuLightData(TG_LightContext{});
 			genShape->TransformMultiShape_HierarchyOnly (&xlatPosition,&rot);
 		}
 		else

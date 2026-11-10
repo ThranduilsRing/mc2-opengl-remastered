@@ -192,7 +192,7 @@ static uint32_t s_lightBakeReadyFrame = 0;
 static thread_local bool s_lastBakeFresh = false;  // [LIGHT_CONTRACT v1] set by the bake gate: true = real gather, false = shared HIT row
 
 void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape,
-                                         bool registered, int32_t recipeIndex)
+                                         bool registered, int32_t recipeIndex, const TG_LightContext& lights)
 {
 	s_lastBakeFresh = true;
 	struct SlotIRec { TG_MultiShape* s; ~SlotIRec() { extern void mc2RecordSlotIFwd(TG_MultiShape*); mc2RecordSlotIFwd(s); } } slotIRec{shape};
@@ -203,7 +203,7 @@ void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape,
 	extern bool mc2IsBakedStaticLightPresent(int32_t);
 	if (!shape) return;
 	if (!mc2LightBakeEnabled() || !registered || recipeIndex < 0) {
-		shape->CacheGpuLightData();                  // unchanged D2/legacy path
+		shape->CacheGpuLightData(lights);                  // unchanged D2/legacy path
 		return;
 	}
 	// LIGHTBAKE-REBAKE-ON-READY-1 (batch3 item D): per-recipe bakes are frozen
@@ -240,7 +240,7 @@ void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape,
 		s_lastBakeFresh = false;
 		shape->EmitBakedGpuLightData(recipeIndex, baked);    // HIT: recompute retired
 	} else {
-		shape->CacheGpuLightData();                          // MISS: real gather (frame 1 / post-invalidate)
+		shape->CacheGpuLightData(lights);                          // MISS: real gather (frame 1 / post-invalidate)
 		// C1 (adversarial review): CacheGpuLightData leaves
 		// cachedGpuLightIndex_ at the 0xFFFFFFFF sentinel when the multi has
 		// no SHAPE_NODE leaf (leaf->lightData_ stale). Only persist

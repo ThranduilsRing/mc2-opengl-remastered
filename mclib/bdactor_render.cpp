@@ -268,7 +268,7 @@ long BldgAppearance::render (long depthFixup)
 				const char* callerName = (appearType ? appearType->name : nullptr);
 				const uint32_t tintByte = mc2::prop_light::packWord(mc2PropSlotI(bldgShape->getCachedGpuLightIndex(), land && eye ? land->getTerrainLight(position) : 1.0f), 0);
 				submittedToGpu = GpuStaticPropBatcher::instance().submitMultiShape(
-					bldgShape, GpuStaticPropPopulation::Building, callerName, tintByte);
+					bldgShape, GpuStaticPropPopulation::Building, eye->lightContext(), callerName, tintByte);
 				if (submittedToGpu) ++s_diag_dyn_submit;
 				// Slice 2 (object-offload) — Stage 2.B: late-registration
 				// recovery flag. When submitMultiShape failed because a leaf
@@ -629,7 +629,7 @@ long TreeAppearance::render (long depthFixup)
 				const char* callerName = (appearType ? appearType->name : nullptr);
 				const uint32_t tintByte = mc2::prop_light::packWord(land && eye ? land->getTerrainLight(position) : 1.0f, mc2::prop_light::kSunOff);
 				submittedToGpu = GpuStaticPropBatcher::instance().submitMultiShape(
-					treeShape, GpuStaticPropPopulation::Tree, callerName, tintByte);
+					treeShape, GpuStaticPropPopulation::Tree, eye->lightContext(), callerName, tintByte);
 				// Slice 2 (object-offload) — Stage 2.B: see BldgAppearance::render
 				// for full rationale on the late-reg recovery flag.
 				if (!submittedToGpu &&

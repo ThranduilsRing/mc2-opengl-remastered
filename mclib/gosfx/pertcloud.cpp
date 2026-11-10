@@ -367,7 +367,7 @@ void
 //
 //------------------------------------------------------------------------------
 //
-void gosFX::PertCloud::Draw(DrawInfo *info)
+void gosFX::PertCloud::Draw(DrawInfo *info) const
 {
 	Check_Object(this);
 	Check_Object(info);
@@ -379,7 +379,7 @@ void gosFX::PertCloud::Draw(DrawInfo *info)
 	//
 	if (m_activeParticleCount)
 	{
-		Specification *spec = GetSpecification();
+		const Specification *spec = GetSpecification();
 		Check_Object(spec);
 		const auto local_to_world = m_localToParent * *info->m_parentToWorld;
 
@@ -411,7 +411,7 @@ void gosFX::PertCloud::Draw(DrawInfo *info)
 				//
 				for (i = 0; i < m_activeParticleCount; i++)
 				{
-					Particle *particle = GetParticle(i);
+					const Particle *particle = GetParticle(i);
 					Check_Object(particle);
 					if (particle->m_age < 1.0f)
 					{
@@ -470,7 +470,7 @@ void gosFX::PertCloud::Draw(DrawInfo *info)
 				//
 				for (i = 0; i < m_activeParticleCount; i++)
 				{
-					Particle *particle = GetParticle(i);
+					const Particle *particle = GetParticle(i);
 					Check_Object(particle);
 					if (particle->m_age < 1.0f)
 					{
@@ -530,7 +530,7 @@ void gosFX::PertCloud::Draw(DrawInfo *info)
 			//
 			for (i = 0; i < m_activeParticleCount; i++)
 			{
-				Particle *particle = GetParticle(i);
+				const Particle *particle = GetParticle(i);
 				Check_Object(particle);
 				if (particle->m_age < 1.0f)
 				{
@@ -575,7 +575,7 @@ void gosFX::PertCloud::Draw(DrawInfo *info)
 		{
 			for (i = 0; i < m_activeParticleCount; i++)
 			{
-				Particle *particle = GetParticle(i);
+				const Particle *particle = GetParticle(i);
 				Check_Object(particle);
 				if (particle->m_age < 1.0f)
 				{

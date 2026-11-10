@@ -104,9 +104,9 @@ namespace {
         lights->lightColor[0][3] = 1.0f;
     }
 
-    static inline std::optional<uint32_t> firstActiveLightSourceIndex() {
-        const TG_LightPtr* listOfLights = TG_Shape::s_listOfLights;
-        const DWORD numLights = TG_Shape::s_numLights;
+    static inline std::optional<uint32_t> firstActiveLightSourceIndex(const TG_LightContext& ctx) {
+        const TG_LightPtr* listOfLights = ctx.list;
+        const DWORD numLights = ctx.count;
 
         if (!listOfLights)
             return std::nullopt;
@@ -118,9 +118,9 @@ namespace {
         return std::nullopt;
     }
 
-    static uint64_t sceneLightTemplateKey(uint32_t actorLightSourceIndex) {
-        const TG_LightPtr* listOfLights = TG_Shape::s_listOfLights;
-        const DWORD numLights = TG_Shape::s_numLights;
+    static uint64_t sceneLightTemplateKey(const TG_LightContext& ctx, uint32_t actorLightSourceIndex) {
+        const TG_LightPtr* listOfLights = ctx.list;
+        const DWORD numLights = ctx.count;
 
         uint64_t h = 0xcbf29ce484222325ULL;
         h = fnv1a_64_u32(h, numLights);
@@ -532,7 +532,7 @@ uint32_t mc2::vkLights::addLightDataStructure(TG_HWLightsData* light_data)
     return rv;
 }
 
-uint32_t mc2::vkLights::addLightDataStructureWithPerActorColor(TG_HWLightsData* light_data)
+uint32_t mc2::vkLights::addLightDataStructureWithPerActorColor(TG_HWLightsData* light_data, const TG_LightContext& lightCtx)
 {
     gosASSERT(light_data);
     mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "vkLights::addLightDataStructureWithPerActorColor");
@@ -542,20 +542,21 @@ uint32_t mc2::vkLights::addLightDataStructureWithPerActorColor(TG_HWLightsData* 
 
     auto& packet = writablePacket();
 
-    const auto actorLightSource = firstActiveLightSourceIndex();
+    // R2 item 1: the caller's pass context serves the index, the key and the gather.
+    const auto actorLightSource = firstActiveLightSourceIndex(lightCtx);
     if (!actorLightSource) {
         ++s_lbFrameNo;  // [LIGHTBRIDGE v1] no per-actor light (direct passthrough)
-        GatherLightsParameters(light_data);
+        GatherLightsParameters(lightCtx, light_data);
         return addLightDataStructure(light_data);
     }
-    const DWORD actorColor = TG_Shape::s_listOfLights[*actorLightSource]->GetaRGB();
+    const DWORD actorColor = lightCtx.list[*actorLightSource]->GetaRGB();
 
-    const uint64_t key = sceneLightTemplateKey(*actorLightSource);
+    const uint64_t key = sceneLightTemplateKey(lightCtx, *actorLightSource);
     auto it = packet.templates.find(key);
     if (it == packet.templates.end()) {
         ++s_lbFrameMiss;  // [LIGHTBRIDGE v1] template miss (GatherLightsParameters runs)
         Packet::CachedSceneLightTemplate entry;
-        GatherLightsParameters(&entry.data);
+        GatherLightsParameters(lightCtx, &entry.data);
         decomposeActorLightColor(&entry.data, actorColor);
         entry.actorLightSlot = 0u;
         const auto [emplacedIt, emplacedNew] = packet.templates.emplace(key, entry);

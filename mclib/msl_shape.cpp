@@ -209,20 +209,6 @@ void TG_MultiShape::SetFogRGB (DWORD fRGB)
 }	
 
 //-------------------------------------------------------------------------------
-//This function sets the list of lights used by the TransformShape function
-//to light the shape.
-//Function returns 0 if lightList entries are all OK.  -1 otherwise.
-//
-long TG_MultiShape::SetLightList (TG_LightPtr *lightList, DWORD nLights)
-{
-	//-----------------------------------------------------
-	// Static member of TG_Shape.  Only need to call once.
-	// NOT a static function in case lights need to change
-	// on a shape by shape basis!
-	return (listOfShapes[0].node->SetLightList(lightList,nLights));
-}	
-
-//-------------------------------------------------------------------------------
 glm::vec3 TG_MultiShape::GetTransformedNodePosition (glm::vec3 *pos, glm::quat *rot, mc2::czstring nodeId)
 {
 	// Hierarchy transforms already contain the world pose. The legacy pos/rot

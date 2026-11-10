@@ -224,7 +224,7 @@ long TG_MultiShape::TransformMultiShape_HierarchyOnly (glm::vec3 *pos, glm::quat
 // cachedGpuLightIndex_. submitMultiShape then reads cachedGpuLightIndex_
 // instead of calling GatherGpuObjectLightDataOnly() itself.
 //-------------------------------------------------------------------------------
-void TG_MultiShape::CacheGpuLightData()
+void TG_MultiShape::CacheGpuLightData(const TG_LightContext& lights)
 {
     // PERF 2026-05-07: stripped hot Tracy zones CacheGpuLightData,
     // CacheGpuLightData findLeaf, and CacheGpuLightData GatherGpuObjectLightDataOnly.
@@ -244,7 +244,7 @@ void TG_MultiShape::CacheGpuLightData()
     }
 
     if (firstShapeNodeLeaf != nullptr) {
-        cachedGpuLightIndex_ = firstShapeNodeLeaf->GatherGpuObjectLightDataOnly();
+        cachedGpuLightIndex_ = firstShapeNodeLeaf->GatherGpuObjectLightDataOnly(lights);
         cachedFrame_         = mc2::overlap::simulationFrame(g_mc2FrameCounter);
     }
 }
@@ -256,7 +256,7 @@ void TG_MultiShape::CacheGpuLightData()
 // CacheGpuLightData; the only difference is that it does not stop at the first
 // SHAPE_NODE leaf. cachedGpuLightIndex_/cachedFrame_ are set from the FIRST
 // leaf so any batcher-side reader keeps identical semantics.
-void TG_MultiShape::CacheGpuLightDataAllLeaves()
+void TG_MultiShape::CacheGpuLightDataAllLeaves(const TG_LightContext& lights)
 {
     bool first = true;
     for (int i = 0; i < numTG_Shapes; ++i) {
@@ -265,7 +265,7 @@ void TG_MultiShape::CacheGpuLightDataAllLeaves()
         TG_Shape* child = rec.node.get();
         if (!child->myType) continue;
         if (child->myType->GetNodeType() != SHAPE_NODE) continue;
-        const uint32_t idx = child->GatherGpuObjectLightDataOnly();
+        const uint32_t idx = child->GatherGpuObjectLightDataOnly(lights);
         if (first) {
             first = false;
             cachedGpuLightIndex_ = idx;

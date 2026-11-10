@@ -114,6 +114,10 @@ namespace gosFX
 						);
 				}
 
+		const Particle*
+			GetParticle(unsigned index) const
+				{ return const_cast<EffectCloud*>(this)->GetParticle(index); }
+
 		static ClassData
 			*DefaultData;
 
@@ -144,6 +148,6 @@ namespace gosFX
 
 	public:
 		void
-			Draw(DrawInfo *info);
+			Draw(DrawInfo *info) const;
 	};
 }

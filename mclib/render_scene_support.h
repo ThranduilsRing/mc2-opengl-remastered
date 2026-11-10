@@ -101,7 +101,6 @@ uint32_t mc2LightSlotBakedHighWater();
 uint64_t mc2LightSlotDedupHits();
 uint64_t mc2LightSlotActorKeyHits();
 uint32_t mc2LightSlotTableCount();
-void GatherLightsParameters(TG_HWLightsData* lights);
 void ProbeGatherLightsForList(TG_LightPtr* lights, unsigned long nLights, TG_HWLightsData* out);
 
 #endif // MC2_RENDER_SCENE_SUPPORT_H

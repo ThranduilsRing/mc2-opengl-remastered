@@ -138,6 +138,12 @@ namespace gosFX
 						);
 				}
 
+		const Specification*
+			GetSpecification() const
+				{ return Cast_Object(const Specification*, m_specification); }
+		const Particle*
+			GetParticle(unsigned index) const
+				{ return const_cast<PertCloud*>(this)->GetParticle(index); }
 		static ClassData
 			*DefaultData;
 
@@ -166,6 +172,6 @@ namespace gosFX
 
 	public:
 		void
-			Draw(DrawInfo *info);
+			Draw(DrawInfo *info) const;
 	};
 }

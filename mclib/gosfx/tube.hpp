@@ -154,6 +154,9 @@ namespace gosFX
 		static void
 			TerminateClass();
 
+		const Tube__Specification*
+			GetSpecification() const
+				{ return Cast_Object(const Tube__Specification*, m_specification); }
 		static ClassData
 			*DefaultData;
 
@@ -164,7 +167,11 @@ namespace gosFX
 		int
 			m_headProfile,
 			m_tailProfile,
-			m_activeProfileCount,
+			m_activeProfileCount;
+		// Derived draw counts (pure function of m_activeProfileCount and the
+		// spec), recomputed by Draw each call and read only inside Draw and
+		// the stats pointer registered in Start; mutable keeps Draw const.
+		mutable int
 			m_triangleCount,
 			m_vertexCount;
 		Stuff::Scalar
@@ -215,6 +222,9 @@ namespace gosFX
 					return
 						Cast_Object(Specification*, m_specification);
 				}
+		const Profile*
+			GetProfile(unsigned index) const
+				{ return &m_profiles[index]; }
 		Profile*
 			GetProfile(unsigned index)
 				{
@@ -264,6 +274,6 @@ namespace gosFX
 		bool
 			HasFinished();
 		void
-			Draw(DrawInfo *info);
+			Draw(DrawInfo *info) const;
 	};
 }
