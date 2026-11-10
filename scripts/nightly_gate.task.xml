@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Daily 04:30: scripts/nightly_gate.py = merge_gate.py --nightly (Sundays --weekly) on the published nifty in mc2-main.
+<!-- Daily 04:30: scripts/nightly_gate.py = merge_gate.py --nightly (Sundays --weekly) on the published nifty in its own worktree A:\Games\mc2-nightly.
      Nightly stages: deploy + tier-1 rows + the slim, non-blocking mods-slim check (one short load per mod, reported per mod,
-     never fails the gate); Sundays run the full mods battery instead. The script refuses (rc 2) when mc2-main is not on
-     claude/nifty-mendeleev or is dirty, so a night while a merge agent holds a stage branch there is skipped.
+     never fails the gate); Sundays run the full mods battery instead. mc2-main's branch and state do not matter;
+     the script refuses (rc 2) only when the nightly worktree has tracked changes.
      Register (orchestrator only): schtasks /Create /TN "\mc2-nightly-gate" /XML A:\Games\mc2-main\scripts\nightly_gate.task.xml /F
      Remove the dead one:          schtasks /Delete /TN "\mc2-smoke-overnight" /F
      Check / run now:              schtasks /Query /TN "\mc2-nightly-gate" /V /FO LIST   |   schtasks /Run /TN "\mc2-nightly-gate" -->
