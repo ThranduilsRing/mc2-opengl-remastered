@@ -2378,12 +2378,41 @@ def prepare_seed_delta(items, target, full_verify=False, allow_legacy=False):
     return verified
 
 
+_PRIVATE_TMP = re.compile(r'\.private-(\d+)$')
+
+
+def sweep_stale_private_temps(target):
+    """Remove `<file>.private-<pid>` temps (see privatize_shared_payload) left by a killed deploy.
+    Only TARGET is walked; a temp whose pid is alive is left alone (another deploy may be running)."""
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from smoke_lib import child_registry
+    removed = 0
+    for root, _dirs, files in os.walk(target):
+        for name in files:
+            m = _PRIVATE_TMP.search(name)
+            if not m:
+                continue
+            if child_registry.pid_alive(int(m.group(1))):
+                log(f'[DEPLOY] leaving {Path(root) / name}: pid {m.group(1)} is alive')
+                continue
+            try:
+                (Path(root) / name).unlink()
+                removed += 1
+            except OSError as exc:
+                log(f'[DEPLOY] could not remove stale {Path(root) / name}: {exc}')
+    if removed:
+        log(f'[DEPLOY] removed {removed} stale .private-<pid> temp files')
+    return removed
+
+
 def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     with deploy_phase("deploy", 1800):
         return _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name)
 
 
 def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
+    if os.path.isdir(target):
+        sweep_stale_private_temps(target)
     if getattr(args, "target", None) == "game" and not args.allow_new_target and not getattr(args, "allow_unverified_exe", False):
         why = verdict_exe_refusal(src_root, os.path.join(build_dir, exe_name), git_head(src_root))
         if why:
