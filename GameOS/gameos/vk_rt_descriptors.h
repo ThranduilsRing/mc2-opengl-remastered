@@ -30,17 +30,20 @@ inline constexpr std::array<BindingDesc, 3> kSmokeBindings = {{
 }};
 
 // shaders/vulkan/rt_scene_probe.comp: the RT scene material probe (vk_rt_scene.cpp, MC2_VK_RT_SELFTEST). Push constants: kSceneProbePushBytes.
-inline constexpr std::array<BindingDesc, 10> kSceneProbeBindings = {{
+inline constexpr std::array<BindingDesc, 13> kSceneProbeBindings = {{
     {0, BindingKind::AccelerationStructure, "tlas"},
     {1, BindingKind::StorageBuffer, "rays"},       // in: as kSmokeBindings
     {2, BindingKind::StorageBuffer, "results"},    // out: 2 x vec4 per ray ((hit, t, primitive id, custom index), (material row, albedo layer, packet / tile, flags))
     {3, BindingKind::StorageBuffer, "materials"},  // scene::MaterialRow[] (32 bytes each)
     {4, BindingKind::StorageBuffer, "uv_index"},   // uint[]: the prop geometries' rebased indices (MaterialRow::firstIndex addresses it)
-    {5, BindingKind::SampledImage, "alpha_off"},   // the colour-prop island's alpha-OFF albedo array
+    {5, BindingKind::SampledImage, "alpha_off"},   // the colour-prop island's alpha-OFF size bucket 0 (buckets 1..3 on 10..12)
     {6, BindingKind::SampledImage, "alpha_on"},    // its alpha-ON size buckets 0..3 (PROP-ARRAY-BUCKETS; the layer names the bucket)
     {7, BindingKind::SampledImage, "alpha_on1"},
     {8, BindingKind::SampledImage, "alpha_on2"},
     {9, BindingKind::SampledImage, "alpha_on3"},
+    {10, BindingKind::SampledImage, "alpha_off1"},
+    {11, BindingKind::SampledImage, "alpha_off2"},
+    {12, BindingKind::SampledImage, "alpha_off3"},
 }};
 // vbo address (uvec2), vertex stride, mode (0 alpha-tested cutouts, 1 every candidate opaque).
 inline constexpr uint32_t kSceneProbePushBytes = 16;

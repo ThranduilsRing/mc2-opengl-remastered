@@ -337,6 +337,13 @@ uint64_t TextureResidency::residentBytes() const {
     }
     return total;
 }
+uint64_t TextureResidency::allocationBytes(RenderCore::TextureHandle handle) const {
+    const auto found=residents_.find(handle.raw());
+    if (found==residents_.end() || !found->second.image || !found->second.image->image.allocation()) return 0;
+    VmaAllocationInfo info{};
+    vmaGetAllocationInfo(ctx_.allocator(),found->second.image->image.allocation(),&info);
+    return info.size;
+}
 void TextureResidency::finishLoading() {
     const auto start=std::chrono::steady_clock::now();
     worker_.waitIdle();

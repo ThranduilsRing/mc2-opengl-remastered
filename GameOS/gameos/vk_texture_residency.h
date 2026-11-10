@@ -65,6 +65,8 @@ public:
     // Load-only barrier: decode, upload and publish before entering gameplay.
     void finishLoading();
     uint64_t residentBytes() const;
+    // The device allocation one resident texture holds (VMA size), 0 while it has no image.
+    uint64_t allocationBytes(RenderCore::TextureHandle handle) const;
     void invalidate(RenderCore::TextureHandle handle);
     void requestDecoded(RenderCore::TextureHandle handle, std::function<std::shared_ptr<const RenderCore::KtxImage>()> decode);
     bool ready(RenderCore::TextureHandle handle) const;

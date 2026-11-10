@@ -1,8 +1,7 @@
 #pragma once
-// PROP-ARRAY-BUCKETS: the static-prop alpha-ON albedo group is split into up to kMaxBuckets texture arrays by size
-// class, so one 1024 tree atlas no longer makes every 128 layer of the group 1024 (one array is sized to its
-// largest member). A packet's layer int carries (bucket, layer-in-bucket); bucket 0 encodes as the plain layer,
-// so a one-bucket group (alpha-OFF) keeps its layer values. Shaders decode with shaders/vulkan/include/prop_array_bucket.glsl.
+// PROP-ARRAY-BUCKETS: each static-prop albedo group (alpha-OFF and alpha-ON) is split into up to kMaxBuckets texture
+// arrays by size class, so one 1024 atlas no longer makes every 128 layer of the group 1024 (one array is sized to its
+// largest member). A packet's layer int carries (bucket, layer-in-bucket); bucket 0 encodes as the plain layer. Shaders decode with shaders/vulkan/include/prop_array_bucket.glsl.
 #include <algorithm>
 #include <cstdint>
 #include <span>

@@ -33,8 +33,8 @@ uint64_t mc2_color_prop_island_alpha_content_hash();
 // PROP-ARRAY-BUCKETS: `views` receives mc2::prop_buckets::kMaxBuckets entries, one per size bucket of the alpha-ON group
 // (a slot the map does not use repeats bucket 0); a packet layer names its bucket (prop_array_buckets.h).
 int mc2_color_prop_island_get_alpha_arrays(void** views, uint32_t* generation);
-// The alpha-OFF albedo array view (same contract), or 0 while the island has none.
-int mc2_color_prop_island_get_albedo_off_array(void** view, uint32_t* generation);
+// The alpha-OFF group's size-bucket views (same contract, kMaxBuckets entries), or 0 while the island has none.
+int mc2_color_prop_island_get_albedo_off_arrays(void** views, uint32_t* generation);
 
 // Per-frame entry. Renders the visible static-prop color instances in-place into the
 // shared scene GBuffer. Pulls its geometry/instance feed from the batcher.

@@ -7,6 +7,7 @@
 #include "mc2fmt.h"
 #include "vegetation_cutout.h"
 #include "prop_array_buckets.h"
+#include "diagnostic_trace.h"
 
 #include <cstring>
 
@@ -175,14 +176,23 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
             continue;
         }
 
-        // PROP-ARRAY-BUCKETS: one array per size bucket (prop_array_buckets.h). alpha-OFF keeps a single array
-        // (bucket 0, plain layers); alpha-ON splits by size class so a 1024 atlas does not inflate its 128 layers.
+        // PROP-ARRAY-BUCKETS: one array per size bucket (prop_array_buckets.h), both groups: a 1024 atlas no longer
+        // inflates the group's 128/256 layers.
         // Within a bucket the array is the members' max W x H; a smaller member sits in the upper-left of its layer
         // and its per-packet uvScale maps [0,1] UV to that sub-region (as for the whole group before).
         std::vector<mc2::prop_buckets::Dims> memberDims;
         memberDims.reserve(uniques.size());
         for (const auto& u : uniques) memberDims.push_back({u.w, u.h});
-        const auto plan = mc2::prop_buckets::planBuckets(memberDims, group == 1u ? mc2::prop_buckets::kMaxBuckets : 1u);
+        const auto plan = mc2::prop_buckets::planBuckets(memberDims, mc2::prop_buckets::kMaxBuckets);
+        if (mc2_diag::tagRequested("PROP_ARRAY"))   // MC2_DIAG_TAGS=PROP_ARRAY: each member's native size and its bucket array
+            for (size_t k = 0; k < uniques.size(); ++k) {
+                const char* name = uniques[k].nodeIdx != 0xFFFFFFFFu && mc2::textures::ready() ? mc2::textures::name(uniques[k].nodeIdx) : nullptr;
+                mc2::fmt::print_err("[PROP_ARRAY v1] group={} bucket={:d} layer={:d} w={:d} h={:d} array={:d}x{:d} tex={}\n",
+                                    group == 0u ? "off" : "on", mc2::fmt::as_u32(plan.bucket[k]), mc2::fmt::as_i32(plan.layer[k]),
+                                    mc2::fmt::as_i32(uniques[k].w), mc2::fmt::as_i32(uniques[k].h),
+                                    mc2::fmt::as_i32(plan.bucketDims[plan.bucket[k]].w), mc2::fmt::as_i32(plan.bucketDims[plan.bucket[k]].h),
+                                    name ? name : "(unnamed)");
+            }
         for (const auto& d : plan.bucketDims) {
             if (d.w <= 0 || d.h <= 0) {
                 // Defensive — shouldn't happen because skip-path filtered W/H<=0.

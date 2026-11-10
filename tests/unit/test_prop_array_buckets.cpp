@@ -37,7 +37,7 @@ TEST_CASE("PropArrayBuckets/mixed 128-256-1024 group: no member is placed in an 
     CHECK(bucketed < static_cast<size_t>(1024) * 1024 * 4u * 6u);
 }
 
-TEST_CASE("PropArrayBuckets/one bucket keeps the single-array layout (alpha-OFF)") {
+TEST_CASE("PropArrayBuckets/one bucket keeps the single-array layout") {
     const std::vector<Dims> members = {{64, 64}, {256, 256}, {128, 128}};
     const Plan plan = planBuckets(members, 1);
     REQUIRE(plan.bucketDims.size() == 1);
@@ -47,6 +47,38 @@ TEST_CASE("PropArrayBuckets/one bucket keeps the single-array layout (alpha-OFF)
         CHECK(plan.layer[i] == static_cast<int32_t>(i));
         CHECK(encodeLayer(plan.bucket[i], plan.layer[i]) == static_cast<int32_t>(i));   // bucket 0 = the plain layer
     }
+}
+
+TEST_CASE("PropArrayBuckets/alpha-OFF mix: non-square members, every bucket holds its members, far fewer texels than one array") {
+    // An alpha-OFF-like group: a few 1024 building atlases, many 256 / 256x128 walls, 128s and one 64 (5 classes, 4 buckets).
+    std::vector<Dims> members = {{1024, 1024}, {1024, 512}, {64, 64}};
+    for (int i = 0; i < 20; ++i) members.push_back({256, i % 2 ? 128 : 256});
+    for (int i = 0; i < 15; ++i) members.push_back({128, 128});
+    members.push_back({512, 256});
+    const Plan plan = planBuckets(members, kMaxBuckets);
+    REQUIRE(plan.bucketDims.size() == kMaxBuckets);
+    CHECK(plan.bucketDims[0].w == 1024);
+    CHECK(plan.bucketDims[0].h == 1024);
+    CHECK(plan.bucketDims[1].w == 512);
+    CHECK(plan.bucketDims[1].h == 256);   // the extent is the members' max, not the square class
+    CHECK(plan.bucketDims[2].w == 256);
+    CHECK(plan.bucketDims[3].w == 128);
+    CHECK(plan.bucket[2] == 3u);           // the 64 folds into the 128 bucket
+    uint64_t bucketTexels = 0;
+    std::vector<uint32_t> seen(plan.bucketDims.size(), 0u);
+    for (size_t i = 0; i < members.size(); ++i) {
+        const Dims& d = plan.bucketDims[plan.bucket[i]];
+        CHECK(d.w >= members[i].w);
+        CHECK(d.h >= members[i].h);
+        CHECK(plan.layer[i] == static_cast<int32_t>(seen[plan.bucket[i]]++));   // dense layers in member order
+        const int32_t enc = encodeLayer(plan.bucket[i], plan.layer[i]);
+        CHECK(bucketOf(enc) == plan.bucket[i]);
+        CHECK(layerOf(enc) == plan.layer[i]);
+        bucketTexels += static_cast<uint64_t>(d.w) * static_cast<uint64_t>(d.h);
+    }
+    for (size_t b = 0; b < seen.size(); ++b) CHECK(plan.bucketLayers[b] == seen[b]);
+    const uint64_t singleTexels = static_cast<uint64_t>(members.size()) * 1024u * 1024u;
+    CHECK(bucketTexels * 8 < singleTexels);   // 39 layers at 1024^2 vs 2 x 1024^2 + 1 x 512x256 + 20 x 256^2 + 16 x 128^2
 }
 
 TEST_CASE("PropArrayBuckets/more size classes than buckets fold the smallest into the smallest kept bucket") {

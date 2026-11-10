@@ -66,12 +66,12 @@ layout(constant_id = 2) const int kOpaqueOnly = 0;
 // Per-frame UBO: generated from RenderCore/gpu_abi/GpuColorFrameUBO.h.
 #include "include/color_frame_ubo_vk.glsl"
 
-// VK-P11 STATIC-PROP MATERIAL: alpha-OFF albedo GL_TEXTURE_2D_ARRAY (copy-once import).
-layout(set = 0, binding = 3) uniform sampler2DArray uAlbedo;
-// VK-P11 STATIC-PROP MATERIAL alpha-ON: alpha-MIXED prop array (copy-once import of
-// s_texArrayOn). Sampled with a 0.5 alpha-test discard, matching GL static_prop.frag.
-// PROP-ARRAY-BUCKETS: one array per size bucket; vLayerOn carries the bucket.
+// PROP-ARRAY-BUCKETS: each albedo group is one array per size bucket; vLayer / vLayerOn carry the bucket.
 #include "include/prop_array_bucket.glsl"
+// VK-P11 STATIC-PROP MATERIAL: alpha-OFF albedo arrays (copy-once import).
+layout(set = 0, binding = 3) uniform sampler2DArray uAlbedo[PROP_ALPHA_ON_BUCKETS];
+// VK-P11 STATIC-PROP MATERIAL alpha-ON: alpha-MIXED prop arrays (copy-once import of
+// s_texArrayOn). Sampled with a 0.5 alpha-test discard, matching GL static_prop.frag.
 layout(set = 0, binding = 6) uniform sampler2DArray uAlbedoOn[PROP_ALPHA_ON_BUCKETS];
 
 layout(location = 0) in vec2 vUv;
@@ -214,7 +214,8 @@ void main() {
         // uvScale defaults to 1.0 for the common single-texture types so this is a
         // no-op there).
         vec2 uvContinuous = vUv * vUvScale;
-        vec4 texOff = vLayer >= 0 ? textureGrad(uAlbedo, vec3(fract(vUv) * vUvScale, float(vLayer)),
+        const int bucketOff = vLayer >= 0 ? propBucketOf(vLayer) : 0;
+        vec4 texOff = vLayer >= 0 ? textureGrad(uAlbedo[nonuniformEXT(bucketOff)], vec3(fract(vUv) * vUvScale, float(propBucketLayer(vLayer))),
                                                dFdx(uvContinuous), dFdy(uvContinuous)) : vec4(1.0);
         vec3 albedo = texOff.rgb;
         vec3 objectAlbedo;
@@ -228,7 +229,7 @@ void main() {
         // A packet GL alpha-tests although its type sits in the alpha-OFF group (its texture's alpha flag is set after the arrays
         // were built, e.g. the hex lattice props): GL's dither discard, its alpha-test light floor and its alpha-test shadow class.
         if (kOpaqueOnly == 0 && uPacket.packetAlphaTest != 0) {
-            cover = propCoverage(texOff.a, vLayer >= 0 ? textureQueryLod(uAlbedo, uvContinuous).y : 0.0);   // PROP-COVERAGE-1
+            cover = propCoverage(texOff.a, vLayer >= 0 ? textureQueryLod(uAlbedo[nonuniformEXT(bucketOff)], uvContinuous).y : 0.0);   // PROP-COVERAGE-1
             rgb = albedo * max(vArgb, vec3(0.5));
             alphaTestClass = true;
         }

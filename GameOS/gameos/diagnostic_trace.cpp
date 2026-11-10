@@ -61,6 +61,7 @@ const std::unordered_set<std::string>& knownTags() {
         "COMBAT",   // COMBAT-TRACE-1: weapon-fire events (attacker/target wid+team). Opt-in.
         "VISUAL_HEIGHT", // [VISUAL_HEIGHT v1] / [VISUAL_DAMP v1] success summaries of the terrain visual-height bake loader (mclib/terrain_init.cpp); fail-loud lines print always. Opt-in.
         "PRESENT_THREAD", // [PRESENT_THREAD] enabled: the present worker's start line (the worker ships ON). Stall / failed-present / inline-fallback lines are fail-loud and print always. Opt-in.
+        "PROP_ARRAY", // [PROP_ARRAY v1]: each static-prop albedo texture's native size and its size-bucket array, once per map (gos_static_prop_batcher_finalize_textures.cpp). Opt-in.
         "VK_DESC_WRITES", // [VK_DESC_WRITES v1]: per-600-frame descriptor writes issued/skipped by the write cache (vulkan_mover_shadow.cpp). Opt-in.
         "VK_DESC_ALLOC",  // [VK_DESC_ALLOC]: a failed vkAllocateDescriptorSets with pool and call site (vk_owned.h). Opt-in.
         "VK_DESC_POOL", // [VK_DESC_POOL v1]: descriptor pool chain length per island at mission unload (vk_owned.h DescPoolChain). Opt-in.

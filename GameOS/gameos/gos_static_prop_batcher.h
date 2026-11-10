@@ -177,7 +177,7 @@ private:
     void buildPerPacketDrawTables(StaticPropFinalizeFrame& f);
     bool reportMaterialCache(StaticPropFinalizeFrame& f);
     void armCoalesce(StaticPropFinalizeFrame& f);
-    // Per group: its size-bucket arrays (prop_array_buckets.h; alpha-OFF has one, alpha-ON up to kMaxBuckets).
+    // Per group: its size-bucket arrays (prop_array_buckets.h; up to kMaxBuckets each).
     std::array<std::vector<mc2tex::TextureArrayCpu>, 2> albedoArrays_;
     // Per group: 0 until the group array of this map is built, then a serial that is new for every build (the change key of the island's copy).
     std::array<uint32_t, 2> albedoKey_{};

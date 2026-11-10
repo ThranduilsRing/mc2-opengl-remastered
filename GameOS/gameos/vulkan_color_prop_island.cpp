@@ -319,9 +319,12 @@ struct ColorPropIsland : mc2vk::IslandState {
     mc2vk::OwnedFramebuffer t1_fb;        // over the 3 shared image views
     mc2vk::OwnedDescriptorSetLayout dsl;
     mc2vk::OwnedDescriptorPool pool;
-    mc2vk::ResidentTextureRef albedoTexture;
+    // PROP-ARRAY-BUCKETS: the alpha-OFF group's size buckets (binding 3 is an array of kMaxBuckets; an unused slot names bucket 0).
+    std::array<mc2vk::ResidentTextureRef, mc2::prop_buckets::kMaxBuckets> albedoTexture;
+    uint32_t albedoOffBuckets = 1;
+    uint32_t albedoMemLoggedMap = ~0u;   // mapGeneration whose resident albedo bytes were logged
     bool descriptorsDirty[mc2vk::kMaxFramesInFlight]={};
-    std::array<VkImageView,1 + mc2::prop_buckets::kMaxBuckets> boundTextures[mc2vk::kMaxFramesInFlight]{};   // binding 3, binding 6[]
+    std::array<VkImageView,2 * mc2::prop_buckets::kMaxBuckets> boundTextures[mc2vk::kMaxFramesInFlight]{};   // binding 3[], binding 6[]
     struct MaskBinding {
         VkDescriptorSet set = VK_NULL_HANDLE;
         VkDescriptorBufferInfo info{};
@@ -423,6 +426,10 @@ void sync_ring_bindings(ColorPropIsland* s, uint32_t par, const mc2vk::FrameAllo
 VkImageView cp_alpha_on_view(const ColorPropIsland* s, uint32_t b) {
     return b < s->albedoOnBuckets && s->albedoOnTexture[b] ? s->albedoOnTexture[b].view() : s->albedoOnTexture[0].view();
 }
+// The same for the alpha-OFF group's buckets (binding 3).
+VkImageView cp_alpha_off_view(const ColorPropIsland* s, uint32_t b) {
+    return b < s->albedoOffBuckets && s->albedoTexture[b] ? s->albedoTexture[b].view() : s->albedoTexture[0].view();
+}
 
 void write_descriptors(ColorPropIsland* s, int parity = -1) {
     if (parity<0) { for (auto& dirty : s->descriptorsDirty) dirty = true; return; }
@@ -441,25 +448,25 @@ void write_descriptors(ColorPropIsland* s, int parity = -1) {
     // Only written when the layout declared them (wantMaterial) AND the objects exist
     // (dummy or real). A valid descriptor is required for binding3 even pre-import.
     VkDescriptorBufferInfo layerInfo{};
-    VkDescriptorImageInfo  albInfo{};
+    VkDescriptorImageInfo  albInfo[mc2::prop_buckets::kMaxBuckets]{};
     VkDescriptorBufferInfo layerOnInfo{};
     VkDescriptorImageInfo  albOnInfo[mc2::prop_buckets::kMaxBuckets]{};
     VkDescriptorBufferInfo hotInfo{};
     VkWriteDescriptorSet   wm[5]{};   // alpha-OFF (2/3) + alpha-ON (5/6) material writes
     uint32_t m = 0;
     if (s->wantMaterial && s->tier1 && s->layerBuf &&
-        s->albedoTexture && s->albedoSamp &&
+        s->albedoTexture[0] && s->albedoSamp &&
         s->layerOnBuf &&
         s->albedoOnTexture[0] && s->albedoOnSamp) {
         layerInfo = VkDescriptorBufferInfo{ s->layerBuf.get(), 0, VK_WHOLE_SIZE };
         wm[m].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; wm[m].dstSet = s->set[i];
         wm[m].dstBinding = 2; wm[m].descriptorCount = 1;
         wm[m].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; wm[m].pBufferInfo = &layerInfo; ++m;
-        albInfo.sampler = s->albedoSamp.get(); albInfo.imageView = s->albedoTexture.view();
-        albInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        for (uint32_t b = 0; b < mc2::prop_buckets::kMaxBuckets; ++b)
+            albInfo[b] = {s->albedoSamp.get(), cp_alpha_off_view(s, b), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
         wm[m].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; wm[m].dstSet = s->set[i];
-        wm[m].dstBinding = 3; wm[m].descriptorCount = 1;
-        wm[m].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; wm[m].pImageInfo = &albInfo; ++m;
+        wm[m].dstBinding = 3; wm[m].descriptorCount = mc2::prop_buckets::kMaxBuckets;   // PROP-ARRAY-BUCKETS
+        wm[m].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; wm[m].pImageInfo = albInfo; ++m;
         // alpha-ON group: binding5 layer SSBO (VS) + binding6 albedo array (FS).
         layerOnInfo = VkDescriptorBufferInfo{ s->layerOnBuf.get(), 0, VK_WHOLE_SIZE };
         wm[m].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; wm[m].dstSet = s->set[i];
@@ -613,8 +620,8 @@ struct AlbedoTarget {
     bool*          ready;
     const char*    tag;   // "alpha-OFF" / "alpha-ON" for logs
 };
-AlbedoTarget cp_target_off(ColorPropIsland* s) {
-    return AlbedoTarget{ &s->albedoTexture, &s->albedoSamp,
+AlbedoTarget cp_target_off(ColorPropIsland* s, uint32_t bucket = 0) {
+    return AlbedoTarget{ &s->albedoTexture[bucket], &s->albedoSamp,
                          &s->albedoLayers, &s->albedoGlTexImported, &s->materialReady, "alpha-OFF" };
 }
 AlbedoTarget cp_target_on(ColorPropIsland* s, uint32_t bucket = 0) {
@@ -1087,7 +1094,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
             b[nb].binding = 2; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
             b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_VERTEX_BIT; ++nb;
             b[nb].binding = 3; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
+            b[nb].descriptorCount = mc2::prop_buckets::kMaxBuckets; b[nb].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;   // PROP-ARRAY-BUCKETS
         }
         if (lightBinding) {
             b[nb].binding = 4; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
@@ -1151,7 +1158,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         sizes[nsz++] = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, mc2vk::kMaxFramesInFlight};
         sizes[nsz++] = {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, mc2vk::kMaxFramesInFlight * (1u + (lightBinding ? 1u : 0u))};
         sizes[nsz++] = {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, mc2vk::kMaxFramesInFlight * ((materialBindings ? 2u : 0u) + (s->tier1 ? 5u : 0u) + 2u)};
-        sizes[nsz++] = {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, mc2vk::kMaxFramesInFlight * ((materialBindings ? 1u + mc2::prop_buckets::kMaxBuckets : 0u) + 4u + s->propTexSlots)};
+        sizes[nsz++] = {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, mc2vk::kMaxFramesInFlight * ((materialBindings ? 2u * mc2::prop_buckets::kMaxBuckets : 0u) + 4u + s->propTexSlots)};
         sizes[nsz++] = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, mc2vk::kMaxFramesInFlight};
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -1529,11 +1536,13 @@ extern "C" int mc2_color_prop_island_get_alpha_arrays(void** views, uint32_t* ge
     return 1;
 }
 
-extern "C" int mc2_color_prop_island_get_albedo_off_array(void** view, uint32_t* generation) {
+extern "C" int mc2_color_prop_island_get_albedo_off_arrays(void** views, uint32_t* generation) {
     const ColorPropIsland* s = parkedIsland();
-    if (!view || !generation || !s || !s->materialReady || !s->albedoTexture) return 0;
-    if (!mc2vk::getOrCreateEngineVulkanContext().textures().ready(s->albedoTexture.get())) return 0;
-    *view = reinterpret_cast<void*>(s->albedoTexture.view());
+    if (!views || !generation || !s || !s->materialReady || !s->albedoTexture[0]) return 0;
+    auto& textures = mc2vk::getOrCreateEngineVulkanContext().textures();
+    for (uint32_t b = 0; b < s->albedoOffBuckets; ++b)
+        if (!s->albedoTexture[b] || !textures.ready(s->albedoTexture[b].get())) return 0;
+    for (uint32_t b = 0; b < mc2::prop_buckets::kMaxBuckets; ++b) views[b] = reinterpret_cast<void*>(cp_alpha_off_view(s, b));
     *generation = s->mapGeneration;
     return 1;
 }
@@ -1583,7 +1592,17 @@ static bool prepare_mission_resources(ColorPropIsland* s) {
                     if (mf.typeAlphaClass[t] == 0 && mf.typeAlbedoLayer[t] >= 0)
                         layerTbl[t] = mf.typeAlbedoLayer[t];
                 }
-                if (cp_import_albedo_array(s, cp_target_off(s), mf.arrayKeyOff, mf.albedoOff)) {
+                // PROP-ARRAY-BUCKETS: every size bucket lands before the group is ready (as alpha-ON below).
+                const uint32_t buckets = std::min(mf.albedoOff ? mf.albedoOffCount : 0u, mc2::prop_buckets::kMaxBuckets);
+                bool imported = buckets > 0;
+                for (uint32_t b = 0; imported && b < buckets; ++b) {
+                    s->materialReady = false;
+                    imported = cp_import_albedo_array(s, cp_target_off(s, b), mf.arrayKeyOff, &mf.albedoOff[b]);
+                }
+                s->materialReady = imported;
+                if (imported) {
+                    s->albedoOffBuckets = buckets;
+                    for (uint32_t b = buckets; b < mc2::prop_buckets::kMaxBuckets; ++b) s->albedoTexture[b] = {};
                     cp_upload_layer_table(s, layerTbl.data(), mf.typeCount);
                     changed = true;
                     vlog("material feed active: alpha-OFF %u types textured (sun=%.2f,%.2f,%.2f).",
@@ -2053,8 +2072,11 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
             mc2vk::noteDescWrites(1,0);
         } else mc2vk::noteDescWrites(0,1);
     }
-    std::array<VkImageView,1 + mc2::prop_buckets::kMaxBuckets> views{s->albedoTexture.view()};
-    for (uint32_t b = 0; b < mc2::prop_buckets::kMaxBuckets; ++b) views[1 + b] = cp_alpha_on_view(s, b);
+    std::array<VkImageView,2 * mc2::prop_buckets::kMaxBuckets> views{};
+    for (uint32_t b = 0; b < mc2::prop_buckets::kMaxBuckets; ++b) {
+        views[b] = cp_alpha_off_view(s, b);
+        views[mc2::prop_buckets::kMaxBuckets + b] = cp_alpha_on_view(s, b);
+    }
     if (s->descriptorsDirty[par] || s->boundTextures[par]!=views) {
         write_descriptors(s,static_cast<int>(par)); s->boundTextures[par]=views;
     }
@@ -2168,11 +2190,28 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         // VK-P11 STATIC-PROP MATERIAL: gate FS albedo sample + computePBR on the real
         // import having landed (Tier-1 only). material-disabled paths leave these zero (the shaders
         // never read them).
-        u.materialReady = (s->wantMaterial && s->tier1 && s->materialReady && rctx.textures().ready(s->albedoTexture.get())) ? 1 : 0;
-        bool onBucketsReady = s->albedoOnTexture[0] && rctx.textures().ready(s->albedoOnTexture[0].get());
-        for (uint32_t b = 1; onBucketsReady && b < s->albedoOnBuckets; ++b)
-            onBucketsReady = s->albedoOnTexture[b] && rctx.textures().ready(s->albedoOnTexture[b].get());
+        const auto bucketsReady = [&rctx](const auto& textures, uint32_t count) {
+            for (uint32_t b = 0; b < count; ++b)
+                if (!textures[b] || !rctx.textures().ready(textures[b].get())) return false;
+            return true;
+        };
+        const bool offBucketsReady = bucketsReady(s->albedoTexture, s->albedoOffBuckets);
+        const bool onBucketsReady = bucketsReady(s->albedoOnTexture, s->albedoOnBuckets);
+        u.materialReady = (s->wantMaterial && s->tier1 && s->materialReady && offBucketsReady) ? 1 : 0;
         u.materialReadyOn = (s->wantMaterial && s->tier1 && s->materialReadyOn && onBucketsReady) ? 1 : 0;
+        // PROP-ARRAY-BUCKETS: once per map, the device memory the albedo arrays really hold (VMA allocation sizes; the residency
+        // upload may have dropped a top mip, so this can be below the import line's CPU byte count).
+        if (u.materialReady && u.materialReadyOn && s->albedoMemLoggedMap != s->mapGeneration) {
+            s->albedoMemLoggedMap = s->mapGeneration;
+            const auto sum = [&rctx](const auto& textures, uint32_t count) {
+                uint64_t bytes = 0;
+                for (uint32_t b = 0; b < count; ++b) bytes += rctx.textures().allocationBytes(textures[b].get());
+                return static_cast<unsigned long long>(bytes);
+            };
+            vlog("albedo arrays resident: alpha-OFF buckets=%u vma_bytes=%llu, alpha-ON buckets=%u vma_bytes=%llu.",
+                 s->albedoOffBuckets, sum(s->albedoTexture, s->albedoOffBuckets),
+                 s->albedoOnBuckets, sum(s->albedoOnTexture, s->albedoOnBuckets));
+        }
         u.terrainSunMC2[0] = s->terrainSunMC2[0];
         u.terrainSunMC2[1] = s->terrainSunMC2[1];
         u.terrainSunMC2[2] = s->terrainSunMC2[2];
