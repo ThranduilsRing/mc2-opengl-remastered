@@ -34,6 +34,10 @@ std::optional<std::vector<uint8_t>> readEntry(std::string_view dir, const CacheK
     const bool read = std::fread(bytes.data(), 1, bytes.size(), f) == bytes.size();
     std::fclose(f);
     if (!read) return {};
+    // A hit makes the entry recently used, so eviction in writeEntry is LRU, not FIFO.
+    // Best effort: a read-only or locked file still returns its bytes.
+    std::error_code touchEc;
+    std::filesystem::last_write_time(path, std::filesystem::file_time_type::clock::now(), touchEc);
     return bytes;
 }
 

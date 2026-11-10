@@ -129,6 +129,37 @@ TEST_CASE("cook cache: newest write stays within budget after a clock rollback")
     CHECK(mc2cache::readEntry(dir, kind, 3));
 }
 
+TEST_CASE("cook cache: a read refreshes the entry so eviction is least-recently-used") {
+    namespace fs = std::filesystem;
+    const std::string dir = tempDir("lru-read");
+    const mc2cache::CacheKind kind{"other-", ".bin", 2, 0};
+    const std::vector<uint8_t> bytes(16, 7);
+    const auto past = fs::file_time_type::clock::now() - std::chrono::hours(2);
+    for (uint64_t key : {1, 2}) {
+        REQUIRE(mc2cache::writeEntry(dir, kind, key, bytes));
+        fs::last_write_time(mc2cache::entryPath(dir, kind, key), past + std::chrono::minutes(key));  // key 1 is the oldest
+    }
+    CHECK(mc2cache::readEntry(dir, kind, 1));   // hit: key 1 becomes the most recently used
+    REQUIRE(mc2cache::writeEntry(dir, kind, 3, bytes));
+    CHECK(fs::exists(mc2cache::entryPath(dir, kind, 1)));
+    CHECK_FALSE(fs::exists(mc2cache::entryPath(dir, kind, 2)));   // never read: the victim
+    CHECK(fs::exists(mc2cache::entryPath(dir, kind, 3)));
+}
+
+TEST_CASE("cook cache: a read-only entry still returns its bytes") {
+    namespace fs = std::filesystem;
+    const std::string dir = tempDir("read-only");
+    const mc2cache::CacheKind kind{"other-", ".bin", 4, 0};
+    const std::vector<uint8_t> bytes(16, 9);
+    REQUIRE(mc2cache::writeEntry(dir, kind, 1, bytes));
+    const auto path = mc2cache::entryPath(dir, kind, 1);
+    fs::permissions(path, fs::perms::owner_read | fs::perms::group_read | fs::perms::others_read, fs::perm_options::replace);
+    const auto got = mc2cache::readEntry(dir, kind, 1);
+    REQUIRE(got);
+    CHECK(*got == bytes);
+    fs::permissions(path, fs::perms::owner_write, fs::perm_options::add);
+}
+
 TEST_CASE("shadow mask: cache key changes with alpha texels and compiled shader bytes") {
     const std::array<uint8_t, 4> alpha = {255, 255, 255, 0}, reskin = {255, 255, 255, 255};
     const std::array<uint32_t, 4> spv = {0x07230203, 1, 2, 3}, editedSpv = {0x07230203, 1, 2, 4};
