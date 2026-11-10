@@ -4,6 +4,7 @@
 #include "render_backend_select.h"
 
 #include <memory>
+#include <mutex>
 #include <vector>
 
 #include "mc2fmt.h"
@@ -46,7 +47,7 @@ bool resetAll(const mc2vk::VulkanContext& ctx, VkQueryPool qp, uint32_t count) {
 }
 
 TimerState* state(bool create) {
-    mc2vk::VulkanContext& ctx = mc2vk::getOrCreateEngineVulkanContext();
+    mc2vk::VulkanContext& ctx = mc2vk::engineVulkanContextNoWait();   // Begin/End also run on a recording worker (see VulkanContext::submitRecorded)
     if (!ctx.valid() || ctx.device() == s_unsupportedDevice) return nullptr;
     std::unique_ptr<mc2vk::IslandState>& slot = ctx.islandSlot(mc2vk::IslandSlot::PassTimer);
     if (slot || !create) return static_cast<TimerState*>(slot.get());
@@ -85,15 +86,23 @@ TimerState* state(bool create) {
 
 }  // namespace
 
+// Recorded islands bracket their passes from worker threads: the ring is one shared structure.
+std::mutex s_ringMutex;
+
 bool Active() {
     return gos_render_pass_timer::Enabled();
+}
+
+void Arm() {
+    if (Active()) (void)state(true);   // the query pool is born on the render thread, never by a worker's first Begin
 }
 
 void Begin(VkCommandBuffer cb, gos_render_pass_timer::Pass p) {
     if (cb == VK_NULL_HANDLE || !Active()) return;
     TimerState* t = state(true);
     if (!t) return;
-    const int64_t q = t->ring.begin(p);
+    int64_t q;
+    { std::lock_guard<std::mutex> lock(s_ringMutex); q = t->ring.begin(p); }
     if (q < 0) return;
     // The pair is reset on the same command buffer, so a reused slot never carries an older frame's stamps into this read.
     vkCmdResetQueryPool(cb, t->pool.get(), static_cast<uint32_t>(q), 2);
@@ -104,19 +113,22 @@ void End(VkCommandBuffer cb, gos_render_pass_timer::Pass p) {
     if (cb == VK_NULL_HANDLE || !Active()) return;
     TimerState* t = state(false);
     if (!t) return;
-    const int64_t q = t->ring.end(p);
+    int64_t q;
+    { std::lock_guard<std::mutex> lock(s_ringMutex); q = t->ring.end(p); }
     if (q >= 0) vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, t->pool.get(), static_cast<uint32_t>(q));
 }
 
 void Cancel(gos_render_pass_timer::Pass p) {
     if (!Active()) return;
-    if (TimerState* t = state(false)) t->ring.cancel(p);
+    if (TimerState* t = state(false)) { std::lock_guard<std::mutex> lock(s_ringMutex); t->ring.cancel(p); }
 }
 
 void FrameEnd() {
     if (!Active()) return;
+    mc2vk::getOrCreateEngineVulkanContext().resolveRecorded();   // reserved recordings bracket into this frame's slot before it closes
     TimerState* t = state(false);
     if (!t) return;
+    std::lock_guard<std::mutex> lock(s_ringMutex);
     VkResult hardError = VK_SUCCESS;
     auto read = [&](const TimerRing::Bracket& b, double* ms) -> ReadResult {
         uint64_t r[4] = {};   // (begin, available, end, available)

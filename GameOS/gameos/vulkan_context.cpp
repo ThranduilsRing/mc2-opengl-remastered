@@ -838,12 +838,17 @@ VkResult VulkanContext::submitLocked(const VkSubmitInfo& si, VkFence fence, uint
     if (fence == VK_NULL_HANDLE && si.waitSemaphoreCount == 0 && si.signalSemaphoreCount == 0 && si.commandBufferCount > 0) {
         const uint64_t deferred = tracker_.noteSubmit(QueueKind::Graphics);
         const auto now = std::chrono::steady_clock::now();
-        if (pendingCbs_.empty()) pendingSince_ = now;
-        pendingCbs_.insert(pendingCbs_.end(), si.pCommandBuffers, si.pCommandBuffers + si.commandBufferCount);
-        pendingValue_ = deferred;
+        if (pending_.empty()) pendingSince_ = now;
+        for (uint32_t i = 0; i < si.commandBufferCount; ++i) pending_.push_back({si.pCommandBuffers[i], deferred});
         if (outValue) *outValue = deferred;
         // A batch older than 0.4 ms goes to the queue now: held until a wait or the present, the GPU idled while the CPU recorded the rest of the frame.
-        if (pendingCbs_.size() >= 64 || now - pendingSince_ > std::chrono::microseconds(400)) flushPendingLocked();
+        // Reserved recordings are not recorded for that: the prefix before the first goes out, and the recordings resolve together once the oldest has
+        // waited 1 ms (or at a flush point), so one batch of islands records in parallel.
+        if (pending_.size() >= 64 || now - pendingSince_ > std::chrono::microseconds(400)) {
+            if (pendingRecs_.empty()) flushPendingLocked();
+            else if (now - pendingRecs_.front().reservedAt > std::chrono::microseconds(1000)) flushPendingLocked();
+            else flushPrefixLocked(pendingRecs_.front().entry);
+        }
         return VK_SUCCESS;
     }
     flushPendingLocked();   // keep queue order: everything deferred so far goes before this submit
@@ -896,25 +901,98 @@ VkResult VulkanContext::queueSubmit2(VkQueue q, const VkSubmitInfo2& si, VkFence
 }
 
 void VulkanContext::flushPendingLocked() const {
-    if (pendingCbs_.empty()) return;
-    if (infra::deviceLostLatched()) { pendingCbs_.clear(); pendingValue_ = 0; return; }   // no queue work on a lost device
-    std::vector<VkCommandBufferSubmitInfo> cbs(pendingCbs_.size());
-    for (size_t i = 0; i < cbs.size(); ++i) {
-        cbs[i] = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO};
-        cbs[i].commandBuffer = pendingCbs_[i];
+    if (!pendingRecs_.empty()) {
+        // The render thread resolves the recordings (their done() callbacks belong to it); the present worker queues what precedes the first one,
+        // which keeps queue order.
+        if (present_thread::onWorker()) { flushPrefixLocked(pendingRecs_.front().entry); return; }
+        resolveRecordsLocked();
     }
+    flushPrefixLocked(pending_.size());
+}
+
+void VulkanContext::resolveRecordsLocked() const {
+    if (pendingRecs_.empty()) return;
+    ZoneScopedN("VKContext.ResolveRecords");
+    VulkanContext* self = const_cast<VulkanContext*>(this);
+    const int n = static_cast<int>(pendingRecs_.size());
+    const auto recordOne = [self, this](int i) {
+        PendingRecord& r = pendingRecs_[static_cast<size_t>(i)];
+        r.cb = self->acquireRecordCommandBuffer();
+        r.ok = r.cb != VK_NULL_HANDLE && r.rec(r.cb);
+    };
+    if (n >= 2 && recordExecutor_.run && recordExecutor_.active && recordExecutor_.active()) recordExecutor_.run(n, recordOne);
+    else for (int i = 0; i < n; ++i) recordOne(i);
+    // A thread without a lane (more threads than lanes) records on main.
+    for (PendingRecord& r : pendingRecs_)
+        if (r.cb == VK_NULL_HANDLE) { r.cb = self->acquireRecordCommandBuffer(); r.ok = r.cb != VK_NULL_HANDLE && r.rec(r.cb); }
+    std::vector<PendingRecord> recs = std::move(pendingRecs_);
+    pendingRecs_.clear();
+    for (PendingRecord& r : recs) pending_[r.entry].cb = r.ok ? r.cb : VK_NULL_HANDLE;   // a failed recording leaves its value to be signalled by the batch
+    for (PendingRecord& r : recs) if (r.done) r.done(r.ok);
+}
+
+void VulkanContext::resolveRecorded() {
+    if (device_ == VK_NULL_HANDLE || present_thread::onWorker()) return;
+    const auto lock = lockSubmit(submitMutex_);
+    resolveRecordsLocked();
+}
+
+VkResult VulkanContext::submitRecorded(RecordFn rec, RecordDoneFn done, uint64_t* outValue) {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "VulkanContext::submitRecorded");
+    const auto fail = [&](VkResult r) { if (done) done(false); return r; };
+    if (device_ == VK_NULL_HANDLE || gfxTimeline_ == VK_NULL_HANDLE || infra::deviceLostLatched()) return fail(VK_ERROR_DEVICE_LOST);
+    if (!recordExecutor_.run || !recordExecutor_.active || !recordExecutor_.active()) {
+        // No worker threads: record here and submit now, the same commands in the same order.
+        VkCommandBuffer cb = acquireRecordCommandBuffer();
+        if (cb == VK_NULL_HANDLE || !rec(cb)) return fail(VK_ERROR_UNKNOWN);
+        VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+        si.commandBufferCount = 1;
+        si.pCommandBuffers = &cb;
+        const VkResult r = submit(si, VK_NULL_HANDLE, outValue);
+        if (done) done(r == VK_SUCCESS);
+        return r;
+    }
+    const auto lock = lockSubmit(submitMutex_);
+    flushUploadsLocked();   // queued uploads run ahead of every submit that may sample them
+    if (pendingFailed_) { pendingFailed_ = false; return fail(VK_ERROR_UNKNOWN); }
+    const uint64_t value = tracker_.noteSubmit(QueueKind::Graphics);
+    const auto now = std::chrono::steady_clock::now();
+    if (pending_.empty()) pendingSince_ = now;
+    pending_.push_back({VK_NULL_HANDLE, value});
+    PendingRecord r;
+    r.entry = pending_.size() - 1;
+    r.rec = std::move(rec);
+    r.done = std::move(done);
+    r.reservedAt = now;
+    pendingRecs_.push_back(std::move(r));
+    if (outValue) *outValue = value;
+    return VK_SUCCESS;
+}
+
+void VulkanContext::flushPrefixLocked(size_t count) const {
+    count = (std::min)(count, pending_.size());
+    if (count == 0) return;
+    const uint64_t value = pending_[count - 1].value;
+    std::vector<VkCommandBufferSubmitInfo> cbs;
+    cbs.reserve(count);
+    for (size_t i = 0; i < count; ++i) {
+        if (pending_[i].cb == VK_NULL_HANDLE) continue;   // a recording that failed: only its value is signalled
+        VkCommandBufferSubmitInfo c{VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO};
+        c.commandBuffer = pending_[i].cb;
+        cbs.push_back(c);
+    }
+    pending_.erase(pending_.begin(), pending_.begin() + static_cast<std::ptrdiff_t>(count));
+    for (PendingRecord& r : pendingRecs_) r.entry -= count;
+    if (infra::deviceLostLatched()) return;   // no queue work on a lost device
     VkSemaphoreSubmitInfo sig{VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO};
     sig.semaphore = gfxTimeline_;
-    sig.value = pendingValue_;
+    sig.value = value;
     sig.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
     VkSubmitInfo2 out{VK_STRUCTURE_TYPE_SUBMIT_INFO_2};
     out.commandBufferInfoCount = static_cast<uint32_t>(cbs.size());
     out.pCommandBufferInfos = cbs.data();
     out.signalSemaphoreInfoCount = 1;
     out.pSignalSemaphoreInfos = &sig;
-    const uint64_t value = pendingValue_;
-    pendingCbs_.clear();
-    pendingValue_ = 0;
     VkResult r = queueSubmit2(gfxQueue_, out, VK_NULL_HANDLE);
     if (r != VK_SUCCESS) {
         ctxlog("the batched submit failed: VkResult=%d (the timeline value is signalled empty to stay in step).", static_cast<int>(r));
@@ -926,7 +1004,6 @@ void VulkanContext::flushPendingLocked() const {
         // The timeline could not be kept in step: every later wait on this value would burn its full timeout. Treat the device as lost.
         if (r != VK_SUCCESS) { ctxlog("the empty timeline signal failed too (VkResult=%d): marking the device lost.", static_cast<int>(r)); infra::deviceLost(); }
     }
-    (void)value;
 }
 
 void VulkanContext::poll() const {
@@ -1195,6 +1272,8 @@ VulkanContext& getOrCreateEngineVulkanContext(std::source_location site) {
     mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "getOrCreateEngineVulkanContext");
     return engineContext();
 }
+
+VulkanContext& engineVulkanContextNoWait() { return engineContext(); }
 
 bool engineVulkanContextValid(std::source_location site) {
     present_thread::waitSealed(site);

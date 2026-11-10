@@ -28,6 +28,8 @@ inline double TicksToMs(uint64_t begin, uint64_t end, uint64_t validMask, double
 
 // True when the VK backend drew this session and the pass timer collects.
 bool Active();
+// Render thread, once per frame before islands reserve recordings: creates the timestamp pool, so a worker thread's Begin never has to.
+void Arm();
 
 // Bracket the work an island records on `cb` for pass `p`; Begin goes outside a render pass. A pass bracketed more than
 // once in a frame reports the sum of its brackets. No-ops in a build without Vulkan islands.

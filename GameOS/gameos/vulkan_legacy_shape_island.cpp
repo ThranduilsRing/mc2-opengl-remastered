@@ -596,80 +596,94 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
     }
     const uint32_t uboOffset = static_cast<uint32_t>(span.offset);
 
-    VkCommandBuffer cb = s->cbuf[par];
-    vkResetCommandPool(s->device, s->cpool[par].get(), 0);
-    VkCommandBufferBeginInfo bi{};
-    bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
-
-    VkRenderPassBeginInfo rbi{};
-    rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
-    rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
-    VkClearValue clears[3]{}; clears[0].color.float32[3]=1;
-    clears[1].color.float32[0]=0.5f; clears[1].color.float32[1]=0.5f; clears[1].color.float32[2]=1;
-    if (s->preview) { rbi.clearValueCount=3; rbi.pClearValues=clears; }
-    MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Legacy");
-    vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
-    float jpx[2];
-    RenderCore::temporal::sceneJitterPixels(g_mc2RenderFrame, jpx);
-    if (s->preview) jpx[0] = jpx[1] = 0.0f;   // UI-in-scene previews are not jittered
-    VkViewport vp{jpx[0], jpx[1], static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
-    VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
-    vkCmdSetViewport(cb, 0, 1, &vp);
-    vkCmdSetScissor(cb, 0, 1, &scissor);
-    VkDeviceSize vertexOffset = span.offset + vtxOff;
-    uint32_t boundPass = 0xffffffffu;
-    vkCmdBindVertexBuffers(cb, 0, 1, &span.buffer, &vertexOffset);
-
-    VkDescriptorSet boundSet = VK_NULL_HANDLE;
+    // The draw list is copied out (set, pass, alpha test, vertex range): the draws' vertices are already in the frame ring and the caller's queue does not
+    // outlive this call. The recording runs on a worker with the frame's other recorded islands (VulkanContext::submitRecorded).
+    struct RecDraw { VkDescriptorSet set; uint32_t pass; uint32_t alphaTest; uint32_t vertexCount; uint32_t firstVtx; };
+    std::vector<RecDraw> recDraws;
+    recDraws.reserve(list.size());
     unsigned long drawn = 0, verts = 0;
-    // Draw order is the blend order, so only ADJACENT entries merge: same texture set, pass and alpha-test flag, with the vertex ranges abutting.
-    // One vkCmdDraw then covers exactly the vertices the separate draws would have, in the same order.
-    uint32_t pendFirst = 0, pendCount = 0;
-    auto flushPending = [&]() {
-        if (pendCount == 0) return;
-        mc2::battlebench::add(mc2::battlebench::DrawLegacy), vkCmdDraw(cb, pendCount, 1, pendFirst, 0);
-        pendCount = 0;
-    };
-    const Resolved* prevR = nullptr;
     for (const Resolved& r : list) {
-        const uint32_t firstVtx = static_cast<uint32_t>((r.byteOff / kVertexStride));
-        if (prevR && pendCount != 0 && r.t->set[par] == prevR->t->set[par] && r.d->pass == prevR->d->pass && r.d->alphaTest == prevR->d->alphaTest &&
-            firstVtx == pendFirst + pendCount) {
-            pendCount += r.d->vertexCount; ++drawn; verts += r.d->vertexCount; prevR = &r;
-            continue;
-        }
-        flushPending();
-        VkDescriptorSet set = r.t->set[par];
-        if (set != boundSet) {
-            vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &set, 1, &uboOffset);
-            boundSet = set;
-        }
-        const uint32_t pass = (r.d->pass < MC2_LEGACY_PASS_COUNT) ? r.d->pass : static_cast<uint32_t>(MC2_LEGACY_PASS_SOLID);
-        if (pass != boundPass) {
-            mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipes[pass].get());
-            boundPass = pass;
-        }
-        // FS flags: bit0 alpha test, bit1 fog off (additive loops clear gos_State_Fog), bit2 opaque alpha.
-        const uint32_t pflags = (r.d->alphaTest ? 1u : 0u) |
-                                (pass == MC2_LEGACY_PASS_ADD ? 2u : 0u) |
-                                (pass == MC2_LEGACY_PASS_SOLID ? 4u : 0u);
-        vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, 4, &pflags);
-        pendFirst = firstVtx; pendCount = r.d->vertexCount; prevR = &r;
+        recDraws.push_back({r.t->set[par], r.d->pass, r.d->alphaTest, r.d->vertexCount, static_cast<uint32_t>(r.byteOff / kVertexStride)});
         ++drawn; verts += r.d->vertexCount;
     }
-    flushPending();
-    vkCmdEndRenderPass(cb);
-    gpuScope.end();
-    if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
+    std::array<VkPipeline, MC2_LEGACY_PASS_COUNT> pipes{};
+    for (uint32_t k = 0; k < MC2_LEGACY_PASS_COUNT; ++k) pipes[k] = s->pipes[k].get();
+    const VkRenderPass rpass = s->rpass.get();
+    const VkFramebuffer fb = s->fb.get();
+    const VkPipelineLayout playout = s->playout.get();
+    const bool preview = s->preview;
+    const VkBuffer vtxBuffer = span.buffer;
+    const VkDeviceSize vertexOffset = span.offset + vtxOff;
+    float jpx[2];
+    RenderCore::temporal::sceneJitterPixels(g_mc2RenderFrame, jpx);
+    if (preview) jpx[0] = jpx[1] = 0.0f;   // UI-in-scene previews are not jittered
+    auto record = [recDraws = std::move(recDraws), pipes, rpass, fb, playout, preview, vtxBuffer, vertexOffset, uboOffset, jpx0 = jpx[0], jpx1 = jpx[1], w, h](VkCommandBuffer cb) -> bool {
+        ZoneScopedN("VKIsl.Legacy.Record");
+        VkCommandBufferBeginInfo bi{};
+        bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) return false;
 
-    VkSubmitInfo si{};
-    si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    { ZoneScopedN("VKIsl.Legacy.Submit");
-      if (mc2vk::submitGraphics(si, VK_NULL_HANDLE) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
+        VkRenderPassBeginInfo rbi{};
+        rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        rbi.renderPass = rpass; rbi.framebuffer = fb;
+        rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
+        VkClearValue clears[3]{}; clears[0].color.float32[3]=1;
+        clears[1].color.float32[0]=0.5f; clears[1].color.float32[1]=0.5f; clears[1].color.float32[2]=1;
+        if (preview) { rbi.clearValueCount=3; rbi.pClearValues=clears; }
+        MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Legacy");
+        vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+        VkViewport vp{jpx0, jpx1, static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
+        VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
+        vkCmdSetViewport(cb, 0, 1, &vp);
+        vkCmdSetScissor(cb, 0, 1, &scissor);
+        uint32_t boundPass = 0xffffffffu;
+        VkBuffer vb = vtxBuffer;
+        VkDeviceSize vo = vertexOffset;
+        vkCmdBindVertexBuffers(cb, 0, 1, &vb, &vo);
+
+        VkDescriptorSet boundSet = VK_NULL_HANDLE;
+        // Draw order is the blend order, so only ADJACENT entries merge: same texture set, pass and alpha-test flag, with the vertex ranges abutting.
+        // One vkCmdDraw then covers exactly the vertices the separate draws would have, in the same order.
+        uint32_t pendFirst = 0, pendCount = 0;
+        auto flushPending = [&]() {
+            if (pendCount == 0) return;
+            mc2::battlebench::add(mc2::battlebench::DrawLegacy), vkCmdDraw(cb, pendCount, 1, pendFirst, 0);
+            pendCount = 0;
+        };
+        const RecDraw* prevR = nullptr;
+        for (const RecDraw& r : recDraws) {
+            if (prevR && pendCount != 0 && r.set == prevR->set && r.pass == prevR->pass && r.alphaTest == prevR->alphaTest &&
+                r.firstVtx == pendFirst + pendCount) {
+                pendCount += r.vertexCount; prevR = &r;
+                continue;
+            }
+            flushPending();
+            VkDescriptorSet set = r.set;
+            if (set != boundSet) {
+                vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, playout, 0, 1, &set, 1, &uboOffset);
+                boundSet = set;
+            }
+            const uint32_t pass = (r.pass < MC2_LEGACY_PASS_COUNT) ? r.pass : static_cast<uint32_t>(MC2_LEGACY_PASS_SOLID);
+            if (pass != boundPass) {
+                mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipes[pass]);
+                boundPass = pass;
+            }
+            // FS flags: bit0 alpha test, bit1 fog off (additive loops clear gos_State_Fog), bit2 opaque alpha.
+            const uint32_t pflags = (r.alphaTest ? 1u : 0u) |
+                                    (pass == MC2_LEGACY_PASS_ADD ? 2u : 0u) |
+                                    (pass == MC2_LEGACY_PASS_SOLID ? 4u : 0u);
+            vkCmdPushConstants(cb, playout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, 4, &pflags);
+            pendFirst = r.firstVtx; pendCount = r.vertexCount; prevR = &r;
+        }
+        flushPending();
+        vkCmdEndRenderPass(cb);
+        gpuScope.end();
+        return vkEndCommandBuffer(cb) == VK_SUCCESS;
+    };
+    auto done = [s](bool ok) { if (!ok) { setFallback("record_failed"); s->disabled = true; } };
+    { ZoneScopedN("VKIsl.Legacy.Submit");   // the reservation in the deferred submit batch; the recording runs at the flush
+      if (slotCtx.submitRecorded(std::move(record), std::move(done), nullptr) != VK_SUCCESS) return 0; }   // done(false) already disabled the island
     s->submitted[par] = rctx.tracker().now();
     s->nextSlot = (par + 1) % kSubmissionSlots;
 
