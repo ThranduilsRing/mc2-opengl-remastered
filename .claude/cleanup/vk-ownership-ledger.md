@@ -90,7 +90,7 @@ Release tokens inside the destructors of the owner types: every one runs once, f
 | sky | CommandBuffers | 2 | 1 |
 | terrain | CommandBuffers | 3 | 1 |
 | vfx | CommandBuffers | 1 | 0 |
-| water | CommandBuffers | 2 | 1 |
+| water | CommandBuffers | 1 | 0 |
 | present | CommandBuffers | 3 | 0 |
 | present | DescriptorSets | 0 | 2 |
 | context | Allocator | 1 | 1 |
