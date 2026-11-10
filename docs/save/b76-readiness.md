@@ -25,13 +25,13 @@ Codecs marked "private" are called by tests and the loader's value path only. Li
 | ABL environment (libs/modules/files) | yes, `mclib/abl_environment_archive.h` | `test_abl_environment_archive.cpp` | marker section only (`saveload.cpp:348`); bytes from legacy |
 | Mission / Part | Part yes, `code/mission_parts_archive.cpp`, `save_archive.h:270`; Mission record no | `test_part_archive.cpp` (Part only) | legacy FIT text (`Part::Save` `saveload.cpp:42`, mission block 191-210) |
 | ObjectiveSet / BooleanFlag / Objective / Condition / Action | no | no | legacy FIT (`Team::home->objectives.Save`, `saveload.cpp:231`; `code/objective.cpp` `Save` methods) |
-| SupportCraft / support state | no (state in `code/missiongui.h:160-171`) | no | `missionInterface->Save` FIT (`saveload.cpp:219`) |
+| SupportCraft / support state | yes (private), `code/support_craft_archive.h` (state in `code/missiongui.h:160-171`) | `tests/unit/test_environment_archive.cpp` | `missionInterface->Save` FIT (`saveload.cpp:219`) |
 | Logistics / Campaign / Variant / Pilot / Mech | no | no | legacy FIT, `LogisticsData::save` (`code/logisticsdata_save.cpp:124`) |
 | MediaCueState / LogicalRequest / CueTrajectory | yes (new, this lane), `code/media_cue_archive.h` | `tests/unit/test_media_cue_archive.cpp` | none; no runtime owner exists yet |
-| Environment (weather schedule) | no | no | legacy FIT, `Weather::save` (`saveload.cpp:223`) |
+| Environment (weather schedule) | yes (private), `code/environment_archive.h` | `tests/unit/test_environment_archive.cpp` | legacy FIT, `Weather::save` (`saveload.cpp:223`) |
 | Presentation / ObjectVisual / RenderWeather | no | no | legacy camera/FIT (`eye->save` `saveload.cpp:182`) |
 | FIX1 music/backoff extras | yes, `code/save_fix_section.h:24-71` | `test_save_sections.cpp` | codec, optional (`saveload.cpp:384-385`) |
 
-Missing codecs (cheapest first): MediaCueState (landed here, pure values), Environment, SupportCraft, ObjectiveSet family
+Missing codecs (cheapest first; MediaCueState, Environment and SupportCraft are landed, private and unused by the save path): ObjectiveSet family
 (large: three payload variants), Logistics family, Contacts family, Mission record, SimRules, Presentation.
 Enum values in the new media/cue codec are provisional until B7.5 fixes the runtime kinds.
