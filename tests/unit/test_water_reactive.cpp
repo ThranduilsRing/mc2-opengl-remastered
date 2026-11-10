@@ -1,7 +1,9 @@
 #include "doctest.h"
 #include "../../RenderCore/water_reactive.h"
 #include "../../shaders/include/water_reactive.hglsl"
+#include <cstring>
 #include <limits>
+#include <memory>
 
 using namespace mc2::waterreactive;
 
