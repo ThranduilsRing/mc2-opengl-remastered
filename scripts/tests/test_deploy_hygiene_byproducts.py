@@ -44,3 +44,14 @@ def test_the_hygiene_patterns_still_flag_the_byproduct_names():
 def test_no_tracked_allowlist_exempts_the_byproducts():
     allows = [p for p in _tracked() if p.endswith(".deploy-hygiene-allow")]
     assert not allows, f"tracked hygiene allowlist(s) would exempt byproducts: {allows}"
+
+
+def test_cook_byproducts_are_gitignored_so_a_cook_cannot_retrack_them():
+    for path in ("tests/terrain/beautify/mc2_01.beauty/visual_height_preview.png",
+                 "tests/terrain/beautify/mc2_01.beauty/visual_damp_preview.png",
+                 "tests/terrain/beautify/mc2_01.beauty/visual_delta_heatmap.png",
+                 "tests/terrain/beautify/mc2_01.beauty/visual_height_report.json"):
+        out = subprocess.run(["git", "-C", str(ROOT), "check-ignore", path],
+                             capture_output=True, text=True)
+        assert out.returncode == 0 and out.stdout.strip() == path, \
+            f"cook byproduct not gitignored (a cook + git add -A would re-track it): {path} (rc={out.returncode})"
