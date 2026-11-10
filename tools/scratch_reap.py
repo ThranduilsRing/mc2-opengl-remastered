@@ -18,16 +18,19 @@ import stat
 import subprocess
 import sys
 
-ROOTS = ("E:/mc2-tmp", "G:/mc2-tmp")
-ARCHIVE = "E:/mc2-archive-2026-10"
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children; scripts/console_child.py)
+
+ROOTS = ("E:/mc2-tmp", "G:/mc2-tmp")  # drive-path: ok PC slot scratch roots (lane-rules section 5); never run on the laptop gate
+ARCHIVE = "E:/mc2-archive-2026-10"  # drive-path: ok PC archive, refused as a delete target
 CRASH_MIRROR = ARCHIVE + "/crashes"
-MAIN_ROOT = "A:/Games/mc2-main"
+MAIN_ROOT = "A:/Games/mc2-main"  # drive-path: ok PC canonical worktree (worktree list, slot paths)
 SLOT_COUNT = 12
-LEGACY_PARENT = "E:/"
+LEGACY_PARENT = "E:/"  # drive-path: ok PC legacy E:/mc2-tmp-<name> scratch parent
 LEGACY = ("clc", "dis", "idr", "isp", "mns", "mpl2", "s02", "s03", "s04", "s05", "s06", "s06b", "s06c", "s07",
           "s11", "s11b", "s11c", "s11d", "s12", "s12b", "wrp", "wrs")
 FORBIDDEN_PARTS = ("owner-test-", "v0.4", "mc2-win64-v0.4")
-FORBIDDEN_PREFIXES = (ARCHIVE, "A:/Games/mc2-opengl")
+FORBIDDEN_PREFIXES = (ARCHIVE, "A:/Games/mc2-opengl")  # drive-path: ok PC owner mod installs, refused as a delete target
 EVIDENCE_SUFFIX = (".dmp", ".mdmp")
 
 
@@ -62,7 +65,7 @@ def ensure_slot_scratch(slot):
 
 
 def _git(*args):
-    r = subprocess.run(["git", "-C", MAIN_ROOT, *args], capture_output=True, text=True)
+    r = subprocess.run(["git", "-C", MAIN_ROOT, *args], capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     return r.stdout.strip() if r.returncode == 0 else ""
 
 
@@ -94,7 +97,8 @@ def legacy_owner(path):
         return None, "unknown (not a slot-named dir)"
     slot = f"slot{int(m.group(1)):02d}"
     wt = f"{MAIN_ROOT.rsplit('/', 1)[0]}/mc2-{slot}"
-    out = subprocess.run(["git", "-C", wt, "branch", "--show-current"], capture_output=True, text=True).stdout.strip()
+    out = subprocess.run(["git", "-C", wt, "branch", "--show-current"], capture_output=True, text=True,
+                         **console_child.child_kwargs(redirected=True)).stdout.strip()
     branch = out or "(detached/none)"
     return slot, f"{slot} now on {branch}"
 

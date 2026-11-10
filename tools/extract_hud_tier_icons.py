@@ -21,6 +21,8 @@ from pathlib import Path
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.append(str(ROOT / "scripts"))
+import console_child  # noqa: E402  (windowless console children; scripts/console_child.py)
 HUD = ROOT / "data" / "art" / "mechicons" / "hud"
 # legacy tier -> HUD cell (width, height); the tier PNG is the cell plus a 1 px transparent border
 TIERS = {"mcui_high7": (40, 48), "mcui_med4": (32, 38), "mcui_low4": (25, 30)}
@@ -28,7 +30,8 @@ DEFAULT_REF = "7d2b1b189^"  # last commit with the tiered tree
 
 
 def git(*args):
-    return subprocess.run(["git", "-C", str(ROOT), *args], check=True, capture_output=True).stdout
+    return subprocess.run(["git", "-C", str(ROOT), *args], check=True, capture_output=True,
+                          **console_child.child_kwargs(redirected=True)).stdout
 
 
 def crop_cell(img, w, h):

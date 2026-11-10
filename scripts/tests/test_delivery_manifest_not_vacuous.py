@@ -4,6 +4,8 @@ import json
 import subprocess
 from pathlib import Path
 
+import console_child
+
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location("delivery_vacuous", ROOT / "scripts" / "check-delivery.py")
 delivery = importlib.util.module_from_spec(spec)
@@ -14,7 +16,7 @@ RETIRED = set(json.loads((ROOT / "Gates" / "retired_names.json").read_text(encod
 
 def _head(path):
     r = subprocess.run(["git", "show", f"HEAD:{path}"], cwd=ROOT, capture_output=True, text=True,
-                       encoding="utf-8", errors="replace")
+                       encoding="utf-8", errors="replace", **console_child.child_kwargs(redirected=True))
     return r.stdout if r.returncode == 0 else ""
 
 

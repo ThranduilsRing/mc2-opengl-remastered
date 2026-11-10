@@ -16,7 +16,7 @@ import re
 import sys
 from pathlib import Path
 
-DEFAULT_QUEUE = "A:/Games/mc2-ops/W135-queue.txt"
+DEFAULT_QUEUE = "A:/Games/mc2-ops/W135-queue.txt"  # drive-path: ok PC ops queue (orchestrator tool; --queue overrides)
 STAMP_RE = re.compile(r"^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2})\]")
 STAMP_FMT = "%Y-%m-%d %H:%M"
 
