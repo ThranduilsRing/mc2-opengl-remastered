@@ -10,6 +10,7 @@ sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 
 from tools import lane_merge as lm  # noqa: E402
+import console_child  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
@@ -19,7 +20,7 @@ def _in_process(monkeypatch):
 
 def git(repo, *args):
     r = subprocess.run(["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t", *args],
-                       capture_output=True, text=True)
+                       capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     assert r.returncode == 0, r.stderr
     return r.stdout.strip()
 

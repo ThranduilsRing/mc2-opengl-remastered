@@ -11,9 +11,11 @@ import os
 import re
 import subprocess
 
+import console_child  # scripts/ is on sys.path (lane_merge puts it there)
+
 
 def _git(root: str, *args: str) -> subprocess.CompletedProcess:
-    return subprocess.run(["git", "-C", root, *args], capture_output=True)
+    return subprocess.run(["git", "-C", root, *args], capture_output=True, **console_child.child_kwargs(redirected=True))
 
 
 def tip_dirname(index: int, ref: str) -> str:
