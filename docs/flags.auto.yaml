@@ -842,8 +842,8 @@ flags:
     registry: {feature_id: MC2_FEATURE_FRAMEGRAPH_EXECUTOR, kind: Feature, order: -1, default_on: true}
   - name: MC2_FRAME_JOBS
     kind: Bool
-    default: false
-    rule: AtoiNZ
+    default: true
+    rule: DefOnAtoiNZ
     owner: code
     doc: ""
     smoke_passthrough: true
