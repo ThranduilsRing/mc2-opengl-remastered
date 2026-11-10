@@ -25,8 +25,9 @@ inline float darkness(float pitch)
 // shadow removes the moon's share of the light, so the fade is the ambient share of (moon + ambient).
 inline float moverNightFade(float darkness, float moonLum, float ambientLum)
 {
-    (void)moonLum; (void)ambientLum;
-    return 0.85f * std::clamp(darkness, 0.0f, 1.0f);
+    const float total = moonLum + ambientLum;
+    const float ambientShare = total > 1e-4f ? ambientLum / total : 0.5f;
+    return std::clamp(darkness, 0.0f, 1.0f) * std::clamp(ambientShare, 0.35f, 0.65f);
 }
 // Receiver floor of a sun shadow with day floor `dayFloor` under that fade (mirrors mover_shadow.glsl moverShadowFloor).
 inline float moverShadowFloor(float dayFloor, float fade) { return dayFloor + (1.0f - dayFloor) * fade; }
