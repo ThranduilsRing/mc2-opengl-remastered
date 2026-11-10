@@ -617,8 +617,10 @@ def finish(target_dir, manifest, tool, cooker=subprocess.run, *, kit_rel=KIT_REL
                       key=lambda r: r['path'])
     if len(out_rows) != len({r["sha256"] for r in manifest["files"] if r["path"].endswith(".glb")}):
         raise ValueError(f"industrial cook incomplete: {len(out_rows)} recipes")
-    checked_files(cache, out_rows)
-    checked_files(kit, manifest["files"])
+    # Stamped receipts (size, mtime, ctime, inode, NTFS ChangeTime) hold these hashes from this run; a drifted stamp
+    # rehashes the bytes, so the evidence is the same and only unchanged files skip the second read.
+    checked_files(cache, out_rows, hashes)
+    checked_files(kit, manifest["files"], hashes)
     value = dict(identity=version, importer=version, by_glb=rows,
                  recipes={rel: rows[model_shas[rel]]['path'] for rel in models}, files=out_rows)
     receipt.write_text(json.dumps(value, indent=2) + "\n")
