@@ -11,6 +11,8 @@
 #include "mc2fmt.h"
 #include "utils/mc2log.h"
 
+#include <tracy/Tracy.hpp>
+
 #include <cassert>
 #include <SDL2/SDL.h>
 #include "gos_input.h"
