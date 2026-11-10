@@ -52,7 +52,7 @@ inline Plan planBuckets(std::span<const Dims> members, uint32_t maxBuckets) {
     std::vector<uint32_t> kept = classes;
     std::sort(kept.begin(), kept.end(), [](uint32_t a, uint32_t b) { return a > b; });
     kept.erase(std::unique(kept.begin(), kept.end()), kept.end());
-    if (kept.size() > std::max(maxBuckets, 1u)) kept.resize(std::max(maxBuckets, 1u));
+    kept.resize(std::min<size_t>(kept.size(), std::max(maxBuckets, 1u)));
     plan.bucketDims.assign(kept.size(), Dims{});
     plan.bucketLayers.assign(kept.size(), 0u);
     for (size_t i = 0; i < members.size(); ++i) {
