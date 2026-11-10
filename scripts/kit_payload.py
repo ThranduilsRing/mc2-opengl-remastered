@@ -613,11 +613,6 @@ def finish(target_dir, manifest, tool, cooker=subprocess.run, *, kit_rel=KIT_REL
                 break
             for g, rel in missing:
                 rows[g] = from_shared(g) or cook_model((g, rel))[1]
-    # Retire recipes this manifest no longer references (stale cooks never ship).
-    wanted = {r['path'] for r in rows.values()}
-    for path in cache.glob('model-*.mci'):
-        if path.name not in wanted:
-            path.unlink()
     out_rows = sorted(({k: r[k] for k in ('path', 'bytes', 'sha256')} for r in rows.values()),
                       key=lambda r: r['path'])
     if len(out_rows) != len({r["sha256"] for r in manifest["files"] if r["path"].endswith(".glb")}):

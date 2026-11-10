@@ -141,3 +141,15 @@ def test_prune_keeps_recent_and_protected(tmp_path):
     left = {d.name for d in root.iterdir()}
     assert "k11" in left and "k0" in left  # protected: fresh / current key
     assert len(left) < 12  # stale keys beyond the retention window are gone
+
+
+def test_finish_keeps_recipes_it_does_not_own(world):
+    # The vehicle kit's finish shares cache/content-model with the industrial kit's: it must not retire their recipes.
+    manifest = world[2]
+    calls = []
+    a = install(world, "a")
+    other = a / "cache/content-model/model-ffffffffffffffff.mci"
+    other.parent.mkdir(parents=True, exist_ok=True)
+    other.write_bytes(b"another kit's recipe")
+    kit.finish(a, manifest, exe(world, "a.exe", b"x"), cooker_for(a, calls), importer_key="src")
+    assert other.is_file()
