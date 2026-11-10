@@ -543,3 +543,24 @@ def test_empty_remote_tree_never_deletes_root(tmp_path, monkeypatch):
     ops.write_text("D|\nD|.\n", encoding="utf-8")
     laptop_gate.r_apply(str(ops), root)
     assert root.is_dir()
+
+
+def test_candidate_install_prefers_the_install_deployed_from_head(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(laptop_gate, "G", tmp_path.as_posix())
+    base = tmp_path / "drv/E/mc2-installs"
+
+    def mk(rel, commit):
+        d = base / rel
+        d.mkdir(parents=True)
+        with open(d / ".deployed_manifest.csv", "w", newline="", encoding="utf-8") as f:
+            w = csv.writer(f)
+            w.writerow(["manifest_version", "v1"])
+            w.writerow(["relpath", "sha256", "bytes", "src_commit", "timestamp", "mtime_ns"])
+            w.writerow(["mc2.exe", "0", 1, commit, "t", 0])
+        return d
+    stale = mk("merge-gate-candidate", "1111111111aa")
+    seed = mk("_gate-reuse/deployed", "2222222222bb")
+    assert laptop_gate.candidate_install("2222222222bbcc") == seed
+    assert "matches HEAD" in capsys.readouterr().out
+    assert laptop_gate.candidate_install("3333333333cc") == stale   # none matches: fallback is loud, not silent
+    assert "STALE" in capsys.readouterr().out

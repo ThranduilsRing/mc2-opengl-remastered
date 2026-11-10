@@ -362,10 +362,12 @@ def candidate_install(head=None):
     stock = sorted(base.glob("*-stock-*"), key=lambda p: p.stat().st_mtime, reverse=True) if base.is_dir() else []
     for p in (*stock, base / "merge-gate-candidate", base / "_gate-reuse/deployed"):
         if (p / ".deployed_manifest.csv").is_file():
-            src = manifest_rows(p / ".deployed_manifest.csv").get("mc2.exe", {}).get("src_commit") or ""
+            src = (manifest_rows(p / ".deployed_manifest.csv").get("mc2.exe", {}).get("src_commit") or "").removesuffix("-dirty")
             if head and not (src and (head.startswith(src) or src.startswith(head))):
                 print(f"laptop_gate pack: skipping {p}: mc2.exe src_commit {src or '(none)'} is not the gate head {head[:9]}")
                 continue
+            if head:
+                print(f"candidate_install: {p} (src_commit {src[:12]} matches HEAD {head[:12]})", flush=True)
             return p
     sys.exit(f"laptop_gate pack: no candidate install with a .deployed_manifest.csv under {base}"
              + (f" built from {head[:9]}" if head else ""))

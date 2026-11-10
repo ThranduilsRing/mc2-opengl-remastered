@@ -60,6 +60,7 @@
     {"module": "scripts/tests/test_player_path.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_fast_precheck_rules.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_lint.py", "owners": ["scripts_tests"]},
+    {"module": "scripts/tests/test_new_drive_paths.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_gate_state.py", "owners": ["gate_receipts"]},
     {"module": "scripts/tests/test_gate_wait.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_gate_keep_candidate.py", "owners": ["scripts_tests"]},

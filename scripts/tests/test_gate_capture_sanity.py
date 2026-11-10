@@ -88,3 +88,12 @@ def test_unexplained_scope_change_without_install_evidence_is_fail(tmp_path):
 def test_no_log_evidence_defers_to_pixel_verdict(tmp_path):
     (tmp_path / "before").mkdir()
     assert gate.capture_pipeline_mismatch(tmp_path / "before", capture(tmp_path, "after", FSR)) is None
+
+
+def test_capture_without_vegetation_line_fails_the_row(tmp_path):
+    """W138c: a capture-before with no vegetation (a base red) went unnoticed until the montage."""
+    veg = "[VK] native_geometry kind=vegetation gpu_cull=1 regions=12297 instances=2557829\n"
+    assert gate.capture_vegetation_problem(capture(tmp_path, "good", NO_FSR + veg)) is None
+    why = gate.capture_vegetation_problem(capture(tmp_path, "bad", NO_FSR))
+    assert why and "mc2_01_capture.log" in why and "native_geometry kind=vegetation" in why
+    assert gate.capture_vegetation_problem(tmp_path / "missing") is None   # no log: the capture row itself reports that

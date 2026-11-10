@@ -1365,6 +1365,25 @@ def capture_post_scopes(capture_dir):
     return scopes
 
 
+#: Captures whose engine log must show GPU vegetation. mc2_01 (day) has vegetation on every tier1 run (smoke's vegetation_floor_missing
+#: rule in scripts/smoke_lib/logparse.py lists more maps); the mission sidecars do not say whether a map has vegetation, so this is a
+#: small explicit table. W138c: the first capture-before lacked vegetation (a base red) and nobody noticed until the montage.
+VEGETATION_CAPTURE_STEMS = ("mc2_01",)
+VEGETATION_LINE_RE = re.compile(r"native_geometry kind=vegetation\b")
+
+
+def capture_vegetation_problem(capture_dir, stems=VEGETATION_CAPTURE_STEMS):
+    """None, or why a capture under `capture_dir` has no vegetation: a *_capture.log of a stem in `stems` with no
+    `native_geometry kind=vegetation` line. A stem with no log at all is not judged here (the capture row reports that)."""
+    bad = []
+    for stem in stems:
+        for log in sorted(Path(capture_dir).glob(f"*/{stem}*_capture.log")):
+            if not VEGETATION_LINE_RE.search(log.read_text(encoding="utf-8", errors="replace")):
+                bad.append(log.name)
+    return (f"no `native_geometry kind=vegetation` line in {', '.join(bad)}: the capture ran without vegetation (a base red or a "
+            "refused vegetation population), so its montage cannot be a baseline") if bad else None
+
+
 def capture_pipeline_mismatch(before_dir, after_dir):
     """None when the before/after captures ran the same post pipeline (or a side has no log evidence), else (infra, reason).
 
@@ -1839,6 +1858,11 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
                         status = "FAIL: MAD > %s or missing/mismatched capture on undeclared view(s) %s" % (MAD_LIMIT, ", ".join(moved))
                     elif mismatch:
                         print(f"[merge_gate] {name}: MAD within bounds, but the pipeline change above is unexplained: stays FAIL")
+                if result.returncode == 0 and name.startswith(EXCLUSIVE_PREFIXES) and "--out" in command:
+                    veg = capture_vegetation_problem(command[command.index("--out") + 1])
+                    if veg:
+                        status = "FAIL: " + veg.replace("|", "/")
+                        print(f"[merge_gate] {name}: {status}", flush=True)
             except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
                 print(f"[merge_gate] {name}: {exc}", file=sys.stderr)
                 # The child could not be run or reaped (OS/subprocess error): the host failed, not the product.
