@@ -261,7 +261,10 @@ bool create_cement_sampler(TerrainIsland* s) {
     sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;   // GL_LINEAR
     sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
     // ★CEMENT: GL_REPEAT wrap (gos_terrain_indirect.cpp:1291-1292) — cement tiles wrap.
-    sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    // CEMENT-ARRAY-1: the shaders fract() the tile UV and sample a per-cell layer, so the sampler must CLAMP: with REPEAT the
+    // bilinear footprint at u/v 0 or 1 wraps to the opposite edge texels (dark dotted seam on every cell border, found by the A/B).
+    // CLAMP_TO_EDGE equals the old half-texel inset at lod 0.
+    sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     sci.maxLod = 0.25f;   // the array is mip-less: lod 0 only
     return mc2vk::create(s->cementSamp, s->device, [&](auto* h) { return vkCreateSampler(s->device, &sci, nullptr, h); });
 }
