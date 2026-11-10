@@ -77,10 +77,15 @@ def ownership_problems(modules: list[str], data: dict) -> list[str]:
 def select_modules(modules: list[str], data: dict, requested: list[str] | None = None) -> list[str]:
     """Named modules run directly; otherwise only aggregate-owned modules run."""
     if requested:
-        unknown = sorted(set(requested) - set(modules))
+        # a module is named by its file stem ("test_x"), file name ("test_x.py") or path ("scripts/tests/test_x.py")
+        wanted = {}
+        for name in requested:
+            stem = name.replace("\\", "/").rsplit("/", 1)[-1]
+            wanted[name] = f"{TESTS_REL}/{stem if stem.endswith('.py') else stem + '.py'}"
+        unknown = sorted(name for name, module in wanted.items() if module not in modules)
         if unknown:
             raise ValueError("unknown test module: " + ", ".join(unknown))
-        return [module for module in modules if module in set(requested)]
+        return [module for module in modules if module in set(wanted.values())]
     aggregate = data["aggregate_owner"]
     owners = {entry["module"]: entry["owners"] for entry in data["tests"]}
     return [module for module in modules if owners.get(module, [aggregate]) == [aggregate]]
