@@ -5999,6 +5999,21 @@
    "count": 1
   },
   {
+   "tag": "MOVER_SHADOW",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "mask_ready",
+    "props_total",
+    "casters_total",
+    "skipped",
+    "kept_mech",
+    "movers_in_view"
+   ],
+   "count": 1
+  },
+  {
    "tag": "MOVE_BD",
    "ver": -1,
    "stream": "stdout",
@@ -8459,23 +8474,6 @@
    "stream": "stderr",
    "keys": [
     "footprint"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "SHADOW_BAKE",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "frame",
-    "center",
-    "ground",
-    "projected",
-    "sun",
-    "texel_wu",
-    "extent",
-    "spheres",
-    "mech_radius"
    ],
    "count": 1
   },

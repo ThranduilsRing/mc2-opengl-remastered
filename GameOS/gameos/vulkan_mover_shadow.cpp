@@ -217,11 +217,16 @@ bool MoverShadowState::prepare(int mapSide, const float cameraRows[16], Vec3 sun
     // With the baked static mask ready, a prop that cannot shadow any mover in view is left to the mask (its shadow is already baked on the ground).
     std::vector<MoverSphere> movers;
     if (maskReady) for (const MechActor& a : actors_) if (a.inView) movers.push_back(a.sphere);
+    uint32_t casters=0, skipped=0, keptMech=0;   // [MOVER_SHADOW] counts
     for (const auto& prop:props) {
         if (prop.typeID >= bounds_.size() || !bounds_[prop.typeID].valid) continue;
         const auto sphere=propSphere(prop,bounds_[prop.typeID]);
         if (!sweptShadowInView(sphere,sun,ground_,view)) continue;
-        if (maskReady && std::none_of(movers.begin(),movers.end(),[&](const MoverSphere& m){ return propShadowReachesMover(sphere,m,sun,ground_); })) continue;
+        ++casters;
+        if (maskReady) {
+            if (std::none_of(movers.begin(),movers.end(),[&](const MoverSphere& m){ return propShadowReachesMover(sphere,m,sun,ground_); })) { ++skipped; continue; }
+            ++keptMech;
+        }
         props_.push_back(prop); spheres_.push_back(sphere);
     }
     appendMechs(cameraRows,sun,ground_);
@@ -247,12 +252,9 @@ bool MoverShadowState::prepare(int mapSide, const float cameraRows[16], Vec3 sun
     if (!active_) return false;
     std::memcpy(active_.ptr,&frame_,sizeof(frame_)); // the engine ring is host coherent
     activeFrame_=ctx.frameContext().frame;
-    if (false && activeFrame_%60==0 && !spheres_.empty()) {
-        const auto c=spheres_.front().center;
-        const auto p=applyMatrix(frame_.matrix,c);
-        mc2::fmt::print_err("[SHADOW_BAKE] mover_diag frame={} center={:.1f},{:.1f},{:.1f} ground={:.1f} projected={:.3f},{:.3f},{:.3f} sun={:.3f},{:.3f},{:.3f} texel_wu={:.3f} extent={:.1f} spheres={} mech_radius={:.1f}\n",
-            activeFrame_,c.x,c.y,c.z,ground_,p.x,p.y,p.z,sun.x,sun.y,sun.z,frame_.params[0],extent_,spheres_.size(),mechRadius_);
-    }
+    if (activeFrame_%120==0 && mc2_diag::tagRequested("MOVER_SHADOW"))   // MC2_DIAG_TAGS=MOVER_SHADOW
+        mc2::fmt::print_err("[MOVER_SHADOW] frame={} mask_ready={} props_total={} casters_total={} skipped={} kept_mech={} movers_in_view={}\n",
+            activeFrame_,maskReady?1:0,props.size(),casters,skipped,keptMech,movers.size());
     return true;
 }
 
