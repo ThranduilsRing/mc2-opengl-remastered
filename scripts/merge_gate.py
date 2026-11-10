@@ -2056,6 +2056,9 @@ def main(argv=None):
         except subprocess.CalledProcessError:
             ap.error(f"invalid comparison base {base}: must be an ancestor of {head}")
         paths = [p for p in git("diff", "--name-only", "-z", base, head).split("\0") if p]
+        if not paths and not args.full:
+            ap.error(f"comparison base {base} equals HEAD {head} (empty diff): a change-based run would go green with nothing run "
+                     "(the default base is the nifty tip, which is HEAD on nifty itself). Pass --base <older ref> or --full.")
         steps, promoted = promote_for_diff(steps, scheduled, planned, paths, asked, args.weekly)
         steps = affected_plan(steps, paths, args.full)
         # A promoted row the diff classification would skip anyway (e.g. a doc naming a map) is not added as a SKIP.
