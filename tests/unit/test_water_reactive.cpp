@@ -102,3 +102,25 @@ TEST_CASE("WaterReactive/shared shader vehicle wake trails velocity and mirrors"
     CHECK(reverse.x == doctest::Approx(-left.x));
     CHECK(reverse.y == doctest::Approx(left.y));
 }
+
+TEST_CASE("WaterReactive/frozen clock keeps stamps at age zero where the profile is invisible, and stats count the chain") {
+    // The visual-capture sweep pauses scenarioTime: a stamp emitted at the pose never ages, and age 0 is faded to nothing.
+    mc2::waterreactive::Buffer buffer;
+    const int key = 1;
+    for (int frame = 0; frame < 120; ++frame)
+        buffer.submit(reinterpret_cast<uintptr_t>(&key), 10.0f, 256, 4096, 13, true, true, false);
+    mc2::waterreactive::GpuFrame frozen;
+    buffer.snapshot(10.0f, frozen);
+    CHECK(buffer.size() == 1);
+    CHECK(frozen.stamps[0].positionRadiusAge[3] == 0);
+    CHECK(glm::length(wr_profile({20, 0}, {0, 0}, 13, 0, 0, 1)) == 0);
+    buffer.snapshot(10.4f, frozen);
+    CHECK(glm::length(wr_profile({13 + 0.4f * 28, 0}, {0, 0}, 13, 0.4f, 0, 1)) > 0.001f);
+    const auto st = buffer.takeStats();
+    CHECK(st.submits == 120);
+    CHECK(st.wet == 120);
+    CHECK(st.vis == 120);
+    CHECK(st.wetVisible == 120);
+    CHECK(st.emitted == 1);
+    CHECK(buffer.takeStats().submits == 0);
+}
