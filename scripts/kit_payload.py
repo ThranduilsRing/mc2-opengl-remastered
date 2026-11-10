@@ -267,13 +267,18 @@ class HashReceipts:
         return stamp
 
     def digest(self, path, *, force=False, hasher=None, variant=''):
-        stamp = self.stamp(path)
         key = variant + ':' + os.path.abspath(path)
-        old = self.rows.get(key)
-        if not force and isinstance(old, list) and old[:-1] == stamp:
-            return old[-1]
-        value = (hasher or sha)(path)
-        if self.stamp(path) != stamp:
+        # A lane linking/unlinking a shared (seed-hardlinked) file bumps its NTFS ChangeTime without changing
+        # bytes: re-stamp and re-hash a few times before calling it a change.
+        for attempt in range(4):
+            stamp = self.stamp(path)
+            old = self.rows.get(key)
+            if not force and isinstance(old, list) and old[:-1] == stamp:
+                return old[-1]
+            value = (hasher or sha)(path)
+            if self.stamp(path) == stamp:
+                break
+        else:
             raise ValueError(f"file changed during hash verification: {path}")
         self.rows[key] = [*stamp, value]
         return value

@@ -209,6 +209,32 @@ def io_workers():
         return 2
 
 
+def write_receipt(path, rows):
+    """Publish a seed receipt: per-pid temp file, atomic replace, never fatal.
+
+    Concurrent verifiers each replace the receipt; on Windows replace raises PermissionError while another
+    process has it open. The receipt is only a hash cache, so retry briefly and then skip (the next run
+    re-hashes) instead of failing the lane's install.
+    """
+    pending = path.with_suffix(f'.{os.getpid()}.{threading.get_ident()}.tmp')
+    try:
+        pending.write_text(json.dumps(rows), encoding='utf-8')
+        for attempt in range(8):
+            try:
+                pending.replace(path)
+                return True
+            except PermissionError:
+                time.sleep(0.05 * (attempt + 1))
+        return False
+    except OSError:
+        return False
+    finally:
+        try:
+            pending.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
 def verified_seed(src, use_cache=False):
     """Verify the payload manifest before projecting a source into a lean tree."""
     path = src / '.deployed_manifest.csv'
@@ -233,15 +259,20 @@ def verified_seed(src, use_cache=False):
             fail(f'seed manifest path escapes source: {rel}', 2)
         if not candidate.is_file():
             fail(f'seed manifest file missing: {rel}', 2)
-        stamp = content_stamp(candidate)
-        old = cached.get(rel, {})
-        if old.get('stamp') == stamp and old.get('sha256') == row['sha256']:
-            digest = old['sha256']
+        # Another lane hardlinking a seed file bumps its NTFS ChangeTime (link count) mid-check without
+        # touching the bytes: re-hash and re-stamp a few times; a real content change still fails the hash.
+        for attempt in range(4):
+            stamp = content_stamp(candidate)
+            old = cached.get(rel, {})
+            if old.get('stamp') == stamp and old.get('sha256') == row['sha256']:
+                digest = old['sha256']
+            else:
+                digest = file_sha(candidate)
+            if digest != row['sha256']:
+                fail(f'seed manifest hash mismatch: {rel}', 2)
+            if content_stamp(candidate) == stamp:
+                break
         else:
-            digest = file_sha(candidate)
-        if digest != row['sha256']:
-            fail(f'seed manifest hash mismatch: {rel}', 2)
-        if content_stamp(candidate) != stamp:
             fail(f'seed changed during verification: {rel}', 2)
         return rel, {'stamp': stamp, 'sha256': digest}
 
@@ -250,12 +281,7 @@ def verified_seed(src, use_cache=False):
                                               if not r.endswith('.pdb'))))
     # Replace, never write through a potentially shared receipt inode.
     if use_cache:
-        pending = cache_path.with_suffix(f'.{os.getpid()}.tmp')
-        try:
-            pending.write_text(json.dumps(updated), encoding='utf-8')
-            pending.replace(cache_path)
-        finally:
-            pending.unlink(missing_ok=True)
+        write_receipt(cache_path, updated)
     # Pinned kits and their verified native recipes enter the seed through kit_seed_members() (W138 merge: it supersedes
     # the W137 recipe rows that were added here; both carried the same pinned sources + cook receipts).
     return manifest
@@ -283,12 +309,7 @@ def refresh_link_receipts(src, shared):
                 entry['stamp'] = new
                 changed = True
         if changed:
-            pending = path.with_suffix(f'.{os.getpid()}.tmp')
-            try:
-                pending.write_text(json.dumps(cached), encoding='utf-8')
-                pending.replace(path)
-            finally:
-                pending.unlink(missing_ok=True)
+            write_receipt(path, cached)
 
 
 def restamp_seed(src):
@@ -400,12 +421,7 @@ def kit_seed_members(src, seed, use_cache=False):
         extra[receipt.relative_to(src).as_posix()] = {
             'relpath': receipt.relative_to(src).as_posix(), 'sha256': kit_payload.sha(receipt)}
     if use_cache:
-        pending = cache_path.with_suffix(f'.{os.getpid()}.tmp')
-        try:
-            pending.write_text(json.dumps(updated), encoding='utf-8')
-            pending.replace(cache_path)
-        finally:
-            pending.unlink(missing_ok=True)
+        write_receipt(cache_path, updated)
     return extra
 
 
