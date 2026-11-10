@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 421
+gate_count: 420
 registry_entry_count: 124
-verified_count: 401
+verified_count: 400
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -1688,15 +1688,6 @@ flags:
     owner: unclassified
     doc: "Hide the OS cursor."
     verified: true
-  - name: MC2_OVERLAY_CEMENT_ADOPT
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: terrain
-    doc: "OVERLAY-CEMENT-ADOPT-1: closes the two-shader concrete seam CEMENT-PATCHY-CAUSE-1 attributed but explicitly left open as a design call ('either the overlay..."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_OVERLAY_CEMENT_ADOPT, kind: Feature, order: 25, default_on: true}
   - name: MC2_OVERLAY_TILE_HIRES
     kind: String
     default: "256"
@@ -3357,4 +3348,5 @@ feature_only_rows:   # registry entries with no environment variable
   - {feature_id: MC2_FEATURE_SNAPSHOT_MECH_EXTRACT, kind: Retired, order: 13, default_on: false}
   - {feature_id: MC2_FEATURE_STATIC_PROP_INDIRECT, kind: Retired, order: 1, default_on: true}
   - {feature_id: MC2_FEATURE_LEGACY_LIT_MC2_FRAME, kind: Retired, order: 22, default_on: true}
+  - {feature_id: MC2_FEATURE_OVERLAY_CEMENT_ADOPT, kind: Retired, order: 25, default_on: true}
   - {feature_id: MC2_FEATURE_VEHICLE_AMBIENT_FLOOR, kind: Retired, order: 26, default_on: true}

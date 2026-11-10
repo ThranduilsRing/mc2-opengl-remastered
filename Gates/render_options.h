@@ -21,6 +21,7 @@ namespace mc2::options {
 // Defaults here ARE the shipped defaults: a missing key, a missing file, and a tool that never loads options.cfg all behave alike.
 struct RenderOptions {
     bool remasteredBuildings = true; // bundled building art; Classic leaves campaign/mod assets intact
+    bool stockOverlayConcrete = false; // concrete look: false = new detail layers + terrain-matched overlay cement (default), true = stock overlay splotches
     // Post-process look.
     bool  postCas          = false;   // contrast-adaptive sharpening on the final image
     float postCasSharpness = 0.5f;
@@ -96,6 +97,7 @@ inline constexpr Option kOptions[] = {
     detail::boolOpt ("VfxSoftParticles",              &RenderOptions::vfxSoftParticles),
     detail::boolOpt ("VfxLitParticles",               &RenderOptions::vfxLitParticles),
     detail::longOpt ("ImpactDecals",                  &RenderOptions::impactDecals, 0, 2),
+    detail::boolOpt ("StockOverlayConcrete",          &RenderOptions::stockOverlayConcrete),
 };
 
 inline constexpr std::size_t kOptionCount = sizeof(kOptions) / sizeof(kOptions[0]);

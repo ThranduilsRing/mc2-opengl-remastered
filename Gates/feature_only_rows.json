@@ -91,6 +91,13 @@
   "doc": "Retired: the vehicle lit path always uses the MC2 frame (env var MC2_LEGACY_LIT_MC2_FRAME removed; it had no reader)."
  },
  {
+  "featureId": "MC2_FEATURE_OVERLAY_CEMENT_ADOPT",
+  "kind": "Retired",
+  "order": 25,
+  "defaultOn": true,
+  "doc": "Retired: the overlay concrete look is the options.cfg key StockOverlayConcrete (default false = new concrete); env var MC2_OVERLAY_CEMENT_ADOPT removed."
+ },
+ {
   "featureId": "MC2_FEATURE_VEHICLE_AMBIENT_FLOOR",
   "kind": "Retired",
   "order": 26,

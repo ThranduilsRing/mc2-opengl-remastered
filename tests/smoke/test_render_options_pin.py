@@ -21,7 +21,8 @@ def values(**changes):
 
 def test_table_has_the_engines_options_with_their_defaults():
     t = {o.key: o for o in rop.table()}
-    assert len(t) == 20
+    assert len(t) == 21
+    assert t["StockOverlayConcrete"].default is False
     assert t["BaseQuality"].default == 2 and (t["BaseQuality"].lo, t["BaseQuality"].hi) == (0, 2)
     assert t["RemasteredBuildings"].default is True
     assert t["SpatialAA"].default == 1 and (t["SpatialAA"].lo, t["SpatialAA"].hi) == (0, 4)

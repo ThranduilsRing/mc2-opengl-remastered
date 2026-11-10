@@ -144,12 +144,8 @@ enum class RendererFeature : int {
     // returned vec3(1,1,1) -> vehicles rendered at raw albedo, fully unlit.
     // Default-ON; =0 restores the shipped unlit behavior.
     VehicleLitPath           = 24,  // MC2_VEHICLE_LIT_PATH
-    // OVERLAY-CEMENT-ADOPT-1 (CONCRETE-DELIVER-1): on a cement tile the
-    // overlay/decal layer adopts terrain_lod_chunk.frag's concrete albedo +
-    // lighting model, closing the two-shader seam that made concrete a
-    // patchwork -- including the in-shader distance fog the overlay applies
-    // and the chunk frag does not. Default-ON; =0 restores stock.
-    OverlayCementAdopt       = 25,  // MC2_OVERLAY_CEMENT_ADOPT
+    // OVERLAY-CEMENT-ADOPT-1: now the options.cfg key StockOverlayConcrete (default false = new concrete).
+    OverlayCementAdopt       = 25,  // retired; preserve the numeric identifier
     // VEHICLE-AMBIENT-FLOOR-1: finishes VEHICLE-LIGHTING-PATH-1 by giving the
     // legacy lit vehicle path mech.vert's kAmbientFloor = 0.35 seed and its
     // clamp(0,1). Without them a gathered vehicle computes base_light+A+S*ndl
@@ -295,8 +291,8 @@ static constexpr EnvVarDesc kFeatureTable[] = {
     },
     // [25] OverlayCementAdopt
     {
-        "MC2_FEATURE_OVERLAY_CEMENT_ADOPT", "MC2_OVERLAY_CEMENT_ADOPT", EnvVarKind::Feature, true,
-        "OVERLAY-CEMENT-ADOPT-1: closes the two-shader concrete seam CEMENT-PATCHY-CAUSE-1 attributed but explicitly left open as a design call ('either the overlay..."
+        "MC2_FEATURE_OVERLAY_CEMENT_ADOPT", nullptr, EnvVarKind::Retired, true,
+        "Retired: the overlay concrete look is the options.cfg key StockOverlayConcrete (default false = new concrete); env var MC2_OVERLAY_CEMENT_ADOPT removed."
     },
     // [26] VehicleAmbientFloor
     {

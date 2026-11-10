@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in gameos_graphics_material_internal.h.
 #include "gameos_graphics_material_internal.h"
 #include "mc2fmt.h"
+#include "Gates/render_options.h"
 
 
 // OVERLAY-BIAS-LINEARIZE-1: bias-mode selector for the overlay/decal VS
@@ -60,7 +61,7 @@ extern "C" void mc2_vk_overlay_fill_frame(Mc2VkOverlayFrame* out)
     gosPostProcess* pp = getGosPostProcess();
     out->mapHalfExtent = pp ? pp->getMapHalfExtent() : 0.0f;
     out->biasLegacy = mc2OverlayBiasLegacy();
-    static const int s_cementAdopt = mc2::gate::get<"MC2_OVERLAY_CEMENT_ADOPT">();
+    static const int s_cementAdopt = mc2::options::current().stockOverlayConcrete ? 0 : 1;
     static const int s_seamFix = true;
     out->cementAdopt = s_cementAdopt;
     out->seamFix = s_seamFix;

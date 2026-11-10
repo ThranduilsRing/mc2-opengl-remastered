@@ -6,6 +6,7 @@
 #include "terrain_surface_cook.h"
 #include <unordered_set>
 #include "mc2fmt.h"
+#include "Gates/render_options.h"
 
 
 // ---------------------------------------------------------------------------
@@ -213,12 +214,12 @@ static constexpr uint32_t kCementPavedFlatBit = 0x00400000u;
 // are untouched, and no existing code path masks or compares bit 21.
 static constexpr uint32_t kCementAuthoredArtBit = 0x00200000u; // bit 21, outside maskId 29:24
 
-// MC2_OVERLAY_CEMENT_ADOPT — 1 = ON (default). See RendererFeatureRegistry.h and
+// options.cfg StockOverlayConcrete (false = adopt, the default). See RendererFeatureRegistry.h and
 // terrain_overlay.frag for the full mechanism. Host side, this gate only decides
 // whether the bit-21 marking pass below runs; the frag reads its own uniform.
-// 0 = OFF => no bit 21 written AND the frag uniform uploads 0 => byte-identical.
+// stock => no bit 21 written AND the frag uniform uploads 0 => byte-identical.
 static bool OverlayCementAdoptEnabled() {
-    static const bool s = mc2::gate::get<"MC2_OVERLAY_CEMENT_ADOPT">();
+    static const bool s = !mc2::options::current().stockOverlayConcrete;
     return s;
 }
 

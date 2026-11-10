@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 421;
+inline constexpr std::size_t kGateCount = 420;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -225,7 +225,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_OOB_FOG_COLOR", Kind::String, Rule::Std, {}},
     {"MC2_OPTIONS_OVERRIDE", Kind::String, Rule::Std, {}},
     {"MC2_OS_CURSOR", Kind::Bool, Rule::Presence, {}},
-    {"MC2_OVERLAY_CEMENT_ADOPT", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_OVERLAY_TILE_HIRES", Kind::String, Rule::Std, {}},
     {"MC2_PLAYTEST_EXE", Kind::String, Rule::Std, {}},
     {"MC2_PLAY_MISSION", Kind::Bool, Rule::Std, {}},
