@@ -94,10 +94,13 @@ inline long propCutThreshold(uint32_t mip) {
 
 // True for a cutout with solid mass (a canopy, an alpha-mixed wall) and false for thin lattice (chain link, wire,
 // railings), whose box-filtered mips must keep averaging down to see-through. Data-driven: erode the 0.5-cutout
-// mask by ~1/64 of the layer (>= 1 texel, the border counts as empty); a canopy keeps a solid core, wire is gone.
-inline bool isSolidCutout(std::span<const uint8_t> rgba, uint32_t width, uint32_t height) {
+// mask by ~1/64 of the image (>= 1 texel, the border counts as empty); a canopy keeps a solid core, wire is gone.
+// contentEdge: the smaller edge of the image itself when it sits in the corner of a larger array layer. The radius must
+// follow the image, not the shared array (one 1024 tree atlas made every 128 canopy in its array erode to nothing).
+inline bool isSolidCutout(std::span<const uint8_t> rgba, uint32_t width, uint32_t height, uint32_t contentEdge = 0) {
     if (!width || !height || rgba.size() != static_cast<size_t>(width) * height * 4) return false;
-    const uint32_t r = std::max(1u, std::min(width, height) / 64u);
+    const uint32_t edge = contentEdge ? std::min(contentEdge, std::min(width, height)) : std::min(width, height);
+    const uint32_t r = std::max(1u, edge / 64u);
     std::vector<uint8_t> in(static_cast<size_t>(width) * height), tmp(in.size());
     size_t covered = 0;
     for (size_t i = 0; i < in.size(); ++i) { in[i] = rgba[i * 4 + 3] >= 128; covered += in[i]; }

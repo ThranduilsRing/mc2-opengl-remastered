@@ -219,7 +219,8 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
         std::vector<float> keepCoverage(uniques.size(), -1.0f);
         if (group == 1u)
             for (size_t k = 0; k < layerTexels.size(); ++k)
-                if (mc2::vegetation::isSolidCutout(layerTexels[k], cpuArray.width, cpuArray.height)) {
+                if (mc2::vegetation::isSolidCutout(layerTexels[k], cpuArray.width, cpuArray.height,
+                                                   static_cast<uint32_t>(std::min(uniques[k].w, uniques[k].h)))) {
                     keepCoverage[k] = mc2::vegetation::cutoutCoverage(layerTexels[k]);
                     mc2::vegetation::dilateCutoutRgb(layerTexels[k], cpuArray.width, cpuArray.height);
                 }

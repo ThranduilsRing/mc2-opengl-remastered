@@ -5,6 +5,7 @@
 #include "GameOS/gameos/vegetation_cutout.h"
 #include "GameAdapters/vegetation_budget.h"
 #include "GameAdapters/vegetation_clumps.h"
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 
@@ -244,6 +245,23 @@ TEST_CASE("prop alpha-ON mips: solid canopy keeps coverage at the shader cut, la
         }
     CHECK(isSolidCutout(canopy, N, N));
     CHECK_FALSE(isSolidCutout(lattice, N, N));
+    {   // The same 128 canopy in the corner of a 1024 array layer (a 1024 tree atlas shares the array): the erosion
+        // radius follows the image, so it stays solid; with the array radius (16 texels) it would not.
+        const uint32_t L = 1024;
+        std::vector<uint8_t> layer(size_t(L) * L * 4, 0);
+        for (uint32_t y = 0; y < N; ++y)
+            std::memcpy(&layer[size_t(y) * L * 4], &canopy[size_t(y) * N * 4], N * 4);
+        std::vector<uint8_t> holey = canopy;                     // stock-like pin holes on a 6-texel pitch
+        for (uint32_t y = 0; y < N; y += 6)
+            for (uint32_t x = 0; x < N; x += 6) holey[(y * N + x) * 4 + 3] = 0;
+        std::vector<uint8_t> holeyLayer(size_t(L) * L * 4, 0);
+        for (uint32_t y = 0; y < N; ++y)
+            std::memcpy(&holeyLayer[size_t(y) * L * 4], &holey[size_t(y) * N * 4], N * 4);
+        CHECK(isSolidCutout(layer, L, L, N));
+        CHECK_FALSE(isSolidCutout(layer, L, L));
+        CHECK_FALSE(isSolidCutout(holeyLayer, L, L, N));         // pin holes read as lattice: closed crowns are art-side
+        CHECK_FALSE(isSolidCutout(lattice, N, N, N));
+    }
     CHECK(propCutThreshold(0) == 128);
     CHECK(propCutThreshold(1) == 179);
     CHECK(propCutThreshold(2) == 230);
