@@ -562,5 +562,6 @@ def test_candidate_install_prefers_the_install_deployed_from_head(tmp_path, monk
     seed = mk("_gate-reuse/deployed", "2222222222bb")
     assert laptop_gate.candidate_install("2222222222bbcc") == seed
     assert "matches HEAD" in capsys.readouterr().out
-    assert laptop_gate.candidate_install("3333333333cc") == stale   # none matches: fallback is loud, not silent
-    assert "STALE" in capsys.readouterr().out
+    with pytest.raises(SystemExit):   # none matches: refuse (W138f kept 7455a0502's fail-closed pick, no stale fallback)
+        laptop_gate.candidate_install("3333333333cc")
+    assert "skipping" in capsys.readouterr().out and stale.is_dir()

@@ -2074,9 +2074,6 @@ def main(argv=None):
             ap.error("change-based promotion requires a valid comparison base: pass --base or verify the merge window "
                      "(claude/nifty-mendeleev could not be resolved)")
         print(f"[merge_gate] no --base given: defaulting to the claude/nifty-mendeleev tip {base}", flush=True)
-    if base and base == head and not args.full:
-        ap.error(f"comparison base {base} equals HEAD: a change-based run would compare the commit with itself and run "
-                 "nothing; pass an older --base or use --full")
     if base:
         try:
             git("merge-base", "--is-ancestor", base, head)
