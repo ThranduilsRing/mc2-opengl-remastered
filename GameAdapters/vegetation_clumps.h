@@ -123,6 +123,12 @@ inline int fieldBladeSide(float gridStep, float spacing, long budget, long field
     while (k > 0 && static_cast<long>(k) * k * fieldCells > budget) --k;
     return k;
 }
+// Clump acceptance over a meadow: 0 on the dry half of the moisture field, 1 in the
+// wet core, so shrubs read as groves with open grass between them, not an orchard grid.
+inline float groveChance(float moisture) {
+    const float t = std::clamp((moisture - 0.42f) / 0.22f, 0.0f, 1.0f);
+    return t * t * (3.0f - 2.0f * t);
+}
 struct FieldBlade { float x, y, scale, yaw, seed; unsigned frame; };
 // Blade j of a k x k cell grid, offsets from the cell origin in world units.
 inline FieldBlade fieldBlade(int col, int row, uint32_t seed, int j, int k,

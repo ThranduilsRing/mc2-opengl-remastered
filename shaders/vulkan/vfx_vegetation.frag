@@ -11,6 +11,7 @@ layout(set = 3, binding = 16) uniform sampler2D u_macroGradient;
 layout(location = 0) in vec2 v_uv;
 layout(location = 2) flat in uint v_flags;
 layout(location = 3) in vec4 v_vegData;
+layout(location = 4) in vec2 v_vegAux;   // y = travelling gust strength (grass only, vegetation_vk.glsl)
 layout(location = 5) in vec3 v_cardNormal;
 layout(location = 6) in vec3 v_worldPos;
 layout(location = 7) flat in vec3 v_rootPos;
@@ -59,6 +60,14 @@ void main() {
     float jitter = fract(v_vegData.x * 7.31);
     albedo *= mix(0.80, 1.16, jitter) * mix(vec3(1.05,0.98,0.88), vec3(0.93,1.03,1.01), v_vegData.x);
     if ((v_flags & 128u) != 0u) albedo = mix(albedo,macro*vec3(1.03,1.03,1.08),0.65);
+    // Grass blades: olive-dark roots under the canopy, light straw tips, and the
+    // gust band brightens bent blades (their sheen faces up) so waves read from above.
+    float tip = 1.0 - v_vegData.y;
+    bool grass = v_atlasLayer < 4u && (v_flags & 192u) == 0u;
+    if (grass) {
+        albedo *= mix(vec3(0.62, 0.68, 0.52), vec3(1.0), smoothstep(0.0, 0.55, tip));
+        albedo *= 1.0 + v_vegAux.y * (0.10 + 0.22 * tip);
+    }
     vec3 rootN = rootNormal();
     vec3 cardN = normalize(gl_FrontFacing ? v_cardNormal : -v_cardNormal);
     vec3 N = normalize(mix(rootN, cardN, 0.30*(1.0-v_vegData.y)));
@@ -67,6 +76,8 @@ void main() {
     float normalLight = computeNdotLBand(N, uT.terrainLightDir.xyz);
     // Thin-leaf transmission, bounded and shadowed with direct light once.
     normalLight += 0.08 * max(dot(-cardN, uT.terrainLightDir.xyz), 0.0) * (1.0-v_vegData.y);
+    // Grass tips are thin enough to glow when backlit (either card face).
+    if (grass) normalLight += 0.22 * tip * tip * abs(dot(cardN, uT.terrainLightDir.xyz));
     vec3 lit = uT.lightingEnabled != 0 ? shadeGround(albedo, rootN, normalLight, shadow, 0.0, v_worldPos, rootN, false, 0.0) : albedo;
     o_color = vec4(lit, 1.0);
     o_normal = rc_gbuffer1_shadowHandled(N);

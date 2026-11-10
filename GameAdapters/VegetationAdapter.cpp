@@ -216,6 +216,10 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
             const float moisture = macroZone(wx+static_cast<float>(seed&4095u),wy,512);
             if (clumpRoll(col,row,seed,112) > (tier == VegDensity::kFull ? 0.9f : 0.4f)*(0.5f+moisture))
                 { ++diagNotGreen; continue; }
+            // Where the meadow field carpets the ground, shrubs and saplings gather in
+            // groves on the wetter half of the moisture field; dry ground stays open grass.
+            if (fieldRecipe && biome == Biome::Temperate && !single &&
+                clumpRoll(col,row,seed,113) > groveChance(moisture)) { ++diagNotGreen; continue; }
             glm::vec3 normal;
             const auto clump = makeClump(col,row,seed,recipes[static_cast<size_t>(biome)],
                                           moisture,land->getTerrainAngle(pos,&normal),single);
