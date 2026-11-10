@@ -159,7 +159,7 @@ MUTATED_ROOTS = (
     "data/defs", "data/kit", "data/model_overrides",
     "data/vegetation", "data/terrain_layers", "data/textures",
     "data/art/mechicons", "data/art/missionmaps",
-    "cache/content-model",
+    "cache/content-model", "saved_bookmarks",
 )
 MUTATED_FILES = (
     "scripts/console_child.py",
