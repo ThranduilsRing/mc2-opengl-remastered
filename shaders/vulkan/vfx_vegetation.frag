@@ -49,6 +49,11 @@ float vegPatchNoise(vec2 p) {
     return mix(mix(vegHash(c), vegHash(c + vec2(1.0, 0.0)), f.x),
                mix(vegHash(c + vec2(0.0, 1.0)), vegHash(c + vec2(1.0, 1.0)), f.x), f.y);
 }
+// World-space sward patch value 0..1 (world XY in WU): 170 WU and 48 WU octaves, 62/38.
+// Kept self-contained so it can move into world_patch_noise.glsl (ground-mottle-ref3) at merge.
+float worldSwardPatch(vec2 worldXY) {
+    return 0.62 * vegPatchNoise(worldXY / 170.0) + 0.38 * vegPatchNoise(worldXY / 48.0 + 17.3);
+}
 const float kVegShoreDryWU = 70.0;   // the sward is driest at the beach and greens over this height above water
 void main() {
     vec4 texel = texture(uAtlas, vec3(v_uv, float(v_atlasLayer)));
@@ -83,7 +88,7 @@ void main() {
         // straw), drier toward the shore. Per-blade picks only add close-up grain (refs 1/2).
         float value = dot(albedo, vec3(0.299, 0.587, 0.114));
         float pick = fract(v_vegData.x * 13.71);
-        float patchTone = 0.62 * vegPatchNoise(v_rootPos.xy / 170.0) + 0.38 * vegPatchNoise(v_rootPos.xy / 48.0 + 17.3);
+        float patchTone = worldSwardPatch(v_rootPos.xy);
         float shore = 1.0 - smoothstep(6.0, kVegShoreDryWU, v_rootPos.z - uT.shorelineWaterElev);
         float dryness = clamp((patchTone - 0.30) * 1.6 + 0.55 * shore + (pick - 0.5) * 0.25, 0.0, 1.0);
         const vec3 kOlive = vec3(0.34, 0.38, 0.17), kYellowGreen = vec3(0.47, 0.49, 0.21), kStraw = vec3(0.60, 0.52, 0.32);
