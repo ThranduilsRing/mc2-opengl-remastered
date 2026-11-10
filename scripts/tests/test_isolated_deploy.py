@@ -15,6 +15,12 @@ import kit_payload
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def _no_v04_reference(monkeypatch, tmp_path):
+    # fixture installs are not v0.4-shaped; the parity check has its own tests (test_seed_parity.py)
+    monkeypatch.setenv("MC2_SEED_PARITY_REF", str(tmp_path / "no-v04"))
+
+
 def test_fresh_install_covers_deploy_payload(tmp_path, monkeypatch):
     spec = importlib.util.spec_from_file_location(
         "isolated_deploy", ROOT / "scripts/make-isolated-deploy.py")

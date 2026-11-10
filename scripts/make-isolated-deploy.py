@@ -156,7 +156,7 @@ def plan(src: Path, guard, seed=None) -> tuple[list, list, int, int]:
             base = Path(dirpath).relative_to(src).as_posix()
             prefix = '' if base == '.' else base + '/'
             _dirs[:] = [d for d in _dirs if
-                        (prefix + d).casefold() in ('data', 'assets') or
+                        (prefix + d).casefold() in ('data', 'assets', 'saved_bookmarks') or
                         (prefix + d).casefold().startswith(('data/', 'assets/')) or
                         (prefix + d).casefold() in parents]
             _dirs[:] = [d for d in _dirs if (prefix + d).casefold() not in ('cache', 'mods')]

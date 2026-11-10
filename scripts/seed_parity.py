@@ -26,7 +26,11 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 PREFIX = "[SEED_PARITY]"
-DEFAULT_REF = Path(os.environ.get("MC2_SEED_PARITY_REF", "A:/Games/mc2-opengl/mc2-win64-v0.4"))
+def default_ref() -> Path:
+    return Path(os.environ.get("MC2_SEED_PARITY_REF", "A:/Games/mc2-opengl/mc2-win64-v0.4"))
+
+
+DEFAULT_REF = default_ref()
 
 ROOT_FILES = ("options.cfg", "system.cfg", "prefs.cfg", "minprefs.cfg", "orgprefs.cfg")
 # (prefix, excluded subdirectories under it). Backups and the random-map picker art are never read by a mission.
@@ -116,7 +120,7 @@ def refresh_seed(seed: Path, ref: Path, dry_run: bool = False) -> int:
 
 def require_parity(install: Path, ref: Path | None = None) -> None:
     """Fail (SystemExit 3) when a freshly built lane install's parity data differs from v0.4's."""
-    ref = Path(ref) if ref else DEFAULT_REF
+    ref = Path(ref) if ref else default_ref()
     if not ref.is_dir():
         print(f"{PREFIX} SKIPPED: reference {ref} not found")
         return
