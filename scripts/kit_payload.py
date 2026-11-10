@@ -477,6 +477,7 @@ def importer_source_key(src_root, tree=None):
     mclib/GameOS header (broad but safe)."""
     root = Path(src_root).resolve()
     names = {"tools/tg_import_dump/CMakeLists.txt"}
+    names.update(p.relative_to(root).as_posix() for p in (root / "cmake").glob("*.cmake"))  # modules the importer includes
     names.update(p.relative_to(root).as_posix() for p in (root / "tools/tg_import_dump").glob("*")
                  if p.suffix in (".cpp", ".h"))
     cmake = root / "tools/tg_import_dump/CMakeLists.txt"
@@ -513,9 +514,11 @@ def importer_source_key(src_root, tree=None):
         f = root / n
         if f.is_file():
             h.update(n.encode() + b"\0" + bytes.fromhex(sha(f)))
-    third = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD:3rdparty/assimp"], capture_output=True,
-                           text=True, **console_child.child_kwargs(redirected=True)).stdout.strip()
-    h.update(b"assimp:" + third.encode())
+    # Vendored trees the ninja deps closure skips (it drops everything under 3rdparty/): their git tree ids join the key.
+    for vendored in ("assimp", "include", "tracy"):
+        third = subprocess.run(["git", "-C", str(root), "rev-parse", f"HEAD:3rdparty/{vendored}"], capture_output=True,
+                               text=True, **console_child.child_kwargs(redirected=True)).stdout.strip()
+        h.update(f"{vendored}:".encode() + third.encode())
     print(f"[deploy_payload] importer source key ({closure}, {len(names)} files)")
     return h.hexdigest()
 
