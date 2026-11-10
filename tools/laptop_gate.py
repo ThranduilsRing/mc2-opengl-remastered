@@ -749,12 +749,26 @@ def sync_mods(src=MODS_SRC):
 def provision_files(eroot=Path("E:/")):
     """(laptop path relative to C:/mc2gate, PC source) for every file the remote half needs before it runs: itself, its HELPERS
     and the E-rooted seeds the contracts read under MC2_GATE_EROOT (E_EXTRA, e.g. the scifi_kit catalog), plus the generated
-    deploy inputs (LAYER_EXTRA) copied from the published install into the laptop clone."""
+    deploy inputs (LAYER_EXTRA) copied from the published install into the laptop clone, and the PC worktree's cooked tree
+    sidecars (tree_upscale_extra)."""
     repo = Path(__file__).resolve().parents[1]
     clone = REPO.removeprefix(G + "/")
     return ([("bin/laptop_gate.py", Path(__file__).resolve())] + [("bin/" + Path(h).name, repo / h) for h in HELPERS]
             + [("drv/E/" + rel, Path(eroot, rel)) for rel in E_EXTRA]
-            + [(f"{clone}/{rel}", PC_V04 / rel) for rel in LAYER_EXTRA])
+            + [(f"{clone}/{rel}", PC_V04 / rel) for rel in LAYER_EXTRA]
+            + [(f"{clone}/{rel}", repo / rel) for rel in tree_upscale_extra(repo)])
+
+
+def tree_upscale_extra(repo):
+    """data/tgl/128/<stem>.ktx2 for every stem pinned in data/kit/tree-upscale.json (deploy_payload.ensure_tree_upscale). The PC
+    cooks them from the golden v0.4c stock TGAs with texconv (tools/tree_retexture/gen_stock_trees.py); the laptop has neither, so
+    without these its deploy ships stock trees and the pulled payload lacks them (W138h). Taken from the PC worktree, which the PC
+    deploy or a direct cook fills; a missing one stops provisioning with a clear error."""
+    try:
+        pins = json.loads((Path(repo) / "data/kit/tree-upscale.json").read_text(encoding="utf-8"))
+    except OSError:
+        return ()
+    return tuple(f"data/tgl/128/{stem}.ktx2" for stem in sorted(pins))
 
 
 def provision(bin_only=False):
