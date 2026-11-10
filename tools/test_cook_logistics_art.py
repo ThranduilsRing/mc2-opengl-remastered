@@ -30,6 +30,12 @@ def test_shipped_art_decodes_with_loader_dimensions_and_transparent_border():
         with Image.open(path) as image:
             assert image.mode == 'RGBA'
             pixels = np.array(image)
+            if '@' in path.stem:
+                # Per-size HUD cell (hud/<side>/<stem>@WxH, tools/extract_hud_tier_icons.py): the v0.4 sheet cell drawn 1:1,
+                # border already cropped, so it carries the cell size instead of a transparent ring.
+                w, h = (int(v) for v in path.stem.rsplit('@', 1)[1].split('x'))
+                assert image.size == (w, h), path
+                continue
             assert not pixels[0].any() and not pixels[-1].any(), path
             assert not pixels[:, 0].any() and not pixels[:, -1].any(), path
 
