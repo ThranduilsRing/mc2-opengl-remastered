@@ -32,6 +32,14 @@ long BldgAppearance::desiredRenderLOD() const
 	return lod;
 }
 
+bool BldgAppearance::lodFollowsCamera() const
+{
+	if (!appearType || !appearType->bldgRenderShape) return false;
+	for (long i = 1; i < MAX_LODS; ++i)
+		if (appearType->bldgRenderLods[i] && appearType->lodDistance[i] > 0) return true;
+	return false;
+}
+
 void BldgAppearance::updateRenderLOD()
 {
 	const long lod = desiredRenderLOD();

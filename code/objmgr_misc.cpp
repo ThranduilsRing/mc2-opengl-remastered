@@ -590,13 +590,26 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 		const glm::mat4 worldToClip = eye ? eye->getWorldToClip() : glm::mat4{0.0f};
 		const float nightFactor = eye ? eye->nightFactor : 0.0f;
 		const bool isNight = eye && eye->isNight;
-		if (worldToClip != terrainPresentationWorldToClip || TerrainRuntime::g_heightEpoch != terrainPresentationHeightEpoch ||
-			nightFactor != terrainPresentationNightFactor || isNight != terrainPresentationIsNight) {
+		// A resident static holds no frame lights or effects, so the continuous nightFactor (which
+		// drifts every frame on day/night maps) cannot change it; only crossing zero (a lamp may now
+		// spawn), the isNight flip or the first frame is a full invalidation. A plain drift revisits
+		// non-residents only.
+		const bool fullInvalidate = TerrainRuntime::g_heightEpoch != terrainPresentationHeightEpoch ||
+			mc2::terrainNightFullInvalidate(terrainPresentationNightFactor, nightFactor, terrainPresentationIsNight, isNight);
+		if (fullInvalidate || nightFactor != terrainPresentationNightFactor || worldToClip != terrainPresentationWorldToClip) {
+			auto bind = [this](long h) {
+				if (objList[h] && objList[h]->getAppearance()) objList[h]->getAppearance()->terrainPresentationHandle = h;
+			};
 			for (long block = 0; block < Terrain::numObjBlocks; ++block) {
 				const auto& info = Terrain::objBlockInfo[block];
-				for (long h = info.firstHandle; h < info.firstHandle + info.numObjects; ++h)
-					if (objList[h] && objList[h]->getAppearance()) objList[h]->getAppearance()->terrainPresentationHandle = h;
-				dirty.markBlock(Terrain::objBlockInfo[block].firstHandle, Terrain::objBlockInfo[block].numObjects);
+				if (fullInvalidate) {
+					for (long h = info.firstHandle; h < info.firstHandle + info.numObjects; ++h) bind(h);
+					dirty.markBlock(info.firstHandle, info.numObjects);
+				} else {
+					// A camera move only revisits objects whose presentation follows the view; a resident
+					// static keeps its last admitted inView (a superset; the GPU cull does the fine cull).
+					dirty.markBlockNonResident(info.firstHandle, info.numObjects, bind);
+				}
 			}
 			terrainPresentationWorldToClip = worldToClip;
 			terrainPresentationHeightEpoch = TerrainRuntime::g_heightEpoch;
@@ -658,10 +671,13 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 						}
 						// Offscreen bake recovery waits for camera invalidation, as update()
 						// above cannot service it until recalcBounds admits the object.
+						const bool terrainKind = kind == TERRAINOBJECT || kind == TREE || kind == BRIDGE || kind == BUILDING;
 						if ((inView && !appearance->IsStaticNow()) || walkObj->getFlag(OBJECT_FLAG_FALLING) ||
 							(appearance->getAppearanceClass() == BLDG_TYPE && static_cast<BldgAppearance*>(appearance)->hasFrameLights()) ||
-							((kind == TERRAINOBJECT || kind == TREE || kind == BRIDGE || kind == BUILDING) && static_cast<TerrainObject*>(walkObj)->hasPresentationEffects()))
+							(terrainKind && static_cast<TerrainObject*>(walkObj)->hasPresentationEffects()))
 							dirty.mark(objIndex);
+						else if (inView && terrainKind && !appearance->lodFollowsCamera())
+							dirty.setResident(objIndex);   // settled: camera moves no longer revisit it
 					}
 		}
 		namespace bb = mc2::battlebench;
