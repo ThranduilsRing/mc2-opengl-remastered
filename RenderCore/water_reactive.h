@@ -46,10 +46,15 @@ class Buffer {
     std::array<Source, kCapacity> sources_{};
     uint32_t count_ = 0;
     float time_ = -1;
+    uint32_t submits_ = 0, wetVisible_ = 0, emitted_ = 0;
+    float firstX_ = 0, firstY_ = 0, firstVx_ = 0, firstVy_ = 0;
 
 public:
     void clear() { count_ = 0; time_ = -1; sources_ = {}; }
     uint32_t size() const { return count_; }
+    // Diagnostics for the once-per-second [WATER_REACTIVE v1] log; reset by takeStats.
+    struct Stats { uint32_t submits, wetVisible, emitted; float x, y, vx, vy; };
+    Stats takeStats() { Stats s{submits_, wetVisible_, emitted_, firstX_, firstY_, firstVx_, firstVy_}; submits_ = wetVisible_ = emitted_ = 0; return s; }
     void advance(float now) {
         if (!std::isfinite(now)) return;
         if (time_ >= 0 && (now < time_ || now - time_ > 5.0f)) clear();
@@ -69,6 +74,7 @@ public:
         if (!key || !std::isfinite(now) || !std::isfinite(x) || !std::isfinite(y)
             || !std::isfinite(radius)) return;
         advance(now);
+        ++submits_;
         auto source = std::find_if(sources_.begin(), sources_.end(),
             [key](const Source& s) { return s.key == key; });
         if (!visible) {
@@ -90,6 +96,7 @@ public:
             if (empty != sources_.end()) source = empty;
             *source = {key, x, y, now, -10};
         }
+        ++wetVisible_;
         const float dt = now - source->seen;
         const float dx = x - source->x, dy = y - source->y;
         const bool discontinuity = dt > 0.5f || dx * dx + dy * dy > 256.0f * 256.0f;
@@ -103,6 +110,7 @@ public:
         if (discontinuity) source->emitted = now; // No connecting wake on teleport/reappearance.
         if (now - source->emitted < (vehicle ? 0.30f : 0.65f)) return;
         source->emitted = now;
+        ++emitted_; firstX_ = x; firstY_ = y; firstVx_ = vx; firstVy_ = vy;
         if (count_ == kCapacity) {
             for (uint32_t i = 1; i < count_; ++i) events_[i - 1] = events_[i];
             --count_;

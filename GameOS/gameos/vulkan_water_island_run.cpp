@@ -321,6 +321,29 @@ extern "C" int mc2_vk_water_island_run(
         mc2::waterreactive::GpuFrame reactive;
         mc2::waterreactive::buffer().snapshot(scenarioTime, reactive);
         std::memcpy(base + reactiveOff, &reactive, sizeof(reactive));
+        {
+            static auto lastLog = clk::now() - std::chrono::seconds(2);
+            if (usSince(lastLog) >= 1.0e6) {
+                lastLog = clk::now();
+                const auto st = mc2::waterreactive::buffer().takeStats();
+                uint32_t litTiles = 0, tileCount = 0;
+                for (uint32_t c : reactive.counts) litTiles += c ? 1u : 0u;
+                float maxRadius = 0.0f;
+                const auto& p0 = reactive.stamps[0].positionRadiusAge;
+                const uint32_t live = mc2::waterreactive::buffer().size();
+                if (live) {
+                    tileCount = reactive.counts[mc2::waterreactive::tile(
+                        static_cast<int>(std::floor(p0[0] / mc2::waterreactive::kTileWidth)),
+                        static_cast<int>(std::floor(p0[1] / mc2::waterreactive::kTileWidth)))];
+                    for (uint32_t i = 0; i < live; ++i)
+                        maxRadius = std::max(maxRadius, reactive.stamps[i].positionRadiusAge[2]);
+                }
+                mc2::fmt::print_err("[WATER_REACTIVE v1] stamps={:d} litTiles={:d} submits={:d} wetVisible={:d} emitted={:d} maxRadius={:.1f} stamp0=({:.1f},{:.1f}) age0={:.2f} tileUnderStamp0={:d} firstVxy=({:.1f},{:.1f})\n",
+                    mc2::fmt::as_u32(live), mc2::fmt::as_u32(litTiles),
+                    mc2::fmt::as_u32(st.submits), mc2::fmt::as_u32(st.wetVisible), mc2::fmt::as_u32(st.emitted), maxRadius,
+                    p0[0], p0[1], p0[3], mc2::fmt::as_u32(tileCount), st.vx, st.vy);
+            }
+        }
         VkDescriptorBufferInfo reactiveInfo{uboSpan.buffer, uboSpan.offset + reactiveOff, sizeof(reactive)};
         VkWriteDescriptorSet reactiveWrite{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
         reactiveWrite.dstSet = s->set[par]; reactiveWrite.dstBinding = 13;
