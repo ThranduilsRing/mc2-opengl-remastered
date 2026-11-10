@@ -4,6 +4,7 @@
 #pragma once
 #include <cstdint>
 #include "../mclib/mc2_czstring.h"
+#include "../mclib/sim_overlap.h"
 
 namespace mc2::sim {
 
@@ -28,5 +29,8 @@ struct RenderHooks {
 };
 
 inline RenderHooks g_renderHooks{};
+
+// The sim worker's kick/join/extract hooks (defined in mission_update.cpp, installed by sim_render_hooks_install.cpp).
+mc2::overlap::Hooks overlapHookTable();
 
 }  // namespace mc2::sim

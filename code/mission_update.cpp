@@ -1365,9 +1365,11 @@ void overlapJoinHook() {
 // G7b K3: the frame's render view is taken at ExtractRenderSnapshot (after the frame part, before DrawScreen and the
 // early kick); the presentation side lives in code/render_view.cpp, this sim unit only hands it the tick alpha.
 void overlapExtractHook() { extractRenderFrame(static_cast<float>(s_tickClock.alpha())); }
-const bool s_overlapHooksInstalled =
-	(mc2::overlap::installHooks({overlapKickHook, overlapJoinHook, overlapExtractHook}), true);
 }
+
+// The overlap hook table is installed from code/sim_render_hooks_install.cpp (one deterministic, logged install), not from a
+// static initialiser in this unit.
+mc2::overlap::Hooks mc2::sim::overlapHookTable() { return {overlapKickHook, overlapJoinHook, overlapExtractHook}; }
 
 // Per-frame mission update. Normal play runs on the fixed 30 Hz sim tick (code/sim_tick_clock.h): the frame's
 // real time x game speed is banked, whole ticks run out of the bank, and a frame that banks no tick only redraws the

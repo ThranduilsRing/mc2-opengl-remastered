@@ -212,6 +212,15 @@ void MouseCursorData::destroy (void)
 }	
 
 //---------------------------------------------------------------------------
+bool UserInput::getKeyDown (gosEnum_KeyIndex index)
+{
+	if ((gos_GetKeyStatus(index) == KEY_HELD) || (gos_GetKeyStatus(index) == KEY_PRESSED))
+		return true;
+
+	return(false);
+}
+
+//---------------------------------------------------------------------------
 void UserInput::mouseOn (void)				//Draw Mouse Cursor
 {
 	drawMouse = true;

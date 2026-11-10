@@ -339,13 +339,7 @@ class UserInput
 
 		//------------------------
 		// Keyboard Functionality
-		bool getKeyDown (gosEnum_KeyIndex index)
-		{
-			if ((gos_GetKeyStatus(index) == KEY_HELD) || (gos_GetKeyStatus(index) == KEY_PRESSED))
-				return true;
-
-			return(false);
-		}
+		bool getKeyDown (gosEnum_KeyIndex index);   // out of line (userinput.cpp): keeps gos_GetKeyStatus out of the sim TUs
 
 		bool leftShift (void)
 		{
