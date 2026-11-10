@@ -937,8 +937,10 @@ void Mech3DAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 	auto texturePathEnd = std::format_to_n(texturePath, sizeof(texturePath) - 1, "{}{}" PATH_SEPARATOR, static_cast<const char*>(tglPath), ObjectTextureSize).out;
 	*texturePathEnd = '\0';
 
-   	FullPathFileName textureName;
-   	textureName.init(texturePath,txmName,"");
+	FullPathFileName legacyTextureName;
+	legacyTextureName.init(texturePath,txmName,"");
+	const auto pbrAlbedo = mc2::textures::stockPbrOverride(static_cast<const char*>(legacyTextureName), false, stockPbr);
+	const char* textureName = pbrAlbedo.c_str();
 
 	/* The texture manager asks for a unique 32bit identifier for every texture instance.
 	However, it requires 72 bits to fully describe a mech texture (the base color (stored in

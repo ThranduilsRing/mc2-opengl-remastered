@@ -326,6 +326,15 @@ void MechFlushFrame::buildMaterialTable() {
                 mIdx = static_cast<uint32_t>(s_mechMaterialTable.size());
                 RenderCore::MaterialGpu entry{};
                 entry.albedoTex = texHandle;
+                if (!subs.empty()) {
+                    const auto& desc = s_pendingSubmits[subs[0]].desc;
+                    entry.normalTex = desc.slot7TexHandle;
+                    if (entry.normalTex) entry.flags |= RenderCore::MaterialFlags::kNormalMap;
+                    if ((desc.renderFlags & kMechRenderFlagOrm) != 0u) {
+                        entry.metallicRoughnessTex = desc.slot6TexHandle;
+                        entry.flags |= RenderCore::MaterialFlags::kMetallicRoughness;
+                    }
+                }
                 s_mechMaterialTable.push_back(entry);
                 s_mechHandleToMaterialIdx[texHandle] = mIdx;
             }

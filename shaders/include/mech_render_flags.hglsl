@@ -6,3 +6,4 @@
 // posed position, normal and tangent); every vertex stage skips its bone blend. Set on the VK copy of the instance record only; the GL batcher never sees it.
 // C++ copy: kMechRenderFlagPreskinned in GameOS/gameos/gos_mech_batcher.h.
 #define MECH_RENDER_FLAG_PRESKINNED 0x80u
+#define MECH_RENDER_FLAG_ORM 0x100u

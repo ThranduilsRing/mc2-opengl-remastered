@@ -26,6 +26,7 @@
 #endif
 
 #include "mc2_czstring.h"
+#include "texture_assets.h"
 #include"vis_semantics.h"   // VISIBILITY-SEMANTICS-1
 #include "sim_overlap.h"
 #include "math/mc2_xform.h"  // mc2::math::quatXYZW
@@ -285,6 +286,7 @@ class GVAppearance : public ObjectAppearance
 
 
 		
+		mc2::textures::StockPbrTextures stockPbr;
 		DWORD										localTextureHandle;
 		
 		DWORD										psRed;

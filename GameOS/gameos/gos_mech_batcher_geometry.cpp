@@ -260,13 +260,12 @@ void GpuMechBatcher::registerTypeLodImpl(const void* mechType, TG_TypeMultiShape
 
                 // NORMALS-1: per-face UV-gradient tangent in object/local space (same frame
                 // as src.normal — the vert shader transforms both identically). Encoded
-                // octahedral into tangentOct for imported-GPU types ONLY; stock types keep
-                // the zero-fill below (VBO byte-identical). Degenerate UV (|det|~0) or zero-
+                // octahedral into tangentOct for stock and imported types. Degenerate UV (|det|~0) or zero-
                 // length tangent -> leave zero, which the frag treats as "no tangent" and
                 // falls back to v_normal. No NaN can escape (all divides are guarded).
                 int16_t faceTanOct[2] = { 0, 0 };
                 float faceTanW = 1.0f;   // handedness: -1 = mirrored UV island
-                if (importGpu) {
+                {
                     const TG_TypeVertex& p0 = typeShape->listOfTypeVertices[tri.Vertices[0]];
                     const TG_TypeVertex& p1 = typeShape->listOfTypeVertices[tri.Vertices[1]];
                     const TG_TypeVertex& p2 = typeShape->listOfTypeVertices[tri.Vertices[2]];

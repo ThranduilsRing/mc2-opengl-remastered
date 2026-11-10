@@ -4,6 +4,7 @@
 #include "doctest.h"
 #include "MaterialRegistry.h"
 #include "TextureService.h"
+#include "StockPbr.h"
 #include "TextureStream.h"
 #include "../../GameOS/gameos/vk_texture_pending.h"
 #include <future>
@@ -12,6 +13,26 @@
 #include "../../GameOS/gameos/vk_completion_tracker.h"
 
 using namespace RenderCore;
+
+TEST_CASE("StockPbr resolves stock UV atlas names and preserves mod priority") {
+    CHECK(stockPbrArchive(25925639, 0x2620c4b9));
+    CHECK(stockPbrArchive(34295854, 0xaef6a9dd));
+    CHECK_FALSE(stockPbrArchive(34295854, 0xaef6a9de));
+    CHECK_FALSE(stockPbrArchive(25925639, 0x2620c4ba));
+    CHECK_FALSE(stockPbrArchive(25925640, 0x2620c4b9));
+    CHECK(stockPbrStem("data/tgl/128/MadCatRGB.tga") == "madcat");
+    CHECK(stockPbrStem("data\\tgl\\128\\AtlasRGB.tga") == "atlas");
+    CHECK(stockPbrStem("ShootistRGB.tga") == "shootist");
+    CHECK(stockPbrStem("UrbanMechRGB.ktx2") == "urbanmech");
+    CHECK(stockPbrStem("VutlureRGB.tga") == "vutlure");
+    CHECK(stockPbrStem("vtolrgb.tga") == "vtolrgb");
+    CHECK(stockPbrStem("vedette.tga") == "vedette");
+    CHECK(preferStockPbr(true, false, 100, 100));
+    CHECK_FALSE(preferStockPbr(false, false, 100, 100));
+    CHECK_FALSE(preferStockPbr(true, true, 0, 100));
+    CHECK_FALSE(preferStockPbr(true, true, 0, 0));
+    CHECK(preferStockPbr(true, true, 1, 0));
+}
 
 namespace {
 TextureKey keyOf(const char* provider, const char* path, uint64_t hash, uint32_t variant = 0, uint32_t format = 1, uint32_t hints = 0) {
