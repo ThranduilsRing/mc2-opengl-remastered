@@ -65,3 +65,32 @@ def test_seed_install_still_names_a_bookmark_found_nowhere(tmp_path):
     with pytest.raises(SystemExit) as exc:
         ab.seed_install(install, "no_such_bookmark_anywhere", tmp_path / "ref")
     assert "no_such_bookmark_anywhere" in str(exc.value)
+
+
+# ---- 3. unregistered env ----------------------------------------------------------------------------------------------
+def _exe(tmp_path, names):
+    p = tmp_path / "mc2.exe"
+    p.write_bytes(b"MZ\0\0" + b"\0".join(n.encode() for n in names) + b"\0tail")
+    return p
+
+
+def test_exe_knows_env_finds_names_across_chunk_edges(tmp_path, monkeypatch):
+    exe = _exe(tmp_path, ["MC2_VISUAL_CAPTURE_CLEAN"])
+    assert capture.exe_knows_env(exe, ["MC2_VISUAL_CAPTURE_CLEAN", "MC2_VISUAL_LIVE_SETTLE_SEC"]) == {
+        "MC2_VISUAL_CAPTURE_CLEAN": True, "MC2_VISUAL_LIVE_SETTLE_SEC": False}
+    big = tmp_path / "big.exe"            # the name straddles a read boundary
+    big.write_bytes(b"x" * ((1 << 24) - 5) + b"MC2_VISUAL_LIVE_SETTLE_SEC" + b"y" * 100)
+    assert capture.exe_knows_env(big, ["MC2_VISUAL_LIVE_SETTLE_SEC"]) == {"MC2_VISUAL_LIVE_SETTLE_SEC": True}
+
+
+def test_flag_knob_the_exe_lacks_is_fatal_and_an_env_knob_warns(tmp_path):
+    exe = _exe(tmp_path, ["MC2_VISUAL_CAPTURE_CLEAN"])
+    declared = {"MC2_VISUAL_CAPTURE_CLEAN": "1", "MC2_VISUAL_LIVE_SETTLE_SEC": "5", "MC2_EXTRA_KNOB": "1", "NOT_MC2": "1"}
+    fatal, warn = capture.env_registration_problems(exe, declared, {"MC2_VISUAL_CAPTURE_CLEAN", "MC2_VISUAL_LIVE_SETTLE_SEC"})
+    assert len(fatal) == 1 and "MC2_VISUAL_LIVE_SETTLE_SEC" in fatal[0]
+    assert len(warn) == 1 and "MC2_EXTRA_KNOB" in warn[0]
+
+
+def test_all_registered_is_quiet(tmp_path):
+    exe = _exe(tmp_path, ["MC2_VISUAL_LIVE_SETTLE_SEC"])
+    assert capture.env_registration_problems(exe, {"MC2_VISUAL_LIVE_SETTLE_SEC": "5"}, {"MC2_VISUAL_LIVE_SETTLE_SEC"}) == ([], [])

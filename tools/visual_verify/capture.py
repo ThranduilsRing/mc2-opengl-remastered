@@ -125,6 +125,21 @@ def exe_knows_env(exe: Path, keys) -> "dict[str, bool]":
     return found
 
 
+def env_registration_problems(exe: Path, declared_env: dict, flag_keys) -> "tuple[list[str], list[str]]":
+    """(fatal, warnings): declared MC2_* knobs whose name is not in the exe's image. A knob the exe never registers is silently
+    ignored, so the capture would run without the effect. `flag_keys` are the knobs a capture.py flag itself implies
+    (--clean, --live-settle-sec, --focus): the flag does nothing on this exe, so that is fatal; a knob from --env is a warning."""
+    keys = sorted(k for k in declared_env if k.startswith("MC2_"))
+    known = exe_knows_env(exe, keys)
+    fatal, warn = [], []
+    for k in keys:
+        if known[k]:
+            continue
+        msg = f"{k} is not in {exe.name}'s image (the exe does not register that knob; it is silently ignored)"
+        (fatal if k in flag_keys else warn).append(msg)
+    return fatal, warn
+
+
 def _running_mc2_from(install: Path) -> "list[tuple[int, str]]":
     """Return [(pid, exepath)] for any running mc2.exe whose image path is under
     `install`. Used as a lane-safety pre-flight (never kills anything)."""
@@ -406,6 +421,22 @@ def main(argv=None) -> int:
         declared_env = env_pin.parse_declarations(args.env_declare)
     except ValueError as e:
         print(f"[vv-capture] ERROR {e}", file=sys.stderr)
+        return 4
+
+    flag_keys = ({"MC2_VISUAL_CAPTURE_CLEAN"} if args.clean else set()) | (
+        {"MC2_VISUAL_LIVE_SETTLE_SEC"} if args.live_settle_sec > 0 else set()) | (
+        {"MC2_CAPTURE_FOCUS"} if args.focus is not None else set())
+    fatal, warn = env_registration_problems(exe, declared_env, flag_keys)
+    for m in warn:
+        print(f"[vv-capture] WARNING !!! {m}", file=sys.stderr)
+        logf.write(f"[vv-capture] WARNING {m}\n")
+    if fatal:
+        for m in fatal:
+            print(f"[vv-capture] ERROR {m}", file=sys.stderr)
+            logf.write(f"[vv-capture] ERROR {m}\n")
+        print("[vv-capture] ERROR the capture would run without that effect; build the exe from a base that has the knob "
+              "(or drop the flag)", file=sys.stderr)
+        logf.close()
         return 4
 
     manifest = capture_sweep(
