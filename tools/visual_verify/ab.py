@@ -55,16 +55,29 @@ MANIFEST = ".deployed_manifest.csv"
 EXECUTABLES = {"mc2.exe", "mc2", "mc2.elf"}
 
 
-def payload_executable(files):
+def payload_executable(files, install=None, windows=None):
+    """The game executable a manifest names. Exactly one of EXECUTABLES -> it. Zero or several (a Windows-seeded box install can
+    list mc2.exe and mc2, or a manifest can omit it): prefer the platform's name, and with `install` the one that exists on disk."""
     names = EXECUTABLES.intersection(files)
-    if len(names) != 1:
+    if len(names) == 1:
+        return next(iter(names))
+    if not names and install is None:
         raise ValueError("payload must identify exactly one game executable")
-    return next(iter(names))
+    windows = (os.name == "nt") if windows is None else windows
+    cands = sorted(names or EXECUTABLES)
+    if install is not None:
+        cands = [n for n in cands if (Path(install) / n).is_file()]
+    pref = "mc2.exe" if windows else "mc2"
+    if pref in cands:
+        return pref
+    if len(cands) == 1:
+        return cands[0]
+    raise ValueError("payload must identify exactly one game executable")
 
 
 def game_executable(install):
     files, _ = read_manifest(install)
-    return Path(install) / payload_executable(files)
+    return Path(install) / payload_executable(files, install)
 
 
 def read_manifest(install):
@@ -86,8 +99,8 @@ def payload_identity(install):
     """Verify the executable and every deployed SPIR-V byte before attributing captures."""
     install = Path(install)
     files, commit = read_manifest(install)
-    exe = payload_executable(files)
-    payload = {p: sha for p, sha in files.items()
+    exe = payload_executable(files, install)
+    payload ={p: sha for p, sha in files.items()
                if p == exe or (p.startswith("shaders/vulkan/") and p.endswith(".spv"))}
     actual = {p.relative_to(install).as_posix() for p in (install / "shaders/vulkan").rglob("*.spv")}
     if not re.fullmatch(r"[0-9a-f]{40}", commit or "") or not actual or actual != set(payload) - {exe}:

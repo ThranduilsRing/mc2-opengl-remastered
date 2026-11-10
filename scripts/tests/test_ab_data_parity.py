@@ -110,3 +110,23 @@ def test_shader_set_difference_is_reported_separately(tmp_path):
     dp = ab.data_parity(a, b)
     assert dp["same"] and not dp["shaders_same"]
     assert any(ln.startswith("[ab] SHADERS: differ") for ln in ab.data_parity_lines(dp))
+
+
+def test_payload_executable_picks_platform_exe(tmp_path):
+    inst = tmp_path / "i"
+    inst.mkdir()
+    for n in ("mc2", "mc2.exe"):
+        (inst / n).write_bytes(b"x")
+    assert ab.payload_executable({"mc2": "h"}) == "mc2"            # the usual box manifest
+    assert ab.payload_executable({"mc2.exe": "h"}) == "mc2.exe"
+    both = {"mc2": "h", "mc2.exe": "h"}                              # Windows-seeded box install listing two
+    assert ab.payload_executable(both, inst, windows=False) == "mc2"
+    assert ab.payload_executable(both, inst, windows=True) == "mc2.exe"
+    (inst / "mc2.exe").unlink()
+    assert ab.payload_executable(both, inst, windows=True) == "mc2"  # only one exists on disk
+    assert ab.payload_executable({}, inst, windows=True) == "mc2"    # manifest omits it: the file on disk decides
+    with pytest.raises(ValueError, match="exactly one game executable"):
+        ab.payload_executable({})
+    (inst / "mc2").unlink()
+    with pytest.raises(ValueError, match="exactly one game executable"):
+        ab.payload_executable({}, inst)
