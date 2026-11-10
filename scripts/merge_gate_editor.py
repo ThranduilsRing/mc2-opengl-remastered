@@ -51,6 +51,7 @@ def main(argv=None) -> int:
         return 2
     # Offline first: the document model (FitReader, MissionDocument, packets, catalog) with no engine or window.
     tests = build / "editor_document_tests.exe"
+    # background-launch: allow editor_document_tests.exe is the offline doctest console binary (no window, no engine)
     rc = subprocess.run([str(tests)], cwd=str(REPO), **console_child.child_kwargs()).returncode if tests.is_file() else 2
     if rc != 0:
         print(f"[EDITOR_GATE] FAIL: editor_document_tests rc={rc} ({tests})")
