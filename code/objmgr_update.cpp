@@ -6,6 +6,7 @@
 #include "job_system.h"
 #include "objmgr_internal.h"
 #include "sim_world_trace.h"
+#include "sim_overlap.h"
 #include "mc2fmt.h"
 #include <utility>
 #include "diagnostic_trace.h"
@@ -981,6 +982,7 @@ void GameObjectManager::extractRenderList (mc2::render_view::RenderList& list)
 		staticResident.validate(residencyKey, [](long, int32_t) { return true; },
 			[](long, int32_t recipe) { GpuStaticPropRegistry::clearResident(recipe); });
 		auto& dirty = mc2::terrainDirtyQueue();
+		dirty.beginQuiescentRead(mc2::overlap::jobInFlight());
 		long residentSkipped = 0, offViewSkipped = 0;
 		if (blockWasActive.size() != static_cast<size_t>(Terrain::numObjBlocks)) blockWasActive.assign(Terrain::numObjBlocks, 0);
 		for (long terrainBlock = 0; terrainBlock < Terrain::numObjBlocks; terrainBlock++)

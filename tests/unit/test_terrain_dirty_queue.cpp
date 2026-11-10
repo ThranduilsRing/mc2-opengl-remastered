@@ -196,3 +196,30 @@ TEST_CASE("terrain_walk_skip/only off-view trees and terrain objects with nothin
     CHECK(!mc2::terrainWalkSkips(GATE, false, false, true));
     CHECK(!mc2::terrainWalkSkips(BRIDGE, false, false, true));
 }
+
+TEST_CASE("terrain_dirty_queue/a quiescent read during a simulated sim phase is caught, counted, and still correct")
+{
+    mc2::TerrainDirtyQueue queue;
+    queue.reset(4);
+    queue.setResident(2);
+    REQUIRE(queue.setRenderResident(2));
+
+    queue.beginQuiescentRead(false);                 // sim joined: lock-free read, no violation
+    CHECK(queue.isRenderResidentQuiescent(2));
+    CHECK(queue.quiescentViolations() == 0);
+
+    queue.beginQuiescentRead(true);                  // sim job in flight at extract entry
+    CHECK(queue.quiescentViolations() == 1);
+    CHECK(queue.isRenderResidentQuiescent(2));       // falls back to the locked read: same answer
+    queue.mark(2);
+    CHECK_FALSE(queue.isRenderResidentQuiescent(2));
+    queue.beginQuiescentRead(true);
+    CHECK(queue.quiescentViolations() == 2);
+
+    queue.beginQuiescentRead(false);                 // next clean extract returns to the lock-free path
+    queue.drain();
+    queue.setResident(2);
+    queue.setRenderResident(2);
+    CHECK(queue.isRenderResidentQuiescent(2));
+    CHECK(queue.quiescentViolations() == 2);
+}

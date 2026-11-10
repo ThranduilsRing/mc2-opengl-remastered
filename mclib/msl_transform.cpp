@@ -25,33 +25,7 @@ long TG_MultiShape::TransformMultiShape_BuildRecipe (glm::vec3 *pos, glm::quat *
         gosASSERT(d < numTG_Shapes);
         return static_cast<int>(d);
     };
-    bool orderOk = static_cast<long>(walkOrder_.size()) == numTG_Shapes && static_cast<long>(walkParent_.size()) == numTG_Shapes;
-    for (long n = 0; orderOk && n < numTG_Shapes; ++n)
-        orderOk = walkParent_[n] == parentIndexOf(n);
-    if (!orderOk)
-    {
-        walkParent_.assign(numTG_Shapes, -1);
-        walkOrder_.clear();
-        walkOrder_.reserve(numTG_Shapes);
-        std::vector<unsigned char> placed(numTG_Shapes, 0);
-        for (long n = 0; n < numTG_Shapes; ++n) walkParent_[n] = parentIndexOf(n);
-        for (long n = 0; n < numTG_Shapes; ++n)
-        {
-            int chain[MAX_NODES];
-            long depth = 0;
-            for (int c = static_cast<int>(n); c >= 0 && !placed[c]; c = walkParent_[c])
-            {
-                gosASSERT(depth < MAX_NODES);
-                chain[depth++] = c;
-            }
-            while (depth > 0)
-            {
-                const int c = chain[--depth];
-                placed[c] = 1;
-                walkOrder_.push_back(c);
-            }
-        }
-    }
+    mc2::msl::refreshWalkOrder(walkOrder_, walkParent_, numTG_Shapes, parentIndexOf, MAX_NODES);
 
     if (!walkOriginValid_ || std::memcmp(&walkOrigin_, &shapeOrigin, sizeof(shapeOrigin)) != 0)
     {

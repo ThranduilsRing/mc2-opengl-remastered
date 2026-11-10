@@ -1,7 +1,9 @@
 #pragma once
 
 #include <algorithm>
+#include <atomic>
 #include <cstddef>
+#include <cstdio>
 #include <mutex>
 #include <vector>
 
@@ -17,6 +19,8 @@ class TerrainDirtyQueue {
     // The last render visit submitted this handle to the static registry and nothing has marked it since;
     // the render extract may skip it. Implies resident_; any mark drops it.
     std::vector<unsigned char> renderResident_;
+    bool lockedQuiescentReads_ = false;
+    std::atomic<unsigned> quiescentViolations_{0};
 public:
     void reset(std::size_t handleCount) {
         const std::lock_guard lock(mutex_);
@@ -67,8 +71,20 @@ public:
         const std::lock_guard lock(mutex_);
         return handle >= 0 && static_cast<std::size_t>(handle) < renderResident_.size() && renderResident_[handle] && !marked_[handle];
     }
-    // Render extract only: the sim is quiescent there, so the flag needs no lock.
-    bool isRenderResidentQuiescent(long handle) const {
+    // Render extract entry: declares the quiescent phase. If the sim job is in flight the lock-free read below is a data
+    // race; log once, count it, and make isRenderResidentQuiescent take the lock for this extract (still correct).
+    // One check per extract; the per-handle read only tests a plain bool (render thread owns it).
+    void beginQuiescentRead(bool simActive) {
+        lockedQuiescentReads_ = simActive;
+        if (simActive) {
+            if (quiescentViolations_.fetch_add(1, std::memory_order_relaxed) == 0)
+                std::fputs("TerrainDirtyQueue: quiescent read while the sim job is in flight; falling back to locked reads\n", stderr);
+        }
+    }
+    unsigned quiescentViolations() const { return quiescentViolations_.load(std::memory_order_relaxed); }
+    // Render extract only: the sim is quiescent there (beginQuiescentRead), so the flag needs no lock.
+    bool isRenderResidentQuiescent(long handle) {
+        if (lockedQuiescentReads_) return isRenderResident(handle);
         return handle >= 0 && static_cast<std::size_t>(handle) < renderResident_.size() && renderResident_[handle] && !marked_[handle];
     }
     bool isResident(long handle) {
