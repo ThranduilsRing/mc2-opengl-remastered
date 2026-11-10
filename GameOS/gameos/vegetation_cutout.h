@@ -63,4 +63,24 @@ inline void dilateCutoutRgb(std::vector<uint8_t>& rgba, uint32_t width, uint32_t
         rgba.swap(next); known.swap(grown);
     }
 }
+// A missing or undecodable card must not switch off every card: each layer takes
+// its own tile, else the nearest present tile of its group of four (grass 0-3,
+// shrubs and saplings 4-7), else any present tile. Empty when no tile is present.
+inline std::vector<int> cardLayerSources(std::span<const bool> present) {
+    std::vector<int> source(present.size(), -1);
+    int any = -1;
+    for (size_t i = 0; i < present.size(); ++i) if (present[i]) { any = static_cast<int>(i); break; }
+    if (any < 0) return {};
+    for (size_t i = 0; i < present.size(); ++i) {
+        if (present[i]) { source[i] = static_cast<int>(i); continue; }
+        const size_t group = i / 4 * 4;
+        int best = -1;
+        for (size_t d = 1; d < 4 && best < 0; ++d) {
+            if (i >= group + d && present[i - d]) best = static_cast<int>(i - d);
+            else if (i + d < group + 4 && i + d < present.size() && present[i + d]) best = static_cast<int>(i + d);
+        }
+        source[i] = best >= 0 ? best : any;
+    }
+    return source;
+}
 } // namespace mc2::vegetation

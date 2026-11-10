@@ -200,3 +200,19 @@ TEST_CASE("vegetation packed population retains map precision and foliage roles"
     }
     CHECK(kVisibleCapacity * 8ull == 4ull * 1024 * 1024);
 }
+
+TEST_CASE("VegCards/a missing card degrades per layer, not all-or-nothing") {
+    const bool all[8] = {true,true,true,true,true,true,true,true};
+    const auto full = cardLayerSources(all);
+    for (int i = 0; i < 8; ++i) CHECK(full[i] == i);
+    // Seed install: grass present, the four newer cards absent.
+    const bool grassOnly[8] = {true,true,true,true,false,false,false,false};
+    const auto s = cardLayerSources(grassOnly);
+    for (int i = 0; i < 4; ++i) CHECK(s[i] == i);
+    for (int i = 4; i < 8; ++i) CHECK(s[i] >= 0);
+    // One shrub missing takes its group neighbour.
+    const bool one[8] = {true,true,true,true,false,true,true,true};
+    CHECK(cardLayerSources(one)[4] == 5);
+    const bool none[8] = {};
+    CHECK(cardLayerSources(none).empty());
+}

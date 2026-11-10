@@ -37,6 +37,18 @@ const char* reason = "no_call";
 const char* atlasOverride = nullptr;
 bool trimCards = false;
 
+// One log line when a card cannot be loaded: its layer reuses a neighbouring card instead of
+// switching every card off (a lean install without the newer cards still draws vegetation).
+void reportMissingCards(std::string_view kind, const std::array<bool, 8>& present, const std::vector<int>& source) {
+    static constexpr std::array<const char*, 8> names{"grass_01", "grass_02", "grass_03", "grass_04",
+        "bush_round", "bush_heath", "sapling_leaf", "sapling_pine"};
+    std::string missing;
+    for (size_t i = 0; i < present.size(); ++i)
+        if (!present[i]) missing += std::string(missing.empty() ? "" : ",") + names[i] + "->" + names[static_cast<size_t>(source[i])];
+    if (!missing.empty())
+        mc2::fmt::print_err("[VK_RESIDENCY v1] vegetation {} cards unavailable, layers reuse a neighbour: {}\n", kind, missing);
+}
+
 // The old private vegetation_atlas_v2.png was never part of the payload. Build
 // its eight shader slots from the tracked cards so a clean install is complete.
 std::optional<mc2tex::DecodedTexture> builtinAtlas() {
@@ -45,19 +57,26 @@ std::optional<mc2tex::DecodedTexture> builtinAtlas() {
         "data/vegetation/cards/grass_03.png", "data/vegetation/cards/grass_04.png",
         "data/vegetation/cards/bush_round.png", "data/vegetation/cards/bush_heath.png",
         "data/vegetation/cards/sapling_leaf.png", "data/vegetation/cards/sapling_pine.png"};
+    std::array<std::optional<mc2tex::DecodedTexture>, 8> tiles;
+    std::array<bool, 8> present{};
+    int cellWidth = 0, cellHeight = 0;
+    for (size_t i = 0; i < paths.size(); ++i) {
+        auto tile = mc2tex::decodeFile(paths[i], gos_Texture_Alpha, 0);
+        if (!tile || tile->layout != mc2tex::PixelLayout::RGBA8) continue;
+        if (!cellWidth) { cellWidth = tile->width; cellHeight = tile->height; }
+        if (tile->width != cellWidth || tile->height != cellHeight) continue;
+        tiles[i] = std::move(tile); present[i] = true;
+    }
+    const auto source = mc2::vegetation::cardLayerSources(present);
+    if (source.empty()) return std::nullopt;
+    reportMissingCards("png", present, source);
     mc2tex::DecodedTexture atlas;
     atlas.layout = mc2tex::PixelLayout::RGBA8;
     atlas.format = gos_Texture_Alpha;
-    int cellWidth = 0, cellHeight = 0;
+    atlas.width = cellWidth * 4; atlas.height = cellHeight * 2;
+    atlas.pixels.resize(static_cast<size_t>(atlas.width) * atlas.height * 4);
     for (size_t i = 0; i < paths.size(); ++i) {
-        const auto tile = mc2tex::decodeFile(paths[i], gos_Texture_Alpha, 0);
-        if (!tile || tile->layout != mc2tex::PixelLayout::RGBA8) return std::nullopt;
-        if (i == 0) {
-            cellWidth = tile->width; cellHeight = tile->height;
-            atlas.width = cellWidth * 4; atlas.height = cellHeight * 2;
-            atlas.pixels.resize(static_cast<size_t>(atlas.width) * atlas.height * 4);
-        }
-        if (tile->width != cellWidth || tile->height != cellHeight) return std::nullopt;
+        const auto& tile = tiles[static_cast<size_t>(source[i])];
         for (int y = 0; y < cellHeight; ++y) {
             const size_t dst = ((i / 4 * cellHeight + y) * atlas.width + i % 4 * cellWidth) * 4;
             std::copy_n(tile->pixels.data() + static_cast<size_t>(y) * cellWidth * 4, static_cast<size_t>(cellWidth) * 4,
@@ -73,11 +92,19 @@ std::optional<mc2tex::TextureArrayCpu> builtinCards() {
     array.width = array.height = 512; array.layers = 8;
     array.vkFormat = mc2tex::kVkFormatBc7Unorm;
     array.levels.resize(10);
-    for (const auto* name : names) {
-        RenderCore::KtxImage tile;
-        const auto path = std::string("data/vegetation/cooked/") + name + ".ktx2";
-        if (!RenderCore::ktxLoadRgba8(path.c_str(), tile) || tile.width != 512 || tile.height != 512 ||
-            tile.mipCount != 10 || tile.vkFormat != array.vkFormat) return std::nullopt;
+    std::array<RenderCore::KtxImage, 8> tiles;
+    std::array<bool, 8> present{};
+    for (size_t k = 0; k < names.size(); ++k) {
+        const auto path = std::string("data/vegetation/cooked/") + names[k] + ".ktx2";
+        auto& tile = tiles[k];
+        present[k] = RenderCore::ktxLoadRgba8(path.c_str(), tile) && tile.width == 512 && tile.height == 512 &&
+                     tile.mipCount == 10 && tile.vkFormat == array.vkFormat;
+    }
+    const auto source = mc2::vegetation::cardLayerSources(present);
+    if (source.empty()) return std::nullopt;
+    reportMissingCards("ktx2", present, source);
+    for (size_t k = 0; k < names.size(); ++k) {
+        const auto& tile = tiles[static_cast<size_t>(source[k])];
         for (int level = 0; level < tile.mipCount; ++level) {
             const auto begin = tile.mipByteOffsets[level];
             const auto end = level + 1 < tile.mipCount ? tile.mipByteOffsets[level + 1] : tile.pixels.size();
