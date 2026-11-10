@@ -17,7 +17,7 @@
 layout(set = TERRAIN_RESOURCE_SET, binding = 2) uniform sampler2D u_colormap;
 // CEMENT/ROAD: the VK-owned copy-once import of the GL cement atlas (REPEAT sampler) +
 // the map-load snapshot of the GL per-vertex cement-word SSBO (GL binding 25).
-layout(set = TERRAIN_RESOURCE_SET, binding = 3) uniform sampler2D u_cementAtlas;
+layout(set = TERRAIN_RESOURCE_SET, binding = 3) uniform sampler2DArray u_cementArt;
 layout(set = TERRAIN_RESOURCE_SET, binding = 4, std430) readonly buffer TerrainCementBuf {
     uint cementWordsF[];
 } uC;

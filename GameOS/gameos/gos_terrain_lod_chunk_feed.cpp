@@ -188,6 +188,7 @@ extern "C" int mc2_terrain_tier1_get_load_feed(Mc2TerrainTier1Feed* out)
     const bool cementReady = gos_terrain_indirect_isCementAtlasReady();
     const bool cementLive  = cementReady && !fields->cementWords().empty();
     out->cementGridSide     = gos_terrain_indirect_getCementAtlasGridSide();
+    out->cementLayerCount   = gos_terrain_indirect_getCementAtlasTileCount();
     {
         const auto& atlas = fields->cementAtlas();
         const bool have = !atlas.texels.empty() && atlas.width == atlas.height;
@@ -278,7 +279,6 @@ extern "C" int mc2_terrain_tier1_get_load_feed(Mc2TerrainTier1Feed* out)
         out->snowBrightnessDampen = gos_TerrainSnowBrightnessDampen();
     }
     out->edgeFeatherStrength = kTglcEdgeFeather ? kTglcEdgeFeatherStr : 0.0f;   // the GL u_edgeFeather / u_edgeFeatherStrength pair
-    out->cementAtlasSeamFix  = kTglcCementAtlasSeamFix;                           // the GL u_cementAtlasSeamFix
     {
         const TerrainShorelineKnobs k = gos_TerrainShorelineKnobs();
         out->shorelineOn = k.on;

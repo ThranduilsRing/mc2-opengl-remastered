@@ -5,6 +5,7 @@
 #include "vk_one_shot.h"
 #include "texture_decode.h"
 #include "terrain_field_store.h"
+#include "cement_layers.h"
 #include "gameos.hpp"
 #include <array>
 #include <bit>
@@ -261,7 +262,7 @@ bool create_cement_sampler(TerrainIsland* s) {
     sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
     // ★CEMENT: GL_REPEAT wrap (gos_terrain_indirect.cpp:1291-1292) — cement tiles wrap.
     sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    sci.maxLod = 0.25f;
+    sci.maxLod = 0.25f;   // the array is mip-less: lod 0 only
     return mc2vk::create(s->cementSamp, s->device, [&](auto* h) { return vkCreateSampler(s->device, &sci, nullptr, h); });
 }
 
@@ -271,8 +272,8 @@ bool ensure_dummy_cement(TerrainIsland* s) {
     if (!create_cement_sampler(s)) return false;
     if (s->cementTexture) return true; // already bound
     const uint8_t px[4] = {128, 128, 128, 255}; // neutral grey; irrelevant (useCement=0)
-    if (!upload_sampled_image(s, s->cementTexture,
-                              VK_FORMAT_R8G8B8A8_UNORM, 1, 1, px, sizeof(px))) return false;
+    if (!upload_sampled_image_array(s, s->cementTexture,
+                                    VK_FORMAT_R8G8B8A8_UNORM, 1, 1, 1, px, sizeof(px))) return false;
     s->cementReady = false;
     return true;
 }
@@ -282,13 +283,18 @@ bool ensure_dummy_cement(TerrainIsland* s) {
 void import_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     if (!feed.cementAtlasRgba || feed.cementAtlasSide <= 0 || feed.cementAtlasVersion == 0) return;   // atlas not built yet
     if (feed.cementAtlasVersion == s->cementVersionImported && s->cementReady) return;              // already imported
-    const uint32_t side = static_cast<uint32_t>(feed.cementAtlasSide);
-    if (upload_sampled_image(s, s->cementTexture, VK_FORMAT_R8G8B8A8_UNORM, side, side,
-                             feed.cementAtlasRgba, static_cast<VkDeviceSize>(side) * side * 4u)) {
+    // CEMENT-ARRAY-1: one array layer per catalog cell (layer k == atlas cell k), no cell borders to bleed across.
+    const std::vector<uint8_t> layers = mc2terrain::cementAtlasToLayers(feed.cementAtlasRgba, feed.cementAtlasSide,
+                                                                        feed.cementGridSide, feed.cementLayerCount);
+    if (layers.empty()) return;
+    const uint32_t tile = static_cast<uint32_t>(feed.cementAtlasSide / feed.cementGridSide);
+    const uint32_t count = static_cast<uint32_t>(feed.cementLayerCount);
+    if (upload_sampled_image_array(s, s->cementTexture, VK_FORMAT_R8G8B8A8_UNORM, tile, tile, count,
+                                   layers.data(), static_cast<VkDeviceSize>(layers.size()))) {
         s->cementVersionImported = feed.cementAtlasVersion;
         s->cementReady = true;
         write_descriptors(s);
-        vlog("CEMENT/ROAD: imported the cement atlas %ux%u from the terrain field store (version %llu).", side, side,
+        vlog("CEMENT/ROAD: imported the cement texture array %ux%ux%u from the terrain field store (version %llu).", tile, tile, count,
              static_cast<unsigned long long>(feed.cementAtlasVersion));
     }
     // On failure the dummy stays bound (cementReady=false) -> FS uses colormap base.

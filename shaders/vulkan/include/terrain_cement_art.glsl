@@ -13,14 +13,9 @@ vec3 shadeRoadArt(vec4 art, uint road, uint cw, vec2 dx, vec2 dy) {
     bool adoptAlbedo = adopt && cementTile && (cw & 0x40000000u) == 0u;
     vec3 color = art.rgb;
     if (adoptAlbedo) {
-        int grid = max(uT.cementGridSide, 1);
         uint layer = cw & 0xffffu;
         vec2 uv = fract(vec2(v_worldPos.x, -v_worldPos.y) / uT.cementWUPT);
-        if (uT.cementAtlasSeamFix != 0) {
-            float inset = 0.5 * float(grid) / float(textureSize(u_cementAtlas, 0).x);
-            uv = clamp(uv, vec2(inset), vec2(1.0 - inset));
-        }
-        color = textureLod(u_cementAtlas, (vec2(int(layer) % grid, int(layer) / grid) + uv) / float(grid), 0.0).rgb;
+        color = textureLod(u_cementArt, vec3(uv, float(layer)), 0.0).rgb;
     } else if (!adopt) {
         color *= vec3(0.82, 0.80, 0.76);
     }
@@ -68,12 +63,11 @@ float shadeRoadArtTile(out vec3 outColor) {
         int index = tile.x + tile.y * uT.mapSide;
         uint road = uC.cementWordsF[plane + index];
         if ((road & 0x80000000u) != 0u) {
-            int grid = max(uT.cementGridSide, 1);
             int layer = int(road & 0xffffu);
             // Match the original quad UV endpoints, including the half-texel inset.
             vec2 uv = mix(vec2(0.0078125), vec2(0.9921875),
                 fract(vec2(v_worldPos.x + uT.halfMap, uT.halfMap - v_worldPos.y) / 128.0));
-            vec4 art = textureLod(u_cementAtlas, (vec2(layer % grid, layer / grid) + uv) / float(grid), 0.0);
+            vec4 art = textureLod(u_cementArt, vec3(uv, float(layer)), 0.0);
             float coverage = smoothstep(0.3, 0.7, art.a);
             if (coverage > 0.0) {
                 outColor = shadeRoadArt(art, road, uC.cementWordsF[index], roadDx, roadDy);

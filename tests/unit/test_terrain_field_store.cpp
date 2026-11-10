@@ -265,3 +265,51 @@ TEST_CASE("terrain fields: clearing the visual bake leaves no relief for the nex
     CHECK(store.visualMipFloats() == 0);
     CHECK(store.visualHeightVersion() != accepted);
 }
+
+#include "cement_layers.h"
+
+// CEMENT-ARRAY-1: the cement catalog atlas (grid x grid cells) becomes one texture-array layer per cell.
+TEST_CASE("cement layers: layer count is the catalog tile count and layer k is atlas cell k") {
+    const int grid = 4, tile = 4, side = grid * tile, tiles = 10;   // 10 cells in a 4x4 grid: 6 grid cells are unused
+    std::vector<uint8_t> atlas(static_cast<size_t>(side) * side * 4, 0);
+    for (int k = 0; k < tiles; ++k)
+        for (int y = 0; y < tile; ++y)
+            for (int x = 0; x < tile; ++x) {
+                uint8_t* p = &atlas[((static_cast<size_t>((k / grid) * tile + y)) * side + (k % grid) * tile + x) * 4];
+                p[0] = static_cast<uint8_t>(k); p[1] = static_cast<uint8_t>(x); p[2] = static_cast<uint8_t>(y); p[3] = 255;
+            }
+    const std::vector<uint8_t> layers = mc2terrain::cementAtlasToLayers(atlas.data(), side, grid, tiles);
+    REQUIRE(layers.size() == static_cast<size_t>(tiles) * tile * tile * 4);   // layers == tiles, not grid^2
+    for (int k = 0; k < tiles; ++k)
+        for (int y = 0; y < tile; ++y)
+            for (int x = 0; x < tile; ++x) {
+                const uint8_t* p = &layers[(static_cast<size_t>(k) * tile * tile + static_cast<size_t>(y) * tile + x) * 4];
+                CHECK(p[0] == k); CHECK(p[1] == x); CHECK(p[2] == y); CHECK(p[3] == 255);
+            }
+}
+
+TEST_CASE("cement layers: texels (including magenta-keyed ones) are copied bit-identically per layer") {
+    // The catalog build keeps the magenta key texels as authored (it only counts them), so a layer must
+    // carry exactly the atlas cell's bytes: nothing is zeroed, dilated or blended across layers.
+    const int grid = 2, tile = 2, side = 4;
+    std::vector<uint8_t> atlas(static_cast<size_t>(side) * side * 4);
+    for (size_t i = 0; i < atlas.size(); ++i) atlas[i] = static_cast<uint8_t>(i * 7 + 3);
+    atlas[0] = 255; atlas[1] = 0; atlas[2] = 255; atlas[3] = 255;   // a magenta texel at cell 0
+    const std::vector<uint8_t> layers = mc2terrain::cementAtlasToLayers(atlas.data(), side, grid, 4);
+    REQUIRE(layers.size() == 4u * tile * tile * 4);
+    CHECK(layers[0] == 255); CHECK(layers[1] == 0); CHECK(layers[2] == 255); CHECK(layers[3] == 255);
+    for (int k = 0; k < 4; ++k)
+        for (int y = 0; y < tile; ++y)
+            CHECK(std::equal(&layers[(static_cast<size_t>(k) * tile * tile + static_cast<size_t>(y) * tile) * 4],
+                             &layers[(static_cast<size_t>(k) * tile * tile + static_cast<size_t>(y) * tile) * 4 + tile * 4],
+                             &atlas[(static_cast<size_t>((k / grid) * tile + y) * side + (k % grid) * tile) * 4]));
+}
+
+TEST_CASE("cement layers: arguments that do not describe the atlas give no layers") {
+    std::vector<uint8_t> atlas(8 * 8 * 4, 1);
+    CHECK(mc2terrain::cementAtlasToLayers(nullptr, 8, 2, 4).empty());
+    CHECK(mc2terrain::cementAtlasToLayers(atlas.data(), 8, 0, 4).empty());
+    CHECK(mc2terrain::cementAtlasToLayers(atlas.data(), 8, 3, 4).empty());   // 8 is not a multiple of 3
+    CHECK(mc2terrain::cementAtlasToLayers(atlas.data(), 8, 2, 5).empty());   // more layers than grid cells
+    CHECK(mc2terrain::cementAtlasToLayers(atlas.data(), 8, 2, 0).empty());
+}

@@ -96,6 +96,7 @@ extern int   g_terrainMaterialProfile;   // global; 0 = legacy
 // Step 5c: cement catalog atlas (tex3) accessors from gos_terrain_indirect.cpp.
 
 extern int          gos_terrain_indirect_getCementAtlasGridSide();
+extern int          gos_terrain_indirect_getCementAtlasTileCount();
 
 extern bool         gos_terrain_indirect_isCementAtlasReady();
 
@@ -156,7 +157,6 @@ TerrainShorelineKnobs gos_TerrainShorelineKnobs();
 
 // State and helpers shared between the pieces. Each is defined once, in the piece that owns it.
 extern const int kTglcDiag;
-extern const bool kTglcCementAtlasSeamFix;
 extern const bool kTglcLightPoolSoft;
 extern const float kTglcLightPoolMoverDim;
 extern const float kTglcLightPoolMoverRadius;

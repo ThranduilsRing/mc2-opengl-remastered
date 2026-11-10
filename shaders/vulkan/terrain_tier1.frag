@@ -227,25 +227,16 @@ void main() {
     // ★CEMENT/ROAD sub-slice: concrete apron / roads. Ports the GL LOD-chunk cement
     // branch (terrain_lod_chunk.frag:484-624) VERBATIM: the solid-tile override, the
     // CEMENT-HARD-EDGE-1 marching-squares transition cut, and CEMENT-DIAG-CONNECT-1.
-    // Fed by the per-vertex cement-word SSBO (uC) + the REPEAT-sampled cement atlas.
+    // Fed by the per-vertex cement-word SSBO (uC) + the REPEAT-sampled cement texture array.
     // The overlay-sidecar composite (GL :626-642) is STILL DEFERRED (not fed here).
     // uT.useCement==0 (gate off / atlas or words not ready) -> whole block skipped ->
     // colormap base only, byte-identical to the colormap-only frame.
     if (uT.useCement != 0) {
-        // CEMENT-MIP-EDGE-1: the road "outline". The atlas was sampled with texture() on a fract()ed
-        // tile UV inside a per-fragment branch: at every tile wrap the implicit derivatives blow up
-        // and the sampler drops to the atlas-wide average mip (a dark 1 px seam along every cement
-        // tile edge and across roads), and at distance the half-texel inset only guarded mip 0, so
-        // the neighbouring atlas cells bled into each road/apron cell's border texels (a dark halo
-        // along both road edges on far hills). Derivatives now come from the CONTINUOUS tile UV,
-        // here in uniform control flow; the LOD is explicit, capped so a cell keeps >= 2 texels,
-        // and the inset is half a texel AT that LOD.
+        // CEMENT-MIP-EDGE-1: the road "outline". Derivatives come from the CONTINUOUS tile UV in uniform
+        // control flow (a fract()ed UV would blow them up at every tile wrap). Cement art is a mip-less
+        // texture array (CEMENT-ARRAY-1), sampled at lod 0 with no cell borders to bleed across.
         vec2  cCont    = vec2(v_worldPos.x, -v_worldPos.y) / uT.cementWUPT;
         vec2  cGx      = dFdx(cCont), cGy = dFdy(cCont);
-        float cCellTex = max(float(textureSize(u_cementAtlas, 0).x) / float(max(uT.cementGridSide, 1)), 1.0);
-        float cLod     = 0.5 * log2(max(max(dot(cGx, cGx), dot(cGy, cGy)) * cCellTex * cCellTex, 1e-12));
-        cLod = clamp(cLod, 0.0, min(max(log2(cCellTex) - 1.0, 0.0), float(textureQueryLevels(u_cementAtlas) - 1)));
-        float cInsetLod = min(0.5 * exp2(cLod) / cCellTex, 0.25);
         // CEMENT-MIP-EDGE-1: per-pixel tile-UV footprint, for the antialiased transition cut below
         // (the marching-squares cut was binary, a hard aliased stair along every road side).
         float cFu = abs(cGx.x) + abs(cGy.x);
@@ -256,18 +247,9 @@ void main() {
         if ((cw & 0x80000000u) != 0u) {
             uint cLayerIdx    = cw & 0xFFFFu;
             bool isTransition = (cw & 0x40000000u) != 0u;
-            int  cGridSide = uT.cementGridSide;
-            if (cGridSide < 1) cGridSide = 1;
-            int  cCol = int(cLayerIdx) % cGridSide;
-            int  cRow = int(cLayerIdx) / cGridSide;
             vec2 cTileUV  = fract(vec2(v_worldPos.x, -v_worldPos.y) / uT.cementWUPT);
-            // CEMENT-ATLAS-SEAM-1 (terrain_lod_chunk.frag): half-texel inset for sampling only; the
-            // transition mask below keeps the true intra-tile position cTileUV.
-            vec2 cSampleUV = cTileUV;
-            if (uT.cementAtlasSeamFix != 0)
-                cSampleUV = clamp(cTileUV, vec2(cInsetLod), vec2(1.0 - cInsetLod));   // CEMENT-MIP-EDGE-1
-            vec2 cAtlasUV = (vec2(float(cCol), float(cRow)) + cSampleUV) / float(cGridSide);
-            vec4 cementTexel = textureLod(u_cementAtlas, cAtlasUV, cLod); cdRoad = 1.0 - smoothstep(0.20, 0.30, dot(cementTexel.rgb, vec3(0.299, 0.587, 0.114)));
+            // CEMENT-ARRAY-1: one array layer per cell, so the tile UV samples directly (no cell borders to inset).
+            vec4 cementTexel = textureLod(u_cementArt, vec3(cTileUV, float(cLayerIdx)), 0.0); cdRoad = 1.0 - smoothstep(0.20, 0.30, dot(cementTexel.rgb, vec3(0.299, 0.587, 0.114)));
             vec3 cementColor = cementTexel.rgb * vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);  // CEMENT-NIGHT-LIGHT-1
             // CEMENT-ALPHA-LAND-1 (terrain_lod_chunk.frag:1009-1015): OWN_ALPHA transition.
             // Word bit23 => the atlas cell carries its own coverage in alpha; composite OVER base.
@@ -329,8 +311,6 @@ void main() {
         // quadrant toward a diagonally adjacent SOLID cement tile. Off by default.
         if (uT.cementDiagConnect != 0 && !cementHit) {
             vec2 dTileUV = fract(vec2(v_worldPos.x, -v_worldPos.y) / uT.cementWUPT);
-            int  dGridSide = uT.cementGridSide;
-            if (dGridSide < 1) dGridSide = 1;
             int dnX = (dTileUV.x > 0.5) ? (ctX + 1) : (ctX - 1);
             int dnY = (dTileUV.y > 0.5) ? (ctY + 1) : (ctY - 1);
             if (dnX >= 0 && dnX < uT.mapSide && dnY >= 0 && dnY < uT.mapSide) {
@@ -339,13 +319,7 @@ void main() {
                 bool dnTransition = (dnw & 0x40000000u) != 0u;
                 if (dnValid && !dnTransition) {
                     uint dLayerIdx = dnw & 0xFFFFu;
-                    int  dCol = int(dLayerIdx) % dGridSide;
-                    int  dRow = int(dLayerIdx) / dGridSide;
-                    vec2 dSampleUV = dTileUV;   // CEMENT-ATLAS-SEAM-1 / CEMENT-MIP-EDGE-1: same inset + LOD as the main branch
-                    if (uT.cementAtlasSeamFix != 0)
-                        dSampleUV = clamp(dTileUV, vec2(cInsetLod), vec2(1.0 - cInsetLod));
-                    vec2 dAtlasUV = (vec2(float(dCol), float(dRow)) + dSampleUV) / float(dGridSide);
-                    base = textureLod(u_cementAtlas, dAtlasUV, cLod).rgb * vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);  // CEMENT-NIGHT-LIGHT-1
+                    base = textureLod(u_cementArt, vec3(dTileUV, float(dLayerIdx)), 0.0).rgb * vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);  // CEMENT-NIGHT-LIGHT-1
                     pureConcrete = true;
                     cementHit = true;   // as GL's diag-connect branch
                 }
