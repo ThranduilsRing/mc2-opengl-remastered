@@ -847,9 +847,9 @@ void
 
 // Execute/Draw split step 1: Draw must stay const on every effect type so it
 // cannot write effect state (mutation belongs in Execute).
-static_assert(std::is_same_v<decltype(&gosFX::Effect::Draw), void (gosFX::Effect::*)(gosFX::Effect::DrawInfo*) const>,
-	"gosFX::Effect::Draw must be const");
-static_assert(std::is_same_v<decltype(&gosFX::Tube::Draw), void (gosFX::Tube::*)(gosFX::Effect::DrawInfo*) const>,
-	"gosFX::Tube::Draw must be const");
-static_assert(std::is_same_v<decltype(&gosFX::Shape::Draw), void (gosFX::Shape::*)(gosFX::Effect::DrawInfo*) const>,
-	"gosFX::Shape::Draw must be const");
+template <class T>
+concept DrawIsConst = requires(const T& t, gosFX::Effect::DrawInfo* info) { t.Draw(info); };
+static_assert(DrawIsConst<gosFX::Effect>, "gosFX::Effect::Draw must be const");
+static_assert(DrawIsConst<gosFX::Tube>, "gosFX::Tube::Draw must be const");
+static_assert(DrawIsConst<gosFX::Shape>, "gosFX::Shape::Draw must be const");
+static_assert(DrawIsConst<gosFX::CardCloud>, "gosFX::CardCloud::Draw must be const");
