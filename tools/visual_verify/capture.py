@@ -74,6 +74,72 @@ def discover_bookmarks(install: Path) -> "list[Path]":
     return sorted(p for p in bd.glob("*.json"))
 
 
+REPO_BOOKMARKS = ROOT / "tests" / "visual" / "bookmarks"
+
+
+def resolve_bookmarks(install: Path, wanted: "set[str] | None", out_dir: Path,
+                      repo_dir: "Path | None" = None) -> "tuple[list[Path], list[str], list[str]]":
+    """The bookmark files to capture: <install>/saved_bookmarks first, then (for a named stem the install lacks) the repo's
+    tests/visual/bookmarks/<stem>.json. The harness rewrites the bookmark json, so a repo file is COPIED into
+    <out_dir>/_repo_bookmarks/ (a dir this run owns) and never used in place; nothing is written into the install.
+    Returns (files, log lines saying where each stem came from, stems found nowhere). wanted=None means 'all' (install only)."""
+    repo_dir = REPO_BOOKMARKS if repo_dir is None else Path(repo_dir)
+    in_install = {p.stem: p for p in discover_bookmarks(install)}
+    if wanted is None:
+        return sorted(in_install.values()), [], []
+    files, notes, missing = [], [], []
+    for stem in sorted(wanted):
+        if stem in in_install:
+            files.append(in_install[stem])
+            continue
+        src = repo_dir / (stem + ".json")
+        if not src.is_file():
+            missing.append(stem)
+            continue
+        dst = Path(out_dir) / "_repo_bookmarks" / src.name
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        dst.write_bytes(src.read_bytes())
+        files.append(dst)
+        notes.append(f"bookmark {stem}: not in {install / 'saved_bookmarks'}; using the repo copy {src} (copied to {dst})")
+    return files, notes, missing
+
+
+def exe_knows_env(exe: Path, keys) -> "dict[str, bool]":
+    """key -> whether the exe's image contains the knob name at all (a knob the exe never registers is silently ignored)."""
+    needles = {k: k.encode("ascii") for k in keys}
+    found = {k: False for k in needles}
+    if not needles:
+        return found
+    overlap = max(len(v) for v in needles.values())
+    tail = b""
+    with open(exe, "rb") as fh:
+        while True:
+            chunk = fh.read(1 << 24)
+            if not chunk:
+                break
+            buf = tail + chunk
+            for k, needle in needles.items():
+                if not found[k] and needle in buf:
+                    found[k] = True
+            tail = buf[-overlap:]
+    return found
+
+
+def env_registration_problems(exe: Path, declared_env: dict, flag_keys) -> "tuple[list[str], list[str]]":
+    """(fatal, warnings): declared MC2_* knobs whose name is not in the exe's image. A knob the exe never registers is silently
+    ignored, so the capture would run without the effect. `flag_keys` are the knobs a capture.py flag itself implies
+    (--clean, --live-settle-sec, --focus): the flag does nothing on this exe, so that is fatal; a knob from --env is a warning."""
+    keys = sorted(k for k in declared_env if k.startswith("MC2_"))
+    known = exe_knows_env(exe, keys)
+    fatal, warn = [], []
+    for k in keys:
+        if known[k]:
+            continue
+        msg = f"{k} is not in {exe.name}'s image (the exe does not register that knob; it is silently ignored)"
+        (fatal if k in flag_keys else warn).append(msg)
+    return fatal, warn
+
+
 def _running_mc2_from(install: Path) -> "list[tuple[int, str]]":
     """Return [(pid, exepath)] for any running mc2.exe whose image path is under
     `install`. Used as a lane-safety pre-flight (never kills anything)."""
@@ -330,23 +396,21 @@ def main(argv=None) -> int:
     if not rvc.guard_exe(exe):
         return 7
 
-    all_files = discover_bookmarks(install)
-    if not all_files:
+    out_dir = Path(args.out).resolve()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    wanted = None if args.bookmarks.strip().lower() == "all" else {x.strip() for x in args.bookmarks.split(",") if x.strip()}
+    files, bookmark_notes, missing = resolve_bookmarks(install, wanted, out_dir)
+    if wanted is None and not files:
         print(f"[vv-capture] ERROR no saved_bookmarks/*.json under {install}",
               file=sys.stderr)
         return 4
-    if args.bookmarks.strip().lower() == "all":
-        files = all_files
-    else:
-        wanted = {s.strip() for s in args.bookmarks.split(",") if s.strip()}
-        by_stem = {p.stem: p for p in all_files}
-        missing = wanted - set(by_stem)
-        if missing:
-            print(f"[vv-capture] ERROR unknown bookmark(s): {sorted(missing)}",
-                  file=sys.stderr)
-            print(f"[vv-capture] available: {sorted(by_stem)}", file=sys.stderr)
-            return 4
-        files = [by_stem[s] for s in sorted(wanted)]
+    if missing:
+        print(f"[vv-capture] ERROR unknown bookmark(s): {sorted(missing)} (not in {install / 'saved_bookmarks'} "
+              f"nor {REPO_BOOKMARKS})", file=sys.stderr)
+        print(f"[vv-capture] available: {sorted(p.stem for p in discover_bookmarks(install))}", file=sys.stderr)
+        return 4
+    for line in bookmark_notes:
+        print(f"[vv-capture] {line}", flush=True)
 
     # Lane-safety pre-flight: refuse if the TARGET exe is already live.
     running = _running_mc2_from(install)
@@ -359,14 +423,14 @@ def main(argv=None) -> int:
               file=sys.stderr)
         return 3
 
-    out_dir = Path(args.out).resolve()
-    out_dir.mkdir(parents=True, exist_ok=True)
     logf = open(out_dir / "capture_run.log", "w", encoding="utf-8", errors="replace")
     # fsr_dll= is the capture-time environment record merge_gate needs to call a missing-FSR pipeline INFRA (p31).
     fsr_dll = "present" if (install / "amd_fidelityfx_vk.dll").is_file() else "missing"
     logf.write(f"[vv-capture] start {_now_iso()} install={install} fsr_dll={fsr_dll} "
                f"bookmarks={len(files)} frame={args.frame}\n")
 
+    for line in bookmark_notes:
+        logf.write(f"[vv-capture] {line}\n")
     # Restore desktop cursor on exit (the sweep parks it center for determinism).
     import atexit
     rvc._save_cursor()
@@ -382,6 +446,22 @@ def main(argv=None) -> int:
         declared_env = env_pin.parse_declarations(args.env_declare)
     except ValueError as e:
         print(f"[vv-capture] ERROR {e}", file=sys.stderr)
+        return 4
+
+    flag_keys = ({"MC2_VISUAL_CAPTURE_CLEAN"} if args.clean else set()) | (
+        {"MC2_VISUAL_LIVE_SETTLE_SEC"} if args.live_settle_sec > 0 else set()) | (
+        {"MC2_CAPTURE_FOCUS"} if args.focus is not None else set())
+    fatal, warn = env_registration_problems(exe, declared_env, flag_keys)
+    for m in warn:
+        print(f"[vv-capture] WARNING !!! {m}", file=sys.stderr)
+        logf.write(f"[vv-capture] WARNING {m}\n")
+    if fatal:
+        for m in fatal:
+            print(f"[vv-capture] ERROR {m}", file=sys.stderr)
+            logf.write(f"[vv-capture] ERROR {m}\n")
+        print("[vv-capture] ERROR the capture would run without that effect; build the exe from a base that has the knob "
+              "(or drop the flag)", file=sys.stderr)
+        logf.close()
         return 4
 
     manifest = capture_sweep(
