@@ -12616,6 +12616,7 @@
   }
  ],
  "consumed_tags": [
+  "AEG",
   "ALLOC_RELOAD",
   "ALLOC_TICK",
   "APPEAR_AUDIT",
@@ -12646,6 +12647,7 @@
   "EDITOR_PANEL_OPERATION",
   "EDITOR_SHELL",
   "ESMOKE",
+  "EXIT",
   "FIRST60",
   "GLP",
   "GPUPROPS",
