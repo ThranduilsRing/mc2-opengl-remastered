@@ -45,6 +45,9 @@ void TG_MultiShape::PublishSimPose(const mc2::sim::PoseJob& job)
     // Canonical node order, independent of worker count.
     for (int i = 0; i < numTG_Shapes; ++i) {
         auto& rec = listOfShapes[i];
+        // The walk-key reuse in TransformMultiShape_BuildRecipe assumes only the walk writes these matrices; the private
+        // sim shapes never run that walk, so their keys stay invalid (scripts/tests/test_msl_matrix_writers.py).
+        gosASSERT(!rec.walkKey.valid);
         if (!job.inputs[i].current) {
             rec.localShapeToWorld = job.outputs[i].local;
             rec.shapeToWorld = job.outputs[i].world;

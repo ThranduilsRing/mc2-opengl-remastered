@@ -167,3 +167,30 @@ TEST_CASE("static_resident/mark, epoch, light generation, destroy and cull each 
     queue.markAll();
     CHECK(!queue.isRenderResidentQuiescent(7));
 }
+
+TEST_CASE("terrain_dirty_queue/a quiescent read during a simulated sim phase is caught, counted, and still correct")
+{
+    mc2::TerrainDirtyQueue queue;
+    queue.reset(4);
+    queue.setResident(2);
+    REQUIRE(queue.setRenderResident(2));
+
+    queue.beginQuiescentRead(false);                 // sim joined: lock-free read, no violation
+    CHECK(queue.isRenderResidentQuiescent(2));
+    CHECK(queue.quiescentViolations() == 0);
+
+    queue.beginQuiescentRead(true);                  // sim job in flight at extract entry
+    CHECK(queue.quiescentViolations() == 1);
+    CHECK(queue.isRenderResidentQuiescent(2));       // falls back to the locked read: same answer
+    queue.mark(2);
+    CHECK_FALSE(queue.isRenderResidentQuiescent(2));
+    queue.beginQuiescentRead(true);
+    CHECK(queue.quiescentViolations() == 2);
+
+    queue.beginQuiescentRead(false);                 // next clean extract returns to the lock-free path
+    queue.drain();
+    queue.setResident(2);
+    queue.setRenderResident(2);
+    CHECK(queue.isRenderResidentQuiescent(2));
+    CHECK(queue.quiescentViolations() == 2);
+}

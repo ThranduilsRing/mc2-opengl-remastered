@@ -8,6 +8,7 @@
 #include "sim_pose_kernel.h"
 #include <cstdint>
 #include <cstring>
+#include <vector>
 
 namespace mc2::msl {
 
@@ -57,6 +58,35 @@ inline bool evalNode(const NodeInput& in, const glm::mat4* parentLocal, std::uin
         key.originGen = originGen;
     }
     return !reuse;
+}
+
+// Hierarchy order cache (parents before children) shared by TransformMultiShape_BuildRecipe and its test.
+// parentOf(n) returns the parent index of node n or -1. The order is rebuilt only when a parent link no longer matches the
+// snapshot it was built from. Returns true when it was rebuilt. maxDepth bounds a chain (cycle guard).
+template <class ParentOf>
+inline bool refreshWalkOrder(std::vector<int>& order, std::vector<int>& snapshot, long count, ParentOf&& parentOf, long maxDepth) {
+    bool ok = static_cast<long>(order.size()) == count && static_cast<long>(snapshot.size()) == count;
+    for (long n = 0; ok && n < count; ++n) ok = snapshot[n] == parentOf(n);
+    if (ok) return false;
+    snapshot.assign(count, -1);
+    order.clear();
+    order.reserve(count);
+    std::vector<unsigned char> placed(count, 0);
+    for (long n = 0; n < count; ++n) snapshot[n] = parentOf(n);
+    std::vector<int> chain(static_cast<std::size_t>(maxDepth));
+    for (long n = 0; n < count; ++n) {
+        long depth = 0;
+        for (int c = static_cast<int>(n); c >= 0 && !placed[c]; c = snapshot[c]) {
+            if (depth >= maxDepth) break;
+            chain[depth++] = c;
+        }
+        while (depth > 0) {
+            const int c = chain[--depth];
+            placed[c] = 1;
+            order.push_back(c);
+        }
+    }
+    return true;
 }
 
 } // namespace mc2::msl
