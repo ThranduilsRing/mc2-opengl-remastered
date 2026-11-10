@@ -167,3 +167,32 @@ TEST_CASE("static_resident/mark, epoch, light generation, destroy and cull each 
     queue.markAll();
     CHECK(!queue.isRenderResidentQuiescent(7));
 }
+
+#include "terrain_walk_skip.h"
+
+// perf-terrain-walk: the render walk drops only views that would draw nothing this frame. The decision is taken per
+// frame from that frame's presentation state, so an object entering the view is drawn the same frame (no vanishing
+// props) and a falling tree off view still captures its moving shadow.
+TEST_CASE("terrain_walk_skip/only off-view trees and terrain objects with nothing to draw leave the walk")
+{
+    // A settled tree outside the view: render() is a no-op, the walk skips it.
+    CHECK(mc2::treeRenderIsNoOp(false, false));
+    CHECK(mc2::terrainWalkSkips(TREE, false, false, mc2::treeRenderIsNoOp(false, false)));
+    // The camera turns: the presentation pass sets inView, the same frame's walk draws it.
+    CHECK(!mc2::treeRenderIsNoOp(true, false));
+    CHECK(!mc2::terrainWalkSkips(TREE, false, false, mc2::treeRenderIsNoOp(true, false)));
+    // A tree that starts to fall off view keeps its shadow capture visit.
+    CHECK(!mc2::treeRenderIsNoOp(false, true));
+    CHECK(!mc2::terrainWalkSkips(TREE, false, false, mc2::treeRenderIsNoOp(false, true)));
+    // Bars (selected) or a dust effect are drawn by renderView itself: always visited.
+    CHECK(!mc2::terrainWalkSkips(TREE, true, false, true));
+    CHECK(!mc2::terrainWalkSkips(TERRAINOBJECT, false, true, true));
+    CHECK(mc2::terrainWalkSkips(TERRAINOBJECT, false, false, true));
+    // An appearance that does not claim a no-op render (the default, e.g. buildings) is always visited.
+    CHECK(!mc2::terrainWalkSkips(TERRAINOBJECT, false, false, false));
+    // Other classes have their own renderView: never skipped here.
+    CHECK(!mc2::terrainWalkSkips(BUILDING, false, false, true));
+    CHECK(!mc2::terrainWalkSkips(TURRET, false, false, true));
+    CHECK(!mc2::terrainWalkSkips(GATE, false, false, true));
+    CHECK(!mc2::terrainWalkSkips(BRIDGE, false, false, true));
+}

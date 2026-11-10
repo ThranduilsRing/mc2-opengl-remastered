@@ -39,6 +39,7 @@
 #include <vector>  // T1.4: BldgAppearance::spotlightLights_/spotlightSlotIds_/spotlightNodeIds_
 //**************************************************************************************
 #include "dstd.h"  // NO_ERR
+#include "terrain_walk_skip.h"
 
 inline constexpr int MAX_BD_ANIMATIONS = 10;
 struct ModelOverrideRecord;
@@ -729,6 +730,8 @@ class TreeAppearance : public ObjectAppearance
 		virtual bool IsStaticNow() const override;
 		virtual bool lodFollowsCamera() const override;
 		virtual std::optional<int32_t> residentRenderRecipe() const override;
+		// render() outside the view only captures a falling tree's moving shadow; everything else sits under inView.
+		virtual bool renderIsNoOp() const override { return mc2::treeRenderIsNoOp(inView, shadowMoving); }
 		uint32_t submittedFrame_ = 0xFFFFFFFFu;   // frame of the last render() that markVisibleChecked accepted
 		virtual void touch() override;
 		void selectActiveLOD();  // TREE-OVERRIDE-LOD-MVP: per-frame distance LOD pick (update+touch)
