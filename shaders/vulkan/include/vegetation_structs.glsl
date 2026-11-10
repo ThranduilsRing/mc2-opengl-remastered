@@ -34,22 +34,31 @@ float vegFieldThin(VegInstance i, VegParamsData p) {
     return mix(1.0, 0.35, smoothstep(1500.0, 4500.0, length(i.pos - p.cam.xyz)));
 }
 
+// Projected card height in pixels (the cull's cover metric; the vertex stage widens sub-2 px field blades).
+float vegPixels(VegInstance i, VegParamsData p) {
+    uint role = (i.atlasFrame >> 4u) & 3u;
+    float height = i.scale * (role == 3u ? 0.25 : role == 2u ? 0.6 : 1.0);
+    float clipW = dot(p.clipRow, vec4(i.pos, 1.0));
+    return clipW <= 0.001 ? 0.0 : height * p.misc.y / clipW;
+}
+
 // One rank and one continuous scale, shared by the cull and draw. No alpha
 // fade, frame-dependent noise or separate binary distance/population tests.
 float vegLodScale(VegInstance i, VegParamsData p) {
     if (p.flags.x != 0u) return 1.0;
-    uint role = (i.atlasFrame >> 4u) & 3u;
-    float height = i.scale * (role == 3u ? 0.25 : role == 2u ? 0.6 : 1.0);
     float clipW = dot(p.clipRow, vec4(i.pos, 1.0));
     if (clipW <= 0.001) return 0.0;
-    float pixels = height * p.misc.y / clipW;
+    float pixels = vegPixels(i, p);
     float distanceFade = 1.0 - smoothstep(p.misc.x, p.cam.w, length(i.pos - p.cam.xyz));
     // Terrain LOD is discrete; only the continuous cover metric controls density.
-    // Grass (meadow-field blades, atlas bit 3, and clump grass, layers 0-3) is the carpet: it stays down to
-    // ~0.5 px so the RTS view keeps a continuous sward (owner ref 3: "actually add grass"). Woody cards keep 3-12 px.
-    bool grassCard = (i.atlasFrame & 8u) != 0u || (i.atlasFrame & 15u) < 4u;
-    float thin = (i.atlasFrame & 8u) != 0u ? vegFieldThin(i, p) : 1.0;
-    float density = grassCard ? min(min(distanceFade, thin), smoothstep(0.5, 2.0, pixels))
+    // Grass (meadow-field blades, atlas bit 3, and clump grass, layers 0-3) is the carpet (owner ref 3:
+    // "actually add grass", then "speckly / not solid - add density"): field blades stay down to ~0.25 px
+    // (the vertex stage widens them), clump grass to ~0.5 px. Woody cards keep 3-12 px.
+    bool fieldCard = (i.atlasFrame & 8u) != 0u;
+    bool grassCard = fieldCard || (i.atlasFrame & 15u) < 4u;
+    float thin = fieldCard ? vegFieldThin(i, p) : 1.0;
+    float cover = fieldCard ? smoothstep(0.25, 1.0, pixels) : smoothstep(0.5, 2.0, pixels);
+    float density = grassCard ? min(min(distanceFade, thin), cover)
                               : min(distanceFade, smoothstep(3.0, 12.0, pixels));
     float rank = fract(i.seed * 17.371 + 0.137);
     return clamp((density - rank) / 0.15, 0.0, 1.0);

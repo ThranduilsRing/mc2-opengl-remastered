@@ -57,7 +57,10 @@ float worldSwardPatch(vec2 worldXY) {
 const float kVegShoreDryWU = 70.0;   // the sward is driest at the beach and greens over this height above water
 void main() {
     vec4 texel = texture(uAtlas, vec3(v_uv, float(v_atlasLayer)));
-    if (texel.a < 0.5) discard;
+    // Coarse mips average thin blades toward zero alpha, so a fixed 0.5 cut erases distant grass
+    // into speckles; lift alpha with the sampled mip level (spatial, per pixel) to keep its cover.
+    float alphaLift = 1.0 + 0.30 * max(textureQueryLod(uAtlas, v_uv).x, 0.0);
+    if (texel.a * alphaLift < 0.5) discard;
     vec3 macro = rootMacro();
     // Cards are painted in the mission palette (data/vegetation/palettes/mc2_01.json):
     // their own hue and value separate species and contrast with the ground. The
