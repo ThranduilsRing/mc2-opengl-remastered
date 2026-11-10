@@ -368,11 +368,16 @@ def kit_seed_members(src, seed, use_cache=False):
             if rel in seen:
                 raise ValueError(f'duplicate kit member: {rel}')
             seen.add(rel)
-            stamp = content_stamp(path)
-            prior = cached.get(rel, {})
-            if prior.get('stamp') != stamp or prior.get('sha256') != row['sha256']:
-                kit_payload.checked_files(root, [row])
-            if path.stat().st_size != row['bytes'] or content_stamp(path) != stamp:
+            # Another lane hardlinking this seed file bumps its NTFS ChangeTime mid-check: re-hash and
+            # re-stamp (a few tries) instead of failing; real content changes still fail the hash.
+            for attempt in range(4):
+                stamp = content_stamp(path)
+                prior = cached.get(rel, {})
+                if prior.get('stamp') != stamp or prior.get('sha256') != row['sha256']:
+                    kit_payload.checked_files(root, [row])
+                if path.stat().st_size == row['bytes'] and content_stamp(path) == stamp:
+                    break
+            else:
                 raise ValueError(f'kit changed during verification: {rel}')
             updated[rel] = {'stamp': stamp, 'sha256': row['sha256']}
     for name in ('industrial', 'vehicle'):
