@@ -2255,13 +2255,13 @@ def require_head_exe(exe, head, root=None):
     return fp
 
 
-def viewer_payload(build_dir, build64_root, head):
+def viewer_payload(build_dir, build64_root, head, root=None):
     """Ship the rebuilt viewer and its complete runtime closure, never an install's old exe."""
     b64 = find_build_root(build_dir, build64_root)
     cfg = "" if is_single_config(build_dir, b64) else os.path.basename(build_dir)
     directory = os.path.join(b64, "out", "tools", "asset_viewer", cfg)
     exe = os.path.join(directory, "mc2_asset_viewer.exe")
-    if require_head_exe(exe, head)["dirty"]:
+    if require_head_exe(exe, head, root)["dirty"]:
         fail(f"REFUSING dirty viewer build: {exe}; commit first and rebuild")
     # Include loader-library objects too: a partial build must not ship an old link.
     for root, _dirs, files in os.walk(os.path.join(b64, "out", "tools", "asset_viewer")):
@@ -2456,7 +2456,7 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
                                   build64_root=args.build64_root, code_only=reuse)
     if exe_name != "mc2":
         with deploy_phase("viewer payload", 120):
-            items.extend(viewer_payload(build_dir, args.build64_root, source_head))
+            items.extend(viewer_payload(build_dir, args.build64_root, source_head, src_root))
     import kit_payload
     from smoke_lib import render_options_pin
     kit_manifest = None
