@@ -27,11 +27,11 @@ uint vegBlockIndex(VegInstance i, VegParamsData p) {
     return uint(row * side + col);
 }
 
-// Field carpet share kept by distance: full near the camera, thinning by rank to 20% by 2000 WU so a low,
+// Field carpet share kept by distance: full to 1500 WU, thinning by rank to 35% by 4500 WU so a low,
 // long view stays inside the visible list. The vertex stage widens the survivors by 1/sqrt of it, so the
-// gameplay-camera sward keeps its cover (owner ref 3) instead of opening onto bare ground.
+// gameplay-camera sward (~2600 WU, owner ref 3) keeps its cover instead of opening onto bare ground.
 float vegFieldThin(VegInstance i, VegParamsData p) {
-    return mix(1.0, 0.2, smoothstep(500.0, 2000.0, length(i.pos - p.cam.xyz)));
+    return mix(1.0, 0.35, smoothstep(1500.0, 4500.0, length(i.pos - p.cam.xyz)));
 }
 
 // One rank and one continuous scale, shared by the cull and draw. No alpha
@@ -45,10 +45,12 @@ float vegLodScale(VegInstance i, VegParamsData p) {
     float pixels = height * p.misc.y / clipW;
     float distanceFade = 1.0 - smoothstep(p.misc.x, p.cam.w, length(i.pos - p.cam.xyz));
     // Terrain LOD is discrete; only the continuous cover metric controls density.
-    // Meadow-field blades (atlas bit 3) are the carpet: they stay down to ~0.5 px so the RTS view keeps a continuous sward (owner ref 3).
-    bool field = (i.atlasFrame & 8u) != 0u;
-    float density = field ? min(min(distanceFade, vegFieldThin(i, p)), smoothstep(0.5, 2.0, pixels))
-                          : min(distanceFade, smoothstep(3.0, 12.0, pixels));
+    // Grass (meadow-field blades, atlas bit 3, and clump grass, layers 0-3) is the carpet: it stays down to
+    // ~0.5 px so the RTS view keeps a continuous sward (owner ref 3: "actually add grass"). Woody cards keep 3-12 px.
+    bool grassCard = (i.atlasFrame & 8u) != 0u || (i.atlasFrame & 15u) < 4u;
+    float thin = (i.atlasFrame & 8u) != 0u ? vegFieldThin(i, p) : 1.0;
+    float density = grassCard ? min(min(distanceFade, thin), smoothstep(0.5, 2.0, pixels))
+                              : min(distanceFade, smoothstep(3.0, 12.0, pixels));
     float rank = fract(i.seed * 17.371 + 0.137);
     return clamp((density - rank) / 0.15, 0.0, 1.0);
 }

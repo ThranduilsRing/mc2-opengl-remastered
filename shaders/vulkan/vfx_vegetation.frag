@@ -68,12 +68,14 @@ void main() {
     float cardValue = dot(texel.rgb, vec3(0.299, 0.587, 0.114));
     float groundValue = dot(macro, vec3(0.299, 0.587, 0.114));
     vec3 groundTone = macro * mix(0.75, 1.15, clamp(cardValue*2.0, 0.0, 1.0));
-    // Owner 2026-11-10: shrubs "take too much color from the ground beneath" (tan/orange
-    // blobs on sand). Woody cards (layers 4+) keep 92% of their own palette hue and a
-    // bright ground no longer lifts them past 1.15x; night still darkens them.
+    // Owner 2026-11-10: "grass should only take about 15% of its color from the ground - we
+    // need contrast" (shrubs read as ground-coloured blobs on sand). Every card keeps 85% of
+    // its own palette hue (was grass/tufts 0.75, woody 0.75); the ground's 15% plus its value
+    // (night stays dark) are all it inherits, and a bright ground lifts it at most 1.2x.
+    const float kVegOwnHue = 0.85;
     bool woody = v_atlasLayer >= 4u;
-    vec3 painted = texel.rgb * clamp(groundValue / kPaletteGround, 0.45, woody ? 1.15 : 1.6);
-    vec3 albedo = mix(groundTone, painted, woody ? 0.92 : 0.75);
+    vec3 painted = texel.rgb * clamp(groundValue / kPaletteGround, 0.45, 1.2);
+    vec3 albedo = mix(groundTone, painted, kVegOwnHue);
     // Stable per-instance value and warm/cool jitter, so a patch is not one flat tone.
     float jitter = fract(v_vegData.x * 7.31);
     albedo *= mix(0.80, 1.16, jitter) * mix(woody ? vec3(1.0,1.0,0.94) : vec3(1.05,0.98,0.88), vec3(0.93,1.03,1.01), v_vegData.x);
@@ -96,7 +98,7 @@ void main() {
         // The card keeps blade-to-blade value; straw reads lighter than olive as in the reference.
         vec3 sward = hue * (value / 0.40);
         float dry = pick < 0.10 ? 0.8 : smoothstep(0.80, 1.0, tip) * 0.5;      // a few dry blades and tips up close
-        albedo = mix(sward, kStraw * (value / 0.40) * 1.08, dry);
+        albedo = mix(groundTone, mix(sward, kStraw * (value / 0.40) * 1.08, dry), kVegOwnHue);   // 15% ground, as for every card
         albedo *= mix(vec3(0.62, 0.68, 0.52), vec3(1.0), smoothstep(0.0, 0.55, tip));
         albedo *= 1.0 + v_vegAux.y * (0.10 + 0.22 * tip);
         // Field wildflowers: white heads (a few yellow) on the tops of short stalks.
