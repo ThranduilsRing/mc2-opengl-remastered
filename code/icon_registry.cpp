@@ -235,6 +235,7 @@ void blit(std::string sheet, long index, bool back, uint32_t* dest, int stride, 
         warned.insert("tiered-hud:" + tiered);
         mc2::fmt::print_out("[ICON_REGISTRY] tiered mod HUD icon {} overrides the single-source icon\n", tiered);
     }
+    { static std::set<std::string> dbgSeen; if (dbgSeen.insert(single + (back ? "B" : "F") + std::to_string(index)).second) mc2::fmt::print_out("[ICONDBG] sheet={} stem={} idx={} back={} single={} sR={} tiered={} tR={} sheetRank={} legacyKey={} legacyFound={} singleFound={} tieredFound={}\n", sheet, stem, index, back, single, singleRank, tiered, tieredRank, LookupModPriority(sheet.c_str()), key, registry.find(key) != nullptr, registry.find(single) != nullptr, registry.find(tiered) != nullptr); }
     const Icon* found = registry.lookupHud(single, tiered, singleRank, tieredRank, key, LookupModPriority(sheet.c_str()));
     // MC2X transport indices also name bay pictures; MCO supplies loose chassis pictures.
     if (!found && !back) {
