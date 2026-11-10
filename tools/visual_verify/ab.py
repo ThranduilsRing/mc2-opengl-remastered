@@ -782,8 +782,12 @@ def seed_install(install, bookmarks, reference=DEFAULT_INSTALL):
         if not dst.is_file() and src.is_file():
             dst.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(src, dst)
-        if not dst.is_file():
-            missing.append(f"{dst} (not in reference {reference} either)")
+        repo = ROOT / "tests" / "visual" / "bookmarks" / (bm + ".json")
+        if not dst.is_file() and repo.is_file():
+            # capture.py copies the repo bookmark into its own out dir; an install ab.py does not own is never written to
+            print(f"[ab] bookmark {bm}: not in {install}/saved_bookmarks or {reference}; capture.py will use the repo copy {repo}", flush=True)
+        elif not dst.is_file():
+            missing.append(f"{dst} (not in reference {reference} or {repo.parent} either)")
     textures = install / "data" / "textures"
     for src in (reference / "data" / "textures").glob("*.burnin.*"):
         if not (textures / src.name).exists():
