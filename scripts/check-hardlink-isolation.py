@@ -260,7 +260,7 @@ def classify(rel: str) -> str:
         return "mutated"
     if rel.startswith("data/tgl/") and rel.endswith(".cookstamp"):
         return "mutated"
-    # Native recipes publish by temp+rename (cook_cache.cpp), never through an existing inode.
+    # Native recipes publish by temp+rename (cook_cache.cpp), never through an existing inode (a read touches the LRU mtime only when nlink == 1).
     if rel.startswith("cache/content-model/model-") and rel.endswith(".mci"):
         return "data"
     if "/" not in rel:

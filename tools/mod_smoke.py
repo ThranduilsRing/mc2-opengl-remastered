@@ -185,8 +185,8 @@ HDR_MAX_BYTES = 20 * 1024 * 1024   # skip the 128 MB 16k sky cubes
 STOCK_FSTS = ('mission.fst', 'tgl.fst', 'art.fst', 'textures.fst', 'misc.fst',
               'camera.fst', 'effect.fst', 'insignia.fst')
 IMMUTABLE_SUFFIXES = {'.fst', '.pak', '.exe', '.dll', '.spv', '.glsl', '.hglsl', '.frag', '.vert', '.comp', '.png', '.tga', '.bmp', '.dds', '.ktx2', '.glb', '.wav', '.ogg', '.ttf', '.otf'}
-# Cooked model entries replace via temp+rename (cook_cache.cpp), never write through
-# an existing inode. Sharing these 500+ MB saves a copy for every mod.
+# Cooked model entries replace via temp+rename (cook_cache.cpp), never write content through
+# an existing inode (a read only touches the mtime of an unshared, nlink == 1 entry). Sharing these 500+ MB saves a copy for every mod.
 IMMUTABLE_SUFFIXES.update(('.mci', '.exr'))
 # Legacy campaign images and movies are read-only payload too.
 IMMUTABLE_SUFFIXES.update(('.jpg', '.jpeg', '.bik'))

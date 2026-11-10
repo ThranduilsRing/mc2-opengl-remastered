@@ -35,9 +35,14 @@ std::optional<std::vector<uint8_t>> readEntry(std::string_view dir, const CacheK
     std::fclose(f);
     if (!read) return {};
     // A hit makes the entry recently used, so eviction in writeEntry is LRU, not FIFO.
-    // Best effort: a read-only or locked file still returns its bytes.
-    std::error_code touchEc;
-    std::filesystem::last_write_time(path, std::filesystem::file_time_type::clock::now(), touchEc);
+    // Best effort: a read-only or locked file still returns its bytes. A hardlinked entry (lane and mod installs share the
+    // E: cook cache by link) is NOT touched: the mtime lives in the shared inode, so touching it would change the size+mtime
+    // key the deploy's InodeSums (scripts/kit_payload.py) trusts for every other link. Such an entry keeps its write time.
+    std::error_code linkEc;
+    if (std::filesystem::hard_link_count(path, linkEc) == 1 && !linkEc) {
+        std::error_code touchEc;
+        std::filesystem::last_write_time(path, std::filesystem::file_time_type::clock::now(), touchEc);
+    }
     return bytes;
 }
 

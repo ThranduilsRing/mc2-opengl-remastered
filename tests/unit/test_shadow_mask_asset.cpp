@@ -146,6 +146,26 @@ TEST_CASE("cook cache: a read refreshes the entry so eviction is least-recently-
     CHECK(fs::exists(mc2cache::entryPath(dir, kind, 3)));
 }
 
+TEST_CASE("cook cache: a read leaves a hardlinked entry's mtime alone (installs share it by link; InodeSums keys on size+mtime)") {
+    namespace fs = std::filesystem;
+    const std::string dir = tempDir("hardlinked-read");
+    const mc2cache::CacheKind kind{"other-", ".bin", 4, 0};
+    const std::vector<uint8_t> bytes(16, 5);
+    const auto past = fs::file_time_type::clock::now() - std::chrono::hours(3);
+    for (uint64_t key : {1, 2}) {
+        REQUIRE(mc2cache::writeEntry(dir, kind, key, bytes));
+        fs::last_write_time(mc2cache::entryPath(dir, kind, key), past);
+    }
+    std::error_code ec;
+    fs::create_hard_link(mc2cache::entryPath(dir, kind, 1), fs::path(dir) / "install-link.bin", ec);
+    REQUIRE_FALSE(ec);
+    const auto sharedBefore = fs::last_write_time(mc2cache::entryPath(dir, kind, 1));
+    CHECK(mc2cache::readEntry(dir, kind, 1));
+    CHECK(fs::last_write_time(mc2cache::entryPath(dir, kind, 1)) == sharedBefore);   // shared inode: untouched
+    CHECK(mc2cache::readEntry(dir, kind, 2));
+    CHECK(fs::last_write_time(mc2cache::entryPath(dir, kind, 2)) > past);            // unshared entry: still LRU-touched
+}
+
 TEST_CASE("cook cache: a read-only entry still returns its bytes") {
     namespace fs = std::filesystem;
     const std::string dir = tempDir("read-only");
