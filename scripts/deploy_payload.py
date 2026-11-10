@@ -2467,7 +2467,10 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     if not args.classic_assets and not getattr(args, "skip_kit", False) and not reuse and remastered:
         try:
             with deploy_phase("kit preparation and importer", 600):
-                kit_receipts = kit_payload.HashReceipts(Path(target) / '.deploy-receipts.json')
+                # The kit stores are read-only reference trees: their stamped hashes are shared by every install.
+                kit_receipts = kit_payload.HashReceipts(
+                    Path(target) / '.deploy-receipts.json',
+                    shared=kit_payload.HashReceipts(kit_payload.cook_cache_root() / 'store-receipts.json'))
                 kit_manifest, kit_items = kit_payload.payload(src_root, receipts=kit_receipts)
                 items.extend(kit_items)
                 vehicle_manifest, vehicle_items = kit_payload.payload(src_root,

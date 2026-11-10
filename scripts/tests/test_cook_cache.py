@@ -153,3 +153,36 @@ def test_finish_keeps_recipes_it_does_not_own(world):
     other.write_bytes(b"another kit's recipe")
     kit.finish(a, manifest, exe(world, "a.exe", b"x"), cooker_for(a, calls), importer_key="src")
     assert other.is_file()
+
+
+def test_cache_hit_on_linked_recipes_does_not_rehash_them(world, monkeypatch):
+    manifest = world[2]
+    calls = []
+    tool = exe(world, "t.exe", b"x")
+    a, b, c = (install(world, n) for n in "abc")
+    kit.finish(a, manifest, tool, cooker_for(a, calls), importer_key="k")
+    kit.finish(b, manifest, tool, cooker_for(b, calls), importer_key="k")  # links the entries (verified, recorded)
+    hashed = []
+    real = kit.sha
+    monkeypatch.setattr(kit, "sha", lambda p: hashed.append(Path(p).name) or real(p))
+    kit.finish(c, manifest, tool, cooker_for(c, calls), importer_key="k")
+    assert len(calls) == 3
+    assert not [n for n in hashed if n.endswith(".mci")], hashed  # recipes trusted by inode+size+mtime
+    # a size change on the shared inode is never trusted
+    entry = next(kit.cook_cache_root().glob("models/*/*/model-*.mci"))
+    entry.write_bytes(b"corrupted!")
+    d = install(world, "d")
+    kit.finish(d, manifest, tool, cooker_for(d, calls), importer_key="k")
+    assert len(calls) == 4
+
+
+def test_shared_store_receipts_skip_rehash_across_installs(tmp_path, monkeypatch):
+    f = tmp_path / "ref.glb"
+    f.write_bytes(b"glb bytes")
+    shared = kit.HashReceipts(tmp_path / "shared.json")
+    first = kit.HashReceipts(tmp_path / "a.json", shared=shared)
+    want = first.digest(f)
+    first.save()
+    monkeypatch.setattr(kit, "sha", lambda p: pytest.fail("rehashed"))
+    second = kit.HashReceipts(tmp_path / "b.json", shared=kit.HashReceipts(tmp_path / "shared.json"))
+    assert second.digest(f) == want

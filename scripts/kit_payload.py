@@ -242,8 +242,11 @@ def sha(path):
 
 class HashReceipts:
     """Private, disposable hash cache; metadata drift forces byte verification."""
-    def __init__(self, path):
+    def __init__(self, path, shared=None):
+        """`shared`: another HashReceipts (machine-wide, for read-only reference files such as the kit store) consulted
+        on a miss; a row is adopted only when its full stamp (size, mtime, ctime, inode, NTFS ChangeTime) matches."""
         self.path = Path(path)
+        self.shared = shared
         try:
             self.rows = json.loads(self.path.read_text())
             if not isinstance(self.rows, dict):
@@ -274,13 +277,84 @@ class HashReceipts:
         old = self.rows.get(key)
         if not force and isinstance(old, list) and old[:-1] == stamp:
             return old[-1]
+        if self.shared is not None and not force and hasher is None and not variant:
+            other = self.shared.rows.get(key)
+            if isinstance(other, list) and other[:-1] == stamp:
+                self.rows[key] = other
+                return other[-1]
         value = (hasher or sha)(path)
         if self.stamp(path) != stamp:
             raise ValueError(f"file changed during hash verification: {path}")
         self.rows[key] = [*stamp, value]
+        if self.shared is not None and hasher is None and not variant:
+            self.shared.rows[key] = self.rows[key]
         return value
 
+    def save(self, merge=False):
+        if merge:  # a machine-wide table: keep other deploys' rows, ours win
+            try:
+                on_disk = json.loads(self.path.read_text())
+                if isinstance(on_disk, dict):
+                    self.rows = on_disk | self.rows
+            except (OSError, ValueError):
+                pass
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        pending = self.path.with_name(self.path.name + f'.{os.getpid()}.tmp')
+        try:
+            pending.write_text(json.dumps(self.rows, separators=(',', ':')))
+            os.replace(pending, self.path)
+        finally:
+            pending.unlink(missing_ok=True)
+        if self.shared is not None:
+            self.shared.save(merge=True)
+
+
+class InodeSums:
+    """Machine-wide disposable table: sha256 of hardlinked cache files, keyed by volume+inode with size and mtime.
+
+    A hardlink to a verified shared recipe is the same bytes as the verified file (same inode); other installs linking it
+    bump its ChangeTime, so a ChangeTime stamp cannot be trusted across installs, but inode+size+mtime can."""
+    def __init__(self, path):
+        self.path = Path(path)
+        try:
+            self.rows = json.loads(self.path.read_text())
+            if not isinstance(self.rows, dict):
+                self.rows = {}
+        except (OSError, ValueError):
+            self.rows = {}
+        self.dirty = False
+
+    @staticmethod
+    def ident(path):
+        st = os.stat(path)
+        return f"{st.st_dev}:{st.st_ino}", [st.st_size, st.st_mtime_ns], st.st_nlink
+
+    def known(self, path, sha_hex):
+        try:
+            key, meta, links = self.ident(path)
+        except OSError:
+            return False
+        row = self.rows.get(key)
+        return links > 1 and isinstance(row, list) and row[:2] == meta and row[2] == sha_hex
+
+    def record(self, path, sha_hex):
+        try:
+            key, meta, _ = self.ident(path)
+        except OSError:
+            return
+        if self.rows.get(key) != [*meta, sha_hex]:
+            self.rows[key] = [*meta, sha_hex]
+            self.dirty = True
+
     def save(self):
+        if not self.dirty:
+            return
+        try:
+            on_disk = json.loads(self.path.read_text())
+            if isinstance(on_disk, dict):
+                self.rows = on_disk | self.rows
+        except (OSError, ValueError):
+            pass
         self.path.parent.mkdir(parents=True, exist_ok=True)
         pending = self.path.with_name(self.path.name + f'.{os.getpid()}.tmp')
         try:
@@ -519,9 +593,23 @@ def finish(target_dir, manifest, tool, cooker=subprocess.run, *, kit_rel=KIT_REL
     except (OSError, ValueError, KeyError, TypeError, AttributeError):
         by_glb = {}
 
+    sums = InodeSums(cache_root / "inode-sums.json")
+
+    def verify_recipe(root, row):
+        """Raise unless root/row is the pinned recipe. A hardlinked file whose inode, size and mtime match the table
+        entry recorded when those bytes were verified is the same bytes; anything else is hashed."""
+        path = root / row['path']
+        try:
+            if path.stat().st_size == row['bytes'] and sums.known(path, row['sha256']):
+                return
+        except OSError:
+            pass
+        checked_files(root, [row], hashes)
+        sums.record(path, row['sha256'])
+
     def installed(row):
         try:
-            checked_files(cache, [row], hashes)
+            verify_recipe(cache, row)
             return re.fullmatch(r'model-[0-9a-f]{16}\.mci', row['path']) is not None
         except (OSError, ValueError, KeyError, TypeError):
             return False
@@ -533,8 +621,9 @@ def finish(target_dir, manifest, tool, cooker=subprocess.run, *, kit_rel=KIT_REL
             row = json.loads((entry / "row.json").read_text())
             if not re.fullmatch(r'model-[0-9a-f]{16}\.mci', row['path']):
                 return None
-            checked_files(entry, [row], hashes)
+            verify_recipe(entry, row)
             _link_or_copy(entry / row['path'], cache / row['path'])
+            sums.record(entry / row['path'], row['sha256'])  # now linked: the inode is verified for every install
             os.utime(entry)
             return row
         except (OSError, ValueError, KeyError, TypeError):
@@ -619,8 +708,10 @@ def finish(target_dir, manifest, tool, cooker=subprocess.run, *, kit_rel=KIT_REL
         raise ValueError(f"industrial cook incomplete: {len(out_rows)} recipes")
     # Stamped receipts (size, mtime, ctime, inode, NTFS ChangeTime) hold these hashes from this run; a drifted stamp
     # rehashes the bytes, so the evidence is the same and only unchanged files skip the second read.
-    checked_files(cache, out_rows, hashes)
+    for row in out_rows:
+        verify_recipe(cache, row)
     checked_files(kit, manifest["files"], hashes)
+    sums.save()
     value = dict(identity=version, importer=version, by_glb=rows,
                  recipes={rel: rows[model_shas[rel]]['path'] for rel in models}, files=out_rows)
     receipt.write_text(json.dumps(value, indent=2) + "\n")
