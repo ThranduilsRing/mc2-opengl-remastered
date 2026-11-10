@@ -2555,21 +2555,6 @@
    "new_array": 0,
    "owners": []
   },
-  "Pool": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "code/job_system.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    ""
-   ]
-  },
   "Radio": {
    "delete": 2,
    "delete_array": 0,

@@ -11,7 +11,7 @@
           "matrix_stride": null,
           "name": "inst",
           "offset": 0,
-          "type": "_617"
+          "type": "_622"
         }
       ],
       "name": "VegInst"
