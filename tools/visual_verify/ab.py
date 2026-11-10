@@ -427,22 +427,22 @@ def discover_bookmarks(a_dir: Path, b_dir: Path) -> list:
     return sorted(names)
 
 
-def stamp_cross_base(img: Image.Image) -> Image.Image:
-    """Burn a red CROSS-BASE banner into the top-left of a montage (the two sides are not a same-base A/B)."""
+def stamp_cross_base(img: Image.Image, text: str = "CROSS-BASE") -> Image.Image:
+    """Burn a red banner (CROSS-BASE and/or CROSS-DATA) into the top-left of a montage (not a same-base/same-data A/B)."""
     from PIL import ImageDraw, ImageFont
     d = ImageDraw.Draw(img)
     try:
         font = ImageFont.load_default(size=max(16, img.width // 40))
     except TypeError:
         font = ImageFont.load_default()
-    box = d.textbbox((8, 8), "CROSS-BASE", font=font)
+    box = d.textbbox((8, 8), text, font=font)
     d.rectangle((box[0] - 4, box[1] - 4, box[2] + 4, box[3] + 4), fill=(200, 0, 0))
-    d.text((8, 8), "CROSS-BASE", fill=(255, 255, 255), font=font)
+    d.text((8, 8), text, fill=(255, 255, 255), font=font)
     return img
 
 
 def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None, cross_base=False, data_delta_accepted=None,
-            exe_a_base_mismatch=None, exe_a_swap=None, hud=False):
+            exe_a_base_mismatch=None, exe_a_swap=None, hud=False, data_parity=None):
     """Returns the compared rows; compare.problems lists missing/empty evidence (callers exit nonzero on it)."""
     if not bookmarks:
         bookmarks = discover_bookmarks(gl_dir, vk_dir)
@@ -484,8 +484,9 @@ def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None, cross_
             mm.paste(fi, (0, m.height))
             m = mm
             flip_image(fm).save(bd / "flip.jpg", quality=85)
-        if cross_base:
-            m = stamp_cross_base(m)
+        cross_data = bool(data_parity and data_parity.get("cross_data"))
+        if cross_base or cross_data:
+            m = stamp_cross_base(m, " + ".join(t for t, on in (("CROSS-BASE", cross_base), ("CROSS-DATA", cross_data)) if on))
         m.save(bd / "montage.jpg", quality=85)
         h = heat(D.astype(np.uint8))
         if h.width > 1200:
@@ -517,7 +518,8 @@ def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None, cross_
     (out / "summary.json").write_text(json.dumps(
         {"gl": str(gl_dir), "vk": str(vk_dir), "threshold": THRESH, "cross_base": cross_base, "hud": hud,
          "data_delta_accepted": list(data_delta_accepted or []), "exe_a_base_mismatch": exe_a_base_mismatch,
-         "exe_a_swap": exe_a_swap,
+         "exe_a_swap": exe_a_swap, "data_parity": data_parity,
+         "cross_data": bool(data_parity and data_parity.get("cross_data")),
          "rows": rows, "problems": problems,
          "gpu": {"a": gpu_a, "b": gpu_b, "same": gpu_a == gpu_b}}, indent=2))
     print(f"[ab] wrote {out}")
@@ -609,6 +611,45 @@ def disk_guard(target: Path, need_bytes: int, min_free_gb: float | None = None) 
     if free < need:
         sys.exit(f"ab.py: {line} -> refused; free space or pass --stage-root on a volume with room")
     print(f"[ab] {line} -> ok", flush=True)
+
+
+def data_tree_files(install) -> dict:
+    """rel -> (size, mtime seconds) for the shared data a run renders: every staged 'link' file except the exe/pdb, the
+    manifest and shaders/ (those are the exe side of an A/B and are compared elsewhere)."""
+    out = {}
+    for rel, path in _walk_files(Path(install)):
+        low = rel.lower()
+        if stage_kind(rel) != "link" or low.startswith("shaders/") or rel == MANIFEST or ("/" not in low and low.endswith((".exe", ".pdb"))):
+            continue
+        st = os.stat(path)
+        out[rel] = (st.st_size, int(st.st_mtime))
+    return out
+
+
+def data_fingerprint(files: dict) -> str:
+    h = hashlib.sha256()
+    for rel in sorted(files):
+        h.update(f"{rel}\t{files[rel][0]}\t{files[rel][1]}\n".encode("utf-8"))
+    return h.hexdigest()
+
+
+def data_parity(install_a, install_b, full_install_a=False) -> dict:
+    """Compare the data trees the two sides will render -> {sha_a, sha_b, files_a, files_b, same, differing, cross_data, ...}."""
+    fa, fb = data_tree_files(install_a), data_tree_files(install_b)
+    differing = sorted(r for r in set(fa) | set(fb) if fa.get(r) != fb.get(r))
+    return {"sha_a": data_fingerprint(fa), "sha_b": data_fingerprint(fb), "files_a": len(fa), "files_b": len(fb),
+            "same": not differing, "differing": differing[:200], "differing_count": len(differing),
+            "full_install_a": bool(full_install_a), "cross_data": bool(differing)}
+
+
+def data_parity_lines(dp: dict) -> list:
+    if dp["same"]:
+        return [f"[ab] DATA: same ({dp['files_a']} files, fingerprint {dp['sha_a'][:12]})"]
+    lines = [f"[ab] DATA: differs ({dp['differing_count']} files); first {min(10, len(dp['differing']))}:"]
+    lines += ["[ab]   " + r for r in dp["differing"][:10]]
+    if dp["full_install_a"]:
+        lines.append("[ab] !!! CROSS-DATA: side A renders its own install's data (--full-install-a); the diff mixes exe AND data changes !!!")
+    return lines
 
 
 def stage_tree(install: Path, dest: Path) -> dict:
@@ -993,6 +1034,11 @@ def main(argv=None):
     ap.add_argument("--shaders-a", metavar="DIR",
                     help="with --exe-a/--exe-b: stage side A with the shaders/ of this install (e.g. v0.4) and rewrite A's manifest "
                          "rows from the swapped bytes")
+    ap.add_argument("--full-install-a", action="store_true",
+                    help="with --install-a/--install-b: side A renders ITS OWN install's data (v0.4 look vs tip look). The sides then "
+                         "differ in data as well as exe: CROSS-DATA is printed, stamped on the montage and recorded in summary.json. "
+                         "Without it a data difference between --install-a and --install-b is refused; the default exe-swap "
+                         "(--exe-a/--exe-b or --exe-a + --install-b) runs both exes on ONE data tree")
     ap.add_argument("--keep-stage", action="store_true",
                     help="leave the staged install_a/install_b dirs after the run (default: deleted when it ends, pass or fail)")
     ap.add_argument("--install", default=DEFAULT_INSTALL, help="data/DLL source for --exe-a/--exe-b")
@@ -1069,6 +1115,12 @@ def main(argv=None):
         parity = bookmark_parity_problems(ia, ib, a.bookmarks)
         if parity:
             sys.exit("ab.py: bookmarks are not seeded identically on both sides:\n  " + "\n  ".join(parity))
+        dpar = data_parity(ia, ib, a.full_install_a)
+        for line in data_parity_lines(dpar):
+            print(line, flush=True)
+        if dpar["cross_data"] and not a.full_install_a:
+            sys.exit("ab.py: the two sides render different data trees; an exe A/B must use one data tree. Use --exe-a/--exe-b or "
+                     "--exe-a with --install-b (both run the B data), or pass --full-install-a for a deliberate v0.4-vs-tip look sheet")
         exe_a_swap = None
         if a.exe_a and not a.exe_b:
             exe_a_swap = {"exe": a.exe_a, "exe_dir": str(Path(a.exe_a).parent), "b_install": a.install_b}
@@ -1089,7 +1141,7 @@ def main(argv=None):
         for line in capture_commit_report(identities[0]["commit"], identities[1]["commit"], worktree_head()):
             print(line, flush=True)
         compare(out / "a", out / "b", out / "cmp", crops, [s.strip() for s in a.bookmarks.split(",") if s.strip()],
-                cross_base=bool(bad), exe_a_base_mismatch=exe_a_base_mismatch, exe_a_swap=exe_a_swap, hud=a.hud)
+                cross_base=bool(bad), exe_a_base_mismatch=exe_a_base_mismatch, exe_a_swap=exe_a_swap, hud=a.hud, data_parity=dpar)
         rc = 1 if getattr(compare, "problems", None) else 0
     finally:
         cleanup_stage(a.staged, keep=a.keep_stage)  # a/, b/ and cmp/ stay; the 13 GB stage goes, pass or fail
