@@ -13,8 +13,8 @@ namespace mc2::msl {
 
 struct NodeInput {
     bool animated = false;
-    glm::quat base{1.0f, 0.0f, 0.0f, 0.0f};
-    glm::quat animation{1.0f, 0.0f, 0.0f, 0.0f};
+    glm::quat base = mc2::math::quatXYZW(0.0f, 0.0f, 0.0f, 1.0f);
+    glm::quat animation = mc2::math::quatXYZW(0.0f, 0.0f, 0.0f, 1.0f);
     glm::vec3 translation{};
 };
 
