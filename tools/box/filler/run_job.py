@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Box idle filler: one perf job on GPU <gpu> (caller holds /workspace/locks/gpu<gpu>). usage: run_job.py <gpu>
+"""Box idle filler: one perf job on GPU <gpu> (caller holds every slot /workspace/locks/gpu<gpu>.s<k>). usage: run_job.py <gpu>
 Picks the pose with the fewest runs for the current nifty sha, runs the game 20 s (GPU timestamps off), writes
 /workspace/filler/results/<sha>/<pose>-<gpu>-<n>.json (frame/MAIN_BUSY/wait_sim/tick stats + the last [PERF_COUNTERS v1] line).
 A run whose engine log shows no RTX 3060 device (missing line, llvmpipe/lavapipe/CPU fallback, another GPU) is a failure, never a result.

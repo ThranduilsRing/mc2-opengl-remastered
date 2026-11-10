@@ -108,7 +108,7 @@ T0=$(date +%s); tick() { echo "[box_run] stage=$1 secs=$(( $(date +%s) - T0 )) t
 }
 #@@END_LANE_FLOOR@@
 mkdir -p /workspace/locks $L $OUT
-GOT=""; WANTF=""; LWANT=/workspace/locks/$BR.want; trap 'rm -f "$LWANT"; [ -n "$WANTF" ] && rm -f "$WANTF"; [ -n "$GOT" ] && rm -f /workspace/locks/gpu$GOT.owner /workspace/locks/gpu$GOT.row' EXIT   # a dead run must not leave a stale owner file
+GOT=""; SB=""; WANTF=""; LWANT=/workspace/locks/$BR.want; trap 'rm -f "$LWANT"; [ -n "$WANTF" ] && rm -f "$WANTF"; [ -n "$SB" ] && rm -f /workspace/locks/$SB.owner /workspace/locks/$SB.row' EXIT   # a dead run must not leave a stale owner file
 exec 8>$L/.lane.lock; flock 8   # one run per lane at a time: src, install and out are shared (fd 8 is not passed on to rows)
 #@@DISK_GUARD@@
 FREE_GB=$(df -BG --output=avail /workspace | tail -1 | tr -dc 0-9)
@@ -183,21 +183,29 @@ if [ "$GPU" = auto ]; then cand="$AVAILABLE"
 elif [ "${MC2_GPU_STRICT:-0}" = 1 ]; then cand=$GPU
 else cand=$GPU; for o in $AVAILABLE; do [ "$o" = "$GPU" ] && continue; [ "$CAP0" = 1 ] && [ "$o" != 0 ] && continue; cand="$cand $o"; done; fi
 GOT=""
-for g in $cand; do exec 9>>/workspace/locks/gpu$g; flock -n 9 && { GOT=$g; break; }; done
+KS=${MC2_BOX_GPU_SLOTS:-${GPU_SLOTS:-3}}   # game slots per GPU (a counting semaphore of K flock files gpu<g>.s<k>; cores.env GPU_SLOTS, env MC2_BOX_GPU_SLOTS overrides); the gate GPU 3 stays one exclusive slot (legacy file gpu3)
+case $KS in ''|*[!0-9]*|0) KS=1;; esac
+try_slot() {   # first free (gpu, slot) among the candidates: non-blocking, fd 9 keeps the winner's flock
+  local c k
+  for c in $cand; do
+    if [ "$c" = 3 ]; then exec 9>>/workspace/locks/gpu3; flock -n 9 && { GOT=3; SLOT=0; SB=gpu3; return 0; }; continue; fi
+    for k in $(seq 0 $((KS-1))); do exec 9>>/workspace/locks/gpu$c.s$k; flock -n 9 && { GOT=$c; SLOT=$k; SB=gpu$c.s$k; return 0; }; done
+  done; return 1
+}
+try_slot
 if [ -z "$GOT" ]; then
   g=${cand%% *}; WANTF=/workspace/locks/gpu$g.want; echo "[box_run] all of ($cand) busy; waiting on GPU $g (up to 30 min)"
   while [ -z "$GOT" ]; do   # retry every candidate; flock is not FIFO and other lanes also wait
     touch $WANTF $LWANT   # $LWANT: lane_cleanup never evicts this lane while it waits
-    for c in $cand; do exec 9>>/workspace/locks/gpu$c; flock -n 9 && { GOT=$c; break; }; done
-    [ -n "$GOT" ] && break
+    try_slot && break
     [ $((SECONDS - LW0)) -gt 1800 ] && { echo "[box_run] LOCK_TIMEOUT: gave up waiting for a GPU"; exit 76; }
-    timeout 3 tail -f /dev/null
+    timeout 1 tail -f /dev/null
   done
 fi
 [ -n "$WANTF" ] && rm -f "$WANTF" "$LWANT"; WANTF=""
 [ "$GPU" != auto ] && [ "$GPU" != "$GOT" ] && [ "${MC2_GPU_STRICT:-0}" = 1 ] && { echo "[box_run] GPU_MISMATCH: asked for GPU $GPU, locked $GOT"; exit 77; }
-GPU=$GOT; echo "$$ $BR $SHA $(date -Is)" > /workspace/locks/gpu$GPU.owner
-echo "[box_run] gpu=$GPU locked lock_wait_secs=$((SECONDS - LW0))"
+GPU=$GOT; echo "$$ $BR $SHA $(date -Is)" > /workspace/locks/$SB.owner
+echo "[box_run] gpu=$GPU slot=$SLOT locked lock_wait_secs=$((SECONDS - LW0))"
 N=$GPU; bus=$(nvidia-smi --query-gpu=pci.bus_id --format=csv,noheader -i "$N"); bus=${bus: -12}
 export DRI_PRIME="pci-$(echo "$bus" | tr ':.' '__')" MESA_VK_DEVICE_SELECT_FORCE_DEFAULT_DEVICE=1
 export MC2_VK_DEVICE=NVIDIA SDL_VIDEODRIVER=x11 SDL_AUDIODRIVER=dummy OMP_NUM_THREADS=1 MC2_LOG=1 TMPDIR=$L/tmp
@@ -307,7 +315,7 @@ for row in "${ROWS[@]}"; do
       printf "%s\t%s\n" "$row" 7 >> $OUT/rows.tsv; RES=1; continue
     fi ;;
   esac
-  [ -n "$GOT" ] && [ "$RUN" = gr ] && echo "$row" > /workspace/locks/gpu$GOT.row   # STATUS.json shows the row the GPU is on
+  [ -n "$GOT" ] && [ "$RUN" = gr ] && echo "$row" > /workspace/locks/$SB.row   # STATUS.json shows the row the GPU is on
   $RUN timeout -k 30 $TMO bash -c 'cd "$1" && eval "$2"' _ "$S" "$cmd" > $OUT/$name.log 2>&1; rc=$?   # eval from argv: a row may carry spaces, quotes, slashes
   case $row in determinism:*|saveload*) [ $rc != 0 ] && grep -aq "baseline FAIL no baseline at\|check: no baseline for" $OUT/$name.log && rc=78;; esac   # NO_BASELINE: own verdict, never a plain FAIL
   echo "[box_run] row=$row rc=$rc"; grep -a "^| mc2_\|result=\|DEPLOY_FINGERPRINT\|FAIL\|PASS" $OUT/$name.log | head -8 | cut -c1-220
@@ -672,7 +680,9 @@ def main():
             (local_out / stale).unlink(missing_ok=True)
     # one ssh: the remote script arrives on stdin (cat > file) and runs at once; rows travel as one base64 argument
     script = f"/workspace/lanes/.box_lane_{branch}.sh"
-    runner = "env MC2_GPU_STRICT=1 bash" if a.gpu_strict else "bash"   # a busy --gpu N falls back to auto unless --gpu-strict
+    runner = "env MC2_GPU_STRICT=1 bash" if a.gpu_strict else "bash"
+    if os.environ.get("MC2_BOX_GPU_SLOTS", "").isdigit():   # K override for this run only (the box default is GPU_SLOTS in cores.env)
+        runner = f"env MC2_BOX_GPU_SLOTS={os.environ['MC2_BOX_GPU_SLOTS']} {runner}"   # a busy --gpu N falls back to auto unless --gpu-strict
     if a.queue:   # submit to the pueue group and return the task id; --wait/--status give the verdict later
         if gpu == "auto":
             if cap0:

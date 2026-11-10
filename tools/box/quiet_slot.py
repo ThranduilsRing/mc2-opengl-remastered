@@ -50,9 +50,10 @@ def gpu_cpus(gpu):
 def my_gpu(pid=None):
     pid = os.getpid() if pid is None else pid
     for g in range(4):
-        own = sup.read_pidfile(f"{sup.LOCKS}/gpu{g}.owner")
-        if own and sup.alive(own) and sup.descends(pid, own):
-            return g
+        for nm in sup.status.slot_names(g):
+            own = sup.read_pidfile(f"{sup.LOCKS}/{nm}.owner")
+            if own and sup.alive(own) and sup.descends(pid, own):
+                return g
     return None
 
 
@@ -144,7 +145,7 @@ def main(argv=None):
         rec["cpus"] = spec
         buses, apps = sup.nvidia_query()
         bus = (buses or {}).get(gpu)
-        own = sup.read_pidfile(f"{sup.LOCKS}/gpu{gpu}.owner")
+        own = next((o for o in (sup.read_pidfile(f"{sup.LOCKS}/{nm}.owner") for nm in sup.status.slot_names(gpu)) if o and sup.alive(o)), None)
         load0, st0, t0 = os.getloadavg(), cpu_stat(), time.time()
         rc = subprocess.run(cmd).returncode  # background-launch: allow runs on the Linux box only (wraps the quiet-slot command); never this desktop
         wall = time.time() - t0
