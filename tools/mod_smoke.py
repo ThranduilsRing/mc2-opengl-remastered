@@ -201,6 +201,26 @@ MANIFEST_SKIP_NAMES = ('mc2-launcher.exe', 'run-mc2.bat', 'run-with-log.bat')
 AI_DEADLINE_S = 20.0
 
 
+# Opt-in HUD-ON capture (--hud-capture). Reuses the engine's existing dev paths, no new gate:
+# MC2_PLAY_MISSION_SKIP_CINEMATICS ends the opening movie mode/letterbox (the harness skip used by tools/play_mission.py)
+# and MC2_VISUAL_CAPTURE_FRAME/_DIR writes one PNG of the presented frame; without MC2_VISUAL_CAPTURE_CLEAN the HUD stays in it.
+HUD_CAPTURE_FRAME = 700
+
+
+def hud_capture_env(out_dir: Path, frame: int = HUD_CAPTURE_FRAME) -> dict[str, str]:
+    return {'MC2_PLAY_MISSION': '1', 'MC2_PLAY_MISSION_SKIP_CINEMATICS': '1', 'MC2_PLAY_MISSION_SECONDS': '600',
+            'MC2_VISUAL_CAPTURE_FRAME': str(frame), 'MC2_VISUAL_CAPTURE_DIR': str(out_dir)}
+
+
+def collect_hud_png(out_dir: Path, dest: Path) -> str | None:
+    """Copy the captured frame next to the mod's log; None when the engine wrote nothing."""
+    pngs = sorted(out_dir.glob('*.png'))
+    if not pngs:
+        return None
+    shutil.copy2(pngs[-1], dest)
+    return str(dest)
+
+
 def split_csv(value: str) -> tuple[str, ...]:
     return tuple(p.strip() for p in value.split(',') if p.strip())
 
@@ -843,7 +863,7 @@ WALLTIME_CAP_RE = re.compile(r'walltime cap hit at [0-9.]+s')
 
 
 def run_mod(staged: Path, stem: str, duration: int, timeout: int, ref_exe: Path | None = None,
-            window: int = 0, known_failures=(), grace_s: int | None = None) -> dict:
+            window: int = 0, known_failures=(), grace_s: int | None = None, hud_env: dict | None = None) -> dict:
     # Give the bounded host-lease wait its own allowance in the outer watchdog;
     # a queue wait is not a game hang.
     lease_wait = min(float(os.environ.get('MC2_HOST_LEASE_TIMEOUT') or 1200), 1200)
@@ -872,6 +892,9 @@ def run_mod(staged: Path, stem: str, duration: int, timeout: int, ref_exe: Path 
     save_dir = staged.parent / 'savegame' / staged.name
     save_dir.mkdir(parents=True, exist_ok=True)
     env['MC2_SAVE_DIR'] = str(save_dir)
+    if hud_env:
+        Path(hud_env['MC2_VISUAL_CAPTURE_DIR']).mkdir(parents=True, exist_ok=True)
+        env.update(hud_env)
     env.setdefault('MC2_MECH_BATCHER_STATS', '1')
     env.setdefault('MC2_MOD_HEALTH_DIAG', '1')  # enables the [MOD_HEALTH v1] AI-liveness lines
     print('[mod_smoke] run:', ' '.join(cmd), flush=True)
@@ -1101,8 +1124,13 @@ def battery(args) -> int:
                           'note': 'asset-load pre-check failed'}
                 (staged / 'smoke.log').write_text(json.dumps(precheck), encoding='utf-8')
             else:
+                hud_dir = run_root / f'{folder}-{index}-hud' if getattr(args, 'hud_capture', False) else None
                 result = run_mod(staged, stem, args.duration, timeout, getattr(args, 'ref_exe', None),
-                                 args.window, known_failures, **({'grace_s': grace} if grace else {}))
+                                 args.window, known_failures, **({'grace_s': grace} if grace else {}),
+                                 **({'hud_env': hud_capture_env(hud_dir, args.hud_frame)} if hud_dir else {}))
+                if hud_dir:
+                    result['hud_png'] = collect_hud_png(hud_dir, run_root / f'{folder}-{index}-hud.png')
+                    print(f"[mod_smoke] {display} {stem} hud_png={result['hud_png']}", flush=True)
                 print(f"[mod_smoke] {display} {stem} KNOWN={result.get('content_known', {})} NEW={result.get('content_new', {})}", flush=True)
                 if precheck is not None:
                     result['asset_load'] = precheck
@@ -1222,6 +1250,10 @@ def main() -> int:
                     help="run_smoke load/walltime grace beyond --duration (default: run_smoke's); a cold per-stage model cook needs minutes")
     ap.add_argument('--no-front-end', dest='front_end', action='store_false',
                     help='skip the bounded front-end walk (briefing, mech lab/bay, launch) run for MCO and MCO-Carver5')
+    ap.add_argument('--hud-capture', action='store_true',
+                    help='opt-in: skip the opening cinematic and write one HUD-ON PNG per mod mission next to its log (off in the nightly)')
+    ap.add_argument('--hud-frame', type=int, default=HUD_CAPTURE_FRAME,
+                    help='frame counter of the --hud-capture PNG (default %(default)s)')
     ap.add_argument('--keep-stages', action='store_true',
                     help='keep every staged install (default: delete a stage after a PASS)')
     args = ap.parse_args()
