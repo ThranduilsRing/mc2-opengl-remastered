@@ -157,7 +157,7 @@ TEST_CASE("msl_node_walk/cached order walk equals a cache-free reference on a mu
     // Parents after children in index order in the second topology: the cached order must still put parents first.
     const std::vector<std::vector<int>> topologies{
         {-1, 0, 1, 1, 0, 4, 5, 4, -1, 8, 9},
-        {7, 3, 3, -1, 3, 9, 4, 0, -1, -1, 8, 3},   // node set changes size and every link
+        {7, 3, 3, -1, 3, 9, 4, 3, -1, -1, 8, 3},   // node set changes size and every link (acyclic: the reference recurses)
         {-1, 0, 0, 1, 2},
         {-1, 0, 1, 2, 3, 4, 5, 6},                 // a chain
     };
