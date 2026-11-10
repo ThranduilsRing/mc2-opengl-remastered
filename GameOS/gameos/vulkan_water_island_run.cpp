@@ -6,6 +6,7 @@
 #include "vk_one_shot.h"
 #include "vk_barrier_batch_vk.h"
 #include <cmath>
+#include <type_traits>
 #include "mc2fmt.h"
 #include "utils/vec.h"   // inverseMat4
 #include "vulkan_shadow_island_live.h"   // the bake mask
@@ -319,9 +320,10 @@ extern "C" int mc2_vk_water_island_run(
         fsLocal.DEEP_COLOR[3] = reflectThisFrame ? 1.0f : 0.0f;
         std::memcpy(base + fsUboOff, &fsLocal, sizeof(WaterFsParams));
         // Frame-owned host writes, after this descriptor slot's fence; no readback or extra submit.
-        mc2::waterreactive::GpuFrame reactive;
+        // The snapshot is written straight into the frame-ring slot (no 139 KB stack frame, no copy). GpuFrame is trivially copyable.
+        static_assert(std::is_trivially_copyable_v<mc2::waterreactive::GpuFrame>);
+        auto& reactive = *reinterpret_cast<mc2::waterreactive::GpuFrame*>(base + reactiveOff);
         mc2::waterreactive::buffer().snapshot(scenarioTime, reactive);
-        std::memcpy(base + reactiveOff, &reactive, sizeof(reactive));
         {
             static auto lastLog = clk::now() - std::chrono::seconds(2);
             static const bool logStats = mc2_diag::tagRequested("WATER_REACTIVE");   // MC2_DIAG_TAGS=WATER_REACTIVE
