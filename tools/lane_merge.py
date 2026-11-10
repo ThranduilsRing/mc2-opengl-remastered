@@ -20,6 +20,9 @@ Usage:
   --message   merge commit subject (default: "merge lane: <subject of the lane tip>"); with --batch a template with {subject} and {n}
   --trailer   commit trailer line (default $MC2_COMMIT_TRAILER (or $MC2_MERGE_TRAILER), else none)
   --dry-run   print the plan (base, file counts, overlap, predicted conflicts); change nothing
+  --conflict-dir DIR  (--batch --dry-run only) per tip in batch order, virtually merged against the running virtual head:
+              DIR/<NN>-<tip>/<path> = the conflicted file with markers, plus summary.txt (sha, paths, hunk counts, earlier tips
+              touching the same file, and a heuristic "same file, both tips" list to spot duplicate fixes); exits 0
   --resolution PATH=FILE  reviewed conflict result; in --batch use TIP:PATH=FILE (FILE - deletes; repeatable)
   --root DIR  repo to operate on (default: this checkout)
   --tools-dir DIR  where the ratchet scripts live (default: <root>/tools); same relative layout
@@ -59,7 +62,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(HERE, "..", "scripts"))
 import console_child  # noqa: E402  (windowless console children without a conhost each)
 sys.path.insert(0, HERE)
-import _git_util, lane_merge_baseline, lane_merge_trust  # noqa: E402  (shared git helpers; the trusted-copy hand-off)
+import _git_util, lane_merge_baseline, lane_merge_conflicts, lane_merge_trust  # noqa: E402  (shared git helpers; the trusted-copy hand-off)
 from lint_slots import LintSlots, cpu_masks, pin_cpus, scratch_dir, sweep_stale_scratch  # noqa: E402
 from lane_precheck import PRECHECK_TREE, Stop, TreeLock, _inside, ensure_precheck_tree, failure_line, failure_summary, precheck_scratch_base  # noqa: E402,F401
 from lane_sim_rows import SIM_ROWS, default_sim_install, run_sim_rows, sim_rows_satisfied, sim_sensitive_paths, tip_changed_paths  # noqa: E402,F401
@@ -1184,6 +1187,8 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--message", help="merge commit subject; with --batch a template: {subject} = the tip's subject, {n} = its position")
     ap.add_argument("--trailer", help="commit trailer line (default $MC2_COMMIT_TRAILER (or $MC2_MERGE_TRAILER), else none)")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--conflict-dir", metavar="DIR",
+                    help="with --batch --dry-run: write each tip's conflicted files (markers) and a summary.txt to DIR/<NN>-<tip>/; changes nothing else")
     ap.add_argument("--regenerate-all", action="store_true",
                     help="regenerate artifacts without merging; --dry-run checks committed HEAD in an isolated clone")
     ap.add_argument("--root", default=os.path.abspath(os.path.join(HERE, "..")))
@@ -1229,8 +1234,13 @@ def plan_batch(root: str, args, refs: list[str], resolutions_for) -> bool:
     """Print the plan of every tip, each against the virtual result of the earlier ones (a conflicted tip's tree is used as is, so
     later tips are planned approximately). -> True when some tip would abort."""
     would_abort, head_ref, blocked = False, "HEAD", False
+    preview = (lane_merge_conflicts.ConflictPreview(root, args.conflict_dir, "HEAD", lambda f: is_generated(f) or is_regenerable(f))
+               if getattr(args, "conflict_dir", None) else None)
     for i, ref in enumerate(refs, 1):
         p = plan(root, ref, head_ref)
+        if preview and not p["contained"]:
+            ptree, pconf = virtual_merge(root, p["sha"], head_ref)
+            preview.add_tip(i, ref, p["sha"], ptree, pconf)
         resolutions = resolutions_for(p)
         subject = tip_subject(root, p["sha"])
         message = render_message(args.message, subject, i) if args.message else f"merge lane: {subject}"
@@ -1242,6 +1252,8 @@ def plan_batch(root: str, args, refs: list[str], resolutions_for) -> bool:
         if head_ref is None:
             print("PLAN the remaining tips cannot be planned: git produced no tree for this one")
             break
+    if preview:
+        print(preview.one_line(len(refs)))
     return would_abort
 
 
@@ -1344,6 +1356,8 @@ def main(argv: list[str] | None = None) -> int:
             return resolutions
 
         if args.dry_run:
+            if args.conflict_dir and not batch:
+                ap.error("--conflict-dir needs --batch")
             would_abort = plan_batch(root, args, refs, resolutions_for)
             print("PLAN then: " + ", ".join(label for label, _, _ in RATCHETS)
                   + "; regenerate-all and commit changed artifacts; follow-up commit of tightened baselines only"
@@ -1351,8 +1365,10 @@ def main(argv: list[str] | None = None) -> int:
             print("[dry-run] nothing changed")
             if would_abort:
                 print("lane_merge: the merge would abort on the blocking conflicts above", file=sys.stderr)
-            return 5 if would_abort else 0
+            return 5 if would_abort and not args.conflict_dir else 0   # with --conflict-dir the folder is the report
         refuse_direct_nifty(root, args.hotfix)
+        if args.conflict_dir:
+            ap.error("--conflict-dir only works with --dry-run")
         if batch and not (args.stage or args.no_receipt_check or os.environ.get("MC2_NO_RECEIPT_CHECK")):
             missing = missing_receipts(root, refs)
             if missing:
