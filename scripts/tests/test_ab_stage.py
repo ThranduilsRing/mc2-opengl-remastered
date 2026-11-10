@@ -74,7 +74,7 @@ def test_stage_removed_after_success_and_failure(tmp_path, monkeypatch, fail):
     inst, ea, eb = _stage_setup(tmp_path, monkeypatch)
     seen = []
 
-    def capture(install, bms, out, env):
+    def capture(install, bms, out, env, **kw):
         seen.append(Path(install))
         assert Path(install).is_dir()
         if fail and len(seen) == 2:
@@ -92,7 +92,7 @@ def test_stage_removed_after_success_and_failure(tmp_path, monkeypatch, fail):
 def test_keep_stage_leaves_the_stage(tmp_path, monkeypatch):
     inst, ea, eb = _stage_setup(tmp_path, monkeypatch)
     seen = []
-    monkeypatch.setattr(ab, "run_capture", lambda install, *a: seen.append(Path(install)))
+    monkeypatch.setattr(ab, "run_capture", lambda install, *a, **kw: seen.append(Path(install)))
     with pytest.raises(SystemExit):
         ab.main(["--bookmarks", "x", "--exe-a", str(ea), "--exe-b", str(eb), "--install", str(inst),
                  "--out-root", str(tmp_path / "o"), "--keep-stage"])
@@ -101,7 +101,7 @@ def test_keep_stage_leaves_the_stage(tmp_path, monkeypatch):
 
 def test_user_supplied_installs_are_never_deleted(tmp_path, monkeypatch):
     inst, ea, eb = _stage_setup(tmp_path, monkeypatch)
-    monkeypatch.setattr(ab, "run_capture", lambda *a: None)
+    monkeypatch.setattr(ab, "run_capture", lambda *a, **kw: None)
     monkeypatch.setattr(ab, "seed_install", lambda *a, **k: None)
     monkeypatch.setattr(ab, "payload_identity", lambda d: {"commit": "a" * 40, "payload": {}, "manifest": {}})
     with pytest.raises(SystemExit):
@@ -123,7 +123,7 @@ def test_disk_guard_counts_stage_size_and_blocks_main(tmp_path, monkeypatch):
     free = ab.shutil.disk_usage(tmp_path).free
     monkeypatch.setattr(ab, "DISK_GUARD_FREE_GB", 0)
     monkeypatch.setattr(ab, "estimate_stage_bytes", lambda *a: free + ab.GB)
-    monkeypatch.setattr(ab, "run_capture", lambda *a: pytest.fail("staged past the disk guard"))
+    monkeypatch.setattr(ab, "run_capture", lambda *a, **kw: pytest.fail("staged past the disk guard"))
     with pytest.raises(SystemExit, match="DISK_GUARD"):
         ab.main(["--bookmarks", "x", "--exe-a", str(ea), "--exe-b", str(eb), "--install", str(inst), "--out-root", str(tmp_path / "o")])
     assert not (tmp_path / "_ab-stage" / "o" / "install_a").exists()
@@ -143,7 +143,7 @@ def test_shaders_a_stages_side_a_with_the_other_shaders_and_fixes_the_manifest(t
     (v04 / "shaders/vulkan/x.spv").write_bytes(b"v04 spv")
     seen = {}
 
-    def capture(install, bms, out, env):
+    def capture(install, bms, out, env, **kw):
         if Path(out).name == "a":
             ident = ab.payload_identity(install)  # the rewritten manifest verifies the swapped bytes
             seen.update(spv=(Path(install) / "shaders/vulkan/x.spv").read_bytes(), sha=ident["payload"]["shaders/vulkan/x.spv"])
@@ -171,7 +171,7 @@ def test_capture_commit_report_warns_when_b_is_not_head():
 
 def test_main_prints_commit_report_after_capture(tmp_path, monkeypatch, capsys):
     inst, ea, eb = _stage_setup(tmp_path, monkeypatch)
-    monkeypatch.setattr(ab, "run_capture", lambda *a: None)
+    monkeypatch.setattr(ab, "run_capture", lambda *a, **kw: None)
     monkeypatch.setattr(ab, "worktree_head", lambda: "f" * 40)
     with pytest.raises(SystemExit):
         ab.main(["--bookmarks", "x", "--exe-a", str(ea), "--exe-b", str(eb), "--install", str(inst), "--out-root", str(tmp_path / "o")])

@@ -212,6 +212,38 @@ def pin_compile_cores(root):
         return 0
 
 
+def prune_orphan_spv(root, tree, known_outputs):
+    """Delete <tree>/shaders/**/*.spv that no build edge produces any more (a shader source deleted from the tree leaves its old
+    .spv behind and the deploy SPIR-V audit then fails). `known_outputs` is the set of output paths ninja knows, relative to the
+    tree or absolute. Only files under <tree>/shaders are ever touched. Returns the removed paths."""
+    base = os.path.realpath(os.path.join(root, tree))
+    shaders = os.path.join(base, "shaders")
+    if not os.path.isdir(shaders) or not known_outputs:
+        return []
+    known = {os.path.normcase(os.path.realpath(o if os.path.isabs(o) else os.path.join(base, o))) for o in known_outputs}
+    removed = []
+    for dirpath, _dirs, files in os.walk(shaders):
+        for name in files:
+            path = os.path.join(dirpath, name)
+            if name.endswith(".spv") and not os.path.islink(path) and os.path.normcase(os.path.realpath(path)) not in known:
+                os.remove(path)
+                removed.append(path)
+                print(f"[ninja_build] pruned orphan shader output (no build edge makes it): {os.path.relpath(path, base)}", flush=True)
+    return removed
+
+
+def ninja_outputs(root, tree):
+    """Every output path of the tree's build graph (`ninja -t targets all`), or an empty set when ninja cannot say."""
+    try:
+        out = subprocess.run([NINJA, "-C", f"{root}/{tree}", "-t", "targets", "all"], capture_output=True, text=True, timeout=120,
+                             **console_child.child_kwargs(redirected=True))
+    except (OSError, subprocess.SubprocessError):
+        return set()
+    if out.returncode != 0:
+        return set()
+    return {line.rsplit(": ", 1)[0] for line in out.stdout.splitlines() if ": " in line}
+
+
 def main():
     root =os.path.dirname(os.path.dirname(os.path.abspath(__file__))).replace("\\", "/")
     argv = sys.argv[1:]
@@ -255,6 +287,8 @@ def main():
     rc = under_vcvars(command, env)
     if rc == 0 and not dry_run and drop_oversize_pdb(root, tree):
         rc = under_vcvars(command, env)  # Fresh full symbols from the same objects; no second compile.
+    if rc == 0 and not dry_run:   # fresh build.ninja (cmake regenerated it): drop shader outputs whose source is gone
+        prune_orphan_spv(root, tree, ninja_outputs(root, tree))
     if started is not None:
         print(f"[warm] done rc={rc} elapsed={time.monotonic() - started:.0f}s", flush=True)
     if tokens is not None:
