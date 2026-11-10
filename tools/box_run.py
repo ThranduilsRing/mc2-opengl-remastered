@@ -183,22 +183,30 @@ if [ "$GPU" = auto ]; then cand="$AVAILABLE"
 elif [ "${MC2_GPU_STRICT:-0}" = 1 ]; then cand=$GPU
 else cand=$GPU; for o in $AVAILABLE; do [ "$o" = "$GPU" ] && continue; [ "$CAP0" = 1 ] && [ "$o" != 0 ] && continue; cand="$cand $o"; done; fi
 GOT=""
-KS=${MC2_BOX_GPU_SLOTS:-${GPU_SLOTS:-3}}   # game slots per GPU (a counting semaphore of K flock files gpu<g>.s<k>; cores.env GPU_SLOTS, env MC2_BOX_GPU_SLOTS overrides); the gate GPU (GATE_GPU in cores.env) stays one exclusive slot (legacy file gpu<N>)
+KS=${MC2_BOX_GPU_SLOTS:-${GPU_SLOTS:-3}}   # game slots per GPU (a counting semaphore of K flock files gpu<g>.s<k>; cores.env GPU_SLOTS, env MC2_BOX_GPU_SLOTS overrides); gate and perf rows (ab:*, gpu-passes, any --gate run) take ALL K slots plus the legacy gate file gpu<g> (exclusive); every other game row takes ONE slot, on the gate GPU too
 case $KS in ''|*[!0-9]*|0) KS=1;; esac
-try_slot() {   # first free (gpu, slot) among the candidates: non-blocking, fd 9 keeps the winner's flock
-  local c k
+[ "$KS" -gt 5 ] && KS=5   # exclusive rows keep slots on fds 11-15
+EXCL=${MC2_BOX_GATE:+1}; for r in "${ROWS[@]}"; do case $r in ab:*|gpu-passes) EXCL=1;; esac; done
+try_slot() {   # first free (gpu, slot) among the candidates: non-blocking, fd 9 keeps the winner's flock; an exclusive row (EXCL) holds the legacy gpu<c> file on fd 9 and every slot file on fds 11.., all-or-nothing
+  local c k ok
   for c in $cand; do
-    if [ "$c" = "${GATE_GPU:-0}" ]; then exec 9>>/workspace/locks/gpu${GATE_GPU:-0}; flock -n 9 && { GOT=${GATE_GPU:-0}; SLOT=0; SB=gpu${GATE_GPU:-0}; return 0; }; continue; fi
+    if [ -n "$EXCL" ]; then
+      exec 9>>/workspace/locks/gpu$c; flock -n 9 || continue
+      ok=1; for k in $(seq 0 $((KS-1))); do eval "exec $((11+k))>>/workspace/locks/gpu$c.s$k"; flock -n $((11+k)) || { ok=""; break; }; done
+      [ -n "$ok" ] && { GOT=$c; SLOT=all; SB=gpu$c; return 0; }
+      release_slots; continue
+    fi
     for k in $(seq 0 $((KS-1))); do exec 9>>/workspace/locks/gpu$c.s$k; flock -n 9 && { GOT=$c; SLOT=$k; SB=gpu$c.s$k; return 0; }; done
   done; return 1
 }
+release_slots() { local k; exec 9>&-; for k in 11 12 13 14 15; do eval "exec $k>&-"; done; }
 try_slot
 if [ -z "$GOT" ]; then
   g=${cand%% *}; WANTF=/workspace/locks/gpu$g.want; echo "[box_run] all of ($cand) busy; waiting on GPU $g (up to 30 min)"
   while [ -z "$GOT" ]; do   # retry every candidate; flock is not FIFO and other lanes also wait
     touch $WANTF $LWANT   # $LWANT: lane_cleanup never evicts this lane while it waits
     try_slot && break
-    [ $((SECONDS - LW0)) -gt 1800 ] && { echo "[box_run] LOCK_TIMEOUT: gave up waiting for a GPU"; exit 76; }
+    [ $((SECONDS - LW0)) -gt 1800 ] && { echo "[box_run] LOCK_TIMEOUT: gave up waiting for a GPU"; printf "gpu-lock\t76\n" >> "$OUT/rows.tsv"; exit 76; }
     timeout 1 tail -f /dev/null
   done
 fi
@@ -210,7 +218,7 @@ N=$GPU; bus=$(nvidia-smi --query-gpu=pci.bus_id --format=csv,noheader -i "$N"); 
 export DRI_PRIME="pci-$(echo "$bus" | tr ':.' '__')" MESA_VK_DEVICE_SELECT_FORCE_DEFAULT_DEVICE=1
 export MC2_VK_DEVICE=NVIDIA SDL_VIDEODRIVER=x11 SDL_AUDIODRIVER=dummy OMP_NUM_THREADS=1 MC2_LOG=1 TMPDIR=$L/tmp
 mkdir -p $TMPDIR; cv=GPU${N}_CPUS; CPUS=${!cv:-"$((4*N))-$((4*N+3))"}   # cores.env GPU<n>_CPUS, else the old 4-per-GPU formula; box quota is ~30.7 CPUs and a game uses ~1 core: rows get 4 cores of their GPU; builds use cores 16-63 at nice 19 (-j24)
-gr() { taskset -c "$CPUS" xvfb-run -a -s "-screen 0 1920x1080x24" "$@" 9>&- 8>&-; }   # -a: free display picked per run, fd 9 (GPU lock) not inherited
+gr() { taskset -c "$CPUS" xvfb-run -a -s "-screen 0 1920x1080x24" "$@" 9>&- 11>&- 12>&- 13>&- 14>&- 15>&- 8>&-; }   # -a: free display picked per run, fds 9 and 11-15 (GPU lock) not inherited
 }
 # CPU rows first, then game rows: the GPU lock is only ever held around the game rows
 # determinism:* and saveload* run the engine with --headless (no window, no device: gameos_graphics.cpp), so they are CPU rows too (r7 finding 3)
@@ -234,7 +242,7 @@ for row in "${ROWS[@]}"; do
     take_lock
     gr timeout -k 30 600 python3 tools/visual_verify/capture.py --install "$I" --bookmarks "$marks" --out "$ABOUT/a" > "$OUT/ab_before.log" 2>&1; rc=$?
     gr timeout -k 30 1500 python3 tools/box_gpu_passes.py run --install "$I" --out "$ABOUT" --name gpu_passes_base --ref-commit "$AB_BEFORE" > "$OUT/ab_gpu_base.log" 2>&1; gprc=$?   # same lock, same arm: its own fresh log dir
-    rm -f /workspace/locks/gpu$GOT.owner /workspace/locks/gpu$GOT.row; exec 9>&-; GOT=""; LOCKED=""
+    rm -f /workspace/locks/$SB.owner /workspace/locks/$SB.row; release_slots; GOT=""; SB=""; LOCKED=""
     BUILD_SHA=$SHA; build_install
     if [ "$rc" = 0 ]; then
       take_lock; LOCKED=1
@@ -258,7 +266,7 @@ for row in "${ROWS[@]}"; do
   case $row in build|unit|unit-san|lint|cpu:*|sh:*) RUN=grc;; determinism:*|saveload*) RUN=grh;; *) RUN=gr; [ -z "$LOCKED" ] && { take_lock; LOCKED=1; };; esac
   case $row in unit-san) TMO=3000;; unit) TMO=1200;; lint) TMO=3600;; smoke*|capture:*|screen:*) TMO=600;; gpu-passes) TMO=1500;; determinism:*|saveload*) TMO=900;; *) TMO=1800;; esac   # a hung row must not hold a GPU or the lane
   case $row in
-    smoke-lite)  QS=""; [ "$GOT" = "${GATE_GPU:-0}" ] && [ -x /workspace/bin/quiet-slot ] && QS="/workspace/bin/quiet-slot --gpu ${GATE_GPU:-0} --"   # gate GPU: pause and drain the idle filler first (its mc2 jobs are foreign engines that hold the game lease)
+    smoke-lite)  QS=""; [ -n "$EXCL" ] && [ "$GOT" = "${GATE_GPU:-0}" ] && [ -x /workspace/bin/quiet-slot ] && QS="/workspace/bin/quiet-slot --gpu ${GATE_GPU:-0} --"   # gate GPU: pause and drain the idle filler first (its mc2 jobs are foreign engines that hold the game lease)
                  cmd="$QS python3 scripts/run_smoke.py --lite --keep-logs --exe $I/mc2" ;;
     smoke-tier1) cmd="python3 scripts/run_smoke.py --tier tier1 --keep-logs --exe $I/mc2" ;;
     screen:*)    sc=${row#screen:}; cmd="python3 scripts/screen_shot.py --screen $sc --exe $I/mc2 --out-dir $(fresh $OUT/$name)" ;;
@@ -682,6 +690,8 @@ def main():
     # one ssh: the remote script arrives on stdin (cat > file) and runs at once; rows travel as one base64 argument
     script = f"/workspace/lanes/.box_lane_{branch}.sh"
     runner = "env MC2_GPU_STRICT=1 bash" if a.gpu_strict else "bash"
+    if a.gate:   # a gate run holds every slot of its GPU (exclusive), like the perf rows
+        runner = f"env MC2_BOX_GATE=1 {runner}"
     if os.environ.get("MC2_BOX_GPU_SLOTS", "").isdigit():   # K override for this run only (the box default is GPU_SLOTS in cores.env)
         runner = f"env MC2_BOX_GPU_SLOTS={os.environ['MC2_BOX_GPU_SLOTS']} {runner}"   # a busy --gpu N falls back to auto unless --gpu-strict
     if a.queue:   # submit to the pueue group and return the task id; --wait/--status give the verdict later
