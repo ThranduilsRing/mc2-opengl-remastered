@@ -207,6 +207,17 @@ def git_diff_files(older, newer):
     return {line for line in out.stdout.splitlines() if line}
 
 
+EXAMPLE_MODS_SRC = "examples/mods"  # scripts/deploy_payload.py EXAMPLE_MODS_SRC: ships to <install>/mods/<id>/
+
+
+def repo_path_to_install(path):
+    """A repo-relative git path -> the install-relative manifest path deploy_payload ships it as. Payload paths are the repo
+    paths themselves except example mods (examples/mods/<id>/... -> mods/<id>/...); the rest is unchanged."""
+    if path.startswith(EXAMPLE_MODS_SRC + "/"):
+        return "mods/" + path[len(EXAMPLE_MODS_SRC) + 1:]
+    return path
+
+
 LANE_BASE_BRANCH = "claude/nifty-mendeleev"
 
 
@@ -487,16 +498,176 @@ def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None, cross_
 
 
 
-def stage_install(install: Path, exe: Path, dest: Path) -> Path:
-    """An install clone whose mc2.exe is `exe`: data and DLLs are hard-linked from `install` (copied across volumes)."""
-    def link(src, dst):
+# Files the game WRITES at run time (cwd = the install dir): a hardlinked stage would write through to the source install and to
+# the other side, so they are real copies. Found from the game's write sites (rg fopen/ofstream/CreateFile in GameOS/ and code/):
+#   options.cfg / prefs*.cfg / system.cfg  code/prefs_io.cpp:50-59 (options.cfg.tmp, chmod, rename), code/mechcmd2.cpp:320
+#   imgui.ini                              3rdparty/imgui/imgui.cpp:1444,4257 (SaveIniSettingsToDisk, in place)
+#   *.log / *.txt / *.csv / *.json(l)      engine logs and diag dumps written in cwd
+#   saved_bookmarks/                       the capture harness reads and rewrites the bookmark json
+#   cache/vulkan/                          GameOS/gameos/vk_render_infra.cpp:206-209 (pipeline cache .bin, rewritten on exit)
+#   debug_state/, crashes/                 GameOS/gameos/diagnostic_trace.cpp:176, gos_crashpad.cpp:65 (output only: staged empty)
+# Saves live under the user data dir (code/mechcmd2.cpp:445), not the install. cache/content-model (5 GB) is content-addressed and
+# only written on a miss, so it stays hardlinked.
+GAME_WRITTEN_SUFFIXES = {".cfg", ".ini", ".txt", ".log", ".csv", ".json", ".jsonl", ".old", ".tmp", ".bak"}
+# Top-level binaries/archives are memory-mapped by any running game; Windows refuses to delete ANY hardlink of a mapped file
+# (WinError 5), so a hardlinked stage could not be removed while another lane's game ran (11-10: avcodec-61.dll, textures.fst).
+# Copied instead (~400 MB per side).
+MAPPED_SUFFIXES = {".dll", ".exe", ".fst"}
+GAME_WRITTEN_COPY_PREFIXES = ("saved_bookmarks/", "cache/vulkan/")
+GAME_WRITTEN_EMPTY_DIRS = ("debug_state", "crashes")
+DISK_GUARD_FREE_GB = 30
+GB = 1 << 30
+
+
+def stage_kind(rel: str) -> str:
+    """'skip' (output-only dir, staged empty), 'copy' (game-written: a real copy) or 'link' (shared data) for install relpath `rel`."""
+    rel = rel.replace("\\", "/")
+    if rel.split("/", 1)[0] in GAME_WRITTEN_EMPTY_DIRS:
+        return "skip"
+    if rel.startswith(GAME_WRITTEN_COPY_PREFIXES) or ("/" not in rel and Path(rel).suffix.lower() in GAME_WRITTEN_SUFFIXES | MAPPED_SUFFIXES):
+        return "copy"
+    return "link"
+
+
+def _walk_files(install: Path):
+    """(relpath with /, absolute path) for every file under install that a stage carries (output-only dirs excluded)."""
+    for root, _dirs, files in os.walk(install):
+        rel_root = os.path.relpath(root, install).replace("\\", "/")
+        for name in files:
+            rel = name if rel_root == "." else f"{rel_root}/{name}"
+            if stage_kind(rel) != "skip":
+                yield rel, os.path.join(root, name)
+
+
+def _same_volume(a: Path, b: Path) -> bool:
+    try:
+        return os.stat(a).st_dev == os.stat(b).st_dev
+    except OSError:
+        return False
+
+
+def _existing_ancestor(path: Path) -> Path:
+    path = Path(path)
+    while not path.exists() and path.parent != path:
+        path = path.parent
+    return path
+
+
+def estimate_stage_bytes(install: Path, stage_parent: Path) -> int:
+    """Bytes one stage of `install` under `stage_parent` really writes: the game-written copies on one volume, everything across."""
+    same = _same_volume(install, _existing_ancestor(stage_parent))
+    return sum(os.stat(p).st_size for rel, p in _walk_files(install) if not same or stage_kind(rel) == "copy")
+
+
+def disk_guard(target: Path, need_bytes: int, min_free_gb: float | None = None) -> None:
+    """DISK_GUARD: refuse when the target volume would drop below min_free_gb free after `need_bytes` of staging."""
+    min_free_gb = DISK_GUARD_FREE_GB if min_free_gb is None else min_free_gb
+    probe = _existing_ancestor(target)
+    free = shutil.disk_usage(probe).free
+    need = min_free_gb * GB + need_bytes
+    line = (f"DISK_GUARD {probe}: free {free / GB:.1f} GB, need {min_free_gb:.0f} GB reserve + "
+            f"{need_bytes / GB:.2f} GB stage = {need / GB:.1f} GB")
+    if free < need:
+        sys.exit(f"ab.py: {line} -> refused; free space or pass --stage-root on a volume with room")
+    print(f"[ab] {line} -> ok", flush=True)
+
+
+def stage_tree(install: Path, dest: Path) -> dict:
+    """Clone `install` into `dest`: shared data hard-linked, game-written files real copies, output-only dirs empty. Falls back
+    to a plain copy (one printed line) when the volumes differ or a link fails. Returns counts."""
+    install, dest = Path(install), Path(dest)
+    dest.mkdir(parents=True)
+    same = _same_volume(install, dest)
+    stats = {"linked": 0, "copied": 0, "bytes_copied": 0, "fallback": not same}
+    if not same:
+        print(f"[ab] stage: {install} and {dest} are on different volumes; staging by full copy (no hardlinks)", flush=True)
+    for d in GAME_WRITTEN_EMPTY_DIRS:
+        (dest / d).mkdir(exist_ok=True)
+    for rel, src in _walk_files(install):
+        dst = dest / rel
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        if same and stage_kind(rel) == "link":
+            try:
+                os.link(src, dst)
+                stats["linked"] += 1
+                continue
+            except OSError as exc:
+                if not stats["fallback"]:
+                    stats["fallback"] = True
+                    print(f"[ab] stage: hardlink failed ({exc}); staging by copy", flush=True)
+        shutil.copy2(src, dst)
+        stats["copied"] += 1
+        stats["bytes_copied"] += dst.stat().st_size
+    return stats
+
+
+def cleanup_stage(staged, keep=False) -> None:
+    """Delete the staged install dirs this run created (never a user-supplied install) and their now-empty stage root."""
+    stuck = []
+
+    def onexc(func, path, _exc):
         try:
-            os.link(src, dst)
-        except OSError:
-            shutil.copy2(src, dst)
+            os.chmod(path, 0o700)
+            func(path)
+        except OSError as exc:
+            stuck.append(f"{path}: {exc}")
+    for d in map(Path, staged):
+        if keep:
+            print(f"[ab] --keep-stage: leaving {d}", flush=True)
+            continue
+        if d.exists():
+            shutil.rmtree(d, onexc=onexc)
+            print(f"[ab] stage removed: {d}" if not stuck else
+                  f"[ab] !!! stage NOT fully removed: {d} ({len(stuck)} files, first: {stuck[0]}); delete it by hand", flush=True)
+        for level, parent in enumerate((d.parent, d.parent.parent)):  # the run dir, then the default _ab-stage root, each only when empty
+            if level and parent.name != "_ab-stage":
+                break
+            try:
+                parent.rmdir()
+            except OSError:
+                break
+
+
+def _swap_spv_rows(rows, dest, shaders_parent, commit, exe_name, exe_path):
+    """Manifest rows for a stage whose shaders/ was replaced from `shaders_parent`/shaders: the exe row and every shaders/vulkan
+    *.spv row come from the staged bytes (rows for shaders the new set no longer ships are dropped, new ones added) so
+    payload_identity verifies exactly what runs."""
+    spv = {p.relative_to(dest).as_posix(): p for p in (dest / "shaders" / "vulkan").rglob("*.spv")}
+    new_rows = []
+    for row in rows:
+        if not row:
+            continue
+        if row[0] == exe_name:
+            row[1:4] = [hashlib.sha256(exe_path.read_bytes()).hexdigest(), str(exe_path.stat().st_size), commit]
+        elif row[0] in spv:
+            src = spv[row[0]]
+            row[1:4] = [hashlib.sha256(src.read_bytes()).hexdigest(), str(src.stat().st_size), commit]
+        elif row[0].startswith("shaders/") and not (Path(shaders_parent) / row[0]).is_file():
+            continue
+        new_rows.append(row)
+    have = {row[0] for row in new_rows if row}
+    for rel, src in sorted(spv.items()):
+        if rel not in have:
+            new_rows.append([rel, hashlib.sha256(src.read_bytes()).hexdigest(), str(src.stat().st_size), commit])
+    return new_rows
+
+
+def shaders_parent_of(path) -> Path:
+    """--shaders-a accepts an install dir (has shaders/) or the shaders dir itself; returns the dir that holds shaders/."""
+    path = Path(path)
+    if (path / "shaders").is_dir():
+        return path
+    if path.name == "shaders" and path.is_dir():
+        return path.parent
+    sys.exit(f"ab.py: --shaders-a {path}: no shaders/ directory there")
+
+
+def stage_install(install: Path, exe: Path, dest: Path, shaders_from=None) -> Path:
+    """An install clone whose mc2.exe is `exe`: shared data and DLLs are hard-linked from `install` (see stage_tree).
+    `shaders_from` (an install dir or its shaders/ dir) also swaps in that build's shaders/, manifest rows rewritten."""
     if dest.exists():
         shutil.rmtree(dest)
-    shutil.copytree(install, dest, copy_function=link)
+    print(f"[ab] stage {dest.name}: {stage_tree(install, dest)}", flush=True)
     target = dest / game_executable(install).name
     if target.exists():
         target.unlink()
@@ -511,13 +682,41 @@ def stage_install(install: Path, exe: Path, dest: Path) -> Path:
     if len(commit) != 40:
         commit = subprocess.check_output(["git", "-C", str(ROOT), "rev-parse", commit + "^{commit}"], text=True,
                                          **console_child.child_kwargs(redirected=True)).strip()
-    for row in rows[2:]:
-        if row and row[0] == target.name:
-            row[1:4] = [hashlib.sha256(target.read_bytes()).hexdigest(), str(target.stat().st_size), commit]
+    if shaders_from:
+        sp = shaders_parent_of(shaders_from)
+        if (dest / "shaders").exists():
+            shutil.rmtree(dest / "shaders")
+        shutil.copytree(sp / "shaders", dest / "shaders")
+        rows = _swap_spv_rows(rows, dest, sp, commit, target.name, target)
+        print(f"[ab] staged {dest.name}: shaders/ swapped from {sp} (manifest rewritten from the swapped bytes)", flush=True)
+    else:
+        for row in rows[2:]:
+            if row and row[0] == target.name:
+                row[1:4] = [hashlib.sha256(target.read_bytes()).hexdigest(), str(target.stat().st_size), commit]
     manifest.unlink()  # copied installs may share this inode with their source
     with manifest.open("w", newline="", encoding="utf-8") as stream:
         csv.writer(stream).writerows(rows)
     return dest
+
+
+def worktree_head():
+    """HEAD of the worktree this tool runs from, or None when git cannot say."""
+    try:
+        out = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"], capture_output=True, text=True,
+                             **console_child.child_kwargs(redirected=True))
+    except OSError:
+        return None
+    return (out.stdout.strip() or None) if out.returncode == 0 else None
+
+
+def capture_commit_report(commit_a, commit_b, head):
+    """Lines printed after capture: each side's CAPTURE src_commit, and a loud warning when side B (the build under test) is not
+    the worktree HEAD (a stale exe makes the whole A/B meaningless)."""
+    lines = [f"[ab] CAPTURE src_commit A={commit_a} B={commit_b} (worktree HEAD {head})"]
+    if head and commit_b != head:
+        lines.append(f"[ab] !!! WARNING: side B src_commit {commit_b} != worktree HEAD {head} -- the B exe is STALE (not built "
+                     "and deployed from this HEAD); this A/B does not test your change !!!")
+    return lines
 
 
 def stage_exe_swap(install: Path, exe: Path, dest: Path) -> Path:
@@ -525,16 +724,11 @@ def stage_exe_swap(install: Path, exe: Path, dest: Path) -> Path:
     side runs the other build's executable against B's data, so a diff isolates the executable. The manifest is rewritten from
     the swapped bytes so the payload identity check still verifies what actually runs -- an explicit, logged exemption for this
     staged side only, never a global weakening of the check for other callers."""
-    def link(src, dst):
-        try:
-            os.link(src, dst)
-        except OSError:
-            shutil.copy2(src, dst)
     install, exe, dest = Path(install), Path(exe), Path(dest)
     exe_dir = exe.parent
     if dest.exists():
         shutil.rmtree(dest)
-    shutil.copytree(install, dest, copy_function=link)
+    print(f"[ab] stage {dest.name}: {stage_tree(install, dest)}", flush=True)
     target = dest / exe.name
     if target.exists():
         target.unlink()
@@ -560,25 +754,7 @@ def stage_exe_swap(install: Path, exe: Path, dest: Path) -> Path:
     if len(commit) != 40:
         commit = subprocess.check_output(["git", "-C", str(ROOT), "rev-parse", commit + "^{commit}"], text=True,
                                          **console_child.child_kwargs(redirected=True)).strip()
-    # The swapped shaders/vulkan/*.spv are the payload: rewrite their manifest rows from the swapped bytes (and drop rows for
-    # shaders the swapped build no longer ships) so payload_identity verifies exactly what runs.
-    spv = {p.relative_to(dest).as_posix(): p for p in (dest / "shaders" / "vulkan").rglob("*.spv")}
-    new_rows = []
-    for row in rows:
-        if not row:
-            continue
-        if row[0] == target.name:
-            row[1:4] = [hashlib.sha256(target.read_bytes()).hexdigest(), str(target.stat().st_size), commit]
-        elif row[0] in spv:
-            src = spv[row[0]]
-            row[1:4] = [hashlib.sha256(src.read_bytes()).hexdigest(), str(src.stat().st_size), commit]
-        elif row[0].startswith("shaders/") and not (exe_dir / row[0]).is_file():
-            continue
-        new_rows.append(row)
-    have = {row[0] for row in new_rows if row}
-    for rel, src in sorted(spv.items()):
-        if rel not in have:
-            new_rows.append([rel, hashlib.sha256(src.read_bytes()).hexdigest(), str(src.stat().st_size), commit])
+    new_rows = _swap_spv_rows(rows, dest, exe_dir, commit, target.name, target)
     manifest.unlink()  # copied installs may share this inode with their source
     with manifest.open("w", newline="", encoding="utf-8") as stream:
         csv.writer(stream).writerows(new_rows)
@@ -612,14 +788,17 @@ def seed_install(install, bookmarks, reference=DEFAULT_INSTALL):
                  + "\n  fix: use --install DIR to name a reference install that has them, or copy them in.")
 
 
-def ensure_saved_bookmarks(install, reference=DEFAULT_INSTALL):
-    """If the (staged or used) install has no saved_bookmarks/*.json at all, copy the reference's bookmarks (read-only) so a
-    capture never runs on an empty bookmark set; fail clearly only if the reference has none either. Never writes to the
-    reference."""
+def ensure_saved_bookmarks(install, reference, staged):
+    """If the install has no saved_bookmarks/*.json at all, copy the reference's bookmarks (read-only) so a capture never runs on
+    an empty bookmark set; fail clearly if the reference has none either. Writes only into an install this run staged (`staged`:
+    the stage dirs main recorded); a user-supplied install without bookmarks is refused, never written into."""
     install, reference = Path(install), Path(reference)
     bookmark_dir = install / "saved_bookmarks"
     if any(bookmark_dir.glob("*.json")):
         return
+    if str(install) not in {str(d) for d in staged}:
+        sys.exit(f"ab.py: {install} has no saved_bookmarks/*.json and is not a staged copy, so ab.py will not write into it; "
+                 f"copy bookmarks into {bookmark_dir} first")
     sources = sorted((reference / "saved_bookmarks").glob("*.json"))
     if not sources:
         sys.exit(f"ab.py: {install} has no saved_bookmarks/*.json and the reference {reference} has none either; "
@@ -628,6 +807,20 @@ def ensure_saved_bookmarks(install, reference=DEFAULT_INSTALL):
     for src in sources:
         shutil.copy2(src, bookmark_dir / src.name)
     print(f"[ab] {install.name}: no saved_bookmarks; copied {len(sources)} from {reference}", flush=True)
+
+
+def _stage_root(a, out: Path, install: Path, count: int) -> Path:
+    """Where the staged installs go: --stage-root, else <install>/../_ab-stage/<run> on the install's own volume (hardlinks need
+    one volume). Runs the DISK_GUARD for `count` stages before anything is written."""
+    root = Path(a.stage_root) / out.name if a.stage_root else Path(install).resolve().parent / "_ab-stage" / out.name
+    disk_guard(root, count * estimate_stage_bytes(Path(install), root))
+    return root
+
+
+def _staged(a, dest) -> str:
+    """Record a staged install dir (main deletes these when the run ends) and return it as the path string callers use."""
+    getattr(a, "staged", []).append(str(dest))
+    return str(dest)
 
 
 def resolve_installs(a, out: Path):
@@ -644,7 +837,8 @@ def resolve_installs(a, out: Path):
         exe = Path(a.exe_a)
         if not exe.is_file():
             sys.exit(f"exe not found: {exe}")
-        return (str(stage_exe_swap(Path(a.install_b), exe, out / "install_a")), a.install_b)
+        root = _stage_root(a, out, Path(a.install_b), 1)
+        return (_staged(a, stage_exe_swap(Path(a.install_b), exe, root / "install_a")), a.install_b)
     if a.install_a or a.install_b:
         if not (a.install_a and a.install_b) or a.exe_a or a.exe_b:
             sys.exit("use --install-a with --install-b, or --exe-a with --exe-b, or --exe-a with --install-b, not a mix")
@@ -659,8 +853,9 @@ def resolve_installs(a, out: Path):
         for e in (a.exe_a, a.exe_b):
             if not Path(e).is_file():
                 sys.exit(f"exe not found: {e}")
-        return (str(stage_install(Path(a.install), Path(a.exe_a), out / "install_a")),
-                str(stage_install(Path(a.install), Path(a.exe_b), out / "install_b")))
+        root = _stage_root(a, out, Path(a.install), 2)
+        return (_staged(a, stage_install(Path(a.install), Path(a.exe_a), root / "install_a", getattr(a, "shaders_a", None))),
+                _staged(a, stage_install(Path(a.install), Path(a.exe_b), root / "install_b")))
     sys.exit("need --install-a/--install-b, or --exe-a/--exe-b, or --exe-a/--install-b (or --compare-only DIR_A DIR_B)")
 
 
@@ -673,6 +868,14 @@ def main(argv=None):
                     help="A's mc2.exe; with --exe-b it stages both exes on --install's data, alone with --install-b it stages A "
                          "as a hardlink copy of B with A's mc2.exe/pdb + shaders/ swapped in from the exe's install dir")
     ap.add_argument("--exe-b", metavar="EXE")
+    ap.add_argument("--stage-root", metavar="DIR",
+                    help="where --exe-a/--exe-b stage their install copies (default <install>/../_ab-stage/<run>, the install's own "
+                         "volume so shared files are hardlinked)")
+    ap.add_argument("--shaders-a", metavar="DIR",
+                    help="with --exe-a/--exe-b: stage side A with the shaders/ of this install (e.g. v0.4) and rewrite A's manifest "
+                         "rows from the swapped bytes")
+    ap.add_argument("--keep-stage", action="store_true",
+                    help="leave the staged install_a/install_b dirs after the run (default: deleted when it ends, pass or fail)")
     ap.add_argument("--install", default=DEFAULT_INSTALL, help="data/DLL source for --exe-a/--exe-b")
     ap.add_argument("--focus", metavar="mech[:N]", default=None,
                     help="MC2_CAPTURE_FOCUS: move every bookmark pose onto the Nth live "
@@ -713,7 +916,7 @@ def main(argv=None):
             if diff_files is None:
                 bad.append("cannot compute `git diff --name-only` between the two capture commits; refusing --allow-data-delta")
             else:
-                accepted = manifest_diff_files(ia["manifest"], ib["manifest"]) & diff_files
+                accepted = manifest_diff_files(ia["manifest"], ib["manifest"]) & {repo_path_to_install(f) for f in diff_files}
                 accepted_delta = sorted(accepted)
                 for path, line in entries:
                     if path in accepted:
@@ -737,29 +940,36 @@ def main(argv=None):
     for b in bad:
         print("[ab] CROSS-BASE (allowed): " + b, flush=True)
     out.mkdir(parents=True, exist_ok=True)
-    ia, ib = resolve_installs(a, out)
-    ensure_saved_bookmarks(ia, a.install)
-    ensure_saved_bookmarks(ib, a.install)
-    exe_a_swap = None
-    if a.exe_a and not a.exe_b:
-        exe_a_swap = {"exe": a.exe_a, "exe_dir": str(Path(a.exe_a).parent), "b_install": a.install_b}
+    a.staged = []  # install dirs this run staged (never a user-supplied --install-a/--install-b): deleted when the run ends
     try:
-        identities = [payload_identity(d) for d in (ia, ib)]
-    except (OSError, ValueError) as exc:
-        sys.exit(f"ab.py: refusing capture: {exc}")
-    # Warn (never refuse) when the A exe was not built from the lane base: the A/B then mixes the lane's changes with
-    # cross-base ones, so a nonzero diff is not a clean signal of the window.
-    base_line, exe_a_base_mismatch = exe_a_base_check(identities[0]["commit"], identities[1]["commit"])
-    if base_line:
-        print("[ab] WARNING: " + base_line, flush=True)
-    env = ["MC2_RENDER_BACKEND=vulkan", "MC2_VK_SHARED_GBUFFER=1"] + a.env + env_pin.focus_declarations(a.focus, a.focus_zoom)
-    run_capture(ia, a.bookmarks, out / "a", env)
-    stamp_identity(out / "a", identities[0])
-    run_capture(ib, a.bookmarks, out / "b", env)
-    stamp_identity(out / "b", identities[1])
-    compare(out / "a", out / "b", out / "cmp", crops, [s.strip() for s in a.bookmarks.split(",") if s.strip()],
-            cross_base=bool(bad), exe_a_base_mismatch=exe_a_base_mismatch, exe_a_swap=exe_a_swap)
-    sys.exit(1 if getattr(compare, "problems", None) else 0)
+        ia, ib = resolve_installs(a, out)
+        ensure_saved_bookmarks(ia, a.install, a.staged)
+        ensure_saved_bookmarks(ib, a.install, a.staged)
+        exe_a_swap = None
+        if a.exe_a and not a.exe_b:
+            exe_a_swap = {"exe": a.exe_a, "exe_dir": str(Path(a.exe_a).parent), "b_install": a.install_b}
+        try:
+            identities = [payload_identity(d) for d in (ia, ib)]
+        except (OSError, ValueError) as exc:
+            sys.exit(f"ab.py: refusing capture: {exc}")
+        # Warn (never refuse) when the A exe was not built from the lane base: the A/B then mixes the lane's changes with
+        # cross-base ones, so a nonzero diff is not a clean signal of the window.
+        base_line, exe_a_base_mismatch = exe_a_base_check(identities[0]["commit"], identities[1]["commit"])
+        if base_line:
+            print("[ab] WARNING: " + base_line, flush=True)
+        env = ["MC2_RENDER_BACKEND=vulkan", "MC2_VK_SHARED_GBUFFER=1"] + a.env + env_pin.focus_declarations(a.focus, a.focus_zoom)
+        run_capture(ia, a.bookmarks, out / "a", env)
+        stamp_identity(out / "a", identities[0])
+        run_capture(ib, a.bookmarks, out / "b", env)
+        stamp_identity(out / "b", identities[1])
+        for line in capture_commit_report(identities[0]["commit"], identities[1]["commit"], worktree_head()):
+            print(line, flush=True)
+        compare(out / "a", out / "b", out / "cmp", crops, [s.strip() for s in a.bookmarks.split(",") if s.strip()],
+                cross_base=bool(bad), exe_a_base_mismatch=exe_a_base_mismatch, exe_a_swap=exe_a_swap)
+        rc = 1 if getattr(compare, "problems", None) else 0
+    finally:
+        cleanup_stage(a.staged, keep=a.keep_stage)  # a/, b/ and cmp/ stay; the 13 GB stage goes, pass or fail
+    sys.exit(rc)
 
 
 if __name__ == "__main__":
