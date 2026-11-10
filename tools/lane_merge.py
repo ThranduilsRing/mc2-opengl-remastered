@@ -1148,6 +1148,52 @@ def precheck(root: str, tip: str, with_link: bool | None = None, sim_rows: bool 
     return int(bool(failed))
 
 
+#: The missions whose committed baselines pin the install data fingerprint (the determinism/saveload gate rows).
+FINGERPRINT_MISSIONS = ("mc2_01", "mc2_03", "mc2_10", "mc2_16", "mc2_24")
+
+
+def recorded_data_fingerprint(root: str) -> dict | None:
+    """The data_fingerprint the determinism/saveload baselines pin (the recorded baseline), or None when none records one
+    or they disagree (a baseline-regeneration problem, not a pre-gate verdict)."""
+    import sim_determinism as sd
+    seen = {}
+    for mission in FINGERPRINT_MISSIONS:
+        try:
+            with open(sd.baseline_path(mission), encoding="utf-8") as fh:
+                fp = json.load(fh).get("data_fingerprint")
+        except (OSError, ValueError):
+            continue
+        if fp and fp.get("digest"):
+            seen.setdefault(fp["digest"], fp)
+    return next(iter(seen.values())) if len(seen) == 1 else None
+
+
+def differing_stock_parts(fp: dict, base: dict) -> str:
+    """The stock parts that differ between the candidate fingerprint and the baseline (the FAIL detail)."""
+    got, want = set(fp.get("inputs") or []), set(base.get("inputs") or [])
+    parts = []
+    if (fp.get("stock_digest") or "") != (base.get("stock_digest") or ""):
+        parts.append(f"stock_digest {fp.get('stock_digest')} is not the baseline's {base.get('stock_digest')}")
+    parts += [f"stock part {p} is absent from the tree" for p in sorted(want - got)]
+    parts += [f"stock part {p} is not in the baseline" for p in sorted(got - want)]
+    parts += fp.get("problems") or []
+    return "; ".join(parts) or "the data fingerprint digest differs"
+
+
+def data_fingerprint_check(root: str, fingerprint=None, baseline=None) -> tuple[str, str]:
+    """The candidate tree's sim data fingerprint vs the recorded baseline the determinism/saveload rows pin.
+    -> (verdict, detail): 'OK' when it matches, 'FAIL' when it does not (the gate would go red), 'SKIPPED' when there is no
+    recorded baseline to compare. W138h: this red only showed on the laptop gate, costing two extra runs (52 min)."""
+    import sim_determinism as sd
+    fp = (fingerprint or sd.data_fingerprint)(root)
+    base = (baseline or recorded_data_fingerprint)(root)
+    if not base:
+        return "SKIPPED", "no recorded baseline data fingerprint"
+    if fp["digest"] != base["digest"]:
+        return "FAIL", differing_stock_parts(fp, base)
+    return "OK", ""
+
+
 def pre_gate(root: str, exe: str | None = None) -> int:
     """Everything that used to fail only after the gate started (W79: three reruns), run in order at the merged HEAD.
     Every step runs; one verdict line at the end. Exit 0 = clean."""
@@ -1158,6 +1204,8 @@ def pre_gate(root: str, exe: str | None = None) -> int:
         ("cxx17", py + [os.path.join(root, "tools", "cxx17_ratchet", "cxx17_ratchet.py"), "--check", "--worktree"]),
     ]
     steps += [(label, py + [os.path.join(root, script), *args]) for label, script, args in EARLY_ROWS]
+    # W138h: the stock-data contract went red only on the laptop; the contracts board's own args (--no-data --quiet).
+    steps += [("stock_mission_data", py + [os.path.join(root, "scripts", "check-stock-mission-data.py"), "--no-data", "--quiet"])]
     exe = exe or os.path.join(root, "build64-ninja", "mc2.exe")
     failed = []
     if os.path.isfile(exe) and exe_matches_head(root, os.path.relpath(os.path.dirname(exe), root)) is False:
@@ -1170,6 +1218,11 @@ def pre_gate(root: str, exe: str | None = None) -> int:
         if rc:
             print(out, flush=True)
             failed.append(label)
+    verdict, detail = data_fingerprint_check(root)
+    print(f"pre-gate: data_fingerprint: {verdict}", flush=True)
+    if verdict == "FAIL":
+        print(detail, flush=True)
+        failed.append("data_fingerprint")
     print("PRE-GATE " + ("PASS" if not failed else "FAIL: " + ", ".join(failed)))
     return 1 if failed else 0
 
