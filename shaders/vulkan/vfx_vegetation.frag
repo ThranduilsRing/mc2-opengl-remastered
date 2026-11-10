@@ -44,7 +44,9 @@ vec3 rootMacro() {
 }
 const float kVegShoreDryWU = 70.0;   // the sward is driest at the beach and greens over this height above water
 const float kBladeLift = 1.05;       // blades read a little lighter than the ground patch under them (1.15 bleached the field)
+const float kBladePickWU = 6.0;      // per-blade pick scale (blade spacing, world units) for the footprint fade
 void main() {
+    float footprintWU = wpnFootprint(v_worldPos.xy);   // world units per pixel, before the discard (derivatives)
     vec4 texel = texture(uAtlas, vec3(v_uv, float(v_atlasLayer)));
     // Coarse mips average thin blades toward zero alpha, so a fixed 0.5 cut erases distant grass
     // into speckles; lift alpha with the sampled mip level (spatial, per pixel) to keep its cover.
@@ -83,14 +85,18 @@ void main() {
         // Per-blade picks only add close-up grain (refs 1/2).
         float value = dot(albedo, vec3(0.299, 0.587, 0.114));
         float pick = fract(v_vegData.x * 13.71);
-        vec2 field = worldPatchField(v_rootPos.xy);
-        field.x = clamp(field.x + (pick - 0.5) * 0.20, 0.0, 1.0);
+        // Same footprint fade as the ground (speckle) and, for the per-blade picks, a blade-spacing fade: far away
+        // the field shows the patch colour, not salt-and-pepper.
+        vec2 field = worldPatchField(v_rootPos.xy, footprintWU);
+        float bladeFade = wpnFade(footprintWU, kBladePickWU);
+        field.x = clamp(field.x + (pick - 0.5) * 0.20 * bladeFade, 0.0, 1.0);
         float shore = 1.0 - smoothstep(6.0, kVegShoreDryWU, v_rootPos.z - uT.shorelineWaterElev);
         // The card keeps blade-to-blade value; straw reads lighter than olive as in the reference.
         float bladeValue = kBladeLift * (value / 0.46);
         vec3 sward = worldPatchColor(field, 0.50 * shore) * bladeValue;
         // A few dry blades and tips up close; kept light so the shared patch field, not per-blade straw, sets the look.
-        float dry = pick < 0.05 ? 0.6 : smoothstep(0.85, 1.0, tip) * 0.15;
+        float dryTip = smoothstep(0.85, 1.0, tip) * 0.15;
+        float dry = mix(dryTip + 0.03, pick < 0.05 ? 0.6 : dryTip, bladeFade);   // 0.03 = the dry-pick mean
         albedo = mix(groundTone, mix(sward, WPN_STRAW * bladeValue, dry), kVegOwnHue);   // 15% ground, as for every card
         albedo *= mix(vec3(0.62, 0.68, 0.52), vec3(1.0), smoothstep(0.0, 0.55, tip));
         albedo *= 1.0 + v_vegAux.y * (0.05 + 0.10 * tip);
