@@ -2552,7 +2552,8 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     if os.path.isdir(os.path.join(build_dir, "shaders", "vulkan")) and os.path.isdir(os.path.join(target, "shaders", "vulkan")):
         sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
         import check_deployed_spv
-        spv_fails, spv_warns, spv_n = check_deployed_spv.audit(target, build_dir)
+        spv_fails, spv_warns, spv_n = check_deployed_spv.audit(
+            target, build_dir, baked={p.name for p in baked_spv_files(build_dir)})
         for m in spv_warns:
             log(f"WARNING deployed SPIR-V: {m}")
         if spv_fails:

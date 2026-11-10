@@ -83,3 +83,17 @@ def test_orphan_warns_and_strict_fails(tmp_path):
     assert not f and any("dead.spv: orphan" in m for m in w)
     f2, _, _ = run(tmp_path / "s", {"a.spv": spv()}, {"a.spv": spv(), "dead.spv": spv()}, strict=True)
     assert any("dead.spv: orphan" in m for m in f2)
+
+
+def test_stray_build_spv_outside_the_baked_set_is_not_audited(tmp_path):
+    b = tree(tmp_path / "b", {"a.spv": spv(), "retired.spv": spv()})
+    i = tree(tmp_path / "i", {"a.spv": spv()})
+    f, _, n = cds.audit(i, b, baked={"a.spv"})
+    assert not f and n == 1
+
+
+def test_baked_spv_missing_from_install_still_fails(tmp_path):
+    b = tree(tmp_path / "b", {"a.spv": spv(), "retired.spv": spv()})
+    i = tree(tmp_path / "i", {"retired.spv": spv()})
+    f, _, _ = cds.audit(i, b, baked={"a.spv"})
+    assert any("a.spv: missing from install" in m for m in f)
