@@ -19,6 +19,11 @@ namespace mc2::bridge {
 using Json = nlohmann::json;
 namespace {
 using Clock = std::chrono::steady_clock;
+Json controlJson() {
+    auto& state = control();
+    return {{"paused", state.paused()}, {"ticks", state.ticks()}, {"pending_steps", state.pendingSteps()},
+            {"speed", state.lastSpeed()}};
+}
 struct Transport {
     std::atomic<bool> stop{false};
     std::atomic<double> hz{0};
@@ -92,7 +97,8 @@ struct Transport {
                 }
             }
             if (live) live = sendJson(socket, {{"version", 1}, {"type", "hello"}, {"session", session},
-                                             {"read_only", true}, {"build_id", std::string(MC2_BUILD_GIT_SHA)}});
+                                             {"read_only", false}, {"control", {"pause", "resume", "step", "set_speed"}},
+                                             {"build_id", std::string(MC2_BUILD_GIT_SHA)}});
             Subscription subscription;
             if (live) std::printf("[BRIDGE v0] ev=session.hello protocol=1\n");
             while (live && !stop) {
@@ -103,17 +109,31 @@ struct Transport {
                 if (ready > 0) {
                     Json message;
                     if (!receive(socket, message)) break;
-                    // Wrong session/version is fatal. No control dispatcher exists in P3.
+                    // Wrong session/version is fatal.
                     if (!message.contains("version") || message["version"] != 1 ||
                         !message.contains("session") || message["session"] != session) break;
-                    const auto next = subscribe(message.dump(), session);
-                    const bool accepted = next.has_value();
-                    if (accepted) {
-                        subscription = *next;
-                        hz = (subscription.state || subscription.movers) ? subscription.hz : 0;
+                    Json reply = {{"version", 1}, {"session", session}, {"seq", message.value("seq", Json(nullptr))}};
+                    if (message.contains("type") && message["type"] == "command") {
+                        // Enum-dispatched sim control; anything unparsed is an error reply, never executed.
+                        const auto parsed = parseCommand(message.dump(), session);
+                        const bool done = parsed.command && control().apply(*parsed.command);
+                        reply["type"] = done ? "ack" : "nack";
+                        if (parsed.command) reply["command"] = std::string(commandName(parsed.command->kind));
+                        if (!done) reply["error"] = std::string(parsed.command ? "not_paused" : parsed.error);
+                        std::printf("[BRIDGE v0] ev=command.%s cmd=%s\n", done ? "ack" : "nack",
+                                    parsed.command ? std::string(commandName(parsed.command->kind)).c_str() : "?");
+                    } else {
+                        const auto next = subscribe(message.dump(), session);
+                        const bool accepted = next.has_value();
+                        if (accepted) {
+                            subscription = *next;
+                            hz = (subscription.state || subscription.movers) ? subscription.hz : 0;
+                        }
+                        reply["type"] = accepted ? "ack" : "nack";
+                        if (!accepted) reply["error"] = "bad_message";
                     }
-                    live = sendJson(socket, {{"version", 1}, {"session", session},
-                        {"type", accepted ? "ack" : "nack"}, {"seq", message.value("seq", Json(nullptr))}});
+                    reply["control"] = controlJson();
+                    live = sendJson(socket, reply);
                 }
                 std::string snapshot, transforms;
                 {
@@ -124,7 +144,8 @@ struct Transport {
                     auto payload = Json::parse(body.begin(), body.end(), nullptr, false);
                     if (payload.is_discarded()) return false;
                     return sendJson(socket, {{"version", 1}, {"type", "telemetry"}, {"session", session},
-                        {"stream", stream}, {"dropped", dropped.load()}, {"data", std::move(payload)}});
+                        {"stream", stream}, {"dropped", dropped.load()}, {"control", controlJson()},
+                        {"data", std::move(payload)}});
                 };
                 if (live && subscription.state && !snapshot.empty()) live = emit("runtime.observation", snapshot);
                 if (live && subscription.movers && !transforms.empty()) live = emit("mover.transform", transforms);

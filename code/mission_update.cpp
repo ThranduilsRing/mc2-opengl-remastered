@@ -11,6 +11,7 @@
 #include "sim_world_trace.h"
 #include "sim_tick_clock.h"
 #include "../mclib/sim_overlap.h"
+#include "../GameOS/gameos/runtime_bridge_protocol.h"
 #include <optional>
 #include <array>
 #include "move_recon_stats.h"
@@ -1307,7 +1308,7 @@ void Mission::overlapKick()
 {
 	if (!mc2::gate::get<"MC2_SIM_OVERLAP">() || !mc2::gate::get<"MC2_DETERMINISTIC_RNG">() || !active || s_pre.valid)
 		return;
-	if (MPlayer || mc2SimTickFrozen(missionInterface) || loadInMissionSave || saveInMissionSave ||
+	if (MPlayer || mc2SimTickFrozen(missionInterface) || mc2::bridge::control().paused() || loadInMissionSave || saveInMissionSave ||
 	    LastTimeGetTime == 0xffffffff || turn != s_turnAfterLastPass)
 		return;
 	const float renderLength = frameLength;
@@ -1337,6 +1338,7 @@ void Mission::overlapKick()
 				break;   // a load drops the rest, as the serial loop does
 			if (saveInMissionSave) { s_pre.unrun = ticks - tick - 1; break; }   // the save and the rest run on Main
 		}
+		mc2::bridge::control().noteTicks(ticks);
 		s_pre.ended = ended;
 		s_pre.earlyResult = early;
 		s_pre.turn = turn;
@@ -1384,6 +1386,8 @@ long Mission::update (void)
 		const bool usePre = pre.valid && pre.owner == this && pre.turn == turn;
 		if (turn != s_turnAfterLastPass && !usePre)
 			s_tickClock.reset();   // a new mission or a loaded save: no banked time carries over
+		if (float bridgeSpeed = 0.0f; mc2::bridge::control().takeSpeed(bridgeSpeed))
+			simSpeedSetMultiplier(bridgeSpeed);   // runtime bridge set_speed, applied on the main thread
 		const float renderLength = frameLength;   // DoGameLogic: this render frame's length (1/30 s per virtual frame under the harness clock)
 
 		if (usePre && pre.ended)
@@ -1425,7 +1429,14 @@ long Mission::update (void)
 		{
 			const bool firstFrame = (LastTimeGetTime == 0xffffffff);
 			const double realSeconds = pollRealFrameSeconds(renderLength);
-			const int ticks = firstFrame ? 1 : s_tickClock.advance(realSeconds, simSpeedGetMultiplier());
+			// Runtime bridge pause: no banked time, and only queued "step" ticks run (the frame part still runs).
+			const bool bridgeHold = !firstFrame && mc2::bridge::control().paused();
+			if (bridgeHold)
+				s_tickClock.reset();
+			const int ticks = firstFrame ? 1
+				: bridgeHold ? mc2::bridge::control().takeSteps(mc2::sim::maxTicksPerFrame(1.0))
+				: s_tickClock.advance(realSeconds, simSpeedGetMultiplier());
+			mc2::bridge::control().noteTicks(ticks);
 			if (ticks == 0)
 			{
 				// No tick is due: the frame part runs (camera and UI stay at render rate), the sim stands still.

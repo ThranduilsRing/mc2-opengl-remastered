@@ -52,3 +52,75 @@ TEST_CASE("runtime_bridge/subscriptions authenticate version session rate and st
     CHECK_FALSE(subscription->movers);
     CHECK_FALSE(subscribe("{", session));
 }
+namespace {
+Json commandMessage(const char* cmd) {
+    return {{"version", 1}, {"session", session}, {"type", "command"}, {"cmd", cmd}};
+}
+}
+TEST_CASE("runtime_bridge/commands parse into the closed enum") {
+    using namespace mc2::bridge;
+    auto message = commandMessage("pause");
+    auto parsed = parseCommand(message.dump(), session);
+    REQUIRE(parsed.command);
+    CHECK(parsed.command->kind == CommandKind::Pause);
+    CHECK(parseCommand(commandMessage("resume").dump(), session).command->kind == CommandKind::Resume);
+    message = commandMessage("step"); message["n"] = 7;
+    parsed = parseCommand(message.dump(), session);
+    REQUIRE(parsed.command);
+    CHECK(parsed.command->kind == CommandKind::Step);
+    CHECK(parsed.command->steps == 7);
+    message = commandMessage("set_speed"); message["speed"] = 2.5;
+    parsed = parseCommand(message.dump(), session);
+    REQUIRE(parsed.command);
+    CHECK(parsed.command->kind == CommandKind::SetSpeed);
+    CHECK(parsed.command->speed == 2.5f);
+}
+TEST_CASE("runtime_bridge/commands reject unknown, malformed and out-of-range input") {
+    using namespace mc2::bridge;
+    for (const char* name : {"eval", "abl", "teleport", "stop", "PAUSE", ""}) {
+        const auto parsed = parseCommand(commandMessage(name).dump(), session);
+        CHECK_FALSE(parsed.command);
+        CHECK(parsed.error == "unknown_command");
+    }
+    for (const auto& bad : {Json(0), Json(-3), Json(100001), Json(1.5), Json("3"), Json(nullptr)}) {
+        auto message = commandMessage("step"); message["n"] = bad;
+        CHECK(parseCommand(message.dump(), session).error == "bad_argument");
+    }
+    CHECK(parseCommand(commandMessage("step").dump(), session).error == "bad_argument");
+    for (const auto& bad : {Json(0.1), Json(4.5), Json(0), Json("2"), Json(nullptr)}) {
+        auto message = commandMessage("set_speed"); message["speed"] = bad;
+        CHECK(parseCommand(message.dump(), session).error == "bad_argument");
+    }
+    auto message = commandMessage("pause"); message["session"] = "stale";
+    CHECK(parseCommand(message.dump(), session).error == "bad_message");
+    message = commandMessage("pause"); message["type"] = "subscribe";
+    CHECK(parseCommand(message.dump(), session).error == "bad_message");
+    message = commandMessage("pause"); message["cmd"] = 5;
+    CHECK(parseCommand(message.dump(), session).error == "bad_message");
+    CHECK(parseCommand("{", session).error == "bad_message");
+}
+TEST_CASE("runtime_bridge/control pause holds, step is bounded and consumed, resume clears") {
+    using namespace mc2::bridge;
+    Control control;
+    CHECK_FALSE(control.paused());
+    CHECK_FALSE(control.apply({CommandKind::Step, 3, 1.0f}));   // step only while paused
+    CHECK(control.apply({CommandKind::Pause, 0, 1.0f}));
+    CHECK(control.paused());
+    CHECK(control.apply({CommandKind::Step, 6, 1.0f}));
+    CHECK(control.takeSteps(4) == 4);
+    CHECK(control.pendingSteps() == 2);
+    CHECK(control.takeSteps(4) == 2);
+    CHECK(control.takeSteps(4) == 0);
+    CHECK(control.apply({CommandKind::Step, 5, 1.0f}));
+    CHECK(control.apply({CommandKind::Resume, 0, 1.0f}));
+    CHECK_FALSE(control.paused());
+    CHECK(control.pendingSteps() == 0);
+    float speed = 0;
+    CHECK_FALSE(control.takeSpeed(speed));
+    CHECK(control.apply({CommandKind::SetSpeed, 0, 2.0f}));
+    CHECK(control.takeSpeed(speed));
+    CHECK(speed == 2.0f);
+    CHECK_FALSE(control.takeSpeed(speed));
+    control.noteTicks(3); control.noteTicks(0);
+    CHECK(control.ticks() == 3);
+}
