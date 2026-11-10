@@ -165,21 +165,46 @@ def commit_order_problem(older, newer, what_older, what_newer):
 SHADER_BUILD_DIRS = ("shaders/vulkan/", "shaders/include/", "shaders/spv/")
 
 
-def manifest_mismatches(ma, mb):
-    """Data manifest differences ignoring the build under test: mc2.exe, everything under shaders/vulkan/ (the .spv and the
-    sources they compile from ship together with the exe) and the build outputs that never change a capture's pixels
-    (mc2.pdb pairs with mc2.exe; mc2_asset_viewer.exe is not launched by a capture).
-    W135: the gate's capture-before (published exe) vs capture-after (candidate) differed only in mc2.pdb/asset viewer and
-    failed; W136: a window that edits shaders/vulkan sources (.frag, include/*.glsl) failed the same way."""
+def _data_mismatch_entries(ma, mb):
+    """[(relpath, line)] for every data file that differs between manifests A and B, ignoring the build under test: mc2.exe,
+    everything under shaders/vulkan/ (the .spv and the sources they compile from ship together with the exe) and the build
+    outputs that never change a capture's pixels (mc2.pdb pairs with mc2.exe; mc2_asset_viewer.exe is not launched by a
+    capture). W135: the gate's capture-before (published exe) vs capture-after (candidate) differed only in mc2.pdb/asset
+    viewer and failed; W136: a window that edits shaders/vulkan sources (.frag, include/*.glsl) failed the same way.
+    W137: shaders/include (*.hglsl) and shaders/spv (prebuilt packages) ship with the exe the same way. Only these three
+    deployed shader dirs are exempt; any other file under shaders/ (data, fixtures) still refuses."""
     build_outputs = EXECUTABLES | {"mc2.pdb", "mc2_asset_viewer.exe", "mc2_asset_viewer"}
-    # W137: shaders/include (*.hglsl) and shaders/spv (prebuilt packages) ship with the exe the same way. Only these three
-    # deployed shader dirs are exempt; any other file under shaders/ (data, fixtures) still refuses.
     skip = lambda p: p in build_outputs or p.startswith(SHADER_BUILD_DIRS)
     ma = {k: v for k, v in ma.items() if not skip(k)}
     mb = {k: v for k, v in mb.items() if not skip(k)}
-    out = [f"only in A: {k}" for k in sorted(ma.keys() - mb.keys())] + [f"only in B: {k}" for k in sorted(mb.keys() - ma.keys())]
-    out += [f"differs: {k} (A {ma[k][:12]} vs B {mb[k][:12]})" for k in sorted(ma.keys() & mb.keys()) if ma[k] != mb[k]]
-    return out
+    entries = [(k, f"only in A: {k}") for k in sorted(ma.keys() - mb.keys())]
+    entries += [(k, f"only in B: {k}") for k in sorted(mb.keys() - ma.keys())]
+    entries += [(k, f"differs: {k} (A {ma[k][:12]} vs B {mb[k][:12]})") for k in sorted(ma.keys() & mb.keys()) if ma[k] != mb[k]]
+    return entries
+
+
+def manifest_mismatches(ma, mb):
+    """The human-readable lines of _data_mismatch_entries (one per differing data file)."""
+    return [line for _, line in _data_mismatch_entries(ma, mb)]
+
+
+def manifest_diff_files(ma, mb):
+    """The set of data relpaths that differ between manifests A and B (same scope as manifest_mismatches)."""
+    return {path for path, _ in _data_mismatch_entries(ma, mb)}
+
+
+def git_diff_files(older, newer):
+    """Relpaths changed between commits older and newer (`git diff --name-only older newer`); None when the diff cannot be
+    computed (unknown commit, git failure) so callers fail closed instead of accepting an unverified payload."""
+    try:
+        out = subprocess.run(["git", "-C", str(ROOT), "diff", "--name-only", older, newer],
+                             capture_output=True, text=True,
+                             **console_child.child_kwargs(redirected=True))
+    except OSError:
+        return None
+    if out.returncode != 0:
+        return None
+    return {line for line in out.stdout.splitlines() if line}
 
 
 def base_problems(install_a=None, install_b=None, exe_a=None, exe_b=None, install=None):
@@ -336,7 +361,7 @@ def stamp_cross_base(img: Image.Image) -> Image.Image:
     return img
 
 
-def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None, cross_base=False):
+def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None, cross_base=False, data_delta_accepted=None):
     """Returns the compared rows; compare.problems lists missing/empty evidence (callers exit nonzero on it)."""
     if not bookmarks:
         bookmarks = discover_bookmarks(gl_dir, vk_dir)
@@ -409,7 +434,8 @@ def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None, cross_
     if problems:
         print("[ab] FAIL: " + "; ".join(problems))
     (out / "summary.json").write_text(json.dumps(
-        {"gl": str(gl_dir), "vk": str(vk_dir), "threshold": THRESH, "cross_base": cross_base, "rows": rows, "problems": problems,
+        {"gl": str(gl_dir), "vk": str(vk_dir), "threshold": THRESH, "cross_base": cross_base,
+         "data_delta_accepted": list(data_delta_accepted or []), "rows": rows, "problems": problems,
          "gpu": {"a": gpu_a, "b": gpu_b, "same": gpu_a == gpu_b}}, indent=2))
     print(f"[ab] wrote {out}")
     compare.problems = problems
@@ -517,8 +543,9 @@ def main(argv=None):
     ap.add_argument("--allow-base-mismatch", action="store_true",
                     help="deliberate cross-base comparison: print the base/data mismatch, stamp CROSS-BASE on the montage, go on")
     ap.add_argument("--allow-data-delta", action="store_true",
-                    help="--compare-only: when capture B's commit descends from A's, list data-manifest differences (the window's "
-                         "payload) instead of refusing; the commit order and payload identity checks still apply")
+                    help="--compare-only: when capture B's commit descends from A's, accept only the data files the window "
+                         "changed (`git diff --name-only A B`) instead of refusing; any other differing data file still refuses; "
+                         "the commit order and payload identity checks still apply")
     a = ap.parse_args(argv)
     os.environ["MC2_CURSOR_NO_PARK"] = "1"
     crops = [tuple(float(x) for x in c.split(",")) for c in a.crop]
@@ -533,17 +560,29 @@ def main(argv=None):
         except ValueError as exc:
             sys.exit(f"ab.py: {exc}")
         bad = [p for p in [commit_order_problem(ia["commit"], ib["commit"], "capture A", "capture B")] if p]
-        delta = manifest_mismatches(ia["manifest"], ib["manifest"])
+        entries = _data_mismatch_entries(ia["manifest"], ib["manifest"])
+        accepted_delta = []
         if a.allow_data_delta and not bad:
             # the merge gate's before (published v0.4) vs after (candidate): B descends from A, so a data difference is the
-            # window's own payload; list it next to the MAD table instead of refusing (W138: logistics-art shipped 574 icons)
-            for line in delta:
-                print("[ab] data delta (window payload): " + line, flush=True)
+            # window's own payload (W138: logistics-art shipped 574 icons). P1: accept only the files the window actually
+            # changed (`git diff --name-only A B`); any other differing data file still refuses.
+            diff_files = git_diff_files(ia["commit"], ib["commit"])
+            if diff_files is None:
+                bad.append("cannot compute `git diff --name-only` between the two capture commits; refusing --allow-data-delta")
+            else:
+                accepted = manifest_diff_files(ia["manifest"], ib["manifest"]) & diff_files
+                accepted_delta = sorted(accepted)
+                for path, line in entries:
+                    if path in accepted:
+                        print("[ab] data delta (window payload): " + line, flush=True)
+                    else:
+                        bad.append(line)
         else:
-            bad += delta
+            bad += [line for _, line in entries]
         if bad and not a.allow_base_mismatch:
             sys.exit("ab.py: mismatched capture identities: " + "; ".join(bad))
-        compare(Path(a.compare_only[0]), Path(a.compare_only[1]), out, crops, cross_base=bool(bad))
+        compare(Path(a.compare_only[0]), Path(a.compare_only[1]), out, crops,
+                cross_base=bool(bad), data_delta_accepted=accepted_delta)
         sys.exit(1 if getattr(compare, "problems", None) else 0)
     if not a.bookmarks:
         sys.exit("--bookmarks required")

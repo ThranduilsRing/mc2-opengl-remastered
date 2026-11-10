@@ -118,6 +118,15 @@ def test_capture_identity_skips_only_deployed_shader_dirs():
         "only in A: shaders/lut.dat", "differs: shaders/fixtures/f.bin (A f1 vs B f2)"]
 
 
+def test_git_diff_files_lists_changed_paths(tmp_path, repo):
+    # repo: commit0 (f=0) -> commit1 (f=1); side branch from commit0 adds g. `git diff --name-only` is the window's payload.
+    assert ab.git_diff_files(repo[0], repo[1]) == {"f"}
+    assert ab.git_diff_files(repo[1], repo[0]) == {"f"}
+    assert ab.git_diff_files(repo[0], repo[2]) == {"g"}
+    assert ab.git_diff_files(repo[0], repo[0]) == set()
+    assert ab.git_diff_files("no-such-commit", repo[0]) is None
+
+
 @pytest.mark.parametrize("rel", ["mc2.exe", "shaders/vulkan/x.spv"])
 def test_manifest_byte_mismatch_refuses_before_capture(tmp_path, repo, monkeypatch, rel):
     install = _install(tmp_path / "install", repo[0])
