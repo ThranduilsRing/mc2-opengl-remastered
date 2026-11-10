@@ -198,3 +198,34 @@ def test_cross_base_montage_is_stamped(tmp_path):
     stamped = Image.open(tmp_path / "xb" / "bm" / "montage.jpg").convert("RGB")
     assert max(stamped.getpixel((12, 12))) > 100 and max(plain.getpixel((12, 12))) < 30
     assert '"cross_base": true' in (tmp_path / "xb" / "summary.json").read_text()
+
+
+def test_exe_a_base_mismatch_warns(tmp_path, repo, monkeypatch):
+    # repo: master commit0 -> commit1 (repo[0], repo[1]); side commit0 -> commit2 (repo[2]).
+    r = ab.ROOT
+    _git(r, "branch", "lane-base-ref", repo[1])   # the lane base branch tip = commit1
+    monkeypatch.setattr(ab, "LANE_BASE_BRANCH", "lane-base-ref")
+    # B = commit2 (side): lane_base = merge-base(commit2, commit1) = commit0.
+    # A = commit0 (== lane_base): a clean A/B, no warning.
+    assert ab.exe_a_base_check(repo[0], repo[2]) == (None, None)
+    # A = commit1 (!= lane_base commit0): the A exe is not built from the lane base -> warn.
+    line, mm = ab.exe_a_base_check(repo[1], repo[2])
+    assert line == f"exe A is {repo[1]}, lane base is {repo[0]}: differences may be cross-base"
+    assert mm == {"exe_a": repo[1], "lane_base": repo[0]}
+    # B = commit1 (master tip): lane_base = merge-base(commit1, commit1) = commit1. A = commit0 != commit1 -> warn.
+    line, mm = ab.exe_a_base_check(repo[0], repo[1])
+    assert mm == {"exe_a": repo[0], "lane_base": repo[1]}
+    # Unknown commits: the lane base cannot be determined, so no warning (never a refusal).
+    assert ab.exe_a_base_check(None, repo[2]) == (None, None)
+    assert ab.exe_a_base_check(repo[1], None) == (None, None)
+
+
+def test_compare_writes_exe_a_base_mismatch(tmp_path):
+    for side in "ab":
+        (tmp_path / side / "bm").mkdir(parents=True)
+        Image.new("RGB", (200, 100), (0, 0, 0)).save(tmp_path / side / "bm" / "bm.png")
+    mm = {"exe_a": "a" * 40, "lane_base": "b" * 40}
+    ab.compare(tmp_path / "a", tmp_path / "b", tmp_path / "cmp", [], ["bm"], exe_a_base_mismatch=mm)
+    assert json.loads((tmp_path / "cmp/summary.json").read_text())["exe_a_base_mismatch"] == mm
+    ab.compare(tmp_path / "a", tmp_path / "b", tmp_path / "cmp2", [], ["bm"])
+    assert json.loads((tmp_path / "cmp2/summary.json").read_text())["exe_a_base_mismatch"] is None

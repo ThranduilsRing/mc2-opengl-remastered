@@ -207,6 +207,46 @@ def git_diff_files(older, newer):
     return {line for line in out.stdout.splitlines() if line}
 
 
+LANE_BASE_BRANCH = "claude/nifty-mendeleev"
+
+
+def git_merge_base(a, b):
+    """merge-base of commits a and b, or None when it cannot be computed (unknown commit, git failure)."""
+    try:
+        out = subprocess.run(["git", "-C", str(ROOT), "merge-base", a, b],
+                             capture_output=True, text=True,
+                             **console_child.child_kwargs(redirected=True))
+    except OSError:
+        return None
+    if out.returncode != 0:
+        return None
+    return out.stdout.strip() or None
+
+
+def lane_base_ref():
+    """The tip of the lane base branch (claude/nifty-mendeleev), or None when it cannot be resolved."""
+    try:
+        out = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "refs/heads/" + LANE_BASE_BRANCH],
+                             capture_output=True, text=True,
+                             **console_child.child_kwargs(redirected=True))
+    except OSError:
+        return None
+    if out.returncode != 0:
+        return None
+    return out.stdout.strip() or None
+
+
+def exe_a_base_check(commit_a, commit_b):
+    """(warning line or None, {exe_a, lane_base} or None) when the A exe is not built from the lane base (the merge-base of
+    B and the lane base branch). A clean A/B has the A exe built exactly at the lane base; anything else may be cross-base."""
+    base_ref = lane_base_ref()
+    lane_base = git_merge_base(commit_b, base_ref) if (commit_b and base_ref) else None
+    if commit_a and lane_base and commit_a != lane_base:
+        return (f"exe A is {commit_a}, lane base is {lane_base}: differences may be cross-base",
+                {"exe_a": commit_a, "lane_base": lane_base})
+    return None, None
+
+
 def base_problems(install_a=None, install_b=None, exe_a=None, exe_b=None, install=None):
     """Reasons the two sides are not a same-base A/B. Install mode: A's commit must be an ancestor of B's and the data/shader
     manifests must match. Exe-swap mode: each exe's commit must descend from the install's deployed commit."""
@@ -361,7 +401,8 @@ def stamp_cross_base(img: Image.Image) -> Image.Image:
     return img
 
 
-def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None, cross_base=False, data_delta_accepted=None):
+def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None, cross_base=False, data_delta_accepted=None,
+            exe_a_base_mismatch=None):
     """Returns the compared rows; compare.problems lists missing/empty evidence (callers exit nonzero on it)."""
     if not bookmarks:
         bookmarks = discover_bookmarks(gl_dir, vk_dir)
@@ -435,7 +476,8 @@ def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None, cross_
         print("[ab] FAIL: " + "; ".join(problems))
     (out / "summary.json").write_text(json.dumps(
         {"gl": str(gl_dir), "vk": str(vk_dir), "threshold": THRESH, "cross_base": cross_base,
-         "data_delta_accepted": list(data_delta_accepted or []), "rows": rows, "problems": problems,
+         "data_delta_accepted": list(data_delta_accepted or []), "exe_a_base_mismatch": exe_a_base_mismatch,
+         "rows": rows, "problems": problems,
          "gpu": {"a": gpu_a, "b": gpu_b, "same": gpu_a == gpu_b}}, indent=2))
     print(f"[ab] wrote {out}")
     compare.problems = problems
@@ -599,12 +641,18 @@ def main(argv=None):
         identities = [payload_identity(d) for d in (ia, ib)]
     except (OSError, ValueError) as exc:
         sys.exit(f"ab.py: refusing capture: {exc}")
+    # Warn (never refuse) when the A exe was not built from the lane base: the A/B then mixes the lane's changes with
+    # cross-base ones, so a nonzero diff is not a clean signal of the window.
+    base_line, exe_a_base_mismatch = exe_a_base_check(identities[0]["commit"], identities[1]["commit"])
+    if base_line:
+        print("[ab] WARNING: " + base_line, flush=True)
     env = ["MC2_RENDER_BACKEND=vulkan", "MC2_VK_SHARED_GBUFFER=1"] + a.env + env_pin.focus_declarations(a.focus, a.focus_zoom)
     run_capture(ia, a.bookmarks, out / "a", env)
     stamp_identity(out / "a", identities[0])
     run_capture(ib, a.bookmarks, out / "b", env)
     stamp_identity(out / "b", identities[1])
-    compare(out / "a", out / "b", out / "cmp", crops, [s.strip() for s in a.bookmarks.split(",") if s.strip()], cross_base=bool(bad))
+    compare(out / "a", out / "b", out / "cmp", crops, [s.strip() for s in a.bookmarks.split(",") if s.strip()],
+            cross_base=bool(bad), exe_a_base_mismatch=exe_a_base_mismatch)
     sys.exit(1 if getattr(compare, "problems", None) else 0)
 
 
