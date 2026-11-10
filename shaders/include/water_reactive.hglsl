@@ -15,6 +15,7 @@ using glm::clamp;
 using glm::max;
 using glm::min;
 using glm::exp;
+using glm::sqrt;
 using glm::sin;
 using glm::abs;
 #define WR_INLINE inline
@@ -25,11 +26,11 @@ using glm::abs;
 // Peak normal slope / foam weight of a ring or wake crest (owner 2026-11-10: the first values, 0.035/0.028, were
 // barely visible). The caller clamps the summed slope to kSlopeMax and the foam weight to kCrestMax.
 #ifdef __cplusplus
-constexpr float kRingSlope = 0.22f, kRingCrest = 0.30f, kWakeSlope = 0.26f, kWakeCrest = 0.22f;
-constexpr float kSlopeMax = 0.45f, kCrestMax = 0.40f;
+constexpr float kRingSlope = 0.30f, kRingCrest = 0.55f, kWakeSlope = 0.32f, kWakeCrest = 0.45f;
+constexpr float kSlopeMax = 0.60f, kCrestMax = 0.75f;
 #else
-const float kRingSlope = 0.22, kRingCrest = 0.30, kWakeSlope = 0.26, kWakeCrest = 0.22;
-const float kSlopeMax = 0.45, kCrestMax = 0.40;
+const float kRingSlope = 0.30, kRingCrest = 0.55, kWakeSlope = 0.32, kWakeCrest = 0.45;
+const float kSlopeMax = 0.60, kCrestMax = 0.75;
 #endif
 
 // Compact support also bounds the CPU tile footprint (224 world units).
@@ -47,7 +48,10 @@ WR_INLINE vec3 wr_profile(vec2 d, vec2 velocity, float radius, float age,
     float envelope = exp(-ring * ring / (2.0f * width * width));
     float wave = sin(ring / width);
     vec2 slope = d / max(dist, 0.001f) * (wave * envelope * kRingSlope);
-    float crest = envelope * max(0.0f, 1.0f - abs(ring) / width) * kRingCrest;
+    // Thin white crest on the wave top: a gaussian a third of the ring width, not the old triangle*envelope (a wide
+    // milky band with a kink at its edges that read as stepped bands).
+    float crestW = width * 0.35f;
+    float crest = exp(-ring * ring / (2.0f * crestW * crestW)) * kRingCrest;
     float speed = length(velocity);
     if (vehicle > 0.5f && speed > 3.0f) {
         vec2 heading = velocity / speed;
@@ -61,9 +65,17 @@ WR_INLINE vec3 wr_profile(vec2 d, vec2 velocity, float radius, float age,
         float wake = exp(-edge * edge / (2.0f * width * width)) * wakeFade;
         float signAcross = across < 0.0f ? -1.0f : 1.0f;
         slope += (side * signAcross + heading * 0.38f) * (sin(edge / width) * wake * kWakeSlope);
-        crest += wake * max(0.0f, 1.0f - abs(edge) / width) * kWakeCrest;
+        crest += exp(-edge * edge / (2.0f * crestW * crestW)) * wakeFade * kWakeCrest;
     }
     return vec3(slope * fade, crest * fade);
+}
+
+// Smooth saturation (slope 1 at 0, asymptote m): overlapping rings add and then roll off. The old hard clamp made flat
+// plateaus (the posterized bands) where neighbouring mechs' rings overlapped.
+WR_INLINE float wr_soft(float x, float m) { return m * x / sqrt(m * m + x * x); }
+// Sum of every stamp's wr_profile -> the slope that perturbs the normal and the foam weight.
+WR_INLINE vec3 wr_combine(vec3 sum) {
+    return vec3(wr_soft(sum.x, kSlopeMax), wr_soft(sum.y, kSlopeMax), wr_soft(max(sum.z, 0.0f), kCrestMax));
 }
 
 #ifdef __cplusplus

@@ -83,7 +83,7 @@ vec3 reactiveWater(vec2 worldXY, float pixelWidth) {
             result += wr_profile(delta, s.velocityType.xy, s.positionRadiusAge.z,
                                  s.positionRadiusAge.w, s.velocityType.z, pixelWidth);
     }
-    return vec3(clamp(result.xy, vec2(-kSlopeMax), vec2(kSlopeMax)), min(result.z, kCrestMax));
+    return wr_combine(result);
 }
 #include "../include/edge_haze.hglsl"   // VK-PARITY-F3: WATER-EDGE-FEATHER-1 (EDGE_HAZE_SKY, edgeHazeAmount)
 

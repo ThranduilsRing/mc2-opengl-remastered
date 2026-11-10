@@ -165,6 +165,28 @@ TEST_CASE("WaterReactive/rings are strong enough to read at the play camera, bou
     CHECK(glm::length(wr_profile({224.5f, 0}, {0, 0}, 40, 0.6f, 0, 1)) == 0);
 }
 
+TEST_CASE("WaterReactive/overlap saturates smoothly (no flat plateaus) and the crest is thin") {
+    // Owner 2026-11-10: posterized milky bands and a blob lattice where neighbouring mechs' rings overlap. A hard clamp made
+    // plateaus; the combine must stay strictly increasing and below the cap, and the foam crest must be thinner than the wave.
+    float prev = -1.0f;
+    for (float s = 0.0f; s <= 3.0f; s += 0.05f) {
+        const auto c = wr_combine(glm::vec3(s * 0.3f, -s * 0.3f, s * 0.4f));
+        CHECK(c.z > prev);
+        CHECK(c.z < kCrestMax);
+        CHECK(std::abs(c.x) < kSlopeMax);
+        prev = c.z;
+    }
+    CHECK(wr_combine(glm::vec3(0.05f, 0.0f, 0.05f)).x == doctest::Approx(0.05f).epsilon(0.01));
+    int crestSamples = 0, slopeSamples = 0;
+    for (float r = 0.0f; r < 223.0f; r += 0.25f) {
+        const auto v = wr_profile({r, 0}, {0, 0}, 13, 0.6f, 0, 1);
+        crestSamples += v.z > 0.5f * 0.55f * 0.5f;
+        slopeSamples += std::abs(v.x) > 0.5f * 0.3f * 0.5f;
+    }
+    CHECK(crestSamples > 0);
+    CHECK(crestSamples < slopeSamples);
+}
+
 #include "../../shaders/include/water_shallow.hglsl"
 TEST_CASE("WaterShallow/opacity follows the water column: wading stays clear, deep water keeps the full veil") {
     using mc2::watershallow::ws_column_veil;
