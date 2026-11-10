@@ -436,35 +436,41 @@ extern "C" int mc2_vk_sky_island_run(int w, int h) {
     { ZoneScopedN("VKIsl.Sky.FenceWait"); mc2::battlebench::WaitScope gpuWait1(mc2::battlebench::WaitGpuMainNs);
       if (!vk_island_util::waitStrike(s->waitStrikes, s->disabled, rctx.wait(s->submitted[par], 5000000000ull, "sky submission slot"), "VK_SKY")) { setFallback("submission_slot_timeout"); vlog("LOUD: submission slot wait timed out (5 s); skipping this frame, will retry next frame."); return 0; } }
 
-    VkCommandBuffer cb = s->cbuf[par];
-    vkResetCommandPool(s->device, s->cpool[par].get(), 0);
-    VkCommandBufferBeginInfo bi{};
-    bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO; bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
-    VkRenderPassBeginInfo rbi{};
-    rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO; rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
-    rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
-    MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Sky");
-    vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
-    VkViewport vp{0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
-    VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
-    vkCmdSetViewport(cb, 0, 1, &vp);
-    vkCmdSetScissor(cb, 0, 1, &scissor);
-    mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
-    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set, 0, nullptr);
+    // The push constants and every handle the recording needs are copied here; the recording itself runs on a worker with the frame's other recorded
+    // islands (VulkanContext::submitRecorded).
     SkyPC pc{};
     std::memcpy(pc.invProj, p.invProj, sizeof(pc.invProj));
     for (int i = 0; i < 3; ++i) { pc.rotC0[i] = p.rot[i]; pc.rotC1[i] = p.rot[3 + i]; pc.rotC2[i] = p.rot[6 + i]; }
     pc.skyYaw = p.yaw;
-    vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
-    mc2::battlebench::add(mc2::battlebench::DrawSky), vkCmdDraw(cb, 3, 1, 0, 0);
-    vkCmdEndRenderPass(cb);
-    gpuScope.end();
-    if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
-    VkSubmitInfo si{};
-    si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO; si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    { ZoneScopedN("VKIsl.Sky.Submit");
-      if (mc2vk::submitGraphics(si, VK_NULL_HANDLE) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
+    const VkRenderPass rpass = s->rpass.get();
+    const VkFramebuffer fb = s->fb.get();
+    const VkPipeline pipe = s->pipe.get();
+    const VkPipelineLayout playout = s->playout.get();
+    const VkDescriptorSet set = s->set;
+    auto record = [pc, rpass, fb, pipe, playout, set, w, h](VkCommandBuffer cb) -> bool {
+        VkCommandBufferBeginInfo bi{};
+        bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO; bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) return false;
+        VkRenderPassBeginInfo rbi{};
+        rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO; rbi.renderPass = rpass; rbi.framebuffer = fb;
+        rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
+        MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Sky");
+        vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+        VkViewport vp{0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
+        VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
+        vkCmdSetViewport(cb, 0, 1, &vp);
+        vkCmdSetScissor(cb, 0, 1, &scissor);
+        mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipe);
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, playout, 0, 1, &set, 0, nullptr);
+        vkCmdPushConstants(cb, playout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
+        mc2::battlebench::add(mc2::battlebench::DrawSky), vkCmdDraw(cb, 3, 1, 0, 0);
+        vkCmdEndRenderPass(cb);
+        gpuScope.end();
+        return vkEndCommandBuffer(cb) == VK_SUCCESS;
+    };
+    auto done = [s](bool ok) { if (!ok) { setFallback("record_failed"); s->disabled = true; } };
+    { ZoneScopedN("VKIsl.Sky.Submit");   // the reservation in the deferred submit batch; the recording runs at the flush
+      if (slotCtx.submitRecorded(std::move(record), std::move(done), nullptr) != VK_SUCCESS) return 0; }   // done(false) already disabled the island
     s->submitted[par] = rctx.tracker().now();
     ++g_health.usedVulkan;
     static bool s_firstOk = false;

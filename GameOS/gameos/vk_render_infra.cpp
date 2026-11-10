@@ -347,7 +347,7 @@ void panel() {
 void breadcrumb(std::string_view kind,std::string_view name,uint64_t hash,VkCommandBuffer cb) {
     auto& s=state(); const LONG sequence=InterlockedIncrement(&s.cursor); auto& crumb=s.crumbs[static_cast<uint32_t>(sequence)%s.crumbs.size()];
     if(InterlockedCompareExchange(&crumb.writing,1,0)!=0) return;
-    std::snprintf(crumb.text,sizeof(crumb.text),"seq=%ld tick=%ld frame=%llu kind=%.*s name=%.*s hash=%016llx",sequence,::turn,getOrCreateEngineVulkanContext().tracker().frameNo(),static_cast<int>(kind.size()),kind.data(),static_cast<int>(std::min<size_t>(name.size(),230)),name.data(),hash);
+    std::snprintf(crumb.text,sizeof(crumb.text),"seq=%ld tick=%ld frame=%llu kind=%.*s name=%.*s hash=%016llx",sequence,::turn,engineVulkanContextNoWait().tracker().frameNo(),static_cast<int>(kind.size()),kind.data(),static_cast<int>(std::min<size_t>(name.size(),230)),name.data(),hash);
     InterlockedExchange(&crumb.writing,0);
     auto retain=[&](auto& ring,volatile LONG& cursor) {
         auto& entry=ring[static_cast<uint32_t>(InterlockedIncrement(&cursor))%ring.size()];

@@ -151,6 +151,9 @@ static LONG WINAPI mc2_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
 #include "vulkan_context.h"         // VK-P13-SELECTOR-1 / T2: shared engine VK device
 #include "vk_gpu_profile.h"          // VK-GPU-ZONES: per-frame Tracy GPU collect / pass timestamps
 #include "vk_desc_write_cache.h"     // per-frame descriptor write/skip counter (Tracy plot + [VK_DESC_WRITES v1])
+#include "vk_render_pass_timer.h"    // Arm(): the timestamp pool is born before a worker thread brackets a pass
+#include "../../code/frame_jobs.h"   // frameJobsEnabled(): MC2_FRAME_JOBS=0 keeps recorded islands on the render thread
+#include "../../code/job_system.h"   // the Render-domain pool the recorded islands run on
 #include "engine_present_vk.h"      // VK-P13-SELECTOR-1 / T3: GL->VK present intercept
 #endif
 #include "gos_visual_diff.h"  // Stage 2.E pre-HUD capture + Ctrl+Shift+P record
@@ -1050,7 +1053,18 @@ int main(int argc, char** argv)
 
     static uint32_t s_hitchFrame = 0u;
 #ifdef MC2_VULKAN
-    if (mc2vk::engineVulkanContextValid()) mc2vk::getOrCreateEngineVulkanContext().beginFrame();   // frame 1 of the completion tracker
+    if (mc2vk::engineVulkanContextValid()) {
+        mc2vk::VulkanContext& vkCtx = mc2vk::getOrCreateEngineVulkanContext();
+        // Recorded islands (VulkanContext::submitRecorded) record on the Render-domain pool, one island per block; with the pool off or
+        // MC2_FRAME_JOBS=0 they record on this thread.
+        vkCtx.setRecordExecutor({
+            [] { return mc2::jobs::enabled() && frameJobsEnabled(); },
+            [](int count, const std::function<void(int)>& body) {
+                vk_render_pass_timer::Arm();
+                mc2::jobs::parallel_for(mc2::jobs::Domain::Render, count, 1, 100000, [&body](int begin, int end) { for (int i = begin; i < end; ++i) body(i); });
+            }});
+        vkCtx.beginFrame();   // frame 1 of the completion tracker
+    }
     if (!headless) mc2vk::present_thread::start();
 #endif
     bool presentJoinPending = false;

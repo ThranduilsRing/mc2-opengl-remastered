@@ -369,6 +369,7 @@ void frameEndSubmitted() {
 
 void frameEnd() {
     if (g.device == VK_NULL_HANDLE) return;
+    if (g.ctx) g.ctx->resolveRecorded();   // reserved recordings write their scope timestamps into this frame's slot before it closes
     if (tailFrame.load(std::memory_order_acquire) == g.frame.load(std::memory_order_relaxed)) {
         // Recorded into this frame's present tail. A refused submit never ran the reset: issue it now so the slot does not read stale.
         const uint32_t first = tailFirst.load(std::memory_order_relaxed), count = tailCount.load(std::memory_order_relaxed);
