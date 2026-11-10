@@ -15,7 +15,7 @@ Rows: ab:<before-ref> (day + night A/B against HEAD, plus the gpu-passes ratio t
 Legacy capture rows are forced onto GPU 0 by `--gpu auto`.
 Windows-only behaviour (window focus, firewall, owner-test) is not covered: those rows stay on the Windows PC.
 """
-import argparse, base64, io, json, os, re, shutil, subprocess, sys, tarfile, tempfile, time
+import argparse, base64, hashlib, io, json, os, re, shutil, subprocess, sys, tarfile, tempfile, time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
@@ -128,6 +128,23 @@ def apply_data_overlay(repo, base, tip, arm, install, golden, git_run=None):
     if base:
         out = git_bytes("diff", "--name-only", "--no-renames", "-z", f"{base}..{tip}", "--", "data/")
         changed = sorted(p for p in out.decode("utf-8").split("\0") if p.startswith("data/"))
+    # also every tracked data file the golden lacks or holds at different bytes (data merged into the base after the golden was seeded:
+    # the lane diff alone would leave it stale, e.g. vegetation placement inputs)
+    stale = set()
+    for ent in git_bytes("ls-tree", "-r", "-z", arm, "--", "data/").decode("utf-8").split("\0"):
+        if not ent:
+            continue
+        meta, rel = ent.split("\t", 1)
+        blob_id = meta.split()[2]
+        g = golden / rel
+        try:
+            raw = g.read_bytes()
+        except OSError:
+            stale.add(rel)
+            continue
+        if hashlib.sha1(b"blob %d\0" % len(raw) + raw).hexdigest() != blob_id:
+            stale.add(rel)
+    changed = sorted(set(changed) | stale)
     files = size = 0
     done = []
     for rel in changed:
@@ -140,6 +157,8 @@ def apply_data_overlay(repo, base, tip, arm, install, golden, git_run=None):
         if blob is not None:
             dst.parent.mkdir(parents=True, exist_ok=True)
             dst.write_bytes(blob)
+            if hashlib.sha256(dst.read_bytes()).hexdigest() != hashlib.sha256(blob).hexdigest():   # sha-check each copied file against its source
+                raise RuntimeError(f"data overlay sha mismatch after copy: {rel}")
             size += len(blob)
         files += 1
         done.append(rel)
@@ -305,7 +324,7 @@ for row in "${ROWS[@]}"; do
       gr timeout -k 30 600 python3 tools/visual_verify/capture.py --install "$I" --bookmarks "$marks" --out "$ABOUT/b" > "$OUT/ab_after.log" 2>&1; rc=$?
       gr timeout -k 30 1500 python3 tools/box_gpu_passes.py run --install "$I" --out "$ABOUT" --name gpu_passes_tip --ref-commit "$SHA" > "$OUT/ab_gpu_tip.log" 2>&1; gprc2=$?; [ "$gprc" = 0 ] && gprc=$gprc2
       if [ "$rc" = 0 ]; then
-        grc python3 tools/visual_verify/ab.py --compare-only "$ABOUT/a" "$ABOUT/b" --out-root "$ABOUT/compare" > "$OUT/ab_compare.log" 2>&1; rc=$?
+        grc python3 tools/visual_verify/ab.py --compare-only "$ABOUT/a" "$ABOUT/b" --allow-data-delta --out-root "$ABOUT/compare" > "$OUT/ab_compare.log" 2>&1; rc=$?
       fi
     fi
     printf "%s\t%s\n" "$row" "$rc" >> "$OUT/rows.tsv"

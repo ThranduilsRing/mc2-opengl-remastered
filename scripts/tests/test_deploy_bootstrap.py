@@ -101,6 +101,16 @@ def _failing_cooker(cmd, **kw):
     return type("R", (), {"returncode": 3, "stdout": "", "stderr": "boom"})()
 
 
+def test_allow_stock_trees_downgrades_a_failed_cook_to_a_warning(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(dp, "CONCRETE_DETAIL_SRC", str(tmp_path))
+    monkeypatch.setattr(dp, "ALLOW_STOCK_TREES", True)
+    dp.ensure_concrete_detail(str(tmp_path), _failing_cooker)   # no SystemExit
+    assert "--allow-stock-trees" in capsys.readouterr().out
+    monkeypatch.setattr(dp, "ALLOW_STOCK_TREES", False)
+    with pytest.raises(SystemExit):
+        dp.ensure_concrete_detail(str(tmp_path), _failing_cooker)
+
+
 def test_failed_cooks_exit_nonzero_instead_of_shipping_stock_data(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(dp, "CONCRETE_DETAIL_SRC", str(tmp_path))
     monkeypatch.setattr(dp, "CLIFF_ROCK_SRC", str(tmp_path))

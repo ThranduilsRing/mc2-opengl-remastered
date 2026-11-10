@@ -75,11 +75,16 @@ def test_zero_overlay_restores_golden_and_prints_the_line(tmp_path, capsys):
     repo, gold, inst, base, tip = make_world(tmp_path)
     box_run.apply_data_overlay(repo, base, tip, tip, inst, gold)
     capsys.readouterr()
-    assert box_run.apply_data_overlay(repo, "", tip, tip, inst, gold) == (0, 0)   # no base ref: N=0 is legal and printed
-    assert "[box_run] data_overlay files=0 bytes=0" in capsys.readouterr().out
-    assert (inst / "data/kit/a.json").read_text() == "gold-a"
+    # no base ref: only tracked files the golden lacks or holds differently (a differs, c absent) are laid over
+    assert box_run.apply_data_overlay(repo, "", tip, tip, inst, gold) == (2, 10)
     assert (inst / "data/kit/b.json").read_text() == "gold-b"
-    assert not (inst / "data/kit/c.json").exists()
+    capsys.readouterr()
+    # golden already equal to the tip's data and no base: N=0 is legal and printed, the install is back on golden links
+    put(gold / "data/kit/a.json", "tip-a")
+    put(gold / "data/kit/c.json", "tip-c")
+    assert box_run.apply_data_overlay(repo, "", tip, tip, inst, gold) == (0, 0)
+    assert "[box_run] data_overlay files=0 bytes=0" in capsys.readouterr().out
+    assert (inst / "data/kit/a.json").read_text() == "tip-a"
     assert os.path.samefile(inst / "data/kit/a.json", gold / "data/kit/a.json")
 
 
