@@ -76,8 +76,9 @@ def gpus(now, problems):
         if e.get("idle_waiter_s") and e["idle_waiter_s"] > 60:
             problems.append(f"gpu{n}: a lane has waited {e['idle_waiter_s']}s while a slot was free ({e['held']}/{e['k']} held)")
         res.append(e)
-    if len(res) < 4:
-        problems.append(f"nvidia-smi sees {len(res)} GPUs (want 4)")
+    want = sup.gpu_count()   # the one core map (locks/cores.env GPU<n>_CPUS), not a hardcoded count
+    if want and len(res) < want:
+        problems.append(f"nvidia-smi sees {len(res)} GPUs (configured {want})")
     return res
 
 

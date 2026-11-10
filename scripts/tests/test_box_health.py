@@ -79,6 +79,34 @@ def test_remote_health_parsers(tmp_path, monkeypatch):
     assert bhr.filler_rows(5) == {"ok": ["mc2_10-wolfman-2-1"], "failed": ["mc2_01-cross_map_view-1-1"]}
 
 
+def test_gpu_count_comes_from_cores_env(box):
+    # The expected GPU count is the number of GPU<n>_CPUS lines in the one core map, never a hardcoded 4.
+    (box.locks / "cores.env").write_text("BUILD_CPUS=32-63\nGPU0_CPUS=0-7\n")
+    assert sup.gpu_count() == 1
+    (box.locks / "cores.env").write_text(
+        "BUILD_CPUS=32-63\nGPU0_CPUS=0-7\nGPU1_CPUS=8-15\nGPU2_CPUS=16-23\nGPU3_CPUS=24-31\n")
+    assert sup.gpu_count() == 4
+    (box.locks / "cores.env").unlink()
+    assert sup.gpu_count() == 0
+
+
+def test_gpu_count_problem_reports_configured_vs_visible(box, monkeypatch):
+    import box_health_remote as bhr
+    monkeypatch.setattr(bhr, "sh", lambda cmd, timeout=10: (0, "0, 00000000:01:00.0, 5, 100, 8192"))
+    monkeypatch.setattr(sup, "nvidia_query", lambda: (None, []))
+    monkeypatch.setattr(bhr.status, "lock_holders", lambda: {})
+    monkeypatch.setattr(bhr.status, "gpu_entry", lambda n, now, inodes: {})
+    monkeypatch.setattr(bhr.status, "slot_names", lambda n: [])
+    (box.locks / "cores.env").write_text("BUILD_CPUS=32-63\nGPU0_CPUS=0-7\n")
+    problems = []
+    assert len(bhr.gpus(0.0, problems)) == 1 and problems == []   # 1 visible, 1 configured: healthy
+    (box.locks / "cores.env").write_text(
+        "BUILD_CPUS=32-63\nGPU0_CPUS=0-7\nGPU1_CPUS=8-15\nGPU2_CPUS=16-23\nGPU3_CPUS=24-31\n")
+    problems = []
+    bhr.gpus(0.0, problems)
+    assert problems == ["nvidia-smi sees 1 GPUs (configured 4)"]   # 1 visible, 4 configured: a GPU is missing
+
+
 def test_client_ssh_fails_fast():
     cmd = box_health.ssh_cmd("x")
     s = " ".join(cmd)

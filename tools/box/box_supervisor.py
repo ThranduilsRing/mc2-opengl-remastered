@@ -392,6 +392,20 @@ def build_cpus():
     return "32-63"
 
 
+def gpu_count():
+    """Number of GPUs in the one core map: the GPU<n>_CPUS lines of locks/cores.env (0 when unreadable)."""
+    n = 0
+    try:
+        with open(f"{LOCKS}/cores.env") as f:
+            for ln in f:
+                key = ln.split("=", 1)[0].strip()
+                if key.startswith("GPU") and key.endswith("_CPUS") and key[3:-5].isdigit():
+                    n += 1
+    except OSError:
+        pass
+    return n
+
+
 def repin():
     bc = build_cpus()
     for pid in all_pids():
