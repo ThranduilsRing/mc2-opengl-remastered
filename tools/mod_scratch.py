@@ -13,8 +13,10 @@ import sys
 
 try:
     from tools.mod_install.resolver import load_config, _index_mod_layer, _read_mod_json, normalize_key
+    from tools import fs_links
 except ModuleNotFoundError:
     from mod_install.resolver import load_config, _index_mod_layer, _read_mod_json, normalize_key
+    import fs_links
 
 
 def scratch_files(mod: Path) -> list[Path]:
@@ -24,7 +26,7 @@ def scratch_files(mod: Path) -> list[Path]:
     files = []
     for folder, dirs, names in os.walk(root / "data"):
         for name in dirs + names:
-            if (Path(folder) / name).is_symlink():
+            if fs_links.is_link_or_junction(Path(folder) / name):
                 raise ValueError("scratch must not contain symlinks")
         dirs[:] = sorted(d for d in dirs if not d.startswith("."))
         files.extend(Path(folder) / n for n in sorted(names) if not n.startswith("."))

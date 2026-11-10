@@ -7,6 +7,11 @@ import contextlib
 import time
 from pathlib import Path
 
+try:
+    from tools import fs_links
+except ModuleNotFoundError:
+    import fs_links
+
 
 class LintSlots:
     """Host-wide counting semaphore across processes: N slot files, each held by an exclusive OS byte lock (the OS drops
@@ -154,7 +159,7 @@ def sweep_stale_scratch(parents, max_age_s=7200, now=None):
         for name in names:
             path = os.path.join(parent, name)
             try:
-                if not SCRATCH_NAME.fullmatch(name) or not os.path.isdir(path) or os.path.islink(path):
+                if not SCRATCH_NAME.fullmatch(name) or not os.path.isdir(path) or fs_links.is_link_or_junction(path):
                     continue
                 if now - _newest_mtime(path) < max_age_s:
                     continue

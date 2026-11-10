@@ -49,6 +49,11 @@ import console_child  # noqa: E402  (windowless console children)
 from smoke_lib import host_lease, nofocus  # noqa: E402
 import stage_root as stages  # noqa: E402  (default staging roots on E:, free-space preflight)
 
+try:
+    from tools import fs_links
+except ModuleNotFoundError:
+    import fs_links
+
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_INSTALL_ROOT = Path('A:/Games/mc2-opengl')
 DEFAULT_BATTERY_ROOT = stages.default_root('mod_smoke')
@@ -299,11 +304,12 @@ def place_tree(source: Path, target: Path, link_ok: bool = True, keep=None, priv
     stats = {'files': 0, 'bytes': 0, 'linked': 0}
     for dirpath, dirnames, filenames in os.walk(source):
         dirnames.sort()
+        dirnames[:] = [d for d in dirnames if not fs_links.is_link_or_junction(Path(dirpath) / d)]
         rel_dir = Path(dirpath).relative_to(source)
         (target / rel_dir).mkdir(parents=True, exist_ok=True)
         for name in sorted(filenames):
             src = Path(dirpath) / name
-            if (src.is_symlink() and not cached_links) or not src.is_file():
+            if (fs_links.is_link_or_junction(src) and not cached_links) or not src.is_file():
                 continue
             if keep is not None and not keep(src):
                 continue
@@ -830,9 +836,20 @@ def refresh_layer(layer: Path, target: Path) -> dict:
                       if p.is_file() and not p.is_symlink())
     wanted.update(p.relative_to(layer) for p in layer.iterdir()
                   if p.is_file() and (p.suffix.lower() in ('.fst', '.pak') or p.name in CONFIG_FILES))
-    for old in target.rglob('*'):
-        if (old.is_file() or old.is_symlink()) and old.relative_to(target) not in wanted:
-            old.unlink()
+    for dirpath, dirnames, filenames in os.walk(target):
+        kept = []
+        for name in dirnames:
+            old = Path(dirpath) / name
+            if fs_links.is_link_or_junction(old):
+                if (old.is_file() or old.is_symlink()) and old.relative_to(target) not in wanted:
+                    old.unlink()
+            else:
+                kept.append(name)
+        dirnames[:] = kept
+        for name in filenames:
+            old = Path(dirpath) / name
+            if (old.is_file() or old.is_symlink()) and old.relative_to(target) not in wanted:
+                old.unlink()
     # Materialize cross-volume sources once in the persistent cache. Stages
     # then hardlink local payload instead of inheriting source-volume symlinks.
     return overlay_mod(layer, target, link_ok=same_volume(layer, target), incremental=True)

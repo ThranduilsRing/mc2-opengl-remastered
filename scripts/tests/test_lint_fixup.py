@@ -80,6 +80,25 @@ def test_dead_waiter_ticket_does_not_block(tmp_path):
     fh.close()
 
 
+def test_sweep_stale_scratch_skips_junctions(tmp_path):
+    import subprocess
+    outside = tmp_path / "outside"
+    (outside / "tree").mkdir(parents=True)
+    (outside / "tree" / "f.txt").write_text("x")
+    link = tmp_path / "lane-lint-junc0001"
+    r = subprocess.run(["cmd", "/c", "mklink", "/J", str(link), str(outside)],
+                       capture_output=True, text=True)
+    if r.returncode != 0:
+        pytest.skip(f"cannot create junction: {r.stderr.strip() or r.stdout.strip()}")
+    old = time.time() - 3 * 3600
+    for p in (outside / "tree" / "f.txt", outside / "tree", outside):
+        os.utime(p, (old, old))
+    removed = ls.sweep_stale_scratch([str(tmp_path)])
+    assert removed == []
+    assert link.exists()   # not renamed, not deleted
+    assert (outside / "tree" / "f.txt").is_file()
+
+
 def test_sweep_stale_scratch_exact_names_age_and_liveness(tmp_path):
     old = time.time() - 3 * 3600
     stale = tmp_path / "lane-lint-ab12_xyz"

@@ -84,6 +84,22 @@ def test_hidden_entries_stay_unpromoted(mod):
     assert (mod / "data/visible.txt").exists()
 
 
+def test_nested_junction_in_scratch_is_refused(mod, tmp_path):
+    import subprocess
+    outside = tmp_path / "outside"
+    (outside / "data").mkdir(parents=True)
+    (outside / "data" / "stolen.txt").write_text("outside")
+    link = mod / ".scratch" / "data" / "linked"
+    link.parent.mkdir(parents=True)
+    r = subprocess.run(["cmd", "/c", "mklink", "/J", str(link), str(outside)],
+                       capture_output=True, text=True)
+    if r.returncode != 0:
+        pytest.skip(f"cannot create junction: {r.stderr.strip() or r.stdout.strip()}")
+    with pytest.raises(ValueError, match="scratch must not contain"):
+        run("diff", mod)
+    assert (outside / "data" / "stolen.txt").is_file()
+
+
 def test_discard_and_cli_id(mod, monkeypatch):
     put(mod, ".scratch/data/test.txt", "scratch")
     project = put(mod, "data/test.txt", "project")
