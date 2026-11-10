@@ -2034,7 +2034,16 @@ def main(argv=None):
         pass
     base = args.base or window.get("base")
     if not base:
-        ap.error("change-based promotion requires a valid comparison base: pass --base or verify the merge window")
+        # No --base and no verified window: default to the current nifty tip (the lane base), resolved at start. The laptop
+        # gate runs merge_gate without --base; refusing it made a whole window's run fail on a missing argument (W139).
+        try:
+            base = git("rev-parse", "claude/nifty-mendeleev")
+        except subprocess.CalledProcessError:
+            base = None
+        if not base:
+            ap.error("change-based promotion requires a valid comparison base: pass --base or verify the merge window "
+                     "(claude/nifty-mendeleev could not be resolved)")
+        print(f"[merge_gate] no --base given: defaulting to the claude/nifty-mendeleev tip {base}", flush=True)
     if base:
         try:
             git("merge-base", "--is-ancestor", base, head)
