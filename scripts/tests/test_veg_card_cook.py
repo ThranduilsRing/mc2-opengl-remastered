@@ -87,7 +87,27 @@ def test_shipped_cards_and_biome_recipes_load():
 
 def test_procedural_woody_cards_repeat_without_external_sources(tmp_path):
     first, second = tmp_path/"first", tmp_path/"second"
-    cook.procedural_woody_cards(first,tmp_path/"sheet-a.png")
-    cook.procedural_woody_cards(second,tmp_path/"sheet-b.png")
+    palette = cook.load_palette(Path(__file__).resolve().parents[2] / "data/vegetation/palettes/mc2_01.json")
+    cook.procedural_woody_cards(first,tmp_path/"sheet-a.png",palette)
+    cook.procedural_woody_cards(second,tmp_path/"sheet-b.png",palette)
     for name in cook.CARDS[4:]:
         assert (first/f"{name}.png").read_bytes() == (second/f"{name}.png").read_bytes()
+
+
+def test_mc2_01_palette_species_are_distinct_and_contrast_with_ground():
+    """Owner 11-10: cards follow the mission palette with distinct per-species value/hue,
+    and woody species read darker than the dominant meadow ground."""
+    root = Path(__file__).resolve().parents[2] / "data/vegetation"
+    palette = cook.load_palette(root / "palettes/mc2_01.json")
+    assert sorted(palette["species"]) == sorted(cook.CARDS)
+    means = {}
+    for name in cook.CARDS:
+        rgba = np.array(Image.open(root / "cards" / f"{name}.png").convert("RGBA")).astype(np.float32)
+        means[name] = rgba[rgba[:, :, 3] >= 128][:, :3].mean(0)
+    luma = {n: float(m @ np.array([0.299, 0.587, 0.114])) / 255 for n, m in means.items()}
+    for name in cook.CARDS[4:]:
+        assert luma[name] < palette["ground_luma"] - 0.05, name
+    names = list(means)
+    for i, a in enumerate(names):
+        for b in names[i+1:]:
+            assert np.abs(means[a] - means[b]).max() > 6, (a, b)

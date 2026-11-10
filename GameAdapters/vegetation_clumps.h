@@ -75,21 +75,27 @@ inline Clump makeClump(int x, int y, uint32_t seed, const ClumpRecipe& recipe,
     }
     if (slope < 28.0f && roll(12) < recipe.treeChance*(0.5f+wet))
         result.members[result.count++] = {0,0,15.0f+roll(13)*9.0f,6u+static_cast<unsigned>(roll(14)*2),true};
+    // Species patches, not an even mix: every shrub in a clump is one species and
+    // most of its grass is one dominant card, so neighbouring clumps differ.
+    const unsigned bushSpecies = 4u+static_cast<unsigned>(roll(16)*2);
+    const unsigned grassSpecies = static_cast<unsigned>(roll(17)*4);
     const int bushes = 2 + static_cast<int>(roll(15)*4);
     for (int i = 0; i < bushes; ++i) {
         const auto salt = static_cast<uint32_t>(20+i*4);
         const float angle = (static_cast<float>(i)+roll(salt))*6.2831853f/static_cast<float>(bushes);
         const float r = radius*(0.12f+0.24f*roll(salt+1));
         result.members[result.count++] = {std::cos(angle)*r,std::sin(angle)*r,
-            5.0f+roll(salt+2)*4.0f,4u+static_cast<unsigned>(roll(salt+3)*2),true};
+            5.0f+roll(salt+2)*4.0f,bushSpecies,true};
     }
     const int grass = std::clamp(static_cast<int>(static_cast<float>(recipe.grass)*(0.6f+0.4f*wet)),6,16);
     for (int i = 0; i < grass; ++i) {
         const auto salt = static_cast<uint32_t>(60+i*4);
         const float angle = (static_cast<float>(i)+roll(salt))*6.2831853f/static_cast<float>(grass);
         const float r = radius*(0.30f+0.70f*std::sqrt(roll(salt+1)));
+        const float pick = roll(salt+3);
+        const unsigned frame = pick < 0.75f ? grassSpecies : static_cast<unsigned>((pick-0.75f)*16.0f);
         result.members[result.count++] = {std::cos(angle)*r,std::sin(angle)*r,
-            2.0f+roll(salt+2)*3.0f,static_cast<unsigned>(roll(salt+3)*4),false};
+            2.0f+roll(salt+2)*3.0f,std::min(frame,3u),false};
     }
     return result;
 }

@@ -1,0 +1,53 @@
+{
+  "mission": "mc2_01",
+  "provenance": "veg-palette-mc2_01 lane, 2026-11-10. Land swatches: 9-cluster k-means over land pixels (water/sky hue excluded) of four day captures at base 2247a9a73 (bookmarks mc2_01_owner_lowwide, _zoom, mc2_01_saved_205644, _reverse). Stock foliage swatches: 15/50/85th percentile of green-dominant pixels in the stock palm crown and the hill treeline of the owner_lowwide_zoom capture. Species ramps are hand-picked from these swatches (screen-space, lit colours); the vegetation shader exposes cards by ground luma / ground_luma.",
+  "ground_luma": 0.34,
+  "swatches": [
+    {"name": "shadow umber",      "hex": "#242317", "source": "land k-means, 4%"},
+    {"name": "dark olive soil",   "hex": "#47422d", "source": "land k-means, 17%"},
+    {"name": "tan sand",          "hex": "#5d5137", "source": "land k-means, 32% (dominant meadow ground)"},
+    {"name": "sea-green grey",    "hex": "#525f56", "source": "land k-means, 5% (shore / haze)"},
+    {"name": "light sand",        "hex": "#706040", "source": "land k-means, 25%"},
+    {"name": "concrete grey",     "hex": "#817e76", "source": "land k-means, 7% (airbase pad)"},
+    {"name": "palm frond green",  "hex": "#333b24", "source": "stock palm crown p15"},
+    {"name": "palm frond khaki",  "hex": "#6d613d", "source": "stock palm crown p50"},
+    {"name": "treeline canopy",   "hex": "#1f2118", "source": "stock treeline p50"},
+    {"name": "treeline lit",      "hex": "#333527", "source": "stock treeline p85"}
+  ],
+  "bark": "#3a2e1e",
+  "grass_reference": "Owner 2026-11-10 grass-field reference (E:/mc2-archive-2026-10/proofs/grass-field/owner_reference.jpg): straw/gold dominant, olive-green near the roots, scattered rust blades and seed heads, backlit tips. Its bright saturated gold is pulled toward mc2_01's overcast khaki (palm frond khaki #6d613d .. light sand #706040 family, lifted for contrast); its green toward the palm-frond olive; rust kept but darkened.",
+  "grass_tones": {
+    "root":  "#3a3d22",
+    "tip":   "#d8c896",
+    "straw": ["#9c8a58", "#ae9a64", "#b8a46e", "#a08c56", "#8a7a4c"],
+    "green": ["#5b6136", "#6a7440", "#4a5733"],
+    "rust":  ["#7e4a2c", "#8f5a34", "#6e4228"],
+    "seed":  ["#a8986a", "#8f5a34", "#c0ae7a"]
+  },
+  "grass_cards": {
+    "grass_01": {"blades": 150, "mix": {"straw": 0.75, "green": 0.15, "rust": 0.10}, "seed_heads": 0.25},
+    "grass_02": {"blades": 150, "mix": {"straw": 0.50, "green": 0.40, "rust": 0.10}, "seed_heads": 0.15, "lean": 0.15},
+    "grass_03": {"blades": 130, "mix": {"straw": 0.40, "green": 0.55, "rust": 0.05}, "seed_heads": 0.05, "lean": -0.2},
+    "grass_04": {"blades": 140, "mix": {"straw": 0.45, "green": 0.15, "rust": 0.40}, "seed_heads": 0.40}
+  },
+  "species": {
+    "grass_01":     ["#3d3624", "#6d613d", "#8f7f52", "#a8986a"],
+    "grass_02":     ["#2c3320", "#4a5733", "#667345", "#808a58"],
+    "grass_03":     ["#2a3128", "#44503f", "#5f6b55", "#79826a"],
+    "grass_04":     ["#34281a", "#5a4429", "#7a5d38", "#937650"],
+    "bush_round":   ["#262a16", "#3d4426", "#565c32", "#6c6c40"],
+    "bush_heath":   ["#241f15", "#3e3624", "#5a4f33", "#6f6a45"],
+    "sapling_leaf": ["#14170e", "#232a17", "#353f24", "#4d5733"],
+    "sapling_pine": ["#0f1412", "#1b2621", "#2a3a33", "#3f5048"]
+  },
+  "species_roles": {
+    "grass_01": "dry straw, lighter and warmer than the sand (palm frond khaki)",
+    "grass_02": "olive grass (palm frond green)",
+    "grass_03": "sage grass (shore sea-green grey)",
+    "grass_04": "russet dry grass (dark olive soil toward umber)",
+    "bush_round": "palm-crown olive shrub (mid value, yellower than the saplings)",
+    "bush_heath": "umber-olive heath",
+    "sapling_leaf": "broadleaf sapling in the stock treeline green",
+    "sapling_pine": "conifer sapling, darkest blue-green"
+  }
+}

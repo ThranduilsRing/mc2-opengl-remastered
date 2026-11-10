@@ -44,12 +44,20 @@ void main() {
     vec4 texel = texture(uAtlas, vec3(v_uv, float(v_atlasLayer)));
     if (texel.a < 0.5) discard;
     vec3 macro = rootMacro();
-    // Preserve card detail while deriving hue AND value from the ground. Sand
-    // stays tan, night stays dark; a stable small variation cannot make a ring.
+    // Cards are painted in the mission palette (data/vegetation/palettes/mc2_01.json):
+    // their own hue and value separate species and contrast with the ground. The
+    // ground sets exposure (sand stays bright, night stays dark) and keeps a share
+    // of its hue so other biomes still read; kPaletteGround is the ground luma the
+    // cards were painted against.
+    const float kPaletteGround = 0.34;
     float cardValue = dot(texel.rgb, vec3(0.299, 0.587, 0.114));
-    vec3 albedo = macro * mix(0.75, 1.15, clamp(cardValue*2.0, 0.0, 1.0));
-    // Root colour provides biome/season; per-map seeds break repeated hues.
-    albedo *= mix(vec3(1.04,0.94,0.85),vec3(0.92,1.04,0.96),v_vegData.x);
+    float groundValue = dot(macro, vec3(0.299, 0.587, 0.114));
+    vec3 groundTone = macro * mix(0.75, 1.15, clamp(cardValue*2.0, 0.0, 1.0));
+    vec3 painted = texel.rgb * clamp(groundValue / kPaletteGround, 0.45, 1.6);
+    vec3 albedo = mix(groundTone, painted, 0.75);
+    // Stable per-instance value and warm/cool jitter, so a patch is not one flat tone.
+    float jitter = fract(v_vegData.x * 7.31);
+    albedo *= mix(0.80, 1.16, jitter) * mix(vec3(1.05,0.98,0.88), vec3(0.93,1.03,1.01), v_vegData.x);
     if ((v_flags & 128u) != 0u) albedo = mix(albedo,macro*vec3(1.03,1.03,1.08),0.65);
     vec3 rootN = rootNormal();
     vec3 cardN = normalize(gl_FrontFacing ? v_cardNormal : -v_cardNormal);
