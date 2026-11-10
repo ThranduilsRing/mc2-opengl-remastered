@@ -747,3 +747,41 @@ def test_stage_cleanup_keeps_other_errors_loud(tmp_path, monkeypatch):
     monkeypatch.setattr(ms.shutil, "rmtree", broken)
     with pytest.raises(OSError):
         ms.remove_disposable(tmp_path)
+
+
+def _lease_stub(monkeypatch, hold):
+    from smoke_lib import host_lease
+    calls = []
+    monkeypatch.delenv(host_lease.BATCH_ENV, raising=False)
+    monkeypatch.setattr(host_lease, "hold", lambda tag, **kw: (calls.append(("hold", tag)), hold(tag))[1])
+    monkeypatch.setattr(host_lease, "release_batch", lambda tag: calls.append(("release", tag)))
+    return host_lease, calls
+
+
+def test_battery_takes_one_lease_for_all_missions(monkeypatch):
+    host_lease, calls = _lease_stub(monkeypatch, lambda tag: 1234)
+    seen = []
+    monkeypatch.setattr(ms, "battery", lambda args: seen.append(os.environ.get(host_lease.BATCH_ENV)) or 0)
+    assert ms.battery_leased(object()) == 0
+    assert [c[0] for c in calls] == ["hold", "release"]
+    assert seen == [calls[0][1]]                      # children inherit the batch tag, so they never queue again
+    assert host_lease.BATCH_ENV not in os.environ     # restored afterwards
+
+
+def test_battery_under_existing_batch_takes_no_second_lease(monkeypatch):
+    host_lease, calls = _lease_stub(monkeypatch, lambda tag: 1)
+    monkeypatch.setenv(host_lease.BATCH_ENV, "outer")
+    monkeypatch.setattr(ms, "battery", lambda args: 0)
+    assert ms.battery_leased(object()) == 0
+    assert calls == []
+
+
+def test_battery_lease_never_obtained_is_not_run(monkeypatch, capsys):
+    def busy(tag):
+        raise host_lease.HostLeaseBusy("held by another lane")
+    host_lease, calls = _lease_stub(monkeypatch, busy)
+    monkeypatch.setattr(ms, "battery", lambda args: pytest.fail("battery must not start"))
+    assert ms.battery_leased(object()) == 3
+    out = capsys.readouterr().out
+    assert "NOT RUN" in out and "FAIL" not in out
+    assert [c[0] for c in calls] == ["hold"]
