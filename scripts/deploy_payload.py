@@ -2361,27 +2361,44 @@ def prepare_seed_delta(items, target, full_verify=False, allow_legacy=False):
     shared = json.loads(receipt.read_text(encoding='utf-8'))['shared'] if receipt.is_file() else {}
     verified = {}
     import kit_payload
+    from concurrent.futures import ThreadPoolExecutor
     source_rx = kit_payload.HashReceipts(kit_payload.cook_cache_root() / 'source-receipts.json')
-    for src, rel, kind in items:
+    counts = {'hashed': 0, 'privatized': 0}
+
+    def settle(item):
+        src, rel, _kind = item
         dst = Path(target) / rel
         if not dst.is_file() or dst.stat().st_nlink <= 1:
-            continue
+            return None
         row = shared.get(rel)
         # Full stamp incl. NTFS ChangeTime (pinned by the restored-mtime corruption test); the source side uses receipts.
-        if (not full_verify and src is not None and row and iso.content_stamp(dst) == row['stamp']
-                and Path(src).is_file() and source_rx.digest(src) == row['sha256']):
-            verified[rel] = row['sha256']
-            continue
+        if not full_verify and src is not None and row and Path(src).is_file() and source_rx.digest(src) == row['sha256']:
+            if iso.content_stamp(dst) == row['stamp']:
+                return rel, row['sha256']
+            # Any link or unlink of the shared inode by another install bumps its ChangeTime without touching the bytes;
+            # re-reading is far cheaper than copying every shared file. Equal bytes stay shared (deploy then writes nothing).
+            counts['hashed'] += 1
+            if kit_payload.sha(dst) == row['sha256']:
+                return rel, row['sha256']
         # The normal deploy still checks the source and copied hash. Privatize
         # first so its in-place write cannot reach the seed or another lane.
+        counts['privatized'] += 1
         tmp = dst.with_name(dst.name + f'.private-{os.getpid()}')
         try:
             shutil.copy2(dst, tmp)
             os.replace(tmp, dst)
         finally:
             tmp.unlink(missing_ok=True)
+        return None
+
+    # Per-file stat/hash/copy is IO latency bound; four workers (JOBS-sized) overlap it. Distinct files, distinct temps.
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        for done in pool.map(settle, items):
+            if done:
+                verified[done[0]] = done[1]
     source_rx.save(merge=True)
-    log(f'lane seed delta: {len(verified)} unchanged shared payload files retained')
+    log(f'lane seed delta: {len(verified)} unchanged shared payload files retained '
+        f'({counts["hashed"]} re-hashed after a link-count change, {counts["privatized"]} detached)')
     return verified
 
 

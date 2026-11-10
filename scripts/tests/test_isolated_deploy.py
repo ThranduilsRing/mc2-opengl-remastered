@@ -369,7 +369,7 @@ def test_linked_pinned_kit_safe_only_with_skip_kit(tmp_path):
     assert guard.run_check(str(dst), payload_rels=[name])[0] == 'SHARED'
 
 
-@pytest.mark.parametrize('change', ['none', 'source', 'corrupt', 'full'])
+@pytest.mark.parametrize('change', ['none', 'source', 'corrupt', 'full', 'relink'])
 def test_fast_install_delta_keeps_unchanged_bytes_and_detaches_changes(tmp_path, monkeypatch, change):
     iso = lean_tool()
     seed, lane, repo = (tmp_path / p for p in ('seed', 'lane', 'repo'))
@@ -389,10 +389,16 @@ def test_fast_install_delta_keeps_unchanged_bytes_and_detaches_changes(tmp_path,
         old = victim.stat()
         victim.write_bytes(b'corrupt')
         os.utime(victim, ns=(old.st_atime_ns, old.st_mtime_ns))
+    if change == 'relink':
+        # Another install linking/unlinking the shared inode bumps its ChangeTime; bytes are unchanged, so no file may be copied.
+        for rel in rels:
+            os.link(lane / rel, lane / (rel + '.pl'))
+            (lane / (rel + '.pl')).unlink()
+        monkeypatch.setattr(dp.shutil, 'copy2', lambda *a, **k: pytest.fail('relinked-but-identical file was copied'))
     items = [(str(repo / rel), rel, 'exe' if rel == 'mc2.exe' else 'support') for rel in rels]
     verified = dp.prepare_seed_delta(items, str(lane), full_verify=change == 'full')
     assert set(verified) == (set() if change == 'full' else set(rels) -
-                             ({'runtime.dll'} if change != 'none' else set()))
+                             ({'runtime.dll'} if change not in ('none', 'relink') else set()))
     dp.check_hardlink_isolation([i for i in items if i[1] not in verified], str(lane))
     monkeypatch.setattr(dp, 'ensure_terrain_materials', lambda *a: {})
     monkeypatch.setattr(dp, 'ensure_engine_normal_cooks', lambda *a: None)
