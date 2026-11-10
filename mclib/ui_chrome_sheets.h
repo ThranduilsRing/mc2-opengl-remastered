@@ -2,7 +2,9 @@
 //
 // data/art/ui/manifest.json (written by tools/ui_art_split.py) lists, per legacy sheet (MCUI_Universal1, MCL_MB_4, ...),
 // each widget PNG and the rect it occupies in that sheet. composeSheet() pastes the widgets back at those rects, so a
-// FIT that crops (u, v, w, h) out of the sheet samples exactly the pixels the authored sheet had. Pure logic: no engine
+// FIT that crops (u, v, w, h) out of the sheet samples exactly the pixels the authored sheet had. Each
+// widget file also keeps `pad` texels of the authored neighbours around its rect, so a bilinear tap at the rect edge reads
+// real texels, not the key. Pure logic: no engine
 // types, no file access (the caller supplies the widget pixels).
 #pragma once
 
@@ -28,8 +30,19 @@ struct Sheet {
     std::string key;        // lower-case sheet stem, e.g. "mcui_universal1"
     int w = 0, h = 0;
     bool rgba = false;      // false: RGB sheet (uncovered texels become the FF00FF key)
+    int pad = 0;            // each widget file carries this many authored neighbour texels around its rect (bilinear taps at the rect edge)
     std::vector<Widget> widgets;
 };
+
+// The widget file's extent: the rect grown by sheet.pad texels per side, clamped to the sheet.
+struct PaddedRect {
+    int x0, y0, x1, y1;   // [x0, x1) x [y0, y1) in sheet texels
+};
+inline PaddedRect paddedRect(const Sheet& s, const Widget& w) {
+    const auto lo = [&](int v) { return v > s.pad ? v - s.pad : 0; };
+    const auto hi = [&](int v, int limit) { return v + s.pad < limit ? v + s.pad : limit; };
+    return {lo(w.x), lo(w.y), hi(w.x + w.w, s.w), hi(w.y + w.h, s.h)};
+}
 
 struct Manifest {
     std::map<std::string, Sheet> sheets;

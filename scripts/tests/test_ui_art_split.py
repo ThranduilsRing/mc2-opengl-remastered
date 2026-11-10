@@ -67,6 +67,38 @@ def test_split_repack_is_pixel_identical_and_deterministic(tmp_path):
     assert len(m1["sheets"]["sheet1"]["widgets"]) == 3
 
 
+def test_widget_files_keep_the_authored_ring_so_bilinear_edge_taps_match(tmp_path):
+    inst = make_install(tmp_path)
+    out = tmp_path / "o"
+    m, _, _ = split.build(str(inst), str(out), True)
+    sh = m["sheets"]["sheet1"]
+    assert sh["pad"] == 1
+    src = Image.open(inst / "data" / "art" / "gui" / "Sheet1.png").convert("RGB")
+    ent = sh["widgets"]["demo.panelbutton0"]   # rect (16, 0, 16, 16): clamped at the top and right sheet edges
+    assert ent["rect"] == [16, 0, 16, 16]
+    img = Image.open(out / "sheet1" / "demo.panelbutton0.png").convert("RGB")
+    assert img.size == (17, 17)                 # +1 on the left and bottom only
+    assert img.getpixel((0, 5)) == src.getpixel((15, 5))     # left ring = neighbour widget's edge texel
+    assert img.getpixel((5, 16)) == src.getpixel((20, 16))   # bottom ring = the uncovered, authored texel
+    assert img.getpixel((5, 16)) != (255, 0, 255)
+
+
+def test_verify_catches_a_missing_ring(tmp_path):
+    """ae2e1b9b4 shipped rect-only widget files; verify() compared only covered pixels and passed them."""
+    inst = make_install(tmp_path)
+    out = tmp_path / "o"
+    m, _, _ = split.build(str(inst), str(out), True)
+    assert split.verify(str(inst), str(out), m) == 0
+    for name, ent in m["sheets"]["sheet1"]["widgets"].items():
+        p = out / "sheet1" / (name + ".png")
+        x, y, w, h = ent["rect"]
+        x0, y0 = min(x, 1), min(y, 1)
+        with Image.open(p) as im:
+            core = im.crop((x0, y0, x0 + w, y0 + h)) if im.size != (w, h) else im.copy()   # strip the ring, as the unpadded split did
+        core.save(p)
+    assert split.verify(str(inst), str(out), m) > 0
+
+
 def test_nine_insets_only_for_exactly_stretchable_art():
     flat = Image.new("RGB", (24, 24), (10, 20, 30))
     for x in range(24):
@@ -90,7 +122,11 @@ def test_checked_in_manifest_matches_files():
     for key, sh in m["sheets"].items():
         for name, ent in sh["widgets"].items():
             with Image.open(root / key / (name + ".png")) as im:
-                assert list(im.size) == ent["rect"][2:]
+                pad = sh.get("pad", 0)
+                x, y, w, h = ent["rect"]
+                W, H = sh["size"]
+                box = split.padded_box(x, y, x + w, y + h, W, H, pad)
+                assert im.size == (box[2] - box[0], box[3] - box[1])
             n += 1
     assert n > 1000
 

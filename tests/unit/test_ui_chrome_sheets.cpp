@@ -82,6 +82,32 @@ TEST_CASE("ui_chrome composeSheet pastes widgets at their rects, uncovered texel
     CHECK(at(7, 0, 2) == 255);
 }
 
+TEST_CASE("ui_chrome composeSheet pastes the padded ring: authored neighbours, clamped at the sheet edge") {
+    Sheet s = makeSheet(false);
+    s.pad = 1;
+    // widget "a" (0,0,4,3) -> file covers x [0,5) y [0,4); widget "b" (4,3,4,3) -> x [3,8) y [2,6)
+    auto load = [&](const Sheet& sh, const Widget& w, Pixels& px) {
+        const PaddedRect pr = paddedRect(sh, w);
+        px = solid(pr.x1 - pr.x0, pr.y1 - pr.y0, 3, w.name == "a" ? 10 : 20);
+        return true;
+    };
+    Pixels out;
+    REQUIRE(composeSheet(s, load, out));
+    auto at = [&](int x, int y) { return out.data[(size_t(y) * 8 + x) * 3]; };
+    CHECK(at(4, 0) == 10);    // right ring of "a"
+    CHECK(at(0, 3) == 10);    // bottom ring of "a"
+    CHECK(at(3, 2) == 20);    // top-left ring of "b" (written after "a" in widget order)
+    CHECK(at(7, 0) == 255);   // beyond every ring: key
+    // a file sized to the bare rect no longer fits a padded sheet
+    CHECK_FALSE(composeSheet(s, [](const Sheet&, const Widget& w, Pixels& px) { px = solid(w.w, w.h, 3, 1); return true; }, out));
+    // pad round-trips through the manifest
+    Manifest m;
+    m.sheets.emplace(s.key, s);
+    Manifest back;
+    REQUIRE(parseManifest(manifestToJson(m), back));
+    CHECK(back.sheets.at("demo").pad == 1);
+}
+
 TEST_CASE("ui_chrome composeSheet fails whole when a widget is missing or the wrong size") {
     const Sheet s = makeSheet(true);
     Pixels out;
@@ -192,8 +218,9 @@ TEST_CASE("ui_chrome checked-in data/art/ui manifest: every widget file exists a
             const auto f = root / key / (w.name + ".png");
             INFO(f.string());
             REQUIRE(pngSize(f, pw, ph));
-            CHECK(pw == w.w);
-            CHECK(ph == w.h);
+            const PaddedRect pr = paddedRect(s, w);
+            CHECK(pw == pr.x1 - pr.x0);
+            CHECK(ph == pr.y1 - pr.y0);
         }
     CHECK(widgets > 1000);
 }

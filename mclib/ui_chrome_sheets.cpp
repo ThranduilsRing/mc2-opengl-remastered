@@ -44,6 +44,8 @@ bool parseManifest(std::string_view json, Manifest& out, std::string* err) {
         s.w = js["size"][0].get<int>();
         s.h = js["size"][1].get<int>();
         s.rgba = js.value("mode", std::string("RGB")) == "RGBA";
+        s.pad = js.value("pad", 0);
+        if (s.pad < 0 || s.pad > 16) return fail("sheet " + it.key() + ": bad pad");
         if (s.w <= 0 || s.h <= 0 || s.w > 8192 || s.h > 8192) return fail("sheet " + it.key() + ": bad dimensions");
         std::set<std::string> names;
         if (js.contains("widgets") && js["widgets"].is_object()) {
@@ -83,6 +85,7 @@ std::string manifestToJson(const Manifest& m) {
         nlohmann::json js;
         js["size"] = {s.w, s.h};
         js["mode"] = s.rgba ? "RGBA" : "RGB";
+        if (s.pad) js["pad"] = s.pad;
         nlohmann::json ws = nlohmann::json::object();
         for (const auto& w : s.widgets) {
             nlohmann::json jw;
@@ -114,13 +117,16 @@ bool composeSheet(const Sheet& sheet, const WidgetLoader& load, Pixels& out, std
     Pixels px;
     for (const auto& w : sheet.widgets) {
         px = Pixels{};
-        if (!load(sheet, w, px) || px.w != w.w || px.h != w.h || px.data.size() != static_cast<size_t>(px.w) * px.h * px.channels ||
+        const PaddedRect pr = paddedRect(sheet, w);
+        const int pw = pr.x1 - pr.x0, ph = pr.y1 - pr.y0;
+        if (!load(sheet, w, px) || px.w != pw || px.h != ph || px.data.size() != static_cast<size_t>(px.w) * px.h * px.channels ||
             (px.channels != 3 && px.channels != 4))
             return fail("widget " + sheet.key + ": " + w.name + " missing or wrong size");
-        for (int y = 0; y < w.h; ++y) {
-            uint8_t* dst = out.data.data() + (static_cast<size_t>(w.y + y) * sheet.w + w.x) * ch;
-            const uint8_t* src = px.data.data() + static_cast<size_t>(y) * w.w * px.channels;
-            for (int x = 0; x < w.w; ++x) {
+        // The padded ring holds the authored neighbours, so it agrees with any widget whose core it overlaps.
+        for (int y = 0; y < ph; ++y) {
+            uint8_t* dst = out.data.data() + (static_cast<size_t>(pr.y0 + y) * sheet.w + pr.x0) * ch;
+            const uint8_t* src = px.data.data() + static_cast<size_t>(y) * pw * px.channels;
+            for (int x = 0; x < pw; ++x) {
                 dst[x * ch + 0] = src[x * px.channels + 0];
                 dst[x * ch + 1] = src[x * px.channels + 1];
                 dst[x * ch + 2] = src[x * px.channels + 2];

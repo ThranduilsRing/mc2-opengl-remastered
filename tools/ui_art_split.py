@@ -38,6 +38,14 @@ STATES = [("normal", "UNormal", "VNormal"), ("pressed", "UPressed", "VPressed"),
 EXCLUDE_SHEETS = re.compile(r"^(cursors|editorcursors|mcui_gn_mechicons|mechparts|jump|run|walk|mcl_loadingscreen|"
                             r"mcl_loadscreen|mcl_splashscreen|mcl_pr_|mcl_gn_)", re.I)
 FIT_DIRS = ("game", "shared")
+# Authored neighbour texels kept around every widget rect. The legacy sheets are sampled bilinearly, so a tap at a rect
+# edge reads one texel outside the rect; the re-packed sheet must hold the authored texel there, not the magenta key.
+PAD = 1
+
+
+def padded_box(x, y, x1, y1, W, H, pad=PAD):
+    """The widget file's extent: the rect grown by `pad` texels per side, clamped to the sheet."""
+    return (max(0, x - pad), max(0, y - pad), min(W, x1 + pad), min(H, y1 + pad))
 
 
 def read_text(p):
@@ -194,19 +202,20 @@ def build(install, out_dir, write):
             if name in used_names:
                 name = f"{name}_{x}_{y}"
             used_names.add(name)
-            crop = im.crop((x, y, cx1, cy1))
+            core = im.crop((x, y, cx1, cy1))
+            crop = im.crop(padded_box(x, y, cx1, cy1, W, H))
             rel = f"{key}/{name}.png"
             ent = {"rect": [x, y, cx1 - x, cy1 - y]}
             if (cx1 - x, cy1 - y) != (w, h):
                 ent["clipped_from"] = [w, h]
-            ni = nine_insets(crop)
+            ni = nine_insets(core)
             if ni:
                 ent["nine"] = ni
             ent["uses"] = sorted({f"{s}:{b}" for s, b, _ in u})
             screens.update(s for s, _, _ in u)
             widgets[name] = ent
             files[rel] = crop
-        manifest["sheets"][key] = {"file": os.path.basename(path), "size": [W, H], "mode": im.mode,
+        manifest["sheets"][key] = {"file": os.path.basename(path), "size": [W, H], "mode": im.mode, "pad": PAD,
                                    "rects": len(widgets), "screens": sorted(screens), "widgets": widgets}
     if write:
         os.makedirs(out_dir, exist_ok=True)
@@ -221,22 +230,28 @@ def build(install, out_dir, write):
 
 
 def verify(install, out_dir, manifest):
-    """Re-pack every widget onto a magenta canvas and compare covered pixels with the source sheet."""
+    """Re-pack every widget file onto a magenta canvas and compare, with the source sheet, every texel a bilinear tap
+    at a rect edge can read: the rect plus the `pad` ring around it (clamped to the sheet). Returns the differing count."""
     art_dir = os.path.join(install, "data", "art", "gui")
     bad = 0
     for key, sh in manifest["sheets"].items():
+        pad = sh.get("pad", 0)
         src = Image.open(find_sheet(art_dir, key)).convert("RGBA")
+        W, H = src.size
         canvas = Image.new("RGBA", src.size, (255, 0, 255, 255))
-        for name, ent in sh["widgets"].items():
-            w = Image.open(os.path.join(out_dir, key, name + ".png")).convert("RGBA")
-            canvas.paste(w, (ent["rect"][0], ent["rect"][1]))
         cov = Image.new("L", src.size, 0)
-        for ent in sh["widgets"].values():
+        for name, ent in sh["widgets"].items():
             x, y, w, h = ent["rect"]
-            cov.paste(255, (x, y, x + w, y + h))
+            box = padded_box(x, y, x + w, y + h, W, H, pad)
+            img = Image.open(os.path.join(out_dir, key, name + ".png")).convert("RGBA")
+            if img.size != (box[2] - box[0], box[3] - box[1]):
+                bad += 1
+                continue
+            canvas.paste(img, (box[0], box[1]))
+            cov.paste(255, box)
         a, b, m = src.load(), canvas.load(), cov.load()
-        for yy in range(src.size[1]):
-            for xx in range(src.size[0]):
+        for yy in range(H):
+            for xx in range(W):
                 if m[xx, yy] and a[xx, yy] != b[xx, yy]:
                     bad += 1
     return bad
@@ -261,7 +276,7 @@ def main():
         print(f"  skipped {k}: {why}")
     if not a.check:
         bad = verify(a.install, out, manifest)
-        print(f"verify: {bad} differing covered pixels")
+        print(f"verify: {bad} differing texels (rects + {PAD}px ring)")
         return 1 if bad else 0
     return 0
 
