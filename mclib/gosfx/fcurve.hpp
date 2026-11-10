@@ -128,10 +128,10 @@ namespace gosFX {
 				{Check_Object(this); m_value = v; return true;}
 
 		Stuff::Scalar
-			ComputeValue(Stuff::Scalar, Stuff::Scalar)
+			ComputeValue(Stuff::Scalar, Stuff::Scalar) const
 				{Check_Object(this); return m_value;}
 		Stuff::Scalar
-			ComputeSlope(Stuff::Scalar)
+			ComputeSlope(Stuff::Scalar) const
 				{Check_Object(this); return 0.0f;}
 
 		void
@@ -184,10 +184,10 @@ namespace gosFX {
 			);
 
 		Stuff::Scalar
-			ComputeValue(Stuff::Scalar t, Stuff::Scalar)
+			ComputeValue(Stuff::Scalar t, Stuff::Scalar) const
 				{Check_Object(this); return m_slope*t + m_value;}
 		Stuff::Scalar
-			ComputeSlope(Stuff::Scalar)
+			ComputeSlope(Stuff::Scalar) const
 				{Check_Object(this); return m_slope;}
 
 		void
@@ -243,10 +243,10 @@ namespace gosFX {
 			);
 
 		Stuff::Scalar
-			ComputeValue(Stuff::Scalar t, Stuff::Scalar)
+			ComputeValue(Stuff::Scalar t, Stuff::Scalar) const
 				{Check_Object(this); return ((m_a*t + m_b)*t + m_slope)*t + m_value;}
 		Stuff::Scalar
-			ComputeSlope(Stuff::Scalar t)
+			ComputeSlope(Stuff::Scalar t) const
 				{Check_Object(this); return (3.0f*m_a*t + 2.0f*m_b)*t + m_slope;}
 
 		void
@@ -285,10 +285,10 @@ namespace gosFX {
 			);
 
 		Stuff::Scalar
-			ComputeValue(Stuff::Scalar t)
+			ComputeValue(Stuff::Scalar t) const
 				{Check_Object(this); return m_slope*t + m_value;}
 		Stuff::Scalar
-			ComputeSlope(Stuff::Scalar)
+			ComputeSlope(Stuff::Scalar) const
 				{Check_Object(this); return m_slope;}
 
 		void
@@ -341,11 +341,14 @@ namespace gosFX {
 		CurveKey&
 			operator[](int index)
 				{Check_Object(this); return m_keys[index];}
+		const CurveKey&
+			operator[](int index) const
+				{Check_Object(this); return m_keys[index];}
 		int
-			GetKeyCount()
+			GetKeyCount() const
 				{Check_Object(this); return static_cast<int>(m_keys.size());}
 		int
-			GetKeyIndex(Stuff::Scalar time)
+			GetKeyIndex(Stuff::Scalar time) const
 				{
 					Check_Object(this);
 					int i = 0;
@@ -370,17 +373,17 @@ namespace gosFX {
 			);
 
 		Stuff::Scalar
-			ComputeValue(Stuff::Scalar time, Stuff::Scalar)
+			ComputeValue(Stuff::Scalar time, Stuff::Scalar) const
 				{
 					Check_Object(this);
-					CurveKey &key = (*this)[GetKeyIndex(time)];
+					const CurveKey &key = (*this)[GetKeyIndex(time)];
 					return key.ComputeValue(time - key.m_time);
 				}
 		Stuff::Scalar
-			ComputeSlope(Stuff::Scalar time)
+			ComputeSlope(Stuff::Scalar time) const
 				{
 					Check_Object(this);
-					CurveKey &key = (*this)[GetKeyIndex(time)];
+					const CurveKey &key = (*this)[GetKeyIndex(time)];
 					return key.ComputeSlope(time - key.m_time);
 				}
 
@@ -424,7 +427,7 @@ namespace gosFX {
 			ComputeValue(
 				Stuff::Scalar age,
 				Stuff::Scalar seed
-			)
+			) const
 				{
 					Check_Object(this);
 					Stuff::Scalar result = m_ageCurve.ComputeValue(age, 0.0f);
