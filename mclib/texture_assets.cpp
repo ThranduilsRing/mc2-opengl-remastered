@@ -74,8 +74,8 @@ std::string stockPbrOverride(std::string_view legacy, bool vehicle, StockPbrText
     if (maps.albedo != albedo) {
         maps = {};
         maps.albedo = albedo;
-        auto detail = [&](const char* suffix, mc2::TextureRef& ref) {
-            const auto path = base + suffix;
+        auto detail = [&](std::string_view suffix, mc2::TextureRef& ref) {
+            const auto path = base + std::string(suffix);
             File file;
             if (file.open(path.c_str()) == NO_ERR)
                 ref.reset(load(path.c_str(), gos_Texture_Solid, gosHint_MipmapFilter0 | gosHint_DontShrink));
@@ -84,7 +84,7 @@ std::string stockPbrOverride(std::string_view legacy, bool vehicle, StockPbrText
         detail("_orm.png", maps.orm);
         // Distinct stock atlases bound this session (each further actor reuses its atlas).
         static std::unordered_set<std::string> mechAtlases, vehicleAtlases;
-        if ((vehicle ? vehicleAtlases : mechAtlases).insert(stem).second)
+        if (const auto [atlasIt, firstBind] = (vehicle ? vehicleAtlases : mechAtlases).insert(stem); firstBind)
             mc2::fmt::print_out("[ACTOR_PBR] atlas={} kind={} normal={} orm={} mechs={} vehicles={} loaded\n", stem,
                 vehicle ? "vehicle" : "mech", static_cast<bool>(maps.normal), static_cast<bool>(maps.orm),
                 mechAtlases.size(), vehicleAtlases.size());
