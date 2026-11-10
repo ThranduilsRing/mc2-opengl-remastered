@@ -118,9 +118,11 @@ int cachedSheetRank(std::string_view sheet) {
     static std::unordered_map<std::string, int> ranks;
     static uint64_t seen = 0;
     if (seen != mc2::vfs::generation()) { ranks.clear(); seen = mc2::vfs::generation(); }
-    const auto it = ranks.find(std::string(sheet));
-    if (it != ranks.end()) return it->second;
-    return ranks.emplace(std::string(sheet), LookupModPriority(std::string(sheet).c_str())).first->second;
+    const std::string key(sheet);
+    if (const auto found = ranks.find(key); found != ranks.end()) { const auto& [name, rank] = *found; return rank; }
+    const int rank = LookupModPriority(key.c_str());
+    ranks.emplace(key, rank);
+    return rank;
 }
 void init(std::string first = {}, int cw = 25, int ch = 30) {
     if (texture) return;

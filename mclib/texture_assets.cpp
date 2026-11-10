@@ -17,6 +17,7 @@
 #include "Gates/gate.h"
 #include "ui_chrome_sheets.h"
 #include "mc2fmt.h"
+#include <format>
 #include <algorithm>
 #include <cctype>
 #include <cstring>
@@ -78,7 +79,7 @@ std::shared_ptr<const Bytes> uiChromeSheetBytes(mc2::czstring path, std::string_
     std::string err;
     auto loader = [](const ui_chrome::Sheet& s, const ui_chrome::Widget& w, ui_chrome::Pixels& px) {
         File wf;
-        const std::string wp = "data/art/ui/" + s.key + "/" + w.name + ".png";
+        const std::string wp = std::format("data/art/ui/{}/{}.png", s.key, w.name);
         if (wf.open(wp.c_str()) != NO_ERR) return false;
         const auto wb = readBytes(wf);
         if (!wb) return false;
