@@ -56,9 +56,11 @@ ATLASES = {
     "a_oak1dead":         dict(kind="branch", ramp="bark",  hue=0.7, cell=5.0, seed=14),
     # mc2_01 LOD1 (shared with other maps)
     "a_treeclump1l1":     dict(kind="leaf",   ramp="crown", hue=0.8, cell=5.0, seed=21),
-    # Multi-species L1 sheets (white birch bark, green oak crowns beside dead ones): stock hue, value lift, smooth outline.
-    "a_pine&palm&birch":  dict(kind="branch", ramp=None,    lift=1.35, cell=5.0, seed=22, blur=0.6, grow=1.15),
 }
+# Not regenerated: a_pine&palm&birch (the far sheet of pine1, palm1 and birch; recipe tried 2026-11-10: kind branch, no ramp,
+# lift 1.35, blur 0.6, grow 1.15). The alpha-ON prop array allocates every layer at its largest member
+# (gos_static_prop_batcher_finalize_textures.cpp, maxW x maxH RGBA8), so one 1024 member makes the whole array 1024:
+# mc2_10 binds this sheet through pine1L1 and has 63 alpha-ON textures (about 350 MiB) for a far-LOD-only gain.
 # Not regenerated (stock 128 stays): a_deadtreesl1 and a_oak&mapledeadl1. Their far-LOD twigs are one texel at alpha
 # below the cut, so any threshold re-gen beads them into dots or smears them into blobs (tried 2026-11-10, blur 0.35-0.6);
 # they need a traced twig skeleton redrawn as strokes.

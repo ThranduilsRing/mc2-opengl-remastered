@@ -23,14 +23,6 @@
   "source_sha256": "ff8baef14469d5045add62d4ac7e6601f9585147e71b7f14abdb27c85632d2e3",
   "stock_coverage": 0.4321
  },
- "a_pine&palm&birch": {
-  "bytes": 1398528,
-  "coverage": 0.3003,
-  "ktx2_sha256": "fc656fb7add5d94b3eebee7c0929dbf8a084389d41ec8e2a8c99aa800b30507c",
-  "size": 1024,
-  "source_sha256": "15245ce4c36004f01e4918f5fcdc71a40a2df3a02560d4f83415baef6023f278",
-  "stock_coverage": 0.2612
- },
  "a_treeclump1": {
   "bytes": 1398528,
   "coverage": 0.4804,
