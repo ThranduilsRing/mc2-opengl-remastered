@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 421
+gate_count: 422
 registry_entry_count: 124
-verified_count: 401
+verified_count: 402
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -2965,6 +2965,15 @@ flags:
     rule: Std
     owner: gameos
     doc: ""
+    verified: true
+  - name: MC2_VISUAL_LIVE_SETTLE_SEC
+    kind: Float
+    default: 0
+    rule: Prefix
+    owner: gameos
+    doc: "CAPTURE-LIVE-CLOCK harness option: sim-seconds the sim runs at each bookmark pose before the freeze and capture; 0 = off (sim stays frozen)."
+    range: {lo: 0, hi: 60, style: clamp}
+    smoke_passthrough: true
     verified: true
   - name: MC2_VISUAL_SETTLE
     kind: Int

@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 421;
+inline constexpr std::size_t kGateCount = 422;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -386,6 +386,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_VISUAL_DIFF_MAX_FRAMES", Kind::Int, Rule::Prefix, {}},
     {"MC2_VISUAL_DIFF_MISSION", Kind::String, Rule::Std, {}},
     {"MC2_VISUAL_DIFF_OUT", Kind::String, Rule::Std, {}},
+    {"MC2_VISUAL_LIVE_SETTLE_SEC", Kind::Float, Rule::Prefix, {}},
     {"MC2_VISUAL_SETTLE", Kind::Int, Rule::Prefix, {}},
     {"MC2_VISUAL_TUNING_FILE", Kind::String, Rule::Std, {}},
     {"MC2_VK_DEVICE", Kind::String, Rule::Std, {}},

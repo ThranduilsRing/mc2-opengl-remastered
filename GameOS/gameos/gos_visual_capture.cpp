@@ -46,6 +46,8 @@
 // bookmark PNGs and zero frame*.png -- see active() / onPostRenderFrame().
 #include "mc2_czstring.h"
 #include "gos_visual_capture.h"
+#include "visual_capture_live_settle.h"
+extern float scenarioTime;   // mclib/timing.h; CAPTURE-LIVE-CLOCK reads it to time the live settle
 
 #include "gos_smoke.h"
 
@@ -540,7 +542,13 @@ struct ReplayState {
     int settleCount = 0;
     int extendCount = 0;        // pose-verify bounded extra-settle budget used
     bool teleported = false;
-    long triggerFrame = 120;        // sweep fires at this fixed frame
+    // CAPTURE-LIVE-CLOCK: per-bookmark live settle (MC2_VISUAL_LIVE_SETTLE_SEC > 0): the sim runs
+    // for liveSec sim-seconds at the bookmark pose before the freeze + normal settle + capture.
+    double liveSec = 0.0;
+    bool liveRunning = false;
+    double liveStart = 0.0;
+    int liveFrames = 0;
+    long triggerFrame = 120;       // sweep fires at this fixed frame
     bool triggered = false;         // sweep has begun (sim frozen)
     // Saved camera pose for restore after the sweep.
     bool saved = false;
@@ -580,6 +588,7 @@ void parse_replay_cfg() {
     g_replay.path = mc2::gate::isSet<"MC2_VISUAL_BOOKMARK_CAPTURE">() ? s_replayPath.c_str() : nullptr;
     if (!g_replay.path) return;
     { long s = mc2::gate::get<"MC2_VISUAL_SETTLE">(); if (s > 0) g_replay.settleFrames = static_cast<int>(s); }
+    { double ls = static_cast<double>(mc2::gate::get<"MC2_VISUAL_LIVE_SETTLE_SEC">()); if (ls > 0.0) g_replay.liveSec = ls; }
     g_replay.dir = mc2::gate::isSet<"MC2_VISUAL_CAPTURE_DIR">() ? mc2::gate::str<"MC2_VISUAL_CAPTURE_DIR">() : std::string(".");
     // Reuse MC2_VISUAL_CAPTURE_FRAME as the deterministic sweep-trigger frame
     // (default 120). Both runs trigger the freeze+sweep at the same frame so
@@ -875,7 +884,26 @@ void onPostRenderFrame(unsigned int frame, int sceneW, int sceneH) {
             g_replay.teleported = true;
             g_replay.settleCount = 0;
             g_replay.extendCount = 0;
+            if (g_replay.liveSec > 0.0 && g_replay.pauseStateSaved) {
+                g_replay.liveRunning = true;
+                g_replay.liveStart = static_cast<double>(scenarioTime);
+                g_replay.liveFrames = 0;
+                mc2VisualCaptureSetPaused(0);   // sim runs at the bookmark pose
+                mc2::fmt::print_err("[VISUAL_CAPTURE v1.5] live settle start bookmark '{}' sec={:.3f} simStart={:.3f}\n", g_replay.marks[g_replay.idx].name.c_str(), g_replay.liveSec, g_replay.liveStart);
+            }
             return;   // let the scene render at the new pose before capturing
+        }
+        if (g_replay.liveRunning) {
+            apply_bookmark(g_replay.marks[g_replay.idx]);   // hold the pose while the sim runs
+            ++g_replay.liveFrames;
+            if (mc2::visual_capture::liveSettleStep(static_cast<double>(scenarioTime), g_replay.liveStart, g_replay.liveSec,
+                    g_replay.liveFrames, mc2::visual_capture::liveSettleMaxFrames(g_replay.liveSec)) == mc2::visual_capture::LiveSettleStep::Run)
+                return;
+            mc2VisualCaptureSetPaused(1);
+            g_replay.liveRunning = false;
+            g_replay.settleCount = 0;
+            mc2::fmt::print_err("[VISUAL_CAPTURE v1.5] live settle done bookmark '{}' frames={:d} simElapsed={:.3f}\n", g_replay.marks[g_replay.idx].name.c_str(), mc2::fmt::as_i32(g_replay.liveFrames), static_cast<double>(scenarioTime) - g_replay.liveStart);
+            return;
         }
         // VK-FIRST-BOOKMARK-POSE-1: verify the pose THIS just-rendered frame used
         // (eye still reflects update()+render output; we have NOT re-applied yet

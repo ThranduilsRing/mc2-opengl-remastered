@@ -84,6 +84,7 @@ P("MC2_VISUAL_DIFF_FRAME_N", Int, 90, "gameos", "", "", verified),
 P("MC2_VISUAL_DIFF_MAX_FRAMES", Int, 0, "gameos", "", "", verified),  // default not derivable from the tree
 G("MC2_VISUAL_DIFF_MISSION", String, "", "gameos", "", "", verified),  // default not derivable from the tree
 G("MC2_VISUAL_DIFF_OUT", String, "", "gameos", "", "", verified),
+P("MC2_VISUAL_LIVE_SETTLE_SEC", Float, 0.0, "gameos", "", "CAPTURE-LIVE-CLOCK harness option: sim-seconds the sim runs at each bookmark pose before the freeze and capture; 0 = off (sim stays frozen).", passthrough | clampRange(0.0, 60.0) | verified),
 P("MC2_VISUAL_SETTLE", Int, 0, "gameos", "", "", passthrough | verified),  // default not derivable from the tree
 G("MC2_VISUAL_TUNING_FILE", String, "", "gameos", "", "", passthrough | verified),  // default not derivable from the tree
 G("MC2_VK_DEVICE", String, "", "vk", "", "Harness GPU routing: Vulkan device whose name contains this text; empty = first discrete.", passthrough | verified),
