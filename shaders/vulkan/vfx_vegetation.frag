@@ -63,11 +63,15 @@ void main() {
     float cardValue = dot(texel.rgb, vec3(0.299, 0.587, 0.114));
     float groundValue = dot(macro, vec3(0.299, 0.587, 0.114));
     vec3 groundTone = macro * mix(0.75, 1.15, clamp(cardValue*2.0, 0.0, 1.0));
-    vec3 painted = texel.rgb * clamp(groundValue / kPaletteGround, 0.45, 1.6);
-    vec3 albedo = mix(groundTone, painted, 0.75);
+    // Owner 2026-11-10: shrubs "take too much color from the ground beneath" (tan/orange
+    // blobs on sand). Woody cards (layers 4+) keep 92% of their own palette hue and a
+    // bright ground no longer lifts them past 1.15x; night still darkens them.
+    bool woody = v_atlasLayer >= 4u;
+    vec3 painted = texel.rgb * clamp(groundValue / kPaletteGround, 0.45, woody ? 1.15 : 1.6);
+    vec3 albedo = mix(groundTone, painted, woody ? 0.92 : 0.75);
     // Stable per-instance value and warm/cool jitter, so a patch is not one flat tone.
     float jitter = fract(v_vegData.x * 7.31);
-    albedo *= mix(0.80, 1.16, jitter) * mix(vec3(1.05,0.98,0.88), vec3(0.93,1.03,1.01), v_vegData.x);
+    albedo *= mix(0.80, 1.16, jitter) * mix(woody ? vec3(1.0,1.0,0.94) : vec3(1.05,0.98,0.88), vec3(0.93,1.03,1.01), v_vegData.x);
     if ((v_flags & 128u) != 0u) albedo = mix(albedo,macro*vec3(1.03,1.03,1.08),0.65);
     // Grass blades: olive-dark roots under the canopy, light straw tips, and the
     // gust band brightens bent blades (their sheen faces up) so waves read from above.
