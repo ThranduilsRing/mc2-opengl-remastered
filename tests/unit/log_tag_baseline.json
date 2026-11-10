@@ -213,6 +213,20 @@
    "count": 1
   },
   {
+   "tag": "ACTOR_PBR",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "atlas",
+    "kind",
+    "normal",
+    "orm",
+    "mechs",
+    "vehicles"
+   ],
+   "count": 1
+  },
+  {
    "tag": "ADJUDICATION_POSE",
    "ver": 1,
    "stream": "stderr",
@@ -7385,6 +7399,21 @@
    "count": 1
   },
   {
+   "tag": "PROP_ARRAY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "group",
+    "bucket",
+    "layer",
+    "w",
+    "h",
+    "array",
+    "tex"
+   ],
+   "count": 1
+  },
+  {
    "tag": "PROP_LIGHT_PROBE",
    "ver": 1,
    "stream": "stderr",
@@ -9487,7 +9516,10 @@
     "extracts",
     "resident",
     "skipped_last",
-    "registry_resident"
+    "registry_resident",
+    "views",
+    "offview_skipped",
+    "by_class"
    ],
    "count": 1
   },
