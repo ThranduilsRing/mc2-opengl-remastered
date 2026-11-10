@@ -36,7 +36,7 @@ vec3 read3(uint at) { return uintBitsToFloat(uvec3(words[at], words[at+1u], word
 vec4 read4(uint at) { return uintBitsToFloat(uvec4(words[at], words[at+1u], words[at+2u], words[at+3u])); }
 Particle readParticle(uint index) {
     uint b = index * 16u;
-    return Particle(read3(b), uintBitsToFloat(words[b+3u]), read4(b+4u),
+    return Particle(read3(b), words[b+3u], read4(b+4u),
         read3(b+8u), words[b+11u], uintBitsToFloat(words[b+12u]),
         uintBitsToFloat(words[b+13u]), uintBitsToFloat(words[b+14u]), words[b+15u]);
 }
