@@ -2,7 +2,7 @@
 
     py -3 scripts/gate_wait.py [--log PATH] [--timeout SEC] -- <command...>
 
-Runs the command with all output going to the log (default <TMP>/gate_wait-<ts>.log) and prints exactly one
+Runs the command with all output going to the log (default <TMP>/gate_wait-<ts>-<pid>.log) and prints exactly one
 line when it ends: `PASS rc=0 secs=N log=PATH` or `FAIL rc=N secs=N log=PATH` (rc=124 on timeout; the child
 tree is killed). Launch it with the Bash tool's run_in_background so the tool timeout never sees it; the
 completion notice then carries the single line. Exit code mirrors the verdict.
@@ -55,7 +55,7 @@ def main(argv=None):
     cmd = a.cmd[1:] if a.cmd[:1] == ["--"] else a.cmd
     if not cmd:
         ap.error("give a command after --")
-    log = a.log or os.path.join(LOG_DIR, f"gate_wait-{int(time.time())}.log")
+    log = a.log or os.path.join(LOG_DIR, f"gate_wait-{int(time.time())}-{os.getpid()}.log")
     os.makedirs(os.path.dirname(os.path.abspath(log)), exist_ok=True)
     try:
         rc, secs = wait(cmd, log, a.timeout)
