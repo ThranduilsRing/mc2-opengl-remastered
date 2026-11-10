@@ -285,11 +285,19 @@ def base_problems(install_a=None, install_b=None, exe_a=None, exe_b=None, instal
     return problems
 
 
-def run_capture(install, bookmarks, out, env_extra):
+def capture_argv(install, bookmarks, out, env_extra, hud=False):
+    """The capture.py command line. --clean hides the HUD, so it is omitted with hud=True (the default capture is clean)."""
     cmd = [sys.executable, str(HERE / "capture.py"), "--install", install,
-           "--bookmarks", bookmarks, "--out", str(out), "--clean"]
+           "--bookmarks", bookmarks, "--out", str(out)]
+    if not hud:
+        cmd.append("--clean")
     for e in env_extra:
         cmd += ["--env", e]
+    return cmd
+
+
+def run_capture(install, bookmarks, out, env_extra, hud=False):
+    cmd = capture_argv(install, bookmarks, out, env_extra, hud)
     print("[ab] " + " ".join(cmd), flush=True)
     # background-launch: allow streams capture.py progress to the caller's console; inherits it (no new window when the parent has one)
     rc = subprocess.call(cmd, env=dict(os.environ, MC2_CURSOR_NO_PARK="1"))
@@ -413,7 +421,7 @@ def stamp_cross_base(img: Image.Image) -> Image.Image:
 
 
 def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None, cross_base=False, data_delta_accepted=None,
-            exe_a_base_mismatch=None, exe_a_swap=None):
+            exe_a_base_mismatch=None, exe_a_swap=None, hud=False):
     """Returns the compared rows; compare.problems lists missing/empty evidence (callers exit nonzero on it)."""
     if not bookmarks:
         bookmarks = discover_bookmarks(gl_dir, vk_dir)
@@ -486,7 +494,7 @@ def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None, cross_
     if problems:
         print("[ab] FAIL: " + "; ".join(problems))
     (out / "summary.json").write_text(json.dumps(
-        {"gl": str(gl_dir), "vk": str(vk_dir), "threshold": THRESH, "cross_base": cross_base,
+        {"gl": str(gl_dir), "vk": str(vk_dir), "threshold": THRESH, "cross_base": cross_base, "hud": hud,
          "data_delta_accepted": list(data_delta_accepted or []), "exe_a_base_mismatch": exe_a_base_mismatch,
          "exe_a_swap": exe_a_swap,
          "rows": rows, "problems": problems,
@@ -883,6 +891,8 @@ def main(argv=None):
     ap.add_argument("--focus-zoom", type=float, default=None, metavar="ALT",
                     help="camera altitude with --focus (default 200 = mech at about a fifth of the frame)")
     ap.add_argument("--env", action="append", default=[], metavar="K=V", help="extra env for both captures")
+    ap.add_argument("--hud", action="store_true",
+                    help="keep the HUD visible in both captures (default: capture.py --clean hides it)")
     ap.add_argument("--crop", action="append", default=[], help="x0,y0,x1,y1 fractions")
     ap.add_argument("--out-root")
     ap.add_argument("--compare-only", nargs=2, metavar=("DIR_A", "DIR_B"))
@@ -928,7 +938,7 @@ def main(argv=None):
         if bad and not a.allow_base_mismatch:
             sys.exit("ab.py: mismatched capture identities: " + "; ".join(bad))
         compare(Path(a.compare_only[0]), Path(a.compare_only[1]), out, crops,
-                cross_base=bool(bad), data_delta_accepted=accepted_delta)
+                cross_base=bool(bad), data_delta_accepted=accepted_delta, hud=a.hud)
         sys.exit(1 if getattr(compare, "problems", None) else 0)
     if not a.bookmarks:
         sys.exit("--bookmarks required")
@@ -958,14 +968,14 @@ def main(argv=None):
         if base_line:
             print("[ab] WARNING: " + base_line, flush=True)
         env = ["MC2_RENDER_BACKEND=vulkan", "MC2_VK_SHARED_GBUFFER=1"] + a.env + env_pin.focus_declarations(a.focus, a.focus_zoom)
-        run_capture(ia, a.bookmarks, out / "a", env)
+        run_capture(ia, a.bookmarks, out / "a", env, hud=a.hud)
         stamp_identity(out / "a", identities[0])
-        run_capture(ib, a.bookmarks, out / "b", env)
+        run_capture(ib, a.bookmarks, out / "b", env, hud=a.hud)
         stamp_identity(out / "b", identities[1])
         for line in capture_commit_report(identities[0]["commit"], identities[1]["commit"], worktree_head()):
             print(line, flush=True)
         compare(out / "a", out / "b", out / "cmp", crops, [s.strip() for s in a.bookmarks.split(",") if s.strip()],
-                cross_base=bool(bad), exe_a_base_mismatch=exe_a_base_mismatch, exe_a_swap=exe_a_swap)
+                cross_base=bool(bad), exe_a_base_mismatch=exe_a_base_mismatch, exe_a_swap=exe_a_swap, hud=a.hud)
         rc = 1 if getattr(compare, "problems", None) else 0
     finally:
         cleanup_stage(a.staged, keep=a.keep_stage)  # a/, b/ and cmp/ stay; the 13 GB stage goes, pass or fail
