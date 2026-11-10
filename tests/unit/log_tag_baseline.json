@@ -11464,7 +11464,7 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [],
-   "count": 1
+   "count": 2
   },
   {
    "tag": "VK_RESIDENCY",
@@ -12665,6 +12665,7 @@
   "RGBA",
   "SAVELOAD",
   "SCREEN_SHOT",
+  "SEED_PARITY",
   "SHADER",
   "SHADER ERROR",
   "SHADOW_BAKE",
