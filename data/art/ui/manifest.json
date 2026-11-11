@@ -452,7 +452,7 @@
    "file": "MCL_CM_5.png",
    "mode": "RGBA",
    "pad": 1,
-   "rects": 7,
+   "rects": 5,
    "screens": [
     "mcl_cm_layout",
     "mcl_cm_op1_1",
@@ -478,8 +478,7 @@
     "mcl_cm_opgeneric_3",
     "mcl_cm_opgeneric_4",
     "mcl_cm_opplayer",
-    "mcl_cm_optutorials",
-    "mcl_cm_standinop"
+    "mcl_cm_optutorials"
    ],
    "size": [
     128,
@@ -655,31 +654,6 @@
       "mcl_cm_optutorials:Button2",
       "mcl_cm_optutorials:Button3",
       "mcl_cm_optutorials:Button4"
-     ]
-    },
-    "mcl_cm_standinop.button0.disabled": {
-     "rect": [
-      0,
-      0,
-      64,
-      64
-     ],
-     "uses": [
-      "mcl_cm_standinop:Button0",
-      "mcl_cm_standinop:Button1",
-      "mcl_cm_standinop:Button2"
-     ]
-    },
-    "mcl_cm_standinop.button0bmp0": {
-     "rect": [
-      64,
-      0,
-      32,
-      32
-     ],
-     "uses": [
-      "mcl_cm_standinop:Button0Bmp0",
-      "mcl_cm_standinop:Button1Bmp0"
      ]
     }
    }
