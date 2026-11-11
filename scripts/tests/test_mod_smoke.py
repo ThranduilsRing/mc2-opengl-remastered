@@ -467,6 +467,31 @@ def test_run_mod_timeout_is_infra_and_forwards_grace(tmp_path, monkeypatch):
     assert ms.run_mod(stage, "metropolitan", 10, 60)["infra"] is None
 
 
+def test_hud_capture_is_opt_in_and_plans_the_skip_and_frame(tmp_path, monkeypatch):
+    """--hud-capture is off by default; on, run_mod gets the cinematic skip + one capture frame, never the CLEAN (HUD-off) switch."""
+    from types import SimpleNamespace
+    seen = []
+    monkeypatch.setattr(ms.subprocess, "run", lambda cmd, **kw: seen.append(kw["env"]) or SimpleNamespace(returncode=0, stdout="", stderr=""))
+    stage = tmp_path / "mod"
+    stage.mkdir()
+    ms.run_mod(stage, "mc2_01", 10, 60)
+    assert "MC2_VISUAL_CAPTURE_FRAME" not in seen[0] and "MC2_PLAY_MISSION_SKIP_CINEMATICS" not in seen[0]
+    out = tmp_path / "hud"
+    env = ms.hud_capture_env(out, 600)
+    ms.run_mod(stage, "mc2_01", 10, 60, hud_env=env)
+    assert out.is_dir()
+    assert seen[1]["MC2_VISUAL_CAPTURE_FRAME"] == "600" and seen[1]["MC2_VISUAL_CAPTURE_DIR"] == str(out)
+    assert seen[1]["MC2_PLAY_MISSION_SKIP_CINEMATICS"] == "1" and "MC2_VISUAL_CAPTURE_CLEAN" not in seen[1]
+    assert ms.collect_hud_png(out, tmp_path / "x.png") is None
+    (out / "frame0600.png").write_bytes(b"png")
+    assert ms.collect_hud_png(out, tmp_path / "x.png") == str(tmp_path / "x.png") and (tmp_path / "x.png").read_bytes() == b"png"
+
+
+def test_hud_capture_cli_flags_default_off():
+    src = (ROOT / "tools" / "mod_smoke.py").read_text(encoding="utf-8")
+    assert "'--hud-capture', action='store_true'" in src and "default=HUD_CAPTURE_FRAME" in src
+
+
 def test_first_mission_prefers_numbered_over_test_maps(tmp_path):
     mod = tmp_path / "m"
     for stem in ("ai_glenn", "cityassault", "m0101", "reap3m02", "reap3m01"):
