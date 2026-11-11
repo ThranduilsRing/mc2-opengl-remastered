@@ -1,0 +1,9 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_01",
+  "_note": "Paved-road poses for per-texture-tier and overlay comparisons. Overlay type 1 (PAVED_ROAD) cells from tools/mapgen/extract.py: vertical road at x=3584 (col 78), y 1920..-256 (rows 35..52), horizontal arm at y=1920 x 3072..3712 (cols 76..80). Steep pitch so the road fills the frame (the earlier shallow pose looked across a tree crown).",
+  "bookmarks": [
+    {"name": "junc_top", "pos": [3584.0, 1850.0, 0.0], "rot": 0.0, "proj": 65.0, "alt": 450.0, "covers": ["roads"]},
+    {"name": "junc_mid", "pos": [3584.0, 800.0, 0.0], "rot": 0.0, "proj": 65.0, "alt": 450.0, "covers": ["roads"]}
+  ]
+}

@@ -96,3 +96,35 @@ TEST_CASE("player settings/object numbers stay signed and on their assignment li
     CHECK_FALSE(PlayerFrontEnd::hasHighObjectNumber("objectnumber\nother = 2000\n"));
     CHECK_FALSE(PlayerFrontEnd::hasHighObjectNumber("myobjectnumber = 2000\n"));
 }
+
+TEST_CASE("texture tier resolves explicit options and Auto by device VRAM") {
+    using mc2::options::resolveTextureTier;
+    constexpr unsigned long long MiB = 1ull << 20;
+    for (int t = 0; t <= 3; ++t) CHECK(resolveTextureTier(t, 0) == t);
+    CHECK(resolveTextureTier(-1, 0) == 0);
+    CHECK(resolveTextureTier(-1, 512 * MiB) == 0);
+    CHECK(resolveTextureTier(-1, 513 * MiB) == 1);
+    CHECK(resolveTextureTier(-1, 2047 * MiB) == 1);
+    CHECK(resolveTextureTier(-1, 2048 * MiB) == 2);
+    CHECK(resolveTextureTier(-1, 6143 * MiB) == 2);
+    CHECK(resolveTextureTier(-1, 6144 * MiB) == 3);
+    CHECK(resolveTextureTier(-1, 24576 * MiB) == 3);
+}
+
+TEST_CASE("TextureQuality option row: range -1..3, default Auto, text form validated") {
+    using namespace mc2::options;
+    const Option* opt = find("texturequality");
+    REQUIRE(opt != nullptr);
+    CHECK(opt->kind == Kind::Long);
+    CHECK(opt->lo == -1);
+    CHECK(opt->hi == 3);
+    RenderOptions o;
+    CHECK(o.textureQuality == -1);
+    CHECK(setFromText(o, *opt, "2") == Verdict::Ok);
+    CHECK(o.textureQuality == 2);
+    CHECK(setFromText(o, *opt, "-1") == Verdict::Ok);
+    CHECK(o.textureQuality == -1);
+    CHECK(setFromText(o, *opt, "5") != Verdict::Ok);
+    CHECK(o.textureQuality == -1);
+    CHECK(setFromText(o, *opt, "high") == Verdict::Garbage);
+}

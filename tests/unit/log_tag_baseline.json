@@ -6709,28 +6709,9 @@
    "ver": 1,
    "stream": "stdout",
    "keys": [
-    "MC2_OVERLAY_TILE_HIRES"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "OVERLAY_TILE_HIRES",
-   "ver": 1,
-   "stream": "stdout",
-   "keys": [
     "path",
     "hits",
     "misses"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "OVERLAY_TILE_HIRES",
-   "ver": 1,
-   "stream": "stdout",
-   "keys": [
-    "tileEdge",
-    "dir"
    ],
    "count": 1
   },
@@ -9982,6 +9963,17 @@
     "owned",
     "encoded_bytes",
     "legacy_cache_bytes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TEXTURE_TIER",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "vram_mib",
+    "option",
+    "tier"
    ],
    "count": 1
   },

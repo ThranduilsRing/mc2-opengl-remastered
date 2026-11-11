@@ -49,6 +49,23 @@ void draw() {
                 ImGui::SetTooltip("SMAA 1x is the default: spatial AA without history or jitter.\nFSR 3.1 is optional temporal AA; FXAA uses less memory.");
             if (aaSaveFailed) ImGui::TextUnformatted("Could not save anti-aliasing setting.");
 
+            ImGui::SeparatorText("Texture quality");
+            {
+                const char* tqNames[] = {"Auto (by VRAM)", "Low", "Medium", "High", "Ultra"};
+                auto opts = mc2::options::current();
+                int tq = opts.textureQuality + 1;
+                static bool tqSaveFailed = false;
+                if (ImGui::Combo("Texture quality", &tq, tqNames, IM_ARRAYSIZE(tqNames))) {
+                    opts.textureQuality = tq - 1;
+                    tqSaveFailed = !PlayerFrontEnd::saveRenderOptions || !PlayerFrontEnd::saveRenderOptions(opts);
+                    if (!tqSaveFailed) mc2::options::publish(opts);
+                }
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("Road/runway/cement tile resolution and overlay normal+ORM maps. Applies to missions loaded after the change. Auto picks by VRAM (512 MB or less = Low).");
+                ImGui::Text("Active tier: %d", mc2::options::textureTier());
+                if (tqSaveFailed) ImGui::TextUnformatted("Could not save texture quality.");
+            }
+
             // view-mode selector.
             // Gated on MC2_VIEWMODE_FRAMEWORK (resolved once at init); when OFF
             // the combo is hidden and endScene() forces Visual (byte-identical).
