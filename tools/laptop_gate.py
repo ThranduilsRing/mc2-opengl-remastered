@@ -813,16 +813,22 @@ def provision_problems(root=G):
     return bad
 
 
+def cooked_preflight(repo=None):
+    """Stop before any upload when a PC-cooked output (tools/cooked_outputs.json) is absent or not its pinned bytes (the grass turf
+    normal and the tree sidecars are sha256-verified): a clear red here, not an unhashed copy that shows as a laptop compare diff."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import cooked_outputs
+    bad = cooked_outputs.problems(str(repo or Path(__file__).resolve().parents[1]))
+    if bad:
+        sys.exit("laptop_gate: PC-cooked outputs missing or stale (tools/cooked_outputs.json):\n  " + "\n  ".join(bad))
+
+
 def pc_main(args):
     w = args.window
     branch = "claude/stage-" + w
     head = subprocess.check_output(["git", "rev-parse", branch], text=True, **console_child.child_kwargs(redirected=True)).strip()
     t0 = time.time()
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
-    import cooked_outputs
-    bad = cooked_outputs.problems(str(Path(__file__).resolve().parents[1]))   # absent or stale PC-cooked output: red here, not a laptop compare diff
-    if bad:
-        sys.exit("laptop_gate: PC-cooked outputs missing or stale (tools/cooked_outputs.json):\n  " + "\n  ".join(bad))
+    cooked_preflight()
     provision(bin_only=True)   # the remote half itself, so init can run (init clones the repo the layer seeds go into)
     ssh(remote_py("init"), stream=True)
     provision()   # helpers + E-root and layer seeds, sha-checked; the remote preflight verifies PROVISION.sha256

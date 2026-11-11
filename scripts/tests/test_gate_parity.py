@@ -307,3 +307,47 @@ def test_compare_captures_accepts_the_grass_turf_only_at_the_pinned_bytes():
     assert ab.cooked_unpinned_accepted(changed, head, {}) == set()                # not in the capture: refused
     assert ab.cooked_unpinned_accepted({"code/mech.cpp"}, head, {out: sha}) == set()
     assert ab.cooked_unpinned_accepted(changed, "no-such-commit", {out: sha}) == set()   # unreadable manifest: fail closed
+
+
+def test_laptop_gate_refuses_an_absent_or_stale_grass_turf_before_uploading(tmp_path):
+    _tree(tmp_path)
+    laptop_gate.cooked_preflight(tmp_path)   # clean tree: no exit
+    grass = tmp_path / "data" / "terrain_layers" / "grass_turf_normal.ktx2"
+    grass.write_bytes(b"stale")
+    with pytest.raises(SystemExit) as stale:
+        laptop_gate.cooked_preflight(tmp_path)
+    assert "grass_turf_normal.ktx2 is not the pinned bytes" in str(stale.value)
+    grass.unlink()
+    with pytest.raises(SystemExit) as absent:
+        laptop_gate.cooked_preflight(tmp_path)
+    assert "grass_turf_normal.ktx2 is absent" in str(absent.value)
+
+
+# (c) the deploy-fixture cook tolerance is scoped to test modules that deploy, and does not depend on import order ----------------
+
+def test_stock_tree_tolerance_is_scoped_by_the_test_modules_source(tmp_path):
+    import conftest
+    dep = tmp_path / "test_dep.py"
+    dep.write_text("import deploy_payload\n")
+    pkg = tmp_path / "test_pkg.py"
+    pkg.write_text("from scripts import deploy_payload\n")
+    both = tmp_path / "test_both.py"
+    both.write_text("import deploy_payload\nimport scripts.deploy_payload\n")
+    other = tmp_path / "test_other.py"
+    other.write_text("import json\n")
+    mod = lambda p: types.SimpleNamespace(__file__=str(p))
+    assert conftest.deploy_modules_named_by(mod(dep)) == ["deploy_payload"]
+    assert "scripts.deploy_payload" in conftest.deploy_modules_named_by(mod(pkg))
+    assert conftest.deploy_modules_named_by(mod(both)) == ["scripts.deploy_payload", "deploy_payload"]
+    assert conftest.deploy_modules_named_by(mod(other)) == []
+    assert conftest.deploy_modules_named_by(types.SimpleNamespace()) == []
+
+
+def test_stock_tree_tolerance_applies_only_to_deploying_modules(request):
+    # this module names no deploy_payload by import but mentions it in source -> it IS a deploying module here; the patch must be on
+    assert importlib_import("deploy_payload").ALLOW_STOCK_TREES is True
+
+
+def importlib_import(name):
+    import importlib
+    return importlib.import_module(name)

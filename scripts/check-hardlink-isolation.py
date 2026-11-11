@@ -160,6 +160,7 @@ MUTATED_ROOTS = (
     "data/defs", "data/kit", "data/model_overrides",
     "data/vegetation", "data/terrain_layers", "data/textures",
     "data/art/mechicons", "data/art/missionmaps", "data/art/ui", "data/art/pilots",
+    "data/art/gui",   # campaign-globe (W147): the campaign chrome sheets (mcl_cm_*, mcl_mn_4) GAME_DATA_PAYLOAD rewrites on every deploy
     "saved_bookmarks",
     "cache/content-model",
 )
@@ -171,9 +172,6 @@ MUTATED_FILES = (
     # data/kit/tree-upscale.json); every deploy may rewrite them, so they are never a shared seed inode.
     "data/tgl/128/a_mapledead.ktx2", "data/tgl/128/a_oak1dead.ktx2", "data/tgl/128/a_palm.ktx2",
     "data/tgl/128/a_treeclump1.ktx2", "data/tgl/128/a_treeclump1l1.ktx2",
-    # campaign-globe (W147): the campaign chrome sheets deploy_payload.GAME_DATA_PAYLOAD rewrites on every deploy.
-    *[f"data/art/gui/mcl_cm_op{op}_{view}.tga" for op, count in ((1, 6), (2, 3), (3, 4)) for view in range(1, count + 1)],
-    "data/art/gui/mcl_cm_5.png", "data/art/gui/mcl_cm_5.tga", "data/art/gui/mcl_mn_4.png", "data/art/gui/mcl_mn_4.tga",
 )
 _MUTATED_FILES_FOLDED = frozenset(rel.casefold() for rel in MUTATED_FILES)
 
