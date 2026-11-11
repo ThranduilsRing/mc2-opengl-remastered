@@ -38,7 +38,7 @@ Proof ladder (offline first), lane proof rules and default run lengths: lane-rul
 ```bash
 bash scripts/check-contracts.sh                                # full board (~50-90 s)
 py -3 tools/build_contract_harnesses.py --run --unit           # C++ harnesses + doctest tier
-py -3 -B -m pytest scripts/tests/ -q -p no:cacheprovider       # full suite
+py -3 -B -m pytest scripts/tests/ -q -p no:cacheprovider -n auto   # full suite, parallel (xdist; cap workers: PYTEST_XDIST_AUTO_NUM_WORKERS=<JOBS>)
 ```
 
 **Runtime change:** one smoke-lite on your own install, `py -3 scripts/run_smoke.py --lite --keep-logs --exe <install>/mc2.exe` (mc2_10 night + mc2_01 day, 10 s each, all gates incl. shader_error and the deploy fingerprint `[DEPLOY_FINGERPRINT] OK: exe sha=… matches worktree HEAD`). None for docs/tests/tools/scripts. Full tier1, the gate tiers (per merge / `--nightly` / `--weekly`) and the nightly schedule: `docs/merge-queue-v2.md`.
