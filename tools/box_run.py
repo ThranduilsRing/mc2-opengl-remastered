@@ -10,7 +10,7 @@ Steps (each timed, summary printed at the end): lock a GPU, git-bundle HEAD to t
 (big immutable data linked, the rest copied) + deploy_payload, run the rows, copy reports back to
 E:/mc2-archive-2026-10/proofs/box/<worktree>/<sha8>/ (MC2_BOX_PROOFS), print the DEPLOY_FINGERPRINT line, release the lock.
 
-Rows: ab:<before-ref> (day + night A/B against HEAD, plus the gpu-passes ratio table) | gpu-passes (per-pass GPU table, mc2_01/mc2_10/mc2_24; refuses a dirty worktree) | smoke-lite | smoke-tier1 | syncval[:aa_off|aa_fxaa|aa_cmaa|cold_bake|imgui|resize|nowater|gpuav|canary] | capture:<mission>:<bookmark-stem> | screen:<id>[@N] (logistics, campaign_missions, mechbay: front-end screenshot) | determinism:<mission>[:audit] | saveload[:<mission>] | unit | unit-san (doctests under ASan+UBSan, CPU-only) | build | lint | cpu:<command> | sh:<command> (no GPU lock) | gpu:<command> (takes the lock)
+Rows: ab:<before-ref> (day + night A/B against HEAD, plus the gpu-passes ratio table) | gpu-passes (per-pass GPU table, mc2_01/mc2_10/mc2_24; refuses a dirty worktree) | smoke-lite | smoke-tier1 | valsum (Khronos sync + best-practices summary, 4 x 300 s) | syncval[:aa_off|aa_fxaa|aa_cmaa|cold_bake|imgui|resize|nowater|gpuav|canary] | capture:<mission>:<bookmark-stem> | screen:<id>[@N] (logistics, campaign_missions, mechbay: front-end screenshot) | determinism:<mission>[:audit] | saveload[:<mission>] | unit | unit-san (doctests under ASan+UBSan, CPU-only) | build | lint | cpu:<command> | sh:<command> (no GPU lock) | gpu:<command> (takes the lock)
 (sh runs in the lane src dir with $INSTALL, $OUT, $GPU_ENV set). Merge gates share the discovered GPUs.
 Legacy capture rows are forced onto GPU 0 by `--gpu auto`.
 Windows-only behaviour (window focus, firewall, owner-test) is not covered: those rows stay on the Windows PC.
@@ -256,7 +256,7 @@ for row in "${ROWS[@]}"; do
   esac
   name=$(printf %s "$row" | tr -c 'A-Za-z0-9._-' _); case $row in sh:*|cpu:*|gpu:*) name=row$RIDX-$(printf %s "$row" | cksum | cut -d' ' -f1);; esac; echo "[box_run] row=$row"   # free-text rows: index + hash, never the row text (File name too long)
   case $row in build|unit|unit-san|lint|cpu:*|sh:*) RUN=grc;; determinism:*|saveload*) RUN=grh;; *) RUN=gr; [ -z "$LOCKED" ] && { take_lock; LOCKED=1; };; esac
-  case $row in unit-san) TMO=3000;; unit) TMO=1200;; lint) TMO=3600;; smoke*|capture:*|screen:*) TMO=600;; gpu-passes) TMO=1500;; determinism:*|saveload*) TMO=900;; *) TMO=1800;; esac   # a hung row must not hold a GPU or the lane
+  case $row in unit-san) TMO=3000;; unit) TMO=1200;; lint) TMO=3600;; smoke*|capture:*|screen:*) TMO=600;; gpu-passes) TMO=1500;; valsum) TMO=3000;; determinism:*|saveload*) TMO=900;; *) TMO=1800;; esac   # a hung row must not hold a GPU or the lane
   case $row in
     smoke-lite)  QS=""; [ "$GOT" = "${GATE_GPU:-0}" ] && [ -x /workspace/bin/quiet-slot ] && QS="/workspace/bin/quiet-slot --gpu ${GATE_GPU:-0} --"   # gate GPU: pause and drain the idle filler first (its mc2 jobs are foreign engines that hold the game lease)
                  cmd="$QS python3 scripts/run_smoke.py --lite --keep-logs --exe $I/mc2" ;;
@@ -303,6 +303,9 @@ for row in "${ROWS[@]}"; do
                    canary)    cmd="git apply tests/syncval/canary_producer_handoff_barrier.patch && { ninja -C build64-ninja -j16 mc2 > $OUT/canary_build.log 2>&1; b=\$?; git checkout -q -- GameOS/gameos/vk_native_producers.cpp; [ \$b = 0 ] || exit 9; cp -f build64-ninja/mc2 $I/mc2; $sv python3 scripts/run_smoke.py --lite --keep-logs --exe $I/mc2 > $OUT/canary_smoke.log 2>&1; grep -qa 'SYNC-HAZARD' $OUT/canary_smoke.log && { echo '[syncval] canary: hazard reported, as required'; exit 0; }; echo '[syncval] canary: NO hazard reported (validation is not live or the canary is stale)'; exit 1; }" ;;
                    *) echo "[box_run] unknown syncval arm $arm"; RES=2; continue ;;
                  esac ;;
+    valsum)      # Khronos validation summary: sync + best-practices modes on the mc2_01 and mc2_10 bookmarks, newer layer (1.4.350), 300 s captures so the layer reaches steady state.
+                 # Prints err / SYNC-HAZARD totals and per-family counts per run (diff two tips' valsum.txt); FAILS on any severity=error or SYNC-HAZARD, or when the layer is not live.
+                 cmd="V=/workspace/toolchains/vvl-1.4.350.0/explicit_layer.d; [ -d \$V ] && export VK_LAYER_PATH=\$V; bad=0; : > $OUT/valsum.txt; for m in sync best-practices; do for b in mc2_01_saved_205644 mc2_10_saved_204523; do d=$OUT/val_\${m}_\$b; python3 tools/visual_verify/capture.py --install $I --bookmarks \$b --duration 300 --env-declare MC2_VULKAN_VALIDATION=\$m --out \$d > \$d.cap.log 2>&1; grep -rah 'VK_VALIDATION v1' \$d > \$d.vkv; e=\$(grep -c severity=error \$d.vkv); h=\$(grep -c SYNC-HAZARD \$d.vkv); grep -aq 'id=layer_enabled' \$d.vkv || { echo \"[valsum] layer not live: \$m \$b\"; bad=1; }; [ \$e = 0 ] && [ \$h = 0 ] || bad=1; { echo \"=== \$m \$b total=\$(wc -l < \$d.vkv) err=\$e hazard=\$h\"; sed -E 's/.*severity=([a-z]+) id=([^ ]+).*/\\1 \\2/' \$d.vkv | sort | uniq -c | sort -rn | head -40; } | tee -a $OUT/valsum.txt; done; done; exit \$bad" ;;
     *) echo "[box_run] unknown row $row"; RES=2; continue ;;
   esac
   case $row in determinism:*|saveload*)
@@ -668,7 +671,7 @@ def main():
         sync_nifty(repo)
     # gpu choice
     # TODO: drop cap0 (smoke/capture rows forced onto GPU 0) once claude/vk-headless-present (eac614635) is in the base
-    cap0 = 1 if (any(r.startswith(("capture", "smoke", "screen", "gpu-passes")) for r in a.rows) and not a.capture_any_gpu and not has_vk_headless(repo)) else 0
+    cap0 = 1 if (any(r.startswith(("capture", "smoke", "screen", "gpu-passes", "valsum")) for r in a.rows) and not a.capture_any_gpu and not has_vk_headless(repo)) else 0
     gpu = a.gpu
     if gpu != "auto" and not gpu.isdigit():
         print(f"[box_run] --gpu must be an index or auto, got {gpu!r}")
