@@ -326,7 +326,10 @@ def test_laptop_gate_refuses_an_absent_or_stale_grass_turf_before_uploading(tmp_
 # (c) the deploy-fixture cook tolerance is scoped to test modules that deploy, and does not depend on import order ----------------
 
 def test_stock_tree_tolerance_is_scoped_by_the_test_modules_source(tmp_path):
-    import conftest
+    import importlib.util   # by path: `import conftest` is whichever conftest the suite imported first
+    spec = importlib.util.spec_from_file_location("scripts_tests_conftest", Path(__file__).with_name("conftest.py"))
+    conftest = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(conftest)
     dep = tmp_path / "test_dep.py"
     dep.write_text("import deploy_payload\n")
     pkg = tmp_path / "test_pkg.py"
