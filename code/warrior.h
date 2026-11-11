@@ -681,12 +681,10 @@ class MechWarrior {
 
 		PathQueueRecPtr			movePathRequest;
 
-		// PATHFINDING-JUMP-FAIL-1: per-pilot doomed jump-path backoff (transient,
-		// runtime-only -- NOT serialized; copyToData/copyFromData ignore these).
-		// Records the goal cell of the last jump solve that returned no path and
-		// the path-manager frame it failed on, so requestMovePath can short-circuit
-		// re-enqueuing the same doomed jump goal within kJumpFailBackoffFrames.
-		// Inert unless MC2_PATH_JUMP_FAIL_BACKOFF is set (default-OFF killswitch).
+		// Failed AI jump goal and sim-tick stamp. FIX1 persists goal and age;
+		// copyToData/copyFromData retain their legacy record layout.
+		// The same goal backs off for 45 ticks (1.5s). Home-team/player orders
+		// and multiplayer bypass it, including after ownership changes.
 		int32_t					lastFailedJumpGoalCellR;
 		int32_t					lastFailedJumpGoalCellC;
 		long					lastJumpFailFrame;
@@ -1482,9 +1480,8 @@ class MechWarrior {
 		std::optional<JumpBackoffState> getJumpBackoff ();
 		void setJumpBackoff (int32_t goalR, int32_t goalC, int32_t age);
 
-		// PATHFINDING-JUMP-FAIL-1: stamp a doomed jump-solve failure (goal cell of
-		// the solve that returned no path). Called from Mover::calcMovePath on the
-		// jump branch. No-op unless the backoff gate is on.
+		// Stamp a failed jump solve's requested goal. Single-player AI only.
+		// Home-team and explicit player orders bypass stamping and admission.
 		void noteJumpPathFailed (void);
 
 		long calcMovePath (long selectionIndex, unsigned long moveParams = MOVEPARAM_NONE);
