@@ -6,3 +6,5 @@
 # a hand-written giant file to hide it -- splitting it is the point of the ratchet.
 # Vendored upstream (bc7enc_rdo, MIT, pinned commit in its VERSION.txt); not ours to split.
 tools/texcook/bc7enc_rdo/
+# GameOS/gameos/vulkan_mech_island.cpp (1516 lines) is NOT excluded: it is baselined in file_size_ratchet.baseline.json so it cannot grow.
+# Split it after mt-islands-m2 lands (that lane is editing it now).

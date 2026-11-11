@@ -287,6 +287,7 @@ add_executable(mc2_tests
     # is required at link time; nothing else from mclib/GameOS is):
     ${MC2_WORKTREE_ROOT}/mclib/file.cpp       # File base: disk/FST/in-RAM backends
     ${MC2_WORKTREE_ROOT}/mclib/vfs.cpp        # mod/loose/FST VFS module (was file_mod.inc)
+    ${MC2_WORKTREE_ROOT}/mclib/vfs_index.cpp  # mc2::vfs mount table + merged index (split from vfs.cpp)
     ${MC2_WORKTREE_ROOT}/mclib/inifile.cpp    # FitIniFile block/var parser
     ${MC2_WORKTREE_ROOT}/mclib/inifile_read.cpp
     ${MC2_WORKTREE_ROOT}/mclib/inifile_arrays.cpp

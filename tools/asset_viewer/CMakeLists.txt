@@ -51,6 +51,7 @@ add_library(mc2_tglloader STATIC
     "${CMAKE_SOURCE_DIR}/GameOS/src/platform_str.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/file.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/vfs.cpp"
+    "${CMAKE_SOURCE_DIR}/mclib/vfs_index.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/fastfile.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/ffile.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/packet.cpp"
