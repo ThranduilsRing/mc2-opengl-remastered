@@ -155,7 +155,7 @@ def test_visual_capture_stamps_and_preserves_sweep_metadata(tmp_path):
 def test_box_ab_releases_gpu_before_rebuild_and_checks_deploy():
     remote = box_run.REMOTE
     before = remote.index('> "$OUT/ab_before.log"')
-    release = remote.index('exec 9>&-', before)
+    release = remote.index('release_slots;', before)   # box-gpu0-slots (W147): release_slots closes fd 9 and the slot fds 11-15
     rebuild = remote.index('BUILD_SHA=$SHA; build_install', release)
     after = remote.index('> "$OUT/ab_after.log"', rebuild)
     assert before < release < rebuild < after

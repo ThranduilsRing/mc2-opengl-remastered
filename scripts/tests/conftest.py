@@ -40,6 +40,19 @@ def deploy_tmp_path(tmp_path):
 
 
 @pytest.fixture(autouse=True)
+def _fixture_deploys_tolerate_failed_cooks(monkeypatch, request):
+    """box-data-overlay (W147) made a failed deploy cook exit non-zero unless --allow-stock-trees; the fixture installs hold fake
+    textures the real cooks reject, so fixture deploys run as --allow-stock-trees (test_deploy_bootstrap tests the flag itself)."""
+    import sys
+    if request.module.__name__.rsplit(".", 1)[-1] == "test_deploy_bootstrap":
+        return
+    for name in ("deploy_payload", "scripts.deploy_payload"):   # tests import it under either name
+        dp = sys.modules.get(name)
+        if dp is not None and hasattr(dp, "ALLOW_STOCK_TREES"):
+            monkeypatch.setattr(dp, "ALLOW_STOCK_TREES", True)
+
+
+@pytest.fixture(autouse=True)
 def _no_inherited_gate_flag(monkeypatch):
     monkeypatch.delenv("MC2_IN_GATE", raising=False)
     monkeypatch.setenv("MC2_NO_RECEIPT_CHECK", "1")   # batch tests drive lane_merge without a precheck receipt (R2)

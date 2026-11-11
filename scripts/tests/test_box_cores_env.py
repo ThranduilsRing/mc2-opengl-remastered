@@ -25,7 +25,9 @@ def test_repo_cores_env_build_cpus_is_8_35():
 def test_box_run_fallback_matches_the_repo_cores_env():
     m = re.search(r"BCPUS=\$\{BUILD_CPUS:-([^}]+)\}", BOX_RUN.read_text())
     assert m, "box_run.py lost its BCPUS=${BUILD_CPUS:-...} fallback"
-    assert m.group(1) == env()["BUILD_CPUS"]
+    # the fallback is either the literal range or (box-queue-stall) "<lo>-$(( $(nproc) - 1 ))": same lower bound, top = the last core
+    fb = m.group(1)
+    assert fb == env()["BUILD_CPUS"] or (fb.startswith(env()["BUILD_CPUS"].split("-")[0] + "-") and "nproc" in fb)
 
 
 def test_build_and_game_cores_do_not_overlap_and_fit_in_the_36_core_box():

@@ -202,7 +202,7 @@ def count_overrides(root):
 
 
 READER_DIRS = ("code", "mclib", "GameOS", "RenderCore", "GuiRuntime", "RenderWorld", "GameAdapters", "HostServices",
-               "EditorBridge", "editor", "gui", "tools")
+               "EditorBridge", "editor", "gui", "tools", "Platform")   # Platform: the R1-window WindowInput.cpp holds the MC2_TRACE_EXIT reader
 _READER_RE = re.compile(r'(?<![A-Za-z_])(?:get|state|isSet|armed|regionTier1Armed|str|is)\s*<\s*"(MC2_\w+)"')
 
 

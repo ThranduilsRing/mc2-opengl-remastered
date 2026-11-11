@@ -218,7 +218,6 @@ struct ShadowBake {
     uint64_t transientBytes_ = 0;
     OwnedImage maskImage_, topR8_, objectImage_, windowImage_, scratch_[4], tileR8_;
     OwnedImageView maskView_, topR8View_, objectView_, windowView_, scratchView_[4], tileR8View_;
-    OwnedFramebuffer objectFb_, windowFb_;
     Owned objectPass_, windowPass_, staging_, blockStaging_, bc4Params_, depthRawSampler_;
     uint64_t tileLevelOff_[kTileLevels] = {};
     std::vector<uint64_t> topLevelOff_;
@@ -229,17 +228,17 @@ struct ShadowBake {
     bool ensureProducts(int);
     bool ensureTransients();
     bool productsComplete() const {
-        return maskImage_ && maskView_ && topR8_ && topR8View_ && objectImage_ && objectView_ && objectFb_;
+        return maskImage_ && maskView_ && topR8_ && topR8View_ && objectImage_ && objectView_;
     }
     bool transientsComplete() const {
-        if (!(windowImage_ && windowView_ && windowFb_ && staging_ && tileR8_ && tileR8View_)) return false;
+        if (!(windowImage_ && windowView_ && staging_ && tileR8_ && tileR8View_)) return false;
         for (int i = 0; i < 4; ++i) if (!(scratch_[i] && scratchView_[i])) return false;
         return true;
     }
 };
 ''' + '\n'.join(methods) + r'''
 int main() {
-    for (int failure = 1; failure <= 7; ++failure) {
+    for (int failure = 1; failure <= 6; ++failure) {   // vk-dynamic-rendering-s1 (W147): no framebuffers, one allocation fewer
         ShadowBake bake;
         operation = 0; failAt = failure;
         assert(!bake.ensureProducts(4096));
@@ -252,17 +251,17 @@ int main() {
         for (int resizeFailure = 1; resizeFailure <= 4; ++resizeFailure) {
             operation = 0; failAt = resizeFailure;
             assert(!bake.ensureProducts(8192));
-            assert(bake.maskTexels_ == 4096 && bake.productsComplete() && live == 7);
+            assert(bake.maskTexels_ == 4096 && bake.productsComplete() && live == 6);
         }
         failAt = 0;
-        assert(bake.ensureProducts(8192) && bake.productsComplete() && live == 7);
+        assert(bake.ensureProducts(8192) && bake.productsComplete() && live == 6);
     }
     assert(live == 0);
-    for (int failure = 1; failure <= 17; ++failure) {
+    for (int failure = 1; failure <= 16; ++failure) {
         ShadowBake bake;
         operation = 0; failAt = failure;
         assert(!bake.ensureTransients());
-        if (failure <= 14) assert(live == 0 && !bake.windowImage_);
+        if (failure <= 13) assert(live == 0 && !bake.windowImage_);
         else assert(bake.transientsComplete()); // encoder refusal retries separately
         failAt = 0;
         assert(bake.ensureTransients() && bake.transientsComplete());
