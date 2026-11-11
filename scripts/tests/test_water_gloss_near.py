@@ -2,8 +2,7 @@
 
 Owner 2026-11-10 (mc2_01_saved_205644): "the near water should be a bit glossier ... generally the vibe is good".
 Far water and night water must not change; the LEAN / specular-AA roughness terms stay in place.
-Round 2 (round 1 was invisible: the near water reflects an overhead sky about as dark as the water body, and the tight
-sun lobe misses it): a broad sheen lobe on the wave normal plus a reflected-sky lift, both weighted by nearGloss.
+The reflected-sky lift supplies near gloss without adding a second broad sun lobe.
 """
 from pathlib import Path
 import re
@@ -68,21 +67,15 @@ def _near(dist, night_dim):
     return (1.0 - _smoothstep(START, END, dist)) * (1.0 - min(max(night_dim / 0.6, 0.0), 1.0))
 
 
-def test_sheen_and_sky_lift_are_weighted_by_near_gloss():
-    # the sheen is a second, broader sun lobe on the wave normal, after the glint and inside the day/near weight
-    sun = SRC.index("col += min(sunRad * (SUN_SPEC_GAIN")
-    sheen = SRC.index("NEAR_SHEEN_GAIN * glintScale * sunVis * nearGloss")
-    assert sun < sheen < SRC.index("if (uT.numPoolLights > 0 && nightSky < 1.0)", sun)
-    assert "if (nearGloss > 0.0)" in SRC[sun:sheen]
-    assert "waterGgxSpec(waveN, vdir, Ls, max(specAlpha2, NEAR_SHEEN_ALPHA2))" in SRC
-    assert "vec3(NEAR_SHEEN_MAX)" in SRC[sheen:sheen + 200]
-    assert _const("NEAR_SHEEN_ALPHA2") > _const("WATER_ALPHA0") ** 2 * 10  # a broad lobe, not a second glint
-    assert _const("NEAR_SHEEN_MAX") <= 0.35  # a sheen, not a white wash
+def test_near_gloss_keeps_sky_lift_without_duplicating_the_sun():
+    assert "NEAR_SHEEN" not in SRC
+    assert SRC.count("waterGgxSpec(waveN, vdir, Ls,") == 1
+    assert _const("SUN_SPEC_GAIN") == 1.0
     assert "skyReflCol *= 1.0 + NEAR_SKY_LIFT * nearGloss;" in SRC
     assert 0.0 < _const("NEAR_SKY_LIFT") <= 0.6
 
 
-def test_sheen_and_sky_lift_vanish_at_night_and_far():
+def test_sky_lift_vanishes_at_night_and_far():
     for dist, night in ((1000.0, 0.6), (1000.0, 0.9), (END + 1.0, 0.0)):
         near = _near(dist, night)
         assert near == 0.0

@@ -1,6 +1,6 @@
 # Water/cliff slice A
 
-Assignment: slot07, claude/water-cliff-a, base d77c0c803.
+Assignment: slot03, claude/water-cliff-a, base d77c0c803.
 Proof: E:/mc2-archive-2026-10/proofs/water-cliff-lowangle-1/.
 Install: E:/mc2-installs/water-cliff-a (already seeded by interrupted worker).
 
@@ -14,6 +14,30 @@ filter, vertex light, reflection and sun; fix established cause; offline
 shader contracts/tests; local commit, lint, final build/deploy/smoke;
 day all13 and night A/B; personally inspect montages and crop metrics.
 At start tree clean. No engine changes or acceptance claims yet.
+
+## v4 resume (2026-11-11 22:20 UTC)
+
+Install repair 94b6ebb24 merged at a9d5ed1ac; normal deploy in progress.
+Owner BEFORE payload will be staged from its verified manifest and published
+into this lane only. No repeated historical captures. Repro controls:
+3717x1608, normal HUD, XTX, original options, canonical all13 bookmarks.
+Next: complete parity/identity audit; owner BEFORE all13; isolate water inputs;
+fix demonstrated cause, offline proof, commit/build/deploy, smoke/day/night A/B.
+Slice B/C remain named serial follow-ups. Run cap 150 calls / 120 active min.
+
+22:35 UTC: normal deploy succeeded, owner payload verified/published; full content
+parity 29,932 files / 7,385,412,068 bytes. Four cookstamps omitted by hygiene
+were restored read-only from v0.4 before valid runs. Owner all13 at frame120
+and gameplay frame600 show broad glint, not large facets. BaseQuality0 also
+smooth; facets remain UNKNOWN. WaterReflections0 retains broad direct glint.
+Shader reload diagnostic rejected ABI mismatch; not bypassed. Publisher
+restored the original owner shader payload and pruned its candidate SPIR-V.
+Candidate removes the duplicate broad sun lobe and reduces primary gain3 to1;
+normal/roughness AA, geometry, terrain, assets untouched. Existing water tests
+12 PASS; 79 production shader compiles PASS. Required layout rows in progress.
+Immediate base all13/day and mc2_10/night in progress before candidate build.
+Next: commit, lint, one final Windows build/deploy/smoke and final day/night A/B.
+No facet acceptance claim; concrete visible glint fix must be judged in pixels.
 
 Remaining: slice B shoreline/coverage/ring; slice C cliff/ridge, in order.
 HZB camera save failure: capture-tooling follow-up.
