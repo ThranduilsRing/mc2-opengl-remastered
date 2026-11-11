@@ -50,6 +50,7 @@ from pathlib import Path
 
 # CAPTURE-ENV-PIN-1: shipped-by-default MC2_* pinning + sidecar recording.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import asset_parity  # noqa: E402  (ASSET-PARITY-1: a capture refuses an install whose assets drifted from v0.4)
 import mc2_env_pin as env_pin  # noqa: E402
 
 # WATER-VISUAL-GATE-1 concurrent-safety:
@@ -788,6 +789,8 @@ def main() -> int:
                     help="explicit bookmark JSON path (overrides --mission lookup)")
     ap.add_argument("--exe", default=str(DEFAULT_EXE))
     ap.add_argument("--classic-assets", action="store_true", help="use stock building art; override this run only")
+    ap.add_argument("--allow-asset-drift", action="store_true",
+                    help="capture although the install's data/assets/*.fst differ from v0.4 (default: refuse; a capture of drifted assets is not a capture of this build)")
     ap.add_argument("--out-dir", default=None,
                     help="output dir (default tests/visual/captures/<mission>)")
     ap.add_argument("--trigger-frame", type=int, default=120)
@@ -865,6 +868,14 @@ def main() -> int:
         return 4
     if not guard_exe(exe):
         return 7
+    drift = asset_parity.capture_drift(exe.parent)
+    if drift is not None and not drift.ok and not args.allow_asset_drift:
+        print(f"[viscap] {asset_parity.verdict_line(drift, asset_parity.default_ref())}", file=sys.stderr)
+        print(f"[viscap] ABORT: the install's assets drifted from v0.4; a capture would grade old art. "
+              f"Redeploy (deploy_payload syncs it), or pass --allow-asset-drift to capture anyway.", file=sys.stderr)
+        return 8
+    if drift is not None:
+        print(f"[viscap] {asset_parity.verdict_line(drift, asset_parity.default_ref())}", file=sys.stderr)
     bookmarks_path, searched = resolve_bookmarks(args.bookmarks, args.mission, exe)
     if bookmarks_path is None:
         print(f"[viscap] ERROR bookmarks missing: {args.bookmarks or args.mission}", file=sys.stderr)

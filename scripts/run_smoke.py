@@ -1005,6 +1005,19 @@ def main():
               "This is a bug — pass --exe explicitly to work around.", file=sys.stderr)
         sys.exit(6)
 
+    # ASSET-PARITY-1: log the install's data/assets/*.fst parity with v0.4 so a capture or smoke run names its
+    # asset state. deploy_payload syncs it; a drift here is reported, never hidden (run_smoke does not refuse).
+    try:
+        import asset_parity as _asset_parity
+        _drift = _asset_parity.capture_drift(Path(args.exe).resolve().parent)
+        if _drift is None:
+            print(f"{_asset_parity.PREFIX} SKIPPED exe={args.exe} (exempt install or no v0.4 reference on this host)",
+                  file=sys.stderr, flush=True)
+        else:
+            print(_asset_parity.verdict_line(_drift, _asset_parity.default_ref()), file=sys.stderr, flush=True)
+    except Exception as _ap_exc:  # advisory here: deploy and the capture tools are the enforcers
+        print(f"[ASSET_PARITY] SKIPPED ({_ap_exc})", file=sys.stderr, flush=True)
+
     if args.resolve_only:
         sys.exit(0)
 
