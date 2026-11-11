@@ -15,8 +15,15 @@ TEST_CASE("VegClumps/stock MOVE overlay sentinel is not a road") {
         obstacle.data |= static_cast<unsigned>(mask);
         CHECK(mc2::vegetation::clumpStaticOccupied(obstacle));
     }
+    auto forest = ground;
+    forest.data |= static_cast<unsigned>(MAPCELL_FOREST_MASK);
+    CHECK_FALSE(mc2::vegetation::clumpStaticOccupied(forest, true));   // understory may grow among trees
+    auto forestRoad = forest;
+    forestRoad.data |= static_cast<unsigned>(MAPCELL_ROAD_MASK);
+    CHECK(mc2::vegetation::clumpStaticOccupied(forestRoad, true));     // roads stay bare
     ground.setPassable(false);
     CHECK(mc2::vegetation::clumpStaticOccupied(ground));
+    CHECK(mc2::vegetation::clumpStaticOccupied(ground, true));
 }
 
 #define LINK_MEMBERS &T::doorIndex, &T::doorSide, &T::cost, &T::openCost

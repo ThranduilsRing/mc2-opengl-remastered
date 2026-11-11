@@ -101,6 +101,75 @@ TEST_CASE("VegClumps/load shipped biome recipes and reject unsafe mod recipes") 
     CHECK(wet.count>dry.count);
 }
 
+TEST_CASE("VegField/grasslands carpets its ground; other biomes and bad mod recipes do not") {
+    const auto root=std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
+    for (const char* name : {"grasslands","grasslands_dense"}) {
+        std::ifstream input(root/"data/vegetation/schemas"/(std::string(name)+".json"));
+        CHECK(readFieldRecipe(nlohmann::json::parse(input,nullptr,false)).has_value());
+    }
+    for (const char* name : {"snow","desert","swamp"}) {
+        std::ifstream input(root/"data/vegetation/schemas"/(std::string(name)+".json"));
+        CHECK_FALSE(readFieldRecipe(nlohmann::json::parse(input,nullptr,false)).has_value());
+    }
+    for (const char* bad : {"{\"field\":{\"spacing\":1,\"height\":4}}", "{\"field\":{\"spacing\":6,\"height\":99}}",
+                            "{\"field\":{\"spacing\":\"x\",\"height\":4}}", "{\"field\":[]}"})
+        CHECK_FALSE(readFieldRecipe(nlohmann::json::parse(bad)).has_value());
+}
+
+TEST_CASE("VegField/even stratified carpet that always fits the remaining budget") {
+    // Authored density when it fits; coarsened (never truncated mid-scan) when it does not.
+    CHECK(fieldBladeSide(33.0f, 6.0f, 10'000'000, 100'000) == 6);
+    CHECK(fieldBladeSide(33.0f, 6.0f, 2'000'000, 100'000) == 4);
+    CHECK(fieldBladeSide(33.0f, 6.0f, 50, 100'000) == 0);
+    CHECK(fieldBladeSide(33.0f, 6.0f, 0, 0) == 6);
+    const FieldRecipe recipe{6.0f, 4.5f};
+    const int k = 6;
+    int cellsHit[36] = {};
+    for (int j = 0; j < k*k; ++j) {
+        const auto a = fieldBlade(7,9,mapSeed("mc2_01"),j,k,33.0f,recipe);
+        const auto b = fieldBlade(7,9,mapSeed("mc2_01"),j,k,33.0f,recipe);
+        CHECK(a.x == b.x); CHECK(a.y == b.y); CHECK(a.frame == b.frame);       // deterministic per map
+        REQUIRE(a.x >= 0.0f); REQUIRE(a.x < 33.0f); REQUIRE(a.y <= 0.0f); REQUIRE(a.y > -33.0f);
+        CHECK((a.frame & kFieldBladeBit) != 0u); CHECK((a.frame & 7u) < 4u);  // grass layers only
+        CHECK((a.frame >> 4u) == 0u);                                           // role/weed/snow bits clear
+        CHECK(a.scale >= 0.7f*4.5f); CHECK(a.scale <= 1.3f*4.5f);
+        ++cellsHit[static_cast<int>(a.x/5.5f) + k*static_cast<int>(-a.y/5.5f)];
+    }
+    for (int hit : cellsHit) CHECK(hit == 1);   // one blade per sub-cell: no clumps, no bare patches
+}
+
+TEST_CASE("VegField/owner ref 3: even sward with only small gaps and a gentle height swell") {
+    CHECK(fieldTuftHeight(0.0f) == 0.0f);                          // gap: no blade
+    CHECK(fieldTuftHeight(kFieldGapBelow - 0.01f) == 0.0f);
+    CHECK(kFieldGapBelow < 0.2f);                                   // gaps stay a small share (ref 2 had 0.33)
+    for (float t = kFieldGapBelow; t <= 1.0f; t += 0.01f) {
+        CHECK(fieldTuftHeight(t) >= 0.85f);                         // no stubby tuft edges
+        CHECK(fieldTuftHeight(t) <= 1.1f);                          // no tall tuft crowns
+    }
+    CHECK(fieldTuftHeight(0.9f) > fieldTuftHeight(0.2f));           // monotone swell
+}
+
+TEST_CASE("VegField/owner: shrubs ~10x fewer, clustered not uniform") {
+    float edgeMean = 0.0f, deepMean = 0.0f;
+    for (int k = 0; k < 100; ++k) {
+        const float c = (static_cast<float>(k) + 0.5f) / 100.0f;
+        edgeMean += shrubKeepChance(10, c, 5.0f) / 100.0f;
+        deepMean += shrubKeepChance(45, c, 5.0f) / 100.0f;
+    }
+    CHECK(edgeMean > 0.05f); CHECK(edgeMean < 0.15f);               // ~1/10 kept at forest edges
+    CHECK(deepMean < 0.04f);                                          // stock trees already cover deep forest
+    CHECK(shrubKeepChance(10, 0.9f, 5.0f) > 4.0f * shrubKeepChance(10, 0.2f, 5.0f));   // clustered
+    CHECK(shrubKeepChance(10, 0.5f, 25.0f) > shrubKeepChance(10, 0.5f, 5.0f));          // rocks/slopes keep more
+    CHECK(shrubKeepChance(0, 0.9f, 5.0f) <= 0.25f);                  // open meadow: sparse singles
+}
+
+TEST_CASE("VegField/shrubs gather at the stock treelines, open meadow keeps few") {
+    CHECK(understoryChance(1) == 1.0f);
+    CHECK(understoryChance(25) == 1.0f);
+    CHECK(understoryChance(0) < 0.1f);
+    CHECK(understoryChance(0) > 0.0f);
+}
+
 TEST_SUITE("VegHardSurface") {
 
 TEST_CASE("cover density falls smoothly and monotonically with coverage") {

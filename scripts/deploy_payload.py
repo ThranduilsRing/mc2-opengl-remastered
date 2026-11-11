@@ -304,6 +304,7 @@ TERRAIN_LAYER_PAYLOAD = [
     "data/terrain_layers/concrete_detail_road.ktx2",
     "data/terrain_layers/cliff_rock_ah.ktx2",          # TERRAIN-CLIFF-ROCK (cook_cliff_rock.py --select riverbed)
     "data/terrain_layers/cliff_rock_nra.ktx2",
+    "data/terrain_layers/grass_turf_normal.ktx2",      # GRASS-GROUND-NORMAL (cook_grass_turf.py), detail-normal layer 1
 ]
 
 # The two concrete/road detail KTX2s are generated, not tracked (about 1.4 MB each): cooked on demand at deploy time when absent.
@@ -396,6 +397,32 @@ def ensure_tree_upscale(src_root, cooker=subprocess.run):
             if os.path.isfile(p):
                 os.remove(p)
 
+
+# GRASS-GROUND-NORMAL: the top-down turf normal that replaces detail-normal layer 1 (grass), generated from CC0 Poly Haven
+# sparse_grass + dry_ground_01 (owner download 2026-10-23). Recooked when absent or older than its cooker.
+GRASS_TURF_COOK = "tools/mc2texcook/cook_grass_turf.py"
+GRASS_TURF_SRC = "G:/mc2-assets/pbr/dl-2026-10-23/ground"
+GRASS_TURF_REL = "data/terrain_layers/grass_turf_normal.ktx2"
+
+
+def ensure_grass_turf(src_root, cooker=subprocess.run):
+    """Cook data/terrain_layers/grass_turf_normal.ktx2 when missing or stale (soft: grass keeps the base layer without it)."""
+    dst = os.path.join(src_root, GRASS_TURF_REL)
+    script = os.path.join(src_root, GRASS_TURF_COOK)
+    if os.path.isfile(dst) and (not os.path.isfile(script) or os.path.getmtime(dst) >= os.path.getmtime(script)):
+        return
+    if not os.path.isdir(GRASS_TURF_SRC):
+        log(f"[DEPLOY] WARN: grass turf normal absent and no cook source at {GRASS_TURF_SRC}: grass keeps the base layer")
+        return
+    log("grass turf normal absent or stale: cooking it")
+    try:
+        r = cooker([sys.executable, script, "--src", GRASS_TURF_SRC, "--out", os.path.dirname(dst)],
+                   capture_output=True, text=True, timeout=300, env=dict(os.environ, OMP_NUM_THREADS="1"), **console_child.child_kwargs(redirected=True))
+    except subprocess.TimeoutExpired:
+        log("[DEPLOY] WARN: grass turf cook timed out after 300 s (skipped)")
+        return
+    if r.returncode:
+        log("[DEPLOY] WARN: grass turf cook failed (skipped): " + (r.stdout + r.stderr).strip()[-300:])
 
 # EXAMPLE-MODS-1: worked example checkbox mods, source-tracked under
 # examples/mods/. Ship to <target>/mods/<id>/ so the launcher enumerates them
@@ -1327,6 +1354,7 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
         p = os.path.join(src_root, rel)
         if os.path.isfile(p):
             items.append((p, rel, "support"))
+    ensure_grass_turf(src_root)
     for rel in TERRAIN_LAYER_PAYLOAD:
         p = os.path.join(src_root, rel)
         if not os.path.isfile(p):

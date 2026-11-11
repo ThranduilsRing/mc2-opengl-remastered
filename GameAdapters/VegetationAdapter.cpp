@@ -151,8 +151,9 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
     const float originX = Terrain::mapTopLeft3d.x;
     const float originY = Terrain::mapTopLeft3d.y;   // max world-Y
     const float mapSpan = Terrain::worldUnitsMapSide;
+    // The clump grid keeps the 5M-era step: the raised cap is the meadow field's, not more shrubs.
     const float gridStep = mc2::vegetation::placementStep(mapSpan, kGridStep * 1.5f,
-                                                        (std::max)(density,44), maxInst);
+                                                        (std::max)(density,44), (std::min)(maxInst, 4750000));
 
     std::vector<GosVegetation::Instance> instances;
     instances.reserve(static_cast<size_t>(maxInst));
@@ -180,10 +181,14 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
     constexpr std::array<const char*,4> paths{
         "data/vegetation/schemas/grasslands.json", "data/vegetation/schemas/snow.json",
         "data/vegetation/schemas/desert.json", "data/vegetation/schemas/swamp.json"};
+    std::optional<FieldRecipe> fieldRecipe;
+    int woodyPlaced = 0, woodyGated = 0, clumpsGated = 0, woodyThinned = 0;   // shrub/sapling counts for the owner sheet
     for (size_t i = 0; i < paths.size(); ++i) {
         std::ifstream input(paths[i]);
         if (input) {
-            if (const auto recipe = readClumpRecipe(nlohmann::json::parse(input,nullptr,false))) recipes[i] = *recipe;
+            const auto doc = nlohmann::json::parse(input,nullptr,false);
+            if (const auto recipe = readClumpRecipe(doc)) recipes[i] = *recipe;
+            if (i == 0) fieldRecipe = readFieldRecipe(doc);   // only the temperate biome carpets its ground
         }
     }
     const int side = static_cast<int>(mapSpan/gridStep);
@@ -216,6 +221,22 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
             glm::vec3 normal;
             const auto clump = makeClump(col,row,seed,recipes[static_cast<size_t>(biome)],
                                           moisture,land->getTerrainAngle(pos,&normal),single);
+            // Where the meadow field carpets the ground, shrubs and saplings gather under
+            // and around the stock trees (owner 2026-11-10); open meadow keeps a rare one.
+            // Every biome but snow: mc2_01's stock tile codes put most clumps in other biomes.
+            int forestCells = 0;
+            if (gameMap) {
+                int cr=0,cc=0;
+                land->worldToCell(pos,cr,cc);
+                for (int dr=-3; dr<=3; ++dr) for (int dc=-3; dc<=3; ++dc)
+                    if (gameMap->inBounds(cr+dr,cc+dc) && gameMap->cellAt(cr+dr,cc+dc).getForest()) ++forestCells;
+            }
+            if (fieldRecipe && biome != Biome::Snow && !single && gameMap) {
+                if (clumpRoll(col,row,seed,113) > understoryChance(forestCells)) {
+                    for (int i=0; i<clump.count; ++i) woodyGated += clump.members[static_cast<size_t>(i)].woody ? 1 : 0;
+                    ++clumpsGated; continue;
+                }
+            }
             for (int i=0; i<clump.count; ++i) {
                 if (static_cast<int>(instances.size()) >= maxInst) break;
                 const auto& member = clump.members[static_cast<size_t>(i)];
@@ -234,7 +255,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                     land->worldToCell(instPos,cr,cc);
                     // Read-only static masks: never alter movement, LOS or RNG.
                     occupied = !gameMap->inBounds(cr,cc) ||
-                        clumpStaticOccupied(gameMap->cellAt(cr,cc));
+                        clumpStaticOccupied(gameMap->cellAt(cr,cc), fieldRecipe.has_value() && biome != Biome::Snow);
                 }
                 const float coverage = gos_terrain_indirect_HardSurfaceCoverage(instWx,instWy);
                 const float slope = land->getTerrainAngle(instPos,&normal);
@@ -245,6 +266,11 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                     continue;
                 }
                 const auto salt = static_cast<uint32_t>(150+i*3);
+                // Clustered shrub thinning (owner: ~10x fewer); grass members are untouched.
+                if (member.woody && biome != Biome::Snow) {
+                    const float cluster = macroZone(instWx+371.0f+static_cast<float>(seed&511u), instWy-529.0f, 220.0f);
+                    if (clumpRoll(col,row,seed,salt+1000) >= shrubKeepChance(forestCells,cluster,slope)) { ++woodyThinned; continue; }
+                }
                 GosVegetation::Instance inst;
                 inst.x = instWx-originX-mapSpan*0.5f;
                 inst.y = instWy-originY+mapSpan*0.5f;
@@ -258,9 +284,88 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                 inst.atlasFrame = frame | (role<<4u) | (biome==Biome::Snow ? 128u : 0u);
                 inst.seed = clumpRoll(col,row,seed,salt+2);
                 instances.push_back(inst);
+                woodyPlaced += member.woody ? 1 : 0;
             }
         }
     }
+
+    // Meadow field: a stratified carpet of blades over open temperate ground,
+    // after the clumps so its budget is exactly the capacity they left.
+    int fieldBlades = 0, fieldSide = 0, fieldGaps = 0, fieldFlowers = 0;
+    const auto fieldT0 = std::chrono::steady_clock::now();
+    if (fieldRecipe) {
+        constexpr float kBeachMarginWU = 8.0f;   // keep the shoreline sand bare
+        std::vector<std::pair<int,int>> fieldCells;
+        for (int row = 1; row < side-1; ++row) {
+            for (int col = 1; col < side-1; ++col) {
+                const glm::vec3 pos(originX+(static_cast<float>(col)+0.5f)*gridStep,
+                                    originY-(static_cast<float>(row)+0.5f)*gridStep, 0);
+                int tr=0,tc=0,sr=0,sc=0;
+                land->worldToTileCell(pos,tr,tc,sr,sc);
+                if (tr<0 || tc<0 || tr>=mapSide || tc>=mapSide) continue;
+                const int code = land->getTerrain(tr,tc);
+                // Stock tile codes do not separate meadow from sand or rock (mc2_01 reads
+                // "sparse" everywhere); the fragment stage drops blades whose root colour
+                // is not vegetation. Snow keeps its clumps only.
+                if (classifyTerrainType(code) == VegDensity::kHard || code == MC_TUNDRA_TYPE) continue;
+                if (TerrainRuntime::sampleVisualHeight(pos) <= Terrain::waterElevation+kBeachMarginWU) continue;
+                fieldCells.emplace_back(col,row);
+            }
+        }
+        const long budget = static_cast<long>(maxInst) - static_cast<long>(instances.size());
+        fieldSide = fieldBladeSide(gridStep, fieldRecipe->spacing, budget, static_cast<long>(fieldCells.size()));
+        for (const auto& [col,row] : fieldCells) {
+            if (fieldSide == 0) break;
+            glm::vec3 normal;
+            const glm::vec3 centre(originX+(static_cast<float>(col)+0.5f)*gridStep,
+                                   originY-(static_cast<float>(row)+0.5f)*gridStep, 0);
+            const float slope = land->getTerrainAngle(centre,&normal);
+            for (int j = 0; j < fieldSide*fieldSide; ++j) {
+                const auto blade = fieldBlade(col,row,seed,j,fieldSide,gridStep,*fieldRecipe);
+                const float bx = originX+static_cast<float>(col)*gridStep+blade.x;
+                const float by = originY-static_cast<float>(row)*gridStep+blade.y;
+                const glm::vec3 bpos(bx,by,0);
+                // Owner ref 3 (2026-11-10, gameplay camera) over ref 2: a fine, even, continuous
+                // sward. The 14 WU tuft field keeps only small soft dirt gaps (close-up flavour)
+                // and a gentle height swell instead of tall tufts.
+                const float tuft = macroZone(bx+static_cast<float>(seed&1023u), by, 14.0f);
+                const float tuftHeight = fieldTuftHeight(tuft);
+                if (tuftHeight <= 0.0f) { ++fieldGaps; continue; }
+                const bool flower = macroZone(bx+911.0f, by-377.0f+static_cast<float>(seed&2047u), 45.0f) > 0.74f &&
+                                    blade.seed < 0.4f;
+                int ir=0,ic=0,isr=0,isc=0;
+                land->worldToTileCell(bpos,ir,ic,isr,isc);
+                if (ir<0 || ic<0 || ir>=mapSide || ic>=mapSide ||
+                    classifyTerrainType(land->getTerrain(ir,ic)) == VegDensity::kHard) continue;
+                const float elevation = TerrainRuntime::sampleVisualHeight(bpos);
+                bool occupied = false;
+                if (gameMap) {
+                    int cr=0,cc=0;
+                    land->worldToCell(bpos,cr,cc);
+                    occupied = !gameMap->inBounds(cr,cc) || clumpStaticOccupied(gameMap->cellAt(cr,cc), true);
+                }
+                const float coverage = gos_terrain_indirect_HardSurfaceCoverage(bx,by);
+                if (!clumpSurfaceAllowed(true,elevation<=Terrain::waterElevation+kBeachMarginWU,
+                                         occupied,coverage,slope,false)) continue;
+                GosVegetation::Instance inst;
+                inst.x = bx-originX-mapSpan*0.5f;
+                inst.y = by-originY+mapSpan*0.5f;
+                inst.z = elevation+0.25f;
+                inst.yaw = blade.yaw;
+                inst.scale = blade.scale * (flower ? 0.55f : tuftHeight);   // flowers sit on short stalks
+                // role 0: the shader bends field blades downwind; bit 2 = white wildflower heads.
+                inst.atlasFrame = blade.frame | (flower ? kFieldFlowerBit : 0u);
+                fieldFlowers += flower ? 1 : 0;
+                inst.seed = blade.seed;
+                instances.push_back(inst);
+                ++fieldBlades;
+            }
+        }
+    }
+    const double fieldMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - fieldT0).count();
+    MC2_DIAGFE(stderr,
+        "[VEG v3] field blades=%d side=%d gaps=%d flowers=%d ms=%.1f shrubs_placed=%d shrubs_moved_off_meadow=%d clumps_gated=%d shrubs_thinned=%d\n",
+        fieldBlades, fieldSide, fieldGaps, fieldFlowers, fieldMs, woodyPlaced, woodyGated, clumpsGated, woodyThinned);
 
     GosVegetation::uploadInstances(instances.data(),
                                    static_cast<uint32_t>(instances.size()));

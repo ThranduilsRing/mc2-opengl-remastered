@@ -63,6 +63,32 @@ def test_concrete_detail_is_cooked_on_demand_only_when_absent(tmp_path, monkeypa
     assert len(calls) == 1
 
 
+def test_grass_turf_is_cooked_when_absent_or_older_than_its_cooker(tmp_path, monkeypatch, capsys):
+    import os
+    monkeypatch.setattr(dp, "GRASS_TURF_SRC", str(tmp_path))
+    assert dp.GRASS_TURF_REL in dp.TERRAIN_LAYER_PAYLOAD
+    script = tmp_path / dp.GRASS_TURF_COOK
+    script.parent.mkdir(parents=True)
+    script.write_text("#")
+    calls = []
+    cooker = lambda cmd, **kw: (calls.append(cmd), type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})())[1]
+    dp.ensure_grass_turf(str(tmp_path), cooker)
+    assert len(calls) == 1 and calls[0][-1].endswith("terrain_layers") and calls[0][calls[0].index("--src") + 1] == str(tmp_path)
+    out = tmp_path / dp.GRASS_TURF_REL
+    out.parent.mkdir(parents=True)
+    out.write_bytes(b"x")
+    os.utime(script, (1_000_000, 1_000_000))
+    dp.ensure_grass_turf(str(tmp_path), cooker)
+    assert len(calls) == 1                       # present and newer than the cooker: kept
+    os.utime(script, (4_000_000_000, 4_000_000_000))
+    dp.ensure_grass_turf(str(tmp_path), cooker)
+    assert len(calls) == 2                       # the cooker changed: recooked
+    monkeypatch.setattr(dp, "GRASS_TURF_SRC", str(tmp_path / "nope"))
+    out.unlink()
+    dp.ensure_grass_turf(str(tmp_path), cooker)
+    assert len(calls) == 2 and "[DEPLOY] WARN" in capsys.readouterr().out
+
+
 def test_bootstrap_fails_on_critical_disk_and_leaves_no_target(tmp_path, monkeypatch):
     src, target = fake_install(tmp_path / "src"), tmp_path / "lane"
     monkeypatch.setattr(dp, "disk_space", lambda *a, **k: (3, {}))

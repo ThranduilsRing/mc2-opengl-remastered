@@ -1,9 +1,11 @@
 // Native crossed-card geometry. Instance culling uses the same CPU block/distance inputs.
 #include "vegetation_card_trim.glsl"
-void mc2VegetationVertex(vec3 i_worldPos, float i_yaw, float i_scale, float i_seed, uint i_atlasFrame, float lodFade, float windFade, float lightZ, float time) {
+void mc2VegetationVertex(vec3 i_worldPos, float i_yaw, float i_scale, float i_seed, uint i_atlasFrame, float lodFade, float windFade, float lightZ, float time, float widthScale) {
     uint vi = uint(gl_VertexIndex);
     uint row = (vi%8u)/2u;
-    uint atlasIdx = min(i_atlasFrame & 0x0fu, 7u);
+    // Bit 3 marks a meadow-field blade (vegetation_clumps.h kFieldBladeBit); its low bits keep the grass layer.
+    bool fieldBlade = (i_atlasFrame & 8u) != 0u;
+    uint atlasIdx = fieldBlade ? (i_atlasFrame & 3u) : min(i_atlasFrame & 0x0fu, 7u);
     vec2 a_uv = D.flags.z != 0u ? kVegCardTrim[atlasIdx * 8u + (3u - row) * 2u + (vi & 1u)]
                                 : vec2(float(vi & 1u), 1.0 - float(row) / 3.0);
     float height = 1.0 - a_uv.y;
@@ -35,8 +37,8 @@ void mc2VegetationVertex(vec3 i_worldPos, float i_yaw, float i_scale, float i_se
     float cy = cos(totalYaw), sy = sin(totalYaw);
 
     // Horizontal spread: a_card.x rotated by totalYaw.
-    float eastFromX  = a_card.x * cy;
-    float northFromX = a_card.x * sy;
+    float eastFromX  = a_card.x * cy * widthScale;
+    float northFromX = a_card.x * sy * widthScale;
     // Vertical component: a_card.y rises if vertFactor>0, spreads outward if flatFactor>0.
     // Outward direction = perpendicular to card face = (−sy, cy).
     float eastFromY  = -a_card.y * sy * flatFactor;
@@ -59,6 +61,28 @@ void mc2VegetationVertex(vec3 i_worldPos, float i_yaw, float i_scale, float i_se
     worldPos.x = i_worldPos.x + (eastFromX + eastFromY) * effectiveScale + sway * cy;
     worldPos.y = i_worldPos.y + (northFromX + northFromY) * effectiveScale + sway * sy;
     worldPos.z = i_worldPos.z + upFromY * effectiveScale;
+
+    // Grass (layers 0-3, not ground cover): every blade leans downwind and gust
+    // bands travel across the field. Bushes and trees keep the sway above.
+    float gust = 0.0;
+    if (atlasIdx < 4u && cardRole != 3u) {
+        const vec2 W = vec2(0.8192, 0.5736);                       // one prevailing wind, 35 degrees
+        float along = dot(i_worldPos.xy, W), across = dot(i_worldPos.xy, vec2(-W.y, W.x));
+        // Bands ~180 WU apart roll downwind at ~45 WU/s; a slow cross-wind warp keeps them from reading as stripes.
+        float g1 = sin(along * 0.035 - time * 1.6 + 1.8 * sin(across * 0.011 + time * 0.23));
+        float g2 = sin(along * 0.012 - time * 0.62 + across * 0.007);
+        gust = clamp(0.5 + 0.38 * g1 + 0.22 * g2, 0.0, 1.0);
+        gust = gust * gust * (3.0 - 2.0 * gust);
+        float flutter = 0.07 * sin(time * 3.3 + i_seed * 41.0 + along * 0.25);
+        float jitter = (i_seed - 0.5) * 0.7;                       // per-blade lean direction spread
+        vec2 lean = vec2(W.x * cos(jitter) - W.y * sin(jitter), W.x * sin(jitter) + W.y * cos(jitter));
+        float bend = (fieldBlade ? 0.32 : 0.18) + (0.50 + flutter) * gust;  // tip offset per unit height
+        bend *= windFade * vertFactor;
+        float h2 = a_card.y * a_card.y;
+        worldPos.xy += lean * (bend * h2 * effectiveScale);
+        worldPos.z -= upFromY * effectiveScale * 0.35 * bend * h2;   // a bent blade is shorter, not stretched
+    }
+    v_vegAux.y = gust;
 
 
 
