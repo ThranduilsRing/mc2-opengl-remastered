@@ -568,6 +568,8 @@ def r_preflight(window="-", published=""):
     bad += tree_problems(pc_tree.read_text(encoding="utf-8").splitlines(), tree_rows(INSTALL)) if pc_tree.is_file() \
         else [f"missing {pc_tree} (the PC v0.4 tree listing sync_tree uploads)"]
     print("\n".join(bad) if bad else "preflight OK")
+    if Path(G, "drv/E/mc2-installs/merge-gate-candidate").is_dir():   # not a red: pack ignores it unless --keep-candidate
+        print("note: a leftover merge-gate-candidate exists; only a --keep-candidate run packs it (its manifest differs from the sim seed)")
     return 1 if bad else 0
 
 

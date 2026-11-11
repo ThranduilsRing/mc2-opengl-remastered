@@ -1218,9 +1218,10 @@ def data_fingerprint_check(root: str, fingerprint=None, baseline=None) -> tuple[
     return "OK", ""
 
 
-def pre_gate(root: str, exe: str | None = None) -> int:
+def pre_gate(root: str, exe: str | None = None, nightly_proofs: str | None = None) -> int:
     """Everything that used to fail only after the gate started (W79: three reruns), run in order at the merged HEAD.
-    Every step runs; one verdict line at the end. Exit 0 = clean."""
+    Every step runs; one verdict line at the end. Exit 0 = clean. Nightly freshness is a WARN line only (it used to surface
+    at promote, lane_merge_stage.untriaged_nightly_fail); the owner does not gate on it here."""
     py = [sys.executable, "-B"]
     steps = [
         ("background-launch", py + [os.path.join(root, "scripts", "check-background-launch.py"), "--quiet"]),
@@ -1248,6 +1249,11 @@ def pre_gate(root: str, exe: str | None = None) -> int:
         print(detail, flush=True)
     if verdict == "FAIL":
         failed.append("data_fingerprint")
+    import lane_merge_stage
+    stale = lane_merge_stage.untriaged_nightly_fail(nightly_proofs or lane_merge_stage.NIGHTLY_PROOFS)
+    print("pre-gate: nightly: " + ("WARN (promote will refuse until fixed or triaged)" if stale else "OK"), flush=True)
+    for why in stale:
+        print("  " + why, flush=True)
     print("PRE-GATE " + ("PASS" if not failed else "FAIL: " + ", ".join(failed)))
     return 1 if failed else 0
 
