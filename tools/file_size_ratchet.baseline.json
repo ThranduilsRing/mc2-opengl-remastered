@@ -28,7 +28,6 @@
   "code/mechlopedia.cpp": 1603,
   "code/missionbegin.cpp": 2228,
   "code/mover.h": 1927,
-  "code/mpparameterscreen.cpp": 2382,
   "code/multplyr.h": 1845,
   "code/objective.cpp": 2419,
   "code/optionsarea.cpp": 1835,
@@ -38,7 +37,6 @@
   "code/turret.cpp": 2355,
   "code/warrior.h": 1937,
   "editor/tests/test_objectives.cpp": 1996,
-  "gui/alistbox.cpp": 1510,
   "mclib/ablenv.cpp": 1709,
   "mclib/ablrtn.cpp": 1800,
   "mclib/assimp_importer.cpp": 1976,
@@ -50,7 +48,6 @@
   "mclib/terrtxm.cpp": 1921,
   "tools/cite_guard.py": 1553,
   "tools/comment_guard.py": 1790,
-  "tools/scifi_kit/art/intent_military.py": 3363,
   "tools/terrain_beautify/visual_heightfield.py": 1510
  },
  "head": "aee1c32a9",
@@ -87,7 +84,7 @@
   },
   "code": {
    "files": 492,
-   "files_over_1500": 20,
+   "files_over_1500": 19,
    "files_over_3000": 0,
    "max_lines": 2696
   },
@@ -99,9 +96,9 @@
   },
   "gui": {
    "files": 26,
-   "files_over_1500": 1,
+   "files_over_1500": 0,
    "files_over_3000": 0,
-   "max_lines": 1510
+   "max_lines": 1273
   },
   "mclib": {
    "files": 573,
@@ -118,8 +115,8 @@
   "tools": {
    "files": 665,
    "files_over_1500": 4,
-   "files_over_3000": 1,
-   "max_lines": 3363
+   "files_over_3000": 0,
+   "max_lines": 1790
   }
  },
  "thresholds": [
@@ -127,10 +124,6 @@
   3000
  ],
  "top": [
-  {
-   "file": "tools/scifi_kit/art/intent_military.py",
-   "lines": 3363
-  },
   {
    "file": "GameOS/include/gameos.hpp",
    "lines": 3362
@@ -150,10 +143,6 @@
   {
    "file": "code/objective.cpp",
    "lines": 2419
-  },
-  {
-   "file": "code/mpparameterscreen.cpp",
-   "lines": 2382
   },
   {
    "file": "code/turret.cpp",
@@ -250,9 +239,9 @@
  ],
  "total": {
   "files": 2679,
-  "files_over_1500": 38,
-  "files_over_3000": 2,
-  "max_lines": 3363
+  "files_over_1500": 35,
+  "files_over_3000": 1,
+  "max_lines": 3362
  },
  "version": 1
 }
