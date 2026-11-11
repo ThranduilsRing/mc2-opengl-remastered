@@ -786,13 +786,6 @@ static void s_emit_esmoke(const char* how)
 	EarlyTrace(esmoke);
 }
 
-void EditorSmokeDetail(const char* line)
-{
-	fprintf(stderr, "%s\n", line);
-	fflush(stderr);
-	EarlyTrace(line);
-}
-
 // Both IPC channels carry panel facts because WIN32 apps may have no stderr pipe.
 void EditorSmokePanelFact(const char* workflow, const char* panel, bool ok, bool modelOnly)
 {

@@ -196,7 +196,7 @@ def window_reusable(window, tree, now=None):
     return (now if now is not None else time.time()) - window.get("started", 0) <= 1200
 
 # Last-measured stage seconds (W112) for worker balancing when no journal exists yet.
-DEFAULT_STAGE_SECONDS = {"mods": 876, "mods-slim": 900,"tier1": 120, "tier1-full": 304, "capture-after": 70, "player-path": 180, "editor": 150, "video-decode": 250,
+DEFAULT_STAGE_SECONDS = {"mods": 876, "mods-slim": 900,"tier1": 120, "tier1-full": 304, "capture-after": 70, "player-path": 180, "video-decode": 250,
                          "determinism-mc2_03": 55, "determinism-mc2_10": 120, "determinism-mc2_16": 104, "determinism-mc2_24": 191}
 
 
@@ -631,8 +631,6 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
         # --no-cache: the row/module result caches live in a shared dir (precheck-speed); the gate runs every row itself.
         ("contracts", [git_bash(), "scripts/check-contracts.sh", "-j" + str(jobs), "--no-cache"], {}),
         ("harnesses", [py, "tools/build_contract_harnesses.py", "--run", "--unit", "-j", str(jobs)], {}),
-        # Mission editor: document doctests, then edit/save/reopen (GATE_CASES) on a private clone of the install.
-        ("editor", [py, "scripts/merge_gate_editor.py", "--install", install, "--out", str(proof / "editor")], {}),
         # Per window: day (mc2_01) + night (mc2_10) only (p29 cut 4); the five-map breadth is the weekly tier1-full row below.
         ("tier1", [py, "scripts/run_smoke.py", "--tier", "tier1", "--mission", "mc2_01", "--mission", "mc2_10", "--keep-logs", "--deploy", "0.4"],
          # sync = core validation plus synchronization validation (it caught the SpatialAA hazard fixed in c5cffa88f); no separate syncval launch.

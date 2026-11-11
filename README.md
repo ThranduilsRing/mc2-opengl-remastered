@@ -5,7 +5,7 @@ A rebuilt engine for MechCommander 2 (Microsoft / FASA Interactive, 2001). The m
 
 ![MechCommander 2 Remastered](screenshots/hero.png)
 
-**[Download the latest release](https://github.com/ThranduilsRing/mc2-opengl-remastered/releases/latest)**: a self-contained install. Run `mc2.exe`; campaigns, mods and options are picked in the in-game front end.
+**[Download the latest release](https://github.com/ThranduilsRing/mc2-opengl-remastered/releases/latest)**: a self-contained install. Run `mc2-launcher.exe`.
 
 ## At a glance
 
@@ -100,7 +100,7 @@ Prerequisites:
      -DCMAKE_PREFIX_PATH=C:/path/to/repo/3rdparty/cmake ^
      -DZLIB_INCLUDE_DIR=C:/path/to/repo/3rdparty/include ^
      -DZLIB_LIBRARY=C:/path/to/repo/3rdparty/lib/x64/zlib.lib
-   cmake --build build64 --config RelWithDebInfo --target mc2
+   cmake --build build64 --config RelWithDebInfo --target mc2 mc2_launcher
    ```
 
    Output: `build64/RelWithDebInfo/mc2.exe`. RelWithDebInfo is the supported configuration.
@@ -129,7 +129,7 @@ ninja -C build64-ninja mc2
 python3 scripts/deploy_payload.py "$INSTALL" --target game --ninja --allow-new-target --classic-assets
 ```
 
-The crash dialog and the dev shell are Windows-only. [docs/linux-build.md](docs/linux-build.md) covers the unit tests and the software-Vulkan (lavapipe) determinism run.
+The launcher, the crash dialog and the dev shell are Windows-only. [docs/linux-build.md](docs/linux-build.md) covers the unit tests and the software-Vulkan (lavapipe) determinism run.
 
 ### Offline checks
 
@@ -144,7 +144,8 @@ py -3 -B -m pytest scripts/tests/ -q -p no:cacheprovider
 ## Running
 
 ```bash
-mc2.exe                     # front end: campaign/mod picker, Engine Options, Graphics
+mc2-launcher.exe            # campaign/mod picker, Import, Engine Options, Graphics
+mc2.exe                     # brings the launcher up first
 mc2.exe -mission mc2_01     # skip the menus and load a mission directly
 mc2.exe --classic-assets    # Classic building art for this run only (--remastered-assets is the reverse)
 ```
@@ -175,7 +176,7 @@ To measure your own machine: `py -3 scripts/run_battle_bench.py` for frame times
 
 ## Modding
 
-`py -3 tools/mc2_import/import_tool.py auto <folder> --deploy <install>` imports community campaigns from an existing MC2, MC2X or MCO install (`probe <folder>` classifies it read-only first). These fan mods are support targets, and an automated mod battery loads all six:
+The launcher imports community campaigns from an existing MC2, MC2X or MCO install. These fan mods are support targets, and an automated mod battery loads all six:
 
 - MC2X-CVE-G
 - MC2X-REAP3

@@ -122,9 +122,7 @@ void EditorInterface::OnRButtonUp(UINT nFlags, CPoint point)
 
 	if ( timeGetTime() - lastRightClickTime < 200 )
 	{
-		// A short click on an object opens its context menu; elsewhere it returns to Select.
-		if ( !openObjectContextMenu( point.x, point.y ) )
-			Select();
+		Select();
 	}
 	else
 	{

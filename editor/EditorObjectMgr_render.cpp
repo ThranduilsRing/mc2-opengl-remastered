@@ -344,14 +344,14 @@ void EditorObjectMgr::primeAllBuildingAppearanceTypes()
 				BldgAppearanceType* bat = static_cast<BldgAppearanceType*>(bldg.appearanceType);
 				for (int lod = 0; lod < MAX_LODS; ++lod)
 				{
-					EditorBridge::registerStaticPropShape(bat->bldgShape[lod].get());
+					EditorBridge::registerStaticPropShape(bat->bldgShape[lod]);
 					// Render overrides and their textures must be resident before finalization.
 					TG_TypeMultiShape* bRenderShape = bat->getBldgRenderShape(lod);
 					EditorBridge::registerStaticPropShape(bRenderShape);
 					if (bRenderShape)
 						Bldg_ForceRenderShapeTexturesResident(bRenderShape);
 				}
-				EditorBridge::registerStaticPropShape(bat->bldgDmgShape.get());
+				EditorBridge::registerStaticPropShape(bat->bldgDmgShape);
 				++nPrimed;
 			}
 			else
@@ -361,13 +361,13 @@ void EditorObjectMgr::primeAllBuildingAppearanceTypes()
 				                       ? (int)tat->treeRenderShapeLodCount : MAX_LODS;
 				for (int lod = 0; lod < lodCount; ++lod)
 				{
-					EditorBridge::registerStaticPropShape(tat->treeShape[lod].get());
+					EditorBridge::registerStaticPropShape(tat->treeShape[lod]);
 					TG_TypeMultiShape* tRenderShape = tat->getTreeRenderShape(lod);
 					EditorBridge::registerStaticPropShape(tRenderShape);
 					if (tRenderShape)
 						Bldg_ForceRenderShapeTexturesResident(tRenderShape);
 				}
-				EditorBridge::registerStaticPropShape(tat->treeDmgShape.get());
+				EditorBridge::registerStaticPropShape(tat->treeDmgShape);
 				++nPrimed;
 			}
 		}

@@ -28,8 +28,6 @@
 // without taking the foreground or focus.
 bool EditorBackgroundLaunch();
 void EditorSmokePanelFact(const char* workflow, const char* panel, bool ok, bool modelOnly = false);
-// One smoke-only detail line (-smoke-* runs only, never a default build) on stderr and the early trace.
-void EditorSmokeDetail(const char* line);
 
 /////////////////////////////////////////////////////////////////////////////
 // EditorMFCApp:

@@ -34,7 +34,6 @@
     "tools/tracy_capture_compare.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10"
   },
   "direct_spawn": {
-    "scripts/merge_gate_editor.py": "Merge gate editor stage: runs only the offline editor_document_tests.exe console binary and scripts/run_editor_smoke.py (console_child, BelowNormal), whose own harness launches the editor off-screen; never the game directly.",
     "scripts/ninja_build.py": "Dev build driver: runs only configure_ninja.NINJA (the build and `-t targets all` for the orphan .spv prune, console_child, captured stdio, 120 s timeout) and git; never the game.",
     "scripts/kit_payload.py": "Cook-cache key: runs only configure_ninja.NINJA `-t deps` on the build tree (console_child, captured stdio, 120 s timeout) to read the importer source closure; never the game.",
     "tests/fixtures/jump_command_witness.py": "Jump-command witness: spawns only sys.executable scripts/run_smoke.py --headless (the harness owns the game launch, focus and kill) with console_child, redirected stdio and a 180 s ack deadline; never mc2.exe directly.",

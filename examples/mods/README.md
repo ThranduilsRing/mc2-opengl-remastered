@@ -98,7 +98,7 @@ supported live path today, and `core_unlocks` documents the legacy variant of it
 
 Every mod ships one `mod.json` at its root (`mods/<id>/mod.json`). This is the
 ONE manifest — the engine loader (`mclib/file.cpp` `ReadModJson()`), the
-in-game front end (`GuiRuntime/PlayerFrontEnd.cpp`), and the packer
+launcher (`tools/mc2_launcher/mc2_launcher.cpp`), and the packer
 (`tools/mc2mod/mc2mod.py`) all read the same file. Validate it offline:
 
 ```

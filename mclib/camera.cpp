@@ -770,7 +770,7 @@ void Camera::getPropLightContract (int S[3], int A[3], int &F, float D[3])
 	A[0] = ambientRed; A[1] = ambientGreen; A[2] = ambientBlue;
 	F = static_cast<int>(mc2NightAmbientFloor());
 	D[0] = D[1] = D[2] = 0.0f;
-	if (worldLights && worldLights[0])  // null until init(); the editor bakes buildings first
+	if (worldLights[0])
 	{
 		const glm::vec3 d = mc2::math::localForwardInWorld(worldLights[0]->lightToWorld);
 		D[0] = d.x; D[1] = d.y; D[2] = d.z;

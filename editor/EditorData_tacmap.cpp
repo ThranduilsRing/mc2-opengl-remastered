@@ -594,18 +594,19 @@ void EditorData::loadTacMap(PacketFile *file, BYTE*& pReturn, long dataSize, int
 	// the bitmap is always 128 * 128, the size of the tac map can be anything,
 	// the edges will be filled in with transparency
 	
-	// Same allocator as makeTacMap: callers release either buffer with free(). (new[] here crashed
-	// initTacMap's free() with 0xC0000374 once operator new moved to mimalloc, a9b93ab58.)
 	long outputSize = 128 * 128 * 4;
-	const long bufferSize = outputSize + sizeof( TGAFileHeader );
 
-	if ( (file->seekPacket(3) == NO_ERR) && (file->getPacketSize() > 0) && (file->getPacketSize() <= bufferSize) )
+	BYTE* pOutput = new BYTE[ outputSize + sizeof( TGAFileHeader )];
+	pReturn = pOutput;
+	BYTE* pShrunken = pOutput + sizeof( TGAFileHeader );
+	
+	dataSize = outputSize + sizeof( TGAFileHeader );
+
+	memset( pShrunken, 0, outputSize );
+
+	if ((file->seekPacket(3) == NO_ERR) && (file->getPacketSize() != 0))
 	{
-		BYTE* pOutput = (BYTE*)malloc( bufferSize );
-		memset( pOutput, 0, bufferSize );
-		file->readPacket( 3, pOutput );
-		pReturn = pOutput;
-		dataSize = bufferSize;
+		file->readPacket(3,pOutput);
 	}
 	else
 	{
@@ -627,7 +628,7 @@ bool EditorData::saveTacMap (PacketFile* file, long whichPacket )
 	test.write( data, size);
 	test.close();
 	
-	free( data );  // makeTacMap allocates with malloc
+	delete []  data;
 
 	return true;
 }
