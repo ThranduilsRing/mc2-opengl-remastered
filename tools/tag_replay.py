@@ -28,15 +28,16 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(ROOT / "scripts"))
 sys.path.insert(0, str(ROOT / "tools"))
+sys.path.insert(0, str(ROOT / "tools/perf"))
 import console_child
 import run_battle_bench as bench
 import sim_determinism as sim
 from smoke_lib import deploy_lease, host_lease, vk_profile
 
 MISSIONS = bench.STOCK_MISSIONS
-DEFAULT_BOOKMARKS = Path("A:/Games/mc2-ops/bookmarks/mc2_01_owner_2026-11-11.json")
-DEFAULT_OUT = Path("E:/mc2-archive-2026-10/proofs/by-tag")
-V04 = Path("A:/Games/mc2-opengl/mc2-win64-v0.4")
+DEFAULT_BOOKMARKS = Path("A:/Games/mc2-ops/bookmarks/mc2_01_owner_2026-11-11.json")  # drive-path: ok brief's canonical owner file; --bookmarks supplies the laptop copy
+DEFAULT_OUT = Path("E:/mc2-archive-2026-10/proofs/by-tag")  # drive-path: ok brief's immutable archive; --out-root supplies laptop-local storage
+V04 = Path("A:/Games/mc2-opengl/mc2-win64-v0.4")  # drive-path: ok identifies the canonical PC snapshot; copied --asset-reference requires its hash
 SETTINGS = {"width": 1920, "height": 1080, "duration_s": 20, "seed": "0xC0FFEE",
             "lighting": "native mission", "fps_cap": 0, "vsync": 0,
             "profile": "stock/default-on native Vulkan", "sim_ticks": 600,
@@ -334,10 +335,15 @@ def zones_stage(stage, exe, sha, directory):
     log = trace.with_suffix(".game.log").read_text(encoding="utf-8", errors="replace")
     bench.verify_runtime(log, sha)
     corner = bench.summarize_stock(directory, log)
-    command = stage.post_command
-    with (directory / "export.log").open("w", encoding="utf-8") as stream:
-        subprocess.run(command, stdout=stream, stderr=subprocess.STDOUT, check=True, timeout=240,
-                       **console_child.child_kwargs(redirected=True))
+    table = importlib.import_module("tracy_table")
+    saved_argv = sys.argv
+    try:
+        sys.argv = stage.post_command[1:]
+        with (directory / "export.log").open("w", encoding="utf-8") as stream, \
+                contextlib.redirect_stdout(stream), contextlib.redirect_stderr(stream):
+            table.main()
+    finally:
+        sys.argv = saved_argv
     structured = json.loads((directory / "zones.json").read_text(encoding="utf-8"))
     steady = structured[trace.name]["steady_play"]
     zones = steady["zones"]
@@ -628,17 +634,17 @@ def main(argv=None):
     parser.add_argument("--asset-reference", type=Path)
     parser.add_argument("--reference-sha256", help="PC v0.4 asset identity; required for a host-local reference copy")
     parser.add_argument("--out-root", type=Path, default=DEFAULT_OUT)
-    parser.add_argument("--scratch-root", type=Path, default=Path("E:/mc2-tmp/slot05/tag-replay"))
-    parser.add_argument("--pc-sweep", type=Path, default=Path("G:/mc2-tmp/perf-brief/stats.md"))
+    parser.add_argument("--scratch-root", type=Path, default=Path("E:/mc2-tmp/slot05/tag-replay"))  # drive-path: ok assigned slot scratch; laptop overrides explicitly
+    parser.add_argument("--pc-sweep", type=Path, default=Path("G:/mc2-tmp/perf-brief/stats.md"))  # drive-path: ok binding owner reference; --pc-sweep supplies laptop copy
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args(argv)
-    if args.compare:
-        return compare(args.out_root, args.compare)
-    if not args.exe or not args.asset_reference:
+    if not args.compare and (not args.exe or not args.asset_reference):
         parser.error("--tag requires --exe and --asset-reference")
-    args.exe = args.exe.resolve()
-    args.asset_reference = args.asset_reference.resolve()
     try:
+        if args.compare:
+            return compare(args.out_root, args.compare)
+        args.exe = args.exe.resolve()
+        args.asset_reference = args.asset_reference.resolve()
         return run(args)
     except (ValueError, OSError, subprocess.SubprocessError) as exc:
         print(f"tag replay refused: {exc}", file=sys.stderr)

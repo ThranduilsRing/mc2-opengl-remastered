@@ -381,13 +381,15 @@ def test_tracy_top_ten_use_same_run_structured_self_time(monkeypatch, tmp_path):
         return 0
     monkeypatch.setattr(replay, "tracy_tools", lambda: (SimpleNamespace(capture_trace=trace), None))
     monkeypatch.setattr(replay.bench, "summarize_stock", lambda *a: {"acknowledged_pose": replay.bench.CORNER})
-    def export(cmd, **kw):
-        assert cmd == stage.post_command and kw["check"] and kw["timeout"] == 240
+    def export():
+        assert sys.argv == stage.post_command[1:]
         replay.dump(directory / "zones.json", {"corner.tracy": {"steady_play": {
             "frames": 100, "start_ns": 1, "end_ns": 1000, "frame_latency": {"mean_ms": 2},
             "zones": [{"name": f"zone{i}", "thread": "1", "src_file": "fixture.cpp", "src_line": i,
                        "self_total_ms": i} for i in range(15)]}}})
-    monkeypatch.setattr(replay.subprocess, "run", export)
+    original_import = replay.importlib.import_module
+    monkeypatch.setattr(replay.importlib, "import_module", lambda name: SimpleNamespace(main=export)
+                        if name == "tracy_table" else original_import(name))
     result = replay.zones_stage(stage, tmp_path / "mc2.exe", SHA, directory)
     assert [z["self_total_ms"] for z in result["top_ten"]] == list(range(14, 4, -1))
     assert result["attribution"]["sha"] == SHA
