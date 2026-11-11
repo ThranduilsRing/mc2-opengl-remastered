@@ -443,6 +443,7 @@ set(SOURCES
     "code/mechcmd2.cpp"
     "code/mechcmd2_cmdline.cpp"
     "code/mechcmd2_debugwins.cpp"
+    "code/sim_render_hooks_install.cpp"
     "code/mechcmd2_frame.cpp"
     "code/artlry.cpp"
     "code/bldng.cpp"
@@ -500,7 +501,6 @@ set(SOURCES
     "code/fire_executor_registry.cpp"
     "code/weapon_presentation_proof.cpp"
     "code/impact_presentation.cpp"
-    "code/tacordr.cpp"
     "code/team.cpp"
     "code/team_los.cpp"
     "code/los_kernel.cpp"
@@ -516,7 +516,6 @@ set(SOURCES
     "code/brain_execution_policy.cpp"
     "code/brain_tactic_select.cpp"
     "code/fitblockwriter.cpp"
-    "code/warrior.cpp"
     "code/warrior_brain.cpp"
     "code/warrior_combat.cpp"
     "code/save_brain_section.cpp"
@@ -524,7 +523,6 @@ set(SOURCES
     "code/warrior_core_orders.cpp"
     "code/warrior_draw.cpp"
     "code/warrior_move.cpp"
-    "code/warrior_orders.cpp"
     "code/warrior_queue.cpp"
     "code/warrior_state.cpp"
     "code/warrior_target.cpp"
@@ -535,7 +533,6 @@ set(SOURCES
     "code/ablmc2_camera.cpp"
     "code/ablmc2_misc.cpp"
     "code/ablmc2_objects.cpp"
-    "code/ablmc2_orders.cpp"
     "code/ablmc2_position.cpp"
     "code/ablmc2_queries.cpp"
     "code/ablmc2_roster.cpp"
@@ -545,7 +542,6 @@ set(SOURCES
     "code/gamecam_bookmark.cpp"
     "code/mission.cpp"
     "code/sim_tick_cost.cpp"
-    "code/mission_update.cpp"
     "code/mission_update_test.cpp"
     "code/mission_update_audit.cpp"
     "code/mission_movers.cpp"
@@ -555,7 +551,6 @@ set(SOURCES
     "code/mission_init_parts.cpp"
     "code/mission_parts_archive.cpp"
     "code/mission2.cpp"
-    "code/sim_identity.cpp"
     "code/sim_world_trace.cpp"
     "code/objective.cpp"
     "code/objective_flags.cpp"
@@ -704,6 +699,29 @@ add_dependencies(mc2_build_identity build_fingerprint)
 
 
 add_executable(mc2 ${SOURCES} ${MAIN_SRC})
+
+# mc2_sim: the sim translation units (the scripts/sim_include_scope.json set minus mclib/cmponent.cpp, which stays in mclib) as their own
+# static library, so the sim kernel has a link-level boundary. Same definitions and include directories as mc2 (they are directory-wide);
+# no behaviour change. docs/sim/sim-link-edges.md lists the GameOS/render symbols these TUs still need.
+add_library(mc2_sim STATIC
+    code/ablmc2_orders.cpp
+    code/mission_update.cpp
+    code/sim_identity.cpp
+    code/sim_rng.cpp
+    code/tactical_order_queue.cpp
+    code/tacordr.cpp
+    code/warrior.cpp
+    code/warrior_orders.cpp)
+if(MC2_SIM_TRACE)
+    target_compile_definitions(mc2_sim PRIVATE MC2_SIM_TRACE=1)
+endif()
+mc2_enable_pch(mc2_sim)
+# Header-only usage requirements (Gates/ include dir) of the one non-mclib library the sim headers reach; mc2_sim links nothing else.
+target_link_libraries(mc2_sim PUBLIC mc2_gate)
+# Slice 3: the platform infrastructure the sim calls (overlap worker, logging, diagnostic trace, crash-bundle ring, Tracy) is the small
+# mc2_core_diag library (GameOS/gameos/CMakeLists.txt), not libgameos.
+target_link_libraries(mc2_sim PUBLIC mc2_core_diag)
+target_link_libraries(mc2 mc2_sim)
 if(MC2_ALLOC_STATS)
     set_source_files_properties("code/mechcmd2_frame.cpp" "code/artlry.cpp" PROPERTIES COMPILE_DEFINITIONS MC2_ALLOC_STATS=1)
     set_source_files_properties("${CMAKE_SOURCE_DIR}/GameOS/gameos/gameos.cpp" DIRECTORY "${CMAKE_SOURCE_DIR}/GameOS/gameos" PROPERTIES COMPILE_DEFINITIONS MC2_ALLOC_STATS=1)
@@ -977,7 +995,7 @@ if(MC2_BUILD_TESTS)
 endif()
 
 target_sources(mc2 PRIVATE code/command_replay.cpp
-    code/combat_sim_hash.cpp code/sim_rng.cpp code/tactical_order_queue.cpp code/save_sections.cpp)
+    code/combat_sim_hash.cpp code/save_sections.cpp)
 # The sim API must not inherit wall-clock access from the engine PCH.
 set_source_files_properties(
     "code/sim_rng.cpp"

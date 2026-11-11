@@ -34,7 +34,6 @@ char missionName[1024];
 // Linux: crashpad installs the fatal-signal handlers and its handler child writes the minidump into
 // <exe_dir>/crashes/crashpad/pending; there is no in-process bundle writer on this platform.
 extern "C" void crashbundle_init(void) { crashpad_start(); }
-extern "C" void crashbundle_append(const char*) {}
 void crashbundle_content_fd(int, std::string_view, std::string_view) {}
 void crashbundle_content_image(std::string_view, const void*, size_t) {}
 void crashbundle_mod(std::string_view, int) {}
@@ -69,13 +68,8 @@ extern "C" void crashbundle_trigger_test_crash(void) {
 // which is a documented interactive option, and must not gate user-visible UI.
 bool gos_NoUserPresentRequested();
 
-// ---------------------------------------------------------------------------
-// Ring buffer
-// ---------------------------------------------------------------------------
-static const size_t kRingBytes = 64 * 1024;
-static char g_ring[kRingBytes];
-static volatile LONG64 g_ring_cursor = 0;  // total bytes written, monotonic
-static volatile LONG   g_ring_lock   = 0;  // spinlock, 0=free 1=held
+// Ring buffer: gos_crashbundle_ring.cpp.
+void crashbundle_ring_write(void* fileHandle);
 
 // NS3 boundary: missionName canonical def moved here so gameos_editor (which
 // lacks code/mechcmd2.cpp) can link cleanly. All consumers extern-declare it.
@@ -116,27 +110,7 @@ static char  g_crash_txtA[MAX_PATH];
 // ---------------------------------------------------------------------------
 // Helpers (safe during normal runtime)
 // ---------------------------------------------------------------------------
-extern "C" void crashbundle_append(mc2::czstring line)
-{
-    if (!line) return;
-    size_t n = strlen(line);
-    if (n == 0) return;
-    // Trim to avoid pathological lines blowing out the ring in one write.
-    n = (std::min)(n, kRingBytes / 2);
-
-    // Spinlock — short critical sections only.
-    while (InterlockedCompareExchange(&g_ring_lock, 1, 0) != 0) {
-        YieldProcessor();
-    }
-    LONG64 cur = g_ring_cursor;
-    for (size_t i = 0; i < n; ++i) {
-        g_ring[(cur + i) % kRingBytes] = line[i];
-    }
-    // ensure newline terminator
-    g_ring[(cur + n) % kRingBytes] = '\n';
-    g_ring_cursor = cur + (LONG64)n + 1;
-    InterlockedExchange(&g_ring_lock, 0);
-}
+// crashbundle_append and the ring buffer live in gos_crashbundle_ring.cpp (the mc2_core_diag library, which mc2_sim links).
 
 // ---------------------------------------------------------------------------
 // Crash-path helpers — must avoid malloc/new/CRT-heavy paths
@@ -251,16 +225,7 @@ static void write_ring_snapshot(void)
     HANDLE h = CreateFileA(path, GENERIC_WRITE, 0, nullptr,
                            CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (h == INVALID_HANDLE_VALUE) return;
-    LONG64 cur = g_ring_cursor;
-    DWORD wrote = 0;
-    if (cur < (LONG64)kRingBytes) {
-        WriteFile(h, g_ring, static_cast<DWORD>(cur), &wrote, nullptr);
-    } else {
-        // wrapped: oldest byte is at cur % kRingBytes
-        DWORD start = static_cast<DWORD>((cur % kRingBytes));
-        WriteFile(h, g_ring + start, static_cast<DWORD>((kRingBytes - start)), &wrote, nullptr);
-        WriteFile(h, g_ring, start, &wrote, nullptr);
-    }
+    crashbundle_ring_write(h);
     CloseHandle(h);
 }
 

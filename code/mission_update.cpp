@@ -19,6 +19,7 @@
 #include "mission_shot.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 #include "mc2fmt.h"
+#include "sim_render_hooks.h"
 
 // FREEZE-MOVERS-1: ONE predicate for "the simulation tick is suspended".
 //
@@ -237,14 +238,15 @@ void Mission::updateDevHotkeys() {
 		{
 			// Shadow softness (Poisson disk radius) — edge-triggered (single step
 			// per press, not continuous while held) with 0.1 step for fine control.
-			if (gos_GetKeyStatus(KEY_LBRACKET) == KEY_PRESSED) {
-				float s = max(gos_GetTerrainShadowSoftness() - 0.1f, 0.1f);
-				gos_SetTerrainShadowSoftness(s);
+			const auto& rh = mc2::sim::g_renderHooks;
+			if (rh.keyPressed && rh.keyPressed(KEY_LBRACKET)) {
+				float s = max(rh.getTerrainShadowSoftness() - 0.1f, 0.1f);
+				rh.setTerrainShadowSoftness(s);
 				CB_PRINTF("[SHADOW-KEY] [: softness={:.1f}", s);
 			}
-			if (gos_GetKeyStatus(KEY_RBRACKET) == KEY_PRESSED) {
-				float s = min(gos_GetTerrainShadowSoftness() + 0.1f, 10.0f);
-				gos_SetTerrainShadowSoftness(s);
+			if (rh.keyPressed && rh.keyPressed(KEY_RBRACKET)) {
+				float s = min(rh.getTerrainShadowSoftness() + 0.1f, 10.0f);
+				rh.setTerrainShadowSoftness(s);
 				CB_PRINTF("[SHADOW-KEY] ]: softness={:.1f}", s);
 			}
 		}
@@ -267,10 +269,11 @@ void Mission::updateTickClock(bool advanceTime) {
 	{
 		scenarioTime += mc2::sim::kTickSecondsF;
 		// Counts the ticks that advanced the clock, so SIMID frame N means tick N under the harness clock.
-		if (SmokeMode::fixedTimestepEnabled())
-			SmokeMode::fixedTimestepOnSimFrame(static_cast<double>(scenarioTime));
+		if (mc2::sim::g_renderHooks.smokeFixedTimestepEnabled && mc2::sim::g_renderHooks.smokeFixedTimestepEnabled())
+			mc2::sim::g_renderHooks.smokeFixedTimestepOnSimFrame(static_cast<double>(scenarioTime));
 	}
-	SmokeMode::onSimTick(static_cast<double>(scenarioTime));
+	if (mc2::sim::g_renderHooks.smokeOnSimTick)
+		mc2::sim::g_renderHooks.smokeOnSimTick(static_cast<double>(scenarioTime));
 	resumeTickAudio();
 	actualTime = scenarioTime;
 }
@@ -300,7 +303,11 @@ void Mission::updateFrontEnd() {
 		static const bool s_mvpPublishEarly = true;
 		if (s_mvpPublishEarly && eye && eye->active && turn > 1)
 		{
-			gos_SetWorldToClipGL(eye->worldToClipGL());
+			if (mc2::sim::g_renderHooks.setWorldToClip)
+			{
+				const glm::mat4 w2c = eye->worldToClipGL();
+				mc2::sim::g_renderHooks.setWorldToClip(&w2c[0][0]);
+			}
 		}
 	}
 
@@ -329,8 +336,8 @@ void Mission::updatePathManager() {
 // Presentation consumes the last completed tick's snapshots, including during pause.
 void Mission::updatePresentationOnly(bool moversOnly, float alpha) {
 	mc2::overlap::assertSimQuiescent("updatePresentationOnly");   // presentation writes appearance state; never while a tick is in flight
-	if (!moversOnly)
-		gpu_cull::substrate_frameBegin();
+	if (!moversOnly && mc2::sim::g_renderHooks.substrateFrameBegin)
+		mc2::sim::g_renderHooks.substrateFrameBegin();
     if (mc2::gate::get<"MC2_PRESENTATION_DISABLED">()) return;
 	ZoneScopedN("GameLogic.Mission.Presentation");
 	MisScope _ms(MS_PRESENT);
@@ -393,7 +400,7 @@ void Mission::updateDisplacementDamp() {
 	// static building damp) so units always stand on TRUE gameplay height
 	// with no visual pop. Rides MC2_TERRAIN_VISUAL_DISPLACE; whole block is
 	// a single cheap bool check when the displace gate / damp map is off.
-	if (gos_TerrainLodChunk_VisualDampWanted())
+	if (mc2::sim::g_renderHooks.visualDampWanted && mc2::sim::g_renderHooks.visualDampWanted())
 	{
 		ZoneScopedN("GameLogic.Mission.VisualDampMovers");
 		static std::vector<float> s_moverCells;
@@ -410,7 +417,7 @@ void Mission::updateDisplacementDamp() {
 			s_moverCells.push_back((halfMap - mp.y) / wupv);
 		}
 		static const float s_objfadeRadiusWu = 256.0f;   // the row clamps to [32, 1024]
-		gos_TerrainLodChunk_UpdateVisualDampMovers(
+		mc2::sim::g_renderHooks.updateVisualDampMovers(
 			s_moverCells.data(), static_cast<int>((s_moverCells.size() / 2)),
 			s_objfadeRadiusWu / wupv, 48.0f / wupv);
 	}
@@ -620,14 +627,14 @@ void Mission::updateCheatsAndFrameRate() {
 		char text[1024];
 		(*std::format_to_n(text,sizeof(text) - 1,"FrameRate: {:f}",1.0f/frameLength).out = '\0');
 	
-		DWORD width, height;
+		uint32_t width = 0, height = 0;
 		Stuff::Vector4D moveHere;
 		moveHere.x = 0.0f;
 		moveHere.y = 0.0f;
-	
-		gos_TextSetAttributes (gosFontHandle, 0, gosFontScale, false, true, false, false);
-		gos_TextStringLength(&width,&height,text);
-	
+
+		if (mc2::sim::g_renderHooks.measureDebugText)
+			mc2::sim::g_renderHooks.measureDebugText(text, &width, &height);
+
 		moveHere.z = width;
 		moveHere.w = height;
 	
@@ -1358,9 +1365,11 @@ void overlapJoinHook() {
 // G7b K3: the frame's render view is taken at ExtractRenderSnapshot (after the frame part, before DrawScreen and the
 // early kick); the presentation side lives in code/render_view.cpp, this sim unit only hands it the tick alpha.
 void overlapExtractHook() { extractRenderFrame(static_cast<float>(s_tickClock.alpha())); }
-const bool s_overlapHooksInstalled =
-	(mc2::overlap::installHooks({overlapKickHook, overlapJoinHook, overlapExtractHook}), true);
 }
+
+// The overlap hook table is installed from code/sim_render_hooks_install.cpp (one deterministic, logged install), not from a
+// static initialiser in this unit.
+mc2::overlap::Hooks mc2::sim::overlapHookTable() { return {overlapKickHook, overlapJoinHook, overlapExtractHook}; }
 
 // Per-frame mission update. Normal play runs on the fixed 30 Hz sim tick (code/sim_tick_clock.h): the frame's
 // real time x game speed is banked, whole ticks run out of the bank, and a frame that banks no tick only redraws the
@@ -1394,7 +1403,7 @@ long Mission::update (void)
 			s_tickClock.reset();
 			pollRealFrameSeconds(renderLength);   // rebase the wall credit so a resume does not burst
 			// Paused or frozen runs the frame part alone; camera/UI keep the game-speed scale.
-			if (!SmokeMode::fixedTimestepEnabled())
+			if (!(mc2::sim::g_renderHooks.smokeFixedTimestepEnabled && mc2::sim::g_renderHooks.smokeFixedTimestepEnabled()))
 				frameLength *= simSpeedGetMultiplier();
 			const bool ended = updatePass(true, true, false, true, earlyResult);
 			mc2::tick::commitTickQueues();

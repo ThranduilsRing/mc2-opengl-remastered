@@ -99,7 +99,6 @@ set(SOURCES ${SOURCES}
     gos_crashpad.cpp
     mc2_verify.cpp
     gos_smoke.cpp
-    sim_overlap.cpp
     gpu_memory_report.cpp
     debug_renderer.cpp
     gos_font.cpp
@@ -126,7 +125,6 @@ set(SOURCES ${SOURCES}
     runtime_bridge.cpp
     runtime_bridge_protocol.cpp
     dbg_asset_globals.cpp
-    diagnostic_trace.cpp
     visual_tuning_profile.cpp
     terrain_material_lib.cpp
     # VK-P13-SELECTOR-1 / T1: top-level MC2_RENDER_BACKEND selector (GL-safe; no
@@ -136,10 +134,8 @@ set(SOURCES ${SOURCES}
     utils/stream.cpp
     utils/color_utils.cpp
     utils/Image.cpp
-    utils/mc2log.cpp
     utils/vec.cpp
     utils/timing.cpp
-    ${CMAKE_SOURCE_DIR}/3rdparty/tracy/TracyClient.cpp
     ${CMAKE_SOURCE_DIR}/3rdparty/tinyexr/miniz.c
     utils/string_utils.cpp
     utils/file_utils.cpp
@@ -327,7 +323,18 @@ add_library(mc2_meshopt STATIC
     "${CMAKE_SOURCE_DIR}/3rdparty/meshoptimizer/src/vfetchoptimizer.cpp")
 target_include_directories(mc2_meshopt PUBLIC "${CMAKE_SOURCE_DIR}/3rdparty/meshoptimizer/src")
 
+# mc2_core_diag: the platform infrastructure the sim calls during play (overlap worker, logging facade, diagnostic trace, crash-bundle
+# ring, Tracy client). No renderer, no SDL, no crashpad: mc2_sim and gameos both link it (sim kernel slice 3).
+add_library(mc2_core_diag STATIC
+    sim_overlap.cpp
+    diagnostic_trace.cpp
+    utils/mc2log.cpp
+    gos_crashbundle_ring.cpp
+    ${CMAKE_SOURCE_DIR}/3rdparty/tracy/TracyClient.cpp)
+target_link_libraries(mc2_core_diag PUBLIC mc2_gate)
+
 add_library(gameos ${SOURCES})
+target_link_libraries(gameos PUBLIC mc2_core_diag)
 target_link_libraries(gameos PRIVATE mc2_meshopt mc2_platform)
 mc2_enable_pch(gameos)
 # KtxLoader.cpp lives in rendercore (STATIC) and is called from
@@ -558,6 +565,7 @@ endif()
 set(GAMEOS_EDITOR_SOURCES ${SOURCES})
 list(REMOVE_ITEM GAMEOS_EDITOR_SOURCES gos_render.cpp)
 add_library(gameos_editor ${GAMEOS_EDITOR_SOURCES})
+target_link_libraries(gameos_editor PUBLIC mc2_core_diag)
 target_link_libraries(gameos_editor PRIVATE rendercore mc2_meshopt sentry mc2_platform)
 if(MC2_VULKAN)
     # VULKAN-VOLK-LOADER-1: headers only -- volk owns runtime dispatch.
