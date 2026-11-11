@@ -691,6 +691,7 @@ inline bool isLandMine (long objTypeNum)
 // TEMP-FINE-LAPS (remove before hand-back)
 #include <atomic>
 #include <chrono>
+std::atomic<uint64_t> g_fineApp{0}, g_fineAppInit{0}, g_fineAppN[3] = {{0},{0},{0}};
 std::atomic<uint64_t> g_fineType{0}, g_fineSwitch{0}, g_fineRest{0}, g_fineN{0};
 static uint64_t fineNow() { return static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()); }
 void GameObjectManager::addObject (ObjDataLoader *objData, long& curTerrainObjectIndex, 
