@@ -108,6 +108,39 @@ TEST_CASE("ui_chrome composeSheet pastes the padded ring: authored neighbours, c
     CHECK(back.sheets.at("demo").pad == 1);
 }
 
+TEST_CASE("ui_chrome scaled sheet: rects stay 1x, widget files and the composed sheet are scale times larger") {
+    Sheet s = makeSheet(true);
+    s.pad = 1;
+    s.scale = 4;
+    auto load = [&](const Sheet& sh, const Widget& w, Pixels& px) {
+        const PaddedRect pr = paddedRect(sh, w);
+        px = solid((pr.x1 - pr.x0) * sh.scale, (pr.y1 - pr.y0) * sh.scale, 4, w.name == "a" ? 10 : 20);
+        return true;
+    };
+    Pixels out;
+    REQUIRE(composeSheet(s, load, out));
+    CHECK(out.w == 32);
+    CHECK(out.h == 24);
+    auto at = [&](int x, int y) { return out.data[(size_t(y) * 32 + x) * 4]; };
+    CHECK(at(0, 0) == 10);
+    CHECK(at(19, 15) == 10);   // last texel of the padded ring of "a": x [0,5) y [0,4) at 4x
+    CHECK(at(12, 8) == 20);    // first texel of the padded ring of "b": x [3,8) y [2,6) at 4x
+    CHECK(at(31, 23) == 20);
+    CHECK(at(31, 0) == 0);     // uncovered RGBA texel stays transparent
+    // a 1x-sized widget file no longer fits a scaled sheet
+    CHECK_FALSE(composeSheet(s, [](const Sheet& sh, const Widget& w, Pixels& px) {
+        const PaddedRect pr = paddedRect(sh, w);
+        px = solid(pr.x1 - pr.x0, pr.y1 - pr.y0, 4, 1);
+        return true;
+    }, out));
+    Manifest m;
+    m.sheets.emplace(s.key, s);
+    Manifest back;
+    REQUIRE(parseManifest(manifestToJson(m), back));
+    CHECK(back.sheets.at("demo").scale == 4);
+    CHECK_FALSE(parseManifest(R"({"version":1,"sheets":{"s":{"size":[4,4],"scale":0}}})", back));
+}
+
 TEST_CASE("ui_chrome composeSheet fails whole when a widget is missing or the wrong size") {
     const Sheet s = makeSheet(true);
     Pixels out;
@@ -219,8 +252,8 @@ TEST_CASE("ui_chrome checked-in data/art/ui manifest: every widget file exists a
             INFO(f.string());
             REQUIRE(pngSize(f, pw, ph));
             const PaddedRect pr = paddedRect(s, w);
-            CHECK(pw == pr.x1 - pr.x0);
-            CHECK(ph == pr.y1 - pr.y0);
+            CHECK(pw == (pr.x1 - pr.x0) * s.scale);
+            CHECK(ph == (pr.y1 - pr.y0) * s.scale);
         }
     CHECK(widgets > 1000);
 }

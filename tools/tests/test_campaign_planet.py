@@ -55,3 +55,31 @@ def test_chrome_repack_of_the_marker_atlas_keeps_black_padding_transparent():
         with Image.open(path) as im:
             assert im.mode == "RGBA", path.name
             assert all(a == 0 for r, g, b, a in im.getdata() if r == g == b == 0), path.name
+
+
+def test_marker_widgets_are_cooked_at_4x_texel_density_with_white_art():
+    # Owner 2026-11-10: the markers were upscaled 2.4x (blurry). The sheet is declared scale 4: rects/uv stay in stock
+    # 51x59 cell units, the widget files carry 4x the texels, and the art is white so the FIT red tint stays crisp.
+    import json
+    manifest = json.loads((ROOT / "data/art/ui/manifest.json").read_text(encoding="utf-8"))
+    sheet = manifest["sheets"]["mcl_cm_5"]
+    assert sheet["scale"] == 4 and sheet["size"] == [128, 128]
+    pad = sheet["pad"]
+    for name, w in sheet["widgets"].items():
+        x, y, rw, rh = w["rect"]
+        x0, y0 = max(0, x - pad), max(0, y - pad)
+        x1, y1 = min(128, x + rw + pad), min(128, y + rh + pad)
+        with Image.open(ROOT / "data/art/ui/mcl_cm_5" / (name + ".png")) as im:
+            assert im.size == ((x1 - x0) * 4, (y1 - y0) * 4), name
+    for name in ("mcl_cm_op1_1.button0.disabled", "mcl_cm_op1_1.button0.pressed"):
+        with Image.open(ROOT / "data/art/ui/mcl_cm_5" / (name + ".png")) as im:
+            lit = [p for p in im.convert("RGBA").getdata() if p[3] == 255]
+            assert lit and all(p[:3] == (255, 255, 255) for p in lit), name
+
+
+def test_marker_cook_is_deterministic():
+    import subprocess
+    import sys
+    done = subprocess.run([sys.executable, str(ROOT / "tools/gen_campaign_marker.py"), "--check"],
+                          capture_output=True, text=True)
+    assert done.returncode == 0, done.stdout

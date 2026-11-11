@@ -453,6 +453,7 @@
    "mode": "RGBA",
    "pad": 1,
    "rects": 5,
+   "scale": 4,
    "screens": [
     "mcl_cm_layout",
     "mcl_cm_op1_1",

@@ -46,6 +46,8 @@ bool parseManifest(std::string_view json, Manifest& out, std::string* err) {
         s.rgba = js.value("mode", std::string("RGB")) == "RGBA";
         s.pad = js.value("pad", 0);
         if (s.pad < 0 || s.pad > 16) return fail("sheet " + it.key() + ": bad pad");
+        s.scale = js.value("scale", 1);
+        if (s.scale < 1 || s.scale > 8) return fail("sheet " + it.key() + ": bad scale");
         if (s.w <= 0 || s.h <= 0 || s.w > 8192 || s.h > 8192) return fail("sheet " + it.key() + ": bad dimensions");
         std::set<std::string> names;
         if (js.contains("widgets") && js["widgets"].is_object()) {
@@ -86,6 +88,7 @@ std::string manifestToJson(const Manifest& m) {
         js["size"] = {s.w, s.h};
         js["mode"] = s.rgba ? "RGBA" : "RGB";
         if (s.pad) js["pad"] = s.pad;
+        if (s.scale != 1) js["scale"] = s.scale;
         nlohmann::json ws = nlohmann::json::object();
         for (const auto& w : s.widgets) {
             nlohmann::json jw;
@@ -108,23 +111,25 @@ bool composeSheet(const Sheet& sheet, const WidgetLoader& load, Pixels& out, std
     };
     if (sheet.widgets.empty()) return fail("sheet " + sheet.key + " has no widgets");
     const int ch = sheet.rgba ? 4 : 3;
-    out.w = sheet.w;
-    out.h = sheet.h;
+    const int k = sheet.scale < 1 ? 1 : sheet.scale;
+    const int outW = sheet.w * k;
+    out.w = outW;
+    out.h = sheet.h * k;
     out.channels = ch;
-    out.data.assign(static_cast<size_t>(sheet.w) * sheet.h * ch, 0);
+    out.data.assign(static_cast<size_t>(out.w) * out.h * ch, 0);
     if (!sheet.rgba)   // the authored RGB sheets key transparency on FF00FF; uncovered texels stay "no art"
         for (size_t i = 0; i < out.data.size(); i += 3) { out.data[i] = 255; out.data[i + 2] = 255; }
     Pixels px;
     for (const auto& w : sheet.widgets) {
         px = Pixels{};
         const PaddedRect pr = paddedRect(sheet, w);
-        const int pw = pr.x1 - pr.x0, ph = pr.y1 - pr.y0;
+        const int pw = (pr.x1 - pr.x0) * k, ph = (pr.y1 - pr.y0) * k;
         if (!load(sheet, w, px) || px.w != pw || px.h != ph || px.data.size() != static_cast<size_t>(px.w) * px.h * px.channels ||
             (px.channels != 3 && px.channels != 4))
             return fail("widget " + sheet.key + ": " + w.name + " missing or wrong size");
         // The padded ring holds the authored neighbours, so it agrees with any widget whose core it overlaps.
         for (int y = 0; y < ph; ++y) {
-            uint8_t* dst = out.data.data() + (static_cast<size_t>(pr.y0 + y) * sheet.w + pr.x0) * ch;
+            uint8_t* dst = out.data.data() + (static_cast<size_t>(pr.y0) * k + y) * outW * ch + static_cast<size_t>(pr.x0) * k * ch;
             const uint8_t* src = px.data.data() + static_cast<size_t>(y) * pw * px.channels;
             for (int x = 0; x < pw; ++x) {
                 dst[x * ch + 0] = src[x * px.channels + 0];
