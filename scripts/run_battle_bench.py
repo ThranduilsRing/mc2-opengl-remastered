@@ -97,7 +97,7 @@ def stock_run(exe, directory, mission, expected_sha):
     saved = {k: v for k, v in os.environ.items() if k.startswith("MC2_")}
     try:
         for key in saved:
-            if not key.startswith(("MC2_HOST_", "MC2_DEPLOY_", "MC2_CHILD_", "MC2_HARNESS_")):
+            if key != "MC2_VK_DEVICE" and not key.startswith(("MC2_HOST_", "MC2_DEPLOY_", "MC2_CHILD_", "MC2_HARNESS_")):
                 os.environ.pop(key, None)
         return _stock_run(exe, directory, mission, expected_sha)
     finally:
