@@ -625,7 +625,7 @@ bool GVAppearance::recalcBounds (void)
 			}
 			else if (eyeDistance > Camera::MinHazeDistance)
 			{
-				Camera::HazeFactor = (eyeDistance - Camera::MinHazeDistance) * Camera::DistanceFactor;
+				Camera::HazeFactor = Camera::fogHaze(eyeDistance);
 				setVisibilityGatesFromLegacy(true);
 			}
 			else

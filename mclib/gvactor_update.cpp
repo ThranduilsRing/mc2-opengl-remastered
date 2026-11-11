@@ -123,33 +123,7 @@ void GVAppearance::updateGeometry (void)
 		visualDelta_ = TerrainRuntime::visualHeightDelta(position);
 		xlatPosition.y += visualDelta_;   // UNIT-VISUAL-SNAP-1: draw only
 	
-		if (xlatPosition.y < fogStart)
-		{
-			float fogFactor = fogStart - xlatPosition.y;
-			if (fogFactor < 0.0)
-				fogRGB = 0xff<<24;
-			else
-			{
-				fogFactor /= (fogStart - fogFull);
-				if (fogFactor <= 1.0)
-				{
-					fogFactor *= fogFactor;
-					fogFactor = 1.0 - fogFactor;
-					fogFactor *= 256.0;
-				}
-				else
-				{
-					fogFactor = 256.0;
-				}
-	
-				unsigned char fogResult = fogFactor;
-				fogRGB = fogResult << 24;
-			}
-		}
-		else
-		{
-			fogRGB = 0xff<<24;
-		}
+		fogRGB = static_cast<DWORD>(mc2FogHeightAlpha(xlatPosition.y, fogStart, fogFull)) << 24;
 	
 		if (useFog)
 			gvShape->SetFogRGB(fogRGB);

@@ -30,6 +30,7 @@
 // outside the render loop (TLS flag tracked by RenderLoopGuard).
 #include <cstdint>  // int64_t for cull_admission_*_ns
 #include <string_view>
+#include "../shaders/include/fog_policy.hglsl"
 #include <string>
 #include "Gates/gate.h"
 #include "spotlight_diag.h"
@@ -360,6 +361,11 @@ class Camera
 		static float			MaxClipDistance;
 		static float    		MinHazeDistance;
 		static float			DistanceFactor;
+
+        // Source camera distances stay unscaled; clipping still uses MaxClipDistance.
+        static float fogHaze(float distance) {
+            return mc2FogHaze(distance, MinHazeDistance, MaxClipDistance);
+        }
 
 		static float			MinNearPlane;
 		static float			MaxNearPlane;

@@ -174,7 +174,7 @@ struct VkProducerSnapshot {
     float    sunDir[3];
     float    rain;
     float    fogStart, fogFull;
-    float    minHaze, maxClip, distFactor;
+    float    minHaze, maxClip, distFactor; // Effective fog endpoints/factor; NOT clipping inputs.
     float    playArea[4];
     float    camPos[3];
 };

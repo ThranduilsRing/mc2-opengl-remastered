@@ -860,9 +860,9 @@ void PackAndDispatch() {
         sn.rendererSW = (Environment.Renderer == 3) ? 1 : 0;
         const float pm = Terrain::worldUnitsMapSide / 2.0f - Terrain::worldUnitsPerVertex * 2.0f;
         sn.playArea[0] = -pm; sn.playArea[1] = -pm; sn.playArea[2] = pm; sn.playArea[3] = pm;
-        sn.minHaze = Camera::MinHazeDistance;
-        sn.maxClip = Camera::MaxClipDistance;
-        sn.distFactor = Camera::DistanceFactor;
+        sn.minHaze = mc2FogDistance(Camera::MinHazeDistance);
+        sn.maxClip = mc2FogDistance(Camera::MaxClipDistance); // Fog endpoint only, not admission.
+        sn.distFactor = mc2FogInvSpan(sn.minHaze, sn.maxClip);
         s_vkSnapValid = true;
     }
 
