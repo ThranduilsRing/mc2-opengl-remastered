@@ -18,9 +18,22 @@ struct Packet {
     struct LightSlotEntry { uint64_t tmpl; uint32_t actorARGB; uint32_t slot; };
     std::vector<TG_HWLightsData> rows;
     std::vector<uint64_t> generations;
-    uint64_t revision = 0;
+    uint64_t revision = 0;   // generation of the latest row write
     uint64_t key = 0;
     uint32_t count = 0;
+    // LIGHTING-CPU-CUT: row-write journal for the shared light feed (see RowWrite).
+    std::vector<RowWrite> journal;
+    uint64_t journalBase = 0;
+    static constexpr size_t kJournalCap = 1024;
+    void recordWrite(uint32_t row, uint64_t gen) {
+        generations[row] = revision = gen;
+        if (journal.size() >= kJournalCap) {
+            const size_t drop = kJournalCap / 2;
+            journalBase = journal[drop - 1].gen;
+            journal.erase(journal.begin(), journal.begin() + drop);
+        }
+        journal.push_back({gen, row});
+    }
     // Lookup/insert/clear only, never iterated (order cannot reach rows or output).
     ankerl::unordered_dense::map<uint64_t, uint32_t> dedup;
     ankerl::unordered_dense::map<uint64_t, CachedSceneLightTemplate> templates;
@@ -65,25 +78,12 @@ namespace {
         return h;
     }
 
-    static inline uint64_t fnv1a_64_struct(const void* data, size_t bytes) {
-        // FNV-1a 64-bit. Walk in uint64_t chunks for fewer iterations
-        // (~110 iters for ~900 bytes vs ~900 iters byte-at-a-time).
-        const uint64_t* p64 = static_cast<const uint64_t*>(data);
-        const size_t chunks = bytes / sizeof(uint64_t);
-        const size_t tail   = bytes % sizeof(uint64_t);
-        uint64_t h = 0xcbf29ce484222325ULL;  // FNV offset basis
-        for (size_t i = 0; i < chunks; ++i) {
-            h ^= p64[i];
-            h *= 0x100000001b3ULL;            // FNV prime
-        }
-        if (tail) {
-            const uint8_t* tailp = reinterpret_cast<const uint8_t*>(&p64[chunks]);
-            for (size_t i = 0; i < tail; ++i) {
-                h ^= tailp[i];
-                h *= 0x100000001b3ULL;
-            }
-        }
-        return h;
+    static inline uint64_t lightRowKey(const void* data, size_t bytes) {
+        // LIGHTING-CPU-CUT: the dedup key no longer runs one serial FNV multiply chain
+        // over all 224 words of the row; the vendored unordered_dense byte hash reads it
+        // in independent lanes. The key only indexes the dedup map (never iterated) and
+        // every hit is memcmp-verified, so rows and slot numbers are unchanged.
+        return ankerl::unordered_dense::detail::hash_bytes(data, bytes);
     }
 
     static inline uint64_t fnv1a_64_u32(uint64_t h, uint32_t v) {
@@ -495,7 +495,7 @@ uint32_t mc2::vkLights::addLightDataStructure(TG_HWLightsData* light_data)
     std::lock_guard<std::recursive_mutex> _lk(s_lightDataMapMu);
 
     auto& packet = writablePacket();
-    const uint64_t hash = fnv1a_64_struct(light_data, sizeof(TG_HWLightsData));
+    const uint64_t hash = lightRowKey(light_data, sizeof(TG_HWLightsData));
     auto it = packet.dedup.find(hash);
     if (it != packet.dedup.end()) {
         const auto& [dedupHash, dedupSlot] = *it;
@@ -518,13 +518,13 @@ uint32_t mc2::vkLights::addLightDataStructure(TG_HWLightsData* light_data)
 
     // Dynamic rows are re-appended every frame at stable slot positions. Keep the row's generation when the
     // content is unchanged so the shared light feed (vk_shared_light_feed.cpp) skips the GPU-memory copy for it.
-    // A generation identifies content: it advances only when the bytes differ. revision still advances per append.
+    // A generation identifies content: it advances only when the bytes differ, and so does the revision
+    // (LIGHTING-CPU-CUT: an unchanged append no longer dirties the feed; a same-frame consumer still
+    // falls back on the larger byte count).
     packet.generations.resize(packet.rows.size());
-    const uint64_t newGeneration = ++s_nextRowGeneration;
-    packet.revision = newGeneration;
     if (0 != memcmp(packet.rows.data() + packet.count, light_data, sizeof(TG_HWLightsData))) {
         packet.rows[packet.count] = *light_data;
-        packet.generations[packet.count] = newGeneration;
+        packet.recordWrite(packet.count, ++s_nextRowGeneration);
     }
     uint32_t rv = packet.count;
     packet.count++;
@@ -658,7 +658,7 @@ void mc2::vkLights::bakeStaticLightSlot(int32_t recipeIndex, const TG_HWLightsDa
     }
     packet.rows[ri] = baked;
     packet.generations.resize(packet.rows.size());
-    packet.generations[ri] = packet.revision = ++s_nextRowGeneration;
+    packet.recordWrite(ri, ++s_nextRowGeneration);
     // 2A: the per-leaf permanent light index is NOT recipeIndex — it is the
     // owning RANGE's lightDataIndex (all leaves of a multi-leaf range share one
     // light slot, matching legacy flush). That propagation now lives in the
@@ -711,7 +711,8 @@ mc2::vkLights::Feed mc2::vkLights::captureFeed()
     if (!s_active) return {};
     const auto& packet = *s_packet;
     return {s_packet, packet.rows.data(), static_cast<uint64_t>(packet.count) * sizeof(TG_HWLightsData),
-            {packet.generations.data(), packet.count}, packet.revision, packet.key};
+            {packet.generations.data(), packet.count}, packet.revision, packet.key,
+            {packet.journal.data(), packet.journal.size()}, packet.journalBase};
 }
 
 
@@ -723,6 +724,7 @@ void mc2::vkLights::start()
     s_packet->rows.resize(128);
     s_packet->revision = ++s_nextRowGeneration;
     s_packet->generations.assign(128, s_packet->revision);
+    s_packet->journalBase = s_packet->revision;   // a new lineage: older mirrors full-scan
     s_active = true;
 }
 
