@@ -170,6 +170,32 @@ TEST_CASE("texture decode: a 24-bit TGA decodes to RGB8 top-down, R first") {
     CHECK(t.pixels[5] == 255);   // bottom row blue
 }
 
+TEST_CASE("campaign marker: production decode keeps black padding transparent") {
+    for (const char* name : {"mcl_cm_5.tga", "mcl_mn_4.tga"}) {
+    CAPTURE(name);
+    const auto path = std::filesystem::path(__FILE__).parent_path().parent_path().parent_path()
+        / "data/art/gui" / name;
+    const auto decoded = mc2tex::decodeFile(path.string().c_str(), gos_Texture_Alpha, 0);
+    REQUIRE(decoded);
+    REQUIRE(decoded->width == 128);
+    REQUIRE(decoded->height == 128);
+    REQUIRE(decoded->layout == mc2tex::PixelLayout::RGBA8);
+    size_t padding = 0;
+    size_t ink = 0;
+    for (size_t i = 0; i < decoded->pixels.size(); i += 4) {
+        const auto* p = decoded->pixels.data() + i;
+        if (p[0] == 0 && p[1] == 0 && p[2] == 0) {
+            CHECK(p[3] == 0);
+            ++padding;
+        } else if (p[0] == 255 && p[1] == 255 && p[2] == 255 && p[3] == 255) {
+            ++ink;
+        }
+    }
+    CHECK(padding > 1000);
+    CHECK(ink > 100);
+    }
+}
+
 TEST_CASE("texture decode: malformed sources are rejected, not trusted") {
     auto truncated = tga(4, 4, 32, {1, 2, 3, 4});
     CHECK_FALSE(mc2tex::decodeMemory(truncated.data(), truncated.size(), "short.tga", gos_Texture_Detect, 0));

@@ -40,7 +40,7 @@ def acquire_label(args) -> str:
 def main():
     os.environ.update(MC2_HOST_GAME_SLOTS="2", MC2_HOST_CORES_PER_SLOT="2")
     ap = argparse.ArgumentParser()
-    ap.add_argument("screen", choices=["mainmenu", "purchase", "bay", "loadout", "launch", "briefing", "encyclopedia", "encyclopedia_vehicles", "encyclopedia_pilots"])
+    ap.add_argument("screen", choices=["mainmenu", "campaign_select", "purchase", "bay", "loadout", "launch", "briefing", "encyclopedia", "encyclopedia_vehicles", "encyclopedia_pilots"])
     ap.add_argument("--campaign", default="campaign",
                     help="stock campaign .fit basename passed to MC2_BOOT_TO_BAY (default: 'campaign')")
     ap.add_argument("--deploy", default=DEFAULT_DEPLOY)
@@ -167,7 +167,7 @@ def main():
                                             **nofocus.hidden_kwargs(creationflags=0x00004000))
             targets = ([21, 20, 22, 31] if args.walk else
                        [-2] if encyclopedia else [-1] if args.screen == "mainmenu" else
-                       [{"purchase":20,"bay":21,"loadout":22,"launch":31,"briefing":11}[args.screen]])
+                       [{"campaign_select":1,"purchase":20,"bay":21,"loadout":22,"launch":31,"briefing":11}[args.screen]])
             while p.poll() is None and time.monotonic() - started < args.timeout:
                 if recorder is not None and recorder.poll() is not None:
                     break

@@ -156,6 +156,26 @@ void ensureTexture(UiElement& e)
         }
     }
     const char* loadPath = loadName.c_str();
+    // Generated PNGs and their TGA siblings are base-game exports. A mod's
+    // authored atlas must win over those.
+    const std::string legacyName = legacyKey.empty() ? std::string() :
+        std::string("data/art/") + std::filesystem::path(legacyKey).stem().string() + ".tga";
+    auto sibling = std::filesystem::path(e.texturePath);
+    sibling.replace_extension(".tga");
+    std::string modPath;
+    int modPriority = 1000000;
+    for (const auto& candidate : {e.texturePath, sibling.generic_string(), legacyName}) {
+        if (!candidate.empty() && LookupModOwner(candidate.c_str()) &&
+            LookupModPriority(candidate.c_str()) < modPriority) {
+            modPath = candidate;
+            modPriority = LookupModPriority(candidate.c_str());
+        }
+    }
+    if (!modPath.empty()) {
+        loadName = modPath;
+        loadPath = loadName.c_str();
+        e.textureWidth = e.textureHeight = 0;
+    }
     e.textureNode = mc2::textures::load(loadPath, gos_Texture_Alpha, 0, 0, 0x2);
     e.textureNodeAssigned = true;
     if (!e.textureNode) {

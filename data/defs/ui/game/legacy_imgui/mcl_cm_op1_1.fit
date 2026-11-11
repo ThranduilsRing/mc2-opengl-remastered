@@ -144,8 +144,8 @@ GuiImage {
     artLayer = "control_art"
     uvX = 0
     uvY = 0
-    uvWidth = 256
-    uvHeight = 256
+    uvWidth = 0
+    uvHeight = 0
 }
 
 GuiMetadata {

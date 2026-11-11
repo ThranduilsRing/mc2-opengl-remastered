@@ -450,7 +450,7 @@
   },
   "mcl_cm_5": {
    "file": "MCL_CM_5.png",
-   "mode": "RGB",
+   "mode": "RGBA",
    "pad": 1,
    "rects": 7,
    "screens": [
