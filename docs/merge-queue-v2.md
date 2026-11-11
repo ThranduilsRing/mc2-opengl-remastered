@@ -29,6 +29,10 @@ schtasks /Create /TN "\mc2-nightly-gate" /XML %TEMP%\mc2-nightly-gate.task.xml /
 schtasks /Delete /TN "\mc2-smoke-overnight" /F
 ```
 
+## Laptop merge gate: one job, detached
+
+`py -3 tools/laptop_gate.py W` is ONE laptop job: it pushes, builds, runs the gate and then, on a gate PASS, the sim rows (determinism-mc2_01/03/10/24, saveload-mc2_03/10) on the same deployed candidate, so the payload and sim manifests are identical by construction; the sim result lands in summary.json as `sim` and a red sim fails the run. `--no-sim` skips the sim rows; `--sim` alone is a rerun-only form (no push or build). The run is a detached job (`tools/detached_job.py`, state `G:/mc2-tmp/jobs/laptop-gate-W.json`, log beside it): it survives the launching session, a relaunch re-attaches to the running job, and a resumed agent waits with `py -3 tools/detached_job.py wait laptop-gate-W` (`status` shows running, done rc=N or lost). `scripts/gate_wait.py` runs its command the same way (`--job NAME` to re-attach).
+
 ## Conflict preview (merge windows)
 
 `py -3 tools/lane_merge.py --batch A B C --dry-run --conflict-dir <dir>` previews every conflict before the real batch, so nobody hand-merges to see them. Each tip, in batch order, is merged virtually (`git merge-tree --write-tree`) against the running virtual head; nothing in any worktree, index or ref changes. For each conflicted path it writes `<dir>/<NN>-<tipname>/<path>` (the file with conflict markers) plus `summary.txt` (tip, sha, conflicted paths with hunk counts, which earlier tip touched the same file). The summary also lists "same file, both tips" pairs: a heuristic (same path edited by two tips, generated files excluded) that flags possible duplicate fixes such as W138f's two empty-diff refusals; it also lists unrelated edits. The run prints one `CONFLICT-PREVIEW` line and exits 0; the merger reads the folder. Tips already contained in the running head get no folder.

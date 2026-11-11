@@ -20,7 +20,7 @@ STAGE_PREFIX = "claude/stage-"
 STAGE_HELP = """merge queue (bors-style staging; nifty only ever fast-forwards to a proven candidate):
   1. py -3 tools/lane_merge.py --stage W --batch A B C     freeze tips A B C, build claude/stage-W from nifty and merge them there
   2. py -3 scripts/merge_gate.py --full ...                gate the checked-out candidate; writes build64-ninja/gate-verdict.json
-     py -3 tools/laptop_gate.py W --sim                   add all six sim PASS rows to the pulled window summary
+     py -3 tools/laptop_gate.py W                         laptop: gate + all six sim PASS rows in one job (--sim = rerun only)
   3. py -3 tools/lane_merge.py --promote W --verdict <pulled>/gate-verdict.json
                                                          fast-forward nifty to the candidate: refused unless the verdict is a
                                                            complete PASS for the candidate HEAD (no skipped row) and nifty is its
