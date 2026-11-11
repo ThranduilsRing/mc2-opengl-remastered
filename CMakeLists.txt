@@ -929,18 +929,6 @@ if(MC2_EDITOR AND MSVC)
     # EditRel is part of the default build (MC2_EDITOR_IN_ALL retired 2026-11-04, editor lane): engine changes
     # must keep the editor compiling and linking on every dev build, not only in build_all_targets.
     add_subdirectory("./editor" "./out/editor")
-    # A build host without the MFC component (the dedicated merge laptop: no afxwin.h) cannot compile EditRel; it stays
-    # buildable on request there and in the default build everywhere MFC is installed (the PC compile is the editor proof).
-    if(TARGET EditRel)
-        find_path(MC2_MFC_INCLUDE_DIR afxwin.h PATHS ENV INCLUDE NO_DEFAULT_PATH)
-        if(NOT MC2_MFC_INCLUDE_DIR)
-            message(STATUS "MFC (afxwin.h) not on INCLUDE: EditRel and gameos_editor are excluded from the default build")
-            set_target_properties(EditRel PROPERTIES EXCLUDE_FROM_ALL TRUE)
-            if(TARGET gameos_editor)
-                set_target_properties(gameos_editor PROPERTIES EXCLUDE_FROM_ALL TRUE)
-            endif()
-        endif()
-    endif()
 endif()
 
 # A class object (std::string, EString) passed through "..." compiles and prints garbage; C4840 is the diagnostic, kept an error so that a printf-style
