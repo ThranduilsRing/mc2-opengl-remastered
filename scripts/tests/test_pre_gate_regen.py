@@ -9,11 +9,12 @@ sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 
 from tools import lane_merge as lm  # noqa: E402
+import console_child  # noqa: E402
 
 
 def _git(repo, *args):
     subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *args], cwd=repo, check=True,
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **console_child.child_kwargs(redirected=True))
 
 
 def _fixture(tmp_path, monkeypatch):
@@ -23,7 +24,7 @@ def _fixture(tmp_path, monkeypatch):
     gen = repo / "tools" / "gen.py"
     gen.write_text("import pathlib\npathlib.Path('out/artifact.json').write_text('{\"v\": 2}\\n')\n")
     (repo / "out" / "artifact.json").write_text('{"v": 1}\n')
-    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True, **console_child.child_kwargs(redirected=True))
     _git(repo, "add", "-A")
     _git(repo, "commit", "-q", "-m", "base")
     monkeypatch.setattr(lm, "GENERATORS", [("fixture", "tools/gen.py", [])])
