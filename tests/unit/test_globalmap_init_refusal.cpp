@@ -14,6 +14,7 @@
 #include "../../GameOS/gameos/utils/mc2log.h"
 
 #include <cstdint>
+#include <algorithm>
 #include <cstdio>
 #include <filesystem>
 #include <memory>
@@ -204,4 +205,41 @@ TEST_CASE("save fields: global map load retains active door link costs")
 	REQUIRE_FALSE(fresh->badLoad);
 	CHECK(fresh->doors_links[0][0][0].cost == 10);
 	CHECK(fresh->doors_links[0][1][0].cost == 10);
+}
+
+TEST_CASE("GlobalMap packed reachability decodes every slot and preserves other cells")
+{
+	// Seven areas cross a byte boundary; three bytes per row include padding.
+	struct Table {
+		unsigned char bytes[21]{};
+		GlobalMap map;
+		Table() { map.numAreas = 7; map.pathExistsTable = bytes; }
+		~Table() { map.pathExistsTable = nullptr; }
+	} table;
+	const unsigned char values[]{GLOBALPATH_EXISTS_TRUE, GLOBALPATH_EXISTS_FALSE, GLOBALPATH_EXISTS_UNKNOWN};
+	for (long row = 0; row < 7; ++row) {
+		for (long col = 0; col < 7; ++col) {
+			// Each cell cycles TRUE -> FALSE -> UNKNOWN. Snapshot the raw bytes
+			// too: decoded neighbors alone would miss writes into row padding.
+			for (const auto value : values) {
+				unsigned char before[21];
+				std::copy_n(table.bytes, 21, before);
+				table.map.setPathExists(row, col, value);
+				CHECK(table.map.getPathExists(row, col) == value);
+				const long byte = row * 3 + col / 4;
+				const unsigned char mask = static_cast<unsigned char>(3 << ((col % 4) * 2));
+				for (long i = 0; i < 21; ++i) {
+					if (i == byte)
+						CHECK((table.bytes[i] & ~mask) == (before[i] & ~mask));
+					else
+						CHECK(table.bytes[i] == before[i]);
+				}
+			}
+			// Leave a nonzero neighbor for the next cell's preservation checks.
+			table.map.setPathExists(row, col, GLOBALPATH_EXISTS_FALSE);
+		}
+	}
+	for (long row = 0; row < 7; ++row)
+		for (long col = 0; col < 7; ++col)
+			CHECK(table.map.getPathExists(row, col) == GLOBALPATH_EXISTS_FALSE);
 }
