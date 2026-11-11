@@ -127,6 +127,7 @@ bool loadCached(Asset& asset, std::string_view sourcePath) {
         decoded.nodes.push_back(std::move(n));
     }
     if (!r.ok || r.pos != r.data.size()) return false;
+    decoded.verifiedCacheKey = key;
     asset = std::move(decoded);
     g_laps.hits++;
     return true;
@@ -139,6 +140,17 @@ bool cook(Asset& asset, std::string_view sourcePath) {
     const char* source = sourceStorage.empty() ? nullptr : sourceStorage.c_str();
     if (asset.nodes.empty() || asset.nodes.size() > kMaxMultiShapeNodes || asset.materials.size() > kMaxShapeTextures)
         return false;
+    if (asset.verifiedCacheKey) {
+        // Payload came from a digest-verified cache entry under this same source key: it already passed this
+        // function's validation when written and the entry is byte-identical by construction. Nothing to publish.
+        const uint64_t again = sourceKey(asset, sourcePath);
+        if (again == asset.verifiedCacheKey) {
+            mc2::fmt::print_err("[CONTENT_COOK] source={} key={:016x} cache=hit nodes={} materials={} sockets={} version={}
+",
+                source ? source : "", again, asset.nodes.size(), asset.materials.size(), asset.sockets.size(), cookerVersion);
+            return true;
+        }
+    }
     std::vector<uint8_t> recipe;
     append(recipe, cookerVersion);
     append(recipe, static_cast<uint32_t>(sizeof(TG_TypeVertex)));
