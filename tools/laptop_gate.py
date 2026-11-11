@@ -57,6 +57,9 @@ MODS_NAMES = ("MechCommanderOmnitech", "mco-compat")   # merge_gate.CANDIDATE_MO
 E_EXTRA = ("mc2-archive-2026-10/asset-modernize/docs/assets/catalog.json",)   # scifi_kit counts.CATALOG (art suite)
 # Generated, gitignored deploy inputs whose cook sources exist only on the PC: the laptop clone gets the published copies. Without
 # them the laptop deploy omits and then prunes them, and compare-captures fails on the cliffs and concrete (W129 run 3: MAD 0.20/0.52).
+# Gitignored deploy inputs cooked on the PC (worktree copy, not the published v0.4: it predates them): the grass turf normal
+# (deploy_payload.ensure_grass_turf; its Poly Haven source is PC-only, W147).
+WORKTREE_EXTRA = ("data/terrain_layers/grass_turf_normal.ktx2",)
 LAYER_EXTRA = tuple(f"data/terrain_layers/{n}.ktx2" for n in ("concrete_detail_pad", "concrete_detail_road", "cliff_rock_ah", "cliff_rock_nra"))
 # flip_evaluator: compare-captures' FLIP columns (no cp315 wheel: build the sdist under vcvars64 with CC=CXX=cl, not MinGW)
 PACKAGES = ("numpy", "PIL", "scipy", "skimage", "pefile", "pytest", "flip_evaluator")
@@ -756,6 +759,7 @@ def provision_files(eroot=Path("E:/")):
     return ([("bin/laptop_gate.py", Path(__file__).resolve())] + [("bin/" + Path(h).name, repo / h) for h in HELPERS]
             + [("drv/E/" + rel, Path(eroot, rel)) for rel in E_EXTRA]
             + [(f"{clone}/{rel}", PC_V04 / rel) for rel in LAYER_EXTRA]
+            + [(f"{clone}/{rel}", repo / rel) for rel in WORKTREE_EXTRA]
             + [(f"{clone}/{rel}", repo / rel) for rel in tree_upscale_extra(repo)])
 
 
