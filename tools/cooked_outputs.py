@@ -47,6 +47,11 @@ def unpinned_by_cook(manifest: dict | None = None) -> dict:
     return {cook: tuple(outs) for cook, outs in out.items()}
 
 
+def pinned_unpinned_paths(manifest: dict | None = None) -> set:
+    """Output relpaths of single-file rows that pin a `sha256` in the manifest itself (e.g. the grass turf normal)."""
+    return {r["out"] for r in (manifest or load())["unpinned"] if r.get("sha256")}
+
+
 def provision_paths(kind: str, root: str = ROOT, manifest: dict | None = None) -> tuple:
     """Output relpaths a host provisions from `kind` ('worktree' or 'published'); pinned outputs are read from the pin file under `root`.
     A missing pin file yields none for it (the caller's preflight names the missing file)."""
@@ -109,8 +114,12 @@ def problems(root: str = ROOT, manifest: dict | None = None, hasher=_sha256) -> 
                 bad.append(f"{len(rels)} of {len(want)} {entry['id']} outputs {label}: {', '.join(rels[:3])}{more}; "
                            f"cook with {entry['cook']} (or deploy_payload.py) before the gate")
     for row in manifest["unpinned"]:
-        if row.get("required") and not os.path.isfile(os.path.join(root, row["out"])):
+        path = os.path.join(root, row["out"])
+        if row.get("required") and not os.path.isfile(path):
             bad.append(f"required cooked output {row['out']} is absent; cook with {row['cook']} (or deploy_payload.py) before the gate")
+        elif row.get("sha256") and os.path.isfile(path) and hasher(path) != row["sha256"]:
+            bad.append(f"cooked output {row['out']} is not the pinned bytes (sha256 in tools/cooked_outputs.json); recook with {row['cook']} "
+                       f"and update the pin if the cook script changed")
     return bad
 
 

@@ -120,6 +120,19 @@ def test_cmake_module_sets_mc2_host_mfc(tmp_path, host, want):
 
 # 3) the cooked-output manifest -------------------------------------------------------------------------------------------------
 
+FAKE_COOK = b"x"   # what _tree writes for every required single-file output
+
+
+@pytest.fixture(autouse=True)
+def _fake_pin_hashes(monkeypatch):
+    """The real manifest pins the real 22 MB grass turf bytes; fixture trees write FAKE_COOK, so pin its hash instead."""
+    real = cooked_outputs.load()
+    for r in real["unpinned"]:
+        if r.get("sha256"):
+            r["sha256"] = hashlib.sha256(FAKE_COOK).hexdigest()
+    monkeypatch.setattr(cooked_outputs, "load", lambda path=cooked_outputs.MANIFEST: real)
+
+
 def _tree(tmp_path, stems=("a_oak", "b_pine"), grass=True):
     """A tree with every cook script and the tree pin file the manifest names, plus (optionally) the cooked outputs at the pinned bytes."""
     m = cooked_outputs.load()
@@ -265,3 +278,32 @@ def test_parity_table_lists_every_gate_row():
 def test_parity_table_names_the_inputs_row_for_deploy(tmp_path):
     lines = lm.parity_table(str(tmp_path), [], [], gate_rows=["deploy"])
     assert lines[1] == "  deploy | NOT RUN (inputs checked by exe-fingerprint)"
+
+
+# 5) review extras (W147 Argon review): the grass turf normal is pinned by hash --------------------------------------------------
+
+def test_a_stale_grass_turf_normal_is_not_the_pinned_bytes(tmp_path):
+    _tree(tmp_path)
+    (tmp_path / "data" / "terrain_layers" / "grass_turf_normal.ktx2").write_bytes(b"an older cook")
+    bad = cooked_outputs.problems(str(tmp_path))
+    assert len(bad) == 1 and "grass_turf_normal.ktx2 is not the pinned bytes" in bad[0]
+
+
+def test_the_real_manifest_pins_the_grass_turf_sha256():
+    real = json.loads(Path(cooked_outputs.MANIFEST).read_text(encoding="utf-8"))
+    pinned = {r["out"]: r.get("sha256") for r in real["unpinned"]}
+    sha = pinned["data/terrain_layers/grass_turf_normal.ktx2"]
+    assert sha and len(sha) == 64 and int(sha, 16) >= 0
+
+
+def test_compare_captures_accepts_the_grass_turf_only_at_the_pinned_bytes():
+    real = json.loads(Path(cooked_outputs.MANIFEST).read_text(encoding="utf-8"))
+    out = "data/terrain_layers/grass_turf_normal.ktx2"
+    sha = {r["out"]: r.get("sha256") for r in real["unpinned"]}[out]
+    changed = {"tools/mc2texcook/cook_grass_turf.py"}
+    head = "HEAD"   # the committed manifest carries the pin
+    assert ab.cooked_unpinned_accepted(changed, head, {out: sha}) == {out}
+    assert ab.cooked_unpinned_accepted(changed, head, {out: "0" * 64}) == set()   # other bytes: refused
+    assert ab.cooked_unpinned_accepted(changed, head, {}) == set()                # not in the capture: refused
+    assert ab.cooked_unpinned_accepted({"code/mech.cpp"}, head, {out: sha}) == set()
+    assert ab.cooked_unpinned_accepted(changed, "no-such-commit", {out: sha}) == set()   # unreadable manifest: fail closed

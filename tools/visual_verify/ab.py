@@ -255,6 +255,25 @@ def cooked_unpinned(diff_files):
     return {path for script, outs in COOKED_UNPINNED_OUTPUTS.items() if script in diff_files for path in outs}
 
 
+def cooked_unpinned_accepted(diff_files, commit, install_manifest):
+    """The unpinned cooked outputs accepted as window payload: cook script changed, and, for a row that pins `sha256` in
+    tools/cooked_outputs.json (read at `commit`), the capture's file must be exactly those bytes (fail closed: an unreadable manifest
+    or a different hash accepts nothing for that row). Rows without a pin keep the cook-script rule."""
+    changed = cooked_unpinned(diff_files)
+    if not changed:
+        return set()
+    try:
+        r = subprocess.run(["git", "-C", str(ROOT), "show", f"{commit}:tools/cooked_outputs.json"], capture_output=True, text=True,
+                           **console_child.child_kwargs(redirected=True))
+        rows = json.loads(r.stdout)["unpinned"] if r.returncode == 0 else None
+    except (OSError, ValueError, KeyError, TypeError):
+        rows = None
+    if rows is None:
+        return {p for p in changed if p not in cooked_outputs.pinned_unpinned_paths()}
+    pins = {row["out"]: row.get("sha256") for row in rows}
+    return {p for p in changed if not pins.get(p) or install_manifest.get(p) == pins[p]}
+
+
 def cooked_payload(diff_files, commit):
     """{install relpath: pinned sha256} of the deploy-cooked outputs whose pin file changed in the window, read at `commit`.
     An unreadable or malformed pin file yields nothing for it (fail closed: its outputs keep refusing)."""
@@ -1204,7 +1223,7 @@ def main(argv=None):
                 accepted = manifest_diff_files(ia["manifest"], ib["manifest"]) & {repo_path_to_install(f) for f in diff_files}
                 accepted |= {path for path, sha in cooked_payload(diff_files, ib["commit"]).items()
                              if ib["manifest"].get(path) == sha}
-                accepted |= cooked_unpinned(diff_files)
+                accepted |= cooked_unpinned_accepted(diff_files, ib["commit"], ib["manifest"])
                 accepted_delta = sorted(accepted)
                 for path, line in entries:
                     if path in accepted:
