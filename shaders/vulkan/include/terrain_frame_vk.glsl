@@ -12,6 +12,7 @@
 #include "lighting_vk.glsl"
 
 #include "terrain_frame_ubo_vk.glsl"
+#include "environment_ubo_vk.glsl"   // uEnv: the per-frame mission environment block (binding 26)
 #include "mover_shadow.glsl"
 
 layout(set = TERRAIN_RESOURCE_SET, binding = 2) uniform sampler2D u_colormap;

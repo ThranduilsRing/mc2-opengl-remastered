@@ -17,7 +17,7 @@ vec3 propAuthoredColor(SurfaceMaterial s, bool alphaTest, bool authoredOrm, vec3
     // R2: the mission environment SH is the only ambient. ObjectLights ambient and the fixed
     // prop hemispheres no longer stack on top of it.
     vec3 sh[9];
-    for (int k=0; k<9; ++k) sh[k] = uFrame.iblSh[k].xyz;
+    for (int k=0; k<9; ++k) sh[k] = uEnv.shDiffuse[k].xyz;
     vec3 ibl = uFrame.iblShStrength > 0.0 ? evalShL2(normalize(nStuff), sh)*uFrame.iblShStrength : vec3(0);
     // AO affects ambient fill only; emission, direct sun and local pools survive.
     // SH is irradiance; legacy sun/seed/highlight inputs are authored sRGB.

@@ -314,8 +314,7 @@ extern "C" int mc2_color_prop_island_get_light_feed(Mc2ColorPropLightFeed* out) 
     out->ambientColor[3] = g_propContract.F;
     std::copy_n(g_propContract.D, 3, out->specDir);
     out->specDir[3] = 0.0f;
-    for (size_t i=0; i<9; ++i)
-        std::copy_n(environment.sky.diffuseSh[i].data(),3,out->iblSh[i]);
+    // The SH coefficients themselves ride the EnvironmentUBO (mission_environment_gpu.cpp); only the class strength is fed here.
     // Retain the existing option and profile strength, applied once.
     out->iblShStrength = iblShEnabled() ? g_iblShStrength * environment.unitAmbientScale : 0.0f;
     bool isNight = false;

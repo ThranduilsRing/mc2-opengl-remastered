@@ -127,6 +127,7 @@ set(SOURCES ${SOURCES}
     dbg_asset_globals.cpp
     diagnostic_trace.cpp
     visual_tuning_profile.cpp
+    mission_environment_gpu.cpp
     terrain_material_lib.cpp
     # VK-P13-SELECTOR-1 / T1: top-level MC2_RENDER_BACKEND selector (GL-safe; no
     # Vulkan headers, always compiled -- inert on =gl/unset, byte-identical).

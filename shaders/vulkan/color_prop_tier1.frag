@@ -272,7 +272,7 @@ void main() {
         vec3 macro = textureLod(u_colormap,uv,0.0).rgb;
         vec3 tint = macro / max(dot(macro,vec3(0.299,0.587,0.114)),0.01);
         vec3 albedo = propDecodeColor(materialAlbedo * mix(vec3(1),tint,0.25));
-        vec3 sh[9]; for (int k=0;k<9;++k) sh[k]=uFrame.iblSh[k].xyz;
+        vec3 sh[9]; for (int k=0;k<9;++k) sh[k]=uEnv.shDiffuse[k].xyz;
         vec3 ambient = uFrame.iblShStrength > 0.0 ? evalShL2(normalize(outputNormalStuff),sh)*uFrame.iblShStrength : vec3(0);
         // Leaf cards scatter light through both sides; crown normals must not
         // make the reverse side of a canopy black.

@@ -1,0 +1,75 @@
+// U1 environment-gpu: the SH basis the environment block carries, and the one producer.
+// The CPU twin below is the evalShL2 of shaders/vulkan/include/prop_sh_l2.glsl, line for line.
+#include "doctest.h"
+#include "../../GameOS/gameos/mission_environment_gpu.h"
+#include "../../RenderCore/IblShCoeffs.h"
+#include "axis_convert.h"
+#include <array>
+#include <cmath>
+
+namespace {
+struct V3 { float x, y, z; };
+std::array<float,3> evalShL2(V3 n, const float (*sh)[3]) {
+    const float c1 = 0.429043f, c2 = 0.511664f, c3 = 0.743125f, c4 = 0.886227f, c5 = 0.247708f;
+    std::array<float,3> r{};
+    for (int c = 0; c < 3; ++c)
+        r[c] = c1*sh[8][c]*(n.x*n.x - n.z*n.z) + c3*sh[6][c]*(n.y*n.y) + c4*sh[0][c] - c5*sh[6][c]
+             + 2*c1*sh[4][c]*(n.x*n.y) + 2*c1*sh[5][c]*(n.y*n.z) + 2*c1*sh[7][c]*(n.x*n.z)
+             + 2*c2*sh[3][c]*n.x + 2*c2*sh[1][c]*n.y + 2*c2*sh[2][c]*n.z;
+    return r;
+}
+float lum(const std::array<float,3>& v) { return 0.2126f*v[0] + 0.7152f*v[1] + 0.0722f*v[2]; }
+}
+
+TEST_CASE("EnvironmentGpu/the sky SH is Y-up: the data pins the shader's up component") {
+    const float (*sh)[3] = RenderCore::kIblShCoeffs;
+    const float up = lum(evalShL2({0,1,0}, sh)), down = lum(evalShL2({0,-1,0}, sh));
+    const float fwd = lum(evalShL2({0,0,1}, sh)), back = lum(evalShL2({0,0,-1}, sh));
+    CHECK(up > 1.5f * down);                                      // zenith is far brighter than nadir
+    CHECK(std::fabs(up - down) > 10.0f * std::fabs(fwd - back));  // a sky has no .z gradient: .z is not up in this data
+}
+
+TEST_CASE("EnvironmentGpu/MC2 up (z) maps to the SH zenith through the one axis conversion") {
+    const float (*sh)[3] = RenderCore::kIblShCoeffs;
+    struct P { float x, y, z; } mc2Up{0,0,1}, mc2Down{0,0,-1}, r{};
+    mc2ToRender(r, mc2Up);
+    CHECK(r.y == 1.0f);   // render-space .y is up
+    const float roof = lum(evalShL2({r.x, r.y, r.z}, sh));
+    mc2ToRender(r, mc2Down);
+    const float floorLit = lum(evalShL2({r.x, r.y, r.z}, sh));
+    CHECK(roof > floorLit);  // a roof (MC2 +z normal) is lit by the sky above it, not the ground below
+}
+
+TEST_CASE("EnvironmentGpu/producer carries the record once and keeps the sky shape") {
+    RenderCore::MissionEnvironment env;
+    env.lighting.ambientColor = {0.4f, 0.4f, 0.4f};
+    env.unitAmbientScale = 1.5f;
+    env.sky.hemisphereSky = {0.2f, 0.4f, 0.6f};
+    for (int i = 0; i < 9; ++i) for (int c = 0; c < 3; ++c) env.sky.diffuseSh[i][c] = RenderCore::kIblShCoeffs[i][c];
+    EnvironmentUBO out{};
+    mc2::environment::fillGpu(env, 0.35f, out);
+    CHECK(out.sceneLight[0] == doctest::Approx(0.35f));
+    CHECK(out.hemiSky[0] == doctest::Approx(0.3f));
+    CHECK(out.hemiSky[2] == doctest::Approx(0.9f));
+    for (int i = 1; i < 9; ++i) for (int c = 0; c < 3; ++c) CHECK(out.shDiffuse[i][c] == RenderCore::kIblShCoeffs[i][c]);
+    // Neutral grey ambient: the L0 hue moves a few percent at most and its luminance is kept.
+    const std::array<float,3> l0{out.shDiffuse[0][0], out.shDiffuse[0][1], out.shDiffuse[0][2]};
+    const std::array<float,3> ref{RenderCore::kIblShCoeffs[0][0], RenderCore::kIblShCoeffs[0][1], RenderCore::kIblShCoeffs[0][2]};
+    CHECK(lum(l0) == doctest::Approx(lum(ref)).epsilon(0.02));
+    CHECK(l0[2] / l0[0] == doctest::Approx(1.0f).epsilon(0.02));  // grey ambient reads neutral
+}
+
+TEST_CASE("EnvironmentGpu/per-mission L0 follows the ambient hue by day and not at night") {
+    RenderCore::MissionEnvironment env;
+    for (int i = 0; i < 9; ++i) for (int c = 0; c < 3; ++c) env.sky.diffuseSh[i][c] = RenderCore::kIblShCoeffs[i][c];
+    env.lighting.ambientColor = {0.6f, 0.4f, 0.2f};   // warm mission
+    EnvironmentUBO day{}, night{};
+    mc2::environment::fillGpu(env, 1.0f, day);
+    CHECK(day.shDiffuse[0][0] / day.shDiffuse[0][2] > 1.3f);   // warm mission, warm ambient
+    env.lighting.night = true;   // the night SH is already built from the mission ambient: no second tint
+    mc2::environment::fillGpu(env, 1.0f, night);
+    for (int c = 0; c < 3; ++c) CHECK(night.shDiffuse[0][c] == RenderCore::kIblShCoeffs[0][c]);
+    float chroma[3];
+    mc2::environment::missionL0Chroma({0, 0, 0}, chroma);      // no mission colour: sky hue kept
+    CHECK((chroma[0] == 1.0f && chroma[1] == 1.0f && chroma[2] == 1.0f));
+}

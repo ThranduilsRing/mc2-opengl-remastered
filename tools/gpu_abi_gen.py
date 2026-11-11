@@ -61,6 +61,10 @@ STRUCTS = [
     ("RenderCore/gpu_abi/GpuTerrainFrameUBO.h",
      "RenderCore/gpu_abi/GpuTerrainFrameUBO.layout.gen.h",
      "shaders/vulkan/include/terrain_frame_ubo_vk.glsl"),
+    # Per-frame mission environment (TERRAIN_RESOURCE_SET binding 26, vertex + fragment).
+    ("RenderCore/gpu_abi/GpuEnvironment.h",
+     "RenderCore/gpu_abi/GpuEnvironment.layout.gen.h",
+     "shaders/vulkan/include/environment_ubo_vk.glsl"),
 ]
 
 

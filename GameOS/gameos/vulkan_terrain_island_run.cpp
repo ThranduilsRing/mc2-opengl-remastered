@@ -15,7 +15,8 @@
 #include "../../mclib/battle_bench_wait.h"
 #include "vk_island_fail_policy.h"
 #include "vk_rt_scene.h"
-
+#include "visual_tuning_profile.h"
+#include "mission_environment_gpu.h"
 
 
 // ===========================================================================
@@ -25,6 +26,26 @@
 extern uint32_t g_mc2RenderFrame;   // mclib/tgl.cpp
 float mc2SceneLightScale();   // mclib/camera.cpp: LOCAL-LIGHTS-4 mission night scale of the prelit ground
 static uint32_t g_sceneClearedRenderFrame = 0;   // render frame + 1 of the last shared-scene clear (0 = never)
+
+// The per-frame mission environment (EnvironmentUBO, binding 26 of set[par]): the one producer fills a frame-ring slice and the
+// binding is re-pointed at it. A new revision follows, so props, mechs, vegetation and water re-copy it with the rest of the set.
+// Call after the slot wait that retires set[par] (the same place as the mover shadow bind).
+bool bind_environment(TerrainIsland* s, uint32_t par) {
+    auto& rctx = mc2vk::getOrCreateEngineVulkanContext();
+    const mc2vk::FrameAlloc slice = rctx.frameAlloc(sizeof(EnvironmentUBO));
+    if (!slice) return false;
+    EnvironmentUBO env;
+    mc2::environment::fillGpu(visualTuning_environment(), mc2SceneLightScale(), env);
+    std::memcpy(slice.ptr, &env, sizeof(env));
+    const VkDescriptorBufferInfo info{slice.buffer, slice.offset, sizeof(EnvironmentUBO)};
+    VkWriteDescriptorSet w{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+    w.dstSet = s->set[par]; w.dstBinding = 26; w.descriptorCount = 1;
+    w.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; w.pBufferInfo = &info;
+    vkUpdateDescriptorSets(s->device, 1, &w, 0, nullptr);
+    mc2vk::noteDescWrites(1, 0);
+    s->setRev[par] = mc2vk::nextDescRevision();
+    return true;
+}
 
 // The visual mode a patch is actually drawn in. Single source for the draw loop and the feed receipt (the receipt used to report
 // the requested mode, so a mode-1 patch that fell back showed as 0 or 2 inconsistently with what was drawn).
@@ -228,7 +249,6 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     u.quadCountX        = patch.quadCountX;
     u.quadCountY        = patch.quadCountY;
     // VK-PARITY-TERRAIN-1: values pulled from the shared GL-side producers.
-    u.sceneLightScale   = mc2SceneLightScale();   // LOCAL-LIGHTS-4 (mclib/camera.cpp mission profile)
     u.ambientFloor      = feed.ambientFloor;
     u.ambientDayGate    = feed.ambientDayGate;
     {
@@ -589,6 +609,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     bool moverBound;
     { ZoneScopedN("VKIsl.Terrain.BindMoverShadow"); mc2_hitch2::Scope hs("terrain.bind_mover_shadow"); moverBound = mc2vk::bindMoverShadowDescriptors(s->device,s->set[par],&s->moverStamp[par]); }
     if (!moverBound) { setFallback("mover_receiver_unavailable"); s->disabled=true; return 0; }
+    if (!bind_environment(s,par)) { setFallback("environment_slice_unavailable"); s->disabled=true; return 0; }
     const std::array<VkImageView,7> views{s->colormapTexture.view(),s->cementTexture.view(),s->shoreMaskTexture.view(),s->matNormalTexture.view(),s->materialTexture.view(),s->macroGradientTexture.view(),s->staticVisibilityDummy.view()};
     if (s->descriptorsDirty[par] || s->boundTextures[par]!=views) {
         ZoneScopedN("VKIsl.Terrain.WriteDescriptors"); mc2_hitch2::Scope hs("terrain.write_descriptors");

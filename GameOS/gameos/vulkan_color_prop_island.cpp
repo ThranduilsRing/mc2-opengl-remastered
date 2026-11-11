@@ -2228,15 +2228,8 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
             std::copy_n(lightFeed.sunColor, 4, u.sunColor);
             std::copy_n(lightFeed.ambientColor, 4, u.ambientColor);
             std::copy_n(lightFeed.specDir, 4, u.specDir);
-            for (int i = 0; i < 9; ++i) {
-                u.iblSh[i][0] = lightFeed.iblSh[i][0];
-                u.iblSh[i][1] = lightFeed.iblSh[i][1];
-                u.iblSh[i][2] = lightFeed.iblSh[i][2];
-                u.iblSh[i][3] = 0.0f;
-            }
-            u.iblShStrength = lightFeed.iblShStrength;
+            u.iblShStrength = lightFeed.iblShStrength;   // the SH coefficients are the EnvironmentUBO's (binding 26)
         } else {
-            std::memset(u.iblSh, 0, sizeof(u.iblSh));
             u.iblShStrength = 0.0f;
         }
         u.lightingReady = s->lightingReady ? 1 : 0;
@@ -2261,10 +2254,10 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
             static bool s_lit_dumped = false;
             if (mc2::gate::get<"MC2_VK_PROP_LIGHT_PROBE">() && !s_lit_dumped) {
                 s_lit_dumped = true;
-                mc2::fmt::print_err("[PROP_LIGHT_PROBE v1] lightingReady={:d} haveLightFeed={:d} tier1={:d} wantLighting={:d} wantMaterial={:d} materialReady={:d} iblShStrength={:.4f} iblSh0=({:.4f},{:.4f},{:.4f}) lightDataCpuBytes={:d} terrainSun=({:.3f},{:.3f},{:.3f})\n",
+                mc2::fmt::print_err("[PROP_LIGHT_PROBE v1] lightingReady={:d} haveLightFeed={:d} tier1={:d} wantLighting={:d} wantMaterial={:d} materialReady={:d} iblShStrength={:.4f} lightDataCpuBytes={:d} terrainSun=({:.3f},{:.3f},{:.3f})\n",
                     mc2::fmt::as_i32(u.lightingReady), mc2::fmt::as_i32(haveLightFeed ? 1 : 0), mc2::fmt::as_i32(s->tier1 ? 1 : 0),
                     mc2::fmt::as_i32(s->wantLighting ? 1 : 0), mc2::fmt::as_i32(s->wantMaterial ? 1 : 0), mc2::fmt::as_i32(u.materialReady),
-                    u.iblShStrength, u.iblSh[0][0], u.iblSh[0][1], u.iblSh[0][2],
+                    u.iblShStrength,
                     mc2::fmt::as_u64(static_cast<unsigned long long>(lightFeed.lights.bytes)),
                     u.terrainSunMC2[0], u.terrainSunMC2[1], u.terrainSunMC2[2]);
                 std::fflush(stderr);
