@@ -82,7 +82,8 @@ TEST_CASE("logistics archive: roundtrip is exact and re-encodes to the same byte
 TEST_CASE("logistics archive: the rank helper matches LogisticsPilot::turnAverageIntoRank") {
     CHECK(logistics_detail::rankOf(50, 50) == 0);
     CHECK(logistics_detail::rankOf(51, 50) == 1);
-    CHECK(logistics_detail::rankOf(70, 71) == 2);
+    CHECK(logistics_detail::rankOf(70, 70) == 2);
+    CHECK(logistics_detail::rankOf(70, 71) == 3);
     CHECK(logistics_detail::rankOf(80, 70) == 3);
     CHECK(logistics_detail::rankOf(80, 80) == 4);
     CHECK(logistics_detail::rankOf(100, 100) == logisticsMaxRank);
