@@ -52,3 +52,37 @@ def test_batch_lint_ok_follows_lint_rc(monkeypatch):
     assert seen == [("r", "HEAD")]
     text = open(lm.__file__, encoding="utf-8").read()
     assert "args.stage and not batch_lint_ok(root)" in text
+
+
+def test_generated_hint_names_the_regen_command():
+    tail = ("split_map: FAIL - docs/split-map.md is stale (a split piece was added, removed or re-described); "
+            "run: py -3 tools/split/split_map.py --write")
+    assert lm.generated_hint(tail) == ("only generated files are stale (docs/split-map.md); "
+                                       "the merge regenerates them, or run py -3 tools/split/split_map.py --write")
+
+
+def test_generated_hint_background_launch_inventory():
+    assert lm.generated_hint("docs/background-launch-inventory.md is stale") == (
+        "only generated files are stale (docs/background-launch-inventory.md); "
+        "the merge regenerates them, or run py -3 scripts/check-background-launch.py --write --quiet")
+
+
+def test_generated_hint_suppressed_when_other_files_fail():
+    assert lm.generated_hint("code/foo.cpp:12 [LG08] violation") is None
+    assert lm.generated_hint("docs/split-map.md is stale; code/foo.cpp:12 also fails") is None
+
+
+def test_report_lint_row_prints_generated_hint(capsys):
+    lm.report_lint_row("split_map", 1, 0.4,
+                       "split_map: FAIL - docs/split-map.md is stale; run: py -3 tools/split/split_map.py --write",
+                       "fix the code, or lower the baseline via the ratchet's own --tighten (never raise it)")
+    out = capsys.readouterr().out
+    assert "lint: split_map: FAIL" in out
+    assert "fix: fix the code" in out
+    assert ("only generated files are stale (docs/split-map.md); "
+            "the merge regenerates them, or run py -3 tools/split/split_map.py --write") in out
+
+
+def test_report_lint_row_pass_prints_no_hint(capsys):
+    lm.report_lint_row("cxx17", 0, 1.2, "", "fix the code")
+    assert capsys.readouterr().out == "lint: cxx17: PASS (1s)\n"

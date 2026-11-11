@@ -7,6 +7,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 
 import pytest
@@ -25,8 +26,19 @@ BASH = shutil.which("bash") or "bash"   # not a bare "bash": on Windows CreatePr
 
 
 def bash(script, env=None, **kw):
-    return subprocess.run([BASH, "-c", script], capture_output=True, text=True, env={**os.environ, **(env or {})},
-                          **console_child.child_kwargs(redirected=True, **kw))
+    # Never pass the script as a -c argument: Git Bash's MSYS2 runtime parses the CreateProcess command line
+    # itself, and its parser corrupts escaped quotes and truncates the argument once its quote tracking
+    # desyncs (the ~10 KB lane_cleanup preamble died at 8186 chars: "unexpected EOF while looking for
+    # matching `'`'), while a reference MSVCRT parse of the same command line is exact. Hand it to bash
+    # as a file instead; the file path is a short, clean argument.
+    fd, path = tempfile.mkstemp(prefix="mc2bash-", suffix=".sh")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="") as f:
+            f.write(script)
+        return subprocess.run([BASH, path], capture_output=True, text=True, env={**os.environ, **(env or {})},
+                              **console_child.child_kwargs(redirected=True, **kw))
+    finally:
+        os.unlink(path)
 
 
 def between(text, a, b):

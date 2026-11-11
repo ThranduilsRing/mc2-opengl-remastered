@@ -907,6 +907,32 @@ def lint_rows(py: list[str], base_ref: str, ref: str) -> list[tuple[str, list[st
     return rows
 
 
+#: A path with a line number in a row's failure output: a file the row reports as failing.
+FAIL_LOC = re.compile(r"([A-Za-z0-9_][A-Za-z0-9_.+-]*/[A-Za-z0-9_.+-]*\.[A-Za-z0-9]{1,8})[:(]\d+")
+
+
+def generated_hint(tail: str) -> str | None:
+    """A failing row's output names files of the GENERATED set as stale and no other file fails:
+    the merge regenerates them, so say so and name the regenerator's own command. -> the hint line, or None."""
+    stale = sorted({p for p in GENERATED if p in tail})
+    if not stale or any(p not in GENERATED for p in FAIL_LOC.findall(tail)):
+        return None
+    cmds = ["py -3 " + " ".join([script, *args]) for files, script, args in GENERATED_REGENERATORS if set(stale) & files]
+    return ("only generated files are stale (" + ", ".join(stale) + "); "
+            "the merge regenerates them, or run " + " / ".join(cmds))
+
+
+def report_lint_row(label: str, rc: int, secs: float, tail: str, hint: str) -> None:
+    """One lint row's report: the verdict line, and for a red the failure tail, its fix and the generated-file hint."""
+    print(f"lint: {label}: {'PASS' if rc == 0 else 'FAIL'} ({secs:.0f}s)", flush=True)
+    if rc:
+        print("  " + tail.replace("\n", "\n  "), flush=True)
+        if hint:
+            print("  fix: " + hint, flush=True)
+        if (note := generated_hint(tail)) is not None:
+            print("  " + note, flush=True)
+
+
 REGEN_WORKERS = 4   # regenerate_all's inner pool; counted against a lint's CPU budget
 
 
@@ -958,12 +984,9 @@ def _lint_locked(root: str, ref: str, runner=None) -> int:
                     failed.append("lint:" + str(exc).replace("\n", " "))
                     continue
                 for label, rc, secs, tail, hint in results:
-                    print(f"lint: {label}: {'PASS' if rc == 0 else 'FAIL'} ({secs:.0f}s)", flush=True)
                     if rc:
                         failed.append(label)
-                        print("  " + tail.replace("\n", "\n  "), flush=True)
-                        if hint:
-                            print("  fix: " + hint, flush=True)
+                    report_lint_row(label, rc, secs, tail, hint)
     print("LINT " + ("FAIL " + ", ".join(failed) if failed else "PASS") + f" WALL={time.monotonic() - started:.0f}s (the precheck still runs the Python suites and the link)")
     return int(bool(failed))
 

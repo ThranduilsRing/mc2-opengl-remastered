@@ -38,3 +38,17 @@ def test_default_log_dir_is_g_not_tmp(monkeypatch, capsys):
     monkeypatch.setattr(gate_wait, "wait", lambda cmd, log, timeout: seen.setdefault("log", log) and (0, 0.0))
     gate_wait.main(["--", "x"])
     assert seen["log"].replace("\\", "/").startswith("G:/mc2-tmp/gate_wait-")
+
+
+def test_two_default_names_same_second_differ(monkeypatch, capsys):
+    import gate_wait
+    monkeypatch.setattr(gate_wait.os, "makedirs", lambda *a, **k: None)
+    monkeypatch.setattr(gate_wait, "wait", lambda cmd, log, timeout: (0, 0.0))
+    monkeypatch.setattr(gate_wait.time, "time", lambda: 1700000000.0)
+    names = []
+    for pid in (111, 222):
+        monkeypatch.setattr(gate_wait.os, "getpid", lambda pid=pid: pid)
+        gate_wait.main(["--", "x"])
+        names.append(capsys.readouterr().out.strip().split("log=")[1].replace("\\", "/"))
+    assert len(set(names)) == 2
+    assert all(n.startswith("G:/mc2-tmp/gate_wait-1700000000-") for n in names)

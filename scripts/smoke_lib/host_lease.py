@@ -376,7 +376,9 @@ def _set_affinity(handle, pid, mask) -> None:
 
 
 def _refresh_game_affinity() -> None:
-    """Called under the queue lock: narrow a running sole game before admitting a neighbour."""
+    """Called under the queue lock: narrow a running sole game before admitting a neighbour.
+    An engine this lease cannot open or pin (another lane's game, WinError 5) is skipped with one log line
+    per pid and the rest is pinned; an error on our own engine still raises."""
     if redirected() or sys.platform != "win32" or os.environ.get("MC2_NO_CPU_PIN"):
         return
     import ctypes
@@ -396,19 +398,19 @@ def _refresh_game_affinity() -> None:
             if not handle:
                 if child_registry.pid_alive(pid):
                     err = ctypes.WinError(ctypes.get_last_error())
-                    if isinstance(err, PermissionError):
-                        print(f"[host-affinity] pid={pid} not re-pinned ({err}); continuing", file=sys.stderr, flush=True)
-                        continue
-                    raise err
+                    if _ours(rec):
+                        raise err
+                    _log_default(f"[host-affinity] skipped pid {pid}: cannot open ({err})")
                 continue
             try:
                 # Recheck after opening: never change a reused PID's affinity.
                 if child_registry.process_create_time(pid) == child["created"]:
-                    _set_affinity(handle, pid, mask)
-            except PermissionError as exc:
-                # Narrowing a neighbour is best effort: an engine that is exiting (or another account's) answers
-                # ACCESS_DENIED, which must not abort the launch that is waiting on the lease (ab.py side B, 11-10).
-                print(f"[host-affinity] pid={pid} not re-pinned ({exc}); continuing", file=sys.stderr, flush=True)
+                    try:
+                        _set_affinity(handle, pid, mask)
+                    except (OSError, RuntimeError) as err:
+                        if _ours(rec):
+                            raise
+                        _log_default(f"[host-affinity] skipped pid {pid}: cannot pin ({err})")
             finally:
                 kernel.CloseHandle(handle)
 
