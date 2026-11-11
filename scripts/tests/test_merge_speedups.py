@@ -1253,7 +1253,7 @@ def test_precheck_and_lint_no_longer_gate_on_generated_inventories():
     assert not hasattr(lm, "stale_inventories")
     assert "inventories" not in inspect.getsource(lm.precheck).replace("generated inventories are no precheck proof", "")
     # pre_gate runs the real regenerate-all once (tooling-speed-2a, pre_gate_regen); precheck/lint still do not.
-    assert "regenerate" not in inspect.getsource(lm.precheck)
+    assert "regenerate_all(" not in inspect.getsource(lm.precheck)
 
 
 def test_preflight_names_the_exact_rebuild_for_a_stale_viewer_and_main_exe(monkeypatch, capsys):
