@@ -17,6 +17,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 DET_DIR = os.path.join(ROOT, "tests", "smoke", "sim_determinism")
@@ -60,19 +61,69 @@ def stale(rows: list[dict], max_behind: int) -> list[dict]:
     return [r for r in rows if r["behind"] is None or r["behind"] > max_behind]
 
 
+GATE_DROP_WITH_VALUE = ("--install", "--out", "--save-dir", "--mission")
+
+
+def gate_form(kind: str, mission: str) -> list[str]:
+    """The merge gate's own flags for this row (scripts/merge_gate.plan): headless-both/ticks/sim-speed/single for determinism,
+    mask/first-save-only/headless for saveload. Taken from the plan, never restated, so a re-pin cannot record in another form.
+    The command word, mission, --install, --out and --save-dir are the caller's."""
+    for extra in (os.path.join(ROOT, "tools"), os.path.join(ROOT, "scripts")):
+        if extra not in sys.path:
+            sys.path.insert(0, extra)
+    import merge_gate
+    name = ("determinism-" if kind == "determinism" else "saveload-") + mission
+    for step, cmd, _env in merge_gate.plan(1, "PROOF"):
+        if step == name:
+            args = list(cmd[4:] if kind == "determinism" else cmd[3:])  # drop py, script, check, mission (saveload: py, script, check)
+            flags, i = [], 0
+            while i < len(args):
+                if args[i] in GATE_DROP_WITH_VALUE:
+                    i += 2
+                    continue
+                flags.append(args[i])
+                i += 1
+            return flags
+    raise SystemExit(f"repin_stale: the merge gate has no row {name}; cannot record in the gate's form")
+
+
+def scratch_root(explicit: str | None = None) -> str:
+    """Parent of the re-pin run dirs: --out-root, else a fresh dir under the slot scratch ($MC2_LANE_SCRATCH), else a fresh tempdir.
+    Never a fixed shared path."""
+    if explicit:
+        return explicit
+    lane = os.environ.get("MC2_LANE_SCRATCH")
+    if lane:
+        os.makedirs(lane, exist_ok=True)
+        return tempfile.mkdtemp(prefix="repin_", dir=lane)
+    return tempfile.mkdtemp(prefix="repin_")
+
+
+def fresh_out_dir(path: str) -> str:
+    """A run dir must not hold an earlier run (the stale log would be re-pinned): refuse loudly, rc 2."""
+    if os.path.exists(path) and (not os.path.isdir(path) or os.listdir(path)):
+        raise SystemExit(f"repin_stale: out dir {path} already exists and is not empty; pass another --out-root (rc 2)")
+    return path
+
+
 def repin_command(row: dict, install: str, det_duration: int, tmp: str) -> list[list[str]]:
     py = [sys.executable, "-B"]
-    if row["kind"] == "saveload":
-        return [py + [os.path.join(ROOT, "tools", "saveload_roundtrip.py"), "--baseline", "--mission", row["mission"], "--install", install]]
     m = row["mission"]
+    if row["kind"] == "saveload":
+        out = os.path.join(tmp, "repin_save_" + m)
+        return [py + [os.path.join(ROOT, "tools", "saveload_roundtrip.py"), "baseline", "--mission", m, "--install", install,
+                      "--out", out, "--save-dir", os.path.join(out, "savegame")] + gate_form("saveload", m)]
     out = os.path.join(tmp, "repin_" + m)
     sd = os.path.join(ROOT, "tools", "sim_determinism.py")
     env = [x for k, v in (row["data"].get("env") or {}).items() for x in ("--env", f"{k}={v}")]
-    return [py + [sd, "run", m, "--duration", str(det_duration), "--install", install, "--out", out, "--baseline"] + env,
+    form = [f for f in gate_form("determinism", m) if f != "--single"]  # --single is check-only: a re-pin records from a pair
+    return [py + [sd, "run", m, "--duration", str(det_duration), "--install", install, "--out", out, "--baseline"] + form + env,
             py + [sd, "write-baseline", "@LOG@", "--frames", str(row["data"].get("frames", 0)), "--mission", m, "--install", install] + env]
 
 
 def repin(row: dict, install: str, det_duration: int, tmp: str) -> bool:
+    fresh_out_dir(os.path.join(tmp, "repin_" + row["mission"]))
+    fresh_out_dir(os.path.join(tmp, "repin_save_" + row["mission"]))
     for cmd in repin_command(row, install, det_duration, tmp):
         if "@LOG@" in cmd:
             logs = glob.glob(os.path.join(tmp, "repin_" + row["mission"], "**", row["mission"] + ".log"), recursive=True)
@@ -109,7 +160,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--only", help="comma-separated missions to restrict the listing / re-pin to")
     ap.add_argument("--install", help="install name or dir for --repin")
     ap.add_argument("--det-duration", type=int, default=30, help="seconds per determinism re-pin run (default 30)")
-    ap.add_argument("--tmp", default="G:/mc2-tmp")
+    ap.add_argument("--out-root", help="parent of the re-pin run dirs (default: a fresh dir under $MC2_LANE_SCRATCH, else a tempdir)")
     args = ap.parse_args(argv)
     rows = scan()
     if args.only:
@@ -126,7 +177,8 @@ def main(argv: list[str] | None = None) -> int:
     if not args.install:
         print("repin_stale: --repin needs --install")
         return 2
-    failed = [r for r in bad if not (print(f"re-pin {r['kind']} {r['mission']}") or repin(r, args.install, args.det_duration, args.tmp))]
+    root = scratch_root(args.out_root)
+    failed = [r for r in bad if not (print(f"re-pin {r['kind']} {r['mission']}") or repin(r, args.install, args.det_duration, root))]
     print("repin_stale: " + ("FAILED " + ", ".join(f"{r['kind']}:{r['mission']}" for r in failed) if failed else "re-pinned all"))
     return 1 if failed else 0
 
