@@ -2795,7 +2795,7 @@ flags:
     verified: true
   - name: MC2_VEGETATION_MAX
     kind: Int
-    default: 5000000
+    default: 10000000
     rule: Prefix
     owner: code
     doc: ""

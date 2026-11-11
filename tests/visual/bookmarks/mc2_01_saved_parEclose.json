@@ -12,7 +12,10 @@
       ],
       "rot": -176.75,
       "proj": 12.5,
-      "alt": 900.0
+      "alt": 900.0,
+      "covers": [
+        "mech"
+      ]
     },
     {
       "name": "saved_parEclose_dup",
@@ -23,7 +26,10 @@
       ],
       "rot": -176.75,
       "proj": 12.5,
-      "alt": 900.0
+      "alt": 900.0,
+      "covers": [
+        "mech"
+      ]
     }
   ]
 }
