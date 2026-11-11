@@ -18,9 +18,6 @@
 #include "watch_list_save_data.h"
 #include "mission_codec.h"
 #include "mc2fmt.h"
-#include <atomic>
-#include <chrono>
-#include "../GameOS/gameos/diagnostic_trace.h"
 #include "../GameOS/gameos/static_caster_set.h"
 
 extern "C" void mission_load_pump();
@@ -199,9 +196,6 @@ long GameObjectManager::getSpecificObjects (long objClass, long objSubType, Game
 
 //---------------------------------------------------------------------------
 
-extern std::atomic<uint64_t> g_fineApp, g_fineAppInit;
-extern std::atomic<uint64_t> g_fineAppN[3];
-extern std::atomic<uint64_t> g_fineType, g_fineSwitch, g_fineRest, g_fineN;
 void GameObjectManager::loadTerrainObjects (PacketFile* terrainFile,
 											volatile float& progress, float progressRange ) 
 {
@@ -242,7 +236,6 @@ void GameObjectManager::loadTerrainObjects (PacketFile* terrainFile,
 	}
 
 	handles.reset();
-	const auto fineLoopEnd = std::chrono::steady_clock::now();
 	
 	//Done loading the objects, free the memory holding them!!
 	std::free(objData);
@@ -335,12 +328,6 @@ void GameObjectManager::loadTerrainObjects (PacketFile* terrainFile,
 			assignNearestPowerSupply(terrainObjects[i], std::span(powerGenerators, numPowerGenerators));
 		}
 	}
-	if (mc2_diag::tagRequested("LOAD_LAPS"))
-		mc2::fmt::print_err("[LOAD_LAPS_FINE] objs={} getType_ms={:.0f} switch_init_ms={:.0f} rest_ms={:.0f} getAppearance_ms={:.0f} appInit_ms={:.0f} nTree={} nTerr={} nBld={} post_loop_ms={:.0f}\n",
-			static_cast<unsigned long long>(g_fineN.exchange(0)), g_fineType.exchange(0) / 1e6, g_fineSwitch.exchange(0) / 1e6, g_fineRest.exchange(0) / 1e6,
-			g_fineApp.exchange(0) / 1e6, g_fineAppInit.exchange(0) / 1e6,
-			static_cast<unsigned long long>(g_fineAppN[0].exchange(0)), static_cast<unsigned long long>(g_fineAppN[1].exchange(0)), static_cast<unsigned long long>(g_fineAppN[2].exchange(0)),
-			std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - fineLoopEnd).count());
 }
 
 //---------------------------------------------------------------------------
