@@ -17,6 +17,7 @@
 #endif
 
 #include "bdactor_internal.h"
+#include "content_ir.h"  // TEMP laps
 #include "gameobj.h"
 #include "appearance_rng.h"
 #include "../RenderCore/axis_convert.h"
@@ -287,8 +288,11 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		// MODEL-OVERRIDE dual-shape: build the per-instance RENDER shape from the
 		// render accessor (override if present, else stock). Collision rebuilds
 		// this same member from stock bldgShape[lod] when it needs passability.
+		const uint64_t tempB0 = mc2::content::tempLapNow();
 		bldgShapeOwner_.reset(appearType->getBldgRenderShape(0)->CreateFrom());
 		bldgShape = bldgShapeOwner_.get();
+		const uint64_t tempB1 = mc2::content::tempLapNow();
+		uint64_t tempExists = 0, tempLoad = 0;
 
 		// Load the texture and store its handle.
 		for (int i=0;i<bldgShape->GetNumTextures();i++)
@@ -302,8 +306,12 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			FullPathFileName textureName;
 			textureName.init(texturePath,txmName,"");
 	
-			if (textureOrKtxSidecarExists(textureName))
+			const uint64_t tempE0 = mc2::content::tempLapNow();
+			const bool tempExistsNow = textureOrKtxSidecarExists(textureName);
+			tempExists += mc2::content::tempLapNow() - tempE0;
+			if (tempExistsNow)
 			{
+				const uint64_t tempL0 = mc2::content::tempLapNow();
 				if (S_strnicmp(txmName,"a_",2) == 0)
 				{
 					DWORD gosTextureHandle = mc2::textures::load(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink);
@@ -318,6 +326,7 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 					bldgShape->SetTextureHandle(i,gosTextureHandle);
 					bldgShape->SetTextureAlpha(i,false);
 				}
+				tempLoad += mc2::content::tempLapNow() - tempL0;
 			}
 			else
 			{
@@ -326,6 +335,7 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			}
 		}
 		
+		const uint64_t tempB2 = mc2::content::tempLapNow();
 		// Gameplay bounds use the original asset; render overrides only own raster geometry.
 		std::unique_ptr<TG_MultiShape> stockBounds;
 		if (appearType->bldgRenderShape || appearType->bldgDmgRenderShape)
@@ -407,6 +417,13 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		// (render type-shape not in s_typeIndex) -> CPU-fallback/cull, and the
 		// override would never rasterize. Damage stays stock (out of MVP).
 		appearType->registerRenderShapes();
+		const uint64_t tempB3 = mc2::content::tempLapNow();
+		mc2::content::tempLapAdd(3, 0, tempB1 - tempB0);
+		mc2::content::tempLapAdd(3, 1, tempB2 - tempB1);
+		mc2::content::tempLapAdd(3, 2, tempB3 - tempB2);
+		mc2::content::tempLapAdd(4, 0, tempExists);
+		mc2::content::tempLapAdd(4, 1, tempLoad);
+		mc2::content::tempLapAdd(4, 2, 0);
 	}
 }
 
