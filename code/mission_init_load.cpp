@@ -740,7 +740,7 @@ void Mission::initTerrainObjectsLoad(char (*commandersToLoad)[3], MissionInitFra
 		ZoneScopedN("Mission::init ObjectManager::loadTerrainObjects");
 		const auto lapT0 = std::chrono::steady_clock::now();
 		ObjectManager->loadTerrainObjects(&pakFile, loadProgress, 30);
-		mc2::content::reportLoadLaps("terrain_objects",
+		if (mc2_diag::tagRequested("LOAD_LAPS")) mc2::content::reportLoadLaps("terrain_objects",
 			std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - lapT0).count(), f.missionName);
 	}
 	mission_phase_mark("terrain_objects_ready");

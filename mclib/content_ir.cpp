@@ -216,7 +216,7 @@ void tempLapAdd(int kind, int phase, uint64_t ns) { g_tempLap[kind][phase].fetch
 uint64_t tempLapNow() { return nowNs(); }
 
 void reportLoadLaps(std::string_view stage, double stageMs, std::string_view mission) {
-    if (!mc2_diag::tagRequested("LOAD_LAPS")) return;   // MC2_DIAG_TAGS=LOAD_LAPS; accumulators are cheap and never reset when off
+    // The caller guards on MC2_DIAG_TAGS=LOAD_LAPS (mc2_diag lives in GameOS, which the asset viewer does not link).
     for (int k = 0; k < 3; ++k) {
         const unsigned long long c = g_tempLap[k][3].exchange(0);
         const double a = static_cast<double>(g_tempLap[k][0].exchange(0)) / 1e6, b = static_cast<double>(g_tempLap[k][1].exchange(0)) / 1e6, r = static_cast<double>(g_tempLap[k][2].exchange(0)) / 1e6;
