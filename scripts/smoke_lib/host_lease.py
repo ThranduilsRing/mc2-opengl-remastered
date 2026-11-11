@@ -672,9 +672,26 @@ def _holder_tag(rec: Optional[dict]) -> str:
     return tag[len("batch "):] if tag.startswith("batch ") else tag
 
 
+def _owner_alive(rec: dict) -> Optional[bool]:
+    """Liveness of the process that started a batch: None when the record predates owner tracking, else True/False.
+    The creation time guards against a recycled pid."""
+    try:
+        pid = int(rec.get("owner_pid") or 0)
+    except (TypeError, ValueError):
+        return False
+    if pid <= 0:
+        return None
+    if not child_registry.pid_alive(pid):
+        return False
+    created = rec.get("owner_created")
+    now = child_registry.process_create_time(pid)
+    return created in (None, "", "None") or now is None or str(created) == str(now)
+
+
 def _reclaim_idle(live, engines, log):
     """A live holder with no engine on the host for IDLE_RECLAIM_S is stuck (2026-10-27: one blocked lanes for hours): drop it.
-    Batch holds have their own TTL; `merge*` holders get a bounded 20-minute idle allowance.
+    A batch whose owner process is gone is an orphan (2026-11-11: a killed batch run left a holder for 2 h): drop it at once.
+    A batch with a live owner but no engine is bounded by IDLE_RECLAIM_S; `merge*` holders get 20 minutes.
     First-seen-idle times live in a sidecar file (the slot records stay untouched)."""
     side = lease_path().with_suffix(".idle.json")
     now, seen, keep = time.time(), (_read(side) or {}), []
@@ -682,9 +699,14 @@ def _reclaim_idle(live, engines, log):
     for p, rec in live:
         cur = _read(p)
         key = f"{rec.get('pid')}:{rec.get('created')}"
-        if not cur or cur.get("batch") or cur.get("legacy_guard") or engines:
+        if not cur or cur.get("legacy_guard") or engines:
             keep.append((p, rec))
-        elif now - float(seen.get(key, now)) > (MERGE_IDLE_TTL_S if _holder_tag(cur).startswith("merge") else IDLE_RECLAIM_S):
+            continue
+        if cur.get("batch") and _owner_alive(cur) is False:
+            log(f"[host-lease] reclaimed orphan batch holder {_holder_tag(cur)} (owner pid {cur.get('owner_pid')} dead)")
+            _remove_records([(p, cur)])
+            continue
+        if now - float(seen.get(key, now)) > (MERGE_IDLE_TTL_S if _holder_tag(cur).startswith("merge") else IDLE_RECLAIM_S):
             log(f"[host-lease] reclaimed idle holder {_holder_tag(cur)} after {now - float(seen[key]):.0f} s: {_describe(cur)}")
             _remove_records([(p, cur)])
         else:
@@ -871,10 +893,16 @@ def _write_record(path: Path, rec: dict) -> None:
     _retry_file_change(os.replace, tmp, path)
 
 
-def holder_loop(tag: str, ttl_s: float, *, exclusive: Optional[bool] = None, log: Callable[[str], None] = _log_default, sleep: Callable[[float], None] = time.sleep,
-                clock: Callable[[], float] = time.time) -> int:
+def holder_loop(tag: str, ttl_s: float, *, exclusive: Optional[bool] = None, owner_pid: Optional[int] = None,
+                owner_created: Optional[str] = None, log: Callable[[str], None] = _log_default,
+                sleep: Callable[[float], None] = time.sleep, clock: Callable[[], float] = time.time) -> int:
     """Body of the holder process: take the lease (waiting as usual), mark it as batch `tag`, keep it until it is released, taken
-    away, or the TTL passes. -> 0 on a normal end, 4 when the lease could not be taken."""
+    away, its owner process dies, or the TTL passes. -> 0 on a normal end, 4 when the lease could not be taken.
+    `owner_pid` 0 means unowned (the CLI `hold`, whose caller exits on purpose): then only the TTL and idle reclaim bound it."""
+    owner = int(owner_pid) if owner_pid is not None else 0     # 0 = unowned: no caller process outlives this hold
+    owner = owner if owner > 0 else None
+    created = owner_created if owner_created not in (None, "", "None") else (
+        child_registry.process_create_time(owner) if owner else None)
     try:
         acquire(f"batch {tag}", log=log, exclusive=exclusive)
     except HostLeaseBusy as exc:
@@ -884,6 +912,8 @@ def holder_loop(tag: str, ttl_s: float, *, exclusive: Optional[bool] = None, log
         paths = [p for p, r in _records() if _ours(r)]
         for path in paths:
             rec = dict(_read(path) or {}, batch=tag, expires=clock() + ttl_s, label=f"batch {tag}")
+            if owner:
+                rec.update(owner_pid=owner, owner_created=created)
             _write_record(path, rec)
     path = paths[0]
     while True:
@@ -894,12 +924,18 @@ def holder_loop(tag: str, ttl_s: float, *, exclusive: Optional[bool] = None, log
             log(f"[host-lease] batch {tag}: TTL reached, releasing")
             release()
             return 0
+        if _owner_alive(cur) is False:
+            log(f"[host-lease] reclaimed orphan batch holder {tag} (owner pid {cur.get('owner_pid')} dead)")
+            release()
+            return 0
         sleep(POLL_S)
 
 
 def hold(tag: str, ttl_s: float = DEFAULT_BATCH_TTL_S, *, timeout_s: Optional[float] = None, exclusive: Optional[bool] = None,
-         log: Callable[[str], None] = _log_default) -> int:
-    """Start the holder process and wait until it holds the lease. -> its pid. Raises HostLeaseBusy when it cannot."""
+         owner_pid: Optional[int] = None, log: Callable[[str], None] = _log_default) -> int:
+    """Start the holder process and wait until it holds the lease. -> its pid. Raises HostLeaseBusy when it cannot.
+    The holder is reclaimed as soon as `owner_pid` (default: this process) dies, so a killed batch cannot wedge the host;
+    pass 0 for a hold whose caller is meant to exit (the `hold` CLI)."""
     import subprocess
     try:
         from scripts import console_child         # type: ignore
@@ -909,8 +945,10 @@ def hold(tag: str, ttl_s: float = DEFAULT_BATCH_TTL_S, *, timeout_s: Optional[fl
     if not tag or not all(c.isalnum() or c in "-_." for c in tag):
         raise ValueError(f"batch tag {tag!r}: use letters, digits, '-', '_' or '.'")
     ttl_s = min(max(ttl_s, 1.0), MAX_BATCH_TTL_S)
+    owner = os.getpid() if owner_pid is None else int(owner_pid)
     flags = 0x00000200 | 0x01000000 if sys.platform == "win32" else 0     # new process group, break away from the caller's job
-    argv = [sys.executable, str(Path(__file__).resolve()), "_holder", "--tag", tag, "--ttl", str(ttl_s)]
+    argv = [sys.executable, str(Path(__file__).resolve()), "_holder", "--tag", tag, "--ttl", str(ttl_s),
+            "--owner-pid", str(owner), "--owner-created", str(child_registry.process_create_time(owner) if owner else None)]
     if _exclusive(exclusive):
         argv.append("--exclusive")
     quiet = {"stdin": subprocess.DEVNULL, "stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL}
@@ -1003,15 +1041,18 @@ def main(argv: Optional[List[str]] = None) -> int:
     hl.add_argument("--tag", required=True)
     hl.add_argument("--exclusive", action="store_true", default=None)
     hl.add_argument("--ttl", type=float, required=True)
+    hl.add_argument("--owner-pid", type=int, default=None)      # the process that started the batch (hold passes its own)
+    hl.add_argument("--owner-created", default=None)
     argv = ["clear-dead" if a == "--clear-dead" else a for a in (sys.argv[1:] if argv is None else argv)]   # deploy_lease spelling
     args = ap.parse_args(argv)
     if args.cmd == "status":
         return _print_status(status())
     if args.cmd == "_holder":
-        return holder_loop(args.tag, args.ttl, exclusive=args.exclusive)
+        return holder_loop(args.tag, args.ttl, exclusive=args.exclusive, owner_pid=args.owner_pid,
+                           owner_created=args.owner_created)
     if args.cmd == "hold":
         try:
-            pid = hold(args.tag, args.ttl, timeout_s=args.wait_timeout, exclusive=args.exclusive)
+            pid = hold(args.tag, args.ttl, timeout_s=args.wait_timeout, exclusive=args.exclusive, owner_pid=0)
         except (HostLeaseBusy, ValueError) as exc:
             print(f"[host-lease] {exc}", file=sys.stderr)
             return 4
