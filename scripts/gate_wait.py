@@ -6,6 +6,8 @@ Runs the command with all output going to the log (default <TMP>/gate_wait-<ts>-
 line when it ends: `PASS rc=0 secs=N log=PATH` or `FAIL rc=N secs=N log=PATH` (rc=124 on timeout; the child
 tree is killed). Launch it with the Bash tool's run_in_background so the tool timeout never sees it; the
 completion notice then carries the single line. Exit code mirrors the verdict.
+The command runs as a detached job (tools/detached_job.py), so it survives the launching session: if this wrapper dies, resume
+with `py -3 tools/detached_job.py wait <job>`; `--job NAME` makes a relaunch re-attach to a still-running job of that name.
 """
 import argparse
 import os
@@ -14,7 +16,8 @@ import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import console_child  # noqa: E402
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tools"))
+import detached_job  # noqa: E402
 
 
 def resolve_cmd(cmd):
@@ -26,21 +29,12 @@ def resolve_cmd(cmd):
     return cmd
 
 
-def wait(cmd, log, timeout=None):
+def wait(cmd, log, timeout=None, job=None):
+    """Run `cmd` as a detached job (tools/detached_job.py: it survives this process and the Claude session; `job` NAME re-attaches
+    to a still-running one instead of relaunching) and wait for it -> (rc, secs). rc 124 = timeout, 125 = job lost."""
     cmd = resolve_cmd(cmd)
-    started = time.time()
-    with open(log, "wb") as fh:
-        p = subprocess.Popen(cmd, stdout=fh, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, **console_child.child_kwargs(redirected=True))
-        try:
-            rc = p.wait(timeout=timeout)
-        except subprocess.TimeoutExpired:
-            if os.name == "nt":
-                subprocess.run(["taskkill", "/F", "/T", "/PID", str(p.pid)], capture_output=True, **console_child.child_kwargs(redirected=True))
-            else:
-                p.kill()
-            p.wait()
-            rc = 124
-    return rc, int(time.time() - started)
+    rc, secs, _ = detached_job.run(cmd, name=job, log=log, timeout=timeout)
+    return rc, secs
 
 
 LOG_DIR = "G:/mc2-tmp"  # never $TMP: it can be C: (lane rules, meta-0220 P2#6)
@@ -50,6 +44,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--log")
     ap.add_argument("--timeout", type=float)
+    ap.add_argument("--job", help="job name: a still-running job of this name is re-attached, not relaunched (state: G:/mc2-tmp/jobs)")
     ap.add_argument("cmd", nargs=argparse.REMAINDER)
     a = ap.parse_args(argv)
     cmd = a.cmd[1:] if a.cmd[:1] == ["--"] else a.cmd
@@ -58,7 +53,7 @@ def main(argv=None):
     log = a.log or os.path.join(LOG_DIR, f"gate_wait-{int(time.time())}-{os.getpid()}.log")
     os.makedirs(os.path.dirname(os.path.abspath(log)), exist_ok=True)
     try:
-        rc, secs = wait(cmd, log, a.timeout)
+        rc, secs = wait(cmd, log, a.timeout, a.job)
     except OSError as exc:
         print(f"FAIL rc=127 secs=0 log={log} ({exc})")
         return 127

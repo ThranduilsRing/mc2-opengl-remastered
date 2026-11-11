@@ -14,7 +14,12 @@ The laptop has no A:/E: drive, so the remote half substs A: and E: onto C:/mc2ga
 unchanged with its hard-coded paths. The laptop's v0.4 and _lean-seed are junctions to C:/mc2gate/install.
 Remote half: this same file, uploaded to C:/mc2gate/bin, run as `--remote <step>`.
 
-Determinism + saveload evidence for a window in ONE invocation, after the full run (or --keep-candidate) left the deployed candidate:
+ONE laptop job (2026-11-11): the default run ends with the sim rows (determinism-mc2_01/03/10/24, saveload-mc2_03/10) on the SAME
+  deployed candidate the gate just verified, so the payload and sim manifests are identical by construction; the sim result is merged
+  into summary.json as "sim" and a red sim fails the run. --no-sim skips it. The run itself is a detached job (tools/detached_job.py,
+  state in G:/mc2-tmp/jobs/laptop-gate-W.json): if the launching session dies it keeps going; a relaunch re-attaches, and
+  `py -3 tools/detached_job.py wait laptop-gate-W` resumes the wait.
+Determinism + saveload rerun alone (rerun-only; the full run already did this), after a run (or --keep-candidate) left the deployed candidate:
   py -3 tools/laptop_gate.py W --sim [--sim-rows determinism-mc2_01,saveload-mc2_10] [--sim-pair] [--dry-run]
   No push, build or capture: the laptop runs merge_gate.sim_plan() (merge_gate's OWN determinism-mc2_01/03/10/24 and saveload-mc2_03/10
   step definitions: same args, --mask, tick ranges) on a stock copy of the gate's deployed candidate (_gate-reuse/deployed), under the
@@ -888,7 +893,16 @@ def pc_main(args):
         return 1
     if (dest / "gate-verdict.json").is_file():
         print("verdict file sha256", sha256(dest / "gate-verdict.json"), dest / "gate-verdict.json")
-    return exit_code(sm)
+    rc = exit_code(sm)
+    if rc or args.no_sim:
+        if rc:
+            print("laptop_gate: gate not PASS; the sim rows are skipped", flush=True)
+        return rc
+    # One laptop job: the sim rows run now, on the SAME deployed candidate (_gate-reuse/deployed) the gate just built and verified,
+    # so the payload manifest and the sim manifest are identical by construction. --sim alone is the rerun-only form.
+    print("running the sim rows (determinism + saveload) on the deployed candidate", flush=True)
+    sim_rc = sim_step(w, head, [r for r in (args.sim_rows or "").split(",") if r], args.sim_pair, t0)
+    return sim_rc
 
 
 def sim_command_list(window, rows=None, pair=False):
@@ -947,7 +961,14 @@ def sim_main(a):
     provision(bin_only=True)
     provision()
     sync_mods()
-    tokens = [*rows, *(["--pair"] if a.sim_pair else []), "--expect-head=" + expected]
+    return sim_step(w, expected, rows, a.sim_pair, t0)
+
+
+def sim_step(w, expected, rows, pair, t0):
+    """Remote sim step + pull + summary merge on the candidate the gate just deployed (the default run calls this right after the
+    gate; --sim calls it alone). 0 only on an all-green PASS."""
+    dest = PROOFS / w
+    tokens = [*rows, *(["--pair"] if pair else []), "--expect-head=" + expected]
     run_rc, _ = ssh(remote_py("sim", w, *(["--", *tokens] if tokens else [])), check=False, stream=True)
     incoming = dest / "incoming-sim"
     shutil.rmtree(incoming, ignore_errors=True)
@@ -1061,6 +1082,8 @@ def main():
     ap.add_argument("--sim-rows", help="comma list of sim rows (default: determinism-mc2_01/03/10/24, saveload-mc2_03/10)")
     ap.add_argument("--sim-pair", action="store_true", help="a/b pair for mc2_03 determinism, as on --weekly or a sim-sensitive diff")
     ap.add_argument("--dry-run", action="store_true", help="with --sim: print the command list and run nothing")
+    ap.add_argument("--no-sim", action="store_true", help="gate only: skip the sim rows the default run adds after a PASS")
+    ap.add_argument("--attached", action="store_true", help=argparse.SUPPRESS)   # set on the detached child: run in this process
     ap.add_argument("gate_args", nargs="*", help="extra merge_gate.py args (after --)")
     a, rest = ap.parse_known_args()
     if a.remote:
@@ -1080,9 +1103,30 @@ def main():
     if a.sim and a.dry_run:
         print("\n".join(sim_command_list(a.window, [r for r in (a.sim_rows or "").split(",") if r], a.sim_pair)))
         return 0
+    if not a.attached:
+        return detach_self(a)
     if a.sim:
         return sim_main(a)
     return pc_main(a)
+
+
+def detach_self(a):
+    """Default launch: run this same command line as a detached job (tools/detached_job.py) and wait for it, so the run survives the
+    launching session dying. A still-running job for the window is re-attached, never relaunched. Exit code = the run's."""
+    import detached_job
+    name = f"laptop-gate-{a.window}" + ("-sim" if a.sim else "")
+    argv = [sys.executable, str(Path(__file__).resolve()), "--attached", *sys.argv[1:]]
+    st = detached_job.status(name)
+    print(f"laptop_gate: job {name} " + ("already running, re-attaching" if st and st["state"] in ("starting", "running") else "starting detached")
+          + " (resume with: py -3 tools/detached_job.py wait " + name + ")", flush=True)
+    log = str(Path(detached_job.jobs_dir()) / (name + ".log"))
+    rc, _, st = detached_job.run(argv, name=name, log=log)
+    try:
+        print(Path(log).read_text(encoding="utf-8", errors="replace")[-20000:], end="")
+    except OSError:
+        pass
+    print(detached_job.verdict_line(st), flush=True)
+    return 0 if rc == 0 else 1
 
 
 if __name__ == "__main__":

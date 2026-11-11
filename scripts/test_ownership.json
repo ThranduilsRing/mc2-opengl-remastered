@@ -64,6 +64,8 @@
     {"module": "scripts/tests/test_new_drive_paths.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_gate_state.py", "owners": ["gate_receipts"]},
     {"module": "scripts/tests/test_gate_wait.py", "owners": ["scripts_tests"]},
+    {"module": "scripts/tests/test_detached_job.py", "owners": ["scripts_tests"]},
+    {"module": "scripts/tests/test_laptop_one_job.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_gate_keep_candidate.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_deploy_payload_papercuts.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_postprocess_cas_upscale.py", "owners": ["scripts_tests"]},
