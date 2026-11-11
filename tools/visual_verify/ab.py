@@ -32,6 +32,8 @@ import mc2_env_pin as env_pin  # noqa: E402
 import console_child  # noqa: E402  (windowless console children; scripts/console_child.py)
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pixel_hist  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import cooked_outputs  # noqa: E402  (tools/cooked_outputs.py: the PC-cooked output manifest)
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
@@ -239,16 +241,13 @@ def git_diff_files(older, newer):
 # Deploy-cooked payload: untracked files deploy_payload generates and pins by sha256 in a tracked pin file. When the window
 # changed the pin file, the pinned outputs are the window's payload too, but only at the pinned bytes (W138h: stock-tree-upscale
 # cooks data/tgl/128/<stem>.ktx2 from data/kit/tree-upscale.json; gitignored, so `git diff` never lists them).
-COOKED_PAYLOAD_PINS = {
-    "data/kit/tree-upscale.json": lambda pins: {f"data/tgl/128/{stem}.ktx2": row["ktx2_sha256"] for stem, row in pins.items()},
-}
+COOKED_PAYLOAD_PINS = {e["pin_file"]: (lambda pins, e=e: cooked_outputs.expand_pins(e, pins)) for e in cooked_outputs.load()["pinned"]}
 
 
 # Unpinned deploy-cooked outputs: gitignored, no pin file, so they are the window's payload when the window changed the cook
-# script that produces them (W147: cook_grass_turf.py cooks data/terrain_layers/grass_turf_normal.ktx2).
-COOKED_UNPINNED_OUTPUTS = {
-    "tools/mc2texcook/cook_grass_turf.py": ("data/terrain_layers/grass_turf_normal.ktx2",),
-}
+# script that produces them (W147: cook_grass_turf.py cooks data/terrain_layers/grass_turf_normal.ktx2). Both tables come from
+# tools/cooked_outputs.json, the one list of PC-cooked outputs.
+COOKED_UNPINNED_OUTPUTS = cooked_outputs.unpinned_by_cook()
 
 
 def cooked_unpinned(diff_files):

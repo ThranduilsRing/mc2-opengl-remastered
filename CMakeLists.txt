@@ -931,7 +931,11 @@ if(MC2_EDITOR AND MSVC)
     # gameos_editor recompiles every gameos source with a different define set (MC2_IMGUI/MC2_RNG_TRACE are
     # only set on gameos), so the objects cannot be shared. Build the editor on request instead of doubling
     # the default build; `ninja EditRel` still builds it. MC2_EDITOR_IN_ALL=ON restores the old default.
-    if(NOT MC2_EDITOR_IN_ALL)
+    # A host without MFC (tools/gate_hosts.json: the merge laptop has no afxwin.h) never builds the editor by default,
+    # whatever MC2_EDITOR_IN_ALL says (W147 laptop gate runs 1-2); the PC compile is the editor proof.
+    include(cmake/GateHosts.cmake)
+    mc2_read_gate_host_caps()
+    if(NOT MC2_EDITOR_IN_ALL OR NOT MC2_HOST_MFC)
         set_target_properties(EditRel gameos_editor PROPERTIES EXCLUDE_FROM_ALL TRUE)
     endif()
 endif()

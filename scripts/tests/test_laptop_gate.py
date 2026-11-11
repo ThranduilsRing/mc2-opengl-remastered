@@ -246,12 +246,14 @@ def test_every_module_the_remote_half_imports_is_provisioned():
     assert {"drv/E/" + rel for rel in laptop_gate.E_EXTRA} <= uploaded
     # every generated deploy input the PC cooks from a PC-only source reaches the laptop clone (W129 run 3 pixel red)
     layers = {r for r in deploy_payload.TERRAIN_LAYER_PAYLOAD if "concrete_detail" in r or "cliff_rock" in r}
-    assert layers == set(laptop_gate.LAYER_EXTRA)
+    assert layers == set(laptop_gate.cooked_extra("published", ROOT))
     assert {"drv/A/Games/mc2-main/" + rel for rel in layers} <= uploaded
-    assert {"drv/A/Games/mc2-main/" + rel for rel in laptop_gate.WORKTREE_EXTRA} <= uploaded   # grass turf normal (W147)
+    worktree = set(laptop_gate.cooked_extra("worktree", ROOT))
+    assert deploy_payload.GRASS_TURF_REL in worktree   # grass turf normal (W147)
+    assert {"drv/A/Games/mc2-main/" + rel for rel in worktree} <= uploaded
     # the tree-upscale sidecars are cooked from the golden v0.4c with texconv, which the laptop lacks (W138h)
     trees = set(deploy_payload.tree_upscale_payload(str(ROOT)))
-    assert trees and trees == set(laptop_gate.tree_upscale_extra(ROOT))
+    assert trees and trees <= worktree
     assert {"drv/A/Games/mc2-main/" + rel for rel in trees} <= uploaded
 
 

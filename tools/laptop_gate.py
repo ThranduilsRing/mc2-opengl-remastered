@@ -55,12 +55,16 @@ MODS_SRC = Path("E:/mc2-ref/campaign-mods")   # merge_gate.CANDIDATE_MODS_SOURCE
 MODS_DST = G + "/drv/E/mc2-ref/campaign-mods"   # the same path under the laptop's MC2_GATE_EROOT
 MODS_NAMES = ("MechCommanderOmnitech", "mco-compat")   # merge_gate.CANDIDATE_MODS
 E_EXTRA = ("mc2-archive-2026-10/asset-modernize/docs/assets/catalog.json",)   # scifi_kit counts.CATALOG (art suite)
-# Generated, gitignored deploy inputs whose cook sources exist only on the PC: the laptop clone gets the published copies. Without
-# them the laptop deploy omits and then prunes them, and compare-captures fails on the cliffs and concrete (W129 run 3: MAD 0.20/0.52).
-# Gitignored deploy inputs cooked on the PC (worktree copy, not the published v0.4: it predates them): the grass turf normal
-# (deploy_payload.ensure_grass_turf; its Poly Haven source is PC-only, W147).
-WORKTREE_EXTRA = ("data/terrain_layers/grass_turf_normal.ktx2",)
-LAYER_EXTRA = tuple(f"data/terrain_layers/{n}.ktx2" for n in ("concrete_detail_pad", "concrete_detail_road", "cliff_rock_ah", "cliff_rock_nra"))
+
+
+def cooked_extra(kind, repo=None):
+    """Gitignored deploy inputs whose cook sources exist only on the PC, from tools/cooked_outputs.json (PC half only: the remote half
+    in C:/mc2gate/bin has no manifest). kind 'published': the laptop clone gets the published v0.4 copies (without them the laptop
+    deploy omits and then prunes them, and compare-captures fails on the cliffs and concrete, W129 run 3: MAD 0.20/0.52). kind
+    'worktree': the PC worktree copy, the published v0.4 predates it (grass turf normal, W147; the tree upscale sidecars, W138h)."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import cooked_outputs
+    return cooked_outputs.provision_paths(kind, str(repo or Path(__file__).resolve().parents[1]))
 # flip_evaluator: compare-captures' FLIP columns (no cp315 wheel: build the sdist under vcvars64 with CC=CXX=cl, not MinGW)
 PACKAGES = ("numpy", "PIL", "scipy", "skimage", "pefile", "pytest", "flip_evaluator")
 GIT_BASH = "C:/Program Files/Git/bin/bash.exe"
@@ -170,6 +174,7 @@ def gate_env():
                 # the laptop's only fixed drive is C: (its E: is a card reader): every E:-rooted gate path lives under drv/E
                 MC2_GATE_REUSE_ROOT=G + "/drv/E/mc2-installs/_gate-reuse", MC2_STAGE_BASE=G + "/drv/E/mc2-installs",
                 MC2_ISO_ALLOW_SYSTEM_DRIVE="1", MC2_REF_ROOT=REF,
+                MC2_GATE_HOST="laptop",   # tools/gate_hosts.json: mfc=no (CMake leaves EditRel out of the default build, the editor stage is SKIPPED)
                 MC2_HOST_INFRA_OK="1",   # check-contracts.sh: a row whose tool/data cannot exist here is reported INFRA (never PASS), not red
                 # Git's usr/bin is not on the laptop PATH; bin/bash.exe is the wrapper that puts coreutils on it
                 MC2_BASH=GIT_BASH)
@@ -752,27 +757,15 @@ def sync_mods(src=MODS_SRC):
 def provision_files(eroot=Path("E:/")):
     """(laptop path relative to C:/mc2gate, PC source) for every file the remote half needs before it runs: itself, its HELPERS
     and the E-rooted seeds the contracts read under MC2_GATE_EROOT (E_EXTRA, e.g. the scifi_kit catalog), plus the generated
-    deploy inputs (LAYER_EXTRA) copied from the published install into the laptop clone, and the PC worktree's cooked tree
-    sidecars (tree_upscale_extra)."""
+    deploy inputs (tools/cooked_outputs.json, via cooked_extra): the 'published' ones copied from the published install into the
+    laptop clone, the 'worktree' ones (grass turf normal, the tree-upscale sidecars the laptop cannot cook: no texconv, W138h) from
+    the PC worktree; a missing one stops provisioning with a clear error."""
     repo = Path(__file__).resolve().parents[1]
     clone = REPO.removeprefix(G + "/")
     return ([("bin/laptop_gate.py", Path(__file__).resolve())] + [("bin/" + Path(h).name, repo / h) for h in HELPERS]
             + [("drv/E/" + rel, Path(eroot, rel)) for rel in E_EXTRA]
-            + [(f"{clone}/{rel}", PC_V04 / rel) for rel in LAYER_EXTRA]
-            + [(f"{clone}/{rel}", repo / rel) for rel in WORKTREE_EXTRA]
-            + [(f"{clone}/{rel}", repo / rel) for rel in tree_upscale_extra(repo)])
-
-
-def tree_upscale_extra(repo):
-    """data/tgl/128/<stem>.ktx2 for every stem pinned in data/kit/tree-upscale.json (deploy_payload.ensure_tree_upscale). The PC
-    cooks them from the golden v0.4c stock TGAs with texconv (tools/tree_retexture/gen_stock_trees.py); the laptop has neither, so
-    without these its deploy ships stock trees and the pulled payload lacks them (W138h). Taken from the PC worktree, which the PC
-    deploy or a direct cook fills; a missing one stops provisioning with a clear error."""
-    try:
-        pins = json.loads((Path(repo) / "data/kit/tree-upscale.json").read_text(encoding="utf-8"))
-    except OSError:
-        return ()
-    return tuple(f"data/tgl/128/{stem}.ktx2" for stem in sorted(pins))
+            + [(f"{clone}/{rel}", PC_V04 / rel) for rel in cooked_extra("published", repo)]
+            + [(f"{clone}/{rel}", repo / rel) for rel in cooked_extra("worktree", repo)])
 
 
 def provision(bin_only=False):
@@ -825,6 +818,11 @@ def pc_main(args):
     branch = "claude/stage-" + w
     head = subprocess.check_output(["git", "rev-parse", branch], text=True, **console_child.child_kwargs(redirected=True)).strip()
     t0 = time.time()
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import cooked_outputs
+    bad = cooked_outputs.problems(str(Path(__file__).resolve().parents[1]))   # absent or stale PC-cooked output: red here, not a laptop compare diff
+    if bad:
+        sys.exit("laptop_gate: PC-cooked outputs missing or stale (tools/cooked_outputs.json):\n  " + "\n  ".join(bad))
     provision(bin_only=True)   # the remote half itself, so init can run (init clones the repo the layer seeds go into)
     ssh(remote_py("init"), stream=True)
     provision()   # helpers + E-root and layer seeds, sha-checked; the remote preflight verifies PROVISION.sha256
