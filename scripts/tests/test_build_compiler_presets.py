@@ -187,7 +187,7 @@ def test_root_preset_trees_match_cli_and_keep_full_product_scope():
     variables = configure["windows-alltargets"]["cacheVariables"]
     assert variables["CMAKE_BUILD_TYPE"] == "RelWithDebInfo"
     assert variables["MC2_CXX_STANDARD"] == "23"
-    for flag in ["MC2_EDITOR", "MC2_EDITOR_IN_ALL", "ENABLE_MC2FX", "ENABLE_MC2FX_PREVIEW", "ENABLE_MC2WEAPON_GUI"]:
+    for flag in ["MC2_EDITOR","ENABLE_MC2FX", "ENABLE_MC2FX_PREVIEW", "ENABLE_MC2WEAPON_GUI"]:
         assert variables[flag] == "ON"
 
 

@@ -31,7 +31,8 @@ VS = "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools"
 VCVARS = VS + "/VC/Auxiliary/Build/vcvars64.bat"
 NINJA = VS + "/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe"
 DEFAULT_TREE = "build64-ninja"
-DEFAULT_TARGETS = ["mc2", "mc2_asset_viewer"] if os.name == "nt" else ["mc2"]
+# EditRel (Mission Editor) + its document tests: the merge gate's `editor` stage runs both from this tree.
+DEFAULT_TARGETS = ["mc2", "mc2_asset_viewer", "EditRel", "editor_document_tests"] if os.name == "nt" else ["mc2"]
 
 
 SCCACHE_EXE = os.environ.get("MC2_SCCACHE", "A:/Games/tools/sccache/sccache.exe")
@@ -81,6 +82,7 @@ def ensure_cache_server(root, env_extra):
         print(f"[sccache] WARNING: {root} is NOT in the fixed base-dir list; it will not share the compile cache "
               "(cold build). Use tools/lane_slot.py acquire to get a slot worktree.", flush=True)
     env = dict(os.environ, **env_extra)
+    # background-launch: allow sccache stats console tool, not the game or editor (the EditRel target name is only a ninja target)
     shown = subprocess.run([SCCACHE_EXE, "-s"], env=env, capture_output=True, text=True,
                            **console_child.child_kwargs(redirected=True)).stdout.lower()
     wanted_dir = env_extra["SCCACHE_DIR"].replace("\\", "/").lower()
@@ -98,7 +100,9 @@ def ensure_cache_server(root, env_extra):
             if inventory.returncode or any('"' + name + '"' in active for name in ("ninja.exe", "cl.exe", "link.exe")):
                 print("[sccache] restart deferred: a ninja/cl/link process is running", flush=True)
                 return
+        # background-launch: allow sccache server control console tool, not the game or editor
         subprocess.run([SCCACHE_EXE, "--stop-server"], env=env, capture_output=True, **console_child.child_kwargs(redirected=True))
+        # background-launch: allow sccache server control console tool, not the game or editor
         subprocess.run([SCCACHE_EXE, "--start-server"], env=env, capture_output=True, **console_child.child_kwargs(redirected=True))
         pin_cache_server()
 

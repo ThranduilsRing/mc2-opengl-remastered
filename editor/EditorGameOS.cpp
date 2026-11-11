@@ -95,6 +95,13 @@ namespace graphics {
     // The editor never runs the off-screen harness window mode: no-ops.
     bool window_offscreen_requested() { return false; }
     void enforce_window_offscreen(RenderWindowHandle /*rw*/) {}
+
+    // mclib/userinput.cpp sets the game's native SDL cursor; the MFC editor owns its own cursors.
+    // Without this stub the link pulls gameos.lib(gos_render.cpp.obj), which duplicates the window API above.
+    void set_native_cursor(SDL_Cursor* /*cursor*/, bool /*visible*/) {}
+
+    // Loading-screen event pump (texture_assets, present_thread): the MFC message loop owns events in the editor.
+    void pump_loading_events() {}
 }
 
 

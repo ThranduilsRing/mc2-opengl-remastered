@@ -318,7 +318,17 @@ namespace {
 // tests above pin the editor's own precedence rules.
 std::filesystem::path repositoryRoot()
 {
-    return std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
+    // __FILE__ can name another worktree: the shared sccache (SCCACHE_BASEDIRS) serves an object compiled
+    // elsewhere, and that worktree may since be deleted. Fall back to the nearest ancestor of the cwd.
+    const auto marker = std::filesystem::path("tests/fixtures/vfs_resolution.json");
+    const auto compiled = std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
+    std::error_code error;
+    if (std::filesystem::exists(compiled / marker, error)) return compiled;
+    for (auto at = std::filesystem::current_path(error); !at.empty(); at = at.parent_path()) {
+        if (std::filesystem::exists(at / marker, error)) return at;
+        if (at == at.parent_path()) break;
+    }
+    return compiled;
 }
 std::string corpusFst(const std::vector<std::pair<std::string, std::string>>& entries)
 {

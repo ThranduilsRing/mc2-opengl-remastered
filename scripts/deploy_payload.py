@@ -1508,6 +1508,19 @@ def ensure_terrain_materials(target_dir):
     return hashes
 
 
+def sibling_preset_owned(rel, exe_name):
+    """True when `rel` belongs only to the OTHER preset sharing this install (game vs editor).
+
+    Both presets deploy into one folder with one manifest; without this, an editor deploy
+    pruned mc2.exe/mc2.pdb/run-mc2.bat as "retired" and the next game deploy pruned the editor."""
+    rel = rel.replace(os.sep, "/").casefold()
+    mine, other = ("editor", "game") if exe_name.casefold() == EDITOR_EXE else ("game", "editor")
+    exe = TARGET_PRESETS[other]["exe_name"]
+    owned = {exe, os.path.splitext(exe)[0] + ".pdb"} | (set(SUPPORT_SCRIPTS[other]) - set(SUPPORT_SCRIPTS[mine]))
+    trees = EDITOR_SUPPORT_TREES if other == "editor" else []
+    return rel in {o.casefold() for o in owned} or any(rel.startswith(t.casefold() + "/") for t in trees)
+
+
 def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
            full_verify=False, code_only=False, verified=None):
     """Copy + verify the payload.
@@ -1633,12 +1646,13 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
 
     retire_unowned(target_dir, src_hashes, preserve,
                    own_shaders=any(kind == "shader" and rel.startswith("shaders/vulkan/") and rel.endswith(".spv")
-                                   for _src, rel, kind in items))
+                                   for _src, rel, kind in items),
+                   deployed_exe=next((rel for _src, rel, kind in items if kind == "exe"), None))
     receipts.save()
     return src_hashes
 
 
-def retire_unowned(target_dir, keep, preserve=(), own_shaders=False):
+def retire_unowned(target_dir, keep, preserve=(), own_shaders=False, deployed_exe=None):
     """Retire files the new payload (`keep`, its relpaths) no longer carries.
 
     Manifest rows of the previous deploy are retired only when unchanged. Paths are resolved before unlinking so a malformed
@@ -1649,6 +1663,8 @@ def retire_unowned(target_dir, keep, preserve=(), own_shaders=False):
     root = Path(target_dir).resolve()
     for rel, (digest, _size, _mtime) in read_manifest(target_dir).items():
         if rel in keep or rel in preserve:
+            continue
+        if deployed_exe and sibling_preset_owned(rel, deployed_exe):
             continue
         retired = root / rel
         resolved = retired.resolve()
