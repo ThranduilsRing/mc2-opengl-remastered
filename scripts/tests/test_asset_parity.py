@@ -1,7 +1,12 @@
 """ASSET-PARITY-1: lane installs carry v0.4's data/, assets/ and *.fst, and captures refuse drift."""
 import itertools
+import csv
+import hashlib
+import importlib.util
+import json
 import os
 import shutil
+import stat
 import sys
 import tempfile
 from pathlib import Path
@@ -179,3 +184,110 @@ def test_deploy_calls_parity_with_sync_and_no_sync_fails():
     assert "asset_parity.PREFIX" in src
     smoke = (ROOT / "scripts/run_smoke.py").read_text(encoding="utf-8")
     assert "asset_parity.capture_drift" in smoke and "verdict_line" in smoke
+
+
+def test_extras_dry_run_then_sync_deletes_only_unowned_assets(ref, work, capsys):
+    extras = {f"data/vegetation/fern_{i}.ktx2": b"fern" for i in range(8)}
+    keep = {"data/new-owned.ktx2": b"owned", "data/tgl/a.tga.cookstamp": b"receipt"}
+    inst = tree(work / "lane", {**SHARED, **extras, **keep, **EXCLUDED, **NOT_PARITY})
+    assert ap.main([str(inst), "--check", "--ref", str(ref)]) == 1
+    assert "extra=9" in capsys.readouterr().out
+    assert all((inst / rel).exists() for rel in extras)
+    skip = {"data/new-owned.ktx2"}
+    result = ap.compare(inst, ref, skip=skip)
+    assert result.extra == sorted(extras)
+    (inst / next(iter(extras))).chmod(stat.S_IREAD)
+    result = ap.enforce(inst, ref, skip=skip)
+    assert "[ASSET_PARITY] DRY_RUN" in capsys.readouterr().out
+    assert result.ok and result.deleted == 8
+    assert not any((inst / rel).exists() for rel in extras)
+    assert all((inst / rel).is_file() for rel in {**keep, **EXCLUDED, **NOT_PARITY})
+    assert ap.compare(inst, ref, skip=skip).ok
+
+
+def test_atomic_sync_replaces_readonly_hardlink_without_writing_peer(ref, work):
+    peer = tree(work / "peer", {"tgl.fst": b"old"}) / "tgl.fst"
+    inst = tree(work / "lane", SHARED)
+    dst = inst / "tgl.fst"
+    dst.unlink()
+    os.link(peer, dst)
+    dst.chmod(stat.S_IREAD)
+    try:
+        result = ap.enforce(inst, ref)
+        assert result.ok and result.synced == 1
+        assert dst.read_bytes() == b"tgl-archive"
+        assert peer.read_bytes() == b"old"
+        assert not peer.samefile(dst)
+    finally:
+        peer.chmod(stat.S_IWRITE | stat.S_IREAD)
+
+
+def test_deploy_replaces_readonly_payload(work, monkeypatch):
+    import deploy_payload as dp
+    monkeypatch.setattr(dp, "ensure_terrain_materials", lambda target: {})
+    monkeypatch.setattr(dp, "ensure_engine_normal_cooks", lambda target: None)
+    src = tree(work / "src", {"data/a.fit": b"new"}) / "data/a.fit"
+    inst = tree(work / "lane", {"data/a.fit": b"old"})
+    dst = inst / "data/a.fit"
+    dst.chmod(stat.S_IREAD)
+    dp.deploy([(str(src), "data/a.fit", "defs")], str(inst), False)
+    assert dst.read_bytes() == b"new"
+
+
+@pytest.mark.parametrize("seed_valid", [True, False])
+def test_tree_cook_reuses_only_hash_pinned_published_assets(work, monkeypatch, seed_valid):
+    import deploy_payload as dp
+    content = b"pinned tree"
+    rel = "data/tgl/128/palm.ktx2"
+    root = tree(work / "src", {"data/kit/tree-upscale.json": json.dumps(
+        {"palm": {"ktx2_sha256": hashlib.sha256(content).hexdigest()}}).encode()})
+    seed = tree(work / "seed", {rel: content if seed_valid else b"wrong tree!"})
+    ref = tree(work / "published", {rel: content})
+    monkeypatch.setenv("MC2_LEAN_SEED", str(seed))
+    monkeypatch.setenv("MC2_ASSET_PARITY_REF", str(ref))
+    def no_cook(*args, **kwargs):
+        pytest.fail("verified published tree should avoid the multi-minute cook")
+    dp.ensure_tree_upscale(str(root), cooker=no_cook)
+    assert (root / rel).read_bytes() == content
+    assert not (root / rel).samefile(ref / rel)
+    assert (seed / rel).read_bytes() == (content if seed_valid else b"wrong tree!")
+
+
+def test_tree_cook_rejects_unpinned_cache_and_runs_cooker(work, monkeypatch):
+    import deploy_payload as dp
+    root = tree(work / "src", {"data/kit/tree-upscale.json": json.dumps(
+        {"palm": {"ktx2_sha256": hashlib.sha256(b"pinned").hexdigest()}}).encode()})
+    seed = tree(work / "seed", {"data/tgl/128/palm.ktx2": b"corrupt"})
+    monkeypatch.setenv("MC2_LEAN_SEED", str(seed))
+    monkeypatch.setenv("MC2_ASSET_PARITY_REF", str(work / "missing"))
+    called = []
+    def cook(*args, **kwargs):
+        called.append(args)
+        return type("Result", (), {"returncode": 1, "stdout": "", "stderr": ""})()
+    dp.ensure_tree_upscale(str(root), cooker=cook)
+    assert len(called) == 1
+    assert not (root / "data/tgl/128/palm.ktx2").exists()
+
+
+def test_seed_manifest_disagreement_still_requires_exact_byte_repair(work):
+    spec = importlib.util.spec_from_file_location("iso_seed", ROOT / "scripts/make-isolated-deploy.py")
+    iso = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(iso)
+    seed = tree(work / "seed", {"mc2.exe": b"exe", "data/defs/a.fit": b"line\n"})
+    manifest = seed / ".deployed_manifest.csv"
+    def write_manifest(defs):
+        with manifest.open("w", newline="") as f:
+            w = csv.writer(f)
+            w.writerow(["manifest_version", "v1"])
+            w.writerow(["relpath", "sha256", "bytes", "src_commit", "timestamp", "mtime_ns"])
+            for rel, data in {"mc2.exe": b"exe", "data/defs/a.fit": defs}.items():
+                w.writerow([rel, hashlib.sha256(data).hexdigest(), len(data), "abc", "", 0])
+    write_manifest(b"line\r\n")
+    with pytest.raises(SystemExit):
+        iso.verified_seed(seed, use_cache=True)
+    # Restore the file to the manifest's independently verified bytes; do not bless drift.
+    (seed / "data/defs/a.fit").write_bytes(b"line\r\n")
+    assert len(iso.verified_seed(seed, use_cache=True)) == 2
+    (seed / "data/defs/a.fit").write_bytes(b"evil\n")
+    with pytest.raises(SystemExit):
+        iso.verified_seed(seed, use_cache=True)

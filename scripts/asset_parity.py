@@ -4,7 +4,8 @@
 A lane install deployed with --skip-kit (E:/mc2-installs/quiet-A) was missing 800 MB / 16,254 v0.4 data
 files and had 2,354 textures of a different size; its captures showed stock concrete. Every lane deploy
 now compares data/, assets/ and the root *.fst archives with the v0.4 install by path and size, plus
-sha256 for a sampled subset, and SYNCS the missing or different files from v0.4 (read only). With
+sha256 for a sampled subset, SYNCS missing or different files from v0.4 (read only), and deletes
+unowned extras after reporting dry-run counts. With
 --no-asset-sync the deploy fails instead, naming the counts.
 
 The one-line `[ASSET_PARITY] OK|SYNCED|FAIL|SKIPPED ...` verdict is printed by deploy_payload and
@@ -19,6 +20,7 @@ import argparse
 import hashlib
 import os
 import shutil
+import stat
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
@@ -98,14 +100,16 @@ class Result:
     missing: list[str] = field(default_factory=list)
     size: list[str] = field(default_factory=list)
     content: list[str] = field(default_factory=list)
+    extra: list[str] = field(default_factory=list)
     sampled: int = 0
     total: int = 0
     synced: int = 0
     synced_bytes: int = 0
+    deleted: int = 0
 
     @property
     def ok(self) -> bool:
-        return not (self.missing or self.size or self.content)
+        return not (self.missing or self.size or self.content or self.extra)
 
 
 def sample_rels(rels: list[str], limit: int = SAMPLE_FILES) -> list[str]:
@@ -136,6 +140,9 @@ def compare(install: Path | str, ref: Path | str, sample: int = SAMPLE_FILES,
     index = {key: value for key, value in reference_index(ref).items()
              if key not in skip and not value[0].casefold().endswith(SKIP_SUFFIXES)}
     result = Result(total=len(index))
+    result.extra = sorted(rel for key, (rel, _size) in reference_index(install).items()
+                          if key not in index and key not in skip
+                          and not rel.casefold().endswith(SKIP_SUFFIXES))
     equal: list[str] = []
     for rel, size in index.values():
         try:
@@ -167,12 +174,14 @@ def compare(install: Path | str, ref: Path | str, sample: int = SAMPLE_FILES,
 
 def verdict_line(result: Result, ref: Path | str, status: str | None = None) -> str:
     """The one line run_smoke and the capture tools read."""
-    state = status or ("SYNCED" if result.ok and result.synced else "OK" if result.ok else "FAIL")
+    state = status or ("SYNCED" if result.ok and (result.synced or result.deleted) else "OK" if result.ok else "FAIL")
     line = (f"{PREFIX} {state} ref={Path(ref).as_posix()} files={result.total} "
             f"missing={len(result.missing)} size={len(result.size)} content={len(result.content)} "
-            f"sampled={result.sampled}")
+            f"extra={len(result.extra)} sampled={result.sampled}")
     if result.synced:
         line += f" synced={result.synced} bytes={result.synced_bytes}"
+    if result.deleted:
+        line += f" deleted={result.deleted}"
     return line
 
 def _copy(src: Path, dst: Path) -> None:
@@ -181,8 +190,12 @@ def _copy(src: Path, dst: Path) -> None:
     tmp = dst.with_name(dst.name + f".asset-parity-{os.getpid()}")
     try:
         shutil.copy2(src, tmp)
+        if dst.exists():
+            dst.chmod(dst.stat().st_mode | stat.S_IWRITE)
         os.replace(tmp, dst)
     finally:
+        if tmp.exists():
+            tmp.chmod(tmp.stat().st_mode | stat.S_IWRITE)
         tmp.unlink(missing_ok=True)
 
 
@@ -192,6 +205,8 @@ def sync(install: Path | str, ref: Path | str, result: Result, jobs: int = 4) ->
     index = reference_index(ref)
     sizes = {rel: size for rel, size in index.values()}
     todo = result.missing + result.size + result.content
+    # Print the complete mutation count before the first copy or deletion.
+    print(verdict_line(result, ref, status="DRY_RUN"), flush=True)
 
     def one(rel: str) -> int:
         _copy(ref / rel, install / rel)
@@ -200,7 +215,14 @@ def sync(install: Path | str, ref: Path | str, result: Result, jobs: int = 4) ->
     with ThreadPoolExecutor(max_workers=max(1, jobs)) as pool:
         written = list(pool.map(one, todo))
     result.synced, result.synced_bytes = len(written), sum(written)
+    for rel in result.extra:
+        path = install / rel
+        path.chmod(path.stat().st_mode | stat.S_IWRITE)
+        path.unlink()
+        result.deleted += 1
+        print(f"{PREFIX} deleted {rel}", flush=True)
     result.missing, result.size, result.content = [], [], []
+    result.extra = []
     return result
 
 
@@ -237,7 +259,7 @@ def main(argv=None) -> int:
     ap.add_argument("install", help="lane install to check")
     group = ap.add_mutually_exclusive_group(required=True)
     group.add_argument("--check", action="store_true", help="report counts only; never copies")
-    group.add_argument("--sync", action="store_true", help="copy missing/different files from the reference")
+    group.add_argument("--sync", action="store_true", help="copy missing/different files and delete unowned extras")
     ap.add_argument("--ref", default=None, help="reference install (default: %s)" % default_ref())
     args = ap.parse_args(argv)
     ref = Path(args.ref) if args.ref else default_ref()
