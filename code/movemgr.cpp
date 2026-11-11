@@ -40,7 +40,7 @@ static long s_pathQueuedThisFrame = 0;
 
 // PATHFINDING-FACTS-2: monotonic path-manager frame counter, advanced once per
 // update(). Used to stamp request enqueue frames and compute oldest-request age.
-// Sim-owned: also clocks failed-jump backoff. Not gated by PATH telemetry.
+// Telemetry only; only read/written under the cached PATH gate.
 static long s_pathFrameCounter = 0;
 
 // PATHFINDING-JUMP-FAIL-1: expose the monotonic path-manager frame counter so the

@@ -862,8 +862,8 @@ int Mover::calcMovePath (MovePathPtr path,
 			if (numOffsets > 8) {
 				result = PathFindMap[SIMPLE_PATHMAP]->calcPathJUMP(pathQuery, PathFindMap[SIMPLE_PATHMAP]->solverScratch, path, nullptr, goalCell);
 				// PATHFINDING-JUMP-FAIL-1: doomed jump solve -> stamp the REQUESTED
-				// goal cell (goalCell out-param is only written on success).
-				// Single-player AI backoff; see requestMovePath.
+				// goal cell (goalCell out-param is only written on success). No-op
+				// unless gate on. See requestMovePath.
 				if ((result <= 0) && pilot)
 					pilot->noteJumpPathFailed();
 			}
@@ -940,8 +940,8 @@ int Mover::calcMovePath (MovePathPtr path,
 			if (numOffsets > 8) {
 				result = PathFindMap[SECTOR_PATHMAP]->calcPathJUMP(pathQuery, PathFindMap[SECTOR_PATHMAP]->solverScratch, path, nullptr, goalCell);
 				// PATHFINDING-JUMP-FAIL-1: doomed jump solve -> stamp the REQUESTED
-				// goal cell (goalCell out-param is only written on success).
-				// Single-player AI backoff; see requestMovePath.
+				// goal cell (goalCell out-param is only written on success). No-op
+				// unless gate on. See requestMovePath.
 				if ((result <= 0) && pilot)
 					pilot->noteJumpPathFailed();
 			}
@@ -1250,8 +1250,8 @@ int Mover::calcMovePath (MovePathPtr path,
 		if (numOffsets > 8) {
 			result = PathFindMap[SECTOR_PATHMAP]->calcPathJUMP(pathQuery, PathFindMap[SECTOR_PATHMAP]->solverScratch, path, goal, goalCell);
 			// PATHFINDING-JUMP-FAIL-1: doomed jump solve -> stamp the REQUESTED goal
-			// cell (goalCell out-param is only written on success).
-			// Single-player AI backoff; see requestMovePath.
+			// cell (goalCell out-param is only written on success). No-op unless gate
+			// on. See requestMovePath.
 			if ((result <= 0) && pilot)
 				pilot->noteJumpPathFailed();
 		}
