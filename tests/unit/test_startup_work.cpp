@@ -42,7 +42,7 @@ TEST_CASE("startup_work: vertex index keeps corner order without rehashing") {
         const auto buckets = index.bucket_count();
         const uint32_t count = 4096 * (twoSided ? 6 : 3);
         for (uint32_t i = 0; i < count; ++i) {
-            std::string packed(40, '\0');
+            mc2_prop::PackedVertexKey packed{};
             std::memcpy(packed.data(), &i, sizeof(i));
             auto [it, inserted] = index.try_emplace(packed, i);
             REQUIRE(inserted);
