@@ -5945,6 +5945,17 @@
    "count": 1
   },
   {
+   "tag": "MOD_WRITE_GUARD",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "path",
+    "mod",
+    "action"
+   ],
+   "count": 1
+  },
+  {
    "tag": "MOUSE_RECON",
    "ver": 1,
    "stream": "stdout",
