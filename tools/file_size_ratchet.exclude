@@ -8,3 +8,5 @@
 tools/texcook/bc7enc_rdo/
 # GameOS/gameos/vulkan_mech_island.cpp (1501 lines) is NOT excluded: it is baselined in file_size_ratchet.baseline.json (owner 2026-11-11) so it cannot grow.
 # Split it after mt-islands-m2 lands (that lane is editing it now).
+# Python tooling is exempt (owner 2026-11-11: "I do not care about python tools being over").
+*.py
