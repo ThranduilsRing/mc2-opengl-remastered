@@ -18,6 +18,7 @@
 #ifndef TEAM_H
 #include"team.h"
 #endif
+#include "content_ir.h"  // TEMP laps
 
 #ifndef CARNAGE_H
 #include"carnage.h"
@@ -1237,8 +1238,9 @@ void Building::init (bool create, ObjectTypePtr objType) {
 
 	//-------------------------------------------
 	// Initialize the Building Appearance here.
+	const uint64_t tempT0 = mc2::content::tempLapNow();
 	GameObject::init(create, objType);
-	
+
 	setExists(true);
 	setFlag(OBJECT_FLAG_JUSTCREATED, true);
 
@@ -1276,14 +1278,17 @@ void Building::init (bool create, ObjectTypePtr objType) {
 		}
 	}
 	  
+	const uint64_t tempGet = mc2::content::tempLapNow() - tempT0;
 	adoptAppearance(std::make_unique_for_overwrite<BldgAppearance>());
 	gosASSERT(appearance != nullptr);
 
 	//--------------------------------------------------------------
 	// The only appearance type for buildings is MLR_APPEARANCE.
 	gosASSERT(buildingAppearanceType->getAppearanceClass() == BLDG_TYPE);
-		
+
+	const uint64_t tempA0 = mc2::content::tempLapNow();
 	appearance->init(static_cast<BldgAppearanceType*>(buildingAppearanceType), static_cast<GameObjectPtr>(this));
+	const uint64_t tempApp = mc2::content::tempLapNow() - tempA0;
 
 	objectClass = BUILDING;
 	setFlag(OBJECT_FLAG_DAMAGED, true);
@@ -1320,7 +1325,13 @@ void Building::init (bool create, ObjectTypePtr objType) {
 		setStatus(OBJECT_STATUS_DESTROYED);
 		setFlag(OBJECT_FLAG_DAMAGED, true);
 	}
-}	
+	{
+		const uint64_t tempTot = mc2::content::tempLapNow() - tempT0;
+		mc2::content::tempLapAdd(2, 0, tempGet);
+		mc2::content::tempLapAdd(2, 1, tempApp);
+		mc2::content::tempLapAdd(2, 2, tempTot - tempGet - tempApp);
+	}
+}
 
 //---------------------------------------------------------------------------
 
