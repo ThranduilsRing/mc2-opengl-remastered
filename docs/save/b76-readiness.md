@@ -26,15 +26,25 @@ Codecs marked "private" are called by tests and the loader's value path only. Li
 | Mission / Part | Part yes, `code/mission_parts_archive.cpp`, `save_archive.h:270`; Mission record no | `test_part_archive.cpp` (Part only) | legacy FIT text (`Part::Save` `saveload.cpp:42`, mission block 191-210) |
 | ObjectiveSet / BooleanFlag / Objective / Condition / Action | yes (private), `code/objective_archive.h` (tag OBJS) | `tests/unit/test_objective_archive.cpp` | legacy FIT (`Team::home->objectives.Save`, `saveload.cpp:231`; `code/objective.cpp` `Save` methods) |
 | SupportCraft / support state | yes (private), `code/support_craft_archive.h` (state in `code/missiongui.h:160-171`) | `tests/unit/test_environment_archive.cpp` | `missionInterface->Save` FIT (`saveload.cpp:219`) |
-| Logistics / Campaign / Variant / Pilot / Mech | no | no | legacy FIT, `LogisticsData::save` (`code/logisticsdata_save.cpp:124`) |
+| Logistics / Campaign / Variant / Pilot / Mech | yes (private), `code/logistics_archive.h` (tag LOGI) | `tests/unit/test_logistics_archive.cpp` | legacy FIT, `LogisticsData::save` (`code/logisticsdata_save.cpp:124`) |
 | MediaCueState / LogicalRequest / CueTrajectory | yes (new, this lane), `code/media_cue_archive.h` | `tests/unit/test_media_cue_archive.cpp` | none; no runtime owner exists yet |
 | Environment (weather schedule) | yes (private), `code/environment_archive.h` | `tests/unit/test_environment_archive.cpp` | legacy FIT, `Weather::save` (`saveload.cpp:223`) |
 | Presentation / ObjectVisual / RenderWeather | no | no | legacy camera/FIT (`eye->save` `saveload.cpp:182`) |
 | FIX1 music/backoff extras | yes, `code/save_fix_section.h:24-71` | `test_save_sections.cpp` | codec, optional (`saveload.cpp:384-385`) |
 
-Missing codecs (cheapest first; MediaCueState, Environment, SupportCraft, Contacts and ObjectiveSet are landed, private and unused by the save path): Logistics family, Mission record, SimRules, Presentation.
+Missing codecs (cheapest first; MediaCueState, Environment, SupportCraft, Contacts, ObjectiveSet and the Logistics family are landed, private and unused by the save path): Mission record, SimRules, Presentation.
 
 ## Schema rows from the code that saves and loads today
+
+Logistics (landed, private; writers `code/logisticsdata_save.cpp:124`, `logisticsmissioninfo.cpp:448`, `logisticsvariant_stats.cpp:427`, `logisticspilot.cpp:178`,
+`logisticsmech.cpp:47`; codec `code/logistics_archive.h`). Corrections to the design rows (`.claude/cleanup/cxx23-step4-save-schema-design.md:131-135`):
+- Only player-made variants are saved (designer variants are skipped); a designer mech in the inventory names a stock CSV variant. The codec checks the variant link only for non-designer mechs.
+- The variant writer stores `Location` per component but `loadVariant` reads and discards it (`addComponent` re-derives it); the codec keeps it, range 0..2 (HEAD/CHEST/LEGS).
+- The mech writer stores Chassis, Variant (the variant NAME, not an id), Pilot (file name, optional) and Designer. The reader uses only Variant and Pilot; force group is re-derived from load order (1..12, only for mechs that have a pilot). Force group and the three paint colours are design additions, absent from the legacy bytes.
+- Pilot rank is not independent: `LogisticsPilot::load` recomputes it from (gunnery + piloting) / 2, so the codec rejects a rank that disagrees. Skills are bounded 0..100 by the codec (no engine clamp found).
+- The campaign stage fields (BigMoviePlayed, MissionName, MissionFileName, completed Mission%d) are written only while `currentStage < groupCount`; the codec carries `hasStage` and requires the fields to be defaults without it. Completed indices are written in ascending order.
+- PilotCount, InventoryCount and VariantCount are redundant with the sequence lengths; `PlayerName` is capped at 63 bytes by the reader; CBills is an int that `decrementCBills` does not clamp, so a negative balance is accepted.
+- Not stored: pilot ids, pilot `newGunnery`/`newPiloting`, `medalsLastMission` and killed icons (runtime-only; `load` does not read them); `currentMissionNum` (design row) is not written by the legacy writer either, `currentMission` is reset to 0 on load.
 
 Contacts (landed): `code/contact.h` ContactInfo `:51` (contactStatus[MAX_TEAMS] u8 < 6, contactCount[MAX_TEAMS] u16, sensors[MAX_SENSORS] u16 with
 0xFFFF = none, teams[MAX_TEAMS] u16, teamSpotter[MAX_TEAMS] u32), SensorSystem `:133` (id, master team + masterIndex, owner, range, skill, broken, notShutdown,
