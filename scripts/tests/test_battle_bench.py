@@ -52,7 +52,8 @@ def test_frame_tails_spikes_and_bursts_are_not_window_means(evidence):
 
 
 def test_incomplete_timestamp_frame_refused(evidence):
-    evidence[1][-3]["valid"] = 0
+    for r in [r for r in evidence[1] if r["type"] == "gpu"][:5]:   # 5 of 100 frames: over the 1% tolerance
+        r["valid"] = 0
     with pytest.raises(ValueError, match="incomplete"):
         summarize(evidence)
 

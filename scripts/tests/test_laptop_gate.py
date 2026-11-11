@@ -163,7 +163,7 @@ def test_pack_skips_a_kept_candidate_built_from_another_commit(tmp_path, monkeyp
     _manifest(seed / ".deployed_manifest.csv", {"mc2.exe": b"new"})
     rows = (seed / ".deployed_manifest.csv").read_text(encoding="utf-8").replace(",abc,", ",def0123,")
     (seed / ".deployed_manifest.csv").write_text(rows, encoding="utf-8")
-    assert laptop_gate.candidate_install() == stale            # no head: first present candidate, as before
+    assert laptop_gate.candidate_install(keep=True) == stale   # no head: first present candidate, as before
     assert laptop_gate.candidate_install("def0123456789") == seed
     with pytest.raises(SystemExit):
         laptop_gate.candidate_install("0000000")

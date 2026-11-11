@@ -366,15 +366,17 @@ def manifest_delta(mine, theirs):
     return sorted(rel for rel, r in mine.items() if theirs.get(rel, {}).get("sha256") != r["sha256"])
 
 
-def candidate_install(head=None):
-    """The gate's deployed candidate: a kept stock copy (<seed>-stock-*), --keep-candidate's merge-gate-candidate, else the
+def candidate_install(head=None, keep=False):
+    """The gate's deployed candidate: a kept stock copy (<seed>-stock-*), --keep-candidate's merge-gate-candidate (only when
+    `keep`: a non --keep-candidate run must not pack a leftover one, its manifest differs from the sim seed and promote refuses
+    the identity mismatch), else the
     pristine deployed seed gate_reuse snapshots right after the candidate deploy (the stock copy is removed at cleanup).
     Never INSTALL: that is the published v0.4 the candidate is diffed against. With `head`, an install whose mc2.exe row was
     built from another commit is skipped (W138e: a merge-gate-candidate kept from an older run, src 6063ca51a, was packed as
     the payload of the 2247a9a73 gate; W138d hit the same leftover and moved it aside by hand)."""
     base = Path(G, "drv/E/mc2-installs")
     stock = sorted(base.glob("*-stock-*"), key=lambda p: p.stat().st_mtime, reverse=True) if base.is_dir() else []
-    for p in (*stock, base / "merge-gate-candidate", base / "_gate-reuse/deployed"):
+    for p in (*stock, *([base / "merge-gate-candidate"] if keep else []), base / "_gate-reuse/deployed"):
         if (p / ".deployed_manifest.csv").is_file():
             src = (manifest_rows(p / ".deployed_manifest.csv").get("mc2.exe", {}).get("src_commit") or "").removesuffix("-dirty")
             if head and not (src and (head.startswith(src) or src.startswith(head))):
@@ -394,10 +396,25 @@ def clone_head():
     return r.stdout.strip() or None if r.returncode == 0 else None
 
 
-def r_pack(window):
+def candidate_identity_problems(cand, seed=None):
+    """[] unless the packed candidate's manifest differs from the sim seed's (promote binds the payload manifest to the sim
+    summary, which hashes the seed): the mismatch costs a whole gate run, so say it before packing or before the gate starts."""
+    seed = seed or (Path(G, "drv/E/mc2-installs/_gate-reuse/deployed") if Path(G, "drv/E/mc2-installs/_gate-reuse/deployed").is_dir() else None)
+    if seed is None or Path(cand) == Path(seed):
+        return []
+    a, b = (Path(p, ".deployed_manifest.csv") for p in (cand, seed))
+    if not (a.is_file() and b.is_file()) or sha256(a) == sha256(b):
+        return []
+    return [f"candidate {cand} manifest differs from the sim seed {seed}: promote will refuse the sim manifest identity "
+            f"(remove a leftover merge-gate-candidate or run with --keep-candidate for both)"]
+
+
+def r_pack(window, keep=False):
     """tar of every file in the candidate's manifest that differs from the PC's v0.4 manifest (in/<W>/pc.manifest.csv)."""
     out = Path(G, "out", window)
-    cand = candidate_install(clone_head())
+    cand = candidate_install(clone_head(), keep=keep)
+    for line in candidate_identity_problems(cand):
+        print("laptop_gate pack WARN: " + line, flush=True)
     delta = manifest_delta(manifest_rows(cand / ".deployed_manifest.csv"), manifest_rows(Path(G, "in", window, "pc.manifest.csv")))
     tarp = out / "payload.tar"
     with tarfile.open(tarp, "w") as tar:
@@ -435,14 +452,18 @@ def tree_diff(src, dst):
     content); touch: sha rows with equal content and another mtime; delete: only in dst."""
     s = {r.split("|", 1)[0]: r.split("|")[1:] for r in src}
     d = {r.split("|", 1)[0]: r.split("|")[1:] for r in dst}
+    # The laptop is NTFS (case-insensitive): a dst name differing from a src name only by case is the same file. Matching by
+    # casefold keeps the delete from removing what the copy just placed (W148 run 1: mcl_cm_5.png / mcl_mn_4.png).
+    dfold = {rel.casefold(): rel for rel in d}
+    sfold = {rel.casefold() for rel in s}
     copy, touch = [], []
     for rel, (size, mt, *sh) in sorted(s.items()):
-        o = d.get(rel)
+        o = d.get(rel) or d.get(dfold.get(rel.casefold(), ""))
         if o is None or o[0] != size or (sh and o[2:] != sh) or (not sh and o[1] != mt):
             copy.append(rel)
         elif o[1] != mt:
             touch.append(rel)
-    return copy, touch, sorted(set(d) - set(s))
+    return copy, touch, sorted(rel for rel in d if rel.casefold() not in sfold)
 
 
 def tree_digest(rows):
@@ -453,7 +474,8 @@ def tree_digest(rows):
 
 def tree_problems(pc_rows, mine):
     """[] when the size+mtime listings match, else the digest mismatch plus the first 10 differing rows."""
-    a, b = (sorted("|".join(r.split("|")[:3]) for r in x) for x in (pc_rows, mine))
+    fold = lambda r: "|".join([r.split("|")[0].casefold(), *r.split("|")[1:3]])   # noqa: E731 (NTFS: case-only names are equal)
+    a, b = (sorted(fold(r) for r in x) for x in (pc_rows, mine))
     if tree_digest(a) == tree_digest(b):
         return []
     diffs = sorted([f"pc-only {r}" for r in set(a) - set(b)] + [f"laptop-only {r}" for r in set(b) - set(a)],
@@ -551,6 +573,8 @@ def r_preflight(window="-", published=""):
     bad += tree_problems(pc_tree.read_text(encoding="utf-8").splitlines(), tree_rows(INSTALL)) if pc_tree.is_file() \
         else [f"missing {pc_tree} (the PC v0.4 tree listing sync_tree uploads)"]
     print("\n".join(bad) if bad else "preflight OK")
+    if Path(G, "drv/E/mc2-installs/merge-gate-candidate").is_dir():   # not a red: pack ignores it unless --keep-candidate
+        print("note: a leftover merge-gate-candidate exists; only a --keep-candidate run packs it (its manifest differs from the sim seed)")
     return 1 if bad else 0
 
 
@@ -856,7 +880,7 @@ def pc_main(args):
     for stale in (dest, incoming, PROOFS / (w + ".rejected")):   # a failed rerun must never leave an old PASS to read
         shutil.rmtree(stale, ignore_errors=True)
     run_rc, _ = ssh(remote_run_cmd(w, args.gate_args), check=False, stream=True)
-    pack_rc, _ = ssh(remote_py("pack", w), check=False, stream=True)
+    pack_rc, _ = ssh(remote_py("pack", w, *(["--keep-candidate"] if "--keep-candidate" in args.gate_args else [])), check=False, stream=True)
     ok, why, sm = pull_and_accept(w, head, run_rc, pack_rc, dest, incoming)
     print("SUMMARY", json.dumps(sm), f"total_wall_s={time.time() - t0:.0f}")
     if not ok:
@@ -1041,7 +1065,7 @@ def main():
     a, rest = ap.parse_known_args()
     if a.remote:
         step = a.remote
-        return {"init": r_init, "run": lambda: r_run(a.window, [x for x in a.gate_args + rest if x != "--"]), "pack": lambda: r_pack(a.window),
+        return {"init": r_init, "run": lambda: r_run(a.window, [x for x in a.gate_args + rest if x != "--"]), "pack": lambda: r_pack(a.window, "--keep-candidate" in a.gate_args + rest),
                 "tree": lambda: r_tree(*(a.gate_args + rest)[:1]), "apply": lambda: r_apply((a.gate_args + rest)[0]),
                 "mods-tree": lambda: r_tree((a.gate_args + rest)[0], MODS_DST, "mods.tree.txt"),
                 "mods-apply": lambda: r_apply((a.gate_args + rest)[0], MODS_DST),
