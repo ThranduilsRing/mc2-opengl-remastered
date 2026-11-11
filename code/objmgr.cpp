@@ -688,6 +688,11 @@ inline bool isLandMine (long objTypeNum)
 }
 
 
+// TEMP-FINE-LAPS (remove before hand-back)
+#include <atomic>
+#include <chrono>
+std::atomic<uint64_t> g_fineType{0}, g_fineSwitch{0}, g_fineRest{0}, g_fineN{0};
+static uint64_t fineNow() { return static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()); }
 void GameObjectManager::addObject (ObjDataLoader *objData, long& curTerrainObjectIndex, 
 								  long& curBuildingIndex, long& curTurretIndex, long &curGateIndex,
 								  long& curCollidableHandle, long& curNonCollidableHandle )
@@ -697,7 +702,9 @@ void GameObjectManager::addObject (ObjDataLoader *objData, long& curTerrainObjec
 
 	long objTypeNum = objData->objTypeNum;
 	if (!isLandMine(objTypeNum)) {
+		const uint64_t fT0 = fineNow();
 		ObjectTypePtr objType = getObjectType(objTypeNum);
+		const uint64_t fT1 = fineNow(); g_fineType += fT1 - fT0; g_fineN++;
 		GameObjectPtr obj = nullptr;
 		if (!objType)
 			return;
@@ -803,6 +810,8 @@ void GameObjectManager::addObject (ObjDataLoader *objData, long& curTerrainObjec
 				Fatal(objType->getObjectClass(), " GameObjectManager.countTerrainObjects: bad object type ");
 		}
 
+		const uint64_t fT2 = fineNow(); g_fineSwitch += fT2 - fT1;
+		struct RestT { uint64_t t; ~RestT() { g_fineRest += fineNow() - t; } } restT{fT2};
 		if (obj) {
 			obj->setTerrainPosition(objData->vector, numbers);
 			int cellRow, cellCol;
