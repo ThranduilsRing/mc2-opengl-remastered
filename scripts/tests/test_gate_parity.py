@@ -112,6 +112,7 @@ def test_cmake_module_sets_mc2_host_mfc(tmp_path, host, want):
     env = {k: v for k, v in os.environ.items() if k != "MC2_GATE_HOST"}
     if host:
         env["MC2_GATE_HOST"] = host
+    # background-launch: allow cmake -P runs a script file, windowless (child_kwargs); no engine, no window
     r = subprocess.run([cmake, "-P", str(script)], capture_output=True, text=True, env=env, **console_child.child_kwargs(redirected=True))
     assert r.returncode == 0, r.stderr
     assert f"RESULT MFC={want}" in r.stdout + r.stderr
@@ -238,6 +239,7 @@ def test_every_reader_takes_its_list_from_the_manifest():
 
 
 def test_stock_data_contract_reads_the_manifest_shape():
+    # background-launch: allow runs the stock-data checker with the current Python, windowless; no engine, no window
     r = subprocess.run([sys.executable, "-B", str(ROOT / "scripts" / "check-stock-mission-data.py"), "--no-data", "--quiet"],
                        capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     assert r.returncode == 0, r.stderr
