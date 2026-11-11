@@ -389,6 +389,7 @@ class BldgAppearance : public ObjectAppearance
 		virtual bool IsStaticNow() const override;
 		virtual bool lodFollowsCamera() const override;
 		virtual std::optional<int32_t> residentRenderRecipe() const override;
+		virtual bool renderIsNoOp() const override;   // perf-building-resident: off view, nothing drawn or captured
 		uint32_t submittedFrame_ = 0xFFFFFFFFu;   // frame of the last render() that markVisibleChecked accepted
 		virtual void touch() override;
 		virtual void invalidateStaticRegistration() override;

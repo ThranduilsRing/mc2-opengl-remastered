@@ -16,6 +16,15 @@ constexpr bool terrainWalkSkips(int objClass, bool hasBars, bool hasDust, bool r
 	return (objClass == TREE || objClass == TERRAINOBJECT) && !hasBars && !hasDust && renderIsNoOp;
 }
 
+// perf-building-resident: BldgAppearance::render outside the view draws nothing; it still marks a world marker's nodes
+// NoShadow and captures a moving (mover-owned or not static-eligible) shadow, so either keeps the visit. The terrain
+// object's renderView also calls setVisibility(true, true), so the visit is a no-op only once both are already set
+// (the FOW flags night lights read in BldgAppearance::update).
+constexpr bool bldgRenderIsNoOp(bool inView, bool marker, bool capturesMoverShadow, bool visibleAndSeen)
+{
+	return !inView && !marker && !capturesMoverShadow && visibleAndSeen;
+}
+
 // perf-building-resident: Building, Turret and Gate::renderView return at once when their extract left the Visible
 // flag clear (appearance not inView); bars and the name are only captured under that flag, so the visit draws nothing.
 constexpr bool visibleFlagWalkSkips(int objClass, bool visibleFlag)
