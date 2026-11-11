@@ -31,6 +31,29 @@
 
 namespace mc2vk {
 
+// The draw loop of one run, over the plan's per-instance regions (dst = first skinned vertex per instance, -1 = bind-pose VBO; null = nothing skinned).
+template <class CountFn>
+inline uint32_t skinDrawRun(VkCommandBuffer cb, const int32_t* dst, VkBuffer skinned, const Mc2MechDrawRun& run, VkBuffer bindPoseVbo, VkBuffer& boundVertexBuffer, CountFn&& issue) {
+    uint32_t draws = 0;
+    uint32_t k = 0;
+    while (k < run.instanceCount) {
+        const bool isSkinned = dst && dst[k] >= 0;
+        uint32_t n = 1;
+        if (!isSkinned) while (k + n < run.instanceCount && dst && dst[k + n] < 0) ++n;
+        if (!isSkinned && !dst) n = run.instanceCount - k;
+        const VkBuffer want = isSkinned ? skinned : bindPoseVbo;
+        if (want != boundVertexBuffer) {
+            const VkDeviceSize zero = 0;
+            vkCmdBindVertexBuffers(cb, 0, 1, &want, &zero);
+            boundVertexBuffer = want;
+        }
+        issue(n, run.instanceBase + k, isSkinned ? dst[k] : run.baseVertex);
+        ++draws;
+        k += n;
+    }
+    return draws;
+}
+
 class MechSkinPass {
 public:
     // Builds the compute pipeline from `<spvDir>mech_skin.comp.spv` and one descriptor set per frame slot. False (logged) leaves the pass unusable; every
@@ -52,26 +75,29 @@ public:
     // the right vertex buffer is bound; `boundVertexBuffer` tracks what is bound so consecutive draws rebind only on a change.
     template <class CountFn>
     uint32_t drawRun(VkCommandBuffer cb, uint32_t r, const Mc2MechDrawRun& run, VkBuffer bindPoseVbo, VkBuffer& boundVertexBuffer, CountFn&& issue) const {
-        uint32_t draws = 0;
         const int32_t* dst = active_ && r + 1 < runOff_.size() ? dst_.data() + runOff_[r] : nullptr;
-        uint32_t k = 0;
-        while (k < run.instanceCount) {
-            const bool skinned = dst && dst[k] >= 0;
-            uint32_t n = 1;
-            if (!skinned) while (k + n < run.instanceCount && dst && dst[k + n] < 0) ++n;
-            if (!skinned && !dst) n = run.instanceCount - k;
-            const VkBuffer want = skinned ? skinned_[slot_].get() : bindPoseVbo;
-            if (want != boundVertexBuffer) {
-                const VkDeviceSize zero = 0;
-                vkCmdBindVertexBuffers(cb, 0, 1, &want, &zero);
-                boundVertexBuffer = want;
-            }
-            issue(n, run.instanceBase + k, skinned ? dst[k] : run.baseVertex);
-            ++draws;
-            k += n;
-        }
-        return draws;
+        return skinDrawRun(cb, dst, skinned_[slot_].get(), run, bindPoseVbo, boundVertexBuffer, std::forward<CountFn>(issue));
     }
+
+    // A recorded island (VulkanContext::submitRecorded) records on a worker after the frame's plan() was replaced: this is the frame's plan copied out on main
+    // together with the pass handles, so the worker touches nothing of the MechSkinPass. writeDescriptors() is the main-thread half of record().
+    struct Frozen {
+        const ComputePipeline* pipe = nullptr;   // immutable after init
+        VkDescriptorSet set = VK_NULL_HANDLE;
+        bool active = false;
+        uint32_t maxCount = 0, jobCount = 0;
+        VkBuffer skinned = VK_NULL_HANDLE;
+        std::vector<uint32_t> runOff;
+        std::vector<int32_t> dst;
+        void recordDispatch(VkCommandBuffer cb, uint32_t boneOffset) const;
+        template <class CountFn>
+        uint32_t drawRun(VkCommandBuffer cb, uint32_t r, const Mc2MechDrawRun& run, VkBuffer bindPoseVbo, VkBuffer& boundVertexBuffer, CountFn&& issue) const {
+            const int32_t* d = active && r + 1 < runOff.size() ? dst.data() + runOff[r] : nullptr;
+            return skinDrawRun(cb, d, skinned, run, bindPoseVbo, boundVertexBuffer, std::forward<CountFn>(issue));
+        }
+    };
+    void writeDescriptors(VkBuffer srcVbo, VkDeviceSize srcBytes, VkBuffer bones, VkDeviceSize boneRange);
+    Frozen freeze() const;
 
     uint32_t plannedInstances() const noexcept { return plannedInstances_; }
 

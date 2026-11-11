@@ -317,10 +317,11 @@ struct TerrainRecordState {
 // The scene pass: CLEAR+STORE on color0, normal and depth (+ stencil), clear values as the GL frame-entry clear plus clearGBuffer1 sentinel
 // (FAR-BAND-BLACK-1: terrain is the first writer of scene depth, so it clears to reverse-Z far instead of loading). The memory barrier is the
 // external dependency of the VkRenderPass this replaced (previous frame's attachment writes -> this pass's attachment reads/writes).
-static void terrain_begin_scene_pass(TerrainIsland* s, mc2vk::VulkanContext& ctx, VkCommandBuffer cb, int w, int h) {
+static void terrain_begin_scene_pass(mc2vk::VulkanContext& ctx, VkCommandBuffer cb, int w, int h, const float (&clearColor)[4], VkImageView colorView,
+                                     VkImageView normalView, VkImageView depthView, VkFormat depthFormat) {
     namespace dr = mc2vk::dynrender;
     VkClearValue clears[3]{};
-    for (int k = 0; k < 4; ++k) clears[0].color.float32[k] = g_prefixClearColor[k];
+    for (int k = 0; k < 4; ++k) clears[0].color.float32[k] = clearColor[k];
     clears[1].color.float32[0] = 0.5f; clears[1].color.float32[1] = 0.5f; clears[1].color.float32[2] = 1.0f; clears[1].color.float32[3] = 0.0f;
     clears[2].depthStencil = {0.0f, 0u};
     dr::memoryBarrier(ctx, cb, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
@@ -331,51 +332,108 @@ static void terrain_begin_scene_pass(TerrainIsland* s, mc2vk::VulkanContext& ctx
     dr::Pass p;
     p.area = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
     p.colorCount = 2;
-    p.color[0] = dr::attachment(s->colorRes->view.get(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_CLEAR,
+    p.color[0] = dr::attachment(colorView, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_CLEAR,
                                 VK_ATTACHMENT_STORE_OP_STORE, &clears[0]);
-    p.color[1] = dr::attachment(s->normalRes->view.get(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_CLEAR,
+    p.color[1] = dr::attachment(normalView, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_CLEAR,
                                 VK_ATTACHMENT_STORE_OP_STORE, &clears[1]);
-    p.setDepth(dr::attachment(s->depthRes->view.get(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_CLEAR,
-                              VK_ATTACHMENT_STORE_OP_STORE, &clears[2]), s->depthRes->format);
+    p.setDepth(dr::attachment(depthView, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_CLEAR,
+                              VK_ATTACHMENT_STORE_OP_STORE, &clears[2]), depthFormat);
     dr::begin(ctx, cb, p);
 }
+static void terrain_begin_scene_pass(TerrainIsland* s, mc2vk::VulkanContext& ctx, VkCommandBuffer cb, int w, int h) {
+    terrain_begin_scene_pass(ctx, cb, w, h, g_prefixClearColor, s->colorRes->view.get(), s->normalRes->view.get(), s->depthRes->view.get(),
+                             s->depthRes->format);
+}
 
-static bool record_terrain(TerrainIsland* s, mc2vk::VulkanContext& rctx, VkCommandBuffer cb, uint32_t par, int w, int h,
-                           const uint32_t (&dynOffs)[4], TerrainRecordState& st,
-                           unsigned long& drawnOut, unsigned long& skirtDrawnOut) {
-    vkResetCommandPool(s->device, s->slotPool[par].get(), 0);   // cb is s->cbuf[par]
+struct TerrainRecPlan {
+    struct Run { VkBuffer vb, ib; uint32_t firstRec, count; };
+    mc2vk::VulkanContext* ctx = nullptr;   // const entry-point table only (cmdBeginRendering/cmdEndRendering/cmdPipelineBarrier2)
+    VkImageView colorView = VK_NULL_HANDLE, normalView = VK_NULL_HANDLE, depthView = VK_NULL_HANDLE; VkFormat depthFormat = VK_FORMAT_UNDEFINED;
+    VkPipeline pipe = VK_NULL_HANDLE, skirtPipe = VK_NULL_HANDLE;
+    VkPipelineLayout playout = VK_NULL_HANDLE; VkDescriptorSet set = VK_NULL_HANDLE; uint32_t dynOffs[4]{};
+    int w = 0, h = 0; float jx = 0, jy = 0, clearColor[4]{};
+    VkBuffer drawBuf = VK_NULL_HANDLE; VkDeviceAddress recBase = 0; VkDeviceSize cmdBase = 0;
+    std::vector<Run> patchRuns, skirtRuns;
+    mc2vk::LightLists::Pending lightLists;
+    VkQueryPool timerPool = VK_NULL_HANDLE; uint32_t timerCount = 0;
+};
+// Pure vkCmd half of the terrain pass; runs on a Render-pool worker via VulkanContext::submitRecorded.
+static bool record_terrain_cmds(const TerrainRecPlan& p, VkCommandBuffer cb) {
+    ZoneScopedN("VKIsl.Terrain.Record");
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) return false;
-    {
+    if (p.lightLists) {
         MC2_VK_GPU_SCOPE(listsScope, cb, "VKIsl.LightLists");
-        s->lightLists.record(rctx, cb, par);
+        p.lightLists.recordCmds(cb);
     }
     vk_render_pass_timer::Begin(cb, gos_render_pass_timer::Pass_TerrainChunk);
 
     // VK-DRAW-PERF-1: reset the query pool (outside the render pass) + stamp pass-start.
-    s->gpuTimer.reset(cb);
-    s->gpuTimer.write(cb, 0);
+    mc2vkts::GpuTimer::cmdReset(cb, p.timerPool, p.timerCount);
+    mc2vkts::GpuTimer::cmdWrite(cb, p.timerPool, p.timerCount, 0);
 
     // FAR-BAND-BLACK-1 FIX: attachment 2 clears to reverse-Z far. The native prefix
     // clear path also clears color0 and normal here, matching the GL frame-entry
     // clear plus clearGBuffer1 sentinel before terrain draws into the shared GBuffer.
     MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Terrain");
-    terrain_begin_scene_pass(s, rctx, cb, w, h);
+    terrain_begin_scene_pass(*p.ctx, cb, p.w, p.h, p.clearColor, p.colorView, p.normalView, p.depthView, p.depthFormat);
 
-    float jpx[2];
-    RenderCore::temporal::sceneJitterPixels(g_mc2RenderFrame, jpx);   // temporal AA: sub-pixel viewport offset, zero with no consumer
-    VkViewport vp{jpx[0], jpx[1], static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
-    VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
+    VkViewport vp{p.jx, p.jy, static_cast<float>(p.w), static_cast<float>(p.h), 0.0f, 1.0f};
+    VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(p.w), static_cast<uint32_t>(p.h)}};
     vkCmdSetViewport(cb, 0, 1, &vp);
     vkCmdSetScissor(cb, 0, 1, &scissor);
-    mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
+    mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, p.pipe);
 
     // VK-DRAW-PERF-1: stamp draws-start (gap 0->1 = setup + clear/load).
-    s->gpuTimer.write(cb, 1);
+    mc2vkts::GpuTimer::cmdWrite(cb, p.timerPool, p.timerCount, 1);
 
-    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], 4, dynOffs);
+    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, p.playout, 0, 1, &p.set, 4, p.dynOffs);
+
+    // One record (TerrainPatchConstants, read through buffer device address by gl_DrawID) and one VkDrawIndexedIndirectCommand per draw; a run of
+    // consecutive draws that share a mesh is one vkCmdDrawIndexedIndirect. All patches draw first, then all skirt strips.
+    const auto drawRuns = [&](const std::vector<TerrainRecPlan::Run>& runs) {
+        for (const TerrainRecPlan::Run& r : runs) {
+            const VkDeviceSize vboOff = 0;
+            vkCmdBindVertexBuffers(cb, 0, 1, &r.vb, &vboOff);
+            vkCmdBindIndexBuffer(cb, r.ib, 0, VK_INDEX_TYPE_UINT16);
+            for (uint32_t done = 0; done < r.count;) {
+                const uint32_t n = std::min<uint32_t>(r.count - done, 65535u);   // multiDrawIndirect guarantees at least 65535 per call
+                const uint64_t addr = p.recBase + static_cast<uint64_t>(r.firstRec + done) * sizeof(TerrainPatchConstants);
+                vkCmdPushConstants(cb, p.playout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(addr), &addr);
+                mc2::battlebench::add(mc2::battlebench::DrawTerrain);
+                vkCmdDrawIndexedIndirect(cb, p.drawBuf, p.cmdBase + static_cast<VkDeviceSize>(r.firstRec + done) * sizeof(TerrainCmd), n, sizeof(TerrainCmd));
+                done += n;
+            }
+        }
+    };
+    drawRuns(p.patchRuns);   // the patch pipeline is already bound above (once per pass); only the skirt pass switches it
+    if (!p.skirtRuns.empty()) mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, p.skirtPipe);
+    drawRuns(p.skirtRuns);
+
+    mc2vk::dynrender::end(*p.ctx, cb);
+    gpuScope.end();
+    // VK-DRAW-PERF-1: stamp pass-end (gap 1->2 = all patch/skirt draws).
+    mc2vkts::GpuTimer::cmdWrite(cb, p.timerPool, p.timerCount, 2);
+    vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_TerrainChunk);
+    return vkEndCommandBuffer(cb) == VK_SUCCESS;
+}
+static bool record_terrain(TerrainIsland* s, mc2vk::VulkanContext& rctx, uint32_t par, int w, int h,
+                           const uint32_t (&dynOffs)[4], TerrainRecordState& st,
+                           unsigned long& drawnOut, unsigned long& skirtDrawnOut, mc2vk::VulkanContext::RecordFn& recordOut) {
+    // Prepare half (main): the record cache, the draw-buffer growth and upload, the light-list descriptors and the gpu-timer pool claim. The recording is
+    // returned as a callback over copied handles (VulkanContext::submitRecorded): it touches nothing of the island.
+    TerrainRecPlan plan;
+    plan.lightLists = s->lightLists.claim(rctx, par);
+    plan.timerCount = s->gpuTimer.count; plan.timerPool = s->gpuTimer.claim();
+    std::copy_n(g_prefixClearColor, 4, plan.clearColor);
+    { float jpx[2]; RenderCore::temporal::sceneJitterPixels(g_mc2RenderFrame, jpx); plan.jx = jpx[0]; plan.jy = jpx[1]; }   // temporal AA: sub-pixel viewport offset, zero with no consumer
+    plan.ctx = &rctx; plan.colorView = s->colorRes->view.get(); plan.normalView = s->normalRes->view.get(); plan.depthView = s->depthRes->view.get();
+    plan.depthFormat = s->depthRes->format;
+    plan.pipe = s->pipe.get(); plan.skirtPipe = s->skirtPipe.get();
+    plan.playout = s->playout.get(); plan.set = s->set[par]; plan.w = w; plan.h = h;
+    std::copy_n(dynOffs, 4, plan.dynOffs);
 
     // Opaque patches write depth. Submit the nearest chunks first so the early
     // depth test rejects hidden terrain before running the material shader.
@@ -430,49 +488,29 @@ static bool record_terrain(TerrainIsland* s, mc2vk::VulkanContext& rctx, VkComma
             st.uploadedGen[par] = st.builtGen;
         }
     }
-    const VkBuffer drawBuf = s->drawBuf[par].get();
-    const VkDeviceAddress recBase = s->drawBuf[par].deviceAddress();
-    const VkDeviceSize cmdBase = static_cast<VkDeviceSize>(totalN) * sizeof(TerrainPatchConstants);
-    auto drawRuns = [&](const std::vector<TerrainRun>& runs, bool skirt) {
+    plan.drawBuf = s->drawBuf[par].get();
+    plan.recBase = s->drawBuf[par].deviceAddress();
+    plan.cmdBase = static_cast<VkDeviceSize>(totalN) * sizeof(TerrainPatchConstants);
+    // One run = one mesh's vertex/index buffers + a record range; the handles are resolved here, so the worker never reads the mesh caches.
+    const auto resolveRuns = [](const std::vector<TerrainRun>& runs, bool skirt, std::vector<TerrainRecPlan::Run>& out) {
+        out.reserve(runs.size());
         for (const TerrainRun& r : runs) {
             const PatchMesh* pm = skirt ? nullptr : static_cast<const PatchMesh*>(r.mesh);
             const SkirtMesh* sm = skirt ? static_cast<const SkirtMesh*>(r.mesh) : nullptr;
-            const VkBuffer vb = skirt ? sm->vbo.get() : pm->vbo.get();
-            const VkBuffer ib = skirt ? sm->ibo.get() : pm->ibo.get();
-            const VkDeviceSize vboOff = 0;
-            vkCmdBindVertexBuffers(cb, 0, 1, &vb, &vboOff);
-            vkCmdBindIndexBuffer(cb, ib, 0, VK_INDEX_TYPE_UINT16);
-            for (uint32_t done = 0; done < r.count;) {
-                const uint32_t n = std::min<uint32_t>(r.count - done, 65535u);   // multiDrawIndirect guarantees at least 65535 per call
-                const uint64_t addr = recBase + static_cast<uint64_t>(r.firstRec + done) * sizeof(TerrainPatchConstants);
-                vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(addr), &addr);
-                mc2::battlebench::add(mc2::battlebench::DrawTerrain);
-                vkCmdDrawIndexedIndirect(cb, drawBuf, cmdBase + static_cast<VkDeviceSize>(r.firstRec + done) * sizeof(TerrainCmd), n, sizeof(TerrainCmd));
-                done += n;
-            }
+            out.push_back({skirt ? sm->vbo.get() : pm->vbo.get(), skirt ? sm->ibo.get() : pm->ibo.get(), r.firstRec, r.count});
         }
     };
-    {
-        // The patch pipeline is already bound above (once per pass); only the skirt pass switches it.
-        drawRuns(st.patchRuns, false);
-        drawnOut = patchN;
-        if (!st.skirtRuns.empty()) mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->skirtPipe.get());
-        drawRuns(st.skirtRuns, true);
-        skirtDrawnOut = st.skirtN;
-        static bool s_logged = false;
-        if (!s_logged && patchN != 0) {
-            s_logged = true;
-            vlog("terrain indirect draws (first frame): patches=%u skirtEdges=%lu (was %lu vkCmdDrawIndexed) -> %zu patch runs + %zu skirt runs.",
-                 patchN, skirtDrawnOut, patchN + skirtDrawnOut, st.patchRuns.size(), st.skirtRuns.size());
-        }
+    resolveRuns(st.patchRuns, false, plan.patchRuns);
+    resolveRuns(st.skirtRuns, true, plan.skirtRuns);
+    drawnOut = patchN;
+    skirtDrawnOut = st.skirtN;
+    static bool s_logged = false;
+    if (!s_logged && patchN != 0) {
+        s_logged = true;
+        vlog("terrain indirect draws (first frame): patches=%u skirtEdges=%lu (was %lu vkCmdDrawIndexed) -> %zu patch runs + %zu skirt runs.",
+             patchN, skirtDrawnOut, patchN + skirtDrawnOut, st.patchRuns.size(), st.skirtRuns.size());
     }
-
-    mc2vk::dynrender::end(rctx, cb);
-    gpuScope.end();
-    // VK-DRAW-PERF-1: stamp pass-end (gap 1->2 = all patch/skirt draws).
-    s->gpuTimer.write(cb, 2);
-    vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_TerrainChunk);
-    if (vkEndCommandBuffer(cb) != VK_SUCCESS) return false;
+    recordOut = [plan = std::move(plan)](VkCommandBuffer cb) -> bool { return record_terrain_cmds(plan, cb); };
     return true;
 }
 
@@ -640,8 +678,6 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     // downstream native islands chain Vulkan-owned). The old hybrid arm
     // (BeginFrame x3 + glInteropSignalToVk x3 + vk2gl signal sems + glInteropWaitFromVk)
     // was deleted. VK-TERRAIN-FENCE-DEFER-1: beginFrame is HOISTED above the UBO fill.
-    VkCommandBuffer cb = s->cbuf[par];
-
     const clk::time_point tRender0 = clk::now();
     ZoneNamedN(zTerrRec, "VK-terrain-record-submit", true);   // VK-FLIP-FIELD-REPORT-1: CPU record+queue-submit (to fn return)
     // TERRAIN-HIRES-NEAR-DIAG: diagonal-fitted mode-1 meshes are keyed to one bake; a rebake (rare) drops them.
@@ -689,18 +725,19 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
                                  static_cast<uint32_t>(lpSpans[1].offset), static_cast<uint32_t>(lpSpans[2].offset)};
     g_sceneClearedRenderFrame = g_mc2RenderFrame + 1u;   // the recorded pass CLEARs color0 / normal / depth (see mc2_vk_scene_clear)
     unsigned long drawn = 0, skirtDrawn = 0;
-    vk_render_pass_timer::CancelUnlessSubmitted timerGuard(gos_render_pass_timer::Pass_TerrainChunk);
-    if (!record_terrain(s, rctx, cb, par, w, h, dynOffs, rec, drawn, skirtDrawn)) { setFallback("record_failed"); s->disabled = true; return 0; }
+    mc2vk::VulkanContext::RecordFn record;
+    if (!record_terrain(s, rctx, par, w, h, dynOffs, rec, drawn, skirtDrawn, record)) { setFallback("record_failed"); s->disabled = true; return 0; }
 
-    // Item-4 submit: wait/signal NO GL<->VK semaphores. The fence orders CPU access;
-    // downstream native islands (prop/mech/water/post) chain Vulkan-owned resources.
-    VkSubmitInfo si{};
-    si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    { ZoneScopedN("VKIsl.Terrain.Submit");   // VK-ISLAND-TRACY-1: vkQueueSubmit
-      if (mc2vk::submitGraphics(si, VK_NULL_HANDLE) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
+    // Item-4: no GL<->VK semaphores. The recording runs at the next flush on a worker with the frame's other recorded islands; done() runs in reserved
+    // order. Downstream native islands (prop/mech/water/post) chain Vulkan-owned resources in the same batch order.
+    auto done = [s](bool ok) {
+        if (ok) return;
+        vk_render_pass_timer::Cancel(gos_render_pass_timer::Pass_TerrainChunk);
+        setFallback("record_failed"); s->disabled = true;
+    };
+    { ZoneScopedN("VKIsl.Terrain.Submit");   // the reservation in the deferred submit batch
+      if (rctx.submitRecorded(std::move(record), std::move(done), nullptr) != VK_SUCCESS) return 0; }   // done(false) already disabled the island
     s->submitted[par] = rctx.tracker().now();
-    timerGuard.submitted();
 
     // VK-TERRAIN-FENCE-DEFER-1: the inline retire wait is GONE — the submit's fence
     // (the shared parity-slot fence) is waited at the slot's next

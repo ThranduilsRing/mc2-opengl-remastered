@@ -83,6 +83,19 @@ struct GpuTimer {
         return true;
     }
 
+    // Recorded islands: claim() takes the frame's ring pool on the thread that owns the timer (main) and returns it (null when unsupported); the recording
+    // thread then only issues cmdReset/cmdWrite on that pool. reset(cb)/write(cb, idx) remain the claim-and-record-in-one-place form.
+    VkQueryPool claim() {
+        if (!supported) return VK_NULL_HANDLE;
+        cur = static_cast<uint32_t>((seq) % kRing);
+        seqOf[cur] = ++seq;
+        return pools[cur];
+    }
+    static void cmdReset(VkCommandBuffer cb, VkQueryPool pool, uint32_t n) { if (pool) vkCmdResetQueryPool(cb, pool, 0, n); }
+    static void cmdWrite(VkCommandBuffer cb, VkQueryPool pool, uint32_t n, uint32_t idx) {
+        if (pool && idx < n) vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, pool, idx);
+    }
+
     // Take the next ring pool for this frame and reset it — MUST be called OUTSIDE any render pass (before Begin).
     void reset(VkCommandBuffer cb) {
         if (!supported) return;

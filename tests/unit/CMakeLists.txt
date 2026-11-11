@@ -723,7 +723,7 @@ file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/overlay_road_inputs.inc" CONTE
 target_sources(mc2_tests PRIVATE test_overlay_prestage.cpp)
 set_source_files_properties(test_overlay_prestage.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
 mc2_height_slice(light_lists_stage GameOS/gameos/vk_light_lists.h
-    "    bool stage(" "    void record(")
+    "    bool stage(" "    // The frame's one dispatch, split")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/light_lists_stage.inc" CONTENT "${light_lists_stage}")
 mc2_height_slice(terrain_light_stage GameOS/gameos/vulkan_terrain_island_run.cpp
     "bool stage_light_pool(" "// Fill one TerrainFrameUBO")
