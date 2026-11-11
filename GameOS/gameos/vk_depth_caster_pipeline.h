@@ -17,8 +17,9 @@
 namespace mc2vk {
 
 // One vertex stream (`binding`, its stride and attributes as the caller filled them: the offline layout checker reads those assignments next to the shader name).
-// False, with `out` empty, when vkCreateGraphicsPipelines fails (the caller logs the reason it names).
-bool createDepthCasterPipeline(OwnedPipeline& out, VkDevice device, VkRenderPass pass, VkPipelineLayout layout, VkShaderModule vert, VkShaderModule frag,
+// False, with `out` empty, when vkCreateGraphicsPipelines fails (the caller logs the reason it names). The pipeline renders under dynamic rendering into
+// one depth attachment of `depthFormat` (no VkRenderPass).
+bool createDepthCasterPipeline(OwnedPipeline& out, VkDevice device, VkFormat depthFormat, VkPipelineLayout layout, VkShaderModule vert, VkShaderModule frag,
                                const VkVertexInputBindingDescription& binding, std::span<const VkVertexInputAttributeDescription> attributes);
 
 }  // namespace mc2vk

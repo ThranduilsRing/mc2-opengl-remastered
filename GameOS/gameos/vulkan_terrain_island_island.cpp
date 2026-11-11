@@ -4,6 +4,7 @@
 #include "vulkan_terrain_island_internal.h"
 #include "Gates/gate_cold.h"
 #include "terrain_diagonal.h"
+#include "vk_dynamic_rendering.h"
 #include <cstdlib>
 
 
@@ -387,96 +388,13 @@ bool init_island(TerrainIsland* s, int w, int h) {
     // a PERMANENT build failure -> the island declines for the session (item-2).
     g_terrainInitReachedBuild = 1;
 
-    // ---- Shared-GBuffer renderpass. Item-4: terrain is unconditionally the native
-    // first owner of color0/normal/depth for the frame — CLEAR loadOp on all three
-    // (color0 = gameplay/menu clear color via mc2_vk_terrain_set_native_prefix_clear_color,
-    // normal = clearGBuffer1 sentinel, depth = reverse-Z far). The GL frame-entry clear
-    // + clearGBuffer1 are skipped in gameosmain.cpp when this island is armed
-    // (mc2vkgate::umbrellaOn()). The old LOAD-preserve hybrid renderpass
-    // (GL clears + GL->VK semaphore handoff) was deleted.
-    {
-        VkAttachmentDescription att[3]{};
-        att[0].format = s->colorRes->format; att[0].samples = VK_SAMPLE_COUNT_1_BIT;
-        att[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        att[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        att[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        att[0].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        att[0].finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        att[1].format = s->normalRes->format; att[1].samples = VK_SAMPLE_COUNT_1_BIT;
-        att[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        att[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        att[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        att[1].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        att[1].finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        // FAR-BAND-BLACK-1 FIX: depth uses CLEAR, not LOAD. The shared depth image is
-        // exported as VK_FORMAT_D32_SFLOAT_S8_UINT (D24_UNORM_S8_UINT export is
-        // unsupported on this device -- see vulkan_shared_scene_depth.cpp), while GL's
-        // per-frame glClearDepth(0.0f)/glClear(GL_DEPTH_BUFFER_BIT) writes through a
-        // GL_DEPTH24_STENCIL8 *reinterpretation* of the SAME bytes. 0.0f happens to be
-        // bit-identical (0x00000000) in both encodings, so the GL clear alone would be
-        // safe in isolation -- but terrain (this island) is the FIRST GL/VK writer each
-        // frame and LOAD_OP_LOAD makes its GEQUAL depth test trust whatever is already
-        // in the image at that instant, which depends on GL/VK submission-order
-        // interleaving with the shared image's cross-API layout transitions; any
-        // non-zero residue read through the wrong format's bit-layout is garbage, and
-        // reverse-Z GEQUAL against garbage fails almost everywhere on a hard camera cut
-        // (root cause of FAR-BAND-BLACK: overview_center/oblique_horizon divergence).
-        // A native VK CLEAR here is unambiguous -- vkCmdClearDepthStencilImage/
-        // VK_ATTACHMENT_LOAD_OP_CLEAR writes through the image's OWN declared format
-        // (D32_SFLOAT_S8_UINT), so terrain always starts its depth test from a
-        // guaranteed-correct reverse-Z-far value, independent of what GL's differently-
-        // interpreted clear wrote to the same memory. Terrain runs first in the frame
-        // (Terrain::flushDrawCommands() before mc2::VkSceneRenderer::renderLists(mc2::renderSubmissions()) --
-        // code/gamecam.cpp:530,535), so clearing here does not discard anything real:
-        // nothing else has written scene depth yet this frame. STORE_OP_STORE (below)
-        // still hands the correct depth downstream to props/mech Tier-1 (LOAD-preserve,
-        // unaffected by this change) and to GL's own post-process reads.
-        att[2].format = s->depthRes->format; att[2].samples = VK_SAMPLE_COUNT_1_BIT;
-        att[2].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR; att[2].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        att[2].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR; att[2].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
-        att[2].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-        att[2].finalLayout   = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-        VkAttachmentReference colorRefs[2] = {
-            {0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL},
-            {1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL},
-        };
-        VkAttachmentReference depthRef{2, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
-        VkSubpassDescription sub{};
-        sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        sub.colorAttachmentCount = 2; sub.pColorAttachments = colorRefs;
-        sub.pDepthStencilAttachment = &depthRef;
-
-        VkSubpassDependency deps[2]{};
-        deps[0].srcSubpass = VK_SUBPASS_EXTERNAL; deps[0].dstSubpass = 0;
-        deps[0].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-        deps[0].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        deps[0].dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        deps[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
-                                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        deps[1].srcSubpass = 0; deps[1].dstSubpass = VK_SUBPASS_EXTERNAL;
-        deps[1].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-        deps[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        deps[1].dstStageMask  = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-        deps[1].dstAccessMask = 0;
-
-        VkRenderPassCreateInfo rpci{};
-        rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        rpci.attachmentCount = 3; rpci.pAttachments = att;
-        rpci.subpassCount = 1; rpci.pSubpasses = &sub;
-        rpci.dependencyCount = 2; rpci.pDependencies = deps;
-        if (!mc2vk::create(s->rpass, s->device, [&](auto* h) { return vkCreateRenderPass(s->device, &rpci, nullptr, h); })) {
-            vlog("vkCreateRenderPass failed."); setFallback("renderpass_failed"); return false;
-        }
-        VkImageView fbViews[3] = { s->colorRes->view.get(), s->normalRes->view.get(), s->depthRes->view.get() };
-        VkFramebufferCreateInfo fci{};
-        fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        fci.renderPass = s->rpass.get(); fci.attachmentCount = 3; fci.pAttachments = fbViews;
-        fci.width = static_cast<uint32_t>(w); fci.height = static_cast<uint32_t>(h); fci.layers = 1;
-        if (!mc2vk::create(s->fb, s->device, [&](auto* h) { return vkCreateFramebuffer(s->device, &fci, nullptr, h); })) {
-            vlog("vkCreateFramebuffer failed."); setFallback("framebuffer_failed"); return false;
-        }
-    }
+    // ---- Shared-GBuffer scene pass (VK_KHR_dynamic_rendering, no VkRenderPass/VkFramebuffer). Terrain is the native first owner of
+    // color0/normal/depth for the frame: loadOp CLEAR on all three (color0 = gameplay/menu clear color via
+    // mc2_vk_terrain_set_native_prefix_clear_color, normal = clearGBuffer1 sentinel, depth = reverse-Z far; depth is cleared, never LOADed,
+    // because nothing has written scene depth yet this frame: FAR-BAND-BLACK-1). storeOp STORE on all three (props/mech/water/vfx and the
+    // post chain read them). The pass stays in COLOR/DEPTH_STENCIL_ATTACHMENT_OPTIMAL; the subpass dependency of the old render pass is the
+    // memory barrier recorded by terrain_begin_scene_pass (vulkan_terrain_island_run.cpp). The pipelines below carry
+    // VkPipelineRenderingCreateInfo with the same formats.
 
     // ---- Buffers (height snapshot SSBO; the per-frame UBO and light pool are frame-ring spans). ----
     if (!ensure_height_capacity(s, 256 * 1024)) return false;
@@ -737,7 +655,10 @@ bool init_island(TerrainIsland* s, int w, int h) {
         gp.pViewportState = &vps; gp.pRasterizationState = &rs;
         gp.pMultisampleState = &ms; gp.pDepthStencilState = &ds; gp.pColorBlendState = &cb;
         gp.pDynamicState = &dsci;
-        gp.layout = s->playout.get(); gp.renderPass = s->rpass.get(); gp.subpass = 0;
+        const VkFormat sceneFmts[2] = { s->colorRes->format, s->normalRes->format };
+        const VkPipelineRenderingCreateInfo prci = mc2vk::dynrender::pipelineInfo(2, sceneFmts, s->depthRes->format);
+        gp.pNext = &prci;
+        gp.layout = s->playout.get(); gp.renderPass = VK_NULL_HANDLE; gp.subpass = 0;
         if (!mc2vk::create(s->pipe, s->device, [&](auto* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
             vlog("vkCreateGraphicsPipelines failed."); setFallback("pipeline_failed"); return false;
         }
@@ -776,7 +697,8 @@ bool init_island(TerrainIsland* s, int w, int h) {
         sgp.pViewportState = &vps; sgp.pRasterizationState = &rs;
         sgp.pMultisampleState = &ms; sgp.pDepthStencilState = &ds; sgp.pColorBlendState = &cb;
         sgp.pDynamicState = &dsci;
-        sgp.layout = s->playout.get(); sgp.renderPass = s->rpass.get(); sgp.subpass = 0;
+        sgp.pNext = &prci;
+        sgp.layout = s->playout.get(); sgp.renderPass = VK_NULL_HANDLE; sgp.subpass = 0;
         if (!mc2vk::create(s->skirtPipe, s->device, [&](auto* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &sgp, nullptr, h); })) {
             vlog("vkCreateGraphicsPipelines (skirt) failed."); setFallback("pipeline_failed"); return false;
         }

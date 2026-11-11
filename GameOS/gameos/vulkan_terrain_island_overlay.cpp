@@ -4,6 +4,7 @@
 #include "vk_island_fail_policy.h"
 #include "vulkan_terrain_island_internal.h"
 #include "vulkan_mover_shadow.h"
+#include "vk_dynamic_rendering.h"
 #include "../../RenderCore/TemporalInputs.h"
 extern uint32_t g_mc2RenderFrame;   // mclib/tgl.cpp
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
@@ -134,51 +135,7 @@ bool ovl_init(TerrainIsland* s, OvlState* o, int w, int h) {
     VkImageResource* depthRes  = s->depthRes;
     if (!colorRes || !normalRes || !depthRes) return false;
 
-    {   // LOAD-preserve render pass + framebuffer over the 3 shared views (same as legacy island)
-        VkAttachmentDescription att[3]{};
-        att[0].format = colorRes->format;  att[0].samples = VK_SAMPLE_COUNT_1_BIT;
-        att[0].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        att[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        att[0].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; att[0].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        att[1].format = normalRes->format; att[1].samples = VK_SAMPLE_COUNT_1_BIT;
-        att[1].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        att[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        att[1].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; att[1].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        att[2].format = depthRes->format;  att[2].samples = VK_SAMPLE_COUNT_1_BIT;
-        att[2].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[2].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        att[2].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[2].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
-        att[2].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL; att[2].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-        VkAttachmentReference colorRefs[2] = {
-            {0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}, {1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL} };
-        VkAttachmentReference depthRef{2, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
-        VkSubpassDescription sub{};
-        sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        sub.colorAttachmentCount = 2; sub.pColorAttachments = colorRefs;
-        sub.pDepthStencilAttachment = &depthRef;
-        VkSubpassDependency deps[2]{};
-        deps[0].srcSubpass = VK_SUBPASS_EXTERNAL; deps[0].dstSubpass = 0;
-        deps[0].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-        deps[0].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        deps[0].dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        deps[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
-                                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        deps[1].srcSubpass = 0; deps[1].dstSubpass = VK_SUBPASS_EXTERNAL;
-        deps[1].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-        deps[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        deps[1].dstStageMask  = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT; deps[1].dstAccessMask = 0;
-        VkRenderPassCreateInfo rpci{};
-        rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        rpci.attachmentCount = 3; rpci.pAttachments = att;
-        rpci.subpassCount = 1; rpci.pSubpasses = &sub;
-        rpci.dependencyCount = 2; rpci.pDependencies = deps;
-        if (!mc2vk::create(o->rpass, s->device, [&](auto* h) { return vkCreateRenderPass(s->device, &rpci, nullptr, h); })) return false;
-        VkImageView fbViews[3] = { colorRes->view.get(), normalRes->view.get(), depthRes->view.get() };
-        VkFramebufferCreateInfo fci{};
-        fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        fci.renderPass = o->rpass.get(); fci.attachmentCount = 3; fci.pAttachments = fbViews;
-        fci.width = static_cast<uint32_t>(w); fci.height = static_cast<uint32_t>(h); fci.layers = 1;
-        if (!mc2vk::create(o->fb, s->device, [&](auto* h) { return vkCreateFramebuffer(s->device, &fci, nullptr, h); })) return false;
-    }
+    // The scene pass is a dynamic rendering pass (LOAD + STORE over the 3 shared views; vk_dynamic_rendering.h beginSceneLoad): no render pass object.
 
     {   // texture set layout / pool / sampler / dummy white
         VkSamplerCreateInfo sci{};
@@ -299,7 +256,10 @@ bool ovl_init(TerrainIsland* s, OvlState* o, int w, int h) {
             gp.pViewportState = &vps; gp.pRasterizationState = &rs;
             gp.pMultisampleState = &ms; gp.pDepthStencilState = &ds; gp.pColorBlendState = &cb;
             gp.pDynamicState = &dsci;
-            gp.layout = o->playout.get(); gp.renderPass = o->rpass.get(); gp.subpass = 0;
+            const VkFormat sceneFmts[2] = { colorRes->format, normalRes->format };
+            const VkPipelineRenderingCreateInfo prci = mc2vk::dynrender::pipelineInfo(2, sceneFmts, depthRes->format);
+            gp.pNext = &prci;
+            gp.layout = o->playout.get(); gp.renderPass = VK_NULL_HANDLE; gp.subpass = 0;
             if (!mc2vk::create(o->pipe[k], s->device, [&](auto* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) return false;
             mc2vk::nameObjectAt(s->device, o->pipe[k].get(), "terrain.overlayPipe", static_cast<int>(k));
         }
@@ -496,12 +456,9 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
         MC2_VK_GPU_SCOPE(listsScope, cb, "VKIsl.LightLists");
         s->lightLists.record(rctx, cb, par);
     }
-    VkRenderPassBeginInfo rbi{};
-    rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    rbi.renderPass = o->rpass.get(); rbi.framebuffer = o->fb.get();
-    rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
     MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Terrain.Overlay");
-    vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+    mc2vk::dynrender::beginSceneLoad(rctx, cb, static_cast<uint32_t>(w), static_cast<uint32_t>(h), s->colorRes->view.get(), s->normalRes->view.get(),
+                                     s->depthRes->view.get(), s->depthRes->format);
     VkViewport vp{0.0f, 0.0f, static_cast<float>(w),   // overlay quads (selection, fog of war) stay unjittered
  static_cast<float>(h), 0.0f, 1.0f};
     VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
@@ -560,7 +517,7 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
         if (sourceKind == 2) ++mineDraws;
     }
     flushPending();
-    vkCmdEndRenderPass(cb);
+    mc2vk::dynrender::end(rctx, cb);
     gpuScope.end();
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { o->disabled = true; return 0; }
     VkSubmitInfo si{};

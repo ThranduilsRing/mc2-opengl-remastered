@@ -1,10 +1,11 @@
 // vk_depth_caster_pipeline.cpp -- see the header. Compiles to nothing unless MC2_VULKAN_ISLAND is defined.
 
 #include "vk_depth_caster_pipeline.h"
+#include "vk_dynamic_rendering.h"
 
 namespace mc2vk {
 
-bool createDepthCasterPipeline(OwnedPipeline& out, VkDevice device, VkRenderPass pass, VkPipelineLayout layout, VkShaderModule vert, VkShaderModule frag,
+bool createDepthCasterPipeline(OwnedPipeline& out, VkDevice device, VkFormat depthFormat, VkPipelineLayout layout, VkShaderModule vert, VkShaderModule frag,
                                const VkVertexInputBindingDescription& binding, std::span<const VkVertexInputAttributeDescription> attributes) {
     VkPipelineVertexInputStateCreateInfo vin{};
     vin.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -73,7 +74,9 @@ bool createDepthCasterPipeline(OwnedPipeline& out, VkDevice device, VkRenderPass
     info.pColorBlendState = &blend;
     info.pDynamicState = &dynamic;
     info.layout = layout;
-    info.renderPass = pass;
+    const VkPipelineRenderingCreateInfo rendering = dynrender::pipelineInfo(0, nullptr, depthFormat);
+    info.pNext = &rendering;
+    info.renderPass = VK_NULL_HANDLE;
     info.subpass = 0;
     return create(out, device, [&](auto* handle) { return mc2vk::infra::graphics(device, VK_NULL_HANDLE, 1, &info, nullptr, handle); });
 }

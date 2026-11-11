@@ -29,10 +29,10 @@ namespace mc2vk {
 
 class ShadowMechCasters {
 public:
-    // Builds the pipeline for `pass` (a depth-only pass; the lent render pass must outlive this object's use) and a descriptor set per frame parity over
+    // Builds the pipeline for a depth-only dynamic rendering pass over a `depthFormat` attachment and a descriptor set per frame parity over
     // `frameUbo`, the island's ShadowFrameUBO (the light-space matrix; bound with a dynamic offset, `uboRange` bytes per slice). False, with the reason
     // logged, when a shader module or an object cannot be made.
-    bool init(VkDevice device, VmaAllocator allocator, VkRenderPass pass, VkBuffer frameUbo, VkDeviceSize uboRange, std::string_view spvDir);
+    bool init(VkDevice device, VmaAllocator allocator, VkFormat depthFormat, VkBuffer frameUbo, VkDeviceSize uboRange, std::string_view spvDir);
 
     // Pulls this frame's mech feed into the buffers of parity `epoch & 1`. The first call of an epoch does the work; later calls of the same epoch return at once.
     // The caller has retired the previous use of that parity (the island's frame fence). A feed that is not ready, or whose run list does not fit its own

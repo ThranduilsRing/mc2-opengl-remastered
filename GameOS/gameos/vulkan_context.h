@@ -147,6 +147,16 @@ public:
         else vkCmdPipelineBarrier2KHR(cb, &dep);
     }
 
+    // vkCmdBeginRendering / vkCmdEndRendering through the entry point of the device's dynamic rendering route (core 1.3 or the KHR extension).
+    void cmdBeginRendering(VkCommandBuffer cb, const VkRenderingInfo& info) const {
+        if (route("dynamic_rendering") == profile::Route::Core) vkCmdBeginRendering(cb, &info);
+        else vkCmdBeginRenderingKHR(cb, &info);
+    }
+    void cmdEndRendering(VkCommandBuffer cb) const {
+        if (route("dynamic_rendering") == profile::Route::Core) vkCmdEndRendering(cb);
+        else vkCmdEndRenderingKHR(cb);
+    }
+
     // vkQueueSubmit2 through the entry point of the device's route (core 1.3 or KHR); the submit funnel is its only caller.
     VkResult queueSubmit2(VkQueue q, const VkSubmitInfo2& si, VkFence fence) const;   // defined in vulkan_context.cpp (the funnel's own file)
 
