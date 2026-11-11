@@ -16,4 +16,11 @@ constexpr bool terrainWalkSkips(int objClass, bool hasBars, bool hasDust, bool r
 	return (objClass == TREE || objClass == TERRAINOBJECT) && !hasBars && !hasDust && renderIsNoOp;
 }
 
+// perf-building-resident: Building, Turret and Gate::renderView return at once when their extract left the Visible
+// flag clear (appearance not inView); bars and the name are only captured under that flag, so the visit draws nothing.
+constexpr bool visibleFlagWalkSkips(int objClass, bool visibleFlag)
+{
+	return (objClass == BUILDING || objClass == TURRET || objClass == GATE) && !visibleFlag;
+}
+
 } // namespace mc2

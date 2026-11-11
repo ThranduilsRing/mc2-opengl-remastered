@@ -223,3 +223,23 @@ TEST_CASE("terrain_dirty_queue/a quiescent read during a simulated sim phase is 
     CHECK(queue.isRenderResidentQuiescent(2));
     CHECK(queue.quiescentViolations() == 2);
 }
+
+// perf-building-resident: buildings, turrets and gates leave the walk only when their extract found them out of view
+// (Visible clear: renderView returns at once). Building-appearance terrain objects are still visited (an off-view skip
+// of them lost two contact shadows in the mc2_01 exe-swap A/B).
+TEST_CASE("terrain_walk_skip/off-view buildings, turrets and gates leave the walk")
+{
+    // Out of view (Visible clear): renderView is a no-op, skipped.
+    CHECK(mc2::visibleFlagWalkSkips(BUILDING, false));
+    CHECK(mc2::visibleFlagWalkSkips(TURRET, false));
+    CHECK(mc2::visibleFlagWalkSkips(GATE, false));
+    // In view (also damaged, burning or selected ones: bars and the name are only captured under Visible): visited.
+    CHECK(!mc2::visibleFlagWalkSkips(BUILDING, true));
+    CHECK(!mc2::visibleFlagWalkSkips(TURRET, true));
+    CHECK(!mc2::visibleFlagWalkSkips(GATE, true));
+    // Other classes do not use the Visible flag: never skipped by it.
+    CHECK(!mc2::visibleFlagWalkSkips(TREE, false));
+    CHECK(!mc2::visibleFlagWalkSkips(TERRAINOBJECT, false));
+    CHECK(!mc2::visibleFlagWalkSkips(BRIDGE, false));
+    CHECK(!mc2::visibleFlagWalkSkips(BATTLEMECH, false));
+}
