@@ -658,12 +658,20 @@ def host_jobs():
         return str(min(6, os.cpu_count() or 2))
 
 
+def build_pool_jobs():
+    """Merge build width: the host build pool (BUILD_POOL / compile mask), not the JOBS lane-count knob.
+
+    ninja_build.py still takes its tokens from the pool, so lanes building at the same time are respected."""
+    import build_tokens
+    return str(max(1, int(build_tokens.pool_size())))
+
+
 def verify_env(root: str) -> dict:
     """Leave the canonical Ninja tree ready for deploy_payload.py --ninja.
 
     The orchestrator owns this worktree exclusively during a merge window.
     """
-    return dict(os.environ, MC2_BUILD_JOBS=host_jobs(), CONTRACTS_JOBS=host_jobs(), MC2_NINJA_TREE="build64-ninja", MC2_UNIT_BUILD_DIR=os.path.join(root, "build-cc-tests"))
+    return dict(os.environ, MC2_BUILD_JOBS=build_pool_jobs(), CONTRACTS_JOBS=host_jobs(), MC2_NINJA_TREE="build64-ninja", MC2_UNIT_BUILD_DIR=os.path.join(root, "build-cc-tests"))
 
 
 def verify_merged(root: str, mode: str, runner=None) -> tuple[str, list[tuple[str, int, str]]]:
