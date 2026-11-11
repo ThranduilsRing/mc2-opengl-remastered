@@ -55,8 +55,13 @@ def gate_gpu():
 
 
 def slot_names(n):
-    """lock-file base names of GPU n: gpu<n>.s<k> for k < K; the gate GPU keeps the one legacy name gpu<n>"""
-    return [f"gpu{n}"] if n == gate_gpu() else [f"gpu{n}.s{k}" for k in range(gpu_slots())]
+    """lock-file base names of GPU n: gpu<n>.s<k> for k < K (the gate GPU too: normal rows take one slot, gate/perf rows take all K)"""
+    return [f"gpu{n}.s{k}" for k in range(gpu_slots())]
+
+
+def owner_names(n):
+    """names that can carry a gpu<n>.owner/.row file: the slots plus the legacy gpu<n> (held by an exclusive gate/perf row, and by an old lane script)"""
+    return slot_names(n) + [f"gpu{n}"]
 
 
 def all_slot_names(gpus=None):
@@ -106,10 +111,9 @@ def gpu_entry(n, now, inodes):
     (how long a waiter has had a free slot: should stay ~0; a growing number means the queue is stuck while the GPU idles)"""
     filler = os.path.exists(os.path.join(FILLER, f"active.{n}"))
     slots = [slot_entry(b, now, inodes, filler) for b in slot_names(n)]
-    if n != gate_gpu():   # a lane still on the old exclusive-lock script holds the legacy gpu<n> file: show it while it is held
-        legacy = slot_entry(f"gpu{n}", now, inodes, filler)
-        if legacy["locked"]:
-            slots.append(legacy)
+    legacy = slot_entry(f"gpu{n}", now, inodes, filler)   # an exclusive gate/perf row (or a lane still on the old exclusive-lock script) holds the legacy gpu<n> file: show it while it is held
+    if legacy["locked"]:
+        slots.append(legacy)
     held = [s for s in slots if s["locked"]]
     e = dict((held or slots)[0])
     e["locked"] = bool(held)

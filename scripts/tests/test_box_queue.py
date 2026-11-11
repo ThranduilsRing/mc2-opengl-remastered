@@ -449,16 +449,19 @@ def test_gpu_lock_is_a_counting_semaphore_of_slot_files():
     assert 'echo "$row" > /workspace/locks/$SB.row' in r
     assert "gpu=$GPU slot=$SLOT locked lock_wait_secs=" in r                    # the old grep key survives
     assert "timeout 1 tail -f /dev/null" in r and "timeout 3 tail" not in r      # 1 s poll
-    assert "SB=gpu${GATE_GPU:-0}" in r                                            # the gate GPU (GATE_GPU in cores.env) keeps its one exclusive legacy lock
+    assert "GATE_GPU" not in r[r.index("try_slot() {"):r.index("release_slots()")]  # the gate GPU takes slots like any GPU (it was one exclusive legacy lock: k=1, rc 76 timeouts)
+    assert "EXCL=${MC2_BOX_GATE:+1}" in r and "ab:*|gpu-passes) EXCL=1" in r        # gate and perf rows are the exclusive ones
+    assert "SB=gpu$c; return 0" in r and "SLOT=all" in r                          # exclusive: the legacy gpu<c> file (the supervisor's gate guard) plus every slot
+    assert r'printf "gpu-lock\t76\n" >> "$OUT/rows.tsv"; exit 76' in r            # a lock timeout is a rows.tsv row
     ce = (Path(box_run.__file__).parent / "box" / "cores.env").read_text()
     assert "GPU_SLOTS=3" in ce and "GATE_GPU=0" in ce                             # the one-GPU box's gate GPU is its only GPU
 
 
-def _slot_harness(tmp_path, k, name):
-    """the real try_slot() from REMOTE against a temp lock dir: prints 'gpu slot' of the slot it got, or 'none'"""
+def _slot_harness(tmp_path, k, name, excl=""):
+    """the real try_slot() from REMOTE against a temp lock dir (one GPU, which is also the gate GPU): prints 'gpu slot' of the slot it got, or 'none'"""
     r = box_run.REMOTE
     fn = r[r.index("try_slot() {"):r.index("try_slot\nif [ -z")]
-    script = (f'cand=0; KS={k}; GOT=""; {fn}\n'.replace("/workspace/locks", tmp_path.as_posix())
+    script = (f'cand=0; KS={k}; GOT=""; EXCL={excl}; GATE_GPU=0; {fn}\n'.replace("/workspace/locks", tmp_path.as_posix())
               + 'if try_slot; then echo "$GOT $SLOT"; else echo none; fi; [ -n "$HOLD" ] && read -t 5 _x <&0\n')
     return script
 
@@ -481,3 +484,44 @@ def test_try_slot_hands_out_k_slots_then_refuses(tmp_path):
     finally:
         for p in procs:
             p.stdin.close(); p.wait(timeout=10)
+
+
+def _hold(bash, script):
+    p = subprocess.Popen([bash, str(script)], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, env={**os.environ, "HOLD": "1"},
+                         **console_child.child_kwargs(redirected=True))
+    return p, p.stdout.readline().strip()
+
+
+def test_gate_gpu_gives_three_game_slots_and_exclusive_rows_take_all(tmp_path):
+    """single-GPU box (GPU 0 is also GATE_GPU): 3 normal rows lock, the 4th waits; an exclusive (gate/perf) row needs every slot and shuts the others out"""
+    import shutil
+    bash = shutil.which("bash")
+    if not bash or not shutil.which("flock"):
+        pytest.skip("bash/flock not available (the live box run covers this)")
+    normal, excl = tmp_path / "n.sh", tmp_path / "x.sh"
+    normal.write_text(_slot_harness(tmp_path, 3, "n"))
+    excl.write_text(_slot_harness(tmp_path, 3, "x", excl="1"))
+    procs = []
+    try:
+        got = []
+        for _ in range(4):
+            p, line = _hold(bash, normal); procs.append(p); got.append(line)
+        assert got == ["0 0", "0 1", "0 2", "none"]
+        p, line = _hold(bash, excl); procs.append(p)
+        assert line == "none"                                     # a perf row cannot start while game rows hold slots
+        procs[2].stdin.close(); procs[2].wait(timeout=10); procs.pop(2)
+        p, line = _hold(bash, excl); procs.append(p)
+        assert line == "none"                                     # two slots still held
+        for q in procs[:2]:
+            q.stdin.close(); q.wait(timeout=10)
+        procs = procs[2:]
+        p, line = _hold(bash, excl); procs.append(p)
+        assert line == "0 all"                                    # all free: the exclusive row takes every slot
+        p, line = _hold(bash, normal); procs.append(p)
+        assert line == "none"                                     # and a normal row now waits
+        p, line = _hold(bash, excl); procs.append(p)
+        assert line == "none"                                     # a second exclusive row too
+    finally:
+        for p in procs:
+            if p.poll() is None:
+                p.stdin.close(); p.wait(timeout=10)

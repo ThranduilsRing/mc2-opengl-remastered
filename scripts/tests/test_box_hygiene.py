@@ -244,7 +244,7 @@ def test_status_build_reads_locks(tmp_path, monkeypatch):
     assert (g1["holder"], g1["alive"], g1["row"]) == ("claude_x@abcdef01", True, "smoke-lite")
     assert s["gpus"]["2"]["alive"] is None and s["gpus"]["0"]["holder"] is None   # a dead owner on a free slot is not shown as the GPU holder
     assert g1["k"] == 3 and [x["row"] for x in g1["slots"]] == ["smoke-lite", None, None] and g1["held"] == 0 and g1["waiters"] == 0
-    assert s["gpus"]["3"]["k"] == 1 and s["gpus"]["3"]["slots"][0]["holder"] is None   # the gate GPU stays one exclusive slot
+    assert s["gpus"]["3"]["k"] == 3 and s["gpus"]["3"]["slots"][0]["holder"] is None   # the gate GPU has the K game slots too (a gate/perf row takes them all plus the legacy gate file)
 
 
 def test_status_counts_held_slots_and_waiters(tmp_path, monkeypatch):
