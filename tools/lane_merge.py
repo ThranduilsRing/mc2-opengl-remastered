@@ -1168,24 +1168,40 @@ def recorded_data_fingerprint(root: str) -> dict | None:
     return next(iter(seen.values())) if len(seen) == 1 else None
 
 
+def candidate_data_fingerprint(root: str) -> tuple[dict | None, str]:
+    """The data fingerprint the gate would compute for this tree: the stock reference install (the gate's deploy target,
+    sim_determinism.INSTALL_DIR) read with the candidate tree's declared overlay manifest (its tests/smoke/sim_determinism/
+    data_overlay.json). -> (fingerprint, skip_reason): fingerprint is None, with a one-line reason, when there is no stock
+    install to read. Read-only: it walks and hashes the install but never writes to it. The stock parts are gitignored and
+    absent from a source tree, so the source tree itself can never be fingerprinted -- only the install the gate deploys to."""
+    import sim_determinism as sd
+    install = sd.INSTALL_DIR
+    if not os.path.isdir(install):
+        return None, f"no stock reference install at {install} to fingerprint"
+    manifest = sd.load_overlay_manifest(os.path.join(root, "tests", "smoke", "sim_determinism", "data_overlay.json"))
+    return sd.data_fingerprint(install, manifest), ""
+
+
 def differing_stock_parts(fp: dict, base: dict) -> str:
     """The stock parts that differ between the candidate fingerprint and the baseline (the FAIL detail)."""
     got, want = set(fp.get("inputs") or []), set(base.get("inputs") or [])
     parts = []
     if (fp.get("stock_digest") or "") != (base.get("stock_digest") or ""):
         parts.append(f"stock_digest {fp.get('stock_digest')} is not the baseline's {base.get('stock_digest')}")
-    parts += [f"stock part {p} is absent from the tree" for p in sorted(want - got)]
+    parts += [f"stock part {p} is absent from the install" for p in sorted(want - got)]
     parts += [f"stock part {p} is not in the baseline" for p in sorted(got - want)]
     parts += fp.get("problems") or []
     return "; ".join(parts) or "the data fingerprint digest differs"
 
 
 def data_fingerprint_check(root: str, fingerprint=None, baseline=None) -> tuple[str, str]:
-    """The candidate tree's sim data fingerprint vs the recorded baseline the determinism/saveload rows pin.
-    -> (verdict, detail): 'OK' when it matches, 'FAIL' when it does not (the gate would go red), 'SKIPPED' when there is no
-    recorded baseline to compare. W138h: this red only showed on the laptop gate, costing two extra runs (52 min)."""
-    import sim_determinism as sd
-    fp = (fingerprint or sd.data_fingerprint)(root)
+    """The gate's sim data fingerprint (stock reference install + the candidate tree's declared overlay) vs the recorded
+    baseline the determinism/saveload rows pin. -> (verdict, detail): 'OK' when it matches, 'FAIL' when it does not (the
+    gate would go red), 'SKIPPED' when there is no recorded baseline or no stock install to read. W138h: this red only
+    showed on the laptop gate, costing two extra runs (52 min)."""
+    fp, skip = (fingerprint or candidate_data_fingerprint)(root)
+    if fp is None:
+        return "SKIPPED", skip
     base = (baseline or recorded_data_fingerprint)(root)
     if not base:
         return "SKIPPED", "no recorded baseline data fingerprint"
@@ -1220,8 +1236,9 @@ def pre_gate(root: str, exe: str | None = None) -> int:
             failed.append(label)
     verdict, detail = data_fingerprint_check(root)
     print(f"pre-gate: data_fingerprint: {verdict}", flush=True)
-    if verdict == "FAIL":
+    if detail:   # the FAIL's differing parts, or the one-line SKIPPED reason
         print(detail, flush=True)
+    if verdict == "FAIL":
         failed.append("data_fingerprint")
     print("PRE-GATE " + ("PASS" if not failed else "FAIL: " + ", ".join(failed)))
     return 1 if failed else 0
