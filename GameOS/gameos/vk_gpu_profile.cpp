@@ -11,6 +11,7 @@
 #include <deque>
 #include <mutex>
 #include <new>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -135,25 +136,36 @@ void flushWindow(uint64_t frame) {
     if (g.windowFrames == 0) return;
     ZoneScopedN("VKIsl.Present.Tail.Blit.Profile.WindowOutput");
     const double n = g.windowFrames;
-    std::fprintf(stderr, "[VK_GPU_PASSES v1] frame=%llu n=%u span_ms=%.3f sum_ms=%.3f unattributed_ms=%.3f scopes=%u dropped=%u overflow=%u |",
+    // Preserve the default benchmark record, with one stream lock/write per window.
+    std::string output;
+    output.reserve(16384);
+    char values[2048];  // enough even for three fixed-format DBL_MAX values
+    std::snprintf(values, sizeof values, "[VK_GPU_PASSES v1] frame=%llu n=%u span_ms=%.3f sum_ms=%.3f unattributed_ms=%.3f scopes=%u dropped=%u overflow=%u |",
                  static_cast<unsigned long long>(frame), g.windowFrames, g.spanSumMs / n, g.sumSumMs / n,
                  (g.spanSumMs - g.sumSumMs) / n, g.rowCount, g.windowDropped, g.windowOverflow);
+    output += values;
     for (uint32_t i = 0; i < g.rowCount; ++i) {
         const Row& r = g.rows[i];
-        std::fprintf(stderr, " %s=%.3f(x%.1f)", r.name, r.sumMs / n, r.frames ? static_cast<double>(r.calls) / r.frames : 0.0);
+        output += ' ';
+        output += r.name;
+        std::snprintf(values, sizeof values, "=%.3f(x%.1f)", r.sumMs / n, r.frames ? static_cast<double>(r.calls) / r.frames : 0.0);
+        output += values;
     }
-    std::fprintf(stderr, "\n");
+    output += '\n';
     if (const uint64_t res = reflectRes.load(std::memory_order_relaxed); res != 0 && !reflectCostDone.load(std::memory_order_relaxed)) {
         for (uint32_t i = 0; i < g.rowCount; ++i) {
             const Row& r = g.rows[i];
             if (r.frames < 30 || std::strcmp(r.name, kReflectScope) != 0) continue;   // wait for a settled window
             const uint32_t w = static_cast<uint32_t>(res >> 32), h = static_cast<uint32_t>(res & 0xFFFFFFFFu);
-            if (mc2_diag::tagRequested("WATER")) std::fprintf(stderr, "[WATER_REFLECT_COST v1] res=%ux%u mpix=%.2f gpu_ms=%.3f frames=%u\n", w, h, static_cast<double>(w) * h / 1.0e6, r.sumMs / r.frames, r.frames);
+            if (mc2_diag::tagRequested("WATER")) {
+                std::snprintf(values, sizeof values, "[WATER_REFLECT_COST v1] res=%ux%u mpix=%.2f gpu_ms=%.3f frames=%u\n", w, h, static_cast<double>(w) * h / 1.0e6, r.sumMs / r.frames, r.frames);
+                output += values;
+            }
             reflectCostDone.store(true, std::memory_order_relaxed);
             break;
         }
     }
-    std::fflush(stderr);
+    std::fwrite(output.data(), 1, output.size(), stderr);
     for (uint32_t i = 0; i < g.rowCount; ++i) { g.rows[i].sumMs = 0; g.rows[i].calls = 0; g.rows[i].frames = 0; }
     g.spanSumMs = g.sumSumMs = 0;
     g.windowFrames = g.windowDropped = g.windowOverflow = 0;

@@ -33,7 +33,6 @@ extern uint32_t g_mc2RenderFrame;   // mclib/tgl.cpp
 #include <filesystem>
 #include <fstream>
 #include <mutex>
-#include <sstream>
 #include <string_view>
 #include <unordered_map>
 #include <unordered_set>
@@ -119,7 +118,9 @@ struct State {
     std::mutex mutex; bool dirty=false; uint64_t creations=0; double creationMs=0;
     // Driver compiles run outside `mutex` against `cache`; shutdown() waits here until none is in flight before destroying it.
     std::condition_variable compileIdle; uint32_t compiling=0;
-    std::chrono::steady_clock::time_point saved, started;
+    // Driver counters are sampled by explicit diagnostics and at load completion.
+    // Crash snapshots refresh owned counters every 120 frames and name both ages.
+    uint64_t ledgerBudget=0, ledgerUsage=0, ledgerAllocated=0, ledgerMemoryFrame=0;
     std::unordered_map<uint64_t,Allocation> allocations;
     std::unordered_map<VkShaderModule,Shader> shaders;
     std::unordered_map<std::string,Shader> overrides;
@@ -158,7 +159,6 @@ size_t category(std::string_view name) {
 void saveLocked(State& s) {
     if (!s.cache || !s.dirty) return;
     ZoneScopedN("VKInfra.Cache.Persist");
-    s.saved=std::chrono::steady_clock::now();
     size_t bytes=0;
     if (vkGetPipelineCacheData(s.dev,s.cache,&bytes,nullptr)!=VK_SUCCESS || bytes>maxCache) return;
     std::vector<unsigned char> data(bytes);
@@ -169,14 +169,14 @@ void saveLocked(State& s) {
     { std::ofstream out(tmp,std::ios::binary|std::ios::trunc); out.write(reinterpret_cast<const char*>(&h),sizeof(h)); out.write(reinterpret_cast<const char*>(data.data()),bytes); out.flush(); if (!out) return; }
     std::error_code ec; std::filesystem::rename(tmp,s.cachePath,ec);
     if (!ec) {
-        s.dirty=false; s.saved=std::chrono::steady_clock::now();
+        s.dirty=false;
         if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) mc2::fmt::print_err("[VK_PIPELINE_CACHE v1] saved_bytes={:d} pipelines={:d} creation_ms={:.3f}\n",mc2::fmt::as_size(bytes),mc2::fmt::as_u64(s.creations),s.creationMs);
     }
 }
 }
 
 void init(VkDevice device, VkPhysicalDevice physical) {
-    auto& s=state(); s.dev=device; s.phys=physical; s.started=s.saved=std::chrono::steady_clock::now();
+    auto& s=state(); s.dev=device; s.phys=physical;
     VkPhysicalDeviceProperties p{}; vkGetPhysicalDeviceProperties(physical,&p);
     s.identity.vendor=p.vendorID; s.identity.device=p.deviceID; s.identity.driver=p.driverVersion; std::memcpy(s.identity.uuid,p.pipelineCacheUUID,VK_UUID_SIZE);
     VkPhysicalDeviceDriverProperties driver{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES};
@@ -334,13 +334,32 @@ uint32_t shadowTier(uint32_t requested,uint64_t bpp,uint32_t copies) {
     if(tier!=requested) mc2::fmt::print_err("[VK_RESIDENCY v1] refused=shadow_map side={:d} fallback=side_{:d}\n",mc2::fmt::as_u32(requested),mc2::fmt::as_u32(tier));
     return tier;
 }
+namespace {
+void refreshLedgerLocked(State& s, uint64_t frame, size_t deferredEntries) {
+    ZoneScopedN("VKInfra.Ledger.CrashSnapshot");
+    int len=std::snprintf(s.ledger,sizeof(s.ledger),
+        "{\"budget_bytes\":%llu,\"physical_budget_bytes\":%llu,\"pending_bytes\":%llu,\"within_budget\":%s,\"live_bytes\":%llu,\"peak_bytes\":%llu,"
+        "\"vma_budget_bytes\":%llu,\"vma_usage_bytes\":%llu,\"vma_allocated_bytes\":%llu,\"dedicated_bytes\":%llu,\"deferred_bytes\":%llu,\"deferred_entries\":%zu,"
+        "\"deferred_is_subset\":true,\"transition_overlap_included\":true,\"denials\":%llu,\"snapshot_frame\":%llu,\"vma_sample_frame\":%llu,\"categories\":{",
+        static_cast<unsigned long long>(s.budget),static_cast<unsigned long long>(s.physicalBudget),static_cast<unsigned long long>(s.pending),s.peak<=s.budget?"true":"false",
+        static_cast<unsigned long long>(s.live),static_cast<unsigned long long>(s.peak),static_cast<unsigned long long>(s.ledgerBudget),static_cast<unsigned long long>(s.ledgerUsage),
+        static_cast<unsigned long long>(s.ledgerAllocated),static_cast<unsigned long long>(s.raw),static_cast<unsigned long long>(s.deferredBytes),deferredEntries,
+        static_cast<unsigned long long>(s.denied),static_cast<unsigned long long>(frame),static_cast<unsigned long long>(s.ledgerMemoryFrame));
+    for(size_t i=0;i<7 && len>0 && static_cast<size_t>(len)<sizeof(s.ledger)-3;++i)
+        len+=std::snprintf(s.ledger+len,sizeof(s.ledger)-len,"%s\"%s\":{\"live\":%llu,\"peak\":%llu}",i?",":"",categories[i],
+            static_cast<unsigned long long>(s.current[i]),static_cast<unsigned long long>(s.peaks[i]));
+    if(len>0 && static_cast<size_t>(len)<sizeof(s.ledger)-2) std::snprintf(s.ledger+len,sizeof(s.ledger)-len,"}}");
+}
+}
 std::string ledgerJson() {
     ZoneScopedN("VKInfra.Ledger.Sample");
-    auto& s=state(); uint64_t os=0,usage=0,allocated=0; getOrCreateEngineVulkanContext().deviceLocalMemory(os,usage,allocated);
-    const auto& deferred=getOrCreateEngineVulkanContext().deferred(); std::lock_guard lock(s.mutex);
-    std::ostringstream out; out<<"{\"budget_bytes\":"<<s.budget<<",\"physical_budget_bytes\":"<<s.physicalBudget<<",\"pending_bytes\":"<<s.pending<<",\"within_budget\":"<<(s.peak<=s.budget?"true":"false")<<",\"live_bytes\":"<<s.live<<",\"peak_bytes\":"<<s.peak<<",\"vma_budget_bytes\":"<<os<<",\"vma_usage_bytes\":"<<usage<<",\"vma_allocated_bytes\":"<<allocated<<",\"dedicated_bytes\":"<<s.raw<<",\"deferred_bytes\":"<<s.deferredBytes<<",\"deferred_entries\":"<<deferred.size()<<",\"deferred_is_subset\":true,\"transition_overlap_included\":true,\"denials\":"<<s.denied<<",\"categories\":{";
-    for(size_t i=0;i<7;++i) out<<(i?",":"")<<'"'<<categories[i]<<"\":{\"live\":"<<s.current[i]<<",\"peak\":"<<s.peaks[i]<<'}';
-    out<<"}}"; const std::string json=out.str(); std::snprintf(s.ledger,sizeof(s.ledger),"%s",json.c_str()); return json;
+    auto& s=state(); uint64_t os=0,usage=0,allocated=0;
+    auto& ctx=getOrCreateEngineVulkanContext();
+    { ZoneScopedN("VKInfra.Ledger.MemoryQuery"); ctx.deviceLocalMemory(os,usage,allocated); }
+    std::lock_guard lock(s.mutex);
+    s.ledgerBudget=os; s.ledgerUsage=usage; s.ledgerAllocated=allocated; s.ledgerMemoryFrame=ctx.tracker().frameNo();
+    refreshLedgerLocked(s,ctx.tracker().frameNo(),ctx.deferred().size());
+    return s.ledger;
 }
 void panel() {
     if(!ImGui::CollapsingHeader("Vulkan residency")) return;
@@ -653,8 +672,17 @@ void frame() {
         }
     }
     const uint64_t f=getOrCreateEngineVulkanContext().tracker().frameNo();
-    if(f%120==0) { const auto json=ledgerJson(); if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) mc2::fmt::print_err("[VK_RESIDENCY v1] {}\n",json.c_str()); }
-    if(std::chrono::steady_clock::now()-s.saved>std::chrono::seconds(30)) saveCache();
+    if(f%120==0) {
+        if(mc2::gate::get<"MC2_DIAG_VERBOSE">() || mc2_diag::tagRequested("VK_RESIDENCY")) {
+            const auto json=ledgerJson();
+            mc2::fmt::print_err("[VK_RESIDENCY v1] {}\n",json.c_str());
+        } else {
+            std::lock_guard lock(s.mutex);
+            refreshLedgerLocked(s,f,getOrCreateEngineVulkanContext().deferred().size());
+        }
+    }
+    // Persistence can retrieve driver data, hash and flush to disk. Keep it at
+    // load completion and ordered shutdown, outside the gameplay frame path.
 }
 void prewarm(int width,int height) {
     if(width<=0 || height<=0 || !getOrCreateEngineVulkanContext().valid()) return;
@@ -683,6 +711,7 @@ void prewarm(int width,int height) {
     getOrCreateEngineVulkanContext().textures().finishLoading();
     warm("shadow_bake",mc2_vk_shadow_island_load_bake);   // F1: after every family, so the bake inputs (prop geometry, alpha array) are resident
     saveCache();
+    (void)ledgerJson();  // Fresh driver counters for crashes before the first periodic snapshot.
     if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) mc2::fmt::print_err("[VK_LOAD_RESOURCE v1] pipeline_creation_ms={:.3f}\n",s.creationMs-pipelineMsBefore);
     s.prewarmCreations=s.creations; s.firstFrames.clear(); s.measureFrames=true; s.firstFrameStarted=false;
     if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_PIPELINE_PREWARM v1] ready=%d families=9 pipelines=%llu ms=%.3f size=%dx%d\n",ready,s.creations-before,std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count(),width,height);
