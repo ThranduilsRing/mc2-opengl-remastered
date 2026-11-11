@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional
 
-from . import nofocus, vk_validation
+from . import nofocus, stall, vk_validation
 from .gates import GateConfig, Verdict, evaluate
 from .logparse import LogSummary, parse_log
 from .firewall_dialog import Guard as FirewallGuard
@@ -341,10 +341,13 @@ def run_one(cfg: RunConfig) -> RunResult:
     reader = threading.Thread(target=_reader_thread,
                               args=(proc.stdout, line_q, t0), daemon=True)
     reader.start()
+    first_frame_at: Optional[float] = None
+    last_line_at = 0.0
     try:
         while True:
             firewall.poll()
-            if time.monotonic() - t0 > cap:
+            now = time.monotonic() - t0
+            if stall.walltime_exceeded(now, cap, cfg.duration, first_frame_at, now - last_line_at):
                 proc.kill()
                 killed = True
                 break
@@ -358,6 +361,9 @@ def run_one(cfg: RunConfig) -> RunResult:
                 break
             lines.append(item)
             line_wallclocks.append(stamp)
+            last_line_at = stamp
+            if first_frame_at is None and "event=first_frame " in item:
+                first_frame_at = stamp
     finally:
         try:
             proc.wait(timeout=5)
