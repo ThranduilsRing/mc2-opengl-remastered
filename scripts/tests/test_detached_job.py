@@ -27,6 +27,7 @@ def test_job_survives_the_starting_process_and_reattaches(tmp_path, monkeypatch)
     launcher.write_text(
         "import sys\nsys.path.insert(0, %r)\nimport detached_job\n"
         "detached_job.start([sys.executable, '-c', 'import time; time.sleep(4); print(\"done\")'], name='b')\n" % os.path.join(ROOT, "tools"))
+    # background-launch: allow runs a tiny python launcher under sys.executable (test); never the game
     subprocess.run([PY, str(launcher)], check=True, env=dict(os.environ, MC2_JOBS_DIR=str(tmp_path)), timeout=60)
     st = detached_job.status("b")   # the launching process is gone
     assert st["state"] == "running" and detached_job.pid_alive(st["supervisor_pid"])

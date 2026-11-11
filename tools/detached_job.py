@@ -55,24 +55,9 @@ def write_state(st):
 def pid_alive(pid):
     if not pid:
         return False
-    if os.name == "nt":
-        import ctypes
-        k32 = ctypes.windll.kernel32
-        h = k32.OpenProcess(0x1000, False, int(pid))   # PROCESS_QUERY_LIMITED_INFORMATION
-        if not h:
-            return False
-        try:
-            code = ctypes.c_ulong()
-            return bool(k32.GetExitCodeProcess(h, ctypes.byref(code))) and code.value == 259   # STILL_ACTIVE
-        finally:
-            k32.CloseHandle(h)
-    try:
-        os.kill(int(pid), 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True
-    return True
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts"))
+    from smoke_lib.child_registry import pid_alive as _alive
+    return _alive(int(pid))
 
 
 def status(name):
@@ -102,10 +87,13 @@ def start(cmd, name=None, log=None, timeout=None, cwd=None):
     if os.name == "nt":
         flags = DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
         try:
+            # background-launch: allow the supervisor is this file under sys.executable with DETACHED_PROCESS (no window); never the game
             p = subprocess.Popen(argv, creationflags=flags | CREATE_BREAKAWAY_FROM_JOB, **kw)
         except OSError:   # the parent's job object forbids breakaway
+            # background-launch: allow same detached supervisor without breakaway
             p = subprocess.Popen(argv, creationflags=flags, **kw)
     else:
+        # background-launch: allow same detached supervisor (POSIX session)
         p = subprocess.Popen(argv, start_new_session=True, **kw)
     deadline = time.time() + 15
     while time.time() < deadline:
@@ -148,6 +136,7 @@ def run(cmd, name=None, log=None, timeout=None, cwd=None):
 
 def _kill_tree(pid):
     if os.name == "nt":
+        # background-launch: allow runs in the detached supervisor (no console of its own); taskkill only
         subprocess.run(["taskkill", "/F", "/T", "/PID", str(pid)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                        creationflags=CREATE_NO_WINDOW)
     else:
@@ -172,6 +161,7 @@ def supervise(path):
                 kw["creationflags"] = flags
             else:
                 kw["start_new_session"] = True
+            # background-launch: allow runs the merge-window build/gate command a caller gave (gate_wait/laptop_gate), CREATE_NO_WINDOW, never the game
             p = subprocess.Popen(st["cmd"], **kw)
             st.update(pid=p.pid, state="running")
             write_state(st)
