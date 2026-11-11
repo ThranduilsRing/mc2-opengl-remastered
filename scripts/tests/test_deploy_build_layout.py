@@ -29,6 +29,13 @@ from scripts import deploy_payload as dp  # noqa: E402
 from scripts import console_child  # noqa: E402
 
 
+@pytest.fixture(autouse=True)
+def _no_texture_cooks(monkeypatch):
+    # enumerate_payload cooks missing generated sidecars (tree upscale takes minutes); these tests only list the payload.
+    for name in ("ensure_concrete_detail", "ensure_cliff_rock", "ensure_tree_upscale"):
+        monkeypatch.setattr(dp, name, lambda *a, **k: None)
+
+
 def test_asset_sidecar_deploy_is_identical_across_checkout_roots(monkeypatch):
     monkeypatch.setattr(dp, "ensure_terrain_materials", lambda target: {})
     rel = "data/tgl/Fixture.mcasset.json"
