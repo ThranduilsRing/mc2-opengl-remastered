@@ -7427,7 +7427,6 @@
     "wantMaterial",
     "materialReady",
     "iblShStrength",
-    "iblSh0",
     "lightDataCpuBytes",
     "terrainSun"
    ],
