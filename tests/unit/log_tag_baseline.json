@@ -9253,6 +9253,24 @@
    "count": 1
   },
   {
+   "tag": "SPAWN_COST",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "obj",
+    "cold_type",
+    "ms",
+    "pilot",
+    "brain",
+    "type",
+    "new",
+    "init",
+    "profile",
+    "rest"
+   ],
+   "count": 1
+  },
+  {
    "tag": "SPAWN_TREES",
    "ver": -1,
    "stream": "stderr",
@@ -11152,7 +11170,11 @@
    "keys": [
     "sharedHits",
     "fallbacks",
-    "frame"
+    "frame",
+    "syncFastExits",
+    "syncJournal",
+    "syncFullScans",
+    "syncRowsCopied"
    ],
    "count": 1
   },

@@ -3167,7 +3167,7 @@
    "delete": 0,
    "delete_array": 6,
    "files": {
-    "gui/alistbox.cpp": {
+    "gui/alistbox_dropdown.cpp": {
      "delete_array": 5,
      "new_array": 4
     },
