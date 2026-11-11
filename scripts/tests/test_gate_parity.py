@@ -19,6 +19,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from tools import lane_merge as lm  # noqa: E402
+import console_child  # noqa: E402
 import cooked_outputs  # noqa: E402
 import gate_hosts  # noqa: E402
 import laptop_gate  # noqa: E402
@@ -111,7 +112,7 @@ def test_cmake_module_sets_mc2_host_mfc(tmp_path, host, want):
     env = {k: v for k, v in os.environ.items() if k != "MC2_GATE_HOST"}
     if host:
         env["MC2_GATE_HOST"] = host
-    r = subprocess.run([cmake, "-P", str(script)], capture_output=True, text=True, env=env)
+    r = subprocess.run([cmake, "-P", str(script)], capture_output=True, text=True, env=env, **console_child.child_kwargs(redirected=True))
     assert r.returncode == 0, r.stderr
     assert f"RESULT MFC={want}" in r.stdout + r.stderr
 
@@ -238,7 +239,7 @@ def test_every_reader_takes_its_list_from_the_manifest():
 
 def test_stock_data_contract_reads_the_manifest_shape():
     r = subprocess.run([sys.executable, "-B", str(ROOT / "scripts" / "check-stock-mission-data.py"), "--no-data", "--quiet"],
-                       capture_output=True, text=True)
+                       capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     assert r.returncode == 0, r.stderr
 
 
