@@ -29,8 +29,7 @@ struct ColorFrameUBO {
     int32_t materialReady;      // 1 = sample the alpha-OFF albedo array
     int32_t materialReadyOn;    // 1 = sample the alpha-ON albedo array (alpha-test discard)
     float   terrainSunMC2[4];   // @vec4 surface->sun in MC2 world; .w pad
-    // Ambient + IBL tail: the real ObjectLights ambient and the SH-L2 feed.
-    float   iblSh[9][4];        // @vec4xN SH-L2 coefficients, .w pad each
+    // Ambient: the SH-L2 coefficients are the EnvironmentUBO's (binding 26); this class owns only its strength option.
     float   iblShStrength;      // 0.0 = feature off
     int32_t lightingReady;      // 1 = LightsData SSBO copied this frame -> ambientTerm real
     // Night state of the eye (the hot-colour night tags light windows, building base lights and runway fixtures).

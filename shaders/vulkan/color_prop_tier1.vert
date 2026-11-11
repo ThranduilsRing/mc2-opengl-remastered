@@ -23,6 +23,10 @@ layout(location = 4) in uint a_aRGBLight;
 // Per-frame UBO: generated from RenderCore/gpu_abi/GpuColorFrameUBO.h.
 #include "include/color_frame_ubo_vk.glsl"
 
+// Mission environment block (SH ambient): the terrain set's binding 26, visible to this vertex stage.
+#define TERRAIN_RESOURCE_SET 1
+#include "include/environment_ubo_vk.glsl"
+
 // Props use frame sun and SH; local lights come from the fragment pool feed.
 
 // SH-L2 evaluator -- verbatim port of static_prop.vert::evalShL2 (Ramamoorthi-Hanrahan
@@ -260,7 +264,7 @@ void main() {
     vec3 iblTerm = vec3(0.0);
     if (uFrame.iblShStrength > 0.0) {
         vec3 shCoeffs[9];
-        for (int i = 0; i < 9; ++i) shCoeffs[i] = uFrame.iblSh[i].xyz;
+        for (int i = 0; i < 9; ++i) shCoeffs[i] = uEnv.shDiffuse[i].xyz;
         // worldNormal is Stuff-space Y-up (un-swapped), matching static_prop.vert's
         // evalShL2(normalize(worldNormal)) call (SH projector's axis convention).
         iblTerm = evalShL2(normalize(worldNormalStuff), shCoeffs) * uFrame.iblShStrength;

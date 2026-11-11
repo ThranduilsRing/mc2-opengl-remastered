@@ -13,7 +13,8 @@ class GroundLighting {
     VkDescriptorSet sets_[mc2vk::kMaxFramesInFlight]{};
     mc2vk::DescWriteStamp stamps_[mc2vk::kMaxFramesInFlight]{};
     // 19 = LOCAL-LIGHTS-2 local-light shadow atlas, read by the pool loop.
-    static constexpr uint32_t bindings_[]{0, 2, 3, 4, 11, 12, 13, 16, 19};
+    // 26 = the per-frame mission environment (EnvironmentUBO); the only binding here a vertex stage reads (props and mechs light per vertex).
+    static constexpr uint32_t bindings_[]{0, 2, 3, 4, 11, 12, 13, 16, 19, 26};
     static constexpr size_t kN = sizeof(bindings_) / sizeof(bindings_[0]);
 public:
     VkDescriptorSetLayout layout() const { return layout_.get(); }
@@ -25,8 +26,9 @@ public:
             const auto type = b == 0 ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC :
                 b == 4 ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER :
                 b >= 11 && b <= 13 ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC :
+                b == 26 ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER :
                 VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            bindings[k] = {b, type, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr};
+            bindings[k] = {b, type, 1, static_cast<VkShaderStageFlags>(b == 26 ? (VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT) : VK_SHADER_STAGE_FRAGMENT_BIT), nullptr};
         }
         VkDescriptorSetLayoutCreateInfo lci{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
         lci.bindingCount = static_cast<uint32_t>(kN); lci.pBindings = bindings;
@@ -35,9 +37,10 @@ public:
             {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, mc2vk::kMaxFramesInFlight},
             {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, mc2vk::kMaxFramesInFlight},
             {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 3 * mc2vk::kMaxFramesInFlight},
-            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4 * mc2vk::kMaxFramesInFlight}};
+            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4 * mc2vk::kMaxFramesInFlight},
+            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, mc2vk::kMaxFramesInFlight}};
         VkDescriptorPoolCreateInfo pci{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
-        pci.maxSets = mc2vk::kMaxFramesInFlight; pci.poolSizeCount = 4; pci.pPoolSizes = sizes;
+        pci.maxSets = mc2vk::kMaxFramesInFlight; pci.poolSizeCount = 5; pci.pPoolSizes = sizes;
         if (!mc2vk::create(pool_, device, [&](VkDescriptorPool* out) { return vkCreateDescriptorPool(device, &pci, nullptr, out); })) return false;
         VkDescriptorSetLayout layouts[mc2vk::kMaxFramesInFlight]; for (auto& entry : layouts) entry = layout();
         VkDescriptorSetAllocateInfo alloc{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};

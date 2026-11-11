@@ -404,6 +404,7 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
       if (!vk_island_util::waitStrike(o->waitStrikes, o->disabled, rctx.wait(slotTicket, 5000000000ull, "overlay submission slot"), "VK_TERRAIN_OVERLAY")) { vlog("[VK_TERRAIN_OVERLAY] LOUD: overlay submission slot wait timed out (5 s); skipping this frame, will retry next frame."); return 0; } }
     if (s->setBoundFrame[par] != frameNo) {
         if (!mc2vk::bindMoverShadowDescriptors(s->device,s->set[par],&s->moverStamp[par])) return 0;
+        if (!bind_environment(s,par)) return 0;
         refresh_biased_samplers(s);
         // Overlays can be the first terrain consumer of this parity (including load warmup).
         // Initialize the shared set after its wait even when the terrain draw was skipped.

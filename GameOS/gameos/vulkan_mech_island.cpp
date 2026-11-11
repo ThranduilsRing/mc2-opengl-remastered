@@ -44,6 +44,7 @@
 #include "texture_decode.h"              // gos_GetTextureTexels: material texels without a GL readback
 #include "../../RenderCore/gpu_abi/GpuMechFrameUBO.h"  // single-source per-frame UBO
 #include "visual_tuning_profile.h"
+#include "mission_environment_gpu.h"
 #include "vk_shared_gbuffer_gate.h"      // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
 #include "vk_shared_light_feed.h"        // VK-LIGHTFEED-DEDUP-1: shared per-frame LightsData SSBO
 #include "gos_terrain_lighting.h"
@@ -1120,9 +1121,9 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
       u.miscI[1] = mechFill;
       u.miscI[2] = static_cast<int>(feed.boneCount);   // start of the previous-frame palette in the bone array
       mc2_mech_prev_from_cur_clip(u.prevFromCurClip);
-      const auto& ambient = visualTuning_environment().sky.hemisphereSky;
-      for (size_t c=0; c<3; ++c)
-          u.environmentAmbient[c] = ambient[c] * visualTuning_environment().unitAmbientScale;
+      // The environment producer's hemisphere. The mech lab preview pass has no terrain set 1, so the mech keeps this UBO copy of it.
+      EnvironmentUBO environment; mc2::environment::fillGpu(visualTuning_environment(), 1.0f, environment);
+      for (size_t c=0; c<3; ++c) u.environmentAmbient[c] = environment.hemiSky[c];
       std::memcpy(mainPtr, &u, sizeof(u)); }
     // Every scheme set of this parity follows the buffers the spans came from; the draw passes the offsets.
     sync_ring_bindings(s, par, mainSpan, lightSpan);
@@ -1418,8 +1419,8 @@ static int mech_preview_flush_impl(void* colorView, void* normalView, void* dept
       u.shadeC[0] = feed.aoStrength;       u.shadeC[1] = feed.normalStrength;
       static const int mechFill = mc2::gate::get<"MC2_MECH_FILL">();
       u.miscI[1] = mechFill;
-      const auto& ambient = visualTuning_environment().sky.hemisphereSky;
-      for (size_t c = 0; c < 3; ++c) u.environmentAmbient[c] = ambient[c] * visualTuning_environment().unitAmbientScale;
+      EnvironmentUBO environment; mc2::environment::fillGpu(visualTuning_environment(), 1.0f, environment);
+      for (size_t c = 0; c < 3; ++c) u.environmentAmbient[c] = environment.hemiSky[c];
       std::memcpy(mainPtr, &u, sizeof(u)); }
     sync_ring_bindings(s, par, mainSpan, lightSpan);
     const uint32_t dynOffsets[5] = {

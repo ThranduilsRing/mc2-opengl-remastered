@@ -389,6 +389,8 @@ void write_descriptors(TerrainIsland* s, int parity = -1);
 bool ensure_height_capacity(TerrainIsland* s, VkDeviceSize bytes);
 // Re-points set[par]'s ring bindings (0 UBO, 11-13 light pool) at the buffers this frame's spans live in.
 void sync_ring_bindings(TerrainIsland* s, uint32_t par, const mc2vk::FrameAlloc& ubo, const mc2vk::FrameAlloc (&lp)[3]);
+// Binding 26 (EnvironmentUBO): fills one ring slice from the mission environment producer and re-points set[par] at it.
+bool bind_environment(TerrainIsland* s, uint32_t par);
 bool init_island(TerrainIsland* s, int w, int h);
 bool snapshot_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 VkCommandBuffer begin_oneshot(TerrainIsland* s);

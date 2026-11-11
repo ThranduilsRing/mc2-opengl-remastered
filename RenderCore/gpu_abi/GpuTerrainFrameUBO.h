@@ -55,7 +55,7 @@ struct TerrainFrameUBO {
     int32_t lightingEnabled;   // MC2_VK_TERRAIN_LIGHTING gate
     int32_t enableShadows;   // static shadow map imported+valid this frame
     float   shadowSoftness;   // GL default 2.5
-    float   sceneLightScale;   // LOCAL-LIGHTS-4: mission night scale of the prelit ground (1 = day/unchanged); local pools are added after it
+    float   reserved220;       // was sceneLightScale (the prelit ground's mission night scale); now EnvironmentUBO.sceneLight.x
     // VK-TERRAIN-DETAIL sub-slice: terrain normal perturbation (macro slope + material
     // detail normal) so grass reads with NdotL relief like GL. LOCKSTEP with the frag.
     int32_t detailEnabled;   // MC2_VK_TERRAIN_DETAIL gate (requires lighting)

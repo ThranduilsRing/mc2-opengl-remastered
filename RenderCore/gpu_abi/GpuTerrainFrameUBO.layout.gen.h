@@ -27,7 +27,7 @@ static_assert(offsetof(TerrainFrameUBO, staticLightSpaceMatrix) == 144, "staticL
 static_assert(offsetof(TerrainFrameUBO, lightingEnabled) == 208, "lightingEnabled offset");
 static_assert(offsetof(TerrainFrameUBO, enableShadows) == 212, "enableShadows offset");
 static_assert(offsetof(TerrainFrameUBO, shadowSoftness) == 216, "shadowSoftness offset");
-static_assert(offsetof(TerrainFrameUBO, sceneLightScale) == 220, "sceneLightScale offset");
+static_assert(offsetof(TerrainFrameUBO, reserved220) == 220, "reserved220 offset");
 static_assert(offsetof(TerrainFrameUBO, detailEnabled) == 224, "detailEnabled offset");
 static_assert(offsetof(TerrainFrameUBO, detailReady) == 228, "detailReady offset");
 static_assert(offsetof(TerrainFrameUBO, nfhStrength) == 232, "nfhStrength offset");

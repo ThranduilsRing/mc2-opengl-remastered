@@ -485,7 +485,7 @@ bool init_island(TerrainIsland* s, int w, int h) {
 
     // ---- Descriptor layout: binding0 dynamic UBO (VS+FS), binding1 height SSBO (VS). ----
     {
-        VkDescriptorSetLayoutBinding b[18]{};
+        VkDescriptorSetLayoutBinding b[19]{};
         b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         // VK-TERRAIN-DETAIL: binding 1 (height SSBO) is now ALSO read by the FS
@@ -538,9 +538,12 @@ bool init_island(TerrainIsland* s, int w, int h) {
         // LOCAL-LIGHTS-2: binding 19 = local-light shadow atlas (D16, plain sampler2D + gather; FS).
         b[17].binding = 19; b[17].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         b[17].descriptorCount = 1; b[17].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        // U1: binding 26 = the per-frame mission environment (EnvironmentUBO), read by vertex and fragment stages.
+        b[18].binding = 26; b[18].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        b[18].descriptorCount = 1; b[18].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        lci.bindingCount = 18; lci.pBindings = b;
+        lci.bindingCount = 19; lci.pBindings = b;
         if (!mc2vk::create(s->dsl, s->device, [&](auto* h) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); })) {
             vlog("vkCreateDescriptorSetLayout failed."); return false;
         }
@@ -552,7 +555,7 @@ bool init_island(TerrainIsland* s, int w, int h) {
         // shoreline mask, shore field; two sets.
         sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;  sizes[2].descriptorCount = 13 * mc2vk::kMaxFramesInFlight;   // + local shadow atlas x2
         sizes[3].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;  sizes[3].descriptorCount = 3 * mc2vk::kMaxFramesInFlight;  // light pool + grid header + grid indices, x2
-        sizes[4].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; sizes[4].descriptorCount = 1 * mc2vk::kMaxFramesInFlight;
+        sizes[4].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; sizes[4].descriptorCount = 2 * mc2vk::kMaxFramesInFlight;   // mover shadow frame (25) + environment (26)
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         pci.maxSets = mc2vk::kMaxFramesInFlight; pci.poolSizeCount = 5; pci.pPoolSizes = sizes;

@@ -173,7 +173,6 @@ struct Mc2ColorPropLightFeed {
     // GL SSBO name/size fields with the audit-gated readback they existed for
     // (MC2_VK_PROP_FEED_AUDIT banked a clean run: 3000 frames, mismatches=0).
     mc2::vkLights::Feed lights;
-    float        iblSh[9][3];       // RenderCore::kIblShCoeffs (or current mission's set)
     float        iblShStrength;     // g_iblShStrength if s_iblShEnabled else 0.0
     // The eye's night state: the hot-colour tags (windows, base lights, fixtures) are lit by it.
     int32_t      isNight;           // 0/1

@@ -102,7 +102,7 @@ void main() {
         surfaceN = cd.n;
     }
     c.rgb = max(c.rgb * shadow + cdSpec * shadow, vec3(0.0));
-    c.rgb *= mix(1.0, uT.sceneLightScale, pc.artFlatExempt); // Live mission light already carries the night profile.
+    c.rgb *= mix(1.0, uEnv.sceneLight.x, pc.artFlatExempt); // Live mission light already carries the night profile.
 
     // In-shader distance fog (skipped on cement tiles: the shared screen-space fog does it once).
     float camDist2D = distance(WorldPos.xy, uT.cameraPosMC2.xy);
