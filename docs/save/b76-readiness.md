@@ -24,7 +24,7 @@ Codecs marked "private" are called by tests and the loader's value path only. Li
 | ABL modules / values / instances | yes, `mclib/abl_module_archive.h`, `abl_value_archive.h` | `test_abl_archive.cpp`, `test_abl_module_archive.cpp` | legacy `ABLi_saveEnvironment` (`saveload.cpp:270`) |
 | ABL environment (libs/modules/files) | yes, `mclib/abl_environment_archive.h` | `test_abl_environment_archive.cpp` | marker section only (`saveload.cpp:348`); bytes from legacy |
 | Mission / Part | Part yes, `code/mission_parts_archive.cpp`, `save_archive.h:270`; Mission record no | `test_part_archive.cpp` (Part only) | legacy FIT text (`Part::Save` `saveload.cpp:42`, mission block 191-210) |
-| ObjectiveSet / BooleanFlag / Objective / Condition / Action | schema row only (below), no codec | no | legacy FIT (`Team::home->objectives.Save`, `saveload.cpp:231`; `code/objective.cpp` `Save` methods) |
+| ObjectiveSet / BooleanFlag / Objective / Condition / Action | yes (private), `code/objective_archive.h` (tag OBJS) | `tests/unit/test_objective_archive.cpp` | legacy FIT (`Team::home->objectives.Save`, `saveload.cpp:231`; `code/objective.cpp` `Save` methods) |
 | SupportCraft / support state | yes (private), `code/support_craft_archive.h` (state in `code/missiongui.h:160-171`) | `tests/unit/test_environment_archive.cpp` | `missionInterface->Save` FIT (`saveload.cpp:219`) |
 | Logistics / Campaign / Variant / Pilot / Mech | no | no | legacy FIT, `LogisticsData::save` (`code/logisticsdata_save.cpp:124`) |
 | MediaCueState / LogicalRequest / CueTrajectory | yes (new, this lane), `code/media_cue_archive.h` | `tests/unit/test_media_cue_archive.cpp` | none; no runtime owner exists yet |
@@ -32,8 +32,7 @@ Codecs marked "private" are called by tests and the loader's value path only. Li
 | Presentation / ObjectVisual / RenderWeather | no | no | legacy camera/FIT (`eye->save` `saveload.cpp:182`) |
 | FIX1 music/backoff extras | yes, `code/save_fix_section.h:24-71` | `test_save_sections.cpp` | codec, optional (`saveload.cpp:384-385`) |
 
-Missing codecs (cheapest first; MediaCueState, Environment, SupportCraft and Contacts are landed, private and unused by the save path): ObjectiveSet family
-(large: three payload variants; schema row below), Logistics family, Mission record, SimRules, Presentation.
+Missing codecs (cheapest first; MediaCueState, Environment, SupportCraft, Contacts and ObjectiveSet are landed, private and unused by the save path): Logistics family, Mission record, SimRules, Presentation.
 
 ## Schema rows from the code that saves and loads today
 
@@ -45,13 +44,18 @@ masterId, effect), SensorSystemManager `:345` (sensor pool + free list, teamSens
 enemyInLOS; TeamSensorSystem::homeTeamInContact and SensorSystem::scanFrequency are statics). The codec encodes ContactInfo.sensors sparsely and validates ids,
 ordering, free-list disjointness and team-to-sensor references. Not encoded: the intrusive prev/next pointers and sensor owner back pointers (rebuilt on restore).
 
-ObjectiveSet (schema only, not implemented; FIT writer `code/objective.cpp:2214-2420`): per team `CObjectives::Save` writes Version 3, NumObjectives, the
-BooleanArray flags (`boolFlags.save`), then per CObjective: title/description text plus UseResourceString and ResourceStringID pairs, priority, resourcePoints,
-previousPrimaryMustBeComplete, allPreviousPrimariesMustBeComplete, displayMarker, markerX/Y, hiddenTrigger, activateOnFlag + activateFlagID, resetStatusOnFlag +
+ObjectiveSet (landed, private; FIT writer `code/objective.cpp:2214-2420`; codec `code/objective_archive.h`): per team `CObjectives::Save` writes Version 3, NumObjectives, the
+BooleanArray flags (`boolFlags.save`: id + bool per flag, ids unique ignoring ASCII case), then per CObjective: title/description text plus UseResourceString and ResourceStringID pairs, priority (1 primary, 2 secondary),
+resourcePoints, previousPrimaryMustBeComplete, allPreviousPrimariesMustBeComplete, displayMarker, markerX/Y, hiddenTrigger, activateOnFlag + activateFlagID, resetStatusOnFlag +
 resetStatusFlagID, counts of the four lists (conditions, actions, failureConditions, failureActions), model name, modelType, baseColor, highlightColor(2),
 modelScale, state (isActive, activationTime double, resolved, resolvedStatus 0..2, changedStatus). Condition payload by species (`code/objective.h:43`, 24 species):
-none (destroy/capture/dead-or-fled all and group), num u32 (number-of-units), watch id (specific unit, must resolve), building WID (specific structure),
-area (centerX, centerY, radius floats), flag (id string + bool), elapsed time (float). Action payload by species (`:342`, 7 species): path string (BIK/WAV),
-message string, resourceStringID u32, flag (id + bool), purchase file string, building WID (_REMOVE_STRUCTURE). The codec needs a species-tagged variant per
-payload kind with its own range check. Not started: too large for this lane.
+none (species 0, 5, 10: destroy / capture-or-destroy / dead-or-fled ALL), num u32 (1, 6, 11), unit watch id (3, 8, 13, 14, 16: specific unit, CAPTURE_UNIT, GUARD_SPECIFIC_UNIT), structure watch id (4, 9, 15, 17),
+area (18-21: centerX, centerY, radius floats), flag (22: id string + bool), elapsed time (23: float). Action payload by species (`:342`, 7 species): path string (0 BIK, 1 WAV),
+message string (2), resourceStringID u32 (3), flag (4: id + bool), purchase file string (5), building WID (6, _REMOVE_STRUCTURE).
+Corrections made while writing the codec: (1) the earlier schema row listed the three *_ENEMY_UNIT_GROUP species (2, 7, 12) under "none"; they have no class and no factory case
+(`CObjective::new_CObjectiveCondition`, `code/objective.cpp:1347`), so a live objective never holds one and the codec rejects them. (2) `m_displayMarker` is an int (MARKER_TYPES 0..2) but the FIT writer
+stores it with `writeIdBoolean`, so the legacy file collapses NAV/NUMERIC to true; the codec keeps the 0..2 value. (3) `m_markerText` (char[4]) is derived on load and not stored.
+Validation: species/priority/status/marker ranges, watch ids > 0 (the writers STOP on a null target), non-negative radius/time/scale/activation time, text <= 2000 bytes (`objective_text::kMaxTextLength`), flag-trigger boolean consistent with its flag id, unique flag ids, ascending unique team alignment < 8, species-foreign payload fields must be default (canonical re-encode).
+Flag references (activate/reset/condition/action flag ids) are not checked against the flag table: `setElementValue` adds a flag on demand and `getElementValue` reads an absent flag as false, so a reference to an unlisted flag is legal.
+Not encoded: observation-only fields (`observationOrdinal`, `observationPayload`, `m_fitOrdinal`, `m_observationState`) and the object-manager existence check of the watch ids (restore-time, needs the live object table).
 Enum values in the new media/cue codec are provisional until B7.5 fixes the runtime kinds.
