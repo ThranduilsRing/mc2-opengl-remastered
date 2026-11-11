@@ -876,7 +876,7 @@ void BattleMech::updateMovement (void) {
 
 glm::vec3 BattleMech::getPositionFromHS (long nodeId)
 {
-	return(appearance->simWeaponNodePosition(nodeId));
+	return(appearance->getWeaponNodePosition(nodeId));
 }
 
 #ifdef PROFILE

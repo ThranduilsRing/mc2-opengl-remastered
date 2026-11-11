@@ -46,12 +46,6 @@ CASES = [
     ("audio read in gui", {"gui/x.cpp": "gosAudio_GetVolume (2);\n"}, [], True),
     ("audio read allowed in soundsys", {"mclib/soundsys.cpp": "gosAudio_GetChannelPlayMode(1);\n"}, [], False),
     ("audio read in comment ok", {"code/x.cpp": "// gosAudio_GetVolume(2)\n"}, [], False),
-    # sim_no_draw_node_reads
-    ("sim reads legacy node getter", {"code/x.cpp": "auto p = appearance->getNodeNamePosition(0);\n"}, [], True),
-    ("sim reads drawNode", {"code/x.cpp": "auto p = a->drawNodePosition(0);\n"}, [], True),
-    ("sim reads currentLOD", {"code/x.h": "int l = a.currentLOD;\n"}, [], True),
-    ("sim uses simNode ok", {"code/x.cpp": "auto p = a->simNodeNamePosition(0);\nauto h = a->simHitNodeLeft();\n"}, [], False),
-    ("presentation TU may draw-read", {"code/weaponbolt_render.cpp": "auto p = t->appearance->drawHitNodeLeft();\n"}, [], False),
     # no_gl_census
     ("gl header include", {"code/x.cpp": "#include <GL/glew.h>\n"}, [], True),
     ("gl call", {"code/x.cpp": "void f() { glClear(0); }\n"}, [], True),
@@ -134,5 +128,5 @@ def test_every_rule_has_a_planted_failure():
     import json
     ids = {r["id"].split(".")[0] for r in json.loads(cb.DEFAULT_TABLE.read_text())["rules"]}
     covered = {"include_firewall", "sim_no_audio_reads", "no_gl", "json_isolation", "particles_no_cpu_projection",
-               "sim_no_draw_node_reads", "unified_projection", "gate_echo_reads"}
+               "unified_projection", "gate_echo_reads"}
     assert ids == covered

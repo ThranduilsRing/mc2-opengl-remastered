@@ -16,10 +16,10 @@ glm::vec3 GroundVehicle::getPositionFromHS (long nodeId)
 	glm::vec3 hsPos = position;
 	if (appearance)
 	{
-		hsPos = appearance->simHitNode();
+		hsPos = appearance->getHitNode();
 		if ((nodeId != -1) || (mc2::math::closeEnough(hsPos, position)))
 		{
-			hsPos = appearance->simWeaponNodePosition(nodeId);
+			hsPos = appearance->getWeaponNodePosition(nodeId);
 		}
 	}
 

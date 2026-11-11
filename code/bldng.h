@@ -230,7 +230,7 @@ class Building : public TerrainObject
 			glm::vec3 hsPos = position;
 			if (appearance)
 			{
-				hsPos = appearance->simHitNode();
+				hsPos = appearance->getHitNode();
 				if (mc2::math::closeEnough(hsPos, position))
 				{
 					hsPos.z += appearance->getTopZ() * 0.5f;

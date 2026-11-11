@@ -377,7 +377,7 @@ long BattleMech::update (void)
 				// DO NOT play disable effect if pilot is dead!!
 				if (getPilot()->alive())
 				{
-					glm::vec3 cockpitPos = appearance->simNodeNamePosition("cockpit");
+					glm::vec3 cockpitPos = appearance->getNodeNamePosition("cockpit");
 					ObjectManager->createExplosion(MECH_DISABLE_EXPLOSION_ID,nullptr,cockpitPos,0.0f,0.0f);
 				}
 
@@ -436,7 +436,7 @@ long BattleMech::update (void)
 			timeLeft -= frameLength;
 			if ((timeLeft < 0.4) && !exploding)
 			{
-				glm::vec3 cockpitPos = appearance->simNodeNamePosition("cockpit");
+				glm::vec3 cockpitPos = appearance->getNodeNamePosition("cockpit");
 				if (getMoveType() != MOVETYPE_AIR)
 					ObjectManager->createExplosion(MECH_EXPLOSION_ID,nullptr,cockpitPos,(static_cast<BattleMechTypePtr>(getObjectType()))->explDmg,(static_cast<BattleMechTypePtr>(getObjectType()))->explRad);
 				else

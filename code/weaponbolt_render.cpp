@@ -39,9 +39,9 @@ static glm::vec3 boltTargetHotSpot (const glm::vec3& raw, GameObjectWatchID targ
 		else
 		{
 			if (targetHotSpot)
-				hotSpot = target->appearance->drawHitNodeLeft();
+				hotSpot = target->appearance->getHitNodeLeft();
 			else
-				hotSpot = target->appearance->drawHitNodeRight();
+				hotSpot = target->appearance->getHitNodeRight();
 		}
 	}
 	return hotSpot;

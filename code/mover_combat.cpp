@@ -316,7 +316,7 @@ glm::vec3 Mover::getLOSPosition(void)
     if (appearance && appearance->simPose->ready) {
         const long node = appearance->getLowestWeaponNode();
         if (node >= 0) {
-            const auto at = appearance->simWeaponNodePosition(node);
+            const auto at = appearance->getWeaponNodePosition(node);
             height = at.z - land->getTerrainElevation(at);
         }
         if (isMech() && appearance->simulationAnimation()->currentGestureId == 20 && height < 15.0f)

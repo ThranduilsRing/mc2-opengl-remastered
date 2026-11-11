@@ -153,7 +153,7 @@ bool BattleMech::hitInventoryItem (long itemIndex, bool setupOnly) {
 
 		if (!setupOnly && !playedCriticalHit)
 		{
-			glm::vec3 smokePos = appearance->simNodePosition(0);
+			glm::vec3 smokePos = appearance->getNodePosition(0);
 			ObjectManager->createExplosion(MECH_CRITICAL_HIT_ID,nullptr,smokePos);
 
 			appearance->startSmoking(1);
