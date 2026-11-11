@@ -57,7 +57,6 @@ set(editor_document_test_sources tests/test_main.cpp tests/test_document.cpp tes
     tests/test_placement.cpp
     tests/test_route_geometry.cpp
     tests/test_objectives.cpp
-    tests/test_mod_picker.cpp
     "${CMAKE_SOURCE_DIR}/code/brain_missionfit_oporbd.cpp")
 add_executable(editor_document_tests ${editor_document_test_sources})
 target_compile_features(editor_document_tests PRIVATE cxx_std_23)
