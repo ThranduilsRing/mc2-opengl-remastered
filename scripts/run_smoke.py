@@ -46,6 +46,7 @@ from scripts.smoke_lib.gates import Verdict as _Verdict
 from scripts.smoke_lib.logparse import LogSummary as _LogSummary
 from scripts.smoke_lib.runner import RunConfig, run_one
 from scripts.smoke_lib import runner as _smoke_runner
+from scripts.smoke_lib import stall as _smoke_stall
 
 # HARNESS-HYGIENE-3: what the run was ACTUALLY configured with. Ambient MC2_*
 # vars reach the engine (see runner.py's ENV COMPOSITION CONTRACT), so the run
@@ -917,6 +918,8 @@ def main():
                                 exclusive=True if args.show_window or args.tier == "resolution" else None)
         except _host_lease.HostLeaseBusy as _busy:
             print(f"[runner] ERROR: {_busy}", file=sys.stderr)
+            print(_smoke_stall.line(",".join(args.mission or []) or "-", "lease_wait", time.monotonic() - _t_lease,
+                                    _smoke_stall.lease_holders()), file=sys.stderr)
             sys.exit(getattr(_busy, "rc", 4))
         _host_wait["lease_wait_s"] = round(time.monotonic() - _t_lease, 1)
         if _host_lease.redirected():
@@ -1792,6 +1795,9 @@ def main():
         _options = render_options_pin.record(Path(args.exe).resolve().parent, {**os.environ, **cfg.env_extra})
         for _pw in result.verdict.warnings:
             print(f"[runner] [PERF_COUNTER_WARN] {label}: {_pw}", file=sys.stderr)
+        if not result.verdict.passed and _smoke_stall.is_stall(result.summary, result.killed_by_timeout):
+            print(_smoke_stall.line(label, _smoke_stall.last_stage(result.summary), result.walltime_s, _smoke_stall.lease_holders()),
+                  file=sys.stderr)
         rows.append(report.Row(stem=label, verdict=result.verdict,
                                summary=result.summary, destroys_delta=delta or 0,
                                render_options=_options["values"]))
