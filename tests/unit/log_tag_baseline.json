@@ -2264,7 +2264,7 @@
     "sockets",
     "version"
    ],
-   "count": 1
+   "count": 2
   },
   {
    "tag": "CONTENT_COOK_ERROR",
@@ -5131,6 +5131,25 @@
     "reason",
     "apprNum",
     "class"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LOAD_LAPS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "stage",
+    "mission",
+    "stage_ms",
+    "loads",
+    "load_hits",
+    "cooks",
+    "digest_ms",
+    "read_ms",
+    "decode_ms",
+    "cook_ms",
+    "cook_read_ms"
    ],
    "count": 1
   },
