@@ -96,6 +96,10 @@
     "SCREEN_SHOT": {
       "status": "keep",
       "reason": "code/missionbegin.cpp: printed only when the MC2_SHOT_SCREEN proof knob asked for a front-end screen capture (the knob is the guard; the default env never reaches it); the single OK/FAIL verdict line is the receipt scripts/screen_shot.py parses, so it must not hide behind a second MC2_DIAG_TAGS opt-in."
+    },
+    "CONTENT_COOK": {
+      "status": "keep",
+      "reason": "mclib/content_ir.cpp: one line per content-cache cook/hit (cache=hit|miss); scripts/kit_payload.py parses key= from it. Printed only when a glTF/FBX shape goes through the content cache, never in a stock default run."
     }
   }
 }

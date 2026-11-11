@@ -19,9 +19,9 @@ import re
 import sys
 from pathlib import Path
 
-DEFAULT_RULES = Path("A:/Games/mc2-ops/lane-rules.md")
-DEFAULT_OUT = Path("A:/Games/mc2-ops")
-RULES_ABS = "A:/Games/mc2-ops/lane-rules.md"
+DEFAULT_RULES = Path("A:/Games/mc2-ops/lane-rules.md")  # drive-path: ok PC ops tool (orchestrator/lane prefix); never runs on the laptop gate
+DEFAULT_OUT = Path("A:/Games/mc2-ops")  # drive-path: ok PC ops tool output dir
+RULES_ABS = "A:/Games/mc2-ops/lane-rules.md"  # drive-path: ok PC ops rules path printed in the digest footer
 FOOTER = f"full rules: {RULES_ABS}; read it only if a case is not covered"
 TYPES = ("tools-only", "engine", "merge")
 T, E, M = TYPES

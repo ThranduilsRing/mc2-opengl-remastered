@@ -212,7 +212,7 @@ bool cook(Asset& asset, std::string_view sourcePath) {
 }
 
 void reportLoadLaps(std::string_view stage, double stageMs, std::string_view mission) {
-    // The caller guards on MC2_DIAG_TAGS=LOAD_LAPS (mc2_diag lives in GameOS, which the asset viewer does not link).
+    // The caller guards with mc2_diag::tagRequested("LOAD_LAPS") (MC2_DIAG_TAGS=LOAD_LAPS; mc2_diag lives in GameOS, which the asset viewer does not link).
     const auto ms = [](std::atomic<uint64_t>& a) { return static_cast<double>(a.exchange(0)) / 1e6; };
     const auto n = [](std::atomic<uint64_t>& a) { return static_cast<unsigned long long>(a.exchange(0)); };
     const double digest = ms(g_laps.digest), read = ms(g_laps.read), decode = ms(g_laps.decode);

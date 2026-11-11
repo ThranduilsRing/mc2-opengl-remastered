@@ -44,7 +44,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--log")
     ap.add_argument("--timeout", type=float)
-    ap.add_argument("--job", help="job name: a still-running job of this name is re-attached, not relaunched (state: G:/mc2-tmp/jobs)")
+    ap.add_argument("--job", help="job name: a still-running job of this name is re-attached, not relaunched (state: G:/mc2-tmp/jobs)")  # drive-path: ok PC-only job state dir named in help text
     ap.add_argument("cmd", nargs=argparse.REMAINDER)
     a = ap.parse_args(argv)
     cmd = a.cmd[1:] if a.cmd[:1] == ["--"] else a.cmd
