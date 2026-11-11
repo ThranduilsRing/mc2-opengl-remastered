@@ -11,6 +11,7 @@
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace mc2::save {
@@ -211,7 +212,7 @@ struct TeamObjectives {
     bool operator==(const TeamObjectives&) const = default;
 
 private:
-    static bool equalsIgnoreCase(const std::string& x, const std::string& y) {
+    static bool equalsIgnoreCase(std::string_view x, std::string_view y) {
         if (x.size() != y.size()) return false;
         for (std::size_t i = 0; i < x.size(); ++i) {
             const auto lower = [](char c) { return (c >= 'A' && c <= 'Z') ? static_cast<char>(c + 32) : c; };
