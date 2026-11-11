@@ -660,6 +660,9 @@ def main():
     ap.add_argument("--grace-s", type=int, default=120, metavar="SECONDS",
                     help="walltime grace beyond --duration, load included (default 120); only the GPU-assisted validation row raises it (its load is minutes long)")
     ap.add_argument("--runtime-bridge", action="store_true", help="dev-only loopback observation socket v1")
+    ap.add_argument("--runtime-bridge-script", default=None, metavar="OPS",
+                    help="with the bridge: scripted control run, e.g. 'pause;step:5;hold:1;resume;set_speed:2;bogus'; "
+                         "results land in latest_runtime_bridge.json control_log")
     ap.add_argument("--headless", action="store_true", help="no window, GPU device or audio (needs --ticks and the fixed clock; see docs/sim/headless-load.md)")
     ap.add_argument("--ticks", type=int, default=0,
                     help="tick-budget exit: quit after N sim ticks (needs MC2_SMOKE_FIXED_TIMESTEP=1, as the determinism runs set); --duration stays the timeout")
@@ -1704,10 +1707,10 @@ def main():
 
         print(f"[runner] running {label} (tier={tier} duration={duration})",
               file=sys.stderr)
-        if args.runtime_bridge or os.environ.get("MC2_BRIDGE") == "1":
+        if args.runtime_bridge or args.runtime_bridge_script or os.environ.get("MC2_BRIDGE") == "1":
             from scripts.smoke_lib.runtime_bridge import RuntimeBridge
             bridge_output = Path(cfg.exe[0]).resolve().parent / "debug_state/latest_runtime_bridge.json"
-            with RuntimeBridge(bridge_output) as bridge:
+            with RuntimeBridge(bridge_output, args.runtime_bridge_script) as bridge:
                 cfg.env_extra.update(bridge.environment)
                 result = run_one(cfg)
             print(f"[runner] runtime bridge: {bridge_output}", file=sys.stderr)

@@ -1,14 +1,17 @@
 """Real loopback socket framing, authentication and harness lifecycle tests."""
 import json
+import os
 from pathlib import Path
 import socket
 import struct
+import subprocess
 import sys
 import threading
 
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import console_child  # noqa: E402
 from smoke_lib.runtime_bridge import MAX_FRAME, RuntimeBridge, receive_frame, send_frame
 
 
@@ -100,3 +103,101 @@ def test_idle_loading_does_not_disconnect_or_prevent_shutdown(tmp_path):
         if connection:
             connection.close()
     assert not bridge.thread.is_alive()
+
+
+def _fake_game(port, session):
+    """A stand-in for the game control loop: pause holds the counter, step N adds N, others are rejected."""
+    state = {"ticks": 100, "paused": False, "pending": 0}
+    def control():
+        return dict(paused=state["paused"], ticks=state["ticks"], pending_steps=state["pending"], speed=0.0)
+    connection = socket.create_connection(("127.0.0.1", port), timeout=3)
+    send_frame(connection, dict(version=1, type="hello", session=session, read_only=False))
+    receive_frame(connection)
+    connection.settimeout(0.05)
+    def run():
+        while True:
+            try:
+                message = receive_frame(connection)
+            except socket.timeout:
+                if not state["paused"]:
+                    state["ticks"] += 3
+                try:
+                    send_frame(connection, dict(version=1, type="telemetry", session=session,
+                                               stream="runtime.observation", data={}, control=control()))
+                except OSError:
+                    return
+                continue
+            except (EOFError, OSError, ValueError):
+                return
+            reply = dict(version=1, session=session, seq=message.get("seq"))
+            cmd = message.get("cmd")
+            if cmd == "pause":
+                state["paused"] = True; reply["type"] = "ack"
+            elif cmd == "resume":
+                state["paused"] = False; reply["type"] = "ack"
+            elif cmd == "step" and state["paused"]:
+                state["ticks"] += message["n"]; reply["type"] = "ack"
+            elif cmd == "set_speed":
+                reply["type"] = "ack"
+            else:
+                reply.update(type="nack", error="unknown_command")
+            reply["control"] = control()
+            try:
+                send_frame(connection, reply)
+            except OSError:
+                return
+    thread = threading.Thread(target=run, daemon=True)
+    thread.start()
+    return connection, thread
+
+
+def test_scripted_control_run_records_ticks_and_rejections(tmp_path):
+    import time
+    script = "pause;hold:0.3;step:5;resume;run:0.3;bogus"
+    with RuntimeBridge(tmp_path / "state.json", script) as bridge:
+        port = int(bridge.environment["MC2_BRIDGE_PORT"])
+        connection, thread = _fake_game(port, bridge.session)
+        deadline = time.time() + 20
+        while len(bridge.control_log) < 6 and time.time() < deadline:
+            time.sleep(0.1)
+        connection.close()
+    log = {entry["op"]: entry for entry in bridge.control_log}
+    assert log["pause"]["reply"]["type"] == "ack"
+    assert log["hold"]["ticks_after"] == log["hold"]["ticks_before"]          # pause holds the counter
+    assert log["step"]["ticks_after"] - log["step"]["ticks_before"] == 5      # stepped == requested
+    assert log["run"]["ticks_after"] > log["run"]["ticks_before"]             # resume runs again
+    assert log["bogus"]["reply"]["type"] == "nack"
+    assert log["bogus"]["reply"]["error"] == "unknown_command"
+
+
+def test_script_rejects_unknown_ops():
+    with pytest.raises(ValueError):
+        RuntimeBridge(Path("unused.json"), "pause;eval:1")
+
+
+@pytest.mark.skipif(not os.environ.get("MC2_BRIDGE_TEST_EXE"),
+                    reason="live run: set MC2_BRIDGE_TEST_EXE to a deployed mc2.exe (Windows, off-screen via run_smoke)")
+@pytest.mark.timeout(900)
+def test_live_control_run_steps_exactly_and_pause_holds(tmp_path):
+    exe = Path(os.environ["MC2_BRIDGE_TEST_EXE"])
+    log_path = tmp_path / "run_smoke.log"
+    script = "pause;hold:1.5;step:5;hold:1;step:12;resume;run:1.5;pause;set_speed:2;bogus"
+    (exe.parent / "debug_state/latest_runtime_bridge.json").unlink(missing_ok=True)   # never read a stale run
+    with open(log_path, "w") as sink:   # a file, not a pipe: the game child would hold a pipe open past run_smoke
+        subprocess.run([sys.executable, str(Path(__file__).resolve().parents[1] / "run_smoke.py"),
+                        "--mission", "mc2_10", "--duration", "30", "--keep-logs", "--exe", str(exe),
+                        "--runtime-bridge-script", script],
+                       stdout=sink, stderr=subprocess.STDOUT, timeout=850, **console_child.child_kwargs(redirected=True))
+    bridge_json = exe.parent / "debug_state/latest_runtime_bridge.json"
+    assert bridge_json.exists(), log_path.read_text()[-3000:]
+    saved = json.loads(bridge_json.read_text())
+    # saved["error"] may hold the reset when the game exits and ends the stream; the complete control_log is the check.
+    log = saved["control_log"]
+    assert [e["op"] for e in log] == ["pause", "hold", "step", "hold", "step", "resume", "run", "pause", "set_speed", "bogus"]
+    assert log[1]["ticks_after"] == log[1]["ticks_before"]
+    assert log[2]["ticks_after"] - log[2]["ticks_before"] == 5
+    assert log[3]["ticks_after"] == log[3]["ticks_before"]
+    assert log[4]["ticks_after"] - log[4]["ticks_before"] == 12
+    assert log[6]["ticks_after"] > log[6]["ticks_before"]
+    assert log[8]["reply"]["type"] == "ack"
+    assert log[9]["reply"]["type"] == "nack" and log[9]["reply"]["error"] == "unknown_command"
