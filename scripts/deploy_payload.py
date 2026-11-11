@@ -2234,7 +2234,13 @@ def main():
                          "instead of enumerating a local build; sha256-verified, no build needed. Pair with --payload-head.")
     ap.add_argument("--payload-head", metavar="SHA", default=None,
                     help="with --from-payload: the candidate head the exe must fingerprint as (default: --source-root HEAD)")
+    ap.add_argument("--quiet", action="store_true",
+                    help="print only verdicts, failures/warnings, artifact paths and the DEPLOY_FINGERPRINT lines; "
+                         "the full output goes to a log (path on the last line)")
     args = ap.parse_args()
+    import quiet_output
+    if quiet_output.wanted(args):
+        quiet_output.install_quiet(name="deploy_payload")
     global ALLOW_STOCK_TREES
     ALLOW_STOCK_TREES = bool(args.allow_stock_trees)
 

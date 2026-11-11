@@ -1983,6 +1983,9 @@ def build_parser():
     except OSError:
         jobs = "2"
     ap.add_argument("-j", type=int, default=int(jobs))
+    ap.add_argument("--quiet", action="store_true",
+                    help="print only verdicts, gate rows, failures/warnings, artifact paths and the DEPLOY_FINGERPRINT lines; "
+                         "the full output goes to a log (path on the last line)")
     return ap
 
 
@@ -1996,6 +1999,9 @@ def main(argv=None):
     if "MC2_IN_GATE" in os.environ:
         ap.error("MC2_IN_GATE is set: nested merge gates are forbidden")
     args = ap.parse_args(argv)
+    import quiet_output
+    if quiet_output.wanted(args):
+        quiet_output.install_quiet(name="merge_gate")
     args.nightly = args.nightly or args.weekly
     args.full = args.full or args.nightly
     STOP_REQUESTED.clear()
