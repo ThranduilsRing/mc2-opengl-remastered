@@ -14,6 +14,7 @@
 #include "fst_hash.h"
 #include "mod_conflict.h"
 #include "../GameOS/gameos/crash_content.h"
+#include <atomic>
 #include <unordered_map>
 #include <string>
 #include <vector>
@@ -61,6 +62,7 @@ struct DigestStamp { uint64_t size = 0; int64_t mtime = 0; uint64_t generation =
 std::mutex g_digestMutex;
 std::map<std::string, std::pair<DigestStamp, uint64_t>> g_digestMemo;
 uint64_t g_digestGeneration = 1;
+static std::atomic<uint64_t> g_generation{1};
 
 void put(Index& ix, const std::string& k, Provider p, const std::string& mount,
          const std::string& phys, const std::string& name)
@@ -122,6 +124,7 @@ void buildLocked()
 		g_digestMemo.clear();
 		++g_digestGeneration;
 	}
+	g_generation.fetch_add(1, std::memory_order_relaxed);
 
 	// 1. base FST archives, in registration order; the earlier archive wins (FastFileFind order),
 	//    so the chain keeps registration order (earliest first).
@@ -246,10 +249,13 @@ void rebuild()
 	buildLocked();
 }
 
+uint64_t generation() { return g_generation.load(std::memory_order_relaxed); }
+
 void invalidate()
 {
 	std::lock_guard<std::mutex> lk(g_indexMutex);
 	g_index.built = false;
+	g_generation.fetch_add(1, std::memory_order_relaxed);
 }
 
 Stats stats()
@@ -471,6 +477,34 @@ void noteWrite(std::string_view path)
 	chain.insert(chain.begin() + static_cast<std::ptrdiff_t>(pos), std::move(e));
 	for (size_t i = 0; i < chain.size(); ++i) chain[i].shadowed = static_cast<unsigned>(chain.size() - 1 - i);
 	g_index.st.entries = g_index.entries.size();
+}
+
+static std::mutex g_writeGuardMutex;
+static std::set<std::string> g_writeGuardSeen;
+
+void resetWriteGuard()
+{
+	std::lock_guard<std::mutex> lk(g_writeGuardMutex);
+	g_writeGuardSeen.clear();
+}
+
+bool guardWrite(std::string_view path)
+{
+	if (!internal::shouldSearchMods(path)) return false;   // only the relative data/ tree is stock data
+	const std::string k = key(path);
+	if (k.compare(0, 13, "data/savegame") == 0) return false;
+	const std::string mod = mc2::gate::str<"MC2_ACTIVE_MOD">();
+	if (mod.empty() || mod == "mc2-industrial-kit" || mod == "mc2-vehicle-kit") return false;   // same "no user layer" rule as the mount
+	{
+		std::lock_guard<std::mutex> lk(g_writeGuardMutex);
+		if (g_writeGuardSeen.size() >= 64) return false;
+		const auto [pos, added] = g_writeGuardSeen.insert(k);
+		(void)pos;
+		if (!added) return false;
+	}
+	mc2::fmt::print_out("[MOD_WRITE_GUARD] path={} mod={} action=warn\n", k.c_str(), mod.c_str());
+	fflush(stdout);
+	return true;
 }
 
 std::vector<Entry> enumerate(std::string_view dirKey, std::string_view ext)
