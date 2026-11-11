@@ -20,11 +20,11 @@ Codecs marked "private" are called by tests and the loader's value path only. Li
 | BrainRuntime / BrainTaskQueue / VarStore | yes, `code/save_brain_section.cpp` | `test_brain_save_policy_seam.cpp` | codec, optional BRN1 (`saveload.cpp:382-383`) |
 | Team / TeamStatic | yes, `code/team_save_data.h` | `test_team_archive.cpp` | legacy `Team::Save` (`saveload.cpp:292`) |
 | Commander / MoverGroup | yes, `code/commander_save_data.h` | `test_commander_archive.cpp` | legacy `Commander::Save` (`saveload.cpp:298`) |
-| Contacts / Sensor / TeamSensor / ContactInfo / Ecm | no | no | none found in `Mission::save`; contacts are rescanned on load (design says this is wrong) |
+| Contacts / Sensor / TeamSensor / ContactInfo / Ecm | yes (private), `code/contacts_archive.h` (tag CNTC) | `tests/unit/test_contacts_archive.cpp` | none found in `Mission::save`; contacts are rescanned on load (design says this is wrong) |
 | ABL modules / values / instances | yes, `mclib/abl_module_archive.h`, `abl_value_archive.h` | `test_abl_archive.cpp`, `test_abl_module_archive.cpp` | legacy `ABLi_saveEnvironment` (`saveload.cpp:270`) |
 | ABL environment (libs/modules/files) | yes, `mclib/abl_environment_archive.h` | `test_abl_environment_archive.cpp` | marker section only (`saveload.cpp:348`); bytes from legacy |
 | Mission / Part | Part yes, `code/mission_parts_archive.cpp`, `save_archive.h:270`; Mission record no | `test_part_archive.cpp` (Part only) | legacy FIT text (`Part::Save` `saveload.cpp:42`, mission block 191-210) |
-| ObjectiveSet / BooleanFlag / Objective / Condition / Action | no | no | legacy FIT (`Team::home->objectives.Save`, `saveload.cpp:231`; `code/objective.cpp` `Save` methods) |
+| ObjectiveSet / BooleanFlag / Objective / Condition / Action | schema row only (below), no codec | no | legacy FIT (`Team::home->objectives.Save`, `saveload.cpp:231`; `code/objective.cpp` `Save` methods) |
 | SupportCraft / support state | yes (private), `code/support_craft_archive.h` (state in `code/missiongui.h:160-171`) | `tests/unit/test_environment_archive.cpp` | `missionInterface->Save` FIT (`saveload.cpp:219`) |
 | Logistics / Campaign / Variant / Pilot / Mech | no | no | legacy FIT, `LogisticsData::save` (`code/logisticsdata_save.cpp:124`) |
 | MediaCueState / LogicalRequest / CueTrajectory | yes (new, this lane), `code/media_cue_archive.h` | `tests/unit/test_media_cue_archive.cpp` | none; no runtime owner exists yet |
@@ -32,6 +32,26 @@ Codecs marked "private" are called by tests and the loader's value path only. Li
 | Presentation / ObjectVisual / RenderWeather | no | no | legacy camera/FIT (`eye->save` `saveload.cpp:182`) |
 | FIX1 music/backoff extras | yes, `code/save_fix_section.h:24-71` | `test_save_sections.cpp` | codec, optional (`saveload.cpp:384-385`) |
 
-Missing codecs (cheapest first; MediaCueState, Environment and SupportCraft are landed, private and unused by the save path): ObjectiveSet family
-(large: three payload variants), Logistics family, Contacts family, Mission record, SimRules, Presentation.
+Missing codecs (cheapest first; MediaCueState, Environment, SupportCraft and Contacts are landed, private and unused by the save path): ObjectiveSet family
+(large: three payload variants; schema row below), Logistics family, Mission record, SimRules, Presentation.
+
+## Schema rows from the code that saves and loads today
+
+Contacts (landed): `code/contact.h` ContactInfo `:51` (contactStatus[MAX_TEAMS] u8 < 6, contactCount[MAX_TEAMS] u16, sensors[MAX_SENSORS] u16 with
+0xFFFF = none, teams[MAX_TEAMS] u16, teamSpotter[MAX_TEAMS] u32), SensorSystem `:133` (id, master team + masterIndex, owner, range, skill, broken, notShutdown,
+hasLOSCapability, ecmEffect, nextScanUpdate, lastScanUpdate, contacts[numContacts] mover ids, numExclusives, totalContacts), TeamSensorSystem `:258` (teamId,
+nextContactId, numContactUpdatesPerPass, curContactUpdate, contacts[], numEnemyContacts, sensors[], ecms/jammers SystemTracker lists `code/team.h:40`: owner,
+masterId, effect), SensorSystemManager `:345` (sensor pool + free list, teamSensors[MAX_TEAMS], ecms[MAX_ECMS], teamToUpdate, static updateFrequency,
+enemyInLOS; TeamSensorSystem::homeTeamInContact and SensorSystem::scanFrequency are statics). The codec encodes ContactInfo.sensors sparsely and validates ids,
+ordering, free-list disjointness and team-to-sensor references. Not encoded: the intrusive prev/next pointers and sensor owner back pointers (rebuilt on restore).
+
+ObjectiveSet (schema only, not implemented; FIT writer `code/objective.cpp:2214-2420`): per team `CObjectives::Save` writes Version 3, NumObjectives, the
+BooleanArray flags (`boolFlags.save`), then per CObjective: title/description text plus UseResourceString and ResourceStringID pairs, priority, resourcePoints,
+previousPrimaryMustBeComplete, allPreviousPrimariesMustBeComplete, displayMarker, markerX/Y, hiddenTrigger, activateOnFlag + activateFlagID, resetStatusOnFlag +
+resetStatusFlagID, counts of the four lists (conditions, actions, failureConditions, failureActions), model name, modelType, baseColor, highlightColor(2),
+modelScale, state (isActive, activationTime double, resolved, resolvedStatus 0..2, changedStatus). Condition payload by species (`code/objective.h:43`, 24 species):
+none (destroy/capture/dead-or-fled all and group), num u32 (number-of-units), watch id (specific unit, must resolve), building WID (specific structure),
+area (centerX, centerY, radius floats), flag (id string + bool), elapsed time (float). Action payload by species (`:342`, 7 species): path string (BIK/WAV),
+message string, resourceStringID u32, flag (id + bool), purchase file string, building WID (_REMOVE_STRUCTURE). The codec needs a species-tagged variant per
+payload kind with its own range check. Not started: too large for this lane.
 Enum values in the new media/cue codec are provisional until B7.5 fixes the runtime kinds.
