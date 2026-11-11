@@ -29,8 +29,17 @@ struct Particle {
     float size;      uint  atlasIndex; // 56 / 60
 };
 layout(std430, set = 0, binding = 1) readonly buffer Particles {
-    Particle particles[];
+    uint words[]; // scalar-packed: 16 words/legacy particle, 10/indexed vertex
 };
+vec2 read2(uint at) { return uintBitsToFloat(uvec2(words[at], words[at+1u])); }
+vec3 read3(uint at) { return uintBitsToFloat(uvec3(words[at], words[at+1u], words[at+2u])); }
+vec4 read4(uint at) { return uintBitsToFloat(uvec4(words[at], words[at+1u], words[at+2u], words[at+3u])); }
+Particle readParticle(uint index) {
+    uint b = index * 16u;
+    return Particle(read3(b), words[b+3u], read4(b+4u),
+        read3(b+8u), words[b+11u], uintBitsToFloat(words[b+12u]),
+        uintBitsToFloat(words[b+13u]), uintBitsToFloat(words[b+14u]), words[b+15u]);
+}
 
 layout(set = 0, binding = 0, std140) uniform VfxVsParams {
     mat4 worldToClipGL;   // SAME 16 raw floats as GL GL_FALSE upload
@@ -78,16 +87,24 @@ layout(location = 4) out vec2 v_vegAux;
 void main() {
 #ifdef VFX_INDEXED
     uint record = G.atlasColumns == 0xffffffffu ? uint(gl_VertexIndex) : uint(gl_VertexIndex) / 6u;
-    Group g = groups[particles[record]._pad0];
+    Group g = groups[words[record * 16u + 3u]];
     v_page = g.page; v_blend = g.blend;
 #else
     // Keep the original page-binding shader usable without descriptor indexing.
     #define g G
 #endif
     v_vegData=vec4(0.0); v_vegAux=vec2(0.0);   // vegetation has its own vertex shader (vfx_vegetation.vert); the fragment shader still reads these
+    if (G.atlasColumns == 0xfffffffdu) {
+        uint b = uint(gl_VertexIndex) * 10u;
+        gl_Position = U.worldToClipGL * vec4(mc2ToRender(read3(b)), 1.0);
+        v_color = read4(b+3u); v_uv = read2(b+7u); v_flags = words[b+9u];
+        if ((v_flags & 128u) != 0u)
+            gl_Position.xy += v_uv * vec2(U.camRight.w, U.camUp.w) * gl_Position.w;
+        return;
+    }
     // Native mesh/ribbon vertices share the 64-byte frame-ring stride.
     if (g.atlasColumns == 0xffffffffu) {
-        Particle p = particles[gl_VertexIndex];
+        Particle p = readParticle(uint(gl_VertexIndex));
         // The terrain MVP includes the MC2-to-render conversion. Native
         // gosFX geometry is already in render space, so convert it back first.
         vec3 world = mc2ToRender(p.position);
@@ -112,7 +129,7 @@ void main() {
     int  cornerSlot = int(uint(gl_VertexIndex) % 6u);
     int  cornerIdx  = kCornerIdx[cornerSlot];
 
-    Particle p = particles[particleId];
+    Particle p = readParticle(particleId);
 
     // Aspect-scaled corner with in-plane spin (velocity.xyz = sizeX,sizeY,spin
     // from the oracle path; 0,0,0 from placeholder). Mirrors the GL VS floors.

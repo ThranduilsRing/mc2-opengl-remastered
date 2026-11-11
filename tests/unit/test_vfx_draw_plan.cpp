@@ -4,6 +4,11 @@
 #include "vfx_draw_plan.h"
 #include <array>
 #include <cmath>
+#include "fx/fx_render.h"
+#include <optional>
+#include <filesystem>
+#include <fstream>
+#include <sstream>
 
 using namespace mc2vfx;
 
@@ -12,6 +17,123 @@ PlanItem item(uint32_t src, uint32_t count, uint32_t blend, uint64_t page, uint3
     PlanItem i;
     i.src = src; i.count = count; i.blend = blend; i.page = page; i.atlas = 0xffffffffu; i.tag = tag;
     return i;
+}
+
+namespace fx = mc2::fx;
+namespace {
+fx::Material authored(uint32_t alpha, bool clamp = false, const char* texture = "") {
+    fx::Material m;
+    m.words = {1u | (alpha << 14) | (clamp ? 1u << 21 : 0), 0xffffffffu, 0xffffffffu, 0, 0xffffffffu, 0xffffffffu};
+    m.texture = texture; return m;
+}
+fx::MeshShape triangle(float x) {
+    fx::MeshPrimitive p;
+    p.class_id = 101;
+    p.positions = {{x, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+    p.indices = {0, 1, 2}; p.texcoords = {{0, 0}, {1, 0}, {0, 1}};
+    p.colors = {0xff804020u, 0xffffffffu, 0xffffffffu};
+    p.materials = {authored(0, true, "base"), authored(4, false, "overlay")};
+    p.extra_texcoords = {{{0.25f, 0.5f}, {0.75f, 0.5f}, {0.25f, 1}}};
+    fx::MeshShape s; s.primitives.push_back(std::move(p)); return s;
+}
+}
+TEST_CASE("fx_render/reload at the same address invalidates mesh and material identities") {
+    fx::RenderResources resources;
+    fx::FramePackets frame;
+    std::optional<fx::MeshShape> owner(triangle(1));
+    fx::Geometry g; g.kind = fx::GeometryKind::mesh; g.shape = &*owner;
+    const auto first = resources.mesh(*owner);
+    resources.append(std::span(&g, 1), frame);
+    const auto material = frame.draws.front().material;
+    CHECK(frame.vertices.front().position[0] == 1);
+    const auto* address = &*owner;
+    const auto generation = resources.generation();
+    resources.reset(); frame.clear();
+    owner.emplace(triangle(9));
+    REQUIRE(&*owner == address);
+    CHECK(resources.generation() != generation);
+    CHECK(resources.mesh(*owner) != first);
+    CHECK(resources.material(material) == nullptr);
+    resources.append(std::span(&g, 1), frame);
+    CHECK(frame.vertices.front().position[0] == 9);
+    CHECK(frame.draws.front().material != material);
+}
+TEST_CASE("fx_render/compact indexed packets retain colors clamp and multipass order") {
+    fx::RenderResources resources;
+    fx::FramePackets frame;
+    const auto shape = triangle(2);
+    fx::Geometry mesh; mesh.kind = fx::GeometryKind::mesh; mesh.shape = &shape;
+    mesh.color = {0.5f, 1, 1, 0.75f}; mesh.scale = {2, 3, 4};
+    resources.append(std::span(&mesh, 1), frame);
+    REQUIRE(frame.draws.size() == 2);
+    REQUIRE(frame.vertices.size() == 6);
+    CHECK(sizeof(fx::RenderVertex) == 40);
+    CHECK(sizeof(fx::RenderDraw) == 16);
+    CHECK(frame.vertices[0].position[0] == 4);
+    CHECK(frame.vertices[0].color[0] == doctest::Approx(0.5f * 128 / 255));
+    CHECK(frame.vertices[0].color[3] == 0.75f);
+    CHECK((frame.vertices[0].flags & 16u) != 0);
+    CHECK((frame.vertices[3].flags & 16u) == 0);
+    CHECK(frame.vertices[3].uv[0] == 0.25f);
+    CHECK(resources.material(frame.draws[0].material)->blend == 3);
+    CHECK(resources.material(frame.draws[1].material)->blend == 0);
+    CHECK(frame.indices == std::vector<uint32_t>{0, 1, 2, 3, 4, 5});
+    const auto capacity = frame.vertices.capacity();
+    frame.clear();
+    CHECK(frame.vertices.capacity() == capacity);
+    fx::Geometry tube;
+    tube.vertices = {{{0, 0, 0}, {1, 1, 1, 1}, {0, 0}}, {{1, 0, 0}, {1, 1, 1, 1}, {1, 0}},
+        {{1, 1, 0}, {1, 1, 1, 1}, {1, 1}}, {{0, 1, 0}, {1, 1, 1, 1}, {0, 1}}};
+    tube.indices = {0, 1, 2, 2, 3, 0};
+    resources.append(std::span(&tube, 1), frame);
+    CHECK(frame.vertices.size() == 4); CHECK(frame.indices.size() == 6);
+}
+TEST_CASE("fx_render/material recipes compose permissions and resolve once per frame") {
+    constexpr uint32_t recipes[] = {3, 2, 1, 4, 0, 5};
+    fx::RenderResources resources;
+    fx::FramePackets frame;
+    for (uint32_t alpha = 0; alpha < 6; ++alpha) {
+        const auto m = authored(alpha, alpha % 2 != 0, "page");
+        const auto mat = fx::render_material(m);
+        CHECK(mat.blend == recipes[alpha]); CHECK(mat.clamp == (alpha % 2 != 0));
+        const auto id = resources.intern(mat);
+        CHECK(resources.intern(mat) == id);
+        frame.draws.push_back({id, 0, 3}); frame.draws.push_back({id, 3, 3});
+    }
+    uint32_t calls = 0;
+    std::map<fx::MaterialId, uint32_t> textures;
+    const auto resolve = [](const fx::RenderMaterial&, void* count) { ++*static_cast<uint32_t*>(count); return 99u; };
+    fx::resolve_materials(resources, frame, resolve, &calls, textures);
+    CHECK(calls == 6); CHECK(textures.size() == 6);
+    fx::resolve_materials(resources, frame, resolve, &calls, textures);
+    CHECK(calls == 12);
+    auto parent = authored(0, false, "parent"), child = authored(4, true, "child");
+    parent.words[2] &= ~0x3fffu;
+    const auto combined = fx::compose_material(parent, child);
+    CHECK(combined.texture == "parent");
+    CHECK(fx::render_material(combined).blend == 0);
+    CHECK(fx::render_material(combined).clamp);
+    // Opaque and alpha barriers keep additive runs and multipass surfaces apart.
+    std::vector<PlanItem> items{item(0, 3, 1, 9, 0), item(3, 3, 3, 8, 1),
+        item(6, 3, 0, 7, 2), item(9, 3, 1, 9, 3)};
+    std::vector<PlanDraw> plan; plan_draws(items, plan);
+    REQUIRE(plan.size() == 4);
+    for (size_t i = 0; i < items.size(); ++i) CHECK(items[i].tag == i);
+}
+TEST_CASE("fx_render/shader scalar loads match the indexed packet layout") {
+    const auto root = std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
+    std::ifstream input(root / "shaders/vulkan/vfx_particle.vert");
+    REQUIRE(input.good());
+    std::ostringstream text; text << input.rdbuf();
+    const auto source = text.str();
+    CHECK(source.find("uint b = uint(gl_VertexIndex) * 10u;") != std::string::npos);
+    CHECK(source.find("mc2ToRender(read3(b))") != std::string::npos);
+    CHECK(source.find("v_color = read4(b+3u)") != std::string::npos);
+    CHECK(source.find("v_uv = read2(b+7u)") != std::string::npos);
+    CHECK(source.find("v_flags = words[b+9u]") != std::string::npos);
+    CHECK(offsetof(fx::RenderVertex, color) / 4 == 3);
+    CHECK(offsetof(fx::RenderVertex, uv) / 4 == 7);
+    CHECK(offsetof(fx::RenderVertex, flags) / 4 == 9);
 }
 }
 

@@ -29,6 +29,7 @@ struct GosVfxMeshInstance {
 };
 extern "C" void gos_vfx_mesh_flush(const GosVfxMeshUpload*, unsigned,
                                    const GosVfxMeshInstance*, unsigned);
+extern "C" uint64_t gos_vfx_mesh_generation();
 
 struct gosFX::NativeShapePrimitive {
     GosVfxMeshUpload upload{};
@@ -55,6 +56,10 @@ bool captureNativeShape(const MidLevelRenderer::DrawScalableShapeInformation& dr
 {
     frozen = {};
     if (!mc2::particles::Batcher::is_oracle_shape_enabled() || !draw.shape) return false;
+    static uint64_t uploadGeneration = 0;
+    if (const auto generation = gos_vfx_mesh_generation(); uploadGeneration != generation) {
+        uploaded.clear(); uploadGeneration = generation;
+    }
     // Validate before submitting any primitive: fallback must never double draw.
     gosFX::NativeShapePrimitive* tail = nullptr;
     for (int p = 0; p < draw.shape->GetNum(); ++p) {

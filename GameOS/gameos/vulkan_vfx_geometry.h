@@ -9,6 +9,12 @@
 
 inline constexpr uint32_t kVfxGeometryAtlas = 0xffffffffu;
 inline constexpr uint32_t kVfxVegetationAtlas = 0xfffffffeu;
+inline constexpr uint32_t kVfxCompactGeometryAtlas = 0xfffffffdu;
+// 40-byte scalar-packed vertices (fx::RenderVertex), with uint32 indices.
+// start/count in each draw address indices; vertex indices remain global.
+int mc2_vk_vfx_indexed_run(const void* vertices, uint32_t vertexCount,
+    const uint32_t* indices, uint32_t indexCount, const VfxParticleDraw* draws,
+    uint32_t drawCount, const float* mvp, const float* right, const float* up, int w, int h);
 namespace mc2tex { struct TextureArrayCpu; }
 void mc2_vk_vfx_vegetation_atlas(const mc2tex::TextureArrayCpu& atlas);
 namespace mc2veg { struct CullParams; }

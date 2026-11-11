@@ -2,6 +2,10 @@
 // Effect stream ownership and the existing MLR/gosFX lifecycle hooks.
 #include "render_scene_support.h"
 #include "effect_resources.h"
+#include "particles/batcher.h"
+#include "../GameOS/gameos/gos_particle_bridge.h"
+#include "../GameOS/gameos/gos_vfx_mesh_bridge.h"
+#include "../GameOS/gameos/vulkan_vfx_island.h"
 Stuff::MemoryStream *effectStream = nullptr;
 static std::unique_ptr<Stuff::MemoryStream> s_effectStreamOwner;
 
@@ -20,6 +24,11 @@ void ReleaseEffectStream()
 extern MidLevelRenderer::MLRClipper* theClipper;
 void mc2::effects::shutdown()
 {
+    // Retire outstanding draws before invalidating either side of the cache.
+    mc2_vk_vfx_island_reset();
+    gos_vfx_mesh_reset();
+    gos_fx_native_reset();
+    mc2::particles::Batcher::Instance().ResetNative();
 	gos_PushCurrentHeap(MidLevelRenderer::Heap);
 
 	delete MidLevelRenderer::MLRTexturePool::Instance;

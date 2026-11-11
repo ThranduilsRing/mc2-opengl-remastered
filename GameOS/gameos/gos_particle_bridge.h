@@ -9,6 +9,9 @@
 // FX-GPU-1 Phase 2: per-group UV sub-rect support (GroupInfo array).
 
 #pragma once
+namespace mc2::fx { class RenderResources; struct FramePackets; struct FrameView; }
+int gos_fx_native_flush(const mc2::fx::RenderResources&, const mc2::fx::FramePackets&, const mc2::fx::FrameView&);
+void gos_fx_native_reset();
 
 namespace mc2 { namespace particles { struct GpuParticle; } }
 namespace mc2 { namespace particles { struct GroupInfo; } }

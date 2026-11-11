@@ -41,6 +41,7 @@
 #include "vulkan_vfx_island.h"
 #include "vulkan_vfx_geometry.h"
 #include "vfx_draw_plan.h"
+#include "../../mclib/fx/fx_render.h"
 #include "vk_desc_write_cache.h"
 #include "vulkan_mover_shadow.h"
 #include "vulkan_shadow_island_live.h"
@@ -725,11 +726,11 @@ extern "C" int mc2_vk_vfx_island_prewarm(int w,int h) {
     return 1;
 }
 
-extern "C" int mc2_vk_vfx_island_run(
+static int run_vfx(
     const void* particles, uint32_t particleCount,
     const VfxParticleDraw* draws, uint32_t drawCount,
     const float* worldToClipGL, const float* camRight, const float* camUp,
-    int w, int h) {
+    int w, int h, const uint32_t* indices = nullptr, uint32_t indexCount = 0) {
     if (particleCount == 0 || drawCount == 0 || particles == nullptr || draws == nullptr) return 0;
     if (w <= 0 || h <= 0 || worldToClipGL == nullptr) return 0;
     ZoneScopedN("VKIsl.Vfx.Run");   // VK-ISLAND-TRACY-1 per-call total (CPU)
@@ -743,10 +744,13 @@ extern "C" int mc2_vk_vfx_island_run(
     const uint32_t par = take_slot(s, slotCtx);
     { ZoneScopedN("VKIsl.Vfx.SlotWait"); mc2::battlebench::WaitScope gpuWait1(mc2::battlebench::WaitGpuMainNs);
     if (!slotCtx.wait(mc2vk::GpuTicket{s->ticket[par], 0}, 5ull * 1000 * 1000 * 1000, "vfx_slot")) { setFallback("slot_timeout"); s->disabled = true; return 0; } }
-    const VkDeviceSize needBytes = static_cast<VkDeviceSize>(particleCount) * 64u;
+    const bool nativeIdx = indices != nullptr;   // native gosFX packets: RenderVertex + index buffer (distinct from the descriptor-indexed page path below)
+    const uint32_t stride = nativeIdx ? sizeof(mc2::fx::RenderVertex) : 64u;
+    const VkDeviceSize needBytes = static_cast<VkDeviceSize>(particleCount) * stride;
     const VkDeviceSize partOff = mc2vk::alignUp(sizeof(VfxVsParams), slotCtx.frameAlignment());
     const VkDeviceSize groupOff = mc2vk::alignUp(partOff + needBytes, slotCtx.frameAlignment());
-    const mc2vk::FrameAlloc span = slotCtx.frameAlloc(groupOff + drawCount * sizeof(VfxIndexedGroup));
+    const VkDeviceSize indexOff = mc2vk::alignUp(groupOff + drawCount * sizeof(VfxIndexedGroup), slotCtx.frameAlignment());
+    const mc2vk::FrameAlloc span = slotCtx.frameAlloc(indexOff + static_cast<VkDeviceSize>(indexCount) * sizeof(uint32_t));
     if (!span) { setFallback("frame_ring_alloc_failed"); s->disabled = true; return 0; }
     fill_frame_params(span.ptr, worldToClipGL, camRight, camUp, w, h);
     { ZoneScopedN("VKIsl.Vfx.Descriptors");
@@ -758,7 +762,7 @@ extern "C" int mc2_vk_vfx_island_run(
     std::vector<std::optional<VkDescriptorSet>> groupPage(drawCount);
     { ZoneScopedN("VKIsl.Vfx.Pages");
     for (uint32_t gi = 0; gi < drawCount; ++gi) {
-        if (draws[gi].count != 0 && (draws[gi].texture != 0 || draws[gi].atlasColumns == kVfxGeometryAtlas))
+        if (draws[gi].count != 0 && (draws[gi].texture != 0 || draws[gi].atlasColumns == kVfxGeometryAtlas || draws[gi].atlasColumns == kVfxCompactGeometryAtlas))
             groupPage[gi] = get_page(s, draws[gi].texture, par);
         // The mesh bridge drew unresolved textures as white; preserve that fallback.
         if (!groupPage[gi] && draws[gi].atlasColumns == kVfxGeometryAtlas && draws[gi].start < particleCount &&
@@ -775,7 +779,9 @@ extern "C" int mc2_vk_vfx_island_run(
     for (uint32_t gi = 0; gi < drawCount; ++gi) {
         const VfxParticleDraw& d = draws[gi];
         if (d.count == 0) continue;
-        if (static_cast<uint64_t>(d.start) + d.count > particleCount) continue;   // clamp bad ranges
+        if (static_cast<uint64_t>(d.start) + d.count > (nativeIdx ? indexCount : particleCount)) continue;
+        if (nativeIdx && (d.atlasColumns != kVfxCompactGeometryAtlas ||
+            std::any_of(indices + d.start, indices + d.start + d.count, [=](auto i) { return i >= particleCount; }))) continue;
         if (!groupPage[gi]) continue;   // no resident texture: skipped, as the GL path does
         if (d.atlasColumns == kVfxVegetationAtlas) continue;   // vegetation draws through mc2_vk_vfx_vegetation_run
         items.push_back({d.start, d.count, d.additive, d.atlasColumns, mc2vk::descKeyWord(*groupPage[gi]), d.u0, d.v0, d.us, d.vs, gi});
@@ -787,7 +793,7 @@ extern "C" int mc2_vk_vfx_island_run(
     }
     // Table writes happen only after this slot's previous submission retired. Fill
     // every descriptor; devices need neither partially-bound nor update-after-bind.
-    bool indexed = s->indexed && !items.empty();
+    bool indexed = s->indexed && !items.empty() && !nativeIdx;
     std::vector<VkDescriptorSet> pageSets;
     std::vector<VkDescriptorImageInfo> pageImages;
     auto* groups = reinterpret_cast<VfxIndexedGroup*>(static_cast<uint8_t*>(span.ptr) + groupOff);
@@ -820,9 +826,22 @@ extern "C" int mc2_vk_vfx_island_run(
         writes[1].descriptorCount = 1; writes[1].pBufferInfo = &buffer;
         vkUpdateDescriptorSets(s->device, 2, writes, 0, nullptr);
     }
-    mc2vfx::plan_draws(items, plan, indexed);
+    if (nativeIdx) {
+        // Native packets include multipass surfaces. Preserve authored ordering
+        // across all families and passes, including consecutive additive passes.
+        uint32_t at = 0;
+        for (uint32_t i = 0; i < items.size(); ++i) { plan.push_back({i, at, items[i].count}); at += items[i].count; }
+    } else mc2vfx::plan_draws(items, plan, indexed);
     {
         ZoneScopedN("VKIsl.Vfx.Feed");   // VK-ISLAND-TRACY-1: particle staging
+        if (nativeIdx) {
+            std::memcpy(static_cast<uint8_t*>(span.ptr) + partOff, particles, static_cast<size_t>(needBytes));
+            auto* dest = static_cast<uint8_t*>(span.ptr) + indexOff;
+            for (const auto& item : items) {
+                const auto bytes = static_cast<size_t>(item.count) * sizeof(uint32_t);
+                std::memcpy(dest, indices + item.src, bytes); dest += bytes;
+            }
+        } else {
         uint8_t* dst = static_cast<uint8_t*>(span.ptr) + partOff;
         uint8_t* const dstEnd = dst + needBytes;
         for (const mc2vfx::PlanItem& it : items) {
@@ -834,12 +853,13 @@ extern "C" int mc2_vk_vfx_island_run(
             }
             dst += static_cast<size_t>(it.count) * 64u;
         }
+        }
     }
 
     // Record: one renderpass, per-group pipeline + sub-range draw. The draw list is copied out here (the caller's arrays do not outlive this call; the
     // pipelines and pages are resolved now, on the render thread) and the recording runs on a worker with the frame's other recorded islands
     // (VulkanContext::submitRecorded). It touches only the copies and handles it captured.
-    struct RecDraw { VkPipeline pipe; VkDescriptorSet page; VfxGroupPush push; uint32_t count; uint32_t start; };
+    struct RecDraw { VkPipeline pipe; VkDescriptorSet page; VfxGroupPush push; uint32_t count; uint32_t start; };   // nativeIdx: count/start are indices
     std::vector<RecDraw> recDraws;
     recDraws.reserve(plan.size());
     for (const mc2vfx::PlanDraw& pd : plan) {
@@ -852,7 +872,7 @@ extern "C" int mc2_vk_vfx_island_run(
         if (indexed) want = s->indexedPipes[mc2vfx::plan_pipe(d.additive)].get();
         const VfxGroupPush push{ {d.u0, d.v0}, {d.us, d.vs}, d.atlasColumns, d.additive == VFX_ADD_ONE_ONE ? 1u : 0u };
         const uint32_t expansion = d.atlasColumns == kVfxGeometryAtlas ? 1u : 6u;
-        recDraws.push_back({want, indexed ? VK_NULL_HANDLE : *groupPage[gi], push, pd.count * expansion, pd.start * expansion});
+        recDraws.push_back({want, indexed ? VK_NULL_HANDLE : *groupPage[gi], push, nativeIdx ? pd.count : pd.count * expansion, nativeIdx ? pd.start : pd.start * expansion});
     }
     if (recDraws.empty()) return 0;   // nothing drawable this frame: nothing is recorded or submitted
     const unsigned long groupsDrawn = static_cast<unsigned long>(recDraws.size());
@@ -863,7 +883,9 @@ extern "C" int mc2_vk_vfx_island_run(
     const VkDescriptorSet frameSet = s->set[par];
     const VkDescriptorSet indexedSet = indexed ? s->indexedSet[par] : VK_NULL_HANDLE;
     const uint32_t offs0 = dynOffsets[0], offs1 = dynOffsets[1];
-    auto record = [recDraws = std::move(recDraws), rpass, fb, playout, frameSet, indexedSet, offs0, offs1, w, h](VkCommandBuffer cb) -> bool {
+    const VkBuffer idxBuf = nativeIdx ? span.buffer : VK_NULL_HANDLE;
+    const VkDeviceSize idxOffset = span.offset + indexOff;
+    auto record = [recDraws = std::move(recDraws), nativeIdx, idxBuf, idxOffset, rpass, fb, playout, frameSet, indexedSet, offs0, offs1, w, h](VkCommandBuffer cb) -> bool {
         ZoneScopedN("VKIsl.Vfx.Record");
         VkCommandBufferBeginInfo bi{};
         bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -881,6 +903,7 @@ extern "C" int mc2_vk_vfx_island_run(
         const uint32_t dynOffsets[2] = {offs0, offs1};
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, playout, 0, 1, &frameSet, 2, dynOffsets);
         if (indexedSet != VK_NULL_HANDLE) vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, playout, 1, 1, &indexedSet, 0, nullptr);
+        if (nativeIdx) vkCmdBindIndexBuffer(cb, idxBuf, idxOffset, VK_INDEX_TYPE_UINT32);
         VkPipeline bound = VK_NULL_HANDLE;
         VkDescriptorSet boundPage = VK_NULL_HANDLE;
         for (const RecDraw& d : recDraws) {
@@ -890,7 +913,9 @@ extern "C" int mc2_vk_vfx_island_run(
                 boundPage = d.page;
             }
             vkCmdPushConstants(cb, playout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(d.push), &d.push);
-            mc2::battlebench::add(mc2::battlebench::DrawVfx), vkCmdDraw(cb, d.count, 1, d.start, 0);
+            mc2::battlebench::add(mc2::battlebench::DrawVfx);
+            if (nativeIdx) vkCmdDrawIndexed(cb, d.count, 1, d.start, 0, 0);
+            else vkCmdDraw(cb, d.count, 1, d.start, 0);
         }
         vkCmdEndRenderPass(cb);
         gpuScope.end();
@@ -928,6 +953,18 @@ extern "C" int mc2_vk_vfx_island_run(
              particleCount, drawCount, groupsDrawn);
     }
     return 1;
+}
+
+extern "C" int mc2_vk_vfx_island_run(const void* particles, uint32_t count,
+    const VfxParticleDraw* draws, uint32_t drawCount, const float* mvp,
+    const float* right, const float* up, int w, int h) {
+    return run_vfx(particles, count, draws, drawCount, mvp, right, up, w, h);
+}
+int mc2_vk_vfx_indexed_run(const void* vertices, uint32_t vertexCount,
+    const uint32_t* indices, uint32_t indexCount, const VfxParticleDraw* draws,
+    uint32_t drawCount, const float* mvp, const float* right, const float* up, int w, int h) {
+    if (!indices || !indexCount) return 0;
+    return run_vfx(vertices, vertexCount, draws, drawCount, mvp, right, up, w, h, indices, indexCount);
 }
 
 // Vegetation: GPU cull (cull -> scan -> compact) and the two indirect strips, in this island's own command buffer and parity slot. Nothing per instance

@@ -1,5 +1,6 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
+#include "test_repo_root.h"
 #include "gosfxheaders.hpp"
 #include "Gates/gate.h"
 #include "Gates/gate_name.h"
@@ -600,12 +601,9 @@ TEST_CASE_FIXTURE(Platform, "Event chain: Copy of a loaded spec with transformed
 
 TEST_CASE_FIXTURE(Platform, "Stock mc2.fx: load then save is byte-identical")
 {
-    const char* path = "A:/Games/mc2-opengl/mc2-win64-v0.4/data/effects/mc2.fx";
+    const auto path = mc2_test::fixtureDir() + "/vfx/mc2.fx";
     std::ifstream file(path, std::ios::binary);
-    if (!file) {
-        MESSAGE("stock mc2.fx not found; skipped: ", path);
-        return;
-    }
+    REQUIRE_MESSAGE(file.is_open(), path);
     std::vector<unsigned char> bytes{std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
     REQUIRE(!bytes.empty());
     // MLRState::Load resolves texture names through the pool (as tools/mc2fx does); MLR TerminateClasses deletes it.

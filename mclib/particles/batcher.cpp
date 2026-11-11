@@ -6,6 +6,7 @@
 //===========================================================================//
 
 #include "batcher.h"
+#include "../fx/fx_render.h"
 #include "../battle_bench_sink.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 
@@ -28,6 +29,7 @@ extern "C" void gos_particle_bridge_flush(const mc2::particles::GpuParticle* rec
                                           unsigned int                       count,
                                           const mc2::particles::GroupInfo*   groups,
                                           unsigned int                       numGroups);
+int gos_fx_native_flush(const mc2::fx::RenderResources&, const mc2::fx::FramePackets&, const mc2::fx::FrameView&);
 
 namespace mc2 {
 namespace particles {
@@ -37,6 +39,8 @@ unsigned long long Batcher::s_trail_spawn_total = 0;
 unsigned long long Batcher::s_trail_head_total  = 0;
 
 struct Batcher::Impl {
+    fx::RenderResources nativeResources;
+    fx::FramePackets nativeFrame;
     std::vector<GpuParticle> staging;
     std::vector<GroupInfo>   groups;
     unsigned int             budget;
@@ -163,6 +167,20 @@ Batcher::Batcher(unsigned int perFrameBudget)
     : impl_(std::make_unique<Impl>(perFrameBudget)) {}
 
 Batcher::~Batcher() = default;
+
+void Batcher::SubmitNative(std::span<const fx::Geometry> geometry) {
+    impl_->nativeResources.append(geometry, impl_->nativeFrame);
+}
+void Batcher::FlushNative(const fx::FrameView& view) {
+    if (!impl_->nativeFrame.draws.empty()) gos_fx_native_flush(impl_->nativeResources, impl_->nativeFrame, view);
+    impl_->nativeFrame.clear();
+}
+void Batcher::ResetNative() {
+    impl_->nativeFrame.clear();
+    impl_->nativeResources.reset();
+    impl_->staging.clear(); impl_->groups.clear();
+    impl_->budgetSixths = 0; impl_->hasOpenGroup = false;
+}
 
 void Batcher::BeginGroup(uint32_t handle, float u0, float v0, float us, float vs,
                          int blendMode, uint32_t atlasColumns) {
