@@ -410,12 +410,26 @@ def validate_bundle(directory):
             raise ValueError(f"missing required artifact {name}")
     docs = manifest["bookmarks"]
     for mission in MISSIONS:
+        capture_dir = f"raw/capture/{mission}"
+        required = [f"{capture_dir}/{mission}_capture.log", f"{capture_dir}/{mission}_capture_manifest.json"]
+        required += [f"raw/bench/{mission}/{name}" for name in
+                     ("frames.jsonl", "engine.log", "environment.json", "stock-corner.json", "commands.txt.ack")]
         for mark in docs[mission]["bookmarks"]:
+            required += [f"{capture_dir}/{mission}_{mark['name']}.{ext}" for ext in ("png", "json")]
             if mark["name"] == "corner_duplicate":
                 continue
             path = directory / "png" / f"{mission}_{mark['name']}.png"
             if not ab().usable_png(path):
                 raise ValueError(f"missing PNG {path.name}")
+        if manifest["stages"][f"zones/{mission}"]["status"] == "PASS":
+            required += [f"raw/zones/{mission}/{name}" for name in
+                         ("corner.tracy", "corner.game.log", "zones.json", "frames.jsonl", "commands.txt.ack")]
+        for rel in required:
+            if rel not in manifest["artifacts"]:
+                raise ValueError(f"missing raw evidence: {rel}")
+    for mission in ("mc2_01", "mc2_03"):
+        if f"raw/sim/{mission}/a/{mission}.log" not in manifest["artifacts"]:
+            raise ValueError(f"missing raw SIMID log: {mission}")
     return manifest
 
 

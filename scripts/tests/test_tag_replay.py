@@ -238,16 +238,27 @@ def mocked_run(monkeypatch, tmp_path, bookmarks):
     monkeypatch.setattr(replay.bench.render_options_pin, "record", lambda *a: {"values": {"BaseQuality": 2}})
     def capture(stage, exe, sha, directory, doc):
         directory.mkdir(parents=True)
+        (directory / f"{stage.mission}_capture.log").write_text(LOG)
+        replay.dump(directory / f"{stage.mission}_capture_manifest.json", {"fixture": True})
         for mark in doc["bookmarks"]:
             path = directory / f"{stage.mission}_{mark['name']}.png"
             Image.new("RGB", (3, 2), (1, 2, 3)).save(path)
             replay.dump(path.with_suffix(".json"), {"pose": mark})
         return {"status": "PASS", "actual_gpu": ["fixture"]}
     monkeypatch.setattr(replay, "capture_stage", capture)
-    monkeypatch.setattr(replay.bench, "stock_run", lambda *a: {"actual_gpu": ["fixture"], "cpu_work": {
-        "n": 100, "over_6_06_ms": 3, "over_8_33_ms": 1, "p99_ms": 7, "max_ms": 9}})
-    monkeypatch.setattr(replay, "sim_stage", lambda *a: {"status": "PASS", "seed": "0xC0FFEE", "ticks": [0, 599],
-        "count": 600, "chain_schema": 2, "chain": "simhash", "data_fingerprint": {"digest": "data"}})
+    def bench(exe, directory, mission, sha):
+        directory.mkdir(parents=True)
+        for name in ("frames.jsonl", "engine.log", "environment.json", "stock-corner.json", "commands.txt.ack"):
+            (directory / name).write_text("fixture")
+        return {"actual_gpu": ["fixture"], "cpu_work": {"n": 100, "over_6_06_ms": 3,
+                "over_8_33_ms": 1, "p99_ms": 7, "max_ms": 9}}
+    monkeypatch.setattr(replay.bench, "stock_run", bench)
+    def sim(stage, exe, sha, directory):
+        (directory / "a").mkdir(parents=True)
+        log_sim(directory / "a" / f"{stage.mission}.log")
+        return {"status": "PASS", "seed": "0xC0FFEE", "ticks": [0, 599], "count": 600,
+                "chain_schema": 2, "chain": "simhash", "data_fingerprint": {"digest": "data"}}
+    monkeypatch.setattr(replay, "sim_stage", sim)
     monkeypatch.setattr(replay, "zones_stage", lambda *a: {"status": "NOT RUN", "reason": "no fixture exporter"})
     monkeypatch.setattr(replay, "tracy_tools", lambda: (None, "no fixture exporter"))
     return args
@@ -422,4 +433,15 @@ def test_bundle_rejects_invalid_threshold_counts(mocked_run):
     manifest["stages"]["bench/mc2_01"]["cpu_work"]["over_6_06_ms"] = 101
     replay.dump(target / "manifest.json", manifest)
     with pytest.raises(ValueError, match="threshold count"):
+        replay.validate_bundle(target)
+
+
+def test_bundle_cannot_omit_raw_samples_even_with_updated_hashes(mocked_run):
+    assert replay.run(mocked_run) == 0
+    target = mocked_run.out_root / mocked_run.tag
+    (target / "raw/bench/mc2_01/frames.jsonl").unlink()
+    manifest = json.loads((target / "manifest.json").read_text())
+    manifest["artifacts"] = replay.artifact_hashes(target)
+    replay.dump(target / "manifest.json", manifest)
+    with pytest.raises(ValueError, match="missing raw evidence"):
         replay.validate_bundle(target)
