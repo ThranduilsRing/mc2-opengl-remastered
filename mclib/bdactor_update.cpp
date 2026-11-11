@@ -598,7 +598,33 @@ long BldgAppearance::update (bool animate)
 			float fogStart = eye->fogStart;
 			float fogFull = eye->fogFull;
 
-			fogRGB = static_cast<DWORD>(mc2FogHeightAlpha(xlatPosition.y, fogStart, fogFull)) << 24;
+			if (xlatPosition.y < fogStart)
+			{
+				float fogFactor = fogStart - xlatPosition.y;
+				if (fogFactor < 0.0)
+					fogRGB = 0xff<<24;
+				else
+				{
+					fogFactor /= (fogStart - fogFull);
+					if (fogFactor <= 1.0)
+					{
+						fogFactor *= fogFactor;
+						fogFactor = 1.0 - fogFactor;
+						fogFactor *= 256.0;
+					}
+					else
+					{
+						fogFactor = 256.0;
+					}
+
+					unsigned char fogResult = float2long(fogFactor);
+					fogRGB = fogResult << 24;
+				}
+			}
+			else
+			{
+				fogRGB = 0xff<<24;
+			}
 
 			fogLightSet = true;
 				lightLatchStamp = mc2CameraLightChangedCount();

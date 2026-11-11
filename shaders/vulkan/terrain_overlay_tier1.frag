@@ -15,7 +15,6 @@
 #ifndef PREC
 #define PREC highp
 #endif
-#include "../include/edge_haze.hglsl"
 #include "include/terrain_frame_vk.glsl"
 #include "include/concrete_detail_vk.glsl"
 
@@ -108,7 +107,7 @@ void main() {
     // In-shader distance fog (skipped on cement tiles: the shared screen-space fog does it once).
     float camDist2D = distance(WorldPos.xy, uT.cameraPosMC2.xy);
     float heightScale = exp(-max(WorldPos.z, 0.0) * 0.002);
-    float fogAmount = clamp(1.0 - exp(-camDist2D * MC2_FOG_EXP_COEFFICIENT * heightScale), 0.0, 0.70);
+    float fogAmount = clamp(1.0 - exp(-camDist2D * 0.00006 * heightScale), 0.0, 0.70);
     const vec3 fogCol = vec3(0.58, 0.65, 0.75);
     if (!ovCementTile)
         c.rgb = mix(c.rgb, fogCol, fogAmount);
@@ -126,7 +125,8 @@ void main() {
     // Map-edge haze (same ramp as gos_terrain.frag).
     if (pc.mapHalfExtent > 0.0) {
         const vec3 edgeSkyCol = vec3(0.58, 0.65, 0.75);
-        float edgeHaze  = edgeHazeAmount(WorldPos.xy, pc.mapHalfExtent);
+        float chebDist  = max(abs(WorldPos.x), abs(WorldPos.y));
+        float edgeHaze  = smoothstep(pc.mapHalfExtent - 256.0, pc.mapHalfExtent - 32.0, chebDist);
         c.rgb = mix(c.rgb, edgeSkyCol, edgeHaze);
     }
 

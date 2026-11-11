@@ -5,10 +5,8 @@
 // NOTE: bare float/vec3 types only — NO PREC qualifier.  This header may be
 // included before any #define PREC ... in the including shader.
 
-#include "fog_policy.hglsl"
-
 const vec3 EDGE_HAZE_SKY = vec3(0.58, 0.65, 0.75);
 
 float edgeHazeAmount(vec2 worldXY, float halfMap) {
-    return smoothstep(halfMap - mc2FogDistance(256.0), halfMap - mc2FogDistance(32.0), max(abs(worldXY.x), abs(worldXY.y)));
+    return smoothstep(halfMap - 256.0, halfMap - 32.0, max(abs(worldXY.x), abs(worldXY.y)));
 }

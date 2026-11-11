@@ -261,7 +261,7 @@ static bool isInView(const glm::vec3 &position)
 			}
 			else if (eyeDistance > Camera::MinHazeDistance)
 			{
-				Camera::HazeFactor = Camera::fogHaze(eyeDistance);
+				Camera::HazeFactor = (eyeDistance - Camera::MinHazeDistance) * Camera::DistanceFactor;
 				inView = true;
 			}
 			else

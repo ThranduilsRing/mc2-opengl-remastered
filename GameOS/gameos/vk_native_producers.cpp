@@ -2,7 +2,6 @@
 
 
 #include "vk_native_producers.h"
-#include "../../shaders/include/fog_policy.hglsl"
 
 #include "vk_island_util.h"
 #include "vk_one_shot.h"
@@ -183,7 +182,16 @@ void refLight(const gos_terrain_lighting::GpuTerrainVertexInput& v, const gos_te
     uint32_t fogResult = 0xFFu;
     const float fs = P.fogHaze[0], ff = P.fogHaze[1];
     if (P.sunRgb[3] == 0 && P.baseRgb[3] != 0) {
-        fogResult = static_cast<uint32_t>(mc2FogHeightAlpha(v.elevation, fs, ff));
+        if (v.elevation < fs) {
+            float fogFactor = fs - v.elevation;
+            if (fogFactor < 0.0f || fs == ff) fogResult = 0xFFu;
+            else {
+                fogFactor /= (fs - ff);
+                if (fogFactor <= 1.0f) { fogFactor = fogFactor * fogFactor; fogFactor = 1.0f - fogFactor; fogFactor *= 256.0f; }
+                else fogFactor = 256.0f;
+                fogResult = static_cast<uint32_t>(static_cast<int>(fogFactor));
+            }
+        }
         outFog = (fogResult << 24) | (sr << 16) | (sg << 8) | sb;
     }
     float haze;
@@ -192,7 +200,9 @@ void refLight(const gos_terrain_lighting::GpuTerrainVertexInput& v, const gos_te
     else {
         const float dx = v.xy[0] - P.camDist[0], dy = v.xy[1] - P.camDist[1], dz = v.elevation - P.camDist[2];
         const float d = std::sqrt(dx * dx + dy * dy + dz * dz);
-        haze = mc2FogRamp(d, P.fogHaze[2], P.fogHaze[3]);
+        if (d > P.fogHaze[3]) haze = 1.0f;
+        else if (d > P.fogHaze[2]) haze = (d - P.fogHaze[2]) * P.camDist[3];
+        else haze = 0.0f;
     }
     if (haze != 0.0f) {
         const float fogFactor = 1.0f - haze;

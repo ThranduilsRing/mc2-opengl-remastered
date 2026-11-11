@@ -11,8 +11,6 @@
 //   b3  ConstantBuffer<LightingParams>                 per-frame scalars
 // Struct layouts are LOCKSTEP with GameOS/gameos/gos_terrain_lighting.h (32 B / 48 B / 8 B).
 
-#include "../include/fog_policy.hglsl"
-
 struct GpuTerrainVertexInput {
     float2 xy;
     float  elevation;
@@ -44,7 +42,7 @@ struct LightingParams {
     int4   ambRgb;     // x ambientRed, y ambientGreen, z ambientBlue, w lighteningLevel
     int4   baseRgb;    // x,y,z BaseVertexColor R,G,B, w useFog
     float4 sunDirRain; // xyz sun light direction, w rainLightLevel
-    float4 fogHaze;    // x fogStart, y fogFull, z minHazeDistance, w effective fog full distance (not clipping)
+    float4 fogHaze;    // x fogStart, y fogFull, z minHazeDistance, w maxClipDistance
     float4 playArea;   // (-m, -m, m, m)
     float4 camDist;    // xyz camera world pos, w distanceFactor
 };
@@ -160,7 +158,30 @@ void main(uint3 tid : SV_DispatchThreadID)
     float fogFull  = P.fogHaze.y;
     if (P.sunRgb.w == 0 && P.baseRgb.w != 0)
     {
-        fogResult = uint(mc2FogHeightAlpha(v.elevation, fogStart, fogFull));
+        float elev = v.elevation;
+        if (elev < fogStart)
+        {
+            float fogFactor = fogStart - elev;
+            if (fogFactor < 0.0 || (fogStart == fogFull))
+            {
+                fogResult = 0xFFu;
+            }
+            else
+            {
+                fogFactor /= (fogStart - fogFull);
+                if (fogFactor <= 1.0)
+                {
+                    fogFactor = fogFactor * fogFactor;
+                    fogFactor = 1.0 - fogFactor;
+                    fogFactor *= 256.0;
+                }
+                else
+                {
+                    fogFactor = 256.0;
+                }
+                fogResult = uint(int(fogFactor));
+            }
+        }
         fogRGB_out = (fogResult << 24) | (specR << 16) | (specG << 8) | specB;
     }
 
@@ -176,7 +197,9 @@ void main(uint3 tid : SV_DispatchThreadID)
     {
         float3 d = hpos - P.camDist.xyz;
         float distanceToEye = sqrt(dot(d, d));
-        hazeFactor = mc2FogRamp(distanceToEye, P.fogHaze.z, P.fogHaze.w);
+        if      (distanceToEye > P.fogHaze.w) hazeFactor = 1.0;
+        else if (distanceToEye > P.fogHaze.z) hazeFactor = (distanceToEye - P.fogHaze.z) * P.camDist.w;
+        else                                  hazeFactor = 0.0;
     }
     if (hazeFactor != 0.0)
     {

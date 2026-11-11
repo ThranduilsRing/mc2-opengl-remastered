@@ -1,5 +1,3 @@
-#include "../../include/fog_policy.hglsl"
-
 // CEMENT-MIP-EDGE-1: antialiased "x < 0.5" for the cement transition cut; fw = the cut form's
 // per-pixel footprint, so the edge is one pixel of coverage at any distance instead of a hard stair.
 float cCutLt(float x, float fw) {
@@ -36,7 +34,7 @@ vec3 shadeRoadArt(vec4 art, uint road, uint cw, vec2 dx, vec2 dy) {
     color = max((color + spec) * shadow, vec3(0));
     if (!cementTile) {
         float dist = distance(v_worldPos.xy, uT.cameraPosMC2.xy);
-        float fog = clamp(1.0 - exp(-dist * MC2_FOG_EXP_COEFFICIENT * exp(-max(v_worldPos.z, 0.0) * 0.002)), 0.0, 0.70);
+        float fog = clamp(1.0 - exp(-dist * 0.00006 * exp(-max(v_worldPos.z, 0.0) * 0.002)), 0.0, 0.70);
         color = mix(color, vec3(0.58, 0.65, 0.75), fog);
     }
     if (uT.numPoolLights > 0) {
@@ -50,7 +48,7 @@ vec3 shadeRoadArt(vec4 art, uint road, uint cw, vec2 dx, vec2 dy) {
     }
     if (uT.halfMap > 0.0)
         color = mix(color, vec3(0.58, 0.65, 0.75),
-            smoothstep(uT.halfMap - mc2FogDistance(256.0), uT.halfMap - mc2FogDistance(32.0), max(abs(v_worldPos.x), abs(v_worldPos.y))));
+            smoothstep(uT.halfMap - 256.0, uT.halfMap - 32.0, max(abs(v_worldPos.x), abs(v_worldPos.y))));
     return color;
 }
 

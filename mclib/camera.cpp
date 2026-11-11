@@ -97,7 +97,7 @@ float Camera::globalScaleFactor = 1.0;
 float Camera::MaxClipDistance	= 50000.0f;
 float Camera::MinHazeDistance	= 50000.0f;
 float Camera::HazeFactor	 	= 0.0f;
-float Camera::DistanceFactor	= mc2FogInvSpan(MinHazeDistance, MaxClipDistance);
+float Camera::DistanceFactor	= 1.0f / (MaxClipDistance - MinHazeDistance);
 float Camera::NearPlaneDistance = -400.0f;
 float Camera::FarPlaneDistance  = 61555.0f;
 
@@ -439,7 +439,7 @@ long Camera::init (FitIniFilePtr cameraFile )
 	AltitudeMaximumHi = 6400.0f;
 	MaxClipDistance = 50000.0f;
 	MinHazeDistance = 50000.0f;
-	DistanceFactor = mc2FogInvSpan(MinHazeDistance, MaxClipDistance);
+	DistanceFactor = 1.0f / (MaxClipDistance - MinHazeDistance + 1.0f);
 
  	setClass(BASE_CAMERA);
 	
@@ -921,7 +921,7 @@ float Camera::getFarClipDistance()
 void Camera::setFarClipDistance(float farClipDistance)
 {
 	MaxClipDistance = farClipDistance;
-	DistanceFactor	= mc2FogInvSpan(MinHazeDistance, MaxClipDistance);
+	DistanceFactor	= 1.0f / (MaxClipDistance - MinHazeDistance);
 }
 
 float Camera::getNearClipDistance()

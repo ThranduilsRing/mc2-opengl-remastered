@@ -83,7 +83,7 @@ void render()
             const float distance = glm::length(renderPos - glm::vec3(eye->getCameraOrigin()));
             if (distance > Camera::MaxClipDistance) continue;
             if (distance > Camera::MinHazeDistance)
-                haze = Camera::fogHaze(distance);
+                haze = (distance - Camera::MinHazeDistance) * Camera::DistanceFactor;
         }
         unsigned char r = eye->ambientRed, g = eye->ambientGreen, b = eye->ambientBlue;
         if (Terrain::terrainTextures2) {
@@ -95,8 +95,15 @@ void render()
         }
         float fog = 1.0f;
         if (useFog) {
-            DWORD fogValue = static_cast<DWORD>(mc2FogHeightAlpha(print.corners[0].z, eye->fogStart, eye->fogFull));
-            fog = static_cast<float>(fogValue) / 255.0f;
+            DWORD fogValue = 255;
+            if (print.corners[0].z < eye->fogStart) {
+                float factor = eye->fogStart - print.corners[0].z;
+                factor /= (eye->fogStart - eye->fogFull);
+                factor = factor <= 1.0f ? (1.0f - factor * factor) * 256.0f : 256.0f;
+                // Stock fog packs this through an unsigned byte before distance haze.
+                fog = static_cast<float>(static_cast<unsigned char>(static_cast<unsigned long>(factor))) / 255.0f;
+                fogValue = static_cast<DWORD>(factor);
+            }
             if (haze != 0.0f) {
                 const DWORD distanceFog = float2long((1.0f - haze) * 255.0f);
                 fogValue = std::min(fogValue, distanceFog);
