@@ -11,6 +11,8 @@
 #include "mech3d_internal.h"
 #include "appearance_rng.h"
 #include <format>
+#include <string>
+#include <unordered_map>
 
 // Returns true if the texture file or its .ktx2 BC7 sidecar exists.
 // Used to gate TGL texture loading so sensor shapes work when .tga is absent
@@ -36,6 +38,50 @@ static bool textureOrKtxSidecarExists(mc2::czstring tgaPath)
 constexpr int FX_POOF_ID = 32;
 constexpr int FX_JUMP_ID = 43;
 constexpr int FX_SMOKE_ID = 48;
+
+// Per-instance texture probes (sensor shapes: .tga or .ktx2 sidecar; shadow shape: .tga only). A MISS walks the whole path ladder
+// (loose, FST, stat) and cost 5-11 ms each on the box, 33-41 ms for the first script-spawned infantry (obj 53), because the sensor/shadow
+// textures a_contactsx.tga, nulltxm and nulx.tga do not exist. The answers are per path and constant for a mission, so
+// Mech3DAppearanceType::warmTextureProbes records the misses at mission load and later instances reuse them. Only recorded misses are
+// served from the table; every other path is probed as before. The table is rebuilt at each warm, so it never outlives a mission load.
+static std::unordered_map<std::string, bool>& knownMissingTextures()
+{
+	static std::unordered_map<std::string, bool> t;
+	return t;
+}
+
+static bool probeTexture(mc2::czstring path, bool tgaOnly)
+{
+	const auto& t = knownMissingTextures();
+	if (!t.empty() && t.count(std::string(tgaOnly ? "t:" : "k:") + path)) return false;
+	return tgaOnly ? fileExists(path) != 0 : textureOrKtxSidecarExists(path);
+}
+
+static void warmShapeProbes(TG_TypeMultiShape* shape, bool tgaOnly)
+{
+	if (!shape) return;
+	for (long i = 0; i < shape->GetNumTextures(); i++)
+	{
+		char txmName[1024];
+		shape->GetTextureName(i, txmName, 256);
+		char texturePath[1024];
+		auto texturePathEnd = std::format_to_n(texturePath, sizeof(texturePath) - 1, "{}{}" PATH_SEPARATOR, static_cast<const char*>(tglPath), ObjectTextureSize).out;
+		*texturePathEnd = '\0';
+		FullPathFileName textureName;
+		textureName.init(texturePath, txmName, "");
+		const bool exists = tgaOnly ? fileExists(textureName) != 0 : textureOrKtxSidecarExists(textureName);
+		if (!exists) knownMissingTextures()[std::string(tgaOnly ? "t:" : "k:") + static_cast<const char*>(textureName)] = true;
+	}
+}
+
+void Mech3DAppearanceType::warmTextureProbes (Mech3DAppearanceType* type)
+{
+	knownMissingTextures().clear();
+	if (!type) return;
+	warmShapeProbes(GVAppearanceType::SensorTriangleShape, false);
+	warmShapeProbes(type->numJumpNodes ? Mech3DAppearanceType::SensorSquareShape : GVAppearanceType::SensorCircleShape, false);
+	warmShapeProbes(type->mechShadowShape.get(), true);
+}
 
 void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 {
@@ -203,7 +249,7 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			FullPathFileName textureName;
 			textureName.init(texturePath,txmName,"");
 	
-			if (textureOrKtxSidecarExists(textureName))
+			if (probeTexture(textureName, false))
 			{
 				if (S_strnicmp(txmName,"a_",2) == 0)
 				{
@@ -240,7 +286,7 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 				FullPathFileName textureName;
 				textureName.init(texturePath,txmName,"");
 		
-				if (textureOrKtxSidecarExists(textureName))
+				if (probeTexture(textureName, false))
 				{
 					if (S_strnicmp(txmName,"a_",2) == 0)
 					{
@@ -277,7 +323,7 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 				FullPathFileName textureName;
 				textureName.init(texturePath,txmName,"");
 
-				if (textureOrKtxSidecarExists(textureName))
+				if (probeTexture(textureName, false))
 				{
 					if (S_strnicmp(txmName,"a_",2) == 0)
 					{
@@ -494,7 +540,7 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			FullPathFileName textureName;
 			textureName.init(texturePath,txmName,"");
 
-			if (fileExists(textureName))
+			if (probeTexture(textureName, true))
 			{
 				if (S_strnicmp(txmName,"a_",2) == 0)
 				{

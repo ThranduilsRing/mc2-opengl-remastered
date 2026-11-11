@@ -149,6 +149,8 @@ class Mech3DAppearanceType: public AppearanceType
 
 
 		static TG_TypeMultiShapePtr SensorSquareShape;
+		// Mission load: record the per-instance texture probes that miss (Mech3DAppearance::init reuses them).
+		static void warmTextureProbes (Mech3DAppearanceType* type);
 
 		static bool animationLoadingEnabled;
 		static void disableAnimationLoading(void)

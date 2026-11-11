@@ -131,8 +131,9 @@ static void warmScriptSpawnInfantry()
 	if (type->getObjectTypeClass() == BATTLEMECH_TYPE) {
 		// Type 53 is a BATTLEMECH_TYPE: Mission::addMover builds a BattleMech whose appearance type is looked up as MECH_TYPE
 		// (BattleMech::init, mech_init.cpp). Load that appearance type (shape + registry entry) now; the per-mover appearance
-		// instance stays a spawn-time cost.
-		appearanceTypeList->getAppearance(MECH_TYPE << 24, type->getAppearanceTypeName());
+		// instance stays a spawn-time cost, but its missing-texture probes (5-11 ms each, three of them) are recorded here.
+		auto* mechType = static_cast<Mech3DAppearanceType*>(appearanceTypeList->getAppearance(MECH_TYPE << 24, type->getAppearanceTypeName()));
+		Mech3DAppearanceType::warmTextureProbes(mechType);
 		return;
 	}
 	if (type->getObjectTypeClass() != VEHICLE_TYPE) return;
