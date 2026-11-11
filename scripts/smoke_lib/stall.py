@@ -36,6 +36,26 @@ def last_stage(summary, lease_waited_never_launched: bool = False) -> str:
     return "launch"
 
 
+LOAD_IDLE_S = 60.0       # a load whose log is still moving past the cap is cooking/loading, not hung (matches heartbeat_timeout_load)
+LOAD_HARD_CAP_S = 900.0  # absolute stop for a load that keeps printing but never presents a frame
+PLAY_GRACE_S = 30.0      # play window = duration + this, counted from first_frame (big maps load past duration+grace)
+
+
+def walltime_exceeded(elapsed: float, cap: float, duration: float, first_frame_at: Optional[float],
+                      idle_s: float, hard_cap: float = LOAD_HARD_CAP_S, load_idle_s: float = LOAD_IDLE_S,
+                      play_grace: float = PLAY_GRACE_S) -> bool:
+    """Wall-clock stop rule. `cap` is the old total cap (duration + grace, load included).
+
+    Once the first frame is up the run owns duration + play_grace from that moment, so a 120 s load no longer eats the play window.
+    Before the first frame the cap only fires when the log has been silent for load_idle_s, or at hard_cap.
+    """
+    if first_frame_at is not None:
+        return elapsed > max(cap, first_frame_at + duration + play_grace)
+    if elapsed <= cap:
+        return False
+    return idle_s > load_idle_s or elapsed > max(cap, hard_cap)
+
+
 def holders_text(records: Iterable[Optional[dict]], own_pid: Optional[int] = None) -> str:
     """`pid/label,pid/label` of the lease holders other than this process; `none` when empty."""
     own = os.getpid() if own_pid is None else own_pid
