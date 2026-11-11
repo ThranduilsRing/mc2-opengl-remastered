@@ -99,10 +99,8 @@ bool                window_offscreen_requested();
 // is what let a desktop-sized window flash on screen for seconds.
 void                enforce_window_offscreen(RenderWindowHandle rw_handle);
 bool                is_mode_supported       (int width, int height, int bpp);
-int                 get_window_display_index(RenderWindowHandle window);
 bool                get_desktop_display_mode(int display_index, int* width, int* height, int* bpp);
-int                 get_num_display_modes   (int display_index);
-bool                get_display_mode_by_index(int display_index, int mode_index, int* width, int* height, int* bpp);
+// get_window_display_index / get_num_display_modes / get_display_mode_by_index moved to Platform/WindowInput (R1-window).
 
 SDL_Window*         getSDLWindow            () noexcept;
 

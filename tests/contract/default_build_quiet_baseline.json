@@ -5,6 +5,10 @@
       "status": "keep",
       "reason": "scripts/smoke_lib/logparse.py counts event=oob_blit occurrences."
     },
+    "EXIT": {
+      "status": "keep",
+      "reason": "Platform/WindowInput.cpp (moved unchanged from GameOS/gameos/gameos.cpp in R1-window): one stderr line when the game requests exit, so a silent quit is diagnosable in smoke logs."
+    },
     "CRASH": {
       "status": "keep",
       "reason": "GameOS/gameos/gos_crashpad.cpp: one stderr line at startup (crashpad handler started / NOT started) and, on Linux, a signal-safe line from the crash hook; scripts/smoke_lib crash evidence and scripts/crashpad_proof.py parse the [CRASH] lines to locate the minidump."

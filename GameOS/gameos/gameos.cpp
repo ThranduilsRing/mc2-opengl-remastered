@@ -37,7 +37,9 @@
 #include "det_rng.h"          // DETERMINISTIC-RNG-1: GL-free LCG kernel
 #include "diagnostic_trace.h" // DETERMINISTIC-RNG-1: optional "RNG" JSONL trace
 #include "Gates/gate.h"
+#include "WindowInput.hpp"
 #include "mc2fmt.h"
+#include "FileSystem.hpp"
 #include "utils/mc2log.h"
 #include <tracy/Tracy.hpp>
 
@@ -73,66 +75,14 @@ void EnterWindowMode(void)
     Environment.fullScreen = false;
 }
 
-static bool g_gos_exit_game_os = false;
-
-// sebi 2026-04-22: when ExitGameOS/gos_TerminateApplication fires, the game
-// quietly stops at the top of the next frame with no visible error. This
-// shim logs the caller's stack so silent exits are debuggable. Gated on
-// env var MC2_TRACE_EXIT so release builds stay quiet by default.
-#ifdef _WIN32
-#include <windows.h>
-#include <dbghelp.h>
-static void mc2_log_exit_caller(mc2::czstring fn)
-{
-    static const bool s_trace = mc2::gate::get<"MC2_TRACE_EXIT">();
-    static bool s_once = false;
-    if (!s_trace) {
-        if (!s_once) mc2::fmt::print_err("[EXIT] {} called\n", mc2::fmt::safe(fn));
-        s_once = true;
-        return;
-    }
-    s_once = true;
-
-    ZoneScopedN("Shutdown.ExitStack");
-    mc2::fmt::print_err("[EXIT] {} called. Stack:\n", mc2::fmt::safe(fn));
-    HANDLE proc = GetCurrentProcess();
-    SymSetOptions(SYMOPT_LOAD_LINES | SYMOPT_DEFERRED_LOADS | SYMOPT_UNDNAME);
-    static bool s_sym_initialized = false;
-    if (!s_sym_initialized) { SymInitialize(proc, nullptr, TRUE); s_sym_initialized = true; }
-
-    void* frames[32];
-    USHORT n = CaptureStackBackTrace(1, 32, frames, nullptr);
-    for (USHORT i = 0; i < n; ++i) {
-        char symBuf[sizeof(SYMBOL_INFO) + 512];
-        SYMBOL_INFO* sym = reinterpret_cast<SYMBOL_INFO*>(symBuf);
-        sym->SizeOfStruct = sizeof(SYMBOL_INFO);
-        sym->MaxNameLen = 512;
-        DWORD64 disp64 = 0;
-        const char* symName = "?";
-        IMAGEHLP_LINE64 line{}; line.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
-        DWORD dispL = 0;
-        const char* fileName = "?"; DWORD lineNum = 0;
-        if (SymFromAddr(proc, (DWORD64)frames[i], &disp64, sym))
-            symName = sym->Name;
-        if (SymGetLineFromAddr64(proc, (DWORD64)frames[i], &dispL, &line)) {
-            fileName = line.FileName; lineNum = line.LineNumber;
-        }
-        mc2::fmt::print_err("  #{:02d}  {}  ({}:{:d})\n", mc2::fmt::as_i32(i), mc2::fmt::safe(symName), mc2::fmt::safe(fileName), mc2::fmt::as_u32(lineNum));
-    }
-    fflush(stderr);
-}
-#else
-static void mc2_log_exit_caller(const char*) {}
-#endif
-
+// R1-window: the exit flag and the MC2_TRACE_EXIT caller-stack shim live in Platform/WindowInput.cpp.
 void __stdcall ExitGameOS()
 {
-    g_gos_exit_game_os = true;
-    mc2_log_exit_caller("ExitGameOS");
+    mc2::platform::RequestExit("ExitGameOS");
 }
 
 bool gosExitGameOS() {
-    return g_gos_exit_game_os;
+    return mc2::platform::ExitRequested();
 }
 
 float frameRate = 30.0f; // apparently tiny geometry needs this
@@ -381,24 +331,31 @@ int __stdcall gos_rand()
 ////////////////////////////////////////////////////////////////////////////////
 void __stdcall gos_EnableIME(bool enabledDisabled)
 {
+    mc2::platform::EnableIME(enabledDisabled);
 }
 void _stdcall gos_ToggleIME(bool activeInactive)
 {
+    mc2::platform::ToggleIME(activeInactive);
 }
 void _stdcall gos_GetIMEAppearance(gosIME_Appearance* pia)
 {
+    mc2::platform::GetIMEAppearance(pia);
 }
 void _stdcall gos_SetIMEAppearance(const gosIME_Appearance* pia)
 {
+    mc2::platform::SetIMEAppearance(pia);
 }
 void _stdcall gos_PositionIME(DWORD x, DWORD y)
 {
+    mc2::platform::PositionIME(x, y);
 }
 void _stdcall gos_SetIMELevel(DWORD dwImeLevel)
 {
+    mc2::platform::SetIMELevel(dwImeLevel);
 }
 void _stdcall gos_FinalizeStringIME()
 {
+    mc2::platform::FinalizeStringIME();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -520,8 +477,7 @@ char* __stdcall gos_GetFormattedTime( WORD Hour/*=-1*/, WORD Minute/*=-1*/, WORD
 
 void __stdcall gos_TerminateApplication()
 {
-    g_gos_exit_game_os = true;
-    mc2_log_exit_caller("gos_TerminateApplication");
+    mc2::platform::TerminateApplication();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -582,160 +538,21 @@ DWORD __stdcall gos_EnableSetting( gosSetting Setting, DWORD Value )
 }
 ////////////////////////////////////////////////////////////////////////////////
 // registry read/write
-static const char* g_user_reg_file = ".registry";
-static const char* g_user_base_config_dir = ".config";
-static const char* g_user_config_dir = ".mechcommander2";
-
-// TODO: use inifile.h functionality for this
 void __stdcall gos_LoadDataFromRegistry( mc2::czstring keyName, void* pData, DWORD* szData, bool HKLM/*=false*/)
 {
-    // this code can be useful to get registry file location
-    
-    const char* home_dir = getenv("HOME");
-    if(home_dir == nullptr)
-    {
-        MC2_LOG(Io, Debug, "gos_Registry: home directory is not set");
-        *szData = 0;
-        return;
-    }
-
-    const int cfg_dir_size = 1024;
-    char cfg_dir[cfg_dir_size] = {0};
-
-    const char* config_dir = getenv("XDG_CONFIG_HOME");
-    if(config_dir == nullptr) {
-        mc2::fmt::to_buf(cfg_dir, "{}/{}", mc2::fmt::safe(home_dir), mc2::fmt::safe(g_user_base_config_dir));
-    } else {
-        strncpy(cfg_dir, config_dir, 1023);
-        cfg_dir[cfg_dir_size-1] = '\0';
-    }
-
-    struct stat st;
-    if(-1 == stat(cfg_dir, &st)) {
-        MC2_LOG(Core, Debug, "stat: {}", mc2::fmt::safe(strerror(errno)));
-        *szData = 0;
-        return;
-    }
-    if(!S_ISDIR(st.st_mode)) {
-        MC2_LOG(Core, Debug, "gos_LoadDataFromRegistry: {} is not directory", mc2::fmt::safe(cfg_dir));
-        *szData = 0;
-        return;
-    }
-
-    // 1 + 1 =  for \0 and /
-    const size_t confDirBytes = strlen(cfg_dir) + strlen(g_user_config_dir) + 1 + 1;
-    auto mc2ConfDir = std::make_unique<char[]>(confDirBytes);
-    char* mc2_conf_dir = mc2ConfDir.get();
-    mc2::fmt::to_buf_n(mc2_conf_dir, confDirBytes, "{}/{}", cfg_dir, g_user_config_dir);
-
-    // if directory does not exist create it
-#ifndef PLATFORM_WINDOWS
-    int permissions = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH;
-#endif
-	if(-1 == stat(mc2_conf_dir, &st)) {
-#ifdef PLATFORM_WINDOWS
-        if(-1 == _mkdir(mc2_conf_dir)) {
-#else
-        if(-1 == mkdir(mc2_conf_dir, permissions)) {
-#endif
-            MC2_LOG(Core, Debug, "stat: {}", mc2::fmt::safe(strerror(errno)));
-            *szData = 0;
-            return;
-        }
-    }
-
-    const size_t regFileBytes = strlen(mc2_conf_dir) + 1 + strlen(g_user_reg_file) + 1;
-    auto regFile = std::make_unique<char[]>(regFileBytes);
-    char* reg_file = regFile.get();
-    mc2::fmt::to_buf_n(reg_file, regFileBytes, "{}/{}", mc2_conf_dir, g_user_reg_file);
-
-    // check if reg file exists
-    if(-1 == stat(reg_file, &st)) {
-        *szData = 0;
-        return;
-    } else {
-        *szData = 0;
-        // open file and read value
-    }
+    std::uint32_t size = 0;
+    mc2::platform::LoadDataFromRegistry(keyName, pData, &size, HKLM);
+    *szData = size;
 }
 
 void __stdcall gos_SaveDataToRegistry( mc2::czstring keyName,  void* pData,  DWORD szData )
 {
-    // TODO:
+    mc2::platform::SaveDataToRegistry(keyName, pData, szData);
 }
-
 
 bool __stdcall gos_GetUserDataDirectory(std::span<char> user_dir)
 {
-    const int len = static_cast<int>(user_dir.size());
-	const int cfg_dir_size = 1024;
-    char cfg_dir[cfg_dir_size] = {0};
-    struct stat st;
-
-#ifdef PLATFORM_WINDOWS
-	PWSTR homeDir = nullptr;
-	SHGetKnownFolderPath(FOLDERID_Profile, 0, nullptr, &homeDir);
-	wcstombs(cfg_dir, homeDir, cfg_dir_size-1);
-	cfg_dir[cfg_dir_size-1] = '\0';
-	CoTaskMemFree(homeDir);
-#else
-    const char* home_dir = getenv("HOME");
-    if(home_dir == nullptr)
-    {
-        MC2_LOG(Io, Debug, "gos_Registry: home directory is not set");
-        return false;
-    }
-
-    const char* config_dir = getenv("XDG_CONFIG_HOME");
-    if(config_dir != nullptr) {
-        strncpy(cfg_dir, config_dir, cfg_dir_size-1);
-        cfg_dir[cfg_dir_size-1] = '\0';
-
-        if(-1 == stat(cfg_dir, &st)) {
-            MC2_LOG(Core, Debug, "stat: {}", mc2::fmt::safe(strerror(errno)));
-            return false;
-        }
-
-        if(!S_ISDIR(st.st_mode)) {
-            MC2_LOG(Io, Debug, "gos_GetUserDataDirectory: {} is not directory", mc2::fmt::safe(cfg_dir));
-            return false;
-        }
-    } else {
-        strncpy(cfg_dir, home_dir, cfg_dir_size-1);
-        cfg_dir[cfg_dir_size-1] = '\0';
-    }
-#endif
-
-    // 1 + 1 =  for \0 and /
-    const size_t confDirBytes = strlen(cfg_dir) + strlen(g_user_config_dir) + 1 + 1;
-    auto mc2_conf_dirOwner = std::make_unique_for_overwrite<char[]>(confDirBytes);
-    char* mc2_conf_dir = mc2_conf_dirOwner.get();
-    mc2::fmt::to_buf_n(mc2_conf_dir, confDirBytes, "{}/{}", cfg_dir, g_user_config_dir);
-
-    // if directory does not exist create it
-#ifndef PLATFORM_WINDOWS
-	int permissions = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH | S_IXUSR | S_IXGRP;      
-#endif
-
-    if(-1 == stat(mc2_conf_dir, &st)) {
-#ifdef PLATFORM_WINDOWS
-        if(-1 == _mkdir(mc2_conf_dir)) {
-#else
-        if(-1 == mkdir(mc2_conf_dir, permissions)) {
-#endif
-            MC2_LOG(Core, Debug, "stat: {}", mc2::fmt::safe(strerror(errno)));
-            mc2_conf_dirOwner.reset();
-            return false;
-        }
-    }
-    
-    size_t conf_len = strlen(mc2_conf_dir);
-    conf_len = len - 1 < conf_len ? len - 1 : conf_len;
-
-    strncpy(user_dir.data(), mc2_conf_dir, conf_len);
-    user_dir[conf_len] = '\0';
-    mc2_conf_dirOwner.reset();
-    return true;
+    return mc2::platform::GetUserDataDirectory(user_dir);
 }
 
 
