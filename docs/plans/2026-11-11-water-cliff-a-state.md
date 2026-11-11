@@ -13,7 +13,7 @@ Plan: owner payload/settings/PNG-size all13 repro; isolate geometry, normal
 filter, vertex light, reflection and sun; fix established cause; offline
 shader contracts/tests; local commit, lint, final build/deploy/smoke;
 day all13 and night A/B; personally inspect montages and crop metrics.
-At start tree clean. No engine changes or acceptance claims yet.
+Initial tree was clean. Source repair and final evidence are recorded below.
 
 ## v4 resume (2026-11-11 22:20 UTC)
 
@@ -42,7 +42,29 @@ No facet acceptance claim; concrete visible glint fix must be judged in pixels.
 Remaining: slice B shoreline/coverage/ring; slice C cliff/ridge, in order.
 HZB camera save failure: capture-tooling follow-up.
 
-## Blocked handoff, 2026-11-11
+## v4 result: visible glint fix, partial slice
+
+Source a52c4ccc63871ac2a0989aa4a15ee691a875d301: remove duplicate broad sun
+lobe and gain3 amplification. Offline water tests12 PASS, production shader
+compiles79 PASS, selected shader/Slang/interface/UBO rows PASS. Windows
+RelWithDebInfo build0, deploy0, smoke-lite mc2_01+mc2_10 PASS.
+Required lint FAIL is stale generated docs/background-launch-inventory.md,
+unchanged from base; merge owns refresh. No ABI/resource/lifetime change.
+Final base/candidate all13 day +3 night completed, matched controls validated,
+ab.py comparisons completed0; personally opened all13/airfield/night montages.
+At owner_101350 fixed crop near-white12.2345% ->0.06695%; bright mean row
+coverage617.297 ->3.196px (threshold coverage, not physical sun diameter).
+Airfield terrain/pads preserved; intended water edge dimmer. Night southeast
+moon highlights reduce, other night views visually unchanged.
+Proof: E:/mc2-archive-2026-10/proofs/water-cliff-lowangle-1/v4-report.md,
+v4-final-capture-audit.json, v4-ab-day-complete/, v4-ab-night-complete/.
+UNFIXED: facets unreproduced even with owner exe/shaders/options at3717x1608
+and gameplay HUD; need owner's live water tuning/session state before another
+facet continuation. Slice B shoreline/coverage/ring and slice C dark cliff/ridge
+remain named serial follow-ups. HZB save failure remains capture-tooling.
+No production deploy or owner acceptance claim. Lane install kept for review.
+
+## Historical blocked handoff (install blocker superseded by v4)
 
 No engine edit; no symptom fixed. Do not treat this as completed slice A.
 Existing water tests: 12 passed (wave/glint + near gloss, 0.19s).
