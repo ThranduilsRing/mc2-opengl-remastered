@@ -597,6 +597,8 @@ set(SOURCES
     "code/mphostgame.cpp"
     "code/mploadmap.cpp"
     "code/mpparameterscreen.cpp"
+    "code/mpparameterscreen_players.cpp"
+    "code/mpparameterscreen_update.cpp"
     "code/mpsetuparea.cpp"
     "code/optionsarea.cpp"
     "code/optionsscreenwrapper.cpp"
