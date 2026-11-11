@@ -13,6 +13,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 import quiet_output as q  # noqa: E402
+import console_child  # noqa: E402  (BELOW_NORMAL + CREATE_NO_WINDOW for every child)
 
 SAMPLE = [
     "[deploy_payload] copying a.dll\n",
@@ -68,7 +69,8 @@ def test_install_quiet_end_to_end(tmp_path):
         print("tail result=PASS", file=sys.stderr)
         sys.exit(3)
     """), encoding="utf-8")
-    r = subprocess.run([sys.executable, "-I", str(script)], capture_output=True, text=True, timeout=60)
+    r = subprocess.run([sys.executable, "-I", str(script)], capture_output=True, text=True, timeout=60,
+                       **console_child.child_kwargs(redirected=True))
     assert r.returncode == 3
     shown = r.stdout + r.stderr
     assert "DEPLOY_FINGERPRINT" in shown and "child FAIL: boom" in shown and "result=PASS" in shown
@@ -81,7 +83,8 @@ def test_install_quiet_end_to_end(tmp_path):
 @pytest.mark.parametrize("rel", ["scripts/run_smoke.py", "scripts/deploy_payload.py", "scripts/merge_gate.py",
                                  "tools/laptop_gate.py"])
 def test_script_accepts_quiet(rel):
-    r = subprocess.run([sys.executable, str(ROOT / rel), "--help"], capture_output=True, text=True, timeout=120)
+    r = subprocess.run([sys.executable, str(ROOT / rel), "--help"], capture_output=True, text=True, timeout=120,
+                       **console_child.child_kwargs(redirected=True))
     assert r.returncode == 0, r.stderr[-400:]
     assert re.search(r"--quiet(?!-)", r.stdout), rel
     src = (ROOT / rel).read_text(encoding="utf-8")
