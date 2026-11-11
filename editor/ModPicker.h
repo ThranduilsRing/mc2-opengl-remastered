@@ -27,6 +27,9 @@ namespace ModPicker
 	// Discovered mod folders (after ScanMods / first use).
 	int  ModCount();
 	const char* ModName( int index );
+	// Save/Open dialog start directory for the active mod: absolute mods/<id>/data/missions
+	// (created); NULL when Stock is active (callers keep the stock default).
+	const char* SaveDirOverride();
 	// Activate a mod ("" or NULL = stock): sets MC2_ACTIVE_MOD + re-indexes. Shared
 	// state with Draw(), so the toolbar combo reflects it too.
 	void Activate( const char* modId );

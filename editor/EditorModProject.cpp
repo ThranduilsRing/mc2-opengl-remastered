@@ -258,7 +258,7 @@ const char* StatusLine(){ return s_status; }
 const char* SaveDirOverride()
 {
 	if (!s_active || s_saveDir.empty())
-		return nullptr;
+		return ModPicker::SaveDirOverride();   // picker-selected mod, or nullptr for Stock
 	return s_saveDir.c_str();
 }
 
