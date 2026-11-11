@@ -1151,6 +1151,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
     if (nativeDraws) *nativeDraws = 0;
     if (texturedDraws) *texturedDraws = 0;
     if (textureUploadsOut) *textureUploadsOut = 0;
+    { ZoneScopedN("VKIsl.Present.Tail.Hud.ObjectsAndMirrorRetirement");
     if (!ensureHudColorObjects(s)) {
         s.pendingHudDraws.clear();
         return draws;
@@ -1177,6 +1178,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
         }
     }
 
+    }
     using HudNativeCmd = HudNativeCommand<VkDescriptorSet>;
     struct HudScratch {
         std::vector<HudColorGpuVertex> triVerts, lineVerts;
@@ -1200,6 +1202,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
     int texObjectsReady = -1;   // ensureHudTexObjects, resolved on the first textured draw
     uint64_t memoKey = 0;
     EnginePresentVk::Impl::HudTextureMirror* memoMirror = nullptr;
+    { ZoneScopedN("VKIsl.Present.Tail.Hud.PrepareAndTextureUpload");
     for (const VkHudDraw& d : s.pendingHudDraws) {
         const bool hasTexture = d.textureHandle != 0 && d.textureHandle != 0xffffffffu;
         if (hasTexture) {
@@ -1319,12 +1322,14 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
         }
     }
 
+    }
     const size_t triBytes = triVerts.size() * sizeof(HudColorGpuVertex);
     const size_t lineBytes = lineVerts.size() * sizeof(HudColorGpuVertex);
     const size_t texBytes = texVerts.size() * sizeof(HudTexGpuVertex);
     const VkDeviceSize colorBytes = static_cast<VkDeviceSize>((triBytes + lineBytes));
     // Both vertex streams are this frame's transient memory (frame ring): rewritten every frame, never read after the frame completed.
     mc2vk::FrameAlloc colorVb, texVb;
+    { ZoneScopedN("VKIsl.Present.Tail.Hud.VertexUpload");
     if (colorBytes != 0) {
         colorVb = s.ctx->frameAlloc(colorBytes, 16);
         if (!colorVb) {
@@ -1343,6 +1348,8 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
         std::memcpy(texVb.ptr, texVerts.data(), texBytes);
     }
 
+    }
+    { ZoneScopedN("VKIsl.Present.Tail.Hud.DrawRecord");
     VkRenderPassBeginInfo rp{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
     rp.renderPass = s.hudColorRenderPass.get();
     rp.framebuffer = s.hudColorFramebuffer.get();
@@ -1432,6 +1439,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
     }
     vkCmdEndRenderPass(cb);
     gpuScope.end();
+    }
     if (nativeDraws) *nativeDraws = triDraws + lineDraws + texDraws;
     if (texturedDraws) *texturedDraws = texDraws;
     if (textureUploadsOut) *textureUploadsOut = textureUploads;
@@ -2329,6 +2337,7 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
     ZoneScopedN("VKIsl.Present.Tail.Blit");
     mc2::battlebench::NsScope benchBlit(mc2::battlebench::PresTailBlitNs);
     MC2_VK_GPU_SCOPE(blitScope, s.curCbuf(), "VKIsl.Present.Blit");   // vk-present-instance 2a: barriers + blit were charged to Present.ImGui
+    { ZoneScopedN("VKIsl.Present.Tail.Blit.BarriersAndBlit");
     // The composite's color writes precede the swapchain blit.
     barrier(s.curCbuf(), s.sharedImg.image.get(),
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
@@ -2367,9 +2376,10 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
             VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
             VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
     blitScope.end();
+    }
     // present-tail-cut: the GPU-profile read-back reset + Tracy collect ride this submit instead of a second vkQueueSubmit in frameEnd().
-    gpuprof::recordFrameEnd(s.curCbuf());
-    vkEndCommandBuffer(s.curCbuf());
+    { ZoneScopedN("VKIsl.Present.Tail.Blit.ProfileEnd"); gpuprof::recordFrameEnd(s.curCbuf()); }
+    { ZoneScopedN("VKIsl.Present.Tail.Blit.CommandBufferEnd"); vkEndCommandBuffer(s.curCbuf()); }
     }
 
     // Submit the composite and tail together, ordered after acquire. Reset the slot fence only for a real submit.

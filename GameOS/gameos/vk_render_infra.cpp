@@ -1,6 +1,7 @@
 #define NOMINMAX
 #include "vk_render_infra.h"
 #include "hitch_stats.h"
+#include "gos_profiler.h"
 #include "vulkan_context.h"
 #include "vk_upscalers.h"
 #include "diagnostic_trace.h"
@@ -156,6 +157,7 @@ size_t category(std::string_view name) {
 }
 void saveLocked(State& s) {
     if (!s.cache || !s.dirty) return;
+    ZoneScopedN("VKInfra.Cache.Persist");
     s.saved=std::chrono::steady_clock::now();
     size_t bytes=0;
     if (vkGetPipelineCacheData(s.dev,s.cache,&bytes,nullptr)!=VK_SUCCESS || bytes>maxCache) return;
@@ -333,6 +335,7 @@ uint32_t shadowTier(uint32_t requested,uint64_t bpp,uint32_t copies) {
     return tier;
 }
 std::string ledgerJson() {
+    ZoneScopedN("VKInfra.Ledger.Sample");
     auto& s=state(); uint64_t os=0,usage=0,allocated=0; getOrCreateEngineVulkanContext().deviceLocalMemory(os,usage,allocated);
     const auto& deferred=getOrCreateEngineVulkanContext().deferred(); std::lock_guard lock(s.mutex);
     std::ostringstream out; out<<"{\"budget_bytes\":"<<s.budget<<",\"physical_budget_bytes\":"<<s.physicalBudget<<",\"pending_bytes\":"<<s.pending<<",\"within_budget\":"<<(s.peak<=s.budget?"true":"false")<<",\"live_bytes\":"<<s.live<<",\"peak_bytes\":"<<s.peak<<",\"vma_budget_bytes\":"<<os<<",\"vma_usage_bytes\":"<<usage<<",\"vma_allocated_bytes\":"<<allocated<<",\"dedicated_bytes\":"<<s.raw<<",\"deferred_bytes\":"<<s.deferredBytes<<",\"deferred_entries\":"<<deferred.size()<<",\"deferred_is_subset\":true,\"transition_overlap_included\":true,\"denials\":"<<s.denied<<",\"categories\":{";
@@ -476,6 +479,7 @@ void reload() {
     const auto now = std::chrono::steady_clock::now();
     if (now - lastPoll < std::chrono::seconds(1)) return;
     lastPoll = now;
+    ZoneScopedN("VKInfra.Reload.Poll");
     std::ifstream request("shader_reload.request"); if(!request) return;
     std::string action,path,candidate,oldHash,newHash; std::getline(request,action); std::getline(request,path); std::getline(request,candidate); std::getline(request,oldHash); std::getline(request,newHash); request.close();
     std::error_code fileError; std::filesystem::remove("shader_reload.request",fileError);

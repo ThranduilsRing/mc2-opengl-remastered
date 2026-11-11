@@ -121,10 +121,10 @@ Snapshot take() {
     Snapshot s;
     s.backend = "vk";
 #ifdef MC2_VULKAN
-    readVulkan(s);
+    { ZoneScopedN("GpuMemory.VulkanQuery"); readVulkan(s); }
 #endif
 #ifdef _WIN32
-    readDxgi(s);
+    { ZoneScopedN("GpuMemory.DxgiQuery"); readDxgi(s); }
 #endif
     return s;
 }
@@ -176,7 +176,8 @@ void log(std::string_view phase) {
 void tick(unsigned long frame) {
     if (frame % kPlotEveryFrames != 0) return;
     if (mc2::battlebench::output) {
-        const auto snapshot = take();
+        Snapshot snapshot;
+        { ZoneScopedN("GpuMemory.BattlebenchSnapshot"); snapshot = take(); }
         unsigned long long peakWorkingSet = 0;
 #ifdef _WIN32
         PROCESS_MEMORY_COUNTERS counters{};
@@ -184,11 +185,14 @@ void tick(unsigned long frame) {
         const auto getMemory = reinterpret_cast<GetMemory>(GetProcAddress(GetModuleHandleA("kernel32.dll"), "K32GetProcessMemoryInfo"));
         if (getMemory && getMemory(GetCurrentProcess(), &counters, sizeof(counters))) peakWorkingSet = counters.PeakWorkingSetSize;
 #endif
+        { ZoneScopedN("GpuMemory.BattlebenchOutput");
         std::fprintf(mc2::battlebench::output, "{\"type\":\"memory\",\"frame\":%llu,\"working_set_peak_bytes\":%llu,\"gpu\":%s}\n",
             static_cast<unsigned long long>(mc2::battlebench::frame), peakWorkingSet, toJson(snapshot).c_str());
         std::fflush(mc2::battlebench::output);
+        }
     }
 #ifdef _WIN32
+    ZoneScopedN("GpuMemory.TracyPoll");
     IDXGIAdapter3* a = dxgiAdapter();
     DXGI_QUERY_VIDEO_MEMORY_INFO info{};
     if (a && SUCCEEDED(a->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &info)))
