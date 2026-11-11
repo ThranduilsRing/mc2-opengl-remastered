@@ -166,7 +166,7 @@ struct Mc2MechPreviewRequest {
 void mc2_vk_mech_preview_request(const Mc2MechPreviewRequest* r);
 // Records + submits the pending panel draw into the preview target views (VkImageView handles).
 // Returns 1 when it drew, 0 when nothing was pending or it failed (the caller keeps the CPU draw).
-int mc2_vk_mech_preview_flush(void* colorView, void* normalView, void* depthView, int w, int h);
+int mc2_vk_mech_preview_flush(void* colorView, void* normalView, void* depthView, void* colorImage, void* normalImage, void* depthImage, int w, int h);
 // 0 once a preview init/record failure latched (the lab then keeps the CPU mech draw); 1 otherwise.
 int mc2_vk_mech_preview_usable(void);
 // 1 when the last posted request drew. The lab keeps its CPU draw under the GPU one until this holds.

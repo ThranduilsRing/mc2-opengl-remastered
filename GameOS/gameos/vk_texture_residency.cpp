@@ -47,6 +47,7 @@ void attachUiImage(RenderCore::TextureHandle handle, std::shared_ptr<const Rende
 }
 
 VkImageView ResidentTextureRef::view() const { return owner_ ? owner_->view(handle_,arrayView_) : VK_NULL_HANDLE; }
+VkImage ResidentTextureRef::image() const { return owner_ ? owner_->image(handle_) : VK_NULL_HANDLE; }
 ResidentTextureRef::~ResidentTextureRef() { if (owner_) owner_->release(handle_); }
 ResidentTextureRef::ResidentTextureRef(ResidentTextureRef&& o) noexcept
     : owner_(std::exchange(o.owner_, nullptr)), handle_(o.handle_), arrayView_(o.arrayView_) {}
@@ -416,6 +417,12 @@ VkImageView TextureResidency::view(RenderCore::TextureHandle handle, bool arrayV
     if (it!=residents_.end()) { const auto& [raw,found]=*it; resident=&found; }
     if (resident && resident->image && service_.isLive(handle)) return resident->image->view.get();
     return (arrayView || (resident && resident->arrayView)) ? arrayPlaceholder_->view.get() : placeholder_->view.get();
+}
+VkImage TextureResidency::image(RenderCore::TextureHandle handle) const {
+    const auto it=residents_.find(handle.raw());
+    if (it==residents_.end()) return VK_NULL_HANDLE;
+    const auto& [raw,resident]=*it;
+    return resident.image && service_.isLive(handle) ? resident.image->image.get() : VK_NULL_HANDLE;
 }
 std::shared_ptr<const void> TextureResidency::imageOwner(RenderCore::TextureHandle handle) const {
     auto it=residents_.find(handle.raw());
