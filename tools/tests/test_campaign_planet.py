@@ -78,8 +78,9 @@ def test_marker_widgets_are_cooked_at_4x_texel_density_with_white_art():
 
 
 def test_marker_cook_is_deterministic():
-    import subprocess
     import sys
-    done = subprocess.run([sys.executable, str(ROOT / "tools/gen_campaign_marker.py"), "--check"],
-                          capture_output=True, text=True)
-    assert done.returncode == 0, done.stdout
+    sys.path.insert(0, str(ROOT / "tools"))
+    import gen_campaign_marker
+    for name, cooked in gen_campaign_marker.build().items():
+        with Image.open(OUTPUT.parent / "ui/mcl_cm_5" / (name + ".png")) as shipped:
+            assert shipped.size == cooked.size and shipped.convert("RGBA").tobytes() == cooked.tobytes(), name
