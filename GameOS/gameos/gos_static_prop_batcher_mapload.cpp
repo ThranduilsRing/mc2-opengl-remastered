@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in gos_static_prop_batcher_internal.h.
 #include "mc2_czstring.h"
 #include <algorithm>
+#include <chrono>
 #include <cstring>
 #include "gos_static_prop_batcher_internal.h"
 #include "static_caster_set.h"
@@ -236,7 +237,9 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
     // preserving authored triangle order. Reuse byte-identical packed vertices:
     // corner UV seams, source vertex IDs/light tags and reversed card normals
     // remain separate, while dense imported meshes keep GPU vertex-cache reuse.
+    const auto tempReg0 = std::chrono::steady_clock::now();
     auto vertexIndices = mc2_prop::makeVertexIndex(numTris, selfLitTwoSided);
+    const double tempIndexMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - tempReg0).count();
     uint32_t runStart = 0;
     uint32_t packetCountForThisType = 0;
     while (runStart < numTris) {
@@ -317,6 +320,7 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
         runStart = runEnd;
     }
 
+    const auto tempReg1 = std::chrono::steady_clock::now();
     // Reorder GPU geometry for the vertex cache / overdraw / fetch. Only this GPU copy changes: triangle and vertex
     // sets are identical, and localVertIdx / aRGBLight travel with each vertex, so sim and hot-colour data are untouched.
     {
@@ -350,6 +354,11 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
             }
         }
     }
+
+    const auto tempReg2 = std::chrono::steady_clock::now();
+    if (std::chrono::duration<double, std::milli>(tempReg2 - tempReg0).count() > 2.0)
+        mc2::fmt::print_err("[LOAD_LAPS v1] registerType tris={} index_alloc_ms={:.2f} pack_ms={:.2f} meshopt_ms={:.2f}\n", numTris, tempIndexMs,
+            std::chrono::duration<double, std::milli>(tempReg1 - tempReg0).count() - tempIndexMs, std::chrono::duration<double, std::milli>(tempReg2 - tempReg1).count());
 
     const uint32_t numVerts = typeShape->numTypeVertices;
 
