@@ -1034,7 +1034,14 @@ def main():
     ap.add_argument("--sim-pair", action="store_true", help="a/b pair for mc2_03 determinism, as on --weekly or a sim-sensitive diff")
     ap.add_argument("--dry-run", action="store_true", help="with --sim: print the command list and run nothing")
     ap.add_argument("gate_args", nargs="*", help="extra merge_gate.py args (after --)")
+    ap.add_argument("--quiet", action="store_true",
+                    help="print only verdicts, gate rows, failures/warnings, artifact paths and the DEPLOY_FINGERPRINT lines; "
+                         "the full output goes to a log (path on the last line)")
     a, rest = ap.parse_known_args()
+    if not a.remote:
+        import quiet_output
+        if quiet_output.wanted(a):
+            quiet_output.install_quiet(name="laptop_gate")
     if a.remote:
         step = a.remote
         return {"init": r_init, "run": lambda: r_run(a.window, [x for x in a.gate_args + rest if x != "--"]), "pack": lambda: r_pack(a.window),

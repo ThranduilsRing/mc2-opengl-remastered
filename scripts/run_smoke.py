@@ -766,7 +766,13 @@ def main():
     ap.add_argument("--legacy-env", action="store_true",
                     help="A/B against an OLDER exe: forward only the MC2_* gates in Gates/gate_table.json at --ref-commit (the older exe's "
                          "commit), dropping the rest with a [LEGACY-ENV] line, so its strict config does not reject newer gates")
+    ap.add_argument("--quiet", action="store_true",
+                    help="print only verdicts, gate rows, failures/warnings, artifact paths and the DEPLOY_FINGERPRINT lines; "
+                         "the full output goes to a log (path on the last line)")
     args = ap.parse_args()
+    import quiet_output
+    if quiet_output.wanted(args):
+        quiet_output.install_quiet(name="run_smoke")
     if args.content_error_budget < 0:
         ap.error("--content-error-budget must be non-negative")
     if args.legacy_env:
