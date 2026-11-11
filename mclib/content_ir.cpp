@@ -199,12 +199,12 @@ bool cook(Asset& asset, std::string_view sourcePath) {
     return true;
 }
 
-void reportLoadLaps(const char* stage, double stageMs, const char* mission) {
+void reportLoadLaps(std::string_view stage, double stageMs, std::string_view mission) {
     const auto ms = [](std::atomic<uint64_t>& a) { return static_cast<double>(a.exchange(0)) / 1e6; };
     const auto n = [](std::atomic<uint64_t>& a) { return static_cast<unsigned long long>(a.exchange(0)); };
     const double digest = ms(g_laps.digest), read = ms(g_laps.read), decode = ms(g_laps.decode);
     const double cookTotal = ms(g_laps.cookTotal), cookRead = ms(g_laps.cookRead);
     mc2::fmt::print_err("[LOAD_LAPS v1] stage={} mission={} stage_ms={:.0f} loads={} load_hits={} cooks={} digest_ms={:.0f} read_ms={:.0f} decode_ms={:.0f} cook_ms={:.0f} cook_read_ms={:.0f}\n",
-        stage, mission ? mission : "", stageMs, n(g_laps.loads), n(g_laps.hits), n(g_laps.cooks), digest, read, decode, cookTotal, cookRead);
+        std::string(stage), std::string(mission), stageMs, n(g_laps.loads), n(g_laps.hits), n(g_laps.cooks), digest, read, decode, cookTotal, cookRead);
 }
 }
