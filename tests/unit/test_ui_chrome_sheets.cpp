@@ -123,7 +123,7 @@ TEST_CASE("ui_chrome scaled sheet: rects stay 1x, widget files and the composed 
     CHECK(out.h == 24);
     auto at = [&](int x, int y) { return out.data[(size_t(y) * 32 + x) * 4]; };
     CHECK(at(0, 0) == 10);
-    CHECK(at(19, 15) == 10);   // last texel of the padded ring of "a": x [0,5) y [0,4) at 4x
+    CHECK(at(19, 3) == 10);    // right ring of "a" (x [0,5) y [0,4) at 4x), above the ring of "b"
     CHECK(at(12, 8) == 20);    // first texel of the padded ring of "b": x [3,8) y [2,6) at 4x
     CHECK(at(31, 23) == 20);
     CHECK(at(31, 0) == 0);     // uncovered RGBA texel stays transparent
