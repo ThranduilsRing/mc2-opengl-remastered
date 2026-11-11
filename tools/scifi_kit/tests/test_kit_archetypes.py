@@ -27,6 +27,16 @@ SHAPE_FIX = ('smallfueltank', '2civliving', 'industrialcomplex', 'greenhouse')  
 ASSETS = ART / 'assets'
 
 
+@pytest.fixture(scope='module', autouse=True)
+def _registry_after_intent():
+    """Order independence (tooling-speed-2a): the first import of `intent` (any test that builds a stock asset through assemble.build)
+    overwrites counts.CONTRACTS/NOTES/ORIGINS, wiping what archetypes.register installed at drafts import, so the proof assets then
+    fail validate with 'counts: doors 0 vs 2'. Import intent first and re-register, whatever ran before this module (xdist worker order)."""
+    import intent  # noqa: F401
+    archetypes.register_all()
+    yield
+
+
 def params(name):
     return json.loads((ASSETS / f'{name}.params.json').read_text())
 
