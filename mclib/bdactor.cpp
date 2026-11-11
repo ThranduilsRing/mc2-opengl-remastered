@@ -416,13 +416,15 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		// against. Registering the stock shape here would make submit() miss
 		// (render type-shape not in s_typeIndex) -> CPU-fallback/cull, and the
 		// override would never rasterize. Damage stays stock (out of MVP).
+		const uint64_t tempR0 = mc2::content::tempLapNow();
 		appearType->registerRenderShapes();
 		const uint64_t tempB3 = mc2::content::tempLapNow();
+		if (tempB3 - tempR0 > 300000) mc2::fmt::print_err("[LOAD_LAPS v1] heavy_register name={} ms={:.2f} bounds_ms={:.2f}\n", mc2::fmt::safe(appearType->name), (tempB3 - tempR0) / 1e6, (tempR0 - tempB2) / 1e6);
 		mc2::content::tempLapAdd(3, 0, tempB1 - tempB0);
 		mc2::content::tempLapAdd(3, 1, tempB2 - tempB1);
 		mc2::content::tempLapAdd(3, 2, tempB3 - tempB2);
 		mc2::content::tempLapAdd(4, 0, tempExists);
-		mc2::content::tempLapAdd(4, 1, tempLoad);
+		mc2::content::tempLapAdd(4, 1, tempB3 - tempR0);   // phase 1 now = registerRenderShapes total (load is in textures)
 		mc2::content::tempLapAdd(4, 2, 0);
 	}
 }
