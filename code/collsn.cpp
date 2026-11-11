@@ -167,6 +167,7 @@ long CollisionGrid::init (glm::vec3 &newOrigin)
 
 	placed.clear();
 	giants.clear();
+	giantClass.clear();
 	gridOrigin = newOrigin;
 
 	return(NO_ERR);
@@ -179,7 +180,8 @@ void CollisionGrid::destroy (void)
 	{
 		std::vector<Placed>().swap(placed);
 		std::vector<GameObjectPtr>().swap(giants);
-		std::vector<unsigned long>().swap(cellStart);
+		std::vector<uint8_t>().swap(giantClass);
+		std::vector<uint8_t>().swap(orderedClass);
 		std::vector<GameObjectPtr>().swap(ordered);
 
 		gridIsGo = FALSE;
@@ -191,7 +193,7 @@ void CollisionGrid::destroy (void)
 long CollisionGrid::add (unsigned long gridIndex, GameObjectPtr object)
 {
 	gosASSERT((gridIndex >= 0) && (gridIndex < (xGridWidth * yGridWidth)));
-	placed.push_back({gridIndex, object});
+	placed.push_back({gridIndex, object, static_cast<uint8_t>(object->getObjectClass())});
 	return(NO_ERR);
 }
 
@@ -207,6 +209,7 @@ long CollisionGrid::add (GameObjectPtr object)
 		if (objectRadius > maxGridRadius)
 		{
 			giants.push_back(object);
+			giantClass.push_back(static_cast<uint8_t>(object->getObjectClass()));
 			return NO_ERR;
 		}
 
@@ -245,19 +248,21 @@ void CollisionGrid::createGrid (void)
 	ZoneScopedN("GameLogic.Collisions.Grid");
 	// Flat cell ranges. The legacy bucket lists were LIFO, so within a cell the newest object
 	// comes first, and giants likewise. The traversal below reproduces that exact order.
-	const size_t cells = static_cast<size_t>(xGridWidth) * yGridWidth;
-	cellStart.assign(cells + 1, 0);
-	for (const auto& p : placed)
-		cellStart[p.cell + 1]++;
-	for (size_t c = 0; c < cells; c++)
-		cellStart[c + 1] += cellStart[c];
-	ordered.resize(placed.size());
+	// SIM-TICK-CUT: only occupied cells are sorted and walked (collision_cell_walk.h).
+	walkItems.resize(placed.size());
+	for (size_t k = 0; k < placed.size(); ++k)
+		walkItems[k].cell = static_cast<uint32_t>(placed[k].cell);
+	cellWalk.build(walkItems.data(), walkItems.size(), static_cast<uint32_t>(xGridWidth), static_cast<uint32_t>(yGridWidth));
+	const std::vector<uint32_t>& order = cellWalk.order();
+	ordered.resize(order.size());
+	orderedClass.resize(order.size());
+	for (size_t slot = 0; slot < order.size(); ++slot)
 	{
-		std::vector<unsigned long> cursor(cellStart.begin(), cellStart.end() - 1);
-		for (size_t k = placed.size(); k-- > 0;)
-			ordered[cursor[placed[k].cell]++] = placed[k].object;
+		ordered[slot] = placed[order[slot]].object;
+		orderedClass[slot] = placed[order[slot]].cls;
 	}
 	std::reverse(giants.begin(), giants.end());	// now in legacy list order
+	std::reverse(giantClass.begin(), giantClass.end());
 	traverse();
 }
 
@@ -270,66 +275,34 @@ void CollisionGrid::traverse (void)
 	//------------------------------------------------
 	// This block of code is only necessary if
 	// we collide a giantObject against a giantObject.
+	const uint8_t* const giantCls = giantClass.data();
 	for (const GameObjectPtr* g = giantBegin; g + 1 < giantEnd; ++g)
-		checkGrid(*g, g + 1, giantEnd);
+		checkGrid(*g, giantCls[g - giantBegin], g + 1, giantCls + (g + 1 - giantBegin), giantEnd);
 
 	const GameObjectPtr* const base = ordered.data();
-	for (long y=0;y<static_cast<long>(yGridWidth);y++)
-	{
-		for (long x=0;x<static_cast<long>(xGridWidth);x++)
+	const uint8_t* const baseCls = orderedClass.data();
+	if (mc2_collision_trace::g_counters.active)
+		mc2_collision_trace::g_counters.gridCells += static_cast<decltype(mc2_collision_trace::g_counters.gridCells)>(cellWalk.occupied().size());
+	// Per object: the giants, then the rest of its cell, x+1, x+1/y+1, y+1 (cells with no objects visit nothing).
+	cellWalk.walk(
+		[&](uint32_t slot)
 		{
-			unsigned long gridIndex = x + y*xGridWidth;
-			const GameObjectPtr* const cellBegin = base + cellStart[gridIndex];
-			const GameObjectPtr* const cellEnd = base + cellStart[gridIndex + 1];
-
-			if (cellBegin != cellEnd && mc2_collision_trace::g_counters.active)
-				mc2_collision_trace::g_counters.gridCells++;
-
-			for (const GameObjectPtr* g = cellBegin; g != cellEnd; ++g)
-			{
-				GameObjectPtr obj = *g;
-
-				//--------------------------------------
-				// Check against the big things.
-				if (giantBegin != giantEnd)
-					checkGrid(obj,giantBegin,giantEnd);
-
-				//---------------------------
-				// Check same grid as object
-				if (g + 1 != cellEnd)
-					checkGrid(obj,g + 1,cellEnd);
-
-				if (x < static_cast<int32_t>(xGridWidth-1))
-				{
-					//---------------------
-					// Check grid at x+1,y
-					checkGrid(obj,base + cellStart[gridIndex+1],base + cellStart[gridIndex+2]);
-
-					if (y < static_cast<int32_t>(yGridWidth-1))
-					{
-						//-----------------------
-						// Check grid at x+1,y+1
-						checkGrid(obj,base + cellStart[gridIndex+1+xGridWidth],base + cellStart[gridIndex+2+xGridWidth]);
-					}
-				}
-
-				if (y < static_cast<int32_t>(yGridWidth-1))
-				{
-					//---------------------
-					// Check grid at x,y+1
-					checkGrid(obj,base + cellStart[gridIndex+xGridWidth],base + cellStart[gridIndex+1+xGridWidth]);
-				}
-			}
-		}
-	}
+			if (giantBegin != giantEnd)
+				checkGrid(base[slot], baseCls[slot], giantBegin, giantCls, giantEnd);
+		},
+		[&](uint32_t slot, uint32_t first, uint32_t last)
+		{
+			checkGrid(base[slot], baseCls[slot], base + first, baseCls + first, base + last);
+		});
 }
 
 //------------------------------------------------------------------------------
-void CollisionGrid::checkGrid (GameObjectPtr obj1, const GameObjectPtr* first, const GameObjectPtr* last)
+void CollisionGrid::checkGrid (GameObjectPtr obj1, uint8_t class1, const GameObjectPtr* first, const uint8_t* firstClass, const GameObjectPtr* last)
 {
-	for (; first != last; ++first)
+	for (; first != last; ++first, ++firstClass)
 	{
 		GameObjectPtr obj2 = *first;
+		const int class2 = *firstClass;
 
 		if (mc2_collision_trace::g_counters.active)
 			mc2_collision_trace::g_counters.pairsTested++;  // headline broadphase pair count
@@ -338,14 +311,15 @@ void CollisionGrid::checkGrid (GameObjectPtr obj1, const GameObjectPtr* first, c
 		{
 			//-------------------------------------------------------------
 			// CULL collisions between things which can never collide here
+			// (cached classes: the reject never dereferences either object)
 			//------------------------------------------------------------
-			if (((obj1->getObjectClass() == TURRET) && (obj2->getObjectClass() == TURRET)) ||
-				((obj1->getObjectClass() == GATE) && (obj2->getObjectClass() == GATE)) ||
-				((obj1->getObjectClass() == GATE) && (obj2->getObjectClass() == TURRET)) ||
-				((obj1->getObjectClass() == TURRET) && (obj2->getObjectClass() == GATE)) ||
-				((obj1->getObjectClass() == TURRET) && (obj2->getObjectClass() == TREE)) ||
-				((obj1->getObjectClass() == TREE) && (obj2->getObjectClass() == TURRET)) ||
-				((obj1->getObjectClass() == EXPLOSION) && (obj2->getObjectClass() == EXPLOSION)))
+			if (((class1 == TURRET) && (class2 == TURRET)) ||
+				((class1 == GATE) && (class2 == GATE)) ||
+				((class1 == GATE) && (class2 == TURRET)) ||
+				((class1 == TURRET) && (class2 == GATE)) ||
+				((class1 == TURRET) && (class2 == TREE)) ||
+				((class1 == TREE) && (class2 == TURRET)) ||
+				((class1 == EXPLOSION) && (class2 == EXPLOSION)))
 			{
 				if (mc2_collision_trace::g_counters.active)
 					mc2_collision_trace::g_counters.culledPairs++;

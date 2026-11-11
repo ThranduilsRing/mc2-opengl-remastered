@@ -56,7 +56,7 @@ long GroundVehicle::update (void)
 	if (recoverBuddyWID && !ObjectManager->getByWatchID(recoverBuddyWID))
 		recoverBuddyWID = 0;
 
-	positionNormal = land->getTerrainNormal(position);
+	refreshPositionNormal();
 
 	updatePathLock(false);
 

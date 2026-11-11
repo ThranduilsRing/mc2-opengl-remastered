@@ -41,6 +41,7 @@ add_executable(mc2_tests
     test_contact_pick.cpp
     test_building_static_eligibility.cpp
     test_terrain_dirty_queue.cpp
+    test_sim_tick_cut.cpp  # SIM-TICK-CUT: terrain tick list + occupied-cell collision walk match the legacy scans
     test_present_handoff.cpp
     test_terrain_record_cache.cpp  # H8 terrain-submit-cut: record cache (static camera 0 rebuilds, one dirty = one)
     test_present_wait.cpp  # PRESENT-HARDEN: pumped bounded main waits, failure seen at seal, start-spaced cap pacing

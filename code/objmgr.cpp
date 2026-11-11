@@ -100,6 +100,7 @@ bool moverInList (long blockNum)
 
 void GameObjectManager::init (void) {
 
+	invalidateTerrainTickList();
 	ownedTypeManager.reset();
 	objTypeManager = nullptr;
 
@@ -226,6 +227,7 @@ void GameObjectManager::setNumObjects (long nMechs,
 
 	//-----------------------------------------------------------
 	// First element in list is NULL (handle of 0 is always NULL)
+	invalidateTerrainTickList();
 	objList = entities.reset(getMaxObjects() + 1);
 	mc2::terrainDirtyQueue().reset(getMaxObjects() + 1);
 	staticResident.reset(getMaxObjects() + 1);
@@ -583,6 +585,7 @@ TurretPtr GameObjectManager::spawnTurret (GameObjectHandle handle)
 	TurretPtr turret = turretPool.get(id.index);
 	turret->setHandle(handle);
 	objList[handle] = turret;
+	invalidateTerrainTickList();
 	return turret;
 }
 
@@ -596,6 +599,7 @@ GatePtr GameObjectManager::spawnGate (GameObjectHandle handle)
 	GatePtr gate = gatePool.resolve(id);
 	gate->setHandle(handle);
 	objList[handle] = gate;
+	invalidateTerrainTickList();
 	return gate;
 }
 
@@ -695,6 +699,7 @@ void GameObjectManager::addObject (ObjDataLoader *objData, long& curTerrainObjec
 	// THIS IS NOT COMPLETELY DONE! MAKE SURE ALL TERRAIN OBJ TYPES
 	// ARE ACCOUNTED FOR HERE!
 
+	invalidateTerrainTickList();
 	long objTypeNum = objData->objTypeNum;
 	if (!isLandMine(objTypeNum)) {
 		ObjectTypePtr objType = getObjectType(objTypeNum);
@@ -875,6 +880,7 @@ void GameObjectManager::addObject (ObjDataLoader *objData, long& curTerrainObjec
 void GameObjectManager::releasePoolArrays (void)
 {
 	entities.clear();
+	invalidateTerrainTickList();
 	resetPartIdIndex();
 	moverGrid.clear();
 	buildingGrid.clear();

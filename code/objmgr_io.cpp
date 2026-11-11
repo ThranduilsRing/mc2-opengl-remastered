@@ -783,6 +783,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum, bool managerVa
 
 	//-----------------------------------------------------------
 	// First element in list is NULL (handle of 0 is always NULL)
+	invalidateTerrainTickList();
 	objList = entities.reset(getMaxObjects() + 1);
 	resetPartIdIndex();
 	invalidateSpatialGrid();
