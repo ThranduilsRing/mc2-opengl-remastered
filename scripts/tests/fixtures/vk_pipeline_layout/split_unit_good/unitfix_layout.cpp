@@ -1,6 +1,6 @@
 // Fixture piece 1 of 2: the descriptor-set layout and pipeline layout (good).
 void build_layout(S* s) {
-    VkDescriptorSetLayoutBinding b[8]{};
+    VkDescriptorSetLayoutBinding b[7]{};
     b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
     b[1].binding = 1; b[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
@@ -17,8 +17,15 @@ void build_layout(S* s) {
     b[6].descriptorCount = 1; b[6].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
     VkDescriptorSetLayoutCreateInfo lci{};
     vkCreateDescriptorSetLayout(s->device, &lci, nullptr, &s->dsl);
+    // Set 1: the EnvironmentUBO (binding 26, vertex + fragment; U1 environment-gpu) beside the ground-lighting set.
+    VkDescriptorSetLayoutBinding e[1]{};
+    e[0].binding = 26; e[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    e[0].descriptorCount = 1; e[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    VkDescriptorSetLayoutCreateInfo eci{};
+    vkCreateDescriptorSetLayout(s->device, &eci, nullptr, &s->envDsl);
     VkPushConstantRange pcr{};
     pcr.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT; pcr.offset = 0; pcr.size = 16;
     VkPipelineLayoutCreateInfo plci{};
-    plci.setLayoutCount = 1; plci.pSetLayouts = &s->dsl;
+    VkDescriptorSetLayout layouts[2] = {s->dsl, s->envDsl};
+    plci.setLayoutCount = 2; plci.pSetLayouts = layouts;
 }
