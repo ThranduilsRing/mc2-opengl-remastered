@@ -7,6 +7,7 @@ set(SOURCES ${SOURCES}
     aedit.cpp
     afont.cpp
     alistbox.cpp
+    alistbox_dropdown.cpp
     ascroll.cpp
     asystem.cpp
     logisticsscreen.cpp
