@@ -4,6 +4,8 @@
 //===========================================================================//
 
 #include"abutton.h"
+#include <set>
+#include <string>
 #include "../mclib/texture_assets.h"
 #include"afont.h"
 #include"mclib.h"
@@ -144,10 +146,26 @@ void aButton::render()
 		if ( textureHandle )
 		{
 			unsigned long gosID = mc2::textures::sourceId( textureHandle );
-			gos_SetRenderState( gos_State_Texture, gosID ); 
+			gos_SetRenderState( gos_State_Texture, gosID );
 		}
 		else
-			gos_SetRenderState( gos_State_Texture, 0 ); 
+			gos_SetRenderState( gos_State_Texture, 0 );
+
+		if ( strstr( data.fileName, "mcl_cm" ) || strstr( data.fileName, "MCL_CM" ) )
+		{
+			// [UI_MARKER v1]: legacy-path marker draw trace, once per button and state.
+			static std::set<std::string> s_markerLogged;
+			char tag[96];
+			sprintf( tag, "%p#%d", (void*)this, (int)state );
+			if ( s_markerLogged.insert( tag ).second )
+			{
+				printf( "[UI_MARKER v1] path=legacy id=%ld state=%d tex=%s texWH=%ldx%ld tint=0x%08x uv=%.3f,%.3f-%.3f,%.3f draw=%.1fx%.1f at %.1f,%.1f\n",
+					(long)getID(), (int)state, data.fileName, (long)data.fileWidth, (long)data.fileHeight,
+					(unsigned)location[0].argb, location[0].u, location[0].v, location[2].u, location[2].v,
+					location[2].x - location[0].x, location[2].y - location[0].y, location[0].x, location[0].y );
+				fflush( stdout );
+			}
+		}
 
 			gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
 			gos_SetRenderState( gos_State_Filter, gos_FilterNone);

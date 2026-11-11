@@ -2,6 +2,8 @@
 #include "Gates/gate.h"
 #include "../mclib/texture_assets.h"
 #include <tracy/Tracy.hpp>
+#include <set>
+#include <string>
 
 
 struct UiDefs::GameOSPage::Impl {
@@ -915,6 +917,19 @@ void UiDefs::GameOSPage::render(int xOffset, int yOffset)
                     const int savedUvY = e.uvY;
                     e.uvX = stateUvX;
                     e.uvY = stateUvY;
+                    if (e.key.find("mcl_cm_op") != std::string::npos) {
+                        // [UI_MARKER v1]: campaign marker draw trace, once per widget and state.
+                        static std::set<std::string> s_markerLogged;
+                        const std::string tag = e.key + "#" + std::to_string(static_cast<int>(e.btnState));
+                        if (s_markerLogged.insert(tag).second) {
+                            const FRect mr = scaledRect(e.rect, xOffset, yOffset, s);
+                            printf("[UI_MARKER v1] path=defs widget=%s state=%d tex=%s texWH=%dx%d tint=0x%08x uv=%d,%d,%d,%d draw=%.1fx%.1f at %.1f,%.1f alphaTest=%d pixelPerfect=%d\n",
+                                   e.key.c_str(), static_cast<int>(e.btnState), e.texturePath.c_str(),
+                                   e.textureWidth, e.textureHeight, artTint, stateUvX, stateUvY, e.uvW, e.uvH,
+                                   mr.w, mr.h, mr.x, mr.y, e.alphaTest ? 1 : 0, e.pixelPerfect ? 1 : 0);
+                            fflush(stdout);
+                        }
+                    }
                     if (!drawUiImageElement(e, xOffset, yOffset, s, artTint)) {
                         const FRect r = scaledRect(e.rect, xOffset, yOffset, s);
                         drawUiRectElement(r, e.fillColor, true);
