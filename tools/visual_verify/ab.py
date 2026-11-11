@@ -244,6 +244,18 @@ COOKED_PAYLOAD_PINS = {
 }
 
 
+# Unpinned deploy-cooked outputs: gitignored, no pin file, so they are the window's payload when the window changed the cook
+# script that produces them (W147: cook_grass_turf.py cooks data/terrain_layers/grass_turf_normal.ktx2).
+COOKED_UNPINNED_OUTPUTS = {
+    "tools/mc2texcook/cook_grass_turf.py": ("data/terrain_layers/grass_turf_normal.ktx2",),
+}
+
+
+def cooked_unpinned(diff_files):
+    """Install relpaths of the unpinned cooked outputs whose cook script changed in the window."""
+    return {path for script, outs in COOKED_UNPINNED_OUTPUTS.items() if script in diff_files for path in outs}
+
+
 def cooked_payload(diff_files, commit):
     """{install relpath: pinned sha256} of the deploy-cooked outputs whose pin file changed in the window, read at `commit`.
     An unreadable or malformed pin file yields nothing for it (fail closed: its outputs keep refusing)."""
@@ -1193,6 +1205,7 @@ def main(argv=None):
                 accepted = manifest_diff_files(ia["manifest"], ib["manifest"]) & {repo_path_to_install(f) for f in diff_files}
                 accepted |= {path for path, sha in cooked_payload(diff_files, ib["commit"]).items()
                              if ib["manifest"].get(path) == sha}
+                accepted |= cooked_unpinned(diff_files)
                 accepted_delta = sorted(accepted)
                 for path, line in entries:
                     if path in accepted:

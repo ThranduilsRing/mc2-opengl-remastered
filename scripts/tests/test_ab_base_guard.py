@@ -261,6 +261,12 @@ def test_cooked_payload_accepts_pinned_outputs_only_when_the_pin_changed(tmp_pat
     assert ab.cooked_payload(diff, repo[1]) == {}   # pin file unreadable at that commit: fail closed
 
 
+def test_cooked_unpinned_output_is_payload_only_when_its_cook_script_changed():
+    # W147: grass_turf_normal.ktx2 is gitignored and unpinned; the window that changes cook_grass_turf.py ships it.
+    assert ab.cooked_unpinned({"tools/mc2texcook/cook_grass_turf.py"}) == {"data/terrain_layers/grass_turf_normal.ktx2"}
+    assert ab.cooked_unpinned({"code/mech.cpp"}) == set()
+
+
 def test_cooked_payload_malformed_pins_fail_closed(tmp_path, repo):
     r = ab.ROOT
     (r / "data" / "kit").mkdir(parents=True)
