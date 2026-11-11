@@ -21,16 +21,11 @@ long MechWarrior::getVehicleStatus (void) {
 	return(myVehicleStatus);
 }
 
-// PATHFINDING-JUMP-FAIL-1: backoff gate + constants. Default-OFF killswitch: when
-// MC2_PATH_JUMP_FAIL_BACKOFF is unset, s_jumpFailBackoffOn is false and every new
-// branch below is inert -> byte-identical legacy behavior (no stamp, no short-circuit).
-// Cached once at first use (repo getenv idiom, mover.cpp style).
-static const bool s_jumpFailBackoffOn = false;
-// Frames to suppress re-requesting a goal cell that just failed a jump solve.
-// ~45 path-manager update() frames ~= 0.5-1s of doomed re-solves eliminated.
+// Failed AI jump goals back off for 45 simulation ticks (1.5 seconds at 30 Hz).
+// PathManager updates once per sim tick in both the serial and worker loops.
 static const long kJumpFailBackoffFrames = 45;
 
-// Defined in movemgr.cpp (PATHFINDING-FACTS-2 counter, advanced once per update()).
+// Sim-owned clock, advanced once per PathManager::update(), independent of rendering.
 extern long MovePathManager_getFrameCounter (void);
 
 // MC2_FX_FORCE_SPAWN fixtures: fire the whole weapon bank, each weapon aimed along the mech's facing at the middle of its
@@ -66,12 +61,12 @@ static FxFixtureVolley fxFireBankAlongFacing (MoverPtr mech, float time) {
 
 void MechWarrior::noteJumpPathFailed (void) {
 
-	if (!s_jumpFailBackoffOn)
+	// Ownership may change after a failure; apply the same bypass at admission.
+	const auto vehicle = getVehicle();
+	if (MPlayer || !land || !vehicle || !Team::home ||
+	    vehicle->getTeamId() == Team::home->getId() || curTacOrder.origin == ORDER_ORIGIN_PLAYER)
 		return;
-	// Key on the pilot's CURRENT move goal cell -- the exact same basis
-	// requestMovePath compares against (getMoveGoal -> worldToCell). Using one
-	// source of truth guarantees the stamp and the short-circuit test agree,
-	// regardless of any goal revision the solver applied internally.
+	// Use the requested goal, since the solver's output cell is undefined on failure.
 	glm::vec3 goalLoc;
 	if (getMoveGoal(&goalLoc) == MOVEGOAL_NONE)
 		return;
@@ -101,22 +96,18 @@ void MechWarrior::setJumpBackoff (int32_t goalR, int32_t goalC, int32_t age) {
 
 void MechWarrior::requestMovePath (long selectionIndex, unsigned long moveParams, long source) {
 
-	// PATHFINDING-JUMP-FAIL-1: short-circuit doomed jump re-requests. If the pilot's
-	// current move goal is the SAME cell as the last jump solve that found no path,
-	// and we are still inside the backoff window, skip the enqueue entirely -- this
-	// is what collapses the queue width (the doomed solve was re-requested every AI
-	// tick with no failure memory). Only AI/non-home jumpers ever fail jump solves
-	// (jump path is enemy-only, mover.cpp), so player orders are never affected.
-	if (s_jumpFailBackoffOn && (lastJumpFailFrame != kNoJumpFailFrame)) {
-		glm::vec3 goalLoc;
-		if (getMoveGoal(&goalLoc) != MOVEGOAL_NONE) {
-			int goalCellR, goalCellC;
-			land->worldToCell(goalLoc, goalCellR, goalCellC);
-			if ((goalCellR == lastFailedJumpGoalCellR) &&
-			    (goalCellC == lastFailedJumpGoalCellC)) {
-				long now = MovePathManager_getFrameCounter();
-				if ((now - lastJumpFailFrame) < kJumpFailBackoffFrames)
-					return;  // doomed: don't re-enqueue yet
+	// Single-player AI only. Home-team and explicit player orders bypass even
+	// a stamp restored from FIX1 or recorded before an ownership change.
+	const auto vehicle = getVehicle();
+	if (!MPlayer && land && vehicle && Team::home &&
+	    vehicle->getTeamId() != Team::home->getId() && curTacOrder.origin != ORDER_ORIGIN_PLAYER) {
+		if (const auto backoff = getJumpBackoff()) {
+			glm::vec3 goalLoc;
+			if (getMoveGoal(&goalLoc) != MOVEGOAL_NONE) {
+				int goalCellR, goalCellC;
+				land->worldToCell(goalLoc, goalCellR, goalCellC);
+				if (goalCellR == backoff->goalR && goalCellC == backoff->goalC)
+					return;
 			}
 		}
 	}

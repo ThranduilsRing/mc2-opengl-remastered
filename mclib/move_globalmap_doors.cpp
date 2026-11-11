@@ -462,7 +462,7 @@ unsigned char GlobalMap::getPathExists (long fromArea, long toArea) {
 	pathByte += (rowWidth * fromArea + (toArea / 4));
 	unsigned char pathShift = (toArea % 4) * 2;
 	unsigned char pathBit = 0x03 << pathShift;
-	return((*pathByte & pathBit) >> pathShift);
+	return(*pathByte & pathBit);
 }
 
 long GlobalMap::exitDirection (long doorIndex, long fromArea) {

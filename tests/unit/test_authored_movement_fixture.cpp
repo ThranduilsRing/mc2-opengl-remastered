@@ -20,6 +20,8 @@
 #include "logisticsdata.h"
 #include "paths.h"
 #include "mc2video.h"
+#include "multplyr.h"
+#include "save_fix_section.h"
 #include <chrono>
 #include <fstream>
 #include <thread>
@@ -1144,4 +1146,85 @@ TEST_CASE("MovementCollision/non-ground blockage defines the path end output") {
         }
         CHECK_FALSE(world.mech->getPathRangeBlocked(1, nullptr));
     }
+}
+
+TEST_CASE("JumpBackoff/production admission and active FIX1 restore use simulation ticks") {
+    Team home;
+    MovementWorld world;
+    world.saved.keep(Team::home);
+    world.saved.keep(MPlayer);
+    Team::home = &home;
+    home.id = 1; // Fixture mover is team zero: single-player AI.
+    MPlayer = nullptr;
+    world.pilot->getCurTacOrder()->init(ORDER_ORIGIN_SELF, TACTICAL_ORDER_MOVETO_POINT, false);
+    auto goal = world.point(140);
+    world.pilot->setMoveGoal(MOVEGOAL_LOCATION, &goal);
+    auto admitted = [&] {
+        REQUIRE(world.queue->queueFront == nullptr);
+        world.pilot->requestMovePath(0, MOVEPARAM_NONE, 1);
+        const bool queued = world.queue->queueFront != nullptr;
+        CHECK((world.pilot->getMovePathRequest() != nullptr) == queued);
+        world.queue->remove(world.pilot.get());
+        return queued;
+    };
+    CHECK_FALSE(world.pilot->getJumpBackoff());
+    CHECK(admitted()); // No stamp.
+    world.pilot->noteJumpPathFailed();
+    REQUIRE(world.pilot->getJumpBackoff());
+    CHECK(world.pilot->getJumpBackoff()->age == 0);
+    CHECK_FALSE(admitted());
+    auto changed = world.point(139);
+    world.pilot->setMoveGoal(MOVEGOAL_LOCATION, &changed);
+    CHECK(admitted());
+    world.pilot->setMoveGoal(MOVEGOAL_LOCATION, &goal);
+    for (int tick = 0; tick < 44; ++tick) world.queue->update();
+    REQUIRE(world.pilot->getJumpBackoff());
+    CHECK(world.pilot->getJumpBackoff()->age == 44);
+    CHECK_FALSE(admitted());
+
+    // Persist a LIVE production stamp through FIX1, then restore at a different
+    // clock origin. This must still suppress a real request, not just decode.
+    const auto active = *world.pilot->getJumpBackoff();
+    mc2::save::FixSection fix;
+    fix.backoffs.push_back({0, active.goalR, active.goalC, active.age});
+    const auto bytes = mc2::save::encodeFixSection(fix);
+    const auto decoded = mc2::save::decodeValidFixSection(mc2::save::fixSectionVersion, bytes, MAX_WARRIORS, 1);
+    REQUIRE(decoded);
+    REQUIRE(decoded->backoffs.size() == 1);
+    world.queue->update(); // Age 45: expires exactly here.
+    CHECK_FALSE(world.pilot->getJumpBackoff());
+    CHECK(admitted());
+    for (int tick = 0; tick < 100; ++tick) world.queue->update();
+    const auto& restored = decoded->backoffs.front();
+    world.pilot->setJumpBackoff(restored.goalR, restored.goalC, restored.age);
+    REQUIRE(world.pilot->getJumpBackoff());
+    CHECK(world.pilot->getJumpBackoff()->age == 44);
+    CHECK_FALSE(admitted());
+    home.id = 0; // Ownership change after stamp/restore: player bypasses.
+    CHECK(admitted());
+    home.id = 1;
+    world.pilot->getCurTacOrder()->origin = ORDER_ORIGIN_PLAYER;
+    CHECK(admitted());
+    world.pilot->getCurTacOrder()->origin = ORDER_ORIGIN_SELF;
+    // Only pointer presence is consulted: no multiplayer service may be used.
+    MPlayer = reinterpret_cast<MultiPlayer*>(world.mech.get());
+    CHECK(admitted());
+    MPlayer = nullptr;
+    CHECK_FALSE(admitted());
+    world.queue->update();
+    CHECK_FALSE(world.pilot->getJumpBackoff());
+    CHECK(admitted());
+
+    // Protected owners never create a new stamp either.
+    home.id = 0;
+    world.pilot->noteJumpPathFailed();
+    CHECK_FALSE(world.pilot->getJumpBackoff());
+    home.id = 1;
+    MPlayer = reinterpret_cast<MultiPlayer*>(world.mech.get());
+    world.pilot->noteJumpPathFailed();
+    MPlayer = nullptr;
+    CHECK_FALSE(world.pilot->getJumpBackoff());
+    world.pilot->getCurTacOrder()->origin = ORDER_ORIGIN_PLAYER;
+    world.pilot->noteJumpPathFailed();
+    CHECK_FALSE(world.pilot->getJumpBackoff());
 }
