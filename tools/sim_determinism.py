@@ -112,19 +112,17 @@ TREE_UPSCALE_PINS = os.path.join(ROOT, "data", "kit", "tree-upscale.json")
 
 
 def render_only_sidecar_sizes(pins_path: str = TREE_UPSCALE_PINS) -> dict:
-    """{install-relative path: (upscaled bytes, stock-cook bytes)} of the deploy-cooked render-only sidecars; empty when the pin file is
-    absent or unreadable. A pin without both sizes maps to (None, None): the file is counted at its own size."""
+    """{lower-cased install-relative path: (upscaled bytes, ktx2 sha256, stock-cook bytes)} of the deploy-cooked render-only sidecars.
+    Empty when the pin file is absent; empty with one warning line when it is malformed (the file is then counted at its own size)."""
     try:
         with open(pins_path, encoding="utf-8") as fh:
             pins = json.load(fh)
-        return {f"data/tgl/128/{stem}.ktx2": (row.get("bytes"), row.get("stock_bytes")) for stem, row in pins.items()}
-    except (OSError, ValueError, TypeError, AttributeError):
+        return {f"data/tgl/128/{stem}.ktx2".lower(): (row.get("bytes"), row.get("ktx2_sha256"), row.get("stock_bytes")) for stem, row in pins.items()}
+    except FileNotFoundError:
         return {}
-
-
-def render_only_sidecars(pins_path: str = TREE_UPSCALE_PINS) -> frozenset:
-    """Install-relative paths of the deploy-cooked render-only sidecars; empty when the pin file is absent or unreadable."""
-    return frozenset(render_only_sidecar_sizes(pins_path))
+    except (OSError, ValueError, TypeError, AttributeError) as exc:
+        print(f"[sim_determinism] WARNING: tree-upscale pin file {pins_path} unreadable ({type(exc).__name__}: {exc}); sidecars counted at their own size", file=sys.stderr)
+        return {}
 
 
 def baseline_path(mission: str) -> str:
@@ -180,10 +178,11 @@ def data_fingerprint(install: str = INSTALL_DIR, manifest: dict | None = None) -
                 full = os.path.join(dp, fn)
                 rel = os.path.relpath(full, install).replace(os.sep, "/")
                 size = os.path.getsize(full)
-                if rel in render_only:
-                    upscaled, stock_size = render_only[rel]
-                    if stock_size is not None and size == upscaled:
-                        size = stock_size  # the deploy-cooked upscale counts as the stock cook it replaced
+                pin = render_only.get(rel.lower())
+                if pin is not None:
+                    upscaled, pinned_sha, stock_size = pin
+                    if stock_size is not None and size == upscaled and pinned_sha and _sha256(full) == pinned_sha:
+                        size = stock_size  # only the exact pinned upscale counts as the stock cook it replaced; any other content moves the digest
                 if rel not in declared:
                     entries.append(f"{rel} {size}")
         for e in sorted(entries):

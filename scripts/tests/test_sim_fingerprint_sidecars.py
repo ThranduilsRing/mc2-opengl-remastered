@@ -1,6 +1,7 @@
 """sim_determinism.data_fingerprint counts a deploy-cooked render-only tree sidecar at its stock cook size (W138h)."""
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -24,7 +25,7 @@ def _install(tmp_path, ktx2=None):
 
 def _pins(tmp_path, monkeypatch, **row):
     pins = tmp_path / "tree-upscale.json"
-    pins.write_text(json.dumps({"a_palm": dict({"ktx2_sha256": "00" * 32}, **row)}))
+    pins.write_text(json.dumps({"a_palm": dict({"ktx2_sha256": hashlib.sha256(UPSCALED).hexdigest()}, **row)}))
     monkeypatch.setattr(sim, "TREE_UPSCALE_PINS", str(pins))
 
 
@@ -50,14 +51,37 @@ def test_pin_without_stock_size_counts_the_file_as_it_is(tmp_path, monkeypatch):
     assert _digest(_install(tmp_path / "a", STOCK)) != _digest(_install(tmp_path / "b", UPSCALED))
 
 
-def test_missing_pin_file_exempts_nothing(tmp_path):
-    assert sim.render_only_sidecars(str(tmp_path / "absent.json")) == frozenset()
+def test_right_size_wrong_content_moves_the_digest(tmp_path, monkeypatch):
+    _pins(tmp_path, monkeypatch, bytes=len(UPSCALED), stock_bytes=len(STOCK))
+    stock = _digest(_install(tmp_path / "a", STOCK))
+    assert _digest(_install(tmp_path / "b", UPSCALED)) == stock
+    assert _digest(_install(tmp_path / "c", b"x" * len(UPSCALED))) != stock
+
+
+def test_case_variant_path_still_matches_the_pin(tmp_path, monkeypatch):
+    _pins(tmp_path, monkeypatch, bytes=len(UPSCALED), stock_bytes=len(STOCK))
+
+    def variant(name, payload):
+        inst = _install(tmp_path / name)
+        (inst / "data" / "tgl" / "128" / "A_Palm.ktx2").write_bytes(payload)
+        return _digest(inst)
+
+    assert variant("a", UPSCALED) == variant("b", STOCK)
+
+
+def test_missing_pin_file_exempts_nothing_silently(tmp_path, capsys):
+    assert sim.render_only_sidecar_sizes(str(tmp_path / "absent.json")) == {}
+    assert capsys.readouterr().err == ""
+
+
+def test_malformed_pin_file_warns(tmp_path, capsys):
     bad = tmp_path / "bad.json"
     bad.write_text("{nope")
-    assert sim.render_only_sidecars(str(bad)) == frozenset()
+    assert sim.render_only_sidecar_sizes(str(bad)) == {}
+    assert "WARNING" in capsys.readouterr().err
 
 
 def test_repo_pins_cover_the_shipped_sidecars():
     sizes = sim.render_only_sidecar_sizes()
-    assert "data/tgl/128/a_palm.ktx2" in sim.render_only_sidecars()
-    assert all(up and stock for up, stock in sizes.values()), "every shipped pin names its upscaled and stock cook sizes"
+    assert "data/tgl/128/a_palm.ktx2" in sizes
+    assert all(up and sha and stock for up, sha, stock in sizes.values()), "every shipped pin names its upscaled and stock cook sizes"
