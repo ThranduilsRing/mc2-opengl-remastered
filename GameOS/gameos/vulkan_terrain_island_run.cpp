@@ -30,7 +30,7 @@ static uint32_t g_sceneClearedRenderFrame = 0;   // render frame + 1 of the last
 // The per-frame mission environment (EnvironmentUBO, binding 26 of set[par]): the one producer fills a frame-ring slice and the
 // binding is re-pointed at it. A new revision follows, so props, mechs, vegetation and water re-copy it with the rest of the set.
 // Call after the slot wait that retires set[par] (the same place as the mover shadow bind).
-bool bind_environment(TerrainIsland* s, uint32_t par) {
+bool vk_terrain_detail::bind_environment(TerrainIsland* s, uint32_t par) {
     auto& rctx = mc2vk::getOrCreateEngineVulkanContext();
     const mc2vk::FrameAlloc slice = rctx.frameAlloc(sizeof(EnvironmentUBO));
     if (!slice) return false;
