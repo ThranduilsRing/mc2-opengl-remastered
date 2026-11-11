@@ -1195,8 +1195,12 @@ def check_exe_fresh(exe_src, build_dir, allow_stale_exe, build64_root=None):
 
 
 def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
-                      require_build=True, build64_root=None, code_only=False):
+                      require_build=True, build64_root=None, code_only=False, cook=None):
     """Returns list of (src_abspath, target_relpath, kind).
+
+    cook (default: require_build): run the on-demand texture cooks (concrete detail, cliff rock, tree upscale; up to
+    minutes of subprocess time) before listing. Enumeration for tests, manifests and dry runs passes cook=False and
+    only lists the sidecars that are already on disk.
 
     require_build=False (manifest-only): the build outputs may be gone; we
     only need the relpath list to know which target files to re-hash, so a
@@ -1364,9 +1368,10 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
     # copies whatever _albedo.ktx2 is on disk. Guard it here: read the KTX2
     # levelCount and HARD-FAIL if a present layer is mip-incomplete, so a stale
     # cook can never reach the payload silently. Re-cook, then re-deploy.
-    ensure_concrete_detail(src_root)
-    ensure_cliff_rock(src_root)
-    ensure_tree_upscale(src_root)
+    if require_build if cook is None else cook:
+        ensure_concrete_detail(src_root)
+        ensure_cliff_rock(src_root)
+        ensure_tree_upscale(src_root)
     for rel in tree_upscale_payload(src_root):
         p = os.path.join(src_root, rel)
         if os.path.isfile(p):
@@ -2041,7 +2046,7 @@ def shader_inventory_problems(source_root, published):
     source_root, build = Path(source_root), Path(source_root) / 'build64-ninja'
     try:
         expected = published_shader_sources(source_root, build)
-        items = enumerate_payload(str(source_root), str(build), 'mc2.exe', 'mc2.pdb', build64_root=str(build))
+        items = enumerate_payload(str(source_root), str(build), 'mc2.exe', 'mc2.pdb', build64_root=str(build), cook=False)
     except (ValueError, SystemExit) as exc:
         return [f'shader inventory: {exc}']
     shipped = {rel: src for src, rel, _kind in items if rel.startswith('shaders/')}
