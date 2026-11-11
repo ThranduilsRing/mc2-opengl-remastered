@@ -32,6 +32,7 @@ const std::unordered_set<std::string>& knownTags() {
     // Immortal (leaked on purpose): tagRequested() -> parseTagsEnv() calls this from atexit handlers, after a destructible static would be gone.
     static const auto* tags = std::make_unique<std::unordered_set<std::string>>(std::initializer_list<std::string>{
         "ABL_NEWPOWER_PART",
+        "LOAD_LAPS", // one-shot [LOAD_LAPS v1] line per mission load (terrain_objects sub-laps). Opt-in.
         "SUPPORT_PRELOAD_LATE", // late mech-class types registered by the support warm and the shared-buffer rebuild that absorbs them. Opt-in.
         "SUPPORT_CRAFT", // Bounded recovery-craft appearance, geometry and native draw trace. Opt-in.
         "GPU_CULL",

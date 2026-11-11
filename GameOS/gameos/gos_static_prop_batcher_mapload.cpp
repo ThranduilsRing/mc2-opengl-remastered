@@ -292,7 +292,9 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
                 // Raw DWORD memcpy preserves the exact bit pattern.
                 std::memcpy(vert + 36, &src.aRGBLight,  4);
                 const auto candidate = static_cast<uint32_t>(s_stagingVbo.size() / kVertexStride - baseVertex);
-                const std::string key(reinterpret_cast<const char*>(vert), kVertexStride);
+                static_assert(kVertexStride == mc2_prop::kPackedVertexBytes);
+                mc2_prop::PackedVertexKey key;
+                std::memcpy(key.data(), vert, kVertexStride);
                 const auto [entry, inserted] = vertexIndices.try_emplace(key, candidate);
                 if (inserted) s_stagingVbo.insert(s_stagingVbo.end(), vert, vert + kVertexStride);
                 s_stagingIbo.push_back(std::get<1>(*entry));

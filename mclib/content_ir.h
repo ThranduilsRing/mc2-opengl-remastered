@@ -32,6 +32,9 @@ struct Asset {
     bool legacyBounds = false;
     int ground = 0;
     std::string parameters;
+    // Set by loadCached on a digest-verified cache hit: the cache key this payload was read under. cook() skips
+    // re-serializing, re-hashing and re-reading the entry it just came from when it still derives the same key.
+    uint64_t verifiedCacheKey = 0;
 };
 
 // Validate and publish a content-addressed CPU recipe. Input identity includes resolved
@@ -39,5 +42,7 @@ struct Asset {
 bool cook(Asset& asset, std::string_view source);
 bool loadCached(Asset& asset, std::string_view source);
 // Digest of a source file's bytes (fastHash of the content; equals vfs::contentDigest for the same bytes).
+// One [LOAD_LAPS v1] line per call (and resets the accumulators): where a load stage spent its time.
+void reportLoadLaps(std::string_view stage, double stageMs, std::string_view mission);
 uint64_t sourceBytesDigest(std::string_view sourcePath, std::span<const uint8_t> bytes);
 }
