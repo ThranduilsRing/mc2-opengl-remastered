@@ -22,7 +22,6 @@
 #ifndef TERROBJ_H
 #include"terrobj.h"
 #include "Gates/gate.h"
-#include "content_ir.h"  // TEMP laps
 #endif
 
 #include "gos_static_prop_killswitch.h"  // g_useGpuStaticProps
@@ -1196,9 +1195,6 @@ void TerrainObject::init (bool create, ObjectTypePtr objType) {
 
 	setFlag(OBJECT_FLAG_JUSTCREATED, true);
 
-	const uint64_t tempT0 = mc2::content::tempLapNow();
-	uint64_t tempGet = 0, tempApp = 0;
-	const int tempKind = ((static_cast<TerrainObjectTypePtr>(objType))->subType == TERROBJ_TREE) ? 0 : 1;
 	if ((static_cast<TerrainObjectTypePtr>(objType))->subType == TERROBJ_TREE)
 	{
 		//-------------------------------------------------------------
@@ -1223,13 +1219,10 @@ void TerrainObject::init (bool create, ObjectTypePtr objType) {
 			gosASSERT(terrainObjectAppearanceType != nullptr);
 		}
 		  
-		tempGet = mc2::content::tempLapNow() - tempT0;
 		adoptAppearance(std::make_unique_for_overwrite<TreeAppearance>());
 		gosASSERT(appearance != nullptr);
 
-		const uint64_t tempA0 = mc2::content::tempLapNow();
 		appearance->init(static_cast<TreeAppearanceType*>(terrainObjectAppearanceType), static_cast<GameObjectPtr>(this));
-		tempApp = mc2::content::tempLapNow() - tempA0;
 	}
 	else
 	{
@@ -1254,7 +1247,6 @@ void TerrainObject::init (bool create, ObjectTypePtr objType) {
 			terrainObjectAppearanceType = appearanceTypeList->getAppearance(appearanceType,"TESTOBJ");
 		}
 	  
-		tempGet = mc2::content::tempLapNow() - tempT0;
 		adoptAppearance(std::make_unique_for_overwrite<BldgAppearance>());
 		gosASSERT(appearance != nullptr);
 
@@ -1262,20 +1254,12 @@ void TerrainObject::init (bool create, ObjectTypePtr objType) {
 		// The only appearance type for buildings is MLR_APPEARANCE.
 		gosASSERT(terrainObjectAppearanceType->getAppearanceClass() == BLDG_TYPE);
 		
-		const uint64_t tempA0 = mc2::content::tempLapNow();
 		appearance->init(static_cast<BldgAppearanceType*>(terrainObjectAppearanceType), static_cast<GameObjectPtr>(this));
-		tempApp = mc2::content::tempLapNow() - tempA0;
 	}
 
 	if (objType->getExtentRadius() > 0.0)
 		setTangible(true);
 
-	{
-		const uint64_t tempTot = mc2::content::tempLapNow() - tempT0;
-		mc2::content::tempLapAdd(tempKind, 0, tempGet);
-		mc2::content::tempLapAdd(tempKind, 1, tempApp);
-		mc2::content::tempLapAdd(tempKind, 2, tempTot - tempGet - tempApp);
-	}
 	objectClass = TERRAINOBJECT;
 	switch ((static_cast<TerrainObjectTypePtr>(objType))->subType) {
 		case TERROBJ_NONE:

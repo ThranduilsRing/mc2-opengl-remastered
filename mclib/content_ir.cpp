@@ -19,7 +19,6 @@ namespace mc2::content {
 namespace {
 // [LOAD_LAPS v1] accumulators (nanoseconds), summed over every shape load in a mission load.
 struct Laps { std::atomic<uint64_t> digest{0}, read{0}, decode{0}, cookTotal{0}, cookRead{0}, loads{0}, hits{0}, cooks{0}; } g_laps;
-std::atomic<uint64_t> g_tempLap[5][4];
 uint64_t nowNs() { return static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()); }
 
 constexpr mc2cache::CacheKind kind{"model-", ".mci", 4096, 128ull << 20};
@@ -212,16 +211,8 @@ bool cook(Asset& asset, std::string_view sourcePath) {
     return true;
 }
 
-void tempLapAdd(int kind, int phase, uint64_t ns) { g_tempLap[kind][phase].fetch_add(ns); if (phase == 2) g_tempLap[kind][3].fetch_add(1); }
-uint64_t tempLapNow() { return nowNs(); }
-
 void reportLoadLaps(std::string_view stage, double stageMs, std::string_view mission) {
     // The caller guards on MC2_DIAG_TAGS=LOAD_LAPS (mc2_diag lives in GameOS, which the asset viewer does not link).
-    for (int k = 0; k < 5; ++k) {
-        const unsigned long long c = g_tempLap[k][3].exchange(0);
-        const double a = static_cast<double>(g_tempLap[k][0].exchange(0)) / 1e6, b = static_cast<double>(g_tempLap[k][1].exchange(0)) / 1e6, r = static_cast<double>(g_tempLap[k][2].exchange(0)) / 1e6;
-        mc2::fmt::print_err("[LOAD_LAPS v1] sub={} n={} get_appearance_ms={:.1f} appearance_init_ms={:.1f} rest_ms={:.1f}\n", k == 0 ? "tree" : k == 1 ? "terrobj" : k == 2 ? "building" : k == 3 ? "bldg_app(createfrom,textures,rest)" : "bldg_tex(exists,load,0)", c, a, b, r);
-    }
     const auto ms = [](std::atomic<uint64_t>& a) { return static_cast<double>(a.exchange(0)) / 1e6; };
     const auto n = [](std::atomic<uint64_t>& a) { return static_cast<unsigned long long>(a.exchange(0)); };
     const double digest = ms(g_laps.digest), read = ms(g_laps.read), decode = ms(g_laps.decode);
