@@ -275,9 +275,6 @@ void reportDescWrites() {
 bool MoverShadowState::bind(VkDevice device, VkDescriptorSet set, VkImageView depth, bool ready, DescWriteStamp* stamp) const {
     if (!inactive_ || !dummyView_ || !sampler_) return false;
     ready=ready && active_ && activeFrame_==getOrCreateEngineVulkanContext().frameContext().frame;
-    if (false && getOrCreateEngineVulkanContext().frameContext().frame%600==0)
-        mc2::fmt::print_err("[SHADOW_BAKE] mover_bind frame={} producer_frame={} ready={} active={}\n",
-            getOrCreateEngineVulkanContext().frameContext().frame,activeFrame_,ready,frame_.flags[0]);
     const VkDescriptorImageInfo image{sampler_.get(),ready?depth:dummyView_.get(),ready?VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL:VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
     VkDescriptorBufferInfo buffer{ready?active_.buffer:inactive_.get(),ready?active_.offset:0,sizeof(MoverShadowFrame)};
     if (!ready) {

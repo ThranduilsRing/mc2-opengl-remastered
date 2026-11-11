@@ -8513,18 +8513,6 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [
-    "frame",
-    "producer_frame",
-    "ready",
-    "active"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "SHADOW_BAKE",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
     "generation",
     "casters"
    ],
