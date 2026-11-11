@@ -186,7 +186,7 @@ void MechSkinPass::setRayInput(bool on) noexcept {
     for (bool& s : usageStale_) s = true;   // ensure() swaps each slot's buffer the next time it plans that slot (its prior submit has retired then)
 }
 
-void MechSkinPass::record(VkCommandBuffer cb, VkBuffer srcVbo, VkDeviceSize srcBytes, VkBuffer bones, VkDeviceSize boneRange, uint32_t boneOffset) {
+void MechSkinPass::writeDescriptors(VkBuffer srcVbo, VkDeviceSize srcBytes, VkBuffer bones, VkDeviceSize boneRange) {
     if (!active_ || srcVbo == VK_NULL_HANDLE || bones == VK_NULL_HANDLE) return;
     // Each binding is rewritten only when its buffer or range changed since this slot's set last saw it (the slot's prior submit has retired).
     const VkDescriptorType types[4] = {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
@@ -199,10 +199,31 @@ void MechSkinPass::record(VkCommandBuffer cb, VkBuffer srcVbo, VkDeviceSize srcB
         ++issued;
     }
     noteDescWrites(issued, 4 - issued);
-    pipe_.bind(cb, sets_.set(slot_), std::span<const uint32_t>(&boneOffset, 1));
-    vkCmdDispatch(cb, (maxCount_ + 63u) / 64u, jobCount_, 1);
+}
+
+static void dispatchSkin(const ComputePipeline& pipe, VkDescriptorSet set, uint32_t maxCount, uint32_t jobCount, VkCommandBuffer cb, uint32_t boneOffset) {
+    pipe.bind(cb, set, std::span<const uint32_t>(&boneOffset, 1));
+    vkCmdDispatch(cb, (maxCount + 63u) / 64u, jobCount, 1);
     // The skinned region feeds the vertex-input stage of the depth, colour and shadow passes recorded after this.
     cmdBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT);
+}
+
+void MechSkinPass::Frozen::recordDispatch(VkCommandBuffer cb, uint32_t boneOffset) const {
+    if (!active || !pipe) return;
+    dispatchSkin(*pipe, set, maxCount, jobCount, cb, boneOffset);
+}
+
+MechSkinPass::Frozen MechSkinPass::freeze() const {
+    Frozen f;
+    f.pipe = &pipe_; f.set = sets_.set(slot_); f.active = active_; f.maxCount = maxCount_; f.jobCount = jobCount_;
+    f.skinned = skinned_[slot_].get(); f.runOff = runOff_; f.dst = dst_;
+    return f;
+}
+
+void MechSkinPass::record(VkCommandBuffer cb, VkBuffer srcVbo, VkDeviceSize srcBytes, VkBuffer bones, VkDeviceSize boneRange, uint32_t boneOffset) {
+    if (!active_ || srcVbo == VK_NULL_HANDLE || bones == VK_NULL_HANDLE) return;
+    writeDescriptors(srcVbo, srcBytes, bones, boneRange);
+    dispatchSkin(pipe_, sets_.set(slot_), maxCount_, jobCount_, cb, boneOffset);
 }
 
 }  // namespace mc2vk
