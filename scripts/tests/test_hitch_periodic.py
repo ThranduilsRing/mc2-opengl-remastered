@@ -74,13 +74,16 @@ def test_periodic_work_has_attribution_outside_element_loops():
 def test_pass_window_keeps_default_emission_and_one_unflushed_write():
     src = source("vk_gpu_profile.cpp")
     window = between(src, 'void flushWindow(uint64_t frame)', '// Reads one slot')
-    assert window.count('std::fwrite(output.data(), 1, output.size(), stderr)') == 1
+    assert window.count('mc2::fmt::print_err(') == 1
     assert 'std::fprintf' not in window and 'std::fflush' not in window
-    assert '[VK_GPU_PASSES v1] frame=%llu n=%u span_ms=%.3f sum_ms=%.3f unattributed_ms=%.3f scopes=%u dropped=%u overflow=%u |' in window
+    assert '[VK_GPU_PASSES v1] frame={} n={} span_ms={:.3f} sum_ms={:.3f} unattributed_ms={:.3f} scopes={} dropped={} overflow={} |{}' in window
     assert '"=%.3f(x%.1f)"' in window and "output += r.name" in window
     assert 'constexpr uint32_t kLogEvery = 120;' in src
     assert src.count('if (g.windowFrames >= kLogEvery) flushWindow(f);') == 2
     assert 'tagRequested' not in window.split('output += \'\\n\';', 1)[0]
+    facade = (ROOT / 'mclib' / 'mc2format.h').read_text(encoding='utf-8')
+    writer = between(facade, 'int print(std::FILE* f,', 'template <class... A> int print_err(')
+    assert writer.count('std::fwrite(') == 1 and 'fflush' not in writer
 
 
 def test_quiet_ledger_retains_crash_refresh_but_only_diagnostics_query_driver():

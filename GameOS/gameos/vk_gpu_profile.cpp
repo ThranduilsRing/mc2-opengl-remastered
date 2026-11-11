@@ -3,6 +3,7 @@
 #include "gos_profiler.h"
 #include "battle_bench.h"
 #include "mc2_diag_verbose.h"
+#include "mc2fmt.h"
 
 #include <algorithm>
 #include <atomic>
@@ -140,10 +141,6 @@ void flushWindow(uint64_t frame) {
     std::string output;
     output.reserve(16384);
     char values[2048];  // enough even for three fixed-format DBL_MAX values
-    std::snprintf(values, sizeof values, "[VK_GPU_PASSES v1] frame=%llu n=%u span_ms=%.3f sum_ms=%.3f unattributed_ms=%.3f scopes=%u dropped=%u overflow=%u |",
-                 static_cast<unsigned long long>(frame), g.windowFrames, g.spanSumMs / n, g.sumSumMs / n,
-                 (g.spanSumMs - g.sumSumMs) / n, g.rowCount, g.windowDropped, g.windowOverflow);
-    output += values;
     for (uint32_t i = 0; i < g.rowCount; ++i) {
         const Row& r = g.rows[i];
         output += ' ';
@@ -165,7 +162,9 @@ void flushWindow(uint64_t frame) {
             break;
         }
     }
-    std::fwrite(output.data(), 1, output.size(), stderr);
+    mc2::fmt::print_err("[VK_GPU_PASSES v1] frame={} n={} span_ms={:.3f} sum_ms={:.3f} unattributed_ms={:.3f} scopes={} dropped={} overflow={} |{}",
+        frame, g.windowFrames, g.spanSumMs / n, g.sumSumMs / n, (g.spanSumMs - g.sumSumMs) / n,
+        g.rowCount, g.windowDropped, g.windowOverflow, output);
     for (uint32_t i = 0; i < g.rowCount; ++i) { g.rows[i].sumMs = 0; g.rows[i].calls = 0; g.rows[i].frames = 0; }
     g.spanSumMs = g.sumSumMs = 0;
     g.windowFrames = g.windowDropped = g.windowOverflow = 0;
