@@ -4,6 +4,7 @@
 #include "file.h"
 #include "vfs.h"
 #include "../GameOS/gameos/cook_cache.h"
+#include "../GameOS/gameos/diagnostic_trace.h"
 #include "mc2fmt.h"
 #include <algorithm>
 #include <cstring>
@@ -200,6 +201,7 @@ bool cook(Asset& asset, std::string_view sourcePath) {
 }
 
 void reportLoadLaps(std::string_view stage, double stageMs, std::string_view mission) {
+    if (!mc2_diag::tagRequested("LOAD_LAPS")) return;   // MC2_DIAG_TAGS=LOAD_LAPS; accumulators are cheap and never reset when off
     const auto ms = [](std::atomic<uint64_t>& a) { return static_cast<double>(a.exchange(0)) / 1e6; };
     const auto n = [](std::atomic<uint64_t>& a) { return static_cast<unsigned long long>(a.exchange(0)); };
     const double digest = ms(g_laps.digest), read = ms(g_laps.read), decode = ms(g_laps.decode);
