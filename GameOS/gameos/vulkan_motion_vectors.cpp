@@ -4,6 +4,7 @@
 #include "vk_island_util.h"
 #include "vk_render_infra.h"
 #include "vk_gpu_profile.h"
+#include "vk_dynamic_rendering.h"
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
 #include "vulkan_shared_scene_color.h"
 #include "../../RenderCore/FramePackets.h"
@@ -20,7 +21,7 @@ extern std::atomic<uint32_t> g_mc2FrameCounter;
 
 namespace mc2vk {
 namespace {
-bool makeFullscreenPipeline(VkDevice dev, VkPipelineLayout layout, VkRenderPass rp, std::string_view frag,
+bool makeFullscreenPipeline(VkDevice dev, VkPipelineLayout layout, const VkFormat* colorFormats, std::string_view frag,
                             VkColorComponentFlags writeMask, OwnedPipeline& out, uint32_t attachments = 1) {
     OwnedShaderModule vs(dev, vk_island_util::loadSpv(dev, vk_island_util::spvDir() + "postprocess.vert.spv", nullptr));
     OwnedShaderModule fs(dev, vk_island_util::loadSpv(dev, vk_island_util::spvDir() + std::string(frag), nullptr));
@@ -42,7 +43,9 @@ bool makeFullscreenPipeline(VkDevice dev, VkPipelineLayout layout, VkRenderPass 
     VkGraphicsPipelineCreateInfo gp{VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};
     gp.stageCount = 2; gp.pStages = stages; gp.pVertexInputState = &vin; gp.pInputAssemblyState = &ia;
     gp.pViewportState = &vp; gp.pRasterizationState = &rs; gp.pMultisampleState = &ms;
-    gp.pColorBlendState = &blend; gp.pDynamicState = &dyn; gp.layout = layout; gp.renderPass = rp;
+    gp.pColorBlendState = &blend; gp.pDynamicState = &dyn; gp.layout = layout;
+    const VkPipelineRenderingCreateInfo prci = dynrender::pipelineInfo(attachments, colorFormats, VK_FORMAT_UNDEFINED);
+    gp.pNext = &prci; gp.renderPass = VK_NULL_HANDLE;
     return mc2vk::create(out, dev, [&](auto* h) { return infra::graphics(dev, VK_NULL_HANDLE, 1, &gp, nullptr, h); });
 }
 }
@@ -57,22 +60,16 @@ struct MotionVectors::Impl {
     OwnedDescriptorPool pool;
     OwnedPipelineLayout layout;
     OwnedPipeline pipeline;
-    OwnedRenderPass renderPass;
-    OwnedFramebuffer framebuffer;
     VkDescriptorSet set = VK_NULL_HANDLE;       // binding 0 = scene depth
     VkDescriptorSet debugSet = VK_NULL_HANDLE;  // binding 0 = motion output
     VkImage sourceDepth = VK_NULL_HANDLE;
     const VkImageResource* normalImage = nullptr;   // shared GBuffer1, bound at binding 2 for the water reactive class
     // Debug inset over the shared present image (built on first use).
-    OwnedRenderPass debugPass;
     OwnedPipeline debugPipeline;
-    OwnedFramebuffer debugFramebuffer;
     VkImageView debugTarget = VK_NULL_HANDLE;
     bool recorded = false, debugFailed = false;
 
     ~Impl() {
-        debugFramebuffer.reset();
-        framebuffer.reset();
         if (ctx) { vkImageResourceDestroy(&reactive, ctx->device()); vkImageResourceDestroy(&output, ctx->device()); }
     }
     bool init(VulkanContext& context, const VkImageResource& depth) {
@@ -136,71 +133,19 @@ struct MotionVectors::Impl {
         VkPipelineLayoutCreateInfo li{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
         li.setLayoutCount = 1; li.pSetLayouts = &sl; li.pushConstantRangeCount = 1; li.pPushConstantRanges = &pc;
         if (!mc2vk::create(layout, dev, [&](auto* h) { return vkCreatePipelineLayout(dev, &li, nullptr, h); })) return false;
-        VkAttachmentDescription ad[2]{};
-        ad[0].format = output.format; ad[1].format = reactive.format;
-        for (auto& a : ad) {
-            a.samples = VK_SAMPLE_COUNT_1_BIT;
-            a.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; a.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-            a.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; a.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-            a.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; a.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        }
-        VkAttachmentReference ref[2] = {{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}, {1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}};
-        VkSubpassDescription sub{}; sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        sub.colorAttachmentCount = 2; sub.pColorAttachments = ref;
-        // In: the previous frame's readers of the output (debug inset, later the resolve) are done.
-        // Out: fragment-shader reads later in this submit.
-        VkSubpassDependency deps[] = {
-            {VK_SUBPASS_EXTERNAL, 0, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT,
-             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, 0},
-            {0, VK_SUBPASS_EXTERNAL, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT, 0}};
-        VkRenderPassCreateInfo ri{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
-        ri.attachmentCount = 2; ri.pAttachments = ad; ri.subpassCount = 1; ri.pSubpasses = &sub;
-        ri.dependencyCount = 2; ri.pDependencies = deps;
-        if (!mc2vk::create(renderPass, dev, [&](auto* h) { return vkCreateRenderPass(dev, &ri, nullptr, h); })) return false;
-        const VkImageView targets[2] = {output.view.get(), reactive.view.get()};
-        VkFramebufferCreateInfo fi{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
-        fi.renderPass = renderPass.get(); fi.attachmentCount = 2; fi.pAttachments = targets;
-        fi.width = output.w; fi.height = output.h; fi.layers = 1;
-        if (!mc2vk::create(framebuffer, dev, [&](auto* h) { return vkCreateFramebuffer(dev, &fi, nullptr, h); })) return false;
-        return makeFullscreenPipeline(dev, layout.get(), renderPass.get(), "motion_vectors.frag.spv",
+        // The pass is dynamic rendering: output + reactive, DONT_CARE load / STORE; record() brackets it with the layout barriers the render pass did.
+        const VkFormat fmts[2] = {output.format, reactive.format};
+        return makeFullscreenPipeline(dev, layout.get(), fmts, "motion_vectors.frag.spv",
                                       VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT, pipeline, 2);
     }
     bool initDebug(VkImageView target, uint32_t w, uint32_t h) {
         const auto dev = ctx->device();
-        if (!debugPass) {
-            VkAttachmentDescription ad{};
-            ad.format = VK_FORMAT_R8G8B8A8_UNORM; ad.samples = VK_SAMPLE_COUNT_1_BIT;
-            ad.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; ad.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-            ad.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; ad.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-            ad.initialLayout = ad.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-            VkAttachmentReference ref{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
-            VkSubpassDescription sub{}; sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-            sub.colorAttachmentCount = 1; sub.pColorAttachments = &ref;
-            // LOAD pass with no layout transition: chain against the previous writer of the
-            // present image and its later readers explicitly.
-            const VkPipelineStageFlags around = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-                VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT;
-            const VkAccessFlags aroundAccess = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT |
-                VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
-            VkSubpassDependency deps[] = {
-                {VK_SUBPASS_EXTERNAL, 0, around, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, aroundAccess,
-                 VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, 0},
-                {0, VK_SUBPASS_EXTERNAL, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, around,
-                 VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, aroundAccess, 0}};
-            VkRenderPassCreateInfo ri{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
-            ri.attachmentCount = 1; ri.pAttachments = &ad; ri.subpassCount = 1; ri.pSubpasses = &sub;
-            ri.dependencyCount = 2; ri.pDependencies = deps;
-            if (!mc2vk::create(debugPass, dev, [&](auto* hh) { return vkCreateRenderPass(dev, &ri, nullptr, hh); })) return false;
-            if (!makeFullscreenPipeline(dev, layout.get(), debugPass.get(), "motion_vectors_debug.frag.spv",
+        if (!debugPipeline) {   // LOAD pass over the present image, no layout change; recordDebug brackets it with the stage/access dependencies
+            const VkFormat fmt = VK_FORMAT_R8G8B8A8_UNORM;
+            if (!makeFullscreenPipeline(dev, layout.get(), &fmt, "motion_vectors_debug.frag.spv",
                     VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
                     debugPipeline)) return false;
         }
-        debugFramebuffer.reset();
-        VkFramebufferCreateInfo fi{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
-        fi.renderPass = debugPass.get(); fi.attachmentCount = 1; fi.pAttachments = &target;
-        fi.width = w; fi.height = h; fi.layers = 1;
-        if (!mc2vk::create(debugFramebuffer, dev, [&](auto* hh) { return vkCreateFramebuffer(dev, &fi, nullptr, hh); })) return false;
         debugTarget = target;
         return true;
     }
@@ -279,9 +224,20 @@ void MotionVectors::record(VkCommandBuffer cb, const VkImageResource& depth, uin
     }
     {
         MC2_VK_GPU_SCOPE(timer, cb, "VKIsl.Post.MotionVectors");
-        VkRenderPassBeginInfo rp{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
-        rp.renderPass = s.renderPass.get(); rp.framebuffer = s.framebuffer.get(); rp.renderArea.extent = {s.output.w, s.output.h};
-        vkCmdBeginRenderPass(cb, &rp, VK_SUBPASS_CONTENTS_INLINE);
+        // The render pass's initial layout move + external dependency: both targets UNDEFINED -> COLOR_ATTACHMENT, after the previous frame's readers.
+        constexpr VkPipelineStageFlags2 kPrevReaders = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+        dynrender::colorImageBarrier(*s.ctx, cb, s.output.image.get(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                     kPrevReaders, 0, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT);
+        dynrender::colorImageBarrier(*s.ctx, cb, s.reactive.image.get(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                     kPrevReaders, 0, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT);
+        {
+            dynrender::Pass pass;
+            pass.area = {{0, 0}, {s.output.w, s.output.h}};
+            pass.colorCount = 2;
+            pass.color[0] = dynrender::attachment(s.output.view.get(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_STORE);
+            pass.color[1] = dynrender::attachment(s.reactive.view.get(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_STORE);
+            dynrender::begin(*s.ctx, cb, pass);
+        }
         VkViewport vp{0, 0, static_cast<float>(s.output.w), static_cast<float>(s.output.h), 0, 1}; VkRect2D sc{{0, 0}, {s.output.w, s.output.h}};
         vkCmdSetViewport(cb, 0, 1, &vp); vkCmdSetScissor(cb, 0, 1, &sc);
         infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s.pipeline.get());
@@ -291,7 +247,14 @@ void MotionVectors::record(VkCommandBuffer cb, const VkImageResource& depth, uin
         vkCmdPushConstants(cb, s.layout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 112, 8, jitterClip);
         const uint32_t objectValid = (objectMotionWritten ? 1u : 0u) | (normalReadable ? 2u : 0u);
         vkCmdPushConstants(cb, s.layout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 120, 4, &objectValid);
-        vkCmdDraw(cb, 3, 1, 0, 0); vkCmdEndRenderPass(cb);
+        vkCmdDraw(cb, 3, 1, 0, 0); dynrender::end(*s.ctx, cb);
+        // The render pass's final layout + external dependency: COLOR_ATTACHMENT -> SHADER_READ_ONLY for the later fragment-shader reads.
+        dynrender::colorImageBarrier(*s.ctx, cb, s.output.image.get(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                     VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                                     VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT);
+        dynrender::colorImageBarrier(*s.ctx, cb, s.reactive.image.get(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                     VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                                     VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT);
     }
     if (normalReadable) {
         nb.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -314,13 +277,22 @@ bool MotionVectors::recordDebug(VkCommandBuffer cb, VkImageView target, uint32_t
     if (!impl_ || !impl_->recorded || impl_->debugFailed || target == VK_NULL_HANDLE || w < 64 || h < 64) return false;
     auto& s = *impl_;
     s.recorded = false;
-    if (s.debugTarget != target || !s.debugFramebuffer) {
+    if (s.debugTarget != target || !s.debugPipeline) {
         if (!s.initDebug(target, w, h)) { s.debugFailed = true; return false; }
     }
-    VkRenderPassBeginInfo rp{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
-    rp.renderPass = s.debugPass.get(); rp.framebuffer = s.debugFramebuffer.get(); rp.renderArea.extent = {w, h};
     MC2_VK_GPU_SCOPE(timer, cb, "VKIsl.Present.MotionVectorsDebug");
-    vkCmdBeginRenderPass(cb, &rp, VK_SUBPASS_CONTENTS_INLINE);
+    // LOAD pass with no layout transition: chain against the previous writer of the present image and its later readers explicitly.
+    constexpr VkPipelineStageFlags2 kAround = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+    constexpr VkAccessFlags2 kAroundAccess = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_TRANSFER_READ_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT;
+    dynrender::memoryBarrier(*s.ctx, cb, kAround, kAroundAccess, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                             VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT);
+    {
+        dynrender::Pass pass;
+        pass.area = {{0, 0}, {w, h}};
+        pass.colorCount = 1;
+        pass.color[0] = dynrender::attachment(target, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE);
+        dynrender::begin(*s.ctx, cb, pass);
+    }
     // Top-right inset, one third of the present image.
     const uint32_t iw = w / 3, ih = h / 3, margin = 16;
     const uint32_t x0 = w - iw - margin;
@@ -332,7 +304,8 @@ bool MotionVectors::recordDebug(VkCommandBuffer cb, VkImageView target, uint32_t
     const float pc[4] = {static_cast<float>(s.output.w), static_cast<float>(s.output.h), 8.0f, 0.0f};   // render size, full-scale pixels
     vkCmdPushConstants(cb, s.layout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), pc);
     vkCmdDraw(cb, 3, 1, 0, 0);
-    vkCmdEndRenderPass(cb);
+    dynrender::end(*s.ctx, cb);
+    dynrender::memoryBarrier(*s.ctx, cb, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, kAround, kAroundAccess);
     return true;
 }
 }

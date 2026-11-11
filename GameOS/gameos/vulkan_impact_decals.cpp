@@ -50,6 +50,7 @@ extern "C" void mc2_vk_impact_decals_health(Mc2ImpactDecalHealth* out) {
 #include <volk.h>
 
 #include "gos_postprocess.h"
+#include "vk_dynamic_rendering.h"
 #include "vk_gpu_profile.h"
 #include "vk_image_resource.h"
 #include "vk_island_util.h"
@@ -121,8 +122,7 @@ struct State {
     mc2vk::ResidentTextureRef normalAtlas;
     mc2vk::OwnedBuffer ubo[kSlots];
     mc2vk::OwnedBuffer ssbo[kSlots];
-    mc2vk::OwnedRenderPass rpass;
-    mc2vk::OwnedFramebuffer fb;
+    VkFormat colorFmt = VK_FORMAT_UNDEFINED;
     mc2vk::OwnedDescriptorSetLayout dsl;
     mc2vk::OwnedDescriptorPool pool;
     mc2vk::OwnedPipelineLayout playout;
@@ -188,32 +188,7 @@ bool build(State* s, int w, int h) {
             decline("buffer_create_failed"); return false;
         }
     }
-    {   // render pass: shared colour0 only, LOAD/STORE, layout-stable
-        VkAttachmentDescription att{};
-        att.format = s->colorRes->format; att.samples = VK_SAMPLE_COUNT_1_BIT;
-        att.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        att.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        att.initialLayout = att.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        VkAttachmentReference ref{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
-        VkSubpassDescription sub{};
-        sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS; sub.colorAttachmentCount = 1; sub.pColorAttachments = &ref;
-        // Colour writes before and after the pass are ordered against its blend reads/writes (the depth and normal barriers
-        // are recorded around the pass).
-        constexpr VkPipelineStageFlags kColorStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        constexpr VkAccessFlags kColorRW = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        const VkSubpassDependency deps[2] = {
-            {VK_SUBPASS_EXTERNAL, 0, kColorStage, kColorStage, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, kColorRW, 0},
-            {0, VK_SUBPASS_EXTERNAL, kColorStage, kColorStage, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, kColorRW, 0}};
-        VkRenderPassCreateInfo rpci{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
-        rpci.attachmentCount = 1; rpci.pAttachments = &att; rpci.subpassCount = 1; rpci.pSubpasses = &sub;
-        rpci.dependencyCount = 2; rpci.pDependencies = deps;
-        if (!mc2vk::create(s->rpass, dev, [&](auto* o) { return vkCreateRenderPass(dev, &rpci, nullptr, o); })) return false;
-        const VkImageView view = s->colorRes->view.get();
-        VkFramebufferCreateInfo fci{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
-        fci.renderPass = s->rpass.get(); fci.attachmentCount = 1; fci.pAttachments = &view;
-        fci.width = static_cast<uint32_t>(w); fci.height = static_cast<uint32_t>(h); fci.layers = 1;
-        if (!mc2vk::create(s->fb, dev, [&](auto* o) { return vkCreateFramebuffer(dev, &fci, nullptr, o); })) return false;
-    }
+    s->colorFmt = s->colorRes->format;   // pass: shared colour0 only, LOAD/STORE, layout-stable; dynamic rendering (pipelines carry the format)
     {   // set: 0 depth, 1 scene normal (class alpha), 2 surface atlas, 3 normal atlas, 4 frame UBO, 5 decal SSBO
         VkDescriptorSetLayoutBinding b[6]{};
         for (uint32_t i = 0; i < 6; ++i) {
@@ -295,7 +270,9 @@ bool build(State* s, int w, int h) {
             dyns.dynamicStateCount = 1; dyns.pDynamicStates = &dynViewport;
             gp.pDynamicState = &dyns;
             gp.pViewportState = &vps; gp.pRasterizationState = &rs; gp.pMultisampleState = &ms; gp.pColorBlendState = &cb;
-            gp.layout = s->playout.get(); gp.renderPass = s->rpass.get(); gp.subpass = 0;
+            const VkPipelineRenderingCreateInfo prci = mc2vk::dynrender::pipelineInfo(1, &s->colorFmt, VK_FORMAT_UNDEFINED);
+            gp.pNext = &prci;
+            gp.layout = s->playout.get(); gp.renderPass = VK_NULL_HANDLE; gp.subpass = 0;
             if (!mc2vk::create(out, dev, [&](VkPipeline* o) { return mc2vk::infra::graphics(dev, VK_NULL_HANDLE, 1, &gp, nullptr, o); })) return false;
             mc2vk::nameObject(dev, out.get(), name);
             return true;
@@ -424,10 +401,13 @@ extern "C" int mc2_vk_impact_decals_run(int w, int h) {
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
     {
         MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.ImpactDecals");
-        VkRenderPassBeginInfo rbi{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
-        rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
-        rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
-        vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+        {   // the external dependency the render pass carried: colour writes ordered against this pass's blend reads/writes
+            constexpr VkPipelineStageFlags2 kStage = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+            constexpr VkAccessFlags2 kRW = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+            mc2vk::dynrender::memoryBarrier(ctx, cb, kStage, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, kStage, kRW);
+        }
+        const VkImageView colorView = s->colorRes->view.get();
+        mc2vk::dynrender::beginLoad(ctx, cb, static_cast<uint32_t>(w), static_cast<uint32_t>(h), 1, &colorView, VK_NULL_HANDLE, VK_FORMAT_UNDEFINED);
         mc2vk::infra::setSceneViewport(cb, static_cast<uint32_t>(w), static_cast<uint32_t>(h));
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[slot], 0, nullptr);
         PushMode pm{};
@@ -440,7 +420,12 @@ extern "C" int mc2_vk_impact_decals_run(int w, int h) {
             vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pm), &pm);
             vkCmdDraw(cb, 36, g_frameHot, 0, 0);
         }
-        vkCmdEndRenderPass(cb);
+        mc2vk::dynrender::end(ctx, cb);
+        {   // the pass's closing dependency (colour writes visible to later colour reads/writes)
+            constexpr VkPipelineStageFlags2 kStage = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+            mc2vk::dynrender::memoryBarrier(ctx, cb, kStage, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, kStage,
+                                            VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT);
+        }
         gpuScope.end();
     }
     barrier(s->depthRes->image.get(), depthAspect, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,

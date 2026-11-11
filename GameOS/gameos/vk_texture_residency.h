@@ -21,6 +21,7 @@ public:
     RenderCore::TextureHandle get() const { return owner_ ? handle_ : RenderCore::TextureHandle::invalid(); }
     explicit operator bool() const { return owner_ != nullptr; }
     VkImageView view() const;
+    VkImage image() const;   // the resident image itself (render targets record their own layout barriers); null when not resident
 private:
     friend class TextureResidency;
     ResidentTextureRef(TextureResidency& owner, RenderCore::TextureHandle handle, bool arrayView = false) : owner_(&owner), handle_(handle), arrayView_(arrayView) {}
@@ -76,6 +77,7 @@ public:
     ResidentTextureRef retain(RenderCore::TextureHandle handle);
     void release(RenderCore::TextureHandle handle);
     VkImageView view(RenderCore::TextureHandle handle, bool arrayView = false) const;
+    VkImage image(RenderCore::TextureHandle handle) const;
     std::shared_ptr<const void> imageOwner(RenderCore::TextureHandle handle) const;
     uint32_t capacity() const { return capacity_; }
 private:

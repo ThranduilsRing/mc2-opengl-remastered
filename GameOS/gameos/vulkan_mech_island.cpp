@@ -37,6 +37,7 @@
 #include "vk_island_util.h"
 #include "vk_one_shot.h"
 #include "vulkan_context.h"
+#include "vk_dynamic_rendering.h"
 #include "vulkan_mech_island.h"
 #include "vulkan_mech_skin.h"
 #include "vk_texture_residency.h"
@@ -201,8 +202,9 @@ struct MechIsland : mc2vk::IslandState {
     // Owned objects are declared in creation order and released in reverse by the destructor, while the device is alive (the engine context releases the
     // parked island ahead of the device). The timer owns its query pool and is torn down first.
     mc2vk::OwnedCommandPool cpool[mc2vk::kMaxFramesInFlight];   // per-slot pools: vkResetCommandPool instead of per-cb reset (game pass and lab preview share cbuf[par])
-    mc2vk::OwnedRenderPass rpass;
-    mc2vk::OwnedFramebuffer fb;
+    struct VkImageResource* mvRes = nullptr;   // shared object-motion image: the pass clears it and moves its layout
+    VkFormat sceneFmts[3]{VK_FORMAT_UNDEFINED, VK_FORMAT_UNDEFINED, VK_FORMAT_UNDEFINED};   // colour0, normal, object MV (dynamic rendering)
+    VkFormat sceneDepthFmt = VK_FORMAT_UNDEFINED;
     mc2vk::OwnedDescriptorSetLayout dsl;
     mc2vk::OwnedDescriptorPool pool;
     mc2vk::OwnedSampler albedoSamp;
@@ -214,12 +216,9 @@ struct MechIsland : mc2vk::IslandState {
     // Mech-lab panel pass: the same skinned material path, drawn into the UI preview target (RGBA8 color LOAD over the
     // legacy preview pass, own cleared depth). Fail-soft: a missing variant leaves previewReady false and the world path intact.
     mc2vk::OwnedShaderModule previewFrag;
-    mc2vk::OwnedRenderPass previewRpass;
+    VkFormat previewFmts[2] = {VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_R8G8B8A8_UNORM};   // the preview pass is dynamic rendering: pipelines carry these (+ D32)
     mc2vk::OwnedPipeline previewPipe, previewDepthPipe, backdropPipe;
     mc2vk::OwnedShaderModule backdropVert, backdropFrag;
-    mc2vk::OwnedFramebuffer previewFb;
-    VkImageView previewFbViews[3] = {};
-    int previewFbW = 0, previewFbH = 0;
     bool previewReady = false;
 
     ~MechIsland() override { gpuTimer.destroy(); }
@@ -496,70 +495,19 @@ bool init_island(MechIsland* s, int w, int h) {
     // The per-scheme descriptor sets (incl. the dummy white schemes[0]) are created in
     // the descriptor-pool block below (needs s->pool). binding3 is always valid there.
 
-    // Render pass: 2 color LOAD (preserve GL terrain in shared color/normal) + shared
-    // depth LOAD (D32S8, GEQUAL test+write). NO clear. Same shape as the prop island Tier-1.
+    // Scene pass (VK_KHR_dynamic_rendering, recorded in record_mech): colour0 + normal LOAD (preserve the terrain in the shared colour/normal), the per-object
+    // motion vectors CLEAR (sentinel), shared depth LOAD (D32S8, GEQUAL test+write). The pipelines carry the formats; the pass records the layout moves of the
+    // motion-vector image (UNDEFINED -> COLOR_ATTACHMENT before, -> SHADER_READ_ONLY for the MV pass after) that the old render pass did.
     {
         VkImageResource* colorRes  = reinterpret_cast<VkImageResource*>(s->colorRes);
         VkImageResource* normalRes = reinterpret_cast<VkImageResource*>(s->normalRes);
         VkImageResource* depthRes  = reinterpret_cast<VkImageResource*>(s->depthRes);
         VkImageResource* mvRes = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_OBJECT_MV);
         if (!mvRes) { setFallback("object_mv_missing"); return false; }
-        VkAttachmentDescription att[4]{};
-        // att[3]: per-object motion vectors, cleared to a sentinel each run, read by the MV pass.
-        att[3].format = mvRes->format;     att[3].samples = VK_SAMPLE_COUNT_1_BIT;
-        att[3].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR; att[3].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        att[3].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att[3].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        att[3].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; att[3].finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        att[0].format = colorRes->format;  att[0].samples = VK_SAMPLE_COUNT_1_BIT;
-        att[0].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        att[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        att[0].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; att[0].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        att[1].format = normalRes->format; att[1].samples = VK_SAMPLE_COUNT_1_BIT;
-        att[1].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        att[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        att[1].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; att[1].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        att[2].format = depthRes->format;  att[2].samples = VK_SAMPLE_COUNT_1_BIT;
-        att[2].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[2].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        att[2].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[2].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
-        att[2].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL; att[2].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-        VkAttachmentReference colorRefs[3] = {
-            {0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}, {1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL},
-            {3, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL} };
-        VkAttachmentReference depthRef{2, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
-        VkSubpassDescription sub{};
-        sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        sub.colorAttachmentCount = 3; sub.pColorAttachments = colorRefs;
-        sub.pDepthStencilAttachment = &depthRef;
-
-        VkSubpassDependency deps[2]{};
-        deps[0].srcSubpass = VK_SUBPASS_EXTERNAL; deps[0].dstSubpass = 0;
-        // FRAGMENT_SHADER: last frame's MV pass sampled the object-motion image this pass now clears.
-        deps[0].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-        deps[0].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        deps[0].dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        deps[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
-                                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        deps[1].srcSubpass = 0; deps[1].dstSubpass = VK_SUBPASS_EXTERNAL;
-        deps[1].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-        deps[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        deps[1].dstStageMask  = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-        deps[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;   // object MV sampled by the MV pass
-
-        VkRenderPassCreateInfo rpci{};
-        rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        rpci.attachmentCount = 4; rpci.pAttachments = att;
-        rpci.subpassCount = 1; rpci.pSubpasses = &sub;
-        rpci.dependencyCount = 2; rpci.pDependencies = deps;
-        if (!mc2vk::create(s->rpass, s->device, [&](VkRenderPass* h) { return vkCreateRenderPass(s->device, &rpci, nullptr, h); })) { setFallback("renderpass_failed"); return false; }
-        VkImageView fbViews[4] = { colorRes->view.get(), normalRes->view.get(), depthRes->view.get(), mvRes->view.get() };
-        VkFramebufferCreateInfo fci{};
-        fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        fci.renderPass = s->rpass.get(); fci.attachmentCount = 4; fci.pAttachments = fbViews;
-        fci.width = static_cast<uint32_t>(w); fci.height = static_cast<uint32_t>(h); fci.layers = 1;
-        if (!mc2vk::create(s->fb, s->device, [&](VkFramebuffer* h) { return vkCreateFramebuffer(s->device, &fci, nullptr, h); })) { setFallback("framebuffer_failed"); return false; }
+        s->mvRes = mvRes;
+        s->sceneFmts[0] = colorRes->format; s->sceneFmts[1] = normalRes->format; s->sceneFmts[2] = mvRes->format;
+        s->sceneDepthFmt = depthRes->format;
     }
-
     // Descriptor layout: 0=UBO(VS/FS), 1=instance SSBO(VS), 2=bone SSBO(VS), 3=albedo(FS).
     {
         VkDescriptorSetLayoutBinding b[9]{};
@@ -693,7 +641,9 @@ bool init_island(MechIsland* s, int w, int h) {
         gp.pViewportState = &vps; gp.pRasterizationState = &rs;
         gp.pMultisampleState = &ms; gp.pDepthStencilState = &ds; gp.pColorBlendState = &cb;
         gp.pDynamicState = &dsci;
-        gp.layout = s->playout.get(); gp.renderPass = s->rpass.get(); gp.subpass = 0;
+        const VkPipelineRenderingCreateInfo sceneRendering = mc2vk::dynrender::pipelineInfo(3, s->sceneFmts, s->sceneDepthFmt);
+        gp.pNext = &sceneRendering;   // world pipelines: dynamic rendering (the lab preview pipelines below keep their render pass)
+        gp.layout = s->playout.get(); gp.renderPass = VK_NULL_HANDLE; gp.subpass = 0;
         // The depth shader consumes only position, UV and skinning attributes.
         const VkVertexInputAttributeDescription depthVia[]{via[0], via[2], via[3], via[4]};
         vin.vertexAttributeDescriptionCount = 4; vin.pVertexAttributeDescriptions = depthVia;
@@ -718,46 +668,11 @@ bool init_island(MechIsland* s, int w, int h) {
         s->previewReady = false;
         s->previewFrag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "mech_preview.frag.spv"));
         if (s->previewFrag) {
-            VkAttachmentDescription patt[3]{};
-            for (auto& a : patt) {
-                a.samples = VK_SAMPLE_COUNT_1_BIT;
-                a.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; a.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-            }
-            // Color: LOAD the legacy preview pass's output (it leaves the target SHADER_READ_ONLY for the UI).
-            patt[0].format = VK_FORMAT_R8G8B8A8_UNORM;
-            patt[0].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; patt[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-            patt[0].initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; patt[0].finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            // The normal output is unused by the panel; depth is private to this pass (reverse-Z clear 0).
-            patt[1].format = VK_FORMAT_R8G8B8A8_UNORM;
-            patt[1].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; patt[1].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-            patt[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; patt[1].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-            patt[2].format = VK_FORMAT_D32_SFLOAT;
-            patt[2].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR; patt[2].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-            patt[2].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; patt[2].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-            VkAttachmentReference pColor[2] = {{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}, {1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}};
-            VkAttachmentReference pDepth{2, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
-            VkSubpassDescription psub{};
-            psub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-            psub.colorAttachmentCount = 2; psub.pColorAttachments = pColor; psub.pDepthStencilAttachment = &pDepth;
-            VkSubpassDependency pdeps[2]{};
-            pdeps[0].srcSubpass = VK_SUBPASS_EXTERNAL; pdeps[0].dstSubpass = 0;
-            pdeps[0].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
-                                     VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-            pdeps[0].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-            pdeps[0].dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-            pdeps[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
-                                     VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-            pdeps[1].srcSubpass = 0; pdeps[1].dstSubpass = VK_SUBPASS_EXTERNAL;
-            pdeps[1].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-            pdeps[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-            pdeps[1].dstStageMask  = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT; pdeps[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-            VkRenderPassCreateInfo prci{};
-            prci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-            prci.attachmentCount = 3; prci.pAttachments = patt;
-            prci.subpassCount = 1; prci.pSubpasses = &psub;
-            prci.dependencyCount = 2; prci.pDependencies = pdeps;
-            bool ok = mc2vk::create(s->previewRpass, s->device, [&](VkRenderPass* h) { return vkCreateRenderPass(s->device, &prci, nullptr, h); });
-            gp.renderPass = s->previewRpass.get();
+            // Colour: LOADs the legacy preview pass's output (left SHADER_READ_ONLY for the UI); the normal output is unused by the panel; depth is
+            // private to this pass (reverse-Z clear 0). Recorded with dynamic rendering: record_mech_preview does the layout moves.
+            const VkPipelineRenderingCreateInfo previewRendering = mc2vk::dynrender::pipelineInfo(2, s->previewFmts, VK_FORMAT_D32_SFLOAT);
+            bool ok = true;
+            gp.pNext = &previewRendering; gp.renderPass = VK_NULL_HANDLE;
             // Color variant first (current state = color/EQUAL), then the depth prepass variant.
             stages[1].module = s->previewFrag.get();
             ok = ok && mc2vk::create(s->previewPipe, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); });
@@ -926,7 +841,9 @@ static void record_ray_movers(MechIsland* s, VkCommandBuffer cb, uint32_t par, c
 // (VulkanContext::submitRecorded). It touches nothing of the island or the caller's feed. The RT mover arm (record_ray_movers reads the feed and the
 // scene) stays on main: with ray tracing demanded the pass records inline, as before.
 struct MechRecPlan {
-    VkRenderPass rpass = VK_NULL_HANDLE; VkFramebuffer fb = VK_NULL_HANDLE; VkPipeline depthPipe = VK_NULL_HANDLE, pipe = VK_NULL_HANDLE;
+    VkImageView colorView = VK_NULL_HANDLE, normalView = VK_NULL_HANDLE, depthView = VK_NULL_HANDLE, mvView = VK_NULL_HANDLE;   // dynamic-rendering attachments
+    VkImage mvImage = VK_NULL_HANDLE; VkFormat depthFmt = VK_FORMAT_UNDEFINED;
+    VkPipeline depthPipe = VK_NULL_HANDLE, pipe = VK_NULL_HANDLE;
     VkPipelineLayout playout = VK_NULL_HANDLE; VkBuffer vbo = VK_NULL_HANDLE, ibo = VK_NULL_HANDLE;
     VkDescriptorSet groundSet = VK_NULL_HANDLE;
     uint32_t dyn[5]{}, groundOffsets[4]{}, boneOffset = 0;
@@ -948,16 +865,31 @@ static bool record_mech_cmds(const MechRecPlan& p, VkCommandBuffer cb, MechIslan
     mc2vkts::GpuTimer::cmdWrite(cb, p.timerPool, p.timerCount, 0);
     if (p.skin.active) { MC2_VK_GPU_SCOPE(skinScope, cb, "VKIsl.Mech.Skin"); p.skin.recordDispatch(cb, p.boneOffset); }   // compute pre-skin, outside the render pass
     if (rayIsland) record_ray_movers(rayIsland, cb, par, *rayFeed);
-    VkRenderPassBeginInfo rbi{};
-    rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    rbi.renderPass = p.rpass; rbi.framebuffer = p.fb;
-    rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(p.w), static_cast<uint32_t>(p.h)}};
-    // Only attachment 3 (object motion) clears: far-out sentinel = "no object motion here".
-    VkClearValue clears[4]{};
-    clears[3].color.float32[0] = 10000.0f; clears[3].color.float32[1] = 10000.0f;
-    rbi.clearValueCount = 4; rbi.pClearValues = clears;
     MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Mech");
-    vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+    mc2vk::VulkanContext& dctx = mc2vk::engineVulkanContextNoWait();
+    {   // scene pass: the external dependency + the MV image's UNDEFINED -> COLOR_ATTACHMENT move of the old render pass (FRAGMENT_SHADER: last frame's MV pass sampled it)
+        namespace dr = mc2vk::dynrender;
+        dr::memoryBarrier(dctx, cb, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                          VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                          VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,
+                          VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT |
+                          VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
+        dr::colorImageBarrier(dctx, cb, p.mvImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                              VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                              VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT);
+        // Only the object-motion slot clears: far-out sentinel = "no object motion here".
+        VkClearValue mvClear{}; mvClear.color.float32[0] = 10000.0f; mvClear.color.float32[1] = 10000.0f;
+        dr::Pass pass;
+        pass.area = {{0, 0}, {static_cast<uint32_t>(p.w), static_cast<uint32_t>(p.h)}};
+        pass.colorCount = 3;
+        pass.color[0] = dr::attachment(p.colorView, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE);
+        pass.color[1] = dr::attachment(p.normalView, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE);
+        pass.color[2] = dr::attachment(p.mvView, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_CLEAR,
+                                       VK_ATTACHMENT_STORE_OP_STORE, &mvClear);
+        pass.setDepth(dr::attachment(p.depthView, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_LOAD,
+                                     VK_ATTACHMENT_STORE_OP_STORE), p.depthFmt);
+        dr::begin(dctx, cb, pass);
+    }
 
     VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(p.w), static_cast<uint32_t>(p.h)}};
     mc2vk::infra::setSceneViewport(cb, static_cast<uint32_t>(p.w), static_cast<uint32_t>(p.h));
@@ -1012,7 +944,11 @@ static bool record_mech_cmds(const MechRecPlan& p, VkCommandBuffer cb, MechIslan
         p.skin.drawRun(cb, r, run, vertexBuffer, boundVertex, emit(run, mc2::battlebench::DrawMechColor));
     }
 
-    vkCmdEndRenderPass(cb);
+    mc2vk::dynrender::end(dctx, cb);
+    // The MV image moves to SHADER_READ_ONLY for the MV pass that samples it (the old render pass's finalLayout + external dependency).
+    mc2vk::dynrender::colorImageBarrier(dctx, cb, p.mvImage, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT);
     gpuScope.end();
     // VK-DRAW-PERF-1: stamp pass-end (gap 1->2 = mech instanced draws).
     mc2vkts::GpuTimer::cmdWrite(cb, p.timerPool, p.timerCount, 2);
@@ -1205,7 +1141,14 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     const clk::time_point tRender0 = clk::now();
     ZoneNamedN(zMechRec, "VK-mech-record-submit", true);   // VK-FLIP-FIELD-REPORT-1: CPU prepare + submit / reservation (to fn return)
     MechRecPlan plan;
-    plan.rpass = s->rpass.get(); plan.fb = s->fb.get(); plan.depthPipe = s->depthPipe.get(); plan.pipe = s->pipe.get();
+    {
+        VkImageResource* mvRes = reinterpret_cast<VkImageResource*>(s->mvRes);
+        plan.colorView = reinterpret_cast<VkImageResource*>(s->colorRes)->view.get();
+        plan.normalView = reinterpret_cast<VkImageResource*>(s->normalRes)->view.get();
+        plan.depthView = reinterpret_cast<VkImageResource*>(s->depthRes)->view.get();
+        plan.mvView = mvRes->view.get(); plan.mvImage = mvRes->image.get(); plan.depthFmt = s->sceneDepthFmt;
+    }
+    plan.depthPipe = s->depthPipe.get(); plan.pipe = s->pipe.get();
     plan.playout = s->playout.get(); plan.vbo = s->vbo.get(); plan.ibo = s->ibo.get(); plan.groundSet = s->groundLighting.set(par);
     std::copy_n(dynOffsets, 5, plan.dyn); std::copy_n(ground->offsets.data(), 4, plan.groundOffsets); plan.boneOffset = dynOffsets[2];
     plan.runs.assign(feed.runs, feed.runs + feed.runCount); plan.sets = runSets;
@@ -1298,19 +1241,38 @@ int previewFail(std::string_view why) {
 
 // Depth prepass + material runs into the preview framebuffer, viewport/scissor = the panel rect.
 bool record_mech_preview(MechIsland* s, VkCommandBuffer cb, const Mc2MechFrameFeed& feed,
-                         const std::vector<VkDescriptorSet>& runSets, const uint32_t (&dynOffsets)[5], int w, int h, uint32_t par) {
+                         const std::vector<VkDescriptorSet>& runSets, const uint32_t (&dynOffsets)[5], int w, int h, uint32_t par,
+                         const VkImageView (&views)[3], const VkImage (&images)[3]) {
     vkResetCommandPool(s->device, s->cpool[par].get(), 0);   // cb is s->cbuf[par]
     VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) return false;
     VkClearValue clears[3]{};
     clears[2].depthStencil = {0.0f, 0};   // reverse-Z far
-    VkRenderPassBeginInfo rbi{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
-    rbi.renderPass = s->previewRpass.get(); rbi.framebuffer = s->previewFb.get();
-    rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
-    rbi.clearValueCount = 3; rbi.pClearValues = clears;
     MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.MechPreview");
-    vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+    mc2vk::VulkanContext& dctx = mc2vk::getOrCreateEngineVulkanContext();
+    {   // the layout moves + external dependency of the render pass this replaced: colour LOAD over the legacy preview output (SHADER_READ_ONLY ->
+        // COLOR_ATTACHMENT), the unused normal output and the private depth from UNDEFINED
+        constexpr VkPipelineStageFlags2 kPrev = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT |
+                                                VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+        constexpr VkPipelineStageFlags2 kColorOut = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+        mc2vk::dynrender::colorImageBarrier(dctx, cb, images[0], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                            kPrev, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, kColorOut,
+                                            VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT);
+        mc2vk::dynrender::colorImageBarrier(dctx, cb, images[1], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                            kPrev, 0, kColorOut, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT);
+        mc2vk::dynrender::depthImageBarrier(dctx, cb, images[2], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, kPrev, 0,
+                                            VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+                                            VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
+        mc2vk::dynrender::Pass pass;
+        pass.area = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
+        pass.colorCount = 2;
+        pass.color[0] = mc2vk::dynrender::attachment(views[0], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE);
+        pass.color[1] = mc2vk::dynrender::attachment(views[1], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE);
+        pass.setDepth(mc2vk::dynrender::attachment(views[2], VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_CLEAR,
+                                                   VK_ATTACHMENT_STORE_OP_DONT_CARE, &clears[2]), VK_FORMAT_D32_SFLOAT);
+        mc2vk::dynrender::begin(dctx, cb, pass);
+    }
     const auto& q = g_previewReq;
     // The request rect is in the panel's fixed 800x600 logical space (y down), the space the legacy preview pass
     // projects with (vulkan_legacy_shape_island.cpp, proj 2/800 and -2/600); the target is that space scaled to w x h
@@ -1349,7 +1311,11 @@ bool record_mech_preview(MechIsland* s, VkCommandBuffer cb, const Mc2MechFrameFe
             vkCmdDrawIndexed(cb, run.indexCount, run.instanceCount, run.firstIndex, run.baseVertex, run.instanceBase);
         }
     }
-    vkCmdEndRenderPass(cb);
+    mc2vk::dynrender::end(dctx, cb);
+    // colour -> SHADER_READ_ONLY for the UI that samples the panel target
+    mc2vk::dynrender::colorImageBarrier(dctx, cb, images[0], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT);
     gpuScope.end();
     return vkEndCommandBuffer(cb) == VK_SUCCESS;
 }
@@ -1365,19 +1331,19 @@ extern "C" int mc2_vk_mech_preview_usable(void) { return g_previewUnusable ? 0 :
 namespace { bool g_previewDrewLast = false; }
 extern "C" int mc2_vk_mech_preview_drew_last(void) { return g_previewDrewLast ? 1 : 0; }
 
-static int mech_preview_flush_impl(void* colorView, void* normalView, void* depthView, int w, int h);
-extern "C" int mc2_vk_mech_preview_flush(void* colorView, void* normalView, void* depthView, int w, int h) {
+static int mech_preview_flush_impl(void* colorView, void* normalView, void* depthView, void* colorImage, void* normalImage, void* depthImage, int w, int h);
+extern "C" int mc2_vk_mech_preview_flush(void* colorView, void* normalView, void* depthView, void* colorImage, void* normalImage, void* depthImage, int w, int h) {
     if (!g_previewPending) return 0;
-    const int drew = mech_preview_flush_impl(colorView, normalView, depthView, w, h);
+    const int drew = mech_preview_flush_impl(colorView, normalView, depthView, colorImage, normalImage, depthImage, w, h);
     g_previewDrewLast = drew != 0;
     return drew;
 }
 
-static int mech_preview_flush_impl(void* colorView, void* normalView, void* depthView, int w, int h) {
+static int mech_preview_flush_impl(void* colorView, void* normalView, void* depthView, void* colorImage, void* normalImage, void* depthImage, int w, int h) {
     if (!g_previewPending) return 0;
     g_previewPending = false;
     if (g_previewUnusable) return 0;
-    if (!colorView || !normalView || !depthView || w <= 0 || h <= 0) return previewSkip("no_preview_target");
+    if (!colorView || !normalView || !depthView || !colorImage || !normalImage || !depthImage || w <= 0 || h <= 0) return previewSkip("no_preview_target");
     ZoneScopedN("VK-mech-preview");
     const Mc2MechPreviewRequest& q = g_previewReq;
     Mc2MechFrameFeed feed{};
@@ -1460,23 +1426,12 @@ static int mech_preview_flush_impl(void* colorView, void* normalView, void* dept
         static_cast<uint32_t>(mainSpan.offset), static_cast<uint32_t>(mainSpan.offset + instOff), static_cast<uint32_t>(mainSpan.offset + boneOff),
         static_cast<uint32_t>(lightSpan ? lightSpan.offset : mainSpan.offset), static_cast<uint32_t>(mainSpan.offset + poolOff)};
 
-    // The preview target can be rebuilt (panel resize / texture service reset): rebuild the framebuffer on any change.
+    // The preview target can be rebuilt (panel resize / texture service reset): the views and images are taken fresh each call (no framebuffer cache).
     const VkImageView views[3] = {static_cast<VkImageView>(colorView), static_cast<VkImageView>(normalView), static_cast<VkImageView>(depthView)};
-    if (!s->previewFb || s->previewFbW != w || s->previewFbH != h || !std::equal(views, views + 3, s->previewFbViews)) {
-        for (const auto& t : s->submitted)
-            if (s->previewFb && !rctx.wait(t, 5000000000ull, "mech preview fb rebuild")) return previewFail("fb_rebuild_timeout");
-        s->previewFb.reset();
-        VkFramebufferCreateInfo fci{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
-        fci.renderPass = s->previewRpass.get(); fci.attachmentCount = 3; fci.pAttachments = views;
-        fci.width = static_cast<uint32_t>(w); fci.height = static_cast<uint32_t>(h); fci.layers = 1;
-        if (!mc2vk::create(s->previewFb, s->device, [&](VkFramebuffer* f) { return vkCreateFramebuffer(s->device, &fci, nullptr, f); }))
-            return previewFail("framebuffer_failed");
-        std::copy(views, views + 3, s->previewFbViews);
-        s->previewFbW = w; s->previewFbH = h;
-    }
+    const VkImage images[3] = {static_cast<VkImage>(colorImage), static_cast<VkImage>(normalImage), static_cast<VkImage>(depthImage)};
 
     VkCommandBuffer cb = s->cbuf[par];
-    if (!record_mech_preview(s, cb, feed, runSets, dynOffsets, w, h, par)) return previewFail("record_failed");
+    if (!record_mech_preview(s, cb, feed, runSets, dynOffsets, w, h, par, views, images)) return previewFail("record_failed");
     VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
     if (mc2vk::submitGraphics(si, VK_NULL_HANDLE) != VK_SUCCESS) return previewFail("submit_failed");

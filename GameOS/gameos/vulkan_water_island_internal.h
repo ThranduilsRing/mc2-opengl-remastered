@@ -207,8 +207,8 @@ struct WaterIsland : mc2vk::IslandState {
     mc2vk::OwnedPipeline reflectionPipe;
     bool reflectionInitialized = false;
     bool mapHasWater = true;
-    mc2vk::OwnedRenderPass rpass;
-    mc2vk::OwnedFramebuffer fb;
+    VkFormat sceneFmts[2]{VK_FORMAT_UNDEFINED, VK_FORMAT_UNDEFINED};   // dynamic rendering: scene colour0 + normal
+    VkFormat sceneDepthFmt = VK_FORMAT_UNDEFINED;
     mc2vk::OwnedDescriptorSetLayout dsl;
     mc2vk::OwnedDescriptorPool pool;
     bool imageDescriptorsDirty[mc2vk::kMaxFramesInFlight]={};

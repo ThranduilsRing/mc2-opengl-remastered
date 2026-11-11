@@ -44,6 +44,7 @@ extern uint32_t g_mc2RenderFrame;   // mclib/tgl.cpp
 #include "gos_visual_capture.h"      // mc2CaptureGaitFreezeActive() (extern "C")
 #include "vk_one_shot.h"
 #include "vulkan_context.h"
+#include "vk_dynamic_rendering.h"
 #include "vk_barrier_batch_vk.h"
 #include "vulkan_shadow_island_live.h"   // geometry and color feed contracts
 #include "gos_postprocess.h"
@@ -315,8 +316,8 @@ struct ColorPropIsland : mc2vk::IslandState {
     // Owned objects are declared in creation order and released in reverse by the destructor, while the device is alive (the engine context releases the
     // parked island ahead of the device). An image is declared before its view so the view is released first.
     mc2vk::OwnedBuffer vbo, ibo;
-    mc2vk::OwnedRenderPass t1_rpass;      // 2 color LOAD + depth LOAD
-    mc2vk::OwnedFramebuffer t1_fb;        // over the 3 shared image views
+    VkFormat t1_fmts[3]{VK_FORMAT_UNDEFINED, VK_FORMAT_UNDEFINED, VK_FORMAT_UNDEFINED};   // dynamic rendering: colour0, normal, object id (UNDEFINED when the id buffer is off)
+    VkFormat t1_depthFmt = VK_FORMAT_UNDEFINED;
     mc2vk::OwnedDescriptorSetLayout dsl;
     mc2vk::OwnedDescriptorPool pool;
     // PROP-ARRAY-BUCKETS: the alpha-OFF group's size buckets (binding 3 is an array of kMaxBuckets; an unused slot names bucket 0).
@@ -984,79 +985,9 @@ bool init_island(ColorPropIsland* s, int w, int h) {
 
         VkImageResource* idRes = reinterpret_cast<VkImageResource*>(s->t1_idRes);
         const bool haveId = idRes && idRes->view.get() != VK_NULL_HANDLE;
-        VkAttachmentDescription att[4]{};
-        // color0 (MRT0) — LOAD GL terrain color, STORE result.
-        att[0].format = colorRes->format; att[0].samples = VK_SAMPLE_COUNT_1_BIT;
-        att[0].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        att[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        att[0].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        att[0].finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        // color1 (MRT1 GBuffer1) — LOAD GL terrain normals (respect clearGBuffer1), STORE.
-        att[1].format = normalRes->format; att[1].samples = VK_SAMPLE_COUNT_1_BIT;
-        att[1].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        att[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        att[1].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        att[1].finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        // depth (shared D32S8) — LOAD GL scene depth, TEST+WRITE (GEQUAL), STORE so GL
-        // (and post passes) see the prop-updated depth. Stencil LOAD/STORE preserved.
-        att[2].format = depthRes->format; att[2].samples = VK_SAMPLE_COUNT_1_BIT;
-        att[2].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[2].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        att[2].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[2].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
-        att[2].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-        att[2].finalLayout   = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-        // OBJECT-ID-1: attachment 3 = shared R32_UINT object id, LOAD (the terrain island zeroed it this frame), STORE. With the id buffer
-        // off the subpass slot is UNUSED and the pipelines mask it, so one shader serves both.
-        if (haveId) {
-            att[3].format = idRes->format; att[3].samples = VK_SAMPLE_COUNT_1_BIT;
-            att[3].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[3].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-            att[3].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att[3].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-            att[3].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-            att[3].finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        }
-        s->t1_haveId = haveId;
-        VkAttachmentReference colorRefs[3] = {
-            {0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL},
-            {1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL},
-            {haveId ? 3u : VK_ATTACHMENT_UNUSED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL},
-        };
-        VkAttachmentReference depthRef{2, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
-        VkSubpassDescription sub{};
-        sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        sub.colorAttachmentCount = 3; sub.pColorAttachments = colorRefs;
-        sub.pDepthStencilAttachment = &depthRef;
-
-        // Cross-submit WAW/hand-off deps shape (GL semaphore provides
-        // the actual ordering; these let sync-val see the LOAD-preserve co-write).
-        VkSubpassDependency deps[2]{};
-        deps[0].srcSubpass = VK_SUBPASS_EXTERNAL; deps[0].dstSubpass = 0;
-        deps[0].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-        deps[0].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        deps[0].dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        deps[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
-                                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        deps[1].srcSubpass = 0; deps[1].dstSubpass = VK_SUBPASS_EXTERNAL;
-        deps[1].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-        deps[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        deps[1].dstStageMask  = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-        deps[1].dstAccessMask = 0;
-
-        VkRenderPassCreateInfo rpci{};
-        rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        rpci.attachmentCount = haveId ? 4 : 3; rpci.pAttachments = att;
-        rpci.subpassCount = 1; rpci.pSubpasses = &sub;
-        rpci.dependencyCount = 2; rpci.pDependencies = deps;
-        if (!mc2vk::create(s->t1_rpass, s->device, [&](VkRenderPass* h) { return vkCreateRenderPass(s->device, &rpci, nullptr, h); })) {
-            vlog("TIER-1 vkCreateRenderPass failed."); setFallback("tier1_renderpass_failed"); return false;
-        }
-        VkImageView fbViews[4] = { colorRes->view.get(), normalRes->view.get(), depthRes->view.get(), haveId ? idRes->view.get() : VK_NULL_HANDLE };
-        VkFramebufferCreateInfo fci{};
-        fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        fci.renderPass = s->t1_rpass.get(); fci.attachmentCount = haveId ? 4 : 3; fci.pAttachments = fbViews;
-        fci.width = static_cast<uint32_t>(w); fci.height = static_cast<uint32_t>(h); fci.layers = 1;
-        if (!mc2vk::create(s->t1_fb, s->device, [&](VkFramebuffer* h) { return vkCreateFramebuffer(s->device, &fci, nullptr, h); })) {
-            vlog("TIER-1 vkCreateFramebuffer failed."); setFallback("tier1_framebuffer_failed"); return false;
-        }
+        s->t1_haveId = haveId;   // OBJECT-ID-1: MRT2 = shared R32_UINT object id (LOAD, STORE); with the id buffer off the slot is unused and the pipelines mask it
+        s->t1_fmts[0] = colorRes->format; s->t1_fmts[1] = normalRes->format; s->t1_fmts[2] = haveId ? idRes->format : VK_FORMAT_UNDEFINED;
+        s->t1_depthFmt = depthRes->format;   // the pass itself is recorded by t1_begin_pass (dynamic rendering, no VkRenderPass/VkFramebuffer)
     }
 
     // ---- Descriptor layout/pool/set (UBO binding0 VS, instance SSBO binding1 VS).
@@ -1334,7 +1265,9 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         gp.pViewportState = &vps; gp.pRasterizationState = &rs;
         gp.pMultisampleState = &ms; gp.pDepthStencilState = &ds; gp.pColorBlendState = &cb;
         gp.pDynamicState = &dsci;
-        gp.layout = s->playout.get(); gp.renderPass = s->t1_rpass.get(); gp.subpass = 0;
+        const VkPipelineRenderingCreateInfo t1Rendering = mc2vk::dynrender::pipelineInfo(3, s->t1_fmts, s->t1_depthFmt);
+        gp.pNext = &t1Rendering;
+        gp.layout = s->playout.get(); gp.renderPass = VK_NULL_HANDLE; gp.subpass = 0;
         if (!mc2vk::create(s->t1_pipe, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
             vlog("TIER-1 vkCreateGraphicsPipelines failed."); setFallback("tier1_pipeline_failed"); return false;
         }
@@ -1696,6 +1629,20 @@ struct PropRecordIn {
     uint32_t nDyn; const uint32_t* dynOffsets; const Mc2GroundLightingFrame* ground;
     bool hzbCulled; uint32_t instanceCount; const GpuStaticPropInstance* insts;
 };
+// The props LOAD pass: colour0 + normal + object id (a NULL view while the id buffer is off) + shared depth/stencil, all LOAD then STORE. The
+// memory barrier is the external dependency of the VkRenderPass this replaced. Both the main pass and the late fringe pass use it. The views
+// overload is what the recording worker calls (it never touches the island); the island overload resolves them.
+static void t1_begin_pass(const VkImageView (&views)[3], VkImageView depthView, VkFormat depthFmt, VkCommandBuffer cb, uint32_t w, uint32_t h) {
+    mc2vk::VulkanContext& dctx = mc2vk::engineVulkanContextNoWait();   // may run on a recording worker: no wait/owner assert
+    mc2vk::dynrender::sceneLoadBarrier(dctx, cb);
+    mc2vk::dynrender::beginLoad(dctx, cb, w, h, 3, views, depthView, depthFmt);
+}
+static void t1_begin_pass(ColorPropIsland* s, VkCommandBuffer cb, uint32_t w, uint32_t h) {
+    const VkImageView views[3] = {reinterpret_cast<VkImageResource*>(s->t1_colorRes)->view.get(),
+                                  reinterpret_cast<VkImageResource*>(s->t1_normalRes)->view.get(),
+                                  s->t1_haveId ? reinterpret_cast<VkImageResource*>(s->t1_idRes)->view.get() : VK_NULL_HANDLE};
+    t1_begin_pass(views, reinterpret_cast<VkImageResource*>(s->t1_depthRes)->view.get(), s->t1_depthFmt, cb, w, h);
+}
 static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std::function<bool(VkCommandBuffer)>& recordOut) {
     ColorPropIsland* s = in.s; VkCommandBuffer cb = in.cb; const int w = in.w, h = in.h; const uint32_t par = in.par;
     const uint32_t nDyn = in.nDyn; const uint32_t* dynOffsets = in.dynOffsets; const Mc2GroundLightingFrame* ground = in.ground;
@@ -1867,12 +1814,15 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std
     // Everything the recording reads is copied out here, on main: the callback runs later on a Render-pool worker (VulkanContext::submitRecorded) and
     // touches only these values and handles, never the island (cmdScratch/runScratch/gpu[] are rewritten by the next prepare).
     struct Plan {
-        VkRenderPass rpass; VkFramebuffer fb; VkPipeline cullPipe, opaquePipe, corePipe, fringePipe;
+        VkImageView views[3], depthView; VkFormat depthFmt; VkPipeline cullPipe, opaquePipe, corePipe, fringePipe;
         VkPipelineLayout cullLayout, playout; VkDescriptorSet set, groundSet; VkBuffer vbo, ibo, cmdBuf;
         VkDeviceAddress pktAddr; uint32_t nDyn, dynOffsets[3], groundOffsets[4], runCount, drawLimit, listStart[kListCount + 1], counts[kListCount];
         float jx, jy; int w, h; bool hzbCulled;
     } plan{};
-    plan.rpass = s->t1_rpass.get(); plan.fb = s->t1_fb.get();
+    plan.views[0] = reinterpret_cast<VkImageResource*>(s->t1_colorRes)->view.get();
+    plan.views[1] = reinterpret_cast<VkImageResource*>(s->t1_normalRes)->view.get();
+    plan.views[2] = s->t1_haveId ? reinterpret_cast<VkImageResource*>(s->t1_idRes)->view.get() : VK_NULL_HANDLE;
+    plan.depthView = reinterpret_cast<VkImageResource*>(s->t1_depthRes)->view.get(); plan.depthFmt = s->t1_depthFmt;
     plan.cullPipe = s->cullPipe.get(); plan.opaquePipe = s->t1_opaquePipe.get(); plan.corePipe = s->t1_pipe.get(); plan.fringePipe = s->t1_fringePipe.get();
     plan.cullLayout = s->cullLayout.get(); plan.playout = s->playout.get();
     plan.set = s->set[par]; plan.groundSet = s->groundLighting.set(par);
@@ -1910,14 +1860,9 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std
             cullScope.end();
         }
 
-        // Begin the LOAD renderpass: no clear values (all attachments loadOp=LOAD).
-        VkRenderPassBeginInfo rbi{};
-        rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        rbi.renderPass = plan.rpass; rbi.framebuffer = plan.fb;
-        rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(plan.w), static_cast<uint32_t>(plan.h)}};
-        rbi.clearValueCount = 0; rbi.pClearValues = nullptr;
+        // Begin the LOAD pass (dynamic rendering) — all attachments LOAD, no clear values.
         MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Props");
-        vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+        t1_begin_pass(plan.views, plan.depthView, plan.depthFmt, cb, static_cast<uint32_t>(plan.w), static_cast<uint32_t>(plan.h));
 
         VkViewport vp{plan.jx, plan.jy, static_cast<float>(plan.w), static_cast<float>(plan.h), 0.0f, 1.0f};
         VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(plan.w), static_cast<uint32_t>(plan.h)}};
@@ -1945,7 +1890,7 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std
         drawList(plan.corePipe, plan.listStart[kListCore], plan.counts[kListCore], kListCore);
         drawList(plan.fringePipe, plan.listStart[kListFringe], plan.counts[kListFringe], kListFringe);
 
-        vkCmdEndRenderPass(cb);
+        mc2vk::dynrender::end(mc2vk::engineVulkanContextNoWait(), cb);
         gpuScope.end();
         vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_SpColor);
         return vkEndCommandBuffer(cb) == VK_SUCCESS;
@@ -2387,14 +2332,11 @@ extern "C" void mc2_vk_color_prop_island_late_fringe() {
     VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { s->disabled = true; return; }
-    VkRenderPassBeginInfo rbi{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
-    rbi.renderPass = s->t1_rpass.get(); rbi.framebuffer = s->t1_fb.get();
-    rbi.renderArea = {{0,0},{static_cast<uint32_t>(s->w),static_cast<uint32_t>(s->h)}};
-    vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+    t1_begin_pass(s, cb, static_cast<uint32_t>(s->w), static_cast<uint32_t>(s->h));
     float jpx[2];
     RenderCore::temporal::sceneJitterPixels(g_mc2RenderFrame, jpx);
     VkViewport vp{jpx[0],jpx[1],static_cast<float>(s->w),static_cast<float>(s->h),0,1};
-    VkRect2D scissor = rbi.renderArea;
+    VkRect2D scissor{{0,0},{static_cast<uint32_t>(s->w),static_cast<uint32_t>(s->h)}};
     vkCmdSetViewport(cb,0,1,&vp); vkCmdSetScissor(cb,0,1,&scissor);
     mc2vk::infra::bind(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,s->t1_fringePipe.get());
     vkCmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,s->playout.get(),0,1,&s->set[par],s->lateDynCount,s->lateOffsets);
@@ -2412,7 +2354,7 @@ extern "C" void mc2_vk_color_prop_island_late_fringe() {
     mc2::battlebench::add(mc2::battlebench::DrawProps);
     vkCmdDrawIndexedIndirectCount(cb,cmdBuf,kPropCmdHeader + static_cast<VkDeviceSize>(lateStart) * sizeof(PropDrawCmd),cmdBuf,kListLate * sizeof(uint32_t),
                                   (std::min)(lateCount,s->drawIndirectLimit),sizeof(PropDrawCmd));
-    vkCmdEndRenderPass(cb);
+    mc2vk::dynrender::end(mc2vk::getOrCreateEngineVulkanContext(), cb);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { s->disabled = true; return; }
     VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;

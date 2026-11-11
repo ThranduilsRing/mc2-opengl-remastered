@@ -87,6 +87,19 @@ inline void depthImageBarrier(VulkanContext& ctx, VkCommandBuffer cb, VkImage im
     ctx.cmdPipelineBarrier2(cb, dep);
 }
 
+// The colour-aspect counterpart (single mip/layer): the layout move of a colour attachment the old render pass did through initial/finalLayout.
+inline void colorImageBarrier(VulkanContext& ctx, VkCommandBuffer cb, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout,
+                              VkPipelineStageFlags2 srcStage, VkAccessFlags2 srcAccess, VkPipelineStageFlags2 dstStage, VkAccessFlags2 dstAccess) {
+    VkImageMemoryBarrier2 b{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2};
+    b.srcStageMask = srcStage; b.srcAccessMask = srcAccess; b.dstStageMask = dstStage; b.dstAccessMask = dstAccess;
+    b.oldLayout = oldLayout; b.newLayout = newLayout;
+    b.srcQueueFamilyIndex = b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    b.image = image; b.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+    VkDependencyInfo dep{VK_STRUCTURE_TYPE_DEPENDENCY_INFO};
+    dep.imageMemoryBarrierCount = 1; dep.pImageMemoryBarriers = &b;
+    ctx.cmdPipelineBarrier2(cb, dep);
+}
+
 // A depth-only pass over one view: depth attachment only, `load` as given (CLEAR with `clearDepth`, or LOAD), STORE.
 inline void beginDepthOnly(VulkanContext& ctx, VkCommandBuffer cb, VkImageView view, VkFormat fmt, uint32_t w, uint32_t h, VkAttachmentLoadOp load,
                            float clearDepth = 1.0f) {
@@ -99,20 +112,39 @@ inline void beginDepthOnly(VulkanContext& ctx, VkCommandBuffer cb, VkImageView v
 
 // The shared scene pass in its LOAD form (colour0 + normal + depth/stencil, every aspect LOAD then STORE): what the render pass of the props, mech,
 // sky, vfx, overlay... islands was. The memory barrier is the external dependency those passes carried (VkSubpassDependency, no layout change).
-inline void beginSceneLoad(VulkanContext& ctx, VkCommandBuffer cb, uint32_t w, uint32_t h, VkImageView color, VkImageView normal, VkImageView depth,
-                           VkFormat depthFormat) {
+// A LOAD/STORE pass over `colorCount` colour views (a VK_NULL_HANDLE entry is an unused slot: the pipelines carry format UNDEFINED there, the
+// VK_ATTACHMENT_UNUSED of the old subpass) and, when `depth` is not null, a depth/stencil view. No barrier: the caller records its own.
+inline void beginLoad(VulkanContext& ctx, VkCommandBuffer cb, uint32_t w, uint32_t h, uint32_t colorCount, const VkImageView* colors, VkImageView depth,
+                      VkFormat depthFormat) {
+    Pass p;
+    p.area = {{0, 0}, {w, h}};
+    p.colorCount = colorCount;
+    for (uint32_t i = 0; i < colorCount; ++i) {
+        if (colors[i] != VK_NULL_HANDLE)
+            p.color[i] = attachment(colors[i], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE);
+        else
+            p.color[i].sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;   // imageView NULL: unused slot
+    }
+    if (depth != VK_NULL_HANDLE)
+        p.setDepth(attachment(depth, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE), depthFormat);
+    begin(ctx, cb, p);
+}
+
+// The external dependency of the scene LOAD render passes: the previous pass's colour/depth writes against this pass's attachment reads/writes.
+inline void sceneLoadBarrier(VulkanContext& ctx, VkCommandBuffer cb) {
     memoryBarrier(ctx, cb, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
                   VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
                   VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,
                   VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT |
                   VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
-    Pass p;
-    p.area = {{0, 0}, {w, h}};
-    p.colorCount = 2;
-    p.color[0] = attachment(color, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE);
-    p.color[1] = attachment(normal, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE);
-    p.setDepth(attachment(depth, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE), depthFormat);
-    begin(ctx, cb, p);
+}
+
+// Scene pass: barrier + beginLoad over (colour0, normal[, third slot]) + depth.
+inline void beginSceneLoad(VulkanContext& ctx, VkCommandBuffer cb, uint32_t w, uint32_t h, VkImageView color, VkImageView normal, VkImageView depth,
+                           VkFormat depthFormat) {
+    sceneLoadBarrier(ctx, cb);
+    const VkImageView views[2] = {color, normal};
+    beginLoad(ctx, cb, w, h, 2, views, depth, depthFormat);
 }
 
 }  // namespace mc2vk::dynrender
