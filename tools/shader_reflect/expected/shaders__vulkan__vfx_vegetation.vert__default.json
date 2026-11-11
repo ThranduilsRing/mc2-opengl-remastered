@@ -11,7 +11,7 @@
           "matrix_stride": null,
           "name": "inst",
           "offset": 0,
-          "type": "_588"
+          "type": "_855"
         }
       ],
       "name": "VegInst"
@@ -67,7 +67,7 @@
           "matrix_stride": null,
           "name": "D",
           "offset": 0,
-          "type": "_200"
+          "type": "_311"
         }
       ],
       "name": "VegDrawParams"

@@ -1866,6 +1866,16 @@
    "stream": "stdout",
    "keys": [
     "ev",
+    "cmd"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRIDGE",
+   "ver": 0,
+   "stream": "stdout",
+   "keys": [
+    "ev",
     "protocol"
    ],
    "count": 3
@@ -8849,6 +8859,17 @@
    "count": 1
   },
   {
+   "tag": "SIM_HOOKS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "render_table",
+    "overlap_table"
+   ],
+   "count": 1
+  },
+  {
    "tag": "SIM_OVERLAP",
    "ver": 1,
    "stream": "buffer",
@@ -9511,7 +9532,8 @@
     "registry_resident",
     "views",
     "offview_skipped",
-    "by_class"
+    "by_class",
+    "offview_by_class"
    ],
    "count": 1
   },

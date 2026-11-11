@@ -534,7 +534,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/vfx_particle.vert",
-        "line": 35,
+        "line": 44,
         "role": "VfxVsParams",
         "std": "std140",
         "type": "uniform",
@@ -957,7 +957,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
-        "line": 54,
+        "line": 59,
         "role": "TerrainVisualHeightBuf",
         "std": "std430",
         "type": "buffer",
@@ -1203,7 +1203,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
-        "line": 33,
+        "line": 34,
         "role": "u_shorelineMask",
         "std": null,
         "type": "sampler2D",
@@ -1215,7 +1215,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
-        "line": 26,
+        "line": 27,
         "role": "u_materialWeights",
         "std": null,
         "type": "sampler2D",
@@ -1237,7 +1237,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
-        "line": 25,
+        "line": 26,
         "role": "u_macroGradient",
         "std": null,
         "type": "sampler2D",
@@ -2394,7 +2394,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
-        "line": 31,
+        "line": 32,
         "role": "u_matNormalArray",
         "std": null,
         "type": "sampler2DArray",
@@ -2830,7 +2830,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/vfx_vegetation.frag",
-        "line": 9,
+        "line": 10,
         "role": "uAtlas",
         "std": null,
         "type": "sampler2DArray",
@@ -2855,7 +2855,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/vfx_particle.vert",
-        "line": 58,
+        "line": 67,
         "role": "Groups",
         "std": "std430",
         "type": "buffer",
@@ -3235,7 +3235,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/vfx_vegetation.frag",
-        "line": 10,
+        "line": 11,
         "role": "u_macroGradient",
         "std": null,
         "type": "sampler2D",
