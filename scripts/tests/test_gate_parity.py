@@ -121,6 +121,8 @@ def test_cmake_module_sets_mc2_host_mfc(tmp_path, host, want):
 def _tree(tmp_path, stems=("a_oak", "b_pine"), grass=True):
     """A tree with every cook script and the tree pin file the manifest names, plus (optionally) the cooked outputs at the pinned bytes."""
     m = cooked_outputs.load()
+    (tmp_path / "tools").mkdir(parents=True, exist_ok=True)
+    shutil.copy(cooked_outputs.MANIFEST, tmp_path / "tools" / "cooked_outputs.json")
     for e in m["pinned"]:
         (tmp_path / e["cook"]).parent.mkdir(parents=True, exist_ok=True)
         (tmp_path / e["cook"]).write_text("# cook")
