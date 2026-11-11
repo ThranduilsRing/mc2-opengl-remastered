@@ -83,9 +83,9 @@ GuiButton {
     textAnchor = "center"
     legacyTextAlignmentSource = "aButton::init default Alignment=2"
     wrapText = false
-    normalTextColorArgb = "0xffffffff"
+    normalTextColorArgb = "0xffff0000"
     normalOverlayColorArgb = "0xffff0000"
-    colorArgb = "0xffffffff"
+    colorArgb = "0xffff0000"
     pressedTextColorArgb = "0x47ff0000"
     pressedOverlayColorArgb = "0x47ff0000"
     highlightTextColorArgb = "0x47ff0000"

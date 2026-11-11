@@ -247,8 +247,13 @@ void MissionSelectionScreen::begin()
 	operationScreen.moveTo( 0, 0 );
 	operationScreen.init( file, "Static", "Text", "Rect", "Button" );
 	
-	operationScreen.moveTo( rects[MAP_RECT].left(), 
+	operationScreen.moveTo( rects[MAP_RECT].left(),
 							rects[MAP_RECT].top() );
+
+	// The stock FIT tints every mission marker red (0xffff0000), which multiplies any other
+	// colour in the marker art down to its red channel. The marker art carries its own colours.
+	for ( int i = 0; i < operationScreen.buttonCount; i++ )
+		operationScreen.buttons[i].setColor( 0xffffffff );
 
 
 	
