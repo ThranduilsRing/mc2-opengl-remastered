@@ -12,6 +12,15 @@
 
 TacticalOverview g_tacticalOverview;
 
+// Only the armed bookmark harness calls this; gameplay input is unchanged.
+extern "C" void mc2VisualCaptureOverview(void* camera, int on)
+{
+    if ((g_tacticalOverview.setpoint() > 0.5f) != (on != 0))
+        g_tacticalOverview.onHotkey();
+    g_tacticalOverview.advance(0.25f);
+    g_tacticalOverview.driveCamera(static_cast<Camera*>(camera));
+}
+
 unsigned long TacticalOverview::maskWorldBars( unsigned long drawFlags )
 {
     if ( g_tacticalOverview.active() )
