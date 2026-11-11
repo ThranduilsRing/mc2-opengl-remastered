@@ -102,21 +102,33 @@ public:
         failure = nullptr;
         return true;
     }
-    void record(VulkanContext& ctx, VkCommandBuffer cb, uint32_t parity) {
-        if (frame_ != ctx.tracker().frameNo() || recorded_ == frame_) return;
+    // The frame's one dispatch, split for a recorded island: claim() (main) writes the descriptors, marks the frame recorded (so a later receiver's
+    // record() is a no-op) and returns the handles; Pending::recordCmds is vkCmd only and may run on any thread.
+    struct Pending {
+        const ComputePipeline* pipe = nullptr; VkDescriptorSet set = VK_NULL_HANDLE; uint32_t offsets[4]{};
+        explicit operator bool() const { return pipe != nullptr; }
+        void recordCmds(VkCommandBuffer cb) const {
+            if (!pipe) return;
+            // No HOST->COMPUTE barrier: host writes before vkQueueSubmit are made visible by the submit itself.
+            pipe->bind(cb, set, offsets);
+            pipe->dispatch(cb, kDim * kDim / 64);
+            cmdBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
+                       VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
+        }
+    };
+    Pending claim(VulkanContext& ctx, uint32_t parity) {
+        if (frame_ != ctx.tracker().frameNo() || recorded_ == frame_) return {};
         const FrameAlloc buffers[]{params_, spans_[0], spans_[1], spans_[2]};
-        uint32_t offsets[4]{};
+        Pending p;
         for (uint32_t b = 0; b < 4; ++b) {
             const auto type = b == 0 ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
             sets_.write(ctx.device(), parity, b, type, buffers[b].buffer, b == 0 ? 32 : buffers[b].range);
-            offsets[b] = static_cast<uint32_t>(buffers[b].offset);
+            p.offsets[b] = static_cast<uint32_t>(buffers[b].offset);
         }
-        // No HOST->COMPUTE barrier: host writes before vkQueueSubmit are made visible by the submit itself.
-        pipeline_.bind(cb, sets_.set(parity), offsets);
-        pipeline_.dispatch(cb, kDim * kDim / 64);
-        cmdBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
-                   VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
+        p.pipe = &pipeline_; p.set = sets_.set(parity);
         recorded_ = frame_;
+        return p;
     }
+    void record(VulkanContext& ctx, VkCommandBuffer cb, uint32_t parity) { claim(ctx, parity).recordCmds(cb); }
 };
 }
