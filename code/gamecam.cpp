@@ -1055,6 +1055,8 @@ void GameCamera::render (void)
 				if (const float* mvp = gos_GetTerrainMVPMat4()) std::copy_n(mvp, 16, &fxView.world_to_clip[0][0]);
 				gos_GetCameraRight(&fxView.right.x); gos_GetCameraUp(&fxView.up.x);
 				if (auto* pp = getGosPostProcess()) { fxView.width = pp->getWidth(); fxView.height = pp->getHeight(); }
+				// One island render pass and submit for gosFX packets, ribbons and mesh effects (closed after the mesh flush).
+				gos_vfx_native_batch_begin();
 				::mc2::particles::Batcher::Instance().FlushNative(fxView);
 
 				// TUBE-DEFERRED-FLUSH-1: drain the ribbon queue enqueued by
@@ -1074,6 +1076,7 @@ void GameCamera::render (void)
                     gos_vfx_mesh_fixture(origin);
                 }
                 gos_vfx_mesh_flush_deferred();
+				gos_vfx_native_batch_end();
 				gos_ClearActiveCamera();
 			}
 		}

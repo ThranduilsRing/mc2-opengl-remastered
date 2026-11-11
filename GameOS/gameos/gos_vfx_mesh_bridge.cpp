@@ -2,6 +2,7 @@
 #include "gos_vfx_mesh_bridge.h"
 #include "vulkan_vfx_geometry.h"
 #include "gos_postprocess.h"
+#include "../../mclib/fx/fx_render.h"
 #include <algorithm>
 #include <array>
 #include <unordered_map>
@@ -51,14 +52,19 @@ extern "C" void gos_vfx_mesh_flush_deferred() {
     const float* mvp = gos_GetTerrainMVPMat4();
     auto* pp = getGosPostProcess();
     if (!mvp || !pp) return;
-    std::vector<VfxGeometryVertex> vertices;
-    std::vector<VfxParticleDraw> draws;
+    // Native indexed submission: each instance transforms its UNIQUE vertices once (40-byte RenderVertex) and submits the mesh's indices
+    // (vkCmdDrawIndexed), not one transformed 64-byte record per index. Storage is reused across frames (capacity kept).
+    static std::vector<mc2::fx::RenderVertex> vertices;
+    static std::vector<uint32_t> indices;
+    static std::vector<VfxParticleDraw> draws;
+    vertices.clear(); indices.clear(); draws.clear();
     for (const auto& inst : instances) {
         const auto it = meshes.find(inst.meshId);
         if (it == meshes.end()) continue;
         const auto& [meshKey, mesh] = *it;
+        const auto vertexBase = static_cast<uint32_t>(vertices.size());
         VfxParticleDraw draw{};
-        draw.start = static_cast<uint32_t>(vertices.size());
+        draw.start = static_cast<uint32_t>(indices.size());
         draw.count = static_cast<uint32_t>(mesh.indices.size());
         if (inst.mlrTexHandle && MidLevelRenderer::MLRTexturePool::Instance) {
             auto* entry = (*MidLevelRenderer::MLRTexturePool::Instance)[inst.mlrTexHandle];
@@ -66,9 +72,9 @@ extern "C" void gos_vfx_mesh_flush_deferred() {
         }
         const unsigned blend = static_cast<unsigned>(inst.blendMode);
         draw.additive = blend;
-        draw.atlasColumns = kVfxGeometryAtlas;
-        for (auto i : mesh.indices) {
-            VfxGeometryVertex v{};
+        draw.atlasColumns = kVfxCompactGeometryAtlas;
+        for (size_t i = 0; i < mesh.positions.size(); ++i) {
+            mc2::fx::RenderVertex v{};
             const auto& p = mesh.positions[i];
             // modelToWorld is the same column-major affine the GL shader read.
             for (unsigned a = 0; a < 3; ++a)
@@ -80,10 +86,12 @@ extern "C" void gos_vfx_mesh_flush_deferred() {
             v.flags = VfxGeometryMesh | 16u | (inst.mlrTexHandle == 0 ? VfxGeometryUntextured : 0u);
             vertices.push_back(v);
         }
+        for (auto i : mesh.indices) indices.push_back(vertexBase + i);
         draws.push_back(draw);
     }
-    if (!vertices.empty()) mc2_vk_vfx_island_run(vertices.data(), static_cast<uint32_t>(vertices.size()),
-        draws.data(), static_cast<uint32_t>(draws.size()), mvp, nullptr, nullptr, pp->getWidth(), pp->getHeight());
+    if (!vertices.empty()) mc2_vk_vfx_indexed_run(vertices.data(), static_cast<uint32_t>(vertices.size()),
+        indices.data(), static_cast<uint32_t>(indices.size()), draws.data(), static_cast<uint32_t>(draws.size()),
+        mvp, nullptr, nullptr, pp->getWidth(), pp->getHeight());
 }
 
 extern "C" void gos_vfx_mesh_fixture(const float origin[3]) {

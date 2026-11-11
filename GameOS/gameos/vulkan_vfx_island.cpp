@@ -42,6 +42,7 @@
 #include "vulkan_vfx_island.h"
 #include "vulkan_vfx_geometry.h"
 #include "vfx_draw_plan.h"
+#include "vfx_native_batch.h"
 #include "../../mclib/fx/fx_render.h"
 #include "vk_desc_write_cache.h"
 #include "vulkan_mover_shadow.h"
@@ -676,6 +677,8 @@ extern "C" int mc2_vk_vfx_island_prewarm(int w,int h) {
     return 1;
 }
 
+static mc2vfx::NativeBatch g_nativeBatch;   // see vfx_native_batch.h
+
 static int run_vfx(
     const void* particles, uint32_t particleCount,
     const VfxParticleDraw* draws, uint32_t drawCount,
@@ -910,7 +913,23 @@ int mc2_vk_vfx_indexed_run(const void* vertices, uint32_t vertexCount,
     const uint32_t* indices, uint32_t indexCount, const VfxParticleDraw* draws,
     uint32_t drawCount, const float* mvp, const float* right, const float* up, int w, int h) {
     if (!indices || !indexCount) return 0;
+    if (g_nativeBatch.open) {   // gamecam's frame batch: append only; mc2_vk_vfx_native_batch_end records one pass for all of them
+        if (!vertices || !vertexCount || !draws || !drawCount || !mvp || w <= 0 || h <= 0) return 0;
+        ZoneScopedN("VKIsl.Vfx.Append");
+        g_nativeBatch.append(static_cast<const mc2::fx::RenderVertex*>(vertices), vertexCount, indices, indexCount, draws, drawCount, mvp, right, up, w, h);
+        return 1;
+    }
     return run_vfx(vertices, vertexCount, draws, drawCount, mvp, right, up, w, h, indices, indexCount);
+}
+extern "C" void mc2_vk_vfx_native_batch_begin() { g_nativeBatch.begin(); }
+extern "C" int mc2_vk_vfx_native_batch_end() {
+    if (!g_nativeBatch.open) return 0;
+    g_nativeBatch.open = false;
+    if (g_nativeBatch.draws.empty() || !g_nativeBatch.hasMvp) return 0;
+    return run_vfx(g_nativeBatch.vertices.data(), static_cast<uint32_t>(g_nativeBatch.vertices.size()), g_nativeBatch.draws.data(),
+                   static_cast<uint32_t>(g_nativeBatch.draws.size()), g_nativeBatch.mvp, g_nativeBatch.hasCam ? g_nativeBatch.camRight : nullptr,
+                   g_nativeBatch.hasCam ? g_nativeBatch.camUp : nullptr, g_nativeBatch.w, g_nativeBatch.h,
+                   g_nativeBatch.indices.data(), static_cast<uint32_t>(g_nativeBatch.indices.size()));
 }
 
 // Vegetation: GPU cull (cull -> scan -> compact) and the two indirect strips, in this island's own command buffer and parity slot. Nothing per instance

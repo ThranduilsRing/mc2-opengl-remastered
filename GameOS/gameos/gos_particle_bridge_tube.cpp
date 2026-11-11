@@ -10,12 +10,14 @@
 
 namespace {
 struct RibbonRecord {
-    std::vector<float> positions, colors, uvs;
-    std::vector<unsigned short> indices;
+    size_t floatAt, indexAt;   // into ribbonFloats / ribbonIndices
+    unsigned numVerts, numIndices;
     unsigned mlrHandle;
     int blendMode;
 };
 std::vector<RibbonRecord> ribbons;
+std::vector<float> ribbonFloats;
+std::vector<unsigned short> ribbonIndices;
 std::vector<mc2::fx::RenderVertex> vertices;
 std::vector<uint32_t> elementIndices;
 std::vector<VfxParticleDraw> draws;
@@ -71,8 +73,17 @@ void submit(const std::vector<mc2::fx::RenderVertex>& vertices, const std::vecto
 extern "C" void gos_tube_ribbon_enqueue(const float* positions, const float* colors, const float* uvs,
     unsigned numVerts, const unsigned short* indices, unsigned numIndices, unsigned mlrHandle, int blendMode) {
     if (!positions || !colors || !uvs || !indices || !numVerts || !numIndices) return;
-    ribbons.push_back({{positions, positions + static_cast<size_t>(numVerts)*3}, {colors, colors + static_cast<size_t>(numVerts)*4},
-                       {uvs, uvs + static_cast<size_t>(numVerts)*2}, {indices, indices + numIndices}, mlrHandle, blendMode});
+    ribbons.push_back({ribbonFloats.size(), ribbonIndices.size(), numVerts, numIndices, mlrHandle, blendMode});
+    // One flat arena per frame (capacity kept) instead of four heap vectors per ribbon: positions, colours, uvs back to back.
+    ribbonFloats.insert(ribbonFloats.end(), positions, positions + static_cast<size_t>(numVerts) * 3);
+    ribbonFloats.insert(ribbonFloats.end(), colors, colors + static_cast<size_t>(numVerts) * 4);
+    ribbonFloats.insert(ribbonFloats.end(), uvs, uvs + static_cast<size_t>(numVerts) * 2);
+    ribbonIndices.insert(ribbonIndices.end(), indices, indices + numIndices);
+}
+extern "C" void gos_vfx_native_batch_begin() { mc2_vk_vfx_native_batch_begin(); }
+extern "C" void gos_vfx_native_batch_end() {
+    ZoneScopedN("VKIsl.Vfx.FrameBatch");
+    mc2_vk_vfx_native_batch_end();
 }
 extern "C" void gos_tube_ribbon_flush_deferred() {
     if (ribbons.empty()) return;
@@ -89,9 +100,10 @@ extern "C" void gos_tube_ribbon_flush_deferred() {
             auto* entry = (*MidLevelRenderer::MLRTexturePool::Instance)[r.mlrHandle];
             if (entry && entry->GetImage()) texture = entry->GetImage()->GetHandle();
         }
-        appendRibbon(vertices, draws, r.positions.data(), r.colors.data(), r.uvs.data(),
-            static_cast<unsigned>(r.positions.size()/3), r.indices.data(), static_cast<unsigned>(r.indices.size()), texture, r.mlrHandle == 0, r.blendMode);
+        const float* pos = ribbonFloats.data() + r.floatAt;
+        appendRibbon(vertices, draws, pos, pos + static_cast<size_t>(r.numVerts) * 3, pos + static_cast<size_t>(r.numVerts) * 7,
+            r.numVerts, ribbonIndices.data() + r.indexAt, r.numIndices, texture, r.mlrHandle == 0, r.blendMode);
     } }
     submit(vertices, draws);
-    ribbons.clear();
+    ribbons.clear(); ribbonFloats.clear(); ribbonIndices.clear();
 }

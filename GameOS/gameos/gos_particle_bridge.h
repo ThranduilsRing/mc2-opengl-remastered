@@ -57,6 +57,11 @@ extern "C" void gos_tube_ribbon_enqueue(const float*          positions,
 
 extern "C" void gos_tube_ribbon_flush_deferred(void);
 
+/* One island pass and submit per frame for the native indexed effects: gamecam opens the batch before
+ * Batcher::FlushNative and closes it after the mesh flush (vulkan_vfx_geometry.h). */
+extern "C" void gos_vfx_native_batch_begin(void);
+extern "C" void gos_vfx_native_batch_end(void);
+
 /* B2: active camera bridge — temporary stop-gap until RenderFrameContext lands.
  * Set by GameCamera::render() immediately before particle flush; cleared after.
  * If never set this frame, accessors return last-known basis (identity at boot).

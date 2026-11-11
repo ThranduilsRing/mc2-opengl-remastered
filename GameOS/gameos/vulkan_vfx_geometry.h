@@ -15,6 +15,10 @@ inline constexpr uint32_t kVfxCompactGeometryAtlas = 0xfffffffdu;
 int mc2_vk_vfx_indexed_run(const void* vertices, uint32_t vertexCount,
     const uint32_t* indices, uint32_t indexCount, const VfxParticleDraw* draws,
     uint32_t drawCount, const float* mvp, const float* right, const float* up, int w, int h);
+// Frame batch: between begin and end, mc2_vk_vfx_indexed_run only appends (vertices, indices and draws are copied) and returns 1;
+// end records ONE render pass and ONE submit for everything appended, in append order (gosFX packets, tube ribbons, mesh effects).
+extern "C" void mc2_vk_vfx_native_batch_begin();
+extern "C" int mc2_vk_vfx_native_batch_end();
 namespace mc2tex { struct TextureArrayCpu; }
 void mc2_vk_vfx_vegetation_atlas(const mc2tex::TextureArrayCpu& atlas);
 namespace mc2veg { struct CullParams; }
