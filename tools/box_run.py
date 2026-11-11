@@ -15,7 +15,7 @@ Rows: ab:<before-ref> (day + night A/B against HEAD, plus the gpu-passes ratio t
 Legacy capture rows are forced onto GPU 0 by `--gpu auto`.
 Windows-only behaviour (window focus, firewall, owner-test) is not covered: those rows stay on the Windows PC.
 """
-import argparse, base64, io, json, os, re, subprocess, sys, tarfile, tempfile, time
+import argparse, base64, hashlib, io, json, os, re, shutil, subprocess, sys, tarfile, tempfile, time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
@@ -166,6 +166,84 @@ if [ -n "$_pp" ] && [ "$_pp" != 1 ] && ps -o comm= -p "$_pp" 2>/dev/null | grep 
 fi
 '''
 
+OVERLAY_LIST = ".data_overlay.json"
+
+
+def apply_data_overlay(repo, base, tip, arm, install, golden, git_run=None):
+    """Make the lane install carry the arm's own tracked data (box installs start as the golden's data).
+
+    The overlay set is every data/ path the lane changed (git diff --name-only base..tip -- data/); each arm gets those
+    files as they are AT ITS OWN revision (the before arm gets the base's version, the after arm the lane's), so an A/B of
+    a data change is not blind. Install data is hardlinked from the golden: files are unlinked before the write, and the
+    previous run's overlay is restored from the golden first (the install is reused across arms and runs).
+    Returns (files, bytes); an empty/unknown base gives (0, 0)."""
+    install, golden, repo = Path(install), Path(golden), str(repo)
+
+    def git_bytes(*args):
+        if git_run:
+            return git_run(*args)
+        r = subprocess.run(["git", "-C", repo, *args], capture_output=True, **console_child.child_kwargs(redirected=True))
+        if r.returncode:
+            raise subprocess.CalledProcessError(r.returncode, args, r.stdout, r.stderr)
+        return r.stdout
+
+    listing = install / OVERLAY_LIST
+    try:
+        previous = json.loads(listing.read_text())
+    except (OSError, ValueError):
+        previous = []
+    for rel in previous:   # undo the last overlay: back to the golden's file (a hardlink again) or absent
+        dst, src = install / rel, golden / rel
+        dst.unlink(missing_ok=True)
+        if src.is_file():
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                os.link(src, dst)
+            except OSError:
+                shutil.copy2(src, dst)
+    changed = []
+    if base:
+        out = git_bytes("diff", "--name-only", "--no-renames", "-z", f"{base}..{tip}", "--", "data/")
+        changed = sorted(p for p in out.decode("utf-8").split("\0") if p.startswith("data/"))
+    # also every tracked data file the golden lacks or holds at different bytes (data merged into the base after the golden was seeded:
+    # the lane diff alone would leave it stale, e.g. vegetation placement inputs)
+    stale = set()
+    for ent in git_bytes("ls-tree", "-r", "-z", arm, "--", "data/").decode("utf-8").split("\0"):
+        if not ent:
+            continue
+        meta, rel = ent.split("\t", 1)
+        blob_id = meta.split()[2]
+        g = golden / rel
+        try:
+            raw = g.read_bytes()
+        except OSError:
+            stale.add(rel)
+            continue
+        if hashlib.sha1(b"blob %d\0" % len(raw) + raw).hexdigest() != blob_id:
+            stale.add(rel)
+    changed = sorted(set(changed) | stale)
+    files = size = 0
+    done = []
+    for rel in changed:
+        dst = install / rel
+        try:
+            blob = git_bytes("show", f"{arm}:{rel}")
+        except subprocess.CalledProcessError:
+            blob = None   # absent at this arm's revision: the arm has no such file
+        dst.unlink(missing_ok=True)
+        if blob is not None:
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            dst.write_bytes(blob)
+            if hashlib.sha256(dst.read_bytes()).hexdigest() != hashlib.sha256(blob).hexdigest():   # sha-check each copied file against its source
+                raise RuntimeError(f"data overlay sha mismatch after copy: {rel}")
+            size += len(blob)
+        files += 1
+        done.append(rel)
+    listing.write_text(json.dumps(done))
+    print(f"[box_run] data_overlay files={files} bytes={size}", flush=True)
+    return files, size
+
+
 REMOTE = r'''#!/bin/bash
 # box_run.py remote half: args GPU BRANCH SHA OUTDIR CAP0 ROWS_B64 (rows newline-joined, base64)
 set -uo pipefail
@@ -237,6 +315,8 @@ for opt in crashpad_handler; do [ -f build64-ninja/$opt ] && { cp -f build64-nin
 mkdir -p $I/shaders && cp -a $S/shaders/. $I/shaders/ && cp -a build64-ninja/shaders/. $I/shaders/ || { echo "[box_run] DEPLOY FAILED: shaders"; exit 6; }
 # Use the tip's tooling for both arms, including when the before revision predates it.
 git -C $S checkout -q -f --detach $SHA || exit 6
+# data overlay: the arm's own tracked data/ changes (lane diff vs the base) go over the golden's data, before the manifest hashes them
+python3 -c 'from tools.box_run import apply_data_overlay; import sys; apply_data_overlay(".", *sys.argv[1:4], sys.argv[4], "/workspace/golden-install")' "$OVL_BASE" "$SHA" "$BUILD_SHA" "$I" || { echo "[box_run] DEPLOY FAILED: data overlay"; exit 6; }
 python3 -c 'from tools.box_run import write_payload_manifest; import sys; write_payload_manifest(sys.argv[1], sys.argv[2])' "$I" "$BUILD_SHA" || { echo "[box_run] DEPLOY FAILED: manifest"; exit 6; }
 mkdir -p "$I/saved_bookmarks"
 for bookmark in mc2_01_saved_205644 mc2_10_saved_204523; do
@@ -247,6 +327,8 @@ AB_BEFORE=""
 for row in "${ROWS[@]}"; do case $row in ab:*) AB_BEFORE=$(git rev-parse --verify "${row#ab:}^{commit}") || exit 6;; esac; done
 [ -z "$AB_BEFORE" ] || git merge-base --is-ancestor "$AB_BEFORE" "$SHA" || { echo "[box_run] AB REFUSED: before is not an ancestor of tip"; exit 6; }
 BUILD_SHA=${AB_BEFORE:-$SHA}
+OVL_BASE=${AB_BEFORE:-$(git merge-base "$SHA" refs/heads/claude/nifty-mendeleev 2>/dev/null)}   # no nifty ref on the mirror: base empty, overlay files=0
+[ -n "$OVL_BASE" ] || echo "[box_run] data_overlay: no base ref (mirror lacks claude/nifty-mendeleev); only an ab: row names one"
 if [ -z "$ONLY_LINT" ]; then
   git checkout -q -f --detach "$BUILD_SHA" || exit 6
   build_install
@@ -337,7 +419,7 @@ for row in "${ROWS[@]}"; do
       gr timeout -k 30 600 python3 tools/visual_verify/capture.py --install "$I" --bookmarks "$marks" --out "$ABOUT/b" > "$OUT/ab_after.log" 2>&1; rc=$?
       gr timeout -k 30 1500 python3 tools/box_gpu_passes.py run --install "$I" --out "$ABOUT" --name gpu_passes_tip --ref-commit "$SHA" > "$OUT/ab_gpu_tip.log" 2>&1; gprc2=$?; [ "$gprc" = 0 ] && gprc=$gprc2
       if [ "$rc" = 0 ]; then
-        grc python3 tools/visual_verify/ab.py --compare-only "$ABOUT/a" "$ABOUT/b" --out-root "$ABOUT/compare" > "$OUT/ab_compare.log" 2>&1; rc=$?
+        grc python3 tools/visual_verify/ab.py --compare-only "$ABOUT/a" "$ABOUT/b" --allow-data-delta --out-root "$ABOUT/compare" > "$OUT/ab_compare.log" 2>&1; rc=$?
       fi
     fi
     printf "%s\t%s\n" "$row" "$rc" >> "$OUT/rows.tsv"
