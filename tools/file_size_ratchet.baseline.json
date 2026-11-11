@@ -16,6 +16,7 @@
  "files_over_1500": {
   "GameOS/gameos/engine_present_vk.cpp": 2628,
   "GameOS/gameos/vulkan_color_prop_island.cpp": 2265,
+  "GameOS/gameos/vulkan_mech_island.cpp": 1501,
   "GameOS/include/gameos.hpp": 3362,
   "code/artlry.cpp": 1715,
   "code/bldng.cpp": 1708,
