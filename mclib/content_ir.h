@@ -39,5 +39,7 @@ struct Asset {
 bool cook(Asset& asset, std::string_view source);
 bool loadCached(Asset& asset, std::string_view source);
 // Digest of a source file's bytes (fastHash of the content; equals vfs::contentDigest for the same bytes).
+// One [LOAD_LAPS v1] line per call (and resets the accumulators): where a load stage spent its time.
+void reportLoadLaps(const char* stage, double stageMs, const char* mission);
 uint64_t sourceBytesDigest(std::string_view sourcePath, std::span<const uint8_t> bytes);
 }

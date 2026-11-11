@@ -13,6 +13,7 @@
 #include "spawn_tree_clear.h"
 #include "render_resource_owners.h"
 #include "mc2fmt.h"
+#include "../mclib/content_ir.h"
 
 #include "content_error.h"
 
@@ -735,7 +736,13 @@ void Mission::initTerrainObjectsLoad(char (*commandersToLoad)[3], MissionInitFra
 	loadProgress = 68.0f;
 	mission_phase_mark("actor_spawn_ready"); // LOAD-PHASE-FACTS-1: mover/vehicle/part object init done
 
-	{ ZoneScopedN("Mission::init ObjectManager::loadTerrainObjects"); ObjectManager->loadTerrainObjects(&pakFile, loadProgress, 30); }
+	{
+		ZoneScopedN("Mission::init ObjectManager::loadTerrainObjects");
+		const auto lapT0 = std::chrono::steady_clock::now();
+		ObjectManager->loadTerrainObjects(&pakFile, loadProgress, 30);
+		mc2::content::reportLoadLaps("terrain_objects",
+			std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - lapT0).count(), f.missionName);
+	}
 	mission_phase_mark("terrain_objects_ready");
 	{ ZoneScopedN("Mission::init ObjectManager::primeTerrainObjectsForMissionLoad"); ObjectManager->primeTerrainObjectsForMissionLoad(loadProgress, 2.0f); }
 	// Movers were placed before trees existed. Do the same tree contact as

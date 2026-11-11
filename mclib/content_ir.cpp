@@ -11,9 +11,15 @@
 #include <mutex>
 #include <span>
 #include <unordered_map>
+#include <atomic>
+#include <chrono>
 
 namespace mc2::content {
 namespace {
+// [LOAD_LAPS v1] accumulators (nanoseconds), summed over every shape load in a mission load.
+struct Laps { std::atomic<uint64_t> digest{0}, read{0}, decode{0}, cookTotal{0}, cookRead{0}, loads{0}, hits{0}, cooks{0}; } g_laps;
+uint64_t nowNs() { return static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()); }
+
 constexpr mc2cache::CacheKind kind{"model-", ".mci", 4096, 128ull << 20};
 constexpr std::string_view directory = "cache/content-model";
 uint64_t hash(std::span<const uint8_t> bytes, uint64_t h = 14695981039346656037ull) { return fastHash(bytes, h); }
@@ -73,10 +79,17 @@ bool loadCached(Asset& asset, std::string_view sourcePath) {
     // glTF may have external buffers: its decoded IR contributes to the key after
     // resolving them. The self-contained formats can bypass decoding on a cache hit.
     if (!source || std::string_view(source).ends_with(".gltf") || std::string_view(source).ends_with(".fbx")) return false;
+    g_laps.loads++;
+    const uint64_t t0 = nowNs();
     const auto key = sourceKey(asset, sourcePath);
+    const uint64_t t1 = nowNs();
+    g_laps.digest += t1 - t0;
     if (!key) return false;
     const auto bytes = mc2cache::readEntry(directory, kind, key);
+    const uint64_t t2 = nowNs();
+    g_laps.read += t2 - t1;
     if (!bytes || bytes->size() < 8) return false;
+    struct DecodeTimer { uint64_t t; ~DecodeTimer() { g_laps.decode += nowNs() - t; } } decodeTimer{t2};
     Reader r{*bytes};
     const auto digest = r.get<uint64_t>();
     if (hash(r.data.subspan(8)) != digest || r.get<uint32_t>() != cookerVersion ||
@@ -114,10 +127,13 @@ bool loadCached(Asset& asset, std::string_view sourcePath) {
     }
     if (!r.ok || r.pos != r.data.size()) return false;
     asset = std::move(decoded);
+    g_laps.hits++;
     return true;
 }
 
 bool cook(Asset& asset, std::string_view sourcePath) {
+    g_laps.cooks++;
+    struct CookTimer { uint64_t t; ~CookTimer() { g_laps.cookTotal += nowNs() - t; } } cookTimer{nowNs()};
     const std::string sourceStorage(sourcePath);
     const char* source = sourceStorage.empty() ? nullptr : sourceStorage.c_str();
     if (asset.nodes.empty() || asset.nodes.size() > kMaxMultiShapeNodes || asset.materials.size() > kMaxShapeTextures)
@@ -169,7 +185,9 @@ bool cook(Asset& asset, std::string_view sourcePath) {
         key = hash(recipe, key);
     std::vector<uint8_t> blob;
     append(blob, hash(recipe)); blob.insert(blob.end(), recipe.begin(), recipe.end());
+    const uint64_t tr = nowNs();
     const auto cached = mc2cache::readEntry(directory, kind, key);
+    g_laps.cookRead += nowNs() - tr;
     const bool hit = cached && *cached == blob;
     if (!hit && !mc2cache::writeEntry(directory, kind, key, blob)) {
         mc2::fmt::print_err("[CONTENT_COOK_ERROR] source={} key={:016x} cache write failed\n",
@@ -179,5 +197,14 @@ bool cook(Asset& asset, std::string_view sourcePath) {
     mc2::fmt::print_err("[CONTENT_COOK] source={} key={:016x} cache={} nodes={} materials={} sockets={} version={}\n",
         source ? source : "", key, hit ? "hit" : "miss", asset.nodes.size(), asset.materials.size(), asset.sockets.size(), cookerVersion);
     return true;
+}
+
+void reportLoadLaps(const char* stage, double stageMs, const char* mission) {
+    const auto ms = [](std::atomic<uint64_t>& a) { return static_cast<double>(a.exchange(0)) / 1e6; };
+    const auto n = [](std::atomic<uint64_t>& a) { return static_cast<unsigned long long>(a.exchange(0)); };
+    const double digest = ms(g_laps.digest), read = ms(g_laps.read), decode = ms(g_laps.decode);
+    const double cookTotal = ms(g_laps.cookTotal), cookRead = ms(g_laps.cookRead);
+    mc2::fmt::print_err("[LOAD_LAPS v1] stage={} mission={} stage_ms={:.0f} loads={} load_hits={} cooks={} digest_ms={:.0f} read_ms={:.0f} decode_ms={:.0f} cook_ms={:.0f} cook_read_ms={:.0f}\n",
+        stage, mission ? mission : "", stageMs, n(g_laps.loads), n(g_laps.hits), n(g_laps.cooks), digest, read, decode, cookTotal, cookRead);
 }
 }
