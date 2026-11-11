@@ -2,6 +2,8 @@
 // VFX island draw packing: stable primitive order, descriptor-indexed pages and blend equivalence audit.
 #include "doctest.h"
 #include "vfx_draw_plan.h"
+#include "vfx_native_batch.h"
+#include "vulkan_vfx_geometry.h"
 #include <array>
 #include <cmath>
 #include "fx/fx_render.h"
@@ -229,6 +231,52 @@ TEST_CASE("folded premultiplied equation matches modes 0/1/2/5 in rgb within 1/2
             CHECK(std::abs(oldRgb - foldedRgb) <= 1.0f / 255.0f);
         }
     }
+}
+
+// Native frame batch: three runs (gosFX packets, a ribbon, a mesh) appended in order read as one call to the island.
+TEST_CASE("native batch rebases indices and draw ranges per append, in append order") {
+    NativeBatch b;
+    b.begin();
+    const float mvp[16]{1};
+    mc2::fx::RenderVertex va[3]{}, vb[2]{};
+    const uint32_t ia[] = {0, 1, 2, 2, 1, 0};
+    const uint32_t ib[] = {1, 0};
+    VfxParticleDraw da{}, db{};
+    da.start = 0; da.count = 6; da.atlasColumns = kVfxCompactGeometryAtlas;
+    db.start = 0; db.count = 2; db.atlasColumns = kVfxCompactGeometryAtlas;
+    b.append(va, 3, ia, 6, &da, 1, mvp, nullptr, nullptr, 640, 480);
+    b.append(vb, 2, ib, 2, &db, 1, mvp, nullptr, nullptr, 640, 480);
+    REQUIRE(b.vertices.size() == 5);
+    REQUIRE(b.indices.size() == 8);
+    CHECK(b.indices[5] == 0);
+    CHECK(b.indices[6] == 3 + 1);   // second run's indices start after the first run's 3 vertices
+    CHECK(b.indices[7] == 3 + 0);
+    REQUIRE(b.draws.size() == 2);
+    CHECK(b.draws[0].start == 0);
+    CHECK(b.draws[1].start == 6);   // second run's index range starts after the first run's 6 indices
+    CHECK(b.draws[1].count == 2);
+    CHECK_FALSE(b.hasCam);
+    CHECK(b.hasMvp);
+}
+
+TEST_CASE("native batch keeps an invalid range or index invalid so the island skips the draw") {
+    NativeBatch b;
+    b.begin();
+    const float mvp[16]{1};
+    mc2::fx::RenderVertex v[2]{};
+    const uint32_t idx[] = {0, 1, 7};   // 7 >= vertexCount
+    VfxParticleDraw bad{}, good{};
+    bad.start = 2; bad.count = 5;       // past indexCount
+    good.start = 0; good.count = 2;
+    VfxParticleDraw both[2] = {bad, good};
+    b.append(v, 2, idx, 3, both, 2, mvp, nullptr, nullptr, 64, 64);
+    CHECK(b.draws[0].start == UINT32_MAX);
+    CHECK(b.draws[1].start == 0);
+    CHECK(b.indices[2] == UINT32_MAX);
+    b.begin();   // capacity kept, contents gone
+    CHECK(b.vertices.empty());
+    CHECK(b.indices.empty());
+    CHECK(b.draws.empty());
 }
 
 }
