@@ -33,9 +33,9 @@ public:
 	void rebuild(const Blocks& blocks, int32_t maxHandle, Classify&& classify, Duplicate&& duplicate) {
 		entries_.clear();
 		covered_.assign(static_cast<size_t>(std::max<int32_t>(maxHandle, 0)) + 1, 0);
-		for (const auto& b : blocks) {
-			for (int32_t i = 0; i < b.second; ++i) {
-				const int32_t h = b.first + i;
+		for (const auto& [firstHandle, numObjects] : blocks) {
+			for (int32_t i = 0; i < numObjects; ++i) {
+				const int32_t h = firstHandle + i;
 				if (h < 0 || h >= static_cast<int32_t>(covered_.size())) continue;
 				covered_[static_cast<size_t>(h)] = 1;
 				const int kind = classify(h);
