@@ -145,8 +145,7 @@ bool cook(Asset& asset, std::string_view sourcePath) {
         // function's validation when written and the entry is byte-identical by construction. Nothing to publish.
         const uint64_t again = sourceKey(asset, sourcePath);
         if (again == asset.verifiedCacheKey) {
-            mc2::fmt::print_err("[CONTENT_COOK] source={} key={:016x} cache=hit nodes={} materials={} sockets={} version={}
-",
+            mc2::fmt::print_err("[CONTENT_COOK] source={} key={:016x} cache=hit nodes={} materials={} sockets={} version={}\n",
                 source ? source : "", again, asset.nodes.size(), asset.materials.size(), asset.sockets.size(), cookerVersion);
             return true;
         }
