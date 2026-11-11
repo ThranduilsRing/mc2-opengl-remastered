@@ -8,6 +8,7 @@
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include <optional>
 #include "mover_internal.h"
+#include "terrain_runtime.h"
 
 #include "object_shared_constants.h"
 #include "mc2fmt.h"
@@ -535,6 +536,16 @@ float Mover::relFacingTo (glm::vec3 goal, long bodyLocation) {
 	*/
 	return(resultAngle);
 #endif
+}
+
+void Mover::refreshPositionNormal (void) {
+	const uint32_t epoch = TerrainRuntime::g_heightEpoch;
+	if (positionNormalEpoch == epoch && positionNormalX == position.x && positionNormalY == position.y)
+		return;
+	positionNormal = land->getTerrainNormal(position);
+	positionNormalX = position.x;
+	positionNormalY = position.y;
+	positionNormalEpoch = epoch;
 }
 
 float Mover::getTerrainAngle (void) {

@@ -622,7 +622,8 @@ long SensorSystem::scanBattlefield (void)
 	}
 	std::sort(contactOrdinals.begin(), contactOrdinals.end());
 	{
-		const auto candidates = ObjectManager->nearbyMovers(owner->getPosition(), radius);
+		static thread_local std::vector<mc2::world::SpatialGrid::Candidate> candidates;   // scratch: one query per scan, no allocation
+		ObjectManager->nearbyMoversInto(owner->getPosition(), radius, candidates);
 		size_t ci = 0;
 		for (const auto& cand : candidates) {
 			const auto position = ObjectManager->getMover(cand.ordinal)->getPosition();

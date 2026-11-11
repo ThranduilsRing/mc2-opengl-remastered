@@ -15,8 +15,10 @@
 #include"mclib.h"
 #endif
 
+#include<cstdint>
 #include<memory>
 #include<vector>
+#include"collision_cell_walk.h"
 
 #ifndef DCOLLSN_H
 #include"dcollsn.h"
@@ -96,11 +98,16 @@ class CollisionGrid
 		
 		unsigned long			maxGridRadius;		//Max radius in (m) of each grid node.
 		
-		struct Placed { unsigned long cell; GameObjectPtr object; };
+		// SIM-TICK-CUT: object class is cached per entry (immutable per object) so the pair reject never touches the
+		// second object, and only occupied cells are walked (collision_cell_walk.h).
+		struct Placed { unsigned long cell; GameObjectPtr object; uint8_t cls; };
 		std::vector<Placed>			placed;			//Grid objects, insertion order.
 		std::vector<GameObjectPtr>	giants;			//Objects larger than maxGridRadius, insertion order.
-		std::vector<unsigned long>	cellStart;		//CSR offsets into 'ordered', one per cell plus one.
+		std::vector<uint8_t>		giantClass;		//getObjectClass() per giant, same order.
+		std::vector<mc2::sim::OccupiedCellWalk::Item> walkItems;	//scratch
+		mc2::sim::OccupiedCellWalk	cellWalk;
 		std::vector<GameObjectPtr>	ordered;		//Cell-major; within a cell, newest first (the legacy list order).
+		std::vector<uint8_t>		orderedClass;	//Class of ordered[i].
 		
 		glm::vec3			gridOrigin;			//Center point of the grid.
 		
@@ -148,7 +155,7 @@ class CollisionGrid
 		void traverse (void);
 		void createGrid (void);		//Put all objects in world into grids
 		
-		void checkGrid (GameObjectPtr object, const GameObjectPtr* first, const GameObjectPtr* last);	//Check each object against grid
+		void checkGrid (GameObjectPtr object, uint8_t objectClass, const GameObjectPtr* first, const uint8_t* firstClass, const GameObjectPtr* last);	//Check each object against grid
 };
 
 //------------------------------------------------------------------------------

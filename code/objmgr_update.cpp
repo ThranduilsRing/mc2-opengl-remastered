@@ -664,20 +664,67 @@ void GameObjectManager::updateTerrainObjects(int& frameJobsPrePassCount) {
     };
     for (long i = 0; i < numSpecialBuildings; ++i) once(specialBuildings[i]);
     for (long i = 0; i < numGates; ++i) once(gates[i]);
+    // SIM-TICK-CUT: walk only the handles that can tick, in the scan's handle order, instead of every block object.
+    if (!terrainTickList.built() || terrainTickSpecial != numSpecialBuildings || terrainTickGates != numGates ||
+        terrainTickBlocks != Terrain::numObjBlocks)
+        rebuildTerrainTickList();
+    const auto isStaticIdle = [](GameObjectPtr object) {
+        const auto kind = object->getObjectClass();
+        return (kind == TREE || kind == TERRAINOBJECT) &&
+            !object->getFlag(OBJECT_FLAG_FALLING) && !object->getFlag(OBJECT_FLAG_JUSTCREATED);
+    };
+    bool pruneNeeded = false;
+    terrainTickList.walk([&](const mc2::sim::TerrainTickList::Entry& entry) {
+        auto* object = objList[entry.handle];
+        if (!object || !object->getExists()) return;
+        if (isStaticIdle(object)) { pruneNeeded = true; return; }
+        if (entry.duplicate) return;
+        advance(object);
+    });
+    if (pruneNeeded)
+        terrainTickList.pruneConditional([&](int32_t handle) {
+            auto* object = objList[handle];
+            return object && !isStaticIdle(object);
+        });
+}
+
+bool GameObjectManager::isSpecialOrGate(GameObjectPtr object) const {
+    for (long i = 0; i < numSpecialBuildings; ++i) if (specialBuildings[i] == object) return true;
+    for (long i = 0; i < numGates; ++i) if (gates[i] == object) return true;
+    return false;
+}
+
+void GameObjectManager::rebuildTerrainTickList() {
+    std::vector<std::pair<int32_t, int32_t>> blocks;
+    blocks.reserve(static_cast<size_t>(std::max<long>(Terrain::numObjBlocks, 0)));
     for (long block = 0; block < Terrain::numObjBlocks; ++block) {
         const auto& info = Terrain::objBlockInfo[block];
-        for (long i = 0; i < info.numObjects; ++i) {
-            auto* object = objList[info.firstHandle + i];
-            if (!object || !object->getExists()) continue;
-            // Static trees/terrain objects are never advanced here (and never in `advanced` unless
-            // already updated above), so test them before the linear `advanced` search.
-            const auto kind = object->getObjectClass();
-            if ((kind == TREE || kind == TERRAINOBJECT) &&
-                !object->getFlag(OBJECT_FLAG_FALLING) && !object->getFlag(OBJECT_FLAG_JUSTCREATED)) continue;
-            if (std::find(advanced.begin(), advanced.end(), object) != advanced.end()) continue;
-            advance(object);
-        }
+        blocks.emplace_back(static_cast<int32_t>(info.firstHandle), static_cast<int32_t>(info.numObjects));
     }
+    terrainTickList.rebuild(
+        blocks, static_cast<int32_t>(getMaxObjects()),
+        [&](int32_t handle) {
+            auto* object = objList ? objList[handle] : nullptr;
+            if (!object) return 0;
+            const auto kind = object->getObjectClass();
+            if (kind != TREE && kind != TERRAINOBJECT) return 1;
+            return (object->getFlag(OBJECT_FLAG_FALLING) || object->getFlag(OBJECT_FLAG_JUSTCREATED)) ? 2 : 3;
+        },
+        [&](int32_t handle) { return isSpecialOrGate(objList[handle]); });
+    terrainTickSpecial = numSpecialBuildings;
+    terrainTickGates = numGates;
+    terrainTickBlocks = Terrain::numObjBlocks;
+}
+
+void noteTerrainTickCandidate(GameObject* object) {
+    if (ObjectManager) ObjectManager->noteTerrainTickFlag(object);
+}
+
+void GameObjectManager::noteTerrainTickFlag(GameObjectPtr object) {
+    if (!object || !terrainTickList.built()) return;
+    const auto kind = object->getObjectClass();
+    if (kind != TREE && kind != TERRAINOBJECT) return;
+    terrainTickList.insert(static_cast<int32_t>(object->getHandle()), isSpecialOrGate(object));
 }
 
 void GameObjectManager::updateMoverWalk(MoverPtr (&removeList)[MAX_MOVERS], long& numRemoved) {

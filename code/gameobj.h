@@ -306,6 +306,10 @@ struct _GameObjectData
 }; using GameObjectData = _GameObjectData;
 
 
+// SIM-TICK-CUT: a TREE/TERRAINOBJECT raised FALLING or JUSTCREATED; the terrain tick list must advance it.
+// Defined in objmgr_update.cpp.
+void noteTerrainTickCandidate(GameObject* object);
+
 class GameObject {
 
 	public:
@@ -830,6 +834,8 @@ class GameObject {
 				flags |= flag;
 			else
 				flags &= (flag ^ 0xFFFFFFFF);
+			if (set && (flag & (OBJECT_FLAG_FALLING | OBJECT_FLAG_JUSTCREATED)))
+				noteTerrainTickCandidate(this);
 		}
 
 		virtual bool getFlag (unsigned long flag) {

@@ -409,6 +409,7 @@ void Mover::init (bool create) {
 	lowestWeaponNodeZ = -9999.9f;
 
 	positionNormal = glm::vec3(0.0f);
+	positionNormalEpoch = 0xFFFFFFFFu;
 	velocity = glm::vec3(0.0f);
 	name[0] = '\0';
 	chassis = 0;

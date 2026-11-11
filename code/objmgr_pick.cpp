@@ -36,6 +36,11 @@ std::vector<mc2::world::SpatialGrid::Candidate> GameObjectManager::nearbyMovers(
 	return moverGrid.query(position.x, position.y, radius);
 }
 
+void GameObjectManager::nearbyMoversInto(const glm::vec3& position, float radius, std::vector<mc2::world::SpatialGrid::Candidate>& out) {
+	ensureMoverGrid(*this, moverGrid, moverGridDirty, std::span<MoverPtr>(moverList, static_cast<size_t>(numMovers)));
+	moverGrid.queryInto(position.x, position.y, radius, out);
+}
+
 int GameObjectManager::moverOrdinal(GameObjectHandle handle) {
 	ensureMoverGrid(*this, moverGrid, moverGridDirty, std::span<MoverPtr>(moverList, static_cast<size_t>(numMovers)));
 	return (handle >= 0 && static_cast<size_t>(handle) < s_moverOrdinalByHandle.size()) ? s_moverOrdinalByHandle[handle] : -1;

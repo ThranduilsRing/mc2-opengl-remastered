@@ -783,6 +783,10 @@ public:
 	public:
 
 		glm::vec3		positionNormal;						// normal to terrain at current position
+		// SIM-TICK-CUT: positionNormal is re-sampled only when xy or the terrain height epoch changed.
+		float			positionNormalX = 0.0f, positionNormalY = 0.0f;
+		uint32_t		positionNormalEpoch = 0xFFFFFFFFu;
+		void refreshPositionNormal (void);
 		glm::vec3		velocity;							//How fast am I going?
 		char				name[MAXLEN_MOVER_NAME];		// Name of this particular mover
 		unsigned char		chassis;							// type of mover's chassis

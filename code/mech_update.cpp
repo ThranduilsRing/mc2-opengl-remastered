@@ -22,7 +22,7 @@ long BattleMech::update (void)
     unitAnimation = appearance->pinnedSimulationAnimation();
     simulationPose = appearance->simPose;
 
-	positionNormal = land->getTerrainNormal(position);
+	refreshPositionNormal();
 
 	getPilot()->getIndex();
 

@@ -26,6 +26,7 @@
 #include "static_resident_set.h"   // static-world-s2
 // Pooled actor ownership (turrets and gates); see spawnTurret and spawnGate.
 #include "world/actor_pool.h"
+#include "terrain_tick_list.h"      // SIM-TICK-CUT: active list for updateTerrainObjects
 
 #ifndef GAMEOBJ_H
 #include"gameobj.h"
@@ -521,10 +522,18 @@ class GameObjectManager {
 		void updateActiveSweep();
 		void updateFrameJobsPrepass(int& frameJobsPrePassCount);
 		void updateTerrainObjects(int& frameJobsPrePassCount);
+		mc2::sim::TerrainTickList terrainTickList;   // SIM-TICK-CUT: handles that can tick, ascending
+		long terrainTickSpecial = -1, terrainTickGates = -1, terrainTickBlocks = -1;   // rebuild signature
+		void rebuildTerrainTickList();
+		bool isSpecialOrGate(GameObjectPtr object) const;
 		void updateMoverWalk(MoverPtr (&removeList)[MAX_MOVERS], long& numRemoved);
 		void updateBrainCommit();
 		void updateOtherFx();
 	public:
+		// SIM-TICK-CUT: object layout changed (init, load, addObject, spawn): rebuild the terrain tick list next tick.
+		void invalidateTerrainTickList() { terrainTickList.invalidate(); }
+		// A TREE/TERRAINOBJECT gained FALLING or JUSTCREATED: it must tick (GameObject::setFlag).
+		void noteTerrainTickFlag(GameObjectPtr object);
 		void updateAppearancesOnly( bool terrain, bool mover, bool other);
 		// R1 render interpolation: mover poses at the start of the latest tick, and the 0..1 weight between them and the
 		// current poses that updateAppearancesOnly draws mechs and vehicles at (1 = the sim pose).
@@ -547,6 +556,7 @@ class GameObjectManager {
 			if (includeBuildings) buildingGridDirty = true;
 		}
 		std::vector<mc2::world::SpatialGrid::Candidate> nearbyMovers(const glm::vec3& position, float radius);
+		void nearbyMoversInto(const glm::vec3& position, float radius, std::vector<mc2::world::SpatialGrid::Candidate>& out);	// nearbyMovers into caller scratch
 		int moverOrdinal(GameObjectHandle handle);	// index in moverList (the nearbyMovers ordinal), -1 if not a mover
 		std::vector<mc2::world::SpatialGrid::Candidate> nearbyBuildings(const glm::vec3& position, float radius);
 

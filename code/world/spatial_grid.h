@@ -39,7 +39,13 @@ public:
         });
     }
     std::vector<Candidate> query(float x, float y, float radius) const {
-        std::vector<Candidate> result = unbounded_;
+        std::vector<Candidate> result;
+        queryInto(x, y, radius, result);
+        return result;
+    }
+    // Same candidates in the same order, into caller scratch (cleared first) so per-scan queries do not allocate.
+    void queryInto(float x, float y, float radius, std::vector<Candidate>& result) const {
+        result.assign(unbounded_.begin(), unbounded_.end());
         // One cell of padding also covers float rounding in legacy distance math.
         const auto lowX = cell(x - radius), highX = cell(x + radius);
         const auto lowY = cell(y - radius), highY = cell(y + radius);
@@ -60,7 +66,6 @@ public:
             }
         }
         std::sort(result.begin(), result.end(), [](const Candidate& a, const Candidate& b) { return a.ordinal < b.ordinal; });
-        return result;
     }
 };
 }
