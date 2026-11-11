@@ -44,7 +44,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/tests/test_host_lease.py` | 91 | `nofocus.spawn` | offscreen |
 | `scripts/tests/test_nofocus_env.py` | 47 | `nofocus.spawn` | offscreen |
 | `scripts/tests/test_shadow_bake_init.py` | 125 | `nofocus.run` | offscreen |
-| `scripts/tests/test_shadow_bake_init.py` | 290 | `nofocus.run` | offscreen |
+| `scripts/tests/test_shadow_bake_init.py` | 289 | `nofocus.run` | offscreen |
 | `tests/smoke/object_visual_diff.py` | 123 | `nofocus.run` | offscreen |
 | `tests/smoke/scene_resize.py` | 37 | `nofocus.spawn` | offscreen |
 | `tools/campaign_save_roundtrip.py` | 178 | `nofocus.spawn` | offscreen |
