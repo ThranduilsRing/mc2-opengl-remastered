@@ -238,6 +238,21 @@ def test_merge_ratchets_scan_worktree_before_verify():
     assert lm.verify_env(ROOT)["MC2_NINJA_TREE"] == "build64-ninja" and lm.verify_env(ROOT)["MC2_UNIT_BUILD_DIR"] == os.path.join(ROOT, "build-cc-tests")
 
 
+def test_merge_build_width_is_the_build_pool_not_the_lane_count(tmp_path, monkeypatch):
+    pool = tmp_path / "BUILD_POOL"
+    pool.write_text("7 3\n")
+    jobs = tmp_path / "JOBS"
+    jobs.write_text("1\n")
+    import build_tokens
+    monkeypatch.setenv("MC2_BUILD_POOL_FILE", str(pool))
+    monkeypatch.setattr(build_tokens, "compile_cpu_count", lambda: 12)
+    env = lm.verify_env(ROOT)
+    assert env["MC2_BUILD_JOBS"] == "7"
+    assert env["CONTRACTS_JOBS"] == lm.host_jobs()   # contracts stay on the JOBS rule
+    monkeypatch.setattr(build_tokens, "compile_cpu_count", lambda: 4)
+    assert lm.verify_env(ROOT)["MC2_BUILD_JOBS"] == "4"   # never above the compile mask
+
+
 def test_deploy_checks_exe_bytes_even_with_fresh_header(tmp_path, capsys):
     import pytest
     import deploy_payload as dp
