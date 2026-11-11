@@ -129,6 +129,7 @@ def read_frames(directory):
 
 # These scopes are timed inside an already measured inclusive scope. Other
 # dotted names (e.g. Terrain.CullCompute) are separate passes, not children.
+GPU_INCOMPLETE_MAX_FRACTION = 0.01
 NESTED_GPU_SCOPES = {"VKIsl.Vfx.Vegetation", "VKIsl.Props.Trees"}
 
 
@@ -158,8 +159,15 @@ def summarize(directory, log, scenario):
     start = next((r["frame"] for r in rows if r["type"] == "clock" and "frame" in r), worlds[0]["frame"])
     samples = [r for r in rows if r.get("frame", 0) >= start]
     gpu = [r for r in samples if r["type"] == "gpu"]
-    if not gpu or any(r["recorded"] != r["valid"] for r in gpu):
-        raise ValueError("missing or incomplete per-frame GPU timestamps")
+    # Frames before `start` (load-in) are already excluded. A few incomplete rows elsewhere (a stall, a streaming hitch: 12 of
+    # 5613 in the W148 quiet window) are dropped and counted; a large fraction still refuses the run.
+    incomplete = [r for r in gpu if r["recorded"] != r["valid"]]
+    if not gpu or len(incomplete) > GPU_INCOMPLETE_MAX_FRACTION * len(gpu) or len(incomplete) == len(gpu):
+        raise ValueError(f"missing or incomplete per-frame GPU timestamps ({len(incomplete)} of {len(gpu)} frames)")
+    if incomplete:
+        print(f"[battle-bench] {len(incomplete)} of {len(gpu)} GPU frames had incomplete timestamps (dropped, "
+              f"frames {incomplete[0]['frame']}..{incomplete[-1]['frame']})", flush=True)
+        gpu = [r for r in gpu if r["recorded"] == r["valid"]]
     cpu = [r for r in samples if r["type"] == "cpu"]
     ticks = [r for r in samples if r["type"] == "tick"]
     memory = [r for r in rows if r["type"] == "memory"]
@@ -177,7 +185,7 @@ def summarize(directory, log, scenario):
     destruction = max(r["destroyed"] for r in worlds) - worlds[0]["destroyed"]
     if destruction <= 0 or not any(r["type"] == "orders" and r["attacks"] > 0 for r in rows):
         raise ValueError("battle did not produce destruction and attack orders")
-    return {"gpu_frame": distribution([r["ms"] for r in gpu]), "gpu_passes": by_pass,
+    return {"gpu_incomplete_frames": len(incomplete), "gpu_frame": distribution([r["ms"] for r in gpu]), "gpu_passes": by_pass,
             "gpu_pass_sum": distribution([gpu_pass_sum(r["passes"]) for r in gpu]),
             "gpu_scopes": {k: distribution([r["passes"].get(k, 0) for r in gpu]) for k in scopes},
             "cpu_frame": distribution([r["ms"] for r in cpu]), "sim_tick": distribution([r["ms"] for r in ticks]),
