@@ -1174,9 +1174,9 @@ glm::vec3 Turret::getPositionFromHS (long nodeId)
 {
 	//-----------------------------------------------------
 	// Need to get this working with SITE code when done!
-	glm::vec3 nodePos = appearance->getHitNode();
+	glm::vec3 nodePos = appearance->simHitNode();
 	if ((mc2::math::closeEnough(nodePos, position)) || (nodeId != -1))
-		nodePos = appearance->getWeaponNodePosition(0);
+		nodePos = appearance->simWeaponNodePosition(0);
 
 	return(nodePos);
 }
@@ -1184,7 +1184,7 @@ glm::vec3 Turret::getPositionFromHS (long nodeId)
 //---------------------------------------------------------------------------
 glm::vec3 Turret::getLOSPosition (void)
 {
-	glm::vec3 nodePos = appearance->getWeaponNodePosition(0);
+	glm::vec3 nodePos = appearance->simWeaponNodePosition(0);
 	glm::vec3 losPos = position;
 	losPos.z = nodePos.z;
 	return(losPos);
@@ -1312,7 +1312,7 @@ void Turret::fireWeapon (GameObjectPtr target, long weaponId) {
 	currentWeaponNode = appearance->getWeaponNode(0);
 	if (currentWeaponNode != -1) 
 	{
-		glm::vec3 pos = appearance->getWeaponNodePosition(currentWeaponNode);
+		glm::vec3 pos = appearance->simWeaponNodePosition(currentWeaponNode);
 		appearance->setWeaponNodeUsed(currentWeaponNode);
 		
 		//Check if this is an indirect Fire weapon.

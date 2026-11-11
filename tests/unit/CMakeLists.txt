@@ -605,6 +605,8 @@ set_source_files_properties(test_part_archive.cpp
 target_sources(mc2_tests PRIVATE test_tg_type_node_dtor.cpp)
 # B7o.3: actor appearance owner protocol (header-only, code/appearance_owner.h)
 target_sources(mc2_tests PRIVATE test_actor_appearance_owner.cpp)
+# G1 sim/render boundary: Appearance::simNode*/drawNode* phase guard (header-only, mclib/presentation_phase.h)
+target_sources(mc2_tests PRIVATE test_node_read_phase.cpp)
 # A2: the ABL debugger managers are created in one place (source pins; the interpreter is not in this tier)
 target_sources(mc2_tests PRIVATE test_abl_debugger_lifetime.cpp)
 

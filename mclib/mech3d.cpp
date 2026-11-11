@@ -325,7 +325,7 @@ void Mech3DAppearance::copyTo (MechAppearanceData *data)
 	data->hitGestureId = unitAnim().hitGestureId;
 
 	data->currentFrame = unitAnim().currentFrame;
-	data->currentLOD = currentLOD;
+	data->currentLOD = 0;	// derived: camera-distance LOD, re-picked by the next render; never saved
 
 	// Keep the legacy 10-byte prefix unchanged. ANIM saves the complete counted
 	// tables; Mission::save requires WNOD for tables beyond the old 10-node cap.
@@ -373,7 +373,7 @@ void Mech3DAppearance::copyFrom (MechAppearanceData *data)
 	unitAnim().hitGestureId = data->hitGestureId;
 
 	unitAnim().currentFrame = data->currentFrame;
-	currentLOD = data->currentLOD;
+	currentLOD = 0;	// derived: the render pass re-picks the LOD from the camera distance
 
 	// Mirror of copyTo: only 10 bytes were saved, and a table shorter than that must not be over-written.
 	memcpy(unitAnim().nodeUsed.data(),data->nodeUsed,std::min<size_t>(10,unitAnim().nodeUsed.size()*sizeof(long)));		 

@@ -316,19 +316,19 @@ void Mover::disable (unsigned long cause)
 		if (isMech() && (getMoveType() != MOVETYPE_AIR))
 		{
 			glm::vec3 explosionLoc;
-			explosionLoc = appearance->getNodeNamePosition("cockpit");
+			explosionLoc = appearance->simNodeNamePosition("cockpit");
 			ObjectManager->createExplosion(MECH_CRITICAL_HIT_ID,nullptr,explosionLoc,0.0f,0.0f);
 
-			explosionLoc = appearance->getNodeNamePosition("hit_left");
+			explosionLoc = appearance->simNodeNamePosition("hit_left");
 			ObjectManager->createExplosion(MECH_CRITICAL_HIT_ID,nullptr,explosionLoc,0.0f,0.0f);
 			
-			explosionLoc = appearance->getNodeNamePosition("hit_right");
+			explosionLoc = appearance->simNodeNamePosition("hit_right");
 			ObjectManager->createExplosion(MECH_CRITICAL_HIT_ID,nullptr,explosionLoc,0.0f,0.0f);
 
-			explosionLoc = appearance->getNodeNamePosition("weapon_righttorso");
+			explosionLoc = appearance->simNodeNamePosition("weapon_righttorso");
 			ObjectManager->createExplosion(MECH_CRITICAL_HIT_ID,nullptr,explosionLoc,0.0f,0.0f);
 
- 			explosionLoc = appearance->getNodeNamePosition("weapon_lefttorso");
+ 			explosionLoc = appearance->simNodeNamePosition("weapon_lefttorso");
 			ObjectManager->createExplosion(MECH_CRITICAL_HIT_ID,nullptr,explosionLoc,0.0f,0.0f);
 		}
 	}

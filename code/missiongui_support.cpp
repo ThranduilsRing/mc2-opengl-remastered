@@ -450,7 +450,7 @@ void MissionInterfaceManager::beginVtol (long supportID, long commanderID, glm::
 	if (vehicleID[commanderID] == 147)
 	{
 		if (mechToRecover[commanderID] && mechToRecover[commanderID]->appearance)
-			newPos = mechToRecover[commanderID]->appearance->getNodeNamePosition("cockpit");
+			newPos = mechToRecover[commanderID]->appearance->drawNodeNamePosition("cockpit");
 	}
 	
 	{

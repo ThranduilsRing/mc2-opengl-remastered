@@ -876,6 +876,24 @@ public:
 			return result;
 		}
 
+		// Typed node accessors. simNode* always reads the sim pose (what the tick, weapons, LOS and the save see); drawNode*
+		// always reads the published draw shape (render, effects, HUD). The legacy get*Position virtuals above choose by the
+		// caller's phase flag; code/ sim translation units must call only simNode* (scripts/boundary_rules.json
+		// sim_no_draw_node_reads).
+		glm::vec3 simWeaponNodePosition (long node) { mc2::sim::NodeReadPhase p(false); return getWeaponNodePosition(node); }
+		glm::vec3 simNodePosition (long nodeId) { mc2::sim::NodeReadPhase p(false); return getNodePosition(nodeId); }
+		glm::vec3 simNodeNamePosition (mc2::czstring nodeName) { mc2::sim::NodeReadPhase p(false); return getNodeNamePosition(nodeName); }
+		glm::vec3 simNodeIdPosition (long nodeId) { mc2::sim::NodeReadPhase p(false); return getNodeIdPosition(nodeId); }
+		glm::vec3 simHitNode (void) { mc2::sim::NodeReadPhase p(false); return getHitNode(); }
+		glm::vec3 simHitNodeLeft (void) { mc2::sim::NodeReadPhase p(false); return getHitNodeLeft(); }
+		glm::vec3 simHitNodeRight (void) { mc2::sim::NodeReadPhase p(false); return getHitNodeRight(); }
+		glm::vec3 drawWeaponNodePosition (long node) { mc2::sim::NodeReadPhase p(true); return getWeaponNodePosition(node); }
+		glm::vec3 drawNodePosition (long nodeId) { mc2::sim::NodeReadPhase p(true); return getNodePosition(nodeId); }
+		glm::vec3 drawNodeNamePosition (mc2::czstring nodeName) { mc2::sim::NodeReadPhase p(true); return getNodeNamePosition(nodeName); }
+		glm::vec3 drawNodeIdPosition (long nodeId) { mc2::sim::NodeReadPhase p(true); return getNodeIdPosition(nodeId); }
+		glm::vec3 drawHitNodeLeft (void) { mc2::sim::NodeReadPhase p(true); return getHitNodeLeft(); }
+		glm::vec3 drawHitNodeRight (void) { mc2::sim::NodeReadPhase p(true); return getHitNodeRight(); }
+
 		virtual bool getRightArmOff (void)
 		{
 			return false;

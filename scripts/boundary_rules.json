@@ -48,6 +48,19 @@
       ]
     },
     {
+      "id": "sim_no_draw_node_reads",
+      "why": "Sim translation units read node positions only through Appearance::simNode*/simHitNode*/simWeaponNodePosition (the sim pose). The legacy get*NodePosition virtuals and drawNode* pick the draw shape by a thread-local phase flag; a sim call that reaches them returns a plausible camera-dependent number (UNIT-VISUAL-SNAP-1: baseRootNodeHeight leaked into saves). currentLOD is camera-distance render state. Presentation TUs are allowlisted by path: weaponbolt_render.cpp and missiongui_support.cpp (render/UI), artlry.cpp (the presentation-only bomber), mech_value_codec.h (writes the derived currentLOD as zero).",
+      "dirs": ["code/"],
+      "exts": [".cpp", ".h", ".hpp", ".inl"],
+      "floor": {"min": 1, "kind": "corpus"},
+      "comment_prefixes": ["//", "/*", "*"],
+      "allow_files": ["code/weaponbolt_render.cpp", "code/missiongui_support.cpp", "code/artlry.cpp", "code/mech_value_codec.h"],
+      "patterns": [
+        {"re": "\\b(get|draw)(WeaponNodePosition|NodePosition|NodeNamePosition|NodeIdPosition|HitNode|HitNodeLeft|HitNodeRight)\\s*\\(", "msg": "draw-node accessor in a sim TU: use Appearance::simNode*/simHitNode*/simWeaponNodePosition"},
+        {"re": "\\bcurrentLOD\\b", "msg": "currentLOD is camera-dependent render state; sim TUs must not read it"}
+      ]
+    },
+    {
       "id": "no_gl.include",
       "why": "GL is gone from the engine: no GL header include in owned C/C++.",
       "dirs": [""],
