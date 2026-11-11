@@ -56,6 +56,7 @@ ROOT = _THIS.parents[2]  # repo root (tools/visual_verify/capture.py -> up 2)
 sys.path.insert(0, str(_THIS.parent))  # sibling ab also resolves when capture is imported by a driver
 sys.path.insert(0, str(ROOT / "scripts"))
 import run_visual_capture as rvc  # noqa: E402  (the hardened launcher we build on)
+import asset_parity  # noqa: E402  (ASSET-PARITY-1: refuse an install whose data/assets/*.fst drifted from v0.4)
 import mc2_env_pin as env_pin  # noqa: E402  (CAPTURE-ENV-PIN-1 declared-env parsing)
 import manifest_schema as ms  # noqa: E402  (unified identity + binary provenance)
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
@@ -385,6 +386,9 @@ def main(argv=None) -> int:
     ap.add_argument("--allow-running", action="store_true",
                     help="skip the pre-flight refusal when an mc2.exe from the "
                          "target install is already running (NOT recommended)")
+    ap.add_argument("--allow-asset-drift", action="store_true",
+                    help="capture although the install's data/assets/*.fst differ from "
+                         "v0.4 (default: refuse, the capture would grade old art)")
     args = ap.parse_args(argv)
 
     install = Path(args.install).resolve()
@@ -395,6 +399,14 @@ def main(argv=None) -> int:
         return 4
     if not rvc.guard_exe(exe):
         return 7
+    drift = asset_parity.capture_drift(install)
+    if drift is not None:
+        print(f"[vv-capture] {asset_parity.verdict_line(drift, asset_parity.default_ref())}", file=sys.stderr)
+        if not drift.ok and not args.allow_asset_drift:
+            print(f"[vv-capture] ABORT: {len(drift.missing)} missing, {len(drift.size)} size-different, "
+                  f"{len(drift.content)} content-different asset file(s) vs {asset_parity.default_ref()}; "
+                  "redeploy (deploy_payload syncs it) or pass --allow-asset-drift.", file=sys.stderr)
+            return 8
 
     out_dir = Path(args.out).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
