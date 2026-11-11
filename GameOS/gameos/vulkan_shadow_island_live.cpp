@@ -1067,8 +1067,8 @@ static void record_local_shadows(ShadowIsland* s) {
     namespace dr = mc2vk::dynrender;
     mc2vk::VulkanContext& dctx = mc2vk::getOrCreateEngineVulkanContext();
     dr::depthImageBarrier(dctx, cb, L.liveAtlas.image.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                          VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-                          VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                          VK_PIPELINE_STAGE_2_TRANSFER_BIT,   // the earlier fragment-shader reads are ordered by the toDst barrier above (src FRAGMENT_SHADER -> TRANSFER); only the copy writes remain
+                          VK_ACCESS_2_TRANSFER_WRITE_BIT,
                           VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
                           VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
     MC2_VK_GPU_SCOPE(liveScope, cb, "VKIsl.Shadow.LocalLive");
