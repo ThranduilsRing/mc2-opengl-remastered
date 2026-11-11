@@ -1087,6 +1087,7 @@ static void record_local_shadows(ShadowIsland* s) {
         vkCmdClearAttachments(cb, 1, &ca, 1, &cr);
     }
     if (s->mech.hasCasters()) {
+        bool mechPipeBound = false;   // one pass, one pipeline: the tiles below share the bind
         for (uint32_t i = 0; i < usedCount; ++i) {
             const uint32_t t = used[i];
             float m[16];
@@ -1097,7 +1098,7 @@ static void record_local_shadows(ShadowIsland* s) {
             static std::vector<uint8_t> tileMask;
             s->mover.runMaskLight(s->mech.runs(), tiles[t].pos, tiles[t].farDistance, tileMask);
             local_tile_viewport(cb, t);
-            s->mech.record(cb, s->parity, dyn, tileMask.data(), true);
+            s->mech.record(cb, s->parity, dyn, tileMask.data(), true, &mechPipeBound);
         }
     }
     dr::end(dctx, cb);

@@ -48,7 +48,7 @@ public:
     // Binds the pipeline and draws every run into the open render pass of `cb`; `uboOffset` is this pass's slice of the frame UBO. The caller has set the
     // viewport, the scissor and the depth bias. `runMask` (one byte per runs() entry, null = all) drops the runs whose mechs cannot reach this map.
     // Returns the draws recorded.
-    uint32_t record(VkCommandBuffer cb, uint32_t parity, uint32_t uboOffset, const uint8_t* runMask = nullptr, bool localLight = false);
+    uint32_t record(VkCommandBuffer cb, uint32_t parity, uint32_t uboOffset, const uint8_t* runMask = nullptr, bool localLight = false, bool* pipelineBound = nullptr);   // pipelineBound: the caller's per-pass flag; set once pipeline_ is bound, and the bind is skipped while it is set (tiles of one render pass)
     const std::vector<Mc2MechDrawRun>& runs() const { return runs_; }
 
     // Mech instances drawn by the last staged epoch (for the health line).
