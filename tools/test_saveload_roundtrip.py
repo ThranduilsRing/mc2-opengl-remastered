@@ -261,3 +261,26 @@ def test_run_retains_failed_smoke_evidence_and_limits_liveness_fixture(tmp_path,
         # More startup allowance must not buy extra post-load simulation ticks.
         assert int(commands[-1][commands[-1].index("--ticks") + 1]) == 2000
         assert (dest / "run/mc2_01.log").read_text() == "fixture did not load"
+
+
+def test_camera_pose_runs_saved_then_moved_and_compares_the_save_bytes(tmp_path, monkeypatch, capsys):
+    """The camera-pose option: one run with nothing parked (the saved camera), one with MC2_CAMERA_PARK; identical save bytes are IDENTICAL."""
+    envs, saves = [], {}
+
+    def fake(mission, save_at, load_at, deploy, out, *a, **k):
+        envs.append(k.get("extra_env"))
+        saves[len(envs)] = _save(tmp_path / f"s{len(envs)}.ims")
+        return out, saves[len(envs)], None, None, 0
+    monkeypatch.setattr(rt, "run_fixture", fake)
+    assert rt.main(["camera-pose", "--mission", "m", "--moved-pose", "1,2,3,4,5@300", "--out", str(tmp_path / "o")]) == 0
+    assert envs == [{}, {"MC2_CAMERA_PARK": "1,2,3,4,5@300"}]
+    assert "IDENTICAL" in capsys.readouterr().out
+
+
+def test_camera_pose_reports_different_saves_and_failed_runs(tmp_path, monkeypatch, capsys):
+    first, moved = _save(tmp_path / "x.ims", 64), _save(tmp_path / "y.ims", 96)
+    ok, lines = rt.camera_pose_verdict(first, moved)
+    assert not ok and lines
+    assert not rt.camera_pose_verdict(first, None)[0]           # a missing save is never "identical"
+    monkeypatch.setattr(rt, "run_fixture", lambda *a, **k: (str(tmp_path), first, None, None, 3))
+    assert rt.main(["camera-pose", "--mission", "m", "--out", str(tmp_path / "o2")]) == 2
