@@ -2,7 +2,6 @@
 #include "Gates/gate.h"
 #include "../mclib/texture_assets.h"
 #include <tracy/Tracy.hpp>
-#include "../GameOS/gameos/diagnostic_trace.h"
 #include <set>
 #include <string>
 
@@ -922,7 +921,7 @@ void UiDefs::GameOSPage::render(int xOffset, int yOffset)
                         // [UI_MARKER v1]: campaign marker draw trace, once per widget and state.
                         static std::set<std::string> s_markerLogged;
                         const std::string tag = e.key + "#" + std::to_string(static_cast<int>(e.btnState));
-                        if (mc2_diag::tagRequested("UI_MARKER") && s_markerLogged.insert(tag).second) {
+                        if (s_markerLogged.insert(tag).second) {
                             const FRect mr = scaledRect(e.rect, xOffset, yOffset, s);
                             printf("[UI_MARKER v1] path=defs widget=%s state=%d tex=%s texWH=%dx%d tint=0x%08x uv=%d,%d,%d,%d draw=%.1fx%.1f at %.1f,%.1f alphaTest=%d pixelPerfect=%d\n",
                                    e.key.c_str(), static_cast<int>(e.btnState), e.texturePath.c_str(),

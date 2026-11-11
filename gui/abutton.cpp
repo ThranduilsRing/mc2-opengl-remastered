@@ -4,7 +4,6 @@
 //===========================================================================//
 
 #include"abutton.h"
-#include "../GameOS/gameos/diagnostic_trace.h"
 #include <set>
 #include <string>
 #include "../mclib/texture_assets.h"
@@ -158,7 +157,7 @@ void aButton::render()
 			static std::set<std::string> s_markerLogged;
 			char tag[96];
 			sprintf( tag, "%p#%d", (void*)this, (int)state );
-			if ( mc2_diag::tagRequested( "UI_MARKER" ) && s_markerLogged.insert( tag ).second )
+			if ( s_markerLogged.insert( tag ).second )
 			{
 				printf( "[UI_MARKER v1] path=legacy id=%ld state=%d tex=%s texWH=%ldx%ld tint=0x%08x uv=%.3f,%.3f-%.3f,%.3f draw=%.1fx%.1f at %.1f,%.1f\n",
 					(long)getID(), (int)state, data.fileName, (long)data.fileWidth, (long)data.fileHeight,
