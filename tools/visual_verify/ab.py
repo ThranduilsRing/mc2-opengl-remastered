@@ -32,6 +32,8 @@ import mc2_env_pin as env_pin  # noqa: E402
 import console_child  # noqa: E402  (windowless console children; scripts/console_child.py)
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pixel_hist  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import cooked_outputs  # noqa: E402  (tools/cooked_outputs.py: the PC-cooked output manifest)
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
@@ -239,21 +241,37 @@ def git_diff_files(older, newer):
 # Deploy-cooked payload: untracked files deploy_payload generates and pins by sha256 in a tracked pin file. When the window
 # changed the pin file, the pinned outputs are the window's payload too, but only at the pinned bytes (W138h: stock-tree-upscale
 # cooks data/tgl/128/<stem>.ktx2 from data/kit/tree-upscale.json; gitignored, so `git diff` never lists them).
-COOKED_PAYLOAD_PINS = {
-    "data/kit/tree-upscale.json": lambda pins: {f"data/tgl/128/{stem}.ktx2": row["ktx2_sha256"] for stem, row in pins.items()},
-}
+COOKED_PAYLOAD_PINS = {e["pin_file"]: (lambda pins, e=e: cooked_outputs.expand_pins(e, pins)) for e in cooked_outputs.load()["pinned"]}
 
 
 # Unpinned deploy-cooked outputs: gitignored, no pin file, so they are the window's payload when the window changed the cook
-# script that produces them (W147: cook_grass_turf.py cooks data/terrain_layers/grass_turf_normal.ktx2).
-COOKED_UNPINNED_OUTPUTS = {
-    "tools/mc2texcook/cook_grass_turf.py": ("data/terrain_layers/grass_turf_normal.ktx2",),
-}
+# script that produces them (W147: cook_grass_turf.py cooks data/terrain_layers/grass_turf_normal.ktx2). Both tables come from
+# tools/cooked_outputs.json, the one list of PC-cooked outputs.
+COOKED_UNPINNED_OUTPUTS = cooked_outputs.unpinned_by_cook()
 
 
 def cooked_unpinned(diff_files):
     """Install relpaths of the unpinned cooked outputs whose cook script changed in the window."""
     return {path for script, outs in COOKED_UNPINNED_OUTPUTS.items() if script in diff_files for path in outs}
+
+
+def cooked_unpinned_accepted(diff_files, commit, install_manifest):
+    """The unpinned cooked outputs accepted as window payload: cook script changed, and, for a row that pins `sha256` in
+    tools/cooked_outputs.json (read at `commit`), the capture's file must be exactly those bytes (fail closed: an unreadable manifest
+    or a different hash accepts nothing for that row). Rows without a pin keep the cook-script rule."""
+    changed = cooked_unpinned(diff_files)
+    if not changed:
+        return set()
+    try:
+        r = subprocess.run(["git", "-C", str(ROOT), "show", f"{commit}:tools/cooked_outputs.json"], capture_output=True, text=True,
+                           **console_child.child_kwargs(redirected=True))
+        rows = json.loads(r.stdout)["unpinned"] if r.returncode == 0 else None
+    except (OSError, ValueError, KeyError, TypeError):
+        rows = None
+    if rows is None:
+        return {p for p in changed if p not in cooked_outputs.pinned_unpinned_paths()}
+    pins = {row["out"]: row.get("sha256") for row in rows}
+    return {p for p in changed if not pins.get(p) or install_manifest.get(p) == pins[p]}
 
 
 def cooked_payload(diff_files, commit):
@@ -1205,7 +1223,7 @@ def main(argv=None):
                 accepted = manifest_diff_files(ia["manifest"], ib["manifest"]) & {repo_path_to_install(f) for f in diff_files}
                 accepted |= {path for path, sha in cooked_payload(diff_files, ib["commit"]).items()
                              if ib["manifest"].get(path) == sha}
-                accepted |= cooked_unpinned(diff_files)
+                accepted |= cooked_unpinned_accepted(diff_files, ib["commit"], ib["manifest"])
                 accepted_delta = sorted(accepted)
                 for path, line in entries:
                     if path in accepted:

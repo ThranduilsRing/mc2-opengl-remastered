@@ -5,9 +5,17 @@ watchdog calls ClipCursor(NULL) every 20 ms and restores the pointer on exit. On
 is using that takes the mouse from them (owner incident 2026-10-10). MC2_CURSOR_GUARD_OFF=1 makes
 smoke_lib.win_input issue no win32 call of any kind.
 """
+import importlib
 import os
+import re
+import sys
 import tempfile
 
+# deploy_payload imports as a top-level module from scripts/ (as every deploy test does it); resolved here, not by import order.
+_SCRIPTS = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+for _p in (os.path.dirname(_SCRIPTS), _SCRIPTS):   # repo root (scripts.deploy_payload), scripts/ (deploy_payload)
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
 os.environ["MC2_CURSOR_GUARD_OFF"] = "1"
 os.environ.setdefault("MC2_LINT_SLOTS_DIR", os.path.join(tempfile.gettempdir(), f"mc2-lint-slots-test-{os.getpid()}"))   # lint tests never share the real host slots
 os.environ["MC2_NO_CPU_PIN"] = "1"
@@ -43,13 +51,26 @@ def deploy_tmp_path(tmp_path):
 def _fixture_deploys_tolerate_failed_cooks(monkeypatch, request):
     """box-data-overlay (W147) made a failed deploy cook exit non-zero unless --allow-stock-trees; the fixture installs hold fake
     textures the real cooks reject, so fixture deploys run as --allow-stock-trees (test_deploy_bootstrap tests the flag itself)."""
-    import sys
     if request.module.__name__.rsplit(".", 1)[-1] == "test_deploy_bootstrap":
         return
-    for name in ("deploy_payload", "scripts.deploy_payload"):   # tests import it under either name
-        dp = sys.modules.get(name)
-        if dp is not None and hasattr(dp, "ALLOW_STOCK_TREES"):
-            monkeypatch.setattr(dp, "ALLOW_STOCK_TREES", True)
+    for name in deploy_modules_named_by(request.module):
+        monkeypatch.setattr(importlib.import_module(name), "ALLOW_STOCK_TREES", True)   # imports it: never depends on what ran before
+
+
+def deploy_modules_named_by(module):
+    """The deploy_payload module names a test module deploys through (`deploy_payload` and/or `scripts.deploy_payload`), read from its
+    source: only test modules that name deploy_payload get the --allow-stock-trees default, whatever was imported before them."""
+    try:
+        with open(module.__file__, encoding="utf-8") as fh:
+            text = fh.read()
+    except (OSError, AttributeError, UnicodeDecodeError):
+        return []
+    names = []
+    if "scripts.deploy_payload" in text or re.search(r"from scripts import [^\n]*\bdeploy_payload\b", text):
+        names.append("scripts.deploy_payload")
+    if re.search(r"(?<![.\w])deploy_payload\b", text):
+        names.append("deploy_payload")
+    return names
 
 
 @pytest.fixture(autouse=True)

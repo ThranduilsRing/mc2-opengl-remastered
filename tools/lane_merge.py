@@ -1218,13 +1218,86 @@ def data_fingerprint_check(root: str, fingerprint=None, baseline=None) -> tuple[
     return "OK", ""
 
 
+def cooked_outputs_check(root: str) -> tuple[str, str]:
+    """The gitignored PC-cooked outputs (tools/cooked_outputs.json: tree-upscale sidecars, grass turf, terrain layers) present and at their
+    pinned bytes under `root`. -> (verdict, detail): 'FAIL' lists each problem (the gate's compare-captures and the laptop provision would
+    otherwise fail on it, W138h x4 / W147 run 4), 'SKIPPED' when `root` has no manifest (not a repo tree)."""
+    if not os.path.isfile(os.path.join(root, "tools", "cooked_outputs.json")):
+        return "SKIPPED", f"no tools/cooked_outputs.json under {root}"
+    sys.path.insert(0, os.path.join(root, "tools"))
+    import cooked_outputs
+    bad = cooked_outputs.problems(root)
+    return ("FAIL", "\n".join(bad)) if bad else ("OK", "")
+
+
+#: pre-gate step label -> the contracts-board row (scripts/check-contracts.sh run_check/run_nightly label) it mirrors.
+PRE_GATE_CONTRACT_ROWS = {"gate_gen": "gate_gen_check", "cxx17": "cxx17_ratchet", "sim_include_firewall": "sim_include_firewall",
+                          "log_tag_census": "log_tag_census", "doc_links": "doc_links", "stock_mission_data": "stock_mission_data"}
+#: gate rows (scripts/merge_gate.py plan) whose INPUTS a pre-gate row checks, though the row itself needs the laptop.
+PRE_GATE_INPUT_ROWS = {"deploy": "exe-fingerprint", "capture-before": "cooked_outputs", "capture-after": "cooked_outputs",
+                       "compare-captures": "cooked_outputs", "determinism-": "data_fingerprint", "saveload-": "data_fingerprint"}
+
+
+def contracts_row_command(root: str, label: str) -> str | None:
+    """The command string of contracts-board row `label` (first run_check/run_nightly line naming it), or None."""
+    try:
+        text = Path(root, "scripts", "check-contracts.sh").read_text(encoding="utf-8")
+    except OSError:
+        return None
+    m = re.search(r'^run_(?:check|nightly)\s+"%s"\s+"((?:[^"\\]|\\.)*)"' % re.escape(label), text, re.M)
+    return m.group(1) if m else None
+
+
+def command_parity(root: str, step_cmd: list[str], contracts_cmd: str | None) -> str:
+    """SAME when the pre-gate step runs the contracts row's command (first `&&` segment: interpreter flags and absolute paths aside),
+    PARTIAL when the row has more segments after it, DIFFERS (naming the argument delta) otherwise."""
+    if contracts_cmd is None:
+        return "no contracts row"
+    def norm(tokens):
+        out = [t for t in tokens if t not in ("py", "-3", "-B") and not t.endswith("python.exe") and t != sys.executable]
+        return [os.path.relpath(t, root).replace("\\", "/") if os.path.isabs(t) else t for t in out]
+    segments = [s.split() for s in contracts_cmd.split("&&")]
+    pre, row = norm(step_cmd), norm(segments[0])
+    if pre != row:
+        return "DIFFERS: pre-gate " + " ".join(pre[1:]) + " vs contracts " + " ".join(row[1:])
+    return "SAME" if len(segments) == 1 else f"PARTIAL (the row also runs {len(segments) - 1} more command(s))"
+
+
+def parity_table(root: str, step_labels: list[str], steps: list | None = None, gate_rows: list[str] | None = None) -> list[str]:
+    """Lines of the parity table: every laptop gate row (scripts/merge_gate.py plan), and whether this pre-gate ran the same command, only
+    its inputs, or nothing. `steps` is [(label, argv)] as pre_gate built them (command comparison); `gate_rows` overrides the plan."""
+    if gate_rows is None:
+        try:
+            sys.path.insert(0, os.path.join(root, "scripts"))
+            import merge_gate
+            gate_rows = [s[0] for s in merge_gate.plan(1)]
+        except Exception as exc:  # noqa: BLE001  (a table failure must not decide the verdict)
+            return [f"pre-gate parity: gate plan unreadable ({type(exc).__name__}: {exc})"]
+    lines = ["pre-gate parity (laptop gate row | this pre-gate):"]
+    cmds = dict(steps or [])
+    for row in gate_rows:
+        if row == "contracts":
+            lines.append(f"  contracts | {len([l for l in step_labels if l in PRE_GATE_CONTRACT_ROWS])} cheap board rows only; the rest of the board NOT RUN")
+            for label in step_labels:
+                crow = PRE_GATE_CONTRACT_ROWS.get(label)
+                if crow:
+                    verdict = command_parity(root, cmds[label], contracts_row_command(root, crow)) if label in cmds else "ran"
+                    lines.append(f"    {crow} | {label}: {verdict}")
+            continue
+        via = next((v for k, v in PRE_GATE_INPUT_ROWS.items() if row == k or (k.endswith("-") and row.startswith(k))), None)
+        lines.append(f"  {row} | " + (f"NOT RUN (inputs checked by {via})" if via else "NOT RUN"))
+    return lines
+
+
 def pre_gate(root: str, exe: str | None = None) -> int:
     """Everything that used to fail only after the gate started (W79: three reruns), run in order at the merged HEAD.
     Every step runs; one verdict line at the end. Exit 0 = clean."""
     py = [sys.executable, "-B"]
     steps = [
         ("background-launch", py + [os.path.join(root, "scripts", "check-background-launch.py"), "--quiet"]),
-        ("gate_gen", py + [os.path.join(root, "tools", "gate_gen.py"), "--check"]),
+        # --rebuild: the form the laptop contracts row runs (it compiles tools/gate_dump and diffs its JSON against the C++ defaults;
+        # W147 run 3: MC2_VEGETATION_MAX json 5M vs C++ 10M passed here without it and failed there).
+        ("gate_gen", py + [os.path.join(root, "tools", "gate_gen.py"), "--check", "--rebuild"]),
         ("cxx17", py + [os.path.join(root, "tools", "cxx17_ratchet", "cxx17_ratchet.py"), "--check", "--worktree"]),
     ]
     steps += [(label, py + [os.path.join(root, script), *args]) for label, script, args in EARLY_ROWS]
@@ -1248,6 +1321,17 @@ def pre_gate(root: str, exe: str | None = None) -> int:
         print(detail, flush=True)
     if verdict == "FAIL":
         failed.append("data_fingerprint")
+    verdict, detail = cooked_outputs_check(root)
+    print(f"pre-gate: cooked_outputs: {verdict}", flush=True)
+    if detail:
+        print(detail, flush=True)
+    if verdict == "FAIL":
+        failed.append("cooked_outputs")
+    import gate_hosts
+    verdict, detail = gate_hosts.editor_stage()
+    print(f"pre-gate: editor-stage: {verdict} ({detail})", flush=True)
+    for line in parity_table(root, [label for label, _cmd in steps], steps):
+        print(line, flush=True)
     print("PRE-GATE " + ("PASS" if not failed else "FAIL: " + ", ".join(failed)))
     return 1 if failed else 0
 

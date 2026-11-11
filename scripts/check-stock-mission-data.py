@@ -62,7 +62,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools" / "mc2data"))
+sys.path.insert(0, str(ROOT / "tools"))
 
+import cooked_outputs  # noqa: E402  (tools/cooked_outputs.py: the PC-cooked output manifest)
 import stock_missions as sm  # noqa: E402
 import stock_corpus as sc  # noqa: E402
 
@@ -968,10 +970,12 @@ def main(argv=None) -> int:
     cshape, cinfo = corpus_manifest_shape()
     fails += cshape
     info["corpus_manifest"] = cinfo
+    fails += cooked_outputs.manifest_problems(root=str(ROOT))   # the PC-cooked output list is well formed (cook scripts and pin files exist)
 
     if not args.no_data:
         dfails, dnotes, dinfo = data_checks()
         fails += dfails
+        fails += cooked_outputs.problems(str(ROOT))   # a PC-cooked output absent or not the pinned bytes: red here, not a compare diff on the laptop
         notes += dnotes
         info["data"] = dinfo
 

@@ -108,7 +108,10 @@ OVERLAY_MANIFEST = os.path.join(BASELINE_DIR, "data_overlay.json")
 #: and the baselines' stock digest counts it (path and size). The deploy overwrites it with the 1024 upscale, so the fingerprint counts a
 #: sidecar of the pinned upscale size at the pin's `stock_bytes` (the stock cook's size): the digest is the same before and after the
 #: deploy (W138h: the upscale moved the stock digest on unchanged simulation data; leaving the path out altogether moved it too).
-TREE_UPSCALE_PINS = os.path.join(ROOT, "data", "kit", "tree-upscale.json")
+#: The pin file and the output path template come from tools/cooked_outputs.json (the one list of PC-cooked outputs).
+import cooked_outputs  # noqa: E402  (tools/ is this file's directory, already first on sys.path)
+_TREE_ENTRY = cooked_outputs.pinned_entry("tree_upscale")
+TREE_UPSCALE_PINS = os.path.join(ROOT, *_TREE_ENTRY["pin_file"].split("/"))
 
 
 def render_only_sidecar_sizes(pins_path: str = TREE_UPSCALE_PINS) -> dict:
@@ -117,7 +120,7 @@ def render_only_sidecar_sizes(pins_path: str = TREE_UPSCALE_PINS) -> dict:
     try:
         with open(pins_path, encoding="utf-8") as fh:
             pins = json.load(fh)
-        return {f"data/tgl/128/{stem}.ktx2".lower(): (row.get("bytes"), row.get("ktx2_sha256"), row.get("stock_bytes")) for stem, row in pins.items()}
+        return {_TREE_ENTRY["out_template"].format(key=stem).lower(): (row.get("bytes"), row.get("ktx2_sha256"), row.get("stock_bytes")) for stem, row in pins.items()}
     except FileNotFoundError:
         return {}
     except (OSError, ValueError, TypeError, AttributeError) as exc:

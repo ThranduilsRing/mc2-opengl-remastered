@@ -1,0 +1,26 @@
+{
+ "comment": "The gitignored, PC-cooked outputs the gate depends on (one list; read by tools/cooked_outputs.py). 'pinned': outputs named by a tracked pin file, sha256-verified. 'unpinned': one file per cook script, accepted as window payload when the cook script changed. provision: 'worktree' = copied from the PC worktree (the published v0.4 predates it), 'published' = copied from the published v0.4, 'none' = not provisioned. required=false rows are optional at deploy time.",
+ "pinned": [
+  {
+   "id": "tree_upscale",
+   "pin_file": "data/kit/tree-upscale.json",
+   "out_template": "data/tgl/128/{key}.ktx2",
+   "sha_field": "ktx2_sha256",
+   "cook": "tools/tree_retexture/gen_stock_trees.py",
+   "provision": "worktree"
+  }
+ ],
+ "unpinned": [
+  {"out": "data/terrain_layers/grass_turf_normal.ktx2", "cook": "tools/mc2texcook/cook_grass_turf.py", "sha256": "2d169a738e57cd0caf00eeb1ef274cec8ce87aea1554941a85a4b9321cff1fc1", "required": true, "provision": "worktree"},
+  {"out": "data/terrain_layers/concrete_detail_pad.ktx2", "cook": "tools/mc2texcook/cook_concrete_detail.py", "required": true, "provision": "published"},
+  {"out": "data/terrain_layers/concrete_detail_road.ktx2", "cook": "tools/mc2texcook/cook_concrete_detail.py", "required": true, "provision": "published"},
+  {"out": "data/terrain_layers/cliff_rock_ah.ktx2", "cook": "tools/mc2texcook/cook_cliff_rock.py", "required": true, "provision": "published"},
+  {"out": "data/terrain_layers/cliff_rock_nra.ktx2", "cook": "tools/mc2texcook/cook_cliff_rock.py", "required": true, "provision": "published"},
+  {"out": "data/terrain_layers/rock_albedo.ktx2", "cook": "tools/mc2texcook/cook_terrain_layers.py", "required": false, "provision": "none"},
+  {"out": "data/terrain_layers/grass_albedo.ktx2", "cook": "tools/mc2texcook/cook_terrain_layers.py", "required": false, "provision": "none"},
+  {"out": "data/terrain_layers/dirt_albedo.ktx2", "cook": "tools/mc2texcook/cook_terrain_layers.py", "required": false, "provision": "none"},
+  {"out": "data/terrain_layers/concrete_albedo.ktx2", "cook": "tools/mc2texcook/cook_terrain_layers.py", "required": false, "provision": "none"},
+  {"out": "data/terrain_layers/snow_albedo.ktx2", "cook": "tools/mc2texcook/cook_terrain_layers.py", "required": false, "provision": "none"},
+  {"out": "data/terrain_layers/cliff_albedo.ktx2", "cook": "tools/mc2texcook/cook_terrain_layers.py", "required": false, "provision": "none"}
+ ]
+}

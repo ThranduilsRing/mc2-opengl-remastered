@@ -1,0 +1,8 @@
+{
+ "comment": "Host capabilities for the merge gate (read by tools/gate_hosts.py, cmake/GateHosts.cmake and lane_merge --pre-gate). The host is $MC2_GATE_HOST, else 'default'. mfc: the Visual Studio MFC component (afxwin.h) is installed, so EditRel/gameos_editor can compile; the editor targets are built by default and the gate's editor stage runs only where mfc is true (W147 laptop gate runs 1-2: afxwin.h missing).",
+ "default": "pc",
+ "hosts": {
+  "pc": {"mfc": true},
+  "laptop": {"mfc": false}
+ }
+}
