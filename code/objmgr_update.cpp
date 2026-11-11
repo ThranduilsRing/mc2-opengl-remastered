@@ -694,7 +694,10 @@ bool GameObjectManager::isSpecialOrGate(GameObjectPtr object) const {
     return false;
 }
 
+static void noteTerrainTickCandidate(GameObject* object);
+
 void GameObjectManager::rebuildTerrainTickList() {
+    g_noteTerrainTickCandidate = &noteTerrainTickCandidate;
     std::vector<std::pair<int32_t, int32_t>> blocks;
     blocks.reserve(static_cast<size_t>(std::max<long>(Terrain::numObjBlocks, 0)));
     for (long block = 0; block < Terrain::numObjBlocks; ++block) {
@@ -716,7 +719,7 @@ void GameObjectManager::rebuildTerrainTickList() {
     terrainTickBlocks = Terrain::numObjBlocks;
 }
 
-void noteTerrainTickCandidate(GameObject* object) {
+static void noteTerrainTickCandidate(GameObject* object) {
     if (ObjectManager) ObjectManager->noteTerrainTickFlag(object);
 }
 
