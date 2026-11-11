@@ -418,7 +418,7 @@ def ensure_tree_upscale(src_root, cooker=subprocess.run):
 # GRASS-GROUND-NORMAL: the top-down turf normal that replaces detail-normal layer 1 (grass), generated from CC0 Poly Haven
 # sparse_grass + dry_ground_01 (owner download 2026-10-23). Recooked when absent or older than its cooker.
 GRASS_TURF_COOK = "tools/mc2texcook/cook_grass_turf.py"
-GRASS_TURF_SRC = "G:/mc2-assets/pbr/dl-2026-10-23/ground"
+GRASS_TURF_SRC = "G:/mc2-assets/pbr/dl-2026-10-23/ground"  # drive-path: ok PC-only cook source; absent on the laptop (soft skip, the laptop gets the published ktx2)
 GRASS_TURF_REL = "data/terrain_layers/grass_turf_normal.ktx2"
 
 

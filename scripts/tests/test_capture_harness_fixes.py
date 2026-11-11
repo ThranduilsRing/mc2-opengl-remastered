@@ -185,4 +185,4 @@ def test_refresh_game_affinity_tolerates_access_denied(monkeypatch, capsys):
         raise PermissionError(13, "Access is denied.")
     monkeypatch.setattr(host_lease, "_set_affinity", denied)
     host_lease._refresh_game_affinity()
-    assert "not re-pinned" in capsys.readouterr().err
+    assert "skipped pid" in capsys.readouterr().err   # host-lease-affinity-skip (W147): one line per skipped foreign pid
