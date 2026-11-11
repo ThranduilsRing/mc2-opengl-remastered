@@ -178,11 +178,13 @@ public:
     // Idles the GPU, then releases one parked island (for an island that rebuilds itself, e.g. on a resize). Safe on an empty slot.
     void retireIsland(IslandSlot slot);
 
-    // THE submit path of the engine device. Every graphics-queue submit goes through here and none through a raw vkQueueSubmit (a contract row
+    // Render submit path of the engine device. Graphics work goes through this funnel (or the dedicated fence-owned Present tail) and none through a raw vkQueueSubmit (a contract row
     // greps for it): the submit gets the next value of the graphics timeline semaphore as one more signal, so a GpuTicket proves "everything submitted
     // up to here has finished". `si` keeps its binary waits and signals; `fence` (may be null) is passed through unchanged. `si.pNext` must be empty.
     // On success *outValue (when given) is the timeline value this submit signals. Thread-safe.
     VkResult submit(const VkSubmitInfo& si, VkFence fence, uint64_t* outValue = nullptr) const;
+    // Blit-only continuation: no Render batch, uploads, frame timeline or allocators. Its dedicated fence owns its lifetime.
+    VkResult submitPresentTail(VkCommandBuffer cb, VkSemaphore acquire, VkSemaphore rendered, VkFence fence) const;
     // Present shares external queue synchronization with submit, even when both families alias.
     VkResult present(VkQueue queue, const VkPresentInfoKHR& info) const;
     // Puts the batched plain submits on the queue now. Call it after a big pass when more CPU recording follows: the age check in submit() runs only
