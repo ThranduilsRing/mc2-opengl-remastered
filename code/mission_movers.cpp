@@ -6,6 +6,8 @@
 #include "spawn_tree_clear.h"
 #include <string>
 #include "mc2fmt.h"
+#include "../GameOS/gameos/diagnostic_trace.h"
+#include <chrono>
 
 
 
@@ -184,7 +186,31 @@ void Mission::createPartObject (long partIndex, MoverPtr mover) {
 
 long Mission::addMover (MoverInitData* moverSpec) {
 	ZoneScopedN("Mission.AddMover");
-	
+	// Opt-in SUPPORT_PRELOAD_LATE: wall ms of this spawn and whether its type was cold (not yet loaded), the cost a
+	// reinforcement pays when its type was not warmed behind the loading screen.
+	struct SpawnTimer {
+		std::chrono::steady_clock::time_point t0;
+		long obj;
+		bool cold;
+		// Sub-phase laps (ms since the previous lap): pilot, brain (ABL preprocess), type (object type load), init (mover create +
+		// profile), rest (paint, lists, sensors, tree clear).
+		std::chrono::steady_clock::time_point last = t0;
+		double lapMs[7] = {};  // 5 = newMech/newVehicle, 6 = profile init
+		void lap(int i) {
+			const auto now = std::chrono::steady_clock::now();
+			lapMs[i] += std::chrono::duration<double, std::milli>(now - last).count();
+			last = now;
+		}
+		~SpawnTimer() {
+			if (mc2_diag::tagRequested("SUPPORT_PRELOAD_LATE")) {
+				lap(4);
+				mc2::fmt::print_out("[SPAWN_COST v1] obj={:d} cold_type={:d} ms={:.3f} pilot={:.3f} brain={:.3f} type={:.3f} new={:.3f} init={:.3f} profile={:.3f} rest={:.3f}\n", obj, cold ? 1 : 0,
+					std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count(),
+					lapMs[0], lapMs[1], lapMs[2], lapMs[5], lapMs[3], lapMs[6], lapMs[4]);
+			}
+		}
+	} spawnTimer{std::chrono::steady_clock::now(), moverSpec->objNumber, ObjectManager && ObjectManager->objTypeManager && !ObjectManager->objTypeManager->get(moverSpec->objNumber, false)};
+
 	MechWarriorPtr pilot = MechWarrior::newWarrior();
 	if (!pilot)
 		STOP(("Too many pilots in this mission!"));
@@ -229,6 +255,7 @@ long Mission::addMover (MoverInitData* moverSpec) {
 	// mover data!
 	//*********************
 
+	spawnTimer.lap(0);
 	long numErrors, numLinesProcessed;
 	FullPathFileName brainFullFileName;
 	if (MPlayer) {
@@ -246,6 +273,7 @@ long Mission::addMover (MoverInitData* moverSpec) {
 		if (moduleHandle < 0 || numErrors != 0) mc2::content::error(mc2::content::Kind::MissionData, static_cast<const char*>(brainFullFileName), moduleHandle < 0 ? "brain ABL failed to load; unit has no brain (idle)" : "brain ABL compiled with errors; unit brain unusable");
 		pilot->setBrain(moduleHandle);
 	}
+	spawnTimer.lap(1);
 
 /*
 typedef struct _MoverInitData {
@@ -271,6 +299,7 @@ typedef struct _MoverInitData {
 	ObjectTypePtr objType = ObjectManager->loadObjectType(moverSpec->objNumber, moverSpec->csvFileName[0] != '\0');
 	if (!objType)
 		objType = ObjectManager->getObjectType(moverSpec->objNumber);
+	spawnTimer.lap(2);
 	if (objType) {
 		if (!objType->getAppearanceTypeName() && moverSpec->csvFileName[0])
 		{
@@ -295,7 +324,9 @@ typedef struct _MoverInitData {
 
 		if (mover) 
 		{
+			spawnTimer.lap(5);
 			{ ZoneScopedN("Mission.AddMover.Init"); mover->init(true, objType); }
+			spawnTimer.lap(3);
 			mover->setAwake(moverSpec->active);
 			mover->setHandle(ObjectManager->getHandle(mover));
 
@@ -338,6 +369,7 @@ typedef struct _MoverInitData {
 				break;
 			}
 
+			spawnTimer.lap(6);
 			mover->setPilotHandle(pilot->getIndex());
 			mover->setTeamId(moverSpec->teamID, true);
 			mover->calcWeaponEffectiveness(true);

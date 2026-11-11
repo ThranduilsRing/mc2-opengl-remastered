@@ -116,6 +116,34 @@ static void runSupportPreloadStep()
 			std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - supportPreloadStart).count());
 }
 
+// ABL CreateInfantry (garrison reinforcements, ablmc2_state.cpp execCreateInfantry) spawns object type 53 / appearance PM101100 mid-mission.
+// A cold first spawn measured 177-202 ms (type load + appearance + textures) plus a shared-buffer rebuild on the next flush; warm the same
+// type and appearance here so both happen behind the loading screen, in the one rebuild the support palette already causes. Types and
+// appearances only: no mover, pilot or handle is created, so sim state is untouched.
+static void warmScriptSpawnInfantry()
+{
+	if (!ObjectManager || !appearanceTypeList) return;
+	ZoneScopedN("Mission.WarmScriptSpawnInfantry");
+	const long kInfantryObj = 53;
+	auto* type = ObjectManager->loadObjectType(kInfantryObj, true);
+	if (!type) return;
+	if (!type->getAppearanceTypeName()) type->setAppearanceTypeName("PM101100");
+	if (type->getObjectTypeClass() == BATTLEMECH_TYPE) {
+		// Type 53 is a BATTLEMECH_TYPE: Mission::addMover builds a BattleMech whose appearance type is looked up as MECH_TYPE
+		// (BattleMech::init, mech_init.cpp). Load that appearance type (shape + registry entry) now; the per-mover appearance
+		// instance stays a spawn-time cost.
+		appearanceTypeList->getAppearance(MECH_TYPE << 24, type->getAppearanceTypeName());
+		return;
+	}
+	if (type->getObjectTypeClass() != VEHICLE_TYPE) return;
+	auto* appearanceType = appearanceTypeList->getAppearance(GV_TYPE << 24, type->getAppearanceTypeName());
+	if (!appearanceType) return;
+	auto appearance = std::make_unique<GVAppearance>();
+	appearance->init(appearanceType);
+	appearance->resetPaintScheme(prefs.highlightColor, prefs.highlightColor, prefs.baseColor);
+	supportPreloads.push_back(std::move(appearance));
+}
+
 // Behind the loading screen: file/appearance registries are main-thread owned and the steps are IO-bound (one cold step was 501 ms inside
 // gameplay), so the whole palette is warmed at the end of mission init, where a stall is invisible. Same permission gating as the steps use.
 void preloadMissionSupportAtLoad()
@@ -124,6 +152,7 @@ void preloadMissionSupportAtLoad()
 	supportPreloadStep = 0;
 	supportPreloadStart = std::chrono::steady_clock::now();
 	while (supportPreloadStep < 20) runSupportPreloadStep();
+	warmScriptSpawnInfantry();
 }
 
 // Fallback for a mission whose load path did not warm the palette: one step per later frame, after the first playable frame.
