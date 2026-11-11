@@ -21,9 +21,9 @@
 #include "Gates/gate.h"
 #include "ui_chrome_sheets.h"
 #include "mc2fmt.h"
+#include <format>
 #include <algorithm>
 #include <cctype>
-#include <filesystem>
 #include <cstring>
 #include <limits>
 #include <mutex>
@@ -145,7 +145,7 @@ std::shared_ptr<const Bytes> uiChromeSheetBytes(mc2::czstring path, std::string_
     std::string err;
     auto loader = [](const ui_chrome::Sheet& s, const ui_chrome::Widget& w, ui_chrome::Pixels& px) {
         File wf;
-        const std::string wp = (std::filesystem::path("data/art/ui") / s.key / (w.name + ".png")).generic_string();
+        const std::string wp = std::format("data/art/ui/{}/{}.png", s.key, w.name);
         if (wf.open(wp.c_str()) != NO_ERR) return false;
         const auto wb = readBytes(wf);
         if (!wb) return false;
@@ -248,10 +248,10 @@ static bool txmLoadCooked(mc2::czstring source, mc2::czstring sidecar, bool pref
     if (exists && sourceMod && cookedMod && std::string_view(sourceMod) == cookedMod &&
         sourceRank == cookedRank && original.isLoadedFromDisk() && cooked.isLoadedFromDisk() &&
         original.getFilename() && cooked.getFilename()) {
-        std::error_code ecSource, ecCooked;
-        const auto sourceTime = std::filesystem::last_write_time(original.getFilename(), ecSource);
-        const auto cookedTime = std::filesystem::last_write_time(cooked.getFilename(), ecCooked);
-        if (!ecSource && !ecCooked && sourceTime > cookedTime) return false;
+        // Project file API (whole-second mtimes: an edit inside the cook's own second is not seen as newer).
+        const time_t sourceTime = original.getFileMTime();
+        const time_t cookedTime = cooked.getFileMTime();
+        if (sourceTime > cookedTime) return false;
     }
     const long size = cooked.fileSize();
     if (size <= 0 || size > 256 * 1024 * 1024) return false;

@@ -10,7 +10,9 @@
 #include "../GameOS/gameos/texture_decode.h"
 #include "mc2fmt.h"
 #include "Gates/gate.h"
+#include "vfs.h"
 #include <filesystem>
+#include <unordered_map>
 #include <set>
 #include <bit>
 
@@ -110,6 +112,18 @@ void collect(mc2::czstring key, void* data) {
         static_cast<std::set<std::string>*>(data)->insert(std::move(path));
 }
 
+// LookupModPriority falls back to _access() for a path no mod owns: once per portrait per frame was a disk probe each.
+// The rank of a legacy sheet is cached until the VFS index changes (mod reload / rebuild) or the registry shuts down.
+int cachedSheetRank(std::string_view sheet) {
+    static std::unordered_map<std::string, int> ranks;
+    static uint64_t seen = 0;
+    if (seen != mc2::vfs::generation()) { ranks.clear(); seen = mc2::vfs::generation(); }
+    const std::string key(sheet);
+    if (const auto found = ranks.find(key); found != ranks.end()) { const auto& [name, rank] = *found; return rank; }
+    const int rank = LookupModPriority(key.c_str());
+    ranks.emplace(key, rank);
+    return rank;
+}
 void init(std::string first = {}, int cw = 25, int ch = 30) {
     if (texture) return;
     std::vector<uint32_t> missing(16 * 16);
@@ -257,7 +271,7 @@ const Icon* pilotIcon(long index, std::string_view legacySheet) {
     const Icon* icon = namedPriority.contains(key) ? registry.find(key) : nullptr;
     if (!icon) return nullptr;
     // Lower VFS rank wins: a mod that replaces the old portrait grid keeps drawing through it.
-    if (!legacySheet.empty() && namedPriority.at(key) > LookupModPriority(std::string(legacySheet).c_str())) {
+    if (!legacySheet.empty() && namedPriority.at(key) > cachedSheetRank(legacySheet)) {
         if (!warned.contains("legacy-pilot-grid")) {
             warned.insert("legacy-pilot-grid");
             mc2::fmt::print_out("[ICON_REGISTRY] mod pilot sheet {} overrides single-file portraits (legacy grid)\n", legacySheet);

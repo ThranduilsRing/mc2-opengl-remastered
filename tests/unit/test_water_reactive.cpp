@@ -1,7 +1,9 @@
 #include "doctest.h"
 #include "../../RenderCore/water_reactive.h"
 #include "../../shaders/include/water_reactive.hglsl"
+#include <cstring>
 #include <limits>
+#include <memory>
 
 using namespace mc2::waterreactive;
 
@@ -198,4 +200,15 @@ TEST_CASE("WaterShallow/opacity follows the water column: wading stays clear, de
     CHECK(ws_column_veil(5) < ws_column_veil(10));              // monotonic
     CHECK(ws_column_veil(10) < ws_column_veil(30));
     CHECK(ws_column_veil(1000) <= 1.0f);
+}
+
+TEST_CASE("WaterReactive/snapshot into a dirty frame equals a clean one (the ring slot is written in place)") {
+    Buffer b;
+    for (uintptr_t i = 1; i <= 40; ++i) b.submit(i, 1, static_cast<float>(i) * 3.0f, -1, 20, true, true, false);
+    auto clean = std::make_unique<GpuFrame>();
+    auto dirty = std::make_unique<GpuFrame>();
+    std::memset(dirty.get(), 0xAB, sizeof(GpuFrame));
+    b.snapshot(1.25f, *clean);
+    b.snapshot(1.25f, *dirty);
+    CHECK(std::memcmp(clean.get(), dirty.get(), sizeof(GpuFrame)) == 0);
 }

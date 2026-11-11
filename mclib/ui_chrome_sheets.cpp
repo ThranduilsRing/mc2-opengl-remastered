@@ -4,6 +4,7 @@
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <cstring>
 #include <ranges>
@@ -139,16 +140,16 @@ bool composeSheet(const Sheet& sheet, const WidgetLoader& load, Pixels& out, std
 
 namespace {
 uint32_t crc32Of(std::span<const uint8_t> p) {
-    static uint32_t table[256];
-    static bool init = false;
-    if (!init) {
+    // Compile-time table: no lazy init, so concurrent callers share only read-only data.
+    static constexpr std::array<uint32_t, 256> table = [] {
+        std::array<uint32_t, 256> t{};
         for (uint32_t i = 0; i < 256; ++i) {
             uint32_t c = i;
             for (int k = 0; k < 8; ++k) c = (c & 1) ? 0xEDB88320u ^ (c >> 1) : c >> 1;
-            table[i] = c;
+            t[i] = c;
         }
-        init = true;
-    }
+        return t;
+    }();
     uint32_t crc = 0xffffffffu;
     for (const uint8_t b : p) crc = table[(crc ^ b) & 0xff] ^ (crc >> 8);
     return ~crc;
