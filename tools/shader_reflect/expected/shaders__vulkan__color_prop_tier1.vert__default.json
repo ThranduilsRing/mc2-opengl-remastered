@@ -11,7 +11,7 @@
           "matrix_stride": null,
           "name": "i",
           "offset": 0,
-          "type": "_363"
+          "type": "_361"
         }
       ],
       "name": "Instances"
@@ -117,112 +117,132 @@
           "type": "vec4"
         },
         {
-          "array_stride": 16,
-          "matrix_stride": null,
-          "name": "iblSh",
-          "offset": 96,
-          "type": "vec4"
-        },
-        {
           "array_stride": null,
           "matrix_stride": null,
           "name": "iblShStrength",
-          "offset": 240,
+          "offset": 96,
           "type": "float"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
           "name": "lightingReady",
-          "offset": 244,
+          "offset": 100,
           "type": "int"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
           "name": "isNight",
-          "offset": 248,
+          "offset": 104,
           "type": "int"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
           "name": "nightFactor",
-          "offset": 252,
+          "offset": 108,
           "type": "float"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
           "name": "nightDarkness",
-          "offset": 256,
+          "offset": 112,
           "type": "float"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
           "name": "hotTableReady",
-          "offset": 260,
+          "offset": 116,
           "type": "int"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
           "name": "pbrV1Strength",
-          "offset": 264,
+          "offset": 120,
           "type": "float"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
           "name": "pbrV1RoughnessOverride",
-          "offset": 268,
+          "offset": 124,
           "type": "float"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
           "name": "cameraWorldPos",
-          "offset": 272,
+          "offset": 128,
           "type": "vec4"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
           "name": "poolF",
-          "offset": 288,
+          "offset": 144,
           "type": "vec4"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
           "name": "poolI",
-          "offset": 304,
+          "offset": 160,
           "type": "ivec4"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
           "name": "sunColor",
-          "offset": 320,
+          "offset": 176,
           "type": "vec4"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
           "name": "ambientColor",
-          "offset": 336,
+          "offset": 192,
           "type": "vec4"
         },
         {
           "array_stride": null,
           "matrix_stride": null,
           "name": "specDir",
-          "offset": 352,
+          "offset": 208,
           "type": "vec4"
         }
       ],
       "name": "ColorFrameUBO"
+    },
+    {
+      "binding": 26,
+      "members": [
+        {
+          "array_stride": 16,
+          "matrix_stride": null,
+          "name": "shDiffuse",
+          "offset": 0,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "hemiSky",
+          "offset": 144,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "sceneLight",
+          "offset": 160,
+          "type": "vec4"
+        }
+      ],
+      "name": "EnvironmentUBO"
     }
   ],
   "variant": "default"

@@ -229,7 +229,7 @@
         {
           "array_stride": null,
           "matrix_stride": null,
-          "name": "sceneLightScale",
+          "name": "reserved220",
           "offset": 220,
           "type": "float"
         },
@@ -934,6 +934,33 @@
         }
       ],
       "name": "MoverShadowFrame"
+    },
+    {
+      "binding": 26,
+      "members": [
+        {
+          "array_stride": 16,
+          "matrix_stride": null,
+          "name": "shDiffuse",
+          "offset": 0,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "hemiSky",
+          "offset": 144,
+          "type": "vec4"
+        },
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "sceneLight",
+          "offset": 160,
+          "type": "vec4"
+        }
+      ],
+      "name": "EnvironmentUBO"
     }
   ],
   "variant": "default"
