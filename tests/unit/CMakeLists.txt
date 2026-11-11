@@ -550,6 +550,7 @@ target_sources(mc2_tests PRIVATE
     test_environment_archive.cpp
     test_contacts_archive.cpp
     test_objective_archive.cpp
+    test_logistics_archive.cpp
     test_team_archive.cpp
     test_object_manager_archive.cpp
     test_watch_list_archive.cpp
