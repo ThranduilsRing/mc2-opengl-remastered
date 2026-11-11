@@ -229,14 +229,17 @@ void ShadowMechCasters::recordSkin(VkCommandBuffer cb) {
     skin_.record(cb, vertexBuf_, skinVboBytes_, boneBuf_[skinParity_].get(), VK_WHOLE_SIZE, 0);
 }
 
-uint32_t ShadowMechCasters::record(VkCommandBuffer cb, uint32_t parity, uint32_t uboOffset, const uint8_t* runMask, bool localLight) {
+uint32_t ShadowMechCasters::record(VkCommandBuffer cb, uint32_t parity, uint32_t uboOffset, const uint8_t* runMask, bool localLight, bool* pipelineBound) {
     if (!hasCasters() || !geomUploaded_ || !pipeline_) return 0;
     if (runMask) {
         bool any = false;
         for (size_t k = 0; k < runs_.size() && !any; ++k) any = runMask[k] != 0;
         if (!any) return 0;
     }
-    mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_.get());
+    if (!pipelineBound || !*pipelineBound) {
+        mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_.get());
+        if (pipelineBound) *pipelineBound = true;
+    }
     const VkDescriptorSet set = set_[parity % kMaxFramesInFlight];
     vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, layout_.get(), 0, 1, &set, 1, &uboOffset);
     const VkBuffer vertexBuf = vertexBuf_;

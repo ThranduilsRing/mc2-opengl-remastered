@@ -60,7 +60,7 @@ public:
     void begin(uint32_t parity) { parity_ = parity % kMaxFramesInFlight; cursor_ = 0; }
 
     // Records `draws` with the layout's set 0 (and the vertex/index buffers) already bound. Opaque draws use `opaque`, alpha draws `alpha` with `alphaSet` at
-    // set 1. Returns the multi-draw calls issued. The pipeline left bound is `opaque`.
+    // set 1. Returns the multi-draw calls issued. The caller has bound `opaque` before the call (every caller does, so the ring no longer re-binds it: a redundant bind per call); the pipeline left bound is `alpha` when the call issued alpha draws, else `opaque`.
     uint32_t record(VkCommandBuffer cb, VkPipelineLayout layout, VkPipeline opaque, VkPipeline alpha, VkDescriptorSet alphaSet, std::span<const ShadowDraw> draws) {
         if (draws.empty() || !ready()) return 0;
         const uint32_t room = cap_ - (std::min)(cursor_, cap_);
@@ -82,7 +82,6 @@ public:
         const VkBuffer buf = cmd_[parity_].get();
         uint32_t calls = 0;
         if (nOpaque) {
-            infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, opaque);
             // shadow_prop.vert reads pc.packetBase in both pipelines (VUID-vkCmdDrawIndexedIndirect-None-08601 without a push); the opaque frag ignores v_row.
             const ShadowDrawPush push{rows_[parity_].deviceAddress(), base, 0};
             vkCmdPushConstants(cb, layout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(push), &push);
@@ -98,7 +97,6 @@ public:
             mc2::battlebench::add(mc2::battlebench::DrawShadow);
             vkCmdDrawIndexedIndirect(cb, buf, static_cast<VkDeviceSize>(base + nOpaque) * sizeof(VkDrawIndexedIndirectCommand), nAlpha, sizeof(VkDrawIndexedIndirectCommand));
             ++calls;
-            infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, opaque);
         }
         return calls;
     }
