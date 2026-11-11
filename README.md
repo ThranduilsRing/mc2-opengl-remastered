@@ -138,7 +138,7 @@ None of these launch the game:
 ```bash
 bash scripts/check-contracts.sh                       # static contract rows
 py -3 tools/build_contract_harnesses.py --run --unit  # C++ harnesses + doctest
-py -3 -B -m pytest scripts/tests/ -q -p no:cacheprovider
+py -3 -B -m pytest scripts/tests/ -q -p no:cacheprovider -n auto   # pytest-xdist; PYTEST_XDIST_AUTO_NUM_WORKERS caps the workers
 ```
 
 ## Running

@@ -68,7 +68,7 @@ def pytest_runtest_protocol(item, nextitem):
         yield
         return
     done = threading.Event()
-    timer = threading.Timer(seconds, _expire, (threading.main_thread().ident, item.nodeid, seconds, done))
+    timer = threading.Timer(seconds, _expire, (threading.get_ident(), item.nodeid, seconds, done))
     timer.daemon = True
     timer.start()
     try:

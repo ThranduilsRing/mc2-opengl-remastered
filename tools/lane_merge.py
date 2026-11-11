@@ -1289,11 +1289,40 @@ def parity_table(root: str, step_labels: list[str], steps: list | None = None, g
     return lines
 
 
+def pre_gate_regen(root: str) -> tuple[list[str], str | None]:
+    """tooling-speed-2a: the real regenerate-all at the merged HEAD (W148 needed three separate re-freeze commits).
+    Writes the regenerated artifacts into the tree and prints the exact files changed plus the one commit command.
+    -> (changed files, failure text or None). A tree with no engine generators (fixtures) is skipped."""
+    if not os.path.exists(os.path.join(root, GENERATORS[0][1])):
+        return [], None
+    try:
+        pending = artifact_changes(root)
+        if pending:
+            return pending, ("uncommitted artifact edits already in the tree; commit them (or `git checkout -- <path>`) and rerun: "
+                             + ", ".join(pending))
+        changed = regenerate_all(root)
+    except Stop as e:
+        return [], str(e)
+    if changed:
+        print("pre-gate: regenerate-all changed " + str(len(changed)) + " path(s); commit them ONCE before the gate:", flush=True)
+        for path in changed:
+            print("  " + path, flush=True)
+        print('  git add -A -- ' + " ".join(changed) + ' && git commit -m "merge fix: regenerate-all at the merged HEAD"', flush=True)
+    return changed, None
+
+
 def pre_gate(root: str, exe: str | None = None, nightly_proofs: str | None = None) -> int:
     """Everything that used to fail only after the gate started (W79: three reruns), run in order at the merged HEAD.
-    Every step runs; one verdict line at the end. Exit 0 = clean. Nightly freshness is a WARN line only (it used to surface
+    Every step runs; one verdict line at the end. Exit 0 = clean (regenerated files are listed, not a failure). Nightly freshness is a WARN line only (it used to surface
     at promote, lane_merge_stage.untriaged_nightly_fail); the owner does not gate on it here."""
     py = [sys.executable, "-B"]
+    failed = []
+    # First, so the checks below see the regenerated artifacts and a stale gate_gen/log-tag table is not reported twice.
+    regen_changed, regen_fail = pre_gate_regen(root)
+    print(f"pre-gate: regenerate-all: {'FAIL' if regen_fail else 'OK'}", flush=True)
+    if regen_fail:
+        print(regen_fail, flush=True)
+        failed.append("regenerate-all")
     steps = [
         ("background-launch", py + [os.path.join(root, "scripts", "check-background-launch.py"), "--quiet"]),
         # --rebuild: the form the laptop contracts row runs (it compiles tools/gate_dump and diffs its JSON against the C++ defaults;
@@ -1305,7 +1334,6 @@ def pre_gate(root: str, exe: str | None = None, nightly_proofs: str | None = Non
     # W138h: the stock-data contract went red only on the laptop; the contracts board's own args (--no-data --quiet).
     steps += [("stock_mission_data", py + [os.path.join(root, "scripts", "check-stock-mission-data.py"), "--no-data", "--quiet"])]
     exe = exe or os.path.join(root, "build64-ninja", "mc2.exe")
-    failed = []
     if os.path.isfile(exe) and exe_matches_head(root, os.path.relpath(os.path.dirname(exe), root)) is False:
         print("pre-gate: exe-fingerprint: FAIL\nthe built exe embeds a different sha than HEAD; rebuild (scripts/ninja_build.py) before the gate", flush=True)
         failed.append("exe-fingerprint")
@@ -1362,8 +1390,8 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--no-sim-rows", action="store_true", help="with --precheck: skip the saveload/determinism rows a sim-sensitive tip requires (recorded in the receipt)")
     ap.add_argument("--sim-install", help="with --precheck: install holding the tip's exe for the sim rows (default E:/mc2-installs/<laneN>)")
     ap.add_argument("--pre-gate", action="store_true",
-                    help="at the merged HEAD run check-background-launch, gate_gen --check and cxx17; "
-                         "all run, one PRE-GATE PASS/FAIL line; --root picks the tree")
+                    help="at the merged HEAD run the real regenerate-all (lists the changed files; commit them once), "
+                         "check-background-launch, gate_gen --check and cxx17; all run, one PRE-GATE PASS/FAIL line; --root picks the tree")
     ap.add_argument("--exe", help="with --pre-gate: exe whose fingerprint must match HEAD (default <root>/build64-ninja/mc2.exe, skipped if absent)")
     ap.add_argument("--batch", nargs="+", metavar="TIP",
                     help="merge these tips in order; baseline follow-ups after each, build + doctest verify once at the end")
