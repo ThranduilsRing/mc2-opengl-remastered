@@ -423,6 +423,33 @@ def test_remote_nightly_builds_nifty_and_runs_contracts_plus_tier(tmp_path, monk
     assert laptop_gate.gate_env()["MC2_STOCK_MISSIONS_DIR"] == laptop_gate.STOCK_MISSIONS
 
 
+@pytest.mark.parametrize("bad", ["missing", "truncated", "wrong-head", "missing-log"])
+def test_nightly_missing_evidence_publishes_infra(tmp_path, monkeypatch, bad):
+    monkeypatch.setattr(laptop_gate, "PROOFS", tmp_path / "laptop-gate")
+    monkeypatch.setattr(laptop_gate, "PC_TMP", tmp_path / "scratch")
+    drop = ("gate-verdict.json",) if bad == "missing" else ("build.log",) if bad == "missing-log" else ()
+    pull = _fake_remote(tmp_path, drop=drop)
+    verdict = tmp_path / "remote/gate-verdict.json"
+    verdict.write_text("{" if bad == "truncated" else json.dumps(dict(
+        head="b" * 40 if bad == "wrong-head" else HEAD, tier=1, verdict="PASS")))
+    monkeypatch.setattr(laptop_gate, "pull_one", pull)
+    assert laptop_gate.pull_nightly("nightly-2026-11-12", HEAD, 0) == 1
+    v = json.loads((tmp_path / "merge-gate/nightly-2026-11-12/gate-verdict.json").read_text())
+    assert v["verdict"] == "INFRA"
+
+
+@pytest.mark.parametrize("argv", [["nightly"], ["W151", "--no-sim", "--", "--nightly"], ["W151", "--", "--weekly"]])
+def test_scheduled_cli_uses_dated_evidence_instead_of_window(monkeypatch, tmp_path, argv):
+    got = {}
+    monkeypatch.setattr(laptop_gate, "PROOFS", tmp_path / "laptop-gate")
+    monkeypatch.setattr(sys, "argv", ["laptop_gate.py", *argv])
+    monkeypatch.setattr(laptop_gate, "detach_self", lambda a: got.update(window=a.window, args=a.gate_args) or 0)
+    assert laptop_gate.main() == 0
+    assert got["window"].startswith("nightly-")
+    assert laptop_gate.gate_branch(got["window"]) == "claude/nifty-mendeleev"
+    assert any(a in got["args"] for a in ("--nightly", "--weekly"))
+
+
 # ---- --sim (determinism + saveload on the gate's deployed candidate) and the campaign-mods mirror ----
 def test_sim_plan_is_merge_gates_own_determinism_and_saveload_steps(tmp_path):
     import merge_gate

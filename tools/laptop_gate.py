@@ -1148,8 +1148,11 @@ def pull_nightly(w, head, run_rc):
         print(f"nightly FAIL: missing verdict; diagnostics {dest}")
         return 1
     try:
-        v = json.loads(local.read_text(encoding="utf-8"))
-        if not _same_sha(v.get("head"), head) or not v.get("tier"):
+        try:
+            v = json.loads(local.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            v = {}
+        if not isinstance(v, dict) or not _same_sha(v.get("head"), head) or not v.get("tier"):
             (dest / "gate-verdict.json").write_text(json.dumps(dict(
                 verdict="INFRA", head=head, tier=1, written=time.time(), failed=[],
                 reason="laptop verdict identity/tier mismatch")), encoding="utf-8")
