@@ -253,6 +253,15 @@ TEST_CASE("terrain_daylight_harness/cliff_filter_preserves_airfield_and_planes")
     CHECK(cliffFilteredHeight(100.0f, 400.0f, 400.0f, 128.0f) == 100.0f);
 }
 
+TEST_CASE("terrain_daylight_harness/rock_reaches_rounded_crest_but_not_flat_top") {
+    CHECK(cliffRockWeight(1.0f) == 0.0f);
+    CHECK(cliffRockWeight(0.98f) == doctest::Approx(0.0f));
+    CHECK(cliffRockWeight(0.95f) > 0.1f);
+    CHECK(cliffRockWeight(0.90f) > 0.6f);
+    CHECK(cliffRockWeight(0.85f) == doctest::Approx(1.0f));
+    CHECK(cliffRockWeight(0.55f) == 1.0f);
+}
+
 TEST_CASE("terrain_daylight_harness/cliff_filter_rejects_source_grid_ripple") {
     // An 8-wu ripple with a 128-wu period rides on a steep planar cliff.
     // At 64-wu taps, east/west have opposite ripple phase; north/south agree.

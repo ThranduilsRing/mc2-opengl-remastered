@@ -40,6 +40,8 @@
 
 extern void gos_GetTerrainLightDir(float* x, float* y, float* z);
 extern void gos_GetTerrainChunkGridInfo(int* mapSide, float* halfMap);
+extern bool terrainVisualDisplaceGateOn();
+extern float terrainVisualDisplaceFarParam();
 float mc2ShadowMinSunAltDeg();
 
 namespace mc2vk {
@@ -583,9 +585,10 @@ bool ShadowBake::readHeightGrid() {
     const auto* store = gos_TerrainFieldStore();
     if (!store) return false;
     const int coarseSide = store->mapSide();
-    const bool visual = !store->visualHeight().empty() && store->visualSide() == (coarseSide - 1) * 4 + 1;
+    const bool visual = terrainVisualDisplaceGateOn() && !store->visualHeight().empty() && store->visualSide() == (coarseSide - 1) * 4 + 1;
     const int sourceSide = visual ? store->visualSide() : coarseSide;
-    heights_ = mc2shadow::maskHeightGrid(visual ? store->visualHeight() : store->height(), sourceSide, layout_.texels);
+    heights_ = mc2shadow::maskHeightGrid(visual ? store->visualHeight() : store->height(), sourceSide, layout_.texels,
+                                      visual, store->height(), terrainVisualDisplaceFarParam());
     if (heights_.empty()) return false;
     heightSide_ = (std::min)(sourceSide, layout_.texels + 1);
     heightSpacing_ = static_cast<float>(coarseSide - 1) * mc2shadow::kWorldUnitsPerVertex / static_cast<float>(heightSide_ - 1);
@@ -1426,15 +1429,17 @@ bool ShadowBake::recordObjectMap(VkCommandBuffer cb, const ShadowBakeInputs& in,
     const mc2terrain::TerrainFieldStore* store = gos_TerrainFieldStore();
     if (!store) return false;
     if (terrainIndexCount_ == 0 || objectHeightVersion_ != store->heightVersion()) {
-        const int side = store->mapSide();
-        const std::vector<float>& height = store->height();
-        const int half = side >> 1;
+        const bool visual = terrainVisualDisplaceGateOn() && !store->visualHeight().empty() && store->visualSide() == (store->mapSide() - 1) * 4 + 1;
+        const int side = visual ? store->visualSide() : store->mapSide();
+        const auto height = mc2shadow::maskHeightGrid(visual ? store->visualHeight() : store->height(), side, side - 1,
+                                                   visual, store->height(), terrainVisualDisplaceFarParam());
+        const float spacing = visual ? 32.0f : mc2shadow::kWorldUnitsPerVertex;
         std::vector<float> positions(static_cast<size_t>(side) * side * 3);
         for (int ay = 0; ay < side; ++ay)
             for (int ax = 0; ax < side; ++ax) {
                 const size_t v = static_cast<size_t>(ax) + static_cast<size_t>(ay) * side;
-                positions[v * 3 + 0] = static_cast<float>(ax - half) * mc2shadow::kWorldUnitsPerVertex;
-                positions[v * 3 + 1] = static_cast<float>(half - ay) * mc2shadow::kWorldUnitsPerVertex;
+                positions[v * 3 + 0] = static_cast<float>(ax) * spacing - halfMap_;
+                positions[v * 3 + 1] = halfMap_ - static_cast<float>(ay) * spacing;
                 positions[v * 3 + 2] = height[v];
             }
         std::vector<uint32_t> indices;
@@ -1442,7 +1447,7 @@ bool ShadowBake::recordObjectMap(VkCommandBuffer cb, const ShadowBakeInputs& in,
         for (int ay = 0; ay < side - 1; ++ay)
             for (int ax = 0; ax < side - 1; ++ax) {
                 const uint32_t v0 = static_cast<uint32_t>(ax + ay * side), v1 = v0 + 1, v3 = v0 + static_cast<uint32_t>(side), v2 = v3 + 1;
-                if ((ax & 1) == (ay & 1)) indices.insert(indices.end(), {v0, v1, v2, v0, v2, v3});
+                if (visual || (ax & 1) == (ay & 1)) indices.insert(indices.end(), {v0, v1, v2, v0, v2, v3});
                 else                      indices.insert(indices.end(), {v0, v1, v3, v1, v2, v3});
             }
         if (!terrainVbo_.createFilled(allocator_, device_, positions.data(), positions.size() * sizeof(float), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, "shadow.bake.terrainVbo") ||

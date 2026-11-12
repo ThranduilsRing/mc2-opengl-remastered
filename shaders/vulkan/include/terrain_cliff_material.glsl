@@ -40,7 +40,7 @@ vec2 mv_cliffParallaxPlane(vec2 uv, vec2 viewPlane, float depth, float steps, fl
 // the cliff-blended one on return; `baseColor` takes the groove darkening. macroN is the un-perturbed macro slope normal. The cliff albedo
 // re-projection of GL is NOT here: the island carries no material albedo array.
 void mv_cliffMaterial(vec3 macroN, vec3 planeLod, inout vec3 N, inout vec3 baseColor) {
-    float cb = smoothstep(0.85, 0.55, abs(macroN.z));
+    float cb = cliffRockWeight(abs(macroN.z));
     if (cb <= 0.01) return;
     const float ts = MATV_CLIFF_TS;
     vec3 wp = v_worldPos;
@@ -96,7 +96,7 @@ void mv_cliffMaterial(vec3 macroN, vec3 planeLod, inout vec3 N, inout vec3 baseC
 // real rock structure. Height-blended into the slope transition. `wpDx`/`wpDy` = screen derivatives of the world position (uniform flow).
 const float CR_TS = 320.0;   // world units per rock repeat
 void crApply(vec3 macroN, vec3 wpDx, vec3 wpDy, inout vec3 N, inout vec3 baseColor) {
-    float cb = smoothstep(0.85, 0.55, abs(macroN.z));
+    float cb = cliffRockWeight(abs(macroN.z));
     if (cb <= 0.01) return;
     vec3 wp = v_worldPos;
     vec3 w = abs(macroN); w *= w; w *= w; w /= (w.x + w.y + w.z + 1e-5);
