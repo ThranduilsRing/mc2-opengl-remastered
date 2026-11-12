@@ -19,11 +19,11 @@ def between(text, begin, end):
 
 def test_present_keeps_outer_zones_and_disjoint_tail_children():
     src = source("engine_present_vk.cpp")
-    tail = between(src, '// Tail.Blit:', '// Submit the composite and tail')
-    assert 'ZoneScopedN("VKIsl.Present.Tail.Blit")' in tail
-    assert tail.index('Blit.BarriersAndBlit') < tail.index('Blit.ProfileEnd') < tail.index('Blit.CommandBufferEnd')
-    assert 'blitScope.end();\n    }' in tail
-    assert '{ ZoneScopedN("VKIsl.Present.Tail.Blit.ProfileEnd"); gpuprof::recordFrameEnd(s.curCbuf()); }' in tail
+    tail = between(src, '// The Render ticket covers every frame allocation', 'const VkSemaphore renderSem')
+    assert tail.index('Blit.ProfileEnd') < tail.index('vkEndCommandBuffer(s.curCbuf())') < tail.index('afterRenderTail(')
+    assert tail.index('afterRenderTail(') < tail.index('VKIsl.Present.Tail.Blit"') < tail.index('Blit.BarriersAndBlit')
+    assert tail.index('Blit.BarriersAndBlit') < tail.index('vkCmdBlitImage(') < tail.index('vkEndCommandBuffer(blitCb)')
+    assert 'gpuprof::recordFrameEnd(s.curCbuf()); }' in tail
     hud = between(src, 'uint32_t recordPendingHudColorProof(', '// Build (or rebuild) the shared present image')
     for name in ('ObjectsAndMirrorRetirement', 'PrepareAndTextureUpload', 'VertexUpload', 'DrawRecord'):
         assert f'ZoneScopedN("VKIsl.Present.Tail.Hud.{name}")' in hud
