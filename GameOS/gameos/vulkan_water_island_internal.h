@@ -72,9 +72,9 @@ struct WaterIslandHealth {
     unsigned long usedInterop = 0;
     unsigned long thinRecords = 0;   // records fed this frame
     unsigned long recipeCount = 0;   // recipe rows uploaded once
-    // GPU cull health (NativeProducers::lastVisible/lastTiles): the last completed frame's visible quads and reflection tiles against the CPU
-    // eligible bound and the tile dispatch cap. visible == 0 on a map with water, or visible > eligible, is a regression visible in the log.
-    unsigned long waterVisible = 0, waterEligibleBound = 0, waterTiles = 0, waterTileCap = 0;
+    // GPU cull health: the last completed frame's visible quads against the CPU
+    // eligible bound. visible == 0 on a map with water, or visible > eligible, is a regression visible in the log.
+    unsigned long waterVisible = 0, waterEligibleBound = 0;
     double copyColorInUs = 0.0, copyDepthInUs = 0.0, drawUs = 0.0, colorOutUs = 0.0, totalUs = 0.0;
 };
 
@@ -97,8 +97,7 @@ struct WaterVsParams {
     float p2[4];             // uvOffsetY, fudge, alphaEdgeByte, alphaMiddleByte      (off 96)
     float p3[4];             // alphaDeepByte, shoreFlat, shoreDepthK, pad            (off 112)
 };
-// The VS-params UBO the island stages: WaterVsParams (what water_geom.vert reads) then inverse(worldToClip) at offset 128 (water_reflection.comp).
-constexpr size_t kWaterVsUboSize = sizeof(WaterVsParams) + 16 * sizeof(float);
+constexpr size_t kWaterVsUboSize = sizeof(WaterVsParams);
 static_assert(sizeof(WaterVsParams) == 128, "WaterVsParams std140 size (water_geom.vert)");
 static_assert(offsetof(WaterVsParams, p0) == 64 && offsetof(WaterVsParams, p1) == 80 &&
               offsetof(WaterVsParams, p2) == 96 && offsetof(WaterVsParams, p3) == 112, "WaterVsParams offsets");
@@ -200,13 +199,13 @@ struct WaterIsland : mc2vk::IslandState {
     mc2vk::OwnedBuffer recipeBuf;
     mc2vk::OwnedBuffer thinBuf[mc2vk::kMaxFramesInFlight];
     mc2vk::OwnedImage reflectionImage;
-    mc2vk::OwnedImageView reflectionView, reflectionDepthView;
-    mc2vk::OwnedSampler reflectionSampler;
-    mc2vk::OwnedShaderModule reflectionShader;
-    mc2vk::OwnedPipelineLayout reflectionLayout;
-    mc2vk::OwnedPipeline reflectionPipe;
+    // Independent full-resolution reverse-Z depth; never aliases main scene depth.
+    mc2vk::OwnedImage planarDepthImage;
+    mc2vk::OwnedImageView planarDepthView;
+    mc2vk::OwnedImageView reflectionView;
     bool reflectionInitialized = false;
-    bool mapHasWater = true;
+    bool planarDepthInitialized = false;
+    bool mapHasWater = false;
     VkFormat sceneFmts[2]{VK_FORMAT_UNDEFINED, VK_FORMAT_UNDEFINED};   // dynamic rendering: scene colour0 + normal
     VkFormat sceneDepthFmt = VK_FORMAT_UNDEFINED;
     mc2vk::OwnedDescriptorSetLayout dsl;
@@ -228,6 +227,10 @@ struct WaterIsland : mc2vk::IslandState {
 
     // STEP 3.4P: the native Vulkan lighting + cull/pack producers (declared last: released first). `nativeFailed` = init was tried and refused, so the
     // GL readback feed stays in use for the session.
+    // Whole reflected views own their descriptors, compaction and draw buffers.
+    // Their slot writes are protected by this water island's submission tickets.
+    std::unique_ptr<mc2vk::IslandState> planarTerrain, planarProps;
+    mc2vk::VulkanContext::RecordFn planarTerrainRecord, planarPropsRecord;
     std::unique_ptr<mc2vk::NativeProducers> native;
     bool     nativeFailed = false;
     bool     thinNative[mc2vk::kMaxFramesInFlight] = {false, false};   // what binding 6 of each parity set currently points at: true = native thin_, false = thinBuf
@@ -244,7 +247,7 @@ namespace vk_water_detail {
 extern WaterIslandHealth g_health;
 extern int g_waterInitReachedBuild;   // 1 once init_island passed its readiness gates (vk_island_fail_policy.h)
 bool init_reflection(WaterIsland* s);
-void record_reflection(WaterIsland* s, VkCommandBuffer cb, uint32_t par, const uint32_t* offsets, bool enabled);
+bool record_reflection(WaterIsland* s, VkCommandBuffer cb, bool enabled);
 extern InteropForbidden g_forbidden;
 extern unsigned long g_depthInGetTexImage;
 extern unsigned long g_depthInCopyBufferToImage;

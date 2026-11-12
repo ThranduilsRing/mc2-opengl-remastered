@@ -13,31 +13,29 @@ bool init_reflection(WaterIsland* s) {
     image.extent={static_cast<uint32_t>(s->w),static_cast<uint32_t>(s->h),1};   // full resolution
     image.mipLevels=1; image.arrayLayers=1; image.samples=VK_SAMPLE_COUNT_1_BIT;
     image.tiling=VK_IMAGE_TILING_OPTIMAL;
-    image.usage=VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    image.usage=VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
     VmaAllocationCreateInfo allocation{}; allocation.usage=VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-    if (!s->reflectionImage.create(s->allocator,s->device,image,allocation,"water.reflection.half")) return false;
     VkImageViewCreateInfo view{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
-    view.image=s->reflectionImage.get(); view.viewType=VK_IMAGE_VIEW_TYPE_2D; view.format=image.format;
+    view.viewType=VK_IMAGE_VIEW_TYPE_2D;
     view.subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,1};
-    if (!mc2vk::create(s->reflectionView,s->device,[&](VkImageView* out){return vkCreateImageView(s->device,&view,nullptr,out);})) return false;
-    view.image=s->sDepthRes->image.get(); view.format=s->sDepthRes->format;
+    if (!s->reflectionImage) {
+        if (!s->reflectionImage.create(s->allocator,s->device,image,allocation,"water.reflection.full")) return false;
+        view.image=s->reflectionImage.get(); view.format=image.format;
+        if (!mc2vk::create(s->reflectionView,s->device,[&](VkImageView* out){return vkCreateImageView(s->device,&view,nullptr,out);})) return false;
+    }
+    // Prewarm can run before water presence is known; dry maps need no depth.
+    if (!s->mapHasWater || s->planarDepthImage) return true;
+    // D32 adds 31.6 MiB at 3840x2160; the existing RGBA16F colour is reused.
+    image.format=VK_FORMAT_D32_SFLOAT;
+    image.usage=VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    if (!s->planarDepthImage.create(s->allocator,s->device,image,allocation,"water.reflection.depth")) return false;
+    view.image=s->planarDepthImage.get(); view.format=image.format;
     view.subresourceRange.aspectMask=VK_IMAGE_ASPECT_DEPTH_BIT;
-    if (!mc2vk::create(s->reflectionDepthView,s->device,[&](VkImageView* out){return vkCreateImageView(s->device,&view,nullptr,out);})) return false;
-    VkSamplerCreateInfo sampler{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
-    sampler.magFilter=sampler.minFilter=VK_FILTER_NEAREST;
-    sampler.addressModeU=sampler.addressModeV=sampler.addressModeW=VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    if (!mc2vk::create(s->reflectionSampler,s->device,[&](VkSampler* out){return vkCreateSampler(s->device,&sampler,nullptr,out);})) return false;
-    const auto layout=s->dsl.get();
-    VkPipelineLayoutCreateInfo pl{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
-    pl.setLayoutCount=1; pl.pSetLayouts=&layout;
-    if (!mc2vk::create(s->reflectionLayout,s->device,[&](VkPipelineLayout* out){return vkCreatePipelineLayout(s->device,&pl,nullptr,out);})) return false;
-    s->reflectionShader=mc2vk::OwnedShaderModule(s->device,load_spv(s->device,spv_dir()+"water_reflection.comp.spv"));
-    if (!s->reflectionShader) return false;
-    VkComputePipelineCreateInfo pipeline{VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO};
-    pipeline.stage.sType=VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    pipeline.stage.stage=VK_SHADER_STAGE_COMPUTE_BIT; pipeline.stage.module=s->reflectionShader.get(); pipeline.stage.pName="main";
-    pipeline.layout=s->reflectionLayout.get();
-    return mc2vk::create(s->reflectionPipe,s->device,[&](VkPipeline* out){return mc2vk::infra::compute(s->device,VK_NULL_HANDLE,1,&pipeline,nullptr,out);});
+    if (!mc2vk::create(s->planarDepthView,s->device,[&](VkImageView* out){return vkCreateImageView(s->device,&view,nullptr,out);})) {
+        s->planarDepthImage.reset();
+        return false;
+    }
+    return true;
 }
 
 // COPY-ONCE HDRI equirect import (not per frame) from the engine's CPU copy, in gos_hdri.cpp's two forms:

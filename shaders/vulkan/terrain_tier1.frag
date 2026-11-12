@@ -19,6 +19,7 @@ vec3 mv_lampPoolNormal(vec3 wp, vec3 macroN, float lod);
 #include "../include/edge_haze.hglsl"   // edgeHazeAmount + EDGE_HAZE_SKY, shared with GL
 
 layout(location = 0) in vec3 v_worldPos;
+layout(constant_id = 10) const int kPlanarReflection = 0;
 layout(constant_id = 0) const int kCsmDebugMode = 0;   // vk-present-instance 8: spec constant from MC2_SHADOW_DEBUG_MODE; mode 0 compiles the debug chain out
 layout(location = 0) out vec4 fragColor;   // MRT0 color
 layout(location = 1) out vec4 GBuffer1;    // MRT1 normal + shadow class
@@ -202,6 +203,7 @@ vec3 mv_lampPoolNormal(vec3 wp, vec3 macroN, float lod) {
 #include "include/terrain_cement_art.glsl"   // cCutLt, shadeRoadArt, shadeRoadArtTile
 
 void main() {
+    if (kPlanarReflection != 0 && v_worldPos.z < uT.shorelineWaterElev) discard;
     vec3 roadColor;
     float roadCoverage = shadeRoadArtTile(roadColor);
     float cdRoad = 0.0;   // CONCRETE-ROAD-PBR-DETAIL: the cement atlas texel is asphalt (roads, runway)

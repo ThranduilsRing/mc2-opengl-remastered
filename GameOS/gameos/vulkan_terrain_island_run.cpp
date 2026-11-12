@@ -19,6 +19,8 @@
 
 #include "visual_tuning_profile.h"
 #include "mission_environment_gpu.h"
+#include "vk_water_planar.h"
+#include "water_planar_terrain.h"
 
 
 // ===========================================================================
@@ -367,6 +369,7 @@ static void terrain_begin_scene_pass(TerrainIsland* s, mc2vk::VulkanContext& ctx
 }
 
 struct TerrainRecPlan {
+    bool embedded = false;
     struct Run { VkBuffer vb, ib; uint32_t firstRec, count; };
     mc2vk::VulkanContext* ctx = nullptr;   // const entry-point table only (cmdBeginRendering/cmdEndRendering/cmdPipelineBarrier2)
     VkImageView colorView = VK_NULL_HANDLE, normalView = VK_NULL_HANDLE, depthView = VK_NULL_HANDLE; VkFormat depthFormat = VK_FORMAT_UNDEFINED;
@@ -384,12 +387,12 @@ static bool record_terrain_cmds(const TerrainRecPlan& p, VkCommandBuffer cb) {
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) return false;
+    if (!p.embedded && vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) return false;
     if (p.lightLists) {
         MC2_VK_GPU_SCOPE(listsScope, cb, "VKIsl.LightLists");
         p.lightLists.recordCmds(cb);
     }
-    vk_render_pass_timer::Begin(cb, gos_render_pass_timer::Pass_TerrainChunk);
+    if (!p.embedded) vk_render_pass_timer::Begin(cb, gos_render_pass_timer::Pass_TerrainChunk);
 
     // VK-DRAW-PERF-1: reset the query pool (outside the render pass) + stamp pass-start.
     mc2vkts::GpuTimer::cmdReset(cb, p.timerPool, p.timerCount);
@@ -437,17 +440,18 @@ static bool record_terrain_cmds(const TerrainRecPlan& p, VkCommandBuffer cb) {
     gpuScope.end();
     // VK-DRAW-PERF-1: stamp pass-end (gap 1->2 = all patch/skirt draws).
     mc2vkts::GpuTimer::cmdWrite(cb, p.timerPool, p.timerCount, 2);
-    vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_TerrainChunk);
-    return vkEndCommandBuffer(cb) == VK_SUCCESS;
+    if (!p.embedded) vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_TerrainChunk);
+    return p.embedded || vkEndCommandBuffer(cb) == VK_SUCCESS;
 }
 static bool record_terrain(TerrainIsland* s, mc2vk::VulkanContext& rctx, uint32_t par, int w, int h,
                            const uint32_t (&dynOffs)[4], TerrainRecordState& st,
-                           unsigned long& drawnOut, unsigned long& skirtDrawnOut, mc2vk::VulkanContext::RecordFn& recordOut) {
+                           unsigned long& drawnOut, unsigned long& skirtDrawnOut, mc2vk::VulkanContext::RecordFn& recordOut,
+                           const mc2::waterplanar::Target* reflected = nullptr) {
     // Prepare half (main): the record cache, the draw-buffer growth and upload, the light-list descriptors and the gpu-timer pool claim. The recording is
     // returned as a callback over copied handles (VulkanContext::submitRecorded): it touches nothing of the island.
     TerrainRecPlan plan;
     plan.lightLists = s->lightLists.claim(rctx, par);
-    plan.timerCount = s->gpuTimer.count; plan.timerPool = s->gpuTimer.claim();
+    if (!reflected) { plan.timerCount = s->gpuTimer.count; plan.timerPool = s->gpuTimer.claim(); }
     std::copy_n(g_prefixClearColor, 4, plan.clearColor);
     { float jpx[2]; RenderCore::temporal::sceneJitterPixels(g_mc2RenderFrame, jpx); plan.jx = jpx[0]; plan.jy = jpx[1]; }   // temporal AA: sub-pixel viewport offset, zero with no consumer
     plan.ctx = &rctx; plan.colorView = s->colorRes->view.get(); plan.normalView = s->normalRes->view.get(); plan.depthView = s->depthRes->view.get();
@@ -455,6 +459,15 @@ static bool record_terrain(TerrainIsland* s, mc2vk::VulkanContext& rctx, uint32_
     plan.pipe = s->pipe.get(); plan.skirtPipe = s->skirtPipe.get();
     plan.playout = s->playout.get(); plan.set = s->set[par]; plan.w = w; plan.h = h;
     std::copy_n(dynOffs, 4, plan.dynOffs);
+    if (reflected) {
+        plan.embedded = true;
+        plan.colorView = reflected->color; plan.normalView = VK_NULL_HANDLE; plan.depthView = reflected->depth;
+        plan.depthFormat = VK_FORMAT_D32_SFLOAT;
+        plan.pipe = s->planarPipe.get(); plan.skirtPipe = VK_NULL_HANDLE;
+        plan.jx = plan.jy = 0; // spatial reflection, independent of any main-view jitter
+        std::fill_n(plan.clearColor, 4, 0.0f); // alpha zero means no reflected geometry (sky fallback)
+        plan.timerPool = VK_NULL_HANDLE; plan.timerCount = 0;
+    }
 
     // Opaque patches write depth. Submit the nearest chunks first so the early
     // depth test rejects hidden terrain before running the material shader.
@@ -535,7 +548,9 @@ static bool record_terrain(TerrainIsland* s, mc2vk::VulkanContext& rctx, uint32_
     return true;
 }
 
-extern "C" int mc2_vk_terrain_island_run(int w, int h) {
+static int run_terrain(int w, int h, TerrainIsland* supplied = nullptr,
+                       const Mc2TerrainTier1Feed* reflectedFeed = nullptr, mc2::waterplanar::Target* target = nullptr,
+                       mc2vk::VulkanContext::RecordFn* reflectedRecord = nullptr) {
     ZoneScopedN("VK-terrain-island");   // VK-FLIP-FIELD-REPORT-1 coarse region zone
     mc2_hitch2::Scope hitchTotal("terrain.island");
     if (w <= 0 || h <= 0) return 0;
@@ -549,9 +564,11 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     // Pull this frame's LOD0 patch list + shared params from the GL terrain path.
     Mc2TerrainTier1Feed feed{};
     bool gotFeed;
-    { ZoneScopedN("VKIsl.Terrain.GetFrameFeed"); mc2_hitch2::Scope hs("terrain.feed"); gotFeed = mc2_terrain_tier1_get_frame_feed(&feed); }
+    { ZoneScopedN("VKIsl.Terrain.GetFrameFeed"); mc2_hitch2::Scope hs("terrain.feed");
+      if (reflectedFeed) { feed = *reflectedFeed; gotFeed = true; }
+      else gotFeed = mc2_terrain_tier1_get_frame_feed(&feed); }
     if (!gotFeed) { setFallback("no_terrain_feed"); return 0; }
-    if (mc2vk::rt::scene::demanded()) {   // sample the current surface only when a ray consumer needs it
+    if (!target && mc2vk::rt::scene::demanded()) {   // sample the current surface only when a ray consumer needs it
         mc2vk::rt::scene::TerrainSource rt;
         rt.mapSide = feed.mapSide;
         rt.halfMap = feed.halfMap;
@@ -563,13 +580,13 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
         rt.visualVersion = feed.visualHeightVersion;
         mc2vk::rt::scene::noteTerrain(rt);
     }
-    if (!feed.patches || feed.patchCount == 0) { setFallback("no_lod0_patches"); return 0; }
+    if (!target && (!feed.patches || feed.patchCount == 0)) { setFallback("no_lod0_patches"); return 0; }
     if (feed.mapSide <= 0) { setFallback("bad_mapside"); return 0; }
 
     bool islandReady;
-    { ZoneScopedN("VKIsl.Terrain.EnsureReady"); mc2_hitch2::Scope hs("terrain.ensure_ready"); islandReady = ensure_island_ready(w, h); }
+    { ZoneScopedN("VKIsl.Terrain.EnsureReady"); mc2_hitch2::Scope hs("terrain.ensure_ready"); islandReady = supplied || ensure_island_ready(w, h); }
     if (!islandReady) return 0;
-    TerrainIsland* s = parkedIsland();
+    TerrainIsland* s = supplied ? supplied : parkedIsland();
     if (!s || s->disabled || !s->inited) return 0;
 
     const unsigned long f0b = g_forbidden.glGetTexImage;
@@ -745,10 +762,15 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     }
     const uint32_t dynOffs[4] = {static_cast<uint32_t>(uboSpan.offset), static_cast<uint32_t>(lpSpans[0].offset),
                                  static_cast<uint32_t>(lpSpans[1].offset), static_cast<uint32_t>(lpSpans[2].offset)};
-    g_sceneClearedRenderFrame = g_mc2RenderFrame + 1u;   // the recorded pass CLEARs color0 / normal / depth (see mc2_vk_scene_clear)
+    if (!target) g_sceneClearedRenderFrame = g_mc2RenderFrame + 1u;   // main-view clear only
     unsigned long drawn = 0, skirtDrawn = 0;
     mc2vk::VulkanContext::RecordFn record;
-    if (!record_terrain(s, rctx, par, w, h, dynOffs, rec, drawn, skirtDrawn, record)) { setFallback("record_failed"); s->disabled = true; return 0; }
+    if (!record_terrain(s, rctx, par, w, h, dynOffs, rec, drawn, skirtDrawn, record, target)) { setFallback("record_failed"); s->disabled = true; return 0; }
+    if (target) {
+        target->ground = s->groundFrame;
+        *reflectedRecord = std::move(record);
+        return 1;
+    }
 
     // Item-4: no GL<->VK semaphores. The recording runs at the next flush on a worker with the frame's other recorded islands; done() runs in reserved
     // order. Downstream native islands (prop/mech/water/post) chain Vulkan-owned resources in the same batch order.
@@ -802,6 +824,24 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
         std::fflush(stderr);
     }
     return 1;
+}
+
+extern "C" int mc2_vk_terrain_island_run(int w, int h) { return run_terrain(w, h); }
+
+namespace mc2::waterplanar {
+struct PlanarTerrain : TerrainIsland { TerrainView view; };
+bool prepareTerrain(std::unique_ptr<mc2vk::IslandState>& state, Target& target, mc2vk::VulkanContext::RecordFn& record) {
+    if (!state) {
+        auto fresh = std::make_unique<PlanarTerrain>();
+        if (!init_island(fresh.get(), target.w, target.h)) return false;
+        state = std::move(fresh);
+    }
+    auto* s = static_cast<PlanarTerrain*>(state.get());
+    if (!prepareTerrainView(s->view, target.mainWorldToClip, target.water)) return false;
+    auto feed = s->view.feed();
+    feed.shorelineWaterElev = target.water;
+    return run_terrain(target.w, target.h, s, &feed, &target, &record) != 0;
+}
 }
 
 // The shared scene's own clear. The terrain pass is the normal clear (CLEAR loadOps), but it does not run when the frame has no terrain (menu,

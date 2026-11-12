@@ -126,13 +126,6 @@ void write_descriptors(WaterIsland* s, int only) {
         // a frame that takes the readback feed (opt-out, null MVP) rebinds its slot to thinBuf first (vulkan_water_island_run.cpp).
         VkDescriptorBufferInfo thinInfo{ (s->thinNative[i] && s->native && s->native->ready()) ? s->native->thin(static_cast<uint32_t>(i)) : s->thinBuf[i].get(), 0, VK_WHOLE_SIZE };
         VkWriteDescriptorSet w[2]{};
-        if (s->native && s->native->ready()) {   // binding 12: the reflection compute's water tile list
-            VkDescriptorBufferInfo tileInfo{ s->native->tileList(static_cast<uint32_t>(i)), 0, VK_WHOLE_SIZE };
-            VkWriteDescriptorSet tw{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
-            tw.dstSet = s->set[i]; tw.dstBinding = 12; tw.descriptorCount = 1;
-            tw.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; tw.pBufferInfo = &tileInfo;
-            vkUpdateDescriptorSets(s->device, 1, &tw, 0, nullptr);
-        }
         w[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[0].dstSet = s->set[i];
         w[0].dstBinding = 5; w[0].descriptorCount = 1;
         w[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[0].pBufferInfo = &recInfo;
@@ -151,19 +144,17 @@ void write_descriptors(WaterIsland* s, int only) {
             vkUpdateDescriptorSets(s->device, 1, &w4, 0, nullptr);
         }
         vkUpdateDescriptorSets(s->device, 2, w, 0, nullptr);
-        if (s->reflectionView && s->reflectionSampler && s->hdriSampler) {
+        if (s->reflectionView && s->hdriSampler) {
             const VkDescriptorImageInfo images[]{
                 {s->hdriSampler.get(),s->reflectionView.get(),VK_IMAGE_LAYOUT_GENERAL},
-                {s->hdriSampler.get(),s->sColorRes->view.get(),VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
-                {s->reflectionSampler.get(),s->reflectionDepthView.get(),VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL},
                 {VK_NULL_HANDLE,s->reflectionView.get(),VK_IMAGE_LAYOUT_GENERAL}};
-            VkWriteDescriptorSet writes[4]{};
-            for (int k=0;k<4;++k) {
+            VkWriteDescriptorSet writes[2]{};
+            for (int k=0;k<2;++k) {
                 writes[k].sType=VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; writes[k].dstSet=s->set[i];
-                writes[k].dstBinding=8+k; writes[k].descriptorCount=1; writes[k].pImageInfo=&images[k];
-                writes[k].descriptorType=k==3 ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE : VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                writes[k].dstBinding=k==0 ? 8 : 11; writes[k].descriptorCount=1; writes[k].pImageInfo=&images[k];
+                writes[k].descriptorType=k==1 ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE : VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             }
-            vkUpdateDescriptorSets(s->device,4,writes,0,nullptr);
+            vkUpdateDescriptorSets(s->device,2,writes,0,nullptr);
         }
         // VK-PARITY-WATER-SHORE-1: bindings 3/4 (shore height / mask), once imported.
         if (s->shHTexture && s->shMTexture && s->hdriSampler) {
@@ -291,7 +282,7 @@ extern "C" void mc2_vk_water_island_destroy() {
          "vk_draws=%lu forbidden_copyBufToImg=%lu forbidden_copyImgToBuf=%lu forbidden_getTexImage=%lu "
          "forbidden_texSubImage=%lu depthin_getTexImage=%lu depthin_copyBufToImg=%lu "
          "copy_color_in_us=%.1f copy_depth_in_us=%.1f draw_us=%.1f color_out_us=%.1f total_us=%.1f "
-         "water_visible=%lu water_eligible_bound=%lu water_tiles=%lu water_tile_cap=%lu",
+         "water_visible=%lu water_eligible_bound=%lu",
          g_health.vulkanAvailable, g_health.usedVulkan, g_health.usedInterop, g_health.interopActive,
          g_health.vk2glSemActive, g_health.validationErrors, g_health.thinRecords, g_health.recipeCount,
          g_health.fallbackReason, g_health.vkDraws,
@@ -299,7 +290,7 @@ extern "C" void mc2_vk_water_island_destroy() {
          g_forbidden.glGetTexImage, g_forbidden.glTexSubImage2D,
          g_depthInGetTexImage, g_depthInCopyBufferToImage,
          g_health.copyColorInUs, g_health.copyDepthInUs, g_health.drawUs, g_health.colorOutUs, g_health.totalUs,
-         g_health.waterVisible, g_health.waterEligibleBound, g_health.waterTiles, g_health.waterTileCap);
+         g_health.waterVisible, g_health.waterEligibleBound);
     mc2vk::getOrCreateEngineVulkanContext().retireIsland(mc2vk::IslandSlot::Water);
 }
 

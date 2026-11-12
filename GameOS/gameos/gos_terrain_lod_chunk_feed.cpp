@@ -4,6 +4,15 @@
 #include "mc2fmt.h"
 #include "terrain_field_store.h"
 
+#include "water_planar_terrain.h"
+
+bool mc2::waterplanar::prepareTerrainView(TerrainView& view, const float* mainWorldToClip, float waterElevation)
+{
+    Mc2TerrainTier1Feed source{};
+    if (!mc2_terrain_tier1_get_load_feed(&source)) source = {};
+    return view.prepare(source, mainWorldToClip, waterElevation);
+}
+
 // ---------------------------------------------------------------------------
 // VK-P10 TERRAIN TIER-1 feed. When MC2_VK_TERRAIN_TIER1 (+ shared depth) is armed,
 // SubmitDrawCommands captures the LOD0 (lodStep==1) patch list + shared params into

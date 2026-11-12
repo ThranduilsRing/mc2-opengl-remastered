@@ -81,12 +81,12 @@ bool init_island(WaterIsland* s, int w, int h) {
 
     // ---- Descriptor layout/pool/set (2 UBO + 2 SSBO), both stages. ----
     {
-        VkDescriptorSetLayoutBinding b[16]{};
+        VkDescriptorSetLayoutBinding b[13]{};
         b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-        b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
+        b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
         b[1].binding = 1; b[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         // HORIZON-WAVE-1: the VS reads the camera position from this block too (grazing-angle wave fade).
-        b[1].descriptorCount = 1; b[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
+        b[1].descriptorCount = 1; b[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         b[2].binding = 5; b[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         b[2].descriptorCount = 1; b[2].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
         b[3].binding = 6; b[3].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
@@ -106,28 +106,25 @@ bool init_island(WaterIsland* s, int w, int h) {
         b[8].descriptorCount=1; b[8].stageFlags=VK_SHADER_STAGE_FRAGMENT_BIT;
         b[9].binding=25; b[9].descriptorType=VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         b[9].descriptorCount=1; b[9].stageFlags=VK_SHADER_STAGE_FRAGMENT_BIT;
-        for (int k=0;k<4;++k) {
-            b[10+k].binding=8+k;
-            b[10+k].descriptorType=k==3 ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE : VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        for (int k=0;k<2;++k) {
+            b[10+k].binding=k==0 ? 8 : 11;
+            b[10+k].descriptorType=k==1 ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE : VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             b[10+k].descriptorCount=1;
-            b[10+k].stageFlags=k==0 ? VK_SHADER_STAGE_FRAGMENT_BIT : VK_SHADER_STAGE_COMPUTE_BIT;
+            b[10+k].stageFlags=VK_SHADER_STAGE_FRAGMENT_BIT;
         }
-        // The reflection compute's list of 8x8 reflection tiles that contain water (water_cull_pack).
-        b[14].binding=12; b[14].descriptorType=VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        b[14].descriptorCount=1; b[14].stageFlags=VK_SHADER_STAGE_COMPUTE_BIT;
-        b[15].binding=13; b[15].descriptorType=VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        b[15].descriptorCount=1; b[15].stageFlags=VK_SHADER_STAGE_FRAGMENT_BIT;
+        b[12].binding=13; b[12].descriptorType=VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        b[12].descriptorCount=1; b[12].stageFlags=VK_SHADER_STAGE_FRAGMENT_BIT;
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        lci.bindingCount = 16; lci.pBindings = b;
+        lci.bindingCount = 13; lci.pBindings = b;
         if (!mc2vk::create(s->dsl, s->device, [&](VkDescriptorSetLayout* h) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); })) {
             vlog("vkCreateDescriptorSetLayout failed."); return false;
         }
         // One descriptor set per frame slot, including the reflection bindings.
         VkDescriptorPoolSize sizes[5]{};
         sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; sizes[0].descriptorCount = 2 * mc2vk::kMaxFramesInFlight;
-        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; sizes[1].descriptorCount = 4 * mc2vk::kMaxFramesInFlight;
-        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[2].descriptorCount = 8 * mc2vk::kMaxFramesInFlight;
+        sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; sizes[1].descriptorCount = 3 * mc2vk::kMaxFramesInFlight;
+        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[2].descriptorCount = 6 * mc2vk::kMaxFramesInFlight;
         sizes[3].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; sizes[3].descriptorCount = 1 * mc2vk::kMaxFramesInFlight;
         sizes[4].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE; sizes[4].descriptorCount = mc2vk::kMaxFramesInFlight;
         VkDescriptorPoolCreateInfo pci{};

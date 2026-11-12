@@ -184,6 +184,7 @@ struct TerrainIsland : mc2vk::IslandState {
     uint64_t groundFrameNo = ~static_cast<uint64_t>(0);
     mc2vk::OwnedPipelineLayout  playout;
     mc2vk::OwnedPipeline        pipe;
+    mc2vk::OwnedPipeline        planarPipe;
     mc2vk::OwnedShaderModule    vert;
     mc2vk::OwnedShaderModule    frag;
 

@@ -667,6 +667,22 @@ bool init_island(TerrainIsland* s, int w, int h) {
         }
         mc2vk::nameObject(s->device, s->pipe.get(), "terrain.pipe");
 
+        // Same materials and descriptors; absent MRT1 is not a reflection allocation.
+        const int32_t planarSpec[2] = {csmDebugSpec, 1};
+        const VkSpecializationMapEntry planarEntries[2] = {{0, 0, sizeof(int32_t)}, {10, sizeof(int32_t), sizeof(int32_t)}};
+        const VkSpecializationInfo planarInfo{2, planarEntries, sizeof(planarSpec), planarSpec};
+        stages[1].pSpecializationInfo = &planarInfo;
+        const VkFormat planarFormats[2] = {VK_FORMAT_R16G16B16A16_SFLOAT, VK_FORMAT_UNDEFINED};
+        const auto planarRendering = mc2vk::dynrender::pipelineInfo(2, planarFormats, VK_FORMAT_D32_SFLOAT);
+        gp.pNext = &planarRendering;
+        cba[1].colorWriteMask = 0;
+        rs.frontFace = VK_FRONT_FACE_CLOCKWISE; // mirror determinant -1 (terrain stays double-sided)
+        if (!mc2vk::create(s->planarPipe, s->device, [&](auto* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) return false;
+        gp.pNext = &prci;
+        stages[1].pSpecializationInfo = &csmDebugInfo;
+        cba[1].colorWriteMask = cba[0].colorWriteMask;
+        rs.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+
         // VK-TERRAIN-SKIRT (rung 4): second pipeline, same layout/renderpass/raster/
         // depth/blend state as above -- only the shader modules + vertex-input state
         // differ (2 attributes: ivec2 localOffset + int isSkirtFlag, mirrors GL's

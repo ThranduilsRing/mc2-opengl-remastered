@@ -1,0 +1,25 @@
+#ifndef MC2_WATER_PLANAR_HGLSL
+#define MC2_WATER_PLANAR_HGLSL
+
+// MC2 world space is Z-up. Clip the original scene before reflection, keeping
+// the plane itself so triangles crossing the shoreline meet it without a gap.
+#ifdef __cplusplus
+namespace mc2::waterplanar {
+#define WP_INLINE inline
+#else
+#define WP_INLINE
+#endif
+
+WP_INLINE float wp_mirror_z(float worldZ, float waterElevation) {
+    return 2.0f * waterElevation - worldZ;
+}
+
+WP_INLINE float wp_clip_distance(float worldZ, float waterElevation) {
+    return worldZ - waterElevation;
+}
+
+#ifdef __cplusplus
+} // namespace mc2::waterplanar
+#endif
+#undef WP_INLINE
+#endif

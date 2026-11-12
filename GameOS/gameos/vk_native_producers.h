@@ -16,7 +16,6 @@
 #include "gos_terrain_lighting.h"
 #include "vk_compute_pipeline.h"
 #include "vk_owned.h"
-#include "water_reflect_dispatch.h"
 #include "vk_frame_ring.h"
 #include "../../mclib/terrain_vertex_dirty.h"
 
@@ -44,9 +43,8 @@ struct VkWaterCullParams {
     float   clip[16];       // the four columns of u_worldToClipGL: the raw 16 floats the GL path uploads with GL_FALSE
     float   misc0[4];       // waterElevation, frameCos, shoreExt, unused
     int32_t misc1[4];       // recipeCount, maxThinRecords, mapSide, biasLegacy
-    int32_t misc2[4];       // reflection image width, height (0 = reflection off), unused x2
 };
-static_assert(sizeof(VkWaterCullParams) == 112, "WaterCullParams std140 size (water_cull_pack.comp.slang)");
+static_assert(sizeof(VkWaterCullParams) == 96, "WaterCullParams std140 size (water_cull_pack.comp.slang)");
 
 // Mirror of DrawArgsParams in shaders/vulkan/water_draw_args.comp.slang.
 struct VkDrawArgsParams { int32_t v[4]; };
@@ -60,8 +58,6 @@ struct WaterCullFrame {
     float    shoreExt;
     uint32_t mapSide;
     int32_t  biasLegacy;
-    uint32_t reflectionGroupsX = 0, reflectionGroupsY = 0;   // 8x8 tile grid of the reflection image (0 = reflection off)
-    uint32_t reflectionW = 0, reflectionH = 0;               // reflection image size in pixels (full-res)
 };
 
 // Result of one GL-vs-VK comparison (parity frames only).
@@ -93,15 +89,9 @@ public:
 
     VkBuffer thin(uint32_t par) const noexcept { return thin_[par % kSlots].get(); }
     VkBuffer drawArgs(uint32_t par) const noexcept { return drawArgs_[par % kSlots].get(); }
-    // Tiles (8x8 pixels of the full-res reflection image) that contain admitted water: the reflection compute runs one workgroup per entry (count in drawArgs words 4..6).
-    VkBuffer tileList(uint32_t par) const noexcept { return tileList_[par % kSlots].get(); }
-    static constexpr uint32_t kMaxTiles = 1u << 20;   // 8K full-res is 518400 tiles; the tile grid is clamped to this
     uint32_t maxThin() const noexcept { return maxThin_; }
-    // Tiles one frame may dispatch: kMaxTiles capped by maxComputeWorkGroupCount[1] x kReflectRowTiles (2-D dispatch, one group per tile).
-    uint32_t maxTiles() const noexcept { return maxTiles_; }
-    // Health of the last slot read back: the visible-quad and tile counts the GPU cull produced (valid once a slot completed a frame).
+    // Visible quads from the last completed slot.
     uint32_t lastVisible() const noexcept { return lastVisible_; }
-    uint32_t lastTiles() const noexcept { return lastTiles_; }
     uint32_t eligibleBound() const noexcept { return eligibleBound_; }
 
     // Stages this frame's inputs into slot `par` (the slot must be retired) and records lighting -> cull/pack -> draw-args with the barriers, ending
@@ -126,8 +116,8 @@ private:
     VmaAllocator allocator_ = nullptr;
     const VulkanContext* ctx_ = nullptr;
     uint32_t numVertices_ = 0, recipeCount_ = 0, maxThin_ = 0;
-    uint32_t maxTiles_ = kMaxTiles, eligibleBound_ = 0;
-    uint32_t lastVisible_ = 0, lastTiles_ = 0, healthFrames_ = 0;
+    uint32_t eligibleBound_ = 0;
+    uint32_t lastVisible_ = 0, healthFrames_ = 0;
     bool healthPending_[kSlots] = {};   // slot `par`'s healthHdr_ holds a completed frame's header (read when the slot is recorded again, after its host wait)
     VkBuffer recipes_ = VK_NULL_HANDLE;
     bool lightOutCleared_ = false;
@@ -141,10 +131,9 @@ private:
     // Lights and the two parameter blocks are frame-ring spans bound with dynamic offsets; ringBound_[par] = the
     // ring buffer slot `par`'s bindings currently name (the slot's set is rewritten only after the island's slot fence retired its last use).
     VkBuffer ringBound_[kSlots] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
-    OwnedBuffer argsUbo_[kSlots];   // thin capacity + this frame's reflection dispatch size
+    OwnedBuffer argsUbo_[kSlots];   // map-static thin capacity and vertices per record
     OwnedBuffer header_[kSlots], drawArgs_[kSlots], thin_[kSlots];   // device-local
-    OwnedBuffer tileMask_[kSlots], tileList_[kSlots];                // reflection tiles: one bit per tile (cleared per frame) and the compacted list
-    OwnedBuffer healthHdr_[kSlots];   // host-visible copy of header_[par] (visible count, tile count) for the [WATER] health line
+    OwnedBuffer healthHdr_[kSlots];   // host-visible copy of header_[par] (visible count) for the [WATER] health line
     // Parity readback (host-visible), made on first use.
     OwnedBuffer parityHdr_, parityThin_, parityLight_;
     uint32_t parityLightFirst_ = 0, parityLightCount_ = 0;
