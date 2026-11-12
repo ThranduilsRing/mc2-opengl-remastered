@@ -200,6 +200,9 @@ struct WaterIsland : mc2vk::IslandState {
     mc2vk::OwnedBuffer recipeBuf;
     mc2vk::OwnedBuffer thinBuf[mc2vk::kMaxFramesInFlight];
     mc2vk::OwnedImage reflectionImage;
+    // Independent full-resolution reverse-Z depth; never aliases main scene depth.
+    mc2vk::OwnedImage planarDepthImage;
+    mc2vk::OwnedImageView planarDepthView;
     mc2vk::OwnedImageView reflectionView, reflectionDepthView;
     mc2vk::OwnedSampler reflectionSampler;
     mc2vk::OwnedShaderModule reflectionShader;
