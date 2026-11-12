@@ -9,7 +9,6 @@
  ],
  "_add_reason": "The shared state lives in the detail namespace and is declared once in the internal header inside a namespace block; check-mdi-submission-ownership needs the flush piece to include mdi_submit.h itself.",
  "scripts": [
-  "scripts/check-apply-pass-bumped.py",
   "scripts/check-light-row-freshness.py",
   "scripts/check-raw-gl-colormask.py",
   "scripts/check-raw-gl-depthfunc.py",
@@ -30,5 +29,5 @@
   "tools/mc2texcook/mc2texcook.py",
   "tools/tg_import_dump/stubs.cpp"
  ],
- "_scripts_reason": "Reviewed: check-shader-variant reads the color and depth program build from the program piece (loadProgramsIfNeeded); the raw glColorMask allowlist names the submit piece and the glDepthFunc one the flush piece (the only holders of those calls); check-static-prop-family, check-apply-pass-bumped and the counter-honesty keys scan the file family and pass unchanged; gl_shader_variants.json is regenerated; the asset-viewer, harness, tg_import_dump and launcher hits are stub symbol lists or comments naming the file; tools/gate_codemod.py, gate_conflicts.py and gate_g0_ledger.json (lane 1) name it only; the rest cite gos_static_prop_batcher.cpp or old line numbers in comments."
+ "_scripts_reason": "Reviewed: check-shader-variant reads the color and depth program build from the program piece (loadProgramsIfNeeded); the raw glColorMask allowlist names the submit piece and the glDepthFunc one the flush piece (the only holders of those calls); check-static-prop-family and the counter-honesty keys scan the file family and pass unchanged; gl_shader_variants.json is regenerated; the asset-viewer, harness, tg_import_dump and launcher hits are stub symbol lists or comments naming the file; tools/gate_codemod.py, gate_conflicts.py and gate_g0_ledger.json (lane 1) name it only; the rest cite gos_static_prop_batcher.cpp or old line numbers in comments."
 }

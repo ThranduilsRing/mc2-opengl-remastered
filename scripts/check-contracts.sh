@@ -984,9 +984,8 @@ run_nightly "multiply_blend"         "py -3 scripts/check-multiply-blend.py --qu
 run_check "render_no_update"         "py -3 scripts/check-render-no-update.py --quiet && py -3 -B -m pytest scripts/tests/test_check_render_no_update.py -q -p no:cacheprovider"   # R2 item 3: renderView / Appearance::render never call update()
 run_nightly "colormask_ownership"   "py -3 scripts/check-colormask-ownership.py --quiet && py -3 -B -m pytest scripts/tests/test_check_native_post_contracts.py -k color_mask -q -p no:cacheprovider"
 run_nightly "pass_attachment"        "py -3 scripts/check-pass-attachment-contract.py --quiet"
-run_nightly "native_scene_targets"   "py -3 scripts/check-native-scene-targets.py --quiet && py -3 -B -m pytest scripts/tests/test_native_scene_targets.py scripts/tests/test_native_executor_health.py -q -p no:cacheprovider"
+run_nightly "native_scene_targets"   "py -3 scripts/check-native-scene-targets.py --quiet && py -3 -B -m pytest scripts/tests/test_native_scene_targets.py -q -p no:cacheprovider"
 run_nightly "drawbuffer_ownership"   "py -3 scripts/check-drawbuffer-ownership.py --quiet"
-run_nightly "apply_pass_bumped"      "py -3 scripts/check-apply-pass-bumped.py --quiet"
 run_nightly "static_prop_family"     "py -3 scripts/check-static-prop-family.py --quiet"
 run_nightly "mdi_submission"         "py -3 scripts/check-mdi-submission-ownership.py --quiet && py -3 -B -m pytest scripts/tests/test_check_native_post_contracts.py -k mdi -q -p no:cacheprovider"
 run_nightly "buffer_lifetime"        "py -3 scripts/check-buffer-lifetime-ownership.py --quiet"

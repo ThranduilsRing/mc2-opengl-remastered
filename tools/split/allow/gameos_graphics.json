@@ -15,7 +15,6 @@
  ],
  "_header_vars_reason": "const DWORD sentinel read by the renderer class and every piece; constant-initialised, so one copy per piece is identical.",
  "scripts": [
-  "scripts/check-apply-pass-bumped.py",
   "scripts/check-contracts.sh",
   "scripts/check-cpu-gpu-cogating.py",
   "scripts/check-frame-resource-feedback.py",

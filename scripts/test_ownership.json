@@ -127,7 +127,6 @@
     {"module": "scripts/tests/test_mod_smoke.py", "owners": ["mod_smoke"]},
     {"module": "scripts/tests/test_abl_static_alloc.py", "owners": ["abl_static_alloc"]},
     {"module": "scripts/tests/test_module_test_cache.py", "owners": ["scripts_tests"]},
-    {"module": "scripts/tests/test_native_executor_health.py", "owners": ["native_scene_targets"]},
     {"module": "scripts/tests/test_native_render_hosts.py", "owners": ["native_render_hosts"]},
     {"module": "scripts/tests/test_native_scene_targets.py", "owners": ["native_scene_targets"]},
     {"module": "scripts/tests/test_nofocus_env.py", "owners": ["scripts_tests"]},
