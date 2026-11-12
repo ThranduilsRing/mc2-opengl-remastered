@@ -19,11 +19,12 @@ void gos_GetTerrainChunkGridInfo(int* mapSide, float* halfMap);
 #include "vk_island_fail_policy.h"
 #include "../../RenderCore/water_reactive.h"
 #include "../../mclib/timing.h"
+#include "vk_water_planar.h"
 
 
 int gos_GetWaterReflectionQuality();
 
-void vk_water_detail::record_reflection(WaterIsland* s, VkCommandBuffer cb, uint32_t par, const uint32_t* offsets, bool enabled) {
+bool vk_water_detail::record_reflection(WaterIsland* s, VkCommandBuffer cb, bool enabled) {
     auto barrier=[&](VkImage image,VkImageAspectFlags aspect,VkImageLayout from,VkImageLayout to,
                      VkPipelineStageFlags src,VkAccessFlags read,VkPipelineStageFlags dst,VkAccessFlags write) {
         // Legacy stage/access bits equal the low 32 bits of the sync2 masks.
@@ -37,34 +38,25 @@ void vk_water_detail::record_reflection(WaterIsland* s, VkCommandBuffer cb, uint
             VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT);
         s->reflectionInitialized=true;
     }
-    if (!enabled) return;
+    if (!enabled) return true;
     MC2_VK_GPU_SCOPE(reflectionScope,cb,"VKIsl.Water.Reflection");
-    mc2vk::cmdBarrier(cb,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-        VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
-        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_SHADER_WRITE_BIT);
-    barrier(s->sColorRes->image.get(),VK_IMAGE_ASPECT_COLOR_BIT,
-        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_SHADER_READ_BIT);
-    const auto depthAspect=VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-    barrier(s->sDepthRes->image.get(),depthAspect,
-        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
-        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_SHADER_READ_BIT);
-    mc2vk::infra::bind(cb,VK_PIPELINE_BIND_POINT_COMPUTE,s->reflectionPipe.get());
-    vkCmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_COMPUTE,s->reflectionLayout.get(),0,1,&s->set[par],2,offsets);
-    vkCmdDispatchIndirect(cb,s->native->drawArgs(par),16);
-    mc2vk::cmdBarrier(cb,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_SHADER_WRITE_BIT,
-        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,VK_ACCESS_SHADER_READ_BIT);
-    barrier(s->sColorRes->image.get(),VK_IMAGE_ASPECT_COLOR_BIT,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_SHADER_READ_BIT,
-        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
-    barrier(s->sDepthRes->image.get(),depthAspect,
-        VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_SHADER_READ_BIT,
+    barrier(s->reflectionImage.get(),VK_IMAGE_ASPECT_COLOR_BIT,VK_IMAGE_LAYOUT_GENERAL,VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,VK_ACCESS_SHADER_READ_BIT,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+    barrier(s->planarDepthImage.get(),VK_IMAGE_ASPECT_DEPTH_BIT,
+        s->planarDepthInitialized ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+        s->planarDepthInitialized ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT : 0,
         VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
         VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
+    s->planarDepthInitialized = true;
+    if (!s->planarTerrainRecord || !s->planarTerrainRecord(cb)) return false;
+    if (s->planarPropsRecord && !s->planarPropsRecord(cb)) return false;
+    barrier(s->reflectionImage.get(),VK_IMAGE_ASPECT_COLOR_BIT,VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,VK_IMAGE_LAYOUT_GENERAL,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,VK_ACCESS_SHADER_READ_BIT);
+    return true;
 }
 
 namespace {
@@ -363,6 +355,17 @@ extern "C" int mc2_vk_water_island_run(
     }
     }   // VK-ISLAND-TRACY-1: close VKIsl.Water.Feed
 
+    s->planarTerrainRecord = {}; s->planarPropsRecord = {};
+    if (reflectThisFrame) {
+        mc2::waterplanar::Target target;
+        target.w = w; target.h = h; target.water = nat->waterElevation; target.mainWorldToClip = nat->mvp;
+        target.color = s->reflectionView.get(); target.depth = s->planarDepthView.get();
+        if (!mc2::waterplanar::prepareTerrain(s->planarTerrain, target, s->planarTerrainRecord)
+            || !mc2::waterplanar::prepareProps(s->planarProps, target, s->planarPropsRecord)) {
+            setFallback("planar_view_prepare_failed"); s->disabled = true; return 0;
+        }
+    }
+
     // ============================ RUNG 6 TIER-1 PATH ============================
     // In-place co-write into the SHARED scene GBuffer. No color/depth import, no
     // composite. Frame-sync protocol COPIED from vulkan_terrain_island.cpp:2495-2603,
@@ -410,7 +413,9 @@ extern "C" int mc2_vk_water_island_run(
         }
 
         const uint32_t uboOffsets[2] = {static_cast<uint32_t>(uboSpan.offset), static_cast<uint32_t>(uboSpan.offset + fsUboOff)};
-        record_reflection(s,cb,par,uboOffsets,reflectThisFrame);
+        if (!record_reflection(s,cb,reflectThisFrame)) {
+            vkEndCommandBuffer(cb); setFallback("planar_record_failed"); s->disabled = true; return 0;
+        }
         // All attachments LOAD: no clear values.
         MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Water");
         mc2vk::VulkanContext& dctx = mc2vk::engineVulkanContextNoWait();

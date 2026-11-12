@@ -209,6 +209,7 @@ struct WaterIsland : mc2vk::IslandState {
     mc2vk::OwnedPipelineLayout reflectionLayout;
     mc2vk::OwnedPipeline reflectionPipe;
     bool reflectionInitialized = false;
+    bool planarDepthInitialized = false;
     bool mapHasWater = true;
     VkFormat sceneFmts[2]{VK_FORMAT_UNDEFINED, VK_FORMAT_UNDEFINED};   // dynamic rendering: scene colour0 + normal
     VkFormat sceneDepthFmt = VK_FORMAT_UNDEFINED;
@@ -231,6 +232,10 @@ struct WaterIsland : mc2vk::IslandState {
 
     // STEP 3.4P: the native Vulkan lighting + cull/pack producers (declared last: released first). `nativeFailed` = init was tried and refused, so the
     // GL readback feed stays in use for the session.
+    // Whole reflected views own their descriptors, compaction and draw buffers.
+    // Their slot writes are protected by this water island's submission tickets.
+    std::unique_ptr<mc2vk::IslandState> planarTerrain, planarProps;
+    mc2vk::VulkanContext::RecordFn planarTerrainRecord, planarPropsRecord;
     std::unique_ptr<mc2vk::NativeProducers> native;
     bool     nativeFailed = false;
     bool     thinNative[mc2vk::kMaxFramesInFlight] = {false, false};   // what binding 6 of each parity set currently points at: true = native thin_, false = thinBuf
@@ -247,7 +252,7 @@ namespace vk_water_detail {
 extern WaterIslandHealth g_health;
 extern int g_waterInitReachedBuild;   // 1 once init_island passed its readiness gates (vk_island_fail_policy.h)
 bool init_reflection(WaterIsland* s);
-void record_reflection(WaterIsland* s, VkCommandBuffer cb, uint32_t par, const uint32_t* offsets, bool enabled);
+bool record_reflection(WaterIsland* s, VkCommandBuffer cb, bool enabled);
 extern InteropForbidden g_forbidden;
 extern unsigned long g_depthInGetTexImage;
 extern unsigned long g_depthInCopyBufferToImage;
