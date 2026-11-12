@@ -272,7 +272,7 @@ def _r_run(window, extra):
         if scheduled(window):
             sys.path.insert(0, REPO + "/scripts")
             import nightly_gate
-            base = nightly_gate.nightly_base()
+            base = extra[extra.index("--base") + 1] if "--base" in extra else nightly_gate.nightly_base()
             if not base:
                 raise RuntimeError("nightly needs a previous nifty-green window as --base")
             cmd += ["--isolated-verdict", "--base", base, "--stages", "contracts",
@@ -890,6 +890,13 @@ def pc_main(args):
     w = args.window
     branch = gate_branch(w)
     head = subprocess.check_output(["git", "rev-parse", branch], text=True, **console_child.child_kwargs(redirected=True)).strip()
+    if scheduled(w) and "--base" not in args.gate_args:
+        # Publication tags live on the PC; an up-to-date laptop clone may have none.
+        import nightly_gate
+        base = nightly_gate.nightly_base()
+        if not base:
+            sys.exit("nightly needs a previous nifty-green window as --base")
+        args.gate_args += ["--base", base]
     t0 = time.time()
     cooked_preflight()
     provision(bin_only=True)   # the remote half itself, so init can run (init clones the repo the layer seeds go into)

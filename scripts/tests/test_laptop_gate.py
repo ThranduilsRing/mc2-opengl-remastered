@@ -405,14 +405,14 @@ def test_remote_nightly_builds_nifty_and_runs_contracts_plus_tier(tmp_path, monk
     monkeypatch.setattr(laptop_gate, "G", tmp_path.as_posix())
     monkeypatch.setattr(laptop_gate, "r_subst", lambda: None)
     monkeypatch.setattr(laptop_gate, "fast_red", lambda *a: pytest.fail("capture-only preflight"))
-    monkeypatch.setattr(nightly_gate, "nightly_base", lambda: "b" * 40)
+    monkeypatch.setattr(nightly_gate, "nightly_base", lambda: None)  # laptop has no publication tags
     git_calls, runs = [], []
     def git(cmd, **kw):
         git_calls.append(cmd)
         return SimpleNamespace(returncode=0, stdout=HEAD, stderr="")
     monkeypatch.setattr(laptop_gate.subprocess, "run", git)
     monkeypatch.setattr(laptop_gate, "run", lambda cmd, log, **kw: (runs.append(cmd) or (0, 0)))
-    laptop_gate._r_run("nightly-2026-11-12", ["--weekly" if weekly else "--nightly"])
+    laptop_gate._r_run("nightly-2026-11-12", ["--weekly" if weekly else "--nightly", "--base", "b" * 40])
     assert any("claude/nifty-mendeleev" in cmd for cmd in git_calls)
     cmd = runs[-1]
     import merge_gate
