@@ -1,0 +1,72 @@
+// Shared C++ / GLSL / Slang fog policy. Inputs stay in source world units;
+// only mc2FogDistance derives effective distances. Never write them to camera data.
+#ifndef MC2_FOG_POLICY_H
+#define MC2_FOG_POLICY_H
+#ifdef __cplusplus
+#define MC2_FOG_INLINE inline
+#else
+#define MC2_FOG_INLINE
+#endif
+
+#define MC2_FOG_DISTANCE_SCALE 1.5f
+#define MC2_FOG_HEIGHT_MAX_OPACITY 0.05f
+#define MC2_FOG_EXP_COEFFICIENT (0.00006f / MC2_FOG_DISTANCE_SCALE)
+
+MC2_FOG_INLINE bool mc2FogFinite(float value) {
+    return value >= -3.402823e38f && value <= 3.402823e38f;
+}
+MC2_FOG_INLINE float mc2FogClamp(float value) {
+    return value > 0.0f ? (value < 1.0f ? value : 1.0f) : 0.0f;
+}
+MC2_FOG_INLINE float mc2FogDistance(float source) {
+    // Preserve invalid inputs for mc2FogRamp's fail-open validation; replacing
+    // one endpoint with zero would create a spurious ramp in the GPU snapshot.
+    return source * MC2_FOG_DISTANCE_SCALE;
+}
+// Equal/reversed endpoints are a hard step at start; invalid inputs disable fog.
+MC2_FOG_INLINE float mc2FogRamp(float distance, float start, float full) {
+    if (!mc2FogFinite(distance) || !mc2FogFinite(start) || !mc2FogFinite(full)) return 0.0f;
+    if (distance <= start) return 0.0f;
+    float span = full - start;
+    if (!mc2FogFinite(span)) return 0.0f;
+    if (span <= 0.0f) return 1.0f;
+    return mc2FogClamp((distance - start) / span);
+}
+MC2_FOG_INLINE float mc2FogHaze(float distance, float sourceStart, float sourceFull) {
+    if (!mc2FogFinite(sourceStart) || !mc2FogFinite(sourceFull)) return 0.0f;
+    if (!mc2FogFinite(sourceStart * MC2_FOG_DISTANCE_SCALE) ||
+        !mc2FogFinite(sourceFull * MC2_FOG_DISTANCE_SCALE)) return 0.0f;
+    return mc2FogRamp(distance, mc2FogDistance(sourceStart), mc2FogDistance(sourceFull));
+}
+MC2_FOG_INLINE float mc2FogInvSpan(float start, float full) {
+    float span = full - start;
+    if (!mc2FogFinite(span) || !(span > 0.0f)) return 0.0f;
+    float factor = 1.0f / span;
+    return mc2FogFinite(factor) ? factor : 0.0f;
+}
+MC2_FOG_INLINE float mc2FogSmooth(float value) {
+    float t = mc2FogClamp(value);
+    return t * t * (3.0f - 2.0f * t);
+}
+// Height endpoints describe SURFACE elevation. No camera-altitude ramp.
+// Degenerate/reversed height bands are disabled. Quantization rounds opacity
+// down, so packed alpha can never exceed the 0.05 opacity bound (12/255).
+MC2_FOG_INLINE float mc2FogHeightAlpha(float elevation, float start, float full) {
+    if (!mc2FogFinite(elevation) || !mc2FogFinite(start) || !mc2FogFinite(full)) return 255.0f;
+    float span = start - full;
+    if (!(span > 0.0f) || !mc2FogFinite(span)) return 255.0f;
+    float t = mc2FogClamp((start - elevation) / span);
+    return 255.0f - float(int(MC2_FOG_HEIGHT_MAX_OPACITY * t * t * 255.0f));
+}
+// Spatial view-ray attenuation affects range haze only. Horizon rays retain
+// full haze; downward rays fade over sin(elevation) 0.35..0.85. Overview (85deg)
+// therefore cannot white out from camera-to-ground distance alone. Map-edge
+// concealment and outside-fill are deliberately independent of this factor.
+MC2_FOG_INLINE float mc2FogRangeViewFactor(float rayVerticalSin) {
+    // Geometry pixels only: use ray slope independent of far-endpoint polarity.
+    float slope = rayVerticalSin < 0.0f ? -rayVerticalSin : rayVerticalSin;
+    return 1.0f - mc2FogSmooth(mc2FogRamp(slope, 0.35f, 0.85f));
+}
+
+#undef MC2_FOG_INLINE
+#endif

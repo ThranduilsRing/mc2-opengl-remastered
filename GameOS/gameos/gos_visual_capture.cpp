@@ -91,6 +91,7 @@ extern "C" {
     void mc2VisualCaptureSetPaused(int paused);
     // Restore the exact pre-sweep pause flag pair captured above.
     void mc2VisualCaptureRestorePauseState(int packed);
+    void mc2VisualCaptureOverview(void* camera, int on);
     // MC2_CAPTURE_FOCUS: nth live player-team mech position (code/sim_identity.cpp).
     int  mc2CaptureFocusMech(int n, float* xyz);
     int  mc2CaptureFocusMechEx(int n, int sel, float* xyz, int* id, int* team, char* name, int* total, int* contact);
@@ -627,6 +628,9 @@ void apply_bookmark(const Bookmark& b0) {
     if (!eye) return;
     parse_focus();
     Bookmark b = b0;
+    // The owner's 28000/85 pose is Tactical Overview, above the gameplay cap.
+    // Enter the real mode so its ceiling and coverage tint match the owner run.
+    mc2VisualCaptureOverview(eye, b.alt == 28000.0f && b.proj == 85.0f);
     if (g_focus.requested) {
         char fnum[256];
         if (g_focus.walk >= 0) {
@@ -701,6 +705,7 @@ bool rendered_pose_matches(const Bookmark& b) {
 // setRotation restores it exactly. cameraAltitude is a public member of Camera.
 void restore_camera_pose() {
     if (!eye || !g_replay.saved) return;
+    mc2VisualCaptureOverview(eye, 0);
     eye->setPosition(g_replay.savePos, false);
     glm::vec3 rot = g_replay.saveRot;   // x=projectionAngle, y=cameraRotation
     rot.z = g_replay.saveAlt;                 // restore altitude (was 0 in saveRot)

@@ -1,8 +1,8 @@
 // VULKAN-EDGE-FOG-ISLAND-2a -- Vulkan port of shaders/edge_fog.frag.
 //
-// MATH is bit-for-bit identical to the GL edge_fog.frag (EDGE-FOG-4 cloud bank at
-// the map boundary). ONLY the uniform/sampler plumbing changed: the GL default-
-// block uniforms became explicit Vulkan set/binding layouts:
+// Fog policy scales distances and suppresses steep-view range whiteout.
+// The map-boundary concealment retains its outside-fill semantics.
+// Uniform/sampler plumbing uses explicit Vulkan set/binding layouts:
 //   set=0,binding=0  depthTex        -> sampler2D (the scene depth, uploaded to a
 //                                       D32_SFLOAT image; sampling returns depth in .r,
 //                                       same as sampling a GL depth texture's .r)
@@ -16,6 +16,8 @@
 // because the pass reads TexCoord (interpolated [0,1] UV), not gl_FragCoord, and the
 // island uploads the depth image so texel (u,v) maps the same way as the GL sample.
 #version 450
+#extension GL_GOOGLE_include_directive : require
+#include "../include/fog_policy.hglsl"
 
 layout(location = 0) in  vec2 TexCoord;
 layout(location = 0) out vec4 outFog;
@@ -75,7 +77,7 @@ void main()
     // on boundary cliffs and skirts rather than failing a plane intersection.
     float distFromEdge = u_halfExtent - max(abs(worldPos.x), abs(worldPos.y));
 
-    float innerRamp   = 1.0 - smoothstep(0.0, max(u_fogStart, 768.0), distFromEdge);
+    float innerRamp   = 1.0 - smoothstep(0.0, mc2FogDistance(max(u_fogStart, 768.0)), distFromEdge);
     float outsideFill = step(0.0, -distFromEdge);
 
     // VK-PARITY-F3: FOG-HORIZON-CLAMP-1 (verbatim from shaders/edge_fog.frag). Full fog
@@ -87,7 +89,9 @@ void main()
         horizonFactor = 1.0 - smoothstep(u_horizonFadeStartSin, u_horizonFadeEndSin, elevSin);
     }
 
-    float rangeHaze = smoothstep(6000.0, 12000.0, length(worldPos - wNear));
+    float rangeHaze = mc2FogSmooth(mc2FogRamp(length(worldPos - wNear),
+        mc2FogDistance(6000.0), mc2FogDistance(12000.0)));
+    rangeHaze *= mc2FogRangeViewFactor(-normalize(wFar - wNear).z);
     float fogFactor = clamp(max(max(innerRamp, rangeHaze) * u_fogMax, outsideFill), 0.0, 1.0)
                       * horizonFactor;
     outFog = vec4(u_fogColor, fogFactor);
