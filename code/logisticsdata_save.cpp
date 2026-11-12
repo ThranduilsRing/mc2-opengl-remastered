@@ -14,6 +14,10 @@
 
 void LogisticsData::removeMechsInForceGroup()
 {
+	// End the edit while its mech is alive; snapshots must retain the owned variant.
+	if ( currentlyModifiedMech && currentlyModifiedMech->getForceGroup() )
+		cancelMechModfications();
+
 	// Capture {variantName, pVariant*} for every deployed mech BEFORE deletion.
 	// pVariant is owned by the variants list, not by LogisticsMech, so the pointer
 	// survives the delete below and can be used by setMissionCompleted() as a fallback
@@ -585,6 +589,8 @@ void LogisticsData::removeMechFromInventory( mc2::czstring mechName, mc2::czstri
 
 	if ( pMech )
 	{
+		if ( currentlyModifiedMech == &pMech->get() )
+			cancelMechModfications();
 		std::erase_if( inventory, [pMech](const auto& mech) { return mech.get() == &pMech->get(); } );
 	}
 }
