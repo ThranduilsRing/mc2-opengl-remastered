@@ -318,6 +318,7 @@ struct ColorPropIsland : mc2vk::IslandState {
     mc2vk::OwnedBuffer vbo, ibo;
     VkFormat t1_fmts[3]{VK_FORMAT_UNDEFINED, VK_FORMAT_UNDEFINED, VK_FORMAT_UNDEFINED};   // dynamic rendering: colour0, normal, object id (UNDEFINED when the id buffer is off)
     VkFormat t1_depthFmt = VK_FORMAT_UNDEFINED;
+    mc2vk::OwnedPipeline planarCorePipe, planarOpaquePipe, planarFringePipe;
     mc2vk::OwnedDescriptorSetLayout dsl;
     mc2vk::OwnedDescriptorPool pool;
     // PROP-ARRAY-BUCKETS: the alpha-OFF group's size buckets (binding 3 is an array of kMaxBuckets; an unused slot names bucket 0).
@@ -1301,6 +1302,23 @@ bool init_island(ColorPropIsland* s, int w, int h) {
             vlog("TIER-1 fringe vkCreateGraphicsPipelines failed."); setFallback("tier1_pipeline_failed"); return false;
         }
         mc2vk::nameObject(s->device, s->t1_fringePipe.get(), "colorprop.tier1FringePipe");
+
+        // Mirrored view: reverse front faces, keep alpha coverage and material quality.
+        int planarData[4] = {specData[0], specData[1], 0, 1};
+        const VkSpecializationMapEntry planarEntries[4] = {{0, 0, sizeof(int)}, {1, sizeof(int), sizeof(int)},
+            {2, 2 * sizeof(int), sizeof(int)}, {10, 3 * sizeof(int), sizeof(int)}};
+        const VkSpecializationInfo planarInfo{4, planarEntries, sizeof(planarData), planarData};
+        stages[1].pSpecializationInfo = &planarInfo;
+        const VkFormat planarFormats[3] = {VK_FORMAT_R16G16B16A16_SFLOAT, VK_FORMAT_UNDEFINED, VK_FORMAT_UNDEFINED};
+        const auto planarRendering = mc2vk::dynrender::pipelineInfo(3, planarFormats, VK_FORMAT_D32_SFLOAT);
+        gp.pNext = &planarRendering;
+        rs.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        if (!mc2vk::create(s->planarFringePipe, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) return false;
+        cba[0].blendEnable = VK_FALSE;
+        ds.depthWriteEnable = VK_TRUE;
+        if (!mc2vk::create(s->planarCorePipe, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) return false;
+        planarData[2] = 1;
+        if (!mc2vk::create(s->planarOpaquePipe, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) return false;
     }
 
     // ---- Command pool + 2 command buffers (per parity). ----

@@ -62,6 +62,7 @@ layout(constant_id = 0) const int kBaseQuality = 2; // Potato / Low / Medium+Hig
 // 1 = the opaque core pipeline: its packets have no alpha-ON layer, no per-packet alpha-test bit and are not
 // fringe rows, so every discard below is dead for them. Compiling the discards out lets the driver run early Z.
 layout(constant_id = 2) const int kOpaqueOnly = 0;
+layout(constant_id = 10) const int kPlanarReflection = 0;
 
 // Per-frame UBO: generated from RenderCore/gpu_abi/GpuColorFrameUBO.h.
 #include "include/color_frame_ubo_vk.glsl"
@@ -167,6 +168,7 @@ float treeVisibility(vec3 N) {
     return visibility;
 }
 void main() {
+    if (kPlanarReflection != 0 && vWorldPos.z < uT.shorelineWaterElev) discard;
     vec3 rgb;
     vec3 materialAlbedo = vec3(0);
     vec3 poolLight = vec3(0);
