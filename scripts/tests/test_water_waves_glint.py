@@ -28,9 +28,10 @@ def _smoothstep(e0, e1, x):
     return t * t * (3.0 - 2.0 * t)
 
 
-def _split(footprint):
+def _split(footprint, packets=None):
     resolved = unresolved = 0.0
-    for _, _, wavelength, slope in TRAINS:
+    for i, (_, _, wavelength, slope) in enumerate(TRAINS):
+        slope *= 1.0 if packets is None else packets[i]
         r = _smoothstep(LO, HI, wavelength / footprint)
         resolved += 0.5 * (r * slope) ** 2
         unresolved += 0.5 * slope * slope * (1.0 - r * r)
@@ -108,3 +109,41 @@ def test_coarse_mesh_does_not_turn_random_water_bits_into_triangle_slopes():
         r"vec4\([-0-9.]+,\s*[-0-9.]+,\s*([0-9.]+),\s*([0-9.]+)\)",
         vs[vs.index("kSwell[SWELL_TRAINS]"):vs.index("SWELL_G =")])]
     assert 2.0 * sum(heights) / 128.0 < 0.015
+
+
+def _packet_noise(x, y):
+    def fract(v):
+        return v - math.floor(v)
+
+    def h21(x, y):
+        q = [fract(x * .1031), fract(y * .1031), fract(x * .1031)]
+        d = sum(q[i] * (q[(i + 1) % 3] + 33.33) for i in range(3))
+        q = [v + d for v in q]
+        return fract((q[0] + q[1]) * q[2])
+
+    ix, iy = math.floor(x), math.floor(y)
+    fx, fy = _smoothstep(0, 1, fract(x)), _smoothstep(0, 1, fract(y))
+    a = h21(ix, iy) * (1 - fx) + h21(ix + 1, iy) * fx
+    b = h21(ix, iy + 1) * (1 - fx) + h21(ix + 1, iy + 1) * fx
+    return a * (1 - fy) + b * fy
+
+
+def test_stochastic_packets_are_bounded_continuous_and_conserve_local_variance():
+    low, high, span = map(_const, ("WAVE_PACKET_MIN", "WAVE_PACKET_MAX", "WAVE_PACKET_SPAN"))
+    assert 0.5 <= low < 1 < high <= 1.5 and span >= 6
+    assert "float a = w.w * gain * packet;" in SRC and "(i < 2) ? 1.0" in SRC
+    samples = []
+    for x, y in ((0, 0), (128, 256), (-1234.7, 1904.4), (4401, -8123)):
+        packets = [1.0 if i < 2 else low + (high - low) * _packet_noise(
+            x / (span * w[2]) + i * 19.19, y / (span * w[2]) + i * 7.73)
+            for i, w in enumerate(TRAINS)]
+        samples.append(packets[2:])
+        assert all(low <= p <= high for p in packets)
+        total = sum(.5 * (w[3] * p) ** 2 for w, p in zip(TRAINS, packets))
+        for footprint in (.5, 2, 8, 30, 60, 120, 400, 1e9):
+            resolved, unresolved = _split(footprint, packets)
+            assert abs(resolved + unresolved - total) < 1e-12
+    assert max(samples[0]) - min(samples[0]) > .15
+    assert samples[0] != samples[1]  # no repeating, globally uniform wave-train amplitudes
+    for boundary in (-2, 0, 3):
+        assert abs(_packet_noise(boundary - 1e-6, .37) - _packet_noise(boundary + 1e-6, .37)) < 1e-8

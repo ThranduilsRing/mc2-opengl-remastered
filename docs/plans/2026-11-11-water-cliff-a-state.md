@@ -15,6 +15,34 @@ shader contracts/tests; local commit, lint, final build/deploy/smoke;
 day all13 and night A/B; personally inspect montages and crop metrics.
 Initial tree was clean. Source repair and final evidence are recorded below.
 
+## v9: bookmark 210656 reproduction and repair
+
+New exact owner pose added as14 in private v9/mc2_01_all14.json; original
+bookmark and canonical sets untouched. Complete W148 a2 at3840x2160:
+fixed-clock frame600 shows regular fine waves; LIVE CLOCK with owner launcher
+MC2_WATER_SKYTINT=1 shows the owner's large triangular patches. Personally
+opened all three diagnostic captures and owner-repro-3.jpg native crops.
+Low-quality frame120 is a separate smooth, cinematic-letterboxed diagnostic.
+No claim that fixed/live runs are registered or deterministic A/B controls.
+
+Owner current executable is W149798bedeaf2d0; a2 is W1481fdbb7c6c114.
+Both water SPIR-V files and options.cfg match hashes. Bookmark has no clock,
+sim frame or live water slider values. Requested focusZ410.9092 becomes
+terrain-driven357.180; XY/rotation/projection/altitude match to0.01.
+
+Facet repair ce031c5dd removes legacy random +/-10wu corner displacement
+on the128wu mesh, retaining the existing <=0.9wu coherent swell. Separate
+stochastic change gives short trains smoothly hashed spatial packet envelopes
+and sends the SAME local slope variance to resolved normals and roughness.
+Approved glint a52c4ccc6 and reflection resolution path remain unchanged.
+Offline water regressions: facet13PASS, stochastic14PASS (0.18s each).
+
+Final-tip shader/layout rows, build, deploy, smoke and before/after inspection
+are pending at this commit; their authoritative receipts and final verdict
+will be archived in E:/mc2-archive-2026-10/proofs/water-cliff-lowangle-1/v9/.
+Reuse v8 canonical13 BEFORE images; do not rerun the old altitude sweeps.
+No owner acceptance or production delivery claim.
+
 ## v8: exact 3840x2160 BEFORE replay
 
 Continuation tested the new resolution prerequisite on 2026-11-11.
