@@ -96,3 +96,15 @@ def test_vertex_swell_matches_long_trains_and_is_tiny_and_shore_faded():
     assert 0.3 <= sum(s[3] for s in sw) <= 1.0     # tiny, in world units
     assert re.search(r"SWELL_G = 30\.0", vs) and _const("WAVE_G") == 30.0
     assert "smoothstep(8.0, 40.0, WaterThickness)" in vs  # zero in shallow water: no shore z-fight
+
+
+def test_coarse_mesh_does_not_turn_random_water_bits_into_triangle_slopes():
+    vs = (ROOT / "shaders/vulkan/water_geom.vert").read_text(encoding="utf-8")
+    assert "waveCos" not in vs and "unpackByte(rec.ctrl.w" not in vs
+    assert re.search(r"float wz = \(shoreFlat \|\| WaterThickness >= 0.0\)\s*\? waterElevation", vs)
+    # Stock +/-10-wu corner offsets on a 128-wu cell can change slope by 20/128
+    # at a diagonal. Even the worst coherent swell corner difference is <1/10 of that.
+    heights = [float(m[1]) for m in re.findall(
+        r"vec4\([-0-9.]+,\s*[-0-9.]+,\s*([0-9.]+),\s*([0-9.]+)\)",
+        vs[vs.index("kSwell[SWELL_TRAINS]"):vs.index("SWELL_G =")])]
+    assert 2.0 * sum(heights) / 128.0 < 0.015
