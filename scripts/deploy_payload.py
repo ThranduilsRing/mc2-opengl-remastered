@@ -2141,11 +2141,9 @@ def shader_inventory_problems(source_root, published):
         manifest = Path(published) / MANIFEST_NAME
         if manifest.is_file():
             shutil.copyfile(manifest, Path(tmp) / MANIFEST_NAME)
-        for rel, src in shipped.items():
-            (Path(tmp) / rel).parent.mkdir(parents=True, exist_ok=True)
-            unlink_for_replace(Path(tmp) / rel)
-            shutil.copyfile(src, Path(tmp) / rel)
-        retire_unowned(tmp, shipped, own_shaders=True)
+        hashes = deploy([(src, rel, kind) for src, rel, kind in items if rel in shipped],
+                        tmp, False, code_only=True)
+        write_manifest(tmp, hashes, "shader-inventory")
         left = {p.relative_to(tmp).as_posix() for p in (Path(tmp) / 'shaders').rglob('*') if p.is_file()}
     if left != set(expected):
         bad.append(f'shader inventory: after deploy {published} would hold {sorted(left - set(expected))[:5]} extra, '

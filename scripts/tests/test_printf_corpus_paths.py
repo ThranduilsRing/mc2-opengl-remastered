@@ -21,6 +21,7 @@ def test_every_corpus_row_names_only_existing_files():
     assert rows, "printf_corpus.jsonl is empty"
     missing = {}
     for row in rows:
+        # Retired sources have no surviving paths; their format regression cases remain useful.
         for path in row["files"]:
             if not os.path.exists(os.path.join(root, path.replace("/", os.sep))):
                 missing.setdefault(path, []).append(row["old"])

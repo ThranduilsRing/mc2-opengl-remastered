@@ -7,6 +7,7 @@ import shutil
 import sys
 import tempfile
 import time
+from collections import Counter
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(HERE, "..", "scripts"))
@@ -32,6 +33,48 @@ def failure_line(line):
 def failure_summary(output):
     rows = output.splitlines()
     return "\n".join(dict.fromkeys([line for line in rows if failure_line(line)] + rows[-8:]))
+
+
+def failure_signatures(output):
+    """Compare diagnostics, keeping symbols/counts but ignoring checkout roots and line shifts."""
+    rows = output.splitlines()
+    pytest = [row.strip() for row in rows if re.match(r"^(FAILED|ERROR|FAIL:|VIOLATION:) \S+", row)]
+    if pytest:
+        return Counter(pytest)
+    diagnostics = []
+    for row in rows:
+        row = re.sub(r"\b[0-9a-f]{9,40}\b", "<sha>", row.strip())
+        row = re.sub(r"([.](?:py|cpp|h))[:(]\d+\)?", r"\1:<line>", row)
+        row = re.sub(r"\b\d+(?:\.\d+)?\s*(?:s|seconds)\b", "<time>", row)
+        if row and not re.search(r"^=|^collected ", row):
+            diagnostics.append(row)
+    return Counter(diagnostics)
+
+
+def base_rot(root, base, label, command, result, runner, env=None):
+    """Reproduce a red on the merge-base; unknown or additional diagnostics stay red.
+
+    Print the base SHA, command and failure receipt so a warning never silently blesses rot.
+    Native builds and diff-based checks are deliberately not eligible.
+    """
+    if not result.returncode or label in {"configure", "link-mc2", "link-tools", "ungated_tags", "new_drive_paths"}:
+        return False
+    if not re.search(r"\w+/[^\s:]+\.\w+|\[[A-Z][A-Z_0-9]*(?: v\d+)?\]|^(?:FAILED|ERROR) .+::", result.stdout, re.M):
+        return False  # no file/symbol diagnostic: cannot attribute this failure safely
+    with tempfile.TemporaryDirectory(prefix="lane-base-", dir=precheck_scratch_base(root)) as scratch:
+        clone = git(root, "clone", "--quiet", "--shared", "--no-checkout", os.path.abspath(root), scratch)
+        if clone.returncode or git(scratch, "checkout", "--quiet", "--detach", base).returncode:
+            return False
+        cmd = [os.path.join(scratch, os.path.relpath(arg, root))
+               if os.path.isabs(arg) and _inside(arg, root) else arg for arg in command]
+        old = runner(scratch, cmd, env=env) if env is not None else runner(scratch, cmd)
+        current = result.stdout.replace(root, "<tree>")
+        previous = old.stdout.replace(scratch, "<tree>")
+        signatures = failure_signatures(current)
+        if not old.returncode or not signatures or signatures - failure_signatures(previous):
+            return False
+        print(f"BASE-ROT {label} base={base} command={' '.join(command)} receipt:\n{failure_summary(old.stdout)}", flush=True)
+        return True
 
 
 PRECHECK_TREE = os.environ.get("MC2_PRECHECK_TREE", "E:/mc2-installs/_precheck/tree")

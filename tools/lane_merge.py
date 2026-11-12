@@ -64,7 +64,7 @@ import console_child  # noqa: E402  (windowless console children without a conho
 sys.path.insert(0, HERE)
 import _git_util, lane_merge_baseline, lane_merge_conflicts, lane_merge_trust  # noqa: E402  (shared git helpers; the trusted-copy hand-off)
 from lint_slots import LintSlots, cpu_masks, pin_cpus, scratch_dir, sweep_stale_scratch  # noqa: E402
-from lane_precheck import PRECHECK_TREE, Stop, TreeLock, _inside, ensure_precheck_tree, failure_line, failure_summary, precheck_scratch_base  # noqa: E402,F401
+from lane_precheck import PRECHECK_TREE, Stop, TreeLock, _inside, base_rot, ensure_precheck_tree, failure_line, failure_summary, precheck_scratch_base  # noqa: E402,F401
 from lane_sim_rows import SIM_ROWS, default_sim_install, run_sim_rows, sim_rows_satisfied, sim_sensitive_paths, tip_changed_paths  # noqa: E402,F401
 from lane_merge_stage import STAGE_HELP, bisect, bisect_step, promote, refuse_direct_nifty, stage  # noqa: E402,F401
 
@@ -576,8 +576,9 @@ def semantic_precheck(root: str, tools_dir: str) -> list[tuple[str, int, str]]:
         script = os.path.join(tools_dir, *rel.split("/"))
         if not os.path.isfile(script):   # the throwaway repos of the tests carry only the fake ratchets
             continue
-        r = run(root, [sys.executable, "-B", script, *args])
-        if r.returncode:
+        command = [sys.executable, "-B", script, *args]
+        r = run(root, command)
+        if r.returncode and not base_rot(root, git_out(root, "rev-parse", "HEAD^1"), label, command, r, run):
             failed.append((label, r.returncode, "\n".join(lines(r.stdout)[-60:])))
     return failed
 
@@ -961,6 +962,7 @@ def _lint_locked(root: str, ref: str, runner=None) -> int:
     try:
         sha = git_out(root, "rev-parse", ref + "^{commit}")
         base_ref = git_out(root, "rev-parse", "claude/nifty-mendeleev^{commit}")
+        base_ref = git_out(root, "merge-base", sha, base_ref)
     except Stop as exc:
         print("LINT FAIL " + str(exc))
         return 1
@@ -980,10 +982,11 @@ def _lint_locked(root: str, ref: str, runner=None) -> int:
             for label, cmd, hint in chains[i]:
                 t0 = time.monotonic()
                 r = runner(snap, cmd)
-                out.append((label, r.returncode, time.monotonic() - t0, failure_summary(r.stdout), hint))
+                rot = base_rot(snap, base_ref, label, cmd, r, runner)
+                out.append((label, 0 if rot else r.returncode, time.monotonic() - t0, failure_summary(r.stdout), hint))
             return out
         from concurrent.futures import ThreadPoolExecutor
-        row_workers = max(1, min(len(chains), bin(cpu_masks()["lane"]).count("1")))
+        row_workers = max(1, min(len(chains), int(host_jobs()), bin(cpu_masks()["lane"]).count("1")))
         with ThreadPoolExecutor(max_workers=row_workers) as pool:
             for f in [pool.submit(chain, i) for i in range(len(chains))]:
                 try:
@@ -1069,9 +1072,10 @@ def precheck(root: str, tip: str, with_link: bool | None = None, sim_rows: bool 
         r = run(workdir, command, env=env)
         secs = time.monotonic() - t0
         timings.append((label, secs))
-        word = "KNOWN" if r.returncode == 3 and 3 in ok else "PASS" if r.returncode == 0 else "FAIL"
+        rot = r.returncode not in ok and base_rot(workdir, base_ref, label, command, r, run, env)
+        word = "BASE-ROT" if rot else "KNOWN" if r.returncode == 3 and 3 in ok else "PASS" if r.returncode == 0 else "FAIL"
         print(f"precheck: {label}: {word} ({secs:.0f}s)", flush=True)
-        if r.returncode not in ok:
+        if r.returncode not in ok and not rot:
             failed.append(label + ":" + failure_summary(r.stdout).replace("\n", " "))
 
     try:
@@ -1089,6 +1093,7 @@ def precheck(root: str, tip: str, with_link: bool | None = None, sim_rows: bool 
             return commit
         commit = timed("virtual-merge", virtual)
         base_ref = git_out(root, "rev-parse", "claude/nifty-mendeleev^{commit}")
+        scope_base = git_out(root, "merge-base", tip, base_ref)
         if with_link is None:
             with_link = compiled_inputs_changed(root, base_ref, commit)
             print(f"precheck: link {'ON' if with_link else 'off'} (compiled inputs {'changed' if with_link else 'unchanged'}; --no-link/--with-link override)", flush=True)
@@ -1099,7 +1104,7 @@ def precheck(root: str, tip: str, with_link: bool | None = None, sim_rows: bool 
         steps += [(label, py + [script, *args]) for label, script, args in EARLY_ROWS]
         steps += [(label, py + args) for label, args in PYTHON_SUITES]
 
-        tag_step = ("ungated_tags", py + [os.path.join(root, "tools", "ungated_log_tags.py"), "--base", base_ref, "--head", commit])
+        tag_step = ("ungated_tags", py + [os.path.join(root, "tools", "ungated_log_tags.py"), "--base", scope_base, "--head", tip])
         stage(tag_step[0], root, tag_step[1])
 
         # proof-diet: generated inventories are no precheck proof; the merge commit regenerates them once.
