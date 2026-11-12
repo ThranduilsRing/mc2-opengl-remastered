@@ -104,7 +104,6 @@
     "tests/analyze/analyze_dangling.py": "runs clang-cl under vcvars64 for the lifetime gate; a compiler, not the game; children use console_child.child_kwargs",
     "tests/analyze/b5_asset_census.py": "runs git ls-files (argv built from a list concatenation, so not a literal program; no window, no game) through console_child.child_kwargs(redirected=True)",
     "tests/analyze/b7_actor_census.py": "runs git ls-files (argv built from a list concatenation, so not a literal program; no window, no game) through console_child.child_kwargs(redirected=True); same shape as b5_asset_census.py",
-    "tests/mapgen/test_mission_codec.py": "Test runs the supplied offline doctest reader (MC2_CODEC_READER, a unit-test binary) with captured output; it never launches the game.",
     "tests/smoke/objectives_e6e/generate_assets.py": "runs the caller-supplied ffmpeg to encode the synthetic e6e test video (no window, no game) with a 60s timeout and captured output through console_child.child_kwargs(redirected=True)",
     "tools/assets/candidates.py": "program is a variable (installed Blender for the documented FBX->GLB adapter); console tool, not the game",
     "tools/axis_swizzle_ratchet.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",

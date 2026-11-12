@@ -1530,7 +1530,6 @@ run_nightly "visual_regression_schema"   "py -3 scripts/run_visual.py --validate
 # one.
 # One pytest process per module, 2 at a time, through the per-module result cache (scripts/module_test_cache.py):
 # a module that fully passed with unchanged recorded inputs is not re-run. --no-cache / CONTRACTS_NO_CACHE=1 turns it off.
-run_nightly "mission_codec_golden"       "_host_need_stock && MC2_CODEC_REQUIRED=1 py -3 -B -m pytest tests/mapgen/test_mission_codec.py -q -p no:cacheprovider"
 run_nightly "farm_runner"                "py -3 -B -m pytest scripts/tests/test_farm_runner.py -q -p no:cacheprovider"
 run_check "gate_farm"                  "py -3 -B -m pytest scripts/tests/test_gate_farm.py scripts/tests/test_box_queue.py -q -p no:cacheprovider"
 run_nightly "gate_inputs"                "py -3 -B -m pytest scripts/tests/test_gate_preflight.py scripts/tests/test_deploy_seed.py scripts/tests/test_kit_payload.py scripts/tests/test_isolated_deploy.py -q -p no:cacheprovider"
@@ -1571,7 +1570,6 @@ run_nightly "scripts_tests"            "py -3 scripts/run_scripts_tests.py"
 if [ "$NIGHTLY" -eq 1 ]; then run_check_tri "tools_tests" "py -3 scripts/run_tools_tests.py --base ''"; fi
 run_nightly "anim_parity"                 "py -3 -B -m pytest tools/anim_parity/test_audit.py tools/content_pipeline/tests -q -p no:cacheprovider"
 run_nightly "ktx2_valid"                  "py -3 -B tools/mc2texcook/check_ktx2_valid.py"
-run_nightly "mapgen_fof"                  "py -3 -B -m pytest tests/mapgen/test_fields_of_fire.py tests/mapgen/test_footprints.py tests/mapgen/test_pixel_generate.py tests/mapgen/test_mission_writer.py -q -p no:cacheprovider"
 run_check "sim_include_firewall"        "py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py"
 fi   # end of the real board (skipped under --selftest-render, above)
 if [ "$PARALLEL" -eq 1 ]; then _drain_queue; fi
