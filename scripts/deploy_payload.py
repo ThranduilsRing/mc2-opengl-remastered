@@ -792,10 +792,61 @@ def check_hardlink_isolation(items, target):
              "MC2_DEPLOY_ALLOW_SHARED_LINKS=1 to bypass deliberately.")
 
 
+def replace_file(src, dst):
+    """Replace without changing attributes on a possibly shared destination inode."""
+    try:
+        os.replace(src, dst)
+        return
+    except PermissionError:
+        if os.name != 'nt' or not os.path.isfile(dst) or os.stat(dst).st_mode & stat.S_IWRITE:
+            raise
+    # MoveFileEx (os.replace) rejects read-only destinations. FileRenameInfoEx
+    # can replace that directory entry without clearing the shared read-only bit.
+    from ctypes import wintypes
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    kernel.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                                  ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+    kernel.CreateFileW.restype = wintypes.HANDLE
+    kernel.SetFileInformationByHandle.argtypes = [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD]
+    kernel.SetFileInformationByHandle.restype = wintypes.BOOL
+    kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+    kernel.CloseHandle.restype = wintypes.BOOL
+    name = os.path.abspath(dst).encode('utf-16-le')
+
+    class RenameInfo(ctypes.Structure):
+        _fields_ = [('Flags', wintypes.DWORD), ('RootDirectory', wintypes.HANDLE),
+                    ('FileNameLength', wintypes.DWORD), ('FileName', ctypes.c_byte * len(name))]
+
+    info = RenameInfo()
+    info.Flags = 0x01 | 0x02 | 0x40  # REPLACE_IF_EXISTS | POSIX_SEMANTICS | IGNORE_READONLY_ATTRIBUTE
+    info.FileNameLength = len(name)
+    ctypes.memmove(ctypes.addressof(info) + RenameInfo.FileName.offset, name, len(name))
+    handle = kernel.CreateFileW(os.path.abspath(src), 0x00010000, 7, None, 3, 0, None)  # DELETE, share all, OPEN_EXISTING
+    if handle == wintypes.HANDLE(-1).value:
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        if not kernel.SetFileInformationByHandle(handle, 22, ctypes.byref(info), ctypes.sizeof(info)):  # FileRenameInfoEx
+            raise ctypes.WinError(ctypes.get_last_error())
+    finally:
+        kernel.CloseHandle(handle)
+
+
 def unlink_for_replace(path):
-    """Clear Windows read-only protection and detach any shared destination."""
+    """Detach shared files before clearing Windows read-only protection."""
     if os.path.lexists(path):
-        os.chmod(path, os.stat(path).st_mode | stat.S_IWRITE)
+        mode = os.stat(path).st_mode
+        if not mode & stat.S_IWRITE:
+            if os.stat(path).st_nlink > 1:
+                fd, private = tempfile.mkstemp(prefix=Path(path).name + '.private-', dir=Path(path).parent)
+                os.close(fd)
+                try:
+                    shutil.copy2(path, private)
+                    os.chmod(private, mode | stat.S_IWRITE)
+                    replace_file(private, path)
+                finally:
+                    unlink_for_replace(private)
+            else:
+                os.chmod(path, mode | stat.S_IWRITE)
         os.unlink(path)
 
 
@@ -2153,9 +2204,11 @@ def deploy_from_payload(payload, target, src_root, head):
             dst.parent.mkdir(parents=True, exist_ok=True)
             tmp = dst.with_name(dst.name + '.payload-tmp')
             unlink_for_replace(tmp)
-            shutil.copy2(src, tmp)
-            unlink_for_replace(dst)
-            os.replace(tmp, dst)
+            try:
+                shutil.copy2(src, tmp)
+                replace_file(tmp, dst)
+            finally:
+                unlink_for_replace(tmp)
         elif not dst.is_file() or dst.stat().st_size != int(row['bytes']) or sha256_file(str(dst)) != row['sha256']:
             fail(f'{rel}: not in the payload and the target copy does not match the manifest (size or sha256); the PC v0.4 drifted since the delta was taken')
     exe = target / 'mc2.exe'
@@ -2164,8 +2217,14 @@ def deploy_from_payload(payload, target, src_root, head):
             or not build_current(fp.get('sha'), head, Path(src_root), bool(fp.get('dirty'))):
         fail(f'{exe}: fingerprint != clean HEAD {head}')
     retire_unowned(str(target), rows, own_shaders=any(rel.startswith('shaders/vulkan/') and rel.endswith('.spv') for rel in rows))
-    unlink_for_replace(target / '.deployed_manifest.csv')
-    shutil.copy2(manifest, target / '.deployed_manifest.csv')
+    dst = target / '.deployed_manifest.csv'
+    tmp = dst.with_name(dst.name + '.payload-tmp')
+    unlink_for_replace(tmp)
+    try:
+        shutil.copy2(manifest, tmp)
+        replace_file(tmp, dst)
+    finally:
+        unlink_for_replace(tmp)
     log(f'payload published: {len(rows)} manifest rows, exe sha256 {rows["mc2.exe"]["sha256"]}, fingerprint matches {head[:9]}')
 
 
