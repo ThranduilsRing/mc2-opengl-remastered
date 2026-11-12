@@ -34,6 +34,7 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
         int  h;
         DWORD  nodeIdx;   // legacy texture manager node index for KTX2 sidecar lookup
         std::shared_ptr<const std::vector<uint8_t>> rgba;
+        bool tree = false;
     };
 
     static uint32_t s_albedoKeySerial = 0;
@@ -100,6 +101,7 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                 auto it = sourceToLayer.find(sourceHandle);
                 if (it != sourceToLayer.end()) {
                     const auto& [srcKey, srcLayer] = *it;
+                    uniques[srcLayer].tree |= type.treeCanopy[1] > 0.0f;
                     layerForPacket[globalPktIdx] = srcLayer;
                     // VK-P11 MATERIAL FIX: FIRST-VALID-LAYER-WINS (was pIdx==0 only).
                     // A multi-packet type whose packet 0 hit the no-dims skip left
@@ -161,7 +163,7 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
             // v3.8 mixed-size: append unique with its actual W,H.
             // Array allocation uses max(W,H) across all uniques.
             const int32_t layer = static_cast<int32_t>(uniques.size());
-            uniques.push_back({sourceHandle, W, H, nodeIdx, std::move(rgba)});
+            uniques.push_back({sourceHandle, W, H, nodeIdx, std::move(rgba), type.treeCanopy[1] > 0.0f});
             sourceToLayer[sourceHandle] = layer;
             layerForPacket[globalPktIdx] = layer;
             if (layerForType[typeID] < 0) layerForType[typeID] = layer; // VK-P11: first-valid wins
@@ -234,7 +236,8 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
         std::vector<float> keepCoverage(members.size(), -1.0f);
         if (group == 1u)
             for (size_t k = 0; k < layerTexels.size(); ++k)
-                if (mc2::vegetation::isSolidCutout(layerTexels[k], cpuArray.width, cpuArray.height,
+                // Leaf atlases have separate tiny leaves, so erosion mistakes them for wire.
+                if (uniques[members[k]].tree || mc2::vegetation::isSolidCutout(layerTexels[k], cpuArray.width, cpuArray.height,
                                                    static_cast<uint32_t>(std::min(uniques[members[k]].w, uniques[members[k]].h)))) {
                     keepCoverage[k] = mc2::vegetation::cutoutCoverage(layerTexels[k]);
                     mc2::vegetation::dilateCutoutRgb(layerTexels[k], cpuArray.width, cpuArray.height);

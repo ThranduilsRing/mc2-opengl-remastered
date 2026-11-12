@@ -11,12 +11,12 @@ from tools.content_pipeline import gltf_io, ir, package, texcook
 from tools.content_pipeline.frontends import gltf_file
 from tools.neural_mat.export_nmat import _dds_bc7
 ROOT = Path(__file__).resolve().parents[2]
-WORK = Path('E:/mc2-tmp/slot03/tree-kit-fix-1')  # drive-path: ok assigned PC prototype scratch
+WORK = Path('E:/mc2-tmp/slot07/tree-kit-fix-1')  # drive-path: ok assigned PC prototype scratch
 OUT = WORK / 'package-tga'
 INSTALL = Path('E:/mc2-installs/tree-kit-fix-1')  # drive-path: ok assigned isolated PC prototype install
 SOURCE = Path('C:/Users/Joe/Downloads/GameAsset')
 PACK = SOURCE / 'Trees/treepack1'
-_, w, h, levels = texcook.read_ktx2((ROOT / 'data/tgl/128/a_treeclump1.ktx2').read_bytes())
+_, w, h, levels = texcook.read_ktx2((INSTALL / 'data/tgl/128/a_treeclump1.ktx2').read_bytes())
 target = np.array(Image.open(io.BytesIO(_dds_bc7(levels[0], w, h))).convert('RGBA'))
 target_mean = target[target[..., 3] >= 128, :3].mean(axis=0) / 255
 assets = []
@@ -38,6 +38,19 @@ for aid, stock, source, frame in [
     transform[:3, 3] = -np.array([(lo[0]+hi[0])/2, lo[1], (lo[2]+hi[2])/2]) * scale
     for mesh in scene.meshes:
         mesh.primitives = [ir.transform_primitive(p, transform) for p in mesh.primitives]
+        # The prop importer ignores doubleSided; bake the authored reverse side,
+        # including its normal, so color, shadow and reflection see the same cards.
+        for p in list(mesh.primitives):
+            if asset.materials[p.material].double_sided:
+                back = ir.transform_primitive(p, np.eye(4))
+                back.indices = back.indices[:, [0, 2, 1]]
+                if back.normals is not None:
+                    back.normals *= -1
+                if back.tangents is not None:
+                    back.tangents[:, 3] *= -1
+                mesh.primitives.append(back)
+    lo, hi = scene.bounds()
+    assert abs(lo[1]) < 1e-4 and abs(hi[1] - height) < 1e-4, (aid, lo, hi)
     for m in asset.materials:
         leaf = m.alpha_mode != 'OPAQUE'
         m.alpha_mode = 'MASK' if leaf else 'OPAQUE'
@@ -64,7 +77,6 @@ assert not package.check_package(OUT)
 declared = {}
 rel = 'data/tgl/128/a_treeclump1.ktx2'
 (INSTALL / rel).parent.mkdir(parents=True, exist_ok=True)
-shutil.copy2(ROOT / rel, INSTALL / rel)
 declared[rel] = ir.sha256_file(INSTALL / rel)
 for p in sorted((OUT / 'data').rglob('*')):
     if not p.is_file() or p.name.endswith('.cook.json') or ('tgl' in p.parts and p.suffix == '.ktx2'):
