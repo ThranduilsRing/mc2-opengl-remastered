@@ -214,19 +214,15 @@ bool MoverShadowState::prepare(int mapSide, const float cameraRows[16], Vec3 sun
     actorsFresh_ = false;   // the next frame refreshes again
     props_.clear(); spheres_.clear();
     const ViewPlanes view=makeViewPlanes(cameraRows);
-    // With the baked static mask ready, a prop that cannot shadow any mover in view is left to the mask (its shadow is already baked on the ground).
-    std::vector<MoverSphere> movers;
-    if (maskReady) for (const MechActor& a : actors_) if (a.inView) movers.push_back(a.sphere);
-    uint32_t casters=0, skipped=0, keptMech=0;   // [MOVER_SHADOW] counts
+    // These are live rigid casters, including turrets and demoted static owners
+    // absent from the bake. Every leaf whose swept shadow meets the view stays
+    // in the live map, independently of nearby mechs and baked-mask readiness.
+    uint32_t casters=0;
     for (const auto& prop:props) {
         if (prop.typeID >= bounds_.size() || !bounds_[prop.typeID].valid) continue;
         const auto sphere=propSphere(prop,bounds_[prop.typeID]);
         if (!sweptShadowInView(sphere,sun,ground_,view)) continue;
         ++casters;
-        if (maskReady) {
-            if (std::none_of(movers.begin(),movers.end(),[&](const MoverSphere& m){ return propShadowReachesMover(sphere,m,sun,ground_); })) { ++skipped; continue; }
-            ++keptMech;
-        }
         props_.push_back(prop); spheres_.push_back(sphere);
     }
     appendMechs(cameraRows,sun,ground_);
@@ -253,8 +249,9 @@ bool MoverShadowState::prepare(int mapSide, const float cameraRows[16], Vec3 sun
     std::memcpy(active_.ptr,&frame_,sizeof(frame_)); // the engine ring is host coherent
     activeFrame_=ctx.frameContext().frame;
     if (activeFrame_%120==0 && mc2_diag::tagRequested("MOVER_SHADOW"))   // MC2_DIAG_TAGS=MOVER_SHADOW
-        mc2::fmt::print_err("[MOVER_SHADOW] frame={} mask_ready={} props_total={} casters_total={} skipped={} kept_mech={} movers_in_view={}\n",
-            activeFrame_,maskReady?1:0,props.size(),casters,skipped,keptMech,movers.size());
+        mc2::fmt::print_err("[MOVER_SHADOW] frame={} mask_ready={} props_total={} casters_total={} movers_in_view={}\n",
+            activeFrame_,maskReady?1:0,props.size(),casters,
+            std::count_if(actors_.begin(),actors_.end(),[](const MechActor& a){ return a.inView; }));
     return true;
 }
 
