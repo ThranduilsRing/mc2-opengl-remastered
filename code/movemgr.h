@@ -32,7 +32,7 @@ struct _PathQueueRec {
 	unsigned long		moveParams;
 	bool				initPath;
 	bool				faceObject;
-	long				enqueueFrame;	// PATHFINDING-FACTS-2: frame stamped at request() (telemetry only; written/read only under PATH gate)
+	long				enqueueFrame;	// sim tick of first pending request; replacements retain it
 	PathQueueRecPtr		prev;
 	PathQueueRecPtr		next;
 };

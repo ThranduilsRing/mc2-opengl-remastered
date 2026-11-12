@@ -780,6 +780,71 @@ def materialize_candidate(set_name: str, last_run: dict, per: dict,
     return set_dir
 
 
+def capture_path_timing(args) -> int:
+    """The existing Tracy recorder, launched through this off-screen entrypoint.
+
+    Reuse the sweep's bench frame sink and corner pose; do not move the cursor.
+    A capture has to contain at least 1800 measured rendered frames.
+    """
+    sys.path.insert(0, str(ROOT / "tools"))
+    import tracy_capture_compare as tracy
+    import run_battle_bench as battle
+    from perf.main_busy import table, load_cpu_rows
+    import math
+
+    out = Path(args.tracy_output).resolve()
+    out.parent.mkdir(parents=True, exist_ok=True)
+    channel = out.with_suffix(".commands.txt")
+    frames = out.with_suffix(".frames.jsonl")
+    channel.write_text(f"bench_output {frames}\n{battle.view_command(battle.CORNER)}\n"
+                       + args.tracy_commands.replace(";", "\n") + "\n", encoding="utf-8")
+    declared = battle.environment(channel, 1920, 1080)
+    declared.update(env_pin.parse_declarations(args.env_declare))
+    # This gate uses presence semantics: even "0" enables it. Absence is OFF.
+    declared.pop("MC2_SMOKE_FIXED_TIMESTEP", None)
+    declared["MC2_WINDOW_OFFSCREEN"] = "1"
+
+    def launch(argv, **kwargs):
+        # This approved runner owns the launch; the recorder owns cleanup/lease.
+        return nofocus.spawn(argv, **kwargs)
+
+    rc = tracy.capture_trace(Path(args.exe).resolve().parent, "vk", args.mission,
+                             args.tracy_seconds, out,
+                             extra_env=[f"{k}={v}" for k, v in declared.items()],
+                             fixed_timestep=False, fps_cap=0, show_window=True,
+                             spawn_game=launch)
+    if rc:
+        return rc
+    tracy.assert_window_was_visible(out, tracy.tracy_exe("tracy-csvexport.exe"), "path timing")
+    cpu = load_cpu_rows(frames)
+    # Omit exactly the first 60 sink frames for settling; never trim tail hitches.
+    cpu = cpu[60:]
+    def stats(values):
+        if not values:
+            raise ValueError("missing timing samples")
+        ordered = sorted(values)
+        return {"samples": len(values), "mean_ms": sum(values) / len(values),
+                "p99_ms": ordered[math.ceil(.99 * len(values)) - 1], "max_ms": ordered[-1]}
+
+    frame_stats = stats([row["ms"] for row in cpu])
+    result = {"mission": args.mission, "frames": frame_stats,
+              "frames_over_8_33_ms": sum(row["ms"] > 8.33 for row in cpu),
+              "frame_table": table(cpu)}
+    records = [json.loads(line) for line in frames.read_text(encoding="utf-8").splitlines() if line.strip()]
+    # The existing sink emits one sample per simulation tick, even on the worker.
+    # Mission.Update also runs on redraw-only frames and cannot stand in for this.
+    ticks = [row["ms"] for row in records if row.get("type") == "tick" and row["frame"] >= cpu[0]["frame"]]
+    result["tick"] = stats(ticks) if ticks else None
+    for label, zone in (("path", "GameLogic.Warrior.Path"), ("wait_worker", "Frame.WaitWorker")):
+        samples = tracy.zone_samples(out, zone, tracy.tracy_exe("tracy-csvexport.exe"))
+        result[label] = stats([value / 1e6 for value in samples]) if samples else None
+    result["path_ms_per_tick"] = (result["path"]["mean_ms"] * result["path"]["samples"] /
+                                  result["tick"]["samples"]) if result["path"] and result["tick"] else None
+    out.with_suffix(".timing.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    print(json.dumps(result, indent=2))
+    return 0 if len(cpu) >= 1800 and result["tick"] and result["path"] and result["wait_worker"] else 1
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--mission", default="mc2_01",
@@ -788,6 +853,9 @@ def main() -> int:
     ap.add_argument("--bookmarks", default=None,
                     help="explicit bookmark JSON path (overrides --mission lookup)")
     ap.add_argument("--exe", default=str(DEFAULT_EXE))
+    ap.add_argument("--tracy-output", help="record an uncapped corner trace and bench frame table")
+    ap.add_argument("--tracy-seconds", type=int, default=60)
+    ap.add_argument("--tracy-commands", default="", help="existing UI fixture commands, separated by semicolons")
     ap.add_argument("--classic-assets", action="store_true", help="use stock building art; override this run only")
     ap.add_argument("--allow-asset-drift", action="store_true",
                     help="capture although the install's data/assets/*.fst differ from v0.4 (default: refuse; a capture of drifted assets is not a capture of this build)")
@@ -849,6 +917,8 @@ def main() -> int:
                     help="SCREEN-SETTLE-SHOT-1: screenshot a front-end screen (logistics, campaign_missions, mechbay, ...) after N settled "
                          "frames instead of a mission bookmark sweep; delegates to scripts/screen_shot.py")
     args = ap.parse_args()
+    if args.tracy_output:
+        return capture_path_timing(args)
     if args.screen:
         import screen_shot
         return screen_shot.run(Path(args.exe), args.screen, Path(args.out_dir or "tests/visual/captures/screens"),

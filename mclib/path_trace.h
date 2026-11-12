@@ -104,24 +104,23 @@ inline void emitMap(int areas, int doors, int special, int cellW, int cellH) {
 	mc2_diag::writeEvent("PATH", 1, 0, buf);
 }
 
-// Per-frame queue event (only emit when there was path activity).
-//
-// PATHFINDING-FACTS-2 adds two high-concurrency probes:
-//   oldestAge  -- frames the oldest request serviced this frame waited in queue
-//                 (currentFrame - enqueueFrame); 0 if same-frame service, -1 if none serviced.
-//   capHit     -- 1 if the numPathsToProcess=6 throttle left requests queued this
-//                 frame (processed hit the cap with the queue still non-empty), else 0.
+// Per-tick queue work and explicit player-order latency. Maxima and sample
+// counts are not percentiles; zero player samples cannot prove player latency.
 inline void emitFrame(long queued, long processed, long backlog, long peak,
-                      long oldestAge, int capHit) {
+                      long oldestAge, int capHit, std::uint64_t expansions,
+                      long playerServed, long playerMaxAge,
+                      long playerPending, long playerPendingMaxAge) {
 	if (!mc2_diag::tagEnabled("PATH"))
 		return;
 	if (queued == 0 && processed == 0 && backlog == 0)
-		return;  // skip idle frames to avoid spam
-	char buf[224];
+		return;
+	char buf[512];
 	auto bufEnd = std::format_to_n(buf, sizeof(buf) - 1,
 		"{{\"ev\":\"frame\",\"queued\":{},\"processed\":{},\"backlog\":{},\"peak\":{},"
-		"\"oldest_age\":{},\"cap_hit\":{}}}",
-		queued, processed, backlog, peak, oldestAge, capHit);
+		"\"oldest_age\":{},\"cap_hit\":{},\"expansions\":{},\"player_served\":{},"
+		"\"player_max_age\":{},\"player_pending\":{},\"player_pending_max_age\":{}}}",
+		queued, processed, backlog, peak, oldestAge, capHit, expansions,
+		playerServed, playerMaxAge, playerPending, playerPendingMaxAge);
 	*bufEnd.out = '\0';
 	mc2_diag::writeEvent("PATH", 1, 0, buf);
 }

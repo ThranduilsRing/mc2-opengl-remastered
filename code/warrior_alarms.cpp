@@ -6,6 +6,63 @@
 #include "mc2fmt.h"
 #include "Gates/gate.h"
 
+extern long MovePathManager_getFrameCounter();
+namespace {
+// Sim-owned, bounded numeric samples. Never format or allocate in an order/solve.
+struct OrderPathSample {
+    MechWarrior* pilot = nullptr;
+    long issued = 0, result = -1, error = 0;
+    long code = 0;
+    float time = 0;
+    int state = 0; // 0 pending, 1 active, 2 result, 3 replaced/interrupted
+};
+std::array<OrderPathSample, 4096> orderPathSamples;
+std::array<unsigned long, MAX_WARRIORS> orderPathCurrent{}; // sequence + 1; zero is absent
+unsigned long orderPathSequence = 0;
+OrderPathSample* orderPathCurrentSample(MechWarrior* pilot) {
+    const auto index = pilot->getIndex();
+    if (index < 0 || index >= MAX_WARRIORS) return nullptr;
+    const auto sequence = orderPathCurrent[index];
+    if (!sequence || orderPathSequence - sequence >= orderPathSamples.size()) return nullptr;
+    auto& sample = orderPathSamples[(sequence - 1) % orderPathSamples.size()];
+    return sample.pilot == pilot ? &sample : nullptr;
+}
+}
+
+unsigned long beginPlayerPathResult(MechWarrior* pilot) {
+    auto* sample = orderPathCurrentSample(pilot);
+    return sample && sample->state == 1 && pilot->getOrderState() == ORDERSTATE_PLAYER
+        ? orderPathCurrent[pilot->getIndex()] : 0;
+}
+
+void recordPlayerPathResult(MechWarrior* pilot, long error, unsigned long sequence) {
+    // A failed solve can clear the current order. Correlate to its entry token,
+    // rather than requiring that order still be active after the result.
+    if (auto* sample = orderPathCurrentSample(pilot); sample && sequence &&
+        orderPathCurrent[pilot->getIndex()] == sequence && sample->result < 0) {
+        sample->result = MovePathManager_getFrameCounter();
+        sample->error = error;
+        sample->state = 2;
+    }
+}
+
+// Called only at path-manager teardown, after simulation has stopped.
+void dumpPlayerPathResults() {
+    const auto begin = orderPathSequence > orderPathSamples.size()
+        ? orderPathSequence - orderPathSamples.size() : 0;
+    mc2::fmt::print_out("[ORDER_PATH] total={} retained={} overwritten={}\n",
+        orderPathSequence, orderPathSequence - begin, begin);
+    for (auto sequence = begin; sequence < orderPathSequence; ++sequence) {
+        const auto& sample = orderPathSamples[sequence % orderPathSamples.size()];
+        mc2::fmt::print_out("[ORDER_PATH] sequence={} issued={} result={} ticks={} error={} state={} code={}\n",
+            sequence, sample.issued, sample.result,
+            sample.result < 0 ? -1L : sample.result - sample.issued,
+            sample.error, sample.state, sample.code);
+    }
+    orderPathSequence = 0;
+    orderPathCurrent.fill(0);
+}
+
 
 
 bool absorbsGeneralOrder(MechWarrior* pilot, long origin) {
@@ -131,6 +188,11 @@ bool MechWarrior::anyPlayerInCombat (void)
 
 void MechWarrior::setCurTacOrder (TacticalOrder newTacOrder) {
 
+    if (auto* sample = orderPathCurrentSample(this); sample && sample->state < 2) {
+        sample->state = orderState == ORDERSTATE_PLAYER &&
+            sample->code == static_cast<long>(newTacOrder.code) && sample->time == newTacOrder.time ? 1 : 3;
+    }
+
 	curTacOrder = newTacOrder;
 	lastTacOrder = newTacOrder;
 	if (curTacOrder.isCombatOrder())
@@ -161,6 +223,15 @@ void MechWarrior::setGeneralTacOrder (TacticalOrder newTacOrder) {
 }
 
 void MechWarrior::setPlayerTacOrder (TacticalOrder newTacOrder, bool fromQueue) {
+
+    if (auto* sample = orderPathCurrentSample(this); sample && sample->state < 2)
+        sample->state = 3;
+    if (index >= 0 && index < MAX_WARRIORS) {
+        orderPathSamples[orderPathSequence % orderPathSamples.size()] = {
+            this, MovePathManager_getFrameCounter(), -1, 0,
+            static_cast<long>(newTacOrder.code), newTacOrder.time, 0};
+        orderPathCurrent[index] = ++orderPathSequence;
+    }
 
     if (mission) if (auto* r = mission->ownedRoute(this))
         mission->signalRoute(*r, mc2::sim::RouteAction::PlayerOrder);

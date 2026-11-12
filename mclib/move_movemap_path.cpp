@@ -5,6 +5,7 @@
 #include "move_internal.h"
 #include "mc2_debug_out.h"
 
+#include "path_work.h"
 
 // WHAT: re-keys the OPEN node of a map cell. WHY: the cell is flagged OPEN, so the list should hold it; if it does not (a corrupt flag), rekey() changes
 // nothing and the cell keeps its place. The first miss of a map logs one line, later ones are silent; release builds compile the assert out.
@@ -135,7 +136,7 @@ long MoveMap::calcPath (const mc2_move::PathQuery& query, mc2_move::SolverScratc
 		}
 
 		PQNode bestPQNode;
-		bestPQNode = scratch.openHeap.popMin().value();
+		bestPQNode = mc2::path_work::popNode(scratch.openHeap).value();
 		_aln.n++;
 		if (_pathTrace) _ptNodes++;
 		bestRow = bestPQNode.row;
@@ -548,7 +549,7 @@ long MoveMap::calcPathJUMP (const mc2_move::PathQuery& query, mc2_move::SolverSc
 		}
 
 		PQNode bestPQNode;
-		bestPQNode = scratch.openHeap.popMin().value();
+		bestPQNode = mc2::path_work::popNode(scratch.openHeap).value();
 		if (_pathTrace) _ptNodes++;
 		bestRow = bestPQNode.row;
 		bestCol = bestPQNode.col;
