@@ -91,6 +91,7 @@ int main() {
                 "/Fo" + str(tmp_path / "font_shutdown.obj"), "/Fe" + str(exe)]
         assert configure_ninja.under_vcvars(subprocess.list2cmdline(args)) == 0
     else:
-        subprocess.run(["c++", "-O0", "-fno-delete-null-pointer-checks", str(cpp), "-o", str(exe)], check=True)
-    result = subprocess.run([str(exe)], **console_child.child_kwargs())
+        subprocess.run(["c++", "-O0", str(cpp), "-o", str(exe)],
+                       check=True, **console_child.child_kwargs())
+    result = subprocess.run([str(exe)], **console_child.child_kwargs())  # background-launch: allow tiny compiled unit fixture, hidden console; never the game
     assert result.returncode == expected
