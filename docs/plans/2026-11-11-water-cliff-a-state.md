@@ -15,6 +15,57 @@ shader contracts/tests; local commit, lint, final build/deploy/smoke;
 day all13 and night A/B; personally inspect montages and crop metrics.
 Initial tree was clean. Source repair and final evidence are recorded below.
 
+## v8: exact 3840x2160 BEFORE replay
+
+Continuation tested the new resolution prerequisite on 2026-11-11.
+Correction to its premise: v7 was 3717x1608, not 1920x1080;
+v7/before-camera-audit.json and PNG dimensions establish that fact.
+
+Existing water wave/glint and near-gloss tests: 12 PASS (0.19s), before
+the game run. No engine, shader, option, asset or canonical bookmark edit.
+Approved glint a52c4ccc6 remains in the source branch; BEFORE deliberately
+uses the complete W148 payload in E:/mc2-installs/water-cliff-a2.
+Executable SHA256 78229b19db8afebbfdddaf38bf312184550dfedf8cb31fdb14adbad7b0b7bd4c.
+
+run_visual_capture.py supports 4K offscreen through --env-declare
+MC2_WIDTH=3840 and MC2_HEIGHT=2160 (render_resolution.py:96).
+Capture exit0: all13 canonical plus20 low poses at 100/70/50/35/25 percent,
+trigger600, settle30, fixed clock, normal HUD, RX7900XTX confirmed in log.
+No resolution, fullscreen or slider edit to either owner or lane options.
+Parity guard PASS:26145 files, missing/size/content/extra all0 (sampled186).
+Camera audit PASS: all33 PNG dimensions3840x2160; clean W1481fdbb7c6c114;
+sim_frame600; requested XY/rot/proj and lower altitudes honored.
+Canonical101157 remains clamped as documented in v7.
+
+Opened owner-vs-4k-native.jpg and all five altitude sheets. Lower panels
+of the owner comparison use unscaled960x540 source crops; previews above
+are fitted independently because aspect ratios differ. They are diagnostic
+comparisons, not registered pixel diffs or A/B acceptance.
+- 101350: large owner triangles absent at all five heights; broad glint
+  and fine regular lattice remain; lowest views stretch the fine ripples.
+- 100624: reflection and regular ripples persist, no owner-scale facets.
+- 100638: cliff/vegetation increasingly occlude water; no large facets.
+- 100705: reflective water around rocks has fine ripples, no large facets.
+- 101454: cliff reflection enlarges as altitude falls, no large facets.
+
+Proof directory: E:/mc2-archive-2026-10/proofs/water-cliff-lowangle-1/v8/.
+Evidence: before-4k.log, before-4k/capture_run.json, camera-audit.json,
+owner-vs-4k-native.jpg, altitude-*.jpg, audit_4k.py, offline-water.txt.
+Prior failed proof: v7 altitude sweep at3717x1608. Current failed proof:
+v8 exact3840x2160 sweep. Resolution alone does not reproduce this symptom
+under the tested fixed-time replay; its role in the live session is UNKNOWN.
+
+PARTIAL per lane rule2 repeated-failed-proof safe default. Named follow-up
+water-cliff-a needs captured live-session water/render state that actually
+reproduces the facets before another replay or shader repair. Source sites
+water_geom.vert:177-202 (random vertex heights) and water_geom.frag:328-341
+(analytic normals) remain hypotheses. No source repair inferred from them.
+Conditional1080p/1440p bisection, facet fix, separate stochastic commit,
+production shader/layout rows, build/deploy/smoke and candidate all13+night
+A/B at4K/1080p NOT RUN: required facet reproduction failed. No self-accept.
+Existing BEFORE install retained for orchestrator inspection, no new install
+or live child left. Owner install untouched. No pushes or uploads.
+
 ## v7: fresh W148 install and lower-altitude replay
 
 Engine source remains c4f33309c; approved glint a52c4ccc6 is preserved.
