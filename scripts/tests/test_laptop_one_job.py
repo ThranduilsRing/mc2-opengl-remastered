@@ -18,6 +18,7 @@ HEAD = "a" * 40
 
 def _fake_pc(monkeypatch, tmp_path, gate_verdict, sim_rc):
     calls = []
+    monkeypatch.setattr(laptop_gate, "cooked_preflight", lambda: None)
     monkeypatch.setattr(laptop_gate, "PROOFS", tmp_path)
     monkeypatch.setattr(laptop_gate.subprocess, "check_output", lambda *a, **k: HEAD + "\n")
     monkeypatch.setattr(laptop_gate.subprocess, "run", lambda *a, **k: SimpleNamespace(returncode=0))
