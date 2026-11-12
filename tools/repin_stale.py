@@ -117,6 +117,11 @@ def repin_command(row: dict, install: str, det_duration: int, tmp: str) -> list[
     sd = os.path.join(ROOT, "tools", "sim_determinism.py")
     env = [x for k, v in (row["data"].get("env") or {}).items() for x in ("--env", f"{k}={v}")]
     form = [f for f in gate_form("determinism", m) if f != "--single"]  # --single is check-only: a re-pin records from a pair
+    if ("--headless-both" in form or "--headless" in form) and "--ticks" not in form:
+        frames = row["data"].get("frames")
+        if type(frames) is not int or frames <= 0:
+            raise SystemExit(f"repin_stale: {m} needs a positive recorded frame count for --ticks")
+        form += ["--ticks", str(frames)]  # run does not infer ticks from the baseline, unlike check
     return [py + [sd, "run", m, "--duration", str(det_duration), "--install", install, "--out", out, "--baseline"] + form + env,
             py + [sd, "write-baseline", "@LOG@", "--frames", str(row["data"].get("frames", 0)), "--mission", m, "--install", install] + env]
 

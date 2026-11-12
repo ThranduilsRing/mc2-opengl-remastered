@@ -10,7 +10,7 @@
   "MC2_BOOT_QUICKLOAD_AT": "1100"
  },
  "exe": {
-  "sha": "8a39a0c9b27f",
+  "sha": "dab109d064ae",
   "dirty": 0
  },
  "comparison": {
@@ -48,10 +48,10 @@
   }
  },
  "mask": "tools/save_noise_mask.json",
- "judged": "first-save-and-resave",
+ "judged": "first-save-only",
  "resave_present": true,
  "packets": 20000,
- "overall": "311c1648a7368606",
+ "overall": "20f5a994a32f29fd",
  "resave_identical": true,
  "resave_matches_policy": true,
  "runs": [
@@ -242,7 +242,7 @@
    5704,
    256,
    4843648,
-   "bf38fd99d10b9644"
+   "c78afae1eedccad3"
   ],
   [
    "TeamStaticData",
@@ -837,7 +837,7 @@
    10701,
    1,
    870766,
-   "a6f171b1f780ba85"
+   "2fcdef310e7b54c4"
   ],
   [
    "empty",

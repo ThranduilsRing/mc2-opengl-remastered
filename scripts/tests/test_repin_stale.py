@@ -48,9 +48,12 @@ def test_commands_use_the_merge_gates_exact_form(tmp_path):
         gate_det = steps["determinism-" + m]
         run = rs.repin_command({"kind": "determinism", "mission": m, "data": {"frames": 5}}, "inst", 30, str(tmp_path))[0]
         for flag in ("--headless-both", "--ticks", "--sim-speed"):
-            assert (flag in gate_det) == (flag in run), (m, flag)
+            inferred_ticks = flag == "--ticks" and "--headless-both" in gate_det
+            assert (flag in gate_det or inferred_ticks) == (flag in run), (m, flag)
             if flag != "--headless-both" and flag in gate_det:
                 assert run[run.index(flag) + 1] == gate_det[gate_det.index(flag) + 1]
+        if "--headless-both" in gate_det and "--ticks" not in gate_det:
+            assert run[run.index("--ticks") + 1] == "5"
         assert "--single" not in run  # check-only
         gate_sl = steps["saveload-" + m]
         sl = rs.repin_command({"kind": "saveload", "mission": m, "data": {}}, "inst", 30, str(tmp_path))[0]
@@ -58,6 +61,23 @@ def test_commands_use_the_merge_gates_exact_form(tmp_path):
             assert (flag in gate_sl) == (flag in sl), (m, flag)
         assert sl[sl.index("--mask") + 1] == gate_sl[gate_sl.index("--mask") + 1]
         assert sl[sl.index("--install") + 1] == "inst" and sl[sl.index("--mission") + 1] == m
+
+
+@pytest.mark.parametrize("mission", ["mc2_01", "mc2_03", "mc2_16"])
+def test_headless_repin_uses_recorded_ticks(tmp_path, mission):
+    data = json.loads((Path(rs.DET_DIR) / (mission + ".json")).read_text())
+    run, write = rs.repin_command({"kind": "determinism", "mission": mission, "data": data}, "inst", 30, str(tmp_path))
+    assert "--headless-both" in run and "--single" not in run
+    assert run.count("--ticks") == 1
+    assert run[run.index("--ticks") + 1] == write[write.index("--frames") + 1] == str(data["frames"])
+    for key, value in (data.get("env") or {}).items():
+        assert f"{key}={value}" in run and f"{key}={value}" in write
+
+
+@pytest.mark.parametrize("frames", [None, 0, -1, "1000", True])
+def test_repin_rejects_invalid_recorded_ticks(tmp_path, frames):
+    with pytest.raises(SystemExit, match="positive recorded frame count"):
+        rs.repin_command({"kind": "determinism", "mission": "mc2_03", "data": {"frames": frames}}, "inst", 30, str(tmp_path))
 
 
 def test_default_out_root_is_the_lane_scratch(tmp_path, monkeypatch):
