@@ -16,7 +16,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/mechbay_preview_harness.py` | 165 | `nofocus.spawn` | offscreen |
 | `scripts/renderdoc_capture.py` | 237 | `nofocus.run` | offscreen |
 | `scripts/renderdoc_capture.py` | 265 | `subprocess.run` **raw, allowed:** renderdoccmd convert is a console file converter, not the game; windowless via hidden_kwargs | offscreen |
-| `scripts/run_battle_bench.py` | 348 | `subprocess.call` **raw, allowed:** re-runs this same bench script (python child); it launches the game through its own offscreen path | offscreen |
+| `scripts/run_battle_bench.py` | 494 | `subprocess.call` **raw, allowed:** re-runs this same bench script (python child); it launches the game through its own offscreen path | offscreen |
 | `scripts/run_editor_capture.py` | 46 | `nofocus.spawn` | offscreen |
 | `scripts/run_editor_playtest_smoke.py` | 246 | `nofocus.spawn` | offscreen |
 | `scripts/run_editor_smoke.py` | 882 | `nofocus.spawn` | offscreen |
@@ -26,7 +26,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/run_smoke.py` | 401 | `nofocus.spawn` | offscreen |
 | `scripts/run_smoke_asan.py` | 203 | `nofocus.spawn` | offscreen |
 | `scripts/run_tool_capture.py` | 108 | `nofocus.spawn` | offscreen |
-| `scripts/run_visual_capture.py` | 449 | `nofocus.spawn` | offscreen |
+| `scripts/run_visual_capture.py` | 450 | `nofocus.spawn` | offscreen |
 | `scripts/screen_shot.py` | 96 | `nofocus.spawn` | offscreen |
 | `scripts/smoke_lib/runner.py` | 317 | `nofocus.spawn` | offscreen |
 | `scripts/sweep_campaign.py` | 108 | `nofocus.spawn` | offscreen |
