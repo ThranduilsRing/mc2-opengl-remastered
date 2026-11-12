@@ -529,23 +529,24 @@ long BldgAppearance::update (bool animate)
 	glm::quat rot;
 
     if (!simPresentationPass || !simulationOwned()) {
+    const auto& anim = static_cast<const Appearance&>(*this).unitAnim();
 	if (simulationOwned()) {
-		if (unitAnim().lastAnimAdvanceFrame == static_cast<uint32_t>(turn)) { updateSimPose(); return TRUE; }
-		unitAnim().lastAnimAdvanceFrame = static_cast<uint32_t>(turn);
+		if (anim.lastAnimAdvanceFrame == static_cast<uint32_t>(turn)) { updateSimPose(); return TRUE; }
+		unitAnim(false).lastAnimAdvanceFrame = static_cast<uint32_t>(turn);
 	}
 	// Recycle the weapon Nodes
-	if (!unitAnim().nodeRecycle.empty())
+	if (!anim.nodeRecycle.empty())
 	{
 		for (long i=0;i<appearType->numWeaponNodes;i++)
 		{
-			if (unitAnim().nodeRecycle[i] > 0.0f)
+			if (anim.nodeRecycle[i] > 0.0f)
 			{
 				unitAnim().nodeRecycle[i] -= frameLength;
-				unitAnim().nodeRecycle[i] = std::max(unitAnim().nodeRecycle[i], 0.0f);
+				unitAnim().nodeRecycle[i] = std::max(anim.nodeRecycle[i], 0.0f);
 			}
 		}
 	}
-	if (animate) mc2::sim::advanceLinearAnimation(unitAnim(), unitAnim().bdFrameRate, appearType->getNumFrames(unitAnim().bdAnimationState), frameLength);
+	if (animate) mc2::sim::advanceLinearAnimation(unitAnim(anim.bdFrameRate * frameLength != 0.0f), anim.bdFrameRate, appearType->getNumFrames(anim.bdAnimationState), frameLength);
 
         if (simulationOwned() || mc2::overlap::onSimWorker()) { updateSimPose(); return TRUE; }
     }

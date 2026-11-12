@@ -779,3 +779,8 @@ mc2_height_slice(tree_recovery_gate mclib/bdactor_render.cpp
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/tree_recovery_gate.inc" CONTENT "${tree_recovery_gate}")
 target_sources(mc2_tests PRIVATE test_tree_bake_recovery.cpp)
 set_source_files_properties(test_tree_bake_recovery.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
+mc2_height_slice(terrain_anim_access mclib/appear.h "    mc2::sim::UnitAnimState& unitAnim(" "    auto simulationAnimation()")
+mc2_height_slice(terrain_tick mclib/bdactor_update.cpp "    if (!simPresentationPass || !simulationOwned()) {" "        if (simulationOwned() || mc2::overlap::onSimWorker())")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/terrain_anim_access.inc" CONTENT "${terrain_anim_access}")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/terrain_tick.inc" CONTENT "${terrain_tick}\n} return TRUE;")
+set_source_files_properties(test_terrain_dirty_queue.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
