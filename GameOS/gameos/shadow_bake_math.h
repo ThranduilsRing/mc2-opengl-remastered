@@ -256,12 +256,12 @@ inline std::vector<float> maskHeightGrid(std::span<const float> source, int sour
         // Match hiresNearHeight's coarse blend and exact two-cell map-border fade.
         const int cs = (sourceSide - 1) / 4 + 1;
         const int cx = (std::min)(x / 4, cs - 2), cy = (std::min)(y / 4, cs - 2);
-        const float u = float(x - cx * 4) * 0.25f, v = float(y - cy * 4) * 0.25f;
+        const float u = static_cast<float>(x - cx * 4) * 0.25f, v = static_cast<float>(y - cy * 4) * 0.25f;
         const size_t i = static_cast<size_t>(cy) * cs + cx;
         const float a = coarse[i], b = coarse[i + 1], c = coarse[i + cs], d = coarse[i + cs + 1];
         const float hc = v >= u ? a + (d - c) * u + (c - a) * v : a + (b - a) * u + (d - b) * v;
         const int edge = (std::min)({x, y, sourceSide - 1 - x, sourceSide - 1 - y});
-        return hc + (fine - hc) * std::clamp(blend, 0.0f, 1.0f) * std::clamp(float(edge) * 0.125f, 0.0f, 1.0f);
+        return hc + (fine - hc) * std::clamp(blend, 0.0f, 1.0f) * std::clamp(static_cast<float>(edge) * 0.125f, 0.0f, 1.0f);
     };
     for (int y = 0; y < side; ++y) {
         const double gy = y * scale;
