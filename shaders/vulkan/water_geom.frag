@@ -168,7 +168,7 @@ PREC float vnoise(PREC vec2 uv){
                mix(h21(i + vec2(0.0,1.0)), h21(i + vec2(1.0, 1.0)), f.x), f.y);
 }
 // WATER-WAVES-GLINT: wind-driven wave trains that read from the RTS camera, lit by a GGX sun/moon and lamp specular.
-// Analytic sine slopes animated by time only (no history). Each train: (wind dir x, y, wavelength wu, slope amplitude
+// Analytic sine slopes with stationary, smoothly hashed short-wave packets (no history). Each train: (wind dir x, y, wavelength wu, slope amplitude
 // A*k); a train's slope variance is slope^2 / 2. Trains below the pixel footprint fade out of the normal and their
 // variance moves into the GGX roughness (LEAN-style), so distant water keeps a wide highlight instead of sparkling.
 const int   WAVE_TRAINS = 12;
@@ -190,6 +190,9 @@ const vec4  kWaveTrain[WAVE_TRAINS] = vec4[WAVE_TRAINS](
 const float WAVE_G           = 30.0;    // deep-water dispersion in wu/s^2: 760 wu swell ~60 wu/s, 150 wu chop ~27 wu/s
 const float WAVE_RESOLVE_LO  = 2.0;     // pixels per wavelength: at or below -> roughness only
 const float WAVE_RESOLVE_HI  = 6.0;     // pixels per wavelength: at or above -> fully in the normal
+const float WAVE_PACKET_MIN  = 0.65;
+const float WAVE_PACKET_MAX  = 1.35;
+const float WAVE_PACKET_SPAN = 6.0;     // wavelengths per smooth packet, no corner or time-dependent reseeding
 const float WATER_ALPHA0     = 0.06;    // GGX alpha of the calm surface
 const float RIPPLE_SLOPE_VAR = 0.004;   // slope variance of the fine ripples once they fade with distance
 const float SUN_SPEC_GAIN    = 1.0;     // one energy-normalised sun/moon lobe at the default glint gain (0.30)
@@ -212,7 +215,12 @@ PREC vec2 waterWaveSlope(PREC vec2 p, float t, float footprint, float gain, out 
         vec4  w = kWaveTrain[i];
         float k = 6.2831853 / w.z;
         float r = smoothstep(WAVE_RESOLVE_LO, WAVE_RESOLVE_HI, w.z / max(footprint, 1e-3));
-        float a = w.w * gain;
+        // Independent packet envelopes break the global lattice without noise-gradient normals.
+        // Long swells retain their vertex-stage phase and amplitude; unresolved packet energy
+        // goes into roughness using the very same local amplitude as the resolved normal.
+        float packet = (i < 2) ? 1.0 : mix(WAVE_PACKET_MIN, WAVE_PACKET_MAX,
+            vnoise(p / (WAVE_PACKET_SPAN * w.z) + vec2(float(i) * 19.19, float(i) * 7.73)));
+        float a = w.w * gain * packet;
         unresolvedVar += 0.5 * a * a * (1.0 - r * r);
         if (r > 0.0) {
             PREC float ph = k * dot(w.xy, p) - sqrt(WAVE_G * k) * t + float(i) * 2.39996;

@@ -13,7 +13,151 @@ Plan: owner payload/settings/PNG-size all13 repro; isolate geometry, normal
 filter, vertex light, reflection and sun; fix established cause; offline
 shader contracts/tests; local commit, lint, final build/deploy/smoke;
 day all13 and night A/B; personally inspect montages and crop metrics.
-At start tree clean. No engine changes or acceptance claims yet.
+Initial tree was clean. Source repair and final evidence are recorded below.
+
+## v9: bookmark 210656 reproduction and repair
+
+New exact owner pose added as14 in private v9/mc2_01_all14.json; original
+bookmark and canonical sets untouched. Complete W148 a2 at3840x2160:
+fixed-clock frame600 shows regular fine waves; LIVE CLOCK with owner launcher
+MC2_WATER_SKYTINT=1 shows the owner's large triangular patches. Personally
+opened all three diagnostic captures and owner-repro-3.jpg native crops.
+Low-quality frame120 is a separate smooth, cinematic-letterboxed diagnostic.
+No claim that fixed/live runs are registered or deterministic A/B controls.
+
+Owner current executable is W149798bedeaf2d0; a2 is W1481fdbb7c6c114.
+Both water SPIR-V files and options.cfg match hashes. Bookmark has no clock,
+sim frame or live water slider values. Requested focusZ410.9092 becomes
+terrain-driven357.180; XY/rotation/projection/altitude match to0.01.
+
+Facet repair ce031c5dd removes legacy random +/-10wu corner displacement
+on the128wu mesh, retaining the existing <=0.9wu coherent swell. Separate
+stochastic change gives short trains smoothly hashed spatial packet envelopes
+and sends the SAME local slope variance to resolved normals and roughness.
+Approved glint a52c4ccc6 and reflection resolution path remain unchanged.
+Offline water regressions: facet13PASS, stochastic14PASS (0.18s each).
+
+Final-tip shader/layout rows, build, deploy, smoke and before/after inspection
+are pending at this commit; their authoritative receipts and final verdict
+will be archived in E:/mc2-archive-2026-10/proofs/water-cliff-lowangle-1/v9/.
+Reuse v8 canonical13 BEFORE images; do not rerun the old altitude sweeps.
+No owner acceptance or production delivery claim.
+
+## v8: exact 3840x2160 BEFORE replay
+
+Continuation tested the new resolution prerequisite on 2026-11-11.
+Correction to its premise: v7 was 3717x1608, not 1920x1080;
+v7/before-camera-audit.json and PNG dimensions establish that fact.
+
+Existing water wave/glint and near-gloss tests: 12 PASS (0.19s), before
+the game run. No engine, shader, option, asset or canonical bookmark edit.
+Approved glint a52c4ccc6 remains in the source branch; BEFORE deliberately
+uses the complete W148 payload in E:/mc2-installs/water-cliff-a2.
+Executable SHA256 78229b19db8afebbfdddaf38bf312184550dfedf8cb31fdb14adbad7b0b7bd4c.
+
+run_visual_capture.py supports 4K offscreen through --env-declare
+MC2_WIDTH=3840 and MC2_HEIGHT=2160 (render_resolution.py:96).
+Capture exit0: all13 canonical plus20 low poses at 100/70/50/35/25 percent,
+trigger600, settle30, fixed clock, normal HUD, RX7900XTX confirmed in log.
+No resolution, fullscreen or slider edit to either owner or lane options.
+Parity guard PASS:26145 files, missing/size/content/extra all0 (sampled186).
+Camera audit PASS: all33 PNG dimensions3840x2160; clean W1481fdbb7c6c114;
+sim_frame600; requested XY/rot/proj and lower altitudes honored.
+Canonical101157 remains clamped as documented in v7.
+
+Opened owner-vs-4k-native.jpg and all five altitude sheets. Lower panels
+of the owner comparison use unscaled960x540 source crops; previews above
+are fitted independently because aspect ratios differ. They are diagnostic
+comparisons, not registered pixel diffs or A/B acceptance.
+- 101350: large owner triangles absent at all five heights; broad glint
+  and fine regular lattice remain; lowest views stretch the fine ripples.
+- 100624: reflection and regular ripples persist, no owner-scale facets.
+- 100638: cliff/vegetation increasingly occlude water; no large facets.
+- 100705: reflective water around rocks has fine ripples, no large facets.
+- 101454: cliff reflection enlarges as altitude falls, no large facets.
+
+Proof directory: E:/mc2-archive-2026-10/proofs/water-cliff-lowangle-1/v8/.
+Evidence: before-4k.log, before-4k/capture_run.json, camera-audit.json,
+owner-vs-4k-native.jpg, altitude-*.jpg, audit_4k.py, offline-water.txt.
+Prior failed proof: v7 altitude sweep at3717x1608. Current failed proof:
+v8 exact3840x2160 sweep. Resolution alone does not reproduce this symptom
+under the tested fixed-time replay; its role in the live session is UNKNOWN.
+
+PARTIAL per lane rule2 repeated-failed-proof safe default. Named follow-up
+water-cliff-a needs captured live-session water/render state that actually
+reproduces the facets before another replay or shader repair. Source sites
+water_geom.vert:177-202 (random vertex heights) and water_geom.frag:328-341
+(analytic normals) remain hypotheses. No source repair inferred from them.
+Conditional1080p/1440p bisection, facet fix, separate stochastic commit,
+production shader/layout rows, build/deploy/smoke and candidate all13+night
+A/B at4K/1080p NOT RUN: required facet reproduction failed. No self-accept.
+Existing BEFORE install retained for orchestrator inspection, no new install
+or live child left. Owner install untouched. No pushes or uploads.
+
+## v7: fresh W148 install and lower-altitude replay
+
+Engine source remains c4f33309c; approved glint a52c4ccc6 is preserved.
+Orchestrator authorized fresh E:/mc2-installs/water-cliff-a2. Original refused
+water-cliff-a install was untouched. Published the complete v6/owner-complete
+payload through deploy_payload.py with W148 head1fdbb7c6c114: rc0,6107 verified
+manifest rows; executable SHA25678229b19db8afebbfdddaf38bf312184550dfedf8cb31fdb14adbad7b0b7bd4c.
+Supported asset parity sync rc0:26145 files, zero missing/size/content/extra.
+Reference options copied to the absent target and their hashes recorded.
+
+Initial startup crashed at frame0,0xE0004D46 invalid-parameter. The payload
+manifest and asset parity omit bootstrap root configs; system.cfg,prefs.cfg,
+minprefs.cfg,orgprefs.cfg were absent. Copied only those absent files from the
+read-only reference, matching make-isolated-deploy.py:198-204 seed policy.
+Crash/catalog/matching PDB archived under
+E:/mc2-archive-2026-10/crashes/water-cliff-a2-2026-11-11-v7/.
+
+Corrected offscreen capture rc0: all13 canonical plus20 altitude-only variants
+at100/70/50/35/25 percent for100624,100638,100705,101350,101454. Fixed30Hz,
+trigger600,settle30,3717x1608,normal HUD,XTX,original options. All20 reduced
+altitudes honored; XY/rot/proj and rendered origins match their base poses.
+Canonical101157 requests28000 but captures12515.314 due to camera clamping;
+focus Z follows terrain (gos_visual_capture.cpp:668-695), both explicitly
+recorded in the camera audit. Initial overstrict audit failed on terrain Z;
+corrected audit preserves requested and effective values rather than claiming
+exact replay of unreachable inputs. Canonical bookmarks were not modified.
+
+Opened both owner facet PNG references, five altitude sheets and all13 sheet.
+Large triangles in the owner reference remain UNREPRODUCED at every tested
+altitude. The regular fine ripple lattice IS visible. Per-pose observations:
+
+- 100525: fogged map corner, no large water triangles visible.
+- 100537: lower-pitch map corner, no large water triangles visible.
+- 100624: cliff reflection and fine regular ripples at all five altitudes.
+- 100638: cliff/trees dominate increasingly as altitude falls; water smooth.
+- 100705: regular ripples and cliff reflection, no owner-scale facets.
+- 100810: overhead point/shore, water lacks large facet patches.
+- 100933: road/shore foreground, water shows fine ripples.
+- 101056: cross-channel cliff and reflected trees; no large facet patches.
+- 101157: fog obscures scene at clamped maximum; no useful facet conclusion.
+- 101247: airfield/runway pads present, edge water remains smooth.
+- 101350: broad original W148 glint and regular ripple lattice at every height;
+  owner screenshot's large triangular patches do not appear.
+- 101454: enlarged cliff reflection as camera lowers, fine ripples persist.
+- 101648: shallow cyan shore shelf and fine ripples, no large facets.
+
+Evidence: E:/mc2-archive-2026-10/proofs/water-cliff-lowangle-1/v7/.
+before-deploy.log,before-parity.log,before-capture-bootstrap.log,
+before-altitude-bootstrap/,before-camera-audit.json,altitude-*.jpg,
+before-canonical-all13.jpg. Existing wave/glint and near-gloss test modules
+PASS before game runs (offline-water.log). No shader source change; production
+compile,shader rows,lint,new build,smoke and candidate day/night A/B NOT RUN.
+
+PARTIAL: item1 sweep complete but reproduction gate failed; facet isolation
+and repair items2-3 remain blocked. Item4 stochastic change remains pending
+its explicit after-facet ordering. Candidate a3 not created without a repair.
+No visual acceptance or owner-install delivery claim. Source legacy random
+vertex heights (water_geom.vert:177-202) remain a hypothesis, not a proven cause.
+Per lane rule2, stop after the prior v4 and this v7 failed reproduction class;
+do not request another replay without changed evidence. Named follow-up
+water-cliff-a needs a reproducing effective water tuning/time/session or
+owner-confirmed different input before source isolation, then separate facet
+and stochastic commits with all13+night proof. Fresh a2 is kept for orchestrator
+inspection; old installs are kept per override. No push or upload.
 
 ## v4 resume (2026-11-11 22:20 UTC)
 
@@ -42,7 +186,29 @@ No facet acceptance claim; concrete visible glint fix must be judged in pixels.
 Remaining: slice B shoreline/coverage/ring; slice C cliff/ridge, in order.
 HZB camera save failure: capture-tooling follow-up.
 
-## Blocked handoff, 2026-11-11
+## v4 result: visible glint fix, partial slice
+
+Source a52c4ccc63871ac2a0989aa4a15ee691a875d301: remove duplicate broad sun
+lobe and gain3 amplification. Offline water tests12 PASS, production shader
+compiles79 PASS, selected shader/Slang/interface/UBO rows PASS. Windows
+RelWithDebInfo build0, deploy0, smoke-lite mc2_01+mc2_10 PASS.
+Required lint FAIL is stale generated docs/background-launch-inventory.md,
+unchanged from base; merge owns refresh. No ABI/resource/lifetime change.
+Final base/candidate all13 day +3 night completed, matched controls validated,
+ab.py comparisons completed0; personally opened all13/airfield/night montages.
+At owner_101350 fixed crop near-white12.2345% ->0.06695%; bright mean row
+coverage617.297 ->3.196px (threshold coverage, not physical sun diameter).
+Airfield terrain/pads preserved; intended water edge dimmer. Night southeast
+moon highlights reduce, other night views visually unchanged.
+Proof: E:/mc2-archive-2026-10/proofs/water-cliff-lowangle-1/v4-report.md,
+v4-final-capture-audit.json, v4-ab-day-complete/, v4-ab-night-complete/.
+UNFIXED: facets unreproduced even with owner exe/shaders/options at3717x1608
+and gameplay HUD; need owner's live water tuning/session state before another
+facet continuation. Slice B shoreline/coverage/ring and slice C dark cliff/ridge
+remain named serial follow-ups. HZB save failure remains capture-tooling.
+No production deploy or owner acceptance claim. Lane install kept for review.
+
+## Historical blocked handoff (install blocker superseded by v4)
 
 No engine edit; no symptom fixed. Do not treat this as completed slice A.
 Existing water tests: 12 passed (wave/glint + near gloss, 0.19s).

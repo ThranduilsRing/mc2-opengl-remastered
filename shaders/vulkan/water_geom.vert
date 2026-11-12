@@ -84,7 +84,6 @@ float cornerElev(WaterRecipe r, uint c) {
     if (c == 2u) return r.elev.z;
     return r.elev.w;
 }
-uint unpackByte(uint bits, uint c) { return (bits >> (c * 8u)) & 0xFFu; }
 uint cornerLightRGB(WaterThinRecord t, uint c) {
     if (c == 0u) return t.lightRGB.x;
     if (c == 1u) return t.lightRGB.y;
@@ -127,7 +126,6 @@ void main() {
     float waterElevation = U.p0.x;
     float alphaDepth     = U.p0.y;
     vec2  mapTopLeft     = U.p0.zw;
-    float frameCos       = U.p1.x;
     float maxMinUV       = U.p1.y;
     float uvScale        = U.p1.z;
     vec2  uvOffset       = vec2(U.p1.w, U.p2.x);
@@ -170,28 +168,16 @@ void main() {
 
     vec2  vxy       = cornerXY(rec, cornerIdx);
     float velev     = cornerElev(rec, cornerIdx);
-    uint  waterBits = unpackByte(rec.ctrl.w, cornerIdx);
 
     WaterThickness = waterElevation - velev;   // negative = above waterline
     float shoreBlendVS = max(alphaDepth, 1.0);
-    float waveCos = ((waterBits & 0x80u) != 0u) ? -frameCos : frameCos;
-    // HORIZON-WAVE-1: the legacy wave lifts or drops every vertex by +/-frameCos (Terrain::waterAmplitude,
-    // 10 wu stock) with a RANDOM sign per vertex (mapdata.cpp RollDice). Seen from above that reads as a
-    // gentle bob; seen at a grazing angle the far edge of the plane IS the horizon, and the random
-    // per-vertex offsets turn it into a stepped, wavy line. Fade the displacement out as the view ray
-    // flattens toward the water plane: steep (gameplay) views keep the full wave, the horizon is flat.
-    {
-        vec3  toVert   = vec3(vxy, waterElevation) - F.f0.yzw;
-        float sinGraze = abs(toVert.z) / max(length(toVert), 1.0);
-        waveCos *= smoothstep(0.03, 0.12, sinGraze);
-    }
-    // Shore mode 3 (U.p3.y != 0): flat animated plane everywhere; the FS carves the
-    // shoreline from the bicubic sidecar. Mirrors gos_terrain_water_fast_mdi.vert u_shoreFlat.
+    // The 128-wu mesh cannot carry independent +/-10-wu corner offsets: its
+    // triangle slopes become a coarse lattice in low-angle reflections. Keep
+    // the mean waterline level; only the sub-unit, coherent swell below moves it.
     const bool shoreFlat = (U.p3.y != 0.0);
-    float wz = shoreFlat ? (waveCos + waterElevation)
-             : (WaterThickness >= 0.0)
-               ? waveCos + waterElevation
-               : min(velev, waterElevation + shoreBlendVS);
+    float wz = (shoreFlat || WaterThickness >= 0.0)
+             ? waterElevation
+             : min(velev, waterElevation + shoreBlendVS);
     float swell = swellHeight(vxy, F.f0.x) * smoothstep(8.0, 40.0, WaterThickness);
     if (shoreFlat || WaterThickness >= 0.0) {
         vec3  toV = vec3(vxy, waterElevation) - F.f0.yzw;
