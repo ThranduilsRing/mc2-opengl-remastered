@@ -347,17 +347,23 @@ extern "C" int mc2_vk_impact_decals_run(int w, int h) {
     State* s = g_state.get();
     if (s->disabled) return 0;
     if (s->inited && (s->w != w || s->h != h)) destroy(s);
-    if (!s->inited && !build(s, w, h)) {
+    if (!s->inited) {
+    ZoneScopedN("VK-impact-decals.LazyBuild");
+    if (!build(s, w, h)) {
         std::fprintf(stderr, "[VK_IMPACT_DECALS] init failed (%s): impact decals stay off this session.\n", g_health.reason);
         destroy(s); s->disabled = true; return 0;
+    }
     }
     ZoneScopedN("VK-impact-decals");
     mc2vk::VulkanContext& ctx = mc2vk::getOrCreateEngineVulkanContext();
     const uint32_t slot = s->slot; s->slot = (s->slot + 1) % kSlots;
+    { ZoneScopedN("VK-impact-decals.SlotWait");
     if (!ctx.wait(mc2vk::GpuTicket{s->ticket[slot], 0}, 5ull * 1000 * 1000 * 1000, "impact_decals_slot")) {
         decline("slot_wait_timeout"); s->disabled = true; return 0;
     }
+    }
     {
+        ZoneScopedN("VK-impact-decals.PrepareAndUpload");
         FrameUbo u{};
         fillFrame(u, *pp, w, h);
         // Rebind the atlas views when residency swaps the placeholder for the uploaded images.
@@ -379,6 +385,7 @@ extern "C" int mc2_vk_impact_decals_run(int w, int h) {
     }
 
     VkCommandBuffer cb = s->cbuf[slot];
+    { ZoneScopedN("VK-impact-decals.Record");
     vkResetCommandPool(s->device, s->cpool[slot].get(), 0);
     VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -435,9 +442,12 @@ extern "C" int mc2_vk_impact_decals_run(int w, int h) {
             VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { decline("record_failed"); return 0; }
+    }
     VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
+    { ZoneScopedN("VK-impact-decals.Submit");
     if (ctx.submit(si, VK_NULL_HANDLE, &s->ticket[slot]) != VK_SUCCESS) { decline("submit_failed"); s->disabled = true; return 0; }
+    }
     ++g_health.framesDrawn;
     if ((g_health.framesDrawn % 600) == 1)
         std::fprintf(stderr, "[VK_IMPACT_DECALS] drawn: frames=%lu decals=%u hot=%u declined=%lu\n", g_health.framesDrawn, count, g_frameHot, g_health.declined);

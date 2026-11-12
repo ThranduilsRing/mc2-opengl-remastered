@@ -256,9 +256,11 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
 
     if(res_type == gosAudio_StreamedFile) {
         ZoneScopedN("Audio.Stream.LoadFile");
+        ZoneText(file_name, std::min<size_t>(std::strlen(file_name), 192));
 
         if (g_sound_engine->musicPaths.contains(file_name)) {
-            auto stream = MusicStream::open(file_name, dst_freq, dst_channels);
+            std::unique_ptr<MusicStream> stream;
+            { ZoneScopedN("Audio.Stream.LoadFile.MusicOpen"); stream = MusicStream::open(file_name, dst_freq, dst_channels); }
             if (!stream) { *hgosaudio = nullptr; return; }
             // A silent carrier lets SDL keep per-channel volume, pause and pan.
             auto silence = std::make_shared<uint8_t[]>(4096);
@@ -275,7 +277,7 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
 #ifndef USE_MIX_LOAD
         SDL_AudioSpec spec;
         SDL_AudioSpec* pspec;
-        pspec = SDL_LoadWAV(file_name, &spec, &databuf, &src_datasize);
+        { ZoneScopedN("Audio.Stream.LoadFile.WavLoad"); pspec = SDL_LoadWAV(file_name, &spec, &databuf, &src_datasize); }
         if(pspec == nullptr) {
             PAUSE(("gosAudio_CreateResource: Failed to load %s, %s\n", file_name, SDL_GetError()));
             *hgosaudio = nullptr;
@@ -295,7 +297,7 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
             default: STOP(("Unsupported audio format\n"));
         }
 #else
-        chunk = Mix_LoadWAV(file_name);
+        { ZoneScopedN("Audio.Stream.LoadFile.WavLoad"); chunk = Mix_LoadWAV(file_name); }
         if(nullptr == chunk) {
             MC2_LOG(Audio, Debug, "gosAudio_CreateResource: Failed to load {}, {}", mc2::fmt::safe(file_name), mc2::fmt::safe(Mix_GetError()));
             *hgosaudio = nullptr;
