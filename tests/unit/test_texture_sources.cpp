@@ -31,6 +31,38 @@ struct Sources {
 }
 
 TEST_SUITE("TextureSources") {
+TEST_CASE("load prewarm selects live cold CPU sources in admission order") {
+    Sources s;
+    const auto cold=s.add("offscreen"), warm=s.add("first-view"), retired=s.add("retired");
+    s.index->get(warm)->cpuTexture=17;
+    auto retiredSnapshot=s.index->get(retired);
+    mc2::textures::release(retired);
+    const auto next=s.add("another-offscreen");
+    CHECK(s.index->coldCpuTextures()==std::vector<DWORD>{cold,next});
+    s.index->get(cold)->cpuTexture=18;
+    s.index->get(next)->cpuTexture=19;
+    CHECK(s.index->coldCpuTextures().empty());
+    CHECK(retiredSnapshot->cpuTexture==0);
+}
+TEST_CASE("LOD replacement retains the same painted CPU texture before release") {
+    std::vector<DWORD> destroyed;
+    Sources s([&](DWORD texture) { destroyed.push_back(texture); });
+    const auto old=s.add("painted-atlas",7);
+    s.index->get(old)->cpuTexture=71;
+    DWORD replacement=0;
+    {
+        mc2::TextureRef previous(old);
+        replacement=mc2::textures::findAndRetain("painted-atlas",gos_Texture_Solid,0,7);
+        REQUIRE(replacement==old);
+    }
+    CHECK(destroyed.empty());
+    REQUIRE(s.index->get(replacement));
+    CHECK(s.index->get(replacement)->cpuTexture==71);
+    CHECK(s.index->get(replacement)->users==1);
+    CHECK(s.index->get(replacement)->ownedReferences==0);
+    mc2::textures::release(replacement);
+    CHECK(destroyed==std::vector<DWORD>{71});
+}
 TEST_CASE("source admission overlaps named lookup byte interning and snapshots") {
     Sources s;
     const auto base=s.add("concurrent/base");

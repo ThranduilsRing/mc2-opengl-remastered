@@ -30,6 +30,14 @@ TextureSource::~TextureSource() { queueCpuTexture(*this); }
 
 
 DWORD assetCapacity() { auto* store=sourcesIfReady(); return store ? store->capacity() : 1; }
+std::vector<DWORD> TextureSources::coldCpuTextures() const {
+    std::vector<DWORD> cold;
+    for (const auto& weak : assets()) if (auto source=weak.lock()) {
+        if (!source->cpuTexture && source->bytes && RenderCore::textureService().isLive(source->handle))
+            cold.push_back(source->asset);
+    }
+    return cold;
+}
 void flushSources(bool all) { if (auto* store=sourcesIfReady()) store->flush(all); }
 void TextureSources::collectRetired() {
     mc2::overlap::assertMainThread("TextureSources::collectRetired");

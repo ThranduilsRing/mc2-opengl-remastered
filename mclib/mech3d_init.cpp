@@ -974,7 +974,11 @@ void Mech3DAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 	}
 
 
-	mc2::textures::release(localTextureHandle);
+	// LODs can use the same painted atlas. Keep the old reference until the
+	// replacement has retained it, otherwise the last user retires the source
+	// and this camera change decodes and paints the identical texture again.
+	mc2::TextureRef previousTexture(localTextureHandle);
+	localTextureHandle = 0xffffffffu;
 	
 	char txmName[1024];
 	mechShape->GetTextureName(0,txmName,256);
