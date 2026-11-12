@@ -1643,6 +1643,78 @@ static void t1_begin_pass(ColorPropIsland* s, VkCommandBuffer cb, uint32_t w, ui
                                   s->t1_haveId ? reinterpret_cast<VkImageResource*>(s->t1_idRes)->view.get() : VK_NULL_HANDLE};
     t1_begin_pass(views, reinterpret_cast<VkImageResource*>(s->t1_depthRes)->view.get(), s->t1_depthFmt, cb, w, h);
 }
+// Prepared view-local draw state. A reflected view must supply its own descriptors,
+// compaction buffers, attachments and compatible pipelines; never reuse main-view HZB results.
+struct PropRecPlan {
+    VkImageView views[3], depthView; VkFormat depthFmt; VkPipeline cullPipe, opaquePipe, corePipe, fringePipe;
+    VkPipelineLayout cullLayout, playout; VkDescriptorSet set, groundSet; VkBuffer vbo, ibo, cmdBuf;
+    VkDeviceAddress pktAddr; uint32_t nDyn, dynOffsets[3], groundOffsets[4], runCount, drawLimit, listStart[kListCount + 1], counts[kListCount];
+    float jx, jy; int w, h; bool hzbCulled;
+};
+// Pure vkCmd half, matching record_terrain_cmds: no island or camera-global reads.
+static bool record_props_cmds(const PropRecPlan& plan, VkCommandBuffer cb) {
+    ZoneScopedN("VKIsl.Props.Record");
+    VkCommandBufferBeginInfo bi{};
+    bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) return false;
+    vk_render_pass_timer::Begin(cb, gos_render_pass_timer::Pass_SpColor);
+
+    // Compaction: the HZB pass's last barrier targets VERTEX|HOST, so this pass first orders itself after the HZB compute writes, and the draw
+    // stages (vertex shader reads the compacted slots, the indirect read takes the counts and instanceCounts) after its own writes.
+    if (plan.runCount != 0) {
+        MC2_VK_GPU_SCOPE(cullScope, cb, "VKIsl.Props.Cull");
+        VkMemoryBarrier pre{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+        pre.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT; pre.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+        vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &pre, 0, nullptr, 0, nullptr);
+        mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_COMPUTE, plan.cullPipe);
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_COMPUTE, plan.cullLayout, 0, 1, &plan.set, plan.nDyn, plan.dynOffsets);
+        const uint32_t hzbFlag = plan.hzbCulled ? 1u : 0u;
+        vkCmdPushConstants(cb, plan.cullLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(hzbFlag), &hzbFlag);
+        vkCmdDispatch(cb, plan.runCount, 1, 1);
+        VkMemoryBarrier post{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+        post.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT; post.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
+        vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT,
+                             0, 1, &post, 0, nullptr, 0, nullptr);
+        cullScope.end();
+    }
+
+    // Begin the LOAD pass: all attachments LOAD, no clear values.
+    MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Props");
+    t1_begin_pass(plan.views, plan.depthView, plan.depthFmt, cb, static_cast<uint32_t>(plan.w), static_cast<uint32_t>(plan.h));
+
+    VkViewport vp{plan.jx, plan.jy, static_cast<float>(plan.w), static_cast<float>(plan.h), 0.0f, 1.0f};
+    VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(plan.w), static_cast<uint32_t>(plan.h)}};
+    vkCmdSetViewport(cb, 0, 1, &vp);
+    vkCmdSetScissor(cb, 0, 1, &scissor);
+
+    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, plan.playout, 0, 1, &plan.set, plan.nDyn, plan.dynOffsets);
+    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, plan.playout, 1, 1, &plan.groundSet, 4, plan.groundOffsets);
+    VkDeviceSize vboOff = 0;
+    vkCmdBindVertexBuffers(cb, 0, 1, &plan.vbo, &vboOff);
+    vkCmdBindIndexBuffer(cb, plan.ibo, 0, VK_INDEX_TYPE_UINT32);
+
+    // One indirect-count call per list; maxDrawCount is clamped to the device limit (a loop-wrap hazard on AMD when it is UINT32_MAX).
+    auto drawList = [&](VkPipeline pipe, uint32_t first, uint32_t n, uint32_t listWord) {
+        if (n == 0) return;
+        mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipe);
+        const PropPacketPush push{plan.pktAddr, first, 0};
+        vkCmdPushConstants(cb, plan.playout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(push), &push);
+        mc2::battlebench::add(mc2::battlebench::DrawProps);
+        vkCmdDrawIndexedIndirectCount(cb, plan.cmdBuf, kPropCmdHeader + static_cast<VkDeviceSize>(first) * sizeof(PropDrawCmd), plan.cmdBuf,
+                                      static_cast<VkDeviceSize>(listWord) * sizeof(uint32_t), (std::min)(n, plan.drawLimit), sizeof(PropDrawCmd));
+    };
+    // Opaque core first so early Z rejects the hidden fragments of everything after it.
+    drawList(plan.opaquePipe, plan.listStart[kListOpaque], plan.counts[kListOpaque], kListOpaque);
+    drawList(plan.corePipe, plan.listStart[kListCore], plan.counts[kListCore], kListCore);
+    drawList(plan.fringePipe, plan.listStart[kListFringe], plan.counts[kListFringe], kListFringe);
+
+    mc2vk::dynrender::end(mc2vk::engineVulkanContextNoWait(), cb);
+    gpuScope.end();
+    vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_SpColor);
+    return vkEndCommandBuffer(cb) == VK_SUCCESS;
+}
+
 static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std::function<bool(VkCommandBuffer)>& recordOut) {
     ColorPropIsland* s = in.s; VkCommandBuffer cb = in.cb; const int w = in.w, h = in.h; const uint32_t par = in.par;
     const uint32_t nDyn = in.nDyn; const uint32_t* dynOffsets = in.dynOffsets; const Mc2GroundLightingFrame* ground = in.ground;
@@ -1813,12 +1885,7 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std
 
     // Everything the recording reads is copied out here, on main: the callback runs later on a Render-pool worker (VulkanContext::submitRecorded) and
     // touches only these values and handles, never the island (cmdScratch/runScratch/gpu[] are rewritten by the next prepare).
-    struct Plan {
-        VkImageView views[3], depthView; VkFormat depthFmt; VkPipeline cullPipe, opaquePipe, corePipe, fringePipe;
-        VkPipelineLayout cullLayout, playout; VkDescriptorSet set, groundSet; VkBuffer vbo, ibo, cmdBuf;
-        VkDeviceAddress pktAddr; uint32_t nDyn, dynOffsets[3], groundOffsets[4], runCount, drawLimit, listStart[kListCount + 1], counts[kListCount];
-        float jx, jy; int w, h; bool hzbCulled;
-    } plan{};
+    PropRecPlan plan{};
     plan.views[0] = reinterpret_cast<VkImageResource*>(s->t1_colorRes)->view.get();
     plan.views[1] = reinterpret_cast<VkImageResource*>(s->t1_normalRes)->view.get();
     plan.views[2] = s->t1_haveId ? reinterpret_cast<VkImageResource*>(s->t1_idRes)->view.get() : VK_NULL_HANDLE;
@@ -1833,68 +1900,7 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std
     { float jpx[2]; RenderCore::temporal::sceneJitterPixels(g_mc2RenderFrame, jpx); plan.jx = jpx[0]; plan.jy = jpx[1]; }
     plan.w = w; plan.h = h; plan.hzbCulled = hzbCulled;
 
-    recordOut = [plan](VkCommandBuffer cb) -> bool {
-        ZoneScopedN("VKIsl.Props.Record");
-        VkCommandBufferBeginInfo bi{};
-        bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-        if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) return false;
-        vk_render_pass_timer::Begin(cb, gos_render_pass_timer::Pass_SpColor);
-
-        // Compaction: the HZB pass's last barrier targets VERTEX|HOST, so this pass first orders itself after the HZB compute writes, and the draw
-        // stages (vertex shader reads the compacted slots, the indirect read takes the counts and instanceCounts) after its own writes.
-        if (plan.runCount != 0) {
-            MC2_VK_GPU_SCOPE(cullScope, cb, "VKIsl.Props.Cull");
-            VkMemoryBarrier pre{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
-            pre.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT; pre.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
-            vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &pre, 0, nullptr, 0, nullptr);
-            mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_COMPUTE, plan.cullPipe);
-            vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_COMPUTE, plan.cullLayout, 0, 1, &plan.set, plan.nDyn, plan.dynOffsets);
-            const uint32_t hzbFlag = plan.hzbCulled ? 1u : 0u;
-            vkCmdPushConstants(cb, plan.cullLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(hzbFlag), &hzbFlag);
-            vkCmdDispatch(cb, plan.runCount, 1, 1);
-            VkMemoryBarrier post{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
-            post.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT; post.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
-            vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT,
-                                 0, 1, &post, 0, nullptr, 0, nullptr);
-            cullScope.end();
-        }
-
-        // Begin the LOAD pass (dynamic rendering) — all attachments LOAD, no clear values.
-        MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Props");
-        t1_begin_pass(plan.views, plan.depthView, plan.depthFmt, cb, static_cast<uint32_t>(plan.w), static_cast<uint32_t>(plan.h));
-
-        VkViewport vp{plan.jx, plan.jy, static_cast<float>(plan.w), static_cast<float>(plan.h), 0.0f, 1.0f};
-        VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(plan.w), static_cast<uint32_t>(plan.h)}};
-        vkCmdSetViewport(cb, 0, 1, &vp);
-        vkCmdSetScissor(cb, 0, 1, &scissor);
-
-        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, plan.playout, 0, 1, &plan.set, plan.nDyn, plan.dynOffsets);
-        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, plan.playout, 1, 1, &plan.groundSet, 4, plan.groundOffsets);
-        VkDeviceSize vboOff = 0;
-        vkCmdBindVertexBuffers(cb, 0, 1, &plan.vbo, &vboOff);
-        vkCmdBindIndexBuffer(cb, plan.ibo, 0, VK_INDEX_TYPE_UINT32);
-
-        // One indirect-count call per list; maxDrawCount is clamped to the device limit (a loop-wrap hazard on AMD when it is UINT32_MAX).
-        auto drawList = [&](VkPipeline pipe, uint32_t first, uint32_t n, uint32_t listWord) {
-            if (n == 0) return;
-            mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipe);
-            const PropPacketPush push{plan.pktAddr, first, 0};
-            vkCmdPushConstants(cb, plan.playout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(push), &push);
-            mc2::battlebench::add(mc2::battlebench::DrawProps);
-            vkCmdDrawIndexedIndirectCount(cb, plan.cmdBuf, kPropCmdHeader + static_cast<VkDeviceSize>(first) * sizeof(PropDrawCmd), plan.cmdBuf,
-                                          static_cast<VkDeviceSize>(listWord) * sizeof(uint32_t), (std::min)(n, plan.drawLimit), sizeof(PropDrawCmd));
-        };
-        // Opaque core first so early Z rejects the hidden fragments of everything after it.
-        drawList(plan.opaquePipe, plan.listStart[kListOpaque], plan.counts[kListOpaque], kListOpaque);
-        drawList(plan.corePipe, plan.listStart[kListCore], plan.counts[kListCore], kListCore);
-        drawList(plan.fringePipe, plan.listStart[kListFringe], plan.counts[kListFringe], kListFringe);
-
-        mc2vk::dynrender::end(mc2vk::engineVulkanContextNoWait(), cb);
-        gpuScope.end();
-        vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_SpColor);
-        return vkEndCommandBuffer(cb) == VK_SUCCESS;
-    };
+    recordOut = [plan](VkCommandBuffer cb) -> bool { return record_props_cmds(plan, cb); };
     typeRunsOut = s->cachedTypeRuns;
     return true;
 }
