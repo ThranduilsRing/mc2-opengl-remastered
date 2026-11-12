@@ -112,7 +112,19 @@ TEST_CASE("present wait: bounded, pumping every slice, lock held on return") {
     CHECK(lock.owns_lock());
     CHECK(took >= 40ms);
     CHECK(took < 2s);
-    CHECK(pumps >= 5);
+    // A requested 2ms wait may sleep a full Windows timer tick. The deadline
+    // bounds the wait, not the number of times this thread gets scheduled.
+    CHECK(pumps >= 1);
+
+    // Exercise repeated slices independently of the timer resolution. Each
+    // callback must run unlocked; the fifth pump satisfies the predicate.
+    pumps = 0;
+    CHECK(d::waitPumping(lock, cv, [&] { return pumps == 5; }, [&] {
+        CHECK_FALSE(lock.owns_lock());
+        ++pumps;
+    }, 5s, 2ms));
+    CHECK(pumps == 5);
+    CHECK(lock.owns_lock());
 }
 
 TEST_CASE("present wait: an already-true predicate returns without pumping") {
