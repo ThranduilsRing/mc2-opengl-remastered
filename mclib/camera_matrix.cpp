@@ -422,6 +422,7 @@ void Camera::setCameraOrigin (void)
 		bool isOKView = false;
 		float localAltitude = cameraAltitude;
 		float localAngle = projectionAngle;
+		glm::vec3 rotationVector(-localAngle, 0.0f, cameraRotation);
 		while (!isOKView)
 		{
 			cameraDirection.range = localAltitude;
@@ -478,6 +479,7 @@ void Camera::setCameraOrigin (void)
 					float horiz = sqrtf(dx*dx + dy*dy);
 					float newPitch = (horiz > 0.1f) ? atan2f(dz, horiz) : (dz < 0.0f ? -1.5707f : 0.0f);
 					mc2::math::buildRotation(cameraOrigin, mc2::math::Euler(newPitch, cameraDirection.yaw, 0.0f));
+					rotationVector.x = newPitch / DEGREES_TO_RADS;
 				}
 			}
 
@@ -485,6 +487,9 @@ void Camera::setCameraOrigin (void)
 			mc2::math::buildTranslation(cameraOrigin, translation);
 			physicalPos = translation;
 		}
+		// CPU angular culls must use the same terrain-clamped pitch as the view.
+		cameraFrame.reset_to_world_frame();
+		cameraFrame.rotate(rotationVector);
 	}
 
 	//------------------------------------------------------------
@@ -579,10 +584,6 @@ void Camera::calculateProjectionConstants (void)
 		verticalSphereClipConstant = tan(screenResolution.y * oneOverResMag * camera_fov * 0.7071f * DEGREES_TO_RADS);
 		horizontalSphereClipConstant = tan(screenResolution.x * oneOverResMag * camera_fov * 0.7071f * DEGREES_TO_RADS);
 		
-		cameraFrame.reset_to_world_frame();
-		
-		glm::vec3 rotationVector(-projectionAngle,0.0f,cameraRotation);
-		cameraFrame.rotate(rotationVector);
 	}
 
 	setOrthogonal();		//Setup the camera Clip matrix.
