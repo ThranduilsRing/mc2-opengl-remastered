@@ -5,7 +5,7 @@
       "hooks": [{"type": "command", "command": "py -3 A:/Games/mc2-ops/hooks/lane_pretool.py", "timeout": 5}]
     }],
     "UserPromptSubmit": [{
-      "hooks": [{"type": "command", "command": "py -3 .claude/hooks/memory_recall.py", "timeout": 5}]
+      "hooks": [{"type": "command", "command": "py -3 A:/Games/mc2-main/.claude/hooks/memory_recall.py", "timeout": 5}]
     }]
   }
 }
