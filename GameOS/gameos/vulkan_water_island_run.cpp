@@ -9,7 +9,6 @@
 #include <cmath>
 #include <type_traits>
 #include "mc2fmt.h"
-#include "utils/vec.h"   // inverseMat4
 #include "vulkan_shadow_island_live.h"   // the bake mask
 #include "vulkan_mover_shadow.h"
 #include "gos_terrain_lod_chunk.h"   // gos_WaterShoreMode
@@ -34,8 +33,7 @@ bool vk_water_detail::record_reflection(WaterIsland* s, VkCommandBuffer cb, bool
     // Keep the statically used water sampler valid even in Off/Sky-only mode.
     if (!s->reflectionInitialized) {
         barrier(s->reflectionImage.get(),VK_IMAGE_ASPECT_COLOR_BIT,VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_GENERAL,
-            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,0,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-            VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT);
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,0,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,VK_ACCESS_SHADER_READ_BIT);
         s->reflectionInitialized=true;
     }
     if (!enabled) return true;
@@ -285,11 +283,6 @@ extern "C" int mc2_vk_water_island_run(
             && WaterStream::NativeWaterInFrustum(*nat,shoreSdf);
         vsLocal.p3[1] = shoreSdf ? 1.0f : 0.0f;
         std::memcpy(base, &vsLocal, sizeof(WaterVsParams));
-        {   // the reflection compute reads inverse(worldToClip) from here instead of inverting per thread
-            mat4 clip; std::memcpy(&clip, vsLocal.worldToClipGL, sizeof(vsLocal.worldToClipGL));
-            const mat4 inv = inverseMat4(clip);
-            std::memcpy(base + sizeof(WaterVsParams), &inv, 16 * sizeof(float));
-        }
         // RUNG-6.5 fail-soft: if the real HDRI bytes aren't imported (dummy
         // bound), force u_waterHdriLod (f2.w, offset 60) to -1 so the FS
         // takes the SH-L2 fallback -- same semantics as GL !isHdriReady().
@@ -398,10 +391,7 @@ extern "C" int mc2_vk_water_island_run(
             wf.frameCos = nat->frameCos; wf.waterElevation = nat->waterElevation; wf.shoreExt = nat->shoreExt;
             wf.mapSide = nat->mapSide; wf.biasLegacy = nat->biasLegacy;
             if (reflectThisFrame) {
-                wf.reflectionW=static_cast<uint32_t>(w); wf.reflectionH=static_cast<uint32_t>(h);   // full-res reflection target
-                wf.reflectionGroupsX=(wf.reflectionW+7)/8;
-                wf.reflectionGroupsY=(wf.reflectionH+7)/8;
-                mc2vk::gpuprof::noteWaterReflection(wf.reflectionW, wf.reflectionH);
+                mc2vk::gpuprof::noteWaterReflection(static_cast<uint32_t>(w), static_cast<uint32_t>(h));
             }
             if (!s->native->record(cb, par, snap, wf, false)) {
                 // record() fails only before it records a command: close the begun buffer so it is never left open, then fail soft.

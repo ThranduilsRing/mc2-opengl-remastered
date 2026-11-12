@@ -27,24 +27,7 @@ bool init_reflection(WaterIsland* s) {
     view.image=s->planarDepthImage.get(); view.format=image.format;
     view.subresourceRange.aspectMask=VK_IMAGE_ASPECT_DEPTH_BIT;
     if (!mc2vk::create(s->planarDepthView,s->device,[&](VkImageView* out){return vkCreateImageView(s->device,&view,nullptr,out);})) return false;
-    view.image=s->sDepthRes->image.get(); view.format=s->sDepthRes->format;
-    view.subresourceRange.aspectMask=VK_IMAGE_ASPECT_DEPTH_BIT;
-    if (!mc2vk::create(s->reflectionDepthView,s->device,[&](VkImageView* out){return vkCreateImageView(s->device,&view,nullptr,out);})) return false;
-    VkSamplerCreateInfo sampler{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
-    sampler.magFilter=sampler.minFilter=VK_FILTER_NEAREST;
-    sampler.addressModeU=sampler.addressModeV=sampler.addressModeW=VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    if (!mc2vk::create(s->reflectionSampler,s->device,[&](VkSampler* out){return vkCreateSampler(s->device,&sampler,nullptr,out);})) return false;
-    const auto layout=s->dsl.get();
-    VkPipelineLayoutCreateInfo pl{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
-    pl.setLayoutCount=1; pl.pSetLayouts=&layout;
-    if (!mc2vk::create(s->reflectionLayout,s->device,[&](VkPipelineLayout* out){return vkCreatePipelineLayout(s->device,&pl,nullptr,out);})) return false;
-    s->reflectionShader=mc2vk::OwnedShaderModule(s->device,load_spv(s->device,spv_dir()+"water_reflection.comp.spv"));
-    if (!s->reflectionShader) return false;
-    VkComputePipelineCreateInfo pipeline{VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO};
-    pipeline.stage.sType=VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    pipeline.stage.stage=VK_SHADER_STAGE_COMPUTE_BIT; pipeline.stage.module=s->reflectionShader.get(); pipeline.stage.pName="main";
-    pipeline.layout=s->reflectionLayout.get();
-    return mc2vk::create(s->reflectionPipe,s->device,[&](VkPipeline* out){return mc2vk::infra::compute(s->device,VK_NULL_HANDLE,1,&pipeline,nullptr,out);});
+    return true;
 }
 
 // COPY-ONCE HDRI equirect import (not per frame) from the engine's CPU copy, in gos_hdri.cpp's two forms:

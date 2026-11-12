@@ -2357,6 +2357,7 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
 }
 extern "C" int mc2_vk_color_prop_island_run(int w, int h) { return run_props(w, h); }
 
+} // anonymous namespace
 namespace mc2::waterplanar {
 struct PlanarProps : ColorPropIsland { std::vector<GpuStaticPropInstance> reflectedInstances; };
 bool prepareProps(std::unique_ptr<mc2vk::IslandState>& state, const Target& target, mc2vk::VulkanContext::RecordFn& record) {
@@ -2379,6 +2380,7 @@ bool prepareProps(std::unique_ptr<mc2vk::IslandState>& state, const Target& targ
 }
 }
 
+namespace {
 extern "C" void mc2_vk_color_prop_island_late_fringe() {
     auto* s = parkedIsland();
     if (!s || s->disabled || s->lateCount == 0) return;

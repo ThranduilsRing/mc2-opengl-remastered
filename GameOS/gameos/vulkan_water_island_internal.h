@@ -97,8 +97,7 @@ struct WaterVsParams {
     float p2[4];             // uvOffsetY, fudge, alphaEdgeByte, alphaMiddleByte      (off 96)
     float p3[4];             // alphaDeepByte, shoreFlat, shoreDepthK, pad            (off 112)
 };
-// The VS-params UBO the island stages: WaterVsParams (what water_geom.vert reads) then inverse(worldToClip) at offset 128 (water_reflection.comp).
-constexpr size_t kWaterVsUboSize = sizeof(WaterVsParams) + 16 * sizeof(float);
+constexpr size_t kWaterVsUboSize = sizeof(WaterVsParams);
 static_assert(sizeof(WaterVsParams) == 128, "WaterVsParams std140 size (water_geom.vert)");
 static_assert(offsetof(WaterVsParams, p0) == 64 && offsetof(WaterVsParams, p1) == 80 &&
               offsetof(WaterVsParams, p2) == 96 && offsetof(WaterVsParams, p3) == 112, "WaterVsParams offsets");
@@ -203,11 +202,7 @@ struct WaterIsland : mc2vk::IslandState {
     // Independent full-resolution reverse-Z depth; never aliases main scene depth.
     mc2vk::OwnedImage planarDepthImage;
     mc2vk::OwnedImageView planarDepthView;
-    mc2vk::OwnedImageView reflectionView, reflectionDepthView;
-    mc2vk::OwnedSampler reflectionSampler;
-    mc2vk::OwnedShaderModule reflectionShader;
-    mc2vk::OwnedPipelineLayout reflectionLayout;
-    mc2vk::OwnedPipeline reflectionPipe;
+    mc2vk::OwnedImageView reflectionView;
     bool reflectionInitialized = false;
     bool planarDepthInitialized = false;
     bool mapHasWater = true;
