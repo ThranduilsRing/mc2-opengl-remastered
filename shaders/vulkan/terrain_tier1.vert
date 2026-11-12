@@ -119,23 +119,23 @@ void main() {
                 int fyC = uP.blockOriginY + localOffset.y;
                 fxV = clamp((uP.blockOriginX + c0) * 4, 0, u_visualSide - 1);
                 int fyVc = clamp(fyC * 4, 0, u_visualSide - 1);
-                hv0 = heightsFine[fxV + fyVc * u_visualSide];
+                hv0 = hiresFineAt(fxV, fyVc);
                 int fxV1 = clamp((uP.blockOriginX + c1) * 4, 0, u_visualSide - 1);
-                hv1 = heightsFine[fxV1 + fyVc * u_visualSide];
+                hv1 = hiresFineAt(fxV1, fyVc);
             } else {
                 int fxC = uP.blockOriginX + localOffset.x;
                 int fxVc = clamp(fxC * 4, 0, u_visualSide - 1);
                 int fyV0 = clamp((uP.blockOriginY + c0) * 4, 0, u_visualSide - 1);
-                hv0 = heightsFine[fxVc + fyV0 * u_visualSide];
+                hv0 = hiresFineAt(fxVc, fyV0);
                 int fyV1 = clamp((uP.blockOriginY + c1) * 4, 0, u_visualSide - 1);
-                hv1 = heightsFine[fxVc + fyV1 * u_visualSide];
+                hv1 = hiresFineAt(fxVc, fyV1);
             }
             hv = mix(hv0, hv1, t2);
         } else {
             //PORT-BEGIN:visualDisplaceFar
             fxV = clamp(mapX * 4, 0, u_visualSide - 1);
             fyV = clamp(mapY * 4, 0, u_visualSide - 1);
-            hv = heightsFine[fxV + fyV * u_visualSide];
+            hv = hiresFineAt(fxV, fyV);
         }
         h = mix(h, hv, clamp(u_visualDisplaceFar, 0.0, 1.0));
         //PORT-END:visualDisplaceFar

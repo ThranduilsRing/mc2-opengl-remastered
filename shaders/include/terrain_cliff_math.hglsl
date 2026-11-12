@@ -1,0 +1,15 @@
+// Scalar cliff rules shared with the offline terrain lighting tests.
+#ifndef TERRAIN_CLIFF_MATH_HGLSL
+#define TERRAIN_CLIFF_MATH_HGLSL
+float cliffDirectShare(float nDotL, float ambient) {
+    return nDotL <= 0.0 ? 0.0 : nDotL / (nDotL + ambient);
+}
+float cliffFilteredHeight(float center, float cardinal, float diagonal, float rise) {
+    // A 64-wu binomial footprint rejects the bake's 128-wu source-grid ripple.
+    // Flat ground and gentle slopes keep their exact authored heights.
+    float t = (rise - 24.0) / 40.0;
+    t = t < 0.0 ? 0.0 : (t > 1.0 ? 1.0 : t);
+    float w = t * t * (3.0 - 2.0 * t);
+    return center + w * ((4.0 * center + 2.0 * cardinal + diagonal) / 16.0 - center);
+}
+#endif

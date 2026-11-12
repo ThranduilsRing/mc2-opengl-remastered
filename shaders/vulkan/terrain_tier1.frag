@@ -60,9 +60,9 @@ const float MATV_WU_PER_TILE  = 768.0;  // MAT_WORLD_UNITS_PER_TILE (terrain_lod
 layout(set = 0, binding = 10, std430) readonly buffer TerrainVisualHeightBuf {
     float heightsFine[];
 };
+#include "include/terrain_cliff_surface.glsl"
 float mv_fineH(ivec2 p) {
-    p = clamp(p, ivec2(0), ivec2(uT.visualSide - 1));
-    return heightsFine[p.x + p.y * uT.visualSide];
+    return cliffVisualHeight(p);
 }
 vec2 mv_fineGrad(ivec2 p) {
     return vec2(-(mv_fineH(p + ivec2(1, 0)) - mv_fineH(p - ivec2(1, 0))),
@@ -462,6 +462,11 @@ void main() {
         // Equal normals give exactly one, including when detail is disabled.
         // Bound the grazing/back-facing ratio rather than re-lighting macro relief.
         float normalLight = clamp(max(dot(N, lightDir), normalLightFloor) / macroNdotL, 0.5, 1.5);
+        // The cliff burnin already carries ambient. Only its sun share receives
+        // another directional modulation; a back-facing face has no sun to occlude.
+        float cliffShare = pureConcrete ? 0.0 : smoothstep(0.85, 0.55, abs(baseNormal.z));
+        float cliffSun = cliffDirectShare(dot(macroN, lightDir), normalLightFloor);
+        normalLight = mix(normalLight, mix(1.0, normalLight, cliffSun), cliffShare);
 
         // CONCRETE-ROAD-PBR-DETAIL: detail only (AO, relative sun shading, sheen), MC2 colour stays. Solid slabs only: those
         // fragments skip the material detail-normal fetches, so the two concrete fetches replace them (no net fetch increase).
@@ -475,7 +480,7 @@ void main() {
         vec3 shadowN=baseNormal;
         float staticS=uT.enableShadows!=0?terrainStaticShadow(v_worldPos):1.0;
         float dynS=terrainDynamicShadow(v_worldPos,shadowN);
-        float shadow = min(staticS, dynS);
+        float shadow = min(mix(staticS, mix(1.0, staticS, cliffSun), cliffShare), dynS);
         // CSM-BLACKOUT-RECON-1: one-shot debug viz (env MC2_SHADOW_DEBUG_MODE=N).
         // Resolve before local lighting so the debug inputs do not stay live through its loop. Bypasses the normal composite so each channel can be inspected in
         // isolation on a live capture. No effect when kCsmDebugMode==0.
