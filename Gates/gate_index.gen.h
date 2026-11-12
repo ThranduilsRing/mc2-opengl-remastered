@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 421;
+inline constexpr std::size_t kGateCount = 420;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -118,7 +118,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_FPS_CAP", Kind::Int, Rule::Prefix, {}},
     {"MC2_FRAMECTX_MISMATCH_FATAL", Kind::Bool, Rule::Presence, {}},
     {"MC2_FRAMEGRAPH_DRYRUN", Kind::Bool, Rule::Lead1, {}},
-    {"MC2_FRAMEGRAPH_EXECUTOR", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_FRAME_JOBS", Kind::Bool, Rule::DefOnAtoiNZ, {}},
     {"MC2_FRAME_JOBS_BATCH", Kind::Int, Rule::Prefix, {}},
     {"MC2_FRAME_JOBS_WORKERS", Kind::Int, Rule::Prefix, {}},

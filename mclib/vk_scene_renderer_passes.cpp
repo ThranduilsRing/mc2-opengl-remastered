@@ -49,9 +49,7 @@ void mc2::VkSceneRenderer::renderListsDynamicShadowPass (RenderSubmissions& subm
 			movers=registryMovers;
 			set.appendMoverLeaves(movers,g_mc2FrameCounter.load(std::memory_order_relaxed));
 			mc2shadow::moverPropFeed().append(movers,g_mc2FrameCounter.load(std::memory_order_relaxed)); }
-			render_contract::executorOwnBeginTopLevel(render_contract::PassIdentity::ShadowCaster,"renderLists_unionMovers");
 			{ ZoneScopedN("DSP.RunMovers"); mc2_vk_shadow_island_run_movers(rows,sun,movers.data(),static_cast<unsigned int>(movers.size())); }
-			render_contract::executorOwnEndTopLevel(render_contract::PassIdentity::ShadowCaster,"renderLists_unionMovers");
 		}
 		{ ZoneScopedN("DSP.SubmitFrame"); mc2_vk_shadow_island_submit_frame(); }
 		g_numShadowShapes.store(0,std::memory_order_relaxed);
@@ -250,10 +248,9 @@ void mc2::VkSceneRenderer::renderListsGpuStaticProps (RenderSubmissions& submiss
 		// The two opaque flush UNITS below — StaticProp BatcherFlush (+Pass_SpColor
 		// timer) and the Mech block (+Pass_Mechs timer) — are the one legal adjacent
 		// swap the legal-reorder oracle proved. StaticProp PREP + compute_dispatch
-		// (above, inside Render.GpuStaticProps) must stay BEFORE both flushes in
-		// EITHER path; only the two flush units swap order. The OpaqueObject
-		// begin(executorOwnBeginTopLevel @ Render.3DObjects)/end wrapper brackets
-		// both regardless. Gate OFF -> today's order verbatim (byte-identical).
+		// (above, inside Render.GpuStaticProps) must stay BEFORE both flushes.
+		// Only the two flush units swap order.
+		// Gate OFF -> today's order verbatim (byte-identical).
 		// Gate ON -> mech flush, then static-prop flush.
 		static const bool s_reorderSpMech = false;
 
@@ -281,13 +278,6 @@ void mc2::VkSceneRenderer::renderListsGpuStaticProps (RenderSubmissions& submiss
 			// state established by terrain/static-prop passes above).
 			render_contract::noteRenderPass(render_contract::PassIdentity::OpaqueObject,
 			                               "GpuMechBatcher_flush(submit)");
-			// APPLY-STATE-MECHOPAQUE-1: when MC2_FRAMEGRAPH_EXECUTOR is ON and a
-			// kTopLevelStateDesc row exists, the executor records the MechOpaque pass here
-			// (at the real flush call site, NOT the begin seam which wraps non-mech draws too).
-			if (render_contract::isTopLevelExecutorEnabled() &&
-			    RenderCore::framegraph::findTopLevelStateDesc(RenderCore::RenderPassId::MechOpaque) != nullptr) {
-				GpuMechBatcher::instance().executorApplyMechOpaqueState();
-			}
 			// VK-P14 MECH TIER-1: flush() BUILDS the instance/bone/run feeds (CPU only); the island
 			// then co-writes the skinned mechs IN-PLACE into the shared GBuffer. Fail-soft (island 0)
 			// = mechs dropped this frame, no corruption.
@@ -309,8 +299,6 @@ void mc2::VkSceneRenderer::renderListsGpuStaticProps (RenderSubmissions& submiss
 			runSpFlushUnit();
 			runMechFlushUnit();
 		}
-		render_contract::executorOwnEndTopLevel(render_contract::PassIdentity::OpaqueObject,
-		                                        "renderLists_GpuMechBatcher_flush");
 	}
 }
 

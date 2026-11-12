@@ -36,8 +36,6 @@
 #include "../../mclib/render_contract.h" // [RENDER_PASS v1] noteRenderPass
 extern "C" void mc2_vk_shadow_island_invalidate_geometry();  // vulkan_shadow_island_live.cpp
 extern "C" void mc2_vk_color_prop_island_invalidate_geometry();  // vulkan_color_prop_island.cpp
-#include "../../RenderCore/top_level_pass_executor.h" // APPLY-STATE-STATICPROP-1: findTopLevelStateDesc
-#include "../../RenderCore/frame_executor.h"          // PER-PASS-APPLY-COUNTERS-1: ApplyPassId
 #include "gameos.hpp"
 #include "tgl.h"  // TG_MultiShape and light values
 #include "Gates/gate_cold.h"  // typed gate registry: get<>(), isSet<>(), str<>()
@@ -228,12 +226,6 @@ struct ObjBatcherCounters {
 void accumulateMonotonicAndMaybeEmit(bool forceEmit);
 }  // namespace gos_static_prop_batcher_detail
 
-// APPLY-STATE-STATICPROP-1: third top-level scene-pass apply-state. Forward-decl of
-// the cross-TU apply-state counter bump (defined in gos_postprocess.cpp). Bumps the
-// SAME g_applyStatePasses that the PostProcess apply-state islands + the TerrainDecal/
-// TerrainOverlay top-level applies use, so executor_apply_state_passes aggregates with
-// no double-count (single increment per apply).
-extern "C" void mc2_framegraph_executor_bump_apply_state(unsigned id);
 
 namespace gos_static_prop_batcher_detail {}
 using namespace gos_static_prop_batcher_detail;

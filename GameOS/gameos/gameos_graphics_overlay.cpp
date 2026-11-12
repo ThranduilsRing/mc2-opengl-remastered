@@ -109,15 +109,6 @@ void gosRenderer::drawDecals()
     decalBatch_.draws.clear();
 }
 
-void gosRenderer::executorApplyTerrainDecalState()
-{
-    // Native overlay pipelines own their render state.
-}
-
-void gosRenderer::executorApplyTerrainOverlayState()
-{
-    // Native overlay pipelines own their render state.
-}
 
 void __stdcall gos_PushTerrainOverlay(const WorldOverlayVert* verts3, unsigned int texHandle) {
     // PR2b Stage 0b probe — counts every entry into the producer regardless

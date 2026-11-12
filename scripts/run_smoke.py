@@ -751,7 +751,7 @@ def main():
                          "child and did work (reads its proof-counter from "
                          "debug_state/latest_render_state.json; exits non-zero if "
                          "counter is 0). Repeatable. Known gates: "
-                         "MC2_FRAMEGRAPH_EXECUTOR, MC2_FRAMEGRAPH_DRYRUN.")
+                         "MC2_FRAMEGRAPH_DRYRUN.")
     ap.add_argument("--skip-preflight-cache", action="store_true",
                     help="SMOKE-LATENCY-WINS-1: skip the preflight result "
                          "cache and always re-run the coherence/BOM checks "
@@ -2011,7 +2011,6 @@ def main():
     # Gate → dotted counter path in latest_render_state.json["frame_graph"].
     # Counter must be > 0 to prove the gate reached the child and did work.
     _REQUIRE_GATE_COUNTERS: dict[str, str] = {
-        "MC2_FRAMEGRAPH_EXECUTOR": "executor_owned_passes",
         "MC2_FRAMEGRAPH_DRYRUN": "frame_graph_dryrun.frames",
     }
     if args.require_gate:

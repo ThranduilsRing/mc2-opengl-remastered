@@ -63,9 +63,7 @@
 #include "../../mclib/camera_frustum_math.h"  // CAMERA-FRUSTUM-HARNESS-1 pure rect/frustum math
 #include "../../mclib/render_contract.h"      // [RENDER_PASS v1] noteRenderPass
 #include "../../mclib/mc2_audit.h"            // META-FIX INFRA-1 gated audit emitter
-#include "RenderCore/top_level_pass_executor.h" // APPLY-STATE-TERRAINDECAL-1: findTopLevelStateDesc
 #include "RenderCore/ResolutionContract.h"     // META-FIX design D: MC2_RES_ASSERT audit
-#include "../../RenderCore/frame_executor.h"     // PER-PASS-APPLY-COUNTERS-1: ApplyPassId
 #include "stuff/stuff.hpp"                     // Stuff::Matrix4D for gos_SetWorldToClipGL (full chain required; matrix.hpp alone creates circular include ordering)
 
 // [B1 C16] (diagnostic) gosFX heap + child accumulation counters; env-gated on
@@ -308,11 +306,6 @@ extern "C" void mc2_ui_pass_note_draw(unsigned kind);
 
 
 
-// APPLY-STATE-TERRAINDECAL-1: forward-decl of the cross-TU apply-state counter bump
-// (defined in gos_postprocess.cpp). Bumps the SAME g_applyStatePasses that the
-// PostProcess apply-state islands use, so executor_apply_state_passes aggregates
-// top-level + sub-stage applies without a separate gauge.
-extern "C" void mc2_framegraph_executor_bump_apply_state(unsigned id);
 
 
 extern gosRenderer* g_gos_renderer;

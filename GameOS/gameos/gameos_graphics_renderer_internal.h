@@ -446,21 +446,6 @@ class gosRenderer {
         void pushDecalTri(const WorldOverlayVert* verts3, unsigned int texHandle);
         void drawTerrainOverlays();
         void drawDecals();
-        // APPLY-STATE-TERRAINDECAL-1: first top-level scene-pass apply-state.
-        // When MC2_FRAMEGRAPH_EXECUTOR is ON, the executor pre-applies the
-        // TerrainDecal pipeline (the sole entry render-state of drawDecals) and
-        // sets decalStateAppliedByExecutor_; drawDecals() then skips its own
-        // applyPipeline (one-shot reset). Gate OFF -> flag stays false -> body
-        // applies as before -> byte-identical.
-        void executorApplyTerrainDecalState();
-        bool decalStateAppliedByExecutor_ = false;
-        // APPLY-STATE-TERRAINOVERLAY-1: second top-level scene-pass apply-state.
-        // Same pattern as decal — when MC2_FRAMEGRAPH_EXECUTOR is ON the executor
-        // pre-applies the TerrainOverlay pipeline (the sole entry render-state of
-        // drawTerrainOverlays) and sets overlayStateAppliedByExecutor_; the body
-        // then skips its own applyPipeline (one-shot). Gate OFF -> byte-identical.
-        void executorApplyTerrainOverlayState();
-        bool overlayStateAppliedByExecutor_ = false;
         // Slice A — draw the mission-static cement-overlay bake. Reproduces
         // drawTerrainOverlays()'s exact state/shader/uniforms/VAO but draws
         // the passed static VBO with per-overlayTexId ranges and does NOT

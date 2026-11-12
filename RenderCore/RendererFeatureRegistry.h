@@ -427,10 +427,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "FORCE-ALL-VISIBLE-1: mark every unit (mechs, ground vehicles, elementals, all teams) fully visible and sensed, bypassing sensor / contact gating so nothing...",
     },
     {
-        "MC2_FEATURE_FRAMEGRAPH_EXECUTOR", "MC2_FRAMEGRAPH_EXECUTOR", EnvVarKind::Feature, true,
-        "RENDER-FRAME-GRAPH arc: top-level frame-graph executor ownership of pass begin/end (mclib/render_contract.cpp, GameOS/gameos/gos_postprocess.cpp).",
-    },
-    {
         "MC2_FX_DEFS", nullptr, EnvVarKind::Feature, true,
         "Authored effect sidecars overlay the stock catalog; absent definitions are a no-op.",
     },

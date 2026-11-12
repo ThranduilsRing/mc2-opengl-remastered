@@ -45,7 +45,6 @@ Split commit: `f0521b300`.
 | Piece | What it holds |
 |---|---|
 | `gos_postprocess.cpp` | keeps the singleton, setters, init, scene begin/end and the viewmode/sky accessors |
-| `gos_postprocess_executor.cpp` | gosPostProcess: frame-graph executor ownership accessors, apply-state wrappers and counters. |
 | `gos_postprocess_gates.cpp` | gosPostProcess: shader diagnostics and cloud control. |
 | `gos_postprocess_skybox.cpp` | Native HDRI sky submission; the terrain pass draws it behind its depth. |
 | `gos_postprocess_targets.cpp` | Native scene-target ownership. Islands, presentation and explicit readbacks share these images; no parallel texture or framebuffer allocations exist. |

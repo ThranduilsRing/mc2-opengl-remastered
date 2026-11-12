@@ -37,9 +37,7 @@
 #include "gos_object_draw_mvp.h"  // RENDER-VIEW-CURRENCY-1 currency-checked accessor
 #include "Gates/gate.h"
 #include "../../RenderCore/MaterialGpu.h"
-#include "../../RenderCore/frame_executor.h"     // APPLY-STATE-MECHOPAQUE-1: ApplyPassId
 
-extern "C" void mc2_framegraph_executor_bump_apply_state(unsigned id);
 
 // Key: (Mech3DAppearanceType* or a vehicle TG_TypeMultiShape*, lod) -> s_typeLodRecords index
 struct TypeLodKey {

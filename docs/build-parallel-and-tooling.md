@@ -149,16 +149,6 @@ stale citations led to deleting the wrong code range at least twice this arc
 (`tools/repo_intel/repo_query.py`) for symbol-level drift and re-verify cited
 line ranges by hand before any recon-derived deletion.
 
-### `get_executor_health()` (render-state MCP)
-
-Returns per-frame frame-graph executor metrics in one call:
-`executor_owned_wrappers`, `executor_validated_top_level_passes`,
-`executor_apply_state_passes`, `executor_scheduled_passes`,
-`executor_validation_failures`, `executor_skipped_deferred_passes`. Use after
-deploying an executor slice with the engine running (`MC2_DEBUG_STATE_DUMP=1`)
-to confirm `validation_failures=0` and `owned_wrappers` matches the expected
-island count. Faster than parsing raw diagnostic JSONL manually.
-
 ---
 
 ## 5. Standing rules learned from the frame-graph arc

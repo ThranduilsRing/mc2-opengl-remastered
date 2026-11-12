@@ -170,7 +170,6 @@ Present-level transient failures (zero surface extent while minimized, `NATIVE_W
 
 ## Frame-graph executor + backend-iface seam (RENDER-FRAME-GRAPH ARC)
 
-- `MC2_FRAMEGRAPH_EXECUTOR` ? default ON native pass validation; `=0` disables it. Pass ordering remains unchanged.
 - `MC2_RENDER_PASS_ORDER` ? default ON resource-order audit; `=0` disables it.
 - `MC2_SNAPSHOT_MECH_EXTRACT` ? default ON observe-only mech snapshot; `=0` disables it.
 - `MC2_VIEWMODE_FRAMEWORK` ? default ON presentation controls, initially Visual; `=0` disables them.

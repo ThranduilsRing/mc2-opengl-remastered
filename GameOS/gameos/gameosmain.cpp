@@ -198,15 +198,6 @@ extern "C" {
     __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 }
 #endif
-
-
-// FRAME-GRAPH-EXECUTOR-ISLAND-1: pre/post-call validation wrappers for the
-// PostProcess island.  Defined in gos_postprocess.cpp.  When gate
-// MC2_FRAMEGRAPH_EXECUTOR is unset they are early-return no-ops (byte-identical).
-
-
-
-
 static bool g_exit = false;
 static bool g_focus_lost = false;
 
@@ -659,12 +650,7 @@ static void draw_screen( void )
         // inner stages call each other, and GL_TIME_ELAPSED cannot nest.
         render_contract::beginPassScope(render_contract::PassIdentity::PostProcess,
                                         "gosPostProcess_endScene");
-        // FRAME-GRAPH-EXECUTOR-ISLAND-1: validate→call-unchanged→validate.
-        // When MC2_FRAMEGRAPH_EXECUTOR is unset both wrappers are no-ops;
-        // pp->endScene() is called unconditionally (byte-identical OFF path).
-        mc2_executor_own_begin_postprocess(pp);
         pp->endScene();
-        mc2_executor_own_end_postprocess(pp);
         render_contract::endPassScope(render_contract::PassIdentity::PostProcess,
                                       "gosPostProcess_endScene");
     }

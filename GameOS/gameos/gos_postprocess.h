@@ -34,13 +34,6 @@ public:
     const struct HdriCpuImage* getHdriCpu() const { return hdriCpu_.get(); }
     void ensureDefaultSky();
 
-    // FRAME-GRAPH-EXECUTOR-ISLAND-1: read-only accessors used by the executor
-    // wrapper (executorOwnBegin / executorOwnEnd) in gos_postprocess.cpp to
-    // validate pre/postconditions without touching private members from outside
-    // the class. These expose only what the executor's IslandContract checks.
-    bool executorSceneColorReady()    const;   // actual native color image readiness
-    bool executorSceneHasTerrain()       const { return sceneHasTerrain_; }
-
     float  getSkyYaw()    const { return skyYaw_; }    // WATER-HDRI-REFL-1: cached per-frame
 
     // HDRI-SKY-NUMBER-1: reload the HDRI texture to match theSkyNumber from the
