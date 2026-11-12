@@ -2137,6 +2137,10 @@ def shader_inventory_problems(source_root, published):
     with tempfile.TemporaryDirectory(prefix='shader-inventory-') as tmp:
         if (Path(published) / 'shaders').is_dir():
             shutil.copytree(Path(published) / 'shaders', Path(tmp) / 'shaders')
+        # Ownership is required to retire unchanged shader sources, just as in a real deploy.
+        manifest = Path(published) / MANIFEST_NAME
+        if manifest.is_file():
+            shutil.copyfile(manifest, Path(tmp) / MANIFEST_NAME)
         for rel, src in shipped.items():
             (Path(tmp) / rel).parent.mkdir(parents=True, exist_ok=True)
             unlink_for_replace(Path(tmp) / rel)

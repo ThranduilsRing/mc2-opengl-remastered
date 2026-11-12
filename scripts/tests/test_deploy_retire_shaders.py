@@ -84,3 +84,31 @@ def test_retire_unowned_drops_rows_missing_from_the_new_manifest(tmp_path):
     assert (target / "edited.txt").is_file()
     assert not (target / "shaders" / "vulkan" / "dead.frag.spv").exists()
     assert (target / "data" / "keep.txt").is_file()
+
+
+def test_shader_inventory_honours_manifest_prune(tmp_path, monkeypatch):
+    """W152: unchanged owned water_reflection.comp retires; modified/unowned sources remain extras."""
+    source = tmp_path / "source"
+    source.mkdir()
+    build = _build(source)
+    live = build / "shaders" / "vulkan" / "live.frag.spv"
+    rel = "shaders/vulkan/water_reflection.comp"
+    shipped = [(str(live), "shaders/vulkan/live.frag.spv", "shader")]
+    monkeypatch.setattr(dp, "enumerate_payload", lambda *args, **kwargs: shipped)
+    for ownership in ("unchanged", "modified", "unowned"):
+        target = tmp_path / ownership
+        retired = target / rel
+        retired.parent.mkdir(parents=True)
+        retired.write_bytes(b"retired water reflection shader")
+        if ownership != "unowned":
+            dp.write_manifest(str(target), {rel: (dp.sha256_file(retired), retired.stat().st_size)}, "old-head")
+        if ownership == "modified":
+            retired.write_bytes(b"owner-edited water reflection shader")
+        before = {p.relative_to(target): p.read_bytes() for p in target.rglob("*") if p.is_file()}
+        problems = dp.shader_inventory_problems(source, target)
+        if ownership == "unchanged":
+            assert problems == []
+        else:
+            assert len(problems) == 1
+            assert f"['{rel}'] extra, [] missing" in problems[0]
+        assert {p.relative_to(target): p.read_bytes() for p in target.rglob("*") if p.is_file()} == before
