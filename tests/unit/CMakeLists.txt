@@ -79,6 +79,7 @@ add_executable(mc2_tests
     test_hzb_cull_reference.cpp  # CPU reference of hzb_cull.comp (RenderCore/hzb_prop_bounds.h): keep-bit cases
     test_prop_light_contract.cpp
     test_water_reflect_dispatch.cpp  # WATER-REFLECT-TIER: 2-D reflection dispatch math (header-only)
+    test_water_planar.cpp
     test_clip_sample.cpp  # glTF clip sampling: STEP / LINEAR / CUBICSPLINE (header-only, no Assimp)
     test_height_sig.cpp  # gameplay_height.sig hash equals the Python writer's test vector (header-only)
     test_render_snap.cpp  # UNIT-VISUAL-SNAP-2 render-only effect-anchor and selection-box lift (header-only)

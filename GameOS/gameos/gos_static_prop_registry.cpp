@@ -4,6 +4,15 @@
 #include <functional>
 #include <atomic>
 #include "../../mclib/texture_assets.h"
+#include "water_planar_props.h"
+
+void mc2::waterplanar::preparePropInstances(const View& reflected, std::span<const mc2hzb::PropBounds> bounds,
+                                          std::vector<GpuStaticPropInstance>& out)
+{
+    collectReflectionInstances(std::span<const GpuStaticPropInstance>(GpuStaticPropRegistry::s_recipes),
+        std::span<const GpuStaticPropRegistry::RecipeRange>(GpuStaticPropRegistry::s_recipeRanges), reflected, bounds, out);
+}
+
 
 namespace GpuStaticPropRegistry {
 const bool s_trace = mc2::gate::get<"MC2_STATIC_PROP_TRACE">();
