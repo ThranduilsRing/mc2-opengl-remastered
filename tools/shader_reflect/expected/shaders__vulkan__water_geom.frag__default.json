@@ -35,7 +35,7 @@
           "matrix_stride": null,
           "name": "poolLights",
           "offset": 0,
-          "type": "_1273"
+          "type": "_1276"
         }
       ],
       "name": "TerrainLightPoolVK"
@@ -74,7 +74,7 @@
           "matrix_stride": null,
           "name": "stamps",
           "offset": 0,
-          "type": "_2242"
+          "type": "_2245"
         },
         {
           "array_stride": 4,

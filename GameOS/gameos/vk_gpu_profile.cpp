@@ -133,6 +133,12 @@ Row& rowFor(std::string_view nameSv) {
     return g.rows[kMaxNames - 1];
 }
 
+void printReflectCost(uint32_t w, uint32_t h, double gpuMs, uint32_t frames) {
+    // This optional, once-per-size diagnostic retains its stderr census contract.
+    mc2::fmt::print_err("[WATER_REFLECT_COST v1] res={}x{} mpix={:.2f} gpu_ms={:.3f} frames={}\n",
+        w, h, static_cast<double>(w) * h / 1.0e6, gpuMs, frames);
+}
+
 void flushWindow(uint64_t frame) {
     if (g.windowFrames == 0) return;
     ZoneScopedN("VKIsl.Present.Tail.Blit.Profile.WindowOutput");
@@ -149,22 +155,21 @@ void flushWindow(uint64_t frame) {
         output += values;
     }
     output += '\n';
+    mc2::fmt::print_err("[VK_GPU_PASSES v1] frame={} n={} span_ms={:.3f} sum_ms={:.3f} unattributed_ms={:.3f} scopes={} dropped={} overflow={} |{}",
+        frame, g.windowFrames, g.spanSumMs / n, g.sumSumMs / n, (g.spanSumMs - g.sumSumMs) / n,
+        g.rowCount, g.windowDropped, g.windowOverflow, output);
     if (const uint64_t res = reflectRes.load(std::memory_order_relaxed); res != 0 && !reflectCostDone.load(std::memory_order_relaxed)) {
         for (uint32_t i = 0; i < g.rowCount; ++i) {
             const Row& r = g.rows[i];
             if (r.frames < 30 || std::strcmp(r.name, kReflectScope) != 0) continue;   // wait for a settled window
             const uint32_t w = static_cast<uint32_t>(res >> 32), h = static_cast<uint32_t>(res & 0xFFFFFFFFu);
             if (mc2_diag::tagRequested("WATER")) {
-                std::snprintf(values, sizeof values, "[WATER_REFLECT_COST v1] res=%ux%u mpix=%.2f gpu_ms=%.3f frames=%u\n", w, h, static_cast<double>(w) * h / 1.0e6, r.sumMs / r.frames, r.frames);
-                output += values;
+                printReflectCost(w, h, r.sumMs / r.frames, r.frames);
             }
             reflectCostDone.store(true, std::memory_order_relaxed);
             break;
         }
     }
-    mc2::fmt::print_err("[VK_GPU_PASSES v1] frame={} n={} span_ms={:.3f} sum_ms={:.3f} unattributed_ms={:.3f} scopes={} dropped={} overflow={} |{}",
-        frame, g.windowFrames, g.spanSumMs / n, g.sumSumMs / n, (g.spanSumMs - g.sumSumMs) / n,
-        g.rowCount, g.windowDropped, g.windowOverflow, output);
     for (uint32_t i = 0; i < g.rowCount; ++i) { g.rows[i].sumMs = 0; g.rows[i].calls = 0; g.rows[i].frames = 0; }
     g.spanSumMs = g.sumSumMs = 0;
     g.windowFrames = g.windowDropped = g.windowOverflow = 0;

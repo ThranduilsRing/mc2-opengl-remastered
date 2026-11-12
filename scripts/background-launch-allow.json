@@ -1,4 +1,4 @@
-﻿{
+{
   "_about": "Hand-maintained. check-background-launch.py RULE 14/15 fail on a launcher, injector or blanket kill that is not listed here, and on a listed entry that no longer does it. --write never edits this file.",
   "nofocus_callers": {
     "scripts/tests/test_nofocus_env.py": "Windows priority inheritance regression launches only a windowless Python child through nofocus.spawn; no game or host lease.",
