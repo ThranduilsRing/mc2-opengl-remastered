@@ -15,3 +15,7 @@ Single header vendored at 3rdparty/unordered_dense/include/ankerl/unordered_dens
 ## FastNoiseLite v1.1.1
 MIT License, copyright Jordan Peck and contributors. Source: https://github.com/Auburn/FastNoiseLite/tree/v1.1.1
 C++ header and GLSL port (trailing whitespace removed) vendored at 3rdparty/fastnoiselite/; full LICENSE and SHA-256 provenance alongside them.
+
+## meshoptimizer v1.3
+MIT License, copyright (c) 2016-2026 Arseny Kapoulkine. Source: https://github.com/zeux/meshoptimizer/tree/v1.3 (commit 9e1f07b159d3cb777f1c67ed31fc11fd117986f4)
+Vendored at 3rdparty/meshoptimizer/ (LICENSE.md alongside). Engine links a five-file subset (allocator, indexanalyzer, vcacheoptimizer, overdrawoptimizer, vfetchoptimizer) as static mc2_meshopt for static-prop/mech index+vertex ordering; the rest of the tree is not built.
