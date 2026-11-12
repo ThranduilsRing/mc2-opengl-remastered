@@ -255,8 +255,9 @@ TEST_CASE("water planar: geometry bounds include every packet and retain only un
     CHECK(bounds[1].valid);
     CHECK_FALSE(bounds[2].valid); // malformed packet is unknown
     CHECK_FALSE(bounds[3].valid); // no geometry is unknown
-    const glm::mat4 identity{1};
-    const wp::View view(glm::value_ptr(identity), 20);
+    glm::mat4 main{1};
+    main[2][2] = 0.1f; main[3][2] = -1;
+    const wp::View view(glm::value_ptr(main), 20);
     CHECK(wp::propIntersects(view, propAt(1, 0, 0, 24), bounds));
     CHECK_FALSE(wp::propIntersects(view, propAt(1, 3, 0, 24), bounds));
     CHECK_FALSE(wp::propIntersects(view, propAt(1, 0, 0, 14), bounds));
