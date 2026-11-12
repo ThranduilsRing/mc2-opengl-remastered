@@ -2362,6 +2362,8 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) { return run_props(w, 
 namespace mc2::waterplanar {
 struct PlanarProps : ColorPropIsland {
     std::vector<GpuStaticPropInstance> reflectedInstances;
+    std::vector<mc2hzb::PropBounds> bounds;
+    bool boundsReady = false;
     uint32_t sourceMapGeneration = 0;
 };
 bool prepareProps(std::unique_ptr<mc2vk::IslandState>& state, const Target& target, mc2vk::VulkanContext::RecordFn& record) {
@@ -2382,8 +2384,19 @@ bool prepareProps(std::unique_ptr<mc2vk::IslandState>& state, const Target& targ
     const float* objectMatrix = gos_GetObjectFixBMVPMat4();
     if (!objectMatrix) return false;
     const View view(objectMatrix, target.water);
-    // Missing local bounds conservatively retain a type, independently of main-view HZB.
-    preparePropInstances(view, {}, s->reflectedInstances);
+    if (!s->boundsReady) {
+        Mc2ShadowGeomFeed geom{};
+        const void *vertices = nullptr, *indices = nullptr;
+        uint64_t vb = 0, ib = 0;
+        if (!mc2_shadow_island_get_geometry_feed(&geom) ||
+            !mc2_static_prop_geometry_cpu(&vertices, &vb, &indices, &ib) ||
+            !vertices || !indices || vb != geom.vboBytes || ib != geom.iboBytes) return false;
+        s->bounds = geometryBounds(geom,
+            std::span(static_cast<const std::byte*>(vertices), static_cast<size_t>(vb)),
+            std::span(static_cast<const uint32_t*>(indices), static_cast<size_t>(ib / sizeof(uint32_t))));
+        s->boundsReady = true;
+    }
+    preparePropInstances(view, s->bounds, s->reflectedInstances);
     if (s->reflectedInstances.empty()) return true;
     Mc2ColorPropFeed feed{};
     feed.instances112 = s->reflectedInstances.data();

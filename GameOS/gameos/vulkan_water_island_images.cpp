@@ -15,11 +15,16 @@ bool init_reflection(WaterIsland* s) {
     image.tiling=VK_IMAGE_TILING_OPTIMAL;
     image.usage=VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
     VmaAllocationCreateInfo allocation{}; allocation.usage=VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-    if (!s->reflectionImage.create(s->allocator,s->device,image,allocation,"water.reflection.full")) return false;
     VkImageViewCreateInfo view{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
-    view.image=s->reflectionImage.get(); view.viewType=VK_IMAGE_VIEW_TYPE_2D; view.format=image.format;
+    view.viewType=VK_IMAGE_VIEW_TYPE_2D;
     view.subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,1};
-    if (!mc2vk::create(s->reflectionView,s->device,[&](VkImageView* out){return vkCreateImageView(s->device,&view,nullptr,out);})) return false;
+    if (!s->reflectionImage) {
+        if (!s->reflectionImage.create(s->allocator,s->device,image,allocation,"water.reflection.full")) return false;
+        view.image=s->reflectionImage.get(); view.format=image.format;
+        if (!mc2vk::create(s->reflectionView,s->device,[&](VkImageView* out){return vkCreateImageView(s->device,&view,nullptr,out);})) return false;
+    }
+    // Prewarm can run before water presence is known; dry maps need no depth.
+    if (!s->mapHasWater || s->planarDepthImage) return true;
     // D32 adds 31.6 MiB at 3840x2160; the existing RGBA16F colour is reused.
     image.format=VK_FORMAT_D32_SFLOAT;
     image.usage=VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;

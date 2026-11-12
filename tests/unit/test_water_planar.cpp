@@ -230,6 +230,45 @@ TEST_CASE("water planar: unknown or invalid prop bounds retain candidates") {
     CHECK(wp::propIntersects(view, instance, bounds));
 }
 
+TEST_CASE("water planar: geometry bounds include every packet and retain only unknown types") {
+    struct Packet { uint32_t firstIndex, indexCount, baseVertex; };
+    struct Geometry {
+        uint32_t vertexStride;
+        const Packet* packets;
+        uint32_t packetCount;
+        const uint32_t* typeFirstPacket;
+        const uint32_t* typePacketCount;
+        uint32_t typeCount;
+    };
+    std::array<std::array<float, 4>, 4> vertices{{
+        {-0.1f, -0.1f, -0.1f, 99}, {0.1f, 0.1f, 0.1f, 99},
+        {0.5f, 2, 3, 99}, {-0.5f, -2, -3, 99}}};
+    std::array<uint32_t, 4> indices{0, 1, 0, 1};
+    const std::array<Packet, 3> packets{{{0, 2, 0}, {2, 2, 2}, {4, 1, 0}}};
+    const std::array<uint32_t, 4> first{0, 0, 2, 3}, count{2, 1, 1, 0};
+    Geometry geom{sizeof(vertices[0]), packets.data(), 3, first.data(), count.data(), 4};
+    auto bounds = wp::geometryBounds(geom, std::as_bytes(std::span(vertices)), indices);
+    REQUIRE(bounds.size() == 4);
+    CHECK(bounds[0].valid);
+    CHECK(bounds[0].lo[2] == -3);
+    CHECK(bounds[0].hi[1] == 2);
+    CHECK(bounds[1].valid);
+    CHECK_FALSE(bounds[2].valid); // malformed packet is unknown
+    CHECK_FALSE(bounds[3].valid); // no geometry is unknown
+    const glm::mat4 identity{1};
+    const wp::View view(glm::value_ptr(identity), 20);
+    CHECK(wp::propIntersects(view, propAt(1, 0, 0, 24), bounds));
+    CHECK_FALSE(wp::propIntersects(view, propAt(1, 3, 0, 24), bounds));
+    CHECK_FALSE(wp::propIntersects(view, propAt(1, 0, 0, 14), bounds));
+    CHECK(wp::propIntersects(view, propAt(2, 3, 0, 14), bounds));
+    vertices[0][0] = std::numeric_limits<float>::infinity();
+    bounds = wp::geometryBounds(geom, std::as_bytes(std::span(vertices)), indices);
+    CHECK_FALSE(bounds[1].valid);
+    indices[0] = 100;
+    bounds = wp::geometryBounds(geom, std::as_bytes(std::span(vertices)), indices);
+    CHECK_FALSE(bounds[0].valid);
+}
+
 TEST_CASE("water planar: full prop registry includes invisible alpha cards and rejects stale recipes") {
     const glm::mat4 identity{1};
     const wp::View view(glm::value_ptr(identity), 0);

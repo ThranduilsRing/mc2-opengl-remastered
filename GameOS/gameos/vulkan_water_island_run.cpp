@@ -67,6 +67,7 @@ bool prepareNative(WaterIsland* s, mc2vk::VulkanContext& ctx) {
     // GetNativeCapacity adds 4096 records of slack after counting eligible quads.
     // A dry map skips the reflection pass, including its attachment transitions.
     s->mapHasWater = capacity->eligibleBound > 4096u;
+    if (s->mapHasWater && !s->planarDepthImage && !init_reflection(s)) return false;
     mc2vk::gpuprof::rearmWaterReflectionCost();   // WATER-REFLECT-TIER: one cost line per mission
     ZoneScopedN("VKIsl.Water.PrepareNative");
     if (!s->recipeUploaded) {
@@ -399,8 +400,8 @@ extern "C" int mc2_vk_water_island_run(
                 vkEndCommandBuffer(cb);
                 setFallback("native_record_failed"); s->disabled = true; return 0;
             }
-            g_health.waterVisible = s->native->lastVisible(); g_health.waterTiles = s->native->lastTiles();
-            g_health.waterEligibleBound = s->native->eligibleBound(); g_health.waterTileCap = s->native->maxTiles();
+            g_health.waterVisible = s->native->lastVisible();
+            g_health.waterEligibleBound = s->native->eligibleBound();
         }
 
         const uint32_t uboOffsets[2] = {static_cast<uint32_t>(uboSpan.offset), static_cast<uint32_t>(uboSpan.offset + fsUboOff)};

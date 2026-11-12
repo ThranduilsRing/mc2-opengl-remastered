@@ -72,9 +72,9 @@ struct WaterIslandHealth {
     unsigned long usedInterop = 0;
     unsigned long thinRecords = 0;   // records fed this frame
     unsigned long recipeCount = 0;   // recipe rows uploaded once
-    // GPU cull health (NativeProducers::lastVisible/lastTiles): the last completed frame's visible quads and reflection tiles against the CPU
-    // eligible bound and the tile dispatch cap. visible == 0 on a map with water, or visible > eligible, is a regression visible in the log.
-    unsigned long waterVisible = 0, waterEligibleBound = 0, waterTiles = 0, waterTileCap = 0;
+    // GPU cull health: the last completed frame's visible quads against the CPU
+    // eligible bound. visible == 0 on a map with water, or visible > eligible, is a regression visible in the log.
+    unsigned long waterVisible = 0, waterEligibleBound = 0;
     double copyColorInUs = 0.0, copyDepthInUs = 0.0, drawUs = 0.0, colorOutUs = 0.0, totalUs = 0.0;
 };
 
@@ -205,7 +205,7 @@ struct WaterIsland : mc2vk::IslandState {
     mc2vk::OwnedImageView reflectionView;
     bool reflectionInitialized = false;
     bool planarDepthInitialized = false;
-    bool mapHasWater = true;
+    bool mapHasWater = false;
     VkFormat sceneFmts[2]{VK_FORMAT_UNDEFINED, VK_FORMAT_UNDEFINED};   // dynamic rendering: scene colour0 + normal
     VkFormat sceneDepthFmt = VK_FORMAT_UNDEFINED;
     mc2vk::OwnedDescriptorSetLayout dsl;

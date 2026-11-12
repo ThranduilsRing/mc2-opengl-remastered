@@ -3,10 +3,51 @@
 #include "water_planar_view.h"
 #include "../../RenderCore/hzb_prop_bounds.h"
 #include <limits>
+#include <cstring>
 #include <span>
 #include <vector>
 
 namespace mc2::waterplanar {
+
+// Bound every packet of a finalized type, including alpha cards. Invalid or
+// absent geometry stays unknown so reflection culling remains conservative.
+template <class Geometry>
+std::vector<mc2hzb::PropBounds> geometryBounds(const Geometry& geom,
+        std::span<const std::byte> vertices, std::span<const uint32_t> indices) {
+    std::vector<mc2hzb::PropBounds> result(geom.typeCount);
+    if (geom.vertexStride < 3 * sizeof(float) || !geom.packets ||
+        !geom.typeFirstPacket || !geom.typePacketCount) return result;
+    for (uint32_t t = 0; t < geom.typeCount; ++t) {
+        auto& b = result[t];
+        for (int a = 0; a < 3; ++a) {
+            b.lo[a] = (std::numeric_limits<float>::max)();
+            b.hi[a] = -(std::numeric_limits<float>::max)();
+        }
+        bool invalid = false;
+        for (uint32_t p = 0; p < geom.typePacketCount[t] && !invalid; ++p) {
+            const uint64_t pk = static_cast<uint64_t>(geom.typeFirstPacket[t]) + p;
+            if (pk >= geom.packetCount) { invalid = true; break; }
+            const auto& packet = geom.packets[pk];
+            if (static_cast<uint64_t>(packet.firstIndex) + packet.indexCount > indices.size()) {
+                invalid = true; break;
+            }
+            for (uint32_t k = 0; k < packet.indexCount; ++k) {
+                const uint64_t vi = static_cast<uint64_t>(packet.baseVertex) + indices[packet.firstIndex + k];
+                if (vi >= vertices.size() / geom.vertexStride) { invalid = true; break; }
+                float pos[3];
+                std::memcpy(pos, vertices.data() + vi * geom.vertexStride, sizeof(pos));
+                for (int a = 0; a < 3; ++a) {
+                    if (!std::isfinite(pos[a])) invalid = true;
+                    b.lo[a] = (std::min)(b.lo[a], pos[a]);
+                    b.hi[a] = (std::max)(b.hi[a], pos[a]);
+                }
+                b.valid = true;
+            }
+        }
+        b.valid = b.valid && !invalid;
+    }
+    return result;
+}
 
 inline bool propIntersects(const View& view, const GpuStaticPropInstance& instance,
                            std::span<const mc2hzb::PropBounds> bounds) {

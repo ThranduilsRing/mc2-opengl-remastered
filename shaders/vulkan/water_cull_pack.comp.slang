@@ -10,9 +10,7 @@
 //   b1  StructuredBuffer<GpuTerrainLightingOutput> per-vertex lighting, indexed by absolute vertex number
 //   b2  RWStructuredBuffer<WaterThinRecord>        packed output (48 B)
 //   b3  ConstantBuffer<WaterCullParams>
-//   b4  RWStructuredBuffer<uint>                   header; [0] = visibleCount, [1] = reflection tile count
-//   b5  RWStructuredBuffer<uint>                   tileMask: one bit per 8x8 reflection tile (cleared each frame)
-//   b6  RWStructuredBuffer<uint>                   tileList: tiles that contain admitted water (the reflection dispatch list)
+//   b4  RWStructuredBuffer<uint>                   header; [0] = visibleCount
 // Struct layouts are LOCKSTEP with gos_terrain_water_stream.h (WaterRecipe 64 B, WaterThinRecord 48 B) and
 // gos_terrain_lighting.h (GpuTerrainLightingOutput 8 B).
 
@@ -51,7 +49,6 @@ struct WaterCullParams {
     float4 c3;
     float4 misc0;   // x waterElevation, y frameCos, z shoreExt, w unused
     int4   misc1;   // x recipeCount, y maxThinRecords, z mapSide, w biasLegacy
-    int4   misc2;   // x,y reflection image size (full-res) (0 = reflection off this frame: no tile marking)
 };
 
 [[vk::binding(0, 0)]] StructuredBuffer<WaterRecipe> recipes;
@@ -59,8 +56,6 @@ struct WaterCullParams {
 [[vk::binding(2, 0)]] RWStructuredBuffer<WaterThinRecord> thin;
 [[vk::binding(4, 0)]] RWStructuredBuffer<uint> header;
 [[vk::binding(3, 0)]] ConstantBuffer<WaterCullParams> P;
-[[vk::binding(5, 0)]] RWStructuredBuffer<uint> tileMask;
-[[vk::binding(6, 0)]] RWStructuredBuffer<uint> tileList;
 
 // shaders/include/terrain_depth_bias.hglsl: WATER_DEPTH_FUDGE_FAST / WATER_DEPTH_FUDGE_FAST_REL.
 static const float WATER_DEPTH_FUDGE_FAST     = 0.00025;
@@ -92,7 +87,7 @@ float4 projectWaterClip(float wx, float wy, uint vWaterBits)
 
 // Conservative triangle admission: clipping is the rasterizer's job. Requiring
 // every corner inside near Z removed whole water tiles in low cinematic views.
-// XY rejection also makes the reflection indirect dispatch zero off screen.
+// XY rejection avoids emitting offscreen water quads.
 bool triangleVisible(float4 a, float4 b, float4 c)
 {
     if (a.w <= 1e-4 && b.w <= 1e-4 && c.w <= 1e-4) return false;
@@ -101,65 +96,6 @@ bool triangleVisible(float4 a, float4 b, float4 c)
     if (a.y < -a.w && b.y < -b.w && c.y < -c.w) return false;
     if (a.y >  a.w && b.y >  b.w && c.y >  c.w) return false;
     return true;
-}
-
-// Marks (and appends once) every 8x8 reflection tile the quad's projected bounds touch, plus a one-tile margin for the
-// water FS's bilinear/normal-offset reflection taps. Corners behind the eye are clipped to w = eps before the bound.
-void markReflectionTiles(float4 a, float4 b, float4 c, float4 d)
-{
-    int hw = P.misc2.x;
-    int hh = P.misc2.y;
-    if (hw <= 0 || hh <= 0) return;
-    const float eps = 1e-3;
-    float4 pts[4] = { a, b, c, d };
-    float2 lo = float2(1e9, 1e9);
-    float2 hi = float2(-1e9, -1e9);
-    for (int i = 0; i < 4; ++i)
-    {
-        float4 p = pts[i];
-        float4 q = pts[(i + 1) & 3];
-        if (p.w > eps)
-        {
-            float2 n = p.xy / p.w;
-            lo = min(lo, n);
-            hi = max(hi, n);
-        }
-        if ((p.w > eps) != (q.w > eps))
-        {
-            float t = (eps - p.w) / (q.w - p.w);
-            float2 n = lerp(p.xy, q.xy, t) / eps;
-            lo = min(lo, n);
-            hi = max(hi, n);
-        }
-    }
-    if (lo.x > hi.x) return;
-    if (hi.x < -1.0 || lo.x > 1.0 || hi.y < -1.0 || lo.y > 1.0) return;
-    int tilesX = (hw + 7) / 8;
-    int tilesY = (hh + 7) / 8;
-    float2 u0 = clamp(lo * 0.5 + 0.5, 0.0, 1.0);
-    float2 u1 = clamp(hi * 0.5 + 0.5, 0.0, 1.0);
-    int tx0 = max(int(floor(u0.x * float(hw) / 8.0)) - 1, 0);
-    int tx1 = min(int(floor(u1.x * float(hw) / 8.0)) + 1, tilesX - 1);
-    int ty0 = max(int(floor(u0.y * float(hh) / 8.0)) - 1, 0);
-    int ty1 = min(int(floor(u1.y * float(hh) / 8.0)) + 1, tilesY - 1);
-    for (int ty = ty0; ty <= ty1; ++ty)
-    {
-        for (int tx = tx0; tx <= tx1; ++tx)
-        {
-            uint tile = uint(ty * tilesX + tx);
-            uint word = tile >> 5;
-            uint bit = 1u << (tile & 31u);
-            if ((tileMask[word] & bit) != 0u) continue;
-            uint old;
-            InterlockedOr(tileMask[word], bit, old);
-            if ((old & bit) == 0u)
-            {
-                uint slot;
-                InterlockedAdd(header[1], 1u, slot);
-                tileList[slot] = tile;
-            }
-        }
-    }
 }
 
 [shader("compute")]
@@ -200,7 +136,6 @@ void main(uint3 tid : SV_DispatchThreadID)
     }
     if (!pzTri1 && !pzTri2) return;
 
-    markReflectionTiles(clip0, clip1, clip2, clip3);
 
     uint ms  = uint(P.misc1.z);
     uint vn0 = r.quadIdx;

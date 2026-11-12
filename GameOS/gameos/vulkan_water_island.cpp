@@ -282,7 +282,7 @@ extern "C" void mc2_vk_water_island_destroy() {
          "vk_draws=%lu forbidden_copyBufToImg=%lu forbidden_copyImgToBuf=%lu forbidden_getTexImage=%lu "
          "forbidden_texSubImage=%lu depthin_getTexImage=%lu depthin_copyBufToImg=%lu "
          "copy_color_in_us=%.1f copy_depth_in_us=%.1f draw_us=%.1f color_out_us=%.1f total_us=%.1f "
-         "water_visible=%lu water_eligible_bound=%lu water_tiles=%lu water_tile_cap=%lu",
+         "water_visible=%lu water_eligible_bound=%lu",
          g_health.vulkanAvailable, g_health.usedVulkan, g_health.usedInterop, g_health.interopActive,
          g_health.vk2glSemActive, g_health.validationErrors, g_health.thinRecords, g_health.recipeCount,
          g_health.fallbackReason, g_health.vkDraws,
@@ -290,7 +290,7 @@ extern "C" void mc2_vk_water_island_destroy() {
          g_forbidden.glGetTexImage, g_forbidden.glTexSubImage2D,
          g_depthInGetTexImage, g_depthInCopyBufferToImage,
          g_health.copyColorInUs, g_health.copyDepthInUs, g_health.drawUs, g_health.colorOutUs, g_health.totalUs,
-         g_health.waterVisible, g_health.waterEligibleBound, g_health.waterTiles, g_health.waterTileCap);
+         g_health.waterVisible, g_health.waterEligibleBound);
     mc2vk::getOrCreateEngineVulkanContext().retireIsland(mc2vk::IslandSlot::Water);
 }
 
