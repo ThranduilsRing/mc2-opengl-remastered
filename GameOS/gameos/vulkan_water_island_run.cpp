@@ -9,6 +9,7 @@
 #include <cmath>
 #include <type_traits>
 #include "mc2fmt.h"
+#include "utils/vec.h"   // existing Windows min/max macro cleanup
 #include "vulkan_shadow_island_live.h"   // the bake mask
 #include "vulkan_mover_shadow.h"
 #include "gos_terrain_lod_chunk.h"   // gos_WaterShoreMode
