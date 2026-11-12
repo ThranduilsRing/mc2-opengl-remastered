@@ -44,7 +44,12 @@ vec3 rootMacro() {
 }
 const float kVegShoreDryWU = 70.0;   // the sward is driest at the beach and greens over this height above water
 const float kBladeLift = 1.05;       // blades read a little lighter than the ground patch under them (1.15 bleached the field)
+// Per-blade scale (wu) for the footprint fade. Measured: field blades are 4.5 wu tall x 0.7-1.3 (recipe height), 6 wu apart,
+// cards ~7 wu wide. Footprint (wu/px; fov 40, 1080p): 205644 / owner_lowwide ~1.75 across at the look-at and 4-20 along depth
+// (camera pitch 12.5 / 5 deg), near field under 1. 4.5 = full detail below ~1 wu/px, the card mean past ~3.2 wu/px.
+const float kBladePickWU = 4.5;
 void main() {
+    float footprintWU = wpnFootprint(v_worldPos.xy);   // world units per pixel, before the discard (derivatives)
     vec4 texel = texture(uAtlas, vec3(v_uv, float(v_atlasLayer)));
     // Coarse mips average thin blades toward zero alpha, so a fixed 0.5 cut erases distant grass
     // into speckles; lift alpha with the sampled mip level (spatial, per pixel) to keep its cover.
@@ -76,6 +81,7 @@ void main() {
     // gust band brightens bent blades (their sheen faces up) so waves read from above.
     float tip = 1.0 - v_vegData.y;
     bool grass = v_atlasLayer < 4u && (v_flags & 192u) == 0u;
+    float bladeFade = 1.0;   // 1 = blades resolved, 0 = sub-pixel: every per-blade term averages to its mean
     if (grass) {
         // Owner ref 3 (2026-11-10, gameplay camera): the sward is one mottled carpet. Blades take
         // the SAME world patch field and palette as the ground (world_patch_noise.glsl), so a dry
@@ -83,16 +89,21 @@ void main() {
         // Per-blade picks only add close-up grain (refs 1/2).
         float value = dot(albedo, vec3(0.299, 0.587, 0.114));
         float pick = fract(v_vegData.x * 13.71);
-        vec2 field = worldPatchField(v_rootPos.xy);
-        field.x = clamp(field.x + (pick - 0.5) * 0.20, 0.0, 1.0);
+        // Same footprint fade as the ground (speckle) and, for the per-blade picks, a blade-spacing fade: far away
+        // the field shows the patch colour, not salt-and-pepper.
+        vec2 field = worldPatchField(v_rootPos.xy, footprintWU);
+        bladeFade = wpnFade(footprintWU, kBladePickWU);
+        field.x = clamp(field.x + (pick - 0.5) * 0.20 * bladeFade, 0.0, 1.0);
         float shore = 1.0 - smoothstep(6.0, kVegShoreDryWU, v_rootPos.z - uT.shorelineWaterElev);
         // The card keeps blade-to-blade value; straw reads lighter than olive as in the reference.
-        float bladeValue = kBladeLift * (value / 0.46);
+        // Far away the per-blade brightness (card texel + per-instance jitter) averages toward 1 instead of aliasing.
+        float bladeValue = kBladeLift * mix(1.0, value / 0.46, bladeFade);
         vec3 sward = worldPatchColor(field, 0.50 * shore) * bladeValue;
         // A few dry blades and tips up close; kept light so the shared patch field, not per-blade straw, sets the look.
-        float dry = pick < 0.05 ? 0.6 : smoothstep(0.85, 1.0, tip) * 0.15;
+        float dryTip = smoothstep(0.85, 1.0, tip) * 0.15;
+        float dry = mix(dryTip + 0.03, pick < 0.05 ? 0.6 : dryTip, bladeFade);   // 0.03 = the dry-pick mean
         albedo = mix(groundTone, mix(sward, WPN_STRAW * bladeValue, dry), kVegOwnHue);   // 15% ground, as for every card
-        albedo *= mix(vec3(0.62, 0.68, 0.52), vec3(1.0), smoothstep(0.0, 0.55, tip));
+        albedo *= mix(vec3(0.85, 0.88, 0.82), mix(vec3(0.62, 0.68, 0.52), vec3(1.0), smoothstep(0.0, 0.55, tip)), bladeFade);   // root-to-tip gradient is sub-pixel far away: its mean
         albedo *= 1.0 + v_vegAux.y * (0.05 + 0.10 * tip);
         // Field wildflowers: white heads (a few yellow) on the tops of short stalks.
         if ((v_flags & 12u) == 12u && tip > 0.70) {
@@ -102,14 +113,15 @@ void main() {
     }
     vec3 rootN = rootNormal();
     vec3 cardN = normalize(gl_FrontFacing ? v_cardNormal : -v_cardNormal);
-    vec3 N = normalize(mix(rootN, cardN, 0.30*(1.0-v_vegData.y)));
+    // Card facing (yaw/tilt) shades each blade differently; sub-pixel it aliases, so grass settles on the ground normal.
+    vec3 N = normalize(mix(rootN, cardN, 0.30*(1.0-v_vegData.y)*bladeFade));
     float staticS = uT.enableShadows != 0 ? terrainStaticShadow(v_shadowWorld) : 1.0;
     float shadow = min(staticS, terrainDynamicShadow(v_shadowWorld, rootN));
     float normalLight = computeNdotLBand(N, uT.terrainLightDir.xyz);
     // Thin-leaf transmission, bounded and shadowed with direct light once.
     normalLight += 0.08 * max(dot(-cardN, uT.terrainLightDir.xyz), 0.0) * (1.0-v_vegData.y);
     // Grass tips are thin enough to glow when backlit (either card face).
-    if (grass) normalLight += 0.10 * tip * tip * abs(dot(cardN, uT.terrainLightDir.xyz));
+    if (grass) normalLight += 0.10 * bladeFade * tip * tip * abs(dot(cardN, uT.terrainLightDir.xyz));
     vec3 lit = uT.lightingEnabled != 0 ? shadeGround(albedo, rootN, normalLight, shadow, 0.0, v_worldPos, rootN, false, 0.0) : albedo;
     o_color = vec4(lit, 1.0);
     o_normal = rc_gbuffer1_shadowHandled(N);

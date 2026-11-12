@@ -44,7 +44,20 @@ float wpn_value(vec2 p) {
     return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
 }
 
-vec2 worldPatchField(vec2 worldXY) {
+// Pixel footprint in world units per pixel (fragment stage only; call outside non-uniform control flow).
+float wpnFootprint(vec2 worldXY) {
+    return max(length(dFdx(worldXY)), length(dFdy(worldXY)));
+}
+
+// Sub-pixel fade for a feature of the given wavelength (wu): 1 while resolved, 0 once under ~1.4 px
+// (the terrain detail-normal rule, f576144d9: clamp(2 - 2.83 * footprint * tiling, 0, 1)).
+float wpnFade(float footprint, float wavelengthWU) {
+    return clamp(2.0 - 2.83 * footprint / wavelengthWU, 0.0, 1.0);
+}
+
+// footprintWU: world units per pixel (wpnFootprint of the same position); the fine speckle fades out toward the
+// field's own mean (no speckle) as it goes sub-pixel, so far views show the big patches, not pixel noise.
+vec2 worldPatchField(vec2 worldXY, float footprintWU) {
     vec2 p = worldXY / WPN_BASE_WU;
     // Rotate each octave so the value-noise lattice never lines up with the terrain grid.
     const mat2 R = mat2(0.80, 0.60, -0.60, 0.80);
@@ -57,8 +70,9 @@ vec2 worldPatchField(vec2 worldXY) {
     float dry = smoothstep(0.48, 0.57, n);
     // Fine in-patch speckle: dry spots in the green, a few green flecks in the straw (ref 3 grain at gameplay scale).
     float speck = wpn_value(mat2(0.60, -0.80, 0.80, 0.60) * worldXY / WPN_SPECK_WU + vec2(-7.7, 29.3));
-    dry = clamp(dry + 0.60 * smoothstep(0.60, 0.80, speck) * (1.0 - dry)
-                    - 0.35 * (1.0 - smoothstep(0.20, 0.40, speck)) * dry, 0.0, 1.0);
+    float speckFade = wpnFade(footprintWU, WPN_SPECK_WU);
+    dry = clamp(dry + speckFade * (0.60 * smoothstep(0.60, 0.80, speck) * (1.0 - dry)
+                    - 0.35 * (1.0 - smoothstep(0.20, 0.40, speck)) * dry), 0.0, 1.0);
     float hue = wpn_value(R * worldXY / (WPN_BASE_WU * 0.55) + vec2(41.0, -23.0));
     return vec2(dry, hue);
 }

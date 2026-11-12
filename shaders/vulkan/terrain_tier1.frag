@@ -388,6 +388,7 @@ void main() {
     // GROUND-MOTTLE-REF3 (owner ref 3): a world-space olive / yellow-green sward mottled with dry straw patches
     // (5-30 m) on natural ground, straw toward the coast, never on concrete/roads/runway, rock, cliffs, snow or
     // the beach band. The field is shared with the vegetation shaders (include/world_patch_noise.glsl).
+    float gmFootprint = wpnFootprint(v_worldPos.xy);   // derivatives outside the branches below
     {
         float natural = materialW.y + materialW.z;   // grass + dirt: the natural-ground weight
         float slopeClean = smoothstep(0.80, 0.92, abs(baseNormal.z));   // steep ground keeps the cliff/rock look
@@ -401,7 +402,7 @@ void main() {
             coastDry = 1.0 - smoothstep(GM_BEACH_WU, GM_COAST_DRY_WU, horiz);
         }
         if (wMottle > 0.001) {
-            vec2 gmField = worldPatchField(v_worldPos.xy);
+            vec2 gmField = worldPatchField(v_worldPos.xy, gmFootprint);
             vec3 gmCol = worldPatchColor(gmField, coastDry * 0.7);
             // Keep part of the authored colormap brightness variation (luma transfer), take the palette hue.
             float lb = dot(baseColor, vec3(0.299, 0.587, 0.114));
