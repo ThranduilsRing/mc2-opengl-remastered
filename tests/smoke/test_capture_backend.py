@@ -109,6 +109,8 @@ def drivers(monkeypatch):
     for name in ("_save_cursor", "_restore_cursor", "_reap_active"):
         monkeypatch.setattr(rvc, name, lambda *a, **k: None)
     monkeypatch.setattr(rvc, "guard_exe", lambda exe: True)
+    # Backend verdicts use synthetic installs, independent of the host's stock assets.
+    monkeypatch.setattr(rvc.asset_parity, "capture_drift", lambda install: None)
     monkeypatch.setattr(rvc.time, "sleep", lambda s: None)
     monkeypatch.setattr(rvc, "_print_result", lambda *a, **k: None)
     monkeypatch.setattr(rvc, "write_manifest", lambda result, exe: Path("manifest.json"))
