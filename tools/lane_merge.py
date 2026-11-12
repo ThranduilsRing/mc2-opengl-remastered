@@ -569,10 +569,14 @@ SEMANTIC_RATCHETS = [
 ]
 
 
-def semantic_precheck(root: str, tools_dir: str) -> list[tuple[str, int, str]]:
+def semantic_precheck(root: str, tools_dir: str, paths=None) -> list[tuple[str, int, str]]:
     """Check-only run of SEMANTIC_RATCHETS at the merged HEAD, before any regeneration. -> the failing (label, rc, tail)."""
     failed = []
+    import contracts_cache as cc
+    affected = cc.affected_rows(root, paths) if paths is not None else None
     for label, rel, args in SEMANTIC_RATCHETS:
+        if affected is not None and ("pointer_order_scan" if label == "pointer_order" else label) not in affected:
+            continue
         script = os.path.join(tools_dir, *rel.split("/"))
         if not os.path.isfile(script):   # the throwaway repos of the tests carry only the fake ratchets
             continue
@@ -583,9 +587,9 @@ def semantic_precheck(root: str, tools_dir: str) -> list[tuple[str, int, str]]:
     return failed
 
 
-def run_ratchets(root: str, tools_dir: str, *, tighten=True) -> list[tuple[str, int, str]]:
+def run_ratchets(root: str, tools_dir: str, *, tighten=True, rows=None) -> list[tuple[str, int, str]]:
     results = []
-    for label, rel, args in RATCHETS:
+    for label, rel, args in (RATCHETS if rows is None else rows):
         script = os.path.join(tools_dir, *rel.split("/"))
         selected = args if tighten else [a for a in args if a != '--tighten']
         r = run(root, [sys.executable, "-B", script, *selected])
@@ -1508,10 +1512,13 @@ def merge_tip(root: str, tools_dir: str, p: dict, message: str, resolutions: dic
     pre_dirty = {path for _, path in status_entries(root)}
     do_merge(root, p["sha"], message, lane_files=p["lane_files"], resolutions=resolutions)
     merge_sha = git_out(root, "rev-parse", "--short=9", "HEAD")
+    import contracts_cache as cc
+    affected = cc.affected_rows(root, p["lane_files"])
+    ratchets = [r for r in RATCHETS if ("cxx17_ratchet" if r[0] == "cxx17" else r[0]) in affected]
     if batch:
-        results = run_ratchets(root, tools_dir, tighten=False)
+        results = run_ratchets(root, tools_dir, tighten=False, rows=ratchets)
         return merge_sha, None, [(label, rc, tail) for label, rc, tail in results if rc != 0]
-    semantic = semantic_precheck(root, tools_dir) or lane_merge_baseline.base_baseline_check(root, tools_dir, git_out(root, "rev-parse", "HEAD^1"), RATCHETS, RATCHET_BASELINES, run, git, lines)
+    semantic = semantic_precheck(root, tools_dir, p["lane_files"]) or lane_merge_baseline.base_baseline_check(root, tools_dir, git_out(root, "rev-parse", "HEAD^1"), ratchets, RATCHET_BASELINES, run, git, lines)
     if semantic:
         return merge_sha, None, semantic
     artifacts = regenerate_all(root)
@@ -1522,7 +1529,7 @@ def merge_tip(root: str, tools_dir: str, p: dict, message: str, resolutions: dic
             print(f"lane_merge: {ARTIFACT_SUBJECT}: {artifact_follow}")
         except _git_util.GitError as exc:
             raise Stop(6, "artifact follow-up commit failed: " + str(exc)) from exc
-    results = run_ratchets(root, tools_dir)
+    results = run_ratchets(root, tools_dir, rows=ratchets)
     follow = commit_tightened(root, pre_dirty)
     return merge_sha, follow or artifact_follow, [(label, rc, tail) for label, rc, tail in results if rc != 0]
 
@@ -1604,7 +1611,7 @@ def main(argv: list[str] | None = None) -> int:
             if args.conflict_dir and not batch:
                 ap.error("--conflict-dir needs --batch")
             would_abort = plan_batch(root, args, refs, resolutions_for)
-            print("PLAN then: " + ", ".join(label for label, _, _ in RATCHETS)
+            print("PLAN then: path-triggered ratchets"
                   + "; regenerate-all and commit changed artifacts; follow-up commit of tightened baselines only"
                   + (" (check each tip; tighten/regenerate/commit/verify once at the end)" if batch else ""))
             print("[dry-run] nothing changed")
@@ -1652,13 +1659,17 @@ def main(argv: list[str] | None = None) -> int:
             if batch and ref != refs[-1]:
                 print(f"{tag} ratchets=OK verify=DEFERRED overlap=0")
         if batch and merged and not reds:
-            semantic = semantic_precheck(root, tools_dir) or lane_merge_baseline.base_baseline_check(root, tools_dir, window_base, RATCHETS, RATCHET_BASELINES, run, git, lines)
+            import contracts_cache as cc
+            paths = lines(git_out(root, "diff", "--name-only", window_base, "HEAD"))
+            affected = cc.affected_rows(root, paths)
+            ratchets = [r for r in RATCHETS if ("cxx17_ratchet" if r[0] == "cxx17" else r[0]) in affected]
+            semantic = semantic_precheck(root, tools_dir, paths) or lane_merge_baseline.base_baseline_check(root, tools_dir, window_base, ratchets, RATCHET_BASELINES, run, git, lines)
             if semantic:
                 reds.append((refs[-1], semantic))
         if batch and merged and not reds:
             pre_dirty = {path for _, path in status_entries(root)}
             artifacts = regenerate_derived(root, window_base)
-            results = run_ratchets(root, tools_dir)
+            results = run_ratchets(root, tools_dir, rows=ratchets)
             failed = [(label, rc, tail) for label, rc, tail in results if rc != 0]
             if failed:
                 reds.append((refs[-1], failed))

@@ -184,6 +184,7 @@ def env(tmp_path):
         write(repo, rel, "base\n")
     write(repo, "a.txt", "a\n")
     write(repo, "b.txt", "b\n")
+    write(repo, "scripts/contracts-cache-inputs.txt", "cxx17_ratchet: .\nsplit_map: .\nown_inventory: .\npointer_order_scan: .\n")
     commit_all(repo, "base")
     tools = tmp_path / "faketools"
     for rel, baseline in FAKES.items():
