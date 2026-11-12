@@ -196,7 +196,7 @@ public:
 private:
     // T5 content proof: read back the shared image, fold a checksum into health.
     void verifyReadbackContent();
-    void finishFrame();
+    bool finishFrame();
 
     Impl* impl_ = nullptr;
 

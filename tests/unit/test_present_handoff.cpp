@@ -1,9 +1,77 @@
 #include "doctest.h"
 #include "sim_overlap.h"
+#include "present_thread.h"
 #include "present_imgui_snapshot.h"
 #include "../../GameOS/gameos/hud_command_merge.h"
 #include <barrier>
 #include <thread>
+
+TEST_CASE("present split: deferred failure and refused tail never enter acquire") {
+    namespace d = mc2vk::present_thread::detail;
+    for (bool deferred : {false, true}) {
+        bool failedPrefix = deferred;
+        int seals = 0, acquire = 0;
+        CHECK_FALSE(d::afterRenderTail([&] {
+            // A deferred prefix failure must survive the flush and be consumed before the fenced tail can report success.
+            if (d::takeDeferredFailure(failedPrefix)) return false;
+            return false; // immediate refused tail / unproven Render completion
+        }, [&] { ++seals; }, [&] { ++acquire; return true; }));
+        CHECK_FALSE(failedPrefix);
+        CHECK(seals == 1);
+        CHECK(acquire == 0);
+    }
+}
+
+TEST_CASE("present split: acquire and blit refusal preserve independent tail completion") {
+    namespace d = mc2vk::present_thread::detail;
+    for (bool acquireSucceeds : {false, true}) {
+        bool tailComplete = false, blitComplete = false;
+        CHECK_FALSE(d::afterRenderTail([&] { tailComplete = true; return true; }, [] {}, [&] {
+            CHECK(tailComplete);
+            if (!acquireSucceeds) return false;
+            // A refused blit does not grant a completion receipt to its command pool.
+            CHECK_FALSE(blitComplete);
+            return false;
+        }));
+        CHECK(tailComplete);
+        CHECK_FALSE(blitComplete);
+    }
+}
+
+TEST_CASE("present split: captured slot survives boundary wrap including one slot and inline no surface") {
+    namespace d = mc2vk::present_thread::detail;
+    for (unsigned slots : {1u, 2u, 3u}) {
+        unsigned frame = 1;
+        bool tailComplete[3] = {true, true, true};
+        bool blitComplete[3] = {true, true, true};
+        for (unsigned n = 0; n < 9; ++n) {
+            const unsigned capturedSlot = frame % slots;
+            int resets = 0;
+            // A still-running blit survives slot wrap even though the independent Render fence is signaled.
+            blitComplete[capturedSlot] = false;
+            CHECK_FALSE(d::prepareBlitSlot(capturedSlot, [&](unsigned slot) { return blitComplete[slot]; },
+                [&](unsigned) { ++resets; return true; }));
+            CHECK(tailComplete[capturedSlot]);
+            CHECK(resets == 0);
+            blitComplete[capturedSlot] = true; // the GPU's own blit fence finally completes
+            CHECK(d::prepareBlitSlot(capturedSlot, [&](unsigned slot) { return blitComplete[slot]; },
+                [&](unsigned) { ++resets; return true; }));
+            CHECK(resets == 1);
+            CHECK(d::afterRenderTail([&] {
+                CHECK(tailComplete[capturedSlot]);
+                ++frame;
+                return true;
+            }, [] { /* Inline seal is a no-op. */ }, [&, capturedSlot] {
+                CHECK(capturedSlot == (frame - 1) % slots);
+                CHECK(blitComplete[capturedSlot]);
+                // Offscreen has no acquire semaphore or present; the dedicated blit completion still owns its pool.
+                blitComplete[capturedSlot] = false;
+                return true;
+            }));
+            CHECK_FALSE(blitComplete[capturedSlot]);
+        }
+    }
+}
 
 TEST_CASE("HUD adjacent commands with identical state merge, differing state never merges") {
     using Command = mc2vk::HudNativeCommand<uint64_t>;

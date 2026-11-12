@@ -2,6 +2,7 @@
 // gives up at a limit instead of hanging, sees a worker failure at the seal, and the cap spaces present starts by a full period.
 #include "doctest.h"
 #include "present_thread_wait.h"
+#include "present_thread.h"
 
 #include <atomic>
 #include <chrono>
@@ -10,6 +11,73 @@
 
 using namespace std::chrono_literals;
 namespace d = mc2vk::present_thread::detail;
+
+TEST_CASE("present split: blocked acquire releases Render after exactly one seal") {
+    std::mutex mutex;
+    std::condition_variable cv;
+    bool finished = false, sealed = false, acquireEntered = false, releaseAcquire = false;
+    int seals = 0;
+    std::thread worker([&] {
+        CHECK(d::afterRenderTail([&] {
+            std::lock_guard lock(mutex);
+            finished = true;
+            return true;
+        }, [&] {
+            std::lock_guard lock(mutex);
+            CHECK(finished);
+            sealed = true;
+            ++seals;
+            cv.notify_all();
+        }, [&] {
+            std::unique_lock lock(mutex);
+            acquireEntered = true;
+            cv.notify_all();
+            cv.wait(lock, [&] { return releaseAcquire; });
+            return true;
+        }));
+    });
+    std::unique_lock lock(mutex);
+    const bool entered = d::waitPumping(lock, cv, [&] { return acquireEntered; }, [] {}, 5s);
+    CHECK(entered);
+    CHECK(finished);
+    CHECK(sealed);
+    CHECK(seals == 1);
+    CHECK(d::canEnqueue(false, sealed));
+    releaseAcquire = true;
+    cv.notify_all();
+    lock.unlock();
+    worker.join();
+}
+
+TEST_CASE("present split: late failure drains a pending packet before teardown") {
+    // Main enqueues N+1 during N's acquire. N then fails; the same production predicates keep teardown waiting for N+1.
+    bool pending = false, busy = true, failed = false;
+    int seals = 0, wsi = 0;
+    CHECK_FALSE(d::afterRenderTail([] { return true; }, [&] { ++seals; }, [&] {
+        REQUIRE(d::canEnqueue(pending, true));
+        pending = true;
+        ++wsi;
+        failed = true;
+        return false;
+    }));
+    CHECK_FALSE(d::drained(pending, busy));
+    busy = false;
+    CHECK_FALSE(d::drained(pending, busy));
+    CHECK(d::discardPresent(failed));
+    pending = false;
+    busy = true;
+    CHECK(d::afterRenderTail([] { return true; }, [&] { ++seals; }, [&] {
+        if (!d::discardPresent(failed)) ++wsi;
+        return true;
+    }));
+    CHECK_FALSE(d::drained(pending, busy));
+    busy = false;
+    CHECK(d::drained(pending, busy));
+    CHECK(seals == 2);
+    CHECK(wsi == 1);
+    CHECK_FALSE(d::canEnqueue(true, true));
+    CHECK_FALSE(d::canEnqueue(false, false));
+}
 
 TEST_CASE("present wait: the pump unblocks a worker stuck in a WSI SendMessage to main") {
     // The worker cannot finish until main services its sent message (the pump). A plain cv wait here would deadlock.
@@ -44,7 +112,19 @@ TEST_CASE("present wait: bounded, pumping every slice, lock held on return") {
     CHECK(lock.owns_lock());
     CHECK(took >= 40ms);
     CHECK(took < 2s);
-    CHECK(pumps >= 5);
+    // A requested 2ms wait may sleep a full Windows timer tick. The deadline
+    // bounds the wait, not the number of times this thread gets scheduled.
+    CHECK(pumps >= 1);
+
+    // Exercise repeated slices independently of the timer resolution. Each
+    // callback must run unlocked; the fifth pump satisfies the predicate.
+    pumps = 0;
+    CHECK(d::waitPumping(lock, cv, [&] { return pumps == 5; }, [&] {
+        CHECK_FALSE(lock.owns_lock());
+        ++pumps;
+    }, 5s, 2ms));
+    CHECK(pumps == 5);
+    CHECK(lock.owns_lock());
 }
 
 TEST_CASE("present wait: an already-true predicate returns without pumping") {

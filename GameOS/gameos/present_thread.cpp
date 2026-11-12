@@ -114,6 +114,7 @@ void run() {
     changed.notify_all();
     for (;;) {
         Packet next;
+        bool discard = false;
         {
             std::unique_lock lock(mutex);
             changed.wait(lock, [] { return pending || quitting; });
@@ -121,6 +122,7 @@ void run() {
             next = std::move(packet);
             pending = false;
             busy = true;
+            discard = detail::discardPresent(failed);
         }
         mc2::overlap::registerThread(mc2::overlap::Owner::Render);
         next.retiredTextures.clear();
@@ -132,7 +134,7 @@ void run() {
             seal();
         } else {
             present.setCaptureFrame(next.renderFrame, next.fireFrame);
-            if (!present.presentFrame(next.width, next.height, next.verify)) {
+            if (!present.presentFrame(discard ? 0 : next.width, discard ? 0 : next.height, !discard && next.verify)) {
                 std::fprintf(stderr, "[PRESENT_THREAD] present failed: %s\n", present.health().fallback_reason.c_str());
             }
         }
@@ -192,7 +194,7 @@ void waitSealed(std::source_location site) {
 void waitIdle() {
     if (!running || isWorker) return;
     std::unique_lock lock(mutex);
-    waitWorker(lock, [] { return !pending && !busy; }, "Vulkan present worker hung: not idle for 30 s");
+    waitWorker(lock, [] { return detail::drained(pending, busy); }, "Vulkan present worker hung: not idle for 30 s");
 }
 void enqueue(uint32_t width, uint32_t height, bool verify, uint32_t renderFrame, uint32_t fireFrame) {
     mc2::overlap::assertMainThread("present_thread::enqueue");
@@ -200,7 +202,7 @@ void enqueue(uint32_t width, uint32_t height, bool verify, uint32_t renderFrame,
     // unrecorded entry (it only ever queues a prefix, VulkanContext::flushPendingLocked).
     if (engineVulkanContextValid()) getOrCreateEngineVulkanContext().resolveRecorded();
     std::lock_guard lock(mutex);
-    assert(!pending && sealed);
+    assert(detail::canEnqueue(pending, sealed));
     packet = {width, height, renderFrame, fireFrame, verify, paceFps, std::move(retiredTextures)};
     sealed = false;
     pending = true;
@@ -211,6 +213,7 @@ void seal() {
     if (!isWorker) return;
     mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "present_thread::seal");
     std::lock_guard lock(mutex);
+    assert(!sealed);
     mc2::overlap::setRenderWorkerOwns(false);
     mc2::overlap::registerThread(mc2::overlap::Owner::Present);
     sealed = true;
@@ -235,8 +238,8 @@ bool takeFailure(std::string& reason) {
     mc2::overlap::assertMainThread("present_thread::takeFailure");
     std::unique_lock lock(mutex);
     if (!failed) return false;
-    // A failure is reported before its frame seals, so nothing is pending; wait out the pacing tail before main tears the path down.
-    if (running) waitWorker(lock, [] { return !pending && !busy; }, "Vulkan present worker hung: not idle for 30 s after a failure");
+    // Post-seal failure may race a new enqueue. The worker retires that packet without WSI; teardown waits for both packets to drain.
+    if (running) waitWorker(lock, [] { return detail::drained(pending, busy); }, "Vulkan present worker hung: not idle for 30 s after a failure");
     failed = false;
     reason = std::move(failure);
     failure.clear();

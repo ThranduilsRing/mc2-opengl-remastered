@@ -47,21 +47,24 @@ struct EnginePresentVk::Impl {
     std::vector<VkImage>     scImages;
     std::vector<mc2vk::OwnedSemaphore> renderSems;   // one per image (present-wait target)
 
-    // per-frame sync: one acquire semaphore, one in-flight fence and one pair of command buffers per frame slot. slot() = engine frame % slotCount;
+    // Render tail and WSI blit have separate pools and completion fences. slot() = engine frame % slotCount;
     // slotCount defaults to kMaxFramesInFlight; MC2_VK_FRAMES_IN_FLIGHT=1 pins every frame to slot 0.
     mc2vk::OwnedCommandPool   cpool;   // readback command buffer only
     mc2vk::OwnedCommandPool   tailPool[mc2vk::kMaxFramesInFlight];        // per-slot pools: vkResetCommandPool instead of per-cb reset
     mc2vk::OwnedCommandPool   compositeCmdPool[mc2vk::kMaxFramesInFlight];   // (tail and composite are recorded at different points of a frame)
-    VkCommandBuffer cbufs[mc2vk::kMaxFramesInFlight] = {};   // present tail: overlay + HUD/ImGui + blit
+    VkCommandBuffer cbufs[mc2vk::kMaxFramesInFlight] = {};   // Render tail: overlay + HUD/ImGui + profiler retirement
     mc2vk::OwnedSemaphore     acquireSems[mc2vk::kMaxFramesInFlight];
     mc2vk::OwnedFence         inFlights[mc2vk::kMaxFramesInFlight];
+    mc2vk::OwnedCommandPool   blitPools[mc2vk::kMaxFramesInFlight];
+    VkCommandBuffer          blitCbufs[mc2vk::kMaxFramesInFlight] = {};
+    mc2vk::OwnedFence         blitFences[mc2vk::kMaxFramesInFlight];
     uint32_t slotCount = 1;
     uint32_t slot() const { return ctx->frameContext().slot; }
     VkCommandBuffer&       curCbuf()          { return cbufs[slot()]; }
     VkCommandBuffer&       curCompositeCbuf() { return compositeCbufs[slot()]; }
     mc2vk::OwnedSemaphore& curAcquireSem()    { return acquireSems[slot()]; }
     mc2vk::OwnedFence&     curInFlight()      { return inFlights[slot()]; }
-    // Composite and tail share one submission. Resize drops a pending recording;
+    // Composite and Render tail share one submission before acquire. Resize drops a pending recording;
     // declined presents keep the fence signaled until a submit can signal it.
     VkCommandBuffer compositeCbufs[mc2vk::kMaxFramesInFlight] = {};
     bool            compositePending = false;

@@ -1618,6 +1618,11 @@ bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* window, uint32_t w, u
         for (uint32_t i = 0; i < mc2vk::kMaxFramesInFlight; ++i) {
             if (!mc2vk::create(s.tailPool[i], s.dev, [&](auto* h) { return vkCreateCommandPool(s.dev, &pci, nullptr, h); }))
                 return fail("vkCreateCommandPool(tail) failed");
+            if (!mc2vk::create(s.blitPools[i], s.dev, [&](auto* h) { return vkCreateCommandPool(s.dev, &pci, nullptr, h); }))
+                return fail("vkCreateCommandPool(blit) failed");
+            cai.commandPool = s.blitPools[i].get();
+            if (vkAllocateCommandBuffers(s.dev, &cai, &s.blitCbufs[i]) != VK_SUCCESS)
+                return fail("vkAllocateCommandBuffers(blit) failed");
             cai.commandPool = s.tailPool[i].get();
             if (vkAllocateCommandBuffers(s.dev, &cai, &s.cbufs[i]) != VK_SUCCESS)
                 return fail("vkAllocateCommandBuffers failed");
@@ -1628,6 +1633,8 @@ bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* window, uint32_t w, u
         for (uint32_t i = 0; i < mc2vk::kMaxFramesInFlight; ++i) {
             if (!mc2vk::create(s.acquireSems[i], s.dev, [&](auto* h) { return vkCreateSemaphore(s.dev, &semci, nullptr, h); }))
                 return fail("vkCreateSemaphore(acquire) failed");
+            if (!mc2vk::create(s.blitFences[i], s.dev, [&](auto* h) { return vkCreateFence(s.dev, &fci, nullptr, h); }))
+                return fail("vkCreateFence(blit) failed");
             if (!mc2vk::create(s.inFlights[i], s.dev, [&](auto* h) { return vkCreateFence(s.dev, &fci, nullptr, h); }))
                 return fail("vkCreateFence(inFlight) failed");
         }
@@ -2089,7 +2096,7 @@ void EnginePresentVk::setCaptureFrame(uint32_t renderFrame, uint32_t fireFrame) 
     if (impl_) { impl_->captureFrame = renderFrame; impl_->captureFireFrame = fireFrame; }
 }
 
-void EnginePresentVk::finishFrame() {
+bool EnginePresentVk::finishFrame() {
     Impl& s = *impl_;
     s.compositePending = false;
     presentImageVkOwned_ = false;
@@ -2099,12 +2106,14 @@ void EnginePresentVk::finishFrame() {
       gpuprof::frameEnd(); }
     { ZoneScopedN("VKIsl.Present.Tail.Finish.Boundary"); mc2::battlebench::NsScope ns(mc2::battlebench::PresBoundaryNs);
       s.ctx->frameBoundary(); }
-    if (present_thread::onWorker() && !waitCompositeSlot(s, health_)) {
+    const bool ready = !present_thread::onWorker() || waitCompositeSlot(s, health_);
+    if (!ready) {
         health_.fallback_reason = "composite slot fence wait failed";
         present_thread::reportFailure(health_.fallback_reason);
     }
     s.frameFinished = true;
     if (present_thread::onWorker() && (health_.present_frames % 300) == 1) logHealth();
+    return ready && !mc2vk::infra::deviceLostLatched();
 }
 
 bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
@@ -2169,6 +2178,7 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
         // shared image / framebuffers and must never be submitted.
         {
             VkFence fences[mc2vk::kMaxFramesInFlight]{};
+            s.ctx->waitIdle("present_resize_blit");
             s.ctx->poll();   // vk-sync-arch: flush the deferred submit batch before the image goes away
             for (uint32_t i = 0; i < s.slotCount; ++i) fences[i] = s.inFlights[i].get();
             VkResult done = vkWaitForFences(s.dev, s.slotCount, fences, VK_TRUE, 5ull * 1000 * 1000 * 1000);
@@ -2221,34 +2231,6 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
         health_.fallback_reason = "no swapchain (an earlier rebuild failed)";
         return false;
     }
-    // Acquire leaves the fence signaled until submit, so declines can retry.
-    uint32_t imageIndex = 0;
-    VkResult r;
-    { ZoneScopedN("VKIsl.Present.Acquire");   // VK-ISLAND-TRACY-1: vkAcquireNextImageKHR (can block on WSI)
-      mc2::battlebench::NsScope benchAcquire(mc2::battlebench::PresAcquireNs, 0);
-      const auto acqT0 = std::chrono::steady_clock::now();
-      r = s.offscreen ? VK_SUCCESS : vkAcquireNextImageKHR(s.dev, s.swapchain.get(), UINT64_MAX, s.curAcquireSem().get(), VK_NULL_HANDLE, &imageIndex);
-      mc2_hitch2::noteAcquire(static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - acqT0).count())); }
-    if (r == VK_ERROR_OUT_OF_DATE_KHR) {
-        // Rebuild for the current drawable; minimized windows retry next frame.
-        const int dw = static_cast<int>(drawableW), dh = static_cast<int>(drawableH);
-        if (dw > 0 && dh > 0) {
-            std::string rr;
-            if (!rebuildSwapchain(s, static_cast<uint32_t>(dw), static_cast<uint32_t>(dh), health_, rr)) {
-                health_.fallback_reason = rr; return false;
-            }
-        }
-        return true;  // retry next frame
-    } else if (r == VK_ERROR_DEVICE_LOST) {
-        mc2vk::infra::deviceLost();
-        health_.fallback_reason = "DEVICE_LOST at acquire"; return false;
-    } else if (r != VK_SUCCESS && r != VK_SUBOPTIMAL_KHR) {
-        health_.fallback_reason = "vkAcquireNextImageKHR failed (" + std::to_string(static_cast<int>(r)) + ")";
-        plog("%s. fail-soft.", health_.fallback_reason.c_str());
-        return false;
-    }
-
-    VkImage scImg = s.scImages[imageIndex];
     ZoneNamedN(zTailRec, "VKIsl.Present.TailRecord", true);   // VK-ISLAND-TRACY-1: overlay/HUD/ImGui + blit record (to fn return)
     mc2::battlebench::NsScope benchTail(mc2::battlebench::PresTailNs);
     vkResetCommandPool(s.dev, s.tailPool[s.slot()].get(), 0);   // curCbuf() is s.cbufs[slot]
@@ -2333,111 +2315,151 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
             ++health_.imgui_vk_frames;
     }
 
-    {   // Tail.Blit: barriers + blit + vkEndCommandBuffer
-    ZoneScopedN("VKIsl.Present.Tail.Blit");
-    mc2::battlebench::NsScope benchBlit(mc2::battlebench::PresTailBlitNs);
-    MC2_VK_GPU_SCOPE(blitScope, s.curCbuf(), "VKIsl.Present.Blit");   // vk-present-instance 2a: barriers + blit were charged to Present.ImGui
+    // The Render ticket covers every frame allocation and query, independently of the later WSI blit.
+    { ZoneScopedN("VKIsl.Present.Tail.Blit.ProfileEnd"); gpuprof::recordFrameEnd(s.curCbuf()); }
+    if (vkEndCommandBuffer(s.curCbuf()) != VK_SUCCESS) {
+        health_.fallback_reason = "tail command buffer end failed";
+        return false;
+    }
+    VkCommandBuffer commands[] = {s.curCompositeCbuf(), s.curCbuf()};
+    VkSubmitInfo tail{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+    tail.commandBufferCount = 2;
+    tail.pCommandBuffers = commands;
+    const VkFence tailFence = s.curInFlight().get();
+    vkResetFences(s.dev, 1, &tailFence);
+    s.compositePending = false;
+    VkResult result;
+    { ZoneScopedN("VKIsl.Present.Submit");
+      mc2::battlebench::NsScope benchSubmit(mc2::battlebench::PresTailSubmitNs);
+      result = s.ctx->submit(tail, tailFence); } // A fence forces the deferred prefix onto the queue before seal.
+    if (result != VK_SUCCESS) {
+        s.ctx->waitIdle("present_tail_failed");
+        VkFenceCreateInfo fci{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
+        fci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+        mc2vk::create(s.curInFlight(), s.dev, [&](auto* h) { return vkCreateFence(s.dev, &fci, nullptr, h); });
+        health_.fallback_reason = "Render tail submit failed";
+        return false;
+    }
+    gpuprof::frameEndSubmitted();
+    s.spatialAA.submitted();
+    if (verifyReadback) verifyReadbackContent();
+    ++health_.present_frames;
+
+    // Capture everything before frameBoundary advances the slot. Only these handles and worker-owned WSI result survive seal.
+    const uint32_t slot = s.slot();
+    const VkDevice dev = s.dev;
+    VulkanContext* const ctx = s.ctx;
+    const bool offscreen = s.offscreen;
+    const VkSwapchainKHR swapchain = s.swapchain.get();
+    const VkQueue presentQueue = s.presentQ;
+    const auto images = s.scImages;
+    std::vector<VkSemaphore> rendered;
+    for (const auto& sem : s.renderSems) rendered.push_back(sem.get());
+    const VkSemaphore acquireSem = s.acquireSems[slot].get();
+    const VkFence blitFence = s.blitFences[slot].get();
+    const VkCommandBuffer blitCb = s.blitCbufs[slot];
+    const VkImage sharedImage = s.sharedImg.image.get();
+    const uint32_t imgW = s.imgW, imgH = s.imgH;
+    const VkExtent2D extent = s.scExtent;
+    // Blit resources are not in the Render ticket. One-slot reuse still waits their own last use.
+    if (!present_thread::detail::prepareBlitSlot(slot, [&](uint32_t) {
+        return vkWaitForFences(dev, 1, &blitFence, VK_TRUE, 5ull * 1000 * 1000 * 1000) == VK_SUCCESS;
+    }, [&](uint32_t capturedSlot) {
+        return vkResetCommandPool(dev, s.blitPools[capturedSlot].get(), 0) == VK_SUCCESS;
+    })) {
+        health_.fallback_reason = "blit slot completion/reset failed";
+        return false;
+    }
+    return present_thread::detail::afterRenderTail([&] { return finishFrame(); }, [] { present_thread::seal(); }, [&, dev, ctx, offscreen, swapchain, presentQueue,
+        images, rendered, acquireSem, blitFence, blitCb, sharedImage, imgW, imgH, extent] {
+    // Acquire leaves the fence signaled until submit, so declines can retry.
+    uint32_t imageIndex = 0;
+    VkResult r;
+    { ZoneScopedN("VKIsl.Present.Acquire");   // VK-ISLAND-TRACY-1: vkAcquireNextImageKHR (can block on WSI)
+      mc2::battlebench::NsScope benchAcquire(mc2::battlebench::PresAcquireNs, 0);
+      const auto acqT0 = std::chrono::steady_clock::now();
+      r = offscreen ? VK_SUCCESS : vkAcquireNextImageKHR(dev, swapchain, UINT64_MAX, acquireSem, VK_NULL_HANDLE, &imageIndex);
+      mc2_hitch2::noteAcquire(static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - acqT0).count())); }
+    if (r == VK_ERROR_OUT_OF_DATE_KHR) {
+        s.lastWsiResult = r; // Rebuild only after the next Render handoff.
+        return true;
+    }
+    if (r != VK_SUCCESS && r != VK_SUBOPTIMAL_KHR) {
+        if (r == VK_ERROR_DEVICE_LOST) mc2vk::infra::deviceLost();
+        health_.fallback_reason = "acquire failed (" + std::to_string(static_cast<int>(r)) + ")";
+        return false;
+    }
+    const VkImage scImg = images[imageIndex];
+    VkCommandBufferBeginInfo begin{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+    begin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    if (vkBeginCommandBuffer(blitCb, &begin) != VK_SUCCESS) {
+        health_.fallback_reason = "blit command buffer begin failed";
+        return false;
+    }
+    { ZoneScopedN("VKIsl.Present.Tail.Blit");
+      mc2::battlebench::NsScope benchBlit(mc2::battlebench::PresTailBlitNs);
     { ZoneScopedN("VKIsl.Present.Tail.Blit.BarriersAndBlit");
     // The composite's color writes precede the swapchain blit.
-    barrier(s.curCbuf(), s.sharedImg.image.get(),
+    barrier(blitCb, sharedImage,
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
 
-    if (!s.offscreen) {
-    // swapchain image: UNDEFINED -> TRANSFER_DST. srcStage includes
-    // COLOR_ATTACHMENT_OUTPUT (the acquire wait stage) to form the acquire
-    // execution dependency (sync-validation WAR guard, per the T0 harness note).
-    barrier(s.curCbuf(), scImg, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+    if (!offscreen) {
+    // The acquire wait and this barrier both use TRANSFER, chaining WSI's image availability to the blit.
+    barrier(blitCb, scImg, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             0, VK_ACCESS_TRANSFER_WRITE_BIT,
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
 
     VkImageBlit region{};
     region.srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
     region.srcOffsets[0] = {0, 0, 0};
-    region.srcOffsets[1] = {static_cast<int32_t>(s.imgW), static_cast<int32_t>(s.imgH), 1};
+    region.srcOffsets[1] = {static_cast<int32_t>(imgW), static_cast<int32_t>(imgH), 1};
     region.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
     // The native composite has a bottom-left origin; WSI has a top-left origin.
-    region.dstOffsets[0] = {0, static_cast<int32_t>(s.scExtent.height), 0};
-    region.dstOffsets[1] = {static_cast<int32_t>(s.scExtent.width), 0, 1};
-    vkCmdBlitImage(s.curCbuf(),
-                   s.sharedImg.image.get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+    region.dstOffsets[0] = {0, static_cast<int32_t>(extent.height), 0};
+    region.dstOffsets[1] = {static_cast<int32_t>(extent.width), 0, 1};
+    vkCmdBlitImage(blitCb,
+                   sharedImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                    scImg,             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                    1, &region, VK_FILTER_LINEAR);
 
     // swapchain -> PRESENT_SRC.
-    barrier(s.curCbuf(), scImg, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+    barrier(blitCb, scImg, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
             VK_ACCESS_TRANSFER_WRITE_BIT, 0,
             VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
     }
     // Return the shared image to COLOR_ATTACHMENT for the next native composite.
-    barrier(s.curCbuf(), s.sharedImg.image.get(),
+    barrier(blitCb, sharedImage,
             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
             VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-    blitScope.end();
     }
-    // present-tail-cut: the GPU-profile read-back reset + Tracy collect ride this submit instead of a second vkQueueSubmit in frameEnd().
-    { ZoneScopedN("VKIsl.Present.Tail.Blit.ProfileEnd"); gpuprof::recordFrameEnd(s.curCbuf()); }
-    { ZoneScopedN("VKIsl.Present.Tail.Blit.CommandBufferEnd"); vkEndCommandBuffer(s.curCbuf()); }
     }
-
-    // Submit the composite and tail together, ordered after acquire. Reset the slot fence only for a real submit.
-    VkSemaphore imgRenderSem = s.offscreen ? VK_NULL_HANDLE : s.renderSems[imageIndex].get();
-    VkSemaphore waitSem      = s.offscreen ? VK_NULL_HANDLE : s.curAcquireSem().get();
-    VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    VkCommandBuffer submitCbufs[2] = { s.curCompositeCbuf(), s.curCbuf() };
-    VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
-    si.waitSemaphoreCount   = s.offscreen ? 0 : 1;
-    si.pWaitSemaphores      = &waitSem;
-    si.pWaitDstStageMask    = &waitStage;
-    si.commandBufferCount   = 2;
-    si.pCommandBuffers      = submitCbufs;
-    si.signalSemaphoreCount = s.offscreen ? 0 : 1;
-    si.pSignalSemaphores    = &imgRenderSem;
-    { const VkFence inFlightFence = s.curInFlight().get(); vkResetFences(s.dev, 1, &inFlightFence); }
-    s.compositePending = false;   // consumed by this submit (success or fail-soft)
-    { ZoneScopedN("VKIsl.Present.Submit");   // VK-ISLAND-TRACY-1: THE single present-path vkQueueSubmit
-      mc2::battlebench::NsScope benchSubmit(mc2::battlebench::PresTailSubmitNs);
-      r = mc2vk::submitGraphics(si, s.curInFlight().get()); }  // drives acquire/present cadence
-    if (r != VK_SUCCESS) {
-        // The reset fence has no submit to signal it. Swap in a SIGNALED one now, so no wait before the DISARM-2 teardown (main runs it
-        // at the next frame top when this is the worker) can block on it; a refused submit holds no reference to the old fence.
-        { VkFenceCreateInfo fci{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO}; fci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-          mc2vk::create(s.curInFlight(), s.dev, [&](auto* h) { return vkCreateFence(s.dev, &fci, nullptr, h); }); }
-        // vk-present-instance 2a: the acquire signalled this slot's acquire semaphore and the refused submit never waited on it, so the next
-        // acquire into the slot would re-signal a signalled semaphore (VUID-vkAcquireNextImageKHR-semaphore-01286). Quiesce, then replace it.
-        { s.ctx->waitIdle("present_submit_failed");
-          VkSemaphoreCreateInfo semci{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
-          mc2vk::create(s.curAcquireSem(), s.dev, [&](auto* h) { return vkCreateSemaphore(s.dev, &semci, nullptr, h); }); }
-        health_.fallback_reason = "vkQueueSubmit failed (" + std::to_string(static_cast<int>(r)) + ")";
-        plog("%s. fail-soft.", health_.fallback_reason.c_str());
+    if (vkEndCommandBuffer(blitCb) != VK_SUCCESS) {
+        health_.fallback_reason = "blit command buffer end failed";
         return false;
     }
-    gpuprof::frameEndSubmitted();
-
-    s.spatialAA.submitted();
+    const VkSemaphore renderSem = offscreen ? VK_NULL_HANDLE : rendered[imageIndex];
+    vkResetFences(dev, 1, &blitFence);
+    r = ctx->submitPresentTail(blitCb, offscreen ? VK_NULL_HANDLE : acquireSem, renderSem, blitFence);
+    if (r != VK_SUCCESS) {
+        // No replacement fence can retire the earlier Render tail. Stop WSI and let main drain the worker then idle before destruction.
+        // The acquired semaphore is deliberately not reused; teardown destroys it after the idle.
+        health_.fallback_reason = "blit submit failed";
+        return false;
+    }
     VkPresentInfoKHR pi{VK_STRUCTURE_TYPE_PRESENT_INFO_KHR};
     pi.waitSemaphoreCount = 1;
-    pi.pWaitSemaphores    = &imgRenderSem;
-    pi.swapchainCount     = 1;
-    const VkSwapchainKHR swapchainHandle = s.swapchain.get();
-    pi.pSwapchains        = &swapchainHandle;
-    pi.pImageIndices      = &imageIndex;
-    // ==== T5 content verification: read back the shared image ==============
-    // Proves the VK composite populated the shared image with REAL, CHANGING content.
-    // Cheap + throttled: only when requested (T5 window), fully synchronous.
-    if (verifyReadback) {
-        verifyReadbackContent();
-    }
-
-    ++health_.present_frames;
-    if (present_thread::onWorker()) finishFrame();
-    // Main may now record frame N+1. Only the queue and immutable WSI handles are touched here.
+    pi.pWaitSemaphores = &renderSem;
+    pi.swapchainCount = 1;
+    pi.pSwapchains = &swapchain;
+    pi.pImageIndices = &imageIndex;
     { ZoneScopedN("VKIsl.Present.QueuePresent");
       mc2::battlebench::NsScope benchPresent(mc2::battlebench::PresQueuePresentNs);
-      s.lastWsiResult = s.offscreen ? VK_SUCCESS : s.ctx->present(s.presentQ, pi); }
+      s.lastWsiResult = offscreen ? VK_SUCCESS : ctx->present(presentQueue, pi); }
     return true;
+    });
 }
 
 // Readback of the shared image (strided checksum, optional PPM dump, capture and screenshot delivery). Never blocks: the copy is requested at one present

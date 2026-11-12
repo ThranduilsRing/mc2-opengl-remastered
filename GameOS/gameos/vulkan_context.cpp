@@ -799,10 +799,33 @@ VkResult VulkanContext::submit(const VkSubmitInfo& si, VkFence fence, uint64_t* 
     return submitLocked(si, fence, outValue);
 }
 
+VkResult VulkanContext::submitPresentTail(VkCommandBuffer cb, VkSemaphore acquire, VkSemaphore rendered, VkFence fence) const {
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Present, "VulkanContext::submitPresentTail");
+    const auto lock = lockSubmit(submitMutex_);
+    if (infra::deviceLostLatched()) return VK_ERROR_DEVICE_LOST;
+    VkCommandBufferSubmitInfo command{VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO};
+    command.commandBuffer = cb;
+    VkSemaphoreSubmitInfo wait{VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO};
+    wait.semaphore = acquire;
+    wait.stageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+    VkSemaphoreSubmitInfo signal{VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO};
+    signal.semaphore = rendered;
+    signal.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+    VkSubmitInfo2 submit{VK_STRUCTURE_TYPE_SUBMIT_INFO_2};
+    submit.commandBufferInfoCount = 1;
+    submit.pCommandBufferInfos = &command;
+    submit.waitSemaphoreInfoCount = acquire ? 1 : 0;
+    submit.pWaitSemaphoreInfos = &wait;
+    submit.signalSemaphoreInfoCount = rendered ? 1 : 0;
+    submit.pSignalSemaphoreInfos = &signal;
+    const VkResult result = queueSubmit2(gfxQueue_, submit, fence);
+    if (result == VK_ERROR_DEVICE_LOST) infra::deviceLost();
+    return result;
+}
+
 VkResult VulkanContext::present(VkQueue queue, const VkPresentInfoKHR& info) const {
     const auto lock = lockSubmit(submitMutex_);
-    flushPendingLocked();   // the frame's batched work goes ahead of the present on the queue
-    present_thread::seal(); // Next-frame submits must stay behind this present, even when main wakes immediately.
+    // Render work was flushed before seal. Main may already be recording another frame: never touch its batch here.
     mc2::overlap::assertOwner(mc2::overlap::Owner::Present, "vkQueuePresentKHR");
     if (infra::deviceLostLatched()) return VK_ERROR_DEVICE_LOST;   // no queue work on a lost device
     return vkQueuePresentKHR(queue, &info);
@@ -832,7 +855,7 @@ GpuTicket VulkanContext::flushUploads() const {
 
 VkResult VulkanContext::submitLocked(const VkSubmitInfo& si, VkFence fence, uint64_t* outValue) const {
     // A deferred batch that failed earlier already returned VK_SUCCESS to its callers: surface it here, once, so an island disables itself.
-    if (pendingFailed_) { pendingFailed_ = false; return VK_ERROR_UNKNOWN; }
+    if (present_thread::detail::takeDeferredFailure(pendingFailed_)) return VK_ERROR_UNKNOWN;
     assert(si.pNext == nullptr && "submit(): the timeline info is appended here; pass a plain VkSubmitInfo");
     if (si.signalSemaphoreCount > 7 || si.waitSemaphoreCount > 8) return VK_ERROR_INITIALIZATION_FAILED;
     if (fence == VK_NULL_HANDLE && si.waitSemaphoreCount == 0 && si.signalSemaphoreCount == 0 && si.commandBufferCount > 0) {
@@ -851,6 +874,9 @@ VkResult VulkanContext::submitLocked(const VkSubmitInfo& si, VkFence fence, uint
         return VK_SUCCESS;
     }
     flushPendingLocked();   // keep queue order: everything deferred so far goes before this submit
+    // A failed deferred prefix cannot be hidden by a successful fenced tail.
+    if (present_thread::detail::takeDeferredFailure(pendingFailed_)) return VK_ERROR_UNKNOWN;
+    if (infra::deviceLostLatched()) return VK_ERROR_DEVICE_LOST;
     const uint64_t value = tracker_.noteSubmit(QueueKind::Graphics);
     // vkQueueSubmit2: the caller's VkSubmitInfo is translated (binary semaphores keep value 0; the stage masks are widened to the 64-bit
     // sync2 type; a caller's wait stage of 0 means TOP_OF_PIPE as in the legacy call). The caller's binary signals go first, the
