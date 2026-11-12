@@ -282,4 +282,4 @@ def test_task_xml_template_resolves_the_launcher_at_registration(tmp_path):
         t.resolve_launcher(lambda n: None)
     dest = tmp_path / "x.xml"
     t.main(["--out", str(dest), "--py", os.path.abspath(sys.executable)])
-    assert "@PY@" not in dest.read_text(encoding="utf-8")
+    assert "@PY@" not in dest.read_text(encoding="utf-16")

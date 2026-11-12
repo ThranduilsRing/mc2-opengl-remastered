@@ -31,7 +31,7 @@ def render(template_text, launcher):
     if "@PY@" not in template_text:
         raise ValueError("template has no @PY@ placeholder")
     args = "-3 " if os.path.basename(launcher).lower().startswith("py.") else ""
-    return template_text.replace("<Arguments>-3 ", "<Arguments>" + args).replace("@PY@", launcher)
+    return template_text.replace("<Arguments>-3 ", "<Arguments>" + args).replace("@PY@", launcher).replace('encoding="UTF-8"', 'encoding="UTF-16"')
 
 
 def main(argv=None):
@@ -42,7 +42,7 @@ def main(argv=None):
     launcher = resolve_launcher(override=a.py)
     with open(TEMPLATE, encoding="utf-8") as f:
         text = render(f.read(), launcher)
-    with open(a.out, "w", encoding="utf-8", newline="") as f:
+    with open(a.out, "w", encoding="utf-16", newline="") as f:
         f.write(text)
     print(f"rendered {a.out} (launcher {launcher}); NOT registered. The orchestrator registers it with:")
     print(f'schtasks /Create /TN "{TASK_NAME}" /XML {a.out} /F')

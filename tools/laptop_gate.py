@@ -1218,7 +1218,8 @@ def main():
     if a.sim:
         return sim_main(a)
     from farm import queue_lock
-    with queue_lock.hold("G:/mc2-tmp/jobs/laptop-gate.lock", timeout=1200,
+    import detached_job
+    with queue_lock.hold(str(Path(detached_job.jobs_dir()) / "laptop-gate.lock"), timeout=1200,
                          log=lambda m: print(m, flush=True)):
         return pc_main(a)
 
