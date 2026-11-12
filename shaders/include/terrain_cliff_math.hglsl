@@ -4,6 +4,13 @@
 float cliffDirectShare(float nDotL, float ambient) {
     return nDotL <= 0.0 ? 0.0 : nDotL / (nDotL + ambient);
 }
+float cliffDelightGain(float luma, float reference) {
+    // A bounded spatial estimate, not an inverse for lost/clipped burnin data.
+    // Uniform dark materials retain their tone; never amplify black texels.
+    if (luma <= 0.02) return 1.0;
+    float ratio = reference / luma;
+    return ratio < 1.0 ? 1.0 : (ratio > 2.5 ? 2.5 : ratio);
+}
 float cliffFilteredHeight(float center, float cardinal, float diagonal, float rise) {
     // A 64-wu binomial footprint rejects the bake's 128-wu source-grid ripple.
     // Flat ground and gentle slopes keep their exact authored heights.

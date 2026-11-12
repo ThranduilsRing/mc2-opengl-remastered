@@ -233,6 +233,18 @@ TEST_CASE("terrain_daylight_harness/cliff_prelit_ambient_is_not_sun_shadowed") {
     }
 }
 
+TEST_CASE("terrain_daylight_harness/cliff_delight_is_spatial_bounded_and_hue_preserving") {
+    CHECK(cliffDelightGain(0.3f, 0.3f) == 1.0f);
+    CHECK(cliffDelightGain(0.05f, 0.05f) == 1.0f);
+    CHECK(cliffDelightGain(0.4f, 0.3f) == 1.0f);
+    CHECK(cliffDelightGain(0.0f, 0.4f) == 1.0f);
+    CHECK(cliffDelightGain(0.01f, 0.4f) == 1.0f);
+    CHECK(cliffDelightGain(0.1f, 0.8f) == 2.5f);
+    const float gain = cliffDelightGain(0.15f, 0.3f);
+    CHECK(gain == doctest::Approx(2.0f));
+    CHECK((0.12f * gain) / (0.18f * gain) == doctest::Approx(0.12f / 0.18f));
+}
+
 TEST_CASE("terrain_daylight_harness/cliff_filter_preserves_airfield_and_planes") {
     CHECK(cliffFilteredHeight(100.0f, 400.0f, 400.0f, 0.0f) == 100.0f);
     // A slight local feature on gentle terrain is retained byte-exactly.

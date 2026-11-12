@@ -159,6 +159,20 @@ vec2 mv_parallax(vec2 uv, float scale, vec4 w, vec3 viewDirTS, vec2 dx, vec2 dy)
     return mix(curOffset, prevOffset, blend);
 }
 
+// The stock burnin includes directional shade and cast shadows. Estimate its
+// low-frequency attenuation from a spatial neighbourhood, preserving hue.
+// Only steep natural terrain calls this; cement and flat ground stay exact.
+float cliffReferenceLuma(vec2 worldXY) {
+    vec2 uv = vec2((worldXY.x - uT.atlasTopLeftX) * uT.atlasOneOverWorldUnits,
+                   (uT.atlasTopLeftY - worldXY.y) * uT.atlasOneOverWorldUnits);
+    float o = 512.0 * uT.atlasOneOverWorldUnits;
+    vec3 reference = 0.25 * (textureLod(u_colormap, uv + vec2(o, 0), 0.0).rgb
+                          + textureLod(u_colormap, uv - vec2(o, 0), 0.0).rgb
+                          + textureLod(u_colormap, uv + vec2(0, o), 0.0).rgb
+                          + textureLod(u_colormap, uv - vec2(0, o), 0.0).rgb);
+    return dot(reference, vec3(0.299, 0.587, 0.114));
+}
+
 #include "include/terrain_cliff_material.glsl"   // MATV_CLIFF_*, mv_cliffMaterial, crApply
 
 // --- GL detail-normal accumulation (terrain_lod_chunk.frag chunkDetailNormal,
@@ -351,6 +365,12 @@ void main() {
     float materialSnow = materials.z;
     vec4 materialW = vec4(max(1.0 - materials.x - materials.y - materials.w, 0.0), materials.x, materials.y, materials.w);
     vec3 baseNormal = mv_smoothTerrainNormal(v_worldPos.xy);
+    vec3 prelitBase = base;
+    float delitShare = pureConcrete || cementHit ? 0.0 : smoothstep(0.85, 0.55, abs(baseNormal.z));
+    if (delitShare > 0.0 && uT.colormapReady != 0) {
+        float gain = cliffDelightGain(dot(base, vec3(0.299, 0.587, 0.114)), cliffReferenceLuma(v_worldPos.xy));
+        base *= mix(1.0, gain, delitShare);
+    }
     vec3 baseColor = base;
     float F3pc = pureConcrete ? 1.0 : 0.0;
     {
@@ -494,6 +514,7 @@ void main() {
         else if (kCsmDebugMode == 8) { fragColor = vec4(N * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }   // surface normal (GL ...=normal)
         else if (kCsmDebugMode == 9) { fragColor = vec4(dbgBaseN * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
         else if (kCsmDebugMode == 10) { fragColor = vec4(dbgDN * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
+        else if (kCsmDebugMode == 12) { fragColor = vec4(prelitBase, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; } // raw prelit before material/lighting
         // Material weights false colour: rock grey, grass green, dirt red, concrete blue, snow white.
         else if (kCsmDebugMode == 11) { fragColor = vec4(materialW.x * vec3(0.35) + materialW.y * vec3(0.1, 0.9, 0.1) + materialW.z * vec3(0.9, 0.2, 0.1) +
                                                          materialW.w * vec3(0.1, 0.3, 1.0) + vec3(materialSnow), 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
