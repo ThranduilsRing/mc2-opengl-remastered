@@ -63,7 +63,12 @@ float bakeTerrainHeight(vec2 xy) {
     ivec2 i = ivec2(floor(g));
     float a = bakeHeightAt(i), b = bakeHeightAt(i + ivec2(1, 0));
     float c = bakeHeightAt(i + ivec2(0, 1)), d = bakeHeightAt(i + ivec2(1, 1));
-    // Match the visible fine mesh's TL-BR triangles, without a second crest filter.
+    // Match the draw mesh's raw-bake diagonal choice and filtered vertex heights.
+    int n = int(uB.heightInfo.w);
+    ivec2 cell = clamp(i, ivec2(0), ivec2(n - 2));
+    if (uH.h[n * n + cell.x + cell.y * n] > 0.5)
+        return f.x + f.y <= 1.0 ? a + (b - a) * f.x + (c - a) * f.y
+                               : d + (c - d) * (1.0 - f.x) + (b - d) * (1.0 - f.y);
     return f.y >= f.x ? a + (d - c) * f.x + (c - a) * f.y
                       : a + (b - a) * f.x + (d - b) * f.y;
 }

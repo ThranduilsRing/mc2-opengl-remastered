@@ -15,6 +15,7 @@
 #include "shadow_dirty_tiles.h"
 #include "static_caster_set.h"
 #include "terrain_field_store.h"
+#include "terrain_diagonal.h"
 #include "vk_depth_caster_pipeline.h"
 #include "vk_dynamic_rendering.h"
 #include "vk_gpu_profile.h"
@@ -587,11 +588,23 @@ bool ShadowBake::readHeightGrid() {
     const int coarseSide = store->mapSide();
     const bool visual = terrainVisualDisplaceGateOn() && !store->visualHeight().empty() && store->visualSide() == (coarseSide - 1) * 4 + 1;
     const int sourceSide = visual ? store->visualSide() : coarseSide;
-    heights_ = mc2shadow::maskHeightGrid(visual ? store->visualHeight() : store->height(), sourceSide, layout_.texels,
+    heights_ = mc2shadow::maskHeightGrid(visual ? store->visualHeight() : store->height(), sourceSide, sourceSide - 1,
                                       visual, store->height(), terrainVisualDisplaceFarParam());
     if (heights_.empty()) return false;
-    heightSide_ = (std::min)(sourceSide, layout_.texels + 1);
+    heightSide_ = sourceSide;
     heightSpacing_ = static_cast<float>(coarseSide - 1) * mc2shadow::kWorldUnitsPerVertex / static_cast<float>(heightSide_ - 1);
+    // Second plane: the draw mesh chooses diagonals from RAW bake corners,
+    // then the vertex shader applies the crest filter to their heights.
+    const size_t count = heights_.size();
+    heights_.resize(count * 2, 0.0f);
+    if (visual) {
+        const auto& raw = store->visualHeight();
+        for (int y = 0; y < sourceSide - 1; ++y)
+            for (int x = 0; x < sourceSide - 1; ++x) {
+                const size_t i = static_cast<size_t>(x) + static_cast<size_t>(y) * sourceSide;
+                heights_[count + i] = mc2terrain::quadSplitsTrBl(raw[i], raw[i + 1], raw[i + sourceSide], raw[i + sourceSide + 1]) ? 1.0f : 0.0f;
+            }
+    }
     return true;
 }
 
@@ -639,7 +652,9 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
     if (!readHeightGrid()) { blog("height field malformed: no bake."); return false; }
     terrainTop_ = -1e30f;
     terrainMin_ = 1e30f;
-    for (float h : heights_) { terrainTop_ = (std::max)(terrainTop_, h); terrainMin_ = (std::min)(terrainMin_, h); }
+    for (size_t i = 0; i < static_cast<size_t>(heightSide_) * heightSide_; ++i) {
+        terrainTop_ = (std::max)(terrainTop_, heights_[i]); terrainMin_ = (std::min)(terrainMin_, heights_[i]);
+    }
     terrainMin_ = (std::max)(terrainMin_, waterZ_);
     if (recordedMask_) bakedHeightVersion_ = store->heightVersion();
 
@@ -1447,7 +1462,9 @@ bool ShadowBake::recordObjectMap(VkCommandBuffer cb, const ShadowBakeInputs& in,
         for (int ay = 0; ay < side - 1; ++ay)
             for (int ax = 0; ax < side - 1; ++ax) {
                 const uint32_t v0 = static_cast<uint32_t>(ax + ay * side), v1 = v0 + 1, v3 = v0 + static_cast<uint32_t>(side), v2 = v3 + 1;
-                if (visual || (ax & 1) == (ay & 1)) indices.insert(indices.end(), {v0, v1, v2, v0, v2, v3});
+                const auto& raw = store->visualHeight();
+                const bool trBl = visual && mc2terrain::quadSplitsTrBl(raw[v0], raw[v1], raw[v3], raw[v2]);
+                if (visual ? !trBl : (ax & 1) == (ay & 1)) indices.insert(indices.end(), {v0, v1, v2, v0, v2, v3});
                 else                      indices.insert(indices.end(), {v0, v1, v3, v1, v2, v3});
             }
         if (!terrainVbo_.createFilled(allocator_, device_, positions.data(), positions.size() * sizeof(float), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, "shadow.bake.terrainVbo") ||
