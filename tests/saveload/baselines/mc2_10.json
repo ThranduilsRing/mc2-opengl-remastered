@@ -10,7 +10,7 @@
   "MC2_BOOT_QUICKLOAD_AT": "1400"
  },
  "exe": {
-  "sha": "8a39a0c9b27f",
+  "sha": "bd60f88c7f47",
   "dirty": 0
  },
  "comparison": {
@@ -51,7 +51,7 @@
  "judged": "first-save-and-resave",
  "resave_present": true,
  "packets": 20000,
- "overall": "69ba573aab9ee529",
+ "overall": "1bdb53856fb2459c",
  "resave_identical": true,
  "resave_matches_policy": true,
  "runs": [
@@ -74,7 +74,7 @@
    3,
    256,
    787279,
-   "429aac99562aeafa"
+   "46fc229237a59fdb"
   ],
   [
    "data",
@@ -109,7 +109,7 @@
    1283,
    256,
    35416,
-   "9b17448aa18df60b"
+   "7fb1b0231d429e61"
   ],
   [
    "data",
@@ -123,7 +123,7 @@
    1795,
    256,
    21255,
-   "a349b9b1ee071bc9"
+   "55422dec2dded8dd"
   ],
   [
    "data",
@@ -137,7 +137,7 @@
    2307,
    256,
    277269,
-   "14375cdc1782228d"
+   "9ce7721df3cce0e2"
   ],
   [
    "data",
@@ -186,7 +186,7 @@
    3613,
    256,
    4843736,
-   "33f07b782d0ffc92"
+   "570bcb0e54a885de"
   ],
   [
    "TeamStaticData",
@@ -207,7 +207,7 @@
    3872,
    1,
    68,
-   "1b650e98c2f290a3"
+   "a78f9fbb4955dac4"
   ],
   [
    "empty",
@@ -221,14 +221,14 @@
    3874,
    147,
    522771,
-   "6c6986cee05e91d0"
+   "d8564a15187d2642"
   ],
   [
    "GroundVehicleData",
    4021,
    157,
    472829,
-   "14e0dc8662e6320a"
+   "1e633da10a84ea71"
   ],
   [
    "TerrainObjectData",
@@ -242,7 +242,7 @@
    4264,
    1,
    550,
-   "a61e9b4fa8ca1415"
+   "8f23b1882952695f"
   ],
   [
    "TerrainObjectData",
@@ -284,7 +284,7 @@
    4438,
    2,
    1100,
-   "71e42d5e4e27841f"
+   "28ecce6780c9a542"
   ],
   [
    "TerrainObjectData",
@@ -326,7 +326,7 @@
    4628,
    1,
    550,
-   "07d0d4f98ea8e9e2"
+   "cdcf57688e381d98"
   ],
   [
    "TerrainObjectData",
@@ -340,7 +340,7 @@
    4642,
    1,
    550,
-   "b8fa9af23d9588f7"
+   "c5d9457a0187b2bd"
   ],
   [
    "BuildingData",
@@ -368,7 +368,7 @@
    4752,
    1,
    550,
-   "aeafd99a36df01a8"
+   "6a1c9c5dbd9eb52b"
   ],
   [
    "TerrainObjectData",
@@ -396,7 +396,7 @@
    4777,
    2,
    1100,
-   "05961c5145a89fad"
+   "c705cc22f5c9bf33"
   ],
   [
    "TerrainObjectData",
@@ -410,7 +410,7 @@
    4796,
    1,
    550,
-   "b5cb5d442c08e8c6"
+   "c8fce448348b8070"
   ],
   [
    "TerrainObjectData",
@@ -424,7 +424,7 @@
    4807,
    2,
    1100,
-   "b91ea62e8e2d3149"
+   "751ce678f4cf66c0"
   ],
   [
    "TerrainObjectData",
@@ -452,7 +452,7 @@
    4853,
    1,
    550,
-   "f1e5f8eb1c9ae52e"
+   "dbb4256df3ae5616"
   ],
   [
    "TerrainObjectData",
@@ -466,7 +466,7 @@
    4861,
    1,
    550,
-   "82c30cd871697918"
+   "0fdc429bdc18e183"
   ],
   [
    "TerrainObjectData",
@@ -480,7 +480,7 @@
    4969,
    20,
    9620,
-   "073c1610bf547b23"
+   "ea687f0879d2101c"
   ],
   [
    "TurretData",
@@ -508,7 +508,7 @@
    5046,
    6,
    3300,
-   "bcced4602303ac12"
+   "6d2abef965fabfef"
   ],
   [
    "BuildingData",
@@ -522,7 +522,7 @@
    5053,
    1,
    550,
-   "45de856ba74d263a"
+   "3a25c5969c62ef8b"
   ],
   [
    "TerrainObjectData",
@@ -571,7 +571,7 @@
    5521,
    1,
    550,
-   "13857153a7591aa3"
+   "59dbefa42cce023a"
   ],
   [
    "TerrainObjectData",
@@ -585,7 +585,7 @@
    5627,
    1,
    550,
-   "1f2d6f203cbe266f"
+   "3e7b956b901d7b2b"
   ],
   [
    "BuildingData",
@@ -599,21 +599,21 @@
    5650,
    2,
    1100,
-   "34c5ee3da0c3f588"
+   "7765aabb8e530593"
   ],
   [
    "TerrainObjectData",
    5652,
    19,
    8683,
-   "065889f6ef495f88"
+   "97180d9442da2a26"
   ],
   [
    "TurretData",
    5671,
    2,
    1100,
-   "04f968e642e21d8a"
+   "9ff99fdfd3c3e0d4"
   ],
   [
    "BuildingData",
@@ -711,7 +711,7 @@
    6233,
    4,
    2200,
-   "be4c59caa8c9780a"
+   "7b312e8b52a5059e"
   ],
   [
    "BuildingData",
@@ -753,7 +753,7 @@
    6807,
    100,
    57700,
-   "4728ffb9645432ca"
+   "88bebd52c5122fe2"
   ],
   [
    "CarnageData",
@@ -774,7 +774,7 @@
    7087,
    1,
    12868,
-   "5e3acbabb331f8d2"
+   "4c3ed5c8df6f9652"
   ],
   [
    "StaticCommanderData",
@@ -809,7 +809,7 @@
    7095,
    1,
    557280,
-   "a1c81f514cd6bad4"
+   "9a8fc837f4027bc9"
   ],
   [
    "empty",
