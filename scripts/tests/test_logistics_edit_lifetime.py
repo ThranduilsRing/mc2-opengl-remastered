@@ -5,7 +5,6 @@ import subprocess
 
 import pytest
 import console_child
-from smoke_lib import nofocus
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -144,5 +143,6 @@ def test_inventory_retirement_ends_edit_before_delete(tmp_path, negative):
                               capture_output=True, text=True,
                               **console_child.child_kwargs(redirected=True))
     assert compiled.returncode == 0, compiled.stderr
-    result = nofocus.run([str(exe)], capture_output=True, text=True)
+    result = subprocess.run([str(exe)], capture_output=True, text=True,
+                            **console_child.child_kwargs(redirected=True))
     assert result.returncode == (86 if negative else 0), result.stderr
