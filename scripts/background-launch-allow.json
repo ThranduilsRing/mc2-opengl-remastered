@@ -34,6 +34,7 @@
     "tools/tracy_capture_compare.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10"
   },
   "direct_spawn": {
+    "scripts/tests/test_font_shutdown_lifetime.py": "Runs only the compiled renderer lifetime unit fixture through console_child.child_kwargs; never the game or a visible window.",
     "scripts/tests/test_gate_parity.py": "Runs cmake -P on a probe script and the stock-data checker with the current Python (console_child, captured stdio); never the game.",
     "scripts/ninja_build.py": "Dev build driver: runs only configure_ninja.NINJA (the build and `-t targets all` for the orphan .spv prune, console_child, captured stdio, 120 s timeout) and git; never the game.",
     "scripts/kit_payload.py": "Cook-cache key: runs only configure_ninja.NINJA `-t deps` on the build tree (console_child, captured stdio, 120 s timeout) to read the importer source closure; never the game.",
