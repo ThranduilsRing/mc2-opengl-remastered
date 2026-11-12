@@ -12,7 +12,6 @@
 #include "RenderCore/fbo_ledger.h"         // FRAME-GRAPH-FBO-LEDGER-1 cross-check
 #include "RenderCore/frame_pass_trace.h"           // FRAME-GRAPH-EXECUTOR-DRYRUN-1 pure kernel
 #include "RenderCore/terrain_subpass_contract.h"   // dominantTerrainPathLive / terrainPathsThatDrew
-#include "RenderCore/top_level_pass_executor.h"    // SAME-ORDER-EXECUTOR-VALIDATE-1 descriptor table
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 
@@ -694,21 +693,6 @@ extern "C" void mc2_note_particle_effect_pass() {
     noteRenderPass(PassIdentity::ParticleEffect, "gamecam::particlesFlush");
 }
 
-// VFX-FBO-ONLY-VALIDATE-1: thin extern "C" shims so code/gamecam.cpp can take top-level
-// executor ownership of the VFX/ParticleEffect pass without including render_contract.h
-// (same TU-include-path constraint as the note shim above). FBO-only validation: the
-// AmbientContract has NO VFX row (the note seam fires pre-body in a different TU, so ambient
-// axes are not honestly declarable), but the FBO ledger declares MainColor (scene HDR FBO
-// bound across the whole flush window). executorOwn* are no-ops when MC2_FRAMEGRAPH_EXECUTOR
-// is unset (byte-identical OFF). PassIdentity::ParticleEffect -> RenderPassId::VFX via
-// toRenderPassId(), same mapping path Water uses. No draw/state change.
-extern "C" void mc2_vfx_pass_begin() {
-    executorOwnBeginTopLevel(PassIdentity::ParticleEffect, "gamecam::particlesFlush");
-}
-extern "C" void mc2_vfx_pass_end() {
-    executorOwnEndTopLevel(PassIdentity::ParticleEffect, "gamecam::particlesFlush");
-}
-
 // ---- CONTRACT-3: per-frame resource-ordering audit ---------------------------
 //
 // MC2_RENDER_PASS_ORDER=1  -- check reads[] satisfied each beginPass
@@ -1027,103 +1011,6 @@ void renderPassScopeFrameBoundary() {
 
 uint32_t getPassScopeViolationCount() {
     return s_scope.violationCount;
-}
-
-// ---- SAME-ORDER-EXECUTOR-VALIDATE-1: top-level frame-order pass wrapper ----------
-//
-// VALIDATE-ONLY. Wraps StaticPropOpaque / Terrain / TerrainOverlay / TerrainDecal /
-// VegetationCards at their begin/end seams. The body between begin and end is
-// UNCHANGED — executor is ADDITIVE (no GL state change, no reorder, no scheduling).
-//
-// Gate: MC2_FRAMEGRAPH_EXECUTOR (default-OFF). When unset both wrappers are no-ops.
-// PIN INVARIANT: markTerrainDrawn latch timing, g_dispatchMvp16 snapshot timing,
-// knownEarly terrain handling, body-owned state setup, and call order are undisturbed.
-
-// Process-lifetime counters in the same anonymous namespace block so they share
-// visibility across the CPU/native executor helpers in this translation unit.
-namespace {
-
-bool topLevelExecutorEnabled() {
-    // Shares the same gate as the sub-stage island executor in gos_postprocess.cpp.
-    static const bool s_on = mc2::gate::get<"MC2_FRAMEGRAPH_EXECUTOR">();
-    return s_on;
-}
-
-// g_validatedTopLevel: End reached (begin+end structurally complete) — optimistic count.
-// g_topLevelFailures: missing native target or unhealthy Vulkan context.
-// g_skippedDeferred: deferred pass Begin calls seen (Shadow/Mech/Water/VFX/UI).
-unsigned long g_validatedTopLevel  = 0;
-unsigned long g_topLevelFailures   = 0;
-unsigned long g_skippedDeferred    = 0;
-
-static constexpr unsigned kMaxTopLevelFailureLog = 32u;
-
-} // namespace
-
-// APPLY-STATE-TERRAINDECAL-1: public forwarder to the anonymous-namespace gate so
-// out-of-TU executor apply-state callers (gameos_graphics.cpp) gate identically to
-// executorOwnBeginTopLevel. Same cached env read (MC2_FRAMEGRAPH_EXECUTOR).
-bool isTopLevelExecutorEnabled() {
-    return topLevelExecutorEnabled();
-}
-
-void executorOwnBeginTopLevel(PassIdentity passId, mc2::czstring callerHint) {
-    if (!topLevelExecutorEnabled()) return;
-    const auto id=toRenderPassId(passId);
-    const auto* c=RenderCore::framegraph::findTopLevelExecutorPass(id);
-    if (!c) { ++g_skippedDeferred; return; }
-    if (c->validateNativeContext && !mc2vk::nativeRenderHealthy()) {
-        ++g_topLevelFailures;
-        if (g_topLevelFailures<=kMaxTopLevelFailureLog)
-            mc2::fmt::print_err("[EXECUTOR_TOPLEVEL v1] BEGIN FAIL nativeContext pass={} hint={}\n",mc2::fmt::safe(c->note),mc2::fmt::safe(callerHint ? callerHint : "?"));
-    }
-    const auto target=RenderCore::framegraph::declaredFboTarget(id);
-    if (c->validateNativeTarget && target!=RenderCore::RenderResourceId::Unknown && !mc2vk::nativeRenderTargetAvailable(target)) {
-        ++g_topLevelFailures;
-        if (g_topLevelFailures<=kMaxTopLevelFailureLog)
-            mc2::fmt::print_err("[EXECUTOR_TOPLEVEL v1] BEGIN FAIL nativeTarget pass={} hint={} target={:d}\n",mc2::fmt::safe(c->note),mc2::fmt::safe(callerHint ? callerHint : "?"),mc2::fmt::as_u32(static_cast<unsigned>(target)));
-    }
-}
-
-void executorOwnEndTopLevel(PassIdentity passId, mc2::czstring callerHint) {
-    if (!topLevelExecutorEnabled()) return;
-    const auto id=toRenderPassId(passId);
-    const auto* c=RenderCore::framegraph::findTopLevelExecutorPass(id);
-    if (!c) return;
-    if (!mc2vk::nativeRenderHealthy()) {
-        ++g_topLevelFailures;
-        if (g_topLevelFailures<=kMaxTopLevelFailureLog)
-            mc2::fmt::print_err("[EXECUTOR_TOPLEVEL v1] END FAIL nativeContext pass={} hint={}\n",mc2::fmt::safe(c->note),mc2::fmt::safe(callerHint ? callerHint : "?"));
-    }
-    const auto target=RenderCore::framegraph::declaredFboTarget(id);
-    if (c->validateNativeTarget && target!=RenderCore::RenderResourceId::Unknown && !mc2vk::nativeRenderTargetAvailable(target)) {
-        ++g_topLevelFailures;
-        if (g_topLevelFailures<=kMaxTopLevelFailureLog)
-            mc2::fmt::print_err("[EXECUTOR_TOPLEVEL v1] END FAIL nativeTarget pass={} hint={} target={:d}\n",mc2::fmt::safe(c->note),mc2::fmt::safe(callerHint ? callerHint : "?"),mc2::fmt::as_u32(static_cast<unsigned>(target)));
-    }
-    ++g_validatedTopLevel;
-}
-
-extern "C" unsigned long mc2_framegraph_executor_top_level_failures() { return g_topLevelFailures; }
-
-extern "C" unsigned long mc2_framegraph_executor_validated_top_level_passes() {
-    return g_validatedTopLevel;
-}
-// FRAMEGRAPH-APPLY-STATE-ISLAND-1: forward to the live counter in gos_postprocess.cpp.
-extern "C" unsigned long mc2_framegraph_executor_apply_state_passes_impl();
-extern "C" unsigned long mc2_framegraph_executor_apply_state_passes() {
-    return mc2_framegraph_executor_apply_state_passes_impl();
-}
-// PER-PASS-APPLY-COUNTERS-1: per-pass public forwarder (two-hop, mirrors above).
-extern "C" unsigned long mc2_framegraph_executor_apply_state_by_pass_impl(unsigned id);
-extern "C" unsigned long mc2_framegraph_executor_apply_state_by_pass(unsigned id) {
-    return mc2_framegraph_executor_apply_state_by_pass_impl(id);
-}
-extern "C" unsigned long mc2_framegraph_executor_scheduled_passes() {
-    return 0ul;  // always 0; VALIDATE-ONLY slice, no scheduling
-}
-extern "C" unsigned long mc2_framegraph_executor_skipped_deferred_passes() {
-    return g_skippedDeferred;
 }
 
 } // namespace render_contract

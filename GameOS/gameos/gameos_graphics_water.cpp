@@ -227,15 +227,6 @@ void gosRenderer::renderWaterFastPath(
     // and pack the thin records and the water island draws them. The handles and the detail / spray tuning went with the GL program.
     (void)waterGosHandle; (void)waterDetailGosHandle; (void)frameCosAlpha; (void)oneOverWaterTF; (void)sprayOffsetX; (void)sprayOffsetY;
     if (recordCount == 0) return;
-    // WATER-SAME-ORDER-VALIDATE-1: top-level validate-only wrapper (gate MC2_FRAMEGRAPH_EXECUTOR).
-    render_contract::executorOwnBeginTopLevel(render_contract::PassIdentity::Water,
-                                              "gosRenderer_renderWaterFastPath");
-    struct TopLevelGuard_ {
-        ~TopLevelGuard_() {
-            render_contract::executorOwnEndTopLevel(render_contract::PassIdentity::Water,
-                                                    "gosRenderer_renderWaterFastPath");
-        }
-    } _tlGuard;
     render_contract::noteRenderPass(render_contract::PassIdentity::Water,
                                     "gosRenderer::renderWaterFastPath");
 

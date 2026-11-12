@@ -39,7 +39,6 @@
 #include <string>
 #include <cstdlib>
 #include <SDL2/SDL.h>
-#include "../../RenderCore/frame_executor.h"  // FRAME-GRAPH-EXECUTOR-ISLAND-1 IslandContract
 #include "Gates/gate_cold.h"   // gate::get<>(), str<>(), raw<>()
 
 // Globals defined in gos_postprocess.cpp (or elsewhere in the engine) that the split pieces share.

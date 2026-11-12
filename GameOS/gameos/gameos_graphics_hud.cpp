@@ -317,22 +317,6 @@ void gosRenderer::flushHUDBatch()
     render_contract::beginPassScope(render_contract::PassIdentity::UI,
                                     "gosRenderer_flushHUDBatch");
 
-    // UI-SAME-ORDER-VALIDATE-1: top-level validate-only wrapper (gate MC2_FRAMEGRAPH_EXECUTOR).
-    // No-op when gate unset (byte-identical OFF). PIN INVARIANT: additive validate counters only —
-    // no GL state change, no reorder, no draw change. The flush body (hudBatch_ replay, the
-    // memcpy state save/restore at :7519) runs UNCHANGED between begin and end. Placed after the
-    // empty-batch early-return so begin only fires on non-empty frames; the RAII guard's dtor
-    // fires end on ALL exit paths. FBO-only: Backbuffer (default FBO 0, bound by pp->endScene
-    // pre-flush). Ambient is DO_NOT_MODEL — UI ambient is per-draw legacy gos dynamic state.
-    render_contract::executorOwnBeginTopLevel(render_contract::PassIdentity::UI,
-                                              "gosRenderer_flushHUDBatch");
-    struct TopLevelUiGuard_ {
-        ~TopLevelUiGuard_() {
-            render_contract::executorOwnEndTopLevel(render_contract::PassIdentity::UI,
-                                                    "gosRenderer_flushHUDBatch");
-        }
-    } _tlUiGuard;
-
     // HUD scale — shrink only in-game HUD (gated by gos_SetHudScaleActive, set
     // to true by mission->start() and false by mission->destroy()). Menus and
     // modal dialogs run through the same HUD buffer but stay at 100%; we skip

@@ -577,10 +577,6 @@ static void persistExtraction() {
     }
 }
 
-// The frame-graph executor's record of the MechOpaque pass: bumps the apply-state ledger (the Vulkan mech island owns the pipeline).
-void GpuMechBatcher::executorApplyMechOpaqueState() {
-    mc2_framegraph_executor_bump_apply_state(static_cast<unsigned>(RenderCore::framegraph::ApplyPassId::MechOpaque));
-}
 
 // Per-frame mech flush: bucket the pending submits and build the instance, bone and run feeds the Vulkan mech island
 // and the VK shadow cascades consume, then persist the frame for the extract snapshot. Each phase is a helper above,

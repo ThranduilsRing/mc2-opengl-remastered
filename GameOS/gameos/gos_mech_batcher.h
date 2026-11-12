@@ -207,10 +207,6 @@ public:
     // CPU-fallback (mechShape->Render(true)) this frame when false.
     [[nodiscard]] bool submitActor(const GpuMechSubmitDesc& desc);
 
-    // APPLY-STATE-MECHOPAQUE-1: the frame-graph executor's record of the MechOpaque top-level pass (counts the pass in the
-    // apply-state ledger; the pipeline itself is the Vulkan mech island's). Called from txmmgr renderLists() when
-    // MC2_FRAMEGRAPH_EXECUTOR is ON.
-    void executorApplyMechOpaqueState();
 
     // Per-frame flush: builds the instance, bone and run feeds the Vulkan mech island consumes (CPU only).
     void flush();
