@@ -179,6 +179,11 @@ void MissionSelectionScreen::update()
 			{
 				highlightButton = i;
 				highlightColor = operationScreen.buttons[i].getColor( );
+				// The defs operation page dispatches to a base no-op handler;
+				// this screen owns the marker's persistent selection state.
+				if ( operationScreen.defsUiPageUsable()
+					&& operationScreen.buttons[i].isEnabled() && userInput->isLeftClick() )
+					operationScreen.buttons[i].press( true );
 			}
 
 			if ( operationScreen.buttons[i].isPressed() && i != pressedButton )
