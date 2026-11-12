@@ -300,6 +300,7 @@ void gos_DestroyRenderer() {
 
     g_gos_renderer->destroy();
     delete g_gos_renderer;
+    g_gos_renderer = nullptr;
 }
 
 void gos_RendererBeginFrame() {

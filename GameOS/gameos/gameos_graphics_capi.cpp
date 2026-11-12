@@ -116,6 +116,9 @@ void __stdcall gos_DeleteFont( HGOSFONT3D FontHandle )
 {
     mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "gos_DeleteFont");
     gosASSERT(FontHandle);
+    // Static UI templates can outlive the renderer, which already freed every font.
+    if (!g_gos_renderer)
+        return;
     gosFont* font = FontHandle;
     getGosRenderer()->deleteFont(font);
 }
