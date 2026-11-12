@@ -2,6 +2,7 @@
 // (offline, header-only logic).
 #include "doctest.h"
 #include "GameAdapters/vegetation_hardsurface.h"
+#include "GameAdapters/vegetation_noise.h"
 #include "GameOS/gameos/vegetation_cutout.h"
 #include "GameAdapters/vegetation_budget.h"
 #include "GameAdapters/vegetation_clumps.h"
@@ -10,6 +11,59 @@
 #include <fstream>
 
 using namespace mc2::vegetation;
+
+TEST_CASE("VegFieldEdge/road shore and cell boundaries keep the interior identical") {
+    // A straight road, a circular lake and a missing candidate rectangle.
+    // These stand in for the adapter's union of the authoritative masks.
+    const FieldEdge road(256, [](float x,float) { return x<64; });
+    const FieldEdge lake(256, [](float x,float y) { return std::hypot(x-128,y-128)<48; });
+    const FieldEdge cell(256, [](float x,float y) { return x>=96 && x<128 && y>=96 && y<128; });
+    CHECK(road.distance(64,128) == doctest::Approx(0));
+    CHECK(road.distance(72,128) == doctest::Approx(8));
+    CHECK(road.distance(88,128) == doctest::Approx(24));
+    CHECK(lake.distance(128,128)<0);
+    CHECK(cell.distance(112,112)<0);
+    CHECK(cell.distance(136,112)>0);
+    // Out-of-map queries remain bounded; no wrap to another edge.
+    CHECK(std::isfinite(road.distance(-8,128)));
+    CHECK(std::isfinite(road.distance(264,128)));
+    for (float patch : {0.0f,0.3f,0.7f,1.0f}) {
+        CHECK(fieldEdgeProbability(0,patch)==0);
+        CHECK(fieldEdgeProbability(-8,patch)==0);
+        CHECK(fieldEdgeProbability(30,patch)==1);
+        CHECK(fieldEdgeProbability(road.distance(128,128),patch)==1);
+        CHECK(fieldEdgeProbability(lake.distance(224,128),patch)==1);
+        CHECK(fieldEdgeProbability(cell.distance(176,112),patch)==1);
+        float previous=0;
+        for (int d=0; d<=30; ++d) {
+            const float p=fieldEdgeProbability(static_cast<float>(d),patch);
+            CHECK(p>=previous); previous=p;
+            CHECK(fieldEdgeRole(p,0.4f)==(p==1 ? 0u : p>0.4f ? 0x10u : 0x20u));
+        }
+    }
+    CHECK(fieldEdgeRole(1,0)==0);
+    CHECK(fieldEdgeRole(1,1)==0);
+    CHECK(fieldEdgeRole(0,0)==0x20u);
+    CHECK(fieldEdgeRole(0.5f,0.25f)==0x10u);
+    const FieldEdge open(256, [](float,float) { return false; });
+    CHECK(fieldEdgeProbability(open.distance(128,128),0.5f)==1);
+}
+
+TEST_CASE("VegFieldEdge/stable blade ranks break the fringe into tufts and gaps") {
+    int fringeKept=0, interiorKept=0, changed=0;
+    const float probability=fieldEdgeProbability(10,0.5f);
+    for (int j=0; j<1024; ++j) {
+        const float x=static_cast<float>(j)*6, y=127;
+        const float a=hashf(x+71,y-137), b=hashf(x+71,y-137);
+        CHECK(a==b);
+        fringeKept += a<probability;
+        interiorKept += a<fieldEdgeProbability(32,0.5f);
+        changed += (a<fieldEdgeProbability(10,0.0f)) != (a<fieldEdgeProbability(10,1.0f));
+    }
+    CHECK(fringeKept>400); CHECK(fringeKept<620);
+    CHECK(interiorKept==1024);
+    CHECK(changed>100);
+}
 
 TEST_CASE("VegClumps/deterministic per-map blue-noise centres") {
     const auto seed = mapSeed("mc2_01");

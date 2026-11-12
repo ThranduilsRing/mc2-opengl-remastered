@@ -25,6 +25,8 @@ void mc2VegetationVertex(vec3 i_worldPos, float i_yaw, float i_scale, float i_se
                     : (cardRole == 2u) ? 1.3963           // top/cap: 80°
                     : (cardRole == 1u) ? 0.7854           // tilted: 45°
                     : 0.0;                                // vertical: 0°
+    // Placement marks boundary survivors; interior field cards retain role 0.
+    if (fieldBlade && cardRole == 1u) tiltAngle = 0.08 + 0.15 * i_seed;
     float vertFactor = cos(tiltAngle);
     float flatFactor = sin(tiltAngle);
 
@@ -32,6 +34,7 @@ void mc2VegetationVertex(vec3 i_worldPos, float i_yaw, float i_scale, float i_se
     float effectiveScale = i_scale * (cardRole == 3u ? 0.25
                                      : cardRole == 2u ? 0.6
                                      : 1.0);
+    if (fieldBlade && cardRole == 1u) effectiveScale *= 0.90 + 0.10 * i_seed;
 
     float totalYaw = i_yaw + a_card.z;
     float cy = cos(totalYaw), sy = sin(totalYaw);

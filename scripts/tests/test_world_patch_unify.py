@@ -53,3 +53,15 @@ def test_fine_speckle_octave_present():
     m = re.search(r"const float WPN_SPECK_WU\s*=\s*([\d.]+)", text)
     assert m, "fine in-patch speckle octave missing"
     assert 20.0 <= float(m.group(1)) <= 40.0  # 5-10 m at 4 wu per metre
+
+
+def test_fringe_roles_preserve_the_capped_interior_survivor_list():
+    # Both the frustum radius and projected-height test must treat every field
+    # role as the original upright card, even when draw rejects that card.
+    role = "(i.atlasFrame & 8u) != 0u ? 0u : (i.atlasFrame >> 4u) & 3u"
+    for name in ("include/vegetation_cull_common.glsl", "include/vegetation_structs.glsl"):
+        assert role in _src(name), name
+    assert "if ((i.atlasFrame & 56u) == 40u) shrink = 0.0;" in _src("vfx_vegetation.vert")
+    adapter = (ROOT / "GameAdapters/VegetationAdapter.cpp").read_text(encoding="utf-8")
+    assert "inst.atlasFrame |= fieldEdgeRole(" in adapter
+    assert "if (hashf(bx+71.0f,by-137.0f)>=edgeProbability) continue;" not in adapter
