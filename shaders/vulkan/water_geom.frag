@@ -192,7 +192,7 @@ const float WAVE_RESOLVE_LO  = 2.0;     // pixels per wavelength: at or below ->
 const float WAVE_RESOLVE_HI  = 6.0;     // pixels per wavelength: at or above -> fully in the normal
 const float WATER_ALPHA0     = 0.06;    // GGX alpha of the calm surface
 const float RIPPLE_SLOPE_VAR = 0.004;   // slope variance of the fine ripples once they fade with distance
-const float SUN_SPEC_GAIN    = 3.0;     // sun/moon specular scale at the default glint gain (0.30)
+const float SUN_SPEC_GAIN    = 1.0;     // one energy-normalised sun/moon lobe at the default glint gain (0.30)
 const float LAMP_SPEC_GAIN   = 1.5;     // lamp/weapon pool-light specular scale at the default glint gain
 // WATER-GLOSS-NEAR: water near the camera is seen steeply, where water's 0.02 Schlick reflectance leaves it a matte
 // body colour. By day, within NEAR_GLOSS_END of the camera, the reflectance gets a floor (only steep views fall below
@@ -201,12 +201,8 @@ const float NEAR_GLOSS_START = 6000.0;  // wu from the camera: full near gloss i
 const float NEAR_GLOSS_END   = 12000.0; // wu: no near gloss beyond (far water unchanged)
 const float NEAR_REFL_FLOOR  = 0.12;    // reflectance floor for close, steeply viewed water
 const float NEAR_ALPHA0      = 0.04;    // GGX alpha of the calm surface close to the camera
-// WATER-GLOSS-NEAR round 2: by day the overhead sky that near water reflects is about as dark as the water body, so a
-// reflectance floor alone shows nothing. The gloss comes from a broad second sun lobe (sheen) on the wave normal and a
-// lift of the reflected sky, both weighted by nearGloss: streaked highlights along the waves, not a white wash.
-const float NEAR_SHEEN_ALPHA2 = 0.18;   // GGX alpha^2 of the broad sheen lobe
-const float NEAR_SHEEN_GAIN   = 4.5;    // sheen scale (the lobe is broad, so its peak is low)
-const float NEAR_SHEEN_MAX    = 0.3;   // per-channel cap of the sheen (keeps the water hue; no white wash)
+// Near gloss belongs to reflected sky and the calm-surface roughness, not an additional sun.
+// A second broad GGX lobe added energy across the channel even outside the primary glitter path.
 const float NEAR_SKY_LIFT     = 0.4;    // reflected-sky brightening at full near gloss
 
 PREC vec2 waterWaveSlope(PREC vec2 p, float t, float footprint, float gain, out float unresolvedVar){
@@ -465,10 +461,6 @@ void main(void)
         Ls = normalize(vec3(Ls.xy, max(Ls.z, max(uT.shadowMinSunSin, 0.05))));
         vec3  sunRad = Color.bgra.rgb * (1.0 - 0.5 * clamp(F.f3.z / 0.6, 0.0, 1.0));
         col += min(sunRad * (SUN_SPEC_GAIN * glintScale * sunVis * waterGgxSpec(waveN, vdir, Ls, specAlpha2)), vec3(4.0));
-        // WATER-GLOSS-NEAR: broad sheen lobe near the camera by day (nearGloss is 0 at night and on far water).
-        if (nearGloss > 0.0)
-            col += min(sunRad * (NEAR_SHEEN_GAIN * glintScale * sunVis * nearGloss
-                                 * waterGgxSpec(waveN, vdir, Ls, max(specAlpha2, NEAR_SHEEN_ALPHA2))), vec3(NEAR_SHEEN_MAX));
         if (uT.numPoolLights > 0 && nightSky < 1.0)
             col += min(waterLampSpec(WorldPos, waveN, vdir, specAlpha2) * (LAMP_SPEC_GAIN * glintScale), vec3(4.0));
     }
