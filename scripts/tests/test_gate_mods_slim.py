@@ -95,18 +95,17 @@ def test_promotion_does_not_require_the_slim_row():
     assert lane_merge_stage.nightly_unmet(dict(tier=1, executed=executed)) == []
 
 
-def test_nightly_without_a_window_keeps_the_slim_row(monkeypatch, capsys, tmp_path):
+def test_nightly_without_a_window_keeps_the_slim_row(monkeypatch):
     import datetime
     monday = datetime.date(2026, 11, 9)
-    monkeypatch.setattr(nightly_gate, "datetime", types.SimpleNamespace(date=types.SimpleNamespace(today=lambda: monday)))
-    monkeypatch.setattr(nightly_gate, "PROOF_ROOT", str(tmp_path))
-    monkeypatch.setattr(nightly_gate, "refusal", lambda: None)
     monkeypatch.setattr(nightly_gate, "nightly_base", lambda: "b" * 40)
     monkeypatch.setattr(nightly_gate, "git", lambda *a: "no window here")
-    assert nightly_gate.main(["--dry-run"]) == 0
-    out = capsys.readouterr().out
-    assert "mods-slim dropped" not in out and "mods-slim" in out.split("--stages", 1)[1] and "--window" not in out.split("--stages", 1)[0]
+    plan, why = nightly_gate.make_plan(False, monday)
+    assert why is None
+    cmd = plan["cmd"]
+    assert "mods-slim" in cmd[cmd.index("--stages") + 1:] and "--window" not in cmd
     monkeypatch.setattr(nightly_gate, "git", lambda *a: "merge w136: x")
-    assert nightly_gate.main(["--dry-run"]) == 0
-    head, stages = capsys.readouterr().out.split("--stages", 1)
-    assert "--window 136" in head and "mods-slim" in stages
+    plan, why = nightly_gate.make_plan(False, monday)
+    assert why is None
+    cmd = plan["cmd"]
+    assert cmd[cmd.index("--window") + 1] == "136" and "mods-slim" in cmd[cmd.index("--stages") + 1:]

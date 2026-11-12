@@ -42,6 +42,8 @@ def test_multi_run_stable_but_engine_capture_never_fired_exits_nonzero(monkeypat
     bm = tmp_path / "bm.json"
     bm.write_text("{}")
     monkeypatch.setattr(rvc, "guard_exe", lambda exe: True)
+    # The fake install isolates the exit predicate; asset parity has its own tests.
+    monkeypatch.setattr(rvc.asset_parity, "capture_drift", lambda install: None)
     monkeypatch.setattr(rvc, "_save_cursor", lambda: None)
     monkeypatch.setattr(rvc.atexit, "register", lambda *a, **k: None)
     monkeypatch.setattr(rvc.time, "sleep", lambda s: None)

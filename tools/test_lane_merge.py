@@ -1381,3 +1381,56 @@ def test_sim_evidence_accepts_perf_counter_only_pass(tmp_path):
     data["sim"]["rows"]["determinism-mc2_10"]["status"] = "PASS (perf_counter-only WARN: mc2_10: draws.vfx=5.5>3.968)"
     summary.write_text(json.dumps(data))
     assert lane_merge_stage.sim_evidence_problems(tmp_path / "gate-verdict.json", "a" * 40) == []
+
+
+@pytest.mark.parametrize("diagnostics, inherited", [
+    ("code/a.cpp:99: old_symbol violation", True),
+    ("code/a.cpp:99: new_symbol violation", False),
+    ("code/a.cpp:99: old_symbol violation\ncode/a.cpp:100: new_symbol violation", False),
+    ("FAILED scripts/tests/test_a.py::test_old - AssertionError", True),
+    ("FAILED scripts/tests/test_a.py::test_new - AssertionError", False),
+    ("FAIL: scripts/tests/test_a.py (rc=1) scripts/tests/test_a.py::test_old scripts/tests/test_a.py::test_new\n"
+     "FAILED scripts/tests/test_a.py::test_old - AssertionError\n"
+     "FAILED scripts/tests/test_a.py::test_new - AssertionError", False),
+    ("tool crashed", False),
+])
+def test_base_rot_preserves_tip_owned_failures(env, diagnostics, inherited, capsys):
+    from lane_precheck import base_rot
+    from tools import lane_merge as lm
+    repo, _ = env
+    base = git(repo, "rev-parse", "HEAD")
+    write(repo, "code/a.cpp", "tip changes the same file\n")
+    commit_all(repo, "tip")
+    def runner(root, command):
+        assert git(root, "rev-parse", "HEAD") == base
+        return subprocess.CompletedProcess(command, 1,
+            "code/a.cpp:1: old_symbol violation\nFAILED scripts/tests/test_a.py::test_old - AssertionError"
+            if "FAILED " in diagnostics else "code/a.cpp:1: old_symbol violation")
+    result = subprocess.CompletedProcess([], 1, diagnostics)
+    assert base_rot(str(repo), base, "check", [sys.executable, "check.py"], result, runner) == inherited
+    assert ("BASE-ROT check base=" in capsys.readouterr().out) == (diagnostics != "tool crashed")
+    if "new_symbol" in diagnostics and "\n" in diagnostics:
+        assert "new_symbol" in result.stdout and "old_symbol" not in result.stdout
+    if diagnostics.startswith("FAIL:"):
+        assert "test_new" in result.stdout and "test_old" not in result.stdout
+
+
+@pytest.mark.parametrize("introduced", [False, True])
+def test_precheck_warns_only_for_reproduced_base_rot(env, monkeypatch, capsys, introduced):
+    from tools import lane_merge as lm
+    repo, _ = env
+    precheck_fixture(lm, repo, monkeypatch, "callers.py")
+    base = git(repo, "rev-parse", "HEAD")
+    write(repo, "tools/check.py", "# tip-owned edit\n")
+    commit_all(repo, "tip")
+    runner = lm.run
+    def scoped_runner(root, command, env=None):
+        result = runner(root, command, env)
+        if result.returncode:
+            symbol = "new_symbol" if introduced and git(root, "rev-parse", "HEAD") != base else "old_symbol"
+            result.stdout = f"code/a.cpp:9: {symbol} violation"
+        return result
+    monkeypatch.setattr(lm, "run", scoped_runner)
+    assert lm.main(["--root", str(repo), "--precheck", "HEAD"]) == int(introduced)
+    output = capsys.readouterr().out
+    assert "BASE-ROT callers base=" in output

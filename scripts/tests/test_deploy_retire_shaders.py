@@ -95,6 +95,13 @@ def test_shader_inventory_honours_manifest_prune(tmp_path, monkeypatch):
     rel = "shaders/vulkan/water_reflection.comp"
     shipped = [(str(live), "shaders/vulkan/live.frag.spv", "shader")]
     monkeypatch.setattr(dp, "enumerate_payload", lambda *args, **kwargs: shipped)
+    real_deploy = dp.deploy
+    deployed = []
+    def deploy(*args, **kwargs):
+        deployed.append(args[0])
+        assert kwargs == {"code_only": True}
+        return real_deploy(*args, **kwargs)
+    monkeypatch.setattr(dp, "deploy", deploy)
     for ownership in ("unchanged", "modified", "unowned"):
         target = tmp_path / ownership
         retired = target / rel
@@ -112,3 +119,4 @@ def test_shader_inventory_honours_manifest_prune(tmp_path, monkeypatch):
             assert len(problems) == 1
             assert f"['{rel}'] extra, [] missing" in problems[0]
         assert {p.relative_to(target): p.read_bytes() for p in target.rglob("*") if p.is_file()} == before
+    assert deployed == [shipped] * 3

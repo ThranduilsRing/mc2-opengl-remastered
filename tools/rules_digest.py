@@ -31,7 +31,7 @@ BUDGET = {T: 8750, E: 8300, M: 8500}
 
 HEAD = {
     T: "Generated header (not a rule): tools-only lane (Python/scripts/docs/tests; no game runs, no deploy).",
-    E: "Generated header (not a rule): engine lane (C++/shader/render/sim; box iterates, PC does one final compile).",
+    E: "Generated header (not a rule): engine lane (C++/shader/render/sim; PC does one final compile).",
     M: "Generated header (not a rule): merge/review runner (merge windows, gates, adversarial reviews; also read lane-rules-merge.md).",
 }
 
@@ -39,22 +39,23 @@ HEAD = {
 # section number as a string or "owner"; the body is the line without a leading "- ".
 # Each section that loses lines gets a pointer to it.
 _PC = ("6", "PC (8 cores")
-_BOXAB = ("6", "Box A/B:")
+_AB = ("6", "A/B:")
 _LAPTOP = ("6", "Laptop (GTX 1050 Ti)")
-_BOX = ("6", "Box (vast.ai")
 _STARTUP = ("6", "At the first startup timeout")
 _C7 = [("7", p) for p in ("| C++, not sim", "| Sim-visible", "| Shader", "| Pixels change", "| Windows-only", "| Shared header")]
 _ROWS7 = _C7 + [("7", p) for p in ("| Docs |", "| Tooling", "| Data / art |", "| Change |", "|---|")]
 _SEC5 = [("5", p) for p in ("Worktree:", "Install:", "One install per lane", "Proofs:")]
-_SEC6 = [("6", p) for p in ("PC (8 cores", "Box (vast.ai", "Box A/B:", "Laptop (GTX 1050 Ti)", "At the first startup timeout")]
+_SEC6 = [_PC, _AB, _LAPTOP, _STARTUP]
 _REPORT = ("9", "At most 12 summary lines")
+# Detailed procedure stays available through the generated section pointers.
+_DETAILS = [("1", "Briefs quote"), ("2", "Never poll or sleep-loop"), ("4", "Long runs:"), ("8", "Delete only enumerated")]
 DROP = {
-    T: [_PC, _BOXAB, _BOX, _STARTUP, *_C7, ("7", "PC compile:"), ("7", "Perf:"), ("7", "Game-run defaults"), ("7", "Mods:"),
+    T: [*_DETAILS, ("1", "**Look lanes"), _PC, _AB, _STARTUP, *_C7, ("7", "PC compile:"), ("7", "Perf briefs"), ("7", "Game-run defaults"), ("7", "Mods:"),
         *_SEC5, ("2", "Do not read whole files"), ("2", "Use the one-verdict"), ("4", "Priority:"), _REPORT],
-    E: [*_SEC5, *_SEC6, ("2", "A continuation names"), ("2", "Do not read whole files"), ("2", "Use the one-verdict"),
-        ("2", "Write scripts with"), ("4", "Priority:"), ("7", "**Unit tests"), ("7", "| Windows-only"), ("7", "| Shared header"),
-        ("7", "Merge-window/scheduled only"), ("7", "Mods:"), ("7", "Perf:"), ("7", "Game-run defaults"), _REPORT],
-    M: [_PC, _BOXAB, _BOX, _STARTUP, *_ROWS7, ("7", "**Unit tests"), ("7", "PC compile:"), ("7", "Game-run defaults"),
+    E: [*_DETAILS, *_SEC5, *_SEC6, ("2", "A continuation names"), ("2", "Do not read whole files"), ("2", "Use the one-verdict"),
+        ("2", "Write scripts with"), ("4", "Priority:"), ("4", "Never `find /`"), ("7", "**Unit tests"), ("7", "| Windows-only"), ("7", "| Shared header"),
+        ("7", "Merge-window/scheduled only"), ("7", "Mods:"), ("7", "Perf briefs"), ("7", "Game-run defaults"), _REPORT],
+    M: [*_DETAILS, ("1", "**Look lanes"), _PC, _AB, _STARTUP, *_ROWS7, ("7", "**Unit tests"), ("7", "PC compile:"), ("7", "Game-run defaults"),
         *_SEC5, ("2", "Do not read whole files"), ("2", "Use the one-verdict"), ("2", "Write scripts with"), ("4", "Priority:"), _REPORT],
 }
 
