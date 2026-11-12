@@ -1389,6 +1389,9 @@ def test_sim_evidence_accepts_perf_counter_only_pass(tmp_path):
     ("code/a.cpp:99: old_symbol violation\ncode/a.cpp:100: new_symbol violation", False),
     ("FAILED scripts/tests/test_a.py::test_old - AssertionError", True),
     ("FAILED scripts/tests/test_a.py::test_new - AssertionError", False),
+    ("FAIL: scripts/tests/test_a.py (rc=1) scripts/tests/test_a.py::test_old scripts/tests/test_a.py::test_new\n"
+     "FAILED scripts/tests/test_a.py::test_old - AssertionError\n"
+     "FAILED scripts/tests/test_a.py::test_new - AssertionError", False),
     ("tool crashed", False),
 ])
 def test_base_rot_preserves_tip_owned_failures(env, diagnostics, inherited, capsys):
@@ -1402,10 +1405,14 @@ def test_base_rot_preserves_tip_owned_failures(env, diagnostics, inherited, caps
         assert git(root, "rev-parse", "HEAD") == base
         return subprocess.CompletedProcess(command, 1,
             "code/a.cpp:1: old_symbol violation\nFAILED scripts/tests/test_a.py::test_old - AssertionError"
-            if diagnostics.startswith("FAILED") else "code/a.cpp:1: old_symbol violation")
+            if "FAILED " in diagnostics else "code/a.cpp:1: old_symbol violation")
     result = subprocess.CompletedProcess([], 1, diagnostics)
     assert base_rot(str(repo), base, "check", [sys.executable, "check.py"], result, runner) == inherited
-    assert ("BASE-ROT check base=" in capsys.readouterr().out) == inherited
+    assert ("BASE-ROT check base=" in capsys.readouterr().out) == (diagnostics != "tool crashed")
+    if "new_symbol" in diagnostics and "\n" in diagnostics:
+        assert "new_symbol" in result.stdout and "old_symbol" not in result.stdout
+    if diagnostics.startswith("FAIL:"):
+        assert "test_new" in result.stdout and "test_old" not in result.stdout
 
 
 @pytest.mark.parametrize("introduced", [False, True])
@@ -1426,4 +1433,4 @@ def test_precheck_warns_only_for_reproduced_base_rot(env, monkeypatch, capsys, i
     monkeypatch.setattr(lm, "run", scoped_runner)
     assert lm.main(["--root", str(repo), "--precheck", "HEAD"]) == int(introduced)
     output = capsys.readouterr().out
-    assert ("BASE-ROT callers base=" in output) == (not introduced)
+    assert "BASE-ROT callers base=" in output

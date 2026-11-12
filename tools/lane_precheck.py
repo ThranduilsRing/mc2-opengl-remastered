@@ -38,8 +38,11 @@ def failure_summary(output):
 def failure_signatures(output):
     """Compare diagnostics, keeping symbols/counts but ignoring checkout roots and line shifts."""
     rows = output.splitlines()
-    pytest = [row.strip() for row in rows if re.match(r"^(FAILED|ERROR|FAIL:|VIOLATION:) \S+", row)]
+    pytest = [row.strip() for row in rows if re.match(r"^(FAILED|ERROR) \S+", row)]
     if pytest:
+        nodes = [row.split()[1] for row in pytest]
+        pytest += [row.strip() for row in rows if row.startswith(("FAIL: ", "VIOLATION: "))
+                   and not any(node in row for node in nodes)]
         return Counter(pytest)
     diagnostics = []
     for row in rows:
@@ -71,10 +74,13 @@ def base_rot(root, base, label, command, result, runner, env=None):
         current = result.stdout.replace(root, "<tree>")
         previous = old.stdout.replace(scratch, "<tree>")
         signatures = failure_signatures(current)
-        if not old.returncode or not signatures or signatures - failure_signatures(previous):
+        if not old.returncode or not signatures:
             return False
+        unmatched = signatures - failure_signatures(previous)
         print(f"BASE-ROT {label} base={base} command={' '.join(command)} receipt:\n{failure_summary(old.stdout)}", flush=True)
-        return True
+        if unmatched:
+            result.stdout = "\n".join(unmatched.elements())
+        return not unmatched
 
 
 PRECHECK_TREE = os.environ.get("MC2_PRECHECK_TREE", "E:/mc2-installs/_precheck/tree")
