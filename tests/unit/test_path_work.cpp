@@ -59,6 +59,26 @@ TEST_CASE("PathWork/player third opportunity bypasses budget with stable FIFO ca
     CHECK(front == &a);
 }
 
+TEST_CASE("PathWork/twelve player group obeys six solve cap across deadline cliff") {
+    using namespace mc2::path_work;
+    Request group[12];
+    for (int i = 0; i < 12; ++i) {
+        group[i].player = true;
+        group[i].next = i < 11 ? &group[i + 1] : nullptr;
+    }
+    auto* front = group;
+    for (long tick = 0; tick < 4; ++tick) {
+        long served = 0;
+        while (nextRequest(front, served * kTickBudget, tick, isPlayer, served)) {
+            front = front->next;
+            ++served;
+        }
+        CHECK(served == (tick < 2 ? 1 : tick == 2 ? 6 : 4));
+        CHECK(nextRequest(group, 0, tick, isPlayer, 6) == nullptr);
+    }
+    CHECK(front == nullptr);
+}
+
 TEST_CASE("PathWork/counts real heap pops without diagnostic gates and isolates worker") {
     using namespace mc2::path_work;
     const auto before = expansions;

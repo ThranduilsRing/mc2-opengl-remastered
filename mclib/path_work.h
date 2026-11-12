@@ -1,5 +1,6 @@
 // Deterministic queued-path admission. Searches finish; one request (and player
-// deadlines) may overshoot the soft budget. No wall clock or diagnostic gate.
+// deadlines) may overshoot the soft budget, within a hard solve cap per tick.
+// No wall clock or diagnostic gate.
 #pragma once
 
 #include <cstdint>
@@ -8,6 +9,7 @@ namespace mc2::path_work {
 
 inline constexpr std::uint64_t kTickBudget = 4096;
 inline constexpr long kPlayerDeadline = 2; // third service opportunity, counting age zero
+inline constexpr long kMaxSolvesPerTick = 6; // legacy cap, including due players
 
 // The simulation runs an update and its synchronous solves on the same thread,
 // whether serial or on the sim worker. Other threads never contribute its work.
@@ -22,7 +24,12 @@ auto popNode(Heap& heap) {
 }
 
 template<class Request, class IsPlayer>
-Request* nextRequest(Request* front, std::uint64_t work, long frame, IsPlayer isPlayer) {
+Request* nextRequest(Request* front, std::uint64_t work, long frame, IsPlayer isPlayer,
+                     long served = 0) {
+    // A shared deadline must not turn a group order into an unbounded burst.
+    // Count all admissions, including the solve that first exhausts the budget.
+    if (served >= kMaxSolvesPerTick)
+        return nullptr;
     if (work < kTickBudget)
         return front;
     // Preserve FIFO among due player requests. Background backlog remains in

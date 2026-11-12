@@ -236,7 +236,8 @@ void MovePathManager::update (void) {
 	#endif
 
 	// Every solve started here completes, so this is a soft admission budget.
-	// Snapshotting the entry count also bounds zero-work/reentrant requests.
+	// The hard solve cap includes deadline promotions; the entry count also
+	// bounds zero-work/reentrant requests. Excess due players keep their age.
 	const auto startExpansions = mc2::path_work::expansions;
 	const long requestsAtEntry = numPaths;
 	long oldestAge = -1;
@@ -249,7 +250,8 @@ void MovePathManager::update (void) {
 	};
 	while (queueFront && processedThisFrame < requestsAtEntry) {
 		auto* next = mc2::path_work::nextRequest(queueFront,
-			mc2::path_work::expansions - startExpansions, s_pathFrameCounter, isPlayer);
+			mc2::path_work::expansions - startExpansions, s_pathFrameCounter, isPlayer,
+			processedThisFrame);
 		if (!next)
 			break;
 		const long age = s_pathFrameCounter - next->enqueueFrame;
