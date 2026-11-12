@@ -450,6 +450,21 @@ def test_scheduled_cli_uses_dated_evidence_instead_of_window(monkeypatch, tmp_pa
     assert any(a in got["args"] for a in ("--nightly", "--weekly"))
 
 
+def test_battery_seed_contains_overlay_data_without_copying_pc_executables(tmp_path, monkeypatch):
+    import mod_smoke
+    monkeypatch.setattr(mod_smoke, "BATTERY", (("test", "test", None),))
+    layer = tmp_path / "test"
+    (layer / "data").mkdir(parents=True)
+    (layer / "assets").mkdir()
+    for name in ("custom.fst", "mission.pak", "campaign.fit", "mc2.exe", "mc2.pdb", "options.cfg"):
+        (layer / name).write_text(name)
+    assert laptop_gate.battery_inputs(tmp_path) == ["test/data", "test/assets", "test/campaign.fit", "test/custom.fst", "test/mission.pak"]
+    assert (layer / "mc2.exe").read_text() == "mc2.exe"
+    monkeypatch.setattr(mod_smoke, "BATTERY", (("missing", "missing", None),))
+    with pytest.raises(SystemExit, match="missing battery mod data"):
+        laptop_gate.battery_inputs(tmp_path)
+
+
 # ---- --sim (determinism + saveload on the gate's deployed candidate) and the campaign-mods mirror ----
 def test_sim_plan_is_merge_gates_own_determinism_and_saveload_steps(tmp_path):
     import merge_gate

@@ -54,7 +54,7 @@ PC_SEED = Path("E:/mc2-installs/_lean-seed")
 PC_STOCK = Path("G:/mc2-assets/out/scifi-kit/round2/stock")
 PROOFS = Path("E:/mc2-archive-2026-10/proofs/laptop-gate")
 PC_REF = Path("E:/mc2-ref")
-PC_TMP = Path("G:/mc2-tmp/gatelaptop")
+PC_TMP = Path(os.environ.get("MC2_LANE_SCRATCH", "G:/mc2-tmp/gatelaptop"))
 STOCK_MISSIONS = G + "/stock-missions"
 REF = G + "/ref"   # the laptop's MC2_REF_ROOT: the subset of E:/mc2-ref the gate stages read
 REF_MANIFESTS = ("data/kit/industrial-kit.json", "data/kit/vehicle-kit.json")   # deploy's pinned kits
@@ -706,6 +706,41 @@ def seed():
     print(f"seeded in {time.time() - t:.0f}s, mc2.exe sha256 {want}")
 
 
+def battery_inputs(root):
+    """Read only the six battery mods' overlay inputs; leave PC installs untouched."""
+    import mod_smoke
+    rels = []
+    for _, folder, _ in mod_smoke.BATTERY:
+        layer = Path(root, folder)
+        if not (layer / "data").is_dir():
+            sys.exit(f"missing battery mod data: {layer / 'data'}")
+        rels += [f"{folder}/{name}" for name in ("data", "assets") if (layer / name).is_dir()]
+        rels += [f"{folder}/{p.name}" for p in sorted(layer.iterdir())
+                 if p.is_file() and p.suffix.lower() in (".fst", ".pak", ".fit")]
+    return rels
+
+
+def seed_battery():
+    """One-time laptop mod-data seed for both nightly advisory and weekly battery receipts."""
+    marker = G + "/battery.seeded"
+    if ssh(f"if exist {marker.replace('/', chr(92))} echo yes")[1].strip() == "yes":
+        return
+    PC_TMP.mkdir(parents=True, exist_ok=True)
+    listing, archive = PC_TMP / "battery.lst", PC_TMP / "battery.tar"
+    try:
+        listing.write_text("\n".join(battery_inputs(PC_V04.parent)) + "\n", encoding="utf-8")
+        subprocess.run(["tar", "-cf", str(archive), "-C", str(PC_V04.parent), "-T", str(listing)],
+                       check=True, **console_child.child_kwargs())
+        print(f"seeding six battery mod overlays: {archive.stat().st_size >> 20} MB", flush=True)
+        scp(archive, f"{HOST}:{G}/tmp/battery.tar")
+        ssh(f"tar -xf {G}/tmp/battery.tar -C {G}/drv/A/Games/mc2-opengl && "
+            f"del {G.replace('/', chr(92))}\\tmp\\battery.tar && "
+            f"cmd /c echo ok> {marker.replace('/', chr(92))}")
+    finally:
+        listing.unlink(missing_ok=True)
+        archive.unlink(missing_ok=True)
+
+
 def published_sha():
     """The MC2FP1 source sha of the PC's published v0.4 mc2.exe (what merge_gate on the PC captures 'before' with)."""
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
@@ -905,6 +940,8 @@ def pc_main(args):
     seed()
     seed_ref()
     sync_mods()
+    if scheduled(w):
+        seed_battery()
     sync_tree()
     print(f"transferring {branch} @ {head[:9]}", flush=True)
     if scheduled(w):
