@@ -21,7 +21,11 @@ Diff promotions at a per-merge gate (`promoted_stages`): a sim-sensitive diff ad
 
 ## Schedule
 
-`scripts/nightly_gate.py` runs the nightly (Sundays: weekly) gate against the published nifty in its own worktree `A:/Games/mc2-nightly` (`MC2_NIGHTLY_ROOT`; created on first run with `git worktree add --detach`, `git checkout --detach claude/nifty-mendeleev` and a build in its own `build64-ninja` each night), with `--isolated-verdict` into `E:/mc2-archive-2026-10/proofs/merge-gate/nightly-<date>/`. mc2-main's branch and dirty state do not matter; it refuses only when the nightly worktree has tracked changes. A host lease still held after 60 min at start drops the game rows (printed `NOT RUN`) and runs the CPU rows. The Windows task is defined in `scripts/nightly_gate.task.xml` (daily 04:30). Only the orchestrator registers it:
+The PC task `scripts/nightly_gate.task.xml` (daily 04:30) launches `py -3 tools/laptop_gate.py nightly`; Sundays select weekly.
+The PC only provisions inputs and pulls results: the farm laptop builds published nifty and runs contracts (including nightly rows), deploy and the tier's game stages. The six mod-battery overlays are seeded once from read-only PC mod inputs; their data, assets and mission archives stay outside git on the laptop.
+Stock `.pak`/`.fit` bytes are verified on the PC, copied once by hash into `C:/mc2gate/stock-missions`, and passed through `MC2_STOCK_MISSIONS_DIR` to every laptop gate row.
+Verdicts land under `E:/mc2-archive-2026-10/proofs/merge-gate/nightly-<date>/` (`--isolated-verdict`); reruns with an existing verdict append a time suffix. No nightly payload is packed, and window evidence is untouched.
+The detached job in `G:/mc2-tmp/jobs` and the laptop farm queue serialize runs; `<window> -- --nightly` also selects this dated nightly path. Only the orchestrator registers the task:
 
 ```
 py -3 A:\Games\mc2-main\scripts\nightly_gate_task.py   # renders the template with the full py.exe path (the task's PATH has no py); prints the line below

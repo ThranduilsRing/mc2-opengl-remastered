@@ -182,7 +182,7 @@ def test_nightly_passes_the_window_and_weekly_runs_without_one(monkeypatch, caps
     monkeypatch.setattr(nightly_gate, "git", lambda *a: "merge w128: x\nmerge follow-up w127: y\nunrelated")
     assert nightly_gate.current_window() == 128
     assert nightly_gate.main(["--dry-run", "--weekly"]) == 0
-    assert "--window 128" in capsys.readouterr().out
+    assert "laptop_gate.py nightly -- --weekly" in capsys.readouterr().out
     monkeypatch.setattr(nightly_gate, "git", lambda *a: "no window here")
     assert nightly_gate.main(["--dry-run", "--weekly"]) == 0   # mod_smoke no longer needs a window number
     assert "--window" not in capsys.readouterr().out.split("--stages", 1)[0]
@@ -212,14 +212,16 @@ def test_nightly_passes_the_previous_green_window_as_base(monkeypatch, capsys, t
     monkeypatch.setattr(nightly_gate, "git", fake_git)
     assert nightly_gate.nightly_base() == base
     assert nightly_gate.main(["--dry-run"]) == 0
-    argv = capsys.readouterr().out.split("merge_gate.py", 1)[1].split()
+    plan, why = nightly_gate.make_plan(False, __import__('datetime').date(2026, 11, 12))
+    assert why is None
+    argv = plan["cmd"][plan["cmd"].index(next(c for c in plan["cmd"] if c.endswith("merge_gate.py"))) + 1:]
     assert argv[argv.index("--base") + 1] == base and argv[argv.index("--window") + 1] == "137"
     with open(os.path.join(ROOT, "scripts", "merge_gate.py"), encoding="utf-8") as fh:
         declared = set(re.findall(r'add_argument\("(--[a-z0-9-]+)"', fh.read()))
     assert {a for a in argv if a.startswith("--")} <= declared
     tags[0] = "nifty-green-137-1d968ffd3"
     assert nightly_gate.nightly_base() is None
-    assert nightly_gate.main(["--dry-run"]) == 2   # one green tag: no previous window to compare against
+    assert nightly_gate.make_plan(False, __import__('datetime').date(2026, 11, 12))[0] is None
 
 
 def _stage_verdict(stages, bad=(), verdict="PARTIAL"):
@@ -280,4 +282,4 @@ def test_task_xml_template_resolves_the_launcher_at_registration(tmp_path):
         t.resolve_launcher(lambda n: None)
     dest = tmp_path / "x.xml"
     t.main(["--out", str(dest), "--py", os.path.abspath(sys.executable)])
-    assert "@PY@" not in dest.read_text(encoding="utf-8")
+    assert "@PY@" not in dest.read_text(encoding="utf-16")

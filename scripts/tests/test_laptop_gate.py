@@ -420,6 +420,117 @@ def test_laptop_old_pass_cannot_survive_a_failed_pull(tmp_path, monkeypatch):
     assert not ok and not dest.exists()
 
 
+def test_nightly_pull_needs_no_payload_and_preserves_window(tmp_path, monkeypatch):
+    import nightly_gate
+    monkeypatch.setattr(laptop_gate, "PROOFS", tmp_path / "laptop-gate")
+    monkeypatch.setattr(laptop_gate, "PC_TMP", tmp_path / "scratch")
+    pull = _fake_remote(tmp_path, drop=("payload.tar", "payload.sha256"), evidence=False)
+    verdict = tmp_path / "remote/gate-verdict.json"
+    verdict.write_text(json.dumps(dict(head=HEAD, verdict="PARTIAL", tier=1, failed=[],
+                                      executed={n: dict(status="PASS") for n in nightly_gate.stage_names(False)})))
+    monkeypatch.setattr(laptop_gate, "pull_one", pull)
+    window = tmp_path / "laptop-gate/W151/gate-verdict.json"
+    window.parent.mkdir(parents=True)
+    window.write_text("window PASS")
+    assert laptop_gate.pull_nightly("nightly-2026-11-12", HEAD, 0) == 0
+    assert window.read_text() == "window PASS"
+    assert not list(tmp_path.rglob("payload"))
+    v = json.loads(verdict.read_text())
+    del v["executed"]["player-path"]
+    verdict.write_text(json.dumps(v))
+    assert laptop_gate.pull_nightly("nightly-2026-11-13", HEAD, 0) == 1
+    assert (tmp_path / "merge-gate/nightly-2026-11-13/gate-verdict.json").is_file()
+
+
+@pytest.mark.parametrize("weekly", [False, True])
+def test_remote_nightly_builds_nifty_and_runs_contracts_plus_tier(tmp_path, monkeypatch, weekly):
+    import nightly_gate
+    from types import SimpleNamespace
+    monkeypatch.setattr(laptop_gate, "G", tmp_path.as_posix())
+    monkeypatch.setattr(laptop_gate, "r_subst", lambda: None)
+    monkeypatch.setattr(laptop_gate, "fast_red", lambda *a: pytest.fail("capture-only preflight"))
+    monkeypatch.setattr(nightly_gate, "nightly_base", lambda: None)  # laptop has no publication tags
+    git_calls, runs = [], []
+    def git(cmd, **kw):
+        git_calls.append(cmd)
+        return SimpleNamespace(returncode=0, stdout=HEAD, stderr="")
+    monkeypatch.setattr(laptop_gate.subprocess, "run", git)
+    monkeypatch.setattr(laptop_gate, "run", lambda cmd, log, **kw: (runs.append(cmd) or (0, 0)))
+    laptop_gate._r_run("nightly-2026-11-12", ["--weekly" if weekly else "--nightly", "--base", "b" * 40])
+    assert any("claude/nifty-mendeleev" in cmd for cmd in git_calls)
+    cmd = runs[-1]
+    import merge_gate
+    args = merge_gate.build_parser().parse_args(cmd[2:])
+    assert args.isolated_verdict and args.base == "b" * 40
+    assert args.stages == ["contracts", *nightly_gate.stage_names(weekly)]
+    assert args.weekly == weekly
+    assert laptop_gate.gate_env()["MC2_STOCK_MISSIONS_DIR"] == laptop_gate.STOCK_MISSIONS
+
+
+@pytest.mark.parametrize("bad", ["missing", "truncated", "wrong-head", "missing-log"])
+def test_nightly_missing_evidence_publishes_infra(tmp_path, monkeypatch, bad):
+    monkeypatch.setattr(laptop_gate, "PROOFS", tmp_path / "laptop-gate")
+    monkeypatch.setattr(laptop_gate, "PC_TMP", tmp_path / "scratch")
+    drop = ("gate-verdict.json",) if bad == "missing" else ("build.log",) if bad == "missing-log" else ()
+    pull = _fake_remote(tmp_path, drop=drop)
+    verdict = tmp_path / "remote/gate-verdict.json"
+    verdict.write_text("{" if bad == "truncated" else json.dumps(dict(
+        head="b" * 40 if bad == "wrong-head" else HEAD, tier=1, verdict="PASS")))
+    monkeypatch.setattr(laptop_gate, "pull_one", pull)
+    assert laptop_gate.pull_nightly("nightly-2026-11-12", HEAD, 0) == 1
+    v = json.loads((tmp_path / "merge-gate/nightly-2026-11-12/gate-verdict.json").read_text())
+    assert v["verdict"] == "INFRA"
+
+
+@pytest.mark.parametrize("argv", [["nightly"], ["W151", "--no-sim", "--", "--nightly"], ["W151", "--", "--weekly"]])
+def test_scheduled_cli_uses_dated_evidence_instead_of_window(monkeypatch, tmp_path, argv):
+    got = {}
+    monkeypatch.setattr(laptop_gate, "PROOFS", tmp_path / "laptop-gate")
+    monkeypatch.setattr(sys, "argv", ["laptop_gate.py", *argv])
+    monkeypatch.setattr(laptop_gate, "detach_self", lambda a: got.update(window=a.window, args=a.gate_args) or 0)
+    assert laptop_gate.main() == 0
+    assert got["window"].startswith("nightly-")
+    assert laptop_gate.gate_branch(got["window"]) == "claude/nifty-mendeleev"
+    assert any(a in got["args"] for a in ("--nightly", "--weekly"))
+
+
+def test_battery_seed_contains_overlay_data_without_copying_pc_executables(tmp_path, monkeypatch):
+    import mod_smoke
+    monkeypatch.setattr(mod_smoke, "BATTERY", (("test", "test", None),))
+    layer = tmp_path / "test"
+    (layer / "data").mkdir(parents=True)
+    (layer / "assets").mkdir()
+    for name in ("custom.fst", "mission.pak", "campaign.fit", "mc2.exe", "mc2.pdb", "options.cfg"):
+        (layer / name).write_text(name)
+    assert laptop_gate.battery_inputs(tmp_path) == ["test/data", "test/assets", "test/campaign.fit", "test/custom.fst", "test/mission.pak"]
+    assert (layer / "mc2.exe").read_text() == "mc2.exe"
+    monkeypatch.setattr(mod_smoke, "BATTERY", (("missing", "missing", None),))
+    with pytest.raises(SystemExit, match="missing battery mod data"):
+        laptop_gate.battery_inputs(tmp_path)
+
+
+def test_nightly_resolves_published_tip_after_long_data_seed(monkeypatch):
+    import nightly_gate
+    from types import SimpleNamespace
+    state = {"seeded": False}
+    new_head = "d" * 40
+    for name in ("cooked_preflight", "provision", "seed", "seed_ref", "sync_mods", "sync_tree", "scp"):
+        monkeypatch.setattr(laptop_gate, name, lambda *a, **kw: None)
+    monkeypatch.setattr(laptop_gate, "seed_battery", lambda: state.update(seeded=True))
+    def resolve(*a, **kw):
+        assert state["seeded"], "publication tip was frozen before the long seed"
+        return new_head
+    monkeypatch.setattr(laptop_gate.subprocess, "check_output", resolve)
+    monkeypatch.setattr(nightly_gate, "nightly_base", lambda: "b" * 40)
+    monkeypatch.setattr(laptop_gate, "ssh", lambda *a, **kw: (0, new_head))
+    monkeypatch.setattr(laptop_gate, "published_sha", lambda: new_head)
+    def accept(w, head, rc):
+        assert head == new_head and rc == 0
+        return 0
+    monkeypatch.setattr(laptop_gate, "pull_nightly", accept)
+    assert laptop_gate.pc_main(SimpleNamespace(window="nightly-2026-11-12", gate_args=["--nightly"])) == 0
+
+
 # ---- --sim (determinism + saveload on the gate's deployed candidate) and the campaign-mods mirror ----
 def test_sim_plan_is_merge_gates_own_determinism_and_saveload_steps(tmp_path):
     import merge_gate
