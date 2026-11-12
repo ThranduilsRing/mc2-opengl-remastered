@@ -36,7 +36,8 @@ float vegFieldThin(VegInstance i, VegParamsData p) {
 
 // Projected card height in pixels (the cull's cover metric; the vertex stage widens sub-2 px field blades).
 float vegPixels(VegInstance i, VegParamsData p) {
-    uint role = (i.atlasFrame >> 4u) & 3u;
+    // Field roles mark fringe draw outcomes, never population/LOD changes.
+    uint role = (i.atlasFrame & 8u) != 0u ? 0u : (i.atlasFrame >> 4u) & 3u;
     float height = i.scale * (role == 3u ? 0.25 : role == 2u ? 0.6 : 1.0);
     float clipW = dot(p.clipRow, vec4(i.pos, 1.0));
     return clipW <= 0.001 ? 0.0 : height * p.misc.y / clipW;

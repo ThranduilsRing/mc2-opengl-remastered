@@ -296,6 +296,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
     if (fieldRecipe) {
         constexpr float kBeachMarginWU = 8.0f;   // keep the shoreline sand bare
         std::vector<std::pair<int,int>> fieldCells;
+        std::vector<float> fieldSlopes(static_cast<size_t>(side)*side, 60.0f);
         for (int row = 1; row < side-1; ++row) {
             for (int col = 1; col < side-1; ++col) {
                 const glm::vec3 pos(originX+(static_cast<float>(col)+0.5f)*gridStep,
@@ -310,16 +311,34 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                 if (classifyTerrainType(code) == VegDensity::kHard || code == MC_TUNDRA_TYPE) continue;
                 if (TerrainRuntime::sampleVisualHeight(pos) <= Terrain::waterElevation+kBeachMarginWU) continue;
                 fieldCells.emplace_back(col,row);
+                glm::vec3 normal;
+                fieldSlopes[static_cast<size_t>(row)*side+col] = land->getTerrainAngle(pos,&normal);
             }
         }
         const long budget = static_cast<long>(maxInst) - static_cast<long>(instances.size());
         fieldSide = fieldBladeSide(gridStep, fieldRecipe->spacing, budget, static_cast<long>(fieldCells.size()));
+        // Include the old whole-cell cut in the mask: its straight seams need
+        // the same broken fringe as the road, shore and terrain-type cuts.
+        const FieldEdge edge(mapSpan, [&](float x, float y) {
+            const int col=static_cast<int>(x/gridStep), row=static_cast<int>(y/gridStep);
+            if (col<0 || row<0 || col>=side || row>=side ||
+                fieldSlopes[static_cast<size_t>(row)*side+col]>=50.0f) return true;
+            const glm::vec3 pos(originX+x,originY-y,0);
+            int tr=0,tc=0,sr=0,sc=0;
+            land->worldToTileCell(pos,tr,tc,sr,sc);
+            if (tr<0 || tc<0 || tr>=mapSide || tc>=mapSide ||
+                classifyTerrainType(land->getTerrain(tr,tc))==VegDensity::kHard) return true;
+            if (TerrainRuntime::sampleVisualHeight(pos)<=Terrain::waterElevation+kBeachMarginWU) return true;
+            if (gameMap) {
+                int cr=0,cc=0;
+                land->worldToCell(pos,cr,cc);
+                if (!gameMap->inBounds(cr,cc) || clumpStaticOccupied(gameMap->cellAt(cr,cc),true)) return true;
+            }
+            return gos_terrain_indirect_HardSurfaceCoverage(pos.x,pos.y)>=kHardFalloffLo;
+        });
         for (const auto& [col,row] : fieldCells) {
             if (fieldSide == 0) break;
-            glm::vec3 normal;
-            const glm::vec3 centre(originX+(static_cast<float>(col)+0.5f)*gridStep,
-                                   originY-(static_cast<float>(row)+0.5f)*gridStep, 0);
-            const float slope = land->getTerrainAngle(centre,&normal);
+            const float slope = fieldSlopes[static_cast<size_t>(row)*side+col];
             for (int j = 0; j < fieldSide*fieldSide; ++j) {
                 const auto blade = fieldBlade(col,row,seed,j,fieldSide,gridStep,*fieldRecipe);
                 const float bx = originX+static_cast<float>(col)*gridStep+blade.x;
@@ -347,6 +366,8 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                 const float coverage = gos_terrain_indirect_HardSurfaceCoverage(bx,by);
                 if (!clumpSurfaceAllowed(true,elevation<=Terrain::waterElevation+kBeachMarginWU,
                                          occupied,coverage,slope,false)) continue;
+                const float edgeProbability = fieldEdgeProbability(edge.distance(bx-originX,originY-by),
+                    macroZone(bx+173.0f,by-319.0f,12.0f));
                 GosVegetation::Instance inst;
                 inst.x = bx-originX-mapSpan*0.5f;
                 inst.y = by-originY+mapSpan*0.5f;
@@ -355,6 +376,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                 inst.scale = blade.scale * (flower ? 0.55f : tuftHeight);   // flowers sit on short stalks
                 // role 0: the shader bends field blades downwind; bit 2 = white wildflower heads.
                 inst.atlasFrame = blade.frame | (flower ? kFieldFlowerBit : 0u);
+                inst.atlasFrame |= fieldEdgeRole(edgeProbability,hashf(bx+71.0f,by-137.0f));
                 fieldFlowers += flower ? 1 : 0;
                 inst.seed = blade.seed;
                 instances.push_back(inst);

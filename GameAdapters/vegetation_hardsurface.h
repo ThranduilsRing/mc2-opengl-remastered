@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <vector>
 
 namespace mc2::vegetation {
 
@@ -51,6 +52,61 @@ inline constexpr unsigned kWeedFlagBit  = 0x40u;  // atlasFrame bit 6 (bits 0-5 
 [[nodiscard]] inline float smoothstep01(float lo, float hi, float x) noexcept {
     const float t = std::clamp((x - lo) / (hi - lo), 0.0f, 1.0f);
     return t * t * (3.0f - 2.0f * t);
+}
+
+// Placement-only distance to the coverage boundary. At 5 WU/metre the mask
+// samples are 1.6 m apart; the 3-5 m fringe ends within 6 m including sampling
+// error. Exact root exclusions still own roads, water and occupied cells.
+inline constexpr float kFieldEdgeSampleWU = 8.0f;
+inline constexpr float kFieldEdgeWidthWU = 20.0f;
+inline constexpr float kFieldEdgeRaggedWU = 10.0f;
+class FieldEdge {
+    int side_;
+    std::vector<float> distance_;
+public:
+    template<class Excluded>
+    FieldEdge(float span, Excluded excluded)
+        : side_(static_cast<int>(std::ceil(span / kFieldEdgeSampleWU))),
+          distance_(static_cast<size_t>(side_)*side_, 64.0f) {
+        for (int r=0; r<side_; ++r) for (int c=0; c<side_; ++c)
+            if (excluded((static_cast<float>(c)+0.5f)*kFieldEdgeSampleWU,
+                         (static_cast<float>(r)+0.5f)*kFieldEdgeSampleWU))
+                distance_[static_cast<size_t>(r)*side_+c] = 0.0f;
+        for (int pass=0; pass<2; ++pass) {
+            const int dir = pass == 0 ? 1 : -1;
+            for (int i=0; i<side_; ++i) for (int j=0; j<side_; ++j) {
+                const int r = pass == 0 ? i : side_-1-i, c = pass == 0 ? j : side_-1-j;
+                auto& d = distance_[static_cast<size_t>(r)*side_+c];
+                const auto relax = [&](int rr, int cc, float cost) {
+                    if (rr>=0 && cc>=0 && rr<side_ && cc<side_)
+                        d = std::min(d, distance_[static_cast<size_t>(rr)*side_+cc]+cost*kFieldEdgeSampleWU);
+                };
+                relax(r,c-dir,1.0f); relax(r-dir,c,1.0f);
+                relax(r-dir,c-1,1.41421356f); relax(r-dir,c+1,1.41421356f);
+            }
+        }
+    }
+    [[nodiscard]] float distance(float x, float y) const {
+        const float gx=x/kFieldEdgeSampleWU-0.5f, gy=y/kFieldEdgeSampleWU-0.5f;
+        const int c=static_cast<int>(std::floor(gx)), r=static_cast<int>(std::floor(gy));
+        const float u=gx-static_cast<float>(c), v=gy-static_cast<float>(r);
+        const auto at = [&](int rr, int cc) {
+            return distance_[static_cast<size_t>(std::clamp(rr,0,side_-1))*side_+std::clamp(cc,0,side_-1)];
+        };
+        return (at(r,c)*(1-u)+at(r,c+1)*u)*(1-v) +
+               (at(r+1,c)*(1-u)+at(r+1,c+1)*u)*v - kFieldEdgeSampleWU*0.5f;
+    }
+};
+
+[[nodiscard]] inline float fieldEdgeProbability(float distance, float patch) noexcept {
+    const float width = kFieldEdgeWidthWU + (patch-0.5f)*kFieldEdgeRaggedWU;
+    return smoothstep01(0.0f, width, distance);
+}
+
+// Preserve every population/cull slot so the visible cap cannot redistribute
+// density in the interior. Field role 1 leans; role 2 collapses at draw time.
+[[nodiscard]] inline unsigned fieldEdgeRole(float probability, float roll) noexcept {
+    return probability>=1.0f ? 0u : roll<probability ? 0x10u : 0x20u;
 }
 
 // Normal-cover density multiplier: 1 on open ground, 0 well inside a hard surface.

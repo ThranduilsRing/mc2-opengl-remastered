@@ -14,7 +14,7 @@ float vegSmooth(float a, float b, float x) {
     return t * t * (3.0 - 2.0 * t);
 }
 bool survives(VegInstance i, bool force) {
-    uint role = (i.atlasFrame >> 4u) & 3u;
+    uint role = (i.atlasFrame & 8u) != 0u ? 0u : (i.atlasFrame >> 4u) & 3u;
     float scale = i.scale * (role == 3u ? 0.25 : role == 2u ? 0.6 : 1.0);
     if (force) return true;
     for (int k = 0; k < 4; ++k)
