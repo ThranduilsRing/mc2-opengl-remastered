@@ -79,6 +79,9 @@ inline bool propIntersects(const View& view, const GpuStaticPropInstance& instan
             hi[axis] = (std::max)(hi[axis], values[axis]);
         }
     }
+    // World-space leaf displacement in color_prop_tier1.vert.
+    lo[0] -= 1.5f; hi[0] += 1.5f;
+    lo[1] -= 0.9f; hi[1] += 0.9f;
     return view.intersects(lo, hi);
 }
 
