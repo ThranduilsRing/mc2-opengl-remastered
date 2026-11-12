@@ -1316,6 +1316,10 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         const auto planarRendering = mc2vk::dynrender::pipelineInfo(3, planarFormats, VK_FORMAT_D32_SFLOAT);
         gp.pNext = &planarRendering;
         rs.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        // Reflection RGB is premultiplied by the fringe blend; coverage must
+        // attenuate the sky too, including over the transparent clear.
+        cba[0].srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        cba[0].dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
         if (!mc2vk::create(s->planarFringePipe, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) return false;
         cba[0].blendEnable = VK_FALSE;
         ds.depthWriteEnable = VK_TRUE;
@@ -2374,7 +2378,6 @@ bool prepareProps(std::unique_ptr<mc2vk::IslandState>& state, const Target& targ
         mc2vk::getOrCreateEngineVulkanContext().retire(std::move(state));
     if (!state) {
         auto fresh = std::make_unique<PlanarProps>();
-        if (!init_island(fresh.get(), target.w, target.h)) return false;
         fresh->sourceMapGeneration = generation;
         state = std::move(fresh);
     }
@@ -2384,6 +2387,10 @@ bool prepareProps(std::unique_ptr<mc2vk::IslandState>& state, const Target& targ
     const float* objectMatrix = gos_GetObjectFixBMVPMat4();
     if (!objectMatrix) return false;
     const View view(objectMatrix, target.water);
+    // Empty registries need neither geometry nor a Vulkan prop island.
+    preparePropInstances(view, s->bounds, s->reflectedInstances);
+    if (s->reflectedInstances.empty()) return true;
+    if (!s->inited && !init_island(s, target.w, target.h)) return false;
     if (!s->boundsReady) {
         Mc2ShadowGeomFeed geom{};
         const void *vertices = nullptr, *indices = nullptr;
@@ -2395,8 +2402,8 @@ bool prepareProps(std::unique_ptr<mc2vk::IslandState>& state, const Target& targ
             std::span(static_cast<const std::byte*>(vertices), static_cast<size_t>(vb)),
             std::span(static_cast<const uint32_t*>(indices), static_cast<size_t>(ib / sizeof(uint32_t))));
         s->boundsReady = true;
+        preparePropInstances(view, s->bounds, s->reflectedInstances);
     }
-    preparePropInstances(view, s->bounds, s->reflectedInstances);
     if (s->reflectedInstances.empty()) return true;
     Mc2ColorPropFeed feed{};
     feed.instances112 = s->reflectedInstances.data();
