@@ -8,6 +8,44 @@ import console_child  # noqa: E402
 import contracts_cache as cc  # noqa: E402
 
 
+def test_merge_triggers_use_the_existing_table():
+    from pathlib import Path
+    import merge_gate
+    import run_tools_tests as rtt
+    root = str(Path(__file__).resolve().parents[2])
+    assert not ({"kit_art", "script_callers", "audio_music_stream", "vk_shaders_compile"}
+                & cc.affected_rows(root, ["docs/merge-queue-v2.md"]))
+    assert "vk_shaders_compile" in cc.affected_rows(root, ["shaders/vulkan/mech.vert"])
+    assert "kit_art" in cc.affected_rows(root, ["tools/scifi_kit/cook.py"])
+    assert merge_gate.laptop_sim_rows(["docs/mc2_10-notes.md"]) == []
+    assert len(merge_gate.laptop_sim_rows(["code/mission_update.cpp"])) == 6
+    modules = ["tools/terrain_beautify/test_cook.py", "tests/terrain_gen/test_generate.py",
+               "tests/assets/test_replace.py", "tests/smoke/test_runner.py",
+               "editor/tests/test_placement_proofs.py", "tools/scifi_kit/test_kit.py",
+               "scripts/tests/test_board_selftests.py", "scripts/tests/test_contract_coverage.py"]
+    assert rtt.scoped_modules(modules, ["docs/merge-queue-v2.md"]) == []
+    for source, module in [("tools/terrain_beautify/cook.py", modules[0]),
+                           ("tools/terrain_gen/generate.py", modules[1]),
+                           ("tools/assets/replace.py", modules[2]),
+                           ("scripts/smoke_lib/runner.py", modules[3]),
+                           ("editor/placement.cpp", modules[4]),
+                           ("tools/scifi_kit/cook.py", modules[5]),
+                           ("scripts/check-contracts.sh", modules[6])]:
+        assert module in rtt.scoped_modules(modules, [source])
+    assert rtt.scoped_modules(modules, [modules[2]]) == [modules[2]]
+
+
+def test_art_input_runs_the_whole_art_suite(monkeypatch):
+    import run_tools_tests as rtt
+    mod = "tools/scifi_kit/test_kit.py"
+    monkeypatch.setattr(sys, "argv", ["run_tools_tests.py", "--suite", "art", "--base", "base"])
+    monkeypatch.setattr(rtt, "discover", lambda *a: [mod])
+    monkeypatch.setattr(rtt, "art_changed", lambda *a: True)
+    monkeypatch.setattr(rtt, "load_ledger", lambda: {})
+    monkeypatch.setattr(rtt, "run_all", lambda mods, *a: [(m, 0, [], "") for m in mods])
+    assert rtt.main() == 0
+
+
 def _git(repo, *a):
     subprocess.run(["git", "-C", str(repo), *a], check=True, capture_output=True,
                    **console_child.child_kwargs(redirected=True))

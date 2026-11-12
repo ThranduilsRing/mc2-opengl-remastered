@@ -49,6 +49,9 @@ FAKES = {
 
 
 def precheck_fixture(lm, repo, monkeypatch, red, tree=None):
+    import contracts_cache
+    monkeypatch.setattr(contracts_cache, "affected_rows", lambda *a: {
+        "cxx17_ratchet", "split_map", "script_callers", "sim_include_firewall", "log_tag_census", "doc_links"})
     git(repo, "branch", "claude/nifty-mendeleev")
     actual_run = lm.run
     seen = []
@@ -1326,6 +1329,8 @@ def test_promote_dry_refusals_leave_nifty_untouched(tmp_path, monkeypatch, fault
     def git_out(root, *args):
         if args[0] == "rev-parse":
             return old if args[-1] == "main^{commit}" else cand
+        if args[0] == "diff":
+            return "code/mission_update.cpp"
         updates.append(args)
         return ""
     monkeypatch.setattr(lm, "NIFTY", "main")
@@ -1370,6 +1375,19 @@ def test_sim_evidence_accepts_full_candidate_payload(tmp_path):
     import lane_merge_stage
     _sim_evidence(tmp_path, "a" * 40)
     assert lane_merge_stage.sim_evidence_problems(tmp_path / "gate-verdict.json", "a" * 40) == []
+
+
+def test_unrelated_diff_needs_payload_identity_without_sim(tmp_path):
+    import lane_merge_stage
+    _sim_evidence(tmp_path, "a" * 40)
+    summary = tmp_path / "summary.json"
+    data = json.loads(summary.read_text())
+    del data["sim"]
+    summary.write_text(json.dumps(data))
+    path = tmp_path / "gate-verdict.json"
+    assert lane_merge_stage.sim_evidence_problems(path, "a" * 40, []) == []
+    (tmp_path / "payload.sha256").write_text("0" * 64)
+    assert "payload sha256 mismatch" in lane_merge_stage.sim_evidence_problems(path, "a" * 40, [])
 
 
 def test_sim_evidence_accepts_perf_counter_only_pass(tmp_path):

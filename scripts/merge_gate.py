@@ -141,6 +141,17 @@ def promoted_stages(paths):
     return want
 
 
+def laptop_sim_rows(paths):
+    """Six laptop rows for sim-sensitive diffs; otherwise only existing mission promotions."""
+    names = [*("determinism-" + m for m in ("mc2_01", "mc2_03", "mc2_10", "mc2_24")),
+             "saveload-mc2_03", "saveload-mc2_10"]
+    if sim_sensitive(paths):
+        return names
+    want = promoted_stages(paths)
+    return [n for n, _, e in affected_plan([(n, [], {}) for n in names if n in want], paths)
+            if not e.get("MC2_GATE_SKIP_REASON")]
+
+
 def promote_for_diff(steps, scheduled, planned, paths, asked, weekly):
     """-> (steps, promoted names). Re-adds the tier-filtered rows promoted_stages(paths) needs, in plan order (never over an
     operator --stages/--skip choice), and returns 03/16 determinism to the a/b pair on --weekly or a sim-sensitive diff."""
@@ -1809,7 +1820,7 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
                 reused_capture = None
                 if name == "capture-before":
                     import capture_reuse
-                    reused_capture = capture_reuse.restore(command, ROOT)
+                    reused_capture = capture_reuse.restore(command, ROOT, env=dict(os.environ, **overrides, **gate_env(name, device)))
                 if reused_capture:
                     print(f"[merge_gate] {name}: REUSED: {reused_capture}", flush=True)
                     from types import SimpleNamespace
@@ -1827,8 +1838,9 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
                     print(f"[merge_gate] exclusive hold {name}: waited {waited:.0f}s, held {held:.0f}s", flush=True)
                 else:
                     result = runner(command, cwd=ROOT, env=dict(os.environ, **overrides, **gate_env(name, device)))
-                if name == "capture-before" and result.returncode == 0 and not reused_capture:
-                    capture_reuse.store(command, ROOT)
+                if name in ("capture-before", "capture-after") and result.returncode == 0 and not reused_capture:
+                    import capture_reuse
+                    capture_reuse.store(command, ROOT, env=dict(os.environ, **overrides, **gate_env(name, device)))
                 if result.returncode == 0 and name in ('deploy', 'publish-v0.4') and 'scripts/deploy_payload.py' in command:
                     from deploy_payload import verify_published_identity
                     target = (Path(command[command.index('--allow-new-target') - 1])
@@ -2101,7 +2113,9 @@ def main(argv=None):
         steps = affected_plan(steps, paths, args.full)
         # A promoted row the diff classification would skip anyway (e.g. a doc naming a map) is not added as a SKIP.
         steps = [s for s in steps if not (s[0] in promoted and s[2].get("MC2_GATE_SKIP_REASON"))]
-        steps = [(n, c, dict(e, MC2_GATE_BASE="" if args.full else base)) for n, c, e in steps]
+        steps = [(n, c, dict(e, MC2_GATE_BASE=base)) for n, c, e in steps]
+    if args.nightly or args.weekly:
+        steps = [(n, c, dict(e, MC2_GATE_NIGHTLY="1") if n == "harnesses" else e) for n, c, e in steps]
     if args.before_dir and any(n == "capture-before-classic" for n, _, _ in steps):
         # Reusing pre-fix evidence must not launch that unsafe executable for the classic arm.
         classic_before = args.before_dir.with_name(args.before_dir.name + "-classic")

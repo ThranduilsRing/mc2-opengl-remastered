@@ -97,6 +97,7 @@ def main() -> int:
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--no-cache", action="store_true")
     ap.add_argument("--report", action="store_true")
+    ap.add_argument("--base", help="run only modules mapped to the committed diff; full suite nightly")
     ap.add_argument("modules", nargs="*", help="run these modules directly, regardless of aggregate ownership")
     args = ap.parse_args()
     mods = discover()
@@ -104,6 +105,10 @@ def main() -> int:
         ownership = load_ownership()
         issues = ownership_problems(mods, ownership)
         selection = select_modules(mods, ownership, args.modules)
+        if args.base and not args.modules:
+            paths = subprocess.check_output(["git", "diff", "--name-only", "-z", args.base, "HEAD"], cwd=rtt.ROOT, text=True,
+                                            **console_child.child_kwargs(redirected=True)).split("\0")
+            selection = rtt.scoped_modules(selection, paths)
     except (OSError, ValueError) as error:
         print(f"FAIL: {OWNERSHIP_REL}: {error}")
         return 1
@@ -112,11 +117,11 @@ def main() -> int:
             print(f"FAIL: ownership: {issue}")
         return 1
     if args.list:
-        print("\n".join(mods))
+        print("\n".join(selection))
         return 0
     if not selection:
-        print("FAIL: scripts_tests selected zero modules")
-        return 1
+        print("scripts_tests: no modules mapped to the diff; full suite nightly")
+        return 0 if args.base else 1
     bad = 0
     passed = 0
     for mod, rc, failed, tail in rtt.run_all(selection, args.jobs, "scripts", args.no_cache, args.report):

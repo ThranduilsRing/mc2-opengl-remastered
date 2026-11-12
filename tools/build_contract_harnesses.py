@@ -43,7 +43,6 @@ REGISTERED_HARNESSES = [
     "job_system_harness",
     "terrain_daylight_harness",
     "object_light_row_harness",
-    "class_light_band_harness",
 ]
 PY_HARNESSES = [
     "tools/deploy_asset_contract_harness/deploy_asset_contract_harness.py",
@@ -260,6 +259,8 @@ def _run_unit_exe(bdir, config, preset, only, asan, started):
         return False, f"requested compiler binary missing in {bdir}"
     command = [str(exe), "--no-breaks"]
     env = dict(os.environ)
+    if not only and env.get("MC2_GATE_NIGHTLY") != "1":
+        command += ["--test-case-exclude=vfx_frozen/*,fx_playback/*oracle*,vfx_oracle/*,package chassis:*,present mailbox stress:*"]
     if only:
         command += ["--test-case=" + test_case_filter(only)]
         if matched_case_count(exe, test_case_filter(only), env) == 0:

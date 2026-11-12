@@ -630,10 +630,14 @@ QUICK_ROWS = [("script_callers", ["tools/callers.py", "--check"]),
               ("test_ownership", ["-m", "pytest", "scripts/tests/test_contract_coverage.py", "-q", "-p", "no:cacheprovider"])]
 
 
-def quick_rows(root: str, runner=run) -> list[tuple[str, int, str]]:
+def quick_rows(root: str, runner=run, base=None) -> list[tuple[str, int, str]]:
     """Run QUICK_ROWS (cwd = root) on the merged tree. -> the failing [(label, rc, tail)] (empty = green)."""
     failed = []
+    import contracts_cache as cc
+    affected = cc.affected_rows(root, lines(git_out(root, "diff", "--name-only", base, "HEAD"))) if base else None
     for label, args in QUICK_ROWS:
+        if affected is not None and ("contract_coverage" if label == "test_ownership" else label) not in affected:
+            continue
         missing = [a for a in args if a.endswith(".py") and not os.path.exists(os.path.join(root, a))]
         if missing:
             if os.path.abspath(root) == os.path.abspath(os.path.join(HERE, "..")):   # the real repo: a renamed script must not skip silently
@@ -1102,10 +1106,16 @@ def precheck(root: str, tip: str, with_link: bool | None = None, sim_rows: bool 
                  for label, script, args in RATCHETS]
         steps += [("callers", py + ["tools/callers.py", "--check"])]
         steps += [(label, py + [script, *args]) for label, script, args in EARLY_ROWS]
-        steps += [(label, py + args) for label, args in PYTHON_SUITES]
+        steps += [(label, py + args + ["--base", base_ref]) for label, args in PYTHON_SUITES]
+        import contracts_cache as cc
+        paths = lines(git_out(root, "diff", "--name-only", base_ref, commit))
+        affected = cc.affected_rows(root, paths)
+        aliases = {"cxx17": "cxx17_ratchet", "callers": "script_callers"}
+        steps = [s for s in steps if s[0] in {p[0] for p in PYTHON_SUITES}
+                 or aliases.get(s[0], s[0]) in affected]
 
-        tag_step = ("ungated_tags", py + [os.path.join(root, "tools", "ungated_log_tags.py"), "--base", scope_base, "--head", tip])
-        stage(tag_step[0], root, tag_step[1])
+        if "log_tag_census" in affected:
+            stage("ungated_tags", root, py + [os.path.join(root, "tools", "ungated_log_tags.py"), "--base", scope_base, "--head", tip])
 
         # proof-diet: generated inventories are no precheck proof; the merge commit regenerates them once.
 
@@ -1433,6 +1443,17 @@ def print_plan(root: str, p: dict, args, message: str, resolutions: dict, head_r
     if p["contained"]:
         print("PLAN lane tip is already contained in HEAD: nothing to merge")
         return False, head_ref
+    import contracts_cache as cc
+    import run_tools_tests as rtt
+    import run_scripts_tests as rst
+    import merge_gate
+    paths = p["lane_files"]
+    board = Path(root, "scripts/check-contracts.sh")
+    per_merge = set(re.findall(r'^run_check(?:_tri)?\s+"([^"]+)"', board.read_text(encoding="utf-8") if board.is_file() else "", re.M))
+    print("PLAN contracts: " + (", ".join(sorted(cc.affected_rows(root, paths) & per_merge)) or "nightly"))
+    print("PLAN tools_tests: " + (", ".join(rtt.scoped_modules(rtt.discover(), paths)) or "nightly"))
+    print("PLAN scripts_tests: " + (", ".join(rtt.scoped_modules(rst.select_modules(rst.discover(), rst.load_ownership()), paths)) or "nightly"))
+    print("PLAN laptop sim: " + (", ".join(merge_gate.laptop_sim_rows(paths)) or "nightly"))
     if p["overlap"]:
         raise Stop(4, "lane files are also dirty in the worktree:\n  " + "\n  ".join(p["overlap"]))
     tree, conf = virtual_merge(root, p["sha"], head_ref)
@@ -1657,7 +1678,7 @@ def main(argv: list[str] | None = None) -> int:
                       tree=git_out(root, "rev-parse", "HEAD^{tree}"), **({"hotfix": True} if args.hotfix else {}))
         record_path = Path(root) / "build64-ninja/merge-window.json"
         if batch and merged and not stopped:
-            qfailed = quick_rows(root)
+            qfailed = quick_rows(root, base=window_base)
             if qfailed:
                 for label, rc, tail in qfailed:
                     print(f"lane_merge: quick row {label} exited {rc}; last lines:\n{tail}", file=sys.stderr)

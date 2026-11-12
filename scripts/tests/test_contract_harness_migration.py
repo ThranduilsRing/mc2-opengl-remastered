@@ -43,6 +43,15 @@ def test_selection_filters_the_shared_binary(monkeypatch):
     assert commands[2][1]["cwd"] == ROOT
 
 
+@pytest.mark.parametrize("nightly", [False, True])
+def test_slow_cases_only_join_the_nightly_default(monkeypatch, nightly):
+    monkeypatch.setenv("MC2_GATE_NIGHTLY", "1" if nightly else "0")
+    commands = record_runs(monkeypatch, [0, 0, 0])
+    assert builder.main(["--run", "--unit-only"]) == 0
+    excludes = [a for a in commands[2][0] if a.startswith("--test-case-exclude=")]
+    assert bool(excludes) == (not nightly)
+
+
 @pytest.mark.parametrize("codes,expected_calls", [([1], 1), ([0, 1], 2), ([0, 0, 1], 3)])
 def test_native_failures_do_not_run_stale_binaries_or_python(monkeypatch, codes, expected_calls, production_seam):
     commands = record_runs(monkeypatch, codes)

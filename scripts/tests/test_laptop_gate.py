@@ -98,6 +98,9 @@ def test_readonly_hardlink_replacement_preserves_source(tmp_path, monkeypatch, r
             os.link(peer, dst.with_name(dst.name + ".payload-tmp"))
             monkeypatch.setattr(exe_fingerprint, "extract", lambda p: {"present": True, "sha": head})
             monkeypatch.setattr(exe_fingerprint, "build_current", lambda *a: True)
+            # This fixture's old manifest is the deliberately arbitrary hardlinked
+            # peer bytes; retirement validation has its own manifest tests.
+            monkeypatch.setattr(deploy_payload, "retire_unowned", lambda *a, **kw: None)
             deploy_payload.deploy_from_payload(payload, target, tmp_path, head)
             assert (target / ".deployed_manifest.csv").read_bytes() == (payload / ".deployed_manifest.csv").read_bytes()
         elif route == "seed":

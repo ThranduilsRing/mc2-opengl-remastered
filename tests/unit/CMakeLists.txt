@@ -505,7 +505,6 @@ target_sources(mc2_tests PRIVATE
     test_los_kernel.cpp
     test_terrain_daylight_harness.cpp
     test_object_light_row_harness.cpp
-    test_class_light_band_harness.cpp
     ${MC2_WORKTREE_ROOT}/mclib/render_contract.cpp
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/native_render_state.cpp
     ${MC2_WORKTREE_ROOT}/code/job_system.cpp

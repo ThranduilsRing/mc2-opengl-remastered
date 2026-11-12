@@ -92,6 +92,8 @@ def _throwaway_repo(tmp_path):
 
 
 def test_batch_exits_6_on_red_quick_row_before_verify(tmp_path, monkeypatch, capsys):
+    import contracts_cache
+    monkeypatch.setattr(contracts_cache, "affected_rows", lambda *a: {"good_row", "bad_row"})
     root = _throwaway_repo(tmp_path)
     verifies = []
     monkeypatch.setattr(lm, "verify_merged", lambda *a, **k: verifies.append(a) or ("OK", []))
@@ -104,6 +106,8 @@ def test_batch_exits_6_on_red_quick_row_before_verify(tmp_path, monkeypatch, cap
 
 
 def test_batch_runs_verify_when_quick_rows_green(tmp_path, monkeypatch):
+    import contracts_cache
+    monkeypatch.setattr(contracts_cache, "affected_rows", lambda *a: {"good_row"})
     root = _throwaway_repo(tmp_path)
     verifies = []
     monkeypatch.setattr(lm, "verify_merged", lambda *a, **k: verifies.append(a) or ("OK", []))

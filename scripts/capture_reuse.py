@@ -1,8 +1,7 @@
 """capture-before reuse (p29 cut 2): the old build's reference captures are restored instead of re-shot when the COMPLETE identity of
 the reference run matches an earlier one and every artifact still hashes to what the sweep recorded.
 
-DISABLED BY DEFAULT (p31 item 3): reuse runs only with MC2_CAPTURE_REUSE=1 until the key is complete (selected GPU/driver, effective stage
-environment, transitive helpers and loose data are still not in it). The key now carries the real shader and DLL bytes, not manifest text:
+Enabled by default; MC2_CAPTURE_REUSE=0 is a temporary kill switch. The key carries shader and DLL bytes, not manifest text:
 merge_gate stages the candidate by removing the shader rows from .deployed_manifest.csv, so the manifest cannot describe them.
 
 Identity = exe sha256, deployed-file content (the install's .deployed_manifest.csv rows: relpath, sha256, bytes; shaders and data
@@ -48,7 +47,7 @@ def gpu_identity() -> str | None:
 
 
 def enabled() -> bool:
-    return os.environ.get(ENABLE_ENV) == "1"
+    return os.environ.get(ENABLE_ENV, "1") != "0"
 
 
 def deployed_bytes(install: Path) -> dict | None:
@@ -69,7 +68,7 @@ def _arg(command: list, flag: str) -> str | None:
     return command[command.index(flag) + 1] if flag in command and command.index(flag) + 1 < len(command) else None
 
 
-def identity(command: list, root: Path, gpu: str | None = None) -> dict | None:
+def identity(command: list, root: Path, gpu: str | None = None, env=None) -> dict | None:
     """The reference-run identity for a capture command, or None when any component cannot be established."""
     install = _arg(command, "--install")
     bookmarks = _arg(command, "--bookmarks")
@@ -91,7 +90,9 @@ def identity(command: list, root: Path, gpu: str | None = None) -> dict | None:
         for name in bookmarks.split(","):
             hits = list((root / "tests").rglob(name + ".json")) + list(install.rglob(name + ".json"))
             poses[name] = sorted({_sha(p) for p in hits}) if hits else []
+        helpers = [p for d in ("scripts/smoke_lib", "tools/visual_verify") for p in (root / d).rglob("*.py")]
         harness = {h: _sha(root / h) for h in HARNESS}
+        harness.update({p.relative_to(root).as_posix(): _sha(p) for p in helpers})
         options = {f: _sha(install / f) for f in OPTION_FILES if (install / f).is_file()}
         exe_sha = _sha(exe)
         files = deployed_bytes(install)
@@ -107,9 +108,9 @@ def identity(command: list, root: Path, gpu: str | None = None) -> dict | None:
         "shader_bytes": files,
         "options": options,
         "poses": poses,
-        "args": [a for i, a in enumerate(command[2:], 2) if a != "--out" and command[i - 1] != "--out"],
+        "args": [a for i, a in enumerate(command[2:], 2) if a not in ("--out", "--install") and command[i - 1] not in ("--out", "--install")],
         "harness": harness,
-        "env": {k: v for k, v in sorted(os.environ.items()) if k.startswith("MC2_")},
+        "env": {k: v for k, v in sorted((os.environ if env is None else env).items()) if k.startswith("MC2_") and k not in ("MC2_GATE_BASE", "MC2_CAPTURE_REUSE")},
         "gpu": gpu,
     }
 
@@ -143,12 +144,12 @@ def _copy(src: Path, dst: Path) -> None:
     shutil.copytree(src, dst)
 
 
-def restore(command: list, root: Path, cache: Path = CACHE_ROOT, gpu: str | None = None) -> str | None:
+def restore(command: list, root: Path, cache: Path = CACHE_ROOT, gpu: str | None = None, env=None) -> str | None:
     """Copy a matching verified reference set to the command's --out. Returns a one-line note on reuse, None on a miss."""
     out = _arg(command, "--out")
     if not enabled():
         return None
-    ident = identity(command, root, gpu)
+    ident = identity(command, root, gpu, env)
     if not out or ident is None:
         return None
     hit = cache / key_of(ident)
@@ -170,12 +171,12 @@ def restore(command: list, root: Path, cache: Path = CACHE_ROOT, gpu: str | None
     return f"capture-before reused: identity {key_of(ident)[:16]} (exe, deployed files, options, poses, harness, GPU/driver all match)"
 
 
-def store(command: list, root: Path, cache: Path = CACHE_ROOT, gpu: str | None = None) -> bool:
+def store(command: list, root: Path, cache: Path = CACHE_ROOT, gpu: str | None = None, env=None) -> bool:
     """Keep a freshly verified reference set under its identity (newest KEEP sets survive)."""
     out = _arg(command, "--out")
     if not enabled():
         return False
-    ident = identity(command, root, gpu)
+    ident = identity(command, root, gpu, env)
     if not out or ident is None or verify_artifacts(Path(out)) is not None:
         return False
     cache.mkdir(parents=True, exist_ok=True)

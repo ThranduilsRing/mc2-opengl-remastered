@@ -27,6 +27,7 @@ Prose line about JOBS and -jN.
 | Change | Proof |
 |---|---|
 | Docs | diff |
+| Tooling | pytest |
 | Sim-visible C++ | det |
 - PC compile: one.
 """
@@ -78,9 +79,9 @@ def test_footer_is_absolute_and_exists():
         assert Path(path).is_absolute() and Path(path).exists()
 
 
-@needs_rules
 def test_byte_budget_enforced():
-    digests = rd.generate(RULES)
+    pre, items = rd.parse(SAMPLE)
+    digests = {t: rd.render(pre, items, t) for t in rd.TYPES}
     assert rd.over_budget(digests) == []
     assert rd.BUDGET[rd.E] <= 8300   # engine digest stays small; it carries the Docs/Tooling rows (engine lanes edit Python tools)
     ls = _lines(digests[rd.E])
@@ -120,11 +121,13 @@ def test_sample_selection_keeps_prose_headings_and_points_at_dropped(monkeypatch
     assert "- Run the rung." in out and "- Never temporal." in out
 
 
-@needs_rules
 def test_check_flag(tmp_path):
-    assert rd.main(["--out-dir", str(tmp_path), "--check"]) == 1   # missing files are stale
-    assert rd.main(["--out-dir", str(tmp_path)]) == 0
-    assert rd.main(["--out-dir", str(tmp_path), "--check"]) == 0
+    rules = tmp_path / "rules.md"
+    rules.write_text(SAMPLE)
+    args = ["--rules", str(rules), "--out-dir", str(tmp_path)]
+    assert rd.main(args + ["--check"]) == 1   # missing files are stale
+    assert rd.main(args) == 0
+    assert rd.main(args + ["--check"]) == 0
     f = tmp_path / "digest-engine.md"
     f.write_text(f.read_text(encoding="utf-8") + "extra\n", encoding="utf-8")
-    assert rd.main(["--out-dir", str(tmp_path), "--check"]) == 1   # stale file detected
+    assert rd.main(args + ["--check"]) == 1   # stale file detected
