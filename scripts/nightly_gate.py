@@ -1,15 +1,10 @@
-"""Scheduled nightly/weekly merge gate against the PUBLISHED nifty, in its own worktree (A:/Games/mc2-nightly).
+"""Schedule the published nifty's nightly/weekly gate on the farm laptop.
 
     py -3 scripts/nightly_gate.py [--dry-run] [--weekly]
 
-Runs `gate_wait.py --timeout 7200 -- merge_gate.py --nightly` (Sundays: --weekly), restricted to the tier-1/2 stages plus
-deploy (nightly: the non-blocking mods-slim check; weekly: the full mods battery), at BELOW_NORMAL, never --kill-existing. Proof dir: E:/mc2-archive-2026-10/proofs/merge-gate/nightly-<date>/
-(gate-verdict.json inside; never written to mc2-main's build64-ninja, which holds the stage window's verdict). mc2-main's branch and dirty state do not matter:
-the gate runs in A:/Games/mc2-nightly (MC2_NIGHTLY_ROOT), created once with `git worktree add --detach`, each night `git checkout --detach claude/nifty-mendeleev`
-and built in its own build64-ninja. Refuses (rc 2) only when that worktree has tracked changes. While another gate holds
-A:/Games/mc2-ops/GATE_QUIET.json, gate_wait waits for it (up to --timeout) instead of skipping the night. A host lease still held after
-LEASE_WAIT_S (60 min) at start drops the game rows (NOT RUN line) and runs the CPU rows. tools/lane_merge_stage.py --promote refuses unless the newest
-verdict here is under 36 h old, failed == [] and not INFRA (FAIL needs a triage* file).
+The PC invokes tools/laptop_gate.py nightly (Sundays: --weekly) and only provisions/pulls.
+Results: E:/mc2-archive-2026-10/proofs/merge-gate/nightly-<date>/gate-verdict.json.
+Planning/receipt helpers remain available to the laptop and existing receipt readers.
 """
 import argparse
 import datetime
@@ -229,47 +224,19 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--weekly", action="store_true", help="default: only on Sundays")
-    ap.add_argument("--force", action="store_true", help="rerun even when an identical-input PASS receipt exists")
+    ap.add_argument("--force", action="store_true", help="compatibility option; laptop runs always execute")
     args = ap.parse_args(argv)
-    why = refusal()
-    if why:
-        print(f"[nightly_gate] REFUSED: {why}")
-        return 2
     today = datetime.date.today()
     weekly = args.weekly or today.weekday() == 6
-    plan, why = make_plan(weekly, today)
-    if why:
-        print(f"[nightly_gate] REFUSED: {why}")
-        return 2
-    names, proof = plan["names"], plan["proof"]
-    print("[nightly_gate] " + " ".join(plan["cmd"]))
+    cmd = [sys.executable, os.path.join(MAIN_ROOT, "tools", "laptop_gate.py"), "nightly"]
+    if weekly:
+        cmd += ["--", "--weekly"]
+    print("[nightly_gate] " + " ".join(cmd))
     if args.dry_run:
         return 0
-    os.makedirs(proof, exist_ok=True)
-    required = required_stages(names)
-    found = {} if args.force else find_stage_receipts(PROOF_ROOT, weekly, required)
-    if required and len(found) == len(required):   # same tree, mode and every stage already passed; do not burn another hour of the box
-        reuse_receipts(found, proof, weekly, required)
-        print(f"[nightly_gate] every required stage already passed on this tree ({', '.join(sorted(set(found.values())))}); reused (--force reruns)")
-        return 0
-    why = prepare_worktree()
-    if why:
-        print(f"[nightly_gate] REFUSED: {why}")
-        return 2
-    if not wait_for_lease():
-        cpu, game = cpu_only(names)
-        print(f"[nightly_gate] NOT RUN: {', '.join(game) or 'none'} (host lease held for {LEASE_WAIT_S // 60} min); running the CPU rows: {', '.join(cpu) or 'none'}")
-        names = cpu
-        required = required_stages(names)
-        plan["cmd"] = gate_cmd(weekly, names, plan["base"], plan["window"], proof)
-        if not names:
-            return 3
     env = dict(os.environ, TMP=TMP_DIR, TEMP=TMP_DIR, TMPDIR=TMP_DIR)  # never write to C: (lane rules)
     os.makedirs(TMP_DIR, exist_ok=True)
-    rc = subprocess.run(plan["cmd"], cwd=ROOT, env=env, **console_child.child_kwargs()).returncode
-    issued = write_receipts(proof, weekly, required)   # per stage, whatever the overall rc: a red stage must not void the green ones
-    print(f"[nightly_gate] receipts issued for {len(issued)}/{len(required)} stages: {', '.join(issued) or 'none'}")
-    return rc
+    return subprocess.run(cmd, cwd=MAIN_ROOT, env=env, **console_child.child_kwargs()).returncode
 
 
 if __name__ == "__main__":

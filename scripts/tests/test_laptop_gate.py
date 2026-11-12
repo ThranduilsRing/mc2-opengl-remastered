@@ -376,6 +376,53 @@ def test_laptop_old_pass_cannot_survive_a_failed_pull(tmp_path, monkeypatch):
     assert not ok and not dest.exists()
 
 
+def test_nightly_pull_needs_no_payload_and_preserves_window(tmp_path, monkeypatch):
+    import nightly_gate
+    monkeypatch.setattr(laptop_gate, "PROOFS", tmp_path / "laptop-gate")
+    monkeypatch.setattr(laptop_gate, "PC_TMP", tmp_path / "scratch")
+    pull = _fake_remote(tmp_path, drop=("payload.tar", "payload.sha256"), evidence=False)
+    verdict = tmp_path / "remote/gate-verdict.json"
+    verdict.write_text(json.dumps(dict(head=HEAD, verdict="PARTIAL", tier=1, failed=[],
+                                      executed={n: dict(status="PASS") for n in nightly_gate.stage_names(False)})))
+    monkeypatch.setattr(laptop_gate, "pull_one", pull)
+    window = tmp_path / "laptop-gate/W151/gate-verdict.json"
+    window.parent.mkdir(parents=True)
+    window.write_text("window PASS")
+    assert laptop_gate.pull_nightly("nightly-2026-11-12", HEAD, 0) == 0
+    assert window.read_text() == "window PASS"
+    assert not list(tmp_path.rglob("payload"))
+    v = json.loads(verdict.read_text())
+    del v["executed"]["player-path"]
+    verdict.write_text(json.dumps(v))
+    assert laptop_gate.pull_nightly("nightly-2026-11-13", HEAD, 0) == 1
+    assert (tmp_path / "merge-gate/nightly-2026-11-13/gate-verdict.json").is_file()
+
+
+@pytest.mark.parametrize("weekly", [False, True])
+def test_remote_nightly_builds_nifty_and_runs_contracts_plus_tier(tmp_path, monkeypatch, weekly):
+    import nightly_gate
+    from types import SimpleNamespace
+    monkeypatch.setattr(laptop_gate, "G", tmp_path.as_posix())
+    monkeypatch.setattr(laptop_gate, "r_subst", lambda: None)
+    monkeypatch.setattr(laptop_gate, "fast_red", lambda *a: pytest.fail("capture-only preflight"))
+    monkeypatch.setattr(nightly_gate, "nightly_base", lambda: "b" * 40)
+    git_calls, runs = [], []
+    def git(cmd, **kw):
+        git_calls.append(cmd)
+        return SimpleNamespace(returncode=0, stdout=HEAD, stderr="")
+    monkeypatch.setattr(laptop_gate.subprocess, "run", git)
+    monkeypatch.setattr(laptop_gate, "run", lambda cmd, log, **kw: (runs.append(cmd) or (0, 0)))
+    laptop_gate._r_run("nightly-2026-11-12", ["--weekly" if weekly else "--nightly"])
+    assert any("claude/nifty-mendeleev" in cmd for cmd in git_calls)
+    cmd = runs[-1]
+    import merge_gate
+    args = merge_gate.build_parser().parse_args(cmd[2:])
+    assert args.isolated_verdict and args.base == "b" * 40
+    assert args.stages == ["contracts", *nightly_gate.stage_names(weekly)]
+    assert args.weekly == weekly
+    assert laptop_gate.gate_env()["MC2_STOCK_MISSIONS_DIR"] == laptop_gate.STOCK_MISSIONS
+
+
 # ---- --sim (determinism + saveload on the gate's deployed candidate) and the campaign-mods mirror ----
 def test_sim_plan_is_merge_gates_own_determinism_and_saveload_steps(tmp_path):
     import merge_gate

@@ -2,6 +2,8 @@
 """Run the merge gate for a staged candidate on the farm laptop, pull the evidence and payload back.
 
 PC side (orchestrator):   py -3 tools/laptop_gate.py W [--setup] [-- <extra merge_gate args>]
+Scheduled: py -3 tools/laptop_gate.py nightly (Sundays weekly), or W -- --nightly.
+Scheduled runs build nifty, publish dated isolated verdicts, and never pack a promotion payload.
   1. push claude/stage-W (and nifty) to the persistent laptop clone  C:/mc2gate/drv/A/Games/mc2-main
   2. over ssh: build there (warm Ninja tree, cold the first time), run merge_gate.py --full against the laptop install
   3. pull gate-verdict.json, gate.log, summary.json and the payload delta (tar of every manifest file that differs from
@@ -53,6 +55,7 @@ PC_STOCK = Path("G:/mc2-assets/out/scifi-kit/round2/stock")
 PROOFS = Path("E:/mc2-archive-2026-10/proofs/laptop-gate")
 PC_REF = Path("E:/mc2-ref")
 PC_TMP = Path("G:/mc2-tmp/gatelaptop")
+STOCK_MISSIONS = G + "/stock-missions"
 REF = G + "/ref"   # the laptop's MC2_REF_ROOT: the subset of E:/mc2-ref the gate stages read
 REF_MANIFESTS = ("data/kit/industrial-kit.json", "data/kit/vehicle-kit.json")   # deploy's pinned kits
 REF_EXTRA = ("scifi-kit/mapping/inventory.csv",)   # kit_art row
@@ -178,7 +181,7 @@ def gate_env():
                 MC2_NO_CPU_PIN="1",   # CPU_SPLIT is the PC's 16-CPU split; on the 8-thread laptop it would pin 7 jobs to 4 CPUs
                 # the laptop's only fixed drive is C: (its E: is a card reader): every E:-rooted gate path lives under drv/E
                 MC2_GATE_REUSE_ROOT=G + "/drv/E/mc2-installs/_gate-reuse", MC2_STAGE_BASE=G + "/drv/E/mc2-installs",
-                MC2_ISO_ALLOW_SYSTEM_DRIVE="1", MC2_REF_ROOT=REF,
+                MC2_ISO_ALLOW_SYSTEM_DRIVE="1", MC2_REF_ROOT=REF, MC2_STOCK_MISSIONS_DIR=STOCK_MISSIONS,
                 MC2_GATE_HOST="laptop",   # tools/gate_hosts.json: mfc=no (CMake leaves EditRel out of the default build, the editor stage is SKIPPED)
                 MC2_HOST_INFRA_OK="1",   # check-contracts.sh: a row whose tool/data cannot exist here is reported INFRA (never PASS), not red
                 # Git's usr/bin is not on the laptop PATH; bin/bash.exe is the wrapper that puts coreutils on it
@@ -212,10 +215,18 @@ def window_number(window):
     return int(m.group()) if m else None
 
 
+def scheduled(window):
+    return window.startswith("nightly-")
+
+
+def gate_branch(window):
+    return "claude/nifty-mendeleev" if scheduled(window) else "claude/stage-" + window
+
+
 def r_run(window, extra):
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import queue_lock   # uploaded next to this file by pc_main (tools/farm/queue_lock.py)
-    with queue_lock.hold(FARM_QUEUE_LOCK, log=lambda m: print("laptop_gate: " + m, flush=True)):
+    with queue_lock.hold(FARM_QUEUE_LOCK, timeout=1200, log=lambda m: print("laptop_gate: " + m, flush=True)):
         return _r_run(window, extra)
 
 
@@ -226,7 +237,7 @@ def _r_run(window, extra):
     shutil.rmtree(out, ignore_errors=True)
     shutil.rmtree(Path(G, "drv/E/mc2-archive-2026-10/proofs/merge-gate", window), ignore_errors=True)
     out.mkdir(parents=True, exist_ok=True)
-    branch = "claude/stage-" + window
+    branch = gate_branch(window)
     e = gate_env()
     sm = {"window": window, "host": "laptop"}
     git = lambda *a: subprocess.run(["git", "-C", REPO, *a], capture_output=True, text=True, env=e,
@@ -250,7 +261,7 @@ def _r_run(window, extra):
         sm["build_seconds"], sm["build_rc"] = s, rc
         if rc:
             sm["error"] = "build failed"
-    if "error" not in sm:
+    if "error" not in sm and not scheduled(window):
         sm["fast_red"] = fast_red(out / "preflight.log", e)
         if sm["fast_red"]:
             sm["error"] = "fast red: " + "; ".join(sm["fast_red"])
@@ -258,6 +269,14 @@ def _r_run(window, extra):
         proof =G + "/drv/E/mc2-archive-2026-10/proofs/merge-gate/" + window
         cmd = [sys.executable, "scripts/merge_gate.py", "--full",
                "--proofs-dir", proof, "--expect-head", head]
+        if scheduled(window):
+            sys.path.insert(0, REPO + "/scripts")
+            import nightly_gate
+            base = nightly_gate.nightly_base()
+            if not base:
+                raise RuntimeError("nightly needs a previous nifty-green window as --base")
+            cmd += ["--isolated-verdict", "--base", base, "--stages", "contracts",
+                    *nightly_gate.stage_names("--weekly" in extra)]
         if window_number(window) is not None:
             cmd += ["--window", str(window_number(window))]
         rc, s = run(cmd + extra, out / "gate.console.log", env=e)
@@ -568,11 +587,17 @@ def r_preflight(window="-", published=""):
     bad += toolchain_problems(configure_ninja, gate_env())
     import exe_fingerprint
     fp = exe_fingerprint.parse_literal(Path(INSTALL, "mc2.exe").read_bytes()) if Path(INSTALL, "mc2.exe").is_file() else None
-    tip = None if window in (None, "-") else "claude/stage-" + window
+    tip = None if window in (None, "-") else gate_branch(window)
     bad += published_problems((fp or {}).get("sha"), published, tip,
                               lambda a, b: subprocess.run(["git", "-C", REPO, "merge-base", "--is-ancestor", a, b],
                                                                        **console_child.child_kwargs()).returncode == 0)
     bad += r_refcheck(REF + "/SHA256SUMS")
+    sys.path.insert(0, REPO + "/tools")
+    from mc2data.stock_missions import resolve_missions_dir, StockDataError
+    try:
+        resolve_missions_dir(STOCK_MISSIONS, quiet=True)
+    except StockDataError as exc:
+        bad.append(str(exc))
     bad += mods_problems()
     pc_tree = Path(G, "in/pc.tree.txt")   # the PC v0.4's rows, uploaded by sync_tree
     bad += tree_problems(pc_tree.read_text(encoding="utf-8").splitlines(), tree_rows(INSTALL)) if pc_tree.is_file() \
@@ -797,13 +822,22 @@ def provision_files(eroot=Path("E:/")):
             + [(f"{clone}/{rel}", repo / rel) for rel in cooked_extra("worktree", repo)])
 
 
+def mission_files():
+    """Verified stock bytes only; provision's hash comparison copies them once."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from mc2data.stock_missions import resolve_missions_dir
+    source = resolve_missions_dir(quiet=True).dir
+    return [("stock-missions/" + p.name, p) for p in sorted(source.iterdir())
+            if p.suffix.lower() in (".pak", ".fit")]
+
+
 def provision(bin_only=False):
     """Self-provisioning, run at the start of every PC-side run (and --preflight): sync every provision_files() entry whose laptop
     sha differs, then upload bin/PROVISION.sha256, which the remote preflight verifies (missing or stale = a clear preflight red).
     bin_only: just the remote half and its helpers (before init)."""
     ssh("cmd /c if not exist C:\\mc2gate\\bin mkdir C:\\mc2gate\\bin")
     lines = []
-    for rel, src in provision_files():
+    for rel, src in provision_files() + ([] if bin_only else mission_files()):
         if bin_only and not rel.startswith("bin/"):
             continue
         if not src.is_file():
@@ -854,7 +888,7 @@ def cooked_preflight(repo=None):
 
 def pc_main(args):
     w = args.window
-    branch = "claude/stage-" + w
+    branch = gate_branch(w)
     head = subprocess.check_output(["git", "rev-parse", branch], text=True, **console_child.child_kwargs(redirected=True)).strip()
     t0 = time.time()
     cooked_preflight()
@@ -865,7 +899,33 @@ def pc_main(args):
     seed_ref()
     sync_mods()
     sync_tree()
-    print(f"pushing {branch} @ {head[:9]}", flush=True)
+    print(f"transferring {branch} @ {head[:9]}", flush=True)
+    if scheduled(w):
+        # A local bundle transfer, never a push to a publishing remote.
+        rc, old = ssh(f"git -C {REPO} rev-parse {branch}", check=False)
+        old = old.strip()
+        if rc or old != head:
+            bundle = PC_TMP / "nightly.bundle"
+            subprocess.run(["git", "bundle", "create", str(bundle), branch, "--tags",
+                            *(["^" + old] if re.fullmatch(r"[0-9a-f]{40}", old) else [])], check=True,
+                           **console_child.child_kwargs())
+            scp(bundle, f"{HOST}:{G}/tmp/nightly.bundle")
+            bundle.unlink()
+            ssh(f'git -C {REPO} fetch --update-head-ok {G}/tmp/nightly.bundle +refs/heads/{branch}:refs/heads/{branch} +refs/tags/*:refs/tags/*', stream=True)
+    else:
+        transfer_stage(branch)
+    ssh(f"cmd /c mkdir C:\\mc2gate\\in\\{w} 2>nul & exit /b 0", check=False)
+    scp(PC_V04 / ".deployed_manifest.csv", f"{HOST}:{G}/in/{w}/pc.manifest.csv")
+    if ssh(remote_py("preflight", w, published_sha()), check=False, stream=True)[0]:
+        sys.exit("laptop preflight failed (above); fix it before a full run")
+    print("running build + gate on the laptop (long)", flush=True)
+    if scheduled(w):
+        run_rc, _ = ssh(remote_run_cmd(w, args.gate_args), check=False, stream=True)
+        return pull_nightly(w, head, run_rc)
+    return run_candidate(args, head, t0)
+
+
+def transfer_stage(branch):
     genv = dict(env(), GIT_SSH_COMMAND="ssh " + " ".join(SSH_OPTS))
     url = f"ssh://{HOST}/{REPO}"
     # The LFS pre-push hook runs; the laptop clone has no LFS locking API (a stage adding new LFS objects fails here, loudly).
@@ -875,11 +935,10 @@ def pc_main(args):
                        **console_child.child_kwargs())
     if r.returncode:
         sys.exit("push to laptop clone failed")
-    ssh(f"cmd /c mkdir C:\\mc2gate\\in\\{w} 2>nul & exit /b 0", check=False)
-    scp(PC_V04 / ".deployed_manifest.csv", f"{HOST}:{G}/in/{w}/pc.manifest.csv")
-    if ssh(remote_py("preflight", w, published_sha()), check=False, stream=True)[0]:   # after the push: it checks the stage tip
-        sys.exit("laptop preflight failed (above); fix it before a full run")
-    print("running build + gate on the laptop (long)", flush=True)
+
+
+def run_candidate(args, head, t0):
+    w = args.window
     dest = PROOFS / w
     incoming = PROOFS / (w + ".incoming")
     for stale in (dest, incoming, PROOFS / (w + ".rejected")):   # a failed rerun must never leave an old PASS to read
@@ -1073,6 +1132,41 @@ def exit_code(sm):
     return 0 if sm.get("verdict") == "PASS" else 1
 
 
+def pull_nightly(w, head, run_rc):
+    """Publish nightly verdicts, including reds, without touching a window or requiring a payload."""
+    dest = PROOFS.parent / "merge-gate" / w
+    dest.mkdir(parents=True, exist_ok=True)
+    # Publish the verdict last so promotion never sees a half-pulled result.
+    missing = [n for n in ("summary.json", "gate.log", "gate.console.log", "build.log")
+               if not pull_one(f"{G}/out/{w}/{n}", dest / ("laptop-" + n))]
+    local = PC_TMP / (w + "-verdict.json")
+    local.parent.mkdir(parents=True, exist_ok=True)
+    if not pull_one(f"{G}/out/{w}/gate-verdict.json", local):
+        (dest / "gate-verdict.json").write_text(json.dumps(dict(
+            verdict="INFRA", head=head, tier=1, written=time.time(), failed=[],
+            reason="laptop verdict missing; see laptop logs")), encoding="utf-8")
+        print(f"nightly FAIL: missing verdict; diagnostics {dest}")
+        return 1
+    try:
+        v = json.loads(local.read_text(encoding="utf-8"))
+        if not _same_sha(v.get("head"), head) or not v.get("tier"):
+            (dest / "gate-verdict.json").write_text(json.dumps(dict(
+                verdict="INFRA", head=head, tier=1, written=time.time(), failed=[],
+                reason="laptop verdict identity/tier mismatch")), encoding="utf-8")
+            print(f"nightly FAIL: verdict identity/tier mismatch; diagnostics {dest}")
+            return 1
+        if run_rc or missing:
+            v.update(verdict="INFRA", written=time.time(), reason=f"run_rc={run_rc}; missing={missing}")
+        (dest / "gate-verdict.json").write_text(json.dumps(v, indent=1), encoding="utf-8")
+        from lane_merge_stage import nightly_unmet
+        unmet = nightly_unmet(v)
+        ok = not (run_rc or missing or unmet or v.get("failed")) and v.get("verdict") in ("PASS", "PARTIAL")
+        print(f"nightly {'PASS' if ok else 'FAIL'}: {dest}/gate-verdict.json; unmet={unmet}; missing={missing}")
+        return 0 if ok else 1
+    finally:
+        local.unlink(missing_ok=True)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("window", nargs="?")
@@ -1105,6 +1199,15 @@ def main():
         return ssh(remote_py("preflight", a.window or "-", published_sha()), check=False, stream=True)[0]
     if not a.window:
         ap.error("window required")
+    a.gate_args += rest
+    if a.window == "nightly" or any(x in a.gate_args for x in ("--nightly", "--weekly")):
+        import datetime
+        today = datetime.date.today()
+        a.window = "nightly-" + today.isoformat()
+        if (PROOFS.parent / "merge-gate" / a.window / "gate-verdict.json").exists():
+            a.window += datetime.datetime.now().strftime("-%H%M%S")
+        if not any(x in a.gate_args for x in ("--nightly", "--weekly")):
+            a.gate_args.append("--weekly" if today.weekday() == 6 else "--nightly")
     if a.dry_run and not a.sim:
         ap.error("--dry-run is for --sim")
     if a.sim and a.dry_run:
@@ -1114,7 +1217,10 @@ def main():
         return detach_self(a)
     if a.sim:
         return sim_main(a)
-    return pc_main(a)
+    from farm import queue_lock
+    with queue_lock.hold("G:/mc2-tmp/jobs/laptop-gate.lock", timeout=1200,
+                         log=lambda m: print(m, flush=True)):
+        return pc_main(a)
 
 
 def detach_self(a):
