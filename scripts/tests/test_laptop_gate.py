@@ -2,6 +2,8 @@
 import ast
 import csv
 import hashlib
+import os
+import stat
 import sys
 from pathlib import Path
 
@@ -70,6 +72,48 @@ def test_pack_ships_only_candidate_files_that_differ(tmp_path, monkeypatch):
     names = sorted(tarfile.open(gate / "out" / "7" / "payload.tar").getnames())
     assert names == [".deployed_manifest.csv", "files/mc2.exe", "files/shaders/b.glsl"]
     assert "2 files" in (gate / "out" / "7" / "payload.sha256").read_text()
+
+
+@pytest.mark.parametrize("route", ["payload", "deploy", "sidecar", "seed"])
+def test_readonly_hardlink_replacement_preserves_source(tmp_path, monkeypatch, route):
+    import exe_fingerprint
+    head = "0" * 40
+    rel = "data/detail.mcasset.json" if route == "sidecar" else "data/detail.tga"
+    payload, target = tmp_path / "payload", tmp_path / "target"
+    source = payload / "files" / rel
+    source.parent.mkdir(parents=True)
+    source.write_bytes(b"new bytes")
+    peer = tmp_path / "shared-source"
+    peer.write_bytes(b"seed bytes")
+    dst = target / rel
+    dst.parent.mkdir(parents=True)
+    os.link(peer, dst)
+    dst.chmod(stat.S_IREAD)
+    assert dst.stat().st_nlink == 2
+    try:
+        if route == "payload":
+            (payload / "files/mc2.exe").write_bytes(b"exe")
+            _manifest(payload / ".deployed_manifest.csv", {rel: b"new bytes", "mc2.exe": b"exe"})
+            os.link(peer, target / ".deployed_manifest.csv")
+            os.link(peer, dst.with_name(dst.name + ".payload-tmp"))
+            monkeypatch.setattr(exe_fingerprint, "extract", lambda p: {"present": True, "sha": head})
+            monkeypatch.setattr(exe_fingerprint, "build_current", lambda *a: True)
+            deploy_payload.deploy_from_payload(payload, target, tmp_path, head)
+            assert (target / ".deployed_manifest.csv").read_bytes() == (payload / ".deployed_manifest.csv").read_bytes()
+        elif route == "seed":
+            monkeypatch.setattr(deploy_payload, "seed_receipt_rows", lambda: {})
+            deploy_payload.prepare_seed_delta([(str(source), rel, "support")], target, full_verify=True, allow_legacy=True)
+        else:
+            deploy_payload.deploy([(str(source), rel, "support")], target, False, code_only=True)
+        expected = b"seed bytes" if route == "seed" else b"new bytes"
+        assert dst.read_bytes() == expected
+        assert peer.read_bytes() == b"seed bytes"
+        assert not os.path.samefile(peer, dst)
+        assert deploy_payload.sha256_file(dst) == hashlib.sha256(expected).hexdigest()
+    finally:
+        peer.chmod(stat.S_IWRITE | stat.S_IREAD)
+        if dst.exists():
+            dst.chmod(stat.S_IWRITE | stat.S_IREAD)
 
 
 def test_from_payload_rejects_a_tampered_file(tmp_path):

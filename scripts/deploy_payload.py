@@ -53,6 +53,7 @@ import ntpath
 from pathlib import Path
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -770,6 +771,13 @@ def check_hardlink_isolation(items, target):
         fail(f"hardlink-isolation guard returned unrecognised exit code {rc} "
              "— refusing to deploy on an unreadable verdict. Set "
              "MC2_DEPLOY_ALLOW_SHARED_LINKS=1 to bypass deliberately.")
+
+
+def unlink_for_replace(path):
+    """Clear Windows read-only protection and detach any shared destination."""
+    if os.path.lexists(path):
+        os.chmod(path, os.stat(path).st_mode | stat.S_IWRITE)
+        os.unlink(path)
 
 
 def sha256_file(path):
@@ -1509,6 +1517,7 @@ def ensure_terrain_materials(target_dir):
                     with tempfile.NamedTemporaryFile(dir=dst.parent, delete=False) as out:
                         temporary = Path(out.name)
                         out.write(content)
+                    unlink_for_replace(dst)
                     os.replace(temporary, dst)
                 finally:
                     if temporary is not None and temporary.exists():
@@ -1592,6 +1601,7 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
         os.makedirs(os.path.dirname(dst) or target_dir, exist_ok=True)
         try:
             copy_started = time.perf_counter()
+            unlink_for_replace(dst)
             if rel.endswith(".mcasset.json"):
                 # Authored sidecars ship unchanged except for checkout line endings;
                 # mixed CRLF/LF copies must not change the pinned data fingerprint.
@@ -2059,6 +2069,7 @@ def shader_inventory_problems(source_root, published):
             shutil.copytree(Path(published) / 'shaders', Path(tmp) / 'shaders')
         for rel, src in shipped.items():
             (Path(tmp) / rel).parent.mkdir(parents=True, exist_ok=True)
+            unlink_for_replace(Path(tmp) / rel)
             shutil.copyfile(src, Path(tmp) / rel)
         retire_unowned(tmp, shipped, own_shaders=True)
         left = {p.relative_to(tmp).as_posix() for p in (Path(tmp) / 'shaders').rglob('*') if p.is_file()}
@@ -2122,7 +2133,9 @@ def deploy_from_payload(payload, target, src_root, head):
                 fail(f'payload file {rel}: sha256 != manifest')
             dst.parent.mkdir(parents=True, exist_ok=True)
             tmp = dst.with_name(dst.name + '.payload-tmp')
+            unlink_for_replace(tmp)
             shutil.copy2(src, tmp)
+            unlink_for_replace(dst)
             os.replace(tmp, dst)
         elif not dst.is_file() or dst.stat().st_size != int(row['bytes']) or sha256_file(str(dst)) != row['sha256']:
             fail(f'{rel}: not in the payload and the target copy does not match the manifest (size or sha256); the PC v0.4 drifted since the delta was taken')
@@ -2132,6 +2145,7 @@ def deploy_from_payload(payload, target, src_root, head):
             or not build_current(fp.get('sha'), head, Path(src_root), bool(fp.get('dirty'))):
         fail(f'{exe}: fingerprint != clean HEAD {head}')
     retire_unowned(str(target), rows, own_shaders=any(rel.startswith('shaders/vulkan/') and rel.endswith('.spv') for rel in rows))
+    unlink_for_replace(target / '.deployed_manifest.csv')
     shutil.copy2(manifest, target / '.deployed_manifest.csv')
     log(f'payload published: {len(rows)} manifest rows, exe sha256 {rows["mc2.exe"]["sha256"]}, fingerprint matches {head[:9]}')
 
@@ -2520,14 +2534,24 @@ def prepare_seed_delta(items, target, full_verify=False, allow_legacy=False):
                 restamped[rel] = stamp
                 return rel, row['sha256']
         # The normal deploy still checks the source and copied hash. Privatize
-        # first so its in-place write cannot reach the seed or another lane.
+        # first so the isolation guard sees no shared write destinations.
         counts['privatized'] += 1
         tmp = dst.with_name(dst.name + f'.private-{os.getpid()}')
+        backup = tmp.with_name(tmp.name + '.shared')
         try:
+            unlink_for_replace(tmp)
             shutil.copy2(dst, tmp)
-            os.replace(tmp, dst)
+            os.link(dst, backup)
+            try:
+                unlink_for_replace(dst)
+                os.replace(tmp, dst)
+            except OSError:
+                if not dst.exists():
+                    os.rename(backup, dst)
+                raise
         finally:
-            tmp.unlink(missing_ok=True)
+            unlink_for_replace(tmp)
+            unlink_for_replace(backup)
         return None
 
     # Per-file stat/hash/copy is IO latency bound; four workers (JOBS-sized) overlap it. Distinct files, distinct temps.
