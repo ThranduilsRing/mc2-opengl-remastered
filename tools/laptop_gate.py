@@ -924,14 +924,8 @@ def cooked_preflight(repo=None):
 def pc_main(args):
     w = args.window
     branch = gate_branch(w)
-    head = subprocess.check_output(["git", "rev-parse", branch], text=True, **console_child.child_kwargs(redirected=True)).strip()
-    if scheduled(w) and "--base" not in args.gate_args:
-        # Publication tags live on the PC; an up-to-date laptop clone may have none.
-        import nightly_gate
-        base = nightly_gate.nightly_base()
-        if not base:
-            sys.exit("nightly needs a previous nifty-green window as --base")
-        args.gate_args += ["--base", base]
+    head = "" if scheduled(w) else subprocess.check_output(
+        ["git", "rev-parse", branch], text=True, **console_child.child_kwargs(redirected=True)).strip()
     t0 = time.time()
     cooked_preflight()
     provision(bin_only=True)   # the remote half itself, so init can run (init clones the repo the layer seeds go into)
@@ -943,6 +937,17 @@ def pc_main(args):
     if scheduled(w):
         seed_battery()
     sync_tree()
+    if scheduled(w):
+        # A publication can advance during a long first-time data seed.
+        head = subprocess.check_output(["git", "rev-parse", branch], text=True,
+                                       **console_child.child_kwargs(redirected=True)).strip()
+        if "--base" not in args.gate_args:
+            # Publication tags live on the PC, not necessarily on the laptop.
+            import nightly_gate
+            base = nightly_gate.nightly_base()
+            if not base:
+                sys.exit("nightly needs a previous nifty-green window as --base")
+            args.gate_args += ["--base", base]
     print(f"transferring {branch} @ {head[:9]}", flush=True)
     if scheduled(w):
         # A local bundle transfer, never a push to a publishing remote.

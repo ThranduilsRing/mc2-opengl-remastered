@@ -465,6 +465,28 @@ def test_battery_seed_contains_overlay_data_without_copying_pc_executables(tmp_p
         laptop_gate.battery_inputs(tmp_path)
 
 
+def test_nightly_resolves_published_tip_after_long_data_seed(monkeypatch):
+    import nightly_gate
+    from types import SimpleNamespace
+    state = {"seeded": False}
+    new_head = "d" * 40
+    for name in ("cooked_preflight", "provision", "seed", "seed_ref", "sync_mods", "sync_tree", "scp"):
+        monkeypatch.setattr(laptop_gate, name, lambda *a, **kw: None)
+    monkeypatch.setattr(laptop_gate, "seed_battery", lambda: state.update(seeded=True))
+    def resolve(*a, **kw):
+        assert state["seeded"], "publication tip was frozen before the long seed"
+        return new_head
+    monkeypatch.setattr(laptop_gate.subprocess, "check_output", resolve)
+    monkeypatch.setattr(nightly_gate, "nightly_base", lambda: "b" * 40)
+    monkeypatch.setattr(laptop_gate, "ssh", lambda *a, **kw: (0, new_head))
+    monkeypatch.setattr(laptop_gate, "published_sha", lambda: new_head)
+    def accept(w, head, rc):
+        assert head == new_head and rc == 0
+        return 0
+    monkeypatch.setattr(laptop_gate, "pull_nightly", accept)
+    assert laptop_gate.pc_main(SimpleNamespace(window="nightly-2026-11-12", gate_args=["--nightly"])) == 0
+
+
 # ---- --sim (determinism + saveload on the gate's deployed candidate) and the campaign-mods mirror ----
 def test_sim_plan_is_merge_gates_own_determinism_and_saveload_steps(tmp_path):
     import merge_gate
