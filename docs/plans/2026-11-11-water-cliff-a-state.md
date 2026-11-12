@@ -15,6 +15,71 @@ shader contracts/tests; local commit, lint, final build/deploy/smoke;
 day all13 and night A/B; personally inspect montages and crop metrics.
 Initial tree was clean. Source repair and final evidence are recorded below.
 
+## v7: fresh W148 install and lower-altitude replay
+
+Engine source remains c4f33309c; approved glint a52c4ccc6 is preserved.
+Orchestrator authorized fresh E:/mc2-installs/water-cliff-a2. Original refused
+water-cliff-a install was untouched. Published the complete v6/owner-complete
+payload through deploy_payload.py with W148 head1fdbb7c6c114: rc0,6107 verified
+manifest rows; executable SHA25678229b19db8afebbfdddaf38bf312184550dfedf8cb31fdb14adbad7b0b7bd4c.
+Supported asset parity sync rc0:26145 files, zero missing/size/content/extra.
+Reference options copied to the absent target and their hashes recorded.
+
+Initial startup crashed at frame0,0xE0004D46 invalid-parameter. The payload
+manifest and asset parity omit bootstrap root configs; system.cfg,prefs.cfg,
+minprefs.cfg,orgprefs.cfg were absent. Copied only those absent files from the
+read-only reference, matching make-isolated-deploy.py:198-204 seed policy.
+Crash/catalog/matching PDB archived under
+E:/mc2-archive-2026-10/crashes/water-cliff-a2-2026-11-11-v7/.
+
+Corrected offscreen capture rc0: all13 canonical plus20 altitude-only variants
+at100/70/50/35/25 percent for100624,100638,100705,101350,101454. Fixed30Hz,
+trigger600,settle30,3717x1608,normal HUD,XTX,original options. All20 reduced
+altitudes honored; XY/rot/proj and rendered origins match their base poses.
+Canonical101157 requests28000 but captures12515.314 due to camera clamping;
+focus Z follows terrain (gos_visual_capture.cpp:668-695), both explicitly
+recorded in the camera audit. Initial overstrict audit failed on terrain Z;
+corrected audit preserves requested and effective values rather than claiming
+exact replay of unreachable inputs. Canonical bookmarks were not modified.
+
+Opened both owner facet PNG references, five altitude sheets and all13 sheet.
+Large triangles in the owner reference remain UNREPRODUCED at every tested
+altitude. The regular fine ripple lattice IS visible. Per-pose observations:
+
+- 100525: fogged map corner, no large water triangles visible.
+- 100537: lower-pitch map corner, no large water triangles visible.
+- 100624: cliff reflection and fine regular ripples at all five altitudes.
+- 100638: cliff/trees dominate increasingly as altitude falls; water smooth.
+- 100705: regular ripples and cliff reflection, no owner-scale facets.
+- 100810: overhead point/shore, water lacks large facet patches.
+- 100933: road/shore foreground, water shows fine ripples.
+- 101056: cross-channel cliff and reflected trees; no large facet patches.
+- 101157: fog obscures scene at clamped maximum; no useful facet conclusion.
+- 101247: airfield/runway pads present, edge water remains smooth.
+- 101350: broad original W148 glint and regular ripple lattice at every height;
+  owner screenshot's large triangular patches do not appear.
+- 101454: enlarged cliff reflection as camera lowers, fine ripples persist.
+- 101648: shallow cyan shore shelf and fine ripples, no large facets.
+
+Evidence: E:/mc2-archive-2026-10/proofs/water-cliff-lowangle-1/v7/.
+before-deploy.log,before-parity.log,before-capture-bootstrap.log,
+before-altitude-bootstrap/,before-camera-audit.json,altitude-*.jpg,
+before-canonical-all13.jpg. Existing wave/glint and near-gloss test modules
+PASS before game runs (offline-water.log). No shader source change; production
+compile,shader rows,lint,new build,smoke and candidate day/night A/B NOT RUN.
+
+PARTIAL: item1 sweep complete but reproduction gate failed; facet isolation
+and repair items2-3 remain blocked. Item4 stochastic change remains pending
+its explicit after-facet ordering. Candidate a3 not created without a repair.
+No visual acceptance or owner-install delivery claim. Source legacy random
+vertex heights (water_geom.vert:177-202) remain a hypothesis, not a proven cause.
+Per lane rule2, stop after the prior v4 and this v7 failed reproduction class;
+do not request another replay without changed evidence. Named follow-up
+water-cliff-a needs a reproducing effective water tuning/time/session or
+owner-confirmed different input before source isolation, then separate facet
+and stochastic commits with all13+night proof. Fresh a2 is kept for orchestrator
+inspection; old installs are kept per override. No push or upload.
+
 ## v4 resume (2026-11-11 22:20 UTC)
 
 Install repair 94b6ebb24 merged at a9d5ed1ac; normal deploy in progress.
