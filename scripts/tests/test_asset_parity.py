@@ -285,9 +285,138 @@ def test_seed_manifest_disagreement_still_requires_exact_byte_repair(work):
     write_manifest(b"line\r\n")
     with pytest.raises(SystemExit):
         iso.verified_seed(seed, use_cache=True)
-    # Restore the file to the manifest's independently verified bytes; do not bless drift.
+    # Restore independently verified bytes; never bless drift.
     (seed / "data/defs/a.fit").write_bytes(b"line\r\n")
     assert len(iso.verified_seed(seed, use_cache=True)) == 2
     (seed / "data/defs/a.fit").write_bytes(b"evil\n")
     with pytest.raises(SystemExit):
         iso.verified_seed(seed, use_cache=True)
+
+
+def payload_manifest(install, files, commit="a" * 40):
+    import deploy_payload as dp
+    dp.write_manifest(str(install), {rel: (hashlib.sha256(data).hexdigest(), len(data))
+                                    for rel, data in {"mc2.exe": b"exe", **files}.items()}, commit)
+
+
+def test_deploy_and_capture_share_exact_payload_ownership(work):
+    ref = tree(work / "reference", {"data/defs/owned.fit": b"base", "data/stock.fit": b"stock"})
+    files = {"data/defs/owned.fit": b"candidate", "data/new.fit": b"new"}
+    install = tree(work / "candidate", {**files, "data/stock.fit": b"stock"})
+    hashes = {rel: hashlib.sha256(data).hexdigest() for rel, data in files.items()}
+    deployed = ap.enforce(install, ref, payload=hashes, declared={})
+    payload_manifest(install, files, commit="unknown")
+    captured = ap.capture_drift(install, ref)
+    assert deployed.ok and captured.ok and deployed.total == captured.total == 1
+    # Missing, extra and same-size corruption outside the payload still refuse.
+    (install / "data/stock.fit").write_bytes(b"STOCK")
+    assert ap.capture_drift(install, ref).content == ["data/stock.fit"]
+    tree(install, {"data/unlisted.fit": b"extra"})
+    assert ap.capture_drift(install, ref).extra == ["data/unlisted.fit"]
+    (install / "data/stock.fit").unlink()
+    assert ap.capture_drift(install, ref).missing == ["data/stock.fit"]
+    # Owned bytes are pinned even if outside the sampled set.
+    (install / "data/new.fit").write_bytes(b"bad")
+    with pytest.raises(ValueError, match="hash mismatch"):
+        ap.capture_drift(install, ref)
+
+
+@pytest.fixture
+def declaration_repo(work, monkeypatch):
+    import subprocess
+    import console_child
+    root = work / "repo"
+    root.mkdir()
+    def git(*args):
+        return subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True,
+                              text=True, **console_child.child_kwargs(redirected=True)).stdout.strip()
+    git("init", "-q")
+    git("config", "user.email", "test@example.invalid")
+    git("config", "user.name", "Parity Test")
+    git("commit", "--allow-empty", "-qm", "baseline")
+    baseline = git("rev-parse", "HEAD")
+    def declare(entries):
+        (root / ap.INTENTIONAL).write_text(json.dumps(entries), encoding="utf-8")
+        git("add", ap.INTENTIONAL)
+        git("commit", "-qm", "declare candidate assets")
+        return git("rev-parse", "HEAD")
+    return root, baseline, declare
+
+
+def test_tracked_grass_declarations_are_candidate_only_and_exact(work, declaration_repo, monkeypatch, capsys):
+    root, baseline, declare = declaration_repo
+    grass = {f"data/vegetation/cards/grass_{n:02d}.png": b"new grass" for n in range(1, 5)}
+    expected = {rel: hashlib.sha256(data).hexdigest() for rel, data in grass.items()}
+    candidate = declare(expected)
+    assert ap.intentional_changes(baseline, root) == {}
+    assert ap.intentional_changes(candidate, root) == expected
+    # An uncommitted edit cannot broaden the pinned list.
+    (root / ap.INTENTIONAL).write_text('{"data/unlisted.png": "bad"}')
+    assert ap.intentional_changes(candidate, root) == expected
+    install = tree(work / "candidate", grass)
+    ref = tree(work / "ref", {rel: b"old grass" for rel in grass})
+    payload_manifest(install, {}, candidate)
+    original = ap.intentional_changes
+    monkeypatch.setattr(ap, "intentional_changes", lambda commit, _root=None: original(commit, root))
+    assert ap.capture_drift(install, ref).ok
+    assert "INTENTIONAL ASSET ACCEPTED data/vegetation/cards/grass_01.png sha256=" in capsys.readouterr().out
+    payload_manifest(install, {}, baseline)
+    assert not ap.capture_drift(install, ref).ok
+    payload_manifest(install, {}, candidate)
+    (install / next(iter(grass))).write_bytes(b"bad grass")
+    with pytest.raises(ValueError, match="INTENTIONAL ASSET hash mismatch"):
+        ap.capture_drift(install, ref)
+
+
+@pytest.mark.parametrize("rel", ["../data/a.png", "/data/a.png", "data/../../a.png", "mc2.exe", "other.dll"])
+def test_declarations_reject_paths_outside_assets_and_auxiliary(declaration_repo, rel):
+    root, _, declare = declaration_repo
+    commit = declare({rel: "a" * 64})
+    with pytest.raises(ValueError, match="invalid path/hash"):
+        ap.intentional_changes(commit, root)
+
+
+def test_ab_auxiliary_requires_baseline_or_declaration(work, declaration_repo, monkeypatch, capsys):
+    sys.path.insert(0, str(ROOT / "tools/visual_verify"))
+    import ab
+    root, base, declare = declaration_repo
+    monkeypatch.setattr(ab, "ROOT", root)
+    ref = tree(work / "baseline", {rel: b"baseline binary" for rel in ap.AUXILIARY})
+    install = tree(work / "candidate", {rel: b"baseline binary" for rel in ap.AUXILIARY})
+    good = hashlib.sha256(b"baseline binary").hexdigest()
+    ma = {rel: "a" * 64 for rel in ap.AUXILIARY}
+    mb = {rel: good for rel in ap.AUXILIARY}
+    assert ab.candidate_mismatches(ma, mb, base, install, ref) == []
+    assert "source=install baseline" in capsys.readouterr().out
+    # A copied manifest cannot hide replaced auxiliary bytes.
+    (install / "mc2res_64.dll").write_bytes(b"different")
+    assert [p for p, _ in ab.candidate_mismatches(ma, mb, base, install, ref)] == ["mc2res_64.dll"]
+    mb["mc2res_64.dll"] = hashlib.sha256(b"different").hexdigest()
+    assert ab.candidate_mismatches(ma, mb, base, baseline=ref)
+    candidate = declare({"mc2res_64.dll": mb["mc2res_64.dll"]})
+    assert ab.candidate_mismatches(ma, mb, candidate, install, ref) == []
+    assert "source=intentional-asset-changes" in capsys.readouterr().out
+    assert ab.candidate_mismatches(ma, {}, candidate, baseline=ref)  # missing B stays refused
+    assert ab.candidate_mismatches({"render.dll": "a" * 64}, {"render.dll": good}, base, baseline=ref)
+
+
+def test_ab_declared_grass_accepts_only_candidate_hash(work, declaration_repo, monkeypatch):
+    sys.path.insert(0, str(ROOT / "tools/visual_verify"))
+    import ab
+    root, base, declare = declaration_repo
+    monkeypatch.setattr(ab, "ROOT", root)
+    rel = "data/vegetation/cards/grass_01.png"
+    sha = hashlib.sha256(b"grass").hexdigest()
+    candidate = declare({rel: sha})
+    ma, mb = {rel: "a" * 64}, {rel: sha}
+    assert ab.candidate_mismatches(ma, mb, candidate) == []
+    assert ab.candidate_mismatches(ma, mb, base)
+    assert ab.candidate_mismatches(ma, {rel: "b" * 64}, candidate)
+    assert ab.candidate_mismatches({**ma, "data/unlisted.png": "a" * 64}, mb, candidate)
+    install_a = tree(work / "a", {rel: b"old"})
+    install_b = tree(work / "b", {rel: b"grass"})
+    payload_manifest(install_b, {}, candidate)
+    parity = ab.data_parity(install_a, install_b)
+    assert parity["cross_data"] and parity["unlisted_differing_count"] == 0
+    tree(install_b, {"data/unlisted.png": b"extra"})
+    assert ab.data_parity(install_a, install_b)["unlisted_differing_count"] == 1

@@ -17,10 +17,14 @@ run_smoke; the capture tools refuse a drifted install unless --allow-asset-drift
 from __future__ import annotations
 
 import argparse
+import csv
 import hashlib
+import json
 import os
+import re
 import shutil
 import stat
+import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
@@ -37,6 +41,85 @@ SAMPLE_BYTES = 32 << 20
 SKIP_SUFFIXES = (".cookstamp",)
 # v0.4 is the read-only reference; the golden install is never a parity target either.
 GOLDEN_NAMES = {"mc2-win64-v0.4c", "mc2-win64-0.4c"}
+INTENTIONAL = "intentional-asset-changes.json"
+AUXILIARY = {"crashpad_handler.exe", "mc2res_64.dll"}
+
+
+def intentional_changes(commit: str | None, root: Path | None = None) -> dict[str, str]:
+    """Read the candidate's tracked {install-relative path: sha256} list at its deployed commit.
+
+    Each lane commits intentional-asset-changes.json with its candidate. No working-copy or
+    environment allowlist is trusted. Baseline arms use only their own commit's declarations.
+    """
+    if not commit or not re.fullmatch(r"[0-9a-f]{40}", commit):
+        return {}
+    import console_child
+    root = root or Path(__file__).resolve().parents[1]
+    proc = subprocess.run(["git", "-C", str(root), "ls-tree", "--name-only", commit, "--", INTENTIONAL],
+                          capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
+    if proc.returncode:
+        # An unavailable commit grants no exceptions; ancestry/identity gates own commit availability.
+        return {}
+    if not proc.stdout.strip():
+        return {}
+    proc = subprocess.run(["git", "-C", str(root), "show", f"{commit}:{INTENTIONAL}"],
+                          capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
+    if proc.returncode:
+        raise ValueError(f"cannot read {INTENTIONAL} at {commit}")
+    entries = json.loads(proc.stdout)
+    if not isinstance(entries, dict):
+        raise ValueError(f"{INTENTIONAL}: expected path -> sha256 object")
+    for rel, sha in entries.items():
+        if (not isinstance(rel, str) or rel != _norm(rel) or ".." in rel.split("/")
+                or ":" in rel or not rel or rel.startswith("/")
+                or not (rel.startswith(("data/", "assets/")) or rel in AUXILIARY
+                        or ("/" not in rel and rel.endswith(ROOT_SUFFIX)))
+                or not isinstance(sha, str) or not re.fullmatch(r"[0-9a-f]{64}", sha)):
+            raise ValueError(f"{INTENTIONAL}: invalid path/hash: {rel!r}")
+    return entries
+
+
+def manifest_assets(install: Path | str) -> tuple[dict[str, str], str | None]:
+    """The deploy manifest is the single inventory of payload-owned asset paths."""
+    path = Path(install) / ".deployed_manifest.csv"
+    if not path.exists():
+        return {}, None
+    with path.open(newline="", encoding="utf-8") as stream:
+        rows = csv.reader(stream)
+        if next(rows, [])[:2] != ["manifest_version", "v1"]:
+            raise ValueError(f"invalid payload manifest: {path}")
+        entries = list(csv.DictReader(stream))
+    commits = {row["src_commit"] for row in entries if row["relpath"] in {"mc2.exe", "mc2", "mc2.elf"}}
+    if len(commits) != 1:
+        raise ValueError(f"missing/ambiguous executable commit: {path}")
+    return {row["relpath"]: row["sha256"] for row in entries}, commits.pop()
+
+
+def owned_paths(install: Path | str, payload: dict[str, str] | None = None,
+                declared: dict[str, str] | None = None) -> set[str]:
+    """Only exact manifest/declaration bytes are owned, in deploy and capture alike."""
+    install = Path(install)
+    if payload is None:
+        payload, commit = manifest_assets(install)
+        declared = intentional_changes(commit) if declared is None else declared
+    expected = dict(payload)
+    expected.update(declared or {})
+    for rel, sha in (declared or {}).items():
+        if not (install / rel).is_file() or _sha(install / rel) != sha:
+            raise ValueError(f"INTENTIONAL ASSET hash mismatch: {rel}")
+        print(f"{PREFIX} INTENTIONAL ASSET ACCEPTED {rel} sha256={sha}", flush=True)
+    owned = set()
+    for rel, sha in expected.items():
+        low = _norm(rel)
+        if not (low.startswith(("data/", "assets/")) or ("/" not in low and low.endswith(ROOT_SUFFIX))):
+            continue
+        path = (install / rel).resolve()
+        if not path.is_relative_to(install.resolve()) or not re.fullmatch(r"[0-9a-f]{64}", sha):
+            raise ValueError(f"invalid owned payload path/hash: {rel}")
+        if not path.is_file() or _sha(path) != sha:
+            raise ValueError(f"owned payload missing or hash mismatch: {rel}")
+        owned.add(low)
+    return owned
 
 
 def default_ref() -> Path:
@@ -130,13 +213,14 @@ def _sha(path: Path) -> str:
 
 
 def compare(install: Path | str, ref: Path | str, sample: int = SAMPLE_FILES,
-            sample_bytes: int = SAMPLE_BYTES, skip: "set[str] | None" = None) -> Result:
+            sample_bytes: int = SAMPLE_BYTES, skip: "set[str] | None" = None,
+            payload: dict[str, str] | None = None, declared: dict[str, str] | None = None) -> Result:
     """Missing, size-different and (sampled) content-different parity files of `install` against `ref`.
 
     `skip` holds casefolded relpaths this deploy itself owns (the payload): those are shipped on purpose and
     must never be replaced by the reference's older copy."""
     install, ref = Path(install), Path(ref)
-    skip = skip or set()
+    skip = owned_paths(install, payload, declared) if skip is None else {_norm(p) for p in skip}
     index = {key: value for key, value in reference_index(ref).items()
              if key not in skip and not value[0].casefold().endswith(SKIP_SUFFIXES)}
     result = Result(total=len(index))
@@ -227,12 +311,13 @@ def sync(install: Path | str, ref: Path | str, result: Result, jobs: int = 4) ->
 
 
 def enforce(install: Path | str, ref: Path | str | None = None, sync_missing: bool = True,
-            jobs: int = 4, skip: "set[str] | None" = None) -> Result | None:
+            jobs: int = 4, skip: "set[str] | None" = None,
+            payload: dict[str, str] | None = None, declared: dict[str, str] | None = None) -> Result | None:
     """Check (and unless sync_missing is False, sync) one lane install; None when exempt or no reference."""
     ref = Path(ref) if ref is not None else default_ref()
     if is_exempt(install, ref) or not ref.is_dir():
         return None
-    result = compare(install, ref, skip=skip)
+    result = compare(install, ref, skip=skip, payload=payload, declared=declared)
     if sync_missing and not result.ok:
         result = sync(install, ref, result, jobs)
     return result

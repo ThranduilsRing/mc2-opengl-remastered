@@ -2761,18 +2761,11 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     # differs from v0.4 (read only) or, with --no-asset-sync, fail with the counts; the verdict line is
     # [ASSET_PARITY], read by run_smoke and refused by the capture tools.
     import asset_parity
-    # The files this deploy ships (data/ defs, terrain layers, kit sources) are owned here: never replace them with
-    # the reference's older copy, which would undo a data lane's change. A code-only (reuse) deploy lists only the
-    # code items, so the owned set is always the FULL payload list (plus any kit items enumerated above).
-    owned = {rel.casefold() for _src, rel, _kind in items}
-    if reuse:
-        try:
-            owned |= {rel.casefold() for _src, rel, _kind in
-                      enumerate_payload(src_root, build_dir, exe_name, pdb_name,
-                                        require_build=False, build64_root=args.build64_root, cook=False)}
-        except (OSError, SystemExit):
-            pass
-    drift = asset_parity.enforce(target, sync_missing=not args.no_asset_sync, jobs=asset_parity.jobs(), skip=owned)
+    # The manifest written below and captures use the same exact, hash-verified payload inventory.
+    # Code-only deploy() retains the prior manifest's data rows in hashes.
+    drift = asset_parity.enforce(target, sync_missing=not args.no_asset_sync, jobs=asset_parity.jobs(),
+                                 payload={rel: row[0] for rel, row in hashes.items()},
+                                 declared=asset_parity.intentional_changes(source_head, Path(src_root)))
     if drift is None:
         log(f"{asset_parity.PREFIX} SKIPPED ref={asset_parity.default_ref().as_posix()} (exempt target or no reference on this host)")
     elif drift.ok:

@@ -30,6 +30,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 from smoke_lib import nofocus  # noqa: E402
 import mc2_env_pin as env_pin  # noqa: E402
 import console_child  # noqa: E402  (windowless console children; scripts/console_child.py)
+import asset_parity  # noqa: E402
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pixel_hist  # noqa: E402
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -117,7 +118,14 @@ def payload_identity(install):
     fingerprint = exe_commit(install / exe)
     if fingerprint and not commit.startswith(fingerprint):
         raise ValueError(f"{install}: executable commit mismatches manifest")
-    return dict(commit=commit, payload=payload, manifest=files)
+    declared = asset_parity.intentional_changes(commit, ROOT)
+    # Stamp the declared bytes actually captured, including authored assets outside the deploy inventory.
+    for rel, sha in declared.items():
+        if asset_parity._sha(install / rel) != sha:
+            raise ValueError(f"{install}: intentional asset hash mismatch: {rel}")
+        print(f"[ab] INTENTIONAL ASSET ACCEPTED {rel} sha256={sha}", flush=True)
+    files.update(declared)
+    return dict(commit=commit, payload=payload, manifest=files, intentional_asset_changes=declared)
 
 
 def stamp_identity(directory, identity):
@@ -215,6 +223,34 @@ def _data_mismatch_entries(ma, mb):
 def manifest_mismatches(ma, mb):
     """The human-readable lines of _data_mismatch_entries (one per differing data file)."""
     return [line for _, line in _data_mismatch_entries(ma, mb)]
+
+
+def candidate_mismatches(ma, mb, commit, install_b=None, baseline=None):
+    """Candidate-only, exact-hash declarations; auxiliary binaries require baseline or declared bytes.
+
+    An absent auxiliary row in B remains a mismatch. No blanket executable/DLL exclusion.
+    """
+    declared = asset_parity.intentional_changes(commit, ROOT)
+    mb = dict(mb)
+    if install_b is not None:
+        for rel, sha in declared.items():
+            if asset_parity._sha(Path(install_b) / rel) != sha:
+                raise ValueError(f"intentional asset hash mismatch: {rel}")
+        mb.update(declared)
+    accepted = {rel for rel, sha in declared.items() if mb.get(rel) == sha}
+    baseline = Path(baseline) if baseline else asset_parity.default_ref()
+    for rel in asset_parity.AUXILIARY:
+        if (baseline / rel).is_file() and mb.get(rel) == asset_parity._sha(baseline / rel):
+            if install_b is None or asset_parity._sha(Path(install_b) / rel) == mb[rel]:
+                accepted.add(rel)
+    remaining = []
+    for rel, line in _data_mismatch_entries(ma, mb):
+        if rel in accepted:
+            print(f"[ab] ACCEPTED candidate asset {rel} sha256={mb[rel]} "
+                  f"source={'intentional-asset-changes' if rel in declared else 'install baseline'}", flush=True)
+        else:
+            remaining.append((rel, line))
+    return remaining
 
 
 def manifest_diff_files(ma, mb):
@@ -356,7 +392,7 @@ def base_problems(install_a=None, install_b=None, exe_a=None, exe_b=None, instal
         if not ma or not mb:
             problems.append(f"{MANIFEST} missing in " + " and ".join(d for d, m in ((install_a, ma), (install_b, mb)) if not m))
         else:
-            diffs = manifest_mismatches(ma, mb)
+            diffs = [line for _, line in candidate_mismatches(ma, mb, cb, install_b, install)]
             if diffs:
                 problems.append(f"{len(diffs)} data/shader manifest mismatch(es) besides mc2.exe and shaders/vulkan/*.spv: "
                                 + "; ".join(diffs[:20]) + (" ..." if len(diffs) > 20 else ""))
@@ -711,12 +747,24 @@ def data_parity(install_a, install_b, full_install_a=False) -> dict:
     """Compare the data trees the two sides will render -> {sha_a, sha_b, files_a, files_b, same, differing, cross_data, ...}."""
     fa, fb = data_tree_files(install_a), data_tree_files(install_b)
     differing = sorted(r for r in set(fa) | set(fb) if fa.get(r) != fb.get(r))
+    _, commit = read_manifest(install_b)
+    declared = asset_parity.intentional_changes(commit, ROOT)
+    accepted = {}
+    for rel in differing:
+        path = Path(install_b) / rel
+        if rel in declared and path.is_file() and asset_parity._sha(path) == declared[rel]:
+            accepted[rel] = declared[rel]
+        elif rel in asset_parity.AUXILIARY:
+            baseline = asset_parity.default_ref() / rel
+            if path.is_file() and baseline.is_file() and asset_parity._sha(path) == asset_parity._sha(baseline):
+                accepted[rel] = asset_parity._sha(path)
     sa, sb = spv_digest(Path(install_a) / "shaders"), spv_digest(Path(install_b) / "shaders")
     sdiff = sorted(r for r in set(sa) | set(sb) if sa.get(r) != sb.get(r))
     return {"shaders_same": not sdiff, "shaders_differing_count": len(sdiff), "shaders_differing": sdiff[:200],
             "sha_a": data_fingerprint(fa), "sha_b": data_fingerprint(fb), "files_a": len(fa), "files_b": len(fb),
             "same": not differing, "differing": differing[:200], "differing_count": len(differing),
-            "full_install_a": bool(full_install_a), "cross_data": bool(differing)}
+            "full_install_a": bool(full_install_a), "cross_data": bool(differing),
+            "accepted_asset_changes": accepted, "unlisted_differing_count": len(set(differing) - accepted.keys())}
 
 
 def data_parity_lines(dp: dict) -> list:
@@ -1214,7 +1262,7 @@ def main(argv=None):
         except ValueError as exc:
             sys.exit(f"ab.py: {exc}")
         bad = [p for p in [commit_order_problem(ia["commit"], ib["commit"], "capture A", "capture B")] if p]
-        entries = _data_mismatch_entries(ia["manifest"], ib["manifest"])
+        entries = candidate_mismatches(ia["manifest"], ib["manifest"], ib["commit"], baseline=a.install)
         accepted_delta = []
         if a.allow_data_delta and not bad:
             # the merge gate's before (published v0.4) vs after (candidate): B descends from A, so a data difference is the
@@ -1262,7 +1310,7 @@ def main(argv=None):
         dpar = data_parity(ia, ib, a.full_install_a)
         for line in data_parity_lines(dpar):
             print(line, flush=True)
-        if dpar["cross_data"] and not a.full_install_a:
+        if dpar.get("unlisted_differing_count", dpar["differing_count"]) and not a.full_install_a:
             sys.exit("ab.py: the two sides render different data trees; an exe A/B must use one data tree. Use --exe-a/--exe-b or "
                      "--exe-a with --install-b (both run the B data), or pass --full-install-a for a deliberate v0.4-vs-tip look sheet")
         exe_a_swap = None

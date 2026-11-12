@@ -72,6 +72,7 @@ def test_deploy_logs_hash_and_copy_phases(tmp_path, monkeypatch, capsys):
 
 @pytest.mark.parametrize("kit_enabled", [True, False])
 def test_run_deploy_logs_stock_receipts_and_kit_cook(tmp_path, monkeypatch, capsys, kit_enabled):
+    import asset_parity
     import kit_payload
     from smoke_lib import render_options_pin
     build, target = tmp_path / "build", tmp_path / "target"
@@ -94,9 +95,11 @@ def test_run_deploy_logs_stock_receipts_and_kit_cook(tmp_path, monkeypatch, caps
     phases = []
     monkeypatch.setattr(kit_payload, "reconcile_stock_textures", lambda *a, **kw: phases.append("stock"))
     monkeypatch.setattr(kit_payload, "finish", lambda *a, **kw: phases.append("cook"))
+    # This synthetic deploy tests phase logging, independently of the host's stock assets.
+    monkeypatch.setattr(asset_parity, "enforce", lambda *a, **kw: None)
     monkeypatch.setattr(dp.subprocess, "run", lambda *a, **kw: SimpleNamespace(stdout=""))
     args = SimpleNamespace(allow_stale_exe=False, build64_root=None, classic_assets=False, skip_kit=False,
-                           require_clean=False, full_verify=False, allow_stale_pdb=False, preserve=[])
+                           require_clean=False, full_verify=False, allow_stale_pdb=False, preserve=[], no_asset_sync=False)
     dp.run_deploy(args, str(tmp_path), str(build), str(target), "mc2", "mc2.pdb")
     out = capsys.readouterr().out
     assert all(f"phase {phase} seconds=" in out for phase in ("hash/verify", "copy", "stock receipts", "kit cook"))
