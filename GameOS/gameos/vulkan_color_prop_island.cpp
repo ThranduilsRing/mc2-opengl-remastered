@@ -87,6 +87,7 @@ float mc2NightLightFactor();   // mclib/camera.cpp: 0 day/evening .. 1 full nigh
 #include "mc2fmt.h"
 #include "vk_island_fail_policy.h"
 #include "prop_array_buckets.h"
+const float* gos_GetObjectFixBMVPMat4();
 
 
 namespace {
@@ -2359,16 +2360,28 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) { return run_props(w, 
 
 } // anonymous namespace
 namespace mc2::waterplanar {
-struct PlanarProps : ColorPropIsland { std::vector<GpuStaticPropInstance> reflectedInstances; };
+struct PlanarProps : ColorPropIsland {
+    std::vector<GpuStaticPropInstance> reflectedInstances;
+    uint32_t sourceMapGeneration = 0;
+};
 bool prepareProps(std::unique_ptr<mc2vk::IslandState>& state, const Target& target, mc2vk::VulkanContext::RecordFn& record) {
     record = {};
+    const auto* main = parkedIsland();
+    const uint32_t generation = main ? main->mapGeneration : 0;
+    if (state && static_cast<PlanarProps*>(state.get())->sourceMapGeneration != generation)
+        mc2vk::getOrCreateEngineVulkanContext().retire(std::move(state));
     if (!state) {
         auto fresh = std::make_unique<PlanarProps>();
         if (!init_island(fresh.get(), target.w, target.h)) return false;
+        fresh->sourceMapGeneration = generation;
         state = std::move(fresh);
     }
     auto* s = static_cast<PlanarProps*>(state.get());
-    const View view(target.mainWorldToClip, target.water);
+    // Object projection is independent of terrain's dispatch matrix, even when
+    // no props were admitted to the main colour list this frame.
+    const float* objectMatrix = gos_GetObjectFixBMVPMat4();
+    if (!objectMatrix) return false;
+    const View view(objectMatrix, target.water);
     // Missing local bounds conservatively retain a type, independently of main-view HZB.
     preparePropInstances(view, {}, s->reflectedInstances);
     if (s->reflectedInstances.empty()) return true;
