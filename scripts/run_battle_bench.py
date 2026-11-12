@@ -29,6 +29,152 @@ PASSES = {
     "props": ("VKIsl.Props",), "mechs": ("VKIsl.Mech",), "water": ("VKIsl.Water",),
     "post": ("VKIsl.Post.", "VKIsl.Present.Composite"), "vfx": ("VKIsl.Vfx",),
 }
+STOCK_MISSIONS = ("mc2_01", "mc2_10", "mc2_15", "mc2_19")
+CORNER = {"name": "corner", "pos": [99999, 99999, 0], "rot": -45, "alt": 5853.4658, "proj": 12.5}
+
+
+def stock_identity(exe, expected_sha):
+    """Historical runs name their reference explicitly; harness HEAD is irrelevant."""
+    if not re.fullmatch(r"[0-9a-f]{40}", expected_sha or ""):
+        raise ValueError("stock corner requires a resolved 40-digit --ref-commit")
+    identity = ms.exe_block(exe)
+    provenance = ms.binary_provenance(identity, {"commit": expected_sha})
+    if (not identity or not identity.get("sha256") or not provenance.get("available")
+            or provenance.get("dirty") is not False or not provenance.get("source_head_matches_binary")):
+        raise ValueError("missing, dirty or mismatched binary provenance")
+    return identity
+
+
+def stock_commands(directory):
+    return f"bench_output {directory / 'frames.jsonl'}\n{view_command(CORNER)}\n"
+
+
+def prepare_stock(directory):
+    directory.mkdir(parents=True, exist_ok=False)
+    channel = directory / "commands.txt"
+    channel.write_text(stock_commands(directory), encoding="utf-8")
+    return channel
+
+
+def summarize_stock(directory, log):
+    """Whole frames after the acknowledged pose; CPU work, never display intervals."""
+    verify = (directory / "commands.txt.ack").read_text(encoding="utf-8")
+    if f"{view_command(CORNER)} -> ok" not in verify or "bench_output " not in verify or " -> blocked" in verify:
+        raise ValueError("stock corner/output acknowledgement missing or blocked")
+    rows = read_frames(directory)
+    clocks = [r for r in rows if r.get("type") == "clock"]
+    views = [r for r in rows if r.get("type") == "view"]
+    if len(clocks) != 1 or len(views) != 1 or "event=mission_ready" not in log:
+        raise ValueError("missing post-load clock or unique corner pose")
+    view = views[0]
+    if (view.get("pos") != CORNER["pos"][:2] or view.get("yaw") != CORNER["rot"]
+            or abs(view.get("alt", 0) - CORNER["alt"]) > .001 or view.get("pitch") != CORNER["proj"]):
+        raise ValueError("acknowledged corner pose mismatch")
+    start = max(clocks[0]["frame"], view["frame"])
+    cpu = [r for r in rows if r.get("type") == "cpu" and r["frame"] > start]
+    values = [r["ms"] for r in cpu]
+    if not values or any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or v < 0 for v in values):
+        raise ValueError("empty or invalid CPU samples")
+    if any(b["frame"] != a["frame"] + 1 for a, b in zip(cpu, cpu[1:])):
+        raise ValueError("nonconsecutive CPU samples")
+    gpu = [r for r in rows if r.get("type") == "gpu" and cpu[0]["frame"] <= r["frame"] <= cpu[-1]["frame"]]
+    if not gpu or any(not r.get("recorded") or r.get("recorded") != r.get("valid") or not math.isfinite(r["ms"]) or r["ms"] < 0 for r in gpu):
+        raise ValueError("missing or invalid GPU samples")
+    worlds = [r for r in rows if r.get("type") == "world" and r["frame"] >= start]
+    return {"cpu_work": {**distribution(values), "over_6_06_ms": sum(v > 6.06 for v in values),
+                         "over_8_33_ms": sum(v > 8.33 for v in values)},
+            "gpu_frame": distribution([r["ms"] for r in gpu]), "acknowledged_pose": view,
+            "sampling": {"first_frame": cpu[0]["frame"], "last_frame": cpu[-1]["frame"],
+                         "pose_frame_excluded": start, "pose_sim_s": view["sim_s"],
+                         "last_world_sim_s": max((r["sim_s"] for r in worlds), default=None),
+                         "cpu_work_sum_s": sum(values) / 1000},
+            "metric": "CPU work times before the FPS cap (cap disabled), not measured display intervals",
+            "raw": str(directory / "frames.jsonl")}
+
+
+def stock_run(exe, directory, mission, expected_sha):
+    """One stock 20-second run. Caller holds host then install leases."""
+    saved = {k: v for k, v in os.environ.items() if k.startswith("MC2_")}
+    try:
+        for key in saved:
+            if key != "MC2_VK_DEVICE" and not key.startswith(("MC2_HOST_", "MC2_DEPLOY_", "MC2_CHILD_", "MC2_HARNESS_")):
+                os.environ.pop(key, None)
+        return _stock_run(exe, directory, mission, expected_sha)
+    finally:
+        for key in list(os.environ):
+            if key.startswith("MC2_"):
+                del os.environ[key]
+        os.environ.update(saved)
+
+
+def _stock_run(exe, directory, mission, expected_sha):
+    if mission not in STOCK_MISSIONS:
+        raise ValueError("unsupported stock corner mission")
+    stock_identity(exe, expected_sha)
+    channel = prepare_stock(directory)
+    declared = environment(channel, 1920, 1080)
+    # Synthetic-battle A/B overrides never change stock replay settings.
+    declared = {k: v for k, v in declared.items() if k not in {
+        "MC2_SIM_OVERLAP", "MC2_SIM_OVERLAP_AUDIT", "MC2_VULKAN_VALIDATION", "MC2_FORCE_DYNAMIC_BUILDINGS"}}
+    env, record = capture.build_capture_env(SCENARIO, directory, 0, 30, False, declared)
+    for key in ("MC2_VISUAL_BOOKMARK_CAPTURE", "MC2_VISUAL_CAPTURE_DIR", "MC2_VISUAL_CAPTURE_FRAME", "MC2_VISUAL_SETTLE"):
+        env.pop(key, None)
+        for section in record.values():
+            if isinstance(section, dict):
+                section.pop(key, None)
+    actual = os.environ.copy()
+    for key in runner.unregistered_ambient(actual, env):
+        actual.pop(key, None)
+    actual.update(runner.FORCED_ENV)
+    for key, value in runner.SOFT_ENV.items():
+        actual.setdefault(key, value)
+    for key in runner.POPPED_ENV:
+        actual.pop(key, None)
+    actual.update(env)
+    tags = actual.get("MC2_DIAG_TAGS") or runner.QUIET_TAG_DEFAULTS
+    actual["MC2_DIAG_TAGS"] = tags + "".join(f",{t}" for t in runner.RUNNER_DIAG_TAGS if t not in tags)
+    actual = capture.nofocus.apply_env(actual, small_window=False, offscreen=True, perf=True)
+    record["effective"] = {k: v for k, v in actual.items() if k.startswith("MC2_")}
+    record["render_options"] = render_options_pin.record(exe.parent, env)["values"]
+    (directory / "environment.json").write_text(json.dumps(record, indent=2), encoding="utf-8")
+    before = machine_load()
+    result = runner.run_one(runner.RunConfig(exe=[str(exe)], profile="stock", stem=mission,
+        duration=20, heartbeat_timeout_load_s=180, heartbeat_timeout_play_s=15,
+        grace_s=240, env_extra=env, show_window=True))
+    (directory / "engine.log").write_text(result.stdout_text, encoding="utf-8")
+    verify_runtime(result.stdout_text, expected_sha)
+    if result.exit_code or result.killed_by_timeout or not result.verdict.passed:
+        raise RuntimeError(f"stock corner child failed: {directory}; exit={result.exit_code}")
+    summary = summarize_stock(directory, result.stdout_text)
+    times = dict((name, float(value)) for name, value in re.findall(r"\[TIMING v1\] event=(\w+) elapsed_ms=([\d.]+)", result.stdout_text))
+    active_s = (times.get("mission_quit", -1) - times.get("mission_ready", 0)) / 1000
+    if active_s < 19.9:
+        raise ValueError("stock corner did not complete its 20s post-load duration")
+    from smoke_lib import vk_profile
+    gpus = sorted({p.device for p in vk_profile.parse(result.stdout_text)})
+    if not gpus:
+        raise ValueError("stock corner did not identify its actual GPU")
+    summary.update(mission=mission, requested_duration_s=20, actual_mission_duration_s=active_s, actual_process_wall_s=result.walltime_s,
+                   environment=record, actual_gpu=gpus, machine_load={"before": before, "after": machine_load()})
+    (directory / "stock-corner.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    return summary
+
+
+def stock_main(args):
+    if not args.out or not args.ref_commit:
+        raise ValueError("stock corner requires --out and --ref-commit")
+    if args.baseline_exe or args.acceptance or args.runs not in (None, 1) or args.duration not in (None, 20) or args.resolution not in ("all", "1080p"):
+        raise ValueError("stock corner is one 20s native-light 1080p run")
+    identity = stock_identity(args.exe, args.ref_commit)
+    with host_lease.exclusive_window("stock corner replay", timeout_s=1200):
+        deploy_lease.acquire_lease_waiting(str(args.exe.parent), "stock corner replay", 120)
+        try:
+            if stock_identity(args.exe, args.ref_commit) != identity:
+                raise ValueError("binary changed during lease wait")
+            stock_run(args.exe, args.out.resolve(), args.stock_corner, args.ref_commit)
+        finally:
+            deploy_lease.release_lease(str(args.exe.parent))
+    return 0
 
 
 def distribution(values):
@@ -379,6 +525,8 @@ def hold_install(install):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--exe", type=Path, default=DEFAULT_EXE)
+    parser.add_argument("--stock-corner", choices=STOCK_MISSIONS, help="stock mission, native lighting; no clones or attack commands")
+    parser.add_argument("--ref-commit", help="resolved historical SHA for --stock-corner")
     parser.add_argument("--out", type=Path)
     parser.add_argument("--runs", type=int, default=None, help="default 1 (2 with --acceptance)")
     parser.add_argument("--duration", type=int, default=None, help="default 20 (30 with --acceptance)")
@@ -394,6 +542,8 @@ def main():
     args = parser.parse_args()
     if args.diff:
         diff(*(json.loads(p.read_text(encoding="utf-8")) for p in args.diff)); return 0
+    if args.stock_corner:
+        return stock_main(args)
     args.runs, args.duration = resolve_lengths(args.runs, args.duration, args.acceptance)
     if args.runs < 1 or not 20 <= args.duration <= 30:
         parser.error("--runs >=1 and --duration 20..30 required")
