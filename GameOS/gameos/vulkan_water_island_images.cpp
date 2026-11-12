@@ -31,7 +31,10 @@ bool init_reflection(WaterIsland* s) {
     if (!s->planarDepthImage.create(s->allocator,s->device,image,allocation,"water.reflection.depth")) return false;
     view.image=s->planarDepthImage.get(); view.format=image.format;
     view.subresourceRange.aspectMask=VK_IMAGE_ASPECT_DEPTH_BIT;
-    if (!mc2vk::create(s->planarDepthView,s->device,[&](VkImageView* out){return vkCreateImageView(s->device,&view,nullptr,out);})) return false;
+    if (!mc2vk::create(s->planarDepthView,s->device,[&](VkImageView* out){return vkCreateImageView(s->device,&view,nullptr,out);})) {
+        s->planarDepthImage.reset();
+        return false;
+    }
     return true;
 }
 
