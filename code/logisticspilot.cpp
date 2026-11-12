@@ -18,6 +18,7 @@
 #include "mc2fmt.h"
 #include "mc2str.h"
 #include "objective_text.h"
+#include "pilot_kill_result.h"
 
 #include <optional>
 #include <utility>
@@ -316,8 +317,9 @@ long LogisticsPilot::update( MechWarrior* pWarrior )
 	for ( int i = 0; i < pWarrior->numKilled; i++ )
 	{
 		GameObject* pDead = ObjectManager->getByWatchID(pWarrior->killed[i]);
+		const auto killIcon = pilot_kill_result::classify(pDead, BATTLEMECH, GROUNDVEHICLE);
 
-		if ( pDead->getObjectClass() == BATTLEMECH )
+		if ( killIcon == pilot_kill_result::Icon::mech )
 		{
 			auto icon = std::make_unique<MechIcon>();
 			MechIcon* pIcon = icon.get();
@@ -325,10 +327,11 @@ long LogisticsPilot::update( MechWarrior* pWarrior )
 			killedIcons.push_back( std::move(icon) );
 			pIcon->init( static_cast<Mover*>(pDead) );
 			pIcon->update();
-			if ((static_cast<MoverPtr>(pDead))->getMoveType() != MOVETYPE_AIR)
+			if (pilot_kill_result::countsForValor(killIcon,
+				(static_cast<MoverPtr>(pDead))->getMoveType() == MOVETYPE_AIR))
 				deadMechCount++;
 		}
-		else if ( pDead->getObjectClass() == GROUNDVEHICLE )
+		else if ( killIcon == pilot_kill_result::Icon::vehicle )
 		{
 			auto icon = std::make_unique<VehicleIcon>();
 			VehicleIcon* pIcon = icon.get();
@@ -341,13 +344,14 @@ long LogisticsPilot::update( MechWarrior* pWarrior )
 
 	memset( medalsLastMission, 0, sizeof( bool ) * MAX_MEDAL );
 
-	if ( deadMechCount >= 7 )
+	const auto killMedal = pilot_kill_result::medal(deadMechCount);
+	if ( killMedal == pilot_kill_result::Medal::uncommonValor )
 	{
 		medalsLastMission[UNCOMMON_VALOR] = true;
 		medals[UNCOMMON_VALOR] = true;
 	}
 
-	if ( (deadMechCount >= 3) && (deadMechCount < 7) ) 
+	if ( killMedal == pilot_kill_result::Medal::valor )
 	{
 		medalsLastMission[VALOR] = true;
 		medals[VALOR] = true;

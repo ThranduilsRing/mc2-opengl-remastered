@@ -139,6 +139,8 @@ std::expected<void, int> LogisticsData::sellMech( LogisticsMech* pVar )
 			continue;
 		if ( (*iter)->getVariant() == pVar->getVariant() )
 		{
+			if ( instance->currentlyModifiedMech == iter->get() )
+				instance->cancelMechModfications();
 			int cost = ((*iter))->getCost();
 			(*iter)->setPilot( nullptr );
 			instance->inventory.erase( std::next( iter ).base() );

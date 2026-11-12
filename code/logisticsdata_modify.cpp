@@ -33,6 +33,8 @@ long LogisticsData::getCurrentMissionId()
 
 void LogisticsData::clearInventory()
 {
+	if ( currentlyModifiedMech )
+		cancelMechModfications();
 	for ( auto iter = inventory.begin(); iter != inventory.end(); ++iter )
 	{
 		(*iter)->setPilot( nullptr );

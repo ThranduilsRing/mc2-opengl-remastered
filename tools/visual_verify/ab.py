@@ -369,19 +369,21 @@ def base_problems(install_a=None, install_b=None, exe_a=None, exe_b=None, instal
     return problems
 
 
-def capture_argv(install, bookmarks, out, env_extra, hud=False):
+def capture_argv(install, bookmarks, out, env_extra, hud=False, allow_asset_drift=False):
     """The capture.py command line. --clean hides the HUD, so it is omitted with hud=True (the default capture is clean)."""
     cmd = [sys.executable, str(HERE / "capture.py"), "--install", install,
            "--bookmarks", bookmarks, "--out", str(out)]
     if not hud:
         cmd.append("--clean")
+    if allow_asset_drift:
+        cmd.append("--allow-asset-drift")
     for e in env_extra:
         cmd += ["--env", e]
     return cmd
 
 
-def run_capture(install, bookmarks, out, env_extra, hud=False):
-    cmd = capture_argv(install, bookmarks, out, env_extra, hud)
+def run_capture(install, bookmarks, out, env_extra, hud=False, allow_asset_drift=False):
+    cmd = capture_argv(install, bookmarks, out, env_extra, hud, allow_asset_drift)
     print("[ab] " + " ".join(cmd), flush=True)
     # background-launch: allow streams capture.py progress to the caller's console; inherits it (no new window when the parent has one)
     proc = subprocess.Popen(cmd, env=dict(os.environ, MC2_CURSOR_NO_PARK="1"))  # background-launch: allow same console stream as the subprocess.call it replaces
@@ -1192,6 +1194,8 @@ def main(argv=None):
     ap.add_argument("--compare-only", nargs=2, metavar=("DIR_A", "DIR_B"))
     ap.add_argument("--allow-base-mismatch", action="store_true",
                     help="deliberate cross-base comparison: print the base/data mismatch, stamp CROSS-BASE on the montage, go on")
+    ap.add_argument("--allow-asset-drift", action="store_true",
+                    help="capture although an install's data/assets/*.fst differ from v0.4 (default: capture.py refuses)")
     ap.add_argument("--allow-data-delta", action="store_true",
                     help="--compare-only: when capture B's commit descends from A's, accept only the data files the window "
                          "changed (`git diff --name-only A B`) instead of refusing; any other differing data file still refuses; "
@@ -1274,9 +1278,9 @@ def main(argv=None):
         if base_line:
             print("[ab] WARNING: " + base_line, flush=True)
         env = ["MC2_RENDER_BACKEND=vulkan", "MC2_VK_SHARED_GBUFFER=1"] + pin_stock_overlay_concrete(a.env) + env_pin.focus_declarations(a.focus, a.focus_zoom)
-        run_capture(ia, a.bookmarks, out / "a", env, hud=a.hud)
+        run_capture(ia, a.bookmarks, out / "a", env, hud=a.hud, allow_asset_drift=a.allow_asset_drift)
         stamp_identity(out / "a", identities[0])
-        run_capture(ib, a.bookmarks, out / "b", env, hud=a.hud)
+        run_capture(ib, a.bookmarks, out / "b", env, hud=a.hud, allow_asset_drift=a.allow_asset_drift)
         stamp_identity(out / "b", identities[1])
         for line in capture_commit_report(identities[0]["commit"], identities[1]["commit"], worktree_head()):
             print(line, flush=True)

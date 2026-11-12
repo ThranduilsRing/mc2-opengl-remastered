@@ -53,6 +53,7 @@ import ntpath
 from pathlib import Path
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -398,6 +399,25 @@ def ensure_tree_upscale(src_root, cooker=subprocess.run):
             with open(os.path.join(src_root, rel), "rb") as f:
                 return hashlib.sha256(f.read()).hexdigest()
         return all(os.path.isfile(os.path.join(src_root, r)) and sha(r) == want for r, want in rows.items())
+    if current():
+        return
+    # Lane worktrees can reuse published bytes only when they match the checked-in pins.
+    # This avoids a redundant multi-minute cook inside the 300 s enumeration phase.
+    import asset_parity
+    references = (Path(os.environ.get('MC2_LEAN_SEED', 'E:/mc2-installs/_lean-seed')),
+                  asset_parity.default_ref())
+    for rel, want in rows.items():
+        dst = Path(src_root) / rel
+        if dst.is_file() and sha256_file(dst) == want:
+            continue
+        for reference in references:
+            source = reference / rel
+            if source.is_file() and sha256_file(source) == want:
+                asset_parity._copy(source, dst)
+                if sha256_file(dst) != want:
+                    fail(f'pinned tree copy hash mismatch: {rel}')
+                log(f'reused pinned tree: {rel}')
+                break
     if current():
         return
     log("tree upscale KTX2s absent or stale: generating them (a few minutes)")
@@ -1592,6 +1612,8 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
         os.makedirs(os.path.dirname(dst) or target_dir, exist_ok=True)
         try:
             copy_started = time.perf_counter()
+            if os.path.isfile(dst):
+                os.chmod(dst, os.stat(dst).st_mode | stat.S_IWRITE)
             if rel.endswith(".mcasset.json"):
                 # Authored sidecars ship unchanged except for checkout line endings;
                 # mixed CRLF/LF copies must not change the pinned data fingerprint.
@@ -2212,6 +2234,8 @@ def main():
                          "dirty=1 (built from an uncommitted tree)")
     ap.add_argument("--skip-kit", action="store_true",
                     help="lane installs: leave the install's mods/ kit untouched (no pinned-kit payload, no kit reconcile)")
+    ap.add_argument("--no-asset-sync", action="store_true",
+                    help="lane installs: FAIL instead of syncing data/assets/*.fst files that differ from v0.4 (asset parity)")
     ap.add_argument("--allow-unverified-exe", action="store_true",
                     help="--target game: publish an exe whose sha256 is not the one in the newest PASS gate verdict for HEAD")
     ap.add_argument("--allow-stock-trees", action="store_true",
@@ -2712,6 +2736,30 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     else:
         log("phase stock receipts seconds=0.000 (skipped)")
         log("phase kit cook seconds=0.000 (skipped)")
+    # ASSET-PARITY-1 (owner 2026-11-11): a lane install must carry v0.4's data/, assets/ and *.fst. Sync what
+    # differs from v0.4 (read only) or, with --no-asset-sync, fail with the counts; the verdict line is
+    # [ASSET_PARITY], read by run_smoke and refused by the capture tools.
+    import asset_parity
+    # The files this deploy ships (data/ defs, terrain layers, kit sources) are owned here: never replace them with
+    # the reference's older copy, which would undo a data lane's change. A code-only (reuse) deploy lists only the
+    # code items, so the owned set is always the FULL payload list (plus any kit items enumerated above).
+    owned = {rel.casefold() for _src, rel, _kind in items}
+    if reuse:
+        try:
+            owned |= {rel.casefold() for _src, rel, _kind in
+                      enumerate_payload(src_root, build_dir, exe_name, pdb_name,
+                                        require_build=False, build64_root=args.build64_root, cook=False)}
+        except (OSError, SystemExit):
+            pass
+    drift = asset_parity.enforce(target, sync_missing=not args.no_asset_sync, jobs=asset_parity.jobs(), skip=owned)
+    if drift is None:
+        log(f"{asset_parity.PREFIX} SKIPPED ref={asset_parity.default_ref().as_posix()} (exempt target or no reference on this host)")
+    elif drift.ok:
+        log(asset_parity.verdict_line(drift, asset_parity.default_ref()))
+    else:
+        fail(f"asset parity: {len(drift.missing)} missing, {len(drift.size)} size-different, "
+             f"{len(drift.content)} content-different, {len(drift.extra)} extra file(s) vs {asset_parity.default_ref()} "
+             f"(missing e.g. {', '.join(drift.missing[:5])}); rerun without --no-asset-sync to copy them from v0.4", 8)
     installed = os.path.join(target, exe_name)
     require_head_exe(installed, source_head, src_root)
     if sha256_file(installed) != sha256_file(os.path.join(build_dir, exe_name)):

@@ -1,4 +1,4 @@
-{
+﻿{
   "_about": "Hand-maintained. check-background-launch.py RULE 14/15 fail on a launcher, injector or blanket kill that is not listed here, and on a listed entry that no longer does it. --write never edits this file.",
   "nofocus_callers": {
     "scripts/tests/test_nofocus_env.py": "Windows priority inheritance regression launches only a windowless Python child through nofocus.spawn; no game or host lease.",
@@ -35,6 +35,7 @@
   },
   "direct_spawn": {
     "scripts/tests/test_gate_parity.py": "Runs cmake -P on a probe script and the stock-data checker with the current Python (console_child, captured stdio); never the game.",
+    "scripts/tests/test_logistics_edit_lifetime.py": "Runs only the compiled fake-mech lifetime probe with captured stdio through console_child; no engine or desktop interaction.",
     "scripts/ninja_build.py": "Dev build driver: runs only configure_ninja.NINJA (the build and `-t targets all` for the orphan .spv prune, console_child, captured stdio, 120 s timeout) and git; never the game.",
     "scripts/kit_payload.py": "Cook-cache key: runs only configure_ninja.NINJA `-t deps` on the build tree (console_child, captured stdio, 120 s timeout) to read the importer source closure; never the game.",
     "tests/fixtures/jump_command_witness.py": "Jump-command witness: spawns only sys.executable scripts/run_smoke.py --headless (the harness owns the game launch, focus and kill) with console_child, redirected stdio and a 180 s ack deadline; never mc2.exe directly.",
