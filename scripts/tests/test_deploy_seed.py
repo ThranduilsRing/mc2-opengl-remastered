@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import stat
 import time
 
 import pytest
@@ -137,3 +138,68 @@ def test_seed_cli_honors_explicit_source_target_and_repo(tmp_path, monkeypatch):
     monkeypatch.setattr(kit, 'seed_install', lambda *args: seen.append(('seed', args)))
     deploy.main()
     assert seen == [('verify', (source, str(repo), 'head')), ('seed', (source, target))]
+
+
+@pytest.mark.parametrize('readonly', [False, True])
+def test_deploy_payload_replace_failure_preserves_original(tmp_path, monkeypatch, readonly):
+    source = source_tree(tmp_path)
+    payload = tmp_path / 'payload'
+    payload.mkdir()
+    (source / '.deployed_manifest.csv').rename(payload / '.deployed_manifest.csv')
+    source.rename(payload / 'files')
+    target = tmp_path / 'target'
+    target.mkdir()
+    dst = target / 'mc2.exe'
+    dst.write_bytes(b'original executable')
+    if readonly:
+        dst.chmod(stat.S_IREAD)
+    original_mode = dst.stat().st_mode
+
+    def broken_replace(src, destination):
+        assert Path(src).parent == Path(destination).parent
+        raise OSError('injected replace failure')
+
+    monkeypatch.setattr(deploy.os, 'replace', broken_replace)
+    try:
+        with pytest.raises(OSError, match='injected replace failure'):
+            deploy.deploy_from_payload(payload, target, tmp_path, 'abc')
+        assert dst.read_bytes() == b'original executable'
+        assert dst.stat().st_mode == original_mode
+        assert list(target.iterdir()) == [dst]
+    finally:
+        dst.chmod(stat.S_IREAD | stat.S_IWRITE)
+
+
+@pytest.mark.parametrize('publish', [False, True])
+def test_deploy_readonly_hardlink_preserves_peer(tmp_path, monkeypatch, publish):
+    import exe_fingerprint
+    source = source_tree(tmp_path)
+    payload = tmp_path / 'payload'
+    payload.mkdir()
+    (source / '.deployed_manifest.csv').rename(payload / '.deployed_manifest.csv')
+    source.rename(payload / 'files')
+    target = tmp_path / 'target'
+    target.mkdir()
+    peer = tmp_path / 'peer.exe'
+    peer.write_bytes(b'original executable')
+    peer.chmod(stat.S_IREAD)
+    dst = target / 'mc2.exe'
+    os.link(peer, dst)
+    original_stat = peer.stat()
+    monkeypatch.setattr(exe_fingerprint, 'extract', lambda p: dict(present=True, dirty=0, sha='abc'))
+    monkeypatch.setattr(exe_fingerprint, 'build_current', lambda *a: True)
+    monkeypatch.setattr(deploy, 'ensure_terrain_materials', lambda t: {})
+    monkeypatch.setattr(deploy, 'ensure_engine_normal_cooks', lambda t: None)
+    try:
+        if publish:
+            deploy.deploy_from_payload(payload, target, tmp_path, 'abc')
+        else:
+            deploy.deploy([(str(payload / 'files/mc2.exe'), 'mc2.exe', 'exe')], str(target), False)
+        assert dst.read_bytes() == b'EXE'
+        assert not os.path.samefile(peer, dst)
+        assert peer.read_bytes() == b'original executable'
+        assert peer.stat().st_mode == original_stat.st_mode
+        if os.name == 'nt':
+            assert peer.stat().st_file_attributes == original_stat.st_file_attributes
+    finally:
+        peer.chmod(stat.S_IREAD | stat.S_IWRITE)
