@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in missiongui_shared_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "missiongui_shared_internal.h"
+#include "render_view.h"
 #include "mc2fmt.h"
 
 
@@ -1088,6 +1089,16 @@ void MissionInterfaceManager::doMove(const glm::vec3& pos)
 	handleOrders(tacOrder);
 	
 	soundSystem->playDigitalSample(BUTTON5);
+	// Reuse the stock spinning waypoint art for ordinary move-click feedback.
+	if (!moveOrderMarker) {
+		auto* type = appearanceTypeList->getAppearance(BLDG_TYPE << 24,
+			controlGui.getWalk() ? "WalkWayPoint" : "RunWayPoint");
+		moveOrderMarker = std::make_unique<BldgAppearance>();
+		moveOrderMarker->init(type);
+		moveOrderMarker->setIsHudElement();
+	}
+	moveOrderMarker->setObjectParameters(pos, moveOrderMarker->rotation, false, 0, 0);
+	moveOrderMarkerUntil = mc2::render_view::clock().scenarioTime + 2.0f;
 
 	controlGui.setDefaultSpeed();
 }

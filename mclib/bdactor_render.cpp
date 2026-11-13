@@ -248,7 +248,7 @@ long BldgAppearance::render (long depthFixup)
 			}
 			(void)s_diag_dyn_submit;  // updated below if we go to the dyn path
 
-			if (!submittedToGpu && bldgShape)
+			if (!submittedToGpu && bldgShape && !bldgShape->IsHudElement())
 			{
 				// Stage 3.D: shape-swap invalidation. IsStaticNow's
 				// staticReg.shape==bldgShape check routed us here when

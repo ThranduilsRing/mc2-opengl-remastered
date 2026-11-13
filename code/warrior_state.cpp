@@ -19,7 +19,9 @@ std::unique_ptr<BldgAppearance> MechWarrior::getWayPointMarker( const glm::vec3&
 	// The only appearance type for buildings is MLR_APPEARANCE.
 	gosASSERT(buildingAppearanceType->getAppearanceClass() == BLDG_TYPE);
 	
-	appearance->init(static_cast<BldgAppearanceType*>(buildingAppearanceType), reinterpret_cast<GameObjectPtr>(this));
+	// Waypoints are cosmetic; a pilot is not a simulation-owned GameObject.
+	appearance->init(static_cast<BldgAppearanceType*>(buildingAppearanceType));
+	appearance->setIsHudElement();
 
 	appearance->setObjectParameters( (const_cast<glm::vec3&>(pos)), 0, 1, 0, 0);
 	appearance->recalcBounds();
