@@ -13,6 +13,7 @@
 #include "tex_resolve_table.h"
 #include "battle_bench_sink.h"
 #include "../code/render_view.h"
+#include "../GameOS/gameos/diagnostic_trace.h"
 #include <algorithm>
 #include <span>
 #include <vector>
@@ -192,6 +193,8 @@ void TG_MultiShape::Render (mc2::tgl::ViewUniforms view, bool refreshTextures, f
 
 void TG_Shape::CpuDraw (const mc2::tgl::ViewUniforms& view, const glm::mat4& shapeToWorld, const glm::mat4& worldToShape, BYTE alphaValue, bool world, float forceZ, bool hud, bool clamped, bool spotlightsOnly)
 {
+	if (hud && mc2_diag::tagRequested("MOVE_MARKER"))
+		mc2::fmt::print_out("[MOVE_MARKER] leaf verts={} tris={} enabled={} camera={} transformed={} turn={} alpha={}\n", numVertices, numTriangles, renderTGLShapes, view.cameraValid, lastTurnTransformed, mc2::render_view::clock().turn, alphaValue);
 	if (!renderTGLShapes || !numVertices || !view.cameraValid || (isSpotlight && !world) || (spotlightsOnly && !isSpotlight))
 		return;
 	if (isSpotlight && (!view.night || lightsOut || mc2_cone_glow::cone_geom_hidden_by_alpha(alphaValue)))
@@ -353,6 +356,8 @@ void TG_Shape::CpuDraw (const mc2::tgl::ViewUniforms& view, const glm::mat4& sha
 	const glm::vec3 camPosition = view.cameraValid ? mc2::math::getTranslation(view.cameraOrigin) : glm::vec3(0.0f);
 	const glm::vec3 backFacePoint = mc2::math::transformPoint(camPosition, worldToShape);
 	const TG_TinyTexture* textures = materialTextures();
+	if (hud && mc2_diag::tagRequested("MOVE_MARKER"))
+		mc2::fmt::print_out("[MOVE_MARKER] projected x={} y={} z={} color={} texCount={} facing={}\n", verts[0].x, verts[0].y, verts[0].z, verts[0].argb, theShape->numTextures, glm::dot(backFacePoint, theShape->listOfTypeTriangles[0].faceNormal));
 	DWORD lastTextureUsed = 0xffffffff;
 
 	auto projectClip = [&](const ClipVertex& cv, gos_VERTEX& v)
@@ -416,6 +421,8 @@ void TG_Shape::CpuDraw (const mc2::tgl::ViewUniforms& view, const glm::mat4& sha
 					gos_SetRenderState(gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
 					gos_SetRenderState(gos_State_AlphaTest, theShape->alphaTestOn);
 					gos_DrawTriangles(out, 3);
+					if (mc2_diag::tagRequested("MOVE_MARKER"))
+						mc2::fmt::print_out("[MOVE_MARKER] triangle x={} y={} texture={}\n", out[0].x, out[0].y, texture);
 					gos_SetRenderState(gos_State_IsHUD, 0);
 					gos_SetHudScaleExempt(exempt);
 				} else {
