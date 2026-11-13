@@ -18,6 +18,13 @@ from scripts.smoke_lib import host_lease, nofocus  # noqa: E402
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
 
 
+def test_linux_box_keeps_taskset_affinity(monkeypatch):
+    monkeypatch.setattr(host_lease.sys, "platform", "linux")
+    monkeypatch.setenv("MC2_SLOT", "4")
+    monkeypatch.setattr(host_lease, "_queue_lock", lambda: pytest.fail("PC affinity on box"))
+    host_lease.apply_affinity(object())
+
+
 @pytest.mark.parametrize("slot", [0, 1])
 def test_sole_game_borrows_both_cores_and_two_games_split(monkeypatch, slot):
     monkeypatch.setattr(host_lease, "redirected", lambda: False)

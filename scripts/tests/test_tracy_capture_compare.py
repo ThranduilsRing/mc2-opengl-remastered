@@ -53,10 +53,12 @@ def test_capture_arm_overrides_are_declared():
     assert "MC2_TERRAIN_LOD_CHUNK_FORCE_LOD=2" in capture.CAPTURE_ARMS["lod"]
 
 
-def test_post_load_starts_recorder_after_pose_and_writes_row(harness, monkeypatch):
+@pytest.mark.parametrize("platform,cores", [("nt", [0, 1]), ("posix", [26, 27])])
+def test_post_load_starts_recorder_after_pose_and_writes_row(harness, monkeypatch, platform, cores):
     import psutil
     h = harness
-    process = Mock(cpu_affinity=Mock(return_value=[0, 1]))
+    monkeypatch.setattr(capture, "os", SimpleNamespace(name=platform, environ=capture.os.environ))
+    process = Mock(cpu_affinity=Mock(return_value=cores))
     monkeypatch.setattr(psutil, "Process", lambda _: process)
     monkeypatch.setattr(capture.host_lease, "held_device", lambda: "AMD")
     monkeypatch.setattr(capture.host_lease, "lane_devices", lambda: ("AMD", "NVIDIA"))
@@ -71,16 +73,23 @@ def test_post_load_starts_recorder_after_pose_and_writes_row(harness, monkeypatc
     assert capture.capture_trace(h.install, "vk", "mc2_15", 30, h.out, post_load=True) == 0
     assert h.events.index("game.spawn") < h.events.index("pose.settled") < h.events.index("recorder.spawn")
     row = capture.json.loads(stats_file.write_text.call_args.args[0])
-    assert row["status"] == "PASS" and row["affinity"] == [0, 1] and row["job_workers"] == 1
+    assert row["status"] == "PASS" and row["affinity"] == cores and row["job_workers"] == 1
+    if platform == "nt":
+        process.cpu_affinity.assert_any_call(cores)
+    else:
+        process.cpu_affinity.assert_called_once_with()
+    recorder = h.recorder_spawn.call_args.args[0]
+    assert recorder[recorder.index("-s") + 1] == "30"
 
 
-@pytest.mark.parametrize("platform,filename", [("nt", "tracy-capture.exe"), ("posix", "tracy-capture")])
-def test_tracy_exe_uses_native_name(tmp_path, monkeypatch, platform, filename):
-    tool = tmp_path / filename
+@pytest.mark.parametrize("platform,suffix", [("nt", ".exe"), ("posix", "")])
+@pytest.mark.parametrize("name", ["tracy-capture", "tracy-csvexport"])
+def test_tracy_exe_uses_native_name(tmp_path, monkeypatch, platform, suffix, name):
+    tool = tmp_path / (name + suffix)
     tool.write_bytes(b"tool")
-    monkeypatch.setattr(capture, "os", SimpleNamespace(name=platform))
-    monkeypatch.setattr(capture, "tracy_dir", lambda: tmp_path)
-    assert capture.tracy_exe("tracy-capture.exe") == tool
+    monkeypatch.setenv("TRACY_TOOLS_DIR", str(tmp_path))
+    monkeypatch.setattr(capture, "os", SimpleNamespace(name=platform, environ=capture.os.environ))
+    assert capture.tracy_exe(name + ".exe") == tool
 
 
 @pytest.fixture
@@ -167,8 +176,10 @@ def harness(monkeypatch):
 
 
 @pytest.mark.parametrize("show_window", [True, False])
-def test_lease_precedes_both_children_and_covers_normal_exit(harness, show_window):
+@pytest.mark.parametrize("platform,exe", [("nt", "mc2.exe"), ("posix", "mc2")])
+def test_lease_precedes_both_children_and_covers_normal_exit(harness, show_window, monkeypatch, platform, exe):
     h = harness
+    monkeypatch.setattr(capture, "os", SimpleNamespace(name=platform, environ=capture.os.environ))
     assert h.run(show_window) == 0
     assert h.events == ["acquire", "recorder.spawn", "game.spawn", "game.wait",
                         "recorder.wait", "game.wait", "recorder.wait", "release"]
@@ -178,6 +189,10 @@ def test_lease_precedes_both_children_and_covers_normal_exit(harness, show_windo
     kwargs = h.game_spawn.call_args.kwargs
     assert kwargs["show_window"] is show_window and kwargs["small_window"] is False
     assert kwargs["env"]["MC2_WINDOW_OFFSCREEN"] == "1"
+    h.install.__truediv__.assert_called_with(exe)
+    assert h.game_spawn.call_args.args[0][0] == str(h.install / exe)
+    recorder = h.recorder_spawn.call_args.args[0]
+    assert recorder[recorder.index("-s") + 1] == "15"
 
 
 @pytest.mark.parametrize("which", ["recorder", "game"])
@@ -361,8 +376,10 @@ def test_compare_takes_no_capture_lease(monkeypatch):
     assert events == ["compare"]
 
 
-def test_zone_summary_prints_top_zones_and_writes_csv_only_when_asked(monkeypatch, tmp_path, capsys):
-    exe = tmp_path / "tracy-csvexport.exe"
+@pytest.mark.parametrize("platform,filename", [("nt", "tracy-csvexport.exe"), ("posix", "tracy-csvexport")])
+def test_zone_summary_prints_top_zones_and_writes_csv_only_when_asked(monkeypatch, tmp_path, capsys, platform, filename):
+    monkeypatch.setattr(capture, "os", SimpleNamespace(name=platform))
+    exe = tmp_path / filename
     exe.write_text("")
     monkeypatch.setattr(capture, "tracy_dir", lambda: tmp_path)
     table = "name,src_file,src_line,total_ns,total_perc,counts,mean_ns\nsmall,a,1,1000000,1,5,200000\nbig,a,2,9000000,9,3,3000000\n"

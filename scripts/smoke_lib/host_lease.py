@@ -417,6 +417,9 @@ def _refresh_game_affinity() -> None:
 
 def apply_affinity(proc) -> None:
     """Pin an engine or its launcher and remember its identity for lease transitions."""
+    # The Linux box's slot.sh already assigned game cores with taskset.
+    if sys.platform == "linux" and os.environ.get("MC2_SLOT") is not None:
+        return
     if os.environ.get("MC2_NO_CPU_PIN"):
         print(f"[host-affinity] pid={proc.pid} mask=unrestricted priority=BELOW_NORMAL pin=off", file=sys.stderr, flush=True)
         return
