@@ -937,7 +937,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
-        "line": 60,
+        "line": 67,
         "role": "TerrainVisualHeightBuf",
         "std": "std430",
         "type": "buffer",
@@ -1143,7 +1143,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 138,
+        "line": 141,
         "role": "uTreeObjectMap",
         "std": null,
         "type": "sampler2DShadow",
@@ -1153,7 +1153,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
-        "line": 35,
+        "line": 42,
         "role": "u_shorelineMask",
         "std": null,
         "type": "sampler2D",
@@ -1165,7 +1165,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
-        "line": 28,
+        "line": 35,
         "role": "u_materialWeights",
         "std": null,
         "type": "sampler2D",
@@ -1187,7 +1187,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
-        "line": 27,
+        "line": 34,
         "role": "u_macroGradient",
         "std": null,
         "type": "sampler2D",
@@ -1305,7 +1305,7 @@
         "type": "sampler2DArray",
         "source": "shaders/vulkan/include/concrete_detail_vk.glsl",
         "branch": {
-          "18": 0
+          "20": 0
         }
       }
     ],
@@ -1871,7 +1871,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 73,
+        "line": 76,
         "role": "uAlbedo",
         "std": null,
         "type": "sampler2DArray",
@@ -2316,7 +2316,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 76,
+        "line": 79,
         "role": "uAlbedoOn",
         "std": null,
         "type": "sampler2DArray",
@@ -2385,7 +2385,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
-        "line": 33,
+        "line": 40,
         "role": "u_matNormalArray",
         "std": null,
         "type": "sampler2DArray",

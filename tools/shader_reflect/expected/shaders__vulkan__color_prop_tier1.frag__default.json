@@ -53,7 +53,7 @@
           "matrix_stride": null,
           "name": "materials",
           "offset": 0,
-          "type": "_1883"
+          "type": "_1899"
         }
       ],
       "name": "PropMaterials"
