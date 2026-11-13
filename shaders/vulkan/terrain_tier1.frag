@@ -110,15 +110,15 @@ vec4 mv_sampleAntiTileArr(int layer, vec2 uv, float scale, vec2 dx, vec2 dy, flo
 // Terrain parallax-occlusion march with the REAL per-fragment tangent-space view vector (GL terrain_lod_chunk.frag
 // chunkParallaxView): more layers at grazing view, an epsilon guard on the denominator of the final blend (AMD yields inf/nan
 // silently), a hard 16-step cap. Displacement = matNormalArray alpha channel (VK's copy-once RGBA8 import), read with
-// textureLod base level so it is valid in any control flow. No self-shadow term.
+// textureLod at the height UV footprint so it is valid in any control flow. No self-shadow term.
 const float MATV_POM_SCALE      = 0.002;    // subtle terrain relief; 1/10 of the old scale
 const float MATV_POM_MIN_LAYERS = 8.0;
 const float MATV_POM_MAX_LAYERS = 16.0;
-float mv_pomDisplacement(vec2 uv, vec4 w) {
+float mv_pomDisplacement(vec2 uv, vec4 w, float lod) {
     float d = 0.0;
-    if (w.x > 0.01) d += w.x * textureLod(u_matNormalArray, vec3(uv, float(MAT_LAYER_ROCK)),     0.0).a;
-    if (w.y > 0.01) d += w.y * textureLod(u_matNormalArray, vec3(uv, float(MAT_LAYER_GRASS)),    0.0).a;
-    if (w.w > 0.01) d += w.w * textureLod(u_matNormalArray, vec3(uv, float(MAT_LAYER_CONCRETE)), 0.0).a;
+    if (w.x > 0.01) d += w.x * textureLod(u_matNormalArray, vec3(uv, float(MAT_LAYER_ROCK)),     lod).a;
+    if (w.y > 0.01) d += w.y * textureLod(u_matNormalArray, vec3(uv, float(MAT_LAYER_GRASS)),    lod).a;
+    if (w.w > 0.01) d += w.w * textureLod(u_matNormalArray, vec3(uv, float(MAT_LAYER_CONCRETE)), lod).a;
     return 1.0 - d;
 }
 // Returns an OFFSET, avoiding cancellation when subtracting large world UVs.
@@ -130,6 +130,10 @@ vec2 mv_parallax(vec2 uv, float scale, vec4 w, vec3 viewDirTS, vec2 dx, vec2 dy)
     // sampling heights, so a grazing camera cannot march over distant features.
     vec2 P = viewDirTS.xz / max(viewDirTS.y, 0.35) * scale;
     float texel = 1.0 / float(textureSize(u_matNormalArray, 0).x);
+    // Height UVs use the weighted tiling, whereas dx/dy describe the rock
+    // receiver UVs. Filter subpixel heights instead of marching mip zero.
+    float heightFootprint = max(length(dx), length(dy)) * dot(MATV_TILING, w) / (MATV_TILING.x / 3.0);
+    float heightLod = log2(max(heightFootprint / texel, 1.0));
     float footprint = max(texel, min(length(dx), length(dy)));
     P *= min(1.0, 0.25 * footprint / max(length(P), 1e-12));
     // Anisotropic footprints: also cap the projected offset at 1/4 pixel.
@@ -142,13 +146,13 @@ vec2 mv_parallax(vec2 uv, float scale, vec4 w, vec3 viewDirTS, vec2 dx, vec2 dy)
     }
     vec2 dUV = P / numLayers;
     vec2 curOffset = vec2(0.0);
-    float curD = mv_pomDisplacement(uv, w);
+    float curD = mv_pomDisplacement(uv, w, heightLod);
     float prevD = curD;
     for (int i = 0; i < 16; ++i) {
         if (curLayer >= curD) break;
         prevD = curD;
         curOffset -= dUV;
-        curD = mv_pomDisplacement(uv + curOffset, w);
+        curD = mv_pomDisplacement(uv + curOffset, w, heightLod);
         curLayer += layerDepth;
     }
     vec2 prevOffset = curOffset + dUV;
@@ -450,8 +454,8 @@ void main() {
             vec3 macroPert = vec3(baseN.xy / max(baseN.z, 0.2) * uT.nfhStrength, 1.0);
             vec3 pert = macroPert + vec3(dN.xy * uT.detailStrength, 0.0);
             N = normalize(pert);
-            if (uT.detailReady >= 2) mv_cliffMaterial(baseN, cliffLod, N, baseColor);
-            if ((uT.concreteDetail & 2) != 0) crApply(baseN, cliffDx * MATV_CLIFF_TS, cliffDy * MATV_CLIFF_TS, N, baseColor);
+            if ((uT.concreteDetail & 2) != 0) crApply(baseN, cliffDx * MATV_CLIFF_TS, cliffDy * MATV_CLIFF_TS, cliffLod, N, baseColor);
+            else if (uT.detailReady >= 2) mv_cliffMaterial(baseN, cliffLod, N, baseColor);
             dbgBaseN = baseN; dbgDN = dN;                        // CSM-BLACKOUT-RECON-1 taps
         }
         // Evaluate the ratio after material sampling so its inputs do not stay
