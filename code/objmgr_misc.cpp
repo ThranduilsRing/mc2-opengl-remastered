@@ -830,11 +830,12 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 
 		if (countVisits) {
 			static long frames = 0;
-			if (++frames <= 10 || frames % 600 == 0) {
+			if ((++frames <= 10 || frames % 600 == 0) && mc2_diag::tagRequested("TURRET_SETTLE")) {
 				char hist[512] = {}; size_t n = 0;
 				for (int c = 0; c < 256 && n + 24 < sizeof(hist); ++c)
 					if (walkByClass[c]) n += static_cast<size_t>(std::snprintf(hist + n, sizeof(hist) - n, "%s%d:%ld", n ? "," : "", c, walkByClass[c]));
-				std::fprintf(stderr, "[TURRET_SETTLE v1] frame=%ld walk_by_class=%s walk_turrets=%ld other_turrets=%ld bound_turrets=%ld\n", frames, hist, walkByClass[TURRET], otherTurrets, boundTurrets);
+				const long turretWalk = walkByClass[TURRET];
+				std::fprintf(stderr, "[TURRET_SETTLE v1] frame=%ld walk_by_class=%s walk_turrets=%ld other_turrets=%ld bound_turrets=%ld\n", frames, hist, turretWalk, otherTurrets, boundTurrets);
 			}
 		}
 		if (artillery) 
