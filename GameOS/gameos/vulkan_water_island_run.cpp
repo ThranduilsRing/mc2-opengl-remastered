@@ -355,8 +355,13 @@ extern "C" int mc2_vk_water_island_run(
         mc2::waterplanar::Target target;
         target.w = w; target.h = h; target.water = nat->waterElevation; target.mainWorldToClip = nat->mvp;
         target.color = s->reflectionView.get(); target.depth = s->planarDepthView.get();
-        if (!mc2::waterplanar::prepareTerrain(s->planarTerrain, target, s->planarTerrainRecord)
-            || !mc2::waterplanar::prepareProps(s->planarProps, target, s->planarPropsRecord)) {
+        if (![&] {
+                ZoneScopedN("Water.PlanarTerrainPrepare");
+                return mc2::waterplanar::prepareTerrain(s->planarTerrain, target, s->planarTerrainRecord);
+            }() || ![&] {
+                ZoneScopedN("Water.PlanarPropsPrepare");
+                return mc2::waterplanar::prepareProps(s->planarProps, target, s->planarPropsRecord);
+            }()) {
             setFallback("planar_view_prepare_failed"); s->disabled = true; return 0;
         }
     }

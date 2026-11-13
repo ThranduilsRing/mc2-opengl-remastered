@@ -28,13 +28,15 @@ bool compute_init() {
 void compute_shutdown() { nativeCullShutdown(); initialized=false; frame=summaries=0; }
 void compute_dispatch() {
     if (!initialized || !compute_isEnabled()) return;
-    ZoneScopedN("Cull.Native.Submit");
-    readback_tryConsume();
+    ZoneScopedN("Cull.Native.Dispatch");
+    { ZoneScopedN("Cull.Native.Consume"); readback_tryConsume(); }
+    { ZoneScopedN("Cull.Native.Submit");
     const auto records=substrate_currentRecords();
     const float* matrix=mc2cullfreeze::cullMvp(gos_GetTerrainMVPMat4());
     if (!matrix || records.empty()) return;
     const float dilation=0.08f;
     if (readback_submit(records,matrix,dilation,frame)) readback_frameEnd(frame++);
+    }
 }
 void compute_emitParitySummary() {
     if (!initialized || !frame) return;
