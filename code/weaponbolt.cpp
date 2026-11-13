@@ -12,6 +12,7 @@
 #include "weaponbolt_internal.h"
 #include "soft_splash.h"
 #include "gvehicl.h"
+#include "warrior.h"
 #include "../mclib/cmponent.h"
 #include "../mclib/texture_assets.h"
 #include "mc2fmt.h"
@@ -430,6 +431,11 @@ void WeaponBolt::applySoftSplash(const glm::vec3& at, GameObjectWatchID directWI
         shot.entryAngle = target->relFacingTo(at);
         traceCombat("damage", "soft_splash", target, &shot);
         target->handleWeaponHit(&shot, MPlayer != nullptr);
+        // The stock kill alarm excludes marine ground vehicles from pilot statistics.
+        if ((target->isDisabled() || target->isDestroyed()) && attacker->isMover() && attacker->getPilot()) {
+            ++attacker->getPilot()->numMechKills[VEHICLE_CLASS_ELEMENTAL][COMBAT_STAT_MISSION];
+            traceCombat("kill", "soft_splash", target, &shot);
+        }
     }
 }
 
