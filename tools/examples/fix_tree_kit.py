@@ -25,8 +25,7 @@ for aid, stock, source, frame in [
     ('broadleaf-maple', 'tc1_3', SOURCE / 'uploads_files_4996646_Broadleaf_GLTF/maple1.glb', 'gltf'),
     ('broadleaf-maple3', 'tc1_2', SOURCE / 'uploads_files_4996646_Broadleaf_GLTF/maple3.glb', 'gltf'),
     ('broadleaf-poplar', 'tc1_4', SOURCE / 'uploads_files_4996646_Broadleaf_GLTF/poplar1.glb', 'gltf'),
-    ('white-poplar', 'palm1', SOURCE / 'uploads_files_4996646_Broadleaf_GLTF/whitePoplar1.glb', 'gltf'),
-    ('broadleaf-poplar2', 'palms', SOURCE / 'uploads_files_4996646_Broadleaf_GLTF/poplar2.glb', 'gltf')]:
+]:
     asset = gltf_file.to_ir(aid, 'tree:' + stock, source, kind='tree', work_dir=WORK / aid,
         meta={'frame': frame}, classes={m['name']: 'wood' for m in gltf_io.load_document(source)[0]['materials']})
     scene = asset.states['intact'][0].scene
