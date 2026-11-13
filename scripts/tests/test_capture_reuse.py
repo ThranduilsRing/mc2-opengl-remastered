@@ -12,7 +12,7 @@ import capture_reuse  # noqa: E402
 
 @pytest.fixture(autouse=True)
 def _reuse_on(monkeypatch):
-    monkeypatch.setenv(capture_reuse.ENABLE_ENV, "1")   # reuse is off by default; these tests exercise the enabled path
+    monkeypatch.setenv(capture_reuse.ENABLE_ENV, "1")
 
 
 def _world(tmp_path):
@@ -108,12 +108,28 @@ def test_an_install_without_shader_files_cannot_be_identified(tmp_path):
     assert not capture_reuse.store(cmd, root, tmp_path / "cache", "gpuA")
 
 
-def test_reuse_is_disabled_by_default(tmp_path, monkeypatch):
+def test_reuse_is_enabled_by_default_with_kill_switch(tmp_path, monkeypatch):
     root, _install, out, cmd = _world(tmp_path)
     cache = tmp_path / "cache"
     _capture(out)
     assert capture_reuse.store(cmd, root, cache, "gpuA")
     monkeypatch.delenv(capture_reuse.ENABLE_ENV)
+    assert capture_reuse.enabled()
+    assert capture_reuse.restore(cmd, root, cache, "gpuA")
+    monkeypatch.setenv(capture_reuse.ENABLE_ENV, "0")
     assert not capture_reuse.enabled()
     assert capture_reuse.restore(cmd, root, cache, "gpuA") is None
     assert not capture_reuse.store(cmd, root, cache, "gpuA")
+
+
+def test_effective_device_and_capture_helpers_invalidate_reuse(tmp_path):
+    root, _install, out, cmd = _world(tmp_path)
+    cache = tmp_path / "cache"
+    _capture(out)
+    assert capture_reuse.store(cmd, root, cache, "gpuA", env={"MC2_VK_DEVICE": "A"})
+    assert capture_reuse.restore(cmd, root, cache, "gpuA", env={"MC2_VK_DEVICE": "A"})
+    assert capture_reuse.restore(cmd, root, cache, "gpuA", env={"MC2_VK_DEVICE": "B"}) is None
+    helper = root / "scripts/smoke_lib/helper.py"
+    helper.parent.mkdir(parents=True)
+    helper.write_text("changed")
+    assert capture_reuse.restore(cmd, root, cache, "gpuA", env={"MC2_VK_DEVICE": "A"}) is None

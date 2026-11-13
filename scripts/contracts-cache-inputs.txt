@@ -8,28 +8,29 @@
 #   dir or file path     prefix match          .   everything
 #   glob:PATTERN         fnmatch on the path ('**' behaves like '*')
 #   !SPEC                exclusion             +ignored   also include git-ignored files (for rows that os.walk/rglob)
-# Rule for adding a row: list EVERYTHING the check reads that is not its own code. When unsure, use "." (wider key,
-# never wrong). Rows that read an install, a build tree, a compiler or a capture on disk must stay undeclared.
+# Rule for adding a row: list the logic it guards, including its own code.
+# External compiler/install rows below declare triggers but are never cached.
 
 @CPP = code mclib gui editor GameAdapters GameOS Viewer EditorBridge RenderCore RenderWorld Visibility MeshRenderer MaterialSystem DebugRenderer RenderDeviceGL GuiRuntime HostServices Gates cmake CMakeLists.txt
 @SHD = shaders
 @ALLSRC = @CPP @SHD
 
 # whole-repo scanners and the two test tiers
-log_tag_census: .
-script_callers: .
+log_tag_census: @CPP tools/log_tag_census.py tests/unit/log_tag_baseline.json
+script_callers: glob:scripts/*.py glob:tools/*.py glob:tests/*.py tests/callers_allowlist.json scripts/check-contracts.sh
 cxx_standard_floor: .
-cxx17_ratchet: .
-doc_links: .
+cxx17_ratchet: @CPP tools/cxx17_ratchet
+split_map: @CPP tools/split
+doc_links: docs CLAUDE.md AGENTS.md README.md scripts/check-doc-links.py
 golden_coverage: .
 asset_manifests: .
 asset_manifest_fixtures: .
-stock_mission_data: .
+stock_mission_data: data tests/missions tools/mc2x_import scripts/check-stock-mission-data.py
 scripts_tests: .
 tools_tests: .
-sim_include_firewall: .
-# precheck-speed: whole-tree keys (reads unknown, so never wrong); they skip an identical-tree rerun
-kit_art: .
+sim_include_firewall: @CPP scripts/check_sim_include_firewall.py scripts/sim_include_baseline.json scripts/tests/test_sim_include_firewall.py
+# Art inputs reuse the existing ART_PREFIXES list in run_tools_tests.py.
+kit_art: tools/scifi_kit tools/blender_pipeline tools/kit tools/mc2data tools/content_pipeline tools/ase_to_glb.py tools/asset_cook tools/material_cook tools/mc2texcook tools/mc2x_import release_assets_src examples/mods mods gameassets data scripts/run_tools_tests.py scripts/console_child.py scripts/test_audit_site glob:scripts/kit* glob:requirements* pyproject.toml pytest.ini conftest.py glob:*.blend glob:*.glb glob:*.ktx2 glob:*.png glob:*.tga glob:*.fit glob:*.pak glob:*.fst
 gate_inputs: .
 mapgen_fof: tools tests/mapgen data
 
@@ -40,9 +41,36 @@ background_launch: glob:scripts/**.py glob:tools/**.py glob:.claude/**.py glob:t
 boundaries: .
 # shader_interface: sources + baked SPIR-V + reflect goldens + schema manifest + census + ABI headers + veg rule files
 shader_interface: shaders tools/shader_offline_build tools/shader_reflect/expected tools/shader_schema tools/gpu_abi_gen.py docs/render-backend-seams/binding-slot-occupancy.json RenderCore/gpu_abi RenderCore/MaterialGpu.h GameOS/gameos/gos_vegetation.cpp GameOS/gameos/vk_vegetation_state.h GameOS/gameos/CMakeLists.txt scripts/shader_interface_rules.json scripts/shader_common.py scripts/console_child.py
-gate_gen_check: @CPP docs/flags.auto.yaml
+gate_gen_check: Gates tools/gate_gen.py tools/gate_table_gen.py tools/registry_gen.py scripts/tests/test_gate_table_gen.py docs/flags.auto.yaml
+
+# Remaining per-merge rows. This is the single trigger table as well as the cache
+# input table; explicit --rows and nightly runs do not filter by these paths.
+audio_music_stream: GameOS/gameos/music_stream.h GameOS/gameos/gameos_music_cache.h GameOS/gameos/gameos_sound.cpp tests/unit/test_audio_backend.cpp tools/build_contract_harnesses.py
+vk_pipeline_infra: GameOS RenderCore shaders scripts/check-vk-submit-funnel.sh
+render_no_update: code mclib GameAdapters scripts/check-render-no-update.py scripts/tests/test_check_render_no_update.py
+vulkan_bindings: GameOS RenderCore shaders scripts/check-vulkan-bindings.py scripts/tests/test_native_binding_contracts.py
+vk_shaders_compile: shaders GameOS RenderCore tools/check_vk_shaders.py tools/shader_offline_build tools/shader_reflect tools/gpu_abi_gen.py scripts/tests/test_window_emission.py
+bookmark_honesty: tests/visual tools/visual_verify scripts/check-visual-bookmark-honesty.py
+delivery_installs: scripts/deploy_payload.py scripts/make-isolated-deploy.py scripts/check-delivery.py release_assets release_assets_src tools/fs_links.py
+split_path_contracts: @CPP tools/split scripts/check-split-path-contracts.py
+capture_provenance: tests/visual tools/visual_verify scripts/run_visual_capture.py scripts/check-capture-provenance.py
+gate_farm: tools/box tools/gate_hosts.py tools/laptop_gate.py scripts/merge_gate.py scripts/tests/test_gate_farm.py scripts/tests/test_box_queue.py
+mod_smoke: mods examples/mods data tools/mod_smoke.py scripts/tests/test_mod_smoke.py scripts/tests/test_stage_root.py tests/smoke/test_mod_smoke_staging.py
+logistics_art: tools/cook_logistics_art.py tools/test_cook_logistics_art.py release_assets_src/logistics release_assets/logistics
+
+# Python modules whose source directory differs from the test directory.
+runner: scripts/run_smoke.py scripts/smoke_lib tests/smoke
+replace: tools/assets tests/assets
+placement_proofs: editor tools/editor tests/editor
+editor_smoke: editor scripts/editor_smoke.py scripts/tests/test_editor_smoke.py
+board_selftests: scripts/check-contracts.sh scripts/contracts_cache.py scripts/contracts-cache-inputs.txt
+contract_coverage: scripts/check-contracts.sh scripts/check-contract-coverage.py scripts/test_ownership.json
+contracts_cache: scripts/contracts_cache.py scripts/contracts-cache-inputs.txt scripts/run_tools_tests.py scripts/run_scripts_tests.py
+merge_speedups: tools/lane_merge.py tools/lane_merge_stage.py tools/laptop_gate.py scripts/merge_gate.py scripts/run_tools_tests.py
+module_test_cache: scripts/module_test_cache.py scripts/run_tools_tests.py scripts/run_scripts_tests.py
+run_scripts_tests_names: scripts/run_scripts_tests.py
 gated_layout_macros: @CPP
-counter_honesty: @CPP
+counter_honesty: @CPP scripts/check-counter-honesty.py
 own_inventory: @CPP
 pointer_order_scan: @CPP
 dup_check: @ALLSRC

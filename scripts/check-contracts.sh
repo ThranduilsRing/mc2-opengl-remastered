@@ -393,6 +393,7 @@ run_check() {
     local cmd="$2"
 
     _row_selected "$label" || return 0
+    _path_selected "$label" || return 0
     _register_row "$label" "$cmd" || return 0
 
     if [ "$PARALLEL" -eq 1 ]; then
@@ -412,6 +413,19 @@ run_check() {
 }
 
 run_nightly() { [ "$NIGHTLY" -eq 1 ] || return 0; run_check "$@"; }
+
+# Explicit --rows is an offline proof request. Otherwise use the existing input
+# declarations as trigger paths; missing declarations run only at night.
+_PATH_ROWS=""
+if [ "$NIGHTLY" -eq 0 ] && [ -z "$ROWS_RE" ] && [ "$SELFTEST_RENDER" -eq 0 ]; then
+    _PATH_ROWS="$(py -3 "$SCRIPT_DIR/contracts_cache.py" affected "$WORKTREE_ROOT" "${MC2_GATE_BASE:-claude/nifty-mendeleev}")"
+fi
+_path_selected() {
+    [ "$NIGHTLY" -eq 1 ] || [ -n "$ROWS_RE" ] || [ "$SELFTEST_RENDER" -eq 1 ] ||
+        printf '%s\n' "$_PATH_ROWS" | grep -Fxq "$1"
+}
+_ART_BASE="${MC2_GATE_BASE:-claude/nifty-mendeleev}"
+[ "$NIGHTLY" -eq 0 ] || _ART_BASE=""
 
 _PAR_DIR=""
 _par_worker() {   # $1 idx
@@ -557,6 +571,7 @@ run_check_tri() {
     local out rc
 
     _row_selected "$label" || return 0
+    _path_selected "$label" || return 0
     _register_row "$label" "$cmd" || return 0
 
     if [ "$PARALLEL" -eq 1 ]; then
@@ -1551,7 +1566,9 @@ run_nightly "abl_static_alloc"           "_host_need clang++ && py -3 -B -m pyte
 # (assembles release zips + launches a smoke; not an offline contract).
 # tools_tests retains its known-failure exit-code handling in lane_merge precheck.
 run_check "logistics_art"               "py -3 -B tools/test_cook_logistics_art.py -q -p no:cacheprovider"
-run_check_tri "kit_art"                 "py -3 scripts/run_tools_tests.py --suite art --jobs 3 --base \"${MC2_GATE_BASE-claude/nifty-mendeleev}\""
+run_check_tri "kit_art"                 "py -3 scripts/run_tools_tests.py --suite art --jobs 3 --base \"$_ART_BASE\""
+run_nightly "scripts_tests"            "py -3 scripts/run_scripts_tests.py"
+if [ "$NIGHTLY" -eq 1 ]; then run_check_tri "tools_tests" "py -3 scripts/run_tools_tests.py --base ''"; fi
 run_nightly "anim_parity"                 "py -3 -B -m pytest tools/anim_parity/test_audit.py tools/content_pipeline/tests -q -p no:cacheprovider"
 run_nightly "ktx2_valid"                  "py -3 -B tools/mc2texcook/check_ktx2_valid.py"
 run_nightly "mapgen_fof"                  "py -3 -B -m pytest tests/mapgen/test_fields_of_fire.py tests/mapgen/test_footprints.py tests/mapgen/test_pixel_generate.py tests/mapgen/test_mission_writer.py -q -p no:cacheprovider"

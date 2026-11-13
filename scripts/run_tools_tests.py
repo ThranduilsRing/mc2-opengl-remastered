@@ -90,6 +90,31 @@ def is_art_test(path):
     return path.startswith(("tools/scifi_kit/", "tools/blender_pipeline/"))
 
 
+def scoped_modules(mods, paths):
+    """Directory-local tests follow their tool; flat tests follow the named source or row's existing input list.
+
+    Unmapped tests stay nightly. The module itself always triggers its test.
+    """
+    import contracts_cache as cc
+    from fnmatch import fnmatchcase
+    rows = cc.affected_rows(ROOT, paths)
+    selected = []
+    for mod in mods:
+        parent, name = mod.rsplit("/", 1)
+        stem = name.removeprefix("test_").removesuffix("_test.py").removesuffix(".py")
+        prefixes = [parent + "/"] if parent not in ("tools", "tests", "scripts/tests") else []
+        if parent.startswith("tests/"):
+            prefixes += ["tools/" + parent[6:] + "/"]
+        if "/tests" in parent and parent != "scripts/tests":
+            prefixes += [parent.split("/tests")[0] + "/"]
+        globs = [f"{d}/{s}*" for d in ("scripts", "tools") for s in (stem, stem.replace("_", "-"))]
+        if stem.startswith(("lane_merge", "laptop_gate", "merge_gate")):
+            globs += ["tools/lane_*", "tools/laptop_gate.py", "scripts/merge_gate.py"]
+        if mod in paths or stem in rows or any(p.startswith(tuple(prefixes)) or any(fnmatchcase(p, g) for g in globs) for p in paths):
+            selected.append(mod)
+    return selected
+
+
 def discover(suite="all") -> list[str]:
     out = subprocess.run(
         ["git", "ls-files", "*test_*.py", "*_test.py"],
@@ -216,7 +241,7 @@ def main() -> int:
                     default=int(os.environ.get("MC2_TEST_JOBS", "") or default_jobs()))
     ap.add_argument("--list", action="store_true", help="print modules and exit")
     ap.add_argument("--suite", choices=("tools", "art", "all"), default="tools")
-    ap.add_argument("--base", default=os.environ.get("MC2_GATE_BASE"), help="art row: skip only for an unaffected committed diff")
+    ap.add_argument("--base", default=os.environ.get("MC2_GATE_BASE"), help="run only tests mapped to this committed diff; omitted = nightly/full suite")
     ap.add_argument("--no-cache", action="store_true", help="run every module (also CONTRACTS_NO_CACHE=1)")
     ap.add_argument("--report", action="store_true", help="print cache hits and the opaque (whole-tree) modules")
     args = ap.parse_args()
@@ -225,15 +250,20 @@ def main() -> int:
     if args.suite == "art" and args.base and not art_changed(args.base):
         print("kit_art: SKIP: window diff has no art/kit inputs")
         return 0
+    if args.base and args.suite != "art":
+        paths = subprocess.check_output(["git", "diff", "--name-only", "-z", args.base, "HEAD"], cwd=ROOT, text=True,
+                                        **console_child.child_kwargs(redirected=True)).split("\0")
+        mods = scoped_modules(mods, paths)
     if args.list:
         print("\n".join(mods))
         return 0
     if not mods:
-        print("VIOLATION: tools_tests discovered zero modules (row would pass on an empty set)")
-        return 1
+        print("tools_tests: no modules mapped to the diff; full suite nightly")
+        return 0 if args.base else 1
 
     led_fail = {node: reason for node, reason in load_ledger().items()
-                if args.suite == "all" or is_art_test(node.split("::")[0]) == (args.suite == "art")}
+                if (not args.base or node.split("::")[0] in mods)
+                and (args.suite == "all" or is_art_test(node.split("::")[0]) == (args.suite == "art"))}
     bad: list[str] = []
     seen_fail: set[str] = set()
     passed = 0

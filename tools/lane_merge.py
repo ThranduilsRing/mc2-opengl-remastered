@@ -569,10 +569,14 @@ SEMANTIC_RATCHETS = [
 ]
 
 
-def semantic_precheck(root: str, tools_dir: str) -> list[tuple[str, int, str]]:
+def semantic_precheck(root: str, tools_dir: str, paths=None) -> list[tuple[str, int, str]]:
     """Check-only run of SEMANTIC_RATCHETS at the merged HEAD, before any regeneration. -> the failing (label, rc, tail)."""
     failed = []
+    import contracts_cache as cc
+    affected = cc.affected_rows(root, paths) if paths is not None else None
     for label, rel, args in SEMANTIC_RATCHETS:
+        if affected is not None and ("pointer_order_scan" if label == "pointer_order" else label) not in affected:
+            continue
         script = os.path.join(tools_dir, *rel.split("/"))
         if not os.path.isfile(script):   # the throwaway repos of the tests carry only the fake ratchets
             continue
@@ -583,9 +587,9 @@ def semantic_precheck(root: str, tools_dir: str) -> list[tuple[str, int, str]]:
     return failed
 
 
-def run_ratchets(root: str, tools_dir: str, *, tighten=True) -> list[tuple[str, int, str]]:
+def run_ratchets(root: str, tools_dir: str, *, tighten=True, rows=None) -> list[tuple[str, int, str]]:
     results = []
-    for label, rel, args in RATCHETS:
+    for label, rel, args in (RATCHETS if rows is None else rows):
         script = os.path.join(tools_dir, *rel.split("/"))
         selected = args if tighten else [a for a in args if a != '--tighten']
         r = run(root, [sys.executable, "-B", script, *selected])
@@ -630,10 +634,14 @@ QUICK_ROWS = [("script_callers", ["tools/callers.py", "--check"]),
               ("test_ownership", ["-m", "pytest", "scripts/tests/test_contract_coverage.py", "-q", "-p", "no:cacheprovider"])]
 
 
-def quick_rows(root: str, runner=run) -> list[tuple[str, int, str]]:
+def quick_rows(root: str, runner=run, base=None) -> list[tuple[str, int, str]]:
     """Run QUICK_ROWS (cwd = root) on the merged tree. -> the failing [(label, rc, tail)] (empty = green)."""
     failed = []
+    import contracts_cache as cc
+    affected = cc.affected_rows(root, lines(git_out(root, "diff", "--name-only", base, "HEAD"))) if base else None
     for label, args in QUICK_ROWS:
+        if affected is not None and ("contract_coverage" if label == "test_ownership" else label) not in affected:
+            continue
         missing = [a for a in args if a.endswith(".py") and not os.path.exists(os.path.join(root, a))]
         if missing:
             if os.path.abspath(root) == os.path.abspath(os.path.join(HERE, "..")):   # the real repo: a renamed script must not skip silently
@@ -1102,10 +1110,16 @@ def precheck(root: str, tip: str, with_link: bool | None = None, sim_rows: bool 
                  for label, script, args in RATCHETS]
         steps += [("callers", py + ["tools/callers.py", "--check"])]
         steps += [(label, py + [script, *args]) for label, script, args in EARLY_ROWS]
-        steps += [(label, py + args) for label, args in PYTHON_SUITES]
+        steps += [(label, py + args + ["--base", base_ref]) for label, args in PYTHON_SUITES]
+        import contracts_cache as cc
+        paths = lines(git_out(root, "diff", "--name-only", base_ref, commit))
+        affected = cc.affected_rows(root, paths)
+        aliases = {"cxx17": "cxx17_ratchet", "callers": "script_callers"}
+        steps = [s for s in steps if s[0] in {p[0] for p in PYTHON_SUITES}
+                 or aliases.get(s[0], s[0]) in affected]
 
-        tag_step = ("ungated_tags", py + [os.path.join(root, "tools", "ungated_log_tags.py"), "--base", scope_base, "--head", tip])
-        stage(tag_step[0], root, tag_step[1])
+        if "log_tag_census" in affected:
+            stage("ungated_tags", root, py + [os.path.join(root, "tools", "ungated_log_tags.py"), "--base", scope_base, "--head", tip])
 
         # proof-diet: generated inventories are no precheck proof; the merge commit regenerates them once.
 
@@ -1433,6 +1447,17 @@ def print_plan(root: str, p: dict, args, message: str, resolutions: dict, head_r
     if p["contained"]:
         print("PLAN lane tip is already contained in HEAD: nothing to merge")
         return False, head_ref
+    import contracts_cache as cc
+    import run_tools_tests as rtt
+    import run_scripts_tests as rst
+    import merge_gate
+    paths = p["lane_files"]
+    board = Path(root, "scripts/check-contracts.sh")
+    per_merge = set(re.findall(r'^run_check(?:_tri)?\s+"([^"]+)"', board.read_text(encoding="utf-8") if board.is_file() else "", re.M))
+    print("PLAN contracts: " + (", ".join(sorted(cc.affected_rows(root, paths) & per_merge)) or "nightly"))
+    print("PLAN tools_tests: " + (", ".join(rtt.scoped_modules(rtt.discover(), paths)) or "nightly"))
+    print("PLAN scripts_tests: " + (", ".join(rtt.scoped_modules(rst.select_modules(rst.discover(), rst.load_ownership()), paths)) or "nightly"))
+    print("PLAN laptop sim: " + (", ".join(merge_gate.laptop_sim_rows(paths)) or "nightly"))
     if p["overlap"]:
         raise Stop(4, "lane files are also dirty in the worktree:\n  " + "\n  ".join(p["overlap"]))
     tree, conf = virtual_merge(root, p["sha"], head_ref)
@@ -1487,10 +1512,13 @@ def merge_tip(root: str, tools_dir: str, p: dict, message: str, resolutions: dic
     pre_dirty = {path for _, path in status_entries(root)}
     do_merge(root, p["sha"], message, lane_files=p["lane_files"], resolutions=resolutions)
     merge_sha = git_out(root, "rev-parse", "--short=9", "HEAD")
+    import contracts_cache as cc
+    affected = cc.affected_rows(root, p["lane_files"])
+    ratchets = [r for r in RATCHETS if ("cxx17_ratchet" if r[0] == "cxx17" else r[0]) in affected]
     if batch:
-        results = run_ratchets(root, tools_dir, tighten=False)
+        results = run_ratchets(root, tools_dir, tighten=False, rows=ratchets)
         return merge_sha, None, [(label, rc, tail) for label, rc, tail in results if rc != 0]
-    semantic = semantic_precheck(root, tools_dir) or lane_merge_baseline.base_baseline_check(root, tools_dir, git_out(root, "rev-parse", "HEAD^1"), RATCHETS, RATCHET_BASELINES, run, git, lines)
+    semantic = semantic_precheck(root, tools_dir, p["lane_files"]) or lane_merge_baseline.base_baseline_check(root, tools_dir, git_out(root, "rev-parse", "HEAD^1"), ratchets, RATCHET_BASELINES, run, git, lines)
     if semantic:
         return merge_sha, None, semantic
     artifacts = regenerate_all(root)
@@ -1501,7 +1529,7 @@ def merge_tip(root: str, tools_dir: str, p: dict, message: str, resolutions: dic
             print(f"lane_merge: {ARTIFACT_SUBJECT}: {artifact_follow}")
         except _git_util.GitError as exc:
             raise Stop(6, "artifact follow-up commit failed: " + str(exc)) from exc
-    results = run_ratchets(root, tools_dir)
+    results = run_ratchets(root, tools_dir, rows=ratchets)
     follow = commit_tightened(root, pre_dirty)
     return merge_sha, follow or artifact_follow, [(label, rc, tail) for label, rc, tail in results if rc != 0]
 
@@ -1583,7 +1611,7 @@ def main(argv: list[str] | None = None) -> int:
             if args.conflict_dir and not batch:
                 ap.error("--conflict-dir needs --batch")
             would_abort = plan_batch(root, args, refs, resolutions_for)
-            print("PLAN then: " + ", ".join(label for label, _, _ in RATCHETS)
+            print("PLAN then: path-triggered ratchets"
                   + "; regenerate-all and commit changed artifacts; follow-up commit of tightened baselines only"
                   + (" (check each tip; tighten/regenerate/commit/verify once at the end)" if batch else ""))
             print("[dry-run] nothing changed")
@@ -1631,13 +1659,17 @@ def main(argv: list[str] | None = None) -> int:
             if batch and ref != refs[-1]:
                 print(f"{tag} ratchets=OK verify=DEFERRED overlap=0")
         if batch and merged and not reds:
-            semantic = semantic_precheck(root, tools_dir) or lane_merge_baseline.base_baseline_check(root, tools_dir, window_base, RATCHETS, RATCHET_BASELINES, run, git, lines)
+            import contracts_cache as cc
+            paths = lines(git_out(root, "diff", "--name-only", window_base, "HEAD"))
+            affected = cc.affected_rows(root, paths)
+            ratchets = [r for r in RATCHETS if ("cxx17_ratchet" if r[0] == "cxx17" else r[0]) in affected]
+            semantic = semantic_precheck(root, tools_dir, paths) or lane_merge_baseline.base_baseline_check(root, tools_dir, window_base, ratchets, RATCHET_BASELINES, run, git, lines)
             if semantic:
                 reds.append((refs[-1], semantic))
         if batch and merged and not reds:
             pre_dirty = {path for _, path in status_entries(root)}
             artifacts = regenerate_derived(root, window_base)
-            results = run_ratchets(root, tools_dir)
+            results = run_ratchets(root, tools_dir, rows=ratchets)
             failed = [(label, rc, tail) for label, rc, tail in results if rc != 0]
             if failed:
                 reds.append((refs[-1], failed))
@@ -1657,7 +1689,7 @@ def main(argv: list[str] | None = None) -> int:
                       tree=git_out(root, "rev-parse", "HEAD^{tree}"), **({"hotfix": True} if args.hotfix else {}))
         record_path = Path(root) / "build64-ninja/merge-window.json"
         if batch and merged and not stopped:
-            qfailed = quick_rows(root)
+            qfailed = quick_rows(root, base=window_base)
             if qfailed:
                 for label, rc, tail in qfailed:
                     print(f"lane_merge: quick row {label} exited {rc}; last lines:\n{tail}", file=sys.stderr)

@@ -10,6 +10,8 @@ The gate is static tiers (`stage_tier` / `tier_includes` in `scripts/merge_gate.
 
 Diff promotions at a per-merge gate (`promoted_stages`): a sim-sensitive diff adds the determinism/saveload rows; a path naming a mission adds that map's rows; a front-end/video diff adds player-path; a mod-content diff (`data/`, `mods/`, `examples/mods/`, `tests/mods/`, `tools/mod_smoke*`, `tools/mod_*.py`, `tools/mc2x_import/`, `tools/mco_import/`) adds the full `mods` battery. Engine C++, shaders, the VFS and loaders never promote mods.
 
+Checks run by default only for touched logic: `scripts/contracts-cache-inputs.txt` is the single contract trigger table (also used by the input cache); unscoped rows run nightly, and explicit `--rows` still runs an offline proof. Precheck passes its comparison base to the Python suites, which select tests in the touched tool/source directories and named contract inputs; the full suites run nightly. Laptop sim evidence is required only for `sim_sensitive` diffs or mission rows selected by `promoted_stages`, using the same classification at promotion. Core doctest stays per merge; frozen VFX/oracle, package chassis and present stress cases run nightly. Capture-before reuses a verified capture set, including the preceding capture-after, only when its executable SHA and the existing content/options/poses/harness/GPU identity match.
+
 ## Mods (owner 2026-11-08)
 
 "We can add a SLIM mod check to the merge gates at night, but they are not critical. I'd rather let them break and do a dedicated fix."
@@ -35,7 +37,7 @@ schtasks /Delete /TN "\mc2-smoke-overnight" /F
 
 ## Laptop merge gate: one job, detached
 
-`py -3 tools/laptop_gate.py W` is ONE laptop job: it pushes, builds, runs the gate and then, on a gate PASS, the sim rows (determinism-mc2_01/03/10/24, saveload-mc2_03/10) on the same deployed candidate, so the payload and sim manifests are identical by construction; the sim result lands in summary.json as `sim` and a red sim fails the run. `--no-sim` skips the sim rows; `--sim` alone is a rerun-only form (no push or build). The run is a detached job (`tools/detached_job.py`, state `G:/mc2-tmp/jobs/laptop-gate-W.json`, log beside it): it survives the launching session, a relaunch re-attaches to the running job, and a resumed agent waits with `py -3 tools/detached_job.py wait laptop-gate-W` (`status` shows running, done rc=N or lost). `scripts/gate_wait.py` runs its command the same way (`--job NAME` to re-attach).
+`py -3 tools/laptop_gate.py W` is ONE laptop job: it pushes, builds, runs the gate and adds the diff-triggered sim rows after PASS on the same deployed candidate. Sim-sensitive diffs require determinism-mc2_01/03/10/24 and saveload-mc2_03/10; a red sim fails the run. `--no-sim` skips these rows; `--sim` alone reruns them without push or build. The detached job (`tools/detached_job.py`, state `G:/mc2-tmp/jobs/laptop-gate-W.json`, log beside it) survives the launching session and re-attaches on relaunch; `py -3 tools/detached_job.py wait laptop-gate-W` resumes the wait. `scripts/gate_wait.py` uses the same mechanism.
 
 ## Conflict preview (merge windows)
 
@@ -52,7 +54,7 @@ MC2_DEBUG_STATE_DUMP=1 MC2_DIAG_TAGS=CONFIG,BUILD,DEVICE py -3 scripts/run_smoke
 
 Removed: the separate syncval/validation stages (validation rides the tier1 smoke), kit-visibility, box-gate and the box route, diff scoping (`gate_scope.py`, last-full-gate mark), the cheap-rows preflight, the tightened-baseline follow-up commit (ratchets only CHECK now; derived inventories are still regenerated), `dup_check` in the gate (it stays in `lane_merge --lint`).
 
-Contracts: rows that never failed in the archived gate logs and take > 3 s are declared with `run_nightly` in `scripts/check-contracts.sh`; the rest run every merge.
+Contracts: `run_nightly` rows and unscoped checks run nightly; the remaining rows run only on their declared trigger paths.
 
 ## GPU profiling
 

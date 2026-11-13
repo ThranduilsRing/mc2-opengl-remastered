@@ -52,6 +52,9 @@ for arg in "$@"; do
         *) DOCTEST_ARGS+=("$arg") ;;
     esac
 done
+if [ "${MC2_GATE_NIGHTLY:-0}" != "1" ] && [ "${#DOCTEST_ARGS[@]}" -eq 0 ]; then
+    DOCTEST_ARGS+=("--test-case-exclude=vfx_frozen/*,fx_playback/*oracle*,vfx_oracle/*,package chassis:*,present mailbox stress:*")
+fi
 
 FAILED=0
 note() { echo "[run-unit-tests] $*"; }

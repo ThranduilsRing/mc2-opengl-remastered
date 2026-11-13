@@ -118,6 +118,13 @@ def _match(path, spec):
     return path == spec or path.startswith(spec + "/")
 
 
+def affected_rows(repo, paths):
+    """The existing input table also declares per-merge triggers; undeclared rows are nightly."""
+    return {label for label, specs in load_decls(repo).items()
+            if any(any(_match(p, s) for s in specs if not s.startswith(("!", "+")))
+                   and not any(_match(p, s[1:]) for s in specs if s.startswith("!")) for p in paths)}
+
+
 def _read(repo, rel):
     try:
         with open(os.path.join(repo, rel), encoding="utf-8", errors="replace") as f:
@@ -249,19 +256,23 @@ def load_cache(repo):
 
 
 def main(argv):
-    if len(argv) < 3 or argv[1] not in ("keys", "store"):
+    if len(argv) < 3 or argv[1] not in ("keys", "store", "affected"):
         print(__doc__)
         return 2
     mode = argv[1]
     # The shell passes an MSYS-style path (/a/Games/...); git resolves it, plain python file reads would not.
     repo = subprocess.run(["git", "-C", argv[2], "rev-parse", "--show-toplevel"], capture_output=True, text=True,
                           check=True, **console_child.child_kwargs(redirected=True)).stdout.strip()
+    if mode == "affected":
+        paths = _git(repo, "diff", "--name-only", "-z", argv[3], "HEAD", nul=True)
+        print("\n".join(sorted(affected_rows(repo, paths))))
+        return 0
     rows = [ln.rstrip("\n").split("\t") for ln in sys.stdin if ln.strip()]
     if mode == "keys":
         decls, cache = load_decls(repo), load_cache(repo)
         uni = Universe(repo)
         for label, cmd in rows:
-            if label not in decls:
+            if label not in decls or label in {"vk_shaders_compile", "audio_music_stream", "delivery_installs"}:
                 continue
             try:
                 key = compute_key(repo, uni, cmd, decls[label])

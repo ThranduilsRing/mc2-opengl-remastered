@@ -16,7 +16,7 @@ The laptop has no A:/E: drive, so the remote half substs A: and E: onto C:/mc2ga
 unchanged with its hard-coded paths. The laptop's v0.4 and _lean-seed are junctions to C:/mc2gate/install.
 Remote half: this same file, uploaded to C:/mc2gate/bin, run as `--remote <step>`.
 
-ONE laptop job (2026-11-11): the default run ends with the sim rows (determinism-mc2_01/03/10/24, saveload-mc2_03/10) on the SAME
+ONE laptop job: sim-sensitive diffs add the six sim rows; mission diffs add only promoted rows, on the SAME
   deployed candidate the gate just verified, so the payload and sim manifests are identical by construction; the sim result is merged
   into summary.json as "sim" and a red sim fails the run. --no-sim skips it. The run itself is a detached job (tools/detached_job.py,
   state in G:/mc2-tmp/jobs/laptop-gate-W.json): if the launching session dies it keeps going; a relaunch re-attaches, and
@@ -1006,10 +1006,18 @@ def run_candidate(args, head, t0):
         if rc:
             print("laptop_gate: gate not PASS; the sim rows are skipped", flush=True)
         return rc
+    import merge_gate
+    base = args.gate_args[args.gate_args.index("--base") + 1] if "--base" in args.gate_args else "claude/nifty-mendeleev"
+    paths = subprocess.check_output(["git", "diff", "--name-only", "-z", base, head], text=True,
+                                    **console_child.child_kwargs(redirected=True)).split("\0")
+    rows = [r for r in (args.sim_rows or "").split(",") if r] or merge_gate.laptop_sim_rows(paths)
+    if not rows:
+        print("laptop_gate: no sim-sensitive or promoted mission inputs; sim rows nightly", flush=True)
+        return rc
     # One laptop job: the sim rows run now, on the SAME deployed candidate (_gate-reuse/deployed) the gate just built and verified,
     # so the payload manifest and the sim manifest are identical by construction. --sim alone is the rerun-only form.
     print("running the sim rows (determinism + saveload) on the deployed candidate", flush=True)
-    sim_rc = sim_step(w, head, [r for r in (args.sim_rows or "").split(",") if r], args.sim_pair, t0)
+    sim_rc = sim_step(w, head, rows, args.sim_pair or bool(merge_gate.sim_sensitive(paths)), t0)
     return sim_rc
 
 
@@ -1228,7 +1236,7 @@ def main():
     ap.add_argument("--sim-rows", help="comma list of sim rows (default: determinism-mc2_01/03/10/24, saveload-mc2_03/10)")
     ap.add_argument("--sim-pair", action="store_true", help="a/b pair for mc2_03 determinism, as on --weekly or a sim-sensitive diff")
     ap.add_argument("--dry-run", action="store_true", help="with --sim: print the command list and run nothing")
-    ap.add_argument("--no-sim", action="store_true", help="gate only: skip the sim rows the default run adds after a PASS")
+    ap.add_argument("--no-sim", action="store_true", help="gate only: skip diff-triggered sim rows after a PASS")
     ap.add_argument("--attached", action="store_true", help=argparse.SUPPRESS)   # set on the detached child: run in this process
     ap.add_argument("gate_args", nargs="*", help="extra merge_gate.py args (after --)")
     ap.add_argument("--quiet", action="store_true",

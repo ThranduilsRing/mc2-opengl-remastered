@@ -20,7 +20,7 @@ STAGE_PREFIX = "claude/stage-"
 STAGE_HELP = """merge queue (bors-style staging; nifty only ever fast-forwards to a proven candidate):
   1. py -3 tools/lane_merge.py --stage W --batch A B C     freeze tips A B C, build claude/stage-W from nifty and merge them there
   2. py -3 scripts/merge_gate.py --full ...                gate the checked-out candidate; writes build64-ninja/gate-verdict.json
-     py -3 tools/laptop_gate.py W                         laptop: gate + all six sim PASS rows in one job (--sim = rerun only)
+     py -3 tools/laptop_gate.py W                         laptop: gate + diff-triggered sim PASS rows (--sim = rerun only)
   3. py -3 tools/lane_merge.py --promote W --verdict <pulled>/gate-verdict.json
                                                          fast-forward nifty to the candidate: refused unless the verdict is a
                                                            complete PASS for the candidate HEAD (no skipped row) and nifty is its
@@ -191,19 +191,21 @@ def untriaged_nightly_fail(proofs: str, now: float | None = None, max_age_h: flo
     return why
 
 
-def sim_evidence_problems(vpath: Path, candidate: str) -> list[str]:
-    """Bind the six explicit sim PASS rows to this candidate and the pulled payload."""
+def sim_evidence_problems(vpath: Path, candidate: str, required=None) -> list[str]:
+    """Always verify candidate/payload identity; bind required sim rows when the diff needs them."""
+    if required is None:
+        required = [*("determinism-" + m for m in ("mc2_01", "mc2_03", "mc2_10", "mc2_24")),
+                    "saveload-mc2_03", "saveload-mc2_10"]
     try:
         summary = json.loads((vpath.parent / "summary.json").read_text(encoding="utf-8"))
         sim = summary.get("sim", {})
         why = []
-        for label, head in (("summary", summary.get("head")), ("sim", sim.get("head"))):
+        identities = [("summary", summary.get("head"))] + ([("sim", sim.get("head"))] if required else [])
+        for label, head in identities:
             if head != candidate:
                 why.append(f"{label} head {head or '(missing)'} is not candidate {candidate}")
-        if sim.get("verdict") != "PASS" or sim.get("rc") != 0 or sim.get("error"):
+        if required and (sim.get("verdict") != "PASS" or sim.get("rc") != 0 or sim.get("error")):
             why.append("sim verdict must be PASS with rc=0 and no error")
-        required = [*("determinism-" + m for m in ("mc2_01", "mc2_03", "mc2_10", "mc2_24")),
-                    "saveload-mc2_03", "saveload-mc2_10"]
         for name in required:
             status = sim.get("rows", {}).get(name, {}).get("status")
             # A perf_counter-only note never fails a row (lane rules; merge_gate.passed); REUSED stays refused here.
@@ -226,7 +228,7 @@ def sim_evidence_problems(vpath: Path, candidate: str) -> list[str]:
                         actual = hashlib.file_digest(stream, "sha256").hexdigest()
                     if actual != hashes.get(rel):
                         why.append(f"payload byte sha256 mismatch: {rel}")
-        if hashlib.sha256(manifest).hexdigest() != sim.get("manifest_sha256"):
+        if required and hashlib.sha256(manifest).hexdigest() != sim.get("manifest_sha256"):
             why.append("sim payload manifest sha256 mismatch or missing identity")
         exe = next((r for r in rows if r["relpath"] == "mc2.exe"), {})
         if exe.get("src_commit") != candidate:
@@ -261,7 +263,10 @@ def promote(root: str, window: str, verdict_path: str | None = None) -> int:
     if verdict.get("skipped"):
         why.append("skipped rows: " + ", ".join(sorted(verdict["skipped"])))
     why.extend(missing_visual_evidence(verdict, vpath))
-    why.extend(sim_evidence_problems(vpath, cand))
+    import merge_gate
+    paths = git_out(root, "diff", "--name-only", "-z", old, cand).split("\0")
+    required = merge_gate.laptop_sim_rows(paths)
+    why.extend(sim_evidence_problems(vpath, cand, required))
     if verdict.get("head") != cand:
         why.append(f"verdict head {str(verdict.get('head'))[:9]} is not the candidate {cand[:9]}")
     if _git_util.git(root, "merge-base", "--is-ancestor", old, cand, merge_stderr=True).returncode != 0:
