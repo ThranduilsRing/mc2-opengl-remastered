@@ -7,6 +7,7 @@ namespace mc2::waterplanar {
 // handles and ring spans; the owning water slot retires all view-local state.
 struct Target {
     int w = 0, h = 0;
+    int divisor = 1; // moving reflection uses a subrectangle of the full-size attachments
     float water = 0;
     const float* mainWorldToClip = nullptr;
     VkImageView color = VK_NULL_HANDLE, depth = VK_NULL_HANDLE;

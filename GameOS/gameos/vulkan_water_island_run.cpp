@@ -23,6 +23,7 @@ void gos_GetTerrainChunkGridInfo(int* mapSide, float* halfMap);
 #include "water_planar_view.h"
 
 
+const float* gos_GetObjectFixBMVPMat4();
 int gos_GetWaterReflectionQuality();
 
 bool vk_water_detail::record_reflection(WaterIsland* s, VkCommandBuffer cb, bool enabled, uint32_t par, const uint32_t (&offsets)[2]) {
@@ -69,7 +70,8 @@ bool vk_water_detail::record_reflection(WaterIsland* s, VkCommandBuffer cb, bool
     mc2vk::infra::bind(cb,VK_PIPELINE_BIND_POINT_COMPUTE,s->maskCompute.get());
     vkCmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_COMPUTE,s->maskLayout.get(),0,1,&s->maskSet,0,nullptr);
     for (int32_t vertical=0; vertical<2; ++vertical) {
-        vkCmdPushConstants(cb,s->maskLayout.get(),VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof(vertical),&vertical);
+        const int32_t mode = vertical | (s->reflectionDivisor==2 ? 2 : 0);
+        vkCmdPushConstants(cb,s->maskLayout.get(),VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof(mode),&mode);
         vkCmdDispatch(cb,(s->w+15)/16,(s->h+15)/16,1);
         dr::memoryBarrier(ctx,cb,VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,VK_ACCESS_2_SHADER_WRITE_BIT,
             vertical ? VK_PIPELINE_STAGE_2_TRANSFER_BIT : VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
@@ -350,7 +352,22 @@ extern "C" int mc2_vk_water_island_run(
             fsLocal.f7[2] = (s->maskView != VK_NULL_HANDLE) ? 1.0f : 0.0f;
             fsLocal.f7[3] = halfMap;
         }
-        fsLocal.DEEP_COLOR[3] = reflectThisFrame ? 1.0f : 0.0f;
+
+        const float* objectCamera = gos_GetObjectFixBMVPMat4();
+        float camera[33]{};
+        std::memcpy(camera, nat->mvp, 16*sizeof(float));
+        if (objectCamera) std::memcpy(camera+16, objectCamera, 16*sizeof(float));
+        camera[32] = nat->waterElevation;
+        static const bool hold = mc2::gate::get<"MC2_WATER_REFLECTION_HOLD">();
+        const bool still = objectCamera && std::memcmp(camera,s->reflectionCamera,sizeof(camera))==0;
+        const int divisor = hold && !still ? 2 : 1;
+        // No cheap bake/content epoch: bound stale light, scene and leaf sway to four frames.
+        const bool reuse = hold && still && s->reflectionValid && s->reflectionDivisor==divisor && s->nativeFrames%4!=0;
+        std::memcpy(s->reflectionCamera,camera,sizeof(camera));
+        s->reflectionValid = reflectThisFrame;
+        s->reflectionDivisor = divisor;
+        fsLocal.DEEP_COLOR[3] = reflectThisFrame ? static_cast<float>(divisor) : 0.0f;
+        reflectThisFrame = reflectThisFrame && !reuse;
         std::memcpy(base + fsUboOff, &fsLocal, sizeof(WaterFsParams));
         // Frame-owned host writes, after this descriptor slot's fence; no readback or extra submit.
         // The snapshot is written straight into the frame-ring slot (no 139 KB stack frame, no copy). GpuFrame is trivially copyable.
@@ -401,6 +418,12 @@ extern "C" int mc2_vk_water_island_run(
         target.w = w; target.h = h; target.water = nat->waterElevation; target.mainWorldToClip = nat->mvp;
         target.color = s->reflectionView.get(); target.depth = s->planarDepthView.get();
         target.scissor = s->reflectionScissor;
+        target.divisor = s->reflectionDivisor;
+        target.scissor.offset.x /= target.divisor; target.scissor.offset.y /= target.divisor;
+        target.scissor.extent.width = (s->reflectionScissor.offset.x + s->reflectionScissor.extent.width + target.divisor - 1) / target.divisor - target.scissor.offset.x;
+        target.scissor.extent.height = (s->reflectionScissor.offset.y + s->reflectionScissor.extent.height + target.divisor - 1) / target.divisor - target.scissor.offset.y;
+        target.scissor.extent.width = std::min(target.scissor.extent.width, static_cast<uint32_t>((w+target.divisor-1)/target.divisor-target.scissor.offset.x));
+        target.scissor.extent.height = std::min(target.scissor.extent.height, static_cast<uint32_t>((h+target.divisor-1)/target.divisor-target.scissor.offset.y));
         if (![&] {
                 ZoneScopedN("Water.PlanarTerrainPrepare");
                 return mc2::waterplanar::prepareTerrain(s->planarTerrain, target, s->planarTerrainRecord);
