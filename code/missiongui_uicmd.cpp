@@ -862,6 +862,13 @@ bool MissionInterfaceManager::uiCmdReadback(UiCmdCtx& c)
 				// unit that renders off-frustum shows here as w<=0.
 				AppearancePtr ap = obj->getAppearance();
 				if (ap && !obj->isMover()) {
+					Stuff::Vector4D projected;
+					eye->projectForScreenXY(p, projected);
+					mc2::fmt::to_buf(b, "  pick: uiTarget={} projected=({:.1f},{:.1f}) team={}\n", target == obj, projected.x, projected.y, obj->getTeamId());
+					extra += b;
+					const auto picked = RenderWorld::getLastGameplayPick();
+					mc2::fmt::to_buf(b, "  click: valid={} recipe={} frame={}\n", picked.valid, picked.recipeIndex, picked.lastPickFrameIndex);
+					extra += b;
 					mc2::fmt::to_buf(b, "  residency: presentation={} render={} winVis={} turn={} selected={} targeted={}\n",
 						mc2::terrainDirtyQueue().isResident(obj->getHandle()), mc2::terrainDirtyQueue().isRenderResident(obj->getHandle()),
 						obj->getWindowsVisible(), turn, obj->getSelected(), obj->getTargeted());
