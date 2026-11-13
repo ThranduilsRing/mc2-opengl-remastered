@@ -64,6 +64,30 @@ TEST_CASE("static caster set: turrets never enter the bake and live poses replac
     CHECK_FALSE(set.hasEvents());
 }
 
+TEST_CASE("static caster set: every turret leaf stays live across neighbour damage and empty frames") {
+    RecipeFeed feed;
+    feed.add(1, 10); feed.add(2, 20); feed.add(3, 30);
+    recipes[1].push_back(recipes[3][0]); // body and barrel, both absent from the bake
+    int turret = 0, neighbour = 0;
+    mc2shadow::StaticCasterSet set;
+    set.beginRebuild();
+    set.add({&turret, 1, 1, mc2shadow::CasterKind::Turret});
+    set.add({&neighbour, 2, 2, mc2shadow::CasterKind::Building});
+    set.endRebuild();
+    set.settleLoadSnapshot();
+    for (uint64_t frame = 1; frame <= 3; ++frame) {
+        if (frame == 2) set.ownerInvalidated(&neighbour, 2);
+        set.takeEvents();
+        std::vector<GpuStaticPropInstance> baked, live;
+        set.resolve(baked);
+        CHECK(baked.size() == (frame == 1 ? 1 : 0));
+        set.appendMoverLeaves(live, frame);
+        REQUIRE(live.size() == 2);
+        CHECK(live[0].typeID == 10);
+        CHECK(live[1].typeID == 30);
+    }
+}
+
 TEST_CASE("static caster set: editor admission preserves the load snapshot and assigns unique handles") {
     RecipeFeed feed;
     feed.add(1, 10);

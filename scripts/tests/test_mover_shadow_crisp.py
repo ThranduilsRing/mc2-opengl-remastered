@@ -43,3 +43,14 @@ def test_penumbra_model_is_crisper_but_still_contact_hardening():
     for d in (25.0, 50.0, 100.0, 200.0):
         assert new(d) <= old(d) / 2.0
     assert new(25.0) < new(100.0) < new(400.0)
+
+
+def test_rigid_casters_do_not_depend_on_nearby_mechs_or_bake_readiness():
+    # Turrets and demoted owners are absent from the static bake. Their individual
+    # leaves must survive even when no mech receives their shadow.
+    code = _code(STATE)
+    loop = code.split("for (const auto& prop:props) {", 1)[1].split("appendMechs(", 1)[0]
+    assert "sweptShadowInView(sphere,sun,ground_,view)" in loop
+    assert "props_.push_back(prop)" in loop
+    assert "maskReady" not in loop, "bake readiness cannot suppress unbaked rigid casters"
+    assert "propShadowReachesMover" not in loop, "a nearby mech cannot control a turret's shadow"
