@@ -716,13 +716,14 @@ def battery_inputs(root):
             sys.exit(f"missing battery mod data: {layer / 'data'}")
         rels += [f"{folder}/{name}" for name in ("data", "assets") if (layer / name).is_dir()]
         rels += [f"{folder}/{p.name}" for p in sorted(layer.iterdir())
-                 if p.is_file() and p.suffix.lower() in (".fst", ".pak", ".fit")]
+                 if p.is_file() and (p.suffix.lower() in (".fst", ".pak", ".fit")
+                                     or p.name.lower() in mod_smoke.CONFIG_FILES)]
     return rels
 
 
 def seed_battery():
     """One-time laptop mod-data seed for both nightly advisory and weekly battery receipts."""
-    marker = G + "/battery.seeded"
+    marker = G + "/battery-configs-v2.seeded"
     if ssh(f"if exist {marker.replace('/', chr(92))} echo yes")[1].strip() == "yes":
         return
     PC_TMP.mkdir(parents=True, exist_ok=True)

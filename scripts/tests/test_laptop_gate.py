@@ -505,13 +505,23 @@ def test_battery_seed_contains_overlay_data_without_copying_pc_executables(tmp_p
     layer = tmp_path / "test"
     (layer / "data").mkdir(parents=True)
     (layer / "assets").mkdir()
-    for name in ("custom.fst", "mission.pak", "campaign.fit", "mc2.exe", "mc2.pdb", "options.cfg"):
+    for name in ("custom.fst", "mission.pak", "campaign.fit", "mc2.exe", "mc2.pdb", "system.cfg", "orgprefs.cfg", *mod_smoke.CONFIG_FILES):
         (layer / name).write_text(name)
-    assert laptop_gate.battery_inputs(tmp_path) == ["test/data", "test/assets", "test/campaign.fit", "test/custom.fst", "test/mission.pak"]
+    inputs = laptop_gate.battery_inputs(tmp_path)
+    assert inputs == ["test/data", "test/assets", "test/campaign.fit", "test/custom.fst", "test/minprefs.cfg", "test/mission.pak", "test/options.cfg", "test/prefs.cfg"]
+    assert {f"test/{name}" for name in mod_smoke.CONFIG_FILES} <= set(inputs)
     assert (layer / "mc2.exe").read_text() == "mc2.exe"
     monkeypatch.setattr(mod_smoke, "BATTERY", (("missing", "missing", None),))
     with pytest.raises(SystemExit, match="missing battery mod data"):
         laptop_gate.battery_inputs(tmp_path)
+
+
+def test_battery_seed_refreshes_seed_without_mod_configs(monkeypatch):
+    seen = []
+    monkeypatch.setattr(laptop_gate, "ssh", lambda command: (seen.append(command) or (0, "yes")))
+    laptop_gate.seed_battery()
+    assert len(seen) == 1
+    assert "/battery-configs-v2.seeded" in seen[0].replace("\\", "/")
 
 
 def test_nightly_resolves_published_tip_after_long_data_seed(monkeypatch):
