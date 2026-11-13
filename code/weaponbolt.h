@@ -430,6 +430,7 @@ class WeaponBolt : public GameObject
                          GameObjectPtr target = nullptr, const WeaponShotInfo* shot = nullptr);
         void traceCombatRetire(std::string_view reason);
         void submitDamage(GameObjectPtr target);
+        void applySoftSplash(const glm::vec3& at, GameObjectWatchID directWID);
 
 };
 

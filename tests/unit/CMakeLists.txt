@@ -49,6 +49,7 @@ add_executable(mc2_tests
     test_present_wait.cpp  # PRESENT-HARDEN: pumped bounded main waits, failure seen at seal, start-spaced cap pacing
     test_commander_team.cpp # COMMANDER-TEAM: commanderPartTeam fallback (first part wins, team 0, non-home team, no parts)
     test_pilot_kill_result.cpp
+    test_soft_splash.cpp
     test_cursor_map.cpp    # CURSOR-SCALE-1: logical 2D space -> ImGui display mapping of the software cursor
     test_visual_capture_live_settle.cpp  # CAPTURE-LIVE-CLOCK: pose -> run N sim-s -> pause sequencing
     ${MC2_WORKTREE_ROOT}/3rdparty/imgui/imgui.cpp

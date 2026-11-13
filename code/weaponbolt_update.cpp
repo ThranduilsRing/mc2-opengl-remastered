@@ -303,6 +303,7 @@ long WeaponBolt::update (void)
 					{
 						submitDamage(target);
 					}
+					applySoftSplash(laserPosition, targetWID);
 				}
 				else if (targetPosition)
 				{
@@ -334,6 +335,7 @@ long WeaponBolt::update (void)
 														areaDmg,
 														(static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectRad);
 					}
+					applySoftSplash(*targetPosition, 0);
 				}
 				armRetireDeadline();
 			}
