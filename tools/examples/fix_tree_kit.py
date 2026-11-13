@@ -1,4 +1,4 @@
-"""Two existing tree meshes, corrected for the Stage 1 owner look proof."""
+"""Distinct existing tree meshes with intact bark for the owner look proof."""
 import json
 import io
 import shutil
@@ -11,9 +11,9 @@ from tools.content_pipeline import gltf_io, ir, package, texcook
 from tools.content_pipeline.frontends import gltf_file
 from tools.neural_mat.export_nmat import _dds_bc7
 ROOT = Path(__file__).resolve().parents[2]
-WORK = Path('E:/mc2-tmp/slot01/tree-kit-fix-1')  # drive-path: ok assigned PC prototype scratch
+WORK = Path('E:/mc2-tmp/slot02/trees-play-1')  # drive-path: ok assigned PC prototype scratch
 OUT = WORK / 'package-tga'
-INSTALL = Path('E:/mc2-installs/tree-kit-fix-1')  # drive-path: ok assigned isolated PC prototype install
+INSTALL = Path('E:/mc2-installs/trees-play-1')  # drive-path: ok assigned isolated PC prototype install
 SOURCE = Path('C:/Users/Joe/Downloads/GameAsset')
 PACK = SOURCE / 'Trees/treepack1'
 _, w, h, levels = texcook.read_ktx2((INSTALL / 'data/tgl/128/a_treeclump1.ktx2').read_bytes())
@@ -22,13 +22,15 @@ target_mean = target[target[..., 3] >= 128, :3].mean(axis=0) / 255
 assets = []
 for aid, stock, source, frame in [
     ('broadleaf-maple2', 'tc1_1', SOURCE / 'uploads_files_4996646_Broadleaf_GLTF/maple2.glb', 'gltf'),
-    ('broadleaf-maple', 'tc1_3', SOURCE / 'uploads_files_4996646_Broadleaf_GLTF/maple1.glb', 'gltf')]:
+    ('broadleaf-maple', 'tc1_3', SOURCE / 'uploads_files_4996646_Broadleaf_GLTF/maple1.glb', 'gltf'),
+    ('broadleaf-maple3', 'tc1_2', SOURCE / 'uploads_files_4996646_Broadleaf_GLTF/maple3.glb', 'gltf'),
+    ('broadleaf-poplar', 'tc1_4', SOURCE / 'uploads_files_4996646_Broadleaf_GLTF/poplar1.glb', 'gltf'),
+    ('white-poplar', 'palm1', SOURCE / 'uploads_files_4996646_Broadleaf_GLTF/whitePoplar1.glb', 'gltf'),
+    ('broadleaf-poplar2', 'palms', SOURCE / 'uploads_files_4996646_Broadleaf_GLTF/poplar2.glb', 'gltf')]:
     asset = gltf_file.to_ir(aid, 'tree:' + stock, source, kind='tree', work_dir=WORK / aid,
         meta={'frame': frame}, classes={m['name']: 'wood' for m in gltf_io.load_document(source)[0]['materials']})
     scene = asset.states['intact'][0].scene
     flat = scene.flattened()
-    if stock == 'tc1_1':
-        flat = [(name, p) for name, p in flat if asset.materials[p.material].alpha_mode != 'OPAQUE']
     scene.meshes = [ir.Mesh(name, [prim]) for name, prim in flat]
     scene.nodes = [ir.Node(f'{aid}-{i}', mesh=i) for i in range(len(flat))]
     lo, hi = scene.bounds()
@@ -73,7 +75,6 @@ for asset in assets:
     for slot, m in enumerate(asset.materials):
         m.base_color = ir.TextureRef.of(OUT / 'data/tgl/128' / names[slot], 'base_color', passthrough=True)
     records.append(package.cook_asset(asset, OUT, compress=True))
-records.extend({**records[0], 'replaces': 'tree:' + stock} for stock in ('tc1_2', 'tc1_4', 'palm1', 'palms'))
 (OUT / 'data/model_overrides/models.json').write_text(json.dumps({'overrides': records}, indent=1))
 assert not package.check_package(OUT)
 # Cooked assets enter only the assigned install; parity pins every emitted byte.

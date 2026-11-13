@@ -4,6 +4,7 @@
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "camera_internal.h"
 #include "camera_pick_hash.h"
+#include "terrain_runtime.h"
 #include "../RenderCore/TemporalInputs.h"
 #include <format>
 namespace {
@@ -465,11 +466,24 @@ void Camera::setCameraOrigin (void)
 			// aiming into the ground with the pre-lift pitch.
 			if (land)
 			{
-				float terrainAtCam = land->getTerrainElevation(actualPosition);
-				terrainAtCam = std::max(terrainAtCam, Terrain::waterElevation);
-				if (translation.y < terrainAtCam + AltitudeMinimum)
+				// Fixed bilinear samples keep the visual floor continuous across bake cells.
+				float terrainAtCam = Terrain::waterElevation;
+				constexpr float radius = 32.0f;
+				for (int y = -1; y <= 1; ++y)
+					for (int x = -1; x <= 1; ++x)
+					{
+						const glm::vec3 sample = actualPosition + glm::vec3(x * radius, y * radius, 0.0f);
+						terrainAtCam = std::max(terrainAtCam, TerrainRuntime::sampleVisualHeight(sample));
+					}
+				const float floor = terrainAtCam + std::max(AltitudeMinimum, 10.0f);
+				const float clearance = translation.y - floor;
+				// Spatial soft maximum: matching slopes at both band edges, always
+				// above the floor, with no frame history or delayed collision response.
+				constexpr float band = 32.0f;
+				if (clearance < band)
 				{
-					translation.y = terrainAtCam + AltitudeMinimum;
+					translation.y += clearance <= -band ? -clearance
+						: (band - clearance) * (band - clearance) / (4.0f * band);
 					actualPosition.z = translation.y - ELEVATION_BUFFER;
 
 					// Repoint at focus from clamped position.

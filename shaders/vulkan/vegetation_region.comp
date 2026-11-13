@@ -23,7 +23,8 @@ void main() {
                 bool outside = false;
                 for (int k = 0; k < 4; ++k)
                     if (P.plane[k].x * R.sphere.x + P.plane[k].y * R.sphere.y + P.plane[k].z * R.sphere.z + P.plane[k].w < -R.sphere.w * P.planeLen[k]) outside = true;
-                vis = !outside && distance(R.sphere.xyz, P.cam.xyz) <= P.cam.w + R.sphere.w;
+                // Mixed regions must reach the grass endpoint; per-instance LOD retains the woody range.
+                vis = !outside && distance(R.sphere.xyz, P.cam.xyz) <= 3.0 * P.cam.w + R.sphere.w;
             }
         }
         uvec4 ballot = subgroupBallot(vis);

@@ -44,7 +44,7 @@ void load(const std::string& text, Preferences& p, RenderOptions& render) {
 }
 TEST_CASE("Preferences/building art persists and command line overrides only the process") {
     using namespace mc2::options;
-    CHECK(RenderOptions{}.remasteredBuildings);
+    CHECK_FALSE(RenderOptions{}.remasteredBuildings); // shipped default is Classic
     const auto* option = find("RemasteredBuildings");
     REQUIRE(option);
     auto text = cfg::set("FITini\n[MechCommander2]\nFITend\n", *option, "false");

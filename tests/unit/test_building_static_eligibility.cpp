@@ -5,6 +5,18 @@
 
 using mc2::building_static::activityNeedsUpdate;
 
+TEST_CASE("building_static_eligibility/capture flash dark interval and completion")
+{
+    using mc2::building_static::flashNeedsUpdate;
+    CHECK(flashNeedsUpdate(true, 1.0f));
+    CHECK(flashNeedsUpdate(false, 0.5f)); // Dark interval must not freeze the timer.
+    CHECK(flashNeedsUpdate(false, 0.001f));
+    CHECK(flashNeedsUpdate(true, 0.0f)); // Final lit frame still needs clearing.
+    CHECK(flashNeedsUpdate(true, -0.01f)); // Timer can overshoot by frameLength.
+    CHECK_FALSE(flashNeedsUpdate(false, 0.0f));
+    CHECK_FALSE(flashNeedsUpdate(false, -0.01f));
+}
+
 TEST_CASE("building_static_eligibility/census reasons keep count units")
 {
     using namespace mc2::battlebench;
