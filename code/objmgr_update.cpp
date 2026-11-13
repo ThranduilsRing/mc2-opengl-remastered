@@ -1097,7 +1097,7 @@ void GameObjectManager::extractRenderList (mc2::render_view::RenderList& list)
 				long why[64][8] = {};
 				for (const auto& v : list.terrain) {
 					auto* a = v.obj->getAppearance();
-					if (!a || a->getAppearanceClass() != BLDG_TYPE || v.objClass >= 64) continue;
+					if (!a || a->getAppearanceClass() != BUILDING_APPR_TYPE || v.objClass >= 64) continue;
 					const bool terrainKind = v.objClass == TERRAINOBJECT || v.objClass == TREE || v.objClass == BRIDGE || v.objClass == BUILDING;
 					const int reason = !a->IsStaticNow() ? 0 : v.obj->getFlag(OBJECT_FLAG_FALLING) ? 1 :
 						static_cast<BldgAppearance*>(a)->hasFrameLights() ? 2 :
