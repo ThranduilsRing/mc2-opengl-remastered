@@ -12,6 +12,68 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
 import tracy_capture_compare as capture  # noqa: E402
 
 
+def test_post_load_requires_ready_and_acknowledged_pose():
+    ready = "[TIMING v1] event=mission_ready elapsed_ms=90000\n"
+    park = "[CAMERA_PARK v1] frame=1 pos=99999,99999\n"
+    assert not capture.post_load_ready(ready, "corner")
+    assert not capture.post_load_ready(park, "corner")
+    assert capture.post_load_ready(ready + park, "corner")
+    assert capture.post_load_ready(ready, None)
+
+
+def test_post_load_wait_excludes_loading_and_settling(tmp_path, monkeypatch):
+    log = tmp_path / "game.log"
+    clock = [0]
+    monkeypatch.setattr(capture.time, "monotonic", lambda: clock[0])
+    def advance(_):
+        clock[0] += 1
+        log.write_text("" if clock[0] < 90 else
+                       "[TIMING v1] event=mission_ready elapsed_ms=90000\n"
+                       "[CAMERA_PARK v1] frame=1 pos=99999,99999\n")
+    log.write_text("")
+    monkeypatch.setattr(capture.time, "sleep", advance)
+    capture.wait_post_load(Mock(poll=lambda: None), log, "corner", settle=2)
+    assert clock[0] == 92
+    with pytest.raises(RuntimeError, match="did not settle"):
+        capture.wait_post_load(Mock(poll=lambda: 0), log, "corner")
+
+
+@pytest.mark.parametrize("count,duration,status", [(3, 10_000_000, "REJECTED"),
+    (600, 50_000_000, "PASS"), (600, 10_000_000, "REJECTED"), (0, 0, "REJECTED")])
+def test_window_rejects_loading_or_short_frames(count, duration, status):
+    rows = [{"name": "Frame", "ns_since_start": str(100_000_000_000 + i * duration),
+             "exec_time_ns": str(duration)} for i in range(count)]
+    result = capture.window_stats(rows, 30)
+    assert result["status"] == status
+    assert result["frames_in_window"] == count
+
+
+def test_capture_arm_overrides_are_declared():
+    assert capture.CAPTURE_ARMS["visible0"] == ["MC2_FORCE_ALL_VISIBLE=0"]
+    assert "MC2_TERRAIN_LOD_CHUNK_FORCE_LOD=2" in capture.CAPTURE_ARMS["lod"]
+
+
+def test_post_load_starts_recorder_after_pose_and_writes_row(harness, monkeypatch):
+    import psutil
+    h = harness
+    process = Mock(cpu_affinity=Mock(return_value=[0, 1]))
+    monkeypatch.setattr(psutil, "Process", lambda _: process)
+    monkeypatch.setattr(capture.host_lease, "held_device", lambda: "AMD")
+    monkeypatch.setattr(capture.host_lease, "lane_devices", lambda: ("AMD", "NVIDIA"))
+    monkeypatch.setattr(capture.host_lease, "affinity_mask", lambda _: 3)
+    h.install.__truediv__.return_value.read_bytes.return_value = b"exe"
+    monkeypatch.setattr(capture, "wait_post_load", lambda *a: h.events.append("pose.settled"))
+    monkeypatch.setattr(capture.subprocess, "run", Mock(return_value=SimpleNamespace(
+        returncode=0, stdout="name,ns_since_start,exec_time_ns\nFrame,0,30000000000\n", stderr="")))
+    monkeypatch.setattr(capture, "window_stats", lambda *a: {"status": "PASS"})
+    stats_file = Mock()
+    h.out.with_suffix.side_effect = lambda suffix: stats_file if suffix == ".stats.json" else Path("trace" + suffix)
+    assert capture.capture_trace(h.install, "vk", "mc2_15", 30, h.out, post_load=True) == 0
+    assert h.events.index("game.spawn") < h.events.index("pose.settled") < h.events.index("recorder.spawn")
+    row = capture.json.loads(stats_file.write_text.call_args.args[0])
+    assert row["status"] == "PASS" and row["affinity"] == [0, 1] and row["job_workers"] == 1
+
+
 @pytest.mark.parametrize("platform,filename", [("nt", "tracy-capture.exe"), ("posix", "tracy-capture")])
 def test_tracy_exe_uses_native_name(tmp_path, monkeypatch, platform, filename):
     tool = tmp_path / filename

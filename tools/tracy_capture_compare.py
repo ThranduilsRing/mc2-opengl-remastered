@@ -65,8 +65,10 @@ Only processes spawned by this script are ever killed, by Popen handle.
 
 import argparse
 import csv
+import hashlib
 import io
 import json
+import math
 import os
 import subprocess
 import sys
@@ -249,10 +251,48 @@ def game_env(arm: str, fixed_timestep: bool, fps_cap, pose, extra_env, via_menu_
     return env
 
 
+CAPTURE_ARMS = {
+    "default": ["MC2_FORCE_ALL_VISIBLE=1"],
+    "lod": ["MC2_FORCE_ALL_VISIBLE=1", "MC2_TERRAIN_LOD_CHUNK=1",
+            "MC2_TERRAIN_LOD_CHUNK_FORCE_LOD=2"],
+    "visible0": ["MC2_FORCE_ALL_VISIBLE=0"],
+}
+
+
+def post_load_ready(log, pose):
+    return ("[TIMING v1] event=mission_ready " in log
+            and (not pose or "[CAMERA_PARK v1] frame=" in log))
+
+
+def wait_post_load(game, log, pose, timeout=300, settle=2):
+    """Require load + acknowledged park, then let spatial resources settle."""
+    deadline, ready = time.monotonic() + timeout, None
+    while game.poll() is None and time.monotonic() < deadline:
+        now = time.monotonic()
+        if post_load_ready(log.read_text(encoding="utf-8", errors="replace"), pose):
+            ready = ready if ready is not None else now
+            if now - ready >= settle:
+                return
+        time.sleep(.1)
+    raise RuntimeError("mission/pose did not settle before exit or load timeout")
+
+
+def window_stats(reader, seconds):
+    frames = sorted((int(r["ns_since_start"]), int(r["exec_time_ns"]))
+                    for r in reader if r.get("name") == "Frame")
+    span = ((frames[-1][0] + frames[-1][1] - frames[0][0]) / 1e9) if frames else 0
+    covered = sum(d for _, d in frames) / 1e9
+    minimum = seconds * 2 / 3
+    passed = len(frames) >= max(20, math.ceil(minimum)) and covered >= minimum and span >= minimum
+    return {"status": "PASS" if passed else "REJECTED", "frames_in_window": len(frames),
+            "post_load_span_s": span, "frame_time_s": covered, "minimum_s": minimum,
+            "fps": len(frames) / span if span else 0}
+
+
 def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path,
                   extra_env=None, pose=None, fixed_timestep=True, fps_cap=None,
                   show_window: bool = True, ticks: int = 0, via_menu_boot: bool = False,
-                  spawn_game=None) -> int:
+                  spawn_game=None, post_load: bool = False, capture_arm: str = "default") -> int:
     """Record one trace under the host lease; retain a caller's existing lease.
 
     Free timestep and an uncapped FPS limit measure renderer throughput.
@@ -269,8 +309,11 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
     if via_menu_boot and ticks:
         sys.exit("ERROR: --via-menu cannot be combined with --ticks (the tick budget is a smoke-mode exit)")
     env = game_env(arm, fixed_timestep, fps_cap, pose, extra_env, via_menu_boot)   # before the recorder starts: a refused --env must leave nothing running
+    if post_load:
+        env.setdefault("MC2_FRAME_JOBS_WORKERS", "1")
 
     with ExitStack() as cleanup:
+        cleanup.enter_context(host_lease.keyed_by(env.get("MC2_VK_DEVICE")))
         # The recorder must share the game's host lease so another lane cannot feed it a trace.
         if not host_lease.holds():
             host_lease.acquire(f"Tracy capture {arm} {mission}")
@@ -282,10 +325,15 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
         cap_log = out.with_suffix(".capture.log")
         cap_lf = cleanup.enter_context(open(cap_log, "w", encoding="utf-8", errors="replace"))
         # background-launch: allow Tracy recorder console tool, windowless via nofocus.hidden_kwargs.
-        recorder = subprocess.Popen(cap_cmd, stdout=cap_lf, stderr=subprocess.STDOUT,
-                                    **nofocus.hidden_kwargs())  # tracy-capture is a console tool
-        cleanup.callback(_stop_capture_child, recorder)
-        time.sleep(1.0)  # let it bind the port before the game boots
+        def start_recorder():
+            # background-launch: allow Tracy console recorder, never an engine.
+            child = subprocess.Popen(cap_cmd, stdout=cap_lf, stderr=subprocess.STDOUT,
+                                     **nofocus.hidden_kwargs())
+            cleanup.callback(_stop_capture_child, child)
+            return child
+        recorder = None if post_load else start_recorder()
+        if not post_load:
+            time.sleep(1.0)
 
         # Render options belong to the trace so comparisons can refuse mismatched inputs.
         options_rec = render_options_pin.record(install, env)
@@ -293,7 +341,7 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
         for rj in options_rec["rejected"]:
             print(f"WARN: render option rejected by the engine's grammar: {rj}", file=sys.stderr)
 
-        duration = seconds + 5  # game outlives the recorder window
+        duration = seconds + (15 if post_load else 5)
         game_cmd = [str(game), "--profile", "stock", "--mission", mission,
                     "--duration", str(duration)]
         if ticks:
@@ -311,7 +359,7 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
                   "unaffected. The post-capture visibility assert will refuse to "
                   "grade this trace.", file=sys.stderr)
 
-        print(f"[capture] recorder pid={recorder.pid} -> {out}")
+        print(f"[capture] trace -> {out}")
         # The pinned drawable size must survive the background launch for comparable measurements.
         if spawn_game:
             gp = spawn_game(game_cmd, stdout=game_lf, stderr=subprocess.STDOUT,
@@ -321,6 +369,26 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
                                cwd=str(install), env=env,
                                show_window=show_window, small_window=False)
         cleanup.callback(_stop_capture_child, gp)
+        if post_load:
+            import psutil
+            process = psutil.Process(gp.pid)
+            # Restrict to this GPU slot even when the lease lends idle game cores.
+            slot = host_lease.lane_devices().index(host_lease.held_device())
+            mask = host_lease.affinity_mask(slot)
+            cpus = [c for c in process.cpu_affinity() if mask & (1 << c)]
+            process.cpu_affinity(cpus)
+            row = {"status": "REJECTED", "mission": mission, "arm": capture_arm,
+                   "seconds": seconds, "settle_s": 2, "affinity": process.cpu_affinity(),
+                   "job_workers": int(env.get("MC2_FRAME_JOBS_WORKERS") or host_lease.frame_jobs_workers()),
+                   "resolution": [int(env.get("MC2_WIDTH", 0)), int(env.get("MC2_HEIGHT", 0))],
+                   "exe_sha256": hashlib.sha256(game.read_bytes()).hexdigest(),
+                   "environment": {k: v for k, v in env.items() if k.startswith("MC2_")}}
+            def save_row():
+                out.with_suffix(".stats.json").write_text(json.dumps(row, indent=2), encoding="utf-8")
+            cleanup.callback(save_row)
+            wait_post_load(gp, game_log, pose)
+            row["measurement_start_epoch"] = time.time()
+            recorder = start_recorder()
         print(f"[capture] game pid={gp.pid} arm={arm} mission={mission} "
               f"duration={duration}s fixed_ts={fixed_timestep} fps_cap={fps_cap} pose={pose}")
 
@@ -332,7 +400,7 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
                 rc = 1
             _stop_capture_child(gp)   # the game has no auto-quit outside smoke mode: end OUR spawned pid once the recording is over
         try:
-            gp.wait(timeout=duration + 90)
+            gp.wait(timeout=duration + (300 if post_load else 90))
             if gp.returncode:
                 rc = 1
         except subprocess.TimeoutExpired:
@@ -359,6 +427,17 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
             sys.exit(f"ERROR: trace {out} missing or trivial ({size} bytes < "
                      f"{MIN_TRACE_BYTES}); see {cap_log} / {game_log}")
 
+        if post_load:
+            # Exact per-event frame durations prove the recorder saw gameplay,
+            # rather than accepting a long connection with a handful of frames.
+            exported = subprocess.run([str(tracy_exe("tracy-csvexport.exe")), "-u", "-f", "Frame", str(out)],
+                                      capture_output=True, text=True, timeout=120, **nofocus.hidden_kwargs())
+            if exported.returncode:
+                raise RuntimeError(f"Frame export failed: {exported.stderr}")
+            row.update(window_stats(csv.DictReader(io.StringIO(exported.stdout)), seconds))
+            row["status"] = "REJECTED" if rc or gp.returncode or recorder.returncode else row["status"]
+            rc = rc or int(row["status"] != "PASS")
+
         print(f"OK capture arm={arm} mission={mission} seconds={seconds} "
               f"-> {out} ({out.stat().st_size / 1e6:.1f} MB)")
         return rc
@@ -384,14 +463,28 @@ def zone_summary(trace: Path, top: int = 10, csv_out: Path | None = None) -> Non
 
 
 def cmd_capture(args: argparse.Namespace) -> int:
+    arms = args.capture_arms.split(",")
+    if any(a not in CAPTURE_ARMS for a in arms) or args.seconds <= 0:
+        raise ValueError("expected positive --seconds and --capture-arms default,lod,visible0")
+    rc = 0
+    for name in arms:
+        out = Path(args.output)
+        if len(arms) > 1:
+            out = out.with_name(f"{out.stem}-{name}{out.suffix}")
+        result = _capture_arm(args, name, out)
+        rc = rc or result
+    return rc
+
+
+def _capture_arm(args, name, out):
     rc = capture_trace(
         Path(args.install), args.arm, args.mission, args.seconds,
-        Path(args.output), extra_env=args.env, pose=args.pose,
+        out, extra_env=CAPTURE_ARMS[name] + args.env, pose=args.pose,
         fixed_timestep=not args.free_timestep, fps_cap=args.fps_cap,
         show_window=args.show_window, ticks=args.ticks, via_menu_boot=args.via_menu,
+        post_load=not (args.ticks or args.via_menu), capture_arm=name,
     )
     if rc == 0:
-        out = Path(args.output)
         zone_summary(out, csv_out=out.with_suffix(".zones.csv") if args.csv else None)
     return rc
 
@@ -975,14 +1068,15 @@ def main() -> int:
     c.add_argument("--install", required=True, help="MC2 install dir containing mc2.exe")
     c.add_argument("--arm", choices=list(ARMS), default="vk")
     c.add_argument("--mission", default="mc2_01")
-    c.add_argument("--seconds", type=int, default=15, help="Tracy recording window (default 15)")
+    c.add_argument("--seconds", type=int, default=30, help="post-load recording window (default 30 seconds)")
+    c.add_argument("--capture-arms", default="default", help="comma-separated default,lod,visible0")
     c.add_argument("--via-menu", action="store_true",
                    help="launch as a player does (boot, main menu, stock campaign, mission; no smoke mode, no --mission, no fixed timestep). "
                         "--seconds must cover menu + mission load (use 90+); the trace includes the front end. [VIA_MENU v1]/[FIRST60 v1] lines are in the .game.log")
     c.add_argument("--ticks", type=int, default=0, help="capture this many headless sim ticks, including mission load; no recorder wall-clock cutoff")
     c.add_argument("--csv", action="store_true", help="also write the full per-zone csvexport table next to the trace (default: top-10 summary only)")
     c.add_argument("-o", "--output", required=True, help="output .tracy path")
-    c.add_argument("--pose", default=None, metavar="X,Y,ROT,PROJ,ALT[@FRAME]",
+    c.add_argument("--pose", default="99999,99999,-45,12.5,5853.4658@1", metavar="X,Y,ROT,PROJ,ALT[@FRAME]",
                    help="MC2_CAMERA_PARK pose to pin the camera (optional)")
     c.add_argument("--free-timestep", action="store_true",
                    help="run free wall-clock timestep (required for FPS/frame-count "
