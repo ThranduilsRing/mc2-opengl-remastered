@@ -6640,6 +6640,32 @@
    "count": 1
   },
   {
+   "tag": "ORDER_PATH",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "sequence",
+    "issued",
+    "result",
+    "ticks",
+    "error",
+    "state",
+    "code"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ORDER_PATH",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "total",
+    "retained",
+    "overwritten"
+   ],
+   "count": 1
+  },
+  {
    "tag": "OVERLAY_CEMENT_ADOPT",
    "ver": 1,
    "stream": "stdout",
@@ -6775,6 +6801,33 @@
     "event",
     "steps",
     "capacity"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PATH",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "simframe",
+    "event",
+    "enqueue_frame"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PATH",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "simframe",
+    "queued",
+    "entry",
+    "processed",
+    "backlog",
+    "expansions",
+    "budget_deferred",
+    "hardcap_deferred"
    ],
    "count": 1
   },
