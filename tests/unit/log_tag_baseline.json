@@ -5997,8 +5997,6 @@
     "mask_ready",
     "props_total",
     "casters_total",
-    "skipped",
-    "kept_mech",
     "movers_in_view"
    ],
    "count": 1
