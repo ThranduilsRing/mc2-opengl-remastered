@@ -1099,6 +1099,8 @@ void MissionInterfaceManager::doMove(const glm::vec3& pos)
 	}
 	moveOrderMarker->setObjectParameters(pos, moveOrderMarker->rotation, false, 0, 0);
 	moveOrderMarkerUntil = mc2::render_view::clock().scenarioTime + 2.0f;
+	if (mc2_diag::tagRequested("MOVE_MARKER"))
+		mc2::fmt::print_out("[MOVE_MARKER] order pos={},{},{} until={}\n", pos.x, pos.y, pos.z, moveOrderMarkerUntil);
 
 	controlGui.setDefaultSpeed();
 }

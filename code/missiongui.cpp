@@ -487,6 +487,8 @@ void MissionInterfaceManager::drawVTOL (void)
 	if (moveOrderMarker && mc2::render_view::clock().scenarioTime < moveOrderMarkerUntil) {
 		moveOrderMarker->recalcBounds();
 		moveOrderMarker->update();
+		if (mc2_diag::tagRequested("MOVE_MARKER"))
+			mc2::fmt::print_out("[MOVE_MARKER] draw visible={} rotation={} time={}\n", moveOrderMarker->canBeSeen(), moveOrderMarker->rotation, mc2::render_view::clock().scenarioTime);
 		moveOrderMarker->render();
 	}
 	for (const auto& row : mc2::render_view::hud().vtols)
