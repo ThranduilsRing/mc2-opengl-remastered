@@ -8,7 +8,7 @@
 // WHERE: right after the terrain overlay/decal batch (mc2_vk_overlay_run), so the opaque scene is complete and water,
 // particles and post have not run yet. The screen shadow and fog later in the frame apply to the decal like to any surface.
 // SYNC: the screen-shadow pattern: in-command-buffer barriers take depth and normal to SHADER_READ_ONLY and back, the render
-// pass LOADs/STOREs colour0 in COLOR_ATTACHMENT layout, one submit per frame, a timeline ticket per parity slot guards the
+// pass LOADs/STOREs colour0 in COLOR_ATTACHMENT layout, one submit per frame, a timeline ticket per frame slot guards the
 // host-written instance buffer and the command buffer.
 // COST: rasterization is bounded by the boxes' screen area (back faces only, so each covered pixel shades once); the
 // instance count is capped by the pool (impact::kMaxDecals); an empty frame records nothing.
@@ -99,7 +99,7 @@ static_assert(sizeof(FrameUbo) == 176, "FrameUbo std140 size");
 
 struct PushMode { uint32_t mode; uint32_t pad[3]; };   // 0 multiply, 1 additive
 
-constexpr uint32_t kSlots = 2;
+constexpr uint32_t kSlots = mc2vk::kMaxFramesInFlight;
 
 struct State {
     bool disabled = false, inited = false;
@@ -109,10 +109,9 @@ struct State {
     VkImageResource* colorRes = nullptr;
     VkImageResource* normalRes = nullptr;
     VkImageResource* depthRes = nullptr;
-    VkDescriptorSet set[kSlots] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
-    VkCommandBuffer cbuf[kSlots] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
-    uint64_t ticket[kSlots] = {0, 0};
-    uint32_t slot = 0;
+    VkDescriptorSet set[kSlots] = {};
+    VkCommandBuffer cbuf[kSlots] = {};
+    uint64_t ticket[kSlots] = {};
     VkImageView boundAtlas[kSlots][2] = {};   // the residency serves a placeholder until the upload lands
     // Owned, in creation order (released in reverse by the moved-to local in destroy()).
     mc2vk::OwnedImageView depthView;
@@ -356,7 +355,8 @@ extern "C" int mc2_vk_impact_decals_run(int w, int h) {
     }
     ZoneScopedN("VK-impact-decals");
     mc2vk::VulkanContext& ctx = mc2vk::getOrCreateEngineVulkanContext();
-    const uint32_t slot = s->slot; s->slot = (s->slot + 1) % kSlots;
+    // The context retired this frame slot; retain the ticket wait for every resource reuse.
+    const uint32_t slot = ctx.frameContext().slot;
     { ZoneScopedN("VK-impact-decals.SlotWait");
     if (!ctx.wait(mc2vk::GpuTicket{s->ticket[slot], 0}, 5ull * 1000 * 1000 * 1000, "impact_decals_slot")) {
         decline("slot_wait_timeout"); s->disabled = true; return 0;
