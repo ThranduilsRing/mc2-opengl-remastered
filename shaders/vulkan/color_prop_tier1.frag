@@ -63,6 +63,9 @@ layout(constant_id = 0) const int kBaseQuality = 2; // Potato / Low / Medium+Hig
 // fringe rows, so every discard below is dead for them. Compiling the discards out lets the driver run early Z.
 layout(constant_id = 2) const int kOpaqueOnly = 0;
 layout(constant_id = 10) const int kPlanarReflection = 0;
+layout(constant_id = 12) const int kReflectCutDetail = 1;
+layout(constant_id = 13) const int kReflectCutPools = 1;
+layout(constant_id = 14) const int kReflectCutMovers = 1;
 
 // Per-frame UBO: generated from RenderCore/gpu_abi/GpuColorFrameUBO.h.
 #include "include/color_frame_ubo_vk.glsl"
@@ -143,7 +146,7 @@ layout(set = 0, binding = 14) uniform sampler2DShadow uTreeObjectMap;
 
 // GL static_prop.frag's pool term: albedo-modulated additive pool light at the MC2-frame world position.
 vec3 propPoolLight(vec3 albedo) {
-    if (uFrame.poolI.x <= 0) return vec3(0.0);
+    if ((kPlanarReflection != 0 && kReflectCutPools != 0 && uFrame.nightDarkness <= 0.0) || uFrame.poolI.x <= 0) return vec3(0.0);
     return albedo * olp_objectPoolLight(vWorldPos, uFrame.poolI.x, uFrame.poolI.y,
                                         uFrame.poolF.x, uFrame.poolF.y,
                                         uFrame.poolI.z, uFrame.poolI.w,
@@ -155,7 +158,7 @@ vec3 propPoolLight(vec3 albedo) {
 #include "include/prop_lighting_compat_vk.glsl"
 
 float treeVisibility(vec3 N) {
-    float visibility = moverVisibility(vWorldPos, N);
+    float visibility = kPlanarReflection != 0 && kReflectCutMovers != 0 ? 1.0 : moverVisibility(vWorldPos, N);
     if (uFrame.poolF.w > 1.0 && uT.enableShadows != 0) {
         vec4 p = uT.staticLightSpaceMatrix * vec4(vWorldPos + N * 0.25, 1.0);
         vec3 q = p.xyz / p.w; q.xy = q.xy * 0.5 + 0.5;

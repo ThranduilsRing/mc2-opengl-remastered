@@ -1,5 +1,11 @@
 #ifndef GROUND_LIGHTING_GLSL
 #define GROUND_LIGHTING_GLSL
+#ifndef GROUND_POOL_ENABLED
+#define GROUND_POOL_ENABLED true
+#endif
+#ifndef GROUND_MOVER_CONTACT
+#define GROUND_MOVER_CONTACT uT.moverContactShadow
+#endif
 // One terrain/cover compose. Existing sun-band, pool, ambient and contact inputs;
 // no new light producer or terrain cover term. Preserve terrain operation order.
 vec3 composeGroundLighting(vec3 baseColor, vec3 ambient, vec3 direct, float shadow, vec3 localLight) {
@@ -19,13 +25,13 @@ vec3 shadeGround(vec3 baseColor, vec3 N, float normalLight, float shadow,
         // :2056-2066), ADDITIVE after the shadow multiply. Cone spill / LIGHT-REALISM
         // reshape is baked into the pool by the shared CPU producer.
         float moverContact = 0.0;
-        if (uT.numPoolLights > 0) {
+        if (GROUND_POOL_ENABLED && uT.numPoolLights > 0) {
             lit += tlp_terrainPoolLight(worldPos, uT.numPoolLights,
                                         uT.lightGridDim, vec2(uT.lightGridMinX, uT.lightGridMinY),
                                         vec2(uT.lightGridInvCellX, uT.lightGridInvCellY),
                                         uT.lightPoolSoft, uT.lightPoolMoverDim, uT.lightPoolMoverScale,
                                         uT.lightPoolMoverMax, uT.lightPoolCompress,
-                                        uT.moverContactShadow, moverContact, N, macroNormal, resolveNormal, normalLod);
+                                        GROUND_MOVER_CONTACT, moverContact, N, macroNormal, resolveNormal, normalLod);
         }
         // The burnin already contains mission ambient; no second ambient floor.
 
