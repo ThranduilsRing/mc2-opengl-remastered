@@ -1,5 +1,38 @@
 #include "doctest.h"
 #include "terrain_dirty_queue.h"
+#include "unit_anim_state.h"
+#include "unit_animation_tick.h"
+namespace {
+bool simPresentationPass = false;
+uint32_t turn = 42;
+float frameLength = 1.0f / 30;
+constexpr int TRUE = 1;
+struct Appearance {
+    std::shared_ptr<mc2::sim::UnitAnimState> simAnim_ = std::make_shared<mc2::sim::UnitAnimState>();
+    mc2::sim::UnitAnimState renderAnim_;
+    std::atomic<bool> animSettled_{true};
+    mc2::TerrainDirtyQueue queue;
+    Appearance() { queue.reset(2); queue.setResident(1); queue.setRenderResident(1); }
+    void markTerrainPresentationDirty() { queue.mark(1); }
+    bool simulationOwned() const { return true; }
+    void updateSimPose() {}
+    struct Type { long numWeaponNodes = 0; long getNumFrames(long) const { return 3; } } type, *appearType = &type;
+    #include "terrain_anim_access.inc"
+    long tick(bool animate) {
+        #include "terrain_tick.inc"
+    }
+};
+}
+TEST_CASE("terrain_dirty_queue/unchanged tick keeps residency; animation wakes next frame") {
+    Appearance a;
+    a.tick(true); CHECK(a.queue.drain().empty()); CHECK(a.queue.isRenderResident(1));
+    CHECK(a.simAnim_->lastAnimAdvanceFrame == turn);
+    a.tick(true); CHECK(a.queue.drain().empty());
+    a.simAnim_->nodeRecycle = {1.0f}; a.type.numWeaponNodes = 1; ++turn; a.tick(true);
+    CHECK(a.queue.drain() == std::vector<long>{1}); CHECK(a.simAnim_->nodeRecycle[0] < 1.0f);
+    a.simAnim_->bdFrameRate = 30; ++turn; a.tick(true);
+    CHECK(a.queue.drain() == std::vector<long>{1}); CHECK(a.simAnim_->currentFrame == doctest::Approx(1));
+}
 
 TEST_CASE("terrain_dirty_queue/static scene drains to zero; one mark = one update")
 {

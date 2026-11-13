@@ -86,7 +86,8 @@ public:
     unsigned registryGeneration = 0;
     bool simulationOwned() const { return simulationOwned_; }
     const mc2::sim::UnitAnimState& presentedAnimation() const { return renderAnim_; }
-    mc2::sim::UnitAnimState& unitAnim() { if (!simPresentationPass) markTerrainPresentationDirty(); animSettled_.store(false, std::memory_order_relaxed); return simPresentationPass ? renderAnim_ : *simAnim_; }
+    // Clock bookkeeping and zero-rate advancement do not change presentation.
+    mc2::sim::UnitAnimState& unitAnim(bool presentationChange = true) { if (!simPresentationPass && presentationChange) markTerrainPresentationDirty(); animSettled_.store(false, std::memory_order_relaxed); return simPresentationPass ? renderAnim_ : *simAnim_; }
     const mc2::sim::UnitAnimState& unitAnim() const { return simPresentationPass ? renderAnim_ : *simAnim_; }
     auto simulationAnimation() const { markTerrainPresentationDirty(); animSettled_.store(false, std::memory_order_relaxed); return simAnim_; }
     auto pinnedSimulationAnimation() const { animPinned_.store(true, std::memory_order_relaxed); return simulationAnimation(); }

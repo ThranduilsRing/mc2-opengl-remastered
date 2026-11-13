@@ -424,7 +424,7 @@ class BldgAppearance : public ObjectAppearance
 
 		virtual bool getInTransition (void)
 		{
-			return (unitAnim().canTransition == false);
+			return (static_cast<const Appearance&>(*this).unitAnim().canTransition == false);
 		}
 
 		void setFadeTable (MemoryPtr fTable)
@@ -436,7 +436,7 @@ class BldgAppearance : public ObjectAppearance
 		
 		virtual long getCurrentGestureId (void)
 		{
-			return unitAnim().bdAnimationState;
+			return static_cast<const Appearance&>(*this).unitAnim().bdAnimationState;
 		}
 
 		virtual unsigned long getAppearanceClass (void)

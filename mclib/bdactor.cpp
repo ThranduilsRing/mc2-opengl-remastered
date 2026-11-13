@@ -624,7 +624,7 @@ void BldgAppearance::setGesture (unsigned long gestureId)
 	if ((status == OBJECT_STATUS_DESTROYED) || (status == OBJECT_STATUS_DISABLED))
 		return;
 		
-	if (gestureId == unitAnim().bdAnimationState)
+	if (gestureId == static_cast<const Appearance&>(*this).unitAnim().bdAnimationState)
 		return;
 
 	const bool naturalStaticExempt =
@@ -922,23 +922,24 @@ void BldgAppearance::updateSimPose()
     auto* source = status == OBJECT_STATUS_DESTROYED && appearType->bldgDmgShape ?
         appearType->bldgDmgShape.get() : appearType->getBldgCollisionShape(0);
     if (!source) { simulationShape_.reset(); simPose->ready = false; return; }
-    const long animationState = status == OBJECT_STATUS_DESTROYED ? -2 : unitAnim().bdAnimationState;
+    const auto& anim = static_cast<const Appearance&>(*this).unitAnim();
+    const long animationState = status == OBJECT_STATUS_DESTROYED ? -2 : anim.bdAnimationState;
     if (simPose->ready && simulationType_ == source && appearType->numWeaponNodes == 0 &&
         (appearType->rotationalNodeId[0] == '\0' || S_stricmp(appearType->rotationalNodeId, "NONE") == 0) &&
-        unitAnim().bdFrameRate == 0.0f &&
-        simulationAnimationState_ == animationState && simulationFrame_ == unitAnim().currentFrame &&
+        anim.bdFrameRate == 0.0f &&
+        simulationAnimationState_ == animationState && simulationFrame_ == anim.currentFrame &&
         simPose->root == position && simPose->heading == rotation) return;
     if (simulationType_ != source || !simulationShape_) {
         simulationShape_.reset(source->CreateFrom());
         simulationType_ = source;
     }
     auto* shape = simulationShape_.get();
-    if (status != OBJECT_STATUS_DESTROYED && unitAnim().bdAnimationState >= 0 && unitAnim().bdAnimationState < MAX_BD_ANIMATIONS)
-        appearType->setAnimation(shape, unitAnim().bdAnimationState);
+    if (status != OBJECT_STATUS_DESTROYED && anim.bdAnimationState >= 0 && anim.bdAnimationState < MAX_BD_ANIMATIONS)
+        appearType->setAnimation(shape, anim.bdAnimationState);
     else
         shape->ClearAnimation();
-    shape->SetFrameNum(unitAnim().currentFrame);
-    auto aim = mc2::math::quatFromEuler(mc2::math::Euler(unitAnim().pitch * DEGREES_TO_RADS, unitAnim().turretRotation * DEGREES_TO_RADS, 0.0f));
+    shape->SetFrameNum(anim.currentFrame);
+    auto aim = mc2::math::quatFromEuler(mc2::math::Euler(anim.pitch * DEGREES_TO_RADS, anim.turretRotation * DEGREES_TO_RADS, 0.0f));
     shape->SetNodeRotation(appearType->rotationalNodeId, &aim);
     auto root = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, rotation * DEGREES_TO_RADS, 0.0f));
     glm::vec3 translation; mc2ToRender(translation, position);
@@ -946,7 +947,7 @@ void BldgAppearance::updateSimPose()
     shape->InvalidateHierarchy();
     shape->TransformMultiShape_BuildRecipe(&translation, &root);
     simulationAnimationState_ = animationState;
-    simulationFrame_ = unitAnim().currentFrame;
+    simulationFrame_ = anim.currentFrame;
     simPose->root = position; simPose->heading = rotation;
     simPose->nodes.resize(appearType->numWeaponNodes);
     for (long i = 0; i < appearType->numWeaponNodes; ++i) {
