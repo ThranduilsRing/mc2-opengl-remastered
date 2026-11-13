@@ -3,6 +3,29 @@
 #include <array>
 #include <optional>
 
+TEST_CASE("prop_record_cache: lighting and animation do not rebuild type runs") {
+    struct Instance { uint32_t typeID, light, transform; };
+    std::array<Instance, 3> data{{{1, 0, 0}, {1, 0, 0}, {4, 0, 0}}};
+    PropTypeGeneration types;
+    PropInstanceGeneration bytes;
+    auto feed = [&] { return std::span<const Instance>(data); };
+    CHECK(types.update(feed()) == 1);
+    CHECK(bytes.update(7, std::as_bytes(feed())) == 1);
+    for (uint32_t frame = 1; frame <= 100; ++frame) {
+        data[1].light = frame;
+        data[2].transform = frame;
+        CHECK(types.update(feed()) == 1);
+        CHECK(bytes.update(7, std::as_bytes(feed())) == frame + 1);
+    }
+    data[1].typeID = 4; // LOD change with the same instance count
+    CHECK(types.update(feed()) == 2);
+    CHECK(types.update(feed().first(2)) == 3); // visibility / destruction
+    std::swap(data[0], data[1]);
+    CHECK(types.update(feed().first(2)) == 4); // ordering matters
+    CHECK(types.update(std::span<const Instance>{}) == 5);
+    CHECK(types.update(std::span<const Instance>{}) == 5);
+}
+
 TEST_CASE("prop_record_cache: scene includes visibility, destruction and same-size edits") {
     PropInstanceGeneration scene;
     std::array<std::byte, 2> instances{};

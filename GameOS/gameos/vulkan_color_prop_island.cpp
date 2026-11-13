@@ -299,6 +299,7 @@ struct ColorPropIsland : mc2vk::IslandState {
     };
     PropGpu gpu[mc2vk::kMaxFramesInFlight];
     PropInstanceGeneration instanceSource;
+    PropTypeGeneration typeSource;
     uint64_t materialGeneration = 0, resourceGeneration = 0;
     PropRecordCacheKey recordKey{};
     std::optional<PropRecordCacheKey> recorded;
@@ -1749,6 +1750,7 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std
     auto& listStart = s->listStart;
     auto& counts = s->listCounts;
     if (s->recorded != s->recordKey) {
+    ZoneScopedN("VKIsl.Props.BuildMetadata");
     for (auto& v : s->cmdScratch) v.clear();
     for (auto& v : s->pktScratch) v.clear();
     s->runScratch.clear();
@@ -1862,6 +1864,7 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std
 
     // The per-parity buffers grow with headroom; a slot's previous submit and late fringe were waited before staging, so recreating is safe.
     if (s->gpu[par].uploaded != s->recordKey) {
+        ZoneScopedN("VKIsl.Props.UploadMetadata");
         auto& g = s->gpu[par];
         bool rebound = false;
         auto ensure = [&](mc2vk::OwnedBuffer& buf, VkDeviceSize& cap, VkDeviceSize need, VkBufferUsageFlags usage, bool host, std::string_view name) {
@@ -2034,7 +2037,9 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
     const uint64_t sceneGeneration = s->instanceSource.update(
         GpuStaticPropRegistry::getRegistryGeneration(),
         {static_cast<const std::byte*>(feed.instances112), static_cast<size_t>(instBytes)});
-    s->recordKey = {sceneGeneration, s->materialGeneration, s->resourceGeneration};
+    const uint64_t typeGeneration = s->typeSource.update(std::span(
+        static_cast<const GpuStaticPropInstance*>(feed.instances112), instanceCount));
+    s->recordKey = {typeGeneration, s->materialGeneration, s->resourceGeneration};
     cp_refresh_samplers(s);
     // Props do not depend on terrain readiness: with no ground-lighting frame this frame (terrain not inited, fell back, or a different frame) reuse
     // the last frame's offsets over the descriptors this island's own set already holds; only a run that never had one skips the draw.
