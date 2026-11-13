@@ -31,6 +31,9 @@ layout(set = 0, binding = 15) uniform sampler2D u_materialWeights;
 // GL_REPEAT). Layers per include/terrain_mat_layers.hglsl. Dummy 1x1 until imported
 // (uT.detailReady gates the sample).
 layout(set = 0, binding = 6) uniform sampler2DArray u_matNormalArray;
+layout(set = 0, binding = 1, std430) readonly buffer TerrainHeightBuf {
+    float heights[];
+} uH;
 // TERRAIN-SHORELINE-V3: optional mask sidecar (G wet, B foam, A valid); read only while uT.shorelineHasMask != 0.
 layout(set = 0, binding = 14) uniform sampler2D u_shorelineMask;
 
@@ -470,8 +473,11 @@ void main() {
             vec3 macroPert = vec3(baseN.xy / max(baseN.z, 0.2) * uT.nfhStrength, 1.0);
             vec3 pert = macroPert + vec3(dN.xy * uT.detailStrength, 0.0);
             N = normalize(pert);
-            if (uT.detailReady >= 2) mv_cliffMaterial(baseN, cliffLod, N, baseColor);
-            if ((uT.concreteDetail & 2) != 0) crApply(baseN, cliffDx * MATV_CLIFF_TS, cliffDy * MATV_CLIFF_TS, N, baseColor);
+            float blocked = crTerrainCliff(v_worldPos.xy);
+            if (uT.detailReady >= 2) mv_cliffMaterial(baseN, cliffLod, blocked, N, baseColor);
+            if ((uT.concreteDetail & 2) != 0) crApply(baseN, cliffDx * MATV_CLIFF_TS, cliffDy * MATV_CLIFF_TS, blocked, N, baseColor);
+            if (uT.detailReady != 0) crNavigable(baseN, cliffDx * MATV_CLIFF_TS, cliffDy * MATV_CLIFF_TS,
+                                               (1.0 - blocked) * max(materialW.x, cliffRockWeight(abs(baseN.z))), N, baseColor);
             dbgBaseN = baseN; dbgDN = dN;                        // CSM-BLACKOUT-RECON-1 taps
         }
         // Evaluate the ratio after material sampling so its inputs do not stay

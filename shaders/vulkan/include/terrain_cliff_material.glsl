@@ -39,8 +39,8 @@ vec2 mv_cliffParallaxPlane(vec2 uv, vec2 viewPlane, float depth, float steps, fl
 // smooth to catch light), and the albedo is darkened by the displacement (groove relief). `N` is the detail-perturbed normal on entry and
 // the cliff-blended one on return; `baseColor` takes the groove darkening. macroN is the un-perturbed macro slope normal. The cliff albedo
 // re-projection of GL is NOT here: the island carries no material albedo array.
-void mv_cliffMaterial(vec3 macroN, vec3 planeLod, inout vec3 N, inout vec3 baseColor) {
-    float cb = cliffRockWeight(abs(macroN.z));
+void mv_cliffMaterial(vec3 macroN, vec3 planeLod, float blocked, inout vec3 N, inout vec3 baseColor) {
+    float cb = cliffRockWeight(abs(macroN.z)) * blocked;
     if (cb <= 0.01) return;
     const float ts = MATV_CLIFF_TS;
     vec3 wp = v_worldPos;
@@ -95,9 +95,42 @@ void mv_cliffMaterial(vec3 macroN, vec3 planeLod, inout vec3 N, inout vec3 baseC
 // palette tone (colormap taps around the face, pulled toward the mission's rock tint) times the scan's albedo ratio: MC2's colours,
 // real rock structure. Height-blended into the slope transition. `wpDx`/`wpDy` = screen derivatives of the world position (uniform flow).
 const float CR_TS = 320.0;   // world units per rock repeat
-void crApply(vec3 macroN, vec3 wpDx, vec3 wpDy, inout vec3 N, inout vec3 baseColor) {
+// Terrain-only MOVE rule (EditorData_save.cpp); object footprints never select rock.
+float crBlockedTile(ivec2 p) {
+    p = clamp(p, ivec2(0), ivec2(uT.mapSide - 2));
+    int i = p.x + p.y * uT.mapSide;
+    float a = uH.heights[i], b = uH.heights[i + uT.mapSide];
+    float c = uH.heights[i + uT.mapSide + 1], d = uH.heights[i + 1];
+    float rise = ((p.x + p.y) & 1) == 0 ? max(abs(a-c), max(abs(a-b), abs(a-d)))
+                                                   : max(max(abs(a-b), abs(a-d)), max(abs(b-c), abs(b-d)));
+    return rise > 90.509668 ? 1.0 : 0.0; // 128 * sin(default CliffTerrainAngle = 45 deg)
+}
+float crTerrainCliff(vec2 xy) {
+    vec2 q = vec2(xy.x + uT.halfMap, uT.halfMap - xy.y) / 128.0 - 0.5;
+    ivec2 p = ivec2(floor(q));
+    vec2 f = smoothstep(vec2(0.0), vec2(1.0), fract(q));
+    return mix(mix(crBlockedTile(p), crBlockedTile(p + ivec2(1,0)), f.x),
+               mix(crBlockedTile(p + ivec2(0,1)), crBlockedTile(p + ivec2(1,1)), f.x), f.y);
+}
+// Separate ground-rock asset (mat0), with two incommensurate world-space scales.
+// Low-contrast height colour preserves the authored palette rather than stamping the cliff scan.
+void crNavigable(vec3 macroN, vec3 dx, vec3 dy, float weight, inout vec3 N, inout vec3 color) {
+    if (weight <= 0.01) return;
+    vec2 uv = v_worldPos.xy / 768.0;
+    float lod = max(0.0, log2(max(max(length(dx.xy), length(dy.xy)), 1e-6)
+                      * float(textureSize(u_matNormalArray, 0).x) / 768.0));
+    const mat2 rot = mat2(0.8, 0.6, -0.6, 0.8);
+    vec4 a = textureLod(u_matNormalArray, vec3(uv, float(MAT_LAYER_ROCK)), lod);
+    vec4 b = textureLod(u_matNormalArray, vec3(rot * uv * 0.371 + vec2(0.31,0.73), float(MAT_LAYER_ROCK)), max(0.0, lod - 1.43));
+    float blend = wpn_value(v_worldPos.xy / 1100.0);
+    float h = mix(a.a, b.a, blend);
+    vec2 tilt = mix(a.rg * 2.0 - 1.0, transpose(rot) * (b.rg * 2.0 - 1.0), blend);
+    color *= mix(1.0, 0.91 + 0.18 * h, weight);
+    N = normalize(mix(N, normalize(macroN + vec3(tilt * 0.22, 0.0)), weight * 0.45));
+}
+void crApply(vec3 macroN, vec3 wpDx, vec3 wpDy, float blocked, inout vec3 N, inout vec3 baseColor) {
     float cb = cliffRockWeight(abs(macroN.z));
-    if (cb <= 0.01) return;
+    if (cb * blocked <= 0.01) return;
     vec3 wp = v_worldPos;
     vec3 w = abs(macroN); w *= w; w *= w; w /= (w.x + w.y + w.z + 1e-5);
     float texN = float(textureSize(u_concreteDetail, 0).x);
@@ -118,7 +151,7 @@ void crApply(vec3 macroN, vec3 wpDx, vec3 wpDy, inout vec3 N, inout vec3 baseCol
     }
     float wsum = w.x * step(0.05, w.x) + w.y * step(0.05, w.y) + w.z * step(0.05, w.z);
     ah /= max(wsum, 1e-4); h /= max(wsum, 1e-4); ao /= max(wsum, 1e-4); tilt /= max(wsum, 1e-4);
-    float m = clamp((cb - 0.5 + (h - 0.5) * 0.6) * 3.0 + 0.5, 0.0, 1.0);
+    float m = clamp((cb - 0.5 + (h - 0.5) * 0.6) * 3.0 + 0.5, 0.0, 1.0) * blocked;
     if (m <= 0.0) return;
     // Palette tone: four colormap taps ~160 wu around the face average out the vertical smear.
     vec3 tone = baseColor;
