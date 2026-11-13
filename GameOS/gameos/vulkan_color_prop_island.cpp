@@ -1928,6 +1928,7 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std
     plan.scissor={{0,0},{static_cast<uint32_t>(w),static_cast<uint32_t>(h)}};
     if (target) {
         plan.embedded = true;
+        plan.w = (w + target->divisor - 1) / target->divisor; plan.h = (h + target->divisor - 1) / target->divisor;
         if (target->scissor.extent.width) plan.scissor=target->scissor;
         plan.views[0] = target->color; plan.views[1] = plan.views[2] = VK_NULL_HANDLE;
         plan.depthView = target->depth; plan.depthFmt = VK_FORMAT_D32_SFLOAT;

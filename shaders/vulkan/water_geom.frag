@@ -444,8 +444,10 @@ void main(void)
         //PORT-END:waterReflSetup
         vec4 geometry=vec4(0);
         if (F.DEEP_COLOR.w > 0.5) {
-            vec2 reflectionUV=gl_FragCoord.xy/u_waterScreenSize + reactive.xy*0.015; // TREE-REFL-SOLID: no wave-normal offset (it tore the reflected canopy); only the local actor ripple bends it
+            vec2 reflectionUV=gl_FragCoord.xy/u_waterScreenSize + reactive.xy*0.015;
             if (all(greaterThan(reflectionUV,vec2(0))) && all(lessThan(reflectionUV,vec2(1)))) {
+                vec2 extent=ceil(u_waterScreenSize/F.DEEP_COLOR.w)/u_waterScreenSize;
+                reflectionUV=clamp(reflectionUV*extent,0.5/u_waterScreenSize,extent-0.5/u_waterScreenSize);
                 geometry=texture(u_waterReflection,reflectionUV);
             }
         }

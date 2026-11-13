@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 420;
+inline constexpr std::size_t kGateCount = 421;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -422,6 +422,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_WATER_HDRI_LOD", Kind::Float, Rule::Prefix, {}},
     {"MC2_WATER_REFLECTION", Kind::Bool, Rule::Lead0Kill, {}},
+    {"MC2_WATER_REFLECTION_HOLD", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_WATER_REFLECTION_RT", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_WATER_SHORE_FEATHER", Kind::Float, Rule::Prefix, {}},
     {"MC2_WATER_SHORE_FEATHER_WU", Kind::Float, Rule::Prefix, {}},

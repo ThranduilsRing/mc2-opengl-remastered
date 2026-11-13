@@ -463,6 +463,7 @@ static bool record_terrain(TerrainIsland* s, mc2vk::VulkanContext& rctx, uint32_
     std::copy_n(dynOffs, 4, plan.dynOffs);
     if (reflected) {
         plan.embedded = true;
+        plan.w = (w + reflected->divisor - 1) / reflected->divisor; plan.h = (h + reflected->divisor - 1) / reflected->divisor;
         if (reflected->scissor.extent.width) plan.scissor=reflected->scissor;
         plan.colorView = reflected->color; plan.normalView = VK_NULL_HANDLE; plan.depthView = reflected->depth;
         plan.depthFormat = VK_FORMAT_D32_SFLOAT;

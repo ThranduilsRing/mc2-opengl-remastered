@@ -212,6 +212,9 @@ struct WaterIsland : mc2vk::IslandState {
     mc2vk::OwnedPipelineLayout maskLayout;
     mc2vk::OwnedPipeline maskCompute, maskCoverage;
     VkRect2D reflectionScissor{};
+    float reflectionCamera[33]{};
+    int reflectionDivisor = 1;
+    bool reflectionValid = false;
     bool reflectionInitialized = false;
     bool planarDepthInitialized = false;
     bool mapHasWater = false;
