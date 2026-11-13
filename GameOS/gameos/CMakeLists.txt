@@ -318,7 +318,7 @@ include_directories("${CMAKE_SOURCE_DIR}/3rdparty/tinyexr")
 add_library(mc2_meshopt STATIC
     "${CMAKE_SOURCE_DIR}/3rdparty/meshoptimizer/src/allocator.cpp"
     "${CMAKE_SOURCE_DIR}/3rdparty/meshoptimizer/src/vcacheoptimizer.cpp"
-    "${CMAKE_SOURCE_DIR}/3rdparty/meshoptimizer/src/vcacheanalyzer.cpp"
+    "${CMAKE_SOURCE_DIR}/3rdparty/meshoptimizer/src/indexanalyzer.cpp"
     "${CMAKE_SOURCE_DIR}/3rdparty/meshoptimizer/src/overdrawoptimizer.cpp"
     "${CMAKE_SOURCE_DIR}/3rdparty/meshoptimizer/src/vfetchoptimizer.cpp")
 target_include_directories(mc2_meshopt PUBLIC "${CMAKE_SOURCE_DIR}/3rdparty/meshoptimizer/src")
