@@ -49,15 +49,17 @@ std::vector<mc2hzb::PropBounds> geometryBounds(const Geometry& geom,
     return result;
 }
 
-inline bool propIntersects(const View& view, const GpuStaticPropInstance& instance,
-                           std::span<const mc2hzb::PropBounds> bounds) {
+struct WorldPropBounds { std::array<float, 3> lo{}, hi{}; bool valid = false; };
+
+inline WorldPropBounds propWorldBounds(const GpuStaticPropInstance& instance,
+                                        std::span<const mc2hzb::PropBounds> bounds) {
     // Missing geometry bounds retain the instance. The reflected pass must
     // never use main-view HZB results to decide whether a palm is present.
-    if (instance.typeID >= bounds.size() || !bounds[instance.typeID].valid) return true;
+    if (instance.typeID >= bounds.size() || !bounds[instance.typeID].valid) return {};
     const auto& b = bounds[instance.typeID];
     std::array<float, 3> lo{}, hi{};
     for (int axis = 0; axis < 3; ++axis) {
-        if (!std::isfinite(b.lo[axis]) || !std::isfinite(b.hi[axis]) || b.lo[axis] > b.hi[axis]) return true;
+        if (!std::isfinite(b.lo[axis]) || !std::isfinite(b.hi[axis]) || b.lo[axis] > b.hi[axis]) return {};
         lo[axis] = (std::numeric_limits<float>::max)();
         hi[axis] = -(std::numeric_limits<float>::max)();
     }
@@ -74,35 +76,72 @@ inline bool propIntersects(const View& view, const GpuStaticPropInstance& instan
         const auto world = mc2ToRender(stuff);
         const float values[] = {world.x, world.y, world.z};
         for (int axis = 0; axis < 3; ++axis) {
-            if (!std::isfinite(values[axis])) return true;
+            if (!std::isfinite(values[axis])) return {};
             lo[axis] = (std::min)(lo[axis], values[axis]);
             hi[axis] = (std::max)(hi[axis], values[axis]);
         }
     }
-    return view.intersects(lo, hi);
+    return {lo, hi, true};
 }
 
-// Full-registry extraction, including non-shadow-casting alpha cards. The
-// range's generation-checked borrow rejects destroyed/replaced actors without
-// reading its main-camera visibility, light-row freshness or shadow flags.
-template <class Range>
-void collectReflectionInstances(std::span<const GpuStaticPropInstance> recipes, std::span<const Range> ranges,
-                                const View& view, std::span<const mc2hzb::PropBounds> bounds,
-                                std::vector<GpuStaticPropInstance>& out) {
-    out.clear();
-    std::vector<size_t> order;
-    for (const Range& range : ranges) {
-        const size_t begin = range.begin, count = range.count;
-        if (count == 0 || begin > recipes.size() || count > recipes.size() - begin || !range.multi()) continue;
-        for (size_t i = begin; i < begin + count; ++i)
-            if (propIntersects(view, recipes[i], bounds)) order.push_back(i);
-    }
-    // Existing prop packets require contiguous type runs. Stable ordering also
-    // keeps the registry order of alpha-tested leaves within each type.
-    std::stable_sort(order.begin(), order.end(), [&](size_t a, size_t b) { return recipes[a].typeID < recipes[b].typeID; });
-    out.reserve(order.size());
-    for (size_t i : order) out.push_back(recipes[i]);
+inline bool propIntersects(const View& view, const GpuStaticPropInstance& instance,
+                           std::span<const mc2hzb::PropBounds> bounds) {
+    const auto b = propWorldBounds(instance, bounds);
+    return !b.valid || view.intersects(b.lo, b.hi);
 }
+
+// Registry revisions cover recipe/transform writes; geometry bounds are compared
+// exactly, including in-place edits. Keep current payloads and independent
+// reflected visibility: neither main-view HZB nor shadow flags are reusable here.
+class ReflectionPropsCache {
+    struct Entry { size_t recipe, range; WorldPropBounds world; };
+    std::vector<Entry> order_;
+    std::vector<mc2hzb::PropBounds> geometry_;
+    const void *recipes_ = nullptr, *ranges_ = nullptr;
+    size_t recipeCount_ = 0, rangeCount_ = 0;
+    uint64_t generation_ = 0;
+    bool ready_ = false;
+public:
+    template <class Range>
+    bool collect(std::span<const GpuStaticPropInstance> recipes, std::span<const Range> ranges,
+                 uint64_t generation, const View& view, std::span<const mc2hzb::PropBounds> bounds,
+                 std::vector<GpuStaticPropInstance>& out) {
+        const bool sameGeometry = geometry_.size() == bounds.size() &&
+            std::equal(geometry_.begin(), geometry_.end(), bounds.begin(), [](const auto& a, const auto& b) {
+                return a.valid == b.valid && std::memcmp(a.lo, b.lo, sizeof(a.lo)) == 0 &&
+                    std::memcmp(a.hi, b.hi, sizeof(a.hi)) == 0;
+            });
+        const bool rebuild = !ready_ || generation_ != generation || recipes_ != recipes.data() ||
+            recipeCount_ != recipes.size() || ranges_ != ranges.data() || rangeCount_ != ranges.size() || !sameGeometry;
+        if (rebuild) {
+            order_.clear();
+            for (size_t r = 0; r < ranges.size(); ++r) {
+                const auto& range = ranges[r];
+                const size_t begin = range.begin, count = range.count;
+                if (count == 0 || begin > recipes.size() || count > recipes.size() - begin || !range.multi()) continue;
+                for (size_t i = begin; i < begin + count; ++i)
+                    order_.push_back({i, r, propWorldBounds(recipes[i], bounds)});
+            }
+            // Filtering a stable type order preserves the old sort-after-cull
+            // order, including alpha cards and duplicate type IDs across ranges.
+            std::stable_sort(order_.begin(), order_.end(), [&](const Entry& a, const Entry& b) {
+                return recipes[a.recipe].typeID < recipes[b.recipe].typeID;
+            });
+            geometry_.assign(bounds.begin(), bounds.end());
+            recipes_ = recipes.data(); recipeCount_ = recipes.size();
+            ranges_ = ranges.data(); rangeCount_ = ranges.size();
+            generation_ = generation; ready_ = true;
+        }
+        out.clear();
+        out.reserve(order_.size());
+        for (const auto& e : order_) {
+            // A TGL borrow can expire independently of the recipe revision.
+            if (ranges[e.range].multi() && (!e.world.valid || view.intersects(e.world.lo, e.world.hi)))
+                out.push_back(recipes[e.recipe]);
+        }
+        return rebuild;
+    }
+};
 
 void preparePropInstances(const View& reflected, std::span<const mc2hzb::PropBounds> bounds,
                           std::vector<GpuStaticPropInstance>& out);

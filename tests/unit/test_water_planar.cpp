@@ -280,8 +280,9 @@ TEST_CASE("water planar: full prop registry includes invisible alpha cards and r
     const std::array<RecipeRange, 7> ranges{{{0, 1, true, false, true}, {1, 2}, {3, 1, false},
         {4, 0}, {4, UINT32_MAX}, {UINT32_MAX, 2}, {6, 1}}};
     std::vector<GpuStaticPropInstance> out;
-    wp::collectReflectionInstances(std::span<const GpuStaticPropInstance>(recipes),
-        std::span<const RecipeRange>(ranges), view, {}, out);
+    wp::ReflectionPropsCache cache;
+    cache.collect(std::span<const GpuStaticPropInstance>(recipes),
+        std::span<const RecipeRange>(ranges), 1, view, {}, out);
     REQUIRE(out.size() == 3);
     CHECK(out[0].typeID == 1);
     CHECK(out[1].typeID == 3);
@@ -290,9 +291,84 @@ TEST_CASE("water planar: full prop registry includes invisible alpha cards and r
     CHECK(out[1].flags == 17);
     CHECK(out[2].actorTint == 456); // stable within a type, source order preserved
     CHECK(recipes[0].typeID == 3); // main/source recipes were not sorted in place
-    wp::collectReflectionInstances(std::span<const GpuStaticPropInstance>(recipes),
-        std::span<const RecipeRange>{}, view, {}, out);
+    cache.collect(std::span<const GpuStaticPropInstance>(recipes),
+        std::span<const RecipeRange>{}, 1, view, {}, out);
     CHECK(out.empty()); // mission unload clears the previous reflected set
+}
+
+// Trigger paths: water_planar_props.h and gos_static_prop_registry.cpp.
+TEST_CASE("water planar: reflection cache keys invalidate bounds order and membership") {
+    glm::mat4 main{1};
+    main[2][2] = 0.1f; main[3][2] = -1;
+    wp::View view(glm::value_ptr(main), 20);
+    std::array<GpuStaticPropInstance, 3> recipes{propAt(1, 0, 0, 24),
+        propAt(0, 0, 0, 24), propAt(1, 3, 0, 24)};
+    std::array<RecipeRange, 1> ranges{{{0, 3}}};
+    std::array<mc2hzb::PropBounds, 2> bounds{{
+        {{-.1f, -.1f, -.1f}, {.1f, .1f, .1f}, true},
+        {{-.1f, -.1f, -.1f}, {.1f, .1f, .1f}, true}}};
+    wp::ReflectionPropsCache cache;
+    std::vector<GpuStaticPropInstance> out;
+    uint64_t generation = 1;
+    auto collect = [&] { return cache.collect(std::span<const GpuStaticPropInstance>(recipes),
+        std::span<const RecipeRange>(ranges), generation, view, bounds, out); };
+    REQUIRE(collect());
+    REQUIRE(out.size() == 2);
+    CHECK(out[0].typeID == 0);
+    CHECK(out[1].typeID == 1);
+    const auto* storage = out.data();
+    const auto capacity = out.capacity();
+    CHECK_FALSE(collect());
+    CHECK(out.data() == storage);
+    CHECK(out.capacity() == capacity);
+    // View changes recull cached bounds; they do not rebuild registry order.
+    main[3][0] = -3;
+    view = wp::View(glm::value_ptr(main), 20);
+    CHECK_FALSE(collect());
+    REQUIRE(out.size() == 1);
+    CHECK(out[0].modelMatrix[3] == recipes[2].modelMatrix[3]);
+    main[3][0] = 0;
+    view = wp::View(glm::value_ptr(main), 20);
+    // A transform edit on the same allocation needs the registry revision.
+    recipes[2] = propAt(1, 0, 0, 24);
+    ++generation;
+    CHECK(collect());
+    REQUIRE(out.size() == 3);
+    // Payload stays live even when no bounds/order key changes.
+    recipes[2].actorTint = 123;
+    recipes[2].lightDataIndex = 456;
+    CHECK_FALSE(collect());
+    CHECK(out[2].actorTint == 123);
+    CHECK(out[2].lightDataIndex == 456);
+    // Type ordering and geometry edits invalidate on the same allocations.
+    recipes[0].typeID = 0;
+    ++generation;
+    CHECK(collect());
+    CHECK(out[0].typeID == 0);
+    bounds[0].lo[0] = 5;
+    bounds[0].hi[0] = 6;
+    CHECK(collect());
+    REQUIRE(out.size() == 1);
+    bounds[0].valid = false; // unknown geometry remains conservative
+    CHECK(collect());
+    CHECK(out.size() == 3);
+    ranges[0].live = false; // expired TGL borrow without a recipe revision
+    CHECK_FALSE(collect());
+    CHECK(out.empty());
+    ranges[0].count = 0;
+    ++generation;
+    CHECK(collect());
+    CHECK(out.empty());
+    ranges[0] = {0, 3}; // recycled recipe range
+    ++generation;
+    CHECK(collect());
+    CHECK(out.size() == 3);
+    const auto relocated = recipes;
+    CHECK(cache.collect(std::span<const GpuStaticPropInstance>(relocated),
+        std::span<const RecipeRange>(ranges), generation, view, bounds, out));
+    CHECK(cache.collect(std::span<const GpuStaticPropInstance>{},
+        std::span<const RecipeRange>{}, generation, view, bounds, out));
+    CHECK(out.empty());
 }
 
 TEST_CASE("water planar: six native clip faces retain crossings and reject exterior boxes") {
