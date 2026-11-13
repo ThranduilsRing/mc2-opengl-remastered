@@ -1,6 +1,8 @@
 # MC2 map layout generator: pixel-art phases 1b/1c and playable phase 2
 
-**Phase 2:** [playable PAK/FIT writer, runtime results and viewed comparisons](phase2/README.md).
+**Historical results:** generated artifacts and the offline test suite were removed in `7bd96f0a9`.
+The commands and measurements below describe that earlier tree; recover files with `git show 7bd96f0a9^:<repo-path>`.
+**Phase 2:** recover the playable PAK/FIT writer results and viewed comparisons with `git show 7bd96f0a9^:docs/mapgen/phase2/README.md`.
 The 180- and 720-cell flat demos load through the ordinary stock PacketFile path.
 Road texture baking and destruction-aware native collision templates remain pending.
 
@@ -32,7 +34,7 @@ this is a survey of these installations, not a claim of pristine original media.
 
 The owner means **top-down pixel art**, like a more detailed tacmap. Raster PNGs
 are the primary output; the phase-1 ASCII tools and examples remain available.
-See [raster examples](raster/README.md) and [model footprint methods/coverage](footprints.md).
+Recover the historical raster examples with `git show 7bd96f0a9^:docs/mapgen/raster/README.md`; see [model footprint methods/coverage](footprints.md).
 All 320 stock/mod corpus missions have full-map PNGs. Every full map and crop
 defaults to **42.080 wu/px**, measured from stock `Quonset` type 335's 84.160-wu
 long side / 2: the hut is two pixels by one. Every original `.png` has a
@@ -158,16 +160,17 @@ process/hash-seed determinism, population summaries, and deliberate gate/road/
 parent/water/slope corruptions. These checks need no installs or engine build;
 they use synthetic inputs and the committed measured profile.
 
-Generated examples (JSON + ASCII) live in `docs/mapgen/examples/generated/`.
+Generated ASCII examples were removed in `7bd96f0a9`; recover one with
+`git show 7bd96f0a9^:docs/mapgen/examples/generated/generated_180_7.txt` (substitute the filename below).
 The 1024-cell ASCII example uses eight cells per character; its large JSON is
 regenerable with the command below.
 
 | Example | Sites | Artifacts |
 |---|---:|---|
-| 180 cells, seed 7 | 3 | [ASCII](examples/generated/generated_180_7.txt), `generated_180_7.json` (untracked) |
-| 300 cells, seed 42 | 5 | [ASCII](examples/generated/generated_300_42.txt), `generated_300_42.json` (untracked) |
-| 360 cells, seed 17 | 7 | [ASCII](examples/generated/generated_360_17.txt), `generated_360_17.json` (untracked) |
-| 1024 cells, seed 42 | 57 | [ASCII](examples/generated/generated_1024_42.txt) |
+| 180 cells, seed 7 | 3 | `generated_180_7.txt` (git history), `generated_180_7.json` (untracked) |
+| 300 cells, seed 42 | 5 | `generated_300_42.txt` (git history), `generated_300_42.json` (untracked) |
+| 360 cells, seed 17 | 7 | `generated_360_17.txt` (git history), `generated_360_17.json` (untracked) |
+| 1024 cells, seed 42 | 57 | `generated_1024_42.txt` (git history) |
 
 All four pass the plausibility checker. Reproduce the large layout locally:
 
@@ -211,7 +214,7 @@ spacing and swept road width checks. It distinguishes permitted wall joins from
 solid footprint overlaps. Conservative model rectangles include overhangs;
 neither these nor visual road widths prove engine MOVE passability.
 
-New examples are in [raster/generated](raster/generated/README.md): 180/7, 360/17,
+Historical raster examples: recover the index via `git show 7bd96f0a9^:docs/mapgen/raster/generated/README.md`: 180/7, 360/17,
 720/23, 1024/42 and **3072/42 (1024 vertices)**, each with JSON, a full map and a
 base crop at Quonset scale, plus exact 4x viewing versions. The old cell examples
 above are historical phase-1 artifacts. Playable mission logic remains unassigned;

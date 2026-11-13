@@ -32,7 +32,6 @@ sim_include_firewall: @CPP scripts/check_sim_include_firewall.py scripts/sim_inc
 # Art inputs reuse the existing ART_PREFIXES list in run_tools_tests.py.
 kit_art: tools/scifi_kit tools/blender_pipeline tools/kit tools/mc2data tools/content_pipeline tools/ase_to_glb.py tools/asset_cook tools/material_cook tools/mc2texcook tools/mc2x_import release_assets_src examples/mods mods gameassets data scripts/run_tools_tests.py scripts/console_child.py scripts/test_audit_site glob:scripts/kit* glob:requirements* pyproject.toml pytest.ini conftest.py glob:*.blend glob:*.glb glob:*.ktx2 glob:*.png glob:*.tga glob:*.fit glob:*.pak glob:*.fst
 gate_inputs: .
-mapgen_fof: tools tests/mapgen data
 
 # background_launch: rglob("*.py") under scripts/tools/.claude/tests (ignored files included) plus every launcher
 background_launch: glob:scripts/**.py glob:tools/**.py glob:.claude/**.py glob:tests/**.py glob:**.bat glob:**.cmd glob:**.ps1 +ignored
