@@ -142,7 +142,7 @@ struct VkNativeInputs {
 bool GetVkNativeInputs(VkNativeInputs& out);
 // Current-camera, conservative water visibility. Static chunk bounds only;
 // no GPU readback, previous-frame visibility, or reflection history.
-bool NativeWaterInFrustum(const VkNativeInputs& frame, bool shoreFieldActive);
+bool NativeWaterInFrustum(const VkNativeInputs& frame, bool shoreFieldActive, float* ndcBounds = nullptr);
 // Load-time: the field-coverage tables NativeWaterInFrustum builds on its first call (about 100 ms on a shore-field map), built behind the loading
 // screen instead. Same inputs as the frame path, so the first frame finds them current. No-op when the shore field is not usable.
 void PrewarmShoreFieldCoverage();

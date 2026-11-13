@@ -6,6 +6,17 @@
 #include "../../shaders/include/water_planar.hglsl"
 
 namespace mc2::waterplanar {
+// Pixel bounds include every possible ripple lookup and bilinear neighbour.
+inline std::array<int,4> paddedPixels(const float* ndc, int w, int h) {
+    std::array<int,4> pixels{};
+    for (int axis=0; axis<2; ++axis) {
+        const int size=axis==0 ? w : h;
+        const int pad=static_cast<int>(std::ceil(size*0.009f))+1;
+        pixels[axis]=std::clamp(static_cast<int>(std::floor((std::clamp(ndc[axis],-1.0f,1.0f)*0.5f+0.5f)*size))-pad,0,size);
+        pixels[axis+2]=std::clamp(static_cast<int>(std::ceil((std::clamp(ndc[axis+2],-1.0f,1.0f)*0.5f+0.5f)*size))+pad,0,size);
+    }
+    return pixels;
+}
 
 // Column-major, column-vector matrix, identical to the terrain/prop vertex
 // shader uploads. Right multiplication reflects WORLD Z, before projection.

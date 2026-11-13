@@ -203,6 +203,15 @@ struct WaterIsland : mc2vk::IslandState {
     mc2vk::OwnedImage planarDepthImage;
     mc2vk::OwnedImageView planarDepthView;
     mc2vk::OwnedImageView reflectionView;
+    mc2vk::OwnedImage coverageImage;
+    mc2vk::OwnedImageView coverageView;
+    mc2vk::OwnedBuffer maskHorizontal, maskDepth;
+    mc2vk::OwnedDescriptorSetLayout maskDsl;
+    mc2vk::OwnedDescriptorPool maskPool;
+    VkDescriptorSet maskSet = VK_NULL_HANDLE;
+    mc2vk::OwnedPipelineLayout maskLayout;
+    mc2vk::OwnedPipeline maskCompute, maskCoverage;
+    VkRect2D reflectionScissor{};
     bool reflectionInitialized = false;
     bool planarDepthInitialized = false;
     bool mapHasWater = false;
@@ -247,7 +256,7 @@ namespace vk_water_detail {
 extern WaterIslandHealth g_health;
 extern int g_waterInitReachedBuild;   // 1 once init_island passed its readiness gates (vk_island_fail_policy.h)
 bool init_reflection(WaterIsland* s);
-bool record_reflection(WaterIsland* s, VkCommandBuffer cb, bool enabled);
+bool record_reflection(WaterIsland* s, VkCommandBuffer cb, bool enabled, uint32_t par, const uint32_t (&offsets)[2]);
 extern InteropForbidden g_forbidden;
 extern unsigned long g_depthInGetTexImage;
 extern unsigned long g_depthInCopyBufferToImage;

@@ -13,6 +13,7 @@
 // -- value inlined (render_contract.hglsl) so the VK shader needs no GL include.
 #version 450
 #extension GL_GOOGLE_include_directive : require
+layout(constant_id = 11) const int kReflectionCoverage = 0;
 #define PREC highp
 #define TERRAIN_RESOURCE_SET 1
 #define TERRAIN_OBJECT_RECEIVER 1
@@ -362,6 +363,7 @@ void main(void)
                                  WorldPos.xy, F.f7.x);
     }
     if (shore <= 0.0) discard;
+    if (kReflectionCoverage != 0) { FragColor = vec4(1.0); GBuffer1 = vec4(0.0); return; }
     // Option A: material-local response. Shore coverage/bands and reflection tracing stay independent.
     float reactivePixelWidth = max(length(shoreDx), length(shoreDy));
     vec3 reactive = reactiveWater(WorldPos.xy, reactivePixelWidth) * waveLOD;

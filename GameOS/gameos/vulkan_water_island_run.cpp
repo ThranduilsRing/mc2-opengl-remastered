@@ -20,11 +20,12 @@ void gos_GetTerrainChunkGridInfo(int* mapSide, float* halfMap);
 #include "../../RenderCore/water_reactive.h"
 #include "../../mclib/timing.h"
 #include "vk_water_planar.h"
+#include "water_planar_view.h"
 
 
 int gos_GetWaterReflectionQuality();
 
-bool vk_water_detail::record_reflection(WaterIsland* s, VkCommandBuffer cb, bool enabled) {
+bool vk_water_detail::record_reflection(WaterIsland* s, VkCommandBuffer cb, bool enabled, uint32_t par, const uint32_t (&offsets)[2]) {
     auto barrier=[&](VkImage image,VkImageAspectFlags aspect,VkImageLayout from,VkImageLayout to,
                      VkPipelineStageFlags src,VkAccessFlags read,VkPipelineStageFlags dst,VkAccessFlags write) {
         // Legacy stage/access bits equal the low 32 bits of the sync2 masks.
@@ -39,16 +40,57 @@ bool vk_water_detail::record_reflection(WaterIsland* s, VkCommandBuffer cb, bool
     }
     if (!enabled) return true;
     MC2_VK_GPU_SCOPE(reflectionScope,cb,"VKIsl.Water.Reflection");
-    barrier(s->reflectionImage.get(),VK_IMAGE_ASPECT_COLOR_BIT,VK_IMAGE_LAYOUT_GENERAL,VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,VK_ACCESS_SHADER_READ_BIT,
+    // Discard the previous mask after dilation has finished reading it.
+    barrier(s->coverageImage.get(),VK_IMAGE_ASPECT_COLOR_BIT,VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_SHADER_READ_BIT,
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+    // Coverage uses the same displaced water vertices, shoreline discard and main-view depth test.
+    auto& ctx=mc2vk::engineVulkanContextNoWait();
+    namespace dr=mc2vk::dynrender;
+    dr::Pass coverage;
+    coverage.area={{0,0},{static_cast<uint32_t>(s->w),static_cast<uint32_t>(s->h)}};
+    coverage.colorCount=2;
+    const VkClearValue zero{};
+    coverage.color[0]=dr::attachment(s->coverageView.get(),VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,VK_ATTACHMENT_LOAD_OP_CLEAR,VK_ATTACHMENT_STORE_OP_STORE,&zero);
+    coverage.color[1]=dr::attachment(VK_NULL_HANDLE,VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,VK_ATTACHMENT_LOAD_OP_DONT_CARE,VK_ATTACHMENT_STORE_OP_DONT_CARE);
+    coverage.setDepth(dr::attachment(s->sDepthRes->view.get(),VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,VK_ATTACHMENT_LOAD_OP_LOAD,VK_ATTACHMENT_STORE_OP_STORE),s->sceneDepthFmt);
+    dr::memoryBarrier(ctx,cb,VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+        VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT);
+    dr::begin(ctx,cb,coverage);
+    mc2vk::infra::setSceneViewport(cb,static_cast<uint32_t>(s->w),static_cast<uint32_t>(s->h));
+    mc2vk::infra::bind(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,s->maskCoverage.get());
+    vkCmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,s->playout.get(),0,1,&s->set[par],2,offsets);
+    vkCmdDrawIndirect(cb,s->native->drawArgs(par),0,1,16);
+    dr::end(ctx,cb);
+    barrier(s->coverageImage.get(),VK_IMAGE_ASPECT_COLOR_BIT,VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,VK_IMAGE_LAYOUT_GENERAL,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_SHADER_READ_BIT);
+    dr::memoryBarrier(ctx,cb,VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT|VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+        VK_ACCESS_2_SHADER_READ_BIT|VK_ACCESS_2_TRANSFER_READ_BIT,VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,VK_ACCESS_2_SHADER_WRITE_BIT);
+    mc2vk::infra::bind(cb,VK_PIPELINE_BIND_POINT_COMPUTE,s->maskCompute.get());
+    vkCmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_COMPUTE,s->maskLayout.get(),0,1,&s->maskSet,0,nullptr);
+    for (int32_t vertical=0; vertical<2; ++vertical) {
+        vkCmdPushConstants(cb,s->maskLayout.get(),VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof(vertical),&vertical);
+        vkCmdDispatch(cb,(s->w+15)/16,(s->h+15)/16,1);
+        dr::memoryBarrier(ctx,cb,VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,VK_ACCESS_2_SHADER_WRITE_BIT,
+            vertical ? VK_PIPELINE_STAGE_2_TRANSFER_BIT : VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+            vertical ? VK_ACCESS_2_TRANSFER_READ_BIT : VK_ACCESS_2_SHADER_READ_BIT);
+    }
     barrier(s->planarDepthImage.get(),VK_IMAGE_ASPECT_DEPTH_BIT,
         s->planarDepthInitialized ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED,
-        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
         s->planarDepthInitialized ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT : 0,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,VK_ACCESS_TRANSFER_WRITE_BIT);
+    VkBufferImageCopy copy{};
+    copy.imageSubresource={VK_IMAGE_ASPECT_DEPTH_BIT,0,0,1};
+    copy.imageExtent={static_cast<uint32_t>(s->w),static_cast<uint32_t>(s->h),1};
+    vkCmdCopyBufferToImage(cb,s->maskDepth.get(),s->planarDepthImage.get(),VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,1,&copy);
+    barrier(s->planarDepthImage.get(),VK_IMAGE_ASPECT_DEPTH_BIT,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,VK_ACCESS_TRANSFER_WRITE_BIT,
         VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
         VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
+    barrier(s->reflectionImage.get(),VK_IMAGE_ASPECT_COLOR_BIT,VK_IMAGE_LAYOUT_GENERAL,VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,VK_ACCESS_SHADER_READ_BIT,VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
     s->planarDepthInitialized = true;
     if (!s->planarTerrainRecord || !s->planarTerrainRecord(cb)) return false;
     if (s->planarPropsRecord && !s->planarPropsRecord(cb)) return false;
@@ -281,8 +323,11 @@ extern "C" int mc2_vk_water_island_run(
         // is really imported (mirrors GL u_shoreFlat = mode==3 && shTex != 0).
         const bool shoreSdf = static_cast<int>(fsLocal.f4[0] + 0.5f) == 3 &&
                               s->shHReal && s->shHSdf;
+        float bounds[4]{};
         reflectThisFrame=s->mapHasWater && gos_GetWaterReflectionQuality()==2
-            && WaterStream::NativeWaterInFrustum(*nat,shoreSdf);
+            && WaterStream::NativeWaterInFrustum(*nat,shoreSdf,bounds);
+        const auto pixels=mc2::waterplanar::paddedPixels(bounds,w,h);
+        s->reflectionScissor={{pixels[0],pixels[1]},{static_cast<uint32_t>(pixels[2]-pixels[0]),static_cast<uint32_t>(pixels[3]-pixels[1])}};
         vsLocal.p3[1] = shoreSdf ? 1.0f : 0.0f;
         std::memcpy(base, &vsLocal, sizeof(WaterVsParams));
         // RUNG-6.5 fail-soft: if the real HDRI bytes aren't imported (dummy
@@ -355,6 +400,7 @@ extern "C" int mc2_vk_water_island_run(
         mc2::waterplanar::Target target;
         target.w = w; target.h = h; target.water = nat->waterElevation; target.mainWorldToClip = nat->mvp;
         target.color = s->reflectionView.get(); target.depth = s->planarDepthView.get();
+        target.scissor = s->reflectionScissor;
         if (![&] {
                 ZoneScopedN("Water.PlanarTerrainPrepare");
                 return mc2::waterplanar::prepareTerrain(s->planarTerrain, target, s->planarTerrainRecord);
@@ -417,7 +463,9 @@ extern "C" int mc2_vk_water_island_run(
         }
 
         const uint32_t uboOffsets[2] = {static_cast<uint32_t>(uboSpan.offset), static_cast<uint32_t>(uboSpan.offset + fsUboOff)};
-        if (!record_reflection(s,cb,reflectThisFrame)) {
+        const auto maskGroundSet=s->groundLighting.set(par);
+        vkCmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,s->playout.get(),1,1,&maskGroundSet,4,ground->offsets.data());
+        if (!record_reflection(s,cb,reflectThisFrame,par,uboOffsets)) {
             vkEndCommandBuffer(cb); setFallback("planar_record_failed"); s->disabled = true; return 0;
         }
         // All attachments LOAD: no clear values.

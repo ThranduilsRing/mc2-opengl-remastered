@@ -10,6 +10,7 @@ struct Target {
     float water = 0;
     const float* mainWorldToClip = nullptr;
     VkImageView color = VK_NULL_HANDLE, depth = VK_NULL_HANDLE;
+    VkRect2D scissor{};
     Mc2GroundLightingFrame ground{};
 };
 bool prepareTerrain(std::unique_ptr<mc2vk::IslandState>& state, Target& target, mc2vk::VulkanContext::RecordFn& record);

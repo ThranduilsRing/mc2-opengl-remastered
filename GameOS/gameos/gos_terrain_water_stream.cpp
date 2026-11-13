@@ -459,7 +459,9 @@ void PrewarmShoreFieldCoverage() {
     UpdateFieldWaterCoverage(Terrain::waterElevation);
 }
 
-bool NativeWaterInFrustum(const VkNativeInputs& f, bool shoreFieldActive) {
+bool NativeWaterInFrustum(const VkNativeInputs& f, bool shoreFieldActive, float* ndcBounds) {
+    bool found=false;
+    if (ndcBounds) { ndcBounds[0]=ndcBounds[1]=1; ndcBounds[2]=ndcBounds[3]=-1; }
     if (!f.mapSide) return false;
     const float threshold=f.waterElevation+f.shoreExt;
     if (g_waterChunkMapSide!=f.mapSide || threshold>g_waterChunkThreshold)
@@ -496,6 +498,16 @@ bool NativeWaterInFrustum(const VkNativeInputs& f, bool shoreFieldActive) {
             outside &= mask((i&1)?chunk.maxX:chunk.minX,(i&2)?chunk.maxY:chunk.minY,
                 f.waterElevation+((i&4)?amplitude:-amplitude));
         if (outside) continue;
+        if (ndcBounds) for (uint32_t i=0;i<8;++i) {
+            const float x=(i&1)?chunk.maxX:chunk.minX, y=(i&2)?chunk.maxY:chunk.minY;
+            const float z=f.waterElevation+((i&4)?1:-1)*(amplitude+std::abs(f.shoreExt)+1.0f);
+            const float* m=f.mvp;
+            const float cw=m[3]*x+m[7]*y+m[11]*z+m[15];
+            if (cw<=0.001f) { ndcBounds[0]=ndcBounds[1]=-1; ndcBounds[2]=ndcBounds[3]=1; continue; }
+            const float cx=(m[0]*x+m[4]*y+m[8]*z+m[12])/cw, cy=(m[1]*x+m[5]*y+m[9]*z+m[13])/cw;
+            ndcBounds[0]=std::min(ndcBounds[0],cx); ndcBounds[1]=std::min(ndcBounds[1],cy);
+            ndcBounds[2]=std::max(ndcBounds[2],cx); ndcBounds[3]=std::max(ndcBounds[3],cy);
+        }
         for (uint32_t id:chunk.recipes) {
             const auto& r=g_recipes[id];
             if (field && !g_fieldWetRecipes[id]) continue;
@@ -509,7 +521,8 @@ bool NativeWaterInFrustum(const VkNativeInputs& f, bool shoreFieldActive) {
                 if (dryOutside) continue;
                 if (trace) std::fprintf(stderr,"[WATER_VIS v1] wet_recipe=%u bounds=%.1f/%.1f/%.1f/%.1f\n",id,
                     static_cast<double>(box[0]),static_cast<double>(box[1]),static_cast<double>(box[2]),static_cast<double>(box[3]));
-                return true;
+                if (!ndcBounds) return true;
+                found=true; break;
             }
             const float x[4]={r.v0x,r.v1x,r.v2x,r.v3x}, y[4]={r.v0y,r.v1y,r.v2y,r.v3y};
             uint32_t clips[4];
@@ -520,11 +533,12 @@ bool NativeWaterInFrustum(const VkNativeInputs& f, bool shoreFieldActive) {
                            : (!(clips[0]&clips[1]&clips[2]) || !(clips[0]&clips[2]&clips[3]))) {
                 if (trace) std::fprintf(stderr,"[WATER_VIS v1] visible_recipe=%u xy=%.1f/%.1f min_elev=%.3f bits=0x%x masks=%u/%u/%u/%u\n",
                     id,static_cast<double>(r.v0x),static_cast<double>(r.v0y),static_cast<double>(std::min({r.v0e,r.v1e,r.v2e,r.v3e})),r.waterBits,clips[0],clips[1],clips[2],clips[3]);
-                return true;
+                if (!ndcBounds) return true;
+                found=true; break;
             }
         }
     }
-    return false;
+    return found;
 }
 
 // STEP 3.4P: the native Vulkan cull/pack produces the thin records on the GPU (the GL compute dispatch, the CPU thin pack, the GL thin ring,
