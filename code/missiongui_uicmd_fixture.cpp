@@ -3,6 +3,7 @@
 #include <atomic>
 #include "missiongui_internal.h"
 #include "terrobj.h"
+#include "bldng.h"
 #include "../mclib/texture_assets.h"
 #include "Gates/gate.h"
 #include "mc2fmt.h"
@@ -139,6 +140,15 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 		} else if (!strcmp(what, "armoff")) {
 			if (!strcmp(arg, "left")) obj->getAppearance()->blowLeftArm(); else obj->getAppearance()->blowRightArm();
 			c.result = "ok";
+		} else if (obj->getObjectClass() == BUILDING && (!strcmp(what, "team") || !strcmp(what, "destroy"))) {
+			// Exercise the production capture/destruction writers, including their dirty notification.
+			const bool before = mc2::terrainDirtyQueue().isRenderResident(obj->getHandle());
+			if (!strcmp(what, "team")) obj->setTeamId(atol(arg), false);
+			else static_cast<Building*>(obj)->setDamage(static_cast<Building*>(obj)->getDamageLevel());
+			c.result = "ok";
+			c.note = "renderResident=" + std::to_string(before) + "->" +
+				std::to_string(mc2::terrainDirtyQueue().isRenderResident(obj->getHandle())) +
+				" team=" + std::to_string(obj->getTeamId()) + " destroyed=" + std::to_string(obj->isDestroyed());
 		} else {
 			c.result = "blocked"; c.note = "force_state <partId> sensor <n> | armoff left|right";
 		}

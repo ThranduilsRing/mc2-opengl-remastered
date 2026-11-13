@@ -489,15 +489,20 @@ extern uint32_t mc2LightSlotBakedHighWater();
 std::optional<int32_t> BldgAppearance::residentRenderRecipe() const
 {
 	if (submittedFrame_ != g_mc2FrameCounter.load(std::memory_order_relaxed)) return std::nullopt;
-	if (!bldgShape || !staticReg.registered || staticReg.recipeIndex < 0 || needsFullBakeNextFrame) return std::nullopt;
-	if (!IsStaticNow() || !isStaticEligible()) return std::nullopt;
+	if (residentRenderBlocker() != ResidentBlocker::None) return std::nullopt;
+	return staticReg.recipeIndex;
+}
+
+BldgAppearance::ResidentBlocker BldgAppearance::residentRenderBlocker() const
+{
+	if (!bldgShape || !staticReg.registered || staticReg.recipeIndex < 0 || !IsStaticNow()) return ResidentBlocker::Geometry;
 	if (!staticReg.hasValidStaticLight || staticReg.lightDataIndex == 0xFFFFFFFFu ||
 		staticReg.lightDataIndex >= mc2LightSlotBakedHighWater() ||
-		staticReg.lastLightEnvGen != mc2StaticLightEnvironmentGeneration(eye)) return std::nullopt;
-	if (drawFlash || (selected & DRAW_COLORED) || captureForcedBuildingHighlight() || destructFX || activity || activity1) return std::nullopt;
-	if (appearType && mc2WorldMarkerAppearance(appearType->name)) return std::nullopt;
-	if (mc2shadow::staticCasterSet().isMoverOwner(static_cast<const Appearance*>(this))) return std::nullopt;
-	return staticReg.recipeIndex;
+		staticReg.lastLightEnvGen != mc2StaticLightEnvironmentGeneration(eye)) return ResidentBlocker::Light;
+	if (drawFlash || (selected & (DRAW_COLORED | DRAW_BARS | DRAW_TEXT)) || captureForcedBuildingHighlight() || destructFX || activity || activity1 || hasFrameLights()) return ResidentBlocker::Overlay;
+	if (appearType && mc2WorldMarkerAppearance(appearType->name)) return ResidentBlocker::Overlay;
+	if (mc2shadow::staticCasterSet().isMoverOwner(static_cast<const Appearance*>(this))) return ResidentBlocker::Shadow;
+	return ResidentBlocker::None;
 }
 
 // perf-building-resident: the same conditions render() tests outside the view (marker NoShadow, moving-shadow capture).

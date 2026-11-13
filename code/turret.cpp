@@ -2045,6 +2045,8 @@ void Turret::renderView (const mc2::render_view::RenderView& view)
 	appearance->setObjectNameId(view.nameId);
 	appearance->setVisibility(true,true);
 	appearance->render();
+	if (!view.has(mc2::render_view::Bars))
+		if (const auto recipe = appearance->residentRenderRecipe()) ObjectManager->noteRenderResident(this, *recipe);
 }
 
 //---------------------------------------------------------------------------

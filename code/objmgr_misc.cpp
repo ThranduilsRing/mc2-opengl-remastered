@@ -610,7 +610,12 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 				} else {
 					// A camera move only revisits objects whose presentation follows the view; a resident
 					// static keeps its last admitted inView (a superset; the GPU cull does the fine cull).
-					dirty.markBlockNonResident(info.firstHandle, info.numObjects, bind);
+					dirty.markBlockNonResident(info.firstHandle, info.numObjects, bind, [this](long h) {
+						auto* a = objList[h] ? objList[h]->getAppearance() : nullptr;
+						if (!a || a->getAppearanceClass() != BUILDING_APPR_TYPE) return false;
+						const auto* b = static_cast<BldgAppearance*>(a);
+						return b->currentLOD != b->desiredRenderLOD();
+					});
 				}
 			}
 			terrainPresentationWorldToClip = worldToClip;
@@ -677,10 +682,14 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 						// above cannot service it until recalcBounds admits the object.
 						const bool terrainKind = kind == TERRAINOBJECT || kind == TREE || kind == BRIDGE || kind == BUILDING;
 						if ((inView && !appearance->IsStaticNow()) || walkObj->getFlag(OBJECT_FLAG_FALLING) ||
-							(appearance->getAppearanceClass() == BLDG_TYPE && static_cast<BldgAppearance*>(appearance)->hasFrameLights()) ||
+							(appearance->getAppearanceClass() == BUILDING_APPR_TYPE && static_cast<BldgAppearance*>(appearance)->hasFrameLights()) ||
+							// A retained presentation must not freeze a frame-local light row before its permanent bake exists.
+							(appearance->getAppearanceClass() == BUILDING_APPR_TYPE &&
+								static_cast<BldgAppearance*>(appearance)->residentRenderBlocker() == BldgAppearance::ResidentBlocker::Light) ||
 							(terrainKind && static_cast<TerrainObject*>(walkObj)->hasPresentationEffects()))
 							dirty.mark(objIndex);
-						else if (inView && terrainKind && !appearance->lodFollowsCamera())
+						else if (inView && (terrainKind || kind == TURRET || kind == GATE) &&
+							(!appearance->lodFollowsCamera() || appearance->getAppearanceClass() == BUILDING_APPR_TYPE))
 							dirty.setResident(objIndex);   // settled: camera moves no longer revisit it
 					}
 		}

@@ -45,10 +45,16 @@ public:
     // Camera change: only objects whose presentation still follows the view are revisited.
     template <class Bind>
     void markBlockNonResident(long firstHandle, long count, Bind&& bind) {
+        markBlockNonResident(firstHandle, count, bind, [](long) { return false; });
+    }
+    // Camera-dependent LOD can retain its recipe until a camera move crosses a LOD boundary.
+    template <class Bind, class Wake>
+    void markBlockNonResident(long firstHandle, long count, Bind&& bind, Wake&& wake) {
         const std::lock_guard lock(mutex_);
         for (long handle = std::max(firstHandle, 0L); handle < firstHandle + count; ++handle) {
             if (static_cast<std::size_t>(handle) >= marked_.size()) break;
-            if (resident_[handle] || marked_[handle]) continue;
+            if (marked_[handle] || (resident_[handle] && !wake(handle))) continue;
+            resident_[handle] = renderResident_[handle] = 0;
             bind(handle);
             marked_[handle] = 1;
             pending_.push_back(handle);
