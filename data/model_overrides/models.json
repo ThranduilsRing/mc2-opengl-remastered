@@ -1,10 +1,10 @@
 { "overrides": [
   { "type":"model","class":"tree","replaces":"tree:tc1_1","source":"broadleaf-maple2/pristine_intact_lod0.glb","renderOnly":true,"scale":1.0,"fallback":"stock" },
   { "type":"model","class":"tree","replaces":"tree:oak1","source":"source/trees/oak1_imp.glb","renderOnly":true,"scale":1.0,"fallback":"stock" },
-  { "type":"model","class":"tree","replaces":"tree:tc1_2","source":"source/trees/tree_lush.glb","renderOnly":true,"scale":1.0,"fallback":"stock","lods":[{"lod":1,"source":"source/trees/tree_lush_impostor.glb","distance":120.0}] },
+  { "type":"model","class":"tree","replaces":"tree:tc1_2","source":"broadleaf-maple2/pristine_intact_lod0.glb","renderOnly":true,"scale":1.0,"fallback":"stock" },
   { "type":"model","class":"tree","replaces":"tree:tc1_3","source":"source/trees/tree_lush.glb","renderOnly":true,"scale":1.0,"fallback":"stock","lods":[{"lod":1,"source":"source/trees/tree_lush_impostor.glb","distance":120.0}] },
-  { "type":"model","class":"tree","replaces":"tree:tc1_4","source":"source/trees/tree_lush.glb","renderOnly":true,"scale":1.0,"fallback":"stock","lods":[{"lod":1,"source":"source/trees/tree_lush_impostor.glb","distance":120.0}] },
-  { "type":"model","class":"tree","replaces":"tree:palm1","source":"source/trees/tree_lush.glb","renderOnly":true,"scale":1.0,"fallback":"stock","lods":[{"lod":1,"source":"source/trees/tree_lush_impostor.glb","distance":120.0}] },
-  { "type":"model","class":"tree","replaces":"tree:palms","source":"source/trees/tree_lush.glb","renderOnly":true,"scale":1.0,"fallback":"stock","lods":[{"lod":1,"source":"source/trees/tree_lush_impostor.glb","distance":120.0}] },
+  { "type":"model","class":"tree","replaces":"tree:tc1_4","source":"broadleaf-maple2/pristine_intact_lod0.glb","renderOnly":true,"scale":1.0,"fallback":"stock" },
+  { "type":"model","class":"tree","replaces":"tree:palm1","source":"broadleaf-maple2/pristine_intact_lod0.glb","renderOnly":true,"scale":1.0,"fallback":"stock" },
+  { "type":"model","class":"tree","replaces":"tree:palms","source":"broadleaf-maple2/pristine_intact_lod0.glb","renderOnly":true,"scale":1.0,"fallback":"stock" },
   { "type":"model","class":"staticProp","replaces":"artilleryturret","source":"source/probe/artilleryturret.glb","renderOnly":true,"fallback":"stock" }
 ] }

@@ -73,6 +73,7 @@ for asset in assets:
     for slot, m in enumerate(asset.materials):
         m.base_color = ir.TextureRef.of(OUT / 'data/tgl/128' / names[slot], 'base_color', passthrough=True)
     records.append(package.cook_asset(asset, OUT, compress=True))
+records.extend({**records[0], 'replaces': 'tree:' + stock} for stock in ('tc1_2', 'tc1_4', 'palm1', 'palms'))
 (OUT / 'data/model_overrides/models.json').write_text(json.dumps({'overrides': records}, indent=1))
 assert not package.check_package(OUT)
 # Cooked assets enter only the assigned install; parity pins every emitted byte.
