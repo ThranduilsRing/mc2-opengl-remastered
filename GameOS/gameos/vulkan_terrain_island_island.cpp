@@ -677,11 +677,13 @@ bool init_island(TerrainIsland* s, int w, int h) {
         gp.pNext = &planarRendering;
         cba[1].colorWriteMask = 0;
         rs.frontFace = VK_FRONT_FACE_CLOCKWISE; // mirror determinant -1 (terrain stays double-sided)
+        ds.depthCompareOp = VK_COMPARE_OP_GREATER; // 1.0 is the mask's unconditionally blocked depth
         if (!mc2vk::create(s->planarPipe, s->device, [&](auto* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) return false;
         gp.pNext = &prci;
         stages[1].pSpecializationInfo = &csmDebugInfo;
         cba[1].colorWriteMask = cba[0].colorWriteMask;
         rs.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        ds.depthCompareOp = VK_COMPARE_OP_GREATER_OR_EQUAL;
 
         // VK-TERRAIN-SKIRT (rung 4): second pipeline, same layout/renderpass/raster/
         // depth/blend state as above -- only the shader modules + vertex-input state

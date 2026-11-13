@@ -203,6 +203,10 @@ vec3 mv_lampPoolNormal(vec3 wp, vec3 macroN, float lod) {
 #include "include/terrain_cement_art.glsl"   // cCutLt, shadeRoadArt, shadeRoadArtTile
 
 void main() {
+    if (kPlanarReflection != 0) {
+        vec3 n = cross(dFdx(v_worldPos), dFdy(v_worldPos));
+        if (dot(n * sign(n.z), mc2ToRender(uT.cameraPosMC2.xyz) - v_worldPos) < 0.0) discard;
+    }
     if (kPlanarReflection != 0 && v_worldPos.z < uT.shorelineWaterElev) discard;
     vec3 roadColor;
     float roadCoverage = shadeRoadArtTile(roadColor);

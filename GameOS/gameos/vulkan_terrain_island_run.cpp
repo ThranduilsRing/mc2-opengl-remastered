@@ -341,7 +341,7 @@ struct TerrainRecordState {
 // (FAR-BAND-BLACK-1: terrain is the first writer of scene depth, so it clears to reverse-Z far instead of loading). The memory barrier is the
 // external dependency of the VkRenderPass this replaced (previous frame's attachment writes -> this pass's attachment reads/writes).
 static void terrain_begin_scene_pass(mc2vk::VulkanContext& ctx, VkCommandBuffer cb, int w, int h, const float (&clearColor)[4], VkImageView colorView,
-                                     VkImageView normalView, VkImageView depthView, VkFormat depthFormat) {
+                                     VkImageView normalView, VkImageView depthView, VkFormat depthFormat, bool loadDepth = false) {
     namespace dr = mc2vk::dynrender;
     VkClearValue clears[3]{};
     for (int k = 0; k < 4; ++k) clears[0].color.float32[k] = clearColor[k];
@@ -359,7 +359,7 @@ static void terrain_begin_scene_pass(mc2vk::VulkanContext& ctx, VkCommandBuffer 
                                 VK_ATTACHMENT_STORE_OP_STORE, &clears[0]);
     p.color[1] = dr::attachment(normalView, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_CLEAR,
                                 VK_ATTACHMENT_STORE_OP_STORE, &clears[1]);
-    p.setDepth(dr::attachment(depthView, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_CLEAR,
+    p.setDepth(dr::attachment(depthView, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, loadDepth ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR,
                               VK_ATTACHMENT_STORE_OP_STORE, &clears[2]), depthFormat);
     dr::begin(ctx, cb, p);
 }
@@ -369,6 +369,7 @@ static void terrain_begin_scene_pass(TerrainIsland* s, mc2vk::VulkanContext& ctx
 }
 
 struct TerrainRecPlan {
+    VkRect2D scissor{};
     bool embedded = false;
     struct Run { VkBuffer vb, ib; uint32_t firstRec, count; };
     mc2vk::VulkanContext* ctx = nullptr;   // const entry-point table only (cmdBeginRendering/cmdEndRendering/cmdPipelineBarrier2)
@@ -402,10 +403,10 @@ static bool record_terrain_cmds(const TerrainRecPlan& p, VkCommandBuffer cb) {
     // clear path also clears color0 and normal here, matching the GL frame-entry
     // clear plus clearGBuffer1 sentinel before terrain draws into the shared GBuffer.
     MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Terrain");
-    terrain_begin_scene_pass(*p.ctx, cb, p.w, p.h, p.clearColor, p.colorView, p.normalView, p.depthView, p.depthFormat);
+    terrain_begin_scene_pass(*p.ctx, cb, p.w, p.h, p.clearColor, p.colorView, p.normalView, p.depthView, p.depthFormat, p.embedded);
 
     VkViewport vp{p.jx, p.jy, static_cast<float>(p.w), static_cast<float>(p.h), 0.0f, 1.0f};
-    VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(p.w), static_cast<uint32_t>(p.h)}};
+    VkRect2D scissor = p.scissor;
     vkCmdSetViewport(cb, 0, 1, &vp);
     vkCmdSetScissor(cb, 0, 1, &scissor);
     mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, p.pipe);
@@ -458,9 +459,11 @@ static bool record_terrain(TerrainIsland* s, mc2vk::VulkanContext& rctx, uint32_
     plan.depthFormat = s->depthRes->format;
     plan.pipe = s->pipe.get(); plan.skirtPipe = s->skirtPipe.get();
     plan.playout = s->playout.get(); plan.set = s->set[par]; plan.w = w; plan.h = h;
+    plan.scissor={{0,0},{static_cast<uint32_t>(w),static_cast<uint32_t>(h)}};
     std::copy_n(dynOffs, 4, plan.dynOffs);
     if (reflected) {
         plan.embedded = true;
+        if (reflected->scissor.extent.width) plan.scissor=reflected->scissor;
         plan.colorView = reflected->color; plan.normalView = VK_NULL_HANDLE; plan.depthView = reflected->depth;
         plan.depthFormat = VK_FORMAT_D32_SFLOAT;
         plan.pipe = s->planarPipe.get(); plan.skirtPipe = VK_NULL_HANDLE;

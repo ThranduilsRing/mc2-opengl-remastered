@@ -1,0 +1,21 @@
+#version 450
+layout(local_size_x = 16, local_size_y = 16) in;
+layout(rgba16f, set = 0, binding = 0) readonly uniform image2D coverage;
+layout(std430, set = 0, binding = 1) buffer Horizontal { float horizontal[]; };
+layout(std430, set = 0, binding = 2) writeonly buffer Depth { float depth[]; };
+layout(push_constant) uniform Params { int vertical; } P;
+void main() {
+    ivec2 p = ivec2(gl_GlobalInvocationID.xy), size = imageSize(coverage);
+    if (any(greaterThanEqual(p, size))) return;
+    // wr_combine bounds each slope by 0.60; lookup gain is 0.015.
+    // One extra texel covers the reflection sampler's bilinear footprint.
+    int radius = int(ceil(float(P.vertical != 0 ? size.y : size.x) * 0.009)) + 1;
+    bool wet = false;
+    for (int i = -radius; i <= radius && !wet; ++i) {
+        ivec2 q = clamp(p + (P.vertical != 0 ? ivec2(0,i) : ivec2(i,0)), ivec2(0), size-1);
+        wet = P.vertical != 0 ? horizontal[q.y*size.x+q.x] != 0.0 : imageLoad(coverage,q).a != 0.0;
+    }
+    int index = p.y*size.x+p.x;
+    if (P.vertical != 0) depth[index] = wet ? 0.0 : 1.0;
+    else horizontal[index] = wet ? 1.0 : 0.0;
+}

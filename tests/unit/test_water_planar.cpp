@@ -7,6 +7,23 @@
 
 namespace wp = mc2::waterplanar;
 
+TEST_CASE("water planar: padded scissor covers ripple and bilinear lookup bounds") {
+    const float bounds[4]{-0.5f,-0.25f,0.25f,0.5f};
+    for (const auto size : {std::array<int,2>{3840,2160}, std::array<int,2>{1,1}, std::array<int,2>{1279,719}}) {
+        const auto pixels=wp::paddedPixels(bounds,size[0],size[1]);
+        for (int axis=0;axis<2;++axis) {
+            for (const float offset : {-0.60f*0.015f,0.60f*0.015f}) {
+                const float lo=(bounds[axis]*0.5f+0.5f+offset)*size[axis];
+                const float hi=(bounds[axis+2]*0.5f+0.5f+offset)*size[axis];
+                CHECK(pixels[axis]<=std::max(0,static_cast<int>(std::floor(lo-0.5f))));
+                CHECK(pixels[axis+2]>=std::min(size[axis],static_cast<int>(std::ceil(hi+0.5f))));
+            }
+        }
+    }
+    const float full[4]{-10,-10,10,10};
+    CHECK(wp::paddedPixels(full,3840,2160)==std::array<int,4>{0,0,3840,2160});
+}
+
 TEST_CASE("water planar: mirror fixes the plane and is an involution") {
     for (float water : {-350.0f, 0.0f, 350.0f}) {
         CHECK(wp::wp_mirror_z(water, water) == water);

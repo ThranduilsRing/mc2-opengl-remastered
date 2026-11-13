@@ -1316,6 +1316,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         const auto planarRendering = mc2vk::dynrender::pipelineInfo(3, planarFormats, VK_FORMAT_D32_SFLOAT);
         gp.pNext = &planarRendering;
         rs.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        ds.depthCompareOp = VK_COMPARE_OP_GREATER; // masked dry pixels have depth 1.0
         if (!mc2vk::create(s->planarFringePipe, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) return false;
         cba[0].blendEnable = VK_FALSE;
         ds.depthWriteEnable = VK_TRUE;
@@ -1667,6 +1668,7 @@ static void t1_begin_pass(ColorPropIsland* s, VkCommandBuffer cb, uint32_t w, ui
 // Prepared view-local draw state. A reflected view must supply its own descriptors,
 // compaction buffers, attachments and compatible pipelines; never reuse main-view HZB results.
 struct PropRecPlan {
+    VkRect2D scissor{};
     bool embedded = false;
     VkImageView views[3], depthView; VkFormat depthFmt; VkPipeline cullPipe, opaquePipe, corePipe, fringePipe;
     VkPipelineLayout cullLayout, playout; VkDescriptorSet set, groundSet; VkBuffer vbo, ibo, cmdBuf;
@@ -1706,7 +1708,7 @@ static bool record_props_cmds(const PropRecPlan& plan, VkCommandBuffer cb) {
     t1_begin_pass(plan.views, plan.depthView, plan.depthFmt, cb, static_cast<uint32_t>(plan.w), static_cast<uint32_t>(plan.h));
 
     VkViewport vp{plan.jx, plan.jy, static_cast<float>(plan.w), static_cast<float>(plan.h), 0.0f, 1.0f};
-    VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(plan.w), static_cast<uint32_t>(plan.h)}};
+    VkRect2D scissor = plan.scissor;
     vkCmdSetViewport(cb, 0, 1, &vp);
     vkCmdSetScissor(cb, 0, 1, &scissor);
 
@@ -1923,8 +1925,10 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std
     std::copy_n(listStart, kListCount + 1, plan.listStart); std::copy_n(counts, kListCount, plan.counts);
     { float jpx[2]; RenderCore::temporal::sceneJitterPixels(g_mc2RenderFrame, jpx); plan.jx = jpx[0]; plan.jy = jpx[1]; }
     plan.w = w; plan.h = h; plan.hzbCulled = hzbCulled;
+    plan.scissor={{0,0},{static_cast<uint32_t>(w),static_cast<uint32_t>(h)}};
     if (target) {
         plan.embedded = true;
+        if (target->scissor.extent.width) plan.scissor=target->scissor;
         plan.views[0] = target->color; plan.views[1] = plan.views[2] = VK_NULL_HANDLE;
         plan.depthView = target->depth; plan.depthFmt = VK_FORMAT_D32_SFLOAT;
         plan.opaquePipe = s->planarOpaquePipe.get(); plan.corePipe = s->planarCorePipe.get(); plan.fringePipe = s->planarFringePipe.get();

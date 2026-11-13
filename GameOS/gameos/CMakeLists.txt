@@ -424,6 +424,7 @@ if(MC2_VULKAN)
     # vulkan_vfx_island.cpp via load_spv(spv_dir()+"vfx_particle.*.spv").
     set(MC2_VK_SHADER_BASENAMES edge_fog fog_oob hzb_reduce hzb_cull color_prop_cull shadow_debug_overlay water_geom shadow_prop shadow_prop_alpha shadow_mech shadow_terrain_static color_prop_tier1 terrain_tier1 terrain_tier1_skirt mech_tier1 mech_depth legacy_shape_tier1 terrain_overlay_tier1 terrain_decal_tier1 hdri_sky cloud_shadow shoreline screen_shadow_csm impact_decal postprocess postprocess_visual hud_color hud_tex vfx_particle)
     set(MC2_VK_SPV_OUTPUTS "")
+    list(APPEND MC2_VK_SHADER_BASENAMES water_reflection_mask)
     list(APPEND MC2_VK_SHADER_BASENAMES vfx_indexed)
     set(MC2_VK_SHADER_SRC_ALIAS_vfx_indexed_vert vfx_particle)
     set(MC2_VK_SHADER_SRC_ALIAS_vfx_indexed_frag vfx_particle)

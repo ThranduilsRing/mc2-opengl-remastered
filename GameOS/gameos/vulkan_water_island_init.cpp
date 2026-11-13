@@ -234,6 +234,16 @@ bool init_island(WaterIsland* s, int w, int h) {
             vlog("vkCreateGraphicsPipelines failed."); return false;
         }
         mc2vk::nameObject(s->device, s->pipe.get(), "water.pipe");
+        const int32_t coverage = 1;
+        const VkSpecializationMapEntry entry{11, 0, sizeof(coverage)};
+        const VkSpecializationInfo spec{1, &entry, sizeof(coverage), &coverage};
+        stages[1].pSpecializationInfo = &spec;
+        const VkFormat maskFormats[2]{VK_FORMAT_R16G16B16A16_SFLOAT, VK_FORMAT_UNDEFINED};
+        const auto maskRendering = mc2vk::dynrender::pipelineInfo(2, maskFormats, s->sceneDepthFmt);
+        gp.pNext = &maskRendering;
+        ds.depthWriteEnable = VK_FALSE;
+        cba[0].blendEnable = VK_FALSE; cba[1].colorWriteMask = 0;
+        if (!mc2vk::create(s->maskCoverage, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) return false;
     }
 
     // ---- Command pool + 2 command buffers (per parity) + fence. ----
