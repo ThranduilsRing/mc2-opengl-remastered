@@ -21,7 +21,6 @@ target = np.array(Image.open(io.BytesIO(_dds_bc7(levels[0], w, h))).convert('RGB
 target_mean = target[target[..., 3] >= 128, :3].mean(axis=0) / 255
 assets = []
 for aid, stock, source, frame in [
-    ('kit-broadleaf', 'tc1_1', Path('E:/mc2-ref/packages/mc2-tree-kit/v3/data/model_overrides/cooked/tc1_1.glb'), 'mc2_runtime'),  # drive-path: ok owner-specified PC source pack
     ('broadleaf-maple', 'tc1_3', SOURCE / 'uploads_files_4996646_Broadleaf_GLTF/maple1.glb', 'gltf')]:
     asset = gltf_file.to_ir(aid, 'tree:' + stock, source, kind='tree', work_dir=WORK / aid,
         meta={'frame': frame}, classes={m['name']: 'wood' for m in gltf_io.load_document(source)[0]['materials']})
