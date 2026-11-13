@@ -432,9 +432,15 @@ static bool record_terrain_cmds(const TerrainRecPlan& p, VkCommandBuffer cb) {
             }
         }
     };
-    drawRuns(p.patchRuns);   // the patch pipeline is already bound above (once per pass); only the skirt pass switches it
-    if (!p.skirtRuns.empty()) mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, p.skirtPipe);
-    drawRuns(p.skirtRuns);
+    {
+        MC2_VK_GPU_SCOPE(patchScope, cb, "VKIsl.Terrain.Patches");
+        drawRuns(p.patchRuns);
+    }
+    if (!p.skirtRuns.empty()) {
+        MC2_VK_GPU_SCOPE(skirtScope, cb, "VKIsl.Terrain.Skirts");
+        mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, p.skirtPipe);
+        drawRuns(p.skirtRuns);
+    }
 
     mc2vk::dynrender::end(*p.ctx, cb);
     gpuScope.end();
