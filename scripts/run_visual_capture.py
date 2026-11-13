@@ -812,7 +812,7 @@ def capture_path_timing(args) -> int:
                              args.tracy_seconds, out,
                              extra_env=[f"{k}={v}" for k, v in declared.items()],
                              fixed_timestep=False, fps_cap=0, show_window=True,
-                             spawn_game=launch)
+                             spawn_game=launch, post_load=True)
     if rc:
         return rc
     tracy.assert_window_was_visible(out, tracy.tracy_exe("tracy-csvexport.exe"), "path timing")
