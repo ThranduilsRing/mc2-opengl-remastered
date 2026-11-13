@@ -263,6 +263,32 @@ TEST_CASE("shadow bake: heights are bounded by mask resolution and preserve a pl
     for (int y = 0; y < 5; ++y) for (int x = 0; x < 5; ++x) CHECK(grid[y * 5 + x] == float(4 * x + 8 * y));
 }
 
+TEST_CASE("shadow bake: caster and receiver share the lowered visual crest") {
+    constexpr int side = 17;
+    std::vector<float> visual(side * side);
+    for (int y = 0; y < side; ++y) for (int x = 0; x < side; ++x)
+        visual[y * side + x] = x < 8 ? 0.0f : 128.0f;
+    const auto caster = maskHeightGrid(visual, side, side - 1, true);
+    const auto receiver = maskHeightGrid(visual, side, 8, true);
+    CHECK(caster[8 * side + 8] == doctest::Approx(96.0f));
+    CHECK(caster[8 * side + 7] == doctest::Approx(32.0f));
+    CHECK(caster[8 * side + 12] == 128.0f);
+    for (int y = 0; y < 9; ++y) for (int x = 0; x < 9; ++x)
+        CHECK(receiver[y * 9 + x] == caster[(y * 2) * side + x * 2]);
+    // Coarse fallback is untouched, and flat authored slabs stay byte-exact.
+    CHECK(maskHeightGrid(visual, side, side - 1) == visual);
+    std::fill(visual.begin(), visual.end(), 123.0f);
+    CHECK(maskHeightGrid(visual, side, side - 1, true) == visual);
+    const std::vector<float> coarse(5 * 5, 23.0f);
+    const auto border = maskHeightGrid(visual, side, side - 1, true, coarse);
+    CHECK(border[0] == 23.0f);
+    CHECK(border[8 * side + 8] == 123.0f);
+    CHECK(border[8 * side + 4] == doctest::Approx(73.0f));
+    const auto halfway = maskHeightGrid(visual, side, side - 1, true, coarse, 0.5f);
+    CHECK(halfway[8 * side + 8] == doctest::Approx(73.0f));
+    CHECK(maskHeightGrid(visual, side, side - 1, true, coarse, 0.0f) == std::vector<float>(side * side, 23.0f));
+}
+
 TEST_CASE("GPU residency: vegetation thins by stride instead of refusing") {
     using namespace RenderCore;
     // mc2_03 at the default quality: 2.5M instances, ~30k regions in the packed model (16 B instances): about 48 MiB resident.

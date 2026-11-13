@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include "../../shaders/include/terrain_cliff_math.hglsl"
 
 namespace mc2shadow {
 
@@ -231,11 +232,37 @@ inline uint64_t hashWords(const void* data, size_t bytes, uint64_t h = 146959810
 }
 
 // Retain endpoints and sample the visual surface without copying its full 4x grid (store mip maxima may trail the fine grid).
-inline std::vector<float> maskHeightGrid(std::span<const float> source, int sourceSide, int maskTexels) {
+inline float visualCliffHeight(std::span<const float> source, int side, int x, int y) {
+    const auto at = [&](int dx, int dy) {
+        return source[static_cast<size_t>(std::clamp(y + dy, 0, side - 1)) * side + std::clamp(x + dx, 0, side - 1)];
+    };
+    // Exactly the taps and steepness test in terrain_cliff_surface.glsl.
+    const float c = at(0, 0), n = at(0, -2), s = at(0, 2), e = at(2, 0), w = at(-2, 0);
+    const float rise = (std::max)({std::abs(n - c), std::abs(s - c), std::abs(e - c), std::abs(w - c)});
+    if (rise <= 24.0f) return c;
+    return cliffFilteredHeight(c, n + s + e + w, at(-2, -2) + at(2, -2) + at(-2, 2) + at(2, 2), rise);
+}
+
+inline std::vector<float> maskHeightGrid(std::span<const float> source, int sourceSide, int maskTexels, bool visual = false,
+                                       std::span<const float> coarse = {}, float blend = 1.0f) {
     if (sourceSide < 2 || source.size() < static_cast<size_t>(sourceSide) * sourceSide || maskTexels < 1) return {};
     const int side = (std::min)(sourceSide, maskTexels + 1);
     std::vector<float> out(static_cast<size_t>(side) * side);
     const double scale = static_cast<double>(sourceSide - 1) / (side - 1);
+    const auto at = [&](int x, int y) {
+        if (!visual) return source[static_cast<size_t>(y) * sourceSide + x];
+        const float fine = visualCliffHeight(source, sourceSide, x, y);
+        if (coarse.empty()) return fine;
+        // Match hiresNearHeight's coarse blend and exact two-cell map-border fade.
+        const int cs = (sourceSide - 1) / 4 + 1;
+        const int cx = (std::min)(x / 4, cs - 2), cy = (std::min)(y / 4, cs - 2);
+        const float u = static_cast<float>(x - cx * 4) * 0.25f, v = static_cast<float>(y - cy * 4) * 0.25f;
+        const size_t i = static_cast<size_t>(cy) * cs + cx;
+        const float a = coarse[i], b = coarse[i + 1], c = coarse[i + cs], d = coarse[i + cs + 1];
+        const float hc = v >= u ? a + (d - c) * u + (c - a) * v : a + (b - a) * u + (d - b) * v;
+        const int edge = (std::min)({x, y, sourceSide - 1 - x, sourceSide - 1 - y});
+        return hc + (fine - hc) * std::clamp(blend, 0.0f, 1.0f) * std::clamp(static_cast<float>(edge) * 0.125f, 0.0f, 1.0f);
+    };
     for (int y = 0; y < side; ++y) {
         const double gy = y * scale;
         const int iy = (std::min)(static_cast<int>(gy), sourceSide - 2);
@@ -244,9 +271,9 @@ inline std::vector<float> maskHeightGrid(std::span<const float> source, int sour
             const double gx = x * scale;
             const int ix = (std::min)(static_cast<int>(gx), sourceSide - 2);
             const float fx = static_cast<float>(gx - ix);
-            const size_t i = static_cast<size_t>(iy) * sourceSide + ix;
-            const float a = source[i] + fx * (source[i + 1] - source[i]);
-            const float b = source[i + sourceSide] + fx * (source[i + sourceSide + 1] - source[i + sourceSide]);
+            const float h00 = at(ix, iy), h10 = at(ix + 1, iy), h01 = at(ix, iy + 1), h11 = at(ix + 1, iy + 1);
+            const float a = h00 + fx * (h10 - h00);
+            const float b = h01 + fx * (h11 - h01);
             out[static_cast<size_t>(y) * side + x] = a + fy * (b - a);
         }
     }

@@ -8,6 +8,8 @@
 // Edges stitched to a coarser neighbour (edgeStitch byte Sc, in coarse units) are linear
 // between those corner heights, matching the neighbour's straight edge: no cracks.
 
+#include "terrain_cliff_surface.glsl"
+
 float hiresBlendW() { return clamp(uT.visualDisplaceFar, 0.0, 1.0); }
 
 // Map-border fade (fine coords): the bake's border rows do not follow the coarse map's
@@ -21,9 +23,7 @@ float hiresEdgeW(int fx, int fy) {
 }
 
 float hiresFineAt(int fx, int fy) {
-    fx = clamp(fx, 0, uT.visualSide - 1);
-    fy = clamp(fy, 0, uT.visualSide - 1);
-    return heightsFine[fx + fy * uT.visualSide];
+    return cliffVisualHeight(ivec2(fx, fy));
 }
 
 // Displaced height at a coarse vertex (what a mode-2 band draws there).

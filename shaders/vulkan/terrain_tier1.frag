@@ -38,6 +38,9 @@ layout(set = 0, binding = 15) uniform sampler2D u_materialWeights;
 // GL_REPEAT). Layers per include/terrain_mat_layers.hglsl. Dummy 1x1 until imported
 // (uT.detailReady gates the sample).
 layout(set = 0, binding = 6) uniform sampler2DArray u_matNormalArray;
+layout(set = 0, binding = 1, std430) readonly buffer TerrainHeightBuf {
+    float heights[];
+} uH;
 // TERRAIN-SHORELINE-V3: optional mask sidecar (G wet, B foam, A valid); read only while uT.shorelineHasMask != 0.
 layout(set = 0, binding = 14) uniform sampler2D u_shorelineMask;
 
@@ -67,9 +70,9 @@ const float MATV_WU_PER_TILE  = 768.0;  // MAT_WORLD_UNITS_PER_TILE (terrain_lod
 layout(set = 0, binding = 10, std430) readonly buffer TerrainVisualHeightBuf {
     float heightsFine[];
 };
+#include "include/terrain_cliff_surface.glsl"
 float mv_fineH(ivec2 p) {
-    p = clamp(p, ivec2(0), ivec2(uT.visualSide - 1));
-    return heightsFine[p.x + p.y * uT.visualSide];
+    return cliffVisualHeight(p);
 }
 vec2 mv_fineGrad(ivec2 p) {
     return vec2(-(mv_fineH(p + ivec2(1, 0)) - mv_fineH(p - ivec2(1, 0))),
@@ -169,6 +172,20 @@ vec2 mv_parallax(vec2 uv, float scale, vec4 w, vec3 viewDirTS, vec2 dx, vec2 dy)
     float denominator = after - before;
     float blend = abs(denominator) > 1.0e-6 ? clamp(after / denominator, 0.0, 1.0) : 0.0;
     return mix(curOffset, prevOffset, blend);
+}
+
+// The stock burnin includes directional shade and cast shadows. Estimate its
+// low-frequency attenuation from a spatial neighbourhood, preserving hue.
+// Only steep natural terrain calls this; cement and flat ground stay exact.
+float cliffReferenceLuma(vec2 worldXY) {
+    vec2 uv = vec2((worldXY.x - uT.atlasTopLeftX) * uT.atlasOneOverWorldUnits,
+                   (uT.atlasTopLeftY - worldXY.y) * uT.atlasOneOverWorldUnits);
+    float o = 512.0 * uT.atlasOneOverWorldUnits;
+    vec3 reference = 0.25 * (textureLod(u_colormap, uv + vec2(o, 0), 0.0).rgb
+                          + textureLod(u_colormap, uv - vec2(o, 0), 0.0).rgb
+                          + textureLod(u_colormap, uv + vec2(0, o), 0.0).rgb
+                          + textureLod(u_colormap, uv - vec2(0, o), 0.0).rgb);
+    return dot(reference, vec3(0.299, 0.587, 0.114));
 }
 
 #include "include/terrain_cliff_material.glsl"   // MATV_CLIFF_*, mv_cliffMaterial, crApply
@@ -363,6 +380,12 @@ void main() {
     float materialSnow = materials.z;
     vec4 materialW = vec4(max(1.0 - materials.x - materials.y - materials.w, 0.0), materials.x, materials.y, materials.w);
     vec3 baseNormal = mv_smoothTerrainNormal(v_worldPos.xy);
+    vec3 prelitBase = base;
+    float delitShare = pureConcrete || cementHit ? 0.0 : smoothstep(0.85, 0.55, abs(baseNormal.z));
+    if (delitShare > 0.0 && uT.colormapReady != 0) {
+        float gain = cliffDelightGain(dot(base, vec3(0.299, 0.587, 0.114)), cliffReferenceLuma(v_worldPos.xy));
+        base *= mix(1.0, gain, delitShare);
+    }
     vec3 baseColor = base;
     float F3pc = pureConcrete ? 1.0 : 0.0;
     {
@@ -462,8 +485,11 @@ void main() {
             vec3 macroPert = vec3(baseN.xy / max(baseN.z, 0.2) * uT.nfhStrength, 1.0);
             vec3 pert = macroPert + vec3(dN.xy * uT.detailStrength, 0.0);
             N = normalize(pert);
-            if ((uT.concreteDetail & 2) != 0) crApply(baseN, cliffDx * MATV_CLIFF_TS, cliffDy * MATV_CLIFF_TS, cliffLod, N, baseColor);
-            else if (uT.detailReady >= 2) mv_cliffMaterial(baseN, cliffLod, N, baseColor);
+            float blocked = crTerrainCliff(v_worldPos.xy);
+            if ((uT.concreteDetail & 2) != 0) crApply(baseN, cliffDx * MATV_CLIFF_TS, cliffDy * MATV_CLIFF_TS, cliffLod, blocked, N, baseColor);
+            else if (uT.detailReady >= 2) mv_cliffMaterial(baseN, cliffLod, blocked, N, baseColor);
+            if (uT.detailReady != 0) crNavigable(baseN, cliffDx * MATV_CLIFF_TS, cliffDy * MATV_CLIFF_TS,
+                                               (1.0 - blocked) * max(materialW.x, cliffRockWeight(abs(baseN.z))), N, baseColor);
             if (kPlanarReflection != 0 && kReflectCutDetail != 0) N = normalize(macroPert);
             dbgBaseN = baseN; dbgDN = dN;                        // CSM-BLACKOUT-RECON-1 taps
         }
@@ -475,6 +501,11 @@ void main() {
         // Equal normals give exactly one, including when detail is disabled.
         // Bound the grazing/back-facing ratio rather than re-lighting macro relief.
         float normalLight = clamp(max(dot(N, lightDir), normalLightFloor) / macroNdotL, 0.5, 1.5);
+        // The cliff burnin already carries ambient. Only its sun share receives
+        // another directional modulation; a back-facing face has no sun to occlude.
+        float cliffShare = pureConcrete ? 0.0 : smoothstep(0.85, 0.55, abs(baseNormal.z));
+        float cliffSun = cliffDirectShare(dot(macroN, lightDir), normalLightFloor);
+        normalLight = mix(normalLight, mix(1.0, normalLight, cliffSun), cliffShare);
 
         // CONCRETE-ROAD-PBR-DETAIL: detail only (AO, relative sun shading, sheen), MC2 colour stays. Solid slabs only: those
         // fragments skip the material detail-normal fetches, so the two concrete fetches replace them (no net fetch increase).
@@ -488,7 +519,7 @@ void main() {
         vec3 shadowN=baseNormal;
         float staticS=uT.enableShadows!=0?terrainStaticShadow(v_worldPos):1.0;
         float dynS=kPlanarReflection != 0 && kReflectCutMovers != 0 ? 1.0 : terrainDynamicShadow(v_worldPos,shadowN);
-        float shadow = min(staticS, dynS);
+        float shadow = min(mix(staticS, mix(1.0, staticS, cliffSun), cliffShare), dynS);
         // CSM-BLACKOUT-RECON-1: one-shot debug viz (env MC2_SHADOW_DEBUG_MODE=N).
         // Resolve before local lighting so the debug inputs do not stay live through its loop. Bypasses the normal composite so each channel can be inspected in
         // isolation on a live capture. No effect when kCsmDebugMode==0.
@@ -502,6 +533,7 @@ void main() {
         else if (kCsmDebugMode == 8) { fragColor = vec4(N * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }   // surface normal (GL ...=normal)
         else if (kCsmDebugMode == 9) { fragColor = vec4(dbgBaseN * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
         else if (kCsmDebugMode == 10) { fragColor = vec4(dbgDN * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
+        else if (kCsmDebugMode == 12) { fragColor = vec4(prelitBase, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; } // raw prelit before material/lighting
         // Material weights false colour: rock grey, grass green, dirt red, concrete blue, snow white.
         else if (kCsmDebugMode == 11) { fragColor = vec4(materialW.x * vec3(0.35) + materialW.y * vec3(0.1, 0.9, 0.1) + materialW.z * vec3(0.9, 0.2, 0.1) +
                                                          materialW.w * vec3(0.1, 0.3, 1.0) + vec3(materialSnow), 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }

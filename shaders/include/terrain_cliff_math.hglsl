@@ -1,0 +1,34 @@
+// Scalar cliff rules shared with the offline terrain lighting tests.
+#ifndef TERRAIN_CLIFF_MATH_HGLSL
+#define TERRAIN_CLIFF_MATH_HGLSL
+#ifdef __cplusplus
+#define CLIFF_INLINE inline
+#else
+#define CLIFF_INLINE
+#endif
+CLIFF_INLINE float cliffRockWeight(float normalZ) {
+    // The rounded upper face is rock; only the nearly flat plateau keeps ground.
+    float t = (0.98 - normalZ) / 0.13;
+    t = t < 0.0 ? 0.0 : (t > 1.0 ? 1.0 : t);
+    return t * t * (3.0 - 2.0 * t);
+}
+CLIFF_INLINE float cliffDirectShare(float nDotL, float ambient) {
+    return nDotL <= 0.0 ? 0.0 : nDotL / (nDotL + ambient);
+}
+CLIFF_INLINE float cliffDelightGain(float luma, float reference) {
+    // A bounded spatial estimate, not an inverse for lost/clipped burnin data.
+    // Uniform dark materials retain their tone; never amplify black texels.
+    if (luma <= 0.02) return 1.0;
+    float ratio = reference / luma;
+    return ratio < 1.0 ? 1.0 : (ratio > 2.5 ? 2.5 : ratio);
+}
+CLIFF_INLINE float cliffFilteredHeight(float center, float cardinal, float diagonal, float rise) {
+    // A 64-wu binomial footprint rejects the bake's 128-wu source-grid ripple.
+    // Flat ground and gentle slopes keep their exact authored heights.
+    float t = (rise - 24.0) / 40.0;
+    t = t < 0.0 ? 0.0 : (t > 1.0 ? 1.0 : t);
+    float w = t * t * (3.0 - 2.0 * t);
+    return center + w * ((4.0 * center + 2.0 * cardinal + diagonal) / 16.0 - center);
+}
+#undef CLIFF_INLINE
+#endif
