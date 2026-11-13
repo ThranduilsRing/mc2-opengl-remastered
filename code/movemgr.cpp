@@ -148,6 +148,8 @@ void MovePathManager::request (MechWarriorPtr pilot, long selectionIndex, unsign
 	// Updating an outstanding request keeps its queue position and original age.
 	// Repeated retries must not hide starvation or defer the player deadline.
 	if (auto* pending = pilot->getMovePathRequest()) {
+		if (mc2_diag::tagRequested("PATH"))
+			mc2::fmt::print_out("[PATH v1] simframe={} event=replace enqueue_frame={}\n", turn - 1, pending->enqueueFrame);
 		sourceTally[pending->num]--;
 		pending->num = source;
 		sourceTally[source]++;
@@ -278,6 +280,10 @@ void MovePathManager::update (void) {
 	mc2_path_trace::emitFrame(s_pathQueuedThisFrame, processedThisFrame, numPaths, peakPaths,
 	                          oldestAge, capHit, work, playerServed, playerMaxAge,
 	                          playerPending, playerPendingMaxAge);
+	if ((s_pathQueuedThisFrame || requestsAtEntry || numPaths) && mc2_diag::tagRequested("PATH"))
+		mc2::fmt::print_out("[PATH v1] simframe={} queued={} entry={} processed={} backlog={} expansions={} budget_deferred={} hardcap_deferred={}\n",
+			turn - 1, s_pathQueuedThisFrame, requestsAtEntry, processedThisFrame, numPaths, work,
+			capHit, processedThisFrame == mc2::path_work::kMaxSolvesPerTick && queueFront ? 1 : 0);
 	s_pathQueuedThisFrame = 0;
 
 	// PATHFINDING-FACTS-2: advance the frame counter once per update().
