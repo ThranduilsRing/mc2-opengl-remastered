@@ -25,6 +25,10 @@ bool init_reflection(WaterIsland* s) {
     }
     // Prewarm can run before water presence is known; dry maps need no depth.
     if (!s->mapHasWater || s->planarDepthImage) return true;
+    // Coverage must not alias the reflection sampler bound by the water draw.
+    if (!s->coverageImage.create(s->allocator,s->device,image,allocation,"water.reflection.coverage")) return false;
+    view.image=s->coverageImage.get(); view.format=image.format;
+    if (!mc2vk::create(s->coverageView,s->device,[&](VkImageView* out){return vkCreateImageView(s->device,&view,nullptr,out);})) return false;
     // D32 adds 31.6 MiB at 3840x2160; the existing RGBA16F colour is reused.
     image.format=VK_FORMAT_D32_SFLOAT;
     image.usage=VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
@@ -51,7 +55,7 @@ bool init_reflection(WaterIsland* s) {
     VkDescriptorSetAllocateInfo alloc{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
     alloc.descriptorPool=s->maskPool.get(); alloc.descriptorSetCount=1; alloc.pSetLayouts=&layout;
     if (vkAllocateDescriptorSets(s->device,&alloc,&s->maskSet)!=VK_SUCCESS) return false;
-    const VkDescriptorImageInfo imageInfo{VK_NULL_HANDLE,s->reflectionView.get(),VK_IMAGE_LAYOUT_GENERAL};
+    const VkDescriptorImageInfo imageInfo{VK_NULL_HANDLE,s->coverageView.get(),VK_IMAGE_LAYOUT_GENERAL};
     const VkDescriptorBufferInfo buffers[2]{{s->maskHorizontal.get(),0,bytes},{s->maskDepth.get(),0,bytes}};
     VkWriteDescriptorSet writes[3]{};
     for (uint32_t i=0; i<3; ++i) {

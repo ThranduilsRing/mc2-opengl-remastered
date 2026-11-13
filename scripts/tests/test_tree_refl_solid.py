@@ -22,6 +22,25 @@ def test_reflected_alpha_coverage_uses_the_material_passes():
     assert "!target && pp && pp->runVkPostHzbNative" in src
 
 
+def test_coverage_attachment_is_distinct_from_sampled_reflection():
+    # Trigger: vulkan_water_island_{images,run}.cpp coverage image usage.
+    images = (ROOT / "GameOS/gameos/vulkan_water_island_images.cpp").read_text()
+    run = (ROOT / "GameOS/gameos/vulkan_water_island_run.cpp").read_text()
+    producer = run.split("record_reflection(", 1)[1].split("namespace {", 1)[0]
+    coverage = producer.split("dr::end(ctx,cb);", 1)[0]
+    assert "coverage.color[0]=dr::attachment(s->coverageView.get()," in coverage
+    assert "dr::attachment(s->reflectionView.get()," not in coverage
+    assert "s->coverageImage.create(" in images
+    assert "imageInfo{VK_NULL_HANDLE,s->coverageView.get(),VK_IMAGE_LAYOUT_GENERAL}" in images
+    transitions = re.findall(r"barrier\(s->coverageImage.get\(\),(.*?);", producer, re.S)
+    assert len(transitions) == 2
+    assert "VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL" in transitions[0]
+    assert "VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_SHADER_READ_BIT" in transitions[0]
+    assert "VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,VK_IMAGE_LAYOUT_GENERAL" in transitions[1]
+    assert "VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT" in transitions[1]
+    assert "VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_SHADER_READ_BIT" in transitions[1]
+
+
 GEOM = (Path(__file__).resolve().parents[2] / "shaders/vulkan/water_geom.frag").read_text(encoding="utf-8")
 
 

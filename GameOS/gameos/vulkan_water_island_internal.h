@@ -203,6 +203,8 @@ struct WaterIsland : mc2vk::IslandState {
     mc2vk::OwnedImage planarDepthImage;
     mc2vk::OwnedImageView planarDepthView;
     mc2vk::OwnedImageView reflectionView;
+    mc2vk::OwnedImage coverageImage;
+    mc2vk::OwnedImageView coverageView;
     mc2vk::OwnedBuffer maskHorizontal, maskDepth;
     mc2vk::OwnedDescriptorSetLayout maskDsl;
     mc2vk::OwnedDescriptorPool maskPool;
