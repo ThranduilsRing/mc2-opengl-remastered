@@ -11,7 +11,7 @@ from tools.content_pipeline import gltf_io, ir, package, texcook
 from tools.content_pipeline.frontends import gltf_file
 from tools.neural_mat.export_nmat import _dds_bc7
 ROOT = Path(__file__).resolve().parents[2]
-WORK = Path('E:/mc2-tmp/slot07/tree-kit-fix-1')  # drive-path: ok assigned PC prototype scratch
+WORK = Path('E:/mc2-tmp/slot01/tree-kit-fix-1')  # drive-path: ok assigned PC prototype scratch
 OUT = WORK / 'package-tga'
 INSTALL = Path('E:/mc2-installs/tree-kit-fix-1')  # drive-path: ok assigned isolated PC prototype install
 SOURCE = Path('C:/Users/Joe/Downloads/GameAsset')
@@ -21,11 +21,14 @@ target = np.array(Image.open(io.BytesIO(_dds_bc7(levels[0], w, h))).convert('RGB
 target_mean = target[target[..., 3] >= 128, :3].mean(axis=0) / 255
 assets = []
 for aid, stock, source, frame in [
+    ('broadleaf-maple2', 'tc1_1', SOURCE / 'uploads_files_4996646_Broadleaf_GLTF/maple2.glb', 'gltf'),
     ('broadleaf-maple', 'tc1_3', SOURCE / 'uploads_files_4996646_Broadleaf_GLTF/maple1.glb', 'gltf')]:
     asset = gltf_file.to_ir(aid, 'tree:' + stock, source, kind='tree', work_dir=WORK / aid,
         meta={'frame': frame}, classes={m['name']: 'wood' for m in gltf_io.load_document(source)[0]['materials']})
     scene = asset.states['intact'][0].scene
     flat = scene.flattened()
+    if stock == 'tc1_1':
+        flat = [(name, p) for name, p in flat if asset.materials[p.material].alpha_mode != 'OPAQUE']
     scene.meshes = [ir.Mesh(name, [prim]) for name, prim in flat]
     scene.nodes = [ir.Node(f'{aid}-{i}', mesh=i) for i in range(len(flat))]
     lo, hi = scene.bounds()
@@ -73,7 +76,7 @@ for asset in assets:
 (OUT / 'data/model_overrides/models.json').write_text(json.dumps({'overrides': records}, indent=1))
 assert not package.check_package(OUT)
 # Cooked assets enter only the assigned install; parity pins every emitted byte.
-declared = {}
+declared = json.loads((ROOT / 'intentional-asset-changes.json').read_text())
 rel = 'data/tgl/128/a_treeclump1.ktx2'
 (INSTALL / rel).parent.mkdir(parents=True, exist_ok=True)
 declared[rel] = ir.sha256_file(INSTALL / rel)

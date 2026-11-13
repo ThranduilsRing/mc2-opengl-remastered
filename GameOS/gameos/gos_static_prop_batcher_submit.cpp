@@ -1,6 +1,7 @@
 // GpuStaticPropBatcher: submit, submitMultiShape, the bucket upload, the V6 array build, the depth prepass and the executor apply-state hook.
 // Declared in the class headers; shared names in gos_static_prop_batcher_internal.h.
 #include <atomic>
+#include <cmath>
 #include "gos_static_prop_batcher_internal.h"
 #include "mc2fmt.h"
 #include "../../mclib/battle_bench_sink.h"
@@ -467,6 +468,31 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
         return false;
     }
 
+    // Position-only render variation; the registry retains this same matrix/tint for reflections and shadows.
+    glm::mat4 variation(1.0f);
+    uint32_t treePaint[3]{};
+    if (pop == GpuStaticPropPopulation::Tree) {
+    uint32_t treeSeed = 0;
+    for (int axis = 0; axis < 3; ++axis) {
+        uint32_t bits = 0;
+        std::memcpy(&bits, &multi->walkOrigin_[axis][3], sizeof(bits));
+        treeSeed = (treeSeed ^ bits) * 16777619u;
+    }
+    auto treeRandom = [&treeSeed]() {
+        treeSeed ^= treeSeed >> 16; treeSeed *= 0x7feb352du;
+        treeSeed ^= treeSeed >> 15; treeSeed *= 0x846ca68bu; treeSeed ^= treeSeed >> 16;
+        return static_cast<float>(treeSeed & 65535u) / 65535.0f;
+    };
+    const float angle = treeRandom() * 6.283185307f;
+    const float width = 0.9f + 0.2f * treeRandom(), height = 0.9f + 0.2f * treeRandom();
+    const float depth = 0.9f + 0.2f * treeRandom();
+    variation[0][0] = std::cos(angle)*width; variation[0][2] = std::sin(angle)*depth;
+    variation[2][0] = -std::sin(angle)*width; variation[2][2] = std::cos(angle)*depth;
+    variation[1][1] = height;
+    const float value = 0.94f + 0.12f * treeRandom(), hue = (treeRandom()-0.5f)*0.03f;
+    const float treeTint[3] = {value*(1.0f+hue), value, value*(1.0f-hue)};
+    std::memcpy(treePaint, treeTint, sizeof(treePaint));
+    }
     // Second pass: submit each eligible child, silently skipping those the
     // CPU path would also skip (helpers, untransformed, daytime spotlights).
     for (int i = 0; i < n; ++i) {
@@ -538,6 +564,11 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
 
         // rec.shapeToWorld is LinearMatrix4D; convert to Matrix4D for submit().
         glm::mat4 xform = glm::mat4(rec.shapeToWorld);
+        const bool varyTree = pop == GpuStaticPropPopulation::Tree && s_types[s_typeIndex.at(child->myType->stableId())].isOverride;
+        if (varyTree) {
+            xform = xform * glm::inverse(multi->walkOrigin_) * variation * multi->walkOrigin_;
+            flags |= 128u; // fogRGB.xyz carries multiplicative tree tint instead of team paint.
+        }
         if (callerName && !std::strcmp(callerName, "karnov") && mc2_diag::tagRequested("SUPPORT_CRAFT")) {
             const auto tid = s_typeIndex.at(child->myType->stableId());
             supportTraceTypes.try_emplace(tid, g_mc2FrameCounter.load(std::memory_order_relaxed));
@@ -551,7 +582,7 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
         const uint32_t teamPaintU32[3] = {static_cast<uint32_t>(multi->teamPaint[0]), static_cast<uint32_t>(multi->teamPaint[1]), static_cast<uint32_t>(multi->teamPaint[2])};
         if (!submit(child, xform,
                     child->aRGBHighlight, child->fogRGB, flags,
-                    lightDataIndex, multi->teamPaintValid ? teamPaintU32 : nullptr, actorTint)) {
+                    lightDataIndex, varyTree ? treePaint : (multi->teamPaintValid ? teamPaintU32 : nullptr), actorTint)) {
             // submit() rejected after we passed the registration gate —
             // typically a buffer-full condition. Fall back for this frame
             // to keep the visual self-consistent.
