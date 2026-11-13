@@ -33,6 +33,7 @@ DWORD retain(DWORD asset);
 void release(DWORD asset);
 DWORD sourceId(DWORD asset);
 void commitTickTextures(); // main only, after joining the tick
+void prewarmCpuTextures(); // mission load only, before gameplay can change the view
 DWORD fromPixels(DWORD* pixels, gos_TextureFormat format, DWORD hints, DWORD width, DWORD bytesPerPixel=4);
 DWORD fromRawPixels(DWORD* pixels, gos_TextureFormat format, DWORD hints, DWORD width, DWORD bytesPerPixel=4);
 long save(DWORD asset,mc2::czstring path);

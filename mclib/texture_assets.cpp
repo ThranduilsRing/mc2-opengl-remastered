@@ -391,6 +391,18 @@ void commitTickTextures() {
         store->collectRetired();
     }
 }
+void prewarmCpuTextures() {
+    mc2::overlap::assertMainThread("textures::prewarmCpuTextures");
+    ZoneScopedN("TextureSource.PrewarmCpuTextures");
+    if (auto* store=sourcesIfReady()) {
+        // Realize the mission's admitted sources while the loading screen is
+        // still up, including sources belonging to actors outside the first view.
+        for (auto asset : store->coldCpuTextures()) {
+            sourceId(asset);
+            graphics::pump_loading_events();
+        }
+    }
+}
 DWORD sourceId(DWORD asset) {
     if (mc2::tick::collecting() || mc2::overlap::onSimWorker()) {
         if (auto* store=sourcesIfReady()) store->requestCreate(asset);

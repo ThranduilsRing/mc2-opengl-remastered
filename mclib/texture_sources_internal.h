@@ -37,6 +37,7 @@ class TextureSources final : public RenderCore::TextureSourceOwner {
 public:
     explicit TextureSources(std::function<void(DWORD)> retireCpu = {}) : retireCpu_(std::move(retireCpu)) { assets_.resize(1); }
     void collectRetired() override;
+    std::vector<DWORD> coldCpuTextures() const;
     DWORD capacity() const { std::lock_guard lock(indexMutex_); return static_cast<DWORD>(assets_.size()); }
     std::vector<std::weak_ptr<TextureSource>> assets() const { std::lock_guard lock(indexMutex_); return assets_; }
     std::shared_ptr<TextureSource> get(DWORD asset) const {
