@@ -1093,6 +1093,25 @@ void GameObjectManager::extractRenderList (mc2::render_view::RenderList& list)
 				// The views the render walk still visits this frame (the non-resident remainder of RenderObjects.Terrain), by object class.
 				long byClass[256] = {};
 				for (const mc2::render_view::RenderView& v : list.terrain) ++byClass[v.objClass];
+				// Sample once per report, outside the hot walk. Priority matches presentation admission.
+				long why[64][8] = {};
+				for (const auto& v : list.terrain) {
+					auto* a = v.obj->getAppearance();
+					if (!a || a->getAppearanceClass() != BLDG_TYPE || v.objClass >= 64) continue;
+					const bool terrainKind = v.objClass == TERRAINOBJECT || v.objClass == TREE || v.objClass == BRIDGE || v.objClass == BUILDING;
+					const int reason = !a->IsStaticNow() ? 0 : v.obj->getFlag(OBJECT_FLAG_FALLING) ? 1 :
+						static_cast<BldgAppearance*>(a)->hasFrameLights() ? 2 :
+						terrainKind && static_cast<TerrainObject*>(v.obj)->hasPresentationEffects() ? 3 :
+						!terrainKind ? 4 : a->lodFollowsCamera() ? 5 :
+						!dirty.isResident(v.obj->getHandle()) ? 6 : 7;
+					++why[v.objClass][reason];
+				}
+				for (int c = 0; c < 64; ++c) {
+					const auto& w = why[c];
+					if (byClass[c] && (w[0]+w[1]+w[2]+w[3]+w[4]+w[5]+w[6]+w[7]))
+						mc2::fmt::print_err("[STATIC_RESIDENT why] class={} not_static={} falling={} lights={} effects={} excluded={} lod={} remarked={} render_pending={}\n",
+							c, w[0], w[1], w[2], w[3], w[4], w[5], w[6], w[7]);
+				}
 				char hist[512]; size_t n = 0; hist[0] = 0;
 				for (int c = 0; c < 256 && n + 24 < sizeof(hist); ++c)
 					if (byClass[c]) n += static_cast<size_t>(std::snprintf(hist + n, sizeof(hist) - n, "%s%d:%ld", n ? "," : "", c, byClass[c]));
