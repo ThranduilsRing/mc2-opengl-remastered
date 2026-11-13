@@ -50,15 +50,18 @@ float vegLodScale(VegInstance i, VegParamsData p) {
     float clipW = dot(p.clipRow, vec4(i.pos, 1.0));
     if (clipW <= 0.001) return 0.0;
     float pixels = vegPixels(i, p);
-    float distanceFade = 1.0 - smoothstep(p.misc.x, p.cam.w, length(i.pos - p.cam.xyz));
     // Terrain LOD is discrete; only the continuous cover metric controls density.
     // Grass (meadow-field blades, atlas bit 3, and clump grass, layers 0-3) is the carpet (owner ref 3:
-    // "actually add grass", then "speckly / not solid - add density"): field blades stay down to ~0.25 px
-    // (the vertex stage widens them), clump grass to ~0.5 px. Woody cards keep 3-12 px.
+    // "actually add grass", then "speckly / not solid - add density"): grass cover fades continuously
+    // toward subpixel sizes (the vertex stage widens field blades). Woody cards keep 3-12 px.
     bool fieldCard = (i.atlasFrame & 8u) != 0u;
     bool grassCard = fieldCard || (i.atlasFrame & 15u) < 4u;
+    // Scale both ends: grass reaches 3x as far with a 3x-long fade, while woody cards keep their range.
+    float distanceScale = grassCard ? 3.0 : 1.0;
+    float distanceFade = 1.0 - smoothstep(p.misc.x * distanceScale, p.cam.w * distanceScale, length(i.pos - p.cam.xyz));
     float thin = fieldCard ? vegFieldThin(i, p) : 1.0;
-    float cover = fieldCard ? smoothstep(0.25, 1.0, pixels) : smoothstep(0.5, 2.0, pixels);
+    // No second, short range cutoff for grass: projected cover converges smoothly to zero.
+    float cover = fieldCard ? smoothstep(0.0, 1.0, pixels) : smoothstep(0.0, 2.0, pixels);
     float density = grassCard ? min(min(distanceFade, thin), cover)
                               : min(distanceFade, smoothstep(3.0, 12.0, pixels));
     float rank = fract(i.seed * 17.371 + 0.137);
