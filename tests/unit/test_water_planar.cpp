@@ -230,6 +230,19 @@ TEST_CASE("water planar: unknown or invalid prop bounds retain candidates") {
     CHECK(wp::propIntersects(view, instance, bounds));
 }
 
+TEST_CASE("water planar: leaf sway crossing reflected side planes stays visible") {
+    glm::mat4 main{1};
+    main[2][2] = 0.1f; main[3][2] = -1;
+    const wp::View view(glm::value_ptr(main), 20);
+    const std::array<mc2hzb::PropBounds, 1> bounds{{{{0, 0, 0}, {0, 0, 0}, true}}};
+    CHECK(wp::propIntersects(view, propAt(0, 2.4f, 0, 24), bounds));
+    CHECK(wp::propIntersects(view, propAt(0, -2.4f, 0, 24), bounds));
+    CHECK(wp::propIntersects(view, propAt(0, 0, 1.8f, 24), bounds));
+    CHECK(wp::propIntersects(view, propAt(0, 0, -1.8f, 24), bounds));
+    CHECK_FALSE(wp::propIntersects(view, propAt(0, 2.6f, 0, 24), bounds));
+    CHECK_FALSE(wp::propIntersects(view, propAt(0, 0, 2.0f, 24), bounds));
+}
+
 TEST_CASE("water planar: geometry bounds include every packet and retain only unknown types") {
     struct Packet { uint32_t firstIndex, indexCount, baseVertex; };
     struct Geometry {
