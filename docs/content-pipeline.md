@@ -221,7 +221,7 @@ stages with "blocked by policy"; they remain under the proof directory's
 
 The launcher checkbox **Building art: Remastered (off: Classic)** persists
 `b RemasteredBuildings = TRUE/FALSE` in the normal `options.cfg`. Remastered
-defaults on. `--classic-assets` and `--remastered-assets` override the saved
+defaults off (Classic) since 2026-11-13. `--classic-assets` and `--remastered-assets` override the saved
 choice for one process, including the later preferences publish; they never
 rewrite it. Changing the launcher setting takes effect on the next launch.
 Classic skips the bundled kit's VFS mount and manifest reads altogether. User

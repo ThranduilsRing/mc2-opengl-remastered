@@ -110,6 +110,26 @@ TEST_CASE("terrain_dirty_queue/a mark drops residency for that handle only")
     CHECK(queue.drain().empty());
 }
 
+TEST_CASE("static_resident/camera wakes a retained LOD only at its boundary")
+{
+    mc2::TerrainDirtyQueue queue;
+    queue.reset(4);
+    for (long h = 1; h < 4; ++h) {
+        queue.setResident(h);
+        REQUIRE(queue.setRenderResident(h));
+    }
+    const auto bind = [](long) {};
+    queue.markBlockNonResident(1, 3, bind, [](long) { return false; });
+    CHECK(queue.drain().empty()); // camera moved inside the same LOD range
+    queue.markBlockNonResident(1, 3, bind, [](long h) { return h == 2; });
+    CHECK_FALSE(queue.isRenderResidentQuiescent(2));
+    CHECK(queue.isRenderResidentQuiescent(1));
+    CHECK(queue.drain() == std::vector<long>{2});
+    CHECK_FALSE(queue.setRenderResident(2)); // changed LOD must present before re-admission
+    queue.setResident(2);
+    CHECK(queue.setRenderResident(2));
+}
+
 TEST_CASE("terrain_dirty_queue/height epoch and night revisit residents")
 {
     mc2::TerrainDirtyQueue queue;
@@ -202,6 +222,35 @@ TEST_CASE("static_resident/mark, epoch, light generation, destroy and cull each 
 }
 
 #include "terrain_walk_skip.h"
+
+TEST_CASE("static_resident/interaction stamps every resident frame and selection wakes it")
+{
+    struct Object {
+        mc2::TerrainDirtyQueue queue;
+        int32_t windowsVisible = 0;
+        bool selected = false, targeted = false, visible = true;
+        bool canBeSeen() const { return visible; }
+        Object* getAppearance() { return this; }
+        void setSelected(bool value) { if (selected != value) queue.mark(1); selected = value; }
+        void setTargeted(bool value) { if (targeted != value) queue.mark(1); targeted = value; }
+    } obj;
+    obj.queue.reset(2);
+    obj.queue.setResident(1);
+    REQUIRE(obj.queue.setRenderResident(1));
+    for (long frame = 1; frame <= 600; ++frame) {
+        mc2::refreshResidentInteraction(obj, frame);
+        CHECK(obj.windowsVisible == frame);
+        CHECK(obj.queue.isRenderResidentQuiescent(1));
+    }
+    obj.setSelected(true); // same invalidation as GUI hover/click
+    CHECK_FALSE(obj.queue.isRenderResidentQuiescent(1));
+    mc2::refreshResidentInteraction(obj, 601);
+    CHECK_FALSE(obj.selected);
+    CHECK(obj.queue.drain() == std::vector<long>{1});
+    obj.visible = false;
+    mc2::refreshResidentInteraction(obj, 602);
+    CHECK(obj.windowsVisible == 601);
+}
 
 // perf-terrain-walk: the render walk drops only views that would draw nothing this frame. The decision is taken per
 // frame from that frame's presentation state, so an object entering the view is drawn the same frame (no vanishing

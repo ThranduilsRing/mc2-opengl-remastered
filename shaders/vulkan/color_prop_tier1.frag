@@ -122,7 +122,8 @@ const float kCoverMin = 0.02;   // below this a fringe is invisible; skip the bl
 float propCoverage(float a, float lod) {
     // Mode 2 uses this same LOD-aware coverage; only its fringe scheduling
     // differs (after vegetation). A fixed cutoff loses minified wire entirely.
-    float cut = mix(0.5, 0.9, clamp(lod * 0.5, 0.0, 1.0));
+    // Canopies retain depth-writing leaf cores against bright sky at every mip.
+    float cut = vTree.y > 0.5 ? 0.5 : mix(0.5, 0.9, clamp(lod * 0.5, 0.0, 1.0));
     if (uPacket.coverageFringePass == 0) {
         if (a < cut) discard;
         return 1.0;
@@ -279,9 +280,9 @@ void main() {
         vec3 albedo = propDecodeColor(materialAlbedo * mix(vec3(1),tint,0.25));
         vec3 sh[9]; for (int k=0;k<9;++k) sh[k]=uEnv.shDiffuse[k].xyz;
         vec3 ambient = uFrame.iblShStrength > 0.0 ? evalShL2(normalize(outputNormalStuff),sh)*uFrame.iblShStrength : vec3(0);
-        // Leaf cards scatter light through both sides; crown normals must not
-        // make the reverse side of a canopy black.
-        float wrap = max(((alphaTestClass ? abs(dot(N,L)) : dot(N,L))+0.5)/1.5,0.0);
+        // Crown normals describe the canopy volume: keep the terrain sun's side.
+        // Backlit leaves receive transmission and sky fill below.
+        float wrap = max((dot(N,L)+0.5)/1.5,0.0);
         float transmission = alphaTestClass ? 0.08*max(dot(-N,L),0.0) : 0.0;
         vec3 direct = propDecodeColor(vMaterialSun) * (propNightSunWeight(wrap, N) + transmission * propNightDirectShare());
         // SH already contains linear irradiance. Preserve the stock albedo exposure ceiling.

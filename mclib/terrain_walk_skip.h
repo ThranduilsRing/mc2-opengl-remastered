@@ -6,6 +6,15 @@
 
 namespace mc2 {
 
+// Resident draws skip extractRenderView, but picking and transient GUI flags still run every frame.
+template <class Object>
+void refreshResidentInteraction(Object& obj, long turn)
+{
+	if (obj.getAppearance()->canBeSeen()) obj.windowsVisible = turn;
+	obj.setSelected(false);
+	obj.setTargeted(false);
+}
+
 // TreeAppearance::render outside the view does one thing: capture a falling tree's moving shadow.
 constexpr bool treeRenderIsNoOp(bool inView, bool shadowMoving) { return !inView && !shadowMoving; }
 
