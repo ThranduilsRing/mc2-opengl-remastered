@@ -683,6 +683,9 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 						const bool terrainKind = kind == TERRAINOBJECT || kind == TREE || kind == BRIDGE || kind == BUILDING;
 						if ((inView && !appearance->IsStaticNow()) || walkObj->getFlag(OBJECT_FLAG_FALLING) ||
 							(appearance->getAppearanceClass() == BUILDING_APPR_TYPE && static_cast<BldgAppearance*>(appearance)->hasFrameLights()) ||
+							// A retained presentation must not freeze a frame-local light row before its permanent bake exists.
+							(appearance->getAppearanceClass() == BUILDING_APPR_TYPE &&
+								static_cast<BldgAppearance*>(appearance)->residentRenderBlocker() == BldgAppearance::ResidentBlocker::Light) ||
 							(terrainKind && static_cast<TerrainObject*>(walkObj)->hasPresentationEffects()))
 							dirty.mark(objIndex);
 						else if (inView && (terrainKind || kind == TURRET || kind == GATE) &&
