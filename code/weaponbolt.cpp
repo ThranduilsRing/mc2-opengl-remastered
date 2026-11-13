@@ -10,6 +10,9 @@
 //===========================================================================//
 
 #include "weaponbolt_internal.h"
+#include "soft_splash.h"
+#include "gvehicl.h"
+#include "../mclib/cmponent.h"
 #include "../mclib/texture_assets.h"
 #include "mc2fmt.h"
 #include "save_archive.h"
@@ -404,6 +407,32 @@ void WeaponBolt::submitDamage(GameObjectPtr target)
     }
 }
 
+void WeaponBolt::applySoftSplash(const glm::vec3& at, GameObjectWatchID directWID)
+{
+    const auto* type = static_cast<WeaponBoltType*>(getObjectType());
+    if ((MPlayer && !MPlayer->isServer()) || weaponShot.masterId < 0 ||
+        !soft_splash::eligible(MasterComponent::masterList[weaponShot.masterId].getForm() ==
+            COMPONENT_FORM_WEAPON_MISSILE, type->isBeam, type->areaEffectDmg, type->areaEffectRad)) return;
+    auto* attacker = ObjectManager->getByWatchID(ownerWID);
+    if (!attacker) return;
+    for (long i = 0; i < ObjectManager->getNumMovers(); ++i) {
+        auto* target = ObjectManager->getMover(i);
+        if (!target || !soft_splash::candidate(target->isMarine(),
+            target->isDestroyed() || target->isDisabled(), target->getWatchID(false) == directWID,
+            target->getTeamId() == attacker->getTeamId())) continue;
+        const auto delta = target->getPosition() - at;
+        const float damage = soft_splash::damage(weaponShot.damage, delta.x * delta.x + delta.y * delta.y);
+        if (damage == 0.0f) continue;
+        auto shot = weaponShot;
+        shot.attackerWID = ownerWID;
+        shot.damage = damage;
+        shot.hitLocation = GROUNDVEHICLE_LOCATION_FRONT; // Fixed: no extra simulation RNG draw.
+        shot.entryAngle = target->relFacingTo(at);
+        traceCombat("damage", "soft_splash", target, &shot);
+        target->handleWeaponHit(&shot, MPlayer != nullptr);
+    }
+}
+
 void WeaponBolt::destroy (void)
 {
 	traceCombatRetire("teardown");
@@ -678,6 +707,7 @@ void WeaponBolt::finishNow (void)
 											(static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectRad);
 		}
 
+		applySoftSplash(target ? target->getPosition() : (targetPosition ? *targetPosition : position), targetWID);
 		traceCombatRetire("forced_finish");
 		MC2_DESTROY(this, "bolt_impact");
 	}
