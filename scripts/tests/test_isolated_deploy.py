@@ -381,7 +381,7 @@ def test_fast_install_delta_keeps_unchanged_bytes_and_detaches_changes(tmp_path,
         path = repo / rel
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b'fixture')
-        assert (seed / rel).samefile(lane / rel)
+        assert (seed / rel).samefile(lane / rel) == (rel != 'mc2.exe')
     if change == 'source':
         (repo / 'runtime.dll').write_bytes(b'updated')
     if change == 'corrupt':
@@ -397,7 +397,7 @@ def test_fast_install_delta_keeps_unchanged_bytes_and_detaches_changes(tmp_path,
         monkeypatch.setattr(dp.shutil, 'copy2', lambda *a, **k: pytest.fail('relinked-but-identical file was copied'))
     items = [(str(repo / rel), rel, 'exe' if rel == 'mc2.exe' else 'support') for rel in rels]
     verified = dp.prepare_seed_delta(items, str(lane), full_verify=change == 'full')
-    assert set(verified) == (set() if change == 'full' else set(rels) -
+    assert set(verified) == (set() if change == 'full' else set(rels) - {'mc2.exe'} -
                              ({'runtime.dll'} if change not in ('none', 'relink') else set()))
     dp.check_hardlink_isolation([i for i in items if i[1] not in verified], str(lane))
     monkeypatch.setattr(dp, 'ensure_terrain_materials', lambda *a: {})
@@ -410,6 +410,21 @@ def test_fast_install_delta_keeps_unchanged_bytes_and_detaches_changes(tmp_path,
         assert (lane / rel).samefile(seed / rel) == (rel in verified)
     if change == 'source':
         assert (seed / 'runtime.dll').read_bytes() == b'fixture'
+
+
+def test_lean_install_exe_swap_cannot_overwrite_seed(tmp_path, monkeypatch):
+    iso = lean_tool()
+    seed, lane = tmp_path / 'seed', tmp_path / 'lane'
+    lean_fixture(seed)
+    monkeypatch.setattr(iso, 'check_space', lambda *a: None)
+    assert iso.main(['--from', str(seed), '--to', str(lane)]) == 0
+    assert not (seed / 'mc2.exe').samefile(lane / 'mc2.exe')
+    replacement = tmp_path / 'baseline.exe'
+    replacement.write_bytes(b'other clean build')
+    iso.shutil.copy2(replacement, lane / 'mc2.exe')
+    assert (lane / 'mc2.exe').read_bytes() == b'other clean build'
+    assert (seed / 'mc2.exe').read_bytes() == b'fixture'
+    assert iso.verified_seed(seed, use_cache=True)
 
 
 def test_normal_deploy_keeps_hardlink_refusal(tmp_path):
@@ -625,7 +640,7 @@ def _churned_lane(tmp_path, monkeypatch, receipt=True):
     monkeypatch.setenv('MC2_LEAN_SEED', str(seed))
     assert iso.main(['--from', str(seed), '--to', str(lane)]) == 0
     iso.verified_seed(seed, use_cache=True)
-    rels = ['mc2.exe', 'runtime.dll', 'shaders_vk/a.spv']
+    rels = ['runtime.dll', 'shaders_vk/a.spv']
     for rel in rels:
         (repo / rel).parent.mkdir(parents=True, exist_ok=True)
         (repo / rel).write_bytes(b'fixture')
@@ -658,7 +673,7 @@ def test_seed_receipt_does_not_excuse_a_same_size_write_with_restored_mtime(tmp_
     victim.write_bytes(b'FIXTURE')  # same size, through the shared inode
     os.utime(victim, ns=(old.st_atime_ns, old.st_mtime_ns))
     verified = dp.prepare_seed_delta(items, str(lane), allow_legacy=True)
-    assert 'runtime.dll' not in verified and {'mc2.exe', 'shaders_vk/a.spv'} <= set(verified)
+    assert set(verified) == {'shaders_vk/a.spv'}
     assert not (lane / 'runtime.dll').samefile(seed / 'runtime.dll')
 
 
