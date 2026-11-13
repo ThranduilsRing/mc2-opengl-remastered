@@ -26,8 +26,9 @@ It measures regional gaps, not literal unoccupied pixels. It intentionally scale
 with map size; absolute nearest-neighbour distances are also given because the
 small authored missions cannot supply a target large-map population density.
 Tree bins include zero-tree bins; REAP3's median zero reflects maps with no trees.
-See [raw baseline](scale-realism/before-metrics.json) and
-[corpus group measurements](scale-realism/corpus-metrics.json).
+Raw baseline and corpus group measurements were removed in `7bd96f0a9`.
+Recover them with `git show 7bd96f0a9^:docs/mapgen/scale-realism/before-metrics.json`
+and `git show 7bd96f0a9^:docs/mapgen/scale-realism/corpus-metrics.json`.
 
 The concrete visual problems are:
 
@@ -157,14 +158,15 @@ game processes or install contents were changed.
 
 ## Review artifacts and reproduction
 
-* [1024 before/after sheet](scale-realism/before_after_1024.png)
-* [3072 before/after sheet](scale-realism/before_after_3072.png)
-* [1024 raw metrics](scale-realism/metrics_1024.json) and
-  [3072 raw metrics](scale-realism/metrics_3072.json)
-* [1024 crop locations](scale-realism/crops_1024.json) and
-  [3072 crop locations](scale-realism/crops_3072.json)
+These artifacts were removed in `7bd96f0a9`. Recover a file with
+`git show 7bd96f0a9^:docs/mapgen/scale-realism/<filename>`:
 
-Full-map originals and exact 4× previews remain under `raster/generated/`.
+* 1024 before/after sheet: `before_after_1024.png`
+* 3072 before/after sheet: `before_after_3072.png`
+* Raw metrics: `metrics_1024.json`, `metrics_3072.json`
+* Crop locations: `crops_1024.json`, `crops_3072.json`
+
+Full-map originals and exact 4× previews are also recoverable from `7bd96f0a9^` under `docs/mapgen/raster/generated/`.
 Each sheet includes matched world-coordinate crops for urban core, industrial
 and wilderness regions. The original crop pairs are
 `scale-realism/{before,after}_{1024,3072}_{urban_core,industrial,wilderness}_1wu.png`,
