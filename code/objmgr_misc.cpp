@@ -623,7 +623,8 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 			GameObjectPtr walkObj = objList[objIndex];
 			if (!walkObj || walkObj->isMover()) continue;
 			const auto kind = walkObj->getObjectClass();
-			if (kind != TREE && kind != TERRAINOBJECT && kind != BRIDGE && kind != BUILDING && kind != TURRET && kind != GATE) continue;
+			// Turrets have a presentation owner in Other, including rotating types that cannot become static.
+			if (kind != TREE && kind != TERRAINOBJECT && kind != BRIDGE && kind != BUILDING && kind != GATE) continue;
 					// Dirty poses are refreshed even before the render cull admits their
 					// vertices (its mask can still describe the previous camera).
 					if (walkObj->getExists())
@@ -764,6 +765,10 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 				if (turrets[i] && turrets[i]->getExists()) 
 				{
                     turrets[i]->updatePresentationLighting();
+					if (turrets[i]->getAppearance()->terrainPoseDirty) {
+						turrets[i]->getAppearance()->terrainPoseDirty = false;
+						turrets[i]->getAppearance()->invalidateStaticRegistration();
+					}
 					turrets[i]->getAppearance()->flushSimEvents();
 					if (turrets[i]->getAppearance()->recalcBounds())
 					{
@@ -774,15 +779,26 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 						// Must force here as well.
 						glm::vec3 pos = turrets[i]->getPosition();
 						float rot = turrets[i]->getRotation();
-						pos.z = TerrainRuntime::groundElevation(pos);
+						auto* appearance = turrets[i]->getAppearance();
+						if (appearance->groundCacheEpoch == TerrainRuntime::g_heightEpoch &&
+							appearance->groundCacheX == pos.x && appearance->groundCacheY == pos.y)
+							pos.z = appearance->groundCacheZ;
+						else {
+							if (appearance->groundCacheEpoch != 0xFFFFFFFFu && appearance->groundCacheEpoch != TerrainRuntime::g_heightEpoch)
+								appearance->invalidateStaticRegistration();
+							pos.z = TerrainRuntime::groundElevation(pos);
+							appearance->groundCacheX = pos.x; appearance->groundCacheY = pos.y;
+							appearance->groundCacheZ = pos.z; appearance->groundCacheEpoch = TerrainRuntime::g_heightEpoch;
+						}
 						bool selected = turrets[i]->isSelected();
 						int teamID = turrets[i]->getTeamId();
 						turrets[i]->getAppearance()->setObjectParameters(pos,rot,selected,teamID,Team::getRelation(teamID, Team::home->getId()));
 
 						MC2_WORLD_UPDATE("appearance_turrets", turrets[i]);
 
-						turrets[i]->getAppearance()->presentAnimation(*turrets[i]->getAppearance()->simulationAnimation());
-                            turrets[i]->getAppearance()->update( false );
+						appearance->presentSettledAnimation();
+						if (appearance->IsStaticNow()) appearance->touch();
+						else appearance->update(false);
 						turrets[i]->getAppearance()->setInView( 1 );
 					}
 					else
