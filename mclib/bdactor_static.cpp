@@ -68,7 +68,7 @@ bool BldgAppearance::isStaticEligible() const
 	if (!s_bldgTypeAnimStaticEligible && bldgTypeHasAnimations(appearType))
 		return false;
 	// Instance-level disqualifiers.
-	if (drawFlash)          return false;
+	if (mc2::building_static::flashNeedsUpdate(drawFlash, duration)) return false;
 	if (destructFX)         return false;
 	if (mc2::building_static::activityNeedsUpdate(isActivitying, static_cast<bool>(activity), static_cast<bool>(activity1)))
 		return false;
