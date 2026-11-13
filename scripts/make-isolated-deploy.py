@@ -958,6 +958,7 @@ def main(argv=None) -> int:
         # Static deployed bytes are detached by deploy_payload only when they
         # differ. Runtime/user writes still require private inodes immediately.
         static = [(r, n) for r, n in to_copy if r.casefold() in seed
+                  and r.casefold() != 'mc2.exe'  # baseline exe swaps may copy in place, outside deploy_payload
                   and not r.casefold().endswith(('.cfg', '.ini', '.bat', '.cookstamp'))
                   and not r.casefold().startswith(('cache/', 'data/textures/'))
                   and r != '.deployed_manifest.csv']
