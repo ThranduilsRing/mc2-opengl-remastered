@@ -14,20 +14,22 @@ struct PropRecordCacheKey {
 // tint or fog. Keep its generation separate from the full instance upload.
 struct PropTypeGeneration {
     uint64_t generation = 0;
-    std::vector<uint32_t> types;
+    std::vector<uint64_t> types;
+    struct TypeIdentity { uint64_t operator()(uint32_t type) const { return type; } };
 
-    template<class Instance>
-    uint64_t update(std::span<const Instance> instances) {
+    template<class Instance, class Identity = TypeIdentity>
+    uint64_t update(std::span<const Instance> instances, Identity identity = {}) {
         bool changed = generation == 0 || types.size() != instances.size();
-        if (!changed) {
-            for (size_t i = 0; i < instances.size(); ++i)
-                if (types[i] != instances[i].typeID) { changed = true; break; }
+        types.resize(instances.size());
+        uint64_t key = 0;
+        for (size_t i = 0; i < instances.size(); ++i) {
+            // Resolve the recipe/object ID once per contiguous type run.
+            if (i == 0 || instances[i].typeID != instances[i - 1].typeID)
+                key = identity(instances[i].typeID);
+            changed |= types[i] != key;
+            types[i] = key;
         }
-        if (changed) {
-            types.resize(instances.size());
-            for (size_t i = 0; i < instances.size(); ++i) types[i] = instances[i].typeID;
-            ++generation;
-        }
+        if (changed) ++generation;
         return generation;
     }
 };

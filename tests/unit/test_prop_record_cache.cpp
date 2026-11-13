@@ -26,6 +26,19 @@ TEST_CASE("prop_record_cache: lighting and animation do not rebuild type runs") 
     CHECK(types.update(std::span<const Instance>{}) == 5);
 }
 
+TEST_CASE("prop_record_cache: recipe replacement preserves object ID invalidation") {
+    struct Instance { uint32_t typeID; };
+    const std::array<Instance, 2> data{{{4}, {4}}};
+    PropTypeGeneration types;
+    uint32_t recipe = 7, lookups = 0;
+    auto identity = [&](uint32_t type) { ++lookups; return (static_cast<uint64_t>(type) << 32) | recipe; };
+    CHECK(types.update(std::span<const Instance>(data), identity) == 1);
+    CHECK(types.update(std::span<const Instance>(data), identity) == 1);
+    CHECK(lookups == 2); // one lookup per run, not per instance
+    recipe = 8; // same type/count, new recipe owner after spawn/destruction
+    CHECK(types.update(std::span<const Instance>(data), identity) == 2);
+}
+
 TEST_CASE("prop_record_cache: scene includes visibility, destruction and same-size edits") {
     PropInstanceGeneration scene;
     std::array<std::byte, 2> instances{};

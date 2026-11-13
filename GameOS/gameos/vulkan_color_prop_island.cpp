@@ -2038,7 +2038,10 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
         GpuStaticPropRegistry::getRegistryGeneration(),
         {static_cast<const std::byte*>(feed.instances112), static_cast<size_t>(instBytes)});
     const uint64_t typeGeneration = s->typeSource.update(std::span(
-        static_cast<const GpuStaticPropInstance*>(feed.instances112), instanceCount));
+        static_cast<const GpuStaticPropInstance*>(feed.instances112), instanceCount), [](uint32_t type) {
+            return (static_cast<uint64_t>(type) << 32) |
+                static_cast<uint32_t>(GpuStaticPropRegistry::getRecipeIndexForType(type));
+        });
     s->recordKey = {typeGeneration, s->materialGeneration, s->resourceGeneration};
     cp_refresh_samplers(s);
     // Props do not depend on terrain readiness: with no ground-lighting frame this frame (terrain not inited, fell back, or a different frame) reuse
