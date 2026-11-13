@@ -109,10 +109,11 @@ void GpuStaticPropBatcher::forgetLodState(const GpuStaticPropInstance& inst) {
 }
 
 extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
+    ZoneScopedN("VKIsl.Props.MainFeed");
     if (!out) return 0;
     if (!s_geometryFinalized || s_fatalRegistrationFailure) return 0;
     static std::vector<GpuStaticPropInstance> s_colorFeedFlat;
-    s_colorFeedFlat.clear();
+    { ZoneScopedN("VKIsl.Props.MainFeed.Clear"); s_colorFeedFlat.clear(); }
 
     // Grouped by typeID for correct per-type geometry addressing (the island issues
     // one type-run per contiguous typeID block via firstInstance). Deterministic
@@ -127,8 +128,9 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
     // every (type, LOD) is still one contiguous run (one instanced draw) and the HZB pass sees the same feed.
     static const bool s_lodOn = mc2::gate::get<"MC2_VK_PROP_LOD">();
     static std::unordered_map<uint32_t, std::vector<GpuStaticPropInstance>> s_lodOut;
-    for (auto& [lodTid, lodVec] : s_lodOut) lodVec.clear();
     const bool lodActive = s_lodOn && !s_lodGroups.empty();
+    { ZoneScopedN("VKIsl.Props.MainFeed.LODRoute");
+    for (auto& [lodTid, lodVec] : s_lodOut) lodVec.clear();
     if (lodActive) {
         const RenderCore::ViewUniforms vu = RenderCore::framePackets().copyMainView().uniforms;
         const float cx = vu.cameraWorldPos[0], cy = vu.cameraWorldPos[1], cz = vu.cameraWorldPos[2];
@@ -158,13 +160,17 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
             }
         }
     }
+    }
     std::vector<uint32_t> typeIds;
+    { ZoneScopedN("VKIsl.Props.MainFeed.TypeOrder");
     typeIds.reserve(s_persistentStaticStore.size() + s_bucketsByType.size());
     for (const auto& [storeType, storeInsts] : s_persistentStaticStore) typeIds.push_back(storeType);
     for (const auto& [bucketType, bucketRef] : s_bucketsByType) typeIds.push_back(bucketType);
     if (lodActive) for (const auto& [lodTid, lodVec] : s_lodOut) if (!lodVec.empty()) typeIds.push_back(lodTid);
     std::sort(typeIds.begin(), typeIds.end());
     typeIds.erase(std::unique(typeIds.begin(), typeIds.end()), typeIds.end());
+    }
+    { ZoneScopedN("VKIsl.Props.MainFeed.Flatten");
     for (uint32_t tid : typeIds) {
         if (lodActive && s_lodGroups.count(tid)) {   // a LOD-capable base type: its instances were re-typed above
             const auto& v = s_lodOut[tid];
@@ -185,6 +191,7 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
             const auto& [bucketKey, b] = *bt;
             s_colorFeedFlat.insert(s_colorFeedFlat.end(), b.instances.begin(), b.instances.end());
         }
+    }
     }
     if (s_colorFeedFlat.empty()) return 0;
 

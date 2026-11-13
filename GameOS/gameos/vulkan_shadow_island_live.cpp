@@ -1186,7 +1186,9 @@ extern "C" void mc2_vk_shadow_island_run_movers(const float cameraRows[16], cons
     record_local_shadows(s);   // LOCAL-LIGHTS-2
     const auto start=std::chrono::steady_clock::now();
     const auto props=std::span(static_cast<const GpuStaticPropInstance*>(instances),instanceCount);
+    { ZoneScopedN("DSP.MoverPrepare");
     if (!s->mover.prepare(s->size,cameraRows,light,props,s->bake.ready())) return;
+    }
     const auto& selected=s->mover.props();
     if (!stage_instances(s,selected.data(),static_cast<uint32_t>(selected.size()))) return;
     const auto& frame=s->mover.frame();

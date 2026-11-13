@@ -27,6 +27,7 @@ void mc2::VkSceneRenderer::renderListsDynamicShadowPass (RenderSubmissions& subm
 			std::memcpy(rows,&camera,sizeof(rows)); // Camera::projectModernClipGL uses these four explicit rows
 			float sun[3]; gos_GetTerrainLightDir(&sun[0],&sun[1],&sun[2]);
 			static std::vector<GpuStaticPropInstance> movers;
+			{ ZoneScopedN("DSP.RegistryPrepare");
 			static std::vector<GpuStaticPropInstance> registryMovers;
 			static std::vector<GpuStaticPropInstance> coldCasters;
 			static uint64_t registryGeneration=~0ull, casterVersion=~0ull, casterDelta=~0ull;
@@ -49,6 +50,7 @@ void mc2::VkSceneRenderer::renderListsDynamicShadowPass (RenderSubmissions& subm
 			movers=registryMovers;
 			set.appendMoverLeaves(movers,g_mc2FrameCounter.load(std::memory_order_relaxed));
 			mc2shadow::moverPropFeed().append(movers,g_mc2FrameCounter.load(std::memory_order_relaxed)); }
+			}
 			{ ZoneScopedN("DSP.RunMovers"); mc2_vk_shadow_island_run_movers(rows,sun,movers.data(),static_cast<unsigned int>(movers.size())); }
 		}
 		{ ZoneScopedN("DSP.SubmitFrame"); mc2_vk_shadow_island_submit_frame(); }

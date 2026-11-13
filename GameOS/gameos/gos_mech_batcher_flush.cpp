@@ -7,6 +7,7 @@
 #include "mc2fmt.h"
 #include "../../mclib/battle_bench_sink.h"
 #include "ui_texture.h"
+#include "gos_profiler.h"
 
 // ---------------------------------------------------------------------------
 // submitActor (Task 6) — bone staging + texture capture
@@ -258,6 +259,7 @@ static void resolveSurfaceMaterial() {
 
 // Count bones and group the pending submits into draw buckets keyed by packet, texture and flags.
 void MechFlushFrame::buildBuckets() {
+    ZoneScopedN("DSP.MechPack.Buckets");
     // Step 1: Count total bones (one block per actor).
     totalBones = 0;
     for (const auto& ps : s_pendingSubmits) totalBones += ps.bones.size();
@@ -294,6 +296,7 @@ void MechFlushFrame::buildBuckets() {
 
 // Append each actor bone palette to the bone snapshot and record its base offset.
 void MechFlushFrame::writeBones() {
+    ZoneScopedN("DSP.MechPack.Bones");
     // Step 4: Write the bone feed once per actor; record each actor's boneBase offset.
     actorBoneBase.assign(s_pendingSubmits.size(), 0u);
     s_vkMechBoneSnapshot.clear();
@@ -307,6 +310,7 @@ void MechFlushFrame::writeBones() {
 
 // Assign each bucket a material-table row; the table grows within a mission.
 void MechFlushFrame::buildMaterialTable() {
+    ZoneScopedN("DSP.MechPack.MaterialTable");
     // Step 2.5: Build mech MaterialGpu table (same bucket iteration order as Step 5).
     // s_mechDrawMaterialIdx is per-draw (bucket-iteration order) — rebuilt every flush.
     // s_mechMaterialTable / s_mechHandleToMaterialIdx PERSIST within a mission
@@ -352,6 +356,7 @@ void MechFlushFrame::buildMaterialTable() {
 
 // Write the instance feed in bucket order and collect the draw calls.
 void MechFlushFrame::writeInstances() {
+    ZoneScopedN("DSP.MechPack.Instances");
     // Step 5: Write the instance feed in bucket order; collect draw calls.
     drawCalls.reserve(buckets.size());
     s_vkMechInstSnapshot.clear();
@@ -431,6 +436,7 @@ void MechFlushFrame::writeInstances() {
 
 // Check every draw call material row still names the bucket texture.
 void MechFlushFrame::validateMaterialTable() {
+    ZoneScopedN("DSP.MechPack.ValidateMaterialTable");
     // Task 5: Compare validation — verify albedoTex == texHandle per draw call
     if (s_mechMaterialGpuEnabled) {
         int mismatches = 0;
@@ -458,6 +464,7 @@ void MechFlushFrame::validateMaterialTable() {
 
 // One run per draw call, with the LIVE slot-0 paint texture (and the per-type AO / normal maps) resolved this frame.
 void MechFlushFrame::collectRuns() {
+    ZoneScopedN("DSP.MechPack.Runs");
     s_vkMechRunSnapshot.clear();
     drawnCalls = 0;
     for (const DrawCall& dc : drawCalls) {
@@ -491,6 +498,7 @@ void MechFlushFrame::collectRuns() {
 // Publish the frame: the projection and depth bias the feed carries, the geometry generation the runs index and the
 // shadow caster counts the state dump reports.
 void MechFlushFrame::snapshotFrame() {
+    ZoneScopedN("DSP.MechPack.Snapshot");
     // gos_GetMechFixBMVPMat4() is the row-major kAxisSwap*worldToClip the island's vertex stage consumes.
     const float* mvp = gos_GetMechFixBMVPMat4();
     if (mvp) std::memcpy(s_vkMechWorldToClipGL, mvp, sizeof(s_vkMechWorldToClipGL));
