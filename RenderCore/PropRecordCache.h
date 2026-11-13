@@ -10,6 +10,30 @@ struct PropRecordCacheKey {
     bool operator==(const PropRecordCacheKey&) const = default;
 };
 
+// Draw metadata depends on ordered type runs, not transforms, light indices,
+// tint or fog. Keep its generation separate from the full instance upload.
+struct PropTypeGeneration {
+    uint64_t generation = 0;
+    std::vector<uint64_t> types;
+    struct TypeIdentity { uint64_t operator()(uint32_t type) const { return type; } };
+
+    template<class Instance, class Identity = TypeIdentity>
+    uint64_t update(std::span<const Instance> instances, Identity identity = {}) {
+        bool changed = generation == 0 || types.size() != instances.size();
+        types.resize(instances.size());
+        uint64_t key = 0;
+        for (size_t i = 0; i < instances.size(); ++i) {
+            // Resolve the recipe/object ID once per contiguous type run.
+            if (i == 0 || instances[i].typeID != instances[i - 1].typeID)
+                key = identity(instances[i].typeID);
+            changed |= types[i] != key;
+            types[i] = key;
+        }
+        if (changed) ++generation;
+        return generation;
+    }
+};
+
 // The final feed includes visibility, transient props and camera-selected LODs.
 // Registry generation alone cannot identify its contents. Compare exactly (no
 // hash collisions), and copy only when the published instance bytes change.
