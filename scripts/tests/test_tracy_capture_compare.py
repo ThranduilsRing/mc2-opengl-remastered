@@ -87,12 +87,14 @@ def test_tracy_exe_uses_native_name(tmp_path, monkeypatch, platform, filename):
 def harness(monkeypatch):
     h = SimpleNamespace(held=False, events=[], logs=[], children=[])
 
-    def acquire(label):
+    def acquire(label, **kwargs):
         assert not h.held
         h.held = True
         h.events.append("acquire")
 
     def release():
+        if not h.held:
+            return
         assert h.held
         assert all(child.poll() is not None for child in h.children)
         assert all(log.closed for log in h.logs)

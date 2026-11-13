@@ -316,8 +316,11 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
         cleanup.enter_context(host_lease.keyed_by(env.get("MC2_VK_DEVICE")))
         # The recorder must share the game's host lease so another lane cannot feed it a trace.
         if not host_lease.holds():
-            host_lease.acquire(f"Tracy capture {arm} {mission}")
-            cleanup.callback(host_lease.release)
+            if post_load:
+                cleanup.enter_context(host_lease.exclusive_window(f"Tracy capture {mission}", timeout_s=1200))
+            else:
+                host_lease.acquire(f"Tracy capture {arm} {mission}")
+                cleanup.callback(host_lease.release)
 
         # Recorder first: TRACY_ON_DEMAND means the game buffers nothing until connected.
         cap_cmd = [str(cap_exe), "-a", "127.0.0.1", "-p", "8086",
@@ -373,7 +376,9 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
             import psutil
             process = psutil.Process(gp.pid)
             # Restrict to this GPU slot even when the lease lends idle game cores.
-            slot = host_lease.lane_devices().index(host_lease.held_device())
+            device = host_lease.held_device()
+            slot = (host_lease.lane_devices().index(device) if device
+                    else host_lease.eligible_slots(env.get("MC2_VK_DEVICE"))[0])
             mask = host_lease.affinity_mask(slot)
             cpus = [c for c in process.cpu_affinity() if mask & (1 << c)]
             process.cpu_affinity(cpus)
@@ -430,6 +435,7 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
         if post_load:
             # Exact per-event frame durations prove the recorder saw gameplay,
             # rather than accepting a long connection with a handful of frames.
+            # background-launch: allow Tracy CSV console exporter, hidden; never an engine.
             exported = subprocess.run([str(tracy_exe("tracy-csvexport.exe")), "-u", "-f", "Frame", str(out)],
                                       capture_output=True, text=True, timeout=120, **nofocus.hidden_kwargs())
             if exported.returncode:
