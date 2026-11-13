@@ -227,6 +227,8 @@ def game_env(arm: str, fixed_timestep: bool, fps_cap, pose, extra_env, via_menu_
         sys.exit(f"ERROR: {e}")
     if fixed_timestep:
         env["MC2_SMOKE_FIXED_TIMESTEP"] = "1"
+    else:
+        env.pop("MC2_SMOKE_FIXED_TIMESTEP", None)
     if fps_cap is not None:
         env["MC2_FPS_CAP"] = str(fps_cap)
     if pose:
@@ -249,7 +251,8 @@ def game_env(arm: str, fixed_timestep: bool, fps_cap, pose, extra_env, via_menu_
 
 def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path,
                   extra_env=None, pose=None, fixed_timestep=True, fps_cap=None,
-                  show_window: bool = True, ticks: int = 0, via_menu_boot: bool = False) -> int:
+                  show_window: bool = True, ticks: int = 0, via_menu_boot: bool = False,
+                  spawn_game=None) -> int:
     """Record one trace under the host lease; retain a caller's existing lease.
 
     Free timestep and an uncapped FPS limit measure renderer throughput.
@@ -275,7 +278,7 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
 
         # Recorder first: TRACY_ON_DEMAND means the game buffers nothing until connected.
         cap_cmd = [str(cap_exe), "-a", "127.0.0.1", "-p", "8086",
-                   *([] if ticks else ["-s", str(seconds)]), "-f", "-o", str(out)]
+                   *([] if ticks or spawn_game else ["-s", str(seconds)]), "-f", "-o", str(out)]
         cap_log = out.with_suffix(".capture.log")
         cap_lf = cleanup.enter_context(open(cap_log, "w", encoding="utf-8", errors="replace"))
         # background-launch: allow Tracy recorder console tool, windowless via nofocus.hidden_kwargs.
@@ -310,9 +313,13 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
 
         print(f"[capture] recorder pid={recorder.pid} -> {out}")
         # The pinned drawable size must survive the background launch for comparable measurements.
-        gp = nofocus.spawn(game_cmd, stdout=game_lf, stderr=subprocess.STDOUT,
-                           cwd=str(install), env=env,
-                           show_window=show_window, small_window=False)
+        if spawn_game:
+            gp = spawn_game(game_cmd, stdout=game_lf, stderr=subprocess.STDOUT,
+                            cwd=str(install), env=env, show_window=show_window, small_window=False)
+        else:
+            gp = nofocus.spawn(game_cmd, stdout=game_lf, stderr=subprocess.STDOUT,
+                               cwd=str(install), env=env,
+                               show_window=show_window, small_window=False)
         cleanup.callback(_stop_capture_child, gp)
         print(f"[capture] game pid={gp.pid} arm={arm} mission={mission} "
               f"duration={duration}s fixed_ts={fixed_timestep} fps_cap={fps_cap} pose={pose}")
@@ -326,6 +333,8 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
             _stop_capture_child(gp)   # the game has no auto-quit outside smoke mode: end OUR spawned pid once the recording is over
         try:
             gp.wait(timeout=duration + 90)
+            if gp.returncode:
+                rc = 1
         except subprocess.TimeoutExpired:
             print("WARN: game exceeded its duration budget -- killing OUR spawned pid "
                   f"{gp.pid} only", file=sys.stderr)

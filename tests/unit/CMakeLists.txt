@@ -39,6 +39,7 @@ add_executable(mc2_tests
     ${MC2_WORKTREE_ROOT}/mclib/fx/fx_mesh_data.cpp
     test_support_craft.cpp
     test_jump_target.cpp
+    test_path_work.cpp
     test_contact_pick.cpp
     test_building_static_eligibility.cpp
     test_terrain_dirty_queue.cpp

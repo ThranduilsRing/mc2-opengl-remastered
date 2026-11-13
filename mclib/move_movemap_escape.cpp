@@ -5,6 +5,7 @@
 #include "move_internal.h"
 #include "mc2_debug_out.h"
 
+#include "path_work.h"
 
 long MoveMap::calcEscapePath (const mc2_move::PathQuery& query, mc2_move::SolverScratch& scratch, MovePathPtr path, glm::vec3* goalWorldPos, long* goalCell) {
 
@@ -77,7 +78,7 @@ long MoveMap::calcEscapePath (const mc2_move::PathQuery& query, mc2_move::Solver
 		}
 
 		PQNode bestPQNode;
-		bestPQNode = scratch.openHeap.popMin().value();
+		bestPQNode = mc2::path_work::popNode(scratch.openHeap).value();
 		if (_pathTrace) _ptNodes++;
 		bestRow = bestPQNode.row;
 		bestCol = bestPQNode.col;

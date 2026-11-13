@@ -1,4 +1,5 @@
 #include "doctest.h"
+#include "path_work.h"
 #include "mission.h"
 #include "mech.h"
 #include "movemgr.h"
@@ -1227,4 +1228,109 @@ TEST_CASE("JumpBackoff/production admission and active FIX1 restore use simulati
     world.pilot->getCurTacOrder()->origin = ORDER_ORIGIN_PLAYER;
     world.pilot->noteJumpPathFailed();
     CHECK_FALSE(world.pilot->getJumpBackoff());
+}
+
+TEST_CASE("PathWorkProduction/all four solver loops count successful and exhausted searches") {
+    MovementWorld world;
+    MOVE_init(21);
+    MOVE_buildData(180, 180, nullptr, 0, nullptr);
+    auto* map = PathFindMap[SIMPLE_PATHMAP];
+    const mc2_move::PathQuery query;
+    for (int solver = 0; solver < 3; ++solver) {
+        for (bool exhausted : {false, true}) {
+            INFO("solver=" << solver << " exhausted=" << exhausted);
+            auto start = world.point(90);
+            REQUIRE(map->setUp(70, 70, 43, 43, 0, &start, 90, 90,
+                                world.point(95), 20, 25, 50, 0, 8) == NO_ERR);
+            if (exhausted) {
+                // Leave the start insert intact but no legal successors/goals.
+                for (auto& cell : map->map) {
+                    cell.cost = COST_BLOCKED;
+                    cell.clearFlag(MOVEFLAG_GOAL);
+                }
+            }
+            MovePath path;
+            int goal[2]{};
+            long escapeGoal[2]{};
+            const auto before = mc2::path_work::expansions;
+            long result = 0;
+            if (solver == 0)
+                result = map->calcPath(query, map->solverScratch, &path, nullptr, goal);
+            else if (solver == 1)
+                result = map->calcPathJUMP(query, map->solverScratch, &path, nullptr, goal);
+            else
+                result = map->calcEscapePath(query, map->solverScratch, &path, nullptr, escapeGoal);
+            CHECK(mc2::path_work::expansions > before);
+            if (exhausted) CHECK(result == 0);
+            else if (solver == 2) {
+                // Release escape search reaches the goal but initializes the
+                // path length only inside _DEBUG (legacy behavior). Pin the
+                // goal-reaching branch without fixing that unrelated defect.
+                CHECK(escapeGoal[0] == 20);
+                CHECK(escapeGoal[1] == 25);
+                CHECK(path.cost > 0);
+            }
+            else CHECK(result > 0);
+        }
+    }
+    auto* global = GlobalMoveMap[0];
+    global->isGateDisabledCallback = [](int) { return false; };
+    global->isGateOpenCallback = [](int) { return true; };
+    const auto start = global->calcArea(90, 40);
+    const auto goal = global->calcArea(90, 140);
+    REQUIRE(start >= 0);
+    REQUIRE(goal >= 0);
+    REQUIRE(start != goal);
+    GlobalPathStep path[MAX_GLOBAL_PATH];
+    auto before = mc2::path_work::expansions;
+    REQUIRE(global->calcPath(start, goal, path, 90, 40, 90, 140) > 0);
+    CHECK(mc2::path_work::expansions > before);
+    global->useClosedAreas = false;
+    for (long door = 0; door < global->numDoors; ++door)
+        global->doors[door].open = false;
+    before = mc2::path_work::expansions;
+    CHECK(global->calcPath(start, goal, path, 90, 40, 90, 140) == 0);
+    CHECK(mc2::path_work::expansions > before);
+}
+
+TEST_CASE("PathWorkProduction/replacement retains age position and source accounting") {
+    MovementWorld world;
+    auto& queue = *world.queue;
+    queue.request(world.pilot.get(), 1, MOVEPARAM_INIT, 16);
+    auto* original = queue.queueFront;
+    original->enqueueFrame = MovePathManager_getFrameCounter() - 2;
+    MovingPilot second;
+    queue.request(&second, 2, MOVEPARAM_INIT, 17);
+    queue.request(world.pilot.get(), 3, MOVEPARAM_JUMP, 18);
+    CHECK(queue.queueFront == original);
+    CHECK(queue.queueEnd == second.getMovePathRequest());
+    CHECK(original->enqueueFrame == MovePathManager_getFrameCounter() - 2);
+    CHECK(original->selectionIndex == 3);
+    CHECK(original->moveParams == MOVEPARAM_JUMP);
+    CHECK(MovePathManager::numPaths == 2);
+    CHECK(MovePathManager::sourceTally[16] == 0);
+    CHECK(MovePathManager::sourceTally[17] == 1);
+    CHECK(MovePathManager::sourceTally[18] == 1);
+    queue.remove(&second);
+}
+
+TEST_CASE("PathWorkProduction/empty and zero expansion requests reset each update") {
+    MovementWorld world;
+    auto& queue = *world.queue;
+    const auto frame = MovePathManager_getFrameCounter();
+    const auto before = mc2::path_work::expansions;
+    queue.update();
+    CHECK(MovePathManager_getFrameCounter() == frame + 1);
+    std::array<MovingPilot, 9> pilots;
+    for (auto& pilot : pilots) queue.request(&pilot, 0, MOVEPARAM_INIT, 16);
+    CHECK(MovePathManager::numPaths == 9);
+    queue.update(); // null vehicles cost zero expansions; all nine can drain
+    CHECK(MovePathManager::numPaths == 0);
+    CHECK(queue.queueFront == nullptr);
+    CHECK(queue.queueEnd == nullptr);
+    CHECK(mc2::path_work::expansions == before);
+    queue.request(&pilots[0], 0, MOVEPARAM_INIT, 16);
+    queue.update();
+    CHECK(MovePathManager::numPaths == 0);
+    CHECK(MovePathManager_getFrameCounter() == frame + 3);
 }

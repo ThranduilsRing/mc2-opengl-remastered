@@ -25,6 +25,11 @@
 #include"path_trace.h"  // PATHFINDING-FACTS-1 gated PATH telemetry
 #include "sim_trace.h"
 #include "mc2fmt.h"
+#include "path_work.h"
+
+extern unsigned long beginPlayerPathResult(MechWarrior*);
+extern void recordPlayerPathResult(MechWarrior*, long, unsigned long);
+extern void dumpPlayerPathResults();
 #if MC2_SIM_TRACE
 #include "mover.h"   // the trace names the mover behind a path request; the file otherwise knows only the forward declaration
 #endif
@@ -93,7 +98,7 @@ long MovePathManager::init (void) {
 //---------------------------------------------------------------------------
 
 void MovePathManager::destroy (void) {
-
+	dumpPlayerPathResults();
 }
 
 //---------------------------------------------------------------------------
@@ -140,10 +145,19 @@ constexpr int DEBUG_MOVEPATH_QUEUE = 0;
 
 void MovePathManager::request (MechWarriorPtr pilot, long selectionIndex, unsigned long moveParams, long source) {
 
-	//-----------------------------------------------------
-	// If the pilot is already awaiting a calc, purge it...
-	remove(pilot);
-
+	// Updating an outstanding request keeps its queue position and original age.
+	// Repeated retries must not hide starvation or defer the player deadline.
+	if (auto* pending = pilot->getMovePathRequest()) {
+		if (mc2_diag::tagRequested("PATH"))
+			mc2::fmt::print_out("[PATH v1] simframe={} event=replace enqueue_frame={}\n", turn - 1, pending->enqueueFrame);
+		sourceTally[pending->num]--;
+		pending->num = source;
+		sourceTally[source]++;
+		pending->selectionIndex = selectionIndex;
+		pending->moveParams = moveParams;
+		++s_pathQueuedThisFrame;
+		return;
+	}
 	if (!freeList)
 		Fatal(0, " Too many pilots calcing paths ");
 
@@ -181,9 +195,7 @@ void MovePathManager::request (MechWarriorPtr pilot, long selectionIndex, unsign
 	sourceTally[source]++;
 	s_pathQueuedThisFrame++;  // PATHFINDING-FACTS-1: enqueue tally (telemetry only)
 
-	// PATHFINDING-FACTS-2: stamp enqueue frame so update() can compute the age of
-	// the oldest request it services. Only meaningful under the PATH gate; written
-	// unconditionally (cheap scalar store) but consumed only when PATH is enabled.
+	// Always stamp: queue age is part of deterministic deadline scheduling.
 	pathQRec->enqueueFrame = s_pathFrameCounter;
 
 	peakPaths = std::max(peakPaths, numPaths);
@@ -208,7 +220,9 @@ void MovePathManager::calcPath (void) {
 			return;
 
 		MC2_SIM_TRACE_LINE("CALC pilot={:d} src={:d}", static_cast<int32_t>(mover->getPartId()), static_cast<int32_t>(curQRec->num));
-		/*long err = */pilot->calcMovePath(curQRec->selectionIndex, curQRec->moveParams);
+		const auto orderSample = beginPlayerPathResult(pilot);
+		const long err = pilot->calcMovePath(curQRec->selectionIndex, curQRec->moveParams);
+		recordPlayerPathResult(pilot, err, orderSample);
 		MC2_SIM_TRACE_LINE("CALCDONE pilot={:d} p0={:d}/{:d} p1={:d}/{:d}", static_cast<int32_t>(mover->getPartId()), static_cast<int32_t>(pilot->getMovePath(0)->curStep), static_cast<int32_t>(pilot->getMovePath(0)->numStepsWhenNotPaused), static_cast<int32_t>(pilot->getMovePath(1)->curStep), static_cast<int32_t>(pilot->getMovePath(1)->numStepsWhenNotPaused));
 	}
 }
@@ -223,32 +237,53 @@ void MovePathManager::update (void) {
 	QueryPerformanceCounter(startCk);
 	#endif
 
-	long numPathsToProcess = 6;
-	//if (numPaths > 15)
-	//	numPathsToProcess = 10;
-
-	// PATHFINDING-FACTS-2: capture the oldest-serviced request's age. The queue is
-	// FIFO, so queueFront at loop entry is the oldest request we will service this
-	// frame. Read before the loop (calcPath() pops queueFront). -1 == none serviced.
-	long oldestEnqueueFrame = queueFront ? queueFront->enqueueFrame : 0;
-	bool hadWorkAtEntry = (queueFront != nullptr);
-
-	long processedThisFrame = 0;  // PATHFINDING-FACTS-1 (telemetry only)
-	for (long i = 0; i < numPathsToProcess; i++) {
-		if (!queueFront)
+	// Every solve started here completes, so this is a soft admission budget.
+	// The hard solve cap includes deadline promotions; the entry count also
+	// bounds zero-work/reentrant requests. Excess due players keep their age.
+	const auto startExpansions = mc2::path_work::expansions;
+	const long requestsAtEntry = numPaths;
+	long oldestAge = -1;
+	long playerServed = 0;
+	long playerMaxAge = -1;
+	long processedThisFrame = 0;
+	const auto isPlayer = [](PathQueueRecPtr rec) {
+		return rec->pilot->getCurTacOrder()->origin == ORDER_ORIGIN_PLAYER &&
+		       rec->pilot->getCurTacOrder()->code != TACTICAL_ORDER_NONE;
+	};
+	while (queueFront && processedThisFrame < requestsAtEntry) {
+		auto* next = mc2::path_work::nextRequest(queueFront,
+			mc2::path_work::expansions - startExpansions, s_pathFrameCounter, isPlayer,
+			processedThisFrame);
+		if (!next)
 			break;
+		const long age = s_pathFrameCounter - next->enqueueFrame;
+		oldestAge = std::max(oldestAge, age);
+		if (isPlayer(next)) {
+			++playerServed;
+			playerMaxAge = std::max(playerMaxAge, age);
+		}
+		mc2::path_work::promote(queueFront, queueEnd, next);
 		calcPath();
-		processedThisFrame++;
+		++processedThisFrame;
+	}
+	const auto work = mc2::path_work::expansions - startExpansions;
+	const int capHit = (work >= mc2::path_work::kTickBudget && queueFront) ? 1 : 0;
+	long playerPending = 0;
+	long playerPendingMaxAge = -1;
+	for (auto* rec = queueFront; rec; rec = rec->next) {
+		if (isPlayer(rec)) {
+			++playerPending;
+			playerPendingMaxAge = std::max(playerPendingMaxAge, s_pathFrameCounter - rec->enqueueFrame);
+		}
 	}
 
-	// PATHFINDING-FACTS-2: throttle-cap-hit -- did the 6-cap stop us with the queue
-	// still non-empty? (processed == cap AND queueFront still set after the loop).
-	int capHit = (processedThisFrame == numPathsToProcess && queueFront != nullptr) ? 1 : 0;
-	long oldestAge = hadWorkAtEntry ? (s_pathFrameCounter - oldestEnqueueFrame) : -1;
-
-	// PATHFINDING-FACTS-1/2: per-frame queue depth/throttle emit (gated, default-OFF).
 	mc2_path_trace::emitFrame(s_pathQueuedThisFrame, processedThisFrame, numPaths, peakPaths,
-	                          oldestAge, capHit);
+	                          oldestAge, capHit, work, playerServed, playerMaxAge,
+	                          playerPending, playerPendingMaxAge);
+	if ((s_pathQueuedThisFrame || requestsAtEntry || numPaths) && mc2_diag::tagRequested("PATH"))
+		mc2::fmt::print_out("[PATH v1] simframe={} queued={} entry={} processed={} backlog={} expansions={} budget_deferred={} hardcap_deferred={}\n",
+			turn - 1, s_pathQueuedThisFrame, requestsAtEntry, processedThisFrame, numPaths, work,
+			capHit, processedThisFrame == mc2::path_work::kMaxSolvesPerTick && queueFront ? 1 : 0);
 	s_pathQueuedThisFrame = 0;
 
 	// PATHFINDING-FACTS-2: advance the frame counter once per update().

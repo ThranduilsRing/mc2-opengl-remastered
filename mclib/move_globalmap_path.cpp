@@ -5,6 +5,7 @@
 #include "move_internal.h"
 #include "mc2fmt.h"
 
+#include "path_work.h"
 namespace {
 
 // WHAT: gives the open-list entry of `door` its new key.
@@ -368,7 +369,7 @@ long GlobalMap::calcPath (long startArea,
 
 	while (!openHeap.isEmpty()) {
 		PQNode bestPQNode;
-		bestPQNode = openHeap.popMin().value();
+		bestPQNode = mc2::path_work::popNode(openHeap).value();
 		if (g_moveReconEnabled) g_moveRecon_ag_nodesPopped++;
 		long bestDoor = bestPQNode.id;
 		GlobalMapDoorPtr bestMapDoor = &doors[bestDoor];
