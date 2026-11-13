@@ -861,6 +861,12 @@ bool MissionInterfaceManager::uiCmdReadback(UiCmdCtx& c)
 				// the post-transform position the HUD/pick code uses, so a
 				// unit that renders off-frustum shows here as w<=0.
 				AppearancePtr ap = obj->getAppearance();
+				if (ap && !obj->isMover()) {
+					mc2::fmt::to_buf(b, "  residency: presentation={} render={} winVis={} turn={} selected={} targeted={}\n",
+						mc2::terrainDirtyQueue().isResident(obj->getHandle()), mc2::terrainDirtyQueue().isRenderResident(obj->getHandle()),
+						obj->getWindowsVisible(), turn, obj->getSelected(), obj->getTargeted());
+					extra += b;
+				}
 				if (!ap) {
 					extra += "  draw: <no appearance>\n";
 				} else {

@@ -1035,6 +1035,7 @@ void GameObjectManager::extractRenderList (mc2::render_view::RenderList& list)
 		dirty.beginQuiescentRead(mc2::overlap::jobInFlight());
 		long residentSkipped = 0, offViewSkipped = 0;
 		long offViewByClass[64] = {};   // diag: the skipped views by object class
+		long residentByClass[64] = {};
 		if (blockWasActive.size() != static_cast<size_t>(Terrain::numObjBlocks)) blockWasActive.assign(Terrain::numObjBlocks, 0);
 		for (long terrainBlock = 0; terrainBlock < Terrain::numObjBlocks; terrainBlock++)
 		{
@@ -1063,6 +1064,10 @@ void GameObjectManager::extractRenderList (mc2::render_view::RenderList& list)
 						if (admitted && dirty.isRenderResidentQuiescent(objIndex) && GpuStaticPropRegistry::isResident(recipe))
 						{
 							++residentSkipped;
+							const auto kind = obj->getObjectClass();
+							if (kind < std::size(residentByClass)) ++residentByClass[kind];
+							if (kind == BUILDING || kind == TURRET || kind == GATE)
+								mc2::refreshResidentInteraction(*obj, turn);
 							continue;
 						}
 						GpuStaticPropRegistry::clearResident(recipe);
@@ -1093,24 +1098,49 @@ void GameObjectManager::extractRenderList (mc2::render_view::RenderList& list)
 				// The views the render walk still visits this frame (the non-resident remainder of RenderObjects.Terrain), by object class.
 				long byClass[256] = {};
 				for (const mc2::render_view::RenderView& v : list.terrain) ++byClass[v.objClass];
+				for (int c = 0; c < 64; ++c)
+					if (byClass[c] || residentByClass[c])
+						mc2::fmt::print_err("[STATIC_RESIDENT class] class={} visits={} residents={}\n", c, byClass[c], residentByClass[c]);
 				// Sample once per report, outside the hot walk. Priority matches presentation admission.
-				long why[64][8] = {};
+				long why[64][12] = {};
+				long notStatic[64][5] = {};
 				for (const auto& v : list.terrain) {
 					auto* a = v.obj->getAppearance();
 					if (!a || a->getAppearanceClass() != BUILDING_APPR_TYPE || v.objClass >= 64) continue;
 					const bool terrainKind = v.objClass == TERRAINOBJECT || v.objClass == TREE || v.objClass == BRIDGE || v.objClass == BUILDING;
-					const int reason = !a->IsStaticNow() ? 0 : v.obj->getFlag(OBJECT_FLAG_FALLING) ? 1 :
+					int reason = !a->IsStaticNow() ? 0 : v.obj->getFlag(OBJECT_FLAG_FALLING) ? 1 :
 						static_cast<BldgAppearance*>(a)->hasFrameLights() ? 2 :
 						terrainKind && static_cast<TerrainObject*>(v.obj)->hasPresentationEffects() ? 3 :
-						!terrainKind ? 4 : a->lodFollowsCamera() ? 5 :
+						!terrainKind && v.objClass != TURRET && v.objClass != GATE ? 4 :
+						a->lodFollowsCamera() && !dirty.isResident(v.obj->getHandle()) ? 5 :
 						!dirty.isResident(v.obj->getHandle()) ? 6 : 7;
+					if (reason == 7) {
+						using Blocker = BldgAppearance::ResidentBlocker;
+						switch (static_cast<BldgAppearance*>(a)->residentRenderBlocker()) {
+							case Blocker::Light: reason = 8; break;
+							case Blocker::Shadow: reason = 9; break;
+							case Blocker::Overlay: reason = 10; break;
+							case Blocker::Geometry: reason = 11; break;
+							case Blocker::None: break;
+						}
+					}
 					++why[v.objClass][reason];
+					if (reason == 0) {
+						const auto* b = static_cast<BldgAppearance*>(a);
+						const int detail = !b->isStaticEligible() ? 0 : !b->staticReg.registered ? 1 :
+							b->needsFullBakeNextFrame ? 2 : b->staticReg.shape != b->bldgShape ? 3 : 4;
+						++notStatic[v.objClass][detail];
+					}
 				}
 				for (int c = 0; c < 64; ++c) {
 					const auto& w = why[c];
-					if (byClass[c] && (w[0]+w[1]+w[2]+w[3]+w[4]+w[5]+w[6]+w[7]))
-						mc2::fmt::print_err("[STATIC_RESIDENT why] class={} not_static={} falling={} lights={} effects={} excluded={} lod={} remarked={} render_pending={}\n",
-							c, w[0], w[1], w[2], w[3], w[4], w[5], w[6], w[7]);
+					if (byClass[c] && (w[0]+w[1]+w[2]+w[3]+w[4]+w[5]+w[6]+w[7]+w[8]+w[9]+w[10]+w[11]))
+						mc2::fmt::print_err("[STATIC_RESIDENT why] class={} not_static={} falling={} lights={} effects={} excluded={} lod={} remarked={} render_pending={} unbaked={} moving_shadow={} overlay={} geometry={}\n",
+							c, w[0], w[1], w[2], w[3], w[4], w[5], w[6], w[7], w[8], w[9], w[10], w[11]);
+					if (w[0]) {
+						const auto& s = notStatic[c];
+						mc2::fmt::print_err("[STATIC_RESIDENT static] class={} ineligible={} unregistered={} bake={} shape={} lod={}\n", c, s[0], s[1], s[2], s[3], s[4]);
+					}
 				}
 				char hist[512]; size_t n = 0; hist[0] = 0;
 				for (int c = 0; c < 256 && n + 24 < sizeof(hist); ++c)
