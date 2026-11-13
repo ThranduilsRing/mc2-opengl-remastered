@@ -10184,6 +10184,19 @@
    "count": 1
   },
   {
+   "tag": "TURRET_SETTLE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "walk_by_class",
+    "walk_turrets",
+    "other_turrets",
+    "bound_turrets"
+   ],
+   "count": 1
+  },
+  {
    "tag": "TXMMGR_BOUNDS",
    "ver": 1,
    "stream": "stderr",
