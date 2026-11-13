@@ -1,4 +1,5 @@
 {
+  "tools/examples/fix_tree_kit.py": "Manual Stage 1 tree cook adapter; py -3 tools/examples/fix_tree_kit.py validates two existing meshes and pins the assigned install's prototype assets.",
   "tools/extract_hud_tier_icons.py": "Operator-run once to regenerate the per-size HUD icons data/art/mechicons/hud/<side>/<stem>@WxH.png from the legacy tier tree in git (module docstring); output is committed.",
   "tools/split_pilot_portraits.py": "Operator-run once to regenerate data/art/pilots from the stock art.fst (module docstring); output is committed.",
   "tools/box/unit_report.py": "Run on the Linux box by tools/box_run.py's unit row (python3 ../tools/box/unit_report.py unit.xml unit_out.txt inside the remote shell string; the caller scanner does not follow it).",

@@ -309,6 +309,7 @@ void main() {
         }
     }
 
+    if ((vMaterialFlags & 128u) != 0u) rgb *= uintBitsToFloat(vTeam);
     // Material inputs only: bypass prop lighting, windows and ORM coverage for inspection.
     // Missing maps use the same class scalars and geometric normal as normal rendering.
     int debugView = int(uFrame.cameraWorldPos.w);
