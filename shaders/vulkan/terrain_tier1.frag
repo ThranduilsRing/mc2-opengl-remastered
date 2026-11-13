@@ -7,6 +7,14 @@
 #ifndef PREC
 #define PREC highp
 #endif
+layout(constant_id = 10) const int kPlanarReflection = 0;
+// Prototype cuts: set a feature to 0 to restore it in the reflected pass.
+layout(constant_id = 11) const int kReflectCutPom = 1;
+layout(constant_id = 12) const int kReflectCutDetail = 1;
+layout(constant_id = 13) const int kReflectCutPools = 1;
+layout(constant_id = 14) const int kReflectCutMovers = 1;
+#define GROUND_POOL_ENABLED (kPlanarReflection == 0 || kReflectCutPools == 0 || uEnv.sceneLight.x < 1.0)
+#define GROUND_MOVER_CONTACT (kPlanarReflection != 0 && kReflectCutMovers != 0 ? 0.0 : uT.moverContactShadow)
 #include "../include/noise.hglsl"   // VK-PARITY-F3: fbm() for the GL colour break-up (terrain_lod_chunk.frag:1839)
 vec3 mv_lampPoolNormal(vec3 wp, vec3 macroN, float lod);
 #define TLP_LAMP_NORMAL mv_lampPoolNormal
@@ -19,7 +27,6 @@ vec3 mv_lampPoolNormal(vec3 wp, vec3 macroN, float lod);
 #include "../include/edge_haze.hglsl"   // edgeHazeAmount + EDGE_HAZE_SKY, shared with GL
 
 layout(location = 0) in vec3 v_worldPos;
-layout(constant_id = 10) const int kPlanarReflection = 0;
 layout(constant_id = 0) const int kCsmDebugMode = 0;   // vk-present-instance 8: spec constant from MC2_SHADOW_DEBUG_MODE; mode 0 compiles the debug chain out
 layout(location = 0) out vec4 fragColor;   // MRT0 color
 layout(location = 1) out vec4 GBuffer1;    // MRT1 normal + shadow class
@@ -123,6 +130,7 @@ float mv_pomDisplacement(vec2 uv, vec4 w) {
 }
 // Returns an OFFSET, avoiding cancellation when subtracting large world UVs.
 vec2 mv_parallax(vec2 uv, float scale, vec4 w, vec3 viewDirTS, vec2 dx, vec2 dy) {
+    if (kPlanarReflection != 0 && kReflectCutPom != 0) return vec2(0.0);
     float numLayers = ceil(mix(MATV_POM_MAX_LAYERS, MATV_POM_MIN_LAYERS, clamp(viewDirTS.y, 0.0, 1.0)));
     float layerDepth = 1.0 / numLayers;
     float curLayer = 0.0;
@@ -440,7 +448,7 @@ void main() {
         if (uT.detailEnabled != 0 && !pureConcrete) {
             vec3 baseN = baseNormal;
             vec3 dN    = vec3(0.0);
-            if (uT.detailReady != 0 && uT.detailStrength != 0.0) {
+            if ((kPlanarReflection == 0 || kReflectCutDetail == 0) && uT.detailReady != 0 && uT.detailStrength != 0.0) {
                 if (mv_needDetail(baseN, lightDir, materialW, materialSnow, v_worldPos, normalLightFloor)) {
                     dN = mv_detailNormal(materialW, materialSnow, v_worldPos.xy, baseN.z, detailUvDx, detailUvDy);
                 } else {
@@ -452,6 +460,7 @@ void main() {
             N = normalize(pert);
             if (uT.detailReady >= 2) mv_cliffMaterial(baseN, cliffLod, N, baseColor);
             if ((uT.concreteDetail & 2) != 0) crApply(baseN, cliffDx * MATV_CLIFF_TS, cliffDy * MATV_CLIFF_TS, N, baseColor);
+            if (kPlanarReflection != 0 && kReflectCutDetail != 0) N = normalize(macroPert);
             dbgBaseN = baseN; dbgDN = dN;                        // CSM-BLACKOUT-RECON-1 taps
         }
         // Evaluate the ratio after material sampling so its inputs do not stay
@@ -467,14 +476,14 @@ void main() {
         // fragments skip the material detail-normal fetches, so the two concrete fetches replace them (no net fetch increase).
         vec3 cdSpec = vec3(0.0);
         vec2 cdWpDx = dFdx(v_worldPos.xy), cdWpDy = dFdy(v_worldPos.xy);   // uniform flow, late: nothing extra stays live through the detail-normal block
-        if (uT.concreteDetail != 0 && pureConcrete) cdApply(cdRoad > 0.5 ? CD_LAYER_ROAD : CD_LAYER_PAD, v_worldPos.xy, cdWpDx, cdWpDy, lightDir, 1.0, baseColor, normalLight, cdSpec, N);
+        if ((kPlanarReflection == 0 || kReflectCutDetail == 0) && uT.concreteDetail != 0 && pureConcrete) cdApply(cdRoad > 0.5 ? CD_LAYER_ROAD : CD_LAYER_PAD, v_worldPos.xy, cdWpDx, cdWpDy, lightDir, 1.0, baseColor, normalLight, cdSpec, N);
         gbufN = N;
 
         // Static ground mask and current-frame movers share the same visibility
         // floor. Cement receives both, exactly like the surrounding terrain.
         vec3 shadowN=baseNormal;
         float staticS=uT.enableShadows!=0?terrainStaticShadow(v_worldPos):1.0;
-        float dynS=terrainDynamicShadow(v_worldPos,shadowN);
+        float dynS=kPlanarReflection != 0 && kReflectCutMovers != 0 ? 1.0 : terrainDynamicShadow(v_worldPos,shadowN);
         float shadow = min(staticS, dynS);
         // CSM-BLACKOUT-RECON-1: one-shot debug viz (env MC2_SHADOW_DEBUG_MODE=N).
         // Resolve before local lighting so the debug inputs do not stay live through its loop. Bypasses the normal composite so each channel can be inspected in

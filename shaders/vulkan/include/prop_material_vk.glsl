@@ -58,7 +58,7 @@ SurfaceMaterial propSurface(int id, vec3 albedo, out float coverage) {
     s.baseColor = propDecodeColor(albedo);
     s.normal = normalize(mc2ToRender(vNormalStuff));
     const bool perTex = kPerTexMaps && (row.material.flags & kMatFlagPerTexture) != 0u;
-    if (row.material.normalTex != 0xffffffffu) {
+    if ((kPlanarReflection == 0 || kReflectCutDetail == 0) && row.material.normalTex != 0xffffffffu) {
         vec3 sampleN = perTex ? texture(uPropTex[nonuniformEXT(row.material.normalTex)], uv).rgb
                               : texture(uPropNormal, vec3(uv, float(row.material.normalTex))).rgb;
         if (row.metadata.z != 0u) {

@@ -11,7 +11,7 @@ float mv_cliffHeight(vec2 uv, float lod) {
     return textureLod(u_matNormalArray, vec3(uv, float(MAT_LAYER_MARBLE_CLIFF)), lod).a;
 }
 vec2 mv_cliffParallaxPlane(vec2 uv, vec2 viewPlane, float depth, float steps, float lod) {
-    if (depth <= 0.0) return uv;
+    if ((kPlanarReflection != 0 && kReflectCutPom != 0) || depth <= 0.0) return uv;
     float nSteps = clamp(steps, 8.0, 32.0);
     float layerDepth = 1.0 / nSteps;
     vec2 P = -viewPlane * depth;   // negative: the parallax shifts toward the eye
@@ -61,6 +61,8 @@ void mv_cliffMaterial(vec3 macroN, vec3 planeLod, inout vec3 N, inout vec3 baseC
     uvY = mix(uvY, mv_cliffParallaxPlane(uvY, vpY, depth, steps, planeLod.y), clamp(wn.y * 1.5, 0.0, 1.0));
     uvZ = mix(uvZ, mv_cliffParallaxPlane(uvZ, vpZ, depth, steps, planeLod.z), clamp(wn.z * 1.5, 0.0, 1.0));
 
+    float hX0 = mv_cliffHeight(uvX, planeLod.x), hY0 = mv_cliffHeight(uvY, planeLod.y), hZ0 = mv_cliffHeight(uvZ, planeLod.z);
+    if (kPlanarReflection == 0 || kReflectCutDetail == 0) {
     vec3 nX = textureLod(u_matNormalArray, vec3(uvX, float(MAT_LAYER_MARBLE_CLIFF)), planeLod.x).rgb * 2.0 - 1.0;
     vec3 nY = textureLod(u_matNormalArray, vec3(uvY, float(MAT_LAYER_MARBLE_CLIFF)), planeLod.y).rgb * 2.0 - 1.0;
     vec3 nZ = textureLod(u_matNormalArray, vec3(uvZ, float(MAT_LAYER_MARBLE_CLIFF)), planeLod.z).rgb * 2.0 - 1.0;
@@ -70,9 +72,9 @@ void mv_cliffMaterial(vec3 macroN, vec3 planeLod, inout vec3 N, inout vec3 baseC
 
     // Difference one texel at each plane's filtered mip, including non-2048 maps.
     vec3 hEps = exp2(planeLod) / float(textureSize(u_matNormalArray, 0).x);
-    float hX0 = mv_cliffHeight(uvX, planeLod.x), hXu = mv_cliffHeight(uvX + vec2(hEps.x, 0.0), planeLod.x), hXv = mv_cliffHeight(uvX + vec2(0.0, hEps.x), planeLod.x);
-    float hY0 = mv_cliffHeight(uvY, planeLod.y), hYu = mv_cliffHeight(uvY + vec2(hEps.y, 0.0), planeLod.y), hYv = mv_cliffHeight(uvY + vec2(0.0, hEps.y), planeLod.y);
-    float hZ0 = mv_cliffHeight(uvZ, planeLod.z), hZu = mv_cliffHeight(uvZ + vec2(hEps.z, 0.0), planeLod.z), hZv = mv_cliffHeight(uvZ + vec2(0.0, hEps.z), planeLod.z);
+    float hXu = mv_cliffHeight(uvX + vec2(hEps.x, 0.0), planeLod.x), hXv = mv_cliffHeight(uvX + vec2(0.0, hEps.x), planeLod.x);
+    float hYu = mv_cliffHeight(uvY + vec2(hEps.y, 0.0), planeLod.y), hYv = mv_cliffHeight(uvY + vec2(0.0, hEps.y), planeLod.y);
+    float hZu = mv_cliffHeight(uvZ + vec2(hEps.z, 0.0), planeLod.z), hZv = mv_cliffHeight(uvZ + vec2(0.0, hEps.z), planeLod.z);
     vec3 g = MATV_CLIFF_HEIGHT_NORMAL_STRENGTH / hEps;
     vec3 hnX = normalize(vec3(-(hXu - hX0) * g.x, -(hXv - hX0) * g.x, 1.0));
     vec3 hnY = normalize(vec3(-(hYu - hY0) * g.y, -(hYv - hY0) * g.y, 1.0));
@@ -85,6 +87,7 @@ void mv_cliffMaterial(vec3 macroN, vec3 planeLod, inout vec3 N, inout vec3 baseC
 
     vec3 triN = normalize(macroN + triTilt * relief);
     N = normalize(mix(N, triN, cb));
+    }
 
     float disp = hX0 * wn.x + hY0 * wn.y + hZ0 * wn.z;
     baseColor *= mix(1.0, 0.62 + 0.38 * disp, cb);
