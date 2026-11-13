@@ -104,6 +104,8 @@ def test_readonly_hardlink_replacement_preserves_source(tmp_path, monkeypatch, r
             deploy_payload.deploy_from_payload(payload, target, tmp_path, head)
             assert (target / ".deployed_manifest.csv").read_bytes() == (payload / ".deployed_manifest.csv").read_bytes()
         elif route == "seed":
+            # Keep receipt writes private; this checks link isolation, not the host cook cache.
+            monkeypatch.setenv("MC2_COOK_CACHE", str(tmp_path / "cook-cache"))
             monkeypatch.setattr(deploy_payload, "seed_receipt_rows", lambda: {})
             deploy_payload.prepare_seed_delta([(str(source), rel, "support")], target, full_verify=True, allow_legacy=True)
         else:
