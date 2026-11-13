@@ -95,7 +95,7 @@ void mv_cliffMaterial(vec3 macroN, vec3 planeLod, inout vec3 N, inout vec3 baseC
 // palette tone (colormap taps around the face, pulled toward the mission's rock tint) times the scan's albedo ratio: MC2's colours,
 // real rock structure. Height-blended into the slope transition. `wpDx`/`wpDy` = screen derivatives of the world position (uniform flow).
 const float CR_TS = 320.0;   // world units per rock repeat
-void crApply(vec3 macroN, vec3 wpDx, vec3 wpDy, inout vec3 N, inout vec3 baseColor) {
+void crApply(vec3 macroN, vec3 wpDx, vec3 wpDy, vec3 planeLod, inout vec3 N, inout vec3 baseColor) {
     float cb = smoothstep(0.85, 0.55, abs(macroN.z));
     if (cb <= 0.01) return;
     vec3 wp = v_worldPos;
@@ -119,6 +119,11 @@ void crApply(vec3 macroN, vec3 wpDx, vec3 wpDy, inout vec3 N, inout vec3 baseCol
     float wsum = w.x * step(0.05, w.x) + w.y * step(0.05, w.y) + w.z * step(0.05, w.z);
     ah /= max(wsum, 1e-4); h /= max(wsum, 1e-4); ao /= max(wsum, 1e-4); tilt /= max(wsum, 1e-4);
     float m = clamp((cb - 0.5 + (h - 0.5) * 0.6) * 3.0 + 0.5, 0.0, 1.0);
+    // Full rock coverage replaces both outputs of the older three-plane POM.
+    // Its palette also replaces baseColor when a colormap is bound. Preserve
+    // the older material through every transition and the missing-colormap path.
+    if ((m < 1.0 || uT.colormapReady == 0) && uT.detailReady >= 2)
+        mv_cliffMaterial(macroN, planeLod, N, baseColor);
     if (m <= 0.0) return;
     // Palette tone: four colormap taps ~160 wu around the face average out the vertical smear.
     vec3 tone = baseColor;

@@ -450,8 +450,8 @@ void main() {
             vec3 macroPert = vec3(baseN.xy / max(baseN.z, 0.2) * uT.nfhStrength, 1.0);
             vec3 pert = macroPert + vec3(dN.xy * uT.detailStrength, 0.0);
             N = normalize(pert);
-            if (uT.detailReady >= 2) mv_cliffMaterial(baseN, cliffLod, N, baseColor);
-            if ((uT.concreteDetail & 2) != 0) crApply(baseN, cliffDx * MATV_CLIFF_TS, cliffDy * MATV_CLIFF_TS, N, baseColor);
+            if ((uT.concreteDetail & 2) != 0) crApply(baseN, cliffDx * MATV_CLIFF_TS, cliffDy * MATV_CLIFF_TS, cliffLod, N, baseColor);
+            else if (uT.detailReady >= 2) mv_cliffMaterial(baseN, cliffLod, N, baseColor);
             dbgBaseN = baseN; dbgDN = dN;                        // CSM-BLACKOUT-RECON-1 taps
         }
         // Evaluate the ratio after material sampling so its inputs do not stay
