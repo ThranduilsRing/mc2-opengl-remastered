@@ -50,6 +50,7 @@
     "vfx_particle": {"stages": ["shaders/vulkan/vfx_particle.frag", "shaders/vulkan/vfx_particle.vert"], "includes": []},
     "vfx_vegetation": {"stages": ["shaders/vulkan/vfx_vegetation.frag", "shaders/vulkan/vfx_vegetation.vert"], "includes": []},
     "water_geom": {"stages": ["shaders/vulkan/water_geom.frag", "shaders/vulkan/water_geom.vert"], "includes": []},
+    "water_reflection_mask": {"stages": ["shaders/vulkan/water_reflection_mask.comp"], "includes": []},
     "water_reflection": {"stages": ["shaders/vulkan/water_reflection.comp"], "includes": []}
   }
 }
