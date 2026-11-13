@@ -1,10 +1,269 @@
-{ "overrides": [
-  { "type":"model","class":"tree","replaces":"tree:tc1_1","source":"broadleaf-maple2/pristine_intact_lod0.glb","renderOnly":true,"scale":1.0,"fallback":"stock" },
-  { "type":"model","class":"tree","replaces":"tree:oak1","source":"source/trees/oak1_imp.glb","renderOnly":true,"scale":1.0,"fallback":"stock" },
-  { "type":"model","class":"tree","replaces":"tree:tc1_2","source":"broadleaf-maple2/pristine_intact_lod0.glb","renderOnly":true,"scale":1.0,"fallback":"stock" },
-  { "type":"model","class":"tree","replaces":"tree:tc1_3","source":"source/trees/tree_lush.glb","renderOnly":true,"scale":1.0,"fallback":"stock","lods":[{"lod":1,"source":"source/trees/tree_lush_impostor.glb","distance":120.0}] },
-  { "type":"model","class":"tree","replaces":"tree:tc1_4","source":"broadleaf-maple2/pristine_intact_lod0.glb","renderOnly":true,"scale":1.0,"fallback":"stock" },
-  { "type":"model","class":"tree","replaces":"tree:palm1","source":"broadleaf-maple2/pristine_intact_lod0.glb","renderOnly":true,"scale":1.0,"fallback":"stock" },
-  { "type":"model","class":"tree","replaces":"tree:palms","source":"broadleaf-maple2/pristine_intact_lod0.glb","renderOnly":true,"scale":1.0,"fallback":"stock" },
-  { "type":"model","class":"staticProp","replaces":"artilleryturret","source":"source/probe/artilleryturret.glb","renderOnly":true,"fallback":"stock" }
-] }
+{
+ "overrides": [
+  {
+   "type": "model",
+   "replaces": "tree:tc1_1",
+   "renderOnly": true,
+   "fallback": "stock",
+   "scale": 1.0,
+   "source": "broadleaf-maple2/pristine_intact_lod0.glb",
+   "materials": {
+    "version": 2,
+    "slots": [
+     {
+      "slot": 0,
+      "reviewed": true,
+      "class": "wood",
+      "alphaMode": "MASK",
+      "normalStrength": 1.0,
+      "aoStrength": 1.0,
+      "roughness": 0.8,
+      "metallic": 0.0,
+      "uvScale": [
+       1.0,
+       1.0
+      ],
+      "alphaCutoff": 0.5
+     },
+     {
+      "slot": 1,
+      "reviewed": true,
+      "class": "wood",
+      "alphaMode": "OPAQUE",
+      "normalStrength": 1.0,
+      "aoStrength": 1.0,
+      "roughness": 0.8,
+      "metallic": 0.0,
+      "uvScale": [
+       1.0,
+       1.0
+      ],
+      "normal": "broadleaf-maple2/detail/1_normal.ktx2",
+      "orm": "broadleaf-maple2/detail/1_orm.ktx2"
+     }
+    ]
+   }
+  },
+  {
+   "type": "model",
+   "replaces": "tree:tc1_3",
+   "renderOnly": true,
+   "fallback": "stock",
+   "scale": 1.0,
+   "source": "broadleaf-maple/pristine_intact_lod0.glb",
+   "materials": {
+    "version": 2,
+    "slots": [
+     {
+      "slot": 0,
+      "reviewed": true,
+      "class": "wood",
+      "alphaMode": "MASK",
+      "normalStrength": 1.0,
+      "aoStrength": 1.0,
+      "roughness": 0.8,
+      "metallic": 0.0,
+      "uvScale": [
+       1.0,
+       1.0
+      ],
+      "alphaCutoff": 0.5
+     },
+     {
+      "slot": 1,
+      "reviewed": true,
+      "class": "wood",
+      "alphaMode": "OPAQUE",
+      "normalStrength": 1.0,
+      "aoStrength": 1.0,
+      "roughness": 0.8,
+      "metallic": 0.0,
+      "uvScale": [
+       1.0,
+       1.0
+      ],
+      "normal": "broadleaf-maple/detail/1_normal.ktx2",
+      "orm": "broadleaf-maple/detail/1_orm.ktx2"
+     }
+    ]
+   }
+  },
+  {
+   "type": "model",
+   "replaces": "tree:tc1_2",
+   "renderOnly": true,
+   "fallback": "stock",
+   "scale": 1.0,
+   "source": "broadleaf-maple3/pristine_intact_lod0.glb",
+   "materials": {
+    "version": 2,
+    "slots": [
+     {
+      "slot": 0,
+      "reviewed": true,
+      "class": "wood",
+      "alphaMode": "MASK",
+      "normalStrength": 1.0,
+      "aoStrength": 1.0,
+      "roughness": 0.8,
+      "metallic": 0.0,
+      "uvScale": [
+       1.0,
+       1.0
+      ],
+      "alphaCutoff": 0.5
+     },
+     {
+      "slot": 1,
+      "reviewed": true,
+      "class": "wood",
+      "alphaMode": "OPAQUE",
+      "normalStrength": 1.0,
+      "aoStrength": 1.0,
+      "roughness": 0.8,
+      "metallic": 0.0,
+      "uvScale": [
+       1.0,
+       1.0
+      ],
+      "normal": "broadleaf-maple3/detail/1_normal.ktx2",
+      "orm": "broadleaf-maple3/detail/1_orm.ktx2"
+     }
+    ]
+   }
+  },
+  {
+   "type": "model",
+   "replaces": "tree:tc1_4",
+   "renderOnly": true,
+   "fallback": "stock",
+   "scale": 1.0,
+   "source": "broadleaf-poplar/pristine_intact_lod0.glb",
+   "materials": {
+    "version": 2,
+    "slots": [
+     {
+      "slot": 0,
+      "reviewed": true,
+      "class": "wood",
+      "alphaMode": "MASK",
+      "normalStrength": 1.0,
+      "aoStrength": 1.0,
+      "roughness": 0.8,
+      "metallic": 0.0,
+      "uvScale": [
+       1.0,
+       1.0
+      ],
+      "alphaCutoff": 0.5
+     },
+     {
+      "slot": 1,
+      "reviewed": true,
+      "class": "wood",
+      "alphaMode": "OPAQUE",
+      "normalStrength": 1.0,
+      "aoStrength": 1.0,
+      "roughness": 0.8,
+      "metallic": 0.0,
+      "uvScale": [
+       1.0,
+       1.0
+      ],
+      "normal": "broadleaf-poplar/detail/1_normal.ktx2",
+      "orm": "broadleaf-poplar/detail/1_orm.ktx2"
+     }
+    ]
+   }
+  },
+  {
+   "type": "model",
+   "replaces": "tree:palm1",
+   "renderOnly": true,
+   "fallback": "stock",
+   "scale": 1.0,
+   "source": "white-poplar/pristine_intact_lod0.glb",
+   "materials": {
+    "version": 2,
+    "slots": [
+     {
+      "slot": 0,
+      "reviewed": true,
+      "class": "wood",
+      "alphaMode": "MASK",
+      "normalStrength": 1.0,
+      "aoStrength": 1.0,
+      "roughness": 0.8,
+      "metallic": 0.0,
+      "uvScale": [
+       1.0,
+       1.0
+      ],
+      "alphaCutoff": 0.5,
+      "normal": "white-poplar/detail/0_normal.ktx2"
+     },
+     {
+      "slot": 1,
+      "reviewed": true,
+      "class": "wood",
+      "alphaMode": "OPAQUE",
+      "normalStrength": 1.0,
+      "aoStrength": 1.0,
+      "roughness": 0.8,
+      "metallic": 0.0,
+      "uvScale": [
+       1.0,
+       1.0
+      ],
+      "normal": "white-poplar/detail/1_normal.ktx2",
+      "orm": "white-poplar/detail/1_orm.ktx2"
+     }
+    ]
+   }
+  },
+  {
+   "type": "model",
+   "replaces": "tree:palms",
+   "renderOnly": true,
+   "fallback": "stock",
+   "scale": 1.0,
+   "source": "broadleaf-poplar2/pristine_intact_lod0.glb",
+   "materials": {
+    "version": 2,
+    "slots": [
+     {
+      "slot": 0,
+      "reviewed": true,
+      "class": "wood",
+      "alphaMode": "MASK",
+      "normalStrength": 1.0,
+      "aoStrength": 1.0,
+      "roughness": 0.8,
+      "metallic": 0.0,
+      "uvScale": [
+       1.0,
+       1.0
+      ],
+      "alphaCutoff": 0.5
+     },
+     {
+      "slot": 1,
+      "reviewed": true,
+      "class": "wood",
+      "alphaMode": "OPAQUE",
+      "normalStrength": 1.0,
+      "aoStrength": 1.0,
+      "roughness": 0.8,
+      "metallic": 0.0,
+      "uvScale": [
+       1.0,
+       1.0
+      ],
+      "normal": "broadleaf-poplar2/detail/1_normal.ktx2",
+      "orm": "broadleaf-poplar2/detail/1_orm.ktx2"
+     }
+    ]
+   }
+  }
+ ]
+}
