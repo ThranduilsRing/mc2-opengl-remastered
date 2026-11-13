@@ -9,8 +9,10 @@
 void mc2::waterplanar::preparePropInstances(const View& reflected, std::span<const mc2hzb::PropBounds> bounds,
                                           std::vector<GpuStaticPropInstance>& out)
 {
-    collectReflectionInstances(std::span<const GpuStaticPropInstance>(GpuStaticPropRegistry::s_recipes),
-        std::span<const GpuStaticPropRegistry::RecipeRange>(GpuStaticPropRegistry::s_recipeRanges), reflected, bounds, out);
+    static ReflectionPropsCache cache;
+    cache.collect(std::span<const GpuStaticPropInstance>(GpuStaticPropRegistry::s_recipes),
+        std::span<const GpuStaticPropRegistry::RecipeRange>(GpuStaticPropRegistry::s_recipeRanges),
+        GpuStaticPropRegistry::getRegistryGeneration(), reflected, bounds, out);
 }
 
 
