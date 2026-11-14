@@ -159,6 +159,8 @@ public:
 		bool						inverseProjectCacheValid;
 		
 		//vTol
+		std::unique_ptr<BldgAppearance> moveOrderMarker;
+		float moveOrderMarkerUntil = 0.0f;
 		glm::vec3				vPos[MAX_TEAMS];		// vehicle position
 		std::unique_ptr<BldgAppearance>				vTol[MAX_TEAMS] = {};	// B7o.5: owned drop-ship VTOL / Karnov per team
 		bool						paintingVtol[MAX_TEAMS];
