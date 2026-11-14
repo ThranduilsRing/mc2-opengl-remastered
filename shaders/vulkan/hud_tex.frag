@@ -53,10 +53,10 @@ void main()
     uint y = uint(clamp(vUv.y, 0.0, 0.999999) * float(pc.texH));
     vec4 sampleColor = unpackRgba(tex.texels[y * pc.texW + x]);
     if (pc.textMode == 3u) {
-        // Reverse-Z depth rejects foreground solids; water and grass stay below the decal.
+        // Reverse-Z depth rejects foreground solids; terrain, water and grass stay below the flat compass.
         ivec2 pixel = clamp(ivec2(vSceneUv * vec2(textureSize(sceneNormal, 0))), ivec2(0), textureSize(sceneNormal, 0) - 1);
         float surfaceClass = texelFetch(sceneNormal, pixel, 0).a;
-        bool underlay = abs(surfaceClass - 0.875) < 0.01 || abs(surfaceClass - 0.9375) < 0.01;
+        bool underlay = abs(surfaceClass - 1.0) < 0.01 || abs(surfaceClass - 0.875) < 0.01 || abs(surfaceClass - 0.9375) < 0.01;
         if (!underlay && texelFetch(sceneDepth, pixel, 0).r > vSceneDepth + 0.00005) discard;
     }
     if (pc.textMode >= 2u) {

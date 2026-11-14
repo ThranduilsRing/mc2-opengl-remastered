@@ -13,7 +13,6 @@
 #include "tex_resolve_table.h"
 #include "battle_bench_sink.h"
 #include "../code/render_view.h"
-#include "terrain_runtime.h"
 #include <array>
 #include <algorithm>
 #include <span>
@@ -264,11 +263,10 @@ void TG_Shape::CpuDraw (const mc2::tgl::ViewUniforms& view, const glm::mat4& sha
 		if (world && hud) {
 			glm::vec3 p = mc2::math::transformPoint(pos, shapeToWorld);
 			xform.MultiplyPoint(p, view.worldToClip);
-			if (compass) xform = Stuff::Vector4D(p.x, p.y, p.z, 1.0f);
 		}
 		// Legacy perspective has negative w in front of the eye. Normalize
 		// its homogeneous sign for clipping; projected coordinates stay identical.
-		if (world && view.perspective && !compass)
+		if (world && view.perspective)
 			xform = Stuff::Vector4D(-xform.x, -xform.y, -xform.z, -xform.w);
 		if (world)
 			clips[j] = xform;
@@ -398,21 +396,8 @@ void TG_Shape::CpuDraw (const mc2::tgl::ViewUniforms& view, const glm::mat4& sha
 				{ clips[tri.Vertices[1]], gv[1].u, gv[1].v, gv[1].argb, gv[1].frgb },
 				{ clips[tri.Vertices[2]], gv[2].u, gv[2].v, gv[2].argb, gv[2].frgb }
 			}};
-			auto draw = [&](auto&& self, std::array<ClipVertex, 3> in, int depth) -> void {
-				if (depth) {
-					const auto ab = lerpClip(in[0], in[1], 0.5f), bc = lerpClip(in[1], in[2], 0.5f), ca = lerpClip(in[2], in[0], 0.5f);
-					self(self, {in[0], ab, ca}, depth - 1); self(self, {ab, in[1], bc}, depth - 1);
-					self(self, {ca, bc, in[2]}, depth - 1); self(self, {ab, bc, ca}, depth - 1);
-					return;
-				}
-				if (compass) for (auto& v : in) {
-					glm::vec3 p(v.clip.x, v.clip.y, v.clip.z);
-					p.y = TerrainRuntime::markerElevation(glm::vec3(-p.x, p.z, p.y));
-					v.clip.MultiplyPoint(p, view.worldToClip);
-					if (view.perspective) v.clip = Stuff::Vector4D(-v.clip.x, -v.clip.y, -v.clip.z, -v.clip.w);
-				}
 			ClipVertex nearClipped[8], farClipped[8];
-			int count = clipPolygon(in, 0, nearClipped);
+			int count = clipPolygon(input, 0, nearClipped);
 			if (count)
 				count = clipPolygon(std::span<const ClipVertex>(nearClipped, count), 1, farClipped);
 			if (count && view.perspective)
@@ -422,7 +407,7 @@ void TG_Shape::CpuDraw (const mc2::tgl::ViewUniforms& view, const glm::mat4& sha
 				std::copy(frontClipped, frontClipped + count, farClipped);
 			}
 			if (count < 3)
-				return;
+				continue;
 			DWORD node, flags;
 			cpuDrawKey(textures, tri, isWindow, isSpotlight, alphaValue, addFlags, node, flags);
 			for (int k = 1; k + 1 < count; k++)
@@ -432,7 +417,7 @@ void TG_Shape::CpuDraw (const mc2::tgl::ViewUniforms& view, const glm::mat4& sha
 				projectClip(farClipped[k], out[1]);
 				projectClip(farClipped[k + 1], out[2]);
 				if (compass) for (auto& v : out) v.frgb = 0x434f4d50;
-				if (forcedZ >= 0.0f)
+				if (!compass && forcedZ >= 0.0f)
 					out[0].z = out[1].z = out[2].z = forcedZ;
 				if (hud) {
 					// World-projected HUD shapes composite after grass, water and scene effects.
@@ -450,8 +435,6 @@ void TG_Shape::CpuDraw (const mc2::tgl::ViewUniforms& view, const glm::mat4& sha
 					mc2::renderSubmissions().addVertices(node, out, flags);
 				}
 			}
-			};
-			draw(draw, input, compass ? 5 : 0);
 			continue;
 		}
 
