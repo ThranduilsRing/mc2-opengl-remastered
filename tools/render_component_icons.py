@@ -55,9 +55,10 @@ for index, (name, row) in enumerate(sorted(icons.items())):
     center = (lo+hi)/2; scale = 2/max(hi-lo); rotation = Matrix.Rotation(math.pi/2, 3, 'Y')
     objects = []
     right = Vector((7, 4, 0)).normalized(); pair = Path(name).stem == 'mcl_mc_jumpjets'  # stock Jump Jets shows two units side by side
-    half = max(abs((rotation @ ((Vector(p)-center)*scale)).dot(right)) for g in geoms for p in g.positions) * 1.05 if pair else 0
+    up = Matrix.Rotation(math.radians(float(os.environ.get('JJ_UP', 90))), 3, Vector((4, -7, 3)).normalized()) if pair else Matrix.Identity(3)  # stand the unit upright, exhaust down
+    half = max(abs((up @ rotation @ ((Vector(p)-center)*scale)).dot(right)) for g in geoms for p in g.positions) * 1.08 if pair else 0
     for g, side in [(g, s) for g in geoms for s in ((1, -1) if pair else (1,))]:
-        pts = [rotation @ ((Vector(p)-center)*scale) + right * half for p in g.positions]
+        pts = [up @ rotation @ ((Vector(p)-center)*scale) + right * half for p in g.positions]
         if side < 0: pts = [p - 2 * p.dot(right) * right for p in pts]
         mesh = bpy.data.meshes.new(g.node_name); mesh.from_pydata(pts, [], [f[:3][::side] for f in g.faces])
         obj = bpy.data.objects.new(g.node_name, mesh); scene.collection.objects.link(obj); objects.append(obj)
