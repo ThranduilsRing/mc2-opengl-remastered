@@ -197,8 +197,7 @@ void init(std::string first = {}, int cw = 25, int ch = 30) {
             src.w = icon.width; src.h = icon.height;
             src.data = std::move(icon.pixels);
         } else src = load(path, raw);
-        if (!src.data.empty()) {
-            registry.add(key, src.w, src.h, src.data);
+        if (!src.data.empty() && registry.add(key, src.w, src.h, src.data)) {
             namedPriority[key] = priority;
         } else if (raw) cacheable = false;
       }
