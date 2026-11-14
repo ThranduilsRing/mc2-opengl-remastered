@@ -288,3 +288,42 @@ int main() {
     assert result.returncode == 0, result.stderr
     result = nofocus.run([str(exe)], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
+def test_object_rebakes_bound_height_builds_and_refresh_edits(tmp_path):
+    # Trigger: vulkan_shadow_bake.cpp; execute production refresh and success paths.
+    engine = (ROOT / "GameOS/gameos/vulkan_shadow_bake.cpp").read_text()
+    guard = next(line for line in engine.splitlines() if "&& !readHeightGrid()" in line)
+    refresh = engine.split("bool ShadowBake::readHeightGrid()", 1)[1].split("bool ShadowBake::recordColdTile", 1)[0]
+    success = refresh[refresh.index("    heightsMoved_ = false;"):]
+    probe = r'''
+#include <cassert>
+#include <vector>
+bool recordedMask_ = false, heightsMoved_ = false, fail = false;
+std::vector<float> heights_;
+unsigned builds = 0, heightsGen_ = 0;
+float terrain = 2;
+void blog(const char*) {}
+bool readHeightGrid() { if (fail) return false; ++builds; heights_.assign(16, terrain);
+''' + success + r'''
+bool record() {
+''' + guard + r'''
+    return true;
+}
+int main() {
+    for (int i = 0; i < 300; ++i) assert(record());
+    assert(builds == 1 && heights_[0] == 2 && heightsGen_ == 1);
+    terrain = 3; heightsMoved_ = true; fail = true; assert(!record());
+    assert(heightsMoved_ && heightsGen_ == 1); fail = false; assert(record());
+    for (int i = 0; i < 300; ++i) assert(record());
+    assert(builds == 2 && heights_[0] == 3 && !heightsMoved_ && heightsGen_ == 2);
+    recordedMask_ = true; assert(record());
+    assert(builds == 3 && heightsGen_ == 3);
+}
+'''
+    source = tmp_path / "height_budget.cpp"
+    source.write_text(probe)
+    exe = tmp_path / ("height_budget.exe" if os.name == "nt" else "height_budget")
+    result = subprocess.run(["clang++", "-std=c++20", str(source), "-o", str(exe)],
+                            capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
+    assert result.returncode == 0, result.stderr
+    result = nofocus.run([str(exe)], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
