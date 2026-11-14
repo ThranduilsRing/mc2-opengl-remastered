@@ -60,6 +60,10 @@ long WeaponBolt::update (void)
 		if ((static_cast<WeaponBoltTypePtr>(getObjectType()))->fireSoundFX != 0)
 			soundSystem->playDigitalSample((static_cast<WeaponBoltTypePtr>(getObjectType()))->fireSoundFX, position, true);
 			
+		if (weaponShot.masterId >= 0 && MasterComponent::masterList[weaponShot.masterId].getForm() == COMPONENT_FORM_WEAPON_MISSILE) {
+			position.x += (static_cast<int>(getWatchID(false) % 5) - 2) * 1.5f;
+			position.y += (static_cast<int>((getWatchID(false) / 5) % 4) - 1) * 1.5f;
+		}
 		laserPosition = position;
 		
 		glm::vec3 ownerPosition = laserPosition;
@@ -219,6 +223,16 @@ long WeaponBolt::update (void)
 			
 			if (lastDistanceMoved >= distance)
 			{
+				if (target && target->isMover() && weaponShot.masterId >= 0 &&
+					MasterComponent::masterList[weaponShot.masterId].getForm() == COMPONENT_FORM_WEAPON_MISSILE &&
+					static_cast<MoverPtr>(target)->interceptMissile()) {
+					traceCombat("intercept", "ams", target, &weaponShot);
+					hitTarget = true;
+					weaponShot.damage = 0.0f;
+					targetWID = 0;
+					armRetireDeadline();
+					return false;
+				}
 				hitTarget = TRUE;
 				if (target) traceCombat("impact", "hit");
 				hitLeft = (static_cast<WeaponBoltTypePtr>(getObjectType()))->afterHitTime;
@@ -296,7 +310,8 @@ long WeaponBolt::update (void)
 						// The explosion owns area damage for both hits and misses.
 						ObjectManager->createExplosion((static_cast<WeaponBoltTypePtr>(getObjectType()))->hitEffectObjNum,
 														nullptr,*targetPosition,
-														(static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectDmg,
+														weaponShot.masterId >= 0 && MasterComponent::masterList[weaponShot.masterId].getForm() == COMPONENT_FORM_WEAPON_MISSILE
+														? weaponShot.damage : (static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectDmg,
 														(static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectRad);
 					}
 					else
@@ -325,7 +340,8 @@ long WeaponBolt::update (void)
 					{
 
 						// Located aimed damage leaves the explosion cosmetic to avoid duplicate damage.
-						float areaDmg = (static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectDmg;
+						float areaDmg = weaponShot.masterId >= 0 && MasterComponent::masterList[weaponShot.masterId].getForm() == COMPONENT_FORM_WEAPON_MISSILE
+							? weaponShot.damage : (static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectDmg;
 						if (deliverAimedAreaHit())
 							areaDmg = 0.0f;
 
@@ -415,7 +431,8 @@ long WeaponBolt::update (void)
 						// The explosion owns area damage for both hits and misses.
 						ObjectManager->createExplosion((static_cast<WeaponBoltTypePtr>(getObjectType()))->hitEffectObjNum,
 														nullptr,*targetPosition,
-														(static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectDmg,
+														weaponShot.masterId >= 0 && MasterComponent::masterList[weaponShot.masterId].getForm() == COMPONENT_FORM_WEAPON_MISSILE
+														? weaponShot.damage : (static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectDmg,
 														(static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectRad);
 					}
 					else
@@ -445,7 +462,8 @@ long WeaponBolt::update (void)
 						// The explosion owns area damage for both hits and misses.
 						ObjectManager->createExplosion((static_cast<WeaponBoltTypePtr>(getObjectType()))->hitEffectObjNum,
 														nullptr,*targetPosition,
-														(static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectDmg,
+														weaponShot.masterId >= 0 && MasterComponent::masterList[weaponShot.masterId].getForm() == COMPONENT_FORM_WEAPON_MISSILE
+														? weaponShot.damage : (static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectDmg,
 														(static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectRad);
 					}
 				}

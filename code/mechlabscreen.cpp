@@ -1303,9 +1303,8 @@ int	MechLabScreen::handleMessage( unsigned long msg, unsigned long who)
 			{
 				// MC2_ENGINE_XL: surface XL engine components in the equipment tab
 				// so they can be installed (they bump speed at mission load).
-				static const bool s_engineXL = mc2::gate::get<"MC2_ENGINE_XL">();
 				componentListBox.setType( COMPONENT_FORM_JUMPJET, COMPONENT_FORM_BULK,
-					COMPONENT_FORM_HEATSINK, s_engineXL ? COMPONENT_FORM_ENGINE : -1 );
+					COMPONENT_FORM_HEATSINK, COMPONENT_FORM_ENGINE );
 			}
 			break;
 

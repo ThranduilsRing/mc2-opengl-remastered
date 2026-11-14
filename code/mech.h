@@ -700,6 +700,7 @@ class BattleMech : public Mover {
 
 		virtual bool handleEjection (void);
 
+		float engineSpeedScale() const;
 		float calcMaxSpeed (void);
 
 		float calcSlowSpeed (void);

@@ -15,6 +15,7 @@
 
 #include "mc2_czstring.h"
 #include <new>
+#include "component_rules.h"
 
 #ifndef HEAP_H
 #include"heap.h"
@@ -112,7 +113,8 @@ long MasterComponent::initEXCEL (char* dataLine, float baseSensorRange) {
 
 	form = static_cast<ComponentFormType>(formIndex);
 	
-	field = strtok(nullptr, ","); // name, ignore
+	field = strtok(nullptr, ","); // authored component name, independent of localized strings
+	ammoAmount = mc2::components::rackSize(field);
 
 	field = strtok(nullptr, ",");
 	size = atof(field);
@@ -121,7 +123,7 @@ long MasterComponent::initEXCEL (char* dataLine, float baseSensorRange) {
 	float recycleTime = atof(field);
 	
 	field = strtok(nullptr, ",");
-	float heat = static_cast<unsigned long>(atof(field));
+	float heat = atof(field);
 
 	field = strtok(nullptr, ","); 
 	tonnage = atof( field );
@@ -233,8 +235,12 @@ long MasterComponent::initEXCEL (char* dataLine, float baseSensorRange) {
 			stats.weapon.range = rangeType;
 			stats.weapon.specialEffect = specialEffect;
 			stats.weapon.ammoMasterId = ammoMasterId;
-			stats.weapon.flags = ammoType == WEAPON_AMMO_ST ? WEAPON_FLAG_STREAK : 0;
-			stats.weapon.ammoAmount = ammoAmount;
+			stats.weapon.flags = flags | (ammoType == WEAPON_AMMO_ST ? WEAPON_FLAG_STREAK : 0);
+			if (form == COMPONENT_FORM_WEAPON_MISSILE && mc2::components::defensive(damage, rangeType)) {
+				stats.weapon.flags |= 16; // defensive, inferred from existing damage/range data
+				stats.weapon.range = WEAPON_RANGE_SHORT; // valid index for inventory bookkeeping
+			}
+			stats.weapon.ammoAmount = form == COMPONENT_FORM_WEAPON_MISSILE ? ammoAmount : 1;
 			break;
 		case COMPONENT_FORM_AMMO:
 			stats.ammo.ammoPerTon = recycleTime;
@@ -252,6 +258,7 @@ long MasterComponent::initEXCEL (char* dataLine, float baseSensorRange) {
 		case COMPONENT_FORM_POWER_AMPLIFIER:
 			break;
 		case COMPONENT_FORM_BULK:
+			stats.weapon.damage = damage > 0.0f ? damage : 32.0f;
 			break;
 		default:
 			return(-2);
@@ -607,7 +614,7 @@ bool MasterComponent::isOffensiveWeapon (void) {
 	// So, we can pretty much special-case this routine. If we add others,
 	// we will want to specify DEFENSIVE/OFFENSIVE for each weapon, and then
 	// check against this field...
-	return((masterID != clanAntiMissileSystemID) && (masterID != innerSphereAntiMissileSystemID));
+	return !isDefensiveWeapon();
 }
 
 //---------------------------------------------------------------------------
@@ -619,7 +626,8 @@ bool MasterComponent::isDefensiveWeapon (void) {
 	// So, we can pretty much special-case this routine. If we add others,
 	// we will want to specify DEFENSIVE/OFFENSIVE for each weapon, and then
 	// check against this field...
-	return((masterID == clanAntiMissileSystemID) || (masterID == innerSphereAntiMissileSystemID));
+	return form == COMPONENT_FORM_WEAPON_MISSILE &&
+		(stats.weapon.flags & 16) != 0;
 }
 
 //---------------------------------------------------------------------------

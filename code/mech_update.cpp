@@ -218,7 +218,7 @@ long BattleMech::update (void)
 
 		if (!appearance->isJumpAirborne())
 		{
-			float velMag = appearance->getVelocityMagnitude();
+			float velMag = appearance->getVelocityMagnitude() * engineSpeedScale();
 			if (emergencyStop)
 				velMag = 0.0;
 	
@@ -343,7 +343,7 @@ long BattleMech::update (void)
 		control.settings.mech.gestureGoal = -1;
 		updateDynamics();
 
-		float velMag = appearance->getVelocityMagnitude();
+		float velMag = appearance->getVelocityMagnitude() * engineSpeedScale();
 
 		glm::vec3 vel = getRotationVector();
 		vel *= velMag * worldUnitsPerMeter;
@@ -397,7 +397,7 @@ long BattleMech::update (void)
 		control.settings.mech.gestureGoal = -1;
 		updateDynamics();
 
-		float velMag = appearance->getVelocityMagnitude();
+		float velMag = appearance->getVelocityMagnitude() * engineSpeedScale();
 
 		glm::vec3 vel = getRotationVector();
 		vel *= velMag * worldUnitsPerMeter;

@@ -1182,6 +1182,7 @@ public:
 //			return appearance->getRadius();
 //		}
 
+		bool interceptMissile();
 		virtual void reduceAntiMissileAmmo (long numAntiMissiles);
 
 		virtual void pilotingCheck (unsigned long situation = 0, float modifier = 0.0);
