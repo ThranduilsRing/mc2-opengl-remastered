@@ -4,6 +4,7 @@
 #define DR_WAV_IMPLEMENTATION
 #include "music_stream.h"
 #include "gos_profiler.h"
+#include "wav_worker.h"
 #include <memory>
 #include <climits>
 #include <utility>
@@ -66,6 +67,14 @@ class gosAudio {
         std::string musicPath;
         std::string sourcePath;
         size_t admissionId = 0;
+        WavDelivery pending;
+        WavChunk decoded{nullptr, Mix_FreeChunk};
+        bool admit() {
+            if (!pending.future.valid()) return true;
+            if (!pending.take(decoded)) return false;
+            if (decoded) { mix_chunk_ = *decoded; mix_chunk_.volume = 50; }
+            return true;
+        }
 
 };
 
@@ -75,6 +84,9 @@ class SoundEngine {
         // Catalog entries are paths only; only active slots own bounded PCM queues.
         std::unordered_set<std::string> musicPaths;
         std::array<std::unique_ptr<MusicStream>, 32> channelStreams;
+        std::array<bool, 32> waiting{};
+        std::array<gosAudio_PlayMode, 32> waitingMode{};
+        std::unique_ptr<WavWorker> wavWorker;
         SoundEngine():frequency_(0), format_(0), channels_(0), chunksize_(0), is_initialized_(false) {} 
         bool init(int frequency, bool b_fmt_16_bit, bool b_fmt_signed, bool b_stereo);
         void destroy();
@@ -172,6 +184,7 @@ bool SoundEngine::init(int frequency, bool b_fmt_16_bit, bool b_fmt_signed, bool
 
     int num_allocated_chanels = Mix_AllocateChannels(NUM_CHANNELS);
     gosASSERT(NUM_CHANNELS == num_allocated_chanels);
+    if (rv != -1) wavWorker = std::make_unique<WavWorker>();
 
     memset(&channel_info_, 0, sizeof(channel_info_));
     for(auto & i : channel_info_) {
@@ -183,6 +196,8 @@ bool SoundEngine::init(int frequency, bool b_fmt_16_bit, bool b_fmt_signed, bool
 }
 
 void SoundEngine::destroy() {
+
+    wavWorker.reset();
 
     for(int i=0; i<NUM_CHANNELS;++i) {
         Mix_HaltChannel(i);
@@ -224,8 +239,6 @@ void gos_DestroyAudio() {
     }
 }
 
-#define USE_MIX_LOAD
-
 //////////////////////////////////////////////////////////////////////////////////
 // Creates a resource to be played later
 //
@@ -249,11 +262,6 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
     SDL_AudioFormat src_fmt = 0;
     int src_channels = 0;
     int src_freq = 0;
-    bool from_file = false;
-
-#ifdef USE_MIX_LOAD
-    Mix_Chunk* chunk = nullptr;
-#endif
 
     const SDL_AudioFormat dst_fmt = g_sound_engine->getFormat();
     const int dst_channels = g_sound_engine->getNumChannels();
@@ -278,58 +286,12 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
             return;
         }
 
-        from_file = true;
-        size_t fileBytes = 0;
-        std::unique_ptr<void, decltype(&SDL_free)> wavBytes(nullptr, SDL_free);
-        { ZoneScopedN("Audio.Stream.LoadFile.Read");
-          wavBytes.reset(SDL_LoadFile(file_name, &fileBytes)); }
-        if (!wavBytes || fileBytes > static_cast<size_t>(INT_MAX)) {
-            *hgosaudio = nullptr;
-            return;
-        }
-        auto* wavInput = SDL_RWFromConstMem(wavBytes.get(), static_cast<int>(fileBytes));
-        if (!wavInput) { *hgosaudio = nullptr; return; }
-
-#ifndef USE_MIX_LOAD
-        SDL_AudioSpec spec;
-        SDL_AudioSpec* pspec;
-        { ZoneScopedN("Audio.Stream.LoadFile.WavLoad");
-          { ZoneScopedN("Audio.Stream.LoadFile.Decode");
-            pspec = SDL_LoadWAV_RW(wavInput, 1, &spec, &databuf, &src_datasize); } }
-        if(pspec == nullptr) {
-            PAUSE(("gosAudio_CreateResource: Failed to load %s, %s\n", file_name, SDL_GetError()));
-            *hgosaudio = nullptr;
-            return;
-        }
-
-        src_fmt = spec.format;
-        src_freq = spec.freq;
-        src_channels = spec.channels;
-
-        switch(spec.format)
-        {
-            case AUDIO_U8: mc2::fmt::print_out("audio_u8\n"); break;
-            case AUDIO_S8: mc2::fmt::print_out("audio_s8\n"); break;
-            case AUDIO_S16LSB: mc2::fmt::print_out("audio_u16lsb\n"); break;
-            case AUDIO_U16LSB: mc2::fmt::print_out("AUDIO_s16lsb\n"); break;
-            default: STOP(("Unsupported audio format\n"));
-        }
-#else
-        { ZoneScopedN("Audio.Stream.LoadFile.WavLoad");
-          { ZoneScopedN("Audio.Stream.LoadFile.Decode");
-            chunk = Mix_LoadWAV_RW(wavInput, 1); } }
-        if(nullptr == chunk) {
-            MC2_LOG(Audio, Debug, "gosAudio_CreateResource: Failed to load {}, {}", mc2::fmt::safe(file_name), mc2::fmt::safe(Mix_GetError()));
-            *hgosaudio = nullptr;
-            return;
-        }
-        databuf = chunk->abuf;
-        src_datasize = chunk->alen;
-        // Mix library always loads data in our output format
-        src_freq = dst_freq;
-        src_fmt = dst_fmt;
-        src_channels = dst_channels;
-#endif
+        auto* audio = gosAudio::makeAudio(dst_fmt, dst_channels, dst_freq, {}, 0);
+        audio->sourcePath = file_name;
+        audio->pending = g_sound_engine->wavWorker->request(file_name);
+        g_sound_engine->addAudio(audio);
+        *hgosaudio = audio;
+        return;
 
     } else {
         gosASSERT(res_type == gosAudio_UserMemory);
@@ -364,8 +326,6 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
 
             PAUSE(("SDL_BuildAudioCVT: Failed to build conversion structure : %s\n", SDL_GetError()));
             audioDataOwner.reset();
-            if(from_file)
-                SDL_FreeWAV(databuf);
             *hgosaudio = nullptr;
             return;
         }
@@ -388,8 +348,6 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
         if(0 > SDL_ConvertAudio(&cvt)) {
             PAUSE(("Failed to convert audio: %s\n", SDL_GetError()));
             audioDataOwner.reset();
-            if(from_file)
-                SDL_FreeWAV(databuf);
             *hgosaudio = nullptr;
             tmpReqBufOwner.reset();
             return;
@@ -414,17 +372,8 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
     }
     tmpReqBufOwner.reset();
 
-#ifndef USE_MIX_LOAD
-    if(from_file)
-        SDL_FreeWAV(databuf);
-#else
-    if(from_file)
-        Mix_FreeChunk(chunk);
-#endif
-
     ZoneScopedN("Audio.Stream.LoadFile.Publish");
     gosAudio* paudio = gosAudio::makeAudio(dst_fmt, dst_channels, dst_freq, std::move(audioDataOwner), audio_data_size);
-    if (from_file) paudio->sourcePath = file_name;
     if(!paudio) {
         PAUSE(("makeAudio: Failed to create audio resource\n"));
         return;
@@ -464,6 +413,7 @@ void __stdcall gosAudio_DestroyResource(HGOSAUDIO* handle)
             g_sound_engine->channelStreams[i].reset();
             channels[i].hAudio = nullptr;
             channels[i].ePlayMode = gosAudio_Stop;
+            g_sound_engine->waiting[i] = false;
         }
     }
     // Resources may be unbound, or shared by several channels. Free exactly once.
@@ -500,6 +450,7 @@ void __stdcall gosAudio_AssignResourceToChannel( int Channel, HGOSAUDIO hgosaudi
 
     // this should only assign resource to channel but not play it
     gosAudio* audio = static_cast<gosAudio*>(hgosaudio);
+    g_sound_engine->waiting[Channel] = false;
     ci->hAudio = audio;
 }
 
@@ -580,7 +531,10 @@ void __stdcall gosAudio_SetChannelPlayMode( int Channel, enum gosAudio_PlayMode 
     if(!ci)
         return;
 
+    if (ga_pm == gosAudio_Continue && g_sound_engine->waiting[Channel])
+        ga_pm = g_sound_engine->waitingMode[Channel];
     ci->ePlayMode = ga_pm;
+    if (ga_pm == gosAudio_Stop) g_sound_engine->waiting[Channel] = false;
 
     switch(ga_pm) {
         case gosAudio_PlayOnce:
@@ -588,6 +542,14 @@ void __stdcall gosAudio_SetChannelPlayMode( int Channel, enum gosAudio_PlayMode 
         {
             gosAudio* audio = static_cast<gosAudio*>(ci->hAudio);
             if(audio) {
+                if (!audio->admit()) {
+                    Mix_HaltChannel(Channel);
+                    g_sound_engine->waiting[Channel] = true;
+                    g_sound_engine->waitingMode[Channel] = ga_pm;
+                    break;
+                }
+                g_sound_engine->waiting[Channel] = false;
+                if (!audio->mix_chunk_.alen) { ci->ePlayMode = gosAudio_Stop; break; }
                 Mix_HaltChannel(Channel);
                 auto& stream = g_sound_engine->channelStreams[Channel];
                 stream.reset();
@@ -641,6 +603,12 @@ gosAudio_PlayMode __stdcall gosAudio_GetChannelPlayMode( int Channel )
     gosAudio_ChannelInfo* ci = g_sound_engine->getChannel(Channel);
     if(!ci) {
         return gosAudio_PlayOnce;
+    }
+    if (g_sound_engine->waiting[Channel]) {
+        if (ci->ePlayMode == gosAudio_Pause) return gosAudio_Pause;
+        const auto requested = ci->ePlayMode;
+        gosAudio_SetChannelPlayMode(Channel, requested);
+        if (g_sound_engine->waiting[Channel]) return requested;
     }
     int playing = Mix_Playing(Channel);
     const auto& stream = g_sound_engine->channelStreams[Channel];

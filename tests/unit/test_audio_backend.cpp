@@ -3,6 +3,7 @@
 #include "gameos.hpp"
 #include "gameos_music_cache.h"
 #include "../../GameOS/gameos/music_stream.h"
+#include "../../GameOS/gameos/wav_worker.h"
 #include "alloc_probe.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mixer.h>
@@ -103,12 +104,47 @@ TEST_CASE("AudioBackend/file WAV preserves user-memory PCM") {
     gosAudio_AssignResourceToChannel(1, loaded);
     gosAudio_SetChannelPlayMode(0, gosAudio_Loop);
     gosAudio_SetChannelPlayMode(1, gosAudio_Loop);
+    // The real worker may finish after play was requested; keep the request alive.
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(3);
+    while (!Mix_GetChunk(1) && std::chrono::steady_clock::now() < deadline) {
+        CHECK(gosAudio_GetChannelPlayMode(1) == gosAudio_Loop);
+        std::this_thread::yield();
+    }
     auto* expected = Mix_GetChunk(0);
     auto* actual = Mix_GetChunk(1);
     REQUIRE(expected != nullptr); REQUIRE(actual != nullptr);
     REQUIRE(actual->alen == expected->alen);
+    CHECK(actual->volume == expected->volume);
     CHECK(std::memcmp(actual->abuf, expected->abuf, actual->alen) == 0);
     gosAudio_DestroyResource(&loaded);
+}
+TEST_CASE("AudioBackend/WAV handover is nonblocking and consumes complete PCM once") {
+    std::promise<WavChunk> producer;
+    WavDelivery delivery{producer.get_future()};
+    WavChunk admitted(nullptr, Mix_FreeChunk);
+    CHECK_FALSE(delivery.take(admitted));
+    CHECK_FALSE(admitted);
+    std::array<Uint8, 4> pcm{};
+    std::jthread worker([&] {
+        pcm = {1, 2, 3, 4};
+        producer.set_value(WavChunk(Mix_QuickLoad_RAW(pcm.data(), pcm.size()), Mix_FreeChunk));
+    });
+    delivery.future.wait();
+    REQUIRE(delivery.take(admitted));
+    CHECK(admitted->alen == 4);
+    CHECK(admitted->abuf[3] == 4);
+    CHECK_FALSE(delivery.take(admitted));
+    worker.join();
+}
+TEST_CASE("AudioBackend/cancelled WAV delivery never waits for the producer") {
+    std::promise<WavChunk> producer;
+    { WavDelivery cancelled{producer.get_future()}; }
+    // Completion after cancellation owns and releases its result with no handle access.
+    std::array<Uint8, 4> pcm{1, 2, 3, 4};
+    producer.set_value(WavChunk(Mix_QuickLoad_RAW(pcm.data(), pcm.size()), Mix_FreeChunk));
+    WavDelivery failed;
+    WavChunk admitted(nullptr, Mix_FreeChunk);
+    CHECK_FALSE(failed.take(admitted));
 }
 TEST_CASE("AudioBackend/resources are freed unbound and detached from every channel") {
     AudioDevice device;
