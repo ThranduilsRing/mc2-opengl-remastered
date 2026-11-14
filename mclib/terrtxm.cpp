@@ -93,15 +93,17 @@ int MC2_OverlayTileHiresSize (void)
 	// TEXTURE-TIER: the largest overlay tile edge the player's texture tier allows (Gates/render_options.h textureTier()):
 	// Low = stock (0, legacy path), Medium 128, High 256, Ultra 1024. initOverlay() walks the ladder from this edge down per
 	// file, so a 512 or 1024 set is picked up without any env var. MC2_OVERLAY_TILE_HIRES=0 stays as the kill-switch.
-	static int s_off = -1;
+	static int s_off = -1, s_cap = 1024;
 	if (s_off < 0)
 	{
 		const std::string hiresStr = mc2::gate::str<"MC2_OVERLAY_TILE_HIRES">();
 		s_off = (hiresStr == "0") ? 1 : 0;
+		const int v = std::atoi(hiresStr.c_str());   // comparison cap: =256 / =512 / =1024 limits the ladder's top edge
+		if (v >= 128 && v <= 1024) s_cap = v;
 	}
 	if (s_off) return 0;
 	static const int kTierEdge[4] = { 0, 128, 256, 1024 };
-	return kTierEdge[mc2::options::textureTier()];
+	return std::min(kTierEdge[mc2::options::textureTier()], s_cap);
 }
 
 constexpr int MAX_MASK_NUM = 14;
