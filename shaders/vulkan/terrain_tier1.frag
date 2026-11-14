@@ -538,6 +538,15 @@ void main() {
         else if (kCsmDebugMode == 9) { fragColor = vec4(dbgBaseN * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
         else if (kCsmDebugMode == 10) { fragColor = vec4(dbgDN * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
         else if (kCsmDebugMode == 12) { fragColor = vec4(prelitBase, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; } // raw prelit before material/lighting
+        // Look-sheet masks: red = blocked slope, green = navigable rock weight.
+        else if (kCsmDebugMode == 13) {
+            float blocked = crTerrainCliff(v_worldPos.xy);
+            float slope = cliffRockWeight(abs(dbgBaseN.z));
+            vec2 masks = pureConcrete ? vec2(0.0) : vec2(blocked * slope,
+                uT.detailReady != 0 ? (1.0 - blocked) * max(materialW.x, slope) : 0.0);
+            fragColor = vec4(masks, 0.0, 1.0);
+            GBuffer1 = vec4(0.5,0.5,1.0,1.0); return;
+        }
         // Material weights false colour: rock grey, grass green, dirt red, concrete blue, snow white.
         else if (kCsmDebugMode == 11) { fragColor = vec4(materialW.x * vec3(0.35) + materialW.y * vec3(0.1, 0.9, 0.1) + materialW.z * vec3(0.9, 0.2, 0.1) +
                                                          materialW.w * vec3(0.1, 0.3, 1.0) + vec3(materialSnow), 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
