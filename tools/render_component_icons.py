@@ -54,12 +54,16 @@ for index, (name, row) in enumerate(sorted(icons.items())):
     lo = Vector(tuple(min(p[i] for p in points) for i in range(3))); hi = Vector(tuple(max(p[i] for p in points) for i in range(3)))
     center = (lo+hi)/2; scale = 2/max(hi-lo); rotation = Matrix.Rotation(math.pi/2, 3, 'Y')
     objects = []
-    for g in geoms:
-        mesh = bpy.data.meshes.new(g.node_name); mesh.from_pydata([rotation @ ((Vector(p)-center)*scale) for p in g.positions], [], [f[:3] for f in g.faces])
+    right = Vector((7, 4, 0)).normalized(); pair = Path(name).stem == 'mcl_mc_jumpjets'  # stock Jump Jets shows two units side by side
+    half = max(abs((rotation @ ((Vector(p)-center)*scale)).dot(right)) for g in geoms for p in g.positions) * 1.05 if pair else 0
+    for g, side in [(g, s) for g in geoms for s in ((1, -1) if pair else (1,))]:
+        pts = [rotation @ ((Vector(p)-center)*scale) + right * half for p in g.positions]
+        if side < 0: pts = [p - 2 * p.dot(right) * right for p in pts]
+        mesh = bpy.data.meshes.new(g.node_name); mesh.from_pydata(pts, [], [f[:3][::side] for f in g.faces])
         obj = bpy.data.objects.new(g.node_name, mesh); scene.collection.objects.link(obj); objects.append(obj)
         mesh.materials.append(mats[g.mat_ref]); uv = mesh.uv_layers.new()
         for face, tf in zip(mesh.polygons, g.tfaces):
-            for loop, ti in zip(face.loop_indices, tf): uv.data[loop].uv = g.tverts[ti][:2]
+            for loop, ti in zip(face.loop_indices, tf[:3][::side]): uv.data[loop].uv = g.tverts[ti][:2]
     def aim(obj, position):
         obj.location = position; obj.rotation_euler = (-obj.location).to_track_quat('-Z','Y').to_euler()
     for label, pos, power, size in [('Key',(3,-4,5),450,4), ('Fill',(-4,-2,2),250,5), ('Rim',(1,4,4),500,3)]:
