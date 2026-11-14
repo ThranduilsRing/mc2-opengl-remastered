@@ -104,12 +104,13 @@ namespace {
 // Separate kind/version from the float cook. Encoding changes must bump this magic.
 constexpr uint32_t kPackedMagic = 0x31415350; // PSA1
 constexpr mc2cache::CacheKind kPackedKind{"macro-packed-", ".tsp", 6, 48ull + 4096ull * 4096 * 4 + 48 + 1024ull * 1024 * 16};
+uint32_t materialSide(uint32_t side) { return std::min(side, 1024u); }
 }
 
 bool storeCachedPackedSurface(std::string_view dir, const SurfaceAsset& surface, bool srgb, std::span<const uint8_t> rgba) {
     if (!validSurfaceAsset(surface, surface.sourceHash) || rgba.size() != static_cast<uint64_t>(surface.width) * surface.height * 4) return false;
     SurfaceAsset materials;
-    materials.width = std::min(surface.width, 1024u); materials.height = std::min(surface.height, 1024u);
+    materials.width = materialSide(surface.width); materials.height = materialSide(surface.height);
     materials.sourceHash = surface.sourceHash;
     materials.macroColor.resize(static_cast<size_t>(materials.width) * materials.height);
     // Match cookSurfaceMaterials' center/nearest lookup exactly, before any RGBA8 quantization.
@@ -143,11 +144,11 @@ std::optional<PackedSurfaceAsset> loadCachedPackedSurface(std::string_view dir, 
     const auto w = static_cast<uint32_t>(getLE(data, 12, 4)), h = static_cast<uint32_t>(getLE(data, 16, 4));
     if (!validSize(w, h)) return {};
     const uint64_t rgbaSize = static_cast<uint64_t>(w) * h * 4;
-    const uint64_t floatsSize = kHeaderBytes + static_cast<uint64_t>(std::min(w, 1024u)) * std::min(h, 1024u) * 16;
+    const uint64_t floatsSize = kHeaderBytes + static_cast<uint64_t>(materialSide(w)) * materialSide(h) * 16;
     if (getLE(data, 40, 8) != rgbaSize || data.size() != kHeaderBytes + rgbaSize + floatsSize ||
         surfaceHash(data.subspan(40), surfaceHash(data.first(32))) != getLE(data, 32, 8)) return {};
     auto materials = decodeSurfaceAsset(data.subspan(kHeaderBytes + static_cast<size_t>(rgbaSize)), source);
-    if (!materials || materials->width != std::min(w, 1024u) || materials->height != std::min(h, 1024u)) return {};
+    if (!materials || materials->width != materialSide(w) || materials->height != materialSide(h)) return {};
     PackedSurfaceAsset result;
     result.width = w; result.height = h; result.materials = std::move(*materials);
     result.rgba.assign(data.begin() + kHeaderBytes, data.begin() + kHeaderBytes + static_cast<size_t>(rgbaSize));
