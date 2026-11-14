@@ -83,6 +83,7 @@ from smoke_lib import host_lease, nofocus  # noqa: E402
 from smoke_lib import render_options_pin, render_resolution  # noqa: E402
 from smoke_lib import via_menu  # noqa: E402  (--via-menu: the player's boot path)
 import perf_baseline_report  # noqa: E402  (GPU memory of a trace: the VRAM plot and the [VRAM v1] log lines)
+import re
 
 DEFAULT_TRACY_DIR = Path("C:/Users/Joe/Downloads/TracyProfiler")
 DEFAULT_ZONES = [
@@ -289,10 +290,56 @@ def window_stats(reader, seconds):
             "fps": len(frames) / span if span else 0}
 
 
+def owner_capture_mode():
+    """Unrestricted affinity requires explicit opt-in and every batch slot."""
+    if os.environ.get("MC2_NO_CPU_PIN") != "1":
+        return False
+    tag = os.environ.get(host_lease.BATCH_ENV)
+    records = dict(host_lease._records())
+    if not tag or not all(
+        (rec := records.get(host_lease.slot_path(i))) and host_lease._ours(rec)
+        and rec.get("exclusive") and rec.get("batch") == tag
+        for i in range(host_lease.slot_count())
+    ):
+        raise RuntimeError("MC2_NO_CPU_PIN=1 requires an exclusive all-slot batch lease")
+    return True
+
+
+def camera_command(channel, command, timeout=10):
+    """Wait for the engine acknowledgement; a first rendered frame can exceed 100 ms."""
+    ack = channel.with_suffix(channel.suffix + ".ack")
+    before = len(ack.read_text(encoding="utf-8")) if ack.exists() else 0
+    deadline = time.monotonic() + timeout
+    while channel.stat().st_size:
+        if time.monotonic() >= deadline:
+            raise RuntimeError("pan camera command channel was not consumed")
+        time.sleep(.01)
+    channel.write_text(command, encoding="utf-8")
+    receipt = command.splitlines()[0] + " -> ok"
+    while time.monotonic() < deadline:
+        if ack.exists() and receipt in ack.read_text(encoding="utf-8")[before:]:
+            return
+        time.sleep(.01)
+    raise RuntimeError("pan camera command was not acknowledged")
+
+
+def pan_camera(channel, half_map, seconds):
+    """Drive the engine's bookmark Camera setters, never desktop key input."""
+    start = time.monotonic()
+    steps = int(seconds * 10)
+    for step in range(steps + 1):
+        time.sleep(max(0, start + step / 10 - time.monotonic()))
+        p = half_map * (1 - 2 * step / steps)
+        command = f"bench_view {p:.3f} {p:.3f} -45 5853.4658 12.5\n"
+        if step in (0, steps):
+            command += f"screenshot pan_{'start' if step == 0 else 'end'}\n"
+        camera_command(channel, command)
+
+
 def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path,
                   extra_env=None, pose=None, fixed_timestep=True, fps_cap=None,
                   show_window: bool = True, ticks: int = 0, via_menu_boot: bool = False,
-                  spawn_game=None, post_load: bool = False, capture_arm: str = "default") -> int:
+                  spawn_game=None, post_load: bool = False, capture_arm: str = "default", pan: bool = False) -> int:
     """Record one trace under the host lease; retain a caller's existing lease.
 
     Free timestep and an uncapped FPS limit measure renderer throughput.
@@ -309,7 +356,13 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
     if via_menu_boot and ticks:
         sys.exit("ERROR: --via-menu cannot be combined with --ticks (the tick budget is a smoke-mode exit)")
     env = game_env(arm, fixed_timestep, fps_cap, pose, extra_env, via_menu_boot)   # before the recorder starts: a refused --env must leave nothing running
-    if post_load:
+    if pan:
+        if not post_load or seconds < 2:
+            raise ValueError("pan requires a post-load window of at least two seconds")
+        channel = out.with_suffix(".commands.txt")
+        channel.write_text(f"bench_output {out.with_suffix('.frames.jsonl')}\n", encoding="utf-8")
+        env.update(MC2_TEST_SPAWN="1", MC2_UI_COMMAND_FILE=str(channel), MC2_DEV_SHELL="1")
+    if post_load and os.environ.get("MC2_NO_CPU_PIN") != "1":
         env.setdefault("MC2_FRAME_JOBS_WORKERS", "1")
 
     with ExitStack() as cleanup:
@@ -322,6 +375,7 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
                 host_lease.acquire(f"Tracy capture {arm} {mission}")
                 cleanup.callback(host_lease.release)
 
+        owner_affinity = owner_capture_mode() if post_load else False
         # Recorder first: TRACY_ON_DEMAND means the game buffers nothing until connected.
         cap_cmd = [str(cap_exe), "-a", "127.0.0.1", "-p", "8086",
                    *([] if ticks or spawn_game else ["-s", str(seconds)]), "-f", "-o", str(out)]
@@ -370,22 +424,28 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
         else:
             gp = nofocus.spawn(game_cmd, stdout=game_lf, stderr=subprocess.STDOUT,
                                cwd=str(install), env=env,
+                               engine_default_workers=owner_affinity,
                                show_window=show_window, small_window=False)
         cleanup.callback(_stop_capture_child, gp)
         if post_load:
             import psutil
             process = psutil.Process(gp.pid)
             # PC masks apply only on Windows; Linux inherits slot.sh's game cores.
-            if os.name == "nt":
+            if os.name == "nt" and not owner_affinity:
                 device = host_lease.held_device()
                 slot = (host_lease.lane_devices().index(device) if device
                         else host_lease.eligible_slots(env.get("MC2_VK_DEVICE"))[0])
                 mask = host_lease.affinity_mask(slot)
                 cpus = [c for c in process.cpu_affinity() if mask & (1 << c)]
                 process.cpu_affinity(cpus)
+            actual_cpus = process.cpu_affinity()
             row = {"status": "REJECTED", "mission": mission, "arm": capture_arm,
-                   "seconds": seconds, "settle_s": 2, "affinity": process.cpu_affinity(),
-                   "job_workers": int(env.get("MC2_FRAME_JOBS_WORKERS") or host_lease.frame_jobs_workers()),
+                   "seconds": seconds, "settle_s": 2, "affinity": actual_cpus,
+                   "affinity_mask": sum(1 << c for c in actual_cpus),
+                   "job_workers": (int(env["MC2_FRAME_JOBS_WORKERS"]) if env.get("MC2_FRAME_JOBS_WORKERS")
+                                   else max(2, min(6, (psutil.cpu_count() or 1) // 2)) if owner_affinity
+                                   else host_lease.frame_jobs_workers()),
+                   "job_workers_source": "override" if env.get("MC2_FRAME_JOBS_WORKERS") else "engine-default",
                    "resolution": [int(env.get("MC2_WIDTH", 0)), int(env.get("MC2_HEIGHT", 0))],
                    "exe_sha256": hashlib.sha256(game.read_bytes()).hexdigest(),
                    "environment": {k: v for k, v in env.items() if k.startswith("MC2_")}}
@@ -393,8 +453,17 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
                 out.with_suffix(".stats.json").write_text(json.dumps(row, indent=2), encoding="utf-8")
             cleanup.callback(save_row)
             wait_post_load(gp, game_log, pose)
+            if pan:
+                half_map = re.search(r"halfMap=([\d.]+)", game_log.read_text(encoding="utf-8", errors="replace"))
+                if not half_map:
+                    raise RuntimeError("pan requires the terrain map extent receipt")
+                row["pan_half_map"] = float(half_map[1])
+                # An acknowledged command proves the first render has finished initializing.
+                camera_command(channel, f"bench_view {half_map[1]} {half_map[1]} -45 5853.4658 12.5\n")
             row["measurement_start_epoch"] = time.time()
             recorder = start_recorder()
+            if pan:
+                pan_camera(channel, float(half_map[1]), seconds - 1)
         print(f"[capture] game pid={gp.pid} arm={arm} mission={mission} "
               f"duration={duration}s fixed_ts={fixed_timestep} fps_cap={fps_cap} pose={pose}")
 
@@ -490,6 +559,7 @@ def _capture_arm(args, name, out):
         fixed_timestep=not args.free_timestep, fps_cap=args.fps_cap,
         show_window=args.show_window, ticks=args.ticks, via_menu_boot=args.via_menu,
         post_load=not (args.ticks or args.via_menu), capture_arm=name,
+        pan=args.pan,
     )
     if rc == 0:
         zone_summary(out, csv_out=out.with_suffix(".zones.csv") if args.csv else None)
@@ -1077,6 +1147,7 @@ def main() -> int:
     c.add_argument("--mission", default="mc2_01")
     c.add_argument("--seconds", type=int, default=30, help="post-load recording window (default 30 seconds)")
     c.add_argument("--capture-arms", default="default", help="comma-separated default,lod,visible0")
+    c.add_argument("--pan", action="store_true", help="script a corner-to-corner engine camera path after mission-ready")
     c.add_argument("--via-menu", action="store_true",
                    help="launch as a player does (boot, main menu, stock campaign, mission; no smoke mode, no --mission, no fixed timestep). "
                         "--seconds must cover menu + mission load (use 90+); the trace includes the front end. [VIA_MENU v1]/[FIRST60 v1] lines are in the .game.log")
