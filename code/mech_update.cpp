@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in mech_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "mech_internal.h"
+#include "water_wake.h"
 #include "hover_name.h"
 #include "tacticaloverview.h"
 #include "appearance_rng.h"
@@ -480,8 +481,9 @@ long BattleMech::update (void)
 	// Water wake is a request on the sim animation state (the effect is created in presentation).
 	int watercellR, watercellC;
 	land->worldToCell(position,watercellR, watercellC);
-	if (GameMap->getDeepWater(watercellR, watercellC) ||
-		GameMap->getShallowWater(watercellR, watercellC))
+	const auto wakeVelocity = getVelocity();
+	if (mc2::waterreactive::shouldEmit(getStatus() == OBJECT_STATUS_NORMAL, wakeVelocity.x, wakeVelocity.y) &&
+		(GameMap->getDeepWater(watercellR, watercellC) || GameMap->getShallowWater(watercellR, watercellC)))
 	{
 		appearance->startWaterWake();
 	}
