@@ -51,10 +51,10 @@ uint overlayCementWord(vec2 wp) {
 }
 
 // Cement art sample: one texture-array layer per catalog cell (CEMENT-ARRAY-1).
-vec3 overlayCementAlbedo(uint cw, vec2 wp) {
+vec3 overlayCementAlbedo(uint cw, vec2 wp, vec2 dx, vec2 dy) {
     uint cLayerIdx = cw & 0xFFFFu;
     vec2 cTileUV   = fract(vec2(wp.x, -wp.y) / uT.cementWUPT);
-    return texture(u_cementArt, vec3(cTileUV, float(cLayerIdx))).rgb * vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);
+    return textureGrad(u_cementArt, vec3(cTileUV, float(cLayerIdx)), dx * vec2(1, -1) / uT.cementWUPT, dy * vec2(1, -1) / uT.cementWUPT).rgb * vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);
 }
 
 void main() {
@@ -79,7 +79,7 @@ void main() {
     vec4 c;
     c.a = tex_color.a;                                         // shape always from the decal texture
     if (ovAdoptAlbedo) {
-        c.rgb = overlayCementAlbedo(ovCw, WorldPos.xy);
+        c.rgb = overlayCementAlbedo(ovCw, WorldPos.xy, cdWpDx, cdWpDy);
     } else {
         c.rgb = (pc.cementAdopt != 0) ? tex_color.rgb : tex_color.rgb * vec3(0.82, 0.80, 0.76);
         c.rgb *= mix(missionFlat, vec3(1.0), pc.artFlatExempt);   // RUNWAY-CLOSE-1 arm

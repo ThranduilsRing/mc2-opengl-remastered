@@ -124,7 +124,7 @@ long TerrainTextures::init (mc2::czstring fileName, mc2::czstring baseName)
 {
 	metadataLoaded = true;
 	const auto inputsStart = std::chrono::steady_clock::now();
-	txmSources = mc2::TerrainCacheKey{};
+	txmSources = mc2::TerrainCacheKey{"txm-composite-v2"};
 	txmRebuildMs = 0;
 	txmRebuilds = txmReuses = 0;
 	// Source pixels/masks must exist even on a warm load: a missing/corrupt
@@ -473,6 +473,53 @@ long TerrainTextures::init (mc2::czstring fileName, mc2::czstring baseName)
 		}
 	}
 
+
+	// Composite at the selected art resolution; preserve native cement and overlay texels.
+	int compositeEdge = TERRAIN_TXM_SIZE;
+	for (int i = 0; i < numOverlays; ++i)
+		for (int j = 0; j < overlays[i].numTextures; ++j)
+			compositeEdge = std::max(compositeEdge, static_cast<int>(overlays[i].overlayDataSizes[j]));
+	if (compositeEdge > TERRAIN_TXM_SIZE)
+	{
+		const int oldEdge = TERRAIN_TXM_SIZE;
+		auto enlarge = [&](MemoryPtr& pixels, int channels) {
+			if (!pixels) return;
+			auto out = static_cast<MemoryPtr>(std::malloc(compositeEdge * compositeEdge * channels));
+			gosASSERT(out != nullptr);
+			for (int y = 0; y < compositeEdge; ++y)
+				for (int x = 0; x < compositeEdge; ++x)
+					memcpy(out + (y * compositeEdge + x) * channels,
+						pixels + ((y * oldEdge / compositeEdge) * oldEdge + x * oldEdge / compositeEdge) * channels, channels);
+			std::free(pixels);
+			pixels = out;
+		};
+		for (int i = 0; i < numTypes; ++i)
+		{
+			if (!types[i].textureData) continue;
+			enlarge(types[i].textureData[0], 4);
+			char sourcePath[512];
+			mc2::fmt::to_buf(sourcePath,"{}{:d}" PATH_SEPARATOR "",mc2::fmt::safe(texturePath),compositeEdge);
+			FullPathFileName nativeName;
+			nativeName.init(sourcePath,types[i].terrainName,".tga");
+			File native;
+			if (native.open(nativeName) == NO_ERR)
+			{
+				TGAFileHeader header;
+				native.read(reinterpret_cast<MemoryPtr>(&header), sizeof(header));
+				if (header.width == compositeEdge && header.height == compositeEdge && types[i].textureData[0])
+				{
+					native.seek(0);
+					loadTGATexture(&native,types[i].textureData[0],compositeEdge,compositeEdge);
+					hashTxmInput(nativeName);
+				}
+			}
+			if (types[i].textureData[0])
+				types[i].baseTXMIndex = textureFromMemoryAlpha(types[i].textureData[0],compositeEdge);
+			for (int mask = 0; types[i].maskData && mask < MC_MASK_NUM; ++mask)
+				enlarge(types[i].maskData[mask], 1);
+		}
+		TERRAIN_TXM_SIZE = compositeEdge;
+	}
 
 	txmContentKey = txmSources.key();
 	quickLoad = !InEditor;
