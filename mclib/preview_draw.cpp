@@ -10,6 +10,7 @@
 #include "tgl_internal.h"
 #include "mc2fmt.h"
 #include "tgl_force_z.h"
+#include "tex_resolve_table.h"
 #include "battle_bench_sink.h"
 #include "../code/render_view.h"
 #include <algorithm>
@@ -145,7 +146,7 @@ static bool spotlightDrawn(bool lightsOut, BYTE alphaValue)
 
 void TG_Shape::ReserveCpuDraw (BYTE alphaValue, bool hud, bool clamped, bool spotlightsOnly)
 {
-	if (!renderTGLShapes || !numVertices || !eye || (spotlightsOnly && !isSpotlight))
+	if (hud || !renderTGLShapes || !numVertices || !eye || (spotlightsOnly && !isSpotlight))
 		return;
 	if (isSpotlight && !spotlightDrawn(lightsOut, alphaValue))
 		return;
@@ -257,6 +258,10 @@ void TG_Shape::CpuDraw (const mc2::tgl::ViewUniforms& view, const glm::mat4& sha
 
 		Stuff::Vector4D xform;
 		xform.MultiplyPoint(pos, shapeToClip);
+		// Legacy perspective has negative w in front of the eye. Normalize
+		// its homogeneous sign for clipping; projected coordinates stay identical.
+		if (world && view.perspective)
+			xform = Stuff::Vector4D(-xform.x, -xform.y, -xform.z, -xform.w);
 		if (world)
 			clips[j] = xform;
 		gos_VERTEX& v = verts[j];
@@ -405,7 +410,21 @@ void TG_Shape::CpuDraw (const mc2::tgl::ViewUniforms& view, const glm::mat4& sha
 				projectClip(farClipped[k + 1], out[2]);
 				if (forcedZ >= 0.0f)
 					out[0].z = out[1].z = out[2].z = forcedZ;
-				mc2::renderSubmissions().addVertices(node, out, flags);
+				if (hud) {
+					// World-projected HUD shapes composite after grass, water and scene effects.
+					const bool exempt = gos_GetHudScaleExempt();
+					gos_SetHudScaleExempt(true);
+					gos_SetRenderState(gos_State_IsHUD, 1);
+					const DWORD texture = tex_resolve(node);
+					gos_SetRenderState(gos_State_Texture, texture == 0xffffffff ? 0 : texture);
+					gos_SetRenderState(gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
+					gos_SetRenderState(gos_State_AlphaTest, theShape->alphaTestOn);
+					gos_DrawTriangles(out, 3);
+					gos_SetRenderState(gos_State_IsHUD, 0);
+					gos_SetHudScaleExempt(exempt);
+				} else {
+					mc2::renderSubmissions().addVertices(node, out, flags);
+				}
 			}
 			continue;
 		}

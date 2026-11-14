@@ -154,7 +154,9 @@ void BldgAppearanceType::init (mc2::czstring fileName)
 
 	result = iniFile.readIdBoolean("SpinMe",spinMe);
 	if (result != NO_ERR)
-		spinMe = false;
+		spinMe = S_stricmp(fileName, "WalkWayPoint") == 0 ||
+			S_stricmp(fileName, "RunWayPoint") == 0 ||
+			S_stricmp(fileName, "JumpWayPoint") == 0;
 		
 	float nFrameRate = 0.0f;
 	result = iniFile.readIdFloat("FrameRate",nFrameRate);

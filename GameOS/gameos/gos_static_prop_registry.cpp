@@ -3,6 +3,9 @@
 #include "mc2fmt.h"
 #include <functional>
 #include <atomic>
+#include <cmath>
+#include <map>
+#include "../../RenderCore/StaticPropOrigin.h"
 #include "../../mclib/texture_assets.h"
 #include "water_planar_props.h"
 
@@ -801,6 +804,43 @@ void setRecipePopulation(int32_t recipeIndex, GpuStaticPropPopulation pop) {
     if (recipeIndex < 0 ||
         recipeIndex >= static_cast<int32_t>(s_recipeRanges.size())) return;
     s_recipeRanges[static_cast<size_t>(recipeIndex)].population = p;
+}
+
+// Mission-load canopy density; duplicate LOD recipes occupy the same 64-unit cell.
+// Four six-bit horizons use flags[8..31], leaving the material flags untouched.
+void bakeForestOcclusion() {
+    using Cell = std::pair<int, int>;
+    std::map<Cell, uint32_t> cells;
+    auto cellOf = [](const GpuStaticPropInstance& inst) -> Cell {
+        const auto origin = staticPropOriginStuff(inst.modelMatrix);
+        return {static_cast<int>(std::floor(origin.x / 64.0f)),
+                static_cast<int>(std::floor(origin.z / 64.0f))};
+    };
+    for (const auto& rng : s_recipeRanges)
+        if (rng.count && rng.population == static_cast<uint8_t>(GpuStaticPropPopulation::Tree))
+            cells.emplace(cellOf(s_recipes[rng.begin]), 0u);
+    for (auto& [cell, packed] : cells) {
+        const auto [cx, cy] = cell;
+        float horizon[4]{};
+        for (int y = -5; y <= 5; ++y) for (int x = -5; x <= 5; ++x) {
+            const float distance = std::sqrt(static_cast<float>(x*x + y*y));
+            if (distance < 0.5f || distance >= 5.0f || !cells.contains({cx+x, cy+y})) continue;
+            const float weight = (1.0f - distance / 5.0f) / distance;
+            horizon[0] += std::max(0, x) * weight;
+            horizon[1] += std::max(0, -x) * weight;
+            horizon[2] += std::max(0, y) * weight;
+            horizon[3] += std::max(0, -y) * weight;
+        }
+        for (uint32_t d = 0; d < 4; ++d)
+            packed |= static_cast<uint32_t>(63.0f * std::min(1.0f, horizon[d] * 0.5f)) << (8u + 6u*d);
+    }
+    for (const auto& rng : s_recipeRanges) {
+        if (!rng.count || rng.population != static_cast<uint8_t>(GpuStaticPropPopulation::Tree)) continue;
+        const uint32_t packed = cells.at(cellOf(s_recipes[rng.begin]));
+        for (uint32_t k = rng.begin; k < rng.begin + rng.count; ++k)
+            s_recipes[k].flags = (s_recipes[k].flags & 255u) | packed;
+    }
+    ++s_registryGeneration;
 }
 
 void setRecipeNoShadow(int32_t recipeIndex, bool noShadow) {

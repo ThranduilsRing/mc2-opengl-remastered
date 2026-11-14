@@ -726,6 +726,7 @@ class TG_MultiShape
 		{
 			isHudElement = true;
 		}
+		bool IsHudElement() const { return isHudElement; }
 
 		void SetAlphaValue (BYTE aVal)
 		{

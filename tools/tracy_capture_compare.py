@@ -299,7 +299,7 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
     A visible, non-activating window avoids the engine's background throttle.
     MC2_LOG preserves mission and option receipts. Return nonzero on timeout.
     """
-    game = install / "mc2.exe"
+    game = install / ("mc2.exe" if os.name == "nt" else "mc2")
     if not game.is_file():
         sys.exit(f"ERROR: {game} not found")
     out = Path(out).resolve()
@@ -375,13 +375,14 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
         if post_load:
             import psutil
             process = psutil.Process(gp.pid)
-            # Restrict to this GPU slot even when the lease lends idle game cores.
-            device = host_lease.held_device()
-            slot = (host_lease.lane_devices().index(device) if device
-                    else host_lease.eligible_slots(env.get("MC2_VK_DEVICE"))[0])
-            mask = host_lease.affinity_mask(slot)
-            cpus = [c for c in process.cpu_affinity() if mask & (1 << c)]
-            process.cpu_affinity(cpus)
+            # PC masks apply only on Windows; Linux inherits slot.sh's game cores.
+            if os.name == "nt":
+                device = host_lease.held_device()
+                slot = (host_lease.lane_devices().index(device) if device
+                        else host_lease.eligible_slots(env.get("MC2_VK_DEVICE"))[0])
+                mask = host_lease.affinity_mask(slot)
+                cpus = [c for c in process.cpu_affinity() if mask & (1 << c)]
+                process.cpu_affinity(cpus)
             row = {"status": "REJECTED", "mission": mission, "arm": capture_arm,
                    "seconds": seconds, "settle_s": 2, "affinity": process.cpu_affinity(),
                    "job_workers": int(env.get("MC2_FRAME_JOBS_WORKERS") or host_lease.frame_jobs_workers()),
@@ -451,7 +452,7 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
 
 def zone_summary(trace: Path, top: int = 10, csv_out: Path | None = None) -> None:
     """Print the top-N zones by total time; write the full csvexport table to csv_out only when asked (--csv)."""
-    exe = tracy_dir() / "tracy-csvexport.exe"
+    exe = tracy_dir() / ("tracy-csvexport.exe" if os.name == "nt" else "tracy-csvexport")
     if not exe.is_file():
         print(f"WARN: {exe} not found; no zone summary", file=sys.stderr)
         return
@@ -1071,7 +1072,7 @@ def main() -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     c = sub.add_parser("capture", help="record a headless Tracy trace of an MC2 smoke run")
-    c.add_argument("--install", required=True, help="MC2 install dir containing mc2.exe")
+    c.add_argument("--install", required=True, help="MC2 install dir containing mc2.exe (Windows) or mc2 (Linux)")
     c.add_argument("--arm", choices=list(ARMS), default="vk")
     c.add_argument("--mission", default="mc2_01")
     c.add_argument("--seconds", type=int, default=30, help="post-load recording window (default 30 seconds)")
@@ -1112,7 +1113,7 @@ def main() -> int:
     d.set_defaults(fn=cmd_compare)
 
     b = sub.add_parser("baseline", help="capture the arms (default vk) at a pose -> dated baseline dir")
-    b.add_argument("--install", required=True, help="MC2 install dir containing mc2.exe")
+    b.add_argument("--install", required=True, help="MC2 install dir containing mc2.exe (Windows) or mc2 (Linux)")
     b.add_argument("--arms", default=",".join(DEFAULT_ARMS),
                    help="arms to measure; the only arm is vk since the GL arm was retired (any other value is refused)")
     b.add_argument("--mission", default=DEFAULT_BASELINE_MISSION)
@@ -1128,7 +1129,7 @@ def main() -> int:
 
     r = sub.add_parser("regress", help="re-capture both arms + compare vs a baseline dir")
     r.add_argument("--baseline", required=True, help="baseline dir (holds baseline.json)")
-    r.add_argument("--install", required=True, help="MC2 install dir containing mc2.exe")
+    r.add_argument("--install", required=True, help="MC2 install dir containing mc2.exe (Windows) or mc2 (Linux)")
     r.add_argument("--out-dir", default=None,
                    help="output dir for the regress traces + report "
                         "(default: <baseline>/regress-<timestamp>)")
