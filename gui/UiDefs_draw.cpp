@@ -251,6 +251,13 @@ void drawUiRectElement(const FRect& r, unsigned int color, bool filled)
 {
     if ((color & 0xff000000) == 0)
         return;
+    if (filled) {   // same pixel grid as drawUiImageElement, so a fill and the art it abuts agree on every edge row
+        const float x0 = std::round(r.x), y0 = std::round(r.y), x1 = std::round(r.x + r.w), y1 = std::round(r.y + r.h);
+        if (x1 > x0 && y1 > y0) {
+            GuiRuntime::DrawUiRect(x0, y0, x1 - x0, y1 - y0, color, true);
+            return;
+        }
+    }
     GuiRuntime::DrawUiRect(r.x, r.y, r.w, r.h, color, filled);
 }
 
