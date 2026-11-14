@@ -1018,7 +1018,7 @@ long TeamSensorSystem::getContacts (GameObjectPtr looker, int* contactList, int 
 		return(0);
 
 	// A team can hold MAX_CONTACTS_PER_TEAM contacts and every one may pass the criteria, so the buffers are that long; the caller's contactList must be too.
-	static_assert(std::size(TeamSensorSystem::contacts) == MAX_CONTACTS_PER_TEAM, "getContacts buffers follow the team contact list");
+	static_assert(sizeof(TeamSensorSystem::contacts) / sizeof(int32_t) == MAX_CONTACTS_PER_TEAM, "getContacts buffers follow the team contact list");
 	mc2::Scored scored[MAX_CONTACTS_PER_TEAM];
 
 	float CV = 0;
