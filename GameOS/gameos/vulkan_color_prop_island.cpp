@@ -188,6 +188,7 @@ static_assert(sizeof(PropDrawCmd) == 20);
 constexpr VkDeviceSize kPropCmdHeader = 16;   // the four list counts precede the commands
 
 struct ColorPropIsland : mc2vk::IslandState {
+    const ColorPropIsland* imageSource = nullptr; // main island; planar retires with it on resize
     bool disabled = false;
     int  waitStrikes = 0;
     bool inited   = false;
@@ -687,6 +688,11 @@ bool cp_upload_albedo_array(ColorPropIsland* s, const AlbedoTarget& tgt,
 bool cp_ensure_dummy_albedo(ColorPropIsland* s, const AlbedoTarget& tgt) {
     if (!cp_make_albedo_sampler(s, tgt.samp, 1)) return false;
     if (*tgt.texture) return true;
+    if (const auto* main = s->imageSource) {
+        const auto& source = tgt.texture == &s->albedoTexture[0] ? main->albedoTexture[0] : main->albedoOnTexture[0];
+        *tgt.texture = mc2vk::getOrCreateEngineVulkanContext().textures().retain(source.get());
+        return static_cast<bool>(*tgt.texture);
+    }
     const uint8_t px[4] = {255, 0, 255, 255};
     std::vector<VkBufferImageCopy> rgn(1);
     rgn[0].bufferOffset = 0;
@@ -702,6 +708,23 @@ bool cp_ensure_dummy_albedo(ColorPropIsland* s, const AlbedoTarget& tgt) {
 bool cp_import_albedo_array(ColorPropIsland* s, const AlbedoTarget& tgt, uint32_t changeKey, const mc2tex::TextureArrayCpu* a) {
     if (changeKey == 0 || !a) return false;
     if (changeKey == *tgt.importedGlName && *tgt.ready) return false; // already
+    if (const auto* main = s->imageSource) {
+        for (uint32_t b = 0; b < mc2::prop_buckets::kMaxBuckets; ++b) {
+            const bool on = tgt.texture == &s->albedoOnTexture[b];
+            if (!on && tgt.texture != &s->albedoTexture[b]) continue;
+            if (!(on ? main->materialReadyOn : main->materialReady) ||
+                changeKey != (on ? main->albedoOnGlTexImported : main->albedoGlTexImported)) return false;
+            const auto& source = on ? main->albedoOnTexture[b] : main->albedoTexture[b];
+            *tgt.texture = mc2vk::getOrCreateEngineVulkanContext().textures().retain(source.get());
+            if (!*tgt.texture || !cp_make_albedo_sampler(s, tgt.samp, 0)) return false;
+            *tgt.layers = on ? main->albedoOnLayers : main->albedoLayers;
+            *tgt.importedGlName = changeKey; *tgt.ready = true;
+            s->alphaContentHash = main->alphaContentHash;
+            ++s->materialGeneration;
+            return true;
+        }
+        return false;
+    }
     const bool compressed = a->vkFormat == 141u || a->vkFormat == mc2tex::kVkFormatBc7Unorm || a->vkFormat == mc2tex::kVkFormatBc7Srgb;
     if (a->width == 0 || a->height == 0 || a->layers == 0 || a->levels.empty() || (!compressed && a->vkFormat != mc2tex::kVkFormatRgba8Unorm)) {
         vlog("%s albedo array rejected: %ux%u layers=%u levels=%zu format=%u.", tgt.tag, a->width, a->height, a->layers, a->levels.size(), a->vkFormat);
@@ -759,13 +782,18 @@ bool cp_import_authored(ColorPropIsland* s, const Mc2ColorPropMaterialFeed* feed
         regions[0].imageExtent = {1,1,1};
         return cp_upload_albedo_array(s, target, VK_FORMAT_R8G8B8A8_UNORM, 1,1,1,1,false,neutral,4,regions);
     };
-    if (!feed) mc2vk::getOrCreateEngineVulkanContext().waitIdle("color_prop_authored_materials");
+    if (!feed && !s->imageSource) mc2vk::getOrCreateEngineVulkanContext().waitIdle("color_prop_authored_materials");
     if (!s->detailSampler && !mc2vk::infra::makeMaterialSampler(s->device, s->detailSampler, VK_SAMPLER_ADDRESS_MODE_REPEAT, s->sampBias)) return false;
     const uint8_t normal[4] = {128,128,255,255}, orm[4] = {255,255,0,255};
     mc2vk::ResidentTextureRef nextNormal, nextOrm;
     mc2vk::OwnedBuffer nextTable;
-    if (!upload(nextNormal, have ? feed->normal : nullptr, normal) ||
-        !upload(nextOrm, have ? feed->orm : nullptr, orm)) return false;
+    if (const auto* main = s->imageSource) {
+        auto& textures = mc2vk::getOrCreateEngineVulkanContext().textures();
+        nextNormal = textures.retain(main->normalTexture.get());
+        nextOrm = textures.retain(main->ormTexture.get());
+        if (!nextNormal || !nextOrm) return false;
+    } else if (!upload(nextNormal, have ? feed->normal : nullptr, normal) ||
+               !upload(nextOrm, have ? feed->orm : nullptr, orm)) return false;
     RenderCore::PropMaterialGpu neutral{};
     const auto bytes = static_cast<VkDeviceSize>(have ? feed->materialCount : 1u) * sizeof(neutral);
     if (!make_buffer(s, nextTable, bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, "colorprop.materials")) return false;
@@ -782,7 +810,11 @@ bool cp_import_authored(ColorPropIsland* s, const Mc2ColorPropMaterialFeed* feed
                           feed->textureCount, s->propTexSlots, dropped);
     }
     nextTable.unmap();
-    if (texResident) {
+    if (texResident && s->imageSource) {
+        for (const auto& texture : s->imageSource->propTextures)
+            nextTextures.push_back(mc2vk::getOrCreateEngineVulkanContext().textures().retain(texture.get()));
+        if (nextTextures.size() != feed->textureCount) return false;
+    } else if (texResident) {
         // Each map is its own image with its own mip chain. Potato drops the top mip from residency and staging.
         const uint32_t drop = mc2::options::current().baseQuality == 0 ? 1u : 0u;
         for (uint32_t ti = 0; ti < feed->textureCount; ++ti) {
@@ -1375,7 +1407,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
 
     s->inited = true;
     setFallback("");
-    vlog("island initialized %dx%d (borrowed shared device; Tier-1 shared-GBuffer prop co-write).", w, h);
+    vlog("island initialized kind=%s %dx%d (borrowed shared device; Tier-1 shared-GBuffer prop co-write).", s->imageSource ? "planar" : "main", w, h);
     return true;
 }
 
@@ -2016,7 +2048,10 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
 
     // Lazy init / rebuild on size change.
     mc2vk::VulkanContext& slotCtx = mc2vk::getOrCreateEngineVulkanContext();
-    if (!supplied) if (const ColorPropIsland* parked = parkedIsland(); parked && (parked->w != w || parked->h != h)) slotCtx.retireIsland(mc2vk::IslandSlot::ColorProp);
+    if (!supplied) if (const ColorPropIsland* parked = parkedIsland(); parked && (parked->w != w || parked->h != h)) {
+        slotCtx.retireIsland(mc2vk::IslandSlot::Water);
+        slotCtx.retireIsland(mc2vk::IslandSlot::ColorProp);
+    }
     if (!supplied && !islandSlot()) {
         auto fresh = std::make_unique<ColorPropIsland>();
         (void)mc2vk::takeLastCreateFailure();
@@ -2413,12 +2448,14 @@ struct PlanarProps : ColorPropIsland {
 bool prepareProps(std::unique_ptr<mc2vk::IslandState>& state, const Target& target, mc2vk::VulkanContext::RecordFn& record) {
     record = {};
     const auto* main = parkedIsland();
-    const uint32_t generation = main ? main->mapGeneration : 0;
+    if (!main || !main->inited || main->disabled) return false;
+    const uint32_t generation = main->mapGeneration;
     if (state && static_cast<PlanarProps*>(state.get())->sourceMapGeneration != generation)
         mc2vk::getOrCreateEngineVulkanContext().retire(std::move(state));
     if (!state) {
         auto fresh = std::make_unique<PlanarProps>();
         fresh->sourceMapGeneration = generation;
+        fresh->imageSource = main;
         state = std::move(fresh);
     }
     auto* s = static_cast<PlanarProps*>(state.get());

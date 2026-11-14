@@ -150,6 +150,7 @@ struct OvlState {
 // The island state. The engine context owns it while it is parked (IslandSlot::Terrain), so the objects below are released by the context ahead of
 // the allocator and device they were made on. The owners are declared in creation order and released in reverse.
 struct TerrainIsland : mc2vk::IslandState {
+    bool planar = false;
     bool disabled = false;
     int  waitStrikes = 0;
     bool inited   = false;

@@ -92,7 +92,11 @@ extern "C" int mc2_vk_terrain_island_ready() {
 bool ensure_island_ready(int w, int h) {
     if (w <= 0 || h <= 0) return false;
     mc2vk::VulkanContext& slotCtx = mc2vk::getOrCreateEngineVulkanContext();
-    if (const TerrainIsland* parked = parkedIsland(); parked && (parked->w != w || parked->h != h)) slotCtx.retireIsland(mc2vk::IslandSlot::Terrain);
+    if (const TerrainIsland* parked = parkedIsland(); parked && (parked->w != w || parked->h != h)) {
+        // Water owns the planar views of this main island's resident images.
+        slotCtx.retireIsland(mc2vk::IslandSlot::Water);
+        slotCtx.retireIsland(mc2vk::IslandSlot::Terrain);
+    }
     if (!islandSlot()) {
         auto fresh = std::make_unique<TerrainIsland>();
         (void)mc2vk::takeLastCreateFailure();
@@ -558,6 +562,33 @@ static bool record_terrain(TerrainIsland* s, mc2vk::VulkanContext& rctx, uint32_
     return true;
 }
 
+// Resident references keep the exact main-view images alive through planar submissions.
+static bool borrow_terrain_images(TerrainIsland* s) {
+    const auto* main = parkedIsland();
+    if (!main || !main->inited || main->disabled) return false;
+    auto& textures = mc2vk::getOrCreateEngineVulkanContext().textures();
+    const auto borrow = [&](auto& dst, const auto& src) {
+        if (dst.get() != src.get()) { dst = textures.retain(src.get()); write_descriptors(s); }
+    };
+    borrow(s->colormapTexture, main->colormapTexture);
+    borrow(s->macroGradientTexture, main->macroGradientTexture);
+    borrow(s->cementTexture, main->cementTexture);
+    borrow(s->shoreMaskTexture, main->shoreMaskTexture);
+    borrow(s->materialTexture, main->materialTexture);
+    borrow(s->matNormalTexture, main->matNormalTexture);
+    borrow(s->concreteDetailTexture, main->concreteDetailTexture);
+    s->colormapReady = main->colormapReady;
+    s->colormapBreakup = main->colormapBreakup;
+    s->colormapCookParams = main->colormapCookParams;
+    s->cementReady = main->cementReady;
+    s->shoreMaskReady = main->shoreMaskReady;
+    s->matNormalReady = main->matNormalReady;
+    s->matNormalLayers = main->matNormalLayers;
+    s->concreteDetailReady = main->concreteDetailReady;
+    s->cliffRockPresent = main->cliffRockPresent;
+    return true;
+}
+
 static int run_terrain(int w, int h, TerrainIsland* supplied = nullptr,
                        const Mc2TerrainTier1Feed* reflectedFeed = nullptr, mc2::waterplanar::Target* target = nullptr,
                        mc2vk::VulkanContext::RecordFn* reflectedRecord = nullptr) {
@@ -618,17 +649,17 @@ static int run_terrain(int w, int h, TerrainIsland* supplied = nullptr,
     // COLORMAP-BASE: copy-once import of the GL colormap atlas (no-op once imported;
     // no-op while the atlas isn't built -> FS falls back to olive). Must run while the
     // GL context is current (this entry point is called on the GL/render thread).
-    import_colormap(s, feed);
-
-    // CEMENT/ROAD: copy-once import of the GL cement atlas + map-load snapshot of the
-    // per-vertex cement-word SSBO. Both no-op once imported / while not ready. Runs on
-    // the GL/render thread (GL context current) — same as the colormap/height copies.
-    import_cement(s, feed);
+    if (s->planar) {
+        if (!borrow_terrain_images(s)) return 0;
+    } else {
+        import_colormap(s, feed);
+        import_cement(s, feed);
+        import_shore_mask(s, feed);
+        import_materials(s);
+        import_concrete_detail(s);
+        import_matnormal(s, feed);
+    }
     snapshot_cement(s, feed);
-    import_shore_mask(s, feed);
-    import_materials(s);
-    import_concrete_detail(s);
-    import_matnormal(s, feed);
 
     // VK-TERRAIN-VISUALDISPLACE-FAR-1: version-gated mission-load snapshot of the 4x
     // visual-height bake (no-op unless the sub-gate armed the feed fields AND the bake
@@ -843,6 +874,7 @@ struct PlanarTerrain : TerrainIsland { TerrainView view; };
 bool prepareTerrain(std::unique_ptr<mc2vk::IslandState>& state, Target& target, mc2vk::VulkanContext::RecordFn& record) {
     if (!state) {
         auto fresh = std::make_unique<PlanarTerrain>();
+        fresh->planar = true;
         if (!init_island(fresh.get(), target.w, target.h)) return false;
         state = std::move(fresh);
     }

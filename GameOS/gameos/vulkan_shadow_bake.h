@@ -192,6 +192,7 @@ private:
     int mapSide_ = 0, heightSide_ = 0;
     float heightSpacing_ = 0.0f;
     std::vector<float> heights_;
+    uint64_t readHeightVersion_ = ~0ull;
     std::vector<GpuStaticPropInstance> leaves_;
     struct TypeBounds { float mn[3], mx[3]; bool valid; };
     std::vector<TypeBounds> typeBounds_;

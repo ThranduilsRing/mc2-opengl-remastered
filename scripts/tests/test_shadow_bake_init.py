@@ -300,6 +300,9 @@ def test_object_rebakes_bound_height_builds_and_refresh_edits(tmp_path):
 bool recordedMask_ = false, heightsMoved_ = false, fail = false;
 std::vector<float> heights_;
 unsigned builds = 0, heightsGen_ = 0;
+struct Store { unsigned version = 1; unsigned heightVersion() const { return version; } };
+Store field; Store* store = &field;
+unsigned readHeightVersion_ = ~0u;
 float terrain = 2;
 void blog(const char*) {}
 bool readHeightGrid() { if (fail) return false; ++builds; heights_.assign(16, terrain);
@@ -317,12 +320,110 @@ int main() {
     assert(builds == 2 && heights_[0] == 3 && !heightsMoved_ && heightsGen_ == 2);
     recordedMask_ = true; assert(record());
     assert(builds == 3 && heightsGen_ == 3);
+    recordedMask_ = false; terrain = 4; ++field.version; fail = true;
+    assert(!record() && readHeightVersion_ != field.version);
+    fail = false; assert(record());
+    assert(builds == 4 && heights_[0] == 4 && readHeightVersion_ == field.version);
+    for (int i = 0; i < 300; ++i) assert(record());
+    assert(builds == 4);
 }
 '''
     source = tmp_path / "height_budget.cpp"
     source.write_text(probe)
     exe = tmp_path / ("height_budget.exe" if os.name == "nt" else "height_budget")
     result = subprocess.run(["clang++", "-std=c++20", str(source), "-o", str(exe)],
+                            capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
+    assert result.returncode == 0, result.stderr
+    result = nofocus.run([str(exe)], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+
+
+def test_planar_images_share_residents_without_reimport(tmp_path):
+    # Trigger: terrain island run/internal and color prop island; execute borrowing paths.
+    terrain = (ROOT / 'GameOS/gameos/vulkan_terrain_island_run.cpp').read_text()
+    props = (ROOT / 'GameOS/gameos/vulkan_color_prop_island.cpp').read_text()
+    helper = terrain[terrain.index('static bool borrow_terrain_images'):terrain.index('static int run_terrain')]
+    importer = props.split('bool cp_import_albedo_array(', 1)[1]
+    branch = importer.split('    if (const auto* main = s->imageSource) {', 1)[1].split('    const bool compressed', 1)[0]
+    images = 'colormapTexture macroGradientTexture cementTexture shoreMaskTexture materialTexture matNormalTexture concreteDetailTexture'.split()
+    flags = 'colormapReady colormapBreakup cementReady shoreMaskReady matNormalReady concreteDetailReady cliffRockPresent'.split()
+    probe = r'''
+#include <array>
+#include <cassert>
+#include <memory>
+#include <cstdint>
+struct Ref {
+    std::shared_ptr<int> p;
+    int* get() const { return p.get(); }
+    explicit operator bool() const { return bool(p); }
+};
+struct Textures {
+    unsigned retains = 0;
+    Ref retain(int* p) { ++retains; return {p ? owners.at(*p) : nullptr}; }
+    std::array<std::shared_ptr<int>, 16> owners;
+} textures;
+namespace mc2vk {
+struct Context { Textures& textures() { return ::textures; } } context;
+Context& getOrCreateEngineVulkanContext() { return context; }
+}
+struct TerrainIsland {
+    bool inited = true, disabled = false;
+    std::array<float, 9> colormapCookParams{};
+    unsigned matNormalLayers = 0;
+''' + 'Ref ' + ', '.join(images) + ';\nbool ' + ', '.join(flags) + r''';
+};
+TerrainIsland* parked = nullptr;
+TerrainIsland* parkedIsland() { return parked; }
+void write_descriptors(TerrainIsland*) {}
+''' + helper + r'''
+namespace mc2::prop_buckets { constexpr unsigned kMaxBuckets = 2; }
+struct ColorPropIsland {
+    ColorPropIsland* imageSource = nullptr;
+    std::array<Ref, 2> albedoTexture, albedoOnTexture;
+    bool materialReady = true, materialReadyOn = true;
+    unsigned albedoGlTexImported = 4, albedoOnGlTexImported = 5, albedoLayers = 2, albedoOnLayers = 3;
+    unsigned alphaContentHash = 17, materialGeneration = 0;
+};
+struct AlbedoTarget { Ref* texture; unsigned* layers; unsigned* importedGlName; bool* ready; int* samp; };
+bool cp_make_albedo_sampler(ColorPropIsland*, int*, int) { return true; }
+bool borrow(ColorPropIsland* s, const AlbedoTarget& tgt, unsigned changeKey) {
+    if (const auto* main = s->imageSource) {
+''' + branch + r'''
+    assert(false); return false; // main import/pack must be unreachable for planar
+}
+int main() {
+    for (int i = 0; i < 16; ++i) textures.owners[i] = std::make_shared<int>(i);
+    TerrainIsland main{}, planar{}; parked = &main;
+''' + '\n'.join(f'    main.{name} = {{textures.owners[{i}]}};' for i, name in enumerate(images)) + r'''
+    main.colormapReady = main.concreteDetailReady = true;
+    main.matNormalLayers = 9;
+    assert(borrow_terrain_images(&planar));
+    auto retains = textures.retains;
+    for (int i = 0; i < 300; ++i) assert(borrow_terrain_images(&planar));
+    assert(textures.retains == retains && planar.colormapReady && planar.concreteDetailReady && planar.matNormalLayers == 9);
+    main.materialTexture = {textures.owners[8]}; assert(borrow_terrain_images(&planar));
+    assert(planar.materialTexture.get() == main.materialTexture.get() && textures.retains == retains + 1);
+    parked = nullptr; assert(!borrow_terrain_images(&planar));
+    main.colormapTexture = {}; assert(planar.colormapTexture);
+    ColorPropIsland source, reflection; reflection.imageSource = &source;
+    for (unsigned b = 0; b < 2; ++b) {
+        source.albedoTexture[b] = {textures.owners[b]}; source.albedoOnTexture[b] = {textures.owners[b + 2]};
+        unsigned layers = 0, key = 0; bool ready = false;
+        AlbedoTarget off{&reflection.albedoTexture[b], &layers, &key, &ready, nullptr};
+        assert(borrow(&reflection, off, 4) && layers == 2 && key == 4 && ready);
+        assert(reflection.albedoTexture[b].get() == source.albedoTexture[b].get());
+        AlbedoTarget on{&reflection.albedoOnTexture[b], &layers, &key, &ready, nullptr};
+        assert(!borrow(&reflection, on, 6));
+        source.materialReadyOn = false; assert(!borrow(&reflection, on, 5)); source.materialReadyOn = true;
+        assert(borrow(&reflection, on, 5) && layers == 3 && key == 5);
+        assert(reflection.albedoOnTexture[b].get() == source.albedoOnTexture[b].get());
+    }
+}
+'''
+    source = tmp_path / 'planar_share.cpp'
+    source.write_text(probe)
+    exe = tmp_path / ('planar_share.exe' if os.name == 'nt' else 'planar_share')
+    result = subprocess.run(['clang++', '-std=c++20', str(source), '-o', str(exe)],
                             capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     assert result.returncode == 0, result.stderr
     result = nofocus.run([str(exe)], capture_output=True, text=True)
