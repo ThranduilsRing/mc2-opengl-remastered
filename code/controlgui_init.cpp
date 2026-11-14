@@ -192,7 +192,7 @@ void ControlGui::bakeFrame()
 	frameVertices.clear();
 	frameSplit = 0;
 	frameScale = gos_GetHudScale();
-	struct Source { DWORD handle; std::shared_ptr<const RenderCore::KtxImage> image; };
+	struct Source { unsigned long handle; std::shared_ptr<const RenderCore::KtxImage> image; };
 	std::vector<Source> sources;
 	uint32_t tile = 1;
 	int band = -1;
