@@ -694,9 +694,10 @@ void ControlGui::render( bool bPaused )
 				gos_SetRenderState(gos_State_Clipping, 1);
 				if (frameSplit) gos_DrawQuads(frameVertices.data(), frameSplit);
 				// The force-group overlay changes alpha at runtime; never bake it.
-				if (staticCount > 20 && std::any_of(std::begin(staticInfos[20].location),
-				    std::end(staticInfos[20].location), [](const auto& v) { return (v.argb >> 24) != 0; }))
-					staticInfos[20].render();
+				const auto* cover = ForceGroupBar::s_coverIcon;
+				if (cover && std::any_of(std::begin(cover->location),
+				    std::end(cover->location), [](const auto& v) { return (v.argb >> 24) != 0; }))
+					ForceGroupBar::s_coverIcon->render();
 				gos_SetRenderState(gos_State_Texture, texture);
 				if (static_cast<size_t>(frameSplit) < frameVertices.size())
 					gos_DrawQuads(frameVertices.data() + frameSplit, static_cast<int>(frameVertices.size()) - frameSplit);

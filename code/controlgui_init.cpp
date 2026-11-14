@@ -191,6 +191,7 @@ void ControlGui::bakeFrame()
 	frameAtlas.reset();
 	frameVertices.clear();
 	frameSplit = 0;
+	const auto* dynamic = ForceGroupBar::s_coverIcon;
 	frameScale = gos_GetHudScale();
 	frameWidth = Environment.screenWidth;
 	frameHeight = Environment.screenHeight;
@@ -200,7 +201,7 @@ void ControlGui::bakeFrame()
 	int band = -1;
 	for (int i = 0; i < staticCount; ++i) {
 		const auto& info = staticInfos[i];
-		if (i == 20 || info.location[0].x == info.location[2].x ||
+		if (&info == dynamic || info.location[0].x == info.location[2].x ||
 		    info.location[0].y == info.location[2].y) continue;
 		// The legacy shrink decision is per draw. Decline mixed-band layouts.
 		float cy = 0.f;
@@ -241,7 +242,8 @@ void ControlGui::bakeFrame()
 	}
 	for (int i = 0; i < staticCount; ++i) {
 		const auto& info = staticInfos[i];
-		if (i == 20 || info.location[0].x == info.location[2].x ||
+		if (&info == dynamic) frameSplit = static_cast<long>(frameVertices.size());
+		if (&info == dynamic || info.location[0].x == info.location[2].x ||
 		    info.location[0].y == info.location[2].y) continue;
 		const auto source = std::find_if(sources.begin(), sources.end(), [&](const auto& s) {
 			return s.handle == info.textureHandle;
@@ -253,8 +255,8 @@ void ControlGui::bakeFrame()
 			v.v = (v.v * source->image->height + (s / cells) * tile) / edge;
 			frameVertices.push_back(v);
 		}
-		if (i < 20) frameSplit = static_cast<long>(frameVertices.size());
 	}
+	if (!dynamic) frameSplit = static_cast<long>(frameVertices.size());
 	frameAtlas = std::move(atlas);
 	if (mc2_diag::tagRequested("HUD_FRAME"))
 	MC2_LOG(Render, Info, "[HUD_FRAME] pieces={} textures={} atlas={}x{} submissions={} scale={:.3f}",
@@ -319,7 +321,6 @@ void ControlGui::initStatics( FitIniFile& file )
 
 	if ( staticCount > 20 )
 		staticInfos[20].showGUIWindow( 0 );
-	bakeFrame();
 
 	{
 		ZoneScopedN("ControlGui::initStatics helpText");
@@ -756,6 +757,7 @@ void ControlGui::swapResolutions( int resolutionX, int resolutionY )
 	forceGroupBar.init( buttonFile, &staticInfos[20] );
 
 	staticInfos[20].showGUIWindow( 0 );
+	bakeFrame();
 
 	
 	pauseWnd->init( buttonFile );

@@ -9,6 +9,7 @@ namespace {
 using DWORD = uint32_t;
 struct Vertex { float x = 0, y = 0, u = 0, v = 0; DWORD argb = 0xffffffff; };
 struct StaticInfo { unsigned long textureHandle = 0; Vertex location[4]; };
+struct ForceGroupBar { inline static StaticInfo* s_coverIcon = nullptr; };
 namespace RenderCore {
 struct KtxImage { int width = 2, height = 2, vkFormat = 37; std::vector<uint8_t> pixels; };
 constexpr uint32_t kKtxMaxEdge = 16384;
@@ -55,6 +56,7 @@ TEST_CASE("HUD frame: atlas preserves pixels, rotated UVs, order and dynamic exc
         mc2::textures::images[id] = image;
     }
     ControlGui gui;
+    ForceGroupBar::s_coverIcon = &gui.staticInfos[20];
     for (auto& info : gui.staticInfos) {
         info.textureHandle = 1;
         info.location[0] = {0,900,0.05f,0.05f};
@@ -102,6 +104,13 @@ TEST_CASE("HUD frame: atlas preserves pixels, rotated UVs, order and dynamic exc
             }
         }
     }
+    // The dynamic cover can occupy a different layout slot.
+    std::swap(gui.staticInfos[7], gui.staticInfos[20]);
+    ForceGroupBar::s_coverIcon = &gui.staticInfos[7];
+    gui.bakeFrame();
+    REQUIRE(gui.frameAtlas);
+    CHECK(gui.frameSplit == 7 * 4);
+    CHECK(gui.frameVertices.size() == 21 * 4);
     gui.staticInfos[0].location[0].y = gui.staticInfos[0].location[1].y = 0;
     gui.staticInfos[0].location[2].y = gui.staticInfos[0].location[3].y = 2;
     gui.bakeFrame();
