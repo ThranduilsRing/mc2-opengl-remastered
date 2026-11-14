@@ -29,6 +29,9 @@
 
 namespace MC2Strings
 {
+    // Decodes the escapes of a quoted FIT string value (\n \r \t \\ \"); the stock backslash line-break code ("\\\n") loses its backslash.
+    std::string UnescapeFitString(std::string_view value);
+
     /*
         Typed resource messages. The shipped catalogs hold printf templates ("%ld MAX PLAYERS");
         a template is imported through a restricted, signature-checked parser instead of being

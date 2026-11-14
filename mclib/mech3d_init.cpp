@@ -216,6 +216,8 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			if (mechType->mechShape[_lod])
 				GpuMechBatcher::instance().registerTypeLod(mechType, _lod);
 		}
+		GpuMechBatcher::instance().registerVehicleType(mechType->rightArm.get());
+		GpuMechBatcher::instance().registerVehicleType(mechType->leftArm.get());
 		GpuMechBatcher::instance().registerVehicleType(mechType->mechForwardDmgShape.get());
 		GpuMechBatcher::instance().registerVehicleType(mechType->mechBackwardDmgShape.get());
 

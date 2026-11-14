@@ -34,12 +34,24 @@ inline bool pickBoxHit(const double (&origin)[3], const double (&direction)[3],
     return true;
 }
 
-// slack: a mover stands on gameplay height while the surface sampled here is the visual terrain, which can rise a few
-// units above it (a unit on a bump or a slope reads as a few units "behind" the ground at its own feet). Movers pass
-// their bounds diagonal, so only a unit buried deeper than its own size behind the surface is occluded.
+// Nonzero slack requires the caller to establish a local terrain-height mismatch.
 inline bool pickBeforeSurface(double objectT, double surfaceT, double slack = 0)
 {
     return std::isfinite(objectT) && objectT >= 0 && objectT <= surfaceT + 1e-3 + slack;
+}
+
+// A visual terrain hit inside the mover's rotated XY footprint can disagree with its gameplay ground placement.
+// A ridge in front of that footprint is an occluder, even when closer than one bounds diagonal.
+inline bool pickMoverBeforeSurface(double objectT, double surfaceT, const double (&surface)[3],
+                                   const double (&lo)[3], const double (&hi)[3]) {
+    double size2 = 0;
+    bool footprint = true;
+    for (int i = 0; i < 3; ++i) {
+        size2 += (hi[i] - lo[i]) * (hi[i] - lo[i]);
+        const auto [lower, upper] = std::minmax(lo[i], hi[i]);
+        if (i < 2) footprint = footprint && surface[i] == std::clamp(surface[i], lower, upper);
+    }
+    return pickBeforeSurface(objectT, surfaceT, footprint ? std::sqrt(size2) : 0);
 }
 
 // The caller has already tested the stock screen rectangle. Static scenery

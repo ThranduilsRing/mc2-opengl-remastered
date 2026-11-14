@@ -822,12 +822,9 @@ void UiDefs::GameOSPage::render(int xOffset, int yOffset)
                                                e.legacyDisabledAnimLoops,
                                                e.animTimeDisabled)
                             : 0xffffffff;
-                        // When the art is NOT animated, tint it with the button's
-                        // own colour (colorArgb) rather than white -- so a frame
-                        // that needs a base tint (e.g. the red DEFAULT button) stays
-                        // that colour and doesn't vanish on hover. White-tinted
-                        // sprites have colorArgb=white, so they are unaffected.
-                        artTint = e.legacyAnimateBmp  ? ac : e.textColor;
+                        // Stock aButton: the bitmap is white unless AnimateBmp drives it. The text colour
+                        // (blue on Load/Cancel/Close) must never tint the art.
+                        artTint = e.legacyAnimateBmp  ? ac : 0xffffffffu;
                         textCol = e.legacyAnimateText ? ac : e.disabledTextColor;
                         if (e.uvDisabledX >= 0) { stateUvX = e.uvDisabledX; stateUvY = e.uvDisabledY; }
                         break;
@@ -847,12 +844,9 @@ void UiDefs::GameOSPage::render(int xOffset, int yOffset)
                                                    e.animTimeHighlightPressed);
                         else
                             ac = 0xffffffff;
-                        // When the art is NOT animated, tint it with the button's
-                        // own colour (colorArgb) rather than white -- so a frame
-                        // that needs a base tint (e.g. the red DEFAULT button) stays
-                        // that colour and doesn't vanish on hover. White-tinted
-                        // sprites have colorArgb=white, so they are unaffected.
-                        artTint = e.legacyAnimateBmp  ? ac : e.textColor;
+                        // Stock aButton: the bitmap is white unless AnimateBmp drives it. The text colour
+                        // (blue on Load/Cancel/Close) must never tint the art.
+                        artTint = e.legacyAnimateBmp  ? ac : 0xffffffffu;
                         textCol = e.legacyAnimateText ? ac : e.pressedTextColor;
                         if (e.uvPressedX >= 0) { stateUvX = e.uvPressedX; stateUvY = e.uvPressedY; }
                         break;
@@ -865,12 +859,9 @@ void UiDefs::GameOSPage::render(int xOffset, int yOffset)
                                                e.legacyPressedAnimLoops,
                                                e.animTimePressed)
                             : 0xffffffff;
-                        // When the art is NOT animated, tint it with the button's
-                        // own colour (colorArgb) rather than white -- so a frame
-                        // that needs a base tint (e.g. the red DEFAULT button) stays
-                        // that colour and doesn't vanish on hover. White-tinted
-                        // sprites have colorArgb=white, so they are unaffected.
-                        artTint = e.legacyAnimateBmp  ? ac : e.textColor;
+                        // Stock aButton: the bitmap is white unless AnimateBmp drives it. The text colour
+                        // (blue on Load/Cancel/Close) must never tint the art.
+                        artTint = e.legacyAnimateBmp  ? ac : 0xffffffffu;
                         textCol = e.legacyAnimateText ? ac : e.pressedTextColor;
                         if (e.uvPressedX >= 0) { stateUvX = e.uvPressedX; stateUvY = e.uvPressedY; }
                         break;
@@ -883,12 +874,9 @@ void UiDefs::GameOSPage::render(int xOffset, int yOffset)
                                                e.legacyHighlightAnimLoops,
                                                e.animTimeHover)
                             : 0xffffffff;
-                        // When the art is NOT animated, tint it with the button's
-                        // own colour (colorArgb) rather than white -- so a frame
-                        // that needs a base tint (e.g. the red DEFAULT button) stays
-                        // that colour and doesn't vanish on hover. White-tinted
-                        // sprites have colorArgb=white, so they are unaffected.
-                        artTint = e.legacyAnimateBmp  ? ac : e.textColor;
+                        // Stock aButton: the bitmap is white unless AnimateBmp drives it. The text colour
+                        // (blue on Load/Cancel/Close) must never tint the art.
+                        artTint = e.legacyAnimateBmp  ? ac : 0xffffffffu;
                         textCol = e.legacyAnimateText ? ac : e.highlightTextColor;
                         if (e.uvHoverX >= 0) { stateUvX = e.uvHoverX; stateUvY = e.uvHoverY; }
                         break;
@@ -901,12 +889,9 @@ void UiDefs::GameOSPage::render(int xOffset, int yOffset)
                                                e.legacyNormalAnimLoops,
                                                e.animTimeNormal)
                             : 0xffffffff;
-                        // When the art is NOT animated, tint it with the button's
-                        // own colour (colorArgb) rather than white -- so a frame
-                        // that needs a base tint (e.g. the red DEFAULT button) stays
-                        // that colour and doesn't vanish on hover. White-tinted
-                        // sprites have colorArgb=white, so they are unaffected.
-                        artTint = e.legacyAnimateBmp  ? ac : e.textColor;
+                        // Stock aButton: the bitmap is white unless AnimateBmp drives it. The text colour
+                        // (blue on Load/Cancel/Close) must never tint the art.
+                        artTint = e.legacyAnimateBmp  ? ac : 0xffffffffu;
                         textCol = e.legacyAnimateText ? ac : e.textColor;
                         break;
                     }

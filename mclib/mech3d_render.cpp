@@ -1024,8 +1024,11 @@ long Mech3DAppearance::render (long depthFixup)
 	{
 		Camera::HazeFactor = rightArmHazeFactor;
 
-		MC2_LEGACY_SITE("mech_blown_arm_right");
-		rightArm->Render(eye->getViewUniforms(),true);
+		if (!submitArmGpu(rightArm, rightArmHazeFactor))
+		{
+			MC2_LEGACY_SITE("mech_blown_arm_right");
+			rightArm->Render(eye->getViewUniforms(),true);
+		}
 
 		if (rightArmSmoke)
 		{
@@ -1065,8 +1068,11 @@ long Mech3DAppearance::render (long depthFixup)
 	{
 		Camera::HazeFactor = leftArmHazeFactor;
 
-		MC2_LEGACY_SITE("mech_blown_arm_left");
-		leftArm->Render(eye->getViewUniforms(),true);
+		if (!submitArmGpu(leftArm, leftArmHazeFactor))
+		{
+			MC2_LEGACY_SITE("mech_blown_arm_left");
+			leftArm->Render(eye->getViewUniforms(),true);
+		}
 		
 		if (leftArmSmoke)
 		{
@@ -1149,6 +1155,54 @@ bool Mech3DAppearance::submitPreviewGpu (bool freshSession)
 	desc.fogARGB        = 0u;
 	desc.objectIdRaw    = 0u;
 	return batcher.submitActor(desc);
+}
+
+// Blown arm on the GPU mech batcher (a vehicle-style record keyed by the arm's type shape). Eligible when the arm type is
+// registered, the shape is opaque, the paint texture is loaded and the mech's own light row (an arm lies within a few
+// metres of it, and a row of its own per arm would fill the light table in a mass kill) is in range. Update and render both
+// use this predicate, so a reserved CPU draw and a batcher submit never disagree.
+static bool armGpuEligible (TG_MultiShape* arm, TG_MultiShape* mech, uint32_t paintHandle, uint32_t* lightRow)
+{
+	if (g_mechPreviewRenderDepth != 0 || paintHandle == 0xffffffffu || arm->GetAlphaValue() != 0xff)
+		return false;
+	if (!GpuMechBatcher::instance().isVehicleTypeRegistered(arm->GetMultiType()))
+		return false;
+	const uint32_t row = mech->getCachedGpuLightIndex();
+	if (row == 0xFFFFFFFFu || (mc2::textures::ready() && row >= mc2::vkLights::getLightStructCount()))
+		return false;
+	if (lightRow) *lightRow = row;
+	return true;
+}
+
+void Mech3DAppearance::poseArmForDraw (TG_MultiShape* arm)
+{
+	if (!armGpuEligible(arm, mechShape, static_cast<uint32_t>(localTextureHandle), nullptr))
+		arm->ReserveCpuDraw();	// fading/unregistered/no paint/no light row: the CPU fallback draws it
+}
+
+bool Mech3DAppearance::submitArmGpu (TG_MultiShape* arm, float haze)
+{
+	uint32_t row = 0;
+	if (!armGpuEligible(arm, mechShape, static_cast<uint32_t>(localTextureHandle), &row))
+		return false;
+	GpuMechSubmitDesc desc{};
+	desc.mechShape      = arm;
+	desc.mechType       = nullptr;
+	desc.slot0TexHandle = static_cast<uint32_t>(localTextureHandle);
+	desc.slot6TexHandle = stockPbr.orm ? stockPbr.orm.get() : (aoValid ? static_cast<uint32_t>(aoTextureHandle) : 0u);
+	desc.slot7TexHandle = stockPbr.normal ? stockPbr.normal.get() : (normalValid ? static_cast<uint32_t>(normalTextureHandle) : 0u);
+	if (stockPbr.orm) desc.renderFlags |= kMechRenderFlagOrm | 0x10u;
+	if (stockPbr.normal) desc.renderFlags |= 0x20u;
+	if (aoValid) desc.renderFlags |= 0x10u;
+	if (normalValid) desc.renderFlags |= 0x20u;
+	if (status == OBJECT_STATUS_DESTROYED || status == OBJECT_STATUS_DISABLED || status == OBJECT_STATUS_SHUTDOWN)
+		desc.renderFlags |= 0x2u;	// lights out, as the body
+	desc.lightDataIndex = row;
+	desc.highlightARGB  = static_cast<uint32_t>(highlightColor);
+	const float h = std::clamp(haze, 0.0f, 1.0f);
+	desc.fogARGB        = static_cast<uint32_t>(h * 255.0f + 0.5f) << 24;
+	desc.objectIdRaw    = getRenderWorldHandle().raw();
+	return GpuMechBatcher::instance().submitActor(desc);
 }
 
 long Mech3DAppearance::renderShadows (void)
