@@ -64,6 +64,8 @@ class gosAudio {
         Mix_Chunk mix_chunk_;
         std::unique_ptr<MusicStream> stream;
         std::string musicPath;
+        std::string sourcePath;
+        size_t admissionId = 0;
 
 };
 
@@ -79,6 +81,7 @@ class SoundEngine {
 
         size_t addAudio(gosAudio* audio) {
             gosASSERT(audio);
+            audio->admissionId = nextAdmissionId_++;
             audioList_.push_back(audio);
             return audioList_.size()-1;
         }
@@ -120,6 +123,7 @@ class SoundEngine {
         static const int NUM_CHANNELS = 32;
     private:
         std::vector<gosAudio*> audioList_;
+        size_t nextAdmissionId_ = 0;
         int frequency_; // Hz
         SDL_AudioFormat format_; // see SDL_audio.h
         int channels_; // mono/stereo
@@ -268,6 +272,7 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
             auto* audio = gosAudio::makeAudio(dst_fmt, dst_channels, dst_freq, std::move(silence), 4096);
             audio->stream = std::move(stream);
             audio->musicPath = file_name;
+            audio->sourcePath = file_name;
             g_sound_engine->addAudio(audio);
             *hgosaudio = audio;
             return;
@@ -419,6 +424,7 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
 
     ZoneScopedN("Audio.Stream.LoadFile.Publish");
     gosAudio* paudio = gosAudio::makeAudio(dst_fmt, dst_channels, dst_freq, std::move(audioDataOwner), audio_data_size);
+    if (from_file) paudio->sourcePath = file_name;
     if(!paudio) {
         PAUSE(("makeAudio: Failed to create audio resource\n"));
         return;
@@ -593,7 +599,11 @@ void __stdcall gosAudio_SetChannelPlayMode( int Channel, enum gosAudio_PlayMode 
                 }
                 int loops = stream || ci->ePlayMode == gosAudio_Loop ? -1 : 0;
                 if (stream) stream->setLoop(ci->ePlayMode == gosAudio_Loop);
-                Mix_PlayChannel(Channel, &audio->mix_chunk_, loops);
+                const int played = Mix_PlayChannel(Channel, &audio->mix_chunk_, loops);
+                if (played >= 0 && SDL_getenv("MC2_DIAG_TAGS") &&
+                    std::strstr(SDL_getenv("MC2_DIAG_TAGS"), "AUDIO"))
+                    std::fprintf(stderr, "[AUDIO_ADMIT] ticks=%u id=%zu path=%s channel=%d\n",
+                        SDL_GetTicks(), audio->admissionId, audio->sourcePath.c_str(), Channel);
                 if (stream) Mix_RegisterEffect(Channel,
                     [](int, void* bytes, int length, void* context) {
                         static_cast<MusicStream*>(context)->read({static_cast<std::byte*>(bytes), static_cast<size_t>(length)});
