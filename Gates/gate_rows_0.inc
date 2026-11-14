@@ -45,6 +45,7 @@ G("MC2_BOOT_TO_SCREEN", String, "", "mech", "", "Headless harness: logistics scr
 L(Lead0, "MC2_BOOT_VIDEO", Bool, false, "code", "", "VIDEO-CAPTURE fixture: =1 overrides the smoke-mode movie skip in MC2Movie::init so in-mission comm videos (mc2_01 V1A.bik ~frame 1600) play under...", registry(Trace, "MC2_TRACE_BOOT_VIDEO", -1, false) | passthrough | verified),
 // SAVE/LOAD-AIFREEZE-TRACE-1: runBrain post-exec diagnostic.
 // history: docs/gate-history.md#MC2_BRAIN_FREEZE_TRACE
+G("MC2_BOX_QUOTA_CPUS", String, "", "harness", "", "Harness-owned box wrapper metadata; ignored by the engine.", passthrough),
 G("MC2_BRAIN_MISSION_SEED", String, "", "code", "", "Tactic-weights mission seed text (decimal, 0x hex, leading-0 octal; strtoul base 0 at the reader); empty = the built-in seed.", passthrough | verified),
 G("MC2_BRAIN_POLICY", Enum, "", "code", "", "Brain execution policy override: legacy forces stock ABL, techbrain forces TechBrain; unset or auto decides per mission at load.", passthrough | tokens("|auto|legacy|techbrain") | verified),
 G("MC2_BRAIN_RUNTIME_FORCE_MODE", Enum, "", "code", "", "MC2_BRAIN_RUNTIME_FORCE_MODE overrides all per-unit modes (post-load global override).", passthrough | tokens("|legacy|enhanced|hybrid") | verified),

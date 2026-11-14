@@ -108,6 +108,7 @@ L(Presence, "MC2_RING_TRACE", Bool, false, "terrain", "", "?? Probe 8: compare d
 G("MC2_RNG_SEED", String, "", "mech", "", "DETERMINISTIC-RNG-1: seed text (decimal, 0x hex, leading-0 octal; strtoul base 0 at the reader); empty = the fixed or mission-hash seed.", passthrough | verified),
 // RUNWAY-EDGE-BLEND-1 (MASTER-FAIL #6): feather solid cement pad/runway edges
 // that abut bare terrain on the indirect terrain path (gos_terrain.frag).
+G("MC2_RUN_ID", String, "", "harness", "", "Harness-owned box wrapper metadata; ignored by the engine.", passthrough),
 G("MC2_SAVE_DIR", String, "", "code", "", "Player-path harness only: directory used instead of ~/.mechcommander2/savegame for saves and quick saves; scripts/run_player_path.py always sets it.", passthrough | verified),
 L(Lead0Kill, "MC2_SCRATCH", Bool, true, "code", "2026-12-31", "Mod VFS layer 0: index mods/<active>/.scratch/data/ above the active mod; 0 = kill-switch.", verified),
 P("MC2_SCREENSHOT_AT_FRAME", Int, -1, "gameos", "", "", passthrough | verified),
