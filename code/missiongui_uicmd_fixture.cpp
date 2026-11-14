@@ -12,6 +12,7 @@
 #include "package_chassis.h"
 
 extern float MapCellDiagonal;
+extern bool useUnlimitedAmmo;
 
 // Test-only loadout queue. Production fire, projectile and movement paths own the measurements.
 namespace {
@@ -52,6 +53,7 @@ void mc2EquipmentProbeTick() {
     auto* source = equipmentSource;
     auto* target = equipmentTarget;
     if (equipmentStarted < 0.0f) {
+        useUnlimitedAmmo = false; // Probe finite ammo; player preferences otherwise seed pools with UNLIMITED_SHOTS.
         long baseline[] = {1};
         source->resetComponents(1, baseline);
         equipmentArmorBefore = probeArmor(source);
@@ -124,7 +126,7 @@ void mc2EquipmentProbeTick() {
         source->inventory[index].disabled = false;
         equipmentRecording = true;
         float damage = 0.0f;
-        equipmentFireResult = source->fireWeapon(target, 0.0f, index, 0, -1, nullptr, damage);
+        equipmentFireResult = source->fireWeapon(target, 0.0f, index, 0, MECH_ARMOR_LOCATION_CTORSO, nullptr, damage);
         equipmentRecording = false;
         source->inventory[index].disabled = true;
         ++equipmentAttempts;
