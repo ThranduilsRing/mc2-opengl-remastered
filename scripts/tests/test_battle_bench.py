@@ -58,6 +58,20 @@ def test_incomplete_timestamp_frame_refused(evidence):
         summarize(evidence)
 
 
+def test_delayed_memory_samples_keep_peak_and_unavailable_meaning(evidence):
+    # gpu_memory_report.cpp publishes completed worker samples after newer frames.
+    evidence[1].extend([
+        {"type": "memory", "frame": 10, "working_set_peak_bytes": 8192,
+         "gpu": {"proc_dedicated_mb": -1, "vk_allocated_mb": 100}},
+        {"type": "memory", "frame": 130, "working_set_peak_bytes": 16384,
+         "gpu": {"proc_dedicated_mb": -1, "vk_allocated_mb": 80}},
+    ])
+    memory = summarize(evidence)["memory"]
+    assert memory["vram_peak_mib"] == -1
+    assert memory["vk_allocated_peak_mib"] == 100
+    assert memory["working_set_peak_bytes"] == 16384
+
+
 def test_idle_workload_refused(evidence):
     evidence[1][1]["destroyed"] = 7
     with pytest.raises(ValueError, match="battle did not"):
