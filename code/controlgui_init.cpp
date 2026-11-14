@@ -182,10 +182,88 @@ void ControlButton::initButtons( FitIniFile& buttonFile, long buttonCount, Contr
 
 }
 
+// Keep the original quads (including rotated UVs) instead of rasterizing a
+// screen-sized image: nearest sampling and alpha blending remain unchanged.
+void ControlGui::bakeFrame()
+{
+	ZoneScopedN("ControlGui::bakeFrame");
+	frameAtlas.reset();
+	frameVertices.clear();
+	frameSplit = 0;
+	frameScale = gos_GetHudScale();
+	struct Source { DWORD handle; std::shared_ptr<const RenderCore::KtxImage> image; };
+	std::vector<Source> sources;
+	uint32_t tile = 1;
+	int band = -1;
+	for (int i = 0; i < staticCount; ++i) {
+		const auto& info = staticInfos[i];
+		if (i == 20 || info.location[0].x == info.location[2].x ||
+		    info.location[0].y == info.location[2].y) continue;
+		// The legacy shrink decision is per draw. Decline mixed-band layouts.
+		float cy = 0.f;
+		for (const auto& v : info.location) cy += v.y;
+		const int nextBand = cy * .25f >= Environment.screenHeight * .60f;
+		if (band >= 0 && band != nextBand) return;
+		band = nextBand;
+		if (std::any_of(sources.begin(), sources.end(), [&](const auto& s) {
+			return s.handle == info.textureHandle;
+		})) continue;
+		auto image = mc2::textures::image(info.textureHandle);
+		if (!image || image->vkFormat != 37 || image->width <= 0 || image->height <= 0 ||
+		    image->pixels.size() != size_t(image->width) * image->height * 4) return;
+		while (tile < uint32_t(std::max(image->width, image->height))) tile *= 2;
+		sources.push_back({info.textureHandle, std::move(image)});
+	}
+	if (sources.empty()) return;
+	uint32_t cells = 1;
+	while (size_t(cells) * cells < sources.size()) cells *= 2;
+	if (tile > RenderCore::kKtxMaxEdge / cells) return;
+	const uint32_t edge = tile * cells;
+	std::vector<DWORD> pixels(size_t(edge) * edge, 0);
+	for (size_t s = 0; s < sources.size(); ++s) {
+		const auto& image = *sources[s].image;
+		const uint32_t ox = uint32_t(s % cells) * tile, oy = uint32_t(s / cells) * tile;
+		for (int y = 0; y < image.height; ++y)
+			for (int x = 0; x < image.width; ++x) {
+				const auto* p = image.pixels.data() + (size_t(y) * image.width + x) * 4;
+				pixels[size_t(oy + y) * edge + ox + x] =
+					(DWORD(p[3]) << 24) | (DWORD(p[0]) << 16) | (DWORD(p[1]) << 8) | p[2];
+			}
+	}
+	auto atlas = std::make_unique<StaticInfo>();
+	atlas->textureHandle = mc2::textures::fromRawPixels(pixels.data(), gos_Texture_Alpha, 0, edge);
+	if (!atlas->textureHandle || atlas->textureHandle >= mc2::textures::kTextureAssetLimit) {
+		atlas->textureHandle = 0;
+		return;
+	}
+	for (int i = 0; i < staticCount; ++i) {
+		const auto& info = staticInfos[i];
+		if (i == 20 || info.location[0].x == info.location[2].x ||
+		    info.location[0].y == info.location[2].y) continue;
+		const auto source = std::find_if(sources.begin(), sources.end(), [&](const auto& s) {
+			return s.handle == info.textureHandle;
+		});
+		const size_t s = size_t(source - sources.begin());
+		for (auto v : info.location) {
+			// Whole source images preserve the original texel centers exactly.
+			v.u = (v.u * source->image->width + (s % cells) * tile) / edge;
+			v.v = (v.v * source->image->height + (s / cells) * tile) / edge;
+			frameVertices.push_back(v);
+		}
+		if (i < 20) frameSplit = long(frameVertices.size());
+	}
+	frameAtlas = std::move(atlas);
+	MC2_LOG(Render, Info, "[HUD_FRAME] pieces={} textures={} atlas={}x{} submissions={} scale={:.3f}",
+		frameVertices.size() / 4, sources.size(), edge, edge,
+		int(frameSplit > 0) + int(size_t(frameSplit) < frameVertices.size()), frameScale);
+}
+
 
 void ControlGui::initStatics( FitIniFile& file )
 {
 	ZoneScopedN("ControlGui::initStatics");
+	frameAtlas.reset();
+	frameVertices.clear();
 
 	if ( infoWnd )
 		infoWnd->setUnit( nullptr );
@@ -237,6 +315,7 @@ void ControlGui::initStatics( FitIniFile& file )
 
 	if ( staticCount > 20 )
 		staticInfos[20].showGUIWindow( 0 );
+	bakeFrame();
 
 	{
 		ZoneScopedN("ControlGui::initStatics helpText");

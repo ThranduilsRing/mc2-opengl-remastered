@@ -682,8 +682,24 @@ void ControlGui::render( bool bPaused )
 
 		{
 			ZoneScopedN("ControlGui::frame");
-			for (int i = 0; i < staticCount; i++ )
-				staticInfos[i].render();
+			if (frameScale != gos_GetHudScale()) bakeFrame();
+			if (!frameAtlas) {
+				for (int i = 0; i < staticCount; ++i) staticInfos[i].render();
+			} else {
+				const auto texture = mc2::textures::sourceId(frameAtlas->textureHandle);
+				gos_SetRenderState(gos_State_Texture, texture);
+				gos_SetRenderState(gos_State_Filter, gos_FilterNone);
+				gos_SetRenderState(gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
+				gos_SetRenderState(gos_State_Clipping, 1);
+				if (frameSplit) gos_DrawQuads(frameVertices.data(), frameSplit);
+				// The force-group overlay changes alpha at runtime; never bake it.
+				if (staticCount > 20 && std::any_of(std::begin(staticInfos[20].location),
+				    std::end(staticInfos[20].location), [](const auto& v) { return (v.argb >> 24) != 0; }))
+					staticInfos[20].render();
+				gos_SetRenderState(gos_State_Texture, texture);
+				if (size_t(frameSplit) < frameVertices.size())
+					gos_DrawQuads(frameVertices.data() + frameSplit, int(frameVertices.size()) - frameSplit);
+			}
 		}
 
 		forceGroupBar.render();
