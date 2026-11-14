@@ -70,7 +70,7 @@ EXCLUDE = {
 }
 
 PYTEST = [sys.executable, "-B", "-m", "pytest", "-q", "-p", "no:cacheprovider",
-          "--tb=no", "-rfE"]
+          "--tb=no", "-rfEs"]
 TIMEOUT_S = 1200  # box_hygiene: 479 s alone, over 600 s under precheck load
 
 
@@ -172,6 +172,8 @@ def _run_module_once(mod: str, env=None) -> tuple[str, int, list[str], str]:
                            text=True, timeout=TIMEOUT_S, env=env,
                            **console_child.child_kwargs(redirected=True))
         text, rc = p.stdout + p.stderr, p.returncode
+        if rc == 5 and re.search(r"\b[1-9]\d* skipped\b", text):
+            rc = 0  # module-level pytest.skip: no collected tests, not a script
         if rc == 5:  # nothing collected: script-style test, run it directly
             p = subprocess.run([sys.executable, "-B", mod], cwd=ROOT,
                                capture_output=True, text=True,
@@ -270,6 +272,8 @@ def main() -> int:
 
     for mod, rc, failed, tail in run_all(mods, args.jobs, "tools-" + args.suite, args.no_cache, args.report):
         if rc == 0:
+            if "SKIPPED" in tail:
+                print(f"tools_tests: SKIP in {mod}\n{tail}")
             passed += 1
             continue
         if not failed:  # timeout / crash / interrupted with no FAILED line
