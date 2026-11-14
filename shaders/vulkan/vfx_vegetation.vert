@@ -26,6 +26,8 @@ layout(location = 6) out vec3 v_worldPos;
 layout(location = 7) flat out vec3 v_rootPos;
 layout(location = 8) flat out uint v_atlasLayer;
 layout(location = 9) out vec3 v_shadowWorld;
+// The depth pre-pass and the shading pass must produce bit-identical depth (the shading pass tests GREATER_OR_EQUAL against it).
+invariant gl_Position;
 #include "include/vegetation_vk.glsl"
 
 void main() {
