@@ -39,7 +39,7 @@
 
 struct _SystemTracker {
 	GameObjectPtr			owner;
-	long					masterId;
+	int32_t					masterId;
 	float					effect;
 	SystemTrackerPtr		prev;
 	SystemTrackerPtr		next;
@@ -54,14 +54,14 @@ class Team {
 
 		//-------------
 		// general info
-		long				id;
-		long				rosterSize;
+		int32_t				id;
+		int32_t				rosterSize;
 		GameObjectWatchID	roster[MAX_MOVERS_PER_TEAM];			// list of mover WIDs
 		
 		//-------------
 		// mission info
 		CObjectives				objectives;
-		long					numPrimaryObjectives;
+		int32_t					numPrimaryObjectives;
 
 		//------------------
 		// static class info

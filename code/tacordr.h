@@ -191,8 +191,8 @@ enum _TravelModeType {
 }; using TravelModeType = _TravelModeType;
 
 struct _WayPath {
-	long			numPoints;
-	long			curPoint;
+	int32_t			numPoints;
+	int32_t			curPoint;
 	float			points[3 * MAX_WAYPTS];
 	unsigned char	mode[MAX_WAYPTS];
 }; using WayPath = _WayPath;
@@ -213,7 +213,7 @@ struct _TacOrderMoveParams {
 	SpecialMoveMode	mode;
 	bool			escapeTile;
 	bool			jump;
-	long			fromArea;
+	int32_t			fromArea;
 	bool			keepMoving;
 }; using TacOrderMoveParams = _TacOrderMoveParams;
 
@@ -222,7 +222,7 @@ struct _TacOrderAttackParams {
 	AttackMethod	method;
 	FireRangeType	range;
 	TacticType		tactic;
-	long			aimLocation;
+	int32_t			aimLocation;
 	bool			pursue;
 	bool			obliterate;
 	glm::vec3	targetPoint;
@@ -232,7 +232,7 @@ class TacticalOrder {
 
 	public:
 
-		long					id;
+		int32_t					id;
 		float					time;
 		float					delayedTime;
 		float					lastTime;
@@ -243,16 +243,16 @@ class TacticalOrder {
 		TacOrderMoveParams		moveParams;
 		TacOrderAttackParams	attackParams;
 		GameObjectWatchID		targetWID;
-		long					targetObjectClass;
-		long					selectionIndex;
+		int32_t					targetObjectClass;
+		int32_t					selectionIndex;
 		char					stage;
 		char					statusCode;
 		glm::vec3			lastMoveGoal;
 
 		// for network use only
 		char					pointLocalMoverId;
-		unsigned long			groupFlags;
-		unsigned long			data[2];
+		uint32_t			groupFlags;
+		uint32_t			data[2];
 
 	public:
 
