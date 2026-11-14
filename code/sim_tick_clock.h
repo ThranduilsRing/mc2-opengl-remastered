@@ -18,10 +18,11 @@ inline constexpr double kTickSeconds = 1.0 / 30.0;
 //: Every float use of the tick (scenarioTime +=, frameLength) must use this one constant.
 inline constexpr float kTickSecondsF = 1000.0f / 30.0f / 1000.0f;
 static_assert(std::bit_cast<unsigned>(kTickSecondsF) == 0x3D088888u, "legacy tick bit pattern");
-//: Retain at most one wall second of debt; longer interruptions discard only the excess.
-inline constexpr double kMaxRealFrameSeconds = 1.0;
-//: Ticks per frame at 1x; the cap scales with game speed so fast-forward is never clamped below its own rate.
-inline constexpr int kBaseMaxTicksPerFrame = 30;
+//: Retain only three ticks of wall time so a hitch pauses play instead of fast-forwarding units afterward.
+inline constexpr double kMaxRealFrameSeconds = 3 * kTickSeconds;
+//: Limit visible catch-up to a few ticks; sustained <10 fps slows the sim rather than skipping forward.
+//: Both limits scale with game speed so 2x/4x still sustain their own rate at 60 fps.
+inline constexpr int kBaseMaxTicksPerFrame = 3;
 
 inline constexpr int kBridgeMaxStepsPerFrame = 4;
 // A tick cannot be interrupted; yield between whole ticks when the frame budget is spent.
