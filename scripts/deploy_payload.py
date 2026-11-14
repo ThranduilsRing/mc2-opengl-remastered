@@ -260,6 +260,7 @@ IMPORTED_STRUCTURE_PAYLOAD = [
 # runtime (both readers tolerate absence), but shipping without them silently
 # drops per-mission/material tuning that was authored assuming the file loads.
 GAME_DATA_PAYLOAD = [
+    "data/art/asset_sizes.csv",
     *[f"data/art/gui/mcl_cm_op{op}_{view}.tga"
       for op, count in ((1, 6), (2, 3), (3, 4)) for view in range(1, count + 1)],
     "data/art/gui/mcl_cm_5.png",
@@ -1400,6 +1401,8 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
             fail(f"game data payload missing in source: {p}")
         items.append((p, rel, "support"))
 
+    for path in sorted((Path(src_root) / "data/art").glob("mcl_mc_*.tga")):
+        items.append((str(path), path.relative_to(src_root).as_posix(), "support"))
     # Optional cooked logistics overrides; missing art retains the original PAK/atlas.
     for folder in ("data/art/mechicons", "data/art/missionmaps", "data/art/pilots"):
         for path in sorted((Path(src_root) / folder).rglob("*.png")):
