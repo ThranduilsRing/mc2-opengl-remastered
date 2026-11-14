@@ -75,6 +75,7 @@ namespace {
 std::unique_lock<std::timed_mutex> lockSubmit(std::timed_mutex& m) {
     std::unique_lock<std::timed_mutex> lock(m, std::try_to_lock);
     if (lock.owns_lock()) return lock;
+    ZoneScopedN("VK.QueueLockWait");
     if (present_thread::onWorker()) { lock.lock(); return lock; }
     auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
     while (!lock.try_lock_for(std::chrono::milliseconds(2))) {
@@ -573,12 +574,12 @@ bool VulkanContext::init(bool wantPresent) {
     }
 
     // ---- logical device ----
-    float prio = 1.0f;
+    const float priorities[] = {1.0f, 1.0f};
     VkDeviceQueueCreateInfo qci{};
     qci.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
     qci.queueFamilyIndex = gfxFamily_;
-    qci.queueCount = 1;
-    qci.pQueuePriorities = &prio;
+    qci.queueCount = wantPresent && qfs[gfxFamily_].queueCount > 1 ? 2u : 1u;
+    qci.pQueuePriorities = priorities;
 
     // Every device extension comes from the profile, in table order: the swapchain of a present window, the KHR routes of dynamic rendering /
     // synchronization2 on a 1.2 device, and the memory-budget extension when the device has it (the VRAM line is then the OS's number and not VMA's
@@ -693,6 +694,9 @@ bool VulkanContext::init(bool wantPresent) {
     volkLoadDevice(device_);
     if (messenger_ != VK_NULL_HANDLE) runValidationCanary(device_);
     vkGetDeviceQueue(device_, gfxFamily_, 0, &gfxQueue_);
+    vkGetDeviceQueue(device_, gfxFamily_, qci.queueCount - 1, &presentQueue_);
+    ctxlog("queue family=%u graphics=0 present=%u (shared=%s)", gfxFamily_, qci.queueCount - 1,
+           presentQueue_ == gfxQueue_ ? "yes" : "no");
     infra::init(device_, phys_);
 
     // ---- the graphics timeline (CompletionTracker's semaphore; the profile requires timeline semaphores) ----
@@ -763,6 +767,7 @@ void VulkanContext::waitIdle(std::string_view why) const {
     const auto idleT0 = std::chrono::steady_clock::now();
     const auto lock = lockSubmit(submitMutex_);
     flushPendingLocked();
+    const auto presentLock = lockSubmit(presentMutex_);   // device idle externally synchronizes every queue
     const VkResult r = vkDeviceWaitIdle(device_);
     if (r == VK_SUCCESS) hostSyncedGfx_ = (std::max)(hostSyncedGfx_, tracker_.lastSubmitted(QueueKind::Graphics));   // an idle device is a host sync point for everything submitted
     {
@@ -824,7 +829,8 @@ VkResult VulkanContext::submitPresentTail(VkCommandBuffer cb, VkSemaphore acquir
 }
 
 VkResult VulkanContext::present(VkQueue queue, const VkPresentInfoKHR& info) const {
-    const auto lock = lockSubmit(submitMutex_);
+    assert(queue == presentQueue_ || queue == gfxQueue_);
+    const auto lock = lockSubmit(queue == gfxQueue_ ? submitMutex_ : presentMutex_);
     // Render work was flushed before seal. Main may already be recording another frame: never touch its batch here.
     mc2::overlap::assertOwner(mc2::overlap::Owner::Present, "vkQueuePresentKHR");
     if (infra::deviceLostLatched()) return VK_ERROR_DEVICE_LOST;   // no queue work on a lost device
@@ -1201,6 +1207,7 @@ void VulkanContext::destroy() {
         device_ = VK_NULL_HANDLE;
     }
     gfxQueue_ = VK_NULL_HANDLE;
+    presentQueue_ = VK_NULL_HANDLE;
     gfxFamily_ = UINT32_MAX;
     phys_ = VK_NULL_HANDLE;
     if (messenger_ != VK_NULL_HANDLE && instance_ != VK_NULL_HANDLE) {

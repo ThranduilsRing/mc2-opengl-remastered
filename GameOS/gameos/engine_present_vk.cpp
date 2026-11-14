@@ -182,7 +182,8 @@ bool chooseQueuesAndPresentMode(EnginePresentVk::Impl& s, std::string& reason) {
                  "(fail-soft to GL; would need a present queue in T2 device create)";
         return false;
     }
-    s.presentQ = s.gfxQ;
+    // Same family: the render-finished binary semaphore orders the two queues without ownership transfers.
+    s.presentQ = s.ctx->presentQueue();
 
     // Present mode mapping (plan §6/R8): FIFO when MC2_VSYNC=1 (vsync-equivalent,
     // matches the GL swap-interval), else MAILBOX if available else IMMEDIATE
