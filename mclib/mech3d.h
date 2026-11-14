@@ -628,6 +628,10 @@ class Mech3DAppearance: public ObjectAppearance
 		TG_MultiShape* previewShape (void);
 		// Mech lab: stages this actor through the GPU mech batcher (light row 0, no fog). False = keep the CPU draw.
 		bool submitPreviewGpu (bool freshSession);
+		// Blown arms: poseArmForDraw runs after the arm's hierarchy transform (reserves the CPU draw only when the batcher cannot
+		// take the arm); submitArmGpu hands the arm to the mech batcher at render time. False = the CPU fallback draws it.
+		void poseArmForDraw (TG_MultiShape* arm);
+		bool submitArmGpu (TG_MultiShape* arm, float haze);
 		virtual long renderShadows (void);
 
 		virtual void updateFootprints (void);

@@ -61,6 +61,7 @@ extern void (*AsynFunc)(RECT& WinRect,DDSURFACEDESC2& mouseSurfaceDesc );
 
 extern bool bInvokeOptionsScreenFlag;
 bool	MainMenu::bDrawMechlopedia = false;;
+bool	MainMenu::bLoadShown = false;
 
 void SplashIntro::init()
 {
@@ -547,6 +548,9 @@ void MainMenu::update()
 		soundSystem->playDigitalMusic(tuneId);
 	}
 
+	bLoadShown = bLoad && endAnim.isDone();
+	if ( !introMovie && !bLoad && mc2::gate::str<"MC2_BOOT_TO_SCREEN">() == "loadgame" )
+		handleMessage( 0, MM_MSG_LOAD );
 	if ( endAnim.isDone() )
 	{
 		status = endResult;

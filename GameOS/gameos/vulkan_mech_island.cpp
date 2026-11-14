@@ -1168,6 +1168,14 @@ bool record_mech_preview(MechIsland* s, VkCommandBuffer cb, const Mc2MechFrameFe
     // The viewport is the full panel rect (it may hang off the target); the scissor clips it to the target.
     VkViewport vp{fx, fy, fw, fh, 0.0f, 1.0f};
     VkRect2D scissor{{x0, y0}, {static_cast<uint32_t>(x1 - x0), static_cast<uint32_t>(y1 - y0)}};
+    if (q.clipW > 0 && q.clipH > 0) {
+        // Keep the backdrop and mech inside the mech panel's box: the shared target also holds the component box.
+        const int cx0 = std::clamp(static_cast<int>(static_cast<float>(q.clipX) * sx), x0, x1 - 1);
+        const int cx1 = std::clamp(static_cast<int>(static_cast<float>(q.clipX + q.clipW) * sx + 0.5f), cx0 + 1, x1);
+        const int cy0 = std::clamp(static_cast<int>(static_cast<float>(h) - static_cast<float>(q.clipY + q.clipH) * sy), y0, y1 - 1);
+        const int cy1 = std::clamp(static_cast<int>(static_cast<float>(h) - static_cast<float>(q.clipY) * sy + 0.5f), cy0 + 1, y1);
+        scissor = {{cx0, cy0}, {static_cast<uint32_t>(cx1 - cx0), static_cast<uint32_t>(cy1 - cy0)}};
+    }
     vkCmdSetViewport(cb, 0, 1, &vp);
     vkCmdSetScissor(cb, 0, 1, &scissor);
     if (s->backdropPipe && !materials.empty()) {

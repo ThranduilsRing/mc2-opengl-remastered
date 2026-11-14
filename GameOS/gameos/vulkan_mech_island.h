@@ -158,6 +158,7 @@ struct Mc2MechPreviewRequest {
     const void* lights;        // GpuObjectLights rows (the lab actor submits lightDataIndex 0)
     uint64_t lightBytes;
     int vpX, vpY, vpW, vpH;    // projection rect in the panel's 800x600 logical space (y down), = the CPU path's viewMul/offset
+    int clipX, clipY, clipW, clipH; // mech panel box in the same 800x600 space; backdrop+mech are scissored to it (0 size = whole viewport)
     float exposure;            // linear scale before the panel tonemap
     int sceneW, sceneH;        // shared scene target size (island init / world-run size match)
     float groundX, groundY, groundH;  // mech feet centre and screen height in the panel logical space (groundH 0 = no contact shadow)
