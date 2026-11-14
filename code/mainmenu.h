@@ -78,6 +78,7 @@ class MainMenu: public LogisticsScreen
 		
 
 		static	bool	bDrawMechlopedia;
+		static	bool	bLoadShown;   // capture harness: the Load Game dialog is fully shown
 
 	private:
 

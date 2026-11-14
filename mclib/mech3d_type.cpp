@@ -296,6 +296,8 @@ void Mech3DAppearanceType::init (mc2::czstring fileName)
 			mechBackwardDmgShape.reset();
 		}
 	}
+	GpuMechBatcher::instance().registerVehicleType(rightArm.get());
+	GpuMechBatcher::instance().registerVehicleType(leftArm.get());
 	GpuMechBatcher::instance().registerVehicleType(mechForwardDmgShape.get());
 	GpuMechBatcher::instance().registerVehicleType(mechBackwardDmgShape.get());
 

@@ -27,6 +27,7 @@ EditorCamera.h			: Interface for the EditorCamera component.
 #include "../RenderCore/FramePackets.h"        // the frame packets the batchers read
 #include "EditorRenderTimer.h"                      // MC2_EDITOR_GPU_TIMERS per-pass GPU timing
 #include "AuthoredMissionState.h"
+#include "../GameAdapters/VegetationAdapter.h"   // grass/ground-patch flush: same pass the game runs after water
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -310,6 +311,19 @@ public:
 			if (land)
 				land->renderWaterFastPath();
 			EditorRenderTimer_Mark("waterFast");
+
+			// Biome view: the game draws vegetation (grass/ground patches) after water; the editor must too.
+			if (land)
+			{
+				float lx = 0.0f, ly = 0.0f, lz = 1.0f;
+				gos_GetTerrainLightDir(&lx, &ly, &lz);
+				const float lightDir4[4] = { lx, ly, lz, 0.0f };
+				const glm::vec3 vegEye = getCameraOrigin();
+				const float vegHalfMap = Terrain::worldUnitsMapSide * 0.5f;
+				GameAdapters::Vegetation::flush(lightDir4, (float)(GetTickCount64() % 3600000ull) * 0.001f,
+					-vegEye.x - Terrain::mapTopLeft3d.x - vegHalfMap, vegEye.z - Terrain::mapTopLeft3d.y + vegHalfMap, vegEye.y);
+			}
+			EditorRenderTimer_Mark("vegetation");
 
 			EditorRenderTimer_End();
 		}
