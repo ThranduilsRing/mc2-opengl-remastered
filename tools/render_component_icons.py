@@ -19,8 +19,8 @@ for index, (name, row) in enumerate(sorted(icons.items())):
     inventory.append(dict(id=row[0], name=row[2], file=name, stock=old.size, cells=[w,h], model=str(model) if model.exists() else None))
     if not model.exists(): continue
     bpy.ops.wm.read_factory_settings(use_empty=True)
-    scene = bpy.context.scene; scene.render.engine = 'CYCLES'; scene.cycles.samples = 32
-    scene.cycles.use_denoising = True; scene.render.film_transparent = True
+    scene = bpy.context.scene; scene.render.engine = 'CYCLES'; scene.cycles.samples = 64
+    scene.cycles.use_denoising = False; scene.render.film_transparent = True
     scene.world = bpy.data.worlds.new('Studio'); scene.world.use_nodes = True
     scene.world.node_tree.nodes['Background'].inputs[0].default_value = (.22,.25,.3,1)
     scene.world.node_tree.nodes['Background'].inputs[1].default_value = .35
