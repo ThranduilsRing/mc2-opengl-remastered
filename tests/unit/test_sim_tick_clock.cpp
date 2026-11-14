@@ -56,15 +56,12 @@ TEST_CASE("tick clock: periodic 200 ms stalls preserve elapsed sim time") {
 }
 
 TEST_CASE("tick clock: a 20 ms tick yields and retains the remaining debt") {
-    using Budget = mc2::sim::TickBudget;
-    const Budget::Clock::time_point start{};
-    Budget budget(start);
     TickClock c;
     const int reserved = c.advance(0.2 + kTickSeconds / 2, 1.0);
     CHECK(reserved == 6);
-    CHECK_FALSE(budget.exhausted(start + std::chrono::milliseconds(7)));
-    CHECK(budget.exhausted(start + std::chrono::milliseconds(8)));
-    CHECK(budget.exhausted(start + std::chrono::milliseconds(20)));
+    CHECK_FALSE(mc2::sim::catchUpSpent(0.007));
+    CHECK(mc2::sim::catchUpSpent(0.008));
+    CHECK(mc2::sim::catchUpSpent(0.020));
     c.defer(reserved - 1);
     CHECK(c.alpha() == 1.0);
     CHECK(c.advance(kTickSeconds, 1.0) == 6);

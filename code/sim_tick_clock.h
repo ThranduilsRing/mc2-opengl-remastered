@@ -8,7 +8,6 @@
 #include <algorithm>
 #include <bit>
 #include <cmath>
-#include <chrono>
 
 namespace mc2::sim {
 
@@ -24,17 +23,10 @@ inline constexpr double kMaxRealFrameSeconds = 1.0;
 //: Ticks per frame at 1x; the cap scales with game speed so fast-forward is never clamped below its own rate.
 inline constexpr int kBaseMaxTicksPerFrame = 30;
 
-// A tick cannot be interrupted. Check elapsed wall time between ticks, including a slow first tick.
-class TickBudget {
-public:
-    using Clock = std::chrono::steady_clock;
-    explicit TickBudget(Clock::time_point start = Clock::now()) : start_(start) {}
-    bool exhausted(Clock::time_point now = Clock::now()) const {
-        return now - start_ >= std::chrono::milliseconds(8);
-    }
-private:
-    Clock::time_point start_;
-};
+inline constexpr int kBridgeMaxStepsPerFrame = 4;
+// A tick cannot be interrupted; yield between whole ticks when the frame budget is spent.
+inline constexpr double kCatchUpBudgetSeconds = 0.008;
+constexpr bool catchUpSpent(double elapsedSeconds) { return elapsedSeconds >= kCatchUpBudgetSeconds; }
 
 inline int maxTicksPerFrame(double speed) {
     if (!(speed > 1.0)) return kBaseMaxTicksPerFrame;   // NaN lands here too

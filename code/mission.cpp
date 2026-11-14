@@ -20,6 +20,7 @@
 #include "render_resource_owners.h"
 #include "mc2fmt.h"
 #include "command_replay.h"
+#include "sim_tick_clock.h"
 #include <algorithm>
 #include <cstdio>
 #include <vector>
@@ -443,6 +444,16 @@ long Mission::submitPlayerOrder(Mover* mover, const ::TacticalOrder& legacy, boo
         mover->getPartId(), static_cast<int>(admitted.error()));
     return admitted ? 0 : 1;
 }
+uint64_t Mission::tickBudgetBegin() {
+	return static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(
+		std::chrono::steady_clock::now().time_since_epoch()).count());
+}
+
+bool Mission::tickBudgetSpent(uint64_t begin) {
+	if (SmokeMode::fixedTimestepEnabled()) return false;
+	return mc2::sim::catchUpSpent(static_cast<double>(tickBudgetBegin() - begin) / 1000000.0);
+}
+
 // Wall-clock seconds since the last call (0 on the first frame of a mission), or the harness clock's virtual frame. Kept out of
 // mission_update.cpp, which is sim code and may not read the wall clock.
 double Mission::pollRealFrameSeconds(float harnessFrameSeconds) {

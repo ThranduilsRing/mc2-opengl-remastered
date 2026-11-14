@@ -1302,6 +1302,7 @@ struct OverlapPre {
 	long turn = 0;   // Mission::turn after the worker finished
 	uint32_t extraFrames = 0; // published to the main frame clock only after DrawScreen has joined
 	int unrun = 0;            // banked ticks a save request stopped; Main runs them after the frame part (none is lost)
+	int deferred = 0;         // budget yield returned to the tick bank by Main after joining
 };
 OverlapPre s_pre;
 }
@@ -1330,7 +1331,7 @@ void Mission::overlapKick()
 		frameLength = renderLength;
 		long early = 0;
 		bool ended = false;
-		const mc2::sim::TickBudget budget;
+		const uint64_t budget = tickBudgetBegin();
 		for (int tick = 0; tick < ticks; ++tick)
 		{
 			mc2::overlap::setSimulationFrame(firstFrame + static_cast<uint32_t>(tick));
@@ -1343,8 +1344,8 @@ void Mission::overlapKick()
 			if (ended || loadInMissionSave)
 				break;   // a load drops the rest, as the serial loop does
 			if (saveInMissionSave) { s_pre.unrun = ticks - tick - 1; break; }   // the save and the rest run on Main
-			if (budget.exhausted()) {
-				s_tickClock.defer(ticks - tick - 1);
+			if (tickBudgetSpent(budget)) {
+				s_pre.deferred = ticks - tick - 1;
 				break;
 			}
 		}
@@ -1362,6 +1363,7 @@ namespace {
 void overlapKickHook() { if (mission) mission->overlapKick(); }
 void overlapJoinHook() {
 	mc2::overlap::waitWorker();
+	s_tickClock.defer(std::exchange(s_pre.deferred, 0));
 	MOVE_bindPathFindMaps(0);
 	g_mc2FrameCounter += std::exchange(s_pre.extraFrames, 0u);
 	mc2::tick::commitTickQueues();
@@ -1424,7 +1426,7 @@ long Mission::update (void)
 				return earlyResult;
 			// A save request stopped the worker: its unrun ticks run here, serially, in the order the serial loop
 			// runs them (the first one's updateTickClock writes the save on Main).
-			const mc2::sim::TickBudget budget;
+			const uint64_t budget = tickBudgetBegin();
 			for (int tick = 0; tick < pre.unrun && !loadInMissionSave; ++tick)
 			{
 				s_extraTickInFrame = true;
@@ -1435,7 +1437,7 @@ long Mission::update (void)
 				mc2::observation::bridgeNoteTicks(1);
 				if (ended)
 					return earlyResult;
-				if (budget.exhausted()) { s_tickClock.defer(pre.unrun - tick - 1); break; }
+				if (tickBudgetSpent(budget)) { s_tickClock.defer(pre.unrun - tick - 1); break; }
 			}
 			updatePresentationOnly(false, static_cast<float>(s_tickClock.alpha()));
 		}
@@ -1448,7 +1450,7 @@ long Mission::update (void)
 			if (bridgeHold)
 				s_tickClock.reset();
 			const int ticks = firstFrame ? 1
-				: bridgeHold ? mc2::observation::bridgeTakeSteps(mc2::sim::maxTicksPerFrame(1.0))
+				: bridgeHold ? mc2::observation::bridgeTakeSteps(mc2::sim::kBridgeMaxStepsPerFrame)
 				: s_tickClock.advance(realSeconds, simSpeedGetMultiplier());
 			if (ticks == 0)
 			{
@@ -1457,7 +1459,7 @@ long Mission::update (void)
 					return earlyResult;
 				updatePresentationOnly(false, static_cast<float>(s_tickClock.alpha()));
 			}
-			const mc2::sim::TickBudget budget;
+			const uint64_t budget = tickBudgetBegin();
 			for (int tick = 0; tick < ticks; ++tick)
 			{
 				// One logic pass per frame-counter value: per-frame-keyed sim paths (animation advance, the brain tick
@@ -1472,7 +1474,7 @@ long Mission::update (void)
 				if (ended)
 					return earlyResult;
 				if (loadInMissionSave) break;   // let the outer loop load before another tick
-				if (!bridgeHold && budget.exhausted()) { s_tickClock.defer(ticks - tick - 1); break; }
+				if (!bridgeHold && tickBudgetSpent(budget)) { s_tickClock.defer(ticks - tick - 1); break; }
 			}
 			if (ticks > 0)
 				updatePresentationOnly(false, static_cast<float>(s_tickClock.alpha()));
