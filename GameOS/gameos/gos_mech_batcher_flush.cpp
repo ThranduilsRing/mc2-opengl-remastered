@@ -7,6 +7,7 @@
 #include "mc2fmt.h"
 #include "../../mclib/battle_bench_sink.h"
 #include "ui_texture.h"
+#include "mech_run_cache.h"
 #include "gos_profiler.h"
 
 // ---------------------------------------------------------------------------
@@ -168,6 +169,7 @@ struct DrawCall {
     uint32_t instanceCount;
     uint32_t aoTexHandle;   // AO-1: AO mc2::textures::ready() slot (0=none; per-type, so consistent within a bucket).
     uint32_t normalTexHandle; // NORMALS-1: normal-map slot (0=none; per-type).
+    bool operator==(const DrawCall&) const = default;
 };
 
 // Locals the flush phases hand to each other: the bucketed submits, the bone bases and the draw-call list.
@@ -464,18 +466,26 @@ void MechFlushFrame::validateMaterialTable() {
 
 // One run per draw call, with the LIVE slot-0 paint texture (and the per-type AO / normal maps) resolved this frame.
 void MechFlushFrame::collectRuns() {
+    static MechRunCache<DrawCall> cache;
+    bool changed;
+    {
+        ZoneScopedN("DSP.MechPack.RunInputs");
+        const uint64_t inputs = (static_cast<uint64_t>(s_vkMechGeomGen) << 1) | (mc2::textures::ready() ? 1u : 0u);
+        changed = cache.update(std::span<const DrawCall>(drawCalls), inputs, [](uint32_t slot) {
+            const DWORD handle = slot != UINT32_MAX && mc2::textures::ready() ? mc2::textures::sourceId(slot) : 0u;
+            return gos_GetMaterialTextureId(handle);
+        });
+    }
+    if (!changed && !s_vkMechRunSnapshot.empty()) {
+        drawnCalls = static_cast<uint32_t>(s_vkMechRunSnapshot.size());
+        return;
+    }
     ZoneScopedN("DSP.MechPack.Runs");
     s_vkMechRunSnapshot.clear();
     drawnCalls = 0;
     for (const DrawCall& dc : drawCalls) {
         const GpuMechPacket& pkt = s_packets[dc.globalPacketIdx];
 
-        // dc.texHandle is the mc2::textures::ready() slot index, NOT a gos handle
-        // (TG_TinyTexture::gosTextureHandle is a misnamed slot index per
-        // memory/mc2_texture_handle_is_live.md). Resolve to the live gos handle THIS FRAME.
-        const DWORD liveGosHandle = (dc.texHandle != 0xFFFFFFFFu && mc2::textures::ready())
-            ? mc2::textures::sourceId(dc.texHandle)
-            : 0u;
         Mc2MechDrawRun run{};
         run.firstIndex    = pkt.firstIndex;
         run.indexCount    = pkt.indexCount;
@@ -484,12 +494,10 @@ void MechFlushFrame::collectRuns() {
         run.instanceBase  = dc.instanceBase;
         run.instanceCount = dc.instanceCount;
         run.materialFlags = dc.materialFlags;
-        run.slot0Tex      = gos_GetMaterialTextureId(liveGosHandle);   // LIVE per-actor paint scheme this frame
+        run.slot0Tex      = cache.textures.at(dc.texHandle);
         // VK-PARITY-MECH-1: per-type AO / normal maps.
-        run.aoTex = (dc.aoTexHandle != 0u && dc.aoTexHandle != 0xFFFFFFFFu && mc2::textures::ready())
-            ? gos_GetMaterialTextureId(mc2::textures::sourceId(dc.aoTexHandle)) : 0u;
-        run.normalTex = (dc.normalTexHandle != 0u && dc.normalTexHandle != 0xFFFFFFFFu && mc2::textures::ready())
-            ? gos_GetMaterialTextureId(mc2::textures::sourceId(dc.normalTexHandle)) : 0u;
+        run.aoTex = dc.aoTexHandle && dc.aoTexHandle != UINT32_MAX && mc2::textures::ready() ? cache.textures.at(dc.aoTexHandle) : 0u;
+        run.normalTex = dc.normalTexHandle && dc.normalTexHandle != UINT32_MAX && mc2::textures::ready() ? cache.textures.at(dc.normalTexHandle) : 0u;
         s_vkMechRunSnapshot.push_back(run);
         ++drawnCalls;
     }

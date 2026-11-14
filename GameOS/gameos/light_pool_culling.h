@@ -9,8 +9,26 @@
 #include <limits>
 #include <span>
 #include <unordered_set>
+#include <cstring>
 
 namespace gos_terrain_lighting {
+// World-space grid inputs exclude the camera tile set. Exact light bytes cover
+// movement, cone/falloff, color and dominance; reset at mission teardown.
+class LightGridInputs {
+public:
+    bool update(std::span<const GpuTerrainLight> lights) {
+        if (valid_ && lights.size() == lights_.size() &&
+            (lights.empty() || std::memcmp(lights.data(), lights_.data(), lights.size_bytes()) == 0))
+            return false;
+        lights_.assign(lights.begin(), lights.end());
+        valid_ = true;
+        return true;
+    }
+private:
+    std::vector<GpuTerrainLight> lights_;
+    bool valid_ = false;
+};
+
 // Registration tags own source classification. Rebuild their pointer lookup
 // only after a lifecycle mutation; active/FoW filtering remains per frame.
 class RegisteredMoverLights {

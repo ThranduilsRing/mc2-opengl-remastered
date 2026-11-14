@@ -133,11 +133,14 @@ static uint32_t LightGridDimEnv() {
 static gos_terrain_lighting::TerrainVertexPack s_vertexPack;
 // Light pack buffer
 static std::vector<gos_terrain_lighting::GpuTerrainLight> s_lightBuf;
+static gos_terrain_lighting::LightGridInputs s_gridInputs;
 
 // Build the CPU grid for s_lightBuf[0..numLights). Sets s_lightGridDim to 0
 // when the grid is not in play (gate off, too few lights, degenerate bbox), which
 // makes every consumer fall back to the exact linear loop.
 static void BuildLightGrid(uint32_t numLights) {
+    if (!s_gridInputs.update(std::span<const gos_terrain_lighting::GpuTerrainLight>(s_lightBuf.data(), numLights))) return;
+    ZoneScopedN("Terrain.LightGrid.Rebuild");
     s_lightGridDim = 0;
     if (!LightGridEnabled() || numLights < kLightGridMinLights) return;
 
@@ -480,6 +483,7 @@ void mission_shutdown() {
     if (!s_initialized) return;
 
     s_lightGridDim         = 0;
+    s_gridInputs = {};
     s_objectPoolDirty = true;
     s_objectPoolUpload.clear();
 

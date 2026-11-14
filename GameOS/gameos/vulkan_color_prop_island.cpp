@@ -303,6 +303,7 @@ struct ColorPropIsland : mc2vk::IslandState {
     uint64_t materialGeneration = 0, resourceGeneration = 0;
     PropRecordCacheKey recordKey{};
     std::optional<PropRecordCacheKey> recorded;
+    uint64_t recordedTopology = 0;
     uint32_t listStart[kListCount + 1]{}, listCounts[kListCount]{};
     unsigned long cachedTypeRuns = 0;
     uint64_t cachedLeaves = 0;
@@ -1756,6 +1757,28 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std
     // record each frame with current dynamic offsets and compaction results.
     auto& listStart = s->listStart;
     auto& counts = s->listCounts;
+    // Changing population within the same ordered type runs only moves instance
+    // ranges. Material, recipe and geometry changes still rebuild every packet.
+    if (s->recorded != s->recordKey && s->recorded &&
+        s->recordedTopology == s->typeSource.topology &&
+        s->recorded->material == s->recordKey.material &&
+        s->recorded->resource == s->recordKey.resource) {
+        ZoneScopedN("VKIsl.Props.PatchInstances");
+        s->cachedLeaves = 0;
+        size_t run = 0;
+        for (uint32_t i = 0; i < instanceCount;) {
+            const uint32_t tid = insts[i].typeID;
+            uint32_t end = i + 1;
+            while (end < instanceCount && insts[end].typeID == tid) ++end;
+            if (run < s->runScratch.size() && s->runScratch[run].pad[0] == tid) {
+                auto& rr = s->runScratch[run++];
+                patchPropRun(rr, s->cmdScratch, listStart, i, end - i);
+                if (rr.pad[1]) s->cachedLeaves += end - i;
+            }
+            i = end;
+        }
+        s->recorded = s->recordKey;
+    }
     if (s->recorded != s->recordKey) {
     ZoneScopedN("VKIsl.Props.BuildMetadata");
     for (auto& v : s->cmdScratch) v.clear();
@@ -1841,6 +1864,8 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std
                         counted = true;
                     }
                 }
+                rr.pad[0] = tid;
+                rr.pad[1] = counted ? 1u : 0u;
                 if (rr.range[kListOpaque][1] + rr.range[kListCore][1] + rr.range[kListFringe][1] + rr.range[kListLate][1] != 0)
                     s->runScratch.push_back(rr);
                 ++typeRuns;
@@ -1863,6 +1888,7 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std
     s->cachedTypeRuns = typeRuns;
     s->cachedLeaves = nativeLeaves;
     s->recorded = s->recordKey;
+    s->recordedTopology = s->typeSource.topology;
     }
     const uint32_t cmdTotal = listStart[kListCount];
     s->lateStart = listStart[kListLate];
