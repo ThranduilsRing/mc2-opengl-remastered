@@ -118,6 +118,7 @@ add_executable(mc2_tests
     test_vfx_draw_plan.cpp  # VFX island draw packing: equal-state merge, additive runs sorted, alpha order kept
     test_readback.cpp  # the Vulkan readback ring: ticket, tag and generation checks, wrong-tag negative control (offline)
     test_light_pool_culling.cpp
+    test_cpu_run_cache.cpp
     test_explosion_light.cpp
     test_terrain_vertex_dirty.cpp
     test_light_feed_sync.cpp  # LIGHTING-CPU-CUT: light-feed slot sync (revision fast exit + journal) equals the source rows
