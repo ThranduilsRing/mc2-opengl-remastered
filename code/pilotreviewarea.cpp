@@ -1245,7 +1245,10 @@ void PilotPromotionArea::render()
 
 	skillListBox.move( xOffset, yOffset );
 	skillListBox.setColor( 0xff000000, 0 );
+	// Bridged so the skill descriptions go through the shrink-to-fit text path (the bitmap font cannot resize and ran past the box).
+	aObject::beginGuiBridgeCanvas();
 	skillListBox.render();
+	aObject::endGuiBridge();
 	skillListBox.move( -xOffset, -yOffset );
 
 
