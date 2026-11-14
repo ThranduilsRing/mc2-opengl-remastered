@@ -52,6 +52,23 @@
 #include "mc2fmt.h"
 #include "Gates/gate_cold.h"
 
+#include "terrain_cache_key.h"
+#include <chrono>
+
+// Terrain texture state is singleton, like nextAvailable and TERRAIN_TXM_SIZE.
+static mc2::TerrainCacheKey txmSources;
+static std::string txmContentKey;
+static double txmInputsMs = 0, txmRebuildMs = 0;
+static long txmRebuilds = 0, txmReuses = 0;
+static void hashTxmInput(mc2::czstring name)
+{
+	File file;
+	std::vector<unsigned char> bytes;
+	if (file.open(name) == NO_ERR)
+		bytes = mc2::tga::readAllBytes(file).value_or(std::vector<unsigned char>{});
+	txmSources.add(name, bytes);
+}
+
 //---------------------------------------------------------------------------
 // Static Globals
 constexpr int TILE_THRESHOLD = 0;
@@ -106,53 +123,13 @@ extern bool InEditor;
 long TerrainTextures::init (mc2::czstring fileName, mc2::czstring baseName)
 {
 	metadataLoaded = true;
-	if (InEditor)
-		quickLoad = false;
-	else
-	{
-		quickLoad = true;
-
-		//Check for the magic list and then for all of the textures on the magic list.
-		FullPathFileName listPath;
-		listPath.init(texturePath,baseName,".lst");
-
-		File listFile;
-		long result = listFile.open(listPath);
-		if (result == NO_ERR)
-		{
-			// Empty .lst means pre-cooked TXM set was never generated for this mission.
-			// Treat it the same as a missing .lst so initMask() loads mask data and
-			// createTransition() can generate + cache the .txm files on first load.
-			bool anyListed = false;
-			while (!listFile.eof())
-			{
-				char listName[1024];
-				listFile.readString(reinterpret_cast<MemoryPtr>(listName));
-				anyListed = true;
-				if (!fileExists(listName))
-				{
-					quickLoad = false;
-					break;
-				}
-			}
-			if (!anyListed)
-				quickLoad = false;
-		}
-		else
-		{
-			quickLoad = false;
-		}
-	}
-
-	// MC2_FORCE_TXM_REGEN=1 -> ignore the pre-cooked .txm composite cache and
-	// regenerate terrain texture composites from the source .tga (cement_N,
-	// overlays, masks) so edited terrain art shows without an editor re-cook.
-	// Same effect as InEditor's quickLoad=false. The .txm hash is keyed by the
-	// texture-combo ID (content-blind), so a .tga edit never invalidates it on
-	// its own; this is the override. Regen re-caches new loose .txm (loose wins
-	// over FST), so the new art persists even after the env is unset.
-	if (false)
-		quickLoad = false;
+	const auto inputsStart = std::chrono::steady_clock::now();
+	txmSources = mc2::TerrainCacheKey{};
+	txmRebuildMs = 0;
+	txmRebuilds = txmReuses = 0;
+	// Source pixels/masks must exist even on a warm load: a missing/corrupt
+	// individual composite must always be able to regenerate safely.
+	quickLoad = false;
 
 	tileCacheReqs = 0;
 	tileCacheHits = 0;
@@ -167,6 +144,7 @@ long TerrainTextures::init (mc2::czstring fileName, mc2::czstring baseName)
 
 
 	txmFileName.init(texturePath,fileName,".FIT");
+	hashTxmInput(txmFileName);
 
 	FitIniFile textureFile;
 
@@ -496,6 +474,9 @@ long TerrainTextures::init (mc2::czstring fileName, mc2::czstring baseName)
 	}
 
 
+	txmContentKey = txmSources.key();
+	quickLoad = !InEditor;
+	txmInputsMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - inputsStart).count();
 	return(NO_ERR);
 }
 
@@ -711,6 +692,7 @@ long TerrainTextures::initTexture (long typeNum)
 
 		FullPathFileName fileName;
 		fileName.init(mipPath,types[typeNum].terrainName,".tga");
+		hashTxmInput(fileName);
 
 		long result = 0;
 		if (InEditor || !quickLoad)
@@ -802,6 +784,7 @@ void TerrainTextures::initMask (long typeNum)
 
 			FullPathFileName fileName;
 			fileName.init(mipPath,tmpy,".tga");
+			hashTxmInput(fileName);
 
 			File tgaFile;
 
@@ -912,6 +895,7 @@ long TerrainTextures::initOverlay (long overlayNum, long txmNum, char *txmName)
 			}
 		}
 
+		hashTxmInput(chosenName);
 		long result = 0;
 		//------------------------------------------------------------
 		if (InEditor || !quickLoad)
@@ -1381,15 +1365,10 @@ inline bool isCementType (DWORD type)
 }
 
 //---------------------------------------------------------------------------
-// Transition cache file name. The cache is keyed by terrain-type/overlay ids only, so a mod that forces another tile edge
-// (MCO ships 256 only) used to overwrite the 64 file a stock run reads, and the next stock run reported "invalid transition
-// cache". The legacy name (also what the shipped textures.fst holds) stays the 64 edge; every other edge gets its own file.
+// Legacy content-blind .txm files deliberately miss on first load after upgrade.
 static void txmCacheName (char (&out)[256], DWORD typeInfo, DWORD overlayInfo)
 {
-	if (TERRAIN_TXM_SIZE == 64)
-		mc2::fmt::to_buf(out,"{:08d}.{:08d}.txm",mc2::fmt::as_i32(typeInfo),mc2::fmt::as_i32(overlayInfo));
-	else
-		mc2::fmt::to_buf(out,"{:08d}.{:08d}.r{:d}.txm",mc2::fmt::as_i32(typeInfo),mc2::fmt::as_i32(overlayInfo),mc2::fmt::as_i32(TERRAIN_TXM_SIZE));
+	mc2::fmt::to_buf(out,"{:08d}.{:08d}.r{:d}.m{:d}.{}.txm",mc2::fmt::as_i32(typeInfo),mc2::fmt::as_i32(overlayInfo),mc2::fmt::as_i32(TERRAIN_TXM_SIZE),mc2::fmt::as_i32(Terrain::terrainTextures2 ? 1 : 0),txmContentKey);
 }
 
 // True when `bytes` is a well-formed cache written for another tile edge (a stale file from before the name carried the edge).
@@ -1462,6 +1441,7 @@ long TerrainTextures::createTransition (DWORD typeInfo, DWORD overlayInfo)
 				txmFile.close();
 
 				if (cacheRead && bufferSize == (mipSize * mipSize * sizeof(DWORD))) {
+				++txmReuses;
 				long result = textureFromMemoryAlpha(lzBuffer.data(),mipSize);
 				txmResult = result;
 
@@ -1475,6 +1455,7 @@ long TerrainTextures::createTransition (DWORD typeInfo, DWORD overlayInfo)
 			}
 		}
 
+		const auto rebuildStart = std::chrono::steady_clock::now();
 		if (!listTransitionFile)
 		{
 			//Check for the magic list and then for all of the textures on the magic list.
@@ -1671,6 +1652,8 @@ long TerrainTextures::createTransition (DWORD typeInfo, DWORD overlayInfo)
 			std::free(ourRAM);
 		}
 
+		++txmRebuilds;
+		txmRebuildMs += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - rebuildStart).count();
 		transitions[nextTransition].transitionIndex = typeInfo;
 		transitions[nextTransition].baseTXMIndex = txmResult;
 		transitions[nextTransition].overlayIndex = overlayInfo;
@@ -1798,6 +1781,8 @@ long TerrainTextures::setDetail (DWORD typeInfo, DWORD frameNum)
 void TerrainTextures::update (void)
 {
 	ZoneScopedN("TerrainTextures::update");
+	if (metadataLoaded)
+		MC2_DIAGF("[TXM_CACHE] inputs_ms=%.3f rebuild_ms=%.3f rebuilt=%ld reused=%ld key=%s\n", txmInputsMs, txmRebuildMs, txmRebuilds, txmReuses, txmContentKey.c_str());
 	if (metadataLoaded)
 	{
 		// BUGS 53: UserHeap::destroy() hands nothing back to the allocator (gos_DestroyMemoryHeap deletes the heap record only),

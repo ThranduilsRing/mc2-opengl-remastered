@@ -1,6 +1,7 @@
 #include "doctest.h"
 #include "tgl_registry.h"
 #include <memory>
+#include <new>
 #include <vector>
 
 namespace {
@@ -42,4 +43,21 @@ TEST_CASE("TGL registry: payload reload at the same address invalidates borrows"
     owner.identity.renew(&owner);
     CHECK(TglRegistry<ShapeOwner>::get().resolve(stale) == nullptr);
     CHECK(TglRegistry<ShapeOwner>::get().resolve(owner.identity.id()) == &owner);
+}
+
+// Trigger: preview selection identity in code/simplecamera.cpp and TGL slot reuse.
+TEST_CASE("TGL registry: preview replacements at the same address have distinct generations") {
+    alignas(ShapeOwner) unsigned char storage[sizeof(ShapeOwner)];
+    TglId<ShapeOwner> previous;
+    auto& registry = TglRegistry<ShapeOwner>::get();
+    for (int selection = 0; selection < 8; ++selection) {
+        auto* owner = new (storage) ShapeOwner;
+        const auto current = owner->identity.id();
+        CHECK(current != previous);
+        CHECK(registry.resolve(previous) == nullptr);
+        CHECK(registry.resolve(current) == owner);
+        owner->~ShapeOwner();
+        CHECK(registry.resolve(current) == nullptr);
+        previous = current;
+    }
 }

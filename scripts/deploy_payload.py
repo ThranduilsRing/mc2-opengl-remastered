@@ -242,7 +242,7 @@ EDITOR_SUPPORT_TREES = ["tools/terrain_gen"]
 GAME_COOK_TOOLS = ["tools/cook_bc6h_hdri.py", "tools/examples"]
 # Tracked loose stock-art PBR maps (PNG albedo/normal/ORM per stock mech and vehicle); mods keep
 # their own art (File::open priority). Walked file-by-file.
-GAME_LOOSE_ART_TREES = ["data/textures/mech_pbr", "data/textures/vehicle_pbr"]
+GAME_LOOSE_ART_TREES = ["data/textures/mech_pbr", "data/textures/vehicle_pbr", "data/textures/256Overlays"]
 
 # Repo-shipped imported structure (TERRAIN-CLIFF-MESH-DRESSING-P0): data/tgl is enumerated
 # file-by-file, not copied wholesale, so these reach an install only through this list.
