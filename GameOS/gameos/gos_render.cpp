@@ -16,6 +16,7 @@
 #include "mc2fmt.h"
 #include "diagnostic_trace.h"
 #include "present_thread_wait.h"
+#include "present_thread.h"
 
 // FIXME: think how to make it better when different parts need window
 SDL_Window* g_sdl_window = nullptr;
