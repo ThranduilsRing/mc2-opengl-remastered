@@ -51,6 +51,7 @@ DeviceCaps gather(VkPhysicalDevice pd, uint32_t instanceApi) {
         c.subgroupOps = sg.supportedOperations;
         c.deviceLuidValid = id.deviceLUIDValid == VK_TRUE;
         for (size_t i = 0; i < sizeof(c.deviceLuid); ++i) c.deviceLuid[i] = id.deviceLUID[i];
+        for (size_t i = 0; i < sizeof(c.deviceUuid); ++i) c.deviceUuid[i] = id.deviceUUID[i];
     }
 
     uint32_t extCount = 0;

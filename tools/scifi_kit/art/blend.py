@@ -40,20 +40,9 @@ def reset():
         scene.view_settings.look = 'AgX - Medium High Contrast'
     except TypeError:
         pass
-    prefs = bpy.context.preferences.addons['cycles'].preferences
-    for backend in ['HIP', 'OPTIX', 'CUDA']:
-        try:
-            prefs.compute_device_type = backend
-            prefs.get_devices()
-            gpu = [d for d in prefs.devices if d.type == backend]
-            if gpu:
-                for d in prefs.devices:
-                    d.use = d.type == backend
-                scene.cycles.device = 'GPU'
-                print('[art] Cycles GPU', backend, [d.name for d in gpu], flush=True)
-                break
-        except (TypeError, RuntimeError):
-            continue
+    sys.path.insert(0, str(HERE.parents[1] / 'blender_pipeline'))
+    import blender_gpu
+    blender_gpu.apply(scene)   # second (non-display) GPU only; fails loud, never the display GPU
     return scene
 
 
