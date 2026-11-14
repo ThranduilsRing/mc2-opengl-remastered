@@ -9,6 +9,7 @@
 #include "mc2fmt.h"
 #include "Gates/render_options.h"
 #include "camera_elevation.h"
+#include "diagnostic_trace.h"
 
 extern bool useFog;
 
@@ -532,7 +533,7 @@ long Camera::update (void)
 				static FILE* s_camTraceFile = nullptr;
 				if (s_camTest < 0) {
 					s_camTest = mc2::gate::get<"MC2_CAM_SMOOTH_TEST">();
-					s_camTrace = false;
+					s_camTrace = mc2::gate::get<"MC2_TEST_SPAWN">() && mc2_diag::tagRequested("CAMERA_ELEVATION");
 				}
 				if (s_camTest) {
 					s_camTestFrame++;
@@ -548,16 +549,16 @@ long Camera::update (void)
 						(s_camTestFrame % 3) == 0)
 						rotateLeft(11.25f);
 				}
-				if (s_camTrace && (dPos > 0.0001f || dRot > 0.0001f || s_camTest)) {
+				if (s_camTrace) {
 					if (!s_camTraceFile)
 					{
 						s_camTraceFile = fopen("cam_smooth_trace.csv", "w");
 						if (s_camTraceFile)
-							mc2::fmt::print(s_camTraceFile, "frame,dt_ms,px,py,rot,alt,dpos,drot\n");
+							mc2::fmt::print(s_camTraceFile, "frame,dt_ms,px,py,rot,alt,dpos,drot,pitch,pitch_goal,alt_goal\n");
 					}
 					if (s_camTraceFile)
 					{
-						mc2::fmt::print(s_camTraceFile, "{:d},{:.3f},{:.2f},{:.2f},{:.3f},{:.2f},{:.4f},{:.4f}\n", mc2::fmt::as_u32(s_motionFrames), frameLength * 1000.0f, position.x, position.y, cameraRotation, cameraAltitude, dPos, dRot);
+						mc2::fmt::print(s_camTraceFile, "{:d},{:.3f},{:.2f},{:.2f},{:.3f},{:.4f},{:.4f},{:.4f},{:.6f},{:.6f},{:.4f}\n", mc2::fmt::as_u32(s_motionFrames), frameLength * 1000.0f, position.x, position.y, cameraRotation, cameraAltitude, dPos, dRot, projectionAngle, pitchGoal, cameraAltitudeDesired);
 						fflush(s_camTraceFile);
 					}
 				}

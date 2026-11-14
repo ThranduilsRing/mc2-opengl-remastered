@@ -140,6 +140,10 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 		} else if (!strcmp(what, "armoff")) {
 			if (!strcmp(arg, "left")) obj->getAppearance()->blowLeftArm(); else obj->getAppearance()->blowRightArm();
 			c.result = "ok";
+		} else if (obj->getObjectClass() == GROUNDVEHICLE && !strcmp(what, "destroy")) {
+			obj->getObjectType()->handleDestruction(obj, nullptr);
+			c.result = obj->isDestroyed() ? "ok" : "blocked";
+			c.note = "destroyed=" + std::to_string(obj->isDestroyed());
 		} else if (obj->getObjectClass() == BUILDING && (!strcmp(what, "team") || !strcmp(what, "destroy"))) {
 			// Exercise the production capture/destruction writers, including their dirty notification.
 			const bool before = mc2::terrainDirtyQueue().isRenderResident(obj->getHandle());
