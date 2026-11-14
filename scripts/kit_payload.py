@@ -21,6 +21,13 @@ IMPORT_ARGS = ["--no-ground", "--static-prop"]
 REF_DEFAULT = "E:/mc2-ref"
 
 
+def jobs_limit():
+    """Use the configured JOBS file, the PC default, or the Linux slot's limit."""
+    path = Path(os.environ.get("MC2_JOBS_FILE", "A:/Games/mc2-ops/JOBS"))
+    value = path.read_text() if "MC2_JOBS_FILE" in os.environ or path.is_file() else os.environ.get("JOBS", "1")
+    return max(1, int(value))
+
+
 def ref_path(path):
     """A manifest path under E:/mc2-ref, re-rooted at MC2_REF_ROOT when set (the laptop gate keeps its reference copy elsewhere)."""
     s = str(path).replace("\\", "/")
@@ -215,7 +222,7 @@ def reconcile_stock_textures(target_dir, inventory=None, jobs=1):
             return None
         return path, stamp, digest
 
-    with ThreadPoolExecutor(max_workers=max(1, min(jobs, int(Path("A:/Games/mc2-ops/JOBS").read_text())))) as pool:
+    with ThreadPoolExecutor(max_workers=max(1, min(jobs, jobs_limit()))) as pool:
         verified = [row for row in pool.map(reconcile, sorted(pins.items())) if row]
     missing = [row for row in verified if 'fnv:' + row[2] not in receipts.rows]
     if missing:
@@ -449,7 +456,7 @@ def build_importer(src_root):
     root = Path(src_root).resolve()
     tree = root / "build-cc-tgdump"
     cmake = find_cmake()
-    jobs = Path("A:/Games/mc2-ops/JOBS").read_text().strip()
+    jobs = str(jobs_limit())
     commands = []
     if not (tree / "build.ninja").is_file():
         # MC2_COMPILE_CACHE=0 is configure_ninja's opt-out (a host without the shared sccache: the laptop gate)
@@ -719,7 +726,7 @@ def finish(target_dir, manifest, tool, cooker=subprocess.run, *, kit_rel=KIT_REL
                 detached = path.with_name(path.name + '.detach')
                 shutil.copyfile(path, detached)
                 os.replace(detached, path)
-        jobs = max(1, int(Path("A:/Games/mc2-ops/JOBS").read_text()))
+        jobs = jobs_limit()
         with ThreadPoolExecutor(max_workers=jobs) as pool:
             rows.update(pool.map(cook_model, todo.items()))
         # The native recipe cache keeps only the newest model-*.mci by mtime and a write sweeps older entries, so a later

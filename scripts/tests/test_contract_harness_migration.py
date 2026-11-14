@@ -52,6 +52,22 @@ def test_slow_cases_only_join_the_nightly_default(monkeypatch, nightly):
     assert bool(excludes) == (not nightly)
 
 
+# Trigger: tools/build_contract_harnesses.py child environment and rc handling.
+@pytest.mark.parametrize("rc", [0, 78, 1])
+def test_unit_child_owns_mc2_environment(monkeypatch, rc):
+    monkeypatch.setenv("MC2_UNKNOWN_AMBIENT_OPTION", "1")
+    monkeypatch.setenv("MC2_CONFIG_STRICT", "1")
+    monkeypatch.setenv("MC2_ACTIVE_MOD", "owner-mod")
+    monkeypatch.setenv("mc2_lowercase_option", "1")
+    monkeypatch.setenv("PATH", "system-tools")
+    commands = record_runs(monkeypatch, [0, 0, rc])
+    assert builder.main(["--run", "--unit-only"]) == (0 if rc == 0 else 1)
+    child_env = commands[2][1]["env"]
+    assert not any(key.upper().startswith("MC2_") for key in child_env)
+    assert child_env["PATH"] == "system-tools"
+    assert builder.os.environ["MC2_CONFIG_STRICT"] == "1"
+
+
 @pytest.mark.parametrize("codes,expected_calls", [([1], 1), ([0, 1], 2), ([0, 0, 1], 3)])
 def test_native_failures_do_not_run_stale_binaries_or_python(monkeypatch, codes, expected_calls, production_seam):
     commands = record_runs(monkeypatch, codes)

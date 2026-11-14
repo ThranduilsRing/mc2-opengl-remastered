@@ -99,7 +99,7 @@ bool MissionInterfaceManager::moveCameraAround( bool lineOfSight, bool passable,
 		}
 		
 		int mouseYDelta = userInput->getMouseYDelta();
-		float actualTilt = rotationInc * 0.1f * abs(mouseYDelta);
+		float actualTilt = rotationInc * 0.025f * abs(mouseYDelta);
 		if (mouseYDelta > 0)
 		{
 			eye->tiltDown(actualTilt);

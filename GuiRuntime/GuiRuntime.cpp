@@ -490,6 +490,17 @@ void GuiRuntime::NewFrame() {
     }
 #endif
 
+    // The off-screen scripted player also drives defs UI, through the same ImGui hit testing.
+    float scriptX = 0.f, scriptY = 0.f;
+    if (input::scriptMouseNorm(&scriptX, &scriptY)) {
+        ImGuiIO& io = ImGui::GetIO();
+        io.AddMousePosEvent(scriptX * io.DisplaySize.x, scriptY * io.DisplaySize.y);
+        const auto* mouse = input::getMouseInfo();
+        for (int button = 0; button < 2; ++button) {
+            const auto state = mouse->button_state_[button == 0 ? 0 : 2];
+            io.AddMouseButtonEvent(button, state == input::KS_PRESSED || state == input::KS_HELD);
+        }
+    }
     ImGui::GetIO().MouseDrawCursor = false;
     ImGui::NewFrame();
     s_frameActive = true;

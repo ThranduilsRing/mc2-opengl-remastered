@@ -50,12 +50,19 @@ static bool postMechPreviewGpu( Camera& cam, Mech3DAppearance* mech, float vpX, 
                                 float groundX, float groundY, float groundH )
 {
 	static uint32_t s_lastFrame = 0xffffffffu;
+	static TG_InstanceId s_lastShape;
 	const uint32_t frame = g_mc2FrameCounter.load( std::memory_order_relaxed );
 	if ( frame == s_lastFrame || !mc2_vk_mech_preview_usable() )
 		return false;
-	// A gap in panel frames is a new lab visit: the batcher still holds the last mission's (freed) types.
-	const bool freshSession = s_lastFrame == 0xffffffffu || frame != s_lastFrame + 1;
+	// Selection releases the old type; its address can be reused while the panel keeps rendering.
+	// Shape generations distinguish replacements even when both type and instance addresses repeat.
+	const auto* shape = mech->previewShape();
+	if (!shape)
+		return false;
+	const auto shapeId = shape->stableId();
+	const bool freshSession = shapeId != s_lastShape || s_lastFrame == 0xffffffffu || frame != s_lastFrame + 1;
 	s_lastFrame = frame;
+	s_lastShape = shapeId;
 	if ( !mech->submitPreviewGpu( freshSession ) )
 		return false;	// batcher not finalized or no shape: the CPU mech draw stays on
 	GpuMechBatcher::instance().flush();

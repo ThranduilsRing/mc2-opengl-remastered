@@ -252,10 +252,13 @@ def test_kit_copy_rejects_unsafe_destinations(tmp_path, monkeypatch, problem):
         outside = tmp_path / "outside"
         target.mkdir()
         outside.mkdir()
-        # Windows junctions require no symlink privilege.
-        result = subprocess.run(["cmd", "/c", "mklink", "/J", str(target / "mods"), str(outside)],
-                                capture_output=True, **kit.console_child.child_kwargs(redirected=True))
-        assert result.returncode == 0
+        if sys.platform == "win32":
+            # Windows junctions require no symlink privilege.
+            result = subprocess.run(["cmd", "/c", "mklink", "/J", str(target / "mods"), str(outside)],
+                                    capture_output=True, **kit.console_child.child_kwargs(redirected=True))
+            assert result.returncode == 0
+        else:
+            (target / "mods").symlink_to(outside, target_is_directory=True)
         monkeypatch.setattr(dp, "ensure_terrain_materials", lambda *a: {})
         monkeypatch.setattr(dp, "ensure_engine_normal_cooks", lambda *a: None)
         with pytest.raises(ValueError, match="unsafe"):
@@ -391,6 +394,25 @@ def test_ref_root_reroots_only_the_reference_store(monkeypatch):
     assert kit.ref_path(r"E:\mc2-ref\packages\k") == "C:/mc2gate/ref/packages/k"
     assert kit.ref_path("E:/mc2-refx/k") == "E:/mc2-refx/k"
     assert kit.ref_path("D:/store/k") == "D:/store/k"
+
+
+@pytest.mark.parametrize("source", ["configured", "windows", "linux", "serial"])
+def test_jobs_limit_sources(tmp_path, monkeypatch, source):
+    monkeypatch.delenv("MC2_JOBS_FILE", raising=False)
+    monkeypatch.delenv("JOBS", raising=False)
+    config = tmp_path / "JOBS"
+    if source in ("configured", "windows"):
+        config.write_text("3\n")
+    if source == "configured":
+        monkeypatch.setenv("MC2_JOBS_FILE", str(config))
+    else:
+        def default_path(value):
+            assert value == "A:/Games/mc2-ops/JOBS"
+            return config
+        monkeypatch.setattr(kit, "Path", default_path)
+    if source == "linux":
+        monkeypatch.setenv("JOBS", "2")
+    assert kit.jobs_limit() == dict(configured=3, windows=3, linux=2, serial=1)[source]
 
 
 def test_cook_cache_root_follows_the_gate_e_root(monkeypatch):

@@ -1325,6 +1325,8 @@ bool ensureEngineVulkanContext() {
     return engineContext().init(/*wantPresent=*/false);
 }
 
+size_t deferredDestroyDepth() { return getOrCreateEngineVulkanContext().deferred().size(); }
+
 }  // namespace mc2vk
 
 #endif  // MC2_VULKAN

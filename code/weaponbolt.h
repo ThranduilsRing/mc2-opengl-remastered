@@ -339,7 +339,7 @@ class WeaponBolt : public GameObject
 		void setTarget (GameObjectPtr who);
 		void setTargetPosition (glm::vec3 pos);
 
-		void connect (GameObjectPtr source, GameObjectPtr dest, WeaponShotInfo* shotInfo = nullptr, long sourceHS = 0, long targetHS = 0)
+		void connect (GameObjectPtr source, GameObjectPtr dest, WeaponShotInfo* shotInfo = nullptr, long sourceHS = 0, long targetHS = 0, bool expandSalvo = true)
 		{
 			ownerWID = source->getWatchID();
 			targetWID = dest->getWatchID();
@@ -370,8 +370,11 @@ class WeaponBolt : public GameObject
 				glm::vec3 targetLoc;
 				targetLoc = ObjectManager->getByWatchID(targetWID)->getPosition();
 				setTargetPosition(targetLoc);
-				targetWID = 0;
+				if (weaponShot.masterId < 0 || MasterComponent::masterList[weaponShot.masterId].getForm() != COMPONENT_FORM_WEAPON_MISSILE)
+					targetWID = 0;
 			}
+
+			if (expandSalvo) splitSalvo(source, dest, sourceHS, targetHS);
 
 			//Reset Node recycle time to either BASE or beam duration.
 			GameObjectPtr myOwner = ObjectManager->getByWatchID(ownerWID);
@@ -381,7 +384,7 @@ class WeaponBolt : public GameObject
 				myOwner->appearance->setWeaponNodeRecycle(sourceHS,BASE_NODE_RECYCLE_TIME);
 		}
 		
-		void connect (GameObjectPtr source, glm::vec3 targetLoc, WeaponShotInfo* shotInfo = nullptr, long sourceHS = 0)
+		void connect (GameObjectPtr source, glm::vec3 targetLoc, WeaponShotInfo* shotInfo = nullptr, long sourceHS = 0, bool expandSalvo = true)
 		{
 			ownerWID = source->getWatchID();
 			targetWID = 0;
@@ -392,6 +395,7 @@ class WeaponBolt : public GameObject
 			
 			if (shotInfo)
 				weaponShot = *shotInfo;
+			if (expandSalvo) splitSalvo(source, nullptr, sourceHS, 0);
 				
 			//Reset Node recycle time to either BASE or beam duration.
 			GameObjectPtr myOwner = ObjectManager->getByWatchID(ownerWID);
@@ -400,6 +404,8 @@ class WeaponBolt : public GameObject
 			else
 				myOwner->appearance->setWeaponNodeRecycle(sourceHS,BASE_NODE_RECYCLE_TIME);
 		}
+
+		void splitSalvo(GameObjectPtr source, GameObjectPtr dest, long sourceHS, long targetHS);
 
 		// fireWeapon calls after connect() resets the flag, only for gated successful aimed hits.
 		void setAimedTarget (GameObjectWatchID tgtWID)

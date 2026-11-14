@@ -17,5 +17,10 @@ if [ ! -s "$T/lib/libVkLayer_khronos_validation.so" ] || [ ! -s "$T/explicit_lay
         "$D"/*/x86_64/share/vulkan/explicit_layer.d/VkLayer_khronos_validation.json > "$T/explicit_layer.d/VkLayer_khronos_validation.json"
     cp "$D"/*/x86_64/lib/libVkLayer_khronos_validation.so "$T/lib/"
 fi
+# remote_setup.sh calls this installer: register the SDK ahead of the apt layer
+# even for non-login SSH commands, which never source /etc/profile.d.
+install -d /etc/vulkan/explicit_layer.d
+install -m 644 "$T/explicit_layer.d/VkLayer_khronos_validation.json" /etc/vulkan/explicit_layer.d/VkLayer_khronos_validation.json
+sha256sum "$T/lib/libVkLayer_khronos_validation.so"
 grep -n 'library_path\|api_version' "$T/explicit_layer.d/VkLayer_khronos_validation.json"
 ldd "$T/lib/libVkLayer_khronos_validation.so"
