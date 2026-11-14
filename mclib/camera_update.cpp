@@ -524,8 +524,8 @@ long Camera::update (void)
 			//     11.25-deg snap at frame 150 (mimics the keyboard/edge
 			//     scroll + rotation input path), then input stops. Proves
 			//     ramp-in/tail-out in the delta log without a human.
-			//   MC2_CAMERA_SMOOTH_TRACE=1 â€” appends per-frame pose deltas to
-			//     cam_smooth_trace.csv in the working dir while motion > 0.
+			//   MC2_TEST_SPAWN=1 + MC2_DIAG_TAGS=CAMERA_ELEVATION appends
+			//     every frame's pose and elevation goals to cam_smooth_trace.csv.
 			{
 				static int s_camTest = -1;
 				static int s_camTrace = -1;
