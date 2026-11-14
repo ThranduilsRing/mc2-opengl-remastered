@@ -3,6 +3,26 @@
 #include <array>
 #include <optional>
 
+TEST_CASE("prop_record_cache: count changes preserve ordered packet topology") {
+    struct Instance { uint32_t typeID; };
+    std::array<Instance, 4> data{{{1}, {1}, {4}, {4}}};
+    PropTypeGeneration types;
+    auto feed = std::span<const Instance>(data);
+    types.update(feed);
+    const auto topology = types.topology;
+    types.update(feed.first(3)); // destroy one actor, both types remain
+    CHECK(types.topology == topology);
+    types.update(feed); // add actor of existing type
+    CHECK(types.topology == topology);
+    types.update(feed.first(2)); // remove last actor of a type
+    CHECK(types.topology == topology + 1);
+    types.update(feed); // restore type
+    CHECK(types.topology == topology + 2);
+    data[0].typeID = 4; // reorder runs
+    types.update(feed);
+    CHECK(types.topology == topology + 3);
+}
+
 TEST_CASE("prop_record_cache: lighting and animation do not rebuild type runs") {
     struct Instance { uint32_t typeID, light, transform; };
     std::array<Instance, 3> data{{{1, 0, 0}, {1, 0, 0}, {4, 0, 0}}};

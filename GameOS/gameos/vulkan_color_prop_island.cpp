@@ -303,6 +303,7 @@ struct ColorPropIsland : mc2vk::IslandState {
     uint64_t materialGeneration = 0, resourceGeneration = 0;
     PropRecordCacheKey recordKey{};
     std::optional<PropRecordCacheKey> recorded;
+    uint64_t recordedTopology = 0;
     uint32_t listStart[kListCount + 1]{}, listCounts[kListCount]{};
     unsigned long cachedTypeRuns = 0;
     uint64_t cachedLeaves = 0;
@@ -1757,6 +1758,12 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std
     auto& listStart = s->listStart;
     auto& counts = s->listCounts;
     if (s->recorded != s->recordKey) {
+    if (s->recorded && s->recorded->material != s->recordKey.material) { ZoneScopedN("Props.Metadata.MaterialChanged"); }
+    if (s->recorded && s->recorded->resource != s->recordKey.resource) { ZoneScopedN("Props.Metadata.ResourceChanged"); }
+    if (s->recorded && s->recorded->scene != s->recordKey.scene) {
+        if (s->recordedTopology == s->typeSource.topology) { ZoneScopedN("Props.Metadata.CountsChanged"); }
+        else { ZoneScopedN("Props.Metadata.TypesChanged"); }
+    }
     ZoneScopedN("VKIsl.Props.BuildMetadata");
     for (auto& v : s->cmdScratch) v.clear();
     for (auto& v : s->pktScratch) v.clear();
@@ -1863,6 +1870,7 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std
     s->cachedTypeRuns = typeRuns;
     s->cachedLeaves = nativeLeaves;
     s->recorded = s->recordKey;
+    s->recordedTopology = s->typeSource.topology;
     }
     const uint32_t cmdTotal = listStart[kListCount];
     s->lateStart = listStart[kListLate];
