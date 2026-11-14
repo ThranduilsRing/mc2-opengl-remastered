@@ -321,6 +321,28 @@ def test_deploy_and_capture_share_exact_payload_ownership(work):
         ap.capture_drift(install, ref)
 
 
+@pytest.mark.parametrize("state", ["missing", "content"])
+def test_declared_cliff_cooks_sync_only_from_pinned_reference(work, state):
+    # Trigger paths: scripts/asset_parity.py, intentional-asset-changes.json.
+    rels = [f"data/terrain_layers/{name}.ktx2" for name in
+            ("cliff_rock_ah", "cliff_rock_nra", "concrete_detail_pad", "concrete_detail_road")]
+    pins = json.loads((ROOT / ap.INTENTIONAL).read_text())
+    assert all(rel in pins for rel in rels)
+    files = dict.fromkeys(rels, b"published cook")
+    ref = tree(work / "reference", files)
+    install = tree(work / "candidate", {} if state == "missing" else dict.fromkeys(rels, b"incorrect cook"))
+    hashes = {rel: hashlib.sha256(data).hexdigest() for rel, data in files.items()}
+    with pytest.raises(ValueError, match="INTENTIONAL ASSET hash mismatch"):
+        ap.enforce(install, ref, sync_missing=False, payload={}, declared=hashes)
+    assert ap.enforce(install, ref, payload={}, declared=hashes).ok
+    assert ap.compare(install, ref, payload={}, declared=hashes).ok
+    (install / rels[0]).unlink()
+    (ref / rels[0]).write_bytes(b"unpublished cook")
+    with pytest.raises(ValueError, match="reference hash mismatch"):
+        ap.enforce(install, ref, payload={}, declared=hashes)
+    assert not (install / rels[0]).exists()
+
+
 @pytest.fixture
 def declaration_repo(work, monkeypatch):
     import subprocess
