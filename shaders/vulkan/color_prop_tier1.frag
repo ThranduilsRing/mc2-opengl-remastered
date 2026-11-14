@@ -290,8 +290,10 @@ void main() {
         vec3 skyNormal = normalize(outputNormalStuff);
         vec2 sunAxis = vec2(-L.x, L.y), probeAxis = vec2(sh[3].r, sh[2].r);
         if (dot(sunAxis,sunAxis) > 1e-8 && dot(probeAxis,probeAxis) > 1e-8) {
-            float angle = atan(sunAxis.y,sunAxis.x) - atan(probeAxis.y,probeAxis.x);
-            float c = cos(angle), s = sin(angle);
+            // Relative unit axes give the same rotation without per-fragment trigonometry.
+            float invLengths = inversesqrt(dot(sunAxis,sunAxis) * dot(probeAxis,probeAxis));
+            float c = dot(sunAxis,probeAxis) * invLengths;
+            float s = (sunAxis.y*probeAxis.x - sunAxis.x*probeAxis.y) * invLengths;
             skyNormal.xz = mat2(c,-s,s,c) * skyNormal.xz;
         }
         vec3 ambient = uFrame.iblShStrength > 0.0 ? evalShL2(skyNormal,sh)*uFrame.iblShStrength : vec3(0);
