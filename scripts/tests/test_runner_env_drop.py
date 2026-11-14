@@ -75,6 +75,7 @@ def test_command_replay_uses_native_executable(monkeypatch, tmp_path, platform, 
     replay = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(replay)
     monkeypatch.setattr(sys, "platform", platform)
+    monkeypatch.setattr(replay.console_child, "child_kwargs", lambda **kw: {})
     calls = []
     monkeypatch.setattr(replay.subprocess, "run", lambda command, **kw:
                         calls.append(command) or SimpleNamespace(stdout="", stderr="", returncode=1))
