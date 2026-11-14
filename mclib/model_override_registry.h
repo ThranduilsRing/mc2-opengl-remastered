@@ -17,6 +17,7 @@
 // Authored material inputs for one slot. Base colour stays the GLB's texture (stock or authored).
 struct ModelOverrideMaterial {
     uint32_t slot = 0;
+    bool doubleSided = false;
     uint32_t materialClass = 0;   // RenderCore::SurfaceClass
     uint32_t alphaMode = 0;       // RenderCore::SurfaceAlpha (Stock keeps the stock coverage policy)
     float alphaCutoff = 0.5f;
