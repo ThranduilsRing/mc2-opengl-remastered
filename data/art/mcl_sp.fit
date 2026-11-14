@@ -8,7 +8,7 @@ FITini
 
 
 [AnimObjects]
-l Count = 44
+l Count = 36
 
 [AnimObject0]
 l XLocation = 0
@@ -17,9 +17,9 @@ l Width = 256
 l Height = 256
 l UNormal = 0
 l VNormal = 0
-l UWidth = 512
-l VHeight = 512
-st FileName = "mcl_menu_jwst_r0c0.tga"
+l UWidth = 384
+l VHeight = 384
+st FileName = "mcl_menu_stars_r0c0.tga"
 l Color = 0xffffffff
 st Animation = "A0"
 b Alpha = TRUE
@@ -51,9 +51,9 @@ l Width = 256
 l Height = 256
 l UNormal = 0
 l VNormal = 0
-l UWidth = 512
-l VHeight = 512
-st FileName = "mcl_menu_jwst_r0c1.tga"
+l UWidth = 384
+l VHeight = 384
+st FileName = "mcl_menu_stars_r0c1.tga"
 l Color = 0xffffffff
 st Animation = "A1"
 b Alpha = TRUE
@@ -85,9 +85,9 @@ l Width = 256
 l Height = 256
 l UNormal = 0
 l VNormal = 0
-l UWidth = 512
-l VHeight = 512
-st FileName = "mcl_menu_jwst_r0c2.tga"
+l UWidth = 384
+l VHeight = 384
+st FileName = "mcl_menu_stars_r0c2.tga"
 l Color = 0xffffffff
 st Animation = "A2"
 b Alpha = TRUE
@@ -119,9 +119,9 @@ l Width = 256
 l Height = 256
 l UNormal = 0
 l VNormal = 0
-l UWidth = 512
-l VHeight = 512
-st FileName = "mcl_menu_jwst_r0c3.tga"
+l UWidth = 384
+l VHeight = 384
+st FileName = "mcl_menu_stars_r0c3.tga"
 l Color = 0xffffffff
 st Animation = "A3"
 b Alpha = TRUE
@@ -153,9 +153,9 @@ l Width = 256
 l Height = 256
 l UNormal = 0
 l VNormal = 0
-l UWidth = 512
-l VHeight = 512
-st FileName = "mcl_menu_jwst_r1c0.tga"
+l UWidth = 384
+l VHeight = 384
+st FileName = "mcl_menu_stars_r1c0.tga"
 l Color = 0xffffffff
 st Animation = "A4"
 b Alpha = TRUE
@@ -187,9 +187,9 @@ l Width = 256
 l Height = 256
 l UNormal = 0
 l VNormal = 0
-l UWidth = 512
-l VHeight = 512
-st FileName = "mcl_menu_jwst_r1c1.tga"
+l UWidth = 384
+l VHeight = 384
+st FileName = "mcl_menu_stars_r1c1.tga"
 l Color = 0xffffffff
 st Animation = "A5"
 b Alpha = TRUE
@@ -221,9 +221,9 @@ l Width = 256
 l Height = 256
 l UNormal = 0
 l VNormal = 0
-l UWidth = 512
-l VHeight = 512
-st FileName = "mcl_menu_jwst_r1c2.tga"
+l UWidth = 384
+l VHeight = 384
+st FileName = "mcl_menu_stars_r1c2.tga"
 l Color = 0xffffffff
 st Animation = "A6"
 b Alpha = TRUE
@@ -255,9 +255,9 @@ l Width = 256
 l Height = 256
 l UNormal = 0
 l VNormal = 0
-l UWidth = 512
-l VHeight = 512
-st FileName = "mcl_menu_jwst_r1c3.tga"
+l UWidth = 384
+l VHeight = 384
+st FileName = "mcl_menu_stars_r1c3.tga"
 l Color = 0xffffffff
 st Animation = "A7"
 b Alpha = TRUE
@@ -289,9 +289,9 @@ l Width = 256
 l Height = 256
 l UNormal = 0
 l VNormal = 0
-l UWidth = 512
-l VHeight = 512
-st FileName = "mcl_menu_jwst_r2c0.tga"
+l UWidth = 384
+l VHeight = 384
+st FileName = "mcl_menu_stars_r2c0.tga"
 l Color = 0xffffffff
 st Animation = "A8"
 b Alpha = TRUE
@@ -323,9 +323,9 @@ l Width = 256
 l Height = 256
 l UNormal = 0
 l VNormal = 0
-l UWidth = 512
-l VHeight = 512
-st FileName = "mcl_menu_jwst_r2c1.tga"
+l UWidth = 384
+l VHeight = 384
+st FileName = "mcl_menu_stars_r2c1.tga"
 l Color = 0xffffffff
 st Animation = "A9"
 b Alpha = TRUE
@@ -357,9 +357,9 @@ l Width = 256
 l Height = 256
 l UNormal = 0
 l VNormal = 0
-l UWidth = 512
-l VHeight = 512
-st FileName = "mcl_menu_jwst_r2c2.tga"
+l UWidth = 384
+l VHeight = 384
+st FileName = "mcl_menu_stars_r2c2.tga"
 l Color = 0xffffffff
 st Animation = "A10"
 b Alpha = TRUE
@@ -391,9 +391,9 @@ l Width = 256
 l Height = 256
 l UNormal = 0
 l VNormal = 0
-l UWidth = 512
-l VHeight = 512
-st FileName = "mcl_menu_jwst_r2c3.tga"
+l UWidth = 384
+l VHeight = 384
+st FileName = "mcl_menu_stars_r2c3.tga"
 l Color = 0xffffffff
 st Animation = "A11"
 b Alpha = TRUE
@@ -658,278 +658,6 @@ l Color0 = 0xffffffff
 l XLocation = 0
 l YLocation = 0
 l Width = 256
-l Height = 256
-l UNormal = 0
-l VNormal = 0
-l UWidth = 1024
-l VHeight = 1024
-st FileName = "mcl_menu_cloud_r0c0.tga"
-l Color = 0xffffffff
-st Animation = "A21"
-b Alpha = TRUE
-
-[A21]
-b AnimationLoops = TRUE
-l AnimationTimeStamps= 3
-
-f Time0 = 0.0
-l Pos0X = 0
-l Pos0Y = 276
-l Color0 = 0xffffffff
-
-f Time1 = 60.0
-l Pos1X = 14
-l Pos1Y = 276
-l Color1 = 0xffffffff
-
-f Time2 = 120.0
-l Pos2X = 0
-l Pos2Y = 276
-l Color2 = 0xffffffff
-
-
-[AnimObject22]
-l XLocation = 0
-l YLocation = 0
-l Width = 256
-l Height = 256
-l UNormal = 0
-l VNormal = 0
-l UWidth = 1024
-l VHeight = 1024
-st FileName = "mcl_menu_cloud_r0c1.tga"
-l Color = 0xffffffff
-st Animation = "A22"
-b Alpha = TRUE
-
-[A22]
-b AnimationLoops = TRUE
-l AnimationTimeStamps= 3
-
-f Time0 = 0.0
-l Pos0X = 256
-l Pos0Y = 276
-l Color0 = 0xffffffff
-
-f Time1 = 60.0
-l Pos1X = 270
-l Pos1Y = 276
-l Color1 = 0xffffffff
-
-f Time2 = 120.0
-l Pos2X = 256
-l Pos2Y = 276
-l Color2 = 0xffffffff
-
-
-[AnimObject23]
-l XLocation = 0
-l YLocation = 0
-l Width = 256
-l Height = 256
-l UNormal = 0
-l VNormal = 0
-l UWidth = 1024
-l VHeight = 1024
-st FileName = "mcl_menu_cloud_r0c2.tga"
-l Color = 0xffffffff
-st Animation = "A23"
-b Alpha = TRUE
-
-[A23]
-b AnimationLoops = TRUE
-l AnimationTimeStamps= 3
-
-f Time0 = 0.0
-l Pos0X = 512
-l Pos0Y = 276
-l Color0 = 0xffffffff
-
-f Time1 = 60.0
-l Pos1X = 526
-l Pos1Y = 276
-l Color1 = 0xffffffff
-
-f Time2 = 120.0
-l Pos2X = 512
-l Pos2Y = 276
-l Color2 = 0xffffffff
-
-
-[AnimObject24]
-l XLocation = 0
-l YLocation = 0
-l Width = 32
-l Height = 256
-l UNormal = 0
-l VNormal = 0
-l UWidth = 128
-l VHeight = 1024
-st FileName = "mcl_menu_cloud_r0c3.tga"
-l Color = 0xffffffff
-st Animation = "A24"
-b Alpha = TRUE
-
-[A24]
-b AnimationLoops = TRUE
-l AnimationTimeStamps= 3
-
-f Time0 = 0.0
-l Pos0X = 768
-l Pos0Y = 276
-l Color0 = 0xffffffff
-
-f Time1 = 60.0
-l Pos1X = 782
-l Pos1Y = 276
-l Color1 = 0xffffffff
-
-f Time2 = 120.0
-l Pos2X = 768
-l Pos2Y = 276
-l Color2 = 0xffffffff
-
-
-[AnimObject25]
-l XLocation = 0
-l YLocation = 0
-l Width = 256
-l Height = 68
-l UNormal = 0
-l VNormal = 0
-l UWidth = 1024
-l VHeight = 272
-st FileName = "mcl_menu_cloud_r1c0.tga"
-l Color = 0xffffffff
-st Animation = "A25"
-b Alpha = TRUE
-
-[A25]
-b AnimationLoops = TRUE
-l AnimationTimeStamps= 3
-
-f Time0 = 0.0
-l Pos0X = 0
-l Pos0Y = 532
-l Color0 = 0xffffffff
-
-f Time1 = 60.0
-l Pos1X = 14
-l Pos1Y = 532
-l Color1 = 0xffffffff
-
-f Time2 = 120.0
-l Pos2X = 0
-l Pos2Y = 532
-l Color2 = 0xffffffff
-
-
-[AnimObject26]
-l XLocation = 0
-l YLocation = 0
-l Width = 256
-l Height = 68
-l UNormal = 0
-l VNormal = 0
-l UWidth = 1024
-l VHeight = 272
-st FileName = "mcl_menu_cloud_r1c1.tga"
-l Color = 0xffffffff
-st Animation = "A26"
-b Alpha = TRUE
-
-[A26]
-b AnimationLoops = TRUE
-l AnimationTimeStamps= 3
-
-f Time0 = 0.0
-l Pos0X = 256
-l Pos0Y = 532
-l Color0 = 0xffffffff
-
-f Time1 = 60.0
-l Pos1X = 270
-l Pos1Y = 532
-l Color1 = 0xffffffff
-
-f Time2 = 120.0
-l Pos2X = 256
-l Pos2Y = 532
-l Color2 = 0xffffffff
-
-
-[AnimObject27]
-l XLocation = 0
-l YLocation = 0
-l Width = 256
-l Height = 68
-l UNormal = 0
-l VNormal = 0
-l UWidth = 1024
-l VHeight = 272
-st FileName = "mcl_menu_cloud_r1c2.tga"
-l Color = 0xffffffff
-st Animation = "A27"
-b Alpha = TRUE
-
-[A27]
-b AnimationLoops = TRUE
-l AnimationTimeStamps= 3
-
-f Time0 = 0.0
-l Pos0X = 512
-l Pos0Y = 532
-l Color0 = 0xffffffff
-
-f Time1 = 60.0
-l Pos1X = 526
-l Pos1Y = 532
-l Color1 = 0xffffffff
-
-f Time2 = 120.0
-l Pos2X = 512
-l Pos2Y = 532
-l Color2 = 0xffffffff
-
-
-[AnimObject28]
-l XLocation = 0
-l YLocation = 0
-l Width = 32
-l Height = 68
-l UNormal = 0
-l VNormal = 0
-l UWidth = 128
-l VHeight = 272
-st FileName = "mcl_menu_cloud_r1c3.tga"
-l Color = 0xffffffff
-st Animation = "A28"
-b Alpha = TRUE
-
-[A28]
-b AnimationLoops = TRUE
-l AnimationTimeStamps= 3
-
-f Time0 = 0.0
-l Pos0X = 768
-l Pos0Y = 532
-l Color0 = 0xffffffff
-
-f Time1 = 60.0
-l Pos1X = 782
-l Pos1Y = 532
-l Color1 = 0xffffffff
-
-f Time2 = 120.0
-l Pos2X = 768
-l Pos2Y = 532
-l Color2 = 0xffffffff
-
-
-[AnimObject29]
-l XLocation = 0
-l YLocation = 0
-l Width = 256
 l Height = 37
 l UNormal = 0
 l VNormal = 0
@@ -950,7 +678,7 @@ l Pos0Y = 0
 l Color0 = 0xffffffff 
 
 
-[AnimObject30]
+[AnimObject22]
 l XLocation = 0
 l YLocation = 0
 l Width = 256
@@ -977,7 +705,7 @@ l Color0 = 0xffffffff
 
 
 
-[AnimObject31]
+[AnimObject23]
 l XLocation = 0
 l YLocation = 0
 l Width = 256
@@ -1005,7 +733,7 @@ l Color0 = 0xffffffff
 
   
   
-[AnimObject32]
+[AnimObject24]
 l XLocation = 0
 l YLocation = 0
 l Width = 32
@@ -1032,7 +760,7 @@ l Color0 = 0xffffffff
 
 
   
-[AnimObject33]
+[AnimObject25]
 l XLocation = 0
 l YLocation = 0
 l Width = 37
@@ -1058,7 +786,7 @@ l Color0 = 0xffffffff
 
 
   
-[AnimObject34]
+[AnimObject26]
 l XLocation = 0
 l YLocation = 0
 l Width = 38
@@ -1085,7 +813,7 @@ l Color0 = 0xffffffff
 
 
   
-[AnimObject35]
+[AnimObject27]
 l XLocation = 0
 l YLocation = 0
 l Width = 37
@@ -1113,7 +841,7 @@ l Color0 = 0xffffffff
 
 
 
-[AnimObject36]
+[AnimObject28]
 l XLocation = 0
 l YLocation = 0
 l Width = 38
@@ -1138,7 +866,7 @@ l Color0 = 0xffffffff
 
 
 
-[AnimObject37]
+[AnimObject29]
 l XLocation = 0
 l YLocation = 0
 l Width = 37
@@ -1162,7 +890,7 @@ l Pos0Y = 549
 l Color0 = 0xffffffff 
 
 
-[AnimObject38]
+[AnimObject30]
 l XLocation = 0
 l YLocation = 0
 l Width = 38
@@ -1187,7 +915,7 @@ l Color0 = 0xffffffff
 
 
 
-[AnimObject39]
+[AnimObject31]
 l XLocation = 0
 l YLocation = 0
 l Width = 256
@@ -1211,7 +939,7 @@ l Pos0Y = 561
 l Color0 = 0xffffffff 
 
 
-[AnimObject40]
+[AnimObject32]
 l XLocation = 0
 l YLocation = 0
 l Width = 256
@@ -1236,7 +964,7 @@ l Color0 = 0xffffffff
 
 
 
-[AnimObject41]
+[AnimObject33]
 l XLocation = 0
 l YLocation = 0
 l Width = 256
@@ -1260,7 +988,7 @@ l Pos0Y = 561
 l Color0 = 0xffffffff 
 
 
-[AnimObject42]
+[AnimObject34]
 l XLocation = 0
 l YLocation = 0
 l Width = 32
@@ -1286,7 +1014,7 @@ l Color0 = 0xffffffff
 
 
 
-[AnimObject43] // rect at very top of screen
+[AnimObject35] // rect at very top of screen
 l XLocation = 0
 l YLocation = 0
 l Width = 800
@@ -1305,7 +1033,7 @@ l Color0 = 0xff000000
 
 
 
-[AnimObject44] // TEXT
+[AnimObject36] // TEXT
 // indicia	
 l XLocation = 0
 l YLocation = 0
