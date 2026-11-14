@@ -253,7 +253,8 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 	// uploads the immutable VBO/IBO. submitMultiShape() fast-rejects until this fires.
 	// Watch editor-startup.log for:
 	//   "[GPUPROPS] finalize: N types, M packets"   -- N > 0 required
-	EditorBridge::finalizeMissionGeometry();                   // steps 11-13 — game lines 3136-3143
+	EditorBridge::finalizeMissionGeometry();
+	GameAdapters::Vegetation::missionLoaded(land, nullptr);   // biome view: scatter grass/ground patches as in game                   // steps 11-13 — game lines 3136-3143
 	EditorDataTrace("EditorData::initTerrainFromPCV: GPU batchers finalized + indirect buffer built");
 
 	{
@@ -1405,6 +1406,7 @@ bool EditorData::initTerrainFromTGA( int mapSize, int min, int max, int terrain 
 	EditorObjectMgr::instance()->registerStaticPropsForMissionLoad();
 	EditorObjectMgr::instance()->primeAllBuildingAppearanceTypes();
 	EditorBridge::finalizeMissionGeometry();
+	GameAdapters::Vegetation::missionLoaded(land, nullptr);   // biome view: scatter grass/ground patches as in game
 
 	EditorDataWarmTerrain("initTerrainFromTGA");
 
