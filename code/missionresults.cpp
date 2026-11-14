@@ -290,7 +290,7 @@ void MissionResults::render()
 			static const void* s_promoteSeen = nullptr;
 			static int s_promoteShots = 0;
 			if ( s_promoteSeen != pPilotScreen.get() ) { s_promoteSeen = pPilotScreen.get(); s_promoteFrames = 0; }
-			if ( s_shotResults && s_promoteFrames >= 0 && ++s_promoteFrames == 240 )  // the panel slides in over the salvage exit; 30 frames caught it mid-slide
+			if ( s_shotResults && s_promoteFrames >= 0 && ++s_promoteFrames == 30 )
 			{
 				gos_dev_shell::scheduleScreenshot( ("results_promote_" + std::to_string( ++s_promoteShots )).c_str() );
 				s_promoteFrames = -1;
