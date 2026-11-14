@@ -73,7 +73,7 @@ struct State {
     StatRow         statRows[kMaxStats * 4];
     uint32_t        statRowCount = 0;
     uint32_t        poseSkip = 0;    // reads still to discard after poseBegin (they belong to the previous pose)
-    const char*     poseName = nullptr;
+    std::string     poseName;
     uint32_t        statUsed = 0;    // stat queries of the slot readSlot just read (the caller resets them)
     // frameEnd's query-reset / Tracy-collect submit: one persistent pool, a command buffer per ring slot, each reused once its last submit completed
     // (a pool created and destroyed per frame cost ~3 ms while Tracy was connected).
@@ -170,7 +170,7 @@ void flushWindow(uint64_t frame) {
     }
     output += '\n';
     mc2::fmt::print_err("[VK_GPU_PASSES v1] pose={} frame={} n={} span_ms={:.3f} sum_ms={:.3f} unattributed_ms={:.3f} scopes={} dropped={} overflow={} |{}",
-        g.poseName ? g.poseName : "-", frame, g.windowFrames, g.spanSumMs / n, g.sumSumMs / n, (g.spanSumMs - g.sumSumMs) / n,
+        (g.poseName.empty() ? "-" : g.poseName.c_str()), frame, g.windowFrames, g.spanSumMs / n, g.sumSumMs / n, (g.spanSumMs - g.sumSumMs) / n,
         g.rowCount, g.windowDropped, g.windowOverflow, output);
     if (const uint64_t res = reflectRes.load(std::memory_order_relaxed); res != 0 && !reflectCostDone.load(std::memory_order_relaxed)) {
         for (uint32_t i = 0; i < g.rowCount; ++i) {
@@ -192,7 +192,7 @@ void flushWindow(uint64_t frame) {
             std::snprintf(values, sizeof values, " %s=ia:%.0f/clip:%.0f/fs:%.0f(x%u)", r.name, r.sum[0] / r.frames, r.sum[1] / r.frames, r.sum[2] / r.frames, r.frames);
             tris += values;
         }
-        if (!tris.empty()) mc2::fmt::print_err("[VK_GPU_TRIS v1] pose={} frame={} n={} |{}\n", g.poseName ? g.poseName : "-", frame, g.windowFrames, tris);
+        if (!tris.empty()) mc2::fmt::print_err("[VK_GPU_TRIS v1] pose={} frame={} n={} |{}\n", (g.poseName.empty() ? "-" : g.poseName.c_str()), frame, g.windowFrames, tris);
     }
     for (uint32_t i = 0; i < g.statRowCount; ++i) { g.statRows[i].sum[0] = g.statRows[i].sum[1] = g.statRows[i].sum[2] = 0; g.statRows[i].frames = 0; }
     for (uint32_t i = 0; i < g.rowCount; ++i) { g.rows[i].sumMs = 0; g.rows[i].calls = 0; g.rows[i].frames = 0; }
@@ -335,11 +335,11 @@ void poseBegin() {
     g.windowFrames = g.windowDropped = g.windowOverflow = 0;
     g.poseSkip = kReadLag + 1;
 }
-void poseEnd(const char* name) {
+void poseEnd(std::string_view name) {
     if (!g.timers || g.windowFrames == 0) return;
     g.poseName = name;
     flushWindow(g.frame.load(std::memory_order_relaxed));
-    g.poseName = nullptr;
+    g.poseName.clear();
 }
 
 uint32_t snapshot(PassStat* out, uint32_t maxRows, float* spanMs) {

@@ -1325,13 +1325,13 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         gp.pNext = &t1Rendering;
         gp.layout = s->playout.get(); gp.renderPass = VK_NULL_HANDLE; gp.subpass = 0;
         // opaque = FS discards compiled out (kOpaqueOnly) so early Z runs; dbl = cull none + back-face lighting (kTwoSided).
-        auto makePipe = [&](mc2vk::OwnedPipeline& dst, const char* name, bool opaque, bool dbl) {
+        auto makePipe = [&](mc2vk::OwnedPipeline& dst, std::string_view name, bool opaque, bool dbl) {
             rs.cullMode = dbl ? VK_CULL_MODE_NONE : VK_CULL_MODE_BACK_BIT;
             specData[2] = opaque ? 1 : 0; specData[3] = dbl ? 1 : 0;
             if (!mc2vk::create(dst, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
-                vlog("TIER-1 %s vkCreateGraphicsPipelines failed.", name); setFallback("tier1_pipeline_failed"); return false;
+                vlog("TIER-1 %s vkCreateGraphicsPipelines failed.", name.data()); setFallback("tier1_pipeline_failed"); return false;
             }
-            mc2vk::nameObject(s->device, dst.get(), name);
+            mc2vk::nameObject(s->device, dst.get(), name.data());
             return true;
         };
         if (!makePipe(s->t1_pipe, "colorprop.tier1Pipe", false, false) || !makePipe(s->t1_dblPipe, "colorprop.tier1DblPipe", false, true) ||
