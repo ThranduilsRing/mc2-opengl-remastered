@@ -25,6 +25,7 @@ void gos_GetTerrainChunkGridInfo(int* mapSide, float* halfMap);
 
 const float* gos_GetObjectFixBMVPMat4();
 int gos_GetWaterReflectionQuality();
+int gos_GetWaterFsDebugMode();
 
 bool vk_water_detail::record_reflection(WaterIsland* s, VkCommandBuffer cb, bool enabled, uint32_t par, const uint32_t (&offsets)[2]) {
     auto barrier=[&](VkImage image,VkImageAspectFlags aspect,VkImageLayout from,VkImageLayout to,
@@ -473,6 +474,8 @@ extern "C" int mc2_vk_water_island_run(
             std::memcpy(wf.mvp, nat->mvp, sizeof(wf.mvp));
             wf.frameCos = nat->frameCos; wf.waterElevation = nat->waterElevation; wf.shoreExt = nat->shoreExt;
             wf.mapSide = nat->mapSide; wf.biasLegacy = nat->biasLegacy;
+            // D0 must include field-dry recipes: scene depth alone defines submersion.
+            if (gos_GetWaterFsDebugMode() == 10) { wf.shoreExt = 1.0e9f; wf.frameCos = 0.0f; }
             if (reflectThisFrame) {
                 mc2vk::gpuprof::noteWaterReflection(static_cast<uint32_t>(w), static_cast<uint32_t>(h));
             }
@@ -500,7 +503,14 @@ extern "C" int mc2_vk_water_island_run(
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], 2, uboOffsets);
         const auto groundSet = s->groundLighting.set(par);
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 1, 1, &groundSet, 4, ground->offsets.data());
-        mc2::battlebench::add(mc2::battlebench::DrawWater), vkCmdDrawIndirect(cb, s->native->drawArgs(par), 0, 1, 16);
+        if (gos_GetWaterFsDebugMode() == 10) {
+            for (const auto& pipeline : s->debugWater) {
+                mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.get());
+                vkCmdDrawIndirect(cb, s->native->drawArgs(par), 0, 1, 16);
+            }
+        } else {
+            mc2::battlebench::add(mc2::battlebench::DrawWater), vkCmdDrawIndirect(cb, s->native->drawArgs(par), 0, 1, 16);
+        }
         mc2vk::dynrender::end(dctx, cb);
         gpuScope.end();
         vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_Water);

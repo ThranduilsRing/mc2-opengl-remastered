@@ -14,6 +14,7 @@
 #version 450
 #extension GL_GOOGLE_include_directive : require
 layout(constant_id = 11) const int kReflectionCoverage = 0;
+layout(constant_id = 13) const int kWaterDbgPass = 0;
 #define PREC highp
 #define TERRAIN_RESOURCE_SET 1
 #define TERRAIN_OBJECT_RECEIVER 1
@@ -373,7 +374,10 @@ void main(void)
                                  u_shoreHeightTex, u_shoreMask, F.f5, F.f6, F.f4.w,
                                  WorldPos.xy, F.f7.x);
     }
-    if (shore <= 0.0) discard;
+    if (kWaterDbgPass != 1 && shore <= 0.0) discard;
+    if (kWaterDbgPass == 1 || kWaterDbgPass == 2) {
+        FragColor = vec4(1.0, 0.0, 1.0, 1.0); GBuffer1 = vec4(0.0); return;
+    }
     if (kReflectionCoverage != 0) { FragColor = vec4(1.0); GBuffer1 = vec4(0.0); return; }
     // Option A: material-local response. Shore coverage/bands and reflection tracing stay independent.
     float reactivePixelWidth = max(length(shoreDx), length(shoreDy));
@@ -495,6 +499,10 @@ void main(void)
 
     // (The local pools cross the shoreline too: they were added after the sky reflection above, so the reflected sky
     // cannot erase lamps, and fog/shore alpha below still attenuate them.)
+    if (kWaterDbgPass == 3) {
+        FragColor = vec4(vec3(dot(col, vec3(0.2126, 0.7152, 0.0722))), 1.0);
+        GBuffer1 = vec4(0.5, 0.5, 1.0, 0.875); return;
+    }
     if (F.fog_color.x > 0.0 || F.fog_color.y > 0.0 || F.fog_color.z > 0.0 || F.fog_color.w > 0.0)
         col = mix(F.fog_color.rgb, col, FogValue);
 

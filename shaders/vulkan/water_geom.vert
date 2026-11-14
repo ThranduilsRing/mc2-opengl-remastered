@@ -22,6 +22,7 @@
 // Everything below mirrors the GL VS math VERBATIM. Any single index/stride
 // drift = geometry garbage; this file is the load-bearing parity surface.
 #version 450
+layout(constant_id = 12) const int kWaterDbgPhysical = 0;
 #extension GL_GOOGLE_include_directive : require
 #include "../include/terrain_depth_bias.hglsl"
 
@@ -185,7 +186,7 @@ void main() {
         swell *= smoothstep(0.03, 0.12, abs(toV.z) / max(length(toV), 1.0));
         wz += swell;
     }
-    vec3 worldPos = vec3(vxy, wz);
+    vec3 worldPos = vec3(vxy, kWaterDbgPhysical != 0 ? waterElevation : wz);
     WorldPos = worldPos;
 
     float u = (vxy.x - mapTopLeft.x) * uvScale + uvOffset.x;
@@ -231,7 +232,7 @@ void main() {
     // A constant NDC lift grows quadratically in world distance and hides
     // near-sea-level islands as the camera moves. Use the shared FAST bias.
     vec4 clip = U.worldToClipGL * vec4(worldPos, 1.0);
-    clip.z   += WATER_DEPTH_FUDGE_FAST_REL * clip.z;
+    if (kWaterDbgPhysical == 0) clip.z += WATER_DEPTH_FUDGE_FAST_REL * clip.z;
     // Test the water surface at its physical depth. A tile-dependent lift
     // occludes rocks above the waterline and exposes straight tile edges.
     gl_Position = clip;
