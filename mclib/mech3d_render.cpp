@@ -1151,15 +1151,16 @@ bool Mech3DAppearance::submitPreviewGpu (bool freshSession)
 }
 
 // Blown arm on the GPU mech batcher (a vehicle-style record keyed by the arm's type shape). Eligible when the arm type is
-// registered, the shape is opaque, the paint texture is loaded and its light row is in range. Update and render both use
-// this predicate, so a reserved CPU draw and a batcher submit never disagree.
-static bool armGpuEligible (TG_MultiShape* arm, uint32_t paintHandle, uint32_t* lightRow)
+// registered, the shape is opaque, the paint texture is loaded and the mech's own light row (an arm lies within a few
+// metres of it, and a row of its own per arm would fill the light table in a mass kill) is in range. Update and render both
+// use this predicate, so a reserved CPU draw and a batcher submit never disagree.
+static bool armGpuEligible (TG_MultiShape* arm, TG_MultiShape* mech, uint32_t paintHandle, uint32_t* lightRow)
 {
 	if (g_mechPreviewRenderDepth != 0 || paintHandle == 0xffffffffu || arm->GetAlphaValue() != 0xff)
 		return false;
 	if (!GpuMechBatcher::instance().isVehicleTypeRegistered(arm->GetMultiType()))
 		return false;
-	const uint32_t row = arm->getCachedGpuLightIndex();
+	const uint32_t row = mech->getCachedGpuLightIndex();
 	if (row == 0xFFFFFFFFu || (mc2::textures::ready() && row >= mc2::vkLights::getLightStructCount()))
 		return false;
 	if (lightRow) *lightRow = row;
@@ -1168,16 +1169,14 @@ static bool armGpuEligible (TG_MultiShape* arm, uint32_t paintHandle, uint32_t* 
 
 void Mech3DAppearance::poseArmForDraw (TG_MultiShape* arm)
 {
-	if (g_mechPreviewRenderDepth == 0 && GpuMechBatcher::instance().isVehicleTypeRegistered(arm->GetMultiType()))
-		arm->CacheGpuLightData(eye->lightContext());
-	if (!armGpuEligible(arm, static_cast<uint32_t>(localTextureHandle), nullptr))
+	if (!armGpuEligible(arm, mechShape, static_cast<uint32_t>(localTextureHandle), nullptr))
 		arm->ReserveCpuDraw();	// fading/unregistered/no paint/no light row: the CPU fallback draws it
 }
 
 bool Mech3DAppearance::submitArmGpu (TG_MultiShape* arm, float haze)
 {
 	uint32_t row = 0;
-	if (!armGpuEligible(arm, static_cast<uint32_t>(localTextureHandle), &row))
+	if (!armGpuEligible(arm, mechShape, static_cast<uint32_t>(localTextureHandle), &row))
 		return false;
 	GpuMechSubmitDesc desc{};
 	desc.mechShape      = arm;
@@ -1191,7 +1190,6 @@ bool Mech3DAppearance::submitArmGpu (TG_MultiShape* arm, float haze)
 	if (normalValid) desc.renderFlags |= 0x20u;
 	if (status == OBJECT_STATUS_DESTROYED || status == OBJECT_STATUS_DISABLED || status == OBJECT_STATUS_SHUTDOWN)
 		desc.renderFlags |= 0x2u;	// lights out, as the body
-	arm->setCachedFrame(g_mc2FrameCounter.load(std::memory_order_relaxed));
 	desc.lightDataIndex = row;
 	desc.highlightARGB  = static_cast<uint32_t>(highlightColor);
 	const float h = std::clamp(haze, 0.0f, 1.0f);
