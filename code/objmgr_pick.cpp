@@ -720,6 +720,10 @@ GameObjectPtr pickGameplayObjects(long x, long y, std::span<GameObjectPtr> list,
         const bool coreHit = x >= rect.left+pad && x <= rect.right-pad
             && y >= rect.top+pad && y <= rect.bottom-pad;
         double surfaceT = terrainT;
+        const auto terrainPoint = [](const double (&o)[3], const double (&d)[3], double t) {
+            return glm::vec3(o[0] + d[0]*t, o[1] + d[1]*t, o[2] + d[2]*t);
+        };
+        auto surfacePoint = terrainPoint(origin, direction, surfaceT);
         bool forgiven = false;
         const auto hit = mc2::pickDepthWithForgiveness(obj->isMover(),
             [&](double& t) { return objectPickDepth(obj, origin, direction, t); },
@@ -741,20 +745,25 @@ GameObjectPtr pickGameplayObjects(long x, long y, std::span<GameObjectPtr> list,
                 || !mc2::pickScreenRay(*eye, std::lround(screen.x), std::lround(screen.y), moverOrigin, moverDirection)
                 || !objectPickDepth(obj, moverOrigin, moverDirection, t)) return false;
             surfaceT = pickTerrainDepth(moverOrigin, moverDirection);
+            surfacePoint = terrainPoint(moverOrigin, moverDirection, surfaceT);
             forgiven = true;
             return true;
         });
         if (!hit) { rejectEnemy(obj, "ray_miss"); continue; }
         const double depth = *hit;
-        double occlusionSlack = 0;
+        bool beforeSurface = mc2::pickBeforeSurface(depth, surfaceT);
         if (obj->isMover()) {
             const auto* type = obj->getAppearance()->getAppearanceType();
             glm::vec3 lo, hi;
             mc2ToRender(lo, type->typeUpperLeft);
             mc2ToRender(hi, type->typeLowerRight);
-            occlusionSlack = glm::length(hi - lo);
+            auto localSurface = surfacePoint - obj->getPosition();
+            Rotate(localSurface, obj->getRotation());
+            const double point[3] = {localSurface.x, localSurface.y, localSurface.z};
+            const double lower[3] = {lo.x, lo.y, lo.z}, upper[3] = {hi.x, hi.y, hi.z};
+            beforeSurface = mc2::pickMoverBeforeSurface(depth, surfaceT, point, lower, upper);
         }
-        if (!mc2::pickBeforeSurface(depth, surfaceT, occlusionSlack)) {
+        if (!beforeSurface) {
             rejectEnemy(obj, "terrain_occluded", depth, surfaceT);
             if (mc2_diag::tagEnabled("CURSOR_TARGET")) {
                 char payload[256];

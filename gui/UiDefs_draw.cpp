@@ -294,7 +294,9 @@ bool drawUiImageElement(UiElement& e, int xOffset, int yOffset, const PageScale&
     float v2 = 1.0f;
     textureUVs(e, u1, v1, u2, v2);
     if (e.flipV) { const float tmp = v1; v1 = v2; v2 = tmp; }
-    {   // Sample from texel centre to texel centre: a bilinear tap at a crop edge must not read the authored edge
+    if (!e.gosTextureOverride && mc2::ui_chrome::insetChromeCrop(e.texturePath, e.pixelPerfect, e.uvLegacySpace,
+                                                               e.hasNineSlice, u1, std::min(v1, v2), u2, std::max(v1, v2))) {
+        // A bilinear tap at a chrome crop edge must not read the authored edge
         // row of the next piece (A/B at 3284x1714: removes the hairlines at piece joins; inset 1.0 gave the same).
         constexpr float inset = 0.5f;
         if (e.uvW > 2 && e.uvH > 2) {
