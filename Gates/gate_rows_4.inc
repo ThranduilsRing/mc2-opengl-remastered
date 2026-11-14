@@ -143,7 +143,7 @@ P("MC2_WATER_EDGE_FEATHER_STRENGTH", Float, 1.0, "gameos", "", "", rangeAbove(0.
 L(Lead0Kill, "MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE", Bool, true, "terrain", "", "", verified),
 P("MC2_WATER_HDRI_LOD", Float, 0.0, "gameos", "", "", passthrough | verified),  // default not derivable from the tree
 L(Lead0Kill, "MC2_WATER_REFLECTION", Bool, true, "gameos", "", "", verified),
-L(Lead0Kill, "MC2_WATER_REFLECTION_HOLD", Bool, true, "terrain", "", "Temporary kill-switch: bounded four-frame still reflection reuse and half-res motion.", verified),
+L(Lead0Kill, "MC2_WATER_REFLECTION_HOLD", Bool, true, "terrain", "", "Temporary kill-switch: bounded four-frame still reflection reuse (full resolution).", verified),
 L(Lead0Kill, "MC2_WATER_REFLECTION_RT", Bool, true, "terrain", "", "Half-resolution spatial water reflection; =0 falls back to sky only. WaterReflections in options.cfg selects Off/Sky only/Half-res.", passthrough | registry(Feature, "MC2_FEATURE_WATER_REFLECTION_RT", -1, true) | verified),
 // ── WATER-SUN-SPEC-2 ───────────────────────────────────────────────────
 // Lives in kAuxEnvVars, not kFeatureTable: kFeatureTable is indexed by
