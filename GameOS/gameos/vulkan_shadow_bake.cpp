@@ -605,6 +605,8 @@ bool ShadowBake::readHeightGrid() {
                 heights_[count + i] = mc2terrain::quadSplitsTrBl(raw[i], raw[i + 1], raw[i + sourceSide], raw[i + sourceSide + 1]) ? 1.0f : 0.0f;
             }
     }
+    heightsMoved_ = false;
+    ++heightsGen_;
     return true;
 }
 
@@ -650,6 +652,7 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
         if (layout_.texels == 0) { blog("map too small for a mask: no bake."); return false; }
     }
     // Object-only caster updates reuse the same terrain snapshot as dirty sub-tiles.
+    const auto tHeight = clk::now();
     if ((recordedMask_ || heightsMoved_ || heights_.empty()) && !readHeightGrid()) { blog("height field malformed: no bake."); return false; }
     terrainTop_ = -1e30f;
     terrainMin_ = 1e30f;
@@ -657,6 +660,7 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
         terrainTop_ = (std::max)(terrainTop_, heights_[i]); terrainMin_ = (std::min)(terrainMin_, heights_[i]);
     }
     terrainMin_ = (std::max)(terrainMin_, waterZ_);
+    const double heightMs = std::chrono::duration<double, std::milli>(clk::now() - tHeight).count();
     if (recordedMask_) bakedHeightVersion_ = store->heightVersion();
 
     if (!ensureProducts(layout_.texels > 0 ? layout_.texels : maskTexels_)) return false;
@@ -705,6 +709,7 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
     }
     objectRuns_.clear();
     appendRuns(objectRuns_, objTypes, 0);
+    const double resolveMs = std::chrono::duration<double, std::milli>(clk::now() - tResolve).count();
 
     // A mask whose inputs a cooked asset already covers is uploaded, not baked.
     std::optional<mc2shadow::ShadowMaskAsset> cached;
@@ -770,6 +775,7 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
     }
     binnedInstances_ = static_cast<uint32_t>(tileInst.size());
     cpuStage_[2] = std::chrono::duration<double, std::milli>(clk::now() - p0).count();
+    const auto tRecord = clk::now();
 
     // The bake owns the full-map object projection. It is paired with the
     // submitted D16 image, independently of camera history or an engine latch.
@@ -903,7 +909,9 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
                             mc2shadow::kSunAngularRadiusDeg, mc2shadow::kFadeStartWorld, mc2shadow::kFadeEndWorld, fadeMax_, waterZ_, heightSide_,
                             heightSpacing_, cpuMs_);
     } else {
-        mc2::fmt::print_err("[SHADOW_BAKE] object map re-recorded: generation={} casters={}\n", mc2::fmt::as_u64(recordedObjectGeneration_), mc2::fmt::as_size(leaves_.size()));
+        mc2::fmt::print_err("[SHADOW_BAKE] object map re-recorded: generation={} casters={} timings(ms): total {:.3f}, height {:.3f}, resolve {:.3f}, bin {:.3f}, record {:.3f}\n",
+                            mc2::fmt::as_u64(recordedObjectGeneration_), mc2::fmt::as_size(leaves_.size()), cpuMs_, heightMs, resolveMs, cpuStage_[2],
+                            std::chrono::duration<double, std::milli>(clk::now() - tRecord).count());
     }
     return true;
 }
@@ -1139,8 +1147,6 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
     if (heightsMoved_ || heights_.empty()) {
         ZoneScopedN("ShadowBake.Dirty.ReadHeights");
         if (!readHeightGrid()) return false;
-        heightsMoved_ = false;
-        ++heightsGen_;
     }
     if (liveStale_) { ZoneScopedN("ShadowBake.Dirty.RebuildLive"); rebuildLive(); }
     if (!ensureTransients() || !ensureIncremental()) return false;
