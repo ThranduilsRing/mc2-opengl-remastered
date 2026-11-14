@@ -439,7 +439,7 @@ def _vet_engine_exe(argv: Sequence[str]) -> None:
 
 def spawn(argv: Sequence[str], *, show_window: bool = False,
           offscreen: "Optional[bool]" = None, small_window: bool = True,
-          env: "Optional[dict]" = None, **kw) -> "subprocess.Popen":
+          env: "Optional[dict]" = None, engine_default_workers: bool = False, **kw) -> "subprocess.Popen":
     """subprocess.Popen whose window never occupies visible desktop area.
 
     `show_window` and `offscreen` are ORTHOGONAL, and conflating them is a
@@ -485,7 +485,7 @@ def spawn(argv: Sequence[str], *, show_window: bool = False,
             # Games must not inherit the lane harness's Idle priority. Replace
             # any caller priority bits while preserving window/console flags.
             kw["creationflags"] = (kw.get("creationflags", 0) & ~0xC1E0) | 0x4000
-        if engine and not child_env.get("MC2_FRAME_JOBS_WORKERS"):
+        if engine and not engine_default_workers and not child_env.get("MC2_FRAME_JOBS_WORKERS"):
             width = host_lease.frame_jobs_workers()   # the lane host's game cores, not the whole machine
             if width:
                 child_env["MC2_FRAME_JOBS_WORKERS"] = str(width)

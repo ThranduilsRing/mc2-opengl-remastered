@@ -61,6 +61,24 @@ def test_constant_pairs_no_launcher_with_json_kill_switch():
     assert nofocus.NOFOCUS_ENV.get("MC2_LAUNCHER_ENV_JSON") == "0"
 
 
+@pytest.mark.parametrize("default,expected", [(False, "3"), (True, None)])
+def test_engine_default_workers_reaches_child_unset(monkeypatch, default, expected):
+    from unittest.mock import Mock
+    from smoke_lib import exe_guard, host_lease
+    monkeypatch.setattr(nofocus, "_vet_engine_exe", lambda *_: None)
+    monkeypatch.setattr(nofocus, "_hold_host_lease", lambda *_: None)
+    monkeypatch.setattr(nofocus, "_record_child", lambda *_: None)
+    monkeypatch.setattr(exe_guard, "engine_kind", lambda _: "mc2")
+    monkeypatch.setattr(host_lease, "held_device", lambda: None)
+    monkeypatch.setattr(host_lease, "apply_affinity", lambda *_: None)
+    monkeypatch.setattr(host_lease, "frame_jobs_workers", lambda: 3)
+    child = Mock(spec=["pid"])
+    popen = Mock(return_value=child)
+    monkeypatch.setattr(nofocus.subprocess, "Popen", popen)
+    nofocus.spawn(["mc2.exe"], env={}, engine_default_workers=default)
+    assert popen.call_args.kwargs["env"].get("MC2_FRAME_JOBS_WORKERS") == expected
+
+
 def test_spawned_env_carries_both(monkeypatch):
     for k in ("MC2_NO_LAUNCHER", "MC2_LAUNCHER_ENV_JSON", "MC2_HARNESS_ALLOW_FOREGROUND"):
         monkeypatch.delenv(k, raising=False)

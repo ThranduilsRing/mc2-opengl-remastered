@@ -324,7 +324,7 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
     if via_menu_boot and ticks:
         sys.exit("ERROR: --via-menu cannot be combined with --ticks (the tick budget is a smoke-mode exit)")
     env = game_env(arm, fixed_timestep, fps_cap, pose, extra_env, via_menu_boot)   # before the recorder starts: a refused --env must leave nothing running
-    if post_load:
+    if post_load and os.environ.get("MC2_NO_CPU_PIN") != "1":
         env.setdefault("MC2_FRAME_JOBS_WORKERS", "1")
 
     with ExitStack() as cleanup:
@@ -386,6 +386,7 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
         else:
             gp = nofocus.spawn(game_cmd, stdout=game_lf, stderr=subprocess.STDOUT,
                                cwd=str(install), env=env,
+                               engine_default_workers=owner_affinity,
                                show_window=show_window, small_window=False)
         cleanup.callback(_stop_capture_child, gp)
         if post_load:
@@ -403,7 +404,10 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
             row = {"status": "REJECTED", "mission": mission, "arm": capture_arm,
                    "seconds": seconds, "settle_s": 2, "affinity": actual_cpus,
                    "affinity_mask": sum(1 << c for c in actual_cpus),
-                   "job_workers": int(env.get("MC2_FRAME_JOBS_WORKERS") or host_lease.frame_jobs_workers()),
+                   "job_workers": (int(env["MC2_FRAME_JOBS_WORKERS"]) if env.get("MC2_FRAME_JOBS_WORKERS")
+                                   else max(2, min(6, (psutil.cpu_count() or 1) // 2)) if owner_affinity
+                                   else host_lease.frame_jobs_workers()),
+                   "job_workers_source": "override" if env.get("MC2_FRAME_JOBS_WORKERS") else "engine-default",
                    "resolution": [int(env.get("MC2_WIDTH", 0)), int(env.get("MC2_HEIGHT", 0))],
                    "exe_sha256": hashlib.sha256(game.read_bytes()).hexdigest(),
                    "environment": {k: v for k, v in env.items() if k.startswith("MC2_")}}

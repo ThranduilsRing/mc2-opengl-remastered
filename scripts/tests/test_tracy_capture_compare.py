@@ -77,6 +77,9 @@ def test_owner_affinity_requires_explicit_exclusive_batch(monkeypatch, opt_in, t
 def test_post_load_starts_recorder_after_pose_and_writes_row(harness, monkeypatch, platform, cores, owner):
     import psutil
     h = harness
+    monkeypatch.setenv("MC2_NO_CPU_PIN", "1" if owner else "0")
+    monkeypatch.delenv("MC2_FRAME_JOBS_WORKERS", raising=False)
+    monkeypatch.setattr(psutil, "cpu_count", lambda: 16)
     monkeypatch.setattr(capture, "owner_capture_mode", lambda: owner)
     monkeypatch.setattr(capture, "os", SimpleNamespace(name=platform, environ=capture.os.environ))
     process = Mock(cpu_affinity=Mock(return_value=cores))
@@ -94,7 +97,9 @@ def test_post_load_starts_recorder_after_pose_and_writes_row(harness, monkeypatc
     assert capture.capture_trace(h.install, "vk", "mc2_15", 30, h.out, post_load=True) == 0
     assert h.events.index("game.spawn") < h.events.index("pose.settled") < h.events.index("recorder.spawn")
     row = capture.json.loads(stats_file.write_text.call_args.args[0])
-    assert row["status"] == "PASS" and row["affinity"] == cores and row["job_workers"] == 1
+    assert row["status"] == "PASS" and row["affinity"] == cores and row["job_workers"] == (6 if owner else 1)
+    assert h.game_spawn.call_args.kwargs["engine_default_workers"] is owner
+    assert ("MC2_FRAME_JOBS_WORKERS" in h.game_spawn.call_args.kwargs["env"]) is not owner
     assert row["affinity_mask"] == sum(1 << c for c in cores)
     if platform == "nt" and not owner:
         process.cpu_affinity.assert_any_call(cores)
