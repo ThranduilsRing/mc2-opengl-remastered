@@ -819,6 +819,11 @@ namespace
 
 namespace MC2Strings
 {
+    std::string UnescapeFitString(std::string_view value)
+    {
+        return Unescape(value);
+    }
+
     bool Load()
     {
         CatalogState& state = State();
