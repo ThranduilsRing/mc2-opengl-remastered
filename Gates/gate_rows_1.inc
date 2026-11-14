@@ -15,6 +15,10 @@ P("MC2_FRAME_PASS_STATS_EVERY", Int, 0, "gameos", "", "", passthrough | verified
 G("MC2_FX_FORCE_SPAWN", Enum, "", "code", "", "FX-FORCE-SPAWN v1 fixture: default-OFF. =impact: impact-decal volley.", passthrough | registry(Trace, "MC2_FX_FORCE_SPAWN", -1, false) | tokens("|0|1|2|3|4|5|6|7|8|9|loop|impact") | verified),
 L(Lead1, "MC2_FX_TRACE", Bool, false, "code", "", "", passthrough | verified),
 
+G("MC2_GATE_GPU", String, "", "harness", "", "Harness-owned box wrapper metadata; ignored by the engine.", passthrough),
+G("MC2_GATE_INSTALL", String, "", "harness", "", "Harness-owned box wrapper metadata; ignored by the engine.", passthrough),
+G("MC2_GATE_MODS_ROOT", String, "", "harness", "", "Harness-owned box wrapper metadata; ignored by the engine.", passthrough),
+G("MC2_GATE_PROOFS", String, "", "harness", "", "Harness-owned box wrapper metadata; ignored by the engine.", passthrough),
 P("MC2_GLTF_AXIS", Int, 0, "props", "", "Coordinate transforms (spec ?6).", reread | verified),
 P("MC2_GLTF_YAW_DEG", Float, 0.0, "props", "", "", reread | verified),
 L(Presence, "MC2_GOM_RECON", Bool, false, "code", "", "GOM Recon: object type classification & mutation tracking (read-only).", verified),

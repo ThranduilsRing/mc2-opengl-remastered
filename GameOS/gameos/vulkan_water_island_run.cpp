@@ -360,7 +360,7 @@ extern "C" int mc2_vk_water_island_run(
         camera[32] = nat->waterElevation;
         static const bool hold = mc2::gate::get<"MC2_WATER_REFLECTION_HOLD">();
         const bool still = objectCamera && std::memcmp(camera,s->reflectionCamera,sizeof(camera))==0;
-        const int divisor = hold && !still ? 2 : 1;
+        const int divisor = 1;   // owner 11-13: reflections stay full resolution while the camera moves (no half-res motion)
         // No cheap bake/content epoch: bound stale light, scene and leaf sway to four frames.
         const bool reuse = hold && still && s->reflectionValid && s->reflectionDivisor==divisor && s->nativeFrames%4!=0;
         std::memcpy(s->reflectionCamera,camera,sizeof(camera));

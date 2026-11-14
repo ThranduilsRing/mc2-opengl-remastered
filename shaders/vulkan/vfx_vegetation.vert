@@ -30,13 +30,15 @@ layout(location = 9) out vec3 v_shadowWorld;
 
 void main() {
     VegInstance i = unpackVegetation(inst[dense[gl_InstanceIndex]]);
+    // Keep rejected fringe slots in the capped list, but emit no geometry.
+    if ((i.atlasFrame & 56u) == 40u) {
+        gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+        return;
+    }
     float dist3 = length(i.pos - D.cam.xyz);
     float fadeStart = D.misc.x;
     float windFade = 1.0 - smoothstep(fadeStart * 0.8, fadeStart, dist3);
     float shrink = vegLodScale(i, D);
-    // A rejected fringe blade keeps its original cull slot, preserving the
-    // capped interior's exact survivor list, then emits degenerate triangles.
-    if ((i.atlasFrame & 56u) == 40u) shrink = 0.0;
     uint frame = i.atlasFrame;
     // Owner ref 3: no white specks at gameplay zoom. Wildflower heads (field bit 2) thin out by a
     // stable per-blade rank between 350 and 800 WU from the camera; the blade stays.

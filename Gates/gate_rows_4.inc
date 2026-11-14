@@ -25,6 +25,7 @@ L(Presence, "MC2_TEXMGR_LOAD_TRACE", Bool, false, "code", "", "", passthrough | 
 // TRACKV quick-win: Probe-6 thin-record canary gate
 L(Presence, "MC2_THIN_DEBUG", Bool, false, "terrain", "", "", passthrough),
 // POST-FX-TONEMAP-V2 (SCOUR-1 #3): filmic tonemap on the composite.
+G("MC2_TOOLCHAINS", String, "", "harness", "", "Harness-owned box wrapper metadata; ignored by the engine.", passthrough),
 L(Presence, "MC2_TRACE_EXIT", Bool, false, "gameos", "", "", verified),
 // ── TREE-DIAG-REGISTER-1 (closed by GATE-PARITY-CLOSE-1) ───────────────
 // Lives in kAuxEnvVars and NOT in kFeatureTable: kFeatureTable is indexed
@@ -143,7 +144,7 @@ P("MC2_WATER_EDGE_FEATHER_STRENGTH", Float, 1.0, "gameos", "", "", rangeAbove(0.
 L(Lead0Kill, "MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE", Bool, true, "terrain", "", "", verified),
 P("MC2_WATER_HDRI_LOD", Float, 0.0, "gameos", "", "", passthrough | verified),  // default not derivable from the tree
 L(Lead0Kill, "MC2_WATER_REFLECTION", Bool, true, "gameos", "", "", verified),
-L(Lead0Kill, "MC2_WATER_REFLECTION_HOLD", Bool, true, "terrain", "", "Temporary kill-switch: bounded four-frame still reflection reuse and half-res motion.", verified),
+L(Lead0Kill, "MC2_WATER_REFLECTION_HOLD", Bool, true, "terrain", "", "Temporary kill-switch: bounded four-frame still reflection reuse (full resolution).", verified),
 L(Lead0Kill, "MC2_WATER_REFLECTION_RT", Bool, true, "terrain", "", "Half-resolution spatial water reflection; =0 falls back to sky only. WaterReflections in options.cfg selects Off/Sky only/Half-res.", passthrough | registry(Feature, "MC2_FEATURE_WATER_REFLECTION_RT", -1, true) | verified),
 // ── WATER-SUN-SPEC-2 ───────────────────────────────────────────────────
 // Lives in kAuxEnvVars, not kFeatureTable: kFeatureTable is indexed by

@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 422;
+inline constexpr std::size_t kGateCount = 430;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -38,6 +38,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_BOOT_TO_MISSION", Kind::String, Rule::Std, {}},
     {"MC2_BOOT_TO_SCREEN", Kind::String, Rule::Std, {}},
     {"MC2_BOOT_VIDEO", Kind::Bool, Rule::Lead0, {}},
+    {"MC2_BOX_QUOTA_CPUS", Kind::String, Rule::Std, {}},
     {"MC2_BRAIN_MISSION_SEED", Kind::String, Rule::Std, {}},
     {"MC2_BRAIN_POLICY", Kind::Enum, Rule::Std, "|auto|legacy|techbrain"},
     {"MC2_BRAIN_RUNTIME_FORCE_MODE", Kind::Enum, Rule::Std, "|legacy|enhanced|hybrid"},
@@ -125,6 +126,10 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_FRAME_PASS_STATS_EVERY", Kind::Int, Rule::Prefix, {}},
     {"MC2_FX_FORCE_SPAWN", Kind::Enum, Rule::Std, "|0|1|2|3|4|5|6|7|8|9|loop|impact"},
     {"MC2_FX_TRACE", Kind::Bool, Rule::Lead1, {}},
+    {"MC2_GATE_GPU", Kind::String, Rule::Std, {}},
+    {"MC2_GATE_INSTALL", Kind::String, Rule::Std, {}},
+    {"MC2_GATE_MODS_ROOT", Kind::String, Rule::Std, {}},
+    {"MC2_GATE_PROOFS", Kind::String, Rule::Std, {}},
     {"MC2_GLTF_AXIS", Kind::Int, Rule::Prefix, {}},
     {"MC2_GLTF_YAW_DEG", Kind::Float, Rule::Prefix, {}},
     {"MC2_GOM_RECON", Kind::Bool, Rule::Presence, {}},
@@ -264,6 +269,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_RES_DIAG", Kind::Bool, Rule::Presence, {}},
     {"MC2_RING_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_RNG_SEED", Kind::String, Rule::Std, {}},
+    {"MC2_RUN_ID", Kind::String, Rule::Std, {}},
     {"MC2_SAVE_DIR", Kind::String, Rule::Std, {}},
     {"MC2_SCRATCH", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_SCREENSHOT_AT_FRAME", Kind::Int, Rule::Prefix, {}},
@@ -284,6 +290,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_SIM_OVERLAP_AUDIT", Kind::Int, Rule::Prefix, {}},
     {"MC2_SIM_RATE_PROBE", Kind::Int, Rule::Prefix, {}},
     {"MC2_SIM_SPEED", Kind::Float, Rule::Prefix, {}},
+    {"MC2_SLOT", Kind::String, Rule::Std, {}},
     {"MC2_SMART_LOAD", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_SMOKE_ACTIVE", Kind::Bool, Rule::Lead0, {}},
     {"MC2_SMOKE_FIXED_TIMESTEP", Kind::Bool, Rule::Presence, {}},
@@ -355,6 +362,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_TEST_SPAWN", Kind::Bool, Rule::Lead1, {}},
     {"MC2_TEXMGR_LOAD_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_THIN_DEBUG", Kind::Bool, Rule::Presence, {}},
+    {"MC2_TOOLCHAINS", Kind::String, Rule::Std, {}},
     {"MC2_TRACE_EXIT", Kind::Bool, Rule::Presence, {}},
     {"MC2_TREE_DIAG_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_UI_COMMAND_FILE", Kind::String, Rule::Std, {}},

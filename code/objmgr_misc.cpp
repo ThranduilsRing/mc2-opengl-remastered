@@ -599,6 +599,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 		const bool fullInvalidate = TerrainRuntime::g_heightEpoch != terrainPresentationHeightEpoch ||
 			mc2::terrainNightFullInvalidate(terrainPresentationNightFactor, nightFactor, terrainPresentationIsNight, isNight);
 		if (fullInvalidate || nightFactor != terrainPresentationNightFactor || worldToClip != terrainPresentationWorldToClip) {
+			ZoneScopedN("Presentation.Terrain.Invalidate");
 			auto bind = [this](long h) {
 				if (objList[h] && objList[h]->getAppearance()) objList[h]->getAppearance()->terrainPresentationHandle = h;
 			};
