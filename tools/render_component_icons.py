@@ -68,6 +68,7 @@ for index, (name, row) in enumerate(sorted(icons.items())):
     camera = bpy.data.objects.new('Camera',bpy.data.cameras.new('Camera')); scene.collection.objects.link(camera); aim(camera,(4,-7,3))
     weapon = 'Weapon' in row[1]; rgb = RANGE_RGB.get(row[10].lower(), (255, 204, 0)) if weapon else (255, 204, 0)
     roll = math.atan(.85 * w / h) if weapon else 0  # stock tilt: muzzle up-left, breech down-right
+    if weapon and w >= h and w * h <= 4: roll += math.radians(12)  # small parts: ~45 deg on screen
     camera.rotation_euler.rotate_axis('Z', ROLL_SIGN * roll)
     scene.camera = camera; camera.data.type = 'ORTHO'; bpy.context.view_layer.update()
     projected = [camera.matrix_world.inverted() @ v.co for obj in objects for v in obj.data.vertices]
