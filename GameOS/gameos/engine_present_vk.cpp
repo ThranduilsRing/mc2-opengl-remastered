@@ -1485,7 +1485,13 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
                 texPushLast = pc;
                 texPushValid = true;
             }
-            vkCmdDraw(cb, td.count, 1, td.firstVertex, 0);
+            if (td.textMode == 3u) {
+                ZoneScopedN("VKIsl.Present.Compass");
+                MC2_VK_GPU_SCOPE(compassScope, cb, "VKIsl.Present.Compass");
+                vkCmdDraw(cb, td.count, 1, td.firstVertex, 0);
+            } else {
+                vkCmdDraw(cb, td.count, 1, td.firstVertex, 0);
+            }
         }
     }
     vkCmdEndRenderPass(cb);
