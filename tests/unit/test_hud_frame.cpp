@@ -29,7 +29,7 @@ constexpr int gos_Texture_Alpha = 0;
 namespace mc2_diag { bool tagRequested(const char*) { return false; } }
 float scale = 1.f;
 float gos_GetHudScale() { return scale; }
-struct { int screenHeight = 1080; } Environment;
+struct { int screenWidth = 1920, screenHeight = 1080; } Environment;
 struct ControlGui {
     std::vector<StaticInfo> staticInfos = std::vector<StaticInfo>(23);
     int staticCount = 23;
@@ -37,6 +37,7 @@ struct ControlGui {
     std::vector<Vertex> frameVertices;
     long frameSplit = 0;
     float frameScale = -1;
+    int frameWidth = 0, frameHeight = 0;
     void bakeFrame();
 };
 #define ZoneScopedN(...)
@@ -67,6 +68,7 @@ TEST_CASE("HUD frame: atlas preserves pixels, rotated UVs, order and dynamic exc
     std::swap(gui.staticInfos[21].location[0].u, gui.staticInfos[21].location[2].u);
     for (int height : {1080,2160}) {
         Environment.screenHeight = height;
+        Environment.screenWidth = height * 16 / 9;
         for (auto& info : gui.staticInfos) {
             info.location[0].y = info.location[3].y = static_cast<float>(height - 100);
             info.location[1].y = info.location[2].y = static_cast<float>(height - 98);
@@ -77,6 +79,8 @@ TEST_CASE("HUD frame: atlas preserves pixels, rotated UVs, order and dynamic exc
             gui.bakeFrame();
             REQUIRE(gui.frameAtlas);
             CHECK(gui.frameScale == hudScale);
+            CHECK(gui.frameWidth == Environment.screenWidth);
+            CHECK(gui.frameHeight == height);
             CHECK(gui.frameSplit == 19 * 4);
             CHECK(gui.frameVertices.size() == 21 * 4);
             CHECK(mc2::textures::atlasEdge == 4);

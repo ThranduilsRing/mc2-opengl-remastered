@@ -192,6 +192,8 @@ void ControlGui::bakeFrame()
 	frameVertices.clear();
 	frameSplit = 0;
 	frameScale = gos_GetHudScale();
+	frameWidth = Environment.screenWidth;
+	frameHeight = Environment.screenHeight;
 	struct Source { unsigned long handle; std::shared_ptr<const RenderCore::KtxImage> image; };
 	std::vector<Source> sources;
 	uint32_t tile = 1;

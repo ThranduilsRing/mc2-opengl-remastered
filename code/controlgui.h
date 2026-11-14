@@ -383,6 +383,7 @@ class ControlGui
 		std::vector<gos_VERTEX> frameVertices;
 		long frameSplit = 0;
 		float frameScale = -1.f;
+		int frameWidth = 0, frameHeight = 0;
 		void bakeFrame();
 		long				staticCount;
 

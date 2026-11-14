@@ -682,7 +682,8 @@ void ControlGui::render( bool bPaused )
 
 		{
 			ZoneScopedN("ControlGui::frame");
-			if (frameScale != gos_GetHudScale()) bakeFrame();
+			if (frameScale != gos_GetHudScale() || frameWidth != Environment.screenWidth ||
+			    frameHeight != Environment.screenHeight) bakeFrame();
 			if (!frameAtlas) {
 				for (int i = 0; i < staticCount; ++i) staticInfos[i].render();
 			} else {
