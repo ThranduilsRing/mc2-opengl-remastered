@@ -61,7 +61,11 @@ def test_fringe_roles_preserve_the_capped_interior_survivor_list():
     role = "(i.atlasFrame & 8u) != 0u ? 0u : (i.atlasFrame >> 4u) & 3u"
     for name in ("include/vegetation_cull_common.glsl", "include/vegetation_structs.glsl"):
         assert role in _src(name), name
-    assert "if ((i.atlasFrame & 56u) == 40u) shrink = 0.0;" in _src("vfx_vegetation.vert")
+    # 6ba5ef1da: the rejected-fringe role (frame&56==40) now early-outs in the vertex stage (off-screen position)
+    # instead of zeroing shrink; the slot still stays in the capped list.
+    vert = _src("vfx_vegetation.vert")
+    assert "if ((i.atlasFrame & 56u) == 40u) {" in vert
+    assert "gl_Position = vec4(2.0, 2.0, 2.0, 1.0);" in vert
     adapter = (ROOT / "GameAdapters/VegetationAdapter.cpp").read_text(encoding="utf-8")
     assert "inst.atlasFrame |= fieldEdgeRole(" in adapter
     assert "if (hashf(bx+71.0f,by-137.0f)>=edgeProbability) continue;" not in adapter
