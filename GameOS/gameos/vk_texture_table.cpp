@@ -67,7 +67,8 @@ bool TextureTable::init() {
     alloc.descriptorPool = pool_.get(); alloc.descriptorSetCount = kMaxFramesInFlight; alloc.pSetLayouts = layouts.data();
     if (MC2_VK_ALLOC_SETS(ctx_.device(), &alloc, sets_.data()) != VK_SUCCESS || !rebuildSamplers()) return false;
     for (auto& tokens : tokens_) tokens.resize(capacity_);
-    std::fprintf(stderr, "[VK_TEXTABLE v1] capacity=%u sets=%u samplers=%u\n", capacity_, kMaxFramesInFlight, kTexSamplerCount);
+    if (mc2_diag::tagRequested("VK_TEXTURE_SERVICE"))
+        std::fprintf(stderr, "[VK_TEXTABLE v1] capacity=%u sets=%u samplers=%u\n", capacity_, kMaxFramesInFlight, kTexSamplerCount);
     return true;
 }
 
@@ -109,9 +110,9 @@ void TextureTable::beginFrame(uint32_t frameSlot) {
     }
     if (!writes.empty()) vkUpdateDescriptorSets(ctx_.device(), static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
     applied_[frameSlot] = slots_.revision(); initialized_[frameSlot] = true;
-    if (full) std::fprintf(stderr, "[VK_TEXTABLE_REWRITE v1] slot=%u writes=%zu us=%.3f\n", frameSlot, writes.size(),
+    if (full && mc2_diag::tagRequested("VK_TEXTURE_SERVICE")) std::fprintf(stderr, "[VK_TEXTABLE_REWRITE v1] slot=%u writes=%zu us=%.3f\n", frameSlot, writes.size(),
                            std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - started).count());
-    if (!writes.empty() || ctx_.tracker().frameNo() % 120 == 0)
+    if ((!writes.empty() || ctx_.tracker().frameNo() % 120 == 0) && mc2_diag::tagRequested("VK_TEXTURE_SERVICE"))
         std::fprintf(stderr, "[VK_TEXTABLE_FRAME v1] frame=%llu slot=%u writes=%zu full=%u stale=%llu\n",
                      static_cast<unsigned long long>(ctx_.tracker().frameNo()), frameSlot, writes.size(), full ? 1u : 0u, static_cast<unsigned long long>(stale_));
 }

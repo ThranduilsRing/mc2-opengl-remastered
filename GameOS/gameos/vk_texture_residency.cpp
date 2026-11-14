@@ -104,6 +104,7 @@ bool TextureResidency::init() {
     const auto room = [](uint32_t limit) { return limit > reserve ? (limit - reserve) / 2 : 0u; };
     capacity_ = std::min({4096u, room(l.maxPerStageDescriptorSampledImages),
                          room(l.maxDescriptorSetSampledImages), room(l.maxPerStageResources)});
+    if (mc2_diag::tagRequested("VK_CAPABILITY"))
     std::fprintf(stderr, "[VK_CAPABILITY] maxPerStageDescriptorSampledImages=%u maxPerStageDescriptorSamplers=%u maxDescriptorSetSampledImages=%u maxDescriptorSetSamplers=%u maxPerStageResources=%u\n",
                  l.maxPerStageDescriptorSampledImages, l.maxPerStageDescriptorSamplers,
                  l.maxDescriptorSetSampledImages, l.maxDescriptorSetSamplers, l.maxPerStageResources);
