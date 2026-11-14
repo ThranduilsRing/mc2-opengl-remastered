@@ -8,6 +8,7 @@ extern bool (*saveRenderOptions)(const mc2::options::RenderOptions&);
 void loadSettings();
 void drawMainMenu();
 void drawOptions();
+void requestCampaignStart(std::string fit);
 std::string takeCampaignStart();
 int restartIfRequested(int argc, char** argv);
 }

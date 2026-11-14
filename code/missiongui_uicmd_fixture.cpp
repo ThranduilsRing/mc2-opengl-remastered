@@ -10,6 +10,82 @@
 #include "../RenderCore/TextureService.h"
 #include "../GameOS/gameos/battle_bench.h"
 #include "package_chassis.h"
+#include "logistics.h"
+#include "missionbegin.h"
+#include "../GameOS/gameos/vulkan_context.h"
+#include "../GuiRuntime/PlayerFrontEnd.h"
+
+extern bool justStartMission;
+extern char missionName[1024];
+
+namespace {
+struct AbortReloadFixture {
+    std::vector<std::string> targets;
+    size_t cycle = 0;
+    int phase = 0;
+    std::chrono::steady_clock::time_point since;
+    std::string current = "mc2_01", campaignFirst;
+} abortReload;
+}
+
+// Remains live while the mission command channel is down in the front end.
+void mc2AbortReloadFixtureUpdate()
+{
+    auto& f = abortReload;
+    if (!f.phase) return;
+    const auto now = std::chrono::steady_clock::now();
+    const double elapsed = std::chrono::duration<double>(now - f.since).count();
+    if (f.phase == 1 && mission->isActive() && elapsed >= 60 && scenarioTime >= 60 && !eye->inMovieMode) {
+        auto* iface = mission->missionInterface;
+        if (!iface->isPaused()) iface->togglePause();
+        iface->getControlGui()->getPauseWnd()->handleClick(PauseWindow::RESTART);
+        f.phase = 2;
+    } else if (f.phase == 2) {
+        auto* pw = mission->missionInterface->getControlGui()->getPauseWnd();
+        if (pw->confirmDialogUp() && LogisticsOKDialog::instance()->getEnterAnim().isDone()) {
+            LogisticsOKDialog::instance()->handleMessage(aMSG_LEFTMOUSEDOWN, LogisticsScreen::YES);
+            std::fprintf(stderr, "[SOAK] abort_reload cycle=%zu phase=abort mission=%s play_s=%.3f sim_s=%.3f\n",
+                         f.cycle + 1, f.current.c_str(), elapsed, static_cast<double>(scenarioTime));
+            f.phase = 3;
+        }
+    } else if (f.phase == 3 && !mission->isActive()) {
+        std::fprintf(stderr, "[SOAK] abort_reload cycle=%zu phase=unload mission=%s deferred=%zu\n",
+                     f.cycle + 1, f.current.c_str(), mc2vk::engineVulkanContextNoWait().deferred().size());
+        logistics->start(log_SPLASH);
+        logistics->getMissionBegin()->beginSplash();
+        f.since = now;
+        f.phase = 4;
+    } else if (f.phase == 4 && elapsed >= 2) {
+        const std::string next = f.targets[f.cycle++];
+        std::fprintf(stderr, "[SOAK] abort_reload cycle=%zu phase=menu next=%s\n", f.cycle, next.c_str());
+        if (next == "campaign") {
+            PlayerFrontEnd::requestCampaignStart("campaign");
+            f.phase = 5;
+        } else {
+            std::strcpy(missionName, next.c_str());
+            LogisticsData::instance->setSingleMission(next.c_str());
+            LogisticsData::instance->setSkipLogistics(true);
+            logistics->stop();
+            Logistics::beginMission(nullptr, 0, nullptr);
+            logistics->setLogisticsState(log_DONE);
+            f.current = next;
+            f.since = std::chrono::steady_clock::now();
+            f.phase = f.cycle < f.targets.size() ? 1 : 0;
+        }
+    } else if (f.phase == 5 && mission->isActive() && scenarioTime >= 3) {
+        f.campaignFirst = LogisticsData::instance->getCurrentMission();
+        std::fprintf(stderr, "[SOAK] abort_reload phase=campaign_win mission=%s\n", f.campaignFirst.c_str());
+        mission->forceTerminate(mis_PLAYER_WIN_BIG);
+        f.phase = 6;
+    } else if (f.phase == 6 && mission->isActive() &&
+               LogisticsData::instance->getCurrentMission() != f.campaignFirst) {
+        std::fprintf(stderr, "[SOAK] abort_reload phase=complete cycles=%zu campaign_next=%s\n",
+                     f.cycle, LogisticsData::instance->getCurrentMission().c_str());
+        f.phase = 0;
+        gos_TerminateApplication();
+    }
+}
+
 
 //--------------------------------------------------------------------------
 // FREEZE-MOVERS-1 (GAMEPLAY-DRIVER-3): deterministic mover freeze.
@@ -126,6 +202,23 @@ void mc2BenchWalk(GameObjectManager& om, int rounds);   // code/objmgr_misc.cpp
 // Test-only fixtures and determinism verbs (spawn, teleport, freeze_movers, set_light, animate). Returns true when a verb of this group matched.
 bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 {
+	if (c.line.starts_with("abort_reload ")) {
+		const std::string next = c.line.substr(13);
+		if (!mc2::gate::get<"MC2_TEST_SPAWN">() ||
+			(next != "mc2_01" && next != "mc2_10" && next != "mc2_17" && next != "mc2_03" && next != "campaign")) {
+			c.result = "blocked"; c.note = "abort_reload <mc2_01|mc2_10|mc2_17|mc2_03|campaign> needs MC2_TEST_SPAWN=1";
+		} else {
+			abortReload.targets.push_back(next);
+			if (!abortReload.phase) {
+				justStartMission = false;
+				abortReload.current = missionName;
+				abortReload.since = std::chrono::steady_clock::now();
+				abortReload.phase = 1;
+			}
+			c.result = "ok";
+		}
+		return true;
+	}
 	if (c.line.starts_with("force_state ")) {
 		// force_state <partId> sensor <0..4> | armoff left|right  (needs MC2_TEST_SPAWN=1; pair with freeze_movers so the sim does not rewrite it)
 		long pid = 0; char what[16] = {0}, arg[16] = {0};
