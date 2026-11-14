@@ -4,6 +4,27 @@
 #include "doctest.h"
 #include "tgl.h"
 #include "alloc_probe.h"
+#include "../../GameOS/gameos/vulkan_legacy_shape_island.h"
+
+// Trigger: legacy island provenance and draw accounting headers.
+TEST_CASE("legacy island mixed-node ownership preserves source vertices") {
+    Mc2LegacyMlrDraw draw{};
+    draw.vertexCount = 15;
+    draw.sourceVertices[MC2_LEGACY_VEHICLE_FADING] = 6;
+    draw.sourceVertices[MC2_LEGACY_SHAPE] = 9;
+    CHECK(mc2LegacyNodeOwner(draw) == MC2_LEGACY_SHAPE);
+    uint32_t sum = 0;
+    for (auto count : draw.sourceVertices) sum += count;
+    CHECK(sum == draw.vertexCount);
+    draw.sourceVertices[MC2_LEGACY_SHAPE] = 6;
+    CHECK(mc2LegacyNodeOwner(draw) == MC2_LEGACY_VEHICLE_FADING);
+    CHECK(mc2LegacyVehicleSource == MC2_LEGACY_SHAPE);
+    { const Mc2LegacyVehicleScope outer(MC2_LEGACY_VEHICLE_FADING);
+      { const Mc2LegacyVehicleScope inner(MC2_LEGACY_VEHICLE_UNREGISTERED);
+        CHECK(mc2LegacyVehicleSource == MC2_LEGACY_VEHICLE_UNREGISTERED); }
+      CHECK(mc2LegacyVehicleSource == MC2_LEGACY_VEHICLE_FADING); }
+    CHECK(mc2LegacyVehicleSource == MC2_LEGACY_SHAPE);
+}
 
 #include <type_traits>
 

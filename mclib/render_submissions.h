@@ -23,6 +23,7 @@ namespace mc2 { class VkSceneRenderer; }
 #include<atomic> // TXMMGR-BOUNDS-HARDEN-1 exhaustion counters
 #include<cstdio> // TXMMGR-BOUNDS-HARDEN-1 trace emit
 #include "mc2fmt.h"
+#include "../GameOS/gameos/vulkan_legacy_shape_island.h"
 
 // ---------------------------------------------------------------------------
 // TXMMGR-BOUNDS-HARDEN-1 — pool/block exhaustion guards (defined in txmmgr.cpp).
@@ -65,6 +66,7 @@ struct _MC_VertexArrayNode
 
 	public:
 		DWORD				textureIndex;
+		uint32_t vehicleVertices[3]; // Successful CPU fallback writes only; cleared with the node.
 		DWORD				flags;						//Marks texture render state and terrain or not, etc.
 		long				numVertices;				//Number of vertices this texture will be used to draw this frame.
 		gos_VERTEX			*currentVertex;				//CurrentVertex data being added.
@@ -77,6 +79,7 @@ struct _MC_VertexArrayNode
 		currentVertex = nullptr;
 		vertices = nullptr;
 		textureIndex = 0;
+		memset(vehicleVertices, 0, sizeof(vehicleVertices));
 	}
 
 }; using MC_VertexArrayNode = _MC_VertexArrayNode;
@@ -503,6 +506,7 @@ class RenderSubmissions
 						#endif
 
 						memcpy(vertices,data,sizeof(gos_VERTEX) * 3);
+						if (mc2LegacyVehicleSource < 3) textureNode.vertexData->vehicleVertices[mc2LegacyVehicleSource] += 3;
 						vertices += 3;
 					}
 
@@ -557,6 +561,8 @@ class RenderSubmissions
 						vertices += 3;
 					}
 
+					if (vertices && mc2LegacyVehicleSource < 3 && vertices > textureNode.vertexData2->currentVertex)
+						textureNode.vertexData2->vehicleVertices[mc2LegacyVehicleSource] += 3;
 					textureNode.vertexData2->currentVertex = vertices;
 				}
 				else if (textureNode.vertexData3 &&
@@ -606,6 +612,8 @@ class RenderSubmissions
 						vertices += 3;
 					}
 
+					if (vertices && mc2LegacyVehicleSource < 3 && vertices > textureNode.vertexData3->currentVertex)
+						textureNode.vertexData3->vehicleVertices[mc2LegacyVehicleSource] += 3;
 					textureNode.vertexData3->currentVertex = vertices;
 				}
 				else	//If we got here, something is really wrong
@@ -636,6 +644,8 @@ class RenderSubmissions
 					else if (vertices)
 						g_txmmgr_add_vertices_overflow_prevented.fetch_add(1, std::memory_order_relaxed);
 
+					if (vertices && mc2LegacyVehicleSource < 3 && vertices > vertexData->currentVertex)
+						vertexData->vehicleVertices[mc2LegacyVehicleSource] += 3;
 					vertexData->currentVertex = vertices;
 				}
 				else if (vertexData2 && vertexData2->flags == flags)
@@ -657,6 +667,8 @@ class RenderSubmissions
 					else if (vertices)
 						g_txmmgr_add_vertices_overflow_prevented.fetch_add(1, std::memory_order_relaxed);
 
+					if (vertices && mc2LegacyVehicleSource < 3 && vertices > vertexData2->currentVertex)
+						vertexData2->vehicleVertices[mc2LegacyVehicleSource] += 3;
 					vertexData2->currentVertex = vertices;
 				}
 				else if (vertexData3 && vertexData3->flags == flags)
@@ -678,6 +690,8 @@ class RenderSubmissions
 					else if (vertices)
 						g_txmmgr_add_vertices_overflow_prevented.fetch_add(1, std::memory_order_relaxed);
 
+					if (vertices && mc2LegacyVehicleSource < 3 && vertices > vertexData3->currentVertex)
+						vertexData3->vehicleVertices[mc2LegacyVehicleSource] += 3;
 					vertexData3->currentVertex = vertices;
 				}
 				else if (vertexData4 && vertexData4->flags == flags)
@@ -699,6 +713,8 @@ class RenderSubmissions
 					else if (vertices)
 						g_txmmgr_add_vertices_overflow_prevented.fetch_add(1, std::memory_order_relaxed);
 
+					if (vertices && mc2LegacyVehicleSource < 3 && vertices > vertexData4->currentVertex)
+						vertexData4->vehicleVertices[mc2LegacyVehicleSource] += 3;
 					vertexData4->currentVertex = vertices;
 				}
 				else if (vertexData5 && vertexData5->flags == flags)
@@ -720,6 +736,8 @@ class RenderSubmissions
 					else if (vertices)
 						g_txmmgr_add_vertices_overflow_prevented.fetch_add(1, std::memory_order_relaxed);
 
+					if (vertices && mc2LegacyVehicleSource < 3 && vertices > vertexData5->currentVertex)
+						vertexData5->vehicleVertices[mc2LegacyVehicleSource] += 3;
 					vertexData5->currentVertex = vertices;
 				}
 				else	//If we got here, something is really wrong
