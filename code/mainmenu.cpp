@@ -152,16 +152,8 @@ int MainMenu::init( FitIniFile& file )
 
 	introMovie = nullptr;
 
-	path.init( moviePath, "msft", ".bik" );
-
-	RECT movieRect;
-	movieRect.top = 0;
-	movieRect.left = 0;
-	movieRect.right = Environment.screenWidth;
-	movieRect.bottom = Environment.screenHeight;
-
+	// Open on the first displayed update, after startup work and renderer setup.
 	introMovie = new MC2Movie;
-	introMovie->init(path,movieRect,true);
 
 	return 0;
 }
@@ -512,10 +504,12 @@ void MainMenu::update()
 	if ( introMovie )
 	{
 		userInput->mouseOff();
-		// The movie opened in init(), at startup; its playback clock has been running since, through every load before the menu's first frame.
-		// On a slow (cold) start that is the whole clip, so the logo never showed. Restart it so the clock begins when it is first shown.
-		static MC2Movie* s_clockArmedFor = nullptr;
-		if ( s_clockArmedFor != introMovie ) { s_clockArmedFor = introMovie; introMovie->restart(); }
+		if (!introMovie->getMovieName()) {
+			FullPathFileName path;
+			path.init(moviePath, "msft", ".bik");
+			RECT movieRect = {0, 0, Environment.screenWidth, Environment.screenHeight};
+			introMovie->init(path, movieRect, true);
+		}
 
 		{
 			static int s_introDbgFrame = 0;
