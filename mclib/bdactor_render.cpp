@@ -319,6 +319,7 @@ long BldgAppearance::render (long depthFixup)
 		}
 		if (!submittedToGpu)
 		{
+			MC2_LEGACY_SITE("building_cpu_fallback");
 			if (appearType->spinMe)
 				bldgShape->Render(eye->getViewUniforms(),false,0.00001f);
 			else if (!depthFixup)
@@ -719,7 +720,10 @@ long TreeAppearance::render (long depthFixup)
 			}
 		}
 		if (!submittedToGpu)
+		{
+			MC2_LEGACY_SITE("tree_cpu_fallback");
 			treeShape->Render(eye->getViewUniforms());
+		}
 
 		if (selected & DRAW_BARS)
 		{

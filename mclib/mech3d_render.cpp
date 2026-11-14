@@ -1008,6 +1008,7 @@ long Mech3DAppearance::render (long depthFixup)
 		
 		if (contactView.blip && !contactView.model)
 		{
+			MC2_LEGACY_SITE("mech_sensor_blip");
 			if (sensorLevel > 1)
 			{
 				sensorSquareShape->Render(eye->getViewUniforms());
@@ -1023,6 +1024,7 @@ long Mech3DAppearance::render (long depthFixup)
 	{
 		Camera::HazeFactor = rightArmHazeFactor;
 
+		MC2_LEGACY_SITE("mech_blown_arm_right");
 		rightArm->Render(eye->getViewUniforms(),true);
 
 		if (rightArmSmoke)
@@ -1063,6 +1065,7 @@ long Mech3DAppearance::render (long depthFixup)
 	{
 		Camera::HazeFactor = leftArmHazeFactor;
 
+		MC2_LEGACY_SITE("mech_blown_arm_left");
 		leftArm->Render(eye->getViewUniforms(),true);
 		
 		if (leftArmSmoke)
