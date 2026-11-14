@@ -42,6 +42,28 @@ def test_profiler_separates_queries_output_and_connected_tracy():
     assert 'g.tracy && tracy::GetProfiler().IsConnected()' in src
 
 
+def test_gpu_query_ring_reads_retired_frames_before_reset_and_reuse():
+    # Trigger: GameOS/gameos/vk_gpu_profile.cpp and vk_frame_ring.h.
+    import re
+    src = source("vk_gpu_profile.cpp")
+    lag = int(re.search(r'kMaxFramesInFlight = (\d+)', source("vk_frame_ring.h"))[1])
+    assert 'constexpr uint32_t kReadLag = kMaxFramesInFlight;' in src
+    assert 'constexpr uint32_t kRing = kReadLag + 1;' in src
+    for begin, end in (('bool recordFrameEnd(', 'void frameEndSubmitted('),
+                       ('void frameEnd() {', 'Scope::Scope(')):
+        body = between(src, begin, end)
+        assert '(f + kRing - kReadLag) % kRing' in body
+        assert 'if (g.timers && f >= kReadLag)' in body
+        assert body.index('readSlot(rslot, used)') < body.index('if (used) vkCmdResetQueryPool(')
+    assert 'VK_QUERY_RESULT_WAIT_BIT' not in src
+    for inflight in range(1, lag + 1):
+        for frame in range(lag, 32):
+            read_frame = frame - lag
+            assert read_frame <= frame - inflight
+            assert (frame + lag + 1 - lag) % (lag + 1) == read_frame % (lag + 1)
+            assert read_frame + lag + 1 > frame  # reset precedes the next recording
+
+
 def test_decal_build_is_measured_outside_unchanged_parent_and_wait_is_separate():
     src = between(source("vulkan_impact_decals.cpp"), 'extern "C" int mc2_vk_impact_decals_run', 'return 1;\n}')
     assert src.index('VK-impact-decals.LazyBuild') < src.index('ZoneScopedN("VK-impact-decals")')

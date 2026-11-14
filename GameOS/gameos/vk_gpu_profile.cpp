@@ -30,7 +30,9 @@
 namespace mc2vk::gpuprof {
 namespace {
 
-constexpr uint32_t kRing = 4;          // frames of timestamp slots; a slot is read two frames after it was recorded
+// beginFrame retires frame N-framesInFlight. Keep one more slot so the reset is queued before reuse.
+constexpr uint32_t kReadLag = kMaxFramesInFlight;
+constexpr uint32_t kRing = kReadLag + 1;
 constexpr uint32_t kMaxScopes = 96;    // scopes one frame may time; more are drawn untimed and counted
 constexpr uint32_t kQueriesPerSlot = kMaxScopes * 2;
 constexpr uint32_t kLogEvery = 120;    // frames per [VK_GPU_PASSES v1] line
@@ -194,7 +196,7 @@ void readSlot(uint32_t slot, uint32_t& used) {
     struct Iv { uint64_t b, e; uint32_t name; } iv[kMaxScopes];
     uint32_t ivN = 0;
     // present-tail-cut: one vkGetQueryPoolResults for the slot's contiguous used*2 queries instead of one call per scope (Finish.Collect).
-    // Same flags (no WAIT): an unavailable query reports availability 0 and is dropped exactly as before.
+    // No WAIT: beginFrame has already retired this slot's frame, even at the maximum frames in flight.
     uint64_t all[kMaxScopes * 4] = {};   // per scope: (begin, avail, end, avail)
     const VkResult batchRes = vkGetQueryPoolResults(g.device, g.pool, slot * kMaxScopes * 2, used * 2, sizeof(uint64_t) * 4 * used, all,
                                                     2 * sizeof(uint64_t), VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WITH_AVAILABILITY_BIT);
@@ -306,7 +308,7 @@ void init(VulkanContext& ctx) {
     const uint32_t fam = ctx.graphicsFamily();
     const bool tsOk = props.limits.timestampPeriod > 0.0f && fam < qfc && qfs[fam].timestampValidBits != 0;
 
-    // Always armed (two vkCmdWriteTimestamp per scope, read back two frames later without waiting) unless the harness says
+    // Always armed (two vkCmdWriteTimestamp per scope, read back after frame retirement without waiting) unless the harness says
     // MC2_VK_GPU_TIMESTAMPS=0 explicitly (rgp_capture.py: the profiler must see an unperturbed queue). Unset keeps them on.
     const bool tsOptOut = mc2::gate::isSet<"MC2_VK_GPU_TIMESTAMPS">() && !mc2::gate::get<"MC2_VK_GPU_TIMESTAMPS">();
     if (tsOk && !tsOptOut) {
@@ -387,8 +389,8 @@ bool recordFrameEnd(VkCommandBuffer cb) {
     if (!g.timers && !tracyLive) return false;
     const uint64_t f = g.frame.load(std::memory_order_relaxed);
     uint32_t used = 0;
-    const uint32_t rslot = static_cast<uint32_t>((f + kRing - 2) % kRing);   // recorded two frames ago, as in frameEnd()
-    if (g.timers && f >= 2) {
+    const uint32_t rslot = static_cast<uint32_t>((f + kRing - kReadLag) % kRing);
+    if (g.timers && f >= kReadLag) {
         readSlot(rslot, used);
         if (g.windowFrames >= kLogEvery) flushWindow(f);
     }
@@ -430,8 +432,8 @@ void frameEnd() {
 
     const uint64_t f = g.frame.load(std::memory_order_relaxed);
     uint32_t used = 0;
-    const uint32_t rslot = static_cast<uint32_t>((f + kRing - 2) % kRing);   // recorded two frames ago
-    if (g.timers && f >= 2) {
+    const uint32_t rslot = static_cast<uint32_t>((f + kRing - kReadLag) % kRing);
+    if (g.timers && f >= kReadLag) {
         readSlot(rslot, used);
         if (g.windowFrames >= kLogEvery) flushWindow(f);
     }
@@ -456,7 +458,7 @@ void frameEnd() {
             g.endPoolsReady = true;   // a failed create leaves endCb null: the submit below is skipped, as before
         }
         VkCommandBuffer cb = g.endCb[cslot];
-        // The slot's previous submit is kRing frames old (at most 2 frames are in flight), so this wait returns at once; a slot that never completes
+        // The slot's previous submit is kRing frames old (beyond the maximum frames in flight), so this wait returns at once; a slot that never completes
         // skips this frame's submit.
         if (cb != VK_NULL_HANDLE && g.ctx->wait(g.endTicket[cslot], 100'000'000ull, "gpuprof_end_cb")) {
             VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
