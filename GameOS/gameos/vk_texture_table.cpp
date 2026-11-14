@@ -1,6 +1,7 @@
 #include "vk_texture_table.h"
 #include "vk_texture_residency.h"
 #include "vulkan_context.h"
+#include "vk_material_sampler.h"
 #include <algorithm>
 #include <cstdio>
 #include <stdexcept>
