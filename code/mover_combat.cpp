@@ -8,6 +8,7 @@
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 #include "score_sort.h"
+#include "component_rules.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 #include <algorithm>
 #include <cmath>
@@ -181,6 +182,21 @@ if (queuePlayerOrder)
 				break;
 		}
 	return(NO_ERR);
+}
+
+bool Mover::interceptMissile() {
+	if (isDisabled() || isDestroyed() || !getAwake()) return false;
+	for (long item = 0; item < numOther + numWeapons; ++item) {
+		auto& component = MasterComponent::masterList[inventory[item].masterID];
+		if (!component.isDefensiveWeapon()) continue;
+		const long ammo = tallyAmmo(component.getWeaponAmmoMasterId());
+		if (!mc2::components::canIntercept(inventory[item].disabled,
+			inventory[item].readyTime, scenarioTime, ammo)) continue;
+		deductWeaponShot(item);
+		startWeaponRecycle(item);
+		return true;
+	}
+	return false;
 }
 
 void Mover::reduceAntiMissileAmmo (long numAntiMissiles) {
@@ -707,6 +723,8 @@ long Mover::getWeaponsInRange (int* list, int listSize, float fireRangeOrder) {
 }
 
 long Mover::getWeaponShots (long weaponIndex) {
+	if (isWeaponIndex(weaponIndex) &&
+		MasterComponent::masterList[inventory[weaponIndex].masterID].isDefensiveWeapon()) return 0;
 
 	if (!isWeaponIndex(weaponIndex))
 		return(-1);
@@ -991,6 +1009,7 @@ bool Mover::isWeaponMissile (long weaponIndex) {
 }
 
 bool Mover::isWeaponReady (long weaponIndex) {
+	if (MasterComponent::masterList[inventory[weaponIndex].masterID].isDefensiveWeapon()) return false;
 
 	if (inventory[weaponIndex].disabled)
 		return(false);

@@ -11,6 +11,7 @@ namespace mc2::screen_settle {
 // Logistics front-end grid cells (MissionBegin::screens[x][y]); the first name of a cell is its canonical id.
 struct ScreenCell { const char* name; int x; int y; };
 inline constexpr ScreenCell kScreens[] = {
+    {"encyclopedia", -2, -2},
     {"campaign_missions", 0, 1},  // mission selection (campaign / globe screen)
     {"logistics", 1, 1},          // alias of briefing: the first logistics-stage screen, with the tactical minimap
     {"briefing", 1, 1},

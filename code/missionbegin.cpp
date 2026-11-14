@@ -246,7 +246,7 @@ static bool mc2BootScreenXY( int& x, int& y )
 		if ( mc2::screen_settle::parseSpec(mc2::gate::str<"MC2_SHOT_SCREEN">(), spec) )
 			cell = spec.cell;
 	}
-	if ( cell ) { x = cell->x; y = cell->y; }
+	if ( cell && cell->x >= 0 && cell->y >= 0 ) { x = cell->x; y = cell->y; }
 	return true;
 }
 
@@ -1837,7 +1837,8 @@ void MissionBegin::render()
 		}
 	}
 	// MC2_SHOT_SCREEN: the splash/main menu counts as "no screen" so only the logistics grid cell is matched.
-	mc2::screen_settle::tickFrontEnd(bSplash ? -1 : curScreenX, bSplash ? -1 : curScreenY);
+	const int splashCell = MainMenu::bDrawMechlopedia ? -2 : -1;
+	mc2::screen_settle::tickFrontEnd(bSplash ? splashCell : curScreenX, bSplash ? splashCell : curScreenY);
 	ZoneScopedN("MissionBegin::render");
 	ZoneValue(bSplash ? 0xffff : 10 * curScreenX + curScreenY);
 	// UI-ASPECT-ANCHOR-1: front-end frame — draw the UI on the 16:9 canvas

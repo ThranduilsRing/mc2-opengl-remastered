@@ -14,6 +14,8 @@
 // classifiable headlessly. Pairs with the 'nofire' event in combatDecisionTree.
 static void fireGateTrace (unsigned long wid, long weaponIndex, mc2::czstring site)
 {
+	void mc2EquipmentProbeEvent(std::string_view event, unsigned long target);
+	mc2EquipmentProbeEvent(site, wid);
 	static const bool s_fireDecisionTrace =
 		mc2::gate::get<"MC2_FIRE_DECISION_TRACE">();
 	if (!s_fireDecisionTrace || !mc2_diag::tagEnabled("COMBAT"))
