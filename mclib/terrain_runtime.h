@@ -52,6 +52,9 @@ namespace TerrainRuntime
 
 	// Bilinear accepted 4x bake, falling back to gameplay outside it or without a bake.
 	float sampleVisualHeight(const glm::vec3& worldPos);
+	// Filtered TL-BR visual ground shared with terrain LOD0 and vegetation placement.
+	float sampleVisibleGroundHeight(const glm::vec3& worldPos);
+	bool visibleGroundSupports(const glm::vec3& worldPos, float radius);
 
 	// Footprints/contact blobs follow the same visual surface as the terrain.
 	float decalElevation(const glm::vec3& worldPos);
