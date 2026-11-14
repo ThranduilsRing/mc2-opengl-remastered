@@ -18,6 +18,7 @@
 #include <vector>
 #include "../GameOS/gameos/terrain_field_store.h"
 #include "../GameOS/gameos/height_sig.h"
+#include "../GameOS/gameos/load_scope.h"
 
 
 //---------------------------------------------------------------------------
@@ -111,7 +112,7 @@ void Terrain::initTerrainTextures(PacketFile* pakFile, volatile float& percent, 
 	// Startup the Terrain Texture Maps
 	if ( !terrainTextures )
 	{
-		ZoneScopedN("Terrain::init terrainTextures");
+		ZoneScopedN("Terrain::init terrainTextures"); MC2_LOAD_SCOPE("Terrain::init terrainTextures");
 		std::string baseName;
 		if (pakFile)
 		{
@@ -136,7 +137,7 @@ void Terrain::initColorMapTexture(PacketFile* pakFile, volatile float& percent, 
 	// Startup the Terrain Color Map
 	if ( !terrainTextures2 && pakFile)
 	{
-		ZoneScopedN("Terrain::init terrainColorMap");
+		ZoneScopedN("Terrain::init terrainColorMap"); MC2_LOAD_SCOPE("Terrain::init terrainColorMap");
 
 		std::string name = std::filesystem::path(pakFile->getFilename()).stem().string();
 		terrainNameOwner = std::make_unique<char[]>(name.size()+1);
@@ -1229,7 +1230,7 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 				   volatile float& percent,
 					float percentRange)
 {
-	ZoneScopedN("Terrain::init");
+	ZoneScopedN("Terrain::init"); MC2_LOAD_SCOPE("Terrain::init");
 	// Derived color never survives a mission switch. Source loaders below retain their provider order.
 	mc2terrain::setSurfaceMissionCook({});
 	if (auto* fields = gos_TerrainFieldStore()) fields->clearSurfaceAsset();
