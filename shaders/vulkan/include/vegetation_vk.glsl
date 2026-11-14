@@ -53,7 +53,10 @@ void mc2VegetationVertex(vec3 i_worldPos, float i_yaw, float i_scale, float i_se
     // Ground cover (role 3) is static — too short to visibly sway.
     float windPhase1 = time * 0.35 + i_worldPos.x * 0.02 + i_worldPos.y * 0.03 + i_seed * 6.28;
     float windPhase2 = time * 0.55 + i_worldPos.x * 0.03 + i_worldPos.y * 0.05 + i_seed * 3.14;
-    float windNoise  = sin(windPhase1) * 0.75 + sin(windPhase2) * 0.25;
+    // Faded wind, static cover and anchored roots have no displacement.
+    float windNoise = 0.0;
+    if (windFade > 0.0 && cardRole != 3u && a_card.y > 0.0)
+        windNoise = sin(windPhase1) * 0.75 + sin(windPhase2) * 0.25;
     float windStr    = (cardRole == 3u) ? 0.0           // ground cover: no sway
                      : (cardRole == 2u) ? 0.05           // top/cap: gentle
                      : 0.10;                             // vertical/tilted: full
@@ -76,14 +79,17 @@ void mc2VegetationVertex(vec3 i_worldPos, float i_yaw, float i_scale, float i_se
         float g2 = sin(along * 0.012 - time * 0.62 + across * 0.007);
         gust = clamp(0.5 + 0.38 * g1 + 0.22 * g2, 0.0, 1.0);
         gust = gust * gust * (3.0 - 2.0 * gust);
-        float flutter = 0.07 * sin(time * 3.3 + i_seed * 41.0 + along * 0.25);
-        float jitter = (i_seed - 0.5) * 0.7;                       // per-blade lean direction spread
-        vec2 lean = vec2(W.x * cos(jitter) - W.y * sin(jitter), W.x * sin(jitter) + W.y * cos(jitter));
-        float bend = (fieldBlade ? 0.32 : 0.18) + (0.50 + flutter) * gust;  // tip offset per unit height
-        bend *= windFade * vertFactor;
-        float h2 = a_card.y * a_card.y;
-        worldPos.xy += lean * (bend * h2 * effectiveScale);
-        worldPos.z -= upFromY * effectiveScale * 0.35 * bend * h2;   // a bent blade is shorter, not stretched
+        // Gust still shades distant blades; only its dead geometry work stops.
+        if (windFade > 0.0 && a_card.y > 0.0) {
+            float flutter = 0.07 * sin(time * 3.3 + i_seed * 41.0 + along * 0.25);
+            float jitter = (i_seed - 0.5) * 0.7;                       // per-blade lean direction spread
+            vec2 lean = vec2(W.x * cos(jitter) - W.y * sin(jitter), W.x * sin(jitter) + W.y * cos(jitter));
+            float bend = (fieldBlade ? 0.32 : 0.18) + (0.50 + flutter) * gust;  // tip offset per unit height
+            bend *= windFade * vertFactor;
+            float h2 = a_card.y * a_card.y;
+            worldPos.xy += lean * (bend * h2 * effectiveScale);
+            worldPos.z -= upFromY * effectiveScale * 0.35 * bend * h2;   // a bent blade is shorter, not stretched
+        }
     }
     v_vegAux.y = gust;
 
