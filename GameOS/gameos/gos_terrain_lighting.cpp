@@ -816,12 +816,6 @@ void PackAndDispatch() {
         }
 
     }
-    // LIGHT-CLUSTER-PERF-1: bin this frame's pool into the world-space XY grid so
-    // the forward consumers loop only over lights whose circle covers the
-    // fragment. Must run AFTER the pack loop (reads s_lightBuf[0..numLights)) and
-    // is a no-op that publishes dim=0 (= linear loop) when gated off or the pool
-    // is too small to be worth binning.
-    BuildLightGrid(numLights);
     // LOCAL-LIGHTS-2: the coned lights nearest the camera target get a shadow tile (bits 4-7 of
     // lightType); the VK shadow island renders exactly these tiles this frame. Potato / shadows
     // off / no island: no tiles, unshadowed lights.
@@ -905,9 +899,9 @@ void mc2::beam_lights::appendFrameLights() {
     const uint32_t cap = std::min(s_maxLights, gos_terrain_lighting::kObjectPoolLights);
     for (unsigned i = 0; i < beams.count && count < cap; ++i)
         s_lightBuf[count++] = beams.lights[i];
-    if (count == s_lastNumLights) return;
     // Preserve the early vertex window and existing shadow assignments; refresh
-    // only the shared pool/grid before any native consumer records its inputs.
+    // the shared pool/grid once, after beams, even when no beams were appended.
+    // Native consumers record their inputs after render extraction.
     BuildLightGrid(count);
     s_lastNumLights = count;
     s_objectPoolDirty = true;
