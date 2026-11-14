@@ -1,4 +1,5 @@
 {
+  "tools/render_component_icons.py": "Manual Blender art cook: blender -b -t 4 --python tools/render_component_icons.py -- <stock-source> <output-art> <proof-dir>; regenerates the 39 shared component TGAs and comparison sheet without launching the engine.",
   "tools/perf/__init__.py": "Package marker for tools.perf; run_visual_capture imports tools.perf.main_busy to avoid the system Linux perf bindings.",
   "scripts/merge_gate_editor.py": "Invoked by scripts/merge_gate.py plan() as the path-scoped editor target build stage.",
   "tools/examples/fix_tree_kit.py": "Manual Stage 1 tree cook adapter; py -3 tools/examples/fix_tree_kit.py validates two existing meshes and pins the assigned install's prototype assets.",
