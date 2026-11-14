@@ -2267,6 +2267,11 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
     {
         ColorFrameUBO u{};
         std::memcpy(u.worldToClipGL, feed.worldToClipGL, sizeof(u.worldToClipGL));
+        if (g_mc2RenderFrame == 431 && std::getenv("MC2_FOREST_DIAG")) {
+            std::fprintf(stderr, "[FOREST_DIAG] matrix");
+            for (int i = 0; i < 16; ++i) std::fprintf(stderr, " %.9g", feed.worldToClipGL[i]);
+            std::fprintf(stderr, "\n");
+        }
         u.objectDepthBias = feed.objectDepthBias;
         u.instBase = 0;
         // VK-P11 STATIC-PROP MATERIAL: gate FS albedo sample + computePBR on the real

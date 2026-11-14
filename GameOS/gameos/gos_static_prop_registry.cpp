@@ -870,6 +870,9 @@ void bakeForestOcclusion(float sunX, float sunY, float sunUp) {
         const auto& rng = s_recipeRanges[t.rng];
         for (uint32_t k = rng.begin; k < rng.begin + rng.count; ++k)
             s_recipes[k].flags = (s_recipes[k].flags & 255u) | packed;
+        if (std::getenv("MC2_FOREST_DIAG"))
+            std::fprintf(stderr, "[FOREST_DIAG] tree id=%u x=%.2f y=%.2f z=%.2f h=%.2f r=%.2f sl=%u ob=%u ot=%u\n",
+                         t.rng, t.x, t.g, t.z, t.h, t.r, sl, occ[0], occ[1]);
     }
     ++s_registryGeneration;
 }
