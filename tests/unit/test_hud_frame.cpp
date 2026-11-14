@@ -8,7 +8,7 @@
 namespace {
 using DWORD = uint32_t;
 struct Vertex { float x = 0, y = 0, u = 0, v = 0; DWORD argb = 0xffffffff; };
-struct StaticInfo { DWORD textureHandle = 0; Vertex location[4]; };
+struct StaticInfo { unsigned long textureHandle = 0; Vertex location[4]; };
 namespace RenderCore {
 struct KtxImage { int width = 2, height = 2, vkFormat = 37; std::vector<uint8_t> pixels; };
 constexpr uint32_t kKtxMaxEdge = 16384;
