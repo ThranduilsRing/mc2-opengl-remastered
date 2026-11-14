@@ -23,8 +23,6 @@
 #include <algorithm>
 #include <cstdio>
 #include <vector>
-#include <cstdlib>
-#include <cstring>
 #include <thread>
 #include <chrono>
 
@@ -451,7 +449,7 @@ double Mission::pollRealFrameSeconds(float harnessFrameSeconds) {
 	const bool firstFrame = (LastTimeGetTime == 0xffffffff);
 	// Diagnostic only: measure wall-paced ticks, optionally stalling the render
 	// scheduler for 200 ms every two seconds. Never perturb the harness clock.
-	static const char* probe = std::getenv("MC2_SIM_RATE_PROBE");
+	static const int probe = mc2::gate::get<"MC2_SIM_RATE_PROBE">();
 	if (probe && !SmokeMode::fixedTimestepEnabled()) {
 		using Clock = std::chrono::steady_clock;
 		static auto started = Clock::now(), stalled = started;
@@ -460,7 +458,7 @@ double Mission::pollRealFrameSeconds(float harnessFrameSeconds) {
 			started = stalled = Clock::now();
 			firstTurn = turn;
 		}
-		if (std::strcmp(probe, "stall") == 0 &&
+		if (probe == 2 &&
 		    std::chrono::duration<double>(Clock::now() - stalled).count() >= 2.0) {
 			stalled = Clock::now();
 			std::this_thread::sleep_for(std::chrono::milliseconds(200));

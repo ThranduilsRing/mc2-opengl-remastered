@@ -47,6 +47,7 @@ G("MC2_SIM_IDENTITY_TRACE", Bool, false, "code", "", "SIM-IDENTITY-HASH-1: emit 
 G("MC2_SIM_IDENTITY_TRACE_DETAIL", Bool, false, "code", "", "SIM-IDENTITY-HASH-1: with MC2_SIM_IDENTITY_TRACE on, additionally emit one `[SIMID v1 mover]` line per mover per sim frame.", passthrough | registry(Trace, "MC2_SIM_IDENTITY_TRACE_DETAIL", -1, false) | verified),
 L(Lead0Kill, "MC2_SIM_OVERLAP", Bool, true, "code", "2026-11-25", "G7b: run the banked sim tick on a worker during snapshot drawing; 0 = serial loop. Retire after three green merge windows.", passthrough | verified),
 P("MC2_SIM_OVERLAP_AUDIT", Int, 0, "code", "", "G7: 1 aborts on overlap violations; 2 also arms the render fence; 3..52 adds 0..(value-2) ms of jitter using a private RNG.", passthrough | clampRange(0, 52) | verified),
+P("MC2_SIM_RATE_PROBE", Int, 0, "code", "", "Diagnostic: 1 reports wall-paced ticks; 2 also stalls the render scheduler 200 ms every 2 s. Disabled for fixed-step runs.", passthrough | clampRange(0, 2) | verified),
 P("MC2_SIM_SPEED", Float, 1.0, "code", "", "SIM-SPEED-BUTTON-1: play (wall clock) = seed of the HUD/dev-shell dt multiplier; harness fixed-step clock, unfocused = floor(N) 1/30 s steps per drawn frame.", passthrough | clampRange(0.25, 4.0) | verified),
 // BACKEND-DEFAULT-PARITY-1: skybox fog exclusion (was unregistered, and that
 // is what let two readers disagree in silence for the whole life of the gate).
