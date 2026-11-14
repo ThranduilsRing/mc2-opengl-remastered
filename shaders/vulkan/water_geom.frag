@@ -37,7 +37,7 @@ layout(set = 0, binding = 1, std140) uniform WaterFsParams {
     vec4 f2;              // (GLINT_GAIN, u_waterReflStrength, u_skyYaw, u_waterHdriLod)
     vec4 f3;              // (screenW, screenH, nightDim, animatedShore)
     vec4 DEEP_COLOR;      // .xyz color, .w Half-res reflection enabled
-    vec4 SHALLOW_COLOR;   // .xyz
+    vec4 SHALLOW_COLOR;   // .xyz color, .w gameplay navigable shallow depth
     // VK-PARITY-WATER-SHORE-1 (WATER-SHORE-EDGE-1): shore-feather inputs.
     vec4 f4;              // (u_shoreMode, u_hasShoreHeight, u_hasShoreMask, u_shoreFeatherWu)
     vec4 f5;              // u_shoreHeightBounds (topLeftX, topLeftY, spanX, spanY)
@@ -326,7 +326,12 @@ void main(void)
     float specAlpha2 = clamp(alpha0 * alpha0
                              + 2.0 * (waveVar + RIPPLE_SLOPE_VAR * (1.0 - waveLOD) * (RIPPLE_GAIN / 0.22))
                              + min(2.0 * kernelVar, 0.18), 0.0, 0.36);
-    PREC vec3 waterCol = DEEP_COLOR;
+    // Gameplay depth, not the reshaped shore field: the tint marks wadeable shelves.
+    // A flat shallow plateau avoids a bright coastline ring; only the deep boundary fades.
+    float shallowDepth = F.SHALLOW_COLOR.w;
+    float shallow = shallowDepth > 0.0
+        ? 1.0 - smoothstep(0.75 * shallowDepth, shallowDepth, max(WaterThickness, 0.0)) : 0.0;
+    PREC vec3 waterCol = mix(DEEP_COLOR, F.SHALLOW_COLOR.xyz, shallow);
 
     PREC float shoreBlend = max(alphaDepth, 1.0);
     PREC float shore = smoothstep(-shoreBlend * 0.5, shoreBlend, WaterThickness);
