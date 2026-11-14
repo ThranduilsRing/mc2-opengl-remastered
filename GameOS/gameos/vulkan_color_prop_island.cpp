@@ -78,6 +78,7 @@ float mc2NightLightFactor();   // mclib/camera.cpp: 0 day/evening .. 1 full nigh
 #include <cstring>
 #include <cstdarg>
 #include <cstdint>
+#include <map>
 #include <cstddef>   // offsetof (M2 layout asserts)
 #include <vector>
 #include <string>
@@ -1681,6 +1682,8 @@ struct PropRecPlan {
     VkPipelineLayout cullLayout, playout; VkDescriptorSet set, groundSet; VkBuffer vbo, ibo, cmdBuf;
     VkDeviceAddress pktAddr; uint32_t nDyn, dynOffsets[3], groundOffsets[4], runCount, drawLimit, listStart[kListCount + 1], counts[kListCount];
     float jx, jy; int w, h; bool hzbCulled;
+    struct DiagnosticDraw { uint32_t start, count; const char* name; };
+    std::vector<DiagnosticDraw> diagnostic[kListCount];
 };
 // Pure vkCmd half, matching record_terrain_cmds: no island or camera-global reads.
 static bool record_props_cmds(const PropRecPlan& plan, VkCommandBuffer cb) {
@@ -1729,6 +1732,17 @@ static bool record_props_cmds(const PropRecPlan& plan, VkCommandBuffer cb) {
     auto drawList = [&](VkPipeline pipe, uint32_t first, uint32_t n, uint32_t listWord) {
         if (n == 0) return;
         mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipe);
+        if (!plan.diagnostic[listWord].empty()) {
+            for (const auto& draw : plan.diagnostic[listWord]) {
+                if (draw.start >= first + (std::min)(n, plan.drawLimit)) break;
+                const uint32_t count = (std::min)(draw.count, first + (std::min)(n, plan.drawLimit) - draw.start);
+                MC2_VK_GPU_SCOPE(typeScope, cb, draw.name);
+                const PropPacketPush diagnosticPush{plan.pktAddr, draw.start, 0};
+                vkCmdPushConstants(cb, plan.playout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(diagnosticPush), &diagnosticPush);
+                vkCmdDrawIndexedIndirect(cb, plan.cmdBuf, kPropCmdHeader + static_cast<VkDeviceSize>(draw.start) * sizeof(PropDrawCmd), count, sizeof(PropDrawCmd));
+            }
+            return;
+        }
         const PropPacketPush push{plan.pktAddr, first, 0};
         vkCmdPushConstants(cb, plan.playout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(push), &push);
         mc2::battlebench::add(mc2::battlebench::DrawProps);
@@ -1946,6 +1960,21 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std
     // Everything the recording reads is copied out here, on main: the callback runs later on a Render-pool worker (VulkanContext::submitRecorded) and
     // touches only these values and handles, never the island (cmdScratch/runScratch/gpu[] are rewritten by the next prepare).
     PropRecPlan plan{};
+    // Packet-dump diagnostics keep the indirect command and instance order intact.
+    // Map nodes retain profiler name storage for the lifetime of the process.
+    if (!mc2::gate::str<"MC2_VK_PROP_PACKET_DUMP">().empty()) {
+        static std::map<uint64_t, std::string> names;
+        for (const auto& run : s->runScratch) {
+            for (uint32_t list = 0; list < kListCount; ++list) {
+                if (run.range[list][1] == 0) continue;
+                const uint64_t key = static_cast<uint64_t>(run.pad[0]) * kListCount + list;
+                auto [it, inserted] = names.try_emplace(key);
+                auto& [nameKey, name] = *it;
+                if (inserted) name = "VKIsl.Props.Type" + std::to_string(run.pad[0]) + ".List" + std::to_string(list);
+                plan.diagnostic[list].push_back({run.range[list][0], run.range[list][1], name.c_str()});
+            }
+        }
+    }
     plan.views[0] = reinterpret_cast<VkImageResource*>(s->t1_colorRes)->view.get();
     plan.views[1] = reinterpret_cast<VkImageResource*>(s->t1_normalRes)->view.get();
     plan.views[2] = s->t1_haveId ? reinterpret_cast<VkImageResource*>(s->t1_idRes)->view.get() : VK_NULL_HANDLE;
