@@ -193,6 +193,7 @@ add_executable(mc2_tests
     test_file_family_contract.cpp   # step 4 B3.0: the File family's name/child/buffer contract before B3.1
     test_pak_read_exact.cpp     # step 4 B4.1: mc2::pak::readExact, the size-checked packet read of the move maps (malformed pak rejected with one log line)
     test_tga_scratch.cpp        # step 4 B4.2a: the whole-file read and the TGA body-size check of the terrain texture loaders
+    test_terrain_overlay_tiles.cpp  # overlay-load-used-tiles-1: used-tile derivation of the overlay loader
     test_globalmap_limits.cpp   # step 4 B4.1c: the range checks of every count a global move map reads from a pak, plus the zeroed owner helper
     test_terrain_part_chunk.cpp
     test_texture_ref.cpp        # step 4 B5.1: mc2::BasicTextureRef, one release per adopted texture node reference

@@ -22,6 +22,8 @@
 #include"render_submissions.h"
 #endif
 #include "mc2_czstring.h"
+#include "terrain_overlay_tiles.h"
+#include <string>
 #include"tex_resolve_table.h"
 
 //---------------------------------------------------------------------------
@@ -165,7 +167,9 @@ class TerrainTextures
 		long initOverlay (long overlayNum, long txmNum, char *txmName);
 
 		long loadTextureMemory (mc2::czstring textureName, long mipSize);
-		long loadOverlayMemory (mc2::czstring overlayName);
+		mc2::OverlayTileRef overlayTileRef (long handle) const;
+		std::string overlayTileKey (long handle);
+		void loadOverlayTilePixels (long overlayNum, long txmNum);
 		long textureFromMemory (MemoryPtr ourRam, long mipSize);
 		long loadDetailMemory  (mc2::czstring detailName, long mipSize);
 		long textureFromMemoryAlpha (MemoryPtr ourRam, long mipSize);
