@@ -3,7 +3,7 @@ import csv, json, math, sys
 from pathlib import Path
 import bpy
 from mathutils import Vector, Matrix
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from ase_to_glb import parse_ase
 src, out, proof = map(Path, sys.argv[sys.argv.index('--') + 1:])
@@ -64,7 +64,7 @@ for index, (name, row) in enumerate(sorted(icons.items())):
     x, y = (index%8)*480, (index//8)*420
     draw.text((x+12,y+8),row[2],font=font,fill='white'); draw.text((x+12,y+34),f'{w}x{h} cells | old / new',font=font,fill='#91a9bb')
     for offset, image in [(10,old.crop((0,0,48*w,32*h))), (245,rendered)]:
-        image.thumbnail((220,340),Image.Resampling.LANCZOS); sheet.paste(image,(x+offset+(220-image.width)//2,y+68),image)
+        image = ImageOps.contain(image,(220,340),Image.Resampling.LANCZOS); sheet.paste(image,(x+offset+(220-image.width)//2,y+68),image)
     print('COOKED',name,old.size,canvas.size,flush=True)
 (proof/'inventory.json').write_text(json.dumps(inventory,indent=2))
 sheet.save(proof/'old-new-4k.png')
