@@ -120,7 +120,7 @@ int MainMenu::init( FitIniFile& file )
 		Assert(0,0,errorStr );
 	}
 
-	background.init( file2, "Static", "Text", "Rect", "Button" );
+	background.init( file2, "Static", "Text", "Rect", "Button", nullptr, "AnimObject" );
 
 	for ( int i = 0; i < buttonCount; i++ )
 	{
@@ -883,7 +883,7 @@ void MainMenu::render()
 
 		if ( bDrawBackground )
 		{
-			background.renderLegacy();
+			background.render();
 			intro.render();
 			if ( !intro.allAnimObjectsDone() && !introOver && !bHostLeftDlg )
 				return;
