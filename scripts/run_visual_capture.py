@@ -787,9 +787,10 @@ def capture_path_timing(args) -> int:
     A capture has to contain at least 1800 measured rendered frames.
     """
     sys.path.insert(0, str(ROOT / "tools"))
+    sys.path.insert(0, str(ROOT))
     import tracy_capture_compare as tracy
     import run_battle_bench as battle
-    from perf.main_busy import table, load_cpu_rows
+    from tools.perf.main_busy import table, load_cpu_rows
     import math
 
     out = Path(args.tracy_output).resolve()

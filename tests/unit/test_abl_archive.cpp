@@ -4,7 +4,7 @@
 #include <regex>
 
 TEST_CASE("save fields: ABL native union and module census") {
-    const auto root = std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
+    const auto root = std::filesystem::path(MC2_REPO_ROOT);
     const auto fields = [&](const char* path, const char* start, const char* end) {
         std::ifstream file(root / path);
         REQUIRE(file.good());
