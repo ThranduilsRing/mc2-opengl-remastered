@@ -13,7 +13,7 @@ icons = {r[23].lower(): r for r in rows if len(r) > 28 and r[23].lower().endswit
 sheet = Image.new('RGB', (3840, 2160), (23, 29, 35)); draw = ImageDraw.Draw(sheet)
 font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 18, layout_engine=ImageFont.Layout.BASIC)
 inventory = []
-ROLL_SIGN = 1
+ROLL_SIGN = -1
 RANGE_RGB = {'short': (110, 124, 0), 'medium': (0, 83, 146), 'long': (198, 28, 0)}
 def stock_frame(w, h, rgb, mask):
     """Stock icon dressing: dashed cell grid + silhouette outline in the range colour (texel units x4)."""
@@ -73,7 +73,7 @@ for index, (name, row) in enumerate(sorted(icons.items())):
     projected = [camera.matrix_world.inverted() @ v.co for obj in objects for v in obj.data.vertices]
     dx = max(p.x for p in projected)-min(p.x for p in projected); dy = max(p.y for p in projected)-min(p.y for p in projected)
     camera.location += camera.rotation_euler.to_matrix() @ Vector(((max(p.x for p in projected)+min(p.x for p in projected))/2,(max(p.y for p in projected)+min(p.y for p in projected))/2,0))
-    aspect = (48*w)/(32*h); camera.data.ortho_scale = max(dx,dy*aspect)/min(1,aspect)*1.14
+    aspect = (48*w)/(32*h); camera.data.ortho_scale = max(dx,dy*aspect)/min(1,aspect)*1.08
     scene.render.resolution_x = 48*w*4; scene.render.resolution_y = 32*h*4; scene.render.resolution_percentage = 100
     scene.render.image_settings.file_format = 'PNG'; scene.render.image_settings.color_mode = 'RGBA'
     scene.render.filepath = str(proof / (Path(name).stem+'.png')); bpy.ops.render.render(write_still=True)
