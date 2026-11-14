@@ -97,6 +97,8 @@ struct DeviceCaps {
     // state each (blended colour, untouched normal / object-id target), which is invalid without it.
     bool independentBlend = false;
     bool samplerAnisotropy = false;
+    // A core 1.0 feature, optional: per-pass clipping-primitive counts (VK_QUERY_TYPE_PIPELINE_STATISTICS) for the GPU pass report.
+    bool pipelineStatisticsQuery = false;
     // A core 1.0 feature: the prop island indexes its uPropTex[] sampler array with a per-material value (SampledImageArrayDynamicIndexing).
     bool shaderSampledImageArrayDynamicIndexing = false;
     // GPU-driven props: core 1.0 multiDrawIndirect + drawIndirectFirstInstance and the 1.2 drawIndirectCount feature.
@@ -235,6 +237,9 @@ inline Evaluation evaluate(const DeviceCaps& c, bool wantPresent) {
 
     add("sampler_anisotropy", Need::Wanted, c.samplerAnisotropy, Route::Core);
     if (c.samplerAnisotropy) e.enabledFeatures.push_back("samplerAnisotropy");
+
+    add("pipeline_statistics", Need::Wanted, c.pipelineStatisticsQuery, Route::Core);
+    if (c.pipelineStatisticsQuery) e.enabledFeatures.push_back("pipelineStatisticsQuery");
 
     // Required: the static-prop colour pass is GPU-driven (compute compaction into VkDrawIndexedIndirectCommand, vkCmdDrawIndexedIndirectCount).
     const bool indirect = c.multiDrawIndirect && c.drawIndirectFirstInstance && c.drawIndirectCount && c.shaderDrawParameters;

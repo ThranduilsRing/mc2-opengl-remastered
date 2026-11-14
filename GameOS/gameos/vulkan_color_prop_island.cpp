@@ -1726,7 +1726,7 @@ static bool record_props_cmds(const PropRecPlan& plan, VkCommandBuffer cb) {
     // Compaction: the HZB pass's last barrier targets VERTEX|HOST, so this pass first orders itself after the HZB compute writes, and the draw
     // stages (vertex shader reads the compacted slots, the indirect read takes the counts and instanceCounts) after its own writes.
     if (plan.runCount != 0) {
-        MC2_VK_GPU_SCOPE(cullScope, cb, "VKIsl.Props.Cull");
+        MC2_VK_GPU_SCOPE(cullScope, cb, plan.embedded ? "VKIsl.Props.Refl.Cull" : "VKIsl.Props.Cull");
         VkMemoryBarrier pre{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
         pre.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT; pre.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
         vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &pre, 0, nullptr, 0, nullptr);
@@ -1743,7 +1743,8 @@ static bool record_props_cmds(const PropRecPlan& plan, VkCommandBuffer cb) {
     }
 
     // Begin the LOAD pass: all attachments LOAD, no clear values.
-    MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Props");
+    // The main view and the embedded reflection run are separate scopes (and separate triangle rows).
+    MC2_VK_GPU_SCOPE_TRIS(gpuScope, cb, plan.embedded ? "VKIsl.Props.Refl" : "VKIsl.Props");
     t1_begin_pass(plan.views, plan.depthView, plan.depthFmt, cb, static_cast<uint32_t>(plan.w), static_cast<uint32_t>(plan.h));
 
     VkViewport vp{plan.jx, plan.jy, static_cast<float>(plan.w), static_cast<float>(plan.h), 0.0f, 1.0f};
@@ -2502,6 +2503,7 @@ extern "C" void mc2_vk_color_prop_island_late_fringe() {
     VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { s->disabled = true; return; }
+    MC2_VK_GPU_SCOPE_TRIS(lateScope, cb, "VKIsl.Props.Late");
     t1_begin_pass(s, cb, static_cast<uint32_t>(s->w), static_cast<uint32_t>(s->h));
     float jpx[2];
     RenderCore::temporal::sceneJitterPixels(g_mc2RenderFrame, jpx);
@@ -2525,6 +2527,7 @@ extern "C" void mc2_vk_color_prop_island_late_fringe() {
     vkCmdDrawIndexedIndirectCount(cb,cmdBuf,kPropCmdHeader + static_cast<VkDeviceSize>(lateStart) * sizeof(PropDrawCmd),cmdBuf,kListLate * sizeof(uint32_t),
                                   (std::min)(lateCount,s->drawIndirectLimit),sizeof(PropDrawCmd));
     mc2vk::dynrender::end(mc2vk::getOrCreateEngineVulkanContext(), cb);
+    lateScope.end();
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { s->disabled = true; return; }
     VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
