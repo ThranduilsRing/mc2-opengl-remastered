@@ -226,6 +226,14 @@ TEST_CASE("duplicate FST key keeps registration order as authority order")
 		CHECK(mc2::vfs::contentDigest(entry) == digestOf("from-first-archive"));
 		FastFileFini();
 	}
+	// The persisted member memo must follow an archive replacement, even for the same logical member.
+	authorFst(a, entry, "replacement-archive-content");
+	fs::last_write_time(a, fs::last_write_time(a) + std::chrono::seconds(7));
+	fastFiles = static_cast<FastFile**>(calloc(static_cast<size_t>(maxFastFiles), sizeof(FastFile*)));
+	REQUIRE(FastFileInit(a.c_str()));
+	mc2::vfs::rebuild();
+	CHECK(mc2::vfs::contentDigest(entry) == digestOf("replacement-archive-content"));
+	FastFileFini();
 	mc2::vfs::rebuild();
 	std::error_code ec;
 	fs::remove(a, ec);
