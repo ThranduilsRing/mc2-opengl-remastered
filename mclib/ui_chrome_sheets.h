@@ -71,6 +71,14 @@ std::vector<uint8_t> encodePngStored(const Pixels& px);
 // not a data/art/gui sheet.
 std::string sheetKeyFromPath(std::string_view path);
 
+// Only chrome sub-crops need neighbour rejection. Content sprites retain their authored UVs.
+inline bool insetChromeCrop(std::string_view path, bool pixelPerfect, bool legacySpace, bool nineSlice,
+                            float u1, float v1, float u2, float v2) {
+    if (pixelPerfect || legacySpace || (u1 == 0.f && v1 == 0.f && u2 == 1.f && v2 == 1.f)) return false;
+    const auto key = sheetKeyFromPath(path);
+    return nineSlice || key.starts_with("mcl_") || key.starts_with("mcui_universal") || key.starts_with("mcui_mr_");
+}
+
 // Nine-slice geometry: the source image (srcW x srcH texels) is cut by `insets` (l, t, r, b); corners keep their texel
 // size, edges stretch along one axis, the centre along both. Quad order: row-major from the top-left. Returns false when
 // the insets leave no centre or the destination is smaller than the (scaled) corners; cornerScale* is the page scale (callers then draw one stretched quad).

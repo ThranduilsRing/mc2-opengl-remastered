@@ -209,6 +209,7 @@ add_executable(mc2_tests
     test_mc2str.cpp         # mc2::str helpers (from_c, ASCII-fold equality/order, ascii_lower/upper) + the stock-identifier corpus against the old compare
     test_resource_strings.cpp
     test_resource_messages.cpp  # typed resource messages over the real catalog (MC2Strings.cpp linked)
+    test_text_fit.cpp       # drawText bounded-region fit math (header-only)
     test_abl_include_path.cpp  # ABL #include_ next to the including script: mixed separators, OConst.abi (Windows regression)
     test_abl_concat.cpp     # ABL concat(): the append never writes past the script variable's declared size
     test_abl_position.cpp   # ABL getRelativePositionToObject: the REAL binding against a scripted argument queue (abl_exec_shim.cpp)
