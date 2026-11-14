@@ -398,7 +398,7 @@ void main(void)
         // gentle shelves (mc2_17) and let coarse terrain decide the visible line elsewhere. Shallow
         // water keeps some translucency through a 0.55..1 depth softness floor.
         float edgeAA = smoothstep(0.0, max(3.0 * coverageThickFw, 1e-3), coverageThick);
-        shore = edgeAA * mix(0.55, 1.0, smoothstep(0.0, max(F.f4.w, 0.5), fieldThick));
+        shore = edgeAA * mix(0.55, 1.0, smoothstep(0.0, max(F.f4.w, 0.5), hasField ? fieldThick : coverageThick));
     } else {
         shore = wse_shoreFeather(shore, int(F.f4.x + 0.5), int(F.f4.y + 0.5), int(F.f4.z + 0.5),
                                  u_shoreHeightTex, u_shoreMask, F.f5, F.f6, F.f4.w,
