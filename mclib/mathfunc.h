@@ -1,3 +1,4 @@
+#include "math/sim_math.h"
 //===========================================================================//
 // Copyright (C) Microsoft Corporation. All rights reserved.                 //
 //===========================================================================//
@@ -144,7 +145,7 @@ inline float mc2_atan2 (float f1, float f2)
 	//f2 is always assumed positive here!!!
 	if (f2 > Stuff::SMALL)
 	{
-        result = atan2f(f1, f2);
+        result = mc2::sim::math::atan2(f1, f2);
 	}
 	
 	return result;

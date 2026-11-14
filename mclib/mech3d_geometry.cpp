@@ -217,7 +217,7 @@ void Mech3DAppearance::updateGeometry (void)
 	{
 		glm::quat qRotation;
 		float yaw = rotation * DEGREES_TO_RADS;
-		qRotation = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, yaw, 0.0f));
+		qRotation = mc2::math::quatFromEulerSim(mc2::math::Euler(0.0f, yaw, 0.0f));
 	
 		unsigned char lightr,lightg,lightb;
 		float lightIntensity = 1.0f;
@@ -503,7 +503,7 @@ void Mech3DAppearance::updateGeometry (void)
 		}
 	
 		glm::quat torsoRot;
-		torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(unitAnim().torsoRotation * DEGREES_TO_RADS),0.0f));
+		torsoRot = mc2::math::quatFromEulerSim(mc2::math::Euler(0.0f,(unitAnim().torsoRotation * DEGREES_TO_RADS),0.0f));
 		if (rotationalNodeIndex == -1)
 	   		rotationalNodeIndex = mechShape->SetNodeRotation("joint_torso",&torsoRot);
 
@@ -1033,7 +1033,7 @@ void Mech3DAppearance::updateSimPose (bool advanceClock)
     }
 
 	glm::quat qRotation;
-	qRotation = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, rotation * DEGREES_TO_RADS, 0.0f));
+	qRotation = mc2::math::quatFromEulerSim(mc2::math::Euler(0.0f, rotation * DEGREES_TO_RADS, 0.0f));
 	glm::vec3 xlatPosition;
 	mc2ToRender(xlatPosition, position);
 
@@ -1068,7 +1068,7 @@ void Mech3DAppearance::updateSimPose (bool advanceClock)
 	}
 
 	glm::quat torsoRot;
-	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(unitAnim().torsoRotation * DEGREES_TO_RADS),0.0f));
+	torsoRot = mc2::math::quatFromEulerSim(mc2::math::Euler(0.0f,(unitAnim().torsoRotation * DEGREES_TO_RADS),0.0f));
 	if (rotationalNodeIndex == -1)
 		rotationalNodeIndex = mechShape->SetNodeRotation("joint_torso",&torsoRot);
 	mechShape->SetNodeRotation(rotationalNodeIndex,&torsoRot);

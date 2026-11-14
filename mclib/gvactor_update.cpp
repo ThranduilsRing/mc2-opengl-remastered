@@ -1,3 +1,4 @@
+#include "math/sim_math.h"
 #include "unit_animation_tick.h"
 // GVAppearance: updateGeometry (reads the shadow-skip gate and the spot-light diagnostic counters), update, destroy, water wake and activity effects.
 // Declared in the class headers; shared names in gvactor_internal.h.
@@ -55,12 +56,12 @@ glm::quat GVAppearance::poseRotation() const
 				up.z = 1.0f;
 
 				pitchAngle = glm::dot(up, pitchK);
-				pitchAngle = acos(pitchAngle) * RADS_TO_DEGREES;
+				pitchAngle = mc2::sim::math::acos(pitchAngle) * RADS_TO_DEGREES;
 				if (pitchK.y < 0.0f)
 					pitchAngle = -pitchAngle;
 
 				rollAngle = glm::dot(up, rollK);
-				rollAngle = acos(rollAngle) * RADS_TO_DEGREES;
+				rollAngle = mc2::sim::math::acos(rollAngle) * RADS_TO_DEGREES;
 				if (rollK.x < 0.0f)
 					rollAngle = -rollAngle;
 			}
@@ -72,9 +73,9 @@ glm::quat GVAppearance::poseRotation() const
 		rollAngle *= DEGREES_TO_RADS;
 	
 		glm::quat totalRotation;
-		rot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, yaw, 0.0f));
+		rot = mc2::math::quatFromEulerSim(mc2::math::Euler(0.0f, yaw, 0.0f));
 	
-		pitchRoll = mc2::math::quatFromEuler(mc2::math::Euler(pitchAngle, 0.0f, rollAngle));
+		pitchRoll = mc2::math::quatFromEulerSim(mc2::math::Euler(pitchAngle, 0.0f, rollAngle));
 		totalRotation = mc2::math::composeQuat(pitchRoll, rot);
 	
     return totalRotation;
@@ -131,7 +132,7 @@ void GVAppearance::updateGeometry (void)
 			gvShape->SetFogRGB(0xffffffff);
 	
 		glm::quat turretRot;
-		turretRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(unitAnim().turretRotation * DEGREES_TO_RADS),0.0f));
+		turretRot = mc2::math::quatFromEulerSim(mc2::math::Euler(0.0f,(unitAnim().turretRotation * DEGREES_TO_RADS),0.0f));
 		if (rotationalNodeIndex == -1)
 		   	rotationalNodeIndex = gvShape->SetNodeRotation(appearType->rotationalNodeId,&turretRot);
 

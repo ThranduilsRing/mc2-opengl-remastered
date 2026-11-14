@@ -1,3 +1,4 @@
+#include "math/sim_math.h"
 //===========================================================================//
 // Copyright (C) Microsoft Corporation. All rights reserved.                 //
 //===========================================================================//
@@ -23,8 +24,8 @@ glm::vec3 UnitK(0.0f,0.0f,1.0f);
 void Rotate (Stuff::Vector2DOf<float> &vec, float angle)
 {
 	float tx = vec.x;
-	float sine = sin(angle * DEGREES_TO_RADS);
-	float cosine = cos(angle * DEGREES_TO_RADS);
+	float sine = mc2::sim::math::sin(angle * DEGREES_TO_RADS);
+	float cosine = mc2::sim::math::cos(angle * DEGREES_TO_RADS);
 
 	vec.x *= cosine;
 	vec.x += (vec.y * sine);
@@ -36,8 +37,8 @@ void Rotate (Stuff::Vector2DOf<float> &vec, float angle)
 void Rotate (glm::vec3 &vec, float angle)
 {
 	float tx = vec.x;
-	float sine = sin(angle * DEGREES_TO_RADS);
-	float cosine = cos(angle * DEGREES_TO_RADS);
+	float sine = mc2::sim::math::sin(angle * DEGREES_TO_RADS);
+	float cosine = mc2::sim::math::cos(angle * DEGREES_TO_RADS);
 
 	vec.x *= cosine;
 	vec.x += (vec.y * sine);
@@ -62,8 +63,8 @@ void RotateLight (glm::vec3 &vec, float angle)
 void OppRotate (glm::vec3 &vec, float angle)
 {
 	float tx = vec.x;
-	float sine = sin(angle * DEGREES_TO_RADS);
-	float cosine = cos(angle * DEGREES_TO_RADS);
+	float sine = mc2::sim::math::sin(angle * DEGREES_TO_RADS);
+	float cosine = mc2::sim::math::cos(angle * DEGREES_TO_RADS);
 
 	vec.x *= cosine;
 	vec.x -= (vec.y * sine);
@@ -96,7 +97,7 @@ float my_acos (float val)
 	val = std::max<double>(val, -1.0);
 	val = std::min<double>(val, 1.0);
 
-	return(acos(val));
+	return(mc2::sim::math::acos(val));
 }
 
 float angle_from (Stuff::Vector2DOf<float>&v1, Stuff::Vector2DOf<float> &v2)

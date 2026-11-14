@@ -1,3 +1,4 @@
+#include "math/sim_math.h"
 // BattleMech: BattleMech::update, render, renderShadows, hit-location and ejection helpers.
 // Declared in the class headers; shared names in mech_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
@@ -228,7 +229,7 @@ long BattleMech::update (void)
 			float velFactor = 1.0;
 				float velAngle = land->getTerrainAngle(position);
 				velAngle *= DEGREES_TO_RADS;
-				velFactor = cos(velAngle);
+				velFactor = mc2::sim::math::cos(velAngle);
 	
 			float velMult = velMag * velFactor * frameLength;
 			velMult = std::min(velMult, DistanceToWaypoint);

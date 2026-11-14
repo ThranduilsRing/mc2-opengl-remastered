@@ -1,3 +1,4 @@
+#include "math/sim_math.h"
 #include "tick_commit.h"
 //***************************************************************************
 //
@@ -1673,8 +1674,8 @@ glm::vec3 GameObject::relativePosition (float angle, float distance, unsigned lo
 	shiftVect.y = 1.0;
 
 	float tx = shiftVect.x;
-	float sine = sin(angle);
-	float cosine = cos(angle);
+	float sine = mc2::sim::math::sin(angle);
+	float cosine = mc2::sim::math::cos(angle);
 
 	shiftVect.x *= cosine;
 	shiftVect.x += (shiftVect.y * sine);

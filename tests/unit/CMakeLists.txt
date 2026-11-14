@@ -61,6 +61,7 @@ add_executable(mc2_tests
     test_runtime_bridge_protocol.cpp
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/runtime_bridge_protocol.cpp
     test_building_gameplay_observation.cpp
+    test_sim_math.cpp
     test_main.cpp           # owns DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
     test_abl_callback_address.cpp
     test_crash_bundle.cpp
