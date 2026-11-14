@@ -54,7 +54,7 @@ TEST_CASE("contact visibility: resolved quality and visual overrides share one t
 
 TEST_CASE("contact visibility: production consumers read the shared snapshot")
 {
-    const auto root = std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
+    const auto root = std::filesystem::path(MC2_REPO_ROOT);
     const auto source = [&](const char* file) {
         std::ifstream input(root / file);
         REQUIRE(input.good());

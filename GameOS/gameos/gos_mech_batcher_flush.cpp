@@ -494,10 +494,10 @@ void MechFlushFrame::collectRuns() {
         run.instanceBase  = dc.instanceBase;
         run.instanceCount = dc.instanceCount;
         run.materialFlags = dc.materialFlags;
-        run.slot0Tex      = cache.textures.at(dc.texHandle);
+        run.slot0Tex      = cache.texture(dc.texHandle);
         // VK-PARITY-MECH-1: per-type AO / normal maps.
-        run.aoTex = dc.aoTexHandle && dc.aoTexHandle != UINT32_MAX && mc2::textures::ready() ? cache.textures.at(dc.aoTexHandle) : 0u;
-        run.normalTex = dc.normalTexHandle && dc.normalTexHandle != UINT32_MAX && mc2::textures::ready() ? cache.textures.at(dc.normalTexHandle) : 0u;
+        run.aoTex = dc.aoTexHandle && dc.aoTexHandle != UINT32_MAX && mc2::textures::ready() ? cache.texture(dc.aoTexHandle) : 0u;
+        run.normalTex = dc.normalTexHandle && dc.normalTexHandle != UINT32_MAX && mc2::textures::ready() ? cache.texture(dc.normalTexHandle) : 0u;
         s_vkMechRunSnapshot.push_back(run);
         ++drawnCalls;
     }

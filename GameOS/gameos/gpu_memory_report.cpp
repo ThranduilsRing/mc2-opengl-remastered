@@ -10,6 +10,7 @@
 
 #include <cstdio>
 #include <cstring>
+#include <future>
 #include <string_view>
 #include "mc2fmt.h"
 
@@ -32,10 +33,9 @@ namespace {
 
 
 #ifdef MC2_VULKAN
-void readVulkan(Snapshot& s) {
-    if (!mc2vk::engineVulkanContextValid()) return;
+void readVulkan(Snapshot& s, const mc2vk::VulkanContext& context) {
     uint64_t budget = 0, usage = 0, allocated = 0;
-    if (mc2vk::getOrCreateEngineVulkanContext().deviceLocalMemory(budget, usage, allocated)) {
+    if (context.deviceLocalMemory(budget, usage, allocated)) {
         s.vkBudgetBytes = static_cast<int64_t>(budget);
         s.vkUsageBytes = static_cast<int64_t>(usage);
         s.vkAllocatedBytes = static_cast<int64_t>(allocated);
@@ -115,13 +115,30 @@ void readDxgi(Snapshot& s) {
 
 int64_t bytesToMib(int64_t v) { return v < 0 ? kUnavailable : v / (1024 * 1024); }
 
+std::future<Snapshot> pendingSnapshot;
+uint64_t sampleFrame = 0;
+unsigned long long peakWorkingSet = 0;
+
+void publishSnapshot() {
+    const Snapshot snapshot = pendingSnapshot.get();
+    ZoneScopedN("GpuMemory.BattlebenchOutput");
+    std::fprintf(mc2::battlebench::output, "{\"type\":\"memory\",\"frame\":%llu,\"working_set_peak_bytes\":%llu,\"gpu\":%s}\n",
+        static_cast<unsigned long long>(sampleFrame), peakWorkingSet, toJson(snapshot).c_str());
+    std::fflush(mc2::battlebench::output);
+#ifdef _WIN32
+    if (TracyIsConnected && snapshot.dxgiProcessUsageBytes >= 0)
+        TracyPlot("VRAM.Process.MB", snapshot.dxgiProcessUsageBytes / (1024 * 1024));
+#endif
+}
+
 }  // namespace
 
 Snapshot take() {
     Snapshot s;
     s.backend = "vk";
 #ifdef MC2_VULKAN
-    { ZoneScopedN("GpuMemory.VulkanQuery"); readVulkan(s); }
+    { ZoneScopedN("GpuMemory.VulkanQuery");
+      if (mc2vk::engineVulkanContextValid()) readVulkan(s, mc2vk::getOrCreateEngineVulkanContext()); }
 #endif
 #ifdef _WIN32
     { ZoneScopedN("GpuMemory.DxgiQuery"); readDxgi(s); }
@@ -173,13 +190,22 @@ void log(std::string_view phase) {
     std::fflush(stdout);
 }
 
+void finish() {
+    // The allocator and benchmark FILE must outlive the last driver query.
+    if (pendingSnapshot.valid()) publishSnapshot();
+}
+
 void tick(unsigned long frame) {
+    if (pendingSnapshot.valid() && pendingSnapshot.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+        publishSnapshot();
     if (frame % kPlotEveryFrames != 0) return;
     Snapshot snapshot;
     if (mc2::battlebench::output) {
-        unsigned long long peakWorkingSet = 0;
+        // Never wait for a driver query in a measured frame, even if it spans a cadence.
+        if (pendingSnapshot.valid()) return;
+        sampleFrame = mc2::battlebench::frame;
+        peakWorkingSet = 0;
         { ZoneScopedN("GpuMemory.BattlebenchSnapshot");
-        snapshot = take();
 #ifdef _WIN32
         PROCESS_MEMORY_COUNTERS counters{};
         using GetMemory = BOOL (WINAPI*)(HANDLE, PPROCESS_MEMORY_COUNTERS, DWORD);
@@ -187,11 +213,23 @@ void tick(unsigned long frame) {
         if (getMemory && getMemory(GetCurrentProcess(), &counters, sizeof(counters))) peakWorkingSet = counters.PeakWorkingSetSize;
 #endif
         }
-        { ZoneScopedN("GpuMemory.BattlebenchOutput");
-        std::fprintf(mc2::battlebench::output, "{\"type\":\"memory\",\"frame\":%llu,\"working_set_peak_bytes\":%llu,\"gpu\":%s}\n",
-            static_cast<unsigned long long>(mc2::battlebench::frame), peakWorkingSet, toJson(snapshot).c_str());
-        std::fflush(mc2::battlebench::output);
-        }
+#ifdef _WIN32
+        { ZoneScopedN("GpuMemory.DxgiQuery"); readDxgi(snapshot); }
+#endif
+        snapshot.backend = "vk";
+#ifdef MC2_VULKAN
+        // Read-only VMA statistics need no present-owner fence; finish() guards lifetime.
+        const auto* context = &mc2vk::engineVulkanContextNoWait();
+        pendingSnapshot = std::async(std::launch::async, [snapshot, context]() mutable {
+            tracy::SetThreadName("GpuMemory");
+            ZoneScopedN("GpuMemory.VulkanQuery");
+            if (context->valid()) readVulkan(snapshot, *context);
+            return snapshot;
+        });
+#else
+        pendingSnapshot = std::async(std::launch::async, [snapshot] { return snapshot; });
+#endif
+        return;
     }
 #ifdef _WIN32
     if (!TracyIsConnected) return;

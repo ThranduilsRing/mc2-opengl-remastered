@@ -77,6 +77,16 @@ void mc2::VkSceneRenderer::vkLegacySubmitNode (RenderSubmissions& submissions, l
 			d.gosTexHandle = (gosTex == 0xffffffffu) ? 0u : static_cast<uint32_t>(gosTex);
 			d.pass = pass;
 			d.alphaTest = alphaTest;
+			const auto& node = submissions.masterVertexNodes[i];
+			const uint32_t source = pass == MC2_LEGACY_PASS_SHADOW ? MC2_LEGACY_BLOB :
+				(node.flags & MC2_ISSPOTLGT) ? MC2_LEGACY_CONE : (node.flags & MC2_ISEFFECTS) ? MC2_LEGACY_EFFECT :
+				pass == MC2_LEGACY_PASS_ALPHA ? MC2_LEGACY_ALPHA : MC2_LEGACY_SHAPE;
+			uint32_t remaining = totalVertices;
+			for (uint32_t c = 0; c < 3; ++c) {
+				const uint32_t count = source == MC2_LEGACY_SHAPE || source == MC2_LEGACY_ALPHA ? std::min(remaining, node.vehicleVertices[c]) : 0;
+				d.sourceVertices[c] = count; remaining -= count;
+			}
+			d.sourceVertices[source] += remaining;
 			mc2_vk_legacy_shape_submit(&d);
 		}
 		submissions.masterVertexNodes[i].currentVertex = submissions.masterVertexNodes[i].vertices;

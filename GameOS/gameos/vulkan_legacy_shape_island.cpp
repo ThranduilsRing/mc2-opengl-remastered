@@ -74,6 +74,40 @@ void vlog(const char* fmt, ...) {
     va_end(ap);
 }
 
+struct Inventory {
+    uint64_t nodes[MC2_LEGACY_PASS_COUNT][MC2_LEGACY_SOURCE_COUNT] = {};
+    uint64_t verts[MC2_LEGACY_PASS_COUNT][MC2_LEGACY_SOURCE_COUNT] = {};
+    uint32_t beginFrame = 0, last = 0, logged = 0;
+    bool active = false;
+};
+Inventory g_inventory[2];
+void logInventory(const Inventory& counts, bool preview, std::string_view kind) {
+    if (!counts.active) return;
+    const char* names[] = {"vehicle_fading", "vehicle_unregistered", "vehicle_declined", "solid_shape",
+        "alpha", "blob_shadow", "additive_effect", "spotlight_cone", "preview_capture"};
+    for (uint32_t p = 0; p < MC2_LEGACY_PASS_COUNT; ++p)
+        for (uint32_t c = 0; c < MC2_LEGACY_SOURCE_COUNT; ++c)
+            vlog("inventory=%.*s target=%s first=%u last=%u frames=%u pass=%u source=%s nodes=%llu verts=%llu node_owner=largest_contribution",
+                static_cast<int>(kind.size()), kind.data(), preview ? "preview" : "world", counts.beginFrame, counts.last, counts.last - counts.beginFrame + 1,
+                p, names[c], static_cast<unsigned long long>(counts.nodes[p][c]), static_cast<unsigned long long>(counts.verts[p][c]));
+}
+void noteInventory(const std::vector<Mc2LegacyMlrDraw>& draws, bool preview) {
+    auto& counts = g_inventory[preview ? 1 : 0];
+    if (!counts.active) { counts.beginFrame = counts.logged = g_mc2RenderFrame; counts.active = true; }
+    counts.last = g_mc2RenderFrame;
+    for (auto draw : draws) {
+        if (preview) {
+            std::memset(draw.sourceVertices, 0, sizeof(draw.sourceVertices));
+            draw.sourceVertices[MC2_LEGACY_PREVIEW] = draw.vertexCount;
+        }
+        const auto pass = draw.pass < MC2_LEGACY_PASS_COUNT ? draw.pass : MC2_LEGACY_PASS_SOLID;
+        ++counts.nodes[pass][mc2LegacyNodeOwner(draw)];
+        for (uint32_t c = 0; c < MC2_LEGACY_SOURCE_COUNT; ++c) counts.verts[pass][c] += draw.sourceVertices[c];
+    }
+    // Cumulative snapshots keep every successful node accounted for; no per-element zones.
+    if (counts.last - counts.logged >= 120) { logInventory(counts, preview, "cadence"); counts.logged = counts.last; }
+}
+
 std::string spv_dir() { return vk_island_util::spvDir(); }
 
 VkShaderModule load_spv(VkDevice device, std::string_view path) {
@@ -679,6 +713,7 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
     }
     g_health.nodesDrawn += drawn;
     g_health.vertsDrawn += verts;
+    noteInventory(draws, s->preview);
     ++g_health.usedVulkan;
     static bool s_firstOk = false;
     if (!s_firstOk) {
@@ -750,6 +785,8 @@ extern "C" void mc2_vk_legacy_shape_island_reset() {
 }
 
 extern "C" void mc2_vk_legacy_shape_island_destroy() {
+    logInventory(g_inventory[0], false, "final");
+    logInventory(g_inventory[1], true, "final");
     vlog("used_vulkan=%lu nodes_drawn=%lu verts_drawn=%lu tex_uploads=%lu fallback_reason=\"%s\"",
          g_health.usedVulkan, g_health.nodesDrawn, g_health.vertsDrawn, g_health.texUploads,
          g_health.fallbackReason);

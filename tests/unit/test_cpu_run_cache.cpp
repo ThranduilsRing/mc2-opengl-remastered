@@ -54,4 +54,19 @@ TEST_CASE("cpu_run_cache: mech runs retain live texture and packet invalidation"
     CHECK(cache.update(std::span<const Call>(calls).first(1), 1, resolve));
     CHECK(update());
     CHECK(cache.update(std::span<const Call>(calls), 2, resolve)); // geometry / map reload
+    calls = {{{7, 9, 3, 9, 0, 1}, {8, 1, 0, UINT32_MAX, 1, 1}}};
+    lookups = 0;
+    CHECK(update());
+    CHECK(lookups == 3); // unordered slots, duplicates and optional sentinels
+    CHECK(cache.texture(1) == texture + 1);
+    CHECK(cache.texture(3) == texture + 3);
+    CHECK(cache.texture(9) == texture + 9);
+    std::swap(calls[0], calls[1]);
+    CHECK(update()); // packet order matters, texture insertion order does not
+    CHECK_FALSE(update());
+    CHECK(cache.update({}, 1, resolve)); // remove every texture
+    lookups = 0;
+    CHECK_FALSE(cache.update({}, 1, resolve));
+    CHECK(lookups == 0);
+    CHECK(update()); // repopulate retained storage
 }

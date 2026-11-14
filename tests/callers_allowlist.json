@@ -1,4 +1,5 @@
 {
+  "tools/perf/__init__.py": "Package marker for tools.perf; run_visual_capture imports tools.perf.main_busy to avoid the system Linux perf bindings.",
   "scripts/merge_gate_editor.py": "Invoked by scripts/merge_gate.py plan() as the path-scoped editor target build stage.",
   "tools/examples/fix_tree_kit.py": "Manual Stage 1 tree cook adapter; py -3 tools/examples/fix_tree_kit.py validates two existing meshes and pins the assigned install's prototype assets.",
   "tools/extract_hud_tier_icons.py": "Operator-run once to regenerate the per-size HUD icons data/art/mechicons/hud/<side>/<stem>@WxH.png from the legacy tier tree in git (module docstring); output is committed.",

@@ -248,7 +248,8 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                 if (ir<0 || ic<0 || ir>=mapSide || ic>=mapSide) { ++instRejHard; continue; }
                 if (classifyTerrainType(land->getTerrain(ir,ic)) == VegDensity::kHard)
                     { ++instRejHard; continue; }
-                const float elevation = TerrainRuntime::sampleVisualHeight(instPos);   // visual surface (nifty), not the sim grid
+                const float elevation = TerrainRuntime::sampleVisibleGroundHeight(instPos);
+                if (!TerrainRuntime::visibleGroundSupports(instPos, member.scale)) { ++instRejSlope; continue; }
                 bool occupied = false;
                 if (gameMap) {
                     int cr=0,cc=0;
@@ -274,7 +275,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                 GosVegetation::Instance inst;
                 inst.x = instWx-originX-mapSpan*0.5f;
                 inst.y = instWy-originY+mapSpan*0.5f;
-                inst.z = elevation+0.5f;
+                inst.z = elevation-0.5f;
                 inst.yaw = clumpRoll(col,row,seed,salt)*6.2831853f;
                 inst.scale = member.scale;
                 unsigned frame = member.frame;
@@ -309,7 +310,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                 // "sparse" everywhere); the fragment stage drops blades whose root colour
                 // is not vegetation. Snow keeps its clumps only.
                 if (classifyTerrainType(code) == VegDensity::kHard || code == MC_TUNDRA_TYPE) continue;
-                if (TerrainRuntime::sampleVisualHeight(pos) <= Terrain::waterElevation+kBeachMarginWU) continue;
+                if (TerrainRuntime::sampleVisibleGroundHeight(pos) <= Terrain::waterElevation+kBeachMarginWU) continue;
                 fieldCells.emplace_back(col,row);
                 glm::vec3 normal;
                 fieldSlopes[static_cast<size_t>(row)*side+col] = land->getTerrainAngle(pos,&normal);
@@ -328,7 +329,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
             land->worldToTileCell(pos,tr,tc,sr,sc);
             if (tr<0 || tc<0 || tr>=mapSide || tc>=mapSide ||
                 classifyTerrainType(land->getTerrain(tr,tc))==VegDensity::kHard) return true;
-            if (TerrainRuntime::sampleVisualHeight(pos)<=Terrain::waterElevation+kBeachMarginWU) return true;
+            if (TerrainRuntime::sampleVisibleGroundHeight(pos)<=Terrain::waterElevation+kBeachMarginWU) return true;
             if (gameMap) {
                 int cr=0,cc=0;
                 land->worldToCell(pos,cr,cc);
@@ -356,7 +357,8 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                 land->worldToTileCell(bpos,ir,ic,isr,isc);
                 if (ir<0 || ic<0 || ir>=mapSide || ic>=mapSide ||
                     classifyTerrainType(land->getTerrain(ir,ic)) == VegDensity::kHard) continue;
-                const float elevation = TerrainRuntime::sampleVisualHeight(bpos);
+                const float elevation = TerrainRuntime::sampleVisibleGroundHeight(bpos);
+                if (!TerrainRuntime::visibleGroundSupports(bpos, blade.scale*2.0f)) continue;
                 bool occupied = false;
                 if (gameMap) {
                     int cr=0,cc=0;
@@ -371,7 +373,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                 GosVegetation::Instance inst;
                 inst.x = bx-originX-mapSpan*0.5f;
                 inst.y = by-originY+mapSpan*0.5f;
-                inst.z = elevation+0.25f;
+                inst.z = elevation-0.5f;
                 inst.yaw = blade.yaw;
                 inst.scale = blade.scale * (flower ? 0.55f : tuftHeight);   // flowers sit on short stalks
                 // role 0: the shader bends field blades downwind; bit 2 = white wildflower heads.

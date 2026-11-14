@@ -143,7 +143,15 @@ def test_cache_persistence_stays_outside_gameplay_and_after_compile_drain():
 def test_memory_tick_keeps_bench_and_connected_plots_without_duplicate_poll():
     tick = between(source("gpu_memory_report.cpp"), 'void tick(unsigned long frame)', '}  // namespace mc2::gpumem')
     assert tick.index('frame % kPlotEveryFrames') < tick.index('if (mc2::battlebench::output)')
-    assert tick.index('snapshot = take()') < tick.index('if (!TracyIsConnected) return;')
+    assert 'std::async(std::launch::async' in tick
+    assert 'if (context->valid()) readVulkan(snapshot, *context);' in tick
+    assert 'engineVulkanContextNoWait()' in tick
+    assert 'engineVulkanContextValid()' not in tick and 'getOrCreateEngineVulkanContext()' not in tick
+    assert 'wait_for(std::chrono::seconds(0))' in tick
+    assert 'sampleFrame = mc2::battlebench::frame' in tick
+    assert tick.index('publishSnapshot();') < tick.index('frame % kPlotEveryFrames')
+    destroy = between(source("vulkan_context.cpp"), 'void VulkanContext::destroy()', 'bool VulkanContext::deviceLocalMemory')
+    assert destroy.index('mc2::gpumem::finish();') < destroy.index('vmaDestroyAllocator(')
     plot = tick.split('if (!TracyIsConnected) return;', 1)[1]
     assert 'if (!mc2::battlebench::output)' in plot
     assert plot.count('QueryVideoMemoryInfo') == 1

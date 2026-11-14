@@ -139,7 +139,7 @@ TEST_CASE("VegClumps/member masks reject roads water buildings stock trees and s
 }
 
 TEST_CASE("VegClumps/load shipped biome recipes and reject unsafe mod recipes") {
-    const auto root=std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
+    const auto root=std::filesystem::path(MC2_REPO_ROOT);
     for (const char* name : {"grasslands","grasslands_dense","snow","desert","swamp"}) {
         std::ifstream input(root/"data/vegetation/schemas"/(std::string(name)+".json"));
         REQUIRE(input.good());
@@ -156,7 +156,7 @@ TEST_CASE("VegClumps/load shipped biome recipes and reject unsafe mod recipes") 
 }
 
 TEST_CASE("VegField/grasslands carpets its ground; other biomes and bad mod recipes do not") {
-    const auto root=std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
+    const auto root=std::filesystem::path(MC2_REPO_ROOT);
     for (const char* name : {"grasslands","grasslands_dense"}) {
         std::ifstream input(root/"data/vegetation/schemas"/(std::string(name)+".json"));
         CHECK(readFieldRecipe(nlohmann::json::parse(input,nullptr,false)).has_value());

@@ -123,7 +123,7 @@ TEST_CASE("fx_render/material recipes compose permissions and resolve once per f
     for (size_t i = 0; i < items.size(); ++i) CHECK(items[i].tag == i);
 }
 TEST_CASE("fx_render/shader scalar loads match the indexed packet layout") {
-    const auto root = std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
+    const auto root = std::filesystem::path(MC2_REPO_ROOT);
     std::ifstream input(root / "shaders/vulkan/vfx_particle.vert");
     REQUIRE(input.good());
     std::ostringstream text; text << input.rdbuf();

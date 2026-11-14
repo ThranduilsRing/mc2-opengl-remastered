@@ -26,6 +26,10 @@ TEST_CASE("screen settle: spec parsing") {
     CHECK(s.cell->x == findScreen("briefing")->x);
     CHECK(s.cell->y == findScreen("briefing")->y);
 
+    CHECK(parseSpec("encyclopedia@120", s, &why));
+    CHECK(s.cell->x == -2);
+    CHECK(s.cell->y == -2);
+
     CHECK_FALSE(parseSpec("", s, &why));
     CHECK_FALSE(parseSpec("nowhere", s, &why));
     CHECK(why == "unknown screen id");
