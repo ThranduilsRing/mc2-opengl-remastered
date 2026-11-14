@@ -318,7 +318,8 @@ namespace {
 // tests above pin the editor's own precedence rules.
 std::filesystem::path repositoryRoot()
 {
-    return std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
+    // Cached objects can retain __FILE__ from a different worktree.
+    return std::filesystem::current_path();
 }
 std::string corpusFst(const std::vector<std::pair<std::string, std::string>>& entries)
 {

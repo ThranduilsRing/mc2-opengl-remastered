@@ -34,7 +34,7 @@
     "tools/tracy_capture_compare.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10"
   },
   "direct_spawn": {
-    "scripts/merge_gate_editor.py": "Runs Ninja and three fixed console unit executables with console_child; never launches a GUI or game.",
+    "scripts/merge_gate_editor.py": "Builds editor targets through ninja_build with console_child; never launches a GUI or game.",
     "scripts/tests/test_campaign_marker_selection.py": "Runs only the compiled mission-selection input fixture and its C++ compiler through console_child with captured stdio; never the game or a visible window.",
     "scripts/tests/test_font_shutdown_lifetime.py": "Runs only the compiled renderer lifetime unit fixture through console_child.child_kwargs; never the game or a visible window.",
     "scripts/tests/test_gate_parity.py": "Runs cmake -P on a probe script and the stock-data checker with the current Python (console_child, captured stdio); never the game.",

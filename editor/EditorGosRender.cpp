@@ -309,6 +309,11 @@ struct RenderWindow {
 
 static void PrintRenderer(SDL_RendererInfo * info);
 
+// MFC owns cursor selection and message dispatch. Shared game loading/cursor
+// hooks must not apply the standalone SDL window policy to the editor shell.
+void set_native_cursor(SDL_Cursor*, bool) {}
+void pump_loading_events() {}
+
 
 void set_verbose(bool is_verbose)
 {
