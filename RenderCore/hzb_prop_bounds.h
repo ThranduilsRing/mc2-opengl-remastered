@@ -32,6 +32,10 @@ inline ProjectedProp project_prop(const GpuStaticPropInstance& inst, const float
     if (inst.typeID >= bounds.size() || !bounds[inst.typeID].valid) return out;
     const auto& b = bounds[inst.typeID];
     float x0 = FLT_MAX, y0 = FLT_MAX, x1 = -FLT_MAX, y1 = -FLT_MAX, nearest = 0;
+    float viewLo[2] = {FLT_MAX, FLT_MAX}, viewHi[2] = {-FLT_MAX, -FLT_MAX}, swayPad[4] = {};
+    bool occlusionSafe = true;
+    if ((inst.flags & 4u) != 0u)
+        for (int a = 0; a < 4; ++a) swayPad[a] = 1.5f * (std::abs(worldToClip[a]) + 0.6f * std::abs(worldToClip[4+a]));
     for (int corner = 0; corner < 8; ++corner) {
         const float p[4] = {corner & 1 ? b.hi[0] : b.lo[0], corner & 2 ? b.hi[1] : b.lo[1], corner & 4 ? b.hi[2] : b.lo[2], 1};
         float stuff[3] = {};
@@ -45,14 +49,20 @@ inline ProjectedProp project_prop(const GpuStaticPropInstance& inst, const float
             for (int k = 0; k < 4; ++k) clip[a] += worldToClip[k*4+a] * world[k];
         if (!(clip[3] > 1e-5f)) return out;
         const float x = clip[0]/clip[3], y = clip[1]/clip[3], z = clip[2]/clip[3] + depthBias;
-        // Near-plane intersections, offscreen bounds and non-finite data keep the
-        // entire object. They must never turn into a clipped, undersized footprint.
-        if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z) || z < 0 || z >= 1 ||
-            x <= -1 || x >= 1 || y <= -1 || y >= 1) return out;
+        if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z) || z < 0 || z >= 1) return out;
+        if (clip[3] > swayPad[3] + 1e-5f) {
+            const float marginX = (swayPad[0] + std::abs(x) * swayPad[3]) / (clip[3] - swayPad[3]) + 4.0f/w;
+            const float marginY = (swayPad[1] + std::abs(y) * swayPad[3]) / (clip[3] - swayPad[3]) + 4.0f/h;
+            viewLo[0] = (std::min)(viewLo[0], x-marginX); viewHi[0] = (std::max)(viewHi[0], x+marginX);
+            viewLo[1] = (std::min)(viewLo[1], y-marginY); viewHi[1] = (std::max)(viewHi[1], y+marginY);
+        } else { viewLo[0] = viewLo[1] = -FLT_MAX; viewHi[0] = viewHi[1] = FLT_MAX; }
+        if (x <= -1 || x >= 1 || y <= -1 || y >= 1) occlusionSafe = false;
         x0 = (std::min)(x0, (x+1)*0.5f*w); x1 = (std::max)(x1, (x+1)*0.5f*w);
         y0 = (std::min)(y0, (y+1)*0.5f*h); y1 = (std::max)(y1, (y+1)*0.5f*h);
         nearest = (std::max)(nearest, z);
     }
+    if (viewHi[0] < -1 || viewHi[1] < -1 || viewLo[0] > 1 || viewLo[1] > 1) { out.keep = 0; out.tiny = 1; return out; }
+    if (!occlusionSafe) return out;
     out.tiny = tiny_box(x0, y0, x1, y1) ? 1u : 0u;
     // +-0.5 px: the pyramid depth was drawn with sub-pixel TAA jitter (mirrors hzb_cull.comp).
     out.pixels[0] = (std::max)(0.0f, std::floor(x0-0.5f)-1); out.pixels[1] = (std::max)(0.0f, std::floor(y0-0.5f)-1);
