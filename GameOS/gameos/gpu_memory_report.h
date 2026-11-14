@@ -44,4 +44,7 @@ void log(std::string_view phase);
 // Once per `kPlotEveryFrames` frames: plot the process's dedicated video memory (MiB) to Tracy as "VRAM.Process.MB".
 void tick(unsigned long frame);
 
+// Drain the final benchmark sample before the Vulkan allocator is destroyed.
+void finish();
+
 }  // namespace mc2::gpumem
