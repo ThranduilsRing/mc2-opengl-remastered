@@ -5,6 +5,7 @@
 #include "music_stream.h"
 #include "gos_profiler.h"
 #include "wav_worker.h"
+#include "diagnostic_trace.h"
 #include <memory>
 #include <climits>
 #include <utility>
@@ -562,8 +563,7 @@ void __stdcall gosAudio_SetChannelPlayMode( int Channel, enum gosAudio_PlayMode 
                 int loops = stream || ci->ePlayMode == gosAudio_Loop ? -1 : 0;
                 if (stream) stream->setLoop(ci->ePlayMode == gosAudio_Loop);
                 const int played = Mix_PlayChannel(Channel, &audio->mix_chunk_, loops);
-                if (played >= 0 && SDL_getenv("MC2_DIAG_TAGS") &&
-                    std::strstr(SDL_getenv("MC2_DIAG_TAGS"), "AUDIO"))
+                if (played >= 0 && mc2_diag::tagRequested("AUDIO"))
                     std::fprintf(stderr, "[AUDIO_ADMIT] ticks=%u id=%zu path=%s channel=%d\n",
                         SDL_GetTicks(), audio->admissionId, audio->sourcePath.c_str(), Channel);
                 if (stream) Mix_RegisterEffect(Channel,
