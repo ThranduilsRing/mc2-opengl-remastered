@@ -6,13 +6,13 @@
 #include "bldng.h"
 #include "../mclib/texture_assets.h"
 #include "Gates/gate.h"
+#include "Gates/preferences_values.h"
 #include "mc2fmt.h"
 #include "../RenderCore/TextureService.h"
 #include "../GameOS/gameos/battle_bench.h"
 #include "package_chassis.h"
 
 extern float MapCellDiagonal;
-extern bool useUnlimitedAmmo;
 
 // Test-only loadout queue. Production fire, projectile and movement paths own the measurements.
 namespace {
@@ -53,7 +53,7 @@ void mc2EquipmentProbeTick() {
     auto* source = equipmentSource;
     auto* target = equipmentTarget;
     if (equipmentStarted < 0.0f) {
-        useUnlimitedAmmo = false; // Probe finite ammo; player preferences otherwise seed pools with UNLIMITED_SHOTS.
+        mc2::options::runtimePreferences().useUnlimitedAmmo = false; // Probe finite ammo, independent of player settings.
         long baseline[] = {1};
         source->resetComponents(1, baseline);
         equipmentArmorBefore = probeArmor(source);
