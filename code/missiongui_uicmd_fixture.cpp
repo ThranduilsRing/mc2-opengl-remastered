@@ -73,7 +73,9 @@ void mc2AbortReloadFixtureUpdate()
             f.since = std::chrono::steady_clock::now();
             f.phase = f.cycle < f.targets.size() ? 1 : 0;
         }
-    } else if (f.phase == 5 && mission->isActive() && scenarioTime >= 3) {
+    } else if (f.phase == 5 && mission->isActive() && scenarioTime >= 3 && eye->inMovieMode) {
+        eye->forceMovieToEnd(); // Same request as ESC; let the mission script restore the HUD before winning.
+    } else if (f.phase == 5 && mission->isActive() && scenarioTime >= 3 && !eye->inMovieMode) {
         f.campaignFirst = LogisticsData::instance->getCurrentMission();
         if (mc2_diag::tagRequested("ABORT_RELOAD")) std::fprintf(stderr, "[ABORT_RELOAD] phase=campaign_win mission=%s\n", f.campaignFirst.c_str());
         mission->forceTerminate(mis_PLAYER_WIN_BIG);
