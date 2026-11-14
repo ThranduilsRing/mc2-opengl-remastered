@@ -9,6 +9,11 @@ TEST_CASE("components/rack sizes and single-missile weapons") {
     CHECK(rackSize("LR Missile/15") == 15);
     CHECK(rackSize("C LR Missile/20") == 20);
     CHECK(rackSize("Streak SRM2 Pack") == 2);
+    CHECK(rackSize("SRM2 Pack") == 2);
+    CHECK(rackSize("SRM4 Pack") == 4);
+    CHECK(rackSize("SRM6 Pack") == 6);
+    CHECK(rackSize("Swarm LRM5 Rack") == 5);
+    CHECK(rackSize("C SR Missile Pack") == 1);
     CHECK(rackSize("C ST-SR Missile/6") == 6);
     CHECK(rackSize("Thunderbolt Missile") == 1);
     CHECK(rackSize("Anti-Missile System") == 1);

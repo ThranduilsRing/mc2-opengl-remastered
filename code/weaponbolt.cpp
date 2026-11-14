@@ -351,6 +351,8 @@ bool WeaponBolt::isVisible (void)
 void WeaponBolt::traceCombat(std::string_view event, std::string_view reason,
                               GameObjectPtr target, const WeaponShotInfo* shot)
 {
+    void mc2EquipmentProbeEvent(std::string_view event, unsigned long target);
+    mc2EquipmentProbeEvent(event, target ? target->getWatchID(false) : 0);
     combatTrace.write("bolt", getHandle(), turn, event, reason, position,
         [this] { return getFlag(OBJECT_FLAG_JUSTCREATED) ? nullptr : &laserPosition; }, target, shot);
 }
