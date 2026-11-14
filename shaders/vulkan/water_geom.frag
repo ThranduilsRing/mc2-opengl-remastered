@@ -249,7 +249,13 @@ float waterGgxSpec(vec3 N, vec3 V, vec3 L, float alpha2){
 
 // Lamp and weapon pool lights reflected by the wave normal: the same grid cell walk and attenuation as the terrain
 // pool term, with the GGX lobe toward each light instead of the flat diffuse pool.
-vec3 waterLampSpec(vec3 wp, vec3 N, vec3 V, float alpha2){
+// WATER-POOL-FUSE-1: ONE walk of the cell's lights returns both terms. Before, the GGX walk and tlp_terrainPoolLight
+// (flat diffuse pool, surfaceNormal==macroNormal, no contact shadow, no local-shadow atlas) each re-fetched every light and
+// re-ran the same attenuation and spot cone: with 48 mechs firing that doubled the water pass. Both bodies are kept
+// term-for-term (tlp_terrainPoolLight in terrain_light_pool.hglsl): `spec` is the lamp specular sum, the return is the
+// pool term with the soft-compress / dither tail.
+vec3 waterPoolLights(vec3 wp, vec3 N, vec3 V, float alpha2, out vec3 spec){
+    spec = vec3(0.0);
     int  lo = 0, hi = uT.numPoolLights;
     bool indexed = false;
     if (uT.lightGridDim > 0) {
@@ -262,7 +268,7 @@ vec3 waterLampSpec(vec3 wp, vec3 N, vec3 V, float alpha2){
         indexed = true;
     }
     if (TLP_POOL_BUDGET > 0) hi = min(hi, lo + TLP_POOL_BUDGET);
-    vec3 s = vec3(0.0);
+    vec3 pool = vec3(0.0), poolMover = vec3(0.0);
     for (int k = lo; k < hi; ++k) {
         int i = indexed ? int(lightGridIndices[k]) : k;
         if (i >= uT.numPoolLights || poolLights[i].lightType == 0u) continue;
@@ -274,10 +280,15 @@ vec3 waterLampSpec(vec3 wp, vec3 N, vec3 V, float alpha2){
                          poolLights[i].farDistance, poolLights[i].oneOverDistance, len, falloff)) continue;
         falloff = lpa_spotCone(vtl, poolLights[i].lightType, len, poolLights[i].farDistance, falloff);
         if (falloff <= 0.0) continue;
-        vec3 plCol = poolLights[i].color * poolLights[i].intensity * (mover ? uT.lightPoolMoverDim : 1.0);
-        s += plCol * (falloff * waterGgxSpec(N, V, -vtl / max(len, 1e-3), alpha2));
+        vec3 plCol = poolLights[i].color * poolLights[i].intensity;
+        if (mover) plCol *= uT.lightPoolMoverDim;
+        spec += plCol * (falloff * waterGgxSpec(N, V, -vtl / max(len, 1e-3), alpha2));
+        if (mover && uT.lightPoolMoverMax != 0) { poolMover = max(poolMover, plCol * falloff); continue; }
+        pool += plCol * falloff;
     }
-    return s;
+    pool += poolMover;
+    if (uT.lightPoolCompress != 0) return lpa_dither(vec3(1.0) - exp(-1.6 * pool));
+    return lpa_dither(min(pool, vec3(1.0)));
 }
 
 void main(void)
@@ -473,19 +484,17 @@ void main(void)
         Ls = normalize(vec3(Ls.xy, max(Ls.z, max(uT.shadowMinSunSin, 0.05))));
         vec3  sunRad = Color.bgra.rgb * (1.0 - 0.5 * clamp(F.f3.z / 0.6, 0.0, 1.0));
         col += min(sunRad * (SUN_SPEC_GAIN * glintScale * sunVis * waterGgxSpec(waveN, vdir, Ls, specAlpha2)), vec3(4.0));
-        if (uT.numPoolLights > 0 && nightSky < 1.0)
-            col += min(waterLampSpec(WorldPos, waveN, vdir, specAlpha2) * (LAMP_SPEC_GAIN * glintScale), vec3(4.0));
+        // The lamp specular and the flat pool term come from one light walk (waterPoolLights), added right after the sun glint.
+        if (uT.numPoolLights > 0 && nightSky < 1.0) {
+            vec3 lampSpec;
+            vec3 poolTerm = waterPoolLights(WorldPos, waveN, vdir, specAlpha2, lampSpec);
+            col += min(lampSpec * (LAMP_SPEC_GAIN * glintScale), vec3(4.0));
+            col += poolTerm;
+        }
     }
 
-    // The same local pools cross the shoreline; apply after sky reflection so
-    // the reflected sky cannot erase lamps, then let fog/shore alpha attenuate.
-    if (uT.numPoolLights > 0 && nightSky < 1.0) {
-        float contact = 0.0;
-        col += tlp_terrainPoolLight(WorldPos, uT.numPoolLights, uT.lightGridDim,
-            vec2(uT.lightGridMinX, uT.lightGridMinY), vec2(uT.lightGridInvCellX, uT.lightGridInvCellY),
-            uT.lightPoolSoft, uT.lightPoolMoverDim, uT.lightPoolMoverScale,
-            uT.lightPoolMoverMax, uT.lightPoolCompress, 0.0, contact, vec3(0,0,1), vec3(0,0,1), false, 0.0);
-    }
+    // (The local pools cross the shoreline too: they were added after the sky reflection above, so the reflected sky
+    // cannot erase lamps, and fog/shore alpha below still attenuate them.)
     if (F.fog_color.x > 0.0 || F.fog_color.y > 0.0 || F.fog_color.z > 0.0 || F.fog_color.w > 0.0)
         col = mix(F.fog_color.rgb, col, FogValue);
 
