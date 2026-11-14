@@ -283,12 +283,18 @@ void PilotReviewScreen::update()
 	// dismiss immediately, but DON'T return early so exitAnim still runs and
 	// isDone() (bDone && exitAnim.isDone()) can resolve.
 	static const int s_soakAutoWin = mc2::gate::get<"MC2_SOAK_AUTOWIN">() ? 1 : 0;
-	if ( s_soakAutoWin )
+	// MC2_SHOT_RESULTS capture runs let the real panel (promotion area included) run for 900 frames before the soak dismisses it.
+	static const bool s_shotHold = mc2::gate::get<"MC2_SHOT_RESULTS">();
+	static int s_shotHoldFrames = 0;
+	if ( s_soakAutoWin && s_shotHold && s_shotHoldFrames < 900 && !bDone )
+		++s_shotHoldFrames;
+	else if ( s_soakAutoWin )
 	{
 		s_curPromotion = nullptr;
 		if ( !bDone )
 		{
 			bDone = true;
+			s_shotHoldFrames = 0;
 			exitAnim.begin();
 			beginFadeOut( 1.0 );
 			soundSystem->stopBettySample();
