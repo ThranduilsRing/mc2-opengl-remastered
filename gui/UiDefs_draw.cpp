@@ -5,6 +5,7 @@
 #include "UiDefs_internal.h"
 #include "../mclib/ui_chrome_sheets.h"
 #include <array>
+#include <cmath>
 #include "Gates/gate.h"
 
 namespace uidefs_detail {
@@ -250,6 +251,13 @@ void drawUiRectElement(const FRect& r, unsigned int color, bool filled)
 {
     if ((color & 0xff000000) == 0)
         return;
+    if (filled) {   // same pixel grid as drawUiImageElement, so a fill and the art it abuts agree on every edge row
+        const float x0 = std::round(r.x), y0 = std::round(r.y), x1 = std::round(r.x + r.w), y1 = std::round(r.y + r.h);
+        if (x1 > x0 && y1 > y0) {
+            GuiRuntime::DrawUiRect(x0, y0, x1 - x0, y1 - y0, color, true);
+            return;
+        }
+    }
     GuiRuntime::DrawUiRect(r.x, r.y, r.w, r.h, color, filled);
 }
 
@@ -286,8 +294,23 @@ bool drawUiImageElement(UiElement& e, int xOffset, int yOffset, const PageScale&
     float v2 = 1.0f;
     textureUVs(e, u1, v1, u2, v2);
     if (e.flipV) { const float tmp = v1; v1 = v2; v2 = tmp; }
+    {   // Sample from texel centre to texel centre: a bilinear tap at a crop edge must not read the authored edge
+        // row of the next piece (A/B at 3284x1714: removes the hairlines at piece joins; inset 1.0 gave the same).
+        constexpr float inset = 0.5f;
+        if (e.uvW > 2 && e.uvH > 2) {
+            const float tu = (u2 - u1) / static_cast<float>(e.uvW), tv = (v2 - v1) / static_cast<float>(e.uvH);
+            u1 += inset * tu; u2 -= inset * tu; v1 += inset * tv; v2 -= inset * tv;
+        }
+    }
 
     FRect r = scaledRect(e.rect, xOffset, yOffset, s);
+    {   // Snap each edge from its own integer page coordinate, so pieces that share an edge land on the same
+        // pixel row/column at any display size (no hairline gaps or double-covered rows at joins).
+        const auto edge = [](int v, float scale, float origin) { return std::round(static_cast<float>(v) * scale + origin); };
+        const float x0 = edge(e.rect.x + xOffset, s.sx, s.ox), x1 = edge(e.rect.x + e.rect.w + xOffset, s.sx, s.ox);
+        const float y0 = edge(e.rect.y + yOffset, s.sy, s.oy), y1 = edge(e.rect.y + e.rect.h + yOffset, s.sy, s.oy);
+        if (x1 > x0 && y1 > y0) { r.x = x0; r.y = y0; r.w = x1 - x0; r.h = y1 - y0; }
+    }
 
     // Full number dump for the pilot portrait
     // element (red-striped-panel bug). Env-gated, one line per texture change.

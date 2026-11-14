@@ -1837,7 +1837,7 @@ void MissionBegin::render()
 		}
 	}
 	// MC2_SHOT_SCREEN: the splash/main menu counts as "no screen" so only the logistics grid cell is matched.
-	const int splashCell = MainMenu::bDrawMechlopedia ? -2 : -1;
+	const int splashCell = MainMenu::bDrawMechlopedia ? -2 : (MainMenu::bLoadShown ? -3 : -1);
 	mc2::screen_settle::tickFrontEnd(bSplash ? splashCell : curScreenX, bSplash ? splashCell : curScreenY);
 	ZoneScopedN("MissionBegin::render");
 	ZoneValue(bSplash ? 0xffff : 10 * curScreenX + curScreenY);
