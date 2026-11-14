@@ -53,6 +53,7 @@
 #include "Gates/gate_cold.h"
 
 #include "terrain_cache_key.h"
+#include "terrain_overlay_tiles.h"
 #include <chrono>
 
 // Terrain texture state is singleton, like nextAvailable and TERRAIN_TXM_SIZE.
@@ -60,6 +61,10 @@ static mc2::TerrainCacheKey txmSources;
 static std::string txmContentKey;
 static double txmInputsMs = 0, txmRebuildMs = 0;
 static long txmRebuilds = 0, txmReuses = 0;
+// Overlay art tiles: resolved (path, edge) at init, keyed and decoded on first use by a transition bake.
+struct OverlayTileSource { std::string path; long edge = 0; bool missing = false; bool keyed = false; std::string key; };
+static std::vector<std::vector<OverlayTileSource>> txmOverlayTiles;
+static long txmTilesKeyed = 0, txmTilesLoaded = 0;
 static void hashTxmInput(mc2::czstring name)
 {
 	File file;
@@ -93,15 +98,17 @@ int MC2_OverlayTileHiresSize (void)
 	// TEXTURE-TIER: the largest overlay tile edge the player's texture tier allows (Gates/render_options.h textureTier()):
 	// Low = stock (0, legacy path), Medium 128, High 256, Ultra 1024. initOverlay() walks the ladder from this edge down per
 	// file, so a 512 or 1024 set is picked up without any env var. MC2_OVERLAY_TILE_HIRES=0 stays as the kill-switch.
-	static int s_off = -1;
+	static int s_off = -1, s_cap = 1024;
 	if (s_off < 0)
 	{
 		const std::string hiresStr = mc2::gate::str<"MC2_OVERLAY_TILE_HIRES">();
 		s_off = (hiresStr == "0") ? 1 : 0;
+		const int v = std::atoi(hiresStr.c_str());   // comparison cap: =256 / =512 / =1024 limits the ladder's top edge
+		if (v >= 128 && v <= 1024) s_cap = v;
 	}
 	if (s_off) return 0;
 	static const int kTierEdge[4] = { 0, 128, 256, 1024 };
-	return kTierEdge[mc2::options::textureTier()];
+	return std::min(kTierEdge[mc2::options::textureTier()], s_cap);
 }
 
 constexpr int MAX_MASK_NUM = 14;
@@ -124,9 +131,10 @@ long TerrainTextures::init (mc2::czstring fileName, mc2::czstring baseName)
 {
 	metadataLoaded = true;
 	const auto inputsStart = std::chrono::steady_clock::now();
-	txmSources = mc2::TerrainCacheKey{};
+	txmSources = mc2::TerrainCacheKey{"txm-composite-v2"};
 	txmRebuildMs = 0;
-	txmRebuilds = txmReuses = 0;
+	txmRebuilds = txmReuses = txmTilesKeyed = txmTilesLoaded = 0;
+	txmOverlayTiles.clear();
 	// Source pixels/masks must exist even on a warm load: a missing/corrupt
 	// individual composite must always be able to regenerate safely.
 	quickLoad = false;
@@ -397,9 +405,11 @@ long TerrainTextures::init (mc2::czstring fileName, mc2::czstring baseName)
 	}
 
 	//--------------------------------------------------------------
-	// Now preload the overlay texture data 
+	// Resolve the overlay art (pixels and keys load on first use, see initOverlay)
+	txmOverlayTiles.assign(numOverlays,{});
 	for (int i=0;i<numOverlays;i++)
 	{
+		txmOverlayTiles[i].assign(overlays[i].numTextures,{});
 		overlays[i].overlayData = static_cast<MemoryPtr *>(std::malloc(sizeof(MemoryPtr) * overlays[i].numTextures * MC_MAX_MIP_LEVELS));
 		gosASSERT(overlays[i].overlayData != nullptr);
 
@@ -473,6 +483,53 @@ long TerrainTextures::init (mc2::czstring fileName, mc2::czstring baseName)
 		}
 	}
 
+
+	// Composite at the selected art resolution; preserve native cement and overlay texels.
+	int compositeEdge = TERRAIN_TXM_SIZE;
+	for (int i = 0; i < numOverlays; ++i)
+		for (int j = 0; j < overlays[i].numTextures; ++j)
+			compositeEdge = std::max(compositeEdge, static_cast<int>(overlays[i].overlayDataSizes[j]));
+	if (compositeEdge > TERRAIN_TXM_SIZE)
+	{
+		const int oldEdge = TERRAIN_TXM_SIZE;
+		auto enlarge = [&](MemoryPtr& pixels, int channels) {
+			if (!pixels) return;
+			auto out = static_cast<MemoryPtr>(std::malloc(compositeEdge * compositeEdge * channels));
+			gosASSERT(out != nullptr);
+			for (int y = 0; y < compositeEdge; ++y)
+				for (int x = 0; x < compositeEdge; ++x)
+					memcpy(out + (y * compositeEdge + x) * channels,
+						pixels + ((y * oldEdge / compositeEdge) * oldEdge + x * oldEdge / compositeEdge) * channels, channels);
+			std::free(pixels);
+			pixels = out;
+		};
+		for (int i = 0; i < numTypes; ++i)
+		{
+			if (!types[i].textureData) continue;
+			enlarge(types[i].textureData[0], 4);
+			char sourcePath[512];
+			mc2::fmt::to_buf(sourcePath,"{}{:d}" PATH_SEPARATOR "",mc2::fmt::safe(texturePath),compositeEdge);
+			FullPathFileName nativeName;
+			nativeName.init(sourcePath,types[i].terrainName,".tga");
+			File native;
+			if (native.open(nativeName) == NO_ERR)
+			{
+				TGAFileHeader header;
+				native.read(reinterpret_cast<MemoryPtr>(&header), sizeof(header));
+				if (header.width == compositeEdge && header.height == compositeEdge && types[i].textureData[0])
+				{
+					native.seek(0);
+					loadTGATexture(&native,types[i].textureData[0],compositeEdge,compositeEdge);
+					hashTxmInput(nativeName);
+				}
+			}
+			if (types[i].textureData[0])
+				types[i].baseTXMIndex = textureFromMemoryAlpha(types[i].textureData[0],compositeEdge);
+			for (int mask = 0; types[i].maskData && mask < MC_MASK_NUM; ++mask)
+				enlarge(types[i].maskData[mask], 1);
+		}
+		TERRAIN_TXM_SIZE = compositeEdge;
+	}
 
 	txmContentKey = txmSources.key();
 	quickLoad = !InEditor;
@@ -588,20 +645,6 @@ long TerrainTextures::loadDetailMemory (mc2::czstring textureName, long mipSize)
 
 	return(nextAvailable-1);
 }	
-
-//---------------------------------------------------------------------------
-long TerrainTextures::loadOverlayMemory (mc2::czstring textureName)
-{
-	textures[nextAvailable].mcTextureNodeIndex = mc2::textures::load(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink, 0, 0x1);
-
-	nextAvailable++;
-
-	if (nextAvailable > numTxms)
-		STOP(("Too Many Terrain Textures!  Its at %d right now!",numTxms));
-
-	return(nextAvailable-1);
-}	
-
 //---------------------------------------------------------------------------
 long TerrainTextures::initDetail (long typeNum, long detailNum)
 {
@@ -811,142 +854,142 @@ void TerrainTextures::initMask (long typeNum)
 //---------------------------------------------------------------------------
 long TerrainTextures::initOverlay (long overlayNum, long txmNum, char *txmName)
 {
-	long txmResult = -1;
-	for (long j=0;j<MC_MAX_MIP_LEVELS;j++)
+	// Resolve only: pick the art file and its edge from the header, reserve the slot. The pixels and the
+	// content key are read on first use by a transition bake (overlayTileKey / loadOverlayTilePixels), so a
+	// mission pays for the tiles it combines, not the whole set.
+	static_assert(MC_MAX_MIP_LEVELS == 1);
+	const long slot = nextAvailable;
+	nextAvailable += MC_MAX_MIP_LEVELS;
+	if (nextAvailable > numTxms)
+		STOP(("Too Many Terrain Textures!  Its at %d right now!",numTxms));
+
+	char tmpy[512];
+	mc2::fmt::to_buf(tmpy,"{}{:04d}",mc2::fmt::safe(txmName),mc2::fmt::as_i32(txmNum));
+
+	char mipPath[512];
+	long mipSize = TERRAIN_TXM_SIZE;
+	mc2::fmt::to_buf(mipPath,"{}{:d}Overlays" PATH_SEPARATOR "",mc2::fmt::safe(texturePath),mc2::fmt::as_i32(TERRAIN_TXM_SIZE));
+
+	FullPathFileName fileName;
+	fileName.init(mipPath,tmpy,".tga");
+
+	// OVERLAY-TILE-HIRES-1: probe hires overlays by default, with per-file fallback.
+	// (1) Folder-by-size selection: probe <hires>Overlays/ first (tier max edge down to the first power of
+	//     two above the base edge; first file present wins), per-file fallback to the legacy folder.
+	// (2) Header resync: mirror initTexture() so the sysRAM copy is read at the file's true stride.
+	const int hiresEdge = MC2_OverlayTileHiresSize();
+	FullPathFileName hiresName;
+	bool useHires = false;
+	if (hiresEdge > 0)
 	{
-		//---------------------------------------------
-		// Change Texture Path to reflect texture size
-		char mipPath[512];
-		long mipSize = 0;
-		switch (j)
+		for (int edge = hiresEdge; edge >= 128 && edge > TERRAIN_TXM_SIZE && !useHires; edge >>= 1)
 		{
-			case 0:
-				mc2::fmt::to_buf(mipPath,"{}{:d}Overlays" PATH_SEPARATOR "",mc2::fmt::safe(texturePath),mc2::fmt::as_i32(TERRAIN_TXM_SIZE));
-				mipSize = TERRAIN_TXM_SIZE;
-				break;	
+			char hiresPath[512];
+			mc2::fmt::to_buf(hiresPath,"{}{:d}Overlays" PATH_SEPARATOR "",mc2::fmt::safe(texturePath),mc2::fmt::as_i32(edge));
+			hiresName.init(hiresPath,tmpy,".tga");
 
-			case 1:
-				mc2::fmt::to_buf(mipPath,"{}{:d}Overlays" PATH_SEPARATOR "",mc2::fmt::safe(texturePath),mc2::fmt::as_i32((TERRAIN_TXM_SIZE>>1)));
-				mipSize = (TERRAIN_TXM_SIZE>>1);
-				break;
-
-			case 2:
-				mc2::fmt::to_buf(mipPath,"{}{:d}Overlays" PATH_SEPARATOR "",mc2::fmt::safe(texturePath),mc2::fmt::as_i32((TERRAIN_TXM_SIZE>>2)));
-				mipSize = (TERRAIN_TXM_SIZE>>2);
-				break;
-
-			case 3:
-				mc2::fmt::to_buf(mipPath,"{}{:d}Overlays" PATH_SEPARATOR "",mc2::fmt::safe(texturePath),mc2::fmt::as_i32((TERRAIN_TXM_SIZE>>3)));
-				mipSize = (TERRAIN_TXM_SIZE>>3);
-				break;
-		}
-
-		char tmpy[512];
-		mc2::fmt::to_buf(tmpy,"{}{:04d}",mc2::fmt::safe(txmName),mc2::fmt::as_i32(txmNum));
-
-		FullPathFileName fileName;
-		fileName.init(mipPath,tmpy,".tga");
-
-		// OVERLAY-TILE-HIRES-1: probe hires overlays by default, with per-file fallback.
-		// (1) Folder-by-size selection: the "%dOverlays" convention above IS the
-		//     engine's intended res-folder mechanism (same TerrainTextureRes pref
-		//     scheme as the base "%d"/"%dmask" folders) but TERRAIN_TXM_SIZE is
-		//     clamped to 64 at startup, so 128Overlays/ has been dead weight.
-		//     Under the gate, probe <hires>Overlays/ first, per-file fallback to
-		//     the legacy folder — partial hi-res tile sets are legal.
-		// (2) Header resync: mirror initTexture() (see "mipSize != header.width"
-		//     above) so the sysRAM copy is read at the file's true stride instead
-		//     of hard-assuming 64 (the old garble/assert failure).
-		const int hiresEdge = (j == 0) ? MC2_OverlayTileHiresSize() : 0;
-		FullPathFileName hiresName;
-		bool useHires = false;
-		if (hiresEdge > 0)
-		{
-			// Ladder: tier max edge down to the first power of two above the base edge; first file present wins.
-			for (int edge = hiresEdge; edge >= 128 && edge > TERRAIN_TXM_SIZE && !useHires; edge >>= 1)
+			File probe;
+			if (probe.open(hiresName) == NO_ERR)
 			{
-				char hiresPath[512];
-				mc2::fmt::to_buf(hiresPath,"{}{:d}Overlays" PATH_SEPARATOR "",mc2::fmt::safe(texturePath),mc2::fmt::as_i32(edge));
-				hiresName.init(hiresPath,tmpy,".tga");
-
-				File probe;
-				if (probe.open(hiresName) == NO_ERR)
-				{
-					useHires = true;
-					probe.close();
-				}
+				useHires = true;
+				probe.close();
 			}
 		}
-		const char* chosenName = useHires ? static_cast<const char*>(hiresName) : static_cast<const char*>(fileName);
+	}
+	const char* chosenName = useHires ? static_cast<const char*>(hiresName) : static_cast<const char*>(fileName);
 
-		// OVERLAY-TILE-HIRES-1 DIAG: settle "is 256 actually loading or falling
-		// back to 64?" -- when the hires gate is armed, count hires-hits vs
-		// legacy-fallbacks and print a running tally + the first few chosen paths
-		// Only emit diagnostics when verbose logging is explicitly requested.
-		if (hiresEdge > 0 && mc2DiagVerbose())
-		{
-			static int s_hiresHit = 0, s_hiresMiss = 0, s_hiresLogged = 0;
-			if (useHires) ++s_hiresHit; else ++s_hiresMiss;
-			if (s_hiresLogged < 8) {
-				++s_hiresLogged;
-				printf("[OVERLAY_TILE_HIRES v1] tile chose %s path=%s (hits=%d misses=%d)\n",
-				       useHires ? "HIRES" : "fallback64", chosenName, s_hiresHit, s_hiresMiss);
-				fflush(stdout);
-			}
+	if (hiresEdge > 0 && mc2DiagVerbose())
+	{
+		static int s_hiresHit = 0, s_hiresMiss = 0, s_hiresLogged = 0;
+		if (useHires) ++s_hiresHit; else ++s_hiresMiss;
+		if (s_hiresLogged < 8) {
+			++s_hiresLogged;
+			printf("[OVERLAY_TILE_HIRES v1] tile chose %s path=%s (hits=%d misses=%d)\n",
+			       useHires ? "HIRES" : "fallback64", chosenName, s_hiresHit, s_hiresMiss);
+			fflush(stdout);
 		}
-
-		hashTxmInput(chosenName);
-		long result = 0;
-		//------------------------------------------------------------
-		if (InEditor || !quickLoad)
-		{
-			File tgaFile;
-
-			result = tgaFile.open(chosenName);
-			if (result != NO_ERR)
-			{
-				mc2::content::error(mc2::content::Kind::Texture, static_cast<const char*>(chosenName), "missing overlay tga; skipping CPU copy");
-				result = loadOverlayMemory(chosenName);
-				if (j==0)
-					txmResult = result;
-				continue;
-			}
-
-			if (hiresEdge > 0)
-			{
-				// Resync to the TGA header like initTexture() does. Accept only
-				// sane square power-of-two tiles; otherwise keep the declared
-				// size (legacy behavior, incl. its loadTGATexture size assert).
-				struct TGAFileHeader header;
-				tgaFile.read(reinterpret_cast<MemoryPtr>(&header),sizeof(TGAFileHeader));
-				tgaFile.seek(0);
-
-				const long hw = header.width;
-				const bool pow2 = (hw > 0) && ((hw & (hw - 1)) == 0);
-				if ((hw == header.height) && pow2 && (hw >= 16) && (hw <= 1024) && (mipSize != hw))
-					mipSize = hw;
-			}
-
-			MemoryPtr ourRAM = static_cast<MemoryPtr>(std::malloc(mipSize * mipSize * sizeof(DWORD)));
-			gosASSERT(ourRAM != nullptr);
-
-			loadTGATexture(&tgaFile,ourRAM,mipSize,mipSize);
-
-			overlays[overlayNum].overlayData[txmNum] = ourRAM;
-			if ((j == 0) && overlays[overlayNum].overlayDataSizes)
-				overlays[overlayNum].overlayDataSizes[txmNum] = mipSize;
-
-			tgaFile.close();
-		}
-		//------------------------------------------------------------
-		result = loadOverlayMemory(chosenName);
-
-		if (j==0)
-			txmResult = result;
 	}
 
-	return(txmResult);
-}	
+	auto& tile = txmOverlayTiles[overlayNum][txmNum];
+	tile.path = chosenName;
+	File tgaFile;
+	if (tgaFile.open(chosenName) != NO_ERR)
+	{
+		mc2::content::error(mc2::content::Kind::Texture, static_cast<const char*>(chosenName), "missing overlay tga; skipping CPU copy");
+		tile.missing = true;
+	}
+	else if (hiresEdge > 0)
+	{
+		// Accept only sane square power-of-two tiles; otherwise keep the declared size (legacy behavior).
+		struct TGAFileHeader header;
+		tgaFile.read(reinterpret_cast<MemoryPtr>(&header),sizeof(TGAFileHeader));
+
+		const long hw = header.width;
+		const bool pow2 = (hw > 0) && ((hw & (hw - 1)) == 0);
+		if ((hw == header.height) && pow2 && (hw >= 16) && (hw <= 1024) && (mipSize != hw))
+			mipSize = hw;
+	}
+	tile.edge = mipSize;
+	if (overlays[overlayNum].overlayDataSizes)
+		overlays[overlayNum].overlayDataSizes[txmNum] = mipSize;
+
+	return(slot);
+}
+
+//---------------------------------------------------------------------------
+// Content key of one overlay tile (path + bytes), read and hashed once, on first use.
+std::string TerrainTextures::overlayTileKey (long handle)
+{
+	if (txmOverlayTiles.empty())
+		return {};
+	const auto ref = overlayTileRef(handle);
+	auto& tile = txmOverlayTiles[ref.overlay][ref.tile];
+	if (!tile.keyed)
+	{
+		tile.keyed = true;
+		mc2::TerrainCacheKey key{"txm-overlay-tile-v1"};
+		File file;
+		std::vector<unsigned char> bytes;
+		if (file.open(tile.path.c_str()) == NO_ERR)
+			bytes = mc2::tga::readAllBytes(file).value_or(std::vector<unsigned char>{});
+		key.add(tile.path, bytes);
+		tile.key = key.key();
+		++txmTilesKeyed;
+	}
+	return tile.key;
+}
+
+//---------------------------------------------------------------------------
+void TerrainTextures::loadOverlayTilePixels (long overlayNum, long txmNum)
+{
+	if (overlays[overlayNum].overlayData[txmNum])
+		return;
+	const auto& tile = txmOverlayTiles[overlayNum][txmNum];
+	if (tile.missing)
+		return;
+
+	File tgaFile;
+	if (tgaFile.open(tile.path.c_str()) != NO_ERR)
+		return;
+	MemoryPtr ourRAM = static_cast<MemoryPtr>(std::malloc(tile.edge * tile.edge * sizeof(DWORD)));
+	gosASSERT(ourRAM != nullptr);
+	loadTGATexture(&tgaFile,ourRAM,tile.edge,tile.edge);
+	overlays[overlayNum].overlayData[txmNum] = ourRAM;
+	tgaFile.close();
+	++txmTilesLoaded;
+}
+
+//---------------------------------------------------------------------------
+mc2::OverlayTileRef TerrainTextures::overlayTileRef (long handle) const
+{
+	std::vector<long> base(numOverlays), count(numOverlays);
+	for (long i = 0; i < numOverlays; ++i)
+	{
+		base[i] = overlays[i].baseTXMIndex;
+		count[i] = overlays[i].numTextures;
+	}
+	return mc2::overlayTileForHandle(base,count,handle);
+}
 
 //---------------------------------------------------------------------------
 long TerrainTextures::setOverlay (DWORD overlayInfo)
@@ -1187,18 +1230,10 @@ void forceAlphaOpaque(MemoryPtr dest, long mipLevel)
 void TerrainTextures::combineOverlayTxm (MemoryPtr dest, long type, long mipLevel)
 {
 	//Convert overlay Type to actual overlay Index.
-	long oType = 0;
-	long oIndx = 0;
-	for (long i=0;i<numOverlays;i++)
-	{
-		if ((type >= overlays[i].baseTXMIndex) &&
-			(type < (overlays[i].baseTXMIndex + overlays[i].numTextures)))
-		{
-			oIndx = type - overlays[i].baseTXMIndex;
-			oType = i;
-			break;
-		}
-	}
+	const auto tileRef = overlayTileRef(type);
+	const long oType = tileRef.overlay;
+	const long oIndx = tileRef.tile;
+	loadOverlayTilePixels(oType,oIndx);
 
 	MemoryPtr combineRAM = overlays[oType].overlayData[oIndx];
 	if (combineRAM == nullptr)
@@ -1366,9 +1401,10 @@ inline bool isCementType (DWORD type)
 
 //---------------------------------------------------------------------------
 // Legacy content-blind .txm files deliberately miss on first load after upgrade.
-static void txmCacheName (char (&out)[256], DWORD typeInfo, DWORD overlayInfo)
+// tileKey is the content key of the one overlay tile the bake combines ("" when it combines none).
+static void txmCacheName (char (&out)[256], DWORD typeInfo, DWORD overlayInfo, std::string_view tileKey)
 {
-	mc2::fmt::to_buf(out,"{:08d}.{:08d}.r{:d}.m{:d}.{}.txm",mc2::fmt::as_i32(typeInfo),mc2::fmt::as_i32(overlayInfo),mc2::fmt::as_i32(TERRAIN_TXM_SIZE),mc2::fmt::as_i32(Terrain::terrainTextures2 ? 1 : 0),txmContentKey);
+	mc2::fmt::to_buf(out,"{:08d}.{:08d}.r{:d}.m{:d}.{}{}{}.txm",mc2::fmt::as_i32(typeInfo),mc2::fmt::as_i32(overlayInfo),mc2::fmt::as_i32(TERRAIN_TXM_SIZE),mc2::fmt::as_i32(Terrain::terrainTextures2 ? 1 : 0),txmContentKey,tileKey.empty() ? "" : ".o",tileKey);
 }
 
 // True when `bytes` is a well-formed cache written for another tile edge (a stale file from before the name carried the edge).
@@ -1416,10 +1452,13 @@ long TerrainTextures::createTransition (DWORD typeInfo, DWORD overlayInfo)
 		// for all of the textures...
 		// About 600K for mc2_01.  With redundancies, assume about 600K per...
 		// About 20 Mb larger build.
+		std::string tileKey;
+		if (mc2::overlayHandleCombined(overlayInfo,Terrain::terrainTextures2 != nullptr))
+			tileKey = overlayTileKey(overlayInfo);
 		if (quickLoad)
 		{
 			char nameData[256];
-			txmCacheName(nameData,typeInfo,overlayInfo);
+			txmCacheName(nameData,typeInfo,overlayInfo,tileKey);
 
 			FullPathFileName testPath;
 			testPath.init(texturePath,nameData,"");
@@ -1627,7 +1666,7 @@ long TerrainTextures::createTransition (DWORD typeInfo, DWORD overlayInfo)
 			// for all of the textures...
 			//
 			char nameData[256];
-			txmCacheName(nameData,typeInfo,overlayInfo);
+			txmCacheName(nameData,typeInfo,overlayInfo,tileKey);
 
 			FullPathFileName testPath;
 			testPath.init(texturePath,nameData,"");
@@ -1782,7 +1821,7 @@ void TerrainTextures::update (void)
 {
 	ZoneScopedN("TerrainTextures::update");
 	if (metadataLoaded)
-		MC2_DIAGF("[TXM_CACHE] inputs_ms=%.3f rebuild_ms=%.3f rebuilt=%ld reused=%ld key=%s\n", txmInputsMs, txmRebuildMs, txmRebuilds, txmReuses, txmContentKey.c_str());
+		MC2_DIAGF("[TXM_CACHE] inputs_ms=%.3f rebuild_ms=%.3f rebuilt=%ld reused=%ld overlay_tiles_keyed=%ld overlay_tiles_decoded=%ld key=%s\n", txmInputsMs, txmRebuildMs, txmRebuilds, txmReuses, txmTilesKeyed, txmTilesLoaded, txmContentKey.c_str());
 	if (metadataLoaded)
 	{
 		// BUGS 53: UserHeap::destroy() hands nothing back to the allocator (gos_DestroyMemoryHeap deletes the heap record only),
@@ -1811,6 +1850,7 @@ void TerrainTextures::update (void)
 			freeTable(overlays[i].overlayData, overlays[i].numTextures * MC_MAX_MIP_LEVELS);
 			freeBlock(overlays[i].overlayDataSizes);
 		}
+		txmOverlayTiles.clear();
 		for (long i = 0; details && i < numDetails; i++)
 		{
 			freeBlock(details[i].detailName);

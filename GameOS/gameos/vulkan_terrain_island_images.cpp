@@ -259,13 +259,17 @@ bool create_cement_sampler(TerrainIsland* s) {
     mc2vk::infra::materialSampler(sci);
     s->sampBias = sci.mipLodBias;
     sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;   // GL_LINEAR
-    sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+    sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
     // ★CEMENT: GL_REPEAT wrap (gos_terrain_indirect.cpp:1291-1292) — cement tiles wrap.
     // CEMENT-ARRAY-1: the shaders fract() the tile UV and sample a per-cell layer, so the sampler must CLAMP: with REPEAT the
     // bilinear footprint at u/v 0 or 1 wraps to the opposite edge texels (dark dotted seam on every cell border, found by the A/B).
     // CLAMP_TO_EDGE equals the old half-texel inset at lod 0.
     sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    sci.maxLod = 0.25f;   // the array is mip-less: lod 0 only
+    sci.maxLod = VK_LOD_CLAMP_NONE;
+    VkPhysicalDeviceProperties props{};
+    vkGetPhysicalDeviceProperties(s->phys, &props);
+    sci.anisotropyEnable = mc2vk::profile::featureEnabled(mc2vk::getOrCreateEngineVulkanContext().profile(), "samplerAnisotropy") ? VK_TRUE : VK_FALSE;
+    sci.maxAnisotropy = std::min(16.0f, props.limits.maxSamplerAnisotropy);
     return mc2vk::create(s->cementSamp, s->device, [&](auto* h) { return vkCreateSampler(s->device, &sci, nullptr, h); });
 }
 
@@ -292,8 +296,10 @@ void import_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     if (layers.empty()) return;
     const uint32_t tile = static_cast<uint32_t>(feed.cementAtlasSide / feed.cementGridSide);
     const uint32_t count = static_cast<uint32_t>(feed.cementLayerCount);
-    if (upload_sampled_image_array(s, s->cementTexture, VK_FORMAT_R8G8B8A8_UNORM, tile, tile, count,
-                                   layers.data(), static_cast<VkDeviceSize>(layers.size()))) {
+    auto texture = mc2vk::getOrCreateEngineVulkanContext().textures().acquirePixels(tile, tile, VK_FORMAT_R8G8B8A8_UNORM,
+        layers.data(), layers.size(), true, count, true);
+    if (texture) {
+        s->cementTexture = std::move(texture);
         s->cementVersionImported = feed.cementAtlasVersion;
         s->cementReady = true;
         write_descriptors(s);
