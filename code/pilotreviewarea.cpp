@@ -8,6 +8,7 @@ SalvageMechArea.cpp			: Implementation of the SalvageMechArea component.
 
 #include <cstdlib>
 #include"pilotreviewarea.h"
+#include"screen_settle_capture.h"
 #include"inifile.h"
 #include"objmgr.h"
 #include"logisticspilot.h"
@@ -253,6 +254,10 @@ void PilotReviewScreen::render()
 	
 	if ( s_curPromotion )
 		s_curPromotion->render();
+
+	// MC2_SHOT_SCREEN=promotion (capture only): photograph the promotion area once it has settled.
+	if ( mc2::screen_settle::promotionCaptureActive() )
+		mc2::screen_settle::promotionTick( s_curPromotion != nullptr );
 }
 
 int	PilotReviewScreen::handleMessage( unsigned long message, unsigned long who)
@@ -283,7 +288,7 @@ void PilotReviewScreen::update()
 	// dismiss immediately, but DON'T return early so exitAnim still runs and
 	// isDone() (bDone && exitAnim.isDone()) can resolve.
 	static const int s_soakAutoWin = mc2::gate::get<"MC2_SOAK_AUTOWIN">() ? 1 : 0;
-	if ( s_soakAutoWin )
+	if ( s_soakAutoWin && !mc2::screen_settle::promotionCaptureActive() )   // promotion capture lets the real panel run
 	{
 		s_curPromotion = nullptr;
 		if ( !bDone )
