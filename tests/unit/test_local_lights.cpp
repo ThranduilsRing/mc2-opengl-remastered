@@ -115,7 +115,7 @@ TEST_CASE("stock lamp definitions exclude every authored override") {
 }
 
 TEST_CASE("loose stock lamps retune by hash and mod ownership, independent of disk source") {
-    const auto source = std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
+    const auto source = std::filesystem::path(MC2_REPO_ROOT);
     std::ifstream caller(source / "mclib/bdactor_type.cpp");
     REQUIRE(caller.good());
     const std::string code{std::istreambuf_iterator<char>(caller), {}};

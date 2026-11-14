@@ -1,12 +1,36 @@
 """run_visual_capture: the exit code, the manifest and the log use ONE predicate (fail_reasons)."""
 import inspect
 import sys
+from types import SimpleNamespace
 from pathlib import Path
 
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 import run_visual_capture as rvc  # noqa: E402
+
+
+def test_path_timing_ignores_system_perf(monkeypatch, tmp_path):
+    """Trigger: run_visual_capture.py and tools/perf/**; Linux perf may already be loaded."""
+    class SystemPerf:
+        def __getattr__(self, name):
+            raise AssertionError("system perf must not be used")
+
+    monkeypatch.setitem(sys.modules, "perf", SystemPerf())
+    import tracy_capture_compare as tracy
+    launches = []
+
+    def capture(*args, **kwargs):
+        launches.append(kwargs)
+        return 73  # Stop at the real recorder boundary without starting a game.
+
+    monkeypatch.setattr(tracy, "capture_trace", capture)
+    args = SimpleNamespace(tracy_output=str(tmp_path / "capture.tracy"),
+                           tracy_commands="", env_declare=[], exe=str(tmp_path / "mc2"),
+                           mission="mc2_01", tracy_seconds=10)
+    assert rvc.capture_path_timing(args) == 73
+    assert len(launches) == 1
+    assert callable(launches[0]["spawn_game"])
 
 
 def _ok():
