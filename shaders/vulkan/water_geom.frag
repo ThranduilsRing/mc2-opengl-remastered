@@ -31,6 +31,18 @@ float waterRenderedHeight(vec2 worldXY) {
                       vec2(0.0), vec2(uT.visualSide - 1));
     ivec2 p = min(ivec2(floor(grid)), ivec2(uT.visualSide - 2));
     vec2 t = grid - vec2(p);
+    // Patch indices choose the flatter diagonal from RAW bake heights.
+    float rawTL = cliffRawHeight(p), rawTR = cliffRawHeight(p + ivec2(1, 0));
+    float rawBL = cliffRawHeight(p + ivec2(0, 1)), rawBR = cliffRawHeight(p + ivec2(1, 1));
+    if (abs(rawTR - rawBL) < abs(rawTL - rawBR)) {
+        float tr = hiresSurfaceHeight(p.x + 1, p.y), bl = hiresSurfaceHeight(p.x, p.y + 1);
+        if (t.x + t.y <= 1.0) {
+            float tl = hiresSurfaceHeight(p.x, p.y);
+            return tl + (tr - tl) * t.x + (bl - tl) * t.y;
+        }
+        float br = hiresSurfaceHeight(p.x + 1, p.y + 1);
+        return br + (bl - br) * (1.0 - t.x) + (tr - br) * (1.0 - t.y);
+    }
     float a = hiresSurfaceHeight(p.x, p.y), d = hiresSurfaceHeight(p.x + 1, p.y + 1);
     float b = t.y >= t.x ? hiresSurfaceHeight(p.x, p.y + 1) : hiresSurfaceHeight(p.x + 1, p.y);
     return t.y >= t.x ? a + (d - b) * t.x + (b - a) * t.y
