@@ -108,19 +108,21 @@ void GpuStaticPropBatcher::forgetLodState(const GpuStaticPropInstance& inst) {
     s_lodState.erase(propLodKey(inst));
 }
 
-void mc2_static_prop_retype_far_tier(GpuStaticPropInstance* instances, uint32_t count, bool resort) {
+void mc2_static_prop_retype_far_tier(std::span<GpuStaticPropInstance> instances, bool resort) {
     if (s_lodMembers.empty()) return;
     bool any = false;
-    for (uint32_t i = 0; i < count; ++i)
-        if (auto it = s_lodMembers.find(instances[i].typeID); it != s_lodMembers.end() && it->second.farType != instances[i].typeID) {
-            instances[i].typeID = it->second.farType; any = true;
-        }
-    if (any && resort) std::sort(instances, instances + count, [](const GpuStaticPropInstance& a, const GpuStaticPropInstance& b) { return a.typeID < b.typeID; });
+    for (GpuStaticPropInstance& inst : instances) {
+        if (!s_lodMembers.contains(inst.typeID)) continue;
+        const PropLodMember& m = s_lodMembers.at(inst.typeID);
+        if (m.farType != inst.typeID) { inst.typeID = m.farType; any = true; }
+    }
+    if (any && resort) std::sort(instances.begin(), instances.end(), [](const GpuStaticPropInstance& a, const GpuStaticPropInstance& b) { return a.typeID < b.typeID; });
 }
 
 int mc2_static_prop_lod_skips_late(uint32_t typeID) {
-    const auto it = s_lodMembers.find(typeID);
-    return it != s_lodMembers.end() && it->second.tier >= 3 ? 1 : 0;
+    if (!s_lodMembers.contains(typeID)) return 0;
+    const PropLodMember& m = s_lodMembers.at(typeID);
+    return m.tier >= 3 ? 1 : 0;
 }
 
 extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {

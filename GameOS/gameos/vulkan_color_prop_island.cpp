@@ -2466,7 +2466,7 @@ bool prepareProps(std::unique_ptr<mc2vk::IslandState>& state, const Target& targ
     const View view(objectMatrix, target.water);
     // Empty registries need neither geometry nor a Vulkan prop island.
     preparePropInstances(view, s->bounds, s->reflectedInstances);
-    mc2_static_prop_retype_far_tier(s->reflectedInstances.data(), static_cast<uint32_t>(s->reflectedInstances.size()));
+    mc2_static_prop_retype_far_tier(std::span<GpuStaticPropInstance>(s->reflectedInstances));
     if (s->reflectedInstances.empty()) return true;
     if (!s->inited && !init_island(s, target.w, target.h)) return false;
     if (!s->boundsReady) {
@@ -2481,7 +2481,7 @@ bool prepareProps(std::unique_ptr<mc2vk::IslandState>& state, const Target& targ
             std::span(static_cast<const uint32_t*>(indices), static_cast<size_t>(ib / sizeof(uint32_t))));
         s->boundsReady = true;
         preparePropInstances(view, s->bounds, s->reflectedInstances);
-        mc2_static_prop_retype_far_tier(s->reflectedInstances.data(), static_cast<uint32_t>(s->reflectedInstances.size()));
+        mc2_static_prop_retype_far_tier(std::span<GpuStaticPropInstance>(s->reflectedInstances));
     }
     if (s->reflectedInstances.empty()) return true;
     Mc2ColorPropFeed feed{};

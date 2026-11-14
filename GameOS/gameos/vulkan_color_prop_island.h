@@ -75,8 +75,9 @@ void mc2_vk_color_prop_island_destroy();
 
 // Tree LOD chains: re-type instances of a chain's types to its far tier (reflection feed, shadow bake casters); resort keeps
 // the list typeID-ordered for run-grouped feeds. mc2_static_prop_lod_skips_late: tiers >= 3 take no second (fringe/late) leaf draw.
+#include <span>
 struct GpuStaticPropInstance;
-void mc2_static_prop_retype_far_tier(GpuStaticPropInstance* instances, uint32_t count, bool resort = true);
+void mc2_static_prop_retype_far_tier(std::span<GpuStaticPropInstance> instances, bool resort = true);
 int mc2_static_prop_lod_skips_late(uint32_t typeID);
 #endif
 
