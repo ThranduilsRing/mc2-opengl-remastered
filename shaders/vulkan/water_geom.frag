@@ -37,7 +37,7 @@ layout(set = 0, binding = 1, std140) uniform WaterFsParams {
     vec4 f2;              // (GLINT_GAIN, u_waterReflStrength, u_skyYaw, u_waterHdriLod)
     vec4 f3;              // (screenW, screenH, nightDim, animatedShore)
     vec4 DEEP_COLOR;      // .xyz color, .w Half-res reflection enabled
-    vec4 SHALLOW_COLOR;   // .xyz
+    vec4 SHALLOW_COLOR;   // .xyz color, .w gameplay navigable shallow depth
     // VK-PARITY-WATER-SHORE-1 (WATER-SHORE-EDGE-1): shore-feather inputs.
     vec4 f4;              // (u_shoreMode, u_hasShoreHeight, u_hasShoreMask, u_shoreFeatherWu)
     vec4 f5;              // u_shoreHeightBounds (topLeftX, topLeftY, spanX, spanY)
@@ -326,8 +326,6 @@ void main(void)
     float specAlpha2 = clamp(alpha0 * alpha0
                              + 2.0 * (waveVar + RIPPLE_SLOPE_VAR * (1.0 - waveLOD) * (RIPPLE_GAIN / 0.22))
                              + min(2.0 * kernelVar, 0.18), 0.0, 0.36);
-    PREC vec3 waterCol = DEEP_COLOR;
-
     PREC float shoreBlend = max(alphaDepth, 1.0);
     PREC float shore = smoothstep(-shoreBlend * 0.5, shoreBlend, WaterThickness);
     // WATER-SHORE-EDGE-1 / WATER-SHORE-MASK-1: shared with the GL FS.
@@ -349,6 +347,11 @@ void main(void)
     // dim (f3.z, 0 by day), so open water reads as dark as the ground around it instead of daylight teal.
     PREC float nightSky = 1.0 - clamp(F.f3.z, 0.0, 1.0);
     PREC vec3  vertexLightRGB = Color.bgra.rgb * nightSky;
+    // Reuse the continuous coverage field: coarse vertex depth draws angular shelves.
+    // Fade across the full shallow range without adding a separate bright shore band.
+    float tintDepth = max(hasField ? fieldThick : WaterThickness, 0.0);
+    float shallow = 1.0 - smoothstep(0.0, max(F.SHALLOW_COLOR.w, 1.0), tintDepth);
+    PREC vec3 waterCol = mix(DEEP_COLOR, F.SHALLOW_COLOR.xyz, shallow);
     PREC vec3  col = waterCol * max(vertexLightRGB, vec3(SKY_AMBIENT * nightSky))
                    + waterCol * SKY_AMBIENT * 0.5 * nightSky;
     // No crest or glint brightening: highlights come only from the sun/lamp specular on the perturbed normal.
