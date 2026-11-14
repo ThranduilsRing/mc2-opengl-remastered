@@ -362,12 +362,12 @@ extern "C" void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame) 
         auto combatHash = combatSimulationHash(*ObjectManager);
         auto vtolHash = vtolSimulationHash();
         objects(sceneryHash, combatHash, vtolHash);
-        for (long i = 1; i <= ObjectManager->getMaxObjects(); ++i) {
+        for (std::int32_t i = 1; i <= ObjectManager->getMaxObjects(); ++i) {
             auto* mover = ObjectManager->get(i);
             if (!mover || !mover->getExists()) continue;
             if (!mover->getAppearance() || !mover->getAppearance()->simulationOwned()) continue;
             auto& a = *mover->getAppearance()->simulationAnimation();
-            auto id = mover->getPartId();
+            std::int32_t id = mover->getPartId();
             animation(i, id, a);
             auto& pose = *mover->getAppearance()->simPose;
             animation(pose.root.x, pose.root.y, pose.root.z, pose.heading);
@@ -407,6 +407,10 @@ extern "C" void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame) 
 		for (const auto & r : recs) {
 			char hm[17];
 			mc2_sim_identity::toHex16(mc2_sim_identity::digestMoverVisual(r), hm);
+			mc2::fmt::print_out("[SIMID bits] simframe={} id={} team={} px={:08x} py={:08x} pz={:08x} rot={:08x} hp={:08x}\n",
+				mc2::fmt::as_i32(simFrame), r.id, r.team, std::bit_cast<std::uint32_t>(r.px),
+				std::bit_cast<std::uint32_t>(r.py), std::bit_cast<std::uint32_t>(r.pz),
+				std::bit_cast<std::uint32_t>(r.rot), std::bit_cast<std::uint32_t>(r.hp));
 			mc2::fmt::print_out("[SIMID v1 mover] simframe={:d} id={:d} vd={} pos={:.4f},{:.4f},{:.4f} rot={:.4f} hp={:.5f} gesture={:d} anim={:d} status={:d} target={:d} brain={:d} mstate={:d} pstep={:d}/{:d}\n", mc2::fmt::as_i32(simFrame), mc2::fmt::as_i32(r.id), mc2::fmt::safe(hm), r.px, r.py, r.pz, r.rot, r.hp, mc2::fmt::as_i32(r.gesture), mc2::fmt::as_i32(r.animFrame), mc2::fmt::as_i32(r.status), mc2::fmt::as_i32(r.target), mc2::fmt::as_i32(r.brainState), mc2::fmt::as_i32(r.moveState), mc2::fmt::as_i32(r.pathStep), mc2::fmt::as_i32(r.pathSteps));
 		}
 	}

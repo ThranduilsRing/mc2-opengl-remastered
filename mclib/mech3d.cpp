@@ -292,7 +292,7 @@ void Mech3DAppearance::destroy (void)
 
 	if (InEditor)
 	{
-		std::vector<long>().swap(unitAnim().nodeUsed);
+		std::vector<int32_t>().swap(unitAnim().nodeUsed);
 		std::vector<float>().swap(unitAnim().nodeRecycle);
 	}
 }
@@ -329,7 +329,7 @@ void Mech3DAppearance::copyTo (MechAppearanceData *data)
 
 	// Keep the legacy 10-byte prefix unchanged. ANIM saves the complete counted
 	// tables; Mission::save requires WNOD for tables beyond the old 10-node cap.
-	memcpy(data->nodeUsed,unitAnim().nodeUsed.data(),std::min<size_t>(10,unitAnim().nodeUsed.size()*sizeof(long)));		 
+	memcpy(data->nodeUsed,unitAnim().nodeUsed.data(),std::min<size_t>(10,unitAnim().nodeUsed.size()*sizeof(int32_t)));
 	memcpy(data->nodeRecycle,unitAnim().nodeRecycle.data(),std::min<size_t>(10,unitAnim().nodeRecycle.size()*sizeof(float)));
 
 	data->isSmoking = isSmoking;
@@ -376,7 +376,7 @@ void Mech3DAppearance::copyFrom (MechAppearanceData *data)
 	currentLOD = data->currentLOD;
 
 	// Mirror of copyTo: only 10 bytes were saved, and a table shorter than that must not be over-written.
-	memcpy(unitAnim().nodeUsed.data(),data->nodeUsed,std::min<size_t>(10,unitAnim().nodeUsed.size()*sizeof(long)));		 
+	memcpy(unitAnim().nodeUsed.data(),data->nodeUsed,std::min<size_t>(10,unitAnim().nodeUsed.size()*sizeof(int32_t)));
 	memcpy(unitAnim().nodeRecycle.data(),data->nodeRecycle,std::min<size_t>(10,unitAnim().nodeRecycle.size()*sizeof(float)));
 
 	isSmoking = -1;
