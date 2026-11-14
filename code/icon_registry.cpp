@@ -8,6 +8,7 @@
 #include "../mclib/texture_assets.h"
 #include "../RenderCore/KtxLoader.h"
 #include "../GameOS/gameos/texture_decode.h"
+#include "../GameOS/gameos/gos_render.h"
 #include "mc2fmt.h"
 #include "Gates/gate.h"
 #include "vfs.h"
@@ -65,6 +66,7 @@ Pixels load(std::string path, bool hud = false) {
 }
 
 void addSheet(std::string path, int cw, int ch, int stripRows = 0) {
+    graphics::pump_loading_events();
     if (!stripRows && sourceScale.contains(path)) return;
     auto src = load(path, stripRows != 0);
     if (src.data.empty()) return;
@@ -157,6 +159,7 @@ void init(std::string first = {}, int cw = 25, int ch = 30) {
         for (long j = 0; j < fastFiles[i]->getNumFiles(); ++j) collect(info[j].pfe->name, &loose);
     }
     for (const auto& path : loose) {
+        graphics::pump_loading_events();
         const bool pilot = path.starts_with("data/art/pilots/");
         auto relative = path.substr(std::string(pilot ? "data/art/pilots/" : "data/art/mechicons/").size());
         relative = relative.substr(0, relative.find_last_of('.'));

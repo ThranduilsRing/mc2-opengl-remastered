@@ -7,6 +7,7 @@
 #include "terrain_field_store.h"
 #include "cement_layers.h"
 #include "gameos.hpp"
+#include "gos_render.h"
 #include <array>
 #include <bit>
 #include <filesystem>
@@ -175,7 +176,8 @@ void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
         }
         const char* cookOrigin = "none";
         const auto resolveT0 = std::chrono::steady_clock::now();
-        auto cooked = mc2terrain::resolveSurfaceAsset(input, mc2terrain::surfaceMissionCook(), cacheDir, &cookOrigin);
+        std::optional<mc2terrain::SurfaceAsset> cooked;
+        graphics::loading_work([&] { cooked = mc2terrain::resolveSurfaceAsset(input, mc2terrain::surfaceMissionCook(), cacheDir, &cookOrigin); });
         const double resolveMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - resolveT0).count();
         if (cooked) {
             const auto source = cooked->sourceHash;
@@ -193,6 +195,7 @@ void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
                 };
                 std::vector<uint32_t> packedColors(surface.macroColor.size());
                 for (size_t i = 0; i < packedColors.size(); ++i) {
+                    if ((i & 4095) == 0) graphics::pump_loading_events();
                     const auto& c = surface.macroColor[i];
                     packedColors[i] = static_cast<uint32_t>(encode(c[0])) | static_cast<uint32_t>(encode(c[1])) << 8 | static_cast<uint32_t>(encode(c[2])) << 16 |
                                       static_cast<uint32_t>(toByte(c[3])) << 24;
