@@ -181,7 +181,7 @@ struct PropPacketPush { uint64_t rows; uint32_t base; uint32_t pad; };
 static_assert(sizeof(PropPacketPush) == 16);
 // Draw lists, in command-buffer order: opaque core (no-discard pipeline, early Z), alpha core, fringe, late fringe.
 constexpr uint32_t kListOpaque = 0, kListCore = 1, kListFringe = 2, kListLate = 3, kListCount = 4;
-struct PropRunRow { uint32_t first, count; uint32_t range[kListCount][2]; uint32_t pad[2]; };   // range[list] = {start, n}
+struct PropRunRow { uint32_t first, count; uint32_t range[kListCount][2]; struct { uint32_t typeId, hasLeaves; } metadata; };   // range[list] = {start, n}
 static_assert(sizeof(PropRunRow) == 48);
 struct PropDrawCmd { uint32_t indexCount, instanceCount, firstIndex; int32_t baseVertex; uint32_t firstInstance; };
 static_assert(sizeof(PropDrawCmd) == 20);
@@ -1802,10 +1802,10 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std
             const uint32_t tid = insts[i].typeID;
             uint32_t end = i + 1;
             while (end < instanceCount && insts[end].typeID == tid) ++end;
-            if (run < s->runScratch.size() && s->runScratch[run].pad[0] == tid) {
+            if (run < s->runScratch.size() && s->runScratch[run].metadata.typeId == tid) {
                 auto& rr = s->runScratch[run++];
                 patchPropRun(rr, s->cmdScratch, listStart, i, end - i);
-                if (rr.pad[1]) s->cachedLeaves += end - i;
+                if (rr.metadata.hasLeaves) s->cachedLeaves += end - i;
             }
             i = end;
         }
@@ -1896,8 +1896,8 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std
                         counted = true;
                     }
                 }
-                rr.pad[0] = tid;
-                rr.pad[1] = counted ? 1u : 0u;
+                rr.metadata.typeId = tid;
+                rr.metadata.hasLeaves = counted ? 1u : 0u;
                 if (rr.range[kListOpaque][1] + rr.range[kListCore][1] + rr.range[kListFringe][1] + rr.range[kListLate][1] != 0)
                     s->runScratch.push_back(rr);
                 ++typeRuns;
