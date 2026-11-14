@@ -83,6 +83,7 @@ from smoke_lib import host_lease, nofocus  # noqa: E402
 from smoke_lib import render_options_pin, render_resolution  # noqa: E402
 from smoke_lib import via_menu  # noqa: E402  (--via-menu: the player's boot path)
 import perf_baseline_report  # noqa: E402  (GPU memory of a trace: the VRAM plot and the [VRAM v1] log lines)
+import re
 
 DEFAULT_TRACY_DIR = Path("C:/Users/Joe/Downloads/TracyProfiler")
 DEFAULT_ZONES = [
@@ -304,10 +305,25 @@ def owner_capture_mode():
     return True
 
 
+def pan_camera(channel, half_map, seconds):
+    """Drive the engine's bookmark Camera setters, never desktop key input."""
+    start = time.monotonic()
+    steps = int(seconds * 10)
+    for step in range(steps + 1):
+        time.sleep(max(0, start + step / 10 - time.monotonic()))
+        if channel.stat().st_size:
+            raise RuntimeError("pan camera command channel was not consumed")
+        p = half_map * (1 - 2 * step / steps)
+        command = f"bench_view {p:.3f} {p:.3f} -45 5853.4658 12.5\n"
+        if step in (0, steps):
+            command += f"screenshot pan_{'start' if step == 0 else 'end'}\n"
+        channel.write_text(command, encoding="utf-8")
+
+
 def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path,
                   extra_env=None, pose=None, fixed_timestep=True, fps_cap=None,
                   show_window: bool = True, ticks: int = 0, via_menu_boot: bool = False,
-                  spawn_game=None, post_load: bool = False, capture_arm: str = "default") -> int:
+                  spawn_game=None, post_load: bool = False, capture_arm: str = "default", pan: bool = False) -> int:
     """Record one trace under the host lease; retain a caller's existing lease.
 
     Free timestep and an uncapped FPS limit measure renderer throughput.
@@ -324,6 +340,12 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
     if via_menu_boot and ticks:
         sys.exit("ERROR: --via-menu cannot be combined with --ticks (the tick budget is a smoke-mode exit)")
     env = game_env(arm, fixed_timestep, fps_cap, pose, extra_env, via_menu_boot)   # before the recorder starts: a refused --env must leave nothing running
+    if pan:
+        if not post_load or seconds < 2:
+            raise ValueError("pan requires a post-load window of at least two seconds")
+        channel = out.with_suffix(".commands.txt")
+        channel.write_text(f"bench_output {out.with_suffix('.frames.jsonl')}\n", encoding="utf-8")
+        env.update(MC2_TEST_SPAWN="1", MC2_UI_COMMAND_FILE=str(channel), MC2_DEV_SHELL="1")
     if post_load and os.environ.get("MC2_NO_CPU_PIN") != "1":
         env.setdefault("MC2_FRAME_JOBS_WORKERS", "1")
 
@@ -417,6 +439,12 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
             wait_post_load(gp, game_log, pose)
             row["measurement_start_epoch"] = time.time()
             recorder = start_recorder()
+            if pan:
+                half_map = re.search(r"halfMap=([\d.]+)", game_log.read_text(encoding="utf-8", errors="replace"))
+                if not half_map:
+                    raise RuntimeError("pan requires the terrain map extent receipt")
+                row["pan_half_map"] = float(half_map[1])
+                pan_camera(channel, float(half_map[1]), seconds - 1)
         print(f"[capture] game pid={gp.pid} arm={arm} mission={mission} "
               f"duration={duration}s fixed_ts={fixed_timestep} fps_cap={fps_cap} pose={pose}")
 
@@ -512,6 +540,7 @@ def _capture_arm(args, name, out):
         fixed_timestep=not args.free_timestep, fps_cap=args.fps_cap,
         show_window=args.show_window, ticks=args.ticks, via_menu_boot=args.via_menu,
         post_load=not (args.ticks or args.via_menu), capture_arm=name,
+        pan=args.pan,
     )
     if rc == 0:
         zone_summary(out, csv_out=out.with_suffix(".zones.csv") if args.csv else None)
@@ -1099,6 +1128,7 @@ def main() -> int:
     c.add_argument("--mission", default="mc2_01")
     c.add_argument("--seconds", type=int, default=30, help="post-load recording window (default 30 seconds)")
     c.add_argument("--capture-arms", default="default", help="comma-separated default,lod,visible0")
+    c.add_argument("--pan", action="store_true", help="script a corner-to-corner engine camera path after mission-ready")
     c.add_argument("--via-menu", action="store_true",
                    help="launch as a player does (boot, main menu, stock campaign, mission; no smoke mode, no --mission, no fixed timestep). "
                         "--seconds must cover menu + mission load (use 90+); the trace includes the front end. [VIA_MENU v1]/[FIRST60 v1] lines are in the .game.log")

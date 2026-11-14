@@ -53,6 +53,21 @@ def test_capture_arm_overrides_are_declared():
     assert "MC2_TERRAIN_LOD_CHUNK_FORCE_LOD=2" in capture.CAPTURE_ARMS["lod"]
 
 
+def test_pan_uses_engine_commands_and_both_endpoint_shots(monkeypatch):
+    channel = Mock()
+    channel.stat.return_value.st_size = 0
+    monkeypatch.setattr(capture.time, "sleep", Mock())
+    capture.pan_camera(channel, 7680, 2)
+    commands = [call.args[0] for call in channel.write_text.call_args_list]
+    assert len(commands) == 21
+    assert commands[0].startswith("bench_view 7680.000 7680.000 ")
+    assert commands[-1].startswith("bench_view -7680.000 -7680.000 ")
+    assert "screenshot pan_start" in commands[0] and "screenshot pan_end" in commands[-1]
+    channel.stat.return_value.st_size = 1
+    with pytest.raises(RuntimeError, match="not consumed"):
+        capture.pan_camera(channel, 7680, 2)
+
+
 @pytest.mark.parametrize("opt_in,tag,exclusive,slots,accepted", [
     (False, "batch", True, 2, False), (True, "batch", True, 2, True),
     (True, "batch", False, 2, None), (True, "batch", True, 1, None),
@@ -81,6 +96,11 @@ def test_post_load_starts_recorder_after_pose_and_writes_row(harness, monkeypatc
     monkeypatch.delenv("MC2_FRAME_JOBS_WORKERS", raising=False)
     monkeypatch.setattr(psutil, "cpu_count", lambda: 16)
     monkeypatch.setattr(capture, "owner_capture_mode", lambda: owner)
+    if owner:
+        monkeypatch.setattr(Path, "read_text", lambda *a, **k: "[TerrainLOD v1] halfMap=7680.0")
+        monkeypatch.setattr(Path, "write_text", Mock())
+        pan_driver = Mock()
+        monkeypatch.setattr(capture, "pan_camera", pan_driver)
     monkeypatch.setattr(capture, "os", SimpleNamespace(name=platform, environ=capture.os.environ))
     process = Mock(cpu_affinity=Mock(return_value=cores))
     monkeypatch.setattr(psutil, "Process", lambda _: process)
@@ -94,7 +114,9 @@ def test_post_load_starts_recorder_after_pose_and_writes_row(harness, monkeypatc
     monkeypatch.setattr(capture, "window_stats", lambda *a: {"status": "PASS"})
     stats_file = Mock()
     h.out.with_suffix.side_effect = lambda suffix: stats_file if suffix == ".stats.json" else Path("trace" + suffix)
-    assert capture.capture_trace(h.install, "vk", "mc2_15", 30, h.out, post_load=True) == 0
+    assert capture.capture_trace(h.install, "vk", "mc2_15", 30, h.out, post_load=True, pan=owner) == 0
+    if owner:
+        pan_driver.assert_called_once_with(Path("trace.commands.txt"), 7680.0, 29)
     assert h.events.index("game.spawn") < h.events.index("pose.settled") < h.events.index("recorder.spawn")
     row = capture.json.loads(stats_file.write_text.call_args.args[0])
     assert row["status"] == "PASS" and row["affinity"] == cores and row["job_workers"] == (6 if owner else 1)
