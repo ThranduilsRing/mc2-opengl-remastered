@@ -174,11 +174,13 @@ void init(std::string first = {}, int cw = 25, int ch = 30) {
     std::array<char, 1024> userDir{};
     const std::string cacheDir = gos_GetUserDataDirectory(userDir)
         ? (std::filesystem::path(userDir.data()) / "cache" / "icons").generic_string() : std::string{};
+    Registry cachedIcons;
+    std::map<std::string, int> cachedRanks;
     const bool cacheHit = [&] {
         MC2_LOAD_SCOPE("icons.cacheRead");
         if (!cacheable) return false;
         const auto bytes = mc2cache::readEntry(cacheDir, iconDecodeKind, decodeKey);
-        return bytes && decodeIcons(*bytes, decodeKey, registry, namedPriority);
+        return bytes && decodeIcons(*bytes, decodeKey, cachedIcons, cachedRanks);
     }();
     { MC2_LOAD_SCOPE("icons.decode");
       for (const auto& path : loose) {
@@ -189,7 +191,12 @@ void init(std::string first = {}, int cw = 25, int ch = 30) {
         const int priority = LookupModPriority(path.c_str());
         if (namedPriority.contains(key) && namedPriority[key] <= priority) continue;
         const bool raw = key.starts_with("hud/") || pilot;
-        auto src = load(path, raw);
+        Pixels src;
+        if (raw && cachedRanks.contains(key) && cachedRanks.at(key) == priority) {
+            auto& icon = cachedIcons.icons.at(key);
+            src.w = icon.width; src.h = icon.height;
+            src.data = std::move(icon.pixels);
+        } else src = load(path, raw);
         if (!src.data.empty()) {
             registry.add(key, src.w, src.h, src.data);
             namedPriority[key] = priority;
