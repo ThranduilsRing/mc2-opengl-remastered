@@ -1,5 +1,6 @@
 #include "doctest.h"
 #include "icon_registry.h"
+#include "icon_decode_cache.h"
 #include <filesystem>
 #include <format>
 #include <fstream>
@@ -7,6 +8,38 @@
 #include <set>
 
 using namespace unit_icons;
+
+TEST_CASE("icon_atlas_harness/decode_cache_identity_and_rejection") {
+    const auto key = iconDecodeKey(iconDecodeVersion, "data/art/pilots/00.png", 123, 10);
+    CHECK(key != iconDecodeKey(iconDecodeVersion, "data/art/pilots/01.png", 123, 10));
+    CHECK(key != iconDecodeKey(iconDecodeVersion, "data/art/pilots/00.png", 124, 10));
+    CHECK(key != iconDecodeKey(iconDecodeVersion, "data/art/pilots/00.png", 123, 9));
+    CHECK(key != iconDecodeKey(iconDecodeVersion + 1, "data/art/pilots/00.png", 123, 10));
+    Registry source, restored;
+    REQUIRE(source.add("pilot/00", 2, 2, std::vector<uint32_t>{0x00123456, 0xffabcdef, 0xff505050, 0}));
+    std::map<std::string, int> ranks{{"pilot/00", 10}}, decoded;
+    const auto bytes = encodeIcons(source, ranks, key);
+    REQUIRE(decodeIcons(bytes, key, restored, decoded));
+    CHECK(restored.find("pilot/00")->pixels == source.find("pilot/00")->pixels);
+    CHECK(decoded == ranks);
+    REQUIRE(source.pack());
+    REQUIRE(restored.pack());
+    CHECK(source.atlas == restored.atlas);
+    CHECK_FALSE(decodeIcons(bytes, key + 1, restored, decoded));
+    for (size_t n = 0; n < bytes.size(); ++n)
+        CHECK_FALSE(decodeIcons(std::span(bytes).first(n), key, restored, decoded));
+    for (size_t i = 0; i < bytes.size(); ++i) {
+        auto corrupt = bytes;
+        corrupt[i] ^= 1;
+        CHECK_FALSE(decodeIcons(corrupt, key, restored, decoded));
+    }
+    auto malformed = bytes;
+    std::fill_n(malformed.begin() + 20, 4, 255); // oversized name, with a valid checksum
+    malformed.resize(malformed.size() - 8);
+    mc2cache::putLE(malformed, mc2::content::fastHash(malformed), 8);
+    CHECK_FALSE(decodeIcons(malformed, key, restored, decoded));
+    CHECK(restored.find("pilot/00")->pixels == source.find("pilot/00")->pixels);
+}
 
 TEST_CASE("icon_atlas_harness/named_image_preferred_with_mod_atlas_fallback") {
     Registry r;
