@@ -63,8 +63,6 @@ extern "C" const float* gos_terrain_indirect_getDispatchMvp16();
 
 namespace WaterStream {
 
-float NavigableShallowDepth() { return MapData::shallowDepth; }
-
 // SHORELINE-STAIRCASE-1: MC2_WATER_SHORE_FEATHER floor on effective alphaDepth
 // (world units). Widens the water FS shore smoothstep band + the beach-ring
 // shoreExt geometry in lockstep so the tile-quantized water-edge staircase

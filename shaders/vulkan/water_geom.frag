@@ -37,7 +37,7 @@ layout(set = 0, binding = 1, std140) uniform WaterFsParams {
     vec4 f2;              // (GLINT_GAIN, u_waterReflStrength, u_skyYaw, u_waterHdriLod)
     vec4 f3;              // (screenW, screenH, nightDim, animatedShore)
     vec4 DEEP_COLOR;      // .xyz color, .w Half-res reflection enabled
-    vec4 SHALLOW_COLOR;   // .xyz color, .w gameplay navigable shallow depth
+    vec4 SHALLOW_COLOR;   // .xyz
     // VK-PARITY-WATER-SHORE-1 (WATER-SHORE-EDGE-1): shore-feather inputs.
     vec4 f4;              // (u_shoreMode, u_hasShoreHeight, u_hasShoreMask, u_shoreFeatherWu)
     vec4 f5;              // u_shoreHeightBounds (topLeftX, topLeftY, spanX, spanY)
@@ -64,6 +64,7 @@ layout(set = 0, binding = 7) uniform sampler2D u_staticMask;
 layout(set = 0, binding = 8) uniform sampler2D u_waterReflection;
 #include "../include/water_shore_edge.hglsl"
 #include "../include/water_reactive.hglsl"
+#include "../include/water_shallow.hglsl"
 
 struct ReactiveStamp { vec4 positionRadiusAge; vec4 velocityType; };
 layout(set = 0, binding = 13, std430) readonly buffer WaterReactive {
@@ -285,10 +286,12 @@ void main(void)
     float time    = F.f0.x;
     vec3  camPos  = F.f0.yzw;
     float alphaDepth        = F.f1.x;
+    float ABSORPTION_DENSITY = F.f1.y;
     float WATER_MAX_ALPHA   = F.f1.z;
     float RIPPLE_GAIN       = F.f1.w;
     float GLINT_GAIN        = F.f2.x;
     vec3  DEEP_COLOR    = F.DEEP_COLOR.xyz;
+    vec3  SHALLOW_COLOR = F.SHALLOW_COLOR.xyz;
     // RUNG-6.5: global aliases feeding the verbatim-ported reflection blocks.
     u_waterReflStrength = F.f2.y;
     u_skyYaw            = F.f2.z;
@@ -301,12 +304,27 @@ void main(void)
     PREC float waveLOD = 1.0 - smoothstep(WAVE_FADE_NEAR, WAVE_FADE_FAR, length(viewVec));
 
 
-    // The shore field owns coverage; water color stays continuous to its edge.
+    // SHORE-FIELD-1: deep/shallow tint from the smooth shore field (mode 3), not the coarse
+    // per-vertex thickness -- no more deep-water diamonds around single low vertices.
+    // Evaluated for every fragment (uniform control flow) so its screen derivative is defined.
     float fieldThick;
     const bool hasField = wse_fieldThickness(int(F.f4.x + 0.5), int(F.f4.y + 0.5), u_shoreHeightTex, F.f5,
                                              WorldPos.xy, F.f7.x, fieldThick);
     const float fieldThickFw = fwidth(fieldThick);
+    PREC float tintThick = hasField ? max(fieldThick, 0.0) : WaterThickness;
+    // Recover horizontal shore distance from the depth field already sampled above.
+    // World-space gradients keep the wash width stable across camera zoom and shore slopes.
+    // Derivatives precede coverage discard so helper lanes remain defined at the coast.
+    float shoreDepth = hasField ? fieldThick : WaterThickness;
     vec2 shoreDx = dFdx(WorldPos.xy), shoreDy = dFdy(WorldPos.xy);
+    vec2 depthD = vec2(dFdx(shoreDepth), dFdy(shoreDepth));
+    float shoreDet = shoreDx.x * shoreDy.y - shoreDx.y * shoreDy.x;
+    vec2 shoreGrad = vec2(shoreDy.y * depthD.x - shoreDx.y * depthD.y,
+                          shoreDx.x * depthD.y - shoreDy.x * depthD.x)
+                   / (abs(shoreDet) > 1e-6 ? shoreDet : 1e-6);
+    float shoreSlope = max(length(shoreGrad), 0.08);
+    float shoreDistance = max(shoreDepth, 0.0) / shoreSlope;
+    float foamAA = max((abs(depthD.x) + abs(depthD.y)) / shoreSlope, 1.0);
 
     // WATER-WAVES-GLINT: surface normal = wind wave trains (world-XZ sine slopes, no noise), and the GGX
     // roughness that carries every slope the pixel cannot resolve. The wave/ripple strength follows the ripple gain
@@ -326,12 +344,19 @@ void main(void)
     float specAlpha2 = clamp(alpha0 * alpha0
                              + 2.0 * (waveVar + RIPPLE_SLOPE_VAR * (1.0 - waveLOD) * (RIPPLE_GAIN / 0.22))
                              + min(2.0 * kernelVar, 0.18), 0.0, 0.36);
+    PREC float trans   = clamp(exp(-tintThick * ABSORPTION_DENSITY), 0.0, 1.0);
+    PREC vec3  waterCol = mix(DEEP_COLOR, SHALLOW_COLOR, trans);
+
     PREC float shoreBlend = max(alphaDepth, 1.0);
     PREC float shore = smoothstep(-shoreBlend * 0.5, shoreBlend, WaterThickness);
     // WATER-SHORE-EDGE-1 / WATER-SHORE-MASK-1: shared with the GL FS.
     if (hasField) {
-        // Antialias coverage only; no translucent band inside the coastline.
-        shore = smoothstep(0.0, max(3.0 * fieldThickFw, 1e-3), fieldThick);
+        // SHORE-FIELD-1: the coast is the field's zero crossing as a crisp ~3 px antialiased edge.
+        // The old depth feather (smoothstep over featherWu of DEPTH) spread hundreds of wu wide on
+        // gentle shelves (mc2_17) and let coarse terrain decide the visible line elsewhere. Shallow
+        // water keeps some translucency through a 0.55..1 depth softness floor.
+        float edgeAA = smoothstep(0.0, max(3.0 * fieldThickFw, 1e-3), fieldThick);
+        shore = edgeAA * mix(0.55, 1.0, smoothstep(0.0, max(F.f4.w, 0.5), fieldThick));
     } else {
         shore = wse_shoreFeather(shore, int(F.f4.x + 0.5), int(F.f4.y + 0.5), int(F.f4.z + 0.5),
                                  u_shoreHeightTex, u_shoreMask, F.f5, F.f6, F.f4.w,
@@ -347,16 +372,28 @@ void main(void)
     // dim (f3.z, 0 by day), so open water reads as dark as the ground around it instead of daylight teal.
     PREC float nightSky = 1.0 - clamp(F.f3.z, 0.0, 1.0);
     PREC vec3  vertexLightRGB = Color.bgra.rgb * nightSky;
-    // Reuse the continuous coverage field: coarse vertex depth draws angular shelves.
-    // Fade across the full shallow range without adding a separate bright shore band.
-    float tintDepth = max(hasField ? fieldThick : WaterThickness, 0.0);
-    float shallow = 1.0 - smoothstep(0.0, max(F.SHALLOW_COLOR.w, 1.0), tintDepth);
-    PREC vec3 waterCol = mix(DEEP_COLOR, F.SHALLOW_COLOR.xyz, shallow);
     PREC vec3  col = waterCol * max(vertexLightRGB, vec3(SKY_AMBIENT * nightSky))
                    + waterCol * SKY_AMBIENT * 0.5 * nightSky;
     // No crest or glint brightening: highlights come only from the sun/lamp specular on the perturbed normal.
     //PORT-END:waterBaseColor
+    // A shallow wash rolls toward the coast and recedes in the SAME water draw.
+    // Coverage and depth stay owned by the existing shore field: no new surface to z-fight.
+    float washReach = 18.0;
+    float shoreRipple = 0.0;
+    float foamBreakup = 1.0;
+    if (F.f3.w > 0.5) {
+        float coastPhase = dot(WorldPos.xy, vec2(0.003, 0.002));
+        washReach = 12.0 + 30.0 * (0.5 + 0.5 * sin(time * 1.25 + coastPhase));
+        shoreRipple = sin(shoreDistance * 0.18 + time * 1.8 + coastPhase) * 0.045;
+        foamBreakup = 0.8;
+    }
+    float nearShore = 1.0 - smoothstep(36.0, 100.0, shoreDistance);
+    float foam = 1.0 - smoothstep(2.0, 6.0 + foamAA, abs(shoreDistance - washReach));
+    float wash = (1.0 - smoothstep(0.0, washReach + foamAA, shoreDistance)) * 0.10;
+    float foamMix = (foam * 0.42 * foamBreakup + wash) * nearShore;
     vec3 foamLight = max(vertexLightRGB, vec3(SKY_AMBIENT * nightSky));
+    col *= 1.0 + shoreRipple * nearShore;
+    col = mix(col, vec3(0.72, 0.80, 0.78) * foamLight, foamMix);
     col = mix(col, vec3(0.72, 0.80, 0.78) * foamLight, reactive.z);
     // Static shadow on the light the surface scatters and glints (the reflected sky is untouched), with the receivers' 0.4 floor.
     // sunVis carries the same shadows (no floor) to the sun specular.
@@ -452,8 +489,8 @@ void main(void)
     if (F.fog_color.x > 0.0 || F.fog_color.y > 0.0 || F.fog_color.z > 0.0 || F.fog_color.w > 0.0)
         col = mix(F.fog_color.rgb, col, FogValue);
 
-    // Keep the shore water the same material as the surrounding surface.
-    PREC float waterA = shore * WATER_MAX_ALPHA;
+    // WATER-SHALLOW-1: opacity follows the water column (shaders/include/water_shallow.hglsl); deep water is unchanged.
+    PREC float waterA = shore * WATER_MAX_ALPHA * ws_column_veil(tintThick);
     // WATER-EDGE-FEATHER-1 (default ON in GL): tint + dissolve the map-edge rim.
     if (F.f8.x != 0.0 && F.f8.z > 0.0) {
         float h = clamp(edgeHazeAmount(WorldPos.xy, F.f8.z) * F.f8.y, 0.0, 1.0);

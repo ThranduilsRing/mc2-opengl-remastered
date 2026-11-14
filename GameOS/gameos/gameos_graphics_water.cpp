@@ -295,7 +295,6 @@ void gosRenderer::renderWaterFastPath(
     }
     memcpy(fsP.deep,    g_waterDeepColor,    3*sizeof(float));
     memcpy(fsP.shallow, g_waterShallowColor, 3*sizeof(float));
-    fsP.shallow[3] = WaterStream::NavigableShallowDepth();
     // VK-PARITY-WATER-SHORE-1: WATER-SHORE-EDGE-1 inputs. f4.y/f4.z (hasHeight / hasMask) are set by the island, which owns the VK copies of the
     // shore textures.
     {

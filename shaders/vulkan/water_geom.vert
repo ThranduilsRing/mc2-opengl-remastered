@@ -7,8 +7,12 @@
 //     thin record -> a WaterRecipe (mission-static SSBO). SAME expansion as the
 //     GL VS (vid%6 -> triIdx/id, vid/6 -> thinIdx). VERIFIED against
 //     gos_terrain_water_fast_mdi.vert:152-190.
-//   - MVP: column-major worldToClipGL uses the baked terrain matrix, without an
-//     offset. Constant NDC bias hides low islands at distant camera poses.
+//   - MVP: worldToClipGL is a column_major std140 mat4 packed from the SAME 16
+//     raw floats GL uploads (glUniformMatrix4fv GL_FALSE). clip = M*worldPos;
+//     clip.z += WATER_DEPTH_FUDGE_FAST*clip.w (reverse-Z pre-divide). SAME rule
+//     WATER-MVP-ORACLE-1 proved bit-exact (commit 4d30d93e5; oracle shader in the
+//     archive/vk-probe-fixtures tag). Do NOT row_major, do
+//     NOT transpose. WATER_DEPTH_FUDGE_FAST=0.00025 passed in via UBO (lockstep).
 //   - BASE LAYER ONLY: the GL FS discards o_isWater==2 (detail/spray), so P9a
 //     renders only the base layer (isWater=1, the old gl_DrawIDARB==0 draw).
 //     uvScale=oneOverTF, uvOffset=(cloudOffsetX,cloudOffsetY), detailMode=0.
@@ -125,6 +129,7 @@ void main() {
     float maxMinUV       = U.p1.y;
     float uvScale        = U.p1.z;
     vec2  uvOffset       = vec2(U.p1.w, U.p2.x);
+    float fudge          = U.p2.y;
 
     uint vid          = uint(gl_VertexIndex);
     uint vertInRecord = vid % 6u;
@@ -222,6 +227,10 @@ void main() {
     Color    = unpackARGB(argb).bgra;
     Texcoord = vec2(u, v);
 
-    // Physical depth keeps above-water islands in front at every distance.
-    gl_Position = U.worldToClipGL * vec4(worldPos, 1.0);
+    // GL clip emit + water reverse-Z depth bias (pre-divide). SAME as GL VS.
+    vec4 clip = U.worldToClipGL * vec4(worldPos, 1.0);
+    clip.z   += fudge * clip.w;
+    // Test the water surface at its physical depth. A tile-dependent lift
+    // occludes rocks above the waterline and exposes straight tile edges.
+    gl_Position = clip;
 }

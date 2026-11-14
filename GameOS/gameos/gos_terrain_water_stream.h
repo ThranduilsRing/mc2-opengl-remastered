@@ -124,7 +124,6 @@ const WaterRecipe* RecipeForVertexNum(int32_t vn);
 //                           (default OFF -> returns base -> byte-identical).
 float ShoreFeatherFloorWu();
 float EffAlphaDepth(float baseAlphaDepth);
-float NavigableShallowDepth();
 
 // Shared tile-admission extent for water recipes and native culling.
 float EffShoreExt(float baseAlphaDepth);
