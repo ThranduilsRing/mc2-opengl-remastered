@@ -26,6 +26,7 @@ DWORD fromRawPixels(DWORD* pixels, int, int, DWORD edge) {
 }
 }
 constexpr int gos_Texture_Alpha = 0;
+namespace mc2_diag { bool tagRequested(const char*) { return false; } }
 float scale = 1.f;
 float gos_GetHudScale() { return scale; }
 struct { int screenHeight = 1080; } Environment;

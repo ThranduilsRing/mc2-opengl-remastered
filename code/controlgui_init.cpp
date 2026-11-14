@@ -6,6 +6,7 @@
 #include "objectives_panel.h"
 #include "mc2fmt.h"
 #include "../GameOS/gameos/utils/mc2log.h"
+#include "../GameOS/gameos/diagnostic_trace.h"
 
 
 namespace {
@@ -253,6 +254,7 @@ void ControlGui::bakeFrame()
 		if (i < 20) frameSplit = static_cast<long>(frameVertices.size());
 	}
 	frameAtlas = std::move(atlas);
+	if (mc2_diag::tagRequested("HUD_FRAME"))
 	MC2_LOG(Render, Info, "[HUD_FRAME] pieces={} textures={} atlas={}x{} submissions={} scale={:.3f}",
 		frameVertices.size() / 4, sources.size(), edge, edge,
 		static_cast<int>(frameSplit > 0) + static_cast<int>(static_cast<size_t>(frameSplit) < frameVertices.size()), frameScale);
