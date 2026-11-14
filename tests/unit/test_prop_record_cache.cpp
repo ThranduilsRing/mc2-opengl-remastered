@@ -3,6 +3,25 @@
 #include <array>
 #include <optional>
 
+TEST_CASE("prop_record_cache: population patch preserves packets and absolute ranges") {
+    struct Command { uint32_t firstInstance, instanceCount, packet; };
+    struct Run { uint32_t first, count, range[2][2]; };
+    std::vector<Command> commands[2]{{{0, 2, 7}, {0, 2, 8}}, {{0, 2, 9}}};
+    const uint32_t starts[]{0, 2};
+    Run run{0, 2, {{0, 2}, {2, 1}}};
+    patchPropRun(run, commands, starts, 3, 5);
+    CHECK(run.first == 3);
+    CHECK(run.count == 5);
+    CHECK(run.range[1][0] == 2);
+    for (const auto& list : commands) for (const auto& cmd : list) {
+        CHECK(cmd.firstInstance == 3);
+        CHECK(cmd.instanceCount == 5);
+    }
+    CHECK(commands[0][0].packet == 7);
+    CHECK(commands[0][1].packet == 8);
+    CHECK(commands[1][0].packet == 9);
+}
+
 TEST_CASE("prop_record_cache: count changes preserve ordered packet topology") {
     struct Instance { uint32_t typeID; };
     std::array<Instance, 4> data{{{1}, {1}, {4}, {4}}};

@@ -10,6 +10,21 @@ struct PropRecordCacheKey {
     bool operator==(const PropRecordCacheKey&) const = default;
 };
 
+// Packet ranges stay fixed while actor counts and their instance bases change.
+template<class Run, class Command, size_t Lists>
+void patchPropRun(Run& run, std::vector<Command> (&commands)[Lists],
+                  const uint32_t* listStart, uint32_t first, uint32_t count) {
+    run.first = first;
+    run.count = count;
+    for (size_t list = 0; list < Lists; ++list) {
+        const auto begin = run.range[list][0] - listStart[list];
+        for (uint32_t p = begin; p < begin + run.range[list][1]; ++p) {
+            commands[list][p].firstInstance = first;
+            commands[list][p].instanceCount = count;
+        }
+    }
+}
+
 // Draw metadata depends on ordered type runs, not transforms, light indices,
 // tint or fog. Keep its generation separate from the full instance upload.
 struct PropTypeGeneration {
