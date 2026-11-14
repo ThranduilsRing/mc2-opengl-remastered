@@ -4,6 +4,7 @@
 
 #include "camera_internal.h"
 #include "sim_trace.h"
+#include "camera_elevation.h"
 
 long Camera::getCameraTargetId(void)
 {
@@ -296,10 +297,8 @@ void Camera::ZoomIn (float amount)
 		// Momentum boosts fast scrolling up to ~2.5x; slow scroll stays at 1x.
 		s_scrollMomentum += 1.0f;
 		s_scrollMomentum = std::min(s_scrollMomentum, 5.0f);
-		float speedMult = 1.0f + s_scrollMomentum * 0.3f;
-		float sf = newScaleFactor > 0.01f ? newScaleFactor : 0.01f;
-		float altRange = max(1.0f, cameraAltitudeDesired - AltitudeMinimum);
-		cameraAltitudeDesired -= altRange * (amount / sf) * 0.0225f * speedMult;
+		cameraAltitudeDesired = mc2cam::zoomElevationTarget(cameraAltitudeDesired,
+			AltitudeMinimum, amount, newScaleFactor, s_scrollMomentum);
 		cameraAltitudeDesired = std::max(cameraAltitudeDesired, AltitudeMinimum);
 		// cameraAltitude lerps toward cameraAltitudeDesired in update()
 	}
@@ -324,10 +323,8 @@ void Camera::ZoomOut (float amount)
 		// Momentum boosts fast scrolling up to ~2.5x; slow scroll stays at 1x.
 		s_scrollMomentum += 1.0f;
 		s_scrollMomentum = std::min(s_scrollMomentum, 5.0f);
-		float speedMult = 1.0f + s_scrollMomentum * 0.3f;
-		float sf = newScaleFactor > 0.01f ? newScaleFactor : 0.01f;
-		float altRange = max(1.0f, testMax - cameraAltitudeDesired);
-		cameraAltitudeDesired += altRange * (amount / sf) * 0.0225f * speedMult;
+		cameraAltitudeDesired = mc2cam::zoomElevationTarget(cameraAltitudeDesired,
+			testMax, amount, newScaleFactor, s_scrollMomentum);
 		cameraAltitudeDesired = std::min(cameraAltitudeDesired, testMax);
 		// cameraAltitude lerps toward cameraAltitudeDesired in update()
 	}
