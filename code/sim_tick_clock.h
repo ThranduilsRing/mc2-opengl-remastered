@@ -18,11 +18,10 @@ inline constexpr double kTickSeconds = 1.0 / 30.0;
 //: Every float use of the tick (scenarioTime +=, frameLength) must use this one constant.
 inline constexpr float kTickSecondsF = 1000.0f / 30.0f / 1000.0f;
 static_assert(std::bit_cast<unsigned>(kTickSecondsF) == 0x3D088888u, "legacy tick bit pattern");
-//: Retain only three ticks of wall time so a hitch pauses play instead of fast-forwarding units afterward.
-inline constexpr double kMaxRealFrameSeconds = 3 * kTickSeconds;
-//: Limit visible catch-up to a few ticks; sustained <10 fps slows the sim rather than skipping forward.
-//: Both limits scale with game speed so 2x/4x still sustain their own rate at 60 fps.
-inline constexpr int kBaseMaxTicksPerFrame = 3;
+//: Retain at most one wall second of debt; longer interruptions discard only the excess.
+inline constexpr double kMaxRealFrameSeconds = 1.0;
+//: Ticks per frame at 1x; the cap scales with game speed so fast-forward is never clamped below its own rate.
+inline constexpr int kBaseMaxTicksPerFrame = 30;
 
 inline constexpr int kBridgeMaxStepsPerFrame = 4;
 // A tick cannot be interrupted; yield between whole ticks when the frame budget is spent.
@@ -40,8 +39,7 @@ public:
     int advance(double realSeconds, double speed) {
         if (!(realSeconds > 0.0) || !(speed > 0.0)) return 0;
         realSeconds = std::min(realSeconds, kMaxRealFrameSeconds);
-        // Slow motion must be able to bank at least one whole tick (0.1 s * 0.25x is less than a tick).
-        banked_ = std::min(banked_ + realSeconds * speed, std::max(kTickSeconds, kMaxRealFrameSeconds * speed));
+        banked_ = std::min(banked_ + realSeconds * speed, kMaxRealFrameSeconds * speed);
         int ticks = static_cast<int>(std::floor(banked_ / kTickSeconds + 1e-6));
         const int cap = maxTicksPerFrame(speed);
         ticks = std::min(ticks, cap);
