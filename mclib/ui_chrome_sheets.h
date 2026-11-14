@@ -61,6 +61,9 @@ struct Pixels {
 // Returns false (and leaves `px` empty) when the widget file is absent or undecodable.
 using WidgetLoader = std::function<bool(const Sheet& sheet, const Widget& widget, Pixels& px)>;
 
+// Remove the baked matte only from stock main-menu/dialog chrome, preserving button wells.
+bool clearMenuMatte(std::string_view path, Pixels& px);
+
 // Pastes every widget at its rect. All-or-nothing: one missing or wrong-sized widget fails the whole sheet.
 bool composeSheet(const Sheet& sheet, const WidgetLoader& load, Pixels& out, std::string* err = nullptr);
 
@@ -76,6 +79,7 @@ inline bool insetChromeCrop(std::string_view path, bool pixelPerfect, bool legac
                             float u1, float v1, float u2, float v2) {
     if (pixelPerfect || legacySpace || (u1 == 0.f && v1 == 0.f && u2 == 1.f && v2 == 1.f)) return false;
     const auto key = sheetKeyFromPath(path);
+    if (key.starts_with("mcl_splashscreen_frame_")) return false; // continuous strips must share their authored edge samples
     return nineSlice || key.starts_with("mcl_") || key.starts_with("mcui_universal") || key.starts_with("mcui_mr_");
 }
 

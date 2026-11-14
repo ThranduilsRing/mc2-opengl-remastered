@@ -101,6 +101,32 @@ std::string manifestToJson(const Manifest& m) {
     return j.dump();
 }
 
+// Stock menu mattes are baked black; text wells are separate filled widgets.
+bool clearMenuMatte(std::string_view path, Pixels& px) {
+    std::string key(path.substr(path.find_last_of("/\\") + 1));
+    for (char& c : key) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    const auto dot = key.find_last_of('.');
+    if (dot != std::string::npos) key.resize(dot);
+    const bool menu = key == "mcl_mm_1" || key == "mcl_mm_2" || key == "mcl_mm_3" ||
+                      key == "mcl_mm_5" || key == "mcl_mm_12";
+    const bool dialog = key.starts_with("mcl_dialog_");
+    if ((!menu && !dialog) || px.w <= 0 || px.h <= 0 || (px.channels != 3 && px.channels != 4)) return false;
+    std::vector<uint8_t> rgba(static_cast<size_t>(px.w) * px.h * 4);
+    for (int y = 0; y < px.h; ++y) for (int x = 0; x < px.w; ++x) {
+        const size_t i = static_cast<size_t>(y) * px.w + x, src = i * px.channels, dst = i * 4;
+        std::copy_n(px.data.data() + src, 3, rgba.data() + dst);
+        const int value = std::max({rgba[dst], rgba[dst + 1], rgba[dst + 2]});
+        // Retain the dialog button wells; the surrounding cable voids remain open.
+        const bool well = dialog && ((key.ends_with("_3") && x >= 50 && x < 178 && y >= 118 && y < 236) ||
+                                     (key == "mcl_dialog_onebutton_4" && x < 99 && y < 118));
+        const int coverage = well ? 255 : std::clamp((value - 4) * 255 / 12, 0, 255);
+        rgba[dst + 3] = static_cast<uint8_t>((px.channels == 4 ? px.data[src + 3] : 255) * coverage / 255);
+    }
+    px.channels = 4;
+    px.data = std::move(rgba);
+    return true;
+}
+
 bool composeSheet(const Sheet& sheet, const WidgetLoader& load, Pixels& out, std::string* err) {
     auto fail = [&](std::string_view why) {
         if (err) *err = std::string(why);
