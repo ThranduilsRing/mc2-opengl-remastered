@@ -1,6 +1,7 @@
 #include "doctest.h"
 #include "../../GameOS/gameos/visual_tuning_profile.h"
 #include "Gates/gate_cold.h"
+#include "Gates/render_options.h"
 #include "file.h"
 #include "vfs.h"
 #include "../../GameAdapters/MissionEnvironmentAdapter.h"
@@ -263,6 +264,12 @@ TEST_CASE("MissionEnvironment/explicit session profile wins over mounted active 
 
 TEST_CASE("MissionEnvironment/loose building and texture overlays beat bundled kit through real VFS") {
     MountedProfiles files;
+    // The kit mounts only with remastered building art on (shipped default is Classic since 947d077ee).
+    struct RemasteredArt {
+        mc2::options::RenderOptions saved = mc2::options::current();
+        RemasteredArt() { auto o = saved; o.remasteredBuildings = true; mc2::options::publish(o); }
+        ~RemasteredArt() { mc2::options::publish(saved); }
+    } remasteredArt;
     mc2::gate::ScopedOverride<"MC2_ACTIVE_MOD"> active(nullptr);
     mc2::gate::ScopedOverride<"MC2_MOD_DEPS"> deps("mc2-industrial-kit,env-a");
     mc2::gate::ScopedOverride<"MC2_REBUILD_MOD_CACHE"> rebuild("1");
