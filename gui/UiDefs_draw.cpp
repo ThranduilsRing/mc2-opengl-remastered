@@ -5,6 +5,7 @@
 #include "UiDefs_internal.h"
 #include "../mclib/ui_chrome_sheets.h"
 #include <array>
+#include <cmath>
 #include "Gates/gate.h"
 
 namespace uidefs_detail {
@@ -288,6 +289,13 @@ bool drawUiImageElement(UiElement& e, int xOffset, int yOffset, const PageScale&
     if (e.flipV) { const float tmp = v1; v1 = v2; v2 = tmp; }
 
     FRect r = scaledRect(e.rect, xOffset, yOffset, s);
+    {   // Snap each edge from its own integer page coordinate, so pieces that share an edge land on the same
+        // pixel row/column at any display size (no hairline gaps or double-covered rows at joins).
+        const auto edge = [](int v, float scale, float origin) { return std::round(static_cast<float>(v) * scale + origin); };
+        const float x0 = edge(e.rect.x + xOffset, s.sx, s.ox), x1 = edge(e.rect.x + e.rect.w + xOffset, s.sx, s.ox);
+        const float y0 = edge(e.rect.y + yOffset, s.sy, s.oy), y1 = edge(e.rect.y + e.rect.h + yOffset, s.sy, s.oy);
+        if (x1 > x0 && y1 > y0) { r.x = x0; r.y = y0; r.w = x1 - x0; r.h = y1 - y0; }
+    }
 
     // Full number dump for the pilot portrait
     // element (red-striped-panel bug). Env-gated, one line per texture change.
