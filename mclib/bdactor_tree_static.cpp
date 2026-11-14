@@ -210,8 +210,8 @@ void TreeAppearance::registerStatic() {
 	// it, exactly as the single-LOD abort did before).
 	bool anyRegistered = false;
 	const bool damaged = status == OBJECT_STATUS_DESTROYED || status == OBJECT_STATUS_DISABLED;
-	// Override LOD chains are drawn by the batcher (registerLodGroup re-types instances by camera distance); an instance registers LOD0 only.
-	const int lodCount = 1;
+	const bool _treeRegIsOverride = damaged ? appearType->treeDmgRenderShape != nullptr : appearType->treeRenderShapeLodCount > 0;
+	const int lodCount = !damaged && _treeRegIsOverride ? static_cast<int>(appearType->treeRenderShapeLodCount) : 1;
 	for (int lod = 0; lod < lodCount && lod < MAX_LODS; ++lod) {
 		// Render-instance for THIS LOD: reuse treeShape for LOD0; temp for >0.
 		std::unique_ptr<TG_MultiShape> temporaryLod;

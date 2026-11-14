@@ -1250,7 +1250,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         // GL's StaticPropOpaque / StaticPropAlphaTest pipelines cull back faces (CCW front); the props were drawn double-sided here, so faces GL
         // culls (the inner panels of the hex lattice props) covered the faces behind them. The island projects with GL's
         // clip matrix into an unflipped viewport, which mirrors window y, so GL's CCW front arrives here clockwise.
-        rs.cullMode = VK_CULL_MODE_NONE; // Per-material back-face rejection in the fragment shader (indirect draws).
+        rs.cullMode = VK_CULL_MODE_BACK_BIT;
         rs.frontFace = VK_FRONT_FACE_CLOCKWISE;
         rs.lineWidth = 1.0f;
 
@@ -1884,7 +1884,7 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std
                                      mc2::fmt::as_i32(static_cast<int32_t>(pkt.baseVertex)), mc2::fmt::as_u32(instCount), mc2::fmt::as_u32(i));
                     // PROP-COVERAGE-1 pass 1 re-draws only the packets the FS can alpha-test (alpha-ON layer or the per-packet bit) with the
                     // fringe pipeline, after every core is in the depth buffer; alphaTest == 2 packets wait for the late pass.
-                    if (alphaTestable && !mc2_static_prop_lod_skips_late(tid)) {
+                    if (alphaTestable) {
                         row.fringe = 1;
                         const uint32_t list = row.alphaTest == 2 ? kListLate : kListFringe;
                         s->cmdScratch[list].push_back(cmd); s->pktScratch[list].push_back(row);
@@ -2466,7 +2466,6 @@ bool prepareProps(std::unique_ptr<mc2vk::IslandState>& state, const Target& targ
     const View view(objectMatrix, target.water);
     // Empty registries need neither geometry nor a Vulkan prop island.
     preparePropInstances(view, s->bounds, s->reflectedInstances);
-    mc2_static_prop_retype_far_tier(std::span<GpuStaticPropInstance>(s->reflectedInstances));
     if (s->reflectedInstances.empty()) return true;
     if (!s->inited && !init_island(s, target.w, target.h)) return false;
     if (!s->boundsReady) {
@@ -2481,7 +2480,6 @@ bool prepareProps(std::unique_ptr<mc2vk::IslandState>& state, const Target& targ
             std::span(static_cast<const uint32_t*>(indices), static_cast<size_t>(ib / sizeof(uint32_t))));
         s->boundsReady = true;
         preparePropInstances(view, s->bounds, s->reflectedInstances);
-        mc2_static_prop_retype_far_tier(std::span<GpuStaticPropInstance>(s->reflectedInstances));
     }
     if (s->reflectedInstances.empty()) return true;
     Mc2ColorPropFeed feed{};

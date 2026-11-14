@@ -166,7 +166,6 @@ inline bool addMaterial(MaterialSources& dst, const ModelOverrideRecord& owner,
             gpu.uvScale[0] = input.uvScale[0]; gpu.uvScale[1] = input.uvScale[1];
             gpu.normalStrength = input.normalStrength; gpu.aoStrength = input.aoStrength;
             gpu.materialClass = input.materialClass; gpu.reserved[0] = input.alphaMode; gpu.reserved[1] = 1; // BC5 XY
-            gpu.material.flags |= input.doubleSided ? RenderCore::MaterialFlags::kDoubleSided : 0u;
             dst.table.push_back(gpu);
             return true;
             }
@@ -212,7 +211,6 @@ inline bool addMaterial(MaterialSources& dst, const ModelOverrideRecord& owner,
         gpu.uvScale[0] = input.uvScale[0]; gpu.uvScale[1] = input.uvScale[1];
         gpu.normalStrength = input.normalStrength; gpu.aoStrength = input.aoStrength;
         gpu.materialClass = input.materialClass; gpu.reserved[0] = input.alphaMode; gpu.reserved[1] = 1; // BC5 XY
-        gpu.material.flags |= input.doubleSided ? RenderCore::MaterialFlags::kDoubleSided : 0u;
         dst.table.push_back(gpu);
         return true;
     }
@@ -240,7 +238,6 @@ inline bool addMaterial(MaterialSources& dst, const ModelOverrideRecord& owner,
 
     const auto* ref = normal ? &*normal : orm ? &*orm : nullptr;
     if (!ref) {                       // class-scalar material: no layers, full coverage
-        gpu.material.flags |= input.doubleSided ? RenderCore::MaterialFlags::kDoubleSided : 0u;
         dst.table.push_back(gpu);
         return true;
     }
@@ -272,7 +269,6 @@ inline bool addMaterial(MaterialSources& dst, const ModelOverrideRecord& owner,
         (orm ? RenderCore::MaterialFlags::kMetallicRoughness : 0u);
     appendLayer(dst.normal, w, h, normal ? std::move(normal->pixels) : neutral(128,128,255), true, chain(normal));
     appendLayer(dst.orm, w, h, orm ? std::move(orm->pixels) : neutral(255,255,255), false, chain(orm));
-    gpu.material.flags |= input.doubleSided ? RenderCore::MaterialFlags::kDoubleSided : 0u;
     dst.table.push_back(gpu);
     return true;
 }
