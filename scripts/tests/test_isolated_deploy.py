@@ -188,7 +188,9 @@ def test_stale_inventory_still_copies_saved_bookmarks(tmp_path, monkeypatch):
     # Simulate an inventory written before the bookmark rule existed.
     cache = src / '.lane-seed-inventory.json'
     cache.write_text(json.dumps(dict(
-        identity=iso.file_sha(src / '.deployed_manifest.csv'),
+        # e52e0d410: the inventory identity is manifest sha + ':' + sha of the declared-asset set.
+        identity=iso.file_sha(src / '.deployed_manifest.csv') + ':'
+        + hashlib.sha256('\n'.join(sorted(iso.declared_asset_paths())).encode()).hexdigest(),
         links=[r for r in links if not r[0].startswith('saved_bookmarks/')],
         copies=[r for r in copies if not r[0].startswith('saved_bookmarks/')])))
     monkeypatch.setattr(iso, 'plan', lambda *a: pytest.fail('stale seed re-walked'))

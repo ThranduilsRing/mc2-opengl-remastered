@@ -30,13 +30,15 @@ def test_kick_follows_draw_screen_and_the_shadow_submit():
 
 
 def test_hzb_waits_for_its_own_slot():
+    # fdb76b75a: frame retirement (beginFrame retires the slot before host writes) replaced the private
+    # per-slot ticket array + wait; the per-slot host-written buffers and sets remain.
     src = read(G / "vulkan_post_hzb_native.cpp")
-    assert re.search(r"uint64_t ticket\[mc2vk::kMaxFramesInFlight\]", src)
     assert re.search(r"OwnedBuffer instances\[mc2vk::kMaxFramesInFlight\]", src)
     assert re.search(r"VkDescriptorSet cullSet\[mc2vk::kMaxFramesInFlight\]", src)
-    assert "GpuTicket{s->ticket[slot], 0}" in src
-    assert "submit(si, VK_NULL_HANDLE, &s->ticket[slot])" in src
-    assert not re.search(r"s->ticket[^\[\w]", src), "a scalar s->ticket use remains"
+    assert "ctx.acquireRecordCommandBuffer()" in src
+    assert "submit(si, VK_NULL_HANDLE, &s->lastTicket)" in src
+    assert not re.search(r"s->ticket", src), "a private per-slot ticket returned"
+    assert "post_prev_submit" not in src, "a redundant private submit wait returned"
     # host reads of in-flight results are polled, never assumed complete
     assert "isComplete(mc2vk::GpuTicket{s->lastTicket, 0})" in src
     assert "isComplete(mc2vk::GpuTicket{pc.ticket, 0})" in src

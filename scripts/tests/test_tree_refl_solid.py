@@ -9,8 +9,12 @@ def test_reflection_has_no_screen_space_producer():
     assert not (ROOT / "shaders/vulkan/water_reflection.comp").exists()
     src = (ROOT / "GameOS/gameos/vulkan_water_island_run.cpp").read_text(encoding="utf-8")
     producer = src.split("record_reflection(", 1)[1].split("namespace {", 1)[0]
-    assert "s->sColorRes" not in producer and "s->sDepthRes" not in producer
-    assert "vkCmdDispatch" not in producer
+    # f1a3dc1d3 added a planar-pixel mask: main-view depth is the coverage pass's depth TEST only, and the sole
+    # compute dispatch dilates that mask (water_reflection_mask.comp). Scene colour is still never read, and the
+    # reflection stays independent planar geometry.
+    assert "s->sColorRes" not in producer
+    assert producer.count("s->sDepthRes") == 1 and "coverage.setDepth(dr::attachment(s->sDepthRes" in producer
+    assert producer.count("vkCmdDispatch") == 1 and "s->maskCompute" in producer
     assert "planarTerrainRecord(cb)" in producer and "planarPropsRecord(cb)" in producer
 
 

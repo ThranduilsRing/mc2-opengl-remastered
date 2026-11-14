@@ -16,6 +16,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 import asset_parity as ap  # noqa: E402
+import console_child  # noqa: E402
 
 _COUNTER = itertools.count()
 
@@ -482,12 +483,14 @@ def test_declared_sha_matches_tracked_blob():
     import subprocess
     declared = json.loads((ROOT / ap.INTENTIONAL).read_text(encoding="utf-8"))
     tracked = set(subprocess.run(["git", "-C", str(ROOT), "ls-files", "--", "data", "assets"],
-                                 capture_output=True, text=True, check=True).stdout.split("\n"))
+                                 capture_output=True, text=True, check=True,
+                                 **console_child.child_kwargs(redirected=True)).stdout.split("\n"))
     bad = []
     for rel, sha in declared.items():
         if rel not in tracked:
             continue
-        blob = subprocess.run(["git", "-C", str(ROOT), "show", f"HEAD:{rel}"], capture_output=True, check=True).stdout
+        blob = subprocess.run(["git", "-C", str(ROOT), "show", f"HEAD:{rel}"], capture_output=True, check=True,
+                              **console_child.child_kwargs(redirected=True)).stdout
         if hashlib.sha256(blob).hexdigest() != sha:
             bad.append(rel)
     assert not bad, f"{ap.INTENTIONAL} sha differs from the tracked blob: {bad}"
