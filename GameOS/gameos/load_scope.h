@@ -10,10 +10,11 @@
 #include <cstring>
 #include <mutex>
 #include <string>
+#include <string_view>
 
 namespace mc2::load {
 struct Entry {
-    const char* name = nullptr;
+    std::string_view name;   // a string literal: the entry keeps the view
     std::atomic<int64_t> ns{0};
     std::atomic<uint32_t> calls{0};
 };
@@ -23,11 +24,11 @@ inline std::atomic<int> g_entryCount{0};
 inline std::atomic<bool> g_active{false};
 inline std::mutex g_entryMutex;
 
-inline Entry* entry(const char* name) {
+inline Entry* entry(std::string_view name) {
     std::scoped_lock lock(g_entryMutex);
     const int n = g_entryCount.load();
     for (int i = 0; i < n; ++i)
-        if (!std::strcmp(g_entries[i].name, name)) return &g_entries[i];
+        if (g_entries[i].name == name) return &g_entries[i];
     if (n >= kMaxEntries) return nullptr;
     g_entries[n].name = name;
     g_entryCount.store(n + 1);
@@ -51,7 +52,8 @@ inline std::string report() {
     for (int k = 0; k < used; ++k) {
         const Entry& e = g_entries[order[k]];
         char item[160];
-        std::snprintf(item, sizeof(item), " %s=%.1f(x%u)", e.name, static_cast<double>(e.ns.load()) / 1e6, e.calls.load());
+        std::snprintf(item, sizeof(item), " %.*s=%.1f(x%u)", static_cast<int>(e.name.size()), e.name.data(),
+                      static_cast<double>(e.ns.load()) / 1e6, e.calls.load());
         out += item;
     }
     return out;
