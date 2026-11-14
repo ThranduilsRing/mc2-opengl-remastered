@@ -1,4 +1,5 @@
 #include "render_view.h"
+#include "tacmap_footprint.h"
 #include <algorithm>
 #include "Gates/preferences_legacy.h"
 #include "../GameOS/gameos/ui_texture.h"
@@ -36,10 +37,7 @@ gameTacMap.cpp			: Implementation of the gameTacMap component.
 //  * Objective markers: parity with RenderMarkers (non-NAV = shadowed white
 //    m_markerText at worldToTacMap pos; NAV draws nothing on the tac map),
 //    including the flash windowing driven by animate().
-//  * Viewport/frustum wedge: NOT ported — the legacy trapezoid was carved out
-//    2026-05-19 (broken inverseProjectForPicking chain, see comment in
-//    render()); parity = absent. Sticky-render-state block still runs on the
-//    ImGui path (downstream renderers inherit it — see that comment).
+//  * Viewport footprint uses the camera frustum and stock viewingrect art.
 //  * Interactions: ImGui-native (InvisibleButton over the panel). Click maps
 //    panel-fraction -> authored rect -> tacMapToWorld (the exact inverse the
 //    legacy update() does through getMouseHudX/Y), then dispatches the SAME
@@ -277,20 +275,7 @@ void GameTacMap::render()
 		count++;
 	}
 
-	// Surgical Phase-1 carve-out 2026-05-19: the broken viewport-rect
-	// overlay block that used to live here (4x inverseProjectForPicking +
-	// worldToTacMap + gos_DrawQuads trapezoid) is killed (the camera
-	// vertices are broken; the chain inverseProjectForPicking ->
-	// inverseProjectZ -> setInverseProject is being retired in Phases 2-5).
-	// HOWEVER these 13 gos_SetRenderState calls are PRESERVED: they were
-	// inside the deleted block but their effect on GPU state is inherited
-	// by every renderer that runs after GameTacMap::render() (gos render
-	// state is sticky across calls; see memory/blend_state_inheritance_in_
-	// post_process.md). Deleting them caused mech-invisible + terrain-
-	// texture-tiling regressions because next-frame 3D rendering inherited
-	// AlphaMode=OneZero / Filter=None / unset TextureAddress instead of
-	// AlphaInvAlpha / BiLinear / Wrap. The state setup STAYS even though
-	// it no longer prefaces a draw within this function.
+	// Keep the stock blend/filter setup: downstream draws inherit this state.
 	gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
 	gos_SetRenderState( gos_State_ShadeMode, gos_ShadeGouraud);
 	gos_SetRenderState( gos_State_MonoEnable, 0);
@@ -304,6 +289,27 @@ void GameTacMap::render()
 	gos_SetRenderState( gos_State_TextureAddress, gos_TextureWrap );
 	gos_SetRenderState( gos_State_ZCompare, 0);
 	gos_SetRenderState( gos_State_ZWrite, 0);
+
+	const glm::mat4 view = eye->worldToClipGL();
+	const auto footprint = mc2::tacmapFootprint(view, eye->getPosition().z,
+		0.5 * land->worldUnitsMapSide);
+	std::vector<gos_VERTEX> vertices;
+	for (const auto& point : footprint) {
+		glm::vec3 world(point);
+		gos_VERTEX vertex = {};
+		worldToTacMap(world, vertex);
+		const glm::vec4 clip = glm::vec4(world, 1.0f) * view;
+		vertex.u = 0.078125f + 0.920625f * (clip.x / clip.w + 1.0f) * 0.5f;
+		vertex.v = 0.078125f + 0.920625f * (1.0f - clip.y / clip.w) * 0.5f;
+		vertex.rhw = 1.0f;
+		vertex.argb = 0xffffffff;
+		vertices.push_back(vertex);
+	}
+	gos_SetRenderState(gos_State_Texture, mc2::textures::sourceId(viewRectHandle));
+	for (size_t i = 1; i + 1 < vertices.size(); ++i) {
+		gos_VERTEX triangle[3] = {vertices[0], vertices[i], vertices[i + 1]};
+		gos_DrawTriangles(triangle, 3);
+	}
 
 	unsigned long colors[MAX_MOVERS];
 	unsigned long ringColors[MAX_MOVERS];
