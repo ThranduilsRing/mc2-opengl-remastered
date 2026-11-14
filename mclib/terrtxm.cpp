@@ -53,6 +53,7 @@
 #include "Gates/gate_cold.h"
 
 #include "terrain_cache_key.h"
+#include "vfs.h"
 #include "terrain_overlay_tiles.h"
 #include <chrono>
 #include "../GameOS/gameos/load_scope.h"
@@ -66,13 +67,15 @@ static long txmRebuilds = 0, txmReuses = 0;
 struct OverlayTileSource { std::string path; long edge = 0; bool missing = false; bool keyed = false; std::string key; };
 static std::vector<std::vector<OverlayTileSource>> txmOverlayTiles;
 static long txmTilesKeyed = 0, txmTilesLoaded = 0;
-static void hashTxmInput(mc2::czstring name)
+static std::vector<std::string> txmInputNames;
+static bool txmInputsVerified = false;
+static void hashTxmInput(mc2::czstring name, bool verify = false)
 {
 	MC2_LOAD_SCOPE("txm.hashInput");
-	File file;
-	std::vector<unsigned char> bytes;
-	if (file.open(name) == NO_ERR)
-		bytes = mc2::tga::readAllBytes(file).value_or(std::vector<unsigned char>{});
+	if (!verify) txmInputNames.emplace_back(name);
+	const uint64_t digest = mc2::vfs::contentDigest(name, verify);
+	std::array<uint8_t, 8> bytes;
+	for (unsigned i = 0; i < bytes.size(); ++i) bytes[i] = static_cast<uint8_t>(digest >> (8 * i));
 	txmSources.add(name, bytes);
 }
 
@@ -134,7 +137,9 @@ long TerrainTextures::init (mc2::czstring fileName, mc2::czstring baseName)
 	MC2_LOAD_SCOPE("txm.init");
 	metadataLoaded = true;
 	const auto inputsStart = std::chrono::steady_clock::now();
-	txmSources = mc2::TerrainCacheKey{"txm-composite-v2"};
+	txmSources = mc2::TerrainCacheKey{"txm-composite-v3-digest"};
+	txmInputNames.clear();
+	txmInputsVerified = false;
 	txmRebuildMs = 0;
 	txmRebuilds = txmReuses = txmTilesKeyed = txmTilesLoaded = 0;
 	txmOverlayTiles.clear();
@@ -535,6 +540,7 @@ long TerrainTextures::init (mc2::czstring fileName, mc2::czstring baseName)
 	}
 
 	txmContentKey = txmSources.key();
+	mc2::vfs::flushContentDigests();
 	quickLoad = !InEditor;
 	txmInputsMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - inputsStart).count();
 	return(NO_ERR);
@@ -1501,6 +1507,14 @@ long TerrainTextures::createTransition (DWORD typeInfo, DWORD overlayInfo)
 		}
 
 		const auto rebuildStart = std::chrono::steady_clock::now();
+		// Any composite miss verifies source bytes once, bounding stat-only memo trust on the rebuild path.
+		if (!txmInputsVerified) {
+			txmSources = mc2::TerrainCacheKey{"txm-composite-v3-digest"};
+			for (const auto& input : txmInputNames) hashTxmInput(input.c_str(), true);
+			txmContentKey = txmSources.key();
+			mc2::vfs::flushContentDigests();
+			txmInputsVerified = true;
+		}
 		if (!listTransitionFile)
 		{
 			//Check for the magic list and then for all of the textures on the magic list.

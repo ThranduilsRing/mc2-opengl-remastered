@@ -7,7 +7,7 @@
 //   * mod > loose rank order, and the digest follows the winner (the mod's bytes)
 //   * duplicate key in two FST archives: registration order is the authority order (the earlier archive wins)
 //   * stale-memo fault injection: a same-size edit MUST change the digest (path+size memo would not)
-//   * bound: a same-size edit with a restored mtime stays memoised until the next VFS rebuild, then is caught
+//   * bound: a same-size edit with a restored mtime is caught by explicit verification (also used on TXM misses)
 
 #include "doctest.h"
 
@@ -17,6 +17,7 @@
 #include "file.h"
 #include "paths.h"
 #include "vfs.h"
+#include "terrain_cache_key.h"
 #include "Gates/gate_cold.h"
 #include "Gates/gate_name.h"
 
@@ -99,17 +100,67 @@ TEST_CASE("same-size edit changes the digest (stale path+size memo fault injecti
 	CHECK(second == digestOf("BBBBBBBB-other-content"));
 	CHECK(second != first);
 
-	// Bound: same size AND a restored mtime is invisible to a stat stamp until the next rebuild clears the memo.
+	// A forced verification also catches an edit with a restored mtime.
 	const auto keepTime = fs::last_write_time(kLooseKey);
 	writeFile(kLooseKey, "CCCCCCCC-third-content");
 	fs::last_write_time(kLooseKey, keepTime);
 	mc2::vfs::rebuild();
-	CHECK(mc2::vfs::contentDigest(kLooseKey) == digestOf("CCCCCCCC-third-content"));
+	CHECK(mc2::vfs::contentDigest(kLooseKey, true) == digestOf("CCCCCCCC-third-content"));
 
 	// Unreadable path: 0, never a stale value.
 	fs::remove(kLooseKey);
 	CHECK(mc2::vfs::contentDigest(kLooseKey) == 0);
 	mc2::vfs::rebuild();
+}
+
+// Trigger: mclib/vfs_index.cpp, mclib/terrtxm.cpp.
+TEST_CASE("persistent digest snapshot hits, verifies, and rejects damaged files")
+{
+	LooseScratch scratch;
+	const std::string memo = "cache/vfs/digests-0000000000000001.memo";
+	std::ifstream saved(memo, std::ios::binary);
+	const bool existed = saved.good();
+	const std::string backup((std::istreambuf_iterator<char>(saved)), {});
+	saved.close();
+	struct Restore {
+		std::string path, bytes; bool existed;
+		~Restore() {
+			if (existed) writeFile(path, bytes);
+			else { std::error_code ec; fs::remove(path, ec); }
+			mc2::vfs::rebuild();
+		}
+	} restore{memo, backup, existed};
+	writeFile(kLooseKey, "AAAA");
+	mc2::vfs::rebuild();
+	const auto first = mc2::vfs::contentDigest(kLooseKey, true);
+	mc2::vfs::flushContentDigests();
+	REQUIRE(fs::exists(memo));
+	const auto stamp = fs::last_write_time(kLooseKey);
+	writeFile(kLooseKey, "BBBB");
+	fs::last_write_time(kLooseKey, stamp);
+	mc2::vfs::rebuild();
+	CHECK(mc2::vfs::contentDigest(kLooseKey) == first); // disk hit after dropping the memory memo
+	const auto second = mc2::vfs::contentDigest(kLooseKey, true);
+	CHECK(second == digestOf("BBBB"));
+	mc2::TerrainCacheKey oldKey("txm-composite-v3-digest"), newKey("txm-composite-v3-digest");
+	std::array<uint8_t, 8> a{}, b{};
+	for (unsigned i = 0; i < 8; ++i) { a[i] = first >> (8 * i); b[i] = second >> (8 * i); }
+	oldKey.add(kLooseKey, a); newKey.add(kLooseKey, b);
+	CHECK(oldKey.key() != newKey.key());
+	// Same stamps with different bytes distinguish a rejected snapshot from a disk hit.
+	mc2::vfs::flushContentDigests();
+	std::ifstream valid(memo, std::ios::binary);
+	const std::string good((std::istreambuf_iterator<char>(valid)), {});
+	valid.close();
+	for (const bool truncate : {false, true}) {
+		auto bad = good;
+		if (truncate) bad.resize(bad.size() / 2); else bad.back() ^= 0x40;
+		writeFile(memo, bad);
+		writeFile(kLooseKey, truncate ? "DDDD" : "CCCC");
+		fs::last_write_time(kLooseKey, stamp);
+		mc2::vfs::rebuild();
+		CHECK(mc2::vfs::contentDigest(kLooseKey) == digestOf(truncate ? "DDDD" : "CCCC"));
+	}
 }
 
 TEST_CASE("mod override outranks loose and the digest follows the winner")
@@ -169,6 +220,9 @@ TEST_CASE("duplicate FST key keeps registration order as authority order")
 		CHECK(chain[1].mountName.find("dup_b") != std::string::npos);
 		CHECK(chain[0].source.authorityRank == 0);
 		CHECK(chain[1].source.authorityRank == 1);
+		CHECK(mc2::vfs::contentDigest(entry) == digestOf("from-first-archive"));
+		mc2::vfs::flushContentDigests();
+		mc2::vfs::rebuild();
 		CHECK(mc2::vfs::contentDigest(entry) == digestOf("from-first-archive"));
 		FastFileFini();
 	}
