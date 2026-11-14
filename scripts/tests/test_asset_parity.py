@@ -473,11 +473,8 @@ def test_pinned_mismatch_error_lists_every_failing_file(work):
     assert "data/b.fit" not in msg
 
 
-# Declared sha = v0.4 reference bytes (enforce() refuses a declaration the reference lacks). models.json: tracked
-# blob dropped the palm overrides (owner 11-13 17:26) but v0.4 still carries the older file. Remove this entry in the
-# same change that refreshes v0.4/data/model_overrides/models.json and the declared sha; the test below then
-# fails if the entry is stale.
-PENDING_V04_REFRESH = {"data/model_overrides/models.json"}
+# Declared sha = v0.4 reference bytes (enforce() refuses a declaration the reference lacks); a declared AND tracked
+# asset must also equal the tracked blob, so v0.4 and the repo agree.
 
 
 def test_declared_sha_matches_tracked_blob():
@@ -493,6 +490,4 @@ def test_declared_sha_matches_tracked_blob():
         blob = subprocess.run(["git", "-C", str(ROOT), "show", f"HEAD:{rel}"], capture_output=True, check=True).stdout
         if hashlib.sha256(blob).hexdigest() != sha:
             bad.append(rel)
-    assert set(bad) >= PENDING_V04_REFRESH, "PENDING_V04_REFRESH entry now matches: delete it"
-    bad = [rel for rel in bad if rel not in PENDING_V04_REFRESH]
     assert not bad, f"{ap.INTENTIONAL} sha differs from the tracked blob: {bad}"
