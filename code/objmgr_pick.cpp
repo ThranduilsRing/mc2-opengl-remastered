@@ -696,11 +696,12 @@ GameObjectPtr pickGameplayObjects(long x, long y, std::span<GameObjectPtr> list,
     const double terrainT = pickTerrainDepth(origin, direction);
     // PICK diag: why an enemy mover is not a candidate under this cursor (rect_miss is expected for most units).
     const bool pickTrace = mc2_diag::tagEnabled("PICK");
-    const auto rejectEnemy = [&](GameObjectPtr o, const char* reason) {
+    const auto rejectEnemy = [&](GameObjectPtr o, const char* reason, double objectT = 0, double surfaceT = 0) {
         if (!pickTrace || !o->isMover() || !o->isEnemy(Team::home)) return;
-        char payload[160];
-        mc2::fmt::to_buf(payload, "{{\"mouse\":[{},{}],\"reject\":\"{}\",\"part_id\":{}}}",
-            mc2::fmt::as_i32(x), mc2::fmt::as_i32(y), reason, o->getPartId());
+        char payload[200];
+        mc2::fmt::to_buf(payload, "{{\"mouse\":[{},{}],\"reject\":\"{}\",\"part_id\":{},\"object_t\":{:.2f},\"terrain_t\":{:.2f},\"blip\":{},\"gui\":{}}}",
+            mc2::fmt::as_i32(x), mc2::fmt::as_i32(y), reason, o->getPartId(), objectT, surfaceT,
+            static_cast<Mover*>(o)->contactView.blip ? 1 : 0, o->isOnGUI() ? 1 : 0);
         mc2_diag::writeEvent("PICK", 1, 0, payload);
     };
     // Include non-targetable foreground objects and other commanders in the
@@ -743,7 +744,7 @@ GameObjectPtr pickGameplayObjects(long x, long y, std::span<GameObjectPtr> list,
         if (!hit) { rejectEnemy(obj, "ray_miss"); continue; }
         const double depth = *hit;
         if (!mc2::pickBeforeSurface(depth, surfaceT)) {
-            rejectEnemy(obj, "terrain_occluded");
+            rejectEnemy(obj, "terrain_occluded", depth, surfaceT);
             if (mc2_diag::tagEnabled("CURSOR_TARGET")) {
                 char payload[256];
                 mc2::fmt::to_buf(payload,
