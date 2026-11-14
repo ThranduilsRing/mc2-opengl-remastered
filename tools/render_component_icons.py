@@ -11,7 +11,7 @@ out.mkdir(parents=True, exist_ok=True); proof.mkdir(parents=True, exist_ok=True)
 rows = list(csv.reader((src / 'art/compbas.csv').open()))[1:]
 icons = {r[23].lower(): r for r in rows if len(r) > 28 and r[23].lower().endswith('.tga')}
 sheet = Image.new('RGB', (3840, 2160), (23, 29, 35)); draw = ImageDraw.Draw(sheet)
-font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 18)
+font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 18, layout_engine=ImageFont.Layout.BASIC)
 inventory = []
 for index, (name, row) in enumerate(sorted(icons.items())):
     model = src / 'tgl' / (Path(name).stem + '.ase')
@@ -35,7 +35,7 @@ for index, (name, row) in enumerate(sorted(icons.items())):
         mat.node_tree.links.new(tex.outputs['Color'], bsdf.inputs['Base Color']); mats.append(mat)
     points = [Vector(p) for g in geoms for p in g.positions]
     lo = Vector(tuple(min(p[i] for p in points) for i in range(3))); hi = Vector(tuple(max(p[i] for p in points) for i in range(3)))
-    center = (lo+hi)/2; scale = 2/max(hi-lo); rotation = Matrix.Rotation(-math.pi/2, 3, 'Y')
+    center = (lo+hi)/2; scale = 2/max(hi-lo); rotation = Matrix.Rotation(math.pi/2, 3, 'Y')
     objects = []
     for g in geoms:
         mesh = bpy.data.meshes.new(g.node_name); mesh.from_pydata([rotation @ ((Vector(p)-center)*scale) for p in g.positions], [], [f[:3] for f in g.faces])
@@ -52,11 +52,13 @@ for index, (name, row) in enumerate(sorted(icons.items())):
     scene.camera = camera; camera.data.type = 'ORTHO'; bpy.context.view_layer.update()
     projected = [camera.matrix_world.inverted() @ v.co for obj in objects for v in obj.data.vertices]
     dx = max(p.x for p in projected)-min(p.x for p in projected); dy = max(p.y for p in projected)-min(p.y for p in projected)
-    camera.data.ortho_scale = max(dx,dy*(48*w)/(32*h))*1.14
+    camera.location += camera.rotation_euler.to_matrix() @ Vector(((max(p.x for p in projected)+min(p.x for p in projected))/2,(max(p.y for p in projected)+min(p.y for p in projected))/2,0))
+    aspect = (48*w)/(32*h); camera.data.ortho_scale = max(dx,dy*aspect)/min(1,aspect)*1.14
     scene.render.resolution_x = 48*w*4; scene.render.resolution_y = 32*h*4; scene.render.resolution_percentage = 100
     scene.render.image_settings.file_format = 'PNG'; scene.render.image_settings.color_mode = 'RGBA'
     scene.render.filepath = str(proof / (Path(name).stem+'.png')); bpy.ops.render.render(write_still=True)
     rendered = Image.open(scene.render.filepath).convert('RGBA')
+    bbox = rendered.getbbox(); assert 0 < bbox[0] < bbox[2] < rendered.width and 0 < bbox[1] < bbox[3] < rendered.height, name
     canvas = Image.new('RGBA',(old.width*4,old.height*4)); canvas.paste(rendered,(0,0)); canvas.save(out/name, compression='tga_rle')
     assert canvas.getchannel('A').getextrema() == (0,255)
     x, y = (index%8)*480, (index//8)*420
