@@ -71,6 +71,11 @@ bool propHidden(uint id) {
     LocalBounds local = types[inst.typeID];
     vec2 lo = vec2(3.402823466e+38), hi = -lo;
     float nearest = 0;
+    // Only wholly off-screen bounds are rejected; retain edge intersections for the HZB keep rule.
+    // Leaf sway is bounded by (1.5, 0.9) world units; add two pixels for jitter/rounding.
+    vec2 viewLo = lo, viewHi = hi;
+    bool occlusionSafe = true;
+    vec4 swayPad = (inst.flags & 4u) != 0u ? 1.5 * (abs(params.worldToClip[0]) + 0.6 * abs(params.worldToClip[1])) : vec4(0);
     for (int corner = 0; corner < 8; ++corner) {
         vec4 p = vec4((corner & 1) != 0 ? local.hi.x : local.lo.x,
                       (corner & 2) != 0 ? local.hi.y : local.lo.y,
@@ -85,12 +90,18 @@ bool propHidden(uint id) {
         if (!(clip.w > 1e-5)) return false;
         vec3 ndc = clip.xyz / clip.w;
         ndc.z += params.viewportDepth.z;
-        if (any(isnan(ndc)) || any(isinf(ndc)) || ndc.z < 0 || ndc.z >= 1 ||
-            any(lessThanEqual(ndc.xy, vec2(-1))) || any(greaterThanEqual(ndc.xy, vec2(1)))) return false;
+        if (any(isnan(ndc)) || any(isinf(ndc)) || ndc.z < 0 || ndc.z >= 1) return false;
+        if (clip.w > swayPad.w + 1e-5) {
+            vec2 margin = (swayPad.xy + abs(ndc.xy) * swayPad.w) / (clip.w - swayPad.w) + 4.0 / params.viewportDepth.xy;
+            viewLo = min(viewLo, ndc.xy - margin); viewHi = max(viewHi, ndc.xy + margin);
+        } else { viewLo = vec2(-3.402823466e+38); viewHi = -viewLo; }
+        if (any(lessThanEqual(ndc.xy, vec2(-1))) || any(greaterThanEqual(ndc.xy, vec2(1)))) occlusionSafe = false;
         vec2 pixels = (ndc.xy + 1) * 0.5 * params.viewportDepth.xy;
         lo = min(lo, pixels); hi = max(hi, pixels);
         nearest = max(nearest, ndc.z);
     }
+    if (any(lessThan(viewHi, vec2(-1))) || any(greaterThan(viewLo, vec2(1)))) return true;
+    if (!occlusionSafe) return false;
     if (tinyBox(lo, hi)) return true;
     // The pyramid was built from depth drawn with the frame's sub-pixel TAA jitter (<= 0.5 px) while this
     // projection is unjittered: widen the box by that jitter plus the one texel of conservatism.
