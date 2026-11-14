@@ -17,17 +17,25 @@ struct Buffer {
     void* allocation() const { return bytes.get(); }
 };
 struct TerrainIsland { int allocator = 0; };
-struct OvlState {
-    Buffer stat;
-    VkDeviceSize statCap = 0;
-    uint64_t statVersion = UINT64_MAX;
-    bool statUsed = false;
+struct OvlTex {};
+struct OvlItem { uint32_t firstVtx, count, kind; OvlTex* tex; };
+struct Mc2VkOverlayDraw { uint32_t texHandle, firstVert, vertCount; };
+struct OvlStatic {
+    uint64_t resolvedVersion = UINT64_MAX, textureGeneration = UINT64_MAX;
+    std::vector<OvlItem> items;
+    Buffer buffer;
+    VkDeviceSize capacity = 0;
+    uint64_t version = UINT64_MAX;
+    bool used = false;
 };
+struct OvlState { std::array<OvlStatic, 3> statics; };
 struct OvlPending {
     bool isStatic = true;
     uint32_t vertCount = 1;
     uint64_t version = 1;
     const uint8_t* staticPtr = nullptr;
+    uint32_t kind = 0;
+    std::vector<Mc2VkOverlayDraw> draws;
 };
 int allocations = 0, retirements = 0;
 bool failAllocation = false, failMap = false;
@@ -51,6 +59,15 @@ struct Context {
 };
 Context& getOrCreateEngineVulkanContext() { static Context ctx; return ctx; }
 }
+uint64_t textureGeneration = 0;
+int resolutions = 0;
+bool texturePending = false;
+OvlTex texture;
+uint64_t gos_GetTextureGeneration() { return textureGeneration; }
+OvlTex* ovl_get_tex(TerrainIsland*, OvlState*, uint32_t) {
+    ++resolutions;
+    return texturePending ? nullptr : &texture;
+}
 #define ZoneScopedN(name)
 #include "overlay_static_upload.inc"
 #undef ZoneScopedN
@@ -68,15 +85,15 @@ TEST_CASE("OverlayPrestage/first draw corrects a provisional upload in place") {
     UploadFixture f;
     REQUIRE(f.prepare());
     CHECK(allocations == 1);
-    auto* loadBuffer = f.state.stat.bytes.get();
+    auto* loadBuffer = f.state.statics[0].buffer.bytes.get();
     f.vertices[0] = 73;
     ++f.pending[0].version;
     REQUIRE(f.prepare());
-    CHECK(f.state.stat.bytes.get() == loadBuffer);
-    CHECK(f.state.stat.bytes[0] == 73);
+    CHECK(f.state.statics[0].buffer.bytes.get() == loadBuffer);
+    CHECK(f.state.statics[0].buffer.bytes[0] == 73);
     CHECK(allocations == 1);
     CHECK(retirements == 0);
-    f.state.statUsed = true;
+    f.state.statics[0].used = true;
     REQUIRE(f.prepare());
     CHECK(allocations == 1); // unchanged version is never uploaded again
     ++f.pending[0].version;
@@ -89,15 +106,70 @@ TEST_CASE("OverlayPrestage/failed preparation remains retryable") {
     UploadFixture f;
     failAllocation = true;
     CHECK_FALSE(f.prepare());
-    CHECK(f.state.statVersion == UINT64_MAX);
+    CHECK(f.state.statics[0].version == UINT64_MAX);
     failAllocation = false;
     failMap = true;
     CHECK_FALSE(f.prepare());
-    CHECK(f.state.statVersion == UINT64_MAX);
+    CHECK(f.state.statics[0].version == UINT64_MAX);
     failMap = false;
     REQUIRE(f.prepare());
-    CHECK(f.state.statVersion == 1);
+    CHECK(f.state.statics[0].version == 1);
     CHECK(allocations == 2);
+}
+
+TEST_CASE("OverlayPrestage/cement and mines retain independent source versions") {
+    UploadFixture f;
+    uint8_t mines[kOvlVertStride] = {42};
+    f.pending.push_back({true, 1, 1, mines, 2});
+    REQUIRE(f.prepare());
+    CHECK(allocations == 2);
+    auto* cement = f.state.statics[0].buffer.bytes.get();
+    f.state.statics[2].used = true;
+    mines[0] = 99;
+    ++f.pending[1].version;
+    REQUIRE(f.prepare());
+    CHECK(allocations == 3);
+    CHECK(retirements == 1);
+    CHECK(f.state.statics[0].buffer.bytes.get() == cement);
+    CHECK(f.state.statics[0].version == 1);
+    CHECK(f.state.statics[2].version == 2);
+    CHECK(f.state.statics[2].buffer.bytes[0] == 99);
+}
+
+TEST_CASE("OverlayPrestage/resolved items follow version and texture generation without sorting") {
+    UploadFixture f;
+    f.pending[0].vertCount = 12;
+    f.pending[0].draws = {{7, 6, 6}, {3, 0, 6}};
+    texturePending = false;
+    resolutions = 0;
+    std::vector<OvlItem> items;
+    auto resolve = [&] { items.clear(); ovl_resolve_items(&f.island, &f.state, f.pending[0], 0, items); };
+    resolve();
+    REQUIRE(items.size() == 2);
+    CHECK(items[0].firstVtx == 6);
+    CHECK(items[1].firstVtx == 0);
+    resolve();
+    CHECK(resolutions == 2);
+    ++f.pending[0].version;
+    resolve();
+    CHECK(resolutions == 4);
+    ++textureGeneration; // CPU texture re-import must invalidate static items
+    resolve();
+    CHECK(resolutions == 6);
+    texturePending = true;
+    ++textureGeneration;
+    resolve();
+    CHECK(items.empty());
+    texturePending = false;
+    resolve(); // an incomplete import retries even without another generation bump
+    CHECK(items.size() == 2);
+    CHECK(resolutions == 10);
+    f.pending[0].isStatic = false;
+    items.clear();
+    ovl_resolve_items(&f.island, &f.state, f.pending[0], 12, items);
+    REQUIRE(items.size() == 2);
+    CHECK(items[0].firstVtx == 18);
+    CHECK(items[0].kind == 0);
 }
 
 TEST_CASE("OverlayPrestage/HUD warm plan covers ten distinct pipeline variants") {
