@@ -92,7 +92,7 @@ layout(location = 10) in vec3 vMaterialSeed;
 flat layout(location = 11) in vec3 vMaterialAmbient;
 flat layout(location = 12) in vec3 vMaterialSun;
 flat layout(location = 13) in uint vMaterialFlags;
-layout(location = 14) in vec2 vTree;
+layout(location = 14) in vec3 vTree;
 flat layout(location = 15) in uvec2 vWindow;
 flat layout(location = 16) in uvec3 vTeam;
 
@@ -286,14 +286,15 @@ void main() {
         float transmission = alphaTestClass ? 0.08*max(dot(-N,L),0.0) : 0.0;
         vec3 direct = propDecodeColor(vMaterialSun) * (propNightSunWeight(wrap, N) + transmission * propNightDirectShare());
         // SH already contains linear irradiance. Preserve the stock albedo exposure ceiling.
-        vec3 irradiance = max(ambient,vec3(0))*vTree.x*materialAO + direct*treeVisibility(N);
+        float forestSky = mix(0.7, 1.0, vTree.z);
+        vec3 irradiance = max(ambient,vec3(0))*vTree.x*materialAO*forestSky + direct*treeVisibility(N)*vTree.z;
         // Thin leaves retain sky fill through canopy self-occlusion. Fade it
         // with the night profile rather than making dark forests emissive. Full night keeps 0.35*0.35 (was 0.35*0.2: stock-dark
         // leaf albedo read near-black on night maps such as mc2_10).
-        if (alphaTestClass) irradiance = max(irradiance, vec3(0.35 * (1.0 - 0.65*uFrame.nightDarkness)));
+        if (alphaTestClass) irradiance = max(irradiance, vec3(0.35 * (1.0 - 0.65*uFrame.nightDarkness) * forestSky));
         // Night moonlight/sky fill for foliage (zero by day): shape-giving hemisphere + leaf wrap, crown AO for form.
         // A light, not brighter albedo; it sits outside the albedo exposure ceiling, which kept stock-dark leaves black.
-        vec3 nightFill = propFoliageNightAmbient(normalize(outputNormalStuff), alphaTestClass) * (vTree.x * materialAO);
+        vec3 nightFill = propFoliageNightAmbient(normalize(outputNormalStuff), alphaTestClass) * (vTree.x * materialAO * forestSky);
         rgb = propEncodeColor(min(albedo, albedo*irradiance) + albedo*nightFill);
         rgb += propEncodeColor(albedo) * poolLight + vHighlight.rgb*vHighlight.a;
     }
