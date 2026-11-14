@@ -74,5 +74,5 @@ void main() {
     gl_Position = uFrame.lightSpaceMatrix * vec4(worldMC2, 1.0);
     v_uv = a_uv;
     v_row = pc.packetBase + uint(gl_DrawIDARB);
-    v_foliage = inst.flags & 4u;
+    v_foliage = (inst.flags & 4u) == 0u ? 0u : (inst.flags >> 8u) != 0u ? 2u : 1u;
 }

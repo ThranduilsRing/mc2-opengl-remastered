@@ -92,7 +92,7 @@ layout(location = 10) in vec3 vMaterialSeed;
 flat layout(location = 11) in vec3 vMaterialAmbient;
 flat layout(location = 12) in vec3 vMaterialSun;
 flat layout(location = 13) in uint vMaterialFlags;
-layout(location = 14) in vec3 vTree;
+layout(location = 14) in vec4 vTree;
 flat layout(location = 15) in uvec2 vWindow;
 flat layout(location = 16) in uvec3 vTeam;
 
@@ -296,7 +296,7 @@ void main() {
         vec3 direct = propDecodeColor(vMaterialSun) * (propNightSunWeight(wrap, N) + transmission * propNightDirectShare());
         // SH already contains linear irradiance. Preserve the stock albedo exposure ceiling.
         float forestSky = vTree.z;
-        vec3 irradiance = max(ambient,vec3(0))*vTree.x*materialAO*forestSky + direct*treeVisibility(N);
+        vec3 irradiance = max(ambient,vec3(0))*vTree.x*materialAO*forestSky + direct*min(treeVisibility(N), vTree.w);
         // Thin leaves retain sky fill through canopy self-occlusion. Fade it
         // with the night profile rather than making dark forests emissive. Full night keeps 0.35*0.35 (was 0.35*0.2: stock-dark
         // leaf albedo read near-black on night maps such as mc2_10).
