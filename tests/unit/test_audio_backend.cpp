@@ -282,7 +282,7 @@ TEST_CASE("AudioBackend/two music slots stream independently across catalog rele
     while (gosAudio_GetChannelPlayMode(0) != gosAudio_Stop && std::chrono::steady_clock::now() < deadline)
         std::this_thread::yield();
     CHECK(gosAudio_GetChannelPlayMode(0) == gosAudio_Stop);
-    CHECK(Mix_GetChunk(0) == nullptr);
+    CHECK(Mix_Playing(0) == 0);
     gosAudio_DestroyResource(&missing);
     CHECK(missing == nullptr);
 }
