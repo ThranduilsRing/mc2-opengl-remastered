@@ -29,8 +29,8 @@ def main():
     for i, (src, sub) in enumerate(jobs):
         px, desc = rd(src); meta[i] = (src, sub, px[..., 3] if px.shape[2] == 4 else None, desc)
         Image.fromarray(px[..., [2, 1, 0]]).save(tin / f"{i}.png")
-    subprocess.run([a.ncnn, "-i", str(tin), "-o", str(tout), "-n", "realesrgan-x4plus", "-s", "4", "-f", "png"], check=True,
-                   cwd=Path(a.ncnn).parent)  # background-launch: allow offline realesrgan upscaler, never the game
+    subprocess.run([a.ncnn, "-i", str(tin), "-o", str(tout), "-n", "realesrgan-x4plus", "-s", "4", "-f", "png"], check=True,  # background-launch: allow offline realesrgan upscaler, never the game
+                   cwd=Path(a.ncnn).parent)
     for i, (src, sub, alpha, desc) in meta.items():
         big = Image.open(tout / f"{i}.png").convert("RGB")
         for edge in (1024, 512):
