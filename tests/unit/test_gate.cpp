@@ -347,7 +347,7 @@ TEST_CASE("table is sorted, unique and every name round-trips through lookupName
     const std::size_t n = gate::tableSize();
     REQUIRE(n == gate::detail::kGateCount);
     // Population after retiring the framegraph executor (names live in Gates/retired_names.json).
-    REQUIRE(n == 420);   // -4 frame-gpu-holes (MC2_VK_{MECH,PROP,TERRAIN,WATER}_FENCE_DEFER: the deferred retire ships, kill-switches gone); -15 vk-gate-amnesty-3 (dead diagnostics + folded editor/unit-snap kill switches); +MC2_TEST_FSR_FAIL_FRAME (diagnostic injection for the FSR sampler refresh proof); +MC2_VK_RT_SELFTEST (RT self-test hook, off by default); +9 restored (Astra f1 P1: hitch/forcepose/clipdiag launchers + terrain_near FORCE_LOD recipes; 4 pass-stats/timer reads for dup_lines_ratchet); -323 vk-signoff batch2 (folded to defaults; MC2_SIM_CLOCK_TRACE kept, upstream passthrough); -10 vk-signoff batch1 (MC2_PRESENT_THREAD + 9 reader-less); +MC2_UNIT_VISUAL_SNAP (render-only unit snap, ships ON); +MC2_MECH_FILL (mech lighting strength, ships ON at 2); -MC2_TERRAIN_MATERIAL_TEXTURES(+_STRENGTH) retired W107; +MC2_PLAY_MISSION_GOTO (dev test knob) W108; -MC2_OVERLAY_CEMENT_ADOPT (now options.cfg StockOverlayConcrete).
+    REQUIRE(n == 429);   // Includes eight harness-owned box wrapper names.
     for (std::size_t i = 0; i < n; ++i) {
         if (i > 0) CHECK((rows[i - 1].name < rows[i].name));
         const auto info = gate::lookupName(rows[i].name);
@@ -487,6 +487,28 @@ TEST_CASE("dumpConfig all lists every row, none only the summary") {
     CHECK(lines >= gate::tableSize());
     CHECK(hasLine(n, "[CONFIG v1] summary"));
     CHECK_FALSE(hasLine(n, "[CONFIG v1] name="));
+}
+
+// Trigger paths: Gates/gate_rows_*.inc and Gates/gate.cpp strict config validation.
+TEST_CASE("dumpConfig accepts box harness metadata under strict config") {
+    const char* names[] = {"MC2_TOOLCHAINS", "MC2_RUN_ID", "MC2_BOX_QUOTA_CPUS",
+        "MC2_GATE_MODS_ROOT", "MC2_GATE_GPU", "MC2_GATE_INSTALL", "MC2_SLOT", "MC2_GATE_PROOFS"};
+    gate::DumpOptions opts;
+    opts.strict = true;
+    const std::string before = capture(opts);
+    for (const char* name : names) {
+        const auto idx = gate::lookupName(name);
+        REQUIRE(idx);
+        const auto& row = gate::tableData()[idx->index];
+        CHECK(row.kind == Kind::String);
+        CHECK(row.owner == "harness");
+        EnvVar env(name);
+        env.set("wrapper metadata / not an engine option");
+        const std::string out = capture(opts);
+        CHECK_FALSE(hasLine(out, "[CONFIG v1] warn=unregistered name=" + std::string(name)));
+        CHECK_FALSE(hasLine(out, "[CONFIG v1] warn=badvalue name=" + std::string(name)));
+    }
+    CHECK_FALSE(hasLine(before, "[CONFIG v1] warn=unregistered name=MC2_SLOT"));
 }
 
 TEST_CASE("dumpConfig warns about an unregistered MC2_ variable and a bad value") {

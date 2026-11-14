@@ -25,6 +25,7 @@ L(Presence, "MC2_TEXMGR_LOAD_TRACE", Bool, false, "code", "", "", passthrough | 
 // TRACKV quick-win: Probe-6 thin-record canary gate
 L(Presence, "MC2_THIN_DEBUG", Bool, false, "terrain", "", "", passthrough),
 // POST-FX-TONEMAP-V2 (SCOUR-1 #3): filmic tonemap on the composite.
+G("MC2_TOOLCHAINS", String, "", "harness", "", "Harness-owned box wrapper metadata; ignored by the engine.", passthrough),
 L(Presence, "MC2_TRACE_EXIT", Bool, false, "gameos", "", "", verified),
 // ── TREE-DIAG-REGISTER-1 (closed by GATE-PARITY-CLOSE-1) ───────────────
 // Lives in kAuxEnvVars and NOT in kFeatureTable: kFeatureTable is indexed
