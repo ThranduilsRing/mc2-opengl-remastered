@@ -349,6 +349,7 @@ static bool tryOpenAudio(VideoSession* s, std::string_view path)
     s->audioStreamStarted = true;
     s->aFrame = av_frame_alloc();
     s->aPkt = av_packet_alloc();
+    VIDEO_TRACE("speech start: source={}", path);
     VIDEO_TRACE("audio: stream opened, rate={:d} ch={:d}",
                 mc2::fmt::as_i32(s->aOutRate), mc2::fmt::as_i32(s->aOutChannels));
     return true;

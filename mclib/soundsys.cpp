@@ -33,6 +33,7 @@
 #include <string>
 #include <vector>
 #include <array>
+#include <atomic>
 #include <format>
 #include "../GameOS/gameos/utils/mc2log.h"
 
@@ -83,7 +84,7 @@ namespace {
         SDL_atomic_t          consumedFrames;
         int                   rate = 0;
         int                   channels = 0;
-        bool                  active = false;
+        std::atomic<bool>     active{false};
     };
     VideoAudioState g_va;
 
@@ -976,6 +977,10 @@ bool SoundSystem::isChannelPlaying (long channelId)
 //---------------------------------------------------------------------------
 bool SoundSystem::isPlayingVoiceOver (void)
 {
+	// VidCom sidecars now use the video PCM hook instead of STREAM3CHANNEL.
+	// ABL must wait for them before advancing to the next speech cue.
+	if (g_va.active.load(std::memory_order_relaxed))
+		return true;
 	if (stream3Handle)
 		return true;
 
