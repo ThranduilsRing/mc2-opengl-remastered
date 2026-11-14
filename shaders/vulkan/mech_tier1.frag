@@ -85,7 +85,7 @@ void main() {
     vec3 rgb;
     if (uFrame.materialReady != 0) {
         // Service images expose a complete mip chain for regenerated paint.
-        vec4 tex_color = texture(uAlbedo, vUv);
+        vec4 tex_color = sampleMechMaterial(uAlbedo, vUv);
         if ((uRun.materialFlags & 1u) != 0u && tex_color.a < 0.5) discard;
         if ((vImportedMech & 1u) != 0u)
             tex_color.rgb = msh_importedAlbedo(tex_color.rgb, uFrame.shadeB.z, uFrame.shadeB.w);
@@ -110,7 +110,8 @@ void main() {
             // procedural softbox environment for the specular term.
             vec3 Vs = normalize(uFrame.cameraWorldPos.xyz - vWorldPos);
             vec3 cf = normalize(uFrame.cameraWorldPos.xyz);
-            vec3 cr = normalize(cross(vec3(0.0, 1.0, 0.0), cf));
+            // vWorldPos and Nshade are in the same Z-up MC2 frame as the mission pass.
+            vec3 cr = normalize(cross(vec3(0.0, 0.0, 1.0), cf));
             vec3 cu = cross(cf, cr);
             vec3 Lk = normalize(-0.60 * cr + 0.70 * cu + 0.50 * cf);
             vec3 Lf = normalize( 0.80 * cr + 0.05 * cu + 0.55 * cf);
@@ -119,10 +120,10 @@ void main() {
             float nk = max(dot(Nshade, Lk), 0.0);
             float nf = max(dot(Nshade, Lf), 0.0);
             float nr = max(dot(Nshade, Lr), 0.0);
-            float hemi = 0.5 + 0.5 * Nshade.y;
-            vec3 amb = mix(vec3(0.16), vec3(0.42, 0.44, 0.48), hemi) * 0.30;
+            float hemi = 0.5 + 0.5 * Nshade.z;
+            vec3 amb = mix(vec3(0.16), vec3(0.42, 0.44, 0.48), hemi) * 0.65;
             vec3 diff = amb + vec3(1.00, 0.98, 0.95) * 0.85 * nk
-                            + vec3(0.75, 0.80, 0.90) * 0.22 * nf
+                            + vec3(0.75, 0.80, 0.90) * 0.50 * nf
                             + vec3(0.90, 0.95, 1.00) * 0.35 * nr;
             rgb = albedo * diff;
             rgb += vHighlight.rgb * vHighlight.a;
@@ -138,7 +139,7 @@ void main() {
             float lobe = pow(max(dot(R, Lk), 0.0), shin) * 1.6
                        + pow(max(dot(R, Lr), 0.0), shin * 0.7) * 1.1
                        + pow(max(dot(R, Lf), 0.0), shin * 0.5) * 0.3;
-            vec3 envRefl = mix(vec3(0.05, 0.045, 0.04), vec3(0.30, 0.34, 0.42), 0.5 + 0.5 * R.y);
+            vec3 envRefl = mix(vec3(0.05, 0.045, 0.04), vec3(0.30, 0.34, 0.42), 0.5 + 0.5 * R.z);
             float fres = 0.05 + 0.95 * pow(1.0 - ndv, 5.0);
             // Authored ORM: f0-weighted (dielectric 0.04), so it keeps the original 2.0 scale; untextured stock paint 0.65.
             vec3 f0 = authoredOrm ? mix(vec3(0.04), albedo, surface.metallic) : vec3(1.0);
