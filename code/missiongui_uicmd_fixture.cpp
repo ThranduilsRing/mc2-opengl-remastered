@@ -44,12 +44,12 @@ void mc2AbortReloadFixtureUpdate()
         auto* pw = mission->missionInterface->getControlGui()->getPauseWnd();
         if (pw->confirmDialogUp() && LogisticsOKDialog::instance()->getEnterAnim().isDone()) {
             LogisticsOKDialog::instance()->handleMessage(aMSG_LEFTMOUSEDOWN, LogisticsScreen::YES);
-            std::fprintf(stderr, "[SOAK] abort_reload cycle=%zu phase=abort mission=%s play_s=%.3f sim_s=%.3f\n",
+            if (mc2_diag::tagRequested("ABORT_RELOAD")) std::fprintf(stderr, "[ABORT_RELOAD] cycle=%zu phase=abort mission=%s play_s=%.3f sim_s=%.3f\n",
                          f.cycle + 1, f.current.c_str(), elapsed, static_cast<double>(scenarioTime));
             f.phase = 3;
         }
     } else if (f.phase == 3 && !mission->isActive()) {
-        std::fprintf(stderr, "[SOAK] abort_reload cycle=%zu phase=unload mission=%s deferred=%zu\n",
+        if (mc2_diag::tagRequested("ABORT_RELOAD")) std::fprintf(stderr, "[ABORT_RELOAD] cycle=%zu phase=unload mission=%s deferred=%zu\n",
                      f.cycle + 1, f.current.c_str(), mc2vk::engineVulkanContextNoWait().deferred().size());
         logistics->start(log_SPLASH);
         logistics->getMissionBegin()->beginSplash();
@@ -57,7 +57,7 @@ void mc2AbortReloadFixtureUpdate()
         f.phase = 4;
     } else if (f.phase == 4 && elapsed >= 2) {
         const std::string next = f.targets[f.cycle++];
-        std::fprintf(stderr, "[SOAK] abort_reload cycle=%zu phase=menu next=%s\n", f.cycle, next.c_str());
+        if (mc2_diag::tagRequested("ABORT_RELOAD")) std::fprintf(stderr, "[ABORT_RELOAD] cycle=%zu phase=menu next=%s\n", f.cycle, next.c_str());
         if (next == "campaign") {
             PlayerFrontEnd::requestCampaignStart("campaign");
             f.phase = 5;
@@ -74,12 +74,12 @@ void mc2AbortReloadFixtureUpdate()
         }
     } else if (f.phase == 5 && mission->isActive() && scenarioTime >= 3) {
         f.campaignFirst = LogisticsData::instance->getCurrentMission();
-        std::fprintf(stderr, "[SOAK] abort_reload phase=campaign_win mission=%s\n", f.campaignFirst.c_str());
+        if (mc2_diag::tagRequested("ABORT_RELOAD")) std::fprintf(stderr, "[ABORT_RELOAD] phase=campaign_win mission=%s\n", f.campaignFirst.c_str());
         mission->forceTerminate(mis_PLAYER_WIN_BIG);
         f.phase = 6;
     } else if (f.phase == 6 && mission->isActive() &&
                LogisticsData::instance->getCurrentMission() != f.campaignFirst) {
-        std::fprintf(stderr, "[SOAK] abort_reload phase=complete cycles=%zu campaign_next=%s\n",
+        if (mc2_diag::tagRequested("ABORT_RELOAD")) std::fprintf(stderr, "[ABORT_RELOAD] phase=complete cycles=%zu campaign_next=%s\n",
                      f.cycle, LogisticsData::instance->getCurrentMission().c_str());
         f.phase = 0;
         gos_TerminateApplication();
