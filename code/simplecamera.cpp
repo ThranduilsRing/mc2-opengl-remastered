@@ -47,7 +47,7 @@ void ProbeGatherLightsForList(TG_LightPtr* lights, unsigned long nLights, TG_HWL
 // panel mech per frame (the batcher snapshot holds one flush); a second camera that frame keeps its CPU draw.
 // Returns true when a request was posted; the CPU draw may still be needed until the island reports a draw.
 static bool postMechPreviewGpu( Camera& cam, Mech3DAppearance* mech, float vpX, float vpY, float vpW, float vpH,
-                                float groundX, float groundY, float groundH )
+                                float groundX, float groundY, float groundH, const float* clipRect )
 {
 	static uint32_t s_lastFrame = 0xffffffffu;
 	static TG_InstanceId s_lastShape;
@@ -82,6 +82,9 @@ static bool postMechPreviewGpu( Camera& cam, Mech3DAppearance* mech, float vpX, 
 	q.vpX = static_cast<int>( lroundf( vpX ) ); q.vpY = static_cast<int>( lroundf( vpY ) );
 	q.vpW = static_cast<int>( lroundf( vpW ) ); q.vpH = static_cast<int>( lroundf( vpH ) );
 	q.exposure = 1.0f;
+	// The mech panel only: the backdrop must not cover the other camera's box in the shared preview target.
+	q.clipX = static_cast<int>( lroundf( clipRect[0] ) ); q.clipY = static_cast<int>( lroundf( clipRect[1] ) );
+	q.clipW = static_cast<int>( lroundf( clipRect[2] - clipRect[0] ) ); q.clipH = static_cast<int>( lroundf( clipRect[3] - clipRect[1] ) );
 	q.groundX = groundX; q.groundY = groundY; q.groundH = groundH;
 	if ( gosPostProcess* pp = getGosPostProcess() )
 	{
@@ -411,7 +414,7 @@ void SimpleCamera::render(long xOffset, long yOffset)
 					haveGround_ = true;
 				}
 				if ( labMech && postMechPreviewGpu( *this, labMech, offsetX, offsetY, viewMulX, viewMulY,
-				                                   haveGround_ ? groundC_[0] : 0.f, groundC_[1], haveGround_ ? groundH_ : 0.f ) )
+				                                   haveGround_ ? groundC_[0] : 0.f, groundC_[1], haveGround_ ? groundH_ : 0.f, bounds ) )
 					gpuDraws = mc2_vk_mech_preview_drew_last() != 0;
 				// With the GPU path drawing, PreviewDraw only projects (the framing bounds below).
 				g_previewBoundsOnly = gpuDraws;
