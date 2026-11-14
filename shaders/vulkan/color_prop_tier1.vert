@@ -178,7 +178,7 @@ void main() {
         float hn = 0.65 + sign(canopy.z) * (a_position.y - canopy.x) / (2.0 * abs(canopy.z));
         vec3 bake = vec3((inst.flags >> 8u) & 255u, (inst.flags >> 16u) & 255u, inst.flags >> 24u) / 255.0;
         forestSun = mix(0.04, 1.0, smoothstep(bake.x * 1.25 - 0.15, bake.x * 1.25, hn));
-        forestSky = 1.0 - mix(bake.y, bake.z, smoothstep(0.3, 1.0, hn));
+        forestSky = pow(1.0 - mix(bake.y, bake.z, smoothstep(0.3, 1.0, hn)), 2.5); // contrast: deep interior falls off fast
     }
     vTree.z = forestSky;
     vTree.w = forestSun;
