@@ -124,11 +124,38 @@ TEST_CASE("hzb ref: depth past the near plane (z >= 1) or behind far (z < 0) kee
     CHECK(project(boxNdc(0, 0.1f, 0, 0.1f, -60.0f, -60.0f)).keep == 1); // 0.5 - 0.6 < 0
 }
 
-TEST_CASE("hzb ref: partly or fully off screen keeps (never an undersized clipped footprint)") {
+TEST_CASE("hzb ref: partly off screen keeps (never an undersized clipped footprint)") {
     Pyramid py(0.9f);
     CHECK(project(boxNdc(0.5f, 1.5f, 0, 0.2f)).keep == 1);              // crosses x = 1
     CHECK(project(boxNdc(-1.0f, -0.5f, 0, 0.2f)).keep == 1);            // touches x = -1 (<= -1)
     CHECK(hidden(project(boxNdc(0.5f, 1.5f, 0, 0.2f)), py) == false);
+}
+
+TEST_CASE("hzb ref: wholly offscreen rejects without an occluder") {
+    Pyramid sky(0.0f);
+    for (const auto& b : {boxNdc(2, 3, 0, .2f), boxNdc(-3, -2, 0, .2f),
+                          boxNdc(0, .2f, 2, 3), boxNdc(0, .2f, -3, -2)}) {
+        CHECK(hidden(project(b), sky));
+    }
+    CHECK(project(boxNdc(1.01f, 1.02f, 0, .2f)).keep == 1); // rounding/jitter guard
+    CHECK(project(boxNdc(-2, 2, -2, 2)).keep == 1); // encloses the view
+}
+
+TEST_CASE("hzb ref: offscreen rejection encloses leaf sway") {
+    const auto b = boxNdc(1.2f, 1.3f, 0, .2f);
+    const mc2hzb::PropBounds bounds[1] = {b};
+    auto inst = identityInstance();
+    const Mat m = flatMatrix();
+    CHECK(mc2hzb::project_prop(inst, m.m, 0, bounds, W, H, LEVELS).tiny == 1);
+    inst.flags |= 4u;
+    CHECK(mc2hzb::project_prop(inst, m.m, 0, bounds, W, H, LEVELS).keep == 1);
+    const mc2hzb::PropBounds farBounds[1] = {boxNdc(4, 5, 0, .2f)};
+    CHECK(mc2hzb::project_prop(inst, m.m, 0, farBounds, W, H, LEVELS).tiny == 1);
+    Mat perspective = m; perspective.m[3] = -1.0f; perspective.m[15] = 2.0f;
+    CHECK(mc2hzb::project_prop(inst, perspective.m, 0, bounds, W, H, LEVELS).keep == 1);
+    const mc2hzb::PropBounds inside[1] = {boxNdc(.1f, .2f, 0, .2f)};
+    perspective = m; perspective.m[3] = 1.0f; perspective.m[15] = .5f;
+    CHECK(mc2hzb::project_prop(inst, perspective.m, 0, inside, W, H, LEVELS).keep == 0); // unchanged HZB path
 }
 
 TEST_CASE("hzb ref: no bounds / invalid type keeps") {

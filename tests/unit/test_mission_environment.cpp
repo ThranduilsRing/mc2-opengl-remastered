@@ -1,6 +1,7 @@
 #include "doctest.h"
 #include "../../GameOS/gameos/visual_tuning_profile.h"
 #include "Gates/gate_cold.h"
+#include "Gates/render_options.h"
 #include "file.h"
 #include "vfs.h"
 #include "../../GameAdapters/MissionEnvironmentAdapter.h"
@@ -61,7 +62,7 @@ TEST_CASE("MissionEnvironment/unit fill and building spill profile bounds and mi
 }
 
 TEST_CASE("MissionEnvironment/version migration preserves exact shipped tuning") {
-    std::ifstream file(std::filesystem::path(__FILE__).parent_path()/"../../data/visual_tuning.json");
+    std::ifstream file(std::filesystem::path(MC2_REPO_ROOT)/"data/visual_tuning.json");
     REQUIRE(bool(file));
     const std::string text((std::istreambuf_iterator<char>(file)),{});
     auto old=nlohmann::json::parse(text); old.erase("schemaVersion"); old.erase("colorContract");
@@ -262,6 +263,11 @@ TEST_CASE("MissionEnvironment/explicit session profile wins over mounted active 
 }
 
 TEST_CASE("MissionEnvironment/loose building and texture overlays beat bundled kit through real VFS") {
+    struct RestoreOptions {
+        mc2::options::RenderOptions saved = mc2::options::g_current;
+        ~RestoreOptions() { mc2::options::g_current = saved; }
+    } restore;
+    mc2::options::g_current.remasteredBuildings = true;
     MountedProfiles files;
     mc2::gate::ScopedOverride<"MC2_ACTIVE_MOD"> active(nullptr);
     mc2::gate::ScopedOverride<"MC2_MOD_DEPS"> deps("mc2-industrial-kit,env-a");

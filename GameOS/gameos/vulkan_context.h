@@ -273,9 +273,13 @@ public:
     VkDeviceSize frameRingRange() const { return frameRing_.bindRange(); }
 
     // Parks an owner (a buffer, an image, a container of them) until the GPU has finished the frame that may use it, then destroys it: the replacement
-    // for "waitIdle, then reset". Main thread only. Owners must be move-only types or movable values.
+    // for "waitIdle, then reset". Render owner only (Main or the unsealed present worker). Owners must be move-only types or movable values.
     template <class Owner>
-    void retire(Owner&& owner, uint64_t bytes = 0) { infra::retiring(owner); deferred_.retire(tracker_, std::forward<Owner>(owner), bytes); }
+    void retire(Owner&& owner, uint64_t bytes = 0) {
+        mc2::overlap::requireOwner(mc2::overlap::Owner::Render, "VulkanContext::retire");
+        infra::retiring(owner);
+        deferred_.retire(tracker_, std::forward<Owner>(owner), bytes);
+    }
     // Mission unload, swapchain recreate, teardown: idles the device and destroys everything parked. The only sanctioned device-idle besides init failure.
     void drainDeferred(std::string_view why);
     const DeferredDestroy& deferred() const { return deferred_; }

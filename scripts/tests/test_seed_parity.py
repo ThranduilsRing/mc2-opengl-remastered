@@ -35,6 +35,36 @@ def tree(root, files):
     return root
 
 
+@pytest.fixture(autouse=True)
+def no_declared_assets(monkeypatch):
+    monkeypatch.setattr(sp, "declared_assets", lambda: {})
+
+
+@pytest.mark.parametrize("after_deploy", [False, True])
+def test_declared_assets_checked_repaired_and_snapshotted(tmp_path, monkeypatch, after_deploy):
+    # Trigger paths: scripts/seed_parity.py, intentional-asset-changes.json.
+    assets = {"data/model_overrides/maple/tree.glb": b"glb", "data/tgl/128/maple.tga": b"tga"}
+    ref = tree(tmp_path / "v04", {**SHARED, **assets})
+    seed = tree(tmp_path / "seed", SHARED)
+    hashes = {rel: sp._sha(ref / rel) for rel in assets}
+    monkeypatch.setattr(sp, "declared_assets", lambda: hashes)
+    for state in ("missing", "content"):
+        with pytest.raises(SystemExit, match="data/(model_overrides|tgl)"):
+            sp.main(["--ref", str(ref), "--check", str(seed)])
+        if after_deploy:
+            assert sp.after_v04_deploy(ref, seed, ref)
+        else:
+            assert sp.main(["--ref", str(ref), "--refresh-seed", str(seed)]) == 0
+        assert sp.main(["--ref", str(ref), "--check", str(seed)]) == 0
+        assert hashes.items() <= sp.read_snapshot(seed).items()
+        sp.require_seed(seed)
+        for rel in assets:
+            (seed / rel).write_bytes(b"bad")
+    (ref / rel).write_bytes(b"bad")
+    with pytest.raises(SystemExit, match="declared asset hash mismatch"):
+        sp.refresh_seed(seed, ref)
+
+
 def test_parity_classification():
     assert all(sp.is_parity(rel) for rel in SHARED)
     assert not any(sp.is_parity(rel) for rel in NOT_SHARED)

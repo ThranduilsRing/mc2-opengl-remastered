@@ -6,7 +6,7 @@
 #include <string>
 
 TEST_CASE("support_craft: preload precedes immutable geometry on mission init and quickload") {
-    const auto root = std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
+    const auto root = std::filesystem::path(MC2_REPO_ROOT);
     for (const auto* path : {"code/mission_init.cpp", "code/saveload_load.cpp"}) {
         CAPTURE(path);
         std::ifstream file(root / path);
