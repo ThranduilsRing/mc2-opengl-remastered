@@ -235,8 +235,6 @@ void TG_Shape::CpuDraw (const mc2::tgl::ViewUniforms& view, const glm::mat4& sha
 
 	const glm::mat4 shapeToClip = shapeToWorld * view.worldToClip;
 	const bool compass = hud && !S_stricmp(theShape->getNodeId(), "compassplane");
-	const glm::vec3 origin = mc2::math::getTranslation(shapeToWorld);
-	const float markerLift = hud ? TerrainRuntime::markerElevation(glm::vec3(-origin.x, origin.z, origin.y)) - origin.y : 0.0f;
 	static thread_local std::vector<gos_VERTEX> verts;
 	static thread_local std::vector<Stuff::Vector4D> clips;
 	verts.resize(numVertices);
@@ -265,7 +263,6 @@ void TG_Shape::CpuDraw (const mc2::tgl::ViewUniforms& view, const glm::mat4& sha
 		xform.MultiplyPoint(pos, shapeToClip);
 		if (world && hud) {
 			glm::vec3 p = mc2::math::transformPoint(pos, shapeToWorld);
-			p.y += markerLift;
 			xform.MultiplyPoint(p, view.worldToClip);
 			if (compass) xform = Stuff::Vector4D(p.x, p.y, p.z, 1.0f);
 		}

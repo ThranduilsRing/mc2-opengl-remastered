@@ -580,7 +580,8 @@ long BldgAppearance::update (bool animate)
 		}
 
 		mc2ToRender(xlatPosition, position);
-		xlatPosition.y += TerrainRuntime::sampleVisualHeight(position) - TerrainRuntime::sampleGameplayHeight(position);
+		xlatPosition.y += mc2WorldMarkerAppearance(appearType->name) ? TerrainRuntime::markerElevation(position) - position.z
+			: TerrainRuntime::sampleVisualHeight(position) - TerrainRuntime::sampleGameplayHeight(position);
 
 		if (!fogLightSet)
 		{
