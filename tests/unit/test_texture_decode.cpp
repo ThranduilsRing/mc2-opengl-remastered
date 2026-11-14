@@ -76,7 +76,8 @@ TEST_CASE("StockPbr: every shipped actor atlas resolves and decodes through the 
                 const auto decoded = mc2tex::decodeMemory(bytes.data(), bytes.size(), name.c_str(),
                     gos_Texture_Solid, gosHint_MipmapFilter0 | gosHint_DontShrink);
                 REQUIRE(decoded);
-                const int edge = stem == "jeep" ? 256 : 512;
+                // Shipped tiers: scripts/tests/test_stock_pbr_assets.py (ghoul has no 2048 set).
+                const int edge = vehicle ? (stem == "jeep" ? 256 : 512) : (stem == "ghoul" ? 512 : 2048);
                 CHECK(decoded->width == edge);
                 CHECK(decoded->height == edge);
                 CHECK(decoded->pixels.size() == static_cast<size_t>(edge * edge * 4));
