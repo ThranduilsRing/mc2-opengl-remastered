@@ -1116,13 +1116,13 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
         // Spatial, premultiplied mip pyramid: transparent edges retain their colour.
         auto* pixels = static_cast<uint8_t*>(mapped);
         for (size_t i = 0; i < baseBytes; i += 4)
-            for (size_t c = 0; c < 3; ++c) pixels[i+c] = (uint32_t(pixels[i+c]) * pixels[i+3] + 127u) / 255u;
+            for (size_t c = 0; c < 3; ++c) pixels[i+c] = (static_cast<uint32_t>(pixels[i+c]) * pixels[i+3] + 127u) / 255u;
         size_t offset = 0, next = baseBytes;
         for (size_t w = 2048; w > 1; w /= 2) {
             for (size_t y = 0; y < w/2; ++y) for (size_t x = 0; x < w/2; ++x)
                 for (size_t c = 0; c < 4; ++c) {
                     const size_t p = offset + ((2*y)*w + 2*x)*4 + c;
-                    pixels[next + (y*(w/2)+x)*4+c] = (uint32_t(pixels[p]) + pixels[p+4] + pixels[p+w*4] + pixels[p+w*4+4] + 2u) / 4u;
+                    pixels[next + (y*(w/2)+x)*4+c] = (static_cast<uint32_t>(pixels[p]) + pixels[p+4] + pixels[p+w*4] + pixels[p+w*4+4] + 2u) / 4u;
                 }
             offset = next; next += (w/2)*(w/2)*4;
         }
