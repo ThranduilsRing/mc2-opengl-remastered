@@ -5,7 +5,7 @@
 downscale of that 1024. Alpha (the road shape) stays Lanczos, never AI. Engine ladder picks the folders up (mclib/terrtxm.cpp).
   py -3 overlay_tile_upscale_x16.py --tex <data/textures> --out <dir> [--ncnn <exe>]
 """
-import argparse, shutil, struct, subprocess, sys, tempfile
+import argparse, os, shutil, struct, subprocess, sys, tempfile
 from pathlib import Path
 import numpy as np
 from PIL import Image
@@ -20,7 +20,7 @@ def wr(p, bgra, desc):
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--tex", required=True); ap.add_argument("--out", required=True)
-    ap.add_argument("--ncnn", default="A:/Games/mc2-opengl-src/realesrgan-ncnn-vulkan/realesrgan-ncnn-vulkan.exe")
+    ap.add_argument("--ncnn", default=os.environ.get("MC2_REALESRGAN_EXE", "A:/Games/mc2-opengl-src/realesrgan-ncnn-vulkan/realesrgan-ncnn-vulkan.exe"))  # drive-path: ok maintainer-only offline art cook, env override
     a = ap.parse_args(); tex, out = Path(a.tex), Path(a.out)
     jobs = [(src, f"{{}}Overlays") for src in sorted((tex / "256Overlays").glob("*.tga"))] + \
            [(src, "{}") for src in sorted((tex / "256").glob("*.tga")) if src.name.split("_")[0] in ("cement", "undefined", "water")]
@@ -30,7 +30,7 @@ def main():
         px, desc = rd(src); meta[i] = (src, sub, px[..., 3] if px.shape[2] == 4 else None, desc)
         Image.fromarray(px[..., [2, 1, 0]]).save(tin / f"{i}.png")
     subprocess.run([a.ncnn, "-i", str(tin), "-o", str(tout), "-n", "realesrgan-x4plus", "-s", "4", "-f", "png"], check=True,
-                   cwd=Path(a.ncnn).parent)
+                   cwd=Path(a.ncnn).parent)  # background-launch: allow offline realesrgan upscaler, never the game
     for i, (src, sub, alpha, desc) in meta.items():
         big = Image.open(tout / f"{i}.png").convert("RGB")
         for edge in (1024, 512):

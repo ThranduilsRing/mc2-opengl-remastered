@@ -134,7 +134,7 @@
   "tools/mc2texcook/cook_concrete_detail.py": "Offline cooker run by hand (usage in its docstring) to regenerate data/terrain_layers/concrete_detail_*.ktx2; no executable caller by design.",
   "tools/mc2texcook/cook_tgl_tiers.py": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
   "tools/mc2texcook/tests/test_cook_grass_turf.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
-  "tools/mc2texcook/tests/test_cook_terrain_layers.py":"Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
+  "tools/mc2texcook/tests/test_cook_terrain_layers.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/mc2texcook/tests/test_mc2texcook.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/mc2weapon/mc2weapon.py": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
   "tools/mc2weapon_gui/dist/mc2weapon-gui.bat": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
@@ -320,11 +320,12 @@
   "tools/glb_uv_mirror_stats.py": "Operator-run diagnostic (py -3 tools/glb_uv_mirror_stats.py <glb>) reporting UV mirroring stats for mech GLBs; run by hand when diagnosing tangent sign.",
   "scripts/box_contracts.sh": "Runs on the Linux box only: tools/box_run.py executes it inside its remote shell script (sh:bash scripts/box_contracts.sh row), so no repo caller names it.",
   "tools/box/install_vvl.sh": "Linux box one-time installer for the Vulkan validation layer (scp to the box, run as root); documented in its header.",
-  "tools/box/deploy.sh":"Linux box maintenance script: run on the box by hand or by tools/box_run.py remote shell (box-hygiene lane); not called from Python.",
+  "tools/box/deploy.sh": "Linux box maintenance script: run on the box by hand or by tools/box_run.py remote shell (box-hygiene lane); not called from Python.",
   "tools/box/env.sh": "Linux box maintenance script: run on the box by hand or by tools/box_run.py remote shell (box-hygiene lane); not called from Python.",
   "tools/box/filler/run_job.py": "Linux box maintenance script: run on the box by hand or by tools/box_run.py remote shell (box-hygiene lane); not called from Python.",
   "tools/box/filler/sync.sh": "Linux box maintenance script: run on the box by hand or by tools/box_run.py remote shell (box-hygiene lane); not called from Python.",
   "tools/box/lane_cleanup.sh": "Linux box maintenance script: run on the box by hand or by tools/box_run.py remote shell (box-hygiene lane); not called from Python.",
   "tools/box/mc2-diskwatch.sh": "Linux box maintenance script: run on the box by hand or by tools/box_run.py remote shell (box-hygiene lane); not called from Python.",
-  "tools/queue_append.py": "Orchestrator CLI run by hand to append a real-clock-stamped line to the ops queue file (py -3 tools/queue_append.py \"text\"); exercised by scripts/tests/test_queue_append.py via import only."
+  "tools/queue_append.py": "Orchestrator CLI run by hand to append a real-clock-stamped line to the ops queue file (py -3 tools/queue_append.py \"text\"); exercised by scripts/tests/test_queue_append.py via import only.",
+  "tools/overlay_upscale/overlay_tile_upscale_x16.py": "Manual offline art cook: py -3 tools/overlay_upscale/overlay_tile_upscale_x16.py --tex <data/textures> --out <dir>; regenerates 512/1024 overlay and cement tiles from the 256 art via realesrgan; never run by the engine or gates."
 }
