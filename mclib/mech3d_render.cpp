@@ -459,7 +459,7 @@ long Mech3DAppearance::render (long depthFixup)
 	// The render gate (GPU-lagged when the cull lifecycle is on), not the CPU inView, says whether the body is drawn.
 	mc2::waterreactive::buffer().submit(reinterpret_cast<uintptr_t>(this), scenarioTime,
 		position.x, position.y, getRadius() * 0.35f,
-		presentedAnimation().wakeRequested && status == OBJECT_STATUS_NORMAL && !isHelicopter && presentedAnimation().currentGestureId != 20,
+		presentedAnimation().wakeRequested && !isHelicopter && presentedAnimation().currentGestureId != 20,
 		visible && mechShouldRender && mc2_vis::meshDrawn(buildVisState()), false);
 	if (mechShouldRender)
 	{

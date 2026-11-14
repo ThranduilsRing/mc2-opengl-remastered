@@ -1,30 +1,11 @@
 #include "doctest.h"
 #include "../../RenderCore/water_reactive.h"
-#include "../../mclib/water_wake.h"
 #include "../../shaders/include/water_reactive.hglsl"
 #include <cstring>
 #include <limits>
 #include <memory>
 
 using namespace mc2::waterreactive;
-
-TEST_CASE("WaterReactive/only live moving units emit and death leaves rings to fade") {
-    CHECK(shouldEmit(true, 2, 0));
-    CHECK(shouldEmit(true, -2, 0));
-    CHECK_FALSE(shouldEmit(false, 20, 0)); // destroyed, disabled or shut down
-    CHECK_FALSE(shouldEmit(true, 0, 0));
-    CHECK_FALSE(shouldEmit(true, 0.5f, 0.5f));
-    Buffer b;
-    b.submit(1, 1, 0, 0, 20, shouldEmit(true, 2, 0), true, true);
-    b.submit(1, 1.5f, 1, 0, 20, shouldEmit(false, 2, 0), true, true);
-    CHECK(b.takeStats().emitted == 1);
-    CHECK(b.size() == 1);
-    GpuFrame gpu;
-    b.snapshot(2, gpu);
-    CHECK(gpu.stamps[0].positionRadiusAge[3] == doctest::Approx(1));
-    b.advance(4);
-    CHECK(b.size() == 0);
-}
 
 TEST_CASE("WaterReactive/wet visible sources only and hidden history removal") {
     Buffer b;

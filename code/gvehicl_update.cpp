@@ -6,7 +6,6 @@
 #include "hover_name.h"
 #include "tacticaloverview.h"
 #include "Gates/gate.h"
-#include "water_wake.h"
 
 
 // C3: env-gated lifecycle routing killswitch (same env var as objmgr.cpp).
@@ -497,9 +496,8 @@ long GroundVehicle::update (void)
 			feedSimHalf(0.0f, 0.0f);
 			int watercellR, watercellC;
 			land->worldToCell(position,watercellR, watercellC);
-			const auto wakeVelocity = getVelocity();
-			if (mc2::waterreactive::shouldEmit(getStatus() == OBJECT_STATUS_NORMAL, wakeVelocity.x, wakeVelocity.y) &&
-				(GameMap->getDeepWater(watercellR, watercellC) || GameMap->getShallowWater(watercellR, watercellC)))
+			if (GameMap->getDeepWater(watercellR, watercellC) || 
+				GameMap->getShallowWater(watercellR, watercellC))
 			{
 				appearance->startWaterWake();
 			}
