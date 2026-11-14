@@ -75,6 +75,7 @@ namespace {
 std::unique_lock<std::timed_mutex> lockSubmit(std::timed_mutex& m) {
     std::unique_lock<std::timed_mutex> lock(m, std::try_to_lock);
     if (lock.owns_lock()) return lock;
+    ZoneScopedN("VK.QueueLockWait");
     if (present_thread::onWorker()) { lock.lock(); return lock; }
     auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
     while (!lock.try_lock_for(std::chrono::milliseconds(2))) {
