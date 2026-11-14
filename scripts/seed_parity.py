@@ -24,9 +24,13 @@ import hashlib
 import json
 import os
 import shutil
+import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+
+import asset_parity
+import console_child
 
 PREFIX = "[SEED_PARITY]"
 def default_ref() -> Path:
@@ -63,6 +67,15 @@ def is_parity(rel: str) -> bool:
     return False
 
 
+def declared_assets() -> dict[str, str]:
+    """Use the tip's tracked declarations, never a working-copy allowlist."""
+    root = Path(__file__).resolve().parents[1]
+    tip = subprocess.check_output(
+        ["git", "-C", str(root), "rev-parse", "HEAD"], text=True,
+        **console_child.child_kwargs(redirected=True)).strip()
+    return asset_parity.intentional_changes(tip, root)
+
+
 def reference_files(ref: Path) -> dict[str, int]:
     """{relpath: size} of every parity file in the reference install."""
     out: dict[str, int] = {}
@@ -78,6 +91,13 @@ def reference_files(ref: Path) -> dict[str, int]:
                 rel = p.relative_to(ref).as_posix()
                 if is_parity(rel):
                     out[rel] = p.stat().st_size
+    for rel, expected in declared_assets().items():
+        path = ref / rel
+        if not path.is_file():
+            raise SystemExit(f"{PREFIX} FAIL: missing declared asset {ref / rel}")
+        if _sha(path) != expected:
+            raise SystemExit(f"{PREFIX} FAIL: declared asset hash mismatch {ref / rel}")
+        out[rel] = path.stat().st_size
     return out
 
 
