@@ -778,10 +778,13 @@ GameObjectPtr pickGameplayObjects(long x, long y, std::span<GameObjectPtr> list,
     });
     const auto& front = stack.front();
     if (pickTrace) {
-        char payload[192];
-        mc2::fmt::to_buf(payload, "{{\"mouse\":[{},{}],\"winner\":{},\"winner_class\":{},\"eligible\":{},\"candidates\":{}}}",
+        char payload[256];
+        std::string order;   // candidate order: partId[class]:forgiven:depth
+        for (size_t i = 0; i < stack.size() && i < 4; ++i)
+            order += std::format("{}[{}]:{}:{:.0f} ", stack[i].obj->getPartId(), static_cast<int>(stack[i].obj->getObjectClass()), stack[i].forgiven ? 1 : 0, stack[i].depth);
+        mc2::fmt::to_buf(payload, "{{\"mouse\":[{},{}],\"winner\":{},\"winner_class\":{},\"eligible\":{},\"candidates\":{},\"order\":\"{}\"}}",
             mc2::fmt::as_i32(x), mc2::fmt::as_i32(y), front.obj->getPartId(), static_cast<int>(front.obj->getObjectClass()),
-            front.eligible ? 1 : 0, static_cast<int>(stack.size()));
+            front.eligible ? 1 : 0, static_cast<int>(stack.size()), order.c_str());
         mc2_diag::writeEvent("PICK", 1, 0, payload);
     }
     return front.eligible ? front.obj : nullptr;
