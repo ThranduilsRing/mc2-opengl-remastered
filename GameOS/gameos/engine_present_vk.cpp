@@ -953,26 +953,28 @@ bool ensureHudTexObjects(EnginePresentVk::Impl& s) {
     if (s.hudTexPipe.get() && s.hudTexOpaquePipe.get() && s.hudTexOneInvAlphaPipe.get() && s.hudTexOneOnePipe.get())
         return true;
     if (!s.hudTexDsl) {
-        VkDescriptorSetLayoutBinding b{};
-        b.binding = 0;
-        b.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        b.descriptorCount = 1;
-        b.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        VkDescriptorSetLayoutBinding b[3]{};
+        for (uint32_t i = 0; i < 3; ++i) {
+            b[i].binding = i;
+            b[i].descriptorType = i ? VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            b[i].descriptorCount = 1;
+            b[i].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        }
         VkDescriptorSetLayoutCreateInfo ci{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
-        ci.bindingCount = 1; ci.pBindings = &b;
+        ci.bindingCount = 3; ci.pBindings = b;
         if (!mc2vk::create(s.hudTexDsl, s.dev, [&](auto* h) { return vkCreateDescriptorSetLayout(s.dev, &ci, nullptr, h); })) {
             s.hudColorVkFailed = true; return false;
         }
     }
     if (!s.hudTexPool) {
-        VkDescriptorPoolSize size{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 512};
+        VkDescriptorPoolSize sizes[2] = {{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 512}, {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1024}};
         VkDescriptorPoolCreateInfo pci{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
         // FREE_DESCRIPTOR_SET_BIT: the (handle,serial)-keyed HUD mirror evicts stale
         // entries and frees their descriptor sets back to the pool (VK-HUD-GLYPH-
         // CORRUPTION FIX) -- without this flag vkFreeDescriptorSets is illegal and the
         // pool would exhaust as runtime string serials accumulate.
         pci.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-        pci.maxSets = 512; pci.poolSizeCount = 1; pci.pPoolSizes = &size;
+        pci.maxSets = 512; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
         if (!mc2vk::create(s.hudTexPool, s.dev, [&](auto* h) { return vkCreateDescriptorPool(s.dev, &pci, nullptr, h); })) {
             s.hudColorVkFailed = true; return false;
         }
@@ -1093,10 +1095,14 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
     auto& m = s.hudTextureMirrors[key];
     m.lastFrame = s.hudMirrorFrameCounter;   // touched this frame -> not evictable yet
     const bool mipmapped = d.textureWidth == 2048 && d.textureHeight == 2048;
+    auto* normal = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_NORMAL);
+    auto* objectId = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_OBJECT_ID);
+    if (!normal || !objectId) return nullptr;
+    const auto sceneGeneration = mc2SharedSceneColorGeneration();
     const size_t baseBytes = static_cast<size_t>(d.textureWidth) * d.textureHeight * 4u;
     const VkDeviceSize bytes = mipmapped ? (baseBytes * 4u - 4u) / 3u : baseBytes;
     const bool needsUpload = m.serial != d.textureSerial || m.width != d.textureWidth ||
-                             m.height != d.textureHeight || m.bytes != bytes || !m.buffer;
+                             m.height != d.textureHeight || m.bytes != bytes || !m.buffer || m.sceneGeneration != sceneGeneration;
     if (!needsUpload)
         return &m;
     // VK-HUD-MIRRORCOPY-1: the draw carries a shared immutable mirror (refcount
@@ -1148,6 +1154,16 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
     wr.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     wr.pBufferInfo = &bi;
     vkUpdateDescriptorSets(s.dev, 1, &wr, 0, nullptr);
+    VkDescriptorImageInfo images[2] = {
+        {s.compositeNearestSampler.get(), normal->view.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+        {s.compositeNearestSampler.get(), objectId->view.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}};
+    for (uint32_t i = 0; i < 2; ++i) {
+        wr.dstBinding = i + 1;
+        wr.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        wr.pBufferInfo = nullptr; wr.pImageInfo = &images[i];
+        vkUpdateDescriptorSets(s.dev, 1, &wr, 0, nullptr);
+    }
+    m.sceneGeneration = sceneGeneration;
     m.serial = d.textureSerial;
     m.width = d.textureWidth;
     m.height = d.textureHeight;
@@ -1243,6 +1259,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
             td.height = mirror->height;
             td.textMode = (d.kind == 3) ? 1u : 0u;
             if (d.kind != 3 && d.textureWidth == 2048 && d.textureHeight == 2048) td.textMode = 2u;
+            if (td.textMode == 2u && !d.vertices.empty() && d.vertices[0].frgb == 0x434f4d50u) td.textMode = 3u;
             td.foreground = d.foregroundColor;
             td.opaque = (d.alphaMode == 1);
             td.oneInvAlpha = (d.alphaMode == 4); // VK-FIELD-VFX-3: additive-glow effect blend
@@ -1369,6 +1386,12 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
 
     }
     { ZoneScopedN("VKIsl.Present.Tail.Hud.DrawRecord");
+    auto* normal = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_NORMAL);
+    auto* objectId = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_OBJECT_ID);
+    for (auto* image : {normal, objectId}) if (image)
+        barrier(cb, image->image.get(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
     VkRenderPassBeginInfo rp{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
     rp.renderPass = s.hudColorRenderPass.get();
     rp.framebuffer = s.hudColorFramebuffer.get();
@@ -1458,6 +1481,10 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
     }
     vkCmdEndRenderPass(cb);
     gpuScope.end();
+    for (auto* image : {normal, objectId}) if (image)
+        barrier(cb, image->image.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
     }
     if (nativeDraws) *nativeDraws = triDraws + lineDraws + texDraws;
     if (texturedDraws) *texturedDraws = texDraws;

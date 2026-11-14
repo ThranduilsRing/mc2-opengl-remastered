@@ -151,6 +151,7 @@ struct EnginePresentVk::Impl {
     mc2vk::OwnedShaderModule  hudTexVert;
     mc2vk::OwnedShaderModule  hudTexFrag;
     struct HudTextureMirror {
+        unsigned long long sceneGeneration = 0;
         uint32_t serial = 0;
         uint32_t width = 0;
         uint32_t height = 0;

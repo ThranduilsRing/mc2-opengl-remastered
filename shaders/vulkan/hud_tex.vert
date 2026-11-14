@@ -14,6 +14,7 @@ layout(push_constant) uniform HudPush {
 
 layout(location = 0) out vec4 vColor;
 layout(location = 1) out vec2 vUv;
+layout(location = 2) noperspective out vec2 vSceneUv;
 
 vec4 unpackArgb(uint c)
 {
@@ -29,6 +30,7 @@ void main()
     vec2 ndc = vec2((inPos.x / pc.extent.x) * 2.0 - 1.0,
                     1.0 - (inPos.y / pc.extent.y) * 2.0);
     gl_Position = vec4(ndc, 0.0, 1.0) / max(inPos.z, 0.000001);
+    vSceneUv = ndc * 0.5 + 0.5;
     vColor = unpackArgb(inArgb);
     vUv = inUv;
 }

@@ -386,6 +386,8 @@ void TG_Shape::CpuDraw (const mc2::tgl::ViewUniforms& view, const glm::mat4& sha
 		gv[0].u = tri.uvdata.u0; gv[0].v = tri.uvdata.v0;
 		gv[1].u = tri.uvdata.u1; gv[1].v = tri.uvdata.v1;
 		gv[2].u = tri.uvdata.u2; gv[2].v = tri.uvdata.v2;
+		// Loose TGA rows are bottom-up; the old cooked compass was top-down.
+		if (compass) for (auto& v : gv) v.v = 1.0f - v.v;
 
 		if (world)
 		{
@@ -429,6 +431,7 @@ void TG_Shape::CpuDraw (const mc2::tgl::ViewUniforms& view, const glm::mat4& sha
 				projectClip(farClipped[0], out[0]);
 				projectClip(farClipped[k], out[1]);
 				projectClip(farClipped[k + 1], out[2]);
+				if (compass) for (auto& v : out) v.frgb = 0x434f4d50;
 				if (forcedZ >= 0.0f)
 					out[0].z = out[1].z = out[2].z = forcedZ;
 				if (hud) {
