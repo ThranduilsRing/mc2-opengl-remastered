@@ -122,6 +122,28 @@ bool clearMenuMatte(std::string_view path, Pixels& px) {
         const int coverage = well ? 255 : std::clamp((value - 4) * 255 / 12, 0, 255);
         rgba[dst + 3] = static_cast<uint8_t>((px.channels == 4 ? px.data[src + 3] : 255) * coverage / 255);
     }
+    // Only exterior-connected matte is empty space. Enclosed black paint (hazard
+    // stripes, vents and button wells) belongs to the chrome.
+    std::vector<bool> exterior(static_cast<size_t>(px.w) * px.h, false);
+    std::vector<size_t> pending;
+    const auto visit = [&](size_t i) {
+        const int authored = px.channels == 4 ? px.data[i * 4 + 3] : 255;
+        if (!exterior[i] && (rgba[i * 4 + 3] < authored || authored == 0)) {
+            exterior[i] = true;
+            pending.push_back(i);
+        }
+    };
+    for (int x = 0; x < px.w; ++x) { visit(x); visit(static_cast<size_t>(px.h - 1) * px.w + x); }
+    for (int y = 0; y < px.h; ++y) { visit(static_cast<size_t>(y) * px.w); visit(static_cast<size_t>(y + 1) * px.w - 1); }
+    for (size_t at = 0; at < pending.size(); ++at) {
+        const size_t i = pending[at];
+        if (i % px.w) visit(i - 1);
+        if (i % px.w + 1 < static_cast<size_t>(px.w)) visit(i + 1);
+        if (i >= static_cast<size_t>(px.w)) visit(i - px.w);
+        if (i + px.w < exterior.size()) visit(i + px.w);
+    }
+    for (size_t i = 0; i < exterior.size(); ++i)
+        if (!exterior[i]) rgba[i * 4 + 3] = px.channels == 4 ? px.data[i * 4 + 3] : 255;
     px.channels = 4;
     px.data = std::move(rgba);
     return true;
