@@ -12,11 +12,11 @@
 #include "package_chassis.h"
 #include "logistics.h"
 #include "missionbegin.h"
-#include "../GameOS/gameos/vulkan_context.h"
 #include "../GuiRuntime/PlayerFrontEnd.h"
 
 extern bool justStartMission;
 extern char missionName[1024];
+namespace mc2vk { size_t deferredDestroyDepth(); }
 
 namespace {
 struct AbortReloadFixture {
@@ -50,7 +50,7 @@ void mc2AbortReloadFixtureUpdate()
         }
     } else if (f.phase == 3 && !mission->isActive()) {
         if (mc2_diag::tagRequested("ABORT_RELOAD")) std::fprintf(stderr, "[ABORT_RELOAD] cycle=%zu phase=unload mission=%s deferred=%zu\n",
-                     f.cycle + 1, f.current.c_str(), mc2vk::engineVulkanContextNoWait().deferred().size());
+                     f.cycle + 1, f.current.c_str(), mc2vk::deferredDestroyDepth());
         logistics->start(log_SPLASH);
         logistics->getMissionBegin()->beginSplash();
         f.since = now;
