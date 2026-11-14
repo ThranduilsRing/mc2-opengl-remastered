@@ -317,9 +317,27 @@ def enforce(install: Path | str, ref: Path | str | None = None, sync_missing: bo
     ref = Path(ref) if ref is not None else default_ref()
     if is_exempt(install, ref) or not ref.is_dir():
         return None
+    repaired = []
+    # Declarations pin published cooks that a lean seed or a host without cook sources may lack.
+    if sync_missing:
+        if declared is None:
+            _, commit = manifest_assets(install)
+            declared = intentional_changes(commit)
+        for rel, expected in (declared or {}).items():
+            dst = Path(install) / rel
+            if not dst.is_file() or _sha(dst) != expected:
+                source = ref / rel
+                if not source.is_file() or _sha(source) != expected:
+                    raise ValueError(f"INTENTIONAL ASSET reference hash mismatch: {rel}")
+                if not dst.resolve().is_relative_to(Path(install).resolve()):
+                    raise ValueError(f"invalid owned payload path/hash: {rel}")
+                _copy(source, dst)
+                repaired.append(rel)
     result = compare(install, ref, skip=skip, payload=payload, declared=declared)
     if sync_missing and not result.ok:
         result = sync(install, ref, result, jobs)
+    result.synced += len(repaired)
+    result.synced_bytes += sum((Path(install) / rel).stat().st_size for rel in repaired)
     return result
 
 
@@ -355,9 +373,7 @@ def main(argv=None) -> int:
     if not ref.is_dir():
         print(f"{PREFIX} SKIPPED reference not found: {ref.as_posix()}")
         return 0
-    result = compare(install, ref)
-    if args.sync and not result.ok:
-        result = sync(install, ref, result, jobs())
+    result = enforce(install, ref, sync_missing=args.sync, jobs=jobs())
     print(verdict_line(result, ref))
     return 0 if result.ok else 1
 
