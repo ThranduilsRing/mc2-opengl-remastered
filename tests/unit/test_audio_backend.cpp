@@ -119,6 +119,8 @@ TEST_CASE("AudioBackend/file WAV preserves user-memory PCM") {
     gosAudio_DestroyResource(&loaded);
 }
 TEST_CASE("AudioBackend/WAV handover is nonblocking and consumes complete PCM once") {
+    AudioDevice device;
+    REQUIRE(gos_CreateAudio());
     std::promise<WavChunk> producer;
     WavDelivery delivery{producer.get_future()};
     WavChunk admitted(nullptr, Mix_FreeChunk);
@@ -137,6 +139,8 @@ TEST_CASE("AudioBackend/WAV handover is nonblocking and consumes complete PCM on
     worker.join();
 }
 TEST_CASE("AudioBackend/cancelled WAV delivery never waits for the producer") {
+    AudioDevice device;
+    REQUIRE(gos_CreateAudio());
     std::promise<WavChunk> producer;
     { WavDelivery cancelled{producer.get_future()}; }
     // Completion after cancellation owns and releases its result with no handle access.
