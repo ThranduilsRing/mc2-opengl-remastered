@@ -299,7 +299,7 @@ void Camera::ZoomIn (float amount)
 		float speedMult = 1.0f + s_scrollMomentum * 0.3f;
 		float sf = newScaleFactor > 0.01f ? newScaleFactor : 0.01f;
 		float altRange = max(1.0f, cameraAltitudeDesired - AltitudeMinimum);
-		cameraAltitudeDesired -= altRange * (amount / sf) * 0.0225f * speedMult;
+		cameraAltitudeDesired -= altRange * (amount / sf) * 0.045f * speedMult;
 		cameraAltitudeDesired = std::max(cameraAltitudeDesired, AltitudeMinimum);
 		// cameraAltitude lerps toward cameraAltitudeDesired in update()
 	}
@@ -327,7 +327,7 @@ void Camera::ZoomOut (float amount)
 		float speedMult = 1.0f + s_scrollMomentum * 0.3f;
 		float sf = newScaleFactor > 0.01f ? newScaleFactor : 0.01f;
 		float altRange = max(1.0f, testMax - cameraAltitudeDesired);
-		cameraAltitudeDesired += altRange * (amount / sf) * 0.0225f * speedMult;
+		cameraAltitudeDesired += altRange * (amount / sf) * 0.045f * speedMult;
 		cameraAltitudeDesired = std::min(cameraAltitudeDesired, testMax);
 		// cameraAltitude lerps toward cameraAltitudeDesired in update()
 	}
@@ -451,7 +451,6 @@ void Camera::ZoomMax (void)
 //---------------------------------------------------------------------------
 void Camera::tiltValue (float value)
 {
-	pitchActive = false;
 	projectionAngle = value;
 	if (usePerspective)
 	{
@@ -468,24 +467,32 @@ void Camera::tiltValue (float value)
 //---------------------------------------------------------------------------
 void Camera::tiltUp (float amount)
 {
-	if (!pitchActive || projectionAngle != pitchLast) {
-		pitchGoal = pitchLast = projectionAngle;
-		pitchVelocity = 0.0f;
+	projectionAngle -= amount;
+	if (usePerspective)
+	{
+		projectionAngle = std::max(projectionAngle, MIN_PERSPECTIVE);
 	}
-	pitchActive = true;
-	pitchGoal = std::clamp(pitchGoal - amount, usePerspective ? MIN_PERSPECTIVE : MIN_ORTHO, MAX_PERSPECTIVE);
+	else
+	{
+		projectionAngle = std::max(projectionAngle, MIN_ORTHO);
+	}
+
+	calculateProjectionConstants();
 }
 
 //---------------------------------------------------------------------------
 void Camera::tiltDown (float amount)
 {
-	tiltUp(-amount);
+	projectionAngle += amount;
+
+	projectionAngle = std::min(projectionAngle, MAX_PERSPECTIVE);
+
+	calculateProjectionConstants();
 }
 
 //---------------------------------------------------------------------------
 void Camera::tiltNormal (void)
 {
-	pitchActive = false;
 	projectionAngle = NORM_PERSPECTIVE;
 	calculateProjectionConstants();
 }

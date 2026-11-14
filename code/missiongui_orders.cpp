@@ -853,13 +853,15 @@ int MissionInterfaceManager::zoomIn()
 }
 int MissionInterfaceManager::zoomChoiceOut()
 {
-	eye->ZoomOut(zoomInc * 18.0f * eye->getScaleFactor());
+	float frameFactor = frameLength / baseFrameLength;
+	eye->ZoomOut(zoomInc * frameFactor * 18.0f * eye->getScaleFactor());
 
 	return 1;
 }
 int MissionInterfaceManager::zoomChoiceIn()
 {
-	eye->ZoomIn(zoomInc * 18.0f * eye->getScaleFactor());
+	float frameFactor = frameLength / baseFrameLength;
+	eye->ZoomIn(zoomInc * frameFactor * 18.0f * eye->getScaleFactor());
  	return 1;
 }
 int MissionInterfaceManager::rotateLeft()
@@ -906,14 +908,14 @@ int MissionInterfaceManager::tiltUp()
 {
 	float frameFactor = frameLength / baseFrameLength;
 	float scrollFactor = scrollInc / eye->getScaleFactor() * frameFactor;
-	eye->tiltDown(scrollFactor * 15.0f);
+	eye->tiltDown(scrollFactor * frameFactor * 30.0f);
 	return 1;
 }
 int MissionInterfaceManager::tiltDown()
 {
 	float frameFactor = frameLength / baseFrameLength;
 	float scrollFactor = scrollInc / eye->getScaleFactor() * frameFactor;
-	eye->tiltUp(scrollFactor * 15.0f);
+	eye->tiltUp(scrollFactor * frameFactor * 30.0f);
 	return 1;
 	
 }
