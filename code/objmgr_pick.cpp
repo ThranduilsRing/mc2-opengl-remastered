@@ -635,7 +635,7 @@ void gameplayPickBattery(GameObjectManager& manager) {
     busy = false;
 }
 
-struct PickCandidate { GameObjectPtr obj; double depth; int priority; bool eligible; };
+struct PickCandidate { GameObjectPtr obj; double depth; int priority; bool eligible; bool forgiven; };
 
 double pickTerrainDepth(const double (&origin)[3], const double (&direction)[3]) {
     double depth = std::numeric_limits<double>::infinity();
@@ -719,6 +719,7 @@ GameObjectPtr pickGameplayObjects(long x, long y, std::span<GameObjectPtr> list,
         const bool coreHit = x >= rect.left+pad && x <= rect.right-pad
             && y >= rect.top+pad && y <= rect.bottom-pad;
         double surfaceT = terrainT;
+        bool forgiven = false;
         const auto hit = mc2::pickDepthWithForgiveness(obj->isMover(),
             [&](double& t) { return objectPickDepth(obj, origin, direction, t); },
             [&](double& t) {
@@ -739,11 +740,20 @@ GameObjectPtr pickGameplayObjects(long x, long y, std::span<GameObjectPtr> list,
                 || !mc2::pickScreenRay(*eye, std::lround(screen.x), std::lround(screen.y), moverOrigin, moverDirection)
                 || !objectPickDepth(obj, moverOrigin, moverDirection, t)) return false;
             surfaceT = pickTerrainDepth(moverOrigin, moverDirection);
+            forgiven = true;
             return true;
         });
         if (!hit) { rejectEnemy(obj, "ray_miss"); continue; }
         const double depth = *hit;
-        if (!mc2::pickBeforeSurface(depth, surfaceT)) {
+        double occlusionSlack = 0;
+        if (obj->isMover()) {
+            const auto* type = obj->getAppearance()->getAppearanceType();
+            glm::vec3 lo, hi;
+            mc2ToRender(lo, type->typeUpperLeft);
+            mc2ToRender(hi, type->typeLowerRight);
+            occlusionSlack = glm::length(hi - lo);
+        }
+        if (!mc2::pickBeforeSurface(depth, surfaceT, occlusionSlack)) {
             rejectEnemy(obj, "terrain_occluded", depth, surfaceT);
             if (mc2_diag::tagEnabled("CURSOR_TARGET")) {
                 char payload[256];
@@ -759,12 +769,12 @@ GameObjectPtr pickGameplayObjects(long x, long y, std::span<GameObjectPtr> list,
             && (excludeCommander == -1 || obj->getCommanderId() != excludeCommander)
             && (!terrainOnly || !obj->isMover()) && std::find(list.begin(), list.end(), obj) != list.end();
         if (!eligible) rejectEnemy(obj, "ineligible");
-        stack.push_back({obj, depth, pickPriority(obj) + (coreHit ? 0 : 5), eligible});
+        stack.push_back({obj, depth, pickPriority(obj) + (coreHit ? 0 : 5), eligible, forgiven});
     }
     if (stack.empty()) return GameObjectPtr{};
     std::stable_sort(stack.begin(), stack.end(), [](const auto& a, const auto& b) {
-        return mc2::pickStackBefore({a.obj->isMover() && a.eligible, a.depth, a.priority, static_cast<long>(a.obj->getHandle())},
-                                    {b.obj->isMover() && b.eligible, b.depth, b.priority, static_cast<long>(b.obj->getHandle())});
+        return mc2::pickStackBefore({a.obj->isMover() && a.eligible, a.depth, a.priority, static_cast<long>(a.obj->getHandle()), a.forgiven},
+                                    {b.obj->isMover() && b.eligible, b.depth, b.priority, static_cast<long>(b.obj->getHandle()), b.forgiven});
     });
     const auto& front = stack.front();
     if (pickTrace) {

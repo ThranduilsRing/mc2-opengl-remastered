@@ -34,9 +34,12 @@ inline bool pickBoxHit(const double (&origin)[3], const double (&direction)[3],
     return true;
 }
 
-inline bool pickBeforeSurface(double objectT, double surfaceT)
+// slack: a mover stands on gameplay height while the surface sampled here is the visual terrain, which can rise a few
+// units above it (a unit on a bump or a slope reads as a few units "behind" the ground at its own feet). Movers pass
+// their bounds diagonal, so only a unit buried deeper than its own size behind the surface is occluded.
+inline bool pickBeforeSurface(double objectT, double surfaceT, double slack = 0)
 {
-    return std::isfinite(objectT) && objectT >= 0 && objectT <= surfaceT + 1e-3;
+    return std::isfinite(objectT) && objectT >= 0 && objectT <= surfaceT + 1e-3 + slack;
 }
 
 // The caller has already tested the stock screen rectangle. Static scenery
@@ -61,10 +64,13 @@ inline bool pickCandidateBefore(bool mover, double depth, int priority,
 
 // Total order of the gameplay pick stack: an eligible (visible, targetable) mover always precedes scenery
 // (trees, props, buildings, even when nearer along the ray); then depth, priority, handle.
-struct PickRank { bool eligibleMover; double depth; int priority; long handle; };
+// forgiven: the cursor ray missed the unit's bounds and the hit comes from a ray through its centre (padded-rect recovery);
+// a unit the cursor actually hits outranks one that was only forgiven, however far behind it stands (grazing views overlap rects).
+struct PickRank { bool eligibleMover; double depth; int priority; long handle; bool forgiven = false; };
 inline bool pickStackBefore(const PickRank& a, const PickRank& b)
 {
     if (a.eligibleMover != b.eligibleMover) return a.eligibleMover;
+    if (a.eligibleMover && a.forgiven != b.forgiven) return !a.forgiven;
     if (a.depth != b.depth) return a.depth < b.depth;
     if (a.priority != b.priority) return a.priority < b.priority;
     return a.handle < b.handle;
