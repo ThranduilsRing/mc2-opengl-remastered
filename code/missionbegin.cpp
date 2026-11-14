@@ -1902,25 +1902,6 @@ void MissionBegin::render()
 				// pattern as Mechlopedia::render).
 				GUI_RECT rect = { 0, 0, Environment.screenWidth, Environment.screenHeight };
 				drawRect( rect, 0xff000000 );
-				// MENU-STALE-CLEAR-2: the GameOS clear killed the top-2/3 ghost
-				// but ImGui-layer remnants (any panel's defs page submitted
-				// earlier this frame) survived in the bottom third. Submit an
-				// opaque ImGui-layer backdrop BEFORE the menu page so the menu
-				// composites over black, not over the previous screen.
-				// LEGACY-FRONTEND-COMPOSITE-1: ONLY when the menu renders as
-				// an ImGui defs page. When the menu is on the legacy GameOS
-				// path (MC2_GAMEOS_UI_DEFS=0, or the lockstep-harden zero-draw
-				// fail-soft), ALL its draws composite in the GameOS HUD layer,
-				// which flushes BEFORE ImGui — this opaque ImGui-layer quad
-				// then covers the entire legacy front-end (root cause of the
-				// "legacy menu renders black" regression: HUD replay put real
-				// menu pixels on FB0, GuiRuntime::Render painted them over).
-				if ( mainMenu->rendersDefsPageOverlay() )
-				{
-					float dw = 0.f, dh = 0.f;
-					if ( GuiRuntime::GetDisplaySize( dw, dh ) && dw > 0.f )
-						GuiRuntime::DrawUiRect( 0.f, 0.f, dw, dh, 0xff000000, true );
-				}
 			}
 		}
 		mainMenu->render();

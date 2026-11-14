@@ -10,6 +10,11 @@ bool GuiRuntime::IsReadyForUiText()
     return g_imguiInitialized && s_frameActive && ImGui::GetCurrentContext() != nullptr;
 }
 
+float GuiRuntime::GetMouseWheelDelta()
+{
+    return IsReadyForUiText() ? ImGui::GetIO().MouseWheel : 0.0f;
+}
+
 
 bool GuiRuntime::DrawUiRect(float x,
                             float y,
