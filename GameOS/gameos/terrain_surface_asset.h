@@ -44,6 +44,15 @@ std::vector<uint8_t> encodeSurfaceAsset(const SurfaceAsset& asset);
 std::optional<SurfaceAsset> loadCachedSurfaceAsset(std::string_view dir, uint64_t expectedSource);
 bool storeCachedSurfaceAsset(std::string_view dir, const SurfaceAsset& asset);
 
+// Upload-ready bytes plus the exact float samples consumed by the <=1024 material classifier.
+struct PackedSurfaceAsset {
+    uint32_t width = 0, height = 0;
+    std::vector<uint8_t> rgba;
+    SurfaceAsset materials;
+};
+std::optional<PackedSurfaceAsset> loadCachedPackedSurface(std::string_view dir, uint64_t source, bool srgb);
+bool storeCachedPackedSurface(std::string_view dir, const SurfaceAsset& surface, bool srgb, std::span<const uint8_t> rgba);
+
 struct SurfaceCookInput;
 // A cook is only a cache hint. The caller passes inputs already resolved by the mission's existing loaders.
 std::optional<SurfaceAsset> resolveSurfaceAsset(const SurfaceCookInput& input, std::span<const uint8_t> candidate,

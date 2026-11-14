@@ -294,6 +294,56 @@ TEST_CASE("surface cook: breakup alpha is independently invalidated and editable
     CHECK(mc2terrain::evaluateSurfaceBreakup(0, 0) == doctest::Approx(0.5));
 }
 
+TEST_CASE("packed surface cache: exact upload and material samples, key changes and damaged files miss") {
+    namespace fs = std::filesystem;
+    const auto dir = fs::temp_directory_path() / "mc2_packed_surface_test";
+    fs::remove_all(dir);
+    std::vector<uint8_t> sourcePixels{20, 70, 190, 255};
+    SurfaceCookInput in;
+    in.rgba = sourcePixels; in.colorWidth = in.colorHeight = 1; in.srgb = true;
+    in.worldSpan = 256; in.outputWidth = 2051; in.outputHeight = 3; in.staticBreakup = true;
+    const auto surface = mc2terrain::cookSurface(in);
+    REQUIRE(surface);
+    const auto key = surface->sourceHash;
+    sourcePixels[0] ^= 1;
+    CHECK(mc2terrain::surfaceCookSourceHash(in) != key);
+    sourcePixels[0] ^= 1;
+    in.srgb = false;
+    CHECK(mc2terrain::surfaceCookSourceHash(in) != key);
+    in.srgb = true;
+    std::vector<uint8_t> upload(surface->macroColor.size() * 4);
+    for (size_t i = 0; i < upload.size(); ++i) upload[i] = static_cast<uint8_t>(i);
+    REQUIRE(mc2terrain::storeCachedPackedSurface(dir.string(), *surface, true, upload));
+    const auto hit = mc2terrain::loadCachedPackedSurface(dir.string(), key, true);
+    REQUIRE(hit);
+    CHECK(hit->rgba == upload);
+    CHECK(hit->width == surface->width); CHECK(hit->height == surface->height);
+    CHECK(hit->materials.macroColor.size() == 1024 * 3);
+    for (bool sand : {false, true})
+        CHECK(mc2terrain::cookSurfaceMaterials(*surface, {}, 0, {}, 0, 1024, 3, sand) ==
+              mc2terrain::cookSurfaceMaterials(hit->materials, {}, 0, {}, 0, 1024, 3, sand));
+    CHECK_FALSE(mc2terrain::loadCachedPackedSurface(dir.string(), key + 1, true));
+    CHECK_FALSE(mc2terrain::loadCachedPackedSurface(dir.string(), key, false));
+    const auto path = fs::directory_iterator(dir)->path();
+    const auto size = fs::file_size(path);
+    for (long offset : {0L, 4L, 8L, 20L, 24L, 32L, 40L, 60L}) {
+        REQUIRE(mc2terrain::storeCachedPackedSurface(dir.string(), *surface, true, upload));
+        auto* file = std::fopen(path.string().c_str(), "r+b");
+        REQUIRE(file);
+        std::fseek(file, offset, SEEK_SET); const int byte = std::fgetc(file);
+        std::fseek(file, offset, SEEK_SET); std::fputc(byte ^ 1, file); std::fclose(file);
+        CHECK_FALSE(mc2terrain::loadCachedPackedSurface(dir.string(), key, true));
+    }
+    for (uintmax_t length : {size - 1, uintmax_t(48), uintmax_t(0)}) {
+        REQUIRE(mc2terrain::storeCachedPackedSurface(dir.string(), *surface, true, upload));
+        fs::resize_file(path, length);
+        CHECK_FALSE(mc2terrain::loadCachedPackedSurface(dir.string(), key, true));
+    }
+    REQUIRE(mc2terrain::storeCachedPackedSurface(dir.string(), *surface, true, upload));
+    REQUIRE(mc2terrain::loadCachedPackedSurface(dir.string(), key, true));
+    fs::remove_all(dir);
+}
+
 TEST_CASE("surface cook cache: roundtrip, stale key, corrupt and truncated files, bit-identical output") {
     namespace fs = std::filesystem;
     const fs::path dir = fs::temp_directory_path() / "mc2_terrain_cache_test";
