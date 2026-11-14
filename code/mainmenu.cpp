@@ -33,6 +33,7 @@ struct DDSURFACEDESC2 {
 #include "Gates/gate_cold.h"   // str<>()
 #include "mc2fmt.h"
 #include "../GuiRuntime/PlayerFrontEnd.h"
+#include "../GuiRuntime/GuiRuntime.h"
 #include "imgui.h"
 extern CPrefs prefs;
 
