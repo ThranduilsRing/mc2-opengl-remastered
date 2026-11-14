@@ -827,7 +827,7 @@ void bakeForestOcclusion(float sunX, float sunY, float sunUp) {
         const float scale = std::max(0.05f, std::sqrt(m[0]*m[0] + m[4]*m[4] + m[8]*m[8]));
         trees.push_back({o.x, o.z, o.y, std::max(1.0f, 2.0f * std::fabs(c[2]) * scale), c[1] * scale, i});
     }
-    constexpr float kCell = 32.0f, kReach = 96.0f;
+    constexpr float kCell = 64.0f, kReach = 320.0f; // trees run ~120 wu tall with ~55 wu crown radii
     std::map<std::pair<int,int>, std::vector<uint32_t>> grid;
     auto cellOf = [&](float v) { return static_cast<int>(std::floor(v / kCell)); };
     for (uint32_t i = 0; i < trees.size(); ++i) grid[{cellOf(trees[i].x), cellOf(trees[i].z)}].push_back(i);
