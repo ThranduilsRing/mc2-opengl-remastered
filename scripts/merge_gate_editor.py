@@ -14,7 +14,6 @@ def main(jobs):
                  "EditRel", *TESTS, "ui_editor"]]
     commands += [[str(ROOT / "build64-ninja/out/editor" / (name + ".exe"))] for name in TESTS]
     for command in commands:
-        # background-launch: allow Only Ninja and the three console unit executables above; no GUI launch.
         result = subprocess.call(command, cwd=ROOT, **console_child.child_kwargs(redirected=True))
         if result:
             return result
