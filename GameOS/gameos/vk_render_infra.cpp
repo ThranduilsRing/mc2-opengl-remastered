@@ -692,13 +692,9 @@ void prewarm(int width,int height) {
     auto& s=state(); const auto begin=std::chrono::steady_clock::now(); const uint64_t before=s.creations;
     const double pipelineMsBefore=s.creationMs;
     const auto warm = [&](std::string_view family, int (*prepare)(int,int)) {
-        ::graphics::loading_events_phase(family);
         ::graphics::pump_loading_events();
-        ::graphics::redraw_loading_screen();
         const auto started=std::chrono::steady_clock::now();
-        int ready=0;
-        // Only the worker touches render resources until it joins; main services OS events.
-        ::graphics::loading_work([&] { ready=prepare(width,height); });
+        const int ready=prepare(width,height);
         if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_LOAD_RESOURCE v1] family=%.*s ready=%d ms=%.3f\n",static_cast<int>(family.size()),family.data(),ready,
             std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-started).count());
         return ready;
@@ -712,15 +708,11 @@ void prewarm(int width,int height) {
     ready+=warm("water",mc2_vk_water_island_prewarm);
     ready+=warm("vegetation",mc2_vk_vfx_island_prewarm);
     ready+=warm("shadows",mc2_vk_shadow_island_prewarm);
-    ::graphics::loading_events_phase("postprocess");
-    ::graphics::redraw_loading_screen();
-    ::graphics::loading_work([&] {
     mc2_vk_overlay_prewarm(width,height);
     ready+=mc2_vk_impact_decals_prewarm(width,height);
     if(auto* post=getGosPostProcess()) { post->prewarmVkFog(); post->prewarmVkScreenFx(); post->prewarmVkHzb(); }
     ready+=getOrCreateEnginePresentVk().prewarmPipelines() ? 1 : 0;
     getOrCreateEngineVulkanContext().textures().finishLoading();
-    });
     warm("shadow_bake",mc2_vk_shadow_island_load_bake);   // F1: after every family, so the bake inputs (prop geometry, alpha array) are resident
     saveCache();
     (void)ledgerJson();  // Fresh driver counters for crashes before the first periodic snapshot.

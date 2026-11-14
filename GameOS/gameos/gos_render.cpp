@@ -212,15 +212,14 @@ void set_native_cursor(SDL_Cursor* cursor, bool visible)
 
 static LoadingPumpStats s_loadPumps;
 
-void loading_work(const std::function<void()>& work, bool redraw)
+void loading_work(const std::function<void()>& work)
 {
     if (SDL_ThreadID() != g_window_thread || s_loadPumps.phase.empty()) {
         work();
         return;
     }
-    mc2vk::present_thread::detail::workPumping(work, [=] {
+    mc2vk::present_thread::detail::workPumping(work, [] {
         mc2vk::present_thread::pumpWindowMessages();
-        if (redraw) redraw_loading_screen();
     });
 }
 

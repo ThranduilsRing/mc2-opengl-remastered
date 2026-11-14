@@ -90,8 +90,7 @@ struct LoadingPumpStats {
 void begin_loading_events();
 void loading_events_phase(std::string_view phase);
 void end_loading_events();
-// Redraw is opt-in: driver/resource work can hold locks needed by presentation.
-void loading_work(const std::function<void()>& work, bool redraw = false);
+void loading_work(const std::function<void()>& work);
 void set_loading_draw(void (*draw)());
 void redraw_loading_screen();
 std::string_view loading_phase();

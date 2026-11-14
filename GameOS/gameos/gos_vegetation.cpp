@@ -2,7 +2,6 @@
 // the frame sends camera parameters and the block-visibility field, never a per-instance list.
 #include "mc2_czstring.h"
 #include "gos_vegetation.h"
-#include "gos_render.h"
 #include "vulkan_vfx_geometry.h"
 #include "vk_vegetation_state.h"
 #include "vulkan_context.h"
@@ -220,12 +219,7 @@ void GosVegetation::uploadInstances(const Instance* data, uint32_t count) {
     mc2veg::State& gpu = mc2veg::State::instance();
     if (!data || !count) { gpu.clear(mc2vk::getOrCreateEngineVulkanContext()); return; }
     // Placement is immutable between uploads. Group nearby clumps once so the device walk rejects regions instead of revisiting the whole map.
-    std::vector<Instance> sorted;
-    std::vector<mc2veg::GpuInstance> gpuInstances;
-    std::vector<mc2veg::GpuRegion> gpuRegions;
-    graphics::loading_events_phase("vegetation_pack");
-    graphics::loading_work([&] {
-    sorted.assign(data, data + count);
+    std::vector<Instance> sorted(data, data + count);
     std::sort(sorted.begin(), sorted.end(), [](const auto& a, const auto& b) { return cell(a) < cell(b); });
     // Over the preset ceiling or the live GPU headroom: keep every Nth clump (the sort keeps the thinning even per cell) instead of dropping all vegetation.
     {
@@ -240,11 +234,12 @@ void GosVegetation::uploadInstances(const Instance* data, uint32_t count) {
             mc2::fmt::print_err("[VK_RESIDENCY v1] thinned=vegetation stride={:d} instances={:d}->{:d}\n", mc2::fmt::as_u32(stride), mc2::fmt::as_u64(before), mc2::fmt::as_u64(kept));
         }
     }
-    gpuInstances.resize(sorted.size());
+    std::vector<mc2veg::GpuInstance> gpuInstances(sorted.size());
     for (size_t k = 0; k < sorted.size(); ++k) {
         const auto& i = sorted[k];
         gpuInstances[k] = mc2::vegetation::packInstance(i.x, i.y, i.z, i.yaw, i.scale, i.atlasFrame, i.seed);
     }
+    std::vector<mc2veg::GpuRegion> gpuRegions;
     for (size_t begin = 0; begin < sorted.size();) {
         size_t end = begin + 1;
         const auto key = cell(sorted[begin]);
@@ -259,11 +254,7 @@ void GosVegetation::uploadInstances(const Instance* data, uint32_t count) {
             std::sqrt(2.0f * 64.0f * 64.0f + (hi - lo) * (hi - lo) * 0.25f) + pad, static_cast<uint32_t>(begin), static_cast<uint32_t>(end), 0u, 0u});
         begin = end;
     }
-    }, true);
-    graphics::loading_events_phase("vegetation_upload");
-    bool uploaded = false;
-    graphics::loading_work([&] { uploaded = gpu.upload(mc2vk::getOrCreateEngineVulkanContext(), gpuInstances, gpuRegions); });
-    if (uploaded) {
+    if (gpu.upload(mc2vk::getOrCreateEngineVulkanContext(), gpuInstances, gpuRegions)) {
         populationCount = static_cast<uint32_t>(sorted.size());
         peak = std::max(peak, populationCount);
     }
