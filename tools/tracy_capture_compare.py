@@ -305,19 +305,35 @@ def owner_capture_mode():
     return True
 
 
+def camera_command(channel, command, timeout=10):
+    """Wait for the engine acknowledgement; a first rendered frame can exceed 100 ms."""
+    ack = channel.with_suffix(channel.suffix + ".ack")
+    before = len(ack.read_text(encoding="utf-8")) if ack.exists() else 0
+    deadline = time.monotonic() + timeout
+    while channel.stat().st_size:
+        if time.monotonic() >= deadline:
+            raise RuntimeError("pan camera command channel was not consumed")
+        time.sleep(.01)
+    channel.write_text(command, encoding="utf-8")
+    receipt = command.splitlines()[0] + " -> ok"
+    while time.monotonic() < deadline:
+        if ack.exists() and receipt in ack.read_text(encoding="utf-8")[before:]:
+            return
+        time.sleep(.01)
+    raise RuntimeError("pan camera command was not acknowledged")
+
+
 def pan_camera(channel, half_map, seconds):
     """Drive the engine's bookmark Camera setters, never desktop key input."""
     start = time.monotonic()
     steps = int(seconds * 10)
     for step in range(steps + 1):
         time.sleep(max(0, start + step / 10 - time.monotonic()))
-        if channel.stat().st_size:
-            raise RuntimeError("pan camera command channel was not consumed")
         p = half_map * (1 - 2 * step / steps)
         command = f"bench_view {p:.3f} {p:.3f} -45 5853.4658 12.5\n"
         if step in (0, steps):
             command += f"screenshot pan_{'start' if step == 0 else 'end'}\n"
-        channel.write_text(command, encoding="utf-8")
+        camera_command(channel, command)
 
 
 def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path,
@@ -437,13 +453,16 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
                 out.with_suffix(".stats.json").write_text(json.dumps(row, indent=2), encoding="utf-8")
             cleanup.callback(save_row)
             wait_post_load(gp, game_log, pose)
-            row["measurement_start_epoch"] = time.time()
-            recorder = start_recorder()
             if pan:
                 half_map = re.search(r"halfMap=([\d.]+)", game_log.read_text(encoding="utf-8", errors="replace"))
                 if not half_map:
                     raise RuntimeError("pan requires the terrain map extent receipt")
                 row["pan_half_map"] = float(half_map[1])
+                # An acknowledged command proves the first render has finished initializing.
+                camera_command(channel, f"bench_view {half_map[1]} {half_map[1]} -45 5853.4658 12.5\n")
+            row["measurement_start_epoch"] = time.time()
+            recorder = start_recorder()
+            if pan:
                 pan_camera(channel, float(half_map[1]), seconds - 1)
         print(f"[capture] game pid={gp.pid} arm={arm} mission={mission} "
               f"duration={duration}s fixed_ts={fixed_timestep} fps_cap={fps_cap} pose={pose}")

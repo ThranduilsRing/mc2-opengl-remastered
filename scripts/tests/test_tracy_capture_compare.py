@@ -57,15 +57,35 @@ def test_pan_uses_engine_commands_and_both_endpoint_shots(monkeypatch):
     channel = Mock()
     channel.stat.return_value.st_size = 0
     monkeypatch.setattr(capture.time, "sleep", Mock())
+    send = Mock()
+    monkeypatch.setattr(capture, "camera_command", send)
     capture.pan_camera(channel, 7680, 2)
-    commands = [call.args[0] for call in channel.write_text.call_args_list]
+    commands = [call.args[1] for call in send.call_args_list]
     assert len(commands) == 21
     assert commands[0].startswith("bench_view 7680.000 7680.000 ")
     assert commands[-1].startswith("bench_view -7680.000 -7680.000 ")
     assert "screenshot pan_start" in commands[0] and "screenshot pan_end" in commands[-1]
-    channel.stat.return_value.st_size = 1
+
+
+def test_camera_command_waits_for_slow_first_frame_and_its_own_ack(tmp_path, monkeypatch):
+    channel = tmp_path / "commands.txt"
+    ack = tmp_path / "commands.txt.ack"
+    channel.write_text("old command\n")
+    ack.write_text("bench_view 1 2 -45 5853 12.5 -> ok\n")
+    clock = [0]
+    monkeypatch.setattr(capture.time, "monotonic", lambda: clock[0])
+    def advance(_):
+        clock[0] += .1
+        if clock[0] >= .5 and channel.read_text() == "old command\n": channel.write_text("")
+        if clock[0] >= .8 and channel.read_text().startswith("bench_view"):
+            ack.write_text(ack.read_text() + "bench_view 1 2 -45 5853 12.5 -> ok\n")
+            channel.write_text("")
+    monkeypatch.setattr(capture.time, "sleep", advance)
+    capture.camera_command(channel, "bench_view 1 2 -45 5853 12.5\n")
+    assert clock[0] >= .8
+    channel.write_text("stuck\n")
     with pytest.raises(RuntimeError, match="not consumed"):
-        capture.pan_camera(channel, 7680, 2)
+        capture.camera_command(channel, "other\n", timeout=.2)
 
 
 @pytest.mark.parametrize("opt_in,tag,exclusive,slots,accepted", [
@@ -101,6 +121,7 @@ def test_post_load_starts_recorder_after_pose_and_writes_row(harness, monkeypatc
         monkeypatch.setattr(Path, "write_text", Mock())
         pan_driver = Mock()
         monkeypatch.setattr(capture, "pan_camera", pan_driver)
+        monkeypatch.setattr(capture, "camera_command", lambda *a: h.events.append("camera.ack"))
     monkeypatch.setattr(capture, "os", SimpleNamespace(name=platform, environ=capture.os.environ))
     process = Mock(cpu_affinity=Mock(return_value=cores))
     monkeypatch.setattr(psutil, "Process", lambda _: process)
@@ -117,6 +138,7 @@ def test_post_load_starts_recorder_after_pose_and_writes_row(harness, monkeypatc
     assert capture.capture_trace(h.install, "vk", "mc2_15", 30, h.out, post_load=True, pan=owner) == 0
     if owner:
         pan_driver.assert_called_once_with(Path("trace.commands.txt"), 7680.0, 29)
+        assert h.events.index("camera.ack") < h.events.index("recorder.spawn")
     assert h.events.index("game.spawn") < h.events.index("pose.settled") < h.events.index("recorder.spawn")
     row = capture.json.loads(stats_file.write_text.call_args.args[0])
     assert row["status"] == "PASS" and row["affinity"] == cores and row["job_workers"] == (6 if owner else 1)
