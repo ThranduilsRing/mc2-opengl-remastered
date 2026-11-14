@@ -73,17 +73,17 @@
     {
      "lod": 2,
      "source": "island_tree_01/pristine_intact_lod2.glb",
-     "distance": 324.0
+     "distance": 216.0
     },
     {
      "lod": 3,
      "source": "island_tree_01/pristine_intact_lod3.glb",
-     "distance": 762.4
+     "distance": 308.6
     },
     {
      "lod": 4,
      "source": "island_tree_01/pristine_intact_far.glb",
-     "distance": 2160.0
+     "distance": 1620.0
     }
    ]
   },
@@ -160,17 +160,17 @@
     {
      "lod": 2,
      "source": "island_tree_02/pristine_intact_lod2.glb",
-     "distance": 180.9
+     "distance": 120.6
     },
     {
      "lod": 3,
      "source": "island_tree_02/pristine_intact_lod3.glb",
-     "distance": 425.6
+     "distance": 172.3
     },
     {
      "lod": 4,
      "source": "island_tree_02/pristine_intact_far.glb",
-     "distance": 1206.0
+     "distance": 904.5
     }
    ]
   },
@@ -247,17 +247,17 @@
     {
      "lod": 2,
      "source": "island_tree_03/pristine_intact_lod2.glb",
-     "distance": 324.0
+     "distance": 216.0
     },
     {
      "lod": 3,
      "source": "island_tree_03/pristine_intact_lod3.glb",
-     "distance": 762.4
+     "distance": 308.6
     },
     {
      "lod": 4,
      "source": "island_tree_03/pristine_intact_far.glb",
-     "distance": 2160.0
+     "distance": 1620.0
     }
    ]
   },
@@ -334,17 +334,17 @@
     {
      "lod": 2,
      "source": "jacaranda_tree/pristine_intact_lod2.glb",
-     "distance": 324.0
+     "distance": 216.0
     },
     {
      "lod": 3,
      "source": "jacaranda_tree/pristine_intact_lod3.glb",
-     "distance": 762.4
+     "distance": 308.6
     },
     {
      "lod": 4,
      "source": "jacaranda_tree/pristine_intact_far.glb",
-     "distance": 2160.0
+     "distance": 1620.0
     }
    ]
   },
@@ -421,17 +421,17 @@
     {
      "lod": 2,
      "source": "tree_small_02/pristine_intact_lod2.glb",
-     "distance": 324.0
+     "distance": 216.0
     },
     {
      "lod": 3,
      "source": "tree_small_02/pristine_intact_lod3.glb",
-     "distance": 762.4
+     "distance": 308.6
     },
     {
      "lod": 4,
      "source": "tree_small_02/pristine_intact_far.glb",
-     "distance": 2160.0
+     "distance": 1620.0
     }
    ]
   },
@@ -508,17 +508,17 @@
     {
      "lod": 2,
      "source": "island_tree_02/pristine_palms_lod2.glb",
-     "distance": 180.9
+     "distance": 120.6
     },
     {
      "lod": 3,
      "source": "island_tree_02/pristine_palms_lod3.glb",
-     "distance": 425.6
+     "distance": 172.3
     },
     {
      "lod": 4,
      "source": "island_tree_02/pristine_palms_far.glb",
-     "distance": 1206.0
+     "distance": 904.5
     }
    ]
   }
