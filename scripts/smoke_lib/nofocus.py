@@ -210,16 +210,11 @@ def gpu_hint(out: dict) -> "Optional[str]":
 
 
 def route_gpu(out: dict, perf: bool = False) -> None:
-    """Force a GPU only when asked (explicit MC2_VK_DEVICE or MC2_HARNESS_GPU=2070|xtx). Otherwise the lease slot a run wins
-    decides: slot 0 = 7900 XTX, slot 1 = RTX 2070 SUPER (A:/Games/mc2-ops/GPU_SPLIT), injected by spawn() after the hold.
-
-    MC2_HARNESS_GPU = auto (default) | xtx | 2070 | any overrides. An explicit MC2_VK_DEVICE wins.
-    The engine reads MC2_VK_DEVICE (a device-name substring): the Vulkan loader on this host ignores
-    VK_LOADER_DRIVERS_SELECT and the engine takes the first discrete device, always the 7900 XTX.
-    """
+    """On the dual-XTX PC every harness uses the runtime-detected non-display UUID, including perf runs.
+    Other hosts retain explicit overrides and lease-slot routing."""
     hint = gpu_hint(out)
     if hint:
-        out.setdefault("MC2_VK_DEVICE", hint)
+        out["MC2_VK_DEVICE"] = hint
 
 
 def gpu_mismatch(out: dict, perf: bool, devices: "Sequence[str]", log_text: str = "") -> "Optional[str]":

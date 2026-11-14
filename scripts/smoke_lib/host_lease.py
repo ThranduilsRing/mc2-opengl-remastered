@@ -87,7 +87,7 @@ def waiver_active(now: Optional[float] = None) -> bool:
 
 
 GPU_SPLIT_PATH = Path("A:/Games/mc2-ops/GPU_SPLIT")   # lines `slot0=AMD`, `slot1=NVIDIA` (device-name substrings, like MC2_VK_DEVICE)
-GPU_SPLIT_DEFAULT = ("AMD", "NVIDIA")                  # slot 0 = RX 7900 XTX, slot 1 = RTX 2070 SUPER: both are LANE devices (no gate device on the PC)
+GPU_SPLIT_DEFAULT = ("AMD", "NVIDIA")
 DEVICE_ALIASES = {"AMD": ("amd", "radeon", "xtx", "7900"), "NVIDIA": ("nvidia", "geforce", "rtx", "2070")}
 
 
@@ -113,9 +113,12 @@ def _parse_gpu_split(text: str) -> tuple:
 
 
 def lane_devices() -> tuple:
-    """The two lane GPUs by device-name substring; lease slot i drives device i. The PC has no gate GPU."""
+    """Each physical GPU has its own UUID-keyed slot; PC harnesses request only the non-display slot."""
     if redirected():
         return GPU_SPLIT_DEFAULT
+    if runtime_lane_adapter():
+        from .gpu_adapters import adapters, selector
+        return tuple(selector(r) for r in adapters() if "7900 XTX" in r["name"])
     try:
         return _parse_gpu_split(GPU_SPLIT_PATH.read_text(encoding="utf-8"))
     except OSError:
@@ -123,10 +126,12 @@ def lane_devices() -> tuple:
 
 
 def lane_uuid() -> Optional[str]:
-    """Vulkan deviceUUID (GPU_SPLIT `lane_uuid=`) of the GPU every lane game and Blender job must use, or None. The PC has two identical
-    RX 7900 XTX cards (name substrings cannot tell them apart); this pins the non-display one. Stable across reboots (LUIDs are not)."""
+    """Runtime non-display UUID, falling back to legacy overrides on other hosts."""
     if redirected():
         return None
+    detected = runtime_lane_adapter()
+    if detected:
+        return detected["uuid"]
     env = os.environ.get("MC2_LANE_UUID", "").strip().lower()   # overrides the file (proof runs, hosts without the key)
     if env:
         return env
@@ -140,9 +145,19 @@ def lane_uuid() -> Optional[str]:
     return None
 
 
+def runtime_lane_adapter():
+    if redirected():
+        return None
+    from .gpu_adapters import lane_adapter
+    return lane_adapter()
+
+
 def pin_device(device: Optional[str]) -> Optional[str]:
-    """`device` (a MC2_VK_DEVICE name substring) with `@<uuid>` appended when GPU_SPLIT pins a lane GPU and the name is not another
-    vendor's or already pinned. No device (an owner-started run never goes through here) stays None."""
+    """Enforce the detected non-display PC card; other hosts retain legacy overrides."""
+    detected = runtime_lane_adapter()
+    if detected:
+        from .gpu_adapters import selector
+        return selector(detected)
     uuid = lane_uuid()
     if not device or not uuid or "@" in device:
         return device
@@ -174,6 +189,7 @@ def device_on_host(label: str, names: Optional[List[str]] = None) -> Optional[bo
     names = host_gpu_names() if names is None else names
     if not names:
         return None
+    label = label.split("@")[0]
     tokens = (label.lower(),) + tuple(DEVICE_ALIASES.get(label, ()))
     return any(t in n for n in names for t in tokens)
 
@@ -194,15 +210,17 @@ def slot_device(slot: int) -> str:
 
 
 def device_hint(env=None) -> Optional[str]:
-    """The MC2_VK_DEVICE substring a run FORCES: explicit MC2_VK_DEVICE or MC2_HARNESS_GPU=2070|xtx. None = the lease slot it
-    wins decides (FIFO across both lane GPUs), which includes MC2_HARNESS_GPU=any."""
+    """Detected non-display PC card; otherwise an explicit override, or None for lease-slot routing."""
     env = os.environ if env is None else env
     mode = (env.get("MC2_HARNESS_GPU") or "").lower()
-    return env.get("MC2_VK_DEVICE") or {"2070": "NVIDIA", "xtx": "AMD"}.get(mode) or None
+    return pin_device(env.get("MC2_VK_DEVICE") or {"2070": "NVIDIA", "xtx": "AMD"}.get(mode) or None)
 
 
 def _device_matches(slot: int, forced: str) -> bool:
-    label, low = slot_device(slot), forced.split("@")[0].lower()
+    label = slot_device(slot)
+    if "@" in label and "@" in forced:
+        return label.partition("@")[2].lower() == forced.partition("@")[2].lower()
+    label, low = label.split("@")[0], forced.split("@")[0].lower()
     return low in label.lower() or label.lower() in low or any(t in low for t in DEVICE_ALIASES.get(label, ()))
 
 

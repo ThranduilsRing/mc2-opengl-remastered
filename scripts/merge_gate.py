@@ -170,15 +170,14 @@ OFFLINE_STAGES = ("contracts", "harnesses", "pytest", "unit-msvc-build", "editor
 
 def gate_env(name, device=None):
     """A8: MC2_IN_GATE (lease priority, nested-gate refusal) belongs on game-launching stages only; the offline
-    stages run test suites that must see the same environment a lane sees. Game stages are also pinned to a lane GPU
-    (slot 0 of A:/Games/mc2-ops/GPU_SPLIT unless `device` names one); the real gate runs on the farm laptop, this is the PC fallback.
-    device: the worker's own MC2_VK_DEVICE name substring (the auxiliary chain runs on aux_device(), not the stock chain's GPU)."""
+    stages run test suites that must see the same environment a lane sees. All PC game rows use the detected non-display UUID.
+    Other hosts use the worker's device override or their first available lane GPU."""
     if name in OFFLINE_STAGES:
         return {}
     from smoke_lib import host_lease
-    chosen = device or host_lease.host_lane_device()   # a host without a lane GPU (none of GPU_SPLIT) gets no forced device
+    chosen = host_lease.pin_device(device or host_lease.host_lane_device())
     if device and host_lease.device_on_host(device) is False:
-        chosen = host_lease.host_lane_device()
+        chosen = host_lease.pin_device(host_lease.host_lane_device())
     env = {"MC2_IN_GATE": "1"}
     if chosen:
         env["MC2_VK_DEVICE"] = chosen
@@ -186,9 +185,10 @@ def gate_env(name, device=None):
 
 
 def aux_device():
-    """r7 finding 3: the auxiliary chain (mods + clone-safe rows) gets the PC's other GPU, by device name: GPU_SPLIT `gate_aux=`
-    when set, else the lane device. The host lease still bounds the game count, so lanes on that GPU share it, never oversubscribe."""
+    """PC auxiliary rows share the non-display lease; other hosts retain GPU_SPLIT gate_aux routing."""
     from smoke_lib import host_lease
+    if host_lease.runtime_lane_adapter():
+        return host_lease.pin_device(None)
     try:
         for line in host_lease.GPU_SPLIT_PATH.read_text(encoding="utf-8").splitlines():
             key, _, value = line.partition("=")
