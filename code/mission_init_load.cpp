@@ -940,7 +940,7 @@ void Mission::initInterface(MissionInitFrame& f) {
 	missionInterface = new MissionInterfaceManager;
 	gosASSERT(missionInterface != nullptr);
 	
-	missionInterface->initTacMap( &pakFile, 2 );
+	{ MC2_LOAD_SCOPE("interface.initTacMap"); missionInterface->initTacMap( &pakFile, 2 ); }
 	
 	FullPathFileName missionScreenName;
 	missionScreenName.init(artPath,"missionScrn",".fit");
@@ -950,8 +950,8 @@ void Mission::initInterface(MissionInitFrame& f) {
 	if (result != NO_ERR)
 		STOP(("Unable to open mission screen layout %s", static_cast<const char*>(missionScreenName)));
 	
-	missionInterface->init(&missionLoader);
-	missionInterface->initMechs();
+	{ MC2_LOAD_SCOPE("interface.init"); missionInterface->init(&missionLoader); }
+	{ MC2_LOAD_SCOPE("interface.initMechs"); missionInterface->initMechs(); }
 	missionLoader.close();
 
 	// MISSION-START-HOVER-TARGET-LIFETIME-1: this MissionInterfaceManager is freshly
@@ -973,7 +973,7 @@ void Mission::initInterface(MissionInitFrame& f) {
 		tempNumSpecialAreas = 0;
 	}
 
-	Mover::initOptimalCells(32);
+	{ MC2_LOAD_SCOPE("interface.initOptimalCells"); Mover::initOptimalCells(32); }
 
 
 	if (CombatLog)
