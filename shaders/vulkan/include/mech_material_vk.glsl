@@ -4,14 +4,14 @@
 // Requires vUv, vTangentGL, vTangentW, uMechAo, uMechNrm, uFrame (mech_tier1.frag) and mech_shading.hglsl.
 #include "../../include/surface_material.hglsl"
 
-vec4 sampleMechMaterial(sampler2D map, vec2 uv) {
+// Macro, not a function: uMechAo/uMechNrm are sampler constructors from the shared texture table, and GLSL
+// requires a sampler constructor at its point of use (it cannot be passed as a function argument).
 #ifdef MECH_PREVIEW
-    // Close-up panels retain the authored atlas detail, independent of the world mip bias.
-    return textureLod(map, uv, 0.0);
+// Close-up panels retain the authored atlas detail, independent of the world mip bias.
+#define sampleMechMaterial(map, uv) textureLod(map, uv, 0.0)
 #else
-    return texture(map, uv);
+#define sampleMechMaterial(map, uv) texture(map, uv)
 #endif
-}
 
 SurfaceMaterial mechSurface(vec3 texRgb, vec3 geometricNormal, uint importedBits, bool alphaTest) {
     SurfaceMaterial s;
