@@ -171,13 +171,12 @@ bool aObject::renderTextBridged( aFont& font, const char* text,
 	{
 		// Shrink-to-fit: the rect is the stock box; text that wraps to more lines than the box holds at this
 		// size (long skill / encyclopedia descriptions) steps down to 70% instead of running past the border.
+		std::vector<std::string> wrapped;
 		const int fs0 = fs;
-		for ( ; fs > 6 && fs * 10 > fs0 * 7; --fs )
-		{
-			const float th = GuiRuntime::CalcUiTextHeight( text, w, fs, "Agency Regular" );
-			if ( th <= h + 0.5f || th < 1.5f * GuiRuntime::CalcUiTextHeight( "A", 0.f, fs, "Agency Regular" ) )
-				break;	// fits, single line, or the ImGui text path is unavailable
-		}
+		while ( fs > 6 && fs * 10 > fs0 * 7 &&
+				GuiRuntime::CalcUiTextWrapLines( text, w, fs, "Agency Regular", wrapped ) &&
+				wrapped.size() > 1 && (float)wrapped.size() * (float)fs > h + 0.5f )
+			--fs;
 	}
 	int align = (int)alignment;
 	if ( align < 0 || align > 2 ) align = 0; // gos bottom(3) etc -> left

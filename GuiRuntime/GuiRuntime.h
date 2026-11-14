@@ -60,9 +60,6 @@ namespace GuiRuntime {
     // walk ImGui uses when rendering with a wrap_width). '\n' is honored as a
     // hard break; an empty input yields one empty line. Returns false when the
     // ImGui text path is unavailable (caller should fall back to its own wrap).
-    // Height DrawUiText would give this text at this wrap width / size (0 when the ImGui text path is unavailable).
-    float CalcUiTextHeight(const char* text, float wrapWidth, int fontSize, const char* fontFamily);
-
     bool CalcUiTextWrapLines(const char* text,
                              float wrapWidth,
                              int fontSize,
