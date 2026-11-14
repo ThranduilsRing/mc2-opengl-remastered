@@ -20,6 +20,22 @@ layout(constant_id = 13) const int kWaterDbgPass = 0;
 #define TERRAIN_OBJECT_RECEIVER 1
 #include "include/terrain_frame_vk.glsl"
 #include "../include/render_contract.hglsl"
+layout(set = 1, binding = 1, std430) readonly buffer TerrainHeightBuf { float heights[]; } uH;
+layout(set = 1, binding = 10, std430) readonly buffer TerrainVisualHeightBuf { float heightsFine[]; };
+float sampleH(int x, int y) {
+    return uH.heights[clamp(x, 0, uT.mapSide - 1) + clamp(y, 0, uT.mapSide - 1) * uT.mapSide];
+}
+#include "include/terrain_visual_surface.glsl"
+float waterRenderedHeight(vec2 worldXY) {
+    vec2 grid = clamp(vec2(worldXY.x + uT.halfMap, uT.halfMap - worldXY.y) / 32.0,
+                      vec2(0.0), vec2(uT.visualSide - 1));
+    ivec2 p = min(ivec2(floor(grid)), ivec2(uT.visualSide - 2));
+    vec2 t = grid - vec2(p);
+    float a = hiresSurfaceHeight(p.x, p.y), d = hiresSurfaceHeight(p.x + 1, p.y + 1);
+    float b = t.y >= t.x ? hiresSurfaceHeight(p.x, p.y + 1) : hiresSurfaceHeight(p.x + 1, p.y);
+    return t.y >= t.x ? a + (d - b) * t.x + (b - a) * t.y
+                      : a + (b - a) * t.x + (d - b) * t.y;
+}
 
 layout(location = 0) in PREC vec4  Color;
 layout(location = 1) in PREC vec2  Texcoord;
@@ -322,7 +338,9 @@ void main(void)
     float fieldThick;
     const bool hasField = wse_fieldThickness(int(F.f4.x + 0.5), int(F.f4.y + 0.5), u_shoreHeightTex, F.f5,
                                              WorldPos.xy, F.f7.x, fieldThick);
-    const float fieldThickFw = fwidth(fieldThick);
+    const bool hasVisual = uT.visualMode != 0 && uT.visualSide > 1;
+    float coverageThick = hasVisual ? F.f7.x - waterRenderedHeight(WorldPos.xy) : fieldThick;
+    const float coverageThickFw = fwidth(coverageThick);
     PREC float tintThick = hasField ? max(fieldThick, 0.0) : WaterThickness;
     // Recover horizontal shore distance from the depth field already sampled above.
     // World-space gradients keep the wash width stable across camera zoom and shore slopes.
@@ -362,12 +380,12 @@ void main(void)
     PREC float shoreBlend = max(alphaDepth, 1.0);
     PREC float shore = smoothstep(-shoreBlend * 0.5, shoreBlend, WaterThickness);
     // WATER-SHORE-EDGE-1 / WATER-SHORE-MASK-1: shared with the GL FS.
-    if (hasField) {
+    if (hasField || hasVisual) {
         // SHORE-FIELD-1: the coast is the field's zero crossing as a crisp ~3 px antialiased edge.
         // The old depth feather (smoothstep over featherWu of DEPTH) spread hundreds of wu wide on
         // gentle shelves (mc2_17) and let coarse terrain decide the visible line elsewhere. Shallow
         // water keeps some translucency through a 0.55..1 depth softness floor.
-        float edgeAA = smoothstep(0.0, max(3.0 * fieldThickFw, 1e-3), fieldThick);
+        float edgeAA = smoothstep(0.0, max(3.0 * coverageThickFw, 1e-3), coverageThick);
         shore = edgeAA * mix(0.55, 1.0, smoothstep(0.0, max(F.f4.w, 0.5), fieldThick));
     } else {
         shore = wse_shoreFeather(shore, int(F.f4.x + 0.5), int(F.f4.y + 0.5), int(F.f4.z + 0.5),

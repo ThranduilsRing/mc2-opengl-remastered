@@ -9,7 +9,7 @@
 //     gos_terrain_water_fast_mdi.vert:152-190.
 //   - MVP: worldToClipGL is a column_major std140 mat4 packed from the SAME 16
 //     raw floats GL uploads (glUniformMatrix4fv GL_FALSE). clip = M*worldPos;
-//     clip.z += WATER_DEPTH_FUDGE_FAST_REL*clip.z (reverse-Z pre-divide).
+//     Physical reverse-Z depth (the scene depth test resolves the coast).
 //     WATER-MVP-ORACLE-1 proved bit-exact (commit 4d30d93e5; oracle shader in the
 //     archive/vk-probe-fixtures tag). Do NOT row_major, do
 //     NOT transpose. Bias constants come from terrain_depth_bias.hglsl.
@@ -24,7 +24,6 @@
 #version 450
 layout(constant_id = 12) const int kWaterDbgPhysical = 0;
 #extension GL_GOOGLE_include_directive : require
-#include "../include/terrain_depth_bias.hglsl"
 
 // --- Recipe SSBO (mission-static). std430 layout mirrors WaterRecipe (64B).
 //     GL binding 5; here set0/binding5 for descriptor-set clarity. ---
@@ -229,10 +228,7 @@ void main() {
     Color    = unpackARGB(argb).bgra;
     Texcoord = vec2(u, v);
 
-    // A constant NDC lift grows quadratically in world distance and hides
-    // near-sea-level islands as the camera moves. Use the shared FAST bias.
     vec4 clip = U.worldToClipGL * vec4(worldPos, 1.0);
-    if (kWaterDbgPhysical == 0) clip.z += WATER_DEPTH_FUDGE_FAST_REL * clip.z;
     // Test the water surface at its physical depth. A tile-dependent lift
     // occludes rocks above the waterline and exposes straight tile edges.
     gl_Position = clip;

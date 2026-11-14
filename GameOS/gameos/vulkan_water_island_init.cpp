@@ -153,7 +153,7 @@ bool init_island(WaterIsland* s, int w, int h) {
 
         VkPipelineLayoutCreateInfo plci{};
         plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        if (!s->groundLighting.init(s->device)) return false;
+        if (!s->groundLighting.init(s->device, true)) return false;
         const VkDescriptorSetLayout layouts[]{s->dsl.get(), s->groundLighting.layout()};
         plci.setLayoutCount = 2; plci.pSetLayouts = layouts;
         if (!mc2vk::create(s->playout, s->device, [&](VkPipelineLayout* h) { return vkCreatePipelineLayout(s->device, &plci, nullptr, h); })) {
