@@ -108,7 +108,7 @@ void GpuStaticPropBatcher::forgetLodState(const GpuStaticPropInstance& inst) {
     s_lodState.erase(propLodKey(inst));
 }
 
-void mc2_static_prop_retype_far_tier(GpuStaticPropInstance* instances, uint32_t count, bool resort) {
+extern "C" void mc2_static_prop_retype_far_tier(GpuStaticPropInstance* instances, uint32_t count, bool resort) {
     if (s_lodMembers.empty()) return;
     bool any = false;
     for (uint32_t i = 0; i < count; ++i)
@@ -118,7 +118,7 @@ void mc2_static_prop_retype_far_tier(GpuStaticPropInstance* instances, uint32_t 
     if (any && resort) std::sort(instances, instances + count, [](const GpuStaticPropInstance& a, const GpuStaticPropInstance& b) { return a.typeID < b.typeID; });
 }
 
-int mc2_static_prop_lod_skips_late(uint32_t typeID) {
+extern "C" int mc2_static_prop_lod_skips_late(uint32_t typeID) {
     const auto it = s_lodMembers.find(typeID);
     return it != s_lodMembers.end() && it->second.tier >= 3 ? 1 : 0;
 }
@@ -147,14 +147,21 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
     { ZoneScopedN("VKIsl.Props.MainFeed.LODRoute");
     for (auto& [lodTid, lodVec] : s_lodOut) lodVec.clear();
     if (lodActive) {
-        const RenderCore::ViewUniforms vu = RenderCore::framePackets().copyMainView().uniforms;
+        const RenderCore::ViewPacket mainView = RenderCore::framePackets().copyMainView();
+        const RenderCore::ViewUniforms& vu = mainView.uniforms;
         const float cx = vu.cameraWorldPos[0], cy = vu.cameraWorldPos[1], cz = vu.cameraWorldPos[2];
         constexpr float kBand = 0.08f;
+        // Tree chains switch on projected size: d = clip w / (clip-y row length) is the distance a 90 degree lens would
+        // need for the same pixels per world unit (zoom-independent), scaled so a 2160p view is the reference.
+        const float* m = vu.worldToClipGL;   // column-major
+        const float rowY = std::sqrt(m[1] * m[1] + m[5] * m[5] + m[9] * m[9]);
+        const float vpScale = mainView.viewport[3] > 0 ? 2160.0f / static_cast<float>(mainView.viewport[3]) : 1.0f;
         auto route = [&](const GpuStaticPropInstance* b, const GpuStaticPropInstance* e, const PropLodGroup& g) {
             for (; b != e; ++b) {
                 const StaticPropOrigin o = staticPropOriginRender(b->modelMatrix);
                 const float dx = o.x - cx, dy = o.y - cy, dz = o.z - cz;
-                const float d = std::sqrt(dx * dx + dy * dy + dz * dz);
+                float d = std::sqrt(dx * dx + dy * dy + dz * dz);
+                if (g.tree && rowY > 1e-6f) d = std::max(0.0f, m[3] * o.x + m[7] * o.y + m[11] * o.z + m[15]) / rowY * vpScale;
                 uint8_t& lod = s_lodState[propLodKey(*b)];
                 propLodAdvance(lod, d, std::span<const float>(g.dist, static_cast<size_t>(g.count)), kBand);
                 GpuStaticPropInstance inst = *b;
