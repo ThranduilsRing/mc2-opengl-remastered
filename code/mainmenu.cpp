@@ -33,6 +33,7 @@ struct DDSURFACEDESC2 {
 #include "Gates/gate_cold.h"   // str<>()
 #include "mc2fmt.h"
 #include "../GuiRuntime/PlayerFrontEnd.h"
+#include "../GuiRuntime/GuiRuntime.h"
 #include "imgui.h"
 extern CPrefs prefs;
 
@@ -60,6 +61,7 @@ extern void (*AsynFunc)(RECT& WinRect,DDSURFACEDESC2& mouseSurfaceDesc );
 
 extern bool bInvokeOptionsScreenFlag;
 bool	MainMenu::bDrawMechlopedia = false;;
+bool	MainMenu::bLoadShown = false;
 
 void SplashIntro::init()
 {
@@ -120,7 +122,7 @@ int MainMenu::init( FitIniFile& file )
 		Assert(0,0,errorStr );
 	}
 
-	background.init( file2, "Static", "Text", "Rect", "Button" );
+	background.init( file2, "Static", "Text", "Rect", "Button", nullptr, "AnimObject" );
 
 	for ( int i = 0; i < buttonCount; i++ )
 	{
@@ -152,16 +154,8 @@ int MainMenu::init( FitIniFile& file )
 
 	introMovie = nullptr;
 
-	path.init( moviePath, "msft", ".bik" );
-
-	RECT movieRect;
-	movieRect.top = 0;
-	movieRect.left = 0;
-	movieRect.right = Environment.screenWidth;
-	movieRect.bottom = Environment.screenHeight;
-
+	// Open on the first displayed update, after startup work and renderer setup.
 	introMovie = new MC2Movie;
-	introMovie->init(path,movieRect,true);
 
 	return 0;
 }
@@ -512,10 +506,12 @@ void MainMenu::update()
 	if ( introMovie )
 	{
 		userInput->mouseOff();
-		// The movie opened in init(), at startup; its playback clock has been running since, through every load before the menu's first frame.
-		// On a slow (cold) start that is the whole clip, so the logo never showed. Restart it so the clock begins when it is first shown.
-		static MC2Movie* s_clockArmedFor = nullptr;
-		if ( s_clockArmedFor != introMovie ) { s_clockArmedFor = introMovie; introMovie->restart(); }
+		if (!introMovie->getMovieName()) {
+			FullPathFileName path;
+			path.init(moviePath, "msft", ".bik");
+			RECT movieRect = {0, 0, Environment.screenWidth, Environment.screenHeight};
+			introMovie->init(path, movieRect, true);
+		}
 
 		{
 			static int s_introDbgFrame = 0;
@@ -552,6 +548,9 @@ void MainMenu::update()
 		soundSystem->playDigitalMusic(tuneId);
 	}
 
+	bLoadShown = bLoad && endAnim.isDone();
+	if ( !introMovie && !bLoad && mc2::gate::str<"MC2_BOOT_TO_SCREEN">() == "loadgame" )
+		handleMessage( 0, MM_MSG_LOAD );
 	if ( endAnim.isDone() )
 	{
 		status = endResult;
@@ -836,6 +835,12 @@ void MainMenu::render()
 	}
 
 	
+	if ( bDrawBackground && rendersDefsPageOverlay() )
+	{
+		float dw = 0.f, dh = 0.f;
+		if ( GuiRuntime::GetDisplaySize( dw, dh ) && dw > 0.f )
+			GuiRuntime::DrawUiRect( 0.f, 0.f, dw, dh, 0xff000000, true );
+	}
 	if ( bOptions )
 	{
 		optionsScreenWrapper->render();
@@ -883,7 +888,7 @@ void MainMenu::render()
 
 		if ( bDrawBackground )
 		{
-			background.renderLegacy();
+			background.render();
 			intro.render();
 			if ( !intro.allAnimObjectsDone() && !introOver && !bHostLeftDlg )
 				return;

@@ -96,7 +96,7 @@ def occupancy_slots(path=BINDING_OCC):
             for site in sites:
                 typ = site['type']
                 ns = ({"uniform": "UBO", "buffer": "SSBO"}.get(typ)
-                      or ('IMAGE' if 'image' in typ else 'SAMPLER' if 'sampler' in typ else None))
+                      or ('IMAGE' if 'image' in typ else 'SAMPLER' if 'sampler' in typ or 'texture' in typ else None))
                 if ns:
                     out.add((ns, descriptor_set, binding, site["role"], site["file"]))
     return out

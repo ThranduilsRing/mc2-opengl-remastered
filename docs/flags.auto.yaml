@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 430
+gate_count: 428
 registry_entry_count: 123
-verified_count: 402
+verified_count: 400
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -735,13 +735,6 @@ flags:
     owner: code
     doc: ""
     tokens: "|legacy|modern"
-    verified: true
-  - name: MC2_ENGINE_XL
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: mech
-    doc: ""
     verified: true
   - name: MC2_EQUIPMENT_ADD
     kind: Bool
@@ -2187,15 +2180,6 @@ flags:
     range: {lo: 0, hi: 52, style: clamp}
     smoke_passthrough: true
     verified: true
-  - name: MC2_SIM_RATE_PROBE
-    kind: Int
-    default: 0
-    rule: Prefix
-    owner: code
-    doc: "Diagnostic: 1 reports wall-paced ticks; 2 also stalls the render scheduler 200 ms every 2 s. Disabled for fixed-step runs."
-    range: {lo: 0, hi: 2, style: clamp}
-    smoke_passthrough: true
-    verified: true
   - name: MC2_SIM_SPEED
     kind: Float
     default: 1
@@ -3315,7 +3299,7 @@ flags:
     default: true
     rule: Lead0Kill
     owner: terrain
-    doc: "Temporary kill-switch: bounded four-frame still reflection reuse and half-res motion."
+    doc: "Temporary kill-switch: bounded four-frame still reflection reuse (full resolution)."
     verified: true
   - name: MC2_WATER_REFLECTION_RT
     kind: Bool

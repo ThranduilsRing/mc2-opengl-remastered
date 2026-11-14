@@ -148,15 +148,27 @@ TREE_LOCK_WAIT_S = 1800   # a cold mc2_tests build in the other holder (harnesse
 
 
 def print_failed_cases(log_path):
-    """Echo the doctest failure headers (file:line + TEST CASE name) and the summary from a captured run."""
+    """Echo the failing doctest cases (file:line + TEST CASE name) and the summary from a captured run.
+
+    doctest prints a case header for any case that logs a MESSAGE, and a should_fail negative control prints its
+    ERROR lines yet counts as passed (its failed assertions still show in the summary), so only a case with an
+    ERROR line that is not a declared should_fail control is listed as failing."""
     try:
         lines = Path(log_path).read_text(errors="replace").splitlines()
     except OSError:
         return
+    expected = set()
+    for src in (REPO_ROOT / "tests" / "unit").glob("*.cpp"):
+        expected.update(re.findall(r'TEST_CASE\("([^"]+)"\s*\*\s*doctest::should_fail', src.read_text(errors="replace")))
     print("---- failing doctest cases (file:line, name) ----")
     for i, ln in enumerate(lines):
-        if ln.startswith("TEST CASE:"):
-            print((lines[i - 1] + "  " if i else "") + ln)
+        if not ln.startswith("TEST CASE:"):
+            continue
+        name = ln[len("TEST CASE:"):].strip()
+        end = next((j for j in range(i + 1, len(lines)) if lines[j].startswith("=====")), len(lines))
+        if name in expected or not any("ERROR" in x for x in lines[i + 1:end]):
+            continue
+        print((lines[i - 1] + "  " if i else "") + ln)
     print("\n".join(ln for ln in lines if ln.startswith("[doctest]")))
 
 
@@ -258,8 +270,10 @@ def _run_unit_exe(bdir, config, preset, only, asan, started):
     if preset and not exe.is_file():
         return False, f"requested compiler binary missing in {bdir}"
     command = [str(exe), "--no-breaks"]
-    env = dict(os.environ)
-    if not only and env.get("MC2_GATE_NIGHTLY") != "1":
+    # Tests own their MC2_* settings, including strict-config fault injection.
+    # Ambient launcher/player options can otherwise terminate the suite with 78.
+    env = {key: value for key, value in os.environ.items() if not key.upper().startswith("MC2_")}
+    if not only and os.environ.get("MC2_GATE_NIGHTLY") != "1":
         command += ["--test-case-exclude=vfx_frozen/*,fx_playback/*oracle*,vfx_oracle/*,package chassis:*,present mailbox stress:*"]
     if only:
         command += ["--test-case=" + test_case_filter(only)]

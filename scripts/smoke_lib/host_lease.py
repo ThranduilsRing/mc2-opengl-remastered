@@ -92,7 +92,7 @@ DEVICE_ALIASES = {"AMD": ("amd", "radeon", "xtx", "7900"), "NVIDIA": ("nvidia", 
 
 
 LEGACY_GPU_KEYS = {"lane": 0, "gate": 1}   # old GPU_SPLIT keys (lane=AMD, gate=NVIDIA), accepted for one window: lane = slot 0, gate = slot 1
-GPU_SPLIT_KEYS = frozenset({"slot0", "slot1", "gate_aux", *LEGACY_GPU_KEYS})   # gate_aux: merge_gate.aux_device()
+GPU_SPLIT_KEYS = frozenset({"slot0", "slot1", "gate_aux", "lane_uuid", *LEGACY_GPU_KEYS})   # gate_aux: merge_gate.aux_device(); lane_uuid: see lane_uuid()
 
 
 def _parse_gpu_split(text: str) -> tuple:
@@ -120,6 +120,34 @@ def lane_devices() -> tuple:
         return _parse_gpu_split(GPU_SPLIT_PATH.read_text(encoding="utf-8"))
     except OSError:
         return GPU_SPLIT_DEFAULT
+
+
+def lane_uuid() -> Optional[str]:
+    """Vulkan deviceUUID (GPU_SPLIT `lane_uuid=`) of the GPU every lane game and Blender job must use, or None. The PC has two identical
+    RX 7900 XTX cards (name substrings cannot tell them apart); this pins the non-display one. Stable across reboots (LUIDs are not)."""
+    if redirected():
+        return None
+    env = os.environ.get("MC2_LANE_UUID", "").strip().lower()   # overrides the file (proof runs, hosts without the key)
+    if env:
+        return env
+    try:
+        for line in GPU_SPLIT_PATH.read_text(encoding="utf-8").splitlines():
+            k, _, v = line.partition("=")
+            if k.strip() == "lane_uuid" and v.strip():
+                return v.strip().lower()
+    except OSError:
+        pass
+    return None
+
+
+def pin_device(device: Optional[str]) -> Optional[str]:
+    """`device` (a MC2_VK_DEVICE name substring) with `@<uuid>` appended when GPU_SPLIT pins a lane GPU and the name is not another
+    vendor's or already pinned. No device (an owner-started run never goes through here) stays None."""
+    uuid = lane_uuid()
+    if not device or not uuid or "@" in device:
+        return device
+    low = device.lower()
+    return f"{device}@{uuid}" if any(t in low for t in ("amd",) + DEVICE_ALIASES["AMD"]) else device
 
 
 _HOST_GPU_NAMES: Optional[List[str]] = None
@@ -174,7 +202,7 @@ def device_hint(env=None) -> Optional[str]:
 
 
 def _device_matches(slot: int, forced: str) -> bool:
-    label, low = slot_device(slot), forced.lower()
+    label, low = slot_device(slot), forced.split("@")[0].lower()
     return low in label.lower() or label.lower() in low or any(t in low for t in DEVICE_ALIASES.get(label, ()))
 
 

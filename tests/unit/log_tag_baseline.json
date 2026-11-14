@@ -4302,6 +4302,19 @@
    "count": 1
   },
   {
+   "tag": "HUD_FRAME",
+   "ver": -1,
+   "stream": "log",
+   "keys": [
+    "pieces",
+    "textures",
+    "atlas",
+    "submissions",
+    "scale"
+   ],
+   "count": 1
+  },
+  {
    "tag": "HZB_CAM",
    "ver": 1,
    "stream": "stderr",
@@ -6080,6 +6093,27 @@
     "worst_call_overflow",
     "chunk_size",
     "node_threshold"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MOVE_MARKER",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "pos",
+    "until"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MOVE_MARKER",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "visible",
+    "rotation",
+    "time"
    ],
    "count": 1
   },
@@ -8907,6 +8941,19 @@
    "count": 1
   },
   {
+   "tag": "SIM_RATE",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "mode",
+    "real_s",
+    "ticks",
+    "ticks_per_s",
+    "lost_s_per_min"
+   ],
+   "count": 1
+  },
+  {
    "tag": "SIM_TICK_COST",
    "ver": 1,
    "stream": "stdout",
@@ -10863,6 +10910,19 @@
   },
   {
    "tag": "VK_CAPABILITY",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "maxPerStageDescriptorSampledImages",
+    "maxPerStageDescriptorSamplers",
+    "maxDescriptorSetSampledImages",
+    "maxDescriptorSetSamplers",
+    "maxPerStageResources"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_CAPABILITY",
    "ver": 1,
    "stream": "stderr",
    "keys": [
@@ -12173,6 +12233,41 @@
     "record_submit_us",
     "fence_wait_us",
     "island_total_us"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_TEXTABLE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "capacity",
+    "sets",
+    "samplers"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_TEXTABLE_FRAME",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "slot",
+    "writes",
+    "full",
+    "stale"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_TEXTABLE_REWRITE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "slot",
+    "writes",
+    "us"
    ],
    "count": 1
   },

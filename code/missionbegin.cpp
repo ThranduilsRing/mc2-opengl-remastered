@@ -246,7 +246,7 @@ static bool mc2BootScreenXY( int& x, int& y )
 		if ( mc2::screen_settle::parseSpec(mc2::gate::str<"MC2_SHOT_SCREEN">(), spec) )
 			cell = spec.cell;
 	}
-	if ( cell ) { x = cell->x; y = cell->y; }
+	if ( cell && cell->x >= 0 && cell->y >= 0 ) { x = cell->x; y = cell->y; }
 	return true;
 }
 
@@ -281,20 +281,50 @@ void shotDone(mc2::czstring path, bool ok, int w, int h)
 }
 }  // namespace
 
+namespace {
+bool g_promotionShot = false;   // MC2_SHOT_SCREEN=promotion: the post-mission pilot promotion panel, not a front-end grid cell
+
+void shotInit()
+{
+	if (g_shotInit) return;
+	g_shotInit = true;
+	g_shotScreen = mc2::gate::str<"MC2_SHOT_SCREEN">();
+	if (g_shotScreen.empty()) return;
+	g_shotPath = mc2::gate::str<"MC2_SCREENSHOT_PATH">();
+	Spec spec;
+	std::string why;
+	if (!parseSpec(g_shotScreen, spec, &why)) { g_trigger.arm(0, 0, 1, 1); shotFail(why.c_str()); return; }
+	if (g_shotPath.empty()) { g_trigger.arm(0, 0, 1, 1); shotFail("MC2_SCREENSHOT_PATH is not set"); return; }
+	g_promotionShot = spec.cell->x == kPromotionCell;
+	// the panel slides in over ~100 frames: default settle for it is 150 frames unless @N was given
+	const int settle = (g_promotionShot && g_shotScreen.find('@') == std::string::npos) ? 150 : spec.settleFrames;
+	g_trigger.arm(g_promotionShot ? 0 : spec.cell->x, g_promotionShot ? 0 : spec.cell->y, settle, kMaxWaitFrames);
+}
+
+void shotStep(int curX, int curY);
+}  // namespace
+
+bool promotionCaptureActive()
+{
+	shotInit();
+	return g_promotionShot;
+}
+
+void promotionTick(bool panelUp)
+{
+	shotInit();
+	if (g_promotionShot) shotStep(panelUp ? 0 : -1, panelUp ? 0 : -1);
+}
+
 void tickFrontEnd(int curX, int curY)
 {
-	if (!g_shotInit)
-	{
-		g_shotInit = true;
-		g_shotScreen = mc2::gate::str<"MC2_SHOT_SCREEN">();
-		if (g_shotScreen.empty()) return;
-		g_shotPath = mc2::gate::str<"MC2_SCREENSHOT_PATH">();
-		Spec spec;
-		std::string why;
-		if (!parseSpec(g_shotScreen, spec, &why)) { g_trigger.arm(0, 0, 1, 1); shotFail(why.c_str()); return; }
-		if (g_shotPath.empty()) { g_trigger.arm(0, 0, 1, 1); shotFail("MC2_SCREENSHOT_PATH is not set"); return; }
-		g_trigger.arm(spec.cell->x, spec.cell->y, spec.settleFrames, kMaxWaitFrames);
-	}
+	shotInit();
+	if (!g_promotionShot) shotStep(curX, curY);
+}
+
+namespace {
+void shotStep(int curX, int curY)
+{
 	if (!g_trigger.armed() || g_trigger.finished()) return;
 	Trigger::Action a = g_trigger.onFrame(curX, curY);
 	if (a == Trigger::Action::Capture)
@@ -309,10 +339,11 @@ void tickFrontEnd(int curX, int curY)
 	}
 	if (a == Trigger::Action::Fail) shotFail(g_trigger.reason());
 }
+}  // namespace
 
 void onMissionStarted()
 {
-	if (g_trigger.onLeftFrontEnd() == Trigger::Action::Fail) shotFail(g_trigger.reason());
+	if (!g_promotionShot && g_trigger.onLeftFrontEnd() == Trigger::Action::Fail) shotFail(g_trigger.reason());
 }
 }  // namespace mc2::screen_settle
 
@@ -1837,7 +1868,8 @@ void MissionBegin::render()
 		}
 	}
 	// MC2_SHOT_SCREEN: the splash/main menu counts as "no screen" so only the logistics grid cell is matched.
-	mc2::screen_settle::tickFrontEnd(bSplash ? -1 : curScreenX, bSplash ? -1 : curScreenY);
+	const int splashCell = MainMenu::bDrawMechlopedia ? -2 : (MainMenu::bLoadShown ? -3 : -1);
+	mc2::screen_settle::tickFrontEnd(bSplash ? splashCell : curScreenX, bSplash ? splashCell : curScreenY);
 	ZoneScopedN("MissionBegin::render");
 	ZoneValue(bSplash ? 0xffff : 10 * curScreenX + curScreenY);
 	// UI-ASPECT-ANCHOR-1: front-end frame — draw the UI on the 16:9 canvas
@@ -1901,25 +1933,6 @@ void MissionBegin::render()
 				// pattern as Mechlopedia::render).
 				GUI_RECT rect = { 0, 0, Environment.screenWidth, Environment.screenHeight };
 				drawRect( rect, 0xff000000 );
-				// MENU-STALE-CLEAR-2: the GameOS clear killed the top-2/3 ghost
-				// but ImGui-layer remnants (any panel's defs page submitted
-				// earlier this frame) survived in the bottom third. Submit an
-				// opaque ImGui-layer backdrop BEFORE the menu page so the menu
-				// composites over black, not over the previous screen.
-				// LEGACY-FRONTEND-COMPOSITE-1: ONLY when the menu renders as
-				// an ImGui defs page. When the menu is on the legacy GameOS
-				// path (MC2_GAMEOS_UI_DEFS=0, or the lockstep-harden zero-draw
-				// fail-soft), ALL its draws composite in the GameOS HUD layer,
-				// which flushes BEFORE ImGui — this opaque ImGui-layer quad
-				// then covers the entire legacy front-end (root cause of the
-				// "legacy menu renders black" regression: HUD replay put real
-				// menu pixels on FB0, GuiRuntime::Render painted them over).
-				if ( mainMenu->rendersDefsPageOverlay() )
-				{
-					float dw = 0.f, dh = 0.f;
-					if ( GuiRuntime::GetDisplaySize( dw, dh ) && dw > 0.f )
-						GuiRuntime::DrawUiRect( 0.f, 0.f, dw, dh, 0xff000000, true );
-				}
 			}
 		}
 		mainMenu->render();

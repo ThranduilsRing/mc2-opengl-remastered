@@ -16,6 +16,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 import asset_parity as ap  # noqa: E402
+import console_child  # noqa: E402
 
 _COUNTER = itertools.count()
 
@@ -321,6 +322,28 @@ def test_deploy_and_capture_share_exact_payload_ownership(work):
         ap.capture_drift(install, ref)
 
 
+@pytest.mark.parametrize("state", ["missing", "content"])
+def test_declared_cliff_cooks_sync_only_from_pinned_reference(work, state):
+    # Trigger paths: scripts/asset_parity.py, intentional-asset-changes.json.
+    rels = [f"data/terrain_layers/{name}.ktx2" for name in
+            ("cliff_rock_ah", "cliff_rock_nra", "concrete_detail_pad", "concrete_detail_road")]
+    pins = json.loads((ROOT / ap.INTENTIONAL).read_text())
+    assert all(rel in pins for rel in rels)
+    files = dict.fromkeys(rels, b"published cook")
+    ref = tree(work / "reference", files)
+    install = tree(work / "candidate", {} if state == "missing" else dict.fromkeys(rels, b"incorrect cook"))
+    hashes = {rel: hashlib.sha256(data).hexdigest() for rel, data in files.items()}
+    with pytest.raises(ValueError, match="INTENTIONAL ASSET hash mismatch"):
+        ap.enforce(install, ref, sync_missing=False, payload={}, declared=hashes)
+    assert ap.enforce(install, ref, payload={}, declared=hashes).ok
+    assert ap.compare(install, ref, payload={}, declared=hashes).ok
+    (install / rels[0]).unlink()
+    (ref / rels[0]).write_bytes(b"unpublished cook")
+    with pytest.raises(ValueError, match="reference hash mismatch"):
+        ap.enforce(install, ref, payload={}, declared=hashes)
+    assert not (install / rels[0]).exists()
+
+
 @pytest.fixture
 def declaration_repo(work, monkeypatch):
     import subprocess
@@ -420,3 +443,54 @@ def test_ab_declared_grass_accepts_only_candidate_hash(work, declaration_repo, m
     assert parity["cross_data"] and parity["unlisted_differing_count"] == 0
     tree(install_b, {"data/unlisted.png": b"extra"})
     assert ab.data_parity(install_a, install_b)["unlisted_differing_count"] == 1
+
+
+def test_fail_detail_names_paths_and_reference_moved_cause(ref, work):
+    inst = tree(work / "lane", SHARED)
+    (inst / ".deployed_manifest.csv").write_text("x")
+    os.utime(inst / ".deployed_manifest.csv", (1000, 1000))
+    (inst / "data/art/mechicons/anubis.png").write_bytes(b"older")
+    tree(inst, {f"data/extra_{i}.bin": b"e" for i in range(10)})
+    result = ap.compare(inst, ref, skip=set())
+    text = "\n".join(ap.detail_lines(result, inst, ref, limit=3))
+    assert "size: data/art/mechicons/anubis.png" in text and "(+7 more)" in text
+    assert "extra: data/extra_0.bin" in text and "the reference moved" in text
+    # With nothing newer in the reference and only extras, the cause names the prune command.
+    inst2 = tree(work / "lane2", {**SHARED, "data/stale.bin": b"s"})
+    os.utime(ref / "data/textures/1.2.txm", (1, 1))
+    text = "\n".join(ap.detail_lines(ap.compare(inst2, ref, skip=set()), inst2, ref))
+    assert "--sync" in text and "stale.bin" in text
+    assert ap.detail_lines(ap.Result(), inst, ref) == []
+
+
+def test_pinned_mismatch_error_lists_every_failing_file(work):
+    inst = tree(work / "lane", {"data/a.fit": b"a", "data/b.fit": b"b"})
+    sha = lambda data: hashlib.sha256(data).hexdigest()
+    declared = {"data/a.fit": sha(b"A"), "data/b.fit": sha(b"b"), "data/gone.fit": sha(b"g")}
+    with pytest.raises(ValueError) as exc:
+        ap.owned_paths(inst, {}, declared)
+    msg = str(exc.value)
+    assert "2 file(s)" in msg and "data/a.fit (sha256=" in msg and "data/gone.fit (absent" in msg
+    assert "data/b.fit" not in msg
+
+
+# Declared sha = v0.4 reference bytes (enforce() refuses a declaration the reference lacks); a declared AND tracked
+# asset must also equal the tracked blob, so v0.4 and the repo agree.
+
+
+def test_declared_sha_matches_tracked_blob():
+    """A declared asset that is also git-tracked must equal the tracked blob, or deploy fails on it."""
+    import subprocess
+    declared = json.loads((ROOT / ap.INTENTIONAL).read_text(encoding="utf-8"))
+    tracked = set(subprocess.run(["git", "-C", str(ROOT), "ls-files", "--", "data", "assets"],
+                                 capture_output=True, text=True, check=True,
+                                 **console_child.child_kwargs(redirected=True)).stdout.split("\n"))
+    bad = []
+    for rel, sha in declared.items():
+        if rel not in tracked:
+            continue
+        blob = subprocess.run(["git", "-C", str(ROOT), "show", f"HEAD:{rel}"], capture_output=True, check=True,
+                              **console_child.child_kwargs(redirected=True)).stdout
+        if hashlib.sha256(blob).hexdigest() != sha:
+            bad.append(rel)
+    assert not bad, f"{ap.INTENTIONAL} sha differs from the tracked blob: {bad}"

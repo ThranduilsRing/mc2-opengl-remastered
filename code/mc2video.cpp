@@ -15,6 +15,7 @@
 #include <SDL2/SDL_mixer.h>
 
 #include "file.h"   // fileExists
+#include "vfs.h"
 #include "gameos.hpp"  // gos_NewEmptyTexture, gos_DestroyTexture, gos_Texture_Alpha, RECT_TEX, gosHint_DisableMipmap, DWORD
 #include "soundsys.h"  // SoundSystem — PCM push adapter (Task 12)
 extern char moviePath[80];  // defined in mclib/paths.cpp
@@ -164,6 +165,10 @@ bool resolveVideoCandidate(mc2::czstring shortName, bool preferUpscaled,
     auto tryEmit = [&](const Slot& s) -> bool {
         char tmp[1024];
         mc2::fmt::to_buf(tmp, "{}{}{}", mc2::fmt::safe(moviePath), mc2::fmt::safe(shortName), mc2::fmt::safe(s.ext));
+        // FFmpeg opens native paths, unlike File::open: preserve case and mod precedence.
+        const auto entry = mc2::vfs::lookup(tmp);
+        if (entry && !entry->physicalPath.empty())
+            mc2::fmt::to_buf(tmp, "{}", entry->physicalPath);
         if (s.looseRequired && !fileExists(tmp)) return false;
         if (viableSoFar == index) {
             mc2::fmt::to_buf_n(outPath, outPathSize, "{}", mc2::fmt::safe(tmp));
@@ -248,6 +253,7 @@ struct VideoSession {
     // Failure-handling log-once flags — Task 16
     bool             loggedDegenerateRect     = false;
     bool             loggedVideoDecodeError   = false;
+    bool             loggedPresented = false;
 
     // Lifecycle
     bool             paused   = false;
@@ -831,6 +837,10 @@ void video_render(VideoSession* s)
     fillQ(vq[2], s->quadX1, s->quadY1, 1.0f, 1.0f);
     fillQ(vq[3], s->quadX0, s->quadY1, 0.0f, 1.0f);
     gos_DrawQuads(vq, 4);
+    if (!s->loggedPresented) {
+        VIDEO_LOG("first_frame_presented path={}", mc2::fmt::safe(s->fmt->url));
+        s->loggedPresented = true;
+    }
 }
 void video_pause(VideoSession* s, bool paused)
 {

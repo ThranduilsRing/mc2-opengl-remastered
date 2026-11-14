@@ -68,6 +68,12 @@ def find_blender_exe(explicit=None):
     )
 
 
+def gpu_startup_args():
+    """`--python blender_gpu.py`: pins Cycles to the second (non-display) GPU before the recipe runs (see blender_gpu.py). Every
+    Blender launch (this runner, kit.py) goes through here."""
+    return ["--python", str(Path(__file__).resolve().with_name("blender_gpu.py"))]
+
+
 def build_blender_cmd(blender_exe, script_path, args):
     """Build the headless command line (pure — unit-testable without Blender).
 
@@ -75,7 +81,7 @@ def build_blender_cmd(blender_exe, script_path, args):
     bare flag, None/False keys are omitted.
     """
     cmd = [str(blender_exe), "--background", "--factory-startup", "--disable-autoexec",
-           "--python", str(Path(script_path).resolve()), "--"]
+           *gpu_startup_args(), "--python", str(Path(script_path).resolve()), "--"]
     for k, v in args.items():
         if v is None or v is False:
             continue

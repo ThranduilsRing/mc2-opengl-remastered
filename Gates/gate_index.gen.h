@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 430;
+inline constexpr std::size_t kGateCount = 428;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -106,7 +106,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_EDITOR_UI_DEFS", Kind::Bool, Rule::Std, {}},
     {"MC2_EDITOR_WATCHDOG", Kind::Bool, Rule::Exact1, {}},
     {"MC2_EFFECT_ADMISSION_PREDICATE", Kind::Enum, Rule::Std, "|legacy|modern"},
-    {"MC2_ENGINE_XL", Kind::Bool, Rule::Presence, {}},
     {"MC2_EQUIPMENT_ADD", Kind::Bool, Rule::Lead0, {}},
     {"MC2_EQUIPMENT_DEFINITION_SOURCE", Kind::Enum, Rule::Std, "legacy|generated"},
     {"MC2_FF_TRACE", Kind::Bool, Rule::Presence, {}},
@@ -288,7 +287,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_SIM_IDENTITY_TRACE_DETAIL", Kind::Bool, Rule::Std, {}},
     {"MC2_SIM_OVERLAP", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_SIM_OVERLAP_AUDIT", Kind::Int, Rule::Prefix, {}},
-    {"MC2_SIM_RATE_PROBE", Kind::Int, Rule::Prefix, {}},
     {"MC2_SIM_SPEED", Kind::Float, Rule::Prefix, {}},
     {"MC2_SLOT", Kind::String, Rule::Std, {}},
     {"MC2_SMART_LOAD", Kind::Bool, Rule::Lead0Kill, {}},

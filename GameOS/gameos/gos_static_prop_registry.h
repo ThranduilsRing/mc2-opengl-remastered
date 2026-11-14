@@ -13,7 +13,7 @@ namespace GpuStaticPropRegistry {
 // One-time init / teardown (called from code/mission.cpp alongside batcher).
 void init();
 void destroy();
-void bakeForestOcclusion();
+void bakeForestOcclusion(float sunX, float sunY, float sunUp); // MC2-world surface->sun (x, y, elevation)
 
 // Returns true iff MC2_STATIC_PROP_MISSION_LOAD_REG=1 was set at startup.
 // Gates the mission-load bulk registration walk in GameObjectManager.

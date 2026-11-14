@@ -78,7 +78,10 @@ def test_decal_build_is_measured_outside_unchanged_parent_and_wait_is_separate()
 def test_audio_distinguishes_open_from_wav_without_logging_asset_paths():
     src = between(source("gameos_sound.cpp"), 'ZoneScopedN("Audio.Stream.LoadFile")', 'gosASSERT(res_type == gosAudio_UserMemory)')
     assert 'Audio.Stream.LoadFile.MusicOpen' in src
-    assert src.count('Audio.Stream.LoadFile.WavLoad') == 2  # SDL and Mix build paths
+    # 9dac0ebcd: WAV read+decode moved to the worker (wav_worker.h); Main keeps Convert and Publish.
+    assert 'Audio.Stream.LoadFile.Convert' in source("gameos_sound.cpp") and 'Audio.Stream.LoadFile.Publish' in source("gameos_sound.cpp")
+    worker = source("wav_worker.h")
+    assert 'Audio.Stream.LoadFile.Read' in worker and 'Audio.Stream.LoadFile.Decode' in worker
     assert 'ZoneText(file_name, std::min<size_t>(std::strlen(file_name), 192))' in src
 
 

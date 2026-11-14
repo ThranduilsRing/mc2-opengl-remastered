@@ -37,6 +37,7 @@ add_executable(mc2_tests
     ${MC2_WORKTREE_ROOT}/mclib/fx/fx_catalog.cpp
     ${MC2_WORKTREE_ROOT}/mclib/fx/fx_curve.cpp
     ${MC2_WORKTREE_ROOT}/mclib/fx/fx_mesh_data.cpp
+    test_component_rules.cpp
     test_support_craft.cpp
     test_jump_target.cpp
     test_path_work.cpp
@@ -73,6 +74,7 @@ add_executable(mc2_tests
     test_mover_los_epoch.cpp
     test_screen_pick.cpp
     test_camera_start_pick.cpp
+    test_camera_elevation.cpp
     test_spawn_tree_clear.cpp
     test_quality_presets.cpp
     test_rendercore.cpp     # RENDERCORE-UNIT-TESTS-1: GL-free substrate invariants
@@ -191,6 +193,7 @@ add_executable(mc2_tests
     test_file_family_contract.cpp   # step 4 B3.0: the File family's name/child/buffer contract before B3.1
     test_pak_read_exact.cpp     # step 4 B4.1: mc2::pak::readExact, the size-checked packet read of the move maps (malformed pak rejected with one log line)
     test_tga_scratch.cpp        # step 4 B4.2a: the whole-file read and the TGA body-size check of the terrain texture loaders
+    test_terrain_overlay_tiles.cpp  # overlay-load-used-tiles-1: used-tile derivation of the overlay loader
     test_globalmap_limits.cpp   # step 4 B4.1c: the range checks of every count a global move map reads from a pak, plus the zeroed owner helper
     test_terrain_part_chunk.cpp
     test_texture_ref.cpp        # step 4 B5.1: mc2::BasicTextureRef, one release per adopted texture node reference
@@ -206,6 +209,7 @@ add_executable(mc2_tests
     test_mc2str.cpp         # mc2::str helpers (from_c, ASCII-fold equality/order, ascii_lower/upper) + the stock-identifier corpus against the old compare
     test_resource_strings.cpp
     test_resource_messages.cpp  # typed resource messages over the real catalog (MC2Strings.cpp linked)
+    test_text_fit.cpp       # drawText bounded-region fit math (header-only)
     test_abl_include_path.cpp  # ABL #include_ next to the including script: mixed separators, OConst.abi (Windows regression)
     test_abl_concat.cpp     # ABL concat(): the append never writes past the script variable's declared size
     test_abl_position.cpp   # ABL getRelativePositionToObject: the REAL binding against a scripted argument queue (abl_exec_shim.cpp)
@@ -550,6 +554,7 @@ endif()
 # Save schema and ABL output bounds exercise their shared production helpers.
 target_sources(mc2_tests PRIVATE
     test_save_archive.cpp
+    test_terrain_cache_key.cpp
     ${MC2_WORKTREE_ROOT}/code/save_archive.cpp
     test_save_sections.cpp
     test_save_field_omission.cpp

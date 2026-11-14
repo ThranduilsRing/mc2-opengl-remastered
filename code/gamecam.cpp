@@ -1245,8 +1245,6 @@ long GameCamera::update (void)
 	
 	cameraAltitude = std::min(cameraAltitude, testMax);
 
-	if ((cameraAltitude < testMax) && (cameraAltitudeDesired > testMax))
-		cameraAltitude = testMax;
 												  
 	// HZB validation knob (debug only): force a low across-map HORIZON view so
 	// static props occlude each other. MC2's default RTS camera is near top-down

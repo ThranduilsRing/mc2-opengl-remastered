@@ -242,7 +242,7 @@ EDITOR_SUPPORT_TREES = ["tools/terrain_gen"]
 GAME_COOK_TOOLS = ["tools/cook_bc6h_hdri.py", "tools/examples"]
 # Tracked loose stock-art PBR maps (PNG albedo/normal/ORM per stock mech and vehicle); mods keep
 # their own art (File::open priority). Walked file-by-file.
-GAME_LOOSE_ART_TREES = ["data/textures/mech_pbr", "data/textures/vehicle_pbr"]
+GAME_LOOSE_ART_TREES = ["data/textures/mech_pbr", "data/textures/vehicle_pbr", "data/textures/256Overlays"]
 
 # Repo-shipped imported structure (TERRAIN-CLIFF-MESH-DRESSING-P0): data/tgl is enumerated
 # file-by-file, not copied wholesale, so these reach an install only through this list.
@@ -260,6 +260,7 @@ IMPORTED_STRUCTURE_PAYLOAD = [
 # runtime (both readers tolerate absence), but shipping without them silently
 # drops per-mission/material tuning that was authored assuming the file loads.
 GAME_DATA_PAYLOAD = [
+    "data/art/asset_sizes.csv",
     *[f"data/art/gui/mcl_cm_op{op}_{view}.tga"
       for op, count in ((1, 6), (2, 3), (3, 4)) for view in range(1, count + 1)],
     "data/art/gui/mcl_cm_5.png",
@@ -1400,6 +1401,12 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
             fail(f"game data payload missing in source: {p}")
         items.append((p, rel, "support"))
 
+    for path in sorted((Path(src_root) / "data/art").glob("mcl_mc_*.tga")):
+        items.append((str(path), path.relative_to(src_root).as_posix(), "support"))
+    # MENU-PLANET-MODERN-1: main-menu backdrop (hi-res tiles + the fit that places them).
+    for pat in ("mcl_menu_*.tga", "mcl_sp.fit"):
+        for path in sorted((Path(src_root) / "data/art").glob(pat)):
+            items.append((str(path), path.relative_to(src_root).as_posix(), "support"))
     # Optional cooked logistics overrides; missing art retains the original PAK/atlas.
     for folder in ("data/art/mechicons", "data/art/missionmaps", "data/art/pilots"):
         for path in sorted((Path(src_root) / folder).rglob("*.png")):
@@ -2832,6 +2839,8 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     elif drift.ok:
         log(asset_parity.verdict_line(drift, asset_parity.default_ref()))
     else:
+        for _ln in asset_parity.detail_lines(drift, target, asset_parity.default_ref()):
+            log(_ln)
         fail(f"asset parity: {len(drift.missing)} missing, {len(drift.size)} size-different, "
              f"{len(drift.content)} content-different, {len(drift.extra)} extra file(s) vs {asset_parity.default_ref()} "
              f"(missing e.g. {', '.join(drift.missing[:5])}); rerun without --no-asset-sync to copy them from v0.4", 8)

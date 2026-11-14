@@ -8,6 +8,8 @@
 #include "camera_internal.h"
 #include "mc2fmt.h"
 #include "Gates/render_options.h"
+#include "camera_elevation.h"
+#include "diagnostic_trace.h"
 
 extern bool useFog;
 
@@ -351,6 +353,15 @@ long Camera::update (void)
 	
 	updateGoalPosition(newPosition);
 	updateGoalRotation();
+	if (pitchActive) {
+		if (projectionAngle != pitchLast || goalRotTime > 0.0f)
+			pitchActive = false;
+		else {
+			projectionAngle = mc2cam::easeElevation(projectionAngle, pitchGoal, pitchVelocity, frameLength,
+				usePerspective ? MIN_PERSPECTIVE : MIN_ORTHO, MAX_PERSPECTIVE);
+			pitchLast = projectionAngle;
+		}
+	}
 	updateGoalFOV();
 	
 	setPosition(newPosition);		//THIS ALWAYS sets z position for us now!!!!!
@@ -398,25 +409,18 @@ long Camera::update (void)
 	screenResolution.x = viewMulX;
 	screenResolution.y = viewMulY;
 
-	// Smooth zoom: lerp cameraAltitude toward cameraAltitudeDesired each frame.
+	// Smooth altitude with an exact critically damped step; hard-set poses reset momentum.
 	// Also decay scroll momentum (used for adaptive scroll-speed zoom).
 	{
 		s_scrollMomentum -= frameLength * 4.0f;
 		s_scrollMomentum = std::max(s_scrollMomentum, 0.0f);
 
-		float diff = cameraAltitudeDesired - cameraAltitude;
-		// [CAMERA-SMOOTHING-1] knob>0: frame-rate-independent exponential
-		// approach (1-exp(-dt/tau)); knob=0: legacy 20/s linear-rate lerp.
-		float zoomStep = (camSmoothTau() > 0.0f)
-			? camSmoothAlpha(frameLength)
-			: (frameLength * 20.0f < 1.0f ? frameLength * 20.0f : 1.0f);
-		if (fabsf(diff) > 0.1f)
-			cameraAltitude += diff * zoomStep;
-		else
-			cameraAltitude = cameraAltitudeDesired;
-		cameraAltitude = std::max(cameraAltitude, AltitudeMinimum);
 		float _ap = (projectionAngle - MIN_PERSPECTIVE) / (MAX_PERSPECTIVE - MIN_PERSPECTIVE);
 		float _tm = AltitudeMaximumLo + ((AltitudeMaximumHi - AltitudeMaximumLo) * _ap);
+		if (cameraAltitude != altitudeLast) altitudeVelocity = 0.0f;
+		cameraAltitude = mc2cam::easeElevation(cameraAltitude, cameraAltitudeDesired, altitudeVelocity,
+			frameLength, AltitudeMinimum, std::max(AltitudeMinimum, _tm));
+		altitudeLast = cameraAltitude;
 		if (_tm > 0.0f)
 			newScaleFactor = 1.0f - ((cameraAltitude - AltitudeMinimum) / _tm);
 	}
@@ -520,8 +524,8 @@ long Camera::update (void)
 			//     11.25-deg snap at frame 150 (mimics the keyboard/edge
 			//     scroll + rotation input path), then input stops. Proves
 			//     ramp-in/tail-out in the delta log without a human.
-			//   MC2_CAMERA_SMOOTH_TRACE=1 â€” appends per-frame pose deltas to
-			//     cam_smooth_trace.csv in the working dir while motion > 0.
+			//   MC2_TEST_SPAWN=1 + MC2_DIAG_TAGS=CAMERA_ELEVATION appends
+			//     every frame's pose and elevation goals to cam_smooth_trace.csv.
 			{
 				static int s_camTest = -1;
 				static int s_camTrace = -1;
@@ -529,7 +533,7 @@ long Camera::update (void)
 				static FILE* s_camTraceFile = nullptr;
 				if (s_camTest < 0) {
 					s_camTest = mc2::gate::get<"MC2_CAM_SMOOTH_TEST">();
-					s_camTrace = false;
+					s_camTrace = mc2::gate::get<"MC2_TEST_SPAWN">() && mc2_diag::tagRequested("CAMERA_ELEVATION");
 				}
 				if (s_camTest) {
 					s_camTestFrame++;
@@ -545,16 +549,16 @@ long Camera::update (void)
 						(s_camTestFrame % 3) == 0)
 						rotateLeft(11.25f);
 				}
-				if (s_camTrace && (dPos > 0.0001f || dRot > 0.0001f || s_camTest)) {
+				if (s_camTrace) {
 					if (!s_camTraceFile)
 					{
 						s_camTraceFile = fopen("cam_smooth_trace.csv", "w");
 						if (s_camTraceFile)
-							mc2::fmt::print(s_camTraceFile, "frame,dt_ms,px,py,rot,alt,dpos,drot\n");
+							mc2::fmt::print(s_camTraceFile, "frame,dt_ms,px,py,rot,alt,dpos,drot,pitch,pitch_goal,alt_goal\n");
 					}
 					if (s_camTraceFile)
 					{
-						mc2::fmt::print(s_camTraceFile, "{:d},{:.3f},{:.2f},{:.2f},{:.3f},{:.2f},{:.4f},{:.4f}\n", mc2::fmt::as_u32(s_motionFrames), frameLength * 1000.0f, position.x, position.y, cameraRotation, cameraAltitude, dPos, dRot);
+						mc2::fmt::print(s_camTraceFile, "{:d},{:.3f},{:.2f},{:.2f},{:.3f},{:.4f},{:.4f},{:.4f},{:.6f},{:.6f},{:.4f}\n", mc2::fmt::as_u32(s_motionFrames), frameLength * 1000.0f, position.x, position.y, cameraRotation, cameraAltitude, dPos, dRot, projectionAngle, pitchGoal, cameraAltitudeDesired);
 						fflush(s_camTraceFile);
 					}
 				}

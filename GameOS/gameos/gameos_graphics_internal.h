@@ -32,6 +32,7 @@ struct gosTextureInfo {
 
 class gosTexture {
     public:
+        static inline uint64_t texelGeneration = 0; // render owner only
         gosTexture(gos_TextureFormat fmt, const char* fname, DWORD hints, BYTE* pdata, DWORD size, bool from_memory)
         {
 
@@ -113,6 +114,7 @@ class gosTexture {
             is_locked_ = false;
             is_from_memory_ = true;
             content_serial_ = 1;
+            ++texelGeneration;
             mirror_w_ = 0;
             mirror_h_ = 0;
         }
@@ -120,6 +122,7 @@ class gosTexture {
         bool prepareSource();
 
         ~gosTexture() {
+            ++texelGeneration;
 
 
             gosASSERT(is_locked_ == false);
@@ -147,6 +150,7 @@ class gosTexture {
         bool hasRgbaMirror() const { return rgba_mirror_ && !rgba_mirror_->empty() && mirror_w_ == tex_.w && mirror_h_ == tex_.h; }
 
         void setRgbaMirror(int w, int h, TexFormat format, const void* pixels) {
+            ++texelGeneration;
             if(w <= 0 || h <= 0 || pixels == nullptr) {
                 rgba_mirror_.reset();
                 mirror_w_ = 0;
@@ -180,6 +184,7 @@ class gosTexture {
 
         // Publishes already-RGBA8 texels as the mirror without a copy (the decoded upload source).
         void adoptRgbaMirror(int w, int h, std::vector<uint8_t>&& rgba) {
+            ++texelGeneration;
             if (w <= 0 || h <= 0 || rgba.size() != static_cast<size_t>(w) * static_cast<size_t>(h) * 4u) {
                 setRgbaMirror(0, 0, TF_RGBA8, nullptr);
                 return;

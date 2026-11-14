@@ -37,7 +37,7 @@ def test_board_wires_host_infra_only_behind_the_env_opt_in():
     text = _board(False)
     assert '"$rc" -eq 77' in text and 'MC2_HOST_INFRA_OK:-0}" = "1"' in text and "grep -q 'HOST_INFRA'" in text
     assert "[HOST_INFRA_ROWS]" in text and "NOT a pass" in text
-    for row in ("analyze_dangling", "shadow_bake_init", "abl_static_alloc", "mission_codec_golden"):
+    for row in ("analyze_dangling", "shadow_bake_init", "abl_static_alloc"):   # mission_codec_golden row deleted in aa615a9f1 (trim)
         line = next(l for l in text.splitlines() if f'run_nightly "{row}"' in l)
         assert "HOST_INFRA" in line or "_host_need" in line, row
 

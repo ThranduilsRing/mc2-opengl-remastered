@@ -121,6 +121,7 @@ struct DeviceCaps {
     // The Windows adapter identity of the device (VkPhysicalDeviceIDProperties::deviceLUID, the bytes of a LUID); valid only when the driver says so.
     uint8_t deviceLuid[8] = {0, 0, 0, 0, 0, 0, 0, 0};
     bool deviceLuidValid = false;
+    uint8_t deviceUuid[16] = {};   // VkPhysicalDeviceIDProperties::deviceUUID: stable across reboots (the LUID is not); tells two identical cards apart
 
     bool hasExtension(std::string_view name) const {
         for (const std::string& e : extensions)

@@ -229,3 +229,50 @@ TEST_CASE("contact pick: first ridge wins over the fixed point far valley")
     REQUIRE(mc2::firstTerrainHit(origin, vertical, lo, hi, 0.125, height, t));
     CHECK(t == doctest::Approx(10));
 }
+
+TEST_CASE("pick stack: enemy mover under a tree canopy beats the nearer tree and prop")
+{
+    using mc2::PickRank;
+    // Cursor ray enters a huge island-tree box (t=5) and a prop (t=6) before the enemy mech (t=40).
+    const PickRank tree{false, 5.0, 4, 10}, prop{false, 6.0, 1, 11}, enemy{true, 40.0, 0, 99};
+    CHECK(mc2::pickStackBefore(enemy, tree));
+    CHECK(mc2::pickStackBefore(enemy, prop));
+    CHECK_FALSE(mc2::pickStackBefore(tree, enemy));
+    // Unit in the open (no scenery on the ray): unchanged, mover is the only candidate.
+    CHECK_FALSE(mc2::pickStackBefore(enemy, enemy));
+    // Friendly and enemy movers: depth then priority, as before.
+    const PickRank friendlyNear{true, 20.0, 2, 5}, enemyFar{true, 40.0, 0, 6};
+    CHECK(mc2::pickStackBefore(friendlyNear, enemyFar));
+    CHECK(mc2::pickStackBefore(PickRank{true, 20.0, 0, 7}, PickRank{true, 20.0, 2, 5}));
+    // An ineligible mover (unseen contact) does not outrank a visible static object.
+    CHECK(mc2::pickStackBefore(PickRank{false, 6.0, 1, 11}, PickRank{false, 40.0, 0, 3}));
+}
+
+TEST_CASE("pick stack: a unit the cursor hits outranks a farther-forgiven-but-nearer one")
+{
+    using mc2::PickRank;
+    // Grazing view: A stands in front (t=100) and is only reached by padded-rect forgiveness; B (t=140) is hit exactly.
+    const PickRank forgivenNear{true, 100.0, 0, 1, true}, exactFar{true, 140.0, 2, 2, false};
+    CHECK(mc2::pickStackBefore(exactFar, forgivenNear));
+    CHECK_FALSE(mc2::pickStackBefore(forgivenNear, exactFar));
+    // Two exact (or two forgiven) hits still resolve by depth.
+    CHECK(mc2::pickStackBefore(PickRank{true, 100.0, 2, 1, false}, PickRank{true, 140.0, 0, 2, false}));
+    CHECK(mc2::pickStackBefore(PickRank{true, 100.0, 2, 1, true}, PickRank{true, 140.0, 0, 2, true}));
+    // Scenery stays behind any eligible mover, forgiven or not.
+    CHECK(mc2::pickStackBefore(forgivenNear, PickRank{false, 5.0, 1, 3, false}));
+}
+
+TEST_CASE("pick occlusion: a mover slightly behind the visual surface at its feet is still pickable")
+{
+    // Observed on mc2_01: object_t 1318.7 vs terrain_t 1313.1 for a visible enemy under the cursor.
+    CHECK_FALSE(mc2::pickBeforeSurface(1318.7, 1313.1));
+    const double lo[3] = {-5, -10, 0}, hi[3] = {5, 10, 20};
+    const double feet[3] = {0, 0, 1}, ridge[3] = {-20, 0, 1};
+    CHECK(mc2::pickMoverBeforeSurface(1318.7, 1313.1, feet, lo, hi));
+    CHECK_FALSE(mc2::pickMoverBeforeSurface(1400.0, 1313.1, feet, lo, hi));
+    // Regression: the old diagonal slack accepted t=120 behind a ridge at t=100.
+    CHECK_FALSE(mc2::pickMoverBeforeSurface(120, 100, ridge, lo, hi));
+    CHECK(mc2::pickMoverBeforeSurface(99, 100, ridge, lo, hi));
+    const double sideRidge[3] = {0, 11, 1};
+    CHECK_FALSE(mc2::pickMoverBeforeSurface(120, 100, sideRidge, lo, hi));
+}

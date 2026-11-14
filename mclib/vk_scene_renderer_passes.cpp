@@ -7,6 +7,7 @@
 #include "mc2fmt.h"
 #include "../GameOS/gameos/static_caster_set.h"
 #include "../GameOS/gameos/shadow_mover_feed.h"
+#include "../GameOS/gameos/vk_rt_scene.h"
 #include <cstring>
 
 extern bool     g_loadRaceTrace;
@@ -265,6 +266,7 @@ void mc2::VkSceneRenderer::renderListsGpuStaticProps (RenderSubmissions& submiss
 			{
 				ZoneScopedN("GpuSP.BatcherFlush");
 				GpuStaticPropBatcher::instance().flush(getLastRenderSnapshot());
+				mc2vk::rt::scene::recordFrame();
 			}
 		};
 

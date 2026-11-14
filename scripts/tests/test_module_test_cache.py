@@ -21,6 +21,40 @@ def test_timed_out_module_is_not_retried(monkeypatch):
     assert calls == ["test_hang.py"]
 
 
+@pytest.mark.parametrize("summary,rc,expected,calls", [
+    ("SKIPPED: stock mesh dump not available\n1 skipped in 0.01s", 5, 0, 1),
+    ("no tests ran in 0.01s", 5, 0, 2),
+    ("ERROR test_fixture.py - missing dependency\n1 skipped, 1 error", 2, 2, 1),
+    ("FAILED test_fixture.py::test_bad\n1 failed, 1 skipped", 1, 1, 1),
+])
+def test_tools_module_skip_is_not_a_script(monkeypatch, summary, rc, expected, calls):
+    import run_tools_tests as runner
+    from types import SimpleNamespace
+    commands = []
+    def run(command, **kwargs):
+        commands.append(command)
+        return SimpleNamespace(stdout=summary if len(commands) == 1 else "", stderr="",
+                               returncode=rc if len(commands) == 1 else 0)
+    monkeypatch.setattr(runner.subprocess, "run", run)
+    result = runner._run_module_once("test_fixture.py")
+    assert result[1] == expected
+    assert len(commands) == calls
+
+
+@pytest.mark.parametrize("tail,counts", [
+    ("1 skipped in 0.01s", "0 fully green, 1 skipped"),
+    ("2 passed, 1 skipped in 0.01s", "1 fully green, 0 skipped"),
+])
+def test_tools_summary_counts_skips(monkeypatch, capsys, tail, counts):
+    import run_tools_tests as runner
+    monkeypatch.setattr(sys, "argv", ["run_tools_tests.py", "--suite", "art"])
+    monkeypatch.setattr(runner, "discover", lambda suite: ["test_fixture.py"])
+    monkeypatch.setattr(runner, "load_ledger", lambda: {})
+    monkeypatch.setattr(runner, "run_all", lambda *a: [("test_fixture.py", 0, [], tail)])
+    assert runner.main() == 0
+    assert counts in capsys.readouterr().out
+
+
 def test_scripts_timeout_reports_without_diagnostic_rerun(monkeypatch, capsys):
     import run_scripts_tests as runner
     monkeypatch.setattr(sys, "argv", ["run_scripts_tests.py"])

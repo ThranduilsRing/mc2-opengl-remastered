@@ -144,7 +144,6 @@ L(Presence, "MC2_EDITOR_TRACE", Bool, false, "editor", "", "", verified),
 G("MC2_EDITOR_UI_DEFS", Bool, true, "editor", "", "Mission Editor shell overlay is data/defs-first by default.", verified),
 L(Exact1, "MC2_EDITOR_WATCHDOG", Bool, false, "editor", "", "", verified),
 G("MC2_EFFECT_ADMISSION_PREDICATE", Enum, "", "code", "", "", tokens("|legacy|modern") | verified),
-L(Presence, "MC2_ENGINE_XL", Bool, false, "mech", "", "", verified),
 L(Lead0, "MC2_EQUIPMENT_ADD", Bool, false, "code", "", "", verified),
 G("MC2_EQUIPMENT_DEFINITION_SOURCE", Enum, "legacy", "code", "", "", passthrough | tokens("legacy|generated") | verified),
 // FarBackdropLit (FAR-BACKDROP-LIT-IMPL-1)

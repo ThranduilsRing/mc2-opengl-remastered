@@ -87,7 +87,7 @@ layout(location = 10) out vec3 vMaterialSeed;
 flat layout(location = 11) out vec3 vMaterialAmbient;
 flat layout(location = 12) out vec3 vMaterialSun;
 flat layout(location = 13) out uint vMaterialFlags;
-layout(location = 14) out vec3 vTree; // ambient AO, tree material active, forest sun visibility
+layout(location = 14) out vec4 vTree; // ambient AO, tree material active, forest sky/sun visibility
 flat layout(location = 15) out uvec2 vWindow; // glass cell ID, stable building seed
 flat layout(location = 16) out uvec3 vTeam;   // team paint 0x00RRGGBB x3 (red, green, blue slot), carried in the instance's fogRGB bits
 flat layout(location = 17) out uint vPacketIdx; // this draw's PropPacket row (packetBase + gl_DrawID)
@@ -172,15 +172,19 @@ void main() {
     vec3 canopy = uFrame.hotTableReady != 0 && canopyBase + 2u < uint(uTypeHot.c.length())
         ? vec3(uTypeHot.c[canopyBase].w, uTypeHot.c[canopyBase+1u].w, uTypeHot.c[canopyBase+2u].w) : vec3(0);
     bool tree = uFrame.poolF.w > 0.0 && canopy.y > 0.0 && (inst.flags & 2u) == 0u;
-    vTree = vec3(1.0, tree ? 1.0 : 0.0, 1.0);
-    vec2 forestSun = vec2(-uFrame.terrainSunMC2.x, uFrame.terrainSunMC2.y);
-    vec4 forestDirection = max(vec4(forestSun.x, -forestSun.x, forestSun.y, -forestSun.y), vec4(0));
-    forestDirection /= max(dot(forestDirection, vec4(1)), 1e-6);
-    vec4 forestHorizon = vec4((inst.flags >> 8u) & 63u, (inst.flags >> 14u) & 63u,
-                              (inst.flags >> 20u) & 63u, (inst.flags >> 26u) & 63u) / 63.0;
-    float forestShade = tree ? dot(forestDirection, forestHorizon) : 0.0;
-    float forestSunVisibility = 1.0 - 0.92 * forestShade;
-    vTree.z = forestSunVisibility;
+    vTree = vec4(1.0, tree ? 1.0 : 0.0, 1.0, 1.0);
+    // Forest light bake (flags[8..31]): sun shadow-line height, crown-base and crown-top sky occlusion.
+    // hn = vertex height in tree-top units (crown centre 0.65, crown top 1.0); crowns are lit above the shadow line.
+    float forestSky = 1.0, forestSun = 1.0;
+    if (tree) {
+        float hn = 0.65 + sign(canopy.z) * (a_position.y - canopy.x) / (2.0 * abs(canopy.z));
+        vec3 bake = vec3((inst.flags >> 8u) & 255u, (inst.flags >> 16u) & 255u, inst.flags >> 24u) / 255.0;
+        float line = bake.x * 1.25;   // lit once hn clears the shadow line; an unshadowed edge tree is lit from the ground up
+        forestSun = mix(0.02, 1.0, max(smoothstep(line - 0.05, line + 0.2, hn), 1.0 - smoothstep(0.0, 0.1, line)));
+        forestSky = pow(1.0 - mix(bake.y, bake.z, smoothstep(0.3, 1.0, hn)), 3.0); // contrast: deep interior falls off fast
+    }
+    vTree.z = forestSky;
+    vTree.w = forestSun;
     vec3 localNormal = a_normal;
     vec3 backNormal = -a_normal;
     if (tree && (inst.flags & 4u) != 0u) {
@@ -299,7 +303,7 @@ void main() {
     // SH evaluates irradiance, not reflected radiance. Apply the Lambert BRDF
     // once, and decode authored light bytes before summing with linear SH.
     vec3 linearLight = surfaceDecodeSrgb(seed) * propDirFactor
-        + (max(iblTerm, vec3(0.0)) * (1.0 - 0.3 * forestShade) + surfaceDecodeSrgb(sunTerm) * forestSunVisibility * propNightSunWeight(ndl, nMC2)) / 3.14159265
+        + (max(iblTerm, vec3(0.0)) * forestSky + surfaceDecodeSrgb(sunTerm) * vTree.w * propNightSunWeight(ndl, nMC2)) / 3.14159265
         + surfaceDecodeSrgb(inst.aRGBHighlight.rgb);
     if (side == 0) vArgb = surfaceEncodeSrgb(linearLight);
     else vBackArgb = surfaceEncodeSrgb(linearLight);

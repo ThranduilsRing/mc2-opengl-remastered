@@ -96,7 +96,7 @@ layout(location = 10) in vec3 vMaterialSeed;
 flat layout(location = 11) in vec3 vMaterialAmbient;
 flat layout(location = 12) in vec3 vMaterialSun;
 flat layout(location = 13) in uint vMaterialFlags;
-layout(location = 14) in vec3 vTree;
+layout(location = 14) in vec4 vTree;
 flat layout(location = 15) in uvec2 vWindow;
 flat layout(location = 16) in uvec3 vTeam;
 
@@ -285,15 +285,24 @@ void main() {
         vec3 tint = macro / max(dot(macro,vec3(0.299,0.587,0.114)),0.01);
         vec3 albedo = propDecodeColor(materialAlbedo * mix(vec3(1),tint,0.25));
         vec3 sh[9]; for (int k=0;k<9;++k) sh[k]=uEnv.shDiffuse[k].xyz;
-        vec3 ambient = uFrame.iblShStrength > 0.0 ? evalShL2(normalize(outputNormalStuff),sh)*uFrame.iblShStrength : vec3(0);
+        // The environment carries the unrotated probe. Evaluate it in the sun's
+        // frame so its strong directional sky fill agrees with the shadow map.
+        vec3 skyNormal = normalize(outputNormalStuff);
+        vec2 sunAxis = vec2(-L.x, L.y), probeAxis = vec2(sh[3].r, sh[2].r);
+        if (dot(sunAxis,sunAxis) > 1e-8 && dot(probeAxis,probeAxis) > 1e-8) {
+            float angle = atan(sunAxis.y,sunAxis.x) - atan(probeAxis.y,probeAxis.x);
+            float c = cos(angle), s = sin(angle);
+            skyNormal.xz = mat2(c,-s,s,c) * skyNormal.xz;
+        }
+        vec3 ambient = uFrame.iblShStrength > 0.0 ? evalShL2(skyNormal,sh)*uFrame.iblShStrength : vec3(0);
         // Crown normals describe the canopy volume: keep the terrain sun's side.
         // Backlit leaves receive transmission and sky fill below.
         float wrap = max((dot(N,L)+0.5)/1.5,0.0);
         float transmission = alphaTestClass ? 0.08*max(dot(-N,L),0.0) : 0.0;
         vec3 direct = propDecodeColor(vMaterialSun) * (propNightSunWeight(wrap, N) + transmission * propNightDirectShare());
         // SH already contains linear irradiance. Preserve the stock albedo exposure ceiling.
-        float forestSky = mix(0.7, 1.0, vTree.z);
-        vec3 irradiance = max(ambient,vec3(0))*vTree.x*materialAO*forestSky + direct*treeVisibility(N)*vTree.z;
+        float forestSky = vTree.z;
+        vec3 irradiance = max(ambient,vec3(0))*vTree.x*materialAO*forestSky + direct*(vTree.w*mix(treeVisibility(N), 1.0, vTree.w)); // above the baked shadow line the crown is lit
         // Thin leaves retain sky fill through canopy self-occlusion. Fade it
         // with the night profile rather than making dark forests emissive. Full night keeps 0.35*0.35 (was 0.35*0.2: stock-dark
         // leaf albedo read near-black on night maps such as mc2_10).

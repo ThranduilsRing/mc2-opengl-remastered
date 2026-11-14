@@ -399,7 +399,6 @@ void GameObjectManager::registerStaticPropsForMissionLoad() {
 	currentArr = 3;
 	for (long i = 0; i < numGates; ++i)
 		registerOne(gates[i]);
-	GpuStaticPropRegistry::bakeForestOcclusion();
 
 	MC2_DIAGFE(stderr,
 		"[STATIC_PROP_REG v1] event=mission_load enumerated=%d registered=%d skipped=%d\n",
