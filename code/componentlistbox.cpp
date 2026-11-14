@@ -54,6 +54,7 @@ ComponentListItem::ComponentListItem( LogisticsComponent* pComp )
 		path.init( artPath, pFile, "tga" );
 
 		icon.setTexture( path );
+		icon.setComponent(*pComponent);
 		icon.resize( sizeX * LogisticsComponent::XICON_FACTOR, sizeY * LogisticsComponent::YICON_FACTOR);
 		icon.setUVs( 0.f, 0.f, sizeX * 48.f, sizeY * 32.f );
 
