@@ -38,8 +38,8 @@
 #include <atomic>
 #include <cstdio>
 // Inventory-only call-site counter: first call and every 1024th log one line (no per-element zones).
-#define MC2_LEGACY_SITE(name) do { static std::atomic<uint64_t> n_; const uint64_t v_ = ++n_; \n    if (v_ == 1 || (v_ & 1023) == 0) { std::fprintf(stderr, "[LEGACY_SITE v1] site=%s calls=%llu
-", name, static_cast<unsigned long long>(v_)); std::fflush(stderr); } } while (0)
+#define MC2_LEGACY_SITE(name) do { static std::atomic<uint64_t> n_; const uint64_t v_ = ++n_; \
+    if (v_ == 1 || (v_ & 1023) == 0) { std::fprintf(stderr, "[LEGACY_SITE v1] site=%s calls=%llu\n", name, static_cast<unsigned long long>(v_)); std::fflush(stderr); } } while (0)
 #endif
 
 #ifdef __cplusplus
