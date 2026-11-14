@@ -30,6 +30,14 @@ TEST_CASE("screen settle: spec parsing") {
     CHECK(s.cell->x == -2);
     CHECK(s.cell->y == -2);
 
+    REQUIRE(parseSpec("promotion", s, &why));
+    CHECK(s.cell->x == kPromotionCell);
+    REQUIRE(parseSpec("loadgame", s, &why));
+    CHECK(s.cell->x != kPromotionCell);
+    Trigger load;
+    load.arm(s.cell->x, s.cell->y, 1, 10);
+    CHECK(load.onFrame(-3, -3) == Action::Capture);
+
     CHECK_FALSE(parseSpec("", s, &why));
     CHECK_FALSE(parseSpec("nowhere", s, &why));
     CHECK(why == "unknown screen id");
