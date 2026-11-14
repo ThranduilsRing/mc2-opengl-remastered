@@ -377,6 +377,7 @@ void main() {
     // inline only rc_pixelHandlesOwnShadow / rc_isStaticPropNoSelfShadow and have no
     // RECEIVE opt-in at all. Closing the granularity gap needs a per-packet alpha bit
     // on the feed; it is not required for class correctness and is NOT done here.
-    oGBuffer1 = vec4(normalize(treeMaterial ? mc2ToRender(outputNormalStuff) : outputNormalStuff) * 0.5 + 0.5, treeMaterial ? 1.0 : alphaTestClass ? 0.1875 : 0.25);
+    // Trees handle their own shadow, but must occlude ground HUD separately from terrain (1.0).
+    oGBuffer1 = vec4(normalize(treeMaterial ? mc2ToRender(outputNormalStuff) : outputNormalStuff) * 0.5 + 0.5, treeMaterial ? 0.96875 : alphaTestClass ? 0.1875 : 0.25);
     oObjectId = uint(uPacket.objectId);
 }
