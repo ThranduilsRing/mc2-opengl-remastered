@@ -37,6 +37,7 @@ add_executable(mc2_tests
     ${MC2_WORKTREE_ROOT}/mclib/fx/fx_catalog.cpp
     ${MC2_WORKTREE_ROOT}/mclib/fx/fx_curve.cpp
     ${MC2_WORKTREE_ROOT}/mclib/fx/fx_mesh_data.cpp
+    test_component_rules.cpp
     test_support_craft.cpp
     test_jump_target.cpp
     test_path_work.cpp
@@ -550,6 +551,7 @@ endif()
 # Save schema and ABL output bounds exercise their shared production helpers.
 target_sources(mc2_tests PRIVATE
     test_save_archive.cpp
+    test_terrain_cache_key.cpp
     ${MC2_WORKTREE_ROOT}/code/save_archive.cpp
     test_save_sections.cpp
     test_save_field_omission.cpp
@@ -675,7 +677,7 @@ target_sources(mc2_tests PRIVATE
     test_audio_backend.cpp
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/gameos_sound.cpp
 )
-set_source_files_properties(${MC2_WORKTREE_ROOT}/GameOS/gameos/gameos_sound.cpp PROPERTIES
+set_source_files_properties(${MC2_WORKTREE_ROOT}/GameOS/gameos/gameos_sound.cpp test_audio_backend.cpp PROPERTIES
     INCLUDE_DIRECTORIES "${MC2_WORKTREE_ROOT}/3rdparty/tracy")
 target_link_libraries(mc2_tests PRIVATE SDL2_mixer::SDL2_mixer)
 if(WIN32)

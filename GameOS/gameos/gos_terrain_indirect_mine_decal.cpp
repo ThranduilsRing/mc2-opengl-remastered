@@ -13,6 +13,12 @@
 namespace {
 struct MineVert { float pos[3]; float uv[2]; uint32_t layer; };
 std::vector<MineVert> g_mineVerts;
+struct MineOverlayVert { float pos[3]; float uv[2]; float fog; uint32_t argb; };
+static_assert(sizeof(MineOverlayVert) == 28);
+std::vector<MineOverlayVert> g_mineOverlayVerts;
+std::vector<Mc2VkOverlayDraw> g_mineOverlayDraws;
+uint64_t g_mineVersion = 1, g_mineOverlayVersion = 0;
+uint32_t g_mineHandles[2]{};
 int g_mineVertCount = 0;
 bool g_mineVBODirty = true;
 bool g_mineTextureArrayReady = false;
@@ -20,8 +26,8 @@ int fixtureRow = -1, fixtureCol = -1;
 unsigned long fixturePrevious[2]{};
 }
 namespace gos_terrain_indirect {
-void MarkMineDirty() { g_mineVBODirty = true; }
-void ResetMineStaticVBO() { g_mineVerts.clear(); g_mineVertCount = 0; g_mineVBODirty = true; fixtureRow = fixtureCol = -1; }
+void MarkMineDirty() { g_mineVBODirty = true; ++g_mineVersion; }
+void ResetMineStaticVBO() { g_mineVerts.clear(); g_mineOverlayVerts.clear(); g_mineOverlayDraws.clear(); g_mineVertCount = 0; MarkMineDirty(); fixtureRow = fixtureCol = -1; }
 void ResetMineTextureArray() { g_mineTextureArrayReady = false; }
 void BuildMineTextureArray() {
     g_mineTextureArrayReady = TerrainQuad::mineTextureHandle != 0xffffffffu &&
@@ -130,22 +136,24 @@ bool DrawMineStatic() {
     RebuildMineStaticVBOIfDirty();
     if (g_mineVerts.empty()) return true;
     if (!mc2_vk_overlay_enabled() || !g_mineTextureArrayReady) return false;
-    struct Vertex { float pos[3]; float uv[2]; float fog; uint32_t argb; };
-    static_assert(sizeof(Vertex) == 28);
-    std::vector<Vertex> vertices;
-    std::vector<Mc2VkOverlayDraw> draws;
-    for (const auto& mine : g_mineVerts) {
-        const auto slot = mine.layer ? TerrainQuad::blownTextureHandle : TerrainQuad::mineTextureHandle;
-        const uint32_t handle = tex_resolve(slot);
-        if (handle == 0 || handle == 0xffffffffu) return false;
-        if (draws.empty() || draws.back().texHandle != handle)
-            draws.push_back({handle, static_cast<uint32_t>(vertices.size()), 0});
-        ++draws.back().vertCount;
-        vertices.push_back({{mine.pos[0], mine.pos[1], mine.pos[2]}, {mine.uv[0], mine.uv[1]}, 1, 0xffffffffu});
+    const uint32_t handles[2] = {tex_resolve(TerrainQuad::mineTextureHandle), tex_resolve(TerrainQuad::blownTextureHandle)};
+    if (g_mineOverlayVersion != g_mineVersion || !std::equal(std::begin(handles), std::end(handles), std::begin(g_mineHandles))) {
+        if (g_mineOverlayVersion == g_mineVersion) ++g_mineVersion;
+        g_mineOverlayVerts.clear();
+        g_mineOverlayDraws.clear();
+        for (const auto& mine : g_mineVerts) {
+            const uint32_t handle = handles[mine.layer ? 1 : 0];
+            if (handle == 0 || handle == 0xffffffffu) return false;
+            if (g_mineOverlayDraws.empty() || g_mineOverlayDraws.back().texHandle != handle)
+                g_mineOverlayDraws.push_back({handle, static_cast<uint32_t>(g_mineOverlayVerts.size()), 0});
+            ++g_mineOverlayDraws.back().vertCount;
+            g_mineOverlayVerts.push_back({{mine.pos[0], mine.pos[1], mine.pos[2]}, {mine.uv[0], mine.uv[1]}, 1, 0xffffffffu});
+        }
+        std::copy(std::begin(handles), std::end(handles), std::begin(g_mineHandles));
+        g_mineOverlayVersion = g_mineVersion;
     }
-    // Dynamic stream keeps the cement bake's independent static-buffer lifetime intact.
-    mc2_vk_overlay_submit(2u, vertices.data(), static_cast<uint32_t>(vertices.size()),
-                          draws.data(), static_cast<uint32_t>(draws.size()), 0);
+    mc2_vk_overlay_submit(2u, g_mineOverlayVerts.data(), static_cast<uint32_t>(g_mineOverlayVerts.size()),
+                          g_mineOverlayDraws.data(), static_cast<uint32_t>(g_mineOverlayDraws.size()), g_mineVersion);
     Counters_AddIndirectMineDrawnCells(g_mineVertCount / 6);
     return true;
 }

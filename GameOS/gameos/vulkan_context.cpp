@@ -1093,7 +1093,7 @@ bool VulkanContext::hostSynced(const GpuTicket& t, std::string_view why) const {
 }
 
 void VulkanContext::beginFrame() {
-    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "VulkanContext::beginFrame");
+    mc2::overlap::requireOwner(mc2::overlap::Owner::Render, "VulkanContext::beginFrame");
     if (tracker_.frameOpen()) return;
     { ZoneScopedN("VKContext.Poll"); poll(); }
     tracker_.beginFrame();
@@ -1149,7 +1149,7 @@ void VulkanContext::drainDeferred(std::string_view why) {
 }
 
 void VulkanContext::endFrame() {
-    mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "VulkanContext::endFrame");
+    mc2::overlap::requireOwner(mc2::overlap::Owner::Render, "VulkanContext::endFrame");
     ZoneScopedN("VKContext.EndFrame");
     flushUploads();   // an upload queued this frame is submitted inside it, so the frame ticket covers its staging
     { const auto lock = lockSubmit(submitMutex_); flushPendingLocked(); }   // the sealed frame ticket must be on the queue
@@ -1324,6 +1324,8 @@ bool ensureEngineVulkanContext() {
     if (engineContext().valid()) return true;               // already born (=vulkan or prior lazy)
     return engineContext().init(/*wantPresent=*/false);
 }
+
+size_t deferredDestroyDepth() { return getOrCreateEngineVulkanContext().deferred().size(); }
 
 }  // namespace mc2vk
 

@@ -50,6 +50,18 @@ extern "C" {
 enum Mc2LegacyMlrPass { MC2_LEGACY_PASS_SOLID = 0, MC2_LEGACY_PASS_ALPHA = 1,
                         MC2_LEGACY_PASS_SHADOW = 2, MC2_LEGACY_PASS_ADD = 3, MC2_LEGACY_PASS_COUNT = 4 };
 
+inline constexpr uint32_t MC2_LEGACY_VEHICLE_FADING = 0, MC2_LEGACY_VEHICLE_UNREGISTERED = 1,
+    MC2_LEGACY_VEHICLE_DECLINED = 2, MC2_LEGACY_SHAPE = 3, MC2_LEGACY_ALPHA = 4, MC2_LEGACY_BLOB = 5,
+    MC2_LEGACY_EFFECT = 6, MC2_LEGACY_CONE = 7, MC2_LEGACY_PREVIEW = 8, MC2_LEGACY_SOURCE_COUNT = 9;
+
+// CPU fallback provenance follows the calling actor on its render thread.
+inline thread_local uint32_t mc2LegacyVehicleSource = MC2_LEGACY_SHAPE;
+struct Mc2LegacyVehicleScope {
+    uint32_t previous = mc2LegacyVehicleSource;
+    explicit Mc2LegacyVehicleScope(uint32_t source) { mc2LegacyVehicleSource = source; }
+    ~Mc2LegacyVehicleScope() { mc2LegacyVehicleSource = previous; }
+};
+
 struct Mc2LegacyMlrDraw {
     const void* vertices;      // gos_VERTEX[vertexCount]
     uint32_t    vertexCount;   // multiple of 3
@@ -57,7 +69,17 @@ struct Mc2LegacyMlrDraw {
     uint32_t    gosTexHandle;  // LIVE gos texture handle this frame (0 / 0xffffffff = untextured)
     uint32_t    pass;          // Mc2LegacyMlrPass
     uint32_t    alphaTest;     // 1 = discard texel alpha < 0.5 (MC2_ALPHATEST nodes)
+    uint32_t    sourceVertices[MC2_LEGACY_SOURCE_COUNT] = {};
 };
+
+// Texture nodes may mix actors. Attribute one node to its largest contribution
+// (ties use source order), while retaining exact per-source vertex counts.
+inline uint32_t mc2LegacyNodeOwner(const Mc2LegacyMlrDraw& draw) {
+    uint32_t owner = 0;
+    for (uint32_t i = 1; i < MC2_LEGACY_SOURCE_COUNT; ++i)
+        if (draw.sourceVertices[i] > draw.sourceVertices[owner]) owner = i;
+    return owner;
+}
 
 // Per-frame inputs that live in mclib / the GL renderer.
 struct Mc2LegacyMlrFrame {

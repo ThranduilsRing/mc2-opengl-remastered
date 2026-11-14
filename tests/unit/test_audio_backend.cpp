@@ -3,6 +3,7 @@
 #include "gameos.hpp"
 #include "gameos_music_cache.h"
 #include "../../GameOS/gameos/music_stream.h"
+#include "../../GameOS/gameos/wav_worker.h"
 #include "alloc_probe.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mixer.h>
@@ -80,6 +81,74 @@ struct Capture {
         std::fwrite(pcm.data(), 1, sizeof(pcm), file); std::fclose(file);
     }
 };
+}
+TEST_CASE("AudioBackend/file WAV preserves user-memory PCM") {
+    AudioDevice device;
+    REQUIRE(gos_CreateAudio());
+    Clip original;
+    const auto path = std::filesystem::temp_directory_path() / "mc2-file-pcm.wav";
+    struct Remove { std::filesystem::path p; ~Remove() { std::filesystem::remove(p); } } cleanup{path};
+    const auto name = path.string();
+    auto* file = SDL_RWFromFile(name.c_str(), "wb");
+    REQUIRE(file != nullptr);
+    SDL_RWwrite(file, "RIFF", 1, 4); SDL_WriteLE32(file, 36 + sizeof(original.pcm));
+    SDL_RWwrite(file, "WAVEfmt ", 1, 8); SDL_WriteLE32(file, 16);
+    SDL_WriteLE16(file, 1); SDL_WriteLE16(file, 2); SDL_WriteLE32(file, 22050);
+    SDL_WriteLE32(file, 88200); SDL_WriteLE16(file, 4); SDL_WriteLE16(file, 16);
+    SDL_RWwrite(file, "data", 1, 4); SDL_WriteLE32(file, sizeof(original.pcm));
+    SDL_RWwrite(file, original.pcm.data(), sizeof(original.pcm), 1); SDL_RWclose(file);
+    HGOSAUDIO loaded = nullptr;
+    gosAudio_CreateResource(&loaded, gosAudio_StreamedFile, name.c_str());
+    REQUIRE(loaded != nullptr);
+    gosAudio_AssignResourceToChannel(0, original.handle);
+    gosAudio_AssignResourceToChannel(1, loaded);
+    gosAudio_SetChannelPlayMode(0, gosAudio_Loop);
+    gosAudio_SetChannelPlayMode(1, gosAudio_Loop);
+    // The real worker may finish after play was requested; keep the request alive.
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(3);
+    while (!Mix_GetChunk(1) && std::chrono::steady_clock::now() < deadline) {
+        CHECK(gosAudio_GetChannelPlayMode(1) == gosAudio_Loop);
+        std::this_thread::yield();
+    }
+    auto* expected = Mix_GetChunk(0);
+    auto* actual = Mix_GetChunk(1);
+    REQUIRE(expected != nullptr); REQUIRE(actual != nullptr);
+    REQUIRE(actual->alen == expected->alen);
+    CHECK(actual->volume == expected->volume);
+    CHECK(std::memcmp(actual->abuf, expected->abuf, actual->alen) == 0);
+    gosAudio_DestroyResource(&loaded);
+}
+TEST_CASE("AudioBackend/WAV handover is nonblocking and consumes complete PCM once") {
+    AudioDevice device;
+    REQUIRE(gos_CreateAudio());
+    std::promise<WavChunk> producer;
+    WavDelivery delivery{producer.get_future()};
+    WavChunk admitted(nullptr, Mix_FreeChunk);
+    CHECK_FALSE(delivery.take(admitted));
+    CHECK_FALSE(admitted);
+    std::array<Uint8, 4> pcm{};
+    std::jthread worker([&] {
+        pcm = {1, 2, 3, 4};
+        producer.set_value(WavChunk(Mix_QuickLoad_RAW(pcm.data(), pcm.size()), Mix_FreeChunk));
+    });
+    delivery.future.wait();
+    REQUIRE(delivery.take(admitted));
+    CHECK(admitted->alen == 4);
+    CHECK(admitted->abuf[3] == 4);
+    CHECK_FALSE(delivery.take(admitted));
+    worker.join();
+}
+TEST_CASE("AudioBackend/cancelled WAV delivery never waits for the producer") {
+    AudioDevice device;
+    REQUIRE(gos_CreateAudio());
+    std::promise<WavChunk> producer;
+    { WavDelivery cancelled{producer.get_future()}; }
+    // Completion after cancellation owns and releases its result with no handle access.
+    std::array<Uint8, 4> pcm{1, 2, 3, 4};
+    producer.set_value(WavChunk(Mix_QuickLoad_RAW(pcm.data(), pcm.size()), Mix_FreeChunk));
+    WavDelivery failed;
+    WavChunk admitted(nullptr, Mix_FreeChunk);
+    CHECK_FALSE(failed.take(admitted));
 }
 TEST_CASE("AudioBackend/resources are freed unbound and detached from every channel") {
     AudioDevice device;
@@ -206,6 +275,15 @@ TEST_CASE("AudioBackend/two music slots stream independently across catalog rele
     REQUIRE(std::filesystem::remove(path));
     HGOSAUDIO missing = nullptr;
     gosAudio_CreateResource(&missing, gosAudio_StreamedFile, name.c_str());
+    REQUIRE(missing != nullptr); // Failure is delivered asynchronously too.
+    gosAudio_AssignResourceToChannel(0, missing);
+    gosAudio_SetChannelPlayMode(0, gosAudio_PlayOnce);
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(3);
+    while (gosAudio_GetChannelPlayMode(0) != gosAudio_Stop && std::chrono::steady_clock::now() < deadline)
+        std::this_thread::yield();
+    CHECK(gosAudio_GetChannelPlayMode(0) == gosAudio_Stop);
+    CHECK(Mix_Playing(0) == 0);
+    gosAudio_DestroyResource(&missing);
     CHECK(missing == nullptr);
 }
 

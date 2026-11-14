@@ -143,6 +143,8 @@ struct ExplosionProbe {
 void MissionInterfaceManager::processUiCommandChannel()
 {
 	extern std::atomic<uint32_t> g_mc2FrameCounter;
+    void mc2EquipmentProbeTick();
+    mc2EquipmentProbeTick();
 	if (explosionProbe.frame && g_mc2FrameCounter.load(std::memory_order_relaxed) >= explosionProbe.frame) {
 		if (ObjectManager && land) {
 			glm::vec3 p(explosionProbe.x, explosionProbe.y, 0.0f);

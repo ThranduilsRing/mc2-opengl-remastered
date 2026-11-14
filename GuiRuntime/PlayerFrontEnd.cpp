@@ -252,6 +252,7 @@ void loadSettings() {
     mc2::gate::invalidateAll();
 }
 
+void requestCampaignStart(std::string fit) { pendingStart = std::move(fit); }
 std::string takeCampaignStart() { return std::exchange(pendingStart, {}); }
 
 void drawMainMenu() {

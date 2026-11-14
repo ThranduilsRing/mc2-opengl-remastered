@@ -348,6 +348,8 @@ void gos_RendererHandleEvents() {
 // Resolve a gosTextureHandle to the underlying raw GL texture name for
 // consumers outside this TU (gos_static_prop_batcher). Returns 0 on
 // invalid handle — caller should treat 0 as "unbind / default white".
+uint64_t gos_GetTextureGeneration() { return gosTexture::texelGeneration; }
+
 GosTexels gos_GetTextureTexels(uint32_t gosHandle) {
     GosTexels out;
     if (gosHandle == INVALID_TEXTURE_ID || !g_gos_renderer) return out;
