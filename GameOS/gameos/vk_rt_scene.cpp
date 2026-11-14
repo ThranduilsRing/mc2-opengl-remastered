@@ -1282,7 +1282,7 @@ void recordFrame() {
     recordBarrier(ctx, cmd, frameRebuildBarrier());
     if (!s.compactions.empty()) {
         ZoneScopedN("RT.AsyncCompaction.Record");
-        MC2_VK_GPU_SCOPE(compactionScope, cmd, "RT.AsyncCompaction");
+        std::vector<std::pair<uint32_t, VkDeviceSize>> copies;
         for (size_t b = 0; b < s.compactions.size();) {
             auto& batch = s.compactions[b];
             bool ready = ctx.frameContext().frame > batch.frame;
@@ -1292,19 +1292,26 @@ void recordFrame() {
                 const VkResult r = vkGetQueryPoolResults(ctx.device(), batch.query.get(), static_cast<uint32_t>(i), 1, sizeof(bytes), &bytes, sizeof(bytes), VK_QUERY_RESULT_64_BIT);
                 if (r == VK_NOT_READY) { ready = false; break; }
                 const uint32_t type = batch.types[i];
-                if (r == VK_SUCCESS && type < s.propBlas.size() && s.propBlas[type].address() == batch.addresses[i] && worthCompacting(s.propBlas[type].size(), bytes)) {
-                    AccelStructure compact;
-                    if (recordCompactCopy(ctx, cmd, s.propBlas[type], bytes, "rt_scene.prop", compact)) {
-                        s.frameWork = true;
-                        s.compacted.emplace_back(type, std::move(compact));
-                        s.compactedDirty = true;
-                    }
-                }
+                if (r == VK_SUCCESS && type < s.propBlas.size() && s.propBlas[type].address() == batch.addresses[i] && worthCompacting(s.propBlas[type].size(), bytes))
+                    copies.emplace_back(type, bytes);
                 batch.addresses[i] = 0;
             }
             if (!ready) { ++b; continue; }
             ctx.retire(std::move(batch.query));
             s.compactions.erase(s.compactions.begin() + b);
+        }
+        if (!copies.empty()) {
+            MC2_VK_GPU_SCOPE(compactionScope, cmd, "RT.AsyncCompaction");
+            // A profiler query must be submitted even if every copy allocation fails.
+            s.frameWork |= mc2vk::gpuprof::active();
+            for (const auto& [type, bytes] : copies) {
+                AccelStructure compact;
+                if (recordCompactCopy(ctx, cmd, s.propBlas[type], bytes, "rt_scene.prop", compact)) {
+                    s.frameWork = true;
+                    s.compacted.emplace_back(type, std::move(compact));
+                    s.compactedDirty = true;
+                }
+            }
         }
     }
     recordBarrier(ctx, cmd, Phase::Copy, Phase::Tlas);
