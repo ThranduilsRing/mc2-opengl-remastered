@@ -113,6 +113,7 @@ public:
     VkPhysicalDevice physicalDevice() const { return phys_; }
     VkDevice         device()        const { return device_; }
     VkQueue          graphicsQueue() const { return gfxQueue_; }
+    VkQueue          presentQueue()  const { return presentQueue_; }
     uint32_t         graphicsFamily() const { return gfxFamily_; }
     VmaAllocator     allocator()     const { return allocator_; }
 
@@ -185,7 +186,7 @@ public:
     VkResult submit(const VkSubmitInfo& si, VkFence fence, uint64_t* outValue = nullptr) const;
     // Blit-only continuation: no Render batch, uploads, frame timeline or allocators. Its dedicated fence owns its lifetime.
     VkResult submitPresentTail(VkCommandBuffer cb, VkSemaphore acquire, VkSemaphore rendered, VkFence fence) const;
-    // Present shares external queue synchronization with submit, even when both families alias.
+    // WSI has its own queue lock when a second graphics-family queue is available.
     VkResult present(VkQueue queue, const VkPresentInfoKHR& info) const;
     // Puts the batched plain submits on the queue now. Call it after a big pass when more CPU recording follows: the age check in submit() runs only
     // on the next plain submit, so without a kick the GPU idles until then. Queue order is unchanged. Render owner only.
@@ -293,6 +294,7 @@ private:
     VkPhysicalDevice phys_              = VK_NULL_HANDLE;
     VkDevice         device_            = VK_NULL_HANDLE;
     VkQueue          gfxQueue_          = VK_NULL_HANDLE;
+    VkQueue          presentQueue_      = VK_NULL_HANDLE;
     uint32_t         gfxFamily_         = UINT32_MAX;
     VmaAllocator     allocator_         = nullptr;
     profile::Evaluation profile_ = [] { profile::Evaluation e; e.accepted = false; return e; }();   // the chosen device's verdict (see profile())
@@ -312,6 +314,7 @@ private:
     mutable DeferredDestroy deferred_;   // after the allocator's owners are gone: destroy() drains it first
     // timed: main pumps window messages while the present worker holds it in WSI
     mutable std::timed_mutex submitMutex_;
+    mutable std::timed_mutex presentMutex_;
     mutable DeferredSubmitBatch<VkCommandBuffer> batch_;   // submitMutex_: the deferred batch in submit order (the submit signals its last entry's value) and the reserved recordings
     RecordExecutor recordExecutor_;
     mutable bool pendingFailed_ = false;                 // submitMutex_: a batched submit failed after its callers were told VK_SUCCESS; the next submit() reports it
