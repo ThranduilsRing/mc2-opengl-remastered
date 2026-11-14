@@ -351,7 +351,7 @@ DWORD load(mc2::czstring path, gos_TextureFormat format, DWORD hints, DWORD vari
     File file;
     const auto open=[&] { ZoneScopedN("TextureSource.Open"); return file.open(path); }();
     std::string provider;
-    if (1 != 0) {
+    if (source->name.find("a_compass.tga") == std::string::npos) {
         const auto sidecar=sidecarPath(source->name);
         RenderCore::KtxImage cooked; Bytes rgba; int w=0,h=0;
         if (txmLoadCooked(path,sidecar.c_str(),1==2,cooked,&provider) &&
@@ -423,7 +423,8 @@ DWORD sourceId(DWORD asset) {
     if (source->cpuTexture) return source->cpuTexture;
     ZoneScopedN("TextureSource.CreateCpuTexture");
     const auto format=static_cast<gos_TextureFormat>(source->format);
-    if ((source->file || source->cookedBc7) && source->variant==0 && !source->name.empty()) {
+    if ((source->file || source->cookedBc7) && source->variant==0 && !source->name.empty() &&
+        source->name.find("a_compass.tga") == std::string::npos) {
         RenderCore::KtxImage cooked;
         if (txmLoadCooked(source->name.c_str(),sidecarPath(source->name).c_str(),true,cooked) &&
             cooked.isCompressed && (cooked.vkFormat==145 || cooked.vkFormat==146)) {

@@ -67,8 +67,9 @@
 # (0.15, 0.35). Argued in full at the write site.
 # Authored materials select a mapped Stuff-space normal; absent IDs retain vNormalStuff.
 # Rechecked render_contract.hglsl: solid noSelfShadow=0.25, alphaTest noSelfShadow=0.1875; class selection unchanged.
-# P5 trees encode the world normal and apply object-map/mover visibility once; screen shadow skips alpha=1.
-shaders/vulkan/color_prop_tier1.frag::oGBuffer1 = vec4(normalize(treeMaterial ? mc2ToRender(outputNormalStuff) : outputNormalStuff) * 0.5 + 0.5, treeMaterial ? 1.0 : alphaTestClass ? 0.1875 : 0.25);
+# Trees retain rc_pixelHandlesOwnShadow (>0.5); exact-fp16 0.96875 distinguishes solids from terrain for ground HUD.
+# Rechecked screen_shadow_csm.frag:28 (>0.5), motion_vectors.frag:51 (<0.95), impact_decal.frag:40 (>0.75): all unchanged.
+shaders/vulkan/color_prop_tier1.frag::oGBuffer1 = vec4(normalize(treeMaterial ? mc2ToRender(outputNormalStuff) : outputNormalStuff) * 0.5 + 0.5, treeMaterial ? 0.96875 : alphaTestClass ? 0.1875 : 0.25);
 
 # MECHS. a = 0.0 == rc_gbuffer1_screenShadowEligible() (render_contract.hglsl:27-29).
 # Matches the GL producer mech.frag:428 `rc_gbuffer1_screenShadowEligible(N_gbuf)`.

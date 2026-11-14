@@ -130,4 +130,5 @@ void main() {
     vec3 lit = uT.lightingEnabled != 0 ? shadeGround(albedo, rootN, normalLight, shadow, 0.0, v_worldPos, rootN, false, 0.0) : albedo;
     o_color = vec4(lit, 1.0);
     o_normal = rc_gbuffer1_shadowHandled(N);
+    o_normal.a = 0.9375; // Grass remains shadow-handled (>0.5), distinct from solid trees for ground UI.
 }
