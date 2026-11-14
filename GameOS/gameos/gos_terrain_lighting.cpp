@@ -138,6 +138,7 @@ static std::vector<gos_terrain_lighting::GpuTerrainLight> s_lightBuf;
 // when the grid is not in play (gate off, too few lights, degenerate bbox), which
 // makes every consumer fall back to the exact linear loop.
 static void BuildLightGrid(uint32_t numLights) {
+    ZoneScopedN("Terrain.LightGrid.Rebuild");
     s_lightGridDim = 0;
     if (!LightGridEnabled() || numLights < kLightGridMinLights) return;
 
