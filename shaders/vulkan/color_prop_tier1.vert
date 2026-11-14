@@ -10,6 +10,7 @@
 // the GL PBR block swaps for lighting). We therefore forward a_normal WITHOUT the
 // vec3(-x, z, y) swizzle, exactly like static_prop.vert forwards v_normal.
 #version 450
+#define FOREST_MASK 1
 #extension GL_GOOGLE_include_directive : require
 #extension GL_ARB_shader_draw_parameters : require
 #extension GL_EXT_buffer_reference : require
@@ -182,6 +183,13 @@ void main() {
     }
     vTree.z = forestSky;
     vTree.w = forestSun;
+#ifdef FOREST_MASK
+    if (tree) {   // DIAG: class code in z (1 sun-edge, 2 interior), height in w
+        float lineN = float((inst.flags >> 8u) & 255u) / 255.0 * 1.25, obN = float((inst.flags >> 16u) & 255u) / 255.0;
+        vTree.z = lineN < 0.15 ? 1.0 : (lineN >= 0.5 && obN >= 0.45 ? 2.0 : 0.0);
+        vTree.w = 0.65 + sign(canopy.z) * (a_position.y - canopy.x) / (2.0 * abs(canopy.z));
+    }
+#endif
     vec3 localNormal = a_normal;
     if (tree && (inst.flags & 4u) != 0u) {
         vec3 crown = vec3(a_position.x / canopy.y, (a_position.y - canopy.x) / abs(canopy.z), a_position.z / canopy.y);
