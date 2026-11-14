@@ -27,8 +27,17 @@ static_assert(static_cast<int>(input::capture::Edge::Released) == std::to_underl
 
 static input::MouseInfo g_mouse_info;
 static input::KeyboardInfo g_keyboard_info;
+static input::capture::PointerCapture g_pointer_capture;
 
 namespace input {
+
+static void applyInputFocus(bool focused) {
+    g_pointer_capture.setFocus(focused);
+    if (!focused) {
+        memset(g_keyboard_info.last_state_, 0, sizeof(g_keyboard_info.last_state_));
+        resetKeypress();
+    }
+}
 
 // ---------------------------------------------------------------------------------------------------------------------
 // MC2_INPUT_SCRIPT=<file>: a scripted player for the player-path harness (scripts/run_player_path.py).
@@ -36,7 +45,7 @@ namespace input {
 // (GUI hit-testing and button handlers run for real) and the keyboard state behind gos_GetKey. It never touches the OS:
 // no SendInput, no cursor, no focus, so it works with the window unfocused, minimised or parked off-screen.
 // The file is tailed every frame, so the harness can append commands as it sees log markers. One command per line:
-//   wait N | move X Y | down [l|r] | up [l|r] | click X Y [l|r] | wheel Y | keydown KEY | keyup KEY | key KEY | shot PATH.tga | mark TEXT
+//   wait N | move X Y | down [l|r] | up [l|r] | click X Y [l|r] | wheel Y | focus lost|gained | keydown KEY | keyup KEY | key KEY | shot PATH.tga | mark TEXT
 // X Y are logical 800x600 canvas pixels (normalised x/800, y/600 the way gos_GetMouseInfo reports them); KEY is an SDL
 // key name (Return, Escape, Space, F1, A). Every executed command logs `[INPUT_SCRIPT v1] frame=N cmd=...`.
 // Inert (one cached string test per frame) when the variable is unset.
@@ -104,6 +113,7 @@ struct ScriptPlayer {
         else if (v == "move" && n >= 3) { nx = static_cast<float>(atof(a)) / 800.f; ny = static_cast<float>(atof(b)) / 600.f; mouseSet = true; }
         else if (v == "down") btn[n >= 2 ? btn_idx(a[0]) : 0] = true;
         else if (v == "up") btn[n >= 2 ? btn_idx(a[0]) : 0] = false;
+        else if (v == "focus" && n >= 2) applyInputFocus(std::string_view(a) == "gained");
         else if (v == "wheel" && n >= 2) {
             SDL_Event event = {};
             event.type = SDL_MOUSEWHEEL;
@@ -186,6 +196,11 @@ void resetKeypress() {
     g_keyboard_info.first_pressed_ = -1;
 }
 
+void setInputFocus(bool focused) {
+    // Off-screen scripts supply their own focus events, independent of the desktop.
+    if (!g_script.active) applyInputFocus(focused);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 static std::optional<int> sdl2idx(int button) {
     switch(button) {
@@ -237,7 +252,7 @@ void handleMouseWheel(const SDL_Event* event) {
     // HUD-IMGUI wheel guard (see gos_input.h): cursor over an ImGui window ->
     // wheel belongs to ImGui, not the game camera. Game modal (pause menu)
     // still wins, mirroring the button gate below.
-    if (!capture::wheelReachesGame({ s_imguiWantsMouse, s_imguiHoversMouse, s_gameModalActive }))
+    if (!g_pointer_capture.focused || !capture::wheelReachesGame({ s_imguiWantsMouse, s_imguiHoversMouse, s_gameModalActive }))
         return;
 
     MouseInfo* mi = &g_mouse_info;
@@ -276,8 +291,7 @@ void updateMouseState() {
     // The editor's GL child HWND uses a custom WndProc (MC2EditorGLChild) that
     // SDL does not subclass, so SDL_GetMouseState() never reflects clicks on
     // the GL viewport.  Poll Win32 hardware state directly instead.
-    // This is safe for the game too — GetAsyncKeyState reflects the physical
-    // button state just as SDL_GetMouseState would under normal focus.
+    // The focus/gesture filter below blocks background and activation clicks.
     Uint32 button_state = 0;
     {
         // Respect OS left/right button swap setting.
@@ -294,15 +308,15 @@ void updateMouseState() {
     Uint32 button_state = SDL_GetMouseState(nullptr, nullptr);
 #endif
 
-    // Gate ImGui-captured clicks out of game input — EXCEPT when a game modal (pause
-    // menu) is active, where the game must remain clickable through/over ImGui windows.
-    if (!capture::mouseButtonsReachGame({ s_imguiWantsMouse, s_imguiHoversMouse, s_gameModalActive }))
+    // Route each gesture at its press; keep that ownership through release.
+    if (g_script.active) {   // Desktop input must not leak into off-screen proofs.
         button_state = 0;
-
-    if (g_script.active) {   // scripted buttons are OR-ed in after the ImGui gate: the script is the "player"
         if (g_script.btn[0]) button_state |= SDL_BUTTON(SDL_BUTTON_LEFT);
         if (g_script.btn[1]) button_state |= SDL_BUTTON(SDL_BUTTON_RIGHT);
     }
+
+    button_state = g_pointer_capture.sample(button_state, g_script.active ||
+        capture::mouseButtonsReachGame({ s_imguiWantsMouse, s_imguiHoversMouse, s_gameModalActive }));
 
     int buttons[] = {SDL_BUTTON_LEFT, SDL_BUTTON_MIDDLE, SDL_BUTTON_RIGHT, SDL_BUTTON_X1, SDL_BUTTON_X2 };
 
@@ -314,7 +328,7 @@ void updateMouseState() {
         const int idx = *idxOpt;
 
         const capture::Edge prev = static_cast<capture::Edge>(mi->button_state_[idx]);
-        const capture::Edge next = capture::nextEdge(prev, (button_state & SDL_BUTTON(buttons[b])) != 0);
+        const capture::Edge next = g_pointer_capture.edge(prev, SDL_BUTTON(buttons[b]), button_state);
         mi->button_state_[idx] = static_cast<KeyState>(next);
 #if 0
         if(mi->button_state_[idx] == KS_PRESSED)
@@ -342,6 +356,12 @@ void handleKeyEvent(const SDL_Event* event) {
 
 void updateKeyboardState() {
     KeyboardInfo* ki = &g_keyboard_info;
+
+    if (!g_pointer_capture.focused) {
+        memset(ki->last_state_, 0, sizeof(ki->last_state_));
+        resetKeypress();
+        return;
+    }
 
     int array_len;
     const Uint8* state = SDL_GetKeyboardState(&array_len);
@@ -382,8 +402,8 @@ void updateKeyboardState() {
         auto injectModifier = [&](SDL_Scancode sc, DWORD vk) {
             int idx = static_cast<int>(sc);
             if (idx < 0 || idx >= kStateLen) return;
-            // The SDL scan already advanced this scripted key's edge once.
-            if (g_script.active && g_script.keys[idx]) return;
+            // A script owns all keys; the SDL scan advanced their edges once.
+            if (g_script.active) return;
             const capture::Edge prev = static_cast<capture::Edge>(ki->last_state_[idx]);
             const bool down = (::GetAsyncKeyState(vk) & 0x8000) != 0;
             ki->last_state_[idx] = static_cast<uint8_t>(capture::nextEdge(prev, down));
