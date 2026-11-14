@@ -1,4 +1,5 @@
 {
+  "scripts/merge_gate_editor.py": "Invoked by scripts/merge_gate.py plan() as the path-scoped editor build and console unit stage.",
   "tools/examples/fix_tree_kit.py": "Manual Stage 1 tree cook adapter; py -3 tools/examples/fix_tree_kit.py validates two existing meshes and pins the assigned install's prototype assets.",
   "tools/extract_hud_tier_icons.py": "Operator-run once to regenerate the per-size HUD icons data/art/mechicons/hud/<side>/<stem>@WxH.png from the legacy tier tree in git (module docstring); output is committed.",
   "tools/split_pilot_portraits.py": "Operator-run once to regenerate data/art/pilots from the stock art.fst (module docstring); output is committed.",
