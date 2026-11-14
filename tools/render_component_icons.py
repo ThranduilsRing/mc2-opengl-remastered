@@ -59,7 +59,7 @@ for index, (name, row) in enumerate(sorted(icons.items())):
     scene.render.filepath = str(proof / (Path(name).stem+'.png')); bpy.ops.render.render(write_still=True)
     rendered = Image.open(scene.render.filepath).convert('RGBA')
     bbox = rendered.getbbox(); assert 0 < bbox[0] < bbox[2] < rendered.width and 0 < bbox[1] < bbox[3] < rendered.height, name
-    canvas = Image.new('RGBA',(old.width*4,old.height*4)); canvas.paste(rendered,(0,0)); canvas.save(out/name, compression='tga_rle')
+    canvas = Image.new('RGBA',(old.width*4,old.height*4)); canvas.paste(rendered,(0,0)); canvas.transpose(Image.Transpose.FLIP_TOP_BOTTOM).save(out/name, compression='tga_rle')
     assert canvas.getchannel('A').getextrema() == (0,255)
     x, y = (index%8)*480, (index//8)*420
     draw.text((x+12,y+8),row[2],font=font,fill='white'); draw.text((x+12,y+34),f'{w}x{h} cells | old / new',font=font,fill='#91a9bb')
