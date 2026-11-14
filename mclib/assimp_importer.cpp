@@ -80,12 +80,7 @@ public:
     Assimp::IOStream* Open(mc2::czstring path, mc2::czstring mode) override {
         if (!mode || mode[0] != 'r') return nullptr;
         File source;
-        if (source.open(path) != NO_ERR) return nullptr;
-        if (source.fileSize() > (256u << 20)) {
-            mc2::fmt::print_err("[TREE_IMPORT] error: {} is {} bytes, over the {} byte import limit; the override falls back to stock\n",
-                mc2::fmt::safe(path), mc2::fmt::as_u64(source.fileSize()), mc2::fmt::as_u64(256u << 20));
-            return nullptr;
-        }
+        if (source.open(path) != NO_ERR || source.fileSize() > (256u << 20)) return nullptr;
         auto stream = std::make_unique<ContentStream>();
         stream->bytes.resize(source.fileSize());
         if (!stream->bytes.empty() && source.read(stream->bytes.data(), static_cast<long>(stream->bytes.size())) !=
