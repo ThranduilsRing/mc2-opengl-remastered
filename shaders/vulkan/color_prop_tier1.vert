@@ -177,8 +177,9 @@ void main() {
     if (tree) {
         float hn = 0.65 + sign(canopy.z) * (a_position.y - canopy.x) / (2.0 * abs(canopy.z));
         vec3 bake = vec3((inst.flags >> 8u) & 255u, (inst.flags >> 16u) & 255u, inst.flags >> 24u) / 255.0;
-        forestSun = mix(0.04, 1.0, smoothstep(bake.x * 1.25 - 0.15, bake.x * 1.25, hn));
-        forestSky = pow(1.0 - mix(bake.y, bake.z, smoothstep(0.3, 1.0, hn)), 2.5); // contrast: deep interior falls off fast
+        float line = bake.x * 1.25;   // lit once hn clears the shadow line; an unshadowed edge tree is lit from the ground up
+        forestSun = mix(0.02, 1.0, max(smoothstep(line - 0.05, line + 0.2, hn), 1.0 - smoothstep(0.0, 0.1, line)));
+        forestSky = pow(1.0 - mix(bake.y, bake.z, smoothstep(0.3, 1.0, hn)), 3.0); // contrast: deep interior falls off fast
     }
     vTree.z = forestSky;
     vTree.w = forestSun;
