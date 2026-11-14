@@ -246,7 +246,7 @@ static bool mc2BootScreenXY( int& x, int& y )
 		if ( mc2::screen_settle::parseSpec(mc2::gate::str<"MC2_SHOT_SCREEN">(), spec) )
 			cell = spec.cell;
 	}
-	if ( cell ) { x = cell->x; y = cell->y; }
+	if ( cell && cell->x >= 0 && cell->y >= 0 ) { x = cell->x; y = cell->y; }
 	return true;
 }
 
