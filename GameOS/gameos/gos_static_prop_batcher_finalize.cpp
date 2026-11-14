@@ -10,6 +10,7 @@
 #include "mc2fmt.h"
 #include "diagnostic_trace.h"
 #include "prop_array_buckets.h"
+#include "gos_render.h"
 
 // Does a packet alpha-test: its own flag, or its texture slot carrying alpha on the type source (null/released texture list reads as no alpha).
 bool GpuStaticPropBatcher::packetHasAlpha(const GpuStaticPropPacket& pkt, const TG_TypeShape* src) {
@@ -667,8 +668,8 @@ void GpuStaticPropBatcher::finalizeGeometry() {
 
     StaticPropFinalizeFrame f;
     finalizePrologue();
-    publishGeometry();
-    buildAuthoredMaterials();
+    graphics::loading_events_phase("prop_materials");
+    graphics::loading_work([&] { publishGeometry(); buildAuthoredMaterials(); }, true);
 
     //
     // Step 5.1 — §CRITICAL-C invariant (pure documentation):
@@ -692,8 +693,10 @@ void GpuStaticPropBatcher::finalizeGeometry() {
     // =======================================================================
 
     if (prepareMaterialLayout(f)) return;
+    graphics::pump_loading_events();
 
     if (buildTextureArrays(f)) return;
+    graphics::pump_loading_events();
     buildPerPacketDrawTables(f);
 
     if (reportMaterialCache(f)) return;

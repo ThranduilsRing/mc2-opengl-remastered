@@ -723,6 +723,40 @@ extern float frameRate;
 static Uint64 g_mission_t0 = 0;
 static unsigned g_missionTraceFrames = 5;
 static Uint64 g_missionReadyTrace = 0;
+static graphics::RenderWindowHandle g_loadingWindow = nullptr;
+static void (*g_loadingDraw)() = nullptr;
+
+void graphics::set_loading_draw(void (*draw)()) { g_loadingDraw = draw; }
+
+void graphics::redraw_loading_screen()
+{
+    if (!g_loadingWindow || !g_loadingDraw || loading_phase().empty()) return;
+    static Uint64 lastDraw = 0;
+    static bool drawing = false;
+    const auto now = SDL_GetTicks64();
+    if (drawing || now - lastDraw < 100) return;
+    lastDraw = now;
+    drawing = true;
+    // Only explicit safe checkpoints enter here: no world update, input or resource-loading callback.
+    mc2vk::present_thread::waitSealed();
+    auto* pp = getGosPostProcess();
+    if (pp) pp->beginScene();
+    (void)mc2_vk_scene_clear(pp ? pp->getWidth() : Environment.drawableWidth,
+                            pp ? pp->getHeight() : Environment.drawableHeight);
+    gos_RendererBeginFrame();
+    gos_SetRenderState(gos_State_IsHUD, 1);
+    g_loadingDraw();
+    gos_SetRenderState(gos_State_IsHUD, 0);
+    gos_RendererEndFrame();
+    if (pp) pp->endScene();
+    gos_RendererFlushHUDBatch();
+    // The present owns a frame boundary; retain the ordinary host clocks and handle retirement.
+    gos::host::advanceFrameCounter();
+    gos::host::presentOrSwap(g_loadingWindow, g_mc2RenderFrame);
+    mc2vk::present_thread::waitSealed();
+    gos::host::retirePresentHandles(g_mc2RenderFrame);
+    drawing = false;
+}
 
 // Loading runs on the window's main thread. Service OS messages without
 // dispatching game input against the partially constructed mission.
@@ -734,6 +768,7 @@ extern "C" void mission_load_pump()
     if (now - lastPump < 50) return;
     lastPump = now;
     graphics::pump_loading_events();
+    graphics::redraw_loading_screen();
     // The sprite cannot advance during synchronous loading; use the OS arrow.
     // The central policy preserves the unattended harness cursor guard.
     graphics::apply_os_cursor_policy("mission_load", false);
@@ -959,6 +994,7 @@ int main(int argc, char** argv)
     const bool headless = SmokeMode::state().headless;
     graphics::RenderWindowHandle win = headless ? graphics::RenderWindowHandle{} : graphics::create_window("mc2", w, h,
         Environment.fullScreen == 0);
+    g_loadingWindow = win;
     if(!win && !headless)
         return 1;
 

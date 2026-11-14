@@ -657,7 +657,10 @@ long TerrainColorMap::init (char *fileName)
 			FullPathFileName grassPath;
 			grassPath.init(texturePath, normalNames[1], ".tga");
 			bool turf = false;
-			usedCooked = mc2::terrain::loadCookedNormals(std::span(cooked), LookupModOwner(grassPath) != nullptr,
+			const bool modGrass = LookupModOwner(grassPath) != nullptr;
+			graphics::loading_events_phase("terrain_textures");
+			graphics::loading_work([&] {
+			usedCooked = mc2::terrain::loadCookedNormals(std::span(cooked), modGrass,
 				[&](int mat, bool wantTurf) {
 					FullPathFileName nmPath;
 					nmPath.init(texturePath, normalNames[mat], ".tga");
@@ -666,12 +669,15 @@ long TerrainColorMap::init (char *fileName)
 					return layer;
 				},
 				[&](std::span<const RenderCore::KtxImage> layers) { return fields->setMaterialNormals(layers); });
+			}, true);
 			if (!usedCooked) fields->setMaterialNormals({});
 			mc2::fmt::print_out("[SPLATTING] cooked detail normals: {}{}\n", usedCooked ? "cooked sidecars" : "absent, TGA import",
 				usedCooked && turf ? ", grass layer = grass_turf_normal" : "");
 		}
 
-		const bool allLoaded = mc2::terrain::loadNormalSources(usedCooked, [&](int mat)
+		bool allLoaded = false;
+		graphics::loading_work([&] {
+		allLoaded = mc2::terrain::loadNormalSources(usedCooked, [&](int mat)
 		{
 			FullPathFileName nmPath;
 			nmPath.init(texturePath, normalNames[mat], ".tga");
@@ -705,6 +711,7 @@ long TerrainColorMap::init (char *fileName)
 			normalLayers[mat] = reinterpret_cast<const unsigned char*>(rgba);
 			return true;
 		});
+		}, true);
 
 		if (allLoaded && !usedCooked) {
 			mc2::fmt::print_out("[SPLATTING] all loaded OK, width={:d}, creating individual textures\n", mc2::fmt::as_i32(arrayWidth));
