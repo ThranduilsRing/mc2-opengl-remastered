@@ -25,7 +25,7 @@ inline Fit fitLines(int numLines, int fontHeight, int regionHeight)
     if (fitPitch >= floorPitch) { f.pitch = fitPitch; return f; }
     f.pitch = floorPitch;
     // the last line must still fit: (visible - 1) * pitch + fontHeight <= regionHeight
-    f.visibleLines = std::min(numLines, std::max(1, (regionHeight - fontHeight) / floorPitch + 1));
+    f.visibleLines = std::clamp((regionHeight - fontHeight) / floorPitch + 1, 1, numLines);   // numLines > 1 here
     f.ellipsize = f.visibleLines < numLines;
     return f;
 }
