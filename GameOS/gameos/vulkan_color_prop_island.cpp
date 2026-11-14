@@ -744,8 +744,8 @@ bool cp_import_albedo_array(ColorPropIsland* s, const AlbedoTarget& tgt, uint32_
     return true;
 }
 
-// Texture/table replacement happens only at map transitions, after retiring
-// earlier draws; descriptor writes remain deferred to each retired parity slot.
+// Old textures/tables retire on the open-frame ticket; descriptor writes remain
+// deferred to each retired parity slot.
 bool cp_import_authored(ColorPropIsland* s, const Mc2ColorPropMaterialFeed* feed) {
     const bool have = feed && feed->materialCount && feed->materials && feed->packetMaterialIds;
     auto upload = [&](mc2vk::ResidentTextureRef& texture, const mc2tex::TextureArrayCpu* array,
@@ -758,7 +758,7 @@ bool cp_import_authored(ColorPropIsland* s, const Mc2ColorPropMaterialFeed* feed
         regions[0].imageExtent = {1,1,1};
         return cp_upload_albedo_array(s, target, VK_FORMAT_R8G8B8A8_UNORM, 1,1,1,1,false,neutral,4,regions);
     };
-    mc2vk::getOrCreateEngineVulkanContext().waitIdle("color_prop_authored_materials");
+    if (!feed) mc2vk::getOrCreateEngineVulkanContext().waitIdle("color_prop_authored_materials");
     if (!s->detailSampler && !mc2vk::infra::makeMaterialSampler(s->device, s->detailSampler, VK_SAMPLER_ADDRESS_MODE_REPEAT, s->sampBias)) return false;
     const uint8_t normal[4] = {128,128,255,255}, orm[4] = {255,255,0,255};
     mc2vk::ResidentTextureRef nextNormal, nextOrm;
@@ -807,10 +807,11 @@ bool cp_import_authored(ColorPropIsland* s, const Mc2ColorPropMaterialFeed* feed
         }
         if (!nextTextures.empty()) vlog("per-object textures resident: %zu.", nextTextures.size());
     }
-    // The old maps release through TextureResidency::release, which retires each image on the open-frame ticket (and waitIdle above already drained).
+    // Old maps release through TextureResidency::release; the table needs the same open-frame lifetime.
     s->propTextures = std::move(nextTextures);
     s->normalTexture = std::move(nextNormal);
     s->ormTexture = std::move(nextOrm);
+    if (s->materialBuf) mc2vk::getOrCreateEngineVulkanContext().retire(std::move(s->materialBuf));
     s->materialBuf = std::move(nextTable);
     s->packetMaterialIds.clear();
     if (have) s->packetMaterialIds.assign(feed->packetMaterialIds, feed->packetMaterialIds + feed->packetCount);
