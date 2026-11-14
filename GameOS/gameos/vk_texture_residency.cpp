@@ -1,4 +1,5 @@
 #include "vk_texture_residency.h"
+#include "vk_texture_table.h"
 #include "hitch_stats.h"
 #include "present_thread.h"
 #include "vk_texture_pending.h"
@@ -28,7 +29,7 @@ void invalidateUiImage(RenderCore::TextureHandle handle) {
     if (engineVulkanContextValid()) getOrCreateEngineVulkanContext().textures().invalidate(handle);
 }
 void TextureResidency::invalidate(RenderCore::TextureHandle handle) {
-    table_->erase(handle);
+    table_->invalidate(handle);
     auto it=residents_.find(handle.raw());
     if (it!=residents_.end()) { auto& [raw,resident]=*it; if (resident.image) ctx_.retire(std::move(resident.image)); residents_.erase(it); }
 }
@@ -98,13 +99,17 @@ uint64_t TextureResidency::legacyUiId(uint32_t gosHandle, uint32_t width, uint32
 bool TextureResidency::init() {
     VkPhysicalDeviceProperties props{}; vkGetPhysicalDeviceProperties(ctx_.physicalDevice(), &props);
     const auto& l = props.limits;
-    capacity_ = std::min({4096u, l.maxPerStageDescriptorSamplers, l.maxPerStageDescriptorSampledImages,
-                         l.maxDescriptorSetSamplers, l.maxDescriptorSetSampledImages, l.maxPerStageResources});
-    if (capacity_ < 2) return false;
-    // The slot table is residency admission accounting only. No pipeline binds a bindless texture set (every island writes its own
-    // per-draw descriptors from view()), so no VkDescriptorSet mirrors the table: the per-flight 4096-entry rewrite it used to get on
-    // every residency revision is gone. A future bindless consumer creates one set with UPDATE_AFTER_BIND | PARTIALLY_BOUND.
-    table_ = std::make_unique<RenderCore::TextureDescriptorTable>(capacity_);
+    // Reserve room for each consumer's existing resources in addition to the two image arrays.
+    constexpr uint32_t reserve = 32;
+    const auto room = [](uint32_t limit) { return limit > reserve ? (limit - reserve) / 2 : 0u; };
+    capacity_ = std::min({4096u, room(l.maxPerStageDescriptorSampledImages),
+                         room(l.maxDescriptorSetSampledImages), room(l.maxPerStageResources)});
+    std::fprintf(stderr, "[VK_CAPABILITY] maxPerStageDescriptorSampledImages=%u maxPerStageDescriptorSamplers=%u maxDescriptorSetSampledImages=%u maxDescriptorSetSamplers=%u maxPerStageResources=%u\n",
+                 l.maxPerStageDescriptorSampledImages, l.maxPerStageDescriptorSamplers,
+                 l.maxDescriptorSetSampledImages, l.maxDescriptorSetSamplers, l.maxPerStageResources);
+    if (capacity_ < 2 || l.maxPerStageDescriptorSamplers < kTexSamplerCount + reserve || l.maxDescriptorSetSamplers < kTexSamplerCount + reserve) return false;
+    // One descriptor set per flight, replayed only after that flight's fence. No update-after-bind.
+    table_ = std::make_unique<RenderCore::TextureDescriptorTable>(capacity_, kMaxFramesInFlight);
     RenderCore::KtxImage image; image.width=image.height=2; image.mipCount=1; image.vkFormat=37; image.mipByteOffsets={0};
     // Async residency is normal during screen changes. Keep the checkerboard
     // diagnostic opt-in; players see a blank image until the upload publishes.
@@ -117,9 +122,17 @@ bool TextureResidency::init() {
     flat.pixels={128,128,255,255}; arrayPlaceholder_=upload(flat,false,nullptr,1,true);
     if (!arrayPlaceholder_) return false;
     table_->placeholder(placeholder_);
+    descriptorTable_ = std::make_unique<TextureTable>(ctx_, *this, *table_, capacity_);
+    if (!descriptorTable_->init()) return false;
     if (mc2_diag::tagRequested("VK_TEXTURE_SERVICE"))
         MC2_LOG(Vk, Info, "[VK_TEXTURE_SERVICE v1] capacity={} placeholder=0 legacy_boundary=P9", capacity_);
     return true;
+}
+
+void TextureResidency::beginFrame(uint64_t frame, uint32_t frameSlot) {
+    table_->beginFrame(frame);
+    pump();
+    descriptorTable_->beginFrame(frameSlot);
 }
 
 std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCore::KtxImage& image, bool useMips, Upload* async, uint32_t layers, bool arrayView, bool vegetation) {

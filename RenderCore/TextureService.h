@@ -19,6 +19,7 @@
 #include <string_view>
 #include <unordered_map>
 #include <vector>
+#include <deque>
 
 #include "Handle.h"
 #include "MaterialRegistry.h"
@@ -333,28 +334,58 @@ private:
     std::unique_ptr<TextureSourceOwner> sourceOwner_;
 };
 
-// Immutable descriptor snapshots retain image owners until that flight completes. Reusing a slot in a newer
-// snapshot cannot change the view or ownership in an older submitted snapshot.
+struct TexSlot { uint16_t slot = 0, gen = 0; };
+
+// Slot reuse waits for every flight to observe the tombstone. Snapshots also retain
+// image owners until submission completes; generations reject cached CPU indices.
 class TextureDescriptorTable {
 public:
-    struct Slot { TextureHandle handle; std::shared_ptr<void> owner; };
-    explicit TextureDescriptorTable(uint32_t capacity) : capacity_(capacity) { slots_.resize(1); }
-    void placeholder(std::shared_ptr<void> owner) { slots_[0].owner = std::move(owner); ++revision_; }
+    struct Slot { TextureHandle handle; std::shared_ptr<void> owner; uint16_t gen = 1; };
+    struct Change { uint32_t slot; uint64_t revision; };
+    explicit TextureDescriptorTable(uint32_t capacity, uint32_t flights = 3)
+        : capacity_(capacity), flights_(flights) { assert(capacity > 0 && capacity <= 65536); slots_.resize(1); }
+    void beginFrame(uint64_t frame) {
+        assert(frame >= frame_); frame_ = frame;
+        while (!quarantine_.empty() && frame_ - quarantine_.front().frame >= flights_) {
+            free_.push_back(quarantine_.front().slot); quarantine_.pop_front();
+        }
+    }
+    void changed(uint32_t slot) {
+        journal_.push_back({slot, ++revision_});
+        if (journal_.size() > capacity_) journal_.pop_front();
+    }
+    // A lagging flight falls back to a full snapshot after bounded journal overflow.
+    std::vector<Change> changesSince(uint64_t applied, bool& full) const {
+        full = !journal_.empty() && applied < journal_.front().revision - 1;
+        std::vector<Change> result;
+        if (applied == revision_) return result;
+        if (!full) for (const auto& change : journal_) if (change.revision > applied) result.push_back(change);
+        return result;
+    }
+    void placeholder(std::shared_ptr<void> owner) { slots_[0].owner = std::move(owner); changed(0); }
     uint32_t insert(TextureHandle h, std::shared_ptr<void> owner) {
         if (!h.isValid() || !owner) return 0;
         if (auto it = indices_.find(h.raw()); it != indices_.end()) {
             const auto& [raw, existing] = *it;
+            slots_[existing].owner = std::move(owner); changed(existing);
             return existing;
         }
         uint32_t slot;
         if (!free_.empty()) { slot = free_.back(); free_.pop_back(); }
         else { if (slots_.size() >= capacity_) return 0; slot = static_cast<uint32_t>(slots_.size()); slots_.push_back({}); }
-        slots_[slot] = {h, std::move(owner)}; indices_[h.raw()] = slot; ++revision_; return slot;
+        slots_[slot].handle = h; slots_[slot].owner = std::move(owner);
+        indices_[h.raw()] = slot; changed(slot); return slot;
     }
     bool erase(TextureHandle h) {
         auto it = indices_.find(h.raw()); if (it == indices_.end()) return false;
         const auto [raw, slot] = *it;
-        slots_[slot] = {}; free_.push_back(slot); indices_.erase(it); ++revision_; return true;
+        auto& entry = slots_[slot]; entry.handle = {}; entry.owner.reset();
+        // Never wrap: a very old CPU token must not become valid again.
+        if (entry.gen < UINT16_MAX) { ++entry.gen; quarantine_.push_back({slot, frame_}); }
+        indices_.erase(it); changed(slot); return true;
+    }
+    void invalidate(TextureHandle h) {
+        if (const auto i = index(h)) { slots_[i].owner.reset(); changed(i); }
     }
     uint32_t index(TextureHandle h) const {
         auto it = indices_.find(h.raw());
@@ -362,13 +393,26 @@ public:
         const auto& [raw, slot] = *it;
         return slot;
     }
-    size_t availableSlots() const { return capacity_ > indices_.size()+1 ? capacity_-indices_.size()-1 : 0; }
+    TexSlot token(TextureHandle h) const {
+        const auto i = index(h); return {static_cast<uint16_t>(i), slots_[i].gen};
+    }
+    uint32_t resolve(TexSlot h) const {
+        return h.slot < slots_.size() && slots_[h.slot].gen == h.gen &&
+            (h.slot == 0 || slots_[h.slot].handle.isValid()) ? h.slot : 0;
+    }
+    const Slot& slot(uint32_t i) const { return slots_[i < slots_.size() ? i : 0]; }
+    size_t availableSlots() const { return free_.size() + capacity_ - slots_.size(); }
     bool full(size_t reserved = 0) const { return reserved >= availableSlots(); }
     std::vector<Slot> snapshot() const { return slots_; }
     uint64_t revision() const { return revision_; }
 private:
     uint32_t capacity_;
     uint64_t revision_ = 0;
+    uint64_t frame_ = 0;
+    uint32_t flights_;
+    struct Retired { uint32_t slot; uint64_t frame; };
+    std::deque<Retired> quarantine_;
+    std::deque<Change> journal_;
     std::vector<Slot> slots_;
     std::vector<uint32_t> free_;
     std::unordered_map<uint32_t, uint32_t> indices_;

@@ -41,6 +41,7 @@
 #include "vulkan_mech_island.h"
 #include "vulkan_mech_skin.h"
 #include "vk_texture_residency.h"
+#include "vk_texture_table.h"
 #include "texture_decode.h"              // gos_GetTextureTexels: material texels without a GL readback
 #include "../../RenderCore/gpu_abi/GpuMechFrameUBO.h"  // single-source per-frame UBO
 #include "visual_tuning_profile.h"
@@ -128,8 +129,8 @@ const uint32_t kMaxPoolLights = 256;
 
 const VkFormat kColorFmt = VK_FORMAT_R16G16B16A16_SFLOAT;
 
-struct MechRunPC { uint32_t materialFlags, poolFirst, poolCount; };
-static_assert(sizeof(MechRunPC) == 12);
+struct MechRunPC { uint32_t materialFlags, poolFirst, poolCount, albedoAo, normal; };
+static_assert(sizeof(MechRunPC) == 20);
 struct MechIsland : mc2vk::IslandState {
     mc2veg::GroundLighting groundLighting;
     bool disabled = false;
@@ -160,15 +161,12 @@ struct MechIsland : mc2vk::IslandState {
     mc2vk::MechSkinPass skin;   // once-per-frame compute pre-skin; unusable => every pass blends bones inline as before
     uint32_t geomGen = 0;   // generation of the feed the buffers were filled from
 
-    // Per-frame data (UBO, instance + bone snapshots, LightsData, night pool) lives in the engine frame ring; every scheme set binds it with dynamic
-    // offsets (bindings 0, 1, 2, 4, 5). ringBound[par][binding] = the ring buffer that binding of every scheme set of that parity points at; a frame
-    // that allocated from another buffer (the ring grew) or a set created since rewrites it.
+    // One set per flight binds frame-ring buffers with dynamic offsets (0,1,2,4,5).
+    // A ring growth rewrites just that flight's set after its fence.
     VkBuffer ringBound[mc2vk::kMaxFramesInFlight][8] = {};
-    // LOCAL-LIGHTS-2: the local-light shadow atlas binding 8 of every scheme set of a parity (null = sets hold the dummy).
+    // Binding 8 stays island-local (null = white dummy).
     VkImageView localShadowBound[mc2vk::kMaxFramesInFlight] = {};
-    // FSR-SAMPLER-REFRESH: the bias albedoSamp was built at, and the sampler generation each parity's scheme sets were last written at.
-    float albedoBias = 0.0f;
-    uint32_t sampGen = 0, sampBoundGen[mc2vk::kMaxFramesInFlight] = {};
+    VkSampler localSamplerBound[mc2vk::kMaxFramesInFlight] = {};
 
     // VK-MECH-MATERIAL-LIGHTING-1: per-frame LightsData span (binding 4) for calc_light.
     bool     wantLighting  = false;   // MC2_VK_MECH_LIGHTING gate
@@ -177,21 +175,14 @@ struct MechIsland : mc2vk::IslandState {
     // VK-PARITY-MECH-1: per-frame object light-pool SSBO (binding 5, FS) = CPU copy
     // of the GL binding-28 pool array (GetObjectLightPoolParams().pool).
 
-    // Descriptors: 0=UBO(VS/FS), 1=instance SSBO(VS), 2=bone SSBO(VS), 3=albedo(FS), 4=LightsData(VS),
-    // 5=pool SSBO(FS), 6=AO map(FS), 7=normal map(FS)  (5-7: VK-PARITY-MECH-1).
-
-    // Per-actor generation identities borrow shared residency; only descriptor pairs live here.
+    // Set 0: UBO, instances, bones, lights, pool and local shadow atlas.
+    // Set 1: ground lighting. Set 2: shared texture table.
     bool        wantMaterial  = false;
     bool        materialReady = false;   // >=1 real scheme imported
     mc2vk::ResidentTextureRef whiteTexture;
-    struct SchemeEntry {
-        uint64_t albedo=0,ao=0,nrm=0;
-        VkDescriptorSet set[mc2vk::kMaxFramesInFlight]={};
-        std::array<VkImageView,3> bound[mc2vk::kMaxFramesInFlight]{};
-        uint64_t lastUsedFrame=~uint64_t(0);
-    };
-    std::vector<SchemeEntry> schemes;
-    static constexpr uint32_t kMaxSchemes=4096; // descriptor cache only; image admission belongs to TextureResidency
+    VkDescriptorSet frameSets[mc2vk::kMaxFramesInFlight] = {};
+    std::vector<mc2vk::ResidentTextureRef> frameTextures[mc2vk::kMaxFramesInFlight];
+    uint64_t textureFrame[mc2vk::kMaxFramesInFlight] = {};
 
     VkCommandBuffer cbuf[mc2vk::kMaxFramesInFlight] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // allocated from `cpool`, freed with it
     mc2vk::GpuTicket submitted[mc2vk::kMaxFramesInFlight];
@@ -208,7 +199,6 @@ struct MechIsland : mc2vk::IslandState {
     VkFormat sceneDepthFmt = VK_FORMAT_UNDEFINED;
     mc2vk::OwnedDescriptorSetLayout dsl;
     mc2vk::OwnedDescriptorPool pool;
-    mc2vk::OwnedSampler albedoSamp;
     mc2vk::OwnedShaderModule vert, frag, depthVert, depthFrag;
     mc2vk::OwnedPipelineLayout playout;
     mc2vk::OwnedPipeline pipe, depthPipe;
@@ -253,9 +243,7 @@ bool make_buffer(MechIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, VkBu
     return true;
 }
 
-// Write the five per-frame BUFFER bindings (0 UBO / 1 inst / 2 bone / 4 lights / 5 pool) of ONE descriptor set at the frame ring's current buffer, and mark
-// the set's parity as needing a rewrite at its next frame (the frame knows which buffer its span came from). binding-3 (albedo) is written separately
-// per scheme by bind_scheme_images (3/6/7).
+// Initial buffer bindings; frame allocation can grow the ring before recording.
 constexpr VkDeviceSize kUboRange = sizeof(MechFrameUBO);
 
 void write_ring_bindings(MechIsland* s, VkDescriptorSet set) {
@@ -268,12 +256,8 @@ void write_ring_bindings(MechIsland* s, VkDescriptorSet set) {
         mc2vk::writeDynamicBinding(s->device, set, b, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, ring, range);
 }
 
-// Point the ring bindings of EVERY cached scheme set's [par] slot at the buffers this frame's spans live in. Safe after beginFrame (the parity fence
-// retired every [par] consumer); the [1-par] sets, possibly in flight, are untouched and follow at their own frame. A binding already pointing at its
-// buffer is skipped.
-void refresh_albedo_sampler(MechIsland* s, uint32_t par);
+// The flight fence protects this set; other flights retain their submitted views.
 void sync_ring_bindings(MechIsland* s, uint32_t par, const mc2vk::FrameAlloc& mainSpan, const mc2vk::FrameAlloc& lightSpan) {
-    refresh_albedo_sampler(s, par);
     struct Want { uint32_t binding; VkDescriptorType type; VkBuffer buf; VkDeviceSize range; };
     const VkBuffer mainBuf = mainSpan.buffer;
     const VkBuffer lightBuf = lightSpan ? lightSpan.buffer : mainSpan.buffer;
@@ -287,138 +271,64 @@ void sync_ring_bindings(MechIsland* s, uint32_t par, const mc2vk::FrameAlloc& ma
     };
     for (const Want& w : want) {
         if (w.buf == VK_NULL_HANDLE || s->ringBound[par][w.binding] == w.buf) continue;
-        for (const auto& e : s->schemes)
-            if (e.set[par] != VK_NULL_HANDLE) mc2vk::writeDynamicBinding(s->device, e.set[par], w.binding, w.type, w.buf, w.range);
+        mc2vk::writeDynamicBinding(s->device, s->frameSets[par], w.binding, w.type, w.buf, w.range);
         s->ringBound[par][w.binding] = w.buf;
     }
     // LOCAL-LIGHTS-2: point binding 8 at the shadow island's live local-light atlas once it exists, and back at the
-    // white dummy when it goes (shadow island rebuilt without one: Potato / no atlas), so no set keeps a destroyed view.
+    // white dummy when it goes, so no set keeps a destroyed view.
     const auto atlas = reinterpret_cast<VkImageView>(mc2_vk_shadow_island_get_local_atlas_view());
     const VkImageView dummy = s->whiteTexture ? s->whiteTexture.view() : VK_NULL_HANDLE;
-    if (s->localShadowBound[par] != atlas && s->albedoSamp && (atlas != VK_NULL_HANDLE || dummy != VK_NULL_HANDLE)) {
+    const auto sampler = mc2vk::getOrCreateEngineVulkanContext().textures().table().sampler(mc2vk::TexSampler::RepeatBiased);
+    if ((s->localShadowBound[par] != atlas || s->localSamplerBound[par] != sampler) && (atlas != VK_NULL_HANDLE || dummy != VK_NULL_HANDLE)) {
         const VkDescriptorImageInfo info = atlas != VK_NULL_HANDLE
-            ? VkDescriptorImageInfo{s->albedoSamp.get(), atlas, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL}
-            : VkDescriptorImageInfo{s->albedoSamp.get(), dummy, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
-        for (const auto& e : s->schemes) {
-            if (e.set[par] == VK_NULL_HANDLE) continue;
+            ? VkDescriptorImageInfo{sampler, atlas, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL}
+            : VkDescriptorImageInfo{sampler, dummy, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+        {
             VkWriteDescriptorSet w{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
-            w.dstSet = e.set[par]; w.dstBinding = 8; w.descriptorCount = 1;
+            w.dstSet = s->frameSets[par]; w.dstBinding = 8; w.descriptorCount = 1;
             w.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w.pImageInfo = &info;
             vkUpdateDescriptorSets(s->device, 1, &w, 0, nullptr);
         }
         s->localShadowBound[par] = atlas;
+        s->localSamplerBound[par] = sampler;
     }
 }
 
-// Point a scheme set's binding-3 (albedo) / 6 (AO) / 7 (normal) at its images + the
-// shared sampler (REPEAT/LINEAR; the FS samples all three with textureLod(...,0)).
-void bind_scheme_images(MechIsland* s, VkDescriptorSet set, VkImageView albedo,
-                        VkImageView ao, VkImageView nrm) {
-    if (set == VK_NULL_HANDLE || albedo == VK_NULL_HANDLE || ao == VK_NULL_HANDLE ||
-        nrm == VK_NULL_HANDLE || !s->albedoSamp) return;
-    VkDescriptorImageInfo info[3]{};
-    const VkImageView views[3] = { albedo, ao, nrm };
-    const uint32_t    binds[3] = { 3u, 6u, 7u };
-    VkWriteDescriptorSet w[3]{};
-    for (int k = 0; k < 3; ++k) {
-        info[k].sampler = s->albedoSamp.get(); info[k].imageView = views[k];
-        info[k].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        w[k].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[k].dstSet = set;
-        w[k].dstBinding = binds[k]; w[k].descriptorCount = 1;
-        w[k].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[k].pImageInfo = &info[k];
-    }
-    vkUpdateDescriptorSets(s->device, 3, w, 0, nullptr);
-}
-
-bool make_albedo_sampler(MechIsland* s) {
-    return s->albedoSamp || mc2vk::infra::makeMaterialSampler(s->device, s->albedoSamp, VK_SAMPLER_ADDRESS_MODE_REPEAT, s->albedoBias);
-}
-
-// FSR-SAMPLER-REFRESH: on a resolve-state change rebuild the sampler, then rewrite each parity's scheme sets once after that parity's fence.
-void refresh_albedo_sampler(MechIsland* s, uint32_t par) {
-    if (mc2vk::infra::refreshSamplers(s->albedoBias, {{&s->albedoSamp, [s] { return make_albedo_sampler(s); }}})) { ++s->sampGen; mc2vk::bumpDescEpoch(); }
-    if (!s->albedoSamp || s->sampBoundGen[par] == s->sampGen) return;
-    const VkImageView w = s->whiteTexture.view();
-    for (auto& e : s->schemes) {
-        if (e.set[par] == VK_NULL_HANDLE) continue;
-        const bool r = e.bound[par][0] != VK_NULL_HANDLE;
-        bind_scheme_images(s, e.set[par], r ? e.bound[par][0] : w, r ? e.bound[par][1] : w, r ? e.bound[par][2] : w);
-    }
-    s->localShadowBound[par] = reinterpret_cast<VkImageView>(~uint64_t(0));   // sync_ring_bindings rewrites binding 8 next
-    s->sampBoundGen[par] = s->sampGen;
-}
-
-// Allocate a descriptor set pair for a scheme (all 8 bindings), write buffer bindings
-// + its three images. Returns false on failure.
-bool alloc_scheme_sets(MechIsland* s, VkImageView albedo, VkImageView ao, VkImageView nrm,
-                       VkDescriptorSet out[mc2vk::kMaxFramesInFlight]) {
-    VkDescriptorSetLayout layouts[mc2vk::kMaxFramesInFlight]; for (auto& layout : layouts) layout = s->dsl.get();
-    VkDescriptorSetAllocateInfo dsai{};
-    dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    dsai.descriptorPool = s->pool.get(); dsai.descriptorSetCount = mc2vk::kMaxFramesInFlight; dsai.pSetLayouts = layouts;
-    if (MC2_VK_ALLOC_SETS(s->device, &dsai, out) != VK_SUCCESS) return false;
-    for (uint32_t par = 0; par < mc2vk::kMaxFramesInFlight; ++par) {
-        write_ring_bindings(s, out[par]);
-        for (VkBuffer& b : s->ringBound[par]) b = VK_NULL_HANDLE;   // the next frame of this parity rewrites its sets at the buffers its spans live in
-        bind_scheme_images(s, out[par], albedo, ao, nrm);
-        // LOCAL-LIGHTS-2: binding 8 holds a dummy until the next sync points every set of the parity at the atlas.
-        if (albedo != VK_NULL_HANDLE && s->albedoSamp) {
-            const VkDescriptorImageInfo info{s->albedoSamp.get(), albedo, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
-            VkWriteDescriptorSet w{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
-            w.dstSet = out[par]; w.dstBinding = 8; w.descriptorCount = 1;
-            w.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w.pImageInfo = &info;
-            vkUpdateDescriptorSets(s->device, 1, &w, 0, nullptr);
-        }
-        s->localShadowBound[par] = VK_NULL_HANDLE;
-    }
-    return true;
-}
-
-// Schemes borrow generation identities. The service owns images and retires replaced paint frames.
+// One frame set replaces the per-paint descriptor cache. Textures are resolved
+// per frame and retained until this flight's next fence.
 bool ensure_dummy_scheme(MechIsland* s) {
-    if (!make_albedo_sampler(s)) return false;
-    if (s->whiteTexture && !RenderCore::textureService().isLive(s->whiteTexture.get())) s->whiteTexture={};
+    auto& ctx = mc2vk::getOrCreateEngineVulkanContext();
+    if (s->whiteTexture && !RenderCore::textureService().isLive(s->whiteTexture.get())) s->whiteTexture = {};
     if (!s->whiteTexture) {
-        const uint8_t white[4]={255,255,255,255};
-        s->whiteTexture=mc2vk::getOrCreateEngineVulkanContext().textures().acquireLegacy(1,1,VK_FORMAT_R8G8B8A8_UNORM,white,4);
+        const uint8_t white[4]{255,255,255,255};
+        s->whiteTexture = ctx.textures().acquireLegacy(1,1,VK_FORMAT_R8G8B8A8_UNORM,white,4);
         if (!s->whiteTexture) return false;
     }
-    if (!s->schemes.empty()) return true;
-    MechIsland::SchemeEntry entry;
-    const auto view=s->whiteTexture.view();
-    if (!alloc_scheme_sets(s,view,view,view,entry.set)) return false;
-    s->schemes.push_back(entry); return true;
+    if (s->frameSets[0]) return true;
+    std::array<VkDescriptorSetLayout, mc2vk::kMaxFramesInFlight> layouts;
+    layouts.fill(s->dsl.get());
+    VkDescriptorSetAllocateInfo alloc{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
+    alloc.descriptorPool = s->pool.get(); alloc.descriptorSetCount = mc2vk::kMaxFramesInFlight; alloc.pSetLayouts = layouts.data();
+    if (MC2_VK_ALLOC_SETS(s->device, &alloc, s->frameSets) != VK_SUCCESS) return false;
+    for (const auto set : s->frameSets) write_ring_bindings(s, set);
+    return true;
 }
-VkImageView get_tex_view(MechIsland* s,uint64_t id) {
-    if (!RenderCore::isUiTextureId(id)) return s->whiteTexture.view();
-    return mc2vk::getOrCreateEngineVulkanContext().textures().view(RenderCore::uiTextureHandle(id));
-}
-VkDescriptorSet get_scheme_set(MechIsland* s,uint64_t albedo,uint64_t ao,uint64_t nrm,uint32_t par) {
-    auto& ctx=mc2vk::getOrCreateEngineVulkanContext();
-    const uint64_t frame=ctx.tracker().frameNo();
-    MechIsland::SchemeEntry* entry=nullptr;
-    for (auto& candidate:s->schemes)
-        if (candidate.albedo==albedo && candidate.ao==ao && candidate.nrm==nrm) { entry=&candidate;break; }
-    const std::array<VkImageView,3> views{get_tex_view(s,albedo),get_tex_view(s,ao),get_tex_view(s,nrm)};
-    if (!entry) {
-        if (s->schemes.size()<s->kMaxSchemes) {
-            MechIsland::SchemeEntry fresh;
-            if (!alloc_scheme_sets(s,views[0],views[1],views[2],fresh.set)) return s->schemes[0].set[par];
-            s->schemes.push_back(fresh); entry=&s->schemes.back();
-        } else {
-            auto victim=std::min_element(s->schemes.begin()+1,s->schemes.end(),[](const auto& a,const auto& b){return a.lastUsedFrame<b.lastUsedFrame;});
-            if (victim==s->schemes.end() || victim->lastUsedFrame==frame) return s->schemes[0].set[par];
-            entry=&*victim; for (auto& bound : entry->bound) bound = {};
-        }
-        entry->albedo=albedo; entry->ao=ao; entry->nrm=nrm;
+MechRunPC resolve_run(MechIsland* s, const Mc2MechDrawRun& run, uint32_t par) {
+    auto& ctx = mc2vk::getOrCreateEngineVulkanContext();
+    auto& residency = ctx.textures();
+    if (s->textureFrame[par] != ctx.tracker().frameNo()) {
+        s->frameTextures[par].clear(); s->textureFrame[par] = ctx.tracker().frameNo();
     }
-    // Called after this parity's fence. The other parity retains its submitted descriptors.
-    if (entry->bound[par]!=views) {
-        bind_scheme_images(s,entry->set[par],views[0],views[1],views[2]); entry->bound[par]=views;
-    }
-    entry->lastUsedFrame=frame;
-    if (albedo) s->materialReady=true;
-    return entry->set[par];
+    const auto resolve = [&](uint64_t id) {
+        const auto handle = RenderCore::isUiTextureId(id) ? RenderCore::uiTextureHandle(id) : s->whiteTexture.get();
+        auto ref = residency.retain(handle);
+        const auto slot = ref ? residency.table().resolve(residency.slot(ref.get())) : 0;
+        if (ref) s->frameTextures[par].push_back(std::move(ref));
+        return slot;
+    };
+    const auto albedo = resolve(run.slot0Tex), ao = resolve(run.aoTex), normal = resolve(run.normalTex);
+    if (run.slot0Tex) s->materialReady = true;
+    return {run.materialFlags, 0, 0, albedo | (ao << 16), normal};
 }
 
 bool init_island(MechIsland* s, int w, int h) {
@@ -493,9 +403,6 @@ bool init_island(MechIsland* s, int w, int h) {
             vlog("GPU timestamps requested but unsupported on this queue (validBits=0 or period<=0).");
     }
 
-    // The per-scheme descriptor sets (incl. the dummy white schemes[0]) are created in
-    // the descriptor-pool block below (needs s->pool). binding3 is always valid there.
-
     // Scene pass (VK_KHR_dynamic_rendering, recorded in record_mech): colour0 + normal LOAD (preserve the terrain in the shared colour/normal), the per-object
     // motion vectors CLEAR (sentinel), shared depth LOAD (D32S8, GEQUAL test+write). The pipelines carry the formats; the pass records the layout moves of the
     // motion-vector image (UNDEFINED -> COLOR_ATTACHMENT before, -> SHADER_READ_ONLY for the MV pass after) that the old render pass did.
@@ -509,46 +416,38 @@ bool init_island(MechIsland* s, int w, int h) {
         s->sceneFmts[0] = colorRes->format; s->sceneFmts[1] = normalRes->format; s->sceneFmts[2] = mvRes->format;
         s->sceneDepthFmt = depthRes->format;
     }
-    // Descriptor layout: 0=UBO(VS/FS), 1=instance SSBO(VS), 2=bone SSBO(VS), 3=albedo(FS).
+    // Per-flight resources; material images live in the shared table.
     {
-        VkDescriptorSetLayoutBinding b[9]{};
+        VkDescriptorSetLayoutBinding b[6]{};
         b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         b[1].binding = 1; b[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
         b[1].descriptorCount = 1; b[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
         b[2].binding = 2; b[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
         b[2].descriptorCount = 1; b[2].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-        b[3].binding = 3; b[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        b[3].descriptorCount = 1; b[3].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-        b[4].binding = 4; b[4].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;   // LightsData
-        b[4].descriptorCount = 1; b[4].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-        // VK-PARITY-MECH-1: 5 = object light-pool SSBO, 6 = AO map, 7 = normal map (FS).
-        b[5].binding = 5; b[5].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
-        b[5].descriptorCount = 1; b[5].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-        b[6].binding = 6; b[6].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        b[6].descriptorCount = 1; b[6].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-        b[7].binding = 7; b[7].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        b[7].descriptorCount = 1; b[7].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        b[3].binding = 4; b[3].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;   // LightsData
+        b[3].descriptorCount = 1; b[3].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        // 5 = object light-pool SSBO.
+        b[4].binding = 5; b[4].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+        b[4].descriptorCount = 1; b[4].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         // LOCAL-LIGHTS-2: 8 = local-light shadow atlas (FS, plain sampler2D + gather).
-        b[8].binding = 8; b[8].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        b[8].descriptorCount = 1; b[8].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        b[5].binding = 8; b[5].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b[5].descriptorCount = 1; b[5].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        lci.bindingCount = 9; lci.pBindings = b;
+        lci.bindingCount = 6; lci.pBindings = b;
         if (!mc2vk::create(s->dsl, s->device, [&](VkDescriptorSetLayout* h) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); })) { vlog("dsl failed."); return false; }
-        // Pool sized for kMaxSchemes descriptor sets (one per distinct paint scheme):
-        // each set = 1 UBO + 4 SSBO (inst/bone/lights/pool) + 3 samplers (albedo/AO/normal).
-        const uint32_t N = MechIsland::kMaxSchemes;
+        // Three frame sets, independent of the number of paint schemes.
+        const uint32_t N = 1;
         VkDescriptorPoolSize sizes[3]{};
         sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; sizes[0].descriptorCount = 1 * mc2vk::kMaxFramesInFlight * N;
         sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC; sizes[1].descriptorCount = 4 * mc2vk::kMaxFramesInFlight * N;  // inst+bone+lights+pool, two parities
-        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[2].descriptorCount = 4 * mc2vk::kMaxFramesInFlight * N;  // albedo+AO+normal+local shadow, two parities
+        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[2].descriptorCount = mc2vk::kMaxFramesInFlight;
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         pci.maxSets = mc2vk::kMaxFramesInFlight * N; pci.poolSizeCount = 3; pci.pPoolSizes = sizes;
         if (!mc2vk::create(s->pool, s->device, [&](VkDescriptorPool* h) { return vkCreateDescriptorPool(s->device, &pci, nullptr, h); })) { vlog("pool failed."); return false; }
-        // Always-present dummy white scheme (schemes[0]) = binding-3 fallback for runs
-        // with no slot-0 paint texture (and the material-OFF flat-fill path).
+        // White fallback for runs without a paint texture.
         if (!ensure_dummy_scheme(s)) { setFallback("dummy_scheme_failed"); return false; }
     }
 
@@ -567,8 +466,8 @@ bool init_island(MechIsland* s, int w, int h) {
         VkPipelineLayoutCreateInfo plci{};
         plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         if (!s->groundLighting.init(s->device)) return false;
-        const VkDescriptorSetLayout layouts[]{s->dsl.get(), s->groundLighting.layout()};
-        plci.setLayoutCount = 2; plci.pSetLayouts = layouts;
+        const VkDescriptorSetLayout layouts[]{s->dsl.get(), s->groundLighting.layout(), ctx.textures().table().layout()};
+        plci.setLayoutCount = 3; plci.pSetLayouts = layouts;
         plci.pushConstantRangeCount = 1; plci.pPushConstantRanges = &pcr;
         if (!mc2vk::create(s->playout, s->device, [&](VkPipelineLayout* h) { return vkCreatePipelineLayout(s->device, &plci, nullptr, h); })) { vlog("playout failed."); return false; }
 
@@ -846,9 +745,9 @@ struct MechRecPlan {
     VkImage mvImage = VK_NULL_HANDLE; VkFormat depthFmt = VK_FORMAT_UNDEFINED;
     VkPipeline depthPipe = VK_NULL_HANDLE, pipe = VK_NULL_HANDLE;
     VkPipelineLayout playout = VK_NULL_HANDLE; VkBuffer vbo = VK_NULL_HANDLE, ibo = VK_NULL_HANDLE;
-    VkDescriptorSet groundSet = VK_NULL_HANDLE;
+    VkDescriptorSet groundSet = VK_NULL_HANDLE, textureSet = VK_NULL_HANDLE;
     uint32_t dyn[5]{}, groundOffsets[4]{}, boneOffset = 0;
-    std::vector<Mc2MechDrawRun> runs; std::vector<VkDescriptorSet> sets;
+    std::vector<Mc2MechDrawRun> runs; VkDescriptorSet frameSet = VK_NULL_HANDLE; std::vector<MechRunPC> materials;
     int poolN = 0, w = 0, h = 0;
     VkQueryPool timerPool = VK_NULL_HANDLE; uint32_t timerCount = 0;
     mc2vk::MechSkinPass::Frozen skin;
@@ -910,16 +809,12 @@ static bool record_mech_cmds(const MechRecPlan& p, VkCommandBuffer cb, MechIslan
     // The color pipeline is read-only EQUAL with early fragment tests: hidden
     // triangles never execute the local-light loop, and discard cannot write depth.
     mc2vk::infra::bind(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,p.depthPipe);
-    VkDescriptorSet depthSet=VK_NULL_HANDLE;
+    vkCmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,p.playout,0,1,&p.frameSet,5,p.dyn);
+    vkCmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,p.playout,2,1,&p.textureSet,0,nullptr);
     const uint32_t runCount = static_cast<uint32_t>(p.runs.size());
     for(uint32_t r=0;r<runCount;++r) {
         const auto& run=p.runs[r];if(!run.indexCount || !run.instanceCount)continue;
-        const auto set=p.sets[r];
-        if(set!=depthSet) {
-            vkCmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,p.playout,0,1,&set,5,p.dyn);
-            depthSet=set;
-        }
-        const MechRunPC pc{run.materialFlags,0,0};
+        const MechRunPC pc=p.materials[r];
         vkCmdPushConstants(cb,p.playout,VK_SHADER_STAGE_FRAGMENT_BIT,0,sizeof(pc),&pc);
         p.skin.drawRun(cb, r, run, vertexBuffer, boundVertex, emit(run, mc2::battlebench::DrawMechDepth));
     }
@@ -928,19 +823,11 @@ static bool record_mech_cmds(const MechRecPlan& p, VkCommandBuffer cb, MechIslan
 
     // One indexed instanced draw per run. firstInstance = run.instanceBase so the VS's
     // gl_InstanceIndex indexes the instance SSBO snapshot exactly as the GL VS's
-    // u_instanceBase + gl_InstanceID did. Per run: bind the descriptor set for this run's
-    // paint scheme (per-actor cache) so the right albedo (binding 3) is sampled.
-    VkDescriptorSet boundSet = VK_NULL_HANDLE;
+    // u_instanceBase + gl_InstanceID did. Push constants select each run's textures.
     for (uint32_t r = 0; r < runCount; ++r) {
         const Mc2MechDrawRun& run = p.runs[r];
         if (run.indexCount == 0 || run.instanceCount == 0) continue;
-        const VkDescriptorSet set = p.sets[r];
-        if (set != boundSet) {
-            vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, p.playout, 0, 1, &set, 5, p.dyn);
-            boundSet = set;
-        }
-        // VK-PARITY-MECH-1: per-run ALPHA_TEST flag (mech.frag u_materialFlags).
-        const MechRunPC pc{run.materialFlags, 0, static_cast<uint32_t>(p.poolN)};
+        auto pc = p.materials[r]; pc.poolCount = static_cast<uint32_t>(p.poolN);
         vkCmdPushConstants(cb, p.playout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
         p.skin.drawRun(cb, r, run, vertexBuffer, boundVertex, emit(run, mc2::battlebench::DrawMechColor));
     }
@@ -1083,15 +970,9 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
 
     // Resolve every run before uploading materialReady or synchronizing dynamic buffers.
     // No descriptor allocation or cache eviction may happen inside the recorded pass.
-    const VkDescriptorSet dummySet = get_scheme_set(s,0,0,0,par);
-    std::vector<VkDescriptorSet> runSets(feed.runCount, dummySet);
+    std::vector<MechRunPC> materials(feed.runCount);
     s->materialReady = false;
-    for (uint32_t r=0; s->wantMaterial && r<feed.runCount; ++r) {
-        const auto& run=feed.runs[r];
-        if (!run.indexCount || !run.instanceCount) continue;
-        const auto set=get_scheme_set(s,run.slot0Tex,run.aoTex,run.normalTex,par);
-        if (set) runSets[r]=set;
-    }
+    for (uint32_t r=0; r<feed.runCount; ++r) materials[r] = resolve_run(s, feed.runs[r], par);
 
     // Upload UBO.
     { MechFrameUBO u{};
@@ -1125,7 +1006,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
       EnvironmentUBO environment; mc2::environment::fillGpu(visualTuning_environment(), 1.0f, environment);
       for (size_t c=0; c<3; ++c) u.environmentAmbient[c] = environment.hemiSky[c];
       std::memcpy(mainPtr, &u, sizeof(u)); }
-    // Every scheme set of this parity follows the buffers the spans came from; the draw passes the offsets.
+    // This flight's set follows the buffers; each pass supplies its dynamic offsets.
     sync_ring_bindings(s, par, mainSpan, lightSpan);
     const uint32_t dynOffsets[5] = {
         static_cast<uint32_t>(mainSpan.offset),
@@ -1152,7 +1033,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     plan.depthPipe = s->depthPipe.get(); plan.pipe = s->pipe.get();
     plan.playout = s->playout.get(); plan.vbo = s->vbo.get(); plan.ibo = s->ibo.get(); plan.groundSet = s->groundLighting.set(par);
     std::copy_n(dynOffsets, 5, plan.dyn); std::copy_n(ground->offsets.data(), 4, plan.groundOffsets); plan.boneOffset = dynOffsets[2];
-    plan.runs.assign(feed.runs, feed.runs + feed.runCount); plan.sets = runSets;
+    plan.runs.assign(feed.runs, feed.runs + feed.runCount); plan.frameSet = s->frameSets[par]; plan.materials = std::move(materials); plan.textureSet = rctx.textures().table().set(rctx.frameContext().slot);
     plan.poolN = poolN; plan.w = w; plan.h = h;
     plan.timerCount = s->gpuTimer.count; plan.timerPool = s->gpuTimer.claim();   // the pool is taken here, on main; the recording only issues commands on it
     s->skin.writeDescriptors(s->vbo.get(), s->vboBytes, mainSpan.buffer, mainSpan.range);
@@ -1242,7 +1123,7 @@ int previewFail(std::string_view why) {
 
 // Depth prepass + material runs into the preview framebuffer, viewport/scissor = the panel rect.
 bool record_mech_preview(MechIsland* s, VkCommandBuffer cb, const Mc2MechFrameFeed& feed,
-                         const std::vector<VkDescriptorSet>& runSets, const uint32_t (&dynOffsets)[5], int w, int h, uint32_t par,
+                         const std::vector<MechRunPC>& materials, const uint32_t (&dynOffsets)[5], int w, int h, uint32_t par,
                          const VkImageView (&views)[3], const VkImage (&images)[3]) {
     vkResetCommandPool(s->device, s->cpool[par].get(), 0);   // cb is s->cbuf[par]
     VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
@@ -1288,26 +1169,23 @@ bool record_mech_preview(MechIsland* s, VkCommandBuffer cb, const Mc2MechFrameFe
     VkRect2D scissor{{x0, y0}, {static_cast<uint32_t>(x1 - x0), static_cast<uint32_t>(y1 - y0)}};
     vkCmdSetViewport(cb, 0, 1, &vp);
     vkCmdSetScissor(cb, 0, 1, &scissor);
-    if (s->backdropPipe && !runSets.empty()) {
+    if (s->backdropPipe && !materials.empty()) {
         mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->backdropPipe.get());
-        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &runSets[0], 5, dynOffsets);
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->frameSets[par], 5, dynOffsets);
         vkCmdDraw(cb, 3, 1, 0, 0);
     }
+    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->frameSets[par], 5, dynOffsets);
+    dctx.textures().table().bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 2);
     VkDeviceSize vboOff = 0;
     const VkBuffer vertexBuffer = s->vbo.get();
     vkCmdBindVertexBuffers(cb, 0, 1, &vertexBuffer, &vboOff);
     vkCmdBindIndexBuffer(cb, s->ibo.get(), 0, VK_INDEX_TYPE_UINT32);
     for (const VkPipeline pipe : {s->previewDepthPipe.get(), s->previewPipe.get()}) {
         mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipe);
-        VkDescriptorSet bound = VK_NULL_HANDLE;
         for (uint32_t r = 0; r < feed.runCount; ++r) {
             const Mc2MechDrawRun& run = feed.runs[r];
             if (!run.indexCount || !run.instanceCount) continue;
-            if (runSets[r] != bound) {
-                vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &runSets[r], 5, dynOffsets);
-                bound = runSets[r];
-            }
-            const MechRunPC pc{run.materialFlags, 0, 0};
+            const MechRunPC pc = materials[r];
             vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
             vkCmdDrawIndexed(cb, run.indexCount, run.instanceCount, run.firstIndex, run.baseVertex, run.instanceBase);
         }
@@ -1388,14 +1266,9 @@ static int mech_preview_flush_impl(void* colorView, void* normalView, void* dept
         if (lightSpan) std::memcpy(lightSpan.ptr, q.lights, static_cast<size_t>(q.lightBytes));
     }
 
-    const VkDescriptorSet dummySet = get_scheme_set(s, 0, 0, 0, par);
-    std::vector<VkDescriptorSet> runSets(feed.runCount, dummySet);
+    std::vector<MechRunPC> materials(feed.runCount);
     s->materialReady = false;
-    for (uint32_t r = 0; s->wantMaterial && r < feed.runCount; ++r) {
-        const auto& run = feed.runs[r];
-        if (!run.indexCount || !run.instanceCount) continue;
-        if (const auto set = get_scheme_set(s, run.slot0Tex, run.aoTex, run.normalTex, par)) runSets[r] = set;
-    }
+    for (uint32_t r=0; r<feed.runCount; ++r) materials[r] = resolve_run(s, feed.runs[r], par);
 
     { MechFrameUBO u{};
       std::memcpy(u.worldToClipGL, q.worldToClipGL, sizeof(u.worldToClipGL));
@@ -1432,7 +1305,7 @@ static int mech_preview_flush_impl(void* colorView, void* normalView, void* dept
     const VkImage images[3] = {static_cast<VkImage>(colorImage), static_cast<VkImage>(normalImage), static_cast<VkImage>(depthImage)};
 
     VkCommandBuffer cb = s->cbuf[par];
-    if (!record_mech_preview(s, cb, feed, runSets, dynOffsets, w, h, par, views, images)) return previewFail("record_failed");
+    if (!record_mech_preview(s, cb, feed, materials, dynOffsets, w, h, par, views, images)) return previewFail("record_failed");
     VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
     if (mc2vk::submitGraphics(si, VK_NULL_HANDLE) != VK_SUCCESS) return previewFail("submit_failed");

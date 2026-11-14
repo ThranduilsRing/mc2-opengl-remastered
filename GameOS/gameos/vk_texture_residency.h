@@ -10,6 +10,7 @@
 namespace mc2vk {
 class VulkanContext;
 class TextureResidency;
+class TextureTable;
 class ResidentTextureRef {
 public:
     ResidentTextureRef() = default;
@@ -37,6 +38,15 @@ public:
     TextureResidency(VulkanContext& ctx, RenderCore::TextureService& service);
     ~TextureResidency();
     bool init();
+    void beginFrame(uint64_t frame, uint32_t frameSlot);
+    TextureTable& table() { return *descriptorTable_; }
+    RenderCore::TexSlot slot(RenderCore::TextureHandle handle) const { return table_->token(handle); }
+    bool arrayView(RenderCore::TextureHandle handle) const {
+        const auto it = residents_.find(handle.raw());
+        if (it == residents_.end()) return false;
+        const auto& [raw, resident] = *it;
+        return resident.arrayView;
+    }
     ResidentTextureRef createRenderTarget(uint32_t width, uint32_t height);
     uint64_t legacyUiId(uint32_t gosHandle, uint32_t width, uint32_t height, VkFormat format,
                         std::shared_ptr<const std::vector<uint8_t>> bytes, bool displaySpace = true, bool mipmaps = false);
@@ -97,6 +107,7 @@ private:
     RenderCore::TextureService& service_;
     uint32_t capacity_ = 0;
     std::unique_ptr<RenderCore::TextureDescriptorTable> table_;
+    std::unique_ptr<TextureTable> descriptorTable_;
     std::shared_ptr<Image> placeholder_, arrayPlaceholder_;
     std::unordered_map<uint32_t, Resident> residents_;
     struct LegacyUi { std::weak_ptr<const std::vector<uint8_t>> source; ResidentTextureRef texture, pending; };

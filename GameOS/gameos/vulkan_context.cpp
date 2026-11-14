@@ -1118,7 +1118,7 @@ void VulkanContext::beginFrame() {
     frameRing_.beginFrame(f, slotFree);
     recordPools_.beginFrame(static_cast<uint32_t>(f % kMaxFramesInFlight), slotFree,
                             [&](uint32_t slot, uint32_t participant) { vkResetCommandPool(device_, recordCmdPools_[slot][participant].get(), 0); });
-    if (textures_) { ZoneScopedN("VKContext.TexturePump"); textures_->pump(); }
+    if (textures_ && slotFree) { ZoneScopedN("VKContext.TexturePump"); textures_->beginFrame(f, frameContext().slot); }
 }
 
 VkCommandBuffer VulkanContext::acquireRecordCommandBuffer() {

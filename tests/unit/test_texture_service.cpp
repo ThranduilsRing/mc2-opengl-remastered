@@ -351,6 +351,8 @@ TEST_CASE("TextureService: last reference during flight and descriptor reuse") {
     CHECK(service.release(old)); CHECK(table.erase(old));
     CHECK(destroyed==1); // only the rejected allocation, never the submitted image
     auto next=service.acquire(keyOf("base","c",3));
+    CHECK(table.full());
+    table.beginFrame(3);
     CHECK(table.insert(next,make())==slot);
     CHECK(table.index(old)==0); CHECK_FALSE(table.erase(old));
     auto nextFlight=table.snapshot();
@@ -358,6 +360,52 @@ TEST_CASE("TextureService: last reference during flight and descriptor reuse") {
     CHECK_FALSE(service.retain(old)); // stale generation cannot name the replacement
     inFlight.clear(); CHECK(destroyed==2);
     CHECK(table.erase(next)); nextFlight.clear(); CHECK(destroyed==3);
+}
+
+TEST_CASE("TextureService: descriptor quarantine generation and journal replay") {
+    TextureService service;
+    TextureDescriptorTable table(2);
+    const auto a=service.acquire(keyOf("unit","quarantine-a",1));
+    const auto b=service.acquire(keyOf("unit","quarantine-b",1));
+    auto owner=std::make_shared<int>(1);
+    table.beginFrame(10);
+    REQUIRE(table.insert(a,owner)==1);
+    const auto old=table.token(a);
+    uint64_t applied[3]={table.revision(),table.revision(),table.revision()};
+    REQUIRE(table.erase(a)); CHECK(table.resolve(old)==0);
+    for (uint64_t frame=11;frame<=13;++frame) {
+        bool full=false;
+        const auto changes=table.changesSince(applied[frame%3],full);
+        REQUIRE_FALSE(full); REQUIRE(changes.size()==1); CHECK(changes[0].slot==1);
+        CHECK_FALSE(table.slot(1).owner); applied[frame%3]=table.revision();
+        if (frame<13) {
+            table.beginFrame(frame); CHECK(table.insert(b,owner)==0); CHECK(table.full());
+        }
+    }
+    table.beginFrame(13); REQUIRE(table.insert(b,owner)==1);
+    CHECK(table.token(b).gen!=old.gen); CHECK(table.resolve(old)==0);
+    CHECK(table.resolve(table.token(b))==1);
+    const auto live=table.token(b);
+    table.invalidate(b); CHECK(table.token(b).gen==live.gen); CHECK_FALSE(table.slot(1).owner);
+    CHECK(table.insert(b,owner)==1); CHECK(table.resolve(live)==1); CHECK(table.slot(1).owner==owner);
+    bool full=false;
+    CHECK(table.changesSince(table.revision(),full).empty()); CHECK_FALSE(full);
+    table.changed(1); table.changed(1); // bounded overflow, as at mission load
+    CHECK(table.changesSince(0,full).empty()); CHECK(full);
+}
+
+TEST_CASE("TextureService: exhausted descriptor generations never wrap") {
+    TextureDescriptorTable table(2,1);
+    const auto handle=TextureHandle::make(1,1);
+    const auto owner=std::make_shared<int>(1);
+    REQUIRE(table.insert(handle,owner)==1);
+    const auto ancient=table.token(handle);
+    for (uint64_t frame=1;frame<UINT16_MAX;++frame) {
+        REQUIRE(table.erase(handle)); table.beginFrame(frame);
+        REQUIRE(table.insert(handle,owner)==1); CHECK(table.resolve(ancient)==0);
+    }
+    REQUIRE(table.erase(handle)); table.beginFrame(UINT16_MAX);
+    CHECK(table.insert(handle,owner)==0); CHECK(table.full()); CHECK(table.resolve(ancient)==0);
 }
 
 TEST_CASE("TextureService: delayed streaming staging cancellation and reload") {
@@ -419,6 +467,8 @@ TEST_CASE("TextureService: in-flight uploads reserve descriptor capacity") {
     REQUIRE(f.table.index(a)==1); REQUIRE(bool(f.residents[a.raw()].image));
     CHECK_FALSE(f.queue(b));
     REQUIRE(f.service.release(a)); REQUIRE(f.table.erase(a));
+    CHECK_FALSE(f.queue(b));
+    f.table.beginFrame(3);
     REQUIRE(f.queue(b));
     f.pump(); CHECK(f.table.index(b)==0);
     f.complete(); f.pump();
@@ -460,6 +510,7 @@ TEST_CASE("TextureService: failed publication retries on the same live handle") 
     CHECK(f.table.index(waiting)==0); CHECK_FALSE(bool(f.residents[waiting.raw()].image));
     REQUIRE(f.uploads.size()==1); CHECK(f.budget.used==4);
     REQUIRE(f.table.erase(occupant));
+    f.table.beginFrame(3);
     f.pump();
     CHECK(f.uploads.empty()); CHECK(f.budget.used==0);
     CHECK(f.service.isLive(waiting)); CHECK(f.table.index(waiting)==1);
@@ -561,6 +612,7 @@ TEST_CASE("TextureService: refused upload batches retain decoded requests and re
         CHECK(f.table.index(handle)==0);
         f.complete(); f.pump();
         REQUIRE(f.service.release(older)); REQUIRE(f.table.erase(older));
+        f.table.beginFrame(3);
         REQUIRE(f.budget.reserve(4));
         f.uploads.push_back({handle,std::make_shared<int>(42),{},4,version});
         batch.push_back(std::move(pending.front())); pending.pop_front();
