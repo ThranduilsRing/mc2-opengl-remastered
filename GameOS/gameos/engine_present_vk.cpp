@@ -1092,7 +1092,9 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
     const uint64_t key = (static_cast<uint64_t>(d.textureHandle) << 32) | static_cast<uint64_t>(d.textureSerial);
     auto& m = s.hudTextureMirrors[key];
     m.lastFrame = s.hudMirrorFrameCounter;   // touched this frame -> not evictable yet
-    const VkDeviceSize bytes = static_cast<VkDeviceSize>(d.textureWidth) * static_cast<VkDeviceSize>(d.textureHeight) * 4u;
+    const bool mipmapped = d.textureWidth == 2048 && d.textureHeight == 2048;
+    const size_t baseBytes = static_cast<size_t>(d.textureWidth) * d.textureHeight * 4u;
+    const VkDeviceSize bytes = mipmapped ? (baseBytes * 4u - 4u) / 3u : baseBytes;
     const bool needsUpload = m.serial != d.textureSerial || m.width != d.textureWidth ||
                              m.height != d.textureHeight || m.bytes != bytes || !m.buffer;
     if (!needsUpload)
@@ -1100,7 +1102,7 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
     // VK-HUD-MIRRORCOPY-1: the draw carries a shared immutable mirror (refcount
     // bump at queue time); bytes are only dereferenced HERE, on a (handle,serial)
     // change — the >99.9% no-upload case never touches them.
-    if (!d.textureRgba || d.textureRgba->size() < static_cast<size_t>(bytes))
+    if (!d.textureRgba || d.textureRgba->size() < baseBytes)
         return nullptr;
     if (!createHostBuffer(s, bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, m.buffer, m.memory, "present.hudTextureMirror"))
         return nullptr;
@@ -1109,7 +1111,22 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
     if (vkMapMemory(s.dev, m.memory.get(), 0, bytes, 0, &mapped) != VK_SUCCESS)
         return nullptr;
     // The former per-pixel pack (b0 | b1<<8 | b2<<16 | b3<<24) is the source byte order on a little-endian host: copy straight, no temp vector.
-    std::memcpy(mapped, rgba.data(), static_cast<size_t>(bytes));
+    std::memcpy(mapped, rgba.data(), baseBytes);
+    if (mipmapped) {
+        // Spatial, premultiplied mip pyramid: transparent edges retain their colour.
+        auto* pixels = static_cast<uint8_t*>(mapped);
+        for (size_t i = 0; i < baseBytes; i += 4)
+            for (size_t c = 0; c < 3; ++c) pixels[i+c] = (uint32_t(pixels[i+c]) * pixels[i+3] + 127u) / 255u;
+        size_t offset = 0, next = baseBytes;
+        for (size_t w = 2048; w > 1; w /= 2) {
+            for (size_t y = 0; y < w/2; ++y) for (size_t x = 0; x < w/2; ++x)
+                for (size_t c = 0; c < 4; ++c) {
+                    const size_t p = offset + ((2*y)*w + 2*x)*4 + c;
+                    pixels[next + (y*(w/2)+x)*4+c] = (uint32_t(pixels[p]) + pixels[p+4] + pixels[p+w*4] + pixels[p+w*4+4] + 2u) / 4u;
+                }
+            offset = next; next += (w/2)*(w/2)*4;
+        }
+    }
     vkUnmapMemory(s.dev, m.memory.get());
     if (!m.set) {
         VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
@@ -1225,6 +1242,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
             td.width = mirror->width;
             td.height = mirror->height;
             td.textMode = (d.kind == 3) ? 1u : 0u;
+            if (d.kind != 3 && d.textureWidth == 2048 && d.textureHeight == 2048) td.textMode = 2u;
             td.foreground = d.foregroundColor;
             td.opaque = (d.alphaMode == 1);
             td.oneInvAlpha = (d.alphaMode == 4); // VK-FIELD-VFX-3: additive-glow effect blend
