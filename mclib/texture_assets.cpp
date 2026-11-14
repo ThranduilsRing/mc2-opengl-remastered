@@ -104,6 +104,7 @@ std::string sidecarPath(std::string_view name) {
     return std::string(name.substr(0, dot != std::string::npos && (slash == std::string::npos || dot > slash) ? dot : name.size())) + ".ktx2";
 }
 std::shared_ptr<const Bytes> readBytes(File& file) {
+    ZoneScopedN("TextureSource.Read");
     const auto count = file.fileSize();
     if (count <= 0 || static_cast<size_t>(count) > kMaxSourceBytes) return {};
     auto bytes = std::make_shared<Bytes>(static_cast<size_t>(count));
@@ -256,18 +257,21 @@ static bool txmLoadCooked(mc2::czstring source, mc2::czstring sidecar, bool pref
     const long size = cooked.fileSize();
     if (size <= 0 || size > 256 * 1024 * 1024) return false;
     std::vector<uint8_t> bytes(size);
-    if (cooked.read(bytes.data(), size) != size) return false;
+    { ZoneScopedN("TextureSource.Cooked.Read");
+      if (cooked.read(bytes.data(), size) != size) return false; }
     const char* mod = LookupModOwner(sidecar);
     const std::string provider = mod ? std::string("mod:") + mod : cooked.isLoadedFromDisk() ? "base-loose" : "fst";
     if (resolvedProvider) *resolvedProvider = provider;
     RenderCore::TextureKey key;
-    key.source = RenderCore::makeTextureSourceId(provider, sidecar, RenderCore::textureContentHash(bytes.data(), bytes.size()));
+    { ZoneScopedN("TextureSource.Cooked.Hash");
+      key.source = RenderCore::makeTextureSourceId(provider, sidecar, RenderCore::textureContentHash(bytes.data(), bytes.size())); }
     auto& service = RenderCore::textureService();
     if (auto cached = service.cooked(key)) { out = *cached; return true; }
-    auto parsed = RenderCore::ktxParse(bytes);
+    auto parsed = [&] { ZoneScopedN("TextureSource.Cooked.Parse"); return RenderCore::ktxParse(bytes); }();
     if (!parsed.image) return false;
     out = std::move(*parsed.image);
-    service.cacheCooked(key, std::make_shared<const RenderCore::KtxImage>(out));
+    { ZoneScopedN("TextureSource.Cooked.Publish");
+      service.cacheCooked(key, std::make_shared<const RenderCore::KtxImage>(out)); }
     return true;
 }
 
@@ -333,6 +337,7 @@ DWORD load(mc2::czstring path, gos_TextureFormat format, DWORD hints, DWORD vari
     ZoneScopedN("TextureSource.Load");
     graphics::pump_loading_events();
     if (!RenderCore::activeTextureService || !path || !*path) return kInvalidAsset;
+    ZoneText(path, std::min<size_t>(std::strlen(path), 192));
     if (mc2::gate::get<"MC2_TEXMGR_LOAD_TRACE">()) {
         mc2::fmt::print_out("[TEXLOAD] uniq={:d} name={}\n",mc2::fmt::as_u32(variant),path);
         std::fflush(stdout);
@@ -344,14 +349,15 @@ DWORD load(mc2::czstring path, gos_TextureFormat format, DWORD hints, DWORD vari
     if (format==gos_Texture_Alpha && Environment.Renderer==3) format=gos_Texture_Keyed;
     source->format=format;
     File file;
-    const auto open=file.open(path);
+    const auto open=[&] { ZoneScopedN("TextureSource.Open"); return file.open(path); }();
     std::string provider;
     if (1 != 0) {
         const auto sidecar=sidecarPath(source->name);
         RenderCore::KtxImage cooked; Bytes rgba; int w=0,h=0;
         if (txmLoadCooked(path,sidecar.c_str(),1==2,cooked,&provider) &&
             cooked.isCompressed && cooked.width==cooked.height &&
-            RenderCore::ktxDecodeBlocksToRgba8(cooked,0,rgba,&w,&h) && w==h && w>0) {
+            [&] { ZoneScopedN("TextureSource.Cooked.Decode");
+                  return RenderCore::ktxDecodeBlocksToRgba8(cooked,0,rgba,&w,&h); }() && w==h && w>0) {
             for (size_t i=0;i+3<rgba.size();i+=4) std::swap(rgba[i],rgba[i+2]);
             source->bytes=std::make_shared<const Bytes>(std::move(rgba));
             source->width=source->height=source->logicalWidth=source->logicalHeight=static_cast<DWORD>(w);
@@ -378,9 +384,11 @@ DWORD load(mc2::czstring path, gos_TextureFormat format, DWORD hints, DWORD vari
         if (auto packed=uiChromeSheetBytes(path,mod ? mod : "")) source->bytes=std::move(packed);
         provider=mod ? std::string("mod:")+mod : file.isLoadedFromDisk() ? "base-loose" : "fst";
     }
-    source->key.source=RenderCore::makeTextureSourceId(provider,path,RenderCore::textureContentHash(source->bytes->data(),source->bytes->size()));
-    source->bytes=store.internBytes(source->key.source,source->bytes);
-    const DWORD asset=store.publish(std::move(source));
+    { ZoneScopedN("TextureSource.Hash");
+      source->key.source=RenderCore::makeTextureSourceId(provider,path,RenderCore::textureContentHash(source->bytes->data(),source->bytes->size())); }
+    const DWORD asset=[&] { ZoneScopedN("TextureSource.Publish");
+        source->bytes=store.internBytes(source->key.source,source->bytes);
+        return store.publish(std::move(source)); }();
     if (mc2::tick::collecting() || mc2::overlap::onSimWorker()) store.requestCreate(asset);
     return asset;
 }

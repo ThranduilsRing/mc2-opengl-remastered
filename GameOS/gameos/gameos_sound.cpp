@@ -5,6 +5,7 @@
 #include "music_stream.h"
 #include "gos_profiler.h"
 #include <memory>
+#include <climits>
 #include <utility>
 #include <string>
 #include <unordered_set>
@@ -273,11 +274,23 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
         }
 
         from_file = true;
+        size_t fileBytes = 0;
+        std::unique_ptr<void, decltype(&SDL_free)> wavBytes(nullptr, SDL_free);
+        { ZoneScopedN("Audio.Stream.LoadFile.Read");
+          wavBytes.reset(SDL_LoadFile(file_name, &fileBytes)); }
+        if (!wavBytes || fileBytes > static_cast<size_t>(INT_MAX)) {
+            *hgosaudio = nullptr;
+            return;
+        }
+        auto* wavInput = SDL_RWFromConstMem(wavBytes.get(), static_cast<int>(fileBytes));
+        if (!wavInput) { *hgosaudio = nullptr; return; }
 
 #ifndef USE_MIX_LOAD
         SDL_AudioSpec spec;
         SDL_AudioSpec* pspec;
-        { ZoneScopedN("Audio.Stream.LoadFile.WavLoad"); pspec = SDL_LoadWAV(file_name, &spec, &databuf, &src_datasize); }
+        { ZoneScopedN("Audio.Stream.LoadFile.WavLoad");
+          { ZoneScopedN("Audio.Stream.LoadFile.Decode");
+            pspec = SDL_LoadWAV_RW(wavInput, 1, &spec, &databuf, &src_datasize); } }
         if(pspec == nullptr) {
             PAUSE(("gosAudio_CreateResource: Failed to load %s, %s\n", file_name, SDL_GetError()));
             *hgosaudio = nullptr;
@@ -297,7 +310,9 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
             default: STOP(("Unsupported audio format\n"));
         }
 #else
-        { ZoneScopedN("Audio.Stream.LoadFile.WavLoad"); chunk = Mix_LoadWAV(file_name); }
+        { ZoneScopedN("Audio.Stream.LoadFile.WavLoad");
+          { ZoneScopedN("Audio.Stream.LoadFile.Decode");
+            chunk = Mix_LoadWAV_RW(wavInput, 1); } }
         if(nullptr == chunk) {
             MC2_LOG(Audio, Debug, "gosAudio_CreateResource: Failed to load {}, {}", mc2::fmt::safe(file_name), mc2::fmt::safe(Mix_GetError()));
             *hgosaudio = nullptr;
@@ -333,6 +348,7 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
     uint8_t* tmp_req_buf = nullptr;
 
     const bool needs_conversion = g_sound_engine->needsConversion(src_fmt, src_channels, src_freq);
+    { ZoneScopedN("Audio.Stream.LoadFile.Convert");
     if(needs_conversion) {
 
 		SDL_AudioCVT cvt = { 0 };
@@ -390,6 +406,7 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
         memcpy(audio_data, databuf, audio_data_size);
     }
 
+    }
     tmpReqBufOwner.reset();
 
 #ifndef USE_MIX_LOAD
@@ -400,6 +417,7 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
         Mix_FreeChunk(chunk);
 #endif
 
+    ZoneScopedN("Audio.Stream.LoadFile.Publish");
     gosAudio* paudio = gosAudio::makeAudio(dst_fmt, dst_channels, dst_freq, std::move(audioDataOwner), audio_data_size);
     if(!paudio) {
         PAUSE(("makeAudio: Failed to create audio resource\n"));

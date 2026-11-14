@@ -81,6 +81,35 @@ struct Capture {
     }
 };
 }
+TEST_CASE("AudioBackend/file WAV preserves user-memory PCM") {
+    AudioDevice device;
+    REQUIRE(gos_CreateAudio());
+    Clip original;
+    const auto path = std::filesystem::temp_directory_path() / "mc2-file-pcm.wav";
+    struct Remove { std::filesystem::path p; ~Remove() { std::filesystem::remove(p); } } cleanup{path};
+    const auto name = path.string();
+    auto* file = SDL_RWFromFile(name.c_str(), "wb");
+    REQUIRE(file != nullptr);
+    SDL_RWwrite(file, "RIFF", 1, 4); SDL_WriteLE32(file, 36 + sizeof(original.pcm));
+    SDL_RWwrite(file, "WAVEfmt ", 1, 8); SDL_WriteLE32(file, 16);
+    SDL_WriteLE16(file, 1); SDL_WriteLE16(file, 2); SDL_WriteLE32(file, 22050);
+    SDL_WriteLE32(file, 88200); SDL_WriteLE16(file, 4); SDL_WriteLE16(file, 16);
+    SDL_RWwrite(file, "data", 1, 4); SDL_WriteLE32(file, sizeof(original.pcm));
+    SDL_RWwrite(file, original.pcm.data(), sizeof(original.pcm), 1); SDL_RWclose(file);
+    HGOSAUDIO loaded = nullptr;
+    gosAudio_CreateResource(&loaded, gosAudio_StreamedFile, name.c_str());
+    REQUIRE(loaded != nullptr);
+    gosAudio_AssignResourceToChannel(0, original.handle);
+    gosAudio_AssignResourceToChannel(1, loaded);
+    gosAudio_SetChannelPlayMode(0, gosAudio_Loop);
+    gosAudio_SetChannelPlayMode(1, gosAudio_Loop);
+    auto* expected = Mix_GetChunk(0);
+    auto* actual = Mix_GetChunk(1);
+    REQUIRE(expected != nullptr); REQUIRE(actual != nullptr);
+    REQUIRE(actual->alen == expected->alen);
+    CHECK(std::memcmp(actual->abuf, expected->abuf, actual->alen) == 0);
+    gosAudio_DestroyResource(&loaded);
+}
 TEST_CASE("AudioBackend/resources are freed unbound and detached from every channel") {
     AudioDevice device;
     REQUIRE(gos_CreateAudio());
