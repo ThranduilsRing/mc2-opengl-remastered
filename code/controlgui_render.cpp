@@ -557,6 +557,7 @@ void ControlGui::extractHudSnapshot()
 
 void ControlGui::render( bool bPaused )
 {
+	ZoneScopedN("ControlGui::render");
 	if (drawGUIOn)
 	{
 		gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha );
@@ -679,9 +680,10 @@ void ControlGui::render( bool bPaused )
 		else
 			renderInfoTab();
 
-		for (int i = 0; i < staticCount; i++ )
 		{
-			staticInfos[i].render();
+			ZoneScopedN("ControlGui::frame");
+			for (int i = 0; i < staticCount; i++ )
+				staticInfos[i].render();
 		}
 
 		forceGroupBar.render();
