@@ -5,6 +5,7 @@
 #include "vulkan_context.h"
 #include "vk_upscalers.h"
 #include "diagnostic_trace.h"
+#include "load_scope.h"
 #include "engine_present_vk.h"
 #include "vk_owned.h"
 #include "vk_material_sampler.h"
@@ -692,6 +693,7 @@ void prewarm(int width,int height) {
     const double pipelineMsBefore=s.creationMs;
     const auto warm = [&](std::string_view family, int (*prepare)(int,int)) {
         const auto started=std::chrono::steady_clock::now();
+        mc2::load::Scope loadScope(mc2::load::entry(family.data()));   // family names are literals
         const int ready=prepare(width,height);
         if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_LOAD_RESOURCE v1] family=%.*s ready=%d ms=%.3f\n",static_cast<int>(family.size()),family.data(),ready,
             std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-started).count());

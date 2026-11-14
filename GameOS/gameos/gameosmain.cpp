@@ -1,4 +1,5 @@
 #include "mc2_czstring.h"
+#include "load_scope.h"
 #include "../../GuiRuntime/PlayerFrontEnd.h"
 #include <memory>
 #include <atomic>
@@ -764,6 +765,7 @@ extern "C" void mission_phase_begin()
     (void)freq; // suppress unused-var if compiler gets clever
     mc2::fmt::print_out("[MISSION] t=  0.00s  phase=mission_load_start\n");
     g_loadPhaseCount = 0;
+    mc2::load::begin();
 }
 
 extern "C" void mission_phase_mark(mc2::czstring name)
@@ -806,6 +808,10 @@ extern "C" void mission_phase_report()
     // several snprintf appends, so the tag literal is not the format string of
     // the call that prints it -- gate the SINK.
     MC2_DIAGF("%s\n", buf);
+    {
+        const std::string scopes = mc2::load::report();
+        MC2_DIAGF("[LOAD_SCOPES v1]%s\n", scopes.c_str());
+    }
     fflush(stdout);
     // Mission load is over: the GPU memory every later frame starts from (the smoke report's load-end VRAM line).
     mc2::gpumem::log("load_end");
