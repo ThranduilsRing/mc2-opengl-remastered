@@ -199,6 +199,12 @@ namespace
                     case 'r': out.push_back('\r'); break;
                     case 't': out.push_back('\t'); break;
                     case '\\':
+                        // Stock mc2res line-break code is a backslash before the newline ("TITLE\<newline>text"); the bridge keeps it
+                        // as an escaped backslash followed by \n. It is a break code, not text: drop it (the font has a visible glyph).
+                        if (i + 2 < value.size() && value[i + 1] == '\\' && value[i + 2] == 'n')
+                            break;
+                        out.push_back(next);
+                        break;
                     case '"':
                         out.push_back(next);
                         break;
