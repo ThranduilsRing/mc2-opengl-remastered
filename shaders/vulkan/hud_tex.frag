@@ -4,7 +4,7 @@ layout(std430, binding = 0) readonly buffer HudTexels {
     uint texels[];
 } tex;
 layout(binding = 1) uniform sampler2D sceneNormal;
-layout(binding = 2) uniform usampler2D sceneObjectId;
+layout(binding = 2) uniform sampler2D sceneDepth;
 
 layout(push_constant) uniform HudPush {
     vec2 extent;
@@ -17,6 +17,7 @@ layout(push_constant) uniform HudPush {
 layout(location = 0) in vec4 vColor;
 layout(location = 1) in vec2 vUv;
 layout(location = 2) noperspective in vec2 vSceneUv;
+layout(location = 3) noperspective in float vSceneDepth;
 layout(location = 0) out vec4 outColor;
 
 vec4 unpackRgba(uint c)
@@ -52,11 +53,11 @@ void main()
     uint y = uint(clamp(vUv.y, 0.0, 0.999999) * float(pc.texH));
     vec4 sampleColor = unpackRgba(tex.texels[y * pc.texW + x]);
     if (pc.textMode == 3u) {
-        // The depth-resolved G-buffer identifies the closest surface. Grass,
-        // terrain and water stay under the ground compass; solids occlude it.
+        // Reverse-Z depth rejects foreground solids; water and grass stay below the decal.
         ivec2 pixel = clamp(ivec2(vSceneUv * vec2(textureSize(sceneNormal, 0))), ivec2(0), textureSize(sceneNormal, 0) - 1);
         float surfaceClass = texelFetch(sceneNormal, pixel, 0).a;
-        if (surfaceClass < 0.5 || texelFetch(sceneObjectId, pixel, 0).r != 0u) discard;
+        bool underlay = abs(surfaceClass - 0.875) < 0.01 || abs(surfaceClass - 0.9375) < 0.01;
+        if (!underlay && texelFetch(sceneDepth, pixel, 0).r > vSceneDepth + 0.00005) discard;
     }
     if (pc.textMode >= 2u) {
         vec2 dx = dFdx(vUv) * float(pc.texW), dy = dFdy(vUv) * float(pc.texH);

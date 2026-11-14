@@ -1,6 +1,6 @@
 #version 450
 
-layout(location = 0) in vec3 inPos;
+layout(location = 0) in vec4 inPos;
 layout(location = 1) in uint inArgb;
 layout(location = 2) in vec2 inUv;
 
@@ -15,6 +15,7 @@ layout(push_constant) uniform HudPush {
 layout(location = 0) out vec4 vColor;
 layout(location = 1) out vec2 vUv;
 layout(location = 2) noperspective out vec2 vSceneUv;
+layout(location = 3) noperspective out float vSceneDepth;
 
 vec4 unpackArgb(uint c)
 {
@@ -31,6 +32,7 @@ void main()
                     1.0 - (inPos.y / pc.extent.y) * 2.0);
     gl_Position = vec4(ndc, 0.0, 1.0) / max(inPos.z, 0.000001);
     vSceneUv = ndc * 0.5 + 0.5;
+    vSceneDepth = inPos.w;
     vColor = unpackArgb(inArgb);
     vUv = inUv;
 }

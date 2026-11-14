@@ -382,13 +382,13 @@ bool rebuildSwapchain(EnginePresentVk::Impl& s, uint32_t w, uint32_t h,
 // image-layout transition helper (whole color image, single subresource)
 void barrier(VkCommandBuffer cb, VkImage img, VkImageLayout oldL, VkImageLayout newL,
              VkAccessFlags srcA, VkAccessFlags dstA,
-             VkPipelineStageFlags srcS, VkPipelineStageFlags dstS) {
+             VkPipelineStageFlags srcS, VkPipelineStageFlags dstS, VkImageAspectFlags aspect = VK_IMAGE_ASPECT_COLOR_BIT) {
     VkImageMemoryBarrier b{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
     b.oldLayout = oldL; b.newLayout = newL;
     b.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     b.image = img;
-    b.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+    b.subresourceRange = {aspect, 0, 1, 0, 1};
     b.srcAccessMask = srcA; b.dstAccessMask = dstA;
     vkCmdPipelineBarrier(cb, srcS, dstS, 0, 0, nullptr, 0, nullptr, 1, &b);
 }
@@ -409,7 +409,7 @@ struct HudColorGpuVertex {
 };
 
 struct HudTexGpuVertex {
-    float x, y, rhw;
+    float x, y, rhw, depth;
     uint32_t argb;
     float u, v;
 };
@@ -1003,7 +1003,7 @@ bool ensureHudTexObjects(EnginePresentVk::Impl& s) {
     VkVertexInputBindingDescription bind{};
     bind.binding = 0; bind.stride = sizeof(HudTexGpuVertex); bind.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
     VkVertexInputAttributeDescription attr[3]{};
-    attr[0].location = 0; attr[0].binding = 0; attr[0].format = VK_FORMAT_R32G32B32_SFLOAT; attr[0].offset = offsetof(HudTexGpuVertex, x);
+    attr[0].location = 0; attr[0].binding = 0; attr[0].format = VK_FORMAT_R32G32B32A32_SFLOAT; attr[0].offset = offsetof(HudTexGpuVertex, x);
     attr[1].location = 1; attr[1].binding = 0; attr[1].format = VK_FORMAT_R32_UINT; attr[1].offset = offsetof(HudTexGpuVertex, argb);
     attr[2].location = 2; attr[2].binding = 0; attr[2].format = VK_FORMAT_R32G32_SFLOAT; attr[2].offset = offsetof(HudTexGpuVertex, u);
     VkPipelineVertexInputStateCreateInfo vin{VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
@@ -1096,9 +1096,16 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
     m.lastFrame = s.hudMirrorFrameCounter;   // touched this frame -> not evictable yet
     const bool mipmapped = d.textureWidth == 2048 && d.textureHeight == 2048;
     auto* normal = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_NORMAL);
-    auto* objectId = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_OBJECT_ID);
-    if (!normal || !objectId) return nullptr;
+    auto* depth = mc2SharedSceneDepthGetResource();
+    if (!normal || !depth) return nullptr;
     const auto sceneGeneration = mc2SharedSceneColorGeneration();
+    if (s.hudSceneGeneration != sceneGeneration) {
+        VkImageViewCreateInfo ci{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+        ci.image = depth->image.get(); ci.viewType = VK_IMAGE_VIEW_TYPE_2D; ci.format = depth->format;
+        ci.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
+        if (!mc2vk::create(s.hudDepthView, s.dev, [&](auto* h) { return vkCreateImageView(s.dev, &ci, nullptr, h); })) return nullptr;
+        s.hudSceneGeneration = sceneGeneration;
+    }
     const size_t baseBytes = static_cast<size_t>(d.textureWidth) * d.textureHeight * 4u;
     const VkDeviceSize bytes = mipmapped ? (baseBytes * 4u - 4u) / 3u : baseBytes;
     const bool needsUpload = m.serial != d.textureSerial || m.width != d.textureWidth ||
@@ -1156,7 +1163,7 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
     vkUpdateDescriptorSets(s.dev, 1, &wr, 0, nullptr);
     VkDescriptorImageInfo images[2] = {
         {s.compositeNearestSampler.get(), normal->view.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
-        {s.compositeNearestSampler.get(), objectId->view.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}};
+        {s.compositeNearestSampler.get(), s.hudDepthView.get(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL}};
     for (uint32_t i = 0; i < 2; ++i) {
         wr.dstBinding = i + 1;
         wr.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -1272,7 +1279,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
             texVerts.resize(texBase + texCount);
             HudTexGpuVertex* texOut = texVerts.data() + texBase;
             auto addTex = [&](const VkHudVertex& v) {
-                *texOut++ = {v.x, v.y, d.kind == 2 ? v.rhw : 1.0f, v.argb, v.u, v.v};
+                *texOut++ = {v.x, v.y, d.kind == 2 ? v.rhw : 1.0f, v.z, v.argb, v.u, v.v};
             };
             // VK-HUD-GLYPH-CORRUPTION ROUND-4 (REAL ROOT CAUSE): the draw KIND, not a
             // vertex-count heuristic, determines the primitive layout. kHudTextQuadBatch
@@ -1387,11 +1394,13 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
     }
     { ZoneScopedN("VKIsl.Present.Tail.Hud.DrawRecord");
     auto* normal = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_NORMAL);
-    auto* objectId = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_OBJECT_ID);
-    for (auto* image : {normal, objectId}) if (image)
-        barrier(cb, image->image.get(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
-                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    auto* depth = mc2SharedSceneDepthGetResource();
+    if (normal) barrier(cb, normal->image.get(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                       VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+                       VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    if (depth) barrier(cb, depth->image.get(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+                      VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+                      VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
     VkRenderPassBeginInfo rp{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
     rp.renderPass = s.hudColorRenderPass.get();
     rp.framebuffer = s.hudColorFramebuffer.get();
@@ -1481,10 +1490,12 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
     }
     vkCmdEndRenderPass(cb);
     gpuScope.end();
-    for (auto* image : {normal, objectId}) if (image)
-        barrier(cb, image->image.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+    if (normal) barrier(cb, normal->image.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                       VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
+                       VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+    if (depth) barrier(cb, depth->image.get(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                      VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
+                      VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
     }
     if (nativeDraws) *nativeDraws = triDraws + lineDraws + texDraws;
     if (texturedDraws) *texturedDraws = texDraws;

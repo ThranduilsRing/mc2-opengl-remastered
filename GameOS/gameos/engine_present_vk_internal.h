@@ -142,6 +142,8 @@ struct EnginePresentVk::Impl {
     mc2vk::OwnedShaderModule  hudColorVert;
     mc2vk::OwnedShaderModule  hudColorFrag;
     mc2vk::OwnedDescriptorSetLayout hudTexDsl;
+    mc2vk::OwnedImageView hudDepthView;
+    unsigned long long hudSceneGeneration = 0;
     mc2vk::OwnedDescriptorPool hudTexPool;
     mc2vk::OwnedPipelineLayout hudTexLayout;
     mc2vk::OwnedPipeline      hudTexPipe;
