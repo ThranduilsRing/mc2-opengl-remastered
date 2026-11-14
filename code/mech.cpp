@@ -5,6 +5,7 @@
 //===========================================================================//
 
 #include "mech_internal.h"
+#include "component_rules.h"
 
 
 float ContactFadeTime = 2.0f;
@@ -587,14 +588,19 @@ void BattleMech::mineCheck (void)
 	}
 }
 
+float BattleMech::engineSpeedScale() const {
+	return engine < numOther && inventory[engine].masterID != 1 && maxMoveSpeed > 0.0f
+		? mc2::components::nextSpeedClass(maxMoveSpeed) / maxMoveSpeed : 1.0f;
+}
+
 float BattleMech::calcMaxSpeed (void) {
 
 	if (canRun())
-		return(appearance->getVelocityOfGesture(GestureRun));
+		return(appearance->getVelocityOfGesture(GestureRun) * engineSpeedScale());
 	else if (canWalk())
-		return(appearance->getVelocityOfGesture(GestureWalk));
+		return(appearance->getVelocityOfGesture(GestureWalk) * engineSpeedScale());
 	else if (canLimp())
-		return(appearance->getVelocityOfGesture(GestureLimpLeft));
+		return(appearance->getVelocityOfGesture(GestureLimpLeft) * engineSpeedScale());
 	return(0.0);
 }
 
@@ -627,9 +633,9 @@ long BattleMech::calcSpriteSpeed (float speed, unsigned long flags, long& state,
 	// greater than the mech's fastest speed, we select the run state, but
 	// also return an error code...
 	long errCode = 0;
-	float maxWalkSpeed = appearance->getVelocityOfGesture(GestureWalk);
+	float maxWalkSpeed = appearance->getVelocityOfGesture(GestureWalk) * engineSpeedScale();
 	float minWalkSpeed = maxWalkSpeed / 2.0;
-	float runSpeed = appearance->getVelocityOfGesture(GestureRun);
+	float runSpeed = appearance->getVelocityOfGesture(GestureRun) * engineSpeedScale();
 
 	if (speed == 0.0)
 		state = MECH_STATE_STANDING;
