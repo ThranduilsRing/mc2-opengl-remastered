@@ -62,6 +62,7 @@ void mc2AbortReloadFixtureUpdate()
             PlayerFrontEnd::requestCampaignStart("campaign");
             f.phase = 5;
         } else {
+            logistics->getMissionBegin()->end();
             std::strcpy(missionName, next.c_str());
             LogisticsData::instance->setSingleMission(next.c_str());
             LogisticsData::instance->setSkipLogistics(true);
