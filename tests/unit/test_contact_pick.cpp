@@ -4,6 +4,7 @@
 #include "../../mclib/contact_visibility.h"
 #include "../../mclib/pick_occlusion.h"
 #include <filesystem>
+#include "../../code/pick_query.h"
 #include <fstream>
 #include <iterator>
 
@@ -275,4 +276,38 @@ TEST_CASE("pick occlusion: a mover slightly behind the visual surface at its fee
     CHECK(mc2::pickMoverBeforeSurface(99, 100, ridge, lo, hi));
     const double sideRidge[3] = {0, 11, 1};
     CHECK_FALSE(mc2::pickMoverBeforeSurface(120, 100, sideRidge, lo, hi));
+}
+
+TEST_CASE("contact pick: attack and repair hover hit a tall mech through a tree")
+{
+    struct Vec { double x, y, z; };
+    const Vec authoredLo{-8, -12, 0}, authoredHi{8, 12, 60};
+    const auto lo = mc2::pickBoundsInMc2(true, authoredLo);
+    const auto hi = mc2::pickBoundsInMc2(true, authoredHi);
+    const double lower[3] = {lo.x, lo.y, lo.z}, upper[3] = {hi.x, hi.y, hi.z};
+    const double origin[3] = {0, -100, 40}, ray[3] = {0, 1, 0};
+    const double treeLo[3] = {-20, -70, 0}, treeHi[3] = {20, -50, 80};
+    double mechT, treeT;
+    REQUIRE(mc2::pickBoxHit(origin, ray, lower, upper, mechT));
+    REQUIRE(mc2::pickBoxHit(origin, ray, treeLo, treeHi, treeT));
+    REQUIRE(treeT < mechT);
+    const mc2::PickRank mech{true, mechT, 2, 1}, tree{false, treeT, 4, 2};
+    REQUIRE(mc2::pickStackBefore(mech, tree));
+    // The old double swap rejected the visible upper body and the local footprint.
+    const auto oldLo = mc2::pickBoundsInMc2(false, authoredLo);
+    const auto oldHi = mc2::pickBoundsInMc2(false, authoredHi);
+    const double wrongLo[3] = {oldLo.x, oldLo.y, oldLo.z}, wrongHi[3] = {oldHi.x, oldHi.y, oldHi.z};
+    double t;
+    CHECK_FALSE(mc2::pickBoxHit(origin, ray, wrongLo, wrongHi, t));
+    const double feet[3] = {0, -10, 0};
+    CHECK(mc2::pickMoverBeforeSurface(100, 95, feet, lower, upper));
+    CHECK_FALSE(mc2::pickMoverBeforeSurface(100, 95, feet, wrongLo, wrongHi));
+    for (const char* cursor : {"attack", "repair"}) {
+        CAPTURE(cursor);
+        const mc2::PickRank* hover = nullptr;
+        mc2::pick::refreshHover(false, hover, [] {}, [&] {
+            return mc2::pickStackBefore(mech, tree) ? &mech : &tree;
+        });
+        CHECK(hover == &mech);
+    }
 }
