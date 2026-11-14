@@ -1,6 +1,7 @@
 // GameObjectManager: object / mover lookup by id, cell and mouse, and the terrain-object pick.
 // Declared in the class headers; shared names in objmgr_internal.h.
 #include <span>
+#include <string_view>
 #include "objmgr_internal.h"
 #include "mc2fmt.h"
 #include "mech3d.h"
@@ -696,7 +697,7 @@ GameObjectPtr pickGameplayObjects(long x, long y, std::span<GameObjectPtr> list,
     const double terrainT = pickTerrainDepth(origin, direction);
     // PICK diag: why an enemy mover is not a candidate under this cursor (rect_miss is expected for most units).
     const bool pickTrace = mc2_diag::tagEnabled("PICK");
-    const auto rejectEnemy = [&](GameObjectPtr o, const char* reason, double objectT = 0, double surfaceT = 0) {
+    const auto rejectEnemy = [&](GameObjectPtr o, std::string_view reason, double objectT = 0, double surfaceT = 0) {
         if (!pickTrace || !o->isMover() || !o->isEnemy(Team::home)) return;
         char payload[200];
         mc2::fmt::to_buf(payload, "{{\"mouse\":[{},{}],\"reject\":\"{}\",\"part_id\":{},\"object_t\":{:.2f},\"terrain_t\":{:.2f},\"blip\":{},\"gui\":{}}}",
