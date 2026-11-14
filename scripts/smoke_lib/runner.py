@@ -10,7 +10,7 @@ import sys
 import threading
 import time
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import List, Optional
 
 from . import nofocus, stall, vk_validation
@@ -269,8 +269,8 @@ def box_validation_layer(env: dict) -> str:
     """Pin box smoke to the SDK, including runs outside box_run's validation row."""
     if sys.platform != "linux" or env.get("MC2_TOOLCHAINS") != "/workspace/toolchains":
         return ""
-    layers = Path(env["MC2_TOOLCHAINS"]) / "vvl-1.4.350.0/explicit_layer.d"
-    manifest = layers / "VkLayer_khronos_validation.json"
+    layers = PurePosixPath(env["MC2_TOOLCHAINS"]) / "vvl-1.4.350.0/explicit_layer.d"
+    manifest = Path(layers / "VkLayer_khronos_validation.json")
     layer = json.loads(manifest.read_text())["layer"]
     if layer["api_version"] != "1.4.350" or not Path(layer["library_path"]).is_file():
         raise RuntimeError(f"Box validation SDK missing or mismatched: {manifest}")
