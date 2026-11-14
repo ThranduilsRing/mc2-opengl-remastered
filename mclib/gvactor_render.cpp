@@ -309,6 +309,7 @@ long GVAppearance::render (long depthFixup)
 		if (contactView.blip && !contactView.model)
 		{
 			transformSensorShapes();
+			MC2_LEGACY_SITE("vehicle_sensor_blip");
 			if (sensorLevel > 1)
 			{
 				sensorCircleShape->Render(eye->getViewUniforms());
