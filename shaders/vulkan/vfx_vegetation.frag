@@ -55,6 +55,9 @@ void main() {
     // into speckles; lift alpha with the sampled mip level (spatial, per pixel) to keep its cover.
     float alphaLift = 1.0 + 0.30 * max(textureQueryLod(uAtlas, v_uv).x, 0.0);
     if (texel.a * alphaLift < 0.5) discard;
+    // Spatial coverage fade: no history or frame-dependent noise, and no shrinking bushes.
+    float coverageRank = fract(52.9829189 * fract(dot(floor(gl_FragCoord.xy), vec2(0.06711056, 0.00583715))));
+    if (v_atlasLayer >= 4u && v_vegAux.x <= coverageRank) discard;
     vec3 macro = rootMacro();
     // Cards are painted in the mission palette (data/vegetation/palettes/mc2_01.json):
     // their own hue and value separate species and contrast with the ground. The

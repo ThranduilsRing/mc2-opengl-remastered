@@ -42,7 +42,6 @@ using mc2hzb::ProjectedProp;
 #include <string_view>
 #include <vector>
 #include <new>
-#include "../../mclib/battle_bench_wait.h"
 #include "diagnostic_trace.h"
 #include <tracy/Tracy.hpp>
 
@@ -117,8 +116,6 @@ struct gosPostProcess::VkPostHzbNative {
     VkImageResource* depthRes = nullptr;
     // VK-RUNG8-ITEM5: shared scene is VK-only (no GL view); direct-chain only.
 
-    VkCommandBuffer cbuf[mc2vk::kMaxFramesInFlight] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // allocated from `cpool`, freed with it
-
     // One reduction level: its image, view, framebuffer and UBO are owned (declared so the UBO goes first, the image last).
     struct Level {
         int w = 0, h = 0;
@@ -140,14 +137,13 @@ struct gosPostProcess::VkPostHzbNative {
     mc2vk::OwnedShaderModule frag;
     mc2vk::OwnedPipelineLayout playout;
     mc2vk::OwnedPipeline pipe;
-    mc2vk::OwnedCommandPool cpool;
     std::vector<PropBounds> propBounds;
     uint32_t boundsGeneration = UINT32_MAX;
     uint32_t cullCapacity = 0, previousCount = 0;
     uint64_t visibilityBytes = 0;   // size `visibility` was made with (cullCapacity is bumped, or zeroed by a bounds rebuild, before the old buffer retires)
     uint64_t visibilityGeneration = 0;
     uint64_t measuredFrames = 0, totalCulled = 0, totalTested = 0;
-    // `instances` is written by the host every run, so it is per frame slot (with the set that binds it): the slot's own ticket covers it.
+    // Host-written instances and sets reuse the slot retired by the engine frame.
     mc2vk::OwnedBuffer visibility, localBounds;
     mc2vk::OwnedBuffer instances[mc2vk::kMaxFramesInFlight];
     mc2vk::OwnedDescriptorSetLayout cullDsl;
@@ -173,8 +169,6 @@ struct gosPostProcess::VkPostHzbNative {
     } parity;
     mc2vk::OwnedBuffer parityMips;
     VkDeviceSize parityMipBytes = 0;
-    // Timeline value of each frame slot's last submit (0 = never): a run waits only for its own slot's previous use (frame N-3), not frame N-1.
-    uint64_t ticket[mc2vk::kMaxFramesInFlight] = {};
     uint64_t lastTicket = 0;   // the newest submit: the [CULL] counter is read only once it has completed (polled)
 };
 
@@ -733,27 +727,6 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
         }
     }
 
-    {
-        VkCommandPoolCreateInfo pci{};
-        pci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        pci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-        pci.queueFamilyIndex = s->gfxFamily;
-        if (!mc2vk::create(s->cpool, s->device, [&](VkCommandPool* h) { r = vkCreateCommandPool(s->device, &pci, nullptr, h); return r; })) {
-            vlog("vkCreateCommandPool failed (%d).", static_cast<int>(r));
-            return false;
-        }
-        VkCommandBufferAllocateInfo cai{};
-        cai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cai.commandPool = s->cpool.get();
-        cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        cai.commandBufferCount = mc2vk::kMaxFramesInFlight;
-        r = vkAllocateCommandBuffers(s->device, &cai, s->cbuf);
-        if (r != VK_SUCCESS) {
-            vlog("vkAllocateCommandBuffers failed (%d).", static_cast<int>(r));
-            return false;
-        }
-    }
-
     s->inited = true;
     setFallback("");
     g_health.levels = static_cast<unsigned long>(mipCount);
@@ -805,24 +778,10 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
     }
     if (s->disabled) return false;
 
-    // This frame slot's previous submit (frame N-3) must have completed before its command buffer, instance buffer and set are reused. Waiting for the
-    // slot's own ticket, not the newest one, keeps this mid-frame point from capping the CPU lead at one frame.
-    const uint32_t slot = mc2vk::getOrCreateEngineVulkanContext().frameContext().slot % mc2vk::kMaxFramesInFlight;
-    {
-        const std::chrono::steady_clock::time_point tWait0 = std::chrono::steady_clock::now();
-        mc2::battlebench::WaitScope gpuWait(mc2::battlebench::WaitGpuMainNs);
-        ZoneScopedN("HZB.WaitPreviousSubmit");
-        if (!mc2vk::getOrCreateEngineVulkanContext().wait(mc2vk::GpuTicket{s->ticket[slot], 0}, 5ull * 1000 * 1000 * 1000, "post_prev_submit")) {
-            setFallback("fence_timeout"); s->disabled = true; return false;
-        }
-        g_health.waitUsLast = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - tWait0).count();
-        g_health.waitUsAccum += g_health.waitUsLast;
-        ++g_health.waitSamples;
-        if ((g_health.waitSamples % 600) == 1)
-            vlog("[QWI-WAIT] wait_us_last=%.1f wait_us_avg=%.1f samples=%lu",
-                 g_health.waitUsLast,
-                 g_health.waitUsAccum / static_cast<double>(g_health.waitSamples), g_health.waitSamples);
-    }
+    // beginFrame retires this slot before host writes. Record into its shared
+    // pool and append to the deferred batch before the same-frame prop consumer.
+    auto& ctx = mc2vk::getOrCreateEngineVulkanContext();
+    const uint32_t slot = ctx.frameContext().slot;
     if (!s->inited || s->width != width_ || s->height != height_ || s->mipCount != hzbMipCount_) {
         if (s->inited) destroy_state(s);
         if (!build_state(s, width_, height_, hzbMipCount_)) {
@@ -883,9 +842,8 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
 
     // VK-RUNG8 item-4: direct-chain only — engage only when upstream is direct-chain,
     // else decline to the GL HZB pass. No GL<->VK semaphore handoff.
-    VkCommandBuffer cb = s->cbuf[slot];   // one command buffer per frame slot
-
-    vkResetCommandBuffer(cb, 0);
+    VkCommandBuffer cb = ctx.acquireRecordCommandBuffer();
+    if (cb == VK_NULL_HANDLE) { setFallback("record_failed"); s->disabled = true; return false; }
     VkCommandBufferBeginInfo bi{};
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -1007,13 +965,13 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
         return false;
     }
 
-    // VK-RUNG8 item-4: direct-chain only — the submit waits/signals no GL<->VK
-    // semaphores; the images stay Vulkan-owned for the following native pass.
+    // A plain submit joins the engine's deferred batch in call order: HZB writes
+    // precede the prop color pass's mask reads, with the barriers above unchanged.
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1;
     si.pCommandBuffers = &cb;
-    if (mc2vk::getOrCreateEngineVulkanContext().submit(si, VK_NULL_HANDLE, &s->ticket[slot]) != VK_SUCCESS) {
+    if (ctx.submit(si, VK_NULL_HANDLE, &s->lastTicket) != VK_SUCCESS) {
         setFallback("submit_failed");
         s->disabled = true;
         return false;
@@ -1033,11 +991,10 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
         pc.bounds = s->propBounds;
         pc.generation = s->visibilityGeneration;
         pc.w = width_; pc.h = height_; pc.mips = s->mipCount;
-        pc.ticket = s->ticket[slot];
+        pc.ticket = s->lastTicket;
         pc.visOffset = visOffset;
         pc.valid = true;
     }
-    s->lastTicket = s->ticket[slot];
     s->previousCount = feed.count;
     *maskBuffer = reinterpret_cast<void*>(s->visibility.get());
     *maskGeneration = s->visibilityGeneration;
