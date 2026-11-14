@@ -8,6 +8,7 @@
 #include "camera_internal.h"
 #include "mc2fmt.h"
 #include "Gates/render_options.h"
+#include "camera_elevation.h"
 #include "diagnostic_trace.h"
 
 extern bool useFog;
@@ -352,6 +353,15 @@ long Camera::update (void)
 	
 	updateGoalPosition(newPosition);
 	updateGoalRotation();
+	if (pitchActive) {
+		if (projectionAngle != pitchLast || goalRotTime > 0.0f)
+			pitchActive = false;
+		else {
+			projectionAngle = mc2cam::easeElevation(projectionAngle, pitchGoal, pitchVelocity, frameLength,
+				usePerspective ? MIN_PERSPECTIVE : MIN_ORTHO, MAX_PERSPECTIVE);
+			pitchLast = projectionAngle;
+		}
+	}
 	updateGoalFOV();
 	
 	setPosition(newPosition);		//THIS ALWAYS sets z position for us now!!!!!
@@ -399,25 +409,18 @@ long Camera::update (void)
 	screenResolution.x = viewMulX;
 	screenResolution.y = viewMulY;
 
-	// Smooth zoom: lerp cameraAltitude toward cameraAltitudeDesired each frame.
+	// Smooth altitude with an exact critically damped step; hard-set poses reset momentum.
 	// Also decay scroll momentum (used for adaptive scroll-speed zoom).
 	{
 		s_scrollMomentum -= frameLength * 4.0f;
 		s_scrollMomentum = std::max(s_scrollMomentum, 0.0f);
-		float diff = cameraAltitudeDesired - cameraAltitude;
-		// [CAMERA-SMOOTHING-1] knob>0: frame-rate-independent exponential
-		// approach (1-exp(-dt/tau)); knob=0: legacy 20/s linear-rate lerp.
-		float zoomStep = (camSmoothTau() > 0.0f)
-			? camSmoothAlpha(frameLength)
-			: (frameLength * 20.0f < 1.0f ? frameLength * 20.0f : 1.0f);
-		if (fabsf(diff) > 0.1f)
-			cameraAltitude += diff * zoomStep;
-		else
-			cameraAltitude = cameraAltitudeDesired;
-		cameraAltitude = std::max(cameraAltitude, AltitudeMinimum);
 
 		float _ap = (projectionAngle - MIN_PERSPECTIVE) / (MAX_PERSPECTIVE - MIN_PERSPECTIVE);
 		float _tm = AltitudeMaximumLo + ((AltitudeMaximumHi - AltitudeMaximumLo) * _ap);
+		if (cameraAltitude != altitudeLast) altitudeVelocity = 0.0f;
+		cameraAltitude = mc2cam::easeElevation(cameraAltitude, cameraAltitudeDesired, altitudeVelocity,
+			frameLength, AltitudeMinimum, std::max(AltitudeMinimum, _tm));
+		altitudeLast = cameraAltitude;
 		if (_tm > 0.0f)
 			newScaleFactor = 1.0f - ((cameraAltitude - AltitudeMinimum) / _tm);
 	}
