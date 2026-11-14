@@ -7,5 +7,9 @@
 layout(push_constant) uniform MechRunPC { uint materialFlags; uint poolFirst; uint poolCount; uint albedoAo; uint normal; } uRun;
 layout(location=0) in vec2 vUv;
 void main() {
-    if(uFrame.materialReady!=0 && (uRun.materialFlags&1u)!=0u && texture(uAlbedo,vUv).a<0.5)discard;
+    if (uFrame.materialReady != 0 && (uRun.materialFlags & 1u) != 0u) {
+        // Positive exposure identifies the preview UBO; match preview colour's LOD 0 alpha test.
+        float alpha = uFrame.fogColorRGB.w > 0.0 ? textureLod(uAlbedo, vUv, 0.0).a : texture(uAlbedo, vUv).a;
+        if (alpha < 0.5) discard;
+    }
 }

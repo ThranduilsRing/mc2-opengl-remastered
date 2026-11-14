@@ -182,7 +182,8 @@ void gosRenderer::drawText(const char* text) {
     // line with an ellipsis. Text that fits, and an unusable region, draw exactly as before.
     const mc2::textfit::Fit fit = mc2::textfit::fitLines(num_lines, font_height, region_height);
     if(ta.WrapType == 3) { // center in Y direction as well
-        y += (region_height - fit.visibleLines * fit.pitch) / 2;
+        const int block_height = fit.visibleLines > 0 ? (fit.visibleLines - 1) * fit.pitch + font_height : 0;
+        y += (region_height - block_height) / 2;
     }
 
     int pos = 0;

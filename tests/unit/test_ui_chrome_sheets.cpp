@@ -18,6 +18,22 @@
 
 using namespace mc2::ui_chrome;
 
+TEST_CASE("ui_chrome inset excludes whole images and content sprites") {
+    const auto inset = [](std::string_view path, bool pixel = false, bool legacy = false, bool nine = false,
+                          float u = .25f, float v = .25f, float r = .75f, float b = .75f) {
+        return insetChromeCrop(path, pixel, legacy, nine, u, v, r, b);
+    };
+    CHECK(inset("data/art/gui/mcl_mm_2.png"));
+    CHECK(inset("data/art/gui/MCUI_Universal1.tga"));
+    CHECK(inset("data/art/ui/panel.png", false, false, true));
+    CHECK_FALSE(inset("data/art/gui/mcl_mm_2.png", false, false, false, 0, 0, 1, 1));
+    CHECK_FALSE(inset("data/art/gui/mcl_mm_2.png", true));
+    CHECK_FALSE(inset("data/art/gui/mcl_mm_2.png", false, true));
+    CHECK_FALSE(inset("data/art/gui/mcui_jumpjets.png"));
+    CHECK_FALSE(inset("data/art/gui/mcui_high7.png"));
+    CHECK_FALSE(inset("data/art/portraits/pilot.png"));
+}
+
 namespace {
 Sheet makeSheet(bool rgba) {
     Sheet s;

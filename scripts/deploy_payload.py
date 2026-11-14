@@ -1403,6 +1403,10 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
 
     for path in sorted((Path(src_root) / "data/art").glob("mcl_mc_*.tga")):
         items.append((str(path), path.relative_to(src_root).as_posix(), "support"))
+    # MENU-PLANET-MODERN-1: main-menu backdrop (hi-res tiles + the fit that places them).
+    for pat in ("mcl_menu_*.tga", "mcl_sp.fit"):
+        for path in sorted((Path(src_root) / "data/art").glob(pat)):
+            items.append((str(path), path.relative_to(src_root).as_posix(), "support"))
     # Optional cooked logistics overrides; missing art retains the original PAK/atlas.
     for folder in ("data/art/mechicons", "data/art/missionmaps", "data/art/pilots"):
         for path in sorted((Path(src_root) / folder).rglob("*.png")):

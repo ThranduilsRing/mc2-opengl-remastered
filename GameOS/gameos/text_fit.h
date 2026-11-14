@@ -21,7 +21,7 @@ inline Fit fitLines(int numLines, int fontHeight, int regionHeight)
     if (numLines <= 1 || fontHeight <= 0 || regionHeight < fontHeight) return f;
     if (numLines * fontHeight <= regionHeight) return f;
     const int floorPitch = std::max(1, fontHeight * kMinPitchPercent / 100);
-    const int fitPitch = regionHeight / numLines;
+    const int fitPitch = (regionHeight - fontHeight) / (numLines - 1);
     if (fitPitch >= floorPitch) { f.pitch = fitPitch; return f; }
     f.pitch = floorPitch;
     // the last line must still fit: (visible - 1) * pitch + fontHeight <= regionHeight
