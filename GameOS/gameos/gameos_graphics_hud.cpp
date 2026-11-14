@@ -1,7 +1,9 @@
 // gameos_graphics: text breaking and drawing, the HUD batch flush and the text C API.
 // Declared in the class headers; shared names in gameos_graphics_material_internal.h.
 #include "gameos_graphics_material_internal.h"
+#include <string>
 #include <utility>
+#include "text_fit.h"
 #include "mc2fmt.h"
 #include "mc2_diag_verbose.h"
 #include "utils/mc2log.h"
@@ -176,16 +178,47 @@ void gosRenderer::drawText(const char* text) {
     const int region_height = getTextRegionHeight();
 
     const int num_lines = calcTextHeight(text, count, font, region_width);
+    // A bounded region that the wrapped block overflows: tighten the line pitch (floor 85%), then clip the last visible
+    // line with an ellipsis. Text that fits, and an unusable region, draw exactly as before.
+    const mc2::textfit::Fit fit = mc2::textfit::fitLines(num_lines, font_height, region_height);
     if(ta.WrapType == 3) { // center in Y direction as well
-        y += (region_height - num_lines * font_height) / 2;
+        y += (region_height - fit.visibleLines * fit.pitch) / 2;
     }
-   
+
     int pos = 0;
     int str_width = 0;
+    int line_index = 0;
+    std::string clipped;
     while(pos < count) {
 
-        x = start_x;    
+        x = start_x;
         int num_chars = findTextBreak(text + pos, count - pos, font, region_width, &str_width);
+        const char* line = text + pos;
+        int line_chars = num_chars;
+        const bool clip_line = fit.ellipsize && line_index == fit.visibleLines - 1;
+        if(clip_line) {
+            // keep the printable chars of this line that leave room for "...", trailing spaces dropped
+            clipped.clear();
+            const int dots_w = 3 * font->getCharAdvance('.');
+            int w = 0;
+            for(int i=0; i<num_chars; ++i) {
+                const char c = text[pos + i];
+                if(static_cast<unsigned char>(c) < 0x20) continue;
+                const int adv = font->getCharAdvance(c);
+                if(w + adv + dots_w > region_width) break;
+                clipped.push_back(c);
+                w += adv;
+            }
+            while(!clipped.empty() && clipped.back() == ' ') {
+                w -= font->getCharAdvance(' ');
+                clipped.pop_back();
+            }
+            clipped += "...";
+            w += dots_w;
+            line = clipped.c_str();
+            line_chars = static_cast<int>(clipped.size());
+            str_width = w;
+        }
 
         // WrapType		- 0=Left aligned, 1=Right aligned, 2=Centered, 3=Centered in region (X and Y)
         switch(ta.WrapType) {
@@ -197,9 +230,9 @@ void gosRenderer::drawText(const char* text) {
                     break;
         }
 
-        for(int i=0; i<num_chars; ++i) {
+        for(int i=0; i<line_chars; ++i) {
 
-            const char c = text[i + pos];
+            const char c = line[i];
 
             // Skip non-printable control chars. findTextBreak still
             // includes the trailing '\n' in num_chars to drive line
@@ -236,8 +269,10 @@ void gosRenderer::drawText(const char* text) {
 
             x += font->getCharAdvance(c);
         }
-        y += font_height;
+        y += fit.pitch;
         pos += num_chars;
+        ++line_index;
+        if(clip_line) break;
     }
     if (renderStates_[gos_State_IsHUD]) {
         const int n = text_->getNumVertices();
