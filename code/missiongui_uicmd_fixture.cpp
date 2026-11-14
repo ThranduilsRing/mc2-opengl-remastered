@@ -11,6 +11,8 @@
 #include "../GameOS/gameos/battle_bench.h"
 #include "package_chassis.h"
 
+extern float MapCellDiagonal;
+
 // Test-only loadout queue. Production fire, projectile and movement paths own the measurements.
 namespace {
 struct EquipmentProbe {
