@@ -1,6 +1,6 @@
 #version 450
 
-layout(location = 0) in vec2 inPos;
+layout(location = 0) in vec3 inPos;
 layout(location = 1) in uint inArgb;
 layout(location = 2) in vec2 inUv;
 
@@ -28,7 +28,7 @@ void main()
 {
     vec2 ndc = vec2((inPos.x / pc.extent.x) * 2.0 - 1.0,
                     1.0 - (inPos.y / pc.extent.y) * 2.0);
-    gl_Position = vec4(ndc, 0.0, 1.0);
+    gl_Position = vec4(ndc, 0.0, 1.0) / max(inPos.z, 0.000001);
     vColor = unpackArgb(inArgb);
     vUv = inUv;
 }

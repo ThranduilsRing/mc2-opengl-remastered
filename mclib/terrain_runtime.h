@@ -55,6 +55,7 @@ namespace TerrainRuntime
 
 	// Footprints/contact blobs follow the same visual surface as the terrain.
 	float decalElevation(const glm::vec3& worldPos);
+	float markerElevation(const glm::vec3& worldPos);
 	// Minimum eye Z covering the eye and near-plane footprint, including ridges
 	// between corners. No bake preserves the legacy eye-only sim/water clamp.
 	float cameraClearanceHeight(const glm::vec3& eye, const glm::vec3 (&nearOffsets)[4], float minimum);

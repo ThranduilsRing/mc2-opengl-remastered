@@ -409,7 +409,7 @@ struct HudColorGpuVertex {
 };
 
 struct HudTexGpuVertex {
-    float x, y;
+    float x, y, rhw;
     uint32_t argb;
     float u, v;
 };
@@ -1001,7 +1001,7 @@ bool ensureHudTexObjects(EnginePresentVk::Impl& s) {
     VkVertexInputBindingDescription bind{};
     bind.binding = 0; bind.stride = sizeof(HudTexGpuVertex); bind.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
     VkVertexInputAttributeDescription attr[3]{};
-    attr[0].location = 0; attr[0].binding = 0; attr[0].format = VK_FORMAT_R32G32_SFLOAT; attr[0].offset = offsetof(HudTexGpuVertex, x);
+    attr[0].location = 0; attr[0].binding = 0; attr[0].format = VK_FORMAT_R32G32B32_SFLOAT; attr[0].offset = offsetof(HudTexGpuVertex, x);
     attr[1].location = 1; attr[1].binding = 0; attr[1].format = VK_FORMAT_R32_UINT; attr[1].offset = offsetof(HudTexGpuVertex, argb);
     attr[2].location = 2; attr[2].binding = 0; attr[2].format = VK_FORMAT_R32G32_SFLOAT; attr[2].offset = offsetof(HudTexGpuVertex, u);
     VkPipelineVertexInputStateCreateInfo vin{VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
@@ -1237,7 +1237,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
             texVerts.resize(texBase + texCount);
             HudTexGpuVertex* texOut = texVerts.data() + texBase;
             auto addTex = [&](const VkHudVertex& v) {
-                *texOut++ = {v.x, v.y, v.argb, v.u, v.v};
+                *texOut++ = {v.x, v.y, d.kind == 2 ? v.rhw : 1.0f, v.argb, v.u, v.v};
             };
             // VK-HUD-GLYPH-CORRUPTION ROUND-4 (REAL ROOT CAUSE): the draw KIND, not a
             // vertex-count heuristic, determines the primitive layout. kHudTextQuadBatch
