@@ -72,6 +72,8 @@ struct State {
     const char*     statNames[kRing][kMaxStats] = {};
     StatRow         statRows[kMaxStats * 4];
     uint32_t        statRowCount = 0;
+    uint32_t        poseSkip = 0;    // reads still to discard after poseBegin (they belong to the previous pose)
+    const char*     poseName = nullptr;
     uint32_t        statUsed = 0;    // stat queries of the slot readSlot just read (the caller resets them)
     // frameEnd's query-reset / Tracy-collect submit: one persistent pool, a command buffer per ring slot, each reused once its last submit completed
     // (a pool created and destroyed per frame cost ~3 ms while Tracy was connected).
@@ -167,8 +169,8 @@ void flushWindow(uint64_t frame) {
         output += values;
     }
     output += '\n';
-    mc2::fmt::print_err("[VK_GPU_PASSES v1] frame={} n={} span_ms={:.3f} sum_ms={:.3f} unattributed_ms={:.3f} scopes={} dropped={} overflow={} |{}",
-        frame, g.windowFrames, g.spanSumMs / n, g.sumSumMs / n, (g.spanSumMs - g.sumSumMs) / n,
+    mc2::fmt::print_err("[VK_GPU_PASSES v1] pose={} frame={} n={} span_ms={:.3f} sum_ms={:.3f} unattributed_ms={:.3f} scopes={} dropped={} overflow={} |{}",
+        g.poseName ? g.poseName : "-", frame, g.windowFrames, g.spanSumMs / n, g.sumSumMs / n, (g.spanSumMs - g.sumSumMs) / n,
         g.rowCount, g.windowDropped, g.windowOverflow, output);
     if (const uint64_t res = reflectRes.load(std::memory_order_relaxed); res != 0 && !reflectCostDone.load(std::memory_order_relaxed)) {
         for (uint32_t i = 0; i < g.rowCount; ++i) {
@@ -190,7 +192,7 @@ void flushWindow(uint64_t frame) {
             std::snprintf(values, sizeof values, " %s=ia:%.0f/clip:%.0f/fs:%.0f(x%u)", r.name, r.sum[0] / r.frames, r.sum[1] / r.frames, r.sum[2] / r.frames, r.frames);
             tris += values;
         }
-        if (!tris.empty()) mc2::fmt::print_err("[VK_GPU_TRIS v1] frame={} n={} |{}\n", frame, g.windowFrames, tris);
+        if (!tris.empty()) mc2::fmt::print_err("[VK_GPU_TRIS v1] pose={} frame={} n={} |{}\n", g.poseName ? g.poseName : "-", frame, g.windowFrames, tris);
     }
     for (uint32_t i = 0; i < g.statRowCount; ++i) { g.statRows[i].sum[0] = g.statRows[i].sum[1] = g.statRows[i].sum[2] = 0; g.statRows[i].frames = 0; }
     for (uint32_t i = 0; i < g.rowCount; ++i) { g.rows[i].sumMs = 0; g.rows[i].calls = 0; g.rows[i].frames = 0; }
@@ -202,7 +204,9 @@ void flushWindow(uint64_t frame) {
 void readSlot(uint32_t slot, uint32_t& used) {
     ZoneScopedN("VKIsl.Present.Tail.Blit.Profile.QueryCollection");
     g.statUsed = std::min<uint32_t>(g.statCount[slot].exchange(0, std::memory_order_relaxed), kMaxStats);
-    if (const uint32_t nStat = g.statUsed; nStat != 0 && g.statPool) {
+    const bool skipRead = g.poseSkip != 0 && g.count[slot].load(std::memory_order_relaxed) != 0;
+    if (skipRead) --g.poseSkip;
+    if (const uint32_t nStat = g.statUsed; nStat != 0 && g.statPool && !skipRead) {
         uint64_t sr[kMaxStats * 4] = {};   // per query: ia prims, clip prims, fs invocations, availability
         const VkResult rr = vkGetQueryPoolResults(g.device, g.statPool, slot * kMaxStats, nStat, sizeof sr, sr, 4 * sizeof(uint64_t),
                                                   VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WITH_AVAILABILITY_BIT);
@@ -253,7 +257,7 @@ void readSlot(uint32_t slot, uint32_t& used) {
         if (k == nNames && nNames < kMaxNames) { nameOf[nNames] = nm; ++nNames; }
         if (k < nNames) { perName[k] += ms; ++callsOf[k]; iv[ivN++] = {rb, re, k}; }
     }
-    if (!any) return;
+    if (!any || skipRead) return;
     {   // Union coverage (nested scopes count once) and the idle gaps, charged to the pass that starts after each gap.
         std::sort(iv, iv + ivN, [](const Iv& a, const Iv& b) { return a.b < b.b; });
         double gapOf[kMaxNames] = {};
@@ -320,6 +324,23 @@ void noteWaterReflection(uint32_t w, uint32_t h) {
     if (reflectRes.exchange(v, std::memory_order_relaxed) != v) reflectCostDone.store(false, std::memory_order_relaxed);   // new tier: log again
 }
 void rearmWaterReflectionCost() { reflectRes.store(0, std::memory_order_relaxed); reflectCostDone.store(false, std::memory_order_relaxed); }
+
+// Per-pose proof windows (gos_visual_capture.cpp declares these itself): poseBegin drops the pending window and the next few reads (frames of the
+// previous pose); poseEnd logs the window under the pose name.
+void poseBegin() {
+    if (!g.timers) return;
+    for (uint32_t i = 0; i < g.rowCount; ++i) { g.rows[i].sumMs = 0; g.rows[i].calls = 0; g.rows[i].frames = 0; }
+    for (uint32_t i = 0; i < g.statRowCount; ++i) { g.statRows[i].sum[0] = g.statRows[i].sum[1] = g.statRows[i].sum[2] = 0; g.statRows[i].frames = 0; }
+    g.spanSumMs = g.sumSumMs = 0;
+    g.windowFrames = g.windowDropped = g.windowOverflow = 0;
+    g.poseSkip = kReadLag + 1;
+}
+void poseEnd(const char* name) {
+    if (!g.timers || g.windowFrames == 0) return;
+    g.poseName = name;
+    flushWindow(g.frame.load(std::memory_order_relaxed));
+    g.poseName = nullptr;
+}
 
 uint32_t snapshot(PassStat* out, uint32_t maxRows, float* spanMs) {
     if (spanMs) *spanMs = static_cast<float>(g.spanEma);

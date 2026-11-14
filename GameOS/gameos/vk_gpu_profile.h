@@ -66,6 +66,7 @@ private:
     int32_t         tsIndex_ = -1;     // timestamp pair index inside the frame slot, -1 = not timed
     uint32_t        tsSlot_ = 0;
     int32_t         statIndex_ = -1;   // pipeline-statistics query index inside the frame slot, -1 = none
+    uint32_t        statSlot_ = 0;
     bool            label_ = false;
     bool            tracy_ = false;
     alignas(16) unsigned char tracyZone_[48];   // tracy::VkCtxScope, built in place by the .cpp
