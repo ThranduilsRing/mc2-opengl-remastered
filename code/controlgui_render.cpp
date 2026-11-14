@@ -557,6 +557,7 @@ void ControlGui::extractHudSnapshot()
 
 void ControlGui::render( bool bPaused )
 {
+	ZoneScopedN("ControlGui::render");
 	if (drawGUIOn)
 	{
 		gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha );
@@ -679,9 +680,28 @@ void ControlGui::render( bool bPaused )
 		else
 			renderInfoTab();
 
-		for (int i = 0; i < staticCount; i++ )
 		{
-			staticInfos[i].render();
+			ZoneScopedN("ControlGui::frame");
+			if (frameScale != gos_GetHudScale() || frameWidth != Environment.screenWidth ||
+			    frameHeight != Environment.screenHeight) bakeFrame();
+			if (!frameAtlas) {
+				for (int i = 0; i < staticCount; ++i) staticInfos[i].render();
+			} else {
+				const auto texture = mc2::textures::sourceId(frameAtlas->textureHandle);
+				gos_SetRenderState(gos_State_Texture, texture);
+				gos_SetRenderState(gos_State_Filter, gos_FilterNone);
+				gos_SetRenderState(gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
+				gos_SetRenderState(gos_State_Clipping, 1);
+				if (frameSplit) gos_DrawQuads(frameVertices.data(), frameSplit);
+				// The force-group overlay changes alpha at runtime; never bake it.
+				const auto* cover = ForceGroupBar::s_coverIcon;
+				if (cover && std::any_of(std::begin(cover->location),
+				    std::end(cover->location), [](const auto& v) { return (v.argb >> 24) != 0; }))
+					ForceGroupBar::s_coverIcon->render();
+				gos_SetRenderState(gos_State_Texture, texture);
+				if (static_cast<size_t>(frameSplit) < frameVertices.size())
+					gos_DrawQuads(frameVertices.data() + frameSplit, static_cast<int>(frameVertices.size()) - frameSplit);
+			}
 		}
 
 		forceGroupBar.render();

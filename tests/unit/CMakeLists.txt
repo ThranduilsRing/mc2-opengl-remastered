@@ -699,6 +699,12 @@ function(mc2_height_slice output source begin end)
     set(${output} "${body}" PARENT_SCOPE)
     set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${MC2_WORKTREE_ROOT}/${source}")
 endfunction()
+# Trigger paths: code/controlgui_init.cpp and tests/unit/test_hud_frame.cpp.
+mc2_height_slice(hud_frame_bake code/controlgui_init.cpp
+    "void ControlGui::bakeFrame()" "void ControlGui::initStatics(")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/hud_frame_bake.inc" CONTENT "${hud_frame_bake}")
+target_sources(mc2_tests PRIVATE test_hud_frame.cpp)
+set_source_files_properties(test_hud_frame.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
 mc2_height_slice(objectives_canvas GameOS/gameos/gameos_graphics_params.cpp
     "static bool computeUiCanvas16x9(" "bool __stdcall gos_ComputeUiCanvasBox(")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/objectives_canvas.inc" CONTENT "${objectives_canvas}")

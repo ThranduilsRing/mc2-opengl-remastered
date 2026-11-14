@@ -10,6 +10,7 @@ ControlGui.h			: Interface for the ControlGui component.  This thing holds the t
 
 #ifndef GAMETACMAP_H
 #include <memory>
+#include <vector>
 #include"gametacmap.h"
 #endif
 
@@ -378,6 +379,12 @@ class ControlGui
 		std::unique_ptr<PauseWindow>		pauseWnd;
 
 		std::unique_ptr<StaticInfo[]>			staticInfos;
+		std::unique_ptr<StaticInfo> frameAtlas;
+		std::vector<gos_VERTEX> frameVertices;
+		long frameSplit = 0;
+		float frameScale = -1.f;
+		int frameWidth = 0, frameHeight = 0;
+		void bakeFrame();
 		long				staticCount;
 
 		std::unique_ptr<StaticInfo[]>			objectiveInfos; //2nd to last one is check, last is x
