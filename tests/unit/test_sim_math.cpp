@@ -6,7 +6,7 @@
 #include <bit>
 #include <cstdint>
 TEST_CASE("sim math portable golden bits") {
-    using namespace mc2::sim::math;
+    namespace sm = mc2::sim::math;
     struct Row { std::uint32_t x, sine, cosine, arcCosine, arcSine, exponential; };
     constexpr Row rows[] = {
         {0x00000000u, 0x00000000u, 0x3f800000u, 0x3fc90fdbu, 0x00000000u, 0x3f800000u},
@@ -24,11 +24,11 @@ TEST_CASE("sim math portable golden bits") {
     for (const auto& r : rows) {
         const float x = std::bit_cast<float>(r.x);
         CAPTURE(r.x);
-        CHECK(std::bit_cast<std::uint32_t>(sin(x)) == r.sine);
-        CHECK(std::bit_cast<std::uint32_t>(cos(x)) == r.cosine);
-        CHECK(std::bit_cast<std::uint32_t>(acos(x)) == r.arcCosine);
-        CHECK(std::bit_cast<std::uint32_t>(asin(x)) == r.arcSine);
-        CHECK(std::bit_cast<std::uint32_t>(exp(x)) == r.exponential);
+        CHECK(std::bit_cast<std::uint32_t>(sm::sin(x)) == r.sine);
+        CHECK(std::bit_cast<std::uint32_t>(sm::cos(x)) == r.cosine);
+        CHECK(std::bit_cast<std::uint32_t>(sm::acos(x)) == r.arcCosine);
+        CHECK(std::bit_cast<std::uint32_t>(sm::asin(x)) == r.arcSine);
+        CHECK(std::bit_cast<std::uint32_t>(sm::exp(x)) == r.exponential);
     }
     struct Binary { float a, b; std::uint32_t angle, power; };
     constexpr Binary binary[] = {
@@ -42,8 +42,8 @@ TEST_CASE("sim math portable golden bits") {
         {10.0f, 0.10000000149011612f, 0x3fc7c82fu, 0x3fa12478u},
     };
     for (const auto& r : binary) {
-        CHECK(std::bit_cast<std::uint32_t>(atan2(r.a, r.b)) == r.angle);
-        CHECK(std::bit_cast<std::uint32_t>(pow(r.a, r.b)) == r.power);
+        CHECK(std::bit_cast<std::uint32_t>(sm::atan2(r.a, r.b)) == r.angle);
+        CHECK(std::bit_cast<std::uint32_t>(sm::pow(r.a, r.b)) == r.power);
     }
     struct Trig { std::uint32_t x, sine, cosine; };
     constexpr Trig trig[] = {
@@ -58,10 +58,10 @@ TEST_CASE("sim math portable golden bits") {
     };
     for (const auto& r : trig) {
         const float x = std::bit_cast<float>(r.x);
-        CHECK(std::bit_cast<std::uint32_t>(sin(x)) == r.sine);
-        CHECK(std::bit_cast<std::uint32_t>(cos(x)) == r.cosine);
+        CHECK(std::bit_cast<std::uint32_t>(sm::sin(x)) == r.sine);
+        CHECK(std::bit_cast<std::uint32_t>(sm::cos(x)) == r.cosine);
     }
-    CHECK(std::bit_cast<std::uint32_t>(acos(2.0f)) == 0x7fc00000u);
-    CHECK(std::bit_cast<std::uint32_t>(pow(-2.0f, 0.5f)) == 0x7fc00000u);
-    CHECK(std::bit_cast<std::uint32_t>(atan2(-0.0f, 1.0f)) == 0x80000000u);
+    CHECK(std::bit_cast<std::uint32_t>(sm::acos(2.0f)) == 0x7fc00000u);
+    CHECK(std::bit_cast<std::uint32_t>(sm::pow(-2.0f, 0.5f)) == 0x7fc00000u);
+    CHECK(std::bit_cast<std::uint32_t>(sm::atan2(-0.0f, 1.0f)) == 0x80000000u);
 }
