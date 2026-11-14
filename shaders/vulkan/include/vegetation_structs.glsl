@@ -31,7 +31,7 @@ uint vegBlockIndex(VegInstance i, VegParamsData p) {
 // long view stays inside the visible list. The vertex stage widens the survivors by 1/sqrt of it, so the
 // gameplay-camera sward (~2600 WU, owner ref 3) keeps its cover instead of opening onto bare ground.
 float vegFieldThin(VegInstance i, VegParamsData p) {
-    return mix(1.0, 0.35, smoothstep(1500.0, 4500.0, length(i.pos - p.cam.xyz)));
+    return mix(1.0, 0.35, smoothstep(6000.0, 18000.0, length(i.pos - p.cam.xyz)));
 }
 
 // Projected card height in pixels (the cull's cover metric; the vertex stage widens sub-2 px field blades).
@@ -56,8 +56,8 @@ float vegLodScale(VegInstance i, VegParamsData p) {
     // toward subpixel sizes (the vertex stage widens field blades). Woody cards keep 3-12 px.
     bool fieldCard = (i.atlasFrame & 8u) != 0u;
     bool grassCard = fieldCard || (i.atlasFrame & 15u) < 4u;
-    // Scale both ends: grass reaches 3x as far with a 3x-long fade, while woody cards keep their range.
-    float distanceScale = grassCard ? 3.0 : 1.0;
+    // Scale both ends: grass reaches 12x as far with a 12x-long fade (owner 11-13: 4x the old 3x), woody cards keep their range.
+    float distanceScale = grassCard ? 12.0 : 1.0;
     float distanceFade = 1.0 - smoothstep(p.misc.x * distanceScale, p.cam.w * distanceScale, length(i.pos - p.cam.xyz));
     float thin = fieldCard ? vegFieldThin(i, p) : 1.0;
     // No second, short range cutoff for grass: projected cover converges smoothly to zero.
