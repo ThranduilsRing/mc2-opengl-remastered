@@ -2,6 +2,21 @@
 #include "doctest.h"
 #include "component_rules.h"
 
+TEST_CASE("components/reset ignores stale storage and preserves unmapped live items") {
+    struct Item { unsigned char masterID; };
+    struct Slot { bool clearOut; };
+    const Item inventory[] = {{1}, {120}, {11}, {122}, {161}};
+    const int locations[] = {0, 1, -1, -1, -1};
+    const Slot table[] = {{false}, {true}, {true}, {true}, {true}};
+    int32_t snapshot[5];
+    mc2::components::resetSnapshot(snapshot, inventory, 3, locations, table);
+    CHECK(snapshot[0] == 1);
+    CHECK(snapshot[1] == 255);
+    CHECK(snapshot[2] == 11); // Missing mapping must never access table[-1].
+    CHECK(snapshot[3] == 255);
+    CHECK(snapshot[4] == 255);
+}
+
 TEST_CASE("components/rack sizes and single-missile weapons") {
     using mc2::components::rackSize;
     CHECK(rackSize("LRM5 Rack") == 5);

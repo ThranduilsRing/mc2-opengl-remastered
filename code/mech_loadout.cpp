@@ -5,6 +5,7 @@
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 #include "package_chassis.h"
+#include "component_rules.h"
 #include <optional>
 
 
@@ -823,32 +824,8 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 	// Add back in all of the components logistics replaced.
 	// Put in the right body locations using the above table.
 	int32_t localMasterComponentList[MAX_MOVER_INVENTORY_ITEMS];
-    MemSet(localMasterComponentList, 0xff);
-
-	for (long item = 0;item<MAX_MOVER_INVENTORY_ITEMS;item++)
-	{
-		localMasterComponentList[item] = inventory[item].masterID;
-		if (inventory[item].masterID != 255)
-		{
-			long ItemLocation = -1;
-			for (long i=0;i<MAX_MOVER_INVENTORY_ITEMS;i++)
-			{
-				if (ItemLocationToInvLocation[i] == item)
-				{
-					ItemLocation = i;
-					break;			
-				}
-			}
-			
-			if (ItemLocation == -1)
-				STOP(("Could Not Find Item %d on Mech",item));
-				
-			if (logisticsTable[ItemLocation].clearOut)
-			{
-				localMasterComponentList[item] = 0xff;
-			}
-		}
-	}
+	mc2::components::resetSnapshot(localMasterComponentList, inventory,
+		numOther + numWeapons + numAmmos, ItemLocationToInvLocation, logisticsTable);
 
 	appearance->resetWeaponNodes();
 		

@@ -1,7 +1,26 @@
 #pragma once
 #include <string_view>
+#include <cstddef>
+#include <cstdint>
 
 namespace mc2::components {
+// Inactive storage can contain a previous loadout. Unmapped live components
+// are preserved without indexing the logistics table with a missing location.
+template<std::size_t N, class Item, class Location, class Logistics>
+inline void resetSnapshot(int32_t (&out)[N], const Item (&inventory)[N], long active,
+                          const Location (&locations)[N], const Logistics (&table)[N]) {
+    for (std::size_t i = 0; i < N; ++i) out[i] = 0xff;
+    for (long item = 0; item < active && item < static_cast<long>(N); ++item) {
+        out[item] = inventory[item].masterID;
+        if (out[item] == 0xff) continue;
+        for (std::size_t location = 0; location < N; ++location) {
+            if (locations[location] != item) continue;
+            if (table[location].clearOut) out[item] = 0xff;
+            break;
+        }
+    }
+}
+
 // Rack sizes are authored in the CSV name, never the localized display string.
 // Unnumbered missiles (Thunderbolt) are single projectiles.
 inline int rackSize(std::string_view name) {

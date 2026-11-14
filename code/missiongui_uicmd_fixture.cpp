@@ -23,7 +23,10 @@ float equipmentStarted = -1.0f, equipmentSampleTime = 0.0f, equipmentTopSpeed = 
 long equipmentBirths = 0, equipmentIntercepts = 0, equipmentAmmo = 0, equipmentDefenseAmmo = 0;
 long equipmentArmorBefore = 0, equipmentFireResult = -1;
 long equipmentChassis = -1;
-bool equipmentRecording = false, equipmentFired = false;
+bool equipmentRecording = false;
+long equipmentWeaponIndex = -1, equipmentAttempts = 0, equipmentHits = 0, equipmentDebits = 0;
+float equipmentLastShot = -1.0f;
+std::string_view equipmentRefusal = "none";
 long probeArmor(BattleMechPtr mech) {
     long sum = 0;
     for (int i = 0; i < mech->numArmorLocations; ++i) sum += mech->armor[i].maxArmor;
@@ -36,6 +39,7 @@ long probeAmmo(BattleMechPtr mech, long component) {
 
 void mc2EquipmentProbeEvent(std::string_view event, unsigned long target) {
     if (equipmentRecording && event == "birth") ++equipmentBirths;
+    else if (equipmentRecording && equipmentSource && target == equipmentSource->getWatchID(false)) equipmentRefusal = event;
     if (equipmentStarted >= 0.0f && equipmentTarget && event == "intercept" &&
         target == equipmentTarget->getWatchID(false)) ++equipmentIntercepts;
 }
@@ -58,7 +62,18 @@ void mc2EquipmentProbeTick() {
         equipmentAmmo = probeAmmo(source, job.weapon);
         equipmentDefenseAmmo = probeAmmo(target, job.defense);
         equipmentFireResult = -1;
-        equipmentFired = false;
+        equipmentWeaponIndex = -1;
+        equipmentAttempts = equipmentHits = equipmentDebits = 0;
+        equipmentLastShot = -1.0f;
+        for (long i = source->numOther; i < source->numOther + source->numWeapons; ++i)
+            if (source->inventory[i].masterID == job.weapon) { equipmentWeaponIndex = i; break; }
+        const long ammoIndex = equipmentWeaponIndex >= 0 ? source->inventory[equipmentWeaponIndex].ammoIndex : -1;
+        const long ammoMaster = job.weapon ? MasterComponent::masterList[job.weapon].getWeaponAmmoMasterId() : 0;
+        const bool binding = !job.weapon || (equipmentWeaponIndex >= 0 && ammoIndex >= 0 &&
+            ammoIndex < source->getNumAmmoTypes() && source->getAmmoType(ammoIndex) == ammoMaster);
+        mc2::fmt::print(stderr, "[EQUIPMENT_PROBE] binding weapon={} index={} actual={} ammo_index={} ammo_master={} valid={}\n",
+            job.weapon, equipmentWeaponIndex, equipmentWeaponIndex >= 0 ? source->inventory[equipmentWeaponIndex].masterID : -1,
+            ammoIndex, ammoMaster, binding);
         equipmentTopSpeed = 0.0f;
         source->setPosition(equipmentOrigin);
         auto pos = equipmentOrigin;
@@ -67,6 +82,8 @@ void mc2EquipmentProbeTick() {
         pos.y += (WeaponRanges[range][0] + WeaponRanges[range][1]) * 0.5f * worldUnitsPerMeter;
         pos.z = land->getTerrainElevation(pos);
         target->setPosition(pos);
+        // Keep this stationary test target alive across many real production volleys.
+        for (int i = 0; i < target->numArmorLocations; ++i) target->armor[i].curArmor = 100000.0f;
         source->getPilot()->orderWait(false, ORDER_ORIGIN_PLAYER);
         target->getPilot()->orderWait(false, ORDER_ORIGIN_PLAYER);
         source->getPilot()->setSkill(MWS_GUNNERY, 100);
@@ -90,21 +107,41 @@ void mc2EquipmentProbeTick() {
         equipmentPrevious = source->getPosition();
         equipmentSampleTime = scenarioTime;
     }
-    if (job.weapon && !equipmentFired && scenarioTime - equipmentStarted >= 3.0f) {
-        const long index = source->numOther;
+    const bool streak = job.weapon && MasterComponent::masterList[job.weapon].getWeaponStreak();
+    const long volleys = streak ? 20 : 1;
+    if (job.weapon && equipmentWeaponIndex >= 0 && equipmentAttempts < volleys &&
+        scenarioTime - equipmentStarted >= 3.0f &&
+        (equipmentLastShot < 0.0f || scenarioTime - equipmentLastShot >=
+            MasterComponent::masterList[job.weapon].getWeaponRecycleTime() + 0.1f)) {
+        const long index = equipmentWeaponIndex;
+        const long before = probeAmmo(source, job.weapon), births = equipmentBirths;
+        const long ammoIndex = source->inventory[index].ammoIndex;
+        const bool binding = ammoIndex >= 0 && ammoIndex < source->getNumAmmoTypes() &&
+            source->getAmmoType(ammoIndex) == MasterComponent::masterList[job.weapon].getWeaponAmmoMasterId();
+        equipmentRefusal = "none";
         source->inventory[index].disabled = false;
         equipmentRecording = true;
         float damage = 0.0f;
         equipmentFireResult = source->fireWeapon(target, 0.0f, index, 0, -1, nullptr, damage);
         equipmentRecording = false;
         source->inventory[index].disabled = true;
-        equipmentFired = true;
+        ++equipmentAttempts;
+        equipmentHits += damage > 0.0f;
+        const long debit = before - probeAmmo(source, job.weapon);
+        equipmentDebits += debit;
+        equipmentLastShot = scenarioTime;
+        mc2::fmt::print(stderr, "[EQUIPMENT_PROBE] shot weapon={} index={} actual={} attempt={} target_valid={} distance={:.4f} in_range={} binding={} fire={} refusal=mech_weapons.cpp/{} births={} debit={} hit={} damage={:.4f}\n",
+            job.weapon, index, source->inventory[index].masterID, equipmentAttempts, !target->isDestroyed(),
+            source->distanceFrom(target->getPosition()), source->weaponInRange(index, source->distanceFrom(target->getPosition()), MapCellDiagonal),
+            binding, equipmentFireResult, equipmentRefusal, equipmentBirths - births, debit, damage > 0.0f, damage);
     }
-    if (scenarioTime - equipmentStarted < 12.0f) return;
-    mc2::fmt::print(stderr, "[EQUIPMENT_PROBE] result weapon={} defense={} engine={} armor={} fire={} births={} intercepts={} ammo={}->{} defense_ammo={}->{} top_mps={:.4f} max_mps={:.4f} armor_total={}->{} engine_master={}\n",
+    if (scenarioTime - equipmentStarted < (streak ? 180.0f : 12.0f) &&
+        (!streak || equipmentAttempts < volleys || scenarioTime - equipmentLastShot < 9.0f)) return;
+    mc2::fmt::print(stderr, "[EQUIPMENT_PROBE] result weapon={} defense={} engine={} armor={} fire={} births={} intercepts={} ammo={}->{} defense_ammo={}->{} top_mps={:.4f} max_mps={:.4f} armor_total={}->{} engine_master={} attempts={} hits={} debits={}\n",
         job.weapon, job.defense, job.engine, job.armor, equipmentFireResult, equipmentBirths, equipmentIntercepts,
         equipmentAmmo, probeAmmo(source, job.weapon), equipmentDefenseAmmo, probeAmmo(target, job.defense),
-        equipmentTopSpeed, source->calcMaxSpeed(), equipmentArmorBefore, probeArmor(source), source->inventory[source->engine].masterID);
+        equipmentTopSpeed, source->calcMaxSpeed(), equipmentArmorBefore, probeArmor(source), source->inventory[source->engine].masterID,
+        equipmentAttempts, equipmentHits, equipmentDebits);
     equipmentQueue.erase(equipmentQueue.begin());
     equipmentStarted = -1.0f;
     if (equipmentQueue.empty()) mc2::fmt::print(stderr, "[EQUIPMENT_PROBE] complete\n");
