@@ -3,6 +3,22 @@
 #include <cmath>
 
 namespace mc2cam {
+// Wheel notches are events, so use the legacy 60 Hz step independent of frame time.
+inline float wheelZoomAmount(float increment, float baseFrameLength, float scale) {
+    return increment * 18.0f * scale / (60.0f * baseFrameLength);
+}
+
+inline float zoomElevationTarget(float target, float bound, float amount, float scale, float momentum) {
+    const float fraction = std::clamp(amount / std::max(scale, 0.01f) * 0.045f
+        * (1.0f + momentum * 0.3f), 0.0f, 0.25f);
+    return target + (bound - target) * fraction;
+}
+
+// The far-zoom scale approaches zero; a stalled frame must not fling the camera.
+inline float panStep(float increment, float scale, float dt, float baseFrameLength) {
+    return increment / std::max(scale, 0.1f) * std::clamp(dt, 0.0f, 0.05f) / baseFrameLength;
+}
+
 // Exact critically damped spring for a constant target over dt (seconds).
 inline float easeElevation(float value, float target, float& velocity, float dt, float lo, float hi) {
     target = std::clamp(target, lo, hi);
