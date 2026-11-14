@@ -275,6 +275,11 @@ int	PilotReviewScreen::handleMessage( unsigned long message, unsigned long who)
 
 }
 
+bool PilotReviewScreen::listFinished()
+{
+	return pilotListBox.isDone() && !s_curPromotion;
+}
+
 bool PilotReviewScreen::isDone()
 {
 	return bDone && exitAnim.isDone();

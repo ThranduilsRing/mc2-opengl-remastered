@@ -173,7 +173,7 @@ void MissionResults::update()
 				fflush(stdout);
 				pSalvageScreen->handleMessage( 101, 101 );
 			}
-			else if ( pPilotScreen && !mc2::screen_settle::promotionCaptureActive() )   // promotion capture: the panel is dismissed by the capture, not the soak
+			else if ( pPilotScreen && ( !mc2::screen_settle::promotionCaptureActive() || pPilotScreen->listFinished() ) )   // promotion capture: wait for the scroll (and any promotion panel) to run out
 			{
 				mc2::fmt::print_out("[SOAK] results dismiss screen=pilot\n");
 				fflush(stdout);
