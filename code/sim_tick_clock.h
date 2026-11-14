@@ -40,7 +40,8 @@ public:
     int advance(double realSeconds, double speed) {
         if (!(realSeconds > 0.0) || !(speed > 0.0)) return 0;
         realSeconds = std::min(realSeconds, kMaxRealFrameSeconds);
-        banked_ = std::min(banked_ + realSeconds * speed, kMaxRealFrameSeconds * speed);
+        // Slow motion must be able to bank at least one whole tick (0.1 s * 0.25x is less than a tick).
+        banked_ = std::min(banked_ + realSeconds * speed, std::max(kTickSeconds, kMaxRealFrameSeconds * speed));
         int ticks = static_cast<int>(std::floor(banked_ / kTickSeconds + 1e-6));
         const int cap = maxTicksPerFrame(speed);
         ticks = std::min(ticks, cap);
