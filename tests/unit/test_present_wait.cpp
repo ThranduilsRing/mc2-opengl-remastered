@@ -3,6 +3,7 @@
 #include "doctest.h"
 #include "present_thread_wait.h"
 #include "present_thread.h"
+#include "gos_render.h"
 
 #include <atomic>
 #include <chrono>
@@ -11,6 +12,26 @@
 
 using namespace std::chrono_literals;
 namespace d = mc2vk::present_thread::detail;
+
+// Trigger paths: GameOS/gameos/gos_render.{h,cpp}, gameosmain.cpp.
+TEST_CASE("loading pump: longest actual interval retains its phase and resets") {
+    graphics::LoadingPumpStats stats;
+    stats.begin(1000);
+    stats.pumped(1050);
+    stats.phase = "terrain";
+    stats.pumped(6250);
+    stats.phase = "models";
+    stats.pumped(6300);
+    CHECK(stats.maxGap == 5200);
+    CHECK(stats.maxPhase == "terrain");
+    stats.phase = {};
+    stats.pumped(50000);
+    CHECK(stats.maxGap == 5200);
+    stats.begin(60000);
+    stats.pumped(60099);
+    CHECK(stats.maxGap == 99);
+    CHECK(stats.maxPhase == "mission_load_start");
+}
 
 TEST_CASE("present split: blocked acquire releases Render after exactly one seal") {
     std::mutex mutex;

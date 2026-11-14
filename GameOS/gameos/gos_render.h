@@ -68,6 +68,28 @@ bool gos_CursorCaptureForbidden(SDL_Window* window, const char** reason);
 
 namespace graphics {
 
+// Tracks actual pumps, rather than checkpoint calls skipped by the throttle.
+struct LoadingPumpStats {
+    Uint64 lastPump = 0, maxGap = 0;
+    std::string_view phase, maxPhase;
+    void begin(Uint64 now) {
+        lastPump = now;
+        maxGap = 0;
+        phase = maxPhase = "mission_load_start";
+    }
+    void pumped(Uint64 now) {
+        if (phase.empty()) return;
+        if (now - lastPump > maxGap) {
+            maxGap = now - lastPump;
+            maxPhase = phase;
+        }
+        lastPump = now;
+    }
+};
+void begin_loading_events();
+void loading_events_phase(std::string_view phase);
+void end_loading_events();
+
 struct RenderWindow;
 
 using RenderWindowHandle = RenderWindow*;

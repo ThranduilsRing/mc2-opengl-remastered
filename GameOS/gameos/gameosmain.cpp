@@ -733,7 +733,7 @@ extern "C" void mission_load_pump()
     const Uint64 now = SDL_GetTicks64();
     if (now - lastPump < 50) return;
     lastPump = now;
-    SDL_PumpEvents();
+    graphics::pump_loading_events();
     // The sprite cannot advance during synchronous loading; use the OS arrow.
     // The central policy preserves the unattended harness cursor guard.
     graphics::apply_os_cursor_policy("mission_load", false);
@@ -756,6 +756,7 @@ namespace {
 
 extern "C" void mission_phase_begin()
 {
+    graphics::begin_loading_events();
     mission_load_pump();
     g_missionTraceFrames = 5;
     g_missionReadyTrace = 0;
@@ -769,6 +770,7 @@ extern "C" void mission_phase_begin()
 extern "C" void mission_phase_mark(mc2::czstring name)
 {
     mission_load_pump();
+    graphics::loading_events_phase(name);
     const Uint64 now = SDL_GetPerformanceCounter();
     const double freq = static_cast<double>(SDL_GetPerformanceFrequency());
     const double elapsed = static_cast<double>((now - g_mission_t0)) / freq;
@@ -787,6 +789,7 @@ extern "C" void mission_phase_mark(mc2::czstring name)
 // for the first mark), so the numbers sum to the final mark's total.
 extern "C" void mission_phase_report()
 {
+    graphics::end_loading_events();
     if (g_sdl_window)
         graphics::apply_os_cursor_policy("mission_ready", !g_focus_lost);
     g_missionTraceFrames = 0;

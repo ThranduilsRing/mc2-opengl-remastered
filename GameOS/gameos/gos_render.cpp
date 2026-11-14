@@ -208,6 +208,23 @@ void set_native_cursor(SDL_Cursor* cursor, bool visible)
     apply_os_cursor_policy("shape", g_sdl_window && (SDL_GetWindowFlags(g_sdl_window) & SDL_WINDOW_INPUT_FOCUS));
 }
 
+static LoadingPumpStats s_loadPumps;
+
+void begin_loading_events()
+{
+    s_loadPumps.begin(SDL_GetTicks64());
+}
+
+void loading_events_phase(std::string_view phase) { s_loadPumps.phase = phase; }
+
+void end_loading_events()
+{
+    pump_loading_events();
+    mc2::fmt::print_out("[LOAD_PUMP] max_gap_ms={} phase={}\n", s_loadPumps.maxGap,
+        s_loadPumps.maxPhase.empty() ? "no_window" : s_loadPumps.maxPhase);
+    s_loadPumps.phase = {};
+}
+
 void pump_loading_events()
 {
     if (!g_sdl_window || SDL_ThreadID() != g_window_thread) return;
@@ -215,6 +232,11 @@ void pump_loading_events()
     const Uint32 now = SDL_GetTicks();
     if (now - lastPump < 50) return;
     lastPump = now;
+    const Uint64 stamp = SDL_GetTicks64();
+    if (!s_loadPumps.phase.empty() && stamp - s_loadPumps.lastPump >= 250)
+        mc2::fmt::print_out("[LOAD_PUMP] gap_ms={} phase={}\n",
+            stamp - s_loadPumps.lastPump, s_loadPumps.phase);
+    s_loadPumps.pumped(stamp);
     // Pump only: do not consume quit/focus/input events or reenter the game mid-load.
     SDL_PumpEvents();
 }
