@@ -41,6 +41,20 @@ def test_tools_module_skip_is_not_a_script(monkeypatch, summary, rc, expected, c
     assert len(commands) == calls
 
 
+@pytest.mark.parametrize("tail,counts", [
+    ("1 skipped in 0.01s", "0 fully green, 1 skipped"),
+    ("2 passed, 1 skipped in 0.01s", "1 fully green, 0 skipped"),
+])
+def test_tools_summary_counts_skips(monkeypatch, capsys, tail, counts):
+    import run_tools_tests as runner
+    monkeypatch.setattr(sys, "argv", ["run_tools_tests.py", "--suite", "art"])
+    monkeypatch.setattr(runner, "discover", lambda suite: ["test_fixture.py"])
+    monkeypatch.setattr(runner, "load_ledger", lambda: {})
+    monkeypatch.setattr(runner, "run_all", lambda *a: [("test_fixture.py", 0, [], tail)])
+    assert runner.main() == 0
+    assert counts in capsys.readouterr().out
+
+
 def test_scripts_timeout_reports_without_diagnostic_rerun(monkeypatch, capsys):
     import run_scripts_tests as runner
     monkeypatch.setattr(sys, "argv", ["run_scripts_tests.py"])
