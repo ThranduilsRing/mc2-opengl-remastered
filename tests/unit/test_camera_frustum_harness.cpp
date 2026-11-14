@@ -8,7 +8,7 @@
 #include <vector>
 #include "camera_frustum_math.h"
 #include "tacmap_footprint.h"
-#include <glm/ext/matrix_transform.hpp>
+#include "../../3rdparty/glm/glm/ext/matrix_transform.hpp"
 
 // Trigger paths: mclib/tacmap_footprint.h, code/gametacmap.cpp.
 TEST_CASE("tacmap_footprint/corner_unprojection") {
