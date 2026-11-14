@@ -363,10 +363,12 @@ public:
         return result;
     }
     void placeholder(std::shared_ptr<void> owner) { slots_[0].owner = std::move(owner); changed(0); }
+    uint32_t reserve(TextureHandle h) { const auto i = index(h); return i ? i : insert(h, {}); }
     uint32_t insert(TextureHandle h, std::shared_ptr<void> owner) {
-        if (!h.isValid() || !owner) return 0;
+        if (!h.isValid()) return 0;
         if (auto it = indices_.find(h.raw()); it != indices_.end()) {
             const auto& [raw, existing] = *it;
+            if (slots_[existing].owner != owner && slots_[existing].gen < UINT16_MAX) ++slots_[existing].gen;
             slots_[existing].owner = std::move(owner); changed(existing);
             return existing;
         }

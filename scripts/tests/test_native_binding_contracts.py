@@ -66,14 +66,14 @@ def test_cross_stage_collision_fails_on_live_source(source, monkeypatch):
 def test_native_lockstep_fails(side, source, monkeypatch):
     if side == 'cpp':
         change(source, 'GameOS/gameos/vulkan_mech_island.cpp',
-               'b[4].binding = 4;', 'b[4].binding = 42;')
+               'b[3].binding = 4;', 'b[3].binding = 42;')
     elif side == 'cpp_set':
         change(source, 'GameOS/gameos/vulkan_mech_island.cpp',
-               'layouts[]{s->dsl.get(), s->groundLighting.layout()}',
-               'layouts[]{s->groundLighting.layout(), s->dsl.get()}')
+               'layouts[]{s->dsl.get(), s->groundLighting.layout(), ctx.textures().table().layout()}',
+               'layouts[]{s->groundLighting.layout(), s->dsl.get(), ctx.textures().table().layout()}')
     elif side == 'cpp_type':
         change(source, 'GameOS/gameos/vulkan_mech_island.cpp',
-               'b[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER',
+               'b[3].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC',
                'b[3].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE')
     elif side == 'type':
         change(source, 'shaders/vulkan/mech_tier1.vert',

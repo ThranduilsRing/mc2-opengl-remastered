@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Vulkan GLSL descriptor census and explicit native C++/GLSL lockstep.
 
-Expand local includes per stage; compare seven live mech layout records with
+Expand local includes per stage; compare four live mech buffer layout records with
 shader set/binding/type. Reject same-stage (set, binding) collisions across ALL
 descriptor types. Cross-stage checks belong to check-vulkan-bindings.py.
 Slang layouts are covered by separate contracts. See binding-slot-occupancy.md.
@@ -195,7 +195,7 @@ def scan_glsl(root):
 
 
 def native_lockstep(root, blocks):
-    """Compare seven live mech descriptors to the actual C++ layout assignments.
+    """Compare four live mech buffers to the actual C++ layout assignments.
 
     Array indices identify C++ layout records, NOT binding numbers. The set is
     read from the pipeline's pSetLayouts array. Missing source/pairs fail closed.
@@ -205,8 +205,7 @@ def native_lockstep(root, blocks):
     layout = re.search(r'const VkDescriptorSetLayout layouts\[\]\s*\{([^}]+)\}', source)
     sets = [item.strip() for item in layout.group(1).split(",")] if layout else []
     descriptor_set = sets.index("s->dsl.get()") if "s->dsl.get()" in sets else None
-    pairs = {0: "MechFrameUBO", 1: "InstanceBuffer", 2: "BoneBuffer",
-             3: "uAlbedo", 4: "LightsData", 6: "uMechAo", 7: "uMechNrm"}
+    pairs = {0: "MechFrameUBO", 1: "InstanceBuffer", 2: "BoneBuffer", 3: "LightsData"}
     fails = []
     for index, role in pairs.items():
         match = re.search(rf'\bb\[{index}\]\.binding\s*=\s*(\d+)\s*;\s*'

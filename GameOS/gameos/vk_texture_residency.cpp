@@ -38,7 +38,8 @@ void requestUiImage(RenderCore::TextureHandle handle, std::function<std::shared_
 }
 void TextureResidency::requestDecoded(RenderCore::TextureHandle handle, std::function<std::shared_ptr<const RenderCore::KtxImage>()> decode) {
     if (!service_.isLive(handle) || residents_.contains(handle.raw())) return;
-    auto [it,inserted]=residents_.emplace(handle.raw(),Resident{{},0,false});
+    const auto slot=table_->reserve(handle); if (!slot) return;
+    auto [it,inserted]=residents_.emplace(handle.raw(),Resident{{},slot,false});
     auto& [raw,resident]=*it;
     resident.highPriority=true; resident.contentVersion=service_.contentVersion(handle);
     worker_.request(handle,std::move(decode),resident.contentVersion);
@@ -62,13 +63,14 @@ TextureResidency::TextureResidency(VulkanContext& ctx, RenderCore::TextureServic
 TextureResidency::~TextureResidency() { service_.onRetired={}; }
 void TextureResidency::attach(RenderCore::TextureHandle handle, std::shared_ptr<const RenderCore::KtxImage> image, bool useMips) {
     if (!service_.isLive(handle) || residents_.contains(handle.raw())) return;
-    residents_.emplace(handle.raw(),Resident{{},0,useMips});
+    const auto slot=table_->reserve(handle); if (!slot) return;
+    residents_.emplace(handle.raw(),Resident{{},slot,useMips});
     residents_.at(handle.raw()).contentVersion=service_.contentVersion(handle);
     if (image) pending_.push_back({handle,std::move(image),service_.contentVersion(handle)});
 }
 
 ResidentTextureRef TextureResidency::createRenderTarget(uint32_t width, uint32_t height) {
-    if (table_->full(uploading_.size())) return {};
+    if (table_->full()) return {};
     auto image=std::make_shared<Image>();
     if (!image->image.createSampled2D(ctx_.allocator(),ctx_.device(),VK_FORMAT_R8G8B8A8_UNORM,width,height,1,
                                     VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,"ui.preview")) return {};
@@ -262,7 +264,8 @@ ResidentTextureRef TextureResidency::acquire(const RenderCore::TextureKey& key, 
     auto handle=service_.acquire(key,RenderCore::kNoTextureNode,dimensions);
     if (!handle.isValid()) return {};
     if (residents_.contains(handle.raw())) return ResidentTextureRef(*this,handle,arrayView);
-    residents_.emplace(handle.raw(),Resident{{},0,mc2tex::wantsMipmaps(key.hints),layers,arrayView});
+    const auto slot=table_->reserve(handle); if (!slot) { service_.release(handle); return {}; }
+    residents_.emplace(handle.raw(),Resident{{},slot,mc2tex::wantsMipmaps(key.hints),layers,arrayView});
     residents_.at(handle.raw()).contentVersion=service_.contentVersion(handle);
     residents_.at(handle.raw()).vegetation=key.source.starts_with("vegetation:P2|");
     pending_.push_back({handle,std::make_shared<RenderCore::KtxImage>(image),service_.contentVersion(handle)});
@@ -273,7 +276,8 @@ ResidentTextureRef TextureResidency::requestKtx(const RenderCore::TextureKey& ke
     auto handle=service_.acquire(key,RenderCore::kNoTextureNode,dimensions);
     if (!handle.isValid()) return {};
     if (!residents_.contains(handle.raw())) {
-        residents_.emplace(handle.raw(),Resident{{},0,mc2tex::wantsMipmaps(key.hints)});
+        const auto slot=table_->reserve(handle); if (!slot) { service_.release(handle); return {}; }
+        residents_.emplace(handle.raw(),Resident{{},slot,mc2tex::wantsMipmaps(key.hints)});
         residents_.at(handle.raw()).contentVersion=service_.contentVersion(handle);
         worker_.request(handle,std::move(bytes),service_.contentVersion(handle));
     }
@@ -316,8 +320,7 @@ void TextureResidency::pump() {
         // A screen can request many images at once. Spread staging across
         // frames instead of draining the decoded queue on its first render.
         // Always allow one image so large textures still make progress.
-        return table_->full(uploading_.size()) ||
-            (uploading_.size()>firstNew && std::chrono::steady_clock::now()-started>std::chrono::milliseconds(2));
+        return uploading_.size()>firstNew && std::chrono::steady_clock::now()-started>std::chrono::milliseconds(2);
     },[this](const Pending& p, Upload& next) {
         const auto& r=residents_.at(p.handle.raw());
         return static_cast<bool>(upload(*p.image,r.useMips,&next,r.layers,r.arrayView,r.vegetation));

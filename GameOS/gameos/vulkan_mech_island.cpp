@@ -968,11 +968,12 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
         s->lightingReady = static_cast<bool>(lightSpan);
     }
 
-    // Resolve every run before uploading materialReady or synchronizing dynamic buffers.
+    // Resolve drawable runs before uploading materialReady or synchronizing dynamic buffers.
     // No descriptor allocation or cache eviction may happen inside the recorded pass.
     std::vector<MechRunPC> materials(feed.runCount);
     s->materialReady = false;
-    for (uint32_t r=0; r<feed.runCount; ++r) materials[r] = resolve_run(s, feed.runs[r], par);
+    for (uint32_t r=0; r<feed.runCount; ++r)
+        if (feed.runs[r].indexCount && feed.runs[r].instanceCount) materials[r] = resolve_run(s, feed.runs[r], par);
 
     // Upload UBO.
     { MechFrameUBO u{};
@@ -1268,7 +1269,8 @@ static int mech_preview_flush_impl(void* colorView, void* normalView, void* dept
 
     std::vector<MechRunPC> materials(feed.runCount);
     s->materialReady = false;
-    for (uint32_t r=0; r<feed.runCount; ++r) materials[r] = resolve_run(s, feed.runs[r], par);
+    for (uint32_t r=0; r<feed.runCount; ++r)
+        if (feed.runs[r].indexCount && feed.runs[r].instanceCount) materials[r] = resolve_run(s, feed.runs[r], par);
 
     { MechFrameUBO u{};
       std::memcpy(u.worldToClipGL, q.worldToClipGL, sizeof(u.worldToClipGL));
