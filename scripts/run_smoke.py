@@ -1021,6 +1021,9 @@ def main():
                   file=sys.stderr, flush=True)
         else:
             print(_asset_parity.verdict_line(_drift, _asset_parity.default_ref()), file=sys.stderr, flush=True)
+            for _ln in ([] if _drift.ok else _asset_parity.detail_lines(
+                    _drift, Path(args.exe).resolve().parent, _asset_parity.default_ref())):
+                print(_ln, file=sys.stderr, flush=True)
     except Exception as _ap_exc:  # advisory here: deploy and the capture tools are the enforcers
         print(f"[ASSET_PARITY] SKIPPED ({_ap_exc})", file=sys.stderr, flush=True)
 

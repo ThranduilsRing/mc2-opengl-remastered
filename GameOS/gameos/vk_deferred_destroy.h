@@ -32,23 +32,23 @@ public:
     // Moves the owner in; it is destroyed by collect() once the open frame's ticket (or, outside a frame, everything submitted now) completes.
     template <class Owner>
     void retire(const CompletionTracker& ct, Owner&& owner, uint64_t bytes = 0) {
-        mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "DeferredDestroy::retire");
+        mc2::overlap::requireOwner(mc2::overlap::Owner::Render, "DeferredDestroy::retire");
         add(ct, std::make_unique<Box<std::decay_t<Owner>>>(std::forward<Owner>(owner)), bytes, ct.now(), !ct.frameOpen());
     }
     // The same with an explicit ticket (an upload or readback that is not tied to the frame).
     template <class Owner>
     void retireAfter(const CompletionTracker& ct, const GpuTicket& t, Owner&& owner, uint64_t bytes = 0) {
-        mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "DeferredDestroy::retireAfter");
+        mc2::overlap::requireOwner(mc2::overlap::Owner::Render, "DeferredDestroy::retireAfter");
         add(ct, std::make_unique<Box<std::decay_t<Owner>>>(std::forward<Owner>(owner)), bytes, t, true);
     }
     // Seals the entries retired during the frame that just ended.
     void sealFrame(const GpuTicket& t) {
-        mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "DeferredDestroy::sealFrame");
+        mc2::overlap::requireOwner(mc2::overlap::Owner::Render, "DeferredDestroy::sealFrame");
         for (Entry& e : entries_) if (!e.sealed) { e.ticket = t; e.sealed = true; }
     }
     // Destroys every sealed entry whose ticket completed, newest insertion first. Returns how many were destroyed.
     uint32_t collect(const CompletionTracker& ct) {
-        mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "DeferredDestroy::collect");
+        mc2::overlap::requireOwner(mc2::overlap::Owner::Render, "DeferredDestroy::collect");
         uint32_t n = 0;
         for (size_t i = entries_.size(); i-- > 0;) {
             Entry& e = entries_[i];
@@ -65,7 +65,7 @@ public:
     }
     // Destroys everything. The caller has waited for the device (mission unload, swapchain recreate, teardown).
     uint32_t drainAll() {
-        mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "DeferredDestroy::drainAll");
+        mc2::overlap::requireOwner(mc2::overlap::Owner::Render, "DeferredDestroy::drainAll");
         uint32_t n = 0;
         while (!entries_.empty()) {
             bytes_ -= entries_.back().bytes;
@@ -78,13 +78,13 @@ public:
     }
     // The newest ticket among the entries still parked: waiting for it makes the whole queue collectable.
     GpuTicket newestTicket() const {
-        mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "DeferredDestroy::newestTicket");
+        mc2::overlap::requireOwner(mc2::overlap::Owner::Render, "DeferredDestroy::newestTicket");
         GpuTicket t;
         for (const Entry& e : entries_) if (e.sealed) t = GpuTicket::both(t, e.ticket);
         return t;
     }
     Stats stats(const CompletionTracker& ct) const {
-        mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "DeferredDestroy::stats");
+        mc2::overlap::requireOwner(mc2::overlap::Owner::Render, "DeferredDestroy::stats");
         Stats s;
         s.entries = static_cast<uint32_t>(entries_.size());
         s.bytes = bytes_;
@@ -94,8 +94,8 @@ public:
         }
         return s;
     }
-    uint64_t bytes() const { mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "DeferredDestroy::bytes"); return bytes_; }
-    size_t size() const { mc2::overlap::assertOwner(mc2::overlap::Owner::Render, "DeferredDestroy::size"); return entries_.size(); }
+    uint64_t bytes() const { mc2::overlap::requireOwner(mc2::overlap::Owner::Render, "DeferredDestroy::bytes"); return bytes_; }
+    size_t size() const { mc2::overlap::requireOwner(mc2::overlap::Owner::Render, "DeferredDestroy::size"); return entries_.size(); }
 
 private:
     struct Holder { virtual ~Holder() = default; };

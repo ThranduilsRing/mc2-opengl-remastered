@@ -116,6 +116,18 @@ struct OvlTex {
     std::shared_ptr<const std::vector<uint8_t>> source;
 };
 
+struct OvlItem {
+    uint32_t firstVtx, count, kind;
+    OvlTex* tex;
+};
+struct OvlStatic {
+    mc2vk::OwnedBuffer buffer;
+    VkDeviceSize capacity = 0;
+    uint64_t version = UINT64_MAX, resolvedVersion = UINT64_MAX, textureGeneration = UINT64_MAX;
+    bool used = false;
+    std::vector<OvlItem> items;
+};
+
 struct OvlPending {
     uint32_t kind = 0;               // 0 = terrain overlay (cement/road art), 1 = decal
     bool     isStatic = false;       // persistent bake (verts stay owned by the caller)
@@ -138,9 +150,7 @@ struct OvlState {
     mc2vk::DescPoolChain texPool;   // grows by kOvlTexPerPool textures when a mission needs more; reset (capacity kept) at mission unload
     mc2vk::OwnedSampler samp;
     float sampBias = 0.0f; uint32_t sampGen = 0, sampBoundGen[mc2vk::kMaxFramesInFlight] = {};   // bias the sampler was built with; per-slot rewrite generation
-    mc2vk::OwnedBuffer stat;   // persistent bake; replaced buffers retire after their last GPU use
-    VkDeviceSize statCap = 0; uint64_t statVersion = UINT64_MAX;
-    bool statUsed = false;    // a load snapshot can be corrected in place before its first submit
+    std::array<OvlStatic, 3> statics; // source kind: cement, decals, mines; independent lifetimes
     VkCommandBuffer cbuf[mc2vk::kMaxFramesInFlight] = {};   // one per slot, each from its own pool
     mc2vk::OwnedCommandPool cpool[mc2vk::kMaxFramesInFlight];   // per-slot pools: vkResetCommandPool instead of per-cb reset
     OvlTex dummy;

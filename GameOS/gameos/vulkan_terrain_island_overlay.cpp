@@ -109,23 +109,49 @@ OvlTex* ovl_get_tex(TerrainIsland* s, OvlState* o, uint32_t gosHandle) {
 bool ovl_prepare_static(TerrainIsland* s, OvlState* o, const std::vector<OvlPending>& pending) {
     for (const OvlPending& p : pending) {
         if (!p.isStatic) continue;
+        auto& slot = o->statics[p.kind];
         const VkDeviceSize bytes = static_cast<VkDeviceSize>(p.vertCount) * kOvlVertStride;
-        if (o->statVersion == p.version && o->stat && bytes <= o->statCap) continue;
+        if (slot.version == p.version && slot.buffer && bytes <= slot.capacity) continue;
         ZoneScopedN("VKIsl.Overlay.StaticUpload");
-        if (!o->stat || o->statUsed || bytes > o->statCap) {
+        if (!slot.buffer || slot.used || bytes > slot.capacity) {
             // A replaced bake may still be referenced by the preceding frame.
-            mc2vk::getOrCreateEngineVulkanContext().retire(std::move(o->stat), o->statCap);
-            o->statCap = bytes + 256;
-            if (!make_buffer(s, o->stat, o->statCap, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, true, "terrain.overlay.stat")) return false;
-            o->statUsed = false;
+            mc2vk::getOrCreateEngineVulkanContext().retire(std::move(slot.buffer), slot.capacity);
+            slot.capacity = bytes + 256;
+            if (!make_buffer(s, slot.buffer, slot.capacity, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, true, "terrain.overlay.stat")) return false;
+            slot.used = false;
         }
         void* dst = nullptr;
-        if (vmaMapMemory(s->allocator, o->stat.allocation(), &dst) != VK_SUCCESS) return false;
+        if (vmaMapMemory(s->allocator, slot.buffer.allocation(), &dst) != VK_SUCCESS) return false;
         std::memcpy(dst, p.staticPtr, static_cast<size_t>(bytes));
-        vmaUnmapMemory(s->allocator, o->stat.allocation());
-        o->statVersion = p.version;
+        vmaUnmapMemory(s->allocator, slot.buffer.allocation());
+        slot.version = p.version;
     }
     return true;
+}
+
+void ovl_resolve_items(TerrainIsland* s, OvlState* o, const OvlPending& p, uint32_t base, std::vector<OvlItem>& items) {
+    auto resolve = [&](std::vector<OvlItem>& out) {
+        bool ready = true;
+        for (const Mc2VkOverlayDraw& d : p.draws) {
+            if (d.vertCount == 0 || d.firstVert + d.vertCount > p.vertCount) continue;
+            OvlTex* t = ovl_get_tex(s, o, d.texHandle);
+            if (!t) { ready = false; continue; } // retry incomplete imports next frame
+            out.push_back({base + d.firstVert, d.vertCount, p.kind | (p.isStatic ? 4u : 0u), t});
+        }
+        return ready;
+    };
+    if (p.isStatic) {
+        auto& slot = o->statics[p.kind];
+        const auto generation = gos_GetTextureGeneration();
+        if (slot.resolvedVersion != p.version || slot.textureGeneration != generation) {
+            slot.items.clear();
+            slot.resolvedVersion = resolve(slot.items) ? p.version : UINT64_MAX;
+            slot.textureGeneration = generation;
+        }
+        items.insert(items.end(), slot.items.begin(), slot.items.end());
+    } else {
+        resolve(items);
+    }
 }
 
 bool ovl_init(TerrainIsland* s, OvlState* o, int w, int h) {
@@ -348,7 +374,7 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
     if (!mc2_terrain_tier1_get_frame_feed(&feed) || !feed.patches || feed.patchCount == 0) return 0;
 
     // ---- resolve textures (GL calls) and size the vertex streams BEFORE recording ----
-    struct Item { uint32_t firstVtx; uint32_t count; uint32_t kind; OvlTex* tex; };   // kind: low two bits select overlay/decal/mine, bit2 static stream
+    using Item = OvlItem; // low two kind bits select source, bit2 selects static stream
     std::vector<Item> items;
     VkDeviceSize dynBytes = 0;
     for (const OvlPending& p : pending) if (!p.isStatic) dynBytes += static_cast<VkDeviceSize>(p.vertCount) * kOvlVertStride;
@@ -361,12 +387,7 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
     for (const OvlPending& p : pending) {
         uint32_t base = 0;
         if (!p.isStatic) { base = static_cast<uint32_t>((dynOff / kOvlVertStride)); dynRuns.push_back({&p, base}); dynOff += static_cast<VkDeviceSize>(p.vertCount) * kOvlVertStride; }
-        for (const Mc2VkOverlayDraw& d : p.draws) {
-            if (d.vertCount == 0 || d.firstVert + d.vertCount > p.vertCount) continue;
-            OvlTex* t = ovl_get_tex(s, o, d.texHandle);
-            if (!t) continue;                               // texture not resident yet: skip this frame
-            items.push_back({ base + d.firstVert, d.vertCount, p.kind | (p.isStatic ? 4u : 0u), t });
-        }
+        ovl_resolve_items(s, o, p, base, items);
     }
     if (items.empty()) return 0;
 
@@ -470,12 +491,11 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
     for (int k = 0; k < 4; ++k) pc.fogColor[k] = fr.fogColor[k];
     pc.artFlatExempt = fr.artFlatExempt; pc.mapHalfExtent = fr.mapHalfExtent;
     pc.biasLegacy = fr.biasLegacy; pc.cementAdopt = fr.cementAdopt; pc.seamFix = fr.seamFix;
-    vkCmdPushConstants(cb, o->playout.get(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
     const uint32_t dynOffsets[4] = {static_cast<uint32_t>(uboSpan.offset), static_cast<uint32_t>(lpSpans[0].offset),
                                     static_cast<uint32_t>(lpSpans[1].offset), static_cast<uint32_t>(lpSpans[2].offset)};
     vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, o->playout.get(), 0, 1, &s->set[par], 4, dynOffsets);
 
-    int boundKind = -1; int boundStatic = -1; VkDescriptorSet boundTex = VK_NULL_HANDLE;
+    int boundKind = -1, boundSource = -1; VkBuffer boundBuffer = VK_NULL_HANDLE; VkDescriptorSet boundTex = VK_NULL_HANDLE;
     unsigned long drawn[2] = {0, 0}, verts = 0;
     uint32_t mineDraws = 0;
     // Draw order is the blend order, so only ADJACENT items merge: same kind (pipeline, static/stream buffer, source) and texture set, and the
@@ -499,15 +519,18 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
         flushPending();
         const int sourceKind = static_cast<int>(it.kind & 3u);
         const int kind = sourceKind == 1 ? 1 : 0;
-        pc._pad[0] = sourceKind == 2 ? 2 : 0;
-        vkCmdPushConstants(cb, o->playout.get(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
+        if (sourceKind != boundSource) {
+            pc._pad[0] = sourceKind == 2 ? 2 : 0;
+            vkCmdPushConstants(cb, o->playout.get(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
+            boundSource = sourceKind;
+        }
         const int isStat = (it.kind & 4u) ? 1 : 0;
         if (kind != boundKind) { mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, o->pipe[kind].get()); boundKind = kind; }
-        if (isStat != boundStatic) {
-            VkBuffer vb = isStat ? o->stat.get() : vtxSpan.buffer;
+        VkBuffer vb = isStat ? o->statics[sourceKind].buffer.get() : vtxSpan.buffer;
+        if (vb != boundBuffer) {
             VkDeviceSize vbOff = isStat ? 0 : vtxSpan.offset;
             vkCmdBindVertexBuffers(cb, 0, 1, &vb, &vbOff);
-            boundStatic = isStat;
+            boundBuffer = vb;
         }
         if (it.tex->set[par] != boundTex) {
             vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, o->playout.get(), 1, 1, &it.tex->set[par], 0, nullptr);
@@ -527,8 +550,8 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
     { ZoneScopedN("VKIsl.Overlay.Submit");
       if (mc2vk::submitGraphics(si, VK_NULL_HANDLE) != VK_SUCCESS) { o->disabled = true; return 0; } }
     s->ovlSubmitted[par] = rctx.tracker().now();
-    if (boundStatic == 1 || std::any_of(items.begin(), items.end(), [](const Item& item) { return (item.kind & 4u) != 0; }))
-        o->statUsed = true;
+    for (const auto& item : items)
+        if (item.kind & 4u) o->statics[item.kind & 3u].used = true;
 
     static bool s_firstOk = false;
     static unsigned long s_frames = 0;
@@ -556,9 +579,7 @@ extern "C" void mc2_vk_overlay_reset() {
     mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_overlay_reset");
     for (auto& [handle, tex] : o->texs) ovl_destroy_tex(tex);
     o->texs.clear();
-    o->stat.reset();
-    o->statCap = 0; o->statVersion = UINT64_MAX;
-    o->statUsed = false;
+    for (auto& slot : o->statics) slot = {};
     o->texPool.logChain("overlay");
     if (o->texPool) o->texPool.reset();
     o->dummy.set[0]=o->dummy.set[1]=VK_NULL_HANDLE;

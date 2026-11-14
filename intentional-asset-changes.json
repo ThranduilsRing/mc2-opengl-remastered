@@ -1,4 +1,8 @@
 {
+ "data/terrain_layers/cliff_rock_ah.ktx2": "11e4ae3a814b890e61201075d38e4704a66cdcfd41c94bca8282f6cd2327d2b6",
+ "data/terrain_layers/cliff_rock_nra.ktx2": "bcead1dede2edde30cebecdc70df644496d16a8d9ff182ed2c4bfa4182b000ce",
+ "data/terrain_layers/concrete_detail_pad.ktx2": "ff23301ed512bd4fd2f37902108ad8394cd964e3c25df869290b3a71e19405f9",
+ "data/terrain_layers/concrete_detail_road.ktx2": "8942c4cf1f38667354b2b929d997d8a4ce9274e173b8cba74289229e78982604",
  "data/tgl/128/a_treeclump1.ktx2": "0c8335f2796c14f95bd55cfe7208c8dc9c39e58602b91c4138cc0a1d9ced7541",
  "data/model_overrides/broadleaf-maple/cook.json": "8832727b7ff3c50cf829f81b033b4076250b805fcf4999b5359390c0ccc562d1",
  "data/model_overrides/broadleaf-maple/detail/1_normal.ktx2": "6d52aab95b14dfba7419138dc3cdb8b964791e46c8ed6db620356900a968b02a",
@@ -10,7 +14,7 @@
  "data/model_overrides/kit-broadleaf/detail/1_normal.ktx2": "02052f6c28532cceb257368080543d692d2aeb90b3bce4f2e68558d82c4acee5",
  "data/model_overrides/kit-broadleaf/detail/cook.json": "c1c3df9d20829215c051d0cb3706df584b3250c5bf8b48969cac3329d8770499",
  "data/model_overrides/kit-broadleaf/pristine_intact_lod0.glb": "e4d30ffac39005ee3c0ef37c79d07a793f2c90a6f2e3e917d5c088ee9bcda1f3",
- "data/model_overrides/models.json": "96de7e3efb9847ce07e5bc6946543eb1fa182b2cf9166460b2d05dfa576f5157",
+ "data/model_overrides/models.json": "8f1746c2d50f8dec969c49b8c34ff0f417517209dd5462f79f108476c8688a1a",
  "data/tgl/1024/a_cp_broadleaf-maple_0.tga": "fc49cfbfe132ee553abd582dc0eb1719b64e15c7d9829ad505a5fc1f5ad94ef4",
  "data/tgl/1024/a_cp_kit-broadleaf_1.tga": "bdbd5c470a9577b0a2852169ac8b6bf57efd0a3abb265b2e1a6447800da4ab64",
  "data/tgl/1024/cook.json": "32650c08fb507860f6e48e02f02c99cb4fd94f2876201b05af3938e09f1bc137",

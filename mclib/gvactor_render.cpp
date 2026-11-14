@@ -47,7 +47,7 @@ long GVAppearance::render (long depthFixup)
 		: inView;
 	// The render gate (GPU-lagged when the cull lifecycle is on), not the CPU inView, says whether the body is drawn.
 	mc2::waterreactive::buffer().submit(reinterpret_cast<uintptr_t>(this), scenarioTime,
-		position.x, position.y, getRadius() * 0.35f, presentedAnimation().wakeRequested,
+		position.x, position.y, getRadius() * 0.35f, presentedAnimation().wakeRequested && status == OBJECT_STATUS_NORMAL,
 		visible && gvShouldRender && mc2_vis::meshDrawn(visibility), true);
 	if (gvShouldRender)
 	{

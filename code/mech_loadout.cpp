@@ -5,6 +5,7 @@
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 #include "package_chassis.h"
+#include "component_rules.h"
 #include <optional>
 
 
@@ -823,32 +824,8 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 	// Add back in all of the components logistics replaced.
 	// Put in the right body locations using the above table.
 	int32_t localMasterComponentList[MAX_MOVER_INVENTORY_ITEMS];
-    MemSet(localMasterComponentList, 0xff);
-
-	for (long item = 0;item<MAX_MOVER_INVENTORY_ITEMS;item++)
-	{
-		localMasterComponentList[item] = inventory[item].masterID;
-		if (inventory[item].masterID != 255)
-		{
-			long ItemLocation = -1;
-			for (long i=0;i<MAX_MOVER_INVENTORY_ITEMS;i++)
-			{
-				if (ItemLocationToInvLocation[i] == item)
-				{
-					ItemLocation = i;
-					break;			
-				}
-			}
-			
-			if (ItemLocation == -1)
-				STOP(("Could Not Find Item %d on Mech",item));
-				
-			if (logisticsTable[ItemLocation].clearOut)
-			{
-				localMasterComponentList[item] = 0xff;
-			}
-		}
-	}
+	mc2::components::resetSnapshot(localMasterComponentList, inventory,
+		numOther + numWeapons + numAmmos, ItemLocationToInvLocation, logisticsTable);
 
 	appearance->resetWeaponNodes();
 		
@@ -903,7 +880,9 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 		armor[MECH_ARMOR_LOCATION_RRTORSO].curArmor = armor[MECH_ARMOR_LOCATION_RRTORSO].maxArmor;
 	}
 	
- 	long numNewArmors = 0;
+	float newArmorPoints = 0.0f;
+	// Rebuilding a loadout always starts with the standard engine.
+	localMasterComponentList[0] = 1;
 	numJumpJets = 0;
 	long numElectronics = 0;
 	long numWeaponsAmmo = 0;
@@ -918,22 +897,8 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 				break;
 
 			case COMPONENT_FORM_ENGINE:
-			{
-				// An XL engine (master id 2 = XL Fusion, 3 = Clan XL) added in the
-				// mech bay is an additive speed upgrade, not a real inventory
-				// engine: always skip adding it to inventory (never crash), and
-				// under MC2_ENGINE_XL bump move speed one class (~+20%).
-				// resetComponents runs once per mech build, so it does not compound.
-				if ( componentList[newItems] == 2 || componentList[newItems] == 3 )
-				{
-					static const bool s_engineXL = mc2::gate::get<"MC2_ENGINE_XL">();
-					if ( s_engineXL )
-						maxMoveSpeed *= 1.2f;
-					continue;
-				}
-				mc2::content::error(mc2::content::Kind::WeaponAmmo, name, "invalid engine in loadout; skipped");
-				break;
-			}
+				localMasterComponentList[0] = componentList[newItems];
+				continue;
 
 			case COMPONENT_FORM_COCKPIT:
 			case COMPONENT_FORM_LIFESUPPORT:
@@ -978,7 +943,7 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 			break;
 			
 			case COMPONENT_FORM_BULK:
-				numNewArmors++;
+				newArmorPoints += MasterComponent::masterList[componentList[newItems]].getWeaponDamage();
 			break;			
 			
 			case COMPONENT_FORM_JUMPJET:
@@ -1168,9 +1133,9 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 		}
 	}
 
-	if (numNewArmors)
+	if (newArmorPoints > 0.0f)
 	{
-		float totalArmorPoints = ARMOR_POINTS_PER_NEWARMOR * numNewArmors;
+		float totalArmorPoints = newArmorPoints;
 		
 		float armorPercent = ARMOR_HEAD_PERCENT * totalArmorPoints;
 		armor[MECH_ARMOR_LOCATION_HEAD].maxArmor += armorPercent;
@@ -1217,6 +1182,9 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 		armor[MECH_ARMOR_LOCATION_RRTORSO].curArmor = armor[MECH_ARMOR_LOCATION_RRTORSO].maxArmor;
 	}
 	
+	// Save records retain the legacy count of 32-point armor units.
+	numArmorComponents = static_cast<int32_t>(newArmorPoints / ARMOR_POINTS_PER_NEWARMOR);
+
 	// Reset the quick Access components in case they removed them in logistics.
 	// SHould only need to do jump jets!!
 	jumpJets = 255;
