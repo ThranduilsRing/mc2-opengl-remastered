@@ -298,9 +298,8 @@ void GameTacMap::render()
 		glm::vec3 world(point);
 		gos_VERTEX vertex = {};
 		worldToTacMap(world, vertex);
-		const glm::vec4 clip = glm::vec4(world, 1.0f) * view;
-		vertex.u = 0.078125f + 0.920625f * (clip.x / clip.w + 1.0f) * 0.5f;
-		vertex.v = 0.078125f + 0.920625f * (1.0f - clip.y / clip.w) * 0.5f;
+		// Sample only the stock fill; perspective UVs stretch its border into bands.
+		vertex.u = vertex.v = 0.5f;
 		vertex.rhw = 1.0f;
 		vertex.argb = 0xffffffff;
 		vertices.push_back(vertex);
@@ -309,6 +308,31 @@ void GameTacMap::render()
 	for (size_t i = 1; i + 1 < vertices.size(); ++i) {
 		gos_VERTEX triangle[3] = {vertices[0], vertices[i], vertices[i + 1]};
 		gos_DrawTriangles(triangle, 3);
+	}
+	// Stock UV orientation: top is far. Draw each boundary once, including
+	// the light map-boundary cap when the far viewport edge is above the horizon.
+	for (size_t i = 0; i < vertices.size(); ++i) {
+		const size_t j = (i + 1) % vertices.size();
+		const glm::vec4 a = glm::vec4(glm::vec3(footprint[i]), 1.0f) * view;
+		const glm::vec4 b = glm::vec4(glm::vec3(footprint[j]), 1.0f) * view;
+		const glm::vec2 ca = glm::vec2(a) / a.w, cb = glm::vec2(b) / b.w;
+		const bool bold = (std::abs(ca.x - cb.x) < 0.001f && std::abs(ca.x) > 0.999f)
+			|| (ca.y < -0.999f && cb.y < -0.999f);
+		const float dx = vertices[j].x - vertices[i].x;
+		const float dy = vertices[j].y - vertices[i].y;
+		const float length = std::hypot(dx, dy);
+		if (length < 0.001f) continue;
+		const float halfWidth = (right - left) * (bold ? 0.006f : 0.0015f);
+		const float nx = -dy * halfWidth / length, ny = dx * halfWidth / length;
+		gos_VERTEX edge[4] = {vertices[i], vertices[j], vertices[j], vertices[i]};
+		for (int k = 0; k < 4; ++k) {
+			const float sign = k < 2 ? 1.0f : -1.0f;
+			edge[k].x += sign * nx;
+			edge[k].y += sign * ny;
+			edge[k].u = 15.5f / 16.0f; // stock bright border, no inner shadow band
+			edge[k].v = 0.5f;
+		}
+		gos_DrawQuads(edge, 4);
 	}
 
 	unsigned long colors[MAX_MOVERS];
