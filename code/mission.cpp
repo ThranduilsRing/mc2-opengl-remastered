@@ -20,9 +20,12 @@
 #include "render_resource_owners.h"
 #include "mc2fmt.h"
 #include "command_replay.h"
+#include "sim_tick_clock.h"
 #include <algorithm>
 #include <cstdio>
 #include <vector>
+#include <thread>
+#include <chrono>
 
 #include "../GameOS/gameos/gos_dev_shell.h"
 #include <algorithm>
@@ -441,10 +444,46 @@ long Mission::submitPlayerOrder(Mover* mover, const ::TacticalOrder& legacy, boo
         mover->getPartId(), static_cast<int>(admitted.error()));
     return admitted ? 0 : 1;
 }
+uint64_t Mission::tickBudgetBegin() {
+	return static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(
+		std::chrono::steady_clock::now().time_since_epoch()).count());
+}
+
+bool Mission::tickBudgetSpent(uint64_t begin) {
+	if (SmokeMode::fixedTimestepEnabled()) return false;
+	return mc2::sim::catchUpSpent(static_cast<double>(tickBudgetBegin() - begin) / 1000000.0);
+}
+
 // Wall-clock seconds since the last call (0 on the first frame of a mission), or the harness clock's virtual frame. Kept out of
 // mission_update.cpp, which is sim code and may not read the wall clock.
 double Mission::pollRealFrameSeconds(float harnessFrameSeconds) {
 	const bool firstFrame = (LastTimeGetTime == 0xffffffff);
+	// Diagnostic only: measure wall-paced ticks, optionally stalling the render
+	// scheduler for 200 ms every two seconds. Never perturb the harness clock.
+	static const int probe = mc2::gate::get<"MC2_SIM_RATE_PROBE">();
+	if (probe && !SmokeMode::fixedTimestepEnabled()) {
+		using Clock = std::chrono::steady_clock;
+		static auto started = Clock::now(), stalled = started;
+		static long firstTurn = turn;
+		if (firstFrame || turn < firstTurn) {
+			started = stalled = Clock::now();
+			firstTurn = turn;
+		}
+		if (probe == 2 &&
+		    std::chrono::duration<double>(Clock::now() - stalled).count() >= 2.0) {
+			stalled = Clock::now();
+			std::this_thread::sleep_for(std::chrono::milliseconds(200));
+		}
+		const double elapsed = std::chrono::duration<double>(Clock::now() - started).count();
+		if (elapsed >= 10.0) {
+			const long ticks = turn - firstTurn;
+			mc2::fmt::print_out("[SIM_RATE v1] mode={} real_s={:.6f} ticks={} ticks_per_s={:.4f} lost_s_per_min={:.4f}\n",
+				probe, elapsed, ticks, ticks / elapsed, 60.0 * (1.0 - ticks / (30.0 * elapsed)));
+			std::fflush(stdout);
+			started = Clock::now();
+			firstTurn = turn;
+		}
+	}
 	const DWORD now = timeGetTime();
 	const double seconds = SmokeMode::fixedTimestepEnabled() ? static_cast<double>(harnessFrameSeconds)
 		: (firstFrame ? 0.0 : static_cast<double>(now - LastTimeGetTime) / 1000.0);

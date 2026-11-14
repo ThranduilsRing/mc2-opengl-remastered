@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 429
+gate_count: 430
 registry_entry_count: 123
-verified_count: 401
+verified_count: 402
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -2185,6 +2185,15 @@ flags:
     owner: code
     doc: "G7: 1 aborts on overlap violations; 2 also arms the render fence; 3..52 adds 0..(value-2) ms of jitter using a private RNG."
     range: {lo: 0, hi: 52, style: clamp}
+    smoke_passthrough: true
+    verified: true
+  - name: MC2_SIM_RATE_PROBE
+    kind: Int
+    default: 0
+    rule: Prefix
+    owner: code
+    doc: "Diagnostic: 1 reports wall-paced ticks; 2 also stalls the render scheduler 200 ms every 2 s. Disabled for fixed-step runs."
+    range: {lo: 0, hi: 2, style: clamp}
     smoke_passthrough: true
     verified: true
   - name: MC2_SIM_SPEED
