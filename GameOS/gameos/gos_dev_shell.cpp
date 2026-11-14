@@ -48,7 +48,15 @@ void registerCommand(mc2::czstring name, CommandHandler fn)
 // Non-Windows builds: inert stubs (winsock-only v0; revisit at the
 // mac/linux port together with the rest of the platform layer).
 bool pollCommands(uint32_t) { return false; }
-void scheduleScreenshot(const char*) {}
+// Callers (MC2_SHOT_RESULTS) are gated; the present path reads the frame back, so the capture works without the socket shell.
+void scheduleScreenshot(const char* name)
+{
+    if (!name || !name[0]) return;
+    std::error_code ec;
+    std::filesystem::create_directory("dev_shell_out", ec);
+    const std::string path = std::string("dev_shell_out/") + name + ".tga";
+    gos::screenshot::request(path.c_str());
+}
 void capturePendingScreenshot(uint32_t) {}
 #else
 
