@@ -24,6 +24,7 @@ struct DDSURFACEDESC2 {
 #include"mission.h"
 #include"gamesound.h"
 #include "Gates/gate.h"
+#include "Gates/gate_cold.h"
 #include "mc2fmt.h"
 #include "gos_render.h"
 #include "gos_screenshot.h"
