@@ -18,7 +18,7 @@ int run(double fps, double seconds, double speed) {
 }
 
 TEST_CASE("tick clock: tick count over ten seconds does not depend on frame rate") {
-    for (double fps : {20.0, 30.0, 60.0, 75.0, 144.0, 165.0, 240.0, 1000.0})
+    for (double fps : {5.0, 20.0, 30.0, 60.0, 75.0, 144.0, 165.0, 240.0, 1000.0})
         CHECK(run(fps, 10.0, 1.0) == 300);
 }
 
@@ -35,14 +35,42 @@ TEST_CASE("tick clock: exact 30 fps is one tick per frame") {
     for (int i = 0; i < 100; ++i) CHECK(c.advance(kTickSeconds, 1.0) == 1);
 }
 
-TEST_CASE("tick clock: a hitch is dropped, not replayed, and the fast-forward cap scales") {
+TEST_CASE("tick clock: only debt beyond one second is dropped") {
     TickClock c;
-    CHECK(c.advance(5.0, 1.0) == 4);           // clamped to 0.25 s, then capped at 4
-    CHECK(c.advance(1.0 / 144.0, 1.0) == 0);   // no backlog left behind
+    CHECK(c.advance(5.0, 1.0) == 30);
+    CHECK(c.advance(1.0 / 144.0, 1.0) == 0);
     TickClock f;
-    CHECK(f.advance(0.25, 4.0) == 16);         // 1 s of sim wanted (30 ticks), cap 16
-    CHECK(mc2::sim::maxTicksPerFrame(4.0) == 16);
-    CHECK(mc2::sim::maxTicksPerFrame(0.25) == 4);
+    CHECK(f.advance(0.25, 4.0) == 30);
+    CHECK(mc2::sim::maxTicksPerFrame(4.0) == 120);
+    CHECK(mc2::sim::maxTicksPerFrame(0.25) == 30);
+}
+
+TEST_CASE("tick clock: periodic 200 ms stalls preserve elapsed sim time") {
+    TickClock c;
+    int ticks = 0;
+    for (int second = 0; second < 10; ++second) {
+        ticks += c.advance(0.2, 1.0);
+        for (int frame = 0; frame < 48; ++frame) ticks += c.advance(1.0 / 60.0, 1.0);
+    }
+    CHECK(ticks == 300);
+}
+
+TEST_CASE("tick clock: a 20 ms tick yields and retains the remaining debt") {
+    using Budget = mc2::sim::TickBudget;
+    const Budget::Clock::time_point start{};
+    Budget budget(start);
+    TickClock c;
+    const int reserved = c.advance(0.2 + kTickSeconds / 2, 1.0);
+    CHECK(reserved == 6);
+    CHECK_FALSE(budget.exhausted(start + std::chrono::milliseconds(7)));
+    CHECK(budget.exhausted(start + std::chrono::milliseconds(8)));
+    CHECK(budget.exhausted(start + std::chrono::milliseconds(20)));
+    c.defer(reserved - 1);
+    CHECK(c.alpha() == 1.0);
+    CHECK(c.advance(kTickSeconds, 1.0) == 6);
+    CHECK(c.alpha() == doctest::Approx(0.5));
+    c.defer(30);
+    CHECK(c.advance(0.2, 1.0) == 30); // accumulating debt also has a one-second ceiling
 }
 
 TEST_CASE("tick clock: degenerate input runs nothing") {

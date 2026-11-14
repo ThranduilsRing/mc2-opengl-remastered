@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <bit>
 #include <cmath>
+#include <chrono>
 
 namespace mc2::sim {
 
@@ -18,10 +19,22 @@ inline constexpr double kTickSeconds = 1.0 / 30.0;
 //: Every float use of the tick (scenarioTime +=, frameLength) must use this one constant.
 inline constexpr float kTickSecondsF = 1000.0f / 30.0f / 1000.0f;
 static_assert(std::bit_cast<unsigned>(kTickSecondsF) == 0x3D088888u, "legacy tick bit pattern");
-//: A real frame longer than this is a hitch (load, drag, breakpoint); the excess is dropped rather than replayed.
-inline constexpr double kMaxRealFrameSeconds = 0.25;
+//: Retain at most one wall second of debt; longer interruptions discard only the excess.
+inline constexpr double kMaxRealFrameSeconds = 1.0;
 //: Ticks per frame at 1x; the cap scales with game speed so fast-forward is never clamped below its own rate.
-inline constexpr int kBaseMaxTicksPerFrame = 4;
+inline constexpr int kBaseMaxTicksPerFrame = 30;
+
+// A tick cannot be interrupted. Check elapsed wall time between ticks, including a slow first tick.
+class TickBudget {
+public:
+    using Clock = std::chrono::steady_clock;
+    explicit TickBudget(Clock::time_point start = Clock::now()) : start_(start) {}
+    bool exhausted(Clock::time_point now = Clock::now()) const {
+        return now - start_ >= std::chrono::milliseconds(8);
+    }
+private:
+    Clock::time_point start_;
+};
 
 inline int maxTicksPerFrame(double speed) {
     if (!(speed > 1.0)) return kBaseMaxTicksPerFrame;   // NaN lands here too
@@ -34,17 +47,16 @@ public:
     int advance(double realSeconds, double speed) {
         if (!(realSeconds > 0.0) || !(speed > 0.0)) return 0;
         realSeconds = std::min(realSeconds, kMaxRealFrameSeconds);
-        banked_ += realSeconds * speed;
+        banked_ = std::min(banked_ + realSeconds * speed, kMaxRealFrameSeconds * speed);
         int ticks = static_cast<int>(std::floor(banked_ / kTickSeconds + 1e-6));
         const int cap = maxTicksPerFrame(speed);
-        if (ticks > cap) {
-            ticks = cap;
-            banked_ = std::fmod(banked_, kTickSeconds);   // drop the backlog, keep the sub-tick phase
-        }
+        ticks = std::min(ticks, cap);
         banked_ = std::max(0.0, banked_ - ticks * kTickSeconds);
         return ticks;
     }
     void reset() { banked_ = 0.0; }
+    // advance reserves a batch; return ticks deferred by the wall-time budget without losing their phase.
+    void defer(int ticks) { banked_ += ticks * kTickSeconds; }
     // Fraction of the next tick already elapsed, 0..1: the render interpolation weight.
     double alpha() const { return std::min(1.0, banked_ / kTickSeconds); }
 
