@@ -832,7 +832,8 @@ void bakeForestOcclusion(float sunX, float sunY, float sunUp) {
     auto cellOf = [&](float v) { return static_cast<int>(std::floor(v / kCell)); };
     for (uint32_t i = 0; i < trees.size(); ++i) grid[{cellOf(trees[i].x), cellOf(trees[i].z)}].push_back(i);
     const float sunH = std::sqrt(sunX*sunX + sunY*sunY);
-    const float tanE = std::max(0.05f, sunUp / std::max(sunH, 1e-4f));
+    const float tanRaw = sunUp / std::max(sunH, 1e-4f);
+    const float tanE = std::clamp(tanRaw, 0.05f, 1e9f);
     const float dx0 = sunH > 1e-4f ? -sunX / sunH : 0.0f, dz0 = sunH > 1e-4f ? sunY / sunH : 0.0f;
     constexpr float kPi = 3.14159265f;
     for (const Tree& t : trees) {
@@ -843,7 +844,9 @@ void bakeForestOcclusion(float sunX, float sunY, float sunUp) {
         for (int gz = cz - span; gz <= cz + span; ++gz) for (int gx = cx - span; gx <= cx + span; ++gx) {
             const auto it = grid.find({gx, gz});
             if (it == grid.end()) continue;
-            for (const uint32_t n : it->second) {
+            const auto& [cellKey, members] = *it;
+            (void)cellKey;
+            for (const uint32_t n : members) {
                 const Tree& o = trees[n];
                 if (&o == &t) continue;
                 const float dx = o.x - t.x, dz = o.z - t.z, dist = std::sqrt(dx*dx + dz*dz);
@@ -851,7 +854,8 @@ void bakeForestOcclusion(float sunX, float sunY, float sunUp) {
                 const float along = dx*dx0 + dz*dz0, across = std::fabs(dx*dz0 - dz*dx0);
                 if (along > 0.0f && across < o.r) {
                     const float topAtOffset = o.g + o.h * (0.65f + 0.35f * std::sqrt(1.0f - (across/o.r)*(across/o.r)));
-                    line = std::max(line, topAtOffset - t.g - std::max(0.0f, along - 0.5f*t.r) * tanE);
+                    const float lateral = std::clamp(along - 0.5f*t.r, 0.0f, 1e9f);
+                    line = std::max(line, topAtOffset - t.g - lateral * tanE);
                 }
                 const int sector = static_cast<int>((std::atan2(dz, dx) + kPi) * (4.0f / kPi)) & 7;
                 for (int h = 0; h < 2; ++h)
