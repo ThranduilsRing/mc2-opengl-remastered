@@ -503,7 +503,7 @@ extern "C" int mc2_vk_water_island_run(
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], 2, uboOffsets);
         const auto groundSet = s->groundLighting.set(par);
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 1, 1, &groundSet, 4, ground->offsets.data());
-        if (gos_GetWaterFsDebugMode() == 10) {
+        if (gos_GetWaterFsDebugMode() == 10 || gos_GetWaterFsDebugMode() == 11) {
             for (const auto& pipeline : s->debugWater) {
                 mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.get());
                 vkCmdDrawIndirect(cb, s->native->drawArgs(par), 0, 1, 16);

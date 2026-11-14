@@ -235,7 +235,7 @@ bool init_island(WaterIsland* s, int w, int h) {
             vlog("vkCreateGraphicsPipelines failed."); return false;
         }
         mc2vk::nameObject(s->device, s->pipe.get(), "water.pipe");
-        if (gos_GetWaterFsDebugMode() == 10) {
+        if (gos_GetWaterFsDebugMode() == 10 || gos_GetWaterFsDebugMode() == 11) {
             const VkSpecializationMapEntry vsEntry{12, 0, sizeof(int32_t)};
             const VkSpecializationMapEntry fsEntry{13, 0, sizeof(int32_t)};
             cba[0].blendEnable = VK_FALSE;
