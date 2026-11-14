@@ -777,3 +777,10 @@ bool mc2PeekStaticPropTypeInfo(uint32_t typeID, const char** outName, int* outAl
     if (outAlphaClass) *outAlphaClass = static_cast<int>(t.alphaClass);
     return true;
 }
+
+bool mc2PeekStaticPropTreeCanopy(uint32_t typeID, float out[3])
+{
+    if (typeID >= s_types.size() || s_types[typeID].treeCanopy[1] <= 0.0f) return false;
+    for (int i = 0; i < 3; ++i) out[i] = s_types[typeID].treeCanopy[i];
+    return true;
+}

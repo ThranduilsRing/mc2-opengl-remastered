@@ -2,6 +2,7 @@
 #include "../GameOS/gameos/gos_render.h"
 #include "../GameOS/gameos/vk_render_infra.h"
 #include "../GameOS/gameos/diagnostic_trace.h"
+#include "../GameOS/gameos/gos_static_prop_registry.h"
 #include <atomic>
 #include <chrono>
 #include "../GameAdapters/SkyRenderAdapter.h"
@@ -1057,7 +1058,8 @@ void Mission::initFinalizeGeometry() {
     // load barrier so sky/water upload the mission HDRI rather than the boot sky.
     GameAdapters::Sky::setSkyNumber(static_cast<int>(theSkyNumber));
     // The load barrier bakes the static shadows (F1); they key on the terrain sun, which the first frame's camera sets. Set the same one now.
-    { const glm::vec3 sun = eye->sunDirection(); gos_SetTerrainLightDir(sun.x, sun.y, sun.z); }
+    { const glm::vec3 sun = eye->sunDirection(); gos_SetTerrainLightDir(sun.x, sun.y, sun.z);
+      GpuStaticPropRegistry::bakeForestOcclusion(sun.x, sun.y, sun.z); } // forest light bake needs the sun
     mc2PrewarmMissionPipelines();
 	mc2::textures::prewarmCpuTextures();
 	mission_phase_mark("render_prewarm_ready");

@@ -5,6 +5,8 @@
 #include <atomic>
 #include <cmath>
 #include <map>
+#include <vector>
+#include <algorithm>
 #include "../../RenderCore/StaticPropOrigin.h"
 #include "../../mclib/texture_assets.h"
 #include "water_planar_props.h"
@@ -806,37 +808,66 @@ void setRecipePopulation(int32_t recipeIndex, GpuStaticPropPopulation pop) {
     s_recipeRanges[static_cast<size_t>(recipeIndex)].population = p;
 }
 
-// Mission-load canopy density; duplicate LOD recipes occupy the same 64-unit cell.
-// Four six-bit horizons use flags[8..31], leaving the material flags untouched.
-void bakeForestOcclusion() {
-    using Cell = std::pair<int, int>;
-    std::map<Cell, uint32_t> cells;
-    auto cellOf = [](const GpuStaticPropInstance& inst) -> Cell {
-        const auto origin = staticPropOriginStuff(inst.modelMatrix);
-        return {static_cast<int>(std::floor(origin.x / 64.0f)),
-                static_cast<int>(std::floor(origin.z / 64.0f))};
-    };
-    for (const auto& rng : s_recipeRanges)
-        if (rng.count && rng.population == static_cast<uint8_t>(GpuStaticPropPopulation::Tree))
-            cells.emplace(cellOf(s_recipes[rng.begin]), 0u);
-    for (auto& [cell, packed] : cells) {
-        const auto [cx, cy] = cell;
-        float horizon[4]{};
-        for (int y = -5; y <= 5; ++y) for (int x = -5; x <= 5; ++x) {
-            const float distance = std::sqrt(static_cast<float>(x*x + y*y));
-            if (distance < 0.5f || distance >= 5.0f || !cells.contains({cx+x, cy+y})) continue;
-            const float weight = (1.0f - distance / 5.0f) / distance;
-            horizon[0] += std::max(0, x) * weight;
-            horizon[1] += std::max(0, -x) * weight;
-            horizon[2] += std::max(0, y) * weight;
-            horizon[3] += std::max(0, -y) * weight;
-        }
-        for (uint32_t d = 0; d < 4; ++d)
-            packed |= static_cast<uint32_t>(63.0f * std::min(1.0f, horizon[d] * 0.5f)) << (8u + 6u*d);
-    }
-    for (const auto& rng : s_recipeRanges) {
+// Mission-load forest light bake (one entry per tree instance; its LOD duplicates share the values).
+// Three 8-bit values fill flags[8..31]: sun shadow-line height (crown-top units, 1.0 = the crown top, /1.25),
+// sky occlusion at the crown base and at the crown top. Neighbour crowns come from real positions and
+// per-type crown dimensions; the sun is the mission sun, so the bake runs after the terrain sun is set.
+void bakeForestOcclusion(float sunX, float sunY, float sunUp) {
+    struct Tree { float x, z, g, h, r; uint32_t rng; };
+    std::vector<Tree> trees;
+    for (uint32_t i = 0; i < s_recipeRanges.size(); ++i) {
+        const auto& rng = s_recipeRanges[i];
         if (!rng.count || rng.population != static_cast<uint8_t>(GpuStaticPropPopulation::Tree)) continue;
-        const uint32_t packed = cells.at(cellOf(s_recipes[rng.begin]));
+        float c[3]{};
+        for (uint32_t k = rng.begin; k < rng.begin + rng.count && c[1] <= 0.0f; ++k)
+            if (!mc2PeekStaticPropTreeCanopy(s_recipes[k].typeID, c)) c[1] = 0.0f;
+        if (c[1] <= 0.0f) continue;
+        const float* m = s_recipes[rng.begin].modelMatrix;
+        const auto o = staticPropOriginStuff(m);
+        const float scale = std::max(0.05f, std::sqrt(m[0]*m[0] + m[4]*m[4] + m[8]*m[8]));
+        trees.push_back({o.x, o.z, o.y, std::max(1.0f, 2.0f * std::fabs(c[2]) * scale), c[1] * scale, i});
+    }
+    constexpr float kCell = 32.0f, kReach = 96.0f;
+    std::map<std::pair<int,int>, std::vector<uint32_t>> grid;
+    auto cellOf = [&](float v) { return static_cast<int>(std::floor(v / kCell)); };
+    for (uint32_t i = 0; i < trees.size(); ++i) grid[{cellOf(trees[i].x), cellOf(trees[i].z)}].push_back(i);
+    const float sunH = std::sqrt(sunX*sunX + sunY*sunY);
+    const float tanE = std::max(0.05f, sunUp / std::max(sunH, 1e-4f));
+    const float dx0 = sunH > 1e-4f ? -sunX / sunH : 0.0f, dz0 = sunH > 1e-4f ? sunY / sunH : 0.0f;
+    constexpr float kPi = 3.14159265f;
+    for (const Tree& t : trees) {
+        float line = 0.0f;
+        float horizon[2][8]{};
+        const float height[2] = {0.3f * t.h, t.h};
+        const int cx = cellOf(t.x), cz = cellOf(t.z), span = static_cast<int>(kReach / kCell) + 1;
+        for (int gz = cz - span; gz <= cz + span; ++gz) for (int gx = cx - span; gx <= cx + span; ++gx) {
+            const auto it = grid.find({gx, gz});
+            if (it == grid.end()) continue;
+            for (const uint32_t n : it->second) {
+                const Tree& o = trees[n];
+                if (&o == &t) continue;
+                const float dx = o.x - t.x, dz = o.z - t.z, dist = std::sqrt(dx*dx + dz*dz);
+                if (dist > kReach) continue;
+                const float along = dx*dx0 + dz*dz0, across = std::fabs(dx*dz0 - dz*dx0);
+                if (along > 0.0f && across < o.r) {
+                    const float topAtOffset = o.g + o.h * (0.65f + 0.35f * std::sqrt(1.0f - (across/o.r)*(across/o.r)));
+                    line = std::max(line, topAtOffset - t.g - std::max(0.0f, along - 0.5f*t.r) * tanE);
+                }
+                const int sector = static_cast<int>((std::atan2(dz, dx) + kPi) * (4.0f / kPi)) & 7;
+                for (int h = 0; h < 2; ++h)
+                    horizon[h][sector] = std::max(horizon[h][sector],
+                        (o.g + o.h - (t.g + height[h])) / std::max(dist - 0.6f*o.r, 2.0f));
+            }
+        }
+        uint32_t occ[2];
+        for (int h = 0; h < 2; ++h) {
+            float sum = 0.0f;
+            for (int s = 0; s < 8; ++s) { const float v = horizon[h][s]; sum += v > 0.0f ? v*v / (1.0f + v*v) : 0.0f; }
+            occ[h] = static_cast<uint32_t>(255.0f * sum * 0.125f + 0.5f);
+        }
+        const uint32_t sl = static_cast<uint32_t>(255.0f * std::min(1.25f, line / t.h) / 1.25f + 0.5f);
+        const uint32_t packed = (sl << 8u) | (occ[0] << 16u) | (occ[1] << 24u);
+        const auto& rng = s_recipeRanges[t.rng];
         for (uint32_t k = rng.begin; k < rng.begin + rng.count; ++k)
             s_recipes[k].flags = (s_recipes[k].flags & 255u) | packed;
     }

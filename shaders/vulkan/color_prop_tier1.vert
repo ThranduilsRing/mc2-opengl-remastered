@@ -171,17 +171,17 @@ void main() {
         ? vec3(uTypeHot.c[canopyBase].w, uTypeHot.c[canopyBase+1u].w, uTypeHot.c[canopyBase+2u].w) : vec3(0);
     bool tree = uFrame.poolF.w > 0.0 && canopy.y > 0.0 && (inst.flags & 2u) == 0u;
     vTree = vec4(1.0, tree ? 1.0 : 0.0, 1.0, 1.0);
-    vec4 forestHorizon = vec4((inst.flags >> 8u) & 63u, (inst.flags >> 14u) & 63u,
-                              (inst.flags >> 20u) & 63u, (inst.flags >> 26u) & 63u) / 63.0;
-    // Enclosed crowns lose sky from every side; an exposed edge keeps its sky.
-    float enclosure = min(min(forestHorizon.x, forestHorizon.y), min(forestHorizon.z, forestHorizon.w));
-    float forestSky = tree ? (1.0 - 0.55 * dot(forestHorizon, vec4(0.25))) * (1.0 - 0.7 * enclosure) : 1.0;
+    // Forest light bake (flags[8..31]): sun shadow-line height, crown-base and crown-top sky occlusion.
+    // hn = vertex height in tree-top units (crown centre 0.65, crown top 1.0); crowns are lit above the shadow line.
+    float forestSky = 1.0, forestSun = 1.0;
+    if (tree) {
+        float hn = 0.65 + sign(canopy.z) * (a_position.y - canopy.x) / (2.0 * abs(canopy.z));
+        vec3 bake = vec3((inst.flags >> 8u) & 255u, (inst.flags >> 16u) & 255u, inst.flags >> 24u) / 255.0;
+        forestSun = mix(0.04, 1.0, smoothstep(bake.x * 1.25 - 0.15, bake.x * 1.25, hn));
+        forestSky = 1.0 - mix(bake.y, bake.z, smoothstep(0.3, 1.0, hn));
+    }
     vTree.z = forestSky;
-    vec2 forestSun = vec2(-uFrame.terrainSunMC2.x, uFrame.terrainSunMC2.y);
-    vec4 forestDirection = max(vec4(forestSun.x, -forestSun.x, forestSun.y, -forestSun.y), vec4(0));
-    forestDirection /= max(dot(forestDirection, vec4(1)), 1e-6);
-    // Sub-texel leaves still block light through neighbouring dense crowns.
-    vTree.w = tree ? 1.0 - 0.9 * dot(forestDirection, forestHorizon) : 1.0;
+    vTree.w = forestSun;
     vec3 localNormal = a_normal;
     if (tree && (inst.flags & 4u) != 0u) {
         vec3 crown = vec3(a_position.x / canopy.y, (a_position.y - canopy.x) / abs(canopy.z), a_position.z / canopy.y);
