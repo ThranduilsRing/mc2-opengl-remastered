@@ -728,8 +728,8 @@ bool init_island(TerrainIsland* s, int w, int h) {
 
     s->inited = true;
     setFallback("");
-    vlog("island initialized %dx%d (shared GBuffer co-write; LOD0 main-triangle terrain "
-         "prefix; reverse-Z GEQUAL double-sided; gbuffer1.a=1.0).", w, h);
+    vlog("island initialized kind=%s %dx%d (shared GBuffer co-write; LOD0 main-triangle terrain "
+         "prefix; reverse-Z GEQUAL double-sided; gbuffer1.a=1.0).", s->planar ? "planar" : "main", w, h);
     return true;
 }
 

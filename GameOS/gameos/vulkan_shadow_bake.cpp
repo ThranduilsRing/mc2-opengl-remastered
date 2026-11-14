@@ -606,6 +606,7 @@ bool ShadowBake::readHeightGrid() {
             }
     }
     heightsMoved_ = false;
+    readHeightVersion_ = store->heightVersion();
     ++heightsGen_;
     return true;
 }
@@ -653,7 +654,7 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
     }
     // Object-only caster updates reuse the same terrain snapshot as dirty sub-tiles.
     const auto tHeight = clk::now();
-    if ((recordedMask_ || heightsMoved_ || heights_.empty()) && !readHeightGrid()) { blog("height field malformed: no bake."); return false; }
+    if ((recordedMask_ || heightsMoved_ || heights_.empty() || readHeightVersion_ != store->heightVersion()) && !readHeightGrid()) { blog("height field malformed: no bake."); return false; }
     terrainTop_ = -1e30f;
     terrainMin_ = 1e30f;
     for (size_t i = 0; i < static_cast<size_t>(heightSide_) * heightSide_; ++i) {
@@ -1144,7 +1145,7 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
     }
     ZoneScopedN("ShadowBake.Dirty");
     // CPU state the sub-tiles read: the heights (re-read after a patch) and the live casters (re-resolved after an event).
-    if (heightsMoved_ || heights_.empty()) {
+    if (heightsMoved_ || heights_.empty() || readHeightVersion_ != store->heightVersion()) {
         ZoneScopedN("ShadowBake.Dirty.ReadHeights");
         if (!readHeightGrid()) return false;
     }
