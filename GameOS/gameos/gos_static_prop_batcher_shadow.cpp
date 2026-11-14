@@ -108,7 +108,7 @@ void GpuStaticPropBatcher::forgetLodState(const GpuStaticPropInstance& inst) {
     s_lodState.erase(propLodKey(inst));
 }
 
-extern "C" void mc2_static_prop_retype_far_tier(GpuStaticPropInstance* instances, uint32_t count, bool resort) {
+void mc2_static_prop_retype_far_tier(GpuStaticPropInstance* instances, uint32_t count, bool resort) {
     if (s_lodMembers.empty()) return;
     bool any = false;
     for (uint32_t i = 0; i < count; ++i)
@@ -118,7 +118,7 @@ extern "C" void mc2_static_prop_retype_far_tier(GpuStaticPropInstance* instances
     if (any && resort) std::sort(instances, instances + count, [](const GpuStaticPropInstance& a, const GpuStaticPropInstance& b) { return a.typeID < b.typeID; });
 }
 
-extern "C" int mc2_static_prop_lod_skips_late(uint32_t typeID) {
+int mc2_static_prop_lod_skips_late(uint32_t typeID) {
     const auto it = s_lodMembers.find(typeID);
     return it != s_lodMembers.end() && it->second.tier >= 3 ? 1 : 0;
 }
