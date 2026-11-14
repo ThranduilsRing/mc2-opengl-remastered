@@ -258,8 +258,10 @@ def _run_unit_exe(bdir, config, preset, only, asan, started):
     if preset and not exe.is_file():
         return False, f"requested compiler binary missing in {bdir}"
     command = [str(exe), "--no-breaks"]
-    env = dict(os.environ)
-    if not only and env.get("MC2_GATE_NIGHTLY") != "1":
+    # Tests own their MC2_* settings, including strict-config fault injection.
+    # Ambient launcher/player options can otherwise terminate the suite with 78.
+    env = {key: value for key, value in os.environ.items() if not key.upper().startswith("MC2_")}
+    if not only and os.environ.get("MC2_GATE_NIGHTLY") != "1":
         command += ["--test-case-exclude=vfx_frozen/*,fx_playback/*oracle*,vfx_oracle/*,package chassis:*,present mailbox stress:*"]
     if only:
         command += ["--test-case=" + test_case_filter(only)]
