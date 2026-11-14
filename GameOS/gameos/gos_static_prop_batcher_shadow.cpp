@@ -115,7 +115,7 @@ void mc2_static_prop_retype_far_tier(GpuStaticPropInstance* instances, uint32_t 
         if (auto it = s_lodMembers.find(instances[i].typeID); it != s_lodMembers.end() && it->second.farType != instances[i].typeID) {
             instances[i].typeID = it->second.farType; any = true;
         }
-    if (any && resort) std::stable_sort(instances, instances + count, [](const GpuStaticPropInstance& a, const GpuStaticPropInstance& b) { return a.typeID < b.typeID; });
+    if (any && resort) std::sort(instances, instances + count, [](const GpuStaticPropInstance& a, const GpuStaticPropInstance& b) { return a.typeID < b.typeID; });
 }
 
 int mc2_static_prop_lod_skips_late(uint32_t typeID) {
