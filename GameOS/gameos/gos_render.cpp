@@ -15,6 +15,7 @@
 #include "Gates/gate_cold.h"   // raw<>()
 #include "mc2fmt.h"
 #include "diagnostic_trace.h"
+#include "present_thread_wait.h"
 
 // FIXME: think how to make it better when different parts need window
 SDL_Window* g_sdl_window = nullptr;
@@ -209,6 +210,15 @@ void set_native_cursor(SDL_Cursor* cursor, bool visible)
 }
 
 static LoadingPumpStats s_loadPumps;
+
+void loading_work(const std::function<void()>& work)
+{
+    if (SDL_ThreadID() != g_window_thread || s_loadPumps.phase.empty()) {
+        work();
+        return;
+    }
+    mc2vk::present_thread::detail::workPumping(work, [] { pump_loading_events(); });
+}
 
 void begin_loading_events()
 {

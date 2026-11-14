@@ -18,6 +18,7 @@ extern uint32_t g_mc2RenderFrame;   // mclib/tgl.cpp
 #include "Gates/render_options.h"
 #include "Gates/gate_cold.h"
 #include "gos_postprocess.h"
+#include "gos_render.h"
 #include "diagnostic_trace.h"
 #include "RenderCore/GpuResidencyPolicy.h"
 #include "platform_windows.h"
@@ -606,7 +607,8 @@ VkResult graphics(VkDevice dev,VkPipelineCache,uint32_t n,const VkGraphicsPipeli
     // The driver compile (the slow part) runs outside the infra mutex so binds and lookups on other threads never wait behind it; the pipeline cache is internally synchronized.
     const VkPipelineCache cache=s.cache; ++s.compiling;
     lock.unlock();
-    const VkResult result=vkCreateGraphicsPipelines(dev,cache,n,info,allocator,out);
+    VkResult result;
+    ::graphics::loading_work([&] { result=vkCreateGraphicsPipelines(dev,cache,n,info,allocator,out); });
     lock.lock(); if(--s.compiling==0) s.compileIdle.notify_all();
     if(result!=VK_SUCCESS) { for(uint32_t i=0;i<n;++i) if(out[i]) { vkDestroyPipeline(dev,out[i],allocator); out[i]=VK_NULL_HANDLE; } }
     const double ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count(); s.creationMs+=ms; s.creations+=n; s.dirty=true; mc2_hitch2::stats().pipelineCreates.fetch_add(n,std::memory_order_relaxed);
@@ -621,7 +623,8 @@ VkResult compute(VkDevice dev,VkPipelineCache,uint32_t n,const VkComputePipeline
     info=updated.data();
     const VkPipelineCache cache=s.cache; ++s.compiling;
     lock.unlock();   // compile outside the infra mutex, as in graphics()
-    const VkResult result=vkCreateComputePipelines(dev,cache,n,info,allocator,out);
+    VkResult result;
+    ::graphics::loading_work([&] { result=vkCreateComputePipelines(dev,cache,n,info,allocator,out); });
     lock.lock(); if(--s.compiling==0) s.compileIdle.notify_all();
     if(result!=VK_SUCCESS) { for(uint32_t i=0;i<n;++i) if(out[i]) { vkDestroyPipeline(dev,out[i],allocator); out[i]=VK_NULL_HANDLE; } }
     const double ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count(); s.creationMs+=ms; s.creations+=n; s.dirty=true; mc2_hitch2::stats().pipelineCreates.fetch_add(n,std::memory_order_relaxed);
@@ -689,6 +692,7 @@ void prewarm(int width,int height) {
     auto& s=state(); const auto begin=std::chrono::steady_clock::now(); const uint64_t before=s.creations;
     const double pipelineMsBefore=s.creationMs;
     const auto warm = [&](std::string_view family, int (*prepare)(int,int)) {
+        ::graphics::pump_loading_events();
         const auto started=std::chrono::steady_clock::now();
         const int ready=prepare(width,height);
         if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_LOAD_RESOURCE v1] family=%.*s ready=%d ms=%.3f\n",static_cast<int>(family.size()),family.data(),ready,

@@ -3,6 +3,7 @@
 
 #include <SDL2/SDL.h>
 #include <string_view>
+#include <functional>
 
 // SMOKE-NO-CURSOR-STEAL-1: true when this process must NOT touch the OS cursor
 // (no SDL_WarpMouseInWindow, no window mouse-grab, no Win32 ClipCursor).
@@ -89,6 +90,7 @@ struct LoadingPumpStats {
 void begin_loading_events();
 void loading_events_phase(std::string_view phase);
 void end_loading_events();
+void loading_work(const std::function<void()>& work);
 
 struct RenderWindow;
 

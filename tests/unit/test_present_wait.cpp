@@ -13,6 +13,27 @@
 using namespace std::chrono_literals;
 namespace d = mc2vk::present_thread::detail;
 
+// Trigger paths: gos_render.cpp, present_thread_wait.h, vk_render_infra.cpp, terrtxm2_load.cpp.
+TEST_CASE("loading work: pumps while blocked and joins before returning") {
+    std::atomic<bool> release = false;
+    int pumps = 0, output = 0;
+    const auto mainThread = std::this_thread::get_id();
+    d::workPumping([&] {
+        CHECK(std::this_thread::get_id() != mainThread);
+        while (!release.load()) std::this_thread::yield();
+        output = 42;
+    }, [&] {
+        CHECK(std::this_thread::get_id() == mainThread);
+        if (++pumps == 3) release = true;
+    });
+    CHECK(pumps == 3);
+    CHECK(output == 42);
+}
+
+TEST_CASE("loading work: propagates a worker failure after joining") {
+    CHECK_THROWS_AS(d::workPumping([] { throw std::runtime_error("decode failed"); }, [] {}), std::runtime_error);
+}
+
 // Trigger paths: GameOS/gameos/gos_render.{h,cpp}, gameosmain.cpp.
 TEST_CASE("loading pump: longest actual interval retains its phase and resets") {
     graphics::LoadingPumpStats stats;

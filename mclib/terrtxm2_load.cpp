@@ -9,6 +9,7 @@
 #include "tga_scratch.h"
 #include "terrain_normal_load.h"
 #include "../GameOS/gameos/terrain_field_store.h"
+#include "../GameOS/gameos/gos_render.h"
 
 using mc2::tga::loadTga;
 using mc2::tga::tgaPixelsPresent;
@@ -288,7 +289,7 @@ long TerrainColorMap::init (char *fileName)
 		// decodes (stb_image) straight into a B,G,R,A ColorMap matching the
 		// .burnin.tga path, so we can skip the TGA read/parse/flip entirely.
 		long jpgColorMapWidth = 0;
-		colorMapStore = tryLoadBurninJpg(texturePath, fileName, &jpgColorMapWidth);
+		graphics::loading_work([&] { colorMapStore = tryLoadBurninJpg(texturePath, fileName, &jpgColorMapWidth); });
 		if (!colorMapStore.empty())
 		{
 			ColorMap = colorMapStore.data();
