@@ -163,7 +163,7 @@ void MissionResults::update()
 	{
 		static float s_soakResultsDwell = 0.0f;
 		s_soakResultsDwell += frameLength;
-		if ( s_soakResultsDwell >= ( mc2::gate::get<"MC2_SHOT_RESULTS">() ? 6.0f : 0.75f ) )  // capture runs hold each panel long enough to photograph
+		if ( s_soakResultsDwell >= 0.75f )
 		{
 			s_soakResultsDwell = 0.0f;
 			if ( pSalvageScreen && !pSalvageScreen->donePressed() )
