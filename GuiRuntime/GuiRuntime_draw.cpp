@@ -200,6 +200,17 @@ bool GuiRuntime::DrawUiText(float x,
     return true;
 }
 
+float GuiRuntime::CalcUiTextHeight(const char* text, float wrapWidth, int fontSize, const char* fontFamily)
+{
+    if (!text || !IsReadyForUiText())
+        return 0.0f;
+    ImFont* font = findUiFont(fontFamily, fontSize);
+    if (!font)
+        return 0.0f;
+    const char* textEnd = nullptr;
+    return font->CalcTextSizeA(static_cast<float>(normalizeSize(fontSize)), FLT_MAX, wrapWidth > 0.0f ? wrapWidth : 0.0f, text, textEnd).y;
+}
+
 bool GuiRuntime::CalcUiTextWrapLines(const char* text,
                                      float wrapWidth,
                                      int fontSize,
