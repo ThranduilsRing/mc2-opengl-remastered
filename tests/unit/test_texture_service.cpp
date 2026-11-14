@@ -351,6 +351,8 @@ TEST_CASE("TextureService: last reference during flight and descriptor reuse") {
     CHECK(service.release(old)); CHECK(table.erase(old));
     CHECK(destroyed==1); // only the rejected allocation, never the submitted image
     auto next=service.acquire(keyOf("base","c",3));
+    CHECK(table.full());
+    table.beginFrame(3);
     CHECK(table.insert(next,make())==slot);
     CHECK(table.index(old)==0); CHECK_FALSE(table.erase(old));
     auto nextFlight=table.snapshot();
@@ -358,6 +360,52 @@ TEST_CASE("TextureService: last reference during flight and descriptor reuse") {
     CHECK_FALSE(service.retain(old)); // stale generation cannot name the replacement
     inFlight.clear(); CHECK(destroyed==2);
     CHECK(table.erase(next)); nextFlight.clear(); CHECK(destroyed==3);
+}
+
+TEST_CASE("TextureService: descriptor quarantine generation and journal replay") {
+    TextureService service;
+    TextureDescriptorTable table(2);
+    const auto a=service.acquire(keyOf("unit","quarantine-a",1));
+    const auto b=service.acquire(keyOf("unit","quarantine-b",1));
+    auto owner=std::make_shared<int>(1);
+    table.beginFrame(10);
+    REQUIRE(table.insert(a,owner)==1);
+    const auto old=table.token(a);
+    uint64_t applied[3]={table.revision(),table.revision(),table.revision()};
+    REQUIRE(table.erase(a)); CHECK(table.resolve(old)==0);
+    for (uint64_t frame=11;frame<=13;++frame) {
+        bool full=false;
+        const auto changes=table.changesSince(applied[frame%3],full);
+        REQUIRE_FALSE(full); REQUIRE(changes.size()==1); CHECK(changes[0].slot==1);
+        CHECK_FALSE(table.slot(1).owner); applied[frame%3]=table.revision();
+        if (frame<13) {
+            table.beginFrame(frame); CHECK(table.insert(b,owner)==0); CHECK(table.full());
+        }
+    }
+    table.beginFrame(13); REQUIRE(table.insert(b,owner)==1);
+    CHECK(table.token(b).gen!=old.gen); CHECK(table.resolve(old)==0);
+    CHECK(table.resolve(table.token(b))==1);
+    const auto live=table.token(b);
+    table.invalidate(b); CHECK(table.token(b).gen==live.gen); CHECK_FALSE(table.slot(1).owner);
+    CHECK(table.insert(b,owner)==1); CHECK(table.resolve(live)==0); CHECK(table.slot(1).owner==owner);
+    bool full=false;
+    CHECK(table.changesSince(table.revision(),full).empty()); CHECK_FALSE(full);
+    table.changed(1); table.changed(1); // bounded overflow, as at mission load
+    CHECK(table.changesSince(0,full).empty()); CHECK(full);
+}
+
+TEST_CASE("TextureService: exhausted descriptor generations never wrap") {
+    TextureDescriptorTable table(2,1);
+    const auto handle=TextureHandle::make(1,1);
+    const auto owner=std::make_shared<int>(1);
+    REQUIRE(table.insert(handle,owner)==1);
+    const auto ancient=table.token(handle);
+    for (uint64_t frame=1;frame<UINT16_MAX;++frame) {
+        REQUIRE(table.erase(handle)); table.beginFrame(frame);
+        REQUIRE(table.insert(handle,owner)==1); CHECK(table.resolve(ancient)==0);
+    }
+    REQUIRE(table.erase(handle)); table.beginFrame(UINT16_MAX);
+    CHECK(table.insert(handle,owner)==0); CHECK(table.full()); CHECK(table.resolve(ancient)==0);
 }
 
 TEST_CASE("TextureService: delayed streaming staging cancellation and reload") {
@@ -394,8 +442,10 @@ struct PublicationFixture {
     std::unordered_map<uint32_t,Resident> residents;
     std::deque<Upload> uploads;
     bool queue(TextureHandle h) {
-        if (table.full(uploads.size()) || !budget.reserve(4)) return false;
+        const auto slot=table.reserve(h);
+        if (!slot || !budget.reserve(4)) return false;
         const auto version=service.contentVersion(h);
+        residents[h.raw()].descriptor=slot;
         residents[h.raw()].contentVersion=version;
         uploads.push_back({h,std::make_shared<int>(1),{tracker.noteSubmit(mc2vk::QueueKind::Graphics),0},4,version});
         return true;
@@ -413,14 +463,24 @@ TEST_CASE("TextureService: in-flight uploads reserve descriptor capacity") {
     const auto a=f.service.acquire(keyOf("unit","a",1));
     const auto b=f.service.acquire(keyOf("unit","b",2));
     REQUIRE(f.queue(a));
+    const auto pending=f.table.token(a);
+    const auto revision=f.table.revision();
+    REQUIRE(pending.slot==1); CHECK_FALSE(f.table.slot(1).owner);
+    CHECK(f.table.reserve(a)==1); CHECK(f.table.revision()==revision);
     CHECK_FALSE(f.queue(b)); // the uncompleted A already claims the only slot
-    f.pump(); CHECK(f.table.index(a)==0); CHECK(f.uploads.size()==1);
+    f.pump(); CHECK(f.table.resolve(pending)==1); CHECK(f.uploads.size()==1);
     f.complete(); f.pump();
     REQUIRE(f.table.index(a)==1); REQUIRE(bool(f.residents[a.raw()].image));
+    CHECK(f.table.token(a).gen!=pending.gen); CHECK(f.table.resolve(pending)==0);
+    bool full=false;
+    const auto changes=f.table.changesSince(revision,full);
+    REQUIRE(changes.size()==1); CHECK(changes[0].slot==pending.slot); CHECK_FALSE(full);
     CHECK_FALSE(f.queue(b));
     REQUIRE(f.service.release(a)); REQUIRE(f.table.erase(a));
+    CHECK_FALSE(f.queue(b));
+    f.table.beginFrame(3);
     REQUIRE(f.queue(b));
-    f.pump(); CHECK(f.table.index(b)==0);
+    f.pump(); CHECK(f.table.index(b)==1); CHECK_FALSE(f.table.slot(1).owner);
     f.complete(); f.pump();
     CHECK(bool(f.residents[b.raw()].image)); CHECK(f.table.index(b)==1);
     CHECK(f.service.isLive(b)); CHECK(f.budget.used==0);
@@ -437,8 +497,8 @@ TEST_CASE("TextureService: batched uploads share a completion ticket") {
     for (auto& upload : f.uploads) upload.ticket=ticket;
     f.tracker.setCompleted(mc2vk::QueueKind::Graphics,ticket.gfx-1);
     f.pump();
-    CHECK(f.table.index(a)==0);
-    CHECK(f.table.index(b)==0);
+    CHECK(f.table.index(a)==1); CHECK_FALSE(f.table.slot(1).owner);
+    CHECK(f.table.index(b)==2); CHECK_FALSE(f.table.slot(2).owner);
     CHECK(f.budget.used==8);
     CHECK(f.uploads.size()==2);
     f.tracker.setCompleted(mc2vk::QueueKind::Graphics,ticket.gfx);
@@ -449,17 +509,12 @@ TEST_CASE("TextureService: batched uploads share a completion ticket") {
     CHECK(f.uploads.empty());
 }
 
-TEST_CASE("TextureService: failed publication retries on the same live handle") {
+TEST_CASE("TextureService: reserved publication cannot be displaced by another publisher") {
     PublicationFixture f;
     const auto waiting=f.service.acquire(keyOf("unit","waiting",1));
     const auto occupant=f.service.acquire(keyOf("unit","occupant",2));
     REQUIRE(f.queue(waiting)); f.complete();
-    // Force an insertion failure even after admission, as with a competing publisher.
-    REQUIRE(f.table.insert(occupant,std::make_shared<int>(2))==1);
-    f.pump();
-    CHECK(f.table.index(waiting)==0); CHECK_FALSE(bool(f.residents[waiting.raw()].image));
-    REQUIRE(f.uploads.size()==1); CHECK(f.budget.used==4);
-    REQUIRE(f.table.erase(occupant));
+    REQUIRE(f.table.insert(occupant,std::make_shared<int>(2))==0);
     f.pump();
     CHECK(f.uploads.empty()); CHECK(f.budget.used==0);
     CHECK(f.service.isLive(waiting)); CHECK(f.table.index(waiting)==1);
@@ -470,11 +525,12 @@ TEST_CASE("TextureService: cancelled completed upload releases its reservation")
     PublicationFixture f;
     const auto h=f.service.acquire(keyOf("unit","cancelled",1));
     REQUIRE(f.queue(h)); REQUIRE(f.service.release(h));
+    REQUIRE(f.table.erase(h)); // residency retirement pump precedes publication
     f.pump(); CHECK(f.budget.used==4); // GPU still owns staging
     f.complete(); f.pump();
     CHECK(f.uploads.empty()); CHECK(f.budget.used==0);
     CHECK(f.table.index(h)==0); CHECK_FALSE(bool(f.residents[h.raw()].image));
-    CHECK_FALSE(f.table.full());
+    CHECK(f.table.full()); f.table.beginFrame(3); CHECK_FALSE(f.table.full());
 }
 
 TEST_CASE("TextureService: UI ids retain every generation bit and signal node retirement") {
@@ -561,6 +617,7 @@ TEST_CASE("TextureService: refused upload batches retain decoded requests and re
         CHECK(f.table.index(handle)==0);
         f.complete(); f.pump();
         REQUIRE(f.service.release(older)); REQUIRE(f.table.erase(older));
+        f.table.beginFrame(3);
         REQUIRE(f.budget.reserve(4));
         f.uploads.push_back({handle,std::make_shared<int>(42),{},4,version});
         batch.push_back(std::move(pending.front())); pending.pop_front();

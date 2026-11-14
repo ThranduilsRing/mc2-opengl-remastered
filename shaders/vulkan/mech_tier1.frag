@@ -33,9 +33,11 @@ layout(early_fragment_tests) in;
 // Per-frame UBO: generated from RenderCore/gpu_abi/GpuMechFrameUBO.h.
 #include "include/mech_frame_ubo_vk.glsl"
 
-layout(set = 0, binding = 3) uniform sampler2D uAlbedo;   // copy-once slot-0 paint scheme
-layout(set = 0, binding = 6) uniform sampler2D uMechAo;   // AO-1 (imported; GL unit 6)
-layout(set = 0, binding = 7) uniform sampler2D uMechNrm;  // NORMALS-1 (imported; GL unit 7)
+#define MC2_TEX_SET 2
+#include "include/texture_table_vk.glsl"
+#define uAlbedo MC2_TEX(uRun.albedoAo & 65535u, MC2_SAMP_REPEAT_BIASED)
+#define uMechAo MC2_TEX(uRun.albedoAo >> 16, MC2_SAMP_REPEAT_BIASED)
+#define uMechNrm MC2_TEX(uRun.normal, MC2_SAMP_REPEAT_BIASED)
 
 #define PREC highp
 // MECH_PREVIEW (mech_preview.frag.spv, baked from this source with -DMECH_PREVIEW=1): the
@@ -50,6 +52,8 @@ layout(push_constant) uniform MechRunPC {
     uint materialFlags;    // bit0 = ALPHA_TEST (mech.frag ALPHA_TEST_BIT)
     uint poolFirst;
     uint poolCount;
+    uint albedoAo;
+    uint normal;
 } uRun;
 #ifndef MECH_PREVIEW
 #define MC2_OBJECT_TERRAIN_GRID 1

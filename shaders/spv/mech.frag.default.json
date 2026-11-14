@@ -6,8 +6,8 @@
   "specializationParams": [],
   "artifact": "mech.frag.default.dbbae7d3.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "303f5a489ec50485abb10cdec10e2f103cce3b71b5ef3f21d15aa9f11aa21b15",
-  "spirv_sha256": "255ee367481ca6005457b624f82933d583e6d617b8d0610bc312f0e18bc46c96",
+  "source_sha256": "0dd17ebce5c248d66352a531888cdb9edcebc175ace4aaa13e5fdd69d4d13a75",
+  "spirv_sha256": "0609219d01919363d55bf2c6556b4946bc20eed756692c5d2c8b23af7004ea46",
   "bindings": {
     "ubos": [
       {
@@ -18,21 +18,21 @@
         "binding": 0
       },
       {
-        "type": "_1138",
+        "type": "_1167",
         "name": "MechFrameUBO",
         "block_size": 288,
         "set": 0,
         "binding": 0
       },
       {
-        "type": "_1547",
+        "type": "_1590",
         "name": "EnvironmentUBO",
         "block_size": 176,
         "set": 1,
         "binding": 26
       },
       {
-        "type": "_1554",
+        "type": "_1597",
         "name": "MoverShadowFrame",
         "block_size": 8336,
         "set": 0,
@@ -65,7 +65,7 @@
         "binding": 13
       },
       {
-        "type": "_1563",
+        "type": "_1605",
         "name": "TerrainCementBuf",
         "readonly": true,
         "block_size": 0,
@@ -80,27 +80,6 @@
         "location": null,
         "binding": 19,
         "set": 1
-      },
-      {
-        "name": "uMechAo",
-        "type": "sampler2D",
-        "location": null,
-        "binding": 6,
-        "set": 0
-      },
-      {
-        "name": "uMechNrm",
-        "type": "sampler2D",
-        "location": null,
-        "binding": 7,
-        "set": 0
-      },
-      {
-        "name": "uAlbedo",
-        "type": "sampler2D",
-        "location": null,
-        "binding": 3,
-        "set": 0
       },
       {
         "name": "moverShadowMap",
@@ -122,6 +101,27 @@
         "location": null,
         "binding": 3,
         "set": 1
+      },
+      {
+        "name": "gTex",
+        "type": "texture2D",
+        "location": null,
+        "binding": 0,
+        "set": 2
+      },
+      {
+        "name": "gTexArr",
+        "type": "texture2DArray",
+        "location": null,
+        "binding": 2,
+        "set": 2
+      },
+      {
+        "name": "gSamp",
+        "type": "sampler",
+        "location": null,
+        "binding": 1,
+        "set": 2
       }
     ],
     "images": []
@@ -851,7 +851,37 @@
         }
       ]
     },
-    "_1138": {
+    "_1113": {
+      "name": "MechRunPC",
+      "members": [
+        {
+          "name": "materialFlags",
+          "type": "uint",
+          "offset": 0
+        },
+        {
+          "name": "poolFirst",
+          "type": "uint",
+          "offset": 4
+        },
+        {
+          "name": "poolCount",
+          "type": "uint",
+          "offset": 8
+        },
+        {
+          "name": "albedoAo",
+          "type": "uint",
+          "offset": 12
+        },
+        {
+          "name": "normal",
+          "type": "uint",
+          "offset": 16
+        }
+      ]
+    },
+    "_1167": {
       "name": "MechFrameUBO",
       "members": [
         {
@@ -933,27 +963,7 @@
         }
       ]
     },
-    "_1208": {
-      "name": "MechRunPC",
-      "members": [
-        {
-          "name": "materialFlags",
-          "type": "uint",
-          "offset": 0
-        },
-        {
-          "name": "poolFirst",
-          "type": "uint",
-          "offset": 4
-        },
-        {
-          "name": "poolCount",
-          "type": "uint",
-          "offset": 8
-        }
-      ]
-    },
-    "_1547": {
+    "_1590": {
       "name": "EnvironmentUBO",
       "members": [
         {
@@ -980,7 +990,7 @@
         }
       ]
     },
-    "_1554": {
+    "_1597": {
       "name": "MoverShadowFrame",
       "members": [
         {
@@ -1028,7 +1038,7 @@
         }
       ]
     },
-    "_1563": {
+    "_1605": {
       "name": "TerrainCementBuf",
       "members": [
         {
