@@ -229,7 +229,7 @@ void ShadowBake::releaseTransients() {
     queryCount_ = 0;
     leaves_.clear(); leaves_.shrink_to_fit();
     tiles_.clear(); runs_.clear();
-    heights_.clear(); heights_.shrink_to_fit();
+    // Keep the CPU height snapshot until map invalidation; object-only rebakes reuse it.
     transientBytes_ = 0;
 }
 
@@ -262,7 +262,7 @@ void ShadowBake::invalidate() {
     diagRequest_ = diagPending_ = diagForceFull_ = false;
     diagBuf_.reset();
     diagInc_.clear();
-    heights_.clear();
+    heights_.clear(); heights_.shrink_to_fit();
     bakedKey_ = objectKey_ = recordedKey_ = recordedObjectKey_ = 0;
     objectGeneration_ = recordedObjectGeneration_ = 0;
     waitFrames_ = 0;
@@ -649,7 +649,8 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
         layout_ = mc2shadow::maskLayout(mapSide_, halfMap_, maskTarget(), maskCap());
         if (layout_.texels == 0) { blog("map too small for a mask: no bake."); return false; }
     }
-    if (!readHeightGrid()) { blog("height field malformed: no bake."); return false; }
+    // Object-only caster updates reuse the same terrain snapshot as dirty sub-tiles.
+    if ((recordedMask_ || heightsMoved_ || heights_.empty()) && !readHeightGrid()) { blog("height field malformed: no bake."); return false; }
     terrainTop_ = -1e30f;
     terrainMin_ = 1e30f;
     for (size_t i = 0; i < static_cast<size_t>(heightSide_) * heightSide_; ++i) {
