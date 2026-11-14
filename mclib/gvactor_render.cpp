@@ -151,6 +151,8 @@ long GVAppearance::render (long depthFixup)
 				// actor's own terrain light colour.
 				eye->setLightColor(0, poseLightRGB_);
 				eye->setLightIntensity(0, 1.0);
+				const Mc2LegacyVehicleScope inventory(drawShape->GetAlphaValue() != 0xff ? MC2_LEGACY_VEHICLE_FADING :
+					!GpuMechBatcher::instance().isVehicleTypeRegistered(drawShape->GetMultiType()) ? MC2_LEGACY_VEHICLE_UNREGISTERED : MC2_LEGACY_VEHICLE_DECLINED);
 				drawShape->Render(eye->getViewUniforms(),true);
 			}
 			else if (gpuPose_ && !renderShape && eye->isNight) {
