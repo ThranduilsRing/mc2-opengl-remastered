@@ -165,7 +165,7 @@ def promote_for_diff(steps, scheduled, planned, paths, asked, weekly):
     return keep, promoted
 
 
-OFFLINE_STAGES = ("contracts", "harnesses", "pytest", "unit-msvc-build")
+OFFLINE_STAGES = ("contracts", "harnesses", "pytest", "unit-msvc-build", "editor")
 
 
 def gate_env(name, device=None):
@@ -640,6 +640,7 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
         ("compare-captures", [py, "tools/visual_verify/ab.py", "--compare-only", str(proof / "before"),
                               str(proof / "after"), "--allow-data-delta", "--out-root", str(proof / "ab")], {}),
         # --no-cache: the row/module result caches live in a shared dir (precheck-speed); the gate runs every row itself.
+        ("editor", [py, "scripts/merge_gate_editor.py", str(jobs)], {}),
         ("contracts", [git_bash(), "scripts/check-contracts.sh", "-j" + str(jobs), "--no-cache"], {}),
         ("harnesses", [py, "tools/build_contract_harnesses.py", "--run", "--unit", "-j", str(jobs)], {}),
         # Per window: day (mc2_01) + night (mc2_10) only (p29 cut 4); the five-map breadth is the weekly tier1-full row below.
@@ -800,6 +801,10 @@ def change_domains(paths):
 
 
 def affected_plan(steps, paths, full=False):
+    import gate_hosts
+    editor = full or any(p.replace("\\", "/").lower().startswith(("editor/", "gameos/", "mclib/"))
+                         or Path(p).name.lower() == "cmakelists.txt" or p.lower().endswith(".cmake")
+                         or p.replace("\\", "/") == "scripts/merge_gate_editor.py" for p in paths)
     domains = change_domains(paths)
     # Save paths retain serialization coverage; asset names alone do not imply it.
     classic_saves = full or any(any(token in p.replace("\\", "/").lower() for token in (
@@ -832,6 +837,9 @@ def affected_plan(steps, paths, full=False):
                 reason = "docs/tooling-only diff has no runtime inputs"
             elif name == "harnesses" and not sim:
                 reason = "diff has no C++ harness inputs"
+        if name == "editor":
+            verdict, detail = gate_hosts.editor_stage()
+            reason = detail if verdict != "RUN" else (None if editor else "diff has no editor build inputs")
         if name == "tier1-full":
             if batch_tier:
                 cmd += ["--mission", "mc2_01", "--mission", "mc2_03", "--mission", "mc2_17", "--mission", "mc2_24"]
