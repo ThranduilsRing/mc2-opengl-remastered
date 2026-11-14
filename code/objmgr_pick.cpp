@@ -750,13 +750,17 @@ GameObjectPtr pickGameplayObjects(long x, long y, std::span<GameObjectPtr> list,
     }
     if (stack.empty()) return GameObjectPtr{};
     std::stable_sort(stack.begin(), stack.end(), [](const auto& a, const auto& b) {
-        const bool mover = a.obj->isMover() && a.eligible;
-        const bool otherMover = b.obj->isMover() && b.eligible;
-        if (mc2::pickCandidateBefore(mover, a.depth, a.priority, otherMover, b.depth, b.priority)) return true;
-        if (mc2::pickCandidateBefore(otherMover, b.depth, b.priority, mover, a.depth, a.priority)) return false;
-        return a.obj->getHandle() < b.obj->getHandle();
+        return mc2::pickStackBefore({a.obj->isMover() && a.eligible, a.depth, a.priority, static_cast<long>(a.obj->getHandle())},
+                                    {b.obj->isMover() && b.eligible, b.depth, b.priority, static_cast<long>(b.obj->getHandle())});
     });
     const auto& front = stack.front();
+    if (mc2_diag::tagEnabled("PICK")) {
+        char payload[192];
+        mc2::fmt::to_buf(payload, "{{\"mouse\":[{},{}],\"winner\":{},\"winner_class\":{},\"eligible\":{},\"candidates\":{}}}",
+            mc2::fmt::as_i32(x), mc2::fmt::as_i32(y), front.obj->getPartId(), static_cast<int>(front.obj->getObjectClass()),
+            front.eligible ? 1 : 0, static_cast<int>(stack.size()));
+        mc2_diag::writeEvent("PICK", 1, 0, payload);
+    }
     return front.eligible ? front.obj : nullptr;
 }
 } // namespace

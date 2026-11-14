@@ -58,4 +58,15 @@ inline bool pickCandidateBefore(bool mover, double depth, int priority,
     if (depth != otherDepth) return depth < otherDepth;
     return priority < otherPriority;
 }
+
+// Total order of the gameplay pick stack: an eligible (visible, targetable) mover always precedes scenery
+// (trees, props, buildings, even when nearer along the ray); then depth, priority, handle.
+struct PickRank { bool eligibleMover; double depth; int priority; long handle; };
+inline bool pickStackBefore(const PickRank& a, const PickRank& b)
+{
+    if (a.eligibleMover != b.eligibleMover) return a.eligibleMover;
+    if (a.depth != b.depth) return a.depth < b.depth;
+    if (a.priority != b.priority) return a.priority < b.priority;
+    return a.handle < b.handle;
+}
 } // namespace mc2

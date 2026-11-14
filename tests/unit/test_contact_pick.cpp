@@ -229,3 +229,21 @@ TEST_CASE("contact pick: first ridge wins over the fixed point far valley")
     REQUIRE(mc2::firstTerrainHit(origin, vertical, lo, hi, 0.125, height, t));
     CHECK(t == doctest::Approx(10));
 }
+
+TEST_CASE("pick stack: enemy mover under a tree canopy beats the nearer tree and prop")
+{
+    using mc2::PickRank;
+    // Cursor ray enters a huge island-tree box (t=5) and a prop (t=6) before the enemy mech (t=40).
+    const PickRank tree{false, 5.0, 4, 10}, prop{false, 6.0, 1, 11}, enemy{true, 40.0, 0, 99};
+    CHECK(mc2::pickStackBefore(enemy, tree));
+    CHECK(mc2::pickStackBefore(enemy, prop));
+    CHECK_FALSE(mc2::pickStackBefore(tree, enemy));
+    // Unit in the open (no scenery on the ray): unchanged, mover is the only candidate.
+    CHECK_FALSE(mc2::pickStackBefore(enemy, enemy));
+    // Friendly and enemy movers: depth then priority, as before.
+    const PickRank friendlyNear{true, 20.0, 2, 5}, enemyFar{true, 40.0, 0, 6};
+    CHECK(mc2::pickStackBefore(friendlyNear, enemyFar));
+    CHECK(mc2::pickStackBefore(PickRank{true, 20.0, 0, 7}, PickRank{true, 20.0, 2, 5}));
+    // An ineligible mover (unseen contact) does not outrank a visible static object.
+    CHECK(mc2::pickStackBefore(PickRank{false, 6.0, 1, 11}, PickRank{false, 40.0, 0, 3}));
+}
