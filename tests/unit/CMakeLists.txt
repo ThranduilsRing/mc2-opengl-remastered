@@ -37,6 +37,7 @@ add_executable(mc2_tests
     ${MC2_WORKTREE_ROOT}/mclib/fx/fx_catalog.cpp
     ${MC2_WORKTREE_ROOT}/mclib/fx/fx_curve.cpp
     ${MC2_WORKTREE_ROOT}/mclib/fx/fx_mesh_data.cpp
+    test_component_rules.cpp
     test_support_craft.cpp
     test_jump_target.cpp
     test_path_work.cpp
@@ -73,6 +74,7 @@ add_executable(mc2_tests
     test_mover_los_epoch.cpp
     test_screen_pick.cpp
     test_camera_start_pick.cpp
+    test_camera_elevation.cpp
     test_spawn_tree_clear.cpp
     test_quality_presets.cpp
     test_rendercore.cpp     # RENDERCORE-UNIT-TESTS-1: GL-free substrate invariants

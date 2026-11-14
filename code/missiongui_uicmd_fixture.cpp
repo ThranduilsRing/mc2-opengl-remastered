@@ -6,10 +6,229 @@
 #include "bldng.h"
 #include "../mclib/texture_assets.h"
 #include "Gates/gate.h"
+#include "Gates/preferences_values.h"
 #include "mc2fmt.h"
 #include "../RenderCore/TextureService.h"
 #include "../GameOS/gameos/battle_bench.h"
 #include "package_chassis.h"
+#include "logistics.h"
+#include "missionbegin.h"
+#include "../GuiRuntime/PlayerFrontEnd.h"
+
+extern bool justStartMission;
+extern char missionName[1024];
+namespace mc2vk { size_t deferredDestroyDepth(); }
+
+namespace {
+struct AbortReloadFixture {
+    std::vector<std::string> targets;
+    size_t cycle = 0;
+    int phase = 0;
+    std::chrono::steady_clock::time_point since;
+    std::string current = "mc2_01", campaignFirst;
+} abortReload;
+}
+
+// Remains live while the mission command channel is down in the front end.
+void mc2AbortReloadFixtureUpdate()
+{
+    auto& f = abortReload;
+    if (!f.phase) return;
+    const auto now = std::chrono::steady_clock::now();
+    const double elapsed = std::chrono::duration<double>(now - f.since).count();
+    if (f.phase == 1 && mission->isActive() && elapsed >= 60 && scenarioTime >= 60 && !eye->inMovieMode) {
+        auto* iface = mission->missionInterface;
+        if (!iface->isPaused()) iface->togglePause();
+        iface->getControlGui()->getPauseWnd()->handleClick(PauseWindow::RESTART);
+        f.phase = 2;
+    } else if (f.phase == 2) {
+        auto* pw = mission->missionInterface->getControlGui()->getPauseWnd();
+        if (pw->confirmDialogUp() && LogisticsOKDialog::instance()->getEnterAnim().isDone()) {
+            LogisticsOKDialog::instance()->handleMessage(aMSG_LEFTMOUSEDOWN, LogisticsScreen::YES);
+            if (mc2_diag::tagRequested("ABORT_RELOAD")) std::fprintf(stderr, "[ABORT_RELOAD] cycle=%zu phase=abort mission=%s play_s=%.3f sim_s=%.3f\n",
+                         f.cycle + 1, f.current.c_str(), elapsed, static_cast<double>(scenarioTime));
+            f.phase = 3;
+        }
+    } else if (f.phase == 3 && !mission->isActive()) {
+        if (mc2_diag::tagRequested("ABORT_RELOAD")) std::fprintf(stderr, "[ABORT_RELOAD] cycle=%zu phase=unload mission=%s deferred=%zu\n",
+                     f.cycle + 1, f.current.c_str(), mc2vk::deferredDestroyDepth());
+        logistics->start(log_SPLASH);
+        logistics->getMissionBegin()->beginSplash();
+        f.since = now;
+        f.phase = 4;
+    } else if (f.phase == 4 && elapsed >= 2) {
+        const std::string next = f.targets[f.cycle++];
+        if (mc2_diag::tagRequested("ABORT_RELOAD")) std::fprintf(stderr, "[ABORT_RELOAD] cycle=%zu phase=menu next=%s\n", f.cycle, next.c_str());
+        if (next == "campaign") {
+            PlayerFrontEnd::requestCampaignStart("campaign");
+            f.phase = 5;
+        } else {
+            logistics->getMissionBegin()->end();
+            std::strcpy(missionName, next.c_str());
+            LogisticsData::instance->setSingleMission(next.c_str());
+            LogisticsData::instance->setSkipLogistics(true);
+            logistics->stop();
+            Logistics::beginMission(nullptr, 0, nullptr);
+            logistics->setLogisticsState(log_DONE);
+            f.current = next;
+            f.since = std::chrono::steady_clock::now();
+            f.phase = f.cycle < f.targets.size() ? 1 : 0;
+        }
+    } else if (f.phase == 5 && mission->isActive() && scenarioTime >= 3 && eye->inMovieMode) {
+        eye->forceMovieToEnd(); // Same request as ESC; let the mission script restore the HUD before winning.
+    } else if (f.phase == 5 && mission->isActive() && scenarioTime >= 3 && !eye->inMovieMode) {
+        f.campaignFirst = LogisticsData::instance->getCurrentMission();
+        if (mc2_diag::tagRequested("ABORT_RELOAD")) std::fprintf(stderr, "[ABORT_RELOAD] phase=campaign_win mission=%s\n", f.campaignFirst.c_str());
+        mission->forceTerminate(mis_PLAYER_WIN_BIG);
+        f.phase = 6;
+    } else if (f.phase == 6 && mission->isActive() &&
+               LogisticsData::instance->getCurrentMission() != f.campaignFirst) {
+        if (mc2_diag::tagRequested("ABORT_RELOAD")) std::fprintf(stderr, "[ABORT_RELOAD] phase=complete cycles=%zu campaign_next=%s\n",
+                     f.cycle, LogisticsData::instance->getCurrentMission().c_str());
+        f.phase = 0;
+        gos_TerminateApplication();
+    }
+}
+
+
+extern float MapCellDiagonal;
+
+// Test-only loadout queue. Production fire, projectile and movement paths own the measurements.
+namespace {
+struct EquipmentProbe {
+    long weapon, defense, engine, armor;
+};
+std::vector<EquipmentProbe> equipmentQueue;
+BattleMechPtr equipmentSource = nullptr, equipmentTarget = nullptr;
+glm::vec3 equipmentOrigin(0.0f), equipmentPrevious(0.0f);
+float equipmentStarted = -1.0f, equipmentSampleTime = 0.0f, equipmentTopSpeed = 0.0f;
+long equipmentBirths = 0, equipmentIntercepts = 0, equipmentAmmo = 0, equipmentDefenseAmmo = 0;
+long equipmentArmorBefore = 0, equipmentFireResult = -1;
+long equipmentChassis = -1;
+bool equipmentRecording = false;
+long equipmentWeaponIndex = -1, equipmentAttempts = 0, equipmentHits = 0, equipmentDebits = 0;
+float equipmentLastShot = -1.0f;
+std::string_view equipmentRefusal = "none";
+long probeArmor(BattleMechPtr mech) {
+    long sum = 0;
+    for (int i = 0; i < mech->numArmorLocations; ++i) sum += mech->armor[i].maxArmor;
+    return sum;
+}
+long probeAmmo(BattleMechPtr mech, long component) {
+    return component ? mech->tallyAmmo(MasterComponent::masterList[component].getWeaponAmmoMasterId()) : 0;
+}
+}
+
+void mc2EquipmentProbeEvent(std::string_view event, unsigned long target) {
+    if (equipmentRecording && event == "birth") ++equipmentBirths;
+    else if (equipmentRecording && equipmentSource && target == equipmentSource->getWatchID(false)) equipmentRefusal = event;
+    if (equipmentStarted >= 0.0f && equipmentTarget && event == "intercept" &&
+        target == equipmentTarget->getWatchID(false)) ++equipmentIntercepts;
+}
+
+void mc2EquipmentProbeTick() {
+    if (equipmentQueue.empty() || !equipmentSource || !equipmentTarget) return;
+    auto& job = equipmentQueue.front();
+    auto* source = equipmentSource;
+    auto* target = equipmentTarget;
+    if (equipmentStarted < 0.0f) {
+        mc2::options::runtimePreferences().useUnlimitedAmmo = false; // Probe finite ammo, independent of player settings.
+        long baseline[] = {1};
+        source->resetComponents(1, baseline);
+        equipmentArmorBefore = probeArmor(source);
+        long loadout[] = {job.engine, job.weapon, job.armor};
+        long count = job.armor ? 3 : job.weapon ? 2 : 1;
+        source->resetComponents(count, loadout);
+        long defense[] = {1, job.defense};
+        target->resetComponents(job.defense ? 2 : 1, defense);
+        equipmentBirths = equipmentIntercepts = 0;
+        equipmentAmmo = probeAmmo(source, job.weapon);
+        equipmentDefenseAmmo = probeAmmo(target, job.defense);
+        equipmentFireResult = -1;
+        equipmentWeaponIndex = -1;
+        equipmentAttempts = equipmentHits = equipmentDebits = 0;
+        equipmentLastShot = -1.0f;
+        for (long i = source->numOther; i < source->numOther + source->numWeapons; ++i)
+            if (source->inventory[i].masterID == job.weapon) { equipmentWeaponIndex = i; break; }
+        const long ammoIndex = equipmentWeaponIndex >= 0 ? source->inventory[equipmentWeaponIndex].ammoIndex : -1;
+        const long ammoMaster = job.weapon ? MasterComponent::masterList[job.weapon].getWeaponAmmoMasterId() : 0;
+        const bool binding = !job.weapon || (equipmentWeaponIndex >= 0 && ammoIndex >= 0 &&
+            ammoIndex < source->getNumAmmoTypes() && source->getAmmoType(ammoIndex) == ammoMaster);
+        mc2::fmt::print(stderr, "[EQUIPMENT_PROBE] binding weapon={} index={} actual={} ammo_index={} ammo_master={} valid={}\n",
+            job.weapon, equipmentWeaponIndex, equipmentWeaponIndex >= 0 ? source->inventory[equipmentWeaponIndex].masterID : -1,
+            ammoIndex, ammoMaster, binding);
+        equipmentTopSpeed = 0.0f;
+        source->setPosition(equipmentOrigin);
+        auto pos = equipmentOrigin;
+        extern float WeaponRanges[NUM_WEAPON_RANGE_TYPES][2];
+        const auto range = job.weapon ? MasterComponent::masterList[job.weapon].getWeaponRange() : WEAPON_RANGE_SHORT;
+        pos.y += (WeaponRanges[range][0] + WeaponRanges[range][1]) * 0.5f * worldUnitsPerMeter;
+        pos.z = land->getTerrainElevation(pos);
+        target->setPosition(pos);
+        // Keep this stationary test target alive across many real production volleys.
+        for (int i = 0; i < target->numArmorLocations; ++i) target->armor[i].curArmor = 100000.0f;
+        source->getPilot()->orderWait(false, ORDER_ORIGIN_PLAYER);
+        target->getPilot()->orderWait(false, ORDER_ORIGIN_PLAYER);
+        source->getPilot()->setSkill(MWS_GUNNERY, 100);
+        for (long i = source->numOther; i < source->numOther + source->numWeapons; ++i)
+            source->inventory[i].disabled = true;
+        if (!job.weapon) {
+            pos = equipmentOrigin;
+            pos.x += 250.0f * worldUnitsPerMeter;
+            pos.z = land->getTerrainElevation(pos);
+            source->getPilot()->orderMoveToPoint(false, true, ORDER_ORIGIN_PLAYER, pos, -1, TACORDER_PARAM_RUN);
+        }
+        equipmentPrevious = source->getPosition();
+        equipmentStarted = equipmentSampleTime = scenarioTime;
+        mc2::fmt::print(stderr, "[EQUIPMENT_PROBE] begin weapon={} defense={} engine={} armor={} source={} target={}\n",
+            job.weapon, job.defense, job.engine, job.armor, source->getPartId(), target->getPartId());
+    }
+    const float dt = scenarioTime - equipmentSampleTime;
+    if (dt > 0.0f) {
+        const auto delta = source->getPosition() - equipmentPrevious;
+        equipmentTopSpeed = std::max(equipmentTopSpeed, glm::length(glm::vec2(delta.x, delta.y)) / (dt * worldUnitsPerMeter));
+        equipmentPrevious = source->getPosition();
+        equipmentSampleTime = scenarioTime;
+    }
+    const bool streak = job.weapon && MasterComponent::masterList[job.weapon].getWeaponStreak();
+    const long volleys = streak ? 20 : 1;
+    if (job.weapon && equipmentWeaponIndex >= 0 && equipmentAttempts < volleys &&
+        scenarioTime - equipmentStarted >= 3.0f &&
+        (equipmentLastShot < 0.0f || scenarioTime - equipmentLastShot >=
+            MasterComponent::masterList[job.weapon].getWeaponRecycleTime() + 0.1f)) {
+        const long index = equipmentWeaponIndex;
+        const long before = probeAmmo(source, job.weapon), births = equipmentBirths;
+        const long ammoIndex = source->inventory[index].ammoIndex;
+        const bool binding = ammoIndex >= 0 && ammoIndex < source->getNumAmmoTypes() &&
+            source->getAmmoType(ammoIndex) == MasterComponent::masterList[job.weapon].getWeaponAmmoMasterId();
+        equipmentRefusal = "none";
+        source->inventory[index].disabled = false;
+        equipmentRecording = true;
+        float damage = 0.0f;
+        equipmentFireResult = source->fireWeapon(target, 0.0f, index, 0, MECH_ARMOR_LOCATION_CTORSO, nullptr, damage);
+        equipmentRecording = false;
+        source->inventory[index].disabled = true;
+        ++equipmentAttempts;
+        equipmentHits += damage > 0.0f;
+        const long debit = before - probeAmmo(source, job.weapon);
+        equipmentDebits += debit;
+        equipmentLastShot = scenarioTime;
+        mc2::fmt::print(stderr, "[EQUIPMENT_PROBE] shot weapon={} index={} actual={} attempt={} target_valid={} distance={:.4f} in_range={} binding={} fire={} refusal=mech_weapons.cpp/{} births={} debit={} hit={} damage={:.4f}\n",
+            job.weapon, index, source->inventory[index].masterID, equipmentAttempts, !target->isDestroyed(),
+            source->distanceFrom(target->getPosition()), source->weaponInRange(index, source->distanceFrom(target->getPosition()), MapCellDiagonal),
+            binding, equipmentFireResult, equipmentRefusal, equipmentBirths - births, debit, damage > 0.0f, damage);
+    }
+    if (scenarioTime - equipmentStarted < (streak ? 180.0f : 12.0f) &&
+        (!streak || equipmentAttempts < volleys || scenarioTime - equipmentLastShot < 9.0f)) return;
+    mc2::fmt::print(stderr, "[EQUIPMENT_PROBE] result weapon={} defense={} engine={} armor={} fire={} births={} intercepts={} ammo={}->{} defense_ammo={}->{} top_mps={:.4f} max_mps={:.4f} armor_total={}->{} engine_master={} attempts={} hits={} debits={}\n",
+        job.weapon, job.defense, job.engine, job.armor, equipmentFireResult, equipmentBirths, equipmentIntercepts,
+        equipmentAmmo, probeAmmo(source, job.weapon), equipmentDefenseAmmo, probeAmmo(target, job.defense),
+        equipmentTopSpeed, source->calcMaxSpeed(), equipmentArmorBefore, probeArmor(source), source->inventory[source->engine].masterID,
+        equipmentAttempts, equipmentHits, equipmentDebits);
+    equipmentQueue.erase(equipmentQueue.begin());
+    equipmentStarted = -1.0f;
+    if (equipmentQueue.empty()) mc2::fmt::print(stderr, "[EQUIPMENT_PROBE] complete\n");
+}
 
 //--------------------------------------------------------------------------
 // FREEZE-MOVERS-1 (GAMEPLAY-DRIVER-3): deterministic mover freeze.
@@ -74,6 +293,11 @@ extern "C" long mc2FreezeMoversMissionFrame()
 // frozen, with no command in mission B's own session having asked for it.
 extern "C" void mc2FreezeMoversMissionReset()
 {
+    equipmentQueue.clear();
+    equipmentSource = equipmentTarget = nullptr;
+    equipmentStarted = -1.0f;
+    equipmentRecording = false;
+    equipmentChassis = -1;
 	s_freezeMoversBase    = static_cast<long>(g_mc2FrameCounter.load(std::memory_order_relaxed));
 	s_freezeMoversOn      = false;
 	s_freezeMoversEngaged = -1;
@@ -126,6 +350,65 @@ void mc2BenchWalk(GameObjectManager& om, int rounds);   // code/objmgr_misc.cpp
 // Test-only fixtures and determinism verbs (spawn, teleport, freeze_movers, set_light, animate). Returns true when a verb of this group matched.
 bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 {
+    if (c.line.starts_with("equipment_probe ")) {
+        long chassis = 0;
+        EquipmentProbe job{};
+        c.result = "blocked";
+        c.note = "equipment_probe <chassis|0=clone> <weapon|0> <AMS|0> <engine> <armor|0>; needs MC2_TEST_SPAWN=1";
+        if (!mc2::gate::get<"MC2_TEST_SPAWN">() || !ObjectManager || !Team::home ||
+            sscanf(c.line.c_str() + 16, "%ld %ld %ld %ld %ld", &chassis, &job.weapon, &job.defense, &job.engine, &job.armor) != 5) return true;
+        if (equipmentChassis != -1 && chassis != equipmentChassis) return true;
+        for (long id : {job.weapon, job.defense, job.engine, job.armor})
+            if (id < 0 || id >= MasterComponent::numComponents) return true;
+        if (MasterComponent::masterList[job.engine].getForm() != COMPONENT_FORM_ENGINE ||
+            (job.weapon && MasterComponent::masterList[job.weapon].getForm() != COMPONENT_FORM_WEAPON_MISSILE) ||
+            (job.weapon && MasterComponent::masterList[job.weapon].isDefensiveWeapon()) ||
+            (job.defense && !MasterComponent::masterList[job.defense].isDefensiveWeapon()) ||
+            (job.armor && MasterComponent::masterList[job.armor].getForm() != COMPONENT_FORM_BULK)) return true;
+        if (!equipmentSource) {
+            MoverPtr model = nullptr;
+            for (long i = 0; i < ObjectManager->getNumMovers(); ++i) {
+                auto* mover = ObjectManager->getMover(i);
+                if (mover && mover->isMech() && mover->getTeamId() == Team::home->getId()) { model = mover; break; }
+            }
+            if (!model) return true;
+            equipmentOrigin = model->getPosition();
+            for (int i = 0; i < 2; ++i) {
+                const long before = ObjectManager->getNumMovers();
+                const auto command = std::format("spawn {} {} {} {}", chassis ? std::to_string(chassis) : "clone",
+                    equipmentOrigin.x, equipmentOrigin.y, Team::home->getId());
+                UiCmdCtx spawn{command};
+                uiCmdFixture(spawn);
+                if (std::string_view(spawn.result) != "ok" || ObjectManager->getNumMovers() != before + 1) return true;
+                auto* mech = dynamic_cast<BattleMech*>(ObjectManager->getMover(before));
+                if (!mech) return true;
+                if (i == 0) equipmentSource = mech; else equipmentTarget = mech;
+            }
+            equipmentChassis = chassis;
+        }
+        equipmentQueue.push_back(job);
+        c.result = "ok";
+        c.note = "queued production salvo/movement measurement";
+        return true;
+    }
+
+	if (c.line.starts_with("abort_reload ")) {
+		const std::string next = c.line.substr(13);
+		if (!mc2::gate::get<"MC2_TEST_SPAWN">() ||
+			(next != "mc2_01" && next != "mc2_10" && next != "mc2_17" && next != "mc2_03" && next != "campaign")) {
+			c.result = "blocked"; c.note = "abort_reload <mc2_01|mc2_10|mc2_17|mc2_03|campaign> needs MC2_TEST_SPAWN=1";
+		} else {
+			abortReload.targets.push_back(next);
+			if (!abortReload.phase) {
+				justStartMission = false;
+				abortReload.current = missionName;
+				abortReload.since = std::chrono::steady_clock::now();
+				abortReload.phase = 1;
+			}
+			c.result = "ok";
+		}
+		return true;
+	}
 	if (c.line.starts_with("force_state ")) {
 		// force_state <partId> sensor <0..4> | armoff left|right  (needs MC2_TEST_SPAWN=1; pair with freeze_movers so the sim does not rewrite it)
 		long pid = 0; char what[16] = {0}, arg[16] = {0};
@@ -140,6 +423,10 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 		} else if (!strcmp(what, "armoff")) {
 			if (!strcmp(arg, "left")) obj->getAppearance()->blowLeftArm(); else obj->getAppearance()->blowRightArm();
 			c.result = "ok";
+		} else if (obj->getObjectClass() == GROUNDVEHICLE && !strcmp(what, "destroy")) {
+			obj->getObjectType()->handleDestruction(obj, nullptr);
+			c.result = obj->isDestroyed() ? "ok" : "blocked";
+			c.note = "destroyed=" + std::to_string(obj->isDestroyed());
 		} else if (obj->getObjectClass() == BUILDING && (!strcmp(what, "team") || !strcmp(what, "destroy"))) {
 			// Exercise the production capture/destruction writers, including their dirty notification.
 			const bool before = mc2::terrainDirtyQueue().isRenderResident(obj->getHandle());

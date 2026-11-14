@@ -442,3 +442,32 @@ def test_ab_declared_grass_accepts_only_candidate_hash(work, declaration_repo, m
     assert parity["cross_data"] and parity["unlisted_differing_count"] == 0
     tree(install_b, {"data/unlisted.png": b"extra"})
     assert ab.data_parity(install_a, install_b)["unlisted_differing_count"] == 1
+
+
+def test_fail_detail_names_paths_and_reference_moved_cause(ref, work):
+    inst = tree(work / "lane", SHARED)
+    (inst / ".deployed_manifest.csv").write_text("x")
+    os.utime(inst / ".deployed_manifest.csv", (1000, 1000))
+    (inst / "data/art/mechicons/anubis.png").write_bytes(b"older")
+    tree(inst, {f"data/extra_{i}.bin": b"e" for i in range(10)})
+    result = ap.compare(inst, ref, skip=set())
+    text = "\n".join(ap.detail_lines(result, inst, ref, limit=3))
+    assert "size: data/art/mechicons/anubis.png" in text and "(+7 more)" in text
+    assert "extra: data/extra_0.bin" in text and "the reference moved" in text
+    # With nothing newer in the reference and only extras, the cause names the prune command.
+    inst2 = tree(work / "lane2", {**SHARED, "data/stale.bin": b"s"})
+    os.utime(ref / "data/textures/1.2.txm", (1, 1))
+    text = "\n".join(ap.detail_lines(ap.compare(inst2, ref, skip=set()), inst2, ref))
+    assert "--sync" in text and "stale.bin" in text
+    assert ap.detail_lines(ap.Result(), inst, ref) == []
+
+
+def test_pinned_mismatch_error_lists_every_failing_file(work):
+    inst = tree(work / "lane", {"data/a.fit": b"a", "data/b.fit": b"b"})
+    sha = lambda data: hashlib.sha256(data).hexdigest()
+    declared = {"data/a.fit": sha(b"A"), "data/b.fit": sha(b"b"), "data/gone.fit": sha(b"g")}
+    with pytest.raises(ValueError) as exc:
+        ap.owned_paths(inst, {}, declared)
+    msg = str(exc.value)
+    assert "2 file(s)" in msg and "data/a.fit (sha256=" in msg and "data/gone.fit (absent" in msg
+    assert "data/b.fit" not in msg

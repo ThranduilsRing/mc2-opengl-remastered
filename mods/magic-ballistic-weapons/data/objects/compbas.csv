@@ -106,7 +106,7 @@ Component Table,Type,Name,crit hits,Recycle (if ammo = #shots),Heat,Weight,Damag
 104,BallisticWeapon,Gauss Rifle,7,5,1,16,7.5,982.72,15300,long,No,Yes,Yes,Yes,Yes,Yes,No,No,1,0,10,204,MCL_MC_GaussRifle.tga,MCL_MC_GaussRifle,32104,34104,2,3
 105,BallisticWeapon,Machine Gun,1,1,0,2,0.3,20,600,short,No,Yes,Yes,Yes,Yes,Yes,No,No,1,0,11,205,MCL_MC_MGArray.tga,MCL_MC_MGArray,32105,34105,1,1
 106,MissileWeapon,Anti-Missile System,1,10,1,1,0,32,0,0,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,1,0,6,206,MCL_MC_SRMPack.tga,MCL_MC_SRMPack,32106,34106,1,1
-107,BallisticWeapon,Light LBX Autocannon,4,1.75,1,8.5,0.5,609,3270,0,No,Yes,Yes,Yes,Yes,Yes,Yes,Yes,1,4,22,207,MCL_MC_ClanLightLBX.tga,MCL_MC_ClanLightLBX,32107,34107,2,1
+107,BallisticWeapon,Light LBX Autocannon,4,1.75,1,8.5,0.5,609,3270,long,No,Yes,Yes,Yes,Yes,Yes,Yes,Yes,1,4,22,207,MCL_MC_ClanLightLBX.tga,MCL_MC_ClanLightLBX,32107,34107,2,1
 108,BallisticWeapon,Ultra Autocannon (AC10),8,3,4,12,6,597.27,8000,medium,No,Yes,Yes,Yes,Yes,Yes,No,No,1,0,18,208,MCL_MC_UltraMediumAutocannon.tga,MCL_MC_UltraMediumAutocannon,32108,34108,2,2
 109,BallisticWeapon,Clan Heavy Ultra Autocannon (AC20),12,4,8,16,15,866.29,14200,short,No,Yes,Yes,Yes,Yes,Yes,No,No,1,0,19,212,MCL_MC_ClanUltraHeavyAutocannon.tga,MCL_MC_ClanUltraHeavyAutocannon,32109,34109,2,3
 110,BallisticWeapon,Clan Light Ultra Autocannon (AC5),4,1.07,1,8,1,443.86,7500,long,No,Yes,Yes,Yes,Yes,Yes,No,No,1,0,7,210,MCL_MC_ClanUltraLightAutocannon.tga,MCL_MC_ClanUltraLightAutocannon,32110,34110,2,1
@@ -205,7 +205,7 @@ Component Table,Type,Name,crit hits,Recycle (if ammo = #shots),Heat,Weight,Damag
 203,Ammo,Light Ultra Autocannon (AC5) Ammo,1,60,NA,0,0.5,NA,NA,0,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,na,0,0,0,0,0,32203,34203,0,0
 204,Ammo,Gauss Rifle Ammo,1,16,NA,0,1,NA,NA,0,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,na,0,0,0,0,0,32204,34204,0,0
 205,Ammo,MG Array Ammo,1,200,NA,0,1,NA,NA,0,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,na,0,0,0,0,0,32205,34205,0,0
-206,Ammo,Anti-Missile Ammo,1,0,na,2,24,11,0,0,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,na,0,0,0,0,0,32206,34206,,
+206,Ammo,Anti-Missile Ammo,1,24,na,2,24,11,0,0,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,na,0,0,0,0,0,32206,34206,,
 207,Ammo,Lt. LBX Ammo,1,2,na,1,260,0,0,0,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,na,0,0,0,0,0,32207,34207,,
 208,Ammo,Ultra Autocannon (AC10) Ammo,1,30,NA,0,0.5,NA,NA,0,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,na,0,0,0,0,0,32208,34208,0,0
 209,Ammo,Heavy Ultra Autocannon (AC20) Ammo,1,12,NA,0,0.5,NA,NA,0,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,na,0,0,0,0,0,32209,34209,0,0
@@ -214,7 +214,7 @@ Component Table,Type,Name,crit hits,Recycle (if ammo = #shots),Heat,Weight,Damag
 212,Ammo,Clan Heavy Ultra Autocannon (AC20) Ammo,1,15,NA,0,0.5,NA,NA,0,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,na,0,0,0,0,0,32212,34212,0,0
 213,Ammo,Clan Gauss Rifle Ammo,1,16,NA,0,1,NA,NA,0,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,na,0,0,0,0,0,32213,34213,0,0
 214,Ammo,C M Gun Ammo,1,500,na,0,1,NA,NA,0,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,na,0,0,0,0,0,32214,34214,,
-215,Ammo,C Anti-Missile Ammo,1,0,na,2,48,21,0,0,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,na,0,0,0,0,0,32215,34215,,
+215,Ammo,C Anti-Missile Ammo,1,48,na,2,48,21,0,0,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,na,0,0,0,0,0,32215,34215,,
 216,Ammo,C Lt. LBX Ammo,1,90,na,0,1.5,0,0,0,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,na,0,0,0,0,0,32216,34216,,
 217,Ammo,C LBX Ammo,1,45,na,0,1.5,0,0,0,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,na,0,0,0,0,0,32217,34217,,
 218,Ammo,C Hvy. LBX Ammo,1,20,na,0,1.5,0,0,0,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,na,0,0,0,0,0,32218,34218,,

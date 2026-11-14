@@ -113,3 +113,5 @@ struct GosTexels {
 
 // Implemented by the renderer's texture list (gameos_graphics.cpp).
 GosTexels gos_GetTextureTexels(uint32_t gosHandle);
+// Render-owner generation: advances on CPU source publication/destruction, including handle reuse.
+uint64_t gos_GetTextureGeneration();

@@ -2835,6 +2835,8 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     elif drift.ok:
         log(asset_parity.verdict_line(drift, asset_parity.default_ref()))
     else:
+        for _ln in asset_parity.detail_lines(drift, target, asset_parity.default_ref()):
+            log(_ln)
         fail(f"asset parity: {len(drift.missing)} missing, {len(drift.size)} size-different, "
              f"{len(drift.content)} content-different, {len(drift.extra)} extra file(s) vs {asset_parity.default_ref()} "
              f"(missing e.g. {', '.join(drift.missing[:5])}); rerun without --no-asset-sync to copy them from v0.4", 8)

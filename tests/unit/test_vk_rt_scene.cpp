@@ -88,6 +88,44 @@ TEST_CASE("rt scene: prop-row growth invalidates retained mover terrain offsets"
     CHECK(updateNeeded(false, false));   // the retired mover TLAS rebuilds even without new poses
 }
 
+TEST_CASE("rt scene: membership deltas keep type IDs and rebuild record ordinals") {
+    float a[16], b[16], c[16];
+    model(1, 2, 3, a);
+    model(4, 5, 6, b);
+    model(7, 8, 9, c);
+    const PropPlacement before[] = {{7, 0x100007, a}, {7, 0x100007, b}};
+    const PropPlacement destroyed[] = {{7, 0x100007, b}};
+    const PropPlacement added[] = {{7, 0x100007, b}, {7, 0x100007, c}};
+    const auto initial = buildRecords(before, 2);
+    const auto removed = buildRecords(destroyed, 2);
+    const auto grown = buildRecords(added, 2);
+    REQUIRE(initial.size() == 4);
+    REQUIRE(removed.size() == 3);
+    REQUIRE(grown.size() == 4);
+    CHECK(removed[2].key == Key{Kind::StaticProp, 0x100007, 0});
+    CHECK(removed[2].transform[3] == -4.0f);
+    CHECK(grown[3].key == Key{Kind::StaticProp, 0x100007, 1});
+    CHECK(grown[3].transform[3] == -7.0f);
+    CHECK(grown[3].typeId == initial[3].typeId);
+    CHECK(moverRowsCompatible(4, 4));   // membership changes do not move material rows
+    CHECK(buildRecords({}, 2).size() == 2);   // last prop destroyed, terrain stays
+    CHECK(deferPropBuild(true, true));       // includes mover-less mission frames
+    CHECK_FALSE(deferPropBuild(false, true)); // map load stays blocking
+    CHECK_FALSE(deferPropBuild(true, false)); // replacement map geometry stays blocking
+}
+
+TEST_CASE("rt scene: a new type changes membership and terrain row offsets together") {
+    float m[16];
+    model(1, 2, 3, m);
+    const PropPlacement props[] = {{7, 0x100007, m}, {8, 0x100008, m}};
+    const auto records = buildRecords(props, 1);
+    REQUIRE(records.size() == 3);
+    CHECK(records[2].typeId == 8);
+    CHECK(records[2].key.objectId == 0x100008);
+    CHECK_FALSE(moverRowsCompatible(4, 5));
+    CHECK(deferPropBuild(true, true));   // new type in the same VBO uses the frame queue
+}
+
 TEST_CASE("rt scene: records are keyed by kind, object ID and per-ID ordinal") {
     float a[16], b[16], c[16];
     model(1, 2, 3, a);

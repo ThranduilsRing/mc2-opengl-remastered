@@ -37,6 +37,8 @@ ROOT_SUFFIX = ".fst"
 EXCLUDED = ("data/textures/_txm_cache_bak/", "data/textures/txm_backup/")
 SAMPLE_FILES = 256
 SAMPLE_BYTES = 32 << 20
+# Paths named per category in a FAIL detail (the one-line verdict stays parseable).
+DETAIL_LIMIT = 8
 # Per-install receipts written by the kit reconcile; not asset content.
 SKIP_SUFFIXES = (".cookstamp",)
 # v0.4 is the read-only reference; the golden install is never a parity target either.
@@ -104,11 +106,14 @@ def owned_paths(install: Path | str, payload: dict[str, str] | None = None,
         declared = intentional_changes(commit) if declared is None else declared
     expected = dict(payload)
     expected.update(declared or {})
+    bad = [f"{rel} ({_why(install / rel, sha)})" for rel, sha in (declared or {}).items()
+           if not (install / rel).is_file() or _sha(install / rel) != sha]
+    if bad:
+        raise ValueError(_bad_message("INTENTIONAL ASSET hash mismatch", bad))
     for rel, sha in (declared or {}).items():
-        if not (install / rel).is_file() or _sha(install / rel) != sha:
-            raise ValueError(f"INTENTIONAL ASSET hash mismatch: {rel}")
         print(f"{PREFIX} INTENTIONAL ASSET ACCEPTED {rel} sha256={sha}", flush=True)
     owned = set()
+    bad = []
     for rel, sha in expected.items():
         low = _norm(rel)
         if not (low.startswith(("data/", "assets/")) or ("/" not in low and low.endswith(ROOT_SUFFIX))):
@@ -117,9 +122,25 @@ def owned_paths(install: Path | str, payload: dict[str, str] | None = None,
         if not path.is_relative_to(install.resolve()) or not re.fullmatch(r"[0-9a-f]{64}", sha):
             raise ValueError(f"invalid owned payload path/hash: {rel}")
         if not path.is_file() or _sha(path) != sha:
-            raise ValueError(f"owned payload missing or hash mismatch: {rel}")
+            bad.append(f"{rel} ({_why(path, sha)})")
+            continue
         owned.add(low)
+    if bad:
+        raise ValueError(_bad_message("owned payload missing or hash mismatch", bad))
     return owned
+
+
+def _why(path: Path, sha: str) -> str:
+    """Short reason a pinned file fails: absent, or the actual vs expected sha prefix."""
+    if not path.is_file():
+        return f"absent, want sha256={sha[:12]}"
+    return f"sha256={_sha(path)[:12]}, want {sha[:12]}"
+
+
+def _bad_message(head: str, bad: list[str], limit: int = DETAIL_LIMIT) -> str:
+    """One error naming EVERY failing pinned path (first `limit`), so one run shows the whole census."""
+    more = f"; +{len(bad) - limit} more" if len(bad) > limit else ""
+    return f"{head}: {len(bad)} file(s): " + "; ".join(bad[:limit]) + more
 
 
 def default_ref() -> Path:
@@ -268,6 +289,34 @@ def verdict_line(result: Result, ref: Path | str, status: str | None = None) -> 
         line += f" deleted={result.deleted}"
     return line
 
+def detail_lines(result: Result, install: Path | str, ref: Path | str, limit: int = DETAIL_LIMIT) -> list[str]:
+    """Actionable lines under a FAIL verdict: first `limit` paths per category and the likely cause.
+
+    A reference file newer than the install's manifest means v0.4 changed after this deploy (a merge-gate
+    deploy or a v0.4 run wrote it): redeploying syncs it. An extra is a file v0.4 and the payload do not
+    list (earlier deploy into a reused install, or a runtime cache): --sync / redeploy prunes it."""
+    install, ref = Path(install), Path(ref)
+    lines = []
+    for name, rels in (("missing", result.missing), ("size", result.size),
+                       ("content", result.content), ("extra", result.extra)):
+        if rels:
+            more = f" (+{len(rels) - limit} more)" if len(rels) > limit else ""
+            lines.append(f"{PREFIX}   {name}: " + ", ".join(rels[:limit]) + more)
+    try:
+        deployed = (install / ".deployed_manifest.csv").stat().st_mtime
+        newer = [rel for rel in result.missing + result.size + result.content
+                 if (ref / rel).is_file() and (ref / rel).stat().st_mtime > deployed]
+    except OSError:
+        newer = []
+    if newer:
+        lines.append(f"{PREFIX}   cause: {len(newer)} of the missing/size/content files are newer in {ref.as_posix()} "
+                     "than this install's deploy (the reference moved); redeploy or run asset_parity.py --sync")
+    elif result.extra and not (result.missing or result.size or result.content):
+        lines.append(f"{PREFIX}   cause: extras are not in {ref.as_posix()} or the payload manifest; "
+                     "redeploy or asset_parity.py --sync <install> deletes them")
+    return lines
+
+
 def _copy(src: Path, dst: Path) -> None:
     """Copy one file atomically: a shared hardlink in dst is replaced, never written through."""
     dst.parent.mkdir(parents=True, exist_ok=True)
@@ -375,6 +424,8 @@ def main(argv=None) -> int:
         return 0
     result = enforce(install, ref, sync_missing=args.sync, jobs=jobs())
     print(verdict_line(result, ref))
+    for line in detail_lines(result, install, ref):
+        print(line)
     return 0 if result.ok else 1
 
 
