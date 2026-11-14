@@ -55,7 +55,6 @@
 // Deleting these lines, or adding a second real write here, fails the check.
 // =============================================================================
 #version 450
-#define FOREST_MASK 1
 #extension GL_GOOGLE_include_directive : require
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_EXT_buffer_reference : require
@@ -354,12 +353,6 @@ void main() {
             rgb = validMaterial ? vec3(h & 255u, (h >> 8) & 255u, (h >> 16) & 255u) / 255.0 : vec3(0);
         }
     }
-#ifdef FOREST_MASK
-    if (vTree.y > 0.5 && vTree.z > 0.5) {  // DIAG mask: R = sun-edge, B = interior; brightness = height band
-        float band = vTree.w > 0.75 ? 1.0 : (vTree.w > 0.35 ? 0.6 : 0.3);
-        rgb = (vTree.z < 1.5 ? vec3(1, 0, 0) : vec3(0, 0, 1)) * band;
-    } else if (vTree.y > 0.5) rgb = vec3(0);
-#endif
     oColor = vec4(rgb, cover);
     // location 1: GBuffer1 — bit-adjacent to static_prop.frag:657-661, which selects
     // between TWO shadow classes off the packet's alpha-test bit:
