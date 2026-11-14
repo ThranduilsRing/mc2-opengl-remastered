@@ -91,6 +91,8 @@ layout(location = 14) out vec3 vTree; // ambient AO, tree material active, fores
 flat layout(location = 15) out uvec2 vWindow; // glass cell ID, stable building seed
 flat layout(location = 16) out uvec3 vTeam;   // team paint 0x00RRGGBB x3 (red, green, blue slot), carried in the instance's fogRGB bits
 flat layout(location = 17) out uint vPacketIdx; // this draw's PropPacket row (packetBase + gl_DrawID)
+layout(location = 18) out vec3 vBackNormalStuff;
+layout(location = 19) out vec3 vBackArgb;
 
 // Per-type hot-colour magic: the emission colours of the three night tags (windows, outside building lights, building base lights), taken from the type's ini.
 // Three vec4 per type in the order pink, yellow, green; indexed by inst.typeID. Same table the GL prop shader reads.
@@ -180,9 +182,13 @@ void main() {
     float forestSunVisibility = 1.0 - 0.92 * forestShade;
     vTree.z = forestSunVisibility;
     vec3 localNormal = a_normal;
+    vec3 backNormal = -a_normal;
     if (tree && (inst.flags & 4u) != 0u) {
         vec3 crown = vec3(a_position.x / canopy.y, (a_position.y - canopy.x) / abs(canopy.z), a_position.z / canopy.y);
-        if (dot(crown,crown) > 1e-6) localNormal = normalize(mix(normalize(a_normal), normalize(crown), 0.7));
+        if (dot(crown,crown) > 1e-6) {
+            localNormal = normalize(mix(normalize(a_normal), normalize(crown), 0.7));
+            backNormal = normalize(mix(-normalize(a_normal), normalize(crown), 0.7));
+        }
         vTree.x = mix(0.65, 1.0, clamp(0.5 + sign(canopy.z) * (a_position.y - canopy.x) / (2.0 * abs(canopy.z)), 0.0, 1.0));
     }
     // Single-level stock-leaf sway; trunk and baked shadows remain fixed.
@@ -194,8 +200,10 @@ void main() {
         clip.z += uFrame.objectDepthBias * clip.w;
         gl_Position = clip; vWorldPos = world_mc2;
     }
-    vec3 worldNormalStuff = localNormal * mat3(inst.modelMatrix);
-    vNormalStuff = worldNormalStuff;
+    vNormalStuff = localNormal * mat3(inst.modelMatrix);
+    vBackNormalStuff = backNormal * mat3(inst.modelMatrix);
+    for (int side = 0; side < 2; ++side) {
+    vec3 worldNormalStuff = side == 0 ? vNormalStuff : vBackNormalStuff;
 
     // VK-FLIP-FIELD-REPORT-2 BLACK-FENCE FIX: albedo layer now comes from the
     // per-PACKET push constant (this draw's own layer), not a per-type SSBO lookup
@@ -236,6 +244,7 @@ void main() {
     vTeam = floatBitsToUint(inst.fogRGB.xyz);
     if ((inst.flags & kFlagIsWindow) != 0u) {
         vArgb = surfaceEncodeSrgb(surfaceDecodeSrgb(seed) + surfaceDecodeSrgb(inst.aRGBHighlight.rgb));
+        vBackArgb = vArgb;
         return;
     }
 
@@ -292,5 +301,7 @@ void main() {
     vec3 linearLight = surfaceDecodeSrgb(seed) * propDirFactor
         + (max(iblTerm, vec3(0.0)) * (1.0 - 0.3 * forestShade) + surfaceDecodeSrgb(sunTerm) * forestSunVisibility * propNightSunWeight(ndl, nMC2)) / 3.14159265
         + surfaceDecodeSrgb(inst.aRGBHighlight.rgb);
-    vArgb = surfaceEncodeSrgb(linearLight); // retain the legacy encoded albedo multiplier
+    if (side == 0) vArgb = surfaceEncodeSrgb(linearLight);
+    else vBackArgb = surfaceEncodeSrgb(linearLight);
+    }
 }

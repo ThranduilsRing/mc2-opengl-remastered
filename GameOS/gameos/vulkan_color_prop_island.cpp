@@ -1250,7 +1250,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         // GL's StaticPropOpaque / StaticPropAlphaTest pipelines cull back faces (CCW front); the props were drawn double-sided here, so faces GL
         // culls (the inner panels of the hex lattice props) covered the faces behind them. The island projects with GL's
         // clip matrix into an unflipped viewport, which mirrors window y, so GL's CCW front arrives here clockwise.
-        rs.cullMode = VK_CULL_MODE_BACK_BIT;
+        rs.cullMode = VK_CULL_MODE_NONE; // Per-material back-face rejection in the fragment shader (indirect draws).
         rs.frontFace = VK_FRONT_FACE_CLOCKWISE;
         rs.lineWidth = 1.0f;
 

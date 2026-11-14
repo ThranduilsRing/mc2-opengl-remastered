@@ -24,7 +24,8 @@
        1.0
       ],
       "normal": "island_tree_01/detail/0_normal.ktx2",
-      "orm": "island_tree_01/detail/0_orm.ktx2"
+      "orm": "island_tree_01/detail/0_orm.ktx2",
+      "doubleSided": true
      },
      {
       "slot": 1,
@@ -41,7 +42,8 @@
       ],
       "alphaCutoff": 0.5,
       "normal": "island_tree_01/detail/1_normal.ktx2",
-      "orm": "island_tree_01/detail/1_orm.ktx2"
+      "orm": "island_tree_01/detail/1_orm.ktx2",
+      "doubleSided": true
      },
      {
       "slot": 2,
@@ -57,7 +59,8 @@
        1.0
       ],
       "normal": "island_tree_01/detail/2_normal.ktx2",
-      "orm": "island_tree_01/detail/2_orm.ktx2"
+      "orm": "island_tree_01/detail/2_orm.ktx2",
+      "doubleSided": true
      }
     ]
    }
@@ -86,7 +89,8 @@
        1.0
       ],
       "normal": "island_tree_02/detail/0_normal.ktx2",
-      "orm": "island_tree_02/detail/0_orm.ktx2"
+      "orm": "island_tree_02/detail/0_orm.ktx2",
+      "doubleSided": true
      },
      {
       "slot": 1,
@@ -103,7 +107,8 @@
       ],
       "alphaCutoff": 0.5,
       "normal": "island_tree_02/detail/1_normal.ktx2",
-      "orm": "island_tree_02/detail/1_orm.ktx2"
+      "orm": "island_tree_02/detail/1_orm.ktx2",
+      "doubleSided": true
      },
      {
       "slot": 2,
@@ -119,7 +124,8 @@
        1.0
       ],
       "normal": "island_tree_02/detail/2_normal.ktx2",
-      "orm": "island_tree_02/detail/2_orm.ktx2"
+      "orm": "island_tree_02/detail/2_orm.ktx2",
+      "doubleSided": true
      }
     ]
    }
@@ -148,7 +154,8 @@
        1.0
       ],
       "normal": "island_tree_03/detail/0_normal.ktx2",
-      "orm": "island_tree_03/detail/0_orm.ktx2"
+      "orm": "island_tree_03/detail/0_orm.ktx2",
+      "doubleSided": true
      },
      {
       "slot": 1,
@@ -165,7 +172,8 @@
       ],
       "alphaCutoff": 0.5,
       "normal": "island_tree_03/detail/1_normal.ktx2",
-      "orm": "island_tree_03/detail/1_orm.ktx2"
+      "orm": "island_tree_03/detail/1_orm.ktx2",
+      "doubleSided": true
      },
      {
       "slot": 2,
@@ -181,7 +189,8 @@
        1.0
       ],
       "normal": "island_tree_03/detail/2_normal.ktx2",
-      "orm": "island_tree_03/detail/2_orm.ktx2"
+      "orm": "island_tree_03/detail/2_orm.ktx2",
+      "doubleSided": true
      }
     ]
    }
@@ -210,7 +219,8 @@
        1.0
       ],
       "normal": "jacaranda_tree/detail/0_normal.ktx2",
-      "orm": "jacaranda_tree/detail/0_orm.ktx2"
+      "orm": "jacaranda_tree/detail/0_orm.ktx2",
+      "doubleSided": true
      },
      {
       "slot": 1,
@@ -226,7 +236,8 @@
        1.0
       ],
       "normal": "jacaranda_tree/detail/1_normal.ktx2",
-      "orm": "jacaranda_tree/detail/1_orm.ktx2"
+      "orm": "jacaranda_tree/detail/1_orm.ktx2",
+      "doubleSided": true
      },
      {
       "slot": 2,
@@ -243,7 +254,8 @@
       ],
       "alphaCutoff": 0.5,
       "normal": "jacaranda_tree/detail/2_normal.ktx2",
-      "orm": "jacaranda_tree/detail/2_orm.ktx2"
+      "orm": "jacaranda_tree/detail/2_orm.ktx2",
+      "doubleSided": true
      }
     ]
    }
@@ -272,7 +284,8 @@
        1.0
       ],
       "normal": "tree_small_02/detail/0_normal.ktx2",
-      "orm": "tree_small_02/detail/0_orm.ktx2"
+      "orm": "tree_small_02/detail/0_orm.ktx2",
+      "doubleSided": true
      },
      {
       "slot": 1,
@@ -289,7 +302,8 @@
       ],
       "alphaCutoff": 0.5,
       "normal": "tree_small_02/detail/1_normal.ktx2",
-      "orm": "tree_small_02/detail/1_orm.ktx2"
+      "orm": "tree_small_02/detail/1_orm.ktx2",
+      "doubleSided": true
      },
      {
       "slot": 2,
@@ -305,7 +319,8 @@
        1.0
       ],
       "normal": "tree_small_02/detail/2_normal.ktx2",
-      "orm": "tree_small_02/detail/2_orm.ktx2"
+      "orm": "tree_small_02/detail/2_orm.ktx2",
+      "doubleSided": true
      }
     ]
    }
@@ -334,7 +349,8 @@
        1.0
       ],
       "normal": "island_tree_02/detail/0_normal.ktx2",
-      "orm": "island_tree_02/detail/0_orm.ktx2"
+      "orm": "island_tree_02/detail/0_orm.ktx2",
+      "doubleSided": true
      },
      {
       "slot": 1,
@@ -351,7 +367,8 @@
       ],
       "alphaCutoff": 0.5,
       "normal": "island_tree_02/detail/1_normal.ktx2",
-      "orm": "island_tree_02/detail/1_orm.ktx2"
+      "orm": "island_tree_02/detail/1_orm.ktx2",
+      "doubleSided": true
      },
      {
       "slot": 2,
@@ -367,7 +384,8 @@
        1.0
       ],
       "normal": "island_tree_02/detail/2_normal.ktx2",
-      "orm": "island_tree_02/detail/2_orm.ktx2"
+      "orm": "island_tree_02/detail/2_orm.ktx2",
+      "doubleSided": true
      }
     ]
    }

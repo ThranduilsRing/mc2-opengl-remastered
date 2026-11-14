@@ -797,7 +797,9 @@ def capture_path_timing(args) -> int:
     out.parent.mkdir(parents=True, exist_ok=True)
     channel = out.with_suffix(".commands.txt")
     frames = out.with_suffix(".frames.jsonl")
-    channel.write_text(f"bench_output {frames}\n{battle.view_command(battle.CORNER)}\n"
+    parked = env_pin.parse_declarations(args.env_declare).get("MC2_CAMERA_PARK")
+    view = "" if parked else battle.view_command(battle.CORNER)
+    channel.write_text(f"bench_output {frames}\n{view}\n"
                        + args.tracy_commands.replace(";", "\n") + "\n", encoding="utf-8")
     declared = battle.environment(channel, 1920, 1080)
     declared.update(env_pin.parse_declarations(args.env_declare))
@@ -813,7 +815,7 @@ def capture_path_timing(args) -> int:
                              args.tracy_seconds, out,
                              extra_env=[f"{k}={v}" for k, v in declared.items()],
                              fixed_timestep=False, fps_cap=0, show_window=True,
-                             spawn_game=launch, post_load=True)
+                             spawn_game=launch, post_load=True, pose=parked)
     if rc:
         return rc
     tracy.assert_window_was_visible(out, tracy.tracy_exe("tracy-csvexport.exe"), "path timing")
@@ -828,7 +830,7 @@ def capture_path_timing(args) -> int:
                 "p99_ms": ordered[math.ceil(.99 * len(values)) - 1], "max_ms": ordered[-1]}
 
     frame_stats = stats([row["ms"] for row in cpu])
-    result = {"mission": args.mission, "frames": frame_stats,
+    result = {"mission": args.mission, "camera_park": parked, "frames": frame_stats,
               "frames_over_8_33_ms": sum(row["ms"] > 8.33 for row in cpu),
               "frame_table": table(cpu)}
     records = [json.loads(line) for line in frames.read_text(encoding="utf-8").splitlines() if line.strip()]
@@ -843,6 +845,8 @@ def capture_path_timing(args) -> int:
                                   result["tick"]["samples"]) if result["path"] and result["tick"] else None
     out.with_suffix(".timing.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(result, indent=2))
+    if parked:  # Static renderer measurements require rendered frames, not a pathing scenario.
+        return 0 if cpu else 1
     return 0 if len(cpu) >= 1800 and result["tick"] and result["path"] and result["wait_worker"] else 1
 
 

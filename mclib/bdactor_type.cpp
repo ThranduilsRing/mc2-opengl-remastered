@@ -108,9 +108,11 @@ static bool importOverrideRenderShape(const ModelOverrideRecord& ov, std::string
 		mc2::fmt::print_err("[MODOVERRIDE] staticProp '{}' {}: import threw ({}), using stock render\n",
 			baseName, state, mc2::fmt::safe(overridePath));
 	}
+	mc2::content::error(mc2::content::Kind::Shape, overridePath, "declared override import failed; using stock render");
 	fflush(stderr);
 	return false;
 #else
+	mc2::content::error(mc2::content::Kind::Shape, relPath, "declared override importer disabled; using stock render");
 	mc2::fmt::print_err("[MODOVERRIDE] staticProp '{}': override resolved but importer disabled, using stock render\n", baseName);
 	return false;
 #endif
