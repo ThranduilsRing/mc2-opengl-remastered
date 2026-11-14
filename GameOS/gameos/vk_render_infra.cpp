@@ -26,6 +26,7 @@ extern uint32_t g_mc2RenderFrame;   // mclib/tgl.cpp
 #include <algorithm>
 #include <array>
 #include <atomic>
+#include <cassert>
 #include <chrono>
 #include <condition_variable>
 #include <cstdio>
@@ -284,6 +285,7 @@ void defer(uint64_t key) {
     auto& s=state(); std::lock_guard lock(s.mutex); auto it=s.allocations.find(key);
     if(it==s.allocations.end()) return;
     auto& [allocationKey,a]=*it;
+    assert(!a.deferred && "GPU allocation retired twice");
     if(!a.deferred) { a.deferred=true; s.deferredBytes+=a.bytes; }
 }
 bool admit(uint64_t bytes) {
