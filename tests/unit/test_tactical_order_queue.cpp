@@ -599,3 +599,30 @@ TEST_CASE("application can submit next tick while receipts grow without invalida
     REQUIRE(queue.endTick());
 }
 } // TEST_SUITE
+
+// MP-0: the drained order stream (what every lockstep peer applies) must not depend on the
+// wall-clock order in which sources delivered their envelopes.
+TEST_CASE("drain order is independent of cross-source admission order and survives wire round trip") {
+    auto run = [](const std::vector<std::pair<std::uint32_t, std::uint64_t>>& arrival) {
+        Permit permit; TacticalOrderQueue queue;
+        REQUIRE(queue.registerSource({5, SourceKind::Peer}));
+        REQUIRE(queue.registerSource({1, SourceKind::UI}));
+        REQUIRE(queue.registerSource({3, SourceKind::ABL}));
+        for (auto [src, seq] : arrival) REQUIRE(queue.submit(order(src, seq, 4), permit));
+        auto batch = queue.beginTick(4); REQUIRE(batch);
+        Bytes stream;
+        for (OrderEnvelope e : *batch) {
+            mc2::save::Archive a; a(e); REQUIRE(a.finish());
+            OrderEnvelope back; REQUIRE(mc2::save::decodeRecord(a.bytes(), back));
+            CHECK(back == e);
+            stream.insert(stream.end(), a.bytes().begin(), a.bytes().end());
+        }
+        return stream;
+    };
+    const auto a = run({{1,0},{1,1},{3,0},{5,0},{5,1}});
+    const auto b = run({{5,0},{3,0},{5,1},{1,0},{1,1}});
+    const auto c = run({{3,0},{1,0},{5,0},{1,1},{5,1}});
+    CHECK(!a.empty());
+    CHECK(a == b);
+    CHECK(a == c);
+}
