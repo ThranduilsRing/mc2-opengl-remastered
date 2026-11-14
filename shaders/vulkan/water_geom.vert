@@ -12,7 +12,7 @@
 //     Physical reverse-Z depth (the scene depth test resolves the coast).
 //     WATER-MVP-ORACLE-1 proved bit-exact (commit 4d30d93e5; oracle shader in the
 //     archive/vk-probe-fixtures tag). Do NOT row_major, do
-//     NOT transpose. Bias constants come from terrain_depth_bias.hglsl.
+//     NOT transpose.
 //   - BASE LAYER ONLY: the GL FS discards o_isWater==2 (detail/spray), so P9a
 //     renders only the base layer (isWater=1, the old gl_DrawIDARB==0 draw).
 //     uvScale=oneOverTF, uvOffset=(cloudOffsetX,cloudOffsetY), detailMode=0.
@@ -23,7 +23,6 @@
 // drift = geometry garbage; this file is the load-bearing parity surface.
 #version 450
 layout(constant_id = 12) const int kWaterDbgPhysical = 0;
-#extension GL_GOOGLE_include_directive : require
 
 // --- Recipe SSBO (mission-static). std430 layout mirrors WaterRecipe (64B).
 //     GL binding 5; here set0/binding5 for descriptor-set clarity. ---

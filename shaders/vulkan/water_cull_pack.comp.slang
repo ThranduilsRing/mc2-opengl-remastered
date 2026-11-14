@@ -48,7 +48,7 @@ struct WaterCullParams {
     float4 c2;
     float4 c3;
     float4 misc0;   // x waterElevation, y frameCos, z shoreExt, w unused
-    int4   misc1;   // x recipeCount, y maxThinRecords, z mapSide, w biasLegacy
+    int4   misc1;   // x recipeCount, y maxThinRecords, z mapSide, w unused (ABI padding)
 };
 
 [[vk::binding(0, 0)]] StructuredBuffer<WaterRecipe> recipes;
@@ -57,9 +57,6 @@ struct WaterCullParams {
 [[vk::binding(4, 0)]] RWStructuredBuffer<uint> header;
 [[vk::binding(3, 0)]] ConstantBuffer<WaterCullParams> P;
 
-// shaders/include/terrain_depth_bias.hglsl: WATER_DEPTH_FUDGE_FAST / WATER_DEPTH_FUDGE_FAST_REL.
-static const float WATER_DEPTH_FUDGE_FAST     = 0.00025;
-static const float WATER_DEPTH_FUDGE_FAST_REL = 0.000631;
 static const uint  kFlagBitUvModeBottomLeft   = 0x1u;
 static const uint  kWaterThinFlagPzTri1Valid  = 0x1u;
 static const uint  kWaterThinFlagPzTri2Valid  = 0x2u;
