@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 420
+gate_count: 429
 registry_entry_count: 123
-verified_count: 400
+verified_count: 401
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -205,6 +205,13 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_TRACE_BOOT_VIDEO, kind: Trace, order: -1, default_on: false}
+  - name: MC2_BOX_QUOTA_CPUS
+    kind: String
+    default: ""
+    rule: Std
+    owner: harness
+    doc: "Harness-owned box wrapper metadata; ignored by the engine."
+    smoke_passthrough: true
   - name: MC2_BRAIN_MISSION_SEED
     kind: String
     default: ""
@@ -889,6 +896,34 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
+  - name: MC2_GATE_GPU
+    kind: String
+    default: ""
+    rule: Std
+    owner: harness
+    doc: "Harness-owned box wrapper metadata; ignored by the engine."
+    smoke_passthrough: true
+  - name: MC2_GATE_INSTALL
+    kind: String
+    default: ""
+    rule: Std
+    owner: harness
+    doc: "Harness-owned box wrapper metadata; ignored by the engine."
+    smoke_passthrough: true
+  - name: MC2_GATE_MODS_ROOT
+    kind: String
+    default: ""
+    rule: Std
+    owner: harness
+    doc: "Harness-owned box wrapper metadata; ignored by the engine."
+    smoke_passthrough: true
+  - name: MC2_GATE_PROOFS
+    kind: String
+    default: ""
+    rule: Std
+    owner: harness
+    doc: "Harness-owned box wrapper metadata; ignored by the engine."
+    smoke_passthrough: true
   - name: MC2_GLTF_AXIS
     kind: Int
     default: 0
@@ -1994,6 +2029,13 @@ flags:
     doc: "DETERMINISTIC-RNG-1: seed text (decimal, 0x hex, leading-0 octal; strtoul base 0 at the reader); empty = the fixed or mission-hash seed."
     smoke_passthrough: true
     verified: true
+  - name: MC2_RUN_ID
+    kind: String
+    default: ""
+    rule: Std
+    owner: harness
+    doc: "Harness-owned box wrapper metadata; ignored by the engine."
+    smoke_passthrough: true
   - name: MC2_SAVE_DIR
     kind: String
     default: ""
@@ -2154,6 +2196,13 @@ flags:
     range: {lo: 0.25, hi: 4, style: clamp}
     smoke_passthrough: true
     verified: true
+  - name: MC2_SLOT
+    kind: String
+    default: ""
+    rule: Std
+    owner: harness
+    doc: "Harness-owned box wrapper metadata; ignored by the engine."
+    smoke_passthrough: true
   - name: MC2_SMART_LOAD
     kind: Bool
     default: true
@@ -2711,6 +2760,13 @@ flags:
     owner: terrain
     doc: ""
     smoke_passthrough: true
+  - name: MC2_TOOLCHAINS
+    kind: String
+    default: ""
+    rule: Std
+    owner: harness
+    doc: "Harness-owned box wrapper metadata; ignored by the engine."
+    smoke_passthrough: true
   - name: MC2_TRACE_EXIT
     kind: Bool
     default: false
@@ -3244,6 +3300,13 @@ flags:
     rule: Lead0Kill
     owner: gameos
     doc: ""
+    verified: true
+  - name: MC2_WATER_REFLECTION_HOLD
+    kind: Bool
+    default: true
+    rule: Lead0Kill
+    owner: terrain
+    doc: "Temporary kill-switch: bounded four-frame still reflection reuse and half-res motion."
     verified: true
   - name: MC2_WATER_REFLECTION_RT
     kind: Bool
