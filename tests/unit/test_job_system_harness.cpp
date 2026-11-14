@@ -15,6 +15,8 @@
 #include "sim_overlap.h"
 #include "jobs_fatal.h"
 #include "sim_pose_kernel.h"
+#include "GameAdapters/vegetation_clumps.h"
+#include "GameAdapters/vegetation_noise.h"
 
 #include <cstdint>
 #include <cstdio>
@@ -372,6 +374,46 @@ TEST_CASE_FIXTURE(JobsFixture, "job_system_harness/serial_equals_parallel") {
         }
     }
     return;
+}
+
+// Trigger: VegetationAdapter.cpp meadow field dispatch or ordered merge changes.
+TEST_CASE_FIXTURE(JobsFixture, "job_system_harness/vegetation_field_order_and_budget") {
+    using namespace mc2::vegetation;
+    constexpr int cells = 137;
+    const FieldRecipe recipe{6, 4.5f};
+    const auto seed = mapSeed("mc2_01");
+    for (const long budget : {0L, 137L, 548L, 2192L}) {
+        const int side = fieldBladeSide(21, recipe.spacing, budget, cells);
+        std::vector<FieldBlade> serial;
+        int gaps = 0;
+        for (int cell = 0; cell < cells; ++cell) for (int j = 0; j < side*side; ++j) {
+            const auto blade = fieldBlade(cell%17,cell/17,seed,j,side,21,recipe);
+            if (fieldTuftHeight(macroZone(blade.x+cell*21,blade.y,14)) <= 0) { ++gaps; continue; }
+            serial.push_back(blade);
+        }
+        for (int workers : {0, 1, 3}) {
+            jobs::startPool(workers);
+            jobs::kDispatchFloorNs = 0;
+            struct Batch { std::vector<FieldBlade> blades; int gaps = 0; };
+            const auto parallel = jobs::parallel_reduce<Batch>(jobs::Domain::Render,
+                side ? cells : 0, 64, 12000, {}, [&](int begin, int end, Batch& batch) {
+                    for (int cell = begin; cell < end; ++cell) for (int j = 0; j < side*side; ++j) {
+                        const auto blade = fieldBlade(cell%17,cell/17,seed,j,side,21,recipe);
+                        if (fieldTuftHeight(macroZone(blade.x+cell*21,blade.y,14)) <= 0) { ++batch.gaps; continue; }
+                        batch.blades.push_back(blade);
+                    }
+                }, [](Batch& out, const Batch& batch) {
+                    out.blades.insert(out.blades.end(),batch.blades.begin(),batch.blades.end());
+                    out.gaps += batch.gaps;
+                });
+            REQUIRE(parallel.blades.size() == serial.size());
+            CHECK(parallel.blades.size() <= static_cast<size_t>(budget));
+            CHECK(parallel.gaps == gaps);
+            for (size_t i = 0; i < serial.size(); ++i)
+                CHECK(std::memcmp(&serial[i], &parallel.blades[i], sizeof(FieldBlade)) == 0);
+            jobs::stopPool();
+        }
+    }
 }
 
 static std::vector<double> magnitudeVariedInput() {
