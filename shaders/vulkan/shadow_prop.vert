@@ -36,6 +36,7 @@ layout(location = 2) in vec2 a_uv;
 layout(location = 0) out vec2 v_uv;
 // Alpha multi-draw: this draw's row in the per-draw alpha rows (packetBase + draw id). The rows' device address is read by the fragment stage only.
 layout(location = 1) flat out uint v_row;
+layout(location = 2) flat out uint v_foliage;
 layout(push_constant) uniform DrawPush {
     uvec2 rowsAddr;
     uint  packetBase;
@@ -73,4 +74,5 @@ void main() {
     gl_Position = uFrame.lightSpaceMatrix * vec4(worldMC2, 1.0);
     v_uv = a_uv;
     v_row = pc.packetBase + uint(gl_DrawIDARB);
+    v_foliage = (inst.flags & 4u) == 0u ? 0u : (inst.flags >> 8u) != 0u ? 2u : 1u;
 }

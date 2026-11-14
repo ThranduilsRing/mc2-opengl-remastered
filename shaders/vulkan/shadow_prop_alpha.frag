@@ -21,16 +21,19 @@ layout(push_constant) uniform DrawPush {
 
 layout(location = 0) in vec2 v_uv;
 layout(location = 1) flat in uint v_row;
+layout(location = 2) flat in uint v_foliage;
 
 void main() {
     AlphaRow row = pc.rows.p[v_row];
     const int bucket = propBucketOf(row.layer);
+    vec2 continuousUv = v_uv * row.uvScale;
     vec2 uv = fract(v_uv) * row.uvScale;
     vec2 size = vec2(textureSize(uAlbedo[nonuniformEXT(bucket)], 0).xy);
-    vec2 dx = dFdx(uv) * size;
-    vec2 dy = dFdy(uv) * size;
+    vec2 dx = dFdx(continuousUv) * size;
+    vec2 dy = dFdy(continuousUv) * size;
     float lod = max(0.5 * log2(max(max(dot(dx, dx), dot(dy, dy)), 1e-12)), 0.0);
     vec4 texel = textureLod(uAlbedo[nonuniformEXT(bucket)], vec3(uv, float(propBucketLayer(row.layer))), lod);
-    float cut = mix(0.5, 0.9, clamp(lod * 0.5, 0.0, 1.0));
+    // Forest cards include their visible fringe in the occluder; keep fences unchanged.
+    float cut = v_foliage == 2u ? 0.15 : v_foliage != 0u ? 0.5 : mix(0.5, 0.9, clamp(lod * 0.5, 0.0, 1.0));
     if (texel.a < cut) discard;
 }

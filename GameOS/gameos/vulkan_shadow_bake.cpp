@@ -56,7 +56,8 @@ bool ShadowBake::init(VkDevice device, VmaAllocator allocator, VkPhysicalDevice 
     alphaDsl_ = alphaDsl;
     const std::string dir(spvDir);
     shaderContentHash_ = mc2shadow::fnv1a(nullptr, 0);
-    for (const char* name : {"shadow_bake_pcss.comp.spv", "shadow_bake_terrain_march.comp.spv", "shadow_bake_resolve.comp.spv", "shadow_bake_bc4.comp.spv"}) {
+    for (const char* name : {"shadow_bake_pcss.comp.spv", "shadow_bake_terrain_march.comp.spv", "shadow_bake_resolve.comp.spv", "shadow_bake_bc4.comp.spv",
+                             "shadow_prop.vert.spv", "shadow_prop_alpha.frag.spv"}) {
         std::FILE* file = std::fopen((dir + name).c_str(), "rb");
         if (!file) { blog("bake shader bytes missing: no bake."); return false; }
         std::array<uint8_t, 4096> bytes;
