@@ -602,8 +602,12 @@ void LogisticsSaveDialog::beginCampaign()
 		aListItem* pItem = gameListBox.GetItem( 0 );
 		if ( pItem )
 		{
-			pItem->select();
-			edits[0].setEntry( (static_cast<aTextListItem*>(pItem))->getText() );
+			gameListBox.SelectItem( 0 );
+			const char* text = (static_cast<aTextListItem*>(pItem))->getText();
+			if ( hasDefsEditBox() )
+				setDefsEditText( kSvEditKey, text ? text : "" );
+			else
+				edits[0].setEntry( text );
 			selectedName = mc2::str::from_c( ( (static_cast<aLocalizedListItem*>(pItem))->getHiddenText() ) );
 		}
 	}
@@ -1038,7 +1042,9 @@ void LogisticsSaveDialog::update()
 	
 	}
 	
-	gameListBox.update();
+	const bool defsList = getDefsListItemCount( "game.mcl_sm.list.game_list" ) > 0;
+	if ( !defsList )
+		gameListBox.update();
 
 	if ( hasDefsUiPage() )
 	{
@@ -1061,7 +1067,7 @@ void LogisticsSaveDialog::update()
 			selectedName = mc2::str::from_c( (static_cast<aLocalizedListItem*>(gameListBox.GetItem( defsItem )))->getHiddenText() );
 			updateMissionInfo();
 		}
-		else if ( userInput->isLeftClick() )
+		else if ( !defsList && userInput->isLeftClick() )
 		{
 			// No v2 list present — use legacy list-click path for item selection.
 			// Buttons are already handled by defsUiPage->update(), so there's no

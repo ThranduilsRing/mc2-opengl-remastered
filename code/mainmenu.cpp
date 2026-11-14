@@ -830,6 +830,12 @@ void MainMenu::render()
 	}
 
 	
+	if ( bDrawBackground && rendersDefsPageOverlay() )
+	{
+		float dw = 0.f, dh = 0.f;
+		if ( GuiRuntime::GetDisplaySize( dw, dh ) && dw > 0.f )
+			GuiRuntime::DrawUiRect( 0.f, 0.f, dw, dh, 0xff000000, true );
+	}
 	if ( bOptions )
 	{
 		optionsScreenWrapper->render();

@@ -36,7 +36,7 @@ namespace input {
 // (GUI hit-testing and button handlers run for real) and the keyboard state behind gos_GetKey. It never touches the OS:
 // no SendInput, no cursor, no focus, so it works with the window unfocused, minimised or parked off-screen.
 // The file is tailed every frame, so the harness can append commands as it sees log markers. One command per line:
-//   wait N | move X Y | down [l|r] | up [l|r] | click X Y [l|r] | keydown KEY | keyup KEY | key KEY | shot PATH.tga | mark TEXT
+//   wait N | move X Y | wheel N | down [l|r] | up [l|r] | click X Y [l|r] | keydown KEY | keyup KEY | key KEY | shot PATH.tga | mark TEXT
 // X Y are logical 800x600 canvas pixels (normalised x/800, y/600 the way gos_GetMouseInfo reports them); KEY is an SDL
 // key name (Return, Escape, Space, F1, A). Every executed command logs `[INPUT_SCRIPT v1] frame=N cmd=...`.
 // Inert (one cached string test per frame) when the variable is unset.
@@ -104,6 +104,7 @@ struct ScriptPlayer {
         else if (v == "move" && n >= 3) { nx = static_cast<float>(atof(a)) / 800.f; ny = static_cast<float>(atof(b)) / 600.f; mouseSet = true; }
         else if (v == "down") btn[n >= 2 ? btn_idx(a[0]) : 0] = true;
         else if (v == "up") btn[n >= 2 ? btn_idx(a[0]) : 0] = false;
+        else if (v == "wheel" && n >= 2) g_mouse_info.wheel_vert_ = static_cast<float>(atof(a));
         else if (v == "click" && n >= 3) {
             const std::string bn = n >= 4 ? c : "l";
             push_front({std::string("move ") + a + " " + b, "wait 4", "down " + bn, "wait 4", "up " + bn, "wait 4"});
