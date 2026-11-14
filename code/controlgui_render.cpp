@@ -697,8 +697,8 @@ void ControlGui::render( bool bPaused )
 				    std::end(staticInfos[20].location), [](const auto& v) { return (v.argb >> 24) != 0; }))
 					staticInfos[20].render();
 				gos_SetRenderState(gos_State_Texture, texture);
-				if (size_t(frameSplit) < frameVertices.size())
-					gos_DrawQuads(frameVertices.data() + frameSplit, int(frameVertices.size()) - frameSplit);
+				if (static_cast<size_t>(frameSplit) < frameVertices.size())
+					gos_DrawQuads(frameVertices.data() + frameSplit, static_cast<int>(frameVertices.size()) - frameSplit);
 			}
 		}
 

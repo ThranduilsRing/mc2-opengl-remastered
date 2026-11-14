@@ -21,7 +21,7 @@ DWORD atlasEdge = 0;
 auto image(DWORD handle) { return images.at(handle); }
 DWORD fromRawPixels(DWORD* pixels, int, int, DWORD edge) {
     atlasEdge = edge;
-    uploaded.assign(pixels, pixels + size_t(edge) * edge);
+    uploaded.assign(pixels, pixels + static_cast<size_t>(edge) * edge);
     return 10;
 }
 }
@@ -67,8 +67,8 @@ TEST_CASE("HUD frame: atlas preserves pixels, rotated UVs, order and dynamic exc
     for (int height : {1080,2160}) {
         Environment.screenHeight = height;
         for (auto& info : gui.staticInfos) {
-            info.location[0].y = info.location[3].y = float(height - 100);
-            info.location[1].y = info.location[2].y = float(height - 98);
+            info.location[0].y = info.location[3].y = static_cast<float>(height - 100);
+            info.location[1].y = info.location[2].y = static_cast<float>(height - 98);
         }
         gui.staticInfos[18].location[2] = gui.staticInfos[18].location[0];
         for (float hudScale : {1.f,.85f,.4f}) {

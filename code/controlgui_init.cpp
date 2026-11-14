@@ -210,24 +210,24 @@ void ControlGui::bakeFrame()
 		})) continue;
 		auto image = mc2::textures::image(info.textureHandle);
 		if (!image || image->vkFormat != 37 || image->width <= 0 || image->height <= 0 ||
-		    image->pixels.size() != size_t(image->width) * image->height * 4) return;
-		while (tile < uint32_t(std::max(image->width, image->height))) tile *= 2;
+		    image->pixels.size() != static_cast<size_t>(image->width) * image->height * 4) return;
+		while (tile < static_cast<uint32_t>(std::max(image->width, image->height))) tile *= 2;
 		sources.push_back({info.textureHandle, std::move(image)});
 	}
 	if (sources.empty()) return;
 	uint32_t cells = 1;
-	while (size_t(cells) * cells < sources.size()) cells *= 2;
+	while (static_cast<size_t>(cells) * cells < sources.size()) cells *= 2;
 	if (tile > RenderCore::kKtxMaxEdge / cells) return;
 	const uint32_t edge = tile * cells;
-	std::vector<DWORD> pixels(size_t(edge) * edge, 0);
+	std::vector<DWORD> pixels(static_cast<size_t>(edge) * edge, 0);
 	for (size_t s = 0; s < sources.size(); ++s) {
 		const auto& image = *sources[s].image;
-		const uint32_t ox = uint32_t(s % cells) * tile, oy = uint32_t(s / cells) * tile;
+		const uint32_t ox = static_cast<uint32_t>(s % cells) * tile, oy = static_cast<uint32_t>(s / cells) * tile;
 		for (int y = 0; y < image.height; ++y)
 			for (int x = 0; x < image.width; ++x) {
-				const auto* p = image.pixels.data() + (size_t(y) * image.width + x) * 4;
-				pixels[size_t(oy + y) * edge + ox + x] =
-					(DWORD(p[3]) << 24) | (DWORD(p[0]) << 16) | (DWORD(p[1]) << 8) | p[2];
+				const auto* p = image.pixels.data() + (static_cast<size_t>(y) * image.width + x) * 4;
+				pixels[static_cast<size_t>(oy + y) * edge + ox + x] =
+					(static_cast<DWORD>(p[3]) << 24) | (static_cast<DWORD>(p[0]) << 16) | (static_cast<DWORD>(p[1]) << 8) | p[2];
 			}
 	}
 	auto atlas = std::make_unique<StaticInfo>();
@@ -243,19 +243,19 @@ void ControlGui::bakeFrame()
 		const auto source = std::find_if(sources.begin(), sources.end(), [&](const auto& s) {
 			return s.handle == info.textureHandle;
 		});
-		const size_t s = size_t(source - sources.begin());
+		const size_t s = static_cast<size_t>(source - sources.begin());
 		for (auto v : info.location) {
 			// Whole source images preserve the original texel centers exactly.
 			v.u = (v.u * source->image->width + (s % cells) * tile) / edge;
 			v.v = (v.v * source->image->height + (s / cells) * tile) / edge;
 			frameVertices.push_back(v);
 		}
-		if (i < 20) frameSplit = long(frameVertices.size());
+		if (i < 20) frameSplit = static_cast<long>(frameVertices.size());
 	}
 	frameAtlas = std::move(atlas);
 	MC2_LOG(Render, Info, "[HUD_FRAME] pieces={} textures={} atlas={}x{} submissions={} scale={:.3f}",
 		frameVertices.size() / 4, sources.size(), edge, edge,
-		int(frameSplit > 0) + int(size_t(frameSplit) < frameVertices.size()), frameScale);
+		static_cast<int>(frameSplit > 0) + static_cast<int>(static_cast<size_t>(frameSplit) < frameVertices.size()), frameScale);
 }
 
 
