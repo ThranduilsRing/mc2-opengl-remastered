@@ -1402,7 +1402,7 @@ inline bool isCementType (DWORD type)
 //---------------------------------------------------------------------------
 // Legacy content-blind .txm files deliberately miss on first load after upgrade.
 // tileKey is the content key of the one overlay tile the bake combines ("" when it combines none).
-static void txmCacheName (char (&out)[256], DWORD typeInfo, DWORD overlayInfo, const std::string& tileKey)
+static void txmCacheName (char (&out)[256], DWORD typeInfo, DWORD overlayInfo, std::string_view tileKey)
 {
 	mc2::fmt::to_buf(out,"{:08d}.{:08d}.r{:d}.m{:d}.{}{}{}.txm",mc2::fmt::as_i32(typeInfo),mc2::fmt::as_i32(overlayInfo),mc2::fmt::as_i32(TERRAIN_TXM_SIZE),mc2::fmt::as_i32(Terrain::terrainTextures2 ? 1 : 0),txmContentKey,tileKey.empty() ? "" : ".o",tileKey);
 }
