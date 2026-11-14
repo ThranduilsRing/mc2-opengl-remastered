@@ -87,7 +87,7 @@ layout(location = 10) out vec3 vMaterialSeed;
 flat layout(location = 11) out vec3 vMaterialAmbient;
 flat layout(location = 12) out vec3 vMaterialSun;
 flat layout(location = 13) out uint vMaterialFlags;
-layout(location = 14) out vec3 vTree; // ambient AO, tree material active, forest sun visibility
+layout(location = 14) out vec3 vTree; // ambient AO, tree material active, forest sky visibility
 flat layout(location = 15) out uvec2 vWindow; // glass cell ID, stable building seed
 flat layout(location = 16) out uvec3 vTeam;   // team paint 0x00RRGGBB x3 (red, green, blue slot), carried in the instance's fogRGB bits
 flat layout(location = 17) out uint vPacketIdx; // this draw's PropPacket row (packetBase + gl_DrawID)
@@ -171,14 +171,11 @@ void main() {
         ? vec3(uTypeHot.c[canopyBase].w, uTypeHot.c[canopyBase+1u].w, uTypeHot.c[canopyBase+2u].w) : vec3(0);
     bool tree = uFrame.poolF.w > 0.0 && canopy.y > 0.0 && (inst.flags & 2u) == 0u;
     vTree = vec3(1.0, tree ? 1.0 : 0.0, 1.0);
-    vec2 forestSun = vec2(-uFrame.terrainSunMC2.x, uFrame.terrainSunMC2.y);
-    vec4 forestDirection = max(vec4(forestSun.x, -forestSun.x, forestSun.y, -forestSun.y), vec4(0));
-    forestDirection /= max(dot(forestDirection, vec4(1)), 1e-6);
     vec4 forestHorizon = vec4((inst.flags >> 8u) & 63u, (inst.flags >> 14u) & 63u,
                               (inst.flags >> 20u) & 63u, (inst.flags >> 26u) & 63u) / 63.0;
-    float forestShade = tree ? dot(forestDirection, forestHorizon) : 0.0;
-    float forestSunVisibility = 1.0 - 0.92 * forestShade;
-    vTree.z = forestSunVisibility;
+    // Sky arrives from the whole hemisphere. Direct light uses the alpha-tested map.
+    float forestSky = tree ? 1.0 - 0.55 * dot(forestHorizon, vec4(0.25)) : 1.0;
+    vTree.z = forestSky;
     vec3 localNormal = a_normal;
     if (tree && (inst.flags & 4u) != 0u) {
         vec3 crown = vec3(a_position.x / canopy.y, (a_position.y - canopy.x) / abs(canopy.z), a_position.z / canopy.y);
@@ -290,7 +287,7 @@ void main() {
     // SH evaluates irradiance, not reflected radiance. Apply the Lambert BRDF
     // once, and decode authored light bytes before summing with linear SH.
     vec3 linearLight = surfaceDecodeSrgb(seed) * propDirFactor
-        + (max(iblTerm, vec3(0.0)) * (1.0 - 0.3 * forestShade) + surfaceDecodeSrgb(sunTerm) * forestSunVisibility * propNightSunWeight(ndl, nMC2)) / 3.14159265
+        + (max(iblTerm, vec3(0.0)) * forestSky + surfaceDecodeSrgb(sunTerm) * propNightSunWeight(ndl, nMC2)) / 3.14159265
         + surfaceDecodeSrgb(inst.aRGBHighlight.rgb);
     vArgb = surfaceEncodeSrgb(linearLight); // retain the legacy encoded albedo multiplier
 }

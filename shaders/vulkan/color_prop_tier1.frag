@@ -295,8 +295,8 @@ void main() {
         float transmission = alphaTestClass ? 0.08*max(dot(-N,L),0.0) : 0.0;
         vec3 direct = propDecodeColor(vMaterialSun) * (propNightSunWeight(wrap, N) + transmission * propNightDirectShare());
         // SH already contains linear irradiance. Preserve the stock albedo exposure ceiling.
-        float forestSky = mix(0.7, 1.0, vTree.z);
-        vec3 irradiance = max(ambient,vec3(0))*vTree.x*materialAO*forestSky + direct*treeVisibility(N)*vTree.z;
+        float forestSky = vTree.z;
+        vec3 irradiance = max(ambient,vec3(0))*vTree.x*materialAO*forestSky + direct*treeVisibility(N);
         // Thin leaves retain sky fill through canopy self-occlusion. Fade it
         // with the night profile rather than making dark forests emissive. Full night keeps 0.35*0.35 (was 0.35*0.2: stock-dark
         // leaf albedo read near-black on night maps such as mc2_10).

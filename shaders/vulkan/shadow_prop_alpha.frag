@@ -21,6 +21,7 @@ layout(push_constant) uniform DrawPush {
 
 layout(location = 0) in vec2 v_uv;
 layout(location = 1) flat in uint v_row;
+layout(location = 2) flat in uint v_foliage;
 
 void main() {
     AlphaRow row = pc.rows.p[v_row];
@@ -31,6 +32,7 @@ void main() {
     vec2 dy = dFdy(uv) * size;
     float lod = max(0.5 * log2(max(max(dot(dx, dx), dot(dy, dy)), 1e-12)), 0.0);
     vec4 texel = textureLod(uAlbedo[nonuniformEXT(bucket)], vec3(uv, float(propBucketLayer(row.layer))), lod);
-    float cut = mix(0.5, 0.9, clamp(lod * 0.5, 0.0, 1.0));
+    // Leaf cores use the colour pass's fixed cutoff, including minified crowns.
+    float cut = v_foliage != 0u ? 0.5 : mix(0.5, 0.9, clamp(lod * 0.5, 0.0, 1.0));
     if (texel.a < cut) discard;
 }
