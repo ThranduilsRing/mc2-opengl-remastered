@@ -19,11 +19,11 @@ inline double asin(double x) { return canonical(detail::asin64(x)); }
 inline double atan2(double y, double x) { return canonical(detail::atan264(y, x)); }
 inline double pow(double x, double y) { return canonical(detail::pow64(x, y)); }
 inline double exp(double x) { return canonical(detail::exp64(x)); }
-inline float sin(float x) { return static_cast<float>(sin(double(x))); }
-inline float cos(float x) { return static_cast<float>(cos(double(x))); }
-inline float acos(float x) { return static_cast<float>(acos(double(x))); }
-inline float asin(float x) { return static_cast<float>(asin(double(x))); }
-inline float atan2(float y, float x) { return static_cast<float>(atan2(double(y), double(x))); }
-inline float pow(float x, float y) { return static_cast<float>(pow(double(x), double(y))); }
-inline float exp(float x) { return static_cast<float>(exp(double(x))); }
+inline float sin(float x) { return static_cast<float>(sin(static_cast<double>(x))); }
+inline float cos(float x) { return static_cast<float>(cos(static_cast<double>(x))); }
+inline float acos(float x) { return static_cast<float>(acos(static_cast<double>(x))); }
+inline float asin(float x) { return static_cast<float>(asin(static_cast<double>(x))); }
+inline float atan2(float y, float x) { return static_cast<float>(atan2(static_cast<double>(y), static_cast<double>(x))); }
+inline float pow(float x, float y) { return static_cast<float>(pow(static_cast<double>(x), static_cast<double>(y))); }
+inline float exp(float x) { return static_cast<float>(exp(static_cast<double>(x))); }
 } // namespace mc2::sim::math
