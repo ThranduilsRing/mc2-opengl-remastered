@@ -28,6 +28,21 @@ import sim_determinism as sd  # noqa: E402
 from visual_verify import ab  # noqa: E402
 
 
+@pytest.mark.parametrize("path,needed", [("editor/EditorObjectMgr_render.cpp", True),
+    ("GameOS/gameos/vulkan_fsr_provider.cpp", True), ("mclib/bdactor.h", True),
+    ("CMakeLists.txt", True), ("cmake/Flags.cmake", True), ("docs/known_issues.md", False),
+    ("code/logistics.cpp", False)])
+def test_editor_gate_build_scope(monkeypatch, path, needed):
+    import merge_gate as gate
+    monkeypatch.setenv("MC2_GATE_HOST", "pc")
+    stage = next(s for s in gate.affected_plan(gate.plan(4), [path]) if s[0] == "editor")
+    assert (not stage[2].get("MC2_GATE_SKIP_REASON")) == needed
+    assert stage[1][1:] == ["scripts/merge_gate_editor.py", "4"]
+    monkeypatch.setenv("MC2_GATE_HOST", "laptop")
+    stage = gate.affected_plan([stage[:2] + ({},)], [path], full=True)[0]
+    assert "mfc=no" in stage[2]["MC2_GATE_SKIP_REASON"]
+
+
 def _r(rc, out=""):
     return types.SimpleNamespace(returncode=rc, stdout=out)
 

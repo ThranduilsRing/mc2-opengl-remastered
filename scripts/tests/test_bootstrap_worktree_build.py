@@ -66,7 +66,9 @@ def test_gameos_requires_vulkan_and_has_no_island_define():
     """G2: Vulkan is required; the island guard macro is gone (always-VK)."""
     gameos = (ROOT / "GameOS" / "gameos" / "CMakeLists.txt").read_text(encoding="utf-8")
     assert "gameos requires MC2_VULKAN=ON" in gameos
-    assert "target_compile_definitions(gameos PRIVATE MC2_VULKAN)" in gameos
+    assert "target_compile_definitions(${target} PRIVATE MC2_VULKAN)" in gameos
+    assert "mc2_gameos_vulkan(gameos)" in gameos
+    assert "mc2_gameos_vulkan(gameos_editor)" in gameos
     assert "if(MC2_VULKAN_ISLAND)" not in gameos
     assert "target_compile_definitions(gameos PUBLIC MC2_VULKAN_ISLAND)" not in gameos
 

@@ -9,9 +9,9 @@ add_library(editorbridge STATIC
 )
 
 # PUBLIC: rendercore + renderworld symbols appear in EditorRenderBridge.h types.
-# PRIVATE: mclib + gameos are carve-out implementation details only; EditorRenderBridge.h
-#   exposes none of their types, so consumers must not inherit these dependencies.
-target_link_libraries(editorbridge PUBLIC rendercore renderworld PRIVATE mclib gameos)
+# Each executable selects gameos or gameos_editor; a static-library PRIVATE link
+# still propagates gameos and pulls its competing window implementation into EditRel.
+target_link_libraries(editorbridge PUBLIC rendercore renderworld PRIVATE mclib)
 
 # Carve-out .cpp reaches game-side and GameOS headers.
 target_include_directories(editorbridge PRIVATE

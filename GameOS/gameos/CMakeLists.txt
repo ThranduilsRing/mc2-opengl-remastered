@@ -344,26 +344,29 @@ target_link_libraries(gameos PRIVATE rendercore sentry)
 
 # VULKAN-BACKEND-SKELETON-1: link the Vulkan loader + define MC2_VULKAN only
 # when the option is ON. gameos_editor gets the same treatment below.
+function(mc2_gameos_vulkan target)
 if(MC2_VULKAN)
     # VULKAN-VOLK-LOADER-1: headers only -- volk loads vulkan-1.dll at runtime,
     # so we must NOT link the loader import lib (Vulkan::Vulkan).
-    target_link_libraries(gameos PRIVATE Vulkan::Headers)
-    target_compile_definitions(gameos PRIVATE MC2_VULKAN)
+    target_link_libraries(${target} PRIVATE Vulkan::Headers)
+    target_compile_definitions(${target} PRIVATE MC2_VULKAN)
     # VMA configuration for every TU that includes vk_mem_alloc.h (only VMA_IMPLEMENTATION reads it; vma_impl.cpp needs dynamic).
-    target_compile_definitions(gameos PRIVATE VMA_STATIC_VULKAN_FUNCTIONS=0 VMA_DYNAMIC_VULKAN_FUNCTIONS=1)
+    target_compile_definitions(${target} PRIVATE VMA_STATIC_VULKAN_FUNCTIONS=0 VMA_DYNAMIC_VULKAN_FUNCTIONS=1)
     # VULKAN-VMA-INTEGRATION-1: vendored header-only VMA (3rdparty/vma).
-    target_include_directories(gameos PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty/vma")
+    target_include_directories(${target} PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty/vma")
     # VULKAN-VOLK-LOADER-1: vendored volk (volk.h/volk.c).
-    target_include_directories(gameos PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty/volk")
+    target_include_directories(${target} PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty/volk")
     # VK-BOOTSTRAP-INTEGRATE-1: vendored vk-bootstrap (SwapchainBuilder).
-    target_include_directories(gameos PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty/vk_bootstrap")
+    target_include_directories(${target} PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty/vk_bootstrap")
     # TAA slice C: vendored FidelityFX ffx-api headers (runtime-loaded amd_fidelityfx_vk.dll).
-    target_include_directories(gameos PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty/fidelityfx")
+    target_include_directories(${target} PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty/fidelityfx")
     # VK-IMGUI-NATIVE-1: engine_present_vk.cpp owns the Vulkan renderer backend.
-    target_include_directories(gameos PRIVATE
+    target_include_directories(${target} PRIVATE
         "${CMAKE_SOURCE_DIR}/3rdparty/imgui"
         "${CMAKE_SOURCE_DIR}/3rdparty/imgui/backends")
 endif()
+endfunction()
+mc2_gameos_vulkan(gameos)
 
 # VULKAN-SHADER-TOOLCHAIN-1: compile the GLSL listed in MC2_VK_SHADER_BASENAMES to
 # SPIR-V at build time -- ONLY when MC2_VULKAN=ON. OFF -> this target/step does
@@ -567,23 +570,7 @@ list(REMOVE_ITEM GAMEOS_EDITOR_SOURCES gos_render.cpp)
 add_library(gameos_editor ${GAMEOS_EDITOR_SOURCES})
 target_link_libraries(gameos_editor PUBLIC mc2_core_diag)
 target_link_libraries(gameos_editor PRIVATE rendercore mc2_meshopt sentry mc2_platform)
-if(MC2_VULKAN)
-    # VULKAN-VOLK-LOADER-1: headers only -- volk owns runtime dispatch.
-    target_link_libraries(gameos_editor PRIVATE Vulkan::Headers)
-    target_compile_definitions(gameos_editor PRIVATE MC2_VULKAN)
-    # VMA configuration for every TU that includes vk_mem_alloc.h (only VMA_IMPLEMENTATION reads it; vma_impl.cpp needs dynamic).
-    target_compile_definitions(gameos_editor PRIVATE VMA_STATIC_VULKAN_FUNCTIONS=0 VMA_DYNAMIC_VULKAN_FUNCTIONS=1)
-    # VULKAN-VMA-INTEGRATION-1: vendored header-only VMA (3rdparty/vma).
-    target_include_directories(gameos_editor PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty/vma")
-    # VULKAN-VOLK-LOADER-1: vendored volk (volk.h/volk.c).
-    target_include_directories(gameos_editor PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty/volk")
-    # VK-BOOTSTRAP-INTEGRATE-1: vendored vk-bootstrap (SwapchainBuilder).
-    target_include_directories(gameos_editor PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty/vk_bootstrap")
-    # engine_present_vk.cpp (shared SOURCES) includes imgui headers; gameos_editor was missing the dirs.
-    target_include_directories(gameos_editor PRIVATE
-        "${CMAKE_SOURCE_DIR}/3rdparty/imgui"
-        "${CMAKE_SOURCE_DIR}/3rdparty/imgui/backends")
-endif()
+mc2_gameos_vulkan(gameos_editor)
 
 add_library(gameos_main ${MAIN_SRC})
 
