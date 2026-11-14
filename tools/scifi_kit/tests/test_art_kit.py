@@ -11,7 +11,17 @@ import geo  # noqa: E402
 CONDITIONS = ['pristine', 'worn', 'abandoned', 'destroyed']
 
 
-def test_intent_check_rejects_lint_only_failure(monkeypatch):
+@pytest.fixture
+def stock_intent():
+    # intent_generic imports measured gate pivots from the host's decoded stock.
+    import analyze
+    if not analyze.STOCK.is_dir():
+        pytest.skip('intent builders require the host-only decoded stock mesh dump at ' + str(analyze.STOCK))
+    import intent
+    return intent
+
+
+def test_intent_check_rejects_lint_only_failure(monkeypatch, stock_intent):
     import numpy as np
     import analyze
     import clearance
@@ -71,7 +81,7 @@ def test_primitives_build(name, cond):
 
 
 @pytest.mark.parametrize('name', list(assemble.ASSEMBLIES))
-def test_assemblies_build(name):
+def test_assemblies_build(name, stock_intent):
     for cond in ('pristine', 'destroyed'):
         k = _parked(assemble.build, name, cond)
         _valid(k)
