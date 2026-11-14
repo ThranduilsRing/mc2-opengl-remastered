@@ -286,7 +286,7 @@ void PilotReviewScreen::update()
 	// MC2_SHOT_RESULTS capture runs let the real panel (promotion area included) run for 900 frames before the soak dismisses it.
 	static const bool s_shotHold = mc2::gate::get<"MC2_SHOT_RESULTS">();
 	static int s_shotHoldFrames = 0;
-	if ( s_soakAutoWin && s_shotHold && s_shotHoldFrames < 1500&& !bDone )
+	if ( s_soakAutoWin && s_shotHold && s_shotHoldFrames < 900 && !bDone )
 		++s_shotHoldFrames;
 	else if ( s_soakAutoWin )
 	{

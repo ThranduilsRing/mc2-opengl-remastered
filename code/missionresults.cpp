@@ -163,7 +163,7 @@ void MissionResults::update()
 	{
 		static float s_soakResultsDwell = 0.0f;
 		s_soakResultsDwell += frameLength;
-		if ( s_soakResultsDwell >= ( mc2::gate::get<"MC2_SHOT_RESULTS">() ? 30.0f : 0.75f ) )  // capture runs hold each panel long enough to photograph
+		if ( s_soakResultsDwell >= ( mc2::gate::get<"MC2_SHOT_RESULTS">() ? 6.0f : 0.75f ) )  // capture runs hold each panel long enough to photograph
 		{
 			s_soakResultsDwell = 0.0f;
 			if ( pSalvageScreen && !pSalvageScreen->donePressed() )
@@ -290,7 +290,7 @@ void MissionResults::render()
 			static const void* s_promoteSeen = nullptr;
 			static int s_promoteShots = 0;
 			if ( s_promoteSeen != pPilotScreen.get() ) { s_promoteSeen = pPilotScreen.get(); s_promoteFrames = 0; }
-			if ( s_shotResults && s_promoteFrames >= 0 && ++s_promoteFrames == 1100 )  // the panel slides in over the salvage exit; 30 frames caught it mid-slide
+			if ( s_shotResults && s_promoteFrames >= 0 && ++s_promoteFrames == 400 )  // the panel slides in over the salvage exit; 30 frames caught it mid-slide
 			{
 				gos_dev_shell::scheduleScreenshot( ("results_promote_" + std::to_string( ++s_promoteShots )).c_str() );
 				s_promoteFrames = -1;
