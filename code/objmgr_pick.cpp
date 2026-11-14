@@ -694,14 +694,24 @@ GameObjectPtr pickGameplayObjects(long x, long y, std::span<GameObjectPtr> list,
     double origin[3], direction[3];
     if (!mc2::pickScreenRay(*eye, x, y, origin, direction)) return GameObjectPtr{};
     const double terrainT = pickTerrainDepth(origin, direction);
+    // PICK diag: why an enemy mover is not a candidate under this cursor (rect_miss is expected for most units).
+    const bool pickTrace = mc2_diag::tagEnabled("PICK");
+    const auto rejectEnemy = [&](GameObjectPtr o, const char* reason) {
+        if (!pickTrace || !o->isMover() || !o->isEnemy(Team::home)) return;
+        char payload[160];
+        mc2::fmt::to_buf(payload, "{{\"mouse\":[{},{}],\"reject\":\"{}\",\"part_id\":{}}}",
+            mc2::fmt::as_i32(x), mc2::fmt::as_i32(y), reason, o->getPartId());
+        mc2_diag::writeEvent("PICK", 1, 0, payload);
+    };
     // Include non-targetable foreground objects and other commanders in the
     // occlusion stack. Filtering them first would pick straight through them.
     for (long h = 1; h <= ObjectManager->getMaxObjects(); ++h) {
         auto* obj = ObjectManager->get(h);
-        if (!obj || !obj->getExists() || obj->inTransport() || !obj->getAppearance()
-            || !obj->getAppearance()->canBeSeen()) continue;
+        if (!obj || !obj->getExists() || obj->inTransport() || !obj->getAppearance()) continue;
+        if (!obj->getAppearance()->canBeSeen()) { rejectEnemy(obj, "not_in_view"); continue; }
         PickRect rect;
-        if (!gameplayPickRect(obj, rect) || !rect.contains(x, y)) continue;
+        if (!gameplayPickRect(obj, rect)) { rejectEnemy(obj, "no_rect"); continue; }
+        if (!rect.contains(x, y)) { rejectEnemy(obj, "rect_miss"); continue; }
         if (!obj->isMover())
             if (auto* ba = dynamic_cast<BldgAppearance*>(obj->getAppearance()); ba && ba->appearType && !cursorOnProjectedBox(ba, x, y)) continue;
         const float pad = gameplayPickPad();
@@ -730,9 +740,10 @@ GameObjectPtr pickGameplayObjects(long x, long y, std::span<GameObjectPtr> list,
             surfaceT = pickTerrainDepth(moverOrigin, moverDirection);
             return true;
         });
-        if (!hit) continue;
+        if (!hit) { rejectEnemy(obj, "ray_miss"); continue; }
         const double depth = *hit;
         if (!mc2::pickBeforeSurface(depth, surfaceT)) {
+            rejectEnemy(obj, "terrain_occluded");
             if (mc2_diag::tagEnabled("CURSOR_TARGET")) {
                 char payload[256];
                 mc2::fmt::to_buf(payload,
@@ -746,6 +757,7 @@ GameObjectPtr pickGameplayObjects(long x, long y, std::span<GameObjectPtr> list,
         const bool eligible = gameplayPickEligible(obj, skipDisabled)
             && (excludeCommander == -1 || obj->getCommanderId() != excludeCommander)
             && (!terrainOnly || !obj->isMover()) && std::find(list.begin(), list.end(), obj) != list.end();
+        if (!eligible) rejectEnemy(obj, "ineligible");
         stack.push_back({obj, depth, pickPriority(obj) + (coreHit ? 0 : 5), eligible});
     }
     if (stack.empty()) return GameObjectPtr{};
@@ -754,7 +766,7 @@ GameObjectPtr pickGameplayObjects(long x, long y, std::span<GameObjectPtr> list,
                                     {b.obj->isMover() && b.eligible, b.depth, b.priority, static_cast<long>(b.obj->getHandle())});
     });
     const auto& front = stack.front();
-    if (mc2_diag::tagEnabled("PICK")) {
+    if (pickTrace) {
         char payload[192];
         mc2::fmt::to_buf(payload, "{{\"mouse\":[{},{}],\"winner\":{},\"winner_class\":{},\"eligible\":{},\"candidates\":{}}}",
             mc2::fmt::as_i32(x), mc2::fmt::as_i32(y), front.obj->getPartId(), static_cast<int>(front.obj->getObjectClass()),
