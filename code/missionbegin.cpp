@@ -281,20 +281,50 @@ void shotDone(mc2::czstring path, bool ok, int w, int h)
 }
 }  // namespace
 
+namespace {
+bool g_promotionShot = false;   // MC2_SHOT_SCREEN=promotion: the post-mission pilot promotion panel, not a front-end grid cell
+
+void shotInit()
+{
+	if (g_shotInit) return;
+	g_shotInit = true;
+	g_shotScreen = mc2::gate::str<"MC2_SHOT_SCREEN">();
+	if (g_shotScreen.empty()) return;
+	g_shotPath = mc2::gate::str<"MC2_SCREENSHOT_PATH">();
+	Spec spec;
+	std::string why;
+	if (!parseSpec(g_shotScreen, spec, &why)) { g_trigger.arm(0, 0, 1, 1); shotFail(why.c_str()); return; }
+	if (g_shotPath.empty()) { g_trigger.arm(0, 0, 1, 1); shotFail("MC2_SCREENSHOT_PATH is not set"); return; }
+	g_promotionShot = spec.cell->x == kPromotionCell;
+	// the panel slides in over ~100 frames: default settle for it is 150 frames unless @N was given
+	const int settle = (g_promotionShot && g_shotScreen.find('@') == std::string::npos) ? 150 : spec.settleFrames;
+	g_trigger.arm(g_promotionShot ? 0 : spec.cell->x, g_promotionShot ? 0 : spec.cell->y, settle, kMaxWaitFrames);
+}
+
+void shotStep(int curX, int curY);
+}  // namespace
+
+bool promotionCaptureActive()
+{
+	shotInit();
+	return g_promotionShot;
+}
+
+void promotionTick(bool panelUp)
+{
+	shotInit();
+	if (g_promotionShot) shotStep(panelUp ? 0 : -1, panelUp ? 0 : -1);
+}
+
 void tickFrontEnd(int curX, int curY)
 {
-	if (!g_shotInit)
-	{
-		g_shotInit = true;
-		g_shotScreen = mc2::gate::str<"MC2_SHOT_SCREEN">();
-		if (g_shotScreen.empty()) return;
-		g_shotPath = mc2::gate::str<"MC2_SCREENSHOT_PATH">();
-		Spec spec;
-		std::string why;
-		if (!parseSpec(g_shotScreen, spec, &why)) { g_trigger.arm(0, 0, 1, 1); shotFail(why.c_str()); return; }
-		if (g_shotPath.empty()) { g_trigger.arm(0, 0, 1, 1); shotFail("MC2_SCREENSHOT_PATH is not set"); return; }
-		g_trigger.arm(spec.cell->x, spec.cell->y, spec.settleFrames, kMaxWaitFrames);
-	}
+	shotInit();
+	if (!g_promotionShot) shotStep(curX, curY);
+}
+
+namespace {
+void shotStep(int curX, int curY)
+{
 	if (!g_trigger.armed() || g_trigger.finished()) return;
 	Trigger::Action a = g_trigger.onFrame(curX, curY);
 	if (a == Trigger::Action::Capture)
@@ -309,10 +339,11 @@ void tickFrontEnd(int curX, int curY)
 	}
 	if (a == Trigger::Action::Fail) shotFail(g_trigger.reason());
 }
+}  // namespace
 
 void onMissionStarted()
 {
-	if (g_trigger.onLeftFrontEnd() == Trigger::Action::Fail) shotFail(g_trigger.reason());
+	if (!g_promotionShot && g_trigger.onLeftFrontEnd() == Trigger::Action::Fail) shotFail(g_trigger.reason());
 }
 }  // namespace mc2::screen_settle
 

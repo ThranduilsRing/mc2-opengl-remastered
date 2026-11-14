@@ -14,6 +14,7 @@ inline constexpr ScreenCell kScreens[] = {
     {"mainmenu", -1, -1},
     {"loadgame", -3, -3},
     {"encyclopedia", -2, -2},
+    {"promotion", -3, -3},        // post-mission pilot promotion panel (PilotReviewScreen), captured by promotionTick, not a grid cell
     {"campaign_missions", 0, 1},  // mission selection (campaign / globe screen)
     {"logistics", 1, 1},          // alias of briefing: the first logistics-stage screen, with the tactical minimap
     {"briefing", 1, 1},
@@ -126,6 +127,9 @@ private:
 
 // Engine hooks (code/missionbegin.cpp). The engine-free state machine above is what the doctest pins.
 void tickFrontEnd(int curX, int curY);   // MissionBegin::render, once per front-end frame (-1,-1 while the main menu/splash is up)
-void onMissionStarted();                 // logistics finished (mission launching): a still-pending capture fails
+inline constexpr int kPromotionCell = -3;
+bool promotionCaptureActive();           // MC2_SHOT_SCREEN=promotion: hold the soak's results dismissal until the panel is photographed
+void promotionTick(bool panelUp);        // PilotReviewScreen::render, once per frame; panelUp = the promotion area is on screen
+void onMissionStarted();              // logistics finished (mission launching): a still-pending capture fails
 
 }  // namespace mc2::screen_settle

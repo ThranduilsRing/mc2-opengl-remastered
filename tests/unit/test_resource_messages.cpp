@@ -234,3 +234,10 @@ TEST_CASE("a valid late override replaces the cached template, through overlay a
     CHECK(mc2msg::message<IDS_PLAYER_LEFT>("Bob") == "Bob   |gone");
     CHECK(MC2Strings::Revision() == steady);
 }
+
+TEST_CASE("UnescapeFitString: the stock backslash break code is a line break, other escapes decode")
+{
+    CHECK(MC2Strings::UnescapeFitString(R"(LASER SPECIALIST\\\nAbility)") == "LASER SPECIALIST\nAbility");
+    CHECK(MC2Strings::UnescapeFitString(R"(a\nb\tc\d\"e)") == "a\nb\tc\d\"e");
+    CHECK(MC2Strings::UnescapeFitString(R"(end\)") == "end\\");
+}

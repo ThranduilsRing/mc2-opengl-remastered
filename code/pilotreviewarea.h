@@ -56,6 +56,7 @@ public:
 	
 	void init(FitIniFile* file);
 	bool isDone();
+	bool listFinished();	// the per-pilot scroll (promotion panels included) has run out (capture harness)
 	virtual void render();
 	virtual void update();
 	virtual int			handleMessage( unsigned long, unsigned long );
