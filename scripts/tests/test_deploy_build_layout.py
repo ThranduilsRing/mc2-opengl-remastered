@@ -119,18 +119,16 @@ def test_enumerate_payload_needs_only_game(tmp_path):
     assert not any("__pycache__" in r or r.endswith((".pyc", ".pyo")) for r in rel)
 
 
-def test_approved_road_art_is_deployed_and_declared(tmp_path):
-    # Trigger paths: scripts/deploy_payload.py, data/textures/256Overlays/, intentional-asset-changes.json.
-    import hashlib
-    import json
+def test_approved_road_art_is_deployed_and_parity_owned(tmp_path):
+    # Trigger paths: scripts/deploy_payload.py, data/textures/256Overlays/.
+    from scripts import asset_parity
     expected = {f"data/textures/256Overlays/{family}{i:04d}.tga"
                 for family in ("runway", "pavedroad", "dirtroad", "2lanedirt") for i in range(15)}
     items = dp.enumerate_payload(str(ROOT), str(_ninja_tree(tmp_path)), "mc2.exe", "mc2.pdb")
     payload = {rel: Path(src) for src, rel, _ in items}
-    declared = json.loads((ROOT / "intentional-asset-changes.json").read_text())
     assert expected <= payload.keys()
-    for rel in expected:
-        assert hashlib.sha256(payload[rel].read_bytes()).hexdigest() == declared[rel]
+    hashes = {rel: dp.sha256_file(payload[rel]) for rel in expected}
+    assert asset_parity.owned_paths(ROOT, payload=hashes, declared={}) == {rel.lower() for rel in expected}
 
 
 def test_missing_baked_shaders_refuses_deploy(tmp_path):
