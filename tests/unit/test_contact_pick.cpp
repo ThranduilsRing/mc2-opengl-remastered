@@ -266,7 +266,13 @@ TEST_CASE("pick occlusion: a mover slightly behind the visual surface at its fee
 {
     // Observed on mc2_01: object_t 1318.7 vs terrain_t 1313.1 for a visible enemy under the cursor.
     CHECK_FALSE(mc2::pickBeforeSurface(1318.7, 1313.1));
-    CHECK(mc2::pickBeforeSurface(1318.7, 1313.1, 30.0));
-    // A unit well behind a ridge (more than its own size) is still occluded.
-    CHECK_FALSE(mc2::pickBeforeSurface(1400.0, 1313.1, 30.0));
+    const double lo[3] = {-5, -10, 0}, hi[3] = {5, 10, 20};
+    const double feet[3] = {0, 0, 1}, ridge[3] = {-20, 0, 1};
+    CHECK(mc2::pickMoverBeforeSurface(1318.7, 1313.1, feet, lo, hi));
+    CHECK_FALSE(mc2::pickMoverBeforeSurface(1400.0, 1313.1, feet, lo, hi));
+    // Regression: the old diagonal slack accepted t=120 behind a ridge at t=100.
+    CHECK_FALSE(mc2::pickMoverBeforeSurface(120, 100, ridge, lo, hi));
+    CHECK(mc2::pickMoverBeforeSurface(99, 100, ridge, lo, hi));
+    const double sideRidge[3] = {0, 11, 1};
+    CHECK_FALSE(mc2::pickMoverBeforeSurface(120, 100, sideRidge, lo, hi));
 }
