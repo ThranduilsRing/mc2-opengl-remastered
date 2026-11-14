@@ -4,6 +4,8 @@
 #include "vk_rt_acceleration.h"
 
 #include "vulkan_context.h"
+#include "vk_gpu_profile.h"
+#include <tracy/Tracy.hpp>
 
 #include <algorithm>
 #include <cassert>
@@ -296,6 +298,8 @@ uint32_t AccelStructure::buildFlagBits() const noexcept {
 
 bool recordBlasJobs(const VulkanContext& ctx, VkCommandBuffer cmd, std::span<BlasJob> jobs, const BuildFlags& flags, std::string_view name, ScratchArena& scratch,
                     uint32_t* groupsOut, VkDeviceSize* scratchOut) {
+    ZoneScopedN("RT.BLAS.Record");
+    MC2_VK_GPU_SCOPE(blasScope, cmd, "RT.BLAS.Build");
     if (groupsOut) *groupsOut = 0;
     if (scratchOut) *scratchOut = 0;
     for (BlasJob& j : jobs) j.ok = false;
@@ -401,6 +405,8 @@ bool recordBlasJobs(const VulkanContext& ctx, VkCommandBuffer cmd, std::span<Bla
 
 bool recordTlasBuild(const VulkanContext& ctx, VkCommandBuffer cmd, VkDeviceAddress instances, uint32_t instanceCount, const BuildFlags& flags, std::string_view name,
                      AccelStructure& tlas, ScratchArena& scratch) {
+    ZoneScopedN("RT.TLAS.Record");
+    MC2_VK_GPU_SCOPE(tlasScope, cmd, "RT.TLAS.Build");
     if (!ctx.rt().accel) return failWith("no_accel");
     if (instancesBad(instances, instanceCount)) return false;
     const VkAccelerationStructureGeometryKHR geo = instancesOf(instances);
@@ -416,6 +422,8 @@ bool recordTlasBuild(const VulkanContext& ctx, VkCommandBuffer cmd, VkDeviceAddr
 
 bool recordTlasRebuild(const VulkanContext& ctx, VkCommandBuffer cmd, VkDeviceAddress instances, uint32_t instanceCount, uint32_t capacity, const BuildFlags& flags,
                        std::string_view name, AccelStructure& tlas, ScratchArena& scratch) {
+    ZoneScopedN("RT.TLAS.Record");
+    MC2_VK_GPU_SCOPE(tlasScope, cmd, "RT.TLAS.Build");
     if (!ctx.rt().accel) return failWith("no_accel");
     if (instancesBad(instances, instanceCount)) return false;
     if (tlas && !tlas.isTop()) return false;

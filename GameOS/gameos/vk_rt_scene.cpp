@@ -23,6 +23,8 @@
 #include "gos_static_prop_registry.h"
 #include "utils/mc2log.h"
 #include "vk_one_shot.h"
+#include "vk_gpu_profile.h"
+#include <tracy/Tracy.hpp>
 #include "vk_rt_acceleration.h"
 #include "vk_rt_selftest.h"
 #include "vulkan_color_prop_island.h"
@@ -467,6 +469,8 @@ void logPublish(const State& s, std::string_view why, const BuildStats& st, doub
          blasBytes + tlasBytes + s.scratch.capacity() + instanceBytes + s.materialBytes, st.buildCalls, st.scratchSpan, ms);
 }
 
+bool terrainOccluder(const State& s, uint32_t id, uint32_t prim, float x, float y, float z);
+
 // MC2_VK_RT_SELFTEST: once the scene holds terrain and props, fixed downward rays at known props and terrain vertices; logs every hit.
 void probe(VulkanContext& ctx, State& s) {
     if (s.probed || !s.tlas || s.terrainBlas.empty() || s.tlasProps == 0 || !mc2::gate::get<"MC2_VK_RT_SELFTEST">()) return;
@@ -523,6 +527,17 @@ void probe(VulkanContext& ctx, State& s) {
             }
             MC2_EVENT(Vk, "VK_RT_SCENE", 1, "probe ray={} occluded_by=0x{:x} behind_found={} passes={}", i, idx, match ? 1 : 0, passes);
         }
+        if (!isProp && hit && !match && idx != kTerrainObjectId) {
+            const ProbePoint& p = s.terrainProbe[i - props];
+            // Only move below an occluder independently confirmed in the CPU source geometry at the reported GPU hit.
+            const bool correct = terrainOccluder(s, idx, static_cast<uint32_t>(o[2]), p.x, p.y, kTop - o[1]);
+            float r[4] = {};
+            const float ray[8] = {p.x, p.y, p.h + 1.0f, 0.0f, 0.0f, 0.0f, -1.0f, 2.0f};
+            if (correct && kTop - o[1] > p.h + 1.0f && traceRays(ctx, s.tlas.get(), ray, r))
+                match = r[0] != 0.0f && static_cast<uint32_t>(r[3]) == kTerrainObjectId && std::abs(r[1] - 1.0f) < 0.1f;
+            MC2_EVENT(Vk, "VK_RT_SCENE", 1, "probe terrain ray={} occluder_correct={} moved_origin_z={:.3f} hit={} t={:.3f} custom=0x{:x} match={}",
+                      i, correct ? 1 : 0, p.h + 1.0f, r[0], r[1], static_cast<uint32_t>(r[3]), match ? 1 : 0);
+        }
         (isProp ? propOk : terrainOk) += match ? 1u : 0u;
         MC2_EVENT(Vk, "VK_RT_SCENE", 1, "probe ray={} kind={} origin=({:.1f},{:.1f}) hit={} t={:.2f} prim={} custom=0x{:x} expect=0x{:x} expect_t={:.2f} match={}", i,
              isProp ? "prop" : "terrain", rays[static_cast<size_t>(i) * 8], rays[static_cast<size_t>(i) * 8 + 1], hit ? 1 : 0, o[1], static_cast<uint32_t>(o[2]), idx, expect[i],
@@ -548,6 +563,48 @@ bool worldTri(const float t[12], const float v[9], WorldTri& w) {
     if (!(len > 1e-4f)) return false;
     for (float& c : w.n) c /= len;
     return true;
+}
+
+// Validate the original hit against CPU vertices and current placements, independently of BLAS/TLAS contents.
+bool terrainOccluder(const State& s, uint32_t id, uint32_t prim, float x, float y, float z) {
+    Mc2ShadowGeomFeed feed{};
+    const void *vb = nullptr, *ib = nullptr;
+    uint64_t vbBytes = 0, ibBytes = 0;
+    if (!mc2_shadow_island_get_geometry_feed(&feed) || !feed.vertexStride ||
+        !mc2_static_prop_geometry_cpu(&vb, &vbBytes, &ib, &ibBytes) || !vb) return false;
+    for (size_t i = 0; i < s.instances.size(); ++i) {
+        const uint32_t ty = s.instances[i].typeID;
+        if (s.objectIds[i] != id || ty >= s.typeRowBase.size() || ty >= feed.typeCount) continue;
+        float t[12];
+        propTransform(s.instances[i].modelMatrix, t);
+        for (size_t row = s.typeRowBase[ty]; row < s.propRows.size(); ++row) {
+            const MaterialRow& m = s.propRows[row];
+            if (m.packet >= feed.typeFirstPacket[ty] + feed.typePacketCount[ty]) break;
+            if (m.packet >= feed.packetCount || prim >= feed.packets[m.packet].indexCount / 3) continue;
+            const size_t at = static_cast<size_t>(m.firstIndex) + 3ull * prim;
+            if (at + 2 >= s.uvIndices.size()) continue;
+            float v[9];
+            bool valid = true;
+            for (size_t k = 0; k < 3; ++k) {
+                const size_t offset = static_cast<size_t>(s.uvIndices[at + k]) * feed.vertexStride;
+                if (offset + 12 > vbBytes) { valid = false; break; }
+                std::memcpy(v + 3 * k, static_cast<const uint8_t*>(vb) + offset, 12);
+            }
+            WorldTri w{};
+            if (!valid || !worldTri(t, v, w)) continue;
+            const float bx = w.b[0] - w.a[0], by = w.b[1] - w.a[1], cx = w.c[0] - w.a[0], cy = w.c[1] - w.a[1];
+            const float det = bx * cy - by * cx;
+            if (std::abs(det) < 1e-6f) continue;
+            const float u = ((x - w.a[0]) * cy - (y - w.a[1]) * cx) / det;
+            const float vWeight = (bx * (y - w.a[1]) - by * (x - w.a[0])) / det;
+            const float cpuZ = w.a[2] + u * (w.b[2] - w.a[2]) + vWeight * (w.c[2] - w.a[2]);
+            if (u < 0 || vWeight < 0 || u + vWeight > 1 || std::abs(cpuZ - z) > 0.1f) continue;
+            MC2_EVENT(Vk, "VK_RT_SCENE", 1, "probe occluder CPU instance={} type={} row={} prim={} xy=({:.3f},{:.3f}) bary=({:.6f},{:.6f}) z={:.3f} gpu_z={:.3f}",
+                      i, ty, row, prim, x, y, u, vWeight, cpuZ, z);
+            return true;
+        }
+    }
+    return false;
 }
 
 // A ray along -normal through barycentric (u, v) of `w`, starting 2 units off the surface: no neighbour above can occlude it (the 1/8 object-ID miss).
@@ -1223,28 +1280,32 @@ void recordFrame() {
     s.frameCmd = cmd;
     s.frameWork = false;
     recordBarrier(ctx, cmd, frameRebuildBarrier());
-    for (size_t b = 0; b < s.compactions.size();) {
-        auto& batch = s.compactions[b];
-        bool ready = ctx.frameContext().frame > batch.frame;
-        for (size_t i = 0; ready && i < batch.types.size(); ++i) {
-            if (!batch.addresses[i]) continue;
-            VkDeviceSize bytes = 0;
-            const VkResult r = vkGetQueryPoolResults(ctx.device(), batch.query.get(), static_cast<uint32_t>(i), 1, sizeof(bytes), &bytes, sizeof(bytes), VK_QUERY_RESULT_64_BIT);
-            if (r == VK_NOT_READY) { ready = false; break; }
-            const uint32_t type = batch.types[i];
-            if (r == VK_SUCCESS && type < s.propBlas.size() && s.propBlas[type].address() == batch.addresses[i] && worthCompacting(s.propBlas[type].size(), bytes)) {
-                AccelStructure compact;
-                if (recordCompactCopy(ctx, cmd, s.propBlas[type], bytes, "rt_scene.prop", compact)) {
-                    s.frameWork = true;
-                    s.compacted.emplace_back(type, std::move(compact));
-                    s.compactedDirty = true;
+    if (!s.compactions.empty()) {
+        ZoneScopedN("RT.AsyncCompaction.Record");
+        MC2_VK_GPU_SCOPE(compactionScope, cmd, "RT.AsyncCompaction");
+        for (size_t b = 0; b < s.compactions.size();) {
+            auto& batch = s.compactions[b];
+            bool ready = ctx.frameContext().frame > batch.frame;
+            for (size_t i = 0; ready && i < batch.types.size(); ++i) {
+                if (!batch.addresses[i]) continue;
+                VkDeviceSize bytes = 0;
+                const VkResult r = vkGetQueryPoolResults(ctx.device(), batch.query.get(), static_cast<uint32_t>(i), 1, sizeof(bytes), &bytes, sizeof(bytes), VK_QUERY_RESULT_64_BIT);
+                if (r == VK_NOT_READY) { ready = false; break; }
+                const uint32_t type = batch.types[i];
+                if (r == VK_SUCCESS && type < s.propBlas.size() && s.propBlas[type].address() == batch.addresses[i] && worthCompacting(s.propBlas[type].size(), bytes)) {
+                    AccelStructure compact;
+                    if (recordCompactCopy(ctx, cmd, s.propBlas[type], bytes, "rt_scene.prop", compact)) {
+                        s.frameWork = true;
+                        s.compacted.emplace_back(type, std::move(compact));
+                        s.compactedDirty = true;
+                    }
                 }
+                batch.addresses[i] = 0;
             }
-            batch.addresses[i] = 0;
+            if (!ready) { ++b; continue; }
+            ctx.retire(std::move(batch.query));
+            s.compactions.erase(s.compactions.begin() + b);
         }
-        if (!ready) { ++b; continue; }
-        ctx.retire(std::move(batch.query));
-        s.compactions.erase(s.compactions.begin() + b);
     }
     recordBarrier(ctx, cmd, Phase::Copy, Phase::Tlas);
     if (s.queuedVbo || s.compactedDirty) updatePropsNow(s.queuedVbo ? s.queuedVbo : s.propVbo);
