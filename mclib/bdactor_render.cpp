@@ -10,6 +10,7 @@
 #include <cstdlib>
 #include <string>
 #include "../GameOS/gameos/static_caster_set.h"   // shadow-bake caster events
+extern uint32_t mc2LightSlotBakedHighWater();
 
 namespace {
 // Parity row 28 oracle: a fixed highlight on every building so a frozen-sim capture can compare the GL and VK highlight
@@ -61,6 +62,13 @@ long BldgAppearance::render (long depthFixup)
 				mc2::fmt::safe(appearType->name), position.x, position.y, position.z, unitAnim().currentFrame);
 	}
 	if (inView && IsStaticNow() && bldgShape) {
+		// Settled presentation can skip touch/update. Refresh dynamic lighting before
+		// stamping render liveness, or that stamp would certify a retired row.
+		if (static_light_row::needsResubmit(staticReg.lightDataIndex, mc2LightSlotBakedHighWater(),
+			bldgShape->getCachedFrame(), g_mc2FrameCounter.load(std::memory_order_relaxed))) {
+			bldgShape->ResubmitCachedGpuLightData();
+			staticReg.lightDataIndex = bldgShape->getCachedGpuLightIndex();
+		}
 		// Static presentation has settled; render owns registry frame liveness.
 		bldgShape->Touch();
 		bldgShape->setCachedFrame(g_mc2FrameCounter.load(std::memory_order_relaxed));
@@ -485,7 +493,6 @@ long BldgAppearance::renderShadows (void)
 
 // static-world-s2: a settled static building: this frame's render submitted it through the registry with a baked light
 // slot, and none of the other things render() does per frame (highlight, shadow capture, effects) is in play.
-extern uint32_t mc2LightSlotBakedHighWater();
 std::optional<int32_t> BldgAppearance::residentRenderRecipe() const
 {
 	if (submittedFrame_ != g_mc2FrameCounter.load(std::memory_order_relaxed)) return std::nullopt;
@@ -523,6 +530,11 @@ long TreeAppearance::render (long depthFixup)
 {
 	if (!eye) return 0;
 	if (inView && IsStaticNow() && treeShape) {
+		if (static_light_row::needsResubmit(staticReg[activeLOD].lightDataIndex, mc2LightSlotBakedHighWater(),
+			treeShape->getCachedFrame(), g_mc2FrameCounter.load(std::memory_order_relaxed))) {
+			treeShape->ResubmitCachedGpuLightData();
+			staticReg[activeLOD].lightDataIndex = treeShape->getCachedGpuLightIndex();
+		}
 		treeShape->Touch();
 		treeShape->setCachedFrame(g_mc2FrameCounter.load(std::memory_order_relaxed));
 	}
