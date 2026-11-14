@@ -289,6 +289,21 @@ def window_stats(reader, seconds):
             "fps": len(frames) / span if span else 0}
 
 
+def owner_capture_mode():
+    """Unrestricted affinity requires explicit opt-in and every batch slot."""
+    if os.environ.get("MC2_NO_CPU_PIN") != "1":
+        return False
+    tag = os.environ.get(host_lease.BATCH_ENV)
+    records = dict(host_lease._records())
+    if not tag or not all(
+        (rec := records.get(host_lease.slot_path(i))) and host_lease._ours(rec)
+        and rec.get("exclusive") and rec.get("batch") == tag
+        for i in range(host_lease.slot_count())
+    ):
+        raise RuntimeError("MC2_NO_CPU_PIN=1 requires an exclusive all-slot batch lease")
+    return True
+
+
 def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path,
                   extra_env=None, pose=None, fixed_timestep=True, fps_cap=None,
                   show_window: bool = True, ticks: int = 0, via_menu_boot: bool = False,
@@ -322,6 +337,7 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
                 host_lease.acquire(f"Tracy capture {arm} {mission}")
                 cleanup.callback(host_lease.release)
 
+        owner_affinity = owner_capture_mode() if post_load else False
         # Recorder first: TRACY_ON_DEMAND means the game buffers nothing until connected.
         cap_cmd = [str(cap_exe), "-a", "127.0.0.1", "-p", "8086",
                    *([] if ticks or spawn_game else ["-s", str(seconds)]), "-f", "-o", str(out)]
@@ -376,15 +392,17 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
             import psutil
             process = psutil.Process(gp.pid)
             # PC masks apply only on Windows; Linux inherits slot.sh's game cores.
-            if os.name == "nt":
+            if os.name == "nt" and not owner_affinity:
                 device = host_lease.held_device()
                 slot = (host_lease.lane_devices().index(device) if device
                         else host_lease.eligible_slots(env.get("MC2_VK_DEVICE"))[0])
                 mask = host_lease.affinity_mask(slot)
                 cpus = [c for c in process.cpu_affinity() if mask & (1 << c)]
                 process.cpu_affinity(cpus)
+            actual_cpus = process.cpu_affinity()
             row = {"status": "REJECTED", "mission": mission, "arm": capture_arm,
-                   "seconds": seconds, "settle_s": 2, "affinity": process.cpu_affinity(),
+                   "seconds": seconds, "settle_s": 2, "affinity": actual_cpus,
+                   "affinity_mask": sum(1 << c for c in actual_cpus),
                    "job_workers": int(env.get("MC2_FRAME_JOBS_WORKERS") or host_lease.frame_jobs_workers()),
                    "resolution": [int(env.get("MC2_WIDTH", 0)), int(env.get("MC2_HEIGHT", 0))],
                    "exe_sha256": hashlib.sha256(game.read_bytes()).hexdigest(),

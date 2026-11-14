@@ -53,10 +53,31 @@ def test_capture_arm_overrides_are_declared():
     assert "MC2_TERRAIN_LOD_CHUNK_FORCE_LOD=2" in capture.CAPTURE_ARMS["lod"]
 
 
-@pytest.mark.parametrize("platform,cores", [("nt", [0, 1]), ("posix", [26, 27])])
-def test_post_load_starts_recorder_after_pose_and_writes_row(harness, monkeypatch, platform, cores):
+@pytest.mark.parametrize("opt_in,tag,exclusive,slots,accepted", [
+    (False, "batch", True, 2, False), (True, "batch", True, 2, True),
+    (True, "batch", False, 2, None), (True, "batch", True, 1, None),
+    (True, "", True, 2, None)])
+def test_owner_affinity_requires_explicit_exclusive_batch(monkeypatch, opt_in, tag, exclusive, slots, accepted):
+    monkeypatch.setenv("MC2_NO_CPU_PIN", "1" if opt_in else "0")
+    monkeypatch.setenv(capture.host_lease.BATCH_ENV, tag)
+    monkeypatch.setattr(capture.host_lease, "slot_count", lambda: 2)
+    monkeypatch.setattr(capture.host_lease, "slot_path", lambda i: i)
+    monkeypatch.setattr(capture.host_lease, "_ours", lambda r: True)
+    monkeypatch.setattr(capture.host_lease, "_records", lambda: [
+        (i, {"exclusive": exclusive, "batch": "batch"}) for i in range(slots)])
+    if accepted is None:
+        with pytest.raises(RuntimeError, match="exclusive all-slot batch"):
+            capture.owner_capture_mode()
+    else:
+        assert capture.owner_capture_mode() is accepted
+
+
+@pytest.mark.parametrize("platform,cores,owner", [("nt", [0, 1], False), ("posix", [26, 27], False),
+                                                ("nt", list(range(16)), True)])
+def test_post_load_starts_recorder_after_pose_and_writes_row(harness, monkeypatch, platform, cores, owner):
     import psutil
     h = harness
+    monkeypatch.setattr(capture, "owner_capture_mode", lambda: owner)
     monkeypatch.setattr(capture, "os", SimpleNamespace(name=platform, environ=capture.os.environ))
     process = Mock(cpu_affinity=Mock(return_value=cores))
     monkeypatch.setattr(psutil, "Process", lambda _: process)
@@ -74,7 +95,8 @@ def test_post_load_starts_recorder_after_pose_and_writes_row(harness, monkeypatc
     assert h.events.index("game.spawn") < h.events.index("pose.settled") < h.events.index("recorder.spawn")
     row = capture.json.loads(stats_file.write_text.call_args.args[0])
     assert row["status"] == "PASS" and row["affinity"] == cores and row["job_workers"] == 1
-    if platform == "nt":
+    assert row["affinity_mask"] == sum(1 << c for c in cores)
+    if platform == "nt" and not owner:
         process.cpu_affinity.assert_any_call(cores)
     else:
         process.cpu_affinity.assert_called_once_with()
