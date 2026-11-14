@@ -275,6 +275,15 @@ TEST_CASE("AudioBackend/two music slots stream independently across catalog rele
     REQUIRE(std::filesystem::remove(path));
     HGOSAUDIO missing = nullptr;
     gosAudio_CreateResource(&missing, gosAudio_StreamedFile, name.c_str());
+    REQUIRE(missing != nullptr); // Failure is delivered asynchronously too.
+    gosAudio_AssignResourceToChannel(0, missing);
+    gosAudio_SetChannelPlayMode(0, gosAudio_PlayOnce);
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(3);
+    while (gosAudio_GetChannelPlayMode(0) != gosAudio_Stop && std::chrono::steady_clock::now() < deadline)
+        std::this_thread::yield();
+    CHECK(gosAudio_GetChannelPlayMode(0) == gosAudio_Stop);
+    CHECK(Mix_GetChunk(0) == nullptr);
+    gosAudio_DestroyResource(&missing);
     CHECK(missing == nullptr);
 }
 
