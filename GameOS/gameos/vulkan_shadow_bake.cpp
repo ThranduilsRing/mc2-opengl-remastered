@@ -674,6 +674,7 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
     if (recordedMask_) casters.logDriftSinceLoad(6);   // what changed since the load snapshot; settled into it below
     if (recordedMask_ && bakedSetVersion_ != casters.version()) casters.settleLoadSnapshot();   // load-time damage/shape swaps land during the first frames
     const uint64_t casterHash=recordedMask_?casters.resolveForBake(bakedSetVersion_, leaves_):casters.resolve(leaves_);
+    mc2_static_prop_retype_far_tier(leaves_.data(), static_cast<uint32_t>(leaves_.size()), false);   // tree casters bake from the far tier
     cpuStage_[0] = std::chrono::duration<double, std::milli>(clk::now() - tResolve).count();
     std::vector<mc2shadow::LightBox> boxes;
     std::vector<float> tops;
@@ -696,6 +697,7 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
     // Object receivers always use current gameplay leaves.
     std::vector<GpuStaticPropInstance> objInst;
     casters.resolve(objInst);
+    mc2_static_prop_retype_far_tier(objInst.data(), static_cast<uint32_t>(objInst.size()), false);
     std::erase_if(objInst, [this](const auto& leaf) {
         return leaf.typeID >= typeBounds_.size() || !typeBounds_[leaf.typeID].valid;
     });
@@ -1331,7 +1333,9 @@ void ShadowBake::rebuildLive() {
     for (const GpuStaticPropInstance& leaf : all) appendLive(leaf);
 }
 
-void ShadowBake::appendLive(const GpuStaticPropInstance& leaf) {
+void ShadowBake::appendLive(const GpuStaticPropInstance& source) {
+    GpuStaticPropInstance leaf = source;
+    mc2_static_prop_retype_far_tier(&leaf, 1, false);
     if (leaf.typeID >= typeBounds_.size() || !typeBounds_[leaf.typeID].valid) return;
     mc2shadow::Vec3 lo, hi;
     instanceBox(leaf.modelMatrix, typeBounds_[leaf.typeID].mn, typeBounds_[leaf.typeID].mx, lo, hi);
@@ -1345,7 +1349,9 @@ void ShadowBake::appendLive(const GpuStaticPropInstance& leaf) {
 // stale, and the next batch rebuilds them whole.
 void ShadowBake::applyLiveEvent(const std::vector<GpuStaticPropInstance>& before, const std::vector<GpuStaticPropInstance>& after) {
     if (liveStale_) return;
-    for (const GpuStaticPropInstance& leaf : before) {
+    for (const GpuStaticPropInstance& beforeLeaf : before) {
+        GpuStaticPropInstance leaf = beforeLeaf;
+        mc2_static_prop_retype_far_tier(&leaf, 1, false);
         if (leaf.typeID >= typeBounds_.size() || !typeBounds_[leaf.typeID].valid) continue;
         bool found = false;
         for (size_t j = 0; j < liveLeaves_.size(); ++j) {

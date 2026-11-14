@@ -108,6 +108,21 @@ void GpuStaticPropBatcher::forgetLodState(const GpuStaticPropInstance& inst) {
     s_lodState.erase(propLodKey(inst));
 }
 
+void mc2_static_prop_retype_far_tier(GpuStaticPropInstance* instances, uint32_t count, bool resort) {
+    if (s_lodMembers.empty()) return;
+    bool any = false;
+    for (uint32_t i = 0; i < count; ++i)
+        if (auto it = s_lodMembers.find(instances[i].typeID); it != s_lodMembers.end() && it->second.farType != instances[i].typeID) {
+            instances[i].typeID = it->second.farType; any = true;
+        }
+    if (any && resort) std::stable_sort(instances, instances + count, [](const GpuStaticPropInstance& a, const GpuStaticPropInstance& b) { return a.typeID < b.typeID; });
+}
+
+int mc2_static_prop_lod_skips_late(uint32_t typeID) {
+    const auto it = s_lodMembers.find(typeID);
+    return it != s_lodMembers.end() && it->second.tier >= 3 ? 1 : 0;
+}
+
 extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
     ZoneScopedN("VKIsl.Props.MainFeed");
     if (!out) return 0;
