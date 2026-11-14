@@ -604,11 +604,15 @@ TEST_CASE("application can submit next tick while receipts grow without invalida
 // wall-clock order in which sources delivered their envelopes.
 TEST_CASE("drain order is independent of cross-source admission order and survives wire round trip") {
     auto run = [](const std::vector<std::pair<std::uint32_t, std::uint64_t>>& arrival) {
-        Permit permit; TacticalOrderQueue queue;
+        Permit permit; TacticalOrderQueue queue(3);
         REQUIRE(queue.registerSource({5, SourceKind::Peer}));
         REQUIRE(queue.registerSource({1, SourceKind::UI}));
-        REQUIRE(queue.registerSource({3, SourceKind::ABL}));
-        for (auto [src, seq] : arrival) REQUIRE(queue.submit(order(src, seq, 4), permit));
+        REQUIRE(queue.registerSource({3, SourceKind::ABL, InstanceId{42}}));
+        for (auto [src, seq] : arrival) {
+            auto envelope = order(src, seq, 4);
+            if (src == 3) envelope.issuer = InstanceId{42};
+            REQUIRE(queue.submit(envelope, permit));
+        }
         auto batch = queue.beginTick(4); REQUIRE(batch);
         Bytes stream;
         for (OrderEnvelope e : *batch) {
