@@ -16,7 +16,7 @@ sys.path.insert(0,str(HERE))
 sys.path.insert(0,str(ROOT/'scripts'))
 sys.path.insert(0,str(ROOT/'tools/blender_pipeline'))
 from core import DEFAULT_OUT, make_job, read_json, write_json, inside
-from blender_runner import find_blender_exe
+from blender_runner import find_blender_exe, gpu_startup_args
 import console_child
 
 PBR=Path('G:/mc2-assets/pbr/scifi-kit')
@@ -27,7 +27,7 @@ INSTALL=Path('G:/mc2-installs/mc2-win64-mapgen')
 
 def run_blender(out,arguments):
     out.parent.mkdir(parents=True,exist_ok=True)
-    cmd=[str(find_blender_exe()),'--background','--factory-startup','--disable-autoexec','--python-exit-code','1','--python',str(HERE/'blender_build.py'),'--',*arguments]
+    cmd=[str(find_blender_exe()),'--background','--factory-startup','--disable-autoexec','--python-exit-code','1',*gpu_startup_args(),'--python',str(HERE/'blender_build.py'),'--',*arguments]
     print('[scifi]', ' '.join(cmd),flush=True)
     with out.open('w',encoding='utf-8') as log:
         result=subprocess.run(cmd,stdout=log,stderr=subprocess.STDOUT,**console_child.child_kwargs(redirected=True))

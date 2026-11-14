@@ -64,6 +64,7 @@ Enforced by `scripts/check-background-launch.py` (wired into check-contracts).
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import sys
 import time
@@ -205,7 +206,7 @@ def gpu_hint(out: dict) -> "Optional[str]":
     except ImportError:
         from smoke_lib import host_lease
     # runners scrub the child env; read the shell too
-    return host_lease.device_hint({k: os.environ.get(k, "") for k in ("MC2_HARNESS_GPU", "MC2_IN_GATE")} | out)
+    return host_lease.pin_device(host_lease.device_hint({k: os.environ.get(k, "") for k in ("MC2_HARNESS_GPU", "MC2_IN_GATE")} | out))
 
 
 def route_gpu(out: dict, perf: bool = False) -> None:
@@ -230,6 +231,11 @@ def gpu_mismatch(out: dict, perf: bool, devices: "Sequence[str]", log_text: str 
     want = gpu_hint(out)
     if not want:
         return None
+    want, _, want_uuid = want.partition("@")   # name@uuid: also assert the engine's [VK_DEVICE] uuid
+    if want_uuid and "matches no accepted device" not in log_text:
+        got = re.findall(r"\[VK_DEVICE\] index=\d+ of \d+ uuid=([0-9a-f-]+)", log_text)
+        if not got or any(want_uuid.lower() not in g for g in got):
+            return f"GPU routing: the run asked for device uuid {want_uuid!r} but the engine logged {got or 'no [VK_DEVICE] line'}"
     # Explicit = the user asked: MC2_HARNESS_GPU=2070|xtx, or MC2_VK_DEVICE in the shell. A harness-derived hint stays skippable.
     explicit = ((out.get("MC2_HARNESS_GPU") or os.environ.get("MC2_HARNESS_GPU") or "auto").lower() in ("2070", "xtx")
                 or bool(os.environ.get("MC2_VK_DEVICE")) or os.environ.get("MC2_IN_GATE") == "1"
@@ -480,6 +486,8 @@ def spawn(argv: Sequence[str], *, show_window: bool = False,
         dev = host_lease.held_device()   # the slot this run won decides its GPU unless one was forced
         if dev and not child_env.get("MC2_VK_DEVICE"):
             child_env["MC2_VK_DEVICE"] = dev
+        if child_env.get("MC2_VK_DEVICE"):   # two identical XTXs: pin the non-display one by UUID (host_lease.lane_uuid)
+            child_env["MC2_VK_DEVICE"] = host_lease.pin_device(child_env["MC2_VK_DEVICE"])
         engine = any(exe_guard.engine_kind(a) is not None for a in argv)
         if engine and sys.platform == "win32":
             # Games must not inherit the lane harness's Idle priority. Replace

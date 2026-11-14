@@ -498,13 +498,23 @@ bool VulkanContext::init(bool wantPresent) {
             cands.push_back(std::move(c));
         }
         const Candidate* pick = nullptr;
+        const auto lower = [](std::string v) { for (char& ch : v) ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch))); return v; };
+        const auto uuidOf = [](const profile::DeviceCaps& cp) {
+            char b[40]; const uint8_t* u = cp.deviceUuid;
+            std::snprintf(b, sizeof(b), "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
+                u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], u[8], u[9], u[10], u[11], u[12], u[13], u[14], u[15]);
+            return std::string(b);
+        };
         // MC2_VK_DEVICE: the harness routes pass/fail runs to a named device (the loader ignores VK_LOADER_DRIVERS_SELECT here).
+        // "name@uuid" additionally pins the device UUID (two identical cards share a name); no hint = the default pick (owner-started runs).
         std::string hint = mc2::gate::str<"MC2_VK_DEVICE">();
         if (!hint.empty()) {
-            const auto lower = [](std::string v) { for (char& ch : v) ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch))); return v; };
+            std::string uuidWant;
+            if (const size_t at = hint.find('@'); at != std::string::npos) { uuidWant = lower(hint.substr(at + 1)); hint.resize(at); }
             const std::string want = lower(hint);
             for (const Candidate& c : cands)
-                if (c.ev.accepted && lower(c.name).find(want) != std::string::npos) { pick = &c; break; }
+                if (c.ev.accepted && lower(c.name).find(want) != std::string::npos
+                    && (uuidWant.empty() || uuidOf(c.caps).find(uuidWant) != std::string::npos)) { pick = &c; break; }
             if (!pick) {
                 ctxlog("MC2_VK_DEVICE=%s matches no accepted device; using the default pick", hint.c_str());
             }
@@ -528,6 +538,8 @@ bool VulkanContext::init(bool wantPresent) {
         for (size_t i = 0; i < sizeof(luid_); ++i) luid_[i] = caps.deviceLuid[i];
         std::strncpy(health_.deviceName, pick->name.c_str(), sizeof(health_.deviceName) - 1);
         health_.deviceName[sizeof(health_.deviceName) - 1] = '\0';
+        for (size_t i = 0; i < cands.size(); ++i)
+            if (&cands[i] == pick) ctxlog("[VK_DEVICE] index=%zu of %zu uuid=%s name=\"%s\" MC2_VK_DEVICE=\"%s\"", i, cands.size(), uuidOf(pick->caps).c_str(), pick->name.c_str(), mc2::gate::str<"MC2_VK_DEVICE">().c_str());
         health_.profileLine = profile::formatLine(pick->name, pick->caps, pick->ev);
         profileLog(health_.profileLine);
         ctxlog("vk caps report %s", profile::writeCapsReport(pick->pd, instanceApi, "debug_state/vk_caps.json") ? "written to debug_state/vk_caps.json" : "write failed");   // once per run, beside the diagnostic trace

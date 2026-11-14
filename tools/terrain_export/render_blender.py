@@ -3,11 +3,12 @@
       [--target wx wy] [--look-deg 0] [--dist 3000] [--pitch 35] [--fov 30] [--samples 24] [--res 1280 720]
 World frame: wx east, wy north, wu.  --look-deg = compass heading the camera looks toward (0 = north, 90 = east).
 Imported scene is Z-up, scale = export scale (default 0.1 => 1 unit = 10 wu).  Sun matches the mission .fit
-(LightDirPitch 50, LightDirYaw 11).  Cycles on the RTX 2070 (OPTIX) per lane rules; falls back to CPU.
+(LightDirPitch 50, LightDirYaw 11).  Cycles HIP on the second (non-display) XTX (blender_gpu.py); no silent fallback.
 """
 import argparse
 import math
 import sys
+from pathlib import Path
 
 import bpy
 from mathutils import Vector
@@ -31,7 +32,7 @@ ap.add_argument("--cam-bookmark", type=float, nargs=6, metavar=("X", "Y", "Z", "
                 help="game bookmark camera: focus pos.x pos.y cameraShiftZ, rot(yaw deg), proj(pitch deg), alt(range wu); "
                      "FOV is the game's 40 deg HORIZONTAL (sensor_fit HORIZONTAL); use --res = capture aspect")
 ap.add_argument("--yaw-sign", type=float, default=-1.0, help="debug: sign on sin(yaw) in the eye offset")
-ap.add_argument("--cycles-device", default="OPTIX", help="unused: always OPTIX with CPU fallback")
+ap.add_argument("--cycles-device", default="OPTIX", help="unused: always the second GPU via blender_gpu.py")
 a = ap.parse_args(argv)
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -104,15 +105,8 @@ sc.cycles.use_denoising = True
 sc.render.resolution_x, sc.render.resolution_y = a.res
 sc.render.filepath = a.out
 sc.view_settings.view_transform = "Standard"
-try:
-    cp = bpy.context.preferences.addons["cycles"].preferences
-    cp.compute_device_type = "OPTIX"
-    cp.get_devices()
-    for d_ in cp.devices:
-        d_.use = d_.type == "OPTIX"
-    sc.cycles.device = "GPU"
-except Exception as e:  # noqa: BLE001
-    print("GPU setup failed, CPU:", e)
-    sc.cycles.device = "CPU"
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "blender_pipeline"))
+import blender_gpu  # noqa: E402
+blender_gpu.apply(sc)   # second (non-display) GPU only; fails loud, never the display GPU
 bpy.ops.render.render(write_still=True)
 print("RENDERED", a.out)
