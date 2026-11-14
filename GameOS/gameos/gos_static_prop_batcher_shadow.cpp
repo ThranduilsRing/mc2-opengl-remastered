@@ -3,6 +3,7 @@
 #include <atomic>
 #include "gos_static_prop_batcher_internal.h"
 #include "mc2fmt.h"
+#include "diagnostic_trace.h"
 #include "view_registry.h"
 #include "visual_tuning_profile.h"
 #include "../../RenderCore/FramePackets.h"
@@ -182,6 +183,18 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
                 const uint32_t n  = static_cast<uint32_t>(pb.instances.size());
                 route(d0, d0 + n, g);
             }
+        }
+        static const bool s_statsOn = mc2_diag::tagRequested("TREE_LOD_STATS");
+        static uint32_t s_statsTick = 0;
+        if (s_statsOn && (++s_statsTick % 120u) == 0) {   // MC2_DIAG_TAGS=TREE_LOD_STATS: per-tier tree instances and triangles
+            uint64_t inst[kMaxPropLods] = {}, tris[kMaxPropLods] = {};
+            for (const auto& [tid, vec] : s_lodOut) {
+                if (!s_lodMembers.contains(tid) || tid >= s_types.size() || !s_types[tid].source) continue;
+                const size_t tier = s_lodMembers.at(tid).tier;
+                inst[tier] += vec.size(); tris[tier] += vec.size() * static_cast<uint64_t>(s_types[tid].source->GetNumTypeTriangles());
+            }
+            mc2::fmt::print_err("[TREE_LOD_STATS] inst={} {} {} {} {} tris={} {} {} {} {}\n", mc2::fmt::as_u64(inst[0]), mc2::fmt::as_u64(inst[1]), mc2::fmt::as_u64(inst[2]), mc2::fmt::as_u64(inst[3]), mc2::fmt::as_u64(inst[4]),
+                mc2::fmt::as_u64(tris[0]), mc2::fmt::as_u64(tris[1]), mc2::fmt::as_u64(tris[2]), mc2::fmt::as_u64(tris[3]), mc2::fmt::as_u64(tris[4]));
         }
     }
     }
