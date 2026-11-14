@@ -10,6 +10,7 @@
 #include "gos_postprocess.h"
 #include "mc2fmt.h"
 #include "Gates/gate.h"
+#include "Gates/gate_cold.h"
 #include "gameos.hpp"   // gos_GetUserDataDirectory
 #include "shadow_mask_asset.h"
 #include "shadow_dirty_tiles.h"
@@ -741,6 +742,8 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
             cached = std::move(result.asset);
             warmReadMs = result.readMs;
         }
+        // Temporary diagnostic: reproduce the original cold-shadow capture without moving a shared cache.
+        if (mc2::gate::str<"MC2_SHADOW_DEBUG_MODE">() == "cold") cached.reset();
         warm = !diagForceFull_ && cached && cached->texels == static_cast<uint32_t>(layout_.texels) && cached->mips == maskMips_;
         mc2::fmt::print_err("[SHADOW_BAKE] key {:016x} parts heights={:016x} casters={:016x} geometry={:016x} alpha={:016x} scalars={:016x} versions={:016x} "
                             "leaves={} alpha_ready={} cpu_ms resolve={:.1f} key={:.1f}\n",

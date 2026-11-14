@@ -100,7 +100,7 @@ bool propHidden(uint id) {
         lo = min(lo, pixels); hi = max(hi, pixels);
         nearest = max(nearest, ndc.z);
     }
-    if (any(lessThan(viewHi, vec2(-1))) || any(greaterThan(viewLo, vec2(1)))) return false; // Diagnostic: keep offscreen colour instances.
+    if (any(lessThan(viewHi, vec2(-1))) || any(greaterThan(viewLo, vec2(1)))) return true;
     if (!occlusionSafe) return false;
     if (tinyBox(lo, hi)) return true;
     // The pyramid was built from depth drawn with the frame's sub-pixel TAA jitter (<= 0.5 px) while this
