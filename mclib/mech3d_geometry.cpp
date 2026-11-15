@@ -142,13 +142,14 @@ void Mech3DAppearance::tickImportedAnimation(bool advanceClock, bool preview)
 {
 	mc2mechanim::MechMotion motion;
 	motion.gestureId = static_cast<int>(unitAnim().currentGestureId);
-	motion.px = position.x; motion.py = position.y; motion.pz = position.z;
-	motion.legHeadingDeg = rotation;
-	motion.destroyed = (status == OBJECT_STATUS_DESTROYED);
+	const auto& pos = preview ? position : simPosition_;
+	motion.px = pos.x; motion.py = pos.y; motion.pz = pos.z;
+	motion.legHeadingDeg = preview ? rotation : simRotation_;
+	motion.destroyed = ((preview ? status : simStatus_) == OBJECT_STATUS_DESTROYED);
 	motion.preview = preview;
-	const void* typeKey = mechType ? mechType->mechShape[currentLOD].get() : nullptr;
+	const void* typeKey = mechType ? mechType->mechShape[preview ? currentLOD : 0].get() : nullptr;
 	mc2mechanim::TickImportedMechs(frameLength, static_cast<unsigned>(turn), motion,
-		mechShape, typeKey, advanceClock, preview ? nullptr : &unitAnim().imported);
+		preview ? mechShape : simulationShape_.get(), typeKey, advanceClock, preview ? nullptr : &unitAnim().imported);
 }
 
 void Mech3DAppearance::updateGeometry (void)
