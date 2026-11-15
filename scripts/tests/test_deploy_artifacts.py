@@ -11,7 +11,8 @@ import deploy_payload as dp
 BAD = ("logs/a.txt", "debug_state/state.json", "nested/a.orig_bak", "a.LOG",
        "data/tgl/_aoktxtmp/model.glb", "data/texture.tga.bak-20260704", "data/texture.tga.orig",
        "tgl.fst.slim-2026-06-12", "dev_shell_out/a.txt", "terrain_gen_out/a.txt", "stdout_smoke.txt",
-       "cache/content-model/model-0123456789abcdef.mci", "cache/content-model/industrial-cook.json")
+       "cache/content-model/model-0123456789abcdef.mci", "cache/content-model/industrial-cook.json",
+       "harness_bay_stdout.txt", "harness_encyclopedia_stderr.txt")
 
 
 def test_deploy_filters_and_prunes_artifacts_without_touching_sources(tmp_path, monkeypatch):

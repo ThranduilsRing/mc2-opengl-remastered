@@ -171,6 +171,7 @@ def is_deploy_artifact(rel: str) -> bool:
             or name.endswith((".rdc", ".dmp", ".mdmp", ".orig_bak"))
             or ".bak-" in name or ".orig" in name
             or (len(parts) == 1 and (name.endswith(".log") or name == "tgl.fst.slim-2026-06-12"
+                or re.fullmatch(r"harness_[a-z0-9_]+_(?:stdout|stderr)\.txt", name) is not None
                 or name.startswith(("stdout", "stderr")) and name.endswith((".txt", ".out", ".err"))))
             or (parts[:3] in (["mods", "mc2-industrial-kit", "content"], ["mods", "mc2-vehicle-kit", "content"])
                 and name.endswith(".mc2ir.json")))

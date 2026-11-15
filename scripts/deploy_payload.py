@@ -2850,12 +2850,10 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     from smoke_lib import render_options_pin
     kit_manifest = None
     vehicle_manifest = None
-    kit_tool = None
     remastered = render_options_pin.record(Path(target), os.environ)["values"]["RemasteredBuildings"]
-    kit_prepare_started = time.perf_counter()
     if not args.classic_assets and not getattr(args, "skip_kit", False) and not reuse and remastered:
         try:
-            with deploy_phase("kit preparation and importer", 600):
+            with deploy_phase("kit preparation", 600):
                 # The kit stores are read-only reference trees: their stamped hashes are shared by every install.
                 kit_receipts = kit_payload.HashReceipts(
                     Path(target) / '.deploy-receipts.json',
@@ -2868,7 +2866,6 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
                 kit_receipts.save()
         except (OSError, ValueError, KeyError) as exc:
             fail(f"RemasteredBuildings requires the pinned kit: {exc}; use --classic-assets for Classic")
-    kit_prepare_seconds = time.perf_counter() - kit_prepare_started
     log(f"payload: {len(items)} files "
         f"({sum(1 for *_x, k in items if k == 'shader')} shaders, "
         f"{sum(1 for *_x, k in items if k == 'defs')} defs)")
