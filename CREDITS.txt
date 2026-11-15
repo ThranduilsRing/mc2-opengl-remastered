@@ -242,27 +242,27 @@ Marceror - Expanded Exodus story [S003, S004, S005, S025]
 Tyberius44 - MC2X community contributor (specific work not stated in the source) [S003, S005]
 VossieWulf - MC2X community contributor (specific work not stated in the source) [S003, S004, S005]
 
-S025 - version.txt
+S025 - MechCommander Omnitech (version.txt)
 
 ThorC - MC1 pilots and Gargoyle model reference [S025]
 Cipher - Mech icons [S025]
 Zarax - ZaraxTowers model [S025]
 d4f_mac - Main menu and loading art [S025]
 
-S030 - e_4_7.fit
+S030 - MechCommander Omnitech mission (e_4_7.fit)
 
 Mike Turner - Map design [S030]
 mantis - Map design [S030]
 
-S033 - README.md
+S033 - alariq mc2 OpenGL/Linux port (README.md)
 
 alariq - Open-source engine and Linux port; OpenGL/Linux port on which this project builds [S033, S034, S038]
 
-S035 - readme.txt
+S035 - MC2 Synapses / Warrior Brain Tool (readme.txt)
 
 Jussi Saarivirta - MC2 Synapses, original tool; MC2 Warrior Brain Tool / MC2 Synapses; Original MC2 Synapses author [S035, S099, S100, S101, S103, S105, S106]
 
-S038 - README.md
+S038 - MechCommander 2 Vulkan, this project (README.md)
 
 Alexbeav - D3F fonts, multi-monitor input, SDL events and FMV reference [S038]
 Methuselas - Mission Editor and UI Editor [S038]
