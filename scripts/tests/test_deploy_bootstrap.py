@@ -25,7 +25,7 @@ def test_bootstrap_copies_base_once(tmp_path):
     src, target = fake_install(tmp_path / "src"), tmp_path / "new" / "lane"
     dp.bootstrap_install(str(src), str(target), "mc2.exe", "mc2.pdb")
     got = {p.relative_to(target).as_posix() for p in target.rglob("*") if p.is_file()}
-    assert got == {"data/missions/a.pak", "assets/x.png", "textures.fst", "SDL2.dll", "options.cfg"}
+    assert got == {"data/missions/a.pak", "assets/x.png", "textures.fst", "SDL2.dll", "options.cfg", "run.log"}
     (target / "marker").write_bytes(b"y")
     (src / "later.fst").write_bytes(b"z")
     dp.bootstrap_install(str(src), str(target), "mc2.exe", "mc2.pdb")      # target has files: no second copy
@@ -46,7 +46,7 @@ def test_native_bootstrap_omits_windows_binaries_and_owner_record(tmp_path):
     (src / ".mc2_deploy_lane.json").write_text("{}")
     dp.bootstrap_install(str(src), str(target), "mc2", "mc2.pdb")
     got = {p.relative_to(target).as_posix() for p in target.rglob("*") if p.is_file()}
-    assert got == {"data/missions/a.pak", "assets/x.png", "textures.fst", "options.cfg"}
+    assert got == {"data/missions/a.pak", "assets/x.png", "textures.fst", "options.cfg", "run.log"}
 
 
 def test_concrete_detail_is_cooked_on_demand_only_when_absent(tmp_path, monkeypatch):
