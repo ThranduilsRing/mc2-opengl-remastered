@@ -967,9 +967,6 @@ run_nightly "cxx17_ratchet"            "py -3 tools/cxx17_ratchet/cxx17_ratchet.
 # lines occurring twice) may only fall. PMD CPD (>= 60 tokens) on the COMMITTED tip vs the merge base, no
 # baseline file; runs on the box (or streams the trees there from the PC); no PMD/box = INFRA, never a pass.
 # Selftest lives in scripts/tests (scripts_tests row).
-# proof-diet (owner 2026-11-07): the axis_swizzle count gate, the journal_comment ratchet and the file_size gate are cut as
-# gates (a count that only falls is not a defect, and transform coverage lives in tests/unit/test_xform_convention.cpp and
-# test_static_prop_origin.cpp). tools/axis_swizzle_ratchet.py and tools/file_size_ratchet.py stay as on-demand advisory reports.
 # docs/split-map.md (old file -> pieces -> what each holds) is generated from tools/split/allow/*.json and the pieces' header comments.
 run_nightly "split_map"                 "py -3 tools/split/split_map.py --check"
 # Comment de-bloat guard (giant-file-split-plan.md, "Comment de-bloat pass"): proves the lexer, protection rules and

@@ -17,9 +17,7 @@ import console_child  # noqa: E402  (windowless console children without a conho
 
 TOOL = os.path.join(HERE, "lane_merge.py")
 
-FSIZE = "tools/file_size_ratchet.baseline.json"
 CXX = "tools/cxx17_ratchet/baseline.json"
-AXIS = "tools/axis_swizzle_ratchet.baseline.json"
 SHADERS = "scripts/gl_shader_variants.json"
 
 # Fake ratchets: behaviour is picked by a <script>.mode file next to the script.
@@ -41,9 +39,7 @@ if mode == "tighten" and "--tighten" in sys.argv:
 sys.exit(0)
 '''
 FAKES = {
-    "file_size_ratchet.py": FSIZE,
     "cxx17_ratchet/cxx17_ratchet.py": CXX,
-    "axis_swizzle_ratchet.py": AXIS,
     "split/split_map.py": None,
 }
 
@@ -180,7 +176,7 @@ def env(tmp_path):
     git(repo, "init", "-q", "-b", "main")
     git(repo, "config", "user.email", "t@example.com")
     git(repo, "config", "user.name", "t")
-    for rel in (FSIZE, CXX, AXIS, SHADERS):
+    for rel in (CXX, SHADERS):
         write(repo, rel, "base\n")
     write(repo, "a.txt", "a\n")
     write(repo, "b.txt", "b\n")
@@ -291,13 +287,13 @@ def test_staged_changes_refused(env):
 
 def test_regenerable_conflict_resolved_to_lane(env):
     repo, _ = env
-    lane_branch(repo, {FSIZE: "lane baseline\n", SHADERS: "lane variants\n"})
-    write(repo, FSIZE, "main baseline\n")
+    lane_branch(repo, {CXX: "lane baseline\n", SHADERS: "lane variants\n"})
+    write(repo, CXX, "main baseline\n")
     write(repo, SHADERS, "main variants\n")
     commit_all(repo, "main edits baselines")
     rc, out, err = merge(env)
     assert rc == 0, err
-    assert (repo / FSIZE).read_text() == "lane baseline\n"
+    assert (repo / CXX).read_text() == "lane baseline\n"
     assert (repo / SHADERS).read_text() == "lane variants\n"
     assert len(parents(repo)) == 2
     assert git(repo, "status", "--porcelain") == ""
@@ -305,13 +301,13 @@ def test_regenerable_conflict_resolved_to_lane(env):
 
 def test_non_regenerable_conflict_aborts(env):
     repo, _ = env
-    lane_branch(repo, {"a.txt": "lane a\n", FSIZE: "lane baseline\n"})
+    lane_branch(repo, {"a.txt": "lane a\n", CXX: "lane baseline\n"})
     write(repo, "a.txt", "main a\n")
-    write(repo, FSIZE, "main baseline\n")
+    write(repo, CXX, "main baseline\n")
     commit_all(repo, "main edits")
     head = git(repo, "rev-parse", "HEAD")
     rc, out, err = merge(env)
-    assert rc == 5 and "a.txt" in err and FSIZE not in err
+    assert rc == 5 and "a.txt" in err and CXX not in err
     assert git(repo, "rev-parse", "HEAD") == head
     assert not (repo / ".git" / "MERGE_HEAD").exists()
     assert git(repo, "status", "--porcelain") == ""
@@ -354,9 +350,9 @@ def test_already_contained_is_noop(env):
 
 def test_dry_run_changes_nothing_and_predicts_conflicts(env):
     repo, _ = env
-    lane_branch(repo, {"a.txt": "lane a\n", FSIZE: "lane baseline\n"})
+    lane_branch(repo, {"a.txt": "lane a\n", CXX: "lane baseline\n"})
     write(repo, "a.txt", "main a\n")
-    write(repo, FSIZE, "main baseline\n")
+    write(repo, CXX, "main baseline\n")
     commit_all(repo, "main edits")
     head = git(repo, "rev-parse", "HEAD")
     rc, out, _ = merge(env, "--dry-run")
