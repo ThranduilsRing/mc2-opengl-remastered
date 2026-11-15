@@ -50,6 +50,18 @@ def test_mp_loopback_rejects_missing_hashes_and_unequal_commands(tmp_path):
         compare_traces(host, client, 1)
 
 
+def test_mp_loopback_uses_the_runner_environment_boundary(tmp_path, monkeypatch):
+    from contextlib import ExitStack
+    import run_mp_loopback_proof as proof
+    monkeypatch.setenv("MC2_HOST_CORES_PER_SLOT", "2")
+    captured = {}
+    monkeypatch.setattr(proof.nofocus, "spawn", lambda argv, **kw: captured.update(kw))
+    with ExitStack() as logs:
+        proof.peer_start(str(tmp_path), str(tmp_path), 0, 23460, 64, 120, False, logs)
+    assert "MC2_HOST_CORES_PER_SLOT" not in captured["env"]
+    assert captured["env"]["MC2_CONFIG_STRICT"] == "1"
+
+
 def test_mp_loopback_requires_both_desync_reports_at_the_first_bad_tick(tmp_path):
     import pytest
     from run_mp_loopback_proof import compare_traces

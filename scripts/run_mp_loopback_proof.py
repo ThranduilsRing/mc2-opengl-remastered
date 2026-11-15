@@ -16,7 +16,7 @@ import subprocess
 import time
 
 from smoke_lib import host_lease, nofocus
-from smoke_lib.runner import FORCED_ENV, SOFT_ENV, POPPED_ENV
+from smoke_lib.runner import FORCED_ENV, SOFT_ENV, POPPED_ENV, unregistered_ambient
 
 
 def read_trace(path: Path) -> tuple[dict[int, tuple[str, ...]], list[str]]:
@@ -55,6 +55,8 @@ def peer_start(install: str, directory: str, slot: int, port: int, ticks: int,
                timeout: int, rendered: bool, logs: ExitStack):
     root = Path(directory)
     env = os.environ.copy()
+    for key in unregistered_ambient(env):
+        env.pop(key, None)
     env.update(FORCED_ENV)
     for key, value in SOFT_ENV.items():
         env.setdefault(key, value)
