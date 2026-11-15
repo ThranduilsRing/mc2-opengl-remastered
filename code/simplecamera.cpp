@@ -35,8 +35,10 @@ SimpleCamera.cpp	: Implementation of the SimpleCamera component.
 #include <string>
 #include "Gates/gate.h"
 #include "mc2fmt.h"
+#include "model_credit.h"
 
 // Screen-space extents of the last PreviewDraw (mclib/tgl.cpp, filled in preview_draw.cpp).
+
 extern bool g_previewCaptureBounds;
 extern bool g_previewBoundsOnly;
 extern float g_previewBoundsMinX, g_previewBoundsMaxX, g_previewBoundsMinY, g_previewBoundsMaxY;
@@ -134,6 +136,7 @@ SimpleCamera::SimpleCamera()
 // The appearance destructor reads appearanceTypeList: with no list (outside a mission) the object is left unfreed, as before B7o.5.
 void SimpleCamera::releaseObject()
 {
+	modelCredit_.clear();
 	if (appearanceTypeList)
 	{
 		// Appearance-owned lamps belong to this preview camera, even when it is not rendering.
@@ -516,6 +519,17 @@ void SimpleCamera::drawPreviewToPanel( float panelX, float panelY, float panelW,
 		return;
 
 	bool ok = GuiRuntime::DrawUiImage( tex, panelX, panelY, panelW, panelH, u1, v1, u2, v2, 0xffffffff );
+	if (pObject && !modelCredit_.empty())
+	{
+		const int size = std::max(16, static_cast<int>(panelH * 0.052f));
+		std::vector<std::string> lines;
+		GuiRuntime::CalcUiTextWrapLines(modelCredit_.c_str(), panelW - 16.f, size, "", lines);
+		const float height = (static_cast<float>(lines.size()) + 0.5f) * size * 1.3f;
+		const float y = panelY + panelH - height;
+		GuiRuntime::DrawUiRect(panelX, y, panelW, height, 0xee000000, true);
+		GuiRuntime::DrawUiText(panelX + 8.f, y + 2.f, panelW - 16.f, height,
+			modelCredit_.c_str(), 0xffffff40, size, 0, "");
+	}
 	if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 	{
 		bool f = mc2::log::enabled(mc2::log::Cat::Ui, mc2::log::Level::Info);
@@ -703,9 +717,15 @@ void SimpleCamera::setMech(mc2::czstring fileName, long baseColor, long highligh
 		if ( appearanceType )
 			appearanceTypeList->removeAppearance( appearanceType );
 		this->popContext();
+
 		return;
 	}
 
+	// The base appearance manifest also credits its encyclopedia preview.
+	path.init(tglPath, NoPathFileName.c_str(), ".ini");
+	FitIniFile manifest;
+	if (manifest.open(path) == NO_ERR)
+		modelCredit_ = readModelCredit(manifest);
 	pObject = std::make_unique<Mech3DAppearance>();
 	pObject->init( appearanceType );
 	pObject->setGestureGoal(2);
