@@ -324,7 +324,7 @@ long TerrainTextures::init (mc2::czstring fileName, mc2::czstring baseName)
 		{
 			char note[160];
 			mc2::fmt::to_buf(note,"terrain tiles missing at TerrainTextureRes={:d}; using {:d} for this mod",mc2::fmt::as_i32(TERRAIN_TXM_SIZE),mc2::fmt::as_i32(bestEdge));
-			mc2::content::error(mc2::content::Kind::Texture, static_cast<const char*>(texturePath), static_cast<const char*>(note));
+			printf("[TERRAIN_RESOLUTION] %s: %s\n", static_cast<const char*>(texturePath), note);
 			TERRAIN_TXM_SIZE = bestEdge;
 		}
 	}
@@ -1095,8 +1095,8 @@ void TerrainTextures::getOverlayInfoFromHandle( long handle, Overlays& id, DWORD
 //---------------------------------------------------------------------------
 void TerrainTextures::combineTxm (MemoryPtr dest, DWORD binNumber, long type, long mipLevel)
 {
-	MemoryPtr combineRAM = types[type].textureData[mipLevel];
-	MemoryPtr maskRAM = types[type].maskData[(binNumber-1) + (mipLevel * MC_MASK_NUM)];
+	MemoryPtr combineRAM = mc2::tga::mipData(types[type].textureData, mipLevel);
+	MemoryPtr maskRAM = mc2::tga::mipData(types[type].maskData, (binNumber-1) + (mipLevel * MC_MASK_NUM));
 
 	// Guard missing terrain-texture/mask data: a mod map (e.g. MCO-Carver5) referencing a
 	// texture type whose textureData/maskData never loaded leaves these NULL -> the blend
@@ -1579,7 +1579,7 @@ long TerrainTextures::createTransition (DWORD typeInfo, DWORD overlayInfo)
 			// Draw by Priority and Mask.
 			// Priority 0 is ALWAYS just copy that texture.
 			// Use a random one if possible.
-			MemoryPtr texture = types[priTypes[0]].textureData[kmp];
+			MemoryPtr texture = mc2::tga::mipData(types[priTypes[0]].textureData, kmp);
 			if (!Terrain::terrainTextures2 || isCementType(priTypes[0]))
 			{
 				//Base is now a BLANK ALPHA MASK for new Terrain

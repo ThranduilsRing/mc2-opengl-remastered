@@ -1,4 +1,4 @@
-"""Trigger: tools/import_campaign.py and its portable deployment entries."""
+"""Trigger: tools/import_campaign.py, transfer_mc2x_campaign.py, portable deployment entries."""
 import importlib.util
 import json
 from pathlib import Path
@@ -144,3 +144,61 @@ def test_data_root_pack_and_missing_dependency_on_repeat(sample):
     (deploy / "mods/mc2x-compat/data").rmdir()
     with pytest.raises(ValueError, match="Missing mc2x-compat"):
         imp.import_campaign(source, deploy)
+
+
+@pytest.mark.parametrize("same", [False, True])
+def test_loose_override_uses_bytes_and_first_dependency(sample, same):
+    source, deploy = sample
+    raw = (source / "data/missions/demo01.fit").read_bytes()
+    ref = deploy / "mods/mc2x-compat/data/missions/demo01.fit"
+    ref.parent.mkdir()
+    ref.write_bytes(raw if same else b"different campaign")
+    result = imp.import_campaign(source, deploy)
+    out = deploy / "mods" / result["mod"] / "data/missions/demo01.fit"
+    assert out.exists() != same
+    if not same:
+        assert out.read_bytes() == raw
+
+
+def test_fst_delta_preserves_different_bytes(tmp_path, monkeypatch):
+    import transfer_mc2x_campaign as transfer
+    ref, out = tmp_path / "ref", tmp_path / "out"
+    (ref / "missions").mkdir(parents=True)
+    (ref / "missions/demo.fit").write_bytes(b"base")
+    monkeypatch.setattr(transfer.fst, "fst_entries", lambda _: [(0, 0, 0, "data/missions/demo.fit", False, b"")])
+    monkeypatch.setattr(transfer.fst, "decompress_entry", lambda *args: b"override")
+    assert transfer.extract_fst("fixture", str(out), refs=[str(ref)]) == 1
+    assert (out / "data/missions/demo.fit").read_bytes() == b"override"
+    assert not transfer.in_refs("data/missions/demo.fit", [str(ref), str(out / "data")], b"override")
+    monkeypatch.setattr(transfer.fst, "fst_entries", lambda _: [(0, 0, 0, "data/objects/mc2xcomp.csv", False, b"")])
+    assert transfer.extract_fst_whitelist("fixture", str(out), transfer.MISC_ROSTER) == 1
+    assert (out / "data/objects/compbas.csv").read_bytes() == b"override"
+
+
+@pytest.mark.parametrize("failure", ["rc", "missing"])
+def test_failed_transfer_is_never_published(sample, monkeypatch, failure):
+    source, deploy = sample
+    original = imp.legacy._run_step
+    def fail(step, args):
+        if failure == "rc":
+            return 7
+        original(step, args)
+        (Path(args[args.index("--out") + 1]) / "data/missions/demo01.pak").unlink()
+    monkeypatch.setattr(imp.legacy, "_run_step", fail)
+    with pytest.raises(ValueError, match="transfer failed: 7" if failure == "rc" else "demo01.pak.*download"):
+        imp.import_campaign(source, deploy)
+    assert [p.name for p in (deploy / "mods").iterdir()] == ["mc2x-compat"]
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows batch launcher")
+def test_batch_changes_directory_and_preserves_failure(tmp_path):
+    import subprocess
+    game = tmp_path / "game with spaces"
+    (game / "tools").mkdir(parents=True)
+    (game / "tools/import_campaign.py").write_text("import os, sys\nassert os.getcwd() == sys.argv[1]\nsys.exit(7)\n")
+    launcher = game / "import-campaign.bat"
+    launcher.write_bytes((ROOT / "import-campaign.bat").read_bytes())
+    run = subprocess.run(f'cmd /d /s /c ""{launcher}" "{game}""', cwd=tmp_path,
+                         input="\n", capture_output=True, text=True,
+                         **imp.console_child.child_kwargs(redirected=True))
+    assert run.returncode == 7, run.stdout + run.stderr

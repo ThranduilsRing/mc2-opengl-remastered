@@ -18,6 +18,8 @@ For the original Inno Setup EXE downloads, get the Windows ZIP from
 https://constexpr.org/innoextract/ and unzip it into a folder on PATH (for example,
 put `innoextract.exe` beside `mc2.exe` and run the command from that game folder).
 The importer uses it to extract content without running the old installer.
+The BAT changes to the game folder automatically, so an `innoextract.exe` beside
+it works even when you start the BAT from another folder.
 Alternatively, install each original campaign into its own separate folder, then
 drag that folder onto the BAT. Extract 7z/RAR downloads first. Never install an old
 campaign over this game's folder or over another campaign.
@@ -76,6 +78,13 @@ the starting files, not every model or script in every mission. A changed source
 version or locally edited installation is refused: preserve your saves and move
 that campaign's mod folder aside before importing a replacement. Never delete a
 compatibility base while other campaigns depend on it.
+
+An error names the missing file and the source installer or folder. Re-extract
+that original download; for missing compatibility content, import the full
+`MCOsetup628.exe` (Omnitech) or `MC2X-CVE-G` (Wolfman) first. A mission name alone,
+a story outline, or a patch without its full campaign is not a complete download.
+The inventory marks editions whose source downloads were unavailable for testing;
+the command list is not a claim that every edition has been tested.
 
 ![Imported Wolfman campaigns in Campaigns & mods](campaign-import-window.jpg)
 

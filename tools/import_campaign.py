@@ -247,18 +247,23 @@ def import_campaign(source, deploy):
                 pending.append(compat)
                 refs.insert(0, str(staged / "mods" / compat / "data"))
         out = staged / "mods" / mod_id
-        available = names | available_assets(deploy)
-        for ref in refs[:-1] if len(refs) > 1 else []:
-            available |= available_assets(Path(ref).parent)
-        for campaign in campaigns:
-            for suffix in ("fit", "pak"):
-                required = f"data/missions/{campaign['first_mission']}.{suffix}"
-                if required not in available:
-                    raise ValueError(f"Missing first-mission asset: {required}. Download the full campaign and its required base.")
         args = ["--source", str(root), "--refs", *refs, "--out", str(out), "--deploy", str(deploy)]
         if "mission.fst" not in files:
             args += ["--fsts"]
-        legacy._run_step({"kind": "transfer"}, args)
+        rc = legacy._run_step({"kind": "transfer"}, args)
+        if rc not in (0, None):
+            raise ValueError(f"Campaign transfer failed: {rc}")
+        available = available_assets(out) | available_assets(deploy)
+        for ref in refs[:-1] if len(refs) > 1 else []:
+            available |= available_assets(Path(ref).parent)
+        for campaign in campaigns:
+            required_files = [f"data/campaign/{campaign['fit']}.fit"] + [
+                f"data/missions/{campaign['first_mission']}.{suffix}" for suffix in ("fit", "pak")]
+            for required in required_files:
+                if required not in available:
+                    raise ValueError(f"Missing first-mission asset: {required} after importing {source.name}. "
+                                     "Re-extract that campaign installer and import its full required base "
+                                     "(MCOsetup628.exe for Omnitech; MC2X-CVE-G for Wolfman).")
         if not (out / "data" / "campaign").is_dir():
             raise ValueError("Converter produced no campaign; original download may be incomplete.")
         metadata = {"id": mod_id, "name": " / ".join(c["name"] for c in campaigns),
