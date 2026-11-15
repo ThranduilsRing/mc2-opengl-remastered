@@ -817,7 +817,7 @@ bool MainMenu::occludesLogisticsScreens() const
 void MainMenu::render()
 {
     if (ImGui::GetCurrentContext()) ImGui::GetIO().MouseDrawCursor = true;
-    if (!introMovie && !bOptions && !bDrawMechlopedia)
+    if (bDrawBackground && !introMovie && !bOptions && !bDrawMechlopedia)
         PlayerFrontEnd::drawMainMenu();
 	// UI-ASPECT-ANCHOR-1: front-end frame — draw the UI on the 16:9 canvas
 	// (re-asserted every frame; auto-cleared at flushHUDBatch).
