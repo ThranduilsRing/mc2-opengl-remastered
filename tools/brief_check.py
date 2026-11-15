@@ -35,7 +35,7 @@ import console_child  # noqa: E402  (git children without a console window)
 #: or a maximal 7-12 lowercase-hex run (a git short sha; longer runs are not extracted).
 #: An all-letter run is dropped in extract: a hex word with no digit ("feedbac") is English, not a sha.
 CITE_RE = re.compile(
-    r"(?P<drive>(?<![A-Za-z])[A-Za-z]:[\\/][^\s`'\"(){}\[\],;|]*)"
+    r"(?P<drive>(?:(?<![A-Za-z])[A-Za-z]:[\\/]|(?<![\w:/])/)[^\s`'\"(){}\[\],;|]*)"
     r"|(?P<rel>(?<![\w./\\-])(?:[A-Za-z0-9_.\-*]+/)+[A-Za-z0-9_.\-*]+\.[A-Za-z0-9]{1,8})"
     r"|(?P<sha>(?<![0-9a-f])[0-9a-f]{7,12}(?![0-9a-f]))"
 )

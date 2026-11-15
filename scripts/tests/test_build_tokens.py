@@ -97,12 +97,13 @@ def queued_builds(tmp_path, monkeypatch):
     monkeypatch.setenv("MC2_BUILD_POOL_FILE", str(tmp_path / "missing"))
     context = multiprocessing.get_context("spawn")
     blocker = build_tokens.acquire(3, total=3, directory=str(tmp_path))
-    results = context.Queue()
+    results = []
     children = []
     try:
         for index in range(3):
+            results.append(context.Queue())  # a killed writer must not strand another child's queue lock
             waiting, admitted, release = (context.Event() for _ in range(3))
-            process = context.Process(target=_waiter, args=(str(tmp_path), index, waiting, admitted, release, results))
+            process = context.Process(target=_waiter, args=(str(tmp_path), index, waiting, admitted, release, results[index]))
             process.start()
             children.append((process, admitted, release))
             assert waiting.wait(60), f"waiter failed to register its ticket (exit={process.exitcode})"
@@ -118,8 +119,9 @@ def queued_builds(tmp_path, monkeypatch):
             if process.is_alive():
                 process.terminate()
                 process.join(5)
-        results.close()
-        results.join_thread()
+        for queue in results:
+            queue.close()
+            queue.join_thread()
 
 
 def test_three_waiters_admitted_in_ticket_order(queued_builds):
@@ -127,7 +129,7 @@ def test_three_waiters_admitted_in_ticket_order(queued_builds):
     blocker.close()
     for index, (process, admitted, release) in enumerate(children):
         assert admitted.wait(60)
-        assert results.get(timeout=5) == index
+        assert results[index].get(timeout=5) == index
         release.set()
         process.join(5)
         assert process.exitcode == 0
@@ -143,7 +145,7 @@ def test_killed_waiter_is_skipped(queued_builds):
     for index in (1, 2):
         process, admitted, release = children[index]
         assert admitted.wait(60)
-        assert results.get(timeout=5) == index
+        assert results[index].get(timeout=5) == index
         release.set()
         process.join(5)
         assert process.exitcode == 0
@@ -154,14 +156,14 @@ def test_killed_holder_releases_tokens_and_ticket(queued_builds):
     blocker.close()
     process, admitted, _ = children[0]
     assert admitted.wait(60)
-    assert results.get(timeout=5) == 0
+    assert results[0].get(timeout=5) == 0
     process.terminate()
     process.join(5)
     assert not process.is_alive()
     for index in (1, 2):
         process, admitted, release = children[index]
         assert admitted.wait(60)
-        assert results.get(timeout=5) == index
+        assert results[index].get(timeout=5) == index
         release.set()
         process.join(5)
         assert process.exitcode == 0
