@@ -75,7 +75,7 @@ void drawCoopLobby() {
         if (ImGui::Button("Host game")) mc2::net::openLobby(true, endpoint, missionName(selected));
         ImGui::SameLine();
         if (ImGui::Button("Join game")) mc2::net::openLobby(false, endpoint, "mc2_01");
-        ImGui::TextUnformatted("Waiting for a peer after Host or Join. Both players must use identical content.");
+        ImGui::TextWrapped("Waiting for a peer after Host or Join. Both players must use identical content.");
     }
     if (state.offered) {
         ImGui::Text("Mission: %s", state.mission.c_str());

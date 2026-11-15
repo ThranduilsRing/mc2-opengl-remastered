@@ -370,6 +370,13 @@ extern "C" void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame) 
             auto& a = *mover->getAppearance()->simulationAnimation();
             std::int32_t id = mover->getPartId();
             animation(i, id, a);
+            if (mc2::net::active() && turn == 1) {
+                mc2::save::Archive initial;
+                initial(a);
+                std::fprintf(stderr, "[MP_ANIM_INIT] object=%d part=%d state=", i, id);
+                for (auto byte : initial.bytes()) std::fprintf(stderr, "%02x", static_cast<unsigned>(byte));
+                std::fprintf(stderr, "\n");
+            }
             auto& pose = *mover->getAppearance()->simPose;
             animation(pose.root.x, pose.root.y, pose.root.z, pose.heading);
             for (auto& node : pose.nodes) animation(node.x, node.y, node.z);
