@@ -239,6 +239,13 @@ def iter_mutated_relpaths(target: Path, deep: bool = False):
     for rel in MUTATED_FILES:
         if (target / rel).is_file():
             yield rel
+    art = target / "data/art"
+    if art.is_dir():
+        # Loose deploy-written art directly under data/art (see classify); subdirectories are covered by MUTATED_ROOTS.
+        for entry in sorted(os.listdir(art)):
+            rel = f"data/art/{entry}"
+            if (art / entry).is_file() and classify(rel) == "mutated":
+                yield rel
     for root in MUTATED_ROOTS:
         base = target / root if root else target
         if not base.is_dir():
@@ -266,6 +273,10 @@ def classify(rel: str) -> str:
     if rel in _MUTATED_FILES_FOLDED:
         return "mutated"
     if rel.startswith("data/tgl/") and rel.endswith(".cookstamp"):
+        return "mutated"
+    # Loose art directly under data/art (component icons, menu planet tiles): stock art ships inside art.fst, so every
+    # loose file there is a deploy-written override that the next deploy may rewrite; never a shared seed inode.
+    if rel.startswith("data/art/") and rel.count("/") == 2:
         return "mutated"
     # Native recipes publish by temp+rename (cook_cache.cpp), never through an existing inode (a read touches the LRU mtime only when nlink == 1).
     if rel.startswith("cache/content-model/model-") and rel.endswith(".mci"):

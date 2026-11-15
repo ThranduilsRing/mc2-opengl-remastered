@@ -71,7 +71,8 @@ def test_waves_resolve_at_gameplay_zoom_and_become_roughness_far_away():
 
 def test_sun_and_lamp_specular_use_the_wave_normal_and_roughness():
     assert "waterGgxSpec(waveN, vdir, Ls, specAlpha2)" in SRC
-    assert "waterLampSpec(WorldPos, waveN, vdir, specAlpha2)" in SRC
+    # WATER-POOL-FUSE-1 (bb3967a57): the lamp specular comes out of the fused pool light walk, still on the wave normal.
+    assert "waterPoolLights(WorldPos, waveN, vdir, specAlpha2, lampSpec)" in SRC
     # The reflection normal is the wave normal plus the actor ripple/wake slope (water-reactive-a), never a noise gradient.
     assert "reflect(-vdir, waveNormal)" in SRC and "PREC vec3  waveNormal = normalize(waveN + vec3(reactive.xy, 0.0));" in SRC
     # Spec AA comes before the coverage discard (derivatives defined) and is not temporal.
