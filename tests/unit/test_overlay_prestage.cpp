@@ -187,6 +187,24 @@ TEST_CASE("OverlayPrestage/HUD warm plan covers ten distinct pipeline variants")
     CHECK(actual.contains({1, false, 3}));
 }
 
+TEST_CASE("OverlayPrestage/HUD mip upload preserves premultiplied pixels and every level") {
+    constexpr size_t baseBytes = 2048u * 2048u * 4u;
+    for (bool mipmapped : {false, true}) {
+        const size_t bytes = mipmapped ? (baseBytes * 4 - 4) / 3 : baseBytes;
+        std::vector<uint8_t> rgba(baseBytes), uploaded(bytes);
+        for (size_t i = 0; i < baseBytes; i += 4) {
+            rgba[i] = 64; rgba[i+1] = 128; rgba[i+2] = 255; rgba[i+3] = 128;
+        }
+        void* mapped = uploaded.data();
+#include "hud_mip_upload.inc"
+        const std::array<uint8_t,4> expected = mipmapped
+            ? std::array<uint8_t,4>{32,64,128,128} : std::array<uint8_t,4>{64,128,255,128};
+        CHECK(std::equal(uploaded.begin(), uploaded.begin()+4, expected.begin()));
+        CHECK(std::equal(uploaded.end()-4, uploaded.end(), expected.begin()));
+        CHECK(rgba[0] == 64); // immutable input survives premultiplication
+    }
+}
+
 namespace roadInputs {
 using DWORD = uint32_t;
 enum Overlays { INVALID_OVERLAY = -1, Road = 7 };

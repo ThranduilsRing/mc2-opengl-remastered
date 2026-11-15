@@ -1109,12 +1109,13 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
     const size_t baseBytes = static_cast<size_t>(d.textureWidth) * d.textureHeight * 4u;
     const VkDeviceSize bytes = mipmapped ? (baseBytes * 4u - 4u) / 3u : baseBytes;
     const bool needsUpload = m.serial != d.textureSerial || m.width != d.textureWidth ||
-                             m.height != d.textureHeight || m.bytes != bytes || !m.buffer || m.sceneGeneration != sceneGeneration;
-    if (!needsUpload)
+                             m.height != d.textureHeight || m.bytes != bytes || !m.buffer;
+    if (!needsUpload && m.sceneGeneration == sceneGeneration)
         return &m;
     // VK-HUD-MIRRORCOPY-1: the draw carries a shared immutable mirror (refcount
     // bump at queue time); bytes are only dereferenced HERE, on a (handle,serial)
     // change — the >99.9% no-upload case never touches them.
+    if (needsUpload) {
     if (!d.textureRgba || d.textureRgba->size() < baseBytes)
         return nullptr;
     if (!createHostBuffer(s, bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, m.buffer, m.memory, "present.hudTextureMirror"))
@@ -1123,11 +1124,15 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
     void* mapped = nullptr;
     if (vkMapMemory(s.dev, m.memory.get(), 0, bytes, 0, &mapped) != VK_SUCCESS)
         return nullptr;
-    // The former per-pixel pack (b0 | b1<<8 | b2<<16 | b3<<24) is the source byte order on a little-endian host: copy straight, no temp vector.
-    std::memcpy(mapped, rgba.data(), baseBytes);
+    // Mapped coherent memory may be uncached. Build spatial mips in cached RAM;
+    // only the final sequential copy may touch the upload allocation.
+    std::vector<uint8_t> mipPixels;
+    const uint8_t* source = rgba.data();
     if (mipmapped) {
+        mipPixels.resize(bytes);
+        std::memcpy(mipPixels.data(), rgba.data(), baseBytes);
         // Spatial, premultiplied mip pyramid: transparent edges retain their colour.
-        auto* pixels = static_cast<uint8_t*>(mapped);
+        auto* pixels = mipPixels.data();
         for (size_t i = 0; i < baseBytes; i += 4)
             for (size_t c = 0; c < 3; ++c) pixels[i+c] = (static_cast<uint32_t>(pixels[i+c]) * pixels[i+3] + 127u) / 255u;
         size_t offset = 0, next = baseBytes;
@@ -1139,8 +1144,11 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
                 }
             offset = next; next += (w/2)*(w/2)*4;
         }
+        source = mipPixels.data();
     }
+    std::memcpy(mapped, source, bytes);
     vkUnmapMemory(s.dev, m.memory.get());
+    }
     if (!m.set) {
         VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
         ai.descriptorPool = s.hudTexPool.get();
@@ -1175,7 +1183,7 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
     m.width = d.textureWidth;
     m.height = d.textureHeight;
     m.bytes = bytes;
-    if (uploads) ++(*uploads);
+    if (uploads && needsUpload) ++(*uploads);
     return &m;
 }
 
