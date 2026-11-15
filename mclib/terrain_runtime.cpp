@@ -95,6 +95,11 @@ float decalElevation(const glm::vec3& worldPos)
 	return sampleVisualHeight(worldPos);
 }
 
+float markerElevation(const glm::vec3& worldPos)
+{
+	return std::max(sampleVisualHeight(worldPos), land ? Terrain::waterElevation : 0.0f);
+}
+
 float cameraClearanceHeight(const glm::vec3& eye, const glm::vec3 (&nearOffsets)[4], float minimum)
 {
 	float height = std::max(sampleVisualHeight(eye), land ? Terrain::waterElevation : 0.0f);

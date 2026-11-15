@@ -835,9 +835,8 @@ static void FlushHardSurfaceTiles() {
     g_hsPending.clear();
 }
 
-float HardSurfaceCoverage(float wx, float wy) {
-    if (!g_hs.built) BuildHardSurfaceField();
-    FlushHardSurfaceTiles();
+// Load workers sample only after the main thread has built/flushed the field.
+float HardSurfaceCoverageReadOnly(float wx, float wy) {
     if (g_hs.blockOf.empty()) return 0.0f;
     // Continuous texel coords; texel centres sit at +0.5.
     const float X = (wx / g_hs.wupv + static_cast<float>(g_hs.half)) * kHsRes - 0.5f;
@@ -848,6 +847,12 @@ float HardSurfaceCoverage(float wx, float wy) {
     const float a = static_cast<float>(hsTexel(ix, iy))     * (1.0f - fx) + static_cast<float>(hsTexel(ix + 1, iy))     * fx;
     const float b = static_cast<float>(hsTexel(ix, iy + 1)) * (1.0f - fx) + static_cast<float>(hsTexel(ix + 1, iy + 1)) * fx;
     return (a * (1.0f - fy) + b * fy) * (1.0f / 255.0f);
+}
+
+float HardSurfaceCoverage(float wx, float wy) {
+    if (!g_hs.built) BuildHardSurfaceField();
+    FlushHardSurfaceTiles();
+    return HardSurfaceCoverageReadOnly(wx, wy);
 }
 
 void InvalidateHardSurfaceField() {
@@ -965,6 +970,9 @@ void gos_terrain_indirect_MarkDecalDirtyTile(long row, long col) {
 }
 float gos_terrain_indirect_HardSurfaceCoverage(float wx, float wy) {
     return gos_terrain_indirect::HardSurfaceCoverage(wx, wy);
+}
+float gos_terrain_indirect_HardSurfaceCoverageReadOnly(float wx, float wy) {
+    return gos_terrain_indirect::HardSurfaceCoverageReadOnly(wx, wy);
 }
 void gos_terrain_indirect_HardSurfaceStats(int* alpha, int* pure, int* noImage) {
     gos_terrain_indirect::HardSurfaceStats(alpha, pure, noImage);

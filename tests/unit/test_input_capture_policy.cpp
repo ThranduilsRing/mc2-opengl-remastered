@@ -14,6 +14,57 @@ using input::capture::PolicyState;
 using input::capture::mouseButtonsReachGame;
 using input::capture::nextEdge;
 using input::capture::wheelReachesGame;
+using input::capture::PointerCapture;
+using input::capture::startsWidgetDrag;
+
+// Trigger paths: gos_input.cpp, gameosmain.cpp, userinput.cpp,
+// componentlistbox.cpp, mechlabscreen.cpp and input_capture_policy.h.
+TEST_CASE("input_capture_policy: logistics down move outside source up delivers drag") {
+    PointerCapture pointer;
+    Edge edge = pointer.edge(Edge::Free, 1, pointer.sample(1, true));
+    REQUIRE(edge == Edge::Pressed);
+    // The next sample has moved past the inventory item (or mech diagram).
+    // ImGui capture changing during the gesture must not steal the hold.
+    edge = pointer.edge(edge, 1, pointer.sample(1, false));
+    REQUIRE(edge == Edge::Held);
+    CHECK(startsWidgetDrag(edge == Edge::Held, true));
+    CHECK_FALSE(startsWidgetDrag(edge == Edge::Held, false));
+    edge = pointer.edge(edge, 1, pointer.sample(0, false));
+    CHECK(edge == Edge::Released); // the logistics endDrag delivery
+    CHECK_FALSE(startsWidgetDrag(false, true));
+}
+
+TEST_CASE("input_capture_policy: captured press cannot turn into a game drag") {
+    PointerCapture pointer;
+    CHECK(pointer.sample(1, false) == 0);
+    CHECK(pointer.sample(1, true) == 0); // left the ImGui surface while held
+    CHECK(pointer.sample(0, true) == 0);
+    CHECK(pointer.sample(1, true) == 1); // a fresh game press
+}
+
+TEST_CASE("input_capture_policy: focus cycle preserves selection and swallows activation") {
+    PointerCapture pointer;
+    Edge edge = Edge::Free;
+    // No Pressed or Released means neither single-select nor mouse-up order.
+    // Also cover alt-tab interrupting a held game button.
+    for (bool wasHeld : {false, true}) {
+        edge = wasHeld ? Edge::Held : Edge::Free;
+        pointer.setFocus(false);
+        edge = pointer.edge(edge, 1, pointer.sample(1, true));
+        CHECK(edge == Edge::Free);
+        pointer.setFocus(true);
+        edge = pointer.edge(edge, 1, pointer.sample(1, true));
+        CHECK(edge == Edge::Free);
+        edge = pointer.edge(edge, 1, pointer.sample(0, true));
+        CHECK(edge == Edge::Free);
+        edge = pointer.edge(edge, 1, pointer.sample(1, true));
+        CHECK(edge == Edge::Pressed); // next deliberate click still works
+    }
+    // Both focus events can arrive in one SDL pump, with no intervening frame.
+    pointer.setFocus(false);
+    pointer.setFocus(true);
+    CHECK(pointer.sample(1, true) == 0);
+}
 
 TEST_CASE("input_capture_policy: mouse buttons reach the game unless ImGui captured them") {
     // imguiWantsMouse x gameModalActive, recorded matrix.

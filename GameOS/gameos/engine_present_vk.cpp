@@ -382,13 +382,13 @@ bool rebuildSwapchain(EnginePresentVk::Impl& s, uint32_t w, uint32_t h,
 // image-layout transition helper (whole color image, single subresource)
 void barrier(VkCommandBuffer cb, VkImage img, VkImageLayout oldL, VkImageLayout newL,
              VkAccessFlags srcA, VkAccessFlags dstA,
-             VkPipelineStageFlags srcS, VkPipelineStageFlags dstS) {
+             VkPipelineStageFlags srcS, VkPipelineStageFlags dstS, VkImageAspectFlags aspect = VK_IMAGE_ASPECT_COLOR_BIT) {
     VkImageMemoryBarrier b{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
     b.oldLayout = oldL; b.newLayout = newL;
     b.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     b.image = img;
-    b.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+    b.subresourceRange = {aspect, 0, 1, 0, 1};
     b.srcAccessMask = srcA; b.dstAccessMask = dstA;
     vkCmdPipelineBarrier(cb, srcS, dstS, 0, 0, nullptr, 0, nullptr, 1, &b);
 }
@@ -409,7 +409,7 @@ struct HudColorGpuVertex {
 };
 
 struct HudTexGpuVertex {
-    float x, y;
+    float x, y, rhw, depth;
     uint32_t argb;
     float u, v;
 };
@@ -953,26 +953,28 @@ bool ensureHudTexObjects(EnginePresentVk::Impl& s) {
     if (s.hudTexPipe.get() && s.hudTexOpaquePipe.get() && s.hudTexOneInvAlphaPipe.get() && s.hudTexOneOnePipe.get())
         return true;
     if (!s.hudTexDsl) {
-        VkDescriptorSetLayoutBinding b{};
-        b.binding = 0;
-        b.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        b.descriptorCount = 1;
-        b.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        VkDescriptorSetLayoutBinding b[3]{};
+        for (uint32_t i = 0; i < 3; ++i) {
+            b[i].binding = i;
+            b[i].descriptorType = i ? VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            b[i].descriptorCount = 1;
+            b[i].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        }
         VkDescriptorSetLayoutCreateInfo ci{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
-        ci.bindingCount = 1; ci.pBindings = &b;
+        ci.bindingCount = 3; ci.pBindings = b;
         if (!mc2vk::create(s.hudTexDsl, s.dev, [&](auto* h) { return vkCreateDescriptorSetLayout(s.dev, &ci, nullptr, h); })) {
             s.hudColorVkFailed = true; return false;
         }
     }
     if (!s.hudTexPool) {
-        VkDescriptorPoolSize size{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 512};
+        VkDescriptorPoolSize sizes[2] = {{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 512}, {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1024}};
         VkDescriptorPoolCreateInfo pci{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
         // FREE_DESCRIPTOR_SET_BIT: the (handle,serial)-keyed HUD mirror evicts stale
         // entries and frees their descriptor sets back to the pool (VK-HUD-GLYPH-
         // CORRUPTION FIX) -- without this flag vkFreeDescriptorSets is illegal and the
         // pool would exhaust as runtime string serials accumulate.
         pci.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-        pci.maxSets = 512; pci.poolSizeCount = 1; pci.pPoolSizes = &size;
+        pci.maxSets = 512; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
         if (!mc2vk::create(s.hudTexPool, s.dev, [&](auto* h) { return vkCreateDescriptorPool(s.dev, &pci, nullptr, h); })) {
             s.hudColorVkFailed = true; return false;
         }
@@ -1001,7 +1003,7 @@ bool ensureHudTexObjects(EnginePresentVk::Impl& s) {
     VkVertexInputBindingDescription bind{};
     bind.binding = 0; bind.stride = sizeof(HudTexGpuVertex); bind.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
     VkVertexInputAttributeDescription attr[3]{};
-    attr[0].location = 0; attr[0].binding = 0; attr[0].format = VK_FORMAT_R32G32_SFLOAT; attr[0].offset = offsetof(HudTexGpuVertex, x);
+    attr[0].location = 0; attr[0].binding = 0; attr[0].format = VK_FORMAT_R32G32B32A32_SFLOAT; attr[0].offset = offsetof(HudTexGpuVertex, x);
     attr[1].location = 1; attr[1].binding = 0; attr[1].format = VK_FORMAT_R32_UINT; attr[1].offset = offsetof(HudTexGpuVertex, argb);
     attr[2].location = 2; attr[2].binding = 0; attr[2].format = VK_FORMAT_R32G32_SFLOAT; attr[2].offset = offsetof(HudTexGpuVertex, u);
     VkPipelineVertexInputStateCreateInfo vin{VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
@@ -1092,15 +1094,28 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
     const uint64_t key = (static_cast<uint64_t>(d.textureHandle) << 32) | static_cast<uint64_t>(d.textureSerial);
     auto& m = s.hudTextureMirrors[key];
     m.lastFrame = s.hudMirrorFrameCounter;   // touched this frame -> not evictable yet
-    const VkDeviceSize bytes = static_cast<VkDeviceSize>(d.textureWidth) * static_cast<VkDeviceSize>(d.textureHeight) * 4u;
+    const bool mipmapped = d.textureWidth == 2048 && d.textureHeight == 2048;
+    auto* normal = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_NORMAL);
+    auto* depth = mc2SharedSceneDepthGetResource();
+    if (!normal || !depth) return nullptr;
+    const auto sceneGeneration = mc2SharedSceneColorGeneration();
+    if (s.hudSceneGeneration != sceneGeneration) {
+        VkImageViewCreateInfo ci{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+        ci.image = depth->image.get(); ci.viewType = VK_IMAGE_VIEW_TYPE_2D; ci.format = depth->format;
+        ci.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
+        if (!mc2vk::create(s.hudDepthView, s.dev, [&](auto* h) { return vkCreateImageView(s.dev, &ci, nullptr, h); })) return nullptr;
+        s.hudSceneGeneration = sceneGeneration;
+    }
+    const size_t baseBytes = static_cast<size_t>(d.textureWidth) * d.textureHeight * 4u;
+    const VkDeviceSize bytes = mipmapped ? (baseBytes * 4u - 4u) / 3u : baseBytes;
     const bool needsUpload = m.serial != d.textureSerial || m.width != d.textureWidth ||
-                             m.height != d.textureHeight || m.bytes != bytes || !m.buffer;
+                             m.height != d.textureHeight || m.bytes != bytes || !m.buffer || m.sceneGeneration != sceneGeneration;
     if (!needsUpload)
         return &m;
     // VK-HUD-MIRRORCOPY-1: the draw carries a shared immutable mirror (refcount
     // bump at queue time); bytes are only dereferenced HERE, on a (handle,serial)
     // change — the >99.9% no-upload case never touches them.
-    if (!d.textureRgba || d.textureRgba->size() < static_cast<size_t>(bytes))
+    if (!d.textureRgba || d.textureRgba->size() < baseBytes)
         return nullptr;
     if (!createHostBuffer(s, bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, m.buffer, m.memory, "present.hudTextureMirror"))
         return nullptr;
@@ -1109,7 +1124,22 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
     if (vkMapMemory(s.dev, m.memory.get(), 0, bytes, 0, &mapped) != VK_SUCCESS)
         return nullptr;
     // The former per-pixel pack (b0 | b1<<8 | b2<<16 | b3<<24) is the source byte order on a little-endian host: copy straight, no temp vector.
-    std::memcpy(mapped, rgba.data(), static_cast<size_t>(bytes));
+    std::memcpy(mapped, rgba.data(), baseBytes);
+    if (mipmapped) {
+        // Spatial, premultiplied mip pyramid: transparent edges retain their colour.
+        auto* pixels = static_cast<uint8_t*>(mapped);
+        for (size_t i = 0; i < baseBytes; i += 4)
+            for (size_t c = 0; c < 3; ++c) pixels[i+c] = (static_cast<uint32_t>(pixels[i+c]) * pixels[i+3] + 127u) / 255u;
+        size_t offset = 0, next = baseBytes;
+        for (size_t w = 2048; w > 1; w /= 2) {
+            for (size_t y = 0; y < w/2; ++y) for (size_t x = 0; x < w/2; ++x)
+                for (size_t c = 0; c < 4; ++c) {
+                    const size_t p = offset + ((2*y)*w + 2*x)*4 + c;
+                    pixels[next + (y*(w/2)+x)*4+c] = (static_cast<uint32_t>(pixels[p]) + pixels[p+4] + pixels[p+w*4] + pixels[p+w*4+4] + 2u) / 4u;
+                }
+            offset = next; next += (w/2)*(w/2)*4;
+        }
+    }
     vkUnmapMemory(s.dev, m.memory.get());
     if (!m.set) {
         VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
@@ -1131,6 +1161,16 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
     wr.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     wr.pBufferInfo = &bi;
     vkUpdateDescriptorSets(s.dev, 1, &wr, 0, nullptr);
+    VkDescriptorImageInfo images[2] = {
+        {s.compositeNearestSampler.get(), normal->view.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+        {s.compositeNearestSampler.get(), s.hudDepthView.get(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL}};
+    for (uint32_t i = 0; i < 2; ++i) {
+        wr.dstBinding = i + 1;
+        wr.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        wr.pBufferInfo = nullptr; wr.pImageInfo = &images[i];
+        vkUpdateDescriptorSets(s.dev, 1, &wr, 0, nullptr);
+    }
+    m.sceneGeneration = sceneGeneration;
     m.serial = d.textureSerial;
     m.width = d.textureWidth;
     m.height = d.textureHeight;
@@ -1225,6 +1265,8 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
             td.width = mirror->width;
             td.height = mirror->height;
             td.textMode = (d.kind == 3) ? 1u : 0u;
+            if (d.kind != 3 && d.textureWidth == 2048 && d.textureHeight == 2048) td.textMode = 2u;
+            if (td.textMode == 2u && !d.vertices.empty() && d.vertices[0].frgb == 0x434f4d50u) td.textMode = 3u;
             td.foreground = d.foregroundColor;
             td.opaque = (d.alphaMode == 1);
             td.oneInvAlpha = (d.alphaMode == 4); // VK-FIELD-VFX-3: additive-glow effect blend
@@ -1237,7 +1279,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
             texVerts.resize(texBase + texCount);
             HudTexGpuVertex* texOut = texVerts.data() + texBase;
             auto addTex = [&](const VkHudVertex& v) {
-                *texOut++ = {v.x, v.y, v.argb, v.u, v.v};
+                *texOut++ = {v.x, v.y, d.kind == 2 ? v.rhw : 1.0f, v.z, v.argb, v.u, v.v};
             };
             // VK-HUD-GLYPH-CORRUPTION ROUND-4 (REAL ROOT CAUSE): the draw KIND, not a
             // vertex-count heuristic, determines the primitive layout. kHudTextQuadBatch
@@ -1351,6 +1393,14 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
 
     }
     { ZoneScopedN("VKIsl.Present.Tail.Hud.DrawRecord");
+    auto* normal = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_NORMAL);
+    auto* depth = mc2SharedSceneDepthGetResource();
+    if (normal) barrier(cb, normal->image.get(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                       VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+                       VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    if (depth) barrier(cb, depth->image.get(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+                      VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+                      VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
     VkRenderPassBeginInfo rp{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
     rp.renderPass = s.hudColorRenderPass.get();
     rp.framebuffer = s.hudColorFramebuffer.get();
@@ -1435,11 +1485,23 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
                 texPushLast = pc;
                 texPushValid = true;
             }
-            vkCmdDraw(cb, td.count, 1, td.firstVertex, 0);
+            if (td.textMode == 3u) {
+                ZoneScopedN("VKIsl.Present.Compass");
+                MC2_VK_GPU_SCOPE(compassScope, cb, "VKIsl.Present.Compass");
+                vkCmdDraw(cb, td.count, 1, td.firstVertex, 0);
+            } else {
+                vkCmdDraw(cb, td.count, 1, td.firstVertex, 0);
+            }
         }
     }
     vkCmdEndRenderPass(cb);
     gpuScope.end();
+    if (normal) barrier(cb, normal->image.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                       VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
+                       VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+    if (depth) barrier(cb, depth->image.get(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                      VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
+                      VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
     }
     if (nativeDraws) *nativeDraws = triDraws + lineDraws + texDraws;
     if (texturedDraws) *texturedDraws = texDraws;

@@ -5,6 +5,7 @@
 #include "sim_overlap.h"
 #include "controlgui_internal.h"
 #include "mc2fmt.h"
+#include "terrain_runtime.h"
 
 
 // Sensor view: standalone toggle (F7), works at all zooms. Draws sensor coverage
@@ -29,7 +30,7 @@ static void drawSensorRing( Camera* eye, const glm::vec3& center, float radius,
 		glm::vec3 p;
 		p.x = center.x + cosf( a ) * radius;
 		p.y = center.y + sinf( a ) * radius;
-		p.z = land ? land->getTerrainElevation( p ) : 0.0f;
+		p.z = TerrainRuntime::markerElevation(p);
 		ModernClipResult r = eye->projectModernClipGL( p );
 		// Only require "in front of camera" (w>0), NOT frustum admission — a
 		// large ring is bigger than the view, so most points are off-screen but

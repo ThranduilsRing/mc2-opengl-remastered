@@ -2,6 +2,39 @@
 #include "camera_elevation.h"
 #include <cstdio>
 
+// Trigger paths: camera_elevation.h, camera_input.cpp, missiongui_orders.cpp.
+TEST_CASE("CameraElevation/wheel notches retain monotonic intermediate altitudes") {
+    for (float bound : {60.0f, 6000.0f}) for (float speed : {1.0f, 2.0f}) {
+        float reference = 0;
+        for (int fps : {30, 60, 144}) {
+            float altitude = 3000, target = altitude, velocity = 0;
+            for (int notch = 0; notch < 12; ++notch) {
+                const float previous = altitude;
+                const float scale = 1.0f - (altitude - 60) / 6000;
+                target = mc2cam::zoomElevationTarget(target, bound,
+                    mc2cam::wheelZoomAmount(10 * speed, 15, scale), scale, 1);
+                for (int frame = 0; frame < fps; ++frame)
+                    altitude = mc2cam::easeElevation(altitude, target, velocity, 1.0f / fps, 60, 6000);
+                CHECK((altitude - previous) * (bound - previous) > 0);
+                CHECK(altitude > 60);
+                CHECK(altitude < 6000);
+            }
+            if (fps == 30) reference = altitude;
+            CHECK(altitude == doctest::Approx(reference).epsilon(0.00001));
+        }
+    }
+    CHECK(mc2cam::zoomElevationTarget(3000, 60, 1e6f, 0, 5) == 2265);
+}
+
+TEST_CASE("CameraElevation/edge and keyboard pan stay bounded at far zoom and stalls") {
+    for (float scale : {0.0f, 0.01f, 0.1f, 0.5f, 1.0f}) {
+        CHECK(mc2cam::panStep(10000, scale, 1, 15) <= doctest::Approx(1000.0f / 3));
+        CHECK(mc2cam::panStep(10000, scale, -1, 15) == 0);
+        const float step = mc2cam::panStep(10000, scale, 1.0f / 60, 15);
+        CHECK(step * 2 == doctest::Approx(mc2cam::panStep(10000, scale, 1.0f / 30, 15)));
+    }
+}
+
 TEST_CASE("CameraElevation/exact damped step agrees at 30 60 and 144 fps") {
     for (float target : {10.0f, 88.0f, 60.0f}) {
         float reference = 45, refVelocity = 0;

@@ -1760,6 +1760,12 @@ def retire_unowned(target_dir, keep, preserve=(), own_shaders=False):
         parts = tuple(part.casefold() for part in Path(rel).parts)
         if parts[0] in {"mods", "savegame"} or parts[:2] == ("data", "savegame"):
             continue
+        # The game and editor presets share one install: each one's root executables, symbols and launchers are owned by
+        # the other preset's payload, not retired by this one (2026-11-14: an editor deploy pruned mc2.exe/mc2.pdb).
+        if len(parts) == 1 and (parts[0].endswith((".exe", ".pdb")) or (parts[0].startswith("run-") and parts[0].endswith(".bat"))):
+            continue
+        if any(parts[:len(Path(t).parts)] == tuple(p.casefold() for p in Path(t).parts) for t in EDITOR_SUPPORT_TREES):
+            continue
         if retired.is_file():
             if sha256_file(retired) != digest:
                 log(f"preserved modified retired payload: {rel}")

@@ -55,6 +55,7 @@
 #include "terrain_cache_key.h"
 #include "terrain_overlay_tiles.h"
 #include <chrono>
+#include "../GameOS/gameos/load_scope.h"
 
 // Terrain texture state is singleton, like nextAvailable and TERRAIN_TXM_SIZE.
 static mc2::TerrainCacheKey txmSources;
@@ -67,6 +68,7 @@ static std::vector<std::vector<OverlayTileSource>> txmOverlayTiles;
 static long txmTilesKeyed = 0, txmTilesLoaded = 0;
 static void hashTxmInput(mc2::czstring name)
 {
+	MC2_LOAD_SCOPE("txm.hashInput");
 	File file;
 	std::vector<unsigned char> bytes;
 	if (file.open(name) == NO_ERR)
@@ -129,6 +131,7 @@ extern bool InEditor;
 // the textures can be preloaded during the init.
 long TerrainTextures::init (mc2::czstring fileName, mc2::czstring baseName)
 {
+	MC2_LOAD_SCOPE("txm.init");
 	metadataLoaded = true;
 	const auto inputsStart = std::chrono::steady_clock::now();
 	txmSources = mc2::TerrainCacheKey{"txm-composite-v2"};
@@ -699,6 +702,7 @@ long TerrainTextures::initDetail (long typeNum, long detailNum)
 //---------------------------------------------------------------------------
 long TerrainTextures::initTexture (long typeNum)
 {
+	MC2_LOAD_SCOPE("txm.initTexture");
 	//-----------------------------------------------------------------------
 	// This function loads the TGA pointed to by name and number into sysRAM
 	// It then copies the raw TGA texture to GOS Texture Memory.
@@ -785,6 +789,7 @@ long TerrainTextures::initTexture (long typeNum)
 //---------------------------------------------------------------------------
 void TerrainTextures::initMask (long typeNum)
 {
+	MC2_LOAD_SCOPE("txm.initMask");
 	if (quickLoad)
 		return;
 
@@ -1423,6 +1428,7 @@ static bool txmCacheIsOtherEdge (const std::vector<unsigned char>& bytes, long w
 //---------------------------------------------------------------------------
 long TerrainTextures::createTransition (DWORD typeInfo, DWORD overlayInfo)
 {
+	MC2_LOAD_SCOPE("txm.createTransition");
 	long result = -1;
 	long txmResult = 0;
 

@@ -16,6 +16,7 @@
 #include "Gates/gate_cold.h"
 #include "terrain_surface_cook.h"
 #include "Gates/render_options.h"
+#include "../../code/job_system.h"
 #include "../../3rdparty/glm/glm/gtc/packing.hpp"
 
 // The field store names the atlas format with its own constants (its header stays free of the decoder); they are the same VkFormat numbers.
@@ -192,11 +193,16 @@ void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
                     return toByte(input.srgb ? (v <= 0.0031308f ? v * 12.92f : 1.055f * std::pow(v, 1.0f / 2.4f) - 0.055f) : v);
                 };
                 std::vector<uint32_t> packedColors(surface.macroColor.size());
-                for (size_t i = 0; i < packedColors.size(); ++i) {
-                    const auto& c = surface.macroColor[i];
-                    packedColors[i] = static_cast<uint32_t>(encode(c[0])) | static_cast<uint32_t>(encode(c[1])) << 8 | static_cast<uint32_t>(encode(c[2])) << 16 |
-                                      static_cast<uint32_t>(toByte(c[3])) << 24;
-                }
+                // Each texel is a pure function of its own cooked value, so rows pack on the job pool (same bytes at any width).
+                const size_t rowTexels = surface.width;
+                const int rows = rowTexels ? static_cast<int>(packedColors.size() / rowTexels) : 0;
+                mc2::jobs::parallel_for(mc2::jobs::Domain::Render, rows, 16, 400000, [&](int begin, int end) {
+                    for (size_t i = static_cast<size_t>(begin) * rowTexels; i < static_cast<size_t>(end) * rowTexels; ++i) {
+                        const auto& c = surface.macroColor[i];
+                        packedColors[i] = static_cast<uint32_t>(encode(c[0])) | static_cast<uint32_t>(encode(c[1])) << 8 | static_cast<uint32_t>(encode(c[2])) << 16 |
+                                          static_cast<uint32_t>(toByte(c[3])) << 24;
+                    }
+                });
                 const double packMs = std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-packStart).count();
                 const auto uploadStart = std::chrono::steady_clock::now();
                 if (upload_colormap_image(s, input.srgb ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UNORM, surface.width, surface.height,

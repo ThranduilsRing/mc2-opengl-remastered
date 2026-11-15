@@ -43,6 +43,7 @@
 #include "Gates/gate.h"
 #include "Gates/render_options.h"
 #include "mc2fmt.h"
+#include "../GameOS/gameos/load_scope.h"
 //---------------------------------------------------------------------------
 // c'tors for postCompVertex
 PostcompVertex& PostcompVertex::operator=( const PostcompVertex& src )
@@ -229,7 +230,7 @@ const MapData::WorldQuadTerrainCacheEntry* MapData::getTerrainFaceCacheEntry (lo
 //---------------------------------------------------------------------------
 void MapData::buildTerrainFaceCache (volatile float* progress, float progressRange)
 {
-	ZoneScopedN("MapData::buildTerrainFaceCache");
+	ZoneScopedN("MapData::buildTerrainFaceCache"); MC2_LOAD_SCOPE("MapData::buildTerrainFaceCache");
 	if (!blocks || !Terrain::terrainTextures2 || !Terrain::terrainTextures)
 		return;
 
@@ -370,7 +371,7 @@ bool MapData::ensureTerrainFaceCacheEntryResident (const WorldQuadTerrainCacheEn
 //---------------------------------------------------------------------------
 void MapData::warmTerrainFaceCacheResidency (volatile float* progress, float progressRange)
 {
-	ZoneScopedN("MapData::warmTerrainFaceCacheResidency");
+	ZoneScopedN("MapData::warmTerrainFaceCacheResidency"); MC2_LOAD_SCOPE("MapData::warmTerrainFaceCacheResidency");
 	if (!terrainFaceCache)
 		return;
 
