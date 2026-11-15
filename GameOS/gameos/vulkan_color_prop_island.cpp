@@ -2010,7 +2010,7 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std
                 const uint32_t n = run.range[kListCore][1];
                 for (uint32_t p = first; p < first + n; ++p)
                     triangles += static_cast<uint64_t>(s->cmdScratch[kListCore][p].indexCount / 3) * run.count;
-                if (n) mc2::fmt::print_err("[PROP_CORE_TYPE] frame={} type={} instances={} first={} packets={} triangles={} hzb={}\n",
+                if (n && mc2_diag::tagRequested("PROP_CORE_TYPE")) mc2::fmt::print_err("[PROP_CORE_TYPE] frame={} type={} instances={} first={} packets={} triangles={} hzb={}\n",
                     g_mc2RenderFrame, run.metadata.typeId, run.count, first, n, triangles, hzbCulled);
             }
         }
@@ -2146,7 +2146,7 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
         if (s->coreStats[par]) {
             uint64_t values[2]{};
             if (s->coreStatsRecorded[par] && vkGetQueryPoolResults(s->device, s->coreStats[par].get(), 0, 1, sizeof(values), values, sizeof(values), VK_QUERY_RESULT_64_BIT) == VK_SUCCESS &&
-                g_mc2RenderFrame % 120 == 0)
+                g_mc2RenderFrame % 120 == 0 && mc2_diag::tagRequested("PROP_CORE_STATS"))
                 mc2::fmt::print_err("[PROP_CORE_STATS] frame={} slot={} raster_triangles={} fragment_invocations={} invocations_per_pixel={:.3f}\n",
                     g_mc2RenderFrame, par, values[0], values[1], static_cast<double>(values[1]) / (w * static_cast<double>(h)));
         } else {
