@@ -14,6 +14,8 @@ from tools import build_contract_harnesses as builder
 @pytest.fixture(autouse=True)
 def production_seam(monkeypatch, tmp_path):
     monkeypatch.setattr(builder, "prepare_unit_tree", lambda *a: (False, tmp_path / "receipt", "[]"))
+    # Hermetic: never run a real (possibly stale) mc2_tests_selected binary left in the build tree.
+    monkeypatch.setattr(builder, "matched_case_count", lambda *a: 1)
     seam = Mock(return_value=True)
     monkeypatch.setattr(builder, "build_and_run_order_seam", seam)
     return seam
