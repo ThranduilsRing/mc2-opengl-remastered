@@ -204,3 +204,15 @@ def test_cleanup_reports_a_stuck_file_instead_of_raising(tmp_path, monkeypatch, 
     monkeypatch.setattr(ab.shutil, "rmtree", stuck_rmtree)
     ab.cleanup_stage([d])
     assert "NOT fully removed" in capsys.readouterr().out
+
+
+def test_disk_guard_reserve_env_override(tmp_path, monkeypatch, capsys):
+    """MC2_AB_DISK_RESERVE_GB replaces the 30 GB PC reserve (the box sets it); an explicit min_free_gb still wins."""
+    free = ab.shutil.disk_usage(tmp_path).free
+    monkeypatch.setenv("MC2_AB_DISK_RESERVE_GB", str(free / ab.GB + 1))
+    with pytest.raises(SystemExit, match="DISK_GUARD"):
+        ab.disk_guard(tmp_path / "stage", 0)
+    monkeypatch.setenv("MC2_AB_DISK_RESERVE_GB", "0")
+    ab.disk_guard(tmp_path / "stage", 1)
+    assert "-> ok" in capsys.readouterr().out
+    ab.disk_guard(tmp_path / "stage", 1, min_free_gb=0)
