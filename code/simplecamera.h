@@ -66,6 +66,7 @@ public:
 	void setRotation( float rotation );
 	void zoomIn( float howMuch ); // scale for things that can't 
 
+	void rotateBy(float degrees) { rotation += degrees; if (rotation > 360.f) rotation -= 360.f; if (rotation < -360.f) rotation += 360.f; }
 	void setInMission (void)
 	{
 		bIsInMission = true;
