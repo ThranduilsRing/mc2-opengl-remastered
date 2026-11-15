@@ -64,6 +64,35 @@ def test_payload_identity_accepts_short_matching_fingerprint(tmp_path, repo, mon
     assert ab.payload_identity(install)["commit"] == repo[0]
 
 
+def test_exe_swap_checks_data_commit_declarations(tmp_path, repo, monkeypatch):
+    rel = "data/model_overrides/models.json"
+    install = Path(_install(tmp_path / "i", repo[1], data={rel: "lane data"}))
+    source = Path(_install(tmp_path / "base", repo[0], data={rel: "base data"}))
+    monkeypatch.setattr(ab, "exe_commit", lambda exe: repo[0])
+    declarations = {repo[0]: {rel: hashlib.sha256(b"base data").hexdigest()},
+                    repo[1]: {rel: hashlib.sha256(b"lane data").hexdigest()}}
+    monkeypatch.setattr(ab.asset_parity, "intentional_changes", lambda commit, root=None: declarations[commit])
+    stage = ab.stage_exe_swap(install, source / "mc2.exe", tmp_path / "stage")
+    identity = ab.payload_identity(stage)
+    assert identity["commit"] == repo[0] and identity["asset_commit"] == repo[1]
+    assert identity["intentional_asset_changes"] == declarations[repo[1]]
+    assert rel in ab.asset_parity.owned_paths(stage)
+    (stage / rel).write_text("stale tar entry")
+    with pytest.raises(ValueError, match="intentional asset hash mismatch"):
+        ab.payload_identity(stage)
+    with pytest.raises(ValueError, match="INTENTIONAL ASSET hash mismatch"):
+        ab.asset_parity.owned_paths(stage)
+
+
+def test_mixed_asset_commits_refused(tmp_path, repo):
+    install = Path(_install(tmp_path / "i", repo[0], data={"data/a": "a", "data/b": "b"}))
+    manifest = install / ab.MANIFEST
+    text = manifest.read_text().replace(f",1,{repo[0]},t,0", f",1,{repo[1]},t,0", 1)
+    manifest.write_text(text)
+    with pytest.raises(ValueError, match="ambiguous asset commit"):
+        ab.payload_identity(install)
+
+
 def test_ancestor_and_matching_manifests_pass(tmp_path, repo):
     a = _install(tmp_path / "a", repo[0], exe="ea", spv="sa")
     b = _install(tmp_path / "b", repo[1], exe="eb", spv="sb")   # only mc2.exe and .spv differ

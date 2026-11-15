@@ -94,6 +94,16 @@ def manifest_assets(install: Path | str) -> tuple[dict[str, str], str | None]:
     commits = {row["src_commit"] for row in entries if row["relpath"] in {"mc2.exe", "mc2", "mc2.elf"}}
     if len(commits) != 1:
         raise ValueError(f"missing/ambiguous executable commit: {path}")
+    # Exe-only A/B stages retain the data rows of the source install. Their
+    # declarations belong to that data commit, even when the executable is older.
+    asset_commits = {row["src_commit"] for row in entries
+                     if row["relpath"].startswith(("data/", "assets/"))
+                     or row["relpath"] in AUXILIARY
+                     or ("/" not in row["relpath"] and row["relpath"].endswith(ROOT_SUFFIX))}
+    if asset_commits:
+        if len(asset_commits) != 1 or not re.fullmatch(r"[0-9a-f]{40}", next(iter(asset_commits))):
+            raise ValueError(f"missing/ambiguous asset commit: {path}")
+        commits = asset_commits
     return {row["relpath"]: row["sha256"] for row in entries}, commits.pop()
 
 

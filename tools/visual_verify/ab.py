@@ -118,14 +118,15 @@ def payload_identity(install):
     fingerprint = exe_commit(install / exe)
     if fingerprint and not commit.startswith(fingerprint):
         raise ValueError(f"{install}: executable commit mismatches manifest")
-    declared = asset_parity.intentional_changes(commit, ROOT)
+    _, asset_commit = asset_parity.manifest_assets(install)
+    declared = asset_parity.intentional_changes(asset_commit, ROOT)
     # Stamp the declared bytes actually captured, including authored assets outside the deploy inventory.
     for rel, sha in declared.items():
         if asset_parity._sha(install / rel) != sha:
             raise ValueError(f"{install}: intentional asset hash mismatch: {rel}")
         print(f"[ab] INTENTIONAL ASSET ACCEPTED {rel} sha256={sha}", flush=True)
     files.update(declared)
-    return dict(commit=commit, payload=payload, manifest=files, intentional_asset_changes=declared)
+    return dict(commit=commit, asset_commit=asset_commit, payload=payload, manifest=files, intentional_asset_changes=declared)
 
 
 def stamp_identity(directory, identity):
