@@ -140,6 +140,19 @@ void loadBuildingImportSourceWithSidecarAxis(TG_TypeMultiShape* shape, mc2::czst
 	tglVerifyShapeLoaded(shape, rc, "bdactor.bldg_import",
 		importSourceBase, failFlag);
 
+	// Mark synthetic body fill separately from authored light and window IDs.
+	// The prop shader keeps this white by day and removes it at full night.
+	for (long i = 0; i < shape->GetNumShapes(); ++i) {
+		auto* node = shape->GetTypeNode(i);
+		if (!node || node->GetNodeType() != SHAPE_NODE
+			|| S_strnicmp(node->getNodeId(), "LitWin_", 6) == 0) continue;
+		auto* body = static_cast<TG_TypeShape*>(node);
+		auto* vertices = body->GetTypeVerticesMutable();
+		for (int v = 0; v < body->GetNumTypeVertices(); ++v)
+			if (vertices[v].aRGBLight == 0xffffffffu)
+				vertices[v].aRGBLight = 0xfeffffffu;
+	}
+
 	if (yawDegrees) {
 		char oldYawText[32] = {0};   // "" removes the variable
 		if (hadYaw) *std::to_chars(oldYawText, oldYawText + sizeof(oldYawText) - 1, oldYawNumber).ptr = '\0';
