@@ -20,8 +20,8 @@ def bake(mask_path, size):
     for ch, col in zip((0, 1, 2), ZONES):
         w = m[..., ch:ch + 1]
         out = out * (1 - w) + np.array(col, np.float32) * w
-    srgb = np.clip(out, 0, 1) ** (1 / 2.2)
-    return Image.fromarray((srgb * 255 + 0.5).astype(np.uint8), "RGB")
+    srgb = np.clip(out, 0, 1)   # zone/metal values are authored as display colours (the engine lights them; no gamma lift)
+    return Image.fromarray((srgb * 255 + 0.5).astype(np.uint8), "RGB").convert("RGBA")
 
 
 if __name__ == "__main__":

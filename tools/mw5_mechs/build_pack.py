@@ -67,6 +67,12 @@ def main():
     (tgl / "madcat.ini").write_bytes(emit_ini(host.read_text(encoding="latin-1")).encode("latin-1"))
     shutil.copyfile(a.glb, tgl / f"{STEM}.glb")
     shutil.copyfile(a.albedo, tgl / f"{STEM}_alb.tga")
+    # The engine resolves mech textures at <tglPath><ObjectTextureSize>/name, so ship every size tier (a root-only file stays unbound).
+    from PIL import Image
+    src = Image.open(a.albedo)
+    for s in (2048, 1024, 512, 256, 128, 64, 32):
+        (tgl / str(s)).mkdir(exist_ok=True)
+        src.resize((s, s), Image.LANCZOS).save(tgl / str(s) / f"{STEM}_alb.tga")
     pkg = {"schema": "bt2018-mech-package/2", "chassisId": "mw5:timberwolf", "sourceGlb": f"{STEM}.glb", "nodes": NODE_MAP,
            "materials": {}, "featureBits": []}
     (tgl / f"{STEM}.package.json").write_text(json.dumps(pkg, indent=2) + "\n")

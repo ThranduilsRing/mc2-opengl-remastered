@@ -18,7 +18,8 @@ from pathlib import Path
 import numpy as np
 
 RENAME = {"Foot0_Left": "j_LFoot", "Foot0_Right": "j_RFoot", "Torso_Pitch": "j_Spine2", "Cockpit": "j_COCKPIT"}
-KEEP_ALWAYS = {"Root", "Pelvis", "Torso_Twist", "Torso_Animation", "Torso_Pitch", "Cockpit"}
+FIX_ROT = [0.0, 0.0, 0.0, 1.0]   # identity; PSA keys map (x,y,z,w) -> (x,z,y,+w), verified by FK (feet below pelvis)
+KEEP_ALWAYS ={"Root", "Pelvis", "Torso_Twist", "Torso_Animation", "Torso_Pitch", "Cockpit"}
 # MW5 clip (TimberWolf/Animations/TBR_<name>_ANI) -> the engine's hard-coded clip name (mclib/mech_clip_state.h)
 CLIPS = {
     "Stand": "atlas_moveCoreIdle", "WalkForward_Straight": "atlas_moveCoreWalkFwd",
@@ -73,7 +74,7 @@ def read_psa(path):
     return names, keys, float(rate), nframes
 
 
-def build(skm_path, anim_dir, out_path, image_name, normal_name=None):
+def build(skm_path, anim_dir, out_path, image_name, clips=None):
     skm = Path(skm_path)
     g = json.loads(skm.read_text())
     buf = (skm.parent / g["buffers"][0]["uri"]).read_bytes()
@@ -141,6 +142,10 @@ def build(skm_path, anim_dir, out_path, image_name, normal_name=None):
         if len(e["name"]) > 24:
             sys.exit("node name over 24 chars: " + e["name"])
     root_nodes = [remap[i] for i in order if i not in parent or parent[i] not in remap]
+    # orientation fix: the engine's skinned bake shows the umodel rest pose upside down; a fixed root rotation
+    # above the skeleton (the inverse-binds stay unfixed) turns the baked model upright.
+    out_nodes.append({"name": "mw5_fix", "rotation": FIX_ROT, "children": root_nodes})
+    root_nodes = [len(out_nodes) - 1]
 
     blob = bytearray()
     views, accs = [], []
@@ -187,6 +192,8 @@ def build(skm_path, anim_dir, out_path, image_name, normal_name=None):
     name_to_node = {nm(o): remap[o] for o in order}
     anims = []
     for src, clip in CLIPS.items():
+        if clips is not None and src not in clips:
+            continue
         f = Path(anim_dir) / f"TBR_{src}_ANI.psa"
         if not f.is_file():
             continue
@@ -199,7 +206,7 @@ def build(skm_path, anim_dir, out_path, image_name, normal_name=None):
             if node is None:
                 continue
             q = keys[:, bi, 3:7].astype(np.float64)
-            q = np.stack([q[:, 0], q[:, 2], q[:, 1], -q[:, 3]], axis=1)
+            q = np.stack([q[:, 0], q[:, 2], q[:, 1], q[:, 3]], axis=1)
             q /= np.linalg.norm(q, axis=1, keepdims=True)
             for k in range(1, nf):
                 if np.dot(q[k], q[k - 1]) < 0:
@@ -228,8 +235,9 @@ def main():
     ap.add_argument("--anim-dir", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--image", required=True)
+    ap.add_argument("--clips", default=None, help="comma list of MW5 clip names to include (default all, empty = none)")
     a = ap.parse_args()
-    build(a.skm, a.anim_dir, a.out, a.image)
+    build(a.skm, a.anim_dir, a.out, a.image, None if a.clips is None else [c for c in a.clips.split(",") if c])
 
 
 if __name__ == "__main__":
