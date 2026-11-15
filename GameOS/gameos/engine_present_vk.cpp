@@ -797,9 +797,11 @@ bool createHostBuffer(EnginePresentVk::Impl& s, VkDeviceSize bytes, VkBufferUsag
     mc2vk::nameObject(s.dev, outBuf.get(), name);
     VkMemoryRequirements req{};
     vkGetBufferMemoryRequirements(s.dev, outBuf.get(), &req);
-    const uint32_t memType = findMemoryType(s.phys, req.memoryTypeBits,
-                                            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                                            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    // Fragment texels are read repeatedly: prefer mapped VRAM, with a portable host-memory fallback.
+    constexpr VkMemoryPropertyFlags hostFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                                VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    uint32_t memType = findMemoryType(s.phys, req.memoryTypeBits, hostFlags | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    if (memType == UINT32_MAX) memType = findMemoryType(s.phys, req.memoryTypeBits, hostFlags);
     if (memType == UINT32_MAX)
         return false;
     VkMemoryAllocateInfo ai{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
