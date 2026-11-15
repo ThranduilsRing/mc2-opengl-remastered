@@ -26,6 +26,7 @@ struct MechMotion {
     int   gestureId = 0;
     float px = 0.0f, py = 0.0f, pz = 0.0f;
     float legHeadingDeg = 0.0f;
+    float torsoYawDeg = 0.0f;  // sim-clamped chassis torso rotation
     bool  destroyed = false;   // P9: death clips instead of knockdown/downed clips
     bool  preview = false;    // unowned logistics actor: loop showcase at authored speed
 };

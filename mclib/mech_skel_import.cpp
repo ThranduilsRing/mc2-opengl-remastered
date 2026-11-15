@@ -222,25 +222,96 @@ double secPerTickOf(const aiAnimation* anim) {
 }
 }  // namespace
 
+LocalRotation ResolveTorsoTwist(const SkelPlan& plan) {
+    LocalRotation result;
+    bool clipAxis = false;
+    // Preorder visits the parent-most animated joint first. Ignore exported
+    // constant/rest channels: they do not identify the authored twist joint.
+    for (size_t i = 0; i < plan.nodes.size(); ++i) {
+        aiVector3D scale, pos; aiQuaternion rest;
+        plan.nodes[i]->mTransformation.Decompose(scale, rest, pos);
+        aiVector3D axis;
+        float largest = 0.0f;
+        for (const char* name : {"atlas_torsoTwistLeft", "atlas_torsoTwistRight"}) {
+            const auto anim = findAnim(plan.scene, name);
+            const aiNodeAnim* ch = anim ? plan.chanByNode[*anim][i] : nullptr;
+            if (!ch) continue;
+            for (unsigned k = 0; k < ch->mNumRotationKeys; ++k) {
+                aiQuaternion inverse = rest;
+                aiQuaternion delta = inverse.Conjugate() * ch->mRotationKeys[k].mValue;
+                delta.Normalize();
+                const aiVector3D v(delta.x, delta.y, delta.z);
+                if (v.SquareLength() > largest) {
+                    largest = v.SquareLength(); axis = v;
+                }
+            }
+            if (largest > 1e-8f) break;  // prefer Left's delta from rest
+        }
+        if (largest <= 1e-8f) continue;
+        result.node = static_cast<int>(i);
+        clipAxis = true;
+        axis.Normalize();
+        result.axis = {axis.x, axis.y, axis.z};
+        break;
+    }
+    if (result.node < 0) {
+        for (const char* name : {"j_Spine", "j_Pitch"}) {
+            for (size_t i = 0; i < plan.nodes.size(); ++i)
+                if (name == std::string_view(plan.nodes[i]->mName.C_Str())) {
+                    result.node = static_cast<int>(i); break;
+                }
+            if (result.node >= 0) break;
+        }
+    }
+    if (result.node >= 0) {
+        aiMatrix4x4 global = plan.nodes[result.node]->mTransformation;
+        for (int p = plan.parent[result.node]; p >= 0; p = plan.parent[p])
+            global = plan.nodes[p]->mTransformation * global;
+        aiMatrix3x3 rotation(global);
+        // The importer maps source Y to MC2 Y. Stock positive torso yaw is
+        // right-handed about +Y. Resolve the clip axis's sign in that frame;
+        // quaternion sign (q versus -q) must not reverse the sim's yaw.
+        aiVector3D axis(result.axis[0], result.axis[1], result.axis[2]);
+        if (!clipAxis) {
+            auto inverse = rotation;
+            axis = inverse.Inverse() * aiVector3D(0, 1, 0);
+            axis.Normalize();
+        }
+        if ((rotation * axis).y < 0.0f) axis = -axis;
+        result.axis = {axis.x, axis.y, axis.z};
+    }
+    return result;
+}
+
+namespace {
+void applyLocalRotation(aiMatrix4x4& local, size_t node, const LocalRotation* extra) {
+    if (!extra || extra->node != static_cast<int>(node) || extra->degrees == 0.0f) return;
+    const aiVector3D axis(extra->axis[0], extra->axis[1], extra->axis[2]);
+    const aiMatrix4x4 rotation(aiQuaternion(axis, extra->degrees * 0.01745329252f).GetMatrix());
+    local = local * rotation;
+}
+}  // namespace
+
 bool EvaluateClipGpuBones(const SkelPlan& plan,
                           std::string_view clip,
                           float frame,
                           std::vector<GpuBone>& out,
                           double* outTimeTicks,
-                          double* outDurTicks) {
+                          double* outDurTicks, const LocalRotation* extra) {
     const aiScene* scene = plan.scene;
     // DIAGNOSTIC forced-pose branch (clip-independent), same math as the scene-based overload.
     if (int fp = forcePoseMode()) {
-        aiMatrix4x4 extra;  // identity
+        aiMatrix4x4 forced;  // identity
         const float a = 1.57079633f;  // 90 deg
-        if (fp == 1) aiMatrix4x4::RotationX(a, extra);
-        else if (fp == 2) aiMatrix4x4::RotationY(a, extra);
-        else if (fp == 3) aiMatrix4x4::RotationZ(a, extra);
+        if (fp == 1) aiMatrix4x4::RotationX(a, forced);
+        else if (fp == 2) aiMatrix4x4::RotationY(a, forced);
+        else if (fp == 3) aiMatrix4x4::RotationZ(a, forced);
         const std::string target = forcePoseBone();
         std::vector<aiMatrix4x4> g(plan.nodes.size());
         for (size_t i = 0; i < plan.nodes.size(); ++i) {
             aiMatrix4x4 local = plan.nodes[i]->mTransformation;
-            if (target == plan.nodes[i]->mName.C_Str()) local = local * extra;
+            if (target == plan.nodes[i]->mName.C_Str()) local = local * forced;
+            applyLocalRotation(local, i, extra);
             g[i] = plan.parent[i] >= 0 ? g[plan.parent[i]] * local : local;
         }
         emitBones(plan, g, out);
@@ -273,6 +344,7 @@ bool EvaluateClipGpuBones(const SkelPlan& plan,
             const LocalTRS l = sampleTRS(ch, t, n->mTransformation, rotOnly, sp);
             local = aiMatrix4x4(l.scl, l.rot, l.pos);
         }
+        applyLocalRotation(local, i, extra);
         globals[i] = plan.parent[i] >= 0 ? globals[plan.parent[i]] * local : local;
     }
     emitBones(plan, globals, out);
@@ -283,9 +355,9 @@ bool EvaluateClipBlendGpuBones(const SkelPlan& plan,
                                std::string_view clipA, float frameA,
                                std::string_view clipB, float frameB,
                                float weightB,
-                               std::vector<GpuBone>& out) {
-    if (weightB <= 0.0f) return EvaluateClipGpuBones(plan, clipA, frameA, out);
-    if (weightB >= 1.0f) return EvaluateClipGpuBones(plan, clipB, frameB, out);
+                               std::vector<GpuBone>& out, const LocalRotation* extra) {
+    if (weightB <= 0.0f) return EvaluateClipGpuBones(plan, clipA, frameA, out, nullptr, nullptr, extra);
+    if (weightB >= 1.0f) return EvaluateClipGpuBones(plan, clipB, frameB, out, nullptr, nullptr, extra);
     const aiScene* scene = plan.scene;
     const std::optional<int> iaOpt = findAnim(scene, clipA), ibOpt = findAnim(scene, clipB);
     if (!iaOpt || !ibOpt) return false;
@@ -313,6 +385,7 @@ bool EvaluateClipBlendGpuBones(const SkelPlan& plan,
             q.Normalize();
             local = aiMatrix4x4(A.scl + (B.scl - A.scl) * weightB, q, A.pos + (B.pos - A.pos) * weightB);
         }
+        applyLocalRotation(local, i, extra);
         globals[i] = plan.parent[i] >= 0 ? globals[plan.parent[i]] * local : local;
     }
     emitBones(plan, globals, out);

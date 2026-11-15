@@ -869,6 +869,7 @@ struct ImportedAnimEntry {
     TG_TypeMultiShape*  multi = nullptr;   // for per-frame bbox refresh
     std::vector<std::string> names;        // skeleton, parallel to clip globals
     std::shared_ptr<const mc2skel::SkelPlan> plan;  // flattened node/channel tables for names (borrows scene; declared after imp so it dies first)
+    mc2skel::LocalRotation torsoTwist;
     std::string         pinnedClip;        // MC2_MECH_IMPORT_FORCE_CLIP (empty = 1C dynamic)
     std::string         initialClip;       // clip seeded into each new actor state
     std::string         showcaseClip;      // optional package clips.showcase
@@ -1162,6 +1163,7 @@ void RegisterImportedAnim(mc2::czstring path, TG_TypeMultiShape* out, const Skel
     e.multi = out;
     e.names = bake.names;
     e.plan = mc2skel::BuildPlan(scene, e.names);
+    e.torsoTwist = mc2skel::ResolveTorsoTwist(*e.plan);
     LoadMechPackage(path, e.nodeManifest, e.aoTexName, e.normalTexName, &e.socketOffsets, &e.showcaseClip);
     if (!e.showcaseClip.empty() && !clipDurationSec(scene, e.showcaseClip)) {
         if (mc2_diag::tagRequested("MECH_IMPORT"))
@@ -1583,7 +1585,9 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
     }
     const float frame = s.clipTimeSec * 30.0f;
     double tt = 0, dd = 0;
-    return mc2skel::EvaluateClipGpuBones(*e.plan, s.activeClip, frame, globals, &tt, &dd);
+    auto twist = e.torsoTwist;
+    twist.degrees = motion.torsoYawDeg;
+    return mc2skel::EvaluateClipGpuBones(*e.plan, s.activeClip, frame, globals, &tt, &dd, &twist);
 }
 
 // Build the GPU per-bone MODEL delta from sampled globals into s.modelDelta, plus the
