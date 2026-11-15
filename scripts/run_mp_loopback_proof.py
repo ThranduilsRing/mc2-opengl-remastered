@@ -66,9 +66,9 @@ def peer_start(install: str, directory: str, slot: int, port: int, ticks: int,
                MC2_DETERMINISTIC_RNG="1", MC2_RNG_SEED="12345",
                MC2_DIAGNOSTIC_TRACE_FILE=str(root / "diagnostic.jsonl"),
                MC2_SAVE_DIR=str(root / "saves"),
-               MC2_CAMERA_PARK=("-1500,2500,0,60,800@30" if slot == 0 else "-2000,2900,90,50,600@30"))
+               MC2_CAMERA_PARK=("2800,1900,0,60,1700@30" if slot == 0 else "3100,1900,90,50,1600@30"))
     if rendered:
-        env.update(MC2_VISUAL_CAPTURE_FRAME="600", MC2_VISUAL_CAPTURE_DIR=str(root))
+        env.update(MC2_VISUAL_CAPTURE_FRAME="2400", MC2_VISUAL_CAPTURE_DIR=str(root))
     argv = [str(Path(install) / "mc2.exe"), "--mission", "mc2_01", "--profile", "tier1",
             "--duration", str(timeout), "--ticks", str(ticks),
             "--host" if slot == 0 else "--join", f"127.0.0.1:{port}",
@@ -101,7 +101,7 @@ def main() -> int:
         script = ["0 0 delay 1"] if slot else []
         script.append(f"0 {1 - slot} reject")
         for tick in range(0, args.ticks - 4, 300):
-            script.append(f"{tick} {slot} move {-1600 + (tick // 300 % 4) * 160} {2500 + slot * 100}")
+            script.append(f"{tick} {slot} move {2800 + (tick // 300 % 4) * 100} {1900 + slot * 100}")
         if args.force_desync and slot:
             script.append(f"{args.force_desync} 0 desync")
         (directory / "orders.txt").write_text("\n".join(script) + "\n", encoding="utf-8")
