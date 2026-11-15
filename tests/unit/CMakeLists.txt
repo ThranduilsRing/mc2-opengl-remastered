@@ -726,6 +726,11 @@ foreach(shooter mech gvehicl)
     file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/called_${shooter}.inc" CONTENT "${called_hit}")
 endforeach()
 set_source_files_properties(test_gate.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
+# Trigger paths: code/weaponbolt*, code/object_slot_codec.h, code/objmgr_io.cpp.
+mc2_height_slice(aimed_impact code/weaponbolt.cpp "bool WeaponBolt::deliverAimedAreaHit" "void WeaponBolt::finishNow")
+string(REPLACE "WeaponBolt::deliverAimedAreaHit" "impact" aimed_impact "${aimed_impact}")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/aimed_impact.inc" CONTENT "${aimed_impact}")
+set_source_files_properties(test_object_value_codec.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
 # Trigger paths: code/controlgui_init.cpp and tests/unit/test_hud_frame.cpp.
 mc2_height_slice(hud_frame_bake code/controlgui_init.cpp
     "void ControlGui::bakeFrame()" "void ControlGui::initStatics(")

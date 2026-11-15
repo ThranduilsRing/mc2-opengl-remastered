@@ -15,6 +15,51 @@
 #include <sstream>
 #include <regex>
 
+TEST_CASE("called shot/save restore keeps aimed missile impact; v1 defaults to splash") {
+    using namespace mc2::save;
+    struct Impact {
+        struct Target {
+            float damage = 0; long location = -1;
+            bool isDestroyed() { return false; }
+            void handleWeaponHit(WeaponShotInfo* shot) { damage += shot->damage; location = shot->hitLocation; }
+        } target;
+        using GameObjectPtr = Target*;
+        struct Blast {
+            GameObjectWatchID excluded = 0;
+            void setCollisionFreeFromWID(GameObjectWatchID wid) { excluded = wid; }
+        } blast;
+        using CarnagePtr = Blast*;
+        Impact* ObjectManager = this;
+        bool MPlayer = false;
+        GameObjectWatchID aimedTargetWID = 7;
+        WeaponShotInfo weaponShot{};
+        Target* getByWatchID(GameObjectWatchID wid) { return wid == 7 ? &target : nullptr; }
+        void traceCombat(const char*, const char*, Target*, WeaponShotInfo*) {}
+#include "aimed_impact.inc"
+    } uninterrupted, restored;
+    WeaponBoltData data{}; data.objectClass = WEAPONBOLT; data.handle = 1;
+    data.weaponShot.damage = 12; data.weaponShot.hitLocation = 3;
+    WeaponBoltRecord record{data, 7};
+    const auto bytes = encodeTaggedRecord(record, weaponBoltTag);
+    REQUIRE(validObjectSlot(bytes, mc2_saved_objects::kBolt, 1));
+    WeaponBoltData loaded{}; WeaponBoltRecord saved{loaded};
+    REQUIRE(readWeaponBoltRecord(bytes, saved));
+    uninterrupted.weaponShot = data.weaponShot;
+    restored.weaponShot = loaded.weaponShot; restored.aimedTargetWID = saved.aimedTargetWID;
+    CHECK(uninterrupted.impact(&uninterrupted.blast)); CHECK(restored.impact(&restored.blast));
+    CHECK(restored.target.damage == uninterrupted.target.damage);
+    CHECK(restored.target.location == uninterrupted.target.location);
+    CHECK(restored.blast.excluded == uninterrupted.blast.excluded);
+    CHECK_FALSE(restored.impact(&restored.blast));
+    Archive old; std::uint32_t tag = weaponBoltTag, version = 1;
+    WeaponBoltRecord legacy{data}; old(tag, version, legacy);
+    REQUIRE(readWeaponBoltRecord(old.bytes(), saved));
+    CHECK(saved.aimedTargetWID == 0);
+    CHECK(validObjectSlot(old.bytes(), mc2_saved_objects::kBolt, 1));
+    CHECK_FALSE(readWeaponBoltRecord(std::span(bytes).first(bytes.size() - 1), saved));
+    auto future = bytes; future[4] = 3; CHECK_FALSE(readWeaponBoltRecord(future, saved));
+}
+
 namespace {
 template<class Record, class Data>
 void realObjectSlots(int c, const char* name) {
@@ -205,7 +250,7 @@ TEST_CASE("ObjectSlot tags validate class, handle, payload and required section"
         CHECK_FALSE(validObjectSlot(bytes, (c + 1) % kClassCount, 1));
         CHECK_FALSE(validObjectSlot(std::span(bytes).first(bytes.size() - 1), c, 1));
         auto bad = bytes;
-        bad[4] = 2;
+        bad[4] = 3;
         CHECK_FALSE(objectSlotClass(bad));
         bad = bytes;
         bad.push_back(0);
