@@ -1383,7 +1383,7 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
     # Portable community importer and docs; the batch launcher is Windows-only.
     if not native:
         items.append((os.path.join(src_root, "import-campaign.bat"), "import-campaign.bat", "support"))
-    for rel in ("tools/import_campaign.py", "docs/modding/IMPORT-CAMPAIGNS.md",
+    for rel in ("tools/import_campaign.py", "THIRD_PARTY_NOTICES.txt", "docs/modding/IMPORT-CAMPAIGNS.md",
                 "docs/modding/campaign-import-status.md", "docs/modding/campaign-import-window.jpg"):
         items.append((os.path.join(src_root, rel), rel, "support"))
     for tree in ("tools/mc2_import", "tools/mc2x_import", "tools/mco_import"):
@@ -1396,6 +1396,7 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
                 items.append((path, os.path.relpath(path, src_root).replace(os.sep, "/"), "support"))
 
     items.append((os.path.join(src_root, "scripts", "console_child.py"), "scripts/console_child.py", "support"))
+    items.append((os.path.join(src_root, "scripts", "smoke_lib", "child_registry.py"), "scripts/smoke_lib/child_registry.py", "support"))
     for rel in IMPORTED_STRUCTURE_PAYLOAD:
         p = os.path.join(src_root, rel)
         if require_build and not os.path.isfile(p):
