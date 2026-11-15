@@ -140,19 +140,6 @@ void loadBuildingImportSourceWithSidecarAxis(TG_TypeMultiShape* shape, mc2::czst
 	tglVerifyShapeLoaded(shape, rc, "bdactor.bldg_import",
 		importSourceBase, failFlag);
 
-	// The importer uses white for unlit foliage. Building bodies instead receive
-	// scene SH and sun; treating that synthetic white as baked fill lights them twice.
-	for (long i = 0; i < shape->GetNumShapes(); ++i) {
-		auto* node = shape->GetTypeNode(i);
-		if (!node || node->GetNodeType() != SHAPE_NODE
-			|| S_strnicmp(node->getNodeId(), "LitWin_", 6) == 0) continue;
-		auto* body = static_cast<TG_TypeShape*>(node);
-		auto* vertices = body->GetTypeVerticesMutable();
-		for (int v = 0; v < body->GetNumTypeVertices(); ++v)
-			if (vertices[v].aRGBLight == 0xffffffffu)
-				vertices[v].aRGBLight = 0xff000000u;
-	}
-
 	if (yawDegrees) {
 		char oldYawText[32] = {0};   // "" removes the variable
 		if (hadYaw) *std::to_chars(oldYawText, oldYawText + sizeof(oldYawText) - 1, oldYawNumber).ptr = '\0';
