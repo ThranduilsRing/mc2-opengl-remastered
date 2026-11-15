@@ -36,6 +36,16 @@ static bool cheatInfiniteMoney() { static const bool on = mc2::gate::get<"MC2_CH
 #include "component_rules.h"
 #include "../GameOS/gameos/input_capture_policy.h"
 
+static void showDropRefusal(const char* reason)
+{
+	auto* dialog = LogisticsOneButtonDialog::instance();
+	dialog->setText(IDS_MC_COMPONENT_TOO_HOT, IDS_DIALOG_OK, IDS_DIALOG_OK);
+	dialog->setText(reason);
+	dialog->setDefsElementText("game.mcl_dialog_onebutton.text.text", reason);
+	dialog->setDefsElementText("game.mcl_dialog_onebutton.button.cancel_okay_whatever_button", "OK");
+	dialog->begin();
+}
+
 MechLabScreen* MechLabScreen::s_instance = nullptr;
 std::unique_ptr<LogisticsVariantDialog> MechLabScreen::saveDlg = nullptr;
 std::unique_ptr<LogisticsAcceptVariantDialog> MechLabScreen::acceptDlg = nullptr;
@@ -683,9 +693,7 @@ void MechLabScreen::update()
 void MechLabScreen::updateDiagramInput()
 {
 	auto refuseRemoval = [this]() {
-		LogisticsOneButtonDialog::instance()->setText(IDS_MC_COMPONENT_TOO_HOT, IDS_DIALOG_OK, IDS_DIALOG_OK);
-		LogisticsOneButtonDialog::instance()->setText("Not enough cooling: remove weapons first.");
-		LogisticsOneButtonDialog::instance()->begin();
+		showDropRefusal("Not enough cooling: remove weapons first.");
 		bErrorDlg = true;
 		soundSystem->playDigitalSample( LOG_WRONGBUTTON );
 	};
@@ -1755,11 +1763,9 @@ void MechLabScreen::endDrag( )
 			[this](long& i, long& j) {
 				const int result = addComponent(pDragComponent, i, j);
 				if (result != NO_ERR) {
-					LogisticsOneButtonDialog::instance()->setText(IDS_MC_COMPONENT_TOO_HOT, IDS_DIALOG_OK, IDS_DIALOG_OK);
-					LogisticsOneButtonDialog::instance()->setText(result == COMPONENT_TOO_HOT
+					showDropRefusal(result == COMPONENT_TOO_HOT
 						? "Not enough cooling for this component."
 						: "Component cannot fit here: choose a free valid slot.");
-					LogisticsOneButtonDialog::instance()->begin();
 					bErrorDlg = true;
 				}
 				return result;
