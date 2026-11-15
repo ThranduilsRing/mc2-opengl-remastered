@@ -281,7 +281,12 @@ void beginUpdateMouseState() {
 
 void setImguiWantsMouse(bool v) {
     s_imguiWantsMouse = v;
-    if (v && !s_gameModalActive && !g_script.active) g_pointer_capture.claim();
+    if (v && !s_gameModalActive && !g_script.active) {
+        g_pointer_capture.claim();
+        // NewFrame claims after sampling, before game logic consumes the edges.
+        for (int i = 0; i < MouseInfo::NUM_BUTTONS; ++i)
+            if (g_pointer_capture.blocked & SDL_BUTTON(i + 1)) g_mouse_info.button_state_[i] = KS_FREE;
+    }
 }
 void setImguiWantsKeyboard(bool v) {
     s_imguiWantsKeyboard = v;
