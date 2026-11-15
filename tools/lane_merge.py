@@ -99,9 +99,7 @@ GENERATORS = [
 # Files that are pure functions of the tree: on conflict the lane's copy is taken and the
 # ratchet --tighten run below regenerates them against the merged result.
 REGENERABLE = {
-    "tools/file_size_ratchet.baseline.json",
     "tools/cxx17_ratchet/baseline.json",
-    "tools/axis_swizzle_ratchet.baseline.json",
     "scripts/gl_shader_variants.json",
 }
 REGENERABLE.update(p for p in ARTIFACTS if p.endswith((".json", ".md")))
@@ -152,13 +150,10 @@ def is_regenerable(path):
     return path in REGENERABLE or is_generated(path) or any(path.startswith(scope + "/") for scope in ARTIFACTS)
 # The baselines the follow-up commit may contain (never a glob over tools/).
 TIGHTENED_BASELINES = [
-    "tools/file_size_ratchet.baseline.json",
     "tools/cxx17_ratchet/baseline.json",
-    "tools/axis_swizzle_ratchet.baseline.json",
 ]
 # (label, script relative to the tools dir, args)
 RATCHETS = [
-    # proof-diet: the file_size and axis_swizzle count gates are cut (the tools stay as advisory reports).
     ("cxx17", "cxx17_ratchet/cxx17_ratchet.py", ["--check", "--worktree"]),
     ("split_map", "split/split_map.py", ["--check"]),
 ]
