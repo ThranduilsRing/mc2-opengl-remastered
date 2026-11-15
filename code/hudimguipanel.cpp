@@ -114,7 +114,7 @@ bool beginPanel( const char* id, float hudLeft, float hudTop,
 		ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
 		ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse |
 		ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings |
-		ImGuiWindowFlags_NoFocusOnAppearing;
+		ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
 
 	bool open = true;
 	if ( !ImGui::Begin( id, &open, flags ) )
@@ -133,7 +133,8 @@ bool beginPanel( const char* id, float hudLeft, float hudTop,
 		hudToDisplay( 0.f, 0.f, ax, ay );
 		hudToDisplay( 0.f, 100.f, bx2, by2 );
 		const float k = ( by2 - ay ) / 100.f;   // ImGui px per HUD px
-		float scale = ( 16.f * k ) / 13.f;
+		const ImFont* font = ImGui::GetIO().FontDefault;
+		float scale = ( 16.f * k ) / ( font->FontSize * font->Scale );
 		scale = std::clamp(scale, 0.5f, 4.f);
 		*fontScaleOut = scale;
 	}

@@ -8,6 +8,36 @@
 #include "doctest.h"
 
 #include "input_capture_policy.h"
+#include "../../GuiRuntime/GuiWindowPolicy.h"
+
+// Trigger paths: GuiRuntime.cpp, GuiWindowPolicy.h, gos_input.cpp, input_capture_policy.h.
+TEST_CASE("input_capture_policy: keyboard capture swallows holds and resumes on a fresh press") {
+    using input::capture::Edge;
+    bool blocked = false;
+    using input::capture::keyboardEdge;
+    CHECK(keyboardEdge(Edge::Free, true, true, blocked) == Edge::Free);
+    CHECK(keyboardEdge(Edge::Free, true, false, blocked) == Edge::Free);
+    CHECK(keyboardEdge(Edge::Free, false, false, blocked) == Edge::Free);
+    CHECK(keyboardEdge(Edge::Free, true, false, blocked) == Edge::Pressed);
+    CHECK(keyboardEdge(Edge::Held, true, true, blocked) == Edge::Free);
+    CHECK(keyboardEdge(Edge::Free, false, true, blocked) == Edge::Free);
+    CHECK(keyboardEdge(Edge::Free, true, false, blocked) == Edge::Pressed);
+    CHECK(keyboardEdge(Edge::Pressed, false, false, blocked) == Edge::Released);
+}
+
+TEST_CASE("input_capture_policy: saved windows fit the work area after resolution changes") {
+    using gui_window_policy::clampPosition;
+    CHECK(clampPosition(3600, 500, 0, 1920) == 1420);
+    CHECK(clampPosition(-300, 500, 0, 1920) == 0);
+    CHECK(clampPosition(200, 500, 0, 1920) == 200);
+    CHECK(clampPosition(2100, 500, 100, 1920) == 1520);
+    CHECK(clampPosition(-100, 2500, 100, 1920) == 100);
+    CHECK(clampPosition(NAN, 500, 100, 1920) == 100);
+    CHECK(clampPosition(200, 500, 100, 0) == 200);
+    CHECK(gui_window_policy::scaleForHeight(1080) == 1);
+    CHECK(gui_window_policy::scaleForHeight(2160) == 2);
+    CHECK(gui_window_policy::scaleForHeight(0) == 1);
+}
 
 using input::capture::Edge;
 using input::capture::PolicyState;
@@ -40,6 +70,10 @@ TEST_CASE("input_capture_policy: captured press cannot turn into a game drag") {
     CHECK(pointer.sample(1, true) == 0); // left the ImGui surface while held
     CHECK(pointer.sample(0, true) == 0);
     CHECK(pointer.sample(1, true) == 1); // a fresh game press
+    pointer.claim(); // ImGui opens while a game button is held.
+    CHECK(pointer.edge(Edge::Held, 1, pointer.sample(1, true)) == Edge::Free);
+    CHECK(pointer.edge(Edge::Free, 1, pointer.sample(0, true)) == Edge::Free);
+    CHECK(pointer.edge(Edge::Free, 1, pointer.sample(1, true)) == Edge::Pressed);
 }
 
 TEST_CASE("input_capture_policy: focus cycle preserves selection and swallows activation") {
@@ -73,7 +107,7 @@ TEST_CASE("input_capture_policy: mouse buttons reach the game unless ImGui captu
         { false, false, true  },  // nothing captured: game gets the click
         { false, true,  true  },  // modal, no ImGui capture: game
         { true,  false, false },  // ImGui captured: gated out
-        { true,  true,  true  },  // IMGUI-PAUSE-INPUT-FIX-1: modal wins over ImGui
+        { true,  true,  false },  // a legacy modal cannot bypass ImGui capture
     };
     for (const Row& r : rows) {
         CAPTURE(r.wants);
@@ -88,7 +122,7 @@ TEST_CASE("input_capture_policy: wheel reaches the game unless the cursor hovers
         { false, false, true  },
         { false, true,  true  },
         { true,  false, false },  // hover is spatial: ImGui owns the wheel
-        { true,  true,  true  },  // modal exception, same as the buttons
+        { true,  true,  false },  // ImGui still owns the wheel over a modal
     };
     for (const Row& r : rows) {
         CAPTURE(r.hovers);
@@ -119,15 +153,13 @@ TEST_CASE("input_capture_policy: a release while free stays free") {
 }
 
 TEST_CASE("input_capture_visibility") {
-    // One scripted frame sequence: the game-modal exception keeps the pause
-    // menu clickable while an ImGui window overlaps it, and the wheel follows
-    // the same rule. Recorded, not derived.
+    // ImGui retains ownership across legacy modal transitions.
     struct Frame { bool wants; bool hovers; bool modal; bool buttons; bool wheel; };
     const Frame frames[] = {
         // ImGui window open over the viewport, no modal: ImGui owns both.
         { true,  true,  false, false, false },
-        // Pause menu up over the same window: the game owns both again.
-        { true,  true,  true,  true,  true  },
+        // Pause menu up over the same window: ImGui retains both.
+        { true,  true,  true,  false, false },
         // Menu closed, window still open: back to ImGui.
         { true,  true,  false, false, false },
         // Window closed: the game owns both.
