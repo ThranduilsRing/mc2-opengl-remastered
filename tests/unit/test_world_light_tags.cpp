@@ -3,6 +3,7 @@
 #include "../../mclib/spotlight_diag.h"
 #include <cstdint>
 #include <memory>
+#include <string>
 
 namespace {
 using DWORD = uint32_t;
@@ -31,6 +32,7 @@ struct PreviewAppearance {
 };
 struct SimpleCamera : CameraSlots {
     std::unique_ptr<PreviewAppearance> pObject;
+    std::string modelCredit_ = "previous model";
     void releaseObject();
 };
 #include "camera_release_object.inc"
@@ -108,6 +110,7 @@ TEST_CASE("WorldLightTags/preview teardown uses its owner camera and restores th
     preview.pObject->slot = slot;
     eye = &mainCamera;
     preview.releaseObject();
+    CHECK(preview.modelCredit_.empty());
     CHECK(observed == &preview);
     CHECK(eye == &mainCamera);
     CHECK(preview.worldLights[slot] == nullptr);

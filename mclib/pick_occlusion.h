@@ -3,12 +3,19 @@
 #include <cmath>
 #include <limits>
 #include <optional>
+#include "../RenderCore/axis_convert.h"
 
 class Camera;
 
 namespace mc2 {
 // Engine adapter shared with the terrain picker, without changing Camera's header.
 bool pickScreenRay(Camera& camera, long x, long y, double (&origin)[3], double (&direction)[3]);
+
+// Mech type bounds are already MC2 XYZ (mech3d_init); static/vehicle bounds are render XYZ.
+template<class V>
+V pickBoundsInMc2(bool mech, const V& bound) {
+    return mech ? bound : mc2ToRender(bound);
+}
 
 // Ray and bounds are in the object's unrotated MC2 frame. A projected rect
 // alone does not say where along the cursor ray the object is encountered.
