@@ -10,6 +10,7 @@ VS-generator trees; tools/build_all_targets.py passes it by default.
 """
 import argparse
 import fnmatch
+import json
 import os
 from pathlib import Path
 import re
@@ -147,6 +148,15 @@ UNIT_RUN_TIMEOUT_S = 900  # a hung doctest exit once held the MSVC pdb for 80 mi
 TREE_LOCK_WAIT_S = 1800   # a cold mc2_tests build in the other holder (harnesses step) finishes well inside this
 
 
+def prepare_unit_tree(bdir, configure):
+    """Reuse configure arguments; CMake's build system tracks source/include changes."""
+    receipt = bdir / "mc2_unit_configure.json"
+    signature = json.dumps(configure)
+    configured = ((bdir / "CMakeCache.txt").is_file() and receipt.is_file()
+                  and receipt.read_text(encoding="utf-8") == signature)
+    return configured, receipt, signature
+
+
 def print_failed_cases(log_path):
     """Echo the failing doctest cases (file:line + TEST CASE name) and the summary from a captured run.
 
@@ -225,7 +235,19 @@ def build_and_run_unit_tests(config, run, asan=False, only=None, preset=None,
     if not lock.acquire(TREE_LOCK_WAIT_S):
         return False, f"build failed:\nanother build held {bdir.name} for {TREE_LOCK_WAIT_S}s ({lock.holder()})"
     try:
+        configured, receipt, signature = prepare_unit_tree(bdir, commands[0])
+        if configured and preset:
+            try:
+                bd.verify_compiler(bdir, preset)
+            except RuntimeError as exc:
+                return False, str(exc)
+        if configured:
+            commands[0] = None
+        else:
+            receipt.unlink(missing_ok=True)
         built = _configure_and_build(commands, cache, preset, log_dir, jobs, keep_going, cache_env, only, timings, bdir)
+        if not built and not configured and (bdir / "CMakeCache.txt").is_file():
+            receipt.write_text(signature, encoding="utf-8")
     finally:
         lock.close()
     if built:
@@ -238,6 +260,10 @@ def build_and_run_unit_tests(config, run, asan=False, only=None, preset=None,
 def _configure_and_build(commands, cache, preset, log_dir, jobs, keep_going, cache_env, only, timings, bdir):
     """Run configure then build; None on success, else the "<stage> failed:" detail."""
     for stage, command in zip(("configure", "build"), commands):
+        if command is None:
+            if only:
+                print("[contracts] configure reused (build system tracks inputs)")
+            continue
         phase_started = time.monotonic()
         if cache or preset or log_dir is not None or jobs or keep_going:
             rc, output = bd.run(command, REPO_ROOT, "mc2_tests", stage, log_dir,

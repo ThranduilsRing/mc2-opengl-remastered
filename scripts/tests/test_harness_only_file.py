@@ -19,3 +19,20 @@ def test_file_stem_expands_to_its_cases():
 def test_non_files_pass_through():
     assert bch.unit_file_cases("no_such_file_xyz") is None
     assert bch.expand_file_selection(["a*", "b"]) == ["a*", "b"]
+
+
+# Trigger: tools/build_contract_harnesses.py configure reuse.
+def test_warm_tree_tracks_arguments_and_missing_cache(tmp_path):
+    command = ["cmake", "-S", "src", "-B", str(tmp_path)]
+    reused, receipt, signature = bch.prepare_unit_tree(tmp_path, command)
+    assert not reused
+    (tmp_path / "CMakeCache.txt").write_text("configured")
+    receipt.write_text(signature)
+    stamp = receipt.stat().st_mtime_ns
+    assert bch.prepare_unit_tree(tmp_path, command)[0]
+    assert receipt.stat().st_mtime_ns == stamp
+    changed = command + ["-DMC2_ASAN=ON"]
+    assert not bch.prepare_unit_tree(tmp_path, changed)[0]
+    assert not bch.prepare_unit_tree(tmp_path, changed)[0]  # failed configure cannot warm it
+    (tmp_path / "CMakeCache.txt").unlink()
+    assert not bch.prepare_unit_tree(tmp_path, command)[0]
