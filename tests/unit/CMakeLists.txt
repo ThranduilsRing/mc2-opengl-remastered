@@ -718,6 +718,14 @@ function(mc2_height_slice output source begin end)
     set(${output} "${body}" PARENT_SCOPE)
     set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${MC2_WORKTREE_ROOT}/${source}")
 endfunction()
+# Trigger paths: Gates/gate_rows_0.inc, code/{mover_attack,mech_weapons,gvehicl_weapons}.cpp.
+mc2_height_slice(called_floors code/mover_attack.cpp "static const bool s_calledShotFix =" "\t\tswitch (aimLocation)")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/called_floors.inc" CONTENT "${called_floors}")
+foreach(shooter mech gvehicl)
+    mc2_height_slice(called_hit code/${shooter}_weapons.cpp "static const bool s_calledShotFix =" "\n\t\t\t\t}\n\t\t\t\telse {\n\t\t\t\t\tweaponFX->connect(this, *targetPoint")
+    file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/called_${shooter}.inc" CONTENT "${called_hit}")
+endforeach()
+set_source_files_properties(test_gate.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
 # Trigger paths: code/controlgui_init.cpp and tests/unit/test_hud_frame.cpp.
 mc2_height_slice(hud_frame_bake code/controlgui_init.cpp
     "void ControlGui::bakeFrame()" "void ControlGui::initStatics(")
