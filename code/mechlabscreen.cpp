@@ -38,13 +38,13 @@ static bool cheatInfiniteMoney() { static const bool on = mc2::gate::get<"MC2_CH
 #include "component_rules.h"
 #include "../GameOS/gameos/input_capture_policy.h"
 
+static std::string dropRefusal;
+static float dropRefusalTime = 0.f;
+static bool dragCancelled = false;
 static void showDropRefusal(std::string_view reason)
 {
-	const std::string message(reason);
-	auto* dialog = LogisticsOneButtonDialog::instance();
-	dialog->setText(IDS_MC_COMPONENT_TOO_HOT, IDS_DIALOG_OK, IDS_DIALOG_OK);
-	dialog->setText(message.c_str());
-	dialog->begin();
+	dropRefusal = reason;
+	dropRefusalTime = 3.5f;
 }
 
 MechLabScreen* MechLabScreen::s_instance = nullptr;
@@ -295,6 +295,8 @@ int MechLabScreen::init( FitIniFile& file )
 
 void MechLabScreen::begin()
 {
+	dropRefusalTime = 0.f;
+	dragCancelled = false;
 	previewPaused = false;
 	previewHeld = -1;
 	componentCount = 0;
@@ -470,6 +472,8 @@ void MechLabScreen::end()
 }
 void MechLabScreen::update()
 {
+	dropRefusalTime = std::max(0.f, dropRefusalTime - frameLength);
+	if (userInput->getMouseLeftButtonState() != MC2_MOUSE_DOWN) dragCancelled = false;
 	// Headless proof hook (MC2_SOAK_CHECK_SCREENS walk): open the SAVE VARIANT
 	// dialog once on the first mech lab update so the -5 capture shows it.
 	{
@@ -667,7 +671,7 @@ void MechLabScreen::update()
 	componentListBox.update();
 	int newSel = componentListBox.GetSelectedItem();
 
-	if ( oldSel != newSel  )
+	if ( oldSel != newSel && !pDragComponent )
 	{
 		if ( newSel != -1 )
 		{
@@ -755,19 +759,22 @@ void MechLabScreen::updateDiagramInput()
 {
 	auto refuseRemoval = [this]() {
 		showDropRefusal("Not enough cooling: remove weapons first.");
-		bErrorDlg = true;
 		soundSystem->playDigitalSample( LOG_WRONGBUTTON );
 	};
 	// Focus cancellation is not a drop; return a removed component to its slot.
-	if (pDragComponent && gos_GetKeyStatus(KEY_LMOUSE) == KEY_FREE) {
-		if (bDragLeft) {
+	if (pDragComponent && (gos_GetKeyStatus(KEY_LMOUSE) == KEY_FREE ||
+		userInput->isRightClick() || userInput->getKeyDown(KEY_ESCAPE))) {
+		if (mc2::components::restoreGridDrag(bDragLeft, false, false, true)) {
 			addComponent(pDragComponent, selI, selJ);
 			pSelectedComponent = pDragComponent;
 		}
 		pDragComponent = nullptr;
 		bDragLeft = false;
+		dragCancelled = true;
 		updateDiagram();
+		return;
 	}
+	if (dragCancelled) return;
 	long mouseX = userInput->getMouseX();
 	long mouseY = userInput->getMouseY();
 
@@ -885,7 +892,7 @@ void MechLabScreen::updateDiagramInput()
 			if (NO_ERR == pVariant->canAddComponent( pDragComponent, x, y )
 				&& x != -1 && y != -1 )
 			{
-				selRect->setColor( 0xffffffff );
+					selRect->setColor( 0xff40ff80 );
 			}
 			else
 				selRect->setColor( 0xffff0000 );			
@@ -899,12 +906,13 @@ void MechLabScreen::updateDiagramInput()
 			if ( i != -1 && j != -1 )
 			{
 				LogisticsComponent* pComp = pVariant->getCompAtLocation(i, j, selI, selJ ).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
-				if ( pComp && pComp == pSelectedComponent )
+				if ( pComp )
 				{
 					if ( canRemoveComponent( pComp ) )
 					{
 						componentListBox.SelectItem( -1 );
 						beginDrag( pComp );
+						pSelectedComponent = pComp;
 						bDragLeft = true;
 						removeComponent( i, j );
 						setComponent( pComp );
@@ -1157,16 +1165,30 @@ void MechLabScreen::render(int xOffset, int yOffset)
 
 	if ( pDragComponent )
 	{
-		// The dragged icon must composite above the same preview as the grid.
-		if ( gridBridge )
-			aObject::beginGuiBridge( tbSx, tbSy, tbOx, tbOy );
+		// Always composite above the defs page, including without a 3D preview.
+		aObject::beginGuiBridge( tbSx, tbSy, tbOx, tbOy );
 		dragIcon.moveTo( userInput->getMouseX() - dragIcon.width() / 2, 
 			userInput->getMouseY() - dragIcon.height() / 2 );
 		dragIcon.render();
 
-		selRect->render();		
-		if ( gridBridge )
-			aObject::endGuiBridge();
+		const GUI_RECT footprint = {static_cast<long>(dragIcon.left()), static_cast<long>(dragIcon.top()),
+			static_cast<long>(dragIcon.right()), static_cast<long>(dragIcon.bottom())};
+		drawEmptyRect(footprint, 0xffffffff, 0xffffffff);
+		if (rects[13].pointInside(userInput->getMouseX(), userInput->getMouseY()))
+		{
+			const GUI_RECT target = {static_cast<long>(selRect->left()), static_cast<long>(selRect->top()),
+				static_cast<long>(selRect->right()), static_cast<long>(selRect->bottom())};
+			drawEmptyRect(target, selRect->getColor(), selRect->getColor());
+		}
+		aObject::endGuiBridge();
+	}
+	if (dropRefusalTime > 0.f)
+	{
+		GuiRuntime::DrawUiRect(145.f * tbSx + tbOx, 540.f * tbSy + tbOy,
+			510.f * tbSx, 48.f * tbSy, 0xff15212c, true);
+		GuiRuntime::DrawUiText(150.f * tbSx + tbOx, 546.f * tbSy + tbOy,
+			500.f * tbSx, 40.f * tbSy, dropRefusal.c_str(), 0xffffc060,
+			static_cast<int>(16.f * tbSy), 0, "");
 	}
 
 
@@ -1775,7 +1797,7 @@ int MechLabScreen::addComponent( LogisticsComponent* pComponent, long& x, long& 
 
 void MechLabScreen::beginDrag( LogisticsComponent* pComponent )
 {
-	if ( !pDragComponent )
+	if ( !pDragComponent && !dragCancelled )
 	{
 		pDragComponent = pComponent;
 
@@ -1830,7 +1852,6 @@ void MechLabScreen::endDrag( )
 					showDropRefusal(result == COMPONENT_TOO_HOT
 						? "Not enough cooling for this component."
 						: "Component cannot fit here: choose a free valid slot.");
-					bErrorDlg = true;
 				}
 				return result;
 			}) )
@@ -1846,6 +1867,12 @@ void MechLabScreen::endDrag( )
 	}
 	else
 	{
+		if (mc2::components::restoreGridDrag(bDragLeft, false,
+			componentListBox.pointInside(mouseX, mouseY), false))
+		{
+			addComponent(pDragComponent, selI, selJ);
+			pSelectedComponent = pDragComponent;
+		}
 		if ( -1 == componentListBox.GetSelectedItem() )
 		{
 			if ( -1 == selI )

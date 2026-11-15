@@ -3,6 +3,16 @@
 #include "component_rules.h"
 
 // Trigger: mechlabscreen.cpp and component_rules.h (same-grid drag completion).
+TEST_CASE("components/drag cancellation restores origin and inventory drop removes") {
+    using mc2::components::restoreGridDrag;
+    CHECK(restoreGridDrag(true, false, false, false));
+    CHECK_FALSE(restoreGridDrag(true, false, true, false));
+    CHECK_FALSE(restoreGridDrag(true, true, false, false));
+    CHECK(restoreGridDrag(true, true, false, true));
+    CHECK(restoreGridDrag(true, false, true, true));
+    CHECK_FALSE(restoreGridDrag(false, false, false, true));
+}
+
 TEST_CASE("components/cooling refusal leaves required heat sink installed") {
     CHECK_FALSE(mc2::components::coolingAllowsRemoval(30, 10, 24));
     CHECK(mc2::components::coolingAllowsRemoval(30, 10, 20));

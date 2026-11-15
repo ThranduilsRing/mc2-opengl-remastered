@@ -5,6 +5,10 @@
 #include <utility>
 
 namespace mc2::components {
+inline bool restoreGridDrag(bool fromGrid, bool overGrid, bool overInventory, bool cancelled) {
+    return fromGrid && (cancelled || (!overGrid && !overInventory));
+}
+
 inline bool coolingAllowsRemoval(float maximum, float removed, float heat) {
     return maximum - removed >= heat;
 }
