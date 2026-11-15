@@ -759,10 +759,6 @@ file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/overlay_static_upload.inc" CON
 mc2_height_slice(hud_warm_variants GameOS/gameos/engine_present_vk.cpp
     "struct WarmVariant {" "for (const auto& variant : variants)")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/hud_warm_variants.inc" CONTENT "${hud_warm_variants}")
-# Trigger paths: GameOS/gameos/engine_present_vk.cpp, mclib/userinput.cpp.
-mc2_height_slice(hud_mip_upload GameOS/gameos/engine_present_vk.cpp
-    "// Mapped coherent memory may be uncached." "    vkUnmapMemory(s.dev, m.memory.get());")
-file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/hud_mip_upload.inc" CONTENT "${hud_mip_upload}")
 mc2_height_slice(cursor_reload mclib/userinput.cpp
     "void UserInput::initMouseCursors (" "void UserInput::setMouseScale (")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/cursor_reload.inc" CONTENT "${cursor_reload}")

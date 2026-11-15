@@ -193,7 +193,7 @@ def harness(monkeypatch):
         def kill():
             assert h.held
             h.events.append(name + ".kill")
-            proc.returncode = -1
+            proc.returncode = 1 if capture.os.name == "nt" else -9
 
         proc.poll.side_effect = lambda: proc.returncode
         proc.wait.side_effect = wait
