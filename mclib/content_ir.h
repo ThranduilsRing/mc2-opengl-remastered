@@ -32,13 +32,11 @@ struct Asset {
     bool legacyBounds = false;
     int ground = 0;
     std::string parameters;
-    // Set by loadCached on a digest-verified cache hit: the cache key this payload was read under. cook() skips
-    // re-serializing, re-hashing and re-reading the entry it just came from when it still derives the same key.
+    // Reserved recipe field; source-only loading leaves this zero.
     uint64_t verifiedCacheKey = 0;
 };
 
-// Validate and publish a content-addressed CPU recipe. Input identity includes resolved
-// source bytes, the complete IR payload and the cooker version. No simulation state/RNG.
+// Validate CPU geometry in memory. No disk cache, simulation state or RNG.
 bool cook(Asset& asset, std::string_view source);
 bool loadCached(Asset& asset, std::string_view source);
 // Digest of a source file's bytes (fastHash of the content; equals vfs::contentDigest for the same bytes).
