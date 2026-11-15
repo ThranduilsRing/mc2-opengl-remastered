@@ -1160,6 +1160,7 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
     std::memcpy(mapped, mipmapped ? mipPixels.data() : rgba.data(), static_cast<size_t>(bytes));
     vkUnmapMemory(s.dev, m.memory.get());
     }
+    }
     if (!m.set) {
         VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
         ai.descriptorPool = s.hudTexPool.get();
