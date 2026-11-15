@@ -516,7 +516,7 @@ void GameAdapters::Vegetation::flush(const float* terrainLightDir_4f, float time
         footprints.push_back({unit.position.x - Terrain::mapTopLeft3d.x - halfMap,
                               unit.position.y - Terrain::mapTopLeft3d.y + halfMap, unit.value[0], 0.0f});
     }
-    GosVegetation::setUnitFootprints(footprints.data(), static_cast<uint32_t>(footprints.size()));
+    GosVegetation::setUnitFootprints(footprints);
 
     // Emit first-frame draw_health event (MCP-queryable).
     static int s_flushCallCount = 0;

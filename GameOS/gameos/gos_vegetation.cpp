@@ -264,10 +264,9 @@ void GosVegetation::setBlockVisibility(const uint32_t* data, uint32_t count) {
     visibilityBlocks = count;
     visibility.assign(data, data + count);
 }
-void GosVegetation::setUnitFootprints(const Footprint* data, uint32_t count) {
-    footprintCount = count;
-    visibility.resize(visibilityBlocks + count * 4u);
-    if (count) std::memcpy(visibility.data() + visibilityBlocks, data, count * sizeof(Footprint));
+void GosVegetation::setUnitFootprints(std::span<const Footprint> data) {
+    footprintCount = static_cast<uint32_t>(data.size());
+    packUnitFootprints(visibility, visibilityBlocks, data);
 }
 void GosVegetation::flush(float lx, float ly, float lz, float lw, float time,
     float cx, float cy, float cz, float halfMap, float blockSide, int chunkSide) {
