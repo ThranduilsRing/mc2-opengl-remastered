@@ -10,6 +10,14 @@ std::expected<sim::OrderReceipt, sim::OrderError> admitAgreedOrder(sim::Tactical
     sim::OrderEnvelope, const sim::OrderAdmissionValidator&);
 void configure(int argc, char** argv);
 void redirectLogs();
+void openLobby(bool host, std::string_view endpoint, std::string_view mission);
+void closeLobby();
+const LobbyState& lobbyState();
+bool lobbyConnected();
+void pumpLobby();
+void lobbyReady(bool value);
+void lobbyStart();
+std::string takeLobbyStart();
 bool active();
 std::uint32_t localSlot();
 void beginMission(std::string_view mission, std::uint32_t seed);

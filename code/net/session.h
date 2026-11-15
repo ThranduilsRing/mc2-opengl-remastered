@@ -4,18 +4,35 @@
 #include <optional>
 
 namespace mc2::net {
-inline constexpr std::uint32_t protocolVersion = 3;
+inline constexpr std::uint32_t protocolVersion = 4;
 inline constexpr std::size_t maxPacketBytes = 256 * 1024;
 struct Identity {
     save::Digest executable{}, content{};
     std::string mission;
     std::uint32_t seed = 0;
+    struct Component {
+        std::string name;
+        save::Digest digest{};
+        bool operator==(const Component&) const = default;
+    };
+    std::vector<Component> components;
     bool operator==(const Identity&) const = default;
 };
 save::Bytes hello(const Identity& identity);
+std::string digestText(const save::Digest& digest);
 save::Digest contentIdentity(const save::Digest& files, bool lowCost, bool remasteredBuildings);
 // Returns the specific incompatible field, or empty on an exact match.
 std::string checkHello(std::span<const std::uint8_t> packet, const Identity& local);
+
+struct LobbyState {
+    bool hosting = false, offered = false, localReady = false, peerReady = false, started = false;
+    std::string mission = "mc2_01", error;
+    bool canStart() const { return offered && localReady && peerReady && !started && error.empty(); }
+    save::Bytes offer();
+    save::Bytes ready(bool value);
+    save::Bytes start();
+    void receive(std::span<const std::uint8_t> packet);
+};
 
 // Both peers settle their frame cadence before four reliable timing probes.
 struct LinkSetup {
@@ -50,6 +67,7 @@ public:
     std::vector<save::Bytes> pump();
     void send(std::span<const std::uint8_t> packet);
     bool connected() const;
+    void missionLoading(bool loading);
     std::uint32_t inputDelay() const;
     std::uint32_t rtt() const;
     std::uint32_t jitter() const;

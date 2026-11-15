@@ -13,7 +13,19 @@ void fields(save::Archive& a, std::uint32_t& tag, std::uint32_t& version, Identi
     a.sequence(name, 128);
     if (a.reading()) id.mission.assign(name.begin(), name.end());
     a(id.seed);
+    a.sequence(id.components, 256, [](save::Archive& archive, Identity::Component& component) {
+        std::vector<std::uint8_t> name(component.name.begin(), component.name.end());
+        archive.sequence(name, 128);
+        if (archive.reading()) component.name.assign(name.begin(), name.end());
+        archive(component.digest);
+    });
 }
+}
+std::string digestText(const save::Digest& digest) {
+    constexpr char hex[] = "0123456789abcdef";
+    std::string result;
+    for (const auto byte : digest) { result += hex[byte >> 4]; result += hex[byte & 15]; }
+    return result;
 }
 save::Digest contentIdentity(const save::Digest& files, bool lowCost, bool remasteredBuildings) {
     save::Archive manifest;
@@ -30,7 +42,7 @@ save::Bytes hello(const Identity& identity) {
     return a.bytes();
 }
 std::string checkHello(std::span<const std::uint8_t> packet, const Identity& local) {
-    if (packet.size() > 208) return "handshake size";
+    if (packet.size() > 48 * 1024) return "handshake size";
     save::Archive a(packet);
     Identity remote;
     std::uint32_t tag = 0, version = 0;
@@ -38,7 +50,19 @@ std::string checkHello(std::span<const std::uint8_t> packet, const Identity& loc
     if (!a.finish() || tag != magic || remote.mission.empty()) return "malformed handshake";
     if (version != protocolVersion) return "protocol version mismatch";
     if (remote.executable != local.executable) return "executable SHA-256 mismatch";
-    if (remote.content != local.content) return "content SHA-256 mismatch";
+    if (remote.content != local.content) {
+        std::string reason = "content SHA-256 mismatch";
+        for (const auto& component : local.components) {
+            const auto peer = std::ranges::find(remote.components, component.name, &Identity::Component::name);
+            if (peer == remote.components.end() || peer->digest != component.digest)
+                reason += "\n" + component.name + " local=" + digestText(component.digest) +
+                    " peer=" + (peer == remote.components.end() ? "missing" : digestText(peer->digest));
+        }
+        for (const auto& component : remote.components)
+            if (std::ranges::find(local.components, component.name, &Identity::Component::name) == local.components.end())
+                reason += "\n" + component.name + " local=missing peer=" + digestText(component.digest);
+        return reason;
+    }
     if (remote.mission != local.mission) return "mission mismatch";
     if (remote.seed != local.seed) return "seed mismatch";
     return {};
@@ -46,6 +70,52 @@ std::string checkHello(std::span<const std::uint8_t> packet, const Identity& loc
 std::uint32_t delayForRtt(std::uint32_t rtt, std::uint32_t jitter) {
     const auto budget = static_cast<std::uint64_t>(rtt) + 2ull * jitter;
     return static_cast<std::uint32_t>(std::clamp<std::uint64_t>((budget * 30 + 999) / 1000 + 2, 3, 12));
+}
+save::Bytes LobbyState::offer() {
+    if (!hosting) return {};
+    save::Archive a;
+    std::uint32_t kind = 2;
+    std::vector<std::uint8_t> name(mission.begin(), mission.end());
+    a(kind); a.sequence(name, 32);
+    offered = true;
+    return a.bytes();
+}
+save::Bytes LobbyState::ready(bool value) {
+    if (!offered || started || !error.empty()) return {};
+    localReady = value;
+    save::Archive a;
+    std::uint32_t kind = 1;
+    a(kind, value);
+    return a.bytes();
+}
+save::Bytes LobbyState::start() {
+    if (!hosting || !canStart()) return {};
+    started = true;
+    save::Archive a;
+    std::uint32_t kind = 3;
+    a(kind);
+    return a.bytes();
+}
+void LobbyState::receive(std::span<const std::uint8_t> packet) {
+    if (!error.empty()) return;
+    save::Archive a(packet);
+    std::uint32_t kind = 0;
+    a(kind);
+    if (kind == 2 && !hosting && !offered) {
+        std::vector<std::uint8_t> name;
+        a.sequence(name, 32);
+        const std::string selected(name.begin(), name.end());
+        if (selected.size() != 6 || selected.substr(0, 4) != "mc2_" ||
+            selected.substr(4) < "01" || selected.substr(4) > "24") a.reject("stock mission required");
+        if (a.finish()) { mission = selected; offered = true; return; }
+    } else if (kind == 1 && offered && !started) {
+        bool value = false;
+        a(value);
+        if (a.finish()) { peerReady = value; return; }
+    } else if (kind == 3 && !hosting && canStart()) {
+        if (a.finish()) { started = true; return; }
+    }
+    error = "MP invalid lobby message or premature start";
 }
 void LinkSetup::stop(std::string_view reason) {
     if (error.empty()) error = reason;
@@ -122,7 +192,7 @@ struct Session::Impl {
     void fail(std::string message) {
         error = std::move(message);
         setup.stop(error);
-        if (peer) { enet_peer_disconnect_now(peer, 1); enet_host_flush(host); }
+        if (peer) { enet_peer_disconnect_later(peer, 1); enet_host_flush(host); }
     }
     void transmit(std::span<const std::uint8_t> bytes) {
         auto* outgoing = enet_packet_create(bytes.data(), bytes.size(), ENET_PACKET_FLAG_RELIABLE);
@@ -220,6 +290,9 @@ void Session::send(std::span<const std::uint8_t> packet) {
     enet_host_flush(s.host);
 }
 bool Session::connected() const { return impl_->setup.phase == LinkSetup::Phase::Ready; }
+void Session::missionLoading(bool loading) {
+    if (impl_->peer) enet_peer_timeout(impl_->peer, 8, loading ? 180000 : 5000, loading ? 180000 : 15000);
+}
 std::uint32_t Session::inputDelay() const { return impl_->setup.delay; }
 std::uint32_t Session::rtt() const { return impl_->peer ? impl_->peer->roundTripTime : 0; }
 std::uint32_t Session::jitter() const { return impl_->peer ? impl_->peer->roundTripTimeVariance : 0; }

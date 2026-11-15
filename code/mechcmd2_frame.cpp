@@ -10,6 +10,8 @@
 #include "mc2fmt.h"
 #include "screen_settle_capture.h"
 #include "startup_preload.h"
+#include "net/runtime.h"
+#include "missionbegin.h"
 #ifdef MC2_IMGUI
 #include "imgui.h"
 #include "ui_texture.h"
@@ -387,6 +389,18 @@ void __stdcall DoGameLogic()
 			if (logistics)
 			{
 				long result = logistics->update();
+				const auto coopMission = mc2::net::takeLobbyStart();
+				if (!coopMission.empty()) {
+					logistics->getMissionBegin()->end();
+					logistics->stop();
+					std::strcpy(missionName, coopMission.c_str());
+					justStartMission = true;
+					logistics->setLogisticsState(log_STARTMISSIONFROMCMDLINE);
+					mission->destroy();
+					char commanders[MAX_MC_PLAYERS][3] = {{0,0,0},{1,1,1},{2,0,2},{3,3,3},{4,4,4},{5,5,5},{6,6,6},{7,7,7}};
+					mission->init(missionName, MISSION_LOAD_SP_QUICKSTART, 0, nullptr, commanders, 2);
+					eye->activate(); eye->update(); mission->start();
+				}
 				if (result == log_DONE)
 				{
 					mc2::screen_settle::onMissionStarted();   // MC2_SHOT_SCREEN: the front end ended before the screen was captured

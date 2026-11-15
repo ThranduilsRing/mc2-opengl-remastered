@@ -32,7 +32,7 @@ TEST_CASE("net session handshake accepts only identical protocol/executable/cont
     auto wrong = packet; wrong[4] = net::protocolVersion + 1;
     CHECK(net::checkHello(wrong, id) == "protocol version mismatch");
     CHECK(packet[0] == 'M'); CHECK(packet[1] == '2');
-    CHECK(packet[packet.size() - 4] == 0x39); // fixed-width LE uint32 seed
+    CHECK(packet[packet.size() - 8] == 0x39); // seed precedes the component count
 }
 TEST_CASE("net session handshake rejects truncation, excessive lengths and trailing bytes") {
     const net::Identity id{{}, {}, "mc2_01", 0};
@@ -116,6 +116,25 @@ TEST_CASE("net content identity includes effective mounted art options") {
     CHECK(high != net::contentIdentity(files, false, false));
 }
 
+TEST_CASE("net content refusal names differing and missing components with both digests") {
+    net::Identity local{{}, {}, "mc2_01", 0};
+    local.components = {{"mission.fst", {}}, {"data/missions", {}}};
+    auto remote = local;
+    remote.content[0] = 1;
+    remote.components[0].digest[0] = 0xab;
+    remote.components.erase(remote.components.begin() + 1);
+    remote.components.push_back({"mods/extra", {}});
+    const auto reason = net::checkHello(net::hello(remote), local);
+    CHECK(reason.find("mission.fst local=" + net::digestText(local.components[0].digest)) != std::string::npos);
+    CHECK(reason.find("peer=ab00") != std::string::npos);
+    CHECK(reason.find("data/missions local=") != std::string::npos);
+    CHECK(reason.find("peer=missing") != std::string::npos);
+    CHECK(reason.find("mods/extra local=missing peer=") != std::string::npos);
+    CHECK(net::digestText(local.content).size() == 64);
+    remote.components.resize(257);
+    CHECK_THROWS(net::hello(remote));
+}
+
 TEST_CASE("net timing ignores a transient post-load frame stall") {
     net::LinkSetup host;
     host.hosting = true;
@@ -130,6 +149,34 @@ TEST_CASE("net timing ignores a transient post-load frame stall") {
     CHECK(host.rtt == 11);
     CHECK(host.jitter == 1);
     CHECK(host.delay == 3);
+}
+
+TEST_CASE("net lobby releases only two ready players and validates host mission and start authority") {
+    net::LobbyState host, client;
+    host.hosting = true;
+    host.mission = "mc2_10";
+    CHECK(host.start().empty());
+    CHECK(client.ready(true).empty());
+    client.receive(host.offer());
+    CHECK(client.mission == "mc2_10");
+    client.receive(host.ready(true));
+    CHECK(host.start().empty());
+    host.receive(client.ready(true));
+    CHECK(host.canStart());
+    host.receive(client.ready(false));
+    CHECK_FALSE(host.canStart());
+    host.receive(client.ready(true));
+    CHECK(client.start().empty());
+    const auto startPacket = host.start();
+    client.receive(startPacket);
+    CHECK(host.started); CHECK(client.started);
+    net::LobbyState premature;
+    premature.receive(startPacket);
+    CHECK_FALSE(premature.error.empty());
+    net::LobbyState invalid;
+    host.mission = "../mod";
+    invalid.receive(host.offer());
+    CHECK_FALSE(invalid.error.empty());
 }
 
 TEST_CASE("net timing waits for thirty consecutive sub-50ms frames on both peers") {
