@@ -14,6 +14,7 @@ import subprocess
 import struct
 import sys
 import tempfile
+import time
 import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "mc2_import"))
@@ -380,8 +381,16 @@ def auto_import(deploy):
     """Discover raw installs; persist progress and source stamps outside their folders."""
     deploy = Path(deploy).resolve()
     mods = deploy / "mods"
+    if mods.is_symlink() or mods.is_junction():
+        raise ValueError("Linked mods directory is unsupported.")
     mods.mkdir(exist_ok=True)
     status = mods / ".campaign-auto.json"
+    def remove_readonly(func, path, exc):
+        os.chmod(path, 0o700)
+        func(path)
+    for staged in mods.glob(".campaign-import-*"):
+        if staged.is_dir() and not staged.is_symlink() and not staged.is_junction():
+            shutil.rmtree(staged, onexc=remove_readonly)
     try:
         previous = json.loads(status.read_text(encoding="utf-8")) if status.is_file() else {}
         if not isinstance(previous, dict):
@@ -416,6 +425,7 @@ def auto_import(deploy):
         publish(f"Checking {source.name}...")
         entry = {}
         output = io.StringIO()
+        started = None
         try:
             root = find_root(source)
             inputs = source_files(root)
@@ -425,11 +435,11 @@ def auto_import(deploy):
             entry = {"stamp": stamp}
             saved = previous.get("sources", {}).get(source.name, {})
             target = saved.get("mod", "")
-            if saved.get("stamp") == stamp and (saved.get("error") or
-                    (target and (mods / target / ".campaign-import.json").is_file())):
+            if saved.get("stamp") == stamp and not saved.get("error") and target and (mods / target / ".campaign-import.json").is_file():
                 entry = saved
             else:
                 publish(f"Importing {source.name} (source files are preserved)...")
+                started = time.perf_counter()
                 with contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):
                     entry.update(import_campaign(source, deploy))
                 print(f"[CAMPAIGN_AUTO] {source.name}: {entry['status']}", flush=True)
@@ -438,6 +448,8 @@ def auto_import(deploy):
             print(f"[CAMPAIGN_AUTO] {source.name}: {exc}", file=sys.stderr, flush=True)
         if output.tell():
             print(output.getvalue(), flush=True)
+        if started is not None:
+            entry["import_seconds"] = round(time.perf_counter() - started, 3)
         state["sources"][source.name] = entry
         publish(f"Checked {source.name}")
     state["running"] = False

@@ -1,0 +1,8 @@
+MCO / MechCommander Omnitech compatibility script
+
+tools/mc2_import/shims/corebrain.abx is the original compiled MCO corebrain
+from the MechCommander Omnitech distribution, credited to its original authors.
+Project and source downloads: https://www.moddb.com/mods/mechcommander-omnitech
+Original rights and notices continue to apply. This attribution does not
+grant a separate licence to redistribute community campaigns. Campaign data
+is not bundled; the player supplies an installed campaign or download.

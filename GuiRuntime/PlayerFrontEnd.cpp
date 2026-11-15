@@ -20,8 +20,6 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
-#include <future>
-#include <chrono>
 #include <iterator>
 #include <optional>
 #include <utility>
@@ -31,6 +29,7 @@
 #else
 #include <unistd.h>
 #include <sys/wait.h>
+#include <signal.h>
 #endif
 
 namespace PlayerFrontEnd {
@@ -53,7 +52,35 @@ std::string campaign, base, texture, campaignFit, pendingStart, pendingMission, 
 bool pickerOpen = false, scanned = false, restart = false, settingsChanged = false;
 std::map<std::string, std::optional<std::string>> inheritedEnv;
 
-std::future<int> importJob;
+struct ImportJob {
+#ifdef _WIN32
+    HANDLE process = nullptr, job = nullptr;
+    bool valid() const { return process != nullptr; }
+    std::optional<int> poll() {
+        if (!process || WaitForSingleObject(process, 0) != WAIT_OBJECT_0) return {};
+        DWORD code = 1;
+        GetExitCodeProcess(process, &code);
+        CloseHandle(process); process = nullptr;
+        CloseHandle(job); job = nullptr;
+        return static_cast<int>(code);
+    }
+    ~ImportJob() {
+        // Closing the job cancels the converter without waiting during game exit.
+        if (job) CloseHandle(job);
+        if (process) CloseHandle(process);
+    }
+#else
+    pid_t process = -1;
+    bool valid() const { return process > 0; }
+    std::optional<int> poll() {
+        int status = 0;
+        if (process <= 0 || waitpid(process, &status, WNOHANG) != process) return {};
+        process = -1;
+        return WIFEXITED(status) ? WEXITSTATUS(status) : 1;
+    }
+    ~ImportJob() { if (process > 0) kill(process, SIGTERM); }
+#endif
+} importJob;
 bool importStarted = false;
 std::string importError;
 Json importStatus = Json::object();
@@ -63,7 +90,7 @@ void startImport() {
     importError.clear();
     importStatus = Json::object();
     // The converter runs separately: filesystem work never blocks the menu thread.
-    importJob = std::async(std::launch::async, [] {
+    const auto result = [] {
 #ifdef _WIN32
         SECURITY_ATTRIBUTES security{sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE};
         const auto log = CreateFileW(L"campaign-auto.log", GENERIC_WRITE, FILE_SHARE_READ, &security, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
@@ -76,30 +103,40 @@ void startImport() {
         startup.hStdError = log;
         startup.hStdInput = input;
         PROCESS_INFORMATION process{};
+        const auto job = CreateJobObjectW(nullptr, nullptr);
+        JOBOBJECT_EXTENDED_LIMIT_INFORMATION limits{};
+        limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+        const bool managed = job && SetInformationJobObject(job, JobObjectExtendedLimitInformation, &limits, sizeof(limits));
         std::wstring command = L"py -3 tools/import_campaign.py --auto --deploy .";
         // background-launch: trusted campaign converter, no installer execution or window.
-        const bool launched = CreateProcessW(nullptr, command.data(), nullptr, nullptr, TRUE,
-            DETACHED_PROCESS | IDLE_PRIORITY_CLASS, nullptr, nullptr, &startup, &process) != 0;
+        const bool launched = managed && CreateProcessW(nullptr, command.data(), nullptr, nullptr, TRUE,
+            DETACHED_PROCESS | IDLE_PRIORITY_CLASS | CREATE_SUSPENDED, nullptr, nullptr, &startup, &process) != 0;
         const auto launchError = GetLastError();
         CloseHandle(log);
         if (input != INVALID_HANDLE_VALUE) CloseHandle(input);
-        if (!launched) return static_cast<int>(launchError);
+        if (!launched) { if (job) CloseHandle(job); return static_cast<int>(launchError); }
+        if (!AssignProcessToJobObject(job, process.hProcess)) {
+            const auto code = GetLastError();
+            TerminateProcess(process.hProcess, code);
+            CloseHandle(process.hThread); CloseHandle(process.hProcess); CloseHandle(job);
+            return static_cast<int>(code);
+        }
+        importJob.process = process.hProcess;
+        importJob.job = job;
+        ResumeThread(process.hThread);
         CloseHandle(process.hThread);
-        WaitForSingleObject(process.hProcess, INFINITE);
-        DWORD code = 1;
-        GetExitCodeProcess(process.hProcess, &code);
-        CloseHandle(process.hProcess);
-        return static_cast<int>(code);
+        return 0;
 #else
         const auto child = fork();
         if (child == 0) {
             execlp("python3", "python3", "tools/import_campaign.py", "--auto", "--deploy", ".", static_cast<char*>(nullptr));
             _exit(127);
         }
-        int status = 0;
-        return child > 0 && waitpid(child, &status, 0) == child && WIFEXITED(status) ? WEXITSTATUS(status) : 1;
+        importJob.process = child;
+        return child > 0 ? 0 : 1;
 #endif
-    });
+    }();
+    if (result) importError = "Could not start campaign importer (code " + std::to_string(result) + "). Python 3.12 or newer is required; see campaign-auto.log.";
 }
 
 std::optional<std::string> env(std::string_view key) {
@@ -395,8 +432,8 @@ void drawMainMenu(bool showCredits) {
     if (importJob.valid() && SDL_GetTicks() >= nextImportRead) {
         nextImportRead = SDL_GetTicks() + 250;
         importStatus = readJson("mods/.campaign-auto.json");
-        if (importJob.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
-            const auto code = importJob.get();
+        if (const auto result = importJob.poll()) {
+            const auto code = *result;
             if (code) {
                 std::ifstream log("campaign-auto.log");
                 const std::string detail((std::istreambuf_iterator<char>(log)), {});

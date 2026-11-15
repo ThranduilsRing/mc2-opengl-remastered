@@ -1,5 +1,11 @@
 MECHCOMMANDER 2 - COMMUNITY CREDITS
 
+MCO / MechCommander Omnitech authors - corebrain compatibility script
+tools/mc2_import/shims/corebrain.abx: original compiled MCO corebrain,
+from the user-supplied Omnitech distribution; original authors retain credit.
+Project and source downloads: https://www.moddb.com/mods/mechcommander-omnitech
+Community campaigns themselves are supplied and installed by the player.
+
 Every person is listed once, grouped by their first source file.
 All additional sources are retained beside their name. Source IDs resolve in the table below.
 Named contributors, handles and patrons are retained; organisations are acknowledged in source notes.

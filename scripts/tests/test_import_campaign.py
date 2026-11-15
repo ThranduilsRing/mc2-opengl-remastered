@@ -413,7 +413,7 @@ def test_auto_restart_skips_import_and_changed_stamp_reruns(sample, monkeypatch)
     assert len(calls) == 1
 
 
-def test_auto_exact_error_persisted_without_retry(sample, monkeypatch, capsys):
+def test_auto_exact_error_persisted_and_retried(sample, monkeypatch, capsys):
     source, deploy = sample
     raw = deploy / "mods/exodus"
     source.rename(raw)
@@ -428,4 +428,25 @@ def test_auto_exact_error_persisted_without_retry(sample, monkeypatch, capsys):
     assert "7" in error and "data/objects/example.fit" in error
     assert json.loads((deploy / "mods/.campaign-auto.json").read_text())["sources"][raw.name]["error"] == error
     assert imp.auto_import(deploy)["sources"][raw.name]["error"] == error
-    assert len(calls) == 1
+    assert len(calls) == 2
+
+
+def test_auto_real_converter_retries_after_base_appears_and_reaps_staging(sample):
+    source, deploy = sample
+    raw = deploy / "mods/exodus"
+    source.rename(raw)
+    compat = deploy / "mods/mc2x-compat/data"
+    imp.shutil.rmtree(compat)
+    stale = deploy / "mods/.campaign-import-interrupted/data"
+    stale.mkdir(parents=True)
+    leftover = stale / "readonly.fit"
+    leftover.write_text("interrupted output")
+    leftover.chmod(0o400)
+    first = imp.auto_import(deploy)["sources"][raw.name]
+    assert "Missing mc2x-compat" in first["error"]
+    assert not stale.parent.exists()
+    compat.mkdir(parents=True)
+    second = imp.auto_import(deploy)["sources"][raw.name]
+    assert first["stamp"] == second["stamp"]
+    assert second["status"] == "installed" and "error" not in second
+    assert second["import_seconds"] >= 0
