@@ -8,7 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import asset_parity as ap
 import deploy_payload as dp
 
-BAD = ("logs/a.txt", "debug_state/state.json", "nested/a.orig_bak", "nested/a.rdc", "a.LOG",
+BAD = ("logs/a.txt", "debug_state/state.json", "nested/a.orig_bak", "a.LOG",
        "data/tgl/_aoktxtmp/model.glb", "data/texture.tga.bak-20260704", "data/texture.tga.orig",
        "tgl.fst.slim-2026-06-12", "dev_shell_out/a.txt", "terrain_gen_out/a.txt", "stdout_smoke.txt",
        "cache/content-model/model-0123456789abcdef.mci", "cache/content-model/industrial-cook.json")
@@ -55,7 +55,7 @@ def test_prune_preserves_crash_evidence(tmp_path):
 def test_prune_protects_owner_files_and_preserve(tmp_path, owned):
     paths = ("savegame/manual_bak/save.fit.bak-today", "mods/custom/backup/model.glb.orig",
              "data/savegame/manual_bak/save.log", "options.cfg", "prefs.cfg", "captures/owner.png",
-             "_pngcap/owner.png", "_rdoc/owner.rdc", "data/tgl/manual_bak/model.glb",
+             "_pngcap/owner.png", "_rdoc/owner.rdc", "owner.rdc", "data/tgl/manual_bak/model.glb",
              "data/captures/model.glb", "logs/preserved.txt", "terrain_gen_out/changed.txt")
     rows = {}
     for rel in paths:

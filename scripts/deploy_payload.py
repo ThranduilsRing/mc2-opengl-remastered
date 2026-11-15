@@ -1793,6 +1793,7 @@ def retire_unowned(target_dir, keep, preserve=(), own_shaders=False):
     def protected(rel):
         parts = rel.replace("\\", "/").casefold().split("/")
         return (any(p in {"mods", "savegame", "captures", "_pngcap", "_rdoc"} for p in parts)
+                or parts[-1].endswith(".rdc")
                 or parts[-1] in {"options.cfg", "prefs.cfg"}
                 or any("/".join(parts) == p or "/".join(parts).startswith(p + "/") for p in preserved))
 
