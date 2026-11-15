@@ -118,10 +118,19 @@ TEST_CASE("hzb ref: straddling the near plane keeps the whole object") {
     CHECK_FALSE(hidden(p, py));         // expected keep=1 even against a full occluder
 }
 
-TEST_CASE("hzb ref: depth past the near plane (z >= 1) or behind far (z < 0) keeps") {
+TEST_CASE("hzb ref: wholly clipped depth rejects without an occluder") {
     Pyramid py(0.9f);
-    CHECK(project(boxNdc(0, 0.1f, 0, 0.1f, 60.0f, 60.0f)).keep == 1);   // 0.5 + 0.6 >= 1
-    CHECK(project(boxNdc(0, 0.1f, 0, 0.1f, -60.0f, -60.0f)).keep == 1); // 0.5 - 0.6 < 0
+    CHECK(hidden(project(boxNdc(0, 0.1f, 0, 0.1f, 60.0f, 60.0f)), py));
+    CHECK(hidden(project(boxNdc(0, 0.1f, 0, 0.1f, -60.0f, -60.0f)), py));
+    CHECK(project(boxNdc(0, .1f, 0, .1f, 49, 60)).keep == 1); // intersects near
+    CHECK(project(boxNdc(0, .1f, 0, .1f, -60, -49)).keep == 1); // intersects far
+    Mat behind = flatMatrix(); behind.m[15] = -1;
+    CHECK(hidden(project(boxNdc(0, .1f, 0, .1f), behind), py));
+    CHECK(project(boxNdc(0, .1f, 0, .1f, 60, 60), flatMatrix(), -.2f).keep == 0); // bias restores visible depth
+    auto inst = identityInstance(); inst.flags = 4u;
+    const mc2hzb::PropBounds bounds[] = {boxNdc(0, .1f, 0, .1f, 50.5f, 50.5f)};
+    const auto m = flatMatrix();
+    CHECK(mc2hzb::project_prop(inst, m.m, 0, bounds, W, H, LEVELS).keep == 1); // sway can cross near
 }
 
 TEST_CASE("hzb ref: partly off screen keeps (never an undersized clipped footprint)") {
