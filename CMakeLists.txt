@@ -930,6 +930,7 @@ if(MSVC AND TARGET mc2res_64)
     set_property(TARGET mc2res_64 PROPERTY COMPILE_OPTIONS "${_res_opts}")
 endif()
 add_subdirectory("./data_tools" "./out/data_tools")
+add_subdirectory("./text_tool" "./out/text_tool")
 # TEMP (merge-methuselas throwaway): @Methuselas's Viewer/CMakeLists.txt lists
 # ImGui-conversion sources (ViewerHostGlobals/Imgui/GuiFit/FontCatalog/
 # TextureLoader.cpp) that are NOT committed to methuselas/main -- one missing
