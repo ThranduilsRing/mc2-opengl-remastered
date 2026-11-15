@@ -9,7 +9,8 @@ import asset_parity as ap
 import deploy_payload as dp
 
 BAD = ("logs/a.txt", "captures/a.png", "debug_state/state.json", "_rdoc/a.png",
-       "nested/old_bak/a.glb", "nested/a.orig_bak", "nested/a.rdc", "nested/a.LOG")
+       "nested/old_bak/a.glb", "nested/a.orig_bak", "nested/a.rdc", "nested/a.LOG",
+       "mods/mc2-industrial-kit/content/a.mc2ir.json")
 
 
 def test_deploy_filters_and_prunes_artifacts_without_touching_sources(tmp_path, monkeypatch):

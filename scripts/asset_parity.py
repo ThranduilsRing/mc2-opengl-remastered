@@ -160,11 +160,13 @@ def _norm(rel: str) -> str:
 
 
 def is_deploy_artifact(rel: str) -> bool:
-    """Generated diagnostics and backup trees are never install payload."""
+    """Diagnostics, backups and bundled kit authoring IR are not runtime payload."""
     parts = _norm(rel).rstrip("/").split("/")
     return (any(p in {"logs", "captures", "debug_state", "crashes", "_rdoc", "_pngcap"}
                 or p.endswith("_bak") for p in parts)
-            or parts[-1].endswith((".log", ".rdc", ".dmp", ".mdmp", ".orig_bak")))
+            or parts[-1].endswith((".log", ".rdc", ".dmp", ".mdmp", ".orig_bak"))
+            or (parts[:3] in (["mods", "mc2-industrial-kit", "content"], ["mods", "mc2-vehicle-kit", "content"])
+                and parts[-1].endswith(".mc2ir.json")))
 
 
 def is_excluded(rel: str) -> bool:

@@ -2953,6 +2953,7 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
         if spv_fails:
             fail("deployed SPIR-V is not the build's SPIR-V:\n  " + "\n  ".join(spv_fails), 4)
         log(f"deployed SPIR-V audit OK: {spv_n} .spv identical to the build, descriptor/push ABI matches")
+    hashes = {rel: row for rel, row in hashes.items() if not asset_parity.is_deploy_artifact(rel)}
     write_manifest(target, hashes, src_commit)
     if reuse:
         # Preserve the verified external source inventory across code-only deploys.
