@@ -4,6 +4,7 @@
 #include "mech_internal.h"
 #include "Gates/gate.h"
 #include "mc2fmt.h"
+#include "net/runtime.h"
 
 
 // ISSUE-17 (MC2_FIRE_DECISION_TRACE, default OFF = byte-identical): fireWeapon
@@ -623,6 +624,7 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 	if (getGroup())
 		getGroup()->handleMateFiredWeapon(getWatchID());
 
+	mc2::net::combatEvent("fire", getWatchID(false), target ? target->getWatchID(false) : 0, 0);
 	return(NO_ERR);
 }
 

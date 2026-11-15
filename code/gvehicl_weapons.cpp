@@ -5,6 +5,7 @@
 #include "gvehicl_internal.h"
 #include "Gates/gate.h"
 #include "mc2fmt.h"
+#include "net/runtime.h"
 
 
 
@@ -412,6 +413,7 @@ long GroundVehicle::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultipl
 
 	*shotInfo = startShotInfo;
 
+	mc2::net::combatEvent("damage", shotInfo->attackerWID, getWatchID(false), shotInfo->damage);
 	return(NO_ERR);
 }
 
@@ -971,6 +973,7 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 	if (getGroup())
 		getGroup()->handleMateFiredWeapon(getWatchID());
 
+	mc2::net::combatEvent("fire", getWatchID(false), target ? target->getWatchID(false) : 0, 0);
 	return(NO_ERR);
 }
 

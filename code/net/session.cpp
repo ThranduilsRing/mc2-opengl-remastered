@@ -2,6 +2,7 @@
 #include <enet/enet.h>
 #include <charconv>
 #include <stdexcept>
+#include <algorithm>
 
 namespace mc2::net {
 namespace {
@@ -13,6 +14,12 @@ void fields(save::Archive& a, std::uint32_t& tag, std::uint32_t& version, Identi
     if (a.reading()) id.mission.assign(name.begin(), name.end());
     a(id.seed);
 }
+}
+save::Digest contentIdentity(const save::Digest& files, bool lowCost, bool remasteredBuildings) {
+    save::Archive manifest;
+    auto digest = files;
+    manifest(digest, lowCost, remasteredBuildings);
+    return save::sha256(manifest.bytes());
 }
 save::Bytes hello(const Identity& identity) {
     save::Archive a;
@@ -36,29 +43,110 @@ std::string checkHello(std::span<const std::uint8_t> packet, const Identity& loc
     if (remote.seed != local.seed) return "seed mismatch";
     return {};
 }
+std::uint32_t delayForRtt(std::uint32_t rtt, std::uint32_t jitter) {
+    const auto budget = static_cast<std::uint64_t>(rtt) + 2ull * jitter;
+    return static_cast<std::uint32_t>(std::clamp<std::uint64_t>((budget * 30 + 999) / 1000 + 2, 3, 12));
+}
+void LinkSetup::stop(std::string_view reason) {
+    if (error.empty()) error = reason;
+    phase = Phase::Stopped;
+}
+std::optional<LinkSetup::Control> LinkSetup::begin(std::uint32_t now) {
+    if (phase != Phase::Identity) { stop("MP duplicate identity"); return {}; }
+    phase = Phase::Settling;
+    lastFrame = now;
+    return {};
+}
+std::optional<LinkSetup::Control> LinkSetup::frame(std::uint32_t now) {
+    if (phase != Phase::Settling) return {};
+    settledFrames = now - lastFrame < 50 ? settledFrames + 1 : 0;
+    lastFrame = now;
+    if (!localSettled && settledFrames >= 30) {
+        localSettled = true;
+        return Control{7, 0};
+    }
+    if (localSettled && peerSettled) {
+        phase = Phase::Measuring;
+        probe = now;
+        if (hosting) return Control{3, probe};
+    }
+    return {};
+}
+std::optional<LinkSetup::Control> LinkSetup::receive(Control message, std::uint32_t now) {
+    if (phase == Phase::Settling && message.kind == 7 && !peerSettled && message.value == 0) {
+        peerSettled = true;
+        return {};
+    }
+    // The host may send its first probe in the same service batch as our ready ACK.
+    if (phase == Phase::Settling && !hosting && localSettled && peerSettled && message.kind == 3)
+        phase = Phase::Measuring;
+    if (phase == Phase::Settling) { stop("MP invalid timing negotiation"); return {}; }
+    if (phase != Phase::Measuring) { stop("MP unexpected setup packet"); return {}; }
+    if (!hosting && message.kind == 3 && samples < 4) { ++samples; return Control{4, message.value}; }
+    if (hosting && message.kind == 4 && samples < 4 && message.value == probe) {
+        const auto measured = now - probe;
+        if (samples) {
+            const auto variation = measured > previous ? measured - previous : previous - measured;
+            jitter = samples == 1 ? variation : (std::min)(jitter, variation);
+        }
+        previous = measured;
+        // The minimum pair excludes one-off post-load frame stalls from input latency.
+        rtt = samples == 0 ? measured : (std::min)(rtt, measured);
+        if (++samples < 4) { probe = now; return Control{3, probe}; }
+        delay = delayForRtt(rtt, jitter);
+        return Control{5, delay};
+    }
+    if (!hosting && message.kind == 5 && samples == 4 && message.value >= 3 && message.value <= 12) {
+        delay = message.value;
+        phase = Phase::Ready;
+        return Control{6, delay};
+    }
+    if (hosting && message.kind == 6 && samples == 4 && message.value == delay) {
+        phase = Phase::Ready;
+        return {};
+    }
+    stop("MP invalid timing negotiation");
+    return {};
+}
 struct Session::Impl {
     ENetHost* host = nullptr;
     ENetPeer* peer = nullptr;
     Identity identity;
     std::string error;
-    bool initialized = false, ready = false;
+    bool initialized = false;
+    LinkSetup setup;
     ~Impl() {
         if (host) enet_host_destroy(host);
         if (initialized) enet_deinitialize();
     }
     void fail(std::string message) {
         error = std::move(message);
-        ready = false;
-        if (peer) enet_peer_disconnect_later(peer, 1);
+        setup.stop(error);
+        if (peer) { enet_peer_disconnect_now(peer, 1); enet_host_flush(host); }
+    }
+    void transmit(std::span<const std::uint8_t> bytes) {
+        auto* outgoing = enet_packet_create(bytes.data(), bytes.size(), ENET_PACKET_FLAG_RELIABLE);
+        if (!outgoing) { fail("ENet packet allocation failed"); return; }
+        if (enet_peer_send(peer, 0, outgoing) < 0) {
+            enet_packet_destroy(outgoing); fail("ENet send failed");
+        }
+    }
+    void control(std::optional<LinkSetup::Control> message) {
+        if (!message) return;
+        save::Archive a;
+        a(message->kind, message->value);
+        transmit(a.bytes());
     }
 };
 Session::Session() : impl_(std::make_unique<Impl>()) {}
 Session::~Session() = default;
 void Session::open(bool hosting, std::string_view endpoint, Identity identity) {
     if (impl_->host) throw std::runtime_error("MP session already open");
+    (void)hello(identity); // Reject invalid local identities inside the startup error boundary.
     if (enet_initialize() != 0) throw std::runtime_error("ENet initialization failed");
     impl_->initialized = true;
     impl_->identity = std::move(identity);
+    impl_->setup.hosting = hosting;
     if (endpoint.empty()) endpoint = "127.0.0.1:23460";
     const auto colon = endpoint.find(':');
     const std::string ip(endpoint.substr(0, colon));
@@ -85,6 +173,7 @@ std::vector<save::Bytes> Session::pump() {
     auto& s = *impl_;
     std::vector<save::Bytes> received;
     if (!s.host || !s.error.empty()) return received;
+    s.control(s.setup.frame(enet_time_get()));
     ENetEvent event{};
     // Nonblocking, bounded work; frames and the owner desktop keep running during a stall.
     for (unsigned count = 0; count < 128; ++count) {
@@ -95,17 +184,22 @@ std::vector<save::Bytes> Session::pump() {
             s.peer = event.peer;
             enet_peer_timeout(s.peer, 8, 5000, 15000);
             const auto packet = hello(s.identity);
-            auto* outgoing = enet_packet_create(packet.data(), packet.size(), ENET_PACKET_FLAG_RELIABLE);
-            if (!outgoing) { s.fail("ENet packet allocation failed"); break; }
-            if (enet_peer_send(s.peer, 0, outgoing) < 0) {
-                enet_packet_destroy(outgoing); s.fail("ENet handshake send failed"); break;
-            }
+            s.transmit(packet);
         } else if (event.type == ENET_EVENT_TYPE_RECEIVE) {
             const std::span<const std::uint8_t> packet(event.packet->data, event.packet->dataLength);
-            if (!s.ready) {
+            if (s.setup.phase == LinkSetup::Phase::Identity) {
                 auto mismatch = checkHello(packet, s.identity);
                 if (!mismatch.empty()) s.fail(std::move(mismatch));
-                else s.ready = true;
+                else s.control(s.setup.begin(enet_time_get()));
+            } else if (s.setup.phase != LinkSetup::Phase::Ready) {
+                save::Archive a(packet);
+                LinkSetup::Control message;
+                a(message.kind, message.value);
+                if (!a.finish()) s.fail("MP malformed timing negotiation");
+                else {
+                    s.control(s.setup.receive(message, enet_time_get()));
+                    if (!s.setup.error.empty()) s.fail(s.setup.error);
+                }
             } else if (packet.size() > maxPacketBytes) s.fail("MP packet exceeds limit");
             else received.emplace_back(packet.begin(), packet.end());
             enet_packet_destroy(event.packet);
@@ -119,15 +213,17 @@ std::vector<save::Bytes> Session::pump() {
 }
 void Session::send(std::span<const std::uint8_t> packet) {
     auto& s = *impl_;
-    if (!s.ready || !s.error.empty()) throw std::runtime_error("MP session is not connected");
-    if (packet.empty() || packet.size() > maxPacketBytes) throw std::runtime_error("invalid MP packet size");
-    auto* outgoing = enet_packet_create(packet.data(), packet.size(), ENET_PACKET_FLAG_RELIABLE);
-    if (!outgoing) { s.fail("ENet packet allocation failed"); return; }
-    if (enet_peer_send(s.peer, 0, outgoing) < 0) {
-        enet_packet_destroy(outgoing); s.fail("ENet send failed");
-    }
+    if (!s.error.empty()) return;
+    if (!connected()) { s.fail("MP session is not connected"); return; }
+    if (packet.empty() || packet.size() > maxPacketBytes) { s.fail("invalid MP packet size"); return; }
+    s.transmit(packet);
     enet_host_flush(s.host);
 }
-bool Session::connected() const { return impl_->ready; }
+bool Session::connected() const { return impl_->setup.phase == LinkSetup::Phase::Ready; }
+std::uint32_t Session::inputDelay() const { return impl_->setup.delay; }
+std::uint32_t Session::rtt() const { return impl_->peer ? impl_->peer->roundTripTime : 0; }
+std::uint32_t Session::jitter() const { return impl_->peer ? impl_->peer->roundTripTimeVariance : 0; }
+std::uint32_t Session::measuredRtt() const { return impl_->setup.rtt; }
+std::uint32_t Session::measuredJitter() const { return impl_->setup.jitter; }
 const std::string& Session::error() const { return impl_->error; }
 }

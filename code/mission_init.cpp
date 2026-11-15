@@ -99,7 +99,7 @@ void Mission::initPrologue(MissionInitFrame& f) {
 		}
         if (mc2::net::active() && (!mc2::gate::str<"MC2_COMMAND_REPLAY_PLAY">().empty() ||
             !mc2::gate::str<"MC2_COMMAND_REPLAY_RECORD">().empty()))
-            throw std::runtime_error("live multiplayer cannot use command replay");
+            mc2::net::stop("live multiplayer cannot use command replay");
         mc2::replay::begin(missionName, seed);
         mc2::net::beginMission(missionName, seed);
 	}

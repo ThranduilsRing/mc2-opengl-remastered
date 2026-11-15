@@ -2,6 +2,7 @@
 #include "doctest.h"
 #include "net/lockstep.h"
 #include "net/runtime.h"
+#include "sim_tick_clock.h"
 #include <fstream>
 #include <sstream>
 using namespace mc2;
@@ -64,6 +65,8 @@ TEST_CASE("net lockstep delayed peer remains identical for 18000 ticks and catch
     REQUIRE(host.divergence()); REQUIRE(client.divergence());
     CHECK(host.divergence()->tick == 18000); CHECK(client.divergence()->tick == 18000);
     CHECK(host.divergence()->local == client.divergence()->remote);
+    host.stop("MP peer disconnected"); client.stop("MP peer stalled");
+    CHECK(host.error() == "MP_DESYNC tick=18000"); CHECK(client.error() == "MP_DESYNC tick=18000");
     CHECK_FALSE(host.ready()); CHECK_FALSE(client.ready());
 }
 TEST_CASE("net lockstep rejects forged source, duplicate batches, future markers and truncated packets") {
@@ -118,6 +121,57 @@ TEST_CASE("net lockstep timeout or disconnect stops without releasing an unagree
         host.stop(reason);
         CHECK_FALSE(host.ready()); CHECK(host.completed() == 0); CHECK(host.error() == reason);
     }
+}
+TEST_CASE("net lockstep negotiated delays survive loss and jitter without skipping an input") {
+    for (const auto delay : {3u, 5u, 12u}) {
+        net::Lockstep host(0, delay), client(1, delay);
+        REQUIRE(host.queue(command(1)));
+        host.seal(); client.seal();
+        auto held = host.takeOutgoing();
+        deliver(client, host);
+        CHECK_FALSE(client.ready()); // Lost reliable data is still pending retransmission.
+        CHECK(client.completed() == 0);
+        for (const auto& packet : held) client.receive(packet);
+        for (sim::Tick tick = 1; tick <= delay + 1; ++tick) {
+            REQUIRE(host.ready()); REQUIRE(client.ready());
+            const auto a = host.beginTick(); CHECK(a == client.beginTick());
+            CHECK(a.size() == (tick == delay + 1 ? 1 : 0));
+            host.finishTick({tick}); client.finishTick({tick});
+            auto jittered = client.takeOutgoing();
+            deliver(host, client);
+            CHECK_FALSE(host.ready()); // No tick escapes while its remote hash is delayed.
+            for (const auto& packet : jittered) host.receive(packet);
+            host.seal(); client.seal(); deliver(host, client); deliver(client, host);
+        }
+    }
+    CHECK_THROWS(net::Lockstep(0, 2)); CHECK_THROWS(net::Lockstep(1, 13));
+}
+TEST_CASE("net lockstep ready markers cannot create wall clock credit") {
+    for (const auto fps : {30, 60, 144, 240}) {
+        net::Lockstep host(0), client(1);
+        sim::TickClock clock;
+        deliver(host, client); deliver(client, host);
+        for (int frame = 0; frame < fps * 10; ++frame) {
+            host.seal(); client.seal(); deliver(host, client); deliver(client, host);
+            const auto due = clock.advance(1.0 / fps, 1.0);
+            for (int tick = 0; tick < due; ++tick) {
+                REQUIRE(host.ready()); REQUIRE(client.ready());
+                CHECK(host.beginTick() == client.beginTick());
+                host.finishTick({}); client.finishTick({});
+                deliver(host, client); deliver(client, host);
+                host.seal(); client.seal(); deliver(host, client); deliver(client, host);
+            }
+        }
+        CHECK(host.completed() == 300); CHECK(client.completed() == 300);
+    }
+}
+TEST_CASE("net scripted player orders use the mission submit callback including rejection") {
+    unsigned called = 0;
+    auto submit = [&](sim::OrderEnvelope order) { ++called; return order.recipients == command(1).recipients; };
+    CHECK(net::submitScriptOrder(command(1), submit));
+    CHECK_FALSE(net::submitScriptOrder(command(2), submit));
+    CHECK(called == 2);
+    CHECK_FALSE(net::submitScriptOrder(command(1), {}));
 }
 TEST_CASE("net soak3 recorded stream isolates live Permission and rejection preserves subsequent admissions") {
     struct Admission : sim::OrderAdmissionValidator {
