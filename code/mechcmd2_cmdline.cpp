@@ -4,6 +4,7 @@
 #include "mechcmd2_internal.h"
 #include "net/runtime.h"
 #include "mc2fmt.h"
+#include "Gates/gate_cold.h"
 
 
 static long textToLong (char *num)
