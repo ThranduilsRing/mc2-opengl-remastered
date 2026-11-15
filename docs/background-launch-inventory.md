@@ -49,6 +49,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `tests/smoke/object_visual_diff.py` | 123 | `nofocus.run` | offscreen |
 | `tests/smoke/scene_resize.py` | 37 | `nofocus.spawn` | offscreen |
 | `tools/campaign_save_roundtrip.py` | 178 | `nofocus.spawn` | offscreen |
+| `tools/import_campaign.py` | 240 | `subprocess.run` **raw, allowed:** innoextract console archive reader only; never runs the installer or engine | offscreen |
 | `tools/menu_oracle.py` | 110 | `nofocus.spawn` | desktop-composite |
 | `tools/mod_smoke.py` | 1061 | `nofocus.run` | offscreen |
 | `tools/perf/mission_cpu_profile.py` | 224 | `subprocess.Popen` **raw, allowed:** Tracy console recorder, never an engine. | offscreen |
@@ -65,7 +66,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `tools/tracy_capture_compare.py` | 687 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
 | `tools/window_cycle.py` | 113 | `nofocus.spawn` | offscreen |
 
-Total engine launch sites: 55
+Total engine launch sites: 56
 
 ## Shell launchers (RULE 9)
 

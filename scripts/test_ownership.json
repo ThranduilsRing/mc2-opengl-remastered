@@ -2,6 +2,7 @@
   "schema_version": 1,
   "aggregate_owner": "scripts_tests",
   "tests": [
+    {"module": "scripts/tests/test_import_campaign.py", "owners": ["campaign_import"]},
     {"module": "scripts/tests/test_shadow_bake_init.py", "owners": ["shadow_bake_init"]},
     {"module": "scripts/tests/test_gate_farm.py", "owners": ["gate_farm"]},
     {"module": "scripts/tests/test_box_queue.py", "owners": ["gate_farm"]},

@@ -7,5 +7,7 @@ goto done
 :import
 py -3 "%~dp0tools\import_campaign.py" %* --deploy "%~dp0."
 :done
+set "result=%errorlevel%"
 if errorlevel 1 echo Import failed. Read the error above. Python 3.12 or newer is required.
 pause
+exit /b %result%
