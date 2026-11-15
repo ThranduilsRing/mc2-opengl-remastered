@@ -14,6 +14,25 @@
 
 using namespace mc2shadow;
 
+TEST_CASE("cook cache: large model recipe reader accepts 303 MiB and rejects over 512 MiB") {
+    namespace fs = std::filesystem;
+    const auto dir = fs::temp_directory_path() / "mc2-large-model-recipe";
+    const mc2cache::CacheKind kind{"model-", ".mci", 4096, 512ull << 20};
+    const auto path = mc2cache::entryPath(dir.string(), kind, 1);
+    REQUIRE(mc2cache::writeEntry(dir.string(), kind, 1, std::vector<uint8_t>{7}));
+    fs::resize_file(path, 303ull << 20);
+    {
+        const auto bytes = mc2cache::readEntry(dir.string(), kind, 1);
+        REQUIRE(bytes);
+        CHECK(bytes->size() == 303ull << 20);
+        CHECK(bytes->front() == 7);
+        CHECK(bytes->back() == 0);
+    }
+    fs::resize_file(path, (512ull << 20) + 1);
+    CHECK_FALSE(mc2cache::readEntry(dir.string(), kind, 1));
+    fs::remove_all(dir);
+}
+
 namespace {
 ShadowMaskAsset makeAsset(uint32_t texels, uint32_t mips, uint64_t key) {
     ShadowMaskAsset a;
