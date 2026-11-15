@@ -134,15 +134,16 @@ void ControlGui::renderSimSpeedButton()
 	const float scale = std::max(1.f, std::floor(size.y / 36.f));
 	const float line = HudFont::LineHeight(font, scale);
 	const float offset = pressed && !disabled ? scale : 0.f;
-	auto text = [&](const char* value, float y) {
-		const float width = HudFont::Measure(font, value, scale, scale).x;
-		HudFont::Draw(draw, font, std::floor(p.x + (size.x - width) * .5f) + offset,
-			std::floor(y) + offset, ink, value, scale, scale);
-	};
-	text(">>>", p.y + (size.y - 2.f * line) * .5f);
 	char label[16];
 	mc2::fmt::to_buf(label, "{:g}x", static_cast<double>(simSpeedGetMultiplier()));
-	text(label, p.y + size.y * .5f);
+	for (int row = 0; row < 2; ++row)
+	{
+		const auto* value = row == 0 ? ">>>" : label;
+		const float width = HudFont::Measure(font, value, scale, scale).x;
+		HudFont::Draw(draw, font, std::floor(p.x + (size.x - width) * .5f) + offset,
+			std::floor(p.y + (size.y - 2.f * line) * .5f + row * line) + offset,
+			ink, value, scale, scale);
+	}
 	if (hover)
 		ImGui::SetTooltip("Sim speed: %gx\nClick: faster; right-click / Shift-click: slower.%s",
 			simSpeedGetMultiplier(), disabled ? "\nUnavailable in multiplayer." : "");
