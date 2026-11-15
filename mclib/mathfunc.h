@@ -1,10 +1,11 @@
-#include "math/sim_math.h"
 //===========================================================================//
 // Copyright (C) Microsoft Corporation. All rights reserved.                 //
 //===========================================================================//
 
 #ifndef MATHFUNC_H
 #define MATHFUNC_H
+
+#include "math/sim_math.h"
 
 #ifndef STUFF_STUFF_HPP
 #include<stuff/stuff.hpp>

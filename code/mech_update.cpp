@@ -1,7 +1,7 @@
-#include "math/sim_math.h"
 // BattleMech: BattleMech::update, render, renderShadows, hit-location and ejection helpers.
 // Declared in the class headers; shared names in mech_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
+#include "math/sim_math.h"
 #include "mech_internal.h"
 #include "water_wake.h"
 #include "hover_name.h"

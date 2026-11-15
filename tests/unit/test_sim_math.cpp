@@ -1,6 +1,9 @@
-// Trigger paths: mclib/math/sim_math.h, 3rdparty/detmath/openlibm.h.
+// Trigger paths: mclib/math/, mclib/mathfunc.*, 3rdparty/detmath/.
 // Golden bits from 100-decimal mpmath 1.3.0, independently rounded to binary32.
 #include "math/sim_math.h"
+#include "math/mc2_xform.h"
+#include "mathfunc.h"
+#include "dstd.h"
 #include "doctest.h"
 #include <array>
 #include <bit>
@@ -64,4 +67,45 @@ TEST_CASE("sim math portable golden bits") {
     CHECK(std::bit_cast<std::uint32_t>(sm::acos(2.0f)) == 0x7fc00000u);
     CHECK(std::bit_cast<std::uint32_t>(sm::pow(-2.0f, 0.5f)) == 0x7fc00000u);
     CHECK(std::bit_cast<std::uint32_t>(sm::atan2(-0.0f, 1.0f)) == 0x80000000u);
+}
+
+TEST_CASE("sim math gameplay call sites") {
+    const auto bits = [](float x) { return std::bit_cast<std::uint32_t>(x); };
+    const auto value = [](std::uint32_t x) { return std::bit_cast<float>(x); };
+    CHECK(bits(my_acos(value(0xbf7f504fu))) == 0x40445fe4u);
+    CHECK(bits(my_acos(1.000001f)) == 0u);
+    CHECK(bits(my_acos(-1.000001f)) == 0x40490fdbu);
+    // atan's previously uncovered [19/16,39/16) reduction branch, including edges.
+    for (const auto& r : std::array<std::pair<float, std::uint32_t>, 4>{{
+             {19.0f/16.0f, 0x3f5ef387u}, {1.5f, 0x3f7b985fu},
+             {2.0f, 0x3f8db70du}, {value(0x401bffffu), 0x3f973ab9u}}}) {
+        CHECK(bits(mc2::sim::math::atan2(r.first, 1.0f)) == r.second);
+        CHECK(bits(mc2_atan2(r.first, 1.0f)) == r.second);
+    }
+    CHECK(bits(mc2_atan2(-1.0f, 0.0f)) == bits(1.570796f));
+    // Independent mpmath sine/cosine bits; this input differs from MSVC sinf.
+    const float angle = value(0x3f476c8bu), sine = value(0x3f33db81u), cosine = value(0x3f362c7fu);
+    for (int axis = 0; axis < 3; ++axis) {
+        mc2::math::Euler e;
+        e[axis] = angle;
+        glm::mat4 reference(1.0f);
+        const int a = (axis + 1) % 3, b = (axis + 2) % 3;
+        reference[a][a] = reference[b][b] = cosine;
+        reference[b][a] = sine;
+        reference[a][b] = -sine;
+        const auto expected = mc2::math::quatFromRotation(reference);
+        const auto actual = mc2::math::quatFromEulerSim(e);
+        for (int component = 0; component < 4; ++component)
+            CHECK(bits(actual[component]) == bits(expected[component]));
+    }
+    glm::vec3 v(0.0f, 1.0f, 7.0f);
+    Stuff::Vector2DOf<float> v2;
+    v2.x = 0.0f; v2.y = 1.0f;
+    const float degrees = angle / DEGREES_TO_RADS;
+    REQUIRE(bits(degrees * DEGREES_TO_RADS) == bits(angle));
+    Rotate(v, degrees);
+    Rotate(v2, degrees);
+    CHECK(bits(v.x) == bits(sine)); CHECK(bits(v.y) == bits(cosine));
+    CHECK(v.z == 7.0f);
+    CHECK(bits(v2.x) == bits(sine)); CHECK(bits(v2.y) == bits(cosine));
 }
