@@ -78,8 +78,9 @@ def test_prune_protects_owner_files_and_preserve(tmp_path, owned):
 @pytest.mark.parametrize("name", ["mc2-win64-v0.4c", "MC2-WIN64-0.4C"])
 @pytest.mark.parametrize("mode", [[], ["--allow-new-target"], ["--write-manifest-only"],
                                   ["--seed-owner-test", "--seed-source", "unused"]])
-def test_cli_refuses_golden_before_any_write(tmp_path, monkeypatch, name, mode):
+def test_cli_refuses_golden_before_any_write(tmp_path, monkeypatch, capsys, name, mode):
     monkeypatch.setattr(sys, "argv", ["deploy_payload.py", str(tmp_path / name), *mode])
     with pytest.raises(SystemExit):
         dp.main()
+    assert "golden install is never a deploy target" in capsys.readouterr().err
     assert not (tmp_path / name).exists()
