@@ -126,7 +126,10 @@ void ControlGui::renderSimSpeedButton()
 	draw->AddImage(static_cast<ImTextureID>(texture), p, ImVec2(p.x + size.x, p.y + size.y),
 		ImVec2((u + .1f) / art.fileWidth, 144.1f / art.fileHeight),
 		ImVec2((u + 42.1f) / art.fileWidth, 180.1f / art.fileHeight));
-	const auto color = static_cast<unsigned long>(art.textColors[state]);
+	// Icon-only command buttons have no Text* fields. Use the stock HUD
+	// blue/white/grey/orange palette rather than their unset text colours.
+	constexpr unsigned long colors[] = {0xff5c96c2, 0xffffffff, 0xff6b6b6b, 0xfff26f00};
+	const auto color = colors[state];
 	const ImU32 ink = IM_COL32((color >> 16) & 255, (color >> 8) & 255, color & 255, 255);
 	const auto font = helpFont.getTempHandle();
 	// The legacy atlas uses nearest sampling; integer glyph scales keep the
