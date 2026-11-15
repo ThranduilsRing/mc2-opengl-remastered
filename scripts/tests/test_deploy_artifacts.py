@@ -1,5 +1,6 @@
 """Trigger: deploy_payload.py and asset_parity.py; diagnostics never become payload."""
 import sys
+import os
 from pathlib import Path
 
 import pytest
@@ -84,3 +85,18 @@ def test_cli_refuses_golden_before_any_write(tmp_path, monkeypatch, capsys, name
         dp.main()
     assert "golden install is never a deploy target" in capsys.readouterr().err
     assert not (tmp_path / name).exists()
+
+
+def test_prune_protects_mod_backup_through_directory_alias(tmp_path):
+    backup = tmp_path / "mods/custom/model.glb.orig"
+    backup.parent.mkdir(parents=True)
+    backup.write_bytes(b"owner")
+    alias = tmp_path / "terrain_gen_out"
+    if os.name == "nt":
+        import _winapi
+        _winapi.CreateJunction(str(backup.parent), str(alias))
+    else:
+        alias.symlink_to(backup.parent, target_is_directory=True)
+    dp.write_manifest(str(tmp_path), {"terrain_gen_out/model.glb.orig": (dp.sha256_file(backup), 5, None)}, "test")
+    dp.retire_unowned(str(tmp_path), {})
+    assert backup.read_bytes() == b"owner"

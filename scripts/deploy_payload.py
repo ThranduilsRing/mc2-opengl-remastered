@@ -1791,11 +1791,18 @@ def retire_unowned(target_dir, keep, preserve=(), own_shaders=False):
     preserved = {p.replace("\\", "/").strip("/").casefold() for p in preserve}
 
     def protected(rel):
-        parts = rel.replace("\\", "/").casefold().split("/")
-        return (any(p in {"mods", "savegame", "captures", "_pngcap", "_rdoc"} for p in parts)
-                or parts[-1].endswith(".rdc")
-                or parts[-1] in {"options.cfg", "prefs.cfg"}
-                or any("/".join(parts) == p or "/".join(parts).startswith(p + "/") for p in preserved))
+        candidates = [rel]
+        resolved = (root / rel).resolve()
+        if resolved.is_relative_to(root):
+            candidates.append(resolved.relative_to(root).as_posix())
+        for candidate in candidates:
+            parts = candidate.replace("\\", "/").casefold().split("/")
+            if (any(p in {"mods", "savegame", "captures", "_pngcap", "_rdoc"} for p in parts)
+                    or parts[-1].endswith(".rdc")
+                    or parts[-1] in {"options.cfg", "prefs.cfg"}
+                    or any("/".join(parts) == p or "/".join(parts).startswith(p + "/") for p in preserved)):
+                return True
+        return False
 
     # Refuse to discard crash evidence; the caller must archive it before deploying.
     artifacts = []
