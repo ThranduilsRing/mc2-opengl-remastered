@@ -1,5 +1,11 @@
 # Third-Party Notices
 
+## ENet v1.3.18
+MIT License, copyright (c) 2002-2024 Lee Salzman.
+Source: https://github.com/lsalzman/enet/tree/v1.3.18
+Unmodified C sources, headers, CMakeLists.txt and LICENSE vendored at 3rdparty/enet/.
+Windows links ws2_32 and winmm; Unix uses ENet's POSIX implementation.
+
 ## OpenLibm v0.8.7
 Derived from https://github.com/JuliaMath/openlibm/tree/v0.8.7/src.
 Vendored binary64 fdlibm kernels at 3rdparty/detmath/openlibm.cpp, with declarations in openlibm.h.

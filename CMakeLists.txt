@@ -1000,6 +1000,15 @@ if(MC2_BUILD_TESTS)
   add_subdirectory(tests/static_natural_skip)
 endif()
 
+add_subdirectory(3rdparty/enet out/3rdparty/enet EXCLUDE_FROM_ALL)
+target_include_directories(enet PUBLIC 3rdparty/enet/include)
+if(WIN32)
+    target_link_libraries(enet PUBLIC ws2_32 winmm)
+endif()
+target_link_libraries(mc2 PRIVATE enet)
+target_sources(mc2 PRIVATE code/net/session.cpp)
+set_source_files_properties(code/net/session.cpp PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
+
 target_sources(mc2 PRIVATE code/command_replay.cpp
     code/combat_sim_hash.cpp code/save_sections.cpp)
 # The sim API must not inherit wall-clock access from the engine PCH.

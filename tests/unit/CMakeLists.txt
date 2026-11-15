@@ -22,6 +22,13 @@
 cmake_minimum_required(VERSION 3.16)
 project(mc2_tests CXX)
 
+enable_language(C)
+add_subdirectory(../../3rdparty/enet enet EXCLUDE_FROM_ALL)
+target_include_directories(enet PUBLIC ../../3rdparty/enet/include)
+if(WIN32)
+    target_link_libraries(enet PUBLIC ws2_32 winmm)
+endif()
+
 include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/Mc2Standalone.cmake")
 
 # Resolve the worktree root (this CMakeLists lives at <root>/tests/unit/).
@@ -29,6 +36,8 @@ get_filename_component(MC2_WORKTREE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABS
 
 set_source_files_properties(${MC2_WORKTREE_ROOT}/RenderCore/KtxBasis.cpp PROPERTIES COMPILE_DEFINITIONS NDEBUG)  # vendored basisu asserts do not compile under clang
 add_executable(mc2_tests
+    test_net_session.cpp
+    ${MC2_WORKTREE_ROOT}/code/net/session.cpp
     test_fog_policy.cpp
     test_water_reactive.cpp
     test_fx_native.cpp
@@ -599,6 +608,7 @@ target_sources(vfx_lifecycle_tests PRIVATE
 set_source_files_properties("${MC2_WORKTREE_ROOT}/tools/vfx_oracle/lifecycle_platform.cpp"
     PROPERTIES COMPILE_DEFINITIONS "gos_particle_bridge_flush=vfx_test_unused_particle_bridge_flush")
 target_sources(mc2_tests PRIVATE test_vfx_frozen_driver.cpp)
+target_link_libraries(mc2_tests PRIVATE enet)
 target_sources(mc2_tests PRIVATE
     test_sim_rng.cpp test_tactical_order_queue.cpp test_mission_order_ingress.cpp test_authored_route.cpp
     test_command_replay.cpp test_tacorder_wire.cpp test_tactic_table.cpp
