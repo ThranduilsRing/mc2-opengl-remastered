@@ -60,6 +60,29 @@ struct Pixels {
 
 // Returns false (and leaves `px` empty) when the widget file is absent or undecodable.
 using WidgetLoader = std::function<bool(const Sheet& sheet, const Widget& widget, Pixels& px)>;
+// Stock menu paint spans amber through green in the source art. Share the
+// outer-chrome yellow (48 degrees HSV), retaining saturation, value and alpha.
+inline uint32_t menuYellow(uint32_t argb) {
+    const int r = (argb >> 16) & 255, g = (argb >> 8) & 255, b = argb & 255;
+    const int hi = r > g ? r : g, lo = r < g ? r : g;
+    const int chroma = hi - b;
+    if (b >= lo || chroma * 100 < hi * 35 ||
+        (g - b) * 100 < (r - b) * 10 || (r - b) * 100 < (g - b) * 67) return argb;
+    return (argb & 0xff000000u) | (static_cast<uint32_t>(hi) << 16) |
+           (static_cast<uint32_t>(b + (chroma * 4 + 2) / 5) << 8) | static_cast<uint32_t>(b);
+}
+
+// Animated tint supplies the button colour; warm neutral carrier texels would
+// multiply a second hue into it. Keep their authored shading as luminance.
+inline uint32_t menuTintCarrier(uint32_t argb) {
+    const int r = (argb >> 16) & 255, g = (argb >> 8) & 255, b = argb & 255;
+    if (r < g || g < b || (r - b) * 2 > r) return argb;
+    return (argb & 0xff000000u) | (static_cast<uint32_t>(r) * 0x010101u);
+}
+
+
+// Remove the baked matte only from stock main-menu/dialog chrome, preserving button wells.
+bool clearMenuMatte(std::string_view path, Pixels& px);
 
 // Pastes every widget at its rect. All-or-nothing: one missing or wrong-sized widget fails the whole sheet.
 bool composeSheet(const Sheet& sheet, const WidgetLoader& load, Pixels& out, std::string* err = nullptr);
@@ -76,6 +99,7 @@ inline bool insetChromeCrop(std::string_view path, bool pixelPerfect, bool legac
                             float u1, float v1, float u2, float v2) {
     if (pixelPerfect || legacySpace || (u1 == 0.f && v1 == 0.f && u2 == 1.f && v2 == 1.f)) return false;
     const auto key = sheetKeyFromPath(path);
+    if (key.starts_with("mcl_mm_")) return false; // continuous menu frame strips share authored edge samples
     return nineSlice || key.starts_with("mcl_") || key.starts_with("mcui_universal") || key.starts_with("mcui_mr_");
 }
 

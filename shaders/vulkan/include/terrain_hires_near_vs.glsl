@@ -8,30 +8,7 @@
 // Edges stitched to a coarser neighbour (edgeStitch byte Sc, in coarse units) are linear
 // between those corner heights, matching the neighbour's straight edge: no cracks.
 
-#include "terrain_cliff_surface.glsl"
-
-float hiresBlendW() { return clamp(uT.visualDisplaceFar, 0.0, 1.0); }
-
-// Map-border fade (fine coords): the bake's border rows do not follow the coarse map's
-// edge falloff, so the outermost 2 coarse cells ramp back to the coarse surface and the
-// border row is exactly coarse (no wall at the map edge). Mode-2 bands use the same
-// weight at their vertices, so corners shared with LOD0 still match.
-float hiresEdgeW(int fx, int fy) {
-    int maxF = (uT.mapSide - 1) * 4;
-    int d = min(min(fx, fy), min(maxF - fx, maxF - fy));
-    return clamp(float(d) * 0.125, 0.0, 1.0);
-}
-
-float hiresFineAt(int fx, int fy) {
-    return cliffVisualHeight(ivec2(fx, fy));
-}
-
-// Displaced height at a coarse vertex (what a mode-2 band draws there).
-float hiresCornerH(int cx, int cy) {
-    cx = clamp(cx, 0, uT.mapSide - 1);
-    cy = clamp(cy, 0, uT.mapSide - 1);
-    return mix(sampleH(cx, cy), hiresFineAt(cx * 4, cy * 4), hiresBlendW() * hiresEdgeW(cx * 4, cy * 4));
-}
+#include "terrain_visual_surface.glsl"
 
 float hiresNearHeight(ivec2 lo, bool stitch, out int fx, out int fy) {
     int maxF = (uT.mapSide - 1) * 4;
@@ -58,17 +35,7 @@ float hiresNearHeight(ivec2 lo, bool stitch, out int fx, out int fy) {
             return mix(hiresCornerH(cx, uP.blockOriginY + c0), hiresCornerH(cx, uP.blockOriginY + c1), t);
         }
     }
-    // Coarse surface under the vertex, TL-BR diagonal like the coarse patch triangulation
-    // (only matters when MC2_TERRAIN_VISUAL_DISPLACE_FAR < 1).
-    int   cx = min(fx / 4, uT.mapSide - 2);
-    int   cy = min(fy / 4, uT.mapSide - 2);
-    float u  = float(fx - cx * 4) * 0.25;
-    float v  = float(fy - cy * 4) * 0.25;
-    float h00 = sampleH(cx, cy), h10 = sampleH(cx + 1, cy);
-    float h01 = sampleH(cx, cy + 1), h11 = sampleH(cx + 1, cy + 1);
-    float hc = (v >= u) ? h00 + (h11 - h01) * u + (h01 - h00) * v
-                        : h00 + (h10 - h00) * u + (h11 - h10) * v;
-    return mix(hc, hiresFineAt(fx, fy), hiresBlendW() * hiresEdgeW(fx, fy));
+    return hiresSurfaceHeight(fx, fy);
 }
 
 // terrain-sse-lod-2 geomorph. uP.morph = 4x6-bit corner weights (NW bits 0-5, NE 6-11,

@@ -818,7 +818,7 @@ void MainMenu::render()
 {
     if (ImGui::GetCurrentContext()) ImGui::GetIO().MouseDrawCursor = true;
     if (!introMovie && !bOptions && !bDrawMechlopedia)
-        PlayerFrontEnd::drawMainMenu();
+        PlayerFrontEnd::drawMainMenu(bDrawBackground && !bLegal);
 	// UI-ASPECT-ANCHOR-1: front-end frame — draw the UI on the 16:9 canvas
 	// (re-asserted every frame; auto-cleared at flushHUDBatch).
 	gos_SetUiCanvasActive( true );

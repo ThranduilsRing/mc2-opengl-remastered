@@ -260,6 +260,7 @@ IMPORTED_STRUCTURE_PAYLOAD = [
 # runtime (both readers tolerate absence), but shipping without them silently
 # drops per-mission/material tuning that was authored assuming the file loads.
 GAME_DATA_PAYLOAD = [
+    "CREDITS.txt",
     "data/art/asset_sizes.csv",
     *[f"data/art/gui/mcl_cm_op{op}_{view}.tga"
       for op, count in ((1, 6), (2, 3), (3, 4)) for view in range(1, count + 1)],
@@ -1378,7 +1379,12 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
                 rel = os.path.relpath(path, src_root).replace(os.sep, "/")
                 items.append((path, rel, "support"))
 
-    # Portable community importer and its recipes/shims; no Win32 launcher needed.
+    # Portable community importer and docs; the batch launcher is Windows-only.
+    if not native:
+        items.append((os.path.join(src_root, "import-campaign.bat"), "import-campaign.bat", "support"))
+    for rel in ("tools/import_campaign.py", "docs/modding/IMPORT-CAMPAIGNS.md",
+                "docs/modding/campaign-import-status.md", "docs/modding/campaign-import-window.jpg"):
+        items.append((os.path.join(src_root, rel), rel, "support"))
     for tree in ("tools/mc2_import", "tools/mc2x_import", "tools/mco_import"):
         for directory, dirs, files in os.walk(os.path.join(src_root, tree)):
             dirs[:] = [d for d in dirs if d != "__pycache__"]
@@ -1401,7 +1407,20 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
             fail(f"game data payload missing in source: {p}")
         items.append((p, rel, "support"))
 
-    for path in sorted((Path(src_root) / "data/art").glob("mcl_mc_*.tga")):
+    # Intentional mip overrides must travel with their committed declarations.
+    import asset_parity
+    for rel, expected in asset_parity.intentional_changes(git_head(src_root), Path(src_root)).items():
+        if re.fullmatch(r"data/tgl/[0-9]+/[^/]+\.tga", rel):
+            p = os.path.join(src_root, rel)
+            # Historical declarations can live only in the published install;
+            # asset_parity still verifies those installed bytes after sync.
+            if not os.path.isfile(p):
+                continue
+            if require_build and sha256_file(p) != expected:
+                fail(f"declared mip asset missing or hash mismatch: {p}")
+            items.append((p, rel, "support"))
+
+    for path in sorted((Path(src_root) / "data/art").glob("mc2_component_*.tga")):
         items.append((str(path), path.relative_to(src_root).as_posix(), "support"))
     # MENU-PLANET-MODERN-1: main-menu backdrop (hi-res tiles + the fit that places them).
     for pat in ("mcl_menu_*.tga", "mcl_sp.fit"):
@@ -1678,8 +1697,19 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
         os.makedirs(os.path.dirname(dst) or target_dir, exist_ok=True)
         try:
             copy_started = time.perf_counter()
-            unlink_for_replace(dst)
-            if rel.endswith(".mcasset.json"):
+            if re.fullmatch(r"data/tgl/[0-9]+/[^/]+\.tga", rel.replace(os.sep, "/")):
+                temporary = None
+                try:
+                    with tempfile.NamedTemporaryFile(dir=os.path.dirname(dst), delete=False) as out:
+                        temporary = out.name
+                    shutil.copyfile(src, temporary)
+                    replace_file(temporary, dst)
+                finally:
+                    if temporary and os.path.exists(temporary):
+                        os.unlink(temporary)
+                copy_seconds += time.perf_counter() - copy_started
+            elif rel.endswith(".mcasset.json"):
+                unlink_for_replace(dst)
                 # Authored sidecars ship unchanged except for checkout line endings;
                 # mixed CRLF/LF copies must not change the pinned data fingerprint.
                 with open(src, "rb") as fh:
@@ -1688,6 +1718,7 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
                     fh.write(content)
                 copy_seconds += time.perf_counter() - copy_started
             else:
+                unlink_for_replace(dst)
                 shutil.copyfile(src, dst)
                 if kind == "exe" and os.name != "nt":
                     shutil.copymode(src, dst)

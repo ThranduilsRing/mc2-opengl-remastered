@@ -29,6 +29,7 @@ data/*
 !data/art/
 data/art/*
 !data/art/mcl_mc_*.tga
+!data/art/mc2_component_*.tga
 !data/defs/
 !data/hdr/
 !data/visual_tuning.json

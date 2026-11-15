@@ -262,13 +262,6 @@ void	ComponentListItem::update()
 
 		}
 		
-		if ( !bCanAdd )
-		{
-			if ( input::capture::startsWidgetDrag(userInput->isLeftDrag(),
-				pointInside(userInput->getMouseDragX(), userInput->getMouseDragY()) &&
-				ComponentIconListBox::s_instance->pointInside(userInput->getMouseDragX(), userInput->getMouseDragY())) )
-				startDrag();
-		}
 	}
 	else if ( isInside && !bCanAdd
 		&& ComponentIconListBox::s_instance->pointInside( userInput->getMouseX(), userInput->getMouseY() ))
@@ -324,6 +317,11 @@ void	ComponentListItem::update()
 		else
 			disabledText.setText( "" );
 	}
+
+	if (!bCanAdd && input::capture::startsWidgetDrag(userInput->isLeftDrag(),
+		pointInside(userInput->getMouseDragX(), userInput->getMouseDragY()) &&
+		ComponentIconListBox::s_instance->pointInside(userInput->getMouseDragX(), userInput->getMouseDragY())))
+		startDrag();
 
 	if ( userInput->isLeftDoubleClick() && isInside 
 		&& ComponentIconListBox::s_instance->pointInside( userInput->getMouseX(), userInput->getMouseY() ) )

@@ -1,8 +1,10 @@
 #include "PlayerFrontEnd.h"
+#include "GuiRuntime_internal.h"
 #include "PlayerOptionRows.h"
 #include "PlayerSettings.h"
 #include <map>
 #include "GraphicsOptionsWindow.h"
+#include "GuiRuntime_internal.h"
 #include "imgui.h"
 #include "gameos.hpp"
 #include "Gates/gate.h"
@@ -18,6 +20,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <optional>
 #include <utility>
 #ifdef _WIN32
@@ -33,9 +36,11 @@ using Json = nlohmann::json;
 bool (*saveRenderOptions)(const mc2::options::RenderOptions&) = nullptr;
 namespace {
 struct Pack {
-    std::string id, name, description, credits, kind, group;
+    std::string id, name, description, credits, author, kind, group;
     Json env = Json::object();
     bool enabled = false;
+    bool unrecognised = false;
+    std::map<std::string, CampaignInfo> campaigns;
 };
 Json settings = Json::object();
 std::vector<Pack> packs;
@@ -122,9 +127,22 @@ void scan() {
         const auto json = readJson(dir / "mod.json");
         Pack pack;
         pack.id = id;
-        pack.name = text(json, "name", id);
+        for (const auto& file : files(dir / "data" / "campaign")) {
+            if (file.extension() != ".fit") continue;
+            std::ifstream input(file);
+            const std::string source((std::istreambuf_iterator<char>(input)), {});
+            pack.campaigns.emplace(file.stem().string(), campaignInfo(source));
+        }
+        std::string fitTitle;
+        if (!pack.campaigns.empty()) {
+            const auto& [fit, info] = *pack.campaigns.begin();
+            fitTitle = info.title;
+        }
+        pack.name = campaignTitle(text(json, "name"), fitTitle, id);
+        pack.unrecognised = unrecognisedCampaign(text(json, "name"), !pack.campaigns.empty());
         pack.description = text(json, "description");
-        pack.credits = text(json, "credits", text(json, "author"));
+        pack.credits = text(json, "credits");
+        pack.author = text(json, "author");
         pack.kind = text(json, "type");
         pack.group = text(json, "radioGroup");
         if (json.contains("env") && json["env"].is_object()) pack.env = json["env"];
@@ -132,7 +150,7 @@ void scan() {
             bool playable = false;
             for (const auto& file : files(dir / "data" / "missions"))
                 playable |= file.extension() == ".fit";
-            pack.kind = id.find("-compat") != std::string::npos ? "dependency" : playable ? "campaign" : "assets";
+            pack.kind = id.find("-compat") != std::string::npos ? "dependency" : playable || !pack.campaigns.empty() ? "campaign" : "assets";
         }
         pack.enabled = contains(deps, id);
         if (pack.enabled && pack.kind == "dependency") base = id;
@@ -255,8 +273,52 @@ void loadSettings() {
 void requestCampaignStart(std::string fit) { pendingStart = std::move(fit); }
 std::string takeCampaignStart() { return std::exchange(pendingStart, {}); }
 
-void drawMainMenu() {
+static void drawCommunityCredits() {
+    const auto* vp = ImGui::GetMainViewport();
+    const float scale = std::clamp(vp->WorkSize.y / 1080.0f, 0.75f, 2.0f);
+    ImGui::PushFont(gui_runtime_detail::findUiFont("roboto", static_cast<int>(18 * scale)));
+    ImGui::SetNextWindowPos(ImVec2(vp->WorkPos.x + vp->WorkSize.x * 0.715f, vp->WorkPos.y + 280 * scale), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(vp->WorkSize.x * 0.27f, vp->WorkSize.y - 320 * scale), ImGuiCond_Always);
+    if (ImGui::Begin("Community", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings)) {
+        ImGui::PushTextWrapPos(0);
+        ImGui::TextUnformatted("Celebrating 25 years of MechCommander 2");
+        ImGui::Separator();
+        ImGui::TextUnformatted("For a quarter of a century, players and creators have kept the dropships flying. "
+            "Every mission shared, tool built and helping hand has given this game another home. Thank you for keeping MC2 alive.");
+        ImGui::Spacing();
+        ImGui::TextUnformatted("Two individuals in particular have kept this game alive for 25+ years:");
+        const auto openURL = ImGui::GetPlatformIO().Platform_OpenInShellFn;
+        ImGui::GetPlatformIO().Platform_OpenInShellFn = [](ImGuiContext*, auto url) { return SDL_OpenURL(url) == 0; };
+        ImGui::TextLinkOpenURL("Wolfman", "https://mc2x.net/");
+        ImGui::SameLine(); ImGui::TextUnformatted("and Magic,");
+        ImGui::TextUnformatted("supported by many, many others.");
+        ImGui::Spacing();
+        ImGui::TextUnformatted("A special thank-you to alariq for the OpenGL/Linux port that this project builds on.");
+        ImGui::TextLinkOpenURL("alariq's OpenGL/Linux port", "https://github.com/alariq/mc2");
+        ImGui::GetPlatformIO().Platform_OpenInShellFn = openURL;
+        ImGui::Spacing();
+        if (ImGui::CollapsingHeader("Credits", ImGuiTreeNodeFlags_DefaultOpen)) {
+            static const std::string credits = [] {
+                std::ifstream stream("CREDITS.txt", std::ios::binary);
+                return stream ? std::string(std::istreambuf_iterator<char>(stream), {}) : std::string("CREDITS.txt is missing from this installation.");
+            }();
+            if (ImGui::BeginChild("##credits", ImVec2(0, -ImGui::GetFrameHeightWithSpacing()), ImGuiChildFlags_Borders)) {
+                ImGui::PushTextWrapPos(0);
+                ImGui::TextUnformatted(credits.c_str());
+                ImGui::PopTextWrapPos();
+            }
+            ImGui::EndChild();
+        }
+        ImGui::TextUnformatted("Free forever.");
+        ImGui::PopTextWrapPos();
+    }
+    ImGui::End();
+    ImGui::PopFont();
+}
+
+void drawMainMenu(bool showCredits) {
     if (!ImGui::GetCurrentContext()) return;
+    if (showCredits) drawCommunityCredits();
     static bool bootScreen = false;
     if (!bootScreen) {
         const auto screen = mc2::gate::str<"MC2_BOOT_TO_SCREEN">();
@@ -273,8 +335,19 @@ void drawMainMenu() {
     ImGui::End();
     if (!pickerOpen) return;
     if (!scanned) scan();
-    ImGui::SetNextWindowSize(ImVec2(650, 580), ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("Campaigns & mods", &pickerOpen)) { ImGui::End(); return; }
+    const float scale = std::clamp(viewport->WorkSize.y / 1080.0f, 0.75f, 2.0f);
+    ImGui::PushFont(gui_runtime_detail::findUiFont("agency", static_cast<int>(22 * scale)));
+    const ImVec4 amber(0.94f, 0.66f, 0.24f, 1), dark(0.06f, 0.055f, 0.04f, 1), hover(0.34f, 0.24f, 0.10f, 1);
+    for (const auto col : {ImGuiCol_Text, ImGuiCol_CheckMark, ImGuiCol_SliderGrab, ImGuiCol_Border}) ImGui::PushStyleColor(col, amber);
+    for (const auto col : {ImGuiCol_WindowBg, ImGuiCol_ChildBg, ImGuiCol_PopupBg, ImGuiCol_FrameBg, ImGuiCol_TitleBg, ImGuiCol_TitleBgActive}) ImGui::PushStyleColor(col, dark);
+    for (const auto col : {ImGuiCol_Button, ImGuiCol_Header, ImGuiCol_FrameBgHovered, ImGuiCol_ButtonHovered, ImGuiCol_HeaderHovered, ImGuiCol_FrameBgActive, ImGuiCol_ButtonActive, ImGuiCol_HeaderActive}) ImGui::PushStyleColor(col, hover);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(22 * scale, 18 * scale));
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(14 * scale, 10 * scale));
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10 * scale, 6 * scale));
+    auto popPickerStyle = [] { ImGui::PopStyleVar(3); ImGui::PopStyleColor(18); ImGui::PopFont(); };
+    ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + viewport->WorkSize.x * 0.5f, viewport->WorkPos.y + viewport->WorkSize.y * 0.5f), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+    ImGui::SetNextWindowSizeConstraints(ImVec2(900 * scale, 0), ImVec2(900 * scale, viewport->WorkSize.y * 0.85f));
+    if (!ImGui::Begin("Campaigns & mods", &pickerOpen, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings)) { ImGui::End(); popPickerStyle(); return; }
     if (ImGui::Button("Refresh")) scan();
     ImGui::SameLine();
     ImGui::TextUnformatted("Installed community campaigns");
@@ -284,19 +357,58 @@ void drawMainMenu() {
         const auto fits = campaigns(id);
         campaignFit = fits.empty() ? "" : fits.front();
     };
-    if (ImGui::BeginListBox("##packs", ImVec2(-1, 125))) {
+    ImGui::BeginTable("##campaignLayout", 2, ImGuiTableFlags_SizingStretchProp);
+    ImGui::TableSetupColumn("Library", ImGuiTableColumnFlags_WidthFixed, 300 * scale);
+    ImGui::TableSetupColumn("Details");
+    ImGui::TableNextColumn();
+    ImGui::SeparatorText("CAMPAIGN LIBRARY");
+    if (ImGui::BeginListBox("##packs", ImVec2(-1, 275 * scale))) {
         if (ImGui::Selectable("Stock campaign", campaign.empty())) select("");
-        for (const auto& pack : packs)
-            if (pack.kind == "campaign" && ImGui::Selectable(pack.name.c_str(), campaign == pack.id)) select(pack.id);
+        for (const auto& pack : packs) {
+            ImGui::PushID(pack.id.c_str());
+            if (pack.kind == "campaign" && !pack.unrecognised && ImGui::Selectable(pack.name.c_str(), campaign == pack.id)) select(pack.id);
+            ImGui::PopID();
+        }
+        if (ImGui::TreeNode("Other / unrecognised folders")) {
+            for (auto& pack : packs) if (pack.unrecognised) {
+                ImGui::PushID(pack.id.c_str());
+                if (ImGui::Selectable(pack.name.c_str(), campaign == pack.id)) select(pack.id);
+                ImGui::PopID();
+            }
+            ImGui::TreePop();
+        }
         ImGui::EndListBox();
     }
+    ImGui::TableNextColumn();
+    if (campaign.empty()) { ImGui::SeparatorText("MechCommander 2"); ImGui::TextWrapped("The original campaign. Command your mercenary company through the Inner Sphere."); }
     for (const auto& pack : packs) if (pack.id == campaign) {
+        ImGui::SeparatorText(pack.name.c_str());
         ImGui::TextWrapped("%s", pack.description.c_str());
+        if (!pack.author.empty()) ImGui::TextWrapped("Author: %s", pack.author.c_str());
         if (!pack.credits.empty()) ImGui::TextWrapped("Credits: %s", pack.credits.c_str());
+        const auto fit = pack.campaigns.find(campaignFit);
+        if (fit != pack.campaigns.end()) {
+            const auto& [name, info] = *fit;
+            if (info.missions) ImGui::Text("Missions: %d", info.missions);
+        }
+        if (pack.unrecognised) ImGui::TextWrapped("Unrecognised folder: no named manifest or campaign FIT. Contents remain available as add-ons below.");
     }
-    if (ImGui::BeginCombo("Campaign", campaignFit.c_str())) {
-        for (const auto& fit : campaigns(campaign))
-            if (ImGui::Selectable(fit.c_str(), campaignFit == fit)) campaignFit = fit;
+    if (!base.empty()) ImGui::TextWrapped("Required base: %s", base.c_str());
+    if (!texture.empty()) ImGui::TextWrapped("Texture pack: %s", texture.c_str());
+    std::string selectedTitle = campaignFit;
+    for (const auto& pack : packs) if (pack.id == campaign && pack.campaigns.contains(campaignFit))
+        selectedTitle = campaignTitle("", pack.campaigns.at(campaignFit).title, campaignFit);
+    ImGui::SeparatorText("CAMPAIGN SETUP");
+    ImGui::PushItemWidth(235 * scale);
+    if (ImGui::BeginCombo("Campaign", selectedTitle.c_str())) {
+        for (const auto& fit : campaigns(campaign)) {
+            std::string label = fit;
+            for (const auto& pack : packs) if (pack.id == campaign && pack.campaigns.contains(fit))
+                label = campaignTitle("", pack.campaigns.at(fit).title, fit);
+            ImGui::PushID(fit.c_str());
+            if (ImGui::Selectable(label.c_str(), campaignFit == fit)) campaignFit = fit;
+            ImGui::PopID();
+        }
         ImGui::EndCombo();
     }
     if (ImGui::BeginCombo("Compatibility base", base.empty() ? "None" : base.c_str())) {
@@ -311,11 +423,14 @@ void drawMainMenu() {
             if (ImGui::Selectable(pack.name.c_str(), texture == pack.id)) texture = pack.id;
         ImGui::EndCombo();
     }
+    ImGui::PopItemWidth();
     if (ImGui::TreeNode("Add-ons")) {
         for (auto& pack : packs) if (pack.kind != "campaign" && pack.kind != "dependency" && pack.group != "texture-quality")
             ImGui::Checkbox(pack.name.c_str(), &pack.enabled);
         ImGui::TreePop();
     }
+    ImGui::EndTable();
+    ImGui::Separator();
     const auto deps = dependencies();
     const bool contentChanged = settingsChanged || campaign != env(mc2::gate::name<"MC2_ACTIVE_MOD">()).value_or("") || deps != env(mc2::gate::name<"MC2_MOD_DEPS">()).value_or("");
     const bool missingBase = !base.empty() && std::none_of(packs.begin(), packs.end(), [](const Pack& p) { return p.id == base; });
@@ -354,6 +469,7 @@ void drawMainMenu() {
     }
     if (!error.empty()) ImGui::TextWrapped("%s", error.c_str());
     ImGui::End();
+    popPickerStyle();
 }
 
 void drawOptions() {

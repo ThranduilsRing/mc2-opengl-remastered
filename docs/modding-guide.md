@@ -1,6 +1,10 @@
 <!-- doc-status: current | reviewed:2026-10-11 -->
 # MC2 OpenGL Modding Guide
 
+To play downloaded Magic, Omnitech or Wolfman campaigns, start with
+[Import community campaigns](modding/IMPORT-CAMPAIGNS.md) and the
+[campaign status table](modding/campaign-import-status.md).
+
 A practical guide to modifying the MechCommander 2 OpenGL renderer. Covers building, shader editing, texture upscaling, debug tools, and autonomous development workflows.
 
 ---

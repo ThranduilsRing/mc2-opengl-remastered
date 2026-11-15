@@ -20,6 +20,7 @@
 #include "../GameOS/gameos/utils/mc2log.h"
 #include "mc2fmt.h"
 #include "sim_render_hooks.h"
+#include "../mclib/unit_animation_tick.h"
 
 // FREEZE-MOVERS-1: ONE predicate for "the simulation tick is suspended".
 //
@@ -343,6 +344,9 @@ void Mission::updatePresentationOnly(bool moversOnly, float alpha) {
 	MisScope _ms(MS_PRESENT);
 	const float renderLength = frameLength;
 	mc2::sim::PresentationScope presentationScope;
+	// Camera/UI ran with render time; appearances, debris and VTOL effects share the pause clock.
+	frameLength = mc2::sim::presentationAnimationSeconds(renderLength,
+		(!MPlayer && mc2SimTickFrozen(missionInterface)) || mc2::observation::bridgePaused());
 	ObjectManager->setPresentationAlpha(alpha);
 	{ ZoneScopedN("GameLogic.Presentation.Appearances");
 	if (moversOnly)

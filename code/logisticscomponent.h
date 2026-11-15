@@ -46,7 +46,7 @@ class LogisticsComponent
 		inline int	getHelpID() const { return helpStringID; }
 		const char* getIconFileName() const;
 		bool hasLauncherIcon() const;
-		inline const char* getPictureFileName() const { return pictureFileName.get(); }
+		const char* getPictureFileName() const;
 		inline int		getComponentWidth() const { return iconX; }
 		inline int		getComponentHeight() const { return iconY; }
 		// MC2_ENGINE_XL: XL engines get a weight-class-dependent footprint + heat,

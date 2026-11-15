@@ -9,6 +9,8 @@ MechLabScreen.cpp			: Implementation of the MechLabScreen component.
 
 #include"mechlabscreen.h"
 #include <array>
+#include <string>
+#include <string_view>
 #include "Gates/gate.h"
 #include"inifile.h"
 #include"logisticsdata.h"
@@ -18,6 +20,7 @@ MechLabScreen.cpp			: Implementation of the MechLabScreen component.
 #include"platform_windows.h"
 #include "../resource.h"
 #include"logisticsdialog.h"
+#include "logisticserrors.h"
 #include<malloc.h>
 #include"gamesound.h"
 #include "../GameOS/gameos/vulkan_legacy_shape_island.h"
@@ -32,7 +35,17 @@ static bool cheatInfiniteMoney() { static const bool on = mc2::gate::get<"MC2_CH
 #include"../GuiRuntime/GuiRuntime.h"
 #include "mc2fmt.h"
 #include "mc2str.h"
+#include "component_rules.h"
 #include "../GameOS/gameos/input_capture_policy.h"
+
+static std::string dropRefusal;
+static float dropRefusalTime = 0.f;
+static bool dragCancelled = false;
+static void showDropRefusal(std::string_view reason)
+{
+	dropRefusal = reason;
+	dropRefusalTime = 3.5f;
+}
 
 MechLabScreen* MechLabScreen::s_instance = nullptr;
 namespace {
@@ -282,6 +295,8 @@ int MechLabScreen::init( FitIniFile& file )
 
 void MechLabScreen::begin()
 {
+	dropRefusalTime = 0.f;
+	dragCancelled = false;
 	previewPaused = false;
 	previewHeld = -1;
 	componentCount = 0;
@@ -457,6 +472,8 @@ void MechLabScreen::end()
 }
 void MechLabScreen::update()
 {
+	dropRefusalTime = std::max(0.f, dropRefusalTime - frameLength);
+	if (userInput->getMouseLeftButtonState() != MC2_MOUSE_DOWN) dragCancelled = false;
 	// Headless proof hook (MC2_SOAK_CHECK_SCREENS walk): open the SAVE VARIANT
 	// dialog once on the first mech lab update so the -5 capture shows it.
 	{
@@ -654,7 +671,7 @@ void MechLabScreen::update()
 	componentListBox.update();
 	int newSel = componentListBox.GetSelectedItem();
 
-	if ( oldSel != newSel  )
+	if ( oldSel != newSel && !pDragComponent )
 	{
 		if ( newSel != -1 )
 		{
@@ -740,16 +757,24 @@ void MechLabScreen::update()
 
 void MechLabScreen::updateDiagramInput()
 {
+	auto refuseRemoval = [this]() {
+		showDropRefusal("Not enough cooling: remove weapons first.");
+		soundSystem->playDigitalSample( LOG_WRONGBUTTON );
+	};
 	// Focus cancellation is not a drop; return a removed component to its slot.
-	if (pDragComponent && gos_GetKeyStatus(KEY_LMOUSE) == KEY_FREE) {
-		if (bDragLeft) {
+	if (pDragComponent && (gos_GetKeyStatus(KEY_LMOUSE) == KEY_FREE ||
+		userInput->isRightClick() || userInput->getKeyDown(KEY_ESCAPE))) {
+		if (mc2::components::restoreGridDrag(bDragLeft, false, false, true)) {
 			addComponent(pDragComponent, selI, selJ);
 			pSelectedComponent = pDragComponent;
 		}
 		pDragComponent = nullptr;
 		bDragLeft = false;
+		dragCancelled = true;
 		updateDiagram();
+		return;
 	}
+	if (dragCancelled) return;
 	long mouseX = userInput->getMouseX();
 	long mouseY = userInput->getMouseY();
 
@@ -867,7 +892,7 @@ void MechLabScreen::updateDiagramInput()
 			if (NO_ERR == pVariant->canAddComponent( pDragComponent, x, y )
 				&& x != -1 && y != -1 )
 			{
-				selRect->setColor( 0xffffffff );
+					selRect->setColor( 0xff40ff80 );
 			}
 			else
 				selRect->setColor( 0xffff0000 );			
@@ -881,19 +906,20 @@ void MechLabScreen::updateDiagramInput()
 			if ( i != -1 && j != -1 )
 			{
 				LogisticsComponent* pComp = pVariant->getCompAtLocation(i, j, selI, selJ ).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
-				if ( pComp && pComp == pSelectedComponent )
+				if ( pComp )
 				{
 					if ( canRemoveComponent( pComp ) )
 					{
 						componentListBox.SelectItem( -1 );
 						beginDrag( pComp );
+						pSelectedComponent = pComp;
 						bDragLeft = true;
 						removeComponent( i, j );
 						setComponent( pComp );
 						updateDiagram();
 					}
 					else
-						soundSystem->playDigitalSample( LOG_WRONGBUTTON );
+						refuseRemoval();
 				}
 				else
 					pSelectedComponent = nullptr;
@@ -920,7 +946,7 @@ void MechLabScreen::updateDiagramInput()
 							selectFirstLBComponent();				
 					}
 					else
-						soundSystem->playDigitalSample( LOG_WRONGBUTTON );
+						refuseRemoval();
 				}
 			}
 		
@@ -1084,7 +1110,8 @@ void MechLabScreen::render(int xOffset, int yOffset)
 	for (int i = 0; i < componentCount; i++ )
 		componentIcons[i].render(xOffset, yOffset);
 
-	if ( pSelectedComponent && pVariant )
+	// Selection and drag outlines share storage; only the drag owns it while held.
+	if ( pSelectedComponent && pVariant && !pDragComponent )
 	{
 		long i = selI;
 		long j = selJ;
@@ -1138,11 +1165,30 @@ void MechLabScreen::render(int xOffset, int yOffset)
 
 	if ( pDragComponent )
 	{
+		// Always composite above the defs page, including without a 3D preview.
+		aObject::beginGuiBridge( tbSx, tbSy, tbOx, tbOy );
 		dragIcon.moveTo( userInput->getMouseX() - dragIcon.width() / 2, 
 			userInput->getMouseY() - dragIcon.height() / 2 );
 		dragIcon.render();
 
-		selRect->render();		
+		const GUI_RECT footprint = {static_cast<long>(dragIcon.left()), static_cast<long>(dragIcon.top()),
+			static_cast<long>(dragIcon.right()), static_cast<long>(dragIcon.bottom())};
+		drawEmptyRect(footprint, 0xffffffff, 0xffffffff);
+		if (rects[13].pointInside(userInput->getMouseX(), userInput->getMouseY()))
+		{
+			const GUI_RECT target = {static_cast<long>(selRect->left()), static_cast<long>(selRect->top()),
+				static_cast<long>(selRect->right()), static_cast<long>(selRect->bottom())};
+			drawEmptyRect(target, selRect->getColor(), selRect->getColor());
+		}
+		aObject::endGuiBridge();
+	}
+	if (dropRefusalTime > 0.f)
+	{
+		GuiRuntime::DrawUiRect(145.f * tbSx + tbOx, 540.f * tbSy + tbOy,
+			510.f * tbSx, 48.f * tbSy, 0xff15212c, true);
+		GuiRuntime::DrawUiText(150.f * tbSx + tbOx, 546.f * tbSy + tbOy,
+			500.f * tbSx, 40.f * tbSy, dropRefusal.c_str(), 0xffffc060,
+			static_cast<int>(16.f * tbSy), 0, "");
 	}
 
 
@@ -1751,7 +1797,7 @@ int MechLabScreen::addComponent( LogisticsComponent* pComponent, long& x, long& 
 
 void MechLabScreen::beginDrag( LogisticsComponent* pComponent )
 {
-	if ( !pDragComponent )
+	if ( !pDragComponent && !dragCancelled )
 	{
 		pDragComponent = pComponent;
 
@@ -1799,29 +1845,21 @@ void MechLabScreen::endDrag( )
 		// use selRect, it already has proper coords
 		getMouseDiagramCoords( selRect->left(), selRect->top(), x, y );
 		
-		if ( x == -2 && pDragComponent->getType() == COMPONENT_FORM_JUMPJET )
-		{
-			x = -2; 
-			y = -2;
-			addComponent( pDragComponent, x, y );				
-		}
-		else
-		{
-			if ( NO_ERR == addComponent( pDragComponent, x, y) )
-			{
-				componentListBox.SelectItem( -1 );
-				selI = x;
-				selJ = y;
-				pSelectedComponent = pDragComponent;
-			}
-			if ( bDragLeft ) // put it bag, if we didn't drag far enough away
-			{
-				if ( NO_ERR == addComponent( pDragComponent, selI, selJ) )
-				{
-					componentListBox.SelectItem( -1 );
-					pSelectedComponent = pDragComponent;
+		if ( mc2::components::finishGridDrop(x, y, bDragLeft, selI, selJ,
+			[this](long& i, long& j) {
+				const int result = addComponent(pDragComponent, i, j);
+				if (result != NO_ERR) {
+					showDropRefusal(result == COMPONENT_TOO_HOT
+						? "Not enough cooling for this component."
+						: "Component cannot fit here: choose a free valid slot.");
 				}
-			}
+				return result;
+			}) )
+		{
+			componentListBox.SelectItem( -1 );
+			selI = x;
+			selJ = y;
+			pSelectedComponent = pDragComponent;
 		}
 
 		updateDiagram();
@@ -1829,6 +1867,12 @@ void MechLabScreen::endDrag( )
 	}
 	else
 	{
+		if (mc2::components::restoreGridDrag(bDragLeft, false,
+			componentListBox.pointInside(mouseX, mouseY), false))
+		{
+			addComponent(pDragComponent, selI, selJ);
+			pSelectedComponent = pDragComponent;
+		}
 		if ( -1 == componentListBox.GetSelectedItem() )
 		{
 			if ( -1 == selI )
@@ -2076,7 +2120,8 @@ bool MechLabScreen::canRemoveComponent( LogisticsComponent* pComp )
 {
 	if ( pComp && pComp->getType() == COMPONENT_FORM_HEATSINK )
 	{
-		if ( pVariant->getMaxHeat() - pComp->getDamage() < pVariant->getHeat() )
+		if ( !mc2::components::coolingAllowsRemoval(pVariant->getMaxHeat(),
+			pComp->getDamage(), pVariant->getHeat()) )
 			return 0;
 	}
 
