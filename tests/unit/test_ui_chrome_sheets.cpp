@@ -292,3 +292,30 @@ TEST_CASE("ui_chrome checked-in data/art/ui manifest: every widget file exists a
         }
     CHECK(widgets > 1000);
 }
+
+TEST_CASE("ui_chrome credits parse into collapsible per-source sections") {
+    // Trigger path: PlayerFrontEnd drawCommunityCredits (owner 11-15: collapsible by source).
+    const auto doc = mc2::ui_chrome::parseCredits(
+        "MECHCOMMANDER 2 - COMMUNITY CREDITS\r\n\r\nIntro line.\n\nS001 - CREDITS.BIK\n\nMitch Gitelman - Producer [S001]\n\n"
+        "S002 - wolfman-MC2X-TCE Readme.pdf\n\nWolfman - MC2X core [S002, S003]\n\nSOURCE TABLE - file -> count\nS001 | CREDITS.BIK -> 214\n\n"
+        "COMMUNITY LINKS\nWolfman: https://mc2x.net/\n\nFree forever.\n");
+    CHECK(doc.preamble == "MECHCOMMANDER 2 - COMMUNITY CREDITS\n\nIntro line.\n");
+    REQUIRE(doc.sections.size() == 4);
+    CHECK(doc.sections[0].title == "MechCommander 2 - original game credits");
+    CHECK(doc.sections[0].body == "Mitch Gitelman - Producer\n");
+    CHECK(doc.sections[1].title == "wolfman-MC2X-TCE Readme.pdf");
+    CHECK(doc.sections[1].body == "Wolfman - MC2X core [S002, S003]\n");
+    CHECK(doc.sections[2].title == "Source table");
+    CHECK(doc.sections[3].title == "Community links");
+    CHECK(doc.sections[3].body.find("Free forever.") == std::string::npos);
+}
+
+TEST_CASE("ui_chrome shipped credits have one section per source") {
+    std::ifstream input(std::filesystem::path(MC2_REPO_ROOT) / "CREDITS.txt", std::ios::binary);
+    REQUIRE(input.good());
+    const auto doc = mc2::ui_chrome::parseCredits(std::string(std::istreambuf_iterator<char>(input), {}));
+    REQUIRE(doc.sections.size() >= 3);
+    CHECK(doc.sections.front().title == "MechCommander 2 - original game credits");
+    CHECK(doc.sections.front().body.find("[S001]") == std::string::npos);
+    for (const auto& s : doc.sections) { INFO(s.title); CHECK(!s.title.empty()); CHECK(!s.body.empty()); }
+}

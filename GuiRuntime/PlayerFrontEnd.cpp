@@ -309,11 +309,19 @@ static void drawCommunityCredits() {
         ImGui::Spacing();
         ImGui::SeparatorText("Credits");
         {
-            static const std::string credits = [] {
+            // Owner 11-15: one collapsible header per credits source, collapsed by default.
+            static const mc2::ui_chrome::CreditsDoc credits = [] {
                 std::ifstream stream("CREDITS.txt", std::ios::binary);
-                return stream ? std::string(std::istreambuf_iterator<char>(stream), {}) : std::string("CREDITS.txt is missing from this installation.");
+                return mc2::ui_chrome::parseCredits(stream ? std::string(std::istreambuf_iterator<char>(stream), {})
+                                                           : std::string("CREDITS.txt is missing from this installation."));
             }();
-            ImGui::TextUnformatted(credits.c_str());
+            ImGui::TextUnformatted(credits.preamble.c_str());
+            for (size_t i = 0; i < credits.sections.size(); ++i) {
+                ImGui::PushID(static_cast<int>(i));
+                if (ImGui::CollapsingHeader(credits.sections[i].title.c_str()))
+                    ImGui::TextUnformatted(credits.sections[i].body.c_str());
+                ImGui::PopID();
+            }
         }
         ImGui::TextUnformatted("Free forever.");
         ImGui::PopTextWrapPos();
