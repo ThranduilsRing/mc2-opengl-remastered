@@ -118,8 +118,10 @@ bool clearMenuMatte(std::string_view path, Pixels& px) {
         std::copy_n(px.data.data() + src, 3, rgba.data() + dst);
         const int value = std::max({rgba[dst], rgba[dst + 1], rgba[dst + 2]});
         if (menu || frame) {
-            const auto paint = menuYellow((static_cast<uint32_t>(rgba[dst]) << 16) |
-                                         (static_cast<uint32_t>(rgba[dst + 1]) << 8) | rgba[dst + 2]);
+            auto paint = (static_cast<uint32_t>(rgba[dst]) << 16) |
+                         (static_cast<uint32_t>(rgba[dst + 1]) << 8) | rgba[dst + 2];
+            if (key == "mcl_mm_12") paint = menuTintCarrier(paint);
+            paint = menuYellow(paint);
             rgba[dst] = static_cast<uint8_t>(paint >> 16);
             rgba[dst + 1] = static_cast<uint8_t>(paint >> 8);
             rgba[dst + 2] = static_cast<uint8_t>(paint);

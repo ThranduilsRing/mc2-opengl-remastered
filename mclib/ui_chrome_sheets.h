@@ -67,9 +67,17 @@ inline uint32_t menuYellow(uint32_t argb) {
     const int hi = r > g ? r : g, lo = r < g ? r : g;
     const int chroma = hi - b;
     if (b >= lo || chroma * 100 < hi * 35 ||
-        (g - b) * 100 < (r - b) * 28 || (r - b) * 100 < (g - b) * 67) return argb;
+        (g - b) * 100 < (r - b) * 10 || (r - b) * 100 < (g - b) * 67) return argb;
     return (argb & 0xff000000u) | (static_cast<uint32_t>(hi) << 16) |
            (static_cast<uint32_t>(b + (chroma * 4 + 2) / 5) << 8) | static_cast<uint32_t>(b);
+}
+
+// Animated tint supplies the button colour; warm neutral carrier texels would
+// multiply a second hue into it. Keep their authored shading as luminance.
+inline uint32_t menuTintCarrier(uint32_t argb) {
+    const int r = (argb >> 16) & 255, g = (argb >> 8) & 255, b = argb & 255;
+    if (r < g || g < b || (r - b) * 2 > r) return argb;
+    return (argb & 0xff000000u) | (static_cast<uint32_t>(r) * 0x010101u);
 }
 
 
