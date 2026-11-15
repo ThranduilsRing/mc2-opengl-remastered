@@ -200,3 +200,56 @@ def test_lane_install_build_checks_the_seed_before_building(tmp_path, monkeypatc
         iso.main(["--from", str(src), "--to", str(tmp_path / "lane")])
     assert seen == [("seed", src.resolve())]           # failed before the seed was even verified, nothing built
     assert not (tmp_path / "lane").exists()
+
+
+@pytest.mark.parametrize("after_deploy", [False, True])
+def test_payload_refresh_after_game_and_editor_preserves_old_hardlinks(tmp_path, monkeypatch, after_deploy):
+    # Trigger paths: scripts/seed_parity.py, scripts/deploy_payload.py.
+    import deploy_payload as dp
+    monkeypatch.setattr(dp, "ensure_terrain_materials", lambda target: {})
+    monkeypatch.setattr(dp, "ensure_engine_normal_cooks", lambda target: None)
+    payload = {"mc2.exe": b"new game", "mc2.pdb": b"symbols", "runtime.dll": b"dll",
+               "shaders/vulkan/main.spv": b"shader", "EditRel.exe": b"editor"}
+    source = tree(tmp_path / "build", payload)
+    ref = tree(tmp_path / "v04", {"options.cfg": b"new options"})
+    for names in (("mc2.exe", "mc2.pdb", "runtime.dll", "shaders/vulkan/main.spv"),
+                  ("EditRel.exe", "runtime.dll", "shaders/vulkan/main.spv")):
+        items = [(str(source / rel), rel, "pdb" if rel.endswith(".pdb") else "exe") for rel in names]
+        hashes = dp.deploy(items, str(ref), False, full_verify=True)
+        dp.write_manifest(str(ref), hashes, "fixture")
+    assert set(dp.read_manifest(ref)) == set(payload)
+    seed = tree(tmp_path / "seed", {"mc2.exe": b"old game", ".deployed_manifest.csv": b"old manifest"})
+    old = tmp_path / "old-lane"
+    old.mkdir()
+    for rel in ("mc2.exe", ".deployed_manifest.csv"):
+        os.link(seed / rel, old / rel)
+    before = {p: p.read_bytes() for p in ref.rglob("*") if p.is_file()}
+    assert sp.main(["--ref", str(ref), "--refresh-seed", str(seed), "--dry-run"]) == 0
+    assert (seed / "mc2.exe").read_bytes() == b"old game"
+    assert not (seed / sp.SNAPSHOT_NAME).exists()
+    if after_deploy:
+        assert sp.after_v04_deploy(ref, seed, ref)
+    else:
+        assert sp.main(["--ref", str(ref), "--refresh-seed", str(seed)]) == 0
+    assert all((seed / rel).read_bytes() == data for rel, data in payload.items())
+    assert (seed / ".deployed_manifest.csv").read_bytes() == (ref / ".deployed_manifest.csv").read_bytes()
+    assert (old / "mc2.exe").read_bytes() == b"old game"
+    assert (old / ".deployed_manifest.csv").read_bytes() == b"old manifest"
+    assert before == {p: p.read_bytes() for p in ref.rglob("*") if p.is_file()}
+    assert sp.refresh_seed(seed, ref) == 0
+    sp.require_seed(seed)
+
+
+def test_failed_atomic_copy_keeps_seed_file_and_cleans_temp(tmp_path, monkeypatch):
+    # Trigger path: scripts/seed_parity.py.
+    source = tree(tmp_path / "ref", {"mc2.exe": b"new"})
+    seed = tree(tmp_path / "seed", {"mc2.exe": b"old"})
+    os.link(seed / "mc2.exe", tmp_path / "old-exe")
+    def failed_replace(src, dst):
+        assert (seed / "mc2.exe").read_bytes() == b"old"
+        raise OSError("replace failed")
+    monkeypatch.setattr(sp.os, "replace", failed_replace)
+    with pytest.raises(OSError, match="replace failed"):
+        sp._atomic_copy(source / "mc2.exe", seed / "mc2.exe")
+    assert (seed / "mc2.exe").read_bytes() == (tmp_path / "old-exe").read_bytes() == b"old"
+    assert list(seed.iterdir()) == [seed / "mc2.exe"]
