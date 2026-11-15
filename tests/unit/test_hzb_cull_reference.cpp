@@ -119,14 +119,14 @@ TEST_CASE("hzb ref: straddling the near plane keeps the whole object") {
 }
 
 TEST_CASE("hzb ref: wholly clipped depth rejects without an occluder") {
-    Pyramid py(0.9f);
+    Pyramid py(0.0f);
     CHECK(hidden(project(boxNdc(0, 0.1f, 0, 0.1f, 60.0f, 60.0f)), py));
     CHECK(hidden(project(boxNdc(0, 0.1f, 0, 0.1f, -60.0f, -60.0f)), py));
     CHECK(project(boxNdc(0, .1f, 0, .1f, 49, 60)).keep == 1); // intersects near
     CHECK(project(boxNdc(0, .1f, 0, .1f, -60, -49)).keep == 1); // intersects far
     Mat behind = flatMatrix(); behind.m[15] = -1;
     CHECK(hidden(project(boxNdc(0, .1f, 0, .1f), behind), py));
-    CHECK(project(boxNdc(0, .1f, 0, .1f, 60, 60), flatMatrix(), -.2f).keep == 0); // bias restores visible depth
+    CHECK_FALSE(hidden(project(boxNdc(0, .1f, 0, .1f, 60, 60), flatMatrix(), -.2f), py)); // bias restores visibility
     auto inst = identityInstance(); inst.flags = 4u;
     const mc2hzb::PropBounds bounds[] = {boxNdc(0, .1f, 0, .1f, 50.5f, 50.5f)};
     auto m = flatMatrix(); m.m[2] = .01f; // leaf sway projects onto clip depth
