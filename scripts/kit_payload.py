@@ -596,7 +596,40 @@ def _link_or_copy(src, dst):
         pending.unlink(missing_ok=True)
 
 
-def finish(target_dir, manifest, tool, cooker=subprocess.run, *, kit_rel=KIT_REL, importer_key=None, cache_root=None):
+def finish_trees(target_dir, tool, cooker=subprocess.run, *, importer_key=None):
+    """Prewarm the native recipes for loose tree overrides after asset synchronization."""
+    target = Path(target_dir)
+    root = target / "data/model_overrides"
+    registry = root / "models.json"
+    if not registry.is_file():
+        return
+
+    def sources(value):
+        if isinstance(value, dict):
+            for key, child in value.items():
+                if key == "source" and isinstance(child, str) and child.endswith(".glb"):
+                    yield child
+                else:
+                    yield from sources(child)
+        elif isinstance(value, list):
+            for child in value:
+                yield from sources(child)
+
+    paths = set()
+    for record in json.loads(registry.read_text())["overrides"]:
+        if record.get("replaces", "").startswith("tree:") and record.get("materials"):
+            paths.update(sources(record))
+    if paths:
+        rows = []
+        for rel in sorted(paths):
+            path = contained_path(root.resolve(), rel)
+            rows.append(dict(path=rel, bytes=path.stat().st_size, sha256=sha(path)))
+        finish(target, dict(files=rows), tool, cooker, kit_rel=Path("data/model_overrides"),
+               importer_key=importer_key, receipt_name="trees-cook.json", exact_files=False)
+
+
+def finish(target_dir, manifest, tool, cooker=subprocess.run, *, kit_rel=KIT_REL, importer_key=None, cache_root=None,
+           receipt_name=None, exact_files=True):
     """Verify installed sources and bring cache/content-model up to date, cooking only models with no valid recipe.
 
     Recipes are keyed per model: sha256(GLB) + importer version (importer source closure + import args).
@@ -606,7 +639,7 @@ def finish(target_dir, manifest, tool, cooker=subprocess.run, *, kit_rel=KIT_REL
     kit = target / kit_rel
     hashes = HashReceipts(target / '.deploy-receipts.json')
     paths = checked_files(kit, manifest["files"], hashes)
-    extra = {p.relative_to(kit).as_posix() for p in kit.rglob("*") if p.is_file()}
+    extra = {p.relative_to(kit).as_posix() for p in kit.rglob("*") if p.is_file()} if exact_files else set()
     extra -= paths | {".modindex-cache"}
     if extra:
         files = ", ".join(str(kit / rel) for rel in sorted(extra))
@@ -617,7 +650,7 @@ def finish(target_dir, manifest, tool, cooker=subprocess.run, *, kit_rel=KIT_REL
     version = hashlib.sha256(((importer_key or hashes.digest(tool)) + json.dumps(IMPORT_ARGS)).encode()).hexdigest()
     cache = target / "cache/content-model"
     cache.mkdir(parents=True, exist_ok=True)
-    receipt = cache / ("industrial-cook.json" if kit_rel == KIT_REL else "vehicle-cook.json")
+    receipt = cache / (receipt_name or ("industrial-cook.json" if kit_rel == KIT_REL else "vehicle-cook.json"))
     cache_root = Path(cache_root) if cache_root else cook_cache_root()
     shared_root = cache_root / "models" / version[:16]
     shared_root.mkdir(parents=True, exist_ok=True)
