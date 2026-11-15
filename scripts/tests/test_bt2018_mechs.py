@@ -421,6 +421,10 @@ def test_cold_logistics_pack_equipment_precedes_variants(tables):
     assert 'ModCapabilityMounted("equipment_add")' in init
     assert 'readIdFloat("BaseSensorRange", sensorRange)' in init
     assert "equipmentAdd && !MasterComponent::masterList" in init
+    engine = (REPO / "code/equipment_registry_engine.cpp").read_text(encoding="utf-8")
+    enable = engine.split("size_t applyEquipmentEnableWireIfEnabled(", 1)[1].split("return forced;", 1)[0]
+    assert 'ModCapabilityMounted("equipment_add")' in enable
+    assert '!legacyGate && !ModOwnerHasCapability(path, "equipment_add")' in enable
     wm, _ = tables
     stock = {int(k) for k in wm["stock_components"] if not k.startswith("_")}
     added = {v["ordinal"] for v in wm["pack_equipment"].values() if isinstance(v, dict)}

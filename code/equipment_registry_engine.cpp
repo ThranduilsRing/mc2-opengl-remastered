@@ -324,7 +324,9 @@ size_t overlayGeneratedEquipmentStatsIfEnabled() {
 // equipmentEnableWireShouldForce() in equipment_registry.h (doctest-covered).
 // Returns the number of ordinals newly forced available.
 size_t applyEquipmentEnableWireIfEnabled(bool* available, long availableCount) {
-    if (!mc2UnitProfileDataEnabled())     // gate OFF (default) -> no-op
+    const bool legacyGate = mc2UnitProfileDataEnabled();
+    if (!legacyGate && (!ModCapabilityMounted("equipment_add") ||
+        mc2::gate::state<"MC2_EQUIPMENT_ADD">() == mc2::gate::Tri::Off))
         return 0;
     if (!available || availableCount <= 0)
         return 0;
@@ -348,6 +350,9 @@ size_t applyEquipmentEnableWireIfEnabled(bool* available, long availableCount) {
         // data/defs/equipment/<ns>/<slug>/ -- core rows resolve as before).
         std::string pathStr = equipmentDefPathForQualifiedId(e.qualifiedId);
         const char* path = pathStr.c_str();
+        // Package availability follows the same ownership boundary as ADD fill.
+        if (!legacyGate && !ModOwnerHasCapability(path, "equipment_add"))
+            continue;
         if (!fileExists(const_cast<char*>(path)))     // no def -> purchase.fit verdict stands
             continue;
 
