@@ -5,8 +5,45 @@
 #include "../3rdparty/include/nlohmann/json.hpp"
 #include <charconv>
 #include <cctype>
+#include <algorithm>
 
 namespace PlayerFrontEnd {
+inline bool contains(std::string_view list, std::string_view id) {
+    std::size_t start = 0;
+    while (start < list.size()) {
+        const auto end = list.find_first_of(",;", start);
+        if (list.substr(start, end - start) == id) return true;
+        if (end == std::string::npos) break;
+        start = end + 1;
+    }
+    return false;
+}
+inline bool packToggleAllowed(bool enabled, std::string_view problem) { return enabled || problem.empty(); }
+inline bool packSelected(std::string_view id, std::string_view campaign, std::string_view deps) {
+    return id == campaign || contains(deps, id);
+}
+template<class Packs>
+std::string pickerDependencies(const Packs& packs, std::string_view campaign, std::string_view base, std::string_view texture) {
+    std::string deps;
+    auto append = [&](std::string_view id) { if (id.empty() || contains(deps, id)) return; if (!deps.empty()) deps += ','; deps += id; };
+    for (const auto& pack : packs)
+        if (pack.enabled && pack.id != campaign && pack.kind != "campaign" && pack.kind != "dependency" && pack.group != "texture-quality") append(pack.id);
+    append(texture);
+    append(base);
+    for (const auto& pack : packs) if (pack.enabled || pack.id == campaign)
+        for (const auto& dependency : pack.dependencies) append(dependency);
+    return deps;
+}
+inline std::string savedDependencies(const nlohmann::json& settings) {
+    auto deps = settings.value("last_addons", std::string{});
+    for (const auto* key : {"tex_pack_mod", "last_base"}) {
+        const auto id = settings.value(key, std::string{});
+        if (id.empty() || contains(deps, id)) continue;
+        if (!deps.empty()) deps += ',';
+        deps += id;
+    }
+    return deps;
+}
 struct CampaignInfo {
     std::string title;
     int missions = 0;
@@ -41,6 +78,30 @@ inline std::string campaignTitle(std::string_view name, std::string_view fitTitl
 }
 inline bool unrecognisedCampaign(std::string_view name, bool hasCampaignFit) {
     return name.empty() && !hasCampaignFit;
+}
+inline std::string packKind(std::string_view declared, std::string_view id, bool campaign, bool missions) {
+    if (!declared.empty()) return std::string(declared);
+    if (id.find("-compat") != std::string_view::npos) return "dependency";
+    return campaign || missions ? "campaign" : "assets";
+}
+inline std::string packProblem(const nlohmann::json& manifest, bool manifestExists, bool hasData,
+                               bool hasArchives, std::string_view id) {
+    if (id.find_first_of(",;") != std::string_view::npos) return "Folder name contains a dependency separator; rename it.";
+    if (!hasData) return "No data/ folder; import the extracted campaign folder first.";
+    if (manifestExists && !manifest.is_object()) return "Invalid mod.json: expected a JSON object.";
+    for (const auto* key : {"id", "name", "type"})
+        if (manifest.contains(key) && !manifest[key].is_string()) return std::string("Invalid mod.json: ") + key + " must be text.";
+    if (manifest.contains("id") && manifest["id"].get<std::string>() != id)
+        return "Manifest id differs from folder name; rename the folder to match its id.";
+    if (manifest.contains("type")) {
+        const auto type = manifest["type"].get<std::string>();
+        if (type != "campaign" && type != "assets" && type != "dependency") return "Unsupported mod.json type; use campaign, assets or dependency.";
+    }
+    if (manifest.contains("dependencies") && (!manifest["dependencies"].is_array() ||
+        std::any_of(manifest["dependencies"].begin(), manifest["dependencies"].end(), [](const auto& v) { return !v.is_string(); })))
+        return "Invalid mod.json: dependencies must be a list of folder names.";
+    if (hasArchives) return "Legacy FST install: import this folder with Import community campaigns before playing.";
+    return {};
 }
 // Drop retired/unknown environment names even when their old value is invalid.
 inline void migrateLegacySettings(nlohmann::json& settings, std::string& cfg) {

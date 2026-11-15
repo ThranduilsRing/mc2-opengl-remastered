@@ -10,5 +10,6 @@ void drawMainMenu(bool showCredits);
 void drawOptions();
 void requestCampaignStart(std::string fit);
 std::string takeCampaignStart();
+std::string takeMissionStart();
 int restartIfRequested(int argc, char** argv);
 }

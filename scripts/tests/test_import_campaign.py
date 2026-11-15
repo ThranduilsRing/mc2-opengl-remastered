@@ -64,6 +64,17 @@ def test_unsafe_zip_rejected(sample, tmp_path, name):
     assert not list((deploy / "mods").glob(".campaign-import-*"))
 
 
+def test_import_existing_raw_mod_folder_without_changing_source(sample):
+    source, deploy = sample
+    raw = deploy / "mods" / "mcosetup628(1)"
+    source.rename(raw)
+    before = imp.digest(imp.source_files(raw))
+    result = imp.import_campaign(raw, deploy)
+    assert result["status"] == "installed"
+    assert (deploy / "mods" / result["mod"] / "mod.json").is_file()
+    assert imp.digest(imp.source_files(raw)) == before
+
+
 def test_incomplete_and_wrong_folder(sample):
     source, deploy = sample
     (source / "data/missions/demo01.pak").unlink()
@@ -360,3 +371,82 @@ def test_imported_id_resolves_legacy_manifest_without_changing_stock(sample):
 def test_batch_preserves_callers_relative_source_directory():
     batch = (ROOT / "import-campaign.bat").read_text().lower()
     assert "cd /d" not in batch and "pushd" not in batch
+
+
+def test_auto_detects_base_before_addons_and_skips_managed(sample, monkeypatch):
+    source, deploy = sample
+    raw = deploy / "mods/z-omnitech"
+    source.rename(raw)
+    (raw / "art.fst").touch()
+    addon = deploy / "mods/a-desertfox"
+    imp.shutil.copytree(raw, addon)
+    (addon / "art.fst").unlink()
+    managed = deploy / "mods/managed"
+    imp.shutil.copytree(addon, managed)
+    (managed / "mod.json").write_text('{}')
+    calls = []
+    def convert(path, game):
+        calls.append(path.name)
+        return {"status": "installed", "mod": path.name + "-converted"}
+    monkeypatch.setattr(imp, "import_campaign", convert)
+    state = imp.auto_import(deploy)
+    assert calls == [raw.name, addon.name]
+    assert not state["running"] and "complete" in state["message"]
+    assert (raw / "data/campaign/demo.fit").is_file()
+    assert not (raw / "mod.json").exists()
+
+
+def test_auto_restart_skips_import_and_changed_stamp_reruns(sample, monkeypatch):
+    source, deploy = sample
+    raw = deploy / "mods/exodus"
+    source.rename(raw)
+    result = imp.auto_import(deploy)
+    target = deploy / "mods" / result["sources"][raw.name]["mod"]
+    receipt = (target / ".campaign-import.json").read_bytes()
+    calls = []
+    monkeypatch.setattr(imp, "import_campaign", lambda *args: calls.append(args) or {"status": "installed", "mod": target.name})
+    imp.auto_import(deploy)
+    assert not calls
+    assert (target / ".campaign-import.json").read_bytes() == receipt
+    (raw / "data/missions/demo01.fit").write_bytes(b'FITini\nObjectNumber = 13')
+    imp.auto_import(deploy)
+    assert len(calls) == 1
+
+
+def test_auto_exact_error_persisted_and_retried(sample, monkeypatch, capsys):
+    source, deploy = sample
+    raw = deploy / "mods/exodus"
+    source.rename(raw)
+    calls = []
+    def fail(*args):
+        calls.append(args)
+        print("missing authored object data/objects/example.fit", file=sys.stderr)
+        raise SystemExit(7)
+    monkeypatch.setattr(imp, "import_campaign", fail)
+    state = imp.auto_import(deploy)
+    error = state["sources"][raw.name]["error"]
+    assert "7" in error and "data/objects/example.fit" in error
+    assert json.loads((deploy / "mods/.campaign-auto.json").read_text())["sources"][raw.name]["error"] == error
+    assert imp.auto_import(deploy)["sources"][raw.name]["error"] == error
+    assert len(calls) == 2
+
+
+def test_auto_real_converter_retries_after_base_appears_and_reaps_staging(sample):
+    source, deploy = sample
+    raw = deploy / "mods/exodus"
+    source.rename(raw)
+    compat = deploy / "mods/mc2x-compat/data"
+    imp.shutil.rmtree(compat)
+    stale = deploy / "mods/.campaign-import-interrupted/data"
+    stale.mkdir(parents=True)
+    leftover = stale / "readonly.fit"
+    leftover.write_text("interrupted output")
+    leftover.chmod(0o400)
+    first = imp.auto_import(deploy)["sources"][raw.name]
+    assert "Missing mc2x-compat" in first["error"]
+    assert not stale.parent.exists()
+    compat.mkdir(parents=True)
+    second = imp.auto_import(deploy)["sources"][raw.name]
+    assert first["stamp"] == second["stamp"]
+    assert second["status"] == "installed" and "error" not in second
+    assert second["import_seconds"] >= 0
