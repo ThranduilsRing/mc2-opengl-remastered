@@ -846,6 +846,9 @@ def unlink_for_replace(path):
                     shutil.copy2(path, private)
                     os.chmod(private, mode | stat.S_IWRITE)
                     replace_file(private, path)
+                    # Clear the destination's retained DOS read-only attribute
+                    # only after replacement has detached the shared inode.
+                    os.chmod(path, mode | stat.S_IWRITE)
                 finally:
                     unlink_for_replace(private)
             else:

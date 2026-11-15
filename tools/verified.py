@@ -87,10 +87,9 @@ def read_ledger(path: Path) -> dict[str, Any]:
 def ledger_lock(path: Path, timeout: float = 30):
     """A persistent lock inode protects the entire read/merge/replace transaction."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.with_name(path.name + ".lock").open("a+b") as lock:
-        if lock.seek(0, os.SEEK_END) == 0:
-            lock.write(b"\0")
-            lock.flush()
+    # Windows permits locking beyond EOF. Never initialize the byte before
+    # locking: another writer may already own it when a buffered write flushes.
+    with path.with_name(path.name + ".lock").open("a+b", buffering=0) as lock:
         deadline = time.monotonic() + timeout
         while True:
             try:
