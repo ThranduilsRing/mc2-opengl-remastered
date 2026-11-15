@@ -297,9 +297,11 @@ struct ColorPropIsland : mc2vk::IslandState {
         VkDeviceSize pktCap = 0, runCap = 0, compactCap = 0, cmdCap = 0;
         mc2vk::OwnedBuffer instances;
         VkDeviceSize instanceCap = 0;
+        uint64_t instanceGeneration = 0;
         std::optional<PropRecordCacheKey> uploaded;
     };
     PropGpu gpu[mc2vk::kMaxFramesInFlight];
+    PropInstanceGeneration instanceSource;
     PropTypeGeneration typeSource;
     uint64_t materialGeneration = 0, resourceGeneration = 0;
     PropRecordCacheKey recordKey{};
@@ -2160,6 +2162,9 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
             }
         }
     }
+    const uint64_t sceneGeneration = [&] { ZoneScopedN("VKIsl.Props.InstanceGeneration"); return s->instanceSource.update(
+        GpuStaticPropRegistry::getRegistryGeneration(),
+        {static_cast<const std::byte*>(feed.instances112), static_cast<size_t>(instBytes)}); }();
     const uint64_t typeGeneration = [&] { ZoneScopedN("VKIsl.Props.TypeGeneration"); return s->typeSource.update(std::span(
         static_cast<const GpuStaticPropInstance*>(feed.instances112), instanceCount), [](uint32_t type) {
             return (static_cast<uint64_t>(type) << 32) |
@@ -2304,12 +2309,14 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
                              "colorprop.instances", static_cast<int>(par))) {
                 setFallback("instance_buffer_failed"); s->disabled = true; return 0;
             }
+            g.instanceGeneration = 0;
             s->ringBound[par][1] = VK_NULL_HANDLE; // allocator may recycle the same VkBuffer handle
         }
-        // The retired slot receives the published bytes directly. Keeping a
-        // second CPU snapshot costs more than the upload it would avoid.
-        if (!g.instances.upload(feed.instances112, instBytes, 0)) {
-            setFallback("instance_upload_failed"); s->disabled = true; return 0;
+        if (g.instanceGeneration != sceneGeneration) {
+            if (!g.instances.upload(feed.instances112, instBytes, 0)) {
+                setFallback("instance_upload_failed"); s->disabled = true; return 0;
+            }
+            g.instanceGeneration = sceneGeneration;
         }
     }
     g_health.instRecords = instanceCount;
