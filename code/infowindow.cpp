@@ -444,7 +444,7 @@ void InfoWindow::renderImGui()
 	ImGui::Begin( "##mc2_info", nullptr,
 		ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
 		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings |
-		ImGuiWindowFlags_NoBackground );
+		ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoNav );
 
 	ImDrawList* dl = ImGui::GetWindowDrawList();
 

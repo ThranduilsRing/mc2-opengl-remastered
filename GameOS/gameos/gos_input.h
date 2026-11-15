@@ -59,12 +59,13 @@ void resetKeypress();
 void setInputFocus(bool focused);
 
 // MC2_INPUT_SCRIPT (scripted player, see gos_input.cpp): true + normalised 0..1 position once the script has moved the pointer.
-bool scriptMouseNorm(float* nx, float* ny);
+bool scriptMouseNorm(float* nx, float* ny, bool* buttons = nullptr);
 
 // Set by the ImGui layer each frame after NewFrame(); gates game mouse input.
 // The capture/focus/modal decisions these flags feed live in
 // input_capture_policy.h (pure, SDL-free); this header only publishes them.
 void setImguiWantsMouse(bool v);
+void setImguiWantsKeyboard(bool v);
 
 // HUD-IMGUI wheel guard (IN-MISSION-HUD-IMGUI-SCOPE-1 slice E, fixes slice D's
 // deferred wheel-zoom conflict for ALL ImGui HUD panels): set per-frame from
@@ -76,8 +77,7 @@ void setImguiWantsMouse(bool v);
 // One frame of hover staleness is acceptable (hover is spatial/slow).
 void setImguiHoversMouse(bool v);
 
-// IMGUI-PAUSE-INPUT-FIX-1: set per-frame by the game; when true (pause menu up), the
-// ImGui mouse gate is bypassed so the pause menu stays clickable over ImGui windows.
+// Legacy modal state remains published; it cannot override ImGui input ownership.
 void setGameModalActive(bool v);
 
 }
