@@ -1001,12 +1001,7 @@ if(MC2_BUILD_TESTS)
 endif()
 
 add_subdirectory(3rdparty/enet out/3rdparty/enet EXCLUDE_FROM_ALL)
-target_include_directories(enet PUBLIC 3rdparty/enet/include)
-if(WIN32)
-    target_link_libraries(enet PUBLIC ws2_32 winmm)
-endif()
-target_compile_options(enet PRIVATE $<$<C_COMPILER_ID:MSVC>:/Z7>)
-target_link_libraries(mc2 PRIVATE enet)
+target_link_libraries(mc2 enet)
 target_sources(mc2 PRIVATE code/net/session.cpp code/net/lockstep.cpp code/net/runtime.cpp)
 set_source_files_properties(code/net/session.cpp code/net/lockstep.cpp code/net/runtime.cpp PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
 

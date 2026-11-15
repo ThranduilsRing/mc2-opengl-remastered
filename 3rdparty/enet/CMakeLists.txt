@@ -95,8 +95,10 @@ add_library(enet STATIC
     ${SOURCE_FILES}
 )
 
-if (MINGW)
-    target_link_libraries(enet winmm ws2_32)
+target_include_directories(enet PUBLIC ${PROJECT_SOURCE_DIR}/include)
+target_compile_options(enet PRIVATE $<$<C_COMPILER_ID:MSVC>:/Z7>)
+if (WIN32)
+    target_link_libraries(enet PUBLIC winmm ws2_32)
 endif()
 
 install(TARGETS enet

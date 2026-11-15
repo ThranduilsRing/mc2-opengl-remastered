@@ -24,11 +24,6 @@ project(mc2_tests CXX)
 
 enable_language(C)
 add_subdirectory(../../3rdparty/enet enet EXCLUDE_FROM_ALL)
-target_include_directories(enet PUBLIC ../../3rdparty/enet/include)
-if(WIN32)
-    target_link_libraries(enet PUBLIC ws2_32 winmm)
-endif()
-target_compile_options(enet PRIVATE $<$<C_COMPILER_ID:MSVC>:/Z7>)
 
 include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/Mc2Standalone.cmake")
 
