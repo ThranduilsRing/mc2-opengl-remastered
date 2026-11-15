@@ -398,7 +398,7 @@ void __stdcall DoGameLogic()
 					logistics->setLogisticsState(log_STARTMISSIONFROMCMDLINE);
 					mission->destroy();
 					char commanders[MAX_MC_PLAYERS][3] = {{0,0,0},{1,1,1},{2,0,2},{3,3,3},{4,4,4},{5,5,5},{6,6,6},{7,7,7}};
-					mission->init(missionName, MISSION_LOAD_SP_QUICKSTART, 0, nullptr, commanders, 2);
+					mission->init(missionName, MissionLoadType::MISSION_LOAD_SP_QUICKSTART, 0, nullptr, commanders, 2);
 					eye->activate(); eye->update(); mission->start();
 				}
 				if (result == log_DONE)

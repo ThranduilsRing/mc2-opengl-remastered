@@ -866,7 +866,7 @@ bool MainMenu::occludesLogisticsScreens() const
 void MainMenu::render()
 {
     if (ImGui::GetCurrentContext()) ImGui::GetIO().MouseDrawCursor = true;
-    if (!introMovie && !bOptions && !bDrawMechlopedia)
+    if (!introMovie && !bOptions && !bDrawMechlopedia && !coopOpen)
         PlayerFrontEnd::drawMainMenu(bDrawBackground && !bLegal);
     if (!introMovie && bDrawBackground && !bOptions && !bDrawMechlopedia)
         drawCoopLobby();
