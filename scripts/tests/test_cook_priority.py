@@ -29,6 +29,9 @@ def test_texconv_env_and_priority(tmp_path, monkeypatch):
 
 
 def test_deploy_pool_cannot_exceed_jobs(tmp_path, monkeypatch):
+    jobs_file = tmp_path / "JOBS"
+    jobs_file.write_text("2")
+    monkeypatch.setenv("MC2_JOBS_FILE", str(jobs_file))
     executor = kit_payload.ThreadPoolExecutor
     workers = []
     def pool(*, max_workers):
@@ -36,4 +39,4 @@ def test_deploy_pool_cannot_exceed_jobs(tmp_path, monkeypatch):
         return executor(max_workers=max_workers)
     monkeypatch.setattr(kit_payload, "ThreadPoolExecutor", pool)
     kit_payload.reconcile_stock_textures(tmp_path, {"sha256": {}, "cooked_sha256": {}}, jobs=999)
-    assert workers == [int(Path("A:/Games/mc2-ops/JOBS").read_text())]
+    assert workers == [2]

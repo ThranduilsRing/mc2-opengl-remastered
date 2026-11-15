@@ -125,6 +125,8 @@ def lanes(tmp_path):
     (w / "lanes" / ".box_lane_zz_t.sh").write_text("x")
     m = tmp_path / "m.git"
     subprocess.run(["git", "init", "-q", "--bare", str(m)], check=True, **console_child.child_kwargs())
+    for key, value in (("user.name", "t"), ("user.email", "t@t")):
+        subprocess.run(["git", "-C", str(m), "config", key, value], check=True, **console_child.child_kwargs())
     (w / "locks").mkdir()
     q = tmp_path / "queue.txt"      # stand-in for `pueue status --json`: one line of command/path/label per queued or running task
     q.write_text("")

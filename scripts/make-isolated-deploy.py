@@ -817,7 +817,7 @@ def selftest() -> int:
             os.environ["SystemDrive"] = "Q:"
             os.environ.pop("SystemRoot", None)
             os.environ.pop("windir", None)
-            check("system_drive() reads SystemDrive", system_drive() == "q:",
+            check("system_drive() reads host drive grammar", system_drive() == ("q:" if os.name == "nt" else ""),
                   system_drive())
 
             if os.name == "nt":

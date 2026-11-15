@@ -44,6 +44,8 @@ def repo(tmp_path):
     r = tmp_path / "repo"
     r.mkdir()
     git(r, "init", "-q", "-b", "main")
+    git(r, "config", "user.name", "t")
+    git(r, "config", "user.email", "t@t")
     (r / "a.txt").write_text(BASE, newline="\n")
     (r / "b.txt").write_text(BASE, newline="\n")
     git(r, "add", ".")
