@@ -4,6 +4,23 @@
 #include "../../GuiRuntime/PlayerSettings.h"
 #include <cstring>
 
+TEST_CASE("campaign picker/title precedence and unrecognised folders") {
+    using namespace PlayerFrontEnd;
+    CHECK(campaignTitle("Manifest title", "Desert Fox", "installer") == "Manifest title");
+    CHECK(campaignTitle("", "Desert Fox", "installer") == "Desert Fox");
+    CHECK(campaignTitle("", "", "carver_probe") == "carver_probe");
+    CHECK(unrecognisedCampaign("", false));
+    CHECK_FALSE(unrecognisedCampaign("Named mod", false));
+    CHECK_FALSE(unrecognisedCampaign("", true));
+    const auto fit = campaignInfo("FITini\r\n[Campaign]\r\nst CampaignName = \"Exodus\"\r\n"
+        "[Group0]\nl MissionCount = 2\n[Group0Mission0]\nst FileName = \"m1\"\n[Group0Mission1]\n");
+    CHECK(fit.title == "Exodus");
+    CHECK(fit.missions == 2);
+    CHECK(campaignInfo("; st CampaignName = \"Comment\"\n[Other]\nst CampaignName = \"Wrong\"\n").title.empty());
+    CHECK(campaignInfo("[Campaign]\nst CampaignNameID = \"Wrong\"\nst CampaignName = 123\n").title.empty());
+    CHECK(campaignInfo("[Campaign]\nst CampaignName = \"Unterminated\n").title.empty());
+}
+
 TEST_CASE("launcher presets scale shadow quality with overall quality") {
     for (int quality = 0; quality < 3; ++quality) {
         CHECK(k_gfxPresets[quality].shadQual == quality);
