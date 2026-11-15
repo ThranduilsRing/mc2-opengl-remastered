@@ -611,8 +611,8 @@ uint32_t batcher_getCoalesceFrameSlot() { return s_coalesceFrameSlot; }  // diag
 
 void batcher_getStaticPropOpaqueDebugState(StaticPropOpaqueDebugState* out) {
     if (!out) return;
-    out->snapshotDispatchDefault     = !s_v6Disarmed;
-    out->legacyDispatch              = s_v6Disarmed;
+    out->snapshotDispatchDefault     = true;
+    out->legacyDispatch              = false;
     out->materialGpuEnabled          = s_materialGpuEnabled;
     out->materialGpuSample           = s_materialGpuSampleEnabled;
     out->iblShEnabled                = iblShEnabled();

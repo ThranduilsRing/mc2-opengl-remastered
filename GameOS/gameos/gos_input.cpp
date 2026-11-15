@@ -347,12 +347,6 @@ void updateMouseState() {
         const capture::Edge prev = static_cast<capture::Edge>(mi->button_state_[idx]);
         const capture::Edge next = g_pointer_capture.edge(prev, SDL_BUTTON(buttons[b]), button_state);
         mi->button_state_[idx] = static_cast<KeyState>(next);
-#if 0
-        if(mi->button_state_[idx] == KS_PRESSED)
-            mc2::fmt::print_out("{:d} pressed\n", mc2::fmt::as_i32(idx));
-        if(mi->button_state_[idx] == KS_RELEASED)
-            mc2::fmt::print_out("{:d} released\n", mc2::fmt::as_i32(idx));
-#endif
     }
 }
 
@@ -395,11 +389,6 @@ void updateKeyboardState() {
         const capture::Edge next = capture::keyboardEdge(prev, down, s_imguiWantsKeyboard, s_blockedKeys[i], isDialogKey(i));
         ki->last_state_[i] = static_cast<uint8_t>(next);
 
-#if 0
-        if(next == capture::Edge::Pressed || next == capture::Edge::Released) {
-            mc2::fmt::print_out("key: {:d} {}\n", mc2::fmt::as_i32(i), mc2::fmt::safe(next == capture::Edge::Pressed ? "PRESSED" : "RELEASED"));
-        }
-#endif
 
         if(ki->first_pressed_==-1 && next==capture::Edge::Pressed) {
             ki->first_pressed_ = i;
