@@ -32,8 +32,8 @@ HERE = Path(__file__).resolve().parent
 DATA = HERE / "data"
 RECIPES = HERE / "recipes"
 
-STRING_ID_BASE = 61800          # bt2018 pack legacy string range 61800..61899 (free in stock text)
-STRING_ID_LIMIT = 61900
+STRING_ID_BASE = 61800          # Pack builder checks every allocated ID against installed text.
+STRING_ID_LIMIT = 62000
 
 # Legacy chassis CSV item rows (0-based item index) per BT location. Items 0..11 are the
 # fixed internals every MC2 chassis carries; 12 is the sensor; 16..21 the leg/jump slots.

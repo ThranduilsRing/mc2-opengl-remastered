@@ -387,6 +387,28 @@ def test_muzzle_sockets_sit_on_geometry_not_joint_centres(marauder_recipe):
     assert len(pkg["socketOffsets"]["weapon_leftarm"].split()) == 3
 
 
+def test_entire_converted_roster_compiles_with_unique_ids(tables):
+    """Trigger: tools/bt2018_mechs/{roster.py,data/roster.json,build_pack.py,compile.py}."""
+    from tools.bt2018_mechs import roster
+    conversions = Path("A:/Games/mc2-opengl/MC2Conversions")
+    if not conversions.is_dir():
+        pytest.skip("owner conversions absent")
+    recipes = roster.recipes(conversions)
+    profiles = [C.build_profile(r, *tables) for r in recipes]
+    assert len(profiles) == 51
+    assert len({p["stem"] for p in profiles}) == 51
+    ids = [sid for i, p in enumerate(profiles) for sid in C.string_ids(p, i).values()]
+    assert len(set(ids)) == 102
+    for p, recipe in zip(profiles, recipes):
+        assert 0 < p["mc2"]["payload"] < p["mc2"]["tonnage"]
+        assert (conversions / recipe["mc2"]["model"]["source_glb"]).is_file()
+        package = C.load_json(conversions / recipe["mc2"]["model"]["package_json"])
+        C.emit_package_json(package, recipe)  # Every authored socket must resolve.
+        C.emit_csv(p, recipe, profiles.index(p))
+        if p["family"] != "marauder":
+            assert "pack-authored MC2 adaptation" in p["provenance"]["gameplay"]
+
+
 def test_spawn_fixture_uses_a_shipped_pilot_with_combat_skills():
     """A missing pilot leaves zero skills and turns weapon status into 0/0."""
     import hashlib
