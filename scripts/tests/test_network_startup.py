@@ -153,3 +153,12 @@ def test_mp_combat_routes_both_lances_and_rejects_unchanged_rng(tmp_path):
     for peer in peers:
         (peer / "session.trace").write_text("C 1 00\nH 1 a b c d e\nH 2 a b c d f\n")
     assert compare_traces(*peers, 2, combat=True)["rng_states"] == 2
+
+
+def test_mp_handshake_deadline_starts_when_the_loaded_mission_pumps():
+    runtime = (ROOT / "code/net/runtime.cpp").read_text()
+    begin = runtime.split("void beginMission(", 1)[1].split("void setRoster", 1)[0]
+    pump = runtime.split("bool prepareTick(", 1)[1]
+    assert "began = std::chrono::steady_clock::now()" not in begin
+    assert pump.index("began = std::chrono::steady_clock::now()") < pump.index("session->pump()")
+    assert "began == std::chrono::steady_clock::time_point{}" in pump

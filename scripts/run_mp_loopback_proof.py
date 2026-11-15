@@ -238,7 +238,11 @@ def run_pair(args, out, kill_peer=None):
                 for packet, destination in shim.ready(now):
                     relay.sendto(packet, destination)
                 if select.select([relay], [], [], 0.005)[0]:
-                    packet, source = relay.recvfrom(65535)
+                    try:
+                        packet, source = relay.recvfrom(65535)
+                    except ConnectionResetError:
+                        # Windows reports UDP ICMP after a killed peer; ENet owns the timeout.
+                        continue
                     if source == upstream:
                         if client is not None:
                             shim.enqueue(packet, client, time.monotonic())

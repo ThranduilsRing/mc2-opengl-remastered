@@ -13,6 +13,7 @@ struct Identity {
     bool operator==(const Identity&) const = default;
 };
 save::Bytes hello(const Identity& identity);
+save::Digest contentIdentity(const save::Digest& files, bool lowCost, bool remasteredBuildings);
 // Returns the specific incompatible field, or empty on an exact match.
 std::string checkHello(std::span<const std::uint8_t> packet, const Identity& local);
 
@@ -49,6 +50,8 @@ public:
     std::uint32_t inputDelay() const;
     std::uint32_t rtt() const;
     std::uint32_t jitter() const;
+    std::uint32_t measuredRtt() const;
+    std::uint32_t measuredJitter() const;
     const std::string& error() const;
 private:
     struct Impl;

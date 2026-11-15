@@ -1,5 +1,6 @@
 #include "runtime.h"
 #include "user_paths.h"
+#include "Gates/render_options.h"
 #include <algorithm>
 #include <chrono>
 #include <deque>
@@ -84,7 +85,8 @@ save::Digest contentHash() {
         if (!file.eof()) fail("cannot read MP content: " + name);
     }
     if (!manifest.good()) fail("MP content manifest exceeds limit");
-    return save::sha256(manifest.bytes());
+    return contentIdentity(save::sha256(manifest.bytes()), mc2::options::lowCost(),
+        mc2::options::current().remasteredBuildings);
 }
 void flushOutgoing() {
     const auto now = std::chrono::steady_clock::now();
@@ -211,8 +213,6 @@ void beginMission(std::string_view mission, std::uint32_t seed) {
     session = std::make_unique<Session>();
     try { session->open(hosting, endpoint, identity); }
     catch (const std::exception& error) { fail(error.what()); }
-    began = std::chrono::steady_clock::now();
-    lastProgress = began;
     std::fprintf(stderr, "Multiplayer: slot=%u mission=%s seed=%u awaiting peer\n", localSlot(), identity.mission.c_str(), seed);
 }
 void setRoster(std::vector<sim::ObjectRef> initial) { roster = std::move(initial); }
@@ -233,6 +233,11 @@ void bindQueue(sim::TacticalOrderQueue& queue, std::unique_ptr<sim::OrderAdmissi
 std::uint64_t nextTick() { return gate ? gate->completed() + 1 : 1; }
 bool prepareTick(bool due) {
     if (!session) fail("MP mission session was not initialized");
+    // beginMission precedes cold asset loading, which can exceed the handshake deadline.
+    if (began == std::chrono::steady_clock::time_point{}) {
+        began = std::chrono::steady_clock::now();
+        lastProgress = began;
+    }
     if (!orderQueue || !admission) fail("MP order queue was not bound");
     auto& queue = *orderQueue;
     const auto& validator = *admission;
@@ -241,7 +246,8 @@ bool prepareTick(bool due) {
         gate = std::make_unique<Lockstep>(localSlot(), session->inputDelay());
         lastProgress = std::chrono::steady_clock::now();
         trace << "NETWORK rtt_ms=" << session->rtt() << " jitter_ms=" << session->jitter()
-              << " input_delay=" << session->inputDelay() << '\n' << std::flush;
+              << " input_delay=" << session->inputDelay() << " measured_rtt_ms=" << session->measuredRtt()
+              << " measured_jitter_ms=" << session->measuredJitter() << '\n' << std::flush;
     }
     if (!gate && !session->error().empty()) fail(session->error());
     for (const auto& packet : packets) {

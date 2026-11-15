@@ -15,6 +15,12 @@ void fields(save::Archive& a, std::uint32_t& tag, std::uint32_t& version, Identi
     a(id.seed);
 }
 }
+save::Digest contentIdentity(const save::Digest& files, bool lowCost, bool remasteredBuildings) {
+    save::Archive manifest;
+    auto digest = files;
+    manifest(digest, lowCost, remasteredBuildings);
+    return save::sha256(manifest.bytes());
+}
 save::Bytes hello(const Identity& identity) {
     save::Archive a;
     auto id = identity;
@@ -57,9 +63,13 @@ std::optional<LinkSetup::Control> LinkSetup::receive(Control message, std::uint3
     if (!hosting && message.kind == 3 && samples < 4) { ++samples; return Control{4, message.value}; }
     if (hosting && message.kind == 4 && samples < 4 && message.value == probe) {
         const auto measured = now - probe;
-        if (samples) jitter = (std::max)(jitter, measured > previous ? measured - previous : previous - measured);
+        if (samples) {
+            const auto variation = measured > previous ? measured - previous : previous - measured;
+            jitter = samples == 1 ? variation : (std::min)(jitter, variation);
+        }
         previous = measured;
-        rtt = (std::max)(rtt, measured);
+        // The minimum pair excludes one-off post-load frame stalls from input latency.
+        rtt = samples == 0 ? measured : (std::min)(rtt, measured);
         if (++samples < 4) { probe = now; return Control{3, probe}; }
         delay = delayForRtt(rtt, jitter);
         return Control{5, delay};
@@ -190,5 +200,7 @@ bool Session::connected() const { return impl_->setup.phase == LinkSetup::Phase:
 std::uint32_t Session::inputDelay() const { return impl_->setup.delay; }
 std::uint32_t Session::rtt() const { return impl_->peer ? impl_->peer->roundTripTime : 0; }
 std::uint32_t Session::jitter() const { return impl_->peer ? impl_->peer->roundTripTimeVariance : 0; }
+std::uint32_t Session::measuredRtt() const { return impl_->setup.rtt; }
+std::uint32_t Session::measuredJitter() const { return impl_->setup.jitter; }
 const std::string& Session::error() const { return impl_->error; }
 }

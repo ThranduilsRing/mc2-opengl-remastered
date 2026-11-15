@@ -57,7 +57,7 @@ TEST_CASE("net setup derives bounded delay from reliable RTT and jitter before r
         CHECK(message->kind == 5);
         CHECK(host.phase == net::LinkSetup::Phase::Measuring);
         CHECK(client.phase == net::LinkSetup::Phase::Measuring);
-        CHECK(host.rtt == latency * 2 + 3);
+        CHECK(host.rtt == latency * 2);
         CHECK(host.jitter == 1);
         CHECK(host.delay == net::delayForRtt(host.rtt, host.jitter));
         auto ack = client.receive(*message, now);
@@ -96,4 +96,27 @@ TEST_CASE("net timeout bounds permit transient packet loss but end an unresponsi
     CHECK_NOTHROW(unopened.send(packet));
     CHECK(unopened.error() == "MP session is not connected");
     CHECK_FALSE(unopened.connected());
+}
+
+TEST_CASE("net content identity includes effective mounted art options") {
+    const save::Digest files{};
+    const auto high = net::contentIdentity(files, false, true);
+    CHECK(high == net::contentIdentity(files, false, true));
+    CHECK(high != net::contentIdentity(files, true, true));
+    CHECK(high != net::contentIdentity(files, false, false));
+}
+
+TEST_CASE("net timing ignores a transient post-load frame stall") {
+    net::LinkSetup host;
+    host.hosting = true;
+    auto packet = host.begin(0);
+    unsigned now = 0;
+    for (const auto duration : {860u, 12u, 11u, 12u}) {
+        REQUIRE(packet);
+        now += duration;
+        packet = host.receive({4, packet->value}, now);
+    }
+    CHECK(host.rtt == 11);
+    CHECK(host.jitter == 1);
+    CHECK(host.delay == 3);
 }
