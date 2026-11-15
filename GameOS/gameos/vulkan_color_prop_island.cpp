@@ -1768,10 +1768,19 @@ static bool record_props_cmds(const PropRecPlan& plan, VkCommandBuffer cb) {
                                       static_cast<VkDeviceSize>(listWord) * sizeof(uint32_t), (std::min)(n, plan.drawLimit), sizeof(PropDrawCmd));
     };
     // Opaque core first so early Z rejects the hidden fragments of everything after it.
-    drawList(plan.opaquePipe, plan.listStart[kListOpaque], plan.counts[kListOpaque], kListOpaque);
-    drawList(plan.corePipe, plan.listStart[kListCore], plan.counts[kListCore], kListCore);
-    drawList(plan.fringePipe, plan.listStart[kListFringe], plan.counts[kListFringe], kListFringe);
-    if (plan.embedded) drawList(plan.fringePipe, plan.listStart[kListLate], plan.counts[kListLate], kListLate);
+    {
+        MC2_VK_GPU_SCOPE(opaqueScope, cb, "VKIsl.Props.Opaque");
+        drawList(plan.opaquePipe, plan.listStart[kListOpaque], plan.counts[kListOpaque], kListOpaque);
+    }
+    {
+        MC2_VK_GPU_SCOPE(coreScope, cb, "VKIsl.Props.Core");
+        drawList(plan.corePipe, plan.listStart[kListCore], plan.counts[kListCore], kListCore);
+    }
+    {
+        MC2_VK_GPU_SCOPE(fringeScope, cb, "VKIsl.Props.Fringe");
+        drawList(plan.fringePipe, plan.listStart[kListFringe], plan.counts[kListFringe], kListFringe);
+        if (plan.embedded) drawList(plan.fringePipe, plan.listStart[kListLate], plan.counts[kListLate], kListLate);
+    }
 
     mc2vk::dynrender::end(mc2vk::engineVulkanContextNoWait(), cb);
     gpuScope.end();
