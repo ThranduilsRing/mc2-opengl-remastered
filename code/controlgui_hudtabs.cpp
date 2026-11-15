@@ -105,11 +105,13 @@ void ControlGui::renderSimSpeedButton()
 	ImGui::InvisibleButton("##cycle", size, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
 	const bool hover = ImGui::IsItemHovered();
 	const bool pressed = ImGui::IsItemActive();
-	if (!disabled && (ImGui::IsItemClicked(ImGuiMouseButtonLeft) || ImGui::IsItemClicked(ImGuiMouseButtonRight)))
+	if (!disabled && (ImGui::IsItemClicked(ImGuiMouseButton_Left) || ImGui::IsItemClicked(ImGuiMouseButton_Right)))
 	{
 		const float speed = simSpeedGetMultiplier();
-		const bool down = ImGui::GetIO().KeyShift || ImGui::IsItemClicked(ImGuiMouseButtonRight);
-		simSpeedSetMultiplier(down ? (speed <= 0.5f ? 4.f : speed * 0.5f) : (speed >= 4.f ? 0.5f : speed * 2.f));
+		const bool down = ImGui::GetIO().KeyShift || ImGui::IsItemClicked(ImGuiMouseButton_Right);
+		const float next = down ? (speed > 2.f ? 2.f : speed > 1.f ? 1.f : speed > 0.5f ? 0.5f : 4.f)
+			: (speed < 0.5f ? 0.5f : speed < 1.f ? 1.f : speed < 2.f ? 2.f : speed < 4.f ? 4.f : 0.5f);
+		simSpeedSetMultiplier(next);
 	}
 	auto* draw = ImGui::GetWindowDrawList();
 	const ImU32 ink = disabled ? IM_COL32(92, 95, 95, 255) :
