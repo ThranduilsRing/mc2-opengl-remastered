@@ -150,9 +150,11 @@ def import_campaign(source, deploy):
             unpacked.mkdir()
             if not zipfile.is_zipfile(source):
                 extractor = shutil.which("innoextract") if source.suffix.lower() == ".exe" else None
+                if not extractor and source.suffix.lower() == ".exe" and (deploy / "innoextract.exe").is_file():
+                    extractor = str(deploy / "innoextract.exe")
                 if not extractor:
                     raise ValueError("Expected a ZIP or campaign folder. For Inno Setup EXEs put innoextract on PATH (see IMPORT-CAMPAIGNS.md), or install into a separate folder and import that folder. Extract 7z/RAR downloads first.")
-                run = subprocess.run(["innoextract", "--extract", "--output-dir", str(unpacked), str(source)],
+                run = subprocess.run([extractor, "--extract", "--output-dir", str(unpacked), str(source)],
                                      capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
                 if run.returncode:
                     raise ValueError("innoextract could not extract this installer: " + run.stderr[-1200:])

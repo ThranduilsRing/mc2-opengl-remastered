@@ -128,9 +128,11 @@ def test_zip_saved_beside_game_and_inno_extraction(sample, monkeypatch):
     assert imp.import_campaign(archive, deploy)["status"] == "installed"
     installer = source.parent / "download.exe"
     installer.write_bytes(b"synthetic installer")
-    monkeypatch.setattr(imp.shutil, "which", lambda name: "innoextract.exe")
+    monkeypatch.setattr(imp.shutil, "which", lambda name: None)
+    (deploy / "innoextract.exe").touch()
     def extract(args, **kwargs):
         from types import SimpleNamespace
+        assert args[0] == str(deploy / "innoextract.exe")
         imp.shutil.copytree(source, Path(args[3]) / "app")
         return SimpleNamespace(returncode=0)
     monkeypatch.setattr(imp.subprocess, "run", extract)
@@ -170,6 +172,8 @@ def test_fst_delta_preserves_different_bytes(tmp_path, monkeypatch):
     assert transfer.extract_fst("fixture", str(out), refs=[str(ref)]) == 1
     assert (out / "data/missions/demo.fit").read_bytes() == b"override"
     assert not transfer.in_refs("data/missions/demo.fit", [str(ref), str(out / "data")], b"override")
+    assert transfer.copy_loose_delta(str(ref), [str(ref)], str(out / "data")) == 1
+    assert (out / "data/missions/demo.fit").read_bytes() == b"base"
     monkeypatch.setattr(transfer.fst, "fst_entries", lambda _: [(0, 0, 0, "data/objects/mc2xcomp.csv", False, b"")])
     assert transfer.extract_fst_whitelist("fixture", str(out), transfer.MISC_ROSTER) == 1
     assert (out / "data/objects/compbas.csv").read_bytes() == b"override"

@@ -260,10 +260,10 @@ def copy_loose_delta(src_data, refs, out_data, drop_upscale=False, gui_canon=Non
                 continue
             if drop_upscale and rel.lower().startswith(UPSCALE_DIRS) and not keep_content:
                 continue
-            with open(sp, "rb") as stream:
-                if in_refs(rel, refs, stream.read()):
-                    continue
             out = os.path.join(out_data, rel.replace("/", os.sep))
+            with open(sp, "rb") as stream:
+                if not os.path.isfile(out) and in_refs(rel, refs, stream.read()):
+                    continue
             os.makedirs(os.path.dirname(out), exist_ok=True)
             shutil.copy2(sp, out)
             n += 1
