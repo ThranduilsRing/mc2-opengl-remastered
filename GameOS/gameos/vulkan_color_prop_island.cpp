@@ -2504,6 +2504,7 @@ extern "C" void mc2_vk_color_prop_island_late_fringe() {
     VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { s->disabled = true; return; }
+    MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Props.LateFringe");
     t1_begin_pass(s, cb, static_cast<uint32_t>(s->w), static_cast<uint32_t>(s->h));
     float jpx[2];
     RenderCore::temporal::sceneJitterPixels(g_mc2RenderFrame, jpx);
@@ -2527,6 +2528,7 @@ extern "C" void mc2_vk_color_prop_island_late_fringe() {
     vkCmdDrawIndexedIndirectCount(cb,cmdBuf,kPropCmdHeader + static_cast<VkDeviceSize>(lateStart) * sizeof(PropDrawCmd),cmdBuf,kListLate * sizeof(uint32_t),
                                   (std::min)(lateCount,s->drawIndirectLimit),sizeof(PropDrawCmd));
     mc2vk::dynrender::end(mc2vk::getOrCreateEngineVulkanContext(), cb);
+    gpuScope.end();
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { s->disabled = true; return; }
     VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
     si.commandBufferCount = 1; si.pCommandBuffers = &cb;
