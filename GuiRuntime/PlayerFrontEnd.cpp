@@ -327,7 +327,9 @@ void drawMainMenu(bool showCredits) {
         bootScreen = true;
     }
     const auto* viewport = ImGui::GetMainViewport();
-    ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + viewport->WorkSize.x - 280, viewport->WorkPos.y + 25), ImGuiCond_Always);
+    const float toolsScale = std::clamp(viewport->WorkSize.y / 1080.0f, 1.0f, 4.0f);
+    ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + viewport->WorkSize.x - 10 * toolsScale,
+        viewport->WorkPos.y + 25 * toolsScale), ImGuiCond_Always, ImVec2(1, 0));
     ImGui::Begin("Campaign tools", nullptr, ImGuiWindowFlags_NoNav | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings);
     if (ImGui::Button("Campaigns & mods")) pickerOpen = !pickerOpen;
     ImGui::SameLine();

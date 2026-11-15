@@ -28,10 +28,10 @@ TEST_CASE("input_capture_policy: keyboard capture swallows holds and resumes on 
 TEST_CASE("input_capture_policy: saved windows fit the work area after resolution changes") {
     using gui_window_policy::clampPosition;
     CHECK(clampPosition(3600, 500, 0, 1920) == 1420);
-    CHECK(clampPosition(-300, 500, 0, 1920) == 0);
+    CHECK(clampPosition(-300, 500, 0, 1920) == -300);
     CHECK(clampPosition(200, 500, 0, 1920) == 200);
     CHECK(clampPosition(2100, 500, 100, 1920) == 1520);
-    CHECK(clampPosition(-100, 2500, 100, 1920) == 100);
+    CHECK(clampPosition(-100, 2500, 100, 1920) == -100);
     CHECK(clampPosition(NAN, 500, 100, 1920) == 100);
     CHECK(clampPosition(200, 500, 100, 0) == 200);
     CHECK(gui_window_policy::scaleForHeight(1080) == 1);
@@ -56,6 +56,8 @@ TEST_CASE("input_capture_policy: logistics down move outside source up delivers 
     // The next sample has moved past the inventory item (or mech diagram).
     // ImGui capture changing during the gesture must not steal the hold.
     edge = pointer.edge(edge, 1, pointer.sample(1, false));
+    pointer.claim(); // ImGui's current-frame capture cannot steal an older press.
+    CHECK(pointer.edge(edge, 1, 1) == Edge::Held);
     REQUIRE(edge == Edge::Held);
     CHECK(startsWidgetDrag(edge == Edge::Held, true));
     CHECK_FALSE(startsWidgetDrag(edge == Edge::Held, false));
@@ -67,6 +69,12 @@ TEST_CASE("input_capture_policy: logistics down move outside source up delivers 
 TEST_CASE("input_capture_policy: captured press cannot turn into a game drag") {
     PointerCapture pointer;
     CHECK(pointer.sample(1, false) == 0);
+    CHECK(pointer.edge(Edge::Free, 1, 0) == Edge::Free);
+    CHECK(pointer.sample(0, false) == 0);
+    // Previous-frame capture can be false at the press; NewFrame claims it.
+    CHECK(pointer.sample(1, true) == 1);
+    pointer.claim();
+    CHECK(pointer.edge(Edge::Free, 1, 1) == Edge::Free);
     CHECK(pointer.sample(1, true) == 0); // left the ImGui surface while held
     CHECK(pointer.sample(0, true) == 0);
     CHECK(pointer.sample(1, true) == 1); // a fresh game press
@@ -178,13 +186,27 @@ TEST_CASE("input_capture_visibility") {
 
 TEST_CASE("input_capture_policy: ImGui mouse drag, navigation focus and text field") {
     // GuiRuntime publishes WantTextInput; general WantCaptureKeyboard is true in all three rows.
-    struct Row { const char* action; bool wantsTextInput; };
-    const Row rows[] = {{"mouse-held window drag", false}, {"focused non-text window", false}, {"active text field", true}};
+    struct IO { bool WantCaptureKeyboard; bool WantTextInput; };
+    struct Row { const char* action; IO io; bool expected; };
+    const Row rows[] = {{"mouse-held window drag", {true, false}, false}, {"focused non-text window", {true, false}, false}, {"active text field", {true, true}, true}};
     for (const auto& row : rows) {
         CAPTURE(row.action);
         bool blocked = false;
-        CHECK(input::capture::keyboardEdge(input::capture::Edge::Held, true, row.wantsTextInput, blocked)
-              == (row.wantsTextInput ? input::capture::Edge::Free : input::capture::Edge::Held));
-        CHECK(blocked == row.wantsTextInput);
+        const bool capture = gui_window_policy::capturesKeyboard(row.io);
+        CHECK(capture == row.expected);
+        CHECK(input::capture::keyboardEdge(input::capture::Edge::Held, true, capture, blocked)
+              == (row.expected ? input::capture::Edge::Free : input::capture::Edge::Held));
+        CHECK(blocked == row.expected);
     }
+}
+
+TEST_CASE("input_capture_policy: dialog keys retain their release during text capture") {
+    bool blocked = true;
+    auto edge = input::capture::keyboardEdge(Edge::Free, true, true, blocked, true);
+    CHECK(edge == Edge::Pressed);
+    CHECK_FALSE(blocked);
+    edge = input::capture::keyboardEdge(edge, true, true, blocked, true);
+    CHECK(edge == Edge::Held);
+    edge = input::capture::keyboardEdge(edge, false, true, blocked, true);
+    CHECK(edge == Edge::Released);
 }

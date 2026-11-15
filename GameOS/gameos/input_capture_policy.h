@@ -47,7 +47,8 @@ inline Edge nextEdge(Edge prev, bool down) {
 
 // Swallow the entire captured key gesture, including its release. Closing a
 // panel while a key is held must not manufacture a game shortcut.
-inline Edge keyboardEdge(Edge previous, bool down, bool captured, bool& blocked) {
+inline Edge keyboardEdge(Edge previous, bool down, bool captured, bool& blocked, bool dialogKey = false) {
+    if (dialogKey) { blocked = false; return nextEdge(previous, down); }
     if (captured) blocked = down;
     if (blocked || captured) {
         blocked = down;
@@ -62,9 +63,10 @@ struct PointerCapture {
     bool focused = true;
     bool quarantine = false;
     unsigned held = 0;
+    unsigned pressed = 0;
     unsigned blocked = 0;
 
-    void claim() { blocked |= held; }
+    void claim() { blocked |= pressed; }
 
     void setFocus(bool value) {
         if (focused != value) quarantine = true;
@@ -74,6 +76,7 @@ struct PointerCapture {
         if (!focused || quarantine) blocked |= buttons;
         if (!allowPress) blocked |= buttons & ~held;
         blocked &= buttons;
+        pressed = buttons & ~held;
         held = buttons;
         quarantine = !focused;
         return focused ? buttons & ~blocked : 0;

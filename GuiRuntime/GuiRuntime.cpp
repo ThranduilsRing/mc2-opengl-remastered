@@ -537,7 +537,7 @@ void GuiRuntime::NewFrame() {
     // Tell the game input layer whether ImGui has claimed the mouse this frame.
     input::setImguiWantsMouse(ImGui::GetIO().WantCaptureMouse);
     // Mouse drags and navigation focus must preserve held gameplay keys.
-    input::setImguiWantsKeyboard(ImGui::GetIO().WantTextInput);
+    input::setImguiWantsKeyboard(gui_window_policy::capturesKeyboard(ImGui::GetIO()));
     // Wheel guard: spatial hover only (NOT WantCaptureMouse, which is tainted
     // by mouse_any_down during viewport drags) — cursor over any ImGui window
     // means the wheel scrolls ImGui, not the game camera. See gos_input.h.
