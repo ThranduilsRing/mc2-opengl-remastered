@@ -70,7 +70,7 @@ EXCLUDE = {
 }
 
 PYTEST = [sys.executable, "-B", "-m", "pytest", "-q", "-p", "no:cacheprovider",
-          "--tb=no", "-rfEs"]
+          "--tb=short", "-rfEs"]
 TIMEOUT_S = 1200  # box_hygiene: 479 s alone, over 600 s under precheck load
 
 
@@ -123,6 +123,8 @@ def scoped_modules(mods, paths):
             covered.update(matches)
             if mod in mods:
                 selected.append(mod)
+    if not selected and mods and all(is_art_test(m) for m in mods) and any(p.startswith(ART_PREFIXES) for p in paths):
+        return mods
     if any(p not in covered and not p.startswith(("docs/", ".claude/")) and not p.endswith((".md", ".rst")) for p in paths):
         return mods
     return selected
