@@ -6,6 +6,7 @@
 #include "mc2fmt.h"
 #include "mc2str.h"
 #include "objective_text.h"
+#include "purchase_catalog.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 
 #include <optional>
@@ -298,10 +299,12 @@ std::expected<void, long> LogisticsData::loadVariant( FitIniFile& file )
 	}
 
 	const LogisticsChassis* pChassis  = nullptr;
+	const auto chassisPack = objective_text::readPlain(file, "PurchasePack");
 	// go out and find that chassis
 	for ( auto vIter = variants.begin(); vIter != variants.end(); ++vIter )
 	{
-		if ( mc2::str::iequals( (*vIter)->getFileName(), *chassisKey ) )
+		if ( mc2purchase::identityMatches(mc2purchase::chassisSource((*vIter)->getFileName()),
+			(*vIter)->getFileName(), chassisPack, *chassisKey) )
 		{
 			pChassis = (*vIter)->getChassis();
 		}
@@ -366,9 +369,11 @@ std::expected<void, long> LogisticsData::loadVariant( FitIniFile& file )
 std::expected<void, long> LogisticsData::loadMech( FitIniFile& file, int& count )
 {
 	const std::string variantKey = objective_text::readPlain( file, "Variant" ).value_or( std::string() );
+	const auto packKey = objective_text::readPlain(file, "PurchasePack");
 	for ( auto mIter = variants.begin(); mIter != variants.end(); ++mIter )
 	{
-		if ( mc2::str::iequals( (*mIter)->getName(), variantKey ) )
+		if ( mc2purchase::identityMatches(mc2purchase::chassisSource((*mIter)->getFileName()),
+			(*mIter)->getName(), packKey, variantKey) )
 		{
 			
 			auto mech = std::make_unique<LogisticsMech>( mIter->get(), count );

@@ -41,6 +41,7 @@
 #include <fstream>
 #include <span>
 #include "vfs_internal.h"
+#include "../code/purchase_catalog.h"
 
 
 // ModFileEntry lives in vfs_internal.h (shared with vfs_index.cpp).
@@ -575,7 +576,7 @@ static std::vector<std::string> JsonGetStringArray(const char* json, const char*
     return result;
 }
 
-struct ModJson { std::string id, name; std::vector<std::string> deps, capabilities; };
+struct ModJson { std::string id, name; std::vector<std::string> deps, capabilities; std::string type, campaign; };
 
 // Read mod.json at jsonPath. Returns nullopt if file not found or has no id.
 static std::optional<ModJson> ReadModJson(const char* jsonPath) {
@@ -589,11 +590,18 @@ static std::optional<ModJson> ReadModJson(const char* jsonPath) {
     buf[read] = '\0';
 
     ModJson mj{JsonGetString(buf, "id"), JsonGetString(buf, "name"), JsonGetStringArray(buf, "dependencies"),
-               JsonGetStringArray(buf, "capabilities")};
+               JsonGetStringArray(buf, "capabilities"), JsonGetString(buf, "type"), JsonGetString(buf, "campaign")};
     if (mj.id.empty()) return std::nullopt;
     return mj;
 }
 
+
+std::string ModDisplayName(std::string_view modId) {
+    if (modId.empty()) return "MechCommander 2";
+    const std::string path = g_modsAbsRoot + std::string(modId) + "/mod.json";
+    const auto manifest = ReadModJson(path.c_str());
+    return manifest && !manifest->name.empty() ? manifest->name : std::string(modId);
+}
 
 // Returns the owning mod id for a given data path (normalized), or nullptr if not in mod index.
 // Used for diagnostic logging only — O(1) lookup.
@@ -862,6 +870,24 @@ void InitModSearchPaths(mc2::czstring modsRoot) {
     if (envModStr == "mc2-industrial-kit" || envModStr == "mc2-vehicle-kit") envModStr.clear(); // Bundled art is never an active user layer.
     const char* envMod = envModStr.c_str();
     const bool stockMode = !envMod[0];
+    // Campaign-free packs are shared content. Mount their files before listing units.
+    std::vector<std::string> installedAssets;
+    std::error_code packError;
+    for (const auto& dir : std::filesystem::directory_iterator(modsRoot, packError)) {
+        const auto manifest = ReadModJson((dir.path() / "mod.json").string().c_str());
+        if (!manifest || manifest->type == "campaign") continue;
+        const auto data = dir.path() / "data";
+        const bool campaign = !manifest->campaign.empty() ||
+            std::filesystem::exists(data / "campaign", packError) ||
+            std::filesystem::exists(data / "campaigns", packError);
+        const bool units = manifest->id == "mc2-vehicle-kit" ||
+            std::ranges::find(manifest->capabilities, "package_chassis") != manifest->capabilities.end() ||
+            std::filesystem::exists(data / "objects", packError) ||
+            std::filesystem::exists(data / "defs" / "equipment", packError);
+        if (mc2purchase::mountInstalled(manifest->type, campaign, units))
+            installedAssets.push_back(dir.path().filename().string());
+    }
+    std::sort(installedAssets.begin(), installedAssets.end());
     const bool industrialKit = mc2::options::current().remasteredBuildings &&
         GetFileAttributesA("mods/mc2-industrial-kit/mod.json") != INVALID_FILE_ATTRIBUTES;
     const bool vehicleKit = mc2::options::current().remasteredBuildings &&
@@ -869,7 +895,7 @@ void InitModSearchPaths(mc2::czstring modsRoot) {
     if (stockMode) {
         // Stock campaign: no active mod. Add-on layers (MC2_MOD_DEPS) may still mount
         // (e.g. "stock + Omnitech mechs"). With NO deps either, this is pure base game.
-        if (!industrialKit && !vehicleKit && mc2::gate::str<"MC2_MOD_DEPS">().empty()) {
+        if (installedAssets.empty() && !industrialKit && !vehicleKit && mc2::gate::str<"MC2_MOD_DEPS">().empty()) {
             mc2::fmt::print_out("[mod] base game mode (MC2_ACTIVE_MOD not set, MC2_MOD_DEPS not set)\n");
             fflush(stdout);
             return;
@@ -908,6 +934,8 @@ void InitModSearchPaths(mc2::czstring modsRoot) {
     } else if (auto mj = ReadModJson(jsonPath)) {
         modId = mj->id; modName = mj->name; deps = mj->deps;
         if (!mj->capabilities.empty()) g_modCapabilities[modId] = mj->capabilities;
+        if (std::filesystem::exists(std::string(absRoot) + envMod + "/data/defs/equipment"))
+            g_modCapabilities[modId].push_back("equipment_add");
     } else {
         // No mod.json — treat the folder name as the id. Dependencies (the compat
         // layer) come from MC2_MOD_DEPS instead (see below) — the launcher lets the
@@ -946,6 +974,8 @@ void InitModSearchPaths(mc2::czstring modsRoot) {
         deps.push_back("mc2-industrial-kit");
     std::erase(deps, "mc2-vehicle-kit");
     if (vehicleKit) deps.push_back("mc2-vehicle-kit");
+    for (const auto& pack : installedAssets)
+        if (pack != envMod && std::ranges::find(deps, pack) == deps.end()) deps.push_back(pack);
     // Priority order: base data < dep[N-1] < ... < dep[0] < active mod.
     // Index is first-wins, so scan highest priority first.
     // Duplicates: winner keeps its slot; loser is logged when MC2_LOG_FILE_RESOLVE=1.
@@ -1006,6 +1036,8 @@ void InitModSearchPaths(mc2::czstring modsRoot) {
             const std::string depJson = std::string(absRoot) + dep + "/mod.json";
             if (auto dj = ReadModJson(depJson.c_str()); dj && !dj->capabilities.empty())
                 g_modCapabilities[dep] = dj->capabilities;
+            if (std::filesystem::exists(std::string(absRoot) + dep + "/data/defs/equipment"))
+                g_modCapabilities[dep].push_back("equipment_add");
         }
         size_t before = g_modIndex.size();
         if (!TryLoadModCache(g_modIndex, g_shadowedBy, absRoot, dep.c_str(), depDataDir))
