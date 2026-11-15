@@ -13,6 +13,7 @@
 #include <algorithm>   // std::min
 #include <bit>
 #include <SDL2/SDL_mixer.h>
+#include <SDL2/SDL_timer.h>
 
 #include "file.h"   // fileExists
 #include "vfs.h"
@@ -346,6 +347,7 @@ static bool tryOpenAudio(VideoSession* s, std::string_view path)
         return false;
     }
 
+    std::fprintf(stderr, "[AUDIO_START] ticks=%u path=%s channel=video-pcm caller=tryOpenAudio\n", SDL_GetTicks(), inputPath.c_str());
     s->audioStreamStarted = true;
     s->aFrame = av_frame_alloc();
     s->aPkt = av_packet_alloc();
@@ -909,6 +911,7 @@ void video_restart(VideoSession* s)
     if (s->aCodec && soundSystem &&
         reinterpret_cast<SoundSystem*>(soundSystem)->beginVideoPCMStream(s->aOutRate, s->aOutChannels)) {
         s->audioStreamStarted = true;
+        std::fprintf(stderr, "[AUDIO_START] ticks=%u path=%s channel=video-pcm caller=video_restart\n", SDL_GetTicks(), s->aFmt->url);
     }
 }
 

@@ -28,6 +28,7 @@
 #include "platform_stdlib.h" // _splitpath
 
 #include <SDL2/SDL_mixer.h>
+#include <cstdio>
 #include <SDL2/SDL_atomic.h>
 #include <algorithm>
 #include <string>
@@ -127,6 +128,8 @@ void preloadSupportSample(unsigned id)
     std::vector<uint8_t> wave(size);
     if (supportPreloadFile->readPacket(id, wave.data()))
         SoundSystem::createWaveResource(&supportResources[id], wave);
+    if (supportResources[id])
+        std::fprintf(stderr, "[AUDIO_CUE] resource=%p path=packet:support.pak/%lu caller=preloadSupport\n", static_cast<void*>(supportResources[id]), static_cast<unsigned long>(id));
 }
 
 // The channel a music crossfade slot plays on: slot 0 is STREAM1CHANNEL, slot 1 is STREAM2CHANNEL.
@@ -511,6 +514,8 @@ void SoundSystem::preloadSoundBite (long soundId)
 		
 		if (!createWaveResource(&thisSoundBite->resourceHandle,thisSoundBite->biteData))
 			thisSoundBite->resourceHandle = nullptr;
+		if (thisSoundBite->resourceHandle)
+			std::fprintf(stderr, "[AUDIO_CUE] resource=%p path=packet:sfx/%ld caller=SoundSystem::preloadSoundBite\n", static_cast<void*>(thisSoundBite->resourceHandle), soundId);
 	}
 }
 
@@ -868,6 +873,7 @@ long SoundSystem::playBettySample (unsigned long bettySampleId)
 			bettySoundBite.clear();
 			return(-1);
 		}
+		std::fprintf(stderr, "[AUDIO_CUE] resource=%p path=packet:Betty.pak/%lu caller=SoundSystem::playBettySample\n", static_cast<void*>(bettyHandle), bettySampleId);
 		gosAudio_AssignResourceToChannel( ourChannel, bettyHandle );
 		gosAudio_SetChannelPlayMode(ourChannel, gosAudio_PlayOnce);
 			
@@ -940,6 +946,7 @@ long SoundSystem::playSupportSample (unsigned long supportSampleId, mc2::czstrin
 			supportSoundBite.clear();
 			return -1;
 		}
+		std::fprintf(stderr, "[AUDIO_CUE] resource=%p path=packet:support/%lu file=%s caller=SoundSystem::playSupportSample\n", static_cast<void*>(supportHandle), supportSampleId, fileName ? fileName : "support.pak");
 		gosAudio_AssignResourceToChannel( ourChannel, supportHandle );
 		gosAudio_SetChannelPlayMode(ourChannel, gosAudio_PlayOnce);
 			

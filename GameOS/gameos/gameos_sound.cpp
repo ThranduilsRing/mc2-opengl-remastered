@@ -20,6 +20,9 @@
 #include "mc2fmt.h"
 #include "utils/mc2log.h"
 
+#if defined(_MSC_VER)
+#include <intrin.h>
+#endif
 static const DWORD INVALID_AUDIO_ID = -1;
 static const DWORD MAX_VOLUME = 254;
 
@@ -89,6 +92,7 @@ class SoundEngine {
         std::array<gosAudio_PlayMode, 32> waitingMode{};
         std::unique_ptr<WavWorker> wavWorker;
         SoundEngine():frequency_(0), format_(0), channels_(0), chunksize_(0), is_initialized_(false) {} 
+        std::array<const void*, 32> startCaller{};
         bool init(int frequency, bool b_fmt_16_bit, bool b_fmt_signed, bool b_stereo);
         void destroy();
 
@@ -534,6 +538,12 @@ void __stdcall gosAudio_SetChannelPlayMode( int Channel, enum gosAudio_PlayMode 
 
     if (ga_pm == gosAudio_Continue && g_sound_engine->waiting[Channel])
         ga_pm = g_sound_engine->waitingMode[Channel];
+#if defined(_MSC_VER)
+    const void* caller = _ReturnAddress();
+#else
+    const void* caller = __builtin_return_address(0);
+#endif
+    if (!g_sound_engine->waiting[Channel]) g_sound_engine->startCaller[Channel] = caller;
     ci->ePlayMode = ga_pm;
     if (ga_pm == gosAudio_Stop) g_sound_engine->waiting[Channel] = false;
 
@@ -563,9 +573,11 @@ void __stdcall gosAudio_SetChannelPlayMode( int Channel, enum gosAudio_PlayMode 
                 int loops = stream || ci->ePlayMode == gosAudio_Loop ? -1 : 0;
                 if (stream) stream->setLoop(ci->ePlayMode == gosAudio_Loop);
                 const int played = Mix_PlayChannel(Channel, &audio->mix_chunk_, loops);
-                if (played >= 0 && mc2_diag::tagRequested("AUDIO"))
-                    std::fprintf(stderr, "[AUDIO_ADMIT] ticks=%u id=%zu path=%s channel=%d\n",
-                        SDL_GetTicks(), audio->admissionId, audio->sourcePath.c_str(), Channel);
+                if (played >= 0)
+                    std::fprintf(stderr, "[AUDIO_START] ticks=%u id=%zu resource=%p path=%s channel=%d caller=%p\n",
+                        SDL_GetTicks(), audio->admissionId, static_cast<void*>(audio),
+                        audio->sourcePath.empty() ? "memory" : audio->sourcePath.c_str(), Channel,
+                        g_sound_engine->startCaller[Channel]);
                 if (stream) Mix_RegisterEffect(Channel,
                     [](int, void* bytes, int length, void* context) {
                         static_cast<MusicStream*>(context)->read({static_cast<std::byte*>(bytes), static_cast<size_t>(length)});
