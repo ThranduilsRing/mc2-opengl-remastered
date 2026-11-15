@@ -48,6 +48,37 @@ inline Edge nextEdge(Edge prev, bool down) {
     return (prev == Edge::Held || prev == Edge::Pressed) ? Edge::Released : Edge::Free;
 }
 
+// A gesture belongs to whoever received its press, even after leaving that
+// surface. Focus regain quarantines the activation buttons until released.
+struct PointerCapture {
+    bool focused = true;
+    bool quarantine = false;
+    unsigned held = 0;
+    unsigned blocked = 0;
+
+    void setFocus(bool value) {
+        if (focused != value) quarantine = true;
+        focused = value;
+    }
+    unsigned sample(unsigned buttons, bool allowPress) {
+        if (!focused || quarantine) blocked |= buttons;
+        if (!allowPress) blocked |= buttons & ~held;
+        blocked &= buttons;
+        held = buttons;
+        quarantine = !focused;
+        return focused ? buttons & ~blocked : 0;
+    }
+    Edge edge(Edge previous, unsigned mask, unsigned accepted) const {
+        if (!focused || (blocked & mask)) return Edge::Free;
+        return nextEdge(previous, (accepted & mask) != 0);
+    }
+};
+
+// Logistics widgets capture from the press location, not the moving pointer.
+inline bool startsWidgetDrag(bool dragging, bool anchorInside) {
+    return dragging && anchorInside;
+}
+
 } // namespace capture
 } // namespace input
 

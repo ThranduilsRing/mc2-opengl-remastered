@@ -21,6 +21,7 @@ PilotReadyScreen.cpp			: Implementation of the PilotReadyScreen component.
 #include"chatwindow.h"
 #include"../GuiRuntime/GuiRuntime.h"
 #include "mc2fmt.h"
+#include "../GameOS/gameos/input_capture_policy.h"
 
 PilotReadyScreen* PilotReadyScreen::s_instance = nullptr;
 
@@ -433,9 +434,8 @@ void PilotReadyScreen::update()
 			{
 				newRightSel = i;
 			}
-			else if ( userInput->isLeftDrag() 
-				&& bInside
-				&& pIcons[i].pointInside( userInput->getMouseDragX(), userInput->getMouseDragY() )
+			else if ( input::capture::startsWidgetDrag(userInput->isLeftDrag(),
+				pIcons[i].pointInside(userInput->getMouseDragX(), userInput->getMouseDragY()))
 				&& pIcons[i].getMech() )
 			{
 				beginDrag( pIcons[i].getMech()->getPilot() );

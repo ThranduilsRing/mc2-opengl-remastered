@@ -159,7 +159,8 @@ public:
     // Distance LOD: shapes[0] is the base multi-shape, shapes[k] the LOD k one (nullptr or == base: not authored);
     // distances[k] is the camera distance from which LOD k draws. Shape nodes pair up by index; a LOD whose node
     // count differs is ignored. Call after registerMultiShape for every shape. Model-override statics only.
-    void registerLodGroup(std::span<TG_TypeMultiShape* const> shapes, std::span<const float> distances);
+    // tree: an override tree chain (up to kMaxPropLods levels); a bad level prints a [TREE_LOD] error line and ends the chain.
+    void registerLodGroup(std::span<TG_TypeMultiShape* const> shapes, std::span<const float> distances, bool tree = false);
     const mc2prop::MaterialSources& materialSources() const { return materialSources_; }
 
     // Called at end of registration to upload the immutable VBO/IBO.
