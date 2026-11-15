@@ -38,6 +38,7 @@ TEST_CASE("called shot/save restore keeps aimed missile impact; v1 defaults to s
 #include "aimed_impact.inc"
     } uninterrupted, restored;
     WeaponBoltData data{}; data.objectClass = WEAPONBOLT; data.handle = 1;
+    data.screenPos = Stuff::Vector4D(0, 0, 0, 0); // Vector4D() leaves components uninitialized; encode rejects non-finite
     data.weaponShot.damage = 12; data.weaponShot.hitLocation = 3;
     WeaponBoltRecord record{data, 7};
     const auto bytes = encodeTaggedRecord(record, weaponBoltTag);
