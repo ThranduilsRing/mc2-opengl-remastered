@@ -486,7 +486,8 @@ def main(argv=None):
         import contracts_cache as cc
         receipt_tip = cc.clean_tip(str(REPO_ROOT))
         full_unit = args.run and not (args.only or args.asan)
-        if full_unit:
+        if args.run:
+            # A selective failure contradicts any earlier full-unit PASS too.
             cc.record_tip_pass(str(REPO_ROOT), "native_unit", receipt_tip, False)
         ok, info = build_and_run_unit_tests(args.config, args.run, args.asan, args.only,
                                            preset=args.preset, keep_going=args.keep_going,

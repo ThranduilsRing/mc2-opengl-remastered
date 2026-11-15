@@ -87,6 +87,19 @@ def test_equivalents_and_stock_trigger_paths(monkeypatch):
     assert "stock_mission_data" not in cc.affected_rows(root, ["data/terrain.fit"])
 
 
+# Trigger: scripts/contracts_cache.py and check-contracts.sh --no-cache export.
+def test_forced_execution_keeps_exact_tip_equivalents(monkeypatch):
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[2]
+    monkeypatch.setattr(cc, "tip_passed", lambda *a: True)
+    monkeypatch.setenv("CONTRACTS_NO_CACHE", "1")
+    paths = ["tools/callers.py", "code/test.cpp", "tests/unit/test_audio_backend.cpp"]
+    assert {"script_callers", "log_tag_census", "audio_music_stream"} <= cc.affected_rows(str(root), paths)
+    shell = (root / "scripts/check-contracts.sh").read_text()
+    assert '--no-cache) NO_CACHE=1' in shell
+    assert shell.index('export CONTRACTS_NO_CACHE=1') < shell.index('contracts_cache.py" affected')
+
+
 def test_generators_follow_inputs_including_deletions(tmp_path, monkeypatch):
     from tools import lane_merge as lm
     repo = _repo(tmp_path)

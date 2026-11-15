@@ -123,6 +123,8 @@ def affected_rows(repo, paths):
     rows = {label for label, specs in load_decls(repo).items()
             if any(any(_match(p, s) for s in specs if not s.startswith(("!", "+")))
                    and not any(_match(p, s[1:]) for s in specs if s.startswith("!")) for p in paths)}
+    if os.environ.get("CONTRACTS_NO_CACHE") == "1":
+        return rows
     if tip_passed(repo, "lint"):
         rows -= {"log_tag_census", "script_callers"}
     if tip_passed(repo, "native_unit"):

@@ -50,6 +50,20 @@ def test_selection_builds_only_the_selected_sources(monkeypatch):
     assert commands[2][1]["cwd"] == ROOT
 
 
+# Trigger: tools/build_contract_harnesses.py exact-tip native evidence.
+def test_failed_selection_invalidates_full_unit_pass(monkeypatch, tmp_path):
+    import contracts_cache as cc
+    monkeypatch.setattr(cc, "clean_tip", lambda *a: "a" * 40)
+    monkeypatch.setattr(cc, "cache_path", lambda *a: str(tmp_path / "pass-cache.json"))
+    monkeypatch.setattr(builder, "build_and_run_unit_tests", lambda *a, **k: (True, "full"))
+    assert builder.main(["--run", "--unit-only"]) == 0
+    assert cc.tip_passed(str(ROOT), "native_unit")
+    monkeypatch.setattr(builder, "build_and_run_unit_tests", lambda *a, **k: (False, "selected"))
+    assert builder.main(["--run", "--only", "AudioBackend/*"]) == 1
+    assert not cc.tip_passed(str(ROOT), "native_unit")
+    assert "audio_music_stream" in cc.affected_rows(str(ROOT), ["tests/unit/test_audio_backend.cpp"])
+
+
 @pytest.mark.parametrize("nightly", [False, True])
 def test_slow_cases_only_join_the_nightly_default(monkeypatch, nightly):
     monkeypatch.setenv("MC2_GATE_NIGHTLY", "1" if nightly else "0")
