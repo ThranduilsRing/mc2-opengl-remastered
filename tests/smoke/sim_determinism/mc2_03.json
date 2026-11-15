@@ -1,38 +1,37 @@
 {
-  "mission": "mc2_03",
-  "frames": 1000,
-  "chain_schema": 2,
-  "chain": "39a6ef01d03af2d1",
-  "full": "8d21eaecfce7733c",
-  "visible_chain": "03cc149287f77457",
-  "sha": "dab109d064ae",
-  "seed": "0x0E7C68FF",
-  "data_fingerprint": {
-    "digest": "631bc626ca376941",
-    "inputs": [
-      "mission.fst",
-      "tgl.fst",
-      "effect.fst",
-      "misc.fst",
-      "camera.fst",
-      "data/tgl/",
-      "data/objects/",
-      "data/effects/",
-      "data/missions/",
-      "data/warriors/"
-    ],
-    "stock_digest": "8703ccf15c7c117f",
-    "overlay": {
-      "data/missions/gaea_peaks_01.fit": "aa24a7b6e35ae2b2",
-      "data/missions/gaea_peaks_01.pak": "af7be4e2f5a9c1c4"
-    },
-    "problems": []
+ "mission": "mc2_03",
+ "frames": 1000,
+ "chain_schema": 2,
+ "chain": "39a6ef01d03af2d1",
+ "full": "8d21eaecfce7733c",
+ "visible_chain": "03cc149287f77457",
+ "sha": "5312f977e4df",
+ "seed": "0x0E7C68FF",
+ "data_fingerprint": {
+  "digest": "ce7928df840e5311",
+  "inputs": [
+   "mission.fst",
+   "tgl.fst",
+   "effect.fst",
+   "misc.fst",
+   "camera.fst",
+   "data/tgl/",
+   "data/objects/",
+   "data/effects/",
+   "data/missions/",
+   "data/warriors/"
+  ],
+  "stock_digest": "1c74588878defb45",
+  "overlay": {
+   "data/missions/gaea_peaks_01.fit": "aa24a7b6e35ae2b2",
+   "data/missions/gaea_peaks_01.pak": "af7be4e2f5a9c1c4"
   },
-  "gates": {
-    "MC2_SMOKE_FIXED_TIMESTEP": "1",
-    "MC2_SIM_IDENTITY_TRACE": "1"
-  },
-  "env": {},
-  "about": "chain digest of the first N [SIMID v1] lines; tools/sim_determinism.py check <mission>",
-  "note": "pinned with MC2_SIM_OVERLAP on; overlap shifts the cosmetic RNG order / save tick by one"
+  "problems": []
+ },
+ "gates": {
+  "MC2_SMOKE_FIXED_TIMESTEP": "1",
+  "MC2_SIM_IDENTITY_TRACE": "1"
+ },
+ "env": {},
+ "about": "chain digest of the first N [SIMID v1] lines; tools/sim_determinism.py check <mission>"
 }

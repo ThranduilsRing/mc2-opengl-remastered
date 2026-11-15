@@ -75,6 +75,9 @@ TEST_CASE("sim math gameplay call sites") {
     CHECK(bits(my_acos(value(0xbf7f504fu))) == 0x40445fe4u);
     CHECK(bits(my_acos(1.000001f)) == 0u);
     CHECK(bits(my_acos(-1.000001f)) == 0x40490fdbu);
+    // Payload canonicalization also detects a host-libm fallback when finite bits agree.
+    CHECK(bits(my_acos(value(0x7fc12345u))) == 0x7fc00000u);
+    CHECK(bits(mc2_atan2(value(0x7fc12345u), 1.0f)) == 0x7fc00000u);
     // atan's previously uncovered [19/16,39/16) reduction branch, including edges.
     for (const auto& r : std::array<std::pair<float, std::uint32_t>, 4>{{
              {19.0f/16.0f, 0x3f5ef387u}, {1.5f, 0x3f7b985fu},

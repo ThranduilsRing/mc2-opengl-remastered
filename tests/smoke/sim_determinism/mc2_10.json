@@ -2,13 +2,13 @@
  "mission": "mc2_10",
  "frames": 800,
  "chain_schema": 2,
- "chain": "99e7e7155739049b",
- "full": "5b7bb05ae8ba26be",
- "visible_chain": "57c5e78e6dd382fe",
- "sha": "cdfe6c63d304",
+ "chain": "21e2aded727ff578",
+ "full": "e63036daae584ab1",
+ "visible_chain": "5338e5203943045f",
+ "sha": "5312f977e4df",
  "seed": "0x157EB29B",
  "data_fingerprint": {
-  "digest": "e8e0c982c321437d",
+  "digest": "ce7928df840e5311",
   "inputs": [
    "mission.fst",
    "tgl.fst",
@@ -21,7 +21,7 @@
    "data/missions/",
    "data/warriors/"
   ],
-  "stock_digest": "3cdbd2f213922831",
+  "stock_digest": "1c74588878defb45",
   "overlay": {
    "data/missions/gaea_peaks_01.fit": "aa24a7b6e35ae2b2",
    "data/missions/gaea_peaks_01.pak": "af7be4e2f5a9c1c4"
