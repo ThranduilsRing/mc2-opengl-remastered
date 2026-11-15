@@ -5,6 +5,53 @@
 #include <utility>
 
 namespace mc2::components {
+// Distinct cooked names keep legacy add-on icon overlays from shadowing the new set.
+inline const char* cookedIcon(std::string_view file) {
+    constexpr std::pair<std::string_view, const char*> icons[] = {
+        {"mcl_mc_armorplating.tga", "mc2_component_armorplating.tga"},
+        {"mcl_mc_clanerlargelaser.tga", "mc2_component_clanerlargelaser.tga"},
+        {"mcl_mc_clanerlaser.tga", "mc2_component_clanerlaser.tga"},
+        {"mcl_mc_clanerppc.tga", "mc2_component_clanerppc.tga"},
+        {"mcl_mc_clangaussrifle.tga", "mc2_component_clangaussrifle.tga"},
+        {"mcl_mc_clanheavylargelaser.tga", "mc2_component_clanheavylargelaser.tga"},
+        {"mcl_mc_clanheavylaser.tga", "mc2_component_clanheavylaser.tga"},
+        {"mcl_mc_clanlrmrack.tga", "mc2_component_clanlrmrack.tga"},
+        {"mcl_mc_clanpulselargelaser.tga", "mc2_component_clanpulselargelaser.tga"},
+        {"mcl_mc_clanpulselaser.tga", "mc2_component_clanpulselaser.tga"},
+        {"mcl_mc_clanstreaksrmpack.tga", "mc2_component_clanstreaksrmpack.tga"},
+        {"mcl_mc_clanultraheavyautocannon.tga", "mc2_component_clanultraheavyautocannon.tga"},
+        {"mcl_mc_clanultralightautocannon.tga", "mc2_component_clanultralightautocannon.tga"},
+        {"mcl_mc_clanultramediumautocannon.tga", "mc2_component_clanultramediumautocannon.tga"},
+        {"mcl_mc_erlargelaser.tga", "mc2_component_erlargelaser.tga"},
+        {"mcl_mc_erlaser.tga", "mc2_component_erlaser.tga"},
+        {"mcl_mc_erppc.tga", "mc2_component_erppc.tga"},
+        {"mcl_mc_flamerarray.tga", "mc2_component_flamerarray.tga"},
+        {"mcl_mc_gaussrifle.tga", "mc2_component_gaussrifle.tga"},
+        {"mcl_mc_heatsink.tga", "mc2_component_heatsink.tga"},
+        {"mcl_mc_heavyautocannon.tga", "mc2_component_heavyautocannon.tga"},
+        {"mcl_mc_jumpjets.tga", "mc2_component_jumpjets.tga"},
+        {"mcl_mc_largelaser.tga", "mc2_component_largelaser.tga"},
+        {"mcl_mc_laser.tga", "mc2_component_laser.tga"},
+        {"mcl_mc_lightautocannon.tga", "mc2_component_lightautocannon.tga"},
+        {"mcl_mc_lightgaussrifle.tga", "mc2_component_lightgaussrifle.tga"},
+        {"mcl_mc_longtomcannon.tga", "mc2_component_longtomcannon.tga"},
+        {"mcl_mc_lrmrack.tga", "mc2_component_lrmrack.tga"},
+        {"mcl_mc_mediumautocannon.tga", "mc2_component_mediumautocannon.tga"},
+        {"mcl_mc_mgarray.tga", "mc2_component_mgarray.tga"},
+        {"mcl_mc_ppc.tga", "mc2_component_ppc.tga"},
+        {"mcl_mc_pulselargelaser.tga", "mc2_component_pulselargelaser.tga"},
+        {"mcl_mc_pulselaser.tga", "mc2_component_pulselaser.tga"},
+        {"mcl_mc_srmpack.tga", "mc2_component_srmpack.tga"},
+        {"mcl_mc_streaksrmpack.tga", "mc2_component_streaksrmpack.tga"},
+        {"mcl_mc_swarmlrmrack.tga", "mc2_component_swarmlrmrack.tga"},
+        {"mcl_mc_thunderboltmissile.tga", "mc2_component_thunderboltmissile.tga"},
+        {"mcl_mc_ultraheavyautocannon.tga", "mc2_component_ultraheavyautocannon.tga"},
+        {"mcl_mc_ultralightautocannon.tga", "mc2_component_ultralightautocannon.tga"},
+        {"mcl_mc_ultramediumautocannon.tga", "mc2_component_ultramediumautocannon.tga"},
+    };
+    for (const auto& [old, cooked] : icons) if (file == old) return cooked;
+    return nullptr;
+}
 // Lowercase legacy launcher aliases resolve to the one-cell model cook.
 inline const char* launcherIcon(std::string_view file) {
     constexpr std::pair<std::string_view, const char*> families[] = {
