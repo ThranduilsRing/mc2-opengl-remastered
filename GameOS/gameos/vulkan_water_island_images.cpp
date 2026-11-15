@@ -73,7 +73,7 @@ bool init_reflection(WaterIsland* s) {
     VkComputePipelineCreateInfo compute{VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO};
     compute.stage={VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,nullptr,0,VK_SHADER_STAGE_COMPUTE_BIT,shader.get(),"main",nullptr};
     compute.layout=s->maskLayout.get();
-    if (!mc2vk::create(s->maskCompute,s->device,[&](auto* h){return vkCreateComputePipelines(s->device,VK_NULL_HANDLE,1,&compute,nullptr,h);})) return false;
+    if (!mc2vk::create(s->maskCompute,s->device,[&](auto* h){return mc2vk::infra::compute(s->device,VK_NULL_HANDLE,1,&compute,nullptr,h);})) return false;
     return true;
 }
 

@@ -9,6 +9,7 @@
 #include "tga_scratch.h"
 #include "terrain_normal_load.h"
 #include "../GameOS/gameos/terrain_field_store.h"
+#include "../GameOS/gameos/load_scope.h"
 
 using mc2::tga::loadTga;
 using mc2::tga::tgaPixelsPresent;
@@ -159,7 +160,7 @@ static long sReadIdFloat(FitIniFile* missionFile, mc2::czstring varName, float &
 //---------------------------------------------------------------------------
 long TerrainColorMap::init (char *fileName)
 {
-	ZoneScopedN("TerrainColorMap::init");
+	ZoneScopedN("TerrainColorMap::init"); MC2_LOAD_SCOPE("TerrainColorMap::init");
 	auto flatFallback = [&] {
 		releaseColorMapScratch();
 		if (cpuColorMap) free(cpuColorMap);
@@ -177,7 +178,7 @@ long TerrainColorMap::init (char *fileName)
 	};
 	if (!colorMapStarted)
 	{
-		ZoneScopedN("TerrainColorMap::init cold");
+		ZoneScopedN("TerrainColorMap::init cold"); MC2_LOAD_SCOPE("TerrainColorMap::init cold");
 		//Load up the detail texture first.
 		// Detail texture is named same as colormap with .detail in name.
 		// if no file exists, no texture drawn.
@@ -196,7 +197,7 @@ long TerrainColorMap::init (char *fileName)
 		}
 		if (fileExists(detailFile))		//Otherwise, its already 0xffffffff!!
 		{
-			ZoneScopedN("TerrainColorMap::init detailTexture");
+			ZoneScopedN("TerrainColorMap::init detailTexture"); MC2_LOAD_SCOPE("TerrainColorMap::init detailTexture");
 			detailTextureNodeIndex.reset(mc2::textures::load(detailFile,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1));
 		}
 		else
@@ -219,7 +220,7 @@ long TerrainColorMap::init (char *fileName)
 		}
 		if (fileExists(waterFile))
 		{
-			ZoneScopedN("TerrainColorMap::init waterTexture");
+			ZoneScopedN("TerrainColorMap::init waterTexture"); MC2_LOAD_SCOPE("TerrainColorMap::init waterTexture");
 			waterTextureNodeIndex.reset(mc2::textures::load(waterFile,gos_Texture_Solid,0, 0, 0x1));
 		}
 		else
@@ -248,7 +249,7 @@ long TerrainColorMap::init (char *fileName)
 		}
 		mc2::fmt::to_buf(dName, "{}{:04d}", mc2::fmt::safe(waterDetailBaseName), mc2::fmt::as_i32(0));
 		waterFile.init(texturePath,dName,".tga");
-		{ ZoneScopedN("TerrainColorMap::init waterDetailTextures"); resetWaterDetailTextures(static_cast<const char *>(waterFile)); }
+		{ ZoneScopedN("TerrainColorMap::init waterDetailTextures"); MC2_LOAD_SCOPE("TerrainColorMap::init waterDetailTextures"); resetWaterDetailTextures(static_cast<const char *>(waterFile)); }
 
 		{
 			detailTextureTilingFactor = 30.0f;
@@ -315,15 +316,15 @@ long TerrainColorMap::init (char *fileName)
 				//Now, divide up the color map into separate COLOR_MAP_TEXTURE_SIZE textures.
 				// and hand the data to the textureManager.
 				{
-					ZoneScopedN("TerrainColorMap::init jpgColorMap tileLoop");
+					ZoneScopedN("TerrainColorMap::init jpgColorMap tileLoop"); MC2_LOAD_SCOPE("TerrainColorMap::init jpgColorMap tileLoop");
 					for (unsigned long i=0;i<numTextures;i++)
 					{
 						{
-							ZoneScopedN("TerrainColorMap::init jpgColorMap tileExtract");
+							ZoneScopedN("TerrainColorMap::init jpgColorMap tileExtract"); MC2_LOAD_SCOPE("TerrainColorMap::init jpgColorMap tileExtract");
 							getColorMapData(txmRAM[i].ourRAM,i, jpgColorMapWidth);
 						}
 						{
-							ZoneScopedN("TerrainColorMap::init jpgColorMap tileCache");
+							ZoneScopedN("TerrainColorMap::init jpgColorMap tileCache"); MC2_LOAD_SCOPE("TerrainColorMap::init jpgColorMap tileCache");
 							textures[i].mcTextureNodeIndex.reset(mc2::textures::fromRawPixels(std::bit_cast<DWORD *>(txmRAM[i].ourRAM),gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE));
 							mc2::textures::setSessionLifetime(textures[i].mcTextureNodeIndex.get(), 0x1);
 						}
@@ -371,7 +372,7 @@ long TerrainColorMap::init (char *fileName)
 					burnedIn = true;
 				}
 
-				ZoneScopedN("TerrainColorMap::init colorMap read");
+				ZoneScopedN("TerrainColorMap::init colorMap read"); MC2_LOAD_SCOPE("TerrainColorMap::init colorMap read");
 				if (!loadTga(colorMapFile, tgaFileImage, colorMapInfo, "colour map"))
 				return flatFallback();
 			}
@@ -393,7 +394,7 @@ long TerrainColorMap::init (char *fileName)
 				long cmapBytes = static_cast<long>(colorMapInfo.width) * static_cast<long>(colorMapInfo.width) * static_cast<long>(sizeof(DWORD));
 				ownColorMap(static_cast<size_t>(cmapBytes));
 
-				{ ZoneScopedN("TerrainColorMap::init colorMap decode");
+				{ ZoneScopedN("TerrainColorMap::init colorMap decode"); MC2_LOAD_SCOPE("TerrainColorMap::init colorMap decode");
 				if (colorMapInfo.pixel_depth == 24)
 				{
 					//24-Bit color means we must add in an opaque alpha to each 24 bits of color data.
@@ -443,13 +444,13 @@ long TerrainColorMap::init (char *fileName)
 
 				if (!top)
 				{
-					{ ZoneScopedN("TerrainColorMap::init colorMap flip"); flipTopToBottom(ColorMap,32,colorMapInfo.width,colorMapInfo.height); }
+					{ ZoneScopedN("TerrainColorMap::init colorMap flip"); MC2_LOAD_SCOPE("TerrainColorMap::init colorMap flip"); flipTopToBottom(ColorMap,32,colorMapInfo.width,colorMapInfo.height); }
 				}
 
 				//Apply shadow map.  calc every time for now.  Save as in editor, eventually.
 				if (!burnedIn)
 				{
-					{ ZoneScopedN("TerrainColorMap::init burnInShadows"); burnInShadows(true,fileName); }
+					{ ZoneScopedN("TerrainColorMap::init burnInShadows"); MC2_LOAD_SCOPE("TerrainColorMap::init burnInShadows"); burnInShadows(true,fileName); }
 					saveTGAFile(ColorMap,fileName,colorMapInfo.width);
 				}
 
@@ -465,15 +466,15 @@ long TerrainColorMap::init (char *fileName)
 					// and hand the data to the textureManager.
 
 					{
-						ZoneScopedN("TerrainColorMap::init colorMap tileLoop");
+						ZoneScopedN("TerrainColorMap::init colorMap tileLoop"); MC2_LOAD_SCOPE("TerrainColorMap::init colorMap tileLoop");
 						for (unsigned long i=0;i<numTextures;i++)
 						{
 							{
-								ZoneScopedN("TerrainColorMap::init colorMap tileExtract");
+								ZoneScopedN("TerrainColorMap::init colorMap tileExtract"); MC2_LOAD_SCOPE("TerrainColorMap::init colorMap tileExtract");
 								getColorMapData(txmRAM[i].ourRAM,i, colorMapInfo.width);
 							}
 							{
-								ZoneScopedN("TerrainColorMap::init colorMap tileCache");
+								ZoneScopedN("TerrainColorMap::init colorMap tileCache"); MC2_LOAD_SCOPE("TerrainColorMap::init colorMap tileCache");
 								textures[i].mcTextureNodeIndex.reset(mc2::textures::fromRawPixels(std::bit_cast<DWORD *>(txmRAM[i].ourRAM),gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE));
 								mc2::textures::setSessionLifetime(textures[i].mcTextureNodeIndex.get(), 0x1);
 							}
@@ -522,7 +523,7 @@ long TerrainColorMap::init (char *fileName)
 	//At this point, the color Map DATA should be freeable!!
 	// All of the textures have been passed to the mc2::textures::ready()!
 	{
-		ZoneScopedN("TerrainColorMap::init colorMap cleanup");
+		ZoneScopedN("TerrainColorMap::init colorMap cleanup"); MC2_LOAD_SCOPE("TerrainColorMap::init colorMap cleanup");
 		releaseColorMapScratch();
 	}
 
@@ -538,7 +539,7 @@ long TerrainColorMap::init (char *fileName)
 
 		if (fileExists(normalMapPath))
 		{
-			ZoneScopedN("TerrainColorMap::init normalMap");
+			ZoneScopedN("TerrainColorMap::init normalMap"); MC2_LOAD_SCOPE("TerrainColorMap::init normalMap");
 			File nmFile;
 			if (nmFile.open(normalMapPath) == NO_ERR)
 			{
@@ -546,7 +547,7 @@ long TerrainColorMap::init (char *fileName)
 				TGAFileHeader nmInfo{};
 				bool nmLoaded = false;
 				{
-					ZoneScopedN("TerrainColorMap::init normalMap read");
+					ZoneScopedN("TerrainColorMap::init normalMap read"); MC2_LOAD_SCOPE("TerrainColorMap::init normalMap read");
 					nmLoaded = loadTga(nmFile, nmData, nmInfo, "normal map");
 				}
 
@@ -562,7 +563,7 @@ long TerrainColorMap::init (char *fileName)
 					// Load pixel data (24 or 32 bit)
 					MemoryPtr loadBuf = nmData.data() + sizeof(TGAFileHeader);
 					{
-						ZoneScopedN("TerrainColorMap::init normalMap decode");
+						ZoneScopedN("TerrainColorMap::init normalMap decode"); MC2_LOAD_SCOPE("TerrainColorMap::init normalMap decode");
 						if (nmInfo.pixel_depth == 24)
 						{
 							MemoryPtr cMap = nmColorMap;
@@ -586,7 +587,7 @@ long TerrainColorMap::init (char *fileName)
 
 					// Allocate texture handles (they outlive the colour map scratch)
 					{
-						ZoneScopedN("TerrainColorMap::init normalMap allocHandles");
+						ZoneScopedN("TerrainColorMap::init normalMap allocHandles"); MC2_LOAD_SCOPE("TerrainColorMap::init normalMap allocHandles");
 						normalMapStore = std::vector<ColorMapTextures>(numNormalMapTextures);
 						normalMapTextures = normalMapStore.data();
 					}
@@ -595,11 +596,11 @@ long TerrainColorMap::init (char *fileName)
 					std::vector<unsigned char> nmTileStore;
 					MemoryPtr tileRAM = nullptr;
 					{
-						ZoneScopedN("TerrainColorMap::init normalMap allocTileBuffer");
+						ZoneScopedN("TerrainColorMap::init normalMap allocTileBuffer"); MC2_LOAD_SCOPE("TerrainColorMap::init normalMap allocTileBuffer");
 						nmTileStore.assign(sizeof(DWORD) * COLOR_MAP_TEXTURE_SIZE * COLOR_MAP_TEXTURE_SIZE, 0);
 						tileRAM = nmTileStore.data();
 					}
-					{ ZoneScopedN("TerrainColorMap::init normalMap tileLoop");
+					{ ZoneScopedN("TerrainColorMap::init normalMap tileLoop"); MC2_LOAD_SCOPE("TerrainColorMap::init normalMap tileLoop");
 					for (DWORD i = 0; i < numNormalMapTextures; i++)
 					{
 						// Use same tile extraction as colormap
@@ -610,7 +611,7 @@ long TerrainColorMap::init (char *fileName)
 						if (startRow > 0) startRow -= nmInfo.width;
 
 						{
-							ZoneScopedN("TerrainColorMap::init normalMap tileExtract");
+							ZoneScopedN("TerrainColorMap::init normalMap tileExtract"); MC2_LOAD_SCOPE("TerrainColorMap::init normalMap tileExtract");
 							MemoryPtr src = nmColorMap + (startCol + startRow) * sizeof(DWORD);
 							MemoryPtr dst = tileRAM;
 							for (long row = 0; row < COLOR_MAP_TEXTURE_SIZE; row++)
@@ -622,7 +623,7 @@ long TerrainColorMap::init (char *fileName)
 						}
 
 						{
-							ZoneScopedN("TerrainColorMap::init normalMap tileCache");
+							ZoneScopedN("TerrainColorMap::init normalMap tileCache"); MC2_LOAD_SCOPE("TerrainColorMap::init normalMap tileCache");
 							normalMapTextures[i].mcTextureNodeIndex.reset(mc2::textures::fromRawPixels(
 								std::bit_cast<DWORD *>(tileRAM), gos_Texture_Solid, gosHint_DontShrink, COLOR_MAP_TEXTURE_SIZE));
 							mc2::textures::setSessionLifetime(normalMapTextures[i].mcTextureNodeIndex.get(), 0x1);
@@ -641,7 +642,7 @@ long TerrainColorMap::init (char *fileName)
 	// Load terrain material texture arrays (4 PBR material sets)
 	mc2::fmt::print_out("[SPLATTING] starting material array load\n");
 	{
-		ZoneScopedN("TerrainColorMap::init materialArrays");
+		ZoneScopedN("TerrainColorMap::init materialArrays"); MC2_LOAD_SCOPE("TerrainColorMap::init materialArrays");
 		const char* normalNames[9] = {
 			"mat0_normal", "mat1_normal", "mat2_normal", "mat3_normal", "mat4_normal",
 			"mat5_normal", "mat6_normal", "mat7_normal", "mat8_normal"

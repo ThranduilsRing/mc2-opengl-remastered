@@ -4,6 +4,7 @@
 #include "missiongui_shared_internal.h"
 #include "render_view.h"
 #include "mc2fmt.h"
+#include "camera_elevation.h"
 
 
 void MissionInterfaceManager::doAttack()
@@ -767,30 +768,26 @@ int MissionInterfaceManager::handleOrders( TacticalOrder& order)
 
 int MissionInterfaceManager::scrollUp()
 {
-	float frameFactor = frameLength / baseFrameLength;
-	float scrollFactor = scrollInc / eye->getScaleFactor() * frameFactor;
+	float scrollFactor = mc2cam::panStep(scrollInc, eye->getScaleFactor(), frameLength, baseFrameLength);
 	eye->moveUp(scrollFactor);
 	return 1;
 }
 
 int MissionInterfaceManager::scrollDown()
 {
-	float frameFactor = frameLength / baseFrameLength;
-	float scrollFactor = scrollInc / eye->getScaleFactor() * frameFactor;
+	float scrollFactor = mc2cam::panStep(scrollInc, eye->getScaleFactor(), frameLength, baseFrameLength);
 	eye->moveDown(scrollFactor);
 	return 1;
 }
 int MissionInterfaceManager::scrollLeft()
 {
-	float frameFactor = frameLength / baseFrameLength;
-	float scrollFactor = scrollInc / eye->getScaleFactor() * frameFactor;
+	float scrollFactor = mc2cam::panStep(scrollInc, eye->getScaleFactor(), frameLength, baseFrameLength);
 	eye->moveLeft(scrollFactor);
 	return 1;
 }
 int MissionInterfaceManager::scrollRight()
 {
-	float frameFactor = frameLength / baseFrameLength;
-	float scrollFactor = scrollInc / eye->getScaleFactor() * frameFactor;
+	float scrollFactor = mc2cam::panStep(scrollInc, eye->getScaleFactor(), frameLength, baseFrameLength);
 	eye->moveRight(scrollFactor);
 	return 1;
 }
@@ -853,13 +850,13 @@ int MissionInterfaceManager::zoomIn()
 }
 int MissionInterfaceManager::zoomChoiceOut()
 {
-	eye->ZoomOut(zoomInc * 18.0f * eye->getScaleFactor());
+	eye->ZoomOut(mc2cam::wheelZoomAmount(zoomInc, baseFrameLength, eye->getScaleFactor()));
 
 	return 1;
 }
 int MissionInterfaceManager::zoomChoiceIn()
 {
-	eye->ZoomIn(zoomInc * 18.0f * eye->getScaleFactor());
+	eye->ZoomIn(mc2cam::wheelZoomAmount(zoomInc, baseFrameLength, eye->getScaleFactor()));
  	return 1;
 }
 int MissionInterfaceManager::rotateLeft()

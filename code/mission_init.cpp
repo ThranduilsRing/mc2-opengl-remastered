@@ -19,6 +19,7 @@
 #include "../GameOS/gameos/gos_dev_shell.h"
 #include "mc2fmt.h"
 #include "appearance_rng.h"
+#include "../GameOS/gameos/load_scope.h"
 
 using enum MissionLoadType;
 static bool devShellSimSpeed(mc2::czstring paramsJson,
@@ -166,9 +167,9 @@ void Mission::initCoreSystems() {
 	MCTimeABLLoad=x1-x;
 #endif
 
-	{ ZoneScopedN("Mission::init initBareMinimum"); initBareMinimum(); }
+	{ ZoneScopedN("Mission::init initBareMinimum"); MC2_LOAD_SCOPE("Mission::init initBareMinimum"); initBareMinimum(); }
 	loadProgress = 4.0f;
-	{ ZoneScopedN("Mission::init initTGLForMission"); initTGLForMission(); }
+	{ ZoneScopedN("Mission::init initTGLForMission"); MC2_LOAD_SCOPE("Mission::init initTGLForMission"); initTGLForMission(); }
 	mission_phase_mark("setup_tgl_ready"); // LOAD-PHASE-FACTS-1
 	
 	
@@ -792,7 +793,7 @@ void Mission::initTerrain(MissionInitFrame& f) {
 	long terrainInitResult;
 	mission_phase_mark("mission_settings_ready");
 	{
-		ZoneScopedN("Mission::init land->init");
+		ZoneScopedN("Mission::init land->init"); MC2_LOAD_SCOPE("Mission::init land->init");
 		terrainInitResult = land->init(&pakFile, 0, GameVisibleVertices, loadProgress, 20.0 );
 	}
 	mission_phase_mark("terrain_data_ready");
@@ -809,11 +810,11 @@ void Mission::initTerrain(MissionInitFrame& f) {
 	MCTimeTerrainLoad=x1-x;
 #endif
 
-	{ ZoneScopedN("Mission::init land->load"); land->load( missionFile ); }
+	{ ZoneScopedN("Mission::init land->load"); MC2_LOAD_SCOPE("Mission::init land->load"); land->load( missionFile ); }
 	mission_phase_mark("terrain_config_ready");
 
 	loadProgress = 36.0f;
-	{ ZoneScopedN("Mission::init land->primeMissionTerrainCache"); land->primeMissionTerrainCache(loadProgress, 4.0f); }
+	{ ZoneScopedN("Mission::init land->primeMissionTerrainCache"); MC2_LOAD_SCOPE("Mission::init land->primeMissionTerrainCache"); land->primeMissionTerrainCache(loadProgress, 4.0f); }
 	loadProgress = 40.0f;
 	mission_phase_mark("terrain_ready"); // LOAD-PHASE-FACTS-1: FST/pak parse + terrain prime done
 }
@@ -1005,64 +1006,64 @@ void Mission::init (mc2::czstring missionName, MissionLoadType loadType, long dr
 		~SimulationPhase() { simPresentationPass = previous; }
 	} simulationPhase;
 	extern int g_lightProbeSetupPath; g_lightProbeSetupPath = 1; // [GPUPROPS v1]
-	ZoneScopedN("Mission::init");
+	ZoneScopedN("Mission::init"); MC2_LOAD_SCOPE("Mission::init");
 	MissionInitFrame f;
 	mc2::content::resetMission();
 	f.missionFileView = &missionFile;
 	f.missionName = missionName;
 	resetOrderIngress(); // Old tokens cannot cross reinitialization.
-	initPrologue(f);
-	initTeamRelations(loadType);
-	initCoreSystems();
+	{ MC2_LOAD_SCOPE("init.initPrologue"); initPrologue(f); }
+	{ MC2_LOAD_SCOPE("init.initTeamRelations"); initTeamRelations(loadType); }
+	{ MC2_LOAD_SCOPE("init.initCoreSystems"); initCoreSystems(); }
 	graphics::pump_loading_events();
-	initGameSystemRanges(f);
-	initGameSystemGeneral(f);
-	initGameSystemHazards(f);
+	{ MC2_LOAD_SCOPE("init.initGameSystemRanges"); initGameSystemRanges(f); }
+	{ MC2_LOAD_SCOPE("init.initGameSystemGeneral"); initGameSystemGeneral(f); }
+	{ MC2_LOAD_SCOPE("init.initGameSystemHazards"); initGameSystemHazards(f); }
 	memset(missionFileName,0,80);
 	strncpy(missionFileName,missionName,79);
-	initMissionFile(dropZoneList, f);
-	initSkyAndTeamReset(f);
-	initTeamsAndCommanders(loadType, dropZoneList, commandersToLoad, f);
-	initTriggerAndDropZone(f);
-	initMissionSettings(f);
+	{ MC2_LOAD_SCOPE("init.initMissionFile"); initMissionFile(dropZoneList, f); }
+	{ MC2_LOAD_SCOPE("init.initSkyAndTeamReset"); initSkyAndTeamReset(f); }
+	{ MC2_LOAD_SCOPE("init.initTeamsAndCommanders"); initTeamsAndCommanders(loadType, dropZoneList, commandersToLoad, f); }
+	{ MC2_LOAD_SCOPE("init.initTriggerAndDropZone"); initTriggerAndDropZone(f); }
+	{ MC2_LOAD_SCOPE("init.initMissionSettings"); initMissionSettings(f); }
 	graphics::pump_loading_events();
-	initTerrain(f);
+	{ MC2_LOAD_SCOPE("init.initTerrain"); initTerrain(f); }
 	graphics::pump_loading_events();
-	initPathfinding(f);
+	{ MC2_LOAD_SCOPE("init.initPathfinding"); initPathfinding(f); }
 	graphics::pump_loading_events();
-	initAblCoreLibs(f);
+	{ MC2_LOAD_SCOPE("init.initAblCoreLibs"); initAblCoreLibs(f); }
 	graphics::pump_loading_events();
-	initMissionScript(f);
-	initWarriorsHeader(f);
-	loadWarriors(f);
+	{ MC2_LOAD_SCOPE("init.initMissionScript"); initMissionScript(f); }
+	{ MC2_LOAD_SCOPE("init.initWarriorsHeader"); initWarriorsHeader(f); }
+	{ MC2_LOAD_SCOPE("init.loadWarriors"); loadWarriors(f); }
 	graphics::pump_loading_events();
-	soakAutowinCheck(f);
-	loadBrainParamsPhase(f);
-	loadMissionFitOpord(f);
-	loadBrainRuntime(f);
-	loadTacticWeights(f);
-	loadBrainDispatch(f);
-initPartsHeader(f);
-	initPartsLoad(loadType, dropZoneID, dropZoneList, commandersToLoad, numMoversPerCommander, f);
+	{ MC2_LOAD_SCOPE("init.soakAutowinCheck"); soakAutowinCheck(f); }
+	{ MC2_LOAD_SCOPE("init.loadBrainParamsPhase"); loadBrainParamsPhase(f); }
+	{ MC2_LOAD_SCOPE("init.loadMissionFitOpord"); loadMissionFitOpord(f); }
+	{ MC2_LOAD_SCOPE("init.loadBrainRuntime"); loadBrainRuntime(f); }
+	{ MC2_LOAD_SCOPE("init.loadTacticWeights"); loadTacticWeights(f); }
+	{ MC2_LOAD_SCOPE("init.loadBrainDispatch"); loadBrainDispatch(f); }
+	{ MC2_LOAD_SCOPE("init.initPartsHeader"); initPartsHeader(f); }
+	{ MC2_LOAD_SCOPE("init.initPartsLoad"); initPartsLoad(loadType, dropZoneID, dropZoneList, commandersToLoad, numMoversPerCommander, f); }
 	graphics::pump_loading_events();
-	initObjectCounts(loadType, f);
-	ObjectManager->preloadTickSpawnTypes();   // G7: the overlap worker must never load an object type
-	initGpuAndLighting();
-	initSpawnActors(loadType);
-	initTerrainObjectsLoad(commandersToLoad, f);
+	{ MC2_LOAD_SCOPE("init.initObjectCounts"); initObjectCounts(loadType, f); }
+	{ MC2_LOAD_SCOPE("init.preloadTickSpawnTypes"); ObjectManager->preloadTickSpawnTypes(); }   // G7: the overlap worker must never load an object type
+	{ MC2_LOAD_SCOPE("init.initGpuAndLighting"); initGpuAndLighting(); }
+	{ MC2_LOAD_SCOPE("init.initSpawnActors"); initSpawnActors(loadType); }
+	{ MC2_LOAD_SCOPE("init.initTerrainObjectsLoad"); initTerrainObjectsLoad(commandersToLoad, f); }
 	graphics::pump_loading_events();
-	initDisableAndObjectives(f);
-	initCommanders(commandersToLoad, f);
-	bindOrderRecipients(); // Commander groups finalize the actors' runtime roster IDs.
-	admitAuthoredRoutes();
-	initWeatherCamera(f);
-	initInterface(f);
-	initLabTimingAndClose();
+	{ MC2_LOAD_SCOPE("init.initDisableAndObjectives"); initDisableAndObjectives(f); }
+	{ MC2_LOAD_SCOPE("init.initCommanders"); initCommanders(commandersToLoad, f); }
+	{ MC2_LOAD_SCOPE("init.bindOrderRecipients"); bindOrderRecipients(); } // Commander groups finalize the actors' runtime roster IDs.
+	{ MC2_LOAD_SCOPE("init.admitAuthoredRoutes"); admitAuthoredRoutes(); }
+	{ MC2_LOAD_SCOPE("init.initWeatherCamera"); initWeatherCamera(f); }
+	{ MC2_LOAD_SCOPE("init.initInterface"); initInterface(f); }
+	{ MC2_LOAD_SCOPE("init.initLabTimingAndClose"); initLabTimingAndClose(); }
 	// Support craft use the native prop renderer too: register their geometry
 	// before the immutable buffers close, while still behind the loading screen.
-	preloadMissionSupportAtLoad();
+	{ MC2_LOAD_SCOPE("init.preloadMissionSupportAtLoad"); preloadMissionSupportAtLoad(); }
 	mission_phase_mark("mission_support_ready");
-	initFinalizeGeometry();
+	{ MC2_LOAD_SCOPE("init.initFinalizeGeometry"); initFinalizeGeometry(); }
 	graphics::pump_loading_events();
 	mc2::content::reportMission(missionName);
 }

@@ -37,6 +37,7 @@
 #include <cmath>     // sinf, fmodf, fabsf
 #include <fstream>
 #include "mc2fmt.h"
+#include "../code/job_system.h"
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -45,6 +46,7 @@
 // VEG-CEMENT-1: sub-cell hard-surface coverage from the decal/overlay bake
 // (GameOS/gameos/gos_terrain_indirect_mine_decal.cpp; C-linkage forwarders).
 extern float gos_terrain_indirect_HardSurfaceCoverage(float wx, float wy);
+extern float gos_terrain_indirect_HardSurfaceCoverageReadOnly(float wx, float wy);
 extern void  gos_terrain_indirect_HardSurfaceStats(int* alpha, int* pure, int* noImage);
 
 namespace {
@@ -337,8 +339,19 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
             }
             return gos_terrain_indirect_HardSurfaceCoverage(pos.x,pos.y)>=kHardFalloffLo;
         });
-        for (const auto& [col,row] : fieldCells) {
-            if (fieldSide == 0) break;
+        // Finish lazy coverage updates before workers read terrain and static masks.
+        (void)gos_terrain_indirect_HardSurfaceCoverage(originX, originY);
+        struct FieldBatch {
+            std::vector<GosVegetation::Instance> instances;
+            int gaps = 0, flowers = 0;
+        };
+        // Fixed batches merge in cell order, preserving upload order and the clump budget.
+        const auto field = mc2::jobs::parallel_reduce<FieldBatch>(mc2::jobs::Domain::Render,
+            fieldSide ? static_cast<int>(fieldCells.size()) : 0, 64, 12000, {},
+            [&](int begin, int end, FieldBatch& batch) {
+        batch.instances.reserve(static_cast<size_t>(end-begin)*fieldSide*fieldSide);
+        for (int cell = begin; cell < end; ++cell) {
+            const auto [col,row] = fieldCells[static_cast<size_t>(cell)];
             const float slope = fieldSlopes[static_cast<size_t>(row)*side+col];
             for (int j = 0; j < fieldSide*fieldSide; ++j) {
                 const auto blade = fieldBlade(col,row,seed,j,fieldSide,gridStep,*fieldRecipe);
@@ -350,7 +363,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                 // and a gentle height swell instead of tall tufts.
                 const float tuft = macroZone(bx+static_cast<float>(seed&1023u), by, 14.0f);
                 const float tuftHeight = fieldTuftHeight(tuft);
-                if (tuftHeight <= 0.0f) { ++fieldGaps; continue; }
+                if (tuftHeight <= 0.0f) { ++batch.gaps; continue; }
                 const bool flower = macroZone(bx+911.0f, by-377.0f+static_cast<float>(seed&2047u), 45.0f) > 0.74f &&
                                     blade.seed < 0.4f;
                 int ir=0,ic=0,isr=0,isc=0;
@@ -365,7 +378,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                     land->worldToCell(bpos,cr,cc);
                     occupied = !gameMap->inBounds(cr,cc) || clumpStaticOccupied(gameMap->cellAt(cr,cc), true);
                 }
-                const float coverage = gos_terrain_indirect_HardSurfaceCoverage(bx,by);
+                const float coverage = gos_terrain_indirect_HardSurfaceCoverageReadOnly(bx,by);
                 if (!clumpSurfaceAllowed(true,elevation<=Terrain::waterElevation+kBeachMarginWU,
                                          occupied,coverage,slope,false)) continue;
                 const float edgeProbability = fieldEdgeProbability(edge.distance(bx-originX,originY-by),
@@ -379,12 +392,19 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                 // role 0: the shader bends field blades downwind; bit 2 = white wildflower heads.
                 inst.atlasFrame = blade.frame | (flower ? kFieldFlowerBit : 0u);
                 inst.atlasFrame |= fieldEdgeRole(edgeProbability,hashf(bx+71.0f,by-137.0f));
-                fieldFlowers += flower ? 1 : 0;
+                batch.flowers += flower ? 1 : 0;
                 inst.seed = blade.seed;
-                instances.push_back(inst);
-                ++fieldBlades;
+                batch.instances.push_back(inst);
             }
         }
+            }, [&](FieldBatch& total, const FieldBatch& batch) {
+                instances.insert(instances.end(), batch.instances.begin(), batch.instances.end());
+                fieldBlades += static_cast<int>(batch.instances.size());
+                total.gaps += batch.gaps;
+                total.flowers += batch.flowers;
+            });
+        fieldGaps = field.gaps;
+        fieldFlowers = field.flowers;
     }
     const double fieldMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - fieldT0).count();
     MC2_DIAGFE(stderr,

@@ -16,6 +16,7 @@
 #include "terrain_field_store.h"
 #include <algorithm>
 #include "mc2fmt.h"
+#include "../GameOS/gameos/load_scope.h"
 
 
 //---------------------------------------------------------------------------
@@ -470,11 +471,11 @@ void Terrain::primeMissionTerrainCache (volatile float& progress, float progress
 	const float buildRange = progressRange * 0.5f;
 	const float warmRange = progressRange - buildRange;
 	{
-		ZoneScopedN("Terrain::primeMissionTerrainCache build");
+		ZoneScopedN("Terrain::primeMissionTerrainCache build"); MC2_LOAD_SCOPE("Terrain::primeMissionTerrainCache build");
 		mapData->buildTerrainFaceCache(&progress, buildRange);
 	}
 	{
-		ZoneScopedN("Terrain::primeMissionTerrainCache warm");
+		ZoneScopedN("Terrain::primeMissionTerrainCache warm"); MC2_LOAD_SCOPE("Terrain::primeMissionTerrainCache warm");
 		mapData->warmTerrainFaceCacheResidency(&progress, warmRange);
 	}
 
@@ -484,7 +485,7 @@ void Terrain::primeMissionTerrainCache (volatile float& progress, float progress
 	// camera-windowed and reshuffles each frame. Spec:
 	// docs/superpowers/specs/2026-04-29-renderwater-fastpath-design.md.
 	{
-		ZoneScopedN("Terrain::primeMissionTerrainCache water_stream_build");
+		ZoneScopedN("Terrain::primeMissionTerrainCache water_stream_build"); MC2_LOAD_SCOPE("Terrain::primeMissionTerrainCache water_stream_build");
 		WaterStream::Reset();
 		WaterStream::Build();
 	}
