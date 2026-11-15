@@ -13,6 +13,7 @@
 #include "utils/mc2log.h"
 #include "WindowInput.hpp"
 
+#include "window_mode.h"
 
 
 // GAMEOS-GRAPHICS-SPLIT-1 slice 1: gosFont implementation moved to
@@ -444,6 +445,11 @@ void __stdcall gos_SetScreenMode( DWORD Width, DWORD Height, DWORD bitDepth/*=16
             GotoWindowMode = true;
         }
     }
+    // false,false means keep the mode, not leave fullscreen (briefing/prefs).
+    GotoFullScreen = graphics::requested_fullscreen(
+        Environment.fullScreen != 0, GotoFullScreen, GotoWindowMode);
+    Environment.fullScreen = GotoFullScreen ? 1 : 0;
+
 
     // WINDOWED-8006-1 (issue #49): clamped path keeps the PHYSICAL window at
     // its current (boot/options.cfg) size — phys 0,0 = keep — while the game's

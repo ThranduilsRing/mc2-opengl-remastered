@@ -9,7 +9,25 @@
 
 #include "mc2_czstring.h"
 #include <cstdint>
+#include <chrono>
 #include <string>
+
+// Yield between codec/demux calls so a slow clip cannot monopolize an update.
+// The operation cap also bounds work when the clock has not advanced.
+class VideoDecodeBudget {
+public:
+    using Clock = std::chrono::steady_clock;
+    explicit VideoDecodeBudget(Clock::time_point now = Clock::now())
+        : deadline(now + std::chrono::milliseconds(2)) {}
+    bool take(Clock::time_point now = Clock::now()) {
+        if (remaining == 0 || now >= deadline) return false;
+        --remaining;
+        return true;
+    }
+private:
+    Clock::time_point deadline;
+    unsigned remaining = 128;
+};
 
 // A decoder receipt retains its initiating action across asynchronous updates.
 struct VideoObjectiveReceipt {

@@ -32,6 +32,7 @@ add_executable(mc2_tests
     test_fog_policy.cpp
     test_water_reactive.cpp
     test_fx_native.cpp
+    test_window_mode.cpp
     ${MC2_WORKTREE_ROOT}/mclib/fx/fx_render.cpp
     ${MC2_WORKTREE_ROOT}/mclib/fx/fx_format.cpp
     ${MC2_WORKTREE_ROOT}/mclib/fx/fx_catalog.cpp

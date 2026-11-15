@@ -429,6 +429,8 @@ void process_events( void ) {
                 graphics::refresh_mouse_grab();
                 break;
             case SDL_WINDOWEVENT_FOCUS_GAINED:
+                graphics::window_checkpoint("focus_gained_before");
+                graphics::window_checkpoint("focus_gained_after", true);
                 // Re-assert the mouse grab on focus regain. The initial
                 // grab at window-creation can be only partially applied on
                 // multi-monitor setups (symptom: cursor escapes to the
@@ -453,6 +455,7 @@ void process_events( void ) {
                 graphics::apply_os_cursor_policy("enter", !g_focus_lost);
                 break;
             case SDL_WINDOWEVENT_FOCUS_LOST:
+                graphics::window_checkpoint("focus_lost");
                 // Release grab so Alt-Tab and other windows behave cleanly.
                 graphics::set_mouse_grab(false);
                 graphics::apply_os_cursor_policy("focus_lost", false);

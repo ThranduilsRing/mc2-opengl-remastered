@@ -85,12 +85,12 @@ class MechLabScreen: public LogisticsScreen
 
 		AttributeMeter attributeMeters[MECH_LAB_ATTRIBUTE_METER_COUNT];
 
-		aObject				componentIcons[128];
+		ComponentIcon componentIcons[128];
 		long				componentCount;
 
 		aObject				payloadIcon;
 
-		aObject				dragIcon;
+		ComponentIcon dragIcon;
 
 		LogisticsComponent*	pDragComponent;
 		LogisticsComponent*	pCurComponent;

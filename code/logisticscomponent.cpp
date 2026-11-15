@@ -16,9 +16,26 @@ LogisticsComponent.cpp			: Implementation of the LogisticsComponent component.
 #include "platform_str.h"
 
 #include <utility>
+#include <string>
+#include <cctype>
+#include "component_rules.h"
 
 
 extern const char* ComponentFormString[];
+
+const char* LogisticsComponent::getIconFileName() const
+{
+	std::string key = iconFileName ? iconFileName.get() : "";
+	for (char& c : key) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+	if (auto icon = mc2::components::launcherIcon(key)) return icon;
+	return iconFileName.get();
+}
+
+bool LogisticsComponent::hasLauncherIcon() const
+{
+	const char* file = getIconFileName();
+	return file && mc2::components::launcherIcon(file);
+}
 
 long LogisticsComponent::XICON_FACTOR = 48;
 long LogisticsComponent::YICON_FACTOR = 32;
