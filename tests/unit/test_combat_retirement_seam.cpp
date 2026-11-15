@@ -315,6 +315,7 @@ TEST_CASE("CombatRetirementProduction/splash hits all nearby units and buildings
     struct Target : GameObject {
         struct Passive : ObjectType { bool handleCollision(GameObjectPtr, GameObjectPtr) override { return false; } } type;
         ObjectTypePtr getObjectType() override { return &type; }
+        float getExtentRadius() override { return 0; }
         void identify(int i) { watchID = i + 1; objectClass = i % 2 ? BUILDING : BATTLEMECH; }
         float damage = 0;
         long handleWeaponHit(WeaponShotInfoPtr shot, bool = false) override {
@@ -333,7 +334,6 @@ TEST_CASE("CombatRetirementProduction/splash hits all nearby units and buildings
     for (int i = 0; i < 5; ++i) {
         targets[i].setExists(true); targets[i].identify(i);
         targets[i].setPosition(glm::vec3(i * 9, 0, 0), false);
-        targets[i].setExtentRadius(0);
     }
     world.objects->entries[1] = &targets[0];
     WeaponBoltType boltType;
