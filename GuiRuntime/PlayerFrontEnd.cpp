@@ -20,6 +20,8 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <future>
+#include <chrono>
 #include <iterator>
 #include <optional>
 #include <utility>
@@ -28,6 +30,7 @@
 #include <windows.h>
 #else
 #include <unistd.h>
+#include <sys/wait.h>
 #endif
 
 namespace PlayerFrontEnd {
@@ -49,6 +52,55 @@ std::vector<Pack> packs;
 std::string campaign, base, texture, campaignFit, pendingStart, pendingMission, error;
 bool pickerOpen = false, scanned = false, restart = false, settingsChanged = false;
 std::map<std::string, std::optional<std::string>> inheritedEnv;
+
+std::future<int> importJob;
+bool importStarted = false;
+std::string importError;
+Json importStatus = Json::object();
+
+void startImport() {
+    importStarted = true;
+    importError.clear();
+    importStatus = Json::object();
+    // The converter runs separately: filesystem work never blocks the menu thread.
+    importJob = std::async(std::launch::async, [] {
+#ifdef _WIN32
+        SECURITY_ATTRIBUTES security{sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE};
+        const auto log = CreateFileW(L"campaign-auto.log", GENERIC_WRITE, FILE_SHARE_READ, &security, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (log == INVALID_HANDLE_VALUE) return static_cast<int>(GetLastError());
+        const auto input = CreateFileW(L"NUL", GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, &security, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+        STARTUPINFOW startup{};
+        startup.cb = sizeof(startup);
+        startup.dwFlags = STARTF_USESTDHANDLES;
+        startup.hStdOutput = log;
+        startup.hStdError = log;
+        startup.hStdInput = input;
+        PROCESS_INFORMATION process{};
+        std::wstring command = L"py -3 tools/import_campaign.py --auto --deploy .";
+        // background-launch: trusted campaign converter, no installer execution or window.
+        const bool launched = CreateProcessW(nullptr, command.data(), nullptr, nullptr, TRUE,
+            DETACHED_PROCESS | IDLE_PRIORITY_CLASS, nullptr, nullptr, &startup, &process) != 0;
+        const auto launchError = GetLastError();
+        CloseHandle(log);
+        if (input != INVALID_HANDLE_VALUE) CloseHandle(input);
+        if (!launched) return static_cast<int>(launchError);
+        CloseHandle(process.hThread);
+        WaitForSingleObject(process.hProcess, INFINITE);
+        DWORD code = 1;
+        GetExitCodeProcess(process.hProcess, &code);
+        CloseHandle(process.hProcess);
+        return static_cast<int>(code);
+#else
+        const auto child = fork();
+        if (child == 0) {
+            execlp("python3", "python3", "tools/import_campaign.py", "--auto", "--deploy", ".", static_cast<char*>(nullptr));
+            _exit(127);
+        }
+        int status = 0;
+        return child > 0 && waitpid(child, &status, 0) == child && WIFEXITED(status) ? WEXITSTATUS(status) : 1;
+#endif
+    });
+}
 
 std::optional<std::string> env(std::string_view key) {
     const char* value = mc2::gate::envText(std::string(key).c_str());
@@ -166,12 +218,18 @@ void scan() {
         if (pack.enabled && pack.group == "texture-quality") texture = id;
         packs.push_back(std::move(pack));
     }
+    std::stable_sort(packs.begin(), packs.end(), [](const Pack& a, const Pack& b) {
+        return (a.kind == "campaign") > (b.kind == "campaign");
+    });
     const auto fits = campaigns(campaign);
     campaignFit = fits.empty() ? "" : fits.front();
     scanned = true;
 }
 void autoBase() {
     if (campaign.empty()) { base.clear(); return; }
+    for (const auto& pack : packs) if (pack.id == campaign && !pack.dependencies.empty()) {
+        for (const auto& dep : pack.dependencies) if (dep == "mco-compat" || dep == "mc2x-compat") { base = dep; return; }
+    }
     for (const auto& pack : packs) if (pack.id == campaign && pack.kind == "assets") { base.clear(); return; }
     bool high = false, magic = false;
     const auto missions = fs::path("mods") / campaign / "data" / "missions";
@@ -332,6 +390,22 @@ void drawMainMenu(bool showCredits) {
     const float toolsScale = std::clamp(viewport->WorkSize.y / 1080.0f, 1.0f, 4.0f);
     ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + viewport->WorkSize.x - 10 * toolsScale,
         viewport->WorkPos.y + 25 * toolsScale), ImGuiCond_Always, ImVec2(1, 0));
+    if (!importStarted) startImport();
+    static Uint32 nextImportRead = 0;
+    if (importJob.valid() && SDL_GetTicks() >= nextImportRead) {
+        nextImportRead = SDL_GetTicks() + 250;
+        importStatus = readJson("mods/.campaign-auto.json");
+        if (importJob.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+            const auto code = importJob.get();
+            if (code) {
+                std::ifstream log("campaign-auto.log");
+                const std::string detail((std::istreambuf_iterator<char>(log)), {});
+                importError = "Automatic campaign import failed (code " + std::to_string(code) + "; Python 3 required): " + detail.substr(detail.size() > 2000 ? detail.size() - 2000 : 0);
+            }
+            importStatus = readJson("mods/.campaign-auto.json");
+            scan();
+        }
+    }
     ImGui::Begin("Campaign tools", nullptr, ImGuiWindowFlags_NoNav | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings);
     if (ImGui::Button("Campaigns & mods")) pickerOpen = !pickerOpen;
     ImGui::SameLine();
@@ -352,9 +426,13 @@ void drawMainMenu(bool showCredits) {
     ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + viewport->WorkSize.x * 0.5f, viewport->WorkPos.y + viewport->WorkSize.y * 0.5f), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
     ImGui::SetNextWindowSizeConstraints(ImVec2(900 * scale, 0), ImVec2(900 * scale, viewport->WorkSize.y * 0.85f));
     if (!ImGui::Begin("Campaigns & mods", &pickerOpen, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings)) { ImGui::End(); popPickerStyle(); return; }
-    if (ImGui::Button("Refresh")) scan();
+    if (ImGui::Button("Refresh") && !importJob.valid()) { scan(); startImport(); }
     ImGui::SameLine();
     ImGui::TextUnformatted("Installed campaigns, missions and add-ons");
+    if (importJob.valid()) ImGui::TextWrapped("%s", text(importStatus, "message", "Starting automatic campaign import...").c_str());
+    if (!importError.empty()) ImGui::TextWrapped("%s", importError.c_str());
+    if (importStatus.contains("sources")) for (const auto& [source, result] : importStatus["sources"].items())
+        if (result.contains("error")) ImGui::TextWrapped("%s: %s", source.c_str(), text(result, "error").c_str());
     auto select = [&](std::string_view id) {
         campaign = id;
         autoBase();
@@ -366,11 +444,18 @@ void drawMainMenu(bool showCredits) {
     ImGui::TableSetupColumn("Details");
     ImGui::TableNextColumn();
     ImGui::SeparatorText("INSTALLED MODS");
-    if (ImGui::BeginListBox("##packs", ImVec2(-1, 275 * scale))) {
+    if (ImGui::BeginListBox("##packs", ImVec2(-1, 375 * scale))) {
         if (ImGui::Selectable("Stock campaign", campaign.empty())) select("");
         for (const auto& pack : packs) {
+            if (importStatus.contains("sources") && importStatus["sources"].contains(pack.id) &&
+                !importStatus["sources"][pack.id].contains("error")) continue;
             ImGui::PushID(pack.id.c_str());
-            if (ImGui::Selectable(pack.name.c_str(), campaign == pack.id)) select(pack.id);
+            if (pack.kind == "campaign" && !pack.campaigns.empty()) {
+                for (const auto& [fit, info] : pack.campaigns) {
+                    const auto title = campaignTitle("", info.title, fit);
+                    if (ImGui::Selectable(title.c_str(), campaign == pack.id && campaignFit == fit)) { select(pack.id); campaignFit = fit; }
+                }
+            } else if (ImGui::Selectable(pack.name.c_str(), campaign == pack.id)) select(pack.id);
             if (!pack.problem.empty()) ImGui::TextWrapped("%s", pack.problem.c_str());
             ImGui::PopID();
         }
@@ -455,7 +540,7 @@ void drawMainMenu(bool showCredits) {
     }
     if (!problem.empty()) ImGui::TextWrapped("%s", problem.c_str());
     else if (campaignFit.empty() && !single) ImGui::TextUnformatted("No campaign or playable mission found; compatibility packs are used with a campaign.");
-    ImGui::BeginDisabled((campaignFit.empty() && !single) || missingBase || !problem.empty());
+    ImGui::BeginDisabled(importJob.valid() || (campaignFit.empty() && !single) || missingBase || !problem.empty());
     const char* startLabel = single ? "Start single mission" : selected && selected->kind == "assets" ? "Start stock campaign with add-on" : "Start campaign";
     if (ImGui::Button(startLabel)) {
         settings["last_campaign"] = campaign;

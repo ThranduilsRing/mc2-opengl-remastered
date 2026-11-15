@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
+import io
 import json
 import os
 from pathlib import Path, PurePosixPath
@@ -374,13 +376,88 @@ def import_campaign(source, deploy):
             (staged / "mods" / item).rename(mods / item)
         return {"status": "installed", "mod": mod_id, "compat": compat, "campaigns": campaigns}
 
+def auto_import(deploy):
+    """Discover raw installs; persist progress and source stamps outside their folders."""
+    deploy = Path(deploy).resolve()
+    mods = deploy / "mods"
+    mods.mkdir(exist_ok=True)
+    status = mods / ".campaign-auto.json"
+    try:
+        previous = json.loads(status.read_text(encoding="utf-8")) if status.is_file() else {}
+        if not isinstance(previous, dict):
+            previous = {}
+    except (ValueError, OSError):
+        previous = {}
+    state = {"running": True, "message": "Looking for community campaigns...", "sources": {}}
+
+    def publish(message):
+        state["message"] = message
+        temporary = status.with_suffix(".tmp")
+        temporary.write_text(json.dumps(state, indent=2), encoding="utf-8")
+        temporary.replace(status)
+
+    publish(state["message"])
+    candidates = []
+    for source in sorted(mods.iterdir()):
+        if (not source.is_dir() or source.name.startswith(".") or
+                (source / "mod.json").exists() or (source / ".campaign-import.json").exists()):
+            continue
+        roots = [source] + sorted(p for p in source.iterdir() if p.is_dir())
+        archives = any(list(root.glob("*.fst")) for root in roots)
+        campaigns = any(list((root / "data/campaign").glob("*.fit")) or
+                        list((root / "Data/campaign").glob("*.fit")) or
+                        list((root / "campaign").glob("*.fit")) for root in roots)
+        known = re.search(r"mcosetup|omnitech|desert.?fox|carver|mw2.?merc|exodus", source.name, re.I)
+        # A loose single-mission mod is already playable without conversion.
+        if not archives and not campaigns and not (known and not (source / "data/missions").is_dir()):
+            continue
+        candidates.append((not archives, source))
+    for _, source in sorted(candidates):
+        publish(f"Checking {source.name}...")
+        entry = {}
+        output = io.StringIO()
+        try:
+            root = find_root(source)
+            inputs = source_files(root)
+            stamp = hashlib.sha256(json.dumps([
+                (name, p.stat().st_size, p.stat().st_mtime_ns)
+                for name, p in sorted(inputs.items())]).encode()).hexdigest()
+            entry = {"stamp": stamp}
+            saved = previous.get("sources", {}).get(source.name, {})
+            target = saved.get("mod", "")
+            if saved.get("stamp") == stamp and (saved.get("error") or
+                    (target and (mods / target / ".campaign-import.json").is_file())):
+                entry = saved
+            else:
+                publish(f"Importing {source.name} (source files are preserved)...")
+                with contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):
+                    entry.update(import_campaign(source, deploy))
+                print(f"[CAMPAIGN_AUTO] {source.name}: {entry['status']}", flush=True)
+        except (Exception, SystemExit) as exc:
+            entry["error"] = str(exc) + ("\n" + output.getvalue()[-1600:] if output.tell() else "")
+            print(f"[CAMPAIGN_AUTO] {source.name}: {exc}", file=sys.stderr, flush=True)
+        if output.tell():
+            print(output.getvalue(), flush=True)
+        state["sources"][source.name] = entry
+        publish(f"Checked {source.name}")
+    state["running"] = False
+    publish("Community campaign scan complete.")
+    return state
+
+
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("source", help="Downloaded ZIP or separate campaign install folder")
+    parser.add_argument("source", nargs="?", help="Downloaded ZIP or separate campaign install folder")
+    parser.add_argument("--auto", action="store_true", help="Import raw campaigns found in the game's mods folder")
     parser.add_argument("--deploy", default=str(Path(__file__).resolve().parents[1]), help="Folder containing mc2.exe")
     args = parser.parse_args(argv)
     try:
+        if args.auto:
+            auto_import(args.deploy)
+            return 0
+        if not args.source:
+            parser.error("source is required unless --auto is used")
         result = import_campaign(args.source, args.deploy)
         print(json.dumps(result, indent=2))
         print("Open Campaigns & mods, press Refresh, select the campaign and compatibility base, then Start campaign.")
