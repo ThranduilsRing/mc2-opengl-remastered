@@ -469,3 +469,33 @@ def test_receipt_save_skips_when_replace_never_succeeds(tmp_path, monkeypatch, m
     assert not (tmp_path / "t.json").exists()
     assert not list(tmp_path.glob("*.tmp"))
     assert "receipt" in capsys.readouterr().out.lower()
+
+
+def test_loose_tree_lods_use_native_cache_without_claiming_other_files(tmp_path, monkeypatch):
+    root = tmp_path / "data/model_overrides"
+    root.mkdir(parents=True)
+    for rel in ("tree.glb", "lod.glb", "unrelated.glb", "detail.ktx2"):
+        (root / rel).write_bytes(rel.encode())
+    (root / "models.json").write_text(json.dumps(dict(overrides=[dict(
+        replaces="tree:palm", source="tree.glb", materials={"version": 2},
+        lods=[dict(source="lod.glb")]), dict(replaces="building:other", source="unrelated.glb")])) )
+    tool = tmp_path / "tool.exe"
+    tool.write_bytes(b"tool")
+    calls = []
+    def cook(command, **kwargs):
+        calls.append(command)
+        assert command[2:] == ["--no-ground", "--static-prop"]
+        key = hashlib.sha256(command[1].encode()).hexdigest()[:16]
+        cache = tmp_path / "cache/content-model"
+        (cache / f"model-{key}.mci").write_bytes(b"recipe")
+        return SimpleNamespace(returncode=0, stdout=f"[CONTENT_COOK] key={key}", stderr="")
+    for _ in range(2):
+        kit.finish_trees(tmp_path, tool, cook)
+    assert len(calls) == 2
+    receipt = json.loads((tmp_path / "cache/content-model/trees-cook.json").read_text())
+    assert set(receipt["recipes"]) == {"tree.glb", "lod.glb"}
+    assert not (tmp_path / "cache/content-model/vehicle-cook.json").exists()
+    (root / "models.json").write_text(json.dumps(dict(overrides=[dict(
+        replaces="tree:palm", source="../escape.glb", materials={"version": 2})])))
+    with pytest.raises(ValueError, match="unsafe"):
+        kit.finish_trees(tmp_path, tool, cook)

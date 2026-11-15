@@ -21,7 +21,8 @@ namespace {
 struct Laps { std::atomic<uint64_t> digest{0}, read{0}, decode{0}, cookTotal{0}, cookRead{0}, loads{0}, hits{0}, cooks{0}; } g_laps;
 uint64_t nowNs() { return static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()); }
 
-constexpr mc2cache::CacheKind kind{"model-", ".mci", 4096, 128ull << 20};
+// The deployed jacaranda LOD0 recipe is 303 MiB; keep it readable instead of recooking on every load.
+constexpr mc2cache::CacheKind kind{"model-", ".mci", 4096, 512ull << 20};
 constexpr std::string_view directory = "cache/content-model";
 uint64_t hash(std::span<const uint8_t> bytes, uint64_t h = 14695981039346656037ull) { return fastHash(bytes, h); }
 template<class T> void append(std::vector<uint8_t>& bytes, const T& value) {

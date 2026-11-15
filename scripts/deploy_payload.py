@@ -191,7 +191,7 @@ def record_deploy_inputs(target, inputs, hashes, items):
     """Publish reuse evidence only after the full deploy and all cooks succeed."""
     from kit_payload import contained_path
     inventory = {rel: row[0] for rel, row in hashes.items()}
-    for name in ("industrial-cook.json", "vehicle-cook.json"):
+    for name in ("industrial-cook.json", "vehicle-cook.json", "trees-cook.json"):
         receipt = Path(target) / "cache/content-model" / name
         if receipt.is_file():
             inventory[receipt.relative_to(target).as_posix()] = sha256_file(receipt)
@@ -2851,6 +2851,14 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
         fail(f"asset parity: {len(drift.missing)} missing, {len(drift.size)} size-different, "
              f"{len(drift.content)} content-different, {len(drift.extra)} extra file(s) vs {asset_parity.default_ref()} "
              f"(missing e.g. {', '.join(drift.missing[:5])}); rerun without --no-asset-sync to copy them from v0.4", 8)
+    if not reuse and (Path(target) / "data/model_overrides/models.json").is_file():
+        try:
+            with deploy_phase("tree cook", 900):
+                kit_tool = kit_tool or kit_payload.build_importer(src_root)
+                kit_payload.finish_trees(target, kit_tool,
+                    importer_key=kit_payload.importer_source_key(src_root, Path(kit_tool).parent))
+        except (OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
+            fail(f"tree model cook failed: {exc}")
     installed = os.path.join(target, exe_name)
     require_head_exe(installed, source_head, src_root)
     if sha256_file(installed) != sha256_file(os.path.join(build_dir, exe_name)):
