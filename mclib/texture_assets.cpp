@@ -383,6 +383,16 @@ DWORD load(mc2::czstring path, gos_TextureFormat format, DWORD hints, DWORD vari
         if (!source->bytes) return kInvalidAsset;
         const auto* mod=LookupModOwner(path);
         if (auto packed=uiChromeSheetBytes(path,mod ? mod : "")) source->bytes=std::move(packed);
+        if (!mod && (strstr(path, "mcl_mm_") || strstr(path, "MCL_MM_") ||
+                     strstr(path, "mcl_dialog_") || strstr(path, "MCL_Dialog_"))) {
+            auto decoded = mc2tex::decodeMemory(source->bytes->data(), source->bytes->size(), path, gos_Texture_Alpha, 0);
+            if (decoded) {
+                ui_chrome::Pixels px{decoded->width, decoded->height,
+                    decoded->layout == mc2tex::PixelLayout::RGB8 ? 3 : 4, std::move(decoded->pixels)};
+                if (ui_chrome::clearMenuMatte(path, px))
+                    source->bytes = std::make_shared<const Bytes>(ui_chrome::encodePngStored(px));
+            }
+        }
         provider=mod ? std::string("mod:")+mod : file.isLoadedFromDisk() ? "base-loose" : "fst";
     }
     { ZoneScopedN("TextureSource.Hash"); MC2_LOAD_SCOPE("TextureSource.Hash");
