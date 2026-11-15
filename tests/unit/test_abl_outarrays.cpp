@@ -16,13 +16,13 @@
 class GameObject;
 extern GameObject* CurObject;
 extern bool s_ablArgGuard;
+extern std::span<float>* queuedOutput;
 void execGetRelativePositionToObject(void);
 void execGetRelativePositionToPoint(void);
 
 
 namespace {
 
-std::span<float>* queuedOutput = nullptr;
 
 template<class Fn>
 std::string capture(Fn fn) {
@@ -62,15 +62,6 @@ struct OutputCall {
 	~OutputCall() { queuedOutput = nullptr; abl_test::args().clear(); CurObject = nullptr; }
 };
 
-}
-
-// Existing position tests explicitly model real[3]; new calls carry their declared extent.
-std::span<float> ABLi_popRealBuf(void) {
-	if (queuedOutput) return *queuedOutput;
-	auto& queue = abl_test::args().realPtrs;
-	auto* address = queue.front();
-	queue.pop_front();
-	return address ? std::span<float>{address, 3} : std::span<float>{};
 }
 
 TEST_SUITE("ABL out arrays") {

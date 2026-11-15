@@ -70,7 +70,7 @@ def case_owner(only):
     hits = set()
     for path in (REPO_ROOT / "tests/unit").glob("test_*.cpp"):
         names = pattern.findall(path.read_text(encoding="utf-8", errors="replace"))
-        if any(fnmatch.filter(names, item) for item in only if item not in REGISTERED_HARNESSES):
+        if any(fnmatch.filter(names, item + "/*" if item in REGISTERED_HARNESSES else item) for item in only):
             hits.add(path.relative_to(REPO_ROOT).as_posix())
     return sorted(hits)
 
@@ -220,15 +220,21 @@ def build_and_run_unit_tests(config, run, asan=False, only=None, preset=None,
     bdir = Path(build_root or REPO_ROOT) / (("build-cc-" + tree.removeprefix("build64-")) if cache else bd.tree_name(tree, preset))
     cm = cmake_exe()
     cache_env = None
+    target = "mc2_tests_selected" if only else "mc2_tests"
+    sources = [Path(owner).name for owner in case_owner(only)] if only else []
+    if only and not sources:
+        return False, "selection has no unit source owners"
+    selection = "-DMC2_UNIT_ONLY_SOURCES=" + ";".join(sources)
     if cache:
         cfg, cache_env = cached_configure(REPO_ROOT / "tests/unit", bdir, ["-DMC2_ASAN=" + ("ON" if asan else "OFF")])
-        commands = [cfg, bd.build_args(cm, bdir, config, ["mc2_tests"], jobs or "2", "ninja", keep_going)]
+        commands = [cfg, bd.build_args(cm, bdir, config, [target], jobs or "2", "ninja", keep_going)]
     else:
         commands = [
             [cm] + bd.configure_args(REPO_ROOT, REPO_ROOT / "tests/unit", bdir, preset) +
             ["-DMC2_ASAN=" + ("ON" if asan else "OFF")],
-            bd.build_args(cm, bdir, config, ["mc2_tests"], jobs, preset, keep_going),
+            bd.build_args(cm, bdir, config, [target], jobs, preset, keep_going),
         ]
+    commands[0].append(selection)
     # One configure+build per tree: merge_gate overlaps the contracts board (audio_music_stream builds mc2_tests with --only)
     # with the harnesses step, and two MSBuilds in one tree fail on the shared PDB (C1041, W138 laptop gate).
     lock = TreeLock(str(bdir.parent), bdir.name)
@@ -254,7 +260,7 @@ def build_and_run_unit_tests(config, run, asan=False, only=None, preset=None,
         return False, built
     if not run:
         return True, f"built in {time.monotonic() - started:.0f}s"
-    return _run_unit_exe(bdir, config, preset, only, asan, started)
+    return _run_unit_exe(bdir, config, preset, only, asan, started, target)
 
 
 def _configure_and_build(commands, cache, preset, log_dir, jobs, keep_going, cache_env, only, timings, bdir):
@@ -288,11 +294,11 @@ def _configure_and_build(commands, cache, preset, log_dir, jobs, keep_going, cac
     return None
 
 
-def _run_unit_exe(bdir, config, preset, only, asan, started):
+def _run_unit_exe(bdir, config, preset, only, asan, started, target="mc2_tests"):
     suffix = ".exe" if os.name == "nt" else ""
-    exe = bdir / config / ("mc2_tests" + suffix)
+    exe = bdir / config / (target + suffix)
     if not exe.is_file():
-        exe = bdir / ("mc2_tests" + suffix)
+        exe = bdir / (target + suffix)
     if preset and not exe.is_file():
         return False, f"requested compiler binary missing in {bdir}"
     command = [str(exe), "--no-breaks"]

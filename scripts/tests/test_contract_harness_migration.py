@@ -34,12 +34,14 @@ def record_runs(monkeypatch, codes):
     return commands
 
 
-def test_selection_filters_the_shared_binary(monkeypatch):
+def test_selection_builds_only_the_selected_sources(monkeypatch):
     commands = record_runs(monkeypatch, [0, 0, 0])
     selected = ["icon_atlas_harness", "job_system_harness"]
     assert builder.main(["--run", "--unit", "--only", selected[0], "--only", selected[1]]) == 0
     assert len(commands) == 3
-    assert "--target" in commands[1][0] and "mc2_tests" in commands[1][0]
+    assert "--target" in commands[1][0] and "mc2_tests_selected" in commands[1][0]
+    assert "-DMC2_UNIT_ONLY_SOURCES=test_icon_atlas_harness.cpp;test_job_system_harness.cpp" in commands[0][0]
+    assert "mc2_tests_selected" in commands[2][0][0]
     assert commands[2][0][-1] == "--test-case=icon_atlas_harness/*,job_system_harness/*"
     assert commands[2][1]["cwd"] == ROOT
 
