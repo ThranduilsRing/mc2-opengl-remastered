@@ -1,15 +1,18 @@
 <!-- doc-status: current | reviewed:2026-10-25 -->
 # MechCommander 2 Remastered
 
-A fully rebuilt engine for MechCommander 2. The missions, campaigns and game rules are the same. I built off of Alariq's openGL port originally, but now have deleted most openGL code, implemented a full Vulkan renderer, a GPU-driven frame, a modern C++23 code base, and a mod pipeline that runs the big community campaigns.
+A fully rebuilt engine for MechCommander 2 playable on Windows 10, Windows 11, Linux, etc. The missions, campaigns and game rules are the same. I built off of Alariq's openGL port originally, but now have deleted most openGL code, implemented a full Vulkan renderer, a GPU-driven frame, a modern C++23 code base, and a mod pipeline that runs the big community campaigns.
 This is a hobby/passion project, free of charge, and I am using it to learn about render engines. This runs on my pc with 3-500 fps on most missions even at 4K. I am continually optimizing and building - I have implemented some of the latest Vulkan features.
 right now I am averaging about 1.5 ms CPU frame times, and am targeting under 1ms. GPU is right now around 6-8 ms at 4k on most missions. 
 multiplayer will be supported soon! (updated on Nov 13, 2026)
 
 Some things I have added:
-fast PPCs (no bending PPCs), splash damage on soft targets from missiles (mostly infantry)
+fast weapons esp. PPCs (no bending PPCs), splash damage on soft targets from missiles (mostly infantry)
 full high res water with reflections
 full PBR support
+rework of trees, terrain, while keeping the 'vibe' of MC2 
+
+I have attempted to keep the spirit of MC2, while also having the viewpoint of "if this game were built today, what would it look like?" I will not always hit that mark, but all of this is open source and you are welcome to modify it and to make a pull request or provide feedback. 
 
 I have moved almost everything to modern/latest Khronos Group recommendations. KTX2 / BCX textures, glTF, gpu-driven most things, compute, mesh, fragment shaders. I am by no means done, I want to continue to implement the latest graphics features. Ray tracing has the base work done but is not enabled yet. 
 
@@ -19,7 +22,7 @@ I have moved almost everything to modern/latest Khronos Group recommendations. K
 **[Download the latest release](https://github.com/ThranduilsRing/mc2-opengl-remastered/releases/latest)**: a self-contained install. Run `mc2-launcher.exe`.
 
 
-
+As of now (11/14/26) I am updating in real time. I will cut a release when I feel like the majority of the issues with the vulkan transition are worked out. If you build from source, you are getting latest cuts that may not be wholly stable. I am not a professional dev and have a day job. However, I care deeply about the game and will address any and all issues as they arise, though I request patience. 
 
 
 # Below here is mostly written by Claude, but feel free to browse through. 
@@ -223,7 +226,7 @@ The tree combines code from several origins. [LICENSES.md](LICENSES.md) has the 
 ## Credits
 
 - **Original game:** Microsoft and FASA Interactive (2001), and Microsoft for the shared-source release that makes all of this possible.
-- **alariq** ([alariq/mc2](https://github.com/alariq/mc2)), Thank you, alariq. I would not have started this without your port, and doing it by hand is well beyond what I haved done
+- **alariq** ([alariq/mc2](https://github.com/alariq/mc2)), Thank you, alariq. I would not have started this without your port, and doing it by hand is well beyond what I have done
 - **Community creators:** [MechCommander Omnitech by magic](https://www.moddb.com/mods/mechcommander-omnitech) and [MC2X by Wolfman](https://mc2x.net/), who have kept this game alive for more than 20 years. There are additional credits in their credit files. If you have read this far, you should read those as well. There are a LOT of people who have contributed to this game over the years. 
 - **[Alexbeav](https://github.com/Alexbeav)** ([MechCommander2-Restoration-Project](https://github.com/Alexbeav/MechCommander2-Restoration-Project)): D3F font loader, multi-monitor mouse grab, SDL window-event dispatch fix, FMV reference.
 - **[Methuselas](https://github.com/Methuselas):** Mission Editor and UI Editor.
