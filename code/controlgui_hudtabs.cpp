@@ -118,14 +118,15 @@ void ControlGui::renderSimSpeedButton()
 	const bool selected = !disabled && (pressed || simSpeedGetMultiplier() != 1.f);
 	const int state = disabled ? ControlButton::DISABLED :
 		(selected ? ControlButton::PRESSED : (hover ? ControlButton::AMBIGUOUS : ControlButton::ENABLED));
-	const auto& art = *button->data;
-	// MCUI_High3's unused fourth-row successor is the stock empty command
-	// frame, including the orange striped pressed face and grey disabled face.
+	// Use the stock empty command frame from the shipped 256px atlas. The
+	// hidden specialist's texture can belong to a different resolution atlas.
+	static const auto frame = mc2::textures::load(
+		"data\\art\\gui\\MCUI_High3.png", gos_Texture_Alpha, 0, 0, 0x1);
 	const float u = static_cast<float>((disabled ? 2 : selected ? 1 : 0) * 42);
-	const auto texture = gos_GetUiTextureId(mc2::textures::sourceId(art.textureHandle));
+	const auto texture = gos_GetUiTextureId(mc2::textures::sourceId(frame));
 	draw->AddImage(static_cast<ImTextureID>(texture), p, ImVec2(p.x + size.x, p.y + size.y),
-		ImVec2((u + .1f) / art.fileWidth, 144.1f / art.fileHeight),
-		ImVec2((u + 42.1f) / art.fileWidth, 180.1f / art.fileHeight));
+		ImVec2((u + .1f) / 256.f, 144.1f / 256.f),
+		ImVec2((u + 42.1f) / 256.f, 180.1f / 256.f));
 	// Icon-only command buttons have no Text* fields. Use the stock HUD
 	// blue/white/grey/orange palette rather than their unset text colours.
 	constexpr unsigned long colors[] = {0xff5c96c2, 0xffffffff, 0xff6b6b6b, 0xfff26f00};
