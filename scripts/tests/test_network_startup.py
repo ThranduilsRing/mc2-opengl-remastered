@@ -162,3 +162,35 @@ def test_mp_handshake_deadline_starts_when_the_loaded_mission_pumps():
     assert "began = std::chrono::steady_clock::now()" not in begin
     assert pump.index("began = std::chrono::steady_clock::now()") < pump.index("session->pump()")
     assert "began == std::chrono::steady_clock::time_point{}" in pump
+
+
+def test_mp_trace_bounds_frame_exit_overshoot(tmp_path):
+    import pytest
+    from run_mp_loopback_proof import compare_traces
+    peers = [tmp_path / "host", tmp_path / "client"]
+    for extra, peer in enumerate(peers):
+        peer.mkdir()
+        (peer / "session.trace").write_text("C 1 00\n" + "".join(f"H {i} a b c d e\n" for i in range(1, 3 + extra)))
+    result = compare_traces(*peers, 2)
+    assert result["equal_ticks"] == 2 and result["uncompared_tail_ticks"] == [0, 1]
+    with pytest.raises(ValueError, match="incomplete"):
+        compare_traces(*peers, 2, max_extra=0)
+    with pytest.raises(ValueError, match="incomplete"):
+        compare_traces(*peers, 4)
+
+
+def test_mp_wall_clock_uses_normal_time_and_bounds_the_cell(tmp_path, monkeypatch):
+    import pytest
+    from contextlib import ExitStack
+    import run_mp_loopback_proof as proof
+    captured = {}
+    monkeypatch.setattr(proof.nofocus, "spawn", lambda argv, **kw: captured.update(argv=argv, **kw))
+    with ExitStack() as logs:
+        proof.peer_start(str(tmp_path), str(tmp_path), 0, 23460, 1200, 600, False, logs, wall_clock=True)
+    assert captured["env"]["MC2_SMOKE_FIXED_TIMESTEP"] == "0"
+    assert captured["argv"][captured["argv"].index("--duration") + 1] == "50"
+    base = ["--install", str(tmp_path), "--out", str(tmp_path / "out"), "--wall-clock"]
+    assert proof.arguments(base + ["--ticks", "1200"]).wall_clock
+    for bad in (["--ticks", "64"], ["--loss", "2"], ["--force-desync", "600"]):
+        with pytest.raises(SystemExit):
+            proof.arguments(base + bad)

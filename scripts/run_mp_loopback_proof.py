@@ -38,15 +38,19 @@ def read_trace(path: Path) -> tuple[dict[int, tuple[str, ...]], list[str]]:
     return hashes, orders
 
 
-def compare_traces(host: Path, client: Path, ticks: int, forced: int = 0, combat: bool = False) -> dict:
+def compare_traces(host: Path, client: Path, ticks: int, forced: int = 0, combat: bool = False,
+                   max_extra: int = 2) -> dict:
     a, commands_a = read_trace(host / "session.trace")
     b, commands_b = read_trace(client / "session.trace")
     expected = forced or ticks
-    if len(a) != expected or len(b) != expected:
+    extra = 0 if forced else max_extra
+    if not expected <= len(a) <= expected + extra or not expected <= len(b) <= expected + extra:
         raise ValueError(f"incomplete evidence: host={len(a)} client={len(b)} required={expected}")
-    different = [tick for tick in a if a[tick] != b[tick]]
+    different = [tick for tick in range(1, expected + 1) if a[tick] != b[tick]]
     if different != ([forced] if forced else []):
         raise ValueError(f"first divergent tick: {different[:1]}; expected {forced or 'none'}")
+    commands_a = [line for line in commands_a if int(line.split()[1]) <= expected]
+    commands_b = [line for line in commands_b if int(line.split()[1]) <= expected]
     if commands_a != commands_b or not commands_a:
         raise ValueError("peer command traces differ or no scripted orders were applied")
     for peer in (host, client):
@@ -54,10 +58,11 @@ def compare_traces(host: Path, client: Path, ticks: int, forced: int = 0, combat
         marker = f"[MP_DESYNC] tick={forced} "
         if (forced and marker not in text) or (not forced and "[MP_DESYNC]" in text):
             raise ValueError(f"unexpected/missing desync verdict in {peer}")
-    rng_states = len({value[-1] for value in a.values()})
+    rng_states = len({a[tick][-1] for tick in range(1, expected + 1)})
     if combat and rng_states < 2:
         raise ValueError("combat fixture did not change the RNG hash")
     return {"ticks": expected, "equal_ticks": expected - bool(forced), "rng_states": rng_states,
+            "uncompared_tail_ticks": [len(a) - expected, len(b) - expected],
             "commands": len(commands_a), "first_divergent_tick": forced or None}
 
 
@@ -76,7 +81,8 @@ def fixture_orders(slot: int, ticks: int, forced: int, combat: bool = False) -> 
 
 
 def peer_start(install: str, directory: str, slot: int, port: int, ticks: int,
-               timeout: int, rendered: bool, logs: ExitStack, address: str = "127.0.0.1", combat: bool = False):
+               timeout: int, rendered: bool, logs: ExitStack, address: str = "127.0.0.1", combat: bool = False,
+               wall_clock: bool = False):
     root = Path(directory)
     env = os.environ.copy()
     for key in unregistered_ambient(env):
@@ -88,7 +94,7 @@ def peer_start(install: str, directory: str, slot: int, port: int, ticks: int,
         env.pop(key, None)
     for key in ("MC2_COMMAND_REPLAY_PLAY", "MC2_COMMAND_REPLAY_RECORD"):
         env.pop(key, None)
-    env.update(MC2_SMOKE_FIXED_TIMESTEP="1", MC2_SIM_IDENTITY_TRACE="1", MC2_FORCE_ALL_VISIBLE="0",
+    env.update(MC2_SMOKE_FIXED_TIMESTEP="0" if wall_clock else "1", MC2_SIM_IDENTITY_TRACE="1", MC2_FORCE_ALL_VISIBLE="0",
                MC2_DETERMINISTIC_RNG="1", MC2_RNG_SEED="12345",
                MC2_DIAGNOSTIC_TRACE_FILE=str(root / "diagnostic.jsonl"),
                MC2_SAVE_DIR=str(root / "saves"),
@@ -98,7 +104,7 @@ def peer_start(install: str, directory: str, slot: int, port: int, ticks: int,
     if rendered:
         env.update(MC2_VISUAL_CAPTURE_FRAME=str(min(2400, ticks // 4)), MC2_VISUAL_CAPTURE_DIR=str(root))
     argv = [str(Path(install) / "mc2.exe"), "--mission", "mc2_01", "--profile", "tier1",
-            "--duration", str(timeout), "--ticks", str(ticks),
+            "--duration", str(ticks // 30 + 10 if wall_clock else timeout), "--ticks", str(ticks),
             "--host" if slot == 0 else "--join", f"{address}:{port}",
             "--mp-user-dir", str(root)]
     if not rendered:
@@ -151,6 +157,7 @@ def parser():
     ap.add_argument("--kill-peer", choices=("host", "client", "both"))
     ap.add_argument("--kill-tick", type=int, default=600)
     ap.add_argument("--combat", action="store_true")
+    ap.add_argument("--wall-clock", action="store_true", help="normal clock, at least 900 ticks, assert 30 Hz +/-5%%")
     ap.add_argument("--out", required=True, type=Path)
     ap.add_argument("--ticks", type=int, default=18000)
     ap.add_argument("--port", type=int, default=23460)
@@ -176,6 +183,8 @@ def arguments(argv=None):
             or (args.kill_peer and not 1 <= args.kill_tick < args.ticks)
             or (args.force_desync and (args.kill_peer or args.combat))):
         ap.error("invalid tick, port, timeout or fault bounds (jitter<=latency, loss<100)")
+    if args.wall_clock and (args.ticks < 900 or args.force_desync or args.kill_peer or args.stall_ms or args.loss or args.latency):
+        ap.error("wall-clock pacing requires >=900 ticks and no injected faults")
     args.install = args.install.resolve()
     args.client_install = (args.client_install or args.install).resolve()
     if not ip.is_loopback and args.install == args.client_install:
@@ -195,6 +204,7 @@ def run_pair(args, out, kill_peer=None):
     started = time.monotonic()
     shim = ClientShim(args.loss, args.latency, args.jitter)
     events, ticks = [], [0, 0]
+    progress = [[], []]
     killed = None
     try:
         with ExitStack() as logs:
@@ -209,7 +219,7 @@ def run_pair(args, out, kill_peer=None):
             for slot, directory in enumerate(peers):
                 rendered = args.render == "both" or args.render == ("host" if slot == 0 else "client")
                 processes.append(peer_start(str(installs[slot]), str(directory), slot, args.port + slot,
-                    args.ticks, args.timeout, rendered, logs, args.address, args.combat))
+                    args.ticks, args.timeout, rendered, logs, args.address, args.combat, args.wall_clock))
             offsets = [0, 0]
             while any(proc.poll() is None for proc in processes):
                 now = time.monotonic()
@@ -226,12 +236,16 @@ def run_pair(args, out, kill_peer=None):
                                 offsets[slot] = trace.tell()
                                 if line.startswith("H "):
                                     ticks[slot] = int(line.split()[1])
+                                    sample = (ticks[slot], now)
+                                    if not progress[slot]:
+                                        progress[slot] = [sample, sample]
+                                    progress[slot][-1] = sample
                 if args.stall_ms and not events and min(ticks) >= args.stall_tick:
                     shim.stall_until = now + args.stall_ms / 1000
                     events.append(dict(event="stall", ticks=ticks.copy(), wall=now-started, ms=args.stall_ms))
                 if events and events[-1]["event"] == "stall" and now >= shim.stall_until:
                     events.append(dict(event="resume", ticks=ticks.copy(), wall=now-started))
-                if kill_peer and killed is None and ticks[0 if kill_peer == "host" else 1] >= args.kill_tick:
+                if kill_peer and killed is None and min(ticks) >= args.kill_tick:
                     killed = 0 if kill_peer == "host" else 1
                     processes[killed].kill()
                     events.append(dict(event="kill", peer=kill_peer, ticks=ticks.copy(), wall=now-started))
@@ -268,15 +282,34 @@ def run_pair(args, out, kill_peer=None):
                 if "[MP_DESYNC]" in text or common < args.kill_tick or any(a[t] != b[t] for t in range(1, common + 1)):
                     raise ValueError("kill proof has incomplete or divergent pre-kill hashes")
                 result = dict(equal_ticks=common, stop_message=[line for line in text.splitlines() if line.startswith("STOP ")])
+                elapsed = time.monotonic() - started - next(e["wall"] for e in events if e["event"] == "kill")
+                if elapsed > 20:
+                    raise ValueError(f"survivor shutdown exceeded 20 seconds: {elapsed:.2f}")
+                result["peer_loss_shutdown_seconds"] = round(elapsed, 3)
             else:
-                if any(proc.returncode != (3 if args.force_desync else 0) for proc in processes):
+                if any(proc.returncode not in ((0, 3) if args.wall_clock else (3 if args.force_desync else 0,)) for proc in processes):
                     raise ValueError("a peer failed; see peer launcher/stderr logs")
-                result = compare_traces(*peers, args.ticks, args.force_desync, args.combat)
+                compared = args.ticks
+                if args.wall_clock:
+                    compared = min(len(read_trace(peer / "session.trace")[0]) for peer in peers)
+                    if compared < args.ticks:
+                        raise ValueError("wall-clock run did not reach the required tick count")
+                result = compare_traces(*peers, compared, args.force_desync, args.combat, 12 if args.wall_clock else 2)
+                if args.wall_clock:
+                    rates = [(last[0] - first[0]) / (last[1] - first[1]) if last[1] > first[1] else 0
+                             for first, last in progress]
+                    if not all(28.5 <= rate <= 31.5 for rate in rates):
+                        raise ValueError(f"wall-clock pacing outside 30 Hz +/-5%: {rates}")
+                    result["ticks_per_wall_second"] = rates
                 if args.stall_ms and (not any(e["event"] == "resume" for e in events) or min(ticks) <= args.stall_tick + 30):
                     raise ValueError("stall was not injected and recovered")
             for slot, directory in enumerate(peers):
                 if slot != killed and "[SHUTDOWN] audio end" not in (directory / "stderr.log").read_text(encoding="utf-8", errors="replace"):
                     raise ValueError(f"engine shutdown incomplete in {directory}")
+                if args.wall_clock and processes[slot].returncode == 3:
+                    text = (directory / "session.trace").read_text(encoding="utf-8")
+                    if not any(message in text for message in ("STOP MP peer disconnected", "STOP MP peer stalled")):
+                        raise ValueError("unexpected stop during wall-clock proof")
             if args.loss and shim.dropped == 0:
                 raise ValueError("loss injection did not drop a datagram")
             if args.render != "none" and not any(out.rglob("*.png")):
