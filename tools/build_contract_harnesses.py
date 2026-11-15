@@ -254,13 +254,15 @@ def build_and_run_unit_tests(config, run, asan=False, only=None, preset=None,
         built = _configure_and_build(commands, cache, preset, log_dir, jobs, keep_going, cache_env, only, timings, bdir)
         if not built and not configured and (bdir / "CMakeCache.txt").is_file():
             receipt.write_text(signature, encoding="utf-8")
+        if built:
+            return False, built
+        if not run:
+            return True, f"built in {time.monotonic() - started:.0f}s"
+        # Hold the tree lock through counting and execution: a concurrent selection in the
+        # same tree would otherwise relink mc2_tests_selected under this run (Astra 1115 P2).
+        return _run_unit_exe(bdir, config, preset, only, asan, started, target)
     finally:
         lock.close()
-    if built:
-        return False, built
-    if not run:
-        return True, f"built in {time.monotonic() - started:.0f}s"
-    return _run_unit_exe(bdir, config, preset, only, asan, started, target)
 
 
 def _configure_and_build(commands, cache, preset, log_dir, jobs, keep_going, cache_env, only, timings, bdir):
