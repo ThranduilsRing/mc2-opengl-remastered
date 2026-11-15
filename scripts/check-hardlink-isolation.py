@@ -172,6 +172,8 @@ MUTATED_FILES = (
     # data/kit/tree-upscale.json); every deploy may rewrite them, so they are never a shared seed inode.
     "data/tgl/128/a_mapledead.ktx2", "data/tgl/128/a_oak1dead.ktx2", "data/tgl/128/a_palm.ktx2",
     "data/tgl/128/a_treeclump1.ktx2", "data/tgl/128/a_treeclump1l1.ktx2",
+    "docs/modding/IMPORT-CAMPAIGNS.md",
+    "docs/modding/campaign-import-status.md", "docs/modding/campaign-import-window.jpg",
 )
 _MUTATED_FILES_FOLDED = frozenset(rel.casefold() for rel in MUTATED_FILES)
 
