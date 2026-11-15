@@ -4,6 +4,10 @@
 
 namespace GosVegetation {
 
+    struct Footprint { float x, y, radius, pad; }; // terrain-chunk XY, WU
+    static_assert(sizeof(Footprint) == 16);
+    void setUnitFootprints(const Footprint* data, uint32_t count);
+
     struct Instance {
         float x, y, z;       // terrain-chunk space: x=east_centered, y=north_centered, z=elevation
         float yaw;            // rotation about Z (elevation) axis (radians)

@@ -95,6 +95,14 @@ void mc2VegetationVertex(vec3 i_worldPos, float i_yaw, float i_scale, float i_se
 
 
 
+    // Trample only the current unit footprint; depth/shading share this exact geometry.
+    for (uint k = 0u; k < uint(D.grid.w); ++k) {
+        uint base = uint(D.grid.z) + k * 4u;
+        vec3 foot = uintBitsToFloat(uvec3(footprintWords[base], footprintWords[base + 1u], footprintWords[base + 2u]));
+        float clear = smoothstep(foot.z, foot.z + max(4.0, foot.z * 0.25), length(worldPos.xy - foot.xy));
+        worldPos.z = mix(min(worldPos.z, i_worldPos.z - 0.5), worldPos.z, clear);
+    }
+
     v_shadowWorld = worldPos;
     v_vegData.y  = 1.0 - a_card.y;
     v_vegData.x        = i_seed;
