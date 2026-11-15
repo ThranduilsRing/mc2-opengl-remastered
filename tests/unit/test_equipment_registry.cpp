@@ -144,8 +144,8 @@ TEST_CASE("equipment access: cold logistics and availability") {
             available[60] = true;
         CHECK(available[7]);
         CHECK(available[60] == c.allowed);
-        CHECK_FALSE(access && equipmentEnableWireShouldForce(false, 8, true));
-        CHECK_FALSE(access && equipmentEnableWireShouldForce(true, 60, false));
+        CHECK_FALSE((access && equipmentEnableWireShouldForce(false, 8, true)));
+        CHECK_FALSE((access && equipmentEnableWireShouldForce(true, 60, false)));
     }
 }
 
