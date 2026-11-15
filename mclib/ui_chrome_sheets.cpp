@@ -137,6 +137,7 @@ bool clearMenuMatte(std::string_view path, Pixels& px) {
                                       (x >= 124 && x < 144 && y >= 214))) ||
             (key == "mcl_mm_2" && (y < 94 || (y >= 116 && y < 210))) ||
             (key == "mcl_mm_3" && ((x < 114 && y < 200) || (x < 57 && x + y < 255) ||
+                                       (x >= 57 && x < 114 && y < 232 && x + 110 > y) ||
                                        (x >= 171 && y < 178)));
         const int coverage = well || !opening ? 255 : std::clamp((value - 4) * 255 / 12, 0, 255);
         rgba[dst + 3] = static_cast<uint8_t>((px.channels == 4 ? px.data[src + 3] : 255) * coverage / 255);

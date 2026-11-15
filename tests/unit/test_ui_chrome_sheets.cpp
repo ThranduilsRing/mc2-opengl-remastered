@@ -103,6 +103,8 @@ TEST_CASE("ui_chrome menu openings preserve cable and hazard paint") {
     CHECK(p.data[(50 * 256 + 140) * 4 + 3] == 255);
     CHECK(p.data[(220 * 256 + 10) * 4 + 3] == 0);
     CHECK(p.data[(245 * 256 + 40) * 4 + 3] == 255);
+    CHECK(p.data[(210 * 256 + 110) * 4 + 3] == 0);
+    CHECK(p.data[(220 * 256 + 80) * 4 + 3] == 255);
     CHECK(p.data[(40 * 256 + 180) * 4 + 3] == 0);
     CHECK_FALSE(clearMenuMatte("other.png", p));
 }
