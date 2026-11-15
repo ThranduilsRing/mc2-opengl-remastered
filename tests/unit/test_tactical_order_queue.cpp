@@ -296,6 +296,30 @@ TEST_CASE("application authority handle validation results acknowledgements and 
     CHECK(afterRetirement.receipts()[0].results[0].reasonCode == 88);
 }
 
+TEST_CASE("targeted orders retain approach speed and flags through save restore") {
+    Permit permit;
+    for (auto kind : {OrderKind::Capture, OrderKind::Refit, OrderKind::GetFixed,
+                      OrderKind::Recover, OrderKind::LoadIntoCarrier, OrderKind::AttackObject}) {
+        for (auto mode : {TravelMode::Slow, TravelMode::Fast}) {
+            TacticalOrderQueue queue;
+            REQUIRE(queue.registerSource({1,SourceKind::UI}));
+            auto e = order();
+            e.payload.kind = kind;
+            e.payload.target = ObjectRef{4,9};
+            if (kind == OrderKind::AttackObject) e.payload.attack.emplace();
+            auto& move = e.payload.move.emplace();
+            move.wayPath = {{{100,200,0}},0,{mode}};
+            move.faceObject = true; move.wait = true; move.fromArea = 7;
+            REQUIRE(queue.submit(e, permit));
+            TacticalOrderQueue restored;
+            REQUIRE(restored.restore(wire(queue), 0));
+            REQUIRE(restored.snapshotPending().size() == 1);
+            CHECK(restored.snapshotPending()[0] == e);
+            CHECK(restored.snapshotPending()[0].payload.move->wayPath.mode[0] == mode);
+        }
+    }
+}
+
 TEST_CASE("Guard accepts object and point path goals and rejects missing or malformed goals") {
     Permit permit; Application application;
     for (bool objectTarget : {false, true}) {
