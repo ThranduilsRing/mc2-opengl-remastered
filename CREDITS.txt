@@ -5,7 +5,7 @@ All additional sources are retained beside their name. Source IDs resolve in the
 Named contributors, handles and patrons are retained; organisations are acknowledged in source notes.
 Original rights and licence notices continue to apply. Free forever.
 
-S001 - A:/Games/mc2-opengl/MC2-Exodus/data/movies/CREDITS.BIK
+S001 - CREDITS.BIK
 
 Mitch Gitelman - Producer [S001]
 Frank Savage - Development lead [S001]
@@ -222,7 +222,7 @@ Jordan Weisman - Special thanks [S001]
 Mort Weisman - Special thanks [S001]
 Jule Zuccotti - Special thanks [S001]
 
-S002 - A:/MC2X-TCE/wolfman-MC2X-TCE Readme.pdf
+S002 - wolfman-MC2X-TCE Readme.pdf
 
 Wolfman - MC2X core and campaigns; MC2X scripting; Campaign design; Buildings, copters and tunnel textures; MC2X Warrior Brain Tool adaptation; MechSwapper suggestions, corrections and sanity checks; MC2 Warrior Brain Tool adaptation and template library [S002, S003, S004, S005, S006, S019, S021, S023, S025, S035, S038, S099, S100, S101, S102, S103, S104, S105, S106]
 Battlemaster - MC2X contributions [S002, S003, S004, S005, S102]
@@ -234,7 +234,7 @@ Starman01 - Mechhangar, prop vehicles, Uziel, Argus, Thanatos, Mobile Turret Con
 Raven IIC - Champion mech and inventory additions [S002, S003, S004, S005, S102]
 Mechlab - MC2 add-ons; Desert Fox campaign [S002, S032]
 
-S003 - A:/Games/mc2-opengl/MC2X-CVE-G/MC2X-CVE-G Readme.pdf
+S003 - MC2X-CVE-G Readme.pdf
 
 Aetrion - MC2X community contributor (specific work not stated in the source) [S003, S004, S005]
 Dege - dgVoodoo [S003, S005]
@@ -242,23 +242,23 @@ Marceror - Expanded Exodus story [S003, S004, S005, S025]
 Tyberius44 - MC2X community contributor (specific work not stated in the source) [S003, S005]
 VossieWulf - MC2X community contributor (specific work not stated in the source) [S003, S004, S005]
 
-S025 - A:/Games/MechCommanderOmnitech/version.txt
+S025 - version.txt
 
 ThorC - MC1 pilots and Gargoyle model reference [S025]
 Cipher - Mech icons [S025]
 Zarax - ZaraxTowers model [S025]
 d4f_mac - Main menu and loading art [S025]
 
-S030 - A:/Games/MechCommanderOmnitech/data/missions/e_4_7.fit
+S030 - e_4_7.fit
 
 Mike Turner - Map design [S030]
 mantis - Map design [S030]
 
-S033 - A:/Games/mc2-opengl/MC2-MagicExpansion/README.md
+S033 - README.md
 
 alariq - Open-source engine and Linux port; OpenGL/Linux port on which this project builds [S033, S034, S038]
 
-S035 - A:/Games/mc2-opengl/MC2X-testFolder/MC2X_WarriorBrainTool/readme.txt
+S035 - readme.txt
 
 Jussi Saarivirta - MC2 Synapses, original tool; MC2 Warrior Brain Tool / MC2 Synapses; Original MC2 Synapses author [S035, S099, S100, S101, S103, S105, S106]
 
@@ -559,19 +559,19 @@ S098 - 3rdparty/sentry-native/vendor/stb_sprintf.h
 
 Jeff Roberts - sentry-native contributor (specific work not stated in the source) [S098]
 
-S099 - A:/MC2X-DEE/wolfman-MC2X-DEE Readme.txt
+S099 - wolfman-MC2X-DEE Readme.txt
 
 Poison - Revised MechSwapper [S099, S100, S101, S103]
 
-S101 - A:/MC2X-HPE/wolfman-MC2X-HPE Readme.txt
+S101 - wolfman-MC2X-HPE Readme.txt
 
 haloman - Houdini Project beta testing and recommendations [S101]
 
-S103 - A:/mC2X-RWC/wolfman-MC2X-RWC Readme.txt
+S103 - wolfman-MC2X-RWC Readme.txt
 
 StarFox - Rebirth of the White Company campaign design [S103]
 
-S104 - A:/MC2X-DEE/MechSwapper/MechSwapper_Documentattion_2.5.pdf
+S104 - MechSwapper_Documentattion_2.5.pdf
 
 Mechronom - MechSwapper 2.5 author [S104]
 Crowfoot - Identified MechSwapper .NET 2.0 requirement [S104]
@@ -579,61 +579,61 @@ Crowfoot - Identified MechSwapper .NET 2.0 requirement [S104]
 SOURCE TABLE - file -> individual names count
 Counts include people also credited by another source; each person appears only once above.
 
-S001 | A:/Games/mc2-opengl/MC2-Exodus/data/movies/CREDITS.BIK -> 214
+S001 | CREDITS.BIK -> 214
   Stock MC2 credits movie: every credit card transcribed from decoded 400x300 frames at 3-second spacing; role spellings retained. Microsoft / FASA Interactive; Soundelux DMG, Digital Arts NYC, Bright Pictures, Mix Magic Post Sound and Arc Video edit house. Our fans.
-S002 | A:/MC2X-TCE/wolfman-MC2X-TCE Readme.pdf -> 9
+S002 | wolfman-MC2X-TCE Readme.pdf -> 9
   2011 revision 03, thanks, Features and Inventory sections; fictional pilot names are not contributor credits.
-S003 | A:/Games/mc2-opengl/MC2X-CVE-G/MC2X-CVE-G Readme.pdf -> 13
-S004 | A:/Games/mc2-opengl/MC2X-REAP3/wolfman-MC2X-REAP3 Readme.pdf -> 11
-S005 | A:/Games/mc2-opengl/MC2X-testFolder/MC2X Readme.pdf -> 13
-S006 | A:/Games/mc2-opengl/MC2X-testFolder/MC2X Advanced Scripting Options.pdf -> 1
-S007 | A:/Games/Magic_MC2_archive/1. Brain Library/Brain_Library.txt -> 1
-S008 | A:/Games/Magic_MC2_archive/2. Gamesys/gamesys.txt -> 0
+S003 | MC2X-CVE-G Readme.pdf -> 13
+S004 | wolfman-MC2X-REAP3 Readme.pdf -> 11
+S005 | MC2X Readme.pdf -> 13
+S006 | MC2X Advanced Scripting Options.pdf -> 1
+S007 | Brain_Library.txt -> 1
+S008 | gamesys.txt -> 0
   Archive readme/document; no contributor names stated.
-S009 | A:/Games/Magic_MC2_archive/3. Zoom Out/Zoom Out.txt -> 0
+S009 | Zoom Out.txt -> 0
   Archive readme/document; no contributor names stated.
-S010 | A:/Games/Magic_MC2_archive/4. Weapons/Weapons.txt -> 0
+S010 | Weapons.txt -> 0
   Archive readme/document; no contributor names stated.
-S011 | A:/Games/Magic_MC2_archive/5. Mechs/Mechs.txt -> 0
+S011 | Mechs.txt -> 0
   Archive readme/document; no contributor names stated.
-S012 | A:/Games/Magic_MC2_archive/6. Mechlab/art-mechs.exe is missing (direct broken link inside).txt -> 0
+S012 | art-mechs.exe is missing (direct broken link inside).txt -> 0
   Archive readme/document; no contributor names stated.
-S013 | A:/Games/Magic_MC2_archive/6. Mechlab/Mechlab.txt -> 0
+S013 | Mechlab.txt -> 0
   Archive readme/document; no contributor names stated.
-S014 | A:/Games/Magic_MC2_archive/7. Carver V/Carver V.txt -> 0
+S014 | Carver V.txt -> 0
   Archive readme/document; no contributor names stated.
-S015 | A:/Games/Magic_MC2_archive/8. FixABL/FixABL.txt -> 0
+S015 | FixABL.txt -> 0
   Archive readme/document; no contributor names stated.
-S016 | A:/Games/Magic_MC2_archive/9. New Exodus campaign/exodus_campaign_11/readme_exodus.txt -> 1
-S017 | A:/Games/Magic_MC2_archive/9. New Exodus campaign/How to install.txt -> 1
-S018 | A:/Games/Magic_MC2_archive/9. New Exodus campaign/Optional/exodus_money_patch_13/Data/How to install.txt -> 1
-S019 | A:/Games/Magic_MC2_archive/DarkRain/Dark Rain_readme.txt -> 1
-S020 | A:/Games/Magic_MC2_archive/Magic_Unofficial_dropshipcommand.com.txt -> 0
+S016 | readme_exodus.txt -> 1
+S017 | How to install.txt -> 1
+S018 | How to install.txt -> 1
+S019 | Dark Rain_readme.txt -> 1
+S020 | Magic_Unofficial_dropshipcommand.com.txt -> 0
   Archive readme/document; no contributor names stated.
-S021 | A:/Games/Magic_MC2_archive/PicturesOfARebeliion/Pictures of Rebellion_readme.txt -> 1
-S022 | A:/Games/Magic_MC2_archive/Sarna.net.txt -> 0
+S021 | Pictures of Rebellion_readme.txt -> 1
+S022 | Sarna.net.txt -> 0
   Archive readme/document; no contributor names stated.
-S023 | A:/Games/Magic_MC2_archive/TangoMaster/TangoMaster_readme.txt -> 1
-S024 | A:/Games/Magic_MC2_archive/Unofficial_MechCommander_2_Patch_by_Magic.htm -> 1
-S025 | A:/Games/MechCommanderOmnitech/version.txt -> 10
-S026 | A:/Games/MechCommanderOmnitech/End install text.txt -> 0
+S023 | TangoMaster_readme.txt -> 1
+S024 | Unofficial_MechCommander_2_Patch_by_Magic.htm -> 1
+S025 | version.txt -> 10
+S026 | End install text.txt -> 0
   MCO team / original rights holders; no individual attribution stated.
-S027 | A:/Games/MechCommanderOmnitech/MCO EULA.txt -> 0
+S027 | MCO EULA.txt -> 0
   MCO team / original rights holders; no individual attribution stated.
-S028 | A:/Games/MechCommanderOmnitech/MCO Requirements.txt -> 0
+S028 | MCO Requirements.txt -> 0
   MCO team / original rights holders; no individual attribution stated.
-S029 | A:/Games/MechCommanderOmnitech/How to create purchase and salvage files for MCO.txt -> 0
+S029 | How to create purchase and salvage files for MCO.txt -> 0
   MCO team / original rights holders; no individual attribution stated.
-S030 | A:/Games/MechCommanderOmnitech/data/missions/e_4_7.fit -> 3
-S031 | A:/Games/mc2-opengl/MCO-Carver5/Readme.txt -> 0
+S030 | e_4_7.fit -> 3
+S031 | Readme.txt -> 0
   Original MC2 development team; Omnitech adaptation by MCO team.
-S032 | A:/Games/mc2-opengl/mc2-win64-v0.4/mods/desertfoxformcosetup/Readme.txt -> 1
-S033 | A:/Games/mc2-opengl/MC2-MagicExpansion/README.md -> 1
-S034 | A:/Games/mc2-opengl/MC2-Exodus/README.md -> 1
-S035 | A:/Games/mc2-opengl/MC2X-testFolder/MC2X_WarriorBrainTool/readme.txt -> 2
-S036 | A:/Games/mc2-opengl/mc2-win64-v0.4/mods/magic-gamesys-tweaks/README.txt -> 0
+S032 | Readme.txt -> 1
+S033 | README.md -> 1
+S034 | README.md -> 1
+S035 | readme.txt -> 2
+S036 | README.txt -> 0
   Gamesys tuning; no individual named in this readme.
-S037 | A:/Games/mc2-opengl/mc2-win64-v0.4/mods/magic-ballistic-weapons/README.txt -> 0
+S037 | README.txt -> 0
   Weapons/equipment tuning; no individual named in this readme.
 S038 | README.md -> 6
   Original game: Microsoft / FASA Interactive. Development tooling: Claude Code / Anthropic.
@@ -644,7 +644,7 @@ S040 | data/hdr/DaySkyHDRI063B_LICENSE.txt -> 0
 S041 | tools/mc2texcook/cook_concrete_detail.py -> 0
   Poly Haven painted_concrete_02 and clean_asphalt normal/roughness/AO detail, CC0. Stock MC2 albedo retained. No individual creator named in local source.
 S042 | data/kit/README.md -> 0
-  Industrial/vehicle kit provenance and bake tags; no individual credited. No CREDITS files found in data/kit, tools/scifi_kit/art or E:/mc2-ref/scifi-kit/art.
+  Industrial/vehicle kit provenance and bake tags; no individual credited. No CREDITS files found in data/kit, tools/scifi_kit/art or scifi-kit/art reference.
 S043 | docs/scifi-kit-content-handoff.md -> 0
   Original kit geometry/shaders; Poly Haven CC0 concrete detail.
 S044 | ASSIGNMENT: credits-overlay-1 -> 0
@@ -757,17 +757,17 @@ S097 | 3rdparty/imgui/imstb_rectpack.h -> 5
   Embedded licence and contributor list.
 S098 | 3rdparty/sentry-native/vendor/stb_sprintf.h -> 2
   Embedded licence and original author attribution (RAD Game Tools).
-S099 | A:/MC2X-DEE/wolfman-MC2X-DEE Readme.txt -> 4
-S100 | A:/MC2X-DWE/wolfman-MC2X Readme.txt -> 4
-S101 | A:/MC2X-HPE/wolfman-MC2X-HPE Readme.txt -> 5
-S102 | A:/MC2X-MCE/wolfman-MC2X-MCE Readme.pdf -> 8
+S099 | wolfman-MC2X-DEE Readme.txt -> 4
+S100 | wolfman-MC2X Readme.txt -> 4
+S101 | wolfman-MC2X-HPE Readme.txt -> 5
+S102 | wolfman-MC2X-MCE Readme.pdf -> 8
   Explicit thanks on page 1; existing specific contribution descriptions retained.
-S103 | A:/mC2X-RWC/wolfman-MC2X-RWC Readme.txt -> 5
-S104 | A:/MC2X-DEE/MechSwapper/MechSwapper_Documentattion_2.5.pdf -> 3
+S103 | wolfman-MC2X-RWC Readme.txt -> 5
+S104 | MechSwapper_Documentattion_2.5.pdf -> 3
   PDF header says By Mechronom; installation note credits Crowfoot from DSC. SHA256 identical in DEE, DWE, HPE and RWC; counted once. Poison is credited separately by package readmes; no alias inferred.
-S105 | A:/MC2X-DEE/WarriorBrainTool/readme.txt -> 2
+S105 | readme.txt -> 2
   Byte-identical copy in HPE; each distinct file counted once.
-S106 | A:/MC2X-DWE/WarriorBrainTool/readme.txt -> 2
+S106 | readme.txt -> 2
   Byte-identical copy in RWC; each distinct file counted once.
 
 COMMUNITY LINKS

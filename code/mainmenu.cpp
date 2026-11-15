@@ -36,6 +36,7 @@ struct DDSURFACEDESC2 {
 #include "../GuiRuntime/GuiRuntime.h"
 #include "imgui.h"
 extern CPrefs prefs;
+#include "screen_settle_capture.h"
 
 
 constexpr int MM_MSG_NEW_CAMPAIGN = 90;
@@ -922,6 +923,16 @@ void MainMenu::render()
 		singleLoadDlg.render();
 	else
 		LogisticsSaveDialog::instance()->render();
+	if ( !xDelta && !yDelta && !bSave && !bLoad && !bLoadSingle && !bLoadCampaign && !bLegal )
+	{
+		static bool markedReady = false;
+		if ( !markedReady )
+		{
+			markedReady = true;
+			mc2::fmt::print_out("[MENU_READY v1] animation_complete=1 buttons_drawn=1\n");
+		}
+		mc2::screen_settle::tickFrontEnd(-1, -1);
+	}
  
 	if ( promptToQuit || promptToDisconnect )
 	{
