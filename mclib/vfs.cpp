@@ -595,6 +595,13 @@ static std::optional<ModJson> ReadModJson(const char* jsonPath) {
 }
 
 
+std::string ModDisplayName(std::string_view modId) {
+    if (modId.empty()) return "MechCommander 2";
+    const std::string path = g_modsAbsRoot + std::string(modId) + "/mod.json";
+    const auto manifest = ReadModJson(path.c_str());
+    return manifest && !manifest->name.empty() ? manifest->name : std::string(modId);
+}
+
 // Returns the owning mod id for a given data path (normalized), or nullptr if not in mod index.
 // Used for diagnostic logging only — O(1) lookup.
 std::vector<unsigned char> ReadArchiveBytes(mc2::czstring dataPath, size_t maxBytes) {

@@ -15,6 +15,7 @@ MechPurchaseScreen.h			: Interface for the MechPurchaseScreen component.
 #include"mechlistbox.h"
 #include"logisticsmech.h"
 #include"logisticsmechdisplay.h"
+#include "purchase_catalog.h"
 
 class LogisticsMech;
 
@@ -50,7 +51,10 @@ class MechPurchaseScreen: public LogisticsScreen
 		MechPurchaseScreen& operator=( const MechPurchaseScreen& echPurchaseScreen );
 
 		MechListBox			inventoryListBox;
-		MechListBox			variantListBox;
+		std::vector<std::unique_ptr<LogisticsMech>> purchaseMechs;
+		std::vector<mc2purchase::Group> purchaseGroups;
+		std::vector<std::string> purchaseGroupNames;
+		LogisticsMech* purchaseSelection = nullptr;
 		LogisticsMechDisplay	mechDisplay;
 
 		LogisticsMech*		pDragMech;
@@ -85,6 +89,7 @@ class MechPurchaseScreen: public LogisticsScreen
 		void removeMech( LogisticsMech* pMech );
 		void endDrag();
 		bool selectFirstBuyableMech();
+		void renderPurchaseGroups(int xOffset, int yOffset);
 
 
 
