@@ -3883,7 +3883,7 @@ String {
 
 String {
     key = "mechlopedia.component.002_xl_fusion_engine.description"
-    text = "undefined"
+    text = "The fusion engine supplies power for a 'Mech's movement and energy weapons. Its endurance makes it the standard power plant for BattleMechs. (attr: sarna.net)"
     legacyId = 34001
     legacySymbol = "IDS_COMPENCYCLO2"
     source = "mechlopedia"
@@ -3928,7 +3928,7 @@ String {
 
 String {
     key = "mechlopedia.component.003_c_xl_fusion_engine.description"
-    text = "undefined"
+    text = "The Inner Sphere XL fusion engine uses lightweight shielding to free tonnage for armor and weapons. Its larger installation occupies more of the torso than a standard engine. (attr: sarna.net)"
     legacyId = 34002
     legacySymbol = "IDS_COMPENCYCLO3"
     source = "mechlopedia"
@@ -3973,7 +3973,7 @@ String {
 
 String {
     key = "mechlopedia.component.004_arm_actuator.description"
-    text = "undefined"
+    text = "The Clan XL fusion engine reduces the weight of a 'Mech's power plant. Clan construction keeps the installation more compact than its Inner Sphere counterpart. (attr: sarna.net)"
     legacyId = 34003
     legacySymbol = "IDS_COMPENCYCLO4"
     source = "mechlopedia"
@@ -4018,7 +4018,7 @@ String {
 
 String {
     key = "mechlopedia.component.005_leg_actuator.description"
-    text = "undefined"
+    text = "Arm actuators control the movement of a 'Mech's arms. Their joints and myomer assemblies position the limb and the weapons it carries. (attr: sarna.net)"
     legacyId = 34004
     legacySymbol = "IDS_COMPENCYCLO5"
     source = "mechlopedia"
@@ -4063,7 +4063,7 @@ String {
 
 String {
     key = "mechlopedia.component.006_cockpit.description"
-    text = "undefined"
+    text = "Leg actuators control the joints used to walk and maneuver a BattleMech. These assemblies work with the gyro to keep the machine moving under control. (attr: sarna.net)"
     legacyId = 34005
     legacySymbol = "IDS_COMPENCYCLO6"
     source = "mechlopedia"
@@ -4202,7 +4202,7 @@ String {
 
 String {
     key = "mechlopedia.component.009_c_double_heat_sink.description"
-    text = "undefined"
+    text = "Double heat sinks remove waste heat more efficiently than conventional heat sinks. Inner Sphere models require a bulkier installation, trading internal space for cooling capacity. (attr: sarna.net)"
     legacyId = 34008
     legacySymbol = "IDS_COMPENCYCLO9"
     source = "mechlopedia"
@@ -4247,7 +4247,7 @@ String {
 
 String {
     key = "mechlopedia.component.010_jump_jets.description"
-    text = "undefined"
+    text = "Clan double heat sinks provide improved cooling without the bulk of equivalent Inner Sphere equipment. Their compact construction leaves more internal room for other systems. (attr: sarna.net)"
     legacyId = 34009
     legacySymbol = "IDS_COMPENCYCLO10"
     source = "mechlopedia"
@@ -4342,7 +4342,7 @@ String {
 
 String {
     key = "mechlopedia.component.012_small_jump_jet.description"
-    text = "undefined"
+    text = "Jump jets use engine power to propel a 'Mech over obstacles. This equipment belongs to the medium jump jet class; the chassis determines the installation required. (attr: sarna.net)"
     legacyId = 34011
     legacySymbol = "IDS_COMPENCYCLO12"
     source = "mechlopedia"
@@ -4387,7 +4387,7 @@ String {
 
 String {
     key = "mechlopedia.component.013_sensor_basic.description"
-    text = "undefined"
+    text = "Jump jets provide brief powered leaps across terrain that would obstruct a walking 'Mech. This equipment belongs to the small jump jet class. (attr: sarna.net)"
     legacyId = 34012
     legacySymbol = "IDS_COMPENCYCLO13"
     source = "mechlopedia"
@@ -4432,7 +4432,7 @@ String {
 
 String {
     key = "mechlopedia.component.014_sensor_intermediate.description"
-    text = "undefined"
+    text = "Basic sensors collect the battlefield contacts shown to a MechWarrior. Their tracking equipment supports reconnaissance and target detection. (attr: sarna.net)"
     legacyId = 34013
     legacySymbol = "IDS_COMPENCYCLO14"
     source = "mechlopedia"
@@ -4477,7 +4477,7 @@ String {
 
 String {
     key = "mechlopedia.component.015_sensor_advanced.description"
-    text = "undefined"
+    text = "Intermediate sensors extend a 'Mech's ability to detect battlefield contacts. Their improved coverage is useful when scouting beyond visual range. (attr: sarna.net)"
     legacyId = 34014
     legacySymbol = "IDS_COMPENCYCLO15"
     source = "mechlopedia"
@@ -4522,7 +4522,7 @@ String {
 
 String {
     key = "mechlopedia.component.016_c_sensor_basic.description"
-    text = "undefined"
+    text = "Advanced sensors combine extended detection with information about enemy contacts. A pilot's sensor skills determine how much of that information can be identified. (attr: sarna.net)"
     legacyId = 34015
     legacySymbol = "IDS_COMPENCYCLO16"
     source = "mechlopedia"
@@ -4567,7 +4567,7 @@ String {
 
 String {
     key = "mechlopedia.component.017_c_sensor_adv.description"
-    text = "undefined"
+    text = "Clan basic sensors provide the contact detection needed by a 'Mech's targeting system. They form part of the machine's standard battlefield electronics. (attr: sarna.net)"
     legacyId = 34016
     legacySymbol = "IDS_COMPENCYCLO17"
     source = "mechlopedia"
@@ -4612,7 +4612,7 @@ String {
 
 String {
     key = "mechlopedia.component.018_vehicle_sensor.description"
-    text = "undefined"
+    text = "Clan advanced sensors gather information about battlefield contacts beyond visual range. Skilled sensor operators can use these contacts to identify enemy forces. (attr: sarna.net)"
     legacyId = 34017
     legacySymbol = "IDS_COMPENCYCLO18"
     source = "mechlopedia"
@@ -4657,7 +4657,7 @@ String {
 
 String {
     key = "mechlopedia.component.019_adv_vehicle_sensor.description"
-    text = "undefined"
+    text = "Vehicle sensors provide the contact information used by a ground vehicle's crew. They support the same battlefield task of finding and tracking nearby units. (attr: sarna.net)"
     legacyId = 34018
     legacySymbol = "IDS_COMPENCYCLO19"
     source = "mechlopedia"
@@ -4702,7 +4702,7 @@ String {
 
 String {
     key = "mechlopedia.component.020_gyroscope_iv.description"
-    text = "undefined"
+    text = "Advanced vehicle sensors improve the information available to a vehicle crew. Their detection equipment helps the crew monitor battlefield contacts. (attr: sarna.net)"
     legacyId = 34019
     legacySymbol = "IDS_COMPENCYCLO20"
     source = "mechlopedia"
@@ -4747,7 +4747,7 @@ String {
 
 String {
     key = "mechlopedia.component.021_gyroscope_iii.description"
-    text = "undefined"
+    text = "The Gyroscope IV is part of a BattleMech's balance and motion-control equipment. Working with the pilot's neurohelmet, the gyro helps stabilize the machine as it moves. (attr: sarna.net)"
     legacyId = 34020
     legacySymbol = "IDS_COMPENCYCLO21"
     source = "mechlopedia"
@@ -4792,7 +4792,7 @@ String {
 
 String {
     key = "mechlopedia.component.022_gyroscope_ii.description"
-    text = "undefined"
+    text = "The Gyroscope III supports a BattleMech's balance during movement. Its control system combines the machine's motion readings with input from the pilot. (attr: sarna.net)"
     legacyId = 34021
     legacySymbol = "IDS_COMPENCYCLO22"
     source = "mechlopedia"
@@ -4837,7 +4837,7 @@ String {
 
 String {
     key = "mechlopedia.component.023_gyroscope_i.description"
-    text = "undefined"
+    text = "The Gyroscope II helps maintain a BattleMech's balance. It works with the pilot and limb controls to coordinate the movement of the chassis. (attr: sarna.net)"
     legacyId = 34022
     legacySymbol = "IDS_COMPENCYCLO23"
     source = "mechlopedia"
@@ -4882,7 +4882,7 @@ String {
 
 String {
     key = "mechlopedia.component.024_power_amplifier.description"
-    text = "undefined"
+    text = "The Gyroscope I is an internal balance-control component. Its sensors and control equipment help the pilot keep a BattleMech upright. (attr: sarna.net)"
     legacyId = 34023
     legacySymbol = "IDS_COMPENCYCLO24"
     source = "mechlopedia"
@@ -4927,7 +4927,7 @@ String {
 
 String {
     key = "mechlopedia.component.025_armor.description"
-    text = "undefined"
+    text = "A power amplifier stores the electrical energy needed to operate energy weapons on conventionally powered vehicles. It adds equipment weight to a vehicle that lacks a fusion power plant. (attr: sarna.net)"
     legacyId = 34024
     legacySymbol = "IDS_COMPENCYCLO25"
     source = "mechlopedia"
@@ -5022,7 +5022,7 @@ String {
 
 String {
     key = "mechlopedia.component.027_c_ferro_fibrous_armor.description"
-    text = "undefined"
+    text = "Vehicle ferro-fibrous armor uses advanced materials to provide protection with less armor weight. Its installation is bulkier than conventional armor. (attr: sarna.net)"
     legacyId = 34026
     legacySymbol = "IDS_COMPENCYCLO27"
     source = "mechlopedia"
@@ -5067,7 +5067,7 @@ String {
 
 String {
     key = "mechlopedia.component.028_c_vehicle_ferro_fibrous.description"
-    text = "undefined"
+    text = "Clan ferro-fibrous armor reduces the weight needed for a given level of protection. Clan manufacturing also keeps its internal space requirements below those of Inner Sphere ferro-fibrous armor. (attr: sarna.net)"
     legacyId = 34027
     legacySymbol = "IDS_COMPENCYCLO28"
     source = "mechlopedia"
@@ -5157,7 +5157,7 @@ String {
 
 String {
     key = "mechlopedia.component.030_c_endosteel_int_str.description"
-    text = "undefined"
+    text = "Endosteel replaces a BattleMech's conventional internal skeleton with a lighter structure. The weight savings come at the expense of additional internal space. (attr: sarna.net)"
     legacyId = 34029
     legacySymbol = "IDS_COMPENCYCLO30"
     source = "mechlopedia"
@@ -5202,7 +5202,7 @@ String {
 
 String {
     key = "mechlopedia.component.031_case.description"
-    text = "undefined"
+    text = "Clan endosteel provides a lightweight internal skeleton for a BattleMech. The Clan version requires less internal space than Inner Sphere endosteel. (attr: sarna.net)"
     legacyId = 34030
     legacySymbol = "IDS_COMPENCYCLO31"
     source = "mechlopedia"
@@ -8587,7 +8587,7 @@ String {
 
 String {
     key = "mechlopedia.component.106_anti_missile_system.description"
-    text = "Undefined"
+    text = "The machine gun delivers rapid ballistic fire against infantry and lightly protected targets. Its ammunition supply limits sustained use, but it produces little weapon heat. (attr: sarna.net)"
     legacyId = 34105
     legacySymbol = "IDS_COMPENCYCLO106"
     source = "mechlopedia"
@@ -8632,7 +8632,7 @@ String {
 
 String {
     key = "mechlopedia.component.107_light_lbx_autocannon.description"
-    text = "undefined"
+    text = "The anti-missile system fires rapid bursts at incoming missiles. It provides defensive fire rather than a substitute for the 'Mech's main weapons, and depends on its own ammunition supply. (attr: sarna.net)"
     legacyId = 34106
     legacySymbol = "IDS_COMPENCYCLO107"
     source = "mechlopedia"
@@ -8677,7 +8677,7 @@ String {
 
 String {
     key = "mechlopedia.component.108_ultra_medium_autocannon.description"
-    text = "undefined"
+    text = "The light LBX autocannon is a ballistic weapon in the lighter LBX class. The LBX family is distinguished by its ability to use cluster ammunition as well as solid projectiles. (attr: sarna.net)"
     legacyId = 34107
     legacySymbol = "IDS_COMPENCYCLO108"
     source = "mechlopedia"
@@ -9055,7 +9055,7 @@ String {
 
 String {
     key = "mechlopedia.component.116_clan_light_lbx_autocannon.description"
-    text = "undefined"
+    text = "The Clan anti-missile system uses rapid defensive fire to intercept incoming missiles. Clan refinements reduce the ammunition burden, but the system still needs a supply of defensive rounds. (attr: sarna.net)"
     legacyId = 34115
     legacySymbol = "IDS_COMPENCYCLO116"
     source = "mechlopedia"
@@ -9100,7 +9100,7 @@ String {
 
 String {
     key = "mechlopedia.component.117_clan_lbx_autocannon.description"
-    text = "undefined"
+    text = "The Clan light LBX autocannon is the lighter member of an advanced ballistic weapon family. LBX weapons can employ cluster rounds to spread their fire across a target. (attr: sarna.net)"
     legacyId = 34116
     legacySymbol = "IDS_COMPENCYCLO117"
     source = "mechlopedia"
@@ -9145,7 +9145,7 @@ String {
 
 String {
     key = "mechlopedia.component.118_clan_heavy_lbx_autocannon.description"
-    text = "undefined"
+    text = "The Clan LBX autocannon combines ballistic firepower with the LBX family's cluster-munition capability. Like other autocannons, it requires ammunition rather than relying solely on engine power. (attr: sarna.net)"
     legacyId = 34117
     legacySymbol = "IDS_COMPENCYCLO118"
     source = "mechlopedia"
@@ -9190,7 +9190,7 @@ String {
 
 String {
     key = "mechlopedia.component.119_undefined.description"
-    text = "undefined"
+    text = "The Clan heavy LBX autocannon belongs to the heavier end of the LBX weapon family. Its ballistic firepower comes with the weight and ammunition demands of a large autocannon. (attr: sarna.net)"
     legacyId = 34118
     legacySymbol = "IDS_COMPENCYCLO119"
     source = "mechlopedia"
@@ -9325,7 +9325,7 @@ String {
 
 String {
     key = "mechlopedia.component.122_lr_missile_20.description"
-    text = "undefined"
+    text = "The LRM/15 launcher provides long-range missile fire in larger salvos than a light rack. It is intended for ranged fire support and requires a supply of LRM ammunition. (attr: sarna.net)"
     legacyId = 34121
     legacySymbol = "IDS_COMPENCYCLO122"
     source = "mechlopedia"
@@ -9370,7 +9370,7 @@ String {
 
 String {
     key = "mechlopedia.component.123_swarm_lrm_rack.description"
-    text = "undefined"
+    text = "The LRM/20 launcher concentrates a large missile salvo on distant targets. Its fire-support role demands both payload space and an adequate ammunition supply. (attr: sarna.net)"
     legacyId = 34122
     legacySymbol = "IDS_COMPENCYCLO123"
     source = "mechlopedia"
@@ -9559,7 +9559,7 @@ String {
 
 String {
     key = "mechlopedia.component.127_undefined.description"
-    text = "undefined"
+    text = "The Heavy Thunderbolt delivers its attack with a single large missile rather than a dispersed salvo. The weapon is intended to concentrate missile damage on a target. (attr: sarna.net)"
     legacyId = 34126
     legacySymbol = "IDS_COMPENCYCLO127"
     source = "mechlopedia"
@@ -9787,7 +9787,7 @@ String {
 
 String {
     key = "mechlopedia.component.132_clan_lr_missile_20.description"
-    text = "undefined"
+    text = "The Clan LRM/15 launcher delivers long-range missile salvos. Clan missile technology provides a more compact installation than comparable Inner Sphere launchers. (attr: sarna.net)"
     legacyId = 34131
     legacySymbol = "IDS_COMPENCYCLO132"
     source = "mechlopedia"
@@ -9832,7 +9832,7 @@ String {
 
 String {
     key = "mechlopedia.component.133_clan_srm_pack.description"
-    text = "undefined"
+    text = "The Clan LRM/20 launcher provides heavy long-range missile support. Its compact Clan construction reduces the mounting burden of a large missile rack. (attr: sarna.net)"
     legacyId = 34132
     legacySymbol = "IDS_COMPENCYCLO133"
     source = "mechlopedia"
@@ -9877,7 +9877,7 @@ String {
 
 String {
     key = "mechlopedia.component.134_clan_sr_missile_6.description"
-    text = "undefined"
+    text = "The Clan SRM pack delivers short-range missile fire against nearby targets. Clan construction makes the launcher lighter and more compact than comparable Inner Sphere equipment. (attr: sarna.net)"
     legacyId = 34133
     legacySymbol = "IDS_COMPENCYCLO134"
     source = "mechlopedia"
@@ -9922,7 +9922,7 @@ String {
 
 String {
     key = "mechlopedia.component.135_clan_streak_srm_pack.description"
-    text = "undefined"
+    text = "The Clan SRM/6 launcher concentrates a larger short-range missile salvo on nearby enemies. Its ammunition supply and short reach suit close combat rather than distant fire support. (attr: sarna.net)"
     legacyId = 34134
     legacySymbol = "IDS_COMPENCYCLO135"
     source = "mechlopedia"
@@ -10012,7 +10012,7 @@ String {
 
 String {
     key = "mechlopedia.component.137_undefined.description"
-    text = "undefined"
+    text = "The Clan Streak SRM/6 launcher combines short-range missiles with Streak fire-control equipment. Streak guidance is designed to avoid wasting ammunition on an inadequate target lock. (attr: sarna.net)"
     legacyId = 34136
     legacySymbol = "IDS_COMPENCYCLO137"
     source = "mechlopedia"
@@ -10516,7 +10516,7 @@ String {
 
 String {
     key = "mechlopedia.component.148_undefined.description"
-    text = "Heavy Lasers represent the latest advancement and research in laser weapon technology. Aimed at increasing damage potential while retaining compact size, Heavy Lasers boast the highest damage-to-size ratio of any weapon. The main weakness of Heavy Lasers is their immense heat output, limiting the number of these weapons that can be carried by any 'Mech."
+    text = "The Clan Heavy Large Laser concentrates heavy laser firepower in a compact mounting. Its medium-range fire inflicts heavy damage, but the high heat output demands careful firing discipline. (attr: sarna.net)"
     legacyId = 34147
     legacySymbol = "IDS_COMPENCYCLO148"
     source = "mechlopedia"
@@ -12818,7 +12818,7 @@ String {
 
 String {
     key = "mechlopedia.component.199_lt_gauss_ammo.description"
-    text = "undefined"
+    text = "Rail gun ammunition supplies the projectiles for an electromagnetic ballistic weapon. The rail gun is a MechCommander weapon design rather than a standard BattleTech autocannon. (attr: sarna.net)"
     legacyId = 34198
     legacySymbol = "IDS_COMPENCYCLO199"
     source = "mechlopedia"
@@ -12863,7 +12863,7 @@ String {
 
 String {
     key = "mechlopedia.component.200_lt_ac_ammo.description"
-    text = "undefined"
+    text = "This ammunition supplies the light Gauss rifle. The weapon accelerates solid projectiles using magnetic force, delivering long-range fire with little firing heat. (attr: sarna.net)"
     legacyId = 34199
     legacySymbol = "IDS_COMPENCYCLO200"
     source = "mechlopedia"
@@ -12908,7 +12908,7 @@ String {
 
 String {
     key = "mechlopedia.component.201_ac_ammo.description"
-    text = "undefined"
+    text = "This ammunition supplies the light autocannon. Autocannons use ballistic rounds for direct fire, trading ammunition weight for a lower heat burden than many energy weapons. (attr: sarna.net)"
     legacyId = 34200
     legacySymbol = "IDS_COMPENCYCLO201"
     source = "mechlopedia"
@@ -12953,7 +12953,7 @@ String {
 
 String {
     key = "mechlopedia.component.202_hvy_ac_ammo.description"
-    text = "undefined"
+    text = "This ammunition supplies the medium autocannon. Autocannons use ballistic rounds for direct fire, trading ammunition weight for a lower heat burden than many energy weapons. (attr: sarna.net)"
     legacyId = 34201
     legacySymbol = "IDS_COMPENCYCLO202"
     source = "mechlopedia"
@@ -12998,7 +12998,7 @@ String {
 
 String {
     key = "mechlopedia.component.203_lt_ultra_ac_ammo.description"
-    text = "undefined"
+    text = "This ammunition supplies the heavy autocannon. Autocannons use ballistic rounds for direct fire, trading ammunition weight for a lower heat burden than many energy weapons. (attr: sarna.net)"
     legacyId = 34202
     legacySymbol = "IDS_COMPENCYCLO203"
     source = "mechlopedia"
@@ -13043,7 +13043,7 @@ String {
 
 String {
     key = "mechlopedia.component.204_gauss_rifle_ammo.description"
-    text = "undefined"
+    text = "This ammunition supplies the light Ultra autocannon. Ultra autocannons increase the firing rate of conventional autocannons and place greater demands on ammunition stocks. (attr: sarna.net)"
     legacyId = 34203
     legacySymbol = "IDS_COMPENCYCLO204"
     source = "mechlopedia"
@@ -13088,7 +13088,7 @@ String {
 
 String {
     key = "mechlopedia.component.205_mg_array_ammo.description"
-    text = "undefined"
+    text = "This ammunition supplies the Gauss rifle. The weapon accelerates solid projectiles using magnetic force, delivering long-range fire with little firing heat. (attr: sarna.net)"
     legacyId = 34204
     legacySymbol = "IDS_COMPENCYCLO205"
     source = "mechlopedia"
@@ -13133,7 +13133,7 @@ String {
 
 String {
     key = "mechlopedia.component.206_anti_missile_ammo.description"
-    text = "undefined"
+    text = "This ammunition supplies the machine gun array. Machine guns use rapid ballistic fire against infantry and other lightly protected targets. (attr: sarna.net)"
     legacyId = 34205
     legacySymbol = "IDS_COMPENCYCLO206"
     source = "mechlopedia"
@@ -13178,7 +13178,7 @@ String {
 
 String {
     key = "mechlopedia.component.207_lt_lbx_ammo.description"
-    text = "undefined"
+    text = "This ammunition supplies the anti-missile system. These rounds are used for defensive fire against incoming missiles rather than attacks on ground targets. (attr: sarna.net)"
     legacyId = 34206
     legacySymbol = "IDS_COMPENCYCLO207"
     source = "mechlopedia"
@@ -13223,7 +13223,7 @@ String {
 
 String {
     key = "mechlopedia.component.208_ultra_ac_ammo.description"
-    text = "undefined"
+    text = "This ammunition supplies the light LBX autocannon. The LBX family can use cluster ammunition for dispersed ballistic fire. (attr: sarna.net)"
     legacyId = 34207
     legacySymbol = "IDS_COMPENCYCLO208"
     source = "mechlopedia"
@@ -13268,7 +13268,7 @@ String {
 
 String {
     key = "mechlopedia.component.209_heavy_ultra_ac_ammo.description"
-    text = "undefined"
+    text = "This ammunition supplies the medium Ultra autocannon. Ultra autocannons increase the firing rate of conventional autocannons and place greater demands on ammunition stocks. (attr: sarna.net)"
     legacyId = 34208
     legacySymbol = "IDS_COMPENCYCLO209"
     source = "mechlopedia"
@@ -13313,7 +13313,7 @@ String {
 
 String {
     key = "mechlopedia.component.210_clan_lt_ultra_ac_ammo.description"
-    text = "undefined"
+    text = "This ammunition supplies the heavy Ultra autocannon. Ultra autocannons increase the firing rate of conventional autocannons and place greater demands on ammunition stocks. (attr: sarna.net)"
     legacyId = 34209
     legacySymbol = "IDS_COMPENCYCLO210"
     source = "mechlopedia"
@@ -13358,7 +13358,7 @@ String {
 
 String {
     key = "mechlopedia.component.211_clan_ultra_ac_ammo.description"
-    text = "undefined"
+    text = "This ammunition supplies the Clan light Ultra autocannon. Ultra autocannons increase the firing rate of conventional autocannons and place greater demands on ammunition stocks. (attr: sarna.net)"
     legacyId = 34210
     legacySymbol = "IDS_COMPENCYCLO211"
     source = "mechlopedia"
@@ -13403,7 +13403,7 @@ String {
 
 String {
     key = "mechlopedia.component.212_clan_heavy_ultra_ac_ammo.description"
-    text = "undefined"
+    text = "This ammunition supplies the Clan medium Ultra autocannon. Ultra autocannons increase the firing rate of conventional autocannons and place greater demands on ammunition stocks. (attr: sarna.net)"
     legacyId = 34211
     legacySymbol = "IDS_COMPENCYCLO212"
     source = "mechlopedia"
@@ -13448,7 +13448,7 @@ String {
 
 String {
     key = "mechlopedia.component.213_clan_gauss_rifle_ammo.description"
-    text = "undefined"
+    text = "This ammunition supplies the Clan heavy Ultra autocannon. Ultra autocannons increase the firing rate of conventional autocannons and place greater demands on ammunition stocks. (attr: sarna.net)"
     legacyId = 34212
     legacySymbol = "IDS_COMPENCYCLO213"
     source = "mechlopedia"
@@ -13493,7 +13493,7 @@ String {
 
 String {
     key = "mechlopedia.component.214_c_m_gun_ammo.description"
-    text = "undefined"
+    text = "This ammunition supplies the Clan Gauss rifle. The weapon accelerates solid projectiles using magnetic force, delivering long-range fire with little firing heat. (attr: sarna.net)"
     legacyId = 34213
     legacySymbol = "IDS_COMPENCYCLO214"
     source = "mechlopedia"
@@ -13538,7 +13538,7 @@ String {
 
 String {
     key = "mechlopedia.component.215_c_anti_missile_ammo.description"
-    text = "undefined"
+    text = "This ammunition supplies the Clan machine gun. Machine guns use rapid ballistic fire against infantry and other lightly protected targets. (attr: sarna.net)"
     legacyId = 34214
     legacySymbol = "IDS_COMPENCYCLO215"
     source = "mechlopedia"
@@ -13583,7 +13583,7 @@ String {
 
 String {
     key = "mechlopedia.component.216_c_lt_lbx_ammo.description"
-    text = "undefined"
+    text = "This ammunition supplies the Clan anti-missile system. These rounds are used for defensive fire against incoming missiles rather than attacks on ground targets. (attr: sarna.net)"
     legacyId = 34215
     legacySymbol = "IDS_COMPENCYCLO216"
     source = "mechlopedia"
@@ -13628,7 +13628,7 @@ String {
 
 String {
     key = "mechlopedia.component.217_c_lbx_ammo.description"
-    text = "undefined"
+    text = "This ammunition supplies the Clan light LBX autocannon. The LBX family can use cluster ammunition for dispersed ballistic fire. (attr: sarna.net)"
     legacyId = 34216
     legacySymbol = "IDS_COMPENCYCLO217"
     source = "mechlopedia"
@@ -13673,7 +13673,7 @@ String {
 
 String {
     key = "mechlopedia.component.218_c_hvy_lbx_ammo.description"
-    text = "undefined"
+    text = "This ammunition supplies the Clan LBX autocannon. The LBX family can use cluster ammunition for dispersed ballistic fire. (attr: sarna.net)"
     legacyId = 34217
     legacySymbol = "IDS_COMPENCYCLO218"
     source = "mechlopedia"
@@ -13718,7 +13718,7 @@ String {
 
 String {
     key = "mechlopedia.component.219_undefined.description"
-    text = "undefined"
+    text = "This ammunition supplies the Clan heavy LBX autocannon. The LBX family can use cluster ammunition for dispersed ballistic fire. (attr: sarna.net)"
     legacyId = 34218
     legacySymbol = "IDS_COMPENCYCLO219"
     source = "mechlopedia"
@@ -13808,7 +13808,7 @@ String {
 
 String {
     key = "mechlopedia.component.221_lrm_15_pack.description"
-    text = "undefined"
+    text = "This ammunition supplies the LRM rack. Long-range missiles provide ranged fire support and can reach targets behind intervening obstacles. (attr: sarna.net)"
     legacyId = 34220
     legacySymbol = "IDS_COMPENCYCLO221"
     source = "mechlopedia"
@@ -13853,7 +13853,7 @@ String {
 
 String {
     key = "mechlopedia.component.222_lrm_20_pack.description"
-    text = "undefined"
+    text = "This ammunition supplies the LRM/15 launcher. Long-range missiles provide ranged fire support and can reach targets behind intervening obstacles. (attr: sarna.net)"
     legacyId = 34221
     legacySymbol = "IDS_COMPENCYCLO222"
     source = "mechlopedia"
@@ -13898,7 +13898,7 @@ String {
 
 String {
     key = "mechlopedia.component.223_srm_ammo.description"
-    text = "undefined"
+    text = "This ammunition supplies the LRM/20 launcher. Long-range missiles provide ranged fire support and can reach targets behind intervening obstacles. (attr: sarna.net)"
     legacyId = 34222
     legacySymbol = "IDS_COMPENCYCLO223"
     source = "mechlopedia"
@@ -13943,7 +13943,7 @@ String {
 
 String {
     key = "mechlopedia.component.224_srm_6_pack.description"
-    text = "undefined"
+    text = "This ammunition supplies the SRM pack. Short-range missiles concentrate their firepower on nearby targets. (attr: sarna.net)"
     legacyId = 34223
     legacySymbol = "IDS_COMPENCYCLO224"
     source = "mechlopedia"
@@ -13988,7 +13988,7 @@ String {
 
 String {
     key = "mechlopedia.component.225_st_srm_ammo.description"
-    text = "undefined"
+    text = "This ammunition supplies the SRM/6 launcher. Short-range missiles concentrate their firepower on nearby targets. (attr: sarna.net)"
     legacyId = 34224
     legacySymbol = "IDS_COMPENCYCLO225"
     source = "mechlopedia"
@@ -14033,7 +14033,7 @@ String {
 
 String {
     key = "mechlopedia.component.226_heavy_thunderbolt_ammo.description"
-    text = "undefined"
+    text = "This ammunition supplies the Streak SRM pack. Streak fire-control equipment is designed to conserve missiles by requiring a reliable target lock. (attr: sarna.net)"
     legacyId = 34225
     legacySymbol = "IDS_COMPENCYCLO226"
     source = "mechlopedia"
@@ -14078,7 +14078,7 @@ String {
 
 String {
     key = "mechlopedia.component.227_long_tom_cannon_ammo.description"
-    text = "undefined"
+    text = "This ammunition supplies the Heavy Thunderbolt launcher. Thunderbolt launchers concentrate their attack in a single large missile rather than a conventional missile salvo. (attr: sarna.net)"
     legacyId = 34226
     legacySymbol = "IDS_COMPENCYCLO227"
     source = "mechlopedia"
@@ -14123,7 +14123,7 @@ String {
 
 String {
     key = "mechlopedia.component.228_thunderbolt_missile_ammo.description"
-    text = "undefined"
+    text = "This ammunition supplies the Long Tom cannon. The Long Tom cannon lobs explosive artillery shells along an indirect firing arc. (attr: sarna.net)"
     legacyId = 34227
     legacySymbol = "IDS_COMPENCYCLO228"
     source = "mechlopedia"
@@ -14168,7 +14168,7 @@ String {
 
 String {
     key = "mechlopedia.component.229_undefined.description"
-    text = "undefined"
+    text = "This ammunition supplies the Thunderbolt missile launcher. Thunderbolt launchers concentrate their attack in a single large missile rather than a conventional missile salvo. (attr: sarna.net)"
     legacyId = 34228
     legacySymbol = "IDS_COMPENCYCLO229"
     source = "mechlopedia"
@@ -14258,7 +14258,7 @@ String {
 
 String {
     key = "mechlopedia.component.231_swarm_lrm_ammo.description"
-    text = "undefined"
+    text = "This ammunition supplies the Clan LRM rack. Long-range missiles provide ranged fire support and can reach targets behind intervening obstacles. (attr: sarna.net)"
     legacyId = 34230
     legacySymbol = "IDS_COMPENCYCLO231"
     source = "mechlopedia"
@@ -14303,7 +14303,7 @@ String {
 
 String {
     key = "mechlopedia.component.232_c_lrm_20_pack.description"
-    text = "undefined"
+    text = "This ammunition supplies the Swarm LRM rack. Swarm missiles are intended to spread an attack through a group of nearby targets. (attr: sarna.net)"
     legacyId = 34231
     legacySymbol = "IDS_COMPENCYCLO232"
     source = "mechlopedia"
@@ -14348,7 +14348,7 @@ String {
 
 String {
     key = "mechlopedia.component.233_clan_srm_ammo.description"
-    text = "undefined"
+    text = "This ammunition supplies the Clan LRM/20 launcher. Long-range missiles provide ranged fire support and can reach targets behind intervening obstacles. (attr: sarna.net)"
     legacyId = 34232
     legacySymbol = "IDS_COMPENCYCLO233"
     source = "mechlopedia"
@@ -14393,7 +14393,7 @@ String {
 
 String {
     key = "mechlopedia.component.234_c_srm_6_pack.description"
-    text = "undefined"
+    text = "This ammunition supplies the Clan SRM pack. Short-range missiles concentrate their firepower on nearby targets. (attr: sarna.net)"
     legacyId = 34233
     legacySymbol = "IDS_COMPENCYCLO234"
     source = "mechlopedia"
@@ -14438,7 +14438,7 @@ String {
 
 String {
     key = "mechlopedia.component.235_c_st_srm_ammo.description"
-    text = "undefined"
+    text = "This ammunition supplies the Clan SRM/6 launcher. Short-range missiles concentrate their firepower on nearby targets. (attr: sarna.net)"
     legacyId = 34234
     legacySymbol = "IDS_COMPENCYCLO235"
     source = "mechlopedia"
@@ -14483,7 +14483,7 @@ String {
 
 String {
     key = "mechlopedia.component.236_c_st_srm_2_pack.description"
-    text = "undefined"
+    text = "This ammunition supplies the Clan Streak SRM pack. Streak fire-control equipment is designed to conserve missiles by requiring a reliable target lock. (attr: sarna.net)"
     legacyId = 34235
     legacySymbol = "IDS_COMPENCYCLO236"
     source = "mechlopedia"
@@ -14528,7 +14528,7 @@ String {
 
 String {
     key = "mechlopedia.component.237_undefined.description"
-    text = "undefined"
+    text = "This ammunition supplies the Clan Streak SRM launcher. Streak fire-control equipment is designed to conserve missiles by requiring a reliable target lock. (attr: sarna.net)"
     legacyId = 34236
     legacySymbol = "IDS_COMPENCYCLO237"
     source = "mechlopedia"
