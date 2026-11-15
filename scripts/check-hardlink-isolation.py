@@ -230,8 +230,7 @@ def iter_mutated_relpaths(target: Path, deep: bool = False):
                     yield rel
         return
 
-    # TGL sources remain shared; deploy only changes the three shipped sources
-    # above and cooker stamps. Scan this tree through the same classifier.
+    # Include deploy-written mip overrides as well as source/cooker receipts.
     for path in (target / "data/tgl").rglob("*"):
         rel = path.relative_to(target).as_posix()
         if path.is_file() and rel.casefold() not in _MUTATED_FILES_FOLDED and classify(rel) == "mutated":
@@ -273,6 +272,9 @@ def classify(rel: str) -> str:
     if rel in _MUTATED_FILES_FOLDED:
         return "mutated"
     if rel.startswith("data/tgl/") and rel.endswith(".cookstamp"):
+        return "mutated"
+    parts = rel.split("/")
+    if len(parts) == 4 and parts[:2] == ["data", "tgl"] and parts[2].isdigit() and rel.endswith(".tga"):
         return "mutated"
     # Loose art directly under data/art (component icons, menu planet tiles): stock art ships inside art.fst, so every
     # loose file there is a deploy-written override that the next deploy may rewrite; never a shared seed inode.
