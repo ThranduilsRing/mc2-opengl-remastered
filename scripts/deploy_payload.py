@@ -1379,6 +1379,9 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
                 items.append((path, rel, "support"))
 
     # Portable community importer and its recipes/shims; no Win32 launcher needed.
+    for rel in ("tools/import_campaign.py", "import-campaign.bat", "docs/modding/IMPORT-CAMPAIGNS.md",
+                "docs/modding/campaign-import-status.md", "docs/modding/campaign-import-window.jpg"):
+        items.append((os.path.join(src_root, rel), rel, "support"))
     for tree in ("tools/mc2_import", "tools/mc2x_import", "tools/mco_import"):
         for directory, dirs, files in os.walk(os.path.join(src_root, tree)):
             dirs[:] = [d for d in dirs if d != "__pycache__"]
