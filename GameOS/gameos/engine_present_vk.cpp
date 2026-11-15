@@ -1125,11 +1125,15 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
     void* mapped = nullptr;
     if (vkMapMemory(s.dev, m.memory.get(), 0, bytes, 0, &mapped) != VK_SUCCESS)
         return nullptr;
-    // The former per-pixel pack (b0 | b1<<8 | b2<<16 | b3<<24) is the source byte order on a little-endian host: copy straight, no temp vector.
-    std::memcpy(mapped, rgba.data(), baseBytes);
+    // Build mips in CPU memory: reading mapped VRAM for each tap stalls first use.
+    std::vector<uint8_t> mipPixels;
+    const void* upload = rgba.data();
     if (mipmapped) {
         // Spatial, premultiplied mip pyramid: transparent edges retain their colour.
-        auto* pixels = static_cast<uint8_t*>(mapped);
+        mipPixels.resize(static_cast<size_t>(bytes));
+        auto* pixels = mipPixels.data();
+        std::memcpy(pixels, rgba.data(), baseBytes);
+        upload = pixels;
         for (size_t i = 0; i < baseBytes; i += 4)
             for (size_t c = 0; c < 3; ++c) pixels[i+c] = (static_cast<uint32_t>(pixels[i+c]) * pixels[i+3] + 127u) / 255u;
         size_t offset = 0, next = baseBytes;
@@ -1142,6 +1146,7 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
             offset = next; next += (w/2)*(w/2)*4;
         }
     }
+    std::memcpy(mapped, upload, static_cast<size_t>(bytes));
     vkUnmapMemory(s.dev, m.memory.get());
     if (!m.set) {
         VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
