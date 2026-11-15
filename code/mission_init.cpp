@@ -656,6 +656,11 @@ void Mission::initTeamsAndCommanders(MissionLoadType loadType, glm::vec3* dropZo
 			long ctlCommander = commandersToLoad[i][0];
 			long ctlTeam = commandersToLoad[i][1];
 			if (ctlCommander > -1) {
+				if (mission_commander_team::unusedIdentity(f.commanderPartTeam, ctlCommander, ctlTeam, i) &&
+					Commander::commanders[ctlCommander] != nullptr) {
+					Commander::commanders[ctlCommander]->setTeam(Team::home);
+					continue;
+				}
 				if (!MC2_VERIFY_BOUNDS(ctlCommander, MAX_COMMANDERS, "Mission::init commandersToLoad commander") ||
 					!MC2_VERIFY_BOUNDS(ctlTeam, MAX_TEAMS, "Mission::init commandersToLoad team") ||
 					!MC2_VERIFY((Commander::commanders[ctlCommander] != nullptr) && (Team::teams[ctlTeam] != nullptr),
