@@ -1164,7 +1164,8 @@ void RegisterImportedAnim(mc2::czstring path, TG_TypeMultiShape* out, const Skel
     e.plan = mc2skel::BuildPlan(scene, e.names);
     LoadMechPackage(path, e.nodeManifest, e.aoTexName, e.normalTexName, &e.socketOffsets, &e.showcaseClip);
     if (!e.showcaseClip.empty() && !clipDurationSec(scene, e.showcaseClip)) {
-        mc2::fmt::print_err("[MECH_IMPORT] unknown showcase clip '{}' in '{}'; using fallback\n", e.showcaseClip, path);
+        if (mc2_diag::tagRequested("MECH_IMPORT"))
+            mc2::fmt::print_err("[MECH_IMPORT] unknown showcase clip '{}' in '{}'; using fallback\n", e.showcaseClip, path);
         e.showcaseClip.clear();
     }
     e.pinnedClip = bake.forcedClip;   // empty -> 1C dynamic selection
