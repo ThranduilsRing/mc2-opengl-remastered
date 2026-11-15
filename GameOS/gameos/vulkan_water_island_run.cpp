@@ -13,6 +13,7 @@
 #include "vulkan_shadow_island_live.h"   // the bake mask
 #include "vulkan_mover_shadow.h"
 #include "gos_terrain_lod_chunk.h"   // gos_WaterShoreMode
+#include "terrain_field_store.h"
 void gos_GetTerrainChunkGridInfo(int* mapSide, float* halfMap);
 #include "mc2_diag_verbose.h"
 #include "../../mclib/battle_bench_wait.h"
@@ -331,7 +332,8 @@ extern "C" int mc2_vk_water_island_run(
             && WaterStream::NativeWaterInFrustum(*nat,shoreSdf,bounds);
         const auto pixels=mc2::waterplanar::paddedPixels(bounds,w,h);
         s->reflectionScissor={{pixels[0],pixels[1]},{static_cast<uint32_t>(pixels[2]-pixels[0]),static_cast<uint32_t>(pixels[3]-pixels[1])}};
-        vsLocal.p3[1] = shoreSdf ? 1.0f : 0.0f;
+        const auto* fields = gos_TerrainFieldStore();
+        vsLocal.p3[1] = (shoreSdf || (fields && fields->visualSide() > 1)) ? 1.0f : 0.0f;
         std::memcpy(base, &vsLocal, sizeof(WaterVsParams));
         // RUNG-6.5 fail-soft: if the real HDRI bytes aren't imported (dummy
         // bound), force u_waterHdriLod (f2.w, offset 60) to -1 so the FS

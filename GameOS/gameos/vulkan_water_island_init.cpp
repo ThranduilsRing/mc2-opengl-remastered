@@ -176,12 +176,12 @@ bool init_island(WaterIsland* s, int w, int h) {
         ms.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
         ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
-        // Depth: reverse-Z GEQUAL, test on, WRITE ON (PipelineRegistry WaterArmed row).
+        // Strict reverse-Z rejects coplanar dry terrain at the physical water level.
         VkPipelineDepthStencilStateCreateInfo ds{};
         ds.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
         ds.depthTestEnable = VK_TRUE;
         ds.depthWriteEnable = VK_TRUE;
-        ds.depthCompareOp = VK_COMPARE_OP_GREATER_OR_EQUAL;
+        ds.depthCompareOp = VK_COMPARE_OP_GREATER;
 
         // RUNG 6 tier1 blend: in-place over the LOADed scene color. The FS emits
         // premultiplied (col*a, a), producing the same RGB result as GL's
@@ -288,7 +288,7 @@ bool init_island(WaterIsland* s, int w, int h) {
     s->inited = true;
     setFallback("");
     vlog("island initialized %dx%d (borrowed shared device; shared scene GBuffer; "
-         "procedural water VS; GEQUAL reverse-Z depth-write-on; "
+         "procedural water VS; GREATER reverse-Z depth-write-on; "
          "MRT alpha-blend).", w, h);
     return true;
 }

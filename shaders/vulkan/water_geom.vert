@@ -56,7 +56,7 @@ layout(set = 0, binding = 0, std140) uniform WaterVsParams {
     vec4  p0;   // (waterElevation, alphaDepth, mapTopLeftX, mapTopLeftY)
     vec4  p1;   // (frameCos, maxMinUV, uvScale, uvOffsetX)
     vec4  p2;   // (uvOffsetY, waterDepthFudgeFast, alphaEdgeByte, alphaMiddleByte)
-    vec4  p3;   // (alphaDeepByte, shoreFlat (mode 3 flat plane, 0/1), shoreDepthK, _pad)
+    vec4  p3;   // (alphaDeepByte, shoreFlat (visual terrain flat plane, 0/1), shoreDepthK, _pad)
 } U;
 
 // HORIZON-WAVE-1: the vertex stage reads the camera position (f0.yzw, MC2 world, the same space as
@@ -173,12 +173,12 @@ void main() {
     float shoreBlendVS = max(alphaDepth, 1.0);
     // The 128-wu mesh cannot carry independent +/-10-wu corner offsets: its
     // triangle slopes become a coarse lattice in low-angle reflections. Keep
-    // the mean waterline level; only the sub-unit, coherent swell below moves it.
+    // the visual-terrain waterline level so scene depth defines its exact coast.
     const bool shoreFlat = (U.p3.y != 0.0);
     float wz = (shoreFlat || WaterThickness >= 0.0)
              ? waterElevation
              : min(velev, waterElevation + shoreBlendVS);
-    float swell = swellHeight(vxy, F.f0.x) * smoothstep(8.0, 40.0, WaterThickness);
+    float swell = shoreFlat ? 0.0 : swellHeight(vxy, F.f0.x) * smoothstep(8.0, 40.0, WaterThickness);
     if (shoreFlat || WaterThickness >= 0.0) {
         vec3  toV = vec3(vxy, waterElevation) - F.f0.yzw;
         swell *= smoothstep(0.03, 0.12, abs(toV.z) / max(length(toV), 1.0));

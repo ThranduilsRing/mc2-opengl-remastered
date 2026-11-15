@@ -26,7 +26,7 @@ float sampleH(int x, int y) {
     return uH.heights[clamp(x, 0, uT.mapSide - 1) + clamp(y, 0, uT.mapSide - 1) * uT.mapSide];
 }
 #include "include/terrain_visual_surface.glsl"
-float waterRenderedHeight(vec2 worldXY) {
+float waterFineHeight(vec2 worldXY) {
     vec2 grid = clamp(vec2(worldXY.x + uT.halfMap, uT.halfMap - worldXY.y) / 32.0,
                       vec2(0.0), vec2(uT.visualSide - 1));
     ivec2 p = min(ivec2(floor(grid)), ivec2(uT.visualSide - 2));
@@ -351,8 +351,10 @@ void main(void)
     const bool hasField = wse_fieldThickness(int(F.f4.x + 0.5), int(F.f4.y + 0.5), u_shoreHeightTex, F.f5,
                                              WorldPos.xy, F.f7.x, fieldThick);
     const bool hasVisual = uT.visualMode != 0 && uT.visualSide > 1;
-    float coverageThick = hasVisual ? F.f7.x - waterRenderedHeight(WorldPos.xy) : fieldThick;
-    const float coverageThickFw = fwidth(coverageThick);
+    // Rasterized terrain depth owns the coast, including its LOD, stitching and morph.
+    // The static fine surface remains a softness fallback, never a second coast.
+    float softnessThick = hasVisual && !hasField ? F.f7.x - waterFineHeight(WorldPos.xy) : fieldThick;
+    const float fieldThickFw = fwidth(fieldThick);
     PREC float tintThick = hasField ? max(fieldThick, 0.0) : WaterThickness;
     // Recover horizontal shore distance from the depth field already sampled above.
     // World-space gradients keep the wash width stable across camera zoom and shore slopes.
@@ -393,12 +395,10 @@ void main(void)
     PREC float shore = smoothstep(-shoreBlend * 0.5, shoreBlend, WaterThickness);
     // WATER-SHORE-EDGE-1 / WATER-SHORE-MASK-1: shared with the GL FS.
     if (hasField || hasVisual) {
-        // SHORE-FIELD-1: the coast is the field's zero crossing as a crisp ~3 px antialiased edge.
-        // The old depth feather (smoothstep over featherWu of DEPTH) spread hundreds of wu wide on
-        // gentle shelves (mc2_17) and let coarse terrain decide the visible line elsewhere. Shallow
-        // water keeps some translucency through a 0.55..1 depth softness floor.
-        float edgeAA = smoothstep(0.0, max(3.0 * coverageThickFw, 1e-3), coverageThick);
-        shore = edgeAA * mix(0.55, 1.0, smoothstep(0.0, max(F.f4.w, 0.5), hasField ? fieldThick : coverageThick));
+        // Retain the authored softness. Only coarse terrain needs the field's edge;
+        // a static height-field edge disagrees with stitched/morphed visual patches.
+        float edgeAA = hasVisual ? 1.0 : smoothstep(0.0, max(3.0 * fieldThickFw, 1e-3), fieldThick);
+        shore = edgeAA * mix(0.55, 1.0, smoothstep(0.0, max(F.f4.w, 0.5), softnessThick));
     } else {
         shore = wse_shoreFeather(shore, int(F.f4.x + 0.5), int(F.f4.y + 0.5), int(F.f4.z + 0.5),
                                  u_shoreHeightTex, u_shoreMask, F.f5, F.f6, F.f4.w,
