@@ -682,11 +682,37 @@ def seed_stock():
     print("mirrored", PC_STOCK)
 
 
+def seed_identity():
+    """Compare the seed's exe manifest row and actual bytes; a marker alone cannot certify a seed."""
+    row = manifest_rows(PC_SEED / ".deployed_manifest.csv").get("mc2.exe")
+    want = sha256(PC_SEED / "mc2.exe")
+    if not row or row.get("sha256", "").lower() != want:
+        sys.exit("PC seed invalid: mc2.exe manifest row missing or sha256 differs from mc2.exe")
+    rc, out = ssh(
+        f'powershell -NoProfile -Command "$ErrorActionPreference = \'Stop\'; '
+        f'$row = if (Test-Path \'{INSTALL}/.deployed_manifest.csv\') {{ '
+        f'Get-Content \'{INSTALL}/.deployed_manifest.csv\' | Select-Object -Skip 1 | ConvertFrom-Csv | '
+        f'Where-Object {{ $_.relpath -ceq \'mc2.exe\' }} }}; '
+        f'$hash = if (Test-Path \'{INSTALL}/mc2.exe\') {{ (Get-FileHash \'{INSTALL}/mc2.exe\' -Algorithm SHA256).Hash }}; '
+        f'@{{ seeded = (Test-Path \'{INSTALL}/.seeded\'); row = $row; sha256 = $hash }} | ConvertTo-Json -Compress"')
+    identity = json.loads(out)
+    theirs, got = identity.get("row"), (identity.get("sha256") or "").lower()
+    why = ("missing .seeded marker" if not identity.get("seeded") else
+           "missing mc2.exe manifest row" if not theirs else
+           "mc2.exe manifest row differs" if theirs != row else
+           "mc2.exe sha256 differs" if got != want else "")
+    print(f"laptop-vs-PC seed identity: {'STALE: ' + why if why else 'MATCH'}; "
+          f"PC mc2.exe sha256={want}; laptop mc2.exe sha256={got or 'missing'}", flush=True)
+    return why
+
+
 def seed():
-    """One-time: stream the PC's lean seed (published v0.4 payload + game data) into C:/mc2gate/install."""
+    """Stream the PC's lean seed into C:/mc2gate/install when its identity is stale."""
+    why = seed_identity()
     seed_stock()
-    if ssh(f"if exist {INSTALL.replace('/', chr(92))}\\.seeded echo yes")[1].strip() == "yes":
+    if not why:
         print("laptop install already seeded"); return
+    print(f"laptop seed stale: {why}", flush=True)
     print("seeding laptop install from", PC_SEED, flush=True)
     t = time.time()
     # A piped ssh stdin on Windows OpenSSH crawls (~0.5 MB/s); one tar file through scp, extracted on the laptop, is ~20x faster.
@@ -1256,8 +1282,10 @@ def main():
                 "mods-apply": lambda: r_apply((a.gate_args + rest)[0], MODS_DST),
                 "sim": lambda: r_sim(a.window, [x for x in a.gate_args + rest if x != "--"]),"preflight": lambda: r_preflight(a.window, *(a.gate_args + rest)[:1]), "ref-commit": r_ref_commit}[step]() or 0
     if a.preflight:
+        stale = seed_identity()
         provision()
-        return ssh(remote_py("preflight", a.window or "-", published_sha()), check=False, stream=True)[0]
+        rc = ssh(remote_py("preflight", a.window or "-", published_sha()), check=False, stream=True)[0]
+        return rc or int(bool(stale))
     if not a.window:
         ap.error("window required")
     a.gate_args += rest
