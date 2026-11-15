@@ -63,11 +63,21 @@ void drawPreviewControls(const SimpleCamera& camera, bool enabled)
 			GuiRuntime::DrawUiRect(x + 9.f * sx, y + 6.f * sy, 3.f * sx, 10.f * sy, color, true);
 			GuiRuntime::DrawUiRect(x + 15.f * sx, y + 6.f * sy, 3.f * sx, 10.f * sy, color, true);
 		}
+		else if (i != 1)
+		{
+			const unsigned background = enabled && previewButton(camera) == i ? 0xff56321a : 0xff17120d;
+			const float direction = i == 0 ? -1.f : 1.f;
+			GuiRuntime::DrawUiCircle(x + 13.f * sx, y + 12.f * sy, 7.f * sy, color, true);
+			GuiRuntime::DrawUiCircle(x + 13.f * sx, y + 12.f * sy, 5.f * sy, background, true);
+			GuiRuntime::DrawUiRect(x + (i == 0 ? 4.f : 13.f) * sx, y + 3.f * sy,
+				9.f * sx, 9.f * sy, background, true);
+			GuiRuntime::DrawUiTriangleVerts(x + (13.f + direction * 6.f) * sx, y + 5.f * sy,
+				x + 13.f * sx, y + 1.f * sy, x + 13.f * sx, y + 9.f * sy, color);
+		}
 		else
 		{
-			const float tip = i == 0 ? 8.f : 18.f, base = i == 0 ? 17.f : 9.f;
-			GuiRuntime::DrawUiTriangleVerts(x + tip * sx, y + 11.f * sy,
-				x + base * sx, y + 6.f * sy, x + base * sx, y + 16.f * sy, color);
+			GuiRuntime::DrawUiTriangleVerts(x + 18.f * sx, y + 11.f * sy,
+				x + 9.f * sx, y + 6.f * sy, x + 9.f * sx, y + 16.f * sy, color);
 		}
 	}
 }
