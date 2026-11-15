@@ -28,7 +28,7 @@ def main():
     args = ap.parse_args()
     tex2d = os.path.join(args.dump, "Texture2D")
 
-    pkgs = sorted(glob.glob(os.path.join(args.deploy, "*.package.json")))
+    pkgs = sorted(glob.glob(os.path.join(args.deploy, "**", "*.package.json"), recursive=True))
     if not pkgs:
         sys.exit(f"FAIL: no *.package.json in {args.deploy}")
 

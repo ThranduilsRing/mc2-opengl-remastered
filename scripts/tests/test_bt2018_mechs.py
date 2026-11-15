@@ -31,6 +31,23 @@ def test_showcase_default_and_recipe_override():
     recipe["mc2"]["showcase_clip"] = "custom"
     assert C.emit_package_json({}, recipe)["clips"] == {"showcase": "custom"}
 
+
+@pytest.mark.parametrize("clips,valid", [(None, True), ({"showcase": "walk"}, True),
+                                        ({"showcase": ""}, False), ({"showcase": 12}, False)])
+def test_package_checker_showcase(tmp_path, monkeypatch, clips, valid):
+    from tools.bt2018_import import check_mech_packages as checker
+    nested = tmp_path / "bt2018"
+    nested.mkdir()
+    (tmp_path / "albedo.tga").write_bytes(b"fixture")
+    pkg = {"materials": {"albedo": {"tga": "albedo.tga"}}}
+    if clips is not None:
+        pkg["clips"] = clips
+    (nested / "test.package.json").write_text(json.dumps(pkg))
+    monkeypatch.setattr(sys, "argv", ["check", "--deploy", str(tmp_path)])
+    with pytest.raises(SystemExit) as result:
+        checker.main()
+    assert result.value.code == (0 if valid else 1)
+
 DUMP = Path(os.environ.get("BT2018_DUMP", REPO / "scripts/tests/fixtures/bt2018-dump"))
 CONVERSIONS = Path(os.environ.get("BT2018_CONVERSIONS", REPO / "scripts/tests/fixtures/bt2018-conversions"))
 
