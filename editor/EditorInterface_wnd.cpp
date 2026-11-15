@@ -289,7 +289,7 @@ void EditorInterface::initTacMap()
 	}
 	
 	tacMap.SetData( pData, size );
-	free( pData );
+	delete [] pData;
 	pData = nullptr;
 	tacMap.Invalidate(FALSE);  // async/coalesced — avoid synchronous per-event minimap repaint storm
 }
