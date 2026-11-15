@@ -1705,6 +1705,7 @@ void MechLabScreen::beginDrag( LogisticsComponent* pComponent )
 			path.init( artPath, pFile, "tga" );
 
 			dragIcon.setTexture( path );
+			dragIcon.setComponent(*pComponent);
 			dragIcon.resize( sizeX * LogisticsComponent::XICON_FACTOR, sizeY * LogisticsComponent::YICON_FACTOR);
 			dragIcon.setUVs( 0.f, 0.f, sizeX * 48.f, sizeY * 32.f );
 			dragIcon.setColor( 0xffffffff );
@@ -1899,6 +1900,7 @@ void MechLabScreen::updateDiagram()
 		path.init( artPath, pFile, "tga" );
 
 		componentIcons[i].setTexture( path );
+		componentIcons[i].setComponent(*pComponent);
 		componentIcons[i].resize( sizeX * LogisticsComponent::XICON_FACTOR, sizeY * LogisticsComponent::YICON_FACTOR );
 		componentIcons[i].setUVs( 0.f, 0.f, sizeX * 48.f, sizeY * 32.f );
 		componentIcons[i].moveTo( xLoc, yLoc );
