@@ -81,6 +81,12 @@ set(SOURCE_FILES
     unix.c
     win32.c)
 
+if(WIN32)
+    list(REMOVE_ITEM SOURCE_FILES unix.c)
+else()
+    list(REMOVE_ITEM SOURCE_FILES win32.c)
+endif()
+
 source_group(include FILES ${INCLUDE_FILES})
 source_group(source FILES ${SOURCE_FILES})
 

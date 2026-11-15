@@ -16,6 +16,7 @@ class Lockstep {
 public:
     explicit Lockstep(std::uint32_t slot);
     bool queue(sim::OrderEnvelope envelope);
+    void stop(std::string_view reason) { if (error_.empty()) error_ = reason; }
     void seal();
     void receive(std::span<const std::uint8_t> packet);
     std::vector<save::Bytes> takeOutgoing();
@@ -30,6 +31,7 @@ private:
     std::uint32_t slot_;
     sim::Tick completed_ = 0;
     std::uint64_t sequence_ = 0, remoteSequence_ = 0;
+    sim::Tick nextRemoteTick_ = 1;
     bool executing_ = false;
     std::map<sim::Tick, Frame> frames_;
     std::map<sim::Tick, std::array<std::optional<StateHash>, 2>> hashes_;
@@ -41,7 +43,7 @@ private:
     void compare(sim::Tick tick);
 };
 // Initial Team 0 roster indices; runtime additions belong to slot 0.
-constexpr std::uint32_t moverOwner(std::uint32_t index, std::uint32_t count, bool initial = true) {
-    return initial && index >= (count >= 4 ? count / 2 : 1) ? 1u : 0u;
+constexpr std::uint32_t moverOwner(std::uint32_t index, std::uint32_t /*count*/, bool initial = true) {
+    return initial && index > 0 ? 1u : 0u;
 }
 }

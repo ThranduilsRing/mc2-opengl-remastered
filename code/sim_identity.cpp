@@ -49,6 +49,7 @@
 #include "bldng.h"
 #include "turret.h"
 #include "combat_sim_hash.h"
+#include "net/runtime.h"
 #include "vtol_simulation.h"
 #include "weather.h"
 #include "team.h"
@@ -323,7 +324,7 @@ extern "C" int mc2SimIdentityWriteJson(char* buf, int cap,
 // One line per SIM frame into the run log. Opt-in (MC2_SIM_IDENTITY_TRACE).
 // Called from the fixed-step sim advance; see code/mission.cpp.
 extern "C" void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame) {
-	if ((!simIdentityEnabled() || !simIdentityTrace()) && !mc2::replay::active()) return;
+	if ((!simIdentityEnabled() || !simIdentityTrace()) && !mc2::replay::active() && !mc2::net::active()) return;
     if (!ObjectManager)
 		return;
 
@@ -355,7 +356,7 @@ extern "C" void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame) 
 	mc2_sim_identity::toHex16(mc2_sim_identity::digestObjects(objs), ho);
 	mc2_sim_identity::toHex16(mc2_sim_identity::digestAbl(abl), ha);
 
-    if (mc2::replay::active()) {
+    if (mc2::replay::active() || mc2::net::active()) {
         mc2::save::Archive animation;
         mc2::save::Archive objects;
         auto sceneryHash = mc2_sim_identity::digestObjects(objs);
@@ -383,6 +384,8 @@ extern "C" void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame) 
         const std::uint64_t rngHash = (static_cast<std::uint64_t>(mc2_anim_rng::state()) << 32) ^
             mc2_anim_rng::drawCount() ^ (static_cast<std::uint64_t>(SimRandomDraws()) * 1099511628211ull) ^ mc2GetSimRngState();
         mc2::replay::hashes(static_cast<std::uint64_t>(turn), {strict,
+            objectHash, mc2_sim_identity::digestAbl(abl), animHash, rngHash});
+        mc2::net::stateHashes(static_cast<std::uint64_t>(turn), {strict,
             objectHash, mc2_sim_identity::digestAbl(abl), animHash, rngHash});
     }
 

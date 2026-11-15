@@ -1007,8 +1007,8 @@ if(WIN32)
 endif()
 target_compile_options(enet PRIVATE $<$<C_COMPILER_ID:MSVC>:/Z7>)
 target_link_libraries(mc2 PRIVATE enet)
-target_sources(mc2 PRIVATE code/net/session.cpp code/net/lockstep.cpp)
-set_source_files_properties(code/net/session.cpp code/net/lockstep.cpp PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
+target_sources(mc2 PRIVATE code/net/session.cpp code/net/lockstep.cpp code/net/runtime.cpp)
+set_source_files_properties(code/net/session.cpp code/net/lockstep.cpp code/net/runtime.cpp PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
 
 target_sources(mc2 PRIVATE code/command_replay.cpp
     code/combat_sim_hash.cpp code/save_sections.cpp)

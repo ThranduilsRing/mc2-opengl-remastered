@@ -10,6 +10,7 @@
 #include "carnage.h"
 #include "weaponfx.h"
 #include "command_replay.h"
+#include "net/runtime.h"
 
 extern std::atomic<uint32_t> g_mc2FrameCounter;
 
@@ -360,7 +361,7 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 		const std::string arg = line.substr(12);
 		char* end = nullptr;
 		const long id = strtol(arg.c_str(), &end, 10);
-		if (!mc2::replay::playing() || arg.empty() || !end || *end != '\0' ||
+		if (mc2::net::active() || !mc2::replay::playing() || arg.empty() || !end || *end != '\0' ||
 			id < 0 || id >= MAX_COMMANDERS || !Commander::commanders[id] ||
 			!Commander::commanders[id]->getTeam()) {
 			result = "blocked"; note = "replay_home requires playback and an existing commander";

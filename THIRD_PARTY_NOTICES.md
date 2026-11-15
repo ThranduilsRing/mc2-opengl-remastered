@@ -3,7 +3,8 @@
 ## ENet v1.3.18
 MIT License, copyright (c) 2002-2024 Lee Salzman.
 Source: https://github.com/lsalzman/enet/tree/v1.3.18
-Unmodified C sources, headers, CMakeLists.txt and LICENSE vendored at 3rdparty/enet/.
+Unmodified C sources, headers and LICENSE vendored at 3rdparty/enet/.
+CMake selects only the platform's socket implementation.
 Windows links ws2_32 and winmm; Unix uses ENet's POSIX implementation.
 
 ## OpenLibm v0.8.7

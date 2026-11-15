@@ -67,6 +67,8 @@ TEST_CASE("net lockstep rejects forged source, duplicate batches, future markers
     auto packets = host.takeOutgoing();
     client.receive(packets[0]); client.receive(packets[0]);
     CHECK_FALSE(client.error().empty());
+    net::Lockstep reordered(1);
+    reordered.receive(packets[1]); CHECK_FALSE(reordered.error().empty());
     net::Lockstep forged(1);
     auto packet = packets[0]; packet[4] = 6;
     forged.receive(packet); CHECK_FALSE(forged.error().empty());
@@ -76,13 +78,40 @@ TEST_CASE("net lockstep rejects forged source, duplicate batches, future markers
         CHECK_FALSE(truncated.error().empty());
     }
     net::Lockstep sender(0), receiver(1);
-    sender.takeOutgoing(); REQUIRE(sender.queue(command(1))); sender.seal();
+    deliver(sender, receiver); REQUIRE(sender.queue(command(1))); sender.seal();
     packet = sender.takeOutgoing().front();
     packet[24] = 101; // OrderEnvelope.sourceId, after kind/tick/count/applyTick
-    receiver.receive(packet); CHECK_FALSE(receiver.error().empty());
+    receiver.receive(packet); CHECK(receiver.error() == "MP forged order source, tick or sequence");
 }
 TEST_CASE("net lockstep partitions stock and larger rosters, additions stay with host") {
     CHECK(net::moverOwner(0, 3) == 0); CHECK(net::moverOwner(1, 3) == 1); CHECK(net::moverOwner(2, 3) == 1);
-    CHECK(net::moverOwner(1, 4) == 0); CHECK(net::moverOwner(2, 4) == 1);
+    CHECK(net::moverOwner(1, 4) == 1); CHECK(net::moverOwner(2, 4) == 1);
     CHECK(net::moverOwner(9, 3, false) == 0);
+}
+TEST_CASE("net lockstep UI during a running step enters the following delayed batch") {
+    net::Lockstep host(0), client(1);
+    host.seal(); client.seal(); deliver(host, client); deliver(client, host);
+    REQUIRE(host.ready()); host.beginTick(); client.beginTick();
+    REQUIRE(host.queue(command(1)));
+    host.finishTick({}); client.finishTick({});
+    deliver(host, client); deliver(client, host);
+    host.seal(); client.seal(); deliver(host, client); deliver(client, host);
+    for (sim::Tick tick = 2; tick <= 5; ++tick) {
+        REQUIRE(host.ready()); REQUIRE(client.ready());
+        auto a = host.beginTick(); CHECK(a == client.beginTick());
+        if (tick < 5) CHECK(a.empty());
+        else { REQUIRE(a.size() == 1); CHECK(a[0].applyTick == 5); }
+        host.finishTick({}); client.finishTick({});
+        deliver(host, client); deliver(client, host);
+        host.seal(); client.seal(); deliver(host, client); deliver(client, host);
+    }
+}
+TEST_CASE("net lockstep timeout or disconnect stops without releasing an unagreed tick") {
+    for (const auto reason : {"MP peer disconnected", "MP peer timed out"}) {
+        net::Lockstep host(0), client(1);
+        deliver(host, client); deliver(client, host);
+        REQUIRE(host.ready());
+        host.stop(reason);
+        CHECK_FALSE(host.ready()); CHECK(host.completed() == 0); CHECK(host.error() == reason);
+    }
 }

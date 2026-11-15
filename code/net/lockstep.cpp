@@ -15,8 +15,9 @@ Lockstep::Lockstep(std::uint32_t slot) : slot_(slot) {
     for (sim::Tick tick = 1; tick <= inputDelay; ++tick) sendFrame(tick, {});
 }
 bool Lockstep::queue(sim::OrderEnvelope envelope) {
-    const auto target = completed_ + inputDelay + 1;
-    if (!error_.empty() || executing_ || frames_[target].orders[slot_] || pending_.size() >= maxOrders) return false;
+    // UI is also serviced during a running step; those inputs belong to the next batch.
+    const auto target = completed_ + inputDelay + 1 + (executing_ ? 1 : 0);
+    if (!error_.empty() || frames_[target].orders[slot_] || pending_.size() >= maxOrders) return false;
     envelope.applyTick = target;
     envelope.sourceId = peerSourceBase + slot_;
     envelope.sequence = sequence_;
@@ -57,7 +58,7 @@ void Lockstep::receive(std::span<const std::uint8_t> packet) {
     if (kind == inputMessage) {
         std::vector<sim::OrderEnvelope> orders;
         a.sequence(orders, maxOrders);
-        if (!a.finish() || tick <= completed_ || frames_[tick].orders[remote]) {
+        if (!a.finish() || tick != nextRemoteTick_ || tick <= completed_ || frames_[tick].orders[remote]) {
             error_ = "MP invalid or duplicate input batch"; return;
         }
         auto sequence = remoteSequence_;
@@ -69,6 +70,7 @@ void Lockstep::receive(std::span<const std::uint8_t> packet) {
             }
         }
         remoteSequence_ = sequence;
+        ++nextRemoteTick_;
         frames_[tick].orders[remote] = std::move(orders);
     } else if (kind == hashMessage) {
         StateHash hash{};
@@ -85,10 +87,14 @@ bool Lockstep::ready() const {
     if (!error_.empty() || executing_) return false;
     if (completed_) {
         const auto previous = hashes_.find(completed_);
-        if (previous == hashes_.end() || !previous->second[0] || !previous->second[1]) return false;
+        if (previous == hashes_.end()) return false;
+        const auto& [tick, peers] = *previous;
+        if (!peers[0] || !peers[1]) return false;
     }
     const auto next = frames_.find(completed_ + 1);
-    return next != frames_.end() && next->second.orders[0] && next->second.orders[1];
+    if (next == frames_.end()) return false;
+    const auto& [tick, frame] = *next;
+    return frame.orders[0] && frame.orders[1];
 }
 std::vector<sim::OrderEnvelope> Lockstep::beginTick() {
     if (!ready()) throw std::logic_error("MP tick is not agreed");

@@ -6,6 +6,7 @@
 // Declared in the class headers; shared names in mission_internal.h.
 #include "mission_internal.h"
 #include "command_replay.h"
+#include "net/runtime.h"
 #include "mission_init_frame.h"
 #include "mission_commander_team.h"
 #include "../GameOS/gameos/diagnostic_trace.h"
@@ -96,7 +97,11 @@ void Mission::initPrologue(MissionInitFrame& f) {
 			gos_srand(seed);
 			mc2::fmt::print_err("[DET_RNG] mission={} reseed=0x{:08X} (MC2_DETERMINISTIC_RNG=1)\n", mc2::fmt::safe(missionName ? missionName : "(null)"), mc2::fmt::as_u32(seed));
 		}
+        if (mc2::net::active() && (!mc2::gate::str<"MC2_COMMAND_REPLAY_PLAY">().empty() ||
+            !mc2::gate::str<"MC2_COMMAND_REPLAY_RECORD">().empty()))
+            throw std::runtime_error("live multiplayer cannot use command replay");
         mc2::replay::begin(missionName, seed);
+        mc2::net::beginMission(missionName, seed);
 	}
 
 	neverEndingStory = false;

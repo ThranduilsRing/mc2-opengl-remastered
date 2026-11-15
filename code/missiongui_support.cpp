@@ -1,4 +1,5 @@
 #include "vtol_simulation.h"
+#include "net/runtime.h"
 // MissionInterfaceManager: air strikes, reinforcements, VTOL calls, salvage, repair, pause API, nav markers and sensor strikes.
 // Declared in the class headers; shared names in missiongui_shared_internal.h.
 #include "missiongui_shared_internal.h"
@@ -677,6 +678,7 @@ int MissionInterfaceManager::showObjectives(bool on)
 
 int MissionInterfaceManager::togglePause()
 {
+	if (mc2::net::active()) return 0;
 	if ( !bPausedWithoutMenu )
 	{
 		bPaused ^= 1;
@@ -701,6 +703,7 @@ int MissionInterfaceManager::togglePause()
 
 int MissionInterfaceManager::togglePauseWithoutMenu()
 {
+	if (mc2::net::active()) return 0;
 
 	if ( !bPausedWithoutMenu )
 	{
@@ -726,6 +729,7 @@ int MissionInterfaceManager::togglePauseWithoutMenu()
 
 bool MissionInterfaceManager::isPaused()
 {
+	if (mc2::net::active()) return false;
 	return bPaused;
 }
 
@@ -739,6 +743,7 @@ bool MissionInterfaceManager::isPaused()
 // continuing sim resumes exactly as before.
 void MissionInterfaceManager::setPausedForCapture(bool paused)
 {
+	if (mc2::net::active()) return;
 	bPaused = paused ? 1 : 0;
 	bPausedWithoutMenu = paused ? 1 : 0;
 }

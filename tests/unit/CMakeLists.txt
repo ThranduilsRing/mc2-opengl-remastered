@@ -41,6 +41,7 @@ add_executable(mc2_tests
     ${MC2_WORKTREE_ROOT}/code/net/session.cpp
     test_net_lockstep.cpp
     ${MC2_WORKTREE_ROOT}/code/net/lockstep.cpp
+    ${MC2_WORKTREE_ROOT}/code/net/runtime.cpp
     test_fog_policy.cpp
     test_water_reactive.cpp
     test_fx_native.cpp

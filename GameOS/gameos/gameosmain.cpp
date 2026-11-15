@@ -1,4 +1,5 @@
 #include "mc2_czstring.h"
+#include "../../code/net/runtime.h"
 #include "load_scope.h"
 #include "../../GuiRuntime/PlayerFrontEnd.h"
 #include <memory>
@@ -843,6 +844,8 @@ int main(int argc, char** argv)
     initDpiAwareness();
 
     initLauncherEnv();
+    try { mc2::net::configure(argc, argv); }
+    catch (const std::exception& error) { std::fprintf(stderr, "[MP_ARGUMENT] %s\n", error.what()); return 2; }
 
     // The launcher_env.json values were just applied: forget every gate a static initialiser cached.
     mc2::gate::invalidateAll();
@@ -885,6 +888,7 @@ int main(int argc, char** argv)
         (void)esink;
     }
 
+    mc2::net::redirectLogs();
     // [CONFIG v1]: which MC2_* variables are set, what they parsed to, and the unregistered / bad ones.
     mc2::gate::dumpConfig(stderr);
 
