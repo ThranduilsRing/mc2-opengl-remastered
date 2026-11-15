@@ -69,8 +69,10 @@ struct ScriptPlayer {
         inited = true;
         path = mc2::gate::str<"MC2_INPUT_SCRIPT">();
         active = !path.empty();
-        if (active)
+        if (active) {
+            applyInputFocus(true); // a parked window may have lost focus before script initialization
             mc2::fmt::print_out("[INPUT_SCRIPT v1] frame=0 script={}\n", mc2::fmt::safe(path.c_str()));
+        }
     }
     void pull() {
         FILE* f = fopen(path.c_str(), "rb");
@@ -372,7 +374,7 @@ void updateKeyboardState() {
     for(int i=0; i<array_len; ++i) {
 
         const capture::Edge prev = static_cast<capture::Edge>(ki->last_state_[i]);
-        const bool down = state[i] != 0 || (g_script.active && i < 512 && g_script.keys[i]);
+        const bool down = g_script.active ? (i < 512 && g_script.keys[i]) : state[i] != 0;
         const capture::Edge next = capture::nextEdge(prev, down);
         ki->last_state_[i] = static_cast<uint8_t>(next);
 
