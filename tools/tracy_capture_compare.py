@@ -468,15 +468,18 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
               f"duration={duration}s fixed_ts={fixed_timestep} fps_cap={fps_cap} pose={pose}")
 
         rc = 0
+        game_stopped = False
         if via_menu_boot:
             try:
                 recorder.wait(timeout=seconds + 90)
+                rc = int(bool(recorder.returncode))
             except subprocess.TimeoutExpired:
                 rc = 1
+            game_stopped = gp.poll() is None
             _stop_capture_child(gp)   # the game has no auto-quit outside smoke mode: end OUR spawned pid once the recording is over
         try:
             gp.wait(timeout=duration + (300 if post_load else 90))
-            if gp.returncode:
+            if gp.returncode and not game_stopped:
                 rc = 1
         except subprocess.TimeoutExpired:
             print("WARN: game exceeded its duration budget -- killing OUR spawned pid "
