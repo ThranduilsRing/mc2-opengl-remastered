@@ -11,6 +11,7 @@ SimpleCamera.h		: Interface for the camera that renders a single object
 #include"camera.h"
 
 #include <memory>
+#include <string>
 
 class ObjectAppearance;
 
@@ -66,6 +67,7 @@ public:
 	void setRotation( float rotation );
 	void zoomIn( float howMuch ); // scale for things that can't 
 
+	void rotateBy(float degrees) { rotation += degrees; if (rotation > 360.f) rotation -= 360.f; if (rotation < -360.f) rotation += 360.f; }
 	void setInMission (void)
 	{
 		bIsInMission = true;
@@ -92,6 +94,7 @@ public:
 private:
 
 	std::unique_ptr<ObjectAppearance>	pObject;	// B7o.5: owned; released only through releaseObject()
+	std::string modelCredit_;
 	void releaseObject();
 	Camera*				oldCam;
 	float				rotation;

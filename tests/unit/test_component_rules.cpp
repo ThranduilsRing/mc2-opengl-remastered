@@ -2,6 +2,18 @@
 #include "doctest.h"
 #include "component_rules.h"
 
+TEST_CASE("components/launcher size aliases use the base model art") {
+    using mc2::components::launcherIcon;
+    CHECK(std::string_view(launcherIcon("mcl_mc_clanlrm20rack.tga")) == "mcl_mc_clanlrmrack.tga");
+    CHECK(std::string_view(launcherIcon("mcl_mc_lrm15rack.tga")) == "mcl_mc_lrmrack.tga");
+    CHECK(std::string_view(launcherIcon("mcl_mc_swarmlrmrack.tga")) == "mcl_mc_swarmlrmrack.tga");
+    CHECK(std::string_view(launcherIcon("mcl_mc_clanstreaksrmpack.tga")) == "mcl_mc_clanstreaksrmpack.tga");
+    CHECK(std::string_view(launcherIcon("mcl_mc_streaksrm6pack.tga")) == "mcl_mc_streaksrmpack.tga");
+    CHECK(std::string_view(launcherIcon("mcl_mc_clansrm6pack.tga")) == "mcl_mc_srmpack.tga");
+    CHECK(launcherIcon("mcl_mc_thunderboltmissile.tga") == nullptr);
+    CHECK(launcherIcon("mcl_mc_gaussrifle.tga") == nullptr);
+}
+
 TEST_CASE("components/reset ignores stale storage and preserves unmapped live items") {
     struct Item { unsigned char masterID; };
     struct Slot { bool clearOut; };

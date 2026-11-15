@@ -349,6 +349,9 @@ long ExplosionType::init (FilePtr objFile, unsigned long fileSize) {
 //---------------------------------------------------------------------------
 
 bool ExplosionType::handleCollision (GameObjectPtr collidee, GameObjectPtr collider) {
+	const auto alreadyHit = collidee->getCollisionFreeFromWID();
+	if (alreadyHit && collider->getWatchID(false) == alreadyHit)
+		return false;
 
 	if (MPlayer && !MPlayer->isServer())
 		return(false);
@@ -490,6 +493,7 @@ void Carnage::init (bool create)
 //---------------------------------------------------------------------------
 void Carnage::init (CarnageEnumType _carnageType) 
 {
+	setCollisionFreeFromWID(0);
     mc2::tick::releaseEffect(gosEffect);
     mc2::tick::releaseLight(pointLight, eye, lightId);
 	//--------------------------------------------------------------------
