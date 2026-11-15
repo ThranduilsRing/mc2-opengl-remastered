@@ -160,13 +160,17 @@ def _norm(rel: str) -> str:
 
 
 def is_deploy_artifact(rel: str) -> bool:
-    """Diagnostics, backups and bundled kit authoring IR are not runtime payload."""
+    """Exact deploy junk locations; arbitrary *_bak/captures model directories are valid."""
     parts = _norm(rel).rstrip("/").split("/")
-    return (any(p in {"logs", "captures", "debug_state", "crashes", "_rdoc", "_pngcap"}
-                or p.endswith("_bak") for p in parts)
-            or parts[-1].endswith((".log", ".rdc", ".dmp", ".mdmp", ".orig_bak"))
+    name = parts[-1]
+    return (parts[0] in {"logs", "debug_state", "crashes", "_rdoc", "_pngcap", "dev_shell_out", "terrain_gen_out"}
+            or parts[:3] == ["data", "tgl", "_aoktxtmp"]
+            or name.endswith((".rdc", ".dmp", ".mdmp", ".orig_bak"))
+            or ".bak-" in name or ".orig" in name
+            or (len(parts) == 1 and (name.endswith(".log") or name == "tgl.fst.slim-2026-06-12"
+                or name.startswith(("stdout", "stderr")) and name.endswith((".txt", ".out", ".err"))))
             or (parts[:3] in (["mods", "mc2-industrial-kit", "content"], ["mods", "mc2-vehicle-kit", "content"])
-                and parts[-1].endswith(".mc2ir.json")))
+                and name.endswith(".mc2ir.json")))
 
 
 def is_excluded(rel: str) -> bool:

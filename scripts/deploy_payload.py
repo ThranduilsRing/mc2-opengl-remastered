@@ -1787,18 +1787,31 @@ def retire_unowned(target_dir, keep, preserve=(), own_shaders=False):
     root = Path(target_dir).resolve()
     shared = any(root == Path(preset["target_dir"]).resolve() for preset in TARGET_PRESETS.values())
     from asset_parity import is_deploy_artifact
+    previous = read_manifest(target_dir)
+    preserved = {p.replace("\\", "/").strip("/").casefold() for p in preserve}
+
+    def protected(rel):
+        parts = rel.replace("\\", "/").casefold().split("/")
+        return (any(p in {"mods", "savegame", "captures", "_pngcap", "_rdoc"} for p in parts)
+                or parts[-1] in {"options.cfg", "prefs.cfg"}
+                or any("/".join(parts) == p or "/".join(parts).startswith(p + "/") for p in preserved))
+
     # Refuse to discard crash evidence; the caller must archive it before deploying.
     artifacts = []
     for directory, _dirs, files in os.walk(root):
         for name in files:
             path = Path(directory) / name
             rel = path.relative_to(root).as_posix()
-            if not is_deploy_artifact(rel):
+            if protected(rel) or not is_deploy_artifact(rel):
                 continue
             if not path.resolve().is_relative_to(root):
                 fail(f"diagnostic payload path escapes target: {rel}")
             if "crashes" in {part.casefold() for part in Path(rel).parts} or path.suffix.lower() in {".dmp", ".mdmp"}:
                 fail(f"archive crash evidence before deploying: {path}")
+            # A manifest claim never authorizes deleting bytes the owner changed.
+            if rel in previous and sha256_file(path) != previous[rel][0]:
+                log(f"preserved modified diagnostic payload: {rel}")
+                continue
             artifacts.append((path, rel))
     for path, rel in artifacts:
         path.unlink()
@@ -1806,11 +1819,11 @@ def retire_unowned(target_dir, keep, preserve=(), own_shaders=False):
         log(f"pruned diagnostic payload: {rel}")
     for directory, _dirs, _files in os.walk(root, topdown=False):
         path = Path(directory)
-        if path != root and is_deploy_artifact(path.relative_to(root).as_posix()):
+        if path != root and not protected(path.relative_to(root).as_posix()) and is_deploy_artifact(path.relative_to(root).as_posix()):
             if path.resolve().is_relative_to(root) and not any(path.iterdir()):
                 path.rmdir()
-    for rel, (digest, size, _mtime) in read_manifest(target_dir).items():
-        if rel in keep or rel in preserve:
+    for rel, (digest, size, _mtime) in previous.items():
+        if rel in keep or protected(rel):
             continue
         retired = root / rel
         resolved = retired.resolve()
@@ -1843,7 +1856,7 @@ def retire_unowned(target_dir, keep, preserve=(), own_shaders=False):
             resolved = path.resolve()
             if not resolved.is_relative_to(spv_root.resolve()):
                 fail(f"retired shader path escapes target: {rel}")
-            if path.is_file() and rel not in keep and rel not in preserve:
+            if path.is_file() and rel not in keep and not protected(rel):
                 path.unlink()
                 log(f"pruned retired payload: {rel}")
 
@@ -2122,9 +2135,14 @@ DEPLOY_ALLOWLIST = {
     "mc2-win64-v0.4",
     "mc2-win64-lane2",
     "mc2-win64-lane3",
-    "mc2-win64-v0.4c",
-    "mc2-win64-0.4c",
 }
+
+
+def refuse_golden_target(target):
+    """Golden installs are read-only, including through a junction or override."""
+    if target and any(p.name.casefold() in {"mc2-win64-v0.4c", "mc2-win64-0.4c"}
+                      for p in (Path(target), *Path(target).parents, Path(target).resolve(), *Path(target).resolve().parents)):
+        fail(f"golden install is never a deploy target: {target}")
 
 
 def implicit_target_refusal(src_root, explicit_target):
@@ -2423,6 +2441,8 @@ def main():
                     help="print only verdicts, failures/warnings, artifact paths and the DEPLOY_FINGERPRINT lines; "
                          "the full output goes to a log (path on the last line)")
     args = ap.parse_args()
+    preset_target = TARGET_PRESETS.get(args.target, {}).get("target_dir")
+    refuse_golden_target(args.target_dir or preset_target)
     import quiet_output
     if quiet_output.wanted(args):
         quiet_output.install_quiet(name="deploy_payload")
