@@ -183,8 +183,9 @@ def arguments(argv=None):
             or (args.kill_peer and not 1 <= args.kill_tick < args.ticks)
             or (args.force_desync and (args.kill_peer or args.combat))):
         ap.error("invalid tick, port, timeout or fault bounds (jitter<=latency, loss<100)")
-    if args.wall_clock and (args.ticks < 900 or args.force_desync or args.kill_peer or args.stall_ms or args.loss or args.latency):
-        ap.error("wall-clock pacing requires >=900 ticks and no injected faults")
+    if args.wall_clock and (args.ticks < 900 or args.force_desync or args.kill_peer or args.stall_ms
+                           or (not args.combat and (args.loss or args.latency))):
+        ap.error("wall-clock requires >=900 ticks; network faults require a combat cell")
     args.install = args.install.resolve()
     args.client_install = (args.client_install or args.install).resolve()
     if not ip.is_loopback and args.install == args.client_install:
@@ -292,15 +293,19 @@ def run_pair(args, out, kill_peer=None):
                 compared = args.ticks
                 if args.wall_clock:
                     compared = min(len(read_trace(peer / "session.trace")[0]) for peer in peers)
-                    if compared < args.ticks:
+                    if not args.combat and compared < args.ticks:
                         raise ValueError("wall-clock run did not reach the required tick count")
                 result = compare_traces(*peers, compared, args.force_desync, args.combat, 12 if args.wall_clock else 2)
                 if args.wall_clock:
                     rates = [(last[0] - first[0]) / (last[1] - first[1]) if last[1] > first[1] else 0
                              for first, last in progress]
-                    if not all(28.5 <= rate <= 31.5 for rate in rates):
+                    coverage = [last[1] - first[1] for first, last in progress]
+                    if args.combat and min(coverage) < args.ticks / 30 - 0.5:
+                        raise ValueError(f"combat did not cover the requested wall duration: {coverage}")
+                    if not args.combat and not all(28.5 <= rate <= 31.5 for rate in rates):
                         raise ValueError(f"wall-clock pacing outside 30 Hz +/-5%: {rates}")
                     result["ticks_per_wall_second"] = rates
+                    result["trace_wall_seconds"] = coverage
                 if args.stall_ms and (not any(e["event"] == "resume" for e in events) or min(ticks) <= args.stall_tick + 30):
                     raise ValueError("stall was not injected and recovered")
             for slot, directory in enumerate(peers):

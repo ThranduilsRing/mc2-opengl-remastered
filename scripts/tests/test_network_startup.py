@@ -191,6 +191,7 @@ def test_mp_wall_clock_uses_normal_time_and_bounds_the_cell(tmp_path, monkeypatc
     assert captured["argv"][captured["argv"].index("--duration") + 1] == "50"
     base = ["--install", str(tmp_path), "--out", str(tmp_path / "out"), "--wall-clock"]
     assert proof.arguments(base + ["--ticks", "1200"]).wall_clock
+    assert proof.arguments(base + ["--combat", "--loss", "2", "--latency", "50", "--jitter", "20"]).combat
     for bad in (["--ticks", "64"], ["--loss", "2"], ["--force-desync", "600"]):
         with pytest.raises(SystemExit):
             proof.arguments(base + bad)
