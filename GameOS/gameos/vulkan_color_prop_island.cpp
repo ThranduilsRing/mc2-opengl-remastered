@@ -1336,10 +1336,6 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         cba[1].blendEnable = VK_FALSE;
         cba[1].colorWriteMask = 0;
         cba[2].colorWriteMask = 0;   // a fringe blends coverage the core pass cut; it never owns the pixel id
-        // Fringe never writes depth: reject hidden fragments before material shading.
-        mc2vk::OwnedShaderModule fringeFrag(s->device, load_spv(s->device, spv_dir() + "color_prop_fringe.frag.spv"));
-        if (!fringeFrag) { setFallback("tier1_fringe_spv_load_failed"); return false; }
-        stages[1].module = fringeFrag.get();
         if (!mc2vk::create(s->t1_fringePipe, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
             vlog("TIER-1 fringe vkCreateGraphicsPipelines failed."); setFallback("tier1_pipeline_failed"); return false;
         }
@@ -1362,7 +1358,6 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         ds.depthCompareOp = VK_COMPARE_OP_GREATER; // masked dry pixels have depth 1.0
         if (!mc2vk::create(s->planarFringePipe, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) return false;
         cba[0].blendEnable = VK_FALSE;
-        stages[1].module = s->t1_frag.get();
         ds.depthWriteEnable = VK_TRUE;
         if (!mc2vk::create(s->planarCorePipe, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) return false;
         planarData[2] = 1;

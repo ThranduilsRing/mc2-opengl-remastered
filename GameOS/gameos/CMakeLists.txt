@@ -442,9 +442,6 @@ if(MC2_VULKAN)
     # own .frag.spv name but runs the main-patch fragment program, so one source feeds both.
     # check-vk-pipeline-layout.py carries the same alias.
     set(MC2_VK_SHADER_SRC_ALIAS_terrain_tier1_skirt_frag terrain_tier1)
-    list(APPEND MC2_VK_SHADER_BASENAMES color_prop_fringe)
-    set(MC2_VK_SHADER_SRC_ALIAS_color_prop_fringe_frag color_prop_tier1)
-    set(MC2_VK_SHADER_DEFINES_color_prop_fringe_frag -DCOLOR_PROP_FRINGE=1)
     # Mech-lab panel pass: mech_tier1.frag baked with -DMECH_PREVIEW=1 (no terrain set 1,
     # in-shader exposure/tonemap for the RGBA8 preview target). Loaded by vulkan_mech_island.cpp.
     list(APPEND MC2_VK_SHADER_BASENAMES mech_preview mech_backdrop)
