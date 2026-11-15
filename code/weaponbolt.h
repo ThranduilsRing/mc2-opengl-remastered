@@ -415,7 +415,7 @@ class WeaponBolt : public GameObject
 
 		// Delivers weaponShot to the aimed target on arrival (single-player only).
 		// True requires a cosmetic (zero-damage) explosion to avoid duplicate damage.
-		bool deliverAimedAreaHit (void);
+			bool deliverAimedAreaHit (CarnagePtr explosion);
 
 		virtual void Save (PacketFilePtr file, long packetNum);
 
