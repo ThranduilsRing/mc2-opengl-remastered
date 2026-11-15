@@ -1,4 +1,5 @@
 #include "PlayerFrontEnd.h"
+#include "GuiRuntime_internal.h"
 #include "PlayerOptionRows.h"
 #include "PlayerSettings.h"
 #include <map>
@@ -255,8 +256,52 @@ void loadSettings() {
 void requestCampaignStart(std::string fit) { pendingStart = std::move(fit); }
 std::string takeCampaignStart() { return std::exchange(pendingStart, {}); }
 
+static void drawCommunityCredits() {
+    const auto* vp = ImGui::GetMainViewport();
+    const float scale = std::clamp(vp->WorkSize.y / 1080.0f, 0.75f, 2.0f);
+    ImGui::PushFont(gui_runtime_detail::findUiFont("roboto", static_cast<int>(18 * scale)));
+    ImGui::SetNextWindowPos(ImVec2(vp->WorkPos.x + vp->WorkSize.x * 0.63f, vp->WorkPos.y + 90 * scale), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(vp->WorkSize.x * 0.35f, vp->WorkSize.y - 130 * scale), ImGuiCond_Always);
+    if (ImGui::Begin("Community", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings)) {
+        ImGui::PushTextWrapPos(0);
+        ImGui::TextUnformatted("Celebrating 25 years of MechCommander 2");
+        ImGui::Separator();
+        ImGui::TextUnformatted("For a quarter of a century, players and creators have kept the dropships flying. "
+            "Every mission shared, tool built and helping hand has given this game another home. Thank you for keeping MC2 alive.");
+        ImGui::Spacing();
+        ImGui::TextUnformatted("Two individuals in particular have kept this game alive for 25+ years:");
+        const auto openURL = ImGui::GetPlatformIO().Platform_OpenInShellFn;
+        ImGui::GetPlatformIO().Platform_OpenInShellFn = [](ImGuiContext*, auto url) { return SDL_OpenURL(url) == 0; };
+        ImGui::TextLinkOpenURL("Wolfman", "https://mc2x.net/");
+        ImGui::SameLine(); ImGui::TextUnformatted("and Magic,");
+        ImGui::TextUnformatted("supported by many, many others.");
+        ImGui::Spacing();
+        ImGui::TextUnformatted("A special thank-you to alariq for the OpenGL/Linux port that this project builds on.");
+        ImGui::TextLinkOpenURL("alariq's OpenGL/Linux port", "https://github.com/alariq/mc2");
+        ImGui::GetPlatformIO().Platform_OpenInShellFn = openURL;
+        ImGui::Spacing();
+        if (ImGui::CollapsingHeader("Credits", ImGuiTreeNodeFlags_DefaultOpen)) {
+            static const std::string credits = [] {
+                std::ifstream stream("CREDITS.txt", std::ios::binary);
+                return stream ? std::string(std::istreambuf_iterator<char>(stream), {}) : std::string("CREDITS.txt is missing from this installation.");
+            }();
+            if (ImGui::BeginChild("##credits", ImVec2(0, -ImGui::GetFrameHeightWithSpacing()), ImGuiChildFlags_Borders)) {
+                ImGui::PushTextWrapPos(0);
+                ImGui::TextUnformatted(credits.c_str());
+                ImGui::PopTextWrapPos();
+            }
+            ImGui::EndChild();
+        }
+        ImGui::TextUnformatted("Free forever.");
+        ImGui::PopTextWrapPos();
+    }
+    ImGui::End();
+    ImGui::PopFont();
+}
+
 void drawMainMenu() {
     if (!ImGui::GetCurrentContext()) return;
+    drawCommunityCredits();
     static bool bootScreen = false;
     if (!bootScreen) {
         const auto screen = mc2::gate::str<"MC2_BOOT_TO_SCREEN">();
