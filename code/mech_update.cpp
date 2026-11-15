@@ -684,7 +684,8 @@ void BattleMech::extractRenderView (mc2::render_view::RenderView& view)
 {
 	using mc2::render_view::Mode;
 	GameObject::extractRenderView(view);
-	view.value[0] = std::max(4.0f, getExtentRadius()); // ground footprint radius, copied before overlap
+	view.value[0] = mc2::render_view::groundFootprintRadius(getExtentRadius(),
+		isJumping() || appearance->isInJump(), getMoveType() == MOVETYPE_AIR || appearance->isJumpAirborne());
 	contactView = mc2::contactVisibility(getContactStatus(Team::home->getId(), true), getTeamId() == Team::home->getId()
 		|| isDestroyed() || isDisabled() || ShowMovers
 		|| (MPlayer && MPlayer->allUnitsDestroyed[MPlayer->commanderID]));

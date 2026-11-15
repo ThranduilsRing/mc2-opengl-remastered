@@ -22,6 +22,11 @@ namespace RenderCore { class FrameArena; }
 
 namespace mc2::render_view {
 
+// Zero radii keep airborne movers out of the vegetation's ground-only XY mask.
+inline constexpr float groundFootprintRadius(float extentRadius, bool jumping, bool airborne) {
+    return jumping || airborne ? 0.0f : (extentRadius < 4.0f ? 4.0f : extentRadius);
+}
+
 struct RenderClock {
     int32_t turn = 0;
     float scenarioTime = 0.0f;
