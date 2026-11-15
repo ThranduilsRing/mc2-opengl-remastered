@@ -179,9 +179,9 @@ void Mech3DAppearance::updateGeometry (void)
 	// renderShadows early-return so the stripped state has no consumer.
 	const bool stripShadowState = gos_IsModernShadowPathActive();
 
+	// Owner 11-15: shut-down mechs stay lit; only destroyed/disabled go lights-out.
 	if ((status == OBJECT_STATUS_DESTROYED) ||
-		(status == OBJECT_STATUS_DISABLED) || 
-		(status == OBJECT_STATUS_SHUTDOWN))
+		(status == OBJECT_STATUS_DISABLED))
 	{
 		mechShape->SetLightsOut(true);
 	}
