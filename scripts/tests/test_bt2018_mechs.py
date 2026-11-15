@@ -409,6 +409,39 @@ def test_entire_converted_roster_compiles_with_unique_ids(tables):
             assert "pack-authored MC2 adaptation" in p["provenance"]["gameplay"]
 
 
+def test_cold_logistics_pack_equipment_precedes_variants(tables):
+    """Trigger: code/logisticsdata_init.cpp, equipment_registry_engine.cpp, BT2018 data."""
+    from tools.bt2018_mechs import roster
+    from collections import Counter
+    source = (REPO / "code/logisticsdata_init.cpp").read_text(encoding="utf-8")
+    init = source.split("void LogisticsData::initComponents()", 1)[1].split(
+        "void LogisticsData::appendEquipmentAddFillComponents()", 1)[0]
+    assert init.index("loadMasterList(") < init.index("applyEquipmentAddFillIfEnabled(")
+    assert init.index("applyEquipmentAddFillIfEnabled(") < init.index("appendEquipmentAddFillComponents();")
+    assert 'ModCapabilityMounted("equipment_add")' in init
+    assert 'readIdFloat("BaseSensorRange", sensorRange)' in init
+    assert "equipmentAdd && !MasterComponent::masterList" in init
+    wm, _ = tables
+    stock = {int(k) for k in wm["stock_components"] if not k.startswith("_")}
+    added = {v["ordinal"] for v in wm["pack_equipment"].values() if isinstance(v, dict)}
+    assert stock.isdisjoint(added)  # ADD never replaces a stock component.
+    recipes = roster.recipes(Path("A:/Games/mc2-opengl/MC2Conversions"))
+    profiles = [C.build_profile(r, *tables) for r in recipes]
+    assert len(profiles) == 51
+    for p in profiles:
+        for v in p["variants"]:
+            ids = [i["mc2"]["master_id"] for i in v["items"]]
+            assert [i for i in ids if i in stock | added] == ids, p["family"]
+    ann = next(p for p in profiles if p["family"] == "annihilator")["variants"][0]
+    counts = Counter(i["mc2"]["master_id"] for i in ann["items"])
+    assert counts[wm["pack_equipment"]["bt2018:ac2"]["ordinal"]] == 4
+    assert counts[156] == 2
+    mad = next(p for p in profiles if p["family"] == "marauder")["variants"][0]
+    stock_ids = [i["mc2"]["master_id"] for i in mad["items"]]
+    assert [i for i in stock_ids if i in stock] == stock_ids
+    assert [i for i in stock_ids if i in stock | added] == stock_ids
+
+
 def test_spawn_fixture_uses_a_shipped_pilot_with_combat_skills():
     """A missing pilot leaves zero skills and turns weapon status into 0/0."""
     import hashlib

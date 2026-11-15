@@ -194,6 +194,30 @@ void LogisticsData::initComponents()
 
 	// EQUIP-ADD-FILL-1 (S2): second consumer of the ADD pass -- the filled rows
 	// are NOT in compbas.csv, so append them here too (gate OFF -> empty list).
+	// Cold logistics constructs variants before Mission::init. Materialize ADD
+	// rows now using the same table, sensor scale and overlay order as missions.
+	// Without an ADD-enabled package (or explicit legacy gates), stock is untouched.
+	const bool equipmentAdd = (ModCapabilityMounted("equipment_add") &&
+		mc2::gate::state<"MC2_EQUIPMENT_ADD">() != mc2::gate::Tri::Off) ||
+		(mc2UnitProfileDataEnabled() && mc2EquipmentAddEnabled());
+	if (equipmentAdd && !MasterComponent::masterList)
+	{
+		FullPathFileName gameSystemPath;
+		gameSystemPath.init(missionPath, "gamesys", ".fit");
+		FitIniFile gameSystem;
+		float sensorRange = 0.0f;
+		if (gameSystem.open(gameSystemPath) != NO_ERR ||
+			gameSystem.seekBlock("General") != NO_ERR ||
+			gameSystem.readIdFloat("BaseSensorRange", sensorRange) != NO_ERR)
+			STOP(("LogisticsData::initComponents: missing BaseSensorRange in %s", static_cast<const char*>(gameSystemPath)));
+		if (MasterComponent::loadMasterList(componentPath, 255, sensorRange) != NO_ERR)
+			STOP(("LogisticsData::initComponents: unable to load %s", componentPath));
+		overlayGeneratedEquipmentStatsIfEnabled();
+		applyEquipmentAddFillIfEnabled(sensorRange);
+		buildAndDumpEquipmentRegistryIfEnabled();
+		dumpFireExecutorProofIfEnabled();
+	}
+
 	appendEquipmentAddFillComponents();
 }
 
