@@ -245,7 +245,7 @@ void gos_DestroyAudio() {
 //
 void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_ResourceType res_type, mc2::czstring file_name, gosAudio_Format* ga_wf, void* data, int size, bool only2D)
 {
-    ZoneScopedN("Audio.CreateResource");
+    ZoneNamedN(createResourceZone, "Audio.CreateResource", true);
     gosASSERT(hgosaudio);
     if(!g_sound_engine) { *hgosaudio = nullptr; return; }   // --headless: no audio engine
     gosASSERT((res_type == gosAudio_UserMemory && data && ga_wf) || (res_type == gosAudio_StreamedFile && file_name));
