@@ -11,6 +11,21 @@
 
 using namespace mc2clip;
 
+// Trigger: imported preview pose publication in mclib/assimp_importer.cpp.
+TEST_CASE("preview publication: CPU geometry changes across ticks; GPU stays on palette path") {
+    glm::vec4 published(0), vertex(1, 2, 3, 1);
+    glm::mat4 sampled(1);
+    int cpu = 0, gpu = 0;
+    const auto tick = [&](bool preview, bool gpuMode, float x) {
+        sampled[3].x = x;
+        publishPreviewPose(preview, gpuMode, [&] { ++gpu; }, [&] { published = sampled * vertex; ++cpu; });
+    };
+    tick(true, false, 1); const auto first = published;
+    tick(true, false, 2); CHECK(published.x == first.x + 1); CHECK(cpu == 2); CHECK(gpu == 0);
+    tick(true, true, 3); tick(false, false, 4);
+    CHECK(published.x == first.x + 1); CHECK(cpu == 2); CHECK(gpu == 1);
+}
+
 TEST_CASE("preview showcase: manifest, gesture, idle, first clip fallback") {
     const auto has = [](std::string_view s) { return s == "show" || s == "walk" || s == "atlas_moveCoreIdle" || s == "first"; };
     CHECK(previewClip("show", "walk", "first", has) == "show");

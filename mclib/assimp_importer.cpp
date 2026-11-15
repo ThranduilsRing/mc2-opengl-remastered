@@ -1655,7 +1655,9 @@ void mc2mechanim::TickImportedMechs(float dt, unsigned frameStamp, const MechMot
                         for (int c = 0; c < 4; ++c) globals[b].m[r * 4 + c] = pose[b][c][r];
             }
             s.lastGlobals = std::move(globals);   // 1A: firepoint/hit-node source
-            if (motion.preview && e.gpuMode) buildGpuModelDelta(e, s, s.lastGlobals);
+            mc2clip::publishPreviewPose(motion.preview, e.gpuMode,
+                [&] { buildGpuModelDelta(e, s, s.lastGlobals); },
+                [&] { rebakeImportedPresentation(e, s.lastGlobals); });
         }
         if (authoritative) *authoritative = static_cast<const mc2::sim::ImportedAnimState&>(s);
         // Prune despawned actors' states (untouched for a while).

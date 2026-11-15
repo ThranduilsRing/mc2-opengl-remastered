@@ -59,6 +59,14 @@ std::string_view previewClip(std::string_view showcase, std::string_view gesture
     return {};
 }
 
+// Preview poses bypass the simulation-to-draw copy, so publish on each sampled tick.
+template<class PublishGpu, class PublishCpu>
+void publishPreviewPose(bool preview, bool gpuMode, PublishGpu publishGpu, PublishCpu publishCpu) {
+    if (!preview) return;
+    if (gpuMode) publishGpu();
+    else publishCpu();
+}
+
 // activeClipFinished: the currently playing Once clip reached its end (drives jump start ->
 // airborne and land -> locomotion). destroyed: the mech is dead (death clips instead of knockdowns).
 inline Choice select(int gesture, float speed, float turnRate, int turnStreak, bool destroyed,
