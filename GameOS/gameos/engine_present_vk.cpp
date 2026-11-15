@@ -2425,8 +2425,10 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
     const VkExtent2D extent = s.scExtent;
     // Blit resources are not in the Render ticket. One-slot reuse still waits their own last use.
     if (!present_thread::detail::prepareBlitSlot(slot, [&](uint32_t) {
+        ZoneScopedN("VKIsl.Present.BlitSlot.Wait");
         return vkWaitForFences(dev, 1, &blitFence, VK_TRUE, 5ull * 1000 * 1000 * 1000) == VK_SUCCESS;
     }, [&](uint32_t capturedSlot) {
+        ZoneScopedN("VKIsl.Present.BlitSlot.Reset");
         return vkResetCommandPool(dev, s.blitPools[capturedSlot].get(), 0) == VK_SUCCESS;
     })) {
         health_.fallback_reason = "blit slot completion/reset failed";
@@ -2527,6 +2529,7 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
 // Readback of the shared image (strided checksum, optional PPM dump, capture and screenshot delivery). Never blocks: the copy is requested at one present
 // and consumed at a later one through the readback ring, and while a request is in flight no second one is made. Only called when verifyReadback is set.
 void EnginePresentVk::verifyReadbackContent() {
+    ZoneScopedN("VKIsl.Present.Readback");
     Impl& s = *impl_;
     mc2vk::VulkanContext& ctx = *s.ctx;
     // First-five-frame proofs need consecutive images. Normal readbacks stay
