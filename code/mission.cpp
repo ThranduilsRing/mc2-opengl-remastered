@@ -65,7 +65,7 @@ struct PeerAdmission final : mc2::sim::OrderAdmissionValidator {
         for (std::uint32_t i = 0; !reason && i < e.recipients.size(); ++i)
             reason = application.validateRecipient(e, e.recipients[i], i);
         if (reason) {
-            mc2::fmt::print_err("[MP_ADMISSION] tick={} source={} sequence={} live_reason={}\n",
+            mc2::fmt::print_err("Multiplayer live admission rejected: tick={} source={} sequence={} reason={}\n",
                 e.applyTick, e.sourceId, e.sequence, reason);
             return false;
         }
