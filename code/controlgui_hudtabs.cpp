@@ -4,8 +4,9 @@
 #include "mc2fmt.h"
 #include "net/runtime.h"
 #include "sim_speed.h"
-#include <array>
-#include <cfloat>
+#include "../GameOS/gameos/ui_texture.h"
+#include "../mclib/texture_assets.h"
+#include <cmath>
 
 
 
@@ -114,24 +115,34 @@ void ControlGui::renderSimSpeedButton()
 		simSpeedSetMultiplier(next);
 	}
 	auto* draw = ImGui::GetWindowDrawList();
-	const ImU32 ink = disabled ? IM_COL32(92, 95, 95, 255) :
-		(hover || pressed ? IM_COL32(242, 111, 0, 255) : IM_COL32(200, 204, 204, 255));
-	const float w = size.x, h = size.y, offset = pressed && !disabled ? w * 0.025f : 0.f;
-	if (hover && !disabled)
-		draw->AddRect(p, ImVec2(p.x + w, p.y + h), ink, 0.f, 0, w * 0.025f);
-	// Vector chevrons stay sharp at the final drawable resolution.
-	for (int i = 0; i < 3; ++i)
-	{
-		const float x = p.x + w * (0.20f + i * 0.21f) + offset;
-		draw->AddPolyline(std::array<ImVec2, 3>{ImVec2(x, p.y + h * 0.20f + offset),
-			ImVec2(x + w * 0.13f, p.y + h * 0.38f + offset),
-			ImVec2(x, p.y + h * 0.56f + offset)}.data(), 3, ink, 0, w * 0.055f);
-	}
+	const bool selected = !disabled && (pressed || simSpeedGetMultiplier() != 1.f);
+	const int state = disabled ? ControlButton::DISABLED :
+		(selected ? ControlButton::PRESSED : (hover ? ControlButton::AMBIGUOUS : ControlButton::ENABLED));
+	const auto& art = *button->data;
+	// MCUI_High3's unused fourth-row successor is the stock empty command
+	// frame, including the orange striped pressed face and grey disabled face.
+	const float u = static_cast<float>((disabled ? 2 : selected ? 1 : 0) * 42);
+	const auto texture = gos_GetUiTextureId(mc2::textures::sourceId(art.textureHandle));
+	draw->AddImage(static_cast<ImTextureID>(texture), p, ImVec2(p.x + size.x, p.y + size.y),
+		ImVec2((u + .1f) / art.fileWidth, 144.1f / art.fileHeight),
+		ImVec2((u + 42.1f) / art.fileWidth, 180.1f / art.fileHeight));
+	const auto color = static_cast<unsigned long>(art.textColors[state]);
+	const ImU32 ink = IM_COL32((color >> 16) & 255, (color >> 8) & 255, color & 255, 255);
+	const auto font = helpFont.getTempHandle();
+	// The legacy atlas uses nearest sampling; integer glyph scales keep the
+	// Agency face crisp at both 1080p and 4K, just like the adjoining HUD text.
+	const float scale = std::max(1.f, std::floor(size.y / 36.f));
+	const float line = HudFont::LineHeight(font, scale);
+	const float offset = pressed && !disabled ? scale : 0.f;
+	auto text = [&](const char* value, float y) {
+		const float width = HudFont::Measure(font, value, scale, scale).x;
+		HudFont::Draw(draw, font, std::floor(p.x + (size.x - width) * .5f) + offset,
+			std::floor(y) + offset, ink, value, scale, scale);
+	};
+	text(">>>", p.y + (size.y - 2.f * line) * .5f);
 	char label[16];
 	mc2::fmt::to_buf(label, "{:g}x", static_cast<double>(simSpeedGetMultiplier()));
-	const float fontSize = h * 0.30f;
-	const ImVec2 text = ImGui::GetFont()->CalcTextSizeA(fontSize, FLT_MAX, 0, label);
-	draw->AddText(ImGui::GetFont(), fontSize, ImVec2(p.x + (w - text.x) * 0.5f, p.y + h * 0.64f), ink, label);
+	text(label, p.y + size.y * .5f);
 	if (hover)
 		ImGui::SetTooltip("Sim speed: %gx\nClick: faster; right-click / Shift-click: slower.%s",
 			simSpeedGetMultiplier(), disabled ? "\nUnavailable in multiplayer." : "");
