@@ -122,7 +122,10 @@ def test_post_load_starts_recorder_after_pose_and_writes_row(harness, monkeypatc
     original_game = h.game_spawn.side_effect
     def game_spawn(*args, **kwargs):
         game = original_game(*args, **kwargs)
-        game.kill.side_effect = lambda: setattr(game, "returncode", 1 if platform == "nt" else -9)
+        def kill():
+            h.events.append("game.kill")
+            game.returncode = 1 if platform == "nt" else -9
+        game.kill.side_effect = kill
         return game
     h.game_spawn.side_effect = game_spawn
     if owner:
