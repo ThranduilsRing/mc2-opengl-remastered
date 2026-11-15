@@ -130,6 +130,11 @@ inline uint32_t menuYellow(uint32_t argb) {
            (static_cast<uint32_t>(b + (chroma * 4 + 2) / 5) << 8) | static_cast<uint32_t>(b);
 }
 
+// Button animation colours are authored with their frame art in the stock FIT.
+inline uint32_t menuElementColor(uint32_t argb, bool button) {
+    return button ? argb : menuYellow(argb);
+}
+
 // Animated tint supplies the button colour; warm neutral carrier texels would
 // multiply a second hue into it. Keep their authored shading as luminance.
 inline uint32_t menuTintCarrier(uint32_t argb) {

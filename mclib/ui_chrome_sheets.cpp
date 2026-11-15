@@ -116,6 +116,12 @@ bool clearMenuMatte(std::string_view path, Pixels& px) {
     for (int y = 0; y < px.h; ++y) for (int x = 0; x < px.w; ++x) {
         const size_t i = static_cast<size_t>(y) * px.w + x, src = i * px.channels, dst = i * 4;
         std::copy_n(px.data.data() + src, 3, rgba.data() + dst);
+        // The three stock button rows include opaque black wells and white
+        // brackets. Their FIT animation supplies the tint; keep the source paint.
+        if (key == "mcl_mm_12" && y < 96) {
+            rgba[dst + 3] = px.channels == 4 ? px.data[src + 3] : 255;
+            continue;
+        }
         const int value = std::max({rgba[dst], rgba[dst + 1], rgba[dst + 2]});
         if (menu || frame) {
             auto paint = (static_cast<uint32_t>(rgba[dst]) << 16) |

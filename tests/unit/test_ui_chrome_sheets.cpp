@@ -18,6 +18,23 @@
 
 using namespace mc2::ui_chrome;
 
+TEST_CASE("ui_chrome button frame retains stock paint wells and animation tint") {
+    // Trigger paths: ui_chrome_sheets.{cpp,h}, gui/UiDefs_draw.cpp.
+    Pixels p{3, 96, 4, std::vector<uint8_t>(3 * 96 * 4, 255)};
+    for (int y = 0; y < 96; ++y) {
+        const size_t i = static_cast<size_t>(y) * 12;
+        p.data[i] = 173; p.data[i + 1] = 149; p.data[i + 2] = 125;
+        p.data[i + 4] = p.data[i + 5] = p.data[i + 6] = 0;
+    }
+    const auto authored = p.data;
+    REQUIRE(clearMenuMatte("data/art/gui/mcl_mm_12.png", p));
+    CHECK(p.data == authored);
+    for (uint32_t tint : {0xfff26f00u, 0xffffffffu, 0xffffb481u, 0xff6b6b6bu})
+        CHECK(menuElementColor(tint, true) == tint);
+    CHECK(menuElementColor(0xfff26f00u, false) == menuYellow(0xfff26f00u));
+    CHECK(menuElementColor(0xffdc0000u, false) == 0xffdc0000u);
+}
+
 TEST_CASE("ui_chrome inset excludes whole images and content sprites") {
     const auto inset = [](std::string_view path, bool pixel = false, bool legacy = false, bool nine = false,
                           float u = .25f, float v = .25f, float r = .75f, float b = .75f) {
