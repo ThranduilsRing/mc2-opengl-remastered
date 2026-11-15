@@ -139,6 +139,7 @@ import os
 import shutil
 import sys
 import tempfile
+from functools import lru_cache
 from pathlib import Path
 
 PREFIX = "[LINK_GUARD]"
@@ -268,6 +269,16 @@ def iter_mutated_relpaths(target: Path, deep: bool = False):
                         yield rel
 
 
+@lru_cache(maxsize=1)
+def _intentional_assets() -> frozenset[str]:
+    # Use the same committed declarations as deploy's intentional mip block.
+    import asset_parity
+    from deploy_payload import git_head
+
+    root = Path(__file__).resolve().parents[1]
+    return frozenset(rel.casefold() for rel in asset_parity.intentional_changes(git_head(str(root)), root))
+
+
 def classify(rel: str) -> str:
     """'mutated' (must be a private inode) or 'data' (safe to share)."""
     rel = rel.replace("\\", "/").lstrip("/").casefold()
@@ -277,7 +288,7 @@ def classify(rel: str) -> str:
         return "mutated"
     parts = rel.split("/")
     if len(parts) == 4 and parts[:2] == ["data", "tgl"] and parts[2].isdigit() and rel.endswith(".tga"):
-        return "mutated"
+        return "mutated" if rel in _intentional_assets() else "data"
     # Loose art directly under data/art (component icons, menu planet tiles): stock art ships inside art.fst, so every
     # loose file there is a deploy-written override that the next deploy may rewrite; never a shared seed inode.
     if rel.startswith("data/art/") and rel.count("/") == 2:
