@@ -170,11 +170,13 @@ OFFLINE_STAGES = ("contracts", "harnesses", "pytest", "unit-msvc-build", "editor
 
 def gate_env(name, device=None):
     """A8: MC2_IN_GATE (lease priority, nested-gate refusal) belongs on game-launching stages only; the offline
-    stages run test suites that must see the same environment a lane sees. All PC game rows use the detected non-display UUID.
+    stages run test suites that must see the same environment a lane sees. PC game rows defer device choice to the lease.
     Other hosts use the worker's device override or their first available lane GPU."""
     if name in OFFLINE_STAGES:
         return {}
     from smoke_lib import host_lease
+    if host_lease.runtime_lane_adapter():
+        return {"MC2_IN_GATE": "1"}
     chosen = host_lease.pin_device(device or host_lease.host_lane_device())
     if device and host_lease.device_on_host(device) is False:
         chosen = host_lease.pin_device(host_lease.host_lane_device())
@@ -185,10 +187,10 @@ def gate_env(name, device=None):
 
 
 def aux_device():
-    """PC auxiliary rows share the non-display lease; other hosts retain GPU_SPLIT gate_aux routing."""
+    """PC auxiliary rows use the acquired slot; other hosts retain explicit gate_aux routing."""
     from smoke_lib import host_lease
     if host_lease.runtime_lane_adapter():
-        return host_lease.pin_device(None)
+        return None
     try:
         for line in host_lease.GPU_SPLIT_PATH.read_text(encoding="utf-8").splitlines():
             key, _, value = line.partition("=")
@@ -196,7 +198,7 @@ def aux_device():
                 return value.strip()
     except OSError:
         pass
-    return host_lease.lane_devices()[1]
+    return host_lease.host_lane_device()
 
 
 def window_reusable(window, tree, now=None):

@@ -681,8 +681,9 @@ def main():
                          "Reduced soak coverage: run full --tier tier1 before "
                          "milestones/landing.")
     ap.add_argument("--gpu", choices=("auto", "xtx", "2070"), default=None,
-                    help="GPU routing: dual-XTX PCs always use the detected non-display UUID, including timing runs; "
-                         "on other hosts auto uses the lease slot, xtx/2070 request AMD/NVIDIA")
+                    help="GPU routing: dual-XTX PCs use the acquired slot's runtime UUID; "
+                         "PC auto uses either XTX lease slot (owner games reserve the display slot); "
+                         "on other hosts xtx/2070 request AMD/NVIDIA")
     ap.add_argument("--profile", default="stock")
     ap.add_argument("--content-error-budget", type=int, default=0,
                     help="maximum content errors for a mod smoke (stock default: zero)")

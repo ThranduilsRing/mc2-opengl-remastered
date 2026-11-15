@@ -206,12 +206,18 @@ def gpu_hint(out: dict) -> "Optional[str]":
     except ImportError:
         from smoke_lib import host_lease
     # runners scrub the child env; read the shell too
-    return host_lease.pin_device(host_lease.device_hint({k: os.environ.get(k, "") for k in ("MC2_HARNESS_GPU", "MC2_IN_GATE")} | out))
+    return host_lease.pin_device(out.get("MC2_VK_DEVICE") or host_lease.device_hint(
+        {k: os.environ.get(k, "") for k in ("MC2_HARNESS_GPU", "MC2_IN_GATE")} | out))
 
 
 def route_gpu(out: dict, perf: bool = False) -> None:
-    """On the dual-XTX PC every harness uses the runtime-detected non-display UUID, including perf runs.
-    Other hosts retain explicit overrides and lease-slot routing."""
+    """On the dual-XTX PC defer to the lease, then pin its runtime name@uuid."""
+    try:
+        from . import host_lease
+    except ImportError:
+        from smoke_lib import host_lease
+    if host_lease.runtime_lane_adapter():
+        out.pop("MC2_VK_DEVICE", None)
     hint = gpu_hint(out)
     if hint:
         out["MC2_VK_DEVICE"] = hint
@@ -481,7 +487,7 @@ def spawn(argv: Sequence[str], *, show_window: bool = False,
         dev = host_lease.held_device()   # the slot this run won decides its GPU unless one was forced
         if dev and not child_env.get("MC2_VK_DEVICE"):
             child_env["MC2_VK_DEVICE"] = dev
-        if child_env.get("MC2_VK_DEVICE"):   # two identical XTXs: pin the non-display one by UUID (host_lease.lane_uuid)
+        if child_env.get("MC2_VK_DEVICE"):   # two identical XTXs: preserve the acquired slot's UUID
             child_env["MC2_VK_DEVICE"] = host_lease.pin_device(child_env["MC2_VK_DEVICE"])
         engine = any(exe_guard.engine_kind(a) is not None for a in argv)
         if engine and sys.platform == "win32":
