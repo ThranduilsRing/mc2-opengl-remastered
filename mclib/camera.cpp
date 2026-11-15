@@ -498,53 +498,6 @@ long Camera::init (FitIniFilePtr cameraFile )
 	gosASSERT(result == NO_ERR);
 
 	result = cameraFile->readIdFloat("FogTransparency",fogTransparency);
-#if 0
-	if (result != NO_ERR)
-	{
-		/* This is an old file where FogColor includes the color of the sky showing through. */
-
-		/* arbitrary assumed daytime sky color */
-		static const float fDaySkyRed = 100.0f;
-		static const float fDaySkyGreen = 162.0f;
-		static const float fDaySkyBlue = 255.0f;
-
-		const float fDayFogRed = static_cast<float>(((dayFogColor >> 16) & 0xff));
-		const float fDayFogGreen = static_cast<float>(((dayFogColor >> 8) & 0xff));
-		const float fDayFogBlue = static_cast<float>(((dayFogColor) & 0xff));
-
-		/* We assume that the fog color specified by the user is a combination of the diffuse
-		light scattered by the fog and the light from the sky showing through the fog. There's
-		no way to know how transparent the fog is meant to be without the user specifying it, 
-		but for now we'll assume the maximum transparency possible given the daytime fog
-		color and an assumed daytime sky color. */
-
-		float fFogTransparency = 1.0f;
-		if ((0.0f < fDaySkyRed) && (fDayFogRed / fDaySkyRed < fFogTransparency))
-		{
-			fFogTransparency = fDayFogRed / fDaySkyRed;
-		}
-		if ((0.0f < fDaySkyGreen) && (fDayFogGreen / fDaySkyGreen < fFogTransparency))
-		{
-			fFogTransparency = fDayFogGreen / fDaySkyGreen;
-		}
-		if ((0.0f < fDaySkyBlue) && (fDayFogBlue / fDaySkyBlue < fFogTransparency))
-		{
-			fFogTransparency = fDayFogBlue / fDaySkyBlue;
-		}
-
-		/* Here we subtract out the sky color component to get the actual color of the fog. */
-		int opaqueDayFogRed = fDayFogRed - fFogTransparency * fDaySkyRed;
-		int opaqueDayFogGreen = fDayFogGreen - fFogTransparency * fDaySkyGreen;
-		int opaqueDayFogBlue = fDayFogBlue - fFogTransparency * fDaySkyBlue;
-		gosASSERT(0 == ((~0xff) & opaqueDayFogRed));
-		gosASSERT(0 == ((~0xff) & opaqueDayFogGreen));
-		gosASSERT(0 == ((~0xff) & opaqueDayFogBlue));
-
-		dayFogColor = (opaqueDayFogRed << 16) + (opaqueDayFogGreen << 8) + opaqueDayFogBlue;
-		fogTransparency = fFogTransparency;
-	}
-	gosASSERT(result == NO_ERR);
-#endif
 
 	long userMin, userMax, baseTerrain;
 	cameraFile->readIdLong( "UserMin", userMin );

@@ -483,27 +483,6 @@ class RenderSubmissions
 
 					if (vertices && vertices < (textureNode.vertexData->vertices + textureNode.vertexData->numVertices))
 					{
-						#if 0
-						if ((data[0].u > 64.0f) ||
-							(data[0].u < -64.0f) ||
-							(data[1].u > 64.0f) ||
-							(data[1].u < -64.0f) ||
-							(data[2].u > 64.0f) ||
-							(data[2].u < -64.0f))
-						{
-							PAUSE(("Vertex U Out of range"));
-						}
-
-						if ((data[0].v > 64.0f) ||
-							(data[0].v < -64.0f) ||
-							(data[1].v > 64.0f) ||
-							(data[1].v < -64.0f) ||
-							(data[2].v > 64.0f) ||
-							(data[2].v < -64.0f))
-						{
-							PAUSE(("Vertex V Out of range"));
-						}
-						#endif
 
 						memcpy(vertices,data,sizeof(gos_VERTEX) * 3);
 						if (mc2LegacyVehicleSource < 3) textureNode.vertexData->vehicleVertices[mc2LegacyVehicleSource] += 3;
@@ -535,27 +514,6 @@ class RenderSubmissions
 
 					if (vertices && vertices < (textureNode.vertexData2->vertices + textureNode.vertexData2->numVertices))
 					{
-						#if 0
-						if ((data[0].u > 64.0f) ||
-							(data[0].u < -64.0f) ||
-							(data[1].u > 64.0f) ||
-							(data[1].u < -64.0f) ||
-							(data[2].u > 64.0f) ||
-							(data[2].u < -64.0f))
-						{
-							PAUSE(("Vertex U Out of range"));
-						}
-
-						if ((data[0].v > 64.0f) ||
-							(data[0].v < -64.0f) ||
-							(data[1].v > 64.0f) ||
-							(data[1].v < -64.0f) ||
-							(data[2].v > 64.0f) ||
-							(data[2].v < -64.0f))
-						{
-							PAUSE(("Vertex V Out of range"));
-						}
-						#endif
 
 						memcpy(vertices,data,sizeof(gos_VERTEX) * 3);
 						vertices += 3;
@@ -586,27 +544,6 @@ class RenderSubmissions
 
 					if (vertices && vertices < (textureNode.vertexData3->vertices + textureNode.vertexData3->numVertices))
 					{
-						#if 0
-						if ((data[0].u > 64.0f) ||
-							(data[0].u < -64.0f) ||
-							(data[1].u > 64.0f) ||
-							(data[1].u < -64.0f) ||
-							(data[2].u > 64.0f) ||
-							(data[2].u < -64.0f))
-						{
-							PAUSE(("Vertex U Out of range"));
-						}
-
-						if ((data[0].v > 64.0f) ||
-							(data[0].v < -64.0f) ||
-							(data[1].v > 64.0f) ||
-							(data[1].v < -64.0f) ||
-							(data[2].v > 64.0f) ||
-							(data[2].v < -64.0f))
-						{
-							PAUSE(("Vertex V Out of range"));
-						}
-						#endif
 
 						memcpy(vertices,data,sizeof(gos_VERTEX) * 3);
 						vertices += 3;
