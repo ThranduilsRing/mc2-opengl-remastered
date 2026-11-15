@@ -109,6 +109,7 @@ def test_merge_gate_stock_and_aux_rows_defer_to_the_lease(detected_pair):
     assert merge_gate.gate_env("pytest") == {}
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="acquire uses msvcrt locking")
 @pytest.mark.parametrize("image", [None, "mc2.exe", "Mission Editor.exe"])
 def test_owner_game_reserves_only_display_slot(detected_pair, monkeypatch, image):
     monkeypatch.setattr(host_lease, "_refresh_game_affinity", lambda: None)
@@ -121,6 +122,7 @@ def test_owner_game_reserves_only_display_slot(detected_pair, monkeypatch, image
         host_lease.release()
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="acquire uses msvcrt locking")
 @pytest.mark.parametrize("owner,exclusive", [(False, False), (True, False), (True, True)])
 def test_second_lane_uses_display_only_without_owner(detected_pair, monkeypatch, owner, exclusive):
     import os
