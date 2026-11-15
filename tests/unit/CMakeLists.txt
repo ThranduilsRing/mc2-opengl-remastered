@@ -427,6 +427,7 @@ endif()
 mc2_asan_runtime(mc2_tests)
 
 if(NOT WIN32)
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/printf_corpus_gen.inc")
     file(READ "${CMAKE_CURRENT_SOURCE_DIR}/printf_corpus_gen.inc" _native_corpus)
     string(REPLACE "std::snprintf(" "corpusSnprintf(" _native_corpus "${_native_corpus}")
     file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/printf_corpus_native.inc" CONTENT "${_native_corpus}")
