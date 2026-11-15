@@ -681,8 +681,9 @@ def main():
                          "Reduced soak coverage: run full --tier tier1 before "
                          "milestones/landing.")
     ap.add_argument("--gpu", choices=("auto", "xtx", "2070"), default=None,
-                    help="GPU routing: pass/fail runs default to the RTX 2070 SUPER (auto); perf/timing runs "
-                         "(MC2_VK_GPU_TIMESTAMPS, --show-window) keep the RX 7900 XTX. Override with xtx or 2070")
+                    help="GPU routing: dual-XTX PCs use the acquired slot's runtime UUID; "
+                         "PC auto uses either XTX lease slot (owner games reserve the display slot); "
+                         "on other hosts xtx/2070 request AMD/NVIDIA")
     ap.add_argument("--profile", default="stock")
     ap.add_argument("--content-error-budget", type=int, default=0,
                     help="maximum content errors for a mod smoke (stock default: zero)")
