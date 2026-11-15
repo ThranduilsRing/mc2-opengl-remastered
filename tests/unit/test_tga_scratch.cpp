@@ -27,6 +27,15 @@ struct FakeFile
 };
 }
 
+TEST_CASE("undefined terrain types have no mip table")
+{
+	unsigned char pixel = 42;
+	unsigned char* mips[] = {&pixel, nullptr};
+	CHECK(mc2::tga::mipData<unsigned char>(nullptr, 0) == nullptr);
+	CHECK(mc2::tga::mipData(mips, 0) == &pixel);
+	CHECK(mc2::tga::mipData(mips, 1) == nullptr);
+}
+
 TEST_CASE("bodyFits accepts exactly the pixels the header claims")
 {
 	namespace tga = mc2::tga;

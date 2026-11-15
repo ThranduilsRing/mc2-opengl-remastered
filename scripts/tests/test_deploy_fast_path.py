@@ -140,6 +140,27 @@ def _deploy(src, target, rel, *, cache, full_verify=False, preserve=()):
                      cache=cache, full_verify=full_verify)
 
 
+def test_mip_publish_replaces_link_only_after_copy(tmp_path, monkeypatch):
+    src, target, _ = _setup(tmp_path, monkeypatch)
+    monkeypatch.setattr(dp, "ensure_engine_normal_cooks", lambda target: None)
+    rel = "data/tgl/128/a_cp_island_tree_01_1.tga"
+    dst = Path(target) / rel
+    dst.parent.mkdir(parents=True)
+    seed = tmp_path / "seed.tga"
+    seed.write_bytes(b"seed-bytes")
+    os.link(seed, dst)
+    copy = dp.shutil.copyfile
+    def checked_copy(source, destination):
+        assert dst.exists() and dst.stat().st_nlink == 2
+        assert Path(destination) != dst
+        return copy(source, destination)
+    monkeypatch.setattr(dp.shutil, "copyfile", checked_copy)
+    _deploy(src, target, rel, cache={})
+    assert dst.read_bytes() == Path(src).read_bytes()
+    assert seed.read_bytes() == b"seed-bytes"
+    assert dst.stat().st_nlink == seed.stat().st_nlink == 1
+
+
 def _cache_after(src, target, rel, values, src_commit="abc123"):
     dp.write_manifest(target, values, src_commit)
     return dp.read_manifest(target)

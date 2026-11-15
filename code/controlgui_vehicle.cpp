@@ -3,6 +3,7 @@
 // ControlGui: the vehicle tab: update, render, click handling and the vehicle command state.
 // Declared in the class headers; shared names in controlgui_internal.h.
 #include "controlgui_internal.h"
+#include "net/runtime.h"
 #include "mc2fmt.h"
 #include "pilot_pick.h"
 #include "gameos_resource.hpp"
@@ -224,6 +225,7 @@ void ControlGui::renderVehicleTab()
 
 void ControlGui::handleVehicleClick( int ID )
 {
+	if (mc2::net::active()) return;
 	if ( getButton( ID )->state & ControlButton::HIDDEN )
 		return;
 
@@ -353,7 +355,7 @@ void ControlGui::disableAllVehicleButtons()
 
 }
 
-const char* ControlGui::getVehicleName( long& ID)
+const char* ControlGui::getVehicleName( int32_t& ID)
 {
 	for ( int i = GUARD_TOWER; i <= RECOVERY_TEAM; i++ )
 	{
@@ -530,6 +532,7 @@ void ControlGui::setInfoWndMover( Mover* pMover )
 
 void ControlGui::setVehicleCommand( bool bSet )
 {
+	if (mc2::net::active()) return;
 	if ( (getButton( REPAIR )->isEnabled()) )
 		getButton( REPAIR )->press( bSet );
 	else if ( (getButton( SALVAGE )->isEnabled()) )

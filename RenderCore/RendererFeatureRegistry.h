@@ -351,8 +351,8 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "VIDEO-CAPTURE fixture: =1 overrides the smoke-mode movie skip in MC2Movie::init so in-mission comm videos (mc2_01 V1A.bik ~frame 1600) play under...",
     },
     {
-        "MC2_FEATURE_CALLED_SHOT_FIX", "MC2_CALLED_SHOT_FIX", EnvVarKind::Feature, false,
-        "ISSUE-9 called-shot effectiveness (gameplay gate, default OFF = stock): (S1) Mover::calcAttackChance floors the aimed-shot modifiers at Head 0.30 / Arm 0.45...",
+        "MC2_FEATURE_CALLED_SHOT_FIX", "MC2_CALLED_SHOT_FIX", EnvVarKind::Feature, true,
+        "ISSUE-9 default ON; =0 restores stock. Aimed floors: Head 0.30 / Arm 0.45 / Leg 0.50; aimed missile hits retain location.",
     },
     {
         "MC2_DIAG_CAMERA_PARK", "MC2_CAMERA_PARK", EnvVarKind::Trace, false,

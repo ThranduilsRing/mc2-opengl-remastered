@@ -388,7 +388,7 @@ bool PauseWindow::renderImGui()
 	ImGui::Begin( "##mc2_pause", nullptr,
 		ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
 		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings |
-		ImGuiWindowFlags_NoBackground );   // baked frame supplies the chrome
+		ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoNav );   // baked frame supplies the chrome
 
 	ImDrawList* dl = ImGui::GetWindowDrawList();
 

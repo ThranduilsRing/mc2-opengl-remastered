@@ -49,11 +49,17 @@ static TEXTUREPTR lockIconPage(unsigned long handle)
     return page;
 }
 
+// Pick source detail from the drawable, independently of the 800x600 HUD canvas.
+static int hudIconSourceWidth()
+{
+    return Environment.drawableWidth > 0 ? Environment.drawableWidth : Environment.screenWidth;
+}
+
 static const char* hudSheet(bool vehicle)
 {
-    if (Environment.screenWidth == 640)
+    if (hudIconSourceWidth() == 640)
         return vehicle ? "data/art/mcui_low5.tga" : "data/art/mcui_low4.tga";
-    if (Environment.screenWidth == 800)
+    if (hudIconSourceWidth() == 800)
         return vehicle ? "data/art/mcui_med5.tga" : "data/art/mcui_med4.tga";
     return vehicle ? "data/art/mcui_high8.tga" : "data/art/mcui_high7.tga";
 }
@@ -1336,6 +1342,13 @@ void ForceGroupIcon::setIconVariables()
 	}
 
 	curScreenWidth = Environment.screenWidth;
+
+    // The canvas controls pilot/layout dimensions; unit art retains native detail.
+    switch (hudIconSourceWidth()) {
+        case 640: unitIconX = 25; unitIconY = 30; break;
+        case 800: unitIconX = 32; unitIconY = 38; break;
+        default: unitIconX = 40; unitIconY = 48; break;
+    }
 }
 
 const char* PilotIcon::legacySheetPath()

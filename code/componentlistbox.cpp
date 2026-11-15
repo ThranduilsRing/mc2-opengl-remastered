@@ -17,6 +17,7 @@ ComponentListBox.cpp			: Implementation of the ComponentListBox component.
 #include"gamesound.h"
 #include"logisticserrors.h"
 #include "mc2fmt.h"
+#include "../GameOS/gameos/input_capture_policy.h"
 
 std::unique_ptr<ComponentListItem> ComponentListItem::s_templateItem = nullptr;
 
@@ -54,6 +55,7 @@ ComponentListItem::ComponentListItem( LogisticsComponent* pComp )
 		path.init( artPath, pFile, "tga" );
 
 		icon.setTexture( path );
+		icon.setComponent(*pComponent);
 		icon.resize( sizeX * LogisticsComponent::XICON_FACTOR, sizeY * LogisticsComponent::YICON_FACTOR);
 		icon.setUVs( 0.f, 0.f, sizeX * 48.f, sizeY * 32.f );
 
@@ -260,13 +262,6 @@ void	ComponentListItem::update()
 
 		}
 		
-		if ( !bCanAdd )
-		{
-			if ( userInput->isLeftDrag() && isInside &&
-				pointInside( userInput->getMouseDragX(), userInput->getMouseDragY() )
-				&& ComponentIconListBox::s_instance->pointInside( userInput->getMouseX(), userInput->getMouseY() ) )
-				startDrag();
-		}
 	}
 	else if ( isInside && !bCanAdd
 		&& ComponentIconListBox::s_instance->pointInside( userInput->getMouseX(), userInput->getMouseY() ))
@@ -322,6 +317,11 @@ void	ComponentListItem::update()
 		else
 			disabledText.setText( "" );
 	}
+
+	if (!bCanAdd && input::capture::startsWidgetDrag(userInput->isLeftDrag(),
+		pointInside(userInput->getMouseDragX(), userInput->getMouseDragY()) &&
+		ComponentIconListBox::s_instance->pointInside(userInput->getMouseDragX(), userInput->getMouseDragY())))
+		startDrag();
 
 	if ( userInput->isLeftDoubleClick() && isInside 
 		&& ComponentIconListBox::s_instance->pointInside( userInput->getMouseX(), userInput->getMouseY() ) )

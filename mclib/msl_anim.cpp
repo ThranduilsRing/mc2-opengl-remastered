@@ -1,3 +1,4 @@
+#include "math/sim_math.h"
 // Multi shape layer: TG_AnimateShape and _TG_Animation: binary load / save, ASE animation import and animation state.
 // Declared in the class headers; shared names in msl_internal.h.
 #include "mc2_czstring.h"
@@ -530,10 +531,10 @@ long TG_AnimateShape::LoadTGMultiShapeAnimationFromASE (mc2::czstring fileName, 
 								//--------------------------------------------
 								// MAX Writes out Quaternions as Angle, Axis.
 								// Must Convert to real quaternion here.
-								thisFrame.w = cos(phi / 2.0f);
-								thisFrame.x = b * sin(phi / 2.0f);
-								thisFrame.y = d * sin(-phi / 2.0f);
-								thisFrame.z = c * sin(-phi / 2.0f);
+								thisFrame.w = mc2::sim::math::cos(phi / 2.0f);
+								thisFrame.x = b * mc2::sim::math::sin(phi / 2.0f);
+								thisFrame.y = d * mc2::sim::math::sin(-phi / 2.0f);
+								thisFrame.z = c * mc2::sim::math::sin(-phi / 2.0f);
 							}
 							else
 							{

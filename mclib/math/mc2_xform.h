@@ -9,6 +9,7 @@
 // Everything not here is plain glm (owner ruling 2026-10-18: P/R by default, exact only for byte formats).
 #include "glm_config.h"
 #include "mc2_math.h"
+#include "sim_math.h"
 
 #include <cmath>
 #include <cstddef>
@@ -107,10 +108,13 @@ inline glm::mat4 translationMatrix(const glm::vec3& p)
 }
 
 // Stuff BuildRotation(EulerAngles): writes the 3x3 only (row 3 and column 3 are kept).
+template<bool Sim = false>
 inline glm::mat4& buildRotation(glm::mat4& m, const Euler& angles)
 {
-	const float xSine = sinf(angles.pitch), xCosine = cosf(angles.pitch), ySine = sinf(angles.yaw), yCosine = cosf(angles.yaw),
-				zSine = sinf(angles.roll), zCosine = cosf(angles.roll);
+	const auto sine = [](float x) { if constexpr (Sim) return mc2::sim::math::sin(x); else return sinf(x); };
+	const auto cosine = [](float x) { if constexpr (Sim) return mc2::sim::math::cos(x); else return cosf(x); };
+	const float xSine = sine(angles.pitch), xCosine = cosine(angles.pitch), ySine = sine(angles.yaw), yCosine = cosine(angles.yaw),
+				zSine = sine(angles.roll), zCosine = cosine(angles.roll);
 	at(m, 0, 0) = yCosine * zCosine;
 	at(m, 0, 1) = yCosine * zSine;
 	at(m, 0, 2) = -ySine;
@@ -155,6 +159,10 @@ inline glm::mat4 rotationMatrix(const glm::quat& q)
 inline glm::quat quatFromRotation(const glm::mat4& m) { return glm::normalize(glm::quat_cast(glm::transpose(glm::mat3(m)))); }
 // Stuff UnitQuaternion = EulerAngles (it went through the matrix too).
 inline glm::quat quatFromEuler(const Euler& e) { return quatFromRotation(rotationMatrix(e)); }
+inline glm::quat quatFromEulerSim(const Euler& e) {
+	glm::mat4 m(1.0f);
+	return quatFromRotation(buildRotation<true>(m, e));
+}
 
 // Stuff Matrix4D = AffineMatrix4D / an affine matrix as a full one: column 3 becomes (0, 0, 0, 1).
 inline glm::mat4 asAffine(glm::mat4 m)

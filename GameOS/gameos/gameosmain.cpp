@@ -1,4 +1,5 @@
 #include "mc2_czstring.h"
+#include "../../code/net/runtime.h"
 #include "load_scope.h"
 #include "../../GuiRuntime/PlayerFrontEnd.h"
 #include <memory>
@@ -429,6 +430,8 @@ void process_events( void ) {
                 graphics::refresh_mouse_grab();
                 break;
             case SDL_WINDOWEVENT_FOCUS_GAINED:
+                graphics::window_checkpoint("focus_gained_before");
+                graphics::window_checkpoint("focus_gained_after", true);
                 // Re-assert the mouse grab on focus regain. The initial
                 // grab at window-creation can be only partially applied on
                 // multi-monitor setups (symptom: cursor escapes to the
@@ -447,15 +450,18 @@ void process_events( void ) {
                 graphics::set_mouse_grab(true);
                 graphics::apply_os_cursor_policy("focus_gained", true);
                 g_focus_lost = false;
+                input::setInputFocus(true);
                 break;
             case SDL_WINDOWEVENT_ENTER:
                 graphics::apply_os_cursor_policy("enter", !g_focus_lost);
                 break;
             case SDL_WINDOWEVENT_FOCUS_LOST:
+                graphics::window_checkpoint("focus_lost");
                 // Release grab so Alt-Tab and other windows behave cleanly.
                 graphics::set_mouse_grab(false);
                 graphics::apply_os_cursor_policy("focus_lost", false);
                 g_focus_lost = true;
+                input::setInputFocus(false);
                 break;
             }
             break;
@@ -838,6 +844,8 @@ int main(int argc, char** argv)
     initDpiAwareness();
 
     initLauncherEnv();
+    try { mc2::net::configure(argc, argv); }
+    catch (const std::exception& error) { std::fprintf(stderr, "Invalid multiplayer argument: %s\n", error.what()); return 2; }
 
     // The launcher_env.json values were just applied: forget every gate a static initialiser cached.
     mc2::gate::invalidateAll();
@@ -880,6 +888,7 @@ int main(int argc, char** argv)
         (void)esink;
     }
 
+    mc2::net::redirectLogs();
     // [CONFIG v1]: which MC2_* variables are set, what they parsed to, and the unregistered / bad ones.
     mc2::gate::dumpConfig(stderr);
 
@@ -1010,7 +1019,8 @@ int main(int argc, char** argv)
     // main-menu widgets via aObject::init which queries the manifest for
     // the chrome-flag opt-in. Late init = manifest empty at widget load.
     AssetScale::init("data/art/asset_sizes.csv");
-    Environment.InitializeGameEngine();
+    try { Environment.InitializeGameEngine(); }
+    catch (const mc2::net::SessionStopped&) { g_exit = true; }
     startup_phase("engine_init_done");
 
 	timing::init();
@@ -1088,7 +1098,8 @@ int main(int argc, char** argv)
         }
         presentJoinPending = false;
     }
-    frameThrottleLogicEvents();
+    try { frameThrottleLogicEvents(); }
+    catch (const mc2::net::SessionStopped&) { g_exit = true; break; }
         // Logic may have loaded another mission since the frame began.
         const bool completeMissionFrame = traceMissionFrame && g_missionTraceFrames < 5 && !g_missionReadyTrace;
 
@@ -1284,6 +1295,7 @@ int main(int argc, char** argv)
     if (getValidateConfig().enabled)
         return getValidateTelemetry().exitCode;
 
+    if (mc2::net::exitStatus()) return mc2::net::exitStatus();
     return PlayerFrontEnd::restartIfRequested(argc, argv);
 }
 #endif // DISABLE_GAMEOS_MAIN

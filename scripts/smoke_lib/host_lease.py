@@ -36,6 +36,15 @@ except ImportError:                       # imported as a top-level module from 
     import bounded_wait                   # type: ignore
     import child_registry                 # type: ignore
 
+def _gpu_adapters():
+    """smoke_lib.gpu_adapters, also when this file runs as a script (the batch holder child: python host_lease.py _holder)."""
+    try:
+        from . import gpu_adapters
+    except ImportError:
+        import gpu_adapters                # type: ignore
+    return gpu_adapters
+
+
 # Slot zero retains the host-global path; the queue and other slots live beside it.
 LEASE_PATH = Path("A:/Games/mc2-opengl/.host_game_lease.json")
 if sys.platform == "linux":
@@ -87,11 +96,11 @@ def waiver_active(now: Optional[float] = None) -> bool:
 
 
 GPU_SPLIT_PATH = Path("A:/Games/mc2-ops/GPU_SPLIT")   # lines `slot0=AMD`, `slot1=NVIDIA` (device-name substrings, like MC2_VK_DEVICE)
-GPU_SPLIT_DEFAULT = ("AMD", "NVIDIA")                  # slot 0 = RX 7900 XTX, slot 1 = RTX 2070 SUPER: both are LANE devices (no gate device on the PC)
+GPU_SPLIT_DEFAULT = ("AMD", "AMD")
 DEVICE_ALIASES = {"AMD": ("amd", "radeon", "xtx", "7900"), "NVIDIA": ("nvidia", "geforce", "rtx", "2070")}
 
 
-LEGACY_GPU_KEYS = {"lane": 0, "gate": 1}   # old GPU_SPLIT keys (lane=AMD, gate=NVIDIA), accepted for one window: lane = slot 0, gate = slot 1
+LEGACY_GPU_KEYS = {"lane": 0, "gate": 1}   # legacy aliases for slot0 / slot1
 GPU_SPLIT_KEYS = frozenset({"slot0", "slot1", "gate_aux", "lane_uuid", *LEGACY_GPU_KEYS})   # gate_aux: merge_gate.aux_device(); lane_uuid: see lane_uuid()
 
 
@@ -113,9 +122,12 @@ def _parse_gpu_split(text: str) -> tuple:
 
 
 def lane_devices() -> tuple:
-    """The two lane GPUs by device-name substring; lease slot i drives device i. The PC has no gate GPU."""
+    """Each physical XTX has its own runtime UUID-keyed slot."""
     if redirected():
         return GPU_SPLIT_DEFAULT
+    if runtime_lane_adapter():
+        _ga = _gpu_adapters(); adapters, selector = _ga.adapters, _ga.selector
+        return tuple(selector(r) for r in adapters() if "7900 XTX" in r["name"])
     try:
         return _parse_gpu_split(GPU_SPLIT_PATH.read_text(encoding="utf-8"))
     except OSError:
@@ -123,10 +135,12 @@ def lane_devices() -> tuple:
 
 
 def lane_uuid() -> Optional[str]:
-    """Vulkan deviceUUID (GPU_SPLIT `lane_uuid=`) of the GPU every lane game and Blender job must use, or None. The PC has two identical
-    RX 7900 XTX cards (name substrings cannot tell them apart); this pins the non-display one. Stable across reboots (LUIDs are not)."""
+    """Runtime non-display UUID, falling back to legacy overrides on other hosts."""
     if redirected():
         return None
+    detected = runtime_lane_adapter()
+    if detected:
+        return detected["uuid"]
     env = os.environ.get("MC2_LANE_UUID", "").strip().lower()   # overrides the file (proof runs, hosts without the key)
     if env:
         return env
@@ -140,9 +154,19 @@ def lane_uuid() -> Optional[str]:
     return None
 
 
+def runtime_lane_adapter():
+    if redirected():
+        return None
+    return _gpu_adapters().lane_adapter()
+
+
 def pin_device(device: Optional[str]) -> Optional[str]:
-    """`device` (a MC2_VK_DEVICE name substring) with `@<uuid>` appended when GPU_SPLIT pins a lane GPU and the name is not another
-    vendor's or already pinned. No device (an owner-started run never goes through here) stays None."""
+    """Pin PC launches to the acquired slot; leave selection to the lease before acquisition."""
+    detected = runtime_lane_adapter()
+    if detected:
+        held = held_device()
+        # Keep a recorded UUID for post-run validation after the lease is released.
+        return held or (device if device in lane_devices() else None)
     uuid = lane_uuid()
     if not device or not uuid or "@" in device:
         return device
@@ -174,18 +198,19 @@ def device_on_host(label: str, names: Optional[List[str]] = None) -> Optional[bo
     names = host_gpu_names() if names is None else names
     if not names:
         return None
+    label = label.split("@")[0]
     tokens = (label.lower(),) + tuple(DEVICE_ALIASES.get(label, ()))
     return any(t in n for n in names for t in tokens)
 
 
 def host_lane_device(devices: Optional[tuple] = None, names: Optional[List[str]] = None) -> Optional[str]:
-    """The first lane GPU (GPU_SPLIT order) this host really has: the PC gives slot 0 (the XTX), the GTX 1050 Ti laptop gives
-    slot 1 (NVIDIA). None when the host has none of them: force nothing and let the engine and run_smoke route. Unknown host = slot 0."""
+    """First configured device present on this host, with the merge laptop detected separately."""
     devices = lane_devices() if devices is None else devices
     names = host_gpu_names() if names is None else names
     if not names:
         return devices[0]
-    return next((d for d in devices if device_on_host(d, names)), None)
+    return next((d for d in devices if device_on_host(d, names)),
+                "NVIDIA" if device_on_host("NVIDIA", names) else None)
 
 
 def slot_device(slot: int) -> str:
@@ -194,15 +219,19 @@ def slot_device(slot: int) -> str:
 
 
 def device_hint(env=None) -> Optional[str]:
-    """The MC2_VK_DEVICE substring a run FORCES: explicit MC2_VK_DEVICE or MC2_HARNESS_GPU=2070|xtx. None = the lease slot it
-    wins decides (FIFO across both lane GPUs), which includes MC2_HARNESS_GPU=any."""
+    """The PC lease chooses the card; other hosts retain explicit device overrides."""
+    if runtime_lane_adapter():
+        return held_device()
     env = os.environ if env is None else env
     mode = (env.get("MC2_HARNESS_GPU") or "").lower()
-    return env.get("MC2_VK_DEVICE") or {"2070": "NVIDIA", "xtx": "AMD"}.get(mode) or None
+    return pin_device(env.get("MC2_VK_DEVICE") or {"2070": "NVIDIA", "xtx": "AMD"}.get(mode) or None)
 
 
 def _device_matches(slot: int, forced: str) -> bool:
-    label, low = slot_device(slot), forced.split("@")[0].lower()
+    label = slot_device(slot)
+    if "@" in label and "@" in forced:
+        return label.partition("@")[2].lower() == forced.partition("@")[2].lower()
+    label, low = label.split("@")[0], forced.split("@")[0].lower()
     return low in label.lower() or label.lower() in low or any(t in low for t in DEVICE_ALIASES.get(label, ()))
 
 
@@ -667,8 +696,11 @@ _registered = False
 
 
 def held_device() -> Optional[str]:
-    """The lane GPU of the one slot this process (or its batch) holds, for MC2_VK_DEVICE; None for an exclusive hold or no hold."""
+    """The acquired slot's GPU; a PC exclusive hold launches on the non-display XTX."""
     records = [rec for _, rec in _records() if _ours(rec)]
+    if records and runtime_lane_adapter() and any(r.get("exclusive") for r in records):
+        selector = _gpu_adapters().selector
+        return selector(runtime_lane_adapter())
     return records[0].get("device") if len(records) == 1 and not records[0].get("exclusive") else None
 
 
@@ -798,22 +830,31 @@ def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None,
                 foreign = scan() if queue[0] == ticket else []
                 if queue[0] == ticket:
                     live = _reclaim_idle(live, foreign, log)
-                if foreign and kill_orphans:
+                pc_adapter = runtime_lane_adapter()
+                if foreign and kill_orphans and not pc_adapter:
                     for pid, _img in foreign:
                         killed, note = child_registry.kill_if_orphan(pid)
                         log(f"[host-lease] game PID {pid}: {note}")
                     foreign = scan()
                 managed = [r for _, r in live]
                 foreign = [(pid, img) for pid, img in foreign if not _managed_engine(pid, managed)]
+                owner_slots = []
+                if pc_adapter:
+                    selector = _gpu_adapters().selector
+                    secondary = selector(pc_adapter)
+                    owner_slots = [i for i in range(slot_count()) if slot_device(i) != secondary] if foreign else []
                 # Slot IDs keep two-core spacing even for a narrower caller. Check
                 # recorded masks as well, including leases from the old layout.
                 occupied = [r.get("affinity_mask", ((1 << (2 * r.get("cores_per_slot", 1))) - 1)
                                   << (4 + r.get("slot", 0) * 2 * r.get("cores_per_slot", 1))) for _, r in live]
                 free = [i for i in eligible_slots(device_hint())
                         if (not slot_path(i).exists() or (_read(slot_path(i)) or {}).get("legacy_guard"))
+                        and i not in owner_slots
                         and not any(affinity_mask(i) & mask for mask in occupied)]
+                if pc_adapter:
+                    free.sort(key=lambda i: slot_device(i) != secondary)
                 legacy = any("slot" not in rec for _, rec in live) or (lease_path().exists() and _read(lease_path()) is None)
-                eligible = queue[0] == ticket and not foreign and not legacy and not (priority == 1 and gate_window_blocks()) and (not live if exclusive else
+                eligible = queue[0] == ticket and not (foreign and (not pc_adapter or exclusive)) and not legacy and not (priority == 1 and gate_window_blocks()) and (not live if exclusive else
                             bool(free) and not any(r.get("exclusive") for _, r in live))
                 if eligible:
                     allocated = []

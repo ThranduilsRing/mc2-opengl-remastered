@@ -165,7 +165,7 @@ class TargetPriorityList {
 //---------------------------------------------------------------------------
 
 struct _AttackerRec {
-	unsigned long				WID;
+	uint32_t				WID;
 	float						lastTime;
 }; using AttackerRec = _AttackerRec;
 
@@ -178,11 +178,11 @@ struct _MoveOrders {
 	// order  parameters
 	float						time;
 	char						origin;
-	long						speedType;				// best, max, slow, moderate
+	int32_t						speedType;				// best, max, slow, moderate
 	float						speedVelocity;			// based upon speedType (m/s)
 	char						speedState;				// based upon speedVelocity (walk, etc.)
 	char						speedThrottle;			// if speedState is walk, else ignored
-	unsigned long				goalType;				// is there no goal, a location or object?
+	uint32_t				goalType;				// is there no goal, a location or object?
 	GameObjectWatchID			goalObjectWID;			// if our goal is an object...
 	glm::vec3				goalObjectPosition;		// object's position at time of path calc
 	glm::vec3				goalLocation;			// goal location, if any
@@ -202,11 +202,11 @@ struct _MoveOrders {
 	short						curGlobalStep;
 	MovePathPtr					path[2];				// 0 = current path, 1 = next path
 	float						timeOfLastStep;			// last time a step was reached for this order
-	long						moveState;				// forward, reverse, paused, etc.
-	long						moveStateGoal;
+	int32_t						moveState;				// forward, reverse, paused, etc.
+	int32_t						moveStateGoal;
 	bool						twisting;
 	float						yieldTime;
-	long						yieldState;				// have we just yielded, been for a while, etc.
+	int32_t						yieldState;				// have we just yielded, been for a while, etc.
 	float						waitForPointTime;
 	bool						run;
 
@@ -219,11 +219,11 @@ struct _SaveableMoveOrders {
 	// order  parameters
 	float						time;
 	char						origin;
-	long						speedType;				// best, max, slow, moderate
+	int32_t						speedType;				// best, max, slow, moderate
 	float						speedVelocity;			// based upon speedType (m/s)
 	char						speedState;				// based upon speedVelocity (walk, etc.)
 	char						speedThrottle;			// if speedState is walk, else ignored
-	unsigned long				goalType;				// is there no goal, a location or object?
+	uint32_t				goalType;				// is there no goal, a location or object?
 	GameObjectWatchID			goalObjectWID;			// if our goal is an object...
 	glm::vec3				goalObjectPosition;		// object's position at time of path calc
 	glm::vec3				goalLocation;			// goal location, if any
@@ -243,11 +243,11 @@ struct _SaveableMoveOrders {
 	char						curGlobalStep;
 	MovePath					path[2];				// 0 = current path, 1 = next path
 	float						timeOfLastStep;			// last time a step was reached for this order
-	long						moveState;				// forward, reverse, paused, etc.
-	long						moveStateGoal;
+	int32_t						moveState;				// forward, reverse, paused, etc.
+	int32_t						moveStateGoal;
 	bool						twisting;
 	float						yieldTime;
-	long						yieldState;				// have we just yielded, been for a while, etc.
+	int32_t						yieldState;				// have we just yielded, been for a while, etc.
 	float						waitForPointTime;
 	bool						run;
 
@@ -351,12 +351,12 @@ struct _SaveableMoveOrders {
 struct _AttackOrders {
 	float						time;
 	char						origin;
-	long						type;				// to kill, to disable, etc.
+	int32_t						type;				// to kill, to disable, etc.
 	GameObjectWatchID			targetWID;		// current object targeted for attack, if attacking object
 	glm::vec3				targetPoint;		// target location targeted for attack, if attacking point
-	long						aimLocation;
+	int32_t						aimLocation;
 	bool						pursue;				// does this attack entail a move order too?
-	long						tactic;
+	int32_t						tactic;
 	float						targetTime;
 
 	void init (void);
@@ -366,7 +366,7 @@ struct _AttackOrders {
 struct _SituationOrders {
 	float						time;
 	// general orders
-	long						mode;				// NORMAL, WITHDRAW, RETREAT, ETC.
+	int32_t						mode;				// NORMAL, WITHDRAW, RETREAT, ETC.
 	float						defFormation;
 	float						curFormation;
 	// fire orders
@@ -405,9 +405,9 @@ inline constexpr int MAX_ATTACKERS = 50;
 
 struct _QueuedTacOrder
 {
-	long						id;
+	int32_t						id;
 	glm::vec3				point;
-	unsigned long				packedData[2];
+	uint32_t				packedData[2];
 	unsigned char				tactic;
 	BldgAppearance*				marker;
 	unsigned char 				moveMode;			//So save/load can recreate this lovely pointer!
@@ -687,9 +687,9 @@ class MechWarrior {
 		// and multiplayer bypass it, including after ownership changes.
 		int32_t					lastFailedJumpGoalCellR;
 		int32_t					lastFailedJumpGoalCellC;
-		long					lastJumpFailFrame;
+		int32_t					lastJumpFailFrame;
 		// No failure recorded. Frames can be negative after a restore at a low path-manager counter.
-		static constexpr long	kNoJumpFailFrame = std::numeric_limits<long>::min();
+		static constexpr int32_t	kNoJumpFailFrame = std::numeric_limits<int32_t>::min();
 
 		uint32_t                debugFlags;
 

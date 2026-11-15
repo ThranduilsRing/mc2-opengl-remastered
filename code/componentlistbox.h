@@ -15,14 +15,45 @@ ComponentListBox.h			: Interface for the ComponentListBox component.
 #ifndef AANIM_H
 #include"aanim.h"
 #include <vector>
+#include <array>
+#include "logisticscomponent.h"
 #endif
 
+#include "component_rules.h"
 class LogisticsVariant;
 class LogisticsComponent;
 class LogisticsVehicle;
 
 
 inline constexpr int COMP_ANIMATION_COUNT = 5;
+
+class ComponentIcon : public aObject
+{
+public:
+	using aObject::render;
+	void setComponent(const LogisticsComponent& c) {
+		const bool tiled = c.hasLauncherIcon() || c.getID() == 2 || c.getID() == 3;
+		const auto* icon = mc2::components::cookedIcon(c.getIconFileName());
+		tileX = tiled ? c.getComponentWidth() : (icon ? -icon->width : 1);
+		tileY = tiled ? c.getComponentHeight() : (icon ? -icon->height : 1);
+	}
+	void render() override
+	{
+		if (tileY < 0) setUVs(0, 0, -tileX * 48, -tileY * 32);
+		if (tileX <= 1 && tileY <= 1) { aObject::render(); return; }
+		const std::array saved{location[0], location[1], location[2], location[3]};
+		const float cellW = width() / tileX, cellH = height() / tileY;
+		setUVs(0, 0, 48, 32);
+		for (int y = 0; y < tileY; ++y) for (int x = 0; x < tileX; ++x)
+		{
+			for (int i = 0; i < 4; ++i) { location[i].x = saved[0].x + (x + (i >= 2)) * cellW; location[i].y = saved[0].y + (y + (i == 1 || i == 2)) * cellH; }
+			aObject::render();
+		}
+		for (int i = 0; i < 4; ++i) location[i] = saved[i];
+	}
+private:
+	int tileX = 1, tileY = 1;
+};
 
 
 //*************************************************************************************************
@@ -58,7 +89,7 @@ class ComponentListItem : public aListItem
 		aText		heatText;
 		aObject		costIcon;
 		aObject		heatIcon;
-		aObject		icon;
+		ComponentIcon icon;
 		aRect		iconOutline;
 		aRect		outline;
 		aText		disabledText;

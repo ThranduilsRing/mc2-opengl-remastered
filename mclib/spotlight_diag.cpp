@@ -16,9 +16,14 @@ namespace {
 struct SlotTag { uint8_t src; const void* owner; };
 
 using CameraTags = std::unordered_map<const void*, std::unordered_map<long, SlotTag>>;
+CameraTags* live_map = nullptr;
 CameraTags& slot_map()
 {
-    static CameraTags s_map;
+    struct Registry : CameraTags {
+        Registry() { live_map = this; }
+        ~Registry() { live_map = nullptr; }
+    };
+    static Registry s_map;
     return s_map;
 }
 
@@ -72,13 +77,14 @@ std::optional<SourceClass> is_e_slot(const void* camera, long slot)
 void reset()
 {
     ++s_registration_revision;
-    slot_map().clear();
+    if (live_map) live_map->clear();
 }
 
 void reset(const void* camera)
 {
     ++s_registration_revision;
-    slot_map().erase(camera);
+    // missionCamera can outlive the lazily constructed registry at process exit.
+    if (camera && live_map) live_map->erase(camera);
 }
 
 uint64_t registration_revision()

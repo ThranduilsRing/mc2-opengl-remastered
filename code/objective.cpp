@@ -1,3 +1,4 @@
+#include "math/sim_math.h"
 #include "render_view.h"
 #define OBJECTIVE_CPP
 /*************************************************************************************************\
@@ -401,7 +402,7 @@ static bool areCloseEnough(float f1, float f2)
 	if (0.0 != bigger) {
 		proportion_diff = diff / bigger;
 	}
-	if ((pow(10.0, -FLT_DIG) * 10.0/*arbitrary*/) > proportion_diff) {
+	if ((mc2::sim::math::pow(10.0, -FLT_DIG) * 10.0/*arbitrary*/) > proportion_diff) {
 		retval = true;
 	}
 	return retval;

@@ -1,3 +1,4 @@
+#include "math/sim_math.h"
 // GroundVehicle: the per-frame update, the GPU-lagged visibility gate, and Save/CopyTo/Load.
 // Declared in the class headers; shared names in gvehicl_internal.h.
 #include <algorithm>
@@ -336,13 +337,13 @@ long GroundVehicle::update (void)
 		up.z = 1.0f;
 
 		float pitchAngle = glm::dot(up, pitchK);
-		pitchAngle = acos(pitchAngle) * RADS_TO_DEGREES;
+		pitchAngle = mc2::sim::math::acos(pitchAngle) * RADS_TO_DEGREES;
 		if (pitchK.y < 0.0f)
 			pitchAngle = -pitchAngle;
 
 		bool useHillFactor = (moveLevel == 0) || (!GameMap->getShallowWater(cellPositionRow, cellPositionCol) && !GameMap->getDeepWater(cellPositionRow, cellPositionCol));
 		if (useHillFactor) {
-			float pitch = sin(pitchAngle * DEGREES_TO_RADS);
+			float pitch = mc2::sim::math::sin(pitchAngle * DEGREES_TO_RADS);
 			if ( (pitch != 0.0f))
 			{
 				float hillFactor = pitch * velMag * gvHillSpeedFactor;

@@ -1199,7 +1199,10 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum, bool managerVa
 		{
 			//We have a WeaponBolt.
 			WeaponBoltData data{};
-			readData.operator()<mc2::save::WeaponBoltRecord>(data, mc2_saved_objects::kBolt);
+			mc2::save::WeaponBoltRecord record{data};
+			if (objectValues) {
+				if (!mc2::save::readWeaponBoltRecord(slotBytes, record)) Fatal(0, "Invalid bolt ObjectSlot payload");
+			} else file->readPacket(packetNum, reinterpret_cast<MemoryPtr>(&data));
 			packetNum++;
 
 			WeaponBoltPtr obj = new WeaponBolt; 
@@ -1212,7 +1215,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum, bool managerVa
 
 				obj->init(true, objType);
 				obj->setExists(true);
-				obj->Load(&data);
+				obj->Load(&data, record.aimedTargetWID);
 			}
 			else
 			{

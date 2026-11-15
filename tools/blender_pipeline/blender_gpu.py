@@ -1,7 +1,7 @@
 """Pin Blender Cycles to the second (non-display) GPU. Owner 11-14: ALL Blender work runs on the second GPU, never the display/game GPU.
 
-The PC has two identical RX 7900 XTX cards, so the card is chosen by PCI bus, derived from the Vulkan deviceUUID that
-A:/Games/mc2-ops/GPU_SPLIT carries as `lane_uuid=` (AMD encodes the bus in byte 4 of the UUID; Cycles HIP ids end in `_0000:<bus>:00`).
+The PC has two identical RX 7900 XTX cards. DXGI attached outputs are matched to Vulkan LUIDs at runtime; the non-display
+card's UUID selects its HIP PCI bus (AMD encodes the bus in byte 4; Cycles HIP ids end in `_0000:<bus>:00`).
 Two ways in: blender_runner.build_blender_cmd adds this file as a startup `--python` (enables only that device), and recipe scripts that
 reset preferences or set their own device call `apply(scene)` again. EEVEE/Workbench cannot be pinned (headless Blender has no GPU
 device preference and the Windows per-app GPU setting is a registry change): cook scripts use Cycles.
@@ -16,7 +16,12 @@ GPU_SPLIT = Path(os.environ.get("MC2_GPU_SPLIT_PATH", "A:/Games/mc2-ops/GPU_SPLI
 
 
 def lane_uuid():
-    """The pinned GPU's deviceUUID: BLENDER_GPU_UUID, else GPU_SPLIT `lane_uuid=`, else None (host without a pinned lane GPU)."""
+    """Runtime non-display UUID first; legacy environment/file overrides on other hosts."""
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+    from smoke_lib.gpu_adapters import lane_adapter
+    detected = lane_adapter()
+    if detected:
+        return detected["uuid"]
     env = (os.environ.get("BLENDER_GPU_UUID") or os.environ.get("MC2_LANE_UUID") or "").strip().lower()
     if env:
         return env

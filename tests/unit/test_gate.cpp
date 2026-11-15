@@ -17,6 +17,7 @@
 #include "Gates/gate_parse.h"
 #include "Gates/gate_row.h"
 #include "Gates/gate_table_dsl.h"
+#include <algorithm>
 #include "Gates/render_options.h"
 #include "Gates/render_options_cfg.h"
 #include "mlr/mlr_gate.h"
@@ -25,6 +26,34 @@
 #include "vk_validation_line.h"  // the engine-log line of one validation-layer message (header-only, Vulkan-free)
 #include "render_backend_select.h"  // the one MC2_RENDER_BACKEND parse rule
 #include "owned_handle.h"       // the move-only owner the Vulkan islands hold their objects in (header-only, Vulkan-free)
+
+// Verbatim production blocks; template instances isolate their first-use static caches.
+template<int Mode> auto calledShotFloors() {
+    const float HeadShotModifier = .08f, ArmShotModifier = .15f, LegShotModifier = .20f;
+#include "called_floors.inc"
+    return std::array{headMod, armMod, legMod};
+}
+template<int Mode> bool calledShotHit(bool vehicle, long aimLocation = 0) {
+    struct Target { int getWatchID() { return 7; } } victim;
+    struct Bolt { int aimed = 0; void setAimedTarget(int wid) { aimed = wid; } } bolt;
+    auto* target = &victim; auto* weaponFX = &bolt;
+    if (vehicle) {
+#include "called_gvehicl.inc"
+    } else {
+#include "called_mech.inc"
+    }
+    return bolt.aimed == 7;
+}
+TEST_CASE("called shot/default floors and both aimed-hit paths; kill-switch restores stock") {
+    mc2::gate::ScopedOverride<"MC2_CALLED_SHOT_FIX"> defaults(nullptr);
+    CHECK(mc2::gate::get<"MC2_CALLED_SHOT_FIX">());
+    CHECK(calledShotFloors<0>() == std::array{.30f, .45f, .50f});
+    for (bool vehicle : {false, true}) { CHECK(calledShotHit<0>(vehicle)); CHECK_FALSE(calledShotHit<0>(vehicle, -1)); }
+    mc2::gate::ScopedOverride<"MC2_CALLED_SHOT_FIX"> stock("0");
+    CHECK_FALSE(mc2::gate::get<"MC2_CALLED_SHOT_FIX">());
+    CHECK(calledShotFloors<1>() == std::array{.08f, .15f, .20f});
+    for (bool vehicle : {false, true}) CHECK_FALSE(calledShotHit<1>(vehicle));
+}
 
 #include <cstdio>
 #include <limits>

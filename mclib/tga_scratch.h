@@ -20,6 +20,13 @@ namespace mc2::tga
 // No terrain texture comes near this; a larger size is a corrupt directory entry, not an image.
 inline constexpr std::size_t kMaxFileBytes = static_cast<std::size_t>(1) << 30;
 
+// Undefined terrain types have no mip table, rather than a table of empty mips.
+template <class PixelT>
+PixelT* mipData(PixelT* const* table, std::size_t level)
+{
+    return table ? table[level] : nullptr;
+}
+
 // True when `fileBytes` holds a header of `headerBytes` and width x height pixels at `pixelDepth` bits (24 is packed to three
 // bytes per pixel; anything else is read as four).
 inline bool bodyFits (std::size_t fileBytes, std::size_t headerBytes, long width, long height, int pixelDepth)

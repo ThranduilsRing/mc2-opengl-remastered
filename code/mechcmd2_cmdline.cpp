@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in mechcmd2_internal.h.
 #include "mc2_czstring.h"
 #include "mechcmd2_internal.h"
+#include "net/runtime.h"
 #include "mc2fmt.h"
 
 
@@ -59,6 +60,7 @@ static long textToLong (char *num)
 // Same command line Parser as MechCommander
 void ParseCommandLine(mc2::czstring command_line)
 {
+	if (mc2::net::active()) { justStartMission = true; strcpy(missionName, "mc2_01"); }
 	int i;
 	int n_args = 0;
 	int index = 0;
