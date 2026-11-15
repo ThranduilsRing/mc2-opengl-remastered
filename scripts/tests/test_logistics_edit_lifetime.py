@@ -55,6 +55,9 @@ struct LogisticsMech {
     int forceGroup;
     LogisticsMech(LogisticsVariant* v, int fg): variant(v), forceGroup(fg) { live.insert(this); }
     ~LogisticsMech() { live.erase(this); }
+    // Keep destroyed addresses quarantined for this short-lived probe. Otherwise
+    // allocator reuse can make a stale pointer appear live in the address set.
+    static void operator delete(void*) noexcept {}
     int getForceGroup() { return forceGroup; }
     const std::string& getName() { return variant->name; }
     LogisticsVariant* getVariant() { return variant; }
