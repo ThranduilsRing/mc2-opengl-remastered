@@ -137,12 +137,11 @@ void init(std::string first = {}, int cw = 25, int ch = 30) {
     for (const auto* name : {"data/art/mcui_gn_mechicons.tga", "data/art/mc2x_mechicons.tga", "data/art/x_mc2x_mechicons.tga"})
         addSheet(name, first == name ? cw : 25, first == name ? ch : 30);
     if (!first.empty() && !sourceScale.contains(first)) addSheet(first, cw, ch);
-    addSheet("data/art/mcui_low4.tga", 25, 30, 2);
-    addSheet("data/art/mcui_med4.tga", 32, 38, 2);
-    addSheet("data/art/mcui_high7.tga", 40, 48, 2);
-    addSheet("data/art/mcui_low5.tga", 25, 30, 1);
-    addSheet("data/art/mcui_med5.tga", 32, 38, 1);
-    addSheet("data/art/mcui_high8.tga", 40, 48, 1);
+    for (int width : {640, 800, 1024})
+        for (bool vehicle : {false, true}) {
+            const auto hud = hudIconSource(width, width, vehicle);
+            addSheet(hud.sheet, hud.width, hud.height, vehicle ? 1 : 2);
+        }
 
     std::set<std::string> loose;
     std::error_code ec;
@@ -216,20 +215,40 @@ const Icon& resolve(std::string key) {
 }
 }
 
-void apply(aObject& widget, const aObject& source, long index, std::string chassis) {
+bool apply(aObject& widget, const aObject& source, long index, std::string chassis) {
     const char* name = mc2::textures::name(source.getTextureHandle());
     const std::string sheet = canonical(name ? name : "missing");
     init(sheet, static_cast<int>(source.width()), static_cast<int>(source.height()));
     const std::string named = "mech/" + canonical(std::filesystem::path(chassis).stem().string());
     const auto found = namedPriority.find(named);
-    const bool individual = found != namedPriority.end() && namedPriority.at(named) <= LookupModPriority(sheet.c_str()) && registry.find(named);
-    const auto& icon = resolve(individual ? named : legacyKey(sheet, index));
+    const int sheetRank = LookupModPriority(sheet.c_str());
+    bool individual = found != namedPriority.end() && namedPriority.at(named) <= sheetRank && registry.find(named);
+    const Icon* selected = nullptr;
+    int bestRank = individual ? namedPriority.at(named) : sheetRank;
+    const auto stem = canonical(std::filesystem::path(chassis).stem().string());
+    // Use the HUD front art in the existing logistics rectangle. Unmatched art keeps its old source.
+    for (bool vehicle : {false, true}) {
+        const auto hud = hudIconSource(Environment.drawableWidth, Environment.screenWidth, vehicle);
+        const std::string single = "hud/front/" + stem;
+        const std::string tiered = std::format("hud/{}/front/{}", std::filesystem::path(hud.sheet).stem().string(), stem);
+        for (const auto& key : {single, tiered}) {
+            const auto rank = namedPriority.find(key);
+            if (rank == namedPriority.end()) continue;
+            const auto& [name, priority] = *rank;
+            if (priority > bestRank || (selected && priority == bestRank)) continue;
+            if (const Icon* icon = registry.find(key)) { selected = icon; bestRank = priority; }
+        }
+    }
+    individual = individual || selected;
+    const auto& icon = selected ? *selected : resolve(individual ? named : legacyKey(sheet, index));
     if (widget.getTextureHandle() != texture) widget.setTexture(mc2::textures::retain(texture));
     widget.setFileWidth(static_cast<float>(registry.edge)); widget.setFileHeight(static_cast<float>(registry.edge));
     // aObject adds 0.1 texel; preserve its old logical-pixel bias on upscaled art.
     const auto scale = individual ? AssetScale::Vec2{1.f, 1.f} : sourceScale[sheet];
     widget.setUVs(icon.x + .1f * scale.x - .1f, icon.y + .1f * scale.y - .1f,
                   icon.x + icon.width + .1f * scale.x - .1f, icon.y + icon.height + .1f * scale.y - .1f);
+    if (selected) widget.setColor(0xffffffff);
+    return selected != nullptr;
 }
 
 void blit(std::string sheet, long index, bool back, uint32_t* dest, int stride, int width, int height, std::string chassis) {

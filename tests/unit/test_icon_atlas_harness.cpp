@@ -8,6 +8,22 @@
 
 using namespace unit_icons;
 
+TEST_CASE("icon_atlas_harness/drawable_source_detail_shared_with_logistics") {
+    for (int width : {1920, 3840}) {
+        const auto mech = hudIconSource(width, 800);
+        CHECK(std::string_view(mech.sheet) == "data/art/mcui_high7.tga");
+        CHECK(mech.width == 40);
+        CHECK(mech.height == 48);
+        CHECK(std::string_view(hudIconSource(width, 800, true).sheet) == "data/art/mcui_high8.tga");
+    }
+    CHECK(hudIconSource(640, 800).width == 25);
+    CHECK(hudIconSource(800, 640).height == 38);
+    CHECK(hudIconSource(0, 800).width == 32);
+    CHECK(hudIconSource(0, 1920).height == 48);
+    CHECK(logisticsIconColor(true, 0xa0123456) == 0xa0ffffff);
+    CHECK(logisticsIconColor(false, 0xa0123456) == 0xa0123456);
+}
+
 TEST_CASE("icon_atlas_harness/named_image_preferred_with_mod_atlas_fallback") {
     Registry r;
     REQUIRE(r.add("mech/starslayer", 2, 2, std::vector<uint32_t>(4, 0xff123456)));
