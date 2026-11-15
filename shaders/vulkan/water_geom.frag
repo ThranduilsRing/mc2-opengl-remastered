@@ -351,8 +351,11 @@ void main(void)
     const bool hasField = wse_fieldThickness(int(F.f4.x + 0.5), int(F.f4.y + 0.5), u_shoreHeightTex, F.f5,
                                              WorldPos.xy, F.f7.x, fieldThick);
     const bool hasVisual = uT.visualMode != 0 && uT.visualSide > 1;
-    // Rasterized terrain depth owns the coast, including its LOD, stitching and morph.
-    // The static fine surface remains a softness fallback, never a second coast.
+    // The cooked SDF predates raster-depth coverage. Its zero crossing can sit on
+    // dry land, leaving a shallow strip and a detached foam contour in wet pixels.
+    // Read shore inputs from the same filtered fine surface as the terrain.
+    if (hasVisual && hasField) fieldThick = F.f7.x - waterFineHeight(WorldPos.xy);
+    // Raster depth still owns coverage, including patch stitching and morph.
     float softnessThick = hasVisual && !hasField ? F.f7.x - waterFineHeight(WorldPos.xy) : fieldThick;
     const float fieldThickFw = fwidth(fieldThick);
     PREC float tintThick = hasField ? max(fieldThick, 0.0) : WaterThickness;
