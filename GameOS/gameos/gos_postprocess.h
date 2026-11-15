@@ -255,7 +255,7 @@ public:
     int getOutputHeight() const { return outputHeight_; }
     void prewarmVkFog();
     void prewarmVkScreenFx();
-    void prewarmVkHzb();
+    void prewarmVkHzb(uint32_t propGeneration = UINT32_MAX);
 
 private:
     void createSceneTargets(int w, int h);
