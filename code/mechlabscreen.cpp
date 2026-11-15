@@ -681,6 +681,12 @@ void MechLabScreen::update()
 
 void MechLabScreen::updateDiagramInput()
 {
+	auto refuseRemoval = [this]() {
+		LogisticsOneButtonDialog::instance()->setText("Not enough cooling: remove weapons first.");
+		LogisticsOneButtonDialog::instance()->begin();
+		bErrorDlg = true;
+		soundSystem->playDigitalSample( LOG_WRONGBUTTON );
+	};
 	// Focus cancellation is not a drop; return a removed component to its slot.
 	if (pDragComponent && gos_GetKeyStatus(KEY_LMOUSE) == KEY_FREE) {
 		if (bDragLeft) {
@@ -834,7 +840,7 @@ void MechLabScreen::updateDiagramInput()
 						updateDiagram();
 					}
 					else
-						soundSystem->playDigitalSample( LOG_WRONGBUTTON );
+						refuseRemoval();
 				}
 				else
 					pSelectedComponent = nullptr;
@@ -861,7 +867,7 @@ void MechLabScreen::updateDiagramInput()
 							selectFirstLBComponent();				
 					}
 					else
-						soundSystem->playDigitalSample( LOG_WRONGBUTTON );
+						refuseRemoval();
 				}
 			}
 		
@@ -1078,11 +1084,16 @@ void MechLabScreen::render(int xOffset, int yOffset)
 
 	if ( pDragComponent )
 	{
+		// The dragged icon must composite above the same preview as the grid.
+		if ( gridBridge )
+			aObject::beginGuiBridge( tbSx, tbSy, tbOx, tbOy );
 		dragIcon.moveTo( userInput->getMouseX() - dragIcon.width() / 2, 
 			userInput->getMouseY() - dragIcon.height() / 2 );
 		dragIcon.render();
 
 		selRect->render();		
+		if ( gridBridge )
+			aObject::endGuiBridge();
 	}
 
 
@@ -1739,7 +1750,17 @@ void MechLabScreen::endDrag( )
 		getMouseDiagramCoords( selRect->left(), selRect->top(), x, y );
 		
 		if ( mc2::components::finishGridDrop(x, y, bDragLeft, selI, selJ,
-			[this](long& i, long& j) { return addComponent(pDragComponent, i, j); }) )
+			[this](long& i, long& j) {
+				const int result = addComponent(pDragComponent, i, j);
+				if (result != NO_ERR) {
+					LogisticsOneButtonDialog::instance()->setText(result == COMPONENT_TOO_HOT
+						? "Not enough cooling for this component."
+						: "Component cannot fit here: choose a free valid slot.");
+					LogisticsOneButtonDialog::instance()->begin();
+					bErrorDlg = true;
+				}
+				return result;
+			}) )
 		{
 			componentListBox.SelectItem( -1 );
 			selI = x;
@@ -1998,7 +2019,8 @@ bool MechLabScreen::canRemoveComponent( LogisticsComponent* pComp )
 {
 	if ( pComp && pComp->getType() == COMPONENT_FORM_HEATSINK )
 	{
-		if ( pVariant->getMaxHeat() - pComp->getDamage() < pVariant->getHeat() )
+		if ( !mc2::components::coolingAllowsRemoval(pVariant->getMaxHeat(),
+			pComp->getDamage(), pVariant->getHeat()) )
 			return 0;
 	}
 

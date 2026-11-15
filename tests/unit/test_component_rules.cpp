@@ -3,6 +3,12 @@
 #include "component_rules.h"
 
 // Trigger: mechlabscreen.cpp and component_rules.h (same-grid drag completion).
+TEST_CASE("components/cooling refusal leaves required heat sink installed") {
+    CHECK_FALSE(mc2::components::coolingAllowsRemoval(30, 10, 24));
+    CHECK(mc2::components::coolingAllowsRemoval(30, 10, 20));
+    CHECK(mc2::components::coolingAllowsRemoval(30, 10, 19));
+}
+
 TEST_CASE("components/grid move places once and rejected drop restores source") {
     for (bool reject : {false, true}) {
         long x = 2, y = 3;

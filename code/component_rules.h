@@ -4,6 +4,10 @@
 #include <cstdint>
 
 namespace mc2::components {
+inline bool coolingAllowsRemoval(float maximum, float removed, float heat) {
+    return maximum - removed >= heat;
+}
+
 // A removed grid item is placed once: at the destination, or back at its source.
 // Copy the source because placement callbacks can change the UI selection.
 template<class Add>
