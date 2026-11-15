@@ -278,36 +278,43 @@ TEST_CASE("pick occlusion: a mover slightly behind the visual surface at its fee
     CHECK_FALSE(mc2::pickMoverBeforeSurface(120, 100, sideRidge, lo, hi));
 }
 
-TEST_CASE("contact pick: attack and repair hover hit a tall mech through a tree")
+TEST_CASE("contact pick: attack through trees, repair and disabled capture at four camera yaws")
 {
     struct Vec { double x, y, z; };
-    const Vec authoredLo{-8, -12, 0}, authoredHi{8, 12, 60};
-    const auto lo = mc2::pickBoundsInMc2(true, authoredLo);
-    const auto hi = mc2::pickBoundsInMc2(true, authoredHi);
-    const double lower[3] = {lo.x, lo.y, lo.z}, upper[3] = {hi.x, hi.y, hi.z};
-    const double origin[3] = {0, -100, 40}, ray[3] = {0, 1, 0};
-    const double treeLo[3] = {-20, -70, 0}, treeHi[3] = {20, -50, 80};
-    double mechT, treeT;
-    REQUIRE(mc2::pickBoxHit(origin, ray, lower, upper, mechT));
-    REQUIRE(mc2::pickBoxHit(origin, ray, treeLo, treeHi, treeT));
-    REQUIRE(treeT < mechT);
-    const mc2::PickRank mech{true, mechT, 2, 1}, tree{false, treeT, 4, 2};
-    REQUIRE(mc2::pickStackBefore(mech, tree));
-    // The old double swap rejected the visible upper body and the local footprint.
-    const auto oldLo = mc2::pickBoundsInMc2(false, authoredLo);
-    const auto oldHi = mc2::pickBoundsInMc2(false, authoredHi);
-    const double wrongLo[3] = {oldLo.x, oldLo.y, oldLo.z}, wrongHi[3] = {oldHi.x, oldHi.y, oldHi.z};
-    double t;
-    CHECK_FALSE(mc2::pickBoxHit(origin, ray, wrongLo, wrongHi, t));
-    const double feet[3] = {0, -10, 0};
-    CHECK(mc2::pickMoverBeforeSurface(100, 95, feet, lower, upper));
-    CHECK_FALSE(mc2::pickMoverBeforeSurface(100, 95, feet, wrongLo, wrongHi));
-    for (const char* cursor : {"attack", "repair"}) {
-        CAPTURE(cursor);
-        const mc2::PickRank* hover = nullptr;
-        mc2::pick::refreshHover(false, hover, [] {}, [&] {
-            return mc2::pickStackBefore(mech, tree) ? &mech : &tree;
-        });
-        CHECK(hover == &mech);
+    for (int scenario = 0; scenario < 3; ++scenario) {
+        const char* action = scenario == 0 ? "attack through trees" : scenario == 1 ? "repair own mech" : "capture disabled Starslayer";
+        CAPTURE(action);
+        const Vec authoredLo{-8, -12, 0}, authoredHi{8, 12, scenario == 2 ? 8.0 : 60.0};
+        const auto lo = mc2::pickBoundsInMc2(true, authoredLo), hi = mc2::pickBoundsInMc2(true, authoredHi);
+        const double lower[3] = {lo.x, lo.y, lo.z}, upper[3] = {hi.x, hi.y, hi.z};
+        const auto oldLo = mc2::pickBoundsInMc2(false, authoredLo), oldHi = mc2::pickBoundsInMc2(false, authoredHi);
+        const double wrongLo[3] = {oldLo.x, oldLo.y, oldLo.z}, wrongHi[3] = {oldHi.x, oldHi.y, oldHi.z};
+        const double yawDirections[4][2] = {{0, -1}, {1, 0}, {0, 1}, {-1, 0}};
+        for (int yaw = 0; yaw < 4; ++yaw) {
+            CAPTURE(yaw * 90);
+            const auto& d = yawDirections[yaw];
+            const double origin[3] = {100*d[0], 100*d[1], hi.z*0.65+50}, ray[3] = {-d[0], -d[1], -0.5};
+            double mechT;
+            REQUIRE(mc2::pickBoxHit(origin, ray, lower, upper, mechT));
+            const double feet[3] = {6*d[0], 6*d[1], 0};
+            REQUIRE(mc2::pickMoverBeforeSurface(mechT, mechT-1, feet, lower, upper));
+            // Old positive-Y footprint fails at0 degrees, succeeds after90: view-dependent rejection.
+            CHECK(mc2::pickMoverBeforeSurface(mechT, mechT-1, feet, wrongLo, wrongHi) == (yaw != 0));
+            const double ridge[3] = {30*d[0], 30*d[1], 0};
+            CHECK_FALSE(mc2::pickMoverBeforeSurface(mechT, mechT-1, ridge, lower, upper));
+            const mc2::PickRank mech{true, mechT, scenario == 2 ? 3 : scenario, 1};
+            const mc2::PickRank* hover = nullptr;
+            mc2::pick::refreshHover(false, hover, [] {}, [&] {
+                if (scenario == 0) {
+                    const double treeLo[3] = {50*d[0]-20, 50*d[1]-20, 0}, treeHi[3] = {50*d[0]+20, 50*d[1]+20, 100};
+                    double treeT;
+                    REQUIRE(mc2::pickBoxHit(origin, ray, treeLo, treeHi, treeT));
+                    REQUIRE(treeT < mechT);
+                    CHECK(mc2::pickStackBefore(mech, mc2::PickRank{false, treeT, 4, 2}));
+                }
+                return &mech;
+            });
+            CHECK(hover == &mech);
+        }
     }
 }
