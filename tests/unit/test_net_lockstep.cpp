@@ -184,7 +184,7 @@ TEST_CASE("net soak3 recorded stream isolates live Permission and rejection pres
         sim::ApplicationOutcome applyRecipient(const sim::OrderEnvelope&, sim::ObjectRef, std::uint32_t) override { return {}; }
         sim::ApplicationOutcome applySupport(const sim::OrderEnvelope&) override { return {}; }
     } apply;
-    std::ifstream file(std::filesystem::path(__FILE__).parent_path() / "fixtures/mp_soak3_orders.txt");
+    std::ifstream file(std::filesystem::path(MC2_TEST_FIXTURE_DIR) / "mp_soak3_orders.txt");
     REQUIRE(file.good());
     std::vector<sim::OrderEnvelope> stream;
     std::string line;
