@@ -22,7 +22,7 @@ inline bool packToggleAllowed(bool enabled, std::string_view problem) { return e
 inline bool packSelected(std::string_view id, std::string_view campaign, std::string_view deps) {
     return id == campaign || contains(deps, id);
 }
-inline std::string packImportProblem(std::string problem, const nlohmann::json& status, const std::string& id) {
+inline std::string packImportProblem(std::string problem, const nlohmann::json& status, std::string_view id) {
     if (status.contains("sources") && status["sources"].contains(id)) {
         const auto& entry = status["sources"][id];
         if (entry.contains("error") && entry["error"].is_string()) return "Import failed: " + entry["error"].get<std::string>();
