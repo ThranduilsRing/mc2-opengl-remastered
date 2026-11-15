@@ -1406,7 +1406,11 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
     for rel, expected in asset_parity.intentional_changes(git_head(src_root), Path(src_root)).items():
         if re.fullmatch(r"data/tgl/[0-9]+/[^/]+\.tga", rel):
             p = os.path.join(src_root, rel)
-            if require_build and (not os.path.isfile(p) or sha256_file(p) != expected):
+            # Historical declarations can live only in the published install;
+            # asset_parity still verifies those installed bytes after sync.
+            if not os.path.isfile(p):
+                continue
+            if require_build and sha256_file(p) != expected:
                 fail(f"declared mip asset missing or hash mismatch: {p}")
             items.append((p, rel, "support"))
 
