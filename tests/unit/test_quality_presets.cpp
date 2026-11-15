@@ -28,6 +28,29 @@ TEST_CASE("launcher presets scale shadow quality with overall quality") {
     }
 }
 
+// Trigger: GuiRuntime/PlayerSettings.h and PlayerFrontEnd.cpp discovery/manifest handling.
+TEST_CASE("campaign picker/asset mission and malformed manifest discovery") {
+    using namespace PlayerFrontEnd;
+    using Json = nlohmann::json;
+    CHECK(packKind("assets", "magic-gamesys-tweaks", false, false) == "assets");
+    CHECK(packKind("", "gamesys-only", false, false) == "assets");
+    CHECK(packKind("", "carver_probe", false, true) == "campaign");
+    CHECK(packKind("", "desertfoxformcosetup", true, true) == "campaign");
+    CHECK(packKind("", "mco-compat", true, true) == "dependency");
+    CHECK(packProblem(Json::object(), false, true, false, "mcosetup628(1)").empty());
+    CHECK_FALSE(packProblem(Json::object(), false, true, true, "mcosetup628(1)").empty());
+    CHECK_FALSE(packProblem(Json::object(), false, false, false, "nested").empty());
+    CHECK_FALSE(packProblem(Json::parse("{", nullptr, false), true, true, false, "bad").empty());
+    CHECK_FALSE(packProblem(Json::array(), true, true, false, "bad").empty());
+    CHECK_FALSE(packProblem(Json{{"id", 123}}, true, true, false, "bad").empty());
+    CHECK_FALSE(packProblem(Json{{"id", "other"}}, true, true, false, "bad").empty());
+    CHECK_FALSE(packProblem(Json{{"type", "typo"}}, true, true, false, "bad").empty());
+    CHECK_FALSE(packProblem(Json{{"dependencies", Json::array({12})}}, true, true, false, "bad").empty());
+    CHECK_FALSE(packProblem(Json{{"dependencies", "base"}}, true, true, false, "bad").empty());
+    CHECK(packProblem(Json{{"id", "pack"}, {"type", "assets"}, {"dependencies", Json::array({"base"})}}, true, true, false, "pack").empty());
+    CHECK_FALSE(packProblem(Json::object(), false, true, false, "bad;name").empty());
+}
+
 TEST_CASE("base presets retain stock vegetation and reserve detail for Medium and High") {
     CHECK(k_gfxPresets[0].baseQuality == 1);
     CHECK(k_gfxPresets[1].baseQuality == 2);

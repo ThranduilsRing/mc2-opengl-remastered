@@ -49,7 +49,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `tests/smoke/object_visual_diff.py` | 123 | `nofocus.run` | offscreen |
 | `tests/smoke/scene_resize.py` | 37 | `nofocus.spawn` | offscreen |
 | `tools/campaign_save_roundtrip.py` | 178 | `nofocus.spawn` | offscreen |
-| `tools/import_campaign.py` | 240 | `subprocess.run` **raw, allowed:** innoextract console archive reader only; never runs the installer or engine | offscreen |
+| `tools/import_campaign.py` | 242 | `subprocess.run` **raw, allowed:** innoextract console archive reader only; never runs the installer or engine | offscreen |
 | `tools/menu_oracle.py` | 110 | `nofocus.spawn` | desktop-composite |
 | `tools/mod_smoke.py` | 1061 | `nofocus.run` | offscreen |
 | `tools/perf/mission_cpu_profile.py` | 224 | `subprocess.Popen` **raw, allowed:** Tracy console recorder, never an engine. | offscreen |

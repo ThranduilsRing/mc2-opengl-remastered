@@ -5,6 +5,7 @@
 #include "../3rdparty/include/nlohmann/json.hpp"
 #include <charconv>
 #include <cctype>
+#include <algorithm>
 
 namespace PlayerFrontEnd {
 struct CampaignInfo {
@@ -41,6 +42,30 @@ inline std::string campaignTitle(std::string_view name, std::string_view fitTitl
 }
 inline bool unrecognisedCampaign(std::string_view name, bool hasCampaignFit) {
     return name.empty() && !hasCampaignFit;
+}
+inline std::string packKind(std::string_view declared, std::string_view id, bool campaign, bool missions) {
+    if (!declared.empty()) return std::string(declared);
+    if (id.find("-compat") != std::string_view::npos) return "dependency";
+    return campaign || missions ? "campaign" : "assets";
+}
+inline std::string packProblem(const nlohmann::json& manifest, bool manifestExists, bool hasData,
+                               bool hasArchives, std::string_view id) {
+    if (id.find_first_of(",;") != std::string_view::npos) return "Folder name contains a dependency separator; rename it.";
+    if (!hasData) return "No data/ folder; import the extracted campaign folder first.";
+    if (manifestExists && !manifest.is_object()) return "Invalid mod.json: expected a JSON object.";
+    for (const auto* key : {"id", "name", "type"})
+        if (manifest.contains(key) && !manifest[key].is_string()) return std::string("Invalid mod.json: ") + key + " must be text.";
+    if (manifest.contains("id") && manifest["id"].get<std::string>() != id)
+        return "Manifest id differs from folder name; rename the folder to match its id.";
+    if (manifest.contains("type")) {
+        const auto type = manifest["type"].get<std::string>();
+        if (type != "campaign" && type != "assets" && type != "dependency") return "Unsupported mod.json type; use campaign, assets or dependency.";
+    }
+    if (manifest.contains("dependencies") && (!manifest["dependencies"].is_array() ||
+        std::any_of(manifest["dependencies"].begin(), manifest["dependencies"].end(), [](const auto& v) { return !v.is_string(); })))
+        return "Invalid mod.json: dependencies must be a list of folder names.";
+    if (hasArchives) return "Legacy FST install: import this folder with Import community campaigns before playing.";
+    return {};
 }
 // Drop retired/unknown environment names even when their old value is invalid.
 inline void migrateLegacySettings(nlohmann::json& settings, std::string& cfg) {

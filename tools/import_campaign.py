@@ -219,7 +219,9 @@ def import_campaign(source, deploy):
         raise ValueError(f"Download or folder not found: {source}")
     if not (deploy / "mc2.exe").is_file():
         raise ValueError(f"Game folder has no mc2.exe: {deploy}; use --deploy with your game folder.")
-    if source.is_dir() and (source == deploy or source in deploy.parents or deploy in source.parents):
+    installed_source = source.parent == deploy / "mods"
+    if source.is_dir() and (source == deploy or source in deploy.parents or
+                            (deploy in source.parents and not installed_source)):
         raise ValueError("Source and game folder must be separate, with neither inside the other.")
     mods = deploy / "mods"
     if mods.is_symlink() or mods.is_junction():
