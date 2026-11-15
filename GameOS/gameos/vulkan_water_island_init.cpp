@@ -3,7 +3,6 @@
 #include "vk_owned.h"
 #include "vulkan_water_island_internal.h"
 #include "vk_dynamic_rendering.h"
-int gos_GetWaterFsDebugMode();
 
 
 
@@ -153,7 +152,7 @@ bool init_island(WaterIsland* s, int w, int h) {
 
         VkPipelineLayoutCreateInfo plci{};
         plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        if (!s->groundLighting.init(s->device, true)) return false;
+        if (!s->groundLighting.init(s->device)) return false;
         const VkDescriptorSetLayout layouts[]{s->dsl.get(), s->groundLighting.layout()};
         plci.setLayoutCount = 2; plci.pSetLayouts = layouts;
         if (!mc2vk::create(s->playout, s->device, [&](VkPipelineLayout* h) { return vkCreatePipelineLayout(s->device, &plci, nullptr, h); })) {
@@ -235,24 +234,6 @@ bool init_island(WaterIsland* s, int w, int h) {
             vlog("vkCreateGraphicsPipelines failed."); return false;
         }
         mc2vk::nameObject(s->device, s->pipe.get(), "water.pipe");
-        if (gos_GetWaterFsDebugMode() == 10 || gos_GetWaterFsDebugMode() == 11) {
-            const VkSpecializationMapEntry vsEntry{12, 0, sizeof(int32_t)};
-            const VkSpecializationMapEntry fsEntry{13, 0, sizeof(int32_t)};
-            cba[0].blendEnable = VK_FALSE;
-            for (int32_t pass = 1; pass <= 3; ++pass) {
-                const int32_t physical = pass != 2;
-                const VkSpecializationInfo vsSpec{1, &vsEntry, sizeof(physical), &physical};
-                const VkSpecializationInfo fsSpec{1, &fsEntry, sizeof(pass), &pass};
-                stages[0].pSpecializationInfo = &vsSpec;
-                stages[1].pSpecializationInfo = &fsSpec;
-                ds.depthWriteEnable = pass == 3 ? VK_TRUE : VK_FALSE;
-                cba[1].colorWriteMask = pass == 3 ? VK_COLOR_COMPONENT_A_BIT : 0;
-                if (!mc2vk::create(s->debugWater[pass - 1], s->device, [&](VkPipeline* h) {
-                    return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h);
-                })) return false;
-            }
-            stages[0].pSpecializationInfo = nullptr;
-        }
         const int32_t coverage = 1;
         const VkSpecializationMapEntry entry{11, 0, sizeof(coverage)};
         const VkSpecializationInfo spec{1, &entry, sizeof(coverage), &coverage};

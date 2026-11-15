@@ -187,7 +187,7 @@ uint32_t BuildWaterChunks(uint32_t side, float threshold) {
     uint32_t eligible=0;
     for (uint32_t i=0;i<g_recipes.size();++i) {
         const auto& r=g_recipes[i];
-        if (!(r.flags&kFlagBitVisualWet) && !(r.waterBits&0x01010101u) && std::min({r.v0e,r.v1e,r.v2e,r.v3e})>=threshold) continue;
+        if (!(r.waterBits&0x01010101u) && std::min({r.v0e,r.v1e,r.v2e,r.v3e})>=threshold) continue;
         auto& chunk=g_waterChunks[(r.quadIdx/side/16)*across+(r.quadIdx%side/16)];
         chunk.recipes.push_back(i);
         chunk.minX=std::min({chunk.minX,r.v0x,r.v1x,r.v2x,r.v3x});
@@ -279,9 +279,6 @@ void Build() {
     const long halfSide = Terrain::halfVerticesMapSide;
     const float wupv    = Terrain::worldUnitsPerVertex;
     const bool has_terrainTextures2 = (Terrain::terrainTextures2 != nullptr);
-    const auto* fields = gos_TerrainFieldStore();
-    const int fineSide = fields ? fields->visualSide() : 0;
-    const bool hasFine = fineSide == (mapSide - 1) * 4 + 1;
 
     auto blockAt = [blocks, mapSide](long mx, long my) -> const PostcompVertex& {
         return blocks[mx + my * mapSide];
@@ -363,18 +360,6 @@ void Build() {
             uint32_t flags = 0;
             if (isBottomLeft)         flags |= kFlagBitUvModeBottomLeft;
             if (has_terrainTextures2) flags |= kFlagBitHasDetail;
-            if (hasFine) {
-                float fineMin = std::numeric_limits<float>::max();
-                // Static minimum, including the cliff filter's two-texel support.
-                // A convex filter and border blend cannot fall below these inputs.
-                for (int dy = -2; dy <= 6; ++dy) for (int dx = -2; dx <= 6; ++dx) {
-                    const int fx = std::clamp(static_cast<int>(mx * 4) + dx, 0, fineSide - 1);
-                    const int fy = std::clamp(static_cast<int>(my * 4) + dy, 0, fineSide - 1);
-                    fineMin = std::min(fineMin, fields->visualHeight()[static_cast<size_t>(fy) * fineSide + fx]);
-                }
-                fineMin = std::min({fineMin, p0.elevation, p1.elevation, p2.elevation, p3.elevation});
-                if (fineMin < Terrain::waterElevation) flags |= kFlagBitVisualWet;
-            }
             r.flags = flags;
 
             const uint32_t t0 = static_cast<uint32_t>(static_cast<uint8_t>(p0.terrainType));
@@ -481,9 +466,7 @@ bool NativeWaterInFrustum(const VkNativeInputs& f, bool shoreFieldActive, float*
     const float threshold=f.waterElevation+f.shoreExt;
     if (g_waterChunkMapSide!=f.mapSide || threshold>g_waterChunkThreshold)
         BuildWaterChunks(f.mapSide,threshold+64.0f);
-    // The cooked field cannot exclude visual-surface water from reflection/scissor.
-    const auto* fields=gos_TerrainFieldStore();
-    const bool field=shoreFieldActive && !(fields && fields->visualSide()>1) && UpdateFieldWaterCoverage(f.waterElevation);
+    const bool field=shoreFieldActive && UpdateFieldWaterCoverage(f.waterElevation);
     static uint32_t debugFrame=0;
     const bool trace=DebugOn() && (++debugFrame%120==0);
     if (trace) {
@@ -528,7 +511,7 @@ bool NativeWaterInFrustum(const VkNativeInputs& f, bool shoreFieldActive, float*
         for (uint32_t id:chunk.recipes) {
             const auto& r=g_recipes[id];
             if (field && !g_fieldWetRecipes[id]) continue;
-            if (!(r.flags&kFlagBitVisualWet) && !(r.waterBits&0x01010101u) && std::min({r.v0e,r.v1e,r.v2e,r.v3e})>=(field?threshold:visibleThreshold)) continue;
+            if (!(r.waterBits&0x01010101u) && std::min({r.v0e,r.v1e,r.v2e,r.v3e})>=(field?threshold:visibleThreshold)) continue;
             if (field) {
                 const auto& box=g_fieldWetBounds[id];
                 uint32_t dryOutside=31;

@@ -9,10 +9,10 @@
 //     gos_terrain_water_fast_mdi.vert:152-190.
 //   - MVP: worldToClipGL is a column_major std140 mat4 packed from the SAME 16
 //     raw floats GL uploads (glUniformMatrix4fv GL_FALSE). clip = M*worldPos;
-//     Physical reverse-Z depth (the scene depth test resolves the coast).
+//     clip.z += WATER_DEPTH_FUDGE_FAST*clip.w (reverse-Z pre-divide). SAME rule
 //     WATER-MVP-ORACLE-1 proved bit-exact (commit 4d30d93e5; oracle shader in the
 //     archive/vk-probe-fixtures tag). Do NOT row_major, do
-//     NOT transpose.
+//     NOT transpose. WATER_DEPTH_FUDGE_FAST=0.00025 passed in via UBO (lockstep).
 //   - BASE LAYER ONLY: the GL FS discards o_isWater==2 (detail/spray), so P9a
 //     renders only the base layer (isWater=1, the old gl_DrawIDARB==0 draw).
 //     uvScale=oneOverTF, uvOffset=(cloudOffsetX,cloudOffsetY), detailMode=0.
@@ -22,7 +22,6 @@
 // Everything below mirrors the GL VS math VERBATIM. Any single index/stride
 // drift = geometry garbage; this file is the load-bearing parity surface.
 #version 450
-layout(constant_id = 12) const int kWaterDbgPhysical = 0;
 
 // --- Recipe SSBO (mission-static). std430 layout mirrors WaterRecipe (64B).
 //     GL binding 5; here set0/binding5 for descriptor-set clarity. ---
@@ -130,6 +129,7 @@ void main() {
     float maxMinUV       = U.p1.y;
     float uvScale        = U.p1.z;
     vec2  uvOffset       = vec2(U.p1.w, U.p2.x);
+    float fudge          = U.p2.y;
 
     uint vid          = uint(gl_VertexIndex);
     uint vertInRecord = vid % 6u;
@@ -184,7 +184,7 @@ void main() {
         swell *= smoothstep(0.03, 0.12, abs(toV.z) / max(length(toV), 1.0));
         wz += swell;
     }
-    vec3 worldPos = vec3(vxy, kWaterDbgPhysical != 0 ? waterElevation : wz);
+    vec3 worldPos = vec3(vxy, wz);
     WorldPos = worldPos;
 
     float u = (vxy.x - mapTopLeft.x) * uvScale + uvOffset.x;
@@ -227,7 +227,9 @@ void main() {
     Color    = unpackARGB(argb).bgra;
     Texcoord = vec2(u, v);
 
+    // GL clip emit + water reverse-Z depth bias (pre-divide). SAME as GL VS.
     vec4 clip = U.worldToClipGL * vec4(worldPos, 1.0);
+    clip.z   += fudge * clip.w;
     // Test the water surface at its physical depth. A tile-dependent lift
     // occludes rocks above the waterline and exposes straight tile edges.
     gl_Position = clip;

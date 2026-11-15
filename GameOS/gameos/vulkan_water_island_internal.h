@@ -235,7 +235,6 @@ struct WaterIsland : mc2vk::IslandState {
     mc2vk::OwnedShaderModule vert, frag;
     mc2vk::OwnedPipelineLayout playout;
     mc2vk::OwnedPipeline pipe;
-    mc2vk::OwnedPipeline debugWater[3];
     mc2vk::OwnedCommandPool cpool[mc2vk::kMaxFramesInFlight];   // per-slot pools: vkResetCommandPool per frame; cpool[0] also serves the synchronous one-shot
 
     // STEP 3.4P: the native Vulkan lighting + cull/pack producers (declared last: released first). `nativeFailed` = init was tried and refused, so the

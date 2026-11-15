@@ -260,9 +260,13 @@ void gosRenderer::renderWaterFastPath(
     memcpy(vsP.m, wMvpWaterMdi, 16 * sizeof(float));
     vsP.p0[0]=waterElevation; vsP.p0[1]=alphaDepth; vsP.p0[2]=mapTopLeftX; vsP.p0[3]=mapTopLeftY;
     vsP.p1[0]=frameCos; vsP.p1[1]=maxMinUV; vsP.p1[2]=oneOverTF; vsP.p1[3]=cloudOffsetX;
-    vsP.p2[0]=cloudOffsetY;
+    // WATER_DEPTH_FUDGE_FAST — LOCKSTEP with mclib/terrain_depth_bias.h (mc2depth::WATER_DEPTH_FUDGE_FAST) +
+    // shaders/include/terrain_depth_bias.hglsl (WATER_DEPTH_FUDGE_FAST). The VS applies clip.z += this * clip.w.
+    vsP.p2[0]=cloudOffsetY; vsP.p2[1]=0.00025f;
     vsP.p2[2]=static_cast<float>(alphaEdgeByte); vsP.p2[3]=static_cast<float>(alphaMiddleByte);
     vsP.p3[0]=static_cast<float>(alphaDeepByte);
+    // Mode 3 lifts the Vulkan shore plane toward the camera by a bounded world distance.
+    vsP.p3[2]=20.0f;
     {
         const vec4 waterFog = uint32_to_vec4(renderStates_[gos_State_Fog]);
         memcpy(fsP.fog, &waterFog, 4*sizeof(float));

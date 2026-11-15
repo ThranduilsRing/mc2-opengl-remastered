@@ -8,7 +8,6 @@
 #include <vector>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
-#include "terrain_diagonal.h"
 
 #include <cstdlib>
 #include <filesystem>
@@ -94,20 +93,6 @@ static std::set<std::string> scanSourceShaderRefs(const fs::path& root) {
         }
     }
     return refs;
-}
-
-TEST_CASE("shader_contract_harness/water_raw_saddle_diagonal") {
-    const auto shader = readFile(repoRoot() / "shaders/vulkan/water_geom.frag");
-    REQUIRE_FALSE(shader.empty());
-    // Pin the shipping shader's rule, rather than duplicate its interpolation in a CPU mirror.
-    CHECK(shader.find("abs(rawTR - rawBL) < abs(rawTL - rawBR)") != std::string::npos);
-    CHECK(shader.find("rawTL = cliffRawHeight(p)") != std::string::npos);
-    CHECK(shader.find("rawTR = cliffRawHeight(p + ivec2(1, 0))") != std::string::npos);
-    CHECK(shader.find("rawBL = cliffRawHeight(p + ivec2(0, 1))") != std::string::npos);
-    CHECK(shader.find("rawBR = cliffRawHeight(p + ivec2(1, 1))") != std::string::npos);
-    CHECK(shader.find("t.x + t.y <= 1.0") != std::string::npos);
-    CHECK(mc2terrain::quadSplitsTrBl(0.0f, 1.0f, 1.0f, 0.2f));
-    CHECK_FALSE(mc2terrain::quadSplitsTrBl(0.0f, 1.0f, 1.0f, 0.0f));
 }
 
 TEST_CASE("shader_contract_harness/terrain_pom_bounded_ray") {

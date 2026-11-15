@@ -58,7 +58,6 @@ struct alignas(16) WaterRecipe {
     uint32_t quadIdx;
     // bit 0: uvMode (0 = BOTTOMRIGHT, 1 = BOTTOMLEFT)
     // bit 1: hasDetail (terrainTextures2 has a valid water-detail texture pool)
-    // bit 2: the fine visual bake dips below the water plane within this quad
     uint32_t flags;
     // Per-vertex terrainType (uchar each, packed v0..v3 into low to high byte).
     // Fed through terrainTypeToMaterial() in the VS to populate fogRGB low byte
@@ -76,7 +75,6 @@ static_assert(sizeof(WaterRecipe) == 64,
 
 constexpr uint32_t kFlagBitUvModeBottomLeft = 0x1u;
 constexpr uint32_t kFlagBitHasDetail        = 0x2u;
-constexpr uint32_t kFlagBitVisualWet        = 0x4u;
 
 // WATER-GPU-FULL-RECIPE-CULL-1B: true when authoritative full-recipe GPU cull is
 // enabled (MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE, default-ON). The native

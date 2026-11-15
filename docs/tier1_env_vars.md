@@ -643,7 +643,7 @@ lights should remain visible at every angle instead of blinking out.
   - Both readers say so: `gos_GetWaterReflectionGate()` returns `(v && v[0]=='0') ? 0 : 1`, and `gos_GetWaterReflStrength()` resolves an unset value to **1.5**, not 0 (`GameOS/gameos/gameos_graphics.cpp:2885,2898`, WATER-REFL-DEFAULT-ON).
   - This bullet asserted the opposite for the whole life of that flip. BACKEND-DEFAULT-PARITY-1 found it: the gate-default checker attributed a written claim only when *every* reader of the var was classifiable, and the strength resolver is an idiom it cannot read — so one unreadable sibling made the entire variable unauditable. The rule now compares against the classified readers when they agree.
 - `MC2_WATER_REFLECTION_RT=1` — mirrored terrain fill into reflection RT. Default **OFF**.
-- `MC2_WATER_DEBUG_MODE=N` — Vulkan water: 0=Final (also 1-9; legacy material views are inactive), 10=scene-depth/coverage magenta difference with cull bypass, 11=same difference with shipping cull. Set at startup; debug pipelines are created only for 10/11. Mode 10 versus 11 measures cull holes, not colour or opacity.
+- `MC2_WATER_DEBUG_MODE=N` — MDI water frag debug (0=Final,1=Tint,2=Alpha,3=Normal,4=Depth,5=Shore,6=Lighting,7=ReflSH,8=ReflRT,9=ReflBlend).
 
 ## VFX gates
 
