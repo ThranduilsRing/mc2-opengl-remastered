@@ -9,25 +9,29 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import asset_parity as ap
 import deploy_payload as dp
 
-BAD = ("logs/a.txt", "debug_state/state.json", "nested/a.orig_bak", "LAUNCHER.LOG",
-       "data/tgl/_aoktxtmp/model.glb", "data/texture.tga.bak-20260704", "data/texture.tga.orig",
+BAD = ("logs/a.txt", "debug_state/state.json", "LAUNCHER.LOG",
+       "data/tgl/_aoktxtmp/model.glb",
        "tgl.fst.slim-2026-06-12", "dev_shell_out/a.txt", "terrain_gen_out/a.txt", "stdout_smoke.txt",
        "harness_bay_stdout.txt", "harness_encyclopedia_stderr.txt")
 
 
-def test_deploy_filters_and_prunes_artifacts_without_touching_sources(tmp_path, monkeypatch):
+@pytest.mark.parametrize("owned", [False, True])
+def test_deploy_filters_artifacts_and_preserves_unowned_files(tmp_path, monkeypatch, owned):
     monkeypatch.setattr(dp, "ensure_terrain_materials", lambda _: {})
     monkeypatch.setattr(dp, "ensure_engine_normal_cooks", lambda _: None)
     source, target = tmp_path / "source", tmp_path / "target"
     source.write_bytes(b"asset")
-    items = [(str(source), rel, "support") for rel in (*BAD, "data/tgl/live.glb")]
+    live = {"data/tgl/live.glb", "data/tgl/mech.original.glb", "data/tgl/mech.bak-valid.glb"}
+    items = [(str(source), rel, "support") for rel in (*BAD, *sorted(live))]
     for rel in BAD:
         path = target / rel
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b"old diagnostic")
+    if owned:
+        dp.write_manifest(str(target), {rel: (dp.sha256_file(target / rel), 14, None) for rel in BAD}, "test")
     hashes = dp.deploy(items, str(target), False)
-    assert set(hashes) == {"data/tgl/live.glb"}
-    assert all(not (target / rel).exists() for rel in BAD)
+    assert set(hashes) == live
+    assert all((target / rel).exists() != owned for rel in BAD)
     assert source.read_bytes() == (target / "data/tgl/live.glb").read_bytes()
     assert all(ap.is_excluded(rel) for rel in BAD)
     assert not ap.is_excluded("data/tgl/live.glb")
@@ -43,11 +47,16 @@ def test_bootstrap_omits_nested_artifacts(tmp_path):
     assert [p.relative_to(target).as_posix() for p in target.rglob("*") if p.is_file()] == ["assets/live.png"]
 
 
-def test_prune_preserves_crash_evidence(tmp_path):
+@pytest.mark.parametrize("owned", [False, True])
+def test_prune_preserves_crash_evidence(tmp_path, owned):
     crash = tmp_path / "crashes/a.dmp"
     crash.parent.mkdir()
     crash.write_bytes(b"evidence")
-    with pytest.raises(SystemExit):
+    if owned:
+        dp.write_manifest(str(tmp_path), {"crashes/a.dmp": (dp.sha256_file(crash), 8, None)}, "test")
+        with pytest.raises(SystemExit):
+            dp.retire_unowned(str(tmp_path), {})
+    else:
         dp.retire_unowned(str(tmp_path), {})
     assert crash.read_bytes() == b"evidence"
 
@@ -73,6 +82,21 @@ def test_prune_protects_owner_files_and_preserve(tmp_path, owned):
     assert all((tmp_path / rel).is_file() for rel in paths)
     for rel in ("data/tgl/manual_bak/model.glb", "data/captures/model.glb", "old_bak/model.glb", "notes.log",
                 "cache/content-model/model-0123456789abcdef.mci", "cache/content-model/industrial-cook.json"):
+        assert not ap.is_excluded(rel)
+
+
+@pytest.mark.parametrize("rel", ["system.cfg.bak-precam", "dev_shell_out/units.tga",
+    "terrain_gen_out/genmap.recipe.json", "debug_state/crash_content.jsonl", "nested/a.orig_bak",
+    "data/tgl/mech.original.glb", "data/texture.tga.bak-20260704", "data/texture.tga.orig"])
+def test_unmanifested_files_survive_repeated_retirement(tmp_path, rel):
+    path = tmp_path / rel
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"unowned")
+    for _ in range(2):
+        dp.retire_unowned(str(tmp_path), {}, own_shaders=True)
+        dp.write_manifest(str(tmp_path), {}, "test")
+        assert path.read_bytes() == b"unowned"
+    if ".orig" in rel or ".bak-" in rel:
         assert not ap.is_excluded(rel)
 
 

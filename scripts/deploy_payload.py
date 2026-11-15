@@ -1780,13 +1780,10 @@ def retire_unowned(target_dir, keep, preserve=(), own_shaders=False):
     """Retire files the new payload (`keep`, its relpaths) no longer carries.
 
     Manifest rows of the previous deploy are retired only when unchanged. Paths are resolved before unlinking so a malformed
-    manifest or a directory junction cannot escape the target. With `own_shaders` (the payload carries the baked SPIR-V) the
-    build's output list owns shaders/: any file there the payload does not carry is retired, manifest row or not (W129:
-    merge_gate.stage_published copies v0.4's shaders/ and _forget_swapped_rows drops their rows, so dead .spv slipped past the
-    manifest loop and verify_published_identity failed the shader inventory)."""
+    manifest or a directory junction cannot escape the target. Unmanifested files are never deleted, including shaders
+    and diagnostic output. `own_shaders` is retained for existing callers; it grants no additional ownership."""
     root = Path(target_dir).resolve()
     shared = any(root == Path(preset["target_dir"]).resolve() for preset in TARGET_PRESETS.values())
-    from asset_parity import is_deploy_artifact
     previous = read_manifest(target_dir)
     preserved = {p.replace("\\", "/").strip("/").casefold() for p in preserve}
 
@@ -1804,32 +1801,6 @@ def retire_unowned(target_dir, keep, preserve=(), own_shaders=False):
                 return True
         return False
 
-    # Refuse to discard crash evidence; the caller must archive it before deploying.
-    artifacts = []
-    for directory, _dirs, files in os.walk(root):
-        for name in files:
-            path = Path(directory) / name
-            rel = path.relative_to(root).as_posix()
-            if protected(rel) or not is_deploy_artifact(rel):
-                continue
-            if not path.resolve().is_relative_to(root):
-                fail(f"diagnostic payload path escapes target: {rel}")
-            if "crashes" in {part.casefold() for part in Path(rel).parts} or path.suffix.lower() in {".dmp", ".mdmp"}:
-                fail(f"archive crash evidence before deploying: {path}")
-            # A manifest claim never authorizes deleting bytes the owner changed.
-            if rel in previous and sha256_file(path) != previous[rel][0]:
-                log(f"preserved modified diagnostic payload: {rel}")
-                continue
-            artifacts.append((path, rel))
-    for path, rel in artifacts:
-        path.unlink()
-        keep.pop(rel, None)
-        log(f"pruned diagnostic payload: {rel}")
-    for directory, _dirs, _files in os.walk(root, topdown=False):
-        path = Path(directory)
-        if path != root and not protected(path.relative_to(root).as_posix()) and is_deploy_artifact(path.relative_to(root).as_posix()):
-            if path.resolve().is_relative_to(root) and not any(path.iterdir()):
-                path.rmdir()
     for rel, (digest, size, _mtime) in previous.items():
         if rel in keep or protected(rel):
             continue
@@ -1850,23 +1821,13 @@ def retire_unowned(target_dir, keep, preserve=(), own_shaders=False):
         if any(parts[:len(Path(t).parts)] == tuple(p.casefold() for p in Path(t).parts) for t in EDITOR_SUPPORT_TREES):
             continue
         if retired.is_file():
+            if "crashes" in parts or retired.suffix.lower() in {".dmp", ".mdmp"}:
+                fail(f"archive crash evidence before deploying: {retired}")
             if sha256_file(retired) != digest:
                 log(f"preserved modified retired payload: {rel}")
                 continue
             retired.unlink()
             log(f"pruned retired payload: {rel}")
-    # W130 review P1: the sweep owns only the baked SPIR-V (shaders/vulkan/*.spv, the W129 defect), never owner or mod files
-    # elsewhere under shaders/, and it resolves like the manifest loop so a junction cannot take it outside the target.
-    spv_root = root / "shaders" / "vulkan"
-    if own_shaders and spv_root.is_dir():
-        for path in sorted(spv_root.glob("*.spv")):
-            rel = path.relative_to(root).as_posix()
-            resolved = path.resolve()
-            if not resolved.is_relative_to(spv_root.resolve()):
-                fail(f"retired shader path escapes target: {rel}")
-            if path.is_file() and rel not in keep and not protected(rel):
-                path.unlink()
-                log(f"pruned retired payload: {rel}")
 
 
 def write_manifest(target_dir, hashes, src_commit):
