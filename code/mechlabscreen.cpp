@@ -35,6 +35,45 @@ static bool cheatInfiniteMoney() { static const bool on = mc2::gate::get<"MC2_CH
 #include "../GameOS/gameos/input_capture_policy.h"
 
 MechLabScreen* MechLabScreen::s_instance = nullptr;
+namespace {
+bool previewPaused = false;
+int previewHeld = -1;
+float previewHoldTime = 0.f;
+// Legacy canvas coordinates, shared by drawing and input; below the payload grid.
+int previewButton(const SimpleCamera& camera)
+{
+	const float x = userInput->getMouseX() - (camera.bounds[2] - 92.f);
+	const float y = userInput->getMouseY() - (camera.bounds[3] - 28.f);
+	const int column = static_cast<int>(x);
+	return x >= 0.f && x < 86.f && y >= 0.f && y < 22.f && column % 30 < 26 ? column / 30 : -1;
+}
+void drawPreviewControls(const SimpleCamera& camera, bool enabled)
+{
+	float sx, sy, ox, oy;
+	aObject::getCanvasTransform(sx, sy, ox, oy);
+	for (int i = 0; i < 3; ++i)
+	{
+		const float x = (camera.bounds[2] - 92.f + i * 30.f) * sx + ox;
+		const float y = (camera.bounds[3] - 28.f) * sy + oy;
+		const unsigned color = enabled ? 0xffffb04a : 0xff805830;
+		GuiRuntime::DrawUiRect(x, y, 26.f * sx, 22.f * sy,
+			enabled && previewButton(camera) == i ? 0xff56321a : 0xff17120d, true);
+		GuiRuntime::DrawUiRect(x, y, 26.f * sx, 22.f * sy, color, false);
+		if (i == 1 && !previewPaused)
+		{
+			GuiRuntime::DrawUiRect(x + 9.f * sx, y + 6.f * sy, 3.f * sx, 10.f * sy, color, true);
+			GuiRuntime::DrawUiRect(x + 15.f * sx, y + 6.f * sy, 3.f * sx, 10.f * sy, color, true);
+		}
+		else
+		{
+			const float tip = i == 0 ? 8.f : 18.f, base = i == 0 ? 17.f : 9.f;
+			GuiRuntime::DrawUiTriangleVerts(x + tip * sx, y + 11.f * sy,
+				x + base * sx, y + 6.f * sy, x + base * sx, y + 16.f * sy, color);
+		}
+	}
+}
+}
+
 std::unique_ptr<LogisticsVariantDialog> MechLabScreen::saveDlg = nullptr;
 std::unique_ptr<LogisticsAcceptVariantDialog> MechLabScreen::acceptDlg = nullptr;
 
@@ -243,6 +282,8 @@ int MechLabScreen::init( FitIniFile& file )
 
 void MechLabScreen::begin()
 {
+	previewPaused = false;
+	previewHeld = -1;
 	componentCount = 0;
 	bSaveDlg = 0;
 	status = RUNNING;
@@ -519,7 +560,26 @@ void MechLabScreen::update()
 
 	
 	camera.update();
-	mechCamera.setTurntablePaused( pDragComponent != nullptr );
+	const int previewHit = mechCamera.hasObject() && !pDragComponent ? previewButton(mechCamera) : -1;
+	const bool previewDown = userInput->getMouseLeftButtonState() == MC2_MOUSE_DOWN;
+	static bool previewWasDown = false;
+	if (previewDown && !previewWasDown && previewHit >= 0)
+	{
+		previewHeld = previewHit;
+		previewHoldTime = 0.f;
+		if (previewHeld == 1) previewPaused = !previewPaused;
+		else mechCamera.rotateBy(previewHeld == 0 ? -15.f : 15.f);
+	}
+	const bool previewOwnsInput = previewHeld >= 0;
+	if (previewDown && previewHeld != 1 && previewHeld >= 0 && previewHit == previewHeld)
+	{
+		previewHoldTime += std::clamp(frameLength, 0.f, 0.1f);
+		if (previewHoldTime > 0.3f)
+			mechCamera.rotateBy((previewHeld == 0 ? -60.f : 60.f) * std::clamp(frameLength, 0.f, 0.1f));
+	}
+	if (!previewDown || pDragComponent) previewHeld = -1;
+	previewWasDown = previewDown;
+	mechCamera.setTurntablePaused(previewPaused || previewOwnsInput || pDragComponent != nullptr);
 	mechCamera.update();
 
 	int oldSel = componentListBox.GetSelectedItem(); // need to check this before we update the list box
@@ -531,7 +591,7 @@ void MechLabScreen::update()
 	if ( !MPlayer || !ChatWindow::instance()->pointInside(userInput->getMouseX(), userInput->getMouseY()) )
 		LogisticsScreen::update();
 
-	updateDiagramInput();	
+	if (!previewOwnsInput) updateDiagramInput();
 
 
 	variantList.update();
@@ -1067,6 +1127,8 @@ void MechLabScreen::render(int xOffset, int yOffset)
 
 	if ( gridBridge )
 		aObject::endGuiBridge();
+	if (!xOffset && !yOffset && mechCamera.hasObject())
+		drawPreviewControls(mechCamera, !bSaveDlg && !bErrorDlg && !pDragComponent && status == RUNNING);
 
 	aObject::beginTextBridge( tbSx, tbSy, 1.3f, tbOx, tbOy );
 	variantList.move( xOffset, yOffset );
