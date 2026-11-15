@@ -57,9 +57,9 @@ std::optional<LinkSetup::Control> LinkSetup::receive(Control message, std::uint3
     if (!hosting && message.kind == 3 && samples < 4) { ++samples; return Control{4, message.value}; }
     if (hosting && message.kind == 4 && samples < 4 && message.value == probe) {
         const auto measured = now - probe;
-        if (samples) jitter = std::max(jitter, measured > previous ? measured - previous : previous - measured);
+        if (samples) jitter = (std::max)(jitter, measured > previous ? measured - previous : previous - measured);
         previous = measured;
-        rtt = std::max(rtt, measured);
+        rtt = (std::max)(rtt, measured);
         if (++samples < 4) { probe = now; return Control{3, probe}; }
         delay = delayForRtt(rtt, jitter);
         return Control{5, delay};
