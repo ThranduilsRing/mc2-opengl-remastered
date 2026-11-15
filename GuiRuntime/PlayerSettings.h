@@ -22,6 +22,16 @@ inline bool packToggleAllowed(bool enabled, std::string_view problem) { return e
 inline bool packSelected(std::string_view id, std::string_view campaign, std::string_view deps) {
     return id == campaign || contains(deps, id);
 }
+inline std::string packImportProblem(std::string problem, const nlohmann::json& status, const std::string& id) {
+    if (status.contains("sources") && status["sources"].contains(id)) {
+        const auto& entry = status["sources"][id];
+        if (entry.contains("error") && entry["error"].is_string()) return "Import failed: " + entry["error"].get<std::string>();
+    }
+    return problem;
+}
+inline bool campaignStartAllowed(bool importing, bool playable, bool missingBase, std::string_view problem) {
+    return !importing && playable && !missingBase && problem.empty();
+}
 template<class Packs>
 std::string pickerDependencies(const Packs& packs, std::string_view campaign, std::string_view base, std::string_view texture) {
     std::string deps;

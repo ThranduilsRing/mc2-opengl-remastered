@@ -396,8 +396,11 @@ def test_auto_detects_base_before_addons_and_skips_managed(sample, monkeypatch):
     assert not (raw / "mod.json").exists()
 
 
-def test_auto_restart_skips_import_and_changed_stamp_reruns(sample, monkeypatch):
+@pytest.mark.parametrize("flat", [False, True])
+def test_auto_restart_skips_import_and_changed_stamp_reruns(sample, monkeypatch, flat):
     source, deploy = sample
+    if flat:
+        source = source / "data"
     raw = deploy / "mods/exodus"
     source.rename(raw)
     result = imp.auto_import(deploy)
@@ -408,7 +411,7 @@ def test_auto_restart_skips_import_and_changed_stamp_reruns(sample, monkeypatch)
     imp.auto_import(deploy)
     assert not calls
     assert (target / ".campaign-import.json").read_bytes() == receipt
-    (raw / "data/missions/demo01.fit").write_bytes(b'FITini\nObjectNumber = 13')
+    (raw / ("missions" if flat else "data/missions") / "demo01.fit").write_bytes(b'FITini\nObjectNumber = 13')
     imp.auto_import(deploy)
     assert len(calls) == 1
 
@@ -431,7 +434,8 @@ def test_auto_exact_error_persisted_and_retried(sample, monkeypatch, capsys):
     assert len(calls) == 2
 
 
-def test_auto_real_converter_retries_after_base_appears_and_reaps_staging(sample):
+@pytest.mark.parametrize("age", [0, 25 * 3600])
+def test_auto_real_converter_retries_after_base_appears_and_reaps_staging(sample, monkeypatch, age):
     source, deploy = sample
     raw = deploy / "mods/exodus"
     source.rename(raw)
@@ -439,6 +443,8 @@ def test_auto_real_converter_retries_after_base_appears_and_reaps_staging(sample
     imp.shutil.rmtree(compat)
     stale = deploy / "mods/.campaign-import-interrupted/data"
     stale.mkdir(parents=True)
+    (stale.parent / ".import-owner.json").write_text(json.dumps({"pid": imp.os.getpid(), "started": imp.time.time() - age}))
+    monkeypatch.setattr(imp, "pid_alive", lambda pid: bool(age))
     leftover = stale / "readonly.fit"
     leftover.write_text("interrupted output")
     leftover.chmod(0o400)
@@ -450,3 +456,20 @@ def test_auto_real_converter_retries_after_base_appears_and_reaps_staging(sample
     assert first["stamp"] == second["stamp"]
     assert second["status"] == "installed" and "error" not in second
     assert second["import_seconds"] >= 0
+
+
+def test_auto_preserves_foreign_and_live_staging(sample, monkeypatch):
+    _, deploy = sample
+    foreign = deploy / "mods/.campaign-import-player"
+    foreign.mkdir()
+    (foreign / "save.fit").write_text("player data")
+    original = imp.inspect_source
+    def inspect(root):
+        staged = next((deploy / "mods").glob(".campaign-import-*/.import-owner.json"))
+        assert json.loads(staged.read_text())["pid"] == imp.os.getpid()
+        assert imp.pid_alive(imp.os.getpid())
+        imp.auto_import(deploy)
+        assert staged.is_file() and (foreign / "save.fit").read_text() == "player data"
+        return original(root)
+    monkeypatch.setattr(imp, "inspect_source", inspect)
+    assert imp.import_campaign(sample[0], deploy)["status"] == "installed"

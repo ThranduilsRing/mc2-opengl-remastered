@@ -53,8 +53,9 @@ def safe_path(name):
 def source_files(root):
     """Only inputs used by the converters participate in content identity."""
     result = {}
+    flat = (root / "campaign").is_dir() and (root / "missions").is_dir()
     for directory, dirs, files in os.walk(root, followlinks=False):
-        if Path(directory) == root:
+        if Path(directory) == root and not flat:
             dirs[:] = [name for name in dirs if name.lower() == "data"]
         for name in dirs + files:
             p = Path(directory) / name
@@ -63,6 +64,8 @@ def source_files(root):
         for name in files:
             p = Path(directory) / name
             rel = safe_path(p.relative_to(root).as_posix())
+            if flat:
+                rel = "data/" + rel
             if rel.lower().startswith("data/") or ("/" not in rel and
                     (p.suffix.lower() == ".fst" or name.lower() == "mc2xres.dll")):
                 key = rel.lower()
@@ -216,6 +219,28 @@ def find_root(folder):
     return roots[0]
 
 
+def pid_alive(pid):
+    if os.name == "nt":
+        import ctypes
+        kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel.OpenProcess.restype = ctypes.c_void_p
+        handle = kernel.OpenProcess(0x1000, False, pid)
+        if not handle:
+            return ctypes.get_last_error() != 87  # Access denied is not proof of death.
+        code = ctypes.c_ulong()
+        try:
+            return not kernel.GetExitCodeProcess(ctypes.c_void_p(handle), ctypes.byref(code)) or code.value == 259
+        finally:
+            kernel.CloseHandle(ctypes.c_void_p(handle))
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        pass
+    return True
+
+
 def import_campaign(source, deploy):
     source, deploy = Path(source).resolve(), Path(deploy).resolve()
     if not source.exists():
@@ -232,6 +257,7 @@ def import_campaign(source, deploy):
     mods.mkdir(exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=".campaign-import-", dir=mods) as scratch:
         scratch = Path(scratch)
+        (scratch / ".import-owner.json").write_text(json.dumps({"pid": os.getpid(), "started": time.time()}), encoding="utf-8")
         if source.is_file():
             unpacked = scratch / "source"
             unpacked.mkdir()
@@ -390,6 +416,18 @@ def auto_import(deploy):
         func(path)
     for staged in mods.glob(".campaign-import-*"):
         if staged.is_dir() and not staged.is_symlink() and not staged.is_junction():
+            marker = staged / ".import-owner.json"
+            if marker.is_symlink() or not marker.is_file():
+                continue
+            try:
+                owner = json.loads(marker.read_text(encoding="utf-8"))
+                pid, started = owner["pid"], owner["started"]
+                if type(pid) is not int or pid <= 0 or not isinstance(started, (int, float)):
+                    continue
+                if time.time() - started <= 24 * 3600 and pid_alive(pid):
+                    continue
+            except (OSError, ValueError, KeyError, TypeError):
+                continue
             shutil.rmtree(staged, onexc=remove_readonly)
     try:
         previous = json.loads(status.read_text(encoding="utf-8")) if status.is_file() else {}

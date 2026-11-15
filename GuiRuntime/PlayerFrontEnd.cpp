@@ -250,6 +250,7 @@ void scan() {
                 break;
             }
         }
+        pack.problem = packImportProblem(std::move(pack.problem), importStatus, id);
         pack.enabled = contains(deps, id);
         if (pack.enabled && pack.kind == "dependency") base = id;
         if (pack.enabled && pack.group == "texture-quality") texture = id;
@@ -577,7 +578,7 @@ void drawMainMenu(bool showCredits) {
     }
     if (!problem.empty()) ImGui::TextWrapped("%s", problem.c_str());
     else if (campaignFit.empty() && !single) ImGui::TextUnformatted("No campaign or playable mission found; compatibility packs are used with a campaign.");
-    ImGui::BeginDisabled(importJob.valid() || (campaignFit.empty() && !single) || missingBase || !problem.empty());
+    ImGui::BeginDisabled(!campaignStartAllowed(importJob.valid(), !campaignFit.empty() || single, missingBase, problem));
     const char* startLabel = single ? "Start single mission" : selected && selected->kind == "assets" ? "Start stock campaign with add-on" : "Start campaign";
     if (ImGui::Button(startLabel)) {
         settings["last_campaign"] = campaign;
