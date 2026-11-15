@@ -12,9 +12,9 @@ inline bool mountInstalled(std::string_view type, bool campaign, bool units) {
 }
 
 template<class File>
-void saveIdentity(File& file, const std::string& pack, const std::string& name) {
-    file.writeIdString("PurchasePack", pack.c_str());
-    file.writeIdString("Variant", name.c_str());
+void saveIdentity(File& file, std::string_view pack, std::string_view name) {
+    file.writeIdString("PurchasePack", std::string(pack).c_str());
+    file.writeIdString("Variant", std::string(name).c_str());
 }
 
 inline bool identityMatches(std::string_view pack, std::string_view name,
