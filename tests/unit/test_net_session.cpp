@@ -2,6 +2,16 @@
 #include "doctest.h"
 #include "net/session.h"
 using namespace mc2;
+auto settled(net::LinkSetup& host, net::LinkSetup& client, std::uint32_t now) {
+    CHECK_FALSE(host.begin(now)); CHECK_FALSE(client.begin(now));
+    for (unsigned i = 1; i <= 30; ++i) {
+        auto h = host.frame(now + i), c = client.frame(now + i);
+        if (h) client.receive(*h, now + i);
+        if (c) host.receive(*c, now + i);
+    }
+    client.frame(now + 31);
+    return host.frame(now + 31);
+}
 
 TEST_CASE("net session handshake accepts only identical protocol/executable/content/mission/seed") {
     net::Identity id;
@@ -19,7 +29,7 @@ TEST_CASE("net session handshake accepts only identical protocol/executable/cont
     CHECK(net::checkHello(net::hello(remote), id) == "mission mismatch");
     remote = id; ++remote.seed;
     CHECK(net::checkHello(net::hello(remote), id) == "seed mismatch");
-    auto wrong = packet; wrong[4] = 3;
+    auto wrong = packet; wrong[4] = net::protocolVersion + 1;
     CHECK(net::checkHello(wrong, id) == "protocol version mismatch");
     CHECK(packet[0] == 'M'); CHECK(packet[1] == '2');
     CHECK(packet[packet.size() - 4] == 0x39); // fixed-width LE uint32 seed
@@ -42,8 +52,8 @@ TEST_CASE("net setup derives bounded delay from reliable RTT and jitter before r
         net::LinkSetup host, client;
         host.hosting = true;
         auto now = 0xfffffff0u; // ENet's millisecond clock wraps during a live session.
-        auto message = host.begin(now);
-        CHECK_FALSE(client.begin(now));
+        auto message = settled(host, client, now);
+        now += 31;
         for (unsigned sample = 0; sample < 4; ++sample) {
             REQUIRE(message);
             CHECK(message->kind == 3);
@@ -109,8 +119,9 @@ TEST_CASE("net content identity includes effective mounted art options") {
 TEST_CASE("net timing ignores a transient post-load frame stall") {
     net::LinkSetup host;
     host.hosting = true;
-    auto packet = host.begin(0);
-    unsigned now = 0;
+    net::LinkSetup client;
+    auto packet = settled(host, client, 0);
+    unsigned now = 31;
     for (const auto duration : {860u, 12u, 11u, 12u}) {
         REQUIRE(packet);
         now += duration;
@@ -119,4 +130,18 @@ TEST_CASE("net timing ignores a transient post-load frame stall") {
     CHECK(host.rtt == 11);
     CHECK(host.jitter == 1);
     CHECK(host.delay == 3);
+}
+
+TEST_CASE("net timing waits for thirty consecutive sub-50ms frames on both peers") {
+    net::LinkSetup host;
+    host.hosting = true;
+    CHECK_FALSE(host.begin(0));
+    for (unsigned i = 1; i <= 40; ++i) CHECK_FALSE(host.frame(i * 100));
+    for (unsigned i = 1; i < 30; ++i) CHECK_FALSE(host.frame(4000 + i));
+    auto ready = host.frame(4030);
+    REQUIRE(ready); CHECK(ready->kind == 7);
+    CHECK_FALSE(host.frame(4031));
+    CHECK_FALSE(host.receive({7, 0}, 9000));
+    auto probe = host.frame(9001);
+    REQUIRE(probe); CHECK(probe->kind == 3); CHECK(probe->value == 9001);
 }

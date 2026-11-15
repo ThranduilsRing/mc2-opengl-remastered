@@ -4,7 +4,7 @@
 #include <optional>
 
 namespace mc2::net {
-inline constexpr std::uint32_t protocolVersion = 2;
+inline constexpr std::uint32_t protocolVersion = 3;
 inline constexpr std::size_t maxPacketBytes = 256 * 1024;
 struct Identity {
     save::Digest executable{}, content{};
@@ -17,15 +17,18 @@ save::Digest contentIdentity(const save::Digest& files, bool lowCost, bool remas
 // Returns the specific incompatible field, or empty on an exact match.
 std::string checkHello(std::span<const std::uint8_t> packet, const Identity& local);
 
-// Four reliable round trips, then one host-selected delay agreed before tick 1.
+// Both peers settle their frame cadence before four reliable timing probes.
 struct LinkSetup {
-    enum class Phase { Identity, Measuring, Ready, Stopped };
+    enum class Phase { Identity, Settling, Measuring, Ready, Stopped };
     struct Control { std::uint32_t kind = 0, value = 0; };
     bool hosting = false;
     Phase phase = Phase::Identity;
     std::uint32_t probe = 0, samples = 0, rtt = 0, jitter = 0, previous = 0, delay = 3;
+    std::uint32_t lastFrame = 0, settledFrames = 0;
+    bool localSettled = false, peerSettled = false;
     std::string error;
     std::optional<Control> begin(std::uint32_t now);
+    std::optional<Control> frame(std::uint32_t now);
     std::optional<Control> receive(Control message, std::uint32_t now);
     void stop(std::string_view reason);
 };

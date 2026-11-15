@@ -46,11 +46,12 @@ def compare_traces(host: Path, client: Path, ticks: int, forced: int = 0, combat
     extra = 0 if forced else max_extra
     if not expected <= len(a) <= expected + extra or not expected <= len(b) <= expected + extra:
         raise ValueError(f"incomplete evidence: host={len(a)} client={len(b)} required={expected}")
-    different = [tick for tick in range(1, expected + 1) if a[tick] != b[tick]]
+    common = min(len(a), len(b))
+    different = [tick for tick in range(1, common + 1) if a[tick] != b[tick]]
     if different != ([forced] if forced else []):
         raise ValueError(f"first divergent tick: {different[:1]}; expected {forced or 'none'}")
-    commands_a = [line for line in commands_a if int(line.split()[1]) <= expected]
-    commands_b = [line for line in commands_b if int(line.split()[1]) <= expected]
+    commands_a = [line for line in commands_a if int(line.split()[1]) <= common]
+    commands_b = [line for line in commands_b if int(line.split()[1]) <= common]
     if commands_a != commands_b or not commands_a:
         raise ValueError("peer command traces differ or no scripted orders were applied")
     for peer in (host, client):
@@ -59,16 +60,28 @@ def compare_traces(host: Path, client: Path, ticks: int, forced: int = 0, combat
         if (forced and marker not in text) or (not forced and "[MP_DESYNC]" in text):
             raise ValueError(f"unexpected/missing desync verdict in {peer}")
     rng_states = len({a[tick][-1] for tick in range(1, expected + 1)})
-    if combat and rng_states < 2:
-        raise ValueError("combat fixture did not change the RNG hash")
-    return {"ticks": expected, "equal_ticks": expected - bool(forced), "rng_states": rng_states,
-            "uncompared_tail_ticks": [len(a) - expected, len(b) - expected],
+    evidence = []
+    if combat:
+        for peer in (host, client):
+            rows = [line.split() for line in (peer / "session.trace").read_text().splitlines() if line.startswith("B ")]
+            counts = {f"{slot}:{event}": sum(int(r[1]) <= common and r[2] == str(slot) and r[3] == event
+                      and (event == "fire" or float(r[6]) > 0) for r in rows)
+                      for slot in (0, 1) for event in ("fire", "damage")}
+            if not all(counts.values()):
+                raise ValueError(f"combat requires firing and damage from both owned groups: {counts}")
+            evidence.append(counts)
+    return {"ticks": expected, "equal_ticks": common - bool(forced), "rng_states": rng_states,
+            "combat": evidence, "uncompared_tail_ticks": [len(a) - common, len(b) - common],
             "commands": len(commands_a), "first_divergent_tick": forced or None}
 
 
 def fixture_orders(slot: int, ticks: int, forced: int, combat: bool = False) -> list[str]:
     script = ["0 0 delay 1"] if slot else []
     script.append(f"0 {1 - slot} reject")
+    if combat:
+        # Stock mc2_01 bandit mechs, identified by authored Part ID.
+        script.extend(f"0 {mover} attack {704 + slot}" for mover in ((1, 2) if slot else (0,)))
+        return script
     # Stay by the stock deployment, south of objective 0's airfield trigger.
     # The old positive-Y route walked all three mechs into the bandit force.
     for tick in range(0, ticks - 4, 300):
@@ -150,6 +163,9 @@ class ClientShim:
 def parser():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--install", required=True, type=Path)
+    ap.add_argument("--role", choices=("host", "join", "both"), default="both")
+    ap.add_argument("--endpoint", help="numeric host IP:port; join connects directly in single-role mode")
+    ap.add_argument("--compare-only", action="store_true", help="compare out/session/{host,client}/session.trace without launching")
     ap.add_argument("--client-install", type=Path, help="separate, privately writable client install")
     ap.add_argument("--address", default="127.0.0.1", help="numeric local LAN IPv4 address")
     ap.add_argument("--loss", type=float, default=0, help="datagram loss percent in each direction")
@@ -173,6 +189,12 @@ def parser():
 def arguments(argv=None):
     ap = parser()
     args = ap.parse_args(argv)
+    if args.endpoint:
+        try:
+            args.address, port = args.endpoint.rsplit(":", 1)
+            args.port = int(port)
+        except ValueError:
+            ap.error("endpoint must be numeric IPv4:port")
     try:
         ip = ipaddress.IPv4Address(args.address)
         if ip.is_unspecified or ip.is_multicast or ip.is_link_local or int(ip) == 0xffffffff:
@@ -191,9 +213,44 @@ def arguments(argv=None):
         ap.error("wall-clock requires >=900 ticks; network faults require a combat cell")
     args.install = args.install.resolve()
     args.client_install = (args.client_install or args.install).resolve()
-    if not ip.is_loopback and args.install == args.client_install:
+    if args.role != "both" and (args.loss or args.latency or args.stall_ms or args.kill_peer or args.wall_clock):
+        ap.error("single-role mode requires direct transport without pair fault/pacing controls")
+    if args.role == "both" and not args.compare_only and not ip.is_loopback and args.install == args.client_install:
         ap.error("LAN proof requires two isolated installs")
     return args
+
+
+def run_role(args, out):
+    slot = 0 if args.role == "host" else 1
+    peer = out / ("host" if slot == 0 else "client")
+    peer.mkdir(parents=True, exist_ok=False)
+    (peer / "orders.txt").write_text("\n".join(fixture_orders(slot, args.ticks, args.force_desync, args.combat)) + "\n")
+    proc = None
+    try:
+        with ExitStack() as logs:
+            deploy_lease.acquire_lease(str(args.install), intended_test="mp LAN role proof")
+            logs.callback(deploy_lease.release_lease, str(args.install))
+            if args.render != "none":
+                host_lease.acquire("mp LAN role proof", timeout_s=120)
+                logs.callback(host_lease.release)
+            proc = peer_start(str(args.install), str(peer), slot, args.port, args.ticks,
+                              args.timeout, args.render != "none", logs, args.address, args.combat)
+            rc = proc.wait(timeout=args.timeout)
+            if rc != (3 if args.force_desync else 0):
+                raise ValueError(f"role exited {rc}; see peer logs")
+            if "[SHUTDOWN] audio end" not in (peer / "stderr.log").read_text(errors="replace"):
+                raise ValueError("engine shutdown incomplete")
+            result = dict(result="PASS", role=args.role, comparison="PENDING --compare-only")
+    except (ValueError, OSError, RuntimeError, subprocess.TimeoutExpired) as error:
+        result = dict(result="FAIL", error=str(error))
+    finally:
+        if proc is not None:
+            cleanup_kill = proc.poll() is None
+            if cleanup_kill:
+                proc.kill()
+            proc.wait()
+            (peer / "exit.json").write_text(json.dumps(dict(rc=proc.returncode, pid=proc.pid, cleanup_kill=cleanup_kill)))
+    return result
 
 
 def run_pair(args, out, kill_peer=None):
@@ -351,9 +408,18 @@ def run_pair(args, out, kill_peer=None):
 def main() -> int:
     args = arguments()
     args.out = args.out.resolve()
-    args.out.mkdir(parents=True, exist_ok=False)
+    args.out.mkdir(parents=True, exist_ok=args.compare_only or args.role != "both")
     directions = ["client", "host"] if args.kill_peer == "both" else [args.kill_peer]
-    runs = [run_pair(args, args.out / (direction or "session"), direction) for direction in directions]
+    if args.compare_only:
+        try:
+            runs = [dict(result="PASS", **compare_traces(args.out / "session/host", args.out / "session/client",
+                         args.ticks, args.force_desync, args.combat))]
+        except (ValueError, OSError) as error:
+            runs = [dict(result="FAIL", error=str(error))]
+    elif args.role != "both":
+        runs = [run_role(args, args.out / "session")]
+    else:
+        runs = [run_pair(args, args.out / (direction or "session"), direction) for direction in directions]
     result = dict(result="PASS" if all(run["result"] == "PASS" for run in runs) else "FAIL", runs=runs)
     (args.out / "result.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
     images = []

@@ -53,12 +53,34 @@ void LinkSetup::stop(std::string_view reason) {
 }
 std::optional<LinkSetup::Control> LinkSetup::begin(std::uint32_t now) {
     if (phase != Phase::Identity) { stop("MP duplicate identity"); return {}; }
-    phase = Phase::Measuring;
-    probe = now;
-    if (hosting) return Control{3, probe};
+    phase = Phase::Settling;
+    lastFrame = now;
+    return {};
+}
+std::optional<LinkSetup::Control> LinkSetup::frame(std::uint32_t now) {
+    if (phase != Phase::Settling) return {};
+    settledFrames = now - lastFrame < 50 ? settledFrames + 1 : 0;
+    lastFrame = now;
+    if (!localSettled && settledFrames >= 30) {
+        localSettled = true;
+        return Control{7, 0};
+    }
+    if (localSettled && peerSettled) {
+        phase = Phase::Measuring;
+        probe = now;
+        if (hosting) return Control{3, probe};
+    }
     return {};
 }
 std::optional<LinkSetup::Control> LinkSetup::receive(Control message, std::uint32_t now) {
+    if (phase == Phase::Settling && message.kind == 7 && !peerSettled && message.value == 0) {
+        peerSettled = true;
+        return {};
+    }
+    // The host may send its first probe in the same service batch as our ready ACK.
+    if (phase == Phase::Settling && !hosting && localSettled && peerSettled && message.kind == 3)
+        phase = Phase::Measuring;
+    if (phase == Phase::Settling) { stop("MP invalid timing negotiation"); return {}; }
     if (phase != Phase::Measuring) { stop("MP unexpected setup packet"); return {}; }
     if (!hosting && message.kind == 3 && samples < 4) { ++samples; return Control{4, message.value}; }
     if (hosting && message.kind == 4 && samples < 4 && message.value == probe) {
@@ -151,6 +173,7 @@ std::vector<save::Bytes> Session::pump() {
     auto& s = *impl_;
     std::vector<save::Bytes> received;
     if (!s.host || !s.error.empty()) return received;
+    s.control(s.setup.frame(enet_time_get()));
     ENetEvent event{};
     // Nonblocking, bounded work; frames and the owner desktop keep running during a stall.
     for (unsigned count = 0; count < 128; ++count) {

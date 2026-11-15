@@ -128,6 +128,8 @@ def test_mp_lan_arguments(tmp_path):
     lan = ["--address", "192.168.1.2", "--client-install", str(tmp_path / "client")]
     assert arguments(base + lan + ["--loss", "2", "--latency", "50", "--jitter", "20"]).loss == 2
     assert arguments(base + ["--kill-peer", "both"]).kill_peer == "both"
+    args = arguments(base + ["--role", "join", "--endpoint", "192.168.1.2:23460", "--compare-only"])
+    assert (args.role, args.address, args.port, args.compare_only) == ("join", "192.168.1.2", 23460, True)
     for bad in (["--address", "0.0.0.0"], ["--address", "localhost"],
                 ["--address", "192.168.1.2"], ["--loss", "100"], ["--loss", "nan"],
                 ["--latency", "nan"], ["--jitter", "20"], ["--stall-ms", "-1"],
@@ -137,22 +139,30 @@ def test_mp_lan_arguments(tmp_path):
             arguments(base + bad)
 
 
-def test_mp_combat_routes_both_lances_and_rejects_unchanged_rng(tmp_path):
+def test_mp_combat_attacks_and_requires_fire_and_damage_for_both_owners(tmp_path):
     import pytest
     from run_mp_loopback_proof import compare_traces, fixture_orders
     for slot, movers in ((0, {0}), (1, {1, 2})):
-        moves = [row.split() for row in fixture_orders(slot, 18000, 0, combat=True) if " move " in row]
-        assert {int(row[1]) for row in moves} == movers
-        assert all(float(row[4]) == 1900 for row in moves)
+        attacks = [row.split() for row in fixture_orders(slot, 18000, 0, combat=True) if " attack " in row]
+        assert {int(row[1]) for row in attacks} == movers
+        assert all(int(row[3]) == 704 + slot for row in attacks)
     peers = [tmp_path / "host", tmp_path / "client"]
     for peer in peers:
         peer.mkdir()
         (peer / "session.trace").write_text("C 1 00\nH 1 a b c d e\nH 2 a b c d e\n")
-    with pytest.raises(ValueError, match="RNG hash"):
+    with pytest.raises(ValueError, match="firing and damage"):
         compare_traces(*peers, 2, combat=True)
     for peer in peers:
         (peer / "session.trace").write_text("C 1 00\nH 1 a b c d e\nH 2 a b c d f\n")
-    assert compare_traces(*peers, 2, combat=True)["rng_states"] == 2
+    with pytest.raises(ValueError, match="firing and damage"):
+        compare_traces(*peers, 2, combat=True)  # Animation RNG alone is insufficient.
+    for peer in peers:
+        with (peer / "session.trace").open("a") as trace:
+            trace.write("B 1 0 fire 10 20 0\nB 1 0 damage 10 20 5\nB 2 1 fire 11 21 0\nB 2 1 damage 11 21 6\n")
+    assert compare_traces(*peers, 2, combat=True)["combat"][0]["1:damage"] == 1
+    (peers[1] / "session.trace").write_text((peers[1] / "session.trace").read_text().replace("damage 11 21 6", "damage 11 21 0"))
+    with pytest.raises(ValueError, match="firing and damage"):
+        compare_traces(*peers, 2, combat=True)
 
 
 def test_mp_handshake_deadline_starts_when_the_loaded_mission_pumps():
@@ -177,6 +187,9 @@ def test_mp_trace_bounds_frame_exit_overshoot(tmp_path):
         compare_traces(*peers, 2, max_extra=0)
     with pytest.raises(ValueError, match="incomplete"):
         compare_traces(*peers, 4)
+    (peers[0] / "session.trace").write_text((peers[1] / "session.trace").read_text().replace("H 3 a", "H 3 z"))
+    with pytest.raises(ValueError, match="first divergent"):
+        compare_traces(*peers, 2)  # A shared overshoot tick must also be compared.
 
 
 def test_mp_wall_clock_uses_normal_time_and_bounds_the_cell(tmp_path, monkeypatch):

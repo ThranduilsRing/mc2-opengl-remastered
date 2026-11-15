@@ -973,16 +973,24 @@ void Mission::start (void)
 {
 	if (mc2::net::active()) {
         std::vector<mc2::sim::ObjectRef> roster;
+        std::vector<std::uint32_t> watchIds;
         for (long i = 0; i < ObjectManager->getNumMovers(); ++i) {
             auto* mover = ObjectManager->getMover(i);
             if (mover->getTeamId() != 0 || mover->getCommanderId() != 0) continue;
             const auto binding = std::ranges::find(orderRecipients, mover, &OrderRecipientBinding::mover);
-            if (binding != orderRecipients.end() && resolveOrderRecipient(binding->ref))
+            if (binding != orderRecipients.end() && resolveOrderRecipient(binding->ref)) {
                 roster.push_back(binding->ref);
+                watchIds.push_back(mover->getWatchID(false));
+            }
         }
-        mc2::net::setRoster(std::move(roster));
+        mc2::net::setRoster(std::move(roster), std::move(watchIds));
         mc2::net::bindQueue(orderIngress.queue(), std::make_unique<PeerAdmission>(*this),
-            [this](mc2::sim::OrderEnvelope envelope) { return submitMissionOrder(orderSession(), std::move(envelope)).has_value(); });
+            [this](mc2::sim::OrderEnvelope envelope) { return submitMissionOrder(orderSession(), std::move(envelope)).has_value(); },
+            [](std::uint32_t part) -> std::optional<mc2::sim::ObjectRef> {
+                auto* target = ObjectManager->findByPartId(part);
+                if (!target || !target->getExists() || target->isDestroyed()) return {};
+                return mc2::sim::ObjectRef{part, static_cast<std::uint32_t>(target->getWatchID(false))};
+            });
     }
 	active = true;
 	mission_phase_mark("mission_ready");

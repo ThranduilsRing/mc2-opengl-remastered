@@ -20,13 +20,15 @@ std::filesystem::path executable;
 std::unique_ptr<Session> session;
 std::unique_ptr<Lockstep> gate;
 std::vector<sim::ObjectRef> roster;
+std::vector<std::uint32_t> rosterWatchIds;
 std::ofstream trace;
 sim::TacticalOrderQueue* orderQueue = nullptr;
 std::unique_ptr<sim::OrderAdmissionValidator> admission;
 PlayerSubmit playerSubmit;
+TargetLookup targetLookup;
 std::chrono::steady_clock::time_point began;
 std::chrono::steady_clock::time_point lastProgress;
-struct ScriptOrder { sim::Tick tick; std::uint32_t mover; std::string verb; float x = 0, y = 0; };
+struct ScriptOrder { sim::Tick tick; std::uint32_t mover; std::string verb; float x = 0, y = 0; std::uint32_t target = 0; };
 std::vector<ScriptOrder> scripted;
 std::size_t nextScript = 0;
 std::uint64_t forcedDesyncTick = 0;
@@ -48,6 +50,7 @@ save::Digest executableHash() {
     return save::sha256(bytes);
 }
 save::Digest contentHash() {
+    // Inherited limitation: this disk-tree digest is not the mounted VFS identity.
     // Content-addressed tree: paths, lengths and fixed 1 MiB chunk digests.
     // Bound memory even for multi-gigabyte packed stock content.
     std::vector<std::filesystem::path> files;
@@ -132,6 +135,13 @@ void scriptOrders() {
             move.wayPath.points = {{row.x, row.y, 0}};
             move.wayPath.mode = {sim::TravelMode::Slow};
         }
+        if (row.verb == "attack") {
+            e.payload.kind = sim::OrderKind::AttackObject;
+            if (!targetLookup) fail("script target lookup unavailable");
+            e.payload.target = targetLookup(row.target);
+            if (!e.payload.target) fail("script attack target unavailable");
+            e.payload.attack.emplace().pursue = true;
+        }
         if (!submitScriptOrder(std::move(e), playerSubmit)) fail("script order could not enter mission order path");
     }
 }
@@ -174,9 +184,10 @@ void configure(int argc, char** argv) {
                 if (!(input >> delayMs) || delayMs > 250) throw std::runtime_error("MP shim delay must be 0..250 ms");
                 continue;
             }
-            if ((row.verb != "move" && row.verb != "stop" && row.verb != "reject") ||
-                (row.verb == "move" && !(input >> row.x >> row.y)) || (!scripted.empty() && row.tick < scripted.back().tick))
-                throw std::runtime_error("invalid MP script (tick mover move x y | tick mover stop)");
+            if ((row.verb != "move" && row.verb != "stop" && row.verb != "reject" && row.verb != "attack") ||
+                (row.verb == "move" && !(input >> row.x >> row.y)) ||
+                (row.verb == "attack" && !(input >> row.target)) || (!scripted.empty() && row.tick < scripted.back().tick))
+                throw std::runtime_error("invalid MP script (tick mover move x y | stop | attack target-part)");
             scripted.push_back(row);
         }
     }
@@ -215,7 +226,18 @@ void beginMission(std::string_view mission, std::uint32_t seed) {
     catch (const std::exception& error) { fail(error.what()); }
     std::fprintf(stderr, "Multiplayer: slot=%u mission=%s seed=%u awaiting peer\n", localSlot(), identity.mission.c_str(), seed);
 }
-void setRoster(std::vector<sim::ObjectRef> initial) { roster = std::move(initial); }
+void setRoster(std::vector<sim::ObjectRef> initial, std::vector<std::uint32_t> watchIds) {
+    if (initial.size() != watchIds.size()) fail("MP roster identity mismatch");
+    roster = std::move(initial); rosterWatchIds = std::move(watchIds);
+}
+void combatEvent(std::string_view event, std::uint32_t attacker, std::uint32_t target, float damage) {
+    if (!enabled || !gate || !trace) return;
+    const auto found = std::ranges::find(rosterWatchIds, attacker);
+    if (found == rosterWatchIds.end()) return;
+    const auto index = static_cast<std::uint32_t>(found - rosterWatchIds.begin());
+    trace << "B " << nextTick() << ' ' << moverOwner(index, static_cast<std::uint32_t>(roster.size()), true)
+          << ' ' << event << ' ' << attacker << ' ' << target << ' ' << damage << '\n' << std::flush;
+}
 bool owns(sim::ObjectRef ref, std::uint32_t slot) {
     const auto found = std::ranges::find(roster, ref);
     return moverOwner(static_cast<std::uint32_t>(found - roster.begin()), static_cast<std::uint32_t>(roster.size()), found != roster.end()) == slot;
@@ -227,8 +249,9 @@ bool submitLocal(sim::OrderEnvelope envelope) {
 bool submitScriptOrder(sim::OrderEnvelope envelope, const PlayerSubmit& submit) {
     return submit && submit(std::move(envelope));
 }
-void bindQueue(sim::TacticalOrderQueue& queue, std::unique_ptr<sim::OrderAdmissionValidator> validator, PlayerSubmit submit) {
+void bindQueue(sim::TacticalOrderQueue& queue, std::unique_ptr<sim::OrderAdmissionValidator> validator, PlayerSubmit submit, TargetLookup target) {
     orderQueue = &queue; admission = std::move(validator); playerSubmit = std::move(submit);
+    targetLookup = std::move(target);
 }
 std::uint64_t nextTick() { return gate ? gate->completed() + 1 : 1; }
 bool prepareTick(bool due) {
