@@ -435,6 +435,13 @@ void MainMenu::update()
 		static bool s_menuMarked = false;
 		if ( !s_menuMarked ) { s_menuMarked = true; mc2::fmt::print_out("[VIA_MENU v1] event=main_menu\n"); }
 	}
+    const auto pickedMission = PlayerFrontEnd::takeMissionStart();
+    if (!pickedMission.empty() && LogisticsData::instance) {
+        skipIntro();
+        LogisticsData::instance->setSingleMission(pickedMission.c_str());
+        status = SKIPONENEXT;
+        return;
+    }
     const auto pickedCampaign = PlayerFrontEnd::takeCampaignStart();
     if (!pickedCampaign.empty() && LogisticsData::instance) {
         skipIntro();

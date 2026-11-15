@@ -38,13 +38,15 @@ namespace {
 struct Pack {
     std::string id, name, description, credits, author, kind, group;
     Json env = Json::object();
+    std::vector<std::string> dependencies;
     bool enabled = false;
-    bool unrecognised = false;
+    std::string problem;
+    std::vector<std::string> missions;
     std::map<std::string, CampaignInfo> campaigns;
 };
 Json settings = Json::object();
 std::vector<Pack> packs;
-std::string campaign, base, texture, campaignFit, pendingStart, error;
+std::string campaign, base, texture, campaignFit, pendingStart, pendingMission, error;
 bool pickerOpen = false, scanned = false, restart = false, settingsChanged = false;
 std::map<std::string, std::optional<std::string>> inheritedEnv;
 
@@ -106,9 +108,10 @@ std::vector<fs::path> files(const fs::path& path) {
 }
 std::vector<std::string> campaigns(std::string_view id) {
     std::vector<std::string> result;
+    for (const auto& pack : packs) if (pack.id == id && pack.kind == "assets") return {"campaign"};
     const fs::path root = id.empty() ? fs::path("data") : fs::path("mods") / id / "data";
     for (const auto& file : files(root / "campaign"))
-        if (file.extension() == ".fit") result.push_back(file.stem().string());
+        if (file.extension() == ".fit" || file.extension() == ".FIT") result.push_back(file.stem().string());
     // Stock campaign.fit is shipped in the FastFiles, invisible to directory iteration.
     if (id.empty() && std::find(result.begin(), result.end(), "campaign") == result.end()) result.insert(result.begin(), "campaign");
     return result;
@@ -121,14 +124,27 @@ void scan() {
     const auto deps = env(mc2::gate::name<"MC2_MOD_DEPS">()).value_or("");
     for (const auto& dir : files("mods")) {
         std::error_code ec;
-        if (!fs::is_directory(dir / "data", ec)) continue;
+        if (!fs::is_directory(dir, ec)) continue;
         const auto id = dir.filename().string();
-        if (id.empty() || id[0] == '.' || id.find_first_of(",;") != std::string::npos) continue;
-        const auto json = readJson(dir / "mod.json");
+        if (id.empty() || id[0] == '.') continue;
+        std::ifstream manifest(dir / "mod.json");
+        const bool manifestExists = manifest.is_open();
+        const auto json = manifestExists ? Json::parse(manifest, nullptr, false) : Json::object();
         Pack pack;
         pack.id = id;
+        bool archives = false;
+        for (const auto& file : files(dir)) archives |= file.extension() == ".fst";
+        pack.problem = packProblem(json, manifestExists, fs::is_directory(dir / "data", ec), archives, id);
+        for (const auto& file : files(dir / "data" / "missions")) {
+            auto ext = file.extension().string();
+            std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+            if (ext != ".fit") continue;
+            std::ifstream input(file);
+            const std::string source((std::istreambuf_iterator<char>(input)), {});
+            if (source.find("[MissionSettings]") != std::string::npos) pack.missions.push_back(file.stem().string());
+        }
         for (const auto& file : files(dir / "data" / "campaign")) {
-            if (file.extension() != ".fit") continue;
+            if (file.extension() != ".fit" && file.extension() != ".FIT") continue;
             std::ifstream input(file);
             const std::string source((std::istreambuf_iterator<char>(input)), {});
             pack.campaigns.emplace(file.stem().string(), campaignInfo(source));
@@ -139,18 +155,21 @@ void scan() {
             fitTitle = info.title;
         }
         pack.name = campaignTitle(text(json, "name"), fitTitle, id);
-        pack.unrecognised = unrecognisedCampaign(text(json, "name"), !pack.campaigns.empty());
         pack.description = text(json, "description");
         pack.credits = text(json, "credits");
         pack.author = text(json, "author");
         pack.kind = text(json, "type");
         pack.group = text(json, "radioGroup");
         if (json.contains("env") && json["env"].is_object()) pack.env = json["env"];
-        if (pack.kind.empty()) {
-            bool playable = false;
-            for (const auto& file : files(dir / "data" / "missions"))
-                playable |= file.extension() == ".fit";
-            pack.kind = id.find("-compat") != std::string::npos ? "dependency" : playable || !pack.campaigns.empty() ? "campaign" : "assets";
+        pack.kind = packKind(pack.kind, id, !pack.campaigns.empty(), !pack.missions.empty());
+        if (pack.problem.empty() && pack.kind == "campaign" && pack.campaigns.empty() && pack.missions.empty())
+            pack.problem = "No campaign FIT or playable mission FIT found; import the complete campaign.";
+        if (pack.problem.empty() && json.contains("dependencies")) for (const auto& dep : json["dependencies"]) {
+            pack.dependencies.push_back(dep.get<std::string>());
+            if (!fs::is_directory(fs::path("mods") / dep.get<std::string>() / "data", ec)) {
+                pack.problem = "Missing dependency: " + dep.get<std::string>() + "; import its compatibility or add-on pack first.";
+                break;
+            }
         }
         pack.enabled = contains(deps, id);
         if (pack.enabled && pack.kind == "dependency") base = id;
@@ -163,6 +182,7 @@ void scan() {
 }
 void autoBase() {
     if (campaign.empty()) { base.clear(); return; }
+    for (const auto& pack : packs) if (pack.id == campaign && pack.kind == "assets") { base.clear(); return; }
     bool high = false, magic = false;
     const auto missions = fs::path("mods") / campaign / "data" / "missions";
     for (const auto& dir : {missions, missions / "warriors"}) {
@@ -182,11 +202,13 @@ void autoBase() {
 }
 std::string dependencies() {
     std::string deps;
-    auto append = [&](std::string_view id) { if (id.empty()) return; if (!deps.empty()) deps += ','; deps += id; };
+    auto append = [&](std::string_view id) { if (id.empty() || contains(deps, id)) return; if (!deps.empty()) deps += ','; deps += id; };
     for (const auto& pack : packs)
-        if (pack.enabled && pack.kind != "campaign" && pack.kind != "dependency" && pack.group != "texture-quality") append(pack.id);
+        if (pack.enabled && pack.id != campaign && pack.kind != "campaign" && pack.kind != "dependency" && pack.group != "texture-quality") append(pack.id);
     append(texture);
     append(base);
+    for (const auto& pack : packs) if (pack.enabled || pack.id == campaign)
+        for (const auto& dependency : pack.dependencies) append(dependency);
     return deps;
 }
 void migrateSettings() {
@@ -267,11 +289,14 @@ void loadSettings() {
     }
     pendingStart = text(settings, "start_campaign");
     if (!pendingStart.empty()) { settings.erase("start_campaign"); saveSettings(); }
+    pendingMission = text(settings, "start_mission");
+    if (!pendingMission.empty()) { settings.erase("start_mission"); saveSettings(); }
     mc2::gate::invalidateAll();
 }
 
 void requestCampaignStart(std::string fit) { pendingStart = std::move(fit); }
 std::string takeCampaignStart() { return std::exchange(pendingStart, {}); }
+std::string takeMissionStart() { return std::exchange(pendingMission, {}); }
 
 static void drawCommunityCredits() {
     const auto* vp = ImGui::GetMainViewport();
@@ -352,7 +377,7 @@ void drawMainMenu(bool showCredits) {
     if (!ImGui::Begin("Campaigns & mods", &pickerOpen, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings)) { ImGui::End(); popPickerStyle(); return; }
     if (ImGui::Button("Refresh")) scan();
     ImGui::SameLine();
-    ImGui::TextUnformatted("Installed community campaigns");
+    ImGui::TextUnformatted("Installed campaigns, missions and add-ons");
     auto select = [&](std::string_view id) {
         campaign = id;
         autoBase();
@@ -363,21 +388,14 @@ void drawMainMenu(bool showCredits) {
     ImGui::TableSetupColumn("Library", ImGuiTableColumnFlags_WidthFixed, 300 * scale);
     ImGui::TableSetupColumn("Details");
     ImGui::TableNextColumn();
-    ImGui::SeparatorText("CAMPAIGN LIBRARY");
+    ImGui::SeparatorText("INSTALLED MODS");
     if (ImGui::BeginListBox("##packs", ImVec2(-1, 275 * scale))) {
         if (ImGui::Selectable("Stock campaign", campaign.empty())) select("");
         for (const auto& pack : packs) {
             ImGui::PushID(pack.id.c_str());
-            if (pack.kind == "campaign" && !pack.unrecognised && ImGui::Selectable(pack.name.c_str(), campaign == pack.id)) select(pack.id);
+            if (ImGui::Selectable(pack.name.c_str(), campaign == pack.id)) select(pack.id);
+            if (!pack.problem.empty()) ImGui::TextWrapped("%s", pack.problem.c_str());
             ImGui::PopID();
-        }
-        if (ImGui::TreeNode("Other / unrecognised folders")) {
-            for (auto& pack : packs) if (pack.unrecognised) {
-                ImGui::PushID(pack.id.c_str());
-                if (ImGui::Selectable(pack.name.c_str(), campaign == pack.id)) select(pack.id);
-                ImGui::PopID();
-            }
-            ImGui::TreePop();
         }
         ImGui::EndListBox();
     }
@@ -393,7 +411,9 @@ void drawMainMenu(bool showCredits) {
             const auto& [name, info] = *fit;
             if (info.missions) ImGui::Text("Missions: %d", info.missions);
         }
-        if (pack.unrecognised) ImGui::TextWrapped("Unrecognised folder: no named manifest or campaign FIT. Contents remain available as add-ons below.");
+        ImGui::TextWrapped("Folder: %s (%s)", pack.id.c_str(), pack.kind.c_str());
+        if (pack.kind == "assets") ImGui::TextWrapped("Start the stock campaign with this add-on, or enable it below alongside another campaign.");
+        if (!pack.problem.empty()) ImGui::TextWrapped("%s", pack.problem.c_str());
     }
     if (!base.empty()) ImGui::TextWrapped("Required base: %s", base.c_str());
     if (!texture.empty()) ImGui::TextWrapped("Texture pack: %s", texture.c_str());
@@ -426,9 +446,13 @@ void drawMainMenu(bool showCredits) {
         ImGui::EndCombo();
     }
     ImGui::PopItemWidth();
-    if (ImGui::TreeNode("Add-ons")) {
+    if (ImGui::TreeNodeEx("Add-ons", ImGuiTreeNodeFlags_DefaultOpen)) {
         for (auto& pack : packs) if (pack.kind != "campaign" && pack.kind != "dependency" && pack.group != "texture-quality")
+        {
+            ImGui::BeginDisabled(!pack.problem.empty());
             ImGui::Checkbox(pack.name.c_str(), &pack.enabled);
+            ImGui::EndDisabled();
+        }
         ImGui::TreePop();
     }
     ImGui::EndTable();
@@ -437,19 +461,41 @@ void drawMainMenu(bool showCredits) {
     const bool contentChanged = settingsChanged || campaign != env(mc2::gate::name<"MC2_ACTIVE_MOD">()).value_or("") || deps != env(mc2::gate::name<"MC2_MOD_DEPS">()).value_or("");
     const bool missingBase = !base.empty() && std::none_of(packs.begin(), packs.end(), [](const Pack& p) { return p.id == base; });
     if (missingBase) ImGui::TextWrapped("Required base %s is missing. Import the compatibility pack first.", base.c_str());
-    if (campaignFit.empty()) ImGui::TextUnformatted("No loose campaign FIT found in this pack.");
-    ImGui::BeginDisabled(campaignFit.empty() || missingBase);
-    if (ImGui::Button(contentChanged ? "Start campaign (restart game)" : "Start campaign")) {
+    std::string problem;
+    const Pack* selected = nullptr;
+    for (const auto& pack : packs) {
+        if (pack.id == campaign) selected = &pack;
+        if ((pack.id == campaign || pack.enabled || pack.id == base || pack.id == texture) && !pack.problem.empty()) problem = pack.problem;
+    }
+    const bool single = selected && campaignFit.empty() && !selected->missions.empty();
+    static std::string mission;
+    if (single) {
+        if (std::find(selected->missions.begin(), selected->missions.end(), mission) == selected->missions.end()) mission = selected->missions.front();
+        if (ImGui::BeginCombo("Single mission", mission.c_str())) {
+            for (const auto& name : selected->missions) if (ImGui::Selectable(name.c_str(), mission == name)) mission = name;
+            ImGui::EndCombo();
+        }
+    }
+    if (!problem.empty()) ImGui::TextWrapped("%s", problem.c_str());
+    else if (campaignFit.empty() && !single) ImGui::TextUnformatted("No campaign or playable mission found; compatibility packs are used with a campaign.");
+    ImGui::BeginDisabled((campaignFit.empty() && !single) || missingBase || !problem.empty());
+    const char* startLabel = single ? "Start single mission" : selected && selected->kind == "assets" ? "Start stock campaign with add-on" : "Start campaign";
+    if (ImGui::Button(startLabel)) {
         settings["last_campaign"] = campaign;
         settings["last_base"] = base;
         settings["tex_pack_mod"] = texture;
         std::string addons;
-        for (const auto& pack : packs) if (pack.enabled && pack.kind != "campaign" && pack.kind != "dependency" && pack.group != "texture-quality") {
+        for (const auto& pack : packs) if (pack.enabled && pack.id != campaign && pack.kind != "campaign" && pack.kind != "dependency" && pack.group != "texture-quality") {
             if (!addons.empty()) addons += ',';
             addons += pack.id;
         }
+        for (const auto& pack : packs) if (pack.enabled) for (const auto& dep : pack.dependencies) {
+            if (dep == base || dep == texture || dep == campaign || contains(addons, dep)) continue;
+            if (!addons.empty()) addons += ',';
+            addons += dep;
+        }
         settings["last_addons"] = addons;
-        if (contentChanged) settings["start_campaign"] = campaignFit;
+        if (contentChanged) settings[single ? "start_mission" : "start_campaign"] = single ? mission : campaignFit;
         if (saveSettings()) {
             if (contentChanged) {
                 // Selecting content in the picker supersedes a startup mod override.
@@ -457,16 +503,21 @@ void drawMainMenu(bool showCredits) {
                 inheritedEnv[mc2::gate::name<"MC2_MOD_DEPS">()] = std::nullopt;
                 restart = true;
                 gos_TerminateApplication();
-            } else pendingStart = campaignFit;
+            } else if (single) pendingMission = mission;
+            else pendingStart = campaignFit;
             std::printf("[CAMPAIGN_PICKER] start mod=%s campaign=%s deps=%s restart=%d\n", campaign.c_str(), campaignFit.c_str(), deps.c_str(), static_cast<int>(contentChanged));
             pickerOpen = false;
         }
     }
     ImGui::EndDisabled();
     if (ImGui::TreeNode("Import community campaigns")) {
-        ImGui::TextWrapped("Use the bundled importer CLI from this install folder. Probe first, then import an MC2, MC2X or MCO install or unpacked campaign folder:");
-        ImGui::TextUnformatted("py -3 tools/mc2_import/import_tool.py probe \"SOURCE\"\npy -3 tools/mc2_import/import_tool.py auto \"SOURCE\" --deploy .");
-        ImGui::TextWrapped("Requires Python 3 (standard library only). On Linux replace py -3 with python3. --dry-run previews; --force replaces an existing import. Ctrl+C cancels. Read warnings and missing-file counts, then Refresh here. For legacy installer EXEs, extract/install into a separate source folder first.");
+        ImGui::TextWrapped("Import a downloaded ZIP, extracted installer or legacy install folder. Import the full Omnitech or MC2X base before its campaign add-ons, then Refresh here.");
+        ImGui::TextUnformatted("py -3 tools/import_campaign.py \"SOURCE\" --deploy .");
+        if (selected) {
+            const auto command = "py -3 tools/import_campaign.py \"" + fs::absolute(fs::path("mods") / selected->id).string() + "\" --deploy .";
+            if (ImGui::Button("Copy import command for selected folder")) ImGui::SetClipboardText(command.c_str());
+        }
+        ImGui::TextWrapped("Run the command from this game folder. Requires Python 3. On Linux replace py -3 with python3. Source files are preserved. For installer EXEs, extract into a separate source folder first.");
         ImGui::TreePop();
     }
     if (!error.empty()) ImGui::TextWrapped("%s", error.c_str());
