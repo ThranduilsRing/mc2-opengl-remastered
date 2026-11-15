@@ -148,7 +148,7 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None):
             for b in np.unique(tb):
                 tri = idx[tb == b]
                 used, inv = np.unique(tri.ravel(), return_inverse=True)
-                parts.setdefault(int(b), []).append((pos[used], nrm[used], uv[used], inv.reshape(-1, 3)))
+                parts.setdefault(int(b), []).append((pos[used], nrm[used], uv[used], inv.reshape(-1, 3), pr.get("material", 0)))
 
     for (a, b), count in sorted(pairs.items()):
         print(f"mixed_pair {nodes[joint_nodes[a]]['name']} {nodes[joint_nodes[b]]['name']} {count}")
@@ -214,18 +214,19 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None):
         if not np.isfinite(drift) or drift >= 1e-4:
             raise ValueError(f"ibm_drift {drift:.9g} >= 1e-4")
         p = [np.concatenate([q[k] for q in plist]) for k in range(3)]
-        base, tris = 0, []
+        base, material_indices = 0, {}
         for q in plist:
-            tris.append(q[3] + base)
+            material_indices.setdefault(q[4], []).append(q[3] + base)
             base += len(q[0])
-        tris = np.concatenate(tris).astype(np.uint32)
         nv = len(p[0])
         attrs = {"POSITION": add(p[0], 5126, "VEC3", 34962, True), "NORMAL": add(p[1], 5126, "VEC3", 34962),
                  "TEXCOORD_0": add(p[2], 5126, "VEC2", 34962),
                  "JOINTS_0": add(np.zeros((nv, 4), np.uint16), 5123, "VEC4", 34962),
                  "WEIGHTS_0": add(np.tile(np.array([1, 0, 0, 0], np.float32), (nv, 1)), 5126, "VEC4", 34962)}
         mname = nm(jn).replace("_DM0", "")
-        meshes.append({"name": mname, "primitives": [{"attributes": attrs, "indices": add(tris.ravel(), 5125, "SCALAR", 34963), "material": 0}]})
+        primitives = [{"attributes": attrs, "indices": add(np.concatenate(indices).astype(np.uint32).ravel(), 5125, "SCALAR", 34963), "material": mat}
+                      for mat, indices in sorted(material_indices.items())]
+        meshes.append({"name": mname, "primitives": primitives})
         skins.append({"joints": [remap[jn]], "inverseBindMatrices": add(ibm.T.astype(np.float32)[None].reshape(1, 16), 5126, "MAT4")})
         mesh_nodes.append({"name": mname + "_n", "mesh": len(meshes) - 1, "skin": len(skins) - 1})
         if len(mesh_nodes[-1]["name"]) > 24:
@@ -262,7 +263,9 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None):
 
     doc = {"asset": {"version": "2.0", "generator": "tools/mw5_mechs/build_glb.py"},
            "scene": 0, "scenes": [{"nodes": root_nodes}], "nodes": out_nodes, "meshes": meshes, "skins": skins,
-           "materials": [{"name": "mw5_mech", "pbrMetallicRoughness": {"baseColorTexture": {"index": 0}, "metallicFactor": 0.3, "roughnessFactor": 0.55}}],
+           "materials": [{"name": ("mw5_body", "mw5_variant")[i] if i < 2 else m.get("name", f"mw5_material_{i}"),
+                          "pbrMetallicRoughness": {"baseColorTexture": {"index": 0}, "metallicFactor": 0.3, "roughnessFactor": 0.55}}
+                         for i, m in enumerate(g.get("materials") or [{}])],
            "textures": [{"source": 0}], "images": [{"uri": image_name}],
            "accessors": accs, "bufferViews": views, "buffers": [{"byteLength": len(blob)}], "animations": anims}
     js = json.dumps(doc, separators=(",", ":")).encode()
