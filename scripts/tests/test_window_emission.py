@@ -20,7 +20,7 @@ def test_tree_vertex_quality_removes_only_unused_sh(tmp_path, quality):
                    check=True, capture_output=True, **console_child.child_kwargs(redirected=True))
     subprocess.run([shader_common.find_tool('spirv-opt'), str(spv),
                     '--set-spec-const-default-value=0:' + str(quality), '--freeze-spec-const',
-                    '--ssa-rewrite', '--ccp', '--eliminate-dead-branches',
+                    '--fold-spec-const-op-composite', '--ssa-rewrite', '--ccp', '--eliminate-dead-branches',
                     '--eliminate-dead-functions', '-o', str(optimized)],
                    check=True, capture_output=True, **console_child.child_kwargs(redirected=True))
     dis = subprocess.check_output([shader_common.find_tool('spirv-dis'), str(optimized)], text=True, **console_child.child_kwargs(redirected=True))
