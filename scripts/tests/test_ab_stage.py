@@ -216,3 +216,14 @@ def test_disk_guard_reserve_env_override(tmp_path, monkeypatch, capsys):
     ab.disk_guard(tmp_path / "stage", 1)
     assert "-> ok" in capsys.readouterr().out
     ab.disk_guard(tmp_path / "stage", 1, min_free_gb=0)
+
+
+def test_data_tree_skips_linux_top_level_binary(tmp_path):
+    """The box's extensionless Linux `mc2` (and .so/.debug) is the exe side of an A/B, never fingerprinted data."""
+    (tmp_path / "data").mkdir()
+    (tmp_path / "data" / "a.fit").write_text("x")
+    for name in ("mc2", "mc2.exe", "mc2.pdb", "libfoo.so", "mc2.debug"):
+        (tmp_path / name).write_bytes(b"bin")
+    files = ab.data_tree_files(tmp_path)
+    assert "data/a.fit" in files
+    assert not {"mc2", "mc2.exe", "mc2.pdb", "libfoo.so", "mc2.debug"} & set(files)
