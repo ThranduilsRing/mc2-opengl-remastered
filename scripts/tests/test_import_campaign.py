@@ -38,6 +38,8 @@ def test_folder_zip_same_identity_idempotent_and_read_only(sample, tmp_path):
     assert result["campaigns"][0]["first_mission"] == "demo01"
     metadata = json.loads((deploy / "mods" / result["mod"] / "mod.json").read_text())
     assert metadata["type"] == "campaign" and metadata["dependencies"] == ["mc2x-compat"]
+    assert metadata["name"] == "Synthetic Campaign"
+    assert metadata["description"] and metadata["author"] and metadata["credits"]
     archive = tmp_path / "renamed.zip"
     with zipfile.ZipFile(archive, "w") as z:
         for name, p in imp.source_files(source).items():

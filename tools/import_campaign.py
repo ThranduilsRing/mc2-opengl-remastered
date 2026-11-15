@@ -262,6 +262,9 @@ def import_campaign(source, deploy):
         if not (out / "data" / "campaign").is_dir():
             raise ValueError("Converter produced no campaign; original download may be incomplete.")
         metadata = {"id": mod_id, "name": " / ".join(c["name"] for c in campaigns),
+                    "description": "Imported community campaigns: " + ", ".join(c["name"] for c in campaigns),
+                    "author": "Original campaign authors (see the supplied campaign credits)",
+                    "credits": "Original campaign authors retain all content credits; imported from a user-supplied download.",
                     "type": "campaign", "version": "1.0", "dependencies": [compat] if compat else []}
         (out / "mod.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
         hashes = {p.relative_to(out).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
