@@ -682,6 +682,7 @@ void MechLabScreen::update()
 void MechLabScreen::updateDiagramInput()
 {
 	auto refuseRemoval = [this]() {
+		LogisticsOneButtonDialog::instance()->setText(IDS_MC_COMPONENT_TOO_HOT, IDS_DIALOG_OK, IDS_DIALOG_OK);
 		LogisticsOneButtonDialog::instance()->setText("Not enough cooling: remove weapons first.");
 		LogisticsOneButtonDialog::instance()->begin();
 		bErrorDlg = true;
@@ -1753,6 +1754,7 @@ void MechLabScreen::endDrag( )
 			[this](long& i, long& j) {
 				const int result = addComponent(pDragComponent, i, j);
 				if (result != NO_ERR) {
+					LogisticsOneButtonDialog::instance()->setText(IDS_MC_COMPONENT_TOO_HOT, IDS_DIALOG_OK, IDS_DIALOG_OK);
 					LogisticsOneButtonDialog::instance()->setText(result == COMPONENT_TOO_HOT
 						? "Not enough cooling for this component."
 						: "Component cannot fit here: choose a free valid slot.");
