@@ -28,6 +28,8 @@ def sample(tmp_path):
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_bytes(data)
     (deploy / "mods/mc2x-compat/data").mkdir(parents=True)
+    (source / "data/objects").mkdir()
+    (source / "data/objects/compbas.csv").write_bytes(b"shared ammo")
     return source, deploy
 
 
@@ -73,7 +75,7 @@ def test_incomplete_and_wrong_folder(sample):
 
 def test_missing_compat_does_not_install(sample):
     source, deploy = sample
-    (deploy / "mods/mc2x-compat/data").rmdir()
+    imp.shutil.rmtree(deploy / "mods/mc2x-compat/data")
     (deploy / "mods/mc2x-compat").rmdir()
     with pytest.raises(ValueError, match="Missing mc2x-compat"):
         imp.import_campaign(source, deploy)
@@ -143,7 +145,7 @@ def test_data_root_pack_and_missing_dependency_on_repeat(sample):
     source, deploy = sample
     result = imp.import_campaign(source / "data", deploy)
     assert result["status"] == "installed"
-    (deploy / "mods/mc2x-compat/data").rmdir()
+    imp.shutil.rmtree(deploy / "mods/mc2x-compat/data")
     with pytest.raises(ValueError, match="Missing mc2x-compat"):
         imp.import_campaign(source, deploy)
 
@@ -213,7 +215,8 @@ def test_failed_transfer_is_never_published(sample, monkeypatch, failure):
 def test_new_compat_keeps_its_component_table(sample, monkeypatch):
     import shutil
     source, deploy = sample
-    (deploy / "mods/mc2x-compat/data").rmdir()
+    (source / "data/objects/compbas.csv").unlink()
+    imp.shutil.rmtree(deploy / "mods/mc2x-compat/data")
     (deploy / "mods/mc2x-compat").rmdir()
     (source / "misc.fst").write_bytes(b"\xaf\xec\xdd\xfa" + bytes(300))
     entries = [(274, 0, 0, "data/objects/mc2xcomp.csv", False, bytes(300))]
@@ -259,14 +262,69 @@ def test_campaign_object_holes_use_authored_definitions(tmp_path):
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows batch launcher")
-def test_batch_changes_directory_and_preserves_failure(tmp_path):
+def test_batch_preserves_relative_source_and_failure(tmp_path):
     import subprocess
     game = tmp_path / "game with spaces"
     (game / "tools").mkdir(parents=True)
-    (game / "tools/import_campaign.py").write_text("import os, sys\nassert os.getcwd() == sys.argv[1]\nsys.exit(7)\n")
+    (tmp_path / "relative.zip").touch()
+    (game / "tools/import_campaign.py").write_text(
+        "import os, sys\nassert sys.argv[1] == 'relative.zip'\nassert os.path.isfile(sys.argv[1])\nsys.exit(7)\n")
     launcher = game / "import-campaign.bat"
     launcher.write_bytes((ROOT / "import-campaign.bat").read_bytes())
-    run = subprocess.run(["cmd", "/d", "/c", "call", str(launcher), str(game)], cwd=tmp_path,
+    run = subprocess.run(["cmd", "/d", "/c", "call", str(launcher), "relative.zip"], cwd=tmp_path,
                          input="\n", capture_output=True, text=True,
                          **imp.console_child.child_kwargs(redirected=True))
     assert run.returncode == 7, run.stdout + run.stderr
+
+
+def test_existing_shared_components_repaired_on_unchanged_import(sample, tmp_path, capsys):
+    source, deploy = sample
+    result = imp.import_campaign(source, deploy)
+    dep = deploy / "mods/mc2x-compat"
+    # A mission-only pack must repair from the compatibility base's provenance.
+    base = tmp_path / "full-base"
+    (base / "data/objects").mkdir(parents=True)
+    (base / "data/objects/mc2xcomp.csv").write_bytes(b"base ammo")
+    (dep / "mc2x_import_report.json").write_text(json.dumps({"source_path": str(base)}))
+    table = dep / "data/objects/compbas.csv"
+    for corrupt in (None, b"broken"):
+        if corrupt is None:
+            table.unlink()
+        else:
+            table.write_bytes(corrupt)
+        assert imp.import_campaign(source, deploy)["status"] == "unchanged"
+        assert table.read_bytes() == b"base ammo"
+        assert "Repaired shared component table" in capsys.readouterr().err
+    assert imp.import_campaign(source, deploy)["mod"] == result["mod"]
+
+
+@pytest.mark.parametrize("names", [["mc2xcomp.csv"], ["compbas.csv", "mc2xcomp.csv"]])
+def test_loose_component_alias_and_priority(tmp_path, names):
+    import transfer_mc2x_campaign as transfer
+    source, out = tmp_path / "source", tmp_path / "out"
+    (source / "objects").mkdir(parents=True)
+    for name in names:
+        (source / "objects" / name).write_bytes(name.encode())
+    transfer.copy_loose_delta(str(source), [], str(out))
+    assert (out / "objects/compbas.csv").read_bytes() == b"mc2xcomp.csv"
+    assert not (out / "objects/mc2xcomp.csv").exists()
+
+
+def test_imported_id_resolves_legacy_manifest_without_changing_stock(sample):
+    from scripts.run_smoke import _modmission_env_guard
+    from scripts.smoke_lib.manifest import Entry
+    source, deploy = sample
+    mod = imp.import_campaign(source, deploy)["mod"]
+    entry = Entry(tier="tier3", stem="demo01", mod="OldFolder", deps="OldBase")
+    ok, env, error = _modmission_env_guard(entry, deploy, {"MC2_ACTIVE_MOD": mod})
+    assert ok and not error
+    assert env == {"MC2_ACTIVE_MOD": mod, "MC2_MOD_DEPS": "mc2x-compat"}
+    assert entry.mod == "OldFolder"
+    assert _modmission_env_guard(Entry(tier="tier1", stem="mc2_01"), deploy, {}) == (True, {}, "")
+    (deploy / "mods" / mod / "mod.json").write_text("{}")
+    assert not _modmission_env_guard(entry, deploy, {"MC2_ACTIVE_MOD": mod})[0]
+
+
+def test_batch_preserves_callers_relative_source_directory():
+    batch = (ROOT / "import-campaign.bat").read_text().lower()
+    assert "cd /d" not in batch and "pushd" not in batch

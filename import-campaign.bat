@@ -1,6 +1,5 @@
 @echo off
 setlocal
-cd /d "%~dp0"
 if not "%~1"=="" goto import
 set /p "campaign=Paste the campaign ZIP or folder path: "
 py -3 "%~dp0tools\import_campaign.py" "%campaign:"=%" --deploy "%~dp0."

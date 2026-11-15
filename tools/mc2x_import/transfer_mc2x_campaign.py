@@ -259,10 +259,12 @@ def copy_loose_delta(src_data, refs, out_data, drop_upscale=False, gui_canon=Non
     import shutil
     n = 0
     for root, _, files in os.walk(src_data):
-        for fn in files:
+        for fn in sorted(files, key=lambda name: name.lower() == "mc2xcomp.csv"):
             sp = os.path.join(root, fn)
             rel = os.path.relpath(sp, src_data).replace("\\", "/")
             rel_key = ("data/" + rel).lower()
+            if rel_key == "data/objects/mc2xcomp.csv":
+                rel = "objects/compbas.csv"
             if rel_key in EXCLUDE_REL or rel_key in CORE_GUI_EXCLUDE:
                 continue
             keep_content = _is_campaign_unique_asset(rel)  # colormaps + matched icon set survive both filters

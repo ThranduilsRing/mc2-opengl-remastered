@@ -148,6 +148,38 @@ def fill_campaign_object_slots(root, out, refs):
         write_pak(str(destination), slots)
 
 
+def repair_shared_components(existing, root, scratch):
+    """Validate shared ammo against its own source, including on unchanged imports."""
+    report = existing / "mc2x_import_report.json"
+    origin = Path(json.loads(report.read_text())["source_path"]) if report.is_file() else root
+    destination = existing / "data/objects/compbas.csv"
+    candidates = source_files(origin) if origin.is_dir() else {}
+    raw = None
+    archive = candidates.get("misc.fst")
+    if archive:
+        entries = sorted(fst_entries(archive), key=lambda e: e[3].lower().endswith("mc2xcomp.csv"))
+        for off, comp, real, name, lz, data in entries:
+            if name.replace("\\", "/").lower() in (
+                    "data/objects/compbas.csv", "data/objects/mc2xcomp.csv"):
+                raw = legacy.fst.decompress_entry(off, comp, real, lz, data)
+    for name in ("data/objects/compbas.csv", "data/objects/mc2xcomp.csv"):
+        if name in candidates:
+            raw = candidates[name].read_bytes()
+    if raw is None:
+        if not destination.is_file():
+            raise ValueError(f"Missing shared component table {destination}; re-import the full MC2X-CVE-G base first (source: {origin}).")
+        return
+    if destination.is_file() and destination.read_bytes() == raw:
+        return
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if destination.is_symlink() or destination.parent.is_symlink() or destination.parent.is_junction():
+        raise ValueError(f"Linked shared component path: {destination}")
+    temporary = scratch / "shared-compbas.csv"
+    temporary.write_bytes(raw)
+    temporary.replace(destination)
+    print(f"Repaired shared component table: {destination} from {origin}", file=sys.stderr)
+
+
 def find_root(folder):
     candidates = [folder] + sorted(p for p in folder.iterdir() if p.is_dir())
     roots = [p for p in candidates if (p / "data").is_dir() or (p / "Data").is_dir()
@@ -182,6 +214,7 @@ def import_campaign(source, deploy):
                     extractor = str(deploy / "innoextract.exe")
                 if not extractor:
                     raise ValueError("Expected a ZIP or campaign folder. For Inno Setup EXEs put innoextract on PATH (see IMPORT-CAMPAIGNS.md), or install into a separate folder and import that folder. Extract 7z/RAR downloads first.")
+                # background-launch: allow innoextract console archive reader only; never runs the installer or engine
                 run = subprocess.run([extractor, "--extract", "--output-dir", str(unpacked), str(source)],
                                      capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
                 if run.returncode:
@@ -236,6 +269,8 @@ def import_campaign(source, deploy):
                 dep = mods / safe_path(dependency)
                 if dep.is_symlink() or dep.is_junction() or not (dep / "data").is_dir():
                     raise ValueError(f"Missing {dependency}; import the full compatibility base first.")
+                if dependency == "mc2x-compat":
+                    repair_shared_components(dep, root, scratch)
             return {"status": "unchanged", "mod": mod_id, "campaigns": campaigns}
         probe = legacy.classify(str(root))
         if probe["action"] == "reject":
@@ -250,6 +285,8 @@ def import_campaign(source, deploy):
             if existing.is_symlink() or existing.is_junction():
                 raise ValueError(f"Linked compatibility directory: {existing}")
             if (existing / "data").is_dir():
+                if compat == "mc2x-compat":
+                    repair_shared_components(existing, root, scratch)
                 refs.insert(0, str(existing / "data"))
             else:
                 plan = legacy._plan(str(root), probe, str(deploy))
@@ -275,12 +312,7 @@ def import_campaign(source, deploy):
                 if rc not in (0, None):
                     raise ValueError(f"Compatibility converter failed: {rc}")
                 if compat == "mc2x-compat":
-                    sys.path.insert(0, str(Path(__file__).resolve().parent / "mc2x_import"))
-                    import transfer_mc2x_campaign as transfer
-                    components = {key: value for key, value in transfer.MISC_ROSTER.items()
-                                  if value.endswith("/compbas.csv")}
-                    transfer.extract_fst_whitelist(str(root / "misc.fst"),
-                                                  str(staged / "mods" / compat), components)
+                    repair_shared_components(staged / "mods" / compat, root, scratch)
                 pending.append(compat)
                 refs.insert(0, str(staged / "mods" / compat / "data"))
         out = staged / "mods" / mod_id
