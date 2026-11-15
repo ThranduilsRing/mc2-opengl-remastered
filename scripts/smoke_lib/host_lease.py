@@ -86,7 +86,7 @@ def waiver_active(now: Optional[float] = None) -> bool:
         return False   # an empty or half-written waiver must never raise the slot count
 
 
-GPU_SPLIT_PATH = Path("A:/Games/mc2-ops/GPU_SPLIT")   # fallback device-name substrings; the dual-XTX PC uses runtime UUIDs
+GPU_SPLIT_PATH = Path("A:/Games/mc2-ops/GPU_SPLIT")   # lines `slot0=AMD`, `slot1=NVIDIA` (device-name substrings, like MC2_VK_DEVICE)
 GPU_SPLIT_DEFAULT = ("AMD", "AMD")
 DEVICE_ALIASES = {"AMD": ("amd", "radeon", "xtx", "7900"), "NVIDIA": ("nvidia", "geforce", "rtx", "2070")}
 
