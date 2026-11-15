@@ -1038,7 +1038,7 @@ def _derived_batch(env, monkeypatch, lane_edits, regen):
     commit_all(repo, "lane gates")
     git(repo, "checkout", "-q", "main")
     lm = _load_module()
-    monkeypatch.setattr(lm, "regenerate_all", lambda root: regen(repo) or [])
+    monkeypatch.setattr(lm, "regenerate_all", lambda root, **kw: regen(repo) or [])
     monkeypatch.setattr(lm, "verify_merged", lambda *a: ("OK", []))
     return lm, lm.main(["--batch", "lane_g", "--root", str(repo), "--tools-dir", str(tools)])
 

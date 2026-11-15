@@ -151,9 +151,10 @@ def test_contained_batch_refreshes_window_receipt(tmp_path, monkeypatch):
 @pytest.mark.timeout(120)
 def test_contract_board_owns_inner_worker_budget(tmp_path, jobs):
     from pathlib import Path
+    import re
     script = Path(ROOT, 'scripts/check-contracts.sh').read_text()
-    script = script.replace('# Aggregate Python suites run in tools/lane_merge.py --precheck, before the merge window.',
-                            r'run_check "scripts_tests" "test \"$MC2_TEST_JOBS\" -eq 1"')
+    script = re.sub(r'^run_check "scripts_tests".*$',
+                    lambda _: r'run_check "scripts_tests" "test \"$MC2_TEST_JOBS\" -eq 1"', script, flags=re.M)
     fixture = tmp_path / 'board.sh'
     fixture.write_text(script, encoding='utf-8', newline='\n')
     result = subprocess.run([lm.git_bash(), fixture.as_posix(), '--rows', '^scripts_tests$', '--no-cache', f'-j{jobs}'],
