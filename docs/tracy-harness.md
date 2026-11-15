@@ -100,6 +100,18 @@ Frame count is taken from the **`DrawScreen`** zone (`gameosmain.cpp`, the
 top-level per-frame draw present in both backends): its `counts` over a fixed
 recording window is the FPS proxy (`fps = frames / seconds`).
 
+## Off-screen mid-mission UI changes
+
+Declare `MC2_UI_COMMAND_FILE=<absolute path>` with `--env` (Tracy) or `--env-declare` (visual capture).
+`MissionInterfaceManager::processUiCommandChannel` (`code/missiongui_uicmd.cpp:157`) polls each mission frame,
+reads newline-separated commands, and **truncates in place**; no Renamed event occurs.
+Wait for an empty file, write a complete batch, then wait with a deadline for new bytes in `<path>.ack`.
+Receipts are `[f=N] <command> -> ok|blocked|unknown`; save the previous ack byte offset before sending.
+Send `toggle_pause`, then `press pause.OPTIONS`, checking each ack and resulting state/screenshot.
+This opens legacy pause options, not ImGui Graphics Options; there is no generic setting setter.
+`debugview 3` changes the live view; `screenshot after_change` needs `MC2_DEV_SHELL=1`.
+For settings without a verb, use `MC2_OPTIONS_OVERRIDE` before launch; mid-mission hot-apply remains unproven.
+
 ## Subcommands
 
 ### `capture` — one trace

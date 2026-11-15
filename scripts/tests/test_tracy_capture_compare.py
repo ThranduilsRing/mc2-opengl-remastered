@@ -241,6 +241,8 @@ def harness(monkeypatch):
     monkeypatch.setattr(capture.time, "sleep", Mock())
     monkeypatch.setattr(capture.render_options_pin, "record", Mock(return_value={"rejected": []}))
     monkeypatch.setattr(capture.render_options_pin, "write", Mock())
+    monkeypatch.setattr(capture, "crash_dumps", lambda install: {})
+    monkeypatch.setattr(Path, "read_text", lambda *a, **k: "")
     h.run = lambda show_window=True: capture.capture_trace(h.install, "vk", "mc2_01", 15, h.out,
                                                           show_window=show_window)
     return h
@@ -361,6 +363,40 @@ def test_trivial_trace_releases_on_system_exit(harness):
         h.run()
     h.release.assert_called_once()
     assert not h.held
+
+
+@pytest.mark.parametrize("failure", [None, "early_exit", "exception", "dump", "crash_log", "recorder", "missing_trace"])
+def test_via_menu_stop_preserves_real_failures(harness, monkeypatch, failure, capsys):
+    # Trigger: tools/tracy_capture_compare.py; real lifecycle, fake children only.
+    h = harness
+    original = h.game_spawn.side_effect
+    def spawn(*args, **kwargs):
+        proc = original(*args, **kwargs)
+        if failure == "early_exit":
+            proc.returncode = 0xC0000005
+        proc.kill.side_effect = lambda: setattr(proc, "returncode", 0xC0000005 if failure == "exception" else (1 if capture.os.name == "nt" else -9))
+        proc.wait.side_effect = lambda timeout=None: proc.returncode
+        return proc
+    h.game_spawn.side_effect = spawn
+    if failure == "recorder":
+        recorder_spawn = h.recorder_spawn.side_effect
+        def recorder(*args, **kwargs):
+            proc = recorder_spawn(*args, **kwargs)
+            proc.wait.side_effect = lambda timeout=None: setattr(proc, "returncode", 2)
+            return proc
+        h.recorder_spawn.side_effect = recorder
+    if failure == "dump":
+        snapshots = iter([{}, {"crash.dmp": 1}])
+        monkeypatch.setattr(capture, "crash_dumps", lambda install: next(snapshots))
+    if failure == "crash_log":
+        monkeypatch.setattr(Path, "read_text", lambda *a, **k: "Crash Report")
+    if failure == "missing_trace":
+        h.out.is_file.return_value = False
+        with pytest.raises(SystemExit, match="missing or trivial"):
+            capture.capture_trace(h.install, "vk", "mc2_01", 15, h.out, via_menu_boot=True)
+    else:
+        assert capture.capture_trace(h.install, "vk", "mc2_01", 15, h.out, via_menu_boot=True) == int(failure is not None)
+    assert ("intentional_stop pid=" in capsys.readouterr().out) == (failure not in ("early_exit", "recorder"))
 
 
 @pytest.mark.parametrize("which", ["recorder", "game"])

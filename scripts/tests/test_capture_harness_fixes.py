@@ -19,6 +19,18 @@ from smoke_lib import host_lease  # noqa: E402
 
 
 # --- 2. bookmark lookup -----------------------------------------------------------------------------------------------------------
+def test_late_bookmark_rejects_short_duration_before_launch(tmp_path, monkeypatch):
+    # Trigger: scripts/run_visual_capture.py (frame-700 regression).
+    bookmark = tmp_path / "late.json"
+    bookmark.write_text('{"bookmarks": [{"name": "late"}]}')
+    monkeypatch.setattr(rvc, "payload_identity", lambda p: {})
+    monkeypatch.setattr(rvc, "guard_exe", lambda p: True)
+    monkeypatch.setattr(rvc.nofocus, "spawn", lambda *a, **k: pytest.fail("launched"))
+    assert rvc.default_duration(1, 700, 30) == 54
+    with pytest.raises(ValueError, match="duration 30s.*trigger frame 700.*54"):
+        rvc.run_one(tmp_path / "mc2.exe", "mc2_01", bookmark, tmp_path / "out", 700, 30, 30, True)
+
+
 def _exe_with_bookmark(tmp_path, name="mc2_01_saved_205644.json"):
     inst = tmp_path / "inst"
     (inst / "saved_bookmarks").mkdir(parents=True)
