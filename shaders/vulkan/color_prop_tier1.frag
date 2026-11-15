@@ -58,6 +58,9 @@
 #extension GL_GOOGLE_include_directive : require
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_EXT_buffer_reference : require
+#ifdef COLOR_PROP_FRINGE
+layout(early_fragment_tests) in;
+#endif
 layout(constant_id = 0) const int kBaseQuality = 2; // Potato / Low / Medium+High
 // 1 = the opaque core pipeline: its packets have no alpha-ON layer, no per-packet alpha-test bit and are not
 // fringe rows, so every discard below is dead for them. Compiling the discards out lets the driver run early Z.
@@ -145,6 +148,7 @@ float propCoverage(float a, float lod) {
 #include "include/ground_lighting.glsl"
 layout(set = 0, binding = 14) uniform sampler2DShadow uTreeObjectMap;
 #define MC2_OBJECT_TERRAIN_GRID 1
+#define MC2_OBJECT_SHORT_POOL (kBaseQuality == 2)
 #define MC2_OBJECT_POOL_BUDGET (kBaseQuality == 0 ? 4 : kBaseQuality == 1 ? 8 : 0)
 #include "../include/object_light_pool.hglsl"
 
