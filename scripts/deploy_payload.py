@@ -1417,7 +1417,7 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
                 fail(f"declared mip asset missing or hash mismatch: {p}")
             items.append((p, rel, "support"))
 
-    for path in sorted((Path(src_root) / "data/art").glob("mcl_mc_*.tga")):
+    for path in sorted((Path(src_root) / "data/art").glob("mc2_component_*.tga")):
         items.append((str(path), path.relative_to(src_root).as_posix(), "support"))
     # MENU-PLANET-MODERN-1: main-menu backdrop (hi-res tiles + the fit that places them).
     for pat in ("mcl_menu_*.tga", "mcl_sp.fit"):
