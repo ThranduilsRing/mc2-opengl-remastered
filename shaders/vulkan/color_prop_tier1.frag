@@ -79,13 +79,9 @@ layout(set = 0, binding = 3) uniform sampler2DArray uAlbedo[PROP_ALPHA_ON_BUCKET
 layout(set = 0, binding = 6) uniform sampler2DArray uAlbedoOn[PROP_ALPHA_ON_BUCKETS];
 
 layout(location = 0) in vec2 vUv;
-layout(location = 1) in vec3 vFrontNormalStuff;
-layout(location = 18) in vec3 vBackNormalStuff;
-layout(location = 19) in vec3 vBackArgb;
-#define vNormalStuff (gl_FrontFacing ? vFrontNormalStuff : vBackNormalStuff)
-#define vArgb (gl_FrontFacing ? vFrontArgb : vBackArgb)
+layout(location = 1) in vec3 vNormalStuff;
 flat layout(location = 2) in int  vLayer;
-layout(location = 3) in vec3 vFrontArgb; // VERTEX-BAKED lit color
+layout(location = 3) in vec3 vArgb;   // VERTEX-BAKED lit color (GL default prop model)
 flat layout(location = 4) in int  vLayerOn;  // alpha-ON albedo array layer (-1 = none)
 flat layout(location = 5) in vec2 vUvScale;  // FENCE-UVSCALE-1: this packet's uvScaleX/Y
 layout(location = 6) in vec3 vWorldPos;
@@ -176,8 +172,6 @@ float treeVisibility(vec3 N) {
     return visibility;
 }
 void main() {
-    if (!gl_FrontFacing && (uPacket.materialId < 0 || uPacket.materialId >= uPropMaterials.materials.length() ||
-        (uPropMaterials.materials[uPacket.materialId].material.flags & kMatFlagDoubleSided) == 0u)) discard;
     if (kPlanarReflection != 0 && vWorldPos.z < uT.shorelineWaterElev) discard;
     vec3 rgb;
     vec3 materialAlbedo = vec3(0);

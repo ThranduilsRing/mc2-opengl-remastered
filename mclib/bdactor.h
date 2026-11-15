@@ -580,8 +580,7 @@ class TreeAppearanceType : public AppearanceType
 		// is the override LOD0 (was the single member); higher indices hold
 		// auto/offline-generated lower LODs (populated in Task 3+). All NULL =
 		// no override. treeRenderShapeLodCount = number of populated LODs.
-		std::unique_ptr<TG_TypeMultiShape> treeRenderShape[MAX_TREE_RENDER_LODS];
-		float						renderLodDistance[MAX_TREE_RENDER_LODS];   // authored switch distance per render LOD (batcher distance LOD)
+		std::unique_ptr<TG_TypeMultiShape> treeRenderShape[MAX_LODS];
 		long						treeRenderShapeLodCount;
 
 		std::unique_ptr<TG_TypeMultiShape> treeDmgShape;
@@ -606,11 +605,8 @@ class TreeAppearanceType : public AppearanceType
 				treeAnimData[i] = nullptr;
 
 			// TREE-OVERRIDE-LOD-MVP Task 1: no override by default; all LODs NULL.
-			for (i=0;i<MAX_TREE_RENDER_LODS;i++)
-			{
+			for (i=0;i<MAX_LODS;i++)
 				treeRenderShape[i] = nullptr;
-				renderLodDistance[i] = 0.0f;
-			}
 			treeRenderShapeLodCount = 0;
 			treeDmgShape = nullptr;
             treeDmgRenderShape.reset();
@@ -642,7 +638,7 @@ class TreeAppearanceType : public AppearanceType
 		// getTreeCollisionShape — unchanged, LOD-independent.
 		TG_TypeMultiShape* getTreeRenderShape (long lod)
 		{
-			lod = std::clamp(lod, 0L, static_cast<long>(MAX_TREE_RENDER_LODS) - 1);
+			lod = std::clamp(lod, 0L, static_cast<long>(MAX_LODS) - 1);
 			if (treeRenderShape[lod])
 				return treeRenderShape[lod].get();
 			// clamp to the highest populated override LOD <= lod
@@ -650,7 +646,7 @@ class TreeAppearanceType : public AppearanceType
 				if (treeRenderShape[i])
 					return treeRenderShape[i].get();
 			// no override populated for this or any lower index → stock
-			return treeShape[std::min(lod, static_cast<long>(MAX_LODS) - 1)].get();
+			return treeShape[lod].get();
 		}
         TG_TypeMultiShape* getTreeDamageRenderShape() { return treeDmgRenderShape ? treeDmgRenderShape.get() : treeDmgShape.get(); }
         void registerRenderShapes();

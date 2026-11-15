@@ -290,12 +290,8 @@ extern std::vector<GpuStaticPropType>                     s_types;
 extern std::unordered_map<TG_TypeNodeId, uint32_t>  s_typeIndex;
 // Distance LOD for model-override statics: base (LOD0) typeID -> the typeID that draws each LOD of the same shape node.
 // target[0] == the base type; dist[k] is the authored switch distance of LOD k (render units == MC2 units).
-inline constexpr int kMaxPropLods = 5;   // LOD0-3 + far proxy for override trees; buildings use up to 3
-struct PropLodGroup { uint32_t target[kMaxPropLods]; float dist[kMaxPropLods]; int count; bool tree; };
+struct PropLodGroup { uint32_t target[3]; float dist[3]; int count; };
 extern std::unordered_map<uint32_t, PropLodGroup> s_lodGroups;
-// Every type of a registered tree LOD chain (base included) -> its tier and the chain's far tier type.
-struct PropLodMember { uint32_t farType; uint8_t tier; };
-extern std::unordered_map<uint32_t, PropLodMember> s_lodMembers;
 extern PropLodStateMap                            s_lodState;   // per-instance hysteresis memory, keyed by (typeID, position); flat table, no per-instance node lookup
 extern std::vector<RenderCore::StaticPropTypeDesc>        s_typeDescTable;
 extern bool s_gpuPropsTrace;

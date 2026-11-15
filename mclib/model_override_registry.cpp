@@ -119,7 +119,6 @@ static void parseMaterials(const json& entry, ModelOverrideRecord& rec) {
             const auto alpha = RenderCore::surfaceAlphaFromName(row.value("alphaMode", std::string("STOCK")));
             if (!alpha || *alpha == RenderCore::SurfaceAlpha::Blend) throw std::runtime_error("unsupported alpha mode");
             m.alphaMode = static_cast<uint32_t>(*alpha);
-            m.doubleSided = row.value("doubleSided", false);
             m.alphaCutoff = ranged(row, "alphaCutoff", 0.5f, 1.0f);
             m.normalStrength = ranged(row, "normalStrength", 1.0f, 2.0f);
             m.aoStrength = ranged(row, "aoStrength", 1.0f, 1.0f);
