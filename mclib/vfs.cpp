@@ -598,7 +598,7 @@ static std::optional<ModJson> ReadModJson(const char* jsonPath) {
 
 std::string ModDisplayName(std::string_view modId) {
     if (modId.empty()) return "MechCommander 2";
-    const std::string path = g_modsAbsRoot + std::string(modId) + "/mod.json";
+    const std::string path = (std::filesystem::path(g_modsAbsRoot) / std::string(modId) / "mod.json").generic_string();
     const auto manifest = ReadModJson(path.c_str());
     return manifest && !manifest->name.empty() ? manifest->name : std::string(modId);
 }
@@ -934,7 +934,7 @@ void InitModSearchPaths(mc2::czstring modsRoot) {
     } else if (auto mj = ReadModJson(jsonPath)) {
         modId = mj->id; modName = mj->name; deps = mj->deps;
         if (!mj->capabilities.empty()) g_modCapabilities[modId] = mj->capabilities;
-        if (std::filesystem::exists(std::string(absRoot) + envMod + "/data/defs/equipment"))
+        if (std::filesystem::exists(std::filesystem::path(absRoot) / envMod / "data" / "defs" / "equipment"))
             g_modCapabilities[modId].push_back("equipment_add");
     } else {
         // No mod.json — treat the folder name as the id. Dependencies (the compat
@@ -1036,7 +1036,7 @@ void InitModSearchPaths(mc2::czstring modsRoot) {
             const std::string depJson = std::string(absRoot) + dep + "/mod.json";
             if (auto dj = ReadModJson(depJson.c_str()); dj && !dj->capabilities.empty())
                 g_modCapabilities[dep] = dj->capabilities;
-            if (std::filesystem::exists(std::string(absRoot) + dep + "/data/defs/equipment"))
+            if (std::filesystem::exists(std::filesystem::path(absRoot) / dep / "data" / "defs" / "equipment"))
                 g_modCapabilities[dep].push_back("equipment_add");
         }
         size_t before = g_modIndex.size();
