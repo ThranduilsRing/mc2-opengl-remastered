@@ -41,7 +41,7 @@ not part of this lane.
 ```bash
 # PC only; use your player install and scratch variables, never a repo output.
 # MW5_SCRATCH must be G:/mc2-tmp/mw5-extractor-cue4parse-1 (or own lane install).
-dotnet build tools/mw5_kit/extract/Mw5Extract.csproj -c RelWithDebInfo --locked-mode
+dotnet build tools/mw5_kit/extract/Mw5Extract.csproj -c RelWithDebInfo -p:RestoreLockedMode=true
 dotnet tools/mw5_kit/extract/bin/RelWithDebInfo/net8.0/Mw5Extract.dll \
   --install "$MW5_INSTALL" --paks "$MW5_INSTALL/MW5Mercs/Content/Paks" \
   --ue 4.26 --request "$MW5_SCRATCH/request.json" --out "$MW5_SCRATCH/madcat-native"
@@ -85,7 +85,7 @@ The engine build/unit commands are unnecessary for this standalone tool.
 Use `/workspace/toolchains/dotnet8/dotnet` if dotnet is not on PATH:
 
 ```bash
-dotnet build tools/mw5_kit/extract/Mw5Extract.csproj -c RelWithDebInfo --locked-mode
+dotnet build tools/mw5_kit/extract/Mw5Extract.csproj -c RelWithDebInfo -p:RestoreLockedMode=true
 dotnet tools/mw5_kit/extract/bin/RelWithDebInfo/net8.0/Mw5Extract.dll --fixture "$TMPDIR/mw5-synthetic"
 MW5_SYNTHETIC_FIXTURE="$TMPDIR/mw5-synthetic" python3 -B -m unittest tools.mw5_mechs.test_from_native -v
 ```
