@@ -3,6 +3,7 @@
 #include "controlgui_internal.h"
 #include "mc2fmt.h"
 #include "net/runtime.h"
+#include "sim_speed.h"
 #include <array>
 #include <cfloat>
 
@@ -109,8 +110,7 @@ void ControlGui::renderSimSpeedButton()
 	{
 		const float speed = simSpeedGetMultiplier();
 		const bool down = ImGui::GetIO().KeyShift || ImGui::IsItemClicked(ImGuiMouseButton_Right);
-		const float next = down ? (speed > 2.f ? 2.f : speed > 1.f ? 1.f : speed > 0.5f ? 0.5f : 4.f)
-			: (speed < 0.5f ? 0.5f : speed < 1.f ? 1.f : speed < 2.f ? 2.f : speed < 4.f ? 4.f : 0.5f);
+		const float next = mc2::sim::speedCycle(speed, down, disabled);
 		simSpeedSetMultiplier(next);
 	}
 	auto* draw = ImGui::GetWindowDrawList();
