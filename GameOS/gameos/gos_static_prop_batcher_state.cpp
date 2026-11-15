@@ -40,6 +40,7 @@ std::vector<uint8_t>                                s_packetAlphaBaked;
 std::vector<GpuStaticPropType>                     s_types;
 std::unordered_map<TG_TypeNodeId, uint32_t>  s_typeIndex;
 std::unordered_map<uint32_t, PropLodGroup>   s_lodGroups;
+std::unordered_map<uint32_t, PropLodMember>  s_lodMembers;
 PropLodStateMap                              s_lodState;
 std::vector<RenderCore::StaticPropTypeDesc>        s_typeDescTable; // v0: cross-seam mirror
 
