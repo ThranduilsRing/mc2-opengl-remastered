@@ -2857,10 +2857,12 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     from smoke_lib import render_options_pin
     kit_manifest = None
     vehicle_manifest = None
+    kit_tool = None
     remastered = render_options_pin.record(Path(target), os.environ)["values"]["RemasteredBuildings"]
+    kit_prepare_started = time.perf_counter()
     if not args.classic_assets and not getattr(args, "skip_kit", False) and not reuse and remastered:
         try:
-            with deploy_phase("kit preparation", 600):
+            with deploy_phase("kit preparation and importer", 600):
                 # The kit stores are read-only reference trees: their stamped hashes are shared by every install.
                 kit_receipts = kit_payload.HashReceipts(
                     Path(target) / '.deploy-receipts.json',
@@ -2871,8 +2873,10 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
                     Path("data/kit/vehicle-kit.json"), Path("mods/mc2-vehicle-kit"), receipts=kit_receipts)
                 items.extend(vehicle_items)
                 kit_receipts.save()
+                kit_tool = kit_payload.build_importer(src_root)
         except (OSError, ValueError, KeyError) as exc:
             fail(f"RemasteredBuildings requires the pinned kit: {exc}; use --classic-assets for Classic")
+    kit_prepare_seconds = time.perf_counter() - kit_prepare_started
     log(f"payload: {len(items)} files "
         f"({sum(1 for *_x, k in items if k == 'shader')} shaders, "
         f"{sum(1 for *_x, k in items if k == 'defs')} defs)")
@@ -2918,7 +2922,14 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
                 kit_payload.reconcile_stock_textures(target,
                     jobs=int(Path("A:/Games/mc2-ops/JOBS").read_text().strip()))
             log(f"phase stock receipts seconds={time.perf_counter() - phase_started:.3f}")
-            log("phase kit cook seconds=0.000 (source-only model loading)")
+            phase_started = time.perf_counter()
+            with deploy_phase("kit cook", 900):
+                importer_key = kit_payload.importer_source_key(src_root, Path(kit_tool).parent)
+                kit_payload.finish(target, kit_manifest, kit_tool, importer_key=importer_key)
+                if vehicle_manifest:
+                    kit_payload.finish(target, vehicle_manifest, kit_tool, kit_rel=Path("mods/mc2-vehicle-kit"),
+                                       importer_key=importer_key)
+            log(f"phase kit cook seconds={kit_prepare_seconds + time.perf_counter() - phase_started:.3f}")
         except (OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
             fail(f"pinned industrial kit deploy failed: {exc}")
     else:
@@ -2943,6 +2954,14 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
         fail(f"asset parity: {len(drift.missing)} missing, {len(drift.size)} size-different, "
              f"{len(drift.content)} content-different, {len(drift.extra)} extra file(s) vs {asset_parity.default_ref()} "
              f"(missing e.g. {', '.join(drift.missing[:5])}); rerun without --no-asset-sync to copy them from v0.4", 8)
+    if not reuse and (Path(target) / "data/model_overrides/models.json").is_file():
+        try:
+            with deploy_phase("tree cook", 900):
+                kit_tool = kit_tool or kit_payload.build_importer(src_root)
+                kit_payload.finish_trees(target, kit_tool,
+                    importer_key=kit_payload.importer_source_key(src_root, Path(kit_tool).parent))
+        except (OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
+            log(f"WARN: tree model precook failed: {exc}; runtime will cook missing models")
     installed = os.path.join(target, exe_name)
     require_head_exe(installed, source_head, src_root)
     if sha256_file(installed) != sha256_file(os.path.join(build_dir, exe_name)):

@@ -20,7 +20,6 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <limits>
 #include <map>
 #include <memory>
 #include <regex>
@@ -172,7 +171,7 @@ TEST_CASE("ContentShape/missing required shape remains visible") {
     CHECK(shape.minBox.z < shape.maxBox.z);
 }
 
-TEST_CASE("ContentCook/source-only validation needs no writable cache") {
+TEST_CASE("ContentCook/cache publication failure is reported as failure") {
     namespace fs = std::filesystem;
     const auto previous = fs::current_path();
     const auto sandbox = fs::temp_directory_path() / ("mc2-cook-write-failure-" +
@@ -196,18 +195,14 @@ TEST_CASE("ContentCook/source-only validation needs no writable cache") {
     asset.nodes.back().name = "helper";
     asset.nodes.back().helper = true;
     CompileLog log;
-    CHECK_FALSE(mc2::content::loadCached(asset, "missing.glb"));
-    CHECK(mc2::content::cook(asset, "missing.glb"));
+    CHECK_FALSE(mc2::content::cook(asset, ""));
     const auto text = log.text();
-    CHECK(text.find("cache=source-only") != std::string::npos);
-    CHECK(text.find("[CONTENT_COOK_ERROR]") == std::string::npos);
+    CHECK(text.find("[CONTENT_COOK_ERROR]") != std::string::npos);
+    CHECK(text.find("[CONTENT_COOK]") == std::string::npos);
     std::error_code removeError;
     REQUIRE_MESSAGE(fs::remove("cache", removeError), "remove cache blocker: ", removeError.message());
     CHECK(mc2::content::cook(asset, ""));
     CHECK(mc2::content::cook(asset, ""));
-    CHECK_FALSE(fs::exists("cache"));
-    asset.nodes.back().center.x = std::numeric_limits<float>::quiet_NaN();
-    CHECK_FALSE(mc2::content::cook(asset, ""));
 }
 
 TEST_CASE("ABLExec/stack overflow stops every push with both softfail flags enabled") {

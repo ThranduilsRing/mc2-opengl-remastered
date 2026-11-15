@@ -164,9 +164,6 @@ def is_deploy_artifact(rel: str) -> bool:
     parts = _norm(rel).rstrip("/").split("/")
     name = parts[-1]
     return (parts[0] in {"logs", "debug_state", "crashes", "_rdoc", "_pngcap", "dev_shell_out", "terrain_gen_out"}
-            or (parts[:2] == ["cache", "content-model"] and len(parts) == 3
-                and (re.fullmatch(r"model-[0-9a-f]{16}\.mci", name) is not None
-                     or name in {"industrial-cook.json", "vehicle-cook.json", "trees-cook.json", "tree-cook.json"}))
             or parts[:3] == ["data", "tgl", "_aoktxtmp"]
             or name.endswith((".rdc", ".dmp", ".mdmp", ".orig_bak"))
             or ".bak-" in name or ".orig" in name
