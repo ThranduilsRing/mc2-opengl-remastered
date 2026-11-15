@@ -17,6 +17,7 @@ ComponentListBox.cpp			: Implementation of the ComponentListBox component.
 #include"gamesound.h"
 #include"logisticserrors.h"
 #include "mc2fmt.h"
+#include "../GameOS/gameos/input_capture_policy.h"
 
 std::unique_ptr<ComponentListItem> ComponentListItem::s_templateItem = nullptr;
 
@@ -262,9 +263,9 @@ void	ComponentListItem::update()
 		
 		if ( !bCanAdd )
 		{
-			if ( userInput->isLeftDrag() && isInside &&
-				pointInside( userInput->getMouseDragX(), userInput->getMouseDragY() )
-				&& ComponentIconListBox::s_instance->pointInside( userInput->getMouseX(), userInput->getMouseY() ) )
+			if ( input::capture::startsWidgetDrag(userInput->isLeftDrag(),
+				pointInside(userInput->getMouseDragX(), userInput->getMouseDragY()) &&
+				ComponentIconListBox::s_instance->pointInside(userInput->getMouseDragX(), userInput->getMouseDragY())) )
 				startDrag();
 		}
 	}

@@ -56,6 +56,7 @@ void handleKeyEvent(const SDL_Event* event);
 void updateKeyboardState();
 
 void resetKeypress();
+void setInputFocus(bool focused);
 
 // MC2_INPUT_SCRIPT (scripted player, see gos_input.cpp): true + normalised 0..1 position once the script has moved the pointer.
 bool scriptMouseNorm(float* nx, float* ny);

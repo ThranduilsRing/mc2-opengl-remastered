@@ -32,6 +32,7 @@ static bool cheatInfiniteMoney() { static const bool on = mc2::gate::get<"MC2_CH
 #include"../GuiRuntime/GuiRuntime.h"
 #include "mc2fmt.h"
 #include "mc2str.h"
+#include "../GameOS/gameos/input_capture_policy.h"
 
 MechLabScreen* MechLabScreen::s_instance = nullptr;
 namespace {
@@ -739,11 +740,23 @@ void MechLabScreen::update()
 
 void MechLabScreen::updateDiagramInput()
 {
+	// Focus cancellation is not a drop; return a removed component to its slot.
+	if (pDragComponent && gos_GetKeyStatus(KEY_LMOUSE) == KEY_FREE) {
+		if (bDragLeft) {
+			addComponent(pDragComponent, selI, selJ);
+			pSelectedComponent = pDragComponent;
+		}
+		pDragComponent = nullptr;
+		bDragLeft = false;
+		updateDiagram();
+	}
 	long mouseX = userInput->getMouseX();
 	long mouseY = userInput->getMouseY();
 
 
-	if ( rects[13].pointInside( mouseX, mouseY ) )
+	if ( rects[13].pointInside(mouseX, mouseY) ||
+		input::capture::startsWidgetDrag(userInput->isLeftDrag(),
+			rects[13].pointInside(userInput->getMouseDragX(), userInput->getMouseDragY())) )
 	{
 		long x, y, x2, y2;
 		getMouseDiagramCoords( x, y );	
@@ -859,10 +872,11 @@ void MechLabScreen::updateDiagramInput()
 			else
 				selRect->setColor( 0xffff0000 );			
 		}			
-		else if ( userInput->isLeftDrag() )
+		else if ( input::capture::startsWidgetDrag(userInput->isLeftDrag(),
+			rects[13].pointInside(userInput->getMouseDragX(), userInput->getMouseDragY())) )
 		{
 			long i, j;
-			getMouseDiagramCoords( i, j );
+			getMouseDiagramCoords(userInput->getMouseDragX(), userInput->getMouseDragY(), i, j);
 
 			if ( i != -1 && j != -1 )
 			{

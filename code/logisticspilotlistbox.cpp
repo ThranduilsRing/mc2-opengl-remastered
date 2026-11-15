@@ -15,6 +15,7 @@ LogisticsPilotListBox.cpp			: Implementation of the LogisticsPilotListBox compon
 #include"pilotreadyscreen.h"
 #include"mc2str.h"
 #include "memfunc.h"
+#include "../GameOS/gameos/input_capture_policy.h"
 
 std::unique_ptr<LogisticsPilotListBoxItem> LogisticsPilotListBoxItem::s_templateItem = nullptr;
 
@@ -226,8 +227,8 @@ void LogisticsPilotListBoxItem::update()
 		if ( userInput->isLeftClick() && isInside )
 			PilotReadyScreen::instance()->setPilot( pPilot );
 		
-		if ( userInput->isLeftDrag() && isInside &&
-			pointInside( userInput->getMouseDragX(), userInput->getMouseDragY() ) )
+		if ( input::capture::startsWidgetDrag(userInput->isLeftDrag(),
+			pointInside(userInput->getMouseDragX(), userInput->getMouseDragY())) )
 		{
 			PilotReadyScreen::instance()->beginDrag( pPilot );
 			icon.setColor( 0x7f000000 );

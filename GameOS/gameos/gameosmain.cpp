@@ -447,6 +447,7 @@ void process_events( void ) {
                 graphics::set_mouse_grab(true);
                 graphics::apply_os_cursor_policy("focus_gained", true);
                 g_focus_lost = false;
+                input::setInputFocus(true);
                 break;
             case SDL_WINDOWEVENT_ENTER:
                 graphics::apply_os_cursor_policy("enter", !g_focus_lost);
@@ -456,6 +457,7 @@ void process_events( void ) {
                 graphics::set_mouse_grab(false);
                 graphics::apply_os_cursor_policy("focus_lost", false);
                 g_focus_lost = true;
+                input::setInputFocus(false);
                 break;
             }
             break;
