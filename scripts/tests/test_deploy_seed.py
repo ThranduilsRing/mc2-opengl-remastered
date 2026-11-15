@@ -26,8 +26,9 @@ def source_tree(root):
     data = source / 'data/stock.bin'; data.parent.mkdir(); data.write_bytes(b'stock' * 100000)
     cache = source / 'cache/content-model'; cache.mkdir(parents=True)
     recipe = cache / 'model-0123456789abcdef.mci'; recipe.write_bytes(b'recipe')
-    (cache / 'industrial-cook.json').write_text(json.dumps({'files': [dict(
-        path=recipe.name, bytes=recipe.stat().st_size, sha256=kit.sha(recipe))]}))
+    for name in ('industrial-cook.json', 'trees-cook.json'):
+        (cache / name).write_text(json.dumps({'files': [dict(
+            path=recipe.name, bytes=recipe.stat().st_size, sha256=kit.sha(recipe))]}))
     return source
 
 
@@ -36,6 +37,7 @@ def test_seed_cold_warm_hash_cache_and_private_mutables(tmp_path, monkeypatch):
     begin = time.monotonic(); kit.seed_install(source, target, cache); cold = time.monotonic() - begin
     assert (target / 'mods/mc2-industrial-kit/model.glb').read_bytes() == b'kit'
     assert (target / 'cache/content-model/model-0123456789abcdef.mci').read_bytes() == b'recipe'
+    assert (target / 'cache/content-model/trees-cook.json').is_file()
     assert not os.path.samefile(source / 'mc2.exe', target / 'mc2.exe')
     assert not os.path.samefile(source / '.deployed_manifest.csv', target / '.deployed_manifest.csv')
     original = kit.sha; calls = []

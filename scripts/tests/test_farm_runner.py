@@ -83,6 +83,9 @@ def test_reseed_selection_and_incremental_changes(tmp_path):
         path=model.name, bytes=6, sha256=hashlib.sha256(b'pinned').hexdigest())]}))
     seeded, _ = host.seed_files(install, harness)
     assert 'install/cache/content-model/industrial-cook.json' in seeded
+    (recipes / 'trees-cook.json').write_bytes((recipes / 'industrial-cook.json').read_bytes())
+    seeded, _ = host.seed_files(install, harness)
+    assert 'install/cache/content-model/trees-cook.json' in seeded
     assert 'install/cache/content-model/model-0123456789abcdef.mci' in seeded
     inventory['install/mc2.exe'][0] += 1
     inventory['install/mission.fst'][1] -= 10

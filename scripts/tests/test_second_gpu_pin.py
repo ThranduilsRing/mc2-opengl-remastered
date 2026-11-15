@@ -165,3 +165,17 @@ def test_blender_uses_detected_uuid_without_config(detected_pair, monkeypatch):
     monkeypatch.delenv("BLENDER_GPU_UUID", raising=False)
     monkeypatch.delenv("MC2_LANE_UUID", raising=False)
     assert blender_gpu.lane_uuid() == SECOND
+
+
+def test_holder_script_mode_imports_gpu_adapters():
+    """The batch holder runs `python host_lease.py _holder` (no package): its gpu_adapters import must still resolve."""
+    import subprocess
+    lease = Path(__file__).resolve().parents[1] / "smoke_lib" / "host_lease.py"
+    code = ("import runpy, sys; sys.argv=['host_lease.py']; "
+            f"g = runpy.run_path({str(lease)!r}, run_name='not_main'); "
+            "print(g['_gpu_adapters']().__name__)")
+    import console_child
+    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, cwd=str(lease.parent),
+                         **console_child.child_kwargs(redirected=True))
+    assert out.returncode == 0, out.stderr
+    assert out.stdout.strip().endswith("gpu_adapters")
