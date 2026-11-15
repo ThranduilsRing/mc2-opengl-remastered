@@ -115,7 +115,8 @@ def main() -> int:
             with open(os.path.join(rtt.ROOT, "scripts/check-contracts.sh"), encoding="utf-8") as board:
                 window_rows = set(re.findall(r'^run_check(?:_tri)?\s+"([^"]+)"', board.read(), re.M))
             selection = select_modules(mods, ownership, active_owners=cc.affected_rows(rtt.ROOT, paths) & window_rows)
-            selection = rtt.scoped_modules(selection, paths)
+            scoped = rtt.scoped_modules(mods, paths)
+            selection = [module for module in selection if module in scoped]
     except (OSError, ValueError) as error:
         print(f"FAIL: {OWNERSHIP_REL}: {error}")
         return 1

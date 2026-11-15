@@ -980,10 +980,12 @@ def lint(root: str, ref: str, runner=None) -> int:
 def _lint_locked(root: str, ref: str, runner=None) -> int:
     """`--lint REF`: the precheck's fast local checks (ratchets, callers, early rows, ungated tags)
     run concurrently at REF in shared clones; every red is printed with its fix. No Python suites, no link. Exit 0 = clean."""
+    real_runner = runner is None
     runner, started, failed = runner or run, time.monotonic(), []   # type: ignore[var-annotated]
     import contracts_cache as cc
     receipt_tip, rotations = cc.clean_tip(root), []
-    cc.record_tip_pass(root, "lint", receipt_tip, False)
+    if real_runner:
+        cc.record_tip_pass(root, "lint", receipt_tip, False)
     try:
         sha = git_out(root, "rev-parse", ref + "^{commit}")
         base_ref = git_out(root, "rev-parse", "claude/nifty-mendeleev^{commit}")
@@ -1026,7 +1028,8 @@ def _lint_locked(root: str, ref: str, runner=None) -> int:
                         failed.append(label)
                     report_lint_row(label, rc, secs, tail, hint)
     print("LINT " + ("FAIL " + ", ".join(failed) if failed else "PASS") + f" WALL={time.monotonic() - started:.0f}s (the precheck still runs the Python suites and the link)")
-    cc.record_tip_pass(root, "lint", receipt_tip, not failed and not rotations and receipt_tip == sha)
+    if real_runner:
+        cc.record_tip_pass(root, "lint", receipt_tip, not failed and not rotations and receipt_tip == sha)
     return int(bool(failed))
 
 

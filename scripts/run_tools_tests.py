@@ -100,7 +100,12 @@ def scoped_modules(mods, paths):
     paths = [p for p in paths if p]
     declarations = cc.load_decls(ROOT)
     selected, covered = [], set()
-    for mod in mods:
+    # A path mapped to the other aggregate is still mapped, so a scripts-only
+    # change need not trigger every tools module (and vice versa).
+    mapping = sorted(set(mods) | set(discover("all")) | {
+        "scripts/tests/" + name for name in os.listdir(os.path.join(ROOT, "scripts/tests"))
+        if name.startswith("test_") and name.endswith(".py")})
+    for mod in mapping:
         parent, name = mod.rsplit("/", 1)
         stem = name.removeprefix("test_").removesuffix("_test.py").removesuffix(".py")
         prefixes = [parent + "/"] if parent not in ("tools", "tests", "scripts/tests") else []
@@ -116,7 +121,8 @@ def scoped_modules(mods, paths):
                    or any(fnmatchcase(p, g) for g in globs) or any(cc._match(p, s) for s in specs)}
         if matches:
             covered.update(matches)
-            selected.append(mod)
+            if mod in mods:
+                selected.append(mod)
     if any(p not in covered and not p.startswith(("docs/", ".claude/")) and not p.endswith((".md", ".rst")) for p in paths):
         return mods
     return selected
@@ -256,9 +262,6 @@ def main() -> int:
     args = ap.parse_args()
 
     mods = discover(args.suite)
-    if args.suite == "art" and args.base and not art_changed(args.base):
-        print("kit_art: SKIP: window diff has no art/kit inputs")
-        return 0
     if args.base:
         paths = subprocess.check_output(["git", "diff", "--name-only", "-z", args.base, "HEAD"], cwd=ROOT, text=True,
                                         **console_child.child_kwargs(redirected=True)).split("\0")
