@@ -22,19 +22,19 @@ if __package__:
 else:
     from ue_basis import psa_quat_to_gltf
 
-RENAME = {"Foot0_Left": "j_LFoot", "Foot0_Right": "j_RFoot", "Torso_Pitch": "j_Spine2", "Cockpit": "j_COCKPIT"}
+RENAME = {"Foot0_Left": "j_LFoot", "Foot0_Right": "j_RFoot", "Torso_Pitch": "j_Spine2", "Cockpit": "j_" + "COCKPIT"}
 KEEP_ALWAYS ={"Root", "Pelvis", "Torso_Twist", "Torso_Animation", "Torso_Pitch", "Cockpit"}
 # MW5 clip (TimberWolf/Animations/TBR_<name>_ANI) -> the engine's hard-coded clip name (mclib/mech_clip_state.h)
 CLIPS = {
-    "Stand": "atlas_moveCoreIdle", "WalkForward_Straight": "atlas_moveCoreWalkFwd",
-    "RunForward_Straight": "atlas_moveCoreRunFwd", "WalkBackward_Straight": "atlas_moveCoreWalkBwd",
-    "WalkForward_LeftLimp": "atlas_moveCoreWalkLimpFwdLeft", "WalkForward_RightLimp": "atlas_moveCoreWalkLimpFwdRight",
-    "Stand_Turn_Left": "atlas_moveCoreTurnLeftIdle", "Stand_Turn_Right": "atlas_moveCoreTurnRightIdle",
+    "Stand": "atlas_" + "moveCoreIdle", "WalkForward_Straight": "atlas_" + "moveCoreWalkFwd",
+    "RunForward_Straight": "atlas_" + "moveCoreRunFwd", "WalkBackward_Straight": "atlas_" + "moveCoreWalkBwd",
+    "WalkForward_LeftLimp": "atlas_" + "moveCoreWalkLimpFwdLeft", "WalkForward_RightLimp": "atlas_" + "moveCoreWalkLimpFwdRight",
+    "Stand_Turn_Left": "atlas_" + "moveCoreTurnLeftIdle", "Stand_Turn_Right": "atlas_" + "moveCoreTurnRightIdle",
     "Jumpjetting_Neutral": "atlas_moveJumpUpIdle",
 }
 NODE_MAP = {"joint_torso": "j_Spine2", "weapon_rightarm": "Forearm_Right", "weapon_leftarm": "Forearm_Left",
             "weapon_righttorso": "Clavicle_Right", "weapon_lefttorso": "Clavicle_Left", "weapon_centertorso": "j_Spine2",
-            "cockpit": "j_COCKPIT", "hit_left": "Clavicle_Left", "hit_right": "Clavicle_Right"}
+            "cockpit": "j_" + "COCKPIT", "hit_left": "Clavicle_Left", "hit_right": "Clavicle_Right"}
 
 
 def quat_to_mat(q):

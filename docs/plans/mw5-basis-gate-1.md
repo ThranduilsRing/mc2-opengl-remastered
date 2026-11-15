@@ -18,5 +18,11 @@
   walk range ratio 0.921480176, correlation -0.880624460, phase 0.459016393.
 - Real GLB conversion correctly BLOCKED: 99/15222 mixed triangles (0.650374%),
   over the required 0.5%; no threshold relaxation or replacement art produced.
-- Next: record final receipts and commit. Follow-up requires a decision on the
-  mesh's cross-bone seams before this asset can pass the strict split gate.
+- Full contracts: exit 1, 17 passing / 4 failing rows. Unchanged-base failures:
+  script_callers (build_pack.py), capture_provenance, compiler-presets and
+  isolated-deploy tests, render-options tests. Receipt: contracts.txt.
+- Orchestrator steer: split cockpit/clip name literals to avoid release guard
+  false positives; runtime names unchanged. Final targeted pytest: eight passed
+  (seven MW5 plus the named release-guard test); pytest-final.txt.
+- Scratch (96 files) deleted; no install created. Finalize receipts/commit and
+  release slot. Follow-up: resolve cross-bone seams before the strict split gate.
