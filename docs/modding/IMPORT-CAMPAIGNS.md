@@ -77,5 +77,10 @@ version or locally edited installation is refused: preserve your saves and move
 that campaign's mod folder aside before importing a replacement. Never delete a
 compatibility base while other campaigns depend on it.
 
-Screenshot proof is pending; no screenshot is substituted from an older build.
+![Imported Wolfman campaigns in Campaigns & mods](campaign-import-window.jpg)
+
+The selected pack above contains MC2X Carver V and its test collection. Choose
+`main_campaign` and `mc2x-compat` before starting Carver V. This screenshot shows
+discovery in the picker; mission compatibility is reported separately.
+
 See [campaign status](campaign-import-status.md) before assuming a campaign works.

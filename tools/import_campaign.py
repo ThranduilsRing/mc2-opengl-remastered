@@ -110,7 +110,10 @@ def inspect_source(root):
         if not mission:
             raise ValueError(f"{name}: missing [Group0Mission0] FileName")
         title = re.search(r'\bCampaignName\s*=\s*"([^"]+)"', text, re.I)
-        campaigns.append({"fit": Path(name).stem, "name": title[1] if title else mission[1],
+        fallback = Path(name).stem
+        if fallback == "campaign":
+            fallback = "Carver V (legacy)" if mission[1].lower() == "mc2_01" else mission[1]
+        campaigns.append({"fit": Path(name).stem, "name": title[1] if title else fallback,
                           "first_mission": mission[1].lower()})
     if not campaigns:
         raise ValueError("No campaign FIT found in data/campaign or FSTs. Select the campaign root, not data/.")
@@ -121,6 +124,8 @@ def find_root(folder):
     candidates = [folder] + sorted(p for p in folder.iterdir() if p.is_dir())
     roots = [p for p in candidates if (p / "data").is_dir() or (p / "Data").is_dir()
              or any(p.glob("*.fst"))]
+    if not roots:
+        roots = [p for p in candidates if (p / "campaign").is_dir() and (p / "missions").is_dir()]
     if len(roots) != 1:
         raise ValueError("Expected one campaign root containing data/ or *.fst; select one campaign folder.")
     return roots[0]
@@ -169,6 +174,10 @@ def import_campaign(source, deploy):
             root = find_root(unpacked)
         else:
             root = find_root(source)
+        if (root / "campaign").is_dir() and (root / "missions").is_dir():
+            normalized = scratch / "normalized"
+            shutil.copytree(root, normalized / "data", symlinks=True)
+            root = normalized
         files, names, campaigns = inspect_source(root)
         identity = json.dumps(campaigns, sort_keys=True)
         slug = re.sub(r"[^a-z0-9]+", "-", campaigns[0]["name"].lower()).strip("-")[:45] or "campaign"
@@ -192,6 +201,11 @@ def import_campaign(source, deploy):
                 p = target / safe_path(rel)
                 if not p.is_file() or p.is_symlink() or hashlib.sha256(p.read_bytes()).hexdigest() != expected:
                     raise ValueError(f"Installed mod has changed or is incomplete: {p}")
+            metadata = json.loads((target / "mod.json").read_text())
+            for dependency in metadata.get("dependencies", []):
+                dep = mods / safe_path(dependency)
+                if dep.is_symlink() or dep.is_junction() or not (dep / "data").is_dir():
+                    raise ValueError(f"Missing {dependency}; import the full compatibility base first.")
             return {"status": "unchanged", "mod": mod_id, "campaigns": campaigns}
         probe = legacy.classify(str(root))
         if probe["action"] == "reject":

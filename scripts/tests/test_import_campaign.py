@@ -66,7 +66,7 @@ def test_incomplete_and_wrong_folder(sample):
     with pytest.raises(ValueError, match="demo01.pak"):
         imp.import_campaign(source, deploy)
     with pytest.raises(ValueError, match="campaign root"):
-        imp.import_campaign(source / "data", deploy)
+        imp.import_campaign(source / "data/missions", deploy)
 
 
 def test_missing_compat_does_not_install(sample):
@@ -133,3 +133,12 @@ def test_zip_saved_beside_game_and_inno_extraction(sample, monkeypatch):
         return SimpleNamespace(returncode=0)
     monkeypatch.setattr(imp.subprocess, "run", extract)
     assert imp.import_campaign(installer, deploy)["status"] == "unchanged"
+
+
+def test_data_root_pack_and_missing_dependency_on_repeat(sample):
+    source, deploy = sample
+    result = imp.import_campaign(source / "data", deploy)
+    assert result["status"] == "installed"
+    (deploy / "mods/mc2x-compat/data").rmdir()
+    with pytest.raises(ValueError, match="Missing mc2x-compat"):
+        imp.import_campaign(source, deploy)
