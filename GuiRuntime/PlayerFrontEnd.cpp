@@ -260,8 +260,8 @@ static void drawCommunityCredits() {
     const auto* vp = ImGui::GetMainViewport();
     const float scale = std::clamp(vp->WorkSize.y / 1080.0f, 0.75f, 2.0f);
     ImGui::PushFont(gui_runtime_detail::findUiFont("roboto", static_cast<int>(18 * scale)));
-    ImGui::SetNextWindowPos(ImVec2(vp->WorkPos.x + vp->WorkSize.x * 0.63f, vp->WorkPos.y + 90 * scale), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(vp->WorkSize.x * 0.35f, vp->WorkSize.y - 130 * scale), ImGuiCond_Always);
+    ImGui::SetNextWindowPos(ImVec2(vp->WorkPos.x + vp->WorkSize.x * 0.715f, vp->WorkPos.y + 280 * scale), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(vp->WorkSize.x * 0.27f, vp->WorkSize.y - 320 * scale), ImGuiCond_Always);
     if (ImGui::Begin("Community", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings)) {
         ImGui::PushTextWrapPos(0);
         ImGui::TextUnformatted("Celebrating 25 years of MechCommander 2");
@@ -299,9 +299,9 @@ static void drawCommunityCredits() {
     ImGui::PopFont();
 }
 
-void drawMainMenu() {
+void drawMainMenu(bool showCredits) {
     if (!ImGui::GetCurrentContext()) return;
-    drawCommunityCredits();
+    if (showCredits) drawCommunityCredits();
     static bool bootScreen = false;
     if (!bootScreen) {
         const auto screen = mc2::gate::str<"MC2_BOOT_TO_SCREEN">();

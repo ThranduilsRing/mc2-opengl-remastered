@@ -79,7 +79,7 @@ inline bool insetChromeCrop(std::string_view path, bool pixelPerfect, bool legac
                             float u1, float v1, float u2, float v2) {
     if (pixelPerfect || legacySpace || (u1 == 0.f && v1 == 0.f && u2 == 1.f && v2 == 1.f)) return false;
     const auto key = sheetKeyFromPath(path);
-    if (key.starts_with("mcl_splashscreen_frame_")) return false; // continuous strips must share their authored edge samples
+    if (key.starts_with("mcl_splashscreen_frame_") || key.starts_with("mcl_mm_")) return false; // continuous frame strips share authored edge samples
     return nineSlice || key.starts_with("mcl_") || key.starts_with("mcui_universal") || key.starts_with("mcui_mr_");
 }
 

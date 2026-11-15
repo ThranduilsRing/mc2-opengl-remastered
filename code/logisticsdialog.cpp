@@ -406,6 +406,11 @@ void	LogisticsOneButtonDialog::setText( int textID, int CancelButton, int OKButt
 void				LogisticsOneButtonDialog::setText( mc2::czstring mainText )
 {
 	textObjects[0].setText( mainText );
+	if (this == LogisticsLegalDialog::instance()) {
+		setDefsElementText("game.mcl_dialoglegal.text.legal_info", mainText);
+		setDefsElementText("game.mcl_dialoglegal.text.main_header", "MECHCOMMANDER 2");
+		setDefsElementText("game.mcl_dialoglegal.button.accept_button", "OK");
+	}
 }
 
 

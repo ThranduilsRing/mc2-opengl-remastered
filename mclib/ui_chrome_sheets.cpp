@@ -119,7 +119,13 @@ bool clearMenuMatte(std::string_view path, Pixels& px) {
         // Retain the dialog button wells; the surrounding cable voids remain open.
         const bool well = dialog && ((key.ends_with("_3") && x >= 50 && x < 178 && y >= 118 && y < 236) ||
                                      (key == "mcl_dialog_onebutton_4" && x < 99 && y < 118));
-        const int coverage = well ? 255 : std::clamp((value - 4) * 255 / 12, 0, 255);
+        // Atlas-space openings, excluding vents and the hazard-painted bottom strips.
+        const bool opening = dialog || key == "mcl_mm_5" || key == "mcl_mm_12" ||
+            (key == "mcl_mm_1" && ((x >= 125 && y < 100) || (x >= 130 && y >= 112 && y < 181) ||
+                                      (x >= 124 && x < 144 && y >= 214))) ||
+            (key == "mcl_mm_2" && (y < 94 || (y >= 116 && y < 210 && x < 164))) ||
+            (key == "mcl_mm_3" && x < 114 && y < 200);
+        const int coverage = well || !opening ? 255 : std::clamp((value - 4) * 255 / 12, 0, 255);
         rgba[dst + 3] = static_cast<uint8_t>((px.channels == 4 ? px.data[src + 3] : 255) * coverage / 255);
     }
     // Only exterior-connected matte is empty space. Enclosed black paint (hazard
@@ -143,7 +149,7 @@ bool clearMenuMatte(std::string_view path, Pixels& px) {
         if (i + px.w < exterior.size()) visit(i + px.w);
     }
     for (size_t i = 0; i < exterior.size(); ++i)
-        if (!exterior[i]) rgba[i * 4 + 3] = px.channels == 4 ? px.data[i * 4 + 3] : 255;
+        if (dialog && !exterior[i]) rgba[i * 4 + 3] = px.channels == 4 ? px.data[i * 4 + 3] : 255;
     px.channels = 4;
     px.data = std::move(rgba);
     return true;
