@@ -845,7 +845,7 @@ int main(int argc, char** argv)
 
     initLauncherEnv();
     try { mc2::net::configure(argc, argv); }
-    catch (const std::exception& error) { std::fprintf(stderr, "[MP_ARGUMENT] %s\n", error.what()); return 2; }
+    catch (const std::exception& error) { std::fprintf(stderr, "Invalid multiplayer argument: %s\n", error.what()); return 2; }
 
     // The launcher_env.json values were just applied: forget every gate a static initialiser cached.
     mc2::gate::invalidateAll();

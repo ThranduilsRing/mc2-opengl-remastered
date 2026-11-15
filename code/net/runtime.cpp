@@ -30,7 +30,7 @@ std::uint32_t delayMs = 0;
 struct DelayedPacket { std::chrono::steady_clock::time_point due; save::Bytes bytes; };
 std::deque<DelayedPacket> delayed;
 [[noreturn]] void fail(std::string_view reason) {
-    std::fprintf(stderr, "[MP_STOP] %.*s\n", static_cast<int>(reason.size()), reason.data());
+    std::fprintf(stderr, "Multiplayer stopped: %.*s\n", static_cast<int>(reason.size()), reason.data());
     if (trace) { trace << "STOP " << reason << '\n' << std::flush; }
     std::fflush(nullptr);
     std::exit(3);
@@ -101,7 +101,7 @@ void checkError() {
             trace << "remote=";
             for (const auto h : d->remote) trace << std::hex << h << ' ';
             trace << std::dec << '\n' << std::flush;
-            std::fprintf(stderr, "[MP_DESYNC] tick=%llu trace=%s\n",
+            std::fprintf(stderr, "Multiplayer desync: tick=%llu trace=%s\n",
                 static_cast<unsigned long long>(d->tick), userFile("session.trace").c_str());
         }
         fail(gate->error());
@@ -117,7 +117,7 @@ void scriptOrders() {
         e.payload.kind = row.verb == "move" ? sim::OrderKind::MoveToPoint : sim::OrderKind::Stop;
         if (row.verb == "reject") {
             if (owns(roster[row.mover], localSlot()) || submitLocal(e)) fail("ownership rejection fixture failed");
-            std::fprintf(stderr, "[MP_OWNERSHIP_PROOF] slot=%u mover=%u rejected\n", localSlot(), row.mover);
+            trace << "OWNERSHIP slot=" << localSlot() << " mover=" << row.mover << " rejected\n" << std::flush;
             continue;
         }
         if (!owns(roster[row.mover], localSlot())) fail("script commands an unowned mover");
@@ -194,7 +194,7 @@ void beginMission(std::string_view mission, std::uint32_t seed) {
     try { session->open(hosting, endpoint, identity); }
     catch (const std::exception& error) { fail(error.what()); }
     began = std::chrono::steady_clock::now();
-    std::fprintf(stderr, "[MP_SESSION] slot=%u mission=%s seed=%u awaiting_peer\n", localSlot(), identity.mission.c_str(), seed);
+    std::fprintf(stderr, "Multiplayer: slot=%u mission=%s seed=%u awaiting peer\n", localSlot(), identity.mission.c_str(), seed);
 }
 void setRoster(std::vector<sim::ObjectRef> initial) { roster = std::move(initial); }
 bool owns(sim::ObjectRef ref, std::uint32_t slot) {
@@ -246,7 +246,7 @@ void stateHashes(std::uint64_t tick, const StateHash& values) {
     auto wireHash = values;
     if (tick == forcedDesyncTick) {
         wireHash[0] ^= 1;
-        std::fprintf(stderr, "[MP_FORCE_DESYNC] tick=%llu\n", static_cast<unsigned long long>(tick));
+        trace << "FORCE_DESYNC tick=" << tick << '\n' << std::flush;
     }
     trace << "H " << tick;
     for (auto h : wireHash) trace << ' ' << std::hex << h;
@@ -254,6 +254,5 @@ void stateHashes(std::uint64_t tick, const StateHash& values) {
     gate->finishTick(wireHash);
     flushOutgoing();
     checkError();
-    std::fprintf(stderr, "[MP_TICK] tick=%llu\n", static_cast<unsigned long long>(tick));
 }
 }

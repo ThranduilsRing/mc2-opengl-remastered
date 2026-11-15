@@ -172,6 +172,7 @@ void updateMissionSupportPreloads()
 // Dev commander purchases obey the same permissions, prices and delivery path as the UI.
 bool MissionInterfaceManager::requestPlayerSupport(int command, glm::vec3 position, MoverPtr salvage)
 {
+    if (mc2::net::active()) return false;
     if (!mc2::gate::get<"MC2_PLAY_MISSION">() || !mc2::brainpolicy::techBrain()
         || MPlayer || !Commander::home || !Team::home || !LogisticsData::instance) return false;
     auto* logistics = LogisticsData::instance;

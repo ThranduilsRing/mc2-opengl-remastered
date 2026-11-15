@@ -44,7 +44,7 @@ def compare_traces(host: Path, client: Path, ticks: int, forced: int = 0) -> dic
     if commands_a != commands_b or not commands_a:
         raise ValueError("peer command traces differ or no scripted orders were applied")
     for peer in (host, client):
-        text = (peer / "stderr.log").read_text(encoding="utf-8", errors="replace")
+        text = (peer / "session.trace").read_text(encoding="utf-8", errors="replace")
         marker = f"[MP_DESYNC] tick={forced} "
         if (forced and marker not in text) or (not forced and "[MP_DESYNC]" in text):
             raise ValueError(f"unexpected/missing desync verdict in {peer}")
