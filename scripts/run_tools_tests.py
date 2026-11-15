@@ -220,6 +220,8 @@ def run_all(mods: list[str], jobs: int, tier: str, no_cache: bool = False, repor
 
     def one(mod):
         def run(env):
+            env = dict(env)
+            env.pop("MC2_GATE_BASE", None)  # selection belongs to this runner, not pytest's fixture repositories
             res = run_module(mod, env)
             return res[1], res[3], res
         res, hit, info = mtc.run_with_cache(cache, mod, "pytest:" + mod, run)
