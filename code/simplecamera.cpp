@@ -705,7 +705,8 @@ void SimpleCamera::setMech(mc2::czstring fileName, long baseColor, long highligh
 	//MUST ALWAYS CALL GET, EVEN IF WE HAVE AN APPEARANCE TYPE OR REFERENCE COUNT DOES NOT INCREASE!
 	Mech3DAppearanceType* appearanceType = nullptr;
 	
-	if ( fileExists( path ) )
+	const bool encyclopediaModel = fileExists(path);
+	if (encyclopediaModel)
 		appearanceType = static_cast<Mech3DAppearanceType*>(appearanceTypeList->getAppearance( MECH_TYPE << 24, static_cast<char*>(testName) ));
 	else
 		appearanceType = static_cast<Mech3DAppearanceType*>(appearanceTypeList->getAppearance( MECH_TYPE << 24, NoPathFileName.data() ));
@@ -721,8 +722,9 @@ void SimpleCamera::setMech(mc2::czstring fileName, long baseColor, long highligh
 		return;
 	}
 
-	// The base appearance manifest also credits its encyclopedia preview.
-	path.init(tglPath, NoPathFileName.c_str(), ".ini");
+	// Credit the selected asset; an encyclopedia replacement may have another author.
+	if (!encyclopediaModel)
+		path.init(tglPath, NoPathFileName.c_str(), ".ini");
 	FitIniFile manifest;
 	if (manifest.open(path) == NO_ERR)
 		modelCredit_ = readModelCredit(manifest);
