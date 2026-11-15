@@ -733,7 +733,10 @@ def data_tree_files(install) -> dict:
     out = {}
     for rel, path in _walk_files(Path(install)):
         low = rel.lower()
-        if stage_kind(rel) != "link" or low.startswith("shaders/") or rel == MANIFEST or ("/" not in low and low.endswith((".exe", ".pdb"))):
+        # Top-level binaries are the exe side of an A/B: Windows .exe/.pdb, and on the box the extensionless Linux `mc2` plus
+        # its .so/.debug files (hangar-cull-1 11-15: Linux `mc2` was fingerprinted as data and refused every box A/B).
+        top_binary = "/" not in low and (low.endswith((".exe", ".pdb", ".so", ".debug")) or Path(low).suffix == "")
+        if stage_kind(rel) != "link" or low.startswith("shaders/") or rel == MANIFEST or top_binary:
             continue
         st = os.stat(path)
         out[rel] = (st.st_size, int(st.st_mtime))
