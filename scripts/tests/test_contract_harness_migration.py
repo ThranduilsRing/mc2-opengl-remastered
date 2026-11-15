@@ -13,6 +13,8 @@ from tools import build_contract_harnesses as builder
 
 @pytest.fixture(autouse=True)
 def production_seam(monkeypatch, tmp_path):
+    import contracts_cache
+    monkeypatch.setattr(contracts_cache, "clean_tip", lambda *a: None)  # mocked native runs cannot certify this checkout
     monkeypatch.setattr(builder, "prepare_unit_tree", lambda *a: (False, tmp_path / "receipt", "[]"))
     # Hermetic: never run a real (possibly stale) mc2_tests_selected binary left in the build tree.
     monkeypatch.setattr(builder, "matched_case_count", lambda *a: 1)
