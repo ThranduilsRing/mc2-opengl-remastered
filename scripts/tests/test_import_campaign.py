@@ -198,7 +198,7 @@ def test_batch_changes_directory_and_preserves_failure(tmp_path):
     (game / "tools/import_campaign.py").write_text("import os, sys\nassert os.getcwd() == sys.argv[1]\nsys.exit(7)\n")
     launcher = game / "import-campaign.bat"
     launcher.write_bytes((ROOT / "import-campaign.bat").read_bytes())
-    run = subprocess.run(f'cmd /d /s /c ""{launcher}" "{game}""', cwd=tmp_path,
+    run = subprocess.run(["cmd", "/d", "/c", "call", str(launcher), str(game)], cwd=tmp_path,
                          input="\n", capture_output=True, text=True,
                          **imp.console_child.child_kwargs(redirected=True))
     assert run.returncode == 7, run.stdout + run.stderr

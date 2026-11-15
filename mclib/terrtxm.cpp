@@ -324,7 +324,7 @@ long TerrainTextures::init (mc2::czstring fileName, mc2::czstring baseName)
 		{
 			char note[160];
 			mc2::fmt::to_buf(note,"terrain tiles missing at TerrainTextureRes={:d}; using {:d} for this mod",mc2::fmt::as_i32(TERRAIN_TXM_SIZE),mc2::fmt::as_i32(bestEdge));
-			printf("[TERRAIN_RESOLUTION] %s: %s\n", static_cast<const char*>(texturePath), note);
+			MC2_DIAGF("[TERRAIN_RESOLUTION] %s: %s\n", static_cast<const char*>(texturePath), note);
 			TERRAIN_TXM_SIZE = bestEdge;
 		}
 	}
