@@ -271,7 +271,7 @@ static void drawCommunityCredits() {
         ImGui::Spacing();
         ImGui::TextUnformatted("Two individuals in particular have kept this game alive for 25+ years:");
         const auto openURL = ImGui::GetPlatformIO().Platform_OpenInShellFn;
-        ImGui::GetPlatformIO().Platform_OpenInShellFn = [](ImGuiContext*, const char* url) { return SDL_OpenURL(url) == 0; };
+        ImGui::GetPlatformIO().Platform_OpenInShellFn = [](ImGuiContext*, auto url) { return SDL_OpenURL(url) == 0; };
         ImGui::TextLinkOpenURL("Wolfman", "https://mc2x.net/");
         ImGui::SameLine(); ImGui::TextUnformatted("and Magic,");
         ImGui::TextUnformatted("supported by many, many others.");
