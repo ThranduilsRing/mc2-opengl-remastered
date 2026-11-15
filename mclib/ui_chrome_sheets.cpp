@@ -116,6 +116,13 @@ bool clearMenuMatte(std::string_view path, Pixels& px) {
         const size_t i = static_cast<size_t>(y) * px.w + x, src = i * px.channels, dst = i * 4;
         std::copy_n(px.data.data() + src, 3, rgba.data() + dst);
         const int value = std::max({rgba[dst], rgba[dst + 1], rgba[dst + 2]});
+        if (menu) {
+            const auto paint = menuYellow((static_cast<uint32_t>(rgba[dst]) << 16) |
+                                         (static_cast<uint32_t>(rgba[dst + 1]) << 8) | rgba[dst + 2]);
+            rgba[dst] = static_cast<uint8_t>(paint >> 16);
+            rgba[dst + 1] = static_cast<uint8_t>(paint >> 8);
+            rgba[dst + 2] = static_cast<uint8_t>(paint);
+        }
         // Retain the dialog button wells; the surrounding cable voids remain open.
         const bool well = dialog && ((key.ends_with("_3") && x >= 50 && x < 178 && y >= 118 && y < 236) ||
                                      (key == "mcl_dialog_onebutton_4" && x < 99 && y < 118));

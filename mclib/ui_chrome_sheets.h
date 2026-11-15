@@ -60,6 +60,18 @@ struct Pixels {
 
 // Returns false (and leaves `px` empty) when the widget file is absent or undecodable.
 using WidgetLoader = std::function<bool(const Sheet& sheet, const Widget& widget, Pixels& px)>;
+// Stock menu paint spans amber through green in the source art. Share the
+// side-chrome yellow (55 degrees HSV), retaining saturation, value and alpha.
+inline uint32_t menuYellow(uint32_t argb) {
+    const int r = (argb >> 16) & 255, g = (argb >> 8) & 255, b = argb & 255;
+    const int hi = r > g ? r : g, lo = r < g ? r : g;
+    const int chroma = hi - b;
+    if (b >= lo || chroma * 100 < hi * 35 ||
+        (g - b) * 100 < (r - b) * 28 || (r - b) * 100 < (g - b) * 67) return argb;
+    return (argb & 0xff000000u) | (static_cast<uint32_t>(hi) << 16) |
+           (static_cast<uint32_t>(b + (chroma * 11 + 6) / 12) << 8) | static_cast<uint32_t>(b);
+}
+
 
 // Remove the baked matte only from stock main-menu/dialog chrome, preserving button wells.
 bool clearMenuMatte(std::string_view path, Pixels& px);
