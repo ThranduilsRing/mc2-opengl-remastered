@@ -1000,9 +1000,15 @@ bool mc2_vk_vfx_vegetation_run(const mc2veg::CullParams& params, const float* wo
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegLayout.get(), 2, 1, &drawSet, 2, drawDyn);
         const VkDescriptorSet groundSet = s->groundLighting.set(vegPar);
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegLayout.get(), 3, 1, &groundSet, 4, ground->offsets.data());
-        veg->drawIndirect(cb, vegPar);   // depth pre-pass
+        {
+            MC2_VK_GPU_SCOPE(depthScope, cb, "VKIsl.Vegetation.Depth");
+            veg->drawIndirect(cb, vegPar);
+        }
         mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegetationPipe.get());   // shading pass; the bound sets stay valid (same layout)
-        veg->drawIndirect(cb, vegPar);
+        {
+            MC2_VK_GPU_SCOPE(shadeScope, cb, "VKIsl.Vegetation.Shade");
+            veg->drawIndirect(cb, vegPar);
+        }
         mc2vk::dynrender::end(slotCtx, cb);
         gpuScope.end();
     }
