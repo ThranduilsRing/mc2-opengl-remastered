@@ -856,7 +856,6 @@ struct ActorAnimState : mc2::sim::ImportedAnimState {
     std::vector<float> modelDelta;          // jointCount*16 row-major (placement-free)
     float gpuLift = 0.0f;                    // world-up foot-ground lift (per-frame)
     // P9 jump/land memory (phase), Once-clip hold (mode) and stride-matched playback (locomotion) live in ImportedAnimState: they are serialized sim state.
-    float playRate = 1.0f;                   // P9: last stride rate (diagnostics)
     std::vector<mc2skel::GpuBone> lastGlobals;  // 1A: last-frame clip bone GLOBALS (FK),
                                                 // parallel to ImportedAnimEntry::names —
                                                 // read by GetImportedNodeWorld for firepoints.
@@ -1553,10 +1552,18 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
                                                      motion.destroyed, finished, s.activeClip.c_str(), s.phase);
         auto adopt = [&](const mc2clip::Choice& c, bool restart) {
             if (auto nd = clipDurationSec(e.scene, c.clip)) {
+                s.previousClip = s.activeClip;
+                s.previousClipTimeSec = s.clipTimeSec;
+                s.previousPlayRate = s.playRate;
+                s.previousDurationSec = s.durationSec;
+                s.previousOnce = s.mode == mc2clip::Mode::Once;
+                s.fadeTimeSec = 0.0f;
                 s.activeClip = c.clip;
                 s.durationSec = *nd > 1e-4f ? *nd : 1.0f;
                 s.mode = c.mode;
                 s.locomotion = c.locomotion;
+                s.playRate = c.mode == mc2clip::Mode::Once
+                    ? mc2clip::onceRate(c.clip, s.durationSec, motion.gestureFrames, motion.gestureRate) : 1.0f;
                 if (restart) s.clipTimeSec = 0.0f;
             }
             s.pendingStreak = 0;
@@ -1564,29 +1571,39 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
         if (s.activeClip == want.clip) {
             s.pendingStreak = 0;
             s.locomotion = want.locomotion;
-        } else if (want.immediate) {
+        } else if (want.immediate || (s.activeClip == "atlas_moveJumpDownLand" && speed > 1.0f)) {
             adopt(want, true);
         } else {
             if (s.pendingClip == want.clip) ++s.pendingStreak;
             else { s.pendingClip = want.clip; s.pendingStreak = 1; }
             if (s.pendingStreak >= 4) adopt(want, s.mode == mc2clip::Mode::Once);
         }
-        s.playRate = 1.0f;
         if (s.locomotion) {
+            s.playRate = 1.0f;
             if (e.strideSpeed.contains(s.activeClip))
                 s.playRate = mc2clip::strideRate(speed, e.strideSpeed.at(s.activeClip));
         }
     }
     const bool holdAtEnd = e.pinnedClip.empty() && s.mode == mc2clip::Mode::Once;
-    if (advanceClock) s.clipTimeSec += dt * (e.pinnedClip.empty() ? s.playRate : 1.0f);
-    if (s.durationSec > 0.0f) {
-        if (holdAtEnd) { s.clipTimeSec = std::min(s.clipTimeSec, s.durationSec); }
-        else while (s.clipTimeSec >= s.durationSec) s.clipTimeSec -= s.durationSec;
+    if (advanceClock) {
+        s.clipTimeSec = mc2clip::advanceClipTime(s.clipTimeSec, dt,
+            e.pinnedClip.empty() ? s.playRate : 1.0f, s.durationSec,
+            holdAtEnd ? mc2clip::Mode::Once : mc2clip::Mode::Loop);
+        if (!s.previousClip.empty()) {
+            s.previousClipTimeSec = mc2clip::advanceClipTime(s.previousClipTimeSec, dt,
+                s.previousPlayRate, s.previousDurationSec,
+                s.previousOnce ? mc2clip::Mode::Once : mc2clip::Mode::Loop);
+            s.fadeTimeSec += dt;
+            if (s.fadeTimeSec >= mc2clip::fadeDuration(s.previousClip, s.activeClip)) s.previousClip.clear();
+        }
     }
     const float frame = s.clipTimeSec * 30.0f;
     double tt = 0, dd = 0;
     auto twist = e.torsoTwist;
     twist.degrees = motion.torsoYawDeg;
+    if (!s.previousClip.empty())
+        return mc2skel::EvaluateClipBlendGpuBones(*e.plan, s.previousClip, s.previousClipTimeSec * 30.0f,
+            s.activeClip, frame, s.fadeTimeSec / mc2clip::fadeDuration(s.previousClip, s.activeClip), globals, &twist);
     return mc2skel::EvaluateClipGpuBones(*e.plan, s.activeClip, frame, globals, &tt, &dd, &twist);
 }
 

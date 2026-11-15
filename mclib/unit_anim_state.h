@@ -18,6 +18,10 @@ struct ImportedAnimState {
     mc2clip::Phase phase;
     mc2clip::Mode mode = mc2clip::Mode::Loop;
     bool locomotion = false;
+    std::string previousClip;
+    float previousClipTimeSec = 0, fadeTimeSec = 0;
+    float playRate = 1, previousPlayRate = 1, previousDurationSec = 1;
+    bool previousOnce = false;
     template<class Archive> void serialize(Archive& a) {
         std::vector<uint8_t> active(activeClip.begin(), activeClip.end()), pending(pendingClip.begin(), pendingClip.end());
         a.sequence(active, 256); a.sequence(pending, 256);
@@ -33,6 +37,17 @@ struct ImportedAnimState {
             if (modeInt != 0 && modeInt != 1) { a.reject("clip_mode"); return; }
             mode = modeInt == 1 ? mc2clip::Mode::Once : mc2clip::Mode::Loop;
         }
+        if (a.sectionVersion < 4) {
+            if (a.reading()) {
+                previousClip.clear(); previousClipTimeSec = fadeTimeSec = 0;
+                playRate = previousPlayRate = previousDurationSec = 1; previousOnce = false;
+            }
+            return;
+        }
+        std::vector<uint8_t> previous(previousClip.begin(), previousClip.end());
+        a.sequence(previous, 256);
+        if (a.reading()) previousClip.assign(previous.begin(), previous.end());
+        a(previousClipTimeSec, fadeTimeSec, playRate, previousPlayRate, previousDurationSec, previousOnce);
     }
 };
 // Advanced only by the fixed tick; copied into immutable render snapshots.

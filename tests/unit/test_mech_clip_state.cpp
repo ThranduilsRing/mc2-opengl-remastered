@@ -137,3 +137,54 @@ TEST_CASE("clip state: stride matching removes planted-foot drift across speeds"
     CHECK(strideRate(100.0f, clipStride) == doctest::Approx(2.0f));
     CHECK(strideRate(5.0f, 0.0f) == doctest::Approx(1.0f));
 }
+
+TEST_CASE("clip state: park and power transitions have their own clips") {
+    Phase ph;
+    CHECK(std::string(pick(kGesturePark, ph).clip) == "atlas_shutdownIdle");
+    CHECK(pick(kGesturePark, ph).mode == Mode::Loop);
+    CHECK(std::string(pick(kGestureStandToPark, ph).clip) == "atlas_shutdownPwroff");
+    CHECK(std::string(pick(kGestureParkToStand, ph).clip) == "atlas_shutdownPwron");
+    CHECK(pick(kGestureStandToPark, ph).mode == Mode::Once);
+    CHECK(pick(kGestureParkToStand, ph).mode == Mode::Once);
+}
+
+TEST_CASE("clip state: destroyed non-fall gestures hold death idle") {
+    for (int gesture = 0; gesture <= 24; ++gesture) {
+        if (gesture == kGestureFallForward || gesture == kGestureFallBackward) continue;
+        Phase ph;
+        const auto c = pick(gesture, ph, 20, true);
+        CHECK(std::string(c.clip) == "atlas_deathIdle");
+        CHECK(c.mode == Mode::Loop);
+        CHECK(c.immediate);
+    }
+}
+
+TEST_CASE("clip state: landing yields immediately above one unit per second") {
+    Phase ph;
+    pick(kGestureJump, ph);
+    CHECK(std::string(pick(2, ph, 1).clip) == "atlas_moveJumpDownLand");
+    CHECK(std::string(pick(kGestureRun, ph, 1.01f, false, false, "atlas_moveJumpDownLand").clip) == "atlas_moveCoreRunFwd");
+    CHECK_FALSE(ph.landing);
+}
+
+TEST_CASE("clip state: one-shots fit stock gesture time with safe bounds") {
+    for (auto clip : {"atlas_hitReactLgtFwd", "atlas_downedGetup", "atlas_hitReactKnockdownInpl", "atlas_shutdownPwron"}) {
+        CHECK(onceRate(clip, 2, 30, 30) == 2);
+        CHECK(onceRate(clip, 0.1f, 30, 30) == 0.5f);
+        CHECK(onceRate(clip, 9, 30, 30) == 3);
+        CHECK(onceRate(clip, 2, 0, 30) == 1);
+        CHECK(onceRate(clip, 2, 30, 0) == 1);
+    }
+    CHECK(onceRate("atlas_moveJumpDownLand", 4, 0, 0) == 2);
+}
+
+TEST_CASE("clip state: fades use longer prone transitions and advance outgoing clips") {
+    CHECK(fadeDuration("walk", "run") == 0.15f);
+    for (auto prone : {"atlas_downedIdle", "atlas_downedGetup", "atlas_deathIdle", "atlas_deathKnockdown", "atlas_hitReactKnockdownInpl"}) {
+        CHECK(fadeDuration("walk", prone) == 0.25f);
+        CHECK(fadeDuration(prone, "walk") == 0.25f);
+    }
+    CHECK(advanceClipTime(0.5f, 0.1f, 2, 1, Mode::Loop) == doctest::Approx(0.7f));
+    CHECK(advanceClipTime(0.9f, 0.1f, 2, 1, Mode::Loop) == doctest::Approx(0.1f));
+    CHECK(advanceClipTime(0.9f, 0.1f, 2, 1, Mode::Once) == 1);
+}

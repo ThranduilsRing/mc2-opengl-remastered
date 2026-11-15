@@ -41,7 +41,8 @@ struct Phase {
     bool landing = false;       // land clip owed after the jump gesture ended
 };
 
-inline constexpr int kGestureWalk = 4, kGestureRun = 7, kGestureReverse = 9, kGestureLimpLeft = 11,
+inline constexpr int kGesturePark = 0, kGestureStandToPark = 1, kGestureParkToStand = 5,
+                     kGestureWalk = 4, kGestureRun = 7, kGestureReverse = 9, kGestureLimpLeft = 11,
                      kGestureLimpRight = 12, kGestureFallBackward = 14, kGestureFallForward = 15,
                      kGestureHitFront = 16, kGestureHitBack = 17, kGestureHitLeft = 18, kGestureHitRight = 19,
                      kGestureJump = 20, kGestureRollover = 21, kGestureGetUp = 22,
@@ -65,11 +66,21 @@ inline Choice select(int gesture, float speed, float turnRate, int turnStreak, b
                      bool activeClipFinished, const char* activeClip, Phase& ph) {
     const int prev = ph.prevGesture;
     ph.prevGesture = gesture;
+    if (destroyed && gesture != kGestureFallBackward && gesture != kGestureFallForward) {
+        ph.jumpStarted = ph.landing = false;
+        Choice c = loop("atlas_deathIdle"); c.immediate = true; return c;
+    }
     if (gesture != kGestureJump) {
         if (prev == kGestureJump && ph.jumpStarted) ph.landing = true;
         ph.jumpStarted = false;
     }
     switch (gesture) {
+        case kGesturePark: {
+            ph.landing = false;
+            Choice c = loop("atlas_shutdownIdle"); c.immediate = true; return c;
+        }
+        case kGestureStandToPark: return once("atlas_shutdownPwroff");
+        case kGestureParkToStand: return once("atlas_shutdownPwron");
         case kGestureHitFront: return once("atlas_hitReactLgtFwd");
         case kGestureHitBack:  return once("atlas_hitReactLgtBwd");
         case kGestureHitLeft:  return once("atlas_hitReactLgtLeft");
@@ -101,7 +112,7 @@ inline Choice select(int gesture, float speed, float turnRate, int turnStreak, b
     }
     if (ph.landing) {
         const bool inLand = activeClip && std::strcmp(activeClip, "atlas_moveJumpDownLand") == 0;
-        if (!inLand || !activeClipFinished) return once("atlas_moveJumpDownLand");
+        if (speed <= 1.0f && (!inLand || !activeClipFinished)) return once("atlas_moveJumpDownLand");
         ph.landing = false;
     }
     const float MOVE_EPS = 1.0f;   // world units/sec
@@ -114,6 +125,30 @@ inline Choice select(int gesture, float speed, float turnRate, int turnStreak, b
         case kGestureWalk:    return loop("atlas_moveCoreWalkFwd", true);
         default: return speed > MOVE_EPS ? loop("atlas_moveCoreWalkFwd", true) : loop("atlas_moveCoreIdle");
     }
+}
+
+inline float onceRate(std::string_view clip, float duration, float gestureFrames, float gestureRate) {
+    if (clip == "atlas_moveJumpDownLand") return 2.0f;
+    if (duration <= 0.0f || gestureFrames <= 0.0f || gestureRate <= 0.0f) return 1.0f;
+    return std::clamp(duration * gestureRate / gestureFrames, 0.5f, 3.0f);
+}
+
+inline bool proneClip(std::string_view clip) {
+    return clip.starts_with("atlas_downed") || clip.starts_with("atlas_death") ||
+           clip == "atlas_hitReactKnockdownInpl";
+}
+
+inline float fadeDuration(std::string_view previous, std::string_view next) {
+    return proneClip(previous) || proneClip(next) ? 0.25f : 0.15f;
+}
+
+inline float advanceClipTime(float time, float dt, float rate, float duration, Mode mode) {
+    time += dt * rate;
+    if (duration > 0.0f) {
+        if (mode == Mode::Once) return std::min(time, duration);
+        while (time >= duration) time -= duration;
+    }
+    return time;
 }
 
 // Playback rate for a locomotion clip: the clip's measured planted-foot speed (world units/s

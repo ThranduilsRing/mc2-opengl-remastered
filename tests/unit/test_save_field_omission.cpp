@@ -22,7 +22,9 @@ bool operator==(const ImportedAnimState& a, const ImportedAnimState& b) {
 
 #define IMPORTED_MEMBERS &T::activeClip, &T::pendingClip, &T::pendingStreak, &T::turnStreak, \
     &T::havePrev, &T::prevPx, &T::prevPy, &T::prevPz, &T::prevHeading, &T::clipTimeSec, \
-    &T::durationSec, &T::lastFrame, &T::phase, &T::mode, &T::locomotion
+    &T::durationSec, &T::lastFrame, &T::phase, &T::mode, &T::locomotion, &T::previousClip, \
+    &T::previousClipTimeSec, &T::fadeTimeSec, &T::playRate, &T::previousPlayRate, \
+    &T::previousDurationSec, &T::previousOnce
 #define ANIM_MEMBERS &T::mechFrameRate, &T::leftArmOff, &T::rightArmOff, &T::fallen, \
     &T::forceStop, &T::atTransitionToNextGesture, &T::inReverse, &T::inJump, &T::jumpSetup, \
     &T::jumpAirborne, &T::oncePerFrame, &T::lockRotation, &T::velocity, &T::currentStateGoal, \
@@ -72,10 +74,11 @@ TEST_CASE("save fields: ANIM independent member census") {
         using T = ImportedAnimState;
         imported = save_probe::patterned<T>(IMPORTED_MEMBERS);
         SAVE_FIELD_SHAPE(imported, activeClip, pendingClip, pendingStreak, turnStreak, havePrev,
-            prevPx, prevPy, prevPz, prevHeading, clipTimeSec, durationSec, lastFrame, phase, mode, locomotion);
+            prevPx, prevPy, prevPz, prevHeading, clipTimeSec, durationSec, lastFrame, phase, mode, locomotion,
+            previousClip, previousClipTimeSec, fadeTimeSec, playRate, previousPlayRate, previousDurationSec, previousOnce);
         SAVE_FIELD_SHAPE(imported.phase, prevGesture, jumpStarted, landing);
         imported.phase = {0x15151515, true, true};
-        CHECK(save_probe::memberBytes<T>(IMPORTED_MEMBERS) + 6 == sizeof(T));
+        CHECK(save_probe::memberBytes<T>(IMPORTED_MEMBERS) + 13 == sizeof(T));
         CHECK(save_probe::roundtrip(imported, [](auto& a, auto& v) { a(v); }, IMPORTED_MEMBERS));
     }
     using T = UnitAnimState;
