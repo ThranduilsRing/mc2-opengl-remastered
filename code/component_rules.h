@@ -4,6 +4,18 @@
 #include <cstdint>
 
 namespace mc2::components {
+// A removed grid item is placed once: at the destination, or back at its source.
+// Copy the source because placement callbacks can change the UI selection.
+template<class Add>
+inline bool finishGridDrop(long& x, long& y, bool fromGrid,
+                           long sourceX, long sourceY, Add add) {
+    if (add(x, y) == 0) return true;
+    if (!fromGrid) return false;
+    x = sourceX;
+    y = sourceY;
+    return add(x, y) == 0;
+}
+
 // Inactive storage can contain a previous loadout. Unmapped live components
 // are preserved without indexing the logistics table with a missing location.
 template<std::size_t N, class Item, class Location, class Logistics>

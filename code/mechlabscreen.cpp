@@ -32,6 +32,7 @@ static bool cheatInfiniteMoney() { static const bool on = mc2::gate::get<"MC2_CH
 #include"../GuiRuntime/GuiRuntime.h"
 #include "mc2fmt.h"
 #include "mc2str.h"
+#include "component_rules.h"
 #include "../GameOS/gameos/input_capture_policy.h"
 
 MechLabScreen* MechLabScreen::s_instance = nullptr;
@@ -1024,7 +1025,8 @@ void MechLabScreen::render(int xOffset, int yOffset)
 	for (int i = 0; i < componentCount; i++ )
 		componentIcons[i].render(xOffset, yOffset);
 
-	if ( pSelectedComponent && pVariant )
+	// Selection and drag outlines share storage; only the drag owns it while held.
+	if ( pSelectedComponent && pVariant && !pDragComponent )
 	{
 		long i = selI;
 		long j = selJ;
@@ -1736,29 +1738,13 @@ void MechLabScreen::endDrag( )
 		// use selRect, it already has proper coords
 		getMouseDiagramCoords( selRect->left(), selRect->top(), x, y );
 		
-		if ( x == -2 && pDragComponent->getType() == COMPONENT_FORM_JUMPJET )
+		if ( mc2::components::finishGridDrop(x, y, bDragLeft, selI, selJ,
+			[this](long& i, long& j) { return addComponent(pDragComponent, i, j); }) )
 		{
-			x = -2; 
-			y = -2;
-			addComponent( pDragComponent, x, y );				
-		}
-		else
-		{
-			if ( NO_ERR == addComponent( pDragComponent, x, y) )
-			{
-				componentListBox.SelectItem( -1 );
-				selI = x;
-				selJ = y;
-				pSelectedComponent = pDragComponent;
-			}
-			if ( bDragLeft ) // put it bag, if we didn't drag far enough away
-			{
-				if ( NO_ERR == addComponent( pDragComponent, selI, selJ) )
-				{
-					componentListBox.SelectItem( -1 );
-					pSelectedComponent = pDragComponent;
-				}
-			}
+			componentListBox.SelectItem( -1 );
+			selI = x;
+			selJ = y;
+			pSelectedComponent = pDragComponent;
 		}
 
 		updateDiagram();

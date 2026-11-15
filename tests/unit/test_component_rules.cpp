@@ -2,6 +2,33 @@
 #include "doctest.h"
 #include "component_rules.h"
 
+// Trigger: mechlabscreen.cpp and component_rules.h (same-grid drag completion).
+TEST_CASE("components/grid move places once and rejected drop restores source") {
+    for (bool reject : {false, true}) {
+        long x = 2, y = 3;
+        int calls = 0, count = 2, cost = 200, heat = 10, weight = 4;
+        bool source = false, target = false;
+        auto add = [&](long& px, long& py) {
+            ++calls;
+            if (reject && px == 2 && py == 3) return 1; // occupied/invalid
+            source = px == 0 && py == 1;
+            target = px == 2 && py == 3;
+            ++count; cost += 100; heat += 5; weight += 2;
+            return 0;
+        };
+        REQUIRE(mc2::components::finishGridDrop(x, y, true, 0, 1, add));
+        CHECK(calls == (reject ? 2 : 1));
+        CHECK(source == reject);
+        CHECK(target == !reject);
+        CHECK(x == (reject ? 0 : 2));
+        CHECK(y == (reject ? 1 : 3));
+        CHECK(count == 3);
+        CHECK(cost == 300);
+        CHECK(heat == 15);
+        CHECK(weight == 6);
+    }
+}
+
 TEST_CASE("components/reset ignores stale storage and preserves unmapped live items") {
     struct Item { unsigned char masterID; };
     struct Slot { bool clearOut; };
