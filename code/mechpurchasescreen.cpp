@@ -610,7 +610,8 @@ void MechPurchaseScreen::renderPurchaseGroups(int xOffset, int yOffset)
 	if (ImGui::Begin("##purchase_sources", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove |
 		ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse))
 	{
-		ImGui::SetWindowFontScale(sy * .75f);
+		// The font atlas already follows display DPI; scale only relative to the 1080p canvas.
+		ImGui::SetWindowFontScale(sy * .75f * 1080.f / ImGui::GetIO().DisplaySize.y);
 		for (std::size_t g = 0; g < purchaseGroups.size(); ++g)
 		{
 			auto& group = purchaseGroups[g];
