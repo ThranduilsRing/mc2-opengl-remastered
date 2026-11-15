@@ -76,7 +76,7 @@ def test_sun_and_lamp_specular_use_the_wave_normal_and_roughness():
     # The reflection normal is the wave normal plus the actor ripple/wake slope (water-reactive-a), never a noise gradient.
     assert "reflect(-vdir, waveNormal)" in SRC and "PREC vec3  waveNormal = normalize(waveN + vec3(reactive.xy, 0.0));" in SRC
     # Spec AA comes before the coverage discard (derivatives defined) and is not temporal.
-    assert SRC.index("float kernelVar") < SRC.index("if (shore <= 0.0) discard;")
+    assert SRC.index("float kernelVar") < SRC.index("shore <= 0.0) discard;")
 
 
 def test_ripples_are_wave_spectrum_without_crest_brightening():
