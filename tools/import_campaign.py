@@ -274,6 +274,13 @@ def import_campaign(source, deploy):
                 rc = legacy._run_step(build, build_args)
                 if rc not in (0, None):
                     raise ValueError(f"Compatibility converter failed: {rc}")
+                if compat == "mc2x-compat":
+                    sys.path.insert(0, str(Path(__file__).resolve().parent / "mc2x_import"))
+                    import transfer_mc2x_campaign as transfer
+                    components = {key: value for key, value in transfer.MISC_ROSTER.items()
+                                  if value.endswith("/compbas.csv")}
+                    transfer.extract_fst_whitelist(str(root / "misc.fst"),
+                                                  str(staged / "mods" / compat), components)
                 pending.append(compat)
                 refs.insert(0, str(staged / "mods" / compat / "data"))
         out = staged / "mods" / mod_id

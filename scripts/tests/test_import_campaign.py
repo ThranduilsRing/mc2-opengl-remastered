@@ -210,6 +210,30 @@ def test_failed_transfer_is_never_published(sample, monkeypatch, failure):
     assert [p.name for p in (deploy / "mods").iterdir()] == ["mc2x-compat"]
 
 
+def test_new_compat_keeps_its_component_table(sample, monkeypatch):
+    import shutil
+    source, deploy = sample
+    (deploy / "mods/mc2x-compat/data").rmdir()
+    (deploy / "mods/mc2x-compat").rmdir()
+    (source / "misc.fst").write_bytes(b"\xaf\xec\xdd\xfa" + bytes(300))
+    entries = [(274, 0, 0, "data/objects/mc2xcomp.csv", False, bytes(300))]
+    monkeypatch.setattr(imp.legacy.fst, "fst_entries", lambda _: entries)
+    monkeypatch.setattr(imp.legacy.fst, "decompress_entry", lambda *args: b"authored ammo")
+    monkeypatch.setattr(imp.legacy, "classify", lambda _: {"action": "convert", "needs_compat": "mc2x-compat"})
+    monkeypatch.setattr(imp.legacy, "_plan", lambda *args: [{"kind": "build", "targets": ["mc2x-compat"], "args": []}])
+    monkeypatch.setattr(imp.legacy, "_subst", lambda args, staged, deploy: [staged])
+    def convert(step, args):
+        if step["kind"] == "build":
+            (Path(args[0]) / "mods/mc2x-compat/data").mkdir(parents=True)
+        else:
+            destination = Path(args[args.index("--out") + 1])
+            shutil.copytree(source / "data", destination / "data")
+        return 0
+    monkeypatch.setattr(imp.legacy, "_run_step", convert)
+    imp.import_campaign(source, deploy)
+    assert (deploy / "mods/mc2x-compat/data/objects/compbas.csv").read_bytes() == b"authored ammo"
+
+
 def test_campaign_object_holes_use_authored_definitions(tmp_path):
     sys.path.insert(0, str(ROOT / "tools/mco_import"))
     from build_object2 import read_pak, write_pak, RAW, NUL
