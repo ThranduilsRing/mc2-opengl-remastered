@@ -32,8 +32,7 @@ CLIPS = {
     "Stand_Turn_Left": "atlas_" + "moveCoreTurnLeftIdle", "Stand_Turn_Right": "atlas_" + "moveCoreTurnRightIdle",
     "Jumpjetting_Neutral": "atlas_moveJumpUpIdle",
 }
-NODE_MAP = {"joint_torso": "j_Spine2", "weapon_rightarm": "Forearm_Right", "weapon_leftarm": "Forearm_Left",
-            "weapon_righttorso": "Clavicle_Right", "weapon_lefttorso": "Clavicle_Left", "weapon_centertorso": "j_Spine2",
+NODE_MAP = {"joint_torso": "j_Spine2",
             "cockpit": "j_" + "COCKPIT", "hit_left": "Clavicle_Left", "hit_right": "Clavicle_Right"}
 
 
@@ -103,7 +102,36 @@ def read_psa(path):
     return names, keys, float(rate), nframes
 
 
-def build(skm_path, anim_dir, out_path, image_name, clips=None):
+def split_parts(g, buf):
+    """The same dominant-first-corner split for hulls and attached weapons."""
+    parts, pairs = {}, {}
+    total, mixed = 0, 0
+    for mesh in g['meshes']:
+        for pr in mesh['primitives']:
+            at = pr['attributes']
+            pos, nrm, uv = [read_accessor(g, buf, at[k]).astype(np.float32)
+                            for k in ('POSITION', 'NORMAL', 'TEXCOORD_0')]
+            j = read_accessor(g, buf, at['JOINTS_0']).astype(int)
+            w = read_accessor(g, buf, at['WEIGHTS_0'])
+            dom = j[np.arange(len(j)), np.argmax(w, axis=1)]
+            idx = read_accessor(g, buf, pr['indices']).astype(np.int64).reshape(-1, 3)
+            total += len(idx)
+            for corners in dom[idx]:
+                bones = sorted(set(map(int, corners)))
+                if len(bones) > 1:
+                    mixed += 1
+                    for a in range(len(bones)):
+                        for b in range(a + 1, len(bones)):
+                            pair = (bones[a], bones[b])
+                            pairs[pair] = pairs.get(pair, 0) + 1
+            for b in np.unique(dom[idx[:, 0]]):
+                tri = idx[dom[idx[:, 0]] == b]
+                used, inv = np.unique(tri.ravel(), return_inverse=True)
+                parts.setdefault(int(b), []).append((pos[used], nrm[used], uv[used], inv.reshape(-1, 3)))
+    return parts, total, mixed, pairs
+
+
+def build(skm_path, anim_dir, out_path, image_name, clips=None, attachments=()):
     skm = Path(skm_path)
     g = json.loads(skm.read_text())
     buf = (skm.parent / g["buffers"][0]["uri"]).read_bytes()
@@ -122,33 +150,7 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None):
             glob[i] = (gmat(parent[i]) @ m) if i in parent else m
         return glob[i]
 
-    # rigid parts: every triangle goes to the dominant bone of its first vertex
-    parts = {}
-    total_triangles, mixed_triangles, pairs = 0, 0, {}
-    for mesh in g["meshes"]:
-        for pr in mesh["primitives"]:
-            at = pr["attributes"]
-            pos = read_accessor(g, buf, at["POSITION"]).astype(np.float32)
-            nrm = read_accessor(g, buf, at["NORMAL"]).astype(np.float32)
-            uv = read_accessor(g, buf, at["TEXCOORD_0"]).astype(np.float32)
-            J = read_accessor(g, buf, at["JOINTS_0"]).astype(int)
-            W = read_accessor(g, buf, at["WEIGHTS_0"])
-            dom = J[np.arange(len(J)), np.argmax(W, axis=1)]
-            idx = read_accessor(g, buf, pr["indices"]).astype(np.int64).reshape(-1, 3)
-            tb = dom[idx[:, 0]]
-            total_triangles += len(idx)
-            for corners in dom[idx]:
-                bones = sorted(set(map(int, corners)))
-                if len(bones) > 1:
-                    mixed_triangles += 1
-                    for a in range(len(bones)):
-                        for c in range(a + 1, len(bones)):
-                            pair = (bones[a], bones[c])
-                            pairs[pair] = pairs.get(pair, 0) + 1
-            for b in np.unique(tb):
-                tri = idx[tb == b]
-                used, inv = np.unique(tri.ravel(), return_inverse=True)
-                parts.setdefault(int(b), []).append((pos[used], nrm[used], uv[used], inv.reshape(-1, 3)))
+    parts, total_triangles, mixed_triangles, pairs = split_parts(g, buf)
 
     for (a, b), count in sorted(pairs.items()):
         print(f"mixed_pair {nodes[joint_nodes[a]]['name']} {nodes[joint_nodes[b]]['name']} {count}")
@@ -157,9 +159,41 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None):
     if fraction > 0.01:  # rigid split assigns seam triangles to the dominant bone; 0.65% on the Mad Cat is cosmetic (orchestrator 11-16)
         raise ValueError("mixed dominant-bone triangles exceed 1%")
 
+    hull = np.concatenate([q[0] for plist in parts.values() for q in plist])
+    true_height = float(np.ptp(hull[:, 1]))
+    part_joints, part_names, attached = {}, {}, []
+    by_name = {nodes[j]['name']: b for b, j in enumerate(joint_nodes)}
+    for ai, spec in enumerate(attachments):
+        source, bone = spec.rsplit('=', 1)
+        if bone not in by_name:
+            raise ValueError(f"attachment bone not found: {bone}")
+        path = Path(source)
+        ag = json.loads(path.read_text())
+        abuf = (path.parent / ag['buffers'][0]['uri']).read_bytes()
+        anodes = ag['nodes']
+        apar = {c: i for i, n in enumerate(anodes) for c in n.get('children', [])}
+        def aworld(i):
+            return (aworld(apar[i]) if i in apar else np.eye(4)) @ trs_mat(anodes[i])
+        target = by_name[bone]
+        frame = gmat(joint_nodes[target])
+        entry = {'source': path.stem, 'joint': RENAME.get(bone, bone), 'meshes': [],
+                 'sockets': {n['name']: aworld(i)[:3, 3].tolist() for i, n in enumerate(anodes)
+                             if n.get('name', '').lower().startswith(('fire', 'muzzle'))}}
+        weapon_parts, _, mixed, _ = split_parts(ag, abuf)
+        if mixed:
+            raise ValueError(f"mixed attachment triangle: {path.stem}")
+        for _, plist in sorted(weapon_parts.items()):
+            key = len(joint_nodes) + len(part_joints)
+            part_joints[key] = target
+            part_names[key] = f'wp{ai:02d}_{len(entry["meshes"]):02d}'
+            entry['meshes'].append(key)
+            parts[key] = [((np.c_[p, np.ones(len(p))] @ frame.T)[:, :3].astype(np.float32),
+                           (n @ frame[:3, :3].T).astype(np.float32), uv, tri) for p, n, uv, tri in plist]
+        attached.append(entry)
+
     keep = set()
     for b in parts:
-        i = joint_nodes[b]
+        i = joint_nodes[part_joints.get(b, b)]
         while i is not None:
             keep.add(i)
             i = parent.get(i)
@@ -207,9 +241,10 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None):
     meshes, skins, mesh_nodes = [], [], []
     drift = 0.0
     for b, plist in sorted(parts.items()):
-        jn = joint_nodes[b]
+        jb = part_joints.get(b, b)
+        jn = joint_nodes[jb]
         ibm = np.linalg.inv(gmat(jn))
-        orig = read_accessor(g, buf, skin["inverseBindMatrices"])[b].reshape(4, 4).T
+        orig = read_accessor(g, buf, skin["inverseBindMatrices"])[jb].reshape(4, 4).T
         drift = max(drift, float(np.abs(ibm - orig).max()))
         if not np.isfinite(drift) or drift >= 1e-4:
             raise ValueError(f"ibm_drift {drift:.9g} >= 1e-4")
@@ -224,7 +259,7 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None):
                  "TEXCOORD_0": add(p[2], 5126, "VEC2", 34962),
                  "JOINTS_0": add(np.zeros((nv, 4), np.uint16), 5123, "VEC4", 34962),
                  "WEIGHTS_0": add(np.tile(np.array([1, 0, 0, 0], np.float32), (nv, 1)), 5126, "VEC4", 34962)}
-        mname = nm(jn).replace("_DM0", "")
+        mname = part_names.get(b, nm(jn).replace("_DM0", ""))
         meshes.append({"name": mname, "primitives": [{"attributes": attrs, "indices": add(tris.ravel(), 5125, "SCALAR", 34963), "material": 0}]})
         skins.append({"joints": [remap[jn]], "inverseBindMatrices": add(ibm.T.astype(np.float32)[None].reshape(1, 16), 5126, "MAT4")})
         mesh_nodes.append({"name": mname + "_n", "mesh": len(meshes) - 1, "skin": len(skins) - 1})
@@ -233,6 +268,9 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None):
     first = len(out_nodes)
     out_nodes += mesh_nodes
     root_nodes += list(range(first, len(out_nodes)))
+    part_indices = {key: i for i, key in enumerate(sorted(parts))}
+    for entry in attached:
+        entry['meshes'] = [part_indices[key] for key in entry['meshes']]
 
     # Rotation-only clips: shared ActorX basis accounts for the root/child convention.
     name_to_node = {nm(o): remap[o] for o in order}
@@ -264,7 +302,8 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None):
            "scene": 0, "scenes": [{"nodes": root_nodes}], "nodes": out_nodes, "meshes": meshes, "skins": skins,
            "materials": [{"name": "mw5_mech", "pbrMetallicRoughness": {"baseColorTexture": {"index": 0}, "metallicFactor": 0.3, "roughnessFactor": 0.55}}],
            "textures": [{"source": 0}], "images": [{"uri": image_name}],
-           "accessors": accs, "bufferViews": views, "buffers": [{"byteLength": len(blob)}], "animations": anims}
+           "accessors": accs, "bufferViews": views, "buffers": [{"byteLength": len(blob)}], "animations": anims,
+           "extras": {"trueHeightM": true_height, "mw5Attachments": attached}}
     js = json.dumps(doc, separators=(",", ":")).encode()
     js += b" " * (-len(js) % 4)
     blob.extend(b"\0" * (-len(blob) % 4))
@@ -281,8 +320,10 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--image", required=True)
     ap.add_argument("--clips", default=None, help="comma list of MW5 clip names to include (default all, empty = none)")
+    ap.add_argument("--attach", action="append", default=[], metavar="GLTF=BONE",
+                    help="rigid weapon export in the named hull bone's local frame (repeatable)")
     a = ap.parse_args()
-    build(a.skm, a.anim_dir, a.out, a.image, None if a.clips is None else [c for c in a.clips.split(",") if c])
+    build(a.skm, a.anim_dir, a.out, a.image, None if a.clips is None else [c for c in a.clips.split(",") if c], a.attach)
 
 
 if __name__ == "__main__":

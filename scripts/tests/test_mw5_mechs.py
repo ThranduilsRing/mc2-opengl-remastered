@@ -144,3 +144,54 @@ def test_world_pelvis_distinguishes_root_sign(fixture):
     assert world_rotation_delta(fk(nodes, pose)[2], rest[2]) < 1e-5
     pose[1]["rotation"] = psa_quat_to_gltf(keys[0, 0, 3:7], False)
     assert world_rotation_delta(fk(nodes, pose)[2], rest[2]) > 179.99
+
+
+@pytest.mark.parametrize('authored', [True, False])
+def test_attached_muzzle_in_rotated_joint_frame(fixture, tmp_path, authored):
+    from tools.mw5_mechs.sockets import package_nodes
+    skm = fixture[0]
+    hull = json.loads(skm.read_text())
+    # Add a cockpit so the fallback has a known horizontal forward axis.
+    hull['nodes'].append({'name': 'Cockpit', 'translation': [0, 5, 10]})
+    skm.write_text(json.dumps(hull))
+    weapon = json.loads(skm.read_text())
+    weapon['nodes'] = [{'name': 'Root'}, {'name': 'Fire00' if authored else 'tip',
+                                        'translation': [2, 3, 30]}]
+    wp = tmp_path / 'weapon.gltf'
+    wp.write_text(json.dumps(weapon))
+    out = tmp_path / 'assembled.glb'
+    bone = 'Foot0_Left'
+    doc = B.build(skm, tmp_path, out, 'albedo.png', attachments=[f'{wp}={bone}'])
+    row = dict(node='weapon_0', mesh='weapon', bone=bone, type=4, fires=['Fire00'])
+    nodes, offsets, types, height = package_nodes(out, [row, dict(node=None)])
+    assert nodes['weapon_0'] == 'j_LFoot' and types == {'weapon_0': 4}
+    assert height == 15  # original hull bounds; weapons must not alter this
+    frame = fk(hull['nodes'])[3]
+    point = np.array([float(x) for x in offsets['weapon_0'].split()])
+    if authored:
+        assert np.allclose(point, [2, 3, 30])
+    else:
+        # Independent expected tip: transform every source vertex, select by +Z.
+        verts = np.arange(18).reshape(6, 3)
+        world = (np.c_[verts, np.ones(6)] @ frame.T)[:, :3]
+        expected = verts[np.argmax(world[:, 2])]
+        assert np.allclose(point, expected, atol=1e-4)
+    assert all(len(n['name']) <= 24 for n in doc['nodes'])
+    assert all(not any(s in m['name'].lower() for s in ('_explode', '_dmg', 'blip', 'indc', 'uix'))
+               for m in doc['meshes'])
+    from tools.mw5_mechs.build_pack import emit_ini
+    ini = emit_ini('FITini\n[Bounds]\nf UpperLeftX = 1\nFITend', types)
+    assert 'l NumWeapon = 1' in ini and 'l WeaponType = 4' in ini
+    assert 'weapon_0' in ini and 'f UpperLeftX = 1' in ini
+    with pytest.raises(ValueError, match='not unique'):
+        package_nodes(out, [dict(row, mesh='missing')])
+    with pytest.raises(ValueError, match='joint mismatch'):
+        package_nodes(out, [dict(row, bone='Foot0_Right')])
+    with pytest.raises(ValueError, match='duplicate'):
+        package_nodes(out, [row, row])
+
+
+def test_attachment_requires_resolved_bone(fixture, tmp_path):
+    with pytest.raises(ValueError, match='bone not found'):
+        B.build(fixture[0], tmp_path, tmp_path / 'bad.glb', 'albedo.png',
+                attachments=[f'{fixture[0]}=unresolved'])
