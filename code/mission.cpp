@@ -20,6 +20,8 @@
 #include "render_resource_owners.h"
 #include "mc2fmt.h"
 #include "command_replay.h"
+#include "net/runtime.h"
+#include "net/user_paths.h"
 #include "sim_tick_clock.h"
 #include <algorithm>
 #include <cstdio>
@@ -49,6 +51,27 @@ struct MissionOrderAccess {
     }
 };
 using MissionOrderApplication = mc2::sim::MoverOrderApplication<::TacticalOrder, MissionOrderAccess>;
+struct PeerAdmission final : mc2::sim::OrderAdmissionValidator {
+    Mission& owner;
+    explicit PeerAdmission(Mission& mission) : owner(mission) {}
+    bool permitted(const mc2::sim::OrderSource& source, const mc2::sim::OrderEnvelope& e) const override {
+        if (!mc2::net::active() || source.kind != mc2::sim::SourceKind::Peer ||
+            source.sourceId < mc2::net::peerSourceBase || source.sourceId >= mc2::net::peerSourceBase + 2) return false;
+        auto ui = source;
+        ui.kind = mc2::sim::SourceKind::UI;
+        const MissionOrderAccess access{owner};
+        const MissionOrderApplication application(access);
+        auto reason = access.validatePlayer(e);
+        for (std::uint32_t i = 0; !reason && i < e.recipients.size(); ++i)
+            reason = application.validateRecipient(e, e.recipients[i], i);
+        if (reason) {
+            mc2::fmt::print_err("Multiplayer live admission rejected: tick={} source={} sequence={} reason={}\n",
+                e.applyTick, e.sourceId, e.sequence, reason);
+            return false;
+        }
+        return application.permitted(ui, e);
+    }
+};
 static_assert(std::to_underlying(TACTICAL_ORDER_NONE) == 0 && std::to_underlying(TACTICAL_ORDER_STOP) == 11 && std::to_underlying(TACTICAL_ORDER_MOVETO_POINT) == 2);
 static_assert(std::to_underlying(TACTICAL_ORDER_TRAVERSE_PATH) == 6 && std::to_underlying(TACTICAL_ORDER_PATROL_PATH) == 7);
 static_assert(ORDER_ORIGIN_PLAYER == 0 && ORDER_ORIGIN_COMMANDER == 1);
@@ -62,6 +85,16 @@ GameObject* playerOrderTarget(mc2::sim::ObjectRef ref) {
 }
 std::uint32_t MissionOrderAccess::validatePlayer(const mc2::sim::OrderEnvelope& e) const {
     using namespace mc2::sim;
+    if (mc2::net::active()) {
+        if (e.sourceId < mc2::net::peerSourceBase || e.sourceId >= mc2::net::peerSourceBase + 2 ||
+            e.issuer != OrderIssuer{CommanderId{0}}) return static_cast<std::uint32_t>(MoverOrderRejection::Permission);
+        for (auto ref : e.recipients) {
+            auto* mover = resolve(ref);
+            if (!mover || mover->getTeamId() != 0 || mover->getCommanderId() != 0 ||
+                !mc2::net::owns(ref, e.sourceId - mc2::net::peerSourceBase))
+                return static_cast<std::uint32_t>(MoverOrderRejection::Permission);
+        }
+    }
     if (e.queueMode != QueueMode::Replace && e.queueMode != QueueMode::Append)
         return static_cast<std::uint32_t>(MoverOrderRejection::UnsupportedMode);
     if (e.payload.kind < OrderKind::Wait || e.payload.kind > OrderKind::Recover ||
@@ -385,6 +418,13 @@ std::expected<mc2::sim::MissionReceipt, mc2::sim::OrderError> Mission::submitMis
     std::uint64_t session, mc2::sim::OrderEnvelope envelope) {
     MissionOrderApplication application(MissionOrderAccess{*this});
     if (session != orderSession()) return std::unexpected(mc2::sim::OrderError::Permission);
+    if (mc2::net::active() && envelope.payload.origin == mc2::sim::OrderOrigin::Player) {
+        for (auto ref : envelope.recipients)
+            if (!mc2::net::owns(ref, mc2::net::localSlot())) return std::unexpected(mc2::sim::OrderError::Permission);
+        if (!mc2::net::submitLocal(std::move(envelope))) return std::unexpected(mc2::sim::OrderError::Permission);
+        // Network admission has no local receipt until both peers seal the batch.
+        return mc2::sim::MissionReceipt{session, 0};
+    }
     const auto result = mc2::replay::submit(orderIngress.queue(), std::move(envelope), application);
     if (!result) return std::unexpected(result.error());
     return mc2::sim::MissionReceipt{session, result->receiptId};
@@ -605,6 +645,7 @@ static float s_simSpeedRuntime = -1.0f;   // < 0 = unseeded (read env on first u
 
 float simSpeedGetMultiplier()
 {
+    if (mc2::net::active()) return 1.0f;
 	if (s_simSpeedRuntime < 0.0f)
 	{
 		s_simSpeedRuntime = mc2::gate::get<"MC2_SIM_SPEED">();   // the row clamps to [0.25, 4]
@@ -614,6 +655,7 @@ float simSpeedGetMultiplier()
 
 void simSpeedSetMultiplier(float v)
 {
+    if (mc2::net::active()) return;
 	const float prev = simSpeedGetMultiplier();
 	s_simSpeedRuntime = simSpeedClamp(v);
 	mc2::fmt::print_err("[SIM-SPEED v1] multiplier={:.2f} (was {:.2f})\n", static_cast<double>(s_simSpeedRuntime), static_cast<double>(prev));
@@ -929,6 +971,27 @@ extern long NumGameObjectsToDisplay;
 
 void Mission::start (void)
 {
+	if (mc2::net::active()) {
+        std::vector<mc2::sim::ObjectRef> roster;
+        std::vector<std::uint32_t> watchIds;
+        for (long i = 0; i < ObjectManager->getNumMovers(); ++i) {
+            auto* mover = ObjectManager->getMover(i);
+            if (mover->getTeamId() != 0 || mover->getCommanderId() != 0) continue;
+            const auto binding = std::ranges::find(orderRecipients, mover, &OrderRecipientBinding::mover);
+            if (binding != orderRecipients.end() && resolveOrderRecipient(binding->ref)) {
+                roster.push_back(binding->ref);
+                watchIds.push_back(mover->getWatchID(false));
+            }
+        }
+        mc2::net::setRoster(std::move(roster), std::move(watchIds));
+        mc2::net::bindQueue(orderIngress.queue(), std::make_unique<PeerAdmission>(*this),
+            [this](mc2::sim::OrderEnvelope envelope) { return submitMissionOrder(orderSession(), std::move(envelope)).has_value(); },
+            [](std::uint32_t part) -> std::optional<mc2::sim::ObjectRef> {
+                auto* target = ObjectManager->findByPartId(part);
+                if (!target || !target->getExists() || target->isDestroyed()) return {};
+                return mc2::sim::ObjectRef{part, static_cast<std::uint32_t>(target->getWatchID(false))};
+            });
+    }
 	active = true;
 	mission_phase_mark("mission_ready");
 	mission_phase_report(); // LOAD-PHASE-FACTS-1: emit consolidated [LOAD_PHASES v1] line

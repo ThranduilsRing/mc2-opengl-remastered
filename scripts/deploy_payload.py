@@ -260,6 +260,8 @@ IMPORTED_STRUCTURE_PAYLOAD = [
 # runtime (both readers tolerate absence), but shipping without them silently
 # drops per-mission/material tuning that was authored assuming the file loads.
 GAME_DATA_PAYLOAD = [
+    "CREDITS.txt",
+    "THIRD_PARTY_NOTICES.txt",
     "data/art/asset_sizes.csv",
     *[f"data/art/gui/mcl_cm_op{op}_{view}.tga"
       for op, count in ((1, 6), (2, 3), (3, 4)) for view in range(1, count + 1)],
@@ -1378,7 +1380,12 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
                 rel = os.path.relpath(path, src_root).replace(os.sep, "/")
                 items.append((path, rel, "support"))
 
-    # Portable community importer and its recipes/shims; no Win32 launcher needed.
+    # Portable community importer and docs; the batch launcher is Windows-only.
+    if not native:
+        items.append((os.path.join(src_root, "import-campaign.bat"), "import-campaign.bat", "support"))
+    for rel in ("tools/import_campaign.py", "docs/modding/IMPORT-CAMPAIGNS.md",
+                "docs/modding/campaign-import-status.md", "docs/modding/campaign-import-window.jpg"):
+        items.append((os.path.join(src_root, rel), rel, "support"))
     for tree in ("tools/mc2_import", "tools/mc2x_import", "tools/mco_import"):
         for directory, dirs, files in os.walk(os.path.join(src_root, tree)):
             dirs[:] = [d for d in dirs if d != "__pycache__"]
@@ -1401,7 +1408,20 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
             fail(f"game data payload missing in source: {p}")
         items.append((p, rel, "support"))
 
-    for path in sorted((Path(src_root) / "data/art").glob("mcl_mc_*.tga")):
+    # Intentional mip overrides must travel with their committed declarations.
+    import asset_parity
+    for rel, expected in asset_parity.intentional_changes(git_head(src_root), Path(src_root)).items():
+        if re.fullmatch(r"data/tgl/[0-9]+/[^/]+\.tga", rel):
+            p = os.path.join(src_root, rel)
+            # Historical declarations can live only in the published install;
+            # asset_parity still verifies those installed bytes after sync.
+            if not os.path.isfile(p):
+                continue
+            if require_build and sha256_file(p) != expected:
+                fail(f"declared mip asset missing or hash mismatch: {p}")
+            items.append((p, rel, "support"))
+
+    for path in sorted((Path(src_root) / "data/art").glob("mc2_component_*.tga")):
         items.append((str(path), path.relative_to(src_root).as_posix(), "support"))
     # MENU-PLANET-MODERN-1: main-menu backdrop (hi-res tiles + the fit that places them).
     for pat in ("mcl_menu_*.tga", "mcl_sp.fit"):
@@ -1678,8 +1698,19 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
         os.makedirs(os.path.dirname(dst) or target_dir, exist_ok=True)
         try:
             copy_started = time.perf_counter()
-            unlink_for_replace(dst)
-            if rel.endswith(".mcasset.json"):
+            if re.fullmatch(r"data/tgl/[0-9]+/[^/]+\.tga", rel.replace(os.sep, "/")):
+                temporary = None
+                try:
+                    with tempfile.NamedTemporaryFile(dir=os.path.dirname(dst), delete=False) as out:
+                        temporary = out.name
+                    shutil.copyfile(src, temporary)
+                    replace_file(temporary, dst)
+                finally:
+                    if temporary and os.path.exists(temporary):
+                        os.unlink(temporary)
+                copy_seconds += time.perf_counter() - copy_started
+            elif rel.endswith(".mcasset.json"):
+                unlink_for_replace(dst)
                 # Authored sidecars ship unchanged except for checkout line endings;
                 # mixed CRLF/LF copies must not change the pinned data fingerprint.
                 with open(src, "rb") as fh:
@@ -1688,6 +1719,7 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
                     fh.write(content)
                 copy_seconds += time.perf_counter() - copy_started
             else:
+                unlink_for_replace(dst)
                 shutil.copyfile(src, dst)
                 if kind == "exe" and os.name != "nt":
                     shutil.copymode(src, dst)
@@ -1750,7 +1782,8 @@ def retire_unowned(target_dir, keep, preserve=(), own_shaders=False):
     merge_gate.stage_published copies v0.4's shaders/ and _forget_swapped_rows drops their rows, so dead .spv slipped past the
     manifest loop and verify_published_identity failed the shader inventory)."""
     root = Path(target_dir).resolve()
-    for rel, (digest, _size, _mtime) in read_manifest(target_dir).items():
+    shared = any(root == Path(preset["target_dir"]).resolve() for preset in TARGET_PRESETS.values())
+    for rel, (digest, size, _mtime) in read_manifest(target_dir).items():
         if rel in keep or rel in preserve:
             continue
         retired = root / rel
@@ -1763,6 +1796,9 @@ def retire_unowned(target_dir, keep, preserve=(), own_shaders=False):
         # The game and editor presets share one install: each one's root executables, symbols and launchers are owned by
         # the other preset's payload, not retired by this one (2026-11-14: an editor deploy pruned mc2.exe/mc2.pdb).
         if len(parts) == 1 and (parts[0].endswith((".exe", ".pdb")) or (parts[0].startswith("run-") and parts[0].endswith(".bat"))):
+            if shared and retired.is_file():
+                # Carry the previous claim, never bless changed bytes or authorize a source-mtime skip.
+                keep[rel] = (digest, size, None)
             continue
         if any(parts[:len(Path(t).parts)] == tuple(p.casefold() for p in Path(t).parts) for t in EDITOR_SUPPORT_TREES):
             continue
@@ -2231,16 +2267,24 @@ def deploy_from_payload(payload, target, src_root, head):
     if sha256_file(str(exe)) != rows['mc2.exe']['sha256'] or not fp.get('present') \
             or not build_current(fp.get('sha'), head, Path(src_root), bool(fp.get('dirty'))):
         fail(f'{exe}: fingerprint != clean HEAD {head}')
-    retire_unowned(str(target), rows, own_shaders=any(rel.startswith('shaders/vulkan/') and rel.endswith('.spv') for rel in rows))
+    hashes = {rel: (row['sha256'], int(row['bytes']), None) for rel, row in rows.items()}
+    retire_unowned(str(target), hashes, own_shaders=any(rel.startswith('shaders/vulkan/') and rel.endswith('.spv') for rel in rows))
     dst = target / '.deployed_manifest.csv'
     tmp = dst.with_name(dst.name + '.payload-tmp')
     unlink_for_replace(tmp)
     try:
         shutil.copy2(manifest, tmp)
+        if hashes.keys() - rows.keys():
+            tmp.chmod(tmp.stat().st_mode | stat.S_IWRITE)
+            with tmp.open('a', newline='', encoding='utf-8') as stream:
+                writer = csv.writer(stream)
+                for rel in sorted(hashes.keys() - rows.keys()):
+                    digest, size, _mtime = hashes[rel]
+                    writer.writerow([rel, digest, size, '', '', ''])
         replace_file(tmp, dst)
     finally:
         unlink_for_replace(tmp)
-    log(f'payload published: {len(rows)} manifest rows, exe sha256 {rows["mc2.exe"]["sha256"]}, fingerprint matches {head[:9]}')
+    log(f'payload published: {len(hashes)} manifest rows, exe sha256 {rows["mc2.exe"]["sha256"]}, fingerprint matches {head[:9]}')
 
 
 def _target_preset(value):

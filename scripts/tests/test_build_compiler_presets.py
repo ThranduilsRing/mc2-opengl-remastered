@@ -15,7 +15,8 @@ import build_driver as bd
 
 
 @pytest.fixture(autouse=True)
-def production_seam(monkeypatch):
+def production_seam(monkeypatch, tmp_path):
+    monkeypatch.setattr(bch, "prepare_unit_tree", lambda *a: (False, tmp_path / "receipt", "[]"))
     seam = Mock(return_value=True)
     monkeypatch.setattr(bch, "build_and_run_order_seam", seam)
     return seam
@@ -150,7 +151,7 @@ def test_default_corpus_commands_and_output_unchanged(monkeypatch, capsys, asan)
     assert bch.main(["--asan"] if asan else ["--unit", "--seam"]) == 0
     tree = ROOT / ("build64-tests-asan" if asan else "build64-tests")
     assert [c[0] for c in calls] == [
-        ["cmake", "-S", str(ROOT / "tests/unit"), "-B", str(tree), "-A", "x64", "-DMC2_ASAN=" + ("ON" if asan else "OFF")],
+        ["cmake", "-S", str(ROOT / "tests/unit"), "-B", str(tree), "-A", "x64", "-DMC2_ASAN=" + ("ON" if asan else "OFF"), "-DMC2_UNIT_ONLY_SOURCES="],
         ["cmake", "--build", str(tree), "--config", "RelWithDebInfo", "--target", "mc2_tests"],
     ]
     expected_kwargs = dict(capture_output=True, text=True, cwd=ROOT,
@@ -247,7 +248,7 @@ def test_verified_clangcl_evidence(monkeypatch, capsys):
 def test_preset_run_uses_only_selected_corpus_tree(monkeypatch, layout):
     record_runs(monkeypatch, bch)
     tree = ROOT / bd.tree_name("build64-tests", "clang-cl-dev")
-    binary = "mc2_tests" + (".exe" if bch.os.name == "nt" else "")
+    binary = "mc2_tests_selected" + (".exe" if bch.os.name == "nt" else "")
     selected = tree / "RelWithDebInfo" / binary if layout == "config" else tree / binary
     monkeypatch.setattr(Path, "is_file", lambda path: path == selected if layout != "missing" else "build64-tests" in str(path))
     runtime = Mock(return_value=0)

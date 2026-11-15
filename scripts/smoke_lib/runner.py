@@ -411,6 +411,7 @@ def run_one(cfg: RunConfig) -> RunResult:
         stem=cfg.stem,
         diag_tags=frozenset(t.strip() for t in env.get("MC2_DIAG_TAGS", "").split(",") if t.strip()),
         vegetation_expected=vegetation_expected,
+        presentation_disabled=env.get("MC2_PRESENTATION_DISABLED", "").lower() in ("1", "true", "yes", "on"),
         content_error_budget=cfg.content_error_budget,
     )
     verdict = evaluate(summary, gcfg, exit_code=proc.returncode,

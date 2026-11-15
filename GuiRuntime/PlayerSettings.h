@@ -7,6 +7,41 @@
 #include <cctype>
 
 namespace PlayerFrontEnd {
+struct CampaignInfo {
+    std::string title;
+    int missions = 0;
+};
+inline CampaignInfo campaignInfo(std::string_view source) {
+    CampaignInfo result;
+    bool campaignSection = false;
+    while (!source.empty()) {
+        const auto end = source.find('\n');
+        auto line = source.substr(0, end);
+        source = end == std::string_view::npos ? std::string_view{} : source.substr(end + 1);
+        const auto first = line.find_first_not_of(" \t\r");
+        if (first == std::string_view::npos) continue;
+        line.remove_prefix(first);
+        if (line.front() == '[') {
+            campaignSection = line.substr(0, 10) == "[Campaign]";
+            if (line.starts_with("[Group") && line.find("Mission") != std::string_view::npos) ++result.missions;
+        }
+        if (!campaignSection || !line.starts_with("st CampaignName")) continue;
+        line.remove_prefix(15);
+        const auto equal = line.find_first_not_of(" \t");
+        if (equal == std::string_view::npos || line[equal] != '=') continue;
+        const auto quote = line.find_first_not_of(" \t", equal + 1);
+        if (quote == std::string_view::npos || line[quote] != '"') continue;
+        const auto close = line.find('"', quote + 1);
+        if (close != std::string_view::npos) result.title = line.substr(quote + 1, close - quote - 1);
+    }
+    return result;
+}
+inline std::string campaignTitle(std::string_view name, std::string_view fitTitle, std::string_view folder) {
+    return std::string(!name.empty() ? name : !fitTitle.empty() ? fitTitle : folder);
+}
+inline bool unrecognisedCampaign(std::string_view name, bool hasCampaignFit) {
+    return name.empty() && !hasCampaignFit;
+}
 // Drop retired/unknown environment names even when their old value is invalid.
 inline void migrateLegacySettings(nlohmann::json& settings, std::string& cfg) {
     for (const auto& key : mc2::options::legacy::kLegacyKeys) {

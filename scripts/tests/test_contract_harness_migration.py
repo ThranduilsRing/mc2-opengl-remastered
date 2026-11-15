@@ -12,7 +12,10 @@ from tools import build_contract_harnesses as builder
 
 
 @pytest.fixture(autouse=True)
-def production_seam(monkeypatch):
+def production_seam(monkeypatch, tmp_path):
+    monkeypatch.setattr(builder, "prepare_unit_tree", lambda *a: (False, tmp_path / "receipt", "[]"))
+    # Hermetic: never run a real (possibly stale) mc2_tests_selected binary left in the build tree.
+    monkeypatch.setattr(builder, "matched_case_count", lambda *a: 1)
     seam = Mock(return_value=True)
     monkeypatch.setattr(builder, "build_and_run_order_seam", seam)
     return seam
@@ -33,12 +36,14 @@ def record_runs(monkeypatch, codes):
     return commands
 
 
-def test_selection_filters_the_shared_binary(monkeypatch):
+def test_selection_builds_only_the_selected_sources(monkeypatch):
     commands = record_runs(monkeypatch, [0, 0, 0])
     selected = ["icon_atlas_harness", "job_system_harness"]
     assert builder.main(["--run", "--unit", "--only", selected[0], "--only", selected[1]]) == 0
     assert len(commands) == 3
-    assert "--target" in commands[1][0] and "mc2_tests" in commands[1][0]
+    assert "--target" in commands[1][0] and "mc2_tests_selected" in commands[1][0]
+    assert "-DMC2_UNIT_ONLY_SOURCES=test_icon_atlas_harness.cpp;test_job_system_harness.cpp" in commands[0][0]
+    assert "mc2_tests_selected" in commands[2][0][0]
     assert commands[2][0][-1] == "--test-case=icon_atlas_harness/*,job_system_harness/*"
     assert commands[2][1]["cwd"] == ROOT
 

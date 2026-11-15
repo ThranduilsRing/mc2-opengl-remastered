@@ -5,6 +5,8 @@
 #ifndef MATHFUNC_H
 #define MATHFUNC_H
 
+#include "math/sim_math.h"
+
 #ifndef STUFF_STUFF_HPP
 #include<stuff/stuff.hpp>
 #endif
@@ -144,7 +146,7 @@ inline float mc2_atan2 (float f1, float f2)
 	//f2 is always assumed positive here!!!
 	if (f2 > Stuff::SMALL)
 	{
-        result = atan2f(f1, f2);
+        result = mc2::sim::math::atan2(f1, f2);
 	}
 	
 	return result;

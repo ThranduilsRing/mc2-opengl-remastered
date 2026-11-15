@@ -10,6 +10,7 @@ VS-generator trees; tools/build_all_targets.py passes it by default.
 """
 import argparse
 import fnmatch
+import json
 import os
 from pathlib import Path
 import re
@@ -69,7 +70,7 @@ def case_owner(only):
     hits = set()
     for path in (REPO_ROOT / "tests/unit").glob("test_*.cpp"):
         names = pattern.findall(path.read_text(encoding="utf-8", errors="replace"))
-        if any(fnmatch.filter(names, item) for item in only if item not in REGISTERED_HARNESSES):
+        if any(fnmatch.filter(names, item + "/*" if item in REGISTERED_HARNESSES else item) for item in only):
             hits.add(path.relative_to(REPO_ROOT).as_posix())
     return sorted(hits)
 
@@ -147,6 +148,15 @@ UNIT_RUN_TIMEOUT_S = 900  # a hung doctest exit once held the MSVC pdb for 80 mi
 TREE_LOCK_WAIT_S = 1800   # a cold mc2_tests build in the other holder (harnesses step) finishes well inside this
 
 
+def prepare_unit_tree(bdir, configure):
+    """Reuse configure arguments; CMake's build system tracks source/include changes."""
+    receipt = bdir / "mc2_unit_configure.json"
+    signature = json.dumps(configure)
+    configured = ((bdir / "CMakeCache.txt").is_file() and receipt.is_file()
+                  and receipt.read_text(encoding="utf-8") == signature)
+    return configured, receipt, signature
+
+
 def print_failed_cases(log_path):
     """Echo the failing doctest cases (file:line + TEST CASE name) and the summary from a captured run.
 
@@ -210,34 +220,58 @@ def build_and_run_unit_tests(config, run, asan=False, only=None, preset=None,
     bdir = Path(build_root or REPO_ROOT) / (("build-cc-" + tree.removeprefix("build64-")) if cache else bd.tree_name(tree, preset))
     cm = cmake_exe()
     cache_env = None
+    target = "mc2_tests_selected" if only else "mc2_tests"
+    sources = [Path(owner).name for owner in case_owner(only)] if only else []
+    if only and not sources:
+        return False, "selection has no unit source owners"
+    selection = "-DMC2_UNIT_ONLY_SOURCES=" + ";".join(sources)
     if cache:
         cfg, cache_env = cached_configure(REPO_ROOT / "tests/unit", bdir, ["-DMC2_ASAN=" + ("ON" if asan else "OFF")])
-        commands = [cfg, bd.build_args(cm, bdir, config, ["mc2_tests"], jobs or "2", "ninja", keep_going)]
+        commands = [cfg, bd.build_args(cm, bdir, config, [target], jobs or "2", "ninja", keep_going)]
     else:
         commands = [
             [cm] + bd.configure_args(REPO_ROOT, REPO_ROOT / "tests/unit", bdir, preset) +
             ["-DMC2_ASAN=" + ("ON" if asan else "OFF")],
-            bd.build_args(cm, bdir, config, ["mc2_tests"], jobs, preset, keep_going),
+            bd.build_args(cm, bdir, config, [target], jobs, preset, keep_going),
         ]
+    commands[0].append(selection)
     # One configure+build per tree: merge_gate overlaps the contracts board (audio_music_stream builds mc2_tests with --only)
     # with the harnesses step, and two MSBuilds in one tree fail on the shared PDB (C1041, W138 laptop gate).
     lock = TreeLock(str(bdir.parent), bdir.name)
     if not lock.acquire(TREE_LOCK_WAIT_S):
         return False, f"build failed:\nanother build held {bdir.name} for {TREE_LOCK_WAIT_S}s ({lock.holder()})"
     try:
+        configured, receipt, signature = prepare_unit_tree(bdir, commands[0])
+        if configured and preset:
+            try:
+                bd.verify_compiler(bdir, preset)
+            except RuntimeError as exc:
+                return False, str(exc)
+        if configured:
+            commands[0] = None
+        else:
+            receipt.unlink(missing_ok=True)
         built = _configure_and_build(commands, cache, preset, log_dir, jobs, keep_going, cache_env, only, timings, bdir)
+        if not built and not configured and (bdir / "CMakeCache.txt").is_file():
+            receipt.write_text(signature, encoding="utf-8")
+        if built:
+            return False, built
+        if not run:
+            return True, f"built in {time.monotonic() - started:.0f}s"
+        # Hold the tree lock through counting and execution: a concurrent selection in the
+        # same tree would otherwise relink mc2_tests_selected under this run (Astra 1115 P2).
+        return _run_unit_exe(bdir, config, preset, only, asan, started, target)
     finally:
         lock.close()
-    if built:
-        return False, built
-    if not run:
-        return True, f"built in {time.monotonic() - started:.0f}s"
-    return _run_unit_exe(bdir, config, preset, only, asan, started)
 
 
 def _configure_and_build(commands, cache, preset, log_dir, jobs, keep_going, cache_env, only, timings, bdir):
     """Run configure then build; None on success, else the "<stage> failed:" detail."""
     for stage, command in zip(("configure", "build"), commands):
+        if command is None:
+            if only:
+                print("[contracts] configure reused (build system tracks inputs)")
+            continue
         phase_started = time.monotonic()
         if cache or preset or log_dir is not None or jobs or keep_going:
             rc, output = bd.run(command, REPO_ROOT, "mc2_tests", stage, log_dir,
@@ -262,11 +296,11 @@ def _configure_and_build(commands, cache, preset, log_dir, jobs, keep_going, cac
     return None
 
 
-def _run_unit_exe(bdir, config, preset, only, asan, started):
+def _run_unit_exe(bdir, config, preset, only, asan, started, target="mc2_tests"):
     suffix = ".exe" if os.name == "nt" else ""
-    exe = bdir / config / ("mc2_tests" + suffix)
+    exe = bdir / config / (target + suffix)
     if not exe.is_file():
-        exe = bdir / ("mc2_tests" + suffix)
+        exe = bdir / (target + suffix)
     if preset and not exe.is_file():
         return False, f"requested compiler binary missing in {bdir}"
     command = [str(exe), "--no-breaks"]

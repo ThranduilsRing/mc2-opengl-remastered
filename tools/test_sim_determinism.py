@@ -31,11 +31,11 @@ def test_overlay_pin_refuses_brain_fixtures_in_base_install(tmp_path, monkeypatc
     assert manifest.read_text() == "previous pin"
 
 
-def test_native_baseline_is_separate(monkeypatch):
+def test_baseline_is_shared_across_hosts(monkeypatch):
     monkeypatch.setattr(sd.sys, "platform", "win32")
     windows = sd.baseline_path("mc2_10")
     monkeypatch.setattr(sd.sys, "platform", "linux")
-    assert sd.baseline_path("mc2_10") == os.path.join(sd.BASELINE_DIR, "linux", "mc2_10.json")
+    assert sd.baseline_path("mc2_10") == windows
     assert windows == os.path.join(sd.BASELINE_DIR, "mc2_10.json")
 
 

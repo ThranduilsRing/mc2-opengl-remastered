@@ -31,6 +31,16 @@ static input::capture::PointerCapture g_pointer_capture;
 
 namespace input {
 
+static bool s_imguiWantsMouse = false;
+static bool s_imguiWantsKeyboard = false;
+static bool s_gameModalActive = false;
+static bool s_blockedKeys[512] = {};
+
+// Legacy edit-box dialogs confirm/cancel on release even while ImGui owns text.
+static bool isDialogKey(int scancode) {
+    return scancode == SDL_SCANCODE_RETURN || scancode == SDL_SCANCODE_KP_ENTER || scancode == SDL_SCANCODE_ESCAPE;
+}
+
 static void applyInputFocus(bool focused) {
     g_pointer_capture.setFocus(focused);
     if (!focused) {
@@ -155,10 +165,11 @@ struct ScriptPlayer {
 ScriptPlayer g_script;
 } // namespace
 
-bool scriptMouseNorm(float* nx, float* ny) {
+bool scriptMouseNorm(float* nx, float* ny, bool* buttons) {
     if (!g_script.active || !g_script.mouseSet) return false;
     *nx = g_script.nx;
     *ny = g_script.ny;
+    if (buttons) { buttons[0] = g_script.btn[0]; buttons[1] = g_script.btn[1]; }
     return true;
 }
 
@@ -241,19 +252,12 @@ void setImguiHoversMouse(bool v) { s_imguiHoversMouse = v; }
 
 // (hoisted above handleMouseWheel for the wheel guard; see comment at the
 // original site below for the IMGUI-PAUSE-INPUT-FIX-1 rationale)
-static bool s_gameModalActive = false;
 void setGameModalActive(bool v) { s_gameModalActive = v; }
-
-// (hoisted above handleMouseWheel so the wheel guard can read the whole
-// capture policy state; the setter stays at its original site below)
-static bool s_imguiWantsMouse = false;
 
 void handleMouseWheel(const SDL_Event* event) {
     assert(event);
 
-    // HUD-IMGUI wheel guard (see gos_input.h): cursor over an ImGui window ->
-    // wheel belongs to ImGui, not the game camera. Game modal (pause menu)
-    // still wins, mirroring the button gate below.
+    // Captured or hovered ImGui windows own the wheel, including over pause.
     if (!g_pointer_capture.focused || !capture::wheelReachesGame({ s_imguiWantsMouse, s_imguiHoversMouse, s_gameModalActive }))
         return;
 
@@ -275,15 +279,26 @@ void beginUpdateMouseState() {
     mi->wheel_hor_ = mi->wheel_vert_ = 0.0f;
 }
 
-void setImguiWantsMouse(bool v) { s_imguiWantsMouse = v; }
-
-// IMGUI-PAUSE-INPUT-FIX-1: when a game MODAL (the pause menu) is up, the game must
-// win mouse input even if an ImGui window (e.g. Graphics Options, Ctrl+Shift+G) is
-// open and overlapping it. Without this, ImGui's WantCaptureMouse zeroes the button
-// state every frame, the pause menu's DOWN->UP click transition never fires, and the
-// RETURN/ABORT/EXIT buttons are dead (the "can't exit via menu" hang). Set per-frame
-// by MissionInterfaceManager::update from isPaused() && !isPausedWithoutMenu().
-// (definition hoisted above handleMouseWheel — shared with the wheel guard)
+void setImguiWantsMouse(bool v) {
+    s_imguiWantsMouse = v;
+    if (v && !s_gameModalActive && !g_script.active) {
+        g_pointer_capture.claim();
+        // NewFrame claims after sampling, before game logic consumes the edges.
+        for (int i = 0; i < MouseInfo::NUM_BUTTONS; ++i)
+            if (g_pointer_capture.blocked & SDL_BUTTON(i + 1)) g_mouse_info.button_state_[i] = KS_FREE;
+    }
+}
+void setImguiWantsKeyboard(bool v) {
+    s_imguiWantsKeyboard = v;
+    if (v) {
+        for (int i = 0; i < 512; ++i) {
+            if (isDialogKey(i)) continue;
+            s_blockedKeys[i] = s_blockedKeys[i] || g_keyboard_info.last_state_[i] == 1 || g_keyboard_info.last_state_[i] == 2;
+            g_keyboard_info.last_state_[i] = 0;
+        }
+        resetKeypress();
+    }
+}
 
 void updateMouseState() {
     MouseInfo* mi = &g_mouse_info;
@@ -346,6 +361,8 @@ void updateMouseState() {
 //
 
 void handleKeyEvent(const SDL_Event* event) {
+    const int scancode = static_cast<int>(event->key.keysym.scancode);
+    if (!isDialogKey(scancode) && (s_imguiWantsKeyboard || (scancode >= 0 && scancode < 512 && s_blockedKeys[scancode]))) return;
     KeyboardInfo* ki = &g_keyboard_info;
     if(event->key.state == SDL_PRESSED) {
         ki->key_pressed_ = true;
@@ -375,7 +392,7 @@ void updateKeyboardState() {
 
         const capture::Edge prev = static_cast<capture::Edge>(ki->last_state_[i]);
         const bool down = g_script.active ? (i < 512 && g_script.keys[i]) : state[i] != 0;
-        const capture::Edge next = capture::nextEdge(prev, down);
+        const capture::Edge next = capture::keyboardEdge(prev, down, s_imguiWantsKeyboard, s_blockedKeys[i], isDialogKey(i));
         ki->last_state_[i] = static_cast<uint8_t>(next);
 
 #if 0
@@ -408,7 +425,7 @@ void updateKeyboardState() {
             if (g_script.active) return;
             const capture::Edge prev = static_cast<capture::Edge>(ki->last_state_[idx]);
             const bool down = (::GetAsyncKeyState(vk) & 0x8000) != 0;
-            ki->last_state_[idx] = static_cast<uint8_t>(capture::nextEdge(prev, down));
+            ki->last_state_[idx] = static_cast<uint8_t>(capture::keyboardEdge(prev, down, s_imguiWantsKeyboard, s_blockedKeys[idx]));
         };
         injectModifier(SDL_SCANCODE_LCTRL,  VK_LCONTROL);
         injectModifier(SDL_SCANCODE_RCTRL,  VK_RCONTROL);

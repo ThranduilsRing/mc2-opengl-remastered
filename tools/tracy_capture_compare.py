@@ -166,6 +166,11 @@ def options_sidecar(trace: Path) -> Path:
     return Path(trace).with_suffix(".options.json")
 
 
+def crash_dumps(install):
+    return {str(p): p.stat().st_mtime_ns for directory in (install, install / "crashes")
+            for pattern in ("*.dmp", "*.mdmp") for p in directory.glob(pattern)}
+
+
 def require_same_options(trace_a: Path, trace_b: Path, vary, a_name: str = "A", b_name: str = "B") -> None:
     """Exit unless both traces recorded their render options and they agree on every key not in `vary` (a mismatch is a hard failure, like the
     resolution)."""
@@ -416,6 +421,7 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
                   "unaffected. The post-capture visibility assert will refuse to "
                   "grade this trace.", file=sys.stderr)
 
+        dumps_before = crash_dumps(install)
         print(f"[capture] trace -> {out}")
         # The pinned drawable size must survive the background launch for comparable measurements.
         if spawn_game:
@@ -468,18 +474,21 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
               f"duration={duration}s fixed_ts={fixed_timestep} fps_cap={fps_cap} pose={pose}")
 
         rc = 0
-        game_stopped = False
+        intentional_stop = False
         if via_menu_boot:
             try:
                 recorder.wait(timeout=seconds + 90)
                 rc = int(bool(recorder.returncode))
             except subprocess.TimeoutExpired:
                 rc = 1
-            game_stopped = gp.poll() is None
-            _stop_capture_child(gp)   # the game has no auto-quit outside smoke mode: end OUR spawned pid once the recording is over
+            if not rc and recorder.returncode == 0 and gp.poll() is None:
+                intentional_stop = True
+                print(f"[capture] intentional_stop pid={gp.pid} reason=recording_complete")
+                _stop_capture_child(gp)
         try:
             gp.wait(timeout=duration + (300 if post_load else 90))
-            if gp.returncode and not game_stopped:
+            expected_exit = 1 if os.name == "nt" else -9  # Popen.kill / TerminateProcess
+            if gp.returncode and not (intentional_stop and gp.returncode == expected_exit):
                 rc = 1
         except subprocess.TimeoutExpired:
             print("WARN: game exceeded its duration budget -- killing OUR spawned pid "
@@ -492,6 +501,14 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
             print(f"WARN: tracy-capture still running -- killing OUR spawned pid "
                   f"{recorder.pid} only", file=sys.stderr)
             recorder.kill()
+            rc = 1
+
+        game_lf.flush()
+        log_text = game_log.read_text(encoding="utf-8", errors="replace")
+        dumps_after = crash_dumps(install)
+        if (recorder.returncode or "Crash Report" in log_text or
+                any(dumps_before.get(p) != stamp for p, stamp in dumps_after.items())):
+            print(f"ERROR: recorder failure or game crash evidence; see {cap_log} / {game_log}", file=sys.stderr)
             rc = 1
 
         if ticks:
@@ -514,10 +531,10 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
             if exported.returncode:
                 raise RuntimeError(f"Frame export failed: {exported.stderr}")
             row.update(window_stats(csv.DictReader(io.StringIO(exported.stdout)), seconds))
-            row["status"] = "REJECTED" if rc or gp.returncode or recorder.returncode else row["status"]
+            row["status"] = "REJECTED" if rc else row["status"]
             rc = rc or int(row["status"] != "PASS")
 
-        print(f"OK capture arm={arm} mission={mission} seconds={seconds} "
+        print(f"{'FAIL' if rc else 'PASS'} capture arm={arm} mission={mission} seconds={seconds} "
               f"-> {out} ({out.stat().st_size / 1e6:.1f} MB)")
         return rc
 

@@ -6,6 +6,10 @@
 #include <string>
 
 namespace {
+// Constructed before the lazy registry: its destructor exercises late camera teardown.
+struct LateCameraReset {
+    ~LateCameraReset() { mc2_spotlight_diag::reset(this); mc2_spotlight_diag::reset(nullptr); }
+} lateCameraReset;
 using DWORD = uint32_t;
 struct Light {};
 using TG_LightPtr = Light*;

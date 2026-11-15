@@ -1,9 +1,11 @@
 // The backend-neutral texture decode (GameOS/gameos/texture_decode.cpp): the bytes and policy every backend uploads.
 
+#include <algorithm>
 #include <span>
 #include "doctest.h"
 
 #include "texture_decode.h"
+#include "hud_texture_mips.h"
 #include "gos_prop_material_cpu.h"
 #include "StockPbr.h"
 #include "TextureService.h"
@@ -291,6 +293,26 @@ TEST_CASE("mip box filter: a 4x4 RGBA8 level halves to the rounded 2x2 means, th
     // r (1+255+0+3+2)/4 = 65, g (25+0+0+3+2)/4 = 7, b (0+0+2+3+2)/4 = 1, a (191+255+0+3+2)/4 = 112
     const std::vector<uint8_t> want2 = {65, 7, 1, 112};
     CHECK(l2 == want2);
+}
+
+// Trigger paths: GameOS/gameos/{hud_texture_mips.h,engine_present_vk.cpp}.
+TEST_CASE("HUD atlas mips preserve premultiplication rounding and immutable source") {
+    const std::vector<uint8_t> source = {
+        255, 0, 0, 255, 0, 255, 0, 128,
+        0, 0, 255, 0,   3, 7, 11, 255};
+    const auto original = source;
+    const auto chain = mc2hud::premultipliedMips(source, 2);
+    const std::vector<uint8_t> expected = {
+        255, 0, 0, 255, 0, 128, 0, 128,
+        0, 0, 0, 0,     3, 7, 11, 255,
+        65, 34, 3, 160};
+    CHECK(chain == expected);
+    CHECK(source == original);
+    const auto single = mc2hud::premultipliedMips({255, 127, 1, 128}, 1);
+    CHECK(single == std::vector<uint8_t>{128, 64, 1, 128});
+    const auto full = mc2hud::premultipliedMips(std::vector<uint8_t>(2048 * 2048 * 4, 255), 2048);
+    CHECK(full.size() == (2048 * 2048 * 4 * 4 - 4) / 3);
+    CHECK(std::all_of(full.begin(), full.end(), [](uint8_t value) { return value == 255; }));
 }
 
 TEST_CASE("mip box filter: non-square and 1-texel edges, malformed input rejected") {

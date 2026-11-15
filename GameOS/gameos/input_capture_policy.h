@@ -17,20 +17,17 @@ namespace capture {
 struct PolicyState {
     bool imguiWantsMouse  = false;  // ImGui::GetIO().WantCaptureMouse
     bool imguiHoversMouse = false;  // ImGui::IsWindowHovered(AnyWindow)
-    bool gameModalActive  = false;  // pause menu up: the game wins over ImGui
+    bool gameModalActive  = false;  // legacy pause menu owns its button clicks
 };
 
-// Mouse buttons: an ImGui-captured click is gated out of game input, EXCEPT
-// while a game modal (pause menu) is up -- the menu must stay clickable over
-// ImGui windows (IMGUI-PAUSE-INPUT-FIX-1).
+// IMGUI-PAUSE-INPUT-FIX-1: legacy pause buttons win over open ImGui windows.
 inline bool mouseButtonsReachGame(const PolicyState& s) {
     return !(s.imguiWantsMouse && !s.gameModalActive);
 }
 
-// Wheel: the cursor hovering an ImGui window gives it the wheel, EXCEPT while
-// a game modal is up (same exception as the buttons).
+// Wheel follows ImGui hover or capture, including during legacy modals.
 inline bool wheelReachesGame(const PolicyState& s) {
-    return !(s.imguiHoversMouse && !s.gameModalActive);
+    return !s.imguiHoversMouse && !s.imguiWantsMouse;
 }
 
 // Press/release edge kernel. Values match input::KeyState in gos_input.h
@@ -48,13 +45,28 @@ inline Edge nextEdge(Edge prev, bool down) {
     return (prev == Edge::Held || prev == Edge::Pressed) ? Edge::Released : Edge::Free;
 }
 
+// Swallow the entire captured key gesture, including its release. Closing a
+// panel while a key is held must not manufacture a game shortcut.
+inline Edge keyboardEdge(Edge previous, bool down, bool captured, bool& blocked, bool dialogKey = false) {
+    if (dialogKey) { blocked = false; return nextEdge(previous, down); }
+    if (captured) blocked = down;
+    if (blocked || captured) {
+        blocked = down;
+        return Edge::Free;
+    }
+    return nextEdge(previous, down);
+}
+
 // A gesture belongs to whoever received its press, even after leaving that
 // surface. Focus regain quarantines the activation buttons until released.
 struct PointerCapture {
     bool focused = true;
     bool quarantine = false;
     unsigned held = 0;
+    unsigned pressed = 0;
     unsigned blocked = 0;
+
+    void claim() { blocked |= pressed; }
 
     void setFocus(bool value) {
         if (focused != value) quarantine = true;
@@ -64,6 +76,7 @@ struct PointerCapture {
         if (!focused || quarantine) blocked |= buttons;
         if (!allowPress) blocked |= buttons & ~held;
         blocked &= buttons;
+        pressed = buttons & ~held;
         held = buttons;
         quarantine = !focused;
         return focused ? buttons & ~blocked : 0;

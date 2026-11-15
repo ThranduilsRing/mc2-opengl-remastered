@@ -19,6 +19,7 @@ ComponentListBox.h			: Interface for the ComponentListBox component.
 #include "logisticscomponent.h"
 #endif
 
+#include "component_rules.h"
 class LogisticsVariant;
 class LogisticsComponent;
 class LogisticsVehicle;
@@ -30,9 +31,15 @@ class ComponentIcon : public aObject
 {
 public:
 	using aObject::render;
-	void setComponent(const LogisticsComponent& c) { tileX = c.hasLauncherIcon() ? c.getComponentWidth() : 1; tileY = c.hasLauncherIcon() ? c.getComponentHeight() : 1; }
+	void setComponent(const LogisticsComponent& c) {
+		const bool tiled = c.hasLauncherIcon() || c.getID() == 2 || c.getID() == 3;
+		const auto* icon = mc2::components::cookedIcon(c.getIconFileName());
+		tileX = tiled ? c.getComponentWidth() : (icon ? -icon->width : 1);
+		tileY = tiled ? c.getComponentHeight() : (icon ? -icon->height : 1);
+	}
 	void render() override
 	{
+		if (tileY < 0) setUVs(0, 0, -tileX * 48, -tileY * 32);
 		if (tileX <= 1 && tileY <= 1) { aObject::render(); return; }
 		const std::array saved{location[0], location[1], location[2], location[3]};
 		const float cellW = width() / tileX, cellH = height() / tileY;

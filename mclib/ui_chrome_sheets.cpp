@@ -101,6 +101,69 @@ std::string manifestToJson(const Manifest& m) {
     return j.dump();
 }
 
+// Stock menu mattes are baked black; text wells are separate filled widgets.
+bool clearMenuMatte(std::string_view path, Pixels& px) {
+    std::string key(path.substr(path.find_last_of("/\\") + 1));
+    for (char& c : key) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    const auto dot = key.find_last_of('.');
+    if (dot != std::string::npos) key.resize(dot);
+    const bool menu = key == "mcl_mm_1" || key == "mcl_mm_2" || key == "mcl_mm_3" ||
+                      key == "mcl_mm_5" || key == "mcl_mm_12";
+    const bool dialog = key.starts_with("mcl_dialog_");
+    const bool frame = key == "mcl_splashscreen_frame_1" || key == "mcl_splashscreen_frame_2";
+    if ((!menu && !dialog && !frame) || px.w <= 0 || px.h <= 0 || (px.channels != 3 && px.channels != 4)) return false;
+    std::vector<uint8_t> rgba(static_cast<size_t>(px.w) * px.h * 4);
+    for (int y = 0; y < px.h; ++y) for (int x = 0; x < px.w; ++x) {
+        const size_t i = static_cast<size_t>(y) * px.w + x, src = i * px.channels, dst = i * 4;
+        std::copy_n(px.data.data() + src, 3, rgba.data() + dst);
+        const int value = std::max({rgba[dst], rgba[dst + 1], rgba[dst + 2]});
+        if (menu || frame) {
+            auto paint = (static_cast<uint32_t>(rgba[dst]) << 16) |
+                         (static_cast<uint32_t>(rgba[dst + 1]) << 8) | rgba[dst + 2];
+            if (key == "mcl_mm_12") paint = menuTintCarrier(paint);
+            paint = menuYellow(paint);
+            rgba[dst] = static_cast<uint8_t>(paint >> 16);
+            rgba[dst + 1] = static_cast<uint8_t>(paint >> 8);
+            rgba[dst + 2] = static_cast<uint8_t>(paint);
+        }
+        // Retain the dialog button wells; the surrounding cable voids remain open.
+        const bool well = dialog && ((key.ends_with("_3") && x >= 50 && x < 178 && y >= 118 && y < 236) ||
+                                     (key == "mcl_dialog_onebutton_4" && x < 99 && y < 118));
+        // Atlas-space openings, excluding vents and the hazard-painted bottom strips.
+        const bool opening = dialog || key == "mcl_mm_5" || key == "mcl_mm_12" ||
+            (key == "mcl_mm_1" && ((x >= 130 && y >= 112 && y < 181) ||
+                                      (x >= 124 && x < 144 && y >= 214))) ||
+            (key == "mcl_mm_3" && x < 114 && y < 200);
+        const int coverage = well || !opening ? 255 : std::clamp((value - 4) * 255 / 12, 0, 255);
+        rgba[dst + 3] = static_cast<uint8_t>((px.channels == 4 ? px.data[src + 3] : 255) * coverage / 255);
+    }
+    // Only exterior-connected matte is empty space. Enclosed black paint (hazard
+    // stripes, vents and button wells) belongs to the chrome.
+    std::vector<bool> exterior(static_cast<size_t>(px.w) * px.h, false);
+    std::vector<size_t> pending;
+    const auto visit = [&](size_t i) {
+        const int authored = px.channels == 4 ? px.data[i * 4 + 3] : 255;
+        if (!exterior[i] && (rgba[i * 4 + 3] < authored || authored == 0)) {
+            exterior[i] = true;
+            pending.push_back(i);
+        }
+    };
+    for (int x = 0; x < px.w; ++x) { visit(x); visit(static_cast<size_t>(px.h - 1) * px.w + x); }
+    for (int y = 0; y < px.h; ++y) { visit(static_cast<size_t>(y) * px.w); visit(static_cast<size_t>(y + 1) * px.w - 1); }
+    for (size_t at = 0; at < pending.size(); ++at) {
+        const size_t i = pending[at];
+        if (i % px.w) visit(i - 1);
+        if (i % px.w + 1 < static_cast<size_t>(px.w)) visit(i + 1);
+        if (i >= static_cast<size_t>(px.w)) visit(i - px.w);
+        if (i + px.w < exterior.size()) visit(i + px.w);
+    }
+    for (size_t i = 0; i < exterior.size(); ++i)
+        if (dialog && !exterior[i]) rgba[i * 4 + 3] = px.channels == 4 ? px.data[i * 4 + 3] : 255;
+    px.channels = 4;
+    px.data = std::move(rgba);
+    return true;
+}
+
 bool composeSheet(const Sheet& sheet, const WidgetLoader& load, Pixels& out, std::string* err) {
     auto fail = [&](std::string_view why) {
         if (err) *err = std::string(why);

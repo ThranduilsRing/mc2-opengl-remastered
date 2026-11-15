@@ -6,6 +6,7 @@
 // Declared in the class headers; shared names in mission_internal.h.
 #include "mission_internal.h"
 #include "command_replay.h"
+#include "net/runtime.h"
 #include "mission_init_frame.h"
 #include "mission_commander_team.h"
 #include "../GameOS/gameos/diagnostic_trace.h"
@@ -96,7 +97,11 @@ void Mission::initPrologue(MissionInitFrame& f) {
 			gos_srand(seed);
 			mc2::fmt::print_err("[DET_RNG] mission={} reseed=0x{:08X} (MC2_DETERMINISTIC_RNG=1)\n", mc2::fmt::safe(missionName ? missionName : "(null)"), mc2::fmt::as_u32(seed));
 		}
+        if (mc2::net::active() && (!mc2::gate::str<"MC2_COMMAND_REPLAY_PLAY">().empty() ||
+            !mc2::gate::str<"MC2_COMMAND_REPLAY_RECORD">().empty()))
+            mc2::net::stop("live multiplayer cannot use command replay");
         mc2::replay::begin(missionName, seed);
+        mc2::net::beginMission(missionName, seed);
 	}
 
 	neverEndingStory = false;
@@ -651,6 +656,11 @@ void Mission::initTeamsAndCommanders(MissionLoadType loadType, glm::vec3* dropZo
 			long ctlCommander = commandersToLoad[i][0];
 			long ctlTeam = commandersToLoad[i][1];
 			if (ctlCommander > -1) {
+				if (mission_commander_team::unusedIdentity(f.commanderPartTeam, ctlCommander, ctlTeam, i) &&
+					Commander::commanders[ctlCommander] != nullptr) {
+					Commander::commanders[ctlCommander]->setTeam(Team::home);
+					continue;
+				}
 				if (!MC2_VERIFY_BOUNDS(ctlCommander, MAX_COMMANDERS, "Mission::init commandersToLoad commander") ||
 					!MC2_VERIFY_BOUNDS(ctlTeam, MAX_TEAMS, "Mission::init commandersToLoad team") ||
 					!MC2_VERIFY((Commander::commanders[ctlCommander] != nullptr) && (Team::teams[ctlTeam] != nullptr),

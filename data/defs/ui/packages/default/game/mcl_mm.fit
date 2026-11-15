@@ -1183,7 +1183,7 @@ GuiButton {
     textRect = "723,223,53,35"
     textRectMode = "control_rect_fallback"
     textLegacyId = 0
-    visible = false
+    visible = true
     textKey = "legacy.strings.ids_undefined_string_sebi"
     textLegacySymbol = "IDS_undefined_string_sebi"
     textSource = "strings.res.h"
@@ -1261,10 +1261,10 @@ GuiRect {
     uiPackage = "default"
     rectModel = "legacy_imgui.modern_rect_v1"
     controlRect = "268,116,268,381"
-    legacyColor = 0xEC000000
+    legacyColor = 0x00000000
     outline = "FALSE"
     filled = true
-    fillColorArgb = "0x00000000"
+    fillColorArgb = "0xff25282c"
     borderColorArgb = "0x00000000"
     colorArgb = "0xffffffff"
 }
@@ -1283,7 +1283,7 @@ GuiRect {
     uiPackage = "default"
     rectModel = "legacy_imgui.modern_rect_v1"
     controlRect = "561,116,211,89"
-    legacyColor = 0xEC000000
+    legacyColor = 0x00000000
     outline = "FALSE"
     filled = true
     fillColorArgb = "0x00000000"

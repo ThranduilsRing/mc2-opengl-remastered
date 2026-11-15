@@ -712,7 +712,11 @@ def estimate_stage_bytes(install: Path, stage_parent: Path) -> int:
 
 def disk_guard(target: Path, need_bytes: int, min_free_gb: float | None = None) -> None:
     """DISK_GUARD: refuse when the target volume would drop below min_free_gb free after `need_bytes` of staging."""
-    min_free_gb = DISK_GUARD_FREE_GB if min_free_gb is None else min_free_gb
+    if min_free_gb is None:
+        # The 30 GB reserve is the PC drive rule. The 100 GB vast.ai box runs under its own 75% ceiling and sets
+        # MC2_AB_DISK_RESERVE_GB (SLOTS.md); a 30 GB reserve there refused every A/B capture (hangar-cull-1 11-15).
+        env = os.environ.get("MC2_AB_DISK_RESERVE_GB", "").strip()
+        min_free_gb = float(env) if env else DISK_GUARD_FREE_GB
     probe = _existing_ancestor(target)
     free = shutil.disk_usage(probe).free
     need = min_free_gb * GB + need_bytes
@@ -729,7 +733,10 @@ def data_tree_files(install) -> dict:
     out = {}
     for rel, path in _walk_files(Path(install)):
         low = rel.lower()
-        if stage_kind(rel) != "link" or low.startswith("shaders/") or rel == MANIFEST or ("/" not in low and low.endswith((".exe", ".pdb"))):
+        # Top-level binaries are the exe side of an A/B: Windows .exe/.pdb, and on the box the extensionless Linux `mc2` plus
+        # its .so/.debug files (hangar-cull-1 11-15: Linux `mc2` was fingerprinted as data and refused every box A/B).
+        top_binary = "/" not in low and (low.endswith((".exe", ".pdb", ".so", ".debug")) or Path(low).suffix == "")
+        if stage_kind(rel) != "link" or low.startswith("shaders/") or rel == MANIFEST or top_binary:
             continue
         st = os.stat(path)
         out[rel] = (st.st_size, int(st.st_mtime))

@@ -283,6 +283,7 @@ unsigned int sampleLegacyAnim(const UiElement::AnimKeyframe* kf, int count,
 bool drawUiImageElement(UiElement& e, int xOffset, int yOffset, const PageScale& s,
                                 unsigned int tint)
 {
+    if (e.key.starts_with("game.mcl_mm.")) tint = mc2::ui_chrome::menuYellow(tint);
     uint64_t glTexture=0;
     if (e.gosTextureOverride) glTexture=gos_GetUiTextureId(e.gosTextureOverride);
     else { ensureTexture(e); if (e.textureNodeAssigned) glTexture=mc2::textures::uiId(e.textureNode); }
@@ -374,6 +375,7 @@ bool drawUiImageElement(UiElement& e, int xOffset, int yOffset, const PageScale&
 
 void renderTextElement(UiElement& e, int xOffset, int yOffset, unsigned int color, const PageScale& s)
 {
+    if (e.key.starts_with("game.mcl_mm.")) color = mc2::ui_chrome::menuYellow(color);
     if (e.text.empty())
         return;
 

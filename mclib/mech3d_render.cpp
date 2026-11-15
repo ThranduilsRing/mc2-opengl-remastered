@@ -684,10 +684,10 @@ long Mech3DAppearance::render (long depthFixup)
 				// mechShape->SetLightsOut(true) for these states; GPU path
 				// reads bit 1 of inst.renderFlags in mech.vert and skips
 				// per-light contributions, leaving only the ambient floor.
+				// Owner 11-15: shut-down mechs stay lit.
 				const bool lightsOut =
 					(status == OBJECT_STATUS_DESTROYED) ||
-					(status == OBJECT_STATUS_DISABLED) ||
-					(status == OBJECT_STATUS_SHUTDOWN);
+					(status == OBJECT_STATUS_DISABLED);
 				desc.renderFlags    = lightsOut ? 0x2u : 0x0u;  // bit 1
 				if (stockPbr.orm) desc.renderFlags |= kMechRenderFlagOrm | 0x10u;
 				if (stockPbr.normal) desc.renderFlags |= 0x20u;
@@ -1195,7 +1195,7 @@ bool Mech3DAppearance::submitArmGpu (TG_MultiShape* arm, float haze)
 	if (stockPbr.normal) desc.renderFlags |= 0x20u;
 	if (aoValid) desc.renderFlags |= 0x10u;
 	if (normalValid) desc.renderFlags |= 0x20u;
-	if (status == OBJECT_STATUS_DESTROYED || status == OBJECT_STATUS_DISABLED || status == OBJECT_STATUS_SHUTDOWN)
+	if (status == OBJECT_STATUS_DESTROYED || status == OBJECT_STATUS_DISABLED)
 		desc.renderFlags |= 0x2u;	// lights out, as the body
 	desc.lightDataIndex = row;
 	desc.highlightARGB  = static_cast<uint32_t>(highlightColor);
