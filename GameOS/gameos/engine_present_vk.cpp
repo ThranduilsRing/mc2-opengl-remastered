@@ -2,6 +2,7 @@
 #include <algorithm>
 #include "engine_present_vk.h"
 #include "hud_command_merge.h"
+#include "hud_texture_mips.h"
 #include "present_thread.h"
 #include "../../mclib/battle_bench_wait.h"
 #include "../../mclib/sim_overlap.h"
@@ -1117,30 +1118,28 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
     // change — the >99.9% no-upload case never touches them.
     if (!d.textureRgba || d.textureRgba->size() < baseBytes)
         return nullptr;
+    ZoneScopedN("HUD.TextureUpload");
+    ZoneValue(d.textureHandle);
+    char textureInfo[128];
+    const int textureInfoSize = std::snprintf(textureInfo, sizeof(textureInfo), "handle=%u serial=%u size=%ux%u kind=%u", d.textureHandle, d.textureSerial, d.textureWidth, d.textureHeight, d.kind);
+    if (textureInfoSize > 0) ZoneText(textureInfo, static_cast<size_t>(textureInfoSize));
+    { ZoneScopedN("HUD.TextureUpload.Allocate");
     if (!createHostBuffer(s, bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, m.buffer, m.memory, "present.hudTextureMirror"))
         return nullptr;
+    }
     const std::vector<uint8_t>& rgba = *d.textureRgba;
+    std::vector<uint8_t> mipPixels;
+    if (mipmapped) {
+        ZoneScopedN("HUD.TextureUpload.Mip2048.Cpu");
+        mipPixels = mc2hud::premultipliedMips(rgba, d.textureWidth);
+    }
+    { ZoneScopedN("HUD.TextureUpload.MapAndCopy");
     void* mapped = nullptr;
     if (vkMapMemory(s.dev, m.memory.get(), 0, bytes, 0, &mapped) != VK_SUCCESS)
         return nullptr;
-    // The former per-pixel pack (b0 | b1<<8 | b2<<16 | b3<<24) is the source byte order on a little-endian host: copy straight, no temp vector.
-    std::memcpy(mapped, rgba.data(), baseBytes);
-    if (mipmapped) {
-        // Spatial, premultiplied mip pyramid: transparent edges retain their colour.
-        auto* pixels = static_cast<uint8_t*>(mapped);
-        for (size_t i = 0; i < baseBytes; i += 4)
-            for (size_t c = 0; c < 3; ++c) pixels[i+c] = (static_cast<uint32_t>(pixels[i+c]) * pixels[i+3] + 127u) / 255u;
-        size_t offset = 0, next = baseBytes;
-        for (size_t w = 2048; w > 1; w /= 2) {
-            for (size_t y = 0; y < w/2; ++y) for (size_t x = 0; x < w/2; ++x)
-                for (size_t c = 0; c < 4; ++c) {
-                    const size_t p = offset + ((2*y)*w + 2*x)*4 + c;
-                    pixels[next + (y*(w/2)+x)*4+c] = (static_cast<uint32_t>(pixels[p]) + pixels[p+4] + pixels[p+w*4] + pixels[p+w*4+4] + 2u) / 4u;
-                }
-            offset = next; next += (w/2)*(w/2)*4;
-        }
-    }
+    std::memcpy(mapped, mipmapped ? mipPixels.data() : rgba.data(), static_cast<size_t>(bytes));
     vkUnmapMemory(s.dev, m.memory.get());
+    }
     if (!m.set) {
         VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
         ai.descriptorPool = s.hudTexPool.get();
