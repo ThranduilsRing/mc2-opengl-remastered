@@ -96,6 +96,8 @@ public:
     bool ready() const { return maskReady_; }
     // A bake is recorded and not yet retired, or the cache read is still running (the load-time drain keeps stepping while either holds).
     bool inFlight() const { return recorded_ || (cacheLoad_.valid() && cacheLoad_.wait_for(std::chrono::seconds(0)) != std::future_status::ready); }
+    // Load barriers finish cache I/O before draining the bake; gameplay keeps polling asynchronously.
+    void waitForCacheLoad() const { if (cacheLoad_.valid()) cacheLoad_.wait(); }
     VkImageView maskView() const { return maskReady_ ? maskView_.get() : VK_NULL_HANDLE; }
     VkImageView objectView() const { return objectReady_ ? objectView_.get() : VK_NULL_HANDLE; }
     const float* objectMatrix() const { return objectMatrix_.data(); }

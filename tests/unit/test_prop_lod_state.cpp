@@ -37,7 +37,8 @@ TEST_CASE("prop_lod_state: projected tree tier uses MC2 coordinates from its fir
     uint8_t lod = 0;
     propLodAdvance(lod, d, distances, 0.08f);
     CHECK(lod == 4); // Missing the axis conversion clamps the old projected distance to zero.
-    CHECK(propLodProjectedDistance(m, {5376,350,-5376}, 2, 1) == 0);
+    // Behind-camera trees retain their projected size instead of all selecting the finest mesh.
+    CHECK(propLodProjectedDistance(m, {5376,350,-5376}, 2, 1) == doctest::Approx(4263.2f));
 }
 
 TEST_CASE("prop_lod_state: hysteresis band keeps an instance on its LOD at a boundary") {

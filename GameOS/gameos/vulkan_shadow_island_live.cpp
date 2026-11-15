@@ -1264,6 +1264,7 @@ extern "C" int mc2_vk_shadow_island_load_bake(int, int) {
            && std::chrono::steady_clock::now() - t0 < std::chrono::seconds(4)) {
         const bool before = s->bake.inFlight();
         mc2_vk_shadow_island_submit_frame();
+        s->bake.waitForCacheLoad();
         ++steps;
         if (s->disabled) break;
         const bool busy = s->bake.inFlight();
