@@ -13,6 +13,7 @@
 namespace mc2::net {
 namespace {
 bool enabled = false, hosting = false;
+int status = 0;
 std::string endpoint;
 std::filesystem::path executable;
 std::unique_ptr<Session> session;
@@ -33,7 +34,8 @@ std::deque<DelayedPacket> delayed;
     std::fprintf(stderr, "Multiplayer stopped: %.*s\n", static_cast<int>(reason.size()), reason.data());
     if (trace) { trace << "STOP " << reason << '\n' << std::flush; }
     std::fflush(nullptr);
-    std::exit(3);
+    status = 3;
+    throw SessionStopped{};
 }
 save::Digest executableHash() {
     std::ifstream file(executable, std::ios::binary);
@@ -182,6 +184,15 @@ void redirectLogs() {
     setvbuf(stdout, nullptr, _IONBF, 0); setvbuf(stderr, nullptr, _IONBF, 0);
 }
 bool active() { return enabled; }
+int exitStatus() { return status; }
+std::expected<sim::OrderReceipt, sim::OrderError> admitAgreedOrder(sim::TacticalOrderQueue& queue,
+    sim::OrderEnvelope order, const sim::OrderAdmissionValidator& validator) {
+    // Lockstep has already authenticated the wire sequence, including rejected orders.
+    // A rejected admission must not poison every subsequent command from this peer.
+    const auto source = std::ranges::find(queue.sources(), order.sourceId, &sim::OrderSource::sourceId);
+    if (source != queue.sources().end()) order.sequence = source->nextSequence;
+    return queue.submit(std::move(order), validator);
+}
 std::uint32_t localSlot() { return hosting ? 0u : 1u; }
 void beginMission(std::string_view mission, std::uint32_t seed) {
     if (!enabled) return;
@@ -236,7 +247,16 @@ bool prepareTick() {
         trace << "C " << order.applyTick << ' ';
         for (auto byte : bytes.bytes()) trace << std::hex << std::setw(2) << std::setfill('0') << static_cast<unsigned>(byte);
         trace << std::dec << '\n' << std::flush;
-        if (!queue.submit(std::move(order), validator)) fail("MP order admission rejected");
+        const auto tick = order.applyTick, sequence = order.sequence;
+        const auto source = order.sourceId;
+        if (const auto result = admitAgreedOrder(queue, std::move(order), validator); !result) {
+            constexpr std::array names{"Shape", "UnknownSource", "Permission", "Duplicate", "Sequence",
+                "Capacity", "Late", "Overflow", "TickContext", "UnknownReceipt", "AlreadyApplied", "Pending", "ApplicationResult"};
+            const auto error = std::to_underlying(result.error());
+            trace << "R " << tick << ' ' << source << ' ' << sequence << ' ' << names[error] << '(' << error << ")\n" << std::flush;
+            std::fprintf(stderr, "Multiplayer order rejected: tick=%llu source=%u sequence=%llu error=%s(%d)\n",
+                static_cast<unsigned long long>(tick), source, static_cast<unsigned long long>(sequence), names[error], error);
+        }
     }
     return true;
 }

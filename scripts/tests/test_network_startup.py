@@ -71,6 +71,11 @@ def test_mp_loopback_requires_both_desync_reports_at_the_first_bad_tick(tmp_path
         (directory / "stderr.log").write_text("[MP_DESYNC] tick=2 trace=session.trace\n")
         (directory / "session.trace").write_text(f"C 1 00\nH 1 a b c d e\nH 2 {index} b c d e\n[MP_DESYNC] tick=2 trace=session.trace\n")
     assert compare_traces(host, client, 2, forced=2)["first_divergent_tick"] == 2
+    original = (host / "session.trace").read_text()
+    (host / "session.trace").write_text(original + "R 1 100 7 Permission(2)\n")
+    with pytest.raises(ValueError, match="command traces differ"):
+        compare_traces(host, client, 2, forced=2)
+    (host / "session.trace").write_text(original)
     with pytest.raises(ValueError, match="first divergent"):
         compare_traces(host, client, 2)
     (host / "session.trace").write_text("C 1 00\nH 1 a b c d e\nH 2 0 b c d e\n")

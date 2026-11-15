@@ -1,6 +1,11 @@
 #pragma once
 #include "lockstep.h"
 namespace mc2::net {
+struct SessionStopped {};
+int exitStatus();
+// Wire sequence counts every agreed command; queue sequence counts admissions.
+std::expected<sim::OrderReceipt, sim::OrderError> admitAgreedOrder(sim::TacticalOrderQueue&,
+    sim::OrderEnvelope, const sim::OrderAdmissionValidator&);
 void configure(int argc, char** argv);
 void redirectLogs();
 bool active();

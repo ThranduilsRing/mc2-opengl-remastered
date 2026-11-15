@@ -60,7 +60,16 @@ struct PeerAdmission final : mc2::sim::OrderAdmissionValidator {
         auto ui = source;
         ui.kind = mc2::sim::SourceKind::UI;
         const MissionOrderAccess access{owner};
-        return access.validatePlayer(e) == 0 && MissionOrderApplication(access).permitted(ui, e);
+        const MissionOrderApplication application(access);
+        auto reason = access.validatePlayer(e);
+        for (std::uint32_t i = 0; !reason && i < e.recipients.size(); ++i)
+            reason = application.validateRecipient(e, e.recipients[i], i);
+        if (reason) {
+            mc2::fmt::print_err("[MP_ADMISSION] tick={} source={} sequence={} live_reason={}\n",
+                e.applyTick, e.sourceId, e.sequence, reason);
+            return false;
+        }
+        return application.permitted(ui, e);
     }
 };
 static_assert(std::to_underlying(TACTICAL_ORDER_NONE) == 0 && std::to_underlying(TACTICAL_ORDER_STOP) == 11 && std::to_underlying(TACTICAL_ORDER_MOVETO_POINT) == 2);

@@ -27,7 +27,7 @@ def read_trace(path: Path) -> tuple[dict[int, tuple[str, ...]], list[str]]:
             if len(fields) != 7 or int(fields[1]) != len(hashes) + 1:
                 raise ValueError(f"missing, duplicated or malformed hash: {line}")
             hashes[int(fields[1])] = tuple(fields[2:])
-        elif fields and fields[0] == "C":
+        elif fields and fields[0] in ("C", "R"):
             orders.append(line)
     return hashes, orders
 
@@ -103,7 +103,8 @@ def main() -> int:
         script = ["0 0 delay 1"] if slot else []
         script.append(f"0 {1 - slot} reject")
         for tick in range(0, args.ticks - 4, 300):
-            script.append(f"{tick} {slot} move {2800 + (tick // 300 % 4) * 100} {1900 + slot * 100}")
+            for mover in ((1, 2) if slot else (0,)):
+                script.append(f"{tick} {mover} move {2800 + (tick // 300 % 4) * 100} {1900 + slot * 100}")
         if args.force_desync and slot:
             script.append(f"{args.force_desync} 0 desync")
         (directory / "orders.txt").write_text("\n".join(script) + "\n", encoding="utf-8")

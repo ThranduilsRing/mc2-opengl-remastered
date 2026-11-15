@@ -16,8 +16,10 @@ Lockstep::Lockstep(std::uint32_t slot) : slot_(slot) {
 }
 bool Lockstep::queue(sim::OrderEnvelope envelope) {
     // UI is also serviced during a running step; those inputs belong to the next batch.
-    const auto target = completed_ + inputDelay + 1 + (executing_ ? 1 : 0);
-    if (!error_.empty() || frames_[target].orders[slot_] || pending_.size() >= maxOrders) return false;
+    auto target = completed_ + inputDelay + 1 + (executing_ ? 1 : 0);
+    if (!error_.empty() || pending_.size() >= maxOrders) return false;
+    // A click while waiting for the peer belongs to the next unsealed batch.
+    if (frames_[target].orders[slot_]) ++target;
     envelope.applyTick = target;
     envelope.sourceId = peerSourceBase + slot_;
     envelope.sequence = sequence_;

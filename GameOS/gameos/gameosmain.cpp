@@ -1019,7 +1019,8 @@ int main(int argc, char** argv)
     // main-menu widgets via aObject::init which queries the manifest for
     // the chrome-flag opt-in. Late init = manifest empty at widget load.
     AssetScale::init("data/art/asset_sizes.csv");
-    Environment.InitializeGameEngine();
+    try { Environment.InitializeGameEngine(); }
+    catch (const mc2::net::SessionStopped&) { g_exit = true; }
     startup_phase("engine_init_done");
 
 	timing::init();
@@ -1097,7 +1098,8 @@ int main(int argc, char** argv)
         }
         presentJoinPending = false;
     }
-    frameThrottleLogicEvents();
+    try { frameThrottleLogicEvents(); }
+    catch (const mc2::net::SessionStopped&) { g_exit = true; break; }
         // Logic may have loaded another mission since the frame began.
         const bool completeMissionFrame = traceMissionFrame && g_missionTraceFrames < 5 && !g_missionReadyTrace;
 
@@ -1293,6 +1295,7 @@ int main(int argc, char** argv)
     if (getValidateConfig().enabled)
         return getValidateTelemetry().exitCode;
 
+    if (mc2::net::exitStatus()) return mc2::net::exitStatus();
     return PlayerFrontEnd::restartIfRequested(argc, argv);
 }
 #endif // DISABLE_GAMEOS_MAIN

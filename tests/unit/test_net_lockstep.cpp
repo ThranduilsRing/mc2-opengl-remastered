@@ -1,6 +1,9 @@
 // Trigger paths: code/net/, code/tactical_order_queue.*, code/mission_update.cpp.
 #include "doctest.h"
 #include "net/lockstep.h"
+#include "net/runtime.h"
+#include <fstream>
+#include <sstream>
 using namespace mc2;
 namespace {
 void deliver(net::Lockstep& from, net::Lockstep& to) {
@@ -19,18 +22,19 @@ TEST_CASE("net lockstep needs both markers and previous matching hashes, delay i
     net::Lockstep host(0), client(1);
     CHECK(host.queue(command(1))); CHECK(client.queue(command(2)));
     host.seal(); client.seal();
-    CHECK_FALSE(host.queue(command(1))); // a sealed batch cannot acquire late inputs
+    CHECK(host.queue(command(1))); // late UI input waits for the next batch
     CHECK_FALSE(host.ready());
     deliver(host, client); deliver(client, host);
-    for (sim::Tick tick = 1; tick <= 4; ++tick) {
+    for (sim::Tick tick = 1; tick <= 5; ++tick) {
         REQUIRE(host.ready()); REQUIRE(client.ready());
         const auto a = host.beginTick(), b = client.beginTick();
         CHECK(a == b);
         if (tick < 4) CHECK(a.empty());
-        else {
+        else if (tick == 4) {
             REQUIRE(a.size() == 2);
             CHECK(a[0].applyTick == 4); CHECK(a[0].sourceId == 100); CHECK(a[1].sourceId == 101);
         }
+        else { REQUIRE(a.size() == 1); CHECK(a[0].applyTick == 5); CHECK(a[0].sequence == 1); }
         host.finishTick({tick, 2, 3, 4, 5});
         CHECK_FALSE(host.ready());
         client.finishTick({tick, 2, 3, 4, 5});
@@ -113,5 +117,59 @@ TEST_CASE("net lockstep timeout or disconnect stops without releasing an unagree
         REQUIRE(host.ready());
         host.stop(reason);
         CHECK_FALSE(host.ready()); CHECK(host.completed() == 0); CHECK(host.error() == reason);
+    }
+}
+TEST_CASE("net soak3 recorded stream isolates live Permission and rejection preserves subsequent admissions") {
+    struct Admission : sim::OrderAdmissionValidator {
+        bool allowed = true;
+        bool permitted(const sim::OrderSource&, const sim::OrderEnvelope&) const override { return allowed; }
+    } admission;
+    struct Apply : sim::OrderApplication {
+        std::uint32_t validateCommand(const sim::OrderEnvelope&) const override { return 0; }
+        std::uint32_t validateRecipient(const sim::OrderEnvelope&, sim::ObjectRef, std::uint32_t) const override { return 0; }
+        sim::ApplicationOutcome applyRecipient(const sim::OrderEnvelope&, sim::ObjectRef, std::uint32_t) override { return {}; }
+        sim::ApplicationOutcome applySupport(const sim::OrderEnvelope&) override { return {}; }
+    } apply;
+    std::ifstream file(std::filesystem::path(__FILE__).parent_path() / "fixtures/mp_soak3_orders.txt");
+    REQUIRE(file.good());
+    std::vector<sim::OrderEnvelope> stream;
+    std::string line;
+    while (std::getline(file, line)) {
+        std::istringstream row(line);
+        std::string marker, hex; sim::Tick tick;
+        REQUIRE(bool(row >> marker >> tick >> hex));
+        save::Bytes bytes;
+        for (std::size_t i = 0; i < hex.size(); i += 2)
+            bytes.push_back(static_cast<std::uint8_t>(std::stoul(hex.substr(i, 2), nullptr, 16)));
+        sim::OrderEnvelope order;
+        REQUIRE(save::decodeRecord(bytes, order)); REQUIRE(order.applyTick == tick);
+        stream.push_back(order);
+    }
+    REQUIRE(stream.size() == 15);
+    REQUIRE(stream.back().applyTick == 2104); REQUIRE(stream.back().sequence == 7);
+    for (const bool reject : {false, true}) {
+        sim::TacticalOrderQueue queue;
+        REQUIRE(queue.registerSource({100, sim::SourceKind::Peer}));
+        REQUIRE(queue.registerSource({101, sim::SourceKind::Peer}));
+        for (sim::Tick tick = 1; tick <= 2104; ++tick) {
+            for (const auto& order : stream) if (order.applyTick == tick) {
+                admission.allowed = !(reject && tick == 2104);
+                const auto result = queue.submit(order, admission);
+                if (!admission.allowed) { REQUIRE_FALSE(result); CHECK(result.error() == sim::OrderError::Permission); }
+                else REQUIRE(result); // Excludes Late/Source/Sequence/Shape/Capacity for the recorded stream.
+            }
+            REQUIRE(queue.beginTick(tick));
+            for (const auto& receipt : queue.receipts()) REQUIRE(queue.apply(receipt.receiptId, apply));
+            REQUIRE(queue.endTick());
+            for (const auto& receipt : queue.receipts()) REQUIRE(queue.acknowledge(receipt.receiptId));
+            queue.retireAcknowledged(queue.nextReceiptId() - 1);
+        }
+        admission.allowed = false;
+        auto next = stream.back(); next.applyTick = 2105; next.sequence = 8;
+        const auto denied = net::admitAgreedOrder(queue, next, admission);
+        REQUIRE_FALSE(denied); CHECK(denied.error() == sim::OrderError::Permission);
+        admission.allowed = true; next.applyTick = 2106; next.sequence = 9;
+        REQUIRE(net::admitAgreedOrder(queue, next, admission));
+        save::Archive snapshot; queue.serialize(snapshot); CHECK(snapshot.good());
     }
 }
