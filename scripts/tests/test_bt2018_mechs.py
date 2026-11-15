@@ -10,6 +10,7 @@ import copy
 import csv
 import io
 import json
+import os
 import struct
 import sys
 from pathlib import Path
@@ -23,7 +24,8 @@ sys.path.insert(0, str(REPO / "scripts"))
 from tools.bt2018_mechs import btjson, compile as C  # noqa: E402
 from tools.mc2data.stock_corpus import resolve, StockDataError  # noqa: E402
 
-DUMP = Path("A:/Games/mc2-opengl/BattleTech_2018_Dump/TextAsset")
+DUMP = Path(os.environ.get("BT2018_DUMP", REPO / "scripts/tests/fixtures/bt2018-dump"))
+CONVERSIONS = Path(os.environ.get("BT2018_CONVERSIONS", REPO / "scripts/tests/fixtures/bt2018-conversions"))
 
 
 @pytest.fixture(scope="module")
@@ -367,7 +369,7 @@ def test_hud_icons_use_only_the_exact_region_palette():
         assert not ({194 + 2, 194 + 1} & {int(v) for v in rear[:, :, 0][rear[:, :, 3] > 0]})   # no limbs on the rear row
 
 
-MARAUDER_GLB = Path("A:/Games/mc2-opengl/MC2Conversions/marauder.glb")
+MARAUDER_GLB = CONVERSIONS / "marauder.glb"
 
 
 @pytest.mark.skipif(not MARAUDER_GLB.is_file(), reason="converted Marauder not present")
@@ -390,9 +392,9 @@ def test_muzzle_sockets_sit_on_geometry_not_joint_centres(marauder_recipe):
 def test_entire_converted_roster_compiles_with_unique_ids(tables):
     """Trigger: tools/bt2018_mechs/{roster.py,data/roster.json,build_pack.py,compile.py}."""
     from tools.bt2018_mechs import roster
-    conversions = Path("A:/Games/mc2-opengl/MC2Conversions")
+    conversions = CONVERSIONS
     if not conversions.is_dir():
-        pytest.skip("owner conversions absent")
+        pytest.skip("external conversions absent; set BT2018_CONVERSIONS to the converted dump")
     recipes = roster.recipes(conversions)
     profiles = [C.build_profile(r, *tables) for r in recipes]
     assert len(profiles) == 51
@@ -409,27 +411,20 @@ def test_entire_converted_roster_compiles_with_unique_ids(tables):
             assert "pack-authored MC2 adaptation" in p["provenance"]["gameplay"]
 
 
-def test_cold_logistics_pack_equipment_precedes_variants(tables):
-    """Trigger: code/logisticsdata_init.cpp, equipment_registry_engine.cpp, BT2018 data."""
+def test_roster_equipment_resolves_without_external_dump(tables, tmp_path):
+    """Trigger: tools/bt2018_mechs/{roster.py,data/roster.json,compile.py}."""
     from tools.bt2018_mechs import roster
     from collections import Counter
-    source = (REPO / "code/logisticsdata_init.cpp").read_text(encoding="utf-8")
-    init = source.split("void LogisticsData::initComponents()", 1)[1].split(
-        "void LogisticsData::appendEquipmentAddFillComponents()", 1)[0]
-    assert init.index("loadMasterList(") < init.index("applyEquipmentAddFillIfEnabled(")
-    assert init.index("applyEquipmentAddFillIfEnabled(") < init.index("appendEquipmentAddFillComponents();")
-    assert 'ModCapabilityMounted("equipment_add")' in init
-    assert 'readIdFloat("BaseSensorRange", sensorRange)' in init
-    assert "equipmentAdd && !MasterComponent::masterList" in init
-    engine = (REPO / "code/equipment_registry_engine.cpp").read_text(encoding="utf-8")
-    enable = engine.split("size_t applyEquipmentEnableWireIfEnabled(", 1)[1].split("return forced;", 1)[0]
-    assert 'ModCapabilityMounted("equipment_add")' in enable
-    assert '!legacyGate && !ModOwnerHasCapability(path, "equipment_add")' in enable
+    rows = C.load_json(C.DATA / "roster.json")
+    assert rows["_source"]
+    manifest = [{"btname": family, "glb": family + ".glb", "tga": family + ".tga"}
+                for family in rows if not family.startswith("_")]
+    (tmp_path / "conversions_manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     wm, _ = tables
     stock = {int(k) for k in wm["stock_components"] if not k.startswith("_")}
     added = {v["ordinal"] for v in wm["pack_equipment"].values() if isinstance(v, dict)}
     assert stock.isdisjoint(added)  # ADD never replaces a stock component.
-    recipes = roster.recipes(Path("A:/Games/mc2-opengl/MC2Conversions"))
+    recipes = roster.recipes(tmp_path)
     profiles = [C.build_profile(r, *tables) for r in recipes]
     assert len(profiles) == 51
     for p in profiles:

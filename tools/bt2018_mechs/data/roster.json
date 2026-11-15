@@ -1,5 +1,6 @@
 {
   "_policy": "Pack-authored MC2 adaptations, not extracted or canonical BT loadouts. Each row is [tonnes, walk class, location:weapon list]. LA/RA are arms; LT/RT/CT are torsos. Armour, structure and economy use a shared authored tonnage curve. Marauder retains its reviewed recipe.",
+  "_source": "Loadouts authored for this MC2 community pack; chassis names and weapon terminology derive from BattleTech (Harebrained Schemes / Paradox Interactive; BattleTech property of its respective rights holders). Marauder uses the separately attributed reviewed recipe. No model bytes are included in this roster.",
   "annihilator": [100, 2, "LA:AC2,AC2 RA:AC2,AC2 CT:ML,ML"],
   "archer": [70, 4, "LT:LRM20 RT:LRM20 LA:ML RA:ML"],
   "assassin": [40, 7, "LA:ML LT:LRM5 RT:SRM2"],

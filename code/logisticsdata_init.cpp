@@ -197,9 +197,10 @@ void LogisticsData::initComponents()
 	// Cold logistics constructs variants before Mission::init. Materialize ADD
 	// rows now using the same table, sensor scale and overlay order as missions.
 	// Without an ADD-enabled package (or explicit legacy gates), stock is untouched.
-	const bool equipmentAdd = (ModCapabilityMounted("equipment_add") &&
-		mc2::gate::state<"MC2_EQUIPMENT_ADD">() != mc2::gate::Tri::Off) ||
-		(mc2UnitProfileDataEnabled() && mc2EquipmentAddEnabled());
+	const bool equipmentAdd = equipmentPackageAccessAllowed(
+		mc2UnitProfileDataEnabled() && mc2EquipmentAddEnabled(),
+		ModCapabilityMounted("equipment_add"),
+		mc2::gate::state<"MC2_EQUIPMENT_ADD">() == mc2::gate::Tri::Off);
 	if (equipmentAdd && !MasterComponent::masterList)
 	{
 		FullPathFileName gameSystemPath;
