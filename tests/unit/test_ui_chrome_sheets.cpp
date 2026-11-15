@@ -23,7 +23,8 @@ TEST_CASE("ui_chrome inset excludes whole images and content sprites") {
                           float u = .25f, float v = .25f, float r = .75f, float b = .75f) {
         return insetChromeCrop(path, pixel, legacy, nine, u, v, r, b);
     };
-    CHECK(inset("data/art/gui/mcl_mm_2.png"));
+    CHECK_FALSE(inset("data/art/gui/mcl_mm_2.png"));
+    CHECK(inset("data/art/gui/mcl_splashscreen_frame_2.png"));
     CHECK(inset("data/art/gui/MCUI_Universal1.tga"));
     CHECK(inset("data/art/ui/panel.png", false, false, true));
     CHECK_FALSE(inset("data/art/gui/mcl_mm_2.png", false, false, false, 0, 0, 1, 1));
@@ -51,6 +52,22 @@ Pixels solid(int w, int h, int ch, uint8_t v) {
     return p;
 }
 }  // namespace
+
+TEST_CASE("ui_chrome menu openings preserve cable and hazard paint") {
+    Pixels p = solid(256, 256, 3, 0);
+    const size_t cable = (140 * 256 + 170) * 3;
+    p.data[cable] = 64;
+    REQUIRE(clearMenuMatte("data/art/gui/mcl_mm_1.png", p));
+    CHECK(p.data[(140 * 256 + 160) * 4 + 3] == 0);
+    CHECK(p.data[(140 * 256 + 170) * 4 + 3] == 255);
+    CHECK(p.data[(210 * 256 + 80) * 4 + 3] == 255);
+    CHECK(p.data[(40 * 256 + 40) * 4 + 3] == 255);
+    p = solid(256, 256, 3, 0);
+    REQUIRE(clearMenuMatte("mcl_mm_3.png", p));
+    CHECK(p.data[(100 * 256 + 20) * 4 + 3] == 0);
+    CHECK(p.data[(50 * 256 + 140) * 4 + 3] == 255);
+    CHECK_FALSE(clearMenuMatte("other.png", p));
+}
 
 TEST_CASE("ui_chrome manifest round trip") {
     Manifest m;
