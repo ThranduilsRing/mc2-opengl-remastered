@@ -18,6 +18,7 @@
 #include "file.h"
 #include "inifile.h"
 #include "packet.h"
+#include "../../code/model_credit.h"
 
 #include <cstdio>
 #include <cstring>
@@ -62,6 +63,25 @@ const char kFitInMemText[] =
 
 TEST_SUITE("FileStack")
 {
+// Trigger paths: code/model_credit.h and code/simplecamera.cpp.
+TEST_CASE("ModelCredit/appearance manifest requires real author and source")
+{
+    auto read = [](const char* fields) {
+        std::string text = std::string("FITini\r\n[ModelCredit]\r\n") + fields + "FITend\r\n";
+        FitIniFile fit;
+        REQUIRE(fit.open(text.data(), static_cast<int>(text.size())) == NO_ERR);
+        return readModelCredit(fit);
+    };
+    CHECK(read("st Author = \"Karl\"\r\nst Source = \"Wolfman TCE p.4\"\r\n") ==
+          "Model by: Karl (Wolfman TCE p.4)");
+    CHECK(read("st Author = \"Wolfman\"\r\n").empty());
+    CHECK(read("st Source = \"TCE\"\r\n").empty());
+    CHECK(read("st Author = \"\"\r\nst Source = \"TCE\"\r\n").empty());
+    std::string stock = "FITini\r\n[TGLData]\r\nst FileName = \"Atlas\"\r\nFITend\r\n";
+    FitIniFile fit;
+    REQUIRE(fit.open(stock.data(), static_cast<int>(stock.size())) == NO_ERR);
+    CHECK(readModelCredit(fit).empty());
+}
 
 TEST_CASE("FitIniFile parses a .fit fixture from disk")
 {
