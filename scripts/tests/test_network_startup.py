@@ -62,6 +62,20 @@ def test_mp_loopback_uses_the_runner_environment_boundary(tmp_path, monkeypatch)
     assert captured["env"]["MC2_CONFIG_STRICT"] == "1"
 
 
+def test_lobby_proof_enters_via_widgets_and_keeps_cli_default(tmp_path, monkeypatch):
+    from contextlib import ExitStack
+    import run_mp_loopback_proof as proof
+    captured = {}
+    monkeypatch.setattr(proof.nofocus, "spawn", lambda argv, **kw: captured.update(argv=argv, **kw))
+    for lobby in (False, True):
+        with ExitStack() as logs:
+            proof.peer_start(str(tmp_path), str(tmp_path), 0, 23460, 64, 120, True, logs, lobby=lobby)
+        assert ("--host" in captured["argv"]) != lobby
+        assert ("MC2_INPUT_SCRIPT" in captured["env"]) == lobby
+    assert captured["env"]["MC2_BOOT_TO_SCREEN"] == "mainmenu"
+    assert "click 40 24" in (tmp_path / "lobby.script").read_text()
+
+
 def test_mp_loopback_requires_both_desync_reports_at_the_first_bad_tick(tmp_path):
     import pytest
     from run_mp_loopback_proof import compare_traces

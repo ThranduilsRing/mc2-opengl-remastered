@@ -95,7 +95,7 @@ def fixture_orders(slot: int, ticks: int, forced: int, combat: bool = False) -> 
 
 def peer_start(install: str, directory: str, slot: int, port: int, ticks: int,
                timeout: int, rendered: bool, logs: ExitStack, address: str = "127.0.0.1", combat: bool = False,
-               wall_clock: bool = False):
+               wall_clock: bool = False, lobby: bool = False):
     root = Path(directory)
     env = os.environ.copy()
     for key in unregistered_ambient(env):
@@ -125,6 +125,15 @@ def peer_start(install: str, directory: str, slot: int, port: int, ticks: int,
             "--mp-user-dir", str(root)]
     if not rendered:
         argv.append("--headless")
+    if lobby:
+        # Enter through the menu and real widgets; never pass --host/--join.
+        option = argv.index("--host" if slot == 0 else "--join")
+        del argv[option:option + 2]
+        env.update(MC2_BOOT_TO_SCREEN="mainmenu", MC2_MENU_CANARY_SKIP_INTRO="1",
+                   MC2_WIDTH="1920", MC2_HEIGHT="1080", MC2_INPUT_SCRIPT=str(root / "lobby.script"))
+        # The existing tailed script accepts subsequent widget clicks from the proof driver.
+        script = ["wait 180", "click 40 24", "wait 30", f"shot {root / 'lobby.tga'}"]
+        (root / "lobby.script").write_text("\n".join(script) + "\n", encoding="utf-8")
     log = logs.enter_context((root / "launcher.log").open("w", encoding="utf-8"))
     return nofocus.spawn(argv, env=env, cwd=install, stdout=log, stderr=subprocess.STDOUT)
 
@@ -176,6 +185,7 @@ def parser():
     ap.add_argument("--kill-peer", choices=("host", "client", "both"))
     ap.add_argument("--kill-tick", type=int, default=600)
     ap.add_argument("--combat", action="store_true")
+    ap.add_argument("--lobby", action="store_true", help="drive the rendered 1080p loopback lobby widgets")
     ap.add_argument("--wall-clock", action="store_true", help="normal clock, at least 900 ticks, assert 30 Hz +/-5%%")
     ap.add_argument("--out", required=True, type=Path)
     ap.add_argument("--ticks", type=int, default=18000)
@@ -213,6 +223,8 @@ def arguments(argv=None):
         ap.error("wall-clock requires >=900 ticks; network faults require a combat cell")
     args.install = args.install.resolve()
     args.client_install = (args.client_install or args.install).resolve()
+    if args.lobby and (args.role != "both" or args.render != "both" or not ip.is_loopback or args.port != 23460):
+        ap.error("lobby proof requires --role both --render both and loopback port 23460")
     if args.role != "both" and (args.loss or args.latency or args.stall_ms or args.kill_peer or args.wall_clock):
         ap.error("single-role mode requires direct transport without pair fault/pacing controls")
     if args.role == "both" and not args.compare_only and not ip.is_loopback and args.install == args.client_install:
@@ -279,8 +291,8 @@ def run_pair(args, out, kill_peer=None):
             upstream, client = (args.address, args.port), None
             for slot, directory in enumerate(peers):
                 rendered = args.render == "both" or args.render == ("host" if slot == 0 else "client")
-                processes.append(peer_start(str(installs[slot]), str(directory), slot, args.port + slot,
-                    args.ticks, args.timeout, rendered, logs, args.address, args.combat, args.wall_clock))
+                processes.append(peer_start(str(installs[slot]), str(directory), slot, args.port + (0 if args.lobby else slot),
+                    args.ticks, args.timeout, rendered, logs, args.address, args.combat, args.wall_clock, args.lobby))
             offsets = [0, 0]
             while any(proc.poll() is None for proc in processes):
                 now = time.monotonic()

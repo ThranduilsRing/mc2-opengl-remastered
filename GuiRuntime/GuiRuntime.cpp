@@ -410,6 +410,8 @@ void GuiRuntime::NewFrame() {
 #ifdef MC2_VULKAN
     mc2vk::getOrCreateEnginePresentVk().prepareImguiVulkanFrame();
 #endif
+    // Keep SDL's OS capture/warp path disabled even when synthetic input is active.
+    if (gos_NoUserPresentRequested()) ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouse;
     if (s_useSDL2Backend)
         ImGui_ImplSDL2_NewFrame();
 
@@ -509,6 +511,8 @@ void GuiRuntime::NewFrame() {
     bool scriptButtons[2] = {};
     if (input::scriptMouseNorm(&scriptX, &scriptY, scriptButtons)) {
         ImGuiIO& io = ImGui::GetIO();
+        io.ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
+        io.AddFocusEvent(true);
         io.AddMousePosEvent(scriptX * io.DisplaySize.x, scriptY * io.DisplaySize.y);
         for (int button = 0; button < 2; ++button) {
             io.AddMouseButtonEvent(button, scriptButtons[button]);

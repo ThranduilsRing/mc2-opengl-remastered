@@ -92,7 +92,7 @@ void drawCoopLobby() {
     ImGui::PushTextWrapPos();
     if (!state.error.empty()) ImGui::TextUnformatted(state.error.c_str());
     ImGui::PopTextWrapPos();
-    if (ImGui::Button("Back (Esc)") || ImGui::IsKeyPressed(ImGuiKey_Escape)) coopOpen = false;
+    if (ImGui::Button("Back (Esc)") || ImGui::IsKeyPressed(ImGuiKey_Escape) || userInput->getKeyDown(KEY_ESCAPE)) coopOpen = false;
     ImGui::End();
     if (!coopOpen) mc2::net::closeLobby();
 }
