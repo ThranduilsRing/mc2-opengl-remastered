@@ -13,6 +13,17 @@ def test_art_ui_and_pilots_are_mutated_roots():
     assert "data/art/pilots" in chk.MUTATED_ROOTS
 
 
+def test_mip_tgas_are_private_and_enumerated(tmp_path):
+    for mip in (32, 64, 128, 256, 512, 1024):
+        rel = f"data/tgl/{mip}/a_cp_island_tree_01_1.tga"
+        path = tmp_path / rel
+        path.parent.mkdir(parents=True)
+        path.write_bytes(b"leaf-mask")
+        assert chk.classify(rel.upper()) == "mutated"
+        assert rel in set(chk.iter_mutated_relpaths(tmp_path))
+    assert chk.classify("data/tgl/tree.ini") == "data"
+
+
 def test_art_ui_and_pilots_files_classify_mutated():
     assert chk.classify("data/art/ui/mcui_universal1/btn.png") == "mutated"
     assert chk.classify("data/art/pilots/01.png") == "mutated"

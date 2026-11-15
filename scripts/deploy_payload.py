@@ -1401,6 +1401,15 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
             fail(f"game data payload missing in source: {p}")
         items.append((p, rel, "support"))
 
+    # Intentional mip overrides must travel with their committed declarations.
+    import asset_parity
+    for rel, expected in asset_parity.intentional_changes(git_head(src_root), Path(src_root)).items():
+        if re.fullmatch(r"data/tgl/[0-9]+/[^/]+\.tga", rel):
+            p = os.path.join(src_root, rel)
+            if require_build and (not os.path.isfile(p) or sha256_file(p) != expected):
+                fail(f"declared mip asset missing or hash mismatch: {p}")
+            items.append((p, rel, "support"))
+
     for path in sorted((Path(src_root) / "data/art").glob("mcl_mc_*.tga")):
         items.append((str(path), path.relative_to(src_root).as_posix(), "support"))
     # MENU-PLANET-MODERN-1: main-menu backdrop (hi-res tiles + the fit that places them).
@@ -1678,8 +1687,19 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
         os.makedirs(os.path.dirname(dst) or target_dir, exist_ok=True)
         try:
             copy_started = time.perf_counter()
-            unlink_for_replace(dst)
-            if rel.endswith(".mcasset.json"):
+            if re.fullmatch(r"data/tgl/[0-9]+/[^/]+\.tga", rel.replace(os.sep, "/")):
+                temporary = None
+                try:
+                    with tempfile.NamedTemporaryFile(dir=os.path.dirname(dst), delete=False) as out:
+                        temporary = out.name
+                    shutil.copyfile(src, temporary)
+                    replace_file(temporary, dst)
+                finally:
+                    if temporary and os.path.exists(temporary):
+                        os.unlink(temporary)
+                copy_seconds += time.perf_counter() - copy_started
+            elif rel.endswith(".mcasset.json"):
+                unlink_for_replace(dst)
                 # Authored sidecars ship unchanged except for checkout line endings;
                 # mixed CRLF/LF copies must not change the pinned data fingerprint.
                 with open(src, "rb") as fh:
@@ -1688,6 +1708,7 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
                     fh.write(content)
                 copy_seconds += time.perf_counter() - copy_started
             else:
+                unlink_for_replace(dst)
                 shutil.copyfile(src, dst)
                 if kind == "exe" and os.name != "nt":
                     shutil.copymode(src, dst)
