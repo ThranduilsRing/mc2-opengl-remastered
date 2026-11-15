@@ -118,15 +118,21 @@ void ControlGui::renderSimSpeedButton()
 	const bool selected = !disabled && (pressed || simSpeedGetMultiplier() != 1.f);
 	const int state = disabled ? ControlButton::DISABLED :
 		(selected ? ControlButton::PRESSED : (hover ? ControlButton::AMBIGUOUS : ControlButton::ENABLED));
-	// Use the stock empty command frame from the shipped 256px atlas. The
-	// hidden specialist's texture can belong to a different resolution atlas.
+	// The repacked atlas omits the unused empty row at y=144. Use the stock
+	// Info command's frame at y=0, extending its side stripes over its icon.
 	static const auto frame = mc2::textures::load(
 		"data\\art\\gui\\MCUI_High3.png", gos_Texture_Alpha, 0, 0, 0x1);
 	const float u = static_cast<float>((disabled ? 2 : selected ? 1 : 0) * 42);
 	const auto texture = gos_GetUiTextureId(mc2::textures::sourceId(frame));
-	draw->AddImage(static_cast<ImTextureID>(texture), p, ImVec2(p.x + size.x, p.y + size.y),
-		ImVec2((u + .1f) / 256.f, 144.1f / 256.f),
-		ImVec2((u + 42.1f) / 256.f, 180.1f / 256.f));
+	constexpr float edges[] = {0.f, 12.f, 30.f, 42.f};
+	constexpr float sourceLeft[] = {0.f, 8.f, 30.f};
+	constexpr float sourceRight[] = {12.f, 9.f, 42.f};
+	for (int strip = 0; strip < 3; ++strip)
+		draw->AddImage(static_cast<ImTextureID>(texture),
+			ImVec2(p.x + size.x * edges[strip] / 42.f, p.y),
+			ImVec2(p.x + size.x * edges[strip + 1] / 42.f, p.y + size.y),
+			ImVec2((u + sourceLeft[strip] + .1f) / 256.f, .1f / 256.f),
+			ImVec2((u + sourceRight[strip] + .1f) / 256.f, 36.1f / 256.f));
 	// Icon-only command buttons have no Text* fields. Use the stock HUD
 	// blue/white/grey/orange palette rather than their unset text colours.
 	constexpr unsigned long colors[] = {0xff5c96c2, 0xffffffff, 0xff6b6b6b, 0xfff26f00};
