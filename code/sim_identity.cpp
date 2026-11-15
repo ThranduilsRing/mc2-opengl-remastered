@@ -1,4 +1,5 @@
 #include "sim_rng_state.h"
+#include "mc2_diag.h"
 //---------------------------------------------------------------------------
 // SIM-IDENTITY-HASH-1 -- engine-side collector for the world-state hash.
 //
@@ -377,7 +378,7 @@ extern "C" void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame) 
             for (auto& node : pose.shapeNodes) animation(node.x, node.y, node.z);
             animation(pose.hitLeft.x, pose.hitLeft.y, pose.hitLeft.z, pose.hitRight.x, pose.hitRight.y, pose.hitRight.z);
             animation(pose.cockpit.x, pose.cockpit.y, pose.cockpit.z);
-            if (mc2::net::active() && turn == 1) {
+            if (mc2::net::active() && turn == 1 && mc2_diag::tagRequested("MP_ANIM_INIT")) {
                 std::fprintf(stderr, "[MP_ANIM_INIT] object=%d part=%d state=", i, id);
                 for (auto offset = begin; offset < animation.bytes().size(); ++offset)
                     std::fprintf(stderr, "%02x", static_cast<unsigned>(animation.bytes()[offset]));
