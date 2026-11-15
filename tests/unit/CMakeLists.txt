@@ -170,6 +170,7 @@ add_executable(mc2_tests
     test_startup_work.cpp  # PC night startup: bounded dedup, appearance noise, TGA scratch reuse
     test_hardpoint.cpp        # HARDPOINT-ID-SCHEMA-1: HardpointId join key + weapon-tag/damage-location link (offline)
     test_package_chassis.cpp  # BT2018-FIRST-CLASS P3/P7: package chassis regions/mounts/payload + type-number allocation (offline)
+    test_purchase_catalog.cpp
     test_mech_clip_state.cpp  # BT2018-FIRST-CLASS P9: imported-mech clip state machine + stride matching (offline)
     test_mech_wreck.cpp
     test_getweaponnode_adapter.cpp  # GETWEAPONNODE-HARDPOINT-ADAPTER-1: chooseWeaponNode() authoritative-with-fallback (offline)
@@ -759,6 +760,10 @@ file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/overlay_static_upload.inc" CON
 mc2_height_slice(hud_warm_variants GameOS/gameos/engine_present_vk.cpp
     "struct WarmVariant {" "for (const auto& variant : variants)")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/hud_warm_variants.inc" CONTENT "${hud_warm_variants}")
+mc2_height_slice(cursor_reload mclib/userinput.cpp
+    "void UserInput::initMouseCursors (" "void UserInput::setMouseScale (")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/cursor_reload.inc" CONTENT "${cursor_reload}")
+set_source_files_properties(test_cursor_map.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
 mc2_height_slice(overlay_road_inputs GameOS/gameos/gos_terrain_indirect_cement.cpp
     "static bool TileIsRoadArt(" "void PopulateRecipeCementWords()")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/overlay_road_inputs.inc" CONTENT "${overlay_road_inputs}")

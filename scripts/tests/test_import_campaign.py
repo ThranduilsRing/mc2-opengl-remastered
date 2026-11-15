@@ -371,3 +371,105 @@ def test_imported_id_resolves_legacy_manifest_without_changing_stock(sample):
 def test_batch_preserves_callers_relative_source_directory():
     batch = (ROOT / "import-campaign.bat").read_text().lower()
     assert "cd /d" not in batch and "pushd" not in batch
+
+
+def test_auto_detects_base_before_addons_and_skips_managed(sample, monkeypatch):
+    source, deploy = sample
+    raw = deploy / "mods/z-omnitech"
+    source.rename(raw)
+    (raw / "art.fst").touch()
+    addon = deploy / "mods/a-desertfox"
+    imp.shutil.copytree(raw, addon)
+    (addon / "art.fst").unlink()
+    managed = deploy / "mods/managed"
+    imp.shutil.copytree(addon, managed)
+    (managed / "mod.json").write_text('{}')
+    calls = []
+    def convert(path, game):
+        calls.append(path.name)
+        return {"status": "installed", "mod": path.name + "-converted"}
+    monkeypatch.setattr(imp, "import_campaign", convert)
+    state = imp.auto_import(deploy)
+    assert calls == [raw.name, addon.name]
+    assert not state["running"] and "complete" in state["message"]
+    assert (raw / "data/campaign/demo.fit").is_file()
+    assert not (raw / "mod.json").exists()
+
+
+@pytest.mark.parametrize("flat", [False, True])
+def test_auto_restart_skips_import_and_changed_stamp_reruns(sample, monkeypatch, flat):
+    source, deploy = sample
+    if flat:
+        source = source / "data"
+    raw = deploy / "mods/exodus"
+    source.rename(raw)
+    result = imp.auto_import(deploy)
+    target = deploy / "mods" / result["sources"][raw.name]["mod"]
+    receipt = (target / ".campaign-import.json").read_bytes()
+    calls = []
+    monkeypatch.setattr(imp, "import_campaign", lambda *args: calls.append(args) or {"status": "installed", "mod": target.name})
+    imp.auto_import(deploy)
+    assert not calls
+    assert (target / ".campaign-import.json").read_bytes() == receipt
+    (raw / ("missions" if flat else "data/missions") / "demo01.fit").write_bytes(b'FITini\nObjectNumber = 13')
+    imp.auto_import(deploy)
+    assert len(calls) == 1
+
+
+def test_auto_exact_error_persisted_and_retried(sample, monkeypatch, capsys):
+    source, deploy = sample
+    raw = deploy / "mods/exodus"
+    source.rename(raw)
+    calls = []
+    def fail(*args):
+        calls.append(args)
+        print("missing authored object data/objects/example.fit", file=sys.stderr)
+        raise SystemExit(7)
+    monkeypatch.setattr(imp, "import_campaign", fail)
+    state = imp.auto_import(deploy)
+    error = state["sources"][raw.name]["error"]
+    assert "7" in error and "data/objects/example.fit" in error
+    assert json.loads((deploy / "mods/.campaign-auto.json").read_text())["sources"][raw.name]["error"] == error
+    assert imp.auto_import(deploy)["sources"][raw.name]["error"] == error
+    assert len(calls) == 2
+
+
+@pytest.mark.parametrize("age", [0, 25 * 3600])
+def test_auto_real_converter_retries_after_base_appears_and_reaps_staging(sample, monkeypatch, age):
+    source, deploy = sample
+    raw = deploy / "mods/exodus"
+    source.rename(raw)
+    compat = deploy / "mods/mc2x-compat/data"
+    imp.shutil.rmtree(compat)
+    stale = deploy / "mods/.campaign-import-interrupted/data"
+    stale.mkdir(parents=True)
+    (stale.parent / ".import-owner.json").write_text(json.dumps({"pid": imp.os.getpid(), "started": imp.time.time() - age}))
+    monkeypatch.setattr(imp, "pid_alive", lambda pid: bool(age))
+    leftover = stale / "readonly.fit"
+    leftover.write_text("interrupted output")
+    leftover.chmod(0o400)
+    first = imp.auto_import(deploy)["sources"][raw.name]
+    assert "Missing mc2x-compat" in first["error"]
+    assert not stale.parent.exists()
+    compat.mkdir(parents=True)
+    second = imp.auto_import(deploy)["sources"][raw.name]
+    assert first["stamp"] == second["stamp"]
+    assert second["status"] == "installed" and "error" not in second
+    assert second["import_seconds"] >= 0
+
+
+def test_auto_preserves_foreign_and_live_staging(sample, monkeypatch):
+    _, deploy = sample
+    foreign = deploy / "mods/.campaign-import-player"
+    foreign.mkdir()
+    (foreign / "save.fit").write_text("player data")
+    original = imp.inspect_source
+    def inspect(root):
+        staged = next((deploy / "mods").glob(".campaign-import-*/.import-owner.json"))
+        assert json.loads(staged.read_text())["pid"] == imp.os.getpid()
+        assert imp.pid_alive(imp.os.getpid())
+        imp.auto_import(deploy)
+        assert staged.is_file() and (foreign / "save.fit").read_text() == "player data"
+        return original(root)
+    monkeypatch.setattr(imp, "inspect_source", inspect)
+    assert imp.import_campaign(sample[0], deploy)["status"] == "installed"

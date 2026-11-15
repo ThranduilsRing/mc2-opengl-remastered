@@ -637,6 +637,7 @@ class Mech3DAppearance: public ObjectAppearance
 		virtual void updateFootprints (void);
 
 		virtual void updateGeometry (void);
+		void tickImportedAnimation(bool advanceClock, bool preview);
 
 		// Poses the node hierarchy (gesture frame, torso twist) for a mech updateGeometry skipped as off screen. WHY: the
 		// weapon, LOS and named-node positions the simulation reads come from that pose, so it must not depend on the camera.

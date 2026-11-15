@@ -19,6 +19,8 @@
 #include "inifile.h"
 #include "packet.h"
 #include "../../code/model_credit.h"
+#include "../../code/purchase_catalog.h"
+#include "../../code/objective_text.h"
 
 #include <cstdio>
 #include <cstring>
@@ -63,6 +65,36 @@ const char kFitInMemText[] =
 
 TEST_SUITE("FileStack")
 {
+// Trigger paths: code/purchase_catalog.h, code/logisticsmech.cpp, code/logisticsdata_save.cpp.
+TEST_CASE("purchase_catalog/pack purchase survives real FIT save reload with duplicate names")
+{
+    const auto path = scratchPath("purchase.fit");
+    {
+        FitIniFile out;
+        REQUIRE(out.create(path.c_str()) == NO_ERR);
+        out.writeBlock("Inventory0");
+        mc2purchase::saveIdentity(out, "bt2018", "Atlas");
+        out.close();
+    }
+    {
+        FitIniFile in;
+        REQUIRE(in.open(path.c_str()) == NO_ERR);
+        REQUIRE(in.seekBlock("Inventory0") == NO_ERR);
+        const auto pack = objective_text::readPlain(in, "PurchasePack");
+        const auto name = objective_text::readPlain(in, "Variant");
+        REQUIRE(pack == "bt2018");
+        REQUIRE(name == "Atlas");
+        const std::vector<mc2purchase::Item> variants = {{"", "Atlas"}, {"other", "Atlas"}, {"bt2018", "Atlas"}};
+        const auto restored = std::find_if(variants.begin(), variants.end(), [&](const auto& variant) {
+            return mc2purchase::identityMatches(variant.source, variant.name, pack, *name);
+        });
+        REQUIRE(restored != variants.end());
+        CHECK(restored->source == "bt2018");
+        in.close();
+    }
+    remove(path.c_str());
+}
+
 // Trigger paths: code/model_credit.h and code/simplecamera.cpp.
 TEST_CASE("ModelCredit/appearance manifest requires real author and source")
 {

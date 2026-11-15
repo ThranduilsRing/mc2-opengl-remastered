@@ -412,3 +412,13 @@ S097 | 3rdparty/imgui/imstb_rectpack.h -> 5
   Embedded licence and contributor list.
 S098 | 3rdparty/sentry-native/vendor/stb_sprintf.h -> 2
   Embedded licence and original author attribution (RAD Game Tools).
+
+MCO / MechCommander Omnitech compatibility script
+
+tools/mc2_import/shims/corebrain.abx is the original compiled MCO corebrain
+from the MechCommander Omnitech distribution, credited to its original authors.
+Project and source downloads: https://www.moddb.com/mods/mechcommander-omnitech
+Original rights and notices continue to apply. This attribution does not
+grant a separate licence to redistribute community campaigns. Campaign data
+is not bundled by default; the player supplies an installed campaign or
+download. A campaign is bundled only where its authors' permission is recorded.

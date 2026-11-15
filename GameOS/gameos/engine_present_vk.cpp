@@ -798,9 +798,20 @@ bool createHostBuffer(EnginePresentVk::Impl& s, VkDeviceSize bytes, VkBufferUsag
     mc2vk::nameObject(s.dev, outBuf.get(), name);
     VkMemoryRequirements req{};
     vkGetBufferMemoryRequirements(s.dev, outBuf.get(), &req);
-    const uint32_t memType = findMemoryType(s.phys, req.memoryTypeBits,
-                                            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                                            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    constexpr VkMemoryPropertyFlags hostFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                                VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    const uint32_t deviceType = findMemoryType(s.phys, req.memoryTypeBits,
+                                              hostFlags | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    // A full BAR heap must retry ordinary host memory, even if another BAR type exists.
+    VkPhysicalDeviceMemoryProperties mp{};
+    vkGetPhysicalDeviceMemoryProperties(s.phys, &mp);
+    uint32_t hostType = UINT32_MAX;
+    for (uint32_t i = 0; i < mp.memoryTypeCount; ++i) {
+        const auto flags = mp.memoryTypes[i].propertyFlags;
+        if ((req.memoryTypeBits & (1u << i)) && (flags & hostFlags) == hostFlags &&
+            !(flags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) { hostType = i; break; }
+    }
+    uint32_t memType = deviceType != UINT32_MAX ? deviceType : hostType;
     if (memType == UINT32_MAX)
         return false;
     VkMemoryAllocateInfo ai{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
@@ -808,8 +819,16 @@ bool createHostBuffer(EnginePresentVk::Impl& s, VkDeviceSize bytes, VkBufferUsag
     ai.memoryTypeIndex = memType;
     mc2vk::infra::Admission admission(req.size,name);
     if(!admission) return false;
-    if (!mc2vk::create(outMem, s.dev, [&](auto* h) { return vkAllocateMemory(s.dev, &ai, nullptr, h); }))
-        return false;
+    if (!mc2vk::create(outMem, s.dev, [&](auto* h) { return vkAllocateMemory(s.dev, &ai, nullptr, h); })) {
+        if (memType != deviceType || hostType == UINT32_MAX) return false;
+        ai.memoryTypeIndex = memType = hostType;
+        if (!mc2vk::create(outMem, s.dev, [&](auto* h) { return vkAllocateMemory(s.dev, &ai, nullptr, h); }))
+            return false;
+        (void)mc2vk::takeLastCreateFailure(); // recovered allocation must not poison later failure diagnostics
+    }
+    plog("[HOST_BUFFER_MEMORY] name=%.*s type=%u preferred=%u bytes=%llu",
+         static_cast<int>(name.size()), name.data(), memType, deviceType,
+         static_cast<unsigned long long>(req.size));
     admission.commit(reinterpret_cast<uint64_t>(outMem.get()), name, true);
     return vkBindBufferMemory(s.dev, outBuf.get(), outMem.get(), 0) == VK_SUCCESS;
 }
@@ -1110,12 +1129,13 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
     const size_t baseBytes = static_cast<size_t>(d.textureWidth) * d.textureHeight * 4u;
     const VkDeviceSize bytes = mipmapped ? (baseBytes * 4u - 4u) / 3u : baseBytes;
     const bool needsUpload = m.serial != d.textureSerial || m.width != d.textureWidth ||
-                             m.height != d.textureHeight || m.bytes != bytes || !m.buffer || m.sceneGeneration != sceneGeneration;
-    if (!needsUpload)
+                             m.height != d.textureHeight || m.bytes != bytes || !m.buffer;
+    if (!needsUpload && m.sceneGeneration == sceneGeneration)
         return &m;
     // VK-HUD-MIRRORCOPY-1: the draw carries a shared immutable mirror (refcount
     // bump at queue time); bytes are only dereferenced HERE, on a (handle,serial)
     // change — the >99.9% no-upload case never touches them.
+    if (needsUpload) {
     if (!d.textureRgba || d.textureRgba->size() < baseBytes)
         return nullptr;
     ZoneScopedN("HUD.TextureUpload");
@@ -1139,6 +1159,7 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
         return nullptr;
     std::memcpy(mapped, mipmapped ? mipPixels.data() : rgba.data(), static_cast<size_t>(bytes));
     vkUnmapMemory(s.dev, m.memory.get());
+    }
     }
     if (!m.set) {
         VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
@@ -1174,7 +1195,7 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
     m.width = d.textureWidth;
     m.height = d.textureHeight;
     m.bytes = bytes;
-    if (uploads) ++(*uploads);
+    if (uploads && needsUpload) ++(*uploads);
     return &m;
 }
 

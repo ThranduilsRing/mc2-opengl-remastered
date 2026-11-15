@@ -10,6 +10,7 @@ LogisticsMech.cpp			: Implementation of the LogisticsMech component.
 #include"logisticsdata.h"
 #include"inifile.h"
 #include "mc2fmt.h"
+#include "purchase_catalog.h"
 
 LogisticsMech::LogisticsMech( LogisticsVariant* pVar, int Count ) : pVariant( pVar )
 {
@@ -52,7 +53,7 @@ long LogisticsMech::save( FitIniFile& file, long counter )
 	file.writeBlock( tmp );
 
 	file.writeIdString( "Chassis", pVariant->getFileName().c_str() );
-	file.writeIdString( "Variant", pVariant->getName().c_str() );
+	mc2purchase::saveIdentity(file, mc2purchase::chassisSource(pVariant->getFileName()), pVariant->getName());
 	if ( pilot )
 		file.writeIdString( "Pilot", pilot->getFileName().c_str() );
 	file.writeIdBoolean( "Designer", pVariant->isDesignerMech() );

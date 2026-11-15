@@ -484,6 +484,7 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
         if via_menu_boot or post_load:
             try:
                 recorder.wait(timeout=seconds + 90)
+                rc = int(bool(recorder.returncode))
             except subprocess.TimeoutExpired:
                 rc = 1
             if not rc and recorder.returncode == 0 and gp.poll() is None:

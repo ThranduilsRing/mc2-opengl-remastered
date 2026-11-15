@@ -209,7 +209,7 @@ def harness(monkeypatch):
         def kill():
             assert h.held
             h.events.append(name + ".kill")
-            proc.returncode = -1
+            proc.returncode = 1 if capture.os.name == "nt" else -9
 
         proc.poll.side_effect = lambda: proc.returncode
         proc.wait.side_effect = wait
@@ -282,6 +282,31 @@ def test_lease_precedes_both_children_and_covers_normal_exit(harness, show_windo
     assert h.game_spawn.call_args.args[0][0] == str(h.install / exe)
     recorder = h.recorder_spawn.call_args.args[0]
     assert recorder[recorder.index("-s") + 1] == "15"
+
+
+@pytest.mark.parametrize("exited,recorder_rc,expected", [(False, 0, 0), (True, 0, 1), (False, 1, 1)])
+def test_via_menu_ignores_only_its_own_game_stop(harness, exited, recorder_rc, expected):
+    h = harness
+    spawn_game, spawn_recorder = h.game_spawn.side_effect, h.recorder_spawn.side_effect
+
+    def game(*args, **kwargs):
+        proc = spawn_game(*args, **kwargs)
+        proc.returncode = 7 if exited else None
+        proc.wait.side_effect = lambda timeout=None: proc.returncode
+        return proc
+
+    def recorder(*args, **kwargs):
+        proc = spawn_recorder(*args, **kwargs)
+        def wait(timeout=None):
+            proc.returncode = recorder_rc
+            return recorder_rc
+        proc.wait.side_effect = wait
+        return proc
+
+    h.game_spawn.side_effect, h.recorder_spawn.side_effect = game, recorder
+    assert capture.capture_trace(h.install, "vk", "mc2_01", 15, h.out, via_menu_boot=True) == expected
+    assert ("game.kill" in h.events) is not exited
+    h.release.assert_called_once()
 
 
 @pytest.mark.parametrize("which", ["recorder", "game"])
