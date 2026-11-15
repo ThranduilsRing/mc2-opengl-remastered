@@ -93,12 +93,13 @@ def is_art_test(path):
 def scoped_modules(mods, paths):
     """Directory-local tests follow their tool; flat tests follow the named source or row's existing input list.
 
-    Unmapped tests stay nightly. The module itself always triggers its test.
+    Unknown changed paths select the full suite. The module itself always triggers its test.
     """
     import contracts_cache as cc
     from fnmatch import fnmatchcase
-    rows = cc.affected_rows(ROOT, paths)
-    selected = []
+    paths = [p for p in paths if p]
+    declarations = cc.load_decls(ROOT)
+    selected, covered = [], set()
     for mod in mods:
         parent, name = mod.rsplit("/", 1)
         stem = name.removeprefix("test_").removesuffix("_test.py").removesuffix(".py")
@@ -110,8 +111,14 @@ def scoped_modules(mods, paths):
         globs = [f"{d}/{s}*" for d in ("scripts", "tools") for s in (stem, stem.replace("_", "-"))]
         if stem.startswith(("lane_merge", "laptop_gate", "merge_gate")):
             globs += ["tools/lane_*", "tools/laptop_gate.py", "scripts/merge_gate.py"]
-        if mod in paths or stem in rows or any(p.startswith(tuple(prefixes)) or any(fnmatchcase(p, g) for g in globs) for p in paths):
+        specs = [s for s in declarations.get(stem, []) if s != "." and not s.startswith(("!", "+"))]
+        matches = {p for p in paths if p == mod or p.startswith(tuple(prefixes))
+                   or any(fnmatchcase(p, g) for g in globs) or any(cc._match(p, s) for s in specs)}
+        if matches:
+            covered.update(matches)
             selected.append(mod)
+    if any(p not in covered and not p.startswith(("docs/", ".claude/")) and not p.endswith((".md", ".rst")) for p in paths):
+        return mods
     return selected
 
 
@@ -252,7 +259,7 @@ def main() -> int:
     if args.suite == "art" and args.base and not art_changed(args.base):
         print("kit_art: SKIP: window diff has no art/kit inputs")
         return 0
-    if args.base and args.suite != "art":
+    if args.base:
         paths = subprocess.check_output(["git", "diff", "--name-only", "-z", args.base, "HEAD"], cwd=ROOT, text=True,
                                         **console_child.child_kwargs(redirected=True)).split("\0")
         mods = scoped_modules(mods, paths)

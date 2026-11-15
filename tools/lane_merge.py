@@ -95,6 +95,9 @@ GENERATORS = [
     ("ownership inventory", "tools/own_inventory.py", ["--write-baseline"]),
     ("Vulkan ownership", "tools/vk_ownership_ledger.py", ["--write"]),
 ]
+GENERATOR_ROWS = dict(zip((g[0] for g in GENERATORS), (
+    "log_tag_census", "pointer_order_scan", "gated_layout_macros", "binding_slots",
+    "shader_interface", "shader_interface", "own_inventory", "vk_ownership")))
 
 # Files that are pure functions of the tree: on conflict the lane's copy is taken and the
 # ratchet --tighten run below regenerates them against the merged result.
@@ -784,7 +787,7 @@ def regenerate_derived(root: str, base: str) -> list[str]:
 
     Tighten-only: the log tag census may only gain emitters and the gate population floor may only follow additions
     (or retirements listed in Gates/retired_names.json). Anything else restores the file and stops the window (exit 6)."""
-    changed = list(regenerate_all(root))
+    changed = list(regenerate_all(root, base=base))
     live = Path(root) / LOG_TAG_BASELINE
     old = _git_json(root, "HEAD", LOG_TAG_BASELINE)
     if old is not None and live.is_file():
@@ -844,7 +847,7 @@ def require_clean_generator_inputs(root):
                        + "\n  ".join(path for _, path in dirty))
 
 
-def regenerate_all(root, *, dry_run=False):
+def regenerate_all(root, *, dry_run=False, base=None):
     """Regenerate the committed tree in isolation for dry runs; never bless preexisting edits."""
     if dry_run:
         # A disposable local clone lets every generator use its normal paths and
@@ -857,7 +860,7 @@ def regenerate_all(root, *, dry_run=False):
                 raise Stop(6, r.stdout)
             sha = git_out(root, "rev-parse", "HEAD")
             git_out(snapshot, "checkout", "--quiet", "--detach", sha)
-            changed = regenerate_all(snapshot)
+            changed = regenerate_all(snapshot, base=base)
             print(f"regenerate-all dry-run at {sha[:9]}: " + (", ".join(changed) or "nothing to change"))
             return changed
     overlaps = artifact_changes(root)
@@ -878,6 +881,17 @@ def regenerate_all(root, *, dry_run=False):
         return label, run(root, [sys.executable, "-B", os.path.join(root, script), *args])
     # Compiled SPIR-V is toolchain-bound: the Linux box's output differs byte-wise from the committed Windows build, so it is skipped there.
     gens = [g for g in GENERATORS if os.name == 'nt' or g[0] != 'SPIR-V pilots']
+    base = base or os.environ.get("MC2_GATE_BASE")
+    if base:
+        import contracts_cache as cc
+        paths = set(lines(git_out(root, "diff", "--name-only", base, "HEAD")))
+        declarations, universe = cc.load_decls(root), cc.Universe(root)
+        gens = [g for g in gens if GENERATOR_ROWS.get(g[0]) not in declarations
+                or paths.intersection(cc.row_inputs(root, universe, g[1], declarations[GENERATOR_ROWS[g[0]]]))
+                or any(cc._match(p, s) for p in paths for s in declarations[GENERATOR_ROWS[g[0]]])]
+    if not gens:
+        print("regenerate-all: no declared inputs changed")
+        return []
     with ThreadPoolExecutor(max_workers=min(REGEN_WORKERS, len(gens))) as pool:
         results = list(pool.map(generate, gens))
     for label, r in results:
@@ -967,6 +981,9 @@ def _lint_locked(root: str, ref: str, runner=None) -> int:
     """`--lint REF`: the precheck's fast local checks (ratchets, callers, early rows, ungated tags)
     run concurrently at REF in shared clones; every red is printed with its fix. No Python suites, no link. Exit 0 = clean."""
     runner, started, failed = runner or run, time.monotonic(), []   # type: ignore[var-annotated]
+    import contracts_cache as cc
+    receipt_tip, rotations = cc.clean_tip(root), []
+    cc.record_tip_pass(root, "lint", receipt_tip, False)
     try:
         sha = git_out(root, "rev-parse", ref + "^{commit}")
         base_ref = git_out(root, "rev-parse", "claude/nifty-mendeleev^{commit}")
@@ -991,6 +1008,8 @@ def _lint_locked(root: str, ref: str, runner=None) -> int:
                 t0 = time.monotonic()
                 r = runner(snap, cmd)
                 rot = base_rot(snap, base_ref, label, cmd, r, runner)
+                if rot:
+                    rotations.append(label)
                 out.append((label, 0 if rot else r.returncode, time.monotonic() - t0, failure_summary(r.stdout), hint))
             return out
         from concurrent.futures import ThreadPoolExecutor
@@ -1007,6 +1026,7 @@ def _lint_locked(root: str, ref: str, runner=None) -> int:
                         failed.append(label)
                     report_lint_row(label, rc, secs, tail, hint)
     print("LINT " + ("FAIL " + ", ".join(failed) if failed else "PASS") + f" WALL={time.monotonic() - started:.0f}s (the precheck still runs the Python suites and the link)")
+    cc.record_tip_pass(root, "lint", receipt_tip, not failed and not rotations and receipt_tip == sha)
     return int(bool(failed))
 
 
@@ -1521,7 +1541,7 @@ def merge_tip(root: str, tools_dir: str, p: dict, message: str, resolutions: dic
     semantic = semantic_precheck(root, tools_dir, p["lane_files"]) or lane_merge_baseline.base_baseline_check(root, tools_dir, git_out(root, "rev-parse", "HEAD^1"), ratchets, RATCHET_BASELINES, run, git, lines)
     if semantic:
         return merge_sha, None, semantic
-    artifacts = regenerate_all(root)
+    artifacts = regenerate_all(root, base=p["head"])
     artifact_follow = None
     if artifacts:
         try:

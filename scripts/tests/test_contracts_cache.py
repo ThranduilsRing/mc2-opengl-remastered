@@ -35,15 +35,75 @@ def test_merge_triggers_use_the_existing_table():
     assert rtt.scoped_modules(modules, [modules[2]]) == [modules[2]]
 
 
-def test_art_input_runs_the_whole_art_suite(monkeypatch):
+def test_art_input_runs_its_selected_module(monkeypatch):
     import run_tools_tests as rtt
     mod = "tools/scifi_kit/test_kit.py"
     monkeypatch.setattr(sys, "argv", ["run_tools_tests.py", "--suite", "art", "--base", "base"])
     monkeypatch.setattr(rtt, "discover", lambda *a: [mod])
     monkeypatch.setattr(rtt, "art_changed", lambda *a: True)
+    monkeypatch.setattr(rtt.subprocess, "check_output", lambda *a, **k: "tools/scifi_kit/cook.py\0")
     monkeypatch.setattr(rtt, "load_ledger", lambda: {})
     monkeypatch.setattr(rtt, "run_all", lambda mods, *a: [(m, 0, [], "") for m in mods])
     assert rtt.main() == 0
+
+
+def test_unmapped_change_falls_back_and_art_is_local():
+    import run_tools_tests as rtt
+    modules = ["tools/scifi_kit/test_kit.py", "tools/blender_pipeline/test_export.py"]
+    assert rtt.scoped_modules(modules, ["new_subsystem/input.xyz"]) == modules
+    assert rtt.scoped_modules(modules, ["tools/scifi_kit/cook.py"]) == modules[:1]
+    assert rtt.scoped_modules(modules, ["tools/blender_pipeline/export.py"]) == modules[1:]
+    assert rtt.scoped_modules(modules, ["data/new.glb"]) == modules
+
+
+def test_exact_tip_passes_reject_dirty_moved_failed_and_corrupt(tmp_path, monkeypatch):
+    repo = _repo(tmp_path)
+    monkeypatch.setattr(cc, "cache_path", lambda *a: str(tmp_path / ".git/pass-cache.json"))
+    head = cc.clean_tip(repo)
+    assert not cc.tip_passed(repo, "lint")
+    cc.record_tip_pass(repo, "lint", head, True)
+    assert cc.tip_passed(repo, "lint")
+    (repo / "src/a.cpp").write_text("changed")
+    assert not cc.tip_passed(repo, "lint")
+    _git(repo, "add", "src/a.cpp")
+    _git(repo, "commit", "-qm", "next")
+    assert not cc.tip_passed(repo, "lint")
+    cc.record_tip_pass(repo, "lint", cc.clean_tip(repo), True)
+    cc.record_tip_pass(repo, "lint", cc.clean_tip(repo), False)
+    assert not cc.tip_passed(repo, "lint")
+    (repo / ".git/pass-cache.json").write_text('{"exact-tip:lint": false}')
+    assert not cc.tip_passed(repo, "lint")
+
+
+def test_equivalents_and_stock_trigger_paths(monkeypatch):
+    from pathlib import Path
+    root = str(Path(__file__).resolve().parents[2])
+    monkeypatch.setattr(cc, "tip_passed", lambda repo, label: False)
+    paths = ["tools/callers.py", "code/test.cpp", "tests/unit/test_audio_backend.cpp"]
+    assert {"script_callers", "log_tag_census", "audio_music_stream"} <= cc.affected_rows(root, paths)
+    monkeypatch.setattr(cc, "tip_passed", lambda repo, label: True)
+    assert not {"script_callers", "log_tag_census", "audio_music_stream"} & cc.affected_rows(root, paths)
+    assert "stock_mission_data" in cc.affected_rows(root, ["tools/new_tool.py"])
+    assert "stock_mission_data" not in cc.affected_rows(root, ["data/terrain.fit"])
+
+
+def test_generators_follow_inputs_including_deletions(tmp_path, monkeypatch):
+    from tools import lane_merge as lm
+    repo = _repo(tmp_path)
+    monkeypatch.setattr(lm, "ARTIFACTS", [])
+    monkeypatch.setattr(lm, "GENERATORS", [("fixture", "scripts/chk.py", [])])
+    monkeypatch.setattr(lm, "GENERATOR_ROWS", {"fixture": "rowa"})
+    # regenerate_all's fixture guard only checks that the first generator exists.
+    calls = []
+    monkeypatch.setattr(lm, "run", lambda root, cmd: calls.append(cmd) or type("R", (), {"returncode": 0, "stdout": ""})())
+    base = cc.clean_tip(repo)
+    (repo / "other/b.txt").write_text("unrelated")
+    _git(repo, "add", "other/b.txt"); _git(repo, "commit", "-qm", "unrelated")
+    assert lm.regenerate_all(str(repo), base=base) == [] and not calls
+    (repo / "src/a.cpp").unlink()
+    _git(repo, "add", "src/a.cpp"); _git(repo, "commit", "-qm", "deleted input")
+    lm.regenerate_all(str(repo), base=base)
+    assert len(calls) == 1
 
 
 def _git(repo, *a):

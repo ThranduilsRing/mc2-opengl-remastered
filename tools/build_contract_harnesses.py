@@ -47,7 +47,6 @@ REGISTERED_HARNESSES = [
 ]
 PY_HARNESSES = [
     "tools/deploy_asset_contract_harness/deploy_asset_contract_harness.py",
-    "tools/deploy_release_tree_contract_harness/deploy_release_tree_contract_harness.py",
     "tools/mech_glb_pack_contract_harness/mech_glb_pack_contract_harness.py",
     "tools/shader_variant_matrix_harness/shader_variant_matrix_harness.py",
 ]
@@ -484,9 +483,16 @@ def main(argv=None):
         ok = True
         print("[contracts] Python-only selection; native units are not rerun")
     else:
+        import contracts_cache as cc
+        receipt_tip = cc.clean_tip(str(REPO_ROOT))
+        full_unit = args.run and not (args.only or args.asan)
+        if full_unit:
+            cc.record_tip_pass(str(REPO_ROOT), "native_unit", receipt_tip, False)
         ok, info = build_and_run_unit_tests(args.config, args.run, args.asan, args.only,
                                            preset=args.preset, keep_going=args.keep_going,
                                            log_dir=args.log_dir, jobs=args.jobs, cache=args.compile_cache, build_root=args.build_root)
+        if full_unit:
+            cc.record_tip_pass(str(REPO_ROOT), "native_unit", receipt_tip, ok)
         print(f"  [{'PASS' if ok else 'FAIL'}] mc2_tests: {info}")
         if not ok:
             return 1

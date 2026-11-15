@@ -2,6 +2,7 @@
   "schema_version": 1,
   "aggregate_owner": "scripts_tests",
   "tests": [
+    {"module": "scripts/tests/test_check_render_no_update.py", "owners": ["render_no_update"]},
     {"module": "scripts/tests/test_import_campaign.py", "owners": ["campaign_import"]},
     {"module": "scripts/tests/test_shadow_bake_init.py", "owners": ["shadow_bake_init"]},
     {"module": "scripts/tests/test_gate_farm.py", "owners": ["gate_farm"]},
@@ -25,7 +26,7 @@
     {"module": "scripts/tests/test_native_harness.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_spirv_fixups.py", "owners": ["shader_interface"]},
     {"module": "scripts/tests/test_window_emission.py", "owners": ["vk_shaders_compile"]},
-    {"module": "scripts/tests/test_native_binding_contracts.py", "owners": ["scripts_tests"]},
+    {"module": "scripts/tests/test_native_binding_contracts.py", "owners": ["vulkan_bindings"]},
     {"module": "scripts/tests/test_kit_payload.py", "owners": ["gate_inputs"]},
     {"module": "scripts/tests/test_default_build_quiet.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_firewall_dialog.py", "owners": ["network_startup"]},
