@@ -7,7 +7,13 @@ bool simPresentationPass = false;
 uint32_t turn = 42;
 float frameLength = 1.0f / 30;
 constexpr int TRUE = 1;
+constexpr int OBJECT_STATUS_DESTROYED = 1, OBJECT_STATUS_DISABLED = 2;
 struct Appearance {
+    long status = 0, simStatus = 0; bool admitted = false;
+    long simStatusView() const { return simStatus; }
+    void gesture() { admitted = false;
+        #include "terrain_gesture_status.inc"
+        admitted = true; }
     std::shared_ptr<mc2::sim::UnitAnimState> simAnim_ = std::make_shared<mc2::sim::UnitAnimState>();
     mc2::sim::UnitAnimState renderAnim_;
     std::atomic<bool> animSettled_{true};
@@ -22,6 +28,14 @@ struct Appearance {
         #include "terrain_tick.inc"
     }
 };
+}
+// Trigger paths: mclib/bdactor.cpp (production gesture admission), mclib/bdactor.h.
+TEST_CASE("terrain_dirty_queue/gesture ignores stale draw status") {
+    Appearance a; simPresentationPass = false;
+    for (int draw : {0, 1, 2}) { a.status = draw; a.simStatus = 0; a.gesture(); CHECK(a.admitted);
+        for (int sim : {1, 2}) { a.simStatus = sim; a.gesture(); CHECK_FALSE(a.admitted); } }
+    simPresentationPass = true; a.status = 0; a.gesture(); CHECK(a.admitted);
+    a.status = 1; a.gesture(); CHECK_FALSE(a.admitted); simPresentationPass = false;
 }
 TEST_CASE("terrain_dirty_queue/unchanged tick keeps residency; animation wakes next frame") {
     Appearance a;

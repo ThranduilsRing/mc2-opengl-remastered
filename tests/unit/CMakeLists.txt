@@ -809,6 +809,8 @@ mc2_height_slice(terrain_anim_access mclib/appear.h "    mc2::sim::UnitAnimState
 mc2_height_slice(terrain_tick mclib/bdactor_update.cpp "    if (!simPresentationPass || !simulationOwned()) {" "        if (simulationOwned() || mc2::overlap::onSimWorker())")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/terrain_anim_access.inc" CONTENT "${terrain_anim_access}")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/terrain_tick.inc" CONTENT "${terrain_tick}\n} return TRUE;")
+mc2_height_slice(terrain_gesture_status mclib/bdactor.cpp "\t// Check if object destroyed.  If so, no animation!" "\tif (gestureId ==")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/terrain_gesture_status.inc" CONTENT "${terrain_gesture_status}")
 set_source_files_properties(test_terrain_dirty_queue.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
 
 # Keep all production objects in the full tier; scoped links extract only needed
