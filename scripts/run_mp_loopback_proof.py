@@ -94,11 +94,14 @@ def peer_start(install: str, directory: str, slot: int, port: int, ticks: int,
         env.pop(key, None)
     for key in ("MC2_COMMAND_REPLAY_PLAY", "MC2_COMMAND_REPLAY_RECORD"):
         env.pop(key, None)
-    env.update(MC2_SMOKE_FIXED_TIMESTEP="0" if wall_clock else "1", MC2_SIM_IDENTITY_TRACE="1", MC2_FORCE_ALL_VISIBLE="0",
+    env.update(MC2_SMOKE_FIXED_TIMESTEP="1", MC2_SIM_IDENTITY_TRACE="1", MC2_FORCE_ALL_VISIBLE="0",
                MC2_DETERMINISTIC_RNG="1", MC2_RNG_SEED="12345",
                MC2_DIAGNOSTIC_TRACE_FILE=str(root / "diagnostic.jsonl"),
                MC2_SAVE_DIR=str(root / "saves"),
                MC2_CAMERA_PARK=("2450,-2100,0,60,1200@30" if slot == 0 else "2450,-2100,90,50,1200@30"))
+    if wall_clock:
+        # Presence gate: even the string "0" enables the virtual clock.
+        env.pop("MC2_SMOKE_FIXED_TIMESTEP", None)
     if combat:
         env["MC2_CAMERA_PARK"] = "3000,1900,0,60,1700@30"
     if rendered:

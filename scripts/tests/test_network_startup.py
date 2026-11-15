@@ -187,7 +187,7 @@ def test_mp_wall_clock_uses_normal_time_and_bounds_the_cell(tmp_path, monkeypatc
     monkeypatch.setattr(proof.nofocus, "spawn", lambda argv, **kw: captured.update(argv=argv, **kw))
     with ExitStack() as logs:
         proof.peer_start(str(tmp_path), str(tmp_path), 0, 23460, 1200, 600, False, logs, wall_clock=True)
-    assert captured["env"]["MC2_SMOKE_FIXED_TIMESTEP"] == "0"
+    assert "MC2_SMOKE_FIXED_TIMESTEP" not in captured["env"]
     assert captured["argv"][captured["argv"].index("--duration") + 1] == "50"
     base = ["--install", str(tmp_path), "--out", str(tmp_path / "out"), "--wall-clock"]
     assert proof.arguments(base + ["--ticks", "1200"]).wall_clock
