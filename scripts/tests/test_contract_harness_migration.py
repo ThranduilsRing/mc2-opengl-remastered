@@ -12,7 +12,8 @@ from tools import build_contract_harnesses as builder
 
 
 @pytest.fixture(autouse=True)
-def production_seam(monkeypatch):
+def production_seam(monkeypatch, tmp_path):
+    monkeypatch.setattr(builder, "prepare_unit_tree", lambda *a: (False, tmp_path / "receipt", "[]"))
     seam = Mock(return_value=True)
     monkeypatch.setattr(builder, "build_and_run_order_seam", seam)
     return seam
@@ -38,7 +39,7 @@ def test_selection_filters_the_shared_binary(monkeypatch):
     selected = ["icon_atlas_harness", "job_system_harness"]
     assert builder.main(["--run", "--unit", "--only", selected[0], "--only", selected[1]]) == 0
     assert len(commands) == 3
-    assert "--target" in commands[1][0] and "mc2_tests" in commands[1][0]
+    assert "--target" in commands[1][0] and "mc2_tests_selected" in commands[1][0]
     assert commands[2][0][-1] == "--test-case=icon_atlas_harness/*,job_system_harness/*"
     assert commands[2][1]["cwd"] == ROOT
 

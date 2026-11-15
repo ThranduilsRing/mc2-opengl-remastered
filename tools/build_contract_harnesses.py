@@ -10,6 +10,7 @@ VS-generator trees; tools/build_all_targets.py passes it by default.
 """
 import argparse
 import fnmatch
+import json
 import os
 from pathlib import Path
 import re
@@ -69,7 +70,7 @@ def case_owner(only):
     hits = set()
     for path in (REPO_ROOT / "tests/unit").glob("test_*.cpp"):
         names = pattern.findall(path.read_text(encoding="utf-8", errors="replace"))
-        if any(fnmatch.filter(names, item) for item in only if item not in REGISTERED_HARNESSES):
+        if any(fnmatch.filter(names, item + "/*" if item in REGISTERED_HARNESSES else item) for item in only):
             hits.add(path.relative_to(REPO_ROOT).as_posix())
     return sorted(hits)
 
@@ -145,6 +146,25 @@ def cached_configure(src, bdir, extra=()):
 
 UNIT_RUN_TIMEOUT_S = 900  # a hung doctest exit once held the MSVC pdb for 80 min
 TREE_LOCK_WAIT_S = 1800   # a cold mc2_tests build in the other holder (harnesses step) finishes well inside this
+
+
+def prepare_unit_tree(bdir, configure, only):
+    """Persist selection and configure arguments; CMake tracks source/include changes."""
+    selection = bdir / "mc2_unit_selection.cmake"
+    if only:
+        owners = case_owner(only)
+        if not owners:
+            raise ValueError("selection failed: no owning test sources")
+        bdir.mkdir(parents=True, exist_ok=True)
+        content = "set(MC2_UNIT_SELECTED_SOURCES\n" + "".join(
+            f'  "{(REPO_ROOT / path).as_posix()}"\n' for path in owners) + ")\n"
+        if not selection.is_file() or selection.read_text(encoding="utf-8") != content:
+            selection.write_text(content, encoding="utf-8")
+    receipt = bdir / "mc2_unit_configure.json"
+    signature = json.dumps([configure, selection.read_text(encoding="utf-8") if selection.is_file() else None])
+    configured = ((bdir / "CMakeCache.txt").is_file() and receipt.is_file()
+                  and receipt.read_text(encoding="utf-8") == signature)
+    return configured, receipt, signature
 
 
 def print_failed_cases(log_path):
@@ -225,19 +245,38 @@ def build_and_run_unit_tests(config, run, asan=False, only=None, preset=None,
     if not lock.acquire(TREE_LOCK_WAIT_S):
         return False, f"build failed:\nanother build held {bdir.name} for {TREE_LOCK_WAIT_S}s ({lock.holder()})"
     try:
+        try:
+            configured, receipt, signature = prepare_unit_tree(bdir, commands[0], only)
+        except ValueError as exc:
+            return False, str(exc)
+        if only:
+            commands[1][commands[1].index("mc2_tests")] = "mc2_tests_selected"
+        if configured and preset:
+            try:
+                bd.verify_compiler(bdir, preset)
+            except RuntimeError as exc:
+                return False, str(exc)
+        if configured:
+            commands[0] = None
         built = _configure_and_build(commands, cache, preset, log_dir, jobs, keep_going, cache_env, only, timings, bdir)
+        if not built and not configured and (bdir / "CMakeCache.txt").is_file():
+            receipt.write_text(signature, encoding="utf-8")
+        if built:
+            return False, built
+        if not run:
+            return True, f"built in {time.monotonic() - started:.0f}s"
+        return _run_unit_exe(bdir, config, preset, only, asan, started)
     finally:
         lock.close()
-    if built:
-        return False, built
-    if not run:
-        return True, f"built in {time.monotonic() - started:.0f}s"
-    return _run_unit_exe(bdir, config, preset, only, asan, started)
 
 
 def _configure_and_build(commands, cache, preset, log_dir, jobs, keep_going, cache_env, only, timings, bdir):
     """Run configure then build; None on success, else the "<stage> failed:" detail."""
     for stage, command in zip(("configure", "build"), commands):
+        if command is None:
+            if only:
+                print("[contracts] configure reused (build system tracks inputs)")
+            continue
         phase_started = time.monotonic()
         if cache or preset or log_dir is not None or jobs or keep_going:
             rc, output = bd.run(command, REPO_ROOT, "mc2_tests", stage, log_dir,
@@ -264,9 +303,10 @@ def _configure_and_build(commands, cache, preset, log_dir, jobs, keep_going, cac
 
 def _run_unit_exe(bdir, config, preset, only, asan, started):
     suffix = ".exe" if os.name == "nt" else ""
-    exe = bdir / config / ("mc2_tests" + suffix)
+    binary = "mc2_tests_selected" if only else "mc2_tests"
+    exe = bdir / config / (binary + suffix)
     if not exe.is_file():
-        exe = bdir / ("mc2_tests" + suffix)
+        exe = bdir / (binary + suffix)
     if preset and not exe.is_file():
         return False, f"requested compiler binary missing in {bdir}"
     command = [str(exe), "--no-breaks"]
