@@ -38,7 +38,7 @@ std::deque<DelayedPacket> delayed;
     throw SessionStopped{};
 }
 save::Digest executableHash() {
-    std::ifstream file(executable, std::ios::binary);
+    std::ifstream file(executable, std::ios::binary);  // path-audit: loose-only (hash of the running exe)
     if (!file) fail("cannot hash MP executable");
     save::Bytes bytes((std::istreambuf_iterator<char>(file)), {});
     if (!file.eof() && file.fail()) fail("cannot read MP executable");
@@ -70,7 +70,7 @@ save::Digest contentHash() {
         auto length = static_cast<std::uint64_t>(std::filesystem::file_size(path));
         std::vector<std::uint8_t> nameBytes(name.begin(), name.end());
         manifest(nameBytes, length);
-        std::ifstream file(path, std::ios::binary);
+        std::ifstream file(path, std::ios::binary);  // path-audit: loose-only (byte hash of on-disk content)
         if (!file) fail("cannot hash MP content: " + name);
         while (file) {
             file.read(reinterpret_cast<char*>(buffer.data()), static_cast<std::streamsize>(buffer.size()));
@@ -157,7 +157,7 @@ void configure(int argc, char** argv) {
         if (std::filesystem::exists(name) && !std::filesystem::exists(userFile(name)))
             std::filesystem::copy_file(name, userFile(name));
     if (std::filesystem::exists(userFile("orders.txt"))) {
-        std::ifstream file(userFile("orders.txt"));
+        std::ifstream file(userFile("orders.txt"));  // path-audit: loose-only (MP proof user dir)
         if (!file) throw std::runtime_error("cannot open MP orders fixture");
         std::string line;
         while (std::getline(file, line)) {
