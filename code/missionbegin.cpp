@@ -41,6 +41,7 @@ MissionBegin.cpp			: Implementation of the MissionBegin component.
 #include"../GameOS/gameos/gos_dev_shell.h"   // DEV-SHELL-1: ui_reload command registration
 #include"../GameOS/gameos/gos_screenshot.h"
 #include <cstdlib>
+#include <algorithm>
 #include <string>
 #include"screen_settle_capture.h"   // MC2_BOOT_TO_SCREEN / MC2_SHOT_SCREEN screen ids and the settle trigger
 
@@ -278,7 +279,7 @@ void shotDone(mc2::czstring path, bool ok, int w, int h)
 	mc2::fmt::print_err("[SCREEN_SHOT v1] OK screen={} path={} w={} h={} settled={} frames={} imgui_vk_ready=1\n",
 		mc2::fmt::safe(g_shotScreen.c_str()), mc2::fmt::safe(path), w, h, g_trigger.settledFrames(), g_trigger.framesSeen());
 	std::fflush(stderr);
-	if (const char* count = std::getenv("MECH_PREVIEW_FRAMES"); count && ++g_sequenceFrame < std::clamp(std::atoi(count), 1, 120)) {
+	if (const auto* count = std::getenv("MECH_PREVIEW_FRAMES"); count && ++g_sequenceFrame < std::clamp(std::atoi(count), 1, 120)) {
 		Spec spec;
 		if (parseSpec(g_shotScreen, spec)) {
 			g_trigger.arm(spec.cell->x, spec.cell->y, 15, kMaxWaitFrames);

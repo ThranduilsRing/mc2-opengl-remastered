@@ -699,7 +699,7 @@ void SimpleCamera::setMech(mc2::czstring fileName, long baseColor, long highligh
 	}
 
 	std::string NoPathFileName = stemOfPath(fileName);
-	if (const char* chassis = std::getenv("MECH_PREVIEW_CAPTURE"); chassis && *chassis)
+	if (const auto* chassis = std::getenv("MECH_PREVIEW_CAPTURE"); chassis && *chassis)
 		NoPathFileName = stemOfPath(chassis);
 
 	char testName[256];
