@@ -5,7 +5,9 @@ ActorX exports already reflect UE Y. The remaining basis is a proper
 orientations then gives (x,z,-y,-w), up to quaternion sign. Root orientations
 are not conjugated: (x,z,-y,+w). The 121-bone reference independently locks
 the child convention; its identity root cannot distinguish root signs.
-verify_basis explicitly reports that degeneracy. No facing correction.
+Stand's world pelvis rotation against rest selects +w (0.00537 degrees,
+versus 179.996 for -w); verify_basis gates this separate measured anchor.
+No facing correction.
 """
 import numpy as np
 

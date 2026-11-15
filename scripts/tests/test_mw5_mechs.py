@@ -10,7 +10,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.mw5_mechs import build_glb as B
 from tools.mw5_mechs.ue_basis import psa_pos_to_gltf, psa_quat_to_gltf
-from tools.mw5_mechs.verify_basis import angle, fk
+from tools.mw5_mechs.verify_basis import angle, fk, world_rotation_delta
 
 
 def chunk(name, size, records):
@@ -132,3 +132,15 @@ def test_truncated_actorx(tmp_path):
     p.write_bytes(chunk("ANIMKEYS", 32, [bytes(32)])[:-1])
     with pytest.raises(ValueError, match="truncated"):
         B.read_psa(p)
+
+
+def test_world_pelvis_distinguishes_root_sign(fixture):
+    skm, _, psa, _, _ = fixture
+    nodes = json.loads(skm.read_text())["nodes"]
+    _, keys, _, _ = B.read_psa(psa)
+    pose = {i+1: {"rotation": psa_quat_to_gltf(k[3:7], i == 0),
+                  "translation": psa_pos_to_gltf(k[:3])} for i, k in enumerate(keys[0])}
+    rest = fk(nodes)
+    assert world_rotation_delta(fk(nodes, pose)[2], rest[2]) < 1e-5
+    pose[1]["rotation"] = psa_quat_to_gltf(keys[0, 0, 3:7], False)
+    assert world_rotation_delta(fk(nodes, pose)[2], rest[2]) > 179.99

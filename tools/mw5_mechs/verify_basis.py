@@ -39,6 +39,10 @@ def fk(nodes, pose=None):
     return np.array([visit(i) for i in range(len(nodes))])
 
 
+def world_rotation_delta(a, b):
+    return float(np.degrees(np.arccos(np.clip((np.trace(a[:3, :3].T @ b[:3, :3]) - 1) / 2, -1, 1))))
+
+
 def verify(skm, psk, anim_dir, expected_bones=121):
     g = json.loads(Path(skm).read_text())
     nodes = g["nodes"]
@@ -87,7 +91,8 @@ def verify(skm, psk, anim_dir, expected_bones=121):
 
     stand = Path(anim_dir) / "TBR_Stand_ANI.psa"
     names, keys, _, _ = read_psa(stand)
-    stand_fk = fk(nodes, next(poses(names, keys)))
+    stand_pose = next(poses(names, keys))
+    stand_fk = fk(nodes, stand_pose)
     delta = float(np.max(np.linalg.norm(stand_fk[joints, :3, 3] - rest[joints, :3, 3], axis=1)))
     print(f"Stand_fk_max_delta_m {delta:.9f}")
     if not np.isfinite(delta):
@@ -104,6 +109,17 @@ def verify(skm, psk, anim_dir, expected_bones=121):
                 errors.append(name)
 
     pelvis, cockpit = by_name["Pelvis"], by_name["Cockpit"]
+    # Stand redistributes bind orientation between Root and Pelvis. Its world
+    # pelvis is independently within .05 degrees of rest, selecting the root
+    # convention even though the PSK root alone is an uninformative identity.
+    root_delta = world_rotation_delta(stand_fk[pelvis], rest[pelvis])
+    alternate_pose = {i: dict(p) for i, p in stand_pose.items()}
+    for root in roots:
+        alternate_pose[root]["rotation"] = psa_quat_to_gltf(keys[0, names.index(nodes[root]["name"]), 3:7], False)
+    alternate_delta = world_rotation_delta(fk(nodes, alternate_pose)[pelvis], rest[pelvis])
+    print(f"Stand_pelvis_root_plus_w_minus_w_deg {root_delta:.9f} {alternate_delta:.9f}")
+    if not np.isfinite(root_delta + alternate_delta) or root_delta >= .05 or alternate_delta < .05:
+        errors.append("Stand_root_pelvis_anchor")
     left, right = by_name["Foot0_Left"], by_name["Foot0_Right"]
     forward = stand_fk[cockpit, :3, 3] - stand_fk[pelvis, :3, 3]
     forward[1] = 0
