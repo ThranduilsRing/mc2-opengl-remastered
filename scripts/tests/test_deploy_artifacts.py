@@ -8,7 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import asset_parity as ap
 import deploy_payload as dp
 
-BAD = ("logs/a.txt", "debug_state/state.json", "nested/a.orig_bak", "a.LOG",
+BAD = ("logs/a.txt", "debug_state/state.json", "nested/a.orig_bak", "LAUNCHER.LOG",
        "data/tgl/_aoktxtmp/model.glb", "data/texture.tga.bak-20260704", "data/texture.tga.orig",
        "tgl.fst.slim-2026-06-12", "dev_shell_out/a.txt", "terrain_gen_out/a.txt", "stdout_smoke.txt",
        "cache/content-model/model-0123456789abcdef.mci", "cache/content-model/industrial-cook.json",
@@ -57,7 +57,7 @@ def test_prune_protects_owner_files_and_preserve(tmp_path, owned):
     paths = ("savegame/manual_bak/save.fit.bak-today", "mods/custom/backup/model.glb.orig",
              "data/savegame/manual_bak/save.log", "options.cfg", "prefs.cfg", "captures/owner.png",
              "_pngcap/owner.png", "_rdoc/owner.rdc", "owner.rdc", "data/tgl/manual_bak/model.glb",
-             "data/captures/model.glb", "logs/preserved.txt", "terrain_gen_out/changed.txt")
+             "data/captures/model.glb", "notes.log", "logs/preserved.txt", "terrain_gen_out/changed.txt")
     rows = {}
     for rel in paths:
         path = tmp_path / rel
@@ -67,11 +67,11 @@ def test_prune_protects_owner_files_and_preserve(tmp_path, owned):
     if owned:
         dp.write_manifest(str(tmp_path), rows, "test")
     (tmp_path / paths[-1]).write_bytes(b"modified by owner")
-    keep = {rel: rows[rel] for rel in ("data/tgl/manual_bak/model.glb", "data/captures/model.glb")}
+    keep = {rel: rows[rel] for rel in ("data/tgl/manual_bak/model.glb", "data/captures/model.glb", "notes.log")}
     preserve = ("LOGS/",) if owned else ("LOGS/", "terrain_gen_out/changed.txt")
     dp.retire_unowned(str(tmp_path), keep, preserve=preserve)
     assert all((tmp_path / rel).is_file() for rel in paths)
-    for rel in ("data/tgl/manual_bak/model.glb", "data/captures/model.glb", "old_bak/model.glb"):
+    for rel in ("data/tgl/manual_bak/model.glb", "data/captures/model.glb", "old_bak/model.glb", "notes.log"):
         assert not ap.is_excluded(rel)
 
 
