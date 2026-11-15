@@ -88,16 +88,6 @@ bool saveSettings() {
     if (!ok) error = "Could not replace launcher_env.json.";
     return ok;
 }
-bool contains(std::string_view list, std::string_view id) {
-    std::size_t start = 0;
-    while (start < list.size()) {
-        const auto end = list.find_first_of(",;", start);
-        if (list.substr(start, end - start) == id) return true;
-        if (end == std::string::npos) break;
-        start = end + 1;
-    }
-    return false;
-}
 std::vector<fs::path> files(const fs::path& path) {
     std::vector<fs::path> result;
     std::error_code ec;
@@ -201,15 +191,7 @@ void autoBase() {
     base = magic ? "mco-compat" : high ? "mc2x-compat" : "";
 }
 std::string dependencies() {
-    std::string deps;
-    auto append = [&](std::string_view id) { if (id.empty() || contains(deps, id)) return; if (!deps.empty()) deps += ','; deps += id; };
-    for (const auto& pack : packs)
-        if (pack.enabled && pack.id != campaign && pack.kind != "campaign" && pack.kind != "dependency" && pack.group != "texture-quality") append(pack.id);
-    append(texture);
-    append(base);
-    for (const auto& pack : packs) if (pack.enabled || pack.id == campaign)
-        for (const auto& dependency : pack.dependencies) append(dependency);
-    return deps;
+    return pickerDependencies(packs, campaign, base, texture);
 }
 void migrateSettings() {
     auto cfg = mc2::options::cfg::readTextFile("options.cfg");
@@ -248,12 +230,7 @@ void loadSettings() {
         if (key.starts_with("MC2_") && mc2::gate::lookupName(key) && value.is_string() && !env(key)) setEnv(key, value.get<std::string>());
     if (!explicitMod) {
         setEnv(mc2::gate::name<"MC2_ACTIVE_MOD">(), text(settings, "last_campaign"));
-        std::string deps = text(settings, "last_addons");
-        for (const auto& id : {text(settings, "tex_pack_mod"), text(settings, "last_base")}) {
-            if (id.empty()) continue;
-            if (!deps.empty()) deps += ',';
-            deps += id;
-        }
+        const auto deps = savedDependencies(settings);
         if (!env(mc2::gate::name<"MC2_MOD_DEPS">())) setEnv(mc2::gate::name<"MC2_MOD_DEPS">(), deps);
     }
     const bool faster = text(settings, "last_faster_weapons") == "1";
@@ -263,7 +240,7 @@ void loadSettings() {
          {mc2::gate::name<"MC2_UNIT_DEFINITION_SOURCE">(), generated ? "generated" : ""}, {mc2::gate::name<"MC2_EQUIPMENT_DEFINITION_SOURCE">(), generated ? "generated" : ""}})
         if (!env(key)) setEnv(key, value);
     // Apply packs in VFS precedence order; only original shell overrides survive.
-    std::vector<std::string> activePacks{text(settings, "last_base"), text(settings, "tex_pack_mod")};
+    std::vector<std::string> activePacks;
     const auto deps = env(mc2::gate::name<"MC2_MOD_DEPS">()).value_or("");
     for (std::size_t start = 0; start < deps.size();) {
         const auto end = deps.find_first_of(",;", start);
@@ -449,7 +426,7 @@ void drawMainMenu(bool showCredits) {
     if (ImGui::TreeNodeEx("Add-ons", ImGuiTreeNodeFlags_DefaultOpen)) {
         for (auto& pack : packs) if (pack.kind != "campaign" && pack.kind != "dependency" && pack.group != "texture-quality")
         {
-            ImGui::BeginDisabled(!pack.problem.empty());
+            ImGui::BeginDisabled(!packToggleAllowed(pack.enabled, pack.problem));
             ImGui::Checkbox(pack.name.c_str(), &pack.enabled);
             ImGui::EndDisabled();
         }
@@ -465,7 +442,7 @@ void drawMainMenu(bool showCredits) {
     const Pack* selected = nullptr;
     for (const auto& pack : packs) {
         if (pack.id == campaign) selected = &pack;
-        if ((pack.id == campaign || pack.enabled || pack.id == base || pack.id == texture) && !pack.problem.empty()) problem = pack.problem;
+        if (packSelected(pack.id, campaign, deps) && !pack.problem.empty()) problem = pack.problem;
     }
     const bool single = selected && campaignFit.empty() && !selected->missions.empty();
     static std::string mission;
@@ -484,17 +461,7 @@ void drawMainMenu(bool showCredits) {
         settings["last_campaign"] = campaign;
         settings["last_base"] = base;
         settings["tex_pack_mod"] = texture;
-        std::string addons;
-        for (const auto& pack : packs) if (pack.enabled && pack.id != campaign && pack.kind != "campaign" && pack.kind != "dependency" && pack.group != "texture-quality") {
-            if (!addons.empty()) addons += ',';
-            addons += pack.id;
-        }
-        for (const auto& pack : packs) if (pack.enabled) for (const auto& dep : pack.dependencies) {
-            if (dep == base || dep == texture || dep == campaign || contains(addons, dep)) continue;
-            if (!addons.empty()) addons += ',';
-            addons += dep;
-        }
-        settings["last_addons"] = addons;
+        settings["last_addons"] = deps;
         if (contentChanged) settings[single ? "start_mission" : "start_campaign"] = single ? mission : campaignFit;
         if (saveSettings()) {
             if (contentChanged) {

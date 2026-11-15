@@ -8,6 +8,42 @@
 #include <algorithm>
 
 namespace PlayerFrontEnd {
+inline bool contains(std::string_view list, std::string_view id) {
+    std::size_t start = 0;
+    while (start < list.size()) {
+        const auto end = list.find_first_of(",;", start);
+        if (list.substr(start, end - start) == id) return true;
+        if (end == std::string::npos) break;
+        start = end + 1;
+    }
+    return false;
+}
+inline bool packToggleAllowed(bool enabled, std::string_view problem) { return enabled || problem.empty(); }
+inline bool packSelected(std::string_view id, std::string_view campaign, std::string_view deps) {
+    return id == campaign || contains(deps, id);
+}
+template<class Packs>
+std::string pickerDependencies(const Packs& packs, std::string_view campaign, std::string_view base, std::string_view texture) {
+    std::string deps;
+    auto append = [&](std::string_view id) { if (id.empty() || contains(deps, id)) return; if (!deps.empty()) deps += ','; deps += id; };
+    for (const auto& pack : packs)
+        if (pack.enabled && pack.id != campaign && pack.kind != "campaign" && pack.kind != "dependency" && pack.group != "texture-quality") append(pack.id);
+    append(texture);
+    append(base);
+    for (const auto& pack : packs) if (pack.enabled || pack.id == campaign)
+        for (const auto& dependency : pack.dependencies) append(dependency);
+    return deps;
+}
+inline std::string savedDependencies(const nlohmann::json& settings) {
+    auto deps = settings.value("last_addons", std::string{});
+    for (const auto* key : {"tex_pack_mod", "last_base"}) {
+        const auto id = settings.value(key, std::string{});
+        if (id.empty() || contains(deps, id)) continue;
+        if (!deps.empty()) deps += ',';
+        deps += id;
+    }
+    return deps;
+}
 struct CampaignInfo {
     std::string title;
     int missions = 0;

@@ -4,6 +4,34 @@
 #include "../../GuiRuntime/PlayerSettings.h"
 #include <cstring>
 
+// Trigger: GuiRuntime/PlayerSettings.h and PlayerFrontEnd.cpp selection/restart handling.
+TEST_CASE("campaign picker/disable invalid enabled addon") {
+    using namespace PlayerFrontEnd;
+    CHECK(packToggleAllowed(true, "Missing dependency"));
+    CHECK_FALSE(packToggleAllowed(false, "Missing dependency"));
+    CHECK(packToggleAllowed(false, ""));
+    CHECK(packSelected("broken", "", "broken"));
+    CHECK_FALSE(packSelected("broken", "", ""));
+    CHECK(packSelected("broken", "broken", ""));
+    CHECK_FALSE(packSelected("broken", "", "broken_other"));
+}
+TEST_CASE("campaign picker/restart preserves selected unchecked dependencies") {
+    using namespace PlayerFrontEnd;
+    struct Pack {
+        std::string id, kind, group;
+        bool enabled;
+        std::vector<std::string> dependencies;
+    };
+    const std::vector<Pack> packs{{"sample_variant", "assets", "", false, {"required", "base"}},
+                                 {"extra", "assets", "", true, {"required"}}};
+    const auto deps = pickerDependencies(packs, "sample_variant", "base", "texture");
+    CHECK(deps == "extra,texture,base,required");
+    const nlohmann::json saved{{"last_addons", deps}, {"last_base", "base"}, {"tex_pack_mod", "texture"}};
+    CHECK(savedDependencies(saved) == deps);
+    CHECK(contains(savedDependencies(saved), "required"));
+    CHECK(savedDependencies({{"last_addons", "extra"}, {"last_base", "base"}, {"tex_pack_mod", "texture"}}) == "extra,texture,base");
+    CHECK(pickerDependencies(packs, "", "", "") == "extra,required");
+}
 TEST_CASE("campaign picker/title precedence and unrecognised folders") {
     using namespace PlayerFrontEnd;
     CHECK(campaignTitle("Manifest title", "Desert Fox", "installer") == "Manifest title");
