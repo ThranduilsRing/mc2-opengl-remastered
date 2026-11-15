@@ -14,11 +14,40 @@
 #version 450
 #extension GL_GOOGLE_include_directive : require
 layout(constant_id = 11) const int kReflectionCoverage = 0;
+layout(constant_id = 13) const int kWaterDbgPass = 0;
 #define PREC highp
 #define TERRAIN_RESOURCE_SET 1
 #define TERRAIN_OBJECT_RECEIVER 1
 #include "include/terrain_frame_vk.glsl"
 #include "../include/render_contract.hglsl"
+layout(set = 1, binding = 1, std430) readonly buffer TerrainHeightBuf { float heights[]; } uH;
+layout(set = 1, binding = 10, std430) readonly buffer TerrainVisualHeightBuf { float heightsFine[]; };
+float sampleH(int x, int y) {
+    return uH.heights[clamp(x, 0, uT.mapSide - 1) + clamp(y, 0, uT.mapSide - 1) * uT.mapSide];
+}
+#include "include/terrain_visual_surface.glsl"
+float waterRenderedHeight(vec2 worldXY) {
+    vec2 grid = clamp(vec2(worldXY.x + uT.halfMap, uT.halfMap - worldXY.y) / 32.0,
+                      vec2(0.0), vec2(uT.visualSide - 1));
+    ivec2 p = min(ivec2(floor(grid)), ivec2(uT.visualSide - 2));
+    vec2 t = grid - vec2(p);
+    // Patch indices choose the flatter diagonal from RAW bake heights.
+    float rawTL = cliffRawHeight(p), rawTR = cliffRawHeight(p + ivec2(1, 0));
+    float rawBL = cliffRawHeight(p + ivec2(0, 1)), rawBR = cliffRawHeight(p + ivec2(1, 1));
+    if (abs(rawTR - rawBL) < abs(rawTL - rawBR)) {
+        float tr = hiresSurfaceHeight(p.x + 1, p.y), bl = hiresSurfaceHeight(p.x, p.y + 1);
+        if (t.x + t.y <= 1.0) {
+            float tl = hiresSurfaceHeight(p.x, p.y);
+            return tl + (tr - tl) * t.x + (bl - tl) * t.y;
+        }
+        float br = hiresSurfaceHeight(p.x + 1, p.y + 1);
+        return br + (bl - br) * (1.0 - t.x) + (tr - br) * (1.0 - t.y);
+    }
+    float a = hiresSurfaceHeight(p.x, p.y), d = hiresSurfaceHeight(p.x + 1, p.y + 1);
+    float b = t.y >= t.x ? hiresSurfaceHeight(p.x, p.y + 1) : hiresSurfaceHeight(p.x + 1, p.y);
+    return t.y >= t.x ? a + (d - b) * t.x + (b - a) * t.y
+                      : a + (b - a) * t.x + (d - b) * t.y;
+}
 
 layout(location = 0) in PREC vec4  Color;
 layout(location = 1) in PREC vec2  Texcoord;
@@ -321,7 +350,9 @@ void main(void)
     float fieldThick;
     const bool hasField = wse_fieldThickness(int(F.f4.x + 0.5), int(F.f4.y + 0.5), u_shoreHeightTex, F.f5,
                                              WorldPos.xy, F.f7.x, fieldThick);
-    const float fieldThickFw = fwidth(fieldThick);
+    const bool hasVisual = uT.visualMode != 0 && uT.visualSide > 1;
+    float coverageThick = hasVisual ? F.f7.x - waterRenderedHeight(WorldPos.xy) : fieldThick;
+    const float coverageThickFw = fwidth(coverageThick);
     PREC float tintThick = hasField ? max(fieldThick, 0.0) : WaterThickness;
     // Recover horizontal shore distance from the depth field already sampled above.
     // World-space gradients keep the wash width stable across camera zoom and shore slopes.
@@ -361,19 +392,22 @@ void main(void)
     PREC float shoreBlend = max(alphaDepth, 1.0);
     PREC float shore = smoothstep(-shoreBlend * 0.5, shoreBlend, WaterThickness);
     // WATER-SHORE-EDGE-1 / WATER-SHORE-MASK-1: shared with the GL FS.
-    if (hasField) {
+    if (hasField || hasVisual) {
         // SHORE-FIELD-1: the coast is the field's zero crossing as a crisp ~3 px antialiased edge.
         // The old depth feather (smoothstep over featherWu of DEPTH) spread hundreds of wu wide on
         // gentle shelves (mc2_17) and let coarse terrain decide the visible line elsewhere. Shallow
         // water keeps some translucency through a 0.55..1 depth softness floor.
-        float edgeAA = smoothstep(0.0, max(3.0 * fieldThickFw, 1e-3), fieldThick);
-        shore = edgeAA * mix(0.55, 1.0, smoothstep(0.0, max(F.f4.w, 0.5), fieldThick));
+        float edgeAA = smoothstep(0.0, max(3.0 * coverageThickFw, 1e-3), coverageThick);
+        shore = edgeAA * mix(0.55, 1.0, smoothstep(0.0, max(F.f4.w, 0.5), hasField ? fieldThick : coverageThick));
     } else {
         shore = wse_shoreFeather(shore, int(F.f4.x + 0.5), int(F.f4.y + 0.5), int(F.f4.z + 0.5),
                                  u_shoreHeightTex, u_shoreMask, F.f5, F.f6, F.f4.w,
                                  WorldPos.xy, F.f7.x);
     }
-    if (shore <= 0.0) discard;
+    if (kWaterDbgPass != 1 && shore <= 0.0) discard;
+    if (kWaterDbgPass == 1 || kWaterDbgPass == 2) {
+        FragColor = vec4(1.0, 0.0, 1.0, 1.0); GBuffer1 = vec4(0.0); return;
+    }
     if (kReflectionCoverage != 0) { FragColor = vec4(1.0); GBuffer1 = vec4(0.0); return; }
     // Option A: material-local response. Shore coverage/bands and reflection tracing stay independent.
     float reactivePixelWidth = max(length(shoreDx), length(shoreDy));
@@ -495,6 +529,10 @@ void main(void)
 
     // (The local pools cross the shoreline too: they were added after the sky reflection above, so the reflected sky
     // cannot erase lamps, and fog/shore alpha below still attenuate them.)
+    if (kWaterDbgPass == 3) {
+        FragColor = vec4(vec3(dot(col, vec3(0.2126, 0.7152, 0.0722))), 1.0);
+        GBuffer1 = vec4(0.5, 0.5, 1.0, 0.875); return;
+    }
     if (F.fog_color.x > 0.0 || F.fog_color.y > 0.0 || F.fog_color.z > 0.0 || F.fog_color.w > 0.0)
         col = mix(F.fog_color.rgb, col, FogValue);
 
