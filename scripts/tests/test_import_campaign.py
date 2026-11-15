@@ -127,6 +127,9 @@ def test_zip_saved_beside_game_and_inno_extraction(sample, monkeypatch):
     with zipfile.ZipFile(archive, "w") as z:
         for name, path in imp.source_files(source).items():
             z.write(path, name)
+    report = deploy / "mods/mc2x-compat/mc2x_import_report.json"
+    report.write_text(json.dumps({"source_path": str(source.parent / "deleted-scratch"),
+                                 "source_fingerprint": imp.legacy.manifest.source_fingerprint(str(source))}))
     assert imp.import_campaign(archive, deploy)["status"] == "installed"
     installer = source.parent / "download.exe"
     installer.write_bytes(b"synthetic installer")
@@ -139,6 +142,13 @@ def test_zip_saved_beside_game_and_inno_extraction(sample, monkeypatch):
         return SimpleNamespace(returncode=0)
     monkeypatch.setattr(imp.subprocess, "run", extract)
     assert imp.import_campaign(installer, deploy)["status"] == "unchanged"
+    table = deploy / "mods/mc2x-compat/data/objects/compbas.csv"
+    for supplied in (archive, installer):
+        assert not Path(json.loads(report.read_text())["source_path"]).exists()
+        for damage in (None, b"broken"):
+            table.unlink() if damage is None else table.write_bytes(damage)
+            assert imp.import_campaign(supplied, deploy)["status"] == "unchanged"
+            assert table.read_bytes() == b"shared ammo"
 
 
 def test_data_root_pack_and_missing_dependency_on_repeat(sample):
@@ -285,7 +295,8 @@ def test_existing_shared_components_repaired_on_unchanged_import(sample, tmp_pat
     base = tmp_path / "full-base"
     (base / "data/objects").mkdir(parents=True)
     (base / "data/objects/mc2xcomp.csv").write_bytes(b"base ammo")
-    (dep / "mc2x_import_report.json").write_text(json.dumps({"source_path": str(base)}))
+    (dep / "mc2x_import_report.json").write_text(json.dumps({
+        "source_path": str(base), "source_sha256": imp.digest(imp.source_files(base))}))
     table = dep / "data/objects/compbas.csv"
     for corrupt in (None, b"broken"):
         if corrupt is None:
@@ -308,6 +319,27 @@ def test_loose_component_alias_and_priority(tmp_path, names):
     transfer.copy_loose_delta(str(source), [], str(out))
     assert (out / "objects/compbas.csv").read_bytes() == b"mc2xcomp.csv"
     assert not (out / "objects/mc2xcomp.csv").exists()
+
+
+@pytest.mark.parametrize("damage", ["missing", "changed", "unverified"])
+def test_unavailable_base_requires_verified_source(sample, tmp_path, damage):
+    source, deploy = sample
+    imp.import_campaign(source, deploy)
+    dep = deploy / "mods/mc2x-compat"
+    report = dep / "mc2x_import_report.json"
+    base = tmp_path / "base"
+    imp.shutil.copytree(source, base)
+    provenance = {"source_path": str(base), "source_sha256": imp.digest(imp.source_files(base))}
+    (base / "data/objects/compbas.csv").write_bytes(b"wrong")
+    if damage == "missing":
+        imp.shutil.rmtree(base)
+    if damage == "unverified":
+        provenance.pop("source_sha256")
+    report.write_text(json.dumps(provenance))
+    (source / "data/objects/compbas.csv").write_bytes(b"other")
+    with pytest.raises(ValueError, match="supply the original.*base ZIP, EXE or folder"):
+        imp.repair_shared_components(dep, source, tmp_path)
+    assert (dep / "data/objects/compbas.csv").read_bytes() == b"shared ammo"
 
 
 def test_imported_id_resolves_legacy_manifest_without_changing_stock(sample):

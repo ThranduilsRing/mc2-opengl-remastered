@@ -151,7 +151,27 @@ def fill_campaign_object_slots(root, out, refs):
 def repair_shared_components(existing, root, scratch):
     """Validate shared ammo against its own source, including on unchanged imports."""
     report = existing / "mc2x_import_report.json"
-    origin = Path(json.loads(report.read_text())["source_path"]) if report.is_file() else root
+    provenance = json.loads(report.read_text()) if report.is_file() else {}
+    origin = Path(provenance.get("source_path", root))
+    expected = provenance.get("source_sha256")
+    legacy_identity = provenance.get("source_fingerprint")
+    supplied_hash = digest(source_files(root))
+    # Upgrade a legacy size-based identity using the original source when available.
+    if provenance and not expected and origin.is_dir():
+        if legacy_identity and legacy.manifest.source_fingerprint(str(origin)) == legacy_identity:
+            expected = digest(source_files(origin))
+    if provenance:
+        def matches(path, fingerprint):
+            return (fingerprint == expected if expected else bool(legacy_identity) and
+                    legacy.manifest.source_fingerprint(str(path)) == legacy_identity)
+        if matches(root, supplied_hash):
+            origin = root
+        elif not origin.is_dir() or not matches(origin, digest(source_files(origin))):
+            raise ValueError("Shared component source is missing or changed; supply the original "
+                             "full MC2X-CVE-G base ZIP, EXE or folder and re-import it "
+                             f"(recorded source: {origin}).")
+    else:
+        origin = root
     destination = existing / "data/objects/compbas.csv"
     candidates = source_files(origin) if origin.is_dir() else {}
     raw = None
@@ -169,6 +189,8 @@ def repair_shared_components(existing, root, scratch):
         if not destination.is_file():
             raise ValueError(f"Missing shared component table {destination}; re-import the full MC2X-CVE-G base first (source: {origin}).")
         return
+    provenance.update(source_path=str(origin), source_sha256=digest(candidates))
+    report.write_text(json.dumps(provenance, indent=2), encoding="utf-8")
     if destination.is_file() and destination.read_bytes() == raw:
         return
     destination.parent.mkdir(parents=True, exist_ok=True)
