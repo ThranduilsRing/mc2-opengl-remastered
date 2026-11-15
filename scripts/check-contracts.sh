@@ -1532,7 +1532,10 @@ run_check "gate_farm"                  "py -3 -B -m pytest scripts/tests/test_ga
 run_nightly "gate_inputs"                "py -3 -B -m pytest scripts/tests/test_gate_preflight.py scripts/tests/test_deploy_seed.py scripts/tests/test_kit_payload.py scripts/tests/test_isolated_deploy.py -q -p no:cacheprovider"
 run_nightly "gate_receipts"              "py -3 -B -m pytest scripts/tests/test_gate_state.py -q -p no:cacheprovider"
 # Aggregate Python suites run in tools/lane_merge.py --precheck, before the merge window.
-run_nightly "release_payload"            "py -3 -B -m pytest scripts/tests/test_release_payload.py -q -p no:cacheprovider"
+# Trigger: scripts/release_asset_guard.py, scripts/test_release_zip_install.py,
+# scripts/build_release.sh, scripts/tests/test_release_{payload,asset_guard}.py,
+# docs/testing/mech_glb_external_pack.json, scripts/test_ownership.json.
+run_nightly "release_payload"            "py -3 -B -m pytest scripts/tests/test_release_payload.py scripts/tests/test_release_asset_guard.py -q -p no:cacheprovider"
 run_nightly "mission_cpu_profile"        "py -3 -B -m pytest scripts/tests/test_mission_cpu_profile.py scripts/tests/test_paired_cpu.py scripts/tests/test_host_lease.py -q -p no:cacheprovider"
 run_nightly "runtime_bridge"             "py -3 -B -m pytest scripts/tests/test_runtime_bridge.py scripts/tests/test_runtime_bridge_socket.py -q -p no:cacheprovider"
 # Trigger: tools/import_campaign.py, tools/mc2x_import, scripts/tests/test_import_campaign.py, import-campaign.bat.
