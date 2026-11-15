@@ -328,11 +328,11 @@ TEST_CASE("CombatRetirementProduction/splash hits all nearby units and buildings
     } blast;
     blast.type = &type; blast.effectId = 0;
     blast.init(CARNAGE_EXPLOSION);
-    blast.objectClass = EXPLOSION; blast.setExists(true); blast.setPosition(glm::vec3(0));
+    blast.objectClass = EXPLOSION; blast.setExists(true); blast.setPosition(glm::vec3(0), false);
     blast.setExtentRadius(20); blast.setExplDmg(10); blast.info.explosion.chunkSize = 10;
     for (int i = 0; i < 5; ++i) {
         targets[i].setExists(true); targets[i].identify(i);
-        targets[i].setPosition(glm::vec3(i * 9, 0, 0));
+        targets[i].setPosition(glm::vec3(i * 9, 0, 0), false);
         targets[i].setExtentRadius(0);
     }
     world.objects->entries[1] = &targets[0];
