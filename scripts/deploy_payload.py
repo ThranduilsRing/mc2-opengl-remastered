@@ -2857,7 +2857,7 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
                 kit_payload.finish_trees(target, kit_tool,
                     importer_key=kit_payload.importer_source_key(src_root, Path(kit_tool).parent))
         except (OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
-            fail(f"tree model cook failed: {exc}")
+            log(f"WARN: tree model precook failed: {exc}; runtime will cook missing models")
     installed = os.path.join(target, exe_name)
     require_head_exe(installed, source_head, src_root)
     if sha256_file(installed) != sha256_file(os.path.join(build_dir, exe_name)):

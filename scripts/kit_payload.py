@@ -18,6 +18,7 @@ import console_child
 KIT_REL = Path("mods/mc2-industrial-kit")
 MANIFEST = Path("data/kit/industrial-kit.json")
 IMPORT_ARGS = ["--no-ground", "--static-prop"]
+MODEL_RECIPE_MAX_BYTES = 512 << 20  # content_ir.cpp's model reader cap
 REF_DEFAULT = "E:/mc2-ref"
 
 
@@ -89,7 +90,7 @@ def seed_install(source, target, hash_cache=None):
     links, copies, _, _ = iso.plan(source, guard, manifest)
     members.update(rel for rel, _ in links + copies if rel != '.deployed_manifest.csv')
     # Reuse only verified content-addressed recipes, not arbitrary writable caches.
-    for name in ('industrial-cook.json', 'vehicle-cook.json'):
+    for name in ('industrial-cook.json', 'vehicle-cook.json', 'trees-cook.json'):
         receipt = source / 'cache/content-model' / name
         if receipt.is_file():
             rows = json.loads(receipt.read_text())['files']
@@ -580,6 +581,8 @@ def acquire_cook_lock(lock, ready, wait=COOK_LOCK_WAIT):
 
 
 def _model_row(path):
+    if path.stat().st_size > MODEL_RECIPE_MAX_BYTES:
+        raise ValueError(f"recipe exceeds reader cap ({MODEL_RECIPE_MAX_BYTES} bytes): {path}")
     return dict(path=path.name, bytes=path.stat().st_size, sha256=sha(path))
 
 
@@ -668,6 +671,8 @@ def finish(target_dir, manifest, tool, cooker=subprocess.run, *, kit_rel=KIT_REL
         """Raise unless root/row is the pinned recipe. A hardlinked file whose inode, size and mtime match the table
         entry recorded when those bytes were verified is the same bytes; anything else is hashed."""
         path = root / row['path']
+        if row['bytes'] > MODEL_RECIPE_MAX_BYTES or path.stat().st_size > MODEL_RECIPE_MAX_BYTES:
+            raise ValueError(f"recipe exceeds reader cap ({MODEL_RECIPE_MAX_BYTES} bytes): {path}")
         try:
             if path.stat().st_size == row['bytes'] and sums.known(path, row['sha256']):
                 return
@@ -712,7 +717,7 @@ def finish(target_dir, manifest, tool, cooker=subprocess.run, *, kit_rel=KIT_REL
             todo[glb_sha] = rel
     reused = len(rows)
 
-    def cook_model(item):
+    def cook_one(item):
         glb_sha, rel = item
         lock = cache_root / "locks" / f"{version[:16]}-{glb_sha[:24]}.lock"
         owner = acquire_cook_lock(lock, lambda: (shared_root / glb_sha / "row.json").is_file())
@@ -751,6 +756,15 @@ def finish(target_dir, manifest, tool, cooker=subprocess.run, *, kit_rel=KIT_REL
             if owner:
                 lock.unlink(missing_ok=True)
 
+    def cook_model(item):
+        try:
+            return cook_one(item)
+        except (OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
+            if receipt_name != "trees-cook.json":
+                raise
+            print(f"[deploy_payload] WARN: tree model cook skipped: {item[1]}: {exc}; runtime will cook it")
+            return item[0], None
+
     if todo:
         # Cookers may overwrite in place; detach shared inodes of anything not just verified.
         keep = {r['path'] for r in rows.values()}
@@ -761,19 +775,23 @@ def finish(target_dir, manifest, tool, cooker=subprocess.run, *, kit_rel=KIT_REL
                 os.replace(detached, path)
         jobs = jobs_limit()
         with ThreadPoolExecutor(max_workers=jobs) as pool:
-            rows.update(pool.map(cook_model, todo.items()))
+            rows.update((g, r) for g, r in pool.map(cook_model, todo.items()) if r is not None)
         # The native recipe cache keeps only the newest model-*.mci by mtime and a write sweeps older entries, so a later
         # model's cook can evict a recipe an earlier model just produced. The shared cache holds every cooked recipe:
         # relink the evicted ones (links never trigger the native sweep); re-cook only if the shared entry is gone too.
         for _ in range(3):
-            missing = [(g, rel) for g, rel in unique.items() if not (cache / rows[g]['path']).is_file()]
+            missing = [(g, rel) for g, rel in unique.items() if g in rows and not (cache / rows[g]['path']).is_file()]
             if not missing:
                 break
             for g, rel in missing:
-                rows[g] = from_shared(g) or cook_model((g, rel))[1]
+                row = from_shared(g) or cook_model((g, rel))[1]
+                if row:
+                    rows[g] = row
+                else:
+                    rows.pop(g, None)
     out_rows = sorted(({k: r[k] for k in ('path', 'bytes', 'sha256')} for r in rows.values()),
                       key=lambda r: r['path'])
-    if len(out_rows) != len({r["sha256"] for r in manifest["files"] if r["path"].endswith(".glb")}):
+    if receipt_name != "trees-cook.json" and len(out_rows) != len(set(model_shas.values())):
         raise ValueError(f"industrial cook incomplete: {len(out_rows)} recipes")
     # Stamped receipts (size, mtime, ctime, inode, NTFS ChangeTime) hold these hashes from this run; a drifted stamp
     # rehashes the bytes, so the evidence is the same and only unchanged files skip the second read.
@@ -782,10 +800,11 @@ def finish(target_dir, manifest, tool, cooker=subprocess.run, *, kit_rel=KIT_REL
     checked_files(kit, manifest["files"], hashes)
     sums.save()
     value = dict(identity=version, importer=version, by_glb=rows,
-                 recipes={rel: rows[model_shas[rel]]['path'] for rel in models}, files=out_rows)
+                 recipes={rel: rows[model_shas[rel]]['path'] for rel in models if model_shas[rel] in rows}, files=out_rows)
     receipt.write_text(json.dumps(value, indent=2) + "\n")
     hashes.save()
-    print(f"[deploy_payload] pinned industrial kit verified: {len(models)} GLBs, "
+    label = "tree models" if receipt_name == "trees-cook.json" else kit_rel.name
+    print(f"[deploy_payload] pinned {label} verified: {len(rows)} recipes for {len(models)} GLBs, "
           f"{reused} reused, {len(todo)} cooked")
     os.utime(shared_root)
     try:
