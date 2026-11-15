@@ -59,9 +59,12 @@ def test_seed_verifies_marker_manifest_and_bytes(tmp_path, monkeypatch, capsys, 
     from types import SimpleNamespace
     (tmp_path / "mc2.exe").write_bytes(b"exe")
     _manifest(tmp_path / ".deployed_manifest.csv", {"mc2.exe": b"exe"})
+    manifest = tmp_path / ".deployed_manifest.csv"
+    manifest.write_text(manifest.read_text().replace(",t,0", ",t,"), encoding="utf-8")
     row = laptop_gate.manifest_rows(tmp_path / ".deployed_manifest.csv")["mc2.exe"]
     want = row["sha256"]
     identity = {"seeded": fault != "marker", "row": dict(row), "sha256": want.upper()}
+    identity["row"]["mtime_ns"] = None  # PowerShell ConvertFrom-Csv emits null for an empty field.
     if fault == "row": identity["row"] = None
     if fault == "manifest": identity["row"]["src_commit"] = "old"
     if fault in ("exe", "missing-exe"):

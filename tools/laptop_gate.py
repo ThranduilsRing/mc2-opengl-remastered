@@ -697,6 +697,8 @@ def seed_identity():
         f'@{{ seeded = (Test-Path \'{INSTALL}/.seeded\'); row = $row; sha256 = $hash }} | ConvertTo-Json -Compress"')
     identity = json.loads(out)
     theirs, got = identity.get("row"), (identity.get("sha256") or "").lower()
+    if isinstance(theirs, dict):
+        theirs = {key: value or "" for key, value in theirs.items()}
     why = ("missing .seeded marker" if not identity.get("seeded") else
            "missing mc2.exe manifest row" if not theirs else
            "mc2.exe manifest row differs" if theirs != row else
