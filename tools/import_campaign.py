@@ -120,6 +120,34 @@ def inspect_source(root):
     return files, names, campaigns
 
 
+def fill_campaign_object_slots(root, out, refs):
+    """Fill compatibility-table holes from the campaign's authored object definitions."""
+    buildings = root / "data/art/buildings.csv"
+    base = next((Path(ref) / "objects/object2.pak" for ref in refs
+                 if (Path(ref) / "objects/object2.pak").is_file()), None)
+    if not buildings.is_file() or base is None:
+        return
+    sys.path.insert(0, str(Path(__file__).resolve().parent / "mco_import"))
+    from build_object2 import read_pak, write_pak, parse_buildings, find_loose_fit, mech_stub, RAW, NUL
+    _, slots = read_pak(str(base))
+    changed = False
+    for name, kind, fid in parse_buildings(str(buildings)):
+        if fid < 1188 or (fid < len(slots) and slots[fid][0] != NUL):
+            continue
+        definition = find_loose_fit(str(root / "data/objects"), name)
+        if kind != "MECH" and definition is None:
+            continue
+        payload = mech_stub(name) if kind == "MECH" else Path(definition).read_bytes()
+        if fid >= len(slots):
+            slots.extend([(NUL, b"")] * (fid + 1 - len(slots)))
+        slots[fid] = (RAW, payload)
+        changed = True
+    if changed:
+        destination = out / "data/objects/object2.pak"
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        write_pak(str(destination), slots)
+
+
 def find_root(folder):
     candidates = [folder] + sorted(p for p in folder.iterdir() if p.is_dir())
     roots = [p for p in candidates if (p / "data").is_dir() or (p / "Data").is_dir()
@@ -255,6 +283,8 @@ def import_campaign(source, deploy):
         rc = legacy._run_step({"kind": "transfer"}, args)
         if rc not in (0, None):
             raise ValueError(f"Campaign transfer failed: {rc}")
+        if compat == "mco-compat":
+            fill_campaign_object_slots(root, out, refs)
         available = available_assets(out) | available_assets(deploy)
         for ref in refs[:-1] if len(refs) > 1 else []:
             available |= available_assets(Path(ref).parent)

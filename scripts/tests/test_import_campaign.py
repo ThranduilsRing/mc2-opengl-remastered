@@ -179,6 +179,22 @@ def test_fst_delta_preserves_different_bytes(tmp_path, monkeypatch):
     assert (out / "data/objects/compbas.csv").read_bytes() == b"override"
 
 
+@pytest.mark.parametrize("names", [
+    ["compbas.csv"], ["mc2xcomp.csv", "compbas.csv"], ["compbas.csv", "mc2xcomp.csv"]])
+def test_campaign_component_table_spellings(tmp_path, monkeypatch, names):
+    import transfer_mc2x_campaign as transfer
+    entries = [(0, 0, 0, "data/objects/" + name, False, name.encode()) for name in names]
+    entries += [(0, 0, 0, "data/objects/VonLuckner.csv", False, b"authored profile"),
+                (0, 0, 0, "data/art/gui.csv", False, b"old GUI")]
+    monkeypatch.setattr(transfer.fst, "fst_entries", lambda _: entries)
+    monkeypatch.setattr(transfer.fst, "decompress_entry", lambda off, comp, real, lz, data: data)
+    transfer.extract_fst_whitelist("fixture", str(tmp_path), transfer.campaign_roster(entries))
+    expected = b"mc2xcomp.csv" if "mc2xcomp.csv" in names else b"compbas.csv"
+    assert (tmp_path / "data/objects/compbas.csv").read_bytes() == expected
+    assert (tmp_path / "data/objects/vonluckner.csv").read_bytes() == b"authored profile"
+    assert not (tmp_path / "data/art/gui.csv").exists()
+
+
 @pytest.mark.parametrize("failure", ["rc", "missing"])
 def test_failed_transfer_is_never_published(sample, monkeypatch, failure):
     source, deploy = sample
@@ -192,6 +208,30 @@ def test_failed_transfer_is_never_published(sample, monkeypatch, failure):
     with pytest.raises(ValueError, match="transfer failed: 7" if failure == "rc" else "demo01.pak.*download"):
         imp.import_campaign(source, deploy)
     assert [p.name for p in (deploy / "mods").iterdir()] == ["mc2x-compat"]
+
+
+def test_campaign_object_holes_use_authored_definitions(tmp_path):
+    sys.path.insert(0, str(ROOT / "tools/mco_import"))
+    from build_object2 import read_pak, write_pak, RAW, NUL
+    source, out, ref = tmp_path / "source", tmp_path / "out", tmp_path / "ref"
+    (source / "data/art").mkdir(parents=True)
+    (source / "data/objects").mkdir()
+    (ref / "objects").mkdir(parents=True)
+    slots = [(NUL, b"")] * 2100
+    slots[1200] = (RAW, b"shared definition")
+    write_pak(str(ref / "objects/object2.pak"), slots)
+    (source / "data/art/buildings.csv").write_text(
+        "name,group,id,type,fitid\nExisting,0,0,VEHICLE,1200\n"
+        "JEdgar(Flamer),0,0,VEHICLE,2091\nUnavailable,0,0,VEHICLE,2092\n")
+    definition = b"FITini\n[ObjectClass]\nl ObjectTypeNum = 1\nFITend"
+    (source / "data/objects/JEdgar(Flamer).fit").write_bytes(definition)
+    (source / "data/objects/Existing.fit").write_bytes(b"campaign override")
+    imp.fill_campaign_object_slots(source, out, [str(ref)])
+    _, result = read_pak(str(out / "data/objects/object2.pak"))
+    assert result[1200] == slots[1200]
+    assert result[2091] == (RAW, definition)
+    assert result[2092] == (NUL, b"")
+    assert read_pak(str(ref / "objects/object2.pak"))[1] == slots
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows batch launcher")

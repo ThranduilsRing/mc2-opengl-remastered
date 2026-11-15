@@ -183,14 +183,24 @@ def _is_campaign_unique_asset(sub):
 # MC2X renamed compbas.csv to mc2xcomp.csv; our engine still opens compbas.csv.
 # Keep the campaign's weapon/ammo definitions with its object loadouts.
 MISC_ROSTER = {"data/objects/pilots.csv": "data/objects/pilots.csv",
+               "data/objects/compbas.csv": "data/objects/compbas.csv",
                "data/objects/mc2xcomp.csv": "data/objects/compbas.csv"}
+
+
+def campaign_roster(entries):
+    """Keep authored unit profiles with their component table; exclude misc GUI data."""
+    return {**{rel_norm(e[3]): rel_norm(e[3]) for e in entries if e[3]
+               and rel_norm(e[3]).startswith("data/objects/")
+               and rel_norm(e[3]).endswith(".csv")}, **MISC_ROSTER}
 
 
 def extract_fst_whitelist(fst_path, out_root, include):
     """Extract ONLY entries whose normalized name is in `include` (lowercased
     'data/...' paths). Surgical roster pull; everything else in the FST is ignored."""
     n = 0
-    for off, comp, real, name, is_lz, data in fst.fst_entries(fst_path):
+    entries = sorted(fst.fst_entries(fst_path), key=lambda entry:
+                     rel_norm(entry[3] or "") == "data/objects/mc2xcomp.csv")
+    for off, comp, real, name, is_lz, data in entries:
         if not name or rel_norm(name) not in include:
             continue
         target = include[rel_norm(name)] if isinstance(include, dict) else name
@@ -367,7 +377,8 @@ def main():
     # Surgical roster pull from misc.fst (campaign pilots.csv; see MISC_ROSTER).
     misc_path = os.path.join(src, "misc.fst")
     if os.path.isfile(misc_path):
-        n_misc = extract_fst_whitelist(misc_path, args.out, MISC_ROSTER)
+        roster = campaign_roster(fst.fst_entries(misc_path))
+        n_misc = extract_fst_whitelist(misc_path, args.out, roster)
         if n_misc:
             print("  extracted misc.fst roster (pilots.csv): %d file(s)" % n_misc)
             total_fst += n_misc
