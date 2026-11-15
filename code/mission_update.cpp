@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <atomic>
 #include "command_replay.h"
+#include "net/runtime.h"
 // Mission: the per-frame Mission::update with its MC2_MISSION_SPLIT timing, mover bridge, soak hooks and coherence audit.
 #include "runtime_observation_scope.h"
 // Declared in the class headers; shared names in mission_internal.h.
@@ -41,6 +42,7 @@
 // path is byte-identical.
 static inline bool mc2SimTickFrozen(MissionInterfaceManager* mim)
 {
+	if (mc2::net::active()) return false;
 	return (mim && mim->isPaused()) || (mc2FreezeMoversActive() != 0);
 }
 
@@ -258,6 +260,7 @@ void Mission::updateDevHotkeys() {
 // The tick-mode clock: one call per sim tick. A tick is always kTickSeconds of sim time, whatever the frame rate or game
 // speed. The in-mission save runs at the tick boundary, before the clock moves.
 void Mission::updateTickClock(bool advanceTime) {
+	if (mc2::net::active()) saveInMissionSave = loadInMissionSave = false;
 	if (saveInMissionSave)
 	{
 		char savegame_path[1024];
@@ -440,7 +443,7 @@ void Mission::updateSimSystems() {
 // Flush the ABL trace and emit the mover bridge, the identity hash and the coherence audit.
 void Mission::updateTraceHooks() {
 	// Refresh after mission ABL, without advancing a controller twice.
-	if (mc2::replay::active()) missionInterface->updateVTol();
+	if (mc2::replay::active() || mc2::net::active()) missionInterface->updateVTol();
 	mc2_abl_trace::flushFrame(mc2::overlap::simulationFrame(g_mc2FrameCounter), getBrainTickIndex());
 
 	// Runtime-bridge v0: emit [MOVER v2] mover.state to stdout (env-gated,
@@ -1318,7 +1321,7 @@ void Mission::overlapKick()
 {
 	if (!mc2::gate::get<"MC2_SIM_OVERLAP">() || !mc2::gate::get<"MC2_DETERMINISTIC_RNG">() || !active || s_pre.valid)
 		return;
-	if (MPlayer || mc2SimTickFrozen(missionInterface) || mc2::observation::bridgePaused() || loadInMissionSave || saveInMissionSave ||
+	if (MPlayer || mc2::net::active() || mc2SimTickFrozen(missionInterface) || mc2::observation::bridgePaused() || loadInMissionSave || saveInMissionSave ||
 	    LastTimeGetTime == 0xffffffff || turn != s_turnAfterLastPass)
 		return;
 	const float renderLength = frameLength;
@@ -1453,7 +1456,7 @@ long Mission::update (void)
 			const bool bridgeHold = !firstFrame && mc2::observation::bridgePaused();
 			if (bridgeHold)
 				s_tickClock.reset();
-			const int ticks = firstFrame ? 1
+			const int ticks = mc2::net::active() ? (mc2::net::prepareTick() ? 1 : 0) : firstFrame ? 1
 				: bridgeHold ? mc2::observation::bridgeTakeSteps(mc2::sim::kBridgeMaxStepsPerFrame)
 				: s_tickClock.advance(realSeconds, simSpeedGetMultiplier());
 			if (ticks == 0)
@@ -1466,12 +1469,13 @@ long Mission::update (void)
 			const uint64_t budget = tickBudgetBegin();
 			for (int tick = 0; tick < ticks; ++tick)
 			{
+				if (mc2::net::active()) g_mc2FrameCounter.store(static_cast<std::uint32_t>(mc2::net::nextTick()), std::memory_order_relaxed);
 				// One logic pass per frame-counter value: per-frame-keyed sim paths (animation advance, the brain tick
 				// accumulator, light-row stamps) see each tick as its own frame.
 				s_extraTickInFrame = tick > 0;
 				if (tick > 0)
 					g_mc2FrameCounter.fetch_add(1, std::memory_order_relaxed);
-				const bool ended = updatePass(true, tick == 0, true, !firstFrame, earlyResult);
+				const bool ended = updatePass(true, tick == 0, true, mc2::net::active() || !firstFrame, earlyResult);
 				mc2::tick::commitTickQueues();
 				s_extraTickInFrame = false;
 				mc2::observation::bridgeNoteTicks(1);
