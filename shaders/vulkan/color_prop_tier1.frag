@@ -145,7 +145,8 @@ float propCoverage(float a, float lod) {
 #include "include/ground_lighting.glsl"
 layout(set = 0, binding = 14) uniform sampler2DShadow uTreeObjectMap;
 #define MC2_OBJECT_TERRAIN_GRID 1
-#define MC2_OBJECT_SHORT_POOL (kBaseQuality == 2)
+// Use the conservative spatial list on every quality tier; a short full-pool
+// walk still multiplies each visible prop fragment by up to 128 lights.
 #define MC2_OBJECT_POOL_BUDGET (kBaseQuality == 0 ? 4 : kBaseQuality == 1 ? 8 : 0)
 #include "../include/object_light_pool.hglsl"
 
