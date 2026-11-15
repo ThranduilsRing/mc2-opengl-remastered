@@ -9,6 +9,7 @@ import zipfile
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import console_child
 import release_asset_guard as guard
 import test_release_zip_install as release
 
@@ -99,6 +100,39 @@ def test_clean_zip_and_tree(tmp_path):
     assert guard.scan(archive) == []
 
 
+@pytest.mark.parametrize("magic", [b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08",
+                                   b"7z\xbc\xaf\x27\x1c", b"Rar!\x1a\x07\x00",
+                                   b"Rar!\x1a\x07\x01\x00", b"\x1f\x8b"])
+def test_archive_magic_any_extension(tmp_path, magic):
+    name = "docs/innocent.txt"
+    assert guard._inspect(name, io.BytesIO(magic), reject_archives=True) == [
+        f"{name}: nested archive not allowed in release payload"]
+    archive = tmp_path / "package.zip"
+    with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as out:
+        out.writestr(name, magic + b"synthetic fixture")
+    assert guard.scan(archive) == [f"{name}: nested archive not allowed in release payload"]
+
+
+def test_nested_zip_is_rejected_without_extraction(tmp_path):
+    inner = io.BytesIO()
+    with zipfile.ZipFile(inner, "w", zipfile.ZIP_DEFLATED) as out:
+        out.writestr("renamed.bin", fake_glb())
+    archive = tmp_path / "package.zip"
+    with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as out:
+        out.writestr("innocent.bin", inner.getvalue())
+    assert guard.scan(archive) == ["innocent.bin: nested archive not allowed in release payload"]
+    (tmp_path / "renamed.dat").write_bytes(inner.getvalue())
+    assert "renamed.dat: nested archive not allowed in release payload" in guard.scan(tmp_path)
+
+
+@pytest.mark.parametrize("name", ["tests/unit/fixtures/stock_names.txt", "tools/mech_import/build_marauder.py"])
+def test_exact_legacy_text_exceptions(name):
+    payload = b"chrTxrMech_fake"
+    assert guard._inspect(name, io.BytesIO(payload)) == []
+    assert guard._inspect("other/" + name, io.BytesIO(payload))
+    assert guard._inspect(name, io.BytesIO(b"\0" + payload))
+
+
 def test_unreadable_and_unsafe_inputs_fail_closed(tmp_path):
     assert guard.scan(tmp_path / "missing.zip")
     archive = tmp_path / "broken.zip"
@@ -113,7 +147,8 @@ def test_cli_and_verify_tree(tmp_path):
     assert_rejected(tmp_path, "renamed.bin", fake_glb())
     assert any("renamed.bin" in item for item in release.verify_tree(tmp_path))
     result = subprocess.run([sys.executable, "-B", str(REPO / "scripts/release_asset_guard.py"),
-                             str(tmp_path)], capture_output=True, text=True)
+                             str(tmp_path)], capture_output=True, text=True,
+                            **console_child.child_kwargs(redirected=True))
     assert result.returncode == 1
     assert "renamed.bin:" in result.stdout
 
@@ -135,7 +170,8 @@ def test_negative_control(tmp_path, monkeypatch):
 
 def test_tracked_repository_is_clean():
     # Scan tracked paths in place: no copying real assets into a fixture/artifact.
-    result = subprocess.run(["git", "ls-files", "-z"], cwd=REPO, check=True, capture_output=True)
+    result = subprocess.run(["git", "ls-files", "-z"], cwd=REPO, check=True, capture_output=True,
+                            **console_child.child_kwargs(redirected=True))
     violations = []
     for raw in result.stdout.split(b"\0"):
         if not raw:

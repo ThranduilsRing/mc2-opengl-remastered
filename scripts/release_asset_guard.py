@@ -13,6 +13,8 @@ CHUNK_SIZE = 1024 * 1024
 TOKENS = tuple(b"chr" + name for name in (b"TxrMech_", b"PrfMech_", b"MatMech_"))
 NODES = (b"j_" + b"COCKPIT", b"atlas_" + b"moveCore")
 MAGICS = (b"UnityFS", b"UnityWeb", b"UnityRaw", b"Kaydara FBX Binary")
+ARCHIVE_MAGICS = (b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08", b"7z\xbc\xaf\x27\x1c",
+                  b"Rar!\x1a\x07\x00", b"Rar!\x1a\x07\x01\x00", b"\x1f\x8b")
 TEXT_SUFFIXES = {".py", ".md", ".json", ".bat", ".txt", ".rst", ".csv", ".yaml", ".yml", ".toml"}
 TOOL_DIRS = ("tools/bt2018_kit/", "tools/bt2018_mechs/", "tools/bt2018_import/")
 NAME_PATTERNS = (
@@ -27,7 +29,8 @@ NAME_PATTERNS = (
 def _text_exception(name: str) -> bool:
     return (PurePosixPath(name).suffix in TEXT_SUFFIXES and
             (name.startswith(TOOL_DIRS + ("docs/", "scripts/tests/")) or
-             name == "scripts/bt2018_retarget_clips.py"))
+             name in {"scripts/bt2018_retarget_clips.py",
+                      "tests/unit/fixtures/stock_names.txt", "tools/mech_import/build_marauder.py"}))
 
 
 def _path_reason(name: str) -> str | None:
@@ -62,7 +65,7 @@ def _legacy_names() -> set[str]:
 LEGACY_NAMES = _legacy_names()
 
 
-def _inspect(name: str, stream) -> list[str]:
+def _inspect(name: str, stream, *, reject_archives: bool = False) -> list[str]:
     """Bounded reads; overlap catches signatures split across chunk boundaries."""
     name = PurePosixPath(name.replace("\\", "/")).as_posix().lower()
     candidate = _text_exception(name)
@@ -76,6 +79,8 @@ def _inspect(name: str, stream) -> list[str]:
     overlap = max(map(len, TOKENS + NODES + MAGICS)) - 1
     while chunk := stream.read(CHUNK_SIZE):
         if first:
+            if reject_archives and chunk.startswith(ARCHIVE_MAGICS):
+                return [f"{name}: nested archive not allowed in release payload"]
             if chunk.startswith(MAGICS):
                 reasons.add("Unity/FBX binary magic")
             # A renamed GLB remains binary even with a JSON-only synthetic payload.
@@ -125,7 +130,7 @@ def scan(path: str | Path) -> list[str]:
                 elif item.is_file():
                     try:
                         with item.open("rb") as stream:
-                            violations.extend(_inspect(name, stream))
+                            violations.extend(_inspect(name, stream, reject_archives=True))
                     except OSError as exc:
                         violations.append(f"{name}: unreadable: {exc}")
         else:
@@ -136,7 +141,7 @@ def scan(path: str | Path) -> list[str]:
                         violations.append(f"{name}: unsafe archive path")
                     elif not member.is_dir():
                         with archive.open(member) as stream:
-                            violations.extend(_inspect(name, stream))
+                            violations.extend(_inspect(name, stream, reject_archives=True))
     except (OSError, ValueError, RuntimeError, zipfile.BadZipFile) as exc:
         violations.append(f"{path}: scan failed: {exc}")
     return violations
