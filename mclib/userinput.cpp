@@ -340,7 +340,7 @@ void UserInput::update (void)
 		leftMouseDrag = false;
 		mouseLeftUpTime += frameLength;
 //		if ( !bWasDouble )
-			leftMouseJustUp = 1;
+			leftMouseJustUp = gos_GetKeyStatus(KEY_LMOUSE) == KEY_RELEASED;
 
 		mouseLeftHeldTime = 0.f;
 	}
@@ -412,7 +412,7 @@ void UserInput::update (void)
 		wasRightMouseDrag = rightMouseDrag;
 		rightMouseDrag = false;
 		mouseRightUpTime = 0.001f;
-		rightMouseJustUp = true;
+		rightMouseJustUp = gos_GetKeyStatus(KEY_RMOUSE) == KEY_RELEASED;
 
 		mouseRightHeldTime = 0.f;
 	}
