@@ -283,13 +283,13 @@ flags:
     doc: ""
   - name: MC2_CALLED_SHOT_FIX
     kind: Bool
-    default: false
-    rule: Lead0P
+    default: true
+    rule: Lead0Kill
     owner: mech
-    doc: "ISSUE-9 called-shot effectiveness (gameplay gate, default OFF = stock): (S1) Mover::calcAttackChance floors the aimed-shot modifiers at Head 0.30 / Arm 0.45..."
+    doc: "ISSUE-9 default ON; =0 restores stock. Aimed floors: Head 0.30 / Arm 0.45 / Leg 0.50; aimed missile hits retain location."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_CALLED_SHOT_FIX, kind: Feature, order: -1, default_on: false}
+    registry: {feature_id: MC2_FEATURE_CALLED_SHOT_FIX, kind: Feature, order: -1, default_on: true}
   - name: MC2_CAMERA_ASPECT_NATIVE
     kind: Bool
     default: true
