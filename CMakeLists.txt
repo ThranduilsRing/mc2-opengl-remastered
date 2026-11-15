@@ -22,6 +22,12 @@ if(MSVC)
         "$<$<CONFIG:RelWithDebInfo>:/INCREMENTAL:NO>"
         "$<$<CONFIG:RelWithDebInfo>:/OPT:REF,ICF>")
 endif()
+# Package globals as COMDATs so REF/ICF can discard and fold unused data too.
+# Keep /O2 and full debug information; /Gy makes the function packaging explicit.
+if(MSVC)
+    add_compile_options("$<$<AND:$<CONFIG:RelWithDebInfo>,$<COMPILE_LANGUAGE:C,CXX>>:/Gy>"
+                        "$<$<AND:$<CONFIG:RelWithDebInfo>,$<COMPILE_LANGUAGE:C,CXX>>:/Gw>")
+endif()
 
 # C++ standard: one cache variable, MC2_CXX_STANDARD (20 or 23; default 23 = MSVC /std:c++23preview).
 # The gate registry (Gates/gate.h) needs C++20 class-type template parameters and consteval, so 17 is
@@ -924,7 +930,6 @@ if(MSVC AND TARGET mc2res_64)
     set_property(TARGET mc2res_64 PROPERTY COMPILE_OPTIONS "${_res_opts}")
 endif()
 add_subdirectory("./data_tools" "./out/data_tools")
-add_subdirectory("./text_tool" "./out/text_tool")
 # TEMP (merge-methuselas throwaway): @Methuselas's Viewer/CMakeLists.txt lists
 # ImGui-conversion sources (ViewerHostGlobals/Imgui/GuiFit/FontCatalog/
 # TextureLoader.cpp) that are NOT committed to methuselas/main -- one missing
