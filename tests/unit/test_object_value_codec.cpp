@@ -44,8 +44,9 @@ TEST_CASE("called shot/save restore keeps aimed missile impact; v1 defaults to s
     REQUIRE(validObjectSlot(bytes, mc2_saved_objects::kBolt, 1));
     WeaponBoltData loaded{}; WeaponBoltRecord saved{loaded};
     REQUIRE(readWeaponBoltRecord(bytes, saved));
-    uninterrupted.weaponShot = data.weaponShot;
-    restored.weaponShot = loaded.weaponShot; restored.aimedTargetWID = saved.aimedTargetWID;
+    uninterrupted.weaponShot.damage = data.weaponShot.damage; uninterrupted.weaponShot.hitLocation = data.weaponShot.hitLocation;
+    restored.weaponShot.damage = loaded.weaponShot.damage; restored.weaponShot.hitLocation = loaded.weaponShot.hitLocation;
+    restored.aimedTargetWID = saved.aimedTargetWID;
     CHECK(uninterrupted.impact(&uninterrupted.blast)); CHECK(restored.impact(&restored.blast));
     CHECK(restored.target.damage == uninterrupted.target.damage);
     CHECK(restored.target.location == uninterrupted.target.location);
