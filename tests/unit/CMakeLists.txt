@@ -28,6 +28,7 @@ target_include_directories(enet PUBLIC ../../3rdparty/enet/include)
 if(WIN32)
     target_link_libraries(enet PUBLIC ws2_32 winmm)
 endif()
+target_compile_options(enet PRIVATE $<$<C_COMPILER_ID:MSVC>:/Z7>)
 
 include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/Mc2Standalone.cmake")
 
@@ -38,6 +39,8 @@ set_source_files_properties(${MC2_WORKTREE_ROOT}/RenderCore/KtxBasis.cpp PROPERT
 add_executable(mc2_tests
     test_net_session.cpp
     ${MC2_WORKTREE_ROOT}/code/net/session.cpp
+    test_net_lockstep.cpp
+    ${MC2_WORKTREE_ROOT}/code/net/lockstep.cpp
     test_fog_policy.cpp
     test_water_reactive.cpp
     test_fx_native.cpp
