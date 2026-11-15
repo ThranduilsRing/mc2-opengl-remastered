@@ -234,6 +234,15 @@ def build_icons(glb: Path, stem: str, out_art: Path, bay_size=(128, 128)):
     p = out_art / f"{stem}_bay.tga"
     save_tga(bay, p)
     written[p.name] = bay
+    # Logistics resolves individual icons by CSV stem, independently of the legacy sheet index.
+    small = render(parts, 25, 30, rear=False, mode="hud")
+    for green, value in ((229, 255), (150, 160), (83, 96), (80, 32)):
+        mask = (small[:, :, 1] == green) & (small[:, :, 3] != 0)
+        small[mask, :3] = value
+    p = out_art / "mechicons" / f"{stem}.png"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    Image.fromarray(small, "RGBA").save(p)
+    written[p.relative_to(out_art).as_posix()] = small
     return written
 
 

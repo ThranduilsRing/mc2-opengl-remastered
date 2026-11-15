@@ -329,6 +329,24 @@ def test_cook_retargets_from_the_raw_cache_so_repeat_cooks_match(tmp_path):
 # ---------------------------------------------------------------- P6 icons
 
 
+def test_generated_logistics_icon_uses_the_registry_stem(tmp_path, monkeypatch):
+    """Trigger: tools/bt2018_mechs/render_icons.py and build_pack.py."""
+    from tools.bt2018_mechs import render_icons as R
+    from tools.bt2018_mechs import build_pack as B
+    import numpy as np
+    from PIL import Image
+    quad = np.array([[-1, 0, 0], [1, 0, 0], [1, 2, 0], [-1, 2, 0]], dtype=float)
+    monkeypatch.setattr(R, "load_parts", lambda _: [(6, quad, np.array([[0, 1, 2], [0, 2, 3]]))])
+    products = R.build_icons(Path("model.glb"), "bt2018_marauder", tmp_path)
+    relative = "mechicons/bt2018_marauder.png"
+    icon = Image.open(tmp_path / relative).convert("RGBA")
+    assert icon.size == (25, 30)
+    assert np.array_equal(np.array(icon), products[relative])
+    assert {p[:3] for p in icon.getdata() if p[3]} <= {(32, 32, 32), (96, 96, 96), (160, 160, 160), (255, 255, 255)}
+    assert len(B.sha256(tmp_path / relative)) == 64  # builder hashes every returned relative path
+    assert {f"bt2018_marauder_hud_{w}x{h}.tga" for w, h in R.HUD_SIZES} <= products.keys()
+
+
 def test_hud_icons_use_only_the_exact_region_palette():
     from tools.bt2018_mechs import render_icons as R
     import numpy as np
