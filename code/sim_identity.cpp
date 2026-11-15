@@ -1,5 +1,5 @@
 #include "sim_rng_state.h"
-#include "mc2_diag.h"
+#include "../GameOS/gameos/diagnostic_trace.h"
 //---------------------------------------------------------------------------
 // SIM-IDENTITY-HASH-1 -- engine-side collector for the world-state hash.
 //
