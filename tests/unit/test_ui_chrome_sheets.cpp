@@ -24,6 +24,7 @@ TEST_CASE("ui_chrome inset excludes whole images and content sprites") {
         return insetChromeCrop(path, pixel, legacy, nine, u, v, r, b);
     };
     CHECK_FALSE(inset("data/art/gui/mcl_mm_2.png"));
+    CHECK(inset("data/art/gui/mcl_splashscreen_frame_2.png"));
     CHECK(inset("data/art/gui/MCUI_Universal1.tga"));
     CHECK(inset("data/art/ui/panel.png", false, false, true));
     CHECK_FALSE(inset("data/art/gui/mcl_mm_2.png", false, false, false, 0, 0, 1, 1));
