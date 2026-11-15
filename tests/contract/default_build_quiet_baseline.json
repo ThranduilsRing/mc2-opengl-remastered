@@ -1,6 +1,18 @@
 {
   "_doc": "QUIET-DEFAULT-BUILD-1 baseline for scripts/check-default-build-quiet.py. This is ATTRIBUTED DEBT, not an approved list -- but unlike the 83-tag seed it replaces, every entry now carries a `keep` reason naming the harness code that parses it. History: VERIFY-INTEGRITY-3 measured 83 tags printing in a default build (nine repeating every 600 frames forever, four announcing switched-OFF features). QUIET-DEFAULT-BUILD-1 gated 70 of them behind MC2_DIAG_VERBOSE, taking a measured default-env mc2_10 run from 79 distinct tags / 439 diagnostic lines to 9 tags / 44 lines. The 9 that remain are load-bearing for verification itself: silencing them would blind the smoke harness, which is a worse failure than being noisy. Changing that is a harness-contract change and belongs to its own slice. The ratchet only ever tightens: gating a tag and removing it here is always correct; adding one requires a keep reason.",
   "tags": {
+    "TREE_LOD_STATS": {
+      "status": "keep",
+      "reason": "Opt-in diagnostic: only prints under MC2_DIAG_TAGS=TREE_LOD_STATS (per-tier tree instance and triangle counts every 120 frames); silent in a default run."
+    },
+    "TREE_LOD": {
+      "status": "keep",
+      "reason": "Error-only: printed when a tree LOD chain is malformed (too many levels, missing or mismatched distances, dark light tags); never printed on a healthy map. Lane proof greps it for zero."
+    },
+    "TREE_IMPORT": {
+      "status": "keep",
+      "reason": "Error-only: printed when a tree GLB exceeds the importer size limit so the fallback is visible instead of silent."
+    },
     "ASSET_SCALE v1": {
       "status": "keep",
       "reason": "scripts/smoke_lib/logparse.py counts event=oob_blit occurrences."
