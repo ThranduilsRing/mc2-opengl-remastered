@@ -2266,6 +2266,7 @@ def deploy_from_payload(payload, target, src_root, head):
     if any(is_deploy_artifact(rel) for rel in rows):
         fail("payload contains diagnostic or backup artifacts; republish a clean payload")
     staged = payload / 'files'
+    sweep_stale_private_temps(target, [rel for rel in rows if (staged / rel).is_file()] + [MANIFEST_NAME])
     for rel, row in rows.items():
         src, dst = staged / rel, target / rel
         if src.is_file():
@@ -2507,7 +2508,6 @@ def main():
         check_locks(target, exe_name, wait_s)
         lease_held = take_folder_lease(target, wait_s)
     try:
-        sweep_stale_private_temps(target)  # stale .private-<pid> temps of killed deploys, under the lease
         if args.from_payload:
             head = args.payload_head or subprocess.check_output(['git', '-C', src_root, 'rev-parse', 'HEAD'],
                                                                 text=True, **console_child.child_kwargs(redirected=True)).strip()
@@ -2742,9 +2742,11 @@ def prepare_seed_delta(items, target, full_verify=False, allow_legacy=False):
 _PRIVATE_TMP = re.compile(r'\.private-(\d+)$')
 
 
-def sweep_stale_private_temps(target):
-    """Remove `<file>.private-<pid>` temps (see privatize_shared_payload) left by a killed deploy.
-    Only TARGET is walked; a temp whose pid is alive is left alone (another deploy may be running)."""
+def sweep_stale_private_temps(target, relpaths):
+    """Remove dead deploy temps only beside exact payload/manifest write targets.
+    Other matching names are reported, never treated as ownership evidence."""
+    target_root = Path(target).resolve()
+    owned = {os.path.normcase(os.path.abspath(Path(target) / rel)) for rel in relpaths}
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     from smoke_lib import child_registry
     removed = 0
@@ -2752,6 +2754,12 @@ def sweep_stale_private_temps(target):
         for name in files:
             m = _PRIVATE_TMP.search(name)
             if not m:
+                continue
+            candidate = Path(root) / name
+            base = candidate.with_name(name[:m.start()])
+            if (os.path.normcase(os.path.abspath(base)) not in owned
+                    or not candidate.resolve().is_relative_to(target_root)):
+                log(f'[DEPLOY] unowned private-temp match preserved: {candidate}')
                 continue
             if child_registry.pid_alive(int(m.group(1))):
                 log(f'[DEPLOY] leaving {Path(root) / name}: pid {m.group(1)} is alive')
@@ -2863,6 +2871,7 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     legacy_lane = (getattr(args, "allow_new_target", False) and
                    Path(target).resolve().is_relative_to(Path('E:/mc2-installs').resolve()))
     with deploy_phase("hardlink isolation", 300):
+        sweep_stale_private_temps(target, [rel for _src, rel, _kind in write_set])
         verified = prepare_seed_delta(write_set, target, args.full_verify, allow_legacy=legacy_lane)
         check_hardlink_isolation([item for item in items if item[1] not in verified] + [(None, MANIFEST_NAME, "manifest")],
                                  target)

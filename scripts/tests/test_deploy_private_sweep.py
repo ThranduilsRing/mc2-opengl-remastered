@@ -14,18 +14,24 @@ def test_sweep(tmp_path, capsys):
     stale = d / "a.ktx2.private-99999999"
     live = d / f"b.ktx2.private-{os.getpid()}"
     other = d / "foo.private-notes"
+    unowned = tmp_path / "mods/custom/model.private-12345"
+    unowned.parent.mkdir()
+    unowned.write_bytes(b"user mod")
     for f in (stale, live, other):
         f.write_bytes(b"x")
-    assert dp.sweep_stale_private_temps(tmp_path) == 1
+    assert dp.sweep_stale_private_temps(tmp_path, ["mods/k/a.ktx2", "mods/k/b.ktx2"]) == 1
+    assert unowned.read_bytes() == b"user mod"
     assert not stale.exists() and live.exists() and other.exists()
-    assert "removed 1 stale .private-<pid> temp files" in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert "removed 1 stale .private-<pid> temp files" in output
+    assert "unowned private-temp match preserved:" in output
 
 
-def test_main_sweeps_before_either_deploy_path():
-    """The sweep runs once under the lease, ahead of both the --from-payload and the build-tree deploy."""
+def test_sweeps_use_each_deploy_paths_write_set():
+    """Trigger: deploy_payload.py; both deploy paths sweep after enumeration, before writes."""
     import inspect
-    src = inspect.getsource(dp.main)
-    sweep = src.index("sweep_stale_private_temps(target)")
-    assert sweep < src.index("if args.from_payload:")
-    assert sweep < src.index("deploy_from_payload(")
-    assert sweep < src.index("run_deploy(")
+    assert "sweep_stale_private_temps" not in inspect.getsource(dp.main)
+    for fn, enumeration, write in ((dp._run_deploy, "write_set =", "prepare_seed_delta("),
+                                   (dp.deploy_from_payload, "staged =", "for rel, row in rows.items():")):
+        src = inspect.getsource(fn)
+        assert src.index(enumeration) < src.index("sweep_stale_private_temps(target,") < src.index(write)
