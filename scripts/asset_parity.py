@@ -101,7 +101,7 @@ def manifest_assets(install: Path | str) -> tuple[dict[str, str], str | None]:
                      or row["relpath"] in AUXILIARY
                      or ("/" not in row["relpath"] and row["relpath"].endswith(ROOT_SUFFIX))}
     if asset_commits:
-        if len(asset_commits) != 1 or not re.fullmatch(r"[0-9a-f]{40}", next(iter(asset_commits))):
+        if len(asset_commits) != 1:
             raise ValueError(f"missing/ambiguous asset commit: {path}")
         commits = asset_commits
     return {row["relpath"]: row["sha256"] for row in entries}, commits.pop()

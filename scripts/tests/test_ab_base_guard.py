@@ -93,6 +93,18 @@ def test_mixed_asset_commits_refused(tmp_path, repo):
         ab.payload_identity(install)
 
 
+def test_named_repo_bookmarks_need_no_install_seed(tmp_path, monkeypatch):
+    monkeypatch.setattr(ab, "ROOT", tmp_path)
+    bookmarks = tmp_path / "tests/visual/bookmarks"
+    bookmarks.mkdir(parents=True)
+    (bookmarks / "day.json").write_text("{}")
+    install = tmp_path / "install"
+    ab.ensure_saved_bookmarks(install, install, [], bookmarks="day")
+    assert not install.exists()
+    with pytest.raises(SystemExit, match="not a staged copy"):
+        ab.ensure_saved_bookmarks(install, install, [], bookmarks="missing")
+
+
 def test_ancestor_and_matching_manifests_pass(tmp_path, repo):
     a = _install(tmp_path / "a", repo[0], exe="ea", spv="sa")
     b = _install(tmp_path / "b", repo[1], exe="eb", spv="sb")   # only mc2.exe and .spv differ

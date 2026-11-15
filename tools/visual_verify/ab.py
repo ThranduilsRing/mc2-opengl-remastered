@@ -1095,12 +1095,16 @@ def seed_install(install, bookmarks, reference=DEFAULT_INSTALL):
                  + "\n  fix: use --install DIR to name a reference install that has them, or copy them in.")
 
 
-def ensure_saved_bookmarks(install, reference, staged):
+def ensure_saved_bookmarks(install, reference, staged, bookmarks=""):
     """If the install has no saved_bookmarks/*.json at all, copy the reference's bookmarks (read-only) so a capture never runs on
     an empty bookmark set; fail clearly if the reference has none either. Writes only into an install this run staged (`staged`:
     the stage dirs main recorded); a user-supplied install without bookmarks is refused, never written into."""
     install, reference = Path(install), Path(reference)
     bookmark_dir = install / "saved_bookmarks"
+    names = [name.strip() for name in bookmarks.split(",") if name.strip()]
+    if names and all((bookmark_dir / (name + ".json")).is_file()
+                     or (ROOT / "tests/visual/bookmarks" / (name + ".json")).is_file() for name in names):
+        return  # capture.py resolves named repo bookmarks into its own output directory.
     if any(bookmark_dir.glob("*.json")):
         return
     if str(install) not in {str(d) for d in staged}:
@@ -1310,8 +1314,8 @@ def main(argv=None):
     a.staged = []  # install dirs this run staged (never a user-supplied --install-a/--install-b): deleted when the run ends
     try:
         ia, ib = resolve_installs(a, out)
-        ensure_saved_bookmarks(ia, a.install, a.staged)
-        ensure_saved_bookmarks(ib, a.install, a.staged)
+        ensure_saved_bookmarks(ia, a.install, a.staged, bookmarks=a.bookmarks)
+        ensure_saved_bookmarks(ib, a.install, a.staged, bookmarks=a.bookmarks)
         parity = bookmark_parity_problems(ia, ib, a.bookmarks)
         if parity:
             sys.exit("ab.py: bookmarks are not seeded identically on both sides:\n  " + "\n  ".join(parity))
