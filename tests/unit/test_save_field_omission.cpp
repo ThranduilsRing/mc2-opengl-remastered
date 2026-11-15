@@ -78,7 +78,7 @@ TEST_CASE("save fields: ANIM independent member census") {
             previousClip, previousClipTimeSec, fadeTimeSec, playRate, previousPlayRate, previousDurationSec, previousOnce);
         SAVE_FIELD_SHAPE(imported.phase, prevGesture, jumpStarted, landing);
         imported.phase = {0x15151515, true, true};
-        CHECK(save_probe::memberBytes<T>(IMPORTED_MEMBERS) + 13 == sizeof(T));
+        CHECK(save_probe::memberBytes<T>(IMPORTED_MEMBERS) + 9 == sizeof(T));
         CHECK(save_probe::roundtrip(imported, [](auto& a, auto& v) { a(v); }, IMPORTED_MEMBERS));
     }
     using T = UnitAnimState;

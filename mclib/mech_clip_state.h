@@ -142,13 +142,13 @@ inline float fadeDuration(std::string_view previous, std::string_view next) {
     return proneClip(previous) || proneClip(next) ? 0.25f : 0.15f;
 }
 
-inline float advanceClipTime(float time, float dt, float rate, float duration, Mode mode) {
-    time += dt * rate;
+inline float advanceClipTime(float clipSec, float dt, float rate, float duration, Mode mode) {
+    clipSec += dt * rate;
     if (duration > 0.0f) {
-        if (mode == Mode::Once) return std::min(time, duration);
-        while (time >= duration) time -= duration;
+        if (mode == Mode::Once) return std::min(clipSec, duration);
+        while (clipSec >= duration) clipSec -= duration;
     }
-    return time;
+    return clipSec;
 }
 
 // Playback rate for a locomotion clip: the clip's measured planted-foot speed (world units/s
