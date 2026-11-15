@@ -49,6 +49,7 @@ DEFAULT_ZIP_DIR = REPO_ROOT / "release_assets"
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 import manifest_schema  # noqa: E402  (S12 unified identity block)
 import console_child  # noqa: E402  (stdio-inheriting children keep their output; scripts/console_child.py)
+import release_asset_guard  # noqa: E402
 from smoke_lib import nofocus, host_lease  # noqa: E402
 
 # ---------------------------------------------------------------------------
@@ -141,7 +142,7 @@ def extract_zip(zip_path: Path, dest: Path, label: str) -> list[str]:
 
 def verify_tree(install: Path) -> list[str]:
     """Return list of failure strings (empty = pass)."""
-    failures: list[str] = []
+    failures: list[str] = release_asset_guard.scan(install)
 
     if (install / "mc2-launcher.exe").exists():
         failures.append("retired mc2-launcher.exe must not ship; launch mc2.exe")
