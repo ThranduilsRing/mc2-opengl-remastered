@@ -21,6 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "mc2_import"))
 import import_tool as legacy
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import console_child
+from smoke_lib.child_registry import pid_alive
 
 
 def fst_entries(path):
@@ -217,28 +218,6 @@ def find_root(folder):
     if len(roots) != 1:
         raise ValueError("Expected one campaign root containing data/ or *.fst; select one campaign folder.")
     return roots[0]
-
-
-def pid_alive(pid):
-    if os.name == "nt":
-        import ctypes
-        kernel = ctypes.WinDLL("kernel32", use_last_error=True)
-        kernel.OpenProcess.restype = ctypes.c_void_p
-        handle = kernel.OpenProcess(0x1000, False, pid)
-        if not handle:
-            return ctypes.get_last_error() != 87  # Access denied is not proof of death.
-        code = ctypes.c_ulong()
-        try:
-            return not kernel.GetExitCodeProcess(ctypes.c_void_p(handle), ctypes.byref(code)) or code.value == 259
-        finally:
-            kernel.CloseHandle(ctypes.c_void_p(handle))
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        pass
-    return True
 
 
 def import_campaign(source, deploy):

@@ -1395,6 +1395,7 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
                 items.append((path, os.path.relpath(path, src_root).replace(os.sep, "/"), "support"))
 
     items.append((os.path.join(src_root, "scripts", "console_child.py"), "scripts/console_child.py", "support"))
+    items.append((os.path.join(src_root, "scripts", "smoke_lib", "child_registry.py"), "scripts/smoke_lib/child_registry.py", "support"))
     for rel in IMPORTED_STRUCTURE_PAYLOAD:
         p = os.path.join(src_root, rel)
         if require_build and not os.path.isfile(p):
