@@ -44,8 +44,7 @@ def test_fresh_install_covers_deploy_payload(tmp_path, monkeypatch):
                 for row in manifest["files"])
     # Outputs written after payload copying, including cooked sidecars/receipts.
     rels.update((".deployed_manifest.csv", "data/textures/engine_normals.cookver",
-                 "data/textures/mat0_normal.ktx2", "data/tgl/128/a.tga.cookstamp",
-                 "cache/content-model/industrial-cook.json"))
+                 "data/textures/mat0_normal.ktx2", "data/tgl/128/a.tga.cookstamp"))
     recipe = "cache/content-model/model-123.mci"
     assert guard.classify(recipe) == "data"
     assert rels

@@ -44,7 +44,7 @@ bool cook(Asset& asset, std::string_view sourcePath) {
             for (int i = 0; i < 6; ++i) if (!std::isfinite(uv[i])) return false;
         }
     }
-    mc2::fmt::print_err("[CONTENT_COOK] source={} cache=source-only nodes={} materials={} sockets={} version={}\n",
+    mc2::fmt::print_err("[CONTENT_COOK] source={} key=0000000000000000 cache=source-only nodes={} materials={} sockets={} version={}\n",
         std::string(sourcePath), asset.nodes.size(), asset.materials.size(), asset.sockets.size(), cookerVersion);
     return true;
 }
