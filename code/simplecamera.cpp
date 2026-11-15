@@ -554,7 +554,6 @@ long SimpleCamera::update()
 	const float savedFrameLength = frameLength;
 	const bool capture = std::getenv("MECH_PREVIEW_CAPTURE") != nullptr;
 	if (capture) { frameLength = 1.f / 60.f; rotation = 30.f; rotationIncrement = 0; turntablePaused_ = true; }
-    if (capture && !bIsComponent) animationCamera = this;
 	if ( pObject )
 	{
 		// MERGE-CONFLICT-UI-PHASE1: see matching note in SimpleCamera::render() above —
