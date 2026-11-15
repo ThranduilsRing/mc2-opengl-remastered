@@ -5,6 +5,7 @@
 #include <memory>
 #include <string_view>
 #include "mc2video.h"
+#include "../GameOS/gameos/gos_render.h"
 #include "gos_crashbundle.h"
 
 #include <cstdio>
@@ -377,6 +378,7 @@ static void computeLetterboxQuad(int srcW, int srcH, double sar,
 
 VideoSession* video_open(const VideoOpenParams& p, VideoOpenResult* out)
 {
+    graphics::window_checkpoint("video_before");
     if (out) memset(out, 0, sizeof(*out));
     if (!g_ffmpegAvailable || !p.resolvedPath) return nullptr;
 
@@ -494,6 +496,7 @@ void video_close(VideoSession* s)
 {
     std::unique_ptr<VideoSession> sessionOwner(s);
     if (!s) return;
+    graphics::window_checkpoint("video_after");
     if (s->audioStreamStarted && soundSystem) {
         reinterpret_cast<SoundSystem*>(soundSystem)->endVideoPCMStream();
         s->audioStreamStarted = false;
@@ -838,6 +841,7 @@ void video_render(VideoSession* s)
     fillQ(vq[3], s->quadX0, s->quadY1, 0.0f, 1.0f);
     gos_DrawQuads(vq, 4);
     if (!s->loggedPresented) {
+        graphics::window_checkpoint("video_during");
         VIDEO_LOG("first_frame_presented path={}", mc2::fmt::safe(s->fmt->url));
         s->loggedPresented = true;
     }
