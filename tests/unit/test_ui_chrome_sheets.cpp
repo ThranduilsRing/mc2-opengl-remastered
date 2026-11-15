@@ -23,7 +23,7 @@ TEST_CASE("ui_chrome inset excludes whole images and content sprites") {
                           float u = .25f, float v = .25f, float r = .75f, float b = .75f) {
         return insetChromeCrop(path, pixel, legacy, nine, u, v, r, b);
     };
-    CHECK_FALSE(inset("data/art/gui/mcl_mm_2.png"));
+    CHECK(inset("data/art/gui/mcl_mm_2.png"));
     CHECK(inset("data/art/gui/mcl_splashscreen_frame_2.png"));
     CHECK(inset("data/art/gui/MCUI_Universal1.tga"));
     CHECK(inset("data/art/ui/panel.png", false, false, true));
@@ -92,16 +92,36 @@ TEST_CASE("ui_chrome menu openings preserve cable and hazard paint") {
     CHECK(p.data[(140 * 256 + 170) * 4 + 3] == 255);
     CHECK(p.data[(210 * 256 + 80) * 4 + 3] == 255);
     CHECK(p.data[(40 * 256 + 40) * 4 + 3] == 255);
-    CHECK(p.data[(40 * 256 + 140) * 4 + 3] == 255);
+    CHECK(p.data[(40 * 256 + 140) * 4 + 3] == 0);
     p = solid(256, 256, 3, 0);
     REQUIRE(clearMenuMatte("mcl_mm_2.png", p));
-    CHECK(p.data[(40 * 256 + 40) * 4 + 3] == 255);
-    CHECK(p.data[(140 * 256 + 40) * 4 + 3] == 255);
+    CHECK(p.data[(40 * 256 + 40) * 4 + 3] == 0);
+    CHECK(p.data[(140 * 256 + 40) * 4 + 3] == 0);
     p = solid(256, 256, 3, 0);
     REQUIRE(clearMenuMatte("mcl_mm_3.png", p));
     CHECK(p.data[(100 * 256 + 20) * 4 + 3] == 0);
     CHECK(p.data[(50 * 256 + 140) * 4 + 3] == 255);
+    CHECK(p.data[(220 * 256 + 10) * 4 + 3] == 0);
+    CHECK(p.data[(245 * 256 + 40) * 4 + 3] == 255);
+    CHECK(p.data[(40 * 256 + 180) * 4 + 3] == 0);
     CHECK_FALSE(clearMenuMatte("other.png", p));
+}
+
+TEST_CASE("ui_chrome keeps authored gold gradient and red markers") {
+    // Trigger paths: mclib/ui_chrome_sheets.{cpp,h}; source paint is never hue-normalized.
+    Pixels p{3, 1, 4, {255, 210, 40, 255, 255, 120, 20, 128, 220, 0, 0, 255}};
+    const auto authored = p.data;
+    REQUIRE(clearMenuMatte("mcl_mm_2.png", p));
+    CHECK(p.data == authored);
+    for (const auto path : {"mcl_splashscreen_frame_1.png", "mcl_splashscreen_frame_2.png"}) {
+        p = solid(3, 1, 4, 0);
+        p.data[3] = p.data[7] = p.data[11] = 255;
+        p.data[4] = 64;
+        REQUIRE(clearMenuMatte(path, p));
+        CHECK(p.data[3] == 0);
+        CHECK(p.data[7] == 255);
+        CHECK(p.data[11] == 0);
+    }
 }
 
 TEST_CASE("ui_chrome manifest round trip") {
