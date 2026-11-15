@@ -153,6 +153,8 @@ for f in "$SRCDATA"/textures/burnin_4x/*.burnin.tga; do
     esac
 done
 rm -f "$OUTDIR/mc2-burnins-4x-pt1.zip" "$OUTDIR/mc2-burnins-4x-pt2.zip"
+py -3 "$REPO/scripts/release_asset_guard.py" "$STAGE/burnins-pt1"
+py -3 "$REPO/scripts/release_asset_guard.py" "$STAGE/burnins-pt2"
 ( cd "$STAGE/burnins-pt1" && z "$OUTDIR/mc2-burnins-4x-pt1.zip" data ) >/dev/null
 ( cd "$STAGE/burnins-pt2" && z "$OUTDIR/mc2-burnins-4x-pt2.zip" data ) >/dev/null
 echo "[burnins-4x-pt1] $(ls -lh "$OUTDIR/mc2-burnins-4x-pt1.zip" | awk '{print $5}')"
@@ -170,6 +172,7 @@ find "$STAGE/gamedata/data/textures" -maxdepth 1 -name "*.burnin.tga" -delete
 find "$STAGE/gamedata/data/movies" -maxdepth 1 -iname "*.bik" -delete 2>/dev/null || true
 cp "$DEPLOY"/*.fst "$STAGE/gamedata/"
 rm -f "$OUTDIR/mc2-gamedata.zip"
+py -3 "$REPO/scripts/release_asset_guard.py" "$STAGE/gamedata"
 ( cd "$STAGE/gamedata" && z "$OUTDIR/mc2-gamedata.zip" data *.fst ) >/dev/null
 # Sanity: gamedata zip must NOT contain loose burnin tgas or .BIK movies.
 if "$SEVENZIP" l "$OUTDIR/mc2-gamedata.zip" | grep -q "\.burnin\.tga"; then
@@ -218,6 +221,7 @@ if [ "${#biks[@]}" -eq 0 ]; then
 fi
 for f in "${biks[@]}"; do cp -f "$f" "$STAGE/movies/data/movies/"; done
 rm -f "$OUTDIR/mc2-movies.zip"
+py -3 "$REPO/scripts/release_asset_guard.py" "$STAGE/movies"
 ( cd "$STAGE/movies" && z "$OUTDIR/mc2-movies.zip" data ) >/dev/null
 echo "[movies] $(ls -lh "$OUTDIR/mc2-movies.zip" | awk '{print $5}') (${#biks[@]} BIK files)"
 
@@ -230,6 +234,7 @@ for kind in art tgl; do
     mkdir -p "$STAGE/$kind/data"
     cp -r "$src" "$STAGE/$kind/data/$kind"
     rm -f "$OUTDIR/mc2-$kind.zip"
+    py -3 "$REPO/scripts/release_asset_guard.py" "$STAGE/$kind"
     ( cd "$STAGE/$kind" && z "$OUTDIR/mc2-$kind.zip" data ) >/dev/null
     echo "[$kind] $(ls -lh "$OUTDIR/mc2-$kind.zip" | awk '{print $5}')"
 done
@@ -318,6 +323,7 @@ for cfg in minprefs.cfg orgprefs.cfg prefs.cfg system.cfg; do
     cp "$DEPLOY/$cfg" "$STAGE/engine/"
 done
 rm -f "$OUTDIR/mc2-remastered-engine.zip"
+py -3 "$REPO/scripts/release_asset_guard.py" "$STAGE/engine"
 ( cd "$STAGE/engine" && z "$OUTDIR/mc2-remastered-engine.zip" . ) >/dev/null
 # Sanity: engine zip must contain the cfg files that gate the sniffer
 # branch. minprefs.cfg is the factory source for first-launch options.cfg.

@@ -30,6 +30,7 @@ SimpleCamera.cpp	: Implementation of the SimpleCamera component.
 // sebi: !NB remove when assert(0 && "test") is removed below
 #include <cassert>
 #include <chrono>
+#include <cstdlib>
 #include <algorithm>
 #include <filesystem>
 #include <string>
@@ -543,6 +544,9 @@ void SimpleCamera::drawPreviewToPanel( float panelX, float panelY, float panelW,
 ////////////////////////////////////////////////
 long SimpleCamera::update()
 {
+	const float savedFrameLength = frameLength;
+	const bool capture = std::getenv("MECH_PREVIEW_CAPTURE") != nullptr;
+	if (capture) { frameLength = 1.f / 60.f; rotation = 30.f; rotationIncrement = 0; turntablePaused_ = true; }
 	if ( pObject )
 	{
 		// MERGE-CONFLICT-UI-PHASE1: see matching note in SimpleCamera::render() above —
@@ -645,6 +649,7 @@ long SimpleCamera::update()
 
 	}
 
+	frameLength = savedFrameLength;
 	return 0;
 }
 
@@ -694,6 +699,8 @@ void SimpleCamera::setMech(mc2::czstring fileName, long baseColor, long highligh
 	}
 
 	std::string NoPathFileName = stemOfPath(fileName);
+	if (const auto* chassis = std::getenv("MECH_PREVIEW_CAPTURE"); chassis && *chassis)
+		NoPathFileName = stemOfPath(chassis);
 
 	char testName[256];
 	strcpy( testName, NoPathFileName.c_str() );

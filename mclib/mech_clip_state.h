@@ -51,6 +51,14 @@ inline constexpr int kGestureWalk = 4, kGestureRun = 7, kGestureReverse = 9, kGe
 inline Choice once(std::string_view c) { Choice ch; ch.clip = c.data(); ch.mode = Mode::Once; ch.immediate = true; return ch; }
 inline Choice loop(std::string_view c, bool loco = false) { Choice ch; ch.clip = c.data(); ch.locomotion = loco; return ch; }
 
+template<class HasClip>
+std::string_view previewClip(std::string_view showcase, std::string_view gesture,
+                             std::string_view first, HasClip hasClip) {
+    for (auto name : {showcase, gesture, std::string_view("atlas_moveCoreIdle"), first})
+        if (!name.empty() && hasClip(name)) return name;
+    return {};
+}
+
 // activeClipFinished: the currently playing Once clip reached its end (drives jump start ->
 // airborne and land -> locomotion). destroyed: the mech is dead (death clips instead of knockdowns).
 inline Choice select(int gesture, float speed, float turnRate, int turnStreak, bool destroyed,

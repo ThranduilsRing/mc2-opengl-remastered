@@ -15,6 +15,7 @@ layout(set = 0, binding = 0, std140) uniform VfxVsParams {
 layout(std430, set = 2, binding = 0) readonly buffer VegInst { PackedVegInstance inst[]; };
 layout(std430, set = 2, binding = 1) readonly buffer VegDense { uint dense[]; };
 layout(set = 2, binding = 2, std140) uniform VegDrawParams { VegParamsData D; };   // the frame's cull parameters
+layout(std430, set = 2, binding = 3) readonly buffer VegFootprints { uint footprintWords[]; };
 
 layout(location = 0) out vec2 v_uv;
 layout(location = 1) out vec4 v_color;
