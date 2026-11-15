@@ -61,6 +61,8 @@ TEST_CASE("ui_chrome shipped credits contain no machine paths") {
     while (std::getline(input, line)) {
         INFO(line);
         CHECK(line.find("mc2-opengl") == std::string::npos);
+        // Owner 11-15: credits are MC2 base game + MC2 modding only; libraries live in THIRD_PARTY_NOTICES.txt.
+        CHECK(line.find("3rdparty/") == std::string::npos);
         for (size_t i = 1; i + 1 < line.size(); ++i)
             CHECK_FALSE(((i == 1 || line[i-2] == ' ' || line[i-2] == '(') &&
                                           line[i] == ':' && (line[i+1] == '/' || line[i+1] == '\\') &&
