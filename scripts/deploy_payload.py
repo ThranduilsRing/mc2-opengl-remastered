@@ -1540,7 +1540,8 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
                     sp = os.path.join(dirpath, fn)
                     rel = os.path.relpath(sp, src_root).replace(os.sep, "/")
                     items.append((sp, rel, "support"))
-    return items
+    from asset_parity import is_deploy_artifact
+    return [item for item in items if not is_deploy_artifact(item[1])]
 
 
 # ---------------------------------------------------------------------------
@@ -1638,6 +1639,8 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
     at write time. Metadata drift rehashes bytes, including same-size corruption.
     Executables are always hashed on both sides. --full-verify copies everything.
     """
+    from asset_parity import is_deploy_artifact
+    items = [item for item in items if not is_deploy_artifact(item[1])]
     # Retention must reach retire_unowned(), before it can delete static files.
     # Shader inventories still belong entirely to the current build.
     src_hashes = {rel: row for rel, row in (cache or {}).items()
@@ -1783,6 +1786,29 @@ def retire_unowned(target_dir, keep, preserve=(), own_shaders=False):
     manifest loop and verify_published_identity failed the shader inventory)."""
     root = Path(target_dir).resolve()
     shared = any(root == Path(preset["target_dir"]).resolve() for preset in TARGET_PRESETS.values())
+    from asset_parity import is_deploy_artifact
+    # Refuse to discard crash evidence; the caller must archive it before deploying.
+    artifacts = []
+    for directory, _dirs, files in os.walk(root):
+        for name in files:
+            path = Path(directory) / name
+            rel = path.relative_to(root).as_posix()
+            if not is_deploy_artifact(rel):
+                continue
+            if not path.resolve().is_relative_to(root):
+                fail(f"diagnostic payload path escapes target: {rel}")
+            if "crashes" in {part.casefold() for part in Path(rel).parts} or path.suffix.lower() in {".dmp", ".mdmp"}:
+                fail(f"archive crash evidence before deploying: {path}")
+            artifacts.append((path, rel))
+    for path, rel in artifacts:
+        path.unlink()
+        keep.pop(rel, None)
+        log(f"pruned diagnostic payload: {rel}")
+    for directory, _dirs, _files in os.walk(root, topdown=False):
+        path = Path(directory)
+        if path != root and is_deploy_artifact(path.relative_to(root).as_posix()):
+            if path.resolve().is_relative_to(root) and not any(path.iterdir()):
+                path.rmdir()
     for rel, (digest, size, _mtime) in read_manifest(target_dir).items():
         if rel in keep or rel in preserve:
             continue
@@ -2129,7 +2155,9 @@ def bootstrap_install(src, target, exe_name, pdb_name):
         log(f"bootstrap: {target} already has files; not copying from {src}")
         return
     skip = BOOTSTRAP_SKIP | {exe_name, pdb_name}
-    names = [n for n in sorted(os.listdir(src)) if n not in skip and not n.lower().endswith((".log", ".pdb"))]
+    from asset_parity import is_deploy_artifact
+    names = [n for n in sorted(os.listdir(src)) if n not in skip and not is_deploy_artifact(n)
+             and not n.lower().endswith(".pdb")]
     if exe_name == "mc2":
         names = [n for n in names if n != ".mc2_deploy_lane.json"
                  and not n.lower().endswith((".exe", ".dll", ".bat"))]
@@ -2147,7 +2175,8 @@ def bootstrap_install(src, target, exe_name, pdb_name):
     for n in names:
         a, b = os.path.join(src, n), os.path.join(partial, n)
         if os.path.isdir(a):
-            shutil.copytree(a, b, ignore=shutil.ignore_patterns("*.log"))
+            shutil.copytree(a, b, ignore=lambda directory, names: [name for name in names
+                if is_deploy_artifact(Path(directory, name).relative_to(src).as_posix())])
         else:
             shutil.copy2(a, b)
     if os.path.isdir(target):
@@ -2246,6 +2275,9 @@ def deploy_from_payload(payload, target, src_root, head):
         if next(csv.reader(stream), [])[:2] != ['manifest_version', 'v1']:
             fail('unsupported payload manifest')
         rows = {row['relpath']: row for row in csv.DictReader(stream)}
+    from asset_parity import is_deploy_artifact
+    if any(is_deploy_artifact(rel) for rel in rows):
+        fail("payload contains diagnostic or backup artifacts; republish a clean payload")
     staged = payload / 'files'
     for rel, row in rows.items():
         src, dst = staged / rel, target / rel

@@ -159,9 +159,17 @@ def _norm(rel: str) -> str:
     return rel.replace("\\", "/").lstrip("/").casefold()
 
 
+def is_deploy_artifact(rel: str) -> bool:
+    """Generated diagnostics and backup trees are never install payload."""
+    parts = _norm(rel).rstrip("/").split("/")
+    return (any(p in {"logs", "captures", "debug_state", "crashes", "_rdoc", "_pngcap"}
+                or p.endswith("_bak") for p in parts)
+            or parts[-1].endswith((".log", ".rdc", ".dmp", ".mdmp", ".orig_bak")))
+
+
 def is_excluded(rel: str) -> bool:
     low = _norm(rel)
-    return any(low.startswith(prefix) for prefix in EXCLUDED)
+    return is_deploy_artifact(rel) or any(low.startswith(prefix) for prefix in EXCLUDED)
 
 
 def is_exempt(install: Path | str, ref: Path | str | None = None) -> bool:
