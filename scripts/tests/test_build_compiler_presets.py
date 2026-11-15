@@ -248,7 +248,7 @@ def test_verified_clangcl_evidence(monkeypatch, capsys):
 def test_preset_run_uses_only_selected_corpus_tree(monkeypatch, layout):
     record_runs(monkeypatch, bch)
     tree = ROOT / bd.tree_name("build64-tests", "clang-cl-dev")
-    binary = "mc2_tests_selected" + (".exe" if bch.os.name == "nt" else "")
+    binary = "mc2_tests" + (".exe" if bch.os.name == "nt" else "")
     selected = tree / "RelWithDebInfo" / binary if layout == "config" else tree / binary
     monkeypatch.setattr(Path, "is_file", lambda path: path == selected if layout != "missing" else "build64-tests" in str(path))
     runtime = Mock(return_value=0)

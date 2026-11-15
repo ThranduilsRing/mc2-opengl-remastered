@@ -70,7 +70,7 @@ def case_owner(only):
     hits = set()
     for path in (REPO_ROOT / "tests/unit").glob("test_*.cpp"):
         names = pattern.findall(path.read_text(encoding="utf-8", errors="replace"))
-        if any(fnmatch.filter(names, item + "/*" if item in REGISTERED_HARNESSES else item) for item in only):
+        if any(fnmatch.filter(names, item) for item in only if item not in REGISTERED_HARNESSES):
             hits.add(path.relative_to(REPO_ROOT).as_posix())
     return sorted(hits)
 
@@ -148,20 +148,10 @@ UNIT_RUN_TIMEOUT_S = 900  # a hung doctest exit once held the MSVC pdb for 80 mi
 TREE_LOCK_WAIT_S = 1800   # a cold mc2_tests build in the other holder (harnesses step) finishes well inside this
 
 
-def prepare_unit_tree(bdir, configure, only):
-    """Persist selection and configure arguments; CMake tracks source/include changes."""
-    selection = bdir / "mc2_unit_selection.cmake"
-    if only:
-        owners = case_owner(only)
-        if not owners:
-            raise ValueError("selection failed: no owning test sources")
-        bdir.mkdir(parents=True, exist_ok=True)
-        content = "set(MC2_UNIT_SELECTED_SOURCES\n" + "".join(
-            f'  "{(REPO_ROOT / path).as_posix()}"\n' for path in owners) + ")\n"
-        if not selection.is_file() or selection.read_text(encoding="utf-8") != content:
-            selection.write_text(content, encoding="utf-8")
+def prepare_unit_tree(bdir, configure):
+    """Reuse configure arguments; CMake's build system tracks source/include changes."""
     receipt = bdir / "mc2_unit_configure.json"
-    signature = json.dumps([configure, selection.read_text(encoding="utf-8") if selection.is_file() else None])
+    signature = json.dumps(configure)
     configured = ((bdir / "CMakeCache.txt").is_file() and receipt.is_file()
                   and receipt.read_text(encoding="utf-8") == signature)
     return configured, receipt, signature
@@ -245,12 +235,7 @@ def build_and_run_unit_tests(config, run, asan=False, only=None, preset=None,
     if not lock.acquire(TREE_LOCK_WAIT_S):
         return False, f"build failed:\nanother build held {bdir.name} for {TREE_LOCK_WAIT_S}s ({lock.holder()})"
     try:
-        try:
-            configured, receipt, signature = prepare_unit_tree(bdir, commands[0], only)
-        except ValueError as exc:
-            return False, str(exc)
-        if only:
-            commands[1][commands[1].index("mc2_tests")] = "mc2_tests_selected"
+        configured, receipt, signature = prepare_unit_tree(bdir, commands[0])
         if configured and preset:
             try:
                 bd.verify_compiler(bdir, preset)
@@ -258,16 +243,18 @@ def build_and_run_unit_tests(config, run, asan=False, only=None, preset=None,
                 return False, str(exc)
         if configured:
             commands[0] = None
+        else:
+            receipt.unlink(missing_ok=True)
         built = _configure_and_build(commands, cache, preset, log_dir, jobs, keep_going, cache_env, only, timings, bdir)
         if not built and not configured and (bdir / "CMakeCache.txt").is_file():
             receipt.write_text(signature, encoding="utf-8")
-        if built:
-            return False, built
-        if not run:
-            return True, f"built in {time.monotonic() - started:.0f}s"
-        return _run_unit_exe(bdir, config, preset, only, asan, started)
     finally:
         lock.close()
+    if built:
+        return False, built
+    if not run:
+        return True, f"built in {time.monotonic() - started:.0f}s"
+    return _run_unit_exe(bdir, config, preset, only, asan, started)
 
 
 def _configure_and_build(commands, cache, preset, log_dir, jobs, keep_going, cache_env, only, timings, bdir):
@@ -303,10 +290,9 @@ def _configure_and_build(commands, cache, preset, log_dir, jobs, keep_going, cac
 
 def _run_unit_exe(bdir, config, preset, only, asan, started):
     suffix = ".exe" if os.name == "nt" else ""
-    binary = "mc2_tests_selected" if only else "mc2_tests"
-    exe = bdir / config / (binary + suffix)
+    exe = bdir / config / ("mc2_tests" + suffix)
     if not exe.is_file():
-        exe = bdir / (binary + suffix)
+        exe = bdir / ("mc2_tests" + suffix)
     if preset and not exe.is_file():
         return False, f"requested compiler binary missing in {bdir}"
     command = [str(exe), "--no-breaks"]

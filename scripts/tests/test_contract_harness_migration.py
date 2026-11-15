@@ -39,7 +39,7 @@ def test_selection_filters_the_shared_binary(monkeypatch):
     selected = ["icon_atlas_harness", "job_system_harness"]
     assert builder.main(["--run", "--unit", "--only", selected[0], "--only", selected[1]]) == 0
     assert len(commands) == 3
-    assert "--target" in commands[1][0] and "mc2_tests_selected" in commands[1][0]
+    assert "--target" in commands[1][0] and "mc2_tests" in commands[1][0]
     assert commands[2][0][-1] == "--test-case=icon_atlas_harness/*,job_system_harness/*"
     assert commands[2][1]["cwd"] == ROOT
 
