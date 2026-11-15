@@ -11,4 +11,6 @@ import tempfile
 os.environ["MC2_CURSOR_GUARD_OFF"] = "1"
 # A private host lease file per test process: tests that spawn a fake engine contend with each other, never with the lanes
 # (scripts/smoke_lib/host_lease.py raises when a test reaches the real lease without this).
-os.environ.setdefault("MC2_HOST_LEASE_PATH", os.path.join(tempfile.gettempdir(), f"mc2-host-lease-test-{os.getpid()}.json"))
+# xdist workers inherit the controller's path, so each worker gets its own file (a shared one made parallel lease tests race).
+if os.environ.get("PYTEST_XDIST_WORKER") or not os.environ.get("MC2_HOST_LEASE_PATH"):
+    os.environ["MC2_HOST_LEASE_PATH"] = os.path.join(tempfile.gettempdir(), f"mc2-host-lease-test-{os.getpid()}.json")

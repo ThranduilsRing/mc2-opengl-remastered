@@ -26,7 +26,9 @@ os.environ["MC2_BOX_PROOFS"] = os.path.join(tempfile.gettempdir(), f"mc2-box-pro
 os.environ["MC2_PRECHECK_RECEIPTS"] = os.path.join(tempfile.gettempdir(), f"mc2-precheck-receipts-test-{os.getpid()}")
 # A private host lease file per test process: tests that spawn a fake engine contend with each other, never with the lanes
 # (scripts/smoke_lib/host_lease.py raises when a test reaches the real lease without this).
-os.environ.setdefault("MC2_HOST_LEASE_PATH", os.path.join(tempfile.gettempdir(), f"mc2-host-lease-test-{os.getpid()}.json"))
+# xdist workers inherit the controller's path, so each worker gets its own file (a shared one made parallel lease tests race).
+if os.environ.get("PYTEST_XDIST_WORKER") or not os.environ.get("MC2_HOST_LEASE_PATH"):
+    os.environ["MC2_HOST_LEASE_PATH"] = os.path.join(tempfile.gettempdir(), f"mc2-host-lease-test-{os.getpid()}.json")
 
 
 # The gate sets MC2_IN_GATE only on game-launching stages (merge_gate.gate_env); a test run that inherits it from an
