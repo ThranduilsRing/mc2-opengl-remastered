@@ -65,6 +65,8 @@ TEST_CASE("net lockstep delayed peer remains identical for 18000 ticks and catch
     REQUIRE(host.divergence()); REQUIRE(client.divergence());
     CHECK(host.divergence()->tick == 18000); CHECK(client.divergence()->tick == 18000);
     CHECK(host.divergence()->local == client.divergence()->remote);
+    host.stop("MP peer disconnected"); client.stop("MP peer stalled");
+    CHECK(host.error() == "MP_DESYNC tick=18000"); CHECK(client.error() == "MP_DESYNC tick=18000");
     CHECK_FALSE(host.ready()); CHECK_FALSE(client.ready());
 }
 TEST_CASE("net lockstep rejects forged source, duplicate batches, future markers and truncated packets") {

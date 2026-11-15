@@ -237,22 +237,24 @@ bool prepareTick(bool due) {
     auto& queue = *orderQueue;
     const auto& validator = *admission;
     const auto packets = session->pump();
-    if (!session->error().empty()) fail(session->error());
     if (!gate && session->connected()) {
         gate = std::make_unique<Lockstep>(localSlot(), session->inputDelay());
         lastProgress = std::chrono::steady_clock::now();
         trace << "NETWORK rtt_ms=" << session->rtt() << " jitter_ms=" << session->jitter()
               << " input_delay=" << session->inputDelay() << '\n' << std::flush;
     }
+    if (!gate && !session->error().empty()) fail(session->error());
     for (const auto& packet : packets) {
         if (!gate) fail("MP data before timing agreement");
         gate->receive(packet);
     }
+    // A final divergent hash and disconnect can arrive in the same pump.
+    // Preserve the first divergent tick before reporting transport failure or timeout.
+    if (gate) checkError();
     const auto age = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now() - (gate ? lastProgress : began)).count();
     if (const auto* timeout = progressTimeout(gate != nullptr, static_cast<std::uint64_t>(age))) fail(timeout);
     if (!gate) return false;
-    checkError();
     if (queue.completedTick() != gate->completed()) fail("MP order queue tick mismatch");
     for (std::uint32_t slot = 0; slot < 2; ++slot) {
         const auto id = peerSourceBase + slot;
