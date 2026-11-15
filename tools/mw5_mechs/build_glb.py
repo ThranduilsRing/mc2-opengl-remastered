@@ -17,8 +17,12 @@ from pathlib import Path
 
 import numpy as np
 
+if __package__:
+    from .ue_basis import psa_quat_to_gltf
+else:
+    from ue_basis import psa_quat_to_gltf
+
 RENAME = {"Foot0_Left": "j_LFoot", "Foot0_Right": "j_RFoot", "Torso_Pitch": "j_Spine2", "Cockpit": "j_COCKPIT"}
-FIX_ROT = [0.0, 0.0, 0.0, 1.0]   # identity; PSA keys map (x,y,z,w) -> (x,z,y,+w), verified by FK (feet below pelvis)
 KEEP_ALWAYS ={"Root", "Pelvis", "Torso_Twist", "Torso_Animation", "Torso_Pitch", "Cockpit"}
 # MW5 clip (TimberWolf/Animations/TBR_<name>_ANI) -> the engine's hard-coded clip name (mclib/mech_clip_state.h)
 CLIPS = {
@@ -57,19 +61,44 @@ def read_accessor(g, buf, i):
     return arr.reshape(a["count"], n) if n > 1 else arr
 
 
-def read_psa(path):
+def actorx_chunks(path):
     d = Path(path).read_bytes()
     off, ch = 0, {}
     while off < len(d):
+        if len(d) - off < 32:
+            raise ValueError("truncated ActorX chunk header")
         name, _flags, size, cnt = struct.unpack_from("<20sIII", d, off)
         off += 32
         ch[name.split(b"\0")[0].decode()] = (off, size, cnt)
         off += size * cnt
+        if off > len(d):
+            raise ValueError("truncated ActorX chunk data")
+    return d, ch
+
+
+def read_psk(path):
+    """Read REFSKELT (FNamedBoneBinary): name, parent, xyzw, centimetres."""
+    d, ch = actorx_chunks(path)
+    o, size, cnt = ch["REFSKELT"]
+    if size != 120:
+        raise ValueError(f"unsupported REFSKELT record size {size}")
+    bones = []
+    for i in range(cnt):
+        name, _flags, _children, parent, *pose = struct.unpack_from("<64sIii4f3ff3f", d, o + i * size)
+        bones.append({"name": name.split(b"\0")[0].decode(), "parent": parent,
+                      "quat": pose[:4], "pos": pose[4:7]})
+    return bones
+
+
+def read_psa(path):
+    d, ch = actorx_chunks(path)
     o, size, cnt = ch["BONENAMES"]
     names = [struct.unpack_from("<64s", d, o + i * size)[0].split(b"\0")[0].decode() for i in range(cnt)]
     o, _, _ = ch["ANIMINFO"]
     _n, _g, nb, _ri, _ks, _kq, _kr, _tt, rate, _sb, _fr, nframes = struct.unpack_from("<64s64siiiifffiii", d, o)
     o, size, cnt = ch["ANIMKEYS"]
+    if size != 32 or cnt != nframes * nb or nb != len(names) or rate <= 0:
+        raise ValueError("inconsistent PSA animation dimensions/rate")
     keys = np.frombuffer(d, dtype="<f4", count=cnt * 8, offset=o).reshape(nframes, nb, 8)
     return names, keys, float(rate), nframes
 
@@ -95,6 +124,7 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None):
 
     # rigid parts: every triangle goes to the dominant bone of its first vertex
     parts = {}
+    total_triangles, mixed_triangles, pairs = 0, 0, {}
     for mesh in g["meshes"]:
         for pr in mesh["primitives"]:
             at = pr["attributes"]
@@ -106,10 +136,26 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None):
             dom = J[np.arange(len(J)), np.argmax(W, axis=1)]
             idx = read_accessor(g, buf, pr["indices"]).astype(np.int64).reshape(-1, 3)
             tb = dom[idx[:, 0]]
+            total_triangles += len(idx)
+            for corners in dom[idx]:
+                bones = sorted(set(map(int, corners)))
+                if len(bones) > 1:
+                    mixed_triangles += 1
+                    for a in range(len(bones)):
+                        for c in range(a + 1, len(bones)):
+                            pair = (bones[a], bones[c])
+                            pairs[pair] = pairs.get(pair, 0) + 1
             for b in np.unique(tb):
                 tri = idx[tb == b]
                 used, inv = np.unique(tri.ravel(), return_inverse=True)
                 parts.setdefault(int(b), []).append((pos[used], nrm[used], uv[used], inv.reshape(-1, 3)))
+
+    for (a, b), count in sorted(pairs.items()):
+        print(f"mixed_pair {nodes[joint_nodes[a]]['name']} {nodes[joint_nodes[b]]['name']} {count}")
+    fraction = mixed_triangles / max(total_triangles, 1)
+    print(f"mixed_triangles {mixed_triangles} {total_triangles} {fraction:.8f}")
+    if fraction > 0.005:
+        raise ValueError("mixed dominant-bone triangles exceed 0.5%")
 
     keep = set()
     for b in parts:
@@ -142,10 +188,6 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None):
         if len(e["name"]) > 24:
             sys.exit("node name over 24 chars: " + e["name"])
     root_nodes = [remap[i] for i in order if i not in parent or parent[i] not in remap]
-    # orientation fix: the engine's skinned bake shows the umodel rest pose upside down; a fixed root rotation
-    # above the skeleton (the inverse-binds stay unfixed) turns the baked model upright.
-    out_nodes.append({"name": "mw5_fix", "rotation": FIX_ROT, "children": root_nodes})
-    root_nodes = [len(out_nodes) - 1]
 
     blob = bytearray()
     views, accs = [], []
@@ -169,6 +211,8 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None):
         ibm = np.linalg.inv(gmat(jn))
         orig = read_accessor(g, buf, skin["inverseBindMatrices"])[b].reshape(4, 4).T
         drift = max(drift, float(np.abs(ibm - orig).max()))
+        if not np.isfinite(drift) or drift >= 1e-4:
+            raise ValueError(f"ibm_drift {drift:.9g} >= 1e-4")
         p = [np.concatenate([q[k] for q in plist]) for k in range(3)]
         base, tris = 0, []
         for q in plist:
@@ -184,11 +228,13 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None):
         meshes.append({"name": mname, "primitives": [{"attributes": attrs, "indices": add(tris.ravel(), 5125, "SCALAR", 34963), "material": 0}]})
         skins.append({"joints": [remap[jn]], "inverseBindMatrices": add(ibm.T.astype(np.float32)[None].reshape(1, 16), 5126, "MAT4")})
         mesh_nodes.append({"name": mname + "_n", "mesh": len(meshes) - 1, "skin": len(skins) - 1})
+        if len(mesh_nodes[-1]["name"]) > 24:
+            raise ValueError("node name over 24 chars: " + mesh_nodes[-1]["name"])
     first = len(out_nodes)
     out_nodes += mesh_nodes
     root_nodes += list(range(first, len(out_nodes)))
 
-    # clips: rotation only (the engine samples rotations), PSA is UE Z-up left-handed -> glTF (x, z, y, -w)
+    # Rotation-only clips: shared ActorX basis accounts for the root/child convention.
     name_to_node = {nm(o): remap[o] for o in order}
     anims = []
     for src, clip in CLIPS.items():
@@ -205,9 +251,8 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None):
             node = name_to_node.get(RENAME.get(bname, bname))
             if node is None:
                 continue
-            q = keys[:, bi, 3:7].astype(np.float64)
-            q = np.stack([q[:, 0], q[:, 2], q[:, 1], q[:, 3]], axis=1)
-            q /= np.linalg.norm(q, axis=1, keepdims=True)
+            old = order[node]
+            q = psa_quat_to_gltf(keys[:, bi, 3:7], parent.get(old) not in joint_nodes)
             for k in range(1, nf):
                 if np.dot(q[k], q[k - 1]) < 0:
                     q[k] = -q[k]
