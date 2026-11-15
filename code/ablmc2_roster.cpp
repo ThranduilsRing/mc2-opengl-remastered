@@ -1,3 +1,4 @@
+#include "math/sim_math.h"
 // ABL native bindings: text messages, teleport, roster/pilot operations, campaign globals, strike toggles, radius counts, omni stubs, trigger areas and off-map queries.
 // Declared in ablmc2_internal.h; registered, in order, by initABL in ablmc2.cpp.
 #include "mc2_czstring.h"
@@ -416,7 +417,7 @@ void execGetTargetRelativePosition (void) {
 	float dx = tgtPos.x - myPos.x;
 	float dy = tgtPos.y - myPos.y;
 	float range = sqrt(dx * dx + dy * dy);
-	float angle = atan2(dy, dx);
+	float angle = mc2::sim::math::atan2(dy, dx);
 	rangeOut[0] = range * metersPerWorldUnit;
 	angleOut[0] = angle;
 }

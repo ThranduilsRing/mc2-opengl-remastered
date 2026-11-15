@@ -1,5 +1,13 @@
 # Third-Party Notices
 
+## OpenLibm v0.8.7
+Derived from https://github.com/JuliaMath/openlibm/tree/v0.8.7/src.
+Vendored binary64 fdlibm kernels at 3rdparty/detmath/openlibm.cpp, with declarations in openlibm.h.
+Copyright Sun Microsystems, Inc. (1993, 2004) and other upstream contributors;
+per-file permissive notices are retained with the kernels. Permission to use, copy,
+modify, and distribute is granted provided the original notices are preserved.
+Adapted for C++ namespaces, bit_cast word access and deterministic simulation math.
+
 ## nlohmann/json v3.11.3
 MIT License. Source: https://github.com/nlohmann/json
 Single-header, vendored at 3rdparty/include/nlohmann/json.hpp.

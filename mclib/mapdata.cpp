@@ -1,3 +1,4 @@
+#include "math/sim_math.h"
 //---------------------------------------------------------------------------
 //
 // MapData.cpp -- File contains class code for the terrain mesh
@@ -1692,7 +1693,7 @@ float MapData::terrainAngle (const glm::vec3 &position, glm::vec3* normal)
 		perpendicularVec.y = 0.0f;	
 		
 		result = glm::dot(perpendicularVec, worldK);
-		result = acos(result) * RADS_TO_DEGREES;
+		result = mc2::sim::math::acos(result) * RADS_TO_DEGREES;
 	}
 
 	return (result);

@@ -353,7 +353,7 @@ void ControlGui::disableAllVehicleButtons()
 
 }
 
-const char* ControlGui::getVehicleName( long& ID)
+const char* ControlGui::getVehicleName( int32_t& ID)
 {
 	for ( int i = GUARD_TOWER; i <= RECOVERY_TEAM; i++ )
 	{

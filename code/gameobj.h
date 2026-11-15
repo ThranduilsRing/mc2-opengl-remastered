@@ -90,9 +90,9 @@ inline constexpr int NUM_ATTACKSOURCES = 5;
 
 struct _WeaponShotInfo {
 	GameObjectWatchID	attackerWID;
-	long				masterId;			// attack weapon master ID
+	int32_t				masterId;			// attack weapon master ID
 	float				damage;				// damage caused by this shot
-	long				hitLocation;		// hit location on target
+	int32_t				hitLocation;		// hit location on target
 	float				entryAngle;			// angle from which target was hit
 
 	void init (GameObjectWatchID _attackerWID, long _masterId, float _damage, long _hitLocation, float _entryAngle);

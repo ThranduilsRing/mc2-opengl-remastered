@@ -195,7 +195,7 @@ class ControlGui
 		bool pushButton (long buttonId);
 		bool flashRPTotal (long numFlashes);
 
-		const char* getVehicleName( long& ID );
+		const char* getVehicleName( int32_t& ID );
 		const char* getVehicleNameFromID (long ID);
 		long playerSupportCost(int command) const {
 			return command >= LARGE_AIRSTRIKE && command < STOP_VEHICLE
