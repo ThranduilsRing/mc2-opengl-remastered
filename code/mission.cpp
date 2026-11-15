@@ -413,7 +413,7 @@ long Mission::submitPlayerOrder(Mover* mover, const ::TacticalOrder& legacy, boo
     const bool attacking = p.kind == OrderKind::AttackObject || p.kind == OrderKind::AttackPoint;
     const bool moving = (p.kind >= OrderKind::MoveToPoint && p.kind <= OrderKind::Guard) ||
         p.kind == OrderKind::Withdraw || p.kind == OrderKind::Scramble;
-    if (moving || attacking || p.kind == OrderKind::Wait) {
+    if (moving || attacking || p.kind == OrderKind::Wait || legacy.targetWID) {
         auto& m = p.move.emplace();
         const auto& old = legacy.moveParams;
         if (old.wayPath.numPoints < 0 || old.wayPath.numPoints > MAX_WAYPTS) return 1;
@@ -437,6 +437,13 @@ long Mission::submitPlayerOrder(Mover* mover, const ::TacticalOrder& legacy, boo
         auto* target = ObjectManager->getByWatchID(legacy.targetWID);
         if (!target || target->getPartId() <= 0) return 1;
         p.target = ObjectRef{static_cast<std::uint32_t>(target->getPartId()), static_cast<std::uint32_t>(target->getWatchID(false))};
+        // Target orders carry their approach speed in mode[0], even without
+        // legacy waypoints. Pair it with the target position for the queue.
+        if (p.move && p.move->wayPath.points.empty()) {
+            const auto position = target->getPosition();
+            p.move->wayPath.points.push_back({position.x, position.y, position.z});
+            p.move->wayPath.mode.push_back(static_cast<TravelMode>(legacy.moveParams.wayPath.mode[0]));
+        }
     }
     const auto admitted = submitMissionOrder(orderSession(), std::move(e));
     if (!admitted) mc2::fmt::print_err("[ORDER_INGRESS v1] player_rejected part={} reason={}\n",

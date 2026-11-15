@@ -92,6 +92,7 @@ void                pump_loading_events     ();
 void                destroy_window          (RenderWindowHandle rw_handle);
 bool                set_window_fullscreen   (RenderWindowHandle rw_handle, bool fullscreen);
 // NOFOCUS-HARDEN-1: true when MC2_WINDOW_OFFSCREEN is set -- the window is
+void                window_checkpoint(std::string_view why, bool restore = false);
 // created off the visible desktop and must be kept there. See gos_render.cpp.
 bool                window_offscreen_requested();
 // Re-assert the offscreen origin after any external window-mode change. No-op

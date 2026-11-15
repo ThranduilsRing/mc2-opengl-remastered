@@ -6,7 +6,7 @@
  "data/art/mcl_mc_clangaussrifle.tga": "6875e6c4db3a8557926c7996e0f43dda7f437360369dc5dfdaf0d08e7be0796d",
  "data/art/mcl_mc_clanheavylargelaser.tga": "4bf1f7c92f4e4cdc6e05de2a5bdef95f979212233d4d2e3e5e57216e0ccd31f2",
  "data/art/mcl_mc_clanheavylaser.tga": "e2c91419ead899ed34d82eb6e9da47609f05aad029195a2af43caed8e3aa30d6",
- "data/art/mcl_mc_clanlrmrack.tga": "2d9a9e3e45c4b0d9008c33621fcbc0c48b2f0bb8e560d86620424508e86ccaf0",
+ "data/art/mcl_mc_clanlrmrack.tga": "79afee379f12a3700583b69296a277248c0d607739baf04bfdc757108aa0680f",
  "data/art/mcl_mc_clanpulselargelaser.tga": "c8a39f0b2bb00baed5931d0b81c2e574b776586ce15709520da972c341058a55",
  "data/art/mcl_mc_clanpulselaser.tga": "196cf69400e07830bddb1bc785d09a2ac72757948528633bd23cb0a26b993942",
  "data/art/mcl_mc_clanstreaksrmpack.tga": "a24767dfb2943cfeab80ee78837938a28459217c94060480be1f711f24f8bf9c",
@@ -38,7 +38,7 @@
  "data/art/mcl_mc_ultraheavyautocannon.tga": "1b7d04764451053064e38c7df33eb9fc04b93156d305dd81c4dd9a24bca62128",
  "data/art/mcl_mc_ultralightautocannon.tga": "ddadba061b74544af61a9a7661a2a417fff20a5df8aac0e79cfc72700cf0985e",
  "data/art/mcl_mc_ultramediumautocannon.tga": "e2f9762117ab6e8779e59d0de398ed22639a4747a5315b0f71d335fe3818ff3f",
- "data/art/asset_sizes.csv": "878f82e0c50139eae880a2a5ff9283d0f95c878a27d5f556a5a6b667140f0633",
+ "data/art/asset_sizes.csv": "e35ef178b33da722c5c0bd4c1d04923a17e372637df9b92ae1b672bec80d5570",
  "data/terrain_layers/cliff_rock_ah.ktx2": "11e4ae3a814b890e61201075d38e4704a66cdcfd41c94bca8282f6cd2327d2b6",
  "data/terrain_layers/cliff_rock_nra.ktx2": "bcead1dede2edde30cebecdc70df644496d16a8d9ff182ed2c4bfa4182b000ce",
  "data/terrain_layers/concrete_detail_pad.ktx2": "ff23301ed512bd4fd2f37902108ad8394cd964e3c25df869290b3a71e19405f9",
@@ -55,7 +55,7 @@
  "data/model_overrides/kit-broadleaf/detail/1_normal.ktx2": "02052f6c28532cceb257368080543d692d2aeb90b3bce4f2e68558d82c4acee5",
  "data/model_overrides/kit-broadleaf/detail/cook.json": "c1c3df9d20829215c051d0cb3706df584b3250c5bf8b48969cac3329d8770499",
  "data/model_overrides/kit-broadleaf/pristine_intact_lod0.glb": "e4d30ffac39005ee3c0ef37c79d07a793f2c90a6f2e3e917d5c088ee9bcda1f3",
- "data/model_overrides/models.json": "4927a05b5eff5a4da1fe9e77b7f5e7dd81bb913c0d5ccb5c4b9f442fb370e3c3",
+ "data/model_overrides/models.json": "46c4fea47ddae100e15dde6a1b1aa39cf103d87562aacf205a209457a9004cce",
  "data/tgl/1024/a_cp_broadleaf-maple_0.tga": "fc49cfbfe132ee553abd582dc0eb1719b64e15c7d9829ad505a5fc1f5ad94ef4",
  "data/tgl/1024/a_cp_kit-broadleaf_1.tga": "bdbd5c470a9577b0a2852169ac8b6bf57efd0a3abb265b2e1a6447800da4ab64",
  "data/tgl/1024/cook.json": "32650c08fb507860f6e48e02f02c99cb4fd94f2876201b05af3938e09f1bc137",
@@ -420,5 +420,6 @@
  "data/tgl/64/cp_jacaranda_tree_0.tga": "75de70811fb18a35503a64b778eaff255e8e9ea62c8076207fe3736adf6db00d",
  "data/tgl/64/cp_jacaranda_tree_1.tga": "04d399f4f49e447539bd2393dabc810efabb8f8454e2357b41705e87512b5d65",
  "data/tgl/64/cp_tree_small_02_0.tga": "3c748b713a838a95900e016d65f24be18a9fb90ad0e61de390de48b5bf371d9d",
- "data/tgl/64/cp_tree_small_02_2.tga": "545225a11a3b89dd632364422aec45fc3d73b5ad7f3d471508b896b18e19b849"
+ "data/tgl/64/cp_tree_small_02_2.tga": "545225a11a3b89dd632364422aec45fc3d73b5ad7f3d471508b896b18e19b849",
+ "data/art/mcl_mc_srmpack.tga": "a64c658b1530d3a9a0d22edf652747ab18aafc7514a9e1eae2bd1b41ba51e014"
 }
