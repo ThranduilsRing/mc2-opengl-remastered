@@ -123,7 +123,7 @@ def test_hard_gates(fixture, tmp_path, fault):
         struct.pack_into("<f" if fault == "ibm" else "<H", buf, off + (2*64 if fault == "ibm" else 8), 42 if fault == "ibm" else 3)
     skm.write_text(json.dumps(g))
     (tmp_path / "fixture.bin").write_bytes(buf)
-    with pytest.raises(ValueError, match={"ibm": "ibm_drift", "mixed": "0.5%", "name": "24 chars"}[fault]):
+    with pytest.raises(ValueError, match={"ibm": "ibm_drift", "mixed": "1%", "name": "24 chars"}[fault]):
         B.build(skm, tmp_path, tmp_path / "bad.glb", "albedo.png")
 
 

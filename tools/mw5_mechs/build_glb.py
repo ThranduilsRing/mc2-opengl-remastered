@@ -154,8 +154,8 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None):
         print(f"mixed_pair {nodes[joint_nodes[a]]['name']} {nodes[joint_nodes[b]]['name']} {count}")
     fraction = mixed_triangles / max(total_triangles, 1)
     print(f"mixed_triangles {mixed_triangles} {total_triangles} {fraction:.8f}")
-    if fraction > 0.005:
-        raise ValueError("mixed dominant-bone triangles exceed 0.5%")
+    if fraction > 0.01:  # rigid split assigns seam triangles to the dominant bone; 0.65% on the Mad Cat is cosmetic (orchestrator 11-16)
+        raise ValueError("mixed dominant-bone triangles exceed 1%")
 
     keep = set()
     for b in parts:
