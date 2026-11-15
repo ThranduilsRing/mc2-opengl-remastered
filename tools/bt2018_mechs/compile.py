@@ -554,6 +554,7 @@ def emit_package_json(base_package: dict, recipe, socket_offsets: dict | None = 
                 else:
                     raise ProfileError(f"socket {s} has no joint in the model package node manifest")
     pkg["chassisId"] = recipe["chassis_id"]
+    pkg["clips"] = {"showcase": recipe["mc2"].get("showcase_clip", "atlas_moveCoreWalkFwd")}
     if socket_offsets:
         # P10: muzzle points in each socket joint's local frame (sockets.py); "x y z" strings keep the
         # engine's flat-map reader.
