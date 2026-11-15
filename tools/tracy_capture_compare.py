@@ -364,8 +364,9 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
     if pan:
         if not post_load or seconds < 2:
             raise ValueError("pan requires a post-load window of at least two seconds")
+    if post_load:
         channel = out.with_suffix(".commands.txt")
-        channel.write_text(f"bench_output {out.with_suffix('.frames.jsonl')}\n", encoding="utf-8")
+        channel.write_text("", encoding="utf-8")
         env.update(MC2_TEST_SPAWN="1", MC2_UI_COMMAND_FILE=str(channel), MC2_DEV_SHELL="1")
     if post_load and os.environ.get("MC2_NO_CPU_PIN") != "1":
         env.setdefault("MC2_FRAME_JOBS_WORKERS", "1")
@@ -403,7 +404,7 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
         for rj in options_rec["rejected"]:
             print(f"WARN: render option rejected by the engine's grammar: {rj}", file=sys.stderr)
 
-        duration = seconds + (15 if post_load else 5)
+        duration = seconds + (300 if post_load else 5)
         game_cmd = [str(game), "--profile", "stock", "--mission", mission,
                     "--duration", str(duration)]
         if ticks:
@@ -459,7 +460,12 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
                 out.with_suffix(".stats.json").write_text(json.dumps(row, indent=2), encoding="utf-8")
             cleanup.callback(save_row)
             wait_post_load(gp, game_log, pose)
+            # Park is logged before the first draw's cold uploads. A command
+            # consumed on the next frame proves that draw has returned.
+            camera_command(channel, "freeze_movers status\n", timeout=120)
+            time.sleep(2)
             if pan:
+                channel.write_text(f"bench_output {out.with_suffix('.frames.jsonl')}\n", encoding="utf-8")
                 half_map = re.search(r"halfMap=([\d.]+)", game_log.read_text(encoding="utf-8", errors="replace"))
                 if not half_map:
                     raise RuntimeError("pan requires the terrain map extent receipt")
@@ -475,7 +481,7 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
 
         rc = 0
         intentional_stop = False
-        if via_menu_boot:
+        if via_menu_boot or post_load:
             try:
                 recorder.wait(timeout=seconds + 90)
             except subprocess.TimeoutExpired:

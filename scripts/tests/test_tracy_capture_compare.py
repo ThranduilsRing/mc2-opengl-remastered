@@ -116,12 +116,23 @@ def test_post_load_starts_recorder_after_pose_and_writes_row(harness, monkeypatc
     monkeypatch.delenv("MC2_FRAME_JOBS_WORKERS", raising=False)
     monkeypatch.setattr(psutil, "cpu_count", lambda: 16)
     monkeypatch.setattr(capture, "owner_capture_mode", lambda: owner)
+    monkeypatch.setattr(Path, "write_text", Mock())
+    command = Mock(side_effect=lambda *a, **k: h.events.append("camera.ack"))
+    monkeypatch.setattr(capture, "camera_command", command)
+    original_game = h.game_spawn.side_effect
+    def game_spawn(*args, **kwargs):
+        game = original_game(*args, **kwargs)
+        def kill():
+            h.events.append("game.kill")
+            game.returncode = 1 if platform == "nt" else -9
+        game.kill.side_effect = kill
+        return game
+    h.game_spawn.side_effect = game_spawn
     if owner:
         monkeypatch.setattr(Path, "read_text", lambda *a, **k: "[TerrainLOD v1] halfMap=7680.0")
         monkeypatch.setattr(Path, "write_text", Mock())
         pan_driver = Mock()
         monkeypatch.setattr(capture, "pan_camera", pan_driver)
-        monkeypatch.setattr(capture, "camera_command", lambda *a: h.events.append("camera.ack"))
     monkeypatch.setattr(capture, "os", SimpleNamespace(name=platform, environ=capture.os.environ))
     process = Mock(cpu_affinity=Mock(return_value=cores))
     monkeypatch.setattr(psutil, "Process", lambda _: process)
@@ -140,6 +151,11 @@ def test_post_load_starts_recorder_after_pose_and_writes_row(harness, monkeypatc
         pan_driver.assert_called_once_with(Path("trace.commands.txt"), 7680.0, 29)
         assert h.events.index("camera.ack") < h.events.index("recorder.spawn")
     assert h.events.index("game.spawn") < h.events.index("pose.settled") < h.events.index("recorder.spawn")
+    command.assert_any_call(Path("trace.commands.txt"), "freeze_movers status\n", timeout=120)
+    assert h.events.index("pose.settled") < h.events.index("camera.ack") < h.events.index("recorder.spawn")
+    assert h.events.index("recorder.wait") < h.events.index("game.kill")
+    argv = h.game_spawn.call_args.args[0]
+    assert int(argv[argv.index("--duration") + 1]) == 330
     row = capture.json.loads(stats_file.write_text.call_args.args[0])
     assert row["status"] == "PASS" and row["affinity"] == cores and row["job_workers"] == (6 if owner else 1)
     assert h.game_spawn.call_args.kwargs["engine_default_workers"] is owner
