@@ -57,7 +57,7 @@ G("MC2_BRIDGE_SESSION", String, "", "gameos", "", "Fresh harness session GUID, e
 L(Presence, "MC2_BUCKET_CENSUS", Bool, false, "terrain", "", ""),
 // history: docs/gate-history.md#MC2_BURNIN_NO_JPG
 // GitHub-issue fix batch 2026-07-16, part 2 (issues #9, #17)
-L(Lead0Kill, "MC2_CALLED_SHOT_FIX", Bool, true, "mech", "", "ISSUE-9 called-shot effectiveness (default ON; =0 restores stock): aimed modifiers floored at Head 0.30 / Arm 0.45 / Leg 0.50; aimed missile hits retain location.", passthrough | registry(Feature, "MC2_FEATURE_CALLED_SHOT_FIX", -1, true) | verified),
+L(Lead0Kill, "MC2_CALLED_SHOT_FIX", Bool, true, "mech", "", "ISSUE-9 default ON; =0 restores stock. Aimed floors: Head 0.30 / Arm 0.45 / Leg 0.50; aimed missile hits retain location.", passthrough | registry(Feature, "MC2_FEATURE_CALLED_SHOT_FIX", -1, true) | verified),
 L(Lead0Kill, "MC2_CAMERA_ASPECT_NATIVE", Bool, true, "code", "", "", passthrough | verified),
 // history: docs/gate-history.md#MC2_CAMERA_PARK
 G("MC2_CAMERA_PARK", String, "", "gameos", "", "CAMERA-PARK-1 (ported from vk branch 4b69ef78): ='x,y,rot,proj,alt[@frame]' hard-sets the live camera pose once at frame >= @frame (default 300) and pins it...", passthrough | registry(Trace, "MC2_DIAG_CAMERA_PARK", -1, false) | verified),
