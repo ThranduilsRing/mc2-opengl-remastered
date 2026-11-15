@@ -369,20 +369,20 @@ extern "C" void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame) 
             if (!mover->getAppearance() || !mover->getAppearance()->simulationOwned()) continue;
             auto& a = *mover->getAppearance()->simulationAnimation();
             std::int32_t id = mover->getPartId();
+            const auto begin = animation.bytes().size();
             animation(i, id, a);
-            if (mc2::net::active() && turn == 1) {
-                mc2::save::Archive initial;
-                initial(a);
-                std::fprintf(stderr, "[MP_ANIM_INIT] object=%d part=%d state=", i, id);
-                for (auto byte : initial.bytes()) std::fprintf(stderr, "%02x", static_cast<unsigned>(byte));
-                std::fprintf(stderr, "\n");
-            }
             auto& pose = *mover->getAppearance()->simPose;
             animation(pose.root.x, pose.root.y, pose.root.z, pose.heading);
             for (auto& node : pose.nodes) animation(node.x, node.y, node.z);
             for (auto& node : pose.shapeNodes) animation(node.x, node.y, node.z);
             animation(pose.hitLeft.x, pose.hitLeft.y, pose.hitLeft.z, pose.hitRight.x, pose.hitRight.y, pose.hitRight.z);
             animation(pose.cockpit.x, pose.cockpit.y, pose.cockpit.z);
+            if (mc2::net::active() && turn == 1) {
+                std::fprintf(stderr, "[MP_ANIM_INIT] object=%d part=%d state=", i, id);
+                for (auto offset = begin; offset < animation.bytes().size(); ++offset)
+                    std::fprintf(stderr, "%02x", static_cast<unsigned>(animation.bytes()[offset]));
+                std::fprintf(stderr, "\n");
+            }
         }
         std::uint64_t animHash = 14695981039346656037ull;
         for (auto byte : animation.bytes()) animHash = (animHash ^ byte) * 1099511628211ull;
