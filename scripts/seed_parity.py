@@ -132,7 +132,7 @@ def differing(install: Path, ref: Path, workers: int = 6) -> list[tuple[str, str
 
 def _atomic_copy(src: Path, dst: Path) -> None:
     dst.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile(dir=dst.parent, delete=False) as stream:
+    with tempfile.NamedTemporaryFile(dir=dst.parent, suffix=".tmp", delete=False) as stream:
         tmp = Path(stream.name)
     try:
         shutil.copy2(src, tmp)
@@ -234,7 +234,7 @@ def after_v04_deploy(target, seed: Path | None = None, ref: Path | None = None) 
             raise OSError(f"seed {seed} not found")
         refresh_seed(seed, ref)
         return True
-    except (OSError, SystemExit) as exc:
+    except (OSError, ValueError, SystemExit) as exc:
         print(f"{PREFIX} seed NOT refreshed after the v0.4 deploy ({exc}); run: {refresh_command(seed)}")
         return False
 
