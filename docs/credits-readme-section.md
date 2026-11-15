@@ -226,14 +226,14 @@ Generic contributor credits indicate that the source gives no more specific role
 
 ### S002: A:/MC2X-TCE/wolfman-MC2X-TCE Readme.pdf
 
-- **Wolfman**: MC2X core and campaigns; MC2X scripting; Campaign design; Buildings, copters and tunnel textures; MC2X Warrior Brain Tool adaptation (sources: S002, S003, S004, S005, S006, S019, S021, S023, S025, S035, S038)
-- **Battlemaster**: MC2X contributions (sources: S002, S003, S004, S005)
-- **Karl**: Mechs including Fafnir, Lupus, Hellfire, MadCat MK3, Bloodkite, Naga, Owens and Sunder; Mechs, icons, purchase-file editor, buildings, campaigns and textures (sources: S002, S003, S004, S005, S025)
-- **Vlada "Magic" Stevanovic**: MC2 inventory, buildings, vehicles, turrets, mechs, scripting insights and map sizes; Unofficial patch and Exodus campaign; Unofficial MC2 patch and Exodus; Omnitech development; Campaign adaptation (sources: S002, S003, S004, S005, S007, S016, S017, S018, S024, S025, S030, S038)
-- **Paul**: Scenery Pack, buildings, structures and monorail (sources: S002, S003, S004, S005)
-- **Rollin**: Building set, Battlefield Intelligence System textbox, QuickSave and editor resize fixes; Message box (sources: S002, S003, S004, S005, S025)
-- **Starman01**: Mechhangar, prop vehicles, Uziel, Argus, Thanatos, Mobile Turret Control and Command Vehicle model; Vehicles, turrets and terrain (sources: S002, S003, S004, S005, S025)
-- **Raven IIC**: Champion mech and inventory additions (sources: S002, S003, S004, S005)
+- **Wolfman**: MC2X core and campaigns; MC2X scripting; Campaign design; Buildings, copters and tunnel textures; MC2X Warrior Brain Tool adaptation; MechSwapper suggestions, corrections and sanity checks; MC2 Warrior Brain Tool adaptation and template library (sources: S002, S003, S004, S005, S006, S019, S021, S023, S025, S035, S038, S099, S100, S101, S102, S103, S104, S105, S106)
+- **Battlemaster**: MC2X contributions (sources: S002, S003, S004, S005, S102)
+- **Karl**: Mechs including Fafnir, Lupus, Hellfire, MadCat MK3, Bloodkite, Naga, Owens and Sunder; Mechs, icons, purchase-file editor, buildings, campaigns and textures (sources: S002, S003, S004, S005, S025, S102)
+- **Vlada "Magic" Stevanovic**: MC2 inventory, buildings, vehicles, turrets, mechs, scripting insights and map sizes; Unofficial patch and Exodus campaign; Unofficial MC2 patch and Exodus; Omnitech development; Campaign adaptation (sources: S002, S003, S004, S005, S007, S016, S017, S018, S024, S025, S030, S038, S102)
+- **Paul**: Scenery Pack, buildings, structures and monorail; Scenery Pack (sources: S002, S003, S004, S005, S099, S100, S101, S102, S103)
+- **Rollin**: Building set, Battlefield Intelligence System textbox, QuickSave and editor resize fixes; Message box (sources: S002, S003, S004, S005, S025, S102)
+- **Starman01**: Mechhangar, prop vehicles, Uziel, Argus, Thanatos, Mobile Turret Control and Command Vehicle model; Vehicles, turrets and terrain (sources: S002, S003, S004, S005, S025, S102)
+- **Raven IIC**: Champion mech and inventory additions (sources: S002, S003, S004, S005, S102)
 - **Mechlab**: MC2 add-ons; Desert Fox campaign (sources: S002, S032)
 
 ### S003: A:/Games/mc2-opengl/MC2X-CVE-G/MC2X-CVE-G Readme.pdf
@@ -262,7 +262,7 @@ Generic contributor credits indicate that the source gives no more specific role
 
 ### S035: A:/Games/mc2-opengl/MC2X-testFolder/MC2X_WarriorBrainTool/readme.txt
 
-- **Jussi Saarivirta**: MC2 Synapses, original tool (sources: S035)
+- **Jussi Saarivirta**: MC2 Synapses, original tool; MC2 Warrior Brain Tool / MC2 Synapses; Original MC2 Synapses author (sources: S035, S099, S100, S101, S103, S105, S106)
 
 ### S038: README.md
 
@@ -561,6 +561,23 @@ Generic contributor credits indicate that the source gives no more specific role
 
 - **Jeff Roberts**: sentry-native contributor (specific work not stated in the source) (sources: S098)
 
+### S099: A:/MC2X-DEE/wolfman-MC2X-DEE Readme.txt
+
+- **Poison**: Revised MechSwapper (sources: S099, S100, S101, S103)
+
+### S101: A:/MC2X-HPE/wolfman-MC2X-HPE Readme.txt
+
+- **haloman**: Houdini Project beta testing and recommendations (sources: S101)
+
+### S103: A:/mC2X-RWC/wolfman-MC2X-RWC Readme.txt
+
+- **StarFox**: Rebirth of the White Company campaign design (sources: S103)
+
+### S104: A:/MC2X-DEE/MechSwapper/MechSwapper_Documentattion_2.5.pdf
+
+- **Mechronom**: MechSwapper 2.5 author (sources: S104)
+- **Crowfoot**: Identified MechSwapper .NET 2.0 requirement (sources: S104)
+
 ### Source table
 
 | Source | File | Names |
@@ -663,6 +680,14 @@ Generic contributor credits indicate that the source gives no more specific role
 | S096 | `3rdparty/imgui/imstb_textedit.h` | 9 |
 | S097 | `3rdparty/imgui/imstb_rectpack.h` | 5 |
 | S098 | `3rdparty/sentry-native/vendor/stb_sprintf.h` | 2 |
+| S099 | `A:/MC2X-DEE/wolfman-MC2X-DEE Readme.txt` | 4 |
+| S100 | `A:/MC2X-DWE/wolfman-MC2X Readme.txt` | 4 |
+| S101 | `A:/MC2X-HPE/wolfman-MC2X-HPE Readme.txt` | 5 |
+| S102 | `A:/MC2X-MCE/wolfman-MC2X-MCE Readme.pdf` | 8 |
+| S103 | `A:/mC2X-RWC/wolfman-MC2X-RWC Readme.txt` | 5 |
+| S104 | `A:/MC2X-DEE/MechSwapper/MechSwapper_Documentattion_2.5.pdf` | 3 |
+| S105 | `A:/MC2X-DEE/WarriorBrainTool/readme.txt` | 2 |
+| S106 | `A:/MC2X-DWE/WarriorBrainTool/readme.txt` | 2 |
 
 ### Assets and community acknowledgments
 
@@ -692,6 +717,10 @@ Generic contributor credits indicate that the source gives no more specific role
 - **S042**: Industrial/vehicle kit provenance and bake tags; no individual credited. No CREDITS files found in data/kit, tools/scifi_kit/art or E:/mc2-ref/scifi-kit/art.
 - **S043**: Original kit geometry/shaders; Poly Haven CC0 concrete detail.
 - **S044**: Sarna.net and its contributors: attribution for weapon descriptions, as required by owner assignment. https://www.sarna.net/; no individual byline supplied locally.
+- **S102**: Explicit thanks on page 1; existing specific contribution descriptions retained.
+- **S104**: PDF header says By Mechronom; installation note credits Crowfoot from DSC. SHA256 identical in DEE, DWE, HPE and RWC; counted once. Poison is credited separately by package readmes; no alias inferred.
+- **S105**: Byte-identical copy in HPE; each distinct file counted once.
+- **S106**: Byte-identical copy in RWC; each distinct file counted once.
 
 Wolfman: https://mc2x.net/ (verified HTTP 200).
 Magic / MCO files page: NOT FOUND / unverified (plain fetch returned HTTP 403); name remains unlinked.

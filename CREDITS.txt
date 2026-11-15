@@ -224,14 +224,14 @@ Jule Zuccotti - Special thanks [S001]
 
 S002 - A:/MC2X-TCE/wolfman-MC2X-TCE Readme.pdf
 
-Wolfman - MC2X core and campaigns; MC2X scripting; Campaign design; Buildings, copters and tunnel textures; MC2X Warrior Brain Tool adaptation [S002, S003, S004, S005, S006, S019, S021, S023, S025, S035, S038]
-Battlemaster - MC2X contributions [S002, S003, S004, S005]
-Karl - Mechs including Fafnir, Lupus, Hellfire, MadCat MK3, Bloodkite, Naga, Owens and Sunder; Mechs, icons, purchase-file editor, buildings, campaigns and textures [S002, S003, S004, S005, S025]
-Vlada "Magic" Stevanovic - MC2 inventory, buildings, vehicles, turrets, mechs, scripting insights and map sizes; Unofficial patch and Exodus campaign; Unofficial MC2 patch and Exodus; Omnitech development; Campaign adaptation [S002, S003, S004, S005, S007, S016, S017, S018, S024, S025, S030, S038]
-Paul - Scenery Pack, buildings, structures and monorail [S002, S003, S004, S005]
-Rollin - Building set, Battlefield Intelligence System textbox, QuickSave and editor resize fixes; Message box [S002, S003, S004, S005, S025]
-Starman01 - Mechhangar, prop vehicles, Uziel, Argus, Thanatos, Mobile Turret Control and Command Vehicle model; Vehicles, turrets and terrain [S002, S003, S004, S005, S025]
-Raven IIC - Champion mech and inventory additions [S002, S003, S004, S005]
+Wolfman - MC2X core and campaigns; MC2X scripting; Campaign design; Buildings, copters and tunnel textures; MC2X Warrior Brain Tool adaptation; MechSwapper suggestions, corrections and sanity checks; MC2 Warrior Brain Tool adaptation and template library [S002, S003, S004, S005, S006, S019, S021, S023, S025, S035, S038, S099, S100, S101, S102, S103, S104, S105, S106]
+Battlemaster - MC2X contributions [S002, S003, S004, S005, S102]
+Karl - Mechs including Fafnir, Lupus, Hellfire, MadCat MK3, Bloodkite, Naga, Owens and Sunder; Mechs, icons, purchase-file editor, buildings, campaigns and textures [S002, S003, S004, S005, S025, S102]
+Vlada "Magic" Stevanovic - MC2 inventory, buildings, vehicles, turrets, mechs, scripting insights and map sizes; Unofficial patch and Exodus campaign; Unofficial MC2 patch and Exodus; Omnitech development; Campaign adaptation [S002, S003, S004, S005, S007, S016, S017, S018, S024, S025, S030, S038, S102]
+Paul - Scenery Pack, buildings, structures and monorail; Scenery Pack [S002, S003, S004, S005, S099, S100, S101, S102, S103]
+Rollin - Building set, Battlefield Intelligence System textbox, QuickSave and editor resize fixes; Message box [S002, S003, S004, S005, S025, S102]
+Starman01 - Mechhangar, prop vehicles, Uziel, Argus, Thanatos, Mobile Turret Control and Command Vehicle model; Vehicles, turrets and terrain [S002, S003, S004, S005, S025, S102]
+Raven IIC - Champion mech and inventory additions [S002, S003, S004, S005, S102]
 Mechlab - MC2 add-ons; Desert Fox campaign [S002, S032]
 
 S003 - A:/Games/mc2-opengl/MC2X-CVE-G/MC2X-CVE-G Readme.pdf
@@ -260,7 +260,7 @@ alariq - Open-source engine and Linux port; OpenGL/Linux port on which this proj
 
 S035 - A:/Games/mc2-opengl/MC2X-testFolder/MC2X_WarriorBrainTool/readme.txt
 
-Jussi Saarivirta - MC2 Synapses, original tool [S035]
+Jussi Saarivirta - MC2 Synapses, original tool; MC2 Warrior Brain Tool / MC2 Synapses; Original MC2 Synapses author [S035, S099, S100, S101, S103, S105, S106]
 
 S038 - README.md
 
@@ -559,6 +559,23 @@ S098 - 3rdparty/sentry-native/vendor/stb_sprintf.h
 
 Jeff Roberts - sentry-native contributor (specific work not stated in the source) [S098]
 
+S099 - A:/MC2X-DEE/wolfman-MC2X-DEE Readme.txt
+
+Poison - Revised MechSwapper [S099, S100, S101, S103]
+
+S101 - A:/MC2X-HPE/wolfman-MC2X-HPE Readme.txt
+
+haloman - Houdini Project beta testing and recommendations [S101]
+
+S103 - A:/mC2X-RWC/wolfman-MC2X-RWC Readme.txt
+
+StarFox - Rebirth of the White Company campaign design [S103]
+
+S104 - A:/MC2X-DEE/MechSwapper/MechSwapper_Documentattion_2.5.pdf
+
+Mechronom - MechSwapper 2.5 author [S104]
+Crowfoot - Identified MechSwapper .NET 2.0 requirement [S104]
+
 SOURCE TABLE - file -> individual names count
 Counts include people also credited by another source; each person appears only once above.
 
@@ -740,6 +757,18 @@ S097 | 3rdparty/imgui/imstb_rectpack.h -> 5
   Embedded licence and contributor list.
 S098 | 3rdparty/sentry-native/vendor/stb_sprintf.h -> 2
   Embedded licence and original author attribution (RAD Game Tools).
+S099 | A:/MC2X-DEE/wolfman-MC2X-DEE Readme.txt -> 4
+S100 | A:/MC2X-DWE/wolfman-MC2X Readme.txt -> 4
+S101 | A:/MC2X-HPE/wolfman-MC2X-HPE Readme.txt -> 5
+S102 | A:/MC2X-MCE/wolfman-MC2X-MCE Readme.pdf -> 8
+  Explicit thanks on page 1; existing specific contribution descriptions retained.
+S103 | A:/mC2X-RWC/wolfman-MC2X-RWC Readme.txt -> 5
+S104 | A:/MC2X-DEE/MechSwapper/MechSwapper_Documentattion_2.5.pdf -> 3
+  PDF header says By Mechronom; installation note credits Crowfoot from DSC. SHA256 identical in DEE, DWE, HPE and RWC; counted once. Poison is credited separately by package readmes; no alias inferred.
+S105 | A:/MC2X-DEE/WarriorBrainTool/readme.txt -> 2
+  Byte-identical copy in HPE; each distinct file counted once.
+S106 | A:/MC2X-DWE/WarriorBrainTool/readme.txt -> 2
+  Byte-identical copy in RWC; each distinct file counted once.
 
 COMMUNITY LINKS
 Wolfman: https://mc2x.net/ (README.md; HTTP 200 verified during this session).
