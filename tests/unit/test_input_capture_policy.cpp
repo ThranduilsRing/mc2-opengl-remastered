@@ -107,7 +107,7 @@ TEST_CASE("input_capture_policy: mouse buttons reach the game unless ImGui captu
         { false, false, true  },  // nothing captured: game gets the click
         { false, true,  true  },  // modal, no ImGui capture: game
         { true,  false, false },  // ImGui captured: gated out
-        { true,  true,  false },  // a legacy modal cannot bypass ImGui capture
+        { true,  true,  true  },  // legacy pause buttons must remain clickable
     };
     for (const Row& r : rows) {
         CAPTURE(r.wants);
@@ -128,6 +128,7 @@ TEST_CASE("input_capture_policy: wheel reaches the game unless the cursor hovers
         CAPTURE(r.hovers);
         CAPTURE(r.modal);
         CHECK(wheelReachesGame(PolicyState{ false, r.hovers, r.modal }) == r.expected);
+        CHECK_FALSE(wheelReachesGame(PolicyState{ true, r.hovers, r.modal }));
     }
 }
 
@@ -153,13 +154,13 @@ TEST_CASE("input_capture_policy: a release while free stays free") {
 }
 
 TEST_CASE("input_capture_visibility") {
-    // ImGui retains ownership across legacy modal transitions.
+    // Legacy pause buttons win; the wheel remains owned by ImGui.
     struct Frame { bool wants; bool hovers; bool modal; bool buttons; bool wheel; };
     const Frame frames[] = {
         // ImGui window open over the viewport, no modal: ImGui owns both.
         { true,  true,  false, false, false },
-        // Pause menu up over the same window: ImGui retains both.
-        { true,  true,  true,  false, false },
+        // Pause menu up over the same window: legacy buttons win.
+        { true,  true,  true,  true,  false },
         // Menu closed, window still open: back to ImGui.
         { true,  true,  false, false, false },
         // Window closed: the game owns both.
@@ -172,5 +173,18 @@ TEST_CASE("input_capture_visibility") {
         CAPTURE(f.modal);
         CHECK(mouseButtonsReachGame(s) == f.buttons);
         CHECK(wheelReachesGame(s) == f.wheel);
+    }
+}
+
+TEST_CASE("input_capture_policy: ImGui mouse drag, navigation focus and text field") {
+    // GuiRuntime publishes WantTextInput; general WantCaptureKeyboard is true in all three rows.
+    struct Row { const char* action; bool wantsTextInput; };
+    const Row rows[] = {{"mouse-held window drag", false}, {"focused non-text window", false}, {"active text field", true}};
+    for (const auto& row : rows) {
+        CAPTURE(row.action);
+        bool blocked = false;
+        CHECK(input::capture::keyboardEdge(input::capture::Edge::Held, true, row.wantsTextInput, blocked)
+              == (row.wantsTextInput ? input::capture::Edge::Free : input::capture::Edge::Held));
+        CHECK(blocked == row.wantsTextInput);
     }
 }

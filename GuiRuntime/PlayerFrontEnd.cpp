@@ -279,7 +279,7 @@ static void drawCommunityCredits() {
     ImGui::PushFont(gui_runtime_detail::findUiFont("roboto", static_cast<int>(18 * scale)));
     ImGui::SetNextWindowPos(ImVec2(vp->WorkPos.x + vp->WorkSize.x * 0.715f, vp->WorkPos.y + 280 * scale), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(vp->WorkSize.x * 0.27f, vp->WorkSize.y - 320 * scale), ImGuiCond_Always);
-    if (ImGui::Begin("Community", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings)) {
+    if (ImGui::Begin("Community", nullptr, ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings)) {
         ImGui::PushTextWrapPos(0);
         ImGui::TextUnformatted("Celebrating 25 years of MechCommander 2");
         ImGui::Separator();
@@ -328,7 +328,7 @@ void drawMainMenu(bool showCredits) {
     }
     const auto* viewport = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + viewport->WorkSize.x - 280, viewport->WorkPos.y + 25), ImGuiCond_Always);
-    ImGui::Begin("Campaign tools", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings);
+    ImGui::Begin("Campaign tools", nullptr, ImGuiWindowFlags_NoNav | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings);
     if (ImGui::Button("Campaigns & mods")) pickerOpen = !pickerOpen;
     ImGui::SameLine();
     if (ImGui::Button("Graphics")) GraphicsOptionsWindow::setOpen(true);

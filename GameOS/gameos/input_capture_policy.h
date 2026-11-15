@@ -17,12 +17,12 @@ namespace capture {
 struct PolicyState {
     bool imguiWantsMouse  = false;  // ImGui::GetIO().WantCaptureMouse
     bool imguiHoversMouse = false;  // ImGui::IsWindowHovered(AnyWindow)
-    bool gameModalActive  = false;  // legacy modal state; cannot override capture
+    bool gameModalActive  = false;  // legacy pause menu owns its button clicks
 };
 
-// ImGui owns captured input even over the legacy pause menu.
+// IMGUI-PAUSE-INPUT-FIX-1: legacy pause buttons win over open ImGui windows.
 inline bool mouseButtonsReachGame(const PolicyState& s) {
-    return !s.imguiWantsMouse;
+    return !(s.imguiWantsMouse && !s.gameModalActive);
 }
 
 // Wheel follows ImGui hover or capture, including during legacy modals.

@@ -145,6 +145,8 @@ static void loadUiFonts(ImGuiIO& io)
     s_uiFonts.clear();
     // Bake at 4K density while retaining 1080p metrics; resizing needs no atlas upload.
     ImFontConfig defaultConfig;
+    defaultConfig.OversampleH = defaultConfig.OversampleV = 1;
+    defaultConfig.PixelSnapH = true;
     defaultConfig.RasterizerDensity = 2.0f;
     io.FontDefault = io.Fonts->AddFontDefault(&defaultConfig);
     loadFontFamily(io, "agency",                fileForFamily("agency"));
@@ -534,7 +536,8 @@ void GuiRuntime::NewFrame() {
 
     // Tell the game input layer whether ImGui has claimed the mouse this frame.
     input::setImguiWantsMouse(ImGui::GetIO().WantCaptureMouse);
-    input::setImguiWantsKeyboard(ImGui::GetIO().WantCaptureKeyboard);
+    // Mouse drags and navigation focus must preserve held gameplay keys.
+    input::setImguiWantsKeyboard(ImGui::GetIO().WantTextInput);
     // Wheel guard: spatial hover only (NOT WantCaptureMouse, which is tainted
     // by mouse_any_down during viewport drags) — cursor over any ImGui window
     // means the wheel scrolls ImGui, not the game camera. See gos_input.h.

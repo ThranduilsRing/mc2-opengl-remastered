@@ -33,6 +33,7 @@ namespace input {
 
 static bool s_imguiWantsMouse = false;
 static bool s_imguiWantsKeyboard = false;
+static bool s_gameModalActive = false;
 static bool s_blockedKeys[512] = {};
 
 static void applyInputFocus(bool focused) {
@@ -183,7 +184,7 @@ KeyboardInfo::KeyboardInfo():
 }
 
 const MouseInfo* getMouseInfo() {
-    if (s_imguiWantsMouse) {
+    if (!g_script.active && !capture::mouseButtonsReachGame({ s_imguiWantsMouse, false, s_gameModalActive })) {
         static MouseInfo captured;
         captured = g_mouse_info;
         memset(captured.button_state_, 0, sizeof(captured.button_state_));
@@ -257,7 +258,6 @@ void setImguiHoversMouse(bool v) { s_imguiHoversMouse = v; }
 
 // (hoisted above handleMouseWheel for the wheel guard; see comment at the
 // original site below for the IMGUI-PAUSE-INPUT-FIX-1 rationale)
-static bool s_gameModalActive = false;
 void setGameModalActive(bool v) { s_gameModalActive = v; }
 
 void handleMouseWheel(const SDL_Event* event) {
@@ -287,7 +287,7 @@ void beginUpdateMouseState() {
 
 void setImguiWantsMouse(bool v) {
     s_imguiWantsMouse = v;
-    if (v) g_pointer_capture.claim();
+    if (v && !s_gameModalActive && !g_script.active) g_pointer_capture.claim();
 }
 void setImguiWantsKeyboard(bool v) {
     s_imguiWantsKeyboard = v;
