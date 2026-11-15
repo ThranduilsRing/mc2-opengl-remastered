@@ -37,6 +37,7 @@ inline constexpr int MECH_APPR_TYPE = 0x13;
 inline constexpr int GENERIC_APPR_TYPE = 0x14;
 
 inline constexpr int MAX_LODS = 3;  // appearance LOD slots (apprtype.h, camera.h)
+inline constexpr int MAX_TREE_RENDER_LODS = 5;  // override tree render chain: LOD0-3 + far proxy (batcher distance LOD)
 //---------------------------------------------------------------------------
 // Class definitions
 
