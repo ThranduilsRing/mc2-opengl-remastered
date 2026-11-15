@@ -48,7 +48,21 @@ def compare_traces(host: Path, client: Path, ticks: int, forced: int = 0) -> dic
         marker = f"[MP_DESYNC] tick={forced} "
         if (forced and marker not in text) or (not forced and "[MP_DESYNC]" in text):
             raise ValueError(f"unexpected/missing desync verdict in {peer}")
-    return {"ticks": expected, "commands": len(commands_a), "first_divergent_tick": forced or None}
+    return {"ticks": expected, "equal_ticks": expected - bool(forced),
+            "commands": len(commands_a), "first_divergent_tick": forced or None}
+
+
+def fixture_orders(slot: int, ticks: int, forced: int) -> list[str]:
+    script = ["0 0 delay 1"] if slot else []
+    script.append(f"0 {1 - slot} reject")
+    # Stay by the stock deployment, south of objective 0's airfield trigger.
+    # The old positive-Y route walked all three mechs into the bandit force.
+    for tick in range(0, ticks - 4, 300):
+        for mover in ((1, 2) if slot else (0,)):
+            script.append(f"{tick} {mover} move {2400 + (tick // 300 % 4) * 50} {-2000 - mover * 100}")
+    if forced and slot:
+        script.append(f"{forced} 0 desync")
+    return script
 
 
 def peer_start(install: str, directory: str, slot: int, port: int, ticks: int,
@@ -68,7 +82,7 @@ def peer_start(install: str, directory: str, slot: int, port: int, ticks: int,
                MC2_DETERMINISTIC_RNG="1", MC2_RNG_SEED="12345",
                MC2_DIAGNOSTIC_TRACE_FILE=str(root / "diagnostic.jsonl"),
                MC2_SAVE_DIR=str(root / "saves"),
-               MC2_CAMERA_PARK=("2800,1900,0,60,1700@30" if slot == 0 else "3100,1900,90,50,1600@30"))
+               MC2_CAMERA_PARK=("2450,-2100,0,60,1200@30" if slot == 0 else "2450,-2100,90,50,1200@30"))
     if rendered:
         env.update(MC2_VISUAL_CAPTURE_FRAME="2400", MC2_VISUAL_CAPTURE_DIR=str(root))
     argv = [str(Path(install) / "mc2.exe"), "--mission", "mc2_01", "--profile", "tier1",
@@ -99,14 +113,7 @@ def main() -> int:
     peers = [args.out / "host", args.out / "client"]
     for slot, directory in enumerate(peers):
         directory.mkdir()
-        # Different lances send commands throughout the run, not only at startup.
-        script = ["0 0 delay 1"] if slot else []
-        script.append(f"0 {1 - slot} reject")
-        for tick in range(0, args.ticks - 4, 300):
-            for mover in ((1, 2) if slot else (0,)):
-                script.append(f"{tick} {mover} move {2800 + (tick // 300 % 4) * 100} {1900 + slot * 100}")
-        if args.force_desync and slot:
-            script.append(f"{args.force_desync} 0 desync")
+        script = fixture_orders(slot, args.ticks, args.force_desync)
         (directory / "orders.txt").write_text("\n".join(script) + "\n", encoding="utf-8")
     processes = []
     started = time.monotonic()
@@ -123,8 +130,12 @@ def main() -> int:
                 (directory / "exit.json").write_text(json.dumps({"rc": rc, "pid": proc.pid}), encoding="utf-8")
             if any(proc.returncode != (3 if args.force_desync else 0) for proc in processes):
                 raise ValueError("a peer failed; see peer launcher/stderr logs")
+            for directory in peers:
+                if "[SHUTDOWN] audio end" not in (directory / "stderr.log").read_text(encoding="utf-8", errors="replace"):
+                    raise ValueError(f"engine shutdown incomplete in {directory}")
         result = compare_traces(*peers, args.ticks, args.force_desync)
-        result.update(result="PASS", wall_seconds=round(time.monotonic() - started, 2))
+        result.update(result="PASS", peer_exit_codes=[proc.returncode for proc in processes],
+                      graceful_shutdown=True, wall_seconds=round(time.monotonic() - started, 2))
     except (ValueError, OSError, RuntimeError, subprocess.TimeoutExpired) as error:
         result = {"result": "FAIL", "error": str(error)}
     finally:

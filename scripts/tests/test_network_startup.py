@@ -81,3 +81,16 @@ def test_mp_loopback_requires_both_desync_reports_at_the_first_bad_tick(tmp_path
     (host / "session.trace").write_text("C 1 00\nH 1 a b c d e\nH 2 0 b c d e\n")
     with pytest.raises(ValueError, match="missing desync"):
         compare_traces(host, client, 2, forced=2)
+
+
+def test_mp_fixture_keeps_both_lances_south_of_airfield():
+    from run_mp_loopback_proof import fixture_orders
+    for slot, movers in ((0, {0}), (1, {1, 2})):
+        rows = [line.split() for line in fixture_orders(slot, 18064, 18064)]
+        moves = [row for row in rows if row[2] == "move"]
+        assert {int(row[1]) for row in moves} == movers
+        assert int(moves[-1][0]) == 18000
+        # Stock mc2_01 objective 0: center (3136,-789.333), radius 256.
+        assert all(2400 <= float(row[3]) <= 2550 and -2200 <= float(row[4]) <= -2000 for row in moves)
+        assert all((float(row[3]) - 3136)**2 + (float(row[4]) + 789.333)**2 > 256**2 for row in moves)
+        assert [row for row in rows if row[2] == "desync"] == ([["18064", "0", "desync"]] if slot else [])
