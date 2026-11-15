@@ -53,6 +53,22 @@ Pixels solid(int w, int h, int ch, uint8_t v) {
 }
 }  // namespace
 
+TEST_CASE("ui_chrome shipped credits contain no machine paths") {
+    // Trigger path: CREDITS.txt (displayed verbatim by PlayerFrontEnd).
+    std::ifstream input(std::filesystem::path(MC2_REPO_ROOT) / "CREDITS.txt");
+    REQUIRE(input.good());
+    std::string line;
+    while (std::getline(input, line)) {
+        INFO(line);
+        CHECK(line.find("mc2-opengl") == std::string::npos);
+        for (size_t i = 1; i + 1 < line.size(); ++i)
+            CHECK_FALSE(((i == 1 || line[i-2] == ' ' || line[i-2] == '(') &&
+                                          line[i] == ':' && (line[i+1] == '/' || line[i+1] == '\\') &&
+                                          ((line[i-1] >= 'A' && line[i-1] <= 'Z') ||
+                                           (line[i-1] >= 'a' && line[i-1] <= 'z'))));
+    }
+}
+
 TEST_CASE("ui_chrome credits bay follows the menu frame at 1080p and 4K") {
     for (float scale : {1.0f, 2.0f}) {
         const auto r = menuCreditsBay(1920 * scale, 1080 * scale);
