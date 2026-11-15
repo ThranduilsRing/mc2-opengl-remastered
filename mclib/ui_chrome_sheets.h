@@ -19,6 +19,12 @@
 
 namespace mc2::ui_chrome {
 
+// Inner right-hand bay in the menu's authored 800x600 frame.
+inline std::array<float, 4> menuCreditsBay(float frameWidth, float frameHeight) {
+    return {604 * frameWidth / 800, 292 * frameHeight / 600,
+            168 * frameWidth / 800, 248 * frameHeight / 600};
+}
+
 struct Widget {
     std::string name;       // file stem under data/art/ui/<sheet>/
     int x = 0, y = 0, w = 0, h = 0;   // rect in the sheet, top-left origin

@@ -169,7 +169,9 @@ void GVAppearance::updateRenderShape()
 	renderShape->SetNodeRotation(turretNode, &turret);
 	renderShape->SetAlphaValue(gvShape->GetAlphaValue());
 	renderShape->SetFogRGB(0xffffffff);
-	renderShape->SetLightsOut(!eye->isNight);
+	// Owner 11-15: vehicles (repair truck included) are lit day and night; lights-out tracks
+	// destroyed/disabled status exactly like the legacy gvShape (gvactor_update.cpp).
+	renderShape->SetLightsOut(status == OBJECT_STATUS_DESTROYED || status == OBJECT_STATUS_DISABLED);
 	auto rotation = poseRotation();
 	// The static-prop batcher draws a type-material body from its node matrices; a declined submit falls back to the
 	// CPU draw from the same matrices.

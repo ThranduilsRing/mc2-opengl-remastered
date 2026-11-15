@@ -261,6 +261,7 @@ IMPORTED_STRUCTURE_PAYLOAD = [
 # drops per-mission/material tuning that was authored assuming the file loads.
 GAME_DATA_PAYLOAD = [
     "CREDITS.txt",
+    "THIRD_PARTY_NOTICES.txt",
     "data/art/asset_sizes.csv",
     *[f"data/art/gui/mcl_cm_op{op}_{view}.tga"
       for op, count in ((1, 6), (2, 3), (3, 4)) for view in range(1, count + 1)],

@@ -23,9 +23,10 @@ cmake_minimum_required(VERSION 3.16)
 project(mc2_tests CXX)
 
 enable_language(C)
-add_subdirectory(../../3rdparty/enet enet EXCLUDE_FROM_ALL)
-
+# Mc2Standalone first: its MC2_COMPILE_CACHE /Zi -> /Z7 swap must reach enet's C flags, or sccache
+# fails to collect enet.pdb in cached harness trees.
 include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/Mc2Standalone.cmake")
+add_subdirectory(../../3rdparty/enet enet EXCLUDE_FROM_ALL)
 
 # Resolve the worktree root (this CMakeLists lives at <root>/tests/unit/).
 get_filename_component(MC2_WORKTREE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
