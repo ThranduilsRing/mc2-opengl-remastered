@@ -44,7 +44,8 @@ class LogisticsComponent
 		inline const char* getName() const { return name.get(); }
 		inline const char* getFlavorText() const { return flavorText; }
 		inline int	getHelpID() const { return helpStringID; }
-		inline const char* getIconFileName() const { return iconFileName.get(); }
+		const char* getIconFileName() const;
+		bool hasLauncherIcon() const;
 		inline const char* getPictureFileName() const { return pictureFileName.get(); }
 		inline int		getComponentWidth() const { return iconX; }
 		inline int		getComponentHeight() const { return iconY; }

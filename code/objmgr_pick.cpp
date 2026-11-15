@@ -442,9 +442,8 @@ bool gameplayPickRect(GameObjectPtr obj, PickRect& rect, bool margin = true) {
         }
         rect.left=static_cast<float>(l); rect.top=static_cast<float>(t); rect.right=static_cast<float>(r); rect.bottom=static_cast<float>(b);
     } else {
-        glm::vec3 lo, hi;
-        mc2ToRender(lo, type->typeUpperLeft);
-        mc2ToRender(hi, type->typeLowerRight);
+        const auto lo = mc2::pickBoundsInMc2(obj->getObjectClass() == BATTLEMECH, type->typeUpperLeft);
+        const auto hi = mc2::pickBoundsInMc2(obj->getObjectClass() == BATTLEMECH, type->typeLowerRight);
         for (int i = 0; i < 8; ++i) {
             glm::vec3 offset((i & 1) ? lo.x : hi.x,
                              (i & 2) ? lo.y : hi.y,
@@ -653,9 +652,8 @@ double pickTerrainDepth(const double (&origin)[3], const double (&direction)[3])
 
 bool objectPickDepth(GameObjectPtr obj, const double (&origin)[3], const double (&direction)[3], double& depth) {
     const auto* type = obj->getAppearance()->getAppearanceType();
-    glm::vec3 lo, hi;
-    mc2ToRender(lo, type->typeUpperLeft);
-    mc2ToRender(hi, type->typeLowerRight);
+    const auto lo = mc2::pickBoundsInMc2(obj->getObjectClass() == BATTLEMECH, type->typeUpperLeft);
+    const auto hi = mc2::pickBoundsInMc2(obj->getObjectClass() == BATTLEMECH, type->typeLowerRight);
     auto position = obj->getPosition();
     auto rotation = obj->getRotation();
     if (auto* ba = dynamic_cast<BldgAppearance*>(obj->getAppearance())) {
@@ -710,6 +708,8 @@ GameObjectPtr pickGameplayObjects(long x, long y, std::span<GameObjectPtr> list,
     for (long h = 1; h <= ObjectManager->getMaxObjects(); ++h) {
         auto* obj = ObjectManager->get(h);
         if (!obj || !obj->getExists() || obj->inTransport() || !obj->getAppearance()) continue;
+        // Vegetation is neither a target nor a pick occluder.
+        if (obj->getObjectClass() == TREE) continue;
         if (!obj->getAppearance()->canBeSeen()) { rejectEnemy(obj, "not_in_view"); continue; }
         PickRect rect;
         if (!gameplayPickRect(obj, rect)) { rejectEnemy(obj, "no_rect"); continue; }
@@ -732,9 +732,8 @@ GameObjectPtr pickGameplayObjects(long x, long y, std::span<GameObjectPtr> list,
             // and salvage. Check terrain along a ray that actually hits the
             // mover, rather than the empty ground beside the clicked mech.
             const auto* type = obj->getAppearance()->getAppearanceType();
-            glm::vec3 lo, hi;
-            mc2ToRender(lo, type->typeUpperLeft);
-            mc2ToRender(hi, type->typeLowerRight);
+            const auto lo = mc2::pickBoundsInMc2(obj->getObjectClass() == BATTLEMECH, type->typeUpperLeft);
+            const auto hi = mc2::pickBoundsInMc2(obj->getObjectClass() == BATTLEMECH, type->typeLowerRight);
             auto offset = (lo + hi) * 0.5f;
             Rotate(offset, -obj->getRotation());
             auto center = obj->getPosition() + offset;
@@ -754,9 +753,8 @@ GameObjectPtr pickGameplayObjects(long x, long y, std::span<GameObjectPtr> list,
         bool beforeSurface = mc2::pickBeforeSurface(depth, surfaceT);
         if (obj->isMover()) {
             const auto* type = obj->getAppearance()->getAppearanceType();
-            glm::vec3 lo, hi;
-            mc2ToRender(lo, type->typeUpperLeft);
-            mc2ToRender(hi, type->typeLowerRight);
+            const auto lo = mc2::pickBoundsInMc2(obj->getObjectClass() == BATTLEMECH, type->typeUpperLeft);
+            const auto hi = mc2::pickBoundsInMc2(obj->getObjectClass() == BATTLEMECH, type->typeLowerRight);
             auto localSurface = surfacePoint - obj->getPosition();
             Rotate(localSurface, obj->getRotation());
             const double point[3] = {localSurface.x, localSurface.y, localSurface.z};

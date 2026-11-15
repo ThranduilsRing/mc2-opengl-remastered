@@ -2,6 +2,7 @@
 #include <string_view>
 #include <cstddef>
 #include <cstdint>
+#include <utility>
 
 namespace mc2::components {
 inline bool coolingAllowsRemoval(float maximum, float removed, float heat) {
@@ -20,6 +21,15 @@ inline bool finishGridDrop(long& x, long& y, bool fromGrid,
     return add(x, y) == 0;
 }
 
+// Lowercase legacy launcher aliases resolve to the one-cell model cook.
+inline const char* launcherIcon(std::string_view file) {
+    constexpr std::pair<std::string_view, const char*> families[] = {
+        {"clanlrm", "mcl_mc_clanlrmrack.tga"}, {"swarmlrm", "mcl_mc_swarmlrmrack.tga"},
+        {"lrm", "mcl_mc_lrmrack.tga"}, {"clanstreaksrm", "mcl_mc_clanstreaksrmpack.tga"},
+        {"streaksrm", "mcl_mc_streaksrmpack.tga"}, {"srm", "mcl_mc_srmpack.tga"}};
+    for (const auto& [family, icon] : families) if (file.find(family) != file.npos) return icon;
+    return nullptr;
+}
 // Inactive storage can contain a previous loadout. Unmapped live components
 // are preserved without indexing the logistics table with a missing location.
 template<std::size_t N, class Item, class Location, class Logistics>
