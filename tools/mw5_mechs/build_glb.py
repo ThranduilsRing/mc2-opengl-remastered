@@ -22,7 +22,11 @@ if __package__:
 else:
     from ue_basis import psa_quat_to_gltf
 
-RENAME = {"Foot0_Left": "j_LFoot", "Foot0_Right": "j_RFoot", "Torso_Pitch": "j_Spine2", "Cockpit": "j_" + "COCKPIT"}
+# Rest FK: Thigh -> Calf -> Foot0 is 3.483 m + 5.176 m on both sides;
+# Knee and Calf share a pivot (within 0.2 micrometres). Preserve foot descendants.
+RENAME = {"Thigh_Left": "j_LThigh", "Calf_Left": "j_LCalf", "Foot0_Left": "j_LFoot",
+          "Thigh_Right": "j_RThigh", "Calf_Right": "j_RCalf", "Foot0_Right": "j_RFoot",
+          "Torso_Pitch": "j_Spine2", "Cockpit": "j_" + "COCKPIT"}
 KEEP_ALWAYS ={"Root", "Pelvis", "Torso_Twist", "Torso_Animation", "Torso_Pitch", "Cockpit"}
 # MW5 clip (TimberWolf/Animations/TBR_<name>_ANI) -> the engine's hard-coded clip name (mclib/mech_clip_state.h)
 CLIPS = {
@@ -31,6 +35,17 @@ CLIPS = {
     "WalkForward_LeftLimp": "atlas_" + "moveCoreWalkLimpFwdLeft", "WalkForward_RightLimp": "atlas_" + "moveCoreWalkLimpFwdRight",
     "Stand_Turn_Left": "atlas_" + "moveCoreTurnLeftIdle", "Stand_Turn_Right": "atlas_" + "moveCoreTurnRightIdle",
     "Jumpjetting_Neutral": "atlas_moveJumpUpIdle",
+}
+# Reverse selects WalkBwd; the engine has no RunBackward slot. Ragdoll/additive
+# gestures have no full-body source: holds prevent continuing the previous loop.
+# Destination -> (MW5 source, sampled frame); these are poses, not transitions.
+HOLD_CLIPS = {
+    **{"atlas_" + name: ("Falling", -1) for name in (
+        "hitReactKnockdownInpl", "downedIdle", "deathKnockdown", "deathIdle")},
+    **{"atlas_" + name: ("Stand", 0) for name in (
+        "downedGetup", "hitReactLgtFwd", "hitReactLgtBwd", "hitReactLgtLeft", "hitReactLgtRight")},
+    "atlas_" + "moveJumpUpStart": ("Crouch", 0),
+    "atlas_" + "moveJumpDownLand": ("Crouch", -1),
 }
 NODE_MAP = {"joint_torso": "j_Spine2", "weapon_rightarm": "Forearm_Right", "weapon_leftarm": "Forearm_Left",
             "weapon_righttorso": "Clavicle_Right", "weapon_lefttorso": "Clavicle_Left", "weapon_centertorso": "j_Spine2",
@@ -237,13 +252,21 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None):
     # Rotation-only clips: shared ActorX basis accounts for the root/child convention.
     name_to_node = {nm(o): remap[o] for o in order}
     anims = []
-    for src, clip in CLIPS.items():
+    clip_specs = [(src, clip, None) for src, clip in CLIPS.items()]
+    clip_specs += [(src, clip, frame) for clip, (src, frame) in HOLD_CLIPS.items()]
+    for src, clip, hold_frame in clip_specs:
         if clips is not None and src not in clips:
             continue
         f = Path(anim_dir) / f"TBR_{src}_ANI.psa"
         if not f.is_file():
+            if hold_frame is not None:
+                print(f"fallback_missing {clip} source={f.name}")
             continue
         bones, keys, rate, nf = read_psa(f)
+        if hold_frame is not None:
+            print(f"fallback_hold {clip} source={f.name} frame={hold_frame % nf}")
+            keys = keys[[hold_frame]]
+            nf = 1
         t = (np.arange(nf) / rate).astype(np.float32)
         samplers, channels = [], []
         tin = add(t, 5126, "SCALAR", None, True)
