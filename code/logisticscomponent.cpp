@@ -28,8 +28,18 @@ const char* LogisticsComponent::getIconFileName() const
 	std::string key = iconFileName ? iconFileName.get() : "";
 	for (char& c : key) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
 	if (auto icon = mc2::components::launcherIcon(key)) return icon;
+	if (key.find("xlengine") != key.npos) return "mcl_mc_heatsink.tga";
+	if (key == "mcl_mc_clanlightlbx.tga") return "mcl_mc_clanultralightautocannon.tga";
 	return iconFileName.get();
 }
+const char* LogisticsComponent::getPictureFileName() const
+{
+	std::string key = pictureFileName ? pictureFileName.get() : "";
+	for (char& c : key) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+	if (auto model = mc2::components::previewModel(key)) return model;
+	return pictureFileName.get();
+}
+
 
 bool LogisticsComponent::hasLauncherIcon() const
 {

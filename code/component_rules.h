@@ -14,6 +14,16 @@ inline const char* launcherIcon(std::string_view file) {
     for (const auto& [family, icon] : families) if (file.find(family) != file.npos) return icon;
     return nullptr;
 }
+// Variants without stock models share the same textured family preview as their icons.
+inline const char* previewModel(std::string_view file) {
+    constexpr std::pair<std::string_view, const char*> families[] = {
+        {"clanlrm", "mcl_mc_clanlrmrack"}, {"swarmlrm", "mcl_mc_swarmlrmrack"},
+        {"lrm", "mcl_mc_lrmrack"}, {"clanstreaksrm", "mcl_mc_clanstreaksrmpack"},
+        {"streaksrm", "mcl_mc_streaksrmpack"}, {"srm", "mcl_mc_srmpack"},
+        {"clanlightlbx", "mcl_mc_clanultralightautocannon"}, {"xlengine", "mcl_mc_heatsink"}};
+    for (const auto& [family, model] : families) if (file.find(family) != file.npos) return model;
+    return nullptr;
+}
 // Inactive storage can contain a previous loadout. Unmapped live components
 // are preserved without indexing the logistics table with a missing location.
 template<std::size_t N, class Item, class Location, class Logistics>
