@@ -18,6 +18,7 @@ MechLabScreen.cpp			: Implementation of the MechLabScreen component.
 #include"platform_windows.h"
 #include "../resource.h"
 #include"logisticsdialog.h"
+#include "logisticserrors.h"
 #include<malloc.h>
 #include"gamesound.h"
 #include "../GameOS/gameos/vulkan_legacy_shape_island.h"
