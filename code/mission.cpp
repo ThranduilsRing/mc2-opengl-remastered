@@ -981,7 +981,8 @@ void Mission::start (void)
                 roster.push_back(binding->ref);
         }
         mc2::net::setRoster(std::move(roster));
-        mc2::net::bindQueue(orderIngress.queue(), std::make_unique<PeerAdmission>(*this));
+        mc2::net::bindQueue(orderIngress.queue(), std::make_unique<PeerAdmission>(*this),
+            [this](mc2::sim::OrderEnvelope envelope) { return submitMissionOrder(orderSession(), std::move(envelope)).has_value(); });
     }
 	active = true;
 	mission_phase_mark("mission_ready");

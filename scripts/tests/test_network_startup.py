@@ -6,8 +6,8 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_no_owned_wildcard_binds():
-    # Multiplayer is compiled out in this tree. Any future wildcard bind needs
-    # an explicit multiplayer-start contract before it can be allowed here.
+    # Co-op binds only its explicitly selected numeric address after an opt-in.
+    # Single-player startup must retain its listener-free contract.
     offenders = []
     for folder in ("GameOS", "code", "mclib", "RenderCore"):
         for path in (ROOT / folder).rglob("*"):

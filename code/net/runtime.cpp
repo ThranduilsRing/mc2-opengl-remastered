@@ -22,7 +22,9 @@ std::vector<sim::ObjectRef> roster;
 std::ofstream trace;
 sim::TacticalOrderQueue* orderQueue = nullptr;
 std::unique_ptr<sim::OrderAdmissionValidator> admission;
+PlayerSubmit playerSubmit;
 std::chrono::steady_clock::time_point began;
+std::chrono::steady_clock::time_point lastProgress;
 struct ScriptOrder { sim::Tick tick; std::uint32_t mover; std::string verb; float x = 0, y = 0; };
 std::vector<ScriptOrder> scripted;
 std::size_t nextScript = 0;
@@ -118,7 +120,7 @@ void scriptOrders() {
         e.payload.origin = sim::OrderOrigin::Player;
         e.payload.kind = row.verb == "move" ? sim::OrderKind::MoveToPoint : sim::OrderKind::Stop;
         if (row.verb == "reject") {
-            if (owns(roster[row.mover], localSlot()) || submitLocal(e)) fail("ownership rejection fixture failed");
+            if (owns(roster[row.mover], localSlot()) || submitScriptOrder(e, playerSubmit)) fail("ownership rejection fixture failed");
             trace << "OWNERSHIP slot=" << localSlot() << " mover=" << row.mover << " rejected\n" << std::flush;
             continue;
         }
@@ -128,7 +130,7 @@ void scriptOrders() {
             move.wayPath.points = {{row.x, row.y, 0}};
             move.wayPath.mode = {sim::TravelMode::Slow};
         }
-        if (!gate->queue(std::move(e))) fail("script order could not enter local batch");
+        if (!submitScriptOrder(std::move(e), playerSubmit)) fail("script order could not enter mission order path");
     }
 }
 }
@@ -185,6 +187,7 @@ void redirectLogs() {
 }
 bool active() { return enabled; }
 int exitStatus() { return status; }
+[[noreturn]] void stop(std::string_view reason) { fail(reason); }
 std::expected<sim::OrderReceipt, sim::OrderError> admitAgreedOrder(sim::TacticalOrderQueue& queue,
     sim::OrderEnvelope order, const sim::OrderAdmissionValidator& validator) {
     // Lockstep has already authenticated the wire sequence, including rejected orders.
@@ -200,11 +203,16 @@ void beginMission(std::string_view mission, std::uint32_t seed) {
     trace.open(userFile("session.trace"), std::ios::trunc);
     if (!trace) fail("cannot open MP trace");
     Identity identity{executableHash(), contentHash(), std::string(mission), seed};
+    trace << "IDENTITY executable=";
+    for (const auto byte : identity.executable) trace << std::hex << std::setw(2) << std::setfill('0') << static_cast<unsigned>(byte);
+    trace << " content=";
+    for (const auto byte : identity.content) trace << std::hex << std::setw(2) << std::setfill('0') << static_cast<unsigned>(byte);
+    trace << std::dec << " mission=" << mission << " seed=" << seed << '\n' << std::flush;
     session = std::make_unique<Session>();
-    gate = std::make_unique<Lockstep>(localSlot());
     try { session->open(hosting, endpoint, identity); }
     catch (const std::exception& error) { fail(error.what()); }
     began = std::chrono::steady_clock::now();
+    lastProgress = began;
     std::fprintf(stderr, "Multiplayer: slot=%u mission=%s seed=%u awaiting peer\n", localSlot(), identity.mission.c_str(), seed);
 }
 void setRoster(std::vector<sim::ObjectRef> initial) { roster = std::move(initial); }
@@ -214,23 +222,37 @@ bool owns(sim::ObjectRef ref, std::uint32_t slot) {
 }
 bool submitLocal(sim::OrderEnvelope envelope) {
     for (auto ref : envelope.recipients) if (!owns(ref, localSlot())) return false;
-    return session && session->connected() && gate->queue(std::move(envelope));
+    return session && session->connected() && gate && gate->queue(std::move(envelope));
 }
-void bindQueue(sim::TacticalOrderQueue& queue, std::unique_ptr<sim::OrderAdmissionValidator> validator) {
-    orderQueue = &queue; admission = std::move(validator);
+bool submitScriptOrder(sim::OrderEnvelope envelope, const PlayerSubmit& submit) {
+    return submit && submit(std::move(envelope));
+}
+void bindQueue(sim::TacticalOrderQueue& queue, std::unique_ptr<sim::OrderAdmissionValidator> validator, PlayerSubmit submit) {
+    orderQueue = &queue; admission = std::move(validator); playerSubmit = std::move(submit);
 }
 std::uint64_t nextTick() { return gate ? gate->completed() + 1 : 1; }
-bool prepareTick() {
+bool prepareTick(bool due) {
     if (!session) fail("MP mission session was not initialized");
     if (!orderQueue || !admission) fail("MP order queue was not bound");
     auto& queue = *orderQueue;
     const auto& validator = *admission;
-    for (const auto& packet : session->pump()) gate->receive(packet);
-    checkError();
-    if (!session->connected()) {
-        if (std::chrono::steady_clock::now() - began > std::chrono::seconds(60)) fail("MP handshake timeout");
-        return false;
+    const auto packets = session->pump();
+    if (!session->error().empty()) fail(session->error());
+    if (!gate && session->connected()) {
+        gate = std::make_unique<Lockstep>(localSlot(), session->inputDelay());
+        lastProgress = std::chrono::steady_clock::now();
+        trace << "NETWORK rtt_ms=" << session->rtt() << " jitter_ms=" << session->jitter()
+              << " input_delay=" << session->inputDelay() << '\n' << std::flush;
     }
+    for (const auto& packet : packets) {
+        if (!gate) fail("MP data before timing agreement");
+        gate->receive(packet);
+    }
+    const auto age = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - (gate ? lastProgress : began)).count();
+    if (const auto* timeout = progressTimeout(bool(gate), static_cast<std::uint64_t>(age))) fail(timeout);
+    if (!gate) return false;
+    checkError();
     if (queue.completedTick() != gate->completed()) fail("MP order queue tick mismatch");
     for (std::uint32_t slot = 0; slot < 2; ++slot) {
         const auto id = peerSourceBase + slot;
@@ -240,7 +262,7 @@ bool prepareTick() {
     scriptOrders();
     gate->seal();
     flushOutgoing();
-    if (!gate->ready()) return false;
+    if (!due || !gate->ready()) return false;
     for (auto& order : gate->beginTick()) {
         save::Archive bytes;
         bytes(order);
@@ -272,6 +294,9 @@ void stateHashes(std::uint64_t tick, const StateHash& values) {
     for (auto h : wireHash) trace << ' ' << std::hex << h;
     trace << std::dec << '\n' << std::flush;
     gate->finishTick(wireHash);
+    lastProgress = std::chrono::steady_clock::now();
+    if (tick % 300 == 0) trace << "NETWORK tick=" << tick << " rtt_ms=" << session->rtt()
+        << " jitter_ms=" << session->jitter() << '\n' << std::flush;
     flushOutgoing();
     checkError();
 }

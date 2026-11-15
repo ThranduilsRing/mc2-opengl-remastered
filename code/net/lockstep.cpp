@@ -9,14 +9,15 @@ void encodeFrame(save::Archive& a, std::uint32_t& kind, sim::Tick& tick,
     a(kind, tick); a.sequence(orders, maxOrders);
 }
 }
-Lockstep::Lockstep(std::uint32_t slot) : slot_(slot) {
+Lockstep::Lockstep(std::uint32_t slot, sim::Tick delay) : slot_(slot), delay_(delay) {
     if (slot > 1) throw std::invalid_argument("MP supports exactly two peers");
+    if (delay < 3 || delay > 12) throw std::invalid_argument("MP delay must be 3..12 ticks");
     // Bootstrap only local empty markers. The other peer must send its own.
-    for (sim::Tick tick = 1; tick <= inputDelay; ++tick) sendFrame(tick, {});
+    for (sim::Tick tick = 1; tick <= delay_; ++tick) sendFrame(tick, {});
 }
 bool Lockstep::queue(sim::OrderEnvelope envelope) {
     // UI is also serviced during a running step; those inputs belong to the next batch.
-    auto target = completed_ + inputDelay + 1 + (executing_ ? 1 : 0);
+    auto target = completed_ + delay_ + 1 + (executing_ ? 1 : 0);
     if (!error_.empty() || pending_.size() >= maxOrders) return false;
     // A click while waiting for the peer belongs to the next unsealed batch.
     if (frames_[target].orders[slot_]) ++target;
@@ -42,7 +43,7 @@ void Lockstep::sendFrame(sim::Tick tick, std::vector<sim::OrderEnvelope> orders)
 }
 void Lockstep::seal() {
     if (!error_.empty() || executing_) return;
-    const auto tick = completed_ + inputDelay + 1;
+    const auto tick = completed_ + delay_ + 1;
     if (frames_[tick].orders[slot_]) return;
     sendFrame(tick, std::move(pending_));
     pending_.clear();
@@ -55,7 +56,7 @@ void Lockstep::receive(std::span<const std::uint8_t> packet) {
     sim::Tick tick = 0;
     a(kind, tick);
     // A peer can seal its next batch after receiving our last hash, before we service its hash.
-    if (!a.good() || tick == 0 || tick > completed_ + inputDelay + 2) { error_ = "MP invalid tick marker"; return; }
+    if (!a.good() || tick == 0 || tick > completed_ + delay_ + 2) { error_ = "MP invalid tick marker"; return; }
     const auto remote = 1u - slot_;
     if (kind == inputMessage) {
         std::vector<sim::OrderEnvelope> orders;

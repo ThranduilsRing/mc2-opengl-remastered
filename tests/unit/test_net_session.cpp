@@ -19,7 +19,7 @@ TEST_CASE("net session handshake accepts only identical protocol/executable/cont
     CHECK(net::checkHello(net::hello(remote), id) == "mission mismatch");
     remote = id; ++remote.seed;
     CHECK(net::checkHello(net::hello(remote), id) == "seed mismatch");
-    auto wrong = packet; wrong[4] = 2;
+    auto wrong = packet; wrong[4] = 3;
     CHECK(net::checkHello(wrong, id) == "protocol version mismatch");
     CHECK(packet[0] == 'M'); CHECK(packet[1] == '2');
     CHECK(packet[packet.size() - 4] == 0x39); // fixed-width LE uint32 seed
@@ -35,4 +35,65 @@ TEST_CASE("net session handshake rejects truncation, excessive lengths and trail
     CHECK_FALSE(net::checkHello(packet, id).empty());
     auto invalid = id; invalid.mission = std::string(129, 'x');
     CHECK_THROWS(net::hello(invalid));
+}
+
+TEST_CASE("net setup derives bounded delay from reliable RTT and jitter before releasing either peer") {
+    for (const auto latency : {0u, 1u, 20u, 80u, 300u}) {
+        net::LinkSetup host, client;
+        host.hosting = true;
+        auto now = 0xfffffff0u; // ENet's millisecond clock wraps during a live session.
+        auto message = host.begin(now);
+        CHECK_FALSE(client.begin(now));
+        for (unsigned sample = 0; sample < 4; ++sample) {
+            REQUIRE(message);
+            CHECK(message->kind == 3);
+            auto reply = client.receive(*message, now + latency);
+            REQUIRE(reply);
+            CHECK(host.phase != net::LinkSetup::Phase::Ready);
+            now += latency * 2 + sample;
+            message = host.receive(*reply, now);
+        }
+        REQUIRE(message);
+        CHECK(message->kind == 5);
+        CHECK(host.phase == net::LinkSetup::Phase::Measuring);
+        CHECK(client.phase == net::LinkSetup::Phase::Measuring);
+        CHECK(host.rtt == latency * 2 + 3);
+        CHECK(host.jitter == 1);
+        CHECK(host.delay == net::delayForRtt(host.rtt, host.jitter));
+        auto ack = client.receive(*message, now);
+        REQUIRE(ack);
+        CHECK(client.delay == host.delay);
+        CHECK(client.phase == net::LinkSetup::Phase::Ready);
+        CHECK_FALSE(host.receive(*ack, now));
+        CHECK(host.phase == net::LinkSetup::Phase::Ready);
+    }
+    CHECK(net::delayForRtt(0, 0) == 3);
+    CHECK(net::delayForRtt(100, 0) == 5);
+    CHECK(net::delayForRtt(0xffffffffu, 0xffffffffu) == 12);
+}
+TEST_CASE("net setup refuses premature or malformed timing agreement and retains first stop reason") {
+    net::LinkSetup client;
+    client.begin(0);
+    CHECK_FALSE(client.receive({5, 3}, 1));
+    CHECK(client.phase == net::LinkSetup::Phase::Stopped);
+    CHECK(client.error == "MP invalid timing negotiation");
+    client.stop("later disconnect");
+    CHECK(client.error == "MP invalid timing negotiation");
+    net::LinkSetup host;
+    host.hosting = true;
+    host.begin(10);
+    CHECK_FALSE(host.receive({4, 9}, 11));
+    CHECK(host.phase == net::LinkSetup::Phase::Stopped);
+}
+TEST_CASE("net timeout bounds permit transient packet loss but end an unresponsive session") {
+    CHECK(net::progressTimeout(false, 59999) == nullptr);
+    REQUIRE(net::progressTimeout(false, 60000));
+    CHECK(std::string_view(net::progressTimeout(false, 60000)) == "MP handshake timeout");
+    CHECK(net::progressTimeout(true, 14999) == nullptr);
+    REQUIRE(net::progressTimeout(true, 15000));
+    net::Session unopened;
+    const save::Bytes packet{1};
+    CHECK_NOTHROW(unopened.send(packet));
+    CHECK(unopened.error() == "MP session is not connected");
+    CHECK_FALSE(unopened.connected());
 }

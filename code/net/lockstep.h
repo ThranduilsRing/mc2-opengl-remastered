@@ -14,7 +14,7 @@ struct Divergence {
 // Pure protocol state. Transport scheduling and local frame timing cannot advance it.
 class Lockstep {
 public:
-    explicit Lockstep(std::uint32_t slot);
+    explicit Lockstep(std::uint32_t slot, sim::Tick delay = inputDelay);
     bool queue(sim::OrderEnvelope envelope);
     void stop(std::string_view reason) { if (error_.empty()) error_ = reason; }
     void seal();
@@ -29,6 +29,7 @@ public:
 private:
     struct Frame { std::array<std::optional<std::vector<sim::OrderEnvelope>>, 2> orders; };
     std::uint32_t slot_;
+    sim::Tick delay_;
     sim::Tick completed_ = 0;
     std::uint64_t sequence_ = 0, remoteSequence_ = 0;
     sim::Tick nextRemoteTick_ = 1;

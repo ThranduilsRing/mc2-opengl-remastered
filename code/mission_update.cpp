@@ -1413,7 +1413,7 @@ long Mission::update (void)
 		if (usePre && pre.ended)
 			return pre.earlyResult;
 
-		if (!MPlayer && mc2SimTickFrozen(missionInterface))
+		if (!MPlayer && !mc2::net::active() && mc2SimTickFrozen(missionInterface))
 		{
 			s_tickClock.reset();
 			pollRealFrameSeconds(renderLength);   // rebase the wall credit so a resume does not burst
@@ -1456,7 +1456,8 @@ long Mission::update (void)
 			const bool bridgeHold = !firstFrame && mc2::observation::bridgePaused();
 			if (bridgeHold)
 				s_tickClock.reset();
-			const int ticks = mc2::net::active() ? (mc2::net::prepareTick() ? 1 : 0) : firstFrame ? 1
+			if (mc2::net::active()) mc2::net::prepareTick(false);
+			const int ticks = mc2::net::active() ? s_tickClock.advance(realSeconds, 1.0) : firstFrame ? 1
 				: bridgeHold ? mc2::observation::bridgeTakeSteps(mc2::sim::kBridgeMaxStepsPerFrame)
 				: s_tickClock.advance(realSeconds, simSpeedGetMultiplier());
 			if (ticks == 0)
@@ -1469,11 +1470,16 @@ long Mission::update (void)
 			const uint64_t budget = tickBudgetBegin();
 			for (int tick = 0; tick < ticks; ++tick)
 			{
+				if (mc2::net::active() && !mc2::net::prepareTick()) {
+					s_tickClock.defer(ticks - tick);
+					if (tick == 0 && updatePass(true, true, false, false, earlyResult)) return earlyResult;
+					break;
+				}
 				if (mc2::net::active()) g_mc2FrameCounter.store(static_cast<std::uint32_t>(mc2::net::nextTick()), std::memory_order_relaxed);
 				// One logic pass per frame-counter value: per-frame-keyed sim paths (animation advance, the brain tick
 				// accumulator, light-row stamps) see each tick as its own frame.
 				s_extraTickInFrame = tick > 0;
-				if (tick > 0)
+				if (tick > 0 && !mc2::net::active())
 					g_mc2FrameCounter.fetch_add(1, std::memory_order_relaxed);
 				const bool ended = updatePass(true, tick == 0, true, mc2::net::active() || !firstFrame, earlyResult);
 				mc2::tick::commitTickQueues();
