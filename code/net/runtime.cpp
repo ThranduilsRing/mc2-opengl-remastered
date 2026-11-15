@@ -250,7 +250,7 @@ bool prepareTick(bool due) {
     }
     const auto age = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now() - (gate ? lastProgress : began)).count();
-    if (const auto* timeout = progressTimeout(bool(gate), static_cast<std::uint64_t>(age))) fail(timeout);
+    if (const auto* timeout = progressTimeout(gate != nullptr, static_cast<std::uint64_t>(age))) fail(timeout);
     if (!gate) return false;
     checkError();
     if (queue.completedTick() != gate->completed()) fail("MP order queue tick mismatch");
