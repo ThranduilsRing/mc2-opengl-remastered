@@ -7,6 +7,9 @@
 #include <cstdint>
 #include <span>
 #include <vector>
+#include <algorithm>
+#include "StaticPropOrigin.h"
+#include "axis_convert.h"
 
 class PropLodStateMap {
 public:
@@ -66,6 +69,13 @@ private:
         for (const Slot& s : old) if (s.used) (*this)[s.key] = s.val;
     }
 };
+
+// ViewUniforms stores the row-vector world-to-clip matrix in row-major order.
+// It consumes MC2 coordinates, just like the prop vertex shader after its axis conversion.
+inline float propLodProjectedDistance(const float* m, StaticPropOrigin renderOrigin, float rowY, float viewportScale) {
+    const auto p = renderToMc2(renderOrigin);
+    return (std::max)(0.0f, m[3] * p.x + m[7] * p.y + m[11] * p.z + m[15]) / rowY * viewportScale;
+}
 
 // One hysteresis step: advance `lod` for camera distance d with a +-band so an instance never flickers at a boundary.
 inline void propLodAdvance(uint8_t& lod, float d, std::span<const float> dist, float band) {

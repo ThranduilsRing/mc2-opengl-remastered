@@ -26,6 +26,20 @@ TEST_CASE("prop_lod_state: flat map matches std::unordered_map under insert, era
     CHECK(flat[7] == 0);
 }
 
+// Trigger paths: RenderCore/PropLodState.h, GameOS/gameos/gos_static_prop_batcher_shadow.cpp.
+TEST_CASE("prop_lod_state: projected tree tier uses MC2 coordinates from its first frame") {
+    const float m[16] = {1,0,0,0.6f, 0,0,0,0.8f, 0,2,1,0, 0,0,0,-1000};
+    const StaticPropOrigin origin{-5376,350,5376}; // MC2 (5376,5376,350), as stored by props
+    const float distances[5] = {0,144,216,308.6f,1620};
+    const float d = propLodProjectedDistance(m, origin, 2, 1);
+    CHECK(d == doctest::Approx(3263.2f));
+    CHECK(propLodProjectedDistance(m, origin, 2, 2) == doctest::Approx(6526.4f));
+    uint8_t lod = 0;
+    propLodAdvance(lod, d, distances, 0.08f);
+    CHECK(lod == 4); // Missing the axis conversion clamps the old projected distance to zero.
+    CHECK(propLodProjectedDistance(m, {5376,350,-5376}, 2, 1) == 0);
+}
+
 TEST_CASE("prop_lod_state: hysteresis band keeps an instance on its LOD at a boundary") {
     const float dist[3] = {0.f, 100.f, 300.f};
     uint8_t lod = 0;
