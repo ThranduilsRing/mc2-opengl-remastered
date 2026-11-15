@@ -1189,7 +1189,10 @@ run_nightly "delivery_manifest"      "py -3 scripts/check-delivery.py --contract
 # Deliberately NOT run_check_tri: that runner is for findings that are
 # IRREPARABLE, and it fails closed on a ledger entry that pins a repairable one.
 # A missing deploy is the most repairable finding there is.
-run_check "delivery_installs"      "py -3 scripts/check-delivery.py --quiet"
+case "$OSTYPE" in
+    msys*|cygwin*|win32*) run_check "delivery_installs" "py -3 scripts/check-delivery.py --quiet" ;;
+    *) echo "[HOST-SCOPED] delivery_installs: Windows PC delivery paths and PE payloads" ;;
+esac
 run_nightly "pass_coverage"          "py -3 scripts/check-pass-coverage.py --quiet"
 run_nightly "native_render_hosts"    "py -3 scripts/check-native-render-hosts.py --quiet && py -3 -B -m pytest scripts/tests/test_native_render_hosts.py scripts/tests/test_bootstrap_worktree_build.py -q -p no:cacheprovider"
 run_nightly "editor_pass_parity"     "py -3 scripts/check-editor-pass-contract-parity.py --quiet"
@@ -1540,7 +1543,10 @@ run_nightly "mission_cpu_profile"        "py -3 -B -m pytest scripts/tests/test_
 run_nightly "runtime_bridge"             "py -3 -B -m pytest scripts/tests/test_runtime_bridge.py scripts/tests/test_runtime_bridge_socket.py -q -p no:cacheprovider"
 # Trigger: tools/import_campaign.py, tools/mc2x_import, scripts/tests/test_import_campaign.py, import-campaign.bat.
 run_check "campaign_import"            "py -3 -B -m pytest scripts/tests/test_import_campaign.py -q -p no:cacheprovider"
-run_check "mod_smoke"                  "py -3 -B -m pytest scripts/tests/test_mod_smoke.py scripts/tests/test_stage_root.py tests/smoke/test_mod_smoke_staging.py -q -p no:cacheprovider"
+case "$OSTYPE" in
+    msys*|cygwin*|win32*) run_check "mod_smoke" "py -3 -B -m pytest scripts/tests/test_mod_smoke.py scripts/tests/test_stage_root.py tests/smoke/test_mod_smoke_staging.py -q -p no:cacheprovider" ;;
+    *) echo "[HOST-SCOPED] mod_smoke: Windows mod installs; mods are not provisioned on the Linux box" ;;
+esac
 run_nightly "content_error_stock"        "py -3 -B -m pytest scripts/tests/test_content_error.py -q -p no:cacheprovider"
 run_nightly "network_startup"            "py -3 -B -m pytest scripts/tests/test_network_startup.py scripts/tests/test_firewall_dialog.py -q -p no:cacheprovider"
 run_nightly "shadow_bake_init"           "_host_need clang++ && py -3 -B -m pytest scripts/tests/test_shadow_bake_init.py -q -p no:cacheprovider"
