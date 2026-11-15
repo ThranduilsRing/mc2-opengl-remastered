@@ -324,7 +324,7 @@ size_t overlayGeneratedEquipmentStatsIfEnabled() {
 // equipmentEnableWireShouldForce() in equipment_registry.h (doctest-covered).
 // Returns the number of ordinals newly forced available.
 size_t applyEquipmentEnableWireIfEnabled(bool* available, long availableCount) {
-    if (!mc2UnitProfileDataEnabled())     // gate OFF (default) -> no-op
+    if (!mc2UnitProfileDataEnabled() && !ModCapabilityMounted("equipment_add"))
         return 0;
     if (!available || availableCount <= 0)
         return 0;

@@ -55,6 +55,7 @@ class MechPurchaseScreen: public LogisticsScreen
 		std::vector<mc2purchase::Group> purchaseGroups;
 		std::vector<std::string> purchaseGroupNames;
 		LogisticsMech* purchaseSelection = nullptr;
+		std::size_t purchaseKeyboardGroup = 0;
 		LogisticsMechDisplay	mechDisplay;
 
 		LogisticsMech*		pDragMech;

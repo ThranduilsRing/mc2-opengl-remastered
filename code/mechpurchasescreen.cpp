@@ -20,6 +20,7 @@ MechPurchaseScreen.cpp			: Implementation of the MechPurchaseScreen component.
 #include"../GuiRuntime/GuiRuntime.h"
 #include "mc2fmt.h"
 #include "imgui.h"
+#include "../GameOS/gameos/gos_input.h"
 
 MechPurchaseScreen* MechPurchaseScreen::s_instance = nullptr;
 
@@ -332,6 +333,7 @@ void MechPurchaseScreen::begin()
 	}
 	const char* campaignOwner = LookupModOwner(LogisticsData::instance->getCampaignName().c_str());
 	purchaseGroups = mc2purchase::group(catalog, campaignOwner ? campaignOwner : "");
+	purchaseKeyboardGroup = 0;
 	purchaseGroupNames.clear();
 	for (const auto& group : purchaseGroups)
 		purchaseGroupNames.push_back(ModDisplayName(group.source));
@@ -612,12 +614,30 @@ void MechPurchaseScreen::renderPurchaseGroups(int xOffset, int yOffset)
 	{
 		// The font atlas already follows display DPI; scale only relative to the 1080p canvas.
 		ImGui::SetWindowFontScale(sy * .75f * 1080.f / ImGui::GetIO().DisplaySize.y);
+		ImGui::TextUnformatted("F6: source  Space: open/close\nF7: next mech  F8: buy");
+		const auto* keys = input::getKeyboardInfo();
+		if (!purchaseGroups.empty()) {
+			if (keys->last_state_[SDL_SCANCODE_F6] == static_cast<int>(input::KS_PRESSED))
+				purchaseKeyboardGroup = (purchaseKeyboardGroup + 1) % purchaseGroups.size();
+			if (keys->last_state_[SDL_SCANCODE_SPACE] == static_cast<int>(input::KS_PRESSED))
+				purchaseGroups[purchaseKeyboardGroup].open = !purchaseGroups[purchaseKeyboardGroup].open;
+			auto& group = purchaseGroups[purchaseKeyboardGroup];
+			if (keys->last_state_[SDL_SCANCODE_F7] == static_cast<int>(input::KS_PRESSED) && !group.items.empty()) {
+				auto selected = std::find_if(group.items.begin(), group.items.end(), [&](auto i) { return purchaseMechs[i].get() == purchaseSelection; });
+				if (selected == group.items.end() || ++selected == group.items.end()) selected = group.items.begin();
+				group.open = true;
+				purchaseSelection = purchaseMechs[*selected].get();
+				inventoryListBox.SelectItem(-1); setMech(purchaseSelection);
+			}
+			if (keys->last_state_[SDL_SCANCODE_F8] == static_cast<int>(input::KS_PRESSED) && purchaseSelection)
+				addMech(purchaseSelection);
+		}
 		for (std::size_t g = 0; g < purchaseGroups.size(); ++g)
 		{
 			auto& group = purchaseGroups[g];
 			ImGui::PushID(group.source.c_str());
 			ImGui::SetNextItemOpen(group.open, ImGuiCond_Always);
-			const std::string title = std::format("{} ({})", purchaseGroupNames[g], group.items.size());
+			const std::string title = std::format("{}{} ({})", g == purchaseKeyboardGroup ? "> " : "", purchaseGroupNames[g], group.items.size());
 			group.open = ImGui::CollapsingHeader(title.c_str());
 			if (!group.open && purchaseSelection)
 				for (const auto i : group.items)

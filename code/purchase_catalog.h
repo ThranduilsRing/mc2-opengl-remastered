@@ -1,11 +1,33 @@
 #pragma once
 #include <algorithm>
 #include <cstddef>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
 
 namespace mc2purchase {
+inline bool mountInstalled(std::string_view type, bool campaign, bool units) {
+    return type != "campaign" && !campaign && (type == "assets" || units);
+}
+
+template<class File>
+void saveIdentity(File& file, const std::string& pack, const std::string& name) {
+    file.writeIdString("PurchasePack", pack.c_str());
+    file.writeIdString("Variant", name.c_str());
+}
+
+inline bool identityMatches(std::string_view pack, std::string_view name,
+    const std::optional<std::string>& savedPack, std::string_view savedName) {
+    const auto same = [](std::string_view a, std::string_view b) {
+        return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(), [](char x, char y) {
+            const auto lower = [](char c) { return c >= 'A' && c <= 'Z' ? c + ('a' - 'A') : c; };
+            return lower(x) == lower(y);
+        });
+    };
+    return same(name, savedName) && (!savedPack || same(pack, *savedPack));
+}
+
 inline bool available(bool campaignUnlocked, std::string_view source) {
     return campaignUnlocked || !source.empty();
 }
@@ -50,4 +72,5 @@ inline std::vector<Group> group(const std::vector<Item>& items, std::string_view
 
 // Engine adapter, kept out of the pure grouping/availability rules above.
 std::string chassisSource(std::string_view csvPath);
+std::string componentSource(int ordinal);
 }

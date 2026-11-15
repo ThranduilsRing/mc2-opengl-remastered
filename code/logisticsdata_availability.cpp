@@ -6,6 +6,8 @@
 #include "mc2str.h"
 #include "package_chassis.h"
 #include "purchase_catalog.h"
+#include "unitprofile.h"
+#include "equipment_registry.h"
 #include <filesystem>
 
 #include <format>
@@ -16,6 +18,18 @@ std::string mc2purchase::chassisSource(std::string_view csvPath)
 	const auto* package = packageChassisByStem(std::filesystem::path(csvPath).stem().string());
 	const char* owner = LookupModOwner(std::string(csvPath).c_str());
 	return source(package ? package->modId : std::string_view{}, owner ? owner : "");
+}
+
+std::string mc2purchase::componentSource(int ordinal)
+{
+	for (const auto& row : equipmentAddFillRows())
+		if (row.ordinal == ordinal) {
+			const auto path = equipmentDefPathForQualifiedId(row.qualifiedId);
+			const char* owner = LookupModOwner(path.c_str());
+			return owner ? owner : "";
+		}
+	const char* owner = LookupModOwner("data/objects/compbas.csv");
+	return owner ? owner : "";
 }
 
 

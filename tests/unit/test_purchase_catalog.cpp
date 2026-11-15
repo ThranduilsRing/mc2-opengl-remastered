@@ -1,7 +1,21 @@
 // Trigger paths: code/purchase_catalog.h, code/logisticsdata_availability.cpp,
 // code/mechpurchasescreen.cpp. Offline purchase population and section rules.
+// Also triggers: mclib/vfs.cpp, code/logisticsmech.cpp, code/logisticsdata_save.cpp.
 #include "doctest.h"
 #include "purchase_catalog.h"
+
+TEST_CASE("purchase_catalog/installed assets mount without selecting a campaign") {
+    CHECK(mc2purchase::mountInstalled("assets", false, false));
+    CHECK(mc2purchase::mountInstalled("", false, true));
+    CHECK_FALSE(mc2purchase::mountInstalled("campaign", true, true));
+    CHECK_FALSE(mc2purchase::mountInstalled("campaign", false, true));
+    CHECK_FALSE(mc2purchase::mountInstalled("assets", true, true));
+    CHECK_FALSE(mc2purchase::mountInstalled("", false, false));
+    CHECK(mc2purchase::identityMatches("pack-a", "Atlas", std::nullopt, "ATLAS"));
+    CHECK_FALSE(mc2purchase::identityMatches("pack-b", "Atlas", std::string("pack-a"), "Atlas"));
+    CHECK_FALSE(mc2purchase::identityMatches("pack-a", "Atlas", std::string("missing"), "Atlas"));
+    CHECK_FALSE(mc2purchase::identityMatches("pack-a", "Atlas", std::string(""), "Atlas"));
+}
 
 TEST_CASE("purchase_catalog/availability preserves stock progression") {
     CHECK_FALSE(mc2purchase::available(false, ""));
