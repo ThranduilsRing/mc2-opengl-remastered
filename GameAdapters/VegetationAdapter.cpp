@@ -513,8 +513,12 @@ void GameAdapters::Vegetation::flush(const float* terrainLightDir_4f, float time
     for (const auto& unit : mc2::render_view::list().movers) {
         using mc2::render_view::Mode;
         if (unit.value[0] <= 0.0f || (unit.mode != Mode::Full && unit.mode != Mode::Own && unit.mode != Mode::Fade)) continue;
-        footprints.push_back({unit.position.x - Terrain::mapTopLeft3d.x - halfMap,
-                              unit.position.y - Terrain::mapTopLeft3d.y + halfMap, unit.value[0], 0.0f});
+        const auto addFoot = [&](const glm::vec3& foot) {
+            footprints.push_back({foot.x - Terrain::mapTopLeft3d.x - halfMap,
+                                  foot.y - Terrain::mapTopLeft3d.y + halfMap, unit.value[0], 0.0f});
+        };
+        if (unit.groundFeet.empty()) addFoot(unit.position); // ground vehicles
+        else for (const auto& foot : unit.groundFeet) addFoot(foot);
     }
     GosVegetation::setUnitFootprints(footprints);
 

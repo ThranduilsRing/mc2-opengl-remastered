@@ -73,6 +73,7 @@ struct RenderView {
     // Artillery: strike appearance, bomber. A pool reuse on the tick retires both at the join, never mid-draw.
     Appearance* appearances[2]{};
     glm::vec3 position{0.0f};  // sim position
+    std::vector<glm::vec3> groundFeet; // world-space foot locators copied before the next tick
     glm::vec3 aux[3]{};
     uint32_t watchId = 0;
     uint32_t generation = 0;   // obj->generation at extract; the draw skips the view when the slot was re-inited
