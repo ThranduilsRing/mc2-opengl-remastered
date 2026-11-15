@@ -36,6 +36,15 @@ except ImportError:                       # imported as a top-level module from 
     import bounded_wait                   # type: ignore
     import child_registry                 # type: ignore
 
+def _gpu_adapters():
+    """smoke_lib.gpu_adapters, also when this file runs as a script (the batch holder child: python host_lease.py _holder)."""
+    try:
+        from . import gpu_adapters
+    except ImportError:
+        import gpu_adapters                # type: ignore
+    return gpu_adapters
+
+
 # Slot zero retains the host-global path; the queue and other slots live beside it.
 LEASE_PATH = Path("A:/Games/mc2-opengl/.host_game_lease.json")
 if sys.platform == "linux":
@@ -117,7 +126,7 @@ def lane_devices() -> tuple:
     if redirected():
         return GPU_SPLIT_DEFAULT
     if runtime_lane_adapter():
-        from .gpu_adapters import adapters, selector
+        _ga = _gpu_adapters(); adapters, selector = _ga.adapters, _ga.selector
         return tuple(selector(r) for r in adapters() if "7900 XTX" in r["name"])
     try:
         return _parse_gpu_split(GPU_SPLIT_PATH.read_text(encoding="utf-8"))
@@ -148,8 +157,7 @@ def lane_uuid() -> Optional[str]:
 def runtime_lane_adapter():
     if redirected():
         return None
-    from .gpu_adapters import lane_adapter
-    return lane_adapter()
+    return _gpu_adapters().lane_adapter()
 
 
 def pin_device(device: Optional[str]) -> Optional[str]:
@@ -691,7 +699,7 @@ def held_device() -> Optional[str]:
     """The acquired slot's GPU; a PC exclusive hold launches on the non-display XTX."""
     records = [rec for _, rec in _records() if _ours(rec)]
     if records and runtime_lane_adapter() and any(r.get("exclusive") for r in records):
-        from .gpu_adapters import selector
+        selector = _gpu_adapters().selector
         return selector(runtime_lane_adapter())
     return records[0].get("device") if len(records) == 1 and not records[0].get("exclusive") else None
 
@@ -832,7 +840,7 @@ def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None,
                 foreign = [(pid, img) for pid, img in foreign if not _managed_engine(pid, managed)]
                 owner_slots = []
                 if pc_adapter:
-                    from .gpu_adapters import selector
+                    selector = _gpu_adapters().selector
                     secondary = selector(pc_adapter)
                     owner_slots = [i for i in range(slot_count()) if slot_device(i) != secondary] if foreign else []
                 # Slot IDs keep two-core spacing even for a narrower caller. Check
