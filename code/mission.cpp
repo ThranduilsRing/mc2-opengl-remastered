@@ -967,7 +967,9 @@ void Mission::start (void)
         for (long i = 0; i < ObjectManager->getNumMovers(); ++i) {
             auto* mover = ObjectManager->getMover(i);
             if (mover->getTeamId() != 0 || mover->getCommanderId() != 0) continue;
-            if (auto ref = orderRecipient(mover->getPartId())) roster.push_back(*ref);
+            const auto binding = std::ranges::find(orderRecipients, mover, &OrderRecipientBinding::mover);
+            if (binding != orderRecipients.end() && resolveOrderRecipient(binding->ref))
+                roster.push_back(binding->ref);
         }
         mc2::net::setRoster(std::move(roster));
         mc2::net::bindQueue(orderIngress.queue(), std::make_unique<PeerAdmission>(*this));
