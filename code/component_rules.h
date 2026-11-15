@@ -53,6 +53,27 @@ inline const CookedIcon* cookedIcon(std::string_view file) {
     for (const auto& icon : icons) if (file == icon.source || file == icon.file) return &icon;
     return nullptr;
 }
+
+inline bool restoreGridDrag(bool fromGrid, bool overGrid, bool overInventory, bool cancelled) {
+    return fromGrid && (cancelled || (!overGrid && !overInventory));
+}
+
+inline bool coolingAllowsRemoval(float maximum, float removed, float heat) {
+    return maximum - removed >= heat;
+}
+
+// A removed grid item is placed once: at the destination, or back at its source.
+// Copy the source because placement callbacks can change the UI selection.
+template<class Add>
+inline bool finishGridDrop(long& x, long& y, bool fromGrid,
+                           long sourceX, long sourceY, Add add) {
+    if (add(x, y) == 0) return true;
+    if (!fromGrid) return false;
+    x = sourceX;
+    y = sourceY;
+    return add(x, y) == 0;
+}
+
 // Lowercase legacy launcher aliases resolve to the one-cell model cook.
 inline const char* launcherIcon(std::string_view file) {
     constexpr std::pair<std::string_view, const char*> families[] = {

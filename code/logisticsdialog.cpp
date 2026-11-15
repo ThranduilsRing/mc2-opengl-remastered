@@ -400,12 +400,16 @@ void	LogisticsOneButtonDialog::setText( int textID, int CancelButton, int OKButt
 	textObjects[0].setText( textID );
 	buttons[0].setText( CancelButton );
 //	buttons[1].setText( OKButton );
-
+	setDefsElementText( "game.mcl_dialog_onebutton.text.text", textObjects[0].textString() );
+	char buttonText[256] = {};
+	cLoadString( CancelButton, buttonText, sizeof(buttonText) );
+	setDefsElementText( "game.mcl_dialog_onebutton.button.cancel_okay_whatever_button", buttonText );
 }
 
 void				LogisticsOneButtonDialog::setText( mc2::czstring mainText )
 {
 	textObjects[0].setText( mainText );
+	setDefsElementText( "game.mcl_dialog_onebutton.text.text", textObjects[0].textString() );
 }
 
 
