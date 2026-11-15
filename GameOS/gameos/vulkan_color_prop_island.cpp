@@ -644,6 +644,7 @@ bool cp_make_albedo_sampler(ColorPropIsland* s, mc2vk::OwnedSampler* samp, uint3
 
 // FSR/AA resolve state changed: rebuild the biased samplers and rewrite every parity's sets once.
 void cp_refresh_samplers(ColorPropIsland* s) {
+    ZoneScopedN("VKIsl.Props.RefreshSamplers");
     const auto albedo = [s](mc2vk::OwnedSampler* p) { return [s, p] { return cp_make_albedo_sampler(s, p, 0); }; };
     const auto detail = [s] { return mc2vk::infra::makeMaterialSampler(s->device, s->detailSampler, VK_SAMPLER_ADDRESS_MODE_REPEAT, s->sampBias); };
     if (!mc2vk::infra::refreshSamplers(s->sampBias, {{&s->albedoSamp, albedo(&s->albedoSamp)}, {&s->albedoOnSamp, albedo(&s->albedoOnSamp)}, {&s->detailSampler, detail}})) return;
@@ -1546,6 +1547,7 @@ extern "C" int mc2_vk_color_prop_island_enabled() {
 }
 
 static bool prepare_mission_resources(ColorPropIsland* s) {
+    ZoneScopedN("VKIsl.Props.MissionResources");
     if (!upload_geometry_once(s)) { setFallback("geometry_not_ready"); return false; }
 
     // VK-P11 STATIC-PROP MATERIAL: copy-once import the alpha-OFF albedo 2D_ARRAY +
@@ -2053,6 +2055,7 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
         slotCtx.retireIsland(mc2vk::IslandSlot::ColorProp);
     }
     if (!supplied && !islandSlot()) {
+        ZoneScopedN("VKIsl.Props.Init");
         auto fresh = std::make_unique<ColorPropIsland>();
         (void)mc2vk::takeLastCreateFailure();
         if (!init_island(fresh.get(), w, h)) {
@@ -2074,7 +2077,10 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
     if (s->disabled || !s->inited) return 0;  // VK-RUNG8-ITEM5: direct-chain-native only
 
     if (!prepare_mission_resources(s)) return 0;
-    if (!target && mc2vk::rt::scene::demanded()) mc2vk::rt::scene::updateProps(s->vbo.deviceAddress());
+    if (!target && mc2vk::rt::scene::demanded()) {
+        ZoneScopedN("VKIsl.Props.RtPrepare");
+        mc2vk::rt::scene::updateProps(s->vbo.deviceAddress());
+    }
 
     // Frame-ring allocations already belong to the current engine frame slot.
     // Private commands and descriptors retire against this island's submissions,
@@ -2165,7 +2171,11 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
     void* hzbMask = nullptr;
     uint64_t hzbMaskGeneration = 0;
     gosPostProcess* pp = getGosPostProcess();
-    const bool hzbCulled = !target && pp && pp->runVkPostHzbNative(feed, s->mapGeneration, &hzbMask, &hzbMaskGeneration);
+    bool hzbCulled = false;
+    {
+        ZoneScopedN("VKIsl.Props.HzbPrepare");
+        hzbCulled = !target && pp && pp->runVkPostHzbNative(feed, s->mapGeneration, &hzbMask, &hzbMaskGeneration);
+    }
     VkDescriptorBufferInfo maskInfo{hzbCulled ? reinterpret_cast<VkBuffer>(hzbMask) : s->hotBuf.get(),0,VK_WHOLE_SIZE};
     VkWriteDescriptorSet maskWrite{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
     maskWrite.dstSet = s->set[par]; maskWrite.dstBinding = 9; maskWrite.descriptorCount = 1;
