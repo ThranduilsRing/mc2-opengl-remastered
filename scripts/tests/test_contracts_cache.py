@@ -78,6 +78,7 @@ def test_exact_tip_passes_reject_dirty_moved_failed_and_corrupt(tmp_path, monkey
 def test_equivalents_and_stock_trigger_paths(monkeypatch):
     from pathlib import Path
     root = str(Path(__file__).resolve().parents[2])
+    monkeypatch.setenv("CONTRACTS_NO_CACHE", "0")
     monkeypatch.setattr(cc, "tip_passed", lambda repo, label: False)
     paths = ["tools/callers.py", "code/test.cpp", "tests/unit/test_audio_backend.cpp"]
     assert {"script_callers", "log_tag_census", "audio_music_stream"} <= cc.affected_rows(root, paths)
