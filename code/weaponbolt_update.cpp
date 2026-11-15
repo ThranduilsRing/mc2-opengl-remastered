@@ -10,14 +10,16 @@
 #include "Gates/gate.h"
 #include "impact_presentation.h"
 #include "tick_commit.h"
+#include <map>
 
 //---------------------------------------------------------------------------
 // PPC de-curve + direct-fire speed (env-gated, default-off). "Direct-fire" =
 // non-arc, non-beam bolts (PPC / autocannon / gauss). MC2_DIRECT_FIRE_STRAIGHT=1
 // makes them fly STRAIGHT (no per-frame target re-track) to a one-time aim that
 // is LED by the target's velocity over the bolt's flight time, so a pre-rolled
-// hit on a moving target still lands. LRM (arcEffect) + beams keep tracking.
-// MC2_PROJECTILE_SPEED_MULT scales direct-fire travel speed (default 1.0).
+// hit on a moving target still lands. Missiles use the same aim lock by default,
+// twice stock speed and a shallow launch arc. Beams keep tracking.
+// MC2_PROJECTILE_SPEED_MULT scales other direct-fire travel speed (default 1.0).
 // Presentation only: the impact decal library reads this event; the simulation never reads it back and draws no RNG for it.
 static void emitImpact(const WeaponBoltType* t, const WeaponShotInfo& shot, const glm::vec3& from, const glm::vec3& at,
                        unsigned long targetWID)
@@ -40,6 +42,8 @@ static float directFireSpeedMult (void)
 long WeaponBolt::update (void)
 {
 	ZoneScopedN("GameLogic.Projectile.Update");
+	const bool missile = weaponShot.masterId >= 0 &&
+		MasterComponent::masterList[weaponShot.masterId].getForm() == COMPONENT_FORM_WEAPON_MISSILE;
 
 	glm::vec3 laserDirection;
 	
@@ -84,17 +88,14 @@ long WeaponBolt::update (void)
 			else
 				aim = target->appearance->getHitNodeRight();
 
-			// PPC de-curve: direct-fire bolts do NOT re-track (see flight loop),
-			// so lead the aim ONCE here by the target's velocity over the bolt's
-			// estimated flight time. getVelocity()==0 for non-movers -> no lead
-			// (straight shot at the fire-time position). Env-gated, default-off.
+			// Lead once at launch; missiles and straight direct fire do not re-track.
 			WeaponBoltTypePtr bt = static_cast<WeaponBoltTypePtr>(getObjectType());
-			if (directFireStraightEnabled() && !bt->arcEffect && !bt->isBeam)
+			if (missile || (directFireStraightEnabled() && !bt->arcEffect && !bt->isBeam))
 			{
 				glm::vec3 toTgt;
 				toTgt = aim - ownerPosition;
 				float dist = glm::length(toTgt);
-				float spd  = bt->velocity * directFireSpeedMult();
+				float spd  = bt->velocity * (missile ? 2.0f : directFireSpeedMult());
 				float tof  = (spd > 0.01f) ? (dist / spd) : 0.0f;
 				glm::vec3 lead;
 				lead = target->getVelocity() * tof;
@@ -139,6 +140,7 @@ long WeaponBolt::update (void)
 		
 		goalHeight = (static_cast<WeaponBoltTypePtr>(getObjectType()))->arcHeight;
 		goalHeight *= 10.0f;
+		if (missile) goalHeight *= 0.25f;
 	}
 
 	GameObjectPtr myOwner = ObjectManager->getByWatchID(ownerWID);
@@ -155,11 +157,10 @@ long WeaponBolt::update (void)
 		
 	glm::vec3 targetPos;
 	targetPos = glm::vec3(0.0f);
-	// PPC de-curve: direct-fire (non-arc, non-beam) bolts do NOT re-track -- they
-	// fly straight to the lead-aim locked at spawn. LRM/arc + beams keep tracking.
+	// Missiles and straight direct fire retain the lead-aim locked at spawn.
 	WeaponBoltTypePtr boltType = static_cast<WeaponBoltTypePtr>(getObjectType());
 	const bool directStraight =
-		directFireStraightEnabled() && !boltType->arcEffect && !boltType->isBeam;
+		missile || (directFireStraightEnabled() && !boltType->arcEffect && !boltType->isBeam);
 	if (target && (!hitTarget || boltType->isBeam) && !directStraight)
 	{
 		if (!target->isMech())
@@ -185,7 +186,9 @@ long WeaponBolt::update (void)
 	velMag *= frameLength;
 
 	// Direct-fire travel speed preserves the pre-rolled hit/miss outcome.
-	if (!(static_cast<WeaponBoltTypePtr>(getObjectType()))->arcEffect)
+	if (missile)
+		velMag *= 2.0f;
+	else if (!(static_cast<WeaponBoltTypePtr>(getObjectType()))->arcEffect)
 		velMag *= directFireSpeedMult();
 
 	laserVelocity = targetPos - ownerPosition;
@@ -198,6 +201,7 @@ long WeaponBolt::update (void)
 		if ( goalHeight > 0.0f )
 		{
 			float accel = -(static_cast<WeaponBoltTypePtr>(getObjectType()))->arcHeight * 10.0f;
+			if (missile) accel *= 0.5f; // Quarter-height launch arc, half the stock duration.
 			goalHeight += accel * frameLength;
 			if (goalHeight >= 0.0f)
 			{
@@ -509,6 +513,17 @@ long WeaponBolt::update (void)
 void WeaponBolt::updatePresentation()
 {
 	if (!targetPosition || getFlag(OBJECT_FLAG_JUSTCREATED)) return;
+	// Rebudget every presentation frame: no salvo can stack dozens of light pools.
+	extern uint32_t g_mc2RenderFrame;
+	static uint32_t lightFrame = ~0u;
+	static std::map<GameObjectWatchID, unsigned> launcherLights;
+	if (lightFrame != g_mc2RenderFrame) {
+		lightFrame = g_mc2RenderFrame;
+		launcherLights.clear();
+	}
+	const bool missile = weaponShot.masterId >= 0 &&
+		MasterComponent::masterList[weaponShot.masterId].getForm() == COMPONENT_FORM_WEAPON_MISSILE;
+	const bool allowLight = !missile || (!hitTarget && launcherLights[ownerWID]++ < 2);
 	auto* myOwner = ObjectManager->getByWatchID(ownerWID);
 	auto* target = ObjectManager->getByWatchID(targetWID);
 	glm::vec3 laserDirection = *targetPosition - (hitTarget ? position : laserPosition);
@@ -636,7 +651,7 @@ void WeaponBolt::updatePresentation()
 		laserDirection *= (static_cast<WeaponBoltTypePtr>(getObjectType()))->projLength;
 		laserVertices[2] = laserPosition + laserDirection;
 	
-		if ((static_cast<WeaponBoltTypePtr>(getObjectType()))->lightSource && !pointLight && (lightId != -1))
+		if (allowLight && (static_cast<WeaponBoltTypePtr>(getObjectType()))->lightSource && !pointLight && (lightId != -1))
 		{
 			pointLight = (static_cast<WeaponBoltTypePtr>(getObjectType()))->getLight();
 			lightId = eye->addWorldLight(pointLight);
@@ -706,6 +721,11 @@ void WeaponBolt::updatePresentation()
 
 	if (pointLight)
 	{
+		if (missile) {
+			pointLight->SetaRGB(0x00ff6018);
+			pointLight->SetIntensity(allowLight ? std::min(0.12f, static_cast<WeaponBoltTypePtr>(getObjectType())->intensity) : 0.0f);
+			pointLight->SetFalloffDistances(4.0f, 65.0f);
+		}
 		glm::vec3 ourPosition;
 		mc2ToRender(ourPosition, laserPosition);
 
