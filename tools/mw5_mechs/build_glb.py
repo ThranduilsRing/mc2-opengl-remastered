@@ -153,7 +153,7 @@ def build(skm_path, anim_dir, out_path, image_name, normal_name=None):
         blob.extend(arr.tobytes())
         a = {"bufferView": len(views) - 1, "componentType": ctype, "count": int(arr.shape[0]), "type": typ}
         if minmax:
-            a["min"], a["max"] = arr.min(axis=0).tolist(), arr.max(axis=0).tolist()
+            a["min"], a["max"] = np.atleast_1d(arr.min(axis=0)).tolist(), np.atleast_1d(arr.max(axis=0)).tolist()
         accs.append(a)
         return len(accs) - 1
 
