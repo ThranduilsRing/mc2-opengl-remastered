@@ -3,6 +3,7 @@
 Run on box after production C# --fixture; no MW5 data used.
 """
 import copy
+import base64
 import json
 import math
 import os
@@ -81,6 +82,23 @@ class NativeTests(unittest.TestCase):
             ref.write_text(json.dumps(self.doc))
             bounds = {"muzzle": {"min": [0, 4, 1], "max": [2, 5, 3]}}
             self.assertEqual(compare(p, ref, bounds)["status"], "PASS")
+            # Reverse quaternion sign in the reference binary: same rotation.
+            bad = copy.deepcopy(self.doc)
+            sampler = bad["animations"][0]["samplers"][1]
+            accessor = bad["accessors"][sampler["output"]]
+            view = bad["bufferViews"][accessor["bufferView"]]
+            data = bytearray(base64.b64decode(bad["buffers"][0]["uri"].split(",")[1]))
+            offset = view["byteOffset"] + 16
+            q = struct.unpack_from("<4f", data, offset)
+            struct.pack_into("<4f", data, offset, *[-x for x in q])
+            bad["buffers"][0]["uri"] = "data:application/octet-stream;base64,"+base64.b64encode(data).decode()
+            ref.write_text(json.dumps(bad))
+            self.assertEqual(compare(p, ref, bounds)["status"], "PASS")
+            struct.pack_into("<4f", data, offset, 0, 0, 0, 1)
+            bad["buffers"][0]["uri"] = "data:application/octet-stream;base64,"+base64.b64encode(data).decode()
+            ref.write_text(json.dumps(bad))
+            with self.assertRaisesRegex(ValueError, "clip key error"):
+                compare(p, ref, bounds)
             bad = copy.deepcopy(self.doc)
             bad["nodes"][1]["translation"][1] += .01
             ref.write_text(json.dumps(bad))

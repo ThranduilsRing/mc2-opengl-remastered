@@ -63,13 +63,14 @@ public static class Native
         System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(path))).ToLowerInvariant();
 
     // Shared timing conversion: CUE tracks contain frame positions, not seconds.
-    public static Channel Keys(float[][] values, float[] times, float fps)
+    public static Channel Keys(float[][] values, float[] times, float fps, int frames = 0)
     {
         if (!(fps > 0) || !float.IsFinite(fps)) throw new InvalidDataException("Invalid frame rate");
         if (values.Length > 1 && times.Length != 0 && times.Length != values.Length)
             throw new InvalidDataException("Unsupported shared time array");
         return new Channel(Enumerable.Range(0, values.Length)
-            .Select(i => values.Length == 1 ? 0 : (times.Length == 0 ? i : times[i]) / fps).ToArray(), values);
+            .Select(i => values.Length == 1 ? 0 : (times.Length == 0 ?
+                i * (frames > 0 ? (float)frames / values.Length : 1) : times[i]) / fps).ToArray(), values);
     }
 
     // Synthetic fixture exercises the production writers, no game data needed.
@@ -93,6 +94,8 @@ public static class Native
         Json(Path.Combine(dir, "loadout.json"), Array.Empty<object>());
         Json(Path.Combine(dir, "bridge.json"), Array.Empty<object>());
         if (Keys([[1,2,3]], [17,21], 30).times[0] != 0) throw new Exception("constant time");
+        if (Math.Abs(Keys([[1,2,3],[4,5,6]], [], 30, 6).times[1]-.1f) > 1e-6f)
+            throw new Exception("uniform sparse time");
         try { Keys([[1,2,3],[4,5,6]], [1], 30); throw new Exception("bad timing accepted"); }
         catch (InvalidDataException) { }
         Console.WriteLine("PASS native writers and key timing; synthetic fixture emitted");

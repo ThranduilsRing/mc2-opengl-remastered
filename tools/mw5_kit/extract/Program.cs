@@ -120,16 +120,18 @@ public static class Program
                 Local(sk.FinalRefBonePose[i].Translation,sk.GetBoneScale(sk.FinalRefBonePose,i)),
                 Q(sk.FinalRefBonePose[i].Rotation),V(sk.FinalRefBonePose[i].Scale3D))).ToArray();
             var lods = new List<object>();
+            var sourceLods = m.LODModels!.Select((lod,index)=>(lod,index)).Where(x=>!x.lod.SkipLod).ToArray();
             for (int i=0;i<converted.LODs.Count;i++)
             {
                 var lod = converted.LODs[i];
-                string file = i == 0 ? "mesh.bin" : $"mesh.lod{i}.bin";
+                int sourceLod = sourceLods[i].index;
+                string file = sourceLod == 0 ? "mesh.bin" : $"mesh.lod{sourceLod}.bin";
                 var vertices = lod.Verts.Select(v=>new Vertex(V(v.Position),[v.Normal.X,v.Normal.Y,v.Normal.Z],
                     [v.UV.U,v.UV.V],v.Influences.Select(b=>new Influence((uint)b.Bone,b.Weight)).ToArray())).ToArray();
                 var ib = lod.Indices.Value;
                 uint[] indices = ib.Indices32.Length > 0 ? ib.Indices32 : ib.Indices16.Select(x=>(uint)x).ToArray();
                 Native.Mesh(Path.Combine(output,file),vertices,indices);
-                lods.Add(new { file, sections=lod.Sections.Value.Select(s=>new { material=s.MaterialIndex, firstIndex=s.FirstIndex, indexCount=s.NumFaces*3 }) });
+                lods.Add(new { file, sourceLod, sections=lod.Sections.Value.Select(s=>new { material=s.MaterialIndex, firstIndex=s.FirstIndex, indexCount=s.NumFaces*3 }) });
             }
             Save("skeleton.json",new { version=1, space="UE_LH_Z_UP_CM", bones });
             Save("lods.json",lods);
@@ -159,9 +161,9 @@ public static class Program
             if (clip.Tracks.Count != sk.FinalRefBoneInfo.Length) throw new InvalidDataException("Missing bone tracks");
             var pose = clip.RetargetBasePose ?? sk.FinalRefBonePose;
             var tracks = clip.Tracks.Select((t,i)=>new Track(i,
-                Native.Keys(t.KeyPos.Select(v=>Local(v,AnimationScale(sk.GetBoneScale(pose,i)))).ToArray(),t.KeyPosTime.Length>0?t.KeyPosTime:t.KeyTime,clip.FramesPerSecond),
-                Native.Keys(t.KeyQuat.Select(Q).ToArray(),t.KeyQuatTime.Length>0?t.KeyQuatTime:t.KeyTime,clip.FramesPerSecond),
-                Native.Keys(t.KeyScale.Select(V).ToArray(),t.KeyScaleTime.Length>0?t.KeyScaleTime:t.KeyTime,clip.FramesPerSecond))).ToArray();
+                Native.Keys(t.KeyPos.Select(v=>Local(v,AnimationScale(sk.GetBoneScale(pose,i)))).ToArray(),t.KeyPosTime.Length>0?t.KeyPosTime:t.KeyTime,clip.FramesPerSecond,clip.NumFrames),
+                Native.Keys(t.KeyQuat.Select(Q).ToArray(),t.KeyQuatTime.Length>0?t.KeyQuatTime:t.KeyTime,clip.FramesPerSecond,clip.NumFrames),
+                Native.Keys(t.KeyScale.Select(V).ToArray(),t.KeyScaleTime.Length>0?t.KeyScaleTime:t.KeyTime,clip.FramesPerSecond,clip.NumFrames))).ToArray();
             Directory.CreateDirectory(Path.Combine(output,"clips"));
             Native.Animation(Path.Combine(output,"clips",Native.Id(a.GetPathName())+".bin"),new(clip.NumFrames,clip.FramesPerSecond,tracks));
             Native.Json(Path.Combine(output,"clips",Native.Id(a.GetPathName())+".json"),new { asset=a.GetPathName(), name=a.Name });

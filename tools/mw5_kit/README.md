@@ -1,9 +1,11 @@
 # Native MW5 reader (synthetic proof only)
 
-This lane uses .NET 8 and exact NuGet pins CUE4Parse **1.2.1** and
+This lane uses .NET 8 and exact NuGet pins CUE4Parse **1.2.2** and
 CUE4Parse-Conversion **1.2.1**. Both are Apache-2.0:
-[package](https://www.nuget.org/packages/CUE4Parse/1.2.1),
-[source and licence](https://github.com/FabianFG/CUE4Parse/tree/v1.2.1).
+[package](https://www.nuget.org/packages/CUE4Parse/1.2.2),
+[source and licence](https://github.com/FabianFG/CUE4Parse/tree/v1.2.2).
+The conversion 1.2.1 package requires reader 1.2.2; both packages identify
+source commit `920dc1682278d70ee738383b6fbd3a1e9b7523ea` in their metadata.
 No FModel assembly, Oodle binary or game asset is vendored. Transitive package
 licences remain those of their respective authors. Newer CUE packages target
 newer frameworks; updating the pins requires another API and synthetic check.
@@ -112,5 +114,6 @@ It requires equal bone/channel sets, bone world rest error <1e-4, identical
 per-channel key times/counts, **every** rotation key <0.1 degree (quaternion
 sign independent), vector keys <1e-4, exact sorted vertex positions, and every
 socket inside its weapon bounds. Resampling or missing clips cannot pass.
-Any bridge fallback prevents a full parity PASS. It emits counts/errors only.
+Geometry/animation/socket bridge fallbacks prevent numeric parity PASS;
+other fallbacks remain listed and counted. It emits counts/errors only.
 M2 sheets follow numeric parity on the PC; this lane makes no visual claim.
