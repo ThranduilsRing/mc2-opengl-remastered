@@ -9,6 +9,8 @@ MechLabScreen.cpp			: Implementation of the MechLabScreen component.
 
 #include"mechlabscreen.h"
 #include <array>
+#include <string>
+#include <string_view>
 #include "Gates/gate.h"
 #include"inifile.h"
 #include"logisticsdata.h"
@@ -36,12 +38,13 @@ static bool cheatInfiniteMoney() { static const bool on = mc2::gate::get<"MC2_CH
 #include "component_rules.h"
 #include "../GameOS/gameos/input_capture_policy.h"
 
-static void showDropRefusal(const char* reason)
+static void showDropRefusal(std::string_view reason)
 {
+	const std::string message(reason);
 	auto* dialog = LogisticsOneButtonDialog::instance();
 	dialog->setText(IDS_MC_COMPONENT_TOO_HOT, IDS_DIALOG_OK, IDS_DIALOG_OK);
-	dialog->setText(reason);
-	dialog->setDefsElementText("game.mcl_dialog_onebutton.text.text", reason);
+	dialog->setText(message.c_str());
+	dialog->setDefsElementText("game.mcl_dialog_onebutton.text.text", message);
 	dialog->setDefsElementText("game.mcl_dialog_onebutton.button.cancel_okay_whatever_button", "OK");
 	dialog->begin();
 }
