@@ -11,6 +11,19 @@
 
 namespace ar = mc2_appearance_rng;
 
+// Trigger paths: code/mission_update.cpp, mclib/unit_animation_tick.h.
+TEST_CASE("presentation animation pause holds phase and resumes without catchup") {
+    mc2::sim::UnitAnimState state;
+    state.currentFrame = 3.25f;
+    for (int frame = 0; frame < 120; ++frame) {
+        mc2::sim::advanceLinearAnimation(state, 30, 60,
+            mc2::sim::presentationAnimationSeconds(1.0f / 60.0f, true));
+    }
+    CHECK(state.currentFrame == 3.25f);
+    mc2::sim::advanceLinearAnimation(state, 30, 60,
+        mc2::sim::presentationAnimationSeconds(1.0f / 60.0f, false));
+    CHECK(state.currentFrame == 3.75f);
+}
 TEST_CASE("gameplay linear clips transition on fixed ticks in either direction") {
     mc2::sim::UnitAnimState state;
     state.setFirstFrame = true;
