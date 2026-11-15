@@ -259,6 +259,7 @@ Trigger g_trigger;
 std::string g_shotPath;
 std::string g_shotScreen;
 bool g_shotInit = false;
+int g_sequenceFrame = 0;
 constexpr int kMaxWaitFrames = 3600;
 
 void shotFail(const char* why)
@@ -277,6 +278,13 @@ void shotDone(mc2::czstring path, bool ok, int w, int h)
 	mc2::fmt::print_err("[SCREEN_SHOT v1] OK screen={} path={} w={} h={} settled={} frames={} imgui_vk_ready=1\n",
 		mc2::fmt::safe(g_shotScreen.c_str()), mc2::fmt::safe(path), w, h, g_trigger.settledFrames(), g_trigger.framesSeen());
 	std::fflush(stderr);
+	if (const char* count = std::getenv("MECH_PREVIEW_FRAMES"); count && ++g_sequenceFrame < std::clamp(std::atoi(count), 1, 120)) {
+		Spec spec;
+		if (parseSpec(g_shotScreen, spec)) {
+			g_trigger.arm(spec.cell->x, spec.cell->y, 15, kMaxWaitFrames);
+			return;
+		}
+	}
 	gos_TerminateApplication();
 }
 }  // namespace
@@ -331,7 +339,7 @@ void shotStep(int curX, int curY)
 	{
 		if (!GuiRuntime::VulkanReady())
 			a = g_trigger.onImguiNotReady();
-		else if (!gos::screenshot::request(g_shotPath.c_str(), &shotDone))
+		else if (!gos::screenshot::request((g_sequenceFrame ? g_shotPath + "." + std::to_string(g_sequenceFrame) + ".tga" : g_shotPath).c_str(), &shotDone))
 		{
 			g_trigger.onCaptureResult(false);
 			a = Trigger::Action::Fail;

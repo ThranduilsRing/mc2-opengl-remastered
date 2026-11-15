@@ -11,6 +11,15 @@
 
 using namespace mc2clip;
 
+TEST_CASE("preview showcase: manifest, gesture, idle, first clip fallback") {
+    const auto has = [](std::string_view s) { return s == "show" || s == "walk" || s == "atlas_moveCoreIdle" || s == "first"; };
+    CHECK(previewClip("show", "walk", "first", has) == "show");
+    CHECK(previewClip("", "walk", "first", has) == "walk");
+    CHECK(previewClip("unknown", "walk", "first", has) == "walk");
+    CHECK(previewClip("unknown", "missing", "first", has) == "atlas_moveCoreIdle");
+    CHECK(previewClip("", "missing", "first", [](auto s) { return s == "first"; }) == "first");
+}
+
 TEST_CASE("imported grounding: soles contact, reverse knees and torso motion survive") {
     mc2ground::Rig rig;
     std::vector<glm::mat4> pose(7, glm::mat4(1));

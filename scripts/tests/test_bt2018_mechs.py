@@ -24,6 +24,13 @@ sys.path.insert(0, str(REPO / "scripts"))
 from tools.bt2018_mechs import btjson, compile as C  # noqa: E402
 from tools.mc2data.stock_corpus import resolve, StockDataError  # noqa: E402
 
+
+def test_showcase_default_and_recipe_override():
+    recipe = {"chassis_id": "test", "mc2": {"sockets": {}}}
+    assert C.emit_package_json({}, recipe)["clips"] == {"showcase": "atlas_moveCoreWalkFwd"}
+    recipe["mc2"]["showcase_clip"] = "custom"
+    assert C.emit_package_json({}, recipe)["clips"] == {"showcase": "custom"}
+
 DUMP = Path(os.environ.get("BT2018_DUMP", REPO / "scripts/tests/fixtures/bt2018-dump"))
 CONVERSIONS = Path(os.environ.get("BT2018_CONVERSIONS", REPO / "scripts/tests/fixtures/bt2018-conversions"))
 

@@ -36,6 +36,9 @@ def main():
     for p in pkgs:
         name = os.path.basename(p)[:-len(".package.json")]
         d = json.load(open(p, encoding="utf-8"))
+        if "clips" in d and (not isinstance(d["clips"], dict) or
+                             not isinstance(d["clips"].get("showcase"), str) or not d["clips"]["showcase"].strip()):
+            errors.append(f"{name}: clips.showcase must be a nonempty clip name")
         mats = d.get("materials", {})
         feats = set(d.get("featureBits", []))
 
