@@ -110,13 +110,14 @@ bool clearMenuMatte(std::string_view path, Pixels& px) {
     const bool menu = key == "mcl_mm_1" || key == "mcl_mm_2" || key == "mcl_mm_3" ||
                       key == "mcl_mm_5" || key == "mcl_mm_12";
     const bool dialog = key.starts_with("mcl_dialog_");
-    if ((!menu && !dialog) || px.w <= 0 || px.h <= 0 || (px.channels != 3 && px.channels != 4)) return false;
+    const bool frame = key == "mcl_splashscreen_frame_1" || key == "mcl_splashscreen_frame_2";
+    if ((!menu && !dialog && !frame) || px.w <= 0 || px.h <= 0 || (px.channels != 3 && px.channels != 4)) return false;
     std::vector<uint8_t> rgba(static_cast<size_t>(px.w) * px.h * 4);
     for (int y = 0; y < px.h; ++y) for (int x = 0; x < px.w; ++x) {
         const size_t i = static_cast<size_t>(y) * px.w + x, src = i * px.channels, dst = i * 4;
         std::copy_n(px.data.data() + src, 3, rgba.data() + dst);
         const int value = std::max({rgba[dst], rgba[dst + 1], rgba[dst + 2]});
-        if (menu) {
+        if (menu || frame) {
             const auto paint = menuYellow((static_cast<uint32_t>(rgba[dst]) << 16) |
                                          (static_cast<uint32_t>(rgba[dst + 1]) << 8) | rgba[dst + 2]);
             rgba[dst] = static_cast<uint8_t>(paint >> 16);

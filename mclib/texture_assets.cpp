@@ -384,6 +384,7 @@ DWORD load(mc2::czstring path, gos_TextureFormat format, DWORD hints, DWORD vari
         const auto* mod=LookupModOwner(path);
         if (auto packed=uiChromeSheetBytes(path,mod ? mod : "")) source->bytes=std::move(packed);
         if (!mod && (strstr(path, "mcl_mm_") || strstr(path, "MCL_MM_") ||
+                     strstr(path, "mcl_splashscreen_frame_") || strstr(path, "MCL_SplashScreen_Frame_") ||
                      strstr(path, "mcl_dialog_") || strstr(path, "MCL_Dialog_"))) {
             auto decoded = mc2tex::decodeMemory(source->bytes->data(), source->bytes->size(), path, gos_Texture_Alpha, 0);
             if (decoded) {
