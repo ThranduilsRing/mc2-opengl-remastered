@@ -131,7 +131,7 @@ def seed_files(install, harness):
             files['install/' + path.name] = path
     # Pinned recipes come from the deployed tree too; reseeding never re-cooks.
     from kit_payload import checked_files
-    for name in ('industrial-cook.json', 'vehicle-cook.json'):
+    for name in ('industrial-cook.json', 'vehicle-cook.json', 'trees-cook.json'):
         receipt = install / 'cache/content-model' / name
         if receipt.is_file():
             rows = json.loads(receipt.read_text())['files']
