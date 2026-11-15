@@ -16,6 +16,7 @@ from tools.mw5_mechs.from_native import basis, convert, inverse, matrix, multipl
 from tools.mw5_mechs.parity import Asset, compare
 
 
+@unittest.skipUnless(os.environ.get("MW5_SYNTHETIC_FIXTURE"), "requires C# --fixture output; see tools/mw5_kit/README.md")
 class NativeTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

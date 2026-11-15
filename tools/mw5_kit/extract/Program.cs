@@ -60,7 +60,7 @@ public static class Program
             var ue = a.GetValueOrDefault("--ue","4.26");
             var game = ue switch { "4.26"=>EGame.GAME_UE4_26, "5.5"=>EGame.GAME_UE5_5, _=>throw new ArgumentException("Unsupported UE version") };
             if (ue == "5.5" && !a.ContainsKey("--usmap")) throw new ArgumentException("UE5.5 requires the player's matching --usmap");
-            using var provider = new DefaultFileProvider(paks,SearchOption.AllDirectories,true,new VersionContainer(game));
+            using var provider = new DefaultFileProvider(paks,SearchOption.AllDirectories,new VersionContainer(game),StringComparer.OrdinalIgnoreCase);
             if (a.TryGetValue("--usmap",out var usmap)) provider.MappingsContainer = new FileUsmapTypeMappingsProvider(usmap);
             provider.Initialize(); provider.Mount();
             if (a.TryGetValue("--aes",out var aes)) provider.SubmitKey(new FGuid(),new FAesKey(aes));
@@ -94,16 +94,16 @@ public static class Program
         {
             try
             {
-                Attempt("skeletal_mesh",r.mesh,()=>Mesh(provider.LoadObject<USkeletalMesh>(r.mesh)));
-                foreach (var path in r.clips ?? []) Attempt("animation",path,()=>Animation(provider.LoadObject<UAnimSequence>(path)));
-                foreach (var path in r.materials ?? []) Attempt("material",path,()=>Material(provider.LoadObject(path)));
+                Attempt("skeletal_mesh",r.mesh,()=>Mesh(provider.LoadPackageObject<USkeletalMesh>(r.mesh)));
+                foreach (var path in r.clips ?? []) Attempt("animation",path,()=>Animation(provider.LoadPackageObject<UAnimSequence>(path)));
+                foreach (var path in r.materials ?? []) Attempt("material",path,()=>Material(provider.LoadPackageObject(path)));
                 var loadouts = new List<object>();
                 foreach (var path in r.loadouts ?? []) Attempt("loadout",path,()=> {
-                    var obj = provider.LoadObject(path);
+                    var obj = provider.LoadPackageObject(path);
                     if (obj.Properties.Count == 0) throw new InvalidDataException("No decoded loadout properties");
                     loadouts.Add(new { asset=path, type=obj.ExportType, properties=obj.Properties });
                 });
-                foreach (var path in r.textures ?? []) Attempt("texture",path,()=>Texture(provider.LoadObject<UTexture2D>(path)));
+                foreach (var path in r.textures ?? []) Attempt("texture",path,()=>Texture(provider.LoadPackageObject<UTexture2D>(path)));
                 Save("materials.json",materials.Values); Save("loadout.json",loadouts);
             }
             finally { Save("bridge.json",bridge); }
@@ -138,21 +138,23 @@ public static class Program
             mesh = m;
             var sockets = new Dictionary<string,object>();
             var refs = m.Sockets.ToList();
-            Attempt("skeleton_sockets",m.Skeleton.ToString(),()=>refs.InsertRange(0,m.Skeleton.Load<USkeleton>().Sockets));
+            Attempt("skeleton_sockets",m.Skeleton.ToString(),()=>refs.InsertRange(0,
+                (m.Skeleton.Load<USkeleton>() ?? throw new InvalidDataException("Skeleton unresolved")).Sockets));
             foreach (var index in refs) Attempt("socket",index.ToString(),()=> {
-                var s = index.Load<USkeletalMeshSocket>();
+                var s = index.Load<USkeletalMeshSocket>() ?? throw new InvalidDataException("Socket unresolved");
                 sockets[s.SocketName.Text] = new { name=s.SocketName.Text,bone=s.BoneName.Text,
                     translation=V(s.RelativeLocation),rotation=Q(s.RelativeRotation.Quaternion()),scale=V(s.RelativeScale) };
             });
             Save("sockets.json",sockets.Values);
-            foreach (var mat in m.Materials ?? []) if (mat != null) Attempt("material",mat.ToString()!,()=>Material(mat.Load<UObject>()));
+            foreach (var mat in m.Materials ?? []) if (mat != null) Attempt("material",mat.ToString()!,()=>Material(
+                mat.Load<UObject>() ?? throw new InvalidDataException("Material unresolved")));
         }
 
         void Animation(UAnimSequence a)
         {
             if (mesh == null) throw new InvalidDataException("Mesh failed; cannot bind clip");
             if (a.AdditiveAnimType != EAdditiveAnimationType.AAT_None) throw new InvalidDataException("Additive clip stays on bridge");
-            var skeleton = a.Skeleton.Load<USkeleton>();
+            var skeleton = a.Skeleton.Load<USkeleton>() ?? throw new InvalidDataException("Animation skeleton unresolved");
             var sk = skeleton.ReferenceSkeleton;
             if (!sk.FinalRefBoneInfo.Select(b=>(b.Name.Text,b.ParentIndex)).SequenceEqual(
                 mesh.ReferenceSkeleton.FinalRefBoneInfo.Select(b=>(b.Name.Text,b.ParentIndex))))
@@ -182,7 +184,8 @@ public static class Program
                 vectors=m.VectorParameterValues, textures=m.TextureParameterValues.Select(t=>new { name=t.Name, asset=t.ParameterValue.ResolvedObject?.GetPathName() }),
                 switches=m.StaticParameters, overrides=m.BasePropertyOverrides, properties=m.Properties };
             if (m.Parent != null) Attempt("material_parent",m.Parent.GetPathName(),()=>Material(m.Parent));
-            foreach (var t in m.TextureParameterValues) Attempt("texture",t.ParameterValue.ToString(),()=>Texture(t.ParameterValue.Load<UTexture2D>()));
+            foreach (var t in m.TextureParameterValues) Attempt("texture",t.ParameterValue.ToString(),()=>Texture(
+                t.ParameterValue.Load<UTexture2D>() ?? throw new InvalidDataException("Texture unresolved")));
         }
 
         void Texture(UTexture2D t)
