@@ -2,6 +2,7 @@
 #include "GuiRuntime_internal.h"
 #include "PlayerOptionRows.h"
 #include "PlayerSettings.h"
+#include "../mclib/ui_chrome_sheets.h"
 #include <map>
 #include "GraphicsOptionsWindow.h"
 #include "GuiRuntime_internal.h"
@@ -275,11 +276,20 @@ std::string takeCampaignStart() { return std::exchange(pendingStart, {}); }
 
 static void drawCommunityCredits() {
     const auto* vp = ImGui::GetMainViewport();
-    const float scale = std::clamp(vp->WorkSize.y / 1080.0f, 0.75f, 2.0f);
+    int bx = 0, by = 0, bw = static_cast<int>(vp->Size.x), bh = static_cast<int>(vp->Size.y);
+    gos_ComputeUiCanvasBox(bw, bh, &bx, &by, &bw, &bh);
+    const auto bay = mc2::ui_chrome::menuCreditsBay(static_cast<float>(bw), static_cast<float>(bh));
+    const float scale = static_cast<float>(bh) / 1080.0f;
     ImGui::PushFont(gui_runtime_detail::findUiFont("roboto", static_cast<int>(18 * scale)));
-    ImGui::SetNextWindowPos(ImVec2(vp->WorkPos.x + vp->WorkSize.x * 0.715f, vp->WorkPos.y + 280 * scale), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(vp->WorkSize.x * 0.27f, vp->WorkSize.y - 320 * scale), ImGuiCond_Always);
-    if (ImGui::Begin("Community", nullptr, ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings)) {
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.09f, 0.10f, 0.11f, 1));
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.94f, 0.78f, 0.24f, 1));
+    ImGui::PushStyleColor(ImGuiCol_TextLink, ImVec4(1, 0.84f, 0.32f, 1));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12 * scale, 12 * scale));
+    ImGui::SetNextWindowPos(ImVec2(vp->Pos.x + bx + bay[0], vp->Pos.y + by + bay[1]), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(bay[2], bay[3]), ImGuiCond_Always);
+    if (ImGui::Begin("##menu_community", nullptr, ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse)) {
         ImGui::PushTextWrapPos(0);
         ImGui::TextUnformatted("Celebrating 25 years of MechCommander 2");
         ImGui::Separator();
@@ -297,22 +307,20 @@ static void drawCommunityCredits() {
         ImGui::TextLinkOpenURL("alariq's OpenGL/Linux port", "https://github.com/alariq/mc2");
         ImGui::GetPlatformIO().Platform_OpenInShellFn = openURL;
         ImGui::Spacing();
-        if (ImGui::CollapsingHeader("Credits", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::SeparatorText("Credits");
+        {
             static const std::string credits = [] {
                 std::ifstream stream("CREDITS.txt", std::ios::binary);
                 return stream ? std::string(std::istreambuf_iterator<char>(stream), {}) : std::string("CREDITS.txt is missing from this installation.");
             }();
-            if (ImGui::BeginChild("##credits", ImVec2(0, -ImGui::GetFrameHeightWithSpacing()), ImGuiChildFlags_Borders)) {
-                ImGui::PushTextWrapPos(0);
-                ImGui::TextUnformatted(credits.c_str());
-                ImGui::PopTextWrapPos();
-            }
-            ImGui::EndChild();
+            ImGui::TextUnformatted(credits.c_str());
         }
         ImGui::TextUnformatted("Free forever.");
         ImGui::PopTextWrapPos();
     }
     ImGui::End();
+    ImGui::PopStyleVar(3);
+    ImGui::PopStyleColor(3);
     ImGui::PopFont();
 }
 

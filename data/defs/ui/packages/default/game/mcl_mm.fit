@@ -1264,7 +1264,7 @@ GuiRect {
     legacyColor = 0x00000000
     outline = "FALSE"
     filled = true
-    fillColorArgb = "0x00000000"
+    fillColorArgb = "0xff25282c"
     borderColorArgb = "0x00000000"
     colorArgb = "0xffffffff"
 }
