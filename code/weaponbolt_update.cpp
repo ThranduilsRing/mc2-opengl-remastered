@@ -339,17 +339,16 @@ long WeaponBolt::update (void)
 						((static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectRad > 0.0f))
 					{
 
-						// Located aimed damage leaves the explosion cosmetic to avoid duplicate damage.
+						// Exclude the located target, rather than suppressing the entire blast.
 						float areaDmg = weaponShot.masterId >= 0 && MasterComponent::masterList[weaponShot.masterId].getForm() == COMPONENT_FORM_WEAPON_MISSILE
 							? weaponShot.damage : (static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectDmg;
-						if (deliverAimedAreaHit())
-							areaDmg = 0.0f;
 
 						// The explosion owns area damage for both hits and misses.
-						ObjectManager->createExplosion((static_cast<WeaponBoltTypePtr>(getObjectType()))->hitEffectObjNum,
+						auto* explosion = ObjectManager->createExplosion((static_cast<WeaponBoltTypePtr>(getObjectType()))->hitEffectObjNum,
 														nullptr,*targetPosition,
 														areaDmg,
 														(static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectRad);
+						deliverAimedAreaHit(explosion);
 					}
 					applySoftSplash(*targetPosition, 0);
 				}

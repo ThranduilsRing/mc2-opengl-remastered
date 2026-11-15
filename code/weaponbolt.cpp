@@ -11,6 +11,7 @@
 
 #include "weaponbolt_internal.h"
 #include "soft_splash.h"
+#include "carnage.h"
 #include "gvehicl.h"
 #include "warrior.h"
 #include "../mclib/cmponent.h"
@@ -673,8 +674,8 @@ void WeaponBolt::Load (WeaponBoltData *data)
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
 // Successful gated area-effect aimed shots retain weaponShot.hitLocation in single-player;
-// ordinary position-bolt explosions randomize the location. Multiplayer keeps stock splash.
-bool WeaponBolt::deliverAimedAreaHit (void)
+// Only that target is excluded from the blast; neighbours keep stock splash.
+bool WeaponBolt::deliverAimedAreaHit (CarnagePtr explosion)
 {
 	if (!aimedTargetWID)
 		return false;
@@ -690,6 +691,8 @@ bool WeaponBolt::deliverAimedAreaHit (void)
 		return false;
 
 	traceCombat("damage", "aimed_area", aimedTarget, &weaponShot);
+	// This existing exclusion is saved with the explosion, including its delay.
+	if (explosion) explosion->setCollisionFreeFromWID(tgtWID);
 	aimedTarget->handleWeaponHit(&weaponShot);
 	return true;
 }
@@ -719,18 +722,17 @@ void WeaponBolt::finishNow (void)
 			((static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectDmg > 0.0f) &&
 			((static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectRad > 0.0f))
 		{
-			// Aimed-hit explosions stay cosmetic to avoid duplicate damage.
+			// The located target takes one hit; the explosion still damages neighbours.
 			float areaDmg = weaponShot.masterId >= 0 && MasterComponent::masterList[weaponShot.masterId].getForm() == COMPONENT_FORM_WEAPON_MISSILE
 				? weaponShot.damage : (static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectDmg;
-			if (deliverAimedAreaHit())
-				areaDmg = 0.0f;
 
 			//Create the explosion here.  HIT or MISS, its the same one!!
 			// Damage is done by explosion NOT by hit!
-			ObjectManager->createExplosion((static_cast<WeaponBoltTypePtr>(getObjectType()))->hitEffectObjNum,
+			auto* explosion = ObjectManager->createExplosion((static_cast<WeaponBoltTypePtr>(getObjectType()))->hitEffectObjNum,
 											nullptr,*targetPosition,
 											areaDmg,
 											(static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectRad);
+			deliverAimedAreaHit(explosion);
 		}
 
 		applySoftSplash(target ? target->getPosition() : (targetPosition ? *targetPosition : position), targetWID);
