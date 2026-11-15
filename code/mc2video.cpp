@@ -6,6 +6,7 @@
 #include <string_view>
 #include "mc2video.h"
 #include "gos_crashbundle.h"
+#include "gos_profiler.h"
 
 #include <cstdio>
 #include <cstring>
@@ -580,12 +581,14 @@ static int logOnceDecodeError(VideoSession* s, mc2::czstring where, int ret)
 //-----------------------------------------------------------------------------
 // Decode-one-frame helper
 // Pulls packets and decodes until one video frame is produced in
-// s->vFrame, or EOF. Returns: 1 = frame produced, -1 = EOF/error.
+// s->vFrame, or EOF. Returns: 1 = frame, 0 = yield, -1 = EOF/error.
 // Audio has its own demux cursor, so holding video cannot starve the mixer.
 //-----------------------------------------------------------------------------
-static int decodeNextVideoFrame(VideoSession* s)
+static int decodeNextVideoFrame(VideoSession* s, VideoDecodeBudget& budget)
 {
+    ZoneScopedN("Video.DecodeFrame");
     for (;;) {
+        if (!budget.take()) return 0;
         int ret = avcodec_receive_frame(s->vCodec, s->vFrame);
         if (ret == 0) return 1;
         if (ret != AVERROR(EAGAIN) && ret != AVERROR_EOF) return logOnceDecodeError(s, "avcodec_receive_frame", ret);
@@ -610,11 +613,13 @@ static int decodeNextVideoFrame(VideoSession* s)
 }
 
 // Keep half a second queued, independently of video presentation or the sim tick.
-static void bufferAudio(VideoSession* s)
+static void bufferAudio(VideoSession* s, VideoDecodeBudget& budget)
 {
+    ZoneScopedN("Video.Audio.Fill");
     if (!s->audioStreamStarted || s->audioEOF || s->audioStallLogged) return;
     auto* snd = reinterpret_cast<SoundSystem*>(soundSystem);
     while (s->audioFramesQueued - snd->videoPCMSamplesConsumed() < s->aOutRate / 2) {
+        if (!budget.take()) return;
         int ret = avcodec_receive_frame(s->aCodec, s->aFrame);
         bool draining = ret == AVERROR_EOF;
         if (ret == 0 || draining) {
@@ -649,6 +654,7 @@ static void bufferAudio(VideoSession* s)
         if (ret != AVERROR(EAGAIN)) { markAudioStalled(s, "audio decode error"); return; }
         do {
             av_packet_unref(s->aPkt);
+            if (!budget.take()) return;
             ret = av_read_frame(s->aFmt, s->aPkt);
         } while (ret >= 0 && s->aPkt->stream_index != s->aStream);
         if (ret == AVERROR_EOF && !s->audioFlushing) {
@@ -705,10 +711,12 @@ static void uploadFrameToTexture(VideoSession* s)
 //-----------------------------------------------------------------------------
 bool video_update(VideoSession* s)
 {
+    ZoneScopedN("Video.Update");
     if (!s || s->eof) return true;
     if (s->paused) return false;
 
-    bufferAudio(s);
+    VideoDecodeBudget budget;
+    bufferAudio(s, budget);
     double masterNow = videoMasterClock(s);
 
     // Future frames remain pending until their presentation time.
@@ -725,7 +733,8 @@ bool video_update(VideoSession* s)
 
     // Decode ahead for presentation; severely late frames need no upload.
     for (;;) {
-        int r = decodeNextVideoFrame(s);
+        int r = decodeNextVideoFrame(s, budget);
+        if (r == 0) return false; // Deferred work keeps the decoder and pending packets intact.
         if (r < 0) {
             // Keep the final picture until its duration and the audio tail finish.
             if (masterNow < s->decodedPTS + 1.0 / s->fps ||

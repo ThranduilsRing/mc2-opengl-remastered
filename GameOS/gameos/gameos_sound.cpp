@@ -245,6 +245,7 @@ void gos_DestroyAudio() {
 //
 void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_ResourceType res_type, mc2::czstring file_name, gosAudio_Format* ga_wf, void* data, int size, bool only2D)
 {
+    ZoneScopedN("Audio.CreateResource");
     gosASSERT(hgosaudio);
     if(!g_sound_engine) { *hgosaudio = nullptr; return; }   // --headless: no audio engine
     gosASSERT((res_type == gosAudio_UserMemory && data && ga_wf) || (res_type == gosAudio_StreamedFile && file_name));
@@ -461,6 +462,7 @@ void __stdcall gosAudio_AssignResourceToChannel( int Channel, HGOSAUDIO hgosaudi
 //  volume and balance
 void __stdcall gosAudio_SetChannelSlider( int Channel, enum gosAudio_Properties prop, float value1, float value2, float value3)
 {
+    ZoneScopedN("Audio.Channel.Slider");
     if(!g_sound_engine) return;   // --headless: no audio engine
     gosASSERT(g_sound_engine->NUM_CHANNELS > Channel);
     gosAudio_ChannelInfo* ci = g_sound_engine->getChannel(Channel);
@@ -526,6 +528,7 @@ void __stdcall gosAudio_GetChannelSlider( int Channel, enum gosAudio_Properties 
 //
 void __stdcall gosAudio_SetChannelPlayMode( int Channel, enum gosAudio_PlayMode ga_pm )
 {
+    ZoneScopedN("Audio.Channel.PlayMode");
     if(!g_sound_engine) return;   // --headless: no audio engine
     gosASSERT(g_sound_engine->NUM_CHANNELS > Channel);
     gosAudio_ChannelInfo* ci = g_sound_engine->getChannel(Channel);
@@ -598,6 +601,7 @@ void __stdcall gosAudio_SetChannelPlayMode( int Channel, enum gosAudio_PlayMode 
 //
 gosAudio_PlayMode __stdcall gosAudio_GetChannelPlayMode( int Channel )
 {
+    ZoneScopedN("Audio.Channel.Query");
     if(!g_sound_engine) return gosAudio_Stop;   // --headless: no audio engine
     gosASSERT(g_sound_engine->NUM_CHANNELS > Channel);
     gosAudio_ChannelInfo* ci = g_sound_engine->getChannel(Channel);
