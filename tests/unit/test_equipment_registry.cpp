@@ -128,6 +128,27 @@ TEST_CASE("EQUIP-ENABLE-WIRE-1: equipmentEnableWireShouldForce combo grid") {
     // "clear it" -- there is no disabling combo by construction (pure predicate).
 }
 
+// Trigger: code/{equipment_registry.h,equipment_registry_engine.cpp,logisticsdata_init.cpp}.
+TEST_CASE("equipment access: cold logistics and availability") {
+    struct Case { bool legacy, capability, off, allowed; };
+    for (const auto c : {Case{false, false, false, false}, // stock
+                         Case{false, true, false, true},   // package-owned
+                         Case{false, true, true, false},   // kill-switch
+                         Case{true, false, false, true},   // legacy mode
+                         Case{true, true, true, true}}) {
+        const bool access = equipmentPackageAccessAllowed(c.legacy, c.capability, c.off);
+        CHECK(access == c.allowed); // same predicate before cold master-list load
+        bool available[255] = {};
+        available[7] = true; // mission-purchased stock stays available
+        if (access && equipmentEnableWireShouldForce(true, 60, true))
+            available[60] = true;
+        CHECK(available[7]);
+        CHECK(available[60] == c.allowed);
+        CHECK_FALSE((access && equipmentEnableWireShouldForce(false, 8, true)));
+        CHECK_FALSE((access && equipmentEnableWireShouldForce(true, 60, false)));
+    }
+}
+
 TEST_CASE("equipment registry looks up bounded IDs") {
     EquipmentRegistry reg;
     reg.add("core:laser", 7, EQ_OTHER, true);

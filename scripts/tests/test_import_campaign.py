@@ -64,6 +64,17 @@ def test_unsafe_zip_rejected(sample, tmp_path, name):
     assert not list((deploy / "mods").glob(".campaign-import-*"))
 
 
+def test_import_existing_raw_mod_folder_without_changing_source(sample):
+    source, deploy = sample
+    raw = deploy / "mods" / "mcosetup628(1)"
+    source.rename(raw)
+    before = imp.digest(imp.source_files(raw))
+    result = imp.import_campaign(raw, deploy)
+    assert result["status"] == "installed"
+    assert (deploy / "mods" / result["mod"] / "mod.json").is_file()
+    assert imp.digest(imp.source_files(raw)) == before
+
+
 def test_incomplete_and_wrong_folder(sample):
     source, deploy = sample
     (source / "data/missions/demo01.pak").unlink()

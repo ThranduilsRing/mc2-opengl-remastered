@@ -10,6 +10,7 @@ import copy
 import csv
 import io
 import json
+import os
 import struct
 import sys
 from pathlib import Path
@@ -23,7 +24,8 @@ sys.path.insert(0, str(REPO / "scripts"))
 from tools.bt2018_mechs import btjson, compile as C  # noqa: E402
 from tools.mc2data.stock_corpus import resolve, StockDataError  # noqa: E402
 
-DUMP = Path("A:/Games/mc2-opengl/BattleTech_2018_Dump/TextAsset")
+DUMP = Path(os.environ.get("BT2018_DUMP", REPO / "scripts/tests/fixtures/bt2018-dump"))
+CONVERSIONS = Path(os.environ.get("BT2018_CONVERSIONS", REPO / "scripts/tests/fixtures/bt2018-conversions"))
 
 
 @pytest.fixture(scope="module")
@@ -329,6 +331,24 @@ def test_cook_retargets_from_the_raw_cache_so_repeat_cooks_match(tmp_path):
 # ---------------------------------------------------------------- P6 icons
 
 
+def test_generated_logistics_icon_uses_the_registry_stem(tmp_path, monkeypatch):
+    """Trigger: tools/bt2018_mechs/render_icons.py and build_pack.py."""
+    from tools.bt2018_mechs import render_icons as R
+    from tools.bt2018_mechs import build_pack as B
+    import numpy as np
+    from PIL import Image
+    quad = np.array([[-1, 0, 0], [1, 0, 0], [1, 2, 0], [-1, 2, 0]], dtype=float)
+    monkeypatch.setattr(R, "load_parts", lambda _: [(6, quad, np.array([[0, 1, 2], [0, 2, 3]]))])
+    products = R.build_icons(Path("model.glb"), "bt2018_marauder", tmp_path)
+    relative = "mechicons/bt2018_marauder.png"
+    icon = Image.open(tmp_path / relative).convert("RGBA")
+    assert icon.size == (25, 30)
+    assert np.array_equal(np.array(icon), products[relative])
+    assert {p[:3] for p in icon.getdata() if p[3]} <= {(32, 32, 32), (96, 96, 96), (160, 160, 160), (255, 255, 255)}
+    assert len(B.sha256(tmp_path / relative)) == 64  # builder hashes every returned relative path
+    assert {f"bt2018_marauder_hud_{w}x{h}.tga" for w, h in R.HUD_SIZES} <= products.keys()
+
+
 def test_hud_icons_use_only_the_exact_region_palette():
     from tools.bt2018_mechs import render_icons as R
     import numpy as np
@@ -349,7 +369,7 @@ def test_hud_icons_use_only_the_exact_region_palette():
         assert not ({194 + 2, 194 + 1} & {int(v) for v in rear[:, :, 0][rear[:, :, 3] > 0]})   # no limbs on the rear row
 
 
-MARAUDER_GLB = Path("A:/Games/mc2-opengl/MC2Conversions/marauder.glb")
+MARAUDER_GLB = CONVERSIONS / "marauder.glb"
 
 
 @pytest.mark.skipif(not MARAUDER_GLB.is_file(), reason="converted Marauder not present")
@@ -367,6 +387,58 @@ def test_muzzle_sockets_sit_on_geometry_not_joint_centres(marauder_recipe):
                                          "weapon_lefttorso": "j_LClavicle", "weapon_righttorso": "j_RClavicle",
                                          "weapon_centertorso": "j_Spine2"}}, marauder_recipe, off)
     assert len(pkg["socketOffsets"]["weapon_leftarm"].split()) == 3
+
+
+def test_entire_converted_roster_compiles_with_unique_ids(tables):
+    """Trigger: tools/bt2018_mechs/{roster.py,data/roster.json,build_pack.py,compile.py}."""
+    from tools.bt2018_mechs import roster
+    conversions = CONVERSIONS
+    if not conversions.is_dir():
+        pytest.skip("external conversions absent; set BT2018_CONVERSIONS to the converted dump")
+    recipes = roster.recipes(conversions)
+    profiles = [C.build_profile(r, *tables) for r in recipes]
+    assert len(profiles) == 51
+    assert len({p["stem"] for p in profiles}) == 51
+    ids = [sid for i, p in enumerate(profiles) for sid in C.string_ids(p, i).values()]
+    assert len(set(ids)) == 102
+    for p, recipe in zip(profiles, recipes):
+        assert 0 < p["mc2"]["payload"] < p["mc2"]["tonnage"]
+        assert (conversions / recipe["mc2"]["model"]["source_glb"]).is_file()
+        package = C.load_json(conversions / recipe["mc2"]["model"]["package_json"])
+        C.emit_package_json(package, recipe)  # Every authored socket must resolve.
+        C.emit_csv(p, recipe, profiles.index(p))
+        if p["family"] != "marauder":
+            assert "pack-authored MC2 adaptation" in p["provenance"]["gameplay"]
+
+
+def test_roster_equipment_resolves_without_external_dump(tables, tmp_path):
+    """Trigger: tools/bt2018_mechs/{roster.py,data/roster.json,compile.py}."""
+    from tools.bt2018_mechs import roster
+    from collections import Counter
+    rows = C.load_json(C.DATA / "roster.json")
+    assert rows["_source"]
+    manifest = [{"btname": family, "glb": family + ".glb", "tga": family + ".tga"}
+                for family in rows if not family.startswith("_")]
+    (tmp_path / "conversions_manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    wm, _ = tables
+    stock = {int(k) for k in wm["stock_components"] if not k.startswith("_")}
+    added = {v["ordinal"] for v in wm["pack_equipment"].values() if isinstance(v, dict)}
+    assert stock.isdisjoint(added)  # ADD never replaces a stock component.
+    recipes = roster.recipes(tmp_path)
+    profiles = [C.build_profile(r, *tables) for r in recipes]
+    assert len(profiles) == 51
+    for p in profiles:
+        for v in p["variants"]:
+            ids = [i["mc2"]["master_id"] for i in v["items"]]
+            assert [i for i in ids if i in stock | added] == ids, p["family"]
+    ann = next(p for p in profiles if p["family"] == "annihilator")["variants"][0]
+    counts = Counter(i["mc2"]["master_id"] for i in ann["items"])
+    assert counts[wm["pack_equipment"]["bt2018:ac2"]["ordinal"]] == 4
+    assert counts[156] == 2
+    mad = next(p for p in profiles if p["family"] == "marauder")["variants"][0]
+    stock_ids = [i["mc2"]["master_id"] for i in mad["items"]]
+    assert [i for i in stock_ids if i in stock] == stock_ids
+    assert [i for i in stock_ids if i in stock | added] == stock_ids
 
 
 def test_spawn_fixture_uses_a_shipped_pilot_with_combat_skills():
