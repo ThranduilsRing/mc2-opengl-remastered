@@ -94,8 +94,8 @@ def evaluate(peers, ticks, codes, combat=False, expected_codes=None, max_extra=2
         result["classification"] = "desync"
     try:
         result["comparison"] = compare_traces(*peers, ticks, combat=combat, max_extra=max_extra)
-    except (OSError, ValueError) as exc:
-        errors.append(str(exc))
+    except (OSError, ValueError, IndexError) as exc:
+        errors.append(f"{type(exc).__name__}: {exc}")
     if result["first_divergent_tick"] is not None:
         errors.insert(0, f"first divergent tick={result['first_divergent_tick']} field={result['first_divergent_field']}")
         result["classification"] = "desync"

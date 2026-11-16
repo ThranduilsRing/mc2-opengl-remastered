@@ -46,7 +46,7 @@ def test_argv_environment_and_fixture_per_role(tmp_path, monkeypatch, slot, comb
     assert not any(key in env for key in ("MC2_COMMAND_REPLAY_PLAY", "MC2_COMMAND_REPLAY_RECORD"))
 
 
-@pytest.mark.parametrize("case", ["equal", "divergent", "desync", "refusal", "content-refusal", "missing-network", "short", "commands", "exit"])
+@pytest.mark.parametrize("case", ["equal", "divergent", "desync", "refusal", "content-refusal", "missing-network", "short", "commands", "exit", "truncated-command", "truncated-combat"])
 def test_verdict_synthetic_traces(tmp_path, case):
     peers = [tmp_path / "host", tmp_path / "client"]
     for peer in peers:
@@ -70,8 +70,12 @@ def test_verdict_synthetic_traces(tmp_path, case):
         content = content.replace("C 1 00", "C 1 ff")
     elif case == "exit":
         codes[1] = 1
+    elif case == "truncated-command":
+        content = content.replace("C 1 00", "C")
+    elif case == "truncated-combat":
+        content += "B 3 0\n"
     path.write_text(content)
-    verdict = pair.evaluate(peers, 64, codes)
+    verdict = pair.evaluate(peers, 64, codes, **({"combat": True} if case == "truncated-combat" else {}))
     assert verdict["result"] == ("PASS" if case == "equal" else "FAIL")
     if case == "divergent":
         assert verdict["first_divergent_tick"] == 17
