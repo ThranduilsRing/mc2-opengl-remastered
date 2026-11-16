@@ -731,7 +731,6 @@ static int run_terrain(int w, int h, TerrainIsland* supplied = nullptr,
     fill_frame_ubo(s, feed, Mc2TerrainTier1Patch{}, vkPoolLights, vkGridDim, common);
     std::memcpy(uboSpan.ptr, &common, sizeof(common));
     sync_ring_bindings(s, par, uboSpan, lpSpans);
-    s->groundFrame.numPoolLights = common.numPoolLights;
     if (mc2_terrain_feed_observation_enabled()) {
         // Preserve the observation boundary's expanded legacy feed for exact A/B.
         std::vector<TerrainFrameUBO> expanded(patchCount, common);
