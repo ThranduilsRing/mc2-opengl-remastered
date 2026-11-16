@@ -541,7 +541,7 @@ class GameObjectManager {
         void extractRenderSnapshots();
         void updatePresentationCull();
         std::vector<uint8_t> saveAnimationState();
-        bool restoreAnimationState(const std::vector<uint8_t>& bytes, uint32_t sectionVersion = 3);
+        bool restoreAnimationState(const std::vector<uint8_t>& bytes, uint32_t sectionVersion = 5);
 		void setPresentationAlpha( float alpha );
 
 		GameObjectPtr get (GameObjectHandle handle);
