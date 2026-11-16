@@ -4,7 +4,7 @@
 #include <optional>
 
 namespace mc2::net {
-inline constexpr std::uint32_t protocolVersion = 4;
+inline constexpr std::uint32_t protocolVersion = 5;
 inline constexpr std::size_t maxPacketBytes = 256 * 1024;
 struct Identity {
     save::Digest executable{}, content{};
@@ -51,8 +51,8 @@ struct LinkSetup {
 };
 std::uint32_t delayForRtt(std::uint32_t rtt, std::uint32_t jitter);
 constexpr const char* progressTimeout(bool connected, std::uint64_t ageMs) {
-    return ageMs >= (connected ? 15000u : 60000u)
-        ? (connected ? "MP peer stalled (15 seconds without an agreed tick)" : "MP handshake timeout") : nullptr;
+    return ageMs >= (connected ? 120000u : 600000u)
+        ? (connected ? "MP peer stalled (120 seconds without an agreed tick)" : "MP loading timeout (600 seconds)") : nullptr;
 }
 
 // Separate from the retail MultiPlayer object: no client/server sim forks.
@@ -66,6 +66,7 @@ public:
     void open(bool host, std::string_view endpoint, Identity identity);
     std::vector<save::Bytes> pump();
     void send(std::span<const std::uint8_t> packet);
+    // Transport negotiated, and (in a mission) both LOADED markers received.
     bool connected() const;
     void missionLoading(bool loading);
     std::uint32_t inputDelay() const;
@@ -73,7 +74,7 @@ public:
     std::uint32_t jitter() const;
     std::uint32_t measuredRtt() const;
     std::uint32_t measuredJitter() const;
-    const std::string& error() const;
+    std::string error() const;
 private:
     struct Impl;
     std::unique_ptr<Impl> impl_;

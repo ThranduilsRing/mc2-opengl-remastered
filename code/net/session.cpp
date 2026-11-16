@@ -3,10 +3,15 @@
 #include <charconv>
 #include <stdexcept>
 #include <algorithm>
+#include <mutex>
+#include <condition_variable>
+#include <thread>
+#include <chrono>
 
 namespace mc2::net {
 namespace {
 constexpr std::uint32_t magic = 0x314e324d; // M2N1, little endian fields
+constexpr std::uint32_t loadedMagic = 0x44414f4c; // LOAD, reserved transport control
 void fields(save::Archive& a, std::uint32_t& tag, std::uint32_t& version, Identity& id) {
     a(tag, version, id.executable, id.content);
     std::vector<std::uint8_t> name(id.mission.begin(), id.mission.end());
@@ -179,13 +184,29 @@ std::optional<LinkSetup::Control> LinkSetup::receive(Control message, std::uint3
     return {};
 }
 struct Session::Impl {
+    // open() initializes before publishing to worker; destruction joins before cleanup.
+    // mutex protects every field below, all ENet calls, setup, identity and packet queues.
+    // worker itself is owner-thread-only; no reference into protected state escapes.
+    mutable std::mutex mutex;
+    std::condition_variable wake;
+    std::thread worker;
+    bool stopping = false;
+    std::vector<save::Bytes> received;
+    std::size_t queuedBytes = 0;
+    std::uint32_t loadEpoch = 0, peerLoadedEpoch = 0;
+    bool localLoaded = false, loadedSent = false, missionTransportReady = false;
     ENetHost* host = nullptr;
     ENetPeer* peer = nullptr;
     Identity identity;
     std::string error;
     bool initialized = false;
     LinkSetup setup;
+    bool loaded() const { return !loadEpoch || (localLoaded && peerLoadedEpoch == loadEpoch); }
+    void service(); // Called only with mutex held.
     ~Impl() {
+        { std::lock_guard lock(mutex); stopping = true; }
+        wake.notify_one();
+        if (worker.joinable()) worker.join();
         if (host) enet_host_destroy(host);
         if (initialized) enet_deinitialize();
     }
@@ -238,12 +259,18 @@ void Session::open(bool hosting, std::string_view endpoint, Identity identity) {
         impl_->peer = enet_host_connect(impl_->host, &address, 1, protocolVersion);
         if (!impl_->peer) throw std::runtime_error("ENet connect failed");
     }
+    impl_->worker = std::thread([s = impl_.get()] {
+        std::unique_lock lock(s->mutex);
+        while (!s->stopping) {
+            try { s->service(); }
+            catch (const std::exception& error) { s->fail(error.what()); }
+            s->wake.wait_for(lock, std::chrono::milliseconds(5), [s] { return s->stopping; });
+        }
+    });
 }
-std::vector<save::Bytes> Session::pump() {
-    auto& s = *impl_;
-    std::vector<save::Bytes> received;
-    if (!s.host || !s.error.empty()) return received;
-    s.control(s.setup.frame(enet_time_get()));
+void Session::Impl::service() {
+    auto& s = *this;
+    if (!s.host || !s.error.empty()) return;
     ENetEvent event{};
     // Nonblocking, bounded work; frames and the owner desktop keep running during a stall.
     for (unsigned count = 0; count < 128; ++count) {
@@ -252,7 +279,7 @@ std::vector<save::Bytes> Session::pump() {
         if (!result) break;
         if (event.type == ENET_EVENT_TYPE_CONNECT) {
             s.peer = event.peer;
-            enet_peer_timeout(s.peer, 8, 5000, 15000);
+            enet_peer_timeout(s.peer, 8, 120000, 600000);
             const auto packet = hello(s.identity);
             s.transmit(packet);
         } else if (event.type == ENET_EVENT_TYPE_RECEIVE) {
@@ -270,33 +297,68 @@ std::vector<save::Bytes> Session::pump() {
                     s.control(s.setup.receive(message, enet_time_get()));
                     if (!s.setup.error.empty()) s.fail(s.setup.error);
                 }
+            } else if (packet.size() == 8 && packet[0] == 'L' && packet[1] == 'O' && packet[2] == 'A' && packet[3] == 'D') {
+                save::Archive a(packet);
+                std::uint32_t kind = 0, epoch = 0;
+                a(kind, epoch);
+                if (!a.finish() || !epoch || epoch > s.loadEpoch + 1) s.fail("MP invalid LOADED marker");
+                else s.peerLoadedEpoch = epoch; // May arrive before the lobby main thread starts loading.
             } else if (packet.size() > maxPacketBytes) s.fail("MP packet exceeds limit");
-            else received.emplace_back(packet.begin(), packet.end());
+            else if (s.queuedBytes + packet.size() > 2 * maxPacketBytes) s.fail("MP receive queue exceeds limit");
+            else { s.received.emplace_back(packet.begin(), packet.end()); s.queuedBytes += packet.size(); }
             enet_packet_destroy(event.packet);
             if (!s.error.empty()) break;
         } else if (event.type == ENET_EVENT_TYPE_DISCONNECT) {
             s.fail("MP peer disconnected"); break;
         }
     }
+    if (s.error.empty() && s.setup.phase == LinkSetup::Phase::Ready && s.loadEpoch) {
+        if (s.localLoaded && !s.loadedSent) {
+            save::Archive a;
+            auto kind = loadedMagic;
+            a(kind, s.loadEpoch);
+            s.transmit(a.bytes());
+            s.loadedSent = true;
+        }
+        if (s.loaded() && !s.missionTransportReady) {
+            enet_peer_timeout(s.peer, 8, 120000, 120000);
+            s.missionTransportReady = true;
+        }
+    }
     enet_host_flush(s.host);
+}
+std::vector<save::Bytes> Session::pump() {
+    auto& s = *impl_;
+    std::lock_guard lock(s.mutex);
+    // Timing still measures real main-thread frames, not the worker's polling cadence.
+    if (s.host && s.error.empty()) s.control(s.setup.frame(enet_time_get()));
+    std::vector<save::Bytes> received;
+    received.swap(s.received);
+    s.queuedBytes = 0;
     return received;
 }
 void Session::send(std::span<const std::uint8_t> packet) {
     auto& s = *impl_;
+    std::lock_guard lock(s.mutex);
     if (!s.error.empty()) return;
-    if (!connected()) { s.fail("MP session is not connected"); return; }
+    if (s.setup.phase != LinkSetup::Phase::Ready) { s.fail("MP session is not connected"); return; }
     if (packet.empty() || packet.size() > maxPacketBytes) { s.fail("invalid MP packet size"); return; }
     s.transmit(packet);
     enet_host_flush(s.host);
 }
-bool Session::connected() const { return impl_->setup.phase == LinkSetup::Phase::Ready; }
+bool Session::connected() const { std::lock_guard lock(impl_->mutex); return impl_->setup.phase == LinkSetup::Phase::Ready && impl_->loaded(); }
 void Session::missionLoading(bool loading) {
-    if (impl_->peer) enet_peer_timeout(impl_->peer, 8, loading ? 180000 : 5000, loading ? 180000 : 15000);
+    std::lock_guard lock(impl_->mutex);
+    if (loading) {
+        ++impl_->loadEpoch;
+        impl_->localLoaded = impl_->loadedSent = impl_->missionTransportReady = false;
+        if (impl_->peer) enet_peer_timeout(impl_->peer, 8, 120000, 600000);
+    } else impl_->localLoaded = true;
 }
-std::uint32_t Session::inputDelay() const { return impl_->setup.delay; }
-std::uint32_t Session::rtt() const { return impl_->peer ? impl_->peer->roundTripTime : 0; }
-std::uint32_t Session::jitter() const { return impl_->peer ? impl_->peer->roundTripTimeVariance : 0; }
-std::uint32_t Session::measuredRtt() const { return impl_->setup.rtt; }
-std::uint32_t Session::measuredJitter() const { return impl_->setup.jitter; }
-const std::string& Session::error() const { return impl_->error; }
+std::uint32_t Session::inputDelay() const { std::lock_guard lock(impl_->mutex); return impl_->setup.delay; }
+std::uint32_t Session::rtt() const { std::lock_guard lock(impl_->mutex); return impl_->peer ? impl_->peer->roundTripTime : 0; }
+std::uint32_t Session::jitter() const { std::lock_guard lock(impl_->mutex); return impl_->peer ? impl_->peer->roundTripTimeVariance : 0; }
+std::uint32_t Session::measuredRtt() const { std::lock_guard lock(impl_->mutex); return impl_->setup.rtt; }
+std::uint32_t Session::measuredJitter() const { std::lock_guard lock(impl_->mutex); return impl_->setup.jitter; }
+std::string Session::error() const { std::lock_guard lock(impl_->mutex); return impl_->error; }
 }

@@ -179,13 +179,13 @@ def test_mp_combat_attacks_and_requires_fire_and_damage_for_both_owners(tmp_path
         compare_traces(*peers, 2, combat=True)
 
 
-def test_mp_handshake_deadline_starts_when_the_loaded_mission_pumps():
+def test_mp_rendezvous_deadline_includes_loading_and_is_not_reset_by_pumps():
     runtime = (ROOT / "code/net/runtime.cpp").read_text()
     begin = runtime.split("void beginMission(", 1)[1].split("void setRoster", 1)[0]
     pump = runtime.split("bool prepareTick(", 1)[1]
-    assert "began = std::chrono::steady_clock::now()" not in begin
-    assert pump.index("began = std::chrono::steady_clock::now()") < pump.index("session->pump()")
-    assert "began == std::chrono::steady_clock::time_point{}" in pump
+    assert begin.index("began = lastProgress = std::chrono::steady_clock::now()") < begin.index("session->open(")
+    assert "began =" not in pump
+    assert pump.index("progressTimeout(false,") < pump.index("session->pump()")
 
 
 def test_mp_trace_bounds_frame_exit_overshoot(tmp_path):

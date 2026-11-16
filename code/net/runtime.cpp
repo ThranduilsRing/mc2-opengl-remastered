@@ -262,8 +262,8 @@ void pumpLobby() {
     }
     if (!lobbyTransport->error().empty()) lobby.error = lobbyTransport->error();
     if (lobbyConnected() && lobby.hosting && !lobby.offered) lobbyTransport->send(lobby.offer());
-    if (!lobbyConnected() && std::chrono::steady_clock::now() - lobbyBegan > std::chrono::seconds(60))
-        lobby.error = "MP handshake timeout";
+    if (!lobbyConnected() && std::chrono::steady_clock::now() - lobbyBegan >= std::chrono::seconds(600))
+        lobby.error = "MP loading timeout (600 seconds)";
 }
 void lobbyReady(bool value) {
     if (!lobbyConnected()) return;
@@ -296,6 +296,8 @@ std::expected<sim::OrderReceipt, sim::OrderError> admitAgreedOrder(sim::Tactical
 std::uint32_t localSlot() { return hosting ? 0u : 1u; }
 void beginMission(std::string_view mission, std::uint32_t seed) {
     if (!enabled) return;
+    // One overall rendezvous cap, including local cold loading and identity work.
+    began = lastProgress = std::chrono::steady_clock::now();
     if (session && !fromLobby) fail("MP mission replacement is not supported");
     trace.open(userFile("session.trace"), std::ios::trunc);
     if (!trace) fail("cannot open MP trace");
@@ -319,6 +321,7 @@ void beginMission(std::string_view mission, std::uint32_t seed) {
         session = std::make_unique<Session>();
         try { session->open(hosting, endpoint, identity); }
         catch (const std::exception& error) { fail(error.what()); }
+        session->missionLoading(true);
     }
     std::fprintf(stderr, "Multiplayer: slot=%u mission=%s seed=%u awaiting peer\n", localSlot(), identity.mission.c_str(), seed);
 }
@@ -352,10 +355,12 @@ void bindQueue(sim::TacticalOrderQueue& queue, std::unique_ptr<sim::OrderAdmissi
 std::uint64_t nextTick() { return gate ? gate->completed() + 1 : 1; }
 bool prepareTick(bool due) {
     if (!session) fail("MP mission session was not initialized");
-    // beginMission precedes cold asset loading, which can exceed the handshake deadline.
-    if (began == std::chrono::steady_clock::time_point{}) {
-        began = std::chrono::steady_clock::now();
-        lastProgress = began;
+    // This first main-thread tick is the local LOADED milestone; it never resets the cap.
+    session->missionLoading(false);
+    if (!gate) {
+        const auto overallAge = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - began).count();
+        if (const auto* timeout = progressTimeout(false, static_cast<std::uint64_t>(overallAge))) fail(timeout);
     }
     if (!orderQueue || !admission) fail("MP order queue was not bound");
     auto& queue = *orderQueue;
@@ -364,20 +369,26 @@ bool prepareTick(bool due) {
     lobbyPending.clear();
     auto incoming = session->pump();
     packets.insert(packets.end(), std::make_move_iterator(incoming.begin()), std::make_move_iterator(incoming.end()));
+    const bool hadGate = gate != nullptr;
     for (const auto& packet : packets) {
         if (missionHandshakePending) {
             const auto error = checkHello(packet, missionIdentity);
             if (!error.empty()) fail(error);
             missionHandshakePending = false;
-            session->missionLoading(false);
         } else {
-            if (!gate) gate = std::make_unique<Lockstep>(localSlot(), session->inputDelay());
+            if (!gate) {
+                if (!session->connected()) fail("MP input before LOADED barrier");
+                gate = std::make_unique<Lockstep>(localSlot(), session->inputDelay());
+            }
             gate->receive(packet);
         }
     }
     if (!gate && session->connected() && !missionHandshakePending) {
         gate = std::make_unique<Lockstep>(localSlot(), session->inputDelay());
+    }
+    if (gate && !hadGate) {
         lastProgress = std::chrono::steady_clock::now();
+        trace << "LOADED both peers; rendezvous_ms=" << std::chrono::duration_cast<std::chrono::milliseconds>(lastProgress - began).count() << '\n';
         trace << "NETWORK rtt_ms=" << session->rtt() << " jitter_ms=" << session->jitter()
               << " input_delay=" << session->inputDelay() << " measured_rtt_ms=" << session->measuredRtt()
               << " measured_jitter_ms=" << session->measuredJitter() << '\n' << std::flush;
@@ -418,6 +429,10 @@ bool prepareTick(bool due) {
         }
     }
     return true;
+}
+bool waitingForPeer() {
+    // Runtime and UI state are main-thread-only; the transport exposes copied snapshots.
+    return enabled && session && (!gate || std::chrono::steady_clock::now() - lastProgress >= std::chrono::milliseconds(500));
 }
 void stateHashes(std::uint64_t tick, const StateHash& values) {
     if (!enabled) return;

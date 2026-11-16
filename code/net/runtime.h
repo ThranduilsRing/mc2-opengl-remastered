@@ -30,6 +30,7 @@ using TargetLookup = std::function<std::optional<sim::ObjectRef>(std::uint32_t)>
 bool submitScriptOrder(sim::OrderEnvelope envelope, const PlayerSubmit& submit);
 void bindQueue(sim::TacticalOrderQueue& queue, std::unique_ptr<sim::OrderAdmissionValidator> validator, PlayerSubmit submit, TargetLookup target);
 bool prepareTick(bool due = true);
+bool waitingForPeer();
 std::uint64_t nextTick();
 void stateHashes(std::uint64_t tick, const StateHash& values);
 }

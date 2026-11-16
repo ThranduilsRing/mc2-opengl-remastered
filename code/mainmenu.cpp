@@ -46,7 +46,9 @@ void drawCoopLobby() {
     const float scale = viewport->WorkSize.y / 1080.0f;
     ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + 24 * scale, viewport->WorkPos.y + 24 * scale));
     ImGui::Begin("Co-op menu", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings);
-    if (ImGui::Button("Co-op over LAN")) coopOpen = true;
+    ImGui::BeginDisabled();
+    ImGui::Button("Co-op over LAN");
+    ImGui::EndDisabled();
     ImGui::End();
     if (!coopOpen) return;
     mc2::net::pumpLobby();
@@ -363,7 +365,6 @@ int	MainMenu::handleMessage( unsigned long what, unsigned long who )
 			}
 			break;
 		case MM_MSG_MULTIPLAYER:
-			coopOpen = true;
 			break;
 
 		case MM_MSG_RETURN_TO_GAME:
@@ -550,7 +551,7 @@ void MainMenu::update()
 	else
 		getButton( MM_MSG_SAVE )->disable( false );
 
-	getButton( MM_MSG_MULTIPLAYER )->disable( !bDrawBackground );
+	getButton( MM_MSG_MULTIPLAYER )->disable( true );
 
 	if ( introMovie )
 	{

@@ -1,6 +1,8 @@
 // Trigger paths: code/net/, code/tactical_order_queue.*, code/mission_update.cpp.
 #include "doctest.h"
 #include "net/session.h"
+#include <chrono>
+#include <thread>
 using namespace mc2;
 auto settled(net::LinkSetup& host, net::LinkSetup& client, std::uint32_t now) {
     CHECK_FALSE(host.begin(now)); CHECK_FALSE(client.begin(now));
@@ -96,16 +98,59 @@ TEST_CASE("net setup refuses premature or malformed timing agreement and retains
     CHECK(host.phase == net::LinkSetup::Phase::Stopped);
 }
 TEST_CASE("net timeout bounds permit transient packet loss but end an unresponsive session") {
-    CHECK(net::progressTimeout(false, 59999) == nullptr);
-    REQUIRE(net::progressTimeout(false, 60000));
-    CHECK(std::string_view(net::progressTimeout(false, 60000)) == "MP handshake timeout");
-    CHECK(net::progressTimeout(true, 14999) == nullptr);
-    REQUIRE(net::progressTimeout(true, 15000));
+    // RCA: host finished at 82.6 s; the cold client finished at 208.8 s.
+    CHECK(net::progressTimeout(false, 208800 - 82600) == nullptr);
+    CHECK(net::progressTimeout(false, 599999) == nullptr);
+    REQUIRE(net::progressTimeout(false, 600000));
+    CHECK(net::progressTimeout(true, 27000) == nullptr);
+    CHECK(net::progressTimeout(true, 119999) == nullptr);
+    REQUIRE(net::progressTimeout(true, 120000));
     net::Session unopened;
     const save::Bytes packet{1};
     CHECK_NOTHROW(unopened.send(packet));
     CHECK(unopened.error() == "MP session is not connected");
     CHECK_FALSE(unopened.connected());
+}
+
+TEST_CASE("net transport services identity while both mission threads are loading") {
+    net::Session host, client;
+    net::Identity identity{{}, {}, "mc2_01", 12345};
+    host.open(true, "127.0.0.1:23469", identity);
+    ++identity.seed;
+    client.open(false, "127.0.0.1:23469", identity);
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    // Neither peer calls pump: the main threads are occupied by cold loading.
+    while (host.error().empty() && client.error().empty() && std::chrono::steady_clock::now() < deadline)
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    CHECK((host.error() == "seed mismatch" || client.error() == "seed mismatch"));
+}
+
+TEST_CASE("net LOADED barrier holds the fast peer until the cold peer finishes") {
+    net::Session host, client;
+    const net::Identity identity{{}, {}, "mc2_01", 12345};
+    host.open(true, "127.0.0.1:23470", identity);
+    client.open(false, "127.0.0.1:23470", identity);
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(3);
+    auto settle = [&] {
+        while ((!host.connected() || !client.connected()) && std::chrono::steady_clock::now() < deadline) {
+            host.pump(); client.pump();
+            std::this_thread::sleep_for(std::chrono::milliseconds(2));
+        }
+    };
+    settle();
+    REQUIRE(host.connected()); REQUIRE(client.connected());
+    host.missionLoading(true); client.missionLoading(true);
+    host.missionLoading(false);
+    // The host is loaded; the client main thread is still inside its loader.
+    for (unsigned i = 0; i < 20; ++i) {
+        host.pump();
+        CHECK_FALSE(host.connected()); CHECK_FALSE(client.connected());
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    }
+    client.missionLoading(false);
+    settle();
+    CHECK(host.connected()); CHECK(client.connected());
+    CHECK(host.error().empty()); CHECK(client.error().empty());
 }
 
 TEST_CASE("net content identity includes effective mounted art options") {
