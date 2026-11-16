@@ -5,7 +5,7 @@ A lane install deployed with --skip-kit (E:/mc2-installs/quiet-A) was missing 80
 files and had 2,354 textures of a different size; its captures showed stock concrete. Every lane deploy
 now compares data/, assets/ and the root *.fst archives with the v0.4 install by path and size, plus
 sha256 for a sampled subset, SYNCS missing or different files from v0.4 (read only), and deletes
-unowned extras after reporting dry-run counts. With
+reports unowned extras without deleting them. With
 --no-asset-sync the deploy fails instead, naming the counts.
 
 The one-line `[ASSET_PARITY] OK|SYNCED|FAIL|SKIPPED ...` verdict is printed by deploy_payload and
@@ -169,9 +169,27 @@ def _norm(rel: str) -> str:
     return rel.replace("\\", "/").lstrip("/").casefold()
 
 
+def is_deploy_artifact(rel: str) -> bool:
+    """Payload-only exclusions; never deletion authority. Arbitrary backup/model names are valid.
+
+    data/tgl/_aoktxtmp is the AO workspace (tools/bt2018_import/cook_ao_from_package.py:59).
+    """
+    parts = _norm(rel).rstrip("/").split("/")
+    name = parts[-1]
+    return (parts[0] in {"logs", "debug_state", "crashes", "_rdoc", "_pngcap", "dev_shell_out", "terrain_gen_out"}
+            or parts[:3] == ["data", "tgl", "_aoktxtmp"]
+            or name.endswith((".rdc", ".dmp", ".mdmp"))
+            or (len(parts) == 1 and (name in {"bt_gamma.log", "bt_nodediag.log", "editor-catalog-trace.log",
+                "editor-startup.log", "launcher.log", "logistics_debug.log", "mc2-strings.log", "tgl.fst.slim-2026-06-12"}
+                or re.fullmatch(r"harness_[a-z0-9_]+_(?:stdout|stderr)\.txt", name) is not None
+                or name.startswith(("stdout", "stderr")) and name.endswith((".txt", ".out", ".err", ".log"))))
+            or (parts[:3] in (["mods", "mc2-industrial-kit", "content"], ["mods", "mc2-vehicle-kit", "content"])
+                and name.endswith(".mc2ir.json")))
+
+
 def is_excluded(rel: str) -> bool:
     low = _norm(rel)
-    return any(low.startswith(prefix) for prefix in EXCLUDED)
+    return is_deploy_artifact(rel) or any(low.startswith(prefix) for prefix in EXCLUDED)
 
 
 def is_exempt(install: Path | str, ref: Path | str | None = None) -> bool:
@@ -223,7 +241,7 @@ class Result:
 
     @property
     def ok(self) -> bool:
-        return not (self.missing or self.size or self.content or self.extra)
+        return not (self.missing or self.size or self.content)
 
 
 def sample_rels(rels: list[str], limit: int = SAMPLE_FILES) -> list[str]:
@@ -304,7 +322,7 @@ def detail_lines(result: Result, install: Path | str, ref: Path | str, limit: in
 
     A reference file newer than the install's manifest means v0.4 changed after this deploy (a merge-gate
     deploy or a v0.4 run wrote it): redeploying syncs it. An extra is a file v0.4 and the payload do not
-    list (earlier deploy into a reused install, or a runtime cache): --sync / redeploy prunes it."""
+    list (earlier deploy into a reused install, or a runtime cache): it is reported, never deleted."""
     install, ref = Path(install), Path(ref)
     lines = []
     for name, rels in (("missing", result.missing), ("size", result.size),
@@ -323,7 +341,7 @@ def detail_lines(result: Result, install: Path | str, ref: Path | str, limit: in
                      "than this install's deploy (the reference moved); redeploy or run asset_parity.py --sync")
     elif result.extra and not (result.missing or result.size or result.content):
         lines.append(f"{PREFIX}   cause: extras are not in {ref.as_posix()} or the payload manifest; "
-                     "redeploy or asset_parity.py --sync <install> deletes them")
+                     "unowned files are preserved for owner review")
     return lines
 
 
@@ -348,7 +366,7 @@ def sync(install: Path | str, ref: Path | str, result: Result, jobs: int = 4) ->
     index = reference_index(ref)
     sizes = {rel: size for rel, size in index.values()}
     todo = result.missing + result.size + result.content
-    # Print the complete mutation count before the first copy or deletion.
+    # Extras are advisory: only deploy's previous manifest can authorize retirement.
     print(verdict_line(result, ref, status="DRY_RUN"), flush=True)
 
     def one(rel: str) -> int:
@@ -358,14 +376,7 @@ def sync(install: Path | str, ref: Path | str, result: Result, jobs: int = 4) ->
     with ThreadPoolExecutor(max_workers=max(1, jobs)) as pool:
         written = list(pool.map(one, todo))
     result.synced, result.synced_bytes = len(written), sum(written)
-    for rel in result.extra:
-        path = install / rel
-        path.chmod(path.stat().st_mode | stat.S_IWRITE)
-        path.unlink()
-        result.deleted += 1
-        print(f"{PREFIX} deleted {rel}", flush=True)
     result.missing, result.size, result.content = [], [], []
-    result.extra = []
     return result
 
 
@@ -421,7 +432,7 @@ def main(argv=None) -> int:
     ap.add_argument("install", help="lane install to check")
     group = ap.add_mutually_exclusive_group(required=True)
     group.add_argument("--check", action="store_true", help="report counts only; never copies")
-    group.add_argument("--sync", action="store_true", help="copy missing/different files and delete unowned extras")
+    group.add_argument("--sync", action="store_true", help="copy missing/different files; report extras without deleting")
     ap.add_argument("--ref", default=None, help="reference install (default: %s)" % default_ref())
     args = ap.parse_args(argv)
     ref = Path(args.ref) if args.ref else default_ref()
