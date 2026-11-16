@@ -957,7 +957,7 @@ void Mech3DAppearance::startSmoking (long smokeLvl)
 
 			if (smokeLvl > 0 && criticalSmoke)
 				criticalSmoke->Start(&info);
-			else if (smokeLvl == 0 && smokeEffect)
+			else if (smokeEffect)
 				smokeEffect->Start(&info);
 		}
 	}
