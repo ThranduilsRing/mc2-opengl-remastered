@@ -6,6 +6,16 @@
 // Window-thread accounting, independent of SDL so boundary/throttle rules can be
 // proved offline. A checkpoint is credited only after actual event service.
 namespace mc2::loadpump {
+struct CursorThrottle {
+    std::uint64_t last = 0;
+    bool applied = false;
+    bool due(std::uint64_t now) {
+        if (applied && now - last < 50) return false;
+        last = now;
+        applied = true;
+        return true;
+    }
+};
 struct Scope {
     bool active = false;
     bool attempted = false;

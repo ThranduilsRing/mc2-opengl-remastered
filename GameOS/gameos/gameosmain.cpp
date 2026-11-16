@@ -738,6 +738,8 @@ extern "C" void mission_load_pump()
 {
     graphics::pump_loading_events();
     if (SmokeMode::state().headless) return;
+    static mc2::loadpump::CursorThrottle cursorThrottle;
+    if (!cursorThrottle.due(SDL_GetTicks64())) return;
     // The sprite cannot advance during synchronous loading; use the OS arrow.
     // The central policy preserves the unattended harness cursor guard.
     graphics::apply_os_cursor_policy("mission_load", false);

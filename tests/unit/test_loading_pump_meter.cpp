@@ -4,6 +4,24 @@
 #include <string_view>
 using mc2::loadpump::Meter;
 
+TEST_CASE("loading pump: cursor policy is throttled independently of event service") {
+    mc2::loadpump::CursorThrottle cursor;
+    Meter m;
+    const std::uint64_t start = (std::uint64_t{1} << 32);
+    REQUIRE(cursor.due(start));
+    for (unsigned i = 0; i < 1000; ++i) {
+        m.service(start + 49, false);
+        CHECK_FALSE(cursor.due(start + 49));
+    }
+    CHECK(cursor.due(start + 50));
+    CHECK_FALSE(cursor.due(start + 50));
+    CHECK_FALSE(cursor.due(start + 99));
+    CHECK(cursor.due(start + 100));
+    CHECK(cursor.due(start + 10000));
+    CHECK_FALSE(cursor.due(start + 10049));
+    CHECK(cursor.due(start + 10050));
+}
+
 TEST_CASE("loading pump: boundaries including no service and final tail") {
     Meter m;
     m.mission.begin(100, "start", false);
