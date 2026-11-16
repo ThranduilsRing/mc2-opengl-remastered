@@ -229,19 +229,8 @@ class gosTexture {
             lock_type_read_only_ = is_read_only;
             const uint32_t ts = tex_.w*tex_.h * getTexFormatPixelSize(TF_RGBA8);
             plocked_area_ = new BYTE[ts];
-            memset(plocked_area_, 0, ts);
-            if (ensureRgbaMirror()) std::memcpy(plocked_area_, rgba_mirror_->data(), ts);
-            for(int y=0;y<tex_.h;++y) {
-                for(int x=0;x<tex_.w;++x) {
-                    DWORD rgba = (reinterpret_cast<DWORD*>(plocked_area_))[tex_.w*y + x];
-                    DWORD r = rgba&0xff;
-                    DWORD g = (rgba&0xff00)>>8;
-                    DWORD b = (rgba&0xff0000)>>16;
-                    DWORD a = (rgba&0xff000000)>>24;
-                    DWORD bgra = (a<<24) | (r<<16) | (g<<8) | b;
-                    (reinterpret_cast<DWORD*>(plocked_area_))[tex_.w*y + x] = bgra;
-                }
-            }
+            mc2tex::writeBgraLockPixels({plocked_area_, ts},
+                ensureRgbaMirror() ? std::span<const uint8_t>(*rgba_mirror_) : std::span<const uint8_t>{});
             return plocked_area_;
         }
 

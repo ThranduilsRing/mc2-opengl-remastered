@@ -15,6 +15,7 @@
 #include <filesystem>
 
 #include <cstdint>
+#include <cstring>
 #include <cstdio>
 #include <vector>
 
@@ -41,6 +42,23 @@ std::vector<uint8_t> tga(int w, int h, int bpp, const std::vector<uint8_t>& bgra
 }
 
 }  // namespace
+
+TEST_CASE("texture lock: fused BGRA copy matches the legacy word swizzle") {
+    std::vector<uint8_t> source(256 * 4), expected(source.size()), actual(source.size(), 0xcd);
+    for (uint32_t i = 0; i < 256; ++i) {
+        const uint32_t rgba = i | ((255 - i) << 8) | ((i ^ 0x5a) << 16) | ((i ^ 0xa5) << 24);
+        const uint32_t bgra = (rgba & 0xff00ff00u) | ((rgba & 0xffu) << 16) | ((rgba >> 16) & 0xffu);
+        std::memcpy(source.data() + i * 4, &rgba, 4);
+        std::memcpy(expected.data() + i * 4, &bgra, 4);
+    }
+    const auto original = source;
+    mc2tex::writeBgraLockPixels(actual, source);
+    CHECK(actual == expected);
+    CHECK(source == original);
+    mc2tex::writeBgraLockPixels(actual, {});
+    CHECK(actual == std::vector<uint8_t>(actual.size(), 0));
+    mc2tex::writeBgraLockPixels({}, {});
+}
 
 TEST_CASE("StockPbr: every shipped actor atlas resolves and decodes through the texture service") {
     auto root = std::filesystem::current_path();

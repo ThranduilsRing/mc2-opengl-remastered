@@ -15,6 +15,21 @@
 #include "utils/mc2log.h"
 
 namespace mc2tex {
+
+void writeBgraLockPixels(std::span<uint8_t> destination, std::span<const uint8_t> rgba) {
+    if (destination.empty()) return;
+    if (rgba.empty()) {
+        std::memset(destination.data(), 0, destination.size());
+        return;
+    }
+    // Copy and swizzle together: no prior zero-fill or intermediate RGBA copy.
+    for (size_t i = 0; i < destination.size(); i += 4) {
+        destination[i] = rgba[i + 2];
+        destination[i + 1] = rgba[i + 1];
+        destination[i + 2] = rgba[i];
+        destination[i + 3] = rgba[i + 3];
+    }
+}
 namespace {
 
 bool endsWithPng(const char* path) {
