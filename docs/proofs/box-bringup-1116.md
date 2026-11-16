@@ -112,3 +112,9 @@ on its assigned branch; slot release was not run because it would recursively
 delete the same refused scratch. All one-shot jobs have completed. The two
 temporary remote bring-up helper scripts were removed before this refusal.
 Persistent box assets, scripts, installs, sources, queue, and services are retained.
+
+## Continuation 1 (supersedes R6 block and prior cleanup status)
+R7 flag sha=f562821f31326eb790f822b1287e73148b0ced1a; deploy pytest 267 passed/1 skipped; lint PASS; incremental box build exit 0.
+R8 slot0 smoke mc2_01=142fps/PASS mc2_10=160fps/PASS fingerprint=OK; 423 parity assets and strict 3221-row manifest verified; only two pruned concrete-detail parity files restored from the existing tar.
+R9 slots1-5 fingerprint=OK x5; same slot0 build, guarded no-example-mods/classic deploys, no mods directories or games there; disk=37%.
+R10 scratch_reap slot08 --apply kept E:/mc2-tmp/slot08/box-bringup/{v04-assets.tar,v04-assets.sha256} and G:/mc2-tmp/slot08/{notes,pytest-cont1,slot-sync}: live lane holds slot08; no deletion retry. Evidence and final state: E:/mc2-archive-2026-10/proofs/box-bringup-1116/cont1/.
