@@ -595,6 +595,7 @@ void ForceGroupBar::update( )
 				iconCount --;
 				memmove( &icons[t], &icons[t] + 1, (iconCount - t) * sizeof (ForceGroupIcon*) );
 				icons[iconCount] = nullptr;
+				--t;
 			}
 		}
 	}
