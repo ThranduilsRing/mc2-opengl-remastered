@@ -888,6 +888,7 @@ void GameCamera::render (void)
 			if (compass && (mc2::render_view::clock().turn > 3) && drawCompass)
 			{
 				ZoneScopedN("GameCamera::render compass");
+				refreshCompass();		// same camera the frame renders with (production path; drawOldWay is the legacy one)
 				compass->render(-1);		//Force this to zBuffer in front of everything
 			}
 		}
