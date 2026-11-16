@@ -492,11 +492,14 @@ void drawMainMenu(bool showCredits) {
             scan();
         }
     }
+    // Owner 11-16: no box behind the buttons; the buttons keep their own frames.
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0));
     ImGui::Begin("Campaign tools", nullptr, ImGuiWindowFlags_NoNav | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings);
     if (ImGui::Button("Campaigns & mods")) pickerOpen = !pickerOpen;
     ImGui::SameLine();
     if (ImGui::Button("Graphics")) GraphicsOptionsWindow::setOpen(true);
     ImGui::End();
+    ImGui::PopStyleColor();
     if (!pickerOpen) return;
     if (!scanned) scan();
     const float scale = std::clamp(viewport->WorkSize.y / 1080.0f, 0.75f, 2.0f);
