@@ -103,3 +103,35 @@ def test_nested_or_unbalanced_definitions_fail_checker(kind, ending, monkeypatch
 def test_unbalanced_blocks_or_commands_fail(text):
     with pytest.raises(ValueError):
         checker.parse_macro_target_defs({"test": text})
+
+
+@pytest.mark.parametrize("kind,second", [
+    ("function", "function"), ("macro", "macro"), ("function", "macro"),
+])
+@pytest.mark.parametrize("separate_file", [False, True])
+def test_duplicate_helpers_fail(kind, second, separate_file, monkeypatch, capsys):
+    first = f"{kind}(enable_layout)\nend{kind}()\nenable_layout()\n"
+    duplicate = f"{second}(ENABLE_LAYOUT)\nend{second}()\n"
+    texts = ({"first.cmake": first, "second.cmake": duplicate} if separate_file
+             else {"test.cmake": first + duplicate})
+    location = "second.cmake:1" if separate_file else "test.cmake:4"
+    monkeypatch.setattr(checker, "read_cmake_text", lambda: texts)
+    assert checker.main() == 1
+    assert ("unsupported CMake construct in layout coverage: " + location
+            + " (duplicate helper ENABLE_LAYOUT)") in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("kind", ["function", "macro"])
+@pytest.mark.parametrize("call", ["enable_layout(gameos)", "outer(gameos)"])
+def test_expanded_return_fails(kind, call, monkeypatch, capsys):
+    text = (f"{kind}(enable_layout destination)\n"
+            'message([=[ignored\nreturn()\n]=])\n'
+            "if(TRUE)\nreturn()\nendif()\n"
+            "target_compile_definitions(${destination} PRIVATE MC2_LAYOUT)\n"
+            f"end{kind}()\nfunction(outer destination)\n"
+            "enable_layout(${destination})\nendfunction()\n")
+    monkeypatch.setattr(checker, "read_cmake_text", lambda: {
+        "helper.cmake": text, "CMakeLists.txt": call})
+    assert checker.main() == 1
+    assert ("unsupported CMake construct in layout coverage: helper.cmake:6 "
+            "(return in helper enable_layout)") in capsys.readouterr().err

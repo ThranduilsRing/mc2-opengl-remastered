@@ -211,7 +211,7 @@ def cmake_commands(text):
         key = "__cmake_literal_%d__" % len(literals)
         literals[key] = (value[1:-1] if value.startswith('"') else
                          value[len(match[1]) + 2:-(len(match[1]) + 2)])
-        return key
+        return key + "\n" * value.count("\n")
 
     masked = CM_LITERAL_RE.sub(hide, text)
     consumed = 0
@@ -227,7 +227,7 @@ def cmake_commands(text):
             raise ValueError("unterminated CMake command: " + match[1])
         consumed = end + 1
         args = [literals.get(arg, arg) for arg in masked[match.end():end].split()]
-        yield match[1].lower(), args
+        yield match[1].lower(), args, masked.count("\n", 0, match.start()) + 1
 
 
 def parse_macro_target_defs(cmake_text):
@@ -241,19 +241,22 @@ def parse_macro_target_defs(cmake_text):
     for cf, text in cmake_text.items():
         commands[cf] = []
         definition = None
-        for name, args in cmake_commands(text):
+        for name, args, line in cmake_commands(text):
             if name in ("function", "macro"):
                 if definition or not args:
                     raise ValueError("unsupported nested/empty CMake definition in " + cf)
+                if args[0].lower() in helpers:
+                    raise ValueError("unsupported CMake construct in layout coverage: "
+                                     "%s:%d (duplicate helper %s)" % (cf, line, args[0]))
                 definition = (name, args, [])
             elif name in ("endfunction", "endmacro"):
                 if not definition or name != "end" + definition[0]:
                     raise ValueError("unbalanced CMake definition in " + cf)
                 _, signature, body = definition
-                helpers[signature[0].lower()] = (signature[1:], body)
+                helpers[signature[0].lower()] = (signature[1:], body, cf)
                 definition = None
             else:
-                (definition[2] if definition else commands[cf]).append((name, args))
+                (definition[2] if definition else commands[cf]).append((name, args, line))
         if definition:
             raise ValueError("unterminated CMake definition in " + cf)
 
@@ -261,11 +264,15 @@ def parse_macro_target_defs(cmake_text):
         if name in helpers:
             if name in active:
                 raise ValueError("recursive CMake helper: " + name)
-            params, body = helpers[name]
+            params, body, helper_cf = helpers[name]
+            for command, _, line in body:
+                if command == "return":
+                    raise ValueError("unsupported CMake construct in layout coverage: "
+                                     "%s:%d (return in helper %s)" % (helper_cf, line, name))
             if len(params) != len(args) or not all(
                     re.fullmatch(r"[A-Za-z_][\w.-]*", arg) for arg in args):
                 return
-            for command, values in body:
+            for command, values, _ in body:
                 for param, value in zip(params, args):
                     values = [v.replace("${" + param + "}", value) for v in values]
                 expand(command, values, cf, active + (name,))
@@ -280,7 +287,7 @@ def parse_macro_target_defs(cmake_text):
                     defs.setdefault(tok.split("=", 1)[0], []).append((target, vis, cf))
 
     for cf, body in commands.items():
-        for name, args in body:
+        for name, args, _ in body:
             expand(name, args, cf)
     return defs
 
