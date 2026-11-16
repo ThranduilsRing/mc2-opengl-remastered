@@ -3,6 +3,27 @@
 #include "Gates/render_options.h"
 #include "../../GuiRuntime/PlayerSettings.h"
 #include <cstring>
+#include <map>
+
+TEST_CASE("campaign picker/all pack FIT pairs select independently including stock") {
+    using namespace PlayerFrontEnd;
+    struct Pack { std::string id, kind; std::map<std::string, CampaignInfo> campaigns; };
+    const std::vector<Pack> packs{{"exodus", "campaign", {{"campaign", {"Exodus"}}, {"bonus", {"Bonus"}}}},
+        {"fox", "campaign", {{"campaign", {"Desert Fox"}}}},
+        {"base", "dependency", {{"hidden", {"Hidden"}}}}, {"mechs", "assets", {}}};
+    const auto choices = campaignChoices(packs);
+    REQUIRE(choices.size() == 4);
+    CHECK((choices[0].pack.empty() && choices[0].fit == "campaign"));
+    CHECK((choices[1].pack == "exodus" && choices[1].fit == "bonus"));
+    CHECK((choices[2].pack == "exodus" && choices[2].fit == "campaign" && choices[2].title == "Exodus"));
+    CHECK((choices[3].pack == "fox" && choices[3].fit == "campaign" && choices[3].title == "Desert Fox"));
+    std::string pack, fit;
+    for (const auto& choice : choices) {
+        selectCampaign(choice, pack, fit);
+        CHECK((pack == choice.pack && fit == choice.fit));
+    }
+    CHECK(campaignChoices(std::vector<Pack>{}).size() == 1);
+}
 
 // Trigger: GuiRuntime/PlayerSettings.h and PlayerFrontEnd.cpp selection/restart handling.
 TEST_CASE("campaign picker/disable invalid enabled addon") {

@@ -568,18 +568,20 @@ void drawMainMenu(bool showCredits) {
     }
     if (!base.empty()) ImGui::TextWrapped("Required base: %s", base.c_str());
     if (!texture.empty()) ImGui::TextWrapped("Texture pack: %s", texture.c_str());
-    std::string selectedTitle = campaignFit;
+    std::string selectedTitle = campaign.empty() ? "Stock campaign" : campaignFit;
     for (const auto& pack : packs) if (pack.id == campaign && pack.campaigns.contains(campaignFit))
         selectedTitle = campaignTitle("", pack.campaigns.at(campaignFit).title, campaignFit);
     ImGui::SeparatorText("CAMPAIGN SETUP");
     ImGui::PushItemWidth(235 * scale);
     if (ImGui::BeginCombo("Campaign", selectedTitle.c_str())) {
-        for (const auto& fit : campaigns(campaign)) {
-            std::string label = fit;
-            for (const auto& pack : packs) if (pack.id == campaign && pack.campaigns.contains(fit))
-                label = campaignTitle("", pack.campaigns.at(fit).title, fit);
-            ImGui::PushID(fit.c_str());
-            if (ImGui::Selectable(label.c_str(), campaignFit == fit)) campaignFit = fit;
+        for (const auto& choice : campaignChoices(packs)) {
+            ImGui::PushID(choice.pack.c_str());
+            ImGui::PushID(choice.fit.c_str());
+            if (ImGui::Selectable(choice.title.c_str(), campaign == choice.pack && campaignFit == choice.fit)) {
+                selectCampaign(choice, campaign, campaignFit);
+                autoBase();
+            }
+            ImGui::PopID();
             ImGui::PopID();
         }
         ImGui::EndCombo();

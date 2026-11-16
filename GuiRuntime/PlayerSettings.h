@@ -86,6 +86,23 @@ inline CampaignInfo campaignInfo(std::string_view source) {
 inline std::string campaignTitle(std::string_view name, std::string_view fitTitle, std::string_view folder) {
     return std::string(!name.empty() ? name : !fitTitle.empty() ? fitTitle : folder);
 }
+struct CampaignChoice {
+    std::string pack, fit, title;
+};
+template<class Packs>
+std::vector<CampaignChoice> campaignChoices(const Packs& packs) {
+    std::vector<CampaignChoice> choices{{"", "campaign", "Stock campaign"}};
+    for (const auto& pack : packs) {
+        if (pack.kind != "campaign") continue;
+        for (const auto& [fit, info] : pack.campaigns)
+            choices.push_back({pack.id, fit, campaignTitle("", info.title, fit)});
+    }
+    return choices;
+}
+inline void selectCampaign(const CampaignChoice& choice, std::string& pack, std::string& fit) {
+    pack = choice.pack;
+    fit = choice.fit;
+}
 inline bool unrecognisedCampaign(std::string_view name, bool hasCampaignFit) {
     return name.empty() && !hasCampaignFit;
 }
