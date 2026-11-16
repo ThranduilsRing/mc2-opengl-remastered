@@ -133,7 +133,7 @@ void InfoWindow::init( FitIniFile& file )
 
     // sebi: WTF??? thank you clang
 	//memset( skillInfos.get(), 0, sizeof( skillInfos ));
-	memset( skillInfos.get(), 0, sizeof( skillInfos ) * 7);
+	memset( skillInfos.get(), 0, sizeof( StaticInfo ) * 7);
 
 	//sebi: ORIG BUG FIX what a reason to clear this and then iterate over it?
 	// obviously clear shoul dbe done after!

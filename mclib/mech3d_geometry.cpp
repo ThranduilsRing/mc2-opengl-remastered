@@ -143,6 +143,8 @@ void Mech3DAppearance::tickImportedAnimation(bool advanceClock, bool preview)
 {
 	mc2mechanim::MechMotion motion;
 	motion.gestureId = static_cast<int>(unitAnim().currentGestureId);
+	motion.gestureFrames = mechType ? static_cast<float>(mechType->getNumFrames(motion.gestureId)) : 0.0f;
+	motion.gestureRate = unitAnim().mechFrameRate;
 	const auto& pos = preview ? position : simPosition_;
 	motion.px = pos.x; motion.py = pos.y; motion.pz = pos.z;
 	motion.legHeadingDeg = preview ? rotation : simRotation_;

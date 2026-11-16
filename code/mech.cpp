@@ -786,7 +786,7 @@ float curTorso, maxTorso, armorTorso, pilotEffect;
 
 		curLeg = armor[MECH_ARMOR_LOCATION_LLEG].curArmor + armor[MECH_ARMOR_LOCATION_RLEG].curArmor;
 		maxLeg = armor[MECH_ARMOR_LOCATION_LLEG].maxArmor + armor[MECH_ARMOR_LOCATION_RLEG].maxArmor;
-		armorLeg = curArm / maxArm * 0.4 + (0.6);
+		armorLeg = curLeg / maxLeg * 0.4 + (0.6);
 
 		armorEffect = armorHead * armorCTorso * armorTorso * armorArm * armorLeg;
 	}

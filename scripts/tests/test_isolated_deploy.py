@@ -13,6 +13,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import deploy_payload as dp
 import kit_payload
 import pytest
+from tools import gate_hosts  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
@@ -209,6 +210,27 @@ def test_seed_rejects_tampered_payload_and_missing_manifest(tmp_path):
     (tmp_path / '.deployed_manifest.csv').unlink()
     with pytest.raises(SystemExit):
         iso.verified_seed(tmp_path)
+
+
+@pytest.mark.parametrize('rel', ['mc2.exe', 'runtime.dll'])
+@pytest.mark.parametrize('after_verification', [False, True])
+def test_stale_seed_payload_rejected_before_or_during_copy(tmp_path, capsys, rel, after_verification):
+    iso = lean_tool()
+    src, dst = tmp_path / 'seed', tmp_path / 'lane'
+    lean_fixture(src)
+    rows = iso.verified_seed(src, use_cache=True)
+    # Reproduce stale bytes, including the race between verification and copy.
+    (src / rel).write_bytes(b'changed')
+    with pytest.raises(SystemExit) as exc:
+        if after_verification:
+            iso.build(src, dst, [], [(rel, 7)], rows)
+        else:
+            iso.verified_seed(src, use_cache=True)
+    assert exc.value.code == (4 if after_verification else 2)
+    message = 'copied manifest hash mismatch' if after_verification else 'seed manifest hash mismatch'
+    assert f'{message}: {rel}' in capsys.readouterr().err
+    assert not (dst / '.lane-seed.json').exists()
+    assert not (dst / '.deployed_manifest.csv').exists()
 
 
 # W138 merge: the W137 pinned-cook seed test is superseded by test_kit_seed_preserves_only_pinned_sources_and_verified_recipes
@@ -669,6 +691,20 @@ def test_churned_link_stamps_are_confirmed_by_the_seed_receipt_without_hashing(t
         assert (lane / rel).samefile(seed / rel)
 
 
+def _hardlinks_share_inode():
+    import tempfile
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            a = Path(d) / "a"
+            a.write_bytes(b"x")
+            os.link(a, Path(d) / "b")
+            return a.samefile(Path(d) / "b") and a.stat().st_nlink == 2
+    except OSError:
+        return False
+
+
+@pytest.mark.skipif(gate_hosts.current_host() != "pc" and not _hardlinks_share_inode(),
+                    reason=f"seed-receipt inode sharing needs hardlinks that share an inode (gate host {gate_hosts.current_host()})")
 def test_seed_receipt_does_not_excuse_a_same_size_write_with_restored_mtime(tmp_path, monkeypatch):
     iso, seed, lane, _repo, rels, items = _churned_lane(tmp_path, monkeypatch)
     iso.restamp_seed(seed)

@@ -3,6 +3,11 @@
 #include <filesystem>
 #include <fstream>
 #include <type_traits>
+#include "../../Platform/FileSystem.cpp"
+
+TEST_CASE("platform/user directory rejects an empty span") {
+    CHECK_FALSE(mc2::platform::GetUserDataDirectory({}));
+}
 
 static_assert(std::is_same_v<PINT_PTR, INT_PTR*>);
 static_assert(std::is_same_v<PUINT_PTR, UINT_PTR*>);

@@ -1,5 +1,8 @@
 """deploy_payload: a fresh Ninja tree is seeded with its runtime DLLs from real sources; --target names the right flag."""
 import subprocess
+import errno
+import json
+import os
 import sys
 import pytest
 from pathlib import Path
@@ -10,6 +13,85 @@ import console_child  # noqa: E402
 import deploy_payload as dp  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+@pytest.fixture(scope='module')
+def hardlink_support(tmp_path_factory):
+    tmp_path = tmp_path_factory.mktemp('hardlink-probe')
+    source = tmp_path / 'source'
+    source.write_bytes(b'probe')
+    try:
+        os.link(source, tmp_path / 'link')
+    except OSError as exc:
+        # Win32: INVALID_FUNCTION, NOT_SAME_DEVICE, NOT_SUPPORTED,
+        # PRIVILEGE_NOT_HELD (1, 17, 50, 1314 respectively).
+        if exc.errno in {errno.EXDEV, errno.EPERM, errno.EOPNOTSUPP, errno.ENOTSUP} or getattr(exc, 'winerror', None) in {1, 17, 50, 1314}:
+            pytest.skip(f'Hardlinks unsupported in test temporary directory: {exc}')
+        raise
+
+
+@pytest.mark.parametrize('error_code,winerror,unsupported', [
+    (errno.EXDEV, None, True), (errno.EPERM, None, True),
+    (errno.EOPNOTSUPP, None, True), (errno.ENOTSUP, None, True),
+    (None, 1, True), (None, 17, True), (None, 50, True), (None, 1314, True),
+    (errno.ENOSPC, 112, False), (errno.EIO, 1117, False), (errno.EACCES, 5, False),
+])
+def test_hardlink_probe_only_skips_unsupported(tmp_path_factory, monkeypatch, error_code, winerror, unsupported):
+    error = OSError(error_code, 'hardlink probe failure')
+    error.winerror = winerror
+
+    def fail_link(*args):
+        raise error
+
+    monkeypatch.setattr(os, 'link', fail_link)
+    with pytest.raises(pytest.skip.Exception if unsupported else OSError) as caught:
+        hardlink_support.__wrapped__(tmp_path_factory)
+    if not unsupported:
+        assert caught.value is error
+
+
+@pytest.mark.parametrize('receipt', [True, False])
+def test_five_link_payload_detaches_only_with_lane_receipt(tmp_path, monkeypatch, receipt, hardlink_support):
+    """Audit fringe/bc7 refusal: changed payload and manifest, five links each."""
+    monkeypatch.setenv('MC2_COOK_CACHE', str(tmp_path / 'cook-cache'))
+    monkeypatch.setenv('MC2_LEAN_SEED', str(tmp_path / 'absent-seed'))
+    seed, lane = tmp_path / 'seed', tmp_path / 'lane'
+    seed.mkdir()
+    lane.mkdir()
+    rels = ['mc2.exe', 'runtime.dll', dp.MANIFEST_NAME]
+    for rel in rels:
+        (seed / rel).write_bytes(b'seed bytes')
+        os.link(seed / rel, lane / rel)
+        for n in range(3):
+            os.link(seed / rel, seed / f'{rel}.peer-{n}')
+        assert (lane / rel).stat().st_nlink == 5
+    if receipt:
+        (lane / '.lane-seed.json').write_text(json.dumps({'shared': {}}))
+    source = tmp_path / 'new-payload'
+    source.write_bytes(b'new lane bytes')
+    items = [(str(source), rel, 'support') for rel in rels[:-1]]
+    writes = items + [(None, dp.MANIFEST_NAME, 'manifest')]
+    verified = dp.prepare_seed_delta(writes, str(lane))
+    assert verified == {}
+    if not receipt:
+        # Outside legacy eligibility, owner/box installs still refuse shared writes.
+        with pytest.raises(SystemExit):
+            dp.check_hardlink_isolation(writes, str(lane))
+        assert all((lane / rel).stat().st_nlink == 5 for rel in rels)
+    else:
+        dp.check_hardlink_isolation(writes, str(lane))
+        assert all((lane / rel).stat().st_nlink == 1 for rel in rels)
+        monkeypatch.setattr(dp, 'ensure_terrain_materials', lambda *a: {})
+        monkeypatch.setattr(dp, 'ensure_engine_normal_cooks', lambda *a: None)
+        monkeypatch.setattr(dp, 'retire_unowned', lambda *a, **kw: None)
+        hashes = dp.deploy(items, str(lane), False, verified=verified)
+        dp.write_manifest(str(lane), hashes, 'lane-tip')
+        assert all((lane / rel).read_bytes() == b'new lane bytes' for rel in rels[:-1])
+        assert set(dp.read_manifest(str(lane))) == set(rels[:-1])
+    for rel in rels:
+        assert (seed / rel).read_bytes() == b'seed bytes'
+        assert all((seed / f'{rel}.peer-{n}').read_bytes() == b'seed bytes' for n in range(3))
+    assert not list(lane.glob('*.private-*'))
 
 
 def test_seed_build_dlls_from_3rdparty_and_redist(tmp_path):

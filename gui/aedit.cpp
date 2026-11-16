@@ -438,6 +438,7 @@ std::string aEdit::entry() const
 void aEdit::setEntry(std::string_view str, BYTE byHighlight)
 {
 	text = str.substr(0, str.find('\0'));
+	if (dwStyleFlags & ES_EDITREADONLY) nLeftOffset = 0;
 
 	if (byHighlight)
 	{
@@ -722,6 +723,7 @@ int		aEdit::charXPos(int nCharIndex)
 }
 void	aEdit::makeCursorVisible()
 {
+	if (dwStyleFlags & ES_EDITREADONLY) { nLeftOffset = 0; return; }
 	int nXPos = charXPos(nInsertion2);
 	if (nXPos < nLeftOffset)
 		nLeftOffset = nXPos;
@@ -730,6 +732,7 @@ void	aEdit::makeCursorVisible()
 }
 void	aEdit::flushCursorRight()
 {
+	if (dwStyleFlags & ES_EDITREADONLY) { nLeftOffset = 0; return; }
 	int nXPos = charXPos(nInsertion2);
 	if (nXPos < width() - ENTRY_MARGIN*2)
 		nLeftOffset = 0;

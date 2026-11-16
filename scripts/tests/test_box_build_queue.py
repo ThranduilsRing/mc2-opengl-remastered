@@ -51,7 +51,8 @@ mkdir -p "$BQ"
 sleep 30 & H=$!
 echo $H > "$BQ/0000000000000000001.holder.$H"
 echo 999999 > "$BQ/0000000000000000000.deadlane.999999"     # dead pid: pruned, never counted
-( sleep 1.5; kill $H ) &
+eval "$(declare -f bq_waiting_line | sed '1s/bq_waiting_line/bq_report_waiting/')"
+bq_waiting_line() { bq_report_waiting "$@"; kill $H; wait $H 2>/dev/null || :; }
 bq_acquire
 echo "after-grant:$(ls "$BQ" | wc -l)"
 bq_release
@@ -70,7 +71,8 @@ mkdir -p "$BQ"
 sleep 30 & H=$!; sleep 30 & W=$!
 echo $H > "$BQ/0000000000000000001.holder.$H"
 echo $W > "$BQ/0000000000000000002.earlier.$W"
-( sleep 1.5; kill $H $W ) &
+eval "$(declare -f bq_waiting_line | sed '1s/bq_waiting_line/bq_report_waiting/')"
+bq_waiting_line() { bq_report_waiting "$@"; kill $H $W; wait $H $W 2>/dev/null || :; }
 bq_acquire
 '''
     r = run_sem(tmp_path, body)

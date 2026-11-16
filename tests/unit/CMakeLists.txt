@@ -114,7 +114,9 @@ add_executable(mc2_tests
     test_mech_up_axis.cpp        # mech-up-axis: which component of the mech/prop world normal is up
     test_static_prop_origin.cpp  # prop instance origin layout: translation at [3][7][11]
     test_prop_record_cache.cpp  # prop scene generations and per-frame-slot cache keys
+    test_prop_list_route.cpp  # colour-prop draw-list routing per packet, tier fringe skip
     test_prop_lod_state.cpp  # flat per-instance LOD hysteresis table equals the unordered_map it replaced
+    test_prop_lod_evaluation.cpp
     test_searchlight_aim.cpp
     test_cone_beam_links.cpp
     test_beam_lights.cpp
@@ -737,6 +739,12 @@ function(mc2_height_slice output source begin end)
     set(${output} "${body}" PARENT_SCOPE)
     set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${MC2_WORKTREE_ROOT}/${source}")
 endfunction()
+mc2_height_slice(carbon_leg_armor code/mech.cpp "\t\tcurLeg =" "\n\t\tarmorEffect = armorHead")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/carbon_leg_armor.inc" CONTENT "${carbon_leg_armor}")
+mc2_height_slice(carbon_difficulty code/mover_attack.cpp "\tif (!MPlayer && (getCommanderId()" "\n\tfloat distanceToTarget")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/carbon_difficulty.inc" CONTENT "${carbon_difficulty}")
+target_sources(mc2_tests PRIVATE test_carbon_correctness.cpp)
+set_source_files_properties(test_carbon_correctness.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
 # Trigger paths: Gates/gate_rows_0.inc, code/{mover_attack,mech_weapons,gvehicl_weapons}.cpp.
 mc2_height_slice(called_floors code/mover_attack.cpp "static const bool s_calledShotFix =" "\t\tswitch (aimLocation)")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/called_floors.inc" CONTENT "${called_floors}")
@@ -771,6 +779,16 @@ mc2_height_slice(camera_release_object code/simplecamera.cpp
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/camera_release_object.inc" CONTENT "${camera_release_object}")
 target_sources(mc2_tests PRIVATE test_world_light_tags.cpp ${MC2_WORKTREE_ROOT}/mclib/spotlight_diag.cpp)
 set_source_files_properties(test_world_light_tags.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
+# Trigger paths: gui/aedit.cpp, code/preview_choice.h, GuiRuntime/PlayerFrontEnd.cpp.
+mc2_height_slice(edit_scroll gui/aedit.cpp "void\taEdit::makeCursorVisible()" "int\t\taEdit::findChar(")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/edit_scroll.inc" CONTENT "${edit_scroll}")
+mc2_height_slice(import_job GuiRuntime/PlayerFrontEnd.cpp "struct ImportLaunchResult {" "} importJob;")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/import_job.inc" CONTENT "${import_job}};")
+target_sources(mc2_tests PRIVATE test_logistics_ui.cpp)
+set_source_files_properties(test_logistics_ui.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
+mc2_height_slice(preview_panel_guard code/simplecamera.cpp
+    "void SimpleCamera::drawPreviewToPanel(" "#ifdef MC2_IMGUI\n    const uint64_t tex=")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/preview_panel_guard.inc" CONTENT "${preview_panel_guard}++composites; }")
 mc2_height_slice(overlay_static_upload GameOS/gameos/vulkan_terrain_island_overlay.cpp
     "bool ovl_prepare_static(" "bool ovl_init(")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/overlay_static_upload.inc" CONTENT "${overlay_static_upload}")
@@ -826,6 +844,9 @@ mc2_height_slice(repair_sensor_remove code/contact.cpp
     "void TeamSensorSystem::removeSensor (SensorSystemPtr sensor)" "void TeamSensorSystem::update (void)")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/repair_vehicle_acquire.inc" CONTENT "${repair_vehicle_acquire}")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/repair_sensor_remove.inc" CONTENT "${repair_sensor_remove}")
+mc2_height_slice(repair_sensor_pool code/contact.cpp
+    "SensorSystemPtr SensorSystemManager::newSensor (void)" "void SensorSystemManager::destroy (void)")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/repair_sensor_pool.inc" CONTENT "${repair_sensor_pool}")
 target_sources(mc2_tests PRIVATE test_repair_deploy.cpp)
 set_source_files_properties(test_repair_deploy.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
 mc2_height_slice(radio_playback code/gamesound.cpp
