@@ -195,7 +195,7 @@ void IfaceCallStrike (long strikeID,
 	if (playerStrike) 
 	{
 		commanderID = Commander::home->getId();
-		bRandom = Team::home->teamLineOfSight(*strikeLoc,0.0f) ? 0 : 1;
+		bRandom = Team::home->teamLineOfSight(strikeLocation,0.0f) ? 0 : 1;
 	}
 	else if (clanStrike) 
 	{
@@ -203,7 +203,7 @@ void IfaceCallStrike (long strikeID,
 			Fatal(0, " Iface.CallStrike: Need more info than clanStrike in MPlayer ");
 		//------------------------------------------------------------
 		// In campaign game, clans can strike into unrevealed terrain.
-		bRandom = Team::teams[1]->teamLineOfSight(*strikeLoc,0.0f) ? 0 : 1;
+		bRandom = Team::teams[1]->teamLineOfSight(strikeLocation,0.0f) ? 0 : 1;
 		commanderID = 1;
 	}
 
@@ -1408,7 +1408,7 @@ void Artillery::init (bool create, ObjectTypePtr _type)
 		case BIG_ARTLRY:
 		{
 			effectId = LARGE_AIRSTRIKE_ID;
-			init(ARTILLERY_LARGE);
+			init(create, ARTILLERY_LARGE);
 			
 			//--------------------------------------------
 			//Load up the strike appearance before hit.
@@ -1478,7 +1478,7 @@ void Artillery::init (bool create, ObjectTypePtr _type)
 		case SMALL_ARTLRY:
 		{
 			effectId = SMALL_AIRSTRIKE_ID;
-			init(ARTILLERY_SMALL);
+			init(create, ARTILLERY_SMALL);
 			//--------------------------------------------
 			//Load up the strike appearance before hit.
 			char appearName[1024];

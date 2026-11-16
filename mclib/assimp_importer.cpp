@@ -858,7 +858,6 @@ struct ActorAnimState : mc2::sim::ImportedAnimState {
     std::vector<float> modelDelta;          // jointCount*16 row-major (placement-free)
     float gpuLift = 0.0f;                    // world-up foot-ground lift (per-frame)
     // P9 jump/land memory (phase), Once-clip hold (mode) and stride-matched playback (locomotion) live in ImportedAnimState: they are serialized sim state.
-    float playRate = 1.0f;                   // P9: last stride rate (diagnostics)
     std::vector<mc2skel::GpuBone> lastGlobals;  // 1A: last-frame clip bone GLOBALS (FK),
                                                 // parallel to ImportedAnimEntry::names —
                                                 // read by GetImportedNodeWorld for firepoints.
@@ -871,6 +870,7 @@ struct ImportedAnimEntry {
     TG_TypeMultiShape*  multi = nullptr;   // for per-frame bbox refresh
     std::vector<std::string> names;        // skeleton, parallel to clip globals
     std::shared_ptr<const mc2skel::SkelPlan> plan;  // flattened node/channel tables for names (borrows scene; declared after imp so it dies first)
+    mc2skel::LocalRotation torsoTwist;
     std::string         pinnedClip;        // MC2_MECH_IMPORT_FORCE_CLIP (empty = 1C dynamic)
     std::string         initialClip;       // clip seeded into each new actor state
     std::string         showcaseClip;      // optional package clips.showcase
@@ -1164,6 +1164,7 @@ void RegisterImportedAnim(mc2::czstring path, TG_TypeMultiShape* out, const Skel
     e.multi = out;
     e.names = bake.names;
     e.plan = mc2skel::BuildPlan(scene, e.names);
+    e.torsoTwist = mc2skel::ResolveTorsoTwist(*e.plan);
     LoadMechPackage(path, e.nodeManifest, e.aoTexName, e.normalTexName, &e.socketOffsets, &e.showcaseClip);
     if (!e.showcaseClip.empty() && !clipDurationSec(scene, e.showcaseClip)) {
         if (mc2_diag::tagRequested("MECH_IMPORT"))
@@ -1523,6 +1524,7 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
     // re-sample the pose at the frozen clipTimeSec. This re-bakes the SAME pose every
     // paused frame (geometry/skinning still runs) instead of striding in place.
     auto* preview = motion.preview ? mc2mechanim::previewAnimation : nullptr;
+    bool adopted = false;
     if (preview) {
         const auto clip = mc2clip::resolveClip(preview->clip, s.activeClip,
             [&](std::string_view name) { return clipDurationSec(e.scene, std::string(name)).has_value(); });
@@ -1566,10 +1568,14 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
                                                      motion.destroyed, finished, s.activeClip.c_str(), s.phase);
         auto adopt = [&](const mc2clip::Choice& c, bool restart) {
             if (auto nd = clipDurationSec(e.scene, c.clip)) {
+                mc2skel::BeginActorClipFade(*e.plan, s);
+                adopted = true;
                 s.activeClip = c.clip;
                 s.durationSec = *nd > 1e-4f ? *nd : 1.0f;
                 s.mode = c.mode;
                 s.locomotion = c.locomotion;
+                s.playRate = c.mode == mc2clip::Mode::Once
+                    ? mc2clip::onceRate(c.clip, s.durationSec, motion.gestureFrames, motion.gestureRate) : 1.0f;
                 if (restart) s.clipTimeSec = 0.0f;
             }
             s.pendingStreak = 0;
@@ -1577,32 +1583,38 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
         if (s.activeClip == want.clip) {
             s.pendingStreak = 0;
             s.locomotion = want.locomotion;
-        } else if (want.immediate) {
+        } else if (want.immediate || (s.activeClip == "atlas_moveJumpDownLand" && speed > 1.0f)) {
             adopt(want, true);
         } else {
             if (s.pendingClip == want.clip) ++s.pendingStreak;
             else { s.pendingClip = want.clip; s.pendingStreak = 1; }
             if (s.pendingStreak >= 4) adopt(want, s.mode == mc2clip::Mode::Once);
         }
-        s.playRate = 1.0f;
         if (s.locomotion) {
+            s.playRate = 1.0f;
             if (e.strideSpeed.contains(s.activeClip))
                 s.playRate = mc2clip::strideRate(speed, e.strideSpeed.at(s.activeClip));
         }
     }
     const bool holdAtEnd = (preview || e.pinnedClip.empty()) && s.mode == mc2clip::Mode::Once;
-    if (advanceClock) s.clipTimeSec += dt * (preview || e.pinnedClip.empty() ? s.playRate : 1.0f);
-    if (s.durationSec > 0.0f) {
-        if (holdAtEnd) { s.clipTimeSec = std::min(s.clipTimeSec, s.durationSec); }
-        else while (s.clipTimeSec >= s.durationSec) s.clipTimeSec -= s.durationSec;
+    if (advanceClock) {
+        s.clipTimeSec = mc2clip::advanceClipTime(s.clipTimeSec, dt,
+            (preview || e.pinnedClip.empty()) ? s.playRate : 1.0f, s.durationSec,
+            holdAtEnd ? mc2clip::Mode::Once : mc2clip::Mode::Loop);
+        if (!s.previousClip.empty() && !adopted) {
+            s.previousClipTimeSec = mc2clip::advanceClipTime(s.previousClipTimeSec, dt,
+                s.previousPlayRate, s.previousDurationSec,
+                s.previousOnce ? mc2clip::Mode::Once : mc2clip::Mode::Loop);
+            s.fadeTimeSec += dt;
+        }
     }
     if (preview) {
         preview->active = s.activeClip; preview->time = s.clipTimeSec; preview->duration = s.durationSec;
         preview->paletteBones = static_cast<int>(e.invMWrest.size());
     }
-    const float frame = s.clipTimeSec * 30.0f;
-    double tt = 0, dd = 0;
-    return mc2skel::EvaluateClipGpuBones(*e.plan, s.activeClip, frame, globals, &tt, &dd);
+    auto twist = e.torsoTwist;
+    twist.degrees = motion.torsoYawDeg;
+    return mc2skel::EvaluateActorClipGpuBones(*e.plan, s, globals, &twist);
 }
 
 // Build the GPU per-bone MODEL delta from sampled globals into s.modelDelta, plus the
@@ -1654,7 +1666,8 @@ void mc2mechanim::TickImportedMechs(float dt, unsigned frameStamp, const MechMot
         }
         if (s.lastFrame == frameStamp && !s.lastGlobals.empty()) return;
         s.lastFrame = frameStamp;
-        std::vector<mc2skel::GpuBone> globals;
+        thread_local std::vector<mc2skel::GpuBone> globals;
+        globals.clear();
         if (sampleActorClip(e, s, dt, motion, globals, advanceClock)) {
             if (s.activeClip.starts_with("atlas_moveCore")) {
                 std::vector<glm::mat4> pose(globals.size());
@@ -1678,7 +1691,7 @@ void mc2mechanim::TickImportedMechs(float dt, unsigned frameStamp, const MechMot
                     for (int r = 0; r < 4; ++r)
                         for (int c = 0; c < 4; ++c) globals[b].m[r * 4 + c] = pose[b][c][r];
             }
-            s.lastGlobals = std::move(globals);   // 1A: firepoint/hit-node source
+            s.lastGlobals.swap(globals);   // retain the previous buffer for the next sample
             mc2clip::publishPreviewPose(motion.preview, e.gpuMode,
                 [&] { buildGpuModelDelta(e, s, s.lastGlobals); },
                 [&] { rebakeImportedPresentation(e, s.lastGlobals); });

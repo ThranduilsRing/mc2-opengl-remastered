@@ -241,6 +241,8 @@ struct VideoSession {
     SwrContext*      swr       = nullptr;
     int              aOutRate     = 0;
     int              aOutChannels = 0;
+    uint8_t*         aPCM = nullptr;
+    size_t           aPCMBytes = 0;
     bool             audioStreamStarted = false;
     bool             audioEOF = false;
     bool             audioFlushing = false;
@@ -516,6 +518,7 @@ void video_close(VideoSession* s)
     if (s->aFmt)   { avformat_close_input(&s->aFmt); }
     if (s->swr)     { swr_free(&s->swr); }
     if (s->fmt)     { avformat_close_input(&s->fmt); }
+    av_free(s->aPCM);
     sessionOwner.reset();
 }
 
@@ -636,10 +639,18 @@ static void bufferAudio(VideoSession* s, VideoDecodeBudget& budget)
                 swr_get_delay(s->swr, s->aCodec->sample_rate) + count,
                 s->aOutRate, s->aCodec->sample_rate, AV_ROUND_UP));
             if (capacity <= 0) { s->audioEOF = draining; if (draining) return; continue; }
-            uint8_t* pcm = static_cast<uint8_t*>(av_malloc(capacity * s->aOutChannels * sizeof(int16_t)));
+            const size_t bytes = capacity * s->aOutChannels * sizeof(int16_t);
+            if (bytes > s->aPCMBytes) {
+                auto* replacement = static_cast<uint8_t*>(av_malloc(bytes));
+                if (!replacement) { markAudioStalled(s, "PCM allocation error"); return; }
+                av_free(s->aPCM);
+                s->aPCM = replacement;
+                s->aPCMBytes = bytes;
+            }
+            uint8_t* pcm = s->aPCM;
             int frames = swr_convert(s->swr, &pcm, capacity,
                 draining ? nullptr : const_cast<const uint8_t**>(af->extended_data), count);
-            if (frames < 0) { av_free(pcm); markAudioStalled(s, "swr_convert error"); return; }
+            if (frames < 0) { markAudioStalled(s, "swr_convert error"); return; }
             if (s->audioSidecar) {
                 const float gain = (snd->getDigitalMasterVolume() / 256.0f) * (snd->getBettyVolume() / 256.0f);
                 auto* samples = std::bit_cast<int16_t*>(pcm);
@@ -650,7 +661,6 @@ static void bufferAudio(VideoSession* s, VideoDecodeBudget& budget)
             if (frames > 0 && s->audioFramesQueued == 0)
                 startup_phase("first_audio_queued");
             s->audioFramesQueued += frames;
-            av_free(pcm);
             if (draining && frames == 0) { s->audioEOF = true; return; }
             continue;
         }

@@ -193,8 +193,11 @@ namespace {
 
     struct LbScope {
         std::chrono::steady_clock::time_point t0;
-        LbScope() : t0(std::chrono::steady_clock::now()) {}
+        LbScope() {
+            if (s_lbEnabled) t0 = std::chrono::steady_clock::now();
+        }
         ~LbScope() {
+            if (!s_lbEnabled) return;
             s_lbFrameNs += static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(
                 std::chrono::steady_clock::now() - t0).count());
             ++s_lbFrameCalls;

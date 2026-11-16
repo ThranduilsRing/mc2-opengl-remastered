@@ -13,6 +13,25 @@ from tools import lane_merge as lm  # noqa: E402
 import console_child  # noqa: E402
 
 
+def test_overlapping_receipt_writers_do_not_share_temps(tmp_path, monkeypatch):
+    import json
+    sha = "a" * 40
+    monkeypatch.setattr(lm, "PRECHECK_RECEIPTS", str(tmp_path))
+    monkeypatch.setattr(lm, "git_out", lambda *args: sha)
+    replace = os.replace
+    pending = []
+    def overlapping(src, dst):
+        pending.append(str(src))
+        if len(pending) == 1:
+            lm.write_receipt("unused", sha, False, "PASS")
+        replace(src, dst)
+    monkeypatch.setattr(os, "replace", overlapping)
+    lm.write_receipt("unused", sha, True, "PASS")
+    assert len(set(pending)) == 2
+    assert json.loads((tmp_path / (sha + ".json")).read_text())["link"] is True
+    assert len(list(tmp_path.iterdir())) == 1
+
+
 @pytest.fixture(autouse=True)
 def _in_process(monkeypatch):
     monkeypatch.setenv("MC2_LANE_MERGE_TRUSTED", "1")
@@ -44,6 +63,8 @@ def repo(tmp_path):
     r = tmp_path / "repo"
     r.mkdir()
     git(r, "init", "-q", "-b", "main")
+    git(r, "config", "user.name", "t")
+    git(r, "config", "user.email", "t@t")
     (r / "a.txt").write_text(BASE, newline="\n")
     (r / "b.txt").write_text(BASE, newline="\n")
     git(r, "add", ".")

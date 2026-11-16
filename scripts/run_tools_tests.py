@@ -184,17 +184,17 @@ def _run_module_once(mod: str, env=None) -> tuple[str, int, list[str], str]:
     """Return (module, rc, failed node ids, tail of output)."""
     try:
         p = subprocess.run(PYTEST + [mod], cwd=ROOT, capture_output=True,
-                           text=True, timeout=TIMEOUT_S, env=env,
+                           text=True, encoding="utf-8", errors="replace", timeout=TIMEOUT_S, env=env,
                            **console_child.child_kwargs(redirected=True))
-        text, rc = p.stdout + p.stderr, p.returncode
+        text, rc = (p.stdout or "") + (p.stderr or ""), p.returncode
         if rc == 5 and re.search(r"\b[1-9]\d* skipped\b", text):
             rc = 0  # module-level pytest.skip: no collected tests, not a script
         if rc == 5:  # nothing collected: script-style test, run it directly
             p = subprocess.run([sys.executable, "-B", mod], cwd=ROOT,
-                               capture_output=True, text=True,
+                               capture_output=True, text=True, encoding="utf-8", errors="replace",
                                timeout=TIMEOUT_S, env=env,
                                **console_child.child_kwargs(redirected=True))
-            text, rc = p.stdout + p.stderr, p.returncode
+            text, rc = (p.stdout or "") + (p.stderr or ""), p.returncode
             if rc != 0:  # report as a module-level failure
                 text += f"\nFAILED {mod} - script exited {rc}"
     except subprocess.TimeoutExpired:

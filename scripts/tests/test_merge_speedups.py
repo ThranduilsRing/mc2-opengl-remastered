@@ -10,6 +10,7 @@ sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 
 from tools import lane_merge as lm  # noqa: E402
+from tools import gate_hosts  # noqa: E402
 import console_child  # noqa: E402
 import ninja_build  # noqa: E402
 
@@ -824,6 +825,21 @@ def test_parallel_gate_respects_inherited_batch_and_failed_deploy(monkeypatch):
     assert gate.execute_parallel(steps, "head") == 1 and seen == steps[:1]
 
 
+def _hardlinks_share_inode():
+    import tempfile
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            a = os.path.join(d, "a")
+            with open(a, "wb") as f:
+                f.write(b"x")
+            os.link(a, os.path.join(d, "b"))
+            return os.path.samefile(a, os.path.join(d, "b")) and os.stat(a).st_nlink == 2
+    except OSError:
+        return False
+
+
+@pytest.mark.skipif(gate_hosts.current_host() != "pc" and not _hardlinks_share_inode(),
+                    reason=f"gate.stock_copy hardlink privacy needs hardlinks that share an inode (gate host {gate_hosts.current_host()})")
 @pytest.mark.parametrize("fail", [False, True])
 def test_stock_copy_is_private_and_always_removed(deploy_tmp_path, fail):
     import merge_gate as gate

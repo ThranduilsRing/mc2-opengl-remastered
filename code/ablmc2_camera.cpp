@@ -153,8 +153,10 @@ GameObjectPtr calcBestTarget (MoverPtr attacker, long numAttackers, MoverPtr* at
 				break;
 			}
 	}
-	for (int d = 0; d < numDefenders; d++)
-		attackRatio[d] = attackTotal[d] / defenders[d]->getThreatRating();
+	for (int d = 0; d < numDefenders; d++) {
+		const long threat = defenders[d]->getThreatRating();
+		attackRatio[d] = threat ? attackTotal[d] / threat : 0;
+	}
 
 	long bestTarget = numDefenders - 1;
 	if (numDefenders > 1)
@@ -167,7 +169,8 @@ GameObjectPtr calcBestTarget (MoverPtr attacker, long numAttackers, MoverPtr* at
 			}
 		}
 	attackTotal[bestTarget] += attacker->getThreatRating();
-	attackRatio[bestTarget] = attackTotal[bestTarget] / defenders[bestTarget]->getThreatRating();
+	const long threat = defenders[bestTarget]->getThreatRating();
+	attackRatio[bestTarget] = threat ? attackTotal[bestTarget] / threat : 0;
 	return(defenders[bestTarget]);
 }
 
@@ -798,7 +801,7 @@ void execRequestTarget (void) {
 	float* center = ABLi_popRealPtr();
 	float radius = ABLi_popReal();
 
-	if (CurWarrior->getTeam()) {
+	if (CurWarrior && CurWarrior->getTeam()) {
 		glm::vec3 friendlyPos;
 		friendlyPos.x = center[0];
 		friendlyPos.y = center[1];
@@ -824,6 +827,8 @@ void execRequestTarget (void) {
 		else
 			ABLi_pushInteger(0);
 	}
+	else
+		ABLi_pushInteger(0);
 }
 
 constexpr int MAX_SHELTERS = 10;

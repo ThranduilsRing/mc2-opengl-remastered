@@ -14,6 +14,11 @@ sys.path.append(os.path.join(HERE, "..", "scripts"))
 sys.path.insert(0, HERE)
 import _git_util  # noqa: E402
 
+# Keep local branch names as well as origin/*: board checks resolve their bases
+# by name, including in a base-rot clone made from another scratch clone.
+SCRATCH_CLONE_ARGS = ("clone", "--quiet", "--shared", "--no-checkout", "--config",
+                      "remote.origin.fetch=+refs/heads/*:refs/heads/*")
+
 
 def git(root: str, *args: str):
     return _git_util.git(root, *args, merge_stderr=True)
@@ -65,7 +70,7 @@ def base_rot(root, base, label, command, result, runner, env=None):
     if not re.search(r"\w+/[^\s:]+\.\w+|\[[A-Z][A-Z_0-9]*(?: v\d+)?\]|^(?:FAILED|ERROR) .+::", result.stdout, re.M):
         return False  # no file/symbol diagnostic: cannot attribute this failure safely
     with tempfile.TemporaryDirectory(prefix="lane-base-", dir=precheck_scratch_base(root)) as scratch:
-        clone = git(root, "clone", "--quiet", "--shared", "--no-checkout", os.path.abspath(root), scratch)
+        clone = git(root, *SCRATCH_CLONE_ARGS, os.path.abspath(root), scratch)
         if clone.returncode or git(scratch, "checkout", "--quiet", "--detach", base).returncode:
             return False
         cmd = [os.path.join(scratch, os.path.relpath(arg, root))

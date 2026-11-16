@@ -23,6 +23,29 @@ def _foreign_lease(folder):
     deploy_lease.acquire_lease(str(folder), "someone else's smoke")
 
 
+def test_registry_lock_never_steals_an_old_live_holder(registry, monkeypatch):
+    with deploy_lease._registry_lock():
+        path = deploy_lease._lock_path()
+        os.utime(path, (0, 0))
+        monkeypatch.setattr(deploy_lease, "_LOCK_WAIT_SECS", 0)
+        with pytest.raises(TimeoutError):
+            with deploy_lease._registry_lock():
+                pytest.fail("a live lock was stolen")
+    with deploy_lease._registry_lock():
+        pass
+
+
+def test_registry_lock_supports_package_import(tmp_path, monkeypatch):
+    from pathlib import Path
+    from scripts.smoke_lib import deploy_lease as packaged
+    monkeypatch.setattr(packaged, "LEASE_REGISTRY_PATH", tmp_path / "packaged.json")
+    scripts_dir = Path(__file__).resolve().parents[1]
+    monkeypatch.setattr(sys, "path", [p for p in sys.path if Path(p).resolve() != scripts_dir])
+    monkeypatch.delitem(sys.modules, "build_tokens", raising=False)
+    with packaged._registry_lock():
+        pass
+
+
 def test_a_free_install_is_leased_for_the_deploy_and_released_after(registry, tmp_path):
     install = tmp_path / "install"
     install.mkdir()

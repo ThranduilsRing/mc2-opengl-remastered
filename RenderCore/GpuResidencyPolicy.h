@@ -41,7 +41,8 @@ constexpr uint64_t gpuHeapAvailable(uint64_t size, uint64_t budget, uint64_t usa
 // Device-resident bytes of a vegetation population (the model above). The upload also holds a transient staging copy of the
 // instances and regions (vegetationStagingBytes).
 constexpr uint64_t vegetationBytes(uint64_t instances, uint64_t regions) {
-    return 16 * instances + 48 * regions + 8 * (std::min)(instances, static_cast<uint64_t>(vegetationVisibleCapacity)) + 3 * gpuMiB + 160;
+    // Three frame slots, one uint per 32 population instances in each survive bitset.
+    return 16 * instances + 48 * regions + 8 * (std::min)(instances, static_cast<uint64_t>(vegetationVisibleCapacity)) + 3 * gpuMiB + 160 + 12 * ((instances + 31) / 32);
 }
 constexpr uint64_t vegetationStagingBytes(uint64_t instances, uint64_t regions) { return 16 * instances + 32 * regions; }
 // Smallest keep-every-Nth stride (1..64) whose population fits the preset ceiling and the live headroom (staging included); 0 = nothing fits.

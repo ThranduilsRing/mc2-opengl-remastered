@@ -337,10 +337,10 @@ mc2vk::OwnedPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive, bo
     VkPipelineDepthStencilStateCreateInfo ds{};
     ds.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
     ds.depthTestEnable = VK_TRUE;
-    // Vegetation is two passes: depthOnly writes the nearest surviving cutout depth (no shading); the shading pass then tests GREATER_OR_EQUAL against it
-    // without writing, so only the visible fragment of each pixel runs the lighting (same image as one GREATER pass, without the overdraw shading).
+    // Vegetation depthOnly writes the nearest surviving cutout depth; shading tests EQUAL without writing.
+    // Both draws share invariant vertex depth, cutout decisions and resources, with no intervening depth write.
     ds.depthWriteEnable = ((vegetation && depthOnly) || (!vegetation && tubeMode == 3)) ? VK_TRUE : VK_FALSE;
-    ds.depthCompareOp = (vegetation && depthOnly) ? VK_COMPARE_OP_GREATER : VK_COMPARE_OP_GREATER_OR_EQUAL;
+    ds.depthCompareOp = vegetation ? (depthOnly ? VK_COMPARE_OP_GREATER : VK_COMPARE_OP_EQUAL) : VK_COMPARE_OP_GREATER_OR_EQUAL;
     // color0: straight-alpha (FS emits straight rgb,a; src-alpha factor premults in HW).
     //   alpha    = SRC_ALPHA / ONE_MINUS_SRC_ALPHA  (GL alpha groups)
     //   additive = SRC_ALPHA / ONE                  (GL additive groups)
@@ -1000,9 +1000,15 @@ bool mc2_vk_vfx_vegetation_run(const mc2veg::CullParams& params, const float* wo
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegLayout.get(), 2, 1, &drawSet, 2, drawDyn);
         const VkDescriptorSet groundSet = s->groundLighting.set(vegPar);
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegLayout.get(), 3, 1, &groundSet, 4, ground->offsets.data());
-        veg->drawIndirect(cb, vegPar);   // depth pre-pass
+        {
+            MC2_VK_GPU_SCOPE(depthScope, cb, "VKIsl.Vegetation.Depth");
+            veg->drawIndirect(cb, vegPar);
+        }
         mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegetationPipe.get());   // shading pass; the bound sets stay valid (same layout)
-        veg->drawIndirect(cb, vegPar);
+        {
+            MC2_VK_GPU_SCOPE(shadeScope, cb, "VKIsl.Vegetation.Shade");
+            veg->drawIndirect(cb, vegPar);
+        }
         mc2vk::dynrender::end(slotCtx, cb);
         gpuScope.end();
     }

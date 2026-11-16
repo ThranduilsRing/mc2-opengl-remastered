@@ -433,7 +433,8 @@ bool	LogisticsData::canDeleteVariant( mc2::czstring name )
 		return 0;
 
 	const std::string wanted = mc2::str::from_c( name );
-	if ( mc2::str::iequals( currentlyModifiedMech->getName(), wanted ) || mc2::str::iequals( oldVariant->getName(), wanted ) )
+	if ( (currentlyModifiedMech && mc2::str::iequals( currentlyModifiedMech->getName(), wanted )) ||
+		 (oldVariant && mc2::str::iequals( oldVariant->getName(), wanted )) )
 		return 0;
 
 	return 1;
