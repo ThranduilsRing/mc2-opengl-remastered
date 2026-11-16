@@ -5,6 +5,7 @@
 #include "texture_assets.h"
 #include "tgl_internal.h"
 #include "mc2fmt.h"
+#include "ase_scan.h"
 #include "sim_overlap.h"
 #include "../code/tick_commit.h"
 
@@ -113,6 +114,13 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, mc2::czstring fileName)
 	memset(listOfTypeVertices,0xff,sizeof(TG_TypeVertex) * numTypeVertices);
 
 	std::vector<int> vertexNormalCount(numTypeVertices, 0);
+	mc2_ase::FirstRecord vertices(reinterpret_cast<char*>(aseBuffer), ASE_MESH_VERTEX_ID, mc2_ase::IdFormat::vertex);
+	mc2_ase::FirstRecord faces(reinterpret_cast<char*>(aseBuffer), ASE_MESH_FACE_ID, mc2_ase::IdFormat::face);
+	mc2_ase::FirstRecord normals(reinterpret_cast<char*>(aseBuffer), ASE_FACE_NORMAL_ID, mc2_ase::IdFormat::normal);
+	// This parser only reads aseBuffer. Same needles and haystack start as
+	// the per-face lookups below; keep their assertions at the original sites.
+	char* textureVertices = strstr(reinterpret_cast<char*>(aseBuffer), ASE_NUM_TVERTEX);
+	char* colourVertices = strstr(reinterpret_cast<char*>(aseBuffer), ASE_NUM_CVERTEX);
 
 	for (int i=0;i<numTypeVertices;i++)
 	{
@@ -121,7 +129,7 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, mc2::czstring fileName)
 		char vertexID[256];
 		mc2::fmt::to_buf(vertexID, "{}{: 5d}", mc2::fmt::safe(ASE_MESH_VERTEX_ID), mc2::fmt::as_i32(i));
 
-		char *vertexData = strstr(reinterpret_cast<char *>(aseBuffer),vertexID);
+		char *vertexData = vertices.find(i);
 		gosASSERT(vertexData != nullptr);
 			
 		vertexData += strlen(vertexID)+1;
@@ -166,7 +174,7 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, mc2::czstring fileName)
 		char faceId[256];
 		mc2::fmt::to_buf(faceId, "{}{: 5d}:", mc2::fmt::safe(ASE_MESH_FACE_ID), mc2::fmt::as_i32(i));
 
-		char *faceData = strstr(reinterpret_cast<char *>(aseBuffer),faceId);
+		char *faceData = faces.find(i);
 		gosASSERT(faceData != nullptr);
 
 		faceData = strstr(faceData,"A:");
@@ -240,7 +248,7 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, mc2::czstring fileName)
 	
 			mc2::fmt::to_buf(faceId, "{}", mc2::fmt::safe(ASE_NUM_TVERTEX));
 	
-			faceData = strstr(reinterpret_cast<char *>(aseBuffer),faceId);
+			faceData = textureVertices;
 			gosASSERT(faceData != nullptr);
 	
 			mc2::fmt::to_buf(faceId, "{} {:d}", mc2::fmt::safe(ASE_MESH_TVERT_ID), mc2::fmt::as_i32(static_cast<int>(tVFaces.x)));
@@ -278,7 +286,7 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, mc2::czstring fileName)
 	
 			mc2::fmt::to_buf(faceId, "{}", mc2::fmt::safe(ASE_NUM_TVERTEX));
 	
-			faceData = strstr(reinterpret_cast<char *>(aseBuffer),faceId);
+			faceData = textureVertices;
 			gosASSERT(faceData != nullptr);
 	
 			mc2::fmt::to_buf(faceId, "{} {:d}", mc2::fmt::safe(ASE_MESH_TVERT_ID), mc2::fmt::as_i32(static_cast<int>(tVFaces.y)));
@@ -314,7 +322,7 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, mc2::czstring fileName)
 	
 			mc2::fmt::to_buf(faceId, "{}", mc2::fmt::safe(ASE_NUM_TVERTEX));
 	
-			faceData = strstr(reinterpret_cast<char *>(aseBuffer),faceId);
+			faceData = textureVertices;
 			gosASSERT(faceData != nullptr);
 	
 			mc2::fmt::to_buf(faceId, "{} {:d}", mc2::fmt::safe(ASE_MESH_TVERT_ID), mc2::fmt::as_i32(static_cast<int>(tVFaces.z)));
@@ -391,7 +399,7 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, mc2::czstring fileName)
 
 			mc2::fmt::to_buf(faceId, "{}", mc2::fmt::safe(ASE_NUM_CVERTEX));
 
-			faceData = strstr(reinterpret_cast<char *>(aseBuffer),faceId);
+			faceData = colourVertices;
 			gosASSERT(faceData != nullptr);
 
 			mc2::fmt::to_buf(faceId, "{} {:d}", mc2::fmt::safe(ASE_MESH_VERTCOL_ID), mc2::fmt::as_i32(static_cast<int>(cVFaces.x)));
@@ -422,7 +430,7 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, mc2::czstring fileName)
 
 			mc2::fmt::to_buf(faceId, "{}", mc2::fmt::safe(ASE_NUM_CVERTEX));
 
-			faceData = strstr(reinterpret_cast<char *>(aseBuffer),faceId);
+			faceData = colourVertices;
 			gosASSERT(faceData != nullptr);
 
 			mc2::fmt::to_buf(faceId, "{} {:d}", mc2::fmt::safe(ASE_MESH_VERTCOL_ID), mc2::fmt::as_i32(static_cast<int>(cVFaces.y)));
@@ -453,7 +461,7 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, mc2::czstring fileName)
 
 			mc2::fmt::to_buf(faceId, "{}", mc2::fmt::safe(ASE_NUM_CVERTEX));
 
-			faceData = strstr(reinterpret_cast<char *>(aseBuffer),faceId);
+			faceData = colourVertices;
 			gosASSERT(faceData != nullptr);
 
 			mc2::fmt::to_buf(faceId, "{} {:d}", mc2::fmt::safe(ASE_MESH_VERTCOL_ID), mc2::fmt::as_i32(static_cast<int>(cVFaces.z)));
@@ -491,7 +499,7 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, mc2::czstring fileName)
 
 
 		mc2::fmt::to_buf(faceId, "{} {:d}", mc2::fmt::safe(ASE_FACE_NORMAL_ID), mc2::fmt::as_i32(i));
-		faceData = strstr(reinterpret_cast<char *>(aseBuffer),faceId);
+		faceData = normals.find(i);
 		gosASSERT(faceData != nullptr);		
 
 		faceData += strlen(faceId);
