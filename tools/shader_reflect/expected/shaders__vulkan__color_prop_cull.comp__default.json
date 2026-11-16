@@ -27,7 +27,7 @@
       "binding": 16,
       "members": [
         {
-          "array_stride": 48,
+          "array_stride": 64,
           "matrix_stride": null,
           "name": "r",
           "offset": 0,
