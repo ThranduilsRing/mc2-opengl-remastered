@@ -419,6 +419,7 @@ target_sources(mc2_tests PRIVATE test_platform_portability.cpp)
 # (memory/mc2_path_separator_linux_build.md); the engine builds with it
 # globally on Windows too.
 target_compile_definitions(mc2_tests PRIVATE
+    MC2_NET_RUNTIME_TESTS
     LINUX_BUILD
     _CRT_SECURE_NO_WARNINGS
     # XFORM-CONVENTION-HARNESS-1: mclib/xform_conventions.{h,cpp} pulls the
@@ -858,6 +859,8 @@ mc2_height_slice(terrain_anim_access mclib/appear.h "    mc2::sim::UnitAnimState
 mc2_height_slice(terrain_tick mclib/bdactor_update.cpp "    if (!simPresentationPass || !simulationOwned()) {" "        if (simulationOwned() || mc2::overlap::onSimWorker())")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/terrain_anim_access.inc" CONTENT "${terrain_anim_access}")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/terrain_tick.inc" CONTENT "${terrain_tick}\n} return TRUE;")
+mc2_height_slice(terrain_gesture_status mclib/bdactor.cpp "\t// Check if object destroyed.  If so, no animation!" "\tif (gestureId ==")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/terrain_gesture_status.inc" CONTENT "${terrain_gesture_status}")
 set_source_files_properties(test_terrain_dirty_queue.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
 
 # Keep all production objects in the full tier; scoped links extract only needed
