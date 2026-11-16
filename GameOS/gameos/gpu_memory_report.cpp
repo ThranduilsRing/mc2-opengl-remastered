@@ -178,7 +178,8 @@ uint64_t drainRetired(std::string_view why) {
     ctx.drainDeferred(why);
     const auto after = mc2vk::infra::deferredBytes();
     const auto released = before > after ? before - after : 0;
-    std::fprintf(stderr, "[VK_RESIDENCY v1] phase=reload_drain why=%.*s entries=%zu released_bytes=%llu deferred_after=%llu\n",
+    if (SmokeMode::state().enabled || mc2DiagVerbose())
+        std::fprintf(stderr, "[VK_RESIDENCY v1] phase=reload_drain why=%.*s entries=%zu released_bytes=%llu deferred_after=%llu\n",
         static_cast<int>(why.size()), why.data(), entries, static_cast<unsigned long long>(released),
         static_cast<unsigned long long>(after));
     return released;

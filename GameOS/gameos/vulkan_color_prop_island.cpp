@@ -2090,7 +2090,7 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std
         plan.embedded = true;
         plan.logPlanarRecord = s->planarRecordDiagnostics++ < 3;
         plan.frame = g_mc2RenderFrame;
-        plan.mapGeneration = s->imageSource->mapGeneration;
+        plan.mapGeneration = geometry.mapGeneration;
         plan.w = (w + target->divisor - 1) / target->divisor; plan.h = (h + target->divisor - 1) / target->divisor;
         if (target->scissor.extent.width) plan.scissor=target->scissor;
         plan.views[0] = target->color; plan.views[1] = plan.views[2] = VK_NULL_HANDLE;
