@@ -825,6 +825,9 @@ mc2_height_slice(repair_sensor_remove code/contact.cpp
     "void TeamSensorSystem::removeSensor (SensorSystemPtr sensor)" "void TeamSensorSystem::update (void)")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/repair_vehicle_acquire.inc" CONTENT "${repair_vehicle_acquire}")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/repair_sensor_remove.inc" CONTENT "${repair_sensor_remove}")
+mc2_height_slice(repair_sensor_pool code/contact.cpp
+    "SensorSystemPtr SensorSystemManager::newSensor (void)" "void SensorSystemManager::destroy (void)")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/repair_sensor_pool.inc" CONTENT "${repair_sensor_pool}")
 target_sources(mc2_tests PRIVATE test_repair_deploy.cpp)
 set_source_files_properties(test_repair_deploy.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
 mc2_height_slice(radio_playback code/gamesound.cpp
