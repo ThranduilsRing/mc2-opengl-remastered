@@ -385,6 +385,10 @@ void MechPurchaseScreen::end()
 	mechDisplay.setMech( nullptr );
 	purchaseSelection = nullptr;
 	purchaseMechs.clear();
+	purchaseGroups.clear();
+	purchaseGroupNames.clear();
+	purchaseKeyboardGroup = 0;
+	pDragMech = nullptr;
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -582,7 +586,7 @@ bool MechPurchaseScreen::selectFirstBuyableMech()
 	for ( const auto& group : purchaseGroups )
 	{
 		if (!group.open) continue;
-		for (const auto i : group.items)
+		for (const auto i : mc2purchase::validItems(group, purchaseMechs.size()))
 		{
 			if (LogisticsData::instance->canPurchaseMech(purchaseMechs[i]->getVariant()))
 			{
@@ -622,9 +626,10 @@ void MechPurchaseScreen::renderPurchaseGroups(int xOffset, int yOffset)
 			if (keys->last_state_[SDL_SCANCODE_SPACE] == static_cast<int>(input::KS_PRESSED))
 				purchaseGroups[purchaseKeyboardGroup].open = !purchaseGroups[purchaseKeyboardGroup].open;
 			auto& group = purchaseGroups[purchaseKeyboardGroup];
-			if (keys->last_state_[SDL_SCANCODE_F7] == static_cast<int>(input::KS_PRESSED) && !group.items.empty()) {
-				auto selected = std::find_if(group.items.begin(), group.items.end(), [&](auto i) { return purchaseMechs[i].get() == purchaseSelection; });
-				if (selected == group.items.end() || ++selected == group.items.end()) selected = group.items.begin();
+			const auto valid = mc2purchase::validItems(group, purchaseMechs.size());
+			if (keys->last_state_[SDL_SCANCODE_F7] == static_cast<int>(input::KS_PRESSED) && !valid.empty()) {
+				auto selected = std::find_if(valid.begin(), valid.end(), [&](auto i) { return purchaseMechs[i].get() == purchaseSelection; });
+				if (selected == valid.end() || ++selected == valid.end()) selected = valid.begin();
 				group.open = true;
 				purchaseSelection = purchaseMechs[*selected].get();
 				inventoryListBox.SelectItem(-1); setMech(purchaseSelection);
@@ -640,9 +645,9 @@ void MechPurchaseScreen::renderPurchaseGroups(int xOffset, int yOffset)
 			const std::string title = std::format("{}{} ({})", g == purchaseKeyboardGroup ? "> " : "", purchaseGroupNames[g], group.items.size());
 			group.open = ImGui::CollapsingHeader(title.c_str());
 			if (!group.open && purchaseSelection)
-				for (const auto i : group.items)
+				for (const auto i : mc2purchase::validItems(group, purchaseMechs.size()))
 					if (purchaseSelection == purchaseMechs[i].get()) { purchaseSelection = nullptr; setMech(nullptr); }
-			if (group.open) for (const auto i : group.items)
+			if (group.open) for (const auto i : mc2purchase::validItems(group, purchaseMechs.size()))
 			{
 				auto* mech = purchaseMechs[i].get();
 				ImGui::PushID(static_cast<int>(i));

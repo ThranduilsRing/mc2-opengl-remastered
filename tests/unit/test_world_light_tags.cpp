@@ -39,6 +39,9 @@ struct SimpleCamera : CameraSlots {
     std::string modelCredit_ = "previous model";
     void releaseObject();
 };
+// File statics the viewer's animation preview added to simplecamera.cpp (read by releaseObject).
+SimpleCamera* animationCamera = nullptr;
+struct PreviewAnimationStub {} animationPreview;
 #include "camera_release_object.inc"
 using namespace mc2_spotlight_diag;
 struct Tags {

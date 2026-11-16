@@ -7,6 +7,8 @@
 #include "doctest.h"
 #include "mech_clip_state.h"
 #include "mech_grounding.h"
+#include "mech_model_delta.h"
+#include "unit_anim_state.h"
 #include <string>
 
 using namespace mc2clip;
@@ -26,6 +28,16 @@ TEST_CASE("preview publication: CPU geometry changes across ticks; GPU stays on 
     CHECK(published.x == first.x + 1); CHECK(cpu == 2); CHECK(gpu == 1);
 }
 
+TEST_CASE("preview resolver: missing binding retains the mission active clip") {
+    const auto has = [](std::string_view clip) { return clip == "atlas_moveCoreIdle" || clip == "atlas_moveCoreWalkFwd"; };
+    Phase phase;
+    const auto walk = select(kGestureWalk, 10, 0, 0, false, false, "atlas_moveCoreIdle", phase);
+    CHECK(resolveClip(walk.clip, "atlas_moveCoreIdle", has) == "atlas_moveCoreWalkFwd");
+    const auto death = select(kGestureFallForward, 0, 0, 0, true, false, "atlas_moveCoreIdle", phase);
+    CHECK(resolveClip(death.clip, "atlas_moveCoreIdle", has) == "atlas_moveCoreIdle");
+    CHECK(resolveClip("", "atlas_moveCoreIdle", has) == "atlas_moveCoreIdle");
+}
+
 TEST_CASE("preview showcase: manifest, gesture, idle, first clip fallback") {
     const auto has = [](std::string_view s) { return s == "show" || s == "walk" || s == "atlas_moveCoreIdle" || s == "first"; };
     CHECK(previewClip("show", "walk", "first", has) == "show");
@@ -33,6 +45,30 @@ TEST_CASE("preview showcase: manifest, gesture, idle, first clip fallback") {
     CHECK(previewClip("unknown", "walk", "first", has) == "walk");
     CHECK(previewClip("unknown", "missing", "first", has) == "atlas_moveCoreIdle");
     CHECK(previewClip("", "missing", "first", [](auto s) { return s == "first"; }) == "first");
+}
+
+TEST_CASE("imported palette: restored clip with no presentation storage") {
+    struct Entry : mc2::sim::ImportedAnimState { std::vector<float> modelDelta; };
+    mc2::sim::ImportedAnimState saved;
+    saved.activeClip = "atlas_moveCoreWalkFwd";
+    saved.clipTimeSec = 0.5f;
+    Entry actor;
+    static_cast<mc2::sim::ImportedAnimState&>(actor) = saved;
+    REQUIRE(actor.modelDelta.empty());
+    Entry draw = actor; // CopyImportedActorPose rebuilds the draw palette.
+    mc2mechanim::sizeModelDelta(draw.modelDelta, 3);
+    REQUIRE(draw.modelDelta.size() == 48);
+    draw.modelDelta.at(47) = 7.0f; // last matrix is writable after restore
+    mc2mechanim::sizeModelDelta(draw.modelDelta, 3);
+    CHECK(draw.modelDelta.at(47) == 7.0f);
+    CHECK(draw.activeClip == saved.activeClip);
+    CHECK(draw.clipTimeSec == saved.clipTimeSec);
+    mc2mechanim::sizeModelDelta(draw.modelDelta, 4);
+    CHECK(draw.modelDelta.at(63) == 0.0f);
+    mc2mechanim::sizeModelDelta(draw.modelDelta, 1);
+    CHECK(draw.modelDelta.size() == 16);
+    mc2mechanim::sizeModelDelta(draw.modelDelta, 0);
+    CHECK(draw.modelDelta.empty());
 }
 
 TEST_CASE("imported grounding: soles contact, reverse knees and torso motion survive") {
