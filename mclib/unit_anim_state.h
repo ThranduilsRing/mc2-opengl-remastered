@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <array>
 #include <memory>
 #include <vector>
 #include <string>
@@ -22,7 +23,9 @@ struct ImportedAnimState {
     float previousClipTimeSec = 0, fadeTimeSec = 0;
     float playRate = 1, previousPlayRate = 1, previousDurationSec = 1;
     bool previousOnce = false;
+    std::vector<std::array<float, 16>> fadeSourceLocals; // interrupted fade, pre-twist node locals
     template<class Archive> void serialize(Archive& a) {
+        if (a.reading()) fadeSourceLocals.clear();
         std::vector<uint8_t> active(activeClip.begin(), activeClip.end()), pending(pendingClip.begin(), pendingClip.end());
         a.sequence(active, 256); a.sequence(pending, 256);
         if (a.reading()) {
@@ -48,6 +51,7 @@ struct ImportedAnimState {
         a.sequence(previous, 256);
         if (a.reading()) previousClip.assign(previous.begin(), previous.end());
         a(previousClipTimeSec, fadeTimeSec, playRate, previousPlayRate, previousDurationSec, previousOnce);
+        if (a.sectionVersion >= 5) a.sequence(fadeSourceLocals, 4096);
     }
 };
 // Advanced only by the fixed tick; copied into immutable render snapshots.

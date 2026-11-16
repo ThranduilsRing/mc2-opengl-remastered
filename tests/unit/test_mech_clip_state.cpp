@@ -9,9 +9,72 @@
 #include "mech_grounding.h"
 #include "mech_model_delta.h"
 #include "unit_anim_state.h"
+#include "mech_skel_import.h"
+#include "save_archive.h"
+#include <assimp/scene.h>
 #include <string>
 
 using namespace mc2clip;
+
+// Trigger: interrupted/restored fades in assimp_importer.cpp and mech_skel_import.cpp.
+TEST_CASE("clip state: interrupted local fade and missing outgoing restore publish immediately") {
+    aiScene scene;
+    scene.mRootNode = new aiNode("root");
+    scene.mRootNode->mNumChildren = 1;
+    scene.mRootNode->mChildren = new aiNode*[1]{new aiNode("tip")};
+    auto* tip = scene.mRootNode->mChildren[0];
+    tip->mParent = scene.mRootNode; tip->mTransformation.a4 = 2;
+    scene.mNumAnimations = 3;
+    scene.mAnimations = new aiAnimation*[3];
+    for (unsigned i = 0; i < 3; ++i) {
+        auto* clip = scene.mAnimations[i] = new aiAnimation;
+        clip->mName = i == 0 ? "A" : i == 1 ? "B" : "C";
+        clip->mDuration = 1; clip->mTicksPerSecond = 1;
+        clip->mNumChannels = 1; clip->mChannels = new aiNodeAnim*[1]{new aiNodeAnim};
+        auto* ch = clip->mChannels[0]; ch->mNodeName = "root";
+        ch->mNumRotationKeys = 1;
+        ch->mRotationKeys = new aiQuatKey[1]{{0, aiQuaternion(aiVector3D(0, 1, 0), i * 0.8f)}};
+    }
+    const auto plan = mc2skel::BuildPlan(&scene, {"root", "tip"});
+    mc2::sim::ImportedAnimState state;
+    state.activeClip = "B"; state.previousClip = "A"; state.fadeTimeSec = 0.075f;
+    const mc2skel::LocalRotation twist{0, {0, 1, 0}, 20};
+    std::vector<mc2skel::GpuBone> displayed, pose;
+    REQUIRE(mc2skel::EvaluateActorClipGpuBones(*plan, state, displayed, &twist));
+    SUBCASE("interrupt at 50 percent, save/load, then interrupt again") {
+        mc2skel::BeginActorClipFade(*plan, state); state.activeClip = "C";
+        REQUIRE_FALSE(state.fadeSourceLocals.empty());
+        for (unsigned version : {2u, 3u, 4u}) {
+            mc2::save::Archive legacyWrite; legacyWrite.sectionVersion = version; legacyWrite(state);
+            auto legacy = state;
+            mc2::save::Archive legacyRead(legacyWrite.bytes()); legacyRead.sectionVersion = version;
+            legacyRead(legacy); REQUIRE(legacyRead.finish()); CHECK(legacy.fadeSourceLocals.empty());
+        }
+        for (int interruption = 0; interruption < 2; ++interruption) {
+            mc2::save::Archive write; write(state); REQUIRE(write.good());
+            mc2::sim::ImportedAnimState restored;
+            mc2::save::Archive read(write.bytes()); read(restored); REQUIRE(read.finish());
+            CHECK(restored.fadeSourceLocals == state.fadeSourceLocals);
+            REQUIRE(mc2skel::EvaluateActorClipGpuBones(*plan, restored, pose, &twist));
+            for (size_t b = 0; b < pose.size(); ++b)
+                for (int k = 0; k < 16; ++k)
+                    CHECK(pose[b].m[k] == doctest::Approx(displayed[b].m[k]).epsilon(1e-5));
+            state = restored; state.fadeTimeSec = 0.075f;
+            REQUIRE(mc2skel::EvaluateActorClipGpuBones(*plan, state, displayed, &twist));
+            mc2skel::BeginActorClipFade(*plan, state); state.activeClip = "A";
+        }
+    }
+    SUBCASE("missing outgoing clip on first paused evaluation") {
+        state.previousClip = "missing";
+        mc2::save::Archive write; write(state);
+        mc2::save::Archive read(write.bytes()); read(state); REQUIRE(read.finish());
+        REQUIRE(mc2skel::EvaluateActorClipGpuBones(*plan, state, pose, &twist));
+        CHECK(state.previousClip.empty()); CHECK(state.fadeSourceLocals.empty());
+        REQUIRE(mc2skel::EvaluateClipGpuBones(*plan, "B", 0, displayed, nullptr, nullptr, &twist));
+        for (size_t b = 0; b < pose.size(); ++b)
+            for (int k = 0; k < 16; ++k) CHECK(pose[b].m[k] == displayed[b].m[k]);
+    }
+}
 
 // Trigger: imported preview pose publication in mclib/assimp_importer.cpp.
 TEST_CASE("preview publication: CPU geometry changes across ticks; GPU stays on palette path") {

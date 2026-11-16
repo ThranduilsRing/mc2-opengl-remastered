@@ -46,7 +46,7 @@ inline constexpr std::uint32_t maxSections = 256;
 inline constexpr std::uint32_t sectionRequired = 1u;
 
 // Frozen tags. The wire value is the four ASCII bytes in order.
-inline constexpr std::uint32_t tagAnimation = fourcc('A', 'N', 'I', 'M');  // ObjectManager animation state (R2 layout v2/v3/v4)
+inline constexpr std::uint32_t tagAnimation = fourcc('A', 'N', 'I', 'M');  // ObjectManager animation state (R2 layout v2-v5)
 inline constexpr std::uint32_t tagOrders = fourcc('O', 'R', 'D', 'Q');     // TacticalOrderQueue
 // Written: BRN1 (brain runtime), WRLD (mover pool/list order), FIX1 (script music, jump backoff, pending path requests; save_fix_section.h). Reserved: PATH.
 inline constexpr std::uint32_t tagBrain = fourcc('B', 'R', 'N', '1');
@@ -74,7 +74,7 @@ inline constexpr std::uint32_t tagWeaponNodes = fourcc('W', 'N', 'O', 'D');
 // Sections this build reads and the newest payload version of each. A newer version, or an unknown section flagged
 // required, rejects the file before the running mission is torn down; an unknown optional section is skipped.
 struct KnownSection { std::uint32_t tag; std::uint32_t maxVersion; };
-inline constexpr std::array<KnownSection, 18> knownSections{{{tagAnimation, 4}, {tagOrders, 1}, {tagBrain, 2}, {tagWorld, 2}, {tagCommander, 1}, {tagTeam, 1}, {tagObjectManager, 1}, {tagWatchList, 1}, {tagMapCells, 1}, {tagMapAreas, 1}, {tagMapDoors, 1}, {tagDoorLinks, 1}, {tagWarriorStatic, 1}, {tagWarrior, 1}, {tagAblEnvironment, 1}, {tagObjectSlots, objectSlotsVersion}, {tagWeaponNodes, 1}, {tagFix, 1}}};
+inline constexpr std::array<KnownSection, 18> knownSections{{{tagAnimation, 5}, {tagOrders, 1}, {tagBrain, 2}, {tagWorld, 2}, {tagCommander, 1}, {tagTeam, 1}, {tagObjectManager, 1}, {tagWatchList, 1}, {tagMapCells, 1}, {tagMapAreas, 1}, {tagMapDoors, 1}, {tagDoorLinks, 1}, {tagWarriorStatic, 1}, {tagWarrior, 1}, {tagAblEnvironment, 1}, {tagObjectSlots, objectSlotsVersion}, {tagWeaponNodes, 1}, {tagFix, 1}}};
 
 // Handles retain the compacted pool prefixes, free-slot order and mover-list order.
 // Object records themselves remain in stable handle order for legacy readers.

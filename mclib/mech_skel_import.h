@@ -20,6 +20,7 @@
 #include <vector>
 
 struct aiScene;  // fwd; full def only in the .cpp
+namespace mc2::sim { struct ImportedAnimState; }
 
 namespace mc2skel {
 
@@ -91,7 +92,14 @@ bool EvaluateClipBlendGpuBones(const SkelPlan& plan,
                                std::string_view clipA, float frameA,
                                std::string_view clipB, float frameB,
                                float weightB, std::vector<GpuBone>& out,
-                               const LocalRotation* extra = nullptr);
+                               const LocalRotation* extra = nullptr,
+                               const std::vector<std::array<float, 16>>* source = nullptr,
+                               std::vector<std::array<float, 16>>* locals = nullptr);
+
+// Preserve an interrupted fade before replacing activeClip. Snapshot locals exclude torso yaw.
+void BeginActorClipFade(const SkelPlan& plan, mc2::sim::ImportedAnimState& state);
+bool EvaluateActorClipGpuBones(const SkelPlan& plan, mc2::sim::ImportedAnimState& state,
+                              std::vector<GpuBone>& out, const LocalRotation* extra = nullptr);
 
 void EvaluateRestGpuBones(const SkelPlan& plan, std::vector<GpuBone>& out);
 

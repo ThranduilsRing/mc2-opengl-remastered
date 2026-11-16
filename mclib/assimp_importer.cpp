@@ -1524,6 +1524,7 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
     // re-sample the pose at the frozen clipTimeSec. This re-bakes the SAME pose every
     // paused frame (geometry/skinning still runs) instead of striding in place.
     auto* preview = motion.preview ? mc2mechanim::previewAnimation : nullptr;
+    bool adopted = false;
     if (preview) {
         const auto clip = mc2clip::resolveClip(preview->clip, s.activeClip,
             [&](std::string_view name) { return clipDurationSec(e.scene, std::string(name)).has_value(); });
@@ -1567,12 +1568,8 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
                                                      motion.destroyed, finished, s.activeClip.c_str(), s.phase);
         auto adopt = [&](const mc2clip::Choice& c, bool restart) {
             if (auto nd = clipDurationSec(e.scene, c.clip)) {
-                s.previousClip = s.activeClip;
-                s.previousClipTimeSec = s.clipTimeSec;
-                s.previousPlayRate = s.playRate;
-                s.previousDurationSec = s.durationSec;
-                s.previousOnce = s.mode == mc2clip::Mode::Once;
-                s.fadeTimeSec = 0.0f;
+                mc2skel::BeginActorClipFade(*e.plan, s);
+                adopted = true;
                 s.activeClip = c.clip;
                 s.durationSec = *nd > 1e-4f ? *nd : 1.0f;
                 s.mode = c.mode;
@@ -1604,26 +1601,20 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
         s.clipTimeSec = mc2clip::advanceClipTime(s.clipTimeSec, dt,
             (preview || e.pinnedClip.empty()) ? s.playRate : 1.0f, s.durationSec,
             holdAtEnd ? mc2clip::Mode::Once : mc2clip::Mode::Loop);
-        if (!s.previousClip.empty()) {
+        if (!s.previousClip.empty() && !adopted) {
             s.previousClipTimeSec = mc2clip::advanceClipTime(s.previousClipTimeSec, dt,
                 s.previousPlayRate, s.previousDurationSec,
                 s.previousOnce ? mc2clip::Mode::Once : mc2clip::Mode::Loop);
             s.fadeTimeSec += dt;
-            if (s.fadeTimeSec >= mc2clip::fadeDuration(s.previousClip, s.activeClip)) s.previousClip.clear();
         }
     }
     if (preview) {
         preview->active = s.activeClip; preview->time = s.clipTimeSec; preview->duration = s.durationSec;
         preview->paletteBones = static_cast<int>(e.invMWrest.size());
     }
-    const float frame = s.clipTimeSec * 30.0f;
-    double tt = 0, dd = 0;
     auto twist = e.torsoTwist;
     twist.degrees = motion.torsoYawDeg;
-    if (!s.previousClip.empty())
-        return mc2skel::EvaluateClipBlendGpuBones(*e.plan, s.previousClip, s.previousClipTimeSec * 30.0f,
-            s.activeClip, frame, s.fadeTimeSec / mc2clip::fadeDuration(s.previousClip, s.activeClip), globals, &twist);
-    return mc2skel::EvaluateClipGpuBones(*e.plan, s.activeClip, frame, globals, &tt, &dd, &twist);
+    return mc2skel::EvaluateActorClipGpuBones(*e.plan, s, globals, &twist);
 }
 
 // Build the GPU per-bone MODEL delta from sampled globals into s.modelDelta, plus the

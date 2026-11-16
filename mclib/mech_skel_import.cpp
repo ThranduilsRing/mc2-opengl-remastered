@@ -2,6 +2,7 @@
 // The one place the FK chain lives; harness and game both link this TU.
 #include "mech_skel_import.h"
 #include "clip_sample.h"
+#include "unit_anim_state.h"
 
 #include <assimp/scene.h>
 #include <assimp/anim.h>
@@ -355,9 +356,15 @@ bool EvaluateClipBlendGpuBones(const SkelPlan& plan,
                                std::string_view clipA, float frameA,
                                std::string_view clipB, float frameB,
                                float weightB,
-                               std::vector<GpuBone>& out, const LocalRotation* extra) {
-    if (weightB <= 0.0f) return EvaluateClipGpuBones(plan, clipA, frameA, out, nullptr, nullptr, extra);
-    if (weightB >= 1.0f) return EvaluateClipGpuBones(plan, clipB, frameB, out, nullptr, nullptr, extra);
+                               std::vector<GpuBone>& out, const LocalRotation* extra,
+                               const std::vector<std::array<float, 16>>* source,
+                               std::vector<std::array<float, 16>>* locals) {
+    if (!source && !locals) {
+        if (weightB <= 0.0f) return EvaluateClipGpuBones(plan, clipA, frameA, out, nullptr, nullptr, extra);
+        if (weightB >= 1.0f) return EvaluateClipGpuBones(plan, clipB, frameB, out, nullptr, nullptr, extra);
+    }
+    weightB = std::clamp(weightB, 0.0f, 1.0f);
+    if (source && source->size() != plan.nodes.size()) return false;
     const aiScene* scene = plan.scene;
     const std::optional<int> iaOpt = findAnim(scene, clipA), ibOpt = findAnim(scene, clipB);
     if (!iaOpt || !ibOpt) return false;
@@ -369,27 +376,67 @@ bool EvaluateClipBlendGpuBones(const SkelPlan& plan,
     const bool rotOnly = rotationOnlyEnabled();
     thread_local std::vector<aiMatrix4x4> globals;
     globals.resize(plan.nodes.size());
+    if (locals) locals->resize(plan.nodes.size());
     for (size_t i = 0; i < plan.nodes.size(); ++i) {
         const aiNode* n = plan.nodes[i];
         const aiNodeAnim* ca = plan.chanByNode[ia][i];
         const aiNodeAnim* cb = plan.chanByNode[ib][i];
         aiMatrix4x4 local = n->mTransformation;
-        if (ca || cb) {
+        if (source || ca || cb) {
             // A clip with no channel for this node contributes the node's rest TRS.
             aiVector3D rs, rp; aiQuaternion rr;
             n->mTransformation.Decompose(rs, rr, rp);
-            const LocalTRS A = ca ? sampleTRS(ca, ta, n->mTransformation, rotOnly, spa) : LocalTRS{rs, rr, rp};
+            LocalTRS A = ca ? sampleTRS(ca, ta, n->mTransformation, rotOnly, spa) : LocalTRS{rs, rr, rp};
+            if (source) {
+                aiMatrix4x4 saved;
+                std::memcpy(&saved, (*source)[i].data(), sizeof(saved));
+                saved.Decompose(A.scl, A.rot, A.pos);
+            }
             const LocalTRS B = cb ? sampleTRS(cb, tb, n->mTransformation, rotOnly, spb) : LocalTRS{rs, rr, rp};
             aiQuaternion q;
             aiQuaternion::Interpolate(q, A.rot, B.rot, weightB);
             q.Normalize();
             local = aiMatrix4x4(A.scl + (B.scl - A.scl) * weightB, q, A.pos + (B.pos - A.pos) * weightB);
         }
+        if (source && weightB == 0.0f) std::memcpy(&local, (*source)[i].data(), sizeof(local));
+        if (locals) rowMajor(local, (*locals)[i].data());
         applyLocalRotation(local, i, extra);
         globals[i] = plan.parent[i] >= 0 ? globals[plan.parent[i]] * local : local;
     }
     emitBones(plan, globals, out);
     return true;
+}
+
+void BeginActorClipFade(const SkelPlan& plan, mc2::sim::ImportedAnimState& s) {
+    std::vector<std::array<float, 16>> snapshot;
+    std::vector<GpuBone> unused;
+    if (!s.previousClip.empty())
+        EvaluateClipBlendGpuBones(plan, s.previousClip, s.previousClipTimeSec * 30,
+            s.activeClip, s.clipTimeSec * 30, s.fadeTimeSec / mc2clip::fadeDuration(s.previousClip, s.activeClip),
+            unused, nullptr, s.fadeSourceLocals.empty() ? nullptr : &s.fadeSourceLocals, &snapshot);
+    s.fadeSourceLocals = std::move(snapshot);
+    s.previousClip = s.activeClip;
+    s.previousClipTimeSec = s.clipTimeSec;
+    s.previousPlayRate = s.playRate;
+    s.previousDurationSec = s.durationSec;
+    s.previousOnce = s.mode == mc2clip::Mode::Once;
+    s.fadeTimeSec = 0;
+}
+
+bool EvaluateActorClipGpuBones(const SkelPlan& plan, mc2::sim::ImportedAnimState& s,
+                              std::vector<GpuBone>& out, const LocalRotation* extra) {
+    // Restores can target a package whose outgoing clip or node layout changed.
+    // Validate even on paused refreshes, before trying to publish a pose.
+    if (!s.previousClip.empty() && (!findAnim(plan.scene, s.previousClip) ||
+        (!s.fadeSourceLocals.empty() && s.fadeSourceLocals.size() != plan.nodes.size()) ||
+        s.fadeTimeSec >= mc2clip::fadeDuration(s.previousClip, s.activeClip))) {
+        s.previousClip.clear(); s.fadeSourceLocals.clear(); s.fadeTimeSec = 0;
+    }
+    if (!s.previousClip.empty())
+        return EvaluateClipBlendGpuBones(plan, s.previousClip, s.previousClipTimeSec * 30,
+            s.activeClip, s.clipTimeSec * 30, s.fadeTimeSec / mc2clip::fadeDuration(s.previousClip, s.activeClip),
+            out, extra, s.fadeSourceLocals.empty() ? nullptr : &s.fadeSourceLocals);
+    return EvaluateClipGpuBones(plan, s.activeClip, s.clipTimeSec * 30, out, nullptr, nullptr, extra);
 }
 
 void EvaluateRestGpuBones(const SkelPlan& plan, std::vector<GpuBone>& out) {
