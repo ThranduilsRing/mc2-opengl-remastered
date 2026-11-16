@@ -39,7 +39,7 @@ def test_fresh_install_covers_deploy_payload(tmp_path, monkeypatch):
         rels.update(rel for _, rel, _ in dp.enumerate_payload(
             str(ROOT), str(tmp_path / "build"), exe, "mc2.pdb",
             require_build=False))
-    manifest = json.loads((ROOT / kit_payload.MANIFEST).read_text())
+    manifest = kit_payload.runtime_manifest(json.loads((ROOT / kit_payload.MANIFEST).read_text()))
     rels.update((kit_payload.KIT_REL / row["path"]).as_posix()
                 for row in manifest["files"])
     # Outputs written after payload copying, including cooked sidecars/receipts.
@@ -306,7 +306,9 @@ def test_kit_seed_preserves_only_pinned_sources_and_verified_recipes(tmp_path, m
     pinned = repo / 'data/kit/industrial-kit.json'
     pinned.parent.mkdir(parents=True)
     pinned.write_text(json.dumps({'files': [{'path': 'model.glb', 'bytes': 5,
-                                           'sha256': iso.file_sha(path)}]}))
+                                           'sha256': iso.file_sha(path)},
+                                          {'path': 'content/offline.mc2ir.json', 'bytes': 123,
+                                           'sha256': '0' * 64}]}))  # authoring IR is absent from runtime seeds
     cache = source / 'cache/content-model'
     cache.mkdir(parents=True)
     recipe = cache / 'model-123.mci'

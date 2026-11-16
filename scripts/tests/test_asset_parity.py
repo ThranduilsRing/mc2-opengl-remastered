@@ -187,11 +187,11 @@ def test_deploy_calls_parity_with_sync_and_no_sync_fails():
     assert "asset_parity.capture_drift" in smoke and "verdict_line" in smoke
 
 
-def test_extras_dry_run_then_sync_deletes_only_unowned_assets(ref, work, capsys):
+def test_extras_are_reported_and_sync_preserves_unowned_assets(ref, work, capsys):
     extras = {f"data/vegetation/fern_{i}.ktx2": b"fern" for i in range(8)}
     keep = {"data/new-owned.ktx2": b"owned", "data/tgl/a.tga.cookstamp": b"receipt"}
     inst = tree(work / "lane", {**SHARED, **extras, **keep, **EXCLUDED, **NOT_PARITY})
-    assert ap.main([str(inst), "--check", "--ref", str(ref)]) == 1
+    assert ap.main([str(inst), "--check", "--ref", str(ref)]) == 0
     assert "extra=9" in capsys.readouterr().out
     assert all((inst / rel).exists() for rel in extras)
     skip = {"data/new-owned.ktx2"}
@@ -199,9 +199,9 @@ def test_extras_dry_run_then_sync_deletes_only_unowned_assets(ref, work, capsys)
     assert result.extra == sorted(extras)
     (inst / next(iter(extras))).chmod(stat.S_IREAD)
     result = ap.enforce(inst, ref, skip=skip)
-    assert "[ASSET_PARITY] DRY_RUN" in capsys.readouterr().out
-    assert result.ok and result.deleted == 8
-    assert not any((inst / rel).exists() for rel in extras)
+    assert result.extra == sorted(extras)
+    assert result.ok and result.deleted == 0
+    assert all((inst / rel).read_bytes() == b"fern" for rel in extras)
     assert all((inst / rel).is_file() for rel in {**keep, **EXCLUDED, **NOT_PARITY})
     assert ap.compare(inst, ref, skip=skip).ok
 
@@ -455,11 +455,11 @@ def test_fail_detail_names_paths_and_reference_moved_cause(ref, work):
     text = "\n".join(ap.detail_lines(result, inst, ref, limit=3))
     assert "size: data/art/mechicons/anubis.png" in text and "(+7 more)" in text
     assert "extra: data/extra_0.bin" in text and "the reference moved" in text
-    # With nothing newer in the reference and only extras, the cause names the prune command.
+    # Extras are advisory and preserved for owner review.
     inst2 = tree(work / "lane2", {**SHARED, "data/stale.bin": b"s"})
     os.utime(ref / "data/textures/1.2.txm", (1, 1))
     text = "\n".join(ap.detail_lines(ap.compare(inst2, ref, skip=set()), inst2, ref))
-    assert "--sync" in text and "stale.bin" in text
+    assert "preserved for owner review" in text and "stale.bin" in text
     assert ap.detail_lines(ap.Result(), inst, ref) == []
 
 

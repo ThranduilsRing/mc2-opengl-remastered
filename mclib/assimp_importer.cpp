@@ -14,6 +14,7 @@
 #include "mc2_czstring.h"
 #include "assimp_importer.h"
 #include "unit_anim_state.h"
+#include "mech_model_delta.h"
 #include "content_ir.h"
 #include "mech_texname_derive.h"  // GLB-TEXNAME-DERIVE-EXTRACT-1 pure name rules
 #include "Gates/gate.h"
@@ -111,6 +112,7 @@ static std::string ContentFloatKey(float value) {
 #include "msl.h"
 #include "tgl.h"
 #include "mech_skel_import.h"  // BT2018-SKEL-ENGINE-1A: shared FK/skeleton math
+#include "mech_anim_preview.h"
 #include "mech_anim_runtime.h" // BT2018-SKEL-ENGINE-1B-RUNTIME: per-frame re-bake API
 #include "file.h"              // ModCapabilityMounted (package capability)
 #include "mech_clip_state.h"   // P9: gesture -> clip state machine + stride matching
@@ -1521,7 +1523,20 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
     // BOTH the clip clock and the motion-driven clip selection, then fall through to
     // re-sample the pose at the frozen clipTimeSec. This re-bakes the SAME pose every
     // paused frame (geometry/skinning still runs) instead of striding in place.
-    if (advanceClock && motion.preview) {
+    auto* preview = motion.preview ? mc2mechanim::previewAnimation : nullptr;
+    if (preview) {
+        const auto clip = mc2clip::resolveClip(preview->clip, s.activeClip,
+            [&](std::string_view name) { return clipDurationSec(e.scene, std::string(name)).has_value(); });
+        if (s.activeClip != clip) { s.activeClip = clip; s.clipTimeSec = 0; }
+        s.durationSec = clipDurationSec(e.scene, s.activeClip).value_or(0);
+        s.mode = preview->loop ? mc2clip::Mode::Loop : mc2clip::Mode::Once;
+        s.playRate = preview->playing ? preview->rate : 0;
+        if (preview->seek >= 0) { s.clipTimeSec = preview->seek; preview->seek = -1; }
+        if (preview->clips.empty()) for (unsigned i = 0; i < e.scene->mNumAnimations; ++i) {
+            const auto* a = e.scene->mAnimations[i];
+            preview->clips.push_back({a->mName.C_Str(), clipDurationSec(e.scene, a->mName.C_Str()).value_or(0)});
+        }
+    } else if (advanceClock && motion.preview) {
         mc2clip::Phase phase;
         const auto gesture = mc2clip::select(motion.gestureId, 0, 0, 0, false, false, "", phase);
         const auto clip = mc2clip::previewClip(e.showcaseClip, gesture.clip, e.scene->mNumAnimations ? e.scene->mAnimations[0]->mName.C_Str() : "",
@@ -1584,10 +1599,10 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
                 s.playRate = mc2clip::strideRate(speed, e.strideSpeed.at(s.activeClip));
         }
     }
-    const bool holdAtEnd = e.pinnedClip.empty() && s.mode == mc2clip::Mode::Once;
+    const bool holdAtEnd = (preview || e.pinnedClip.empty()) && s.mode == mc2clip::Mode::Once;
     if (advanceClock) {
         s.clipTimeSec = mc2clip::advanceClipTime(s.clipTimeSec, dt,
-            e.pinnedClip.empty() ? s.playRate : 1.0f, s.durationSec,
+            (preview || e.pinnedClip.empty()) ? s.playRate : 1.0f, s.durationSec,
             holdAtEnd ? mc2clip::Mode::Once : mc2clip::Mode::Loop);
         if (!s.previousClip.empty()) {
             s.previousClipTimeSec = mc2clip::advanceClipTime(s.previousClipTimeSec, dt,
@@ -1596,6 +1611,10 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
             s.fadeTimeSec += dt;
             if (s.fadeTimeSec >= mc2clip::fadeDuration(s.previousClip, s.activeClip)) s.previousClip.clear();
         }
+    }
+    if (preview) {
+        preview->active = s.activeClip; preview->time = s.clipTimeSec; preview->duration = s.durationSec;
+        preview->paletteBones = static_cast<int>(e.invMWrest.size());
     }
     const float frame = s.clipTimeSec * 30.0f;
     double tt = 0, dd = 0;
@@ -1611,6 +1630,7 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
 // per-frame foot-ground lift into s.gpuLift.
 void buildGpuModelDelta(const ImportedAnimEntry& e, ActorAnimState& s,
                         const std::vector<mc2skel::GpuBone>& globals) {
+    mc2mechanim::sizeModelDelta(s.modelDelta, e.invMWrest.size());
     const size_t n = (globals.size() < e.invMWrest.size()) ? globals.size() : e.invMWrest.size();
     // Default: static rest lift (steady torso). MC2_MECH_IMPORT_DYNAMIC_LIFT=1 restores
     // the old per-frame lowest-vertex lift (follows ground but bobs each step).
@@ -1644,10 +1664,14 @@ void mc2mechanim::TickImportedMechs(float dt, unsigned frameStamp, const MechMot
         // PER-ACTOR: each actor instance advances its OWN clip + model-delta palette.
         ActorAnimState& s = e.actors[actorKey];
         if (authoritative) static_cast<mc2::sim::ImportedAnimState&>(s) = *authoritative;
-        if (s.activeClip.empty()) {                 // first tick for this actor
+        if (!clipDurationSec(e.scene, s.activeClip) ||
+            !std::isfinite(s.durationSec) || s.durationSec <= 1e-4f) {
+            // Restored state may refer to a clip absent from this scene.
             s.activeClip   = e.initialClip;
             s.durationSec  = e.initialDuration;
-            s.modelDelta.assign(e.invMWrest.size() * 16, 0.0f);
+            s.clipTimeSec  = 0.0f;
+            s.mode = mc2clip::Mode::Loop;
+            s.locomotion = false;
         }
         if (s.lastFrame == frameStamp && !s.lastGlobals.empty()) return;
         s.lastFrame = frameStamp;
@@ -1676,7 +1700,9 @@ void mc2mechanim::TickImportedMechs(float dt, unsigned frameStamp, const MechMot
                         for (int c = 0; c < 4; ++c) globals[b].m[r * 4 + c] = pose[b][c][r];
             }
             s.lastGlobals = std::move(globals);   // 1A: firepoint/hit-node source
-            if (motion.preview && e.gpuMode) buildGpuModelDelta(e, s, s.lastGlobals);
+            mc2clip::publishPreviewPose(motion.preview, e.gpuMode,
+                [&] { buildGpuModelDelta(e, s, s.lastGlobals); },
+                [&] { rebakeImportedPresentation(e, s.lastGlobals); });
         }
         if (authoritative) *authoritative = static_cast<const mc2::sim::ImportedAnimState&>(s);
         // Prune despawned actors' states (untouched for a while).

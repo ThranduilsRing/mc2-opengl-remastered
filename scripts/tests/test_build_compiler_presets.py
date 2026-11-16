@@ -16,6 +16,10 @@ import build_driver as bd
 
 @pytest.fixture(autouse=True)
 def production_seam(monkeypatch, tmp_path):
+    import contracts_cache
+    monkeypatch.setattr(contracts_cache, "clean_tip", lambda *a: None)
+    # These are MSVC command contracts even when pytest runs on the Linux box.
+    monkeypatch.setattr(bd, "os", SimpleNamespace(name="nt", environ=sys.modules["os"].environ))
     monkeypatch.setattr(bch, "prepare_unit_tree", lambda *a: (False, tmp_path / "receipt", "[]"))
     seam = Mock(return_value=True)
     monkeypatch.setattr(bch, "build_and_run_order_seam", seam)

@@ -58,6 +58,7 @@ add_executable(mc2_tests
     test_present_handoff.cpp
     test_terrain_record_cache.cpp  # H8 terrain-submit-cut: record cache (static camera 0 rebuilds, one dirty = one)
     test_present_wait.cpp  # PRESENT-HARDEN: pumped bounded main waits, failure seen at seal, start-spaced cap pacing
+    test_loading_pump_meter.cpp
     test_commander_team.cpp # COMMANDER-TEAM: commanderPartTeam fallback (first part wins, team 0, non-home team, no parts)
     test_pilot_kill_result.cpp
     test_soft_splash.cpp
