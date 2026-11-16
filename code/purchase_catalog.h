@@ -79,6 +79,14 @@ struct Group {
     bool open = false;
 };
 
+// Index validation is independent of openness (F7 also visits closed groups).
+inline std::vector<std::size_t> validItems(const Group& group, std::size_t itemCount) {
+    std::vector<std::size_t> valid;
+    for (const auto i : group.items)
+        if (i < itemCount) valid.push_back(i);
+    return valid;
+}
+
 inline std::vector<Group> group(const std::vector<Item>& items, std::string_view campaignSource) {
     std::vector<Group> groups;
     for (std::size_t i = 0; i < items.size(); ++i) {
