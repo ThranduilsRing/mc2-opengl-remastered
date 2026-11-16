@@ -39,6 +39,20 @@ bool isAligned(const void* p, size_t a) {
 
 TEST_SUITE("RenderCore") {
 
+TEST_CASE("FrameArena raw address alignment and huge requests") {
+    alignas(64) uint8_t backing[129];
+    FrameArena arena; arena.init(backing + 1, 128);
+    CHECK(arena.allocBytes(1, 64, "unaligned base") == backing + 64);
+    const auto used = arena.bytesUsed();
+    CHECK(arena.allocBytes(SIZE_MAX, 1, "overflow") == nullptr);
+    CHECK(arena.bytesUsed() == used);
+    CHECK(arena.allocBytes(65, 1, "too large") == nullptr);
+    CHECK(arena.allocBytes(64, 1, "exact fit") == backing + 65);
+    CHECK(arena.remaining() == 0);
+    arena.init(backing + 1, 1);
+    CHECK(arena.allocBytes(1, 64, "padding exceeds capacity") == nullptr);
+}
+
 TEST_CASE("FrameArena initial capacity/used/remaining") {
     Backing<1024> buf;
     FrameArena arena;
