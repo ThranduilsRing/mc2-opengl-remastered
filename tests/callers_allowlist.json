@@ -1,4 +1,7 @@
 {
+  "tools/mw5_mechs/__init__.py": "Operator-run MW5 mech pack tool (owner-run extractor kit, M-series lanes); no repo caller by design.",
+  "tools/mw5_mechs/bake_albedo.py": "Operator-run MW5 mech pack tool (owner-run extractor kit, M-series lanes); no repo caller by design.",
+  "tools/mw5_mechs/build_pack.py": "Operator-run MW5 mech pack tool (owner-run extractor kit, M-series lanes); no repo caller by design.",
   "scripts/bake_colormap_ktx2.py": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
   "scripts/box_contracts.sh": "Runs on the Linux box only: tools/box_run.py executes it inside its remote shell script (sh:bash scripts/box_contracts.sh row), so no repo caller names it.",
   "scripts/build_release.sh": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
