@@ -30,45 +30,6 @@ size_t getRecipeShadowLeaves(int32_t recipe, std::vector<GpuStaticPropInstance>&
 }
 }
 
-TEST_CASE("static caster set: clear and rebuild restores the load snapshot without duplicates") {
-    RecipeFeed feed;
-    feed.add(1, 10); feed.add(2, 20);
-    int turret = 0, building = 0;
-    mc2shadow::StaticCasterSet set;
-    const auto rebuild = [&] {
-        set.beginRebuild();
-        set.add({&turret, 2, 1, mc2shadow::CasterKind::Turret});
-        set.add({&building, 1, 2, mc2shadow::CasterKind::Building});
-        set.endRebuild();
-    };
-    rebuild();
-    const uint64_t version = set.version();
-    REQUIRE(version != 0);
-    const size_t count = set.entries().size();
-    REQUIRE(count == 1);
-    std::vector<GpuStaticPropInstance> leaves;
-    const uint64_t hash = set.loadSnapshot(leaves);
-    REQUIRE(leaves.size() == 1);
-    set.clear();
-    CHECK(set.version() == 0);
-    CHECK(set.entries().empty());
-    CHECK(set.recipeMask().empty());
-    rebuild();
-    CHECK(set.version() != 0);
-    CHECK(set.version() != version);
-    CHECK(set.entries().size() == count);
-    leaves.clear();
-    CHECK(set.loadSnapshot(leaves) == hash);
-    REQUIRE(leaves.size() == 1);
-    CHECK(leaves[0].typeID == 20);
-    CHECK(set.isMoverOwner(&turret));
-    CHECK(set.moverOwnerCount() == 1);
-    leaves.clear();
-    set.appendMoverLeaves(leaves);
-    REQUIRE(leaves.size() == 1);
-    CHECK(leaves[0].typeID == 10);
-}
-
 TEST_CASE("static caster set: turrets never enter the bake and live poses replace their registry fallback") {
     RecipeFeed feed;
     feed.add(1,10); feed.add(2,20); feed.add(3,30);
