@@ -26,6 +26,16 @@ TEST_CASE("preview publication: CPU geometry changes across ticks; GPU stays on 
     CHECK(published.x == first.x + 1); CHECK(cpu == 2); CHECK(gpu == 1);
 }
 
+TEST_CASE("preview resolver: missing binding retains the mission active clip") {
+    const auto has = [](std::string_view clip) { return clip == "atlas_moveCoreIdle" || clip == "atlas_moveCoreWalkFwd"; };
+    Phase phase;
+    const auto walk = select(kGestureWalk, 10, 0, 0, false, false, "atlas_moveCoreIdle", phase);
+    CHECK(resolveClip(walk.clip, "atlas_moveCoreIdle", has) == "atlas_moveCoreWalkFwd");
+    const auto death = select(kGestureFallForward, 0, 0, 0, true, false, "atlas_moveCoreIdle", phase);
+    CHECK(resolveClip(death.clip, "atlas_moveCoreIdle", has) == "atlas_moveCoreIdle");
+    CHECK(resolveClip("", "atlas_moveCoreIdle", has) == "atlas_moveCoreIdle");
+}
+
 TEST_CASE("preview showcase: manifest, gesture, idle, first clip fallback") {
     const auto has = [](std::string_view s) { return s == "show" || s == "walk" || s == "atlas_moveCoreIdle" || s == "first"; };
     CHECK(previewClip("show", "walk", "first", has) == "show");
