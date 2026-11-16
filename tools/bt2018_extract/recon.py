@@ -2,6 +2,7 @@
 
 Run with Python 3.12 / UnityPy 1.25.0. Output JSON is stdout; inputs are read only.
 """
+import os
 import argparse
 from collections import Counter
 import hashlib
@@ -182,7 +183,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('mode', choices=('bundle', 'glb', 'fbx', 'compare'))
     ap.add_argument('path', type=Path)
-    ap.add_argument('--dump', type=Path, default=Path('A:/Games/mc2-opengl/BattleTech_2018_Dump'))
+    ap.add_argument('--dump', type=Path, default=Path(os.environ.get('MC2_BT2018_DUMP', 'A:/Games/mc2-opengl/BattleTech_2018_Dump')))  # drive-path: ok operator-run PC-only recon; overridable via env
     args = ap.parse_args()
     if args.mode in ('bundle', 'compare'):
         result = globals()[args.mode](args.path, args.dump)

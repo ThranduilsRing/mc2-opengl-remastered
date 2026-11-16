@@ -368,38 +368,32 @@ std::expected<void, long> LogisticsData::loadVariant( FitIniFile& file )
 
 std::expected<void, long> LogisticsData::loadMech( FitIniFile& file, int& count )
 {
-	const std::string variantKey = objective_text::readPlain( file, "Variant" ).value_or( std::string() );
-	const auto packKey = objective_text::readPlain(file, "PurchasePack");
-	for ( auto mIter = variants.begin(); mIter != variants.end(); ++mIter )
+	auto mIter = mc2purchase::loadInventoryVariant(file, variants, mc2purchase::chassisSource);
+	if ( mIter != variants.end() )
 	{
-		if ( mc2purchase::identityMatches(mc2purchase::chassisSource((*mIter)->getFileName()),
-			(*mIter)->getName(), packKey, variantKey) )
-		{
-			
-			auto mech = std::make_unique<LogisticsMech>( mIter->get(), count );
-			LogisticsMech* pMech = mech.get();
-			// A mech without a Pilot key has no pilot: the key is never read as the variant text.
-			const std::optional<std::string> pilotKey = objective_text::readPlain( file, "Pilot" );
-			inventory.push_back( std::move(mech) );
+		auto mech = std::make_unique<LogisticsMech>( mIter->get(), count );
+		LogisticsMech* pMech = mech.get();
+		// A mech without a Pilot key has no pilot: the key is never read as the variant text.
+		const std::optional<std::string> pilotKey = objective_text::readPlain( file, "Pilot" );
+		inventory.push_back( std::move(mech) );
 
-			if ( pilotKey )
+		if ( pilotKey )
+		{
+			for ( auto pIter = pilots.begin(); pIter != pilots.end(); ++pIter )
 			{
-				for ( auto pIter = pilots.begin(); pIter != pilots.end(); ++pIter )
+				if ( mc2::str::iequals( (*pIter).getFileName(), *pilotKey ) )
 				{
-					if ( mc2::str::iequals( (*pIter).getFileName(), *pilotKey ) )
-					{
-						pMech->setPilot( &(*pIter ) );
-						count++;
-						if ( count > -1 && count < 13 )
-							pMech->setForceGroup( count );
-						break;
-					}
+					pMech->setPilot( &(*pIter ) );
+					count++;
+					if ( count > -1 && count < 13 )
+						pMech->setForceGroup( count );
+					break;
 				}
 			}
-
-			// it could have had no pilot
-			return {};
 		}
+
+		// it could have had no pilot
+		return {};
 	}
 
 	return std::unexpected(-1L); // failed in finding the variant

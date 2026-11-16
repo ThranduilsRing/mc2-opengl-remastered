@@ -741,6 +741,7 @@ void ControlGui::render( bool bPaused )
 		}
 
 		getButton( LAYMINES )->render();
+		renderSimSpeedButton();
 
 
 		RenderObjectives();

@@ -51,6 +51,12 @@ inline constexpr int kGestureWalk = 4, kGestureRun = 7, kGestureReverse = 9, kGe
 inline Choice once(std::string_view c) { Choice ch; ch.clip = c.data(); ch.mode = Mode::Once; ch.immediate = true; return ch; }
 inline Choice loop(std::string_view c, bool loco = false) { Choice ch; ch.clip = c.data(); ch.locomotion = loco; return ch; }
 
+// Missing mission bindings keep the actor's current clip, including its clock.
+template<class HasClip>
+std::string_view resolveClip(std::string_view requested, std::string_view active, HasClip hasClip) {
+    return hasClip(requested) ? requested : active;
+}
+
 template<class HasClip>
 std::string_view previewClip(std::string_view showcase, std::string_view gesture,
                              std::string_view first, HasClip hasClip) {

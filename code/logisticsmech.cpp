@@ -52,11 +52,9 @@ long LogisticsMech::save( FitIniFile& file, long counter )
 
 	file.writeBlock( tmp );
 
-	file.writeIdString( "Chassis", pVariant->getFileName().c_str() );
-	mc2purchase::saveIdentity(file, mc2purchase::chassisSource(pVariant->getFileName()), pVariant->getName());
-	if ( pilot )
-		file.writeIdString( "Pilot", pilot->getFileName().c_str() );
-	file.writeIdBoolean( "Designer", pVariant->isDesignerMech() );
+	mc2purchase::saveInventoryIdentity(file, mc2purchase::chassisSource(pVariant->getFileName()),
+		pVariant->getName(), pVariant->getFileName(), pVariant->isDesignerMech(),
+		pilot ? pilot->getFileName().c_str() : nullptr);
 
 	return 0;
 }
