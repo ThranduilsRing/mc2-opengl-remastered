@@ -1297,6 +1297,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
                            static_cast<int>(s->propTexSlots), 0};
         const VkSpecializationMapEntry qualityEntry[3] = {{0, 0, sizeof(int)}, {1, sizeof(int), sizeof(int)}, {2, 2 * sizeof(int), sizeof(int)}};
         const VkSpecializationInfo qualityInfo{3, qualityEntry, sizeof(specData), specData};
+        stages[0].pSpecializationInfo = &qualityInfo;
         stages[1].pSpecializationInfo = &qualityInfo;
         VkGraphicsPipelineCreateInfo gp{};
         gp.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
