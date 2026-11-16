@@ -435,7 +435,10 @@ void main(void)
         shoreRipple = sin(shoreDistance * 0.18 + time * 1.8 + coastPhase) * 0.045;
         foamBreakup = 0.8;
     }
-    float nearShore = 1.0 - smoothstep(36.0, 100.0, shoreDistance);
+    // A flat shelf has no real coast: the slope floor would place the wash contour at a fixed
+    // depth far offshore, tracing seabed relief. Fade the wash out where the true slope is below the floor.
+    float shelfFade = smoothstep(0.04, 0.08, length(shoreGrad));
+    float nearShore = (1.0 - smoothstep(36.0, 100.0, shoreDistance)) * shelfFade;
     float foam = 1.0 - smoothstep(2.0, 6.0 + foamAA, abs(shoreDistance - washReach));
     float wash = (1.0 - smoothstep(0.0, washReach + foamAA, shoreDistance)) * 0.10;
     float foamMix = (foam * 0.42 * foamBreakup + wash) * nearShore;
