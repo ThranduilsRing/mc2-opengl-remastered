@@ -13,19 +13,6 @@ struct Request {
 auto isPlayer = [](Request* rec) { return rec->player; };
 }
 
-TEST_CASE("PathWork/long solved chains retain their first 200 steps and drop tail doors") {
-    for (long length : {199, 200, 201, 1200}) for (long door : {-1, 2}) {
-        const auto prefix = mc2::path_work::boundedPrefix(length, 200, length - (door != -1), 7, door,
-            [](long row, long col) { return std::pair{row - 1, col}; });
-        CHECK(prefix.steps == std::min(length, 200L));
-        CHECK(prefix.row == prefix.steps - (prefix.door != -1));
-        CHECK(prefix.col == 7);
-        CHECK(prefix.truncated == (length > 200));
-        CHECK(prefix.door == (length > 200 ? -1 : door));
-        for (long index = prefix.steps; index > 0; --index) CHECK(index - 1 < 200);
-    }
-}
-
 TEST_CASE("PathWork/empty zero cost exact threshold overshoot and next tick") {
     using namespace mc2::path_work;
     Request a, b;

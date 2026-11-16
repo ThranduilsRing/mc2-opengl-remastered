@@ -7,28 +7,6 @@
 
 namespace mc2::path_work {
 
-struct PathPrefix {
-    long steps, row, col, door;
-    bool truncated;
-};
-
-// Reconstruction walks backwards. Drop the tail before bounding its write index,
-// retaining the first capacity steps from the start, including jump parents.
-template<class Parent>
-PathPrefix boundedPrefix(long steps, long capacity, long row, long col, long door, Parent parent) {
-    PathPrefix result{steps, row, col, door, steps > capacity};
-    if (!result.truncated) return result;
-    long discard = steps - capacity;
-    if (door != -1) { result.door = -1; --discard; }
-    while (discard-- > 0) {
-        const auto [prevRow, prevCol] = parent(result.row, result.col);
-        result.row = prevRow;
-        result.col = prevCol;
-    }
-    result.steps = capacity;
-    return result;
-}
-
 inline constexpr std::uint64_t kTickBudget = 4096;
 inline constexpr long kPlayerDeadline = 2; // third service opportunity, counting age zero
 inline constexpr long kMaxSolvesPerTick = 6; // legacy cap, including due players
