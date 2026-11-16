@@ -45,7 +45,8 @@ def text(path):
     return path.read_text(encoding="utf-8", errors="replace") if path.exists() else ""
 
 
-def evaluate(peers, ticks, codes, combat=False, expected_codes=None, max_extra=2):
+def evaluate(peers, ticks, codes, combat=False, expected_codes=None, max_extra=2,
+             loss=0, latency=0, cleanup=None):
     result = dict(result="FAIL", ticks_reached=[], peer_exit_codes=codes,
                   first_divergent_tick=None, first_divergent_field=None,
                   equal_ticks=0, handshake=[], desync_lines=[], first_failing_line=None)
@@ -96,7 +97,26 @@ def evaluate(peers, ticks, codes, combat=False, expected_codes=None, max_extra=2
         errors.append(result["desync_lines"][0])
         result["classification"] = "desync"
     try:
-        result["comparison"] = compare_traces(*peers, ticks, combat=combat, max_extra=max_extra)
+        result["comparison"] = compare_traces(*peers, ticks, combat=False, max_extra=max_extra)
+    except (OSError, ValueError, IndexError) as exc:
+        errors.append(f"{type(exc).__name__}: {exc}")
+    try:
+        if combat:
+            common = min(max(rows, default=0) for rows in hashes)
+            battle = [[line for line in text(peer / "session.trace").splitlines()
+                       if line.startswith("B ") and int(line.split()[1]) <= common] for peer in peers]
+            counts = [{f"{slot}:{event}": sum(r[2] == str(slot) and r[3] == event
+                       and (event == "fire" or float(r[6]) > 0) for r in map(str.split, rows))
+                       for slot in (0, 1) for event in ("fire", "damage")} for rows in battle]
+            both = all(all(count.values()) for count in counts)
+            result["combat_evidence"] = dict(per_peer=counts, both_groups=both)
+            if battle[0] != battle[1]:
+                raise ValueError("combat rows differ")
+            if not all(sum(counts[0][f"{slot}:{event}"] for slot in (0, 1))
+                       for event in ("fire", "damage")):
+                raise ValueError("combat requires firing and positive damage")
+            if not (loss or latency) and not both:
+                raise ValueError("combat requires firing and damage from both owned groups")
     except (OSError, ValueError, IndexError) as exc:
         errors.append(f"{type(exc).__name__}: {exc}")
     if result["first_divergent_tick"] is not None:
@@ -105,7 +125,9 @@ def evaluate(peers, ticks, codes, combat=False, expected_codes=None, max_extra=2
     result["errors"] = errors
     result["first_failing_line"] = errors[0] if errors else None
     result.setdefault("classification", "peer never connects" if any("no NETWORK" in e for e in errors)
-                      else "crash" if any(code is not None and code < 0 for code in codes)
+                      else "transport stop" if any("STOP MP peer" in log for log in logs)
+                      else "crash" if any(code is not None and code < 0 and not (cleanup or [False, False])[i]
+                                          for i, code in enumerate(codes))
                       else "headless or path defect" if errors else "connected")
     result["result"] = "FAIL" if errors else "PASS"
     return result
@@ -159,6 +181,8 @@ def run_pair(args):
     shim = ClientShim(args.loss, args.latency, args.jitter)
     events, ticks, exits, cleanup = [], [0, 0], [None, None], [False, False]
     killed = None
+    transport_exit = None
+    last_tick_wall = [None, None]
     try:
         with ExitStack() as logs:
             relay = logs.enter_context(socket.socket(socket.AF_INET, socket.SOCK_DGRAM))
@@ -170,7 +194,7 @@ def run_pair(args):
                 err = logs.enter_context((peer / "launcher.err.log").open("w", encoding="utf-8"))
                 # background-launch: allow Linux headless peers under slot.sh --game; only owned PIDs are stopped
                 processes.append(subprocess.Popen(argv, cwd=args.install, env=env, stdout=log, stderr=err))
-            while any(rc is None for rc in [proc.poll() for proc in processes]):
+            while True:
                 now = time.monotonic()
                 elapsed = now - started
                 if elapsed > args.timeout:
@@ -188,14 +212,23 @@ def run_pair(args):
                                 if line.startswith("NETWORK ") and network[slot] is None:
                                     network[slot] = elapsed
                                 if line.startswith("H "):
-                                    ticks[slot] = int(line.split()[1])
+                                    tick = int(line.split()[1])
+                                    if tick > ticks[slot]:
+                                        ticks[slot] = tick
+                                        last_tick_wall[slot] = elapsed
                     if proc.poll() is not None and exits[slot] is None:
                         exits[slot] = elapsed
                         # A fault victim must not cause us to terminate its survivor.
-                        if proc.returncode != 0 and not (args.kill_peer or args.stall_ms):
+                        if proc.returncode == 3 and not (args.kill_peer or args.stall_ms):
+                            transport_exit = elapsed if transport_exit is None else transport_exit
+                        elif proc.returncode != 0 and not (args.kill_peer or args.stall_ms):
                             raise RuntimeError(f"{peer.name} exited {proc.returncode}")
-                        if ticks[slot] < args.ticks and not (args.kill_peer or args.stall_ms):
+                        if proc.returncode != 3 and ticks[slot] < args.ticks and not (args.kill_peer or args.stall_ms):
                             raise RuntimeError(f"{peer.name} exited before tick target")
+                if all(value is not None for value in exits):
+                    break
+                if transport_exit is not None and elapsed - transport_exit >= 20:
+                    raise TimeoutError("transport shutdown exceeded 20 seconds")
                 if args.stall_ms and not events and min(ticks) >= args.stall_tick:
                     shim.stall_until = now + args.stall_ms / 1000
                     events.append(dict(event="stall", ticks=ticks.copy(), wall=elapsed, ms=args.stall_ms))
@@ -230,10 +263,34 @@ def run_pair(args):
         stop(processes)
     codes = [proc.returncode for proc in processes]
     codes.extend([None] * (2 - len(codes)))
+    receipt = dict(events=events, cleanup_kill=cleanup, exit_wall_seconds=exits,
+                   last_tick_wall=last_tick_wall, faults=shim.receipt())
+    result = evaluate_run(args, peers, codes, ticks, receipt)
+    if failure:
+        result.update(result="FAIL", runner_error=failure)
+        result["first_failing_line"] = result["first_failing_line"] or failure
+    result.update(wall_seconds=time.monotonic() - started, peak_rss_kib=peak,
+                  rendezvous_seconds=max(network) if all(n is not None for n in network) else None,
+                  pids=[proc.pid for proc in processes], requested_ticks=args.ticks, combat=args.combat)
+    result.update(receipt)
+    if result["result"] == "FAIL":
+        result["peer_stdio"] = {p.name: {
+            "stdout": (text(p / "stdout.log") + text(p / "launcher.log"))[-4096:],
+            "stderr": (text(p / "stderr.log") + text(p / "launcher.err.log"))[-4096:]} for p in peers}
+    (args.out / "verdict.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    print(f"{result['result']} ticks={result['ticks_reached']} equal={result['equal_ticks']} "
+          f"wall={result['wall_seconds']:.2f}s verdict={args.out / 'verdict.json'}", flush=True)
+    return result
+
+
+def evaluate_run(args, peers, codes, ticks, receipt):
+    events, cleanup, exits = (receipt[key] for key in ("events", "cleanup_kill", "exit_wall_seconds"))
+    killed = next((0 if e["peer"] == "host" else 1 for e in events if e["event"] == "kill"), None)
     stopped_stall = args.stall_ms and codes == [3, 3]
     expected = codes if killed is not None or stopped_stall else None
     compared = min(ticks) if expected else args.ticks
-    result = evaluate(peers, compared, codes, args.combat, expected, args.ticks if expected else 2)
+    result = evaluate(peers, compared, codes, args.combat, expected, args.ticks if expected else 2,
+                      args.loss, args.latency, cleanup)
     errors = result["errors"]
     if args.kill_peer:
         survivor = 1 - killed if killed is not None else None
@@ -253,37 +310,38 @@ def run_pair(args):
             errors.append("stall did not resume")
     if expected:
         injection = next(e for e in events if e["event"] in ("kill", "stall")) if events else None
-        shutdown = max((value or time.monotonic() - started) for value in exits) - injection["wall"] if injection else None
+        shutdown = max(exits) - injection["wall"] if injection and all(v is not None for v in exits) else None
         result["peer_loss_shutdown_seconds"] = shutdown
         if shutdown is None or shutdown > 20 or any(cleanup):
             errors.append("fault shutdown was not independent within 20 seconds")
-    if args.loss and not shim.dropped:
+    if args.loss and not receipt["faults"]["dropped"]:
         errors.append("loss injection did not drop a datagram")
     result.update(result="FAIL" if errors else "PASS", first_failing_line=errors[0] if errors else None)
-    if failure:
-        result.update(result="FAIL", runner_error=failure)
-        result["first_failing_line"] = result["first_failing_line"] or failure
-    result.update(wall_seconds=time.monotonic() - started, peak_rss_kib=peak,
-                  rendezvous_seconds=max(network) if all(n is not None for n in network) else None,
-                  pids=[proc.pid for proc in processes], requested_ticks=args.ticks, combat=args.combat)
-    result.update(faults=shim.receipt(), events=events, cleanup_kill=cleanup, exit_wall_seconds=exits)
-    if result["result"] == "FAIL":
-        result["peer_stdio"] = {p.name: {
-            "stdout": (text(p / "stdout.log") + text(p / "launcher.log"))[-4096:],
-            "stderr": (text(p / "stderr.log") + text(p / "launcher.err.log"))[-4096:]} for p in peers}
-    (args.out / "verdict.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
-    print(f"{result['result']} ticks={result['ticks_reached']} equal={result['equal_ticks']} "
-          f"wall={result['wall_seconds']:.2f}s verdict={args.out / 'verdict.json'}", flush=True)
     return result
 
 
 def main(argv=None):
     args = arguments(argv)
-    if (args.role != "both" or args.address != "127.0.0.1" or args.compare_only
+    if (args.role != "both" or args.address != "127.0.0.1"
             or args.render != "none" or args.wall_clock or args.force_desync
             or args.client_install != args.install or args.kill_peer == "both"):
         raise SystemExit("Linux pair supports one headless loopback pair per invocation")
-    return 0 if run_pair(args)["result"] == "PASS" else 1
+    if args.compare_only:
+        original = json.loads((args.out / "verdict.json").read_text(encoding="utf-8"))
+        peers = [args.out / "session" / name for name in ("host", "client")]
+        result = evaluate_run(args, peers, original["peer_exit_codes"], original["ticks_reached"], original)
+        # Only the superseded combat policy may be removed from the original failures.
+        result["errors"].extend(e for e in original["errors"] if "combat requires firing and damage from both owned groups" not in e
+                                and e not in result["errors"])
+        if original.get("runner_error"):
+            result["errors"].append(original["runner_error"])
+        result = {**original, **result}
+        result.update(result="FAIL" if result["errors"] else "PASS",
+                      first_failing_line=next(iter(result["errors"]), None))
+        (args.out / "verdict.reeval.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    else:
+        result = run_pair(args)
+    return 0 if result["result"] == "PASS" else 1
 
 
 if __name__ == "__main__":

@@ -167,7 +167,7 @@ if os.environ.get('PAIR_FAKE_HANG') in ('1', root.name):
 def test_fake_pair_fixture_creation_and_directory_isolation(tmp_path, fake_peer, combat):
     args = options(tmp_path, combat=combat)
     verdict = pair.run_pair(args)
-    # Combat comparison itself is covered by the imported Windows proof; stub has no battle events.
+    # The stub has no battle events.
     assert verdict["result"] == ("FAIL" if combat else "PASS")
     assert verdict["peer_exit_codes"] == [0, 0]
     for slot, name in enumerate(("host", "client")):
@@ -314,3 +314,97 @@ def test_kill_waits_for_survivor_independent_shutdown(tmp_path, monkeypatch, fak
     assert verdict["cleanup_kill"] == [False, False]
     assert verdict["events"][0]["event"] == "kill"
     assert verdict["peer_loss_shutdown_seconds"] < 20
+
+
+@pytest.mark.parametrize("loss,latency,passed", [(0, 0, False), (2, 60, True), (10, 0, True), (0, 60, True)])
+def test_combat_policy_and_identical_rows(tmp_path, loss, latency, passed):
+    peers = [tmp_path / name for name in ("host", "client")]
+    for peer in peers:
+        trace(peer)
+        with (peer / "session.trace").open("a") as log:
+            log.write("B 3 0 fire 1 4 0\nB 4 1 damage 2 4 7\nB 65 0 damage 1 4 9\n")
+    verdict = pair.evaluate(peers, 64, [0, 0], combat=True, loss=loss, latency=latency)
+    assert (verdict["result"] == "PASS") == passed
+    assert verdict["combat_evidence"]["both_groups"] is False
+    assert verdict["combat_evidence"]["per_peer"][0]["0:damage"] == 0
+    with (peers[1] / "session.trace").open("a") as log:
+        log.write("B 5 1 fire 2 4 0\n")
+    assert "ValueError: combat rows differ" in pair.evaluate(
+        peers, 64, [0, 0], combat=True, loss=loss, latency=latency)["errors"]
+
+
+@pytest.mark.parametrize("row", ["F1-rerun", "F3"])
+def test_compare_only_archived_configurations(tmp_path, monkeypatch, row):
+    f1 = row == "F1-rerun"
+    ticks = 18000 if f1 else 3000
+    args = options(tmp_path, ticks=ticks)
+    peers = [args.out / "session" / name for name in ("host", "client")]
+    for peer in peers:
+        trace(peer, ticks)
+        with (peer / "session.trace").open("a") as log:
+            log.write("B 3 0 fire 1 4 0\nB 4 1 fire 2 4 0\nB 5 1 damage 2 4 7\n")
+            if not f1:
+                log.write("B 6 0 damage 1 4 7\n")
+    original = dict(peer_exit_codes=[0, 0], ticks_reached=[ticks, ticks], requested_ticks=ticks,
+                    combat=True, cleanup_kill=[False, False], exit_wall_seconds=[None, 65],
+                    events=[] if f1 else [dict(event="stall", ticks=[1500, 1500], wall=53, ms=2000),
+                                         dict(event="resume", ticks=[1501, 1500], wall=55)],
+                    faults=dict(dropped=2900 if f1 else 0), errors=[
+                        "ValueError: combat requires firing and damage from both owned groups: counts"] if f1 else [])
+    path = args.out / "verdict.json"
+    before = json.dumps(original)
+    path.write_text(before)
+    monkeypatch.setattr(pair, "run_pair", lambda args: pytest.fail("compare-only launched peers"))
+    argv = ["--install", str(tmp_path), "--out", str(args.out), "--compare-only", "--combat", "--ticks", str(ticks)]
+    argv += ["--loss", "2", "--latency", "60", "--jitter", "20"] if f1 else ["--stall-ms", "2000", "--stall-tick", "1500"]
+    assert pair.main(argv) == 0
+    result = json.loads((args.out / "verdict.reeval.json").read_text())
+    assert result["combat_evidence"]["both_groups"] == (not f1)
+    assert path.read_text() == before
+    original["errors"].append("unrelated failure")
+    path.write_text(json.dumps(original))
+    assert pair.main(argv) == 1
+    assert "unrelated failure" in json.loads((args.out / "verdict.reeval.json").read_text())["errors"]
+    if not f1:
+        original["errors"] = []
+        original["events"].pop()
+        path.write_text(json.dumps(original))
+        assert pair.main(argv) == 1
+
+
+def test_transport_stop_waits_and_records_last_advance(tmp_path, monkeypatch, fake_peer):
+    monkeypatch.setenv("PAIR_FAKE_HANG", "1")
+    real_poll, real_kill = POPEN_CLASS.poll, POPEN_CLASS.kill
+    turns = [0, 0]
+
+    def poll(proc):
+        rc = real_poll(proc)
+        if len(fake_peer) == 2 and rc is None:
+            slot = fake_peer.index(proc)
+            peer = tmp_path / "proof" / "session" / ("host" if slot == 0 else "client")
+            if (peer / "session.trace").exists():
+                turns[slot] += 1
+                if turns[slot] >= (3 if slot == 0 else 30):
+                    with (peer / "session.trace").open("a") as log:
+                        log.write("STOP MP peer disconnected\n")
+                    real_kill(proc)
+                    proc.wait()
+                    proc.returncode = rc = 3
+        return rc
+
+    monkeypatch.setattr(POPEN_CLASS, "poll", poll)
+    verdict = pair.run_pair(options(tmp_path))
+    assert verdict["peer_exit_codes"] == [3, 3]
+    assert verdict["cleanup_kill"] == [False, False]
+    assert verdict["classification"] == "transport stop"
+    assert all(last is not None and end >= last for last, end in
+               zip(verdict["last_tick_wall"], verdict["exit_wall_seconds"]))
+    assert turns[1] >= 30
+
+
+def test_owned_termination_is_not_a_crash(tmp_path):
+    peers = [tmp_path / name for name in ("host", "client")]
+    for peer in peers:
+        trace(peer)
+    verdict = pair.evaluate(peers, 64, [-15, -15], cleanup=[True, True])
+    assert verdict["classification"] != "crash"
