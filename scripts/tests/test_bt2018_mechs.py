@@ -365,6 +365,18 @@ def test_retarget_turns_bones_in_model_space_whatever_the_bind_frame(tmp_path):
     assert np.degrees(2 * np.arccos(min(1.0, abs(float(delta @ [0, 0, s, s]))))) < 0.5
 
 
+def test_native_clip_baker_decodes_streamed_dense_and_constant_curves():
+    """Trigger: tools/bt2018_extract/bake_clips.py (native BT clips replace Atlas retargets)."""
+    from tools.bt2018_extract import bake_clips as B
+    # one streamed curve: key at t=0 value 1 slope 2, key at t=1 constant 5; one constant curve 7
+    words = struct.unpack("<14I", struct.pack("<fi i4f fi i4f", 0.0, 1, 0, 0, 0, 2.0, 1.0, 1.0, 1, 0, 0, 0, 0, 5.0))
+    clip = {"m_StreamedClip": {"data": list(words), "curveCount": 1},
+            "m_DenseClip": {"m_CurveCount": 1, "m_SampleArray": [0.0, 10.0], "m_BeginTime": 0.0, "m_SampleRate": 1.0},
+            "m_ConstantClip": {"data": [7.0]}}
+    vals = B.sample_clip({"m_MuscleClip": {"m_Clip": {"data": clip}}}, [0.0, 0.5, 1.0])
+    assert vals.tolist() == [[1.0, 0.0, 7.0], [2.0, 5.0, 7.0], [5.0, 10.0, 7.0]]
+
+
 # ---------------------------------------------------------------- P6 icons
 
 
