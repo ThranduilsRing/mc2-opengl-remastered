@@ -11,6 +11,7 @@
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include <memory>
 #include <span>
+#include <map>
 #include "objmgr_internal.h"
 #include "static_prop_prewarm.h"
 #include "saved_objects_check.h"
@@ -222,18 +223,34 @@ void GameObjectManager::loadTerrainObjects (PacketFile* terrainFile,
 		increment = progressRange/totalObjCount;
 	{
 		ZoneScopedN("GameObjectManager::loadTerrainObjects addObjectLoop"); MC2_LOAD_SCOPE("GameObjectManager::loadTerrainObjects addObjectLoop");
+		const bool laps = mc2_diag::tagRequested("LOAD_LAPS");
+		struct TypeLap { long objects = 0, misses = 0; double ms = 0; };
+		std::map<long, TypeLap> byType;
 		for (int i = 0; i < totalObjCount; ++i )
 		{
 			mission_load_pump();
+			// Count actual cache misses separately: countObject normally loaded these types already.
+			const bool miss = laps && !objTypeManager->get(data->objTypeNum, false);
+			const auto start = laps ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
 			addObject( data, 
 				curTerrainObjectIndex, curBuildingIndex, 
 				curTurretIndex, curGateIndex, handles[2 * data->blockNumber], 
 				handles[(2 * data->blockNumber) + 1] 
 				);
+			if (laps) {
+				const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+				auto& lap = byType[data->objTypeNum];
+				++lap.objects;
+				lap.misses += miss;
+				lap.ms += ms;
+			}
 
 			data++;
 			progress += increment;
 		}
+		for (const auto& [type, lap] : byType)
+			mc2::fmt::print_err("[LOAD_LAPS v1] stage=addObject type={} objects={} type_cache_misses={} active_ms={:.3f}\n",
+				type, lap.objects, lap.misses, lap.ms);
 	}
 
 	handles.reset();
@@ -389,17 +406,25 @@ void GameObjectManager::registerStaticPropsForMissionLoad() {
 	};
 
 	currentArr = 0;
+	{ ZoneScopedN("StaticPropRegistration terrainObjects"); MC2_LOAD_SCOPE("StaticPropRegistration terrainObjects");
 	for (long i = 0; i < numTerrainObjects; ++i)
 		registerOne(terrainObjects[i]);
+	}
 	currentArr = 1;
+	{ ZoneScopedN("StaticPropRegistration buildings"); MC2_LOAD_SCOPE("StaticPropRegistration buildings");
 	for (long i = 0; i < numBuildings; ++i)
 		registerOne(buildings[i]);
+	}
 	currentArr = 2;
+	{ ZoneScopedN("StaticPropRegistration turrets"); MC2_LOAD_SCOPE("StaticPropRegistration turrets");
 	for (long i = 0; i < numTurrets; ++i)
 		registerOne(turrets[i]);
+	}
 	currentArr = 3;
+	{ ZoneScopedN("StaticPropRegistration gates"); MC2_LOAD_SCOPE("StaticPropRegistration gates");
 	for (long i = 0; i < numGates; ++i)
 		registerOne(gates[i]);
+	}
 
 	MC2_DIAGFE(stderr,
 		"[STATIC_PROP_REG v1] event=mission_load enumerated=%d registered=%d skipped=%d\n",
