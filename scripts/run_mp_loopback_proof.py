@@ -130,6 +130,7 @@ def peer_start(install: str, directory: str, slot: int, port: int, ticks: int,
         option = argv.index("--host" if slot == 0 else "--join")
         del argv[option:option + 2]
         env.update(MC2_BOOT_TO_SCREEN="mainmenu", MC2_MENU_CANARY_SKIP_INTRO="1",
+                   MC2_DIAG_TAGS="COOP_UI",
                    MC2_WIDTH="1920", MC2_HEIGHT="1080", MC2_INPUT_SCRIPT=str(root / "lobby.script"))
         # run_pair appends clicks at the real controls' reported hit regions.
         script = ["wait 180"]

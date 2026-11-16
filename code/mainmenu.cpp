@@ -36,19 +36,21 @@ struct DDSURFACEDESC2 {
 #include "../GuiRuntime/GuiRuntime.h"
 #include "imgui.h"
 #include "net/runtime.h"
+#include "diagnostic_trace.h"
 #include <set>
 extern CPrefs prefs;
 
 namespace {
 bool& coopOpen = mc2::net::lobbyVisible();
 // Report real hit regions to the tailed mouse script; never activate controls here.
-void coopProofWidget(const char* name, float left, float top, float right, float bottom, float width, float height) {
+void coopProofWidget(std::string_view name, float left, float top, float right, float bottom, float width, float height) {
     if (mc2::gate::str<"MC2_INPUT_SCRIPT">().empty()) return;
     static std::set<std::string> reported;
-    if (reported.insert(name).second)
-        std::fprintf(stderr, "[COOP_UI] %s %.3f %.3f\n", name, (left + right) * 400 / width, (top + bottom) * 300 / height);
+    const auto [position, inserted] = reported.emplace(name);
+    if (inserted && mc2_diag::tagRequested("COOP_UI"))
+        std::fprintf(stderr, "[COOP_UI] %.*s %.3f %.3f\n", static_cast<int>(name.size()), name.data(), (left + right) * 400 / width, (top + bottom) * 300 / height);
 }
-void coopProofItem(const char* name) {
+void coopProofItem(std::string_view name) {
     const auto a = ImGui::GetItemRectMin(), b = ImGui::GetItemRectMax();
     const auto size = ImGui::GetIO().DisplaySize;
     coopProofWidget(name, a.x, a.y, b.x, b.y, size.x, size.y);
@@ -83,7 +85,7 @@ void drawCoopLobby() {
         }
         if (ImGui::Button("Host game")) {
             mc2::net::openLobby(true, endpoint, missionName(selected));
-            if (state.error.empty()) std::fprintf(stderr, "[COOP_UI] Listening 0 0\n");
+            if (state.error.empty() && mc2_diag::tagRequested("COOP_UI")) std::fprintf(stderr, "[COOP_UI] Listening 0 0\n");
         }
         coopProofItem("Host");
         ImGui::SameLine();

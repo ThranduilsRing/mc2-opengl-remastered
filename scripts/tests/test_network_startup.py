@@ -73,6 +73,7 @@ def test_lobby_proof_enters_via_widgets_and_keeps_cli_default(tmp_path, monkeypa
         assert ("--host" in captured["argv"]) != lobby
         assert ("MC2_INPUT_SCRIPT" in captured["env"]) == lobby
     assert captured["env"]["MC2_BOOT_TO_SCREEN"] == "mainmenu"
+    assert captured["env"]["MC2_DIAG_TAGS"] == "COOP_UI"
     assert (tmp_path / "lobby.script").read_text() == "wait 180\n"
 
 
