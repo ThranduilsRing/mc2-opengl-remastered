@@ -838,9 +838,9 @@ def main():
               "full --tier tier1 before milestones.", file=sys.stderr)
 
     # Front-end runs include videos/loading; ordinary and determinism caps stay 30/60 s.
-    duration_cap = VIA_MENU_TIMEOUT_S if args.via_menu else (60 if args.sim_determinism else 30)
+    duration_cap = 60 if args.sim_determinism else (VIA_MENU_TIMEOUT_S if args.via_menu else 30)
     if args.via_menu and args.duration is None:
-        args.duration = VIA_MENU_TIMEOUT_S
+        args.duration = duration_cap
     # Mission test runs explicitly request a simulation budget in minutes.
     # Keep longer wall budgets confined to this headless developer fixture.
     if args.headless and os.environ.get("MC2_PLAY_MISSION") == "1":

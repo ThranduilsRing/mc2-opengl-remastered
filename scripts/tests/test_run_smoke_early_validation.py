@@ -16,6 +16,9 @@ ROOT = Path(__file__).resolve().parents[2]
     ("--via-menu", 300, 300, True), ("--via-menu", 301, 300, False),
     (None, 30, 30, True), (None, 31, 30, False),
     ("--sim-determinism", 60, 60, True), ("--sim-determinism", 61, 60, False),
+    ("--via-menu --sim-determinism", None, 60, True),
+    ("--via-menu --sim-determinism", 60, 60, True),
+    ("--via-menu --sim-determinism", 61, 60, False),
 ])
 def test_duration_caps_before_any_lease_or_launch(monkeypatch, capsys, mode, duration, cap, accepted):
     import argparse
@@ -29,7 +32,7 @@ def test_duration_caps_before_any_lease_or_launch(monkeypatch, capsys, mode, dur
     monkeypatch.setattr(argparse.ArgumentParser, "parse_args", parse)
     monkeypatch.delenv("MC2_OWNER_NO_LEASE", raising=False)
     monkeypatch.delenv("MC2_PLAY_MISSION", raising=False)
-    monkeypatch.setattr(sys, "argv", ["run_smoke", "--no-lease", *([mode] if mode else []),
+    monkeypatch.setattr(sys, "argv", ["run_smoke", "--no-lease", *(mode.split() if mode else []),
                                     *(["--duration", str(duration)] if duration is not None else [])])
     with pytest.raises(SystemExit) as error:
         run_smoke.main()
@@ -38,8 +41,8 @@ def test_duration_caps_before_any_lease_or_launch(monkeypatch, capsys, mode, dur
     if accepted:
         # Deliberately stop at the existing owner-only guard, before lease/game work.
         assert "--no-lease is owner-only" in stderr and "hard cap" not in stderr
-        if mode == "--via-menu":
-            assert parsed[0].duration == (duration if duration is not None else run_smoke.VIA_MENU_TIMEOUT_S)
+        if mode and "--via-menu" in mode:
+            assert parsed[0].duration == (duration if duration is not None else cap)
     else:
         assert f"cap of {cap}s" in stderr
 

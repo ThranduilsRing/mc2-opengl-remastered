@@ -77,6 +77,7 @@ NIGHTLY=0   # --nightly adds the rows that never failed in 90 gate logs (run_nig
 ROWS_RE=""
 SKIP_RE=""
 ROWS_SKIPPED=0
+MATCHED_SKIPPED=0
 _ARGS=()
 while [ $# -gt 0 ]; do
     if [ "$1" = "--rows" ]; then
@@ -206,7 +207,10 @@ SEEN_LABELS=""
 SEEN_CMDS=""
 
 _row_selected() {   # 0 = run this row (no --rows filter, or the label matches)
-    if [ -n "$SKIP_RE" ] && [[ "$1" =~ $SKIP_RE ]]; then ROWS_SKIPPED=$((ROWS_SKIPPED + 1)); return 1; fi
+    if [ -n "$SKIP_RE" ] && [[ "$1" =~ $SKIP_RE ]]; then
+        if [ -z "$ROWS_RE" ] || [[ "$1" =~ $ROWS_RE ]]; then MATCHED_SKIPPED=$((MATCHED_SKIPPED + 1)); fi
+        ROWS_SKIPPED=$((ROWS_SKIPPED + 1)); return 1
+    fi
     [ -z "$ROWS_RE" ] && return 0
     if [[ "$1" =~ $ROWS_RE ]]; then return 0; fi
     ROWS_SKIPPED=$((ROWS_SKIPPED + 1))
@@ -415,6 +419,7 @@ run_check() {
 NIGHTLY_MATCHES=()
 run_nightly() {
     if [ "$NIGHTLY" -ne 1 ]; then
+        if [ -n "$SKIP_RE" ] && [[ "$1" =~ $SKIP_RE ]]; then _row_selected "$1" || :; fi
         if [ -n "$ROWS_RE" ] && [[ "$1" =~ $ROWS_RE ]] &&
            { [ -z "$SKIP_RE" ] || ! [[ "$1" =~ $SKIP_RE ]]; }; then NIGHTLY_MATCHES+=("$1"); fi
         return 0
@@ -859,6 +864,14 @@ _fail_reason_selftest() {
            bash "$self" --selftest-render --quiet --rows '^st_nightly_only$' --skip-rows '^st_nightly_only$' 2>&1)" || rc=$?
     [ "$rc" -ne 0 ] && _st_ok "skipped nightly selection fails closed" || _st_bad "skipped nightly selection exited 0"
     _st_absent "skipped nightly row has no remedy" "$out" 'add --nightly'
+    _st_want "skipped selection explains match" "$out" 'Rows matched but were skipped'
+    _st_absent "skipped selection is not an unknown label" "$out" 'No row label matched'
+    rc=0
+    out="$(CONTRACTS_SELFTEST=1 SELFTEST_SCENARIO=pass TMPDIR="$td" \
+           bash "$self" --selftest-render --quiet --rows '^st_pass_talks$' --skip-rows '^st_pass_talks$' 2>&1)" || rc=$?
+    [ "$rc" -ne 0 ] && _st_ok "skipped normal selection fails closed" || _st_bad "skipped normal selection exited 0"
+    _st_want "skipped normal selection explains match" "$out" 'Rows matched but were skipped'
+    _st_absent "skipped normal selection is not an unknown label" "$out" 'No row label matched'
 
     rm -rf "$td"
 
@@ -1697,7 +1710,11 @@ if [ -n "$ROWS_RE" ] || [ -n "$SKIP_RE" ]; then
     echo "  PARTIAL BOARD: --rows '$ROWS_RE' ran $((PASS_COUNT + FAIL_COUNT + KNOWN_COUNT)) row(s) and skipped $ROWS_SKIPPED."
     echo "  This is NOT a green board; run the full board (no --rows) before committing a batch."
     if [ "$((PASS_COUNT + FAIL_COUNT + KNOWN_COUNT))" -eq 0 ]; then
-        echo "  No row label matched '$ROWS_RE' -- nothing was checked."
+        if [ "$MATCHED_SKIPPED" -gt 0 ]; then
+            echo "  Rows matched but were skipped by --skip-rows '$SKIP_RE' -- nothing was checked."
+        else
+            echo "  No row label matched '$ROWS_RE' -- nothing was checked."
+        fi
         if [ "${#NIGHTLY_MATCHES[@]}" -gt 0 ]; then
             echo "  Matching row(s) are nightly-only: ${NIGHTLY_MATCHES[*]}; add --nightly."
         fi

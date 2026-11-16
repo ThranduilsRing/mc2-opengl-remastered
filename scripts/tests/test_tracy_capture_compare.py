@@ -201,6 +201,9 @@ def test_tracy_exe_uses_native_name(tmp_path, monkeypatch, platform, suffix, nam
 
 @pytest.fixture
 def harness(monkeypatch):
+    import psutil
+    monkeypatch.setattr(psutil, "Process", Mock(return_value=SimpleNamespace(net_connections=lambda **k: [
+        SimpleNamespace(status=psutil.CONN_ESTABLISHED, raddr=SimpleNamespace(port=8086))])))
     h = SimpleNamespace(held=False, events=[], logs=[], children=[])
 
     def acquire(label, **kwargs):
@@ -366,6 +369,54 @@ def test_via_menu_trace_without_mission_ready_is_invalid(harness, monkeypatch, c
     assert "INVALID: no mission_ready inside the recording window" in capsys.readouterr().err
     assert ("phase=mission_ready" in log[0]) == bool(late)
     assert "game.kill" in h.events and h.events[-1] == "release"
+
+
+@pytest.mark.parametrize("ready_time,exit_time,expected", [(16, 21, 0), (21, 22, 1), (6, 6, 0)])
+def test_via_menu_uses_connection_window_and_final_read(harness, monkeypatch, ready_time, exit_time, expected):
+    import psutil
+    h = harness
+    log = "[MISSION] t=1.00s phase=mission_ready\n"
+    monkeypatch.setattr(Path, "read_text", lambda *a, **k: log if h.clock >= ready_time else "")
+    monkeypatch.setattr(psutil.Process.return_value, "net_connections", lambda **k: [
+        SimpleNamespace(status=psutil.CONN_ESTABLISHED, raddr=SimpleNamespace(port=8086))]
+        if h.clock >= 5 else [])
+    original = h.recorder_spawn.side_effect
+    def recorder(*args, **kwargs):
+        proc = original(*args, **kwargs)
+        def poll():
+            if h.clock >= exit_time:
+                proc.returncode = 0
+            return proc.returncode
+        proc.poll.side_effect = poll
+        return proc
+    h.recorder_spawn.side_effect = recorder
+    # Advance in exact 0.1 s steps so the recorder can exit during sleep.
+    monkeypatch.setattr(capture.time, "sleep", lambda seconds: setattr(h, "clock", round(h.clock + seconds, 1)))
+    assert capture.capture_trace(h.install, "vk", "mc2_01", 15, h.out, via_menu_boot=True) == expected
+    wait_timeout = h.children[0].wait.call_args_list[0].kwargs["timeout"]
+    assert wait_timeout == pytest.approx(105 - h.clock)
+
+
+def test_via_menu_hung_connection_uses_one_overall_deadline(harness, monkeypatch):
+    import psutil
+    h = harness
+    monkeypatch.setattr(psutil.Process.return_value, "net_connections", lambda **k: [])
+    monkeypatch.setattr(Path, "read_text", lambda *a, **k: "")
+    monkeypatch.setattr(capture.time, "sleep", lambda seconds: setattr(h, "clock", round(h.clock + seconds, 1)))
+    original = h.recorder_spawn.side_effect
+    def recorder(*args, **kwargs):
+        proc = original(*args, **kwargs)
+        wait = proc.wait.side_effect
+        def finish(timeout=None):
+            if proc.returncode is None:
+                assert h.clock == 105 and timeout == 0
+                raise subprocess.TimeoutExpired("recorder", timeout)
+            return wait(timeout)
+        proc.wait.side_effect = finish
+        return proc
+    h.recorder_spawn.side_effect = recorder
+    assert capture.capture_trace(h.install, "vk", "mc2_01", 15, h.out, via_menu_boot=True) == 1
+    assert h.clock == 105 and "recorder.kill" in h.events and "game.kill" in h.events
 
 
 @pytest.mark.parametrize("which", ["recorder", "game"])

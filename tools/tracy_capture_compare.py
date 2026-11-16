@@ -404,7 +404,7 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
                                      **nofocus.hidden_kwargs())
             cleanup.callback(_stop_capture_child, child)
             return child
-        recording_deadline = time.monotonic() + seconds
+        overall_deadline = time.monotonic() + seconds + 90
         recorder = None if post_load else start_recorder()
         if not post_load:
             time.sleep(1.0)
@@ -489,6 +489,7 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
                 # An acknowledged command proves the first render has finished initializing.
                 camera_command(channel, f"bench_view {half_map[1]} {half_map[1]} -45 5853.4658 12.5\n")
             row["measurement_start_epoch"] = time.time()
+            overall_deadline = time.monotonic() + seconds + 90
             recorder = start_recorder()
             if pan:
                 pan_camera(channel, float(half_map[1]), seconds - 1)
@@ -499,22 +500,46 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
         intentional_stop = False
         if via_menu_boot or post_load:
             if via_menu_boot:
-                # -s starts after connection, so launch + seconds is a conservative
-                # cutoff inside the recording window. Never count trace-save time.
-                ready_in_window = False
-                while time.monotonic() < recording_deadline and recorder.poll() is None:
+                import psutil
+                try:
+                    recorder_process = psutil.Process(recorder.pid)
+                except psutil.NoSuchProcess:
+                    recorder_process = None
+                recording_start = recording_deadline = ready_at = None
+                def read_window():
+                    nonlocal recording_start, recording_deadline, ready_at
+                    if recording_start is None and recorder_process is not None and recorder.poll() is None:
+                        # Tracy's -s timer starts at client connection, not Popen.
+                        try:
+                            connections = recorder_process.net_connections(kind="tcp")
+                        except psutil.NoSuchProcess:
+                            connections = []
+                        if any(c.status == psutil.CONN_ESTABLISHED and c.raddr
+                               and c.raddr.port == 8086
+                               for c in connections):
+                            recording_start = time.monotonic()
+                            recording_deadline = recording_start + seconds
                     game_lf.flush()
                     window_log = game_log.read_text(encoding="utf-8", errors="replace")
-                    if (re.search(r"^\[MISSION\].*\bphase=mission_ready\s*$", window_log, re.M)
-                            and time.monotonic() < recording_deadline):
-                        ready_in_window = True
+                    if ready_at is None and re.search(r"^\[MISSION\].*\bphase=mission_ready\s*$", window_log, re.M):
+                        ready_at = time.monotonic()
+                while time.monotonic() < overall_deadline and recorder.poll() is None:
+                    read_window()
+                    if ready_at is not None or (recording_deadline is not None
+                                               and time.monotonic() >= recording_deadline):
                         break
                     time.sleep(.1)
+                # The recorder may exit during sleep just as readiness is logged.
+                read_window()
+                ready_in_window = (ready_at is not None and recording_start is not None
+                                   and recording_start <= ready_at < recording_deadline)
             try:
-                recorder.wait(timeout=seconds + 90)
+                recorder.wait(timeout=max(0, overall_deadline - time.monotonic()))
                 rc = int(bool(recorder.returncode))
             except subprocess.TimeoutExpired:
                 rc = 1
+                _stop_capture_child(recorder)
+                _stop_capture_child(gp)
             if via_menu_boot:
                 if not ready_in_window:
                     print(f"INVALID: no mission_ready inside the recording window; see {game_log}", file=sys.stderr)
@@ -534,7 +559,8 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
             gp.kill()
             rc = 1
         try:
-            recorder.wait(timeout=60)
+            recorder.wait(timeout=max(0, overall_deadline - time.monotonic())
+                          if via_menu_boot or post_load else 60)
         except subprocess.TimeoutExpired:
             print(f"WARN: tracy-capture still running -- killing OUR spawned pid "
                   f"{recorder.pid} only", file=sys.stderr)
