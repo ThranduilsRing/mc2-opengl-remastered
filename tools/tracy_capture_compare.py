@@ -404,6 +404,7 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
                                      **nofocus.hidden_kwargs())
             cleanup.callback(_stop_capture_child, child)
             return child
+        recording_deadline = time.monotonic() + seconds
         recorder = None if post_load else start_recorder()
         if not post_load:
             time.sleep(1.0)
@@ -497,17 +498,25 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
         rc = 0
         intentional_stop = False
         if via_menu_boot or post_load:
+            if via_menu_boot:
+                # -s starts after connection, so launch + seconds is a conservative
+                # cutoff inside the recording window. Never count trace-save time.
+                ready_in_window = False
+                while time.monotonic() < recording_deadline and recorder.poll() is None:
+                    game_lf.flush()
+                    window_log = game_log.read_text(encoding="utf-8", errors="replace")
+                    if (re.search(r"^\[MISSION\].*\bphase=mission_ready\s*$", window_log, re.M)
+                            and time.monotonic() < recording_deadline):
+                        ready_in_window = True
+                        break
+                    time.sleep(.1)
             try:
                 recorder.wait(timeout=seconds + 90)
                 rc = int(bool(recorder.returncode))
             except subprocess.TimeoutExpired:
                 rc = 1
             if via_menu_boot:
-                # Snapshot BEFORE stopping/waiting for the game: shutdown or a
-                # slow exit can append readiness after the recorder has ended.
-                game_lf.flush()
-                window_log = game_log.read_text(encoding="utf-8", errors="replace")
-                if "[TIMING v1] event=mission_ready " not in window_log:
+                if not ready_in_window:
                     print(f"INVALID: no mission_ready inside the recording window; see {game_log}", file=sys.stderr)
                     rc = 1
             if recorder.returncode == 0 and gp.poll() is None:

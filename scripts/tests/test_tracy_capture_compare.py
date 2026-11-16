@@ -278,7 +278,12 @@ def harness(monkeypatch):
     monkeypatch.setattr(capture.render_options_pin, "record", Mock(return_value={"rejected": []}))
     monkeypatch.setattr(capture.render_options_pin, "write", Mock())
     monkeypatch.setattr(capture, "crash_dumps", lambda install: {})
-    monkeypatch.setattr(Path, "read_text", lambda *a, **k: "[TIMING v1] event=mission_ready elapsed_ms=1000\n")
+    h.clock = 0.0
+    monkeypatch.setattr(capture.time, "monotonic", lambda: h.clock)
+    monkeypatch.setattr(capture.time, "sleep", lambda seconds: setattr(h, "clock", h.clock + seconds))
+    monkeypatch.setattr(Path, "read_text", lambda *a, **k:
+                        "[MISSION] t=  0.00s  phase=mission_load_start\n"
+                        "[MISSION] t=  1.00s  phase=mission_ready\n")
     h.run = lambda show_window=True: capture.capture_trace(h.install, "vk", "mc2_01", 15, h.out,
                                                           show_window=show_window)
     return h
@@ -329,25 +334,37 @@ def test_via_menu_ignores_only_its_own_game_stop(harness, exited, recorder_rc, e
     h.release.assert_called_once()
 
 
-@pytest.mark.parametrize("late", [False, True])
+@pytest.mark.parametrize("late", [False, "shutdown", "finalization"])
 def test_via_menu_trace_without_mission_ready_is_invalid(harness, monkeypatch, capsys, late):
     h = harness
-    log = ["[TIMING v1] event=mission_settings_ready elapsed_ms=120000\n"]
+    log = ["[MISSION] t=  0.00s  phase=mission_load_start\n"]
     monkeypatch.setattr(Path, "read_text", lambda *a, **k: log[0])
     original = h.game_spawn.side_effect
     def spawn(*args, **kwargs):
         proc = original(*args, **kwargs)
         kill = proc.kill.side_effect
         def stop():
-            if late:
-                log[0] += "[TIMING v1] event=mission_ready elapsed_ms=177000\n"
+            if late == "shutdown":
+                log[0] += "[MISSION] t=177.00s  phase=mission_ready\n"
             kill()
         proc.kill.side_effect = stop
         return proc
     h.game_spawn.side_effect = spawn
+    if late == "finalization":
+        spawn_recorder = h.recorder_spawn.side_effect
+        def recorder(*args, **kwargs):
+            proc = spawn_recorder(*args, **kwargs)
+            wait = proc.wait.side_effect
+            def finish(timeout=None):
+                assert h.clock >= 120  # timed recording ended, process still saving
+                log[0] += "[MISSION] t=177.00s  phase=mission_ready\n"
+                return wait(timeout)
+            proc.wait.side_effect = finish
+            return proc
+        h.recorder_spawn.side_effect = recorder
     assert capture.capture_trace(h.install, "vk", "mc2_01", 120, h.out, via_menu_boot=True) != 0
     assert "INVALID: no mission_ready inside the recording window" in capsys.readouterr().err
-    assert ("event=mission_ready " in log[0]) is late
+    assert ("phase=mission_ready" in log[0]) == bool(late)
     assert "game.kill" in h.events and h.events[-1] == "release"
 
 

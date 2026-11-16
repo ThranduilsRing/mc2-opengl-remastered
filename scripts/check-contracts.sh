@@ -415,7 +415,8 @@ run_check() {
 NIGHTLY_MATCHES=()
 run_nightly() {
     if [ "$NIGHTLY" -ne 1 ]; then
-        if [ -n "$ROWS_RE" ] && [[ "$1" =~ $ROWS_RE ]]; then NIGHTLY_MATCHES+=("$1"); fi
+        if [ -n "$ROWS_RE" ] && [[ "$1" =~ $ROWS_RE ]] &&
+           { [ -z "$SKIP_RE" ] || ! [[ "$1" =~ $SKIP_RE ]]; }; then NIGHTLY_MATCHES+=("$1"); fi
         return 0
     fi
     run_check "$@"
@@ -852,6 +853,12 @@ _fail_reason_selftest() {
            bash "$self" --selftest-render --quiet --nightly --rows '^st_nightly_only$' 2>&1)" || rc=$?
     [ "$rc" -eq 0 ] && _st_ok "--nightly selects nightly row" || _st_bad "--nightly did not select nightly row"
     _st_absent "selected nightly row has no remedy" "$out" 'add --nightly'
+
+    rc=0
+    out="$(CONTRACTS_SELFTEST=1 SELFTEST_SCENARIO=pass TMPDIR="$td" \
+           bash "$self" --selftest-render --quiet --rows '^st_nightly_only$' --skip-rows '^st_nightly_only$' 2>&1)" || rc=$?
+    [ "$rc" -ne 0 ] && _st_ok "skipped nightly selection fails closed" || _st_bad "skipped nightly selection exited 0"
+    _st_absent "skipped nightly row has no remedy" "$out" 'add --nightly'
 
     rm -rf "$td"
 
