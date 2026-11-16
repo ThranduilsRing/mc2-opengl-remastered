@@ -50,6 +50,7 @@ const std::unordered_set<std::string>& knownTags() {
         "DEVICE",
         "SHADER_COMPILE",
         "CAPTURE_FOCUS",
+        "COMPASS_SYNC",   // [COMPASS_SYNC]: per-frame compass camera position/yaw/pitch at the render-time refresh. Opt-in.
         "LOGISTICS",
         "FRAME_JOBS",
         "CURSOR_TARGET",
