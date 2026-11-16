@@ -71,6 +71,7 @@ public:
             const auto& [k, idx] = *it;
             return MaterialHandle::make(idx, kIssuedGeneration);
         }
+        if (keys_.size() >= 0x100000u) return MaterialHandle::invalid();
         const uint32_t idx = static_cast<uint32_t>(keys_.size());
         keys_.push_back(key);
         byKey_.emplace(key, idx);

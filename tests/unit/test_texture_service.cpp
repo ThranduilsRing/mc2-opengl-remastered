@@ -182,6 +182,15 @@ MaterialKey matKey(uint64_t mesh, uint32_t slot, TextureHandle albedo, uint32_t 
 
 TEST_SUITE("MaterialRegistry") {
 
+TEST_CASE("MaterialRegistry refuses indices beyond the handle field") {
+    MaterialRegistry r;
+    for (uint32_t i = 0; i < 0x100000u; ++i)
+        REQUIRE(r.acquire(matKey(i, 0, TextureHandle::make(1, 1))).index() == i);
+    CHECK_FALSE(r.acquire(matKey(0x100000u, 0, TextureHandle::make(1, 1))).isValid());
+    CHECK(r.materialCount() == 0x100000u);
+    CHECK(r.acquire(matKey(0, 0, TextureHandle::make(1, 1))) == MaterialHandle::make(0, 1));
+}
+
 TEST_CASE("equal keys are one material; the semantic of the unified table is the descriptor index") {
     MaterialRegistry r;
     const TextureHandle t = TextureHandle::make(3, 1);
