@@ -1,20 +1,16 @@
 #!/usr/bin/env python3
-"""Linux counterpart of run_mp_loopback_proof.py; fold into it after mp-4 merges.
-
-Run only under slot.sh N --game. Imports its read_trace/compare_traces (lines
-28-75) and fixture_orders (78-93) unchanged; peer_command mirrors peer_start
-(96-130), replacing the Windows executable/spawner. ClientShim and argument
-validation are imported unchanged from the Windows runner (132-220).
-"""
+"""Linux headless lockstep pair runner; run under slot.sh N --game."""
 from __future__ import annotations
 
 from contextlib import ExitStack
+import itertools
 import json
 import os
 from pathlib import Path
 import select
 import socket
 import subprocess
+import sys
 import time
 
 from run_mp_loopback_proof import ClientShim, arguments, compare_traces, fixture_orders, read_trace
@@ -59,7 +55,7 @@ def evaluate(peers, ticks, codes, combat=False, expected_codes=None, max_extra=2
     for peer in peers:
         trace = text(peer / "session.trace")
         combined = "\n".join(text(peer / name) for name in
-                             ("launcher.log", "stdout.log", "stderr.log", "diagnostic.jsonl", "session.trace"))
+                             ("launcher.log", "launcher.err.log", "stdout.log", "stderr.log", "diagnostic.jsonl", "session.trace"))
         logs.append(combined)
         result["handshake"].append([line for line in trace.splitlines()
                                     if line.startswith(("IDENTITY ", "NETWORK "))])
@@ -78,12 +74,19 @@ def evaluate(peers, ticks, codes, combat=False, expected_codes=None, max_extra=2
             result["classification"] = "handshake refusal"
         if not any(line.startswith("NETWORK ") for line in trace.splitlines()):
             errors.append(f"{peer.name}: no NETWORK record (peer never connects)")
-    for tick in range(1, min(map(len, hashes)) + 1):
+    for tick in range(1, min(max(rows, default=0) for rows in hashes) + 1):
+        if any(tick not in rows for rows in hashes):
+            errors.append(f"missing hash at tick={tick}")
+            result["first_divergent_tick"] = tick
+            result["first_divergent_field"] = "H tick"
+            break
         if hashes[0][tick] != hashes[1][tick]:
             result["first_divergent_tick"] = tick
-            index = next(i for i, pair in enumerate(zip(hashes[0][tick], hashes[1][tick])) if pair[0] != pair[1])
+            index = next(i for i, pair in enumerate(itertools.zip_longest(
+                hashes[0][tick], hashes[1][tick], fillvalue="<missing>")) if pair[0] != pair[1])
             result["first_divergent_field"] = f"H[{index + 2}]"
-            result["divergent_values"] = [rows[tick][index] for rows in hashes]
+            result["divergent_values"] = [rows[tick][index] if index < len(rows[tick]) else "<missing>"
+                                          for rows in hashes]
             break
         result["equal_ticks"] += 1
     result["simid_detail"] = [[line for line in log.splitlines() if "[SIMID]" in line][-20:] for log in logs]
@@ -124,15 +127,24 @@ def stop(processes):
     for proc in processes:
         if proc.poll() is None:
             proc.terminate()
-    for proc in processes:
-        try:
-            proc.wait(timeout=3)
-        except subprocess.TimeoutExpired:
-            proc.kill()
+    try:
+        for proc in processes:
+            try:
+                proc.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait()
+    except BaseException:
+        for proc in processes:
+            if proc.poll() is None:
+                proc.kill()
             proc.wait()
+        raise
 
 
 def run_pair(args):
+    if sys.platform != "linux":
+        raise RuntimeError("Linux only")
     args.install = args.install.resolve()
     args.out = args.out.resolve()
     args.out.mkdir(parents=True, exist_ok=False)
@@ -155,9 +167,10 @@ def run_pair(args):
             for slot, peer in enumerate(peers):
                 argv, env = peer_command(args, peer, slot)
                 log = logs.enter_context((peer / "launcher.log").open("w", encoding="utf-8"))
+                err = logs.enter_context((peer / "launcher.err.log").open("w", encoding="utf-8"))
                 # background-launch: allow Linux headless peers under slot.sh --game; only owned PIDs are stopped
-                processes.append(subprocess.Popen(argv, cwd=args.install, env=env, stdout=log, stderr=subprocess.STDOUT))
-            while any(proc.poll() is None for proc in processes):
+                processes.append(subprocess.Popen(argv, cwd=args.install, env=env, stdout=log, stderr=err))
+            while any(rc is None for rc in [proc.poll() for proc in processes]):
                 now = time.monotonic()
                 elapsed = now - started
                 if elapsed > args.timeout:
@@ -254,6 +267,10 @@ def run_pair(args):
                   rendezvous_seconds=max(network) if all(n is not None for n in network) else None,
                   pids=[proc.pid for proc in processes], requested_ticks=args.ticks, combat=args.combat)
     result.update(faults=shim.receipt(), events=events, cleanup_kill=cleanup, exit_wall_seconds=exits)
+    if result["result"] == "FAIL":
+        result["peer_stdio"] = {p.name: {
+            "stdout": (text(p / "stdout.log") + text(p / "launcher.log"))[-4096:],
+            "stderr": (text(p / "stderr.log") + text(p / "launcher.err.log"))[-4096:]} for p in peers}
     (args.out / "verdict.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     print(f"{result['result']} ticks={result['ticks_reached']} equal={result['equal_ticks']} "
           f"wall={result['wall_seconds']:.2f}s verdict={args.out / 'verdict.json'}", flush=True)

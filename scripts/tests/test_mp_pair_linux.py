@@ -46,7 +46,7 @@ def test_argv_environment_and_fixture_per_role(tmp_path, monkeypatch, slot, comb
     assert not any(key in env for key in ("MC2_COMMAND_REPLAY_PLAY", "MC2_COMMAND_REPLAY_RECORD"))
 
 
-@pytest.mark.parametrize("case", ["equal", "divergent", "desync", "refusal", "content-refusal", "missing-network", "short", "commands", "exit", "truncated-command", "truncated-combat"])
+@pytest.mark.parametrize("case", ["equal", "divergent", "desync", "refusal", "content-refusal", "missing-network", "short", "commands", "exit", "truncated-command", "truncated-combat", "gapped-tick", "unequal-row"])
 def test_verdict_synthetic_traces(tmp_path, case):
     peers = [tmp_path / "host", tmp_path / "client"]
     for peer in peers:
@@ -74,6 +74,10 @@ def test_verdict_synthetic_traces(tmp_path, case):
         content = content.replace("C 1 00", "C")
     elif case == "truncated-combat":
         content += "B 3 0\n"
+    elif case == "gapped-tick":
+        content = content.replace("H 17 a b c d 11\n", "")
+    elif case == "unequal-row":
+        content = content.replace("H 17 a b c d 11", "H 17 a b c d")
     path.write_text(content)
     verdict = pair.evaluate(peers, 64, codes, **({"combat": True} if case == "truncated-combat" else {}))
     assert verdict["result"] == ("PASS" if case == "equal" else "FAIL")
@@ -83,8 +87,33 @@ def test_verdict_synthetic_traces(tmp_path, case):
         assert verdict["equal_ticks"] == 16
 
 
+@pytest.mark.parametrize("case", ["gapped-tick", "unequal-row"])
+def test_evaluate_irregular_hash_rows(tmp_path, monkeypatch, case):
+    peers = [tmp_path / "host", tmp_path / "client"]
+    for peer in peers:
+        trace(peer)
+    original = pair.read_trace
+
+    def irregular(path):
+        rows, orders = original(path)
+        if path.parent == peers[1]:
+            if case == "gapped-tick":
+                del rows[17]
+            else:
+                rows[17] = rows[17][:-1]
+        return rows, orders
+
+    monkeypatch.setattr(pair, "read_trace", irregular)
+    verdict = pair.evaluate(peers, 64, [0, 0])
+    assert verdict["result"] == "FAIL"
+    assert verdict["first_divergent_tick"] == 17
+    if case == "unequal-row":
+        assert verdict["divergent_values"] == ["11", "<missing>"]
+
+
 @pytest.fixture
 def fake_peer(tmp_path, monkeypatch):
+    monkeypatch.setattr(pair.sys, "platform", "linux")
     stub = tmp_path / "fake_peer.py"
     stub.write_text('''import argparse, os, pathlib, time
 p = argparse.ArgumentParser()
@@ -92,6 +121,9 @@ p.add_argument('--mp-user-dir')
 p.add_argument('--ticks', type=int)
 a, unknown = p.parse_known_args()
 root = pathlib.Path(a.mp_user_dir)
+print('launcher stdout', flush=True)
+import sys
+print('launcher stderr', file=sys.stderr, flush=True)
 if os.environ.get('PAIR_FAKE_RELAY'):
     import socket
     host = '--host' in unknown
@@ -147,13 +179,17 @@ def test_fake_pair_fixture_creation_and_directory_isolation(tmp_path, fake_peer,
     assert json.loads((args.out / "verdict.json").read_text())["ticks_reached"] == [64, 64]
 
 
-@pytest.mark.parametrize("failure", ["timeout", "peer-dies", "short-peer", "interrupt", "second-spawn"])
+@pytest.mark.parametrize("failure", ["timeout", "peer-dies", "short-peer", "client-dies", "short-client", "interrupt", "second-spawn"])
 def test_owned_children_reaped_on_every_exit(tmp_path, monkeypatch, fake_peer, failure):
     monkeypatch.setenv("PAIR_FAKE_HANG", "1")
     args = options(tmp_path, timeout=0.4)
     if failure in ("peer-dies", "short-peer"):
         monkeypatch.setenv("PAIR_FAKE_HANG", "client")
         monkeypatch.setenv("PAIR_FAKE_DIE" if failure == "peer-dies" else "PAIR_FAKE_SHORT", "host")
+    elif failure in ("client-dies", "short-client"):
+        args.timeout = 5
+        monkeypatch.setenv("PAIR_FAKE_HANG", "host")
+        monkeypatch.setenv("PAIR_FAKE_DIE" if failure == "client-dies" else "PAIR_FAKE_SHORT", "client")
     elif failure in ("interrupt", "second-spawn"):
         spawn = pair.subprocess.Popen
 
@@ -167,6 +203,11 @@ def test_owned_children_reaped_on_every_exit(tmp_path, monkeypatch, fake_peer, f
         monkeypatch.setattr(pair.subprocess, "Popen", failing_spawn)
     verdict = pair.run_pair(args)
     assert verdict["result"] == "FAIL"
+    assert set(verdict["peer_stdio"]) == {"host", "client"}
+    if failure in ("client-dies", "short-client"):
+        assert verdict["wall_seconds"] < 2
+        assert verdict["peer_stdio"]["client"] == {
+            "stdout": "fake stdoutlauncher stdout\n", "stderr": "fake stderrlauncher stderr\n"}
     assert fake_peer and all(proc.poll() is not None for proc in fake_peer)
     assert (args.out / "verdict.json").exists()
     if failure == "timeout":
@@ -174,6 +215,37 @@ def test_owned_children_reaped_on_every_exit(tmp_path, monkeypatch, fake_peer, f
         assert all(proc.returncode != 0 for proc in fake_peer)
     if failure in ("peer-dies", "short-peer"):
         assert fake_peer[1].returncode != 0
+
+
+def test_platform_guard_before_output_creation(tmp_path, monkeypatch):
+    monkeypatch.setattr(pair.sys, "platform", "win32")
+    with pytest.raises(RuntimeError, match="Linux only"):
+        pair.run_pair(options(tmp_path))
+    assert not (tmp_path / "proof").exists()
+
+
+def test_module_description():
+    assert pair.__doc__ == "Linux headless lockstep pair runner; run under slot.sh N --game."
+
+
+def test_stop_reaps_all_owned_processes_after_second_interrupt():
+    class Owned:
+        returncode = None
+        waited = False
+        def poll(self):
+            return self.returncode
+        def terminate(self):
+            pass
+        def kill(self):
+            self.returncode = -9
+        def wait(self, timeout=None):
+            if timeout is not None:
+                raise KeyboardInterrupt()
+            self.waited = True
+    children = [Owned(), Owned()]
+    with pytest.raises(KeyboardInterrupt):
+        pair.stop(children)
+    assert all(p.returncode == -9 and p.waited for p in children)
 
 
 @pytest.mark.parametrize("fault", ["--loss=100", "--loss=-1", "--latency=-1", "--latency=inf",
