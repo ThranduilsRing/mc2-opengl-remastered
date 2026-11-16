@@ -317,7 +317,7 @@ def test_lease_precedes_both_children_and_covers_normal_exit(harness, show_windo
 
 
 @pytest.mark.parametrize("exited,recorder_rc,expected", [(False, 0, 0), (True, 0, 1), (False, 1, 1)])
-def test_via_menu_ignores_only_its_own_game_stop(harness, exited, recorder_rc, expected):
+def test_via_menu_ignores_only_its_own_game_stop(harness, capsys, exited, recorder_rc, expected):
     h = harness
     spawn_game, spawn_recorder = h.game_spawn.side_effect, h.recorder_spawn.side_effect
 
@@ -339,11 +339,20 @@ def test_via_menu_ignores_only_its_own_game_stop(harness, exited, recorder_rc, e
     h.game_spawn.side_effect, h.recorder_spawn.side_effect = game, recorder
     assert capture.capture_trace(h.install, "vk", "mc2_01", 15, h.out, via_menu_boot=True) == expected
     assert ("game.kill" in h.events) is not exited
+    if expected:
+        capture.mission_ready_in_trace.assert_not_called()
+        assert "INVALID:" not in capsys.readouterr().err
+    else:
+        capture.mission_ready_in_trace.assert_called_once()
     h.release.assert_called_once()
 
 
-@pytest.mark.parametrize("late", [False, "shutdown", "finalization"])
-def test_via_menu_trace_without_mission_ready_is_invalid(harness, monkeypatch, capsys, late):
+@pytest.mark.parametrize("late,diagnostic,ready", [
+    (False, "log does not show ready", False),
+    ("shutdown", "log shows ready, trace does not", True),
+    ("finalization", "log shows ready, trace does not", True),
+])
+def test_via_menu_trace_without_mission_ready_is_invalid(harness, monkeypatch, capsys, late, diagnostic, ready):
     h = harness
     capture.mission_ready_in_trace.return_value = "no interface after load"
     log = ["[MISSION] t=  0.00s  phase=mission_load_start\n"]
@@ -373,8 +382,8 @@ def test_via_menu_trace_without_mission_ready_is_invalid(harness, monkeypatch, c
     assert capture.capture_trace(h.install, "vk", "mc2_01", 120, h.out, via_menu_boot=True) != 0
     error = capsys.readouterr().err
     assert "INVALID: no mission_ready inside the recording window" in error
-    assert ("log shows ready, trace does not" in error) == bool(late)
-    assert ("phase=mission_ready" in log[0]) == bool(late)
+    assert diagnostic in error
+    assert ("phase=mission_ready" in log[0]) == ready
     assert "game.kill" in h.events and h.events[-1] == "release"
 
 
@@ -701,6 +710,11 @@ def test_tick_capture_waits_for_disconnect_and_requires_budget(harness, monkeypa
     (("Mission::init", "bad", "10"), ("GameLogic.Mission.Interface", "20", "1"), False),
     (("Mission::init", "10", "bad"), ("GameLogic.Mission.Interface", "20", "1"), False),
     (("Mission::init", "10", None), ("GameLogic.Mission.Interface", "20", "1"), False),
+    (("Mission::init", "10", "0"), ("GameLogic.Mission.Interface", "20", "1"), False),
+    (("Mission::init", "10", "-1"), ("GameLogic.Mission.Interface", "20", "1"), False),
+    (("Mission::init", "10", "10"), ("GameLogic.Mission.Interface", "20", "0"), False),
+    (("Mission::init", "10", "10"), ("GameLogic.Mission.Interface", "20", "-1"), False),
+    (("Mission::init", "10", "10"), ("GameLogic.Mission.Interface", "20", None), False),
     (("Mission::init", "10", "10"), ("GameLogic.Mission.Interface extra", "20", "1"), False)])
 def test_mission_ready_anchor(key, load, active, valid):
     def rows(event):
@@ -713,7 +727,16 @@ def test_mission_ready_anchor(key, load, active, valid):
     assert (capture.mission_ready_anchor(rows(load), rows(active)) is None) == valid
 
 
-@pytest.mark.parametrize("failure", [None, "rc", "timeout", "oserror", "empty", "header"])
+@pytest.mark.parametrize("starts,valid", [([15], False), ([25, 15], True)])
+def test_mission_ready_anchor_pairs_latest_load(starts, valid):
+    loads = [dict(name=capture.MISSION_LOAD_ZONE, ns_since_start=start, ns=duration)
+             for start, duration in ((10, 10), (0, 5))]
+    active = [dict(name=capture.MISSION_ACTIVE_ZONE, ns_since_start=start, ns=1)
+              for start in starts]
+    assert (capture.mission_ready_anchor(loads, active) is None) == valid
+
+
+@pytest.mark.parametrize("failure", [None, "rc", "timeout", "oserror", "decode", "unicode", "csv", "empty", "header"])
 @pytest.mark.parametrize("fail_at", [0, 1])
 def test_mission_ready_in_trace_exports(monkeypatch, failure, fail_at):
     exports = [SimpleNamespace(returncode=0, stdout=f"name,ns_since_start,ns\n{zone},{start},10\n")
@@ -723,6 +746,9 @@ def test_mission_ready_in_trace_exports(monkeypatch, failure, fail_at):
             "rc": SimpleNamespace(returncode=1, stdout=""),
             "timeout": subprocess.TimeoutExpired("csvexport", 300),
             "oserror": OSError("export unavailable"),
+            "decode": UnicodeDecodeError("utf-8", b"\xff", 0, 1, "invalid byte"),
+            "unicode": UnicodeError("export decoding failed"),
+            "csv": SimpleNamespace(returncode=0, stdout='name,ns_since_start,ns\n"unterminated'),
             "empty": SimpleNamespace(returncode=0, stdout=""),
             "header": SimpleNamespace(returncode=0, stdout="name,ns_since_start,ns\n"),
         }[failure]

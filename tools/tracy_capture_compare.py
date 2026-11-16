@@ -366,13 +366,20 @@ def mission_ready_anchor(load_rows, active_rows) -> str | None:
                 matched.append((int(row["ns_since_start"]), int(row[duration_key])))
             except (KeyError, TypeError, ValueError):
                 return f"{zone}: missing or non-integer timestamp/duration"
+            if matched[-1][1] <= 0:
+                return f"{zone}: non-positive duration (unfinished zone)"
         if not matched:
             return ("recording did not cover the mission load" if zone == MISSION_LOAD_ZONE
                     else "recording has no mission interface event")
         events.append(matched)
-    if any(start >= load_start + duration for load_start, duration in events[0]
-           for start, _ in events[1]):
-        return None
+    for start, _ in sorted(events[1]):
+        loads = [(load_start, duration) for load_start, duration in events[0]
+                 if load_start <= start]
+        if loads:
+            # A prior mission must not mask a newer load still in progress.
+            load_start, duration = max(loads)
+            if start >= load_start + duration:
+                return None
     return "recording has no mission interface event after the mission load"
 
 
@@ -385,11 +392,11 @@ def mission_ready_in_trace(trace, export_exe) -> str | None:
             result = subprocess.run([str(export_exe), "-f", zone, "-u", str(trace)],
                                     capture_output=True, text=True, timeout=300,
                                     **nofocus.hidden_kwargs())
-        except (subprocess.TimeoutExpired, OSError) as exc:
+            if result.returncode:
+                return f"{zone}: csvexport exited {result.returncode}"
+            rows = list(csv.DictReader(io.StringIO(result.stdout), strict=True))
+        except (subprocess.TimeoutExpired, OSError, UnicodeError, csv.Error) as exc:
             return f"{zone}: csvexport failed ({exc})"
-        if result.returncode:
-            return f"{zone}: csvexport exited {result.returncode}"
-        rows = list(csv.DictReader(io.StringIO(result.stdout)))
         if not rows:
             return f"{zone}: empty csvexport output"
         exports.append(rows)
@@ -618,7 +625,7 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
             sys.exit(f"ERROR: trace {out} missing or trivial ({size} bytes < "
                      f"{MIN_TRACE_BYTES}); see {cap_log} / {game_log}")
 
-        if via_menu_boot:
+        if via_menu_boot and rc == 0:
             reason = mission_ready_in_trace(out, export_exe)
             if reason is not None:
                 ready_logged = re.search(r"^\[MISSION\].*\bphase=mission_ready\s*$", log_text, re.M)
