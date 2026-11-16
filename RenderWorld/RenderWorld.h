@@ -183,6 +183,7 @@ enum class RenderObjectKind : uint8_t {
     // ship as a new named slice (HoverKindIndicator /
     // RenderWorldDebugOverlay / M5-perf overlay-decal GPU port) — NOT
     // as "M5 Overlay."
+    None       = 0xFFu, // Unpopulated record, including gaps below the mech range.
 };
 
 // M1.5: per-slot inspection record. Indexed by handle.index().
@@ -209,7 +210,7 @@ struct RenderObjectRecord {
     // M2: kind tag. Populated by registerMech (kind=Mech) and upsertStaticProp
     // (kind=StaticProp). lookupAtPixel callers MUST check kind before consuming
     // kind-specific fields.
-    RenderObjectKind kind     = RenderObjectKind::StaticProp;  // default for M1 legacy slots
+    RenderObjectKind kind     = RenderObjectKind::None;
     // M2: opaque debug cookie. Stored for log output; never dereferenced by engine.
     // For mechs: reinterpret_cast<uintptr_t>(&mech3DAppearance). For static props: 0.
     uintptr_t debugCookie     = 0;

@@ -63,6 +63,7 @@ std::atomic<uint64_t> s_upsertOk{0};
 std::atomic<uint64_t> s_upsertFail{0};
 std::atomic<uint64_t> s_destroyCalls{0};
 std::atomic<uint64_t> s_markVisibleCalls{0};
+uint32_t s_staticPropRecordEnd = 0; // Guarded by s_objectRecordsMutex; excludes mech storage.
 std::atomic<uint64_t> s_frameCounter{0};
 
 // M1.5: cached env-flag accessor. First call reads MC2_OBJECT_ID_BUFFER
@@ -162,6 +163,8 @@ void populateRecord(uint32_t handleIndex,
         s_objectRecords.resize(cap);
     }
     auto& rec = s_objectRecords[handleIndex];
+    if (handleIndex < RenderWorld::detail::kMechHandleBase && handleIndex >= s_staticPropRecordEnd)
+        s_staticPropRecordEnd = handleIndex + 1;
     rec.generation         = generation;
     rec.flags              = RenderWorld::kRenderObjectFlagAlive;
     rec.meshHandleBits     = 0;           // M1.5: unknown (no MeshHandle producer)
@@ -984,7 +987,8 @@ uint64_t getMechsAliveCount() {
 uint32_t getStaticPropSlotCount() {
     std::lock_guard<std::mutex> lock(s_objectRecordsMutex);
     uint32_t count = 0;
-    for (const auto& rec : s_objectRecords) {
+    for (uint32_t i = 0; i < s_staticPropRecordEnd; ++i) {
+        const auto& rec = s_objectRecords[i];
         if (rec.kind == RenderObjectKind::StaticProp) ++count;
     }
     return count;
@@ -994,7 +998,7 @@ uint32_t fillStaticPropSlots(StaticPropRecordView* out, uint32_t capacity) {
     std::lock_guard<std::mutex> lock(s_objectRecordsMutex);
     uint32_t total   = 0;
     uint32_t written = 0;
-    for (uint32_t i = 0; i < static_cast<uint32_t>(s_objectRecords.size()); ++i) {
+    for (uint32_t i = 0; i < s_staticPropRecordEnd; ++i) {
         const RenderObjectRecord& rec = s_objectRecords[i];
         if (rec.kind != RenderObjectKind::StaticProp) continue;
         ++total;

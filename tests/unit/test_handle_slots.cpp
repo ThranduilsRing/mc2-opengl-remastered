@@ -119,6 +119,7 @@ TEST_CASE("mech mission sweep mirrors slot generations across wrap and reuse") {
     for (uint32_t i = 0; i <= RenderCore::HandleSlotTable::kMaxGeneration; ++i) {
         const auto old = registerMech({});
         REQUIRE(old.isValid());
+        CHECK(detail::objectRecords.front().kind == RenderObjectKind::None);
         clearAllMechRecords();
         const auto& rec = detail::objectRecords[old.index()];
         CHECK(rec.generation != old.generation());
