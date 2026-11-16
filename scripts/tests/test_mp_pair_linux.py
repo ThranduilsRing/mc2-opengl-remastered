@@ -334,7 +334,8 @@ def test_combat_policy_and_identical_rows(tmp_path, loss, latency, passed):
 
 
 @pytest.mark.parametrize("row", ["F1-rerun", "F3"])
-def test_compare_only_archived_configurations(tmp_path, monkeypatch, row):
+@pytest.mark.parametrize("runner_error", [None, "runner failed"])
+def test_compare_only_archived_configurations(tmp_path, monkeypatch, row, runner_error):
     f1 = row == "F1-rerun"
     ticks = 18000 if f1 else 3000
     args = options(tmp_path, ticks=ticks)
@@ -352,13 +353,16 @@ def test_compare_only_archived_configurations(tmp_path, monkeypatch, row):
                     faults=dict(dropped=2900 if f1 else 0), errors=[
                         "ValueError: combat requires firing and damage from both owned groups: counts"] if f1 else [])
     path = args.out / "verdict.json"
+    original.update(result="FAIL", classification="stale", peer_stdio={"host": "stale"}, runner_error=runner_error)
     before = json.dumps(original)
     path.write_text(before)
     monkeypatch.setattr(pair, "run_pair", lambda args: pytest.fail("compare-only launched peers"))
     argv = ["--install", str(tmp_path), "--out", str(args.out), "--compare-only", "--combat", "--ticks", str(ticks)]
     argv += ["--loss", "2", "--latency", "60", "--jitter", "20"] if f1 else ["--stall-ms", "2000", "--stall-tick", "1500"]
-    assert pair.main(argv) == 0
+    assert pair.main(argv) == (1 if runner_error else 0)
     result = json.loads((args.out / "verdict.reeval.json").read_text())
+    assert "peer_stdio" not in result and "runner_error" not in result and result["classification"] == "connected"
+    assert not runner_error or runner_error in result["errors"]
     assert result["combat_evidence"]["both_groups"] == (not f1)
     assert path.read_text() == before
     original["errors"].append("unrelated failure")
@@ -408,3 +412,25 @@ def test_owned_termination_is_not_a_crash(tmp_path):
         trace(peer)
     verdict = pair.evaluate(peers, 64, [-15, -15], cleanup=[True, True])
     assert verdict["classification"] != "crash"
+
+
+@pytest.mark.parametrize("codes,cleanup,kill,recorded,desync,classification", [
+    ([-11, 3], [False, False], None, False, False, "crash"),
+    ([-9, 3], [False, False], "host", True, False, "transport stop"),
+    ([-9, -11], [False, False], "host", True, False, "crash"),
+    ([-15, -11], [True, False], None, False, False, "crash"),
+    ([-9, 3], [False, False], "host", False, False, "crash"),
+    ([-11, 3], [False, False], "host", True, False, "crash"),
+    ([-9, -11], [False, False], "host", True, True, "desync"),
+])
+def test_crash_precedence_with_disconnect(tmp_path, codes, cleanup, kill, recorded, desync, classification):
+    peers = [tmp_path / name for name in ("host", "client")]
+    for peer in peers:
+        trace(peer)
+        with (peer / "session.trace").open("a") as log:
+            log.write("STOP MP peer disconnected\n" + ("[MP_DESYNC] test\n" if desync else ""))
+    receipt = dict(events=[dict(event="kill", peer="host", wall=1)] if recorded else [],
+                   cleanup_kill=cleanup, exit_wall_seconds=[2, 3], faults=dict(dropped=0))
+    verdict = pair.evaluate_run(options(tmp_path, kill_peer=kill), peers, codes, [64, 64], receipt)
+    assert verdict["classification"] == classification
+    assert verdict["result"] == ("PASS" if classification == "transport stop" else "FAIL")

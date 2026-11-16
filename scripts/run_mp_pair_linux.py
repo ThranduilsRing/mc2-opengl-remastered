@@ -46,7 +46,7 @@ def text(path):
 
 
 def evaluate(peers, ticks, codes, combat=False, expected_codes=None, max_extra=2,
-             loss=0, latency=0, cleanup=None):
+             loss=0, latency=0, cleanup=None, killed=None):
     result = dict(result="FAIL", ticks_reached=[], peer_exit_codes=codes,
                   first_divergent_tick=None, first_divergent_field=None,
                   equal_ticks=0, handshake=[], desync_lines=[], first_failing_line=None)
@@ -91,7 +91,12 @@ def evaluate(peers, ticks, codes, combat=False, expected_codes=None, max_extra=2
             break
         result["equal_ticks"] += 1
     result["simid_detail"] = [[line for line in log.splitlines() if "[SIMID]" in line][-20:] for log in logs]
-    if codes != (expected_codes if expected_codes is not None else [0, 0]):
+    # Recorded kills exempt only that peer and the signal the runner sent.
+    crashed = [i for i, code in enumerate(codes)
+               if code is not None and code < 0
+               and not ((cleanup or [False, False])[i] and code in (-15, -9))
+               and not (i == killed and code == -9)]
+    if crashed or codes != (expected_codes if expected_codes is not None else [0, 0]):
         errors.append(f"peer exit codes: {codes}")
     if result["desync_lines"]:
         errors.append(result["desync_lines"][0])
@@ -124,10 +129,10 @@ def evaluate(peers, ticks, codes, combat=False, expected_codes=None, max_extra=2
         result["classification"] = "desync"
     result["errors"] = errors
     result["first_failing_line"] = errors[0] if errors else None
+    if crashed and result.get("classification") != "desync":
+        result["classification"] = "crash"
     result.setdefault("classification", "peer never connects" if any("no NETWORK" in e for e in errors)
                       else "transport stop" if any("STOP MP peer" in log for log in logs)
-                      else "crash" if any(code is not None and code < 0 and not (cleanup or [False, False])[i]
-                                          for i, code in enumerate(codes))
                       else "headless or path defect" if errors else "connected")
     result["result"] = "FAIL" if errors else "PASS"
     return result
@@ -285,12 +290,13 @@ def run_pair(args):
 
 def evaluate_run(args, peers, codes, ticks, receipt):
     events, cleanup, exits = (receipt[key] for key in ("events", "cleanup_kill", "exit_wall_seconds"))
-    killed = next((0 if e["peer"] == "host" else 1 for e in events if e["event"] == "kill"), None)
+    killed = next((0 if e["peer"] == "host" else 1 for e in events
+                   if e["event"] == "kill" and e["peer"] == args.kill_peer), None)
     stopped_stall = args.stall_ms and codes == [3, 3]
     expected = codes if killed is not None or stopped_stall else None
     compared = min(ticks) if expected else args.ticks
     result = evaluate(peers, compared, codes, args.combat, expected, args.ticks if expected else 2,
-                      args.loss, args.latency, cleanup)
+                      args.loss, args.latency, cleanup, killed)
     errors = result["errors"]
     if args.kill_peer:
         survivor = 1 - killed if killed is not None else None
@@ -335,7 +341,13 @@ def main(argv=None):
                                 and e not in result["errors"])
         if original.get("runner_error"):
             result["errors"].append(original["runner_error"])
-        result = {**original, **result}
+        # Rebuild from current evaluation; stale failure diagnostics are not inputs.
+        result.update(requested_ticks=args.ticks, combat=args.combat,
+                      loss=args.loss, latency=args.latency, jitter=args.jitter,
+                      stall_ms=args.stall_ms, stall_tick=args.stall_tick,
+                      kill_peer=args.kill_peer, kill_tick=args.kill_tick)
+        for key in ("events", "cleanup_kill", "exit_wall_seconds", "faults"):
+            result[key] = original[key]
         result.update(result="FAIL" if result["errors"] else "PASS",
                       first_failing_line=next(iter(result["errors"]), None))
         (args.out / "verdict.reeval.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
