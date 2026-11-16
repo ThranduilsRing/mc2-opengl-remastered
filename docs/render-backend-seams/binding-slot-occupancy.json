@@ -1,6 +1,6 @@
 {
   "summary": {
-    "glsl_blocks_with_binding": 302,
+    "glsl_blocks_with_binding": 305,
     "native_pairs": 4,
     "fails": 0,
     "warns": 1
@@ -1002,6 +1002,36 @@
         "std": "std430",
         "type": "buffer",
         "source": "shaders/vulkan/terrain_tier1_skirt.vert",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/vegetation_compact.comp",
+        "line": 12,
+        "role": "VegSurvive",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/include/vegetation_cull_common.glsl",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/vegetation_cull.comp",
+        "line": 12,
+        "role": "VegSurvive",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/include/vegetation_cull_common.glsl",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/vegetation_region.comp",
+        "line": 12,
+        "role": "VegSurvive",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/include/vegetation_cull_common.glsl",
         "branch": {}
       }
     ],
