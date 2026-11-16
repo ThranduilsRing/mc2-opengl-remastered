@@ -120,6 +120,35 @@ def test_timeout_reaps_child(tmp_path):
     assert result['status'] == 'error' and 'TimeoutExpired' in result['error']
 
 
+@pytest.mark.parametrize('copy_fails', [False, True])
+def test_mod_timeout_collects_before_completion(tmp_path, monkeypatch, copy_fails):
+    from tools.farm import runner
+    for folder in ('savegame', 'debug_state', 'crashes'):
+        source = tmp_path / 'work/sample' / folder
+        source.mkdir(parents=True)
+        (source / 'evidence').write_bytes(folder.encode())
+    if copy_fails:
+        def fail_copy(*args, **kwargs):
+            raise OSError('disk full')
+        monkeypatch.setattr(runner.shutil, 'copytree', fail_copy)
+    publish = runner.atomic_json
+    def checked_publish(path, value):
+        if path.name == 'result.json':
+            assert value['artifacts_collected'] is not copy_fails
+            if not copy_fails:
+                for folder in ('savegame', 'debug_state', 'crashes'):
+                    assert (path.parent / folder / 'evidence').read_bytes() == folder.encode()
+        publish(path, value)
+    monkeypatch.setattr(runner, 'atomic_json', checked_publish)
+    result = job(tmp_path, {'type': 'mod-smoke', 'argv': [sys.executable, '-c',
+                          'import time; time.sleep(30)'], 'timeout': .1})
+    assert 'TimeoutExpired' in result['error']
+    assert (tmp_path / 'work/sample/savegame/evidence').exists()
+    if copy_fails:
+        assert 'disk full' in result['artifact_error']
+        assert host.CLEAN_PS.index('.artifacts_collected -eq $false') < host.CLEAN_PS.index('Remove-Item')
+
+
 def test_malformed_job_does_not_block_queue(tmp_path):
     result = job(tmp_path, {'argv': 'must not execute a shell string'})
     assert result['status'] == 'error' and 'ValueError' in result['error']
@@ -193,12 +222,41 @@ def test_mod_smoke_disk_refusal_precedes_upload(tmp_path, monkeypatch):
         with zipfile.ZipFile(destination, 'w') as archive:
             archive.writestr('test', b'payload')
     monkeypatch.setattr(host, 'payload_archive', payload)
-    def refuse(args, script):
-        assert 'Get-PSDrive C' in script and 'insufficient' in script
+    def refuse(args, code):
+        assert 'disk_usage' in code and 'insufficient' in code
         raise RuntimeError('disk full')
-    monkeypatch.setattr(host, 'remote', refuse)
+    monkeypatch.setattr(host, 'remote_python', refuse)
     monkeypatch.setattr(host, 'scp', lambda *a, **k: pytest.fail('upload before disk check'))
     with pytest.raises(RuntimeError, match='disk full'):
+        host.main()
+
+
+def test_mod_disk_admission_counts_expansion_and_large_seed(tmp_path, monkeypatch):
+    import zipfile
+    seed = tmp_path / 'install'
+    for name in ('cache', 'mods', 'data', 'shared'):
+        (seed / name).mkdir(parents=True)
+        with (seed / name / 'large').open('wb') as stream:
+            stream.truncate(64 * 1024**2)
+    (seed / 'options.cfg').write_bytes(b'cfg')
+    exe = tmp_path / 'mc2.exe'; exe.write_bytes(b'exe')
+    delta = tmp_path / 'delta/data'; delta.mkdir(parents=True)
+    (delta / 'new').write_bytes(b'delta')
+    def payload(exe, destination):
+        with zipfile.ZipFile(destination, 'w', zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr('shader/big', b'0' * 1024**2)
+    monkeypatch.setattr(host, 'payload_archive', payload)
+    monkeypatch.setattr(host, 'ROOT', tmp_path.as_posix())
+    def admit(args, code):
+        values = {}
+        exec(code, values)
+        assert values['required'] >= 2 * 1024**3 + 3 * 64 * 1024**2 + 2 * 1024**2 + 16
+        raise RuntimeError('admission tested')
+    monkeypatch.setattr(host, 'remote_python', admit)
+    monkeypatch.setattr(host, 'scp', lambda *a, **k: pytest.fail('upload before admission'))
+    path = Path(__file__).resolve().parents[2] / 'tools/farm/mod-smoke.json'
+    monkeypatch.setattr(sys, 'argv', ['host', 'submit', str(path), '--exe', str(exe), '--data-delta', str(delta.parent)])
+    with pytest.raises(RuntimeError, match='admission tested'):
         host.main()
 
 
