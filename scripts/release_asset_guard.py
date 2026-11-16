@@ -39,6 +39,10 @@ NAME_PATTERNS = (
 
 
 def _text_exception(name: str) -> bool:
+    if name in {"tools/bt2018_extract/recon.py", "tools/content_pipeline/frontends/bt2018.py",
+                "tools/mw5_kit/extract/.gitignore", "tools/mw5_kit/extract/mw5extract.csproj",
+                "tools/mw5_kit/extract/native.cs", "tools/mw5_kit/extract/program.cs"}:
+        return True
     return (PurePosixPath(name).suffix in TEXT_SUFFIXES and
             (name.startswith(TOOL_DIRS + ("docs/", "scripts/tests/")) or
              name in {"scripts/bt2018_retarget_clips.py",

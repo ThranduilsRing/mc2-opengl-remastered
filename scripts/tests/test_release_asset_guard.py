@@ -177,9 +177,13 @@ def test_nested_zip_is_rejected_without_extraction(tmp_path):
     assert "renamed.dat: nested archive not allowed in release payload" in guard.scan(tmp_path)
 
 
-@pytest.mark.parametrize("name", ["tests/unit/fixtures/stock_names.txt", "tools/mech_import/build_marauder.py"],
-                         ids=["stock", "marauder"])
-def test_exact_legacy_text_exceptions(name):
+@pytest.mark.parametrize("name", [
+    "tests/unit/fixtures/stock_names.txt", "tools/mech_import/build_marauder.py",
+    "tools/bt2018_extract/recon.py", "tools/content_pipeline/frontends/bt2018.py",
+    "tools/mw5_kit/extract/.gitignore", "tools/mw5_kit/extract/mw5extract.csproj",
+    "tools/mw5_kit/extract/native.cs", "tools/mw5_kit/extract/program.cs",
+], ids=["stock", "marauder", "recon", "frontend", "gitignore", "csproj", "native", "program"])
+def test_exact_text_exceptions(name):
     payload = b"chrTxrMech_fake"
     assert guard._inspect(name, io.BytesIO(payload)) == []
     assert guard._inspect("other/" + name, io.BytesIO(payload))
