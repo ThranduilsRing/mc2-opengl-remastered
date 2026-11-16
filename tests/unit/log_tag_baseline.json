@@ -5262,6 +5262,57 @@
    "count": 1
   },
   {
+   "tag": "LOAD_LAPS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "stage",
+    "total_ms",
+    "terrainObjects_ms",
+    "buildings_ms",
+    "turrets_ms",
+    "gates_ms"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LOAD_LAPS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "stage",
+    "type",
+    "objects",
+    "type_cache_misses",
+    "active_ms",
+    "first_ms"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LOAD_LAPS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "stage",
+    "types",
+    "tris",
+    "out_verts",
+    "dedupe_ms",
+    "meshopt_ms",
+    "lodgroup_calls",
+    "lodgroup_ms",
+    "vbo_bytes",
+    "vbo_hash",
+    "ibo_count",
+    "ibo_hash",
+    "packets_hash",
+    "lod_groups",
+    "lod_hash"
+   ],
+   "count": 1
+  },
+  {
    "tag": "LOAD_PHASES",
    "ver": 1,
    "stream": "buffer",
