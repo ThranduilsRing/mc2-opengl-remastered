@@ -3,8 +3,42 @@
 // generations wrap past 0. The "GPU" is a completed-frame number advanced by hand.
 #include "doctest.h"
 #include "HandleSlots.h"
+#include "../../RenderWorld/RenderWorld.h"
 
 using namespace RenderCore;
+
+TEST_CASE("handle_partition_static_boundaries") {
+    using namespace RenderWorld::detail;
+    const auto mech = RenderObjectHandle::make(kMechHandleBase, 7u);
+    for (const uint32_t index : {65535u, 65536u, 65537u, kMechHandleBase - 1u}) {
+        const auto prop = staticPropHandle(index);
+        REQUIRE(prop.isValid());
+        CHECK(prop.index() == index);
+        CHECK(prop.index() != mech.index());
+        CHECK(decodeObjectId(prop.raw()) == prop);
+    }
+    CHECK_FALSE(staticPropHandle(-1).isValid());
+    CHECK_FALSE(staticPropRecipeIndexFits(kMechHandleBase));
+    CHECK_FALSE(staticPropHandle(kMechHandleBase).isValid());
+    CHECK_FALSE(staticPropHandle(0x100000u).isValid());
+    // A full append range still permits a valid recycled slot.
+    CHECK(staticPropRecipeIndexFits(kMechHandleBase - 1u));
+}
+
+TEST_CASE("handle_partition_mech_object_id_roundtrip") {
+    using namespace RenderWorld::detail;
+    CHECK(kTerrainHandleBase - kMechHandleBase >= 0x30000u);
+    for (const uint32_t index : {kMechHandleBase, kTerrainHandleBase - 1u}) {
+        for (const uint32_t generation : {1u, 7u, 0xFFFu}) {
+            const auto mech = RenderObjectHandle::make(index, generation);
+            const auto decoded = decodeObjectId(mech.raw());
+            CHECK(decoded == mech);
+            CHECK(decoded.index() == index);
+            CHECK(decoded.generation() == generation);
+            CHECK_FALSE(staticPropRecipeIndexFits(decoded.index()));
+        }
+    }
+}
 
 TEST_SUITE("HandleSlotTable") {
 

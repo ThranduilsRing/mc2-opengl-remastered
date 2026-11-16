@@ -86,10 +86,28 @@ bool IsObjectIdBufferEnabled();
 // Handle.h; the static_assert fails the build if the layouts diverge.
 static constexpr uint32_t kHandleIndexMask = 0xFFFFFu;
 
+namespace detail {
+// Written ranges are contiguous: static props first, then mechs. Higher kinds
+// remain reserved; postprocess classifies using MechHandleIndexBase().
+constexpr uint32_t kMechHandleBase = 0x00040000u;
+constexpr uint32_t kTerrainHandleBase = 0x00070000u;
+constexpr bool staticPropRecipeIndexFits(uint64_t index) {
+    return index < kMechHandleBase;
+}
+constexpr RenderCore::RenderObjectHandle staticPropHandle(int64_t index) {
+    return index >= 0 && staticPropRecipeIndexFits(static_cast<uint64_t>(index))
+        ? RenderCore::RenderObjectHandle::make(static_cast<uint32_t>(index), 1u)
+        : RenderCore::RenderObjectHandle::invalid();
+}
+constexpr RenderCore::RenderObjectHandle decodeObjectId(uint32_t raw) {
+    return RenderCore::RenderObjectHandle{raw};
+}
+} // namespace detail
+
 // GAMEADAPTERS-VISUAL-STATE-BRIDGE: DELIBERATE, RenderWorld-OWNED classification
 // API — the one sanctioned exception to handle opacity. RenderWorld owns the
-// handle index partition (mechs occupy indices >= this base; static props /
-// terrain are below it — INVARIANT in RenderWorld.cpp), so RenderWorld is the
+// handle index partition (static props are below this base; mechs start here;
+// higher reserved kinds have no writers in v1), so RenderWorld is the
 // correct authority to PUBLISH a classification threshold. Callers do NOT
 // reverse-engineer an opaque handle; they consume a partition fact RenderWorld
 // chooses to expose (precedent: RenderWorld.cpp iterateHandles uses the same
