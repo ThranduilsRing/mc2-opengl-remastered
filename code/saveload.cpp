@@ -366,7 +366,7 @@ void Mission::save (mc2::czstring saveFileName)
         if (!archive.good()) Fatal(0, "WRLD save section failed");
         sections.add(mc2::save::tagWorld, 2, true, archive.bytes());
     }
-    sections.add(mc2::save::tagAnimation, 3, true, ObjectManager->saveAnimationState());
+    sections.add(mc2::save::tagAnimation, 5, true, ObjectManager->saveAnimationState());
     for (auto* mech : std::span(ObjectManager->mechs, ObjectManager->maxMechs)) {
         if (!mech || !mech->getExists() || !mech->getAppearance()) continue;
         const auto animation = mech->getAppearance()->simulationAnimation();
