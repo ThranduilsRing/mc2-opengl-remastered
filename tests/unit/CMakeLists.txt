@@ -770,6 +770,16 @@ mc2_height_slice(camera_release_object code/simplecamera.cpp
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/camera_release_object.inc" CONTENT "${camera_release_object}")
 target_sources(mc2_tests PRIVATE test_world_light_tags.cpp ${MC2_WORKTREE_ROOT}/mclib/spotlight_diag.cpp)
 set_source_files_properties(test_world_light_tags.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
+# Trigger paths: gui/aedit.cpp, code/preview_choice.h, GuiRuntime/PlayerFrontEnd.cpp.
+mc2_height_slice(edit_scroll gui/aedit.cpp "void\taEdit::makeCursorVisible()" "int\t\taEdit::findChar(")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/edit_scroll.inc" CONTENT "${edit_scroll}")
+mc2_height_slice(import_job GuiRuntime/PlayerFrontEnd.cpp "struct ImportLaunchResult {" "} importJob;")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/import_job.inc" CONTENT "${import_job}};")
+target_sources(mc2_tests PRIVATE test_logistics_ui.cpp)
+set_source_files_properties(test_logistics_ui.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
+mc2_height_slice(preview_panel_guard code/simplecamera.cpp
+    "void SimpleCamera::drawPreviewToPanel(" "#ifdef MC2_IMGUI\n    const uint64_t tex=")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/preview_panel_guard.inc" CONTENT "${preview_panel_guard}++composites; }")
 mc2_height_slice(overlay_static_upload GameOS/gameos/vulkan_terrain_island_overlay.cpp
     "bool ovl_prepare_static(" "bool ovl_init(")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/overlay_static_upload.inc" CONTENT "${overlay_static_upload}")
