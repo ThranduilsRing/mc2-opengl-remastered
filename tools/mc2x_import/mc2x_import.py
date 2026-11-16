@@ -83,12 +83,8 @@ def extract_mod(source, deploy, mod_id, entries):
             by_fst.setdefault(fstn, {}).setdefault(src, []).append(tgt)
     for fstn, wanted in by_fst.items():
         p = os.path.join(source, fstn)
-        if not os.path.isfile(p):
-            for tgts in wanted.values():
-                missing.extend(tgts)
-            continue
         seen = set()
-        for off, comp, real, name, is_lz, data in fst.fst_entries(p):
+        for off, comp, real, name, is_lz, data in fst.fst_entries(p) if os.path.isfile(p) else []:
             key = name.replace("\\", "/").lower()
             tgts = wanted.get(key)
             if not tgts:
@@ -99,7 +95,14 @@ def extract_mod(source, deploy, mod_id, entries):
             seen.add(key)
         for k, tgts in wanted.items():
             if k not in seen:
-                missing.extend(tgts)
+                loose = os.path.join(source, k.replace("/", os.sep))
+                if os.path.isfile(loose):
+                    with open(loose, "rb") as stream:
+                        content = stream.read()
+                    for tgt in tgts:
+                        written.append(_write(root, tgt, content))
+                else:
+                    missing.extend(tgts)
     return written, missing
 
 def copy_shims(deploy, mod_id):
@@ -185,7 +188,12 @@ def main(argv=None):
         written[m] = w
         all_missing[m] = miss
         print(f"  {m}: extracted {len(w)} + {sh} shims, {len(miss)} missing-from-install")
+        for name in miss:
+            print(f"WARNING: {m}: missing recipe file: {name}", file=sys.stderr)
     _write_provenance(args, written, all_missing)
+    if not os.path.isfile(os.path.join(args.deploy, "mods", "mc2x-compat", "data/objects/object2.pak")):
+        print("ERROR: no data/objects/object2.pak produced for mc2x-compat", file=sys.stderr)
+        return 2
     return 0
 
 def _write_provenance(args, written, all_missing):
@@ -201,7 +209,7 @@ def _write_provenance(args, written, all_missing):
             rows.append([m, rel, size, sha, "import"])
         manifest.write_marker(args.deploy, m,
                               dict(base, mod=m, files_written=len(written[m]),
-                                   files_missing=len(all_missing[m]), files_skipped=0))
+                                   files_missing=len(all_missing[m]), missing=all_missing[m], files_skipped=0))
     manifest.write_reports(args.deploy, stamp,
                            dict(base, totals={m: len(written[m]) for m in written},
                                 missing={m: all_missing[m] for m in all_missing}),

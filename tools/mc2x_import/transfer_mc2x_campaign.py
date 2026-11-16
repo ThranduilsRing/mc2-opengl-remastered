@@ -14,8 +14,8 @@ lives in the deploy base + mc2x-compat, so the campaign mod only needs:
      from the first dependency providing that path (warriors, purchase, ops
      script, pilots, campaign-only art/sound/csv).
 
-object2.pak and data/art/buildings.csv are EXCLUDED (mc2x-compat owns the object
-table; overlaying a campaign's buildings.csv re-routes logistics and crashes —
+Each MC2X campaign retains its own loose object2.pak, even when identical to a
+reference. data/art/buildings.csv stays EXCLUDED (overlaying it crashes logistics —
 the same conflict seen with the MCO "everything diff" experiment).
 
 Bytes come from the user's own install; nothing is redistributed. The player
@@ -265,7 +265,10 @@ def copy_loose_delta(src_data, refs, out_data, drop_upscale=False, gui_canon=Non
             rel_key = ("data/" + rel).lower()
             if rel_key == "data/objects/mc2xcomp.csv":
                 rel = "objects/compbas.csv"
-            if rel_key in EXCLUDE_REL or rel_key in CORE_GUI_EXCLUDE:
+            own_table = rel_key == "data/objects/object2.pak" and not any(
+                os.path.basename(os.path.dirname(os.path.normpath(ref))).lower() == "mco-compat"
+                for ref in refs)
+            if (rel_key in EXCLUDE_REL and not own_table) or rel_key in CORE_GUI_EXCLUDE:
                 continue
             keep_content = _is_campaign_unique_asset(rel)  # colormaps + matched icon set survive both filters
             if gui_canon and _is_canon_gui(rel_key, gui_canon) and not keep_content:
@@ -274,7 +277,7 @@ def copy_loose_delta(src_data, refs, out_data, drop_upscale=False, gui_canon=Non
                 continue
             out = os.path.join(out_data, rel.replace("/", os.sep))
             with open(sp, "rb") as stream:
-                if not os.path.isfile(out) and in_refs(rel, refs, stream.read()):
+                if not own_table and not os.path.isfile(out) and in_refs(rel, refs, stream.read()):
                     continue
             os.makedirs(os.path.dirname(out), exist_ok=True)
             shutil.copy2(sp, out)
