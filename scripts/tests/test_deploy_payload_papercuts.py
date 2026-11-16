@@ -1,6 +1,6 @@
 """deploy_payload: a fresh Ninja tree is seeded with its runtime DLLs from real sources; --target names the right flag."""
 import subprocess
-import hashlib
+import errno
 import json
 import os
 import sys
@@ -23,7 +23,31 @@ def hardlink_support(tmp_path_factory):
     try:
         os.link(source, tmp_path / 'link')
     except OSError as exc:
-        pytest.skip(f'Hardlinks unsupported in test temporary directory: {exc}')
+        # Win32: INVALID_FUNCTION, NOT_SAME_DEVICE, NOT_SUPPORTED,
+        # PRIVILEGE_NOT_HELD (1, 17, 50, 1314 respectively).
+        if exc.errno in {errno.EXDEV, errno.EPERM, errno.EOPNOTSUPP, errno.ENOTSUP} or getattr(exc, 'winerror', None) in {1, 17, 50, 1314}:
+            pytest.skip(f'Hardlinks unsupported in test temporary directory: {exc}')
+        raise
+
+
+@pytest.mark.parametrize('error_code,winerror,unsupported', [
+    (errno.EXDEV, None, True), (errno.EPERM, None, True),
+    (errno.EOPNOTSUPP, None, True), (errno.ENOTSUP, None, True),
+    (None, 1, True), (None, 17, True), (None, 50, True), (None, 1314, True),
+    (errno.ENOSPC, 112, False), (errno.EIO, 1117, False), (errno.EACCES, 5, False),
+])
+def test_hardlink_probe_only_skips_unsupported(tmp_path_factory, monkeypatch, error_code, winerror, unsupported):
+    error = OSError(error_code, 'hardlink probe failure')
+    error.winerror = winerror
+
+    def fail_link(*args):
+        raise error
+
+    monkeypatch.setattr(os, 'link', fail_link)
+    with pytest.raises(pytest.skip.Exception if unsupported else OSError) as caught:
+        hardlink_support.__wrapped__(tmp_path_factory)
+    if not unsupported:
+        assert caught.value is error
 
 
 @pytest.mark.parametrize('receipt', [True, False])
