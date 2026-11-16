@@ -691,8 +691,20 @@ def test_churned_link_stamps_are_confirmed_by_the_seed_receipt_without_hashing(t
         assert (lane / rel).samefile(seed / rel)
 
 
-@pytest.mark.skipif(gate_hosts.current_host() != "pc",
-                    reason=f"seed-receipt inode sharing needs the PC's NTFS hardlinks (gate host {gate_hosts.current_host()})")
+def _hardlinks_share_inode():
+    import tempfile
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            a = Path(d) / "a"
+            a.write_bytes(b"x")
+            os.link(a, Path(d) / "b")
+            return a.samefile(Path(d) / "b") and a.stat().st_nlink == 2
+    except OSError:
+        return False
+
+
+@pytest.mark.skipif(gate_hosts.current_host() != "pc" and not _hardlinks_share_inode(),
+                    reason=f"seed-receipt inode sharing needs hardlinks that share an inode (gate host {gate_hosts.current_host()})")
 def test_seed_receipt_does_not_excuse_a_same_size_write_with_restored_mtime(tmp_path, monkeypatch):
     iso, seed, lane, _repo, rels, items = _churned_lane(tmp_path, monkeypatch)
     iso.restamp_seed(seed)

@@ -90,8 +90,22 @@ def guard():
     return between(box_run.REMOTE, "#@@DISK_GUARD@@", "#@@END_DISK_GUARD@@")
 
 
-@pytest.mark.skipif(not Path("/workspace").exists() and gate_hosts.current_host() != "pc",
-                    reason="df /workspace needs the Linux box: /workspace is absent on this gate host")
+def _bash_runs_stub_df():
+    """The guard's real precondition: bash can invoke a stub df placed first on PATH."""
+    import tempfile
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / "df").write_text('#!/bin/sh\necho Avail\necho "7G"\n')
+            (Path(d) / "df").chmod(0o755)
+            r = bash("df -BG --output=avail /workspace | tail -1 | tr -dc 0-9",
+                     env={"PATH": f"{Path(d).as_posix()}{os.pathsep}{os.environ['PATH']}"})
+            return r.stdout.strip() == "7"
+    except OSError:
+        return False
+
+
+@pytest.mark.skipif(gate_hosts.current_host() != "pc" and not _bash_runs_stub_df(),
+                    reason="bash cannot invoke the stub df on this gate host")
 @pytest.mark.parametrize("avail,floor,rc", [(5, None, 77), (14, None, 77), (15, None, 0), (40, None, 0), (20, "30", 77), (20, "10", 0)])
 def test_disk_guard_floor(avail, floor, rc, tmp_path):
     (tmp_path / "df").write_text(f'#!/bin/sh\necho Avail\necho "{avail}G"\n')   # a fake df first on PATH

@@ -123,7 +123,7 @@ def test_refused_roots_exit_2(tmp_path, which):
         byproduct = plant_byproduct(tmp_path / "owner-test-lane7")
         install = tmp_path / "owner-test-lane7"
     elif which == "remastered":
-        if gate_hosts.current_host() != "pc":
+        if gate_hosts.current_host() != "pc" and not Path("A:/Games/MC2 OpenGL Remastered").exists():
             pytest.skip(f"PC-only install root A:/Games/MC2 OpenGL Remastered (gate host {gate_hosts.current_host()})")
         byproduct = None
         install = Path("A:/Games/MC2 OpenGL Remastered") / "clean-byproducts-test-absent"
