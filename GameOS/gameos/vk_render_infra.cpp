@@ -294,6 +294,10 @@ bool admit(uint64_t bytes) {
     auto& s=state(); std::lock_guard lock(s.mutex);
     return RenderCore::gpuFits(s.budget,s.live,s.pending,bytes);
 }
+uint64_t deferredBytes() {
+    auto& s=state(); std::lock_guard lock(s.mutex);
+    return s.deferredBytes;
+}
 uint64_t headroom() {
     auto& s=state(); std::lock_guard lock(s.mutex);
     const uint64_t used=s.live+s.pending;
