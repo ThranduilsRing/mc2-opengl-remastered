@@ -20,5 +20,17 @@ No digest change without measured evidence.
 
 Preflight: clean, assigned branch/root and pinned HEAD match. repo_query reports harness
 extraction ambiguous; canonical CLAUDE.md and SLOTS.md commands read directly.
-R1-R6 pending. Cold matrix, night baseline, owner mods and 12 unspecified poses NOT RUN
-per binding brief. Registry totals alone cannot prove R5 content identity.
+BLOCKED-ON-BASE: box lane_merge --lint HEAD exits 1 in tools/lane_merge.py:1000,
+before any lint row. Its shared temporary clone attempts to smudge 3rdparty.zip;
+LFS object c8a9425bad3eb8adba4461f3dbea98a1f925b8c1590feea81aa47fd11dc971aa
+is absent remotely. No tooling fix or retry; route to orchestrator. Temporary clone self-cleaned.
+Offline at 2c3c9a5c98: cxx17 ratchet PASS; scoped box unit PASS (13 cases, 95 assertions,
+one expected intentional failure). Filters: objmgr_contract_harness/*, same-size edit*,
+mod override*, duplicate FST key*. No registry-content identity test identified.
+R1, R3-R6 NOT RUN due to required lint blocker; R2 memo already implemented,
+its existing invalidation tests PASS, runtime digest ms NOT RUN. No perf claim.
+Build/deploy NOT RUN. Starts used: 0/3. Cold matrix, night baseline, owner mods,
+12 unspecified poses NOT RUN per brief. Archive: E:/mc2-archive-2026-10/proofs/load-objects-cut-1/RESULT.html.
+Next: orchestrator repairs missing-LFS lint prerequisite, then continue at this lane tip.
+No runtime behavior optimization shipped; owner acceptance pending. Keep incremental box
+build/test/install trees and source for continuation; release PC slot after archiving this note.
