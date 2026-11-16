@@ -6,6 +6,7 @@
 #include "mc2_debug_out.h"
 
 #include "path_work.h"
+#include "../GameOS/gameos/utils/mc2log.h"
 
 long MoveMap::calcEscapePath (const mc2_move::PathQuery& query, mc2_move::SolverScratch& scratch, MovePathPtr path, glm::vec3* goalWorldPos, long* goalCell) {
 
@@ -206,13 +207,22 @@ long MoveMap::calcEscapePath (const mc2_move::PathQuery& query, mc2_move::Solver
 		}
 #endif
 
-		if (numCells > MAX_STEPS_PER_MOVEPATH) {
-			path->init();
-			return 0;
+		const auto prefix = mc2::path_work::boundedPrefix(numCells, MAX_STEPS_PER_MOVEPATH,
+			bestRow, bestCol, doorDirection, [&](long r, long c) {
+				const auto offset = nodeAt(r, c).parent * 2;
+				return std::pair{r + cellShift[offset], c + cellShift[offset + 1]};
+			});
+		if (prefix.truncated) {
+			MC2_LOG_ONCE(Sim, Error, "Path exceeds {} steps; retaining a movable prefix", MAX_STEPS_PER_MOVEPATH);
+			numCells = static_cast<decltype(numCells)>(prefix.steps);
+			bestRow = static_cast<decltype(bestRow)>(prefix.row);
+			bestCol = static_cast<decltype(bestCol)>(prefix.col);
+			doorDirection = static_cast<decltype(doorDirection)>(prefix.door);
 		}
 
 		path->init();
 		if (numCells) {
+			if (prefix.truncated) path->init(numCells);
 			
 #ifdef _DEBUG			
 			long maxSteps = path->init(numCells);
@@ -297,6 +307,14 @@ long MoveMap::calcEscapePath (const mc2_move::PathQuery& query, mc2_move::Solver
 				curCol += cellShift[cellOffsetIndex];
 			}
 			
+			if (prefix.truncated) {
+				path->goal = path->stepList[numCells - 1].destination;
+				if (goalWorldPos) *goalWorldPos = path->goal;
+				if (goalCell) {
+					goalCell[0] = path->stepList[numCells - 1].cell[0];
+					goalCell[1] = path->stepList[numCells - 1].cell[1];
+				}
+			}
 			#ifdef BLOCKED_PATH_TEST
 				for (long i = 0; i < path->numSteps; i++) {
 					long tile[2], cell[2];
