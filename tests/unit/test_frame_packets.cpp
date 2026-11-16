@@ -8,6 +8,22 @@
 
 using namespace RenderCore;
 
+TEST_CASE("ground footprint suppresses jumping and airborne movers and restores on landing") {
+    using mc2::render_view::groundFootprintRadius;
+    mc2::render_view::RenderView view;
+    for (float extent : {2.0f, 9.0f}) {
+        const float landed = extent < 4.0f ? 4.0f : extent;
+        view.value[0] = groundFootprintRadius(extent, false, false);
+        CHECK(view.value[0] == landed);
+        for (auto state : {std::pair{true, false}, std::pair{true, true}, std::pair{false, true}}) {
+            view.value[0] = groundFootprintRadius(extent, state.first, state.second);
+            CHECK(view.value[0] == 0.0f);
+        }
+        view.value[0] = groundFootprintRadius(extent, false, false);
+        CHECK(view.value[0] == landed);
+    }
+}
+
 TEST_CASE("frame draws own ordered streams and HUD values across staging reuse") {
     using namespace mc2::render_view;
     static_assert(std::is_const_v<std::remove_reference_t<decltype(list())>>);

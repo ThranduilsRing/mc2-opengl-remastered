@@ -8,8 +8,8 @@ tests/ for the tools live in run_tools_tests.py (the `tools_tests` row).
 
   py -3 scripts/run_scripts_tests.py [--no-cache] [--report] [--jobs N] [--list]
 
-Exit 0 = every module green (or cached green); 1 = any failure (the failing module is re-run with --tb=short and its
-tail printed). CONTRACTS_NO_CACHE=1 is the same as --no-cache.
+Exit 0 = every module green (or cached green); 1 = any failure (the first captured output is printed).
+CONTRACTS_NO_CACHE=1 is the same as --no-cache.
 """
 from __future__ import annotations
 
@@ -74,7 +74,8 @@ def ownership_problems(modules: list[str], data: dict) -> list[str]:
     return issues
 
 
-def select_modules(modules: list[str], data: dict, requested: list[str] | None = None) -> list[str]:
+def select_modules(modules: list[str], data: dict, requested: list[str] | None = None,
+                   active_owners: set[str] | None = None) -> list[str]:
     """Named modules run directly; otherwise only aggregate-owned modules run."""
     if requested:
         # a module is named by its file stem ("test_x"), file name ("test_x.py") or path ("scripts/tests/test_x.py")
@@ -88,7 +89,8 @@ def select_modules(modules: list[str], data: dict, requested: list[str] | None =
         return [module for module in modules if module in set(wanted.values())]
     aggregate = data["aggregate_owner"]
     owners = {entry["module"]: entry["owners"] for entry in data["tests"]}
-    return [module for module in modules if owners.get(module, [aggregate]) == [aggregate]]
+    return [module for module in modules if owners.get(module, [aggregate]) == [aggregate]
+            or (active_owners is not None and not set(owners.get(module, [])).intersection(active_owners))]
 
 
 def main() -> int:
@@ -97,7 +99,7 @@ def main() -> int:
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--no-cache", action="store_true")
     ap.add_argument("--report", action="store_true")
-    ap.add_argument("--base", help="run only modules mapped to the committed diff; full suite nightly")
+    ap.add_argument("--base", default=os.environ.get("MC2_GATE_BASE"), help="run only modules mapped to the committed diff; full suite nightly")
     ap.add_argument("modules", nargs="*", help="run these modules directly, regardless of aggregate ownership")
     args = ap.parse_args()
     mods = discover()
@@ -108,7 +110,13 @@ def main() -> int:
         if args.base and not args.modules:
             paths = subprocess.check_output(["git", "diff", "--name-only", "-z", args.base, "HEAD"], cwd=rtt.ROOT, text=True,
                                             **console_child.child_kwargs(redirected=True)).split("\0")
-            selection = rtt.scoped_modules(selection, paths)
+            import contracts_cache as cc
+            import re
+            with open(os.path.join(rtt.ROOT, "scripts/check-contracts.sh"), encoding="utf-8") as board:
+                window_rows = set(re.findall(r'^run_check(?:_tri)?\s+"([^"]+)"', board.read(), re.M))
+            selection = select_modules(mods, ownership, active_owners=cc.affected_rows(rtt.ROOT, paths) & window_rows)
+            scoped = rtt.scoped_modules(mods, paths)
+            selection = [module for module in selection if module in scoped]
     except (OSError, ValueError) as error:
         print(f"FAIL: {OWNERSHIP_REL}: {error}")
         return 1
@@ -130,13 +138,7 @@ def main() -> int:
             continue
         bad += 1
         print(f"FAIL: {mod} (rc={rc}) {' '.join(failed[:5])}")
-        print(tail)  # preserve the original verdict even if a diagnostic rerun passes
-        if rc == 124:
-            continue  # a bounded timeout is already a verdict, not a reason to run the hang again
-        p = subprocess.run([sys.executable, "-B", "-m", "pytest", "-q", "-p", "no:cacheprovider", "--tb=short", mod],
-                           cwd=rtt.ROOT, capture_output=True, text=True, timeout=rtt.TIMEOUT_S,
-                           **console_child.child_kwargs(redirected=True))
-        print("\n".join((p.stdout + p.stderr).splitlines()[-60:]))
+        print(tail)
     print(f"scripts_tests: {len(selection)} modules, {passed} green, {bad} failing")
     return 1 if bad else 0
 

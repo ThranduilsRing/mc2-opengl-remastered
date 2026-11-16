@@ -128,14 +128,8 @@ void Terrain::geometry (void)
 	// Default OFF: bit-identical legacy behavior. See handoff S2.13.
 
 
-	// VPL retirement: the MC2_VPL_CULL / MC2_VPL_REDUCE getenv reads are
-	// KEPT solely to gate the one-shot event=retired lifecycle lines
-	// emitted just before the slim reduce loop below (8c-part-2: the VPL
-	// body those probes compared against is deleted, so any relocated
-	// self-comparison would be tautological/false-alarm; demote-not-
-	// silently-delete per the worktree Debug-instrumentation rule).
+	// Retired VPL cull probe retains its one-shot lifecycle notice.
 	static const bool s_vplCull = mc2::gate::get<"MC2_VPL_CULL">();
-	static const bool s_vplReduce = false;
 
 	// F6 T1/T2: terrain admission Modern path. Replaces per-vertex
 	// projectForTerrainAdmission with a world-space frustum-plane test:
@@ -165,18 +159,7 @@ void Terrain::geometry (void)
 	// SURVIVES because its return drives the clipInfo / objBlock cull cascade
 	// AND the rv->px/py/pz/pw raster writes consumed by the legacy
 	// TerrainQuad::draw() immediate path on un-armed frames.
-	// VPL retirement Step 8c-part-2: the VertexProjectLoop body (fast +
-	// legacy-twin) is DELETED here â the slim reduce loop below is the
-	// proven sole producer of BOTH the cull cascade and the
-	// leastZ/mostZ/... reduction (8c-part-1 static + camera-swept
-	// superset_violations=0 + bit-identity proof). The legacy-reference
-	// sources the MC2_VPL_CULL and MC2_VPL_REDUCE probes compared against
-	// died with the body, so a relocated self-comparison would be a pure
-	// tautology / false-alarm; both probes are RETIRED (demote-not-
-	// silently-delete per the worktree Debug-instrumentation rule + plan
-	// v3.3:467 + v3.5:530) to a one-shot lifecycle line, env-gated by the
-	// surviving getenv so it only prints when someone had the probe on.
-	// See docs/superpowers/reviews/2026-05-15-step8-vpl-body-deletion-
+	// The retired VPL cull probe logs only when explicitly enabled.
 	// adversarial-review.md CRIT-1/Â§6 + the v3.5 plan amendment.
 	if (s_vplCull)
 	{
@@ -185,16 +168,6 @@ void Terrain::geometry (void)
 			s_vplCullRetiredLogged = true;
 			mc2::fmt::print_err(
 				"[VPL_CULL v1] event=retired reason=vpl_body_deleted_slim_is_sole_producer\n");
-			fflush(stderr);
-		}
-	}
-	if (s_vplReduce)
-	{
-		static bool s_vplReduceRetiredLogged = false;
-		if (!s_vplReduceRetiredLogged) {
-			s_vplReduceRetiredLogged = true;
-			mc2::fmt::print_err(
-				"[VPL_REDUCE v1] event=retired reason=vpl_body_deleted_slim_is_sole_reduction_producer\n");
 			fflush(stderr);
 		}
 	}

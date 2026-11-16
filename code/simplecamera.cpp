@@ -30,12 +30,18 @@ SimpleCamera.cpp	: Implementation of the SimpleCamera component.
 // sebi: !NB remove when assert(0 && "test") is removed below
 #include <cassert>
 #include <chrono>
+#include <cstdlib>
 #include <algorithm>
 #include <filesystem>
 #include <string>
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 #include "model_credit.h"
+#include "mech_anim_preview.h"
+#include "imgui.h"
+
+static SimpleCamera* animationCamera = nullptr;
+static mc2mechanim::PreviewAnimation animationPreview;
 
 // Screen-space extents of the last PreviewDraw (mclib/tgl.cpp, filled in preview_draw.cpp).
 
@@ -136,6 +142,7 @@ SimpleCamera::SimpleCamera()
 // The appearance destructor reads appearanceTypeList: with no list (outside a mission) the object is left unfreed, as before B7o.5.
 void SimpleCamera::releaseObject()
 {
+    if (animationCamera == this) animationPreview = {};
 	modelCredit_.clear();
 	if (appearanceTypeList)
 	{
@@ -151,6 +158,7 @@ void SimpleCamera::releaseObject()
 
 SimpleCamera::~SimpleCamera()
 {
+    if (animationCamera == this) animationCamera = nullptr;
 
 	// sebi: added this condition ecause  appearanceTypeList used inside destructor
 	releaseObject();
@@ -543,6 +551,9 @@ void SimpleCamera::drawPreviewToPanel( float panelX, float panelY, float panelW,
 ////////////////////////////////////////////////
 long SimpleCamera::update()
 {
+	const float savedFrameLength = frameLength;
+	const bool capture = std::getenv("MECH_PREVIEW_CAPTURE") != nullptr;
+	if (capture) { frameLength = 1.f / 60.f; rotation = 30.f; rotationIncrement = 0; turntablePaused_ = true; }
 	if ( pObject )
 	{
 		// MERGE-CONFLICT-UI-PHASE1: see matching note in SimpleCamera::render() above —
@@ -632,7 +643,9 @@ long SimpleCamera::update()
 
 		pObject->setObjectParameters(mechPos, rotation, 0, 0, 0);
 	
+        if (animationCamera == this) mc2mechanim::previewAnimation = &animationPreview;
 		pObject->update();
+        if (animationCamera == this) mc2mechanim::previewAnimation = nullptr;
 		pObject->setVisibility(true,true);
 
 		if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
@@ -645,7 +658,40 @@ long SimpleCamera::update()
 
 	}
 
+	frameLength = savedFrameLength;
 	return 0;
+}
+
+void SimpleCamera::drawAnimationPanel()
+{
+    if (ImGui::IsKeyPressed(ImGuiKey_F9, false)) {
+        animationPreview = {}; animationCamera = animationCamera == this ? nullptr : this;
+    }
+    if (animationCamera != this) return;
+    bool open = true;
+    ImGui::SetNextWindowPos(ImVec2(900, 110), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(600, 410), ImGuiCond_FirstUseEver);
+    if (ImGui::Begin("Mech animation prototype (F9)", &open)) {
+        auto& a = animationPreview;
+        if (ImGui::BeginCombo("Clip", a.active.c_str())) {
+            for (const auto& clip : a.clips) {
+                ImGui::PushID(clip.name.c_str());
+                if (ImGui::Selectable(clip.name.c_str(), a.active == clip.name)) a.clip = clip.name;
+                ImGui::SameLine(); ImGui::Text("%.3f s", clip.duration);
+                ImGui::PopID();
+            }
+            ImGui::EndCombo();
+        }
+        ImGui::Checkbox("Play", &a.playing); ImGui::SameLine(); ImGui::Checkbox("Loop", &a.loop);
+        ImGui::Checkbox("Pause turntable", &turntablePaused_);
+        float time = a.time;
+        if (ImGui::SliderFloat("Time (s)", &time, 0, a.duration)) a.seek = time;
+        ImGui::SliderFloat("Speed", &a.rate, .25f, 2.f, "%.2fx");
+        if (ImGui::Button("Step 1/30 s")) { a.playing = false; a.seek = std::min(a.time + 1.f / 30.f, a.duration); }
+        ImGui::Text("%.3f / %.3f s | palette: %d bones", a.time, a.duration, a.paletteBones);
+    }
+    ImGui::End();
+    if (!open) animationCamera = nullptr;
 }
 
 // File name without directory or extension (the _splitpath fname part).
@@ -694,6 +740,8 @@ void SimpleCamera::setMech(mc2::czstring fileName, long baseColor, long highligh
 	}
 
 	std::string NoPathFileName = stemOfPath(fileName);
+	if (const auto* chassis = std::getenv("MECH_PREVIEW_CAPTURE"); chassis && *chassis)
+		NoPathFileName = stemOfPath(chassis);
 
 	char testName[256];
 	strcpy( testName, NoPathFileName.c_str() );

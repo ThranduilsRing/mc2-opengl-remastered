@@ -70,7 +70,7 @@ EXCLUDE = {
 }
 
 PYTEST = [sys.executable, "-B", "-m", "pytest", "-q", "-p", "no:cacheprovider",
-          "--tb=no", "-rfEs"]
+          "--tb=short", "-rfEs"]
 TIMEOUT_S = 1200  # box_hygiene: 479 s alone, over 600 s under precheck load
 
 
@@ -93,13 +93,19 @@ def is_art_test(path):
 def scoped_modules(mods, paths):
     """Directory-local tests follow their tool; flat tests follow the named source or row's existing input list.
 
-    Unmapped tests stay nightly. The module itself always triggers its test.
+    Unknown changed paths select the full suite. The module itself always triggers its test.
     """
     import contracts_cache as cc
     from fnmatch import fnmatchcase
-    rows = cc.affected_rows(ROOT, paths)
-    selected = []
-    for mod in mods:
+    paths = [p for p in paths if p]
+    declarations = cc.load_decls(ROOT)
+    selected, covered = [], set()
+    # A path mapped to the other aggregate is still mapped, so a scripts-only
+    # change need not trigger every tools module (and vice versa).
+    mapping = sorted(set(mods) | set(discover("all")) | {
+        "scripts/tests/" + name for name in os.listdir(os.path.join(ROOT, "scripts/tests"))
+        if name.startswith("test_") and name.endswith(".py")})
+    for mod in mapping:
         parent, name = mod.rsplit("/", 1)
         stem = name.removeprefix("test_").removesuffix("_test.py").removesuffix(".py")
         prefixes = [parent + "/"] if parent not in ("tools", "tests", "scripts/tests") else []
@@ -110,8 +116,17 @@ def scoped_modules(mods, paths):
         globs = [f"{d}/{s}*" for d in ("scripts", "tools") for s in (stem, stem.replace("_", "-"))]
         if stem.startswith(("lane_merge", "laptop_gate", "merge_gate")):
             globs += ["tools/lane_*", "tools/laptop_gate.py", "scripts/merge_gate.py"]
-        if mod in paths or stem in rows or any(p.startswith(tuple(prefixes)) or any(fnmatchcase(p, g) for g in globs) for p in paths):
-            selected.append(mod)
+        specs = [s for s in declarations.get(stem, []) if s != "." and not s.startswith(("!", "+"))]
+        matches = {p for p in paths if p == mod or p.startswith(tuple(prefixes))
+                   or any(fnmatchcase(p, g) for g in globs) or any(cc._match(p, s) for s in specs)}
+        if matches:
+            covered.update(matches)
+            if mod in mods:
+                selected.append(mod)
+    if not selected and mods and all(is_art_test(m) for m in mods) and any(p.startswith(ART_PREFIXES) for p in paths):
+        return mods
+    if any(p not in covered and not p.startswith(("docs/", ".claude/")) and not p.endswith((".md", ".rst")) for p in paths):
+        return mods
     return selected
 
 
@@ -205,6 +220,8 @@ def run_all(mods: list[str], jobs: int, tier: str, no_cache: bool = False, repor
 
     def one(mod):
         def run(env):
+            env = dict(env)
+            env.pop("MC2_GATE_BASE", None)  # selection belongs to this runner, not pytest's fixture repositories
             res = run_module(mod, env)
             return res[1], res[3], res
         res, hit, info = mtc.run_with_cache(cache, mod, "pytest:" + mod, run)
@@ -249,10 +266,7 @@ def main() -> int:
     args = ap.parse_args()
 
     mods = discover(args.suite)
-    if args.suite == "art" and args.base and not art_changed(args.base):
-        print("kit_art: SKIP: window diff has no art/kit inputs")
-        return 0
-    if args.base and args.suite != "art":
+    if args.base:
         paths = subprocess.check_output(["git", "diff", "--name-only", "-z", args.base, "HEAD"], cwd=ROOT, text=True,
                                         **console_child.child_kwargs(redirected=True)).split("\0")
         mods = scoped_modules(mods, paths)

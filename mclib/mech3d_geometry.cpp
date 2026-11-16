@@ -3,6 +3,7 @@
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "texture_assets.h"
 #include "mech3d_internal.h"
+#include "../GameOS/gameos/gos_frame_context.h"
 #include "footprints.h"
 #include "render_snap.h"
 #include "terrain_runtime.h"
@@ -138,22 +139,34 @@ void Mech3DAppearance::setObjStatus (long oStatus)
 	status = oStatus;
 }
 
+void Mech3DAppearance::tickImportedAnimation(bool advanceClock, bool preview)
+{
+	mc2mechanim::MechMotion motion;
+	motion.gestureId = static_cast<int>(unitAnim().currentGestureId);
+	const auto& pos = preview ? position : simPosition_;
+	motion.px = pos.x; motion.py = pos.y; motion.pz = pos.z;
+	motion.legHeadingDeg = preview ? rotation : simRotation_;
+	motion.destroyed = ((preview ? status : simStatus_) == OBJECT_STATUS_DESTROYED);
+	motion.preview = preview;
+	const void* typeKey = mechType ? mechType->mechShape[preview ? currentLOD : 0].get() : nullptr;
+	const unsigned stamp = preview ? g_mc2FrameCounter.load(std::memory_order_relaxed) : static_cast<unsigned>(turn);
+	mc2mechanim::TickImportedMechs(frameLength, stamp, motion,
+		preview ? mechShape : simulationShape_.get(), typeKey, advanceClock, preview ? nullptr : &unitAnim().imported);
+}
+
 void Mech3DAppearance::updateGeometry (void)
 {
 	if (!simPresentationPass && (simulationOwned() || mc2::overlap::onSimWorker())) { updateSimPose(); return; }
 	mc2::overlap::assertMainThread("Mech3DAppearance::updateGeometry");
-    mc2mechanim::CopyImportedActorPose(simulationShape_.get(), mechShape);
+    if (!simulationOwned()) tickImportedAnimation(true, true);
+    else mc2mechanim::CopyImportedActorPose(simulationShape_.get(), mechShape);
 	ZoneScopedN("GameLogic.Mech3D.UpdateGeometry");
 	// F3 CPU projection cost-baseline: sidecar bucket (NEVER in
 	// projection_total). One scope per visible mech per frame.
 	::mc2_cpu_proj_cost::SidecarScope _f3_skin_scope(
 	    ::mc2_cpu_proj_cost::SidecarId::SIDECAR_SKINNING_CHAIN);
 
-	// BT2018-SKEL-ENGINE-1B-RUNTIME / 1C: advance + re-pose imported skinned mechs
-	// once per frame BEFORE TransformMultiShape re-reads the shared type geometry
-	// below. Idempotent on g_mc2FrameCounter (the second combat update() is a no-op
-	// here); near-free when no imported animated mech is registered. 1C selects the
-	// clip from this mech's movement (gesture + position/leg-heading deltas).
+	// Unowned previews tick their draw actor; battle draws consume the published sim pose.
 
 	//Always override with our local instance.
 	mechShape->SetTextureHandle(0,localTextureHandle);
@@ -1082,16 +1095,7 @@ void Mech3DAppearance::updateSimPose (bool advanceClock)
 	}
 	}
 	{
-		mc2mechanim::MechMotion _mm;
-		_mm.gestureId = static_cast<int>(unitAnim().currentGestureId);
-		_mm.px = position.x; _mm.py = position.y; _mm.pz = position.z;
-		_mm.legHeadingDeg = rotation;
-		_mm.destroyed = (status == OBJECT_STATUS_DESTROYED);
-		// PER-ACTOR: actorKey = this instance shape; typeKey = the chassis type shape
-		// (== the batcher's rec.importedGpuType / desc.mechShape keying).
-		const void* _typeKey = (mechType ? static_cast<const void*>(mechType->mechShape[currentLOD].get()) : nullptr);
-		mc2mechanim::TickImportedMechs(frameLength, static_cast<unsigned>(turn), _mm,
-		                               static_cast<const void*>(mechShape), _typeKey, advanceClock, &unitAnim().imported);
+		tickImportedAnimation(advanceClock, false);
 		// ANIM-FROZEN-WARNING-FIX-1: imported-mech GPU animation IS implemented and
 		// working at shipped defaults (per-actor model-delta palette; proven by
 		// IMPORTED-GPU-ANIM-READPATH-RECON-1). It is armed by MC2_MECH_IMPORT_GPU.

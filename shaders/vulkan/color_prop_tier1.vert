@@ -125,6 +125,10 @@ vec3 hotColorBaseLight(uint startV, vec3 colouredSeed, bool lightsOut, vec3 pink
         else if (nightFactor > kSmall) outLight = green * nightFactor;
     } else if (startV == 0xffff0000u || startV == 0xff0000ffu) {
         // blink tags: dark
+    } else if (startV == 0xfeffffffu) {
+        // Synthetic imported building body fill: preserve day brightness, but
+        // match the former black seed exactly at full night (not the 20% bake).
+        if (!lightsOut) outLight = colouredSeed * (1.0 - uFrame.nightDarkness);
     } else if ((startV & 0x00ffffffu) != 0u) {
         // Any other light colour is authored vertex light (hangars, terminals carry a near-white bake): it is environment
         // light, not a lamp, so the night dims it like the sun and ambient -- by day it is added as authored.

@@ -159,6 +159,7 @@ extern "C" int mc2_vk_water_island_prewarm(int w,int h) {
     if(!s->native) s->native=std::make_unique<mc2vk::NativeProducers>();
     if (!s->native->prewarmPipelines(ctx)) return 0;
     if (!prepareNative(s, ctx)) return 0;
+    if (!mc2::waterplanar::prewarmProps(s->planarProps, w, h)) return 0;
     // Exercise cull/args now as well as creating their pipelines: the first
     // gameplay dispatch must not pay driver first-use work or buffer clears.
     // This off-screen cull is never drawn; the real feed overwrites both slots.

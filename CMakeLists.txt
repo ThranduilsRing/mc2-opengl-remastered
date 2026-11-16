@@ -22,6 +22,12 @@ if(MSVC)
         "$<$<CONFIG:RelWithDebInfo>:/INCREMENTAL:NO>"
         "$<$<CONFIG:RelWithDebInfo>:/OPT:REF,ICF>")
 endif()
+# Package globals as COMDATs so REF/ICF can discard and fold unused data too.
+# Keep /O2 and full debug information; /Gy makes the function packaging explicit.
+if(MSVC)
+    add_compile_options("$<$<AND:$<CONFIG:RelWithDebInfo>,$<COMPILE_LANGUAGE:C,CXX>>:/Gy>"
+                        "$<$<AND:$<CONFIG:RelWithDebInfo>,$<COMPILE_LANGUAGE:C,CXX>>:/Gw>")
+endif()
 
 # C++ standard: one cache variable, MC2_CXX_STANDARD (20 or 23; default 23 = MSVC /std:c++23preview).
 # The gate registry (Gates/gate.h) needs C++20 class-type template parameters and consteval, so 17 is

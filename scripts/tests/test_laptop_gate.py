@@ -161,6 +161,7 @@ def test_readonly_hardlink_replacement_preserves_source(tmp_path, monkeypatch, r
         expected = b"seed bytes" if route == "seed" else b"new bytes"
         assert dst.read_bytes() == expected
         assert peer.read_bytes() == b"seed bytes"
+        assert not peer.stat().st_mode & stat.S_IWRITE
         assert not os.path.samefile(peer, dst)
         assert deploy_payload.sha256_file(dst) == hashlib.sha256(expected).hexdigest()
     finally:

@@ -14,43 +14,14 @@
 // The rows of kFeatureTable and kAuxEnvVars below are GENERATED from that table; the RendererFeature
 // enum stays hand-ordered (kFeatureTable is indexed by it, and the length is static_asserted).
 //
-// Usage:
-//   DeviceCaps caps{};
-//   debugDumpFeatureRegistry(caps);   // optional legacy diagnostic banner
-//
 // Firewall: MUST NOT include any GL header or game-side header.
 
 #pragma once
 
 #include <cstdint>
-#include <cstdio>
-#include "Gates/gate_cold.h"   // boolState(): the dump names gates from its own table
 
 namespace RenderCore {
 
-// ---------------------------------------------------------------------------
-// Device capabilities
-// ---------------------------------------------------------------------------
-// Legacy diagnostic payload; field names and layout are retained for compatibility.
-// Zero-initialised default = "unknown / not queried yet". These fields do not
-// describe the active Vulkan device; see GameOS/gameos/vk_device_profile.h.
-// Nothing in this header queries a graphics API.
-
-struct DeviceCaps {
-    // Extension / promotion points
-    bool hasSSBO              = false;  // GL 4.3 / ARB_shader_storage_buffer_object
-    bool hasTessellation      = false;  // GL 4.0 / ARB_tessellation_shader
-    bool hasComputeShaders    = false;  // GL 4.3 / ARB_compute_shader
-    bool hasIndirectDraw      = false;  // GL 4.0 / ARB_draw_indirect
-    bool hasBindlessTextures  = false;  // ARB_bindless_texture (AMD: driver-version-gated)
-    bool hasClipControl       = false;  // GL 4.5 / ARB_clip_control (load-bearing for reverse-Z)
-    bool hasDSA               = false;  // GL 4.5 / ARB_direct_state_access
-
-    // Limits
-    int  maxColorAttachments  = 0;  // GL_MAX_COLOR_ATTACHMENTS
-    int  maxSSBOBindings      = 0;  // GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS
-    int  maxTessGenLevel      = 0;  // GL_MAX_TESS_GEN_LEVEL
-};
 
 // ---------------------------------------------------------------------------
 // Env-var kind
@@ -699,48 +670,5 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "XFORM-CONVENTION-HARNESS-1: promote the F1-3C clip-space parity probe (code/gamecam.cpp) to a HARD invariant.",
     },
 };
-
-// ---------------------------------------------------------------------------
-// Debug dump
-// ---------------------------------------------------------------------------
-// Emits a [RENDERER_FEATURES v1] startup banner to stderr.
-// Optional legacy diagnostic; preserves the v1 field names for log consumers.
-// Prints Feature entries normally; Retired entries with [RETIRED] tag.
-// Trace entries (kAuxEnvVars) are not printed here -- they are per-subsystem.
-
-inline void debugDumpFeatureRegistry(const DeviceCaps& caps) {
-    fprintf(stderr,
-            "[RENDERER_FEATURES v1]"
-            " ssbo=%d tess=%d compute=%d indirect=%d"
-            " bindless=%d clipctrl=%d dsa=%d"
-            " max_color_attach=%d max_ssbo_bind=%d max_tess_level=%d\n",
-            static_cast<int>(caps.hasSSBO), static_cast<int>(caps.hasTessellation),
-            static_cast<int>(caps.hasComputeShaders), static_cast<int>(caps.hasIndirectDraw),
-            static_cast<int>(caps.hasBindlessTextures), static_cast<int>(caps.hasClipControl),
-            static_cast<int>(caps.hasDSA),
-            caps.maxColorAttachments, caps.maxSSBOBindings, caps.maxTessGenLevel);
-
-    for (const auto & d : kFeatureTable) {
-        const char* envStr = d.envVar ? d.envVar : "(none)";
-        const char* curStr;
-        if (d.kind == EnvVarKind::Retired) {
-            curStr = "[RETIRED]";
-        } else if (!d.envVar) {
-            curStr = "always-on";
-        } else {
-            const auto st = mc2::gate::boolState(d.envVar);   // the name comes from the table being dumped
-            if (!st || !st->set) {
-                curStr = d.defaultOn ? "on(default)" : "off(default)";
-            } else if (!st->on) {
-                curStr = "off(forced)";
-            } else {
-                curStr = "on(forced)";
-            }
-        }
-        fprintf(stderr,
-                "[RENDERER_FEATURES v1]   %-38s env=%-32s %s\n",
-                d.featureId, envStr, curStr);
-    }
-}
 
 } // namespace RenderCore

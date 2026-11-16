@@ -27,6 +27,7 @@ struct MechMotion {
     float px = 0.0f, py = 0.0f, pz = 0.0f;
     float legHeadingDeg = 0.0f;
     bool  destroyed = false;   // P9: death clips instead of knockdown/downed clips
+    bool  preview = false;    // unowned logistics actor: loop showcase at authored speed
 };
 
 // Advance + re-bake every registered imported animated mech, once per frameStamp.

@@ -297,11 +297,9 @@ struct ColorPropIsland : mc2vk::IslandState {
         VkDeviceSize pktCap = 0, runCap = 0, compactCap = 0, cmdCap = 0;
         mc2vk::OwnedBuffer instances;
         VkDeviceSize instanceCap = 0;
-        uint64_t instanceGeneration = 0;
         std::optional<PropRecordCacheKey> uploaded;
     };
     PropGpu gpu[mc2vk::kMaxFramesInFlight];
-    PropInstanceGeneration instanceSource;
     PropTypeGeneration typeSource;
     uint64_t materialGeneration = 0, resourceGeneration = 0;
     PropRecordCacheKey recordKey{};
@@ -646,6 +644,7 @@ bool cp_make_albedo_sampler(ColorPropIsland* s, mc2vk::OwnedSampler* samp, uint3
 
 // FSR/AA resolve state changed: rebuild the biased samplers and rewrite every parity's sets once.
 void cp_refresh_samplers(ColorPropIsland* s) {
+    ZoneScopedN("VKIsl.Props.RefreshSamplers");
     const auto albedo = [s](mc2vk::OwnedSampler* p) { return [s, p] { return cp_make_albedo_sampler(s, p, 0); }; };
     const auto detail = [s] { return mc2vk::infra::makeMaterialSampler(s->device, s->detailSampler, VK_SAMPLER_ADDRESS_MODE_REPEAT, s->sampBias); };
     if (!mc2vk::infra::refreshSamplers(s->sampBias, {{&s->albedoSamp, albedo(&s->albedoSamp)}, {&s->albedoOnSamp, albedo(&s->albedoOnSamp)}, {&s->detailSampler, detail}})) return;
@@ -1548,6 +1547,7 @@ extern "C" int mc2_vk_color_prop_island_enabled() {
 }
 
 static bool prepare_mission_resources(ColorPropIsland* s) {
+    ZoneScopedN("VKIsl.Props.MissionResources");
     if (!upload_geometry_once(s)) { setFallback("geometry_not_ready"); return false; }
 
     // VK-P11 STATIC-PROP MATERIAL: copy-once import the alpha-OFF albedo 2D_ARRAY +
@@ -1681,7 +1681,10 @@ extern "C" int mc2_vk_color_prop_island_prewarm(int w,int h) {
         if(!init_island(fresh.get(),w,h)) { ctx.waitIdle("color_prop_prewarm_failure"); return 0; }
         slot=std::move(fresh);
     }
-    return prepare_mission_resources(static_cast<ColorPropIsland*>(slot.get())) ? 1 : 0;
+    auto* s = static_cast<ColorPropIsland*>(slot.get());
+    if (!prepare_mission_resources(s)) return 0;
+    if (auto* post = getGosPostProcess()) post->prewarmVkHzb(s->mapGeneration);
+    return 1;
 }
 
 // Props pass, prepare half (main thread): builds the cached packet lists, the per-parity prop buffers, their descriptor writes and uploads, and the late-fringe range,
@@ -2090,6 +2093,7 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
         slotCtx.retireIsland(mc2vk::IslandSlot::ColorProp);
     }
     if (!supplied && !islandSlot()) {
+        ZoneScopedN("VKIsl.Props.Init");
         auto fresh = std::make_unique<ColorPropIsland>();
         (void)mc2vk::takeLastCreateFailure();
         if (!init_island(fresh.get(), w, h)) {
@@ -2111,7 +2115,10 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
     if (s->disabled || !s->inited) return 0;  // VK-RUNG8-ITEM5: direct-chain-native only
 
     if (!prepare_mission_resources(s)) return 0;
-    if (!target && mc2vk::rt::scene::demanded()) mc2vk::rt::scene::updateProps(s->vbo.deviceAddress());
+    if (!target && mc2vk::rt::scene::demanded()) {
+        ZoneScopedN("VKIsl.Props.RtPrepare");
+        mc2vk::rt::scene::updateProps(s->vbo.deviceAddress());
+    }
 
     // Frame-ring allocations already belong to the current engine frame slot.
     // Private commands and descriptors retire against this island's submissions,
@@ -2161,16 +2168,13 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
             }
         }
     }
-    const uint64_t sceneGeneration = s->instanceSource.update(
-        GpuStaticPropRegistry::getRegistryGeneration(),
-        {static_cast<const std::byte*>(feed.instances112), static_cast<size_t>(instBytes)});
-    const uint64_t typeGeneration = s->typeSource.update(std::span(
+    const uint64_t typeGeneration = [&] { ZoneScopedN("VKIsl.Props.TypeGeneration"); return s->typeSource.update(std::span(
         static_cast<const GpuStaticPropInstance*>(feed.instances112), instanceCount), [](uint32_t type) {
             return (static_cast<uint64_t>(type) << 32) |
                 static_cast<uint32_t>(GpuStaticPropRegistry::getRecipeIndexForType(type));
-        });
+        }); }();
     s->recordKey = {typeGeneration, s->materialGeneration, s->resourceGeneration};
-    cp_refresh_samplers(s);
+    { ZoneScopedN("VKIsl.Props.Samplers"); cp_refresh_samplers(s); }
     // Props do not depend on terrain readiness: with no ground-lighting frame this frame (terrain not inited, fell back, or a different frame) reuse
     // the last frame's offsets over the descriptors this island's own set already holds; only a run that never had one skips the draw.
     auto groundNow = target ? std::optional<Mc2GroundLightingFrame>(target->ground) : mc2_vk_ground_lighting_frame();
@@ -2221,7 +2225,8 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
     void* hzbMask = nullptr;
     uint64_t hzbMaskGeneration = 0;
     gosPostProcess* pp = getGosPostProcess();
-    const bool hzbCulled = !target && pp && pp->runVkPostHzbNative(feed, s->mapGeneration, &hzbMask, &hzbMaskGeneration);
+    const bool hzbCulled = [&] { ZoneScopedN("VKIsl.Props.HzbPrepare");
+        return !target && pp && pp->runVkPostHzbNative(feed, s->mapGeneration, &hzbMask, &hzbMaskGeneration); }();
     VkDescriptorBufferInfo maskInfo{hzbCulled ? reinterpret_cast<VkBuffer>(hzbMask) : s->hotBuf.get(),0,VK_WHOLE_SIZE};
     VkWriteDescriptorSet maskWrite{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
     maskWrite.dstSet = s->set[par]; maskWrite.dstBinding = 9; maskWrite.descriptorCount = 1;
@@ -2307,14 +2312,12 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
                              "colorprop.instances", static_cast<int>(par))) {
                 setFallback("instance_buffer_failed"); s->disabled = true; return 0;
             }
-            g.instanceGeneration = 0;
             s->ringBound[par][1] = VK_NULL_HANDLE; // allocator may recycle the same VkBuffer handle
         }
-        if (g.instanceGeneration != sceneGeneration) {
-            if (!g.instances.upload(feed.instances112, instBytes, 0)) {
-                setFallback("instance_upload_failed"); s->disabled = true; return 0;
-            }
-            g.instanceGeneration = sceneGeneration;
+        // The retired slot receives the published bytes directly. Keeping a
+        // second CPU snapshot costs more than the upload it would avoid.
+        if (!g.instances.upload(feed.instances112, instBytes, 0)) {
+            setFallback("instance_upload_failed"); s->disabled = true; return 0;
         }
     }
     g_health.instRecords = instanceCount;
@@ -2501,8 +2504,7 @@ struct PlanarProps : ColorPropIsland {
     bool boundsReady = false;
     uint32_t sourceMapGeneration = 0;
 };
-bool prepareProps(std::unique_ptr<mc2vk::IslandState>& state, const Target& target, mc2vk::VulkanContext::RecordFn& record) {
-    record = {};
+bool prewarmProps(std::unique_ptr<mc2vk::IslandState>& state, int w, int h) {
     const auto* main = parkedIsland();
     if (!main || !main->inited || main->disabled) return false;
     const uint32_t generation = main->mapGeneration;
@@ -2515,16 +2517,8 @@ bool prepareProps(std::unique_ptr<mc2vk::IslandState>& state, const Target& targ
         state = std::move(fresh);
     }
     auto* s = static_cast<PlanarProps*>(state.get());
-    // Object projection is independent of terrain's dispatch matrix, even when
-    // no props were admitted to the main colour list this frame.
-    const float* objectMatrix = gos_GetObjectFixBMVPMat4();
-    if (!objectMatrix) return false;
-    const View view(objectMatrix, target.water);
-    // Empty registries need neither geometry nor a Vulkan prop island.
-    preparePropInstances(view, s->bounds, s->reflectedInstances);
-    mc2_static_prop_retype_far_tier(std::span<GpuStaticPropInstance>(s->reflectedInstances));
-    if (s->reflectedInstances.empty()) return true;
-    if (!s->inited && !init_island(s, target.w, target.h)) return false;
+    if (!s->inited && !init_island(s, w, h)) return false;
+    if (!prepare_mission_resources(s)) return false;
     if (!s->boundsReady) {
         Mc2ShadowGeomFeed geom{};
         const void *vertices = nullptr, *indices = nullptr;
@@ -2536,9 +2530,19 @@ bool prepareProps(std::unique_ptr<mc2vk::IslandState>& state, const Target& targ
             std::span(static_cast<const std::byte*>(vertices), static_cast<size_t>(vb)),
             std::span(static_cast<const uint32_t*>(indices), static_cast<size_t>(ib / sizeof(uint32_t))));
         s->boundsReady = true;
-        preparePropInstances(view, s->bounds, s->reflectedInstances);
-        mc2_static_prop_retype_far_tier(std::span<GpuStaticPropInstance>(s->reflectedInstances));
     }
+    return true;
+}
+bool prepareProps(std::unique_ptr<mc2vk::IslandState>& state, const Target& target, mc2vk::VulkanContext::RecordFn& record) {
+    record = {};
+    if (!prewarmProps(state, target.w, target.h)) return false;
+    auto* s = static_cast<PlanarProps*>(state.get());
+    // Match the object projection; only the view-dependent instance list remains per frame.
+    const float* objectMatrix = gos_GetObjectFixBMVPMat4();
+    if (!objectMatrix) return false;
+    const View view(objectMatrix, target.water);
+    preparePropInstances(view, s->bounds, s->reflectedInstances);
+    mc2_static_prop_retype_far_tier(std::span<GpuStaticPropInstance>(s->reflectedInstances));
     if (s->reflectedInstances.empty()) return true;
     Mc2ColorPropFeed feed{};
     feed.instances112 = s->reflectedInstances.data();
