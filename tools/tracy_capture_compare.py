@@ -186,7 +186,8 @@ def vary_list(text) -> "list[str]":
     return [k.strip() for k in (text or "").split(",") if k.strip()]
 
 
-def game_env(arm: str, fixed_timestep: bool, fps_cap, pose, extra_env, via_menu_boot: bool = False) -> dict:
+def game_env(arm: str, fixed_timestep: bool, fps_cap, pose, extra_env, via_menu_boot: bool = False,
+             skip_intro: bool = False) -> dict:
     """The environment the game runs under for a trace: the shell's, minus stray backend variables, plus the harness's settings, the pinned
     drawable size, the arm, and the caller's --env entries (which win). A function of its inputs so the pin is testable without an engine."""
     if arm not in ARMS:
@@ -248,7 +249,7 @@ def game_env(arm: str, fixed_timestep: bool, fps_cap, pose, extra_env, via_menu_
               "fail-softs to GL and you profile the wrong present path.")
     if via_menu_boot:
         # The player's path: no smoke mode (so no fixed timestep and no --mission), the main menu starts the stock campaign itself.
-        via_menu.apply_via_menu_env(env)
+        via_menu.apply_via_menu_env(env, skip_intro=skip_intro)
     for kv in (extra_env or []):
         k, sep, v = kv.partition("=")
         if not sep:
@@ -348,7 +349,8 @@ def pan_camera(channel, half_map, seconds):
 def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path,
                   extra_env=None, pose=None, fixed_timestep=True, fps_cap=None,
                   show_window: bool = True, ticks: int = 0, via_menu_boot: bool = False,
-                  spawn_game=None, post_load: bool = False, capture_arm: str = "default", pan: bool = False) -> int:
+                  spawn_game=None, post_load: bool = False, capture_arm: str = "default", pan: bool = False,
+                  skip_intro: bool = False) -> int:
     """Record one trace under the host lease; retain a caller's existing lease.
 
     Free timestep and an uncapped FPS limit measure renderer throughput.
@@ -364,7 +366,9 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
 
     if via_menu_boot and ticks:
         sys.exit("ERROR: --via-menu cannot be combined with --ticks (the tick budget is a smoke-mode exit)")
-    env = game_env(arm, fixed_timestep, fps_cap, pose, extra_env, via_menu_boot)   # before the recorder starts: a refused --env must leave nothing running
+    if skip_intro and not via_menu_boot:
+        sys.exit("ERROR: --skip-intro requires --via-menu")
+    env = game_env(arm, fixed_timestep, fps_cap, pose, extra_env, via_menu_boot, skip_intro)   # before the recorder starts: a refused --env must leave nothing running
     if pan:
         if not post_load or seconds < 2:
             raise ValueError("pan requires a post-load window of at least two seconds")
@@ -498,7 +502,15 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
                 rc = int(bool(recorder.returncode))
             except subprocess.TimeoutExpired:
                 rc = 1
-            if not rc and recorder.returncode == 0 and gp.poll() is None:
+            if via_menu_boot:
+                # Snapshot BEFORE stopping/waiting for the game: shutdown or a
+                # slow exit can append readiness after the recorder has ended.
+                game_lf.flush()
+                window_log = game_log.read_text(encoding="utf-8", errors="replace")
+                if "[TIMING v1] event=mission_ready " not in window_log:
+                    print(f"INVALID: no mission_ready inside the recording window; see {game_log}", file=sys.stderr)
+                    rc = 1
+            if recorder.returncode == 0 and gp.poll() is None:
                 intentional_stop = True
                 print(f"[capture] intentional_stop pid={gp.pid} reason=recording_complete")
                 _stop_capture_child(gp)
@@ -596,7 +608,7 @@ def _capture_arm(args, name, out):
         fixed_timestep=not args.free_timestep, fps_cap=args.fps_cap,
         show_window=args.show_window, ticks=args.ticks, via_menu_boot=args.via_menu,
         post_load=not (args.ticks or args.via_menu), capture_arm=name,
-        pan=args.pan,
+        pan=args.pan, skip_intro=args.skip_intro,
     )
     if rc == 0:
         zone_summary(out, csv_out=out.with_suffix(".zones.csv") if args.csv else None)
@@ -1188,6 +1200,8 @@ def main() -> int:
     c.add_argument("--via-menu", action="store_true",
                    help="launch as a player does (boot, main menu, stock campaign, mission; no smoke mode, no --mission, no fixed timestep). "
                         "--seconds must cover menu + mission load (use 90+); the trace includes the front end. [VIA_MENU v1]/[FIRST60 v1] lines are in the .game.log")
+    c.add_argument("--skip-intro", action="store_true",
+                   help="with --via-menu: skip intro/front-end videos; videos play by default")
     c.add_argument("--ticks", type=int, default=0, help="capture this many headless sim ticks, including mission load; no recorder wall-clock cutoff")
     c.add_argument("--csv", action="store_true", help="also write the full per-zone csvexport table next to the trace (default: top-10 summary only)")
     c.add_argument("-o", "--output", required=True, help="output .tracy path")

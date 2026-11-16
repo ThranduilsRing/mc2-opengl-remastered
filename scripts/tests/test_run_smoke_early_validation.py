@@ -3,10 +3,45 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import console_child  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+@pytest.mark.parametrize("mode,duration,cap,accepted", [
+    ("--via-menu", None, 300, True), ("--via-menu", 120, 300, True),
+    ("--via-menu", 300, 300, True), ("--via-menu", 301, 300, False),
+    (None, 30, 30, True), (None, 31, 30, False),
+    ("--sim-determinism", 60, 60, True), ("--sim-determinism", 61, 60, False),
+])
+def test_duration_caps_before_any_lease_or_launch(monkeypatch, capsys, mode, duration, cap, accepted):
+    import argparse
+    import run_smoke
+    parsed = []
+    real_parse = argparse.ArgumentParser.parse_args
+    def parse(parser, *args, **kwargs):
+        result = real_parse(parser, *args, **kwargs)
+        parsed.append(result)
+        return result
+    monkeypatch.setattr(argparse.ArgumentParser, "parse_args", parse)
+    monkeypatch.delenv("MC2_OWNER_NO_LEASE", raising=False)
+    monkeypatch.delenv("MC2_PLAY_MISSION", raising=False)
+    monkeypatch.setattr(sys, "argv", ["run_smoke", "--no-lease", *([mode] if mode else []),
+                                    *(["--duration", str(duration)] if duration is not None else [])])
+    with pytest.raises(SystemExit) as error:
+        run_smoke.main()
+    assert error.value.code == (6 if accepted else 2)
+    stderr = capsys.readouterr().err
+    if accepted:
+        # Deliberately stop at the existing owner-only guard, before lease/game work.
+        assert "--no-lease is owner-only" in stderr and "hard cap" not in stderr
+        if mode == "--via-menu":
+            assert parsed[0].duration == (duration if duration is not None else run_smoke.VIA_MENU_TIMEOUT_S)
+    else:
+        assert f"cap of {cap}s" in stderr
 
 
 def _run(*args):

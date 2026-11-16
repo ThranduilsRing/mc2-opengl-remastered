@@ -278,7 +278,7 @@ def harness(monkeypatch):
     monkeypatch.setattr(capture.render_options_pin, "record", Mock(return_value={"rejected": []}))
     monkeypatch.setattr(capture.render_options_pin, "write", Mock())
     monkeypatch.setattr(capture, "crash_dumps", lambda install: {})
-    monkeypatch.setattr(Path, "read_text", lambda *a, **k: "")
+    monkeypatch.setattr(Path, "read_text", lambda *a, **k: "[TIMING v1] event=mission_ready elapsed_ms=1000\n")
     h.run = lambda show_window=True: capture.capture_trace(h.install, "vk", "mc2_01", 15, h.out,
                                                           show_window=show_window)
     return h
@@ -327,6 +327,28 @@ def test_via_menu_ignores_only_its_own_game_stop(harness, exited, recorder_rc, e
     assert capture.capture_trace(h.install, "vk", "mc2_01", 15, h.out, via_menu_boot=True) == expected
     assert ("game.kill" in h.events) is not exited
     h.release.assert_called_once()
+
+
+@pytest.mark.parametrize("late", [False, True])
+def test_via_menu_trace_without_mission_ready_is_invalid(harness, monkeypatch, capsys, late):
+    h = harness
+    log = ["[TIMING v1] event=mission_settings_ready elapsed_ms=120000\n"]
+    monkeypatch.setattr(Path, "read_text", lambda *a, **k: log[0])
+    original = h.game_spawn.side_effect
+    def spawn(*args, **kwargs):
+        proc = original(*args, **kwargs)
+        kill = proc.kill.side_effect
+        def stop():
+            if late:
+                log[0] += "[TIMING v1] event=mission_ready elapsed_ms=177000\n"
+            kill()
+        proc.kill.side_effect = stop
+        return proc
+    h.game_spawn.side_effect = spawn
+    assert capture.capture_trace(h.install, "vk", "mc2_01", 120, h.out, via_menu_boot=True) != 0
+    assert "INVALID: no mission_ready inside the recording window" in capsys.readouterr().err
+    assert ("event=mission_ready " in log[0]) is late
+    assert "game.kill" in h.events and h.events[-1] == "release"
 
 
 @pytest.mark.parametrize("which", ["recorder", "game"])

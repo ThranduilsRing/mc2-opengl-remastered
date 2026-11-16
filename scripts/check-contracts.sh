@@ -412,7 +412,14 @@ run_check() {
     return 0
 }
 
-run_nightly() { [ "$NIGHTLY" -eq 1 ] || return 0; run_check "$@"; }
+NIGHTLY_MATCHES=()
+run_nightly() {
+    if [ "$NIGHTLY" -ne 1 ]; then
+        if [ -n "$ROWS_RE" ] && [[ "$1" =~ $ROWS_RE ]]; then NIGHTLY_MATCHES+=("$1"); fi
+        return 0
+    fi
+    run_check "$@"
+}
 
 # Explicit --rows is an offline proof request. Otherwise use the existing input
 # declarations as trigger paths; missing declarations run only at night.
@@ -698,6 +705,7 @@ _selftest_rows() {
     pass)
         run_check     "st_pass_talks" 'printf "%s\n" ST-STDOUT-SENTINEL'
         run_check_tri "st_tri_pass"   'printf "%s\n" ST-STDOUT-SENTINEL-TRI'
+        run_nightly   "st_nightly_only" 'printf "%s\n" ST-NIGHTLY-SENTINEL'
         ;;
     fail)
         run_check     "st_fail_talks"  'printf "%s\n" "note: a preamble line" "ERROR: ST-DIGEST-SENTINEL blew up" "trailing noise"; exit 1'
@@ -825,6 +833,25 @@ _fail_reason_selftest() {
     _st_want "(d2) ...its header"                "$out" "--- st_pass_talks ---"
     _st_want "(d2) ...and the tri-state runner prints too" \
              "$out" "ST-STDOUT-SENTINEL-TRI"
+
+    # Explicit selection must fail closed and only suggest --nightly for real matches.
+    local pattern
+    for pattern in '^st_nightly_only$' '^st_missing$'; do
+        rc=0
+        out="$(CONTRACTS_SELFTEST=1 SELFTEST_SCENARIO=pass TMPDIR="$td" \
+               bash "$self" --selftest-render --quiet --rows "$pattern" 2>&1)" || rc=$?
+        [ "$rc" -ne 0 ] && _st_ok "zero-row selection fails: $pattern" || _st_bad "zero rows exited 0: $pattern"
+        if [ "$pattern" = '^st_nightly_only$' ]; then
+            _st_want "nightly-only remedy" "$out" 'add --nightly'
+        else
+            _st_absent "unknown row has no nightly remedy" "$out" 'add --nightly'
+        fi
+    done
+    rc=0
+    out="$(CONTRACTS_SELFTEST=1 SELFTEST_SCENARIO=pass TMPDIR="$td" \
+           bash "$self" --selftest-render --quiet --nightly --rows '^st_nightly_only$' 2>&1)" || rc=$?
+    [ "$rc" -eq 0 ] && _st_ok "--nightly selects nightly row" || _st_bad "--nightly did not select nightly row"
+    _st_absent "selected nightly row has no remedy" "$out" 'add --nightly'
 
     rm -rf "$td"
 
@@ -1664,6 +1691,9 @@ if [ -n "$ROWS_RE" ] || [ -n "$SKIP_RE" ]; then
     echo "  This is NOT a green board; run the full board (no --rows) before committing a batch."
     if [ "$((PASS_COUNT + FAIL_COUNT + KNOWN_COUNT))" -eq 0 ]; then
         echo "  No row label matched '$ROWS_RE' -- nothing was checked."
+        if [ "${#NIGHTLY_MATCHES[@]}" -gt 0 ]; then
+            echo "  Matching row(s) are nightly-only: ${NIGHTLY_MATCHES[*]}; add --nightly."
+        fi
         FAIL_COUNT=$((FAIL_COUNT + 1))
     fi
 fi
