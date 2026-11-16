@@ -1,4 +1,6 @@
 #include "gos_render.h"
+#include "loading_pump_meter.h"
+#include "gos_smoke.h"
 #include "mc2fmt.h"
 
 #ifdef PLATFORM_WINDOWS
@@ -212,13 +214,31 @@ void set_native_cursor(SDL_Cursor* cursor, bool visible)
 
 void pump_loading_events()
 {
+    auto& meter = mc2::loadpump::meter;
+    if (SmokeMode::state().headless) {
+        meter.service(SDL_GetTicks64(), true);
+        return;
+    }
     if (!g_sdl_window || SDL_ThreadID() != g_window_thread) return;
-    static Uint32 lastPump = 0;
-    const Uint32 now = SDL_GetTicks();
-    if (now - lastPump < 50) return;
-    lastPump = now;
+    if (!meter.due(SDL_GetTicks64())) return;
     // Pump only: do not consume quit/focus/input events or reenter the game mid-load.
     SDL_PumpEvents();
+    meter.service(SDL_GetTicks64(), false);
+}
+
+void begin_variant_load()
+{
+    mc2::loadpump::meter.variants.begin(SDL_GetTicks64(), "initVariants.catalog", SmokeMode::state().headless);
+    pump_loading_events();
+}
+
+void end_variant_load()
+{
+    auto& scope = mc2::loadpump::meter.variants;
+    scope.end(SDL_GetTicks64());
+    if (mc2_diag::tagRequested("LOAD_PUMP"))
+        MC2_LOG(Io, Info, "[LOAD_PUMP v1] max_gap_ms={} phase={} scope=initVariants mode={} services={}",
+            scope.maxGap, scope.worst, scope.attempted ? "attempted-pump" : "actual-service", scope.services);
 }
 
 void refresh_mouse_grab()

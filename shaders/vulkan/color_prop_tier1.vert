@@ -13,6 +13,7 @@
 #extension GL_GOOGLE_include_directive : require
 #extension GL_ARB_shader_draw_parameters : require
 #extension GL_EXT_buffer_reference : require
+layout(constant_id = 0) const int kBaseQuality = 2;
 
 layout(location = 0) in vec3 a_position;
 layout(location = 1) in vec3 a_normal;
@@ -285,6 +286,15 @@ void main() {
     vMaterialSun = sunTerm;
     vSunDirStuff = sunDirFed;
     vSunColor = sunFound ? sunColorFed : vec3(0.0);
+
+    // Medium/High tree fragments replace the legacy vertex colour, including
+    // both faces' SH evaluations. Keep their material sun/seed and normals.
+    // Low/Potato still consume vArgb; missing albedo uses the teal fallback.
+    if (kBaseQuality == 2 && tree) {
+        vArgb = vec3(0);
+        vBackArgb = vec3(0);
+        return;
+    }
 
     vec3 iblTerm = vec3(0.0);
     if (uFrame.iblShStrength > 0.0) {
