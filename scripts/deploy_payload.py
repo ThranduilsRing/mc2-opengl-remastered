@@ -1279,7 +1279,8 @@ def check_exe_fresh(exe_src, build_dir, allow_stale_exe, build64_root=None):
 
 
 def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
-                      require_build=True, build64_root=None, code_only=False, cook=None):
+                      require_build=True, build64_root=None, code_only=False, cook=None,
+                      no_example_mods=False):
     """Returns list of (src_abspath, target_relpath, kind).
 
     cook (default: require_build): run the on-demand texture cooks (concrete detail, cliff rock, tree upscale; up to
@@ -1521,7 +1522,10 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
                     items.append((sp, rel, "support"))
     # Example mods (EXAMPLE-MODS-1) -> <target>/mods/<id>/ (launcher add-on
     # checkboxes). Ships with both game and editor installs.
-    items.extend(example_mods_payload(src_root))
+    if no_example_mods:
+        log("[DEPLOY] example mods skipped (--no-example-mods)")
+    else:
+        items.extend(example_mods_payload(src_root))
 
     # Generated unit/equipment definitions -> <target>/data/defs/{units,equipment}/
     # so MC2_*_DEFINITION_SOURCE=generated works from a normal install. Converter
@@ -1883,7 +1887,7 @@ def hash_present_payload(items, target_dir):
 
 
 def write_manifest_only(src_root, build_dir, exe_name, pdb_name, target_dir,
-                        build64_root=None):
+                        build64_root=None, no_example_mods=False):
     """Refresh <target>/.deployed_manifest.csv from files ALREADY in target.
 
     No copy, no lock check (we are not writing binaries -- only the CSV).
@@ -1894,7 +1898,8 @@ def write_manifest_only(src_root, build_dir, exe_name, pdb_name, target_dir,
     if not os.path.isdir(target_dir):
         fail(f"target dir does not exist: {target_dir}")
     items = enumerate_payload(src_root, build_dir, exe_name, pdb_name,
-                              require_build=False, build64_root=build64_root)
+                              require_build=False, build64_root=build64_root,
+                              no_example_mods=no_example_mods)
     hashes = hash_present_payload(items, target_dir)
 
     # Merge: keep prior rows for payload files we did not just re-hash but
@@ -2393,6 +2398,8 @@ def main():
     ap.add_argument("--require-clean", action="store_true",
                     help="refuse an executable whose embedded fingerprint says "
                          "dirty=1 (built from an uncommitted tree)")
+    ap.add_argument("--no-example-mods", action="store_true",
+                    help="omit bundled example mods from the payload")
     ap.add_argument("--skip-kit", action="store_true",
                     help="lane installs: leave the install's mods/ kit untouched (no pinned-kit payload, no kit reconcile)")
     ap.add_argument("--no-asset-sync", action="store_true",
@@ -2484,7 +2491,7 @@ def main():
 
     if args.write_manifest_only:
         write_manifest_only(src_root, build_dir, exe_name, pdb_name, target,
-                            build64_root=args.build64_root)
+                            build64_root=args.build64_root, no_example_mods=args.no_example_mods)
         return
 
     # DEPLOY-TARGET-GUARD: force deploys to the canonical deploy folders; never create
@@ -2786,6 +2793,8 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
         reuse, reason = False, "explicit full verification or asset override"
         if not args.classic_assets and not getattr(args, "skip_kit", False):
             inputs = deploy_inputs(src_root)
+            if getattr(args, "no_example_mods", False):
+                inputs["no_example_mods"] = True
             reuse, reason = reusable_payload(src_root, target, inputs)
             if getattr(args, "full_verify", False):
                 reuse, reason = False, "explicit full verification"
@@ -2796,7 +2805,8 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
         (Path(target) / REUSE_NAME).unlink(missing_ok=True)
     with deploy_phase("payload enumeration", 300):
         items = enumerate_payload(src_root, build_dir, exe_name, pdb_name,
-                                  build64_root=args.build64_root, code_only=reuse)
+                                  build64_root=args.build64_root, code_only=reuse,
+                                  no_example_mods=getattr(args, "no_example_mods", False))
     if exe_name != "mc2":
         with deploy_phase("viewer payload", 120):
             items.extend(viewer_payload(build_dir, args.build64_root, source_head, src_root))
