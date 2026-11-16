@@ -465,6 +465,29 @@ def test_roster_equipment_resolves_without_external_dump(tables, tmp_path):
     assert [i for i in stock_ids if i in stock | added] == stock_ids
 
 
+def test_every_roster_chassis_places_its_sensor_and_items(tables, tmp_path):
+    """mc2_18 invisible attackers: an empty ComponentPlacement grid left BT2018 mechs with
+    no sensor system. Trigger: tools/bt2018_mechs/{roster.py,data/roster.json,compile.py}."""
+    from tools.bt2018_mechs import roster
+    rows = C.load_json(C.DATA / "roster.json")
+    manifest = [{"btname": f, "glb": f + ".glb", "tga": f + ".tga"} for f in rows if not f.startswith("_")]
+    (tmp_path / "conversions_manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    recipes = roster.recipes(tmp_path)
+    assert len(recipes) == 51
+    for index, recipe in enumerate(recipes):
+        p = C.build_profile(recipe, *tables)
+        csv_rows = list(csv.reader(io.StringIO(C.emit_csv(p, recipe, index))))
+        for v in range(len(p["variants"])):
+            base = 97 * v
+            items = {i: int(csv_rows[25 + base + i][4]) for i in range(72)}
+            placed = {int(csv_rows[101 + base + s][c]) for s in range(12) for c in range(1, 9)
+                      if csv_rows[101 + base + s][c]}
+            assert items[12] == 13 and int(csv_rows[103 + base][1]) == 12, p["family"]  # Head Slot3
+            assert {i for i, mid in items.items() if mid != C.EMPTY_MASTER} <= placed, p["family"]
+            if p["mc2"]["jump_capable"]:
+                assert items[C.JUMP_ITEM_FIRST] != C.EMPTY_MASTER, p["family"]
+
+
 def test_spawn_fixture_uses_a_shipped_pilot_with_combat_skills():
     """A missing pilot leaves zero skills and turns weapon status into 0/0."""
     import hashlib

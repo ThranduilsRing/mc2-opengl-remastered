@@ -50,6 +50,19 @@ FIXED_ITEMS = [  # (master id, name) for items 0..12, as every stock chassis lis
     (5, "Leg Actuator"), (5, "Leg Actuator"), (6, "Cockpit"), (35, "LifeSupport"),
     (33, "Shoulder"), (33, "Shoulder"), (34, "Hip"), (34, "Hip"), (13, "Standard Sensors"),
 ]
+# ComponentPlacement grid (item index per Slot1..12, columns Head..RightLeg) shared by every
+# stock chassis CSV. BattleMech::init reads it to give each item a body location; the sensor
+# system is only created when item 12 is placed, so an empty grid leaves the mech blind.
+STOCK_PLACEMENT = [
+    [6, 7, 12, 13, 14, 15],
+    [8, 2, 2, 2] + list(range(22, 30)),
+    [9, 3, 3, 3] + list(range(30, 38)),
+    list(range(38, 50)),
+    list(range(50, 62)),
+    [0, 1] + list(range(62, 72)),
+    [10, 4, 4, 16, 18, 20],
+    [11, 5, 5, 17, 19, 21],
+]
 EMPTY_MASTER = 255
 JUMP_ITEM_FIRST = 16
 CSV_COLS = 26
@@ -439,7 +452,8 @@ def variant_rows(profile, v):
         _row([]),
         _row(["ComponentPlacement", "Head", "LeftArm", "RightArm", "LeftTorso", "RightTorso", "CenterTorso", "LeftLeg", "RightLeg"]),
     ]
-    rows += [_row([f"Slot{n}"]) for n in range(1, 13)]
+    rows += [_row([f"Slot{n + 1}"] + [col[n] if n < len(col) else "" for col in STOCK_PLACEMENT])
+             for n in range(12)]
     rows.append(_row(["CurrentInternalStructure"] + [profile["mc2"]["structure"][l] for l in btjson.LOCATIONS]))
     rows.append(_row(["CurrentArmorPoints"] + armor_cells(v["armor"])))
     rows.append(_row([]))
