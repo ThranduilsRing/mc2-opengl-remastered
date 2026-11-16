@@ -37,9 +37,10 @@ inline void dilateCutoutRgb(std::vector<uint8_t>& rgba, uint32_t width, uint32_t
     if (rgba.size() != static_cast<size_t>(width) * height * 4) return;
     std::vector<uint8_t> known(static_cast<size_t>(width) * height);
     for (size_t i = 0; i < known.size(); ++i) known[i] = rgba[i * 4 + 3] != 0;
+    std::vector<uint8_t> next, grown;
     for (int iteration = 0; iteration < 8; ++iteration) {
-        auto next = rgba;
-        auto grown = known;
+        next = rgba;
+        grown = known;
         for (uint32_t y = 0; y < height; ++y) {
             for (uint32_t x = 0; x < width; ++x) {
                 const size_t i = static_cast<size_t>(y) * width + x;

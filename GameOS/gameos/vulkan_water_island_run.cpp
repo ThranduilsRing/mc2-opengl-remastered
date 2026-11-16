@@ -132,7 +132,7 @@ bool prepareNative(WaterIsland* s, mc2vk::VulkanContext& ctx) {
     s->native = std::move(np);
     // The first drawn slot still waits for a lighting snapshot, so prewarm
     // never exposes the newly allocated, unwritten lighting output.
-    s->thinNative[0] = s->thinNative[1] = false;
+    for (bool& thinNative : s->thinNative) thinNative = false;
     write_descriptors(s);
     return true;
 }
@@ -294,7 +294,9 @@ extern "C" int mc2_vk_water_island_run(
             prepareNative(s, slotCtx);
     }
     nat = (s->native && s->native->ready()) ? static_cast<const WaterStream::VkNativeInputs*>(nativeInputsIn) : nullptr;
-    if (nat && !s->thinNative[0] && !s->thinNative[1]) {
+    bool anyThinNative = false;
+    for (bool thinNative : s->thinNative) anyThinNative |= thinNative;
+    if (nat && !anyThinNative) {
         gos_terrain_lighting::VkProducerSnapshot first{};
         if (!gos_terrain_lighting::GetVkProducerSnapshot(first) || !first.numVertices) nat = nullptr;
     }

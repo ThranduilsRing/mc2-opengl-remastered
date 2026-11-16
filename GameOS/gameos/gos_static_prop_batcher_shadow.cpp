@@ -200,7 +200,8 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
         }
     }
     }
-    std::vector<uint32_t> typeIds;
+    static std::vector<uint32_t> typeIds;
+    typeIds.clear();
     { ZoneScopedN("VKIsl.Props.MainFeed.TypeOrder");
     typeIds.reserve(s_persistentStaticStore.size() + s_bucketsByType.size());
     for (const auto& [storeType, storeInsts] : s_persistentStaticStore) typeIds.push_back(storeType);

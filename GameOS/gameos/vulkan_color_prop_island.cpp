@@ -736,6 +736,9 @@ bool cp_import_albedo_array(ColorPropIsland* s, const AlbedoTarget& tgt, uint32_
     const uint32_t mips = static_cast<uint32_t>(a->levels.size()) - firstMip;
     const uint32_t width = mc2tex::mipExtent(a->width, firstMip), height = mc2tex::mipExtent(a->height, firstMip);
     std::vector<uint8_t> blob;
+    size_t blobBytes = 0;
+    for (uint32_t m = firstMip; m < a->levels.size(); ++m) blobBytes += a->levels[m].size();
+    blob.reserve(blobBytes);
     std::vector<VkBufferImageCopy> regions;
     regions.reserve(mips);
     for (uint32_t m = 0; m < mips; ++m) {
