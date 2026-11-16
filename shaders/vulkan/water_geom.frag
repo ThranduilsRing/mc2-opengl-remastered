@@ -369,9 +369,22 @@ void main(void)
     vec2 shoreGrad = vec2(shoreDy.y * depthD.x - shoreDx.y * depthD.y,
                           shoreDx.x * depthD.y - shoreDy.x * depthD.x)
                    / (abs(shoreDet) > 1e-6 ? shoreDet : 1e-6);
+    // The fine surface is a 32-unit bilinear grid: its screen gradient jumps per triangle and the contour of its
+    // depth is a polygon. Take shoreDepth and its gradient from a 3x3 tent blur of the same height (C1, rounded
+    // contours, continuous gradient); coverage and tint keep the raw fine height.
+    if (hasVisual && hasField) {
+        const float gh = 32.0;
+        vec2 wp = WorldPos.xy;
+        float h00 = waterFineHeight(wp + vec2(-gh, -gh)), h10 = waterFineHeight(wp + vec2(0.0, -gh)), h20 = waterFineHeight(wp + vec2(gh, -gh));
+        float h01 = waterFineHeight(wp + vec2(-gh, 0.0)), h11 = waterFineHeight(wp),                  h21 = waterFineHeight(wp + vec2(gh, 0.0));
+        float h02 = waterFineHeight(wp + vec2(-gh, gh)),  h12 = waterFineHeight(wp + vec2(0.0, gh)),   h22 = waterFineHeight(wp + vec2(gh, gh));
+        shoreDepth = F.f7.x - (h00 + 2.0 * h10 + h20 + 2.0 * h01 + 4.0 * h11 + 2.0 * h21 + h02 + 2.0 * h12 + h22) / 16.0;
+        shoreGrad = -vec2((h20 + 2.0 * h21 + h22) - (h00 + 2.0 * h01 + h02),
+                          (h02 + 2.0 * h12 + h22) - (h00 + 2.0 * h10 + h20)) / (8.0 * gh);
+    }
     float shoreSlope = max(length(shoreGrad), 0.08);
     float shoreDistance = max(shoreDepth, 0.0) / shoreSlope;
-    float foamAA = max((abs(depthD.x) + abs(depthD.y)) / shoreSlope, 1.0);
+    float foamAA = max(max(length(shoreDx), length(shoreDy)), 1.0);
 
     // WATER-WAVES-GLINT: surface normal = wind wave trains (world-XZ sine slopes, no noise), and the GGX
     // roughness that carries every slope the pixel cannot resolve. The wave/ripple strength follows the ripple gain
