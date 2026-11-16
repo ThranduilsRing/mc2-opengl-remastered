@@ -129,7 +129,7 @@ public:
             const auto& [boundNode, bound] = *it;
             if (bound.index != h.index()) return false;
         }
-        auto& binding = byNode_[asset]; binding.index = h.index(); ++binding.users;
+        bindNode(h.index(), asset, 1);
         ++e->users;
         if (e->node == kNoTextureNode) e->node = asset;
         return true;
@@ -146,7 +146,7 @@ public:
             if (e.users == UINT32_MAX) return TextureHandle::invalid();
             ++e.users;
             if (node != kNoTextureNode) {
-                auto& binding=byNode_[node]; binding.index=idx; ++binding.users;
+                bindNode(idx, node, 1);
                 if (e.node==kNoTextureNode) e.node=node;
             }
             return TextureHandle::make(idx, e.generation);
@@ -165,7 +165,7 @@ public:
         e.contentVersion = 0;
         e.dimensions = dimensions;
         byKey_.emplace(key, idx);
-        if (node != kNoTextureNode) byNode_[node] = {idx,1};
+        if (node != kNoTextureNode) bindNode(idx, node, 1);
         return TextureHandle::make(idx, e.generation);
     }
 
@@ -229,13 +229,8 @@ public:
         const auto [boundNode, binding]=*it;
         Entry& e=entries_[binding.index];
         e.users=e.users>binding.users ? e.users-binding.users : 0;
-        byNode_.erase(it);
-        for (const auto& [alias, other] : byNode_) {
-            if (other.index != binding.index) continue;
-            if (e.node==node) e.node=alias;
-            return; // another manager node still owns this identity
-        }
-        e.node = kNoTextureNode;
+        unbindNode(node);
+        if (!e.aliases.empty()) return; // another manager node still owns this identity
         if (e.users == 0) retire(binding.index);
     }
 
@@ -245,11 +240,11 @@ public:
         Entry* e = resolve(h);
         if (!e) return false;
         uint32_t nodeUsers=0;
-        if (auto it=byNode_.find(e->node); it!=byNode_.end()) { const auto& [boundNode, binding]=*it; nodeUsers=binding.users; byNode_.erase(it); }
+        if (auto it=byNode_.find(e->node); it!=byNode_.end()) { nodeUsers=it->second.users; unbindNode(e->node); }
         e->node = newNode;
         ++e->contentVersion;
-        if (newNode != kNoTextureNode) { auto& binding=byNode_[newNode]; binding.index=h.index(); binding.users+=nodeUsers; }
-        else for (const auto& [alias,binding] : byNode_) if (binding.index==h.index()) { e->node=alias; break; }
+        if (newNode != kNoTextureNode) bindNode(h.index(), newNode, nodeUsers);
+        else if (!e->aliases.empty()) e->node=e->aliases.front();
         return true;
     }
 
@@ -305,7 +300,31 @@ private:
         TextureKey  key;
         TextureDimensions dimensions;
         std::shared_ptr<TextureSourcePayload> source;
+        std::vector<uint32_t> aliases;
     };
+    // Each binding indexes its slot in the entry's dense alias list. Swap removal
+    // makes mission teardown linear in the destroyed nodes, without a global scan.
+    void bindNode(uint32_t index, uint32_t node, uint32_t users) {
+        auto [it, inserted] = byNode_.try_emplace(node);
+        auto& binding = it->second;
+        if (inserted) {
+            binding.index = index;
+            binding.slot = static_cast<uint32_t>(entries_[index].aliases.size());
+            entries_[index].aliases.push_back(node);
+        }
+        binding.users += users;
+    }
+    void unbindNode(uint32_t node) {
+        auto it = byNode_.find(node);
+        const auto binding = it->second;
+        auto& e = entries_[binding.index];
+        const uint32_t moved = e.aliases.back();
+        e.aliases[binding.slot] = moved;
+        byNode_.at(moved).slot = binding.slot;
+        e.aliases.pop_back();
+        byNode_.erase(it);
+        if (e.node == node) e.node = e.aliases.empty() ? kNoTextureNode : e.aliases.front();
+    }
     const Entry* resolve(TextureHandle h) const {
         if (!h.isValid() || h.index() >= entries_.size()) return nullptr;
         const Entry& e = entries_[h.index()];
@@ -318,6 +337,7 @@ private:
         byKey_.erase(e.key);
         e.live = false;
         e.node = kNoTextureNode;
+        e.aliases.clear();
         // Quarantine exhausted slots: wrapping would revive an old CPU handle.
         if (e.generation < 0xFFFu) { ++e.generation; free_.push_back(idx); }
         e.source.reset();   // payload teardown only queues consumer cleanup
@@ -329,7 +349,7 @@ private:
     std::vector<Entry> entries_;
     std::vector<uint32_t> free_;
     std::unordered_map<TextureKey, uint32_t, TextureKeyHash> byKey_;
-    struct NodeBinding { uint32_t index=0, users=0; };
+    struct NodeBinding { uint32_t index=0, users=0, slot=0; };
     std::unordered_map<uint32_t, NodeBinding> byNode_;
     std::unique_ptr<TextureSourceOwner> sourceOwner_;
 };
