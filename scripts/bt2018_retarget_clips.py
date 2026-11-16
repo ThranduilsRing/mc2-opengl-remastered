@@ -74,7 +74,7 @@ def retarget_file(target_path, atlas_path, out_path):
     atlas_bind = [node_bind_rot(atl, i) for i in range(len(atl.nodes))]
     target_world, atlas_world = globals_for(tgt, target_bind), globals_for(atl, atlas_bind)
     recipe = json.loads((Path(__file__).resolve().parents[1] / 'tools/bt2018_mechs/data/retarget.json').read_text())
-    locks = recipe.get(Path(target_path).stem, {}).get('bind_lock', [])
+    rule = recipe.get(Path(target_path).stem, {})
     parent = parents(tgt)
     tgt_names_rev = {i: n.name for i, n in enumerate(tgt.nodes)}
 
@@ -83,15 +83,19 @@ def retarget_file(target_path, atlas_path, out_path):
     missing = []
     bone_report = {}
     for anim in tgt.animations:
-        if not anim.name.startswith('atlas_'):
+        native = not anim.name.startswith('atlas_')
+        locks = rule.get('bind_lock', []) if not native else rule.get('idle_bind_lock', [])
+        if native and (not locks or not anim.name.endswith('_moveCoreIdle')):
             continue
+        source = tgt if native else atl
+        atl_names = name_to_index(source)
         rotation_channels = [c for c in anim.channels if c.target.path == 'rotation']
         def times(ch):
             acc = tgt.accessors[anim.samplers[ch.sampler].input]
             view = tgt.bufferViews[acc.bufferView]
             return np.frombuffer(blob, '<f4', acc.count, (view.byteOffset or 0) + (acc.byteOffset or 0))
         grid = np.unique(np.concatenate([times(c) for c in rotation_channels]))
-        local = [np.broadcast_to(q, (len(grid), 4)) for q in atlas_bind]
+        local = [np.broadcast_to(q, (len(grid), 4)) for q in (target_bind if native else atlas_bind)]
         for ch in rotation_channels:
             bone = tgt.nodes[ch.target.node].name
             if bone not in atl_names:
@@ -102,13 +106,14 @@ def retarget_file(target_path, atlas_path, out_path):
                 if np.dot(keys[k-1], keys[k]) < 0: keys[k] *= -1
             q = np.stack([np.interp(grid, times(ch), keys[:, k]) for k in range(4)], axis=-1)
             local[atl_names[bone]] = q / np.linalg.norm(q, axis=-1, keepdims=True)
-        source_world = globals_for(atl, local)
+        source_world = globals_for(source, local)
         posed = {}
         def target_pose(i):
             if i not in posed:
                 bone = tgt.nodes[i].name
                 inherited = target_pose(parent[i]) if i in parent else np.array([0., 0., 0., 1.])
                 posed[i] = (np.broadcast_to(target_world[i], (len(grid), 4)) if bone in locks else
+                    source_world[i] if native else
                     quat_mul(quat_mul(source_world[atl_names[bone]], quat_conj(atlas_world[atl_names[bone]])), target_world[i])
                     if bone in atl_names else quat_mul(inherited, target_bind[i]))
             return posed[i]
