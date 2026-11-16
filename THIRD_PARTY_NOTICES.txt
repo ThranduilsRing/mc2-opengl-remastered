@@ -422,3 +422,7 @@ Original rights and notices continue to apply. This attribution does not
 grant a separate licence to redistribute community campaigns. Campaign data
 is not bundled by default; the player supplies an installed campaign or
 download. A campaign is bundled only where its authors' permission is recorded.
+
+CUE4Parse v1.2.2 / CUE4Parse-Conversion v1.2.1
+Apache-2.0, copyright FabianFG and contributors. Source: https://github.com/FabianFG/CUE4Parse/tree/v1.2.2 (commit 920dc1682278d70ee738383b6fbd3a1e9b7523ea)
+Not vendored: NuGet-restored with exact pins and packages.lock.json by the optional MW5 extractor in tools/mw5_kit/ (code only; the player supplies their own MW5 install and Oodle). A distributed built extractor must also carry the Apache-2.0 text and its transitive package licences.

@@ -25,7 +25,7 @@ def test_table_has_the_engines_options_with_their_defaults():
     assert t["StockOverlayConcrete"].default is False
     assert t["TextureQuality"].default == -1 and (t["TextureQuality"].lo, t["TextureQuality"].hi) == (-1, 3)
     assert t["BaseQuality"].default == 2 and (t["BaseQuality"].lo, t["BaseQuality"].hi) == (0, 2)
-    assert t["RemasteredBuildings"].default is True
+    assert t["RemasteredBuildings"].default is False
     assert t["SpatialAA"].default == 1 and (t["SpatialAA"].lo, t["SpatialAA"].hi) == (0, 4)
     assert t["ShadowQuality"].default == 2 and (t["ShadowQuality"].lo, t["ShadowQuality"].hi) == (0, 2)
     assert t["CpuPhongRetire"].default is True and t["StaticPropPbr"].default is False and t["StaticPropAmbient"].default is True
@@ -103,7 +103,7 @@ def test_old_capture_missing_option_uses_default():
     del old["RemasteredBuildings"]
     rop.require_same({"values": old}, {"values": values()})
     with pytest.raises(rop.OptionsMismatch, match="RemasteredBuildings"):
-        rop.require_same({"values": old}, {"values": values(RemasteredBuildings=False)})
+        rop.require_same({"values": old}, {"values": values(RemasteredBuildings=True)})
 
 
 def test_historical_capture_logs_all_defaulted_options(capsys):
