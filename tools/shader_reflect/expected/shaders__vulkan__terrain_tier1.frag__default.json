@@ -15,6 +15,19 @@
   "shader": "shaders/vulkan/terrain_tier1.frag",
   "ssbos": [
     {
+      "binding": 1,
+      "members": [
+        {
+          "array_stride": 4,
+          "matrix_stride": null,
+          "name": "heights",
+          "offset": 0,
+          "type": "float"
+        }
+      ],
+      "name": "TerrainHeightBuf"
+    },
+    {
       "binding": 4,
       "members": [
         {
@@ -48,7 +61,7 @@
           "matrix_stride": null,
           "name": "poolLights",
           "offset": 0,
-          "type": "_1625"
+          "type": "_1669"
         }
       ],
       "name": "TerrainLightPoolVK"

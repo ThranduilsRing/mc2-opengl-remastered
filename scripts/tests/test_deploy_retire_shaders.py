@@ -47,7 +47,7 @@ def _target_with_unlisted_dead_spv(tmp_path):
     return target
 
 
-def test_deploy_prunes_shader_files_the_payload_does_not_carry(tmp_path, monkeypatch):
+def test_deploy_preserves_unmanifested_shader_files(tmp_path, monkeypatch):
     monkeypatch.setattr(dp, "ensure_terrain_materials", lambda target: {})
     monkeypatch.setattr(dp, "ensure_engine_normal_cooks", lambda target: None)
     b64 = _build(tmp_path)
@@ -55,7 +55,7 @@ def test_deploy_prunes_shader_files_the_payload_does_not_carry(tmp_path, monkeyp
     items = [(str(p), f"shaders/vulkan/{p.name}", "shader") for p in dp.baked_spv_files(b64)]
     hashes = dp.deploy(items, str(target), False)
     assert set(hashes) == {"shaders/vulkan/live.frag.spv"}
-    assert not (target / "shaders" / "vulkan" / "dead.frag.spv").exists()
+    assert (target / "shaders" / "vulkan" / "dead.frag.spv").read_bytes() == b"old"
     assert (target / "shaders" / "vulkan" / "live.frag.spv").is_file()
     assert (target / "data" / "keep.txt").is_file()
     assert (target / "shaders" / "owner_override.frag").is_file() and (target / "shaders" / "vulkan" / "notes.txt").is_file()
@@ -82,7 +82,7 @@ def test_retire_unowned_drops_rows_missing_from_the_new_manifest(tmp_path):
     dp.retire_unowned(str(target), {"mc2.exe": {}}, own_shaders=True)
     assert not (target / "old.dll").exists()
     assert (target / "edited.txt").is_file()
-    assert not (target / "shaders" / "vulkan" / "dead.frag.spv").exists()
+    assert (target / "shaders" / "vulkan" / "dead.frag.spv").read_bytes() == b"old"
     assert (target / "data" / "keep.txt").is_file()
 
 

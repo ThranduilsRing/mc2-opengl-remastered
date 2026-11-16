@@ -48,7 +48,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_BRIDGE_PORT", Kind::Int, Rule::Prefix, {}},
     {"MC2_BRIDGE_SESSION", Kind::String, Rule::Std, {}},
     {"MC2_BUCKET_CENSUS", Kind::Bool, Rule::Presence, {}},
-    {"MC2_CALLED_SHOT_FIX", Kind::Bool, Rule::Lead0P, {}},
+    {"MC2_CALLED_SHOT_FIX", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_CAMERA_ASPECT_NATIVE", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_CAMERA_PARK", Kind::String, Rule::Std, {}},
     {"MC2_CAMERA_SMOOTH", Kind::Float, Rule::Prefix, {}},

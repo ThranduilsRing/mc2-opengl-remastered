@@ -3,6 +3,40 @@
 #include "RenderCore/CursorImage.h"
 #include <array>
 #include <cmath>
+#include <memory>
+#include <string>
+
+namespace cursorReload {
+namespace mc2 { using czstring = const char*; }
+const char* artPath = "art/";
+struct { int screenWidth = 1920; } Environment;
+int loads = 0;
+struct MouseCursorData { void destroy() {} void initCursors(const char*) { ++loads; } };
+struct UserInput {
+    std::unique_ptr<MouseCursorData> cursors;
+    int mouseFrame = 0;
+    void syncNativeCursor() {}
+    void initMouseCursors(const char*);
+};
+#define ZoneScopedN(...)
+#define gosASSERT(...) CHECK(__VA_ARGS__)
+#include "cursor_reload.inc"
+#undef gosASSERT
+#undef ZoneScopedN
+}
+TEST_CASE("cursor reload: reuse same art, reload on size, path, name or reset") {
+    using namespace cursorReload;
+    loads = 0; UserInput input;
+    input.initMouseCursors("cursors");
+    for (int i = 0; i < 10; ++i) input.initMouseCursors("cursors");
+    CHECK(loads == 1);
+    Environment.screenWidth = 800; input.initMouseCursors("cursors"); CHECK(loads == 2);
+    Environment.screenWidth = 640; input.initMouseCursors("cursors"); CHECK(loads == 2);
+    artPath = "mods/"; input.initMouseCursors("cursors"); CHECK(loads == 3);
+    input.initMouseCursors("other"); CHECK(loads == 4);
+    input.cursors.reset(); input.initMouseCursors("other"); CHECK(loads == 5);
+    Environment.screenWidth = 1920; artPath = "art/";
+}
 
 TEST_CASE("cursor image: magenta becomes alpha zero and other pixels survive") {
     std::array<uint8_t, 20> pixels{255,0,255,255, 255,0,254,255, 20,30,40,128,

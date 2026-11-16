@@ -25,15 +25,6 @@ bool s_objbatcherTrace     = false;
 bool s_objbatcherTraceInit = false;
 bool s_atexitRegistered    = false;
 
-// [SPOTLIGHT_REAL_TRACE v1] (E) Stage 0 / T0.1 baseline. Counts submitMultiShape
-// events whose child has isSpotlight==true. Separate state (not in
-// ObjBatcherCounters) so the schema stays self-contained and easy to retire.
-// First-hit emits one-line stderr always-on so an operator without the env still
-// sees confirmation that SpotLight_ children are observed at all.
-uint64_t s_spotlightReal_window  = 0;  // resets every 600 frames
-uint64_t s_spotlightReal_mono    = 0;  // monotonic since process start
-bool     s_spotlightReal_firstHit = false;
-
 std::unordered_map<std::string, uint32_t> s_lateRegisterCounts;
 std::unordered_set<std::string> s_lateRegisterAllowlist;
 bool s_lateRegisterAllowlistLoaded = false;
@@ -254,20 +245,6 @@ void accumulateMonotonicAndMaybeEmit(bool forceEmit) {
                static_cast<unsigned long long>(s_counters.mono_stale_light_row_unresolvable),
                static_cast<unsigned long long>(s_counters.mono_light_row_out_of_range));
         std::fflush(stderr);
-    }
-
-    // [SPOTLIGHT_REAL_TRACE v1] summary line, env-gated. Post-T3.2 the
-    // increment site is gone (spotlight children are unconditionally skipped
-    // at submit, the bit-2 flag is no longer emitted). Window/mono counters
-    // therefore print 0 — that 0 IS the substitutive evidence (criterion #2:
-    // zero static-prop draws contain spotlight-tagged packets). Demoted, not
-    // deleted, per the Debug Instrumentation Rule.
-    if (s_spotlightRealTrace && periodic) {
-        mc2::fmt::print_err("[SPOTLIGHT_REAL_TRACE v1] event=summary site=static_prop_batcher frames={:d} window_spotlight_submits={:d} mono_spotlight_submits={:d}\n", mc2::fmt::as_u64(static_cast<unsigned long long>(s_counters.frame_count)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_spotlightReal_window)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_spotlightReal_mono)));
-        std::fflush(stderr);
-    }
-    if (periodic) {
-        s_spotlightReal_window = 0;
     }
 
     for (int p = 0; p < kPopCount; ++p) {

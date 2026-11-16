@@ -51,6 +51,54 @@ def test_sim_records_deployed_payload_identity_without_game(tmp_path, monkeypatc
     assert result["manifest_sha256"] == hashlib.sha256((seed / ".deployed_manifest.csv").read_bytes()).hexdigest()
 
 
+@pytest.mark.parametrize("fault,reason", [("", "MATCH"), ("marker", "missing .seeded marker"),
+    ("row", "missing mc2.exe manifest row"), ("manifest", "mc2.exe manifest row differs"),
+    ("exe", "mc2.exe sha256 differs"), ("missing-exe", "mc2.exe sha256 differs")])
+def test_seed_verifies_marker_manifest_and_bytes(tmp_path, monkeypatch, capsys, fault, reason):
+    import json
+    from types import SimpleNamespace
+    (tmp_path / "mc2.exe").write_bytes(b"exe")
+    _manifest(tmp_path / ".deployed_manifest.csv", {"mc2.exe": b"exe"})
+    manifest = tmp_path / ".deployed_manifest.csv"
+    manifest.write_text(manifest.read_text().replace(",t,0", ",t,"), encoding="utf-8")
+    row = laptop_gate.manifest_rows(tmp_path / ".deployed_manifest.csv")["mc2.exe"]
+    want = row["sha256"]
+    identity = {"seeded": fault != "marker", "row": dict(row), "sha256": want.upper()}
+    identity["row"]["mtime_ns"] = None  # PowerShell ConvertFrom-Csv emits null for an empty field.
+    if fault == "row": identity["row"] = None
+    if fault == "manifest": identity["row"]["src_commit"] = "old"
+    if fault in ("exe", "missing-exe"):
+        identity["sha256"] = "0" * 64 if fault == "exe" else None
+    calls, transfers = [], []
+    def ssh(cmd, **kwargs):
+        calls.append(cmd)
+        return (0, json.dumps(identity)) if "ConvertTo-Json" in cmd else (0, "SHA256\n" + want)
+    monkeypatch.setattr(laptop_gate, "PC_SEED", tmp_path)
+    monkeypatch.setattr(laptop_gate, "ssh", ssh)
+    monkeypatch.setattr(laptop_gate, "seed_stock", lambda: None)
+    monkeypatch.setattr(laptop_gate, "scp", lambda *a: transfers.append(a))
+    monkeypatch.setattr(laptop_gate.subprocess, "run", lambda *a, **kw: SimpleNamespace(returncode=0))
+    monkeypatch.setenv("TEMP", str(tmp_path))
+    laptop_gate.seed()
+    output = capsys.readouterr().out
+    assert "laptop-vs-PC seed identity: " in output and reason in output
+    assert len(transfers) == int(bool(fault))
+    assert len(calls) == (4 if fault else 1)
+    if fault:
+        assert "laptop seed stale: " + reason in output
+        assert "seeded in " in output
+
+
+@pytest.mark.parametrize("files", [{}, {"mc2.exe": b"other"}])
+def test_invalid_pc_seed_cannot_touch_laptop(tmp_path, monkeypatch, files):
+    (tmp_path / "mc2.exe").write_bytes(b"exe")
+    _manifest(tmp_path / ".deployed_manifest.csv", files)
+    monkeypatch.setattr(laptop_gate, "PC_SEED", tmp_path)
+    monkeypatch.setattr(laptop_gate, "ssh", lambda *a, **kw: pytest.fail("invalid PC seed used"))
+    with pytest.raises(SystemExit, match="PC seed invalid"):
+        laptop_gate.seed()
+
+
 def test_pack_ships_only_candidate_files_that_differ(tmp_path, monkeypatch):
     gate = tmp_path / "gate"
     install = gate / "drv/E/mc2-installs/install-stock-abc"   # the candidate, not INSTALL (the published v0.4)
@@ -113,6 +161,7 @@ def test_readonly_hardlink_replacement_preserves_source(tmp_path, monkeypatch, r
         expected = b"seed bytes" if route == "seed" else b"new bytes"
         assert dst.read_bytes() == expected
         assert peer.read_bytes() == b"seed bytes"
+        assert not peer.stat().st_mode & stat.S_IWRITE
         assert not os.path.samefile(peer, dst)
         assert deploy_payload.sha256_file(dst) == hashlib.sha256(expected).hexdigest()
     finally:

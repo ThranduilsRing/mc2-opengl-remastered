@@ -19,6 +19,8 @@ MechPurchaseScreen.cpp			: Implementation of the MechPurchaseScreen component.
 #include"multplyr.h"
 #include"../GuiRuntime/GuiRuntime.h"
 #include "mc2fmt.h"
+#include "imgui.h"
+#include "../GameOS/gameos/gos_input.h"
 
 MechPurchaseScreen* MechPurchaseScreen::s_instance = nullptr;
 
@@ -28,13 +30,12 @@ MechPurchaseScreen* MechPurchaseScreen::s_instance = nullptr;
 static bool cheatInfiniteMoney() { static const bool on = mc2::gate::get<"MC2_CHEAT_INFINITE_MONEY">(); return on; }
 
 constexpr int INVENTORY_ID = 88;
-constexpr int VARIANT_ID = 89;
 
 
 //-------------------------------------------------------------------------------------------------
 
 MechPurchaseScreen::MechPurchaseScreen(  ) 
-: inventoryListBox( 1, 0 ), variantListBox( 0, 0 )
+: inventoryListBox( 1, 0 )
 {
 	status = RUNNING;
 	gosASSERT( !s_instance );
@@ -44,7 +45,6 @@ MechPurchaseScreen::MechPurchaseScreen(  )
 	dragStartLeft = 0;
 	helpTextArrayID = 4; 
 	inventoryListBox.setID( INVENTORY_ID );
-	variantListBox.setID( VARIANT_ID );
 
 	countDownTime = .5;
 	curCount = 0.0;
@@ -61,7 +61,6 @@ MechPurchaseScreen::~MechPurchaseScreen()
 {
 	s_instance = nullptr;
 
-	variantListBox.destroy();
 	inventoryListBox.destroy();
 }
 
@@ -82,10 +81,6 @@ int MechPurchaseScreen::init( FitIniFile& file )
 
 	inventoryListBox.setScrollBarOrange();
 
-	(static_cast<aObject*>(&variantListBox))->init( rects[1].left(), rects[1].top(),
-		rects[1].width(), rects[1].height() );
-
-	variantListBox.setScrollBarOrange();
 
 
 	for ( int i= 0; i < buttonCount; i++ )
@@ -163,22 +158,11 @@ void MechPurchaseScreen::update()
 	int newSell = inventoryListBox.GetSelectedItem();
 	if ( oldSell != newSell && newSell != -1 )
 	{
-		variantListBox.SelectItem( -1 );
+		purchaseSelection = nullptr;
 	}
-
-	oldSell = variantListBox.GetSelectedItem();
-	variantListBox.update();
-	newSell = variantListBox.GetSelectedItem();
-
-	if ( oldSell != newSell  && newSell != -1 )
-	{
-		inventoryListBox.SelectItem( -1 );
-	}
-
-	variantListBox.disableItemsThatCostMoreThanRP();
 
 	LogisticsMech* pCurSell = inventoryListBox.getCurrentMech();
-	LogisticsMech* pCurBuy = variantListBox.getCurrentMech();
+	LogisticsMech* pCurBuy = purchaseSelection;
 
 	// disable the sell button
 	buttons[2].disable( pCurSell ? 0 : 1);
@@ -262,15 +246,13 @@ void MechPurchaseScreen::render( int xOffset, int yOffset )
 	inventoryListBox.render();
 	inventoryListBox.move( -xOffset, -yOffset );
 
-	variantListBox.move(xOffset, yOffset);
-	variantListBox.render();
-	variantListBox.move(-xOffset, -yOffset);
 	aObject::endTextBridge();
 	aObject::endGuiBridge();
 
 	mechDisplay.render( xOffset, yOffset );
 
 	LogisticsScreen::render( xOffset, yOffset );
+	renderPurchaseGroups(xOffset, yOffset);
 
 	if ( pDragMech )
 		dragIcon.render();
@@ -288,8 +270,9 @@ void MechPurchaseScreen::render( int xOffset, int yOffset )
 void MechPurchaseScreen::begin()
 {
 
-	variantListBox.removeAllItems(true);
 	inventoryListBox.removeAllItems(true);
+	purchaseSelection = nullptr;
+	purchaseMechs.clear();
 	// initialize both the inventory and icon lists
 	auto mechList = LogisticsData::instance->getInventory();
 	prevInventory.clear();
@@ -333,37 +316,38 @@ void MechPurchaseScreen::begin()
 	}
 	
 
-	LogisticsVariant* pVariants[256];
-	int count = 256;
-
-	LogisticsData::instance->getPurchasableMechs( pVariants, count );
+	int count = 0;
+	LogisticsData::instance->getPurchasableMechs(nullptr, count);
+	std::vector<LogisticsVariant*> pVariants(count);
+	LogisticsData::instance->getPurchasableMechs(pVariants.data(), count);
+	std::vector<mc2purchase::Item> catalog;
 
 	for ( int i =0; i < count; i++ )
 	{
 		if ( !MPlayer || MPlayer->missionSettings.variants || pVariants[i]->isDesignerMech() )
 		{
-			LogisticsMech* pMech = new LogisticsMech( pVariants[i], -1 );
-			MechListBoxItem* item = new MechListBoxItem( pMech, 1 );
-			variantListBox.AddItem( item );
+			purchaseMechs.push_back(std::make_unique<LogisticsMech>(pVariants[i], -1));
+			catalog.push_back({mc2purchase::chassisSource(pVariants[i]->getFileName()),
+				pVariants[i]->getName(), pVariants[i]->getMaxWeight()});
 		}
 	}
+	const char* campaignOwner = LookupModOwner(LogisticsData::instance->getCampaignName().c_str());
+	purchaseGroups = mc2purchase::group(catalog, campaignOwner ? campaignOwner : "");
+	purchaseKeyboardGroup = 0;
+	purchaseGroupNames.clear();
+	for (const auto& group : purchaseGroups)
+		purchaseGroupNames.push_back(ModDisplayName(group.source));
 
 	if ( !pSelMech )
 	{
-		MechListBoxItem* item = static_cast<MechListBoxItem*>(variantListBox.GetItem( 0 ));
-		if ( item )
-		{
-			variantListBox.SelectItem( 0 );
-			pSelMech = item->getMech();
-		}
+		selectFirstBuyableMech();
+		pSelMech = purchaseSelection;
 	}
 
 	status = RUNNING;
 	acceptPressed = 0;
 
 	inventoryListBox.drawCBills(1);
-	variantListBox.drawCBills(1);
-	variantListBox.setOrange( 0 );
 	inventoryListBox.setOrange( 1 );
 	
 	
@@ -396,10 +380,15 @@ void MechPurchaseScreen::end()
 
 	}
 
-	variantListBox.removeAllItems(true);
 	inventoryListBox.removeAllItems(true);
 
 	mechDisplay.setMech( nullptr );
+	purchaseSelection = nullptr;
+	purchaseMechs.clear();
+	purchaseGroups.clear();
+	purchaseGroupNames.clear();
+	purchaseKeyboardGroup = 0;
+	pDragMech = nullptr;
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -417,7 +406,7 @@ void MechPurchaseScreen::setMech( LogisticsMech* pMech, bool FromLB )
 		if ( FromLB ) // clicked on a disabled item
 		{
 			inventoryListBox.SelectItem( -1 );
-			variantListBox.SelectItem( -1 );
+			purchaseSelection = nullptr;
 
 		}
 		mechDisplay.setMech( pMech );		
@@ -448,7 +437,6 @@ void MechPurchaseScreen::beginDrag( LogisticsMech* pMech )
 	else 
 	{
 		dragStartLeft = false;
-		variantListBox.dimItem( pMech, true );
 	}
 }
 
@@ -473,7 +461,6 @@ void MechPurchaseScreen::endDrag( )
 	}
 
 	inventoryListBox.undimAll();
-	variantListBox.undimAll();
 
 	pDragMech = nullptr;
 }
@@ -533,25 +520,22 @@ int	MechPurchaseScreen::handleMessage( unsigned long what, unsigned long who )
 
 void MechPurchaseScreen::addSelectedMech()
 {
-	LogisticsMech* pMech = variantListBox.getCurrentMech();
+	LogisticsMech* pMech = purchaseSelection;
 	if ( pMech )
 	{
 		addMech( pMech );
 	}
 
-	variantListBox.disableItemsThatCostMoreThanRP();
-	int curSel = variantListBox.GetSelectedItem();
-	if ( curSel == -1 )
-	{
-		variantListBox.SelectItem( -1 );
-		inventoryListBox.SelectItem( 0 );
-	}
 
 }
 
 void MechPurchaseScreen::addMech( LogisticsMech* pMech )
 {
-	LogisticsData::instance->purchaseMech( pMech->getVariant() );
+	if (!LogisticsData::instance->purchaseMech(pMech->getVariant()))
+	{
+		flashTime = .0001f;
+		return;
+	}
 
 		for ( int i = 0; i < inventoryListBox.GetItemCount(); i++ )
 		{
@@ -599,17 +583,95 @@ void MechPurchaseScreen::removeMech( LogisticsMech* pMech )
 
 bool MechPurchaseScreen::selectFirstBuyableMech()
 {
-	for ( int i = 0; i < variantListBox.GetItemCount(); i++ )
+	for ( const auto& group : purchaseGroups )
 	{
-		if ( LogisticsData::instance->canPurchaseMech(
-			(static_cast<MechListBoxItem*>(variantListBox.GetItem(i)))->getMech()->getVariant() ) )
+		if (!group.open) continue;
+		for (const auto i : mc2purchase::validItems(group, purchaseMechs.size()))
 		{
-			variantListBox.SelectItem( i );
-			return true;
+			if (LogisticsData::instance->canPurchaseMech(purchaseMechs[i]->getVariant()))
+			{
+				purchaseSelection = purchaseMechs[i].get();
+				return true;
+			}
 		}
 	}
 
 	return false;
+}
+
+void MechPurchaseScreen::renderPurchaseGroups(int xOffset, int yOffset)
+{
+	if (!ImGui::GetCurrentContext()) return;
+	float sx, sy, ox, oy;
+	aObject::getCanvasTransform(sx, sy, ox, oy);
+	ImGui::SetNextWindowPos(ImVec2((rects[1].left() + xOffset) * sx + ox, (rects[1].top() + yOffset) * sy + oy));
+	ImGui::SetNextWindowSize(ImVec2(rects[1].width() * sx, rects[1].height() * sy));
+	ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.025f, 0.04f, 0.06f, 1));
+	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.85f, 0.9f, 0.94f, 1));
+	ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.0f, 0.18f, 0.32f, 1));
+	ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.0f, 0.3f, 0.5f, 1));
+	ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.0f, 0.4f, 0.6f, 1));
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(3 * sx, 3 * sy));
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0);
+	if (ImGui::Begin("##purchase_sources", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove |
+		ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse))
+	{
+		// The font atlas already follows display DPI; scale only relative to the 1080p canvas.
+		ImGui::SetWindowFontScale(sy * .75f * 1080.f / ImGui::GetIO().DisplaySize.y);
+		ImGui::TextUnformatted("F6: source  Space: open/close\nF7: next mech  F8: buy");
+		const auto* keys = input::getKeyboardInfo();
+		if (!purchaseGroups.empty()) {
+			if (keys->last_state_[SDL_SCANCODE_F6] == static_cast<int>(input::KS_PRESSED))
+				purchaseKeyboardGroup = (purchaseKeyboardGroup + 1) % purchaseGroups.size();
+			if (keys->last_state_[SDL_SCANCODE_SPACE] == static_cast<int>(input::KS_PRESSED))
+				purchaseGroups[purchaseKeyboardGroup].open = !purchaseGroups[purchaseKeyboardGroup].open;
+			auto& group = purchaseGroups[purchaseKeyboardGroup];
+			const auto valid = mc2purchase::validItems(group, purchaseMechs.size());
+			if (keys->last_state_[SDL_SCANCODE_F7] == static_cast<int>(input::KS_PRESSED) && !valid.empty()) {
+				auto selected = std::find_if(valid.begin(), valid.end(), [&](auto i) { return purchaseMechs[i].get() == purchaseSelection; });
+				if (selected == valid.end() || ++selected == valid.end()) selected = valid.begin();
+				group.open = true;
+				purchaseSelection = purchaseMechs[*selected].get();
+				inventoryListBox.SelectItem(-1); setMech(purchaseSelection);
+			}
+			if (keys->last_state_[SDL_SCANCODE_F8] == static_cast<int>(input::KS_PRESSED) && purchaseSelection)
+				addMech(purchaseSelection);
+		}
+		for (std::size_t g = 0; g < purchaseGroups.size(); ++g)
+		{
+			auto& group = purchaseGroups[g];
+			ImGui::PushID(group.source.c_str());
+			ImGui::SetNextItemOpen(group.open, ImGuiCond_Always);
+			const std::string title = std::format("{}{} ({})", g == purchaseKeyboardGroup ? "> " : "", purchaseGroupNames[g], group.items.size());
+			group.open = ImGui::CollapsingHeader(title.c_str());
+			if (!group.open && purchaseSelection)
+				for (const auto i : mc2purchase::validItems(group, purchaseMechs.size()))
+					if (purchaseSelection == purchaseMechs[i].get()) { purchaseSelection = nullptr; setMech(nullptr); }
+			if (group.open) for (const auto i : mc2purchase::validItems(group, purchaseMechs.size()))
+			{
+				auto* mech = purchaseMechs[i].get();
+				ImGui::PushID(static_cast<int>(i));
+				const bool buyable = LogisticsData::instance->canPurchaseMech(mech->getVariant()).has_value();
+				const std::string label = std::format("{}\n{:.0f} t   {} C-Bills", mech->getName(), mech->getMaxWeight(), mech->getCost());
+				if (!buyable) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1));
+				if (ImGui::Selectable(label.c_str(), purchaseSelection == mech, ImGuiSelectableFlags_AllowDoubleClick))
+				{
+					purchaseSelection = mech;
+					inventoryListBox.SelectItem(-1);
+					setMech(mech);
+					if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) addMech(mech);
+				}
+				if (!buyable) ImGui::PopStyleColor();
+				if (ImGui::IsItemFocused() && ImGui::IsKeyPressed(ImGuiKey_Enter)) addMech(mech);
+				if (buyable && ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) beginDrag(mech);
+				ImGui::PopID();
+			}
+			ImGui::PopID();
+		}
+	}
+	ImGui::End();
+	ImGui::PopStyleVar(2);
+	ImGui::PopStyleColor(5);
 }
 
 

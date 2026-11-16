@@ -402,6 +402,17 @@ ResidentTextureRef TextureResidency::acquirePixels(uint32_t width,uint32_t heigh
     image.isCompressed=compressed; image.blockSizeBytes=(format>=131 && format<=134)?8:compressed?16:0;
     image.pixels.assign(static_cast<const uint8_t*>(bytes),static_cast<const uint8_t*>(bytes)+count);
     if (mipmaps && !compressed && (format==VK_FORMAT_R8G8B8A8_UNORM || format==VK_FORMAT_R8G8B8A8_SRGB)) {
+        // First-use mech materials enter here during shadow packing. Keep their
+        // spatial mip work on the existing decode worker, like cooked textures.
+        auto handle=service_.acquire(key,RenderCore::kNoTextureNode,{width,height,width,height});
+        if (!handle.isValid()) return {};
+        if (residents_.contains(handle.raw())) return ResidentTextureRef(*this,handle,arrayView);
+        const auto slot=table_->reserve(handle);
+        if (!slot) { service_.release(handle); return {}; }
+        residents_.emplace(handle.raw(),Resident{{},slot,true,layers,arrayView});
+        const auto version=service_.contentVersion(handle);
+        residents_.at(handle.raw()).contentVersion=version;
+        worker_.request(handle,[image=std::move(image),width,height,layers]() mutable -> std::shared_ptr<const RenderCore::KtxImage> {
         std::vector<uint8_t> current=image.pixels;
         uint32_t w=width,h=height;
         while (w>1 || h>1) {
@@ -416,6 +427,9 @@ ResidentTextureRef TextureResidency::acquirePixels(uint32_t width,uint32_t heigh
             image.mipByteOffsets.push_back(image.pixels.size()); image.pixels.insert(image.pixels.end(),next.begin(),next.end()); ++image.mipCount;
             current=std::move(next); w=std::max(1u,w/2);h=std::max(1u,h/2);
         }
+        return std::make_shared<RenderCore::KtxImage>(std::move(image));
+        },version);
+        return ResidentTextureRef(*this,handle,arrayView);
     }
     auto ref=acquire(key,image,{width,height,width,height},layers,arrayView);
     if (ref) { auto& r=residents_.at(ref.get().raw()); r.layers=layers; r.arrayView=arrayView; }

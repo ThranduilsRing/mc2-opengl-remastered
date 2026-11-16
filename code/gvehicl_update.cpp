@@ -699,6 +699,7 @@ void GroundVehicle::extractRenderView (mc2::render_view::RenderView& view)
 {
 	using mc2::render_view::Mode;
 	GameObject::extractRenderView(view);
+	view.value[0] = mc2::render_view::groundFootprintRadius(getExtentRadius(), false, getMoveType() == MOVETYPE_AIR);
 	contactView = mc2::contactVisibility(getContactStatus(Team::home->getId(), true), getTeamId() == Team::home->getId()
 		|| isDestroyed() || isDisabled() || ShowMovers
 		|| (MPlayer && MPlayer->allUnitsDestroyed[MPlayer->commanderID]));

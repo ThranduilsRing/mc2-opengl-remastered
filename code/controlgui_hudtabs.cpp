@@ -2,6 +2,11 @@
 // Declared in the class headers; shared names in controlgui_internal.h.
 #include "controlgui_internal.h"
 #include "mc2fmt.h"
+#include "net/runtime.h"
+#include "sim_speed.h"
+#include "../GameOS/gameos/ui_texture.h"
+#include "../mclib/texture_assets.h"
+#include <cmath>
 
 
 
@@ -58,22 +63,6 @@ void ControlGui::initHudTabRegistry()
 	t.countsAsTacMap = false;
 	hudTabRegistry.add( t );
 
-	// SIM-SPEED-BUTTON-1: double-gated sim-speed tab (MC2_HUD_SIM_SPEED;
-	// needs MC2_HUD_IMGUI_TABS like every registry consumer). 1x/2x/4x
-	// buttons drive the runtime multiplier behind MC2_SIM_SPEED
-	// (simSpeedSetMultiplier, mission.cpp) — the same mechanism, no second
-	// sim-speed path. Disabled in multiplayer (would desync the sim).
-	if ( mc2::gate::get<"MC2_HUD_SIM_SPEED">() )
-	{
-		t.id = "speed";
-		t.buttonCommand = -1;   // no legacy ControlButton; chrome is ImGui-drawn
-		t.render = &ControlGui::hudTabRenderSimSpeed;
-		t.update = nullptr;
-		t.helpTextHeaderID = 0;
-		t.helpTextID = 0;
-		t.countsAsTacMap = false;
-		hudTabRegistry.add( t );
-	}
 }
 
 void ControlGui::setActiveHudTab( int index, const char* via )
@@ -95,63 +84,82 @@ void ControlGui::setActiveHudTab( int index, const char* via )
 	mc2::fmt::print_err("[HUD-TABS v1] dispatch tab '{}' (index {:d}, via {})\n", mc2::fmt::safe(t->id), mc2::fmt::as_i32(index), mc2::fmt::safe(via));
 }
 
-// SIM-SPEED-BUTTON-1 tab body: 1x/2x/4x sim-speed buttons over the tac area
-// rect (same panel placement as the test tab: bottom-band shrink + canvas
-// transform via the slice-B helper). Clicks route through
-// simSpeedSetMultiplier (mission.cpp) — the shipped MC2_SIM_SPEED mechanism.
-// Guards: buttons disabled in multiplayer (sim-speed change would desync);
-// the multiplier itself resets to the env seed at every Mission::init, and
-// pause already freezes scenarioTime regardless of the multiplier.
-void ControlGui::hudTabRenderSimSpeed( void* user )
+void ControlGui::renderSimSpeedButton()
 {
-	ControlGui* self = static_cast<ControlGui*>(user);
-	if ( !self->rectInfos )
-		return;
-	const GUI_RECT& r = self->rectInfos[0].rect;
-	float l = static_cast<float>(r.left),  tY = static_cast<float>(r.top);
-	float rt = static_cast<float>(r.right), b = static_cast<float>(r.bottom);
-	const float cy = 0.5f * ( tY + b );
-	HudImGui::hudShrinkPoint( l, tY, cy );
-	HudImGui::hudShrinkPoint( rt, b, cy );
-
-	float fontScale = 1.f;
-	if ( !HudImGui::beginPanel( "##hud_tab_simspeed", l, tY, rt, b, &fontScale ) )
-		return;
-	ImGui::SetWindowFontScale( fontScale );
-
-	const float current = simSpeedGetMultiplier();
-	ImGui::Text( "Sim speed: %.2fx", current );
-
-	if ( MPlayer )
+	// This square belongs to specialist orders while such a unit is selected.
+	for (int id : {LAYMINES, REPAIR, SALVAGE, GUARDTOWER})
+		if (getButton(id)->state != ControlButton::HIDDEN) return;
+	const auto* button = getButton(LAYMINES);
+	float l = button->location[0].x, t = button->location[0].y;
+	float r = button->location[2].x, b = button->location[2].y;
+	const float cy = (t + b) * 0.5f;
+	HudImGui::hudShrinkPoint(l, t, cy);
+	HudImGui::hudShrinkPoint(r, b, cy);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+	ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0));
+	const bool open = HudImGui::beginPanel("##sim_speed", l, t, r, b);
+	ImGui::PopStyleColor();
+	ImGui::PopStyleVar();
+	if (!open) return;
+	const bool disabled = mc2::net::active();
+	const ImVec2 p = ImGui::GetWindowPos(), size = ImGui::GetWindowSize();
+	ImGui::SetCursorScreenPos(p);
+	ImGui::InvisibleButton("##cycle", size, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
+	const bool hover = ImGui::IsItemHovered();
+	const bool pressed = ImGui::IsItemActive();
+	if (!disabled && (ImGui::IsItemClicked(ImGuiMouseButton_Left) || ImGui::IsItemClicked(ImGuiMouseButton_Right)))
 	{
-		ImGui::TextUnformatted( "(unavailable in multiplayer)" );
-		HudImGui::endPanel();
-		return;
+		const float speed = simSpeedGetMultiplier();
+		const bool down = ImGui::GetIO().KeyShift || ImGui::IsItemClicked(ImGuiMouseButton_Right);
+		const float next = mc2::sim::speedCycle(speed, down, disabled);
+		simSpeedSetMultiplier(next);
 	}
-
-	static const float kSpeeds[3] = { 1.0f, 2.0f, 4.0f };
-	static const char* kLabels[3] = { "1x##simspeed", "2x##simspeed", "4x##simspeed" };
-	for ( int i = 0; i < 3; ++i )
+	auto* draw = ImGui::GetWindowDrawList();
+	const bool selected = !disabled && (pressed || simSpeedGetMultiplier() != 1.f);
+	const int state = disabled ? ControlButton::DISABLED :
+		(selected ? ControlButton::PRESSED : (hover ? ControlButton::AMBIGUOUS : ControlButton::ENABLED));
+	// The repacked atlas omits the unused empty row at y=144. Use the stock
+	// Info command's frame at y=0, extending its side stripes over its icon.
+	static const auto frame = mc2::textures::load(
+		"data\\art\\gui\\MCUI_High3.png", gos_Texture_Alpha, 0, 0, 0x1);
+	const float u = static_cast<float>((disabled ? 2 : selected ? 1 : 0) * 42);
+	const auto texture = gos_GetUiTextureId(mc2::textures::sourceId(frame));
+	constexpr float edges[] = {0.f, 12.f, 30.f, 42.f};
+	constexpr float sourceLeft[] = {0.f, 8.f, 30.f};
+	constexpr float sourceRight[] = {12.f, 9.f, 42.f};
+	for (int strip = 0; strip < 3; ++strip)
+		draw->AddImage(static_cast<ImTextureID>(texture),
+			ImVec2(p.x + size.x * edges[strip] / 42.f, p.y),
+			ImVec2(p.x + size.x * edges[strip + 1] / 42.f, p.y + size.y),
+			ImVec2((u + sourceLeft[strip] + .1f) / 256.f, .1f / 256.f),
+			ImVec2((u + sourceRight[strip] + .1f) / 256.f, 36.1f / 256.f));
+	// Icon-only command buttons have no Text* fields. Use the stock HUD
+	// blue/white/grey/orange palette rather than their unset text colours.
+	constexpr unsigned long colors[] = {0xff5c96c2, 0xffffffff, 0xff6b6b6b, 0xfff26f00};
+	const auto color = colors[state];
+	const ImU32 ink = IM_COL32((color >> 16) & 255, (color >> 8) & 255, color & 255, 255);
+	const auto font = helpFont.getTempHandle();
+	// The legacy atlas uses nearest sampling; integer glyph scales keep the
+	// Agency face crisp at both 1080p and 4K, just like the adjoining HUD text.
+	const float scale = std::max(1.f, std::floor(size.y / 36.f));
+	const float line = HudFont::LineHeight(font, scale);
+	const float offset = pressed && !disabled ? scale : 0.f;
+	char label[16];
+	mc2::fmt::to_buf(label, "{:g}x", static_cast<double>(simSpeedGetMultiplier()));
+	for (int row = 0; row < 2; ++row)
 	{
-		if ( i )
-			ImGui::SameLine();
-		const bool active = ( current > kSpeeds[i] - 0.01f && current < kSpeeds[i] + 0.01f );
-		if ( active )
-			ImGui::PushStyleColor( ImGuiCol_Button, ImVec4( 0.1f, 0.45f, 0.1f, 1.f ) );
-		if ( ImGui::Button( kLabels[i], ImVec2( 48.f, 0.f ) ) )
-		{
-			mc2::fmt::print_err("[SIM-SPEED-BUTTON v1] click {:.0f}x (was {:.2f}x)\n", static_cast<double>(kSpeeds[i]), static_cast<double>(current));
-			fflush( stderr );
-			simSpeedSetMultiplier( kSpeeds[i] );
-		}
-		if ( active )
-			ImGui::PopStyleColor();
+		const auto* value = row == 0 ? ">>>" : label;
+		const float width = HudFont::Measure(font, value, scale, scale).x;
+		HudFont::Draw(draw, font, std::floor(p.x + (size.x - width) * .5f) + offset,
+			std::floor(p.y + (size.y - 2.f * line) * .5f + row * line) + offset,
+			ink, value, scale, scale);
 	}
-
-	ImGui::TextUnformatted( "Resets at mission start." );
-
+	if (hover)
+		ImGui::SetTooltip("Sim speed: %gx\nClick: faster; right-click / Shift-click: slower.%s",
+			simSpeedGetMultiplier(), disabled ? "\nUnavailable in multiplayer." : "");
 	HudImGui::endPanel();
 }
+
 
 // Tab-strip chrome for registry tabs with no legacy button (buttonCommand<0):
 // a small ImGui button placed just right of the last legacy tab button, in

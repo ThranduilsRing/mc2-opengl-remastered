@@ -13,6 +13,22 @@ if(MC2_COMPILE_CACHE AND MSVC)
     message(STATUS "MC2_COMPILE_CACHE=ON: /Zi -> /Z7 (${CMAKE_CXX_FLAGS_RELWITHDEBINFO})")
 endif()
 
+# Full nonincremental PDBs retain crash function/line data without accumulating
+# incremental type maps. /DEBUG otherwise disables REF/ICF in RelWithDebInfo;
+# restore dead-code removal and folding while keeping cacheable /Z7 compiles.
+if(MSVC)
+    add_link_options(
+        "$<$<CONFIG:RelWithDebInfo>:/DEBUG:FULL>"
+        "$<$<CONFIG:RelWithDebInfo>:/INCREMENTAL:NO>"
+        "$<$<CONFIG:RelWithDebInfo>:/OPT:REF,ICF>")
+endif()
+# Package globals as COMDATs so REF/ICF can discard and fold unused data too.
+# Keep /O2 and full debug information; /Gy makes the function packaging explicit.
+if(MSVC)
+    add_compile_options("$<$<AND:$<CONFIG:RelWithDebInfo>,$<COMPILE_LANGUAGE:C,CXX>>:/Gy>"
+                        "$<$<AND:$<CONFIG:RelWithDebInfo>,$<COMPILE_LANGUAGE:C,CXX>>:/Gw>")
+endif()
+
 # C++ standard: one cache variable, MC2_CXX_STANDARD (20 or 23; default 23 = MSVC /std:c++23preview).
 # The gate registry (Gates/gate.h) needs C++20 class-type template parameters and consteval, so 17 is
 # not an option; standalone projects take the same variable through cmake/Mc2Standalone.cmake.

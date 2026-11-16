@@ -32,7 +32,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/screen_shot.py` | 103 | `nofocus.spawn` | offscreen |
 | `scripts/smoke_lib/runner.py` | 338 | `nofocus.spawn` | offscreen |
 | `scripts/sweep_campaign.py` | 108 | `nofocus.spawn` | offscreen |
-| `scripts/test_release_zip_install.py` | 262 | `nofocus.run` | offscreen |
+| `scripts/test_release_zip_install.py` | 263 | `nofocus.run` | offscreen |
 | `scripts/tests/test_abl_static_alloc.py` | 87 | `nofocus.run` | offscreen |
 | `scripts/tests/test_gpu_routing.py` | 60 | `nofocus.spawn` | offscreen |
 | `scripts/tests/test_harness_desktop_safety.py` | 172 | `nofocus.spawn` | offscreen |
@@ -42,13 +42,15 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/tests/test_host_lease.py` | 98 | `nofocus.spawn` | offscreen |
 | `scripts/tests/test_nofocus_env.py` | 47 | `nofocus.spawn` | offscreen |
 | `scripts/tests/test_nofocus_env.py` | 78 | `nofocus.spawn` | offscreen |
-| `scripts/tests/test_shadow_bake_init.py` | 125 | `nofocus.run` | offscreen |
-| `scripts/tests/test_shadow_bake_init.py` | 289 | `nofocus.run` | offscreen |
-| `scripts/tests/test_shadow_bake_init.py` | 337 | `nofocus.run` | offscreen |
-| `scripts/tests/test_shadow_bake_init.py` | 429 | `nofocus.run` | offscreen |
+| `scripts/tests/test_shadow_bake_init.py` | 52 | `nofocus.run` | offscreen |
+| `scripts/tests/test_shadow_bake_init.py` | 164 | `nofocus.run` | offscreen |
+| `scripts/tests/test_shadow_bake_init.py` | 328 | `nofocus.run` | offscreen |
+| `scripts/tests/test_shadow_bake_init.py` | 376 | `nofocus.run` | offscreen |
+| `scripts/tests/test_shadow_bake_init.py` | 468 | `nofocus.run` | offscreen |
 | `tests/smoke/object_visual_diff.py` | 123 | `nofocus.run` | offscreen |
 | `tests/smoke/scene_resize.py` | 37 | `nofocus.spawn` | offscreen |
 | `tools/campaign_save_roundtrip.py` | 178 | `nofocus.spawn` | offscreen |
+| `tools/import_campaign.py` | 250 | `subprocess.run` **raw, allowed:** innoextract console archive reader only; never runs the installer or engine | offscreen |
 | `tools/menu_oracle.py` | 110 | `nofocus.spawn` | desktop-composite |
 | `tools/mod_smoke.py` | 1061 | `nofocus.run` | offscreen |
 | `tools/perf/mission_cpu_profile.py` | 224 | `subprocess.Popen` **raw, allowed:** Tracy console recorder, never an engine. | offscreen |
@@ -56,16 +58,17 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `tools/perf/rgp_capture.py` | 66 | `subprocess.Popen` **raw, allowed:** RDS console service, never an engine. | offscreen |
 | `tools/perf/rgp_capture.py` | 70 | `subprocess.Popen` **raw, allowed:** minimized no-activate profiler panel, never an engine. | offscreen |
 | `tools/renderdoc/capture.py` | 144 | `nofocus.run` | offscreen |
-| `tools/tracy_capture_compare.py` | 392 | `subprocess.Popen` **raw, allowed:** Tracy console recorder, never an engine. | offscreen |
-| `tools/tracy_capture_compare.py` | 431 | `nofocus.spawn` | offscreen |
-| `tools/tracy_capture_compare.py` | 528 | `subprocess.run` **raw, allowed:** Tracy CSV console exporter, hidden; never an engine. | offscreen |
-| `tools/tracy_capture_compare.py` | 548 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
-| `tools/tracy_capture_compare.py` | 598 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
-| `tools/tracy_capture_compare.py` | 634 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
-| `tools/tracy_capture_compare.py` | 687 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
+| `tools/tracy_capture_compare.py` | 403 | `subprocess.run` **raw, allowed:** windowless Tracy csvexport console tool. | offscreen |
+| `tools/tracy_capture_compare.py` | 472 | `subprocess.Popen` **raw, allowed:** Tracy console recorder, never an engine. | offscreen |
+| `tools/tracy_capture_compare.py` | 516 | `nofocus.spawn` | offscreen |
+| `tools/tracy_capture_compare.py` | 653 | `subprocess.run` **raw, allowed:** Tracy CSV console exporter, hidden; never an engine. | offscreen |
+| `tools/tracy_capture_compare.py` | 673 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
+| `tools/tracy_capture_compare.py` | 723 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
+| `tools/tracy_capture_compare.py` | 759 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
+| `tools/tracy_capture_compare.py` | 812 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
 | `tools/window_cycle.py` | 113 | `nofocus.spawn` | offscreen |
 
-Total engine launch sites: 55
+Total engine launch sites: 58
 
 ## Shell launchers (RULE 9)
 

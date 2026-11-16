@@ -49,19 +49,9 @@ static TEXTUREPTR lockIconPage(unsigned long handle)
     return page;
 }
 
-// Pick source detail from the drawable, independently of the 800x600 HUD canvas.
-static int hudIconSourceWidth()
-{
-    return Environment.drawableWidth > 0 ? Environment.drawableWidth : Environment.screenWidth;
-}
-
 static const char* hudSheet(bool vehicle)
 {
-    if (hudIconSourceWidth() == 640)
-        return vehicle ? "data/art/mcui_low5.tga" : "data/art/mcui_low4.tga";
-    if (hudIconSourceWidth() == 800)
-        return vehicle ? "data/art/mcui_med5.tga" : "data/art/mcui_med4.tga";
-    return vehicle ? "data/art/mcui_high8.tga" : "data/art/mcui_high7.tga";
+    return unit_icons::hudIconSource(Environment.drawableWidth, Environment.screenWidth, vehicle).sheet;
 }
 
 std::unique_ptr<StaticInfo>		ForceGroupIcon::jumpJetIcon = nullptr;
@@ -1321,22 +1311,16 @@ void ForceGroupIcon::setIconVariables()
 		case 800:
 			PilotIcon::pilotIconX = 25;
 			PilotIcon::pilotIconY = 36;
-			unitIconX = 32;
-			unitIconY = 38;
 			break;
 
 		case 640:
 			PilotIcon::pilotIconX = 20;
 			PilotIcon::pilotIconY = 28;
-			unitIconX = 25;
-			unitIconY = 30;
 			break;
 
 		default:
 			PilotIcon::pilotIconX = 33;
 			PilotIcon::pilotIconY = 46;
-			unitIconX = 40;
-			unitIconY = 48;
 			break;
 
 	}
@@ -1344,11 +1328,9 @@ void ForceGroupIcon::setIconVariables()
 	curScreenWidth = Environment.screenWidth;
 
     // The canvas controls pilot/layout dimensions; unit art retains native detail.
-    switch (hudIconSourceWidth()) {
-        case 640: unitIconX = 25; unitIconY = 30; break;
-        case 800: unitIconX = 32; unitIconY = 38; break;
-        default: unitIconX = 40; unitIconY = 48; break;
-    }
+    const auto source = unit_icons::hudIconSource(Environment.drawableWidth, Environment.screenWidth);
+    unitIconX = source.width;
+    unitIconY = source.height;
 }
 
 const char* PilotIcon::legacySheetPath()

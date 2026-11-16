@@ -14,6 +14,7 @@
 
 // Engine side.
 #include "gos_vegetation.h"
+#include "../code/render_view.h"
 
 // Game side -- terrain geometry + type queries.
 #include "../mclib/terrain.h"
@@ -504,6 +505,22 @@ void GameAdapters::Vegetation::flush(const float* terrainLightDir_4f, float time
         GosVegetation::setBlockVisibility(s_visBuffer.data(),
                                           static_cast<uint32_t>(blockCount));
     }
+
+    // Snapshot values: no live sim reads while the next tick is in flight.
+    static thread_local std::vector<GosVegetation::Footprint> footprints;
+    footprints.clear();
+    const float halfMap = Terrain::worldUnitsMapSide * 0.5f;
+    for (const auto& unit : mc2::render_view::list().movers) {
+        using mc2::render_view::Mode;
+        if (unit.value[0] <= 0.0f || (unit.mode != Mode::Full && unit.mode != Mode::Own && unit.mode != Mode::Fade)) continue;
+        const auto addFoot = [&](const glm::vec3& foot) {
+            footprints.push_back({foot.x - Terrain::mapTopLeft3d.x - halfMap,
+                                  foot.y - Terrain::mapTopLeft3d.y + halfMap, unit.value[0], 0.0f});
+        };
+        if (unit.groundFeet.empty()) addFoot(unit.position); // ground vehicles
+        else for (const auto& foot : unit.groundFeet) addFoot(foot);
+    }
+    GosVegetation::setUnitFootprints(footprints);
 
     // Emit first-frame draw_health event (MCP-queryable).
     static int s_flushCallCount = 0;

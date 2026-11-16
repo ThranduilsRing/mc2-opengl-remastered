@@ -26,7 +26,7 @@ DEFAULT_EXE = Path("G:/mc2-installs/mc2-win64-mapgen/mc2.exe")
 PASSES = {
     "terrain": ("VKIsl.Terrain",),
     "shadows": ("VKIsl.Shadow.",), "vegetation": ("VKIsl.Vfx.Vegetation",),
-    "props": ("VKIsl.Props",), "mechs": ("VKIsl.Mech",), "water": ("VKIsl.Water",),
+    "props": ("VKIsl.Props", "VKIsl.Props.LateFringe"), "mechs": ("VKIsl.Mech",), "water": ("VKIsl.Water",),
     "post": ("VKIsl.Post.", "VKIsl.Present.Composite"), "vfx": ("VKIsl.Vfx",),
 }
 STOCK_MISSIONS = ("mc2_01", "mc2_10", "mc2_15", "mc2_19")

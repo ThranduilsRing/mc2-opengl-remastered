@@ -302,7 +302,7 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 				if (target)
 				{
 					weaponFX->connect(this, target, &curShotInfo, sourceHotSpot, targetHotSpot);
-					// ISSUE-9 S2 (MC2_CALLED_SHOT_FIX, default OFF): successful AIMED
+                    // ISSUE-9 S2 (MC2_CALLED_SHOT_FIX, default ON; =0 restores stock): successful AIMED
 					// missile shot — flag the bolt so an area-effect (LRM) arrival
 					// honors the called location (curShotInfo.hitLocation ==
 					// aimLocation here) instead of a randomly-located explosion.

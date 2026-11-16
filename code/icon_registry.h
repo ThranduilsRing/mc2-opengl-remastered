@@ -11,6 +11,19 @@
 
 namespace unit_icons {
 
+struct HudSource { const char* sheet; int width, height; };
+// The drawable selects source detail; the logical UI canvas only controls layout.
+inline constexpr HudSource hudIconSource(int drawableWidth, int screenWidth, bool vehicle = false) {
+    switch (drawableWidth > 0 ? drawableWidth : screenWidth) {
+        case 640: return {vehicle ? "data/art/mcui_low5.tga" : "data/art/mcui_low4.tga", 25, 30};
+        case 800: return {vehicle ? "data/art/mcui_med5.tga" : "data/art/mcui_med4.tga", 32, 38};
+        default: return {vehicle ? "data/art/mcui_high8.tga" : "data/art/mcui_high7.tga", 40, 48};
+    }
+}
+inline constexpr uint32_t logisticsIconColor(bool hudArt, uint32_t color) {
+    return hudArt ? color | 0x00ffffffu : color;
+}
+
 inline std::string canonical(std::string key) {
     fst_normalize_loose_key_inplace(key.data());
     return key;
@@ -168,7 +181,7 @@ public:
 
 class aObject;
 namespace unit_icons {
-void apply(aObject& widget, const aObject& source, long index, std::string chassis);
+bool apply(aObject& widget, const aObject& source, long index, std::string chassis);
 void blit(std::string sheet, long index, bool back, uint32_t* dest, int stride, int width, int height,
           std::string chassis = {});
 // Single-file pilot portrait (data/art/pilots/NN.png). Null when absent or when a mod's replacement

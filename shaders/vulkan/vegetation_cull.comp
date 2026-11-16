@@ -22,8 +22,13 @@ void main() {
     if (lid == 0u) s_count = 0u;
     barrier();
     uint localCount = 0u;
-    for (uint id = R.first + lid; id < R.last; id += 64u)
-        if (survives(unpackVegetation(inst[id]), force)) ++localCount;
+    for (uint id = R.first + lid; id < R.last; id += 64u) {
+        if (survives(unpackVegetation(inst[id]), force)) {
+            // Adjacent regions and lanes may share words; false bits were cleared by the host.
+            atomicOr(surviveBits[id >> 5u], 1u << (id & 31u));
+            ++localCount;
+        }
+    }
     uint waveSum = subgroupAdd(localCount);
     if (subgroupElect()) atomicAdd(s_count, waveSum);
     barrier();

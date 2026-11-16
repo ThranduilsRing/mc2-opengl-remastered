@@ -73,8 +73,8 @@ bool init_island(WaterIsland* s, int w, int h) {
         if (!make_buffer(s, s->recipeBuf, s->recipeBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "water.recipeBuf")) return false;
     }
     // Thin SSBOs (per parity slot) — start with a small ring; grows in run().
-    if (!ensure_thin_capacity(s, 0, 64 * 1024)) return false; // ~1365 records to start
-    if (!ensure_thin_capacity(s, 1, 64 * 1024)) return false;
+    for (uint32_t par = 0; par < mc2vk::kMaxFramesInFlight; ++par)
+        if (!ensure_thin_capacity(s, par, 64 * 1024)) return false; // ~1365 records to start
     // ---- Scene pass (VK_KHR_dynamic_rendering, no VkRenderPass/VkFramebuffer): color0 (shared, LOAD scene color, alpha-blend, STORE) + normal (LOAD,
     // STORE) + depth (LOAD, GEQUAL, write). Water runs after terrain/props/mechs wrote scene depth. The incoming WAW dependency of the old render pass
     // (this frame's colour/depth writes after the prior frame's stores) is the memory barrier recorded by beginSceneLoad. ----

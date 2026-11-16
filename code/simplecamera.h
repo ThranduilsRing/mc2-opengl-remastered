@@ -36,6 +36,7 @@ public:
 	void render() override;
 	virtual void render(long xOffset, long yOffset);
 	long update() override;
+    void drawAnimationPanel();
 
 	// PREVIEW-FBO-FIXED-800x600-1: opt a defs/ImGui page's use of this camera into
 	// rendering the mech preview into a fixed 800x600 offscreen texture instead

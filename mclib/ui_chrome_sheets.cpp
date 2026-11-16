@@ -116,12 +116,20 @@ bool clearMenuMatte(std::string_view path, Pixels& px) {
     for (int y = 0; y < px.h; ++y) for (int x = 0; x < px.w; ++x) {
         const size_t i = static_cast<size_t>(y) * px.w + x, src = i * px.channels, dst = i * 4;
         std::copy_n(px.data.data() + src, 3, rgba.data() + dst);
+        // The three stock button rows include opaque black wells and white
+        // brackets. Their FIT animation supplies the tint; keep the source paint.
+        if (key == "mcl_mm_12" && y < 96) {
+            rgba[dst + 3] = px.channels == 4 ? px.data[src + 3] : 255;
+            continue;
+        }
         const int value = std::max({rgba[dst], rgba[dst + 1], rgba[dst + 2]});
         if (menu || frame) {
             auto paint = (static_cast<uint32_t>(rgba[dst]) << 16) |
                          (static_cast<uint32_t>(rgba[dst + 1]) << 8) | rgba[dst + 2];
             if (key == "mcl_mm_12") paint = menuTintCarrier(paint);
-            paint = menuYellow(paint);
+            const bool title = (key == "mcl_mm_1" && x >= 125 && y < 100) ||
+                               (key == "mcl_mm_2" && (y < 94 || (y >= 116 && y < 210)));
+            if (!title) paint = menuYellow(paint); // Only the logo retains its authored gold gradient.
             rgba[dst] = static_cast<uint8_t>(paint >> 16);
             rgba[dst + 1] = static_cast<uint8_t>(paint >> 8);
             rgba[dst + 2] = static_cast<uint8_t>(paint);
@@ -129,12 +137,14 @@ bool clearMenuMatte(std::string_view path, Pixels& px) {
         // Retain the dialog button wells; the surrounding cable voids remain open.
         const bool well = dialog && ((key.ends_with("_3") && x >= 50 && x < 178 && y >= 118 && y < 236) ||
                                      (key == "mcl_dialog_onebutton_4" && x < 99 && y < 118));
-        // Atlas-space openings, excluding vents and the hazard-painted bottom strips.
-        const bool opening = dialog || key == "mcl_mm_5" || key == "mcl_mm_12" ||
+        // Open the title and outer-frame mattes; retain the hazard stripes' black paint.
+        const bool opening = dialog || frame || key == "mcl_mm_5" || key == "mcl_mm_12" ||
             (key == "mcl_mm_1" && ((x >= 125 && y < 100) || (x >= 130 && y >= 112 && y < 181) ||
                                       (x >= 124 && x < 144 && y >= 214))) ||
-            (key == "mcl_mm_2" && (y < 94 || (y >= 116 && y < 210 && x < 164))) ||
-            (key == "mcl_mm_3" && x < 114 && y < 200);
+            (key == "mcl_mm_2" && (y < 94 || (y >= 116 && y < 210))) ||
+            (key == "mcl_mm_3" && ((x < 114 && y < 200) || (x < 57 && x + y < 255) ||
+                                       (x >= 57 && x < 114 && y < 232 && x + 110 > y) ||
+                                       (x >= 171 && y < 178)));
         const int coverage = well || !opening ? 255 : std::clamp((value - 4) * 255 / 12, 0, 255);
         rgba[dst + 3] = static_cast<uint8_t>((px.channels == 4 ? px.data[src + 3] : 255) * coverage / 255);
     }

@@ -566,7 +566,7 @@ void WeaponBolt::Save (PacketFilePtr file, long packetNum)
 	MC2_SAVE_STRUCT(WeaponBoltData, data);
 	CopyTo(&data);
 
-	auto bytes = mc2::save::encodeTaggedRecord(mc2::save::WeaponBoltRecord{data}, mc2::save::weaponBoltTag);
+	auto bytes = mc2::save::encodeTaggedRecord(mc2::save::WeaponBoltRecord{data, aimedTargetWID}, mc2::save::weaponBoltTag);
 	if (bytes.empty()) Fatal(0, "Invalid bolt ObjectSlot");
 	file->writePacket(packetNum, bytes.data(), static_cast<unsigned int>(bytes.size()), STORAGE_TYPE_ZLIB);
 }
@@ -620,11 +620,12 @@ void WeaponBolt::CopyTo (WeaponBoltData *data)
 }
 
 //---------------------------------------------------------------------------
-void WeaponBolt::Load (WeaponBoltData *data)
+void WeaponBolt::Load (WeaponBoltData *data, GameObjectWatchID savedAimedTarget)
 {
 	// All supported save versions use the same reserved handle slots. Ignore
 	// legacy nonzero values; init resolved this bolt type's textures for this run.
 	GameObject::Load(data); 
+	aimedTargetWID = savedAimedTarget;
 
 	ownerWID = data->ownerWID;
 	hotSpotNumber = data->hotSpotNumber;

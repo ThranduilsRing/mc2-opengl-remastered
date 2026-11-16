@@ -120,9 +120,44 @@ def _match(path, spec):
 
 def affected_rows(repo, paths):
     """The existing input table also declares per-merge triggers; undeclared rows are nightly."""
-    return {label for label, specs in load_decls(repo).items()
+    rows = {label for label, specs in load_decls(repo).items()
             if any(any(_match(p, s) for s in specs if not s.startswith(("!", "+")))
                    and not any(_match(p, s[1:]) for s in specs if s.startswith("!")) for p in paths)}
+    if os.environ.get("CONTRACTS_NO_CACHE") == "1":
+        return rows
+    if tip_passed(repo, "lint"):
+        rows -= {"log_tag_census", "script_callers"}
+    if tip_passed(repo, "native_unit"):
+        rows.discard("audio_music_stream")
+    return rows
+
+
+def clean_tip(repo):
+    try:
+        return _git(repo, "rev-parse", "HEAD")[0] if not _git(repo, "status", "--porcelain") else None
+    except (OSError, subprocess.CalledProcessError, IndexError):
+        return None
+
+
+def tip_passed(repo, label):
+    head = clean_tip(repo)
+    entry = load_cache(repo).get("exact-tip:" + label, {}) if head else {}
+    return bool(head and isinstance(entry, dict) and entry.get("key") == head)
+
+
+def record_tip_pass(repo, label, head, passed):
+    """Reuse the existing PASS cache format; dirty, moved, failed and missing evidence never qualify."""
+    if not head:
+        return
+    cache = load_cache(repo)
+    cache.pop("exact-tip:" + label, None)
+    if passed and head and clean_tip(repo) == head:
+        cache["exact-tip:" + label] = {"key": head}
+    p = cache_path(repo)
+    tmp = p + f".{os.getpid()}.tmp"
+    with open(tmp, "w", encoding="utf-8") as stream:
+        json.dump(cache, stream)
+    os.replace(tmp, p)
 
 
 def _read(repo, rel):

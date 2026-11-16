@@ -743,13 +743,14 @@ void gosPostProcess::VkPostHzbNativeDeleter::operator()(VkPostHzbNative* s) cons
     delete s;
 }
 
-void gosPostProcess::prewarmVkHzb() {
+void gosPostProcess::prewarmVkHzb(uint32_t propGeneration) {
     if(!hzbEnabled_ || width_<=0 || height_<=0) return;
     if(!vkPostHzbNative_) vkPostHzbNative_.reset(std::make_unique<VkPostHzbNative>().release());
     auto* s=vkPostHzbNative_.get();
     int levels=1; for(int edge=(std::max)(width_,height_);edge>1;edge=(edge+1)/2) ++levels;
     if(!s->inited && !build_state(s,width_,height_,levels)) { destroy_state(s); return; }
-    // Prewarm precedes the map bounds upload; descriptors still need a valid buffer.
+    if (propGeneration != UINT32_MAX && !cache_prop_bounds(s, propGeneration)) { destroy_state(s); return; }
+    // Non-mission callers still need a valid buffer before geometry is finalized.
     if (!s->localBounds && !make_buffer(s, 32, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
                                       s->localBounds, "hzb.local_bounds")) { destroy_state(s); return; }
     if(!build_prop_cull(*s,1024)) destroy_state(s);
@@ -809,14 +810,14 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
                     static_cast<unsigned long long>(s->totalTested), static_cast<unsigned long long>(s->totalCulled), static_cast<unsigned long long>(s->measuredFrames));
         }
     }
-    parity_check(s);   // runs once the pending check frame has completed
+    if (mc2_diag::tagRequested("CULL_PARITY")) parity_check(s); // runs once the pending check frame has completed
     if (!s->instances[slot].upload(feed.instances112, static_cast<uint64_t>(feed.count)*sizeof(GpuStaticPropInstance))) {
         setFallback("instances_upload_failed"); s->disabled = true; return false;
     }
 
     // Check frame: one in kParityEvery. Needs a host-readable copy of every pyramid level (recorded below, after the cull).
     // A pending check still owns `parityMips`: no new check frame until it has run.
-    const bool parityFrame = (g_parity.runs++ % kParityEvery) == 0 && !s->parity.valid;
+    const bool parityFrame = mc2_diag::tagRequested("CULL_PARITY") && (g_parity.runs++ % kParityEvery) == 0 && !s->parity.valid;
     bool parityRecord = false;
     VkDeviceSize parityOffset[64] = {};
     VkDeviceSize visOffset = 0;

@@ -24,7 +24,7 @@
           "matrix_stride": null,
           "name": "inst",
           "offset": 0,
-          "type": "_592"
+          "type": "_571"
         }
       ],
       "name": "VegInst"
@@ -37,7 +37,7 @@
           "matrix_stride": null,
           "name": "region",
           "offset": 0,
-          "type": "_541"
+          "type": "_520"
         }
       ],
       "name": "VegReg"
@@ -106,6 +106,19 @@
         }
       ],
       "name": "VegVisList"
+    },
+    {
+      "binding": 10,
+      "members": [
+        {
+          "array_stride": 4,
+          "matrix_stride": null,
+          "name": "surviveBits",
+          "offset": 0,
+          "type": "uint"
+        }
+      ],
+      "name": "VegSurvive"
     }
   ],
   "stage": "comp",
@@ -118,7 +131,7 @@
           "matrix_stride": null,
           "name": "P",
           "offset": 0,
-          "type": "_386"
+          "type": "_365"
         }
       ],
       "name": "VegParams"

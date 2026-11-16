@@ -1,4 +1,5 @@
 #include <array>
+#include <atomic>
 // tests/unit/test_gate.cpp
 // GATE-REGISTRY-G1A: the typed gate table's parser, readers, cache and [CONFIG v1] dump.
 //
@@ -17,6 +18,7 @@
 #include "Gates/gate_parse.h"
 #include "Gates/gate_row.h"
 #include "Gates/gate_table_dsl.h"
+#include <algorithm>
 #include "Gates/render_options.h"
 #include "Gates/render_options_cfg.h"
 #include "mlr/mlr_gate.h"
@@ -25,6 +27,34 @@
 #include "vk_validation_line.h"  // the engine-log line of one validation-layer message (header-only, Vulkan-free)
 #include "render_backend_select.h"  // the one MC2_RENDER_BACKEND parse rule
 #include "owned_handle.h"       // the move-only owner the Vulkan islands hold their objects in (header-only, Vulkan-free)
+
+// Verbatim production blocks; template instances isolate their first-use static caches.
+template<int Mode> auto calledShotFloors() {
+    const float HeadShotModifier = .08f, ArmShotModifier = .15f, LegShotModifier = .20f;
+#include "called_floors.inc"
+    return std::array{headMod, armMod, legMod};
+}
+template<int Mode> bool calledShotHit(bool vehicle, long aimLocation = 0) {
+    struct Target { int getWatchID() { return 7; } } victim;
+    struct Bolt { int aimed = 0; void setAimedTarget(int wid) { aimed = wid; } } bolt;
+    auto* target = &victim; auto* weaponFX = &bolt;
+    if (vehicle) {
+#include "called_gvehicl.inc"
+    } else {
+#include "called_mech.inc"
+    }
+    return bolt.aimed == 7;
+}
+TEST_CASE("called shot/default floors and both aimed-hit paths; kill-switch restores stock") {
+    mc2::gate::ScopedOverride<"MC2_CALLED_SHOT_FIX"> defaults(nullptr);
+    CHECK(mc2::gate::get<"MC2_CALLED_SHOT_FIX">());
+    CHECK(calledShotFloors<0>() == std::array{.30f, .45f, .50f});
+    for (bool vehicle : {false, true}) { CHECK(calledShotHit<0>(vehicle)); CHECK_FALSE(calledShotHit<0>(vehicle, -1)); }
+    mc2::gate::ScopedOverride<"MC2_CALLED_SHOT_FIX"> stock("0");
+    CHECK_FALSE(mc2::gate::get<"MC2_CALLED_SHOT_FIX">());
+    CHECK(calledShotFloors<1>() == std::array{.08f, .15f, .20f});
+    for (bool vehicle : {false, true}) CHECK_FALSE(calledShotHit<1>(vehicle));
+}
 
 #include <cstdio>
 #include <limits>
@@ -816,6 +846,44 @@ TEST_CASE("strict_exit_child") {
     if (std::getenv("GATE_TEST_STRICT_CHILD") == nullptr) return;
     gate::dumpConfig(stderr);
     if (std::getenv("MC2_CONFIG_STRICT") != nullptr) FAIL("dumpConfig returned under strict mode");
+}
+
+TEST_CASE("diagnostic_trace/concurrent_shutdown") {
+    constexpr const char* testName = "-tc=diagnostic_trace/concurrent_shutdown";
+    if (!std::getenv("DIAG_TRACE_TEST_CHILD")) {
+        char exe[MAX_PATH]{};
+        REQUIRE(GetModuleFileNameA(nullptr, exe, MAX_PATH) > 0);
+        EnvVar child("DIAG_TRACE_TEST_CHILD");
+        child.set("1");
+        CHECK(_spawnl(_P_WAIT, exe, exe, testName, nullptr) == 0);
+        return;
+    }
+    char temp[MAX_PATH]{};
+    REQUIRE(GetTempPathA(MAX_PATH, temp) > 0);
+    const std::string path = std::string(temp) + "mc2-diag-" + std::to_string(GetCurrentProcessId()) + ".jsonl";
+    EnvVar output("MC2_DIAGNOSTIC_TRACE_FILE"), tags("MC2_DIAG_TAGS");
+    output.set(path.c_str()); tags.set("CONFIG");
+    gate::invalidateAll();
+    std::atomic<bool> ready{false}, go{false};
+    std::thread worker([&] {
+        ready.store(true);
+        while (!go.load()) std::this_thread::yield();
+        for (int i = 0; i < 256; ++i) {
+            (void)mc2_diag::enabled();
+            (void)mc2_diag::tagEnabled("CONFIG");
+            mc2_diag::writeEvent("CONFIG", 1, i, "{}");
+            mc2_diag::flush();
+        }
+    });
+    while (!ready.load()) std::this_thread::yield();
+    go.store(true);
+    mc2_diag::init("concurrent-shutdown", 0);
+    mc2_diag::shutdown();
+    worker.join();
+    CHECK_FALSE(mc2_diag::enabled());
+    CHECK_FALSE(mc2_diag::tagEnabled("CONFIG"));
+    CHECK_FALSE(mc2_diag::writeEvent("CONFIG", 1, 0, "{}"));
+    CHECK(std::remove(path.c_str()) == 0);
 }
 
 TEST_CASE("an unregistered MC2_ variable under MC2_CONFIG_STRICT=1 ends the process with exit code 78") {

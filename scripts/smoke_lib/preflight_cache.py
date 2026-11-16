@@ -28,8 +28,10 @@ writers, so separate proof directories reuse the same fingerprinted checks.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from typing import Optional
 from . import nofocus  # noqa: E402  (OWNER RULE: no window for any child process)
@@ -115,10 +117,15 @@ def save_cache(cache_path: Path, fp: dict, results: dict) -> None:
     never observes a half-written cache file."""
     entry = {"fingerprint": fp, "results": results}
     cache_path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = cache_path.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(entry, indent=2), encoding="utf-8")
-    import os
-    os.replace(str(tmp), str(cache_path))
+    tmp = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", dir=cache_path.parent, delete=False, encoding="utf-8") as out:
+            tmp = Path(out.name)
+            json.dump(entry, out, indent=2)
+        os.replace(tmp, cache_path)
+    finally:
+        if tmp is not None:
+            tmp.unlink(missing_ok=True)
 
 
 def check_cache_hit(cache_path: Path, fp: Optional[dict]) -> Optional[dict]:

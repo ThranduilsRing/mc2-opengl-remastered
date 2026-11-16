@@ -13,7 +13,11 @@ from tools import build_contract_harnesses as builder
 
 @pytest.fixture(autouse=True)
 def production_seam(monkeypatch, tmp_path):
+    import contracts_cache
+    monkeypatch.setattr(contracts_cache, "clean_tip", lambda *a: None)  # mocked native runs cannot certify this checkout
     monkeypatch.setattr(builder, "prepare_unit_tree", lambda *a: (False, tmp_path / "receipt", "[]"))
+    # Hermetic: never run a real (possibly stale) mc2_tests_selected binary left in the build tree.
+    monkeypatch.setattr(builder, "matched_case_count", lambda *a: 1)
     seam = Mock(return_value=True)
     monkeypatch.setattr(builder, "build_and_run_order_seam", seam)
     return seam
@@ -44,6 +48,20 @@ def test_selection_builds_only_the_selected_sources(monkeypatch):
     assert "mc2_tests_selected" in commands[2][0][0]
     assert commands[2][0][-1] == "--test-case=icon_atlas_harness/*,job_system_harness/*"
     assert commands[2][1]["cwd"] == ROOT
+
+
+# Trigger: tools/build_contract_harnesses.py exact-tip native evidence.
+def test_failed_selection_invalidates_full_unit_pass(monkeypatch, tmp_path):
+    import contracts_cache as cc
+    monkeypatch.setattr(cc, "clean_tip", lambda *a: "a" * 40)
+    monkeypatch.setattr(cc, "cache_path", lambda *a: str(tmp_path / "pass-cache.json"))
+    monkeypatch.setattr(builder, "build_and_run_unit_tests", lambda *a, **k: (True, "full"))
+    assert builder.main(["--run", "--unit-only"]) == 0
+    assert cc.tip_passed(str(ROOT), "native_unit")
+    monkeypatch.setattr(builder, "build_and_run_unit_tests", lambda *a, **k: (False, "selected"))
+    assert builder.main(["--run", "--only", "AudioBackend/*"]) == 1
+    assert not cc.tip_passed(str(ROOT), "native_unit")
+    assert "audio_music_stream" in cc.affected_rows(str(ROOT), ["tests/unit/test_audio_backend.cpp"])
 
 
 @pytest.mark.parametrize("nightly", [False, True])

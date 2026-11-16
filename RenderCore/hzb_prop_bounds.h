@@ -34,6 +34,8 @@ inline ProjectedProp project_prop(const GpuStaticPropInstance& inst, const float
     float x0 = FLT_MAX, y0 = FLT_MAX, x1 = -FLT_MAX, y1 = -FLT_MAX, nearest = 0;
     float viewLo[2] = {FLT_MAX, FLT_MAX}, viewHi[2] = {-FLT_MAX, -FLT_MAX}, swayPad[4] = {};
     bool occlusionSafe = true;
+    bool projectable = true;
+    float maxClipW = -FLT_MAX, maxClipZ = -FLT_MAX, maxClipFar = -FLT_MAX;
     if ((inst.flags & 4u) != 0u)
         for (int a = 0; a < 4; ++a) swayPad[a] = 1.5f * (std::abs(worldToClip[a]) + 0.6f * std::abs(worldToClip[4+a]));
     for (int corner = 0; corner < 8; ++corner) {
@@ -47,9 +49,15 @@ inline ProjectedProp project_prop(const GpuStaticPropInstance& inst, const float
         float clip[4] = {};
         for (int a = 0; a < 4; ++a)
             for (int k = 0; k < 4; ++k) clip[a] += worldToClip[k*4+a] * world[k];
-        if (!(clip[3] > 1e-5f)) return out;
+        for (float v : clip) if (!std::isfinite(v)) return out;
+        const float biasedZ = clip[2] + depthBias * clip[3];
+        const float padZ = swayPad[2] + std::abs(depthBias) * swayPad[3];
+        maxClipW = (std::max)(maxClipW, clip[3] + swayPad[3]);
+        maxClipZ = (std::max)(maxClipZ, biasedZ + padZ);
+        maxClipFar = (std::max)(maxClipFar, clip[3] - biasedZ + swayPad[3] + padZ);
+        if (!(clip[3] > 1e-5f)) { projectable = false; continue; }
         const float x = clip[0]/clip[3], y = clip[1]/clip[3], z = clip[2]/clip[3] + depthBias;
-        if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z) || z < 0 || z >= 1) return out;
+        if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z) || z < 0 || z >= 1) { projectable = false; continue; }
         if (clip[3] > swayPad[3] + 1e-5f) {
             const float marginX = (swayPad[0] + std::abs(x) * swayPad[3]) / (clip[3] - swayPad[3]) + 4.0f/w;
             const float marginY = (swayPad[1] + std::abs(y) * swayPad[3]) / (clip[3] - swayPad[3]) + 4.0f/h;
@@ -61,6 +69,8 @@ inline ProjectedProp project_prop(const GpuStaticPropInstance& inst, const float
         y0 = (std::min)(y0, (y+1)*0.5f*h); y1 = (std::max)(y1, (y+1)*0.5f*h);
         nearest = (std::max)(nearest, z);
     }
+    if (maxClipW < -1e-5f || maxClipZ < -1e-5f || maxClipFar < -1e-5f) { out.keep = 0; out.tiny = 1; return out; }
+    if (!projectable) return out;
     if (viewHi[0] < -1 || viewHi[1] < -1 || viewLo[0] > 1 || viewLo[1] > 1) { out.keep = 0; out.tiny = 1; return out; }
     if (!occlusionSafe) return out;
     out.tiny = tiny_box(x0, y0, x1, y1) ? 1u : 0u;
