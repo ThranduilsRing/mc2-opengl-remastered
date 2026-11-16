@@ -384,7 +384,7 @@ def test_transport_stop_waits_and_records_last_advance(tmp_path, monkeypatch, fa
             peer = tmp_path / "proof" / "session" / ("host" if slot == 0 else "client")
             if (peer / "session.trace").exists():
                 turns[slot] += 1
-                if turns[slot] >= (3 if slot == 0 else 30):
+                if turns[slot] == (3 if slot == 0 else 30):
                     with (peer / "session.trace").open("a") as log:
                         log.write("STOP MP peer disconnected\n")
                     real_kill(proc)
