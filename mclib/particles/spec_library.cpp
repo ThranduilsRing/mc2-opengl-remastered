@@ -116,8 +116,8 @@ gosFX::Effect::Specification* SpecLibrary::Find(mc2::czstring name)
     // Preserved verbatim from gosFX::EffectLibrary::Find at B1 Stage 2' C1.
     FX_TRACE_SPAWN(name);
 
-    if (m_nameIndex.empty()) return nullptr;
-    const auto found = m_nameIndex.find(std::string_view(name));
+    const auto found = m_nameIndex.empty() ? m_nameIndex.end()
+                                         : m_nameIndex.find(std::string_view(name));
     if (found == m_nameIndex.end()) return nullptr;
     const auto& [key, i] = *found;
     gosFX::Effect::Specification* spec = m_effects[i].get();
