@@ -10,7 +10,7 @@
 #include "Gates/gate.h"
 #include "impact_presentation.h"
 #include "tick_commit.h"
-#include <map>
+#include "launcher_light_budget.h"
 
 //---------------------------------------------------------------------------
 // PPC de-curve + direct-fire speed (env-gated, default-off). "Direct-fire" =
@@ -515,15 +515,10 @@ void WeaponBolt::updatePresentation()
 	if (!targetPosition || getFlag(OBJECT_FLAG_JUSTCREATED)) return;
 	// Rebudget every presentation frame: no salvo can stack dozens of light pools.
 	extern uint32_t g_mc2RenderFrame;
-	static uint32_t lightFrame = ~0u;
-	static std::map<GameObjectWatchID, unsigned> launcherLights;
-	if (lightFrame != g_mc2RenderFrame) {
-		lightFrame = g_mc2RenderFrame;
-		launcherLights.clear();
-	}
+	static mc2::LauncherLightBudget budget;
 	const bool missile = weaponShot.masterId >= 0 &&
 		MasterComponent::masterList[weaponShot.masterId].getForm() == COMPONENT_FORM_WEAPON_MISSILE;
-	const bool allowLight = !missile || (!hitTarget && launcherLights[ownerWID]++ < 2);
+	const bool allowLight = !missile || (!hitTarget && budget.allow(g_mc2RenderFrame, ownerWID, 2));
 	auto* myOwner = ObjectManager->getByWatchID(ownerWID);
 	auto* target = ObjectManager->getByWatchID(targetWID);
 	glm::vec3 laserDirection = *targetPosition - (hitTarget ? position : laserPosition);
