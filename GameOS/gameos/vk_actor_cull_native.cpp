@@ -171,7 +171,7 @@ NativeCullSubmit nativeCullSubmit(uint32_t i, std::span<const GpuActorRecord> re
     return NativeCullSubmit::Submitted;
 }
 bool nativeCullPoll(uint32_t i, NativeCullHeader& header, uint32_t& count,
-                    std::span<uint32_t> visibility, std::span<uint32_t> ids) {
+                    std::span<uint8_t> visibility, std::span<uint32_t> ids) {
     auto* s=state(); if (!s || i>=3) return false;
     auto& ctx=mc2vk::getOrCreateEngineVulkanContext(); auto& slot=s->slots[i];
     ctx.poll();
@@ -180,7 +180,8 @@ bool nativeCullPoll(uint32_t i, NativeCullHeader& header, uint32_t& count,
     vmaInvalidateAllocation(ctx.allocator(),slot.staging.allocation(),0,VK_WHOLE_SIZE);
     std::memcpy(&header,mapped,sizeof(header));
     const bool valid=header.frame==slot.frame;
-    if (valid) std::memcpy(visibility.data(),mapped+4,static_cast<size_t>(slot.count)*sizeof(uint32_t));
+    if (valid) for (uint32_t n=0; n<slot.count; ++n)
+        visibility[n]=static_cast<uint8_t>(mapped[4+n]!=0);
     slot.staging.unmap();
     if (!valid) return false;
     count=slot.count; std::copy_n(slot.ids.data(),count,ids.data());
@@ -218,7 +219,8 @@ bool selftestNative() {
             if (nativeCullSubmit(0,{records.data()+first,count},matrix,0.08f,frame)!=NativeCullSubmit::Submitted ||
                 !ctx.wait(state()->slots[0].ticket,5ull*1000*1000*1000,"actorCull_selftest")) return false;
             NativeCullHeader header{}; uint32_t copied=0;
-            std::vector<uint32_t> bits(count),ids(count);
+            std::vector<uint8_t> bits(count);
+            std::vector<uint32_t> ids(count);
             if (!nativeCullPoll(0,header,copied,bits,ids) || copied!=count || header.frame!=frame) return false;
             uint32_t visible=0;
             for (uint32_t i=0;i<count;++i) {
