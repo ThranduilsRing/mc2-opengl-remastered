@@ -21,6 +21,8 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <future>
+#include <chrono>
 #include <iterator>
 #include <optional>
 #include <utility>
@@ -54,10 +56,17 @@ bool pickerOpen = false, scanned = false, restart = false, settingsChanged = fal
 std::map<std::string, std::optional<std::string>> inheritedEnv;
 
 struct ImportJob {
+    std::future<int> launch;
+    template<class Start> void start(Start work) { launch = std::async(std::launch::async, std::move(work)); }
+    std::optional<int> launchResult() {
+        if (!launch.valid() || launch.wait_for(std::chrono::seconds(0)) != std::future_status::ready) return {};
+        try { return launch.get(); } catch (...) { return 1; }
+    }
 #ifdef _WIN32
     HANDLE process = nullptr, job = nullptr;
-    bool valid() const { return process != nullptr; }
+    bool valid() const { return launch.valid() || process != nullptr; }
     std::optional<int> poll() {
+        if (launch.valid()) return {};
         if (!process || WaitForSingleObject(process, 0) != WAIT_OBJECT_0) return {};
         DWORD code = 1;
         GetExitCodeProcess(process, &code);
@@ -66,20 +75,22 @@ struct ImportJob {
         return static_cast<int>(code);
     }
     ~ImportJob() {
+        if (launch.valid()) launch.wait();
         // Closing the job cancels the converter without waiting during game exit.
         if (job) CloseHandle(job);
         if (process) CloseHandle(process);
     }
 #else
     pid_t process = -1;
-    bool valid() const { return process > 0; }
+    bool valid() const { return launch.valid() || process > 0; }
     std::optional<int> poll() {
+        if (launch.valid()) return {};
         int status = 0;
         if (process <= 0 || waitpid(process, &status, WNOHANG) != process) return {};
         process = -1;
         return WIFEXITED(status) ? WEXITSTATUS(status) : 1;
     }
-    ~ImportJob() { if (process > 0) kill(process, SIGTERM); }
+    ~ImportJob() { if (launch.valid()) launch.wait(); if (process > 0) kill(process, SIGTERM); }
 #endif
 } importJob;
 bool importStarted = false;
@@ -87,11 +98,12 @@ std::string importError;
 Json importStatus = Json::object();
 
 void startImport() {
+    if (importJob.valid()) return;
     importStarted = true;
     importError.clear();
     importStatus = Json::object();
-    // The converter runs separately: filesystem work never blocks the menu thread.
-    const auto result = [] {
+    // File creation and process/job setup can block too; publish through the future.
+    try { importJob.start([] {
 #ifdef _WIN32
         SECURITY_ATTRIBUTES security{sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE};
         const auto log = CreateFileW(L"campaign-auto.log", GENERIC_WRITE, FILE_SHARE_READ, &security, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
@@ -136,8 +148,7 @@ void startImport() {
         importJob.process = child;
         return child > 0 ? 0 : 1;
 #endif
-    }();
-    if (result) importError = "Could not start campaign importer (code " + std::to_string(result) + "). Python 3.12 or newer is required; see campaign-auto.log.";
+    }); } catch (const std::exception& e) { importError = std::string("Could not start campaign importer: ") + e.what(); }
 }
 
 std::optional<std::string> env(std::string_view key) {
@@ -445,6 +456,8 @@ void drawMainMenu(bool showCredits) {
     ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + viewport->WorkSize.x - 10 * toolsScale,
         viewport->WorkPos.y + 25 * toolsScale), ImGuiCond_Always, ImVec2(1, 0));
     if (!importStarted) startImport();
+    if (const auto result = importJob.launchResult(); result && *result)
+        importError = "Could not start campaign importer (code " + std::to_string(*result) + "). Python 3.12 or newer is required; see campaign-auto.log.";
     static Uint32 nextImportRead = 0;
     if (importJob.valid() && SDL_GetTicks() >= nextImportRead) {
         nextImportRead = SDL_GetTicks() + 250;
