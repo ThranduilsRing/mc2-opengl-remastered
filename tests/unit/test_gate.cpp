@@ -872,8 +872,8 @@ TEST_CASE("diagnostic_trace/concurrent_shutdown") {
         const HANDLE handle = reinterpret_cast<HANDLE>(process);
         const DWORD waited = WaitForSingleObject(handle, 15000);
         if (waited != WAIT_OBJECT_0) {
-            TerminateProcess(handle, 1);
-            WaitForSingleObject(handle, INFINITE);
+            CHECK(TerminateProcess(handle, 1) != 0);
+            CHECK(WaitForSingleObject(handle, 5000) == WAIT_OBJECT_0);
         }
         DWORD status = 1;
         CHECK(GetExitCodeProcess(handle, &status) != 0);
@@ -893,8 +893,14 @@ TEST_CASE("diagnostic_trace/concurrent_shutdown") {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         } while (std::chrono::steady_clock::now() < deadline);
         if (waited != pid) {
-            kill(pid, SIGKILL);
-            while (waitpid(pid, &status, 0) < 0 && errno == EINTR) {}
+            CHECK(kill(pid, SIGKILL) == 0);
+            const auto cleanupDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+            do {
+                waited = waitpid(pid, &status, WNOHANG);
+                if (waited == pid || (waited < 0 && errno != EINTR)) break;
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            } while (std::chrono::steady_clock::now() < cleanupDeadline);
+            CHECK(waited == pid);
             FAIL("diagnostic trace child failed to finish within 15 seconds");
         }
         CHECK(status == 0);
