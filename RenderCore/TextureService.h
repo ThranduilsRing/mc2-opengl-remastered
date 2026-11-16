@@ -240,7 +240,7 @@ public:
         Entry* e = resolve(h);
         if (!e) return false;
         uint32_t nodeUsers=0;
-        if (auto it=byNode_.find(e->node); it!=byNode_.end()) { nodeUsers=it->second.users; unbindNode(e->node); }
+        if (auto it=byNode_.find(e->node); it!=byNode_.end()) { const auto& [boundNode, binding]=*it; nodeUsers=binding.users; unbindNode(e->node); }
         e->node = newNode;
         ++e->contentVersion;
         if (newNode != kNoTextureNode) bindNode(h.index(), newNode, nodeUsers);
@@ -306,7 +306,7 @@ private:
     // makes mission teardown linear in the destroyed nodes, without a global scan.
     void bindNode(uint32_t index, uint32_t node, uint32_t users) {
         auto [it, inserted] = byNode_.try_emplace(node);
-        auto& binding = it->second;
+        auto& [boundNode, binding] = *it;
         if (inserted) {
             binding.index = index;
             binding.slot = static_cast<uint32_t>(entries_[index].aliases.size());
@@ -316,7 +316,7 @@ private:
     }
     void unbindNode(uint32_t node) {
         auto it = byNode_.find(node);
-        const auto binding = it->second;
+        const auto [boundNode, binding] = *it;
         auto& e = entries_[binding.index];
         const uint32_t moved = e.aliases.back();
         e.aliases[binding.slot] = moved;
