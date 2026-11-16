@@ -536,7 +536,7 @@ TEST_CASE("fx_playback/spec index matches linear catalog lookup and first duplic
             std::string name = raw, upper = name, lower = name;
             for (char& byte : upper) byte = static_cast<char>(std::toupper(static_cast<unsigned char>(byte)));
             for (char& byte : lower) byte = static_cast<char>(std::tolower(static_cast<unsigned char>(byte)));
-            for (const auto& query : {name, upper, lower, name.substr(0, name.size() - 1), name + "~"})
+            for (const auto& query : {name, upper, lower, name.empty() ? name : name.substr(0, name.size() - 1), name + "~"})
                 CHECK(lib->Find(query.c_str()) == reference(query.c_str()));
         }
         for (const char* absent : {"__absent_spec_index__", "Spec Index Duplicat", "Spec Index Duplicate~"}) {
@@ -545,13 +545,16 @@ TEST_CASE("fx_playback/spec index matches linear catalog lookup and first duplic
         CHECK(lib->Find(nullptr) == nullptr);
         if (duplicates) CHECK(lib->Find("SPEC INDEX DUPLICATE") == lib->At(0));
     };
-    std::ifstream file(stock_fixture_path, std::ios::binary); REQUIRE(file.good());
-    std::vector<uint8_t> bytes{std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
-    check(bytes, false);
-    gosFX::Effect::Specification first, second; first.BuildDefaults(); second.BuildDefaults();
+    std::vector<uint8_t> bytes;
+    if (!stock_fixture_missing()) {
+        std::ifstream file(stock_fixture_path, std::ios::binary); REQUIRE(file.good());
+        bytes.assign(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
+        check(bytes, false);
+    }
+    gosFX::Effect::Specification first, second, unnamed; first.BuildDefaults(); second.BuildDefaults(); unnamed.BuildDefaults();
     first.m_name = "Spec Index Duplicate"; second.m_name = "sPEC iNDEX dUPLICATE";
-    Stuff::DynamicMemoryStream stream(1024 * 1024); gosFX::WriteGFXVersion(&stream); stream << 2u;
-    first.Save(&stream); second.Save(&stream); const auto size = stream.GetBytesUsed(); stream.Rewind();
+    Stuff::DynamicMemoryStream stream(1024 * 1024); gosFX::WriteGFXVersion(&stream); stream << 3u;
+    first.Save(&stream); unnamed.Save(&stream); second.Save(&stream); const auto size = stream.GetBytesUsed(); stream.Rewind();
     const auto* begin = static_cast<const uint8_t*>(stream.GetPointer());
     bytes.assign(begin, begin + size); check(bytes, true);
 }

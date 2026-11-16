@@ -84,7 +84,7 @@ void SpecLibrary::Load(Stuff::MemoryStream* stream)
 
 size_t SpecLibrary::NameHash::operator()(std::string_view name) const
 {
-    // S_stricmp uses _stricmp/strcasecmp: lowercase bytes in LC_CTYPE.
+    // Fold matches S_stricmp (_stricmp/strcasecmp): lowercase bytes in LC_CTYPE.
     // The engine never changes LC_CTYPE from its initial C locale.
     size_t hash = 0;
     for (unsigned char byte : name) {
@@ -95,8 +95,13 @@ size_t SpecLibrary::NameHash::operator()(std::string_view name) const
 
 bool SpecLibrary::NameEqual::operator()(std::string_view left, std::string_view right) const
 {
-    // Keys and queries are complete NUL-terminated strings, never substrings.
-    return left.size() == right.size() && !S_stricmp(left.data(), right.data());
+    // Same ASCII/C-locale fold as NameHash, over the view length (no NUL assumption).
+    if (left.size() != right.size()) return false;
+    for (size_t i = 0; i < left.size(); ++i) {
+        if (std::tolower(static_cast<unsigned char>(left[i])) != std::tolower(static_cast<unsigned char>(right[i])))
+            return false;
+    }
+    return true;
 }
 
 void SpecLibrary::Save(Stuff::MemoryStream* stream)
@@ -121,14 +126,15 @@ gosFX::Effect::Specification* SpecLibrary::Find(mc2::czstring name)
     // Preserved verbatim from gosFX::EffectLibrary::Find at B1 Stage 2' C1.
     FX_TRACE_SPAWN(name);
 
-    if (!name) return nullptr;
-    const auto found = m_nameIndex.empty() ? m_nameIndex.end()
-                                         : m_nameIndex.find(std::string_view(name));
-    if (found == m_nameIndex.end()) return nullptr;
-    const auto& [key, i] = *found;
-    gosFX::Effect::Specification* spec = m_effects[i].get();
-    Check_Object(spec);
-    Verify(spec->m_effectID == i);
+    gosFX::Effect::Specification* spec = nullptr;
+    const auto found = (!name || m_nameIndex.empty()) ? m_nameIndex.end()
+                                                      : m_nameIndex.find(std::string_view(name));
+    if (found != m_nameIndex.end()) {
+        const auto& [key, i] = *found;
+        spec = m_effects[i].get();
+        Check_Object(spec);
+        Verify(spec->m_effectID == i);
+    }
     return spec;
 }
 
