@@ -234,7 +234,14 @@ MissionOrigin missionOrigin() { return origin; }
 bool& lobbyVisible() { return coopOpen; }
 void endMission() {
     // takeLobbyStart precedes destruction of the empty front-end Mission object.
-    if (!missionRunning) return;
+    switch (missionOrigin()) {
+    case MissionOrigin::None: return;
+    case MissionOrigin::Lobby:
+        if (fromLobby) return;
+        break;
+    case MissionOrigin::CommandLine:
+    case MissionOrigin::SinglePlayer: break;
+    }
     session.reset();
     gate.reset();
     enabled = hosting = false;
@@ -517,6 +524,7 @@ void testLobbyPeerLoss() {
     auto transport = std::make_unique<RecordedSession>(sent);
     transport->fault = "MP peer disconnected";
     lobbyTransport = std::move(transport);
+    lobbyBegan = std::chrono::steady_clock::now();
     lobby.offered = lobby.localReady = lobby.peerReady = true;
     pumpLobby();
     CHECK(lobby.error == "MP peer disconnected");
@@ -525,6 +533,7 @@ void testLobbyPeerLoss() {
     CHECK_FALSE(lobby.peerReady);
     CHECK_FALSE(lobbyConnected());
     closeLobby();
+    lobbyBegan = {};
 }
 void testMissionLifecycle() {
     const auto previousDirectory = userDirectory;
@@ -588,6 +597,13 @@ void testMissionLifecycle() {
     for (const auto& packet : secondSent) CHECK(packet != stale);
     CHECK(callbacks == 0);
     CHECK_FALSE(missionHandshakePending);
+    endMission(); clean();
+    // Command-line missions use the same complete cleanup without a lobby launch.
+    origin = MissionOrigin::CommandLine;
+    enabled = true;
+    session = std::make_unique<RecordedSession>(secondSent);
+    CHECK(missionOrigin() == MissionOrigin::CommandLine);
+    CHECK_FALSE(missionRunning); // The durable origin, not this flag, selects teardown.
     endMission(); clean();
 }
 #endif

@@ -23,9 +23,9 @@ cmake_minimum_required(VERSION 3.16)
 project(mc2_tests CXX)
 
 enable_language(C)
-add_subdirectory(../../3rdparty/enet enet EXCLUDE_FROM_ALL)
 
 include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/Mc2Standalone.cmake")
+add_subdirectory(../../3rdparty/enet enet EXCLUDE_FROM_ALL)
 
 # Resolve the worktree root (this CMakeLists lives at <root>/tests/unit/).
 get_filename_component(MC2_WORKTREE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
