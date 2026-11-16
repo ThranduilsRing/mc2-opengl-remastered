@@ -817,8 +817,11 @@ def replace_file(src, dst):
     name = os.path.abspath(dst).encode('utf-16-le')
 
     class RenameInfo(ctypes.Structure):
+        # Kernel32 expects a NUL-terminated FileName even though FileNameLength
+        # excludes the terminator. Structure padding is not guaranteed to leave
+        # room for it; otherwise adjacent memory can become part of the path.
         _fields_ = [('Flags', wintypes.DWORD), ('RootDirectory', wintypes.HANDLE),
-                    ('FileNameLength', wintypes.DWORD), ('FileName', ctypes.c_byte * len(name))]
+                    ('FileNameLength', wintypes.DWORD), ('FileName', ctypes.c_byte * (len(name) + 2))]
 
     info = RenameInfo()
     info.Flags = 0x01 | 0x02 | 0x40  # REPLACE_IF_EXISTS | POSIX_SEMANTICS | IGNORE_READONLY_ATTRIBUTE
