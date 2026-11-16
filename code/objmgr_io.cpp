@@ -248,6 +248,7 @@ void GameObjectManager::loadTerrainObjects (PacketFile* terrainFile,
 			data++;
 			progress += increment;
 		}
+		if (mc2_diag::tagRequested("LOAD_LAPS"))
 		for (const auto& [type, lap] : byType)
 			mc2::fmt::print_err("[LOAD_LAPS v1] stage=addObject type={} objects={} type_cache_misses={} active_ms={:.3f}\n",
 				type, lap.objects, lap.misses, lap.ms);
