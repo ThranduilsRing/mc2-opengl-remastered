@@ -111,24 +111,21 @@ void clearAllMechRecords() {
     uint64_t cleared = 0;
     {
         std::lock_guard<std::mutex> lk(objectRecordsMutex);
+        // Reset slots and their records in one transaction, including wrapped generations.
+        s_mechSlots.reset();
         for (uint32_t i = kMechHandleBase;
              i < static_cast<uint32_t>(objectRecords.size()); ++i) {
             auto& rec = objectRecords[i];
             if (rec.kind == RenderObjectKind::Mech &&
                 (rec.flags & kRenderObjectFlagAlive) != 0u) {
                 rec.flags &= static_cast<uint16_t>(~kRenderObjectFlagAlive);
-                rec.generation = static_cast<uint16_t>(rec.generation + 1u);
+                rec.generation = static_cast<uint16_t>(s_mechSlots.generationOf(i - kMechHandleBase));
                 ++cleared;
             }
         }
     }
     if (cleared > 0) {
         mechsAlive.fetch_sub(cleared, std::memory_order_relaxed);
-    }
-    // A mission boundary: every slot free again (no GPU work of the old mission may name these indices), generations kept moving (a handle held from the old mission stays stale).
-    {
-        std::lock_guard<std::mutex> lk(objectRecordsMutex);
-        s_mechSlots.reset();
     }
 }
 
