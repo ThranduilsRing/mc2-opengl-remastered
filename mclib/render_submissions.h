@@ -465,6 +465,7 @@ class RenderSubmissions
 
 		void addVertices (DWORD nodeId, gos_VERTEX *data, DWORD flags)
 		{
+			std::lock_guard<std::recursive_mutex> guard(m_vertexNodeMu);
 			//This function adds the actual vertex data to the texture Node.
 			if (nodeId < mc2::textures::kTextureAssetLimit)
 			{
