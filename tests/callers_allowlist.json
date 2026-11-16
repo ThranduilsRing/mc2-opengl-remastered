@@ -149,6 +149,7 @@
   "tools/mod_install/test_dotdir_skip.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/mod_smoke.py": "Operator-run battery tool (py -3 tools/mod_smoke.py), no in-repo caller by design; merge window 27.",
   "tools/mover_budget.py": "Manual M6 command: the 200-mover sim tick budget verdict (design target 0.6 ms); run by hand or from a perf pass, prints one [MOVER_BUDGET v1] line.",
+  "tools/mw5_mechs/test_from_native.py": "Dynamically discovered by scripts/run_tools_tests.py; box synthetic proof supplies MW5_SYNTHETIC_FIXTURE from the C# --fixture command documented in tools/mw5_kit/README.md. No literal caller names this unittest module.",
   "tools/neural_mat/derisk.py": "Operator-run N2 neural-material workbench entry point: py -3 -m tools.neural_mat.derisk --work \u003cdir\u003e --shards \u003cparquet...\u003e --orm \u003corm.ktx2\u003e (module docstring).",
   "tools/neural_mat/tests/test_neural_mat.py": "Pytest-discovered module for tools/neural_mat (offline N2 workbench tests).",
   "tools/overlay_upscale/overlay_tile_upscale.py": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
