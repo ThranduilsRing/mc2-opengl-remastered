@@ -164,7 +164,7 @@ void populateRecord(uint32_t handleIndex,
         s_objectRecords.resize(cap);
     }
     auto& rec = s_objectRecords[handleIndex];
-    if (handleIndex < RenderWorld::detail::kMechHandleBase && handleIndex >= s_staticPropRecordEnd)
+    if (handleIndex >= s_staticPropRecordEnd)
         s_staticPropRecordEnd = handleIndex + 1;
     rec.generation         = generation;
     rec.flags              = RenderWorld::kRenderObjectFlagAlive;
