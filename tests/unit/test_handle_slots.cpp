@@ -4,8 +4,45 @@
 #include "doctest.h"
 #include "HandleSlots.h"
 #include "../../RenderWorld/RenderWorld.h"
+#include "../../GameOS/gameos/static_prop_recipe_admission.h"
 
 using namespace RenderCore;
+
+TEST_CASE("static prop exhaust admission and episode resets") {
+    GpuStaticPropRegistry::StaticPropRecipeAdmission policy;
+    const size_t full = RenderWorld::detail::kMechHandleBase;
+    std::vector<uint32_t> free;
+    int logs = 0;
+    auto admit = [&](bool eligible, size_t size) {
+        return policy.admit(eligible, size, true, free, [&](size_t index) {
+            CHECK(index == full);
+            ++logs;
+        });
+    };
+    for (int i = 0; i < 8; ++i) CHECK(admit(false, full) == -1);
+    CHECK(logs == 0);
+    for (int i = 0; i < 8; ++i) CHECK(admit(true, full) == -1);
+    CHECK(logs == 1);
+    CHECK_FALSE(policy.recycleSlot(true, false)); // invalid/repeated invalidation
+    CHECK_FALSE(policy.recycleSlot(false, true)); // recycling disabled
+    CHECK(admit(true, full) == -1);
+    CHECK(logs == 1);
+    // Preserve append indices and LIFO reuse, including a completely full range.
+    REQUIRE(policy.recycleSlot(true, true));
+    free = {3u, 1u};
+    CHECK(admit(true, full) == 1);
+    free.pop_back();
+    CHECK(admit(true, full) == 3);
+    free.pop_back();
+    CHECK(admit(true, full) == -1);
+    CHECK(admit(true, full) == -1);
+    CHECK(logs == 2);
+    policy.reset(); // registry clear, then refill through the last accepted index
+    for (size_t i = 0; i < full; ++i) REQUIRE(admit(true, i) == i);
+    CHECK(admit(true, full) == -1);
+    CHECK(admit(true, full) == -1);
+    CHECK(logs == 3);
+}
 
 TEST_CASE("handle_partition_static_boundaries") {
     using namespace RenderWorld::detail;
