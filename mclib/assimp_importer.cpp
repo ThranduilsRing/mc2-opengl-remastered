@@ -1666,7 +1666,8 @@ void mc2mechanim::TickImportedMechs(float dt, unsigned frameStamp, const MechMot
         }
         if (s.lastFrame == frameStamp && !s.lastGlobals.empty()) return;
         s.lastFrame = frameStamp;
-        std::vector<mc2skel::GpuBone> globals;
+        thread_local std::vector<mc2skel::GpuBone> globals;
+        globals.clear();
         if (sampleActorClip(e, s, dt, motion, globals, advanceClock)) {
             if (s.activeClip.starts_with("atlas_moveCore")) {
                 std::vector<glm::mat4> pose(globals.size());
@@ -1690,7 +1691,7 @@ void mc2mechanim::TickImportedMechs(float dt, unsigned frameStamp, const MechMot
                     for (int r = 0; r < 4; ++r)
                         for (int c = 0; c < 4; ++c) globals[b].m[r * 4 + c] = pose[b][c][r];
             }
-            s.lastGlobals = std::move(globals);   // 1A: firepoint/hit-node source
+            s.lastGlobals.swap(globals);   // retain the previous buffer for the next sample
             mc2clip::publishPreviewPose(motion.preview, e.gpuMode,
                 [&] { buildGpuModelDelta(e, s, s.lastGlobals); },
                 [&] { rebakeImportedPresentation(e, s.lastGlobals); });
