@@ -19,6 +19,8 @@ TEST_CASE("purchase_catalog/transition bounds and closed group keyboard traversa
 
 TEST_CASE("purchase_catalog/screen end resets views and begin rebuilds them") {
     const auto root = std::filesystem::path(MC2_REPO_ROOT);
+    INFO("__FILE__=" << __FILE__ << ", cwd=" << std::filesystem::current_path().string()
+        << ", fixture=" << (root / "code/mechpurchasescreen.cpp").string());
     std::ifstream file(root / "code/mechpurchasescreen.cpp");
     REQUIRE(file.good());
     const std::string source{std::istreambuf_iterator<char>(file), {}};
