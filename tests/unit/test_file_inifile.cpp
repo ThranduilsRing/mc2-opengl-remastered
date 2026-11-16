@@ -68,7 +68,7 @@ TEST_SUITE("FileStack")
 {
 TEST_CASE("carbon_mclib/RAM seek is relative to each file after reads")
 {
-    unsigned char a[] = "abcdef", b[] = "uvwxyz";
+    char a[] = "abcdef", b[] = "uvwxyz";
     File first, second;
     REQUIRE(first.open(a, 6) == NO_ERR);
     REQUIRE(second.open(b, 6) == NO_ERR);
@@ -86,7 +86,7 @@ TEST_CASE("carbon_mclib/RAM seek is relative to each file after reads")
 
 TEST_CASE("carbon_mclib/RAM line with a final delimiter stops at EOF")
 {
-    unsigned char text[] = {'a', '\r'};
+    char text[] = {'a', '\r'};
     File file;
     REQUIRE(file.open(text, sizeof text) == NO_ERR);
     unsigned char line[8] = {};
