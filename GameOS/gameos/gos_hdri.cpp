@@ -26,7 +26,7 @@
 #include "Gates/render_options.h"
 #include "mc2fmt.h"
 #include "sim_overlap.h"
-#include "diagnostic_trace.h"
+#include <tracy/Tracy.hpp>
 
 // HDRI-SKY Item 2: scan a decoded equirect RGBA-float buffer for the dominant
 // above-horizon light source and return its GL-equirect azimuth (radians).

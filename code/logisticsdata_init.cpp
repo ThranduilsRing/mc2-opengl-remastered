@@ -13,6 +13,7 @@
 #include "../GameOS/gameos/utils/mc2log.h"
 
 #include <chrono>
+#include <tracy/Tracy.hpp>
 
 
 // SMART-LOAD-1: defer mech-bay data (components/pilots/variants) until first mech-bay accessor.
