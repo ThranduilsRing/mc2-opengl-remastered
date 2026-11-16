@@ -10,6 +10,7 @@
 #include "../../mclib/texture_assets.h"
 #include "mc2fmt.h"
 #include "meshoptimizer.h"
+#include "diagnostic_trace.h"
 
 // ---------------------------------------------------------------------------
 // DEBUG-VIEW-REGISTRY-1: static-prop shader mode <-> RenderDebugView mapping.
@@ -74,6 +75,7 @@ void GpuStaticPropBatcher::onMapLoad() {
     s_sharedVboBytes = 0;   // VK-P8a SHADOW-INTEROP: geometry feed invalid after unmap
     s_sharedIboBytes = 0;
     s_meshoptTris = 0;
+    s_propStagingLaps = {};
     s_meshoptMissesBefore = s_meshoptMissesAfter = 0.0;
     mc2_vk_shadow_island_invalidate_geometry();
     mc2shadow::staticCasterSet().clear();   // the next mission rebuilds it once its geometry is final
@@ -236,6 +238,8 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
     // preserving authored triangle order. Reuse byte-identical packed vertices:
     // corner UV seams, source vertex IDs/light tags and reversed card normals
     // remain separate, while dense imported meshes keep GPU vertex-cache reuse.
+    const bool laps = mc2_diag::tagRequested("LOAD_LAPS");
+    const auto dedupeStart = std::chrono::steady_clock::now();
     auto vertexIndices = mc2_prop::makeVertexIndex(numTris, selfLitTwoSided);
     uint32_t runStart = 0;
     uint32_t packetCountForThisType = 0;
@@ -319,6 +323,8 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
         runStart = runEnd;
     }
 
+    const auto meshoptStart = std::chrono::steady_clock::now();
+    if (laps) s_propStagingLaps.dedupeMs += std::chrono::duration<double, std::milli>(meshoptStart - dedupeStart).count();
     // Reorder GPU geometry for the vertex cache / overdraw / fetch. Only this GPU copy changes: triangle and vertex
     // sets are identical, and localVertIdx / aRGBLight travel with each vertex, so sim and hot-colour data are untouched.
     {
@@ -353,6 +359,12 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
         }
     }
 
+    if (laps) {
+        ++s_propStagingLaps.types;
+        s_propStagingLaps.tris += numTris;
+        s_propStagingLaps.outVerts += s_stagingVbo.size() / kVertexStride - baseVertex;
+        s_propStagingLaps.meshoptMs += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - meshoptStart).count();
+    }
     const uint32_t numVerts = typeShape->numTypeVertices;
 
     GpuStaticPropType type{};
@@ -377,6 +389,11 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
 }
 
 void GpuStaticPropBatcher::registerLodGroup(std::span<TG_TypeMultiShape* const> shapes, std::span<const float> distances, bool tree) {
+    struct Lap {
+        bool enabled = mc2_diag::tagRequested("LOAD_LAPS");
+        std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+        ~Lap() { if (enabled) { ++s_propStagingLaps.lodCalls; s_propStagingLaps.lodMs += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count(); } }
+    } lap;
     const int count = static_cast<int>(std::min(shapes.size(), distances.size()));
     if (shapes.empty() || !shapes[0] || count < 2) return;
     const char* const tag = tree ? "TREE_LOD" : "PROP_LOD";

@@ -10,6 +10,9 @@
 #include "mc2fmt.h"
 #include "diagnostic_trace.h"
 #include "prop_array_buckets.h"
+#include "../../mclib/fast_hash.h"
+#include "cook_cache.h"
+#include <bit>
 
 // Does a packet alpha-test: its own flag, or its texture slot carrying alpha on the type source (null/released texture list reads as no alpha).
 bool GpuStaticPropBatcher::packetHasAlpha(const GpuStaticPropPacket& pkt, const TG_TypeShape* src) {
@@ -69,6 +72,34 @@ void GpuStaticPropBatcher::publishGeometry() {
 
     s_sharedVboBytes = static_cast<uint64_t>(s_stagingVbo.size());
     s_sharedIboBytes = static_cast<uint64_t>(s_stagingIbo.size()) * sizeof(uint32_t);
+    if (mc2_diag::tagRequested("LOAD_LAPS")) {
+        // Canonical LE fields, no pointers/padding. Hash each complete stream once in every run.
+        std::vector<uint8_t> bytes;
+        for (uint32_t index : s_stagingIbo) mc2cache::putLE(bytes, index, 4);
+        const auto iboHash = mc2::content::fastHash(bytes);
+        bytes.clear();
+        for (const auto& p : s_packets) {
+            mc2cache::putLE(bytes, p.firstIndex, 4); mc2cache::putLE(bytes, p.indexCount, 4);
+            mc2cache::putLE(bytes, static_cast<uint32_t>(p.baseVertex), 4); mc2cache::putLE(bytes, p.textureSlot, 4);
+            mc2cache::putLE(bytes, p.materialFlags, 4); mc2cache::putLE(bytes, p.owningTypeID, 4);
+        }
+        const auto packetsHash = mc2::content::fastHash(bytes);
+        bytes.clear();
+        std::vector<uint32_t> bases;
+        for (const auto& [base, group] : s_lodGroups) bases.push_back(base);
+        std::sort(bases.begin(), bases.end());
+        for (uint32_t base : bases) {
+            const auto& g = s_lodGroups.at(base);
+            mc2cache::putLE(bytes, base, 4); mc2cache::putLE(bytes, g.count, 4); mc2cache::putLE(bytes, g.tree, 1);
+            for (auto target : g.target) mc2cache::putLE(bytes, target, 4);
+            for (float dist : g.dist) mc2cache::putLE(bytes, std::bit_cast<uint32_t>(dist), 4);
+        }
+        const auto& l = s_propStagingLaps;
+        mc2::fmt::print_err("[LOAD_LAPS v1] stage=prop_staging types={} tris={} out_verts={} dedupe_ms={:.3f} meshopt_ms={:.3f} lodgroup_calls={} lodgroup_ms={:.3f} vbo_bytes={} vbo_hash={:016x} ibo_count={} ibo_hash={:016x} packets_hash={:016x} lod_groups={} lod_hash={:016x}\n",
+            l.types, l.tris, l.outVerts, l.dedupeMs, l.meshoptMs, l.lodCalls, l.lodMs,
+            s_sharedVboBytes, mc2::content::fastHash(s_stagingVbo), s_stagingIbo.size(), iboHash, packetsHash,
+            s_lodGroups.size(), mc2::content::fastHash(bytes));
+    }
     s_stagingVbo.shrink_to_fit();
     s_stagingIbo.shrink_to_fit();
 
