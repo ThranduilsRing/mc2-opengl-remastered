@@ -824,11 +824,13 @@ def replace_file(src, dst):
 
     class RenameInfo(ctypes.Structure):
         _fields_ = [('Flags', wintypes.DWORD), ('RootDirectory', wintypes.HANDLE),
-                    ('FileNameLength', wintypes.DWORD), ('FileName', ctypes.c_byte * len(name))]
+                    ('FileNameLength', wintypes.DWORD), ('FileName', ctypes.c_byte * (len(name) + 2))]
 
     info = RenameInfo()
     info.Flags = 0x01 | 0x02 | 0x40  # REPLACE_IF_EXISTS | POSIX_SEMANTICS | IGNORE_READONLY_ATTRIBUTE
     info.FileNameLength = len(name)
+    # SetFileInformationByHandle needs a NUL-terminated WCHAR path even though
+    # FileNameLength excludes that terminator. Structure initialization zeros it.
     ctypes.memmove(ctypes.addressof(info) + RenameInfo.FileName.offset, name, len(name))
     handle = kernel.CreateFileW(os.path.abspath(src), 0x00010000, 7, None, 3, 0, None)  # DELETE, share all, OPEN_EXISTING
     if handle == wintypes.HANDLE(-1).value:
