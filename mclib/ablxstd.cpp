@@ -52,7 +52,8 @@ void execStdSetState (void) {
 
 	unsigned int stateHandle = ABLi_popInteger();
 
-	if (stateHandle > 0) {
+	if (g_ablExec->CurFSM && stateHandle > 0 &&
+		stateHandle < static_cast<unsigned int>(ModuleRegistry[g_ablExec->CurFSM->getHandle()].numStateHandles)) {
 		SymTableNodePtr stateFunction = ModuleRegistry[g_ablExec->CurFSM->getHandle()].stateHandles[stateHandle].state;
 		g_ablExec->CurFSM->setPrevState(g_ablExec->CurFSM->getState());
 		g_ablExec->CurFSM->setState(stateFunction);
