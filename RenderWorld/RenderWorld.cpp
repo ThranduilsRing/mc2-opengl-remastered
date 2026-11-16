@@ -646,7 +646,7 @@ void markVisible(RenderCore::RenderObjectHandle h,
     if (!h.isValid()) return;
     legacy::markVisibleStaticProp(handleToRecipeIndex(h),
                                   lightDataIndex, extentRadius);
-    s_markVisibleCalls.fetch_add(1, std::memory_order_relaxed);
+    if (mc2DiagVerbose()) s_markVisibleCalls.fetch_add(1, std::memory_order_relaxed);
 }
 
 bool isReady(RenderCore::RenderObjectHandle h) {
