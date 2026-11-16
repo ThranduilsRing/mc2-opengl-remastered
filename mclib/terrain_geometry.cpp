@@ -308,7 +308,8 @@ void Terrain::geometry (void)
 		// 1-block neighbor dilation (closes frustum-edge sliver FN; FP-safe).
 		{
 			const long bms = blocksMapSide;
-			std::vector<uint8_t> dil(nB, 0);
+			static std::vector<uint8_t> dil;
+			dil.assign(nB, 0);
 			for (long b = 0; b < nB; ++b)
 			{
 				if (!s_prodBlock[b]) continue;
