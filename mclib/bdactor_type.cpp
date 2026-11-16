@@ -108,9 +108,11 @@ static bool importOverrideRenderShape(const ModelOverrideRecord& ov, std::string
 		mc2::fmt::print_err("[MODOVERRIDE] staticProp '{}' {}: import threw ({}), using stock render\n",
 			baseName, state, mc2::fmt::safe(overridePath));
 	}
+	mc2::content::error(mc2::content::Kind::Shape, overridePath, "declared override import failed; using stock render");
 	fflush(stderr);
 	return false;
 #else
+	mc2::content::error(mc2::content::Kind::Shape, relPath, "declared override importer disabled; using stock render");
 	mc2::fmt::print_err("[MODOVERRIDE] staticProp '{}': override resolved but importer disabled, using stock render\n", baseName);
 	return false;
 #endif
@@ -807,11 +809,11 @@ void TreeAppearanceType::init (mc2::czstring fileName)
                 treeRenderShapeLodCount = 1;
                 propMaterialSource = ov;
                 for (const auto& lod : lods) {
-                    if (lod.lod <= 0 || lod.lod >= MAX_LODS || treeRenderShape[lod.lod]) continue;
+                    if (lod.lod <= 0 || lod.lod >= MAX_TREE_RENDER_LODS || treeRenderShape[lod.lod]) continue;
                     auto shape = import(lod.sourceRelPath, "lod");
                     if (shape) {
                         treeRenderShape[lod.lod] = std::move(shape);
-                        lodDistance[lod.lod] = lod.distance;
+                        renderLodDistance[lod.lod] = lod.distance;
                         treeRenderShapeLodCount = std::max(treeRenderShapeLodCount, static_cast<long>(lod.lod + 1));
                     }
                 }
@@ -859,6 +861,17 @@ void TreeAppearanceType::registerRenderShapes()
     const long count = overridden ? treeRenderShapeLodCount : MAX_LODS;
     for (long lod = 0; lod < count; ++lod)
         GpuStaticPropBatcher::instance().registerMultiShape(getTreeRenderShape(lod), overridden, overridden ? propMaterialSource : nullptr, true);
+    if (overridden && treeRenderShapeLodCount > 1) {
+        // The batcher re-types each instance to the LOD its main-camera distance selects; instances stay registered as LOD0.
+        TG_TypeMultiShape* shapes[MAX_TREE_RENDER_LODS]{};
+        float dists[MAX_TREE_RENDER_LODS]{};
+        for (long lod = 0; lod < MAX_TREE_RENDER_LODS; ++lod) {
+            shapes[lod] = (lod == 0 || treeRenderShape[lod]) ? getTreeRenderShape(lod) : nullptr;
+            dists[lod] = renderLodDistance[lod];
+        }
+        GpuStaticPropBatcher::instance().registerLodGroup(std::span<TG_TypeMultiShape* const>(shapes, MAX_TREE_RENDER_LODS),
+            std::span<const float>(dists, MAX_TREE_RENDER_LODS), true);
+    }
     GpuStaticPropBatcher::instance().registerMultiShape(getTreeDamageRenderShape(), treeDmgRenderShape != nullptr,
         treeDmgRenderShape ? propMaterialSource : nullptr, true);
 }

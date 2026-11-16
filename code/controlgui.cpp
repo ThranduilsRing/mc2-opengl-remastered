@@ -1,4 +1,5 @@
 #include "tick_commit.h"
+#include "net/runtime.h"
 /*************************************************************************************************\
 controlGui.cpp			: Implementation of the controlGui component.
 //---------------------------------------------------------------------------//
@@ -336,7 +337,7 @@ void ControlGui::addMover (MoverPtr mover)
 {
 	if (mover->getCommanderId() == Commander::home->getId()) 
 	{
-		if ( turn > 3 )
+		if ( turn > 3 && !mc2::net::active() )
 			mover->removeFromUnitGroup( 1 );
 
         // Reinforcements join on the sim worker; icon atlas writes belong to
@@ -452,6 +453,7 @@ bool ControlGui::getGuard( )
 
 void ControlGui::setRange( int Range )
 {
+	if (mc2::net::active()) return;
 	// apply to all selected mechs
 	Team* pTeam = Team::home;
 	for ( int i = 0; i < pTeam->getRosterSize(); ++i )

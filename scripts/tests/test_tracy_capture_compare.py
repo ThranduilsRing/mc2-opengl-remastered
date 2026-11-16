@@ -116,12 +116,23 @@ def test_post_load_starts_recorder_after_pose_and_writes_row(harness, monkeypatc
     monkeypatch.delenv("MC2_FRAME_JOBS_WORKERS", raising=False)
     monkeypatch.setattr(psutil, "cpu_count", lambda: 16)
     monkeypatch.setattr(capture, "owner_capture_mode", lambda: owner)
+    monkeypatch.setattr(Path, "write_text", Mock())
+    command = Mock(side_effect=lambda *a, **k: h.events.append("camera.ack"))
+    monkeypatch.setattr(capture, "camera_command", command)
+    original_game = h.game_spawn.side_effect
+    def game_spawn(*args, **kwargs):
+        game = original_game(*args, **kwargs)
+        def kill():
+            h.events.append("game.kill")
+            game.returncode = 1 if platform == "nt" else -9
+        game.kill.side_effect = kill
+        return game
+    h.game_spawn.side_effect = game_spawn
     if owner:
         monkeypatch.setattr(Path, "read_text", lambda *a, **k: "[TerrainLOD v1] halfMap=7680.0")
         monkeypatch.setattr(Path, "write_text", Mock())
         pan_driver = Mock()
         monkeypatch.setattr(capture, "pan_camera", pan_driver)
-        monkeypatch.setattr(capture, "camera_command", lambda *a: h.events.append("camera.ack"))
     monkeypatch.setattr(capture, "os", SimpleNamespace(name=platform, environ=capture.os.environ))
     process = Mock(cpu_affinity=Mock(return_value=cores))
     monkeypatch.setattr(psutil, "Process", lambda _: process)
@@ -140,6 +151,12 @@ def test_post_load_starts_recorder_after_pose_and_writes_row(harness, monkeypatc
         pan_driver.assert_called_once_with(Path("trace.commands.txt"), 7680.0, 29)
         assert h.events.index("camera.ack") < h.events.index("recorder.spawn")
     assert h.events.index("game.spawn") < h.events.index("pose.settled") < h.events.index("recorder.spawn")
+    command.assert_any_call(Path("trace.commands.txt"), "freeze_movers status\n", timeout=120)
+    assert h.events.index("pose.settled") < h.events.index("camera.ack") < h.events.index("recorder.spawn")
+    assert h.events.index("recorder.wait") < h.events.index("game.kill")
+    argv = h.game_spawn.call_args.args[0]
+    assert int(argv[argv.index("--duration") + 1]) == (
+        30 + capture.POST_LOAD_TIMEOUT + capture.POST_LOAD_COMMAND_TIMEOUT + 2 * capture.POST_LOAD_SETTLE)
     row = capture.json.loads(stats_file.write_text.call_args.args[0])
     assert row["status"] == "PASS" and row["affinity"] == cores and row["job_workers"] == (6 if owner else 1)
     assert h.game_spawn.call_args.kwargs["engine_default_workers"] is owner
@@ -151,6 +168,25 @@ def test_post_load_starts_recorder_after_pose_and_writes_row(harness, monkeypatc
         process.cpu_affinity.assert_called_once_with()
     recorder = h.recorder_spawn.call_args.args[0]
     assert recorder[recorder.index("-s") + 1] == "30"
+
+
+def test_post_load_never_connects_to_an_exited_game(harness, monkeypatch):
+    # Trigger: tools/tracy_capture_compare.py. The old 25 s smoke could expire
+    # during the first draw; a successful recorder handshake is not gameplay.
+    import psutil
+    h = harness
+    monkeypatch.setattr(psutil, "Process", lambda _: Mock(cpu_affinity=lambda *cpus: [26, 27]))
+    monkeypatch.setattr(capture, "owner_capture_mode", lambda: False)
+    monkeypatch.setattr(capture, "wait_post_load", Mock())
+    monkeypatch.setattr(Path, "write_text", Mock())
+    h.install.__truediv__.return_value.read_bytes.return_value = b"exe"
+    def expired(*args, **kwargs):
+        h.children[0].returncode = 0
+    monkeypatch.setattr(capture, "camera_command", expired)
+    with pytest.raises(RuntimeError, match="exited before the post-load recorder"):
+        capture.capture_trace(h.install, "vk", "mc2_01", 10, h.out, post_load=True)
+    h.recorder_spawn.assert_not_called()
+    assert h.events[-1] == "release"
 
 
 @pytest.mark.parametrize("platform,suffix", [("nt", ".exe"), ("posix", "")])
@@ -193,7 +229,7 @@ def harness(monkeypatch):
         def kill():
             assert h.held
             h.events.append(name + ".kill")
-            proc.returncode = -1
+            proc.returncode = 1 if capture.os.name == "nt" else -9
 
         proc.poll.side_effect = lambda: proc.returncode
         proc.wait.side_effect = wait
@@ -241,6 +277,8 @@ def harness(monkeypatch):
     monkeypatch.setattr(capture.time, "sleep", Mock())
     monkeypatch.setattr(capture.render_options_pin, "record", Mock(return_value={"rejected": []}))
     monkeypatch.setattr(capture.render_options_pin, "write", Mock())
+    monkeypatch.setattr(capture, "crash_dumps", lambda install: {})
+    monkeypatch.setattr(Path, "read_text", lambda *a, **k: "")
     h.run = lambda show_window=True: capture.capture_trace(h.install, "vk", "mc2_01", 15, h.out,
                                                           show_window=show_window)
     return h
@@ -264,6 +302,31 @@ def test_lease_precedes_both_children_and_covers_normal_exit(harness, show_windo
     assert h.game_spawn.call_args.args[0][0] == str(h.install / exe)
     recorder = h.recorder_spawn.call_args.args[0]
     assert recorder[recorder.index("-s") + 1] == "15"
+
+
+@pytest.mark.parametrize("exited,recorder_rc,expected", [(False, 0, 0), (True, 0, 1), (False, 1, 1)])
+def test_via_menu_ignores_only_its_own_game_stop(harness, exited, recorder_rc, expected):
+    h = harness
+    spawn_game, spawn_recorder = h.game_spawn.side_effect, h.recorder_spawn.side_effect
+
+    def game(*args, **kwargs):
+        proc = spawn_game(*args, **kwargs)
+        proc.returncode = 7 if exited else None
+        proc.wait.side_effect = lambda timeout=None: proc.returncode
+        return proc
+
+    def recorder(*args, **kwargs):
+        proc = spawn_recorder(*args, **kwargs)
+        def wait(timeout=None):
+            proc.returncode = recorder_rc
+            return recorder_rc
+        proc.wait.side_effect = wait
+        return proc
+
+    h.game_spawn.side_effect, h.recorder_spawn.side_effect = game, recorder
+    assert capture.capture_trace(h.install, "vk", "mc2_01", 15, h.out, via_menu_boot=True) == expected
+    assert ("game.kill" in h.events) is not exited
+    h.release.assert_called_once()
 
 
 @pytest.mark.parametrize("which", ["recorder", "game"])
@@ -361,6 +424,40 @@ def test_trivial_trace_releases_on_system_exit(harness):
         h.run()
     h.release.assert_called_once()
     assert not h.held
+
+
+@pytest.mark.parametrize("failure", [None, "early_exit", "exception", "dump", "crash_log", "recorder", "missing_trace"])
+def test_via_menu_stop_preserves_real_failures(harness, monkeypatch, failure, capsys):
+    # Trigger: tools/tracy_capture_compare.py; real lifecycle, fake children only.
+    h = harness
+    original = h.game_spawn.side_effect
+    def spawn(*args, **kwargs):
+        proc = original(*args, **kwargs)
+        if failure == "early_exit":
+            proc.returncode = 0xC0000005
+        proc.kill.side_effect = lambda: setattr(proc, "returncode", 0xC0000005 if failure == "exception" else (1 if capture.os.name == "nt" else -9))
+        proc.wait.side_effect = lambda timeout=None: proc.returncode
+        return proc
+    h.game_spawn.side_effect = spawn
+    if failure == "recorder":
+        recorder_spawn = h.recorder_spawn.side_effect
+        def recorder(*args, **kwargs):
+            proc = recorder_spawn(*args, **kwargs)
+            proc.wait.side_effect = lambda timeout=None: setattr(proc, "returncode", 2)
+            return proc
+        h.recorder_spawn.side_effect = recorder
+    if failure == "dump":
+        snapshots = iter([{}, {"crash.dmp": 1}])
+        monkeypatch.setattr(capture, "crash_dumps", lambda install: next(snapshots))
+    if failure == "crash_log":
+        monkeypatch.setattr(Path, "read_text", lambda *a, **k: "Crash Report")
+    if failure == "missing_trace":
+        h.out.is_file.return_value = False
+        with pytest.raises(SystemExit, match="missing or trivial"):
+            capture.capture_trace(h.install, "vk", "mc2_01", 15, h.out, via_menu_boot=True)
+    else:
+        assert capture.capture_trace(h.install, "vk", "mc2_01", 15, h.out, via_menu_boot=True) == int(failure is not None)
+    assert ("intentional_stop pid=" in capsys.readouterr().out) == (failure not in ("early_exit", "recorder"))
 
 
 @pytest.mark.parametrize("which", ["recorder", "game"])

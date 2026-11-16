@@ -1,6 +1,7 @@
 
 
 #include "GuiRuntime_internal.h"
+#include "GuiWindowPolicy.h"
 #include <optional>
 #include "mc2fmt.h"
 #include "../GameOS/gameos/debug_renderer.h"
@@ -35,6 +36,7 @@ namespace gui_runtime_detail {
 bool s_frameActive = false;
 bool s_useSDL2Backend = false;
 std::unordered_map<std::string, ImFont*> s_uiFonts;
+static ImGuiStyle s_unscaledStyle;
 
 static bool isEnabled() {
     static int cached = -1;
@@ -141,7 +143,12 @@ static void loadFontFamily(ImGuiIO& io, std::string_view familyName, std::string
 static void loadUiFonts(ImGuiIO& io)
 {
     s_uiFonts.clear();
-    io.Fonts->AddFontDefault();
+    // Bake at 4K density while retaining 1080p metrics; resizing needs no atlas upload.
+    ImFontConfig defaultConfig;
+    defaultConfig.OversampleH = defaultConfig.OversampleV = 1;
+    defaultConfig.PixelSnapH = true;
+    defaultConfig.RasterizerDensity = 2.0f;
+    io.FontDefault = io.Fonts->AddFontDefault(&defaultConfig);
     loadFontFamily(io, "agency",                fileForFamily("agency"));
     loadFontFamily(io, "agency_bold",           fileForFamily("agency_bold"));
     loadFontFamily(io, "impact",                fileForFamily("impact"));
@@ -259,6 +266,7 @@ void GuiRuntime::Init() {
 
     loadUiFonts(io);
     ImGui::StyleColorsDark();
+    s_unscaledStyle = ImGui::GetStyle();
 
     ImGui_ImplSDL2_InitForVulkan(graphics::getSDLWindow());
     io.Fonts->Build();
@@ -407,6 +415,12 @@ void GuiRuntime::NewFrame() {
 
     // The foreign editor child uses physical client pixels at scale one.
     ImGui::GetIO().DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
+    if (!s_editorMode) {
+        const float scale = gui_window_policy::scaleForHeight(ImGui::GetIO().DisplaySize.y);
+        ImGui::GetIO().FontDefault->Scale = scale;
+        ImGui::GetStyle() = s_unscaledStyle;
+        ImGui::GetStyle().ScaleAllSizes(scale);
+    }
 
 #ifdef PLATFORM_WINDOWS
     // Win32 input polling
@@ -492,17 +506,27 @@ void GuiRuntime::NewFrame() {
 
     // The off-screen scripted player also drives defs UI, through the same ImGui hit testing.
     float scriptX = 0.f, scriptY = 0.f;
-    if (input::scriptMouseNorm(&scriptX, &scriptY)) {
+    bool scriptButtons[2] = {};
+    if (input::scriptMouseNorm(&scriptX, &scriptY, scriptButtons)) {
         ImGuiIO& io = ImGui::GetIO();
         io.AddMousePosEvent(scriptX * io.DisplaySize.x, scriptY * io.DisplaySize.y);
-        const auto* mouse = input::getMouseInfo();
         for (int button = 0; button < 2; ++button) {
-            const auto state = mouse->button_state_[button == 0 ? 0 : 2];
-            io.AddMouseButtonEvent(button, state == input::KS_PRESSED || state == input::KS_HELD);
+            io.AddMouseButtonEvent(button, scriptButtons[button]);
         }
     }
     ImGui::GetIO().MouseDrawCursor = false;
     ImGui::NewFrame();
+    if (!s_editorMode) {
+        const ImGuiViewport* vp = ImGui::GetMainViewport();
+        for (ImGuiWindow* window : ImGui::GetCurrentContext()->Windows) {
+            if (window->Flags & (ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_ChildWindow)) continue;
+            const ImVec2 pos(
+                gui_window_policy::clampPosition(window->Pos.x, window->Size.x, vp->WorkPos.x, vp->WorkSize.x),
+                gui_window_policy::clampPosition(window->Pos.y, window->Size.y, vp->WorkPos.y, vp->WorkSize.y));
+            if (pos.x != window->Pos.x || pos.y != window->Pos.y)
+                ImGui::SetWindowPos(window, pos, ImGuiCond_Always);
+        }
+    }
     s_frameActive = true;
     DebugRenderer::drawFrozenPrimsToOverlay();
 
@@ -512,6 +536,8 @@ void GuiRuntime::NewFrame() {
 
     // Tell the game input layer whether ImGui has claimed the mouse this frame.
     input::setImguiWantsMouse(ImGui::GetIO().WantCaptureMouse);
+    // Mouse drags and navigation focus must preserve held gameplay keys.
+    input::setImguiWantsKeyboard(gui_window_policy::capturesKeyboard(ImGui::GetIO()));
     // Wheel guard: spatial hover only (NOT WantCaptureMouse, which is tainted
     // by mouse_any_down during viewport drags) — cursor over any ImGui window
     // means the wheel scrolls ImGui, not the game camera. See gos_input.h.

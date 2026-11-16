@@ -4,11 +4,91 @@
 #include "../../GuiRuntime/PlayerSettings.h"
 #include <cstring>
 
+// Trigger: GuiRuntime/PlayerSettings.h and PlayerFrontEnd.cpp selection/restart handling.
+TEST_CASE("campaign picker/disable invalid enabled addon") {
+    using namespace PlayerFrontEnd;
+    CHECK(packToggleAllowed(true, "Missing dependency"));
+    CHECK_FALSE(packToggleAllowed(false, "Missing dependency"));
+    CHECK(packToggleAllowed(false, ""));
+    CHECK(packSelected("broken", "", "broken"));
+    CHECK_FALSE(packSelected("broken", "", ""));
+    CHECK(packSelected("broken", "broken", ""));
+    CHECK_FALSE(packSelected("broken", "", "broken_other"));
+}
+TEST_CASE("campaign picker/restart preserves selected unchecked dependencies") {
+    using namespace PlayerFrontEnd;
+    struct Pack {
+        std::string id, kind, group;
+        bool enabled;
+        std::vector<std::string> dependencies;
+    };
+    const std::vector<Pack> packs{{"sample_variant", "assets", "", false, {"required", "base"}},
+                                 {"extra", "assets", "", true, {"required"}}};
+    const auto deps = pickerDependencies(packs, "sample_variant", "base", "texture");
+    CHECK(deps == "extra,texture,base,required");
+    const nlohmann::json saved{{"last_addons", deps}, {"last_base", "base"}, {"tex_pack_mod", "texture"}};
+    CHECK(savedDependencies(saved) == deps);
+    CHECK(contains(savedDependencies(saved), "required"));
+    CHECK(savedDependencies({{"last_addons", "extra"}, {"last_base", "base"}, {"tex_pack_mod", "texture"}}) == "extra,texture,base");
+    CHECK(pickerDependencies(packs, "", "", "") == "extra,required");
+}
+TEST_CASE("campaign picker/failed import blocks Start with its error") {
+    using namespace PlayerFrontEnd;
+    const nlohmann::json status{{"sources", {{"raw", {{"error", "Missing demo01.pak"}}}}}};
+    const auto problem = packImportProblem("", status, "raw");
+    CHECK(problem == "Import failed: Missing demo01.pak");
+    CHECK_FALSE(campaignStartAllowed(false, true, false, problem));
+    CHECK(campaignStartAllowed(false, true, false, packImportProblem("", status, "other")));
+    CHECK_FALSE(campaignStartAllowed(true, true, false, ""));
+    CHECK_FALSE(campaignStartAllowed(false, false, false, ""));
+    CHECK_FALSE(campaignStartAllowed(false, true, true, ""));
+    CHECK(packImportProblem("Invalid mod.json", {}, "raw") == "Invalid mod.json");
+}
+TEST_CASE("campaign picker/title precedence and unrecognised folders") {
+    using namespace PlayerFrontEnd;
+    CHECK(campaignTitle("Manifest title", "Desert Fox", "installer") == "Manifest title");
+    CHECK(campaignTitle("", "Desert Fox", "installer") == "Desert Fox");
+    CHECK(campaignTitle("", "", "carver_probe") == "carver_probe");
+    CHECK(unrecognisedCampaign("", false));
+    CHECK_FALSE(unrecognisedCampaign("Named mod", false));
+    CHECK_FALSE(unrecognisedCampaign("", true));
+    const auto fit = campaignInfo("FITini\r\n[Campaign]\r\nst CampaignName = \"Exodus\"\r\n"
+        "[Group0]\nl MissionCount = 2\n[Group0Mission0]\nst FileName = \"m1\"\n[Group0Mission1]\n");
+    CHECK(fit.title == "Exodus");
+    CHECK(fit.missions == 2);
+    CHECK(campaignInfo("; st CampaignName = \"Comment\"\n[Other]\nst CampaignName = \"Wrong\"\n").title.empty());
+    CHECK(campaignInfo("[Campaign]\nst CampaignNameID = \"Wrong\"\nst CampaignName = 123\n").title.empty());
+    CHECK(campaignInfo("[Campaign]\nst CampaignName = \"Unterminated\n").title.empty());
+}
+
 TEST_CASE("launcher presets scale shadow quality with overall quality") {
     for (int quality = 0; quality < 3; ++quality) {
         CHECK(k_gfxPresets[quality].shadQual == quality);
         CHECK(k_gfxPresets[quality].aa == (quality == 2));
     }
+}
+
+// Trigger: GuiRuntime/PlayerSettings.h and PlayerFrontEnd.cpp discovery/manifest handling.
+TEST_CASE("campaign picker/asset mission and malformed manifest discovery") {
+    using namespace PlayerFrontEnd;
+    using Json = nlohmann::json;
+    CHECK(packKind("assets", "magic-gamesys-tweaks", false, false) == "assets");
+    CHECK(packKind("", "gamesys-only", false, false) == "assets");
+    CHECK(packKind("", "carver_probe", false, true) == "campaign");
+    CHECK(packKind("", "desertfoxformcosetup", true, true) == "campaign");
+    CHECK(packKind("", "mco-compat", true, true) == "dependency");
+    CHECK(packProblem(Json::object(), false, true, false, "mcosetup628(1)").empty());
+    CHECK_FALSE(packProblem(Json::object(), false, true, true, "mcosetup628(1)").empty());
+    CHECK_FALSE(packProblem(Json::object(), false, false, false, "nested").empty());
+    CHECK_FALSE(packProblem(Json::parse("{", nullptr, false), true, true, false, "bad").empty());
+    CHECK_FALSE(packProblem(Json::array(), true, true, false, "bad").empty());
+    CHECK_FALSE(packProblem(Json{{"id", 123}}, true, true, false, "bad").empty());
+    CHECK_FALSE(packProblem(Json{{"id", "other"}}, true, true, false, "bad").empty());
+    CHECK_FALSE(packProblem(Json{{"type", "typo"}}, true, true, false, "bad").empty());
+    CHECK_FALSE(packProblem(Json{{"dependencies", Json::array({12})}}, true, true, false, "bad").empty());
+    CHECK_FALSE(packProblem(Json{{"dependencies", "base"}}, true, true, false, "bad").empty());
+    CHECK(packProblem(Json{{"id", "pack"}, {"type", "assets"}, {"dependencies", Json::array({"base"})}}, true, true, false, "pack").empty());
+    CHECK_FALSE(packProblem(Json::object(), false, true, false, "bad;name").empty());
 }
 
 TEST_CASE("base presets retain stock vegetation and reserve detail for Medium and High") {

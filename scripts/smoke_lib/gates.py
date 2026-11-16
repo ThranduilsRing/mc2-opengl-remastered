@@ -53,6 +53,7 @@ class GateConfig:
     # MC2_DIAG_TAGS the child ran with; None = unknown, every tag-gated presence rule applies. A rule with a diag_tag is skipped when its tag is off.
     diag_tags: Optional[frozenset] = None
     vegetation_expected: bool = True  # Low/Potato retain only stock objects.
+    presentation_disabled: bool = False
     content_error_budget: Optional[int] = 0
     # {stem: {counter: ceiling}} for the perf_counter bucket; None loads tests/smoke/perf_counter_ceilings.json.
     perf_ceilings: Optional[dict] = None
@@ -135,6 +136,9 @@ def evaluate(s: LogSummary, cfg: GateConfig, *,
 
     # Regression floors: a line the mission must print (logparse.PRESENCE_RULES). Only a run that reached play can be judged; a load failure has its own bucket.
     for rule in PRESENCE_RULES:
+        # Replay's presentation-off arm never runs the mover cull pass.
+        if rule.bucket == "cull_parity_missing" and cfg.presentation_disabled:
+            continue
         if rule.bucket.startswith("vegetation_") and not cfg.vegetation_expected:
             continue
         if rule.diag_tag and cfg.diag_tags is not None and "*" not in cfg.diag_tags and rule.diag_tag not in cfg.diag_tags:

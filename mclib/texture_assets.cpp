@@ -352,7 +352,7 @@ DWORD load(mc2::czstring path, gos_TextureFormat format, DWORD hints, DWORD vari
     File file;
     const auto open=[&] { ZoneScopedN("TextureSource.Open"); MC2_LOAD_SCOPE("TextureSource.Open"); return file.open(path); }();
     std::string provider;
-    if (1 != 0) {
+    if (source->name.find("a_compass.tga") == std::string::npos) {
         const auto sidecar=sidecarPath(source->name);
         RenderCore::KtxImage cooked; Bytes rgba; int w=0,h=0;
         if (txmLoadCooked(path,sidecar.c_str(),1==2,cooked,&provider) &&
@@ -383,6 +383,17 @@ DWORD load(mc2::czstring path, gos_TextureFormat format, DWORD hints, DWORD vari
         if (!source->bytes) return kInvalidAsset;
         const auto* mod=LookupModOwner(path);
         if (auto packed=uiChromeSheetBytes(path,mod ? mod : "")) source->bytes=std::move(packed);
+        if (!mod && (strstr(path, "mcl_mm_") || strstr(path, "MCL_MM_") ||
+                     strstr(path, "mcl_splashscreen_frame_") || strstr(path, "MCL_SplashScreen_Frame_") ||
+                     strstr(path, "mcl_dialog_") || strstr(path, "MCL_Dialog_"))) {
+            auto decoded = mc2tex::decodeMemory(source->bytes->data(), source->bytes->size(), path, gos_Texture_Alpha, 0);
+            if (decoded) {
+                ui_chrome::Pixels px{decoded->width, decoded->height,
+                    decoded->layout == mc2tex::PixelLayout::RGB8 ? 3 : 4, std::move(decoded->pixels)};
+                if (ui_chrome::clearMenuMatte(path, px))
+                    source->bytes = std::make_shared<const Bytes>(ui_chrome::encodePngStored(px));
+            }
+        }
         provider=mod ? std::string("mod:")+mod : file.isLoadedFromDisk() ? "base-loose" : "fst";
     }
     { ZoneScopedN("TextureSource.Hash"); MC2_LOAD_SCOPE("TextureSource.Hash");
@@ -424,7 +435,8 @@ DWORD sourceId(DWORD asset) {
     if (source->cpuTexture) return source->cpuTexture;
     ZoneScopedN("TextureSource.CreateCpuTexture"); MC2_LOAD_SCOPE("TextureSource.CreateCpuTexture");
     const auto format=static_cast<gos_TextureFormat>(source->format);
-    if ((source->file || source->cookedBc7) && source->variant==0 && !source->name.empty()) {
+    if ((source->file || source->cookedBc7) && source->variant==0 && !source->name.empty() &&
+        source->name.find("a_compass.tga") == std::string::npos) {
         RenderCore::KtxImage cooked;
         if (txmLoadCooked(source->name.c_str(),sidecarPath(source->name).c_str(),true,cooked) &&
             cooked.isCompressed && (cooked.vkFormat==145 || cooked.vkFormat==146)) {

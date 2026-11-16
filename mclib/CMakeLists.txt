@@ -12,6 +12,7 @@ set(SOURCES ${SOURCES}
     lzcomp.cpp
     lzdecomp.cpp
     mathfunc.cpp
+    ../3rdparty/detmath/openlibm.cpp
     mouse.cpp
     msl.cpp
     msl_load.cpp

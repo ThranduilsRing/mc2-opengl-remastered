@@ -1491,6 +1491,7 @@ long GameCamera::update (void)
 	{
   		
    		compass->setObjectParameters(getPosition(),0.0f,false,0,0);
+		compass->scale(0.78f);
    		compass->setMoverParameters(0.0f);
    		compass->setGesture(0);
    		compass->setObjStatus(OBJECT_STATUS_DESTROYED);

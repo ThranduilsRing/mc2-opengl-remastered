@@ -140,8 +140,8 @@ void loadBuildingImportSourceWithSidecarAxis(TG_TypeMultiShape* shape, mc2::czst
 	tglVerifyShapeLoaded(shape, rc, "bdactor.bldg_import",
 		importSourceBase, failFlag);
 
-	// The importer uses white for unlit foliage. Building bodies instead receive
-	// scene SH and sun; treating that synthetic white as baked fill lights them twice.
+	// Mark synthetic body fill separately from authored light and window IDs.
+	// The prop shader keeps this white by day and removes it at full night.
 	for (long i = 0; i < shape->GetNumShapes(); ++i) {
 		auto* node = shape->GetTypeNode(i);
 		if (!node || node->GetNodeType() != SHAPE_NODE
@@ -150,7 +150,7 @@ void loadBuildingImportSourceWithSidecarAxis(TG_TypeMultiShape* shape, mc2::czst
 		auto* vertices = body->GetTypeVerticesMutable();
 		for (int v = 0; v < body->GetNumTypeVertices(); ++v)
 			if (vertices[v].aRGBLight == 0xffffffffu)
-				vertices[v].aRGBLight = 0xff000000u;
+				vertices[v].aRGBLight = 0xfeffffffu;
 	}
 
 	if (yawDegrees) {

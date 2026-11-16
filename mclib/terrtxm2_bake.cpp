@@ -813,21 +813,7 @@ void TerrainColorMap::resetDetailTexture (mc2::czstring fileName)
 
 	detailTextureNodeIndex.reset();
 
-#if 0
-	//Load up the detail texture.
-	// Detail texture is named same as colormap with .detail in name.
-	// if no file exists, no texture drawn.
-	char dName[1024];
-	mc2::fmt::to_buf(dName, "{}.detail", mc2::fmt::safe(fileName));
-		
-	FullPathFileName detailFile;
-	detailFile.init(texturePath,dName,".tga");
-
-	if (fileExists(detailFile))		//Otherwise, its already 0xffffffff!!
-		detailTextureNodeIndex.reset(mc2::textures::load(detailFile,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1));
-#else
 	detailTextureNodeIndex.reset(mc2::textures::load(fileName,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1));
-#endif
 }
 
 //---------------------------------------------------------------------------
@@ -843,21 +829,7 @@ void TerrainColorMap::resetWaterTexture (mc2::czstring fileName)
 
 	waterTextureNodeIndex.reset();
 	
-#if 0
-	//load up the water texture.
-	// Water texture is named the same as the colormap with .water in name.
-	// If no file exists, no texture drawn!!
-	char dName[1024];
-	mc2::fmt::to_buf(dName, "{}.water", mc2::fmt::safe(fileName));
-	
-	FullPathFileName waterFile;
-	waterFile.init(texturePath,dName,".tga");
-	
-	if (fileExists(waterFile))    //Otherwise, its already 0xffffffff!! 
-		waterTextureNodeIndex.reset(mc2::textures::load(waterFile,gos_Texture_Solid,0, 0, 0x1));
-#else
 	waterTextureNodeIndex.reset(mc2::textures::load(fileName,gos_Texture_Solid,0, 0, 0x1));
-#endif
 }
 
 //---------------------------------------------------------------------------

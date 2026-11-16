@@ -2,6 +2,61 @@
 #include "doctest.h"
 #include "component_rules.h"
 
+// Trigger: mechlabscreen.cpp and component_rules.h (same-grid drag completion).
+TEST_CASE("components/drag cancellation restores origin and inventory drop removes") {
+    using mc2::components::restoreGridDrag;
+    CHECK(restoreGridDrag(true, false, false, false));
+    CHECK_FALSE(restoreGridDrag(true, false, true, false));
+    CHECK_FALSE(restoreGridDrag(true, true, false, false));
+    CHECK(restoreGridDrag(true, true, false, true));
+    CHECK(restoreGridDrag(true, false, true, true));
+    CHECK_FALSE(restoreGridDrag(false, false, false, true));
+}
+
+TEST_CASE("components/cooling refusal leaves required heat sink installed") {
+    CHECK_FALSE(mc2::components::coolingAllowsRemoval(30, 10, 24));
+    CHECK(mc2::components::coolingAllowsRemoval(30, 10, 20));
+    CHECK(mc2::components::coolingAllowsRemoval(30, 10, 19));
+}
+
+TEST_CASE("components/grid move places once and rejected drop restores source") {
+    for (bool reject : {false, true}) {
+        long x = 2, y = 3;
+        int calls = 0, count = 2, cost = 200, heat = 10, weight = 4;
+        bool source = false, target = false;
+        auto add = [&](long& px, long& py) {
+            ++calls;
+            if (reject && px == 2 && py == 3) return 1; // occupied/invalid
+            source = px == 0 && py == 1;
+            target = px == 2 && py == 3;
+            ++count; cost += 100; heat += 5; weight += 2;
+            return 0;
+        };
+        REQUIRE(mc2::components::finishGridDrop(x, y, true, 0, 1, add));
+        CHECK(calls == (reject ? 2 : 1));
+        CHECK(source == reject);
+        CHECK(target == !reject);
+        CHECK(x == (reject ? 0 : 2));
+        CHECK(y == (reject ? 1 : 3));
+        CHECK(count == 3);
+        CHECK(cost == 300);
+        CHECK(heat == 15);
+        CHECK(weight == 6);
+    }
+}
+
+TEST_CASE("components/launcher size aliases use the base model art") {
+    using mc2::components::launcherIcon;
+    CHECK(std::string_view(launcherIcon("mcl_mc_clanlrm20rack.tga")) == "mcl_mc_clanlrmrack.tga");
+    CHECK(std::string_view(launcherIcon("mcl_mc_lrm15rack.tga")) == "mcl_mc_lrmrack.tga");
+    CHECK(std::string_view(launcherIcon("mcl_mc_swarmlrmrack.tga")) == "mcl_mc_swarmlrmrack.tga");
+    CHECK(std::string_view(launcherIcon("mcl_mc_clanstreaksrmpack.tga")) == "mcl_mc_clanstreaksrmpack.tga");
+    CHECK(std::string_view(launcherIcon("mcl_mc_streaksrm6pack.tga")) == "mcl_mc_streaksrmpack.tga");
+    CHECK(std::string_view(launcherIcon("mcl_mc_clansrm6pack.tga")) == "mcl_mc_srmpack.tga");
+    CHECK(launcherIcon("mcl_mc_thunderboltmissile.tga") == nullptr);
+    CHECK(launcherIcon("mcl_mc_gaussrifle.tga") == nullptr);
+}
+
 TEST_CASE("components/reset ignores stale storage and preserves unmapped live items") {
     struct Item { unsigned char masterID; };
     struct Slot { bool clearOut; };

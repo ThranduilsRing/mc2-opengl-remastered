@@ -72,6 +72,17 @@ def test_scripts_timeout_reports_without_diagnostic_rerun(monkeypatch, capsys):
 def _private_cache_dir(tmp_path, monkeypatch):
     """The cache file is shared across worktrees by default; these tests must not read or write the real one."""
     monkeypatch.setenv("MC2_TEST_CACHE_DIR", str(tmp_path / "cache-dir"))
+    monkeypatch.delenv("MC2_GATE_BASE", raising=False)  # these runner fixtures exercise full-suite summaries
+
+
+def test_gate_base_only_controls_outer_selection(monkeypatch):
+    import run_tools_tests as runner
+    monkeypatch.setenv("MC2_GATE_BASE", "window-base")
+    seen = []
+    monkeypatch.setattr(runner, "run_module", lambda mod, env: seen.append(env) or (mod, 0, [], "1 passed"))
+    runner.run_all(["fixture.py"], 1, "test", True, False)
+    assert "MC2_GATE_BASE" not in seen[0]
+    assert os.environ["MC2_GATE_BASE"] == "window-base"
 
 
 def _git(repo, *a):

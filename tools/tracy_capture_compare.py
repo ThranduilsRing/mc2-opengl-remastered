@@ -33,7 +33,8 @@ Facts baked in (recon 2026-07-18):
     binaries) -- see docs/tracy-harness.md for the download source.
   * Every non-ASAN MC2 build compiles with TRACY_ENABLE + TRACY_ON_DEMAND
     (root CMakeLists.txt:139-148): the client buffers nothing until a recorder connects,
-    so we start tracy-capture BEFORE launching the game.
+    so post-load captures connect only after load, first-draw acknowledgement
+    and settling; the game's safety timeout must cover all of those stages.
   * csvexport CSV columns:
       name,src_file,src_line,total_ns,total_perc,counts,mean_ns,min_ns,max_ns,std_ns
     (note: "counts", not "count"; mean/min/max are integers, std is float).
@@ -166,6 +167,11 @@ def options_sidecar(trace: Path) -> Path:
     return Path(trace).with_suffix(".options.json")
 
 
+def crash_dumps(install):
+    return {str(p): p.stat().st_mtime_ns for directory in (install, install / "crashes")
+            for pattern in ("*.dmp", "*.mdmp") for p in directory.glob(pattern)}
+
+
 def require_same_options(trace_a: Path, trace_b: Path, vary, a_name: str = "A", b_name: str = "B") -> None:
     """Exit unless both traces recorded their render options and they agree on every key not in `vary` (a mismatch is a hard failure, like the
     resolution)."""
@@ -258,6 +264,9 @@ CAPTURE_ARMS = {
             "MC2_TERRAIN_LOD_CHUNK_FORCE_LOD=2"],
     "visible0": ["MC2_FORCE_ALL_VISIBLE=0"],
 }
+POST_LOAD_TIMEOUT = 300
+POST_LOAD_COMMAND_TIMEOUT = 120
+POST_LOAD_SETTLE = 2
 
 
 def post_load_ready(log, pose):
@@ -265,7 +274,7 @@ def post_load_ready(log, pose):
             and (not pose or "[CAMERA_PARK v1] frame=" in log))
 
 
-def wait_post_load(game, log, pose, timeout=300, settle=2):
+def wait_post_load(game, log, pose, timeout=POST_LOAD_TIMEOUT, settle=POST_LOAD_SETTLE):
     """Require load + acknowledged park, then let spatial resources settle."""
     deadline, ready = time.monotonic() + timeout, None
     while game.poll() is None and time.monotonic() < deadline:
@@ -359,8 +368,9 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
     if pan:
         if not post_load or seconds < 2:
             raise ValueError("pan requires a post-load window of at least two seconds")
+    if post_load:
         channel = out.with_suffix(".commands.txt")
-        channel.write_text(f"bench_output {out.with_suffix('.frames.jsonl')}\n", encoding="utf-8")
+        channel.write_text("", encoding="utf-8")
         env.update(MC2_TEST_SPAWN="1", MC2_UI_COMMAND_FILE=str(channel), MC2_DEV_SHELL="1")
     if post_load and os.environ.get("MC2_NO_CPU_PIN") != "1":
         env.setdefault("MC2_FRAME_JOBS_WORKERS", "1")
@@ -376,13 +386,15 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
                 cleanup.callback(host_lease.release)
 
         owner_affinity = owner_capture_mode() if post_load else False
-        # Recorder first: TRACY_ON_DEMAND means the game buffers nothing until connected.
+        # Post-load mode deliberately excludes startup from the recorder's -s window.
         cap_cmd = [str(cap_exe), "-a", "127.0.0.1", "-p", "8086",
                    *([] if ticks or spawn_game else ["-s", str(seconds)]), "-f", "-o", str(out)]
         cap_log = out.with_suffix(".capture.log")
         cap_lf = cleanup.enter_context(open(cap_log, "w", encoding="utf-8", errors="replace"))
         # background-launch: allow Tracy recorder console tool, windowless via nofocus.hidden_kwargs.
         def start_recorder():
+            if post_load and gp.poll() is not None:
+                raise RuntimeError("game exited before the post-load recorder could connect")
             # background-launch: allow Tracy console recorder, never an engine.
             child = subprocess.Popen(cap_cmd, stdout=cap_lf, stderr=subprocess.STDOUT,
                                      **nofocus.hidden_kwargs())
@@ -398,7 +410,11 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
         for rj in options_rec["rejected"]:
             print(f"WARN: render option rejected by the engine's grammar: {rj}", file=sys.stderr)
 
-        duration = seconds + (15 if post_load else 5)
+        # The first-draw acknowledgement has its own timeout after mission/park.
+        # A short smoke budget can expire while we wait, leaving only shutdown
+        # frames for Tracy despite thousands of frames in the game log.
+        duration = seconds + (POST_LOAD_TIMEOUT + POST_LOAD_COMMAND_TIMEOUT
+                              + 2 * POST_LOAD_SETTLE if post_load else 5)
         game_cmd = [str(game), "--profile", "stock", "--mission", mission,
                     "--duration", str(duration)]
         if ticks:
@@ -416,6 +432,7 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
                   "unaffected. The post-capture visibility assert will refuse to "
                   "grade this trace.", file=sys.stderr)
 
+        dumps_before = crash_dumps(install)
         print(f"[capture] trace -> {out}")
         # The pinned drawable size must survive the background launch for comparable measurements.
         if spawn_game:
@@ -440,7 +457,8 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
                 process.cpu_affinity(cpus)
             actual_cpus = process.cpu_affinity()
             row = {"status": "REJECTED", "mission": mission, "arm": capture_arm,
-                   "seconds": seconds, "settle_s": 2, "affinity": actual_cpus,
+                   "seconds": seconds, "settle_s": POST_LOAD_SETTLE, "game_timeout_s": duration,
+                   "affinity": actual_cpus,
                    "affinity_mask": sum(1 << c for c in actual_cpus),
                    "job_workers": (int(env["MC2_FRAME_JOBS_WORKERS"]) if env.get("MC2_FRAME_JOBS_WORKERS")
                                    else max(2, min(6, (psutil.cpu_count() or 1) // 2)) if owner_affinity
@@ -453,7 +471,12 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
                 out.with_suffix(".stats.json").write_text(json.dumps(row, indent=2), encoding="utf-8")
             cleanup.callback(save_row)
             wait_post_load(gp, game_log, pose)
+            # Park is logged before the first draw's cold uploads. A command
+            # consumed on the next frame proves that draw has returned.
+            camera_command(channel, "freeze_movers status\n", timeout=POST_LOAD_COMMAND_TIMEOUT)
+            time.sleep(POST_LOAD_SETTLE)
             if pan:
+                channel.write_text(f"bench_output {out.with_suffix('.frames.jsonl')}\n", encoding="utf-8")
                 half_map = re.search(r"halfMap=([\d.]+)", game_log.read_text(encoding="utf-8", errors="replace"))
                 if not half_map:
                     raise RuntimeError("pan requires the terrain map extent receipt")
@@ -468,15 +491,21 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
               f"duration={duration}s fixed_ts={fixed_timestep} fps_cap={fps_cap} pose={pose}")
 
         rc = 0
-        if via_menu_boot:
+        intentional_stop = False
+        if via_menu_boot or post_load:
             try:
                 recorder.wait(timeout=seconds + 90)
+                rc = int(bool(recorder.returncode))
             except subprocess.TimeoutExpired:
                 rc = 1
-            _stop_capture_child(gp)   # the game has no auto-quit outside smoke mode: end OUR spawned pid once the recording is over
+            if not rc and recorder.returncode == 0 and gp.poll() is None:
+                intentional_stop = True
+                print(f"[capture] intentional_stop pid={gp.pid} reason=recording_complete")
+                _stop_capture_child(gp)
         try:
             gp.wait(timeout=duration + (300 if post_load else 90))
-            if gp.returncode:
+            expected_exit = 1 if os.name == "nt" else -9  # Popen.kill / TerminateProcess
+            if gp.returncode and not (intentional_stop and gp.returncode == expected_exit):
                 rc = 1
         except subprocess.TimeoutExpired:
             print("WARN: game exceeded its duration budget -- killing OUR spawned pid "
@@ -489,6 +518,14 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
             print(f"WARN: tracy-capture still running -- killing OUR spawned pid "
                   f"{recorder.pid} only", file=sys.stderr)
             recorder.kill()
+            rc = 1
+
+        game_lf.flush()
+        log_text = game_log.read_text(encoding="utf-8", errors="replace")
+        dumps_after = crash_dumps(install)
+        if (recorder.returncode or "Crash Report" in log_text or
+                any(dumps_before.get(p) != stamp for p, stamp in dumps_after.items())):
+            print(f"ERROR: recorder failure or game crash evidence; see {cap_log} / {game_log}", file=sys.stderr)
             rc = 1
 
         if ticks:
@@ -511,10 +548,10 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
             if exported.returncode:
                 raise RuntimeError(f"Frame export failed: {exported.stderr}")
             row.update(window_stats(csv.DictReader(io.StringIO(exported.stdout)), seconds))
-            row["status"] = "REJECTED" if rc or gp.returncode or recorder.returncode else row["status"]
+            row["status"] = "REJECTED" if rc else row["status"]
             rc = rc or int(row["status"] != "PASS")
 
-        print(f"OK capture arm={arm} mission={mission} seconds={seconds} "
+        print(f"{'FAIL' if rc else 'PASS'} capture arm={arm} mission={mission} seconds={seconds} "
               f"-> {out} ({out.stat().st_size / 1e6:.1f} MB)")
         return rc
 

@@ -185,7 +185,7 @@ float Mover::calcAttackChance (GameObjectPtr target, long aimLocation, float tar
 	// Therefore, must go here after all modifiers...
 	if ((aimLocation > -1) && (mech))
 	{
-		// ISSUE-9 S1 (MC2_CALLED_SHOT_FIX, default OFF = stock): the stock
+		// ISSUE-9 S1 (MC2_CALLED_SHOT_FIX, default ON; =0 restores stock): the stock
 		// gamesys.fit modifiers (Head=0.08/Arm=0.15/Leg=0.20) put an aimed head
 		// shot at the 5% clamp floor for most engagements, so per-shot the
 		// called shot is statistically invisible (issue #9). Under the gate the

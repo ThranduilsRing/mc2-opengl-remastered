@@ -13,6 +13,7 @@
 #include "tex_resolve_table.h"
 #include "battle_bench_sink.h"
 #include "../code/render_view.h"
+#include <array>
 #include <algorithm>
 #include <span>
 #include <vector>
@@ -232,6 +233,7 @@ void TG_Shape::CpuDraw (const mc2::tgl::ViewUniforms& view, const glm::mat4& sha
 	}
 
 	const glm::mat4 shapeToClip = shapeToWorld * view.worldToClip;
+	const bool compass = hud && !S_stricmp(theShape->getNodeId(), "compassplane");
 	static thread_local std::vector<gos_VERTEX> verts;
 	static thread_local std::vector<Stuff::Vector4D> clips;
 	verts.resize(numVertices);
@@ -258,6 +260,10 @@ void TG_Shape::CpuDraw (const mc2::tgl::ViewUniforms& view, const glm::mat4& sha
 
 		Stuff::Vector4D xform;
 		xform.MultiplyPoint(pos, shapeToClip);
+		if (world && hud) {
+			glm::vec3 p = mc2::math::transformPoint(pos, shapeToWorld);
+			xform.MultiplyPoint(p, view.worldToClip);
+		}
 		// Legacy perspective has negative w in front of the eye. Normalize
 		// its homogeneous sign for clipping; projected coordinates stay identical.
 		if (world && view.perspective)
@@ -378,18 +384,20 @@ void TG_Shape::CpuDraw (const mc2::tgl::ViewUniforms& view, const glm::mat4& sha
 		gv[0].u = tri.uvdata.u0; gv[0].v = tri.uvdata.v0;
 		gv[1].u = tri.uvdata.u1; gv[1].v = tri.uvdata.v1;
 		gv[2].u = tri.uvdata.u2; gv[2].v = tri.uvdata.v2;
+		// Loose TGA rows are bottom-up; the old cooked compass was top-down.
+		if (compass) for (auto& v : gv) v.v = 1.0f - v.v;
 
 		if (world)
 		{
 			if (!isWindow && !isSpotlight && !textures)
 				continue;
-			const ClipVertex in[3] = {
+			const std::array<ClipVertex, 3> input = {{
 				{ clips[tri.Vertices[0]], gv[0].u, gv[0].v, gv[0].argb, gv[0].frgb },
 				{ clips[tri.Vertices[1]], gv[1].u, gv[1].v, gv[1].argb, gv[1].frgb },
 				{ clips[tri.Vertices[2]], gv[2].u, gv[2].v, gv[2].argb, gv[2].frgb }
-			};
+			}};
 			ClipVertex nearClipped[8], farClipped[8];
-			int count = clipPolygon(in, 0, nearClipped);
+			int count = clipPolygon(input, 0, nearClipped);
 			if (count)
 				count = clipPolygon(std::span<const ClipVertex>(nearClipped, count), 1, farClipped);
 			if (count && view.perspective)
@@ -408,7 +416,8 @@ void TG_Shape::CpuDraw (const mc2::tgl::ViewUniforms& view, const glm::mat4& sha
 				projectClip(farClipped[0], out[0]);
 				projectClip(farClipped[k], out[1]);
 				projectClip(farClipped[k + 1], out[2]);
-				if (forcedZ >= 0.0f)
+				if (compass) for (auto& v : out) v.frgb = 0x434f4d50;
+				if (!compass && forcedZ >= 0.0f)
 					out[0].z = out[1].z = out[2].z = forcedZ;
 				if (hud) {
 					// World-projected HUD shapes composite after grass, water and scene effects.

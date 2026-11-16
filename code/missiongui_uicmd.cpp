@@ -9,6 +9,8 @@
 #include "mc2fmt.h"
 #include "carnage.h"
 #include "weaponfx.h"
+#include "command_replay.h"
+#include "net/runtime.h"
 
 extern std::atomic<uint32_t> g_mc2FrameCounter;
 
@@ -354,7 +356,22 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 	// dispatcher the mouse/keyboard uses (handleOrders / Mover::setSelected
 	// / Camera::setPosition) so game rules apply. The homeCmdr / homeTeam
 	// gate matches the roster walks in doMove/doAttack.
-	if (line.compare(0, 7, "select ") == 0) {
+	// Replay symmetry probe: change only the local view, retaining recorded issuers.
+	if (line.compare(0, 12, "replay_home ") == 0) {
+		const std::string arg = line.substr(12);
+		char* end = nullptr;
+		const long id = strtol(arg.c_str(), &end, 10);
+		if (mc2::net::active() || !mc2::replay::playing() || arg.empty() || !end || *end != '\0' ||
+			id < 0 || id >= MAX_COMMANDERS || !Commander::commanders[id] ||
+			!Commander::commanders[id]->getTeam()) {
+			result = "blocked"; note = "replay_home requires playback and an existing commander";
+		} else {
+			Commander::home = Commander::commanders[id];
+			Team::home = Commander::home->getTeam();
+			result = "ok"; note = "replay local commander=" + std::to_string(id);
+		}
+	}
+	else if (line.compare(0, 7, "select ") == 0) {
 		const std::string arg = line.substr(7);
 		Team* pTeam = Team::home;
 		const long homeCmdr = Commander::home ? Commander::home->getId() : -1;

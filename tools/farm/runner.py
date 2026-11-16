@@ -5,6 +5,7 @@ import argparse
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import time
@@ -28,6 +29,7 @@ def run_job(path, root):
     output = root / 'results' / path.stem
     output.mkdir(parents=True, exist_ok=True)
     result = {'started': time.time(), 'status': 'error', 'returncode': None}
+    job = {}
     try:
         job = json.loads(path.read_text(encoding='utf-8'))
         argv = job['argv']
@@ -59,6 +61,18 @@ def run_job(path, root):
                     child.wait()
     except Exception as exc:
         result['error'] = f'{type(exc).__name__}: {exc}'
+    if job.get('type') == 'mod-smoke':
+        # The child cannot run finally after taskkill /T /F. Collect before completion.
+        result['artifacts_collected'] = False
+        try:
+            for folder in ('crashes', 'debug_state', 'savegame'):
+                source = root / 'work' / path.stem / folder
+                if source.exists():
+                    shutil.copytree(source, output / folder, dirs_exist_ok=True)
+            result['artifacts_collected'] = True
+        except OSError as exc:
+            result['status'] = 'error'
+            result['artifact_error'] = f'{type(exc).__name__}: {exc}'
     result['finished'] = time.time()
     atomic_json(output / 'result.json', result)
     path.replace(path.with_suffix('.done'))

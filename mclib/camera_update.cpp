@@ -194,6 +194,7 @@ long Camera::update (void)
 				samples[(n - 1) * 99 / 100], samples.back(), over50);
 			samples.clear();
 		}
+		if (wasMovie && !inMovieMode) mc2::fmt::print_err("[CINEMATIC_END] turn={}\n", turn);
 		previous = now;
 		wasMovie = inMovieMode;
 	}

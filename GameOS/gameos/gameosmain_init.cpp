@@ -1,6 +1,7 @@
 // main: the start-up helpers -- DPI awareness, the launcher hand-off and launcher_env.json, the instrumentation banner,
 // the pre-window resolution and the Vulkan backend bring-up. The orchestrator is in gameosmain.cpp.
 #include "gameosmain_internal.h"
+#include "../../code/net/user_paths.h"
 #include "mc2fmt.h"
 #include "../../GuiRuntime/PlayerFrontEnd.h"
 #include "Gates/gate_cold.h"   // str<>()
@@ -163,7 +164,7 @@ void initResolutionFromConfig() {
         // If no env override, try options.cfg.
         if (!envW && !envH)
         {
-            FILE* f = std::fopen("options.cfg", "r");
+            FILE* f = std::fopen(mc2::net::userFile("options.cfg").c_str(), "r");
             if (f)
             {
                 char line[256];

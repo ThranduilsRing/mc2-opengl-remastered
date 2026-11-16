@@ -2,7 +2,6 @@
 #include "tactical_order_queue.h"
 #include "terrain.h"
 
-float Terrain::worldUnitsMapSide = 1000;
 
 namespace {
 std::string routeText(int type = 2, int count = 2, int stance = 4) {

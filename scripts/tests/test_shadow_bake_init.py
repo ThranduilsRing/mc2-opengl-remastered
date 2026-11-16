@@ -14,6 +14,45 @@ import console_child
 from smoke_lib import nofocus
 
 
+def test_cache_load_wait_respects_deadline_and_preserves_future(tmp_path):
+    # Trigger: vulkan_shadow_bake.h and vulkan_shadow_island_live.cpp load barrier.
+    header = (ROOT / "GameOS/gameos/vulkan_shadow_bake.h").read_text()
+    start = header.index("    void waitForCacheLoad(")
+    method = header[start:header.index("\n    }", start) + 6]
+    source = tmp_path / "cache_wait.cpp"
+    source.write_text(r'''
+#include <cassert>
+#include <chrono>
+#include <future>
+struct ShadowBake {
+    std::future<int> cacheLoad_;
+''' + method + r'''
+};
+int main() {
+    using namespace std::chrono;
+    std::promise<int> stalled;
+    ShadowBake bake{stalled.get_future()};
+    const auto deadline = steady_clock::now() + milliseconds(30);
+    bake.waitForCacheLoad(deadline);
+    assert(steady_clock::now() >= deadline);
+    assert(steady_clock::now() < deadline + seconds(1));
+    assert(bake.cacheLoad_.valid());
+    assert(bake.cacheLoad_.wait_for(seconds(0)) == std::future_status::timeout);
+    stalled.set_value(7);
+    assert(bake.cacheLoad_.wait_for(seconds(0)) == std::future_status::ready);
+    assert(bake.cacheLoad_.get() == 7);
+    bake.waitForCacheLoad(deadline); // A consumed/absent future is also safe.
+}
+''')
+    exe = tmp_path / ("cache_wait.exe" if os.name == "nt" else "cache_wait")
+    result = subprocess.run(["clang++", "-std=c++20", "-pthread", str(source), "-o", str(exe)],
+                            capture_output=True, text=True, timeout=30,
+                            **console_child.child_kwargs(redirected=True))
+    assert result.returncode == 0, result.stderr
+    result = nofocus.run([str(exe)], capture_output=True, text=True, timeout=3)
+    assert result.returncode == 0, result.stderr
+
+
 def probe_source(engine_source):
     methods = []
     for signature in ("bool ShadowBake::ensureIncremental()", "void ShadowBake::releaseIncremental()"):

@@ -3,6 +3,7 @@
 #include "vk_owned.h"
 #include "vulkan_water_island_internal.h"
 #include "vk_dynamic_rendering.h"
+int gos_GetWaterFsDebugMode();
 
 
 
@@ -152,7 +153,7 @@ bool init_island(WaterIsland* s, int w, int h) {
 
         VkPipelineLayoutCreateInfo plci{};
         plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        if (!s->groundLighting.init(s->device)) return false;
+        if (!s->groundLighting.init(s->device, true)) return false;
         const VkDescriptorSetLayout layouts[]{s->dsl.get(), s->groundLighting.layout()};
         plci.setLayoutCount = 2; plci.pSetLayouts = layouts;
         if (!mc2vk::create(s->playout, s->device, [&](VkPipelineLayout* h) { return vkCreatePipelineLayout(s->device, &plci, nullptr, h); })) {
@@ -175,12 +176,12 @@ bool init_island(WaterIsland* s, int w, int h) {
         ms.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
         ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
-        // Depth: reverse-Z GEQUAL, test on, WRITE ON (PipelineRegistry WaterArmed row).
+        // Strict reverse-Z rejects coplanar dry terrain at the physical water level.
         VkPipelineDepthStencilStateCreateInfo ds{};
         ds.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
         ds.depthTestEnable = VK_TRUE;
         ds.depthWriteEnable = VK_TRUE;
-        ds.depthCompareOp = VK_COMPARE_OP_GREATER_OR_EQUAL;
+        ds.depthCompareOp = VK_COMPARE_OP_GREATER;
 
         // RUNG 6 tier1 blend: in-place over the LOADed scene color. The FS emits
         // premultiplied (col*a, a), producing the same RGB result as GL's
@@ -234,6 +235,24 @@ bool init_island(WaterIsland* s, int w, int h) {
             vlog("vkCreateGraphicsPipelines failed."); return false;
         }
         mc2vk::nameObject(s->device, s->pipe.get(), "water.pipe");
+        if (gos_GetWaterFsDebugMode() == 10 || gos_GetWaterFsDebugMode() == 11) {
+            const VkSpecializationMapEntry vsEntry{12, 0, sizeof(int32_t)};
+            const VkSpecializationMapEntry fsEntry{13, 0, sizeof(int32_t)};
+            cba[0].blendEnable = VK_FALSE;
+            for (int32_t pass = 1; pass <= 3; ++pass) {
+                const int32_t physical = pass != 2;
+                const VkSpecializationInfo vsSpec{1, &vsEntry, sizeof(physical), &physical};
+                const VkSpecializationInfo fsSpec{1, &fsEntry, sizeof(pass), &pass};
+                stages[0].pSpecializationInfo = &vsSpec;
+                stages[1].pSpecializationInfo = &fsSpec;
+                ds.depthWriteEnable = pass == 3 ? VK_TRUE : VK_FALSE;
+                cba[1].colorWriteMask = pass == 3 ? VK_COLOR_COMPONENT_A_BIT : 0;
+                if (!mc2vk::create(s->debugWater[pass - 1], s->device, [&](VkPipeline* h) {
+                    return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h);
+                })) return false;
+            }
+            stages[0].pSpecializationInfo = nullptr;
+        }
         const int32_t coverage = 1;
         const VkSpecializationMapEntry entry{11, 0, sizeof(coverage)};
         const VkSpecializationInfo spec{1, &entry, sizeof(coverage), &coverage};
@@ -269,7 +288,7 @@ bool init_island(WaterIsland* s, int w, int h) {
     s->inited = true;
     setFallback("");
     vlog("island initialized %dx%d (borrowed shared device; shared scene GBuffer; "
-         "procedural water VS; GEQUAL reverse-Z depth-write-on; "
+         "procedural water VS; GREATER reverse-Z depth-write-on; "
          "MRT alpha-blend).", w, h);
     return true;
 }

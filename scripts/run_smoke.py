@@ -498,6 +498,28 @@ def _modmission_env_guard(e, deploy_dir: Path, caller_env: dict) -> tuple[bool, 
     if not e.mod:
         return True, {}, ""
 
+    # Imported campaign IDs depend on content, not legacy manifest folder names.
+    # Resolve an explicit caller selection only when the import receipt owns this FIT.
+    selected = caller_env.get("MC2_ACTIVE_MOD", "")
+    if selected and selected != e.mod and Path(selected).name == selected:
+        imported = deploy_dir / "mods" / selected
+        receipt = imported / ".campaign-import.json"
+        if receipt.is_file():
+            try:
+                saved = json.loads(receipt.read_text())
+                metadata = json.loads((imported / "mod.json").read_text())
+                rel = f"data/missions/{e.stem}.fit"
+                import hashlib
+                owned = saved["files"]
+                if (hashlib.sha256((imported / rel).read_bytes()).hexdigest() == owned.get(rel)
+                        and hashlib.sha256((imported / "mod.json").read_bytes()).hexdigest() == owned.get("mod.json")
+                        and metadata["id"] == selected):
+                    from dataclasses import replace
+                    e = replace(e, mod=selected, deps=",".join(metadata["dependencies"]))
+                    print(f"[runner] [ENV-GUARD] resolved imported campaign {selected} for {e.stem}", file=sys.stderr)
+            except (OSError, ValueError, KeyError, TypeError):
+                return False, {}, f"[runner] [ENV-GUARD] invalid imported campaign receipt: {receipt}"
+
     env_overrides: dict = {}
     # G1: auto-set MC2_ACTIVE_MOD
     caller_mod = caller_env.get("MC2_ACTIVE_MOD", "")
@@ -681,8 +703,9 @@ def main():
                          "Reduced soak coverage: run full --tier tier1 before "
                          "milestones/landing.")
     ap.add_argument("--gpu", choices=("auto", "xtx", "2070"), default=None,
-                    help="GPU routing: pass/fail runs default to the RTX 2070 SUPER (auto); perf/timing runs "
-                         "(MC2_VK_GPU_TIMESTAMPS, --show-window) keep the RX 7900 XTX. Override with xtx or 2070")
+                    help="GPU routing: dual-XTX PCs use the acquired slot's runtime UUID; "
+                         "PC auto uses either XTX lease slot (owner games reserve the display slot); "
+                         "on other hosts xtx/2070 request AMD/NVIDIA")
     ap.add_argument("--profile", default="stock")
     ap.add_argument("--content-error-budget", type=int, default=0,
                     help="maximum content errors for a mod smoke (stock default: zero)")

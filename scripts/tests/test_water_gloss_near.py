@@ -60,7 +60,7 @@ def test_shader_wiring_keeps_lean_and_specular_aa():
     assert re.search(r"specAlpha2 = clamp\(alpha0 \* alpha0\s*\n\s*\+ 2\.0 \* \(waveVar", SRC)
     assert "min(2.0 * kernelVar, 0.18)" in SRC
     assert 0.0 < _const("NEAR_ALPHA0") <= _const("WATER_ALPHA0")
-    assert SRC.index("float nearGloss") < SRC.index("if (shore <= 0.0) discard;")
+    assert SRC.index("float nearGloss") < SRC.index("shore <= 0.0) discard;")
 
 
 def _near(dist, night_dim):

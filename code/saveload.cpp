@@ -1,6 +1,7 @@
 #include "save_archive.h"
 #include "../GameOS/gameos/crash_content.h"
 #include "save_exactness.h"
+#include "net/runtime.h"
 #include "saved_objects_check.h"
 #include "save_sections.h"
 #include <optional>
@@ -117,6 +118,7 @@ static mc2::save::Bytes captureFixSection()
 
 void Mission::save (mc2::czstring saveFileName)
 {
+	if (mc2::net::active()) return;
 	struct SimulationPhase {
 		bool previous = simPresentationPass;
 		SimulationPhase() { simPresentationPass = false; }
@@ -993,6 +995,7 @@ void Mission::loadMissionSettings(MissionLoadFrame& f) {
 // MissionLoadFrame.
 void Mission::load (mc2::czstring loadFileName)
 {
+	if (mc2::net::active()) return;
 	struct SimulationPhase {
 		bool previous = simPresentationPass;
 		SimulationPhase() { simPresentationPass = false; }

@@ -432,7 +432,7 @@ def kit_seed_members(src, seed, use_cache=False):
             continue
         if installed.is_file() and installed.read_bytes().replace(b'\r\n', b'\n') != pinned.read_bytes().replace(b'\r\n', b'\n'):
             fail(f'stale {name} seed kit; refresh from published nifty using deploy_payload.py --seed-owner-test --seed-source (see docs/plans/lane-install-fast.md)', 2)
-        manifest = json.loads(pinned.read_text(encoding='utf-8'))
+        manifest = kit_payload.runtime_manifest(json.loads(pinned.read_text(encoding='utf-8')))
         check(root, manifest['files'])
         for row in manifest['files']:
             member = f'mods/mc2-{name}-kit/{row["path"]}'

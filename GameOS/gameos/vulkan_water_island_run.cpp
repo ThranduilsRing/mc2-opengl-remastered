@@ -13,6 +13,7 @@
 #include "vulkan_shadow_island_live.h"   // the bake mask
 #include "vulkan_mover_shadow.h"
 #include "gos_terrain_lod_chunk.h"   // gos_WaterShoreMode
+#include "terrain_field_store.h"
 void gos_GetTerrainChunkGridInfo(int* mapSide, float* halfMap);
 #include "mc2_diag_verbose.h"
 #include "../../mclib/battle_bench_wait.h"
@@ -25,6 +26,7 @@ void gos_GetTerrainChunkGridInfo(int* mapSide, float* halfMap);
 
 const float* gos_GetObjectFixBMVPMat4();
 int gos_GetWaterReflectionQuality();
+int gos_GetWaterFsDebugMode();
 
 bool vk_water_detail::record_reflection(WaterIsland* s, VkCommandBuffer cb, bool enabled, uint32_t par, const uint32_t (&offsets)[2]) {
     auto barrier=[&](VkImage image,VkImageAspectFlags aspect,VkImageLayout from,VkImageLayout to,
@@ -157,6 +159,7 @@ extern "C" int mc2_vk_water_island_prewarm(int w,int h) {
     if(!s->native) s->native=std::make_unique<mc2vk::NativeProducers>();
     if (!s->native->prewarmPipelines(ctx)) return 0;
     if (!prepareNative(s, ctx)) return 0;
+    if (!mc2::waterplanar::prewarmProps(s->planarProps, w, h)) return 0;
     // Exercise cull/args now as well as creating their pipelines: the first
     // gameplay dispatch must not pay driver first-use work or buffer clears.
     // This off-screen cull is never drawn; the real feed overwrites both slots.
@@ -330,7 +333,8 @@ extern "C" int mc2_vk_water_island_run(
             && WaterStream::NativeWaterInFrustum(*nat,shoreSdf,bounds);
         const auto pixels=mc2::waterplanar::paddedPixels(bounds,w,h);
         s->reflectionScissor={{pixels[0],pixels[1]},{static_cast<uint32_t>(pixels[2]-pixels[0]),static_cast<uint32_t>(pixels[3]-pixels[1])}};
-        vsLocal.p3[1] = shoreSdf ? 1.0f : 0.0f;
+        const auto* fields = gos_TerrainFieldStore();
+        vsLocal.p3[1] = (shoreSdf || (fields && fields->visualSide() > 1)) ? 1.0f : 0.0f;
         std::memcpy(base, &vsLocal, sizeof(WaterVsParams));
         // RUNG-6.5 fail-soft: if the real HDRI bytes aren't imported (dummy
         // bound), force u_waterHdriLod (f2.w, offset 60) to -1 so the FS
@@ -473,6 +477,8 @@ extern "C" int mc2_vk_water_island_run(
             std::memcpy(wf.mvp, nat->mvp, sizeof(wf.mvp));
             wf.frameCos = nat->frameCos; wf.waterElevation = nat->waterElevation; wf.shoreExt = nat->shoreExt;
             wf.mapSide = nat->mapSide; wf.biasLegacy = nat->biasLegacy;
+            // D0 must include field-dry recipes: scene depth alone defines submersion.
+            if (gos_GetWaterFsDebugMode() == 10) { wf.shoreExt = 1.0e9f; wf.frameCos = 0.0f; }
             if (reflectThisFrame) {
                 mc2vk::gpuprof::noteWaterReflection(static_cast<uint32_t>(w), static_cast<uint32_t>(h));
             }
@@ -500,7 +506,14 @@ extern "C" int mc2_vk_water_island_run(
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], 2, uboOffsets);
         const auto groundSet = s->groundLighting.set(par);
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 1, 1, &groundSet, 4, ground->offsets.data());
-        mc2::battlebench::add(mc2::battlebench::DrawWater), vkCmdDrawIndirect(cb, s->native->drawArgs(par), 0, 1, 16);
+        if (gos_GetWaterFsDebugMode() == 10 || gos_GetWaterFsDebugMode() == 11) {
+            for (const auto& pipeline : s->debugWater) {
+                mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.get());
+                vkCmdDrawIndirect(cb, s->native->drawArgs(par), 0, 1, 16);
+            }
+        } else {
+            mc2::battlebench::add(mc2::battlebench::DrawWater), vkCmdDrawIndirect(cb, s->native->drawArgs(par), 0, 1, 16);
+        }
         mc2vk::dynrender::end(dctx, cb);
         gpuScope.end();
         vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_Water);

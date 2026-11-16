@@ -16,6 +16,7 @@ def _env(**kw):
 
 @pytest.fixture(autouse=True)
 def _clean_gpu_env(monkeypatch):
+    monkeypatch.setattr(host_lease, "runtime_lane_adapter", lambda: None)
     for k in ("MC2_VK_DEVICE", "MC2_HARNESS_GPU", "MC2_IN_GATE"):
         monkeypatch.delenv(k, raising=False)
     monkeypatch.setattr(host_lease, "GPU_SPLIT_PATH", Path("Z:/no/such/GPU_SPLIT"))

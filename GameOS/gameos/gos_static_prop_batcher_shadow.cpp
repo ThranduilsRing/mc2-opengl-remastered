@@ -3,6 +3,7 @@
 #include <atomic>
 #include "gos_static_prop_batcher_internal.h"
 #include "mc2fmt.h"
+#include "diagnostic_trace.h"
 #include "view_registry.h"
 #include "visual_tuning_profile.h"
 #include "../../RenderCore/FramePackets.h"
@@ -108,6 +109,23 @@ void GpuStaticPropBatcher::forgetLodState(const GpuStaticPropInstance& inst) {
     s_lodState.erase(propLodKey(inst));
 }
 
+void mc2_static_prop_retype_far_tier(std::span<GpuStaticPropInstance> instances, bool resort) {
+    if (s_lodMembers.empty()) return;
+    bool any = false;
+    for (GpuStaticPropInstance& inst : instances) {
+        if (!s_lodMembers.contains(inst.typeID)) continue;
+        const PropLodMember& m = s_lodMembers.at(inst.typeID);
+        if (m.farType != inst.typeID) { inst.typeID = m.farType; any = true; }
+    }
+    if (any && resort) std::sort(instances.begin(), instances.end(), [](const GpuStaticPropInstance& a, const GpuStaticPropInstance& b) { return a.typeID < b.typeID; });
+}
+
+int mc2_static_prop_lod_skips_late(uint32_t typeID) {
+    if (!s_lodMembers.contains(typeID)) return 0;
+    const PropLodMember& m = s_lodMembers.at(typeID);
+    return m.tier >= 3 ? 1 : 0;
+}
+
 extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
     ZoneScopedN("VKIsl.Props.MainFeed");
     if (!out) return 0;
@@ -128,18 +146,28 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
     // every (type, LOD) is still one contiguous run (one instanced draw) and the HZB pass sees the same feed.
     static const bool s_lodOn = mc2::gate::get<"MC2_VK_PROP_LOD">();
     static std::unordered_map<uint32_t, std::vector<GpuStaticPropInstance>> s_lodOut;
+    static const bool s_statsOn = mc2_diag::tagRequested("TREE_LOD_STATS");
     const bool lodActive = s_lodOn && !s_lodGroups.empty();
     { ZoneScopedN("VKIsl.Props.MainFeed.LODRoute");
     for (auto& [lodTid, lodVec] : s_lodOut) lodVec.clear();
     if (lodActive) {
-        const RenderCore::ViewUniforms vu = RenderCore::framePackets().copyMainView().uniforms;
+        const RenderCore::ViewPacket mainView = RenderCore::framePackets().copyMainView();
+        const RenderCore::ViewUniforms& vu = mainView.uniforms;
         const float cx = vu.cameraWorldPos[0], cy = vu.cameraWorldPos[1], cz = vu.cameraWorldPos[2];
         constexpr float kBand = 0.08f;
+        // Tree chains switch on projected size: d = clip w / (clip-y row length) is the distance a 90 degree lens would
+        // need for the same pixels per world unit (zoom-independent), scaled so a 2160p view is the reference.
+        const float* m = vu.worldToClipGL;   // row-major storage, row-vector transform
+        const float rowY = std::sqrt(m[1] * m[1] + m[5] * m[5] + m[9] * m[9]);
+        const float vpScale = mainView.viewport[3] > 0 ? 2160.0f / static_cast<float>(mainView.viewport[3]) : 1.0f;
+        float maxTreeD = 0.0f;
         auto route = [&](const GpuStaticPropInstance* b, const GpuStaticPropInstance* e, const PropLodGroup& g) {
             for (; b != e; ++b) {
                 const StaticPropOrigin o = staticPropOriginRender(b->modelMatrix);
                 const float dx = o.x - cx, dy = o.y - cy, dz = o.z - cz;
-                const float d = std::sqrt(dx * dx + dy * dy + dz * dz);
+                float d = std::sqrt(dx * dx + dy * dy + dz * dz);
+                if (g.tree && rowY > 1e-6f) d = propLodProjectedDistance(m, o, rowY, vpScale);
+                if (s_statsOn && g.tree) maxTreeD = (std::max)(maxTreeD, d);
                 uint8_t& lod = s_lodState[propLodKey(*b)];
                 propLodAdvance(lod, d, std::span<const float>(g.dist, static_cast<size_t>(g.count)), kBand);
                 GpuStaticPropInstance inst = *b;
@@ -158,6 +186,17 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
                 const uint32_t n  = static_cast<uint32_t>(pb.instances.size());
                 route(d0, d0 + n, g);
             }
+        }
+        static uint32_t s_statsTick = 0;
+        if (s_statsOn && (++s_statsTick <= 3u || s_statsTick % 120u == 0)) {
+            uint64_t inst[kMaxPropLods] = {}, tris[kMaxPropLods] = {};
+            for (const auto& [tid, vec] : s_lodOut) {
+                if (!s_lodMembers.contains(tid) || tid >= s_types.size() || !s_types[tid].source) continue;
+                const size_t tier = s_lodMembers.at(tid).tier;
+                inst[tier] += vec.size(); tris[tier] += vec.size() * static_cast<uint64_t>(s_types[tid].source->GetNumTypeTriangles());
+            }
+            mc2::fmt::print_err("[TREE_LOD_STATS] frame={} lodActive={} d={} rowY={} viewport={}x{} inst={} {} {} {} {} tris={} {} {} {} {}\n", mainView.frame, lodActive, maxTreeD, rowY, mainView.viewport[2], mainView.viewport[3], mc2::fmt::as_u64(inst[0]), mc2::fmt::as_u64(inst[1]), mc2::fmt::as_u64(inst[2]), mc2::fmt::as_u64(inst[3]), mc2::fmt::as_u64(inst[4]),
+                mc2::fmt::as_u64(tris[0]), mc2::fmt::as_u64(tris[1]), mc2::fmt::as_u64(tris[2]), mc2::fmt::as_u64(tris[3]), mc2::fmt::as_u64(tris[4]));
         }
     }
     }

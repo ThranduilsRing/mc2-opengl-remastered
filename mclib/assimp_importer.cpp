@@ -14,6 +14,7 @@
 #include "mc2_czstring.h"
 #include "assimp_importer.h"
 #include "unit_anim_state.h"
+#include "mech_model_delta.h"
 #include "content_ir.h"
 #include "mech_texname_derive.h"  // GLB-TEXNAME-DERIVE-EXTRACT-1 pure name rules
 #include "Gates/gate.h"
@@ -80,7 +81,12 @@ public:
     Assimp::IOStream* Open(mc2::czstring path, mc2::czstring mode) override {
         if (!mode || mode[0] != 'r') return nullptr;
         File source;
-        if (source.open(path) != NO_ERR || source.fileSize() > (256u << 20)) return nullptr;
+        if (source.open(path) != NO_ERR) return nullptr;
+        if (source.fileSize() > (256u << 20)) {
+            mc2::fmt::print_err("[TREE_IMPORT] error: {} is {} bytes, over the {} byte import limit; the override falls back to stock\n",
+                mc2::fmt::safe(path), mc2::fmt::as_u64(source.fileSize()), mc2::fmt::as_u64(256u << 20));
+            return nullptr;
+        }
         auto stream = std::make_unique<ContentStream>();
         stream->bytes.resize(source.fileSize());
         if (!stream->bytes.empty() && source.read(stream->bytes.data(), static_cast<long>(stream->bytes.size())) !=
@@ -106,6 +112,7 @@ static std::string ContentFloatKey(float value) {
 #include "msl.h"
 #include "tgl.h"
 #include "mech_skel_import.h"  // BT2018-SKEL-ENGINE-1A: shared FK/skeleton math
+#include "mech_anim_preview.h"
 #include "mech_anim_runtime.h" // BT2018-SKEL-ENGINE-1B-RUNTIME: per-frame re-bake API
 #include "file.h"              // ModCapabilityMounted (package capability)
 #include "mech_clip_state.h"   // P9: gesture -> clip state machine + stride matching
@@ -866,6 +873,7 @@ struct ImportedAnimEntry {
     std::shared_ptr<const mc2skel::SkelPlan> plan;  // flattened node/channel tables for names (borrows scene; declared after imp so it dies first)
     std::string         pinnedClip;        // MC2_MECH_IMPORT_FORCE_CLIP (empty = 1C dynamic)
     std::string         initialClip;       // clip seeded into each new actor state
+    std::string         showcaseClip;      // optional package clips.showcase
     std::map<std::string, float> strideSpeed;  // P9: locomotion clip -> planted-foot speed (world units/s)
     std::map<std::string, std::string> nodeManifest;  // 1A: MC2 node name -> source joint
     std::map<std::string, aiVector3D> socketOffsets;  // P10: socket name -> point in its joint's local frame
@@ -1049,7 +1057,8 @@ void measureClipStrides(ImportedAnimEntry& e) {
 // controls the format). Leaves the map empty (→ legacy node lookup) if absent.
 void LoadMechPackage(mc2::czstring glbPath, std::map<std::string, std::string>& out,
                      std::string& aoOut, std::string& normalOut,
-                     std::map<std::string, aiVector3D>* socketOut = nullptr) {
+                     std::map<std::string, aiVector3D>* socketOut = nullptr,
+                     std::string* showcaseOut = nullptr) {
     if (!glbPath) return;
     std::string p(glbPath);
     size_t dot = p.rfind(".glb");
@@ -1063,6 +1072,18 @@ void LoadMechPackage(mc2::czstring glbPath, std::map<std::string, std::string>& 
     char tmp[4096]; size_t n;
     while ((n = fread(tmp, 1, sizeof(tmp), f)) > 0) buf.append(tmp, n);
     fclose(f);
+    if (showcaseOut) {
+        const size_t clips = buf.find("\"clips\"");
+        const size_t start = clips == std::string::npos ? clips : buf.find('{', clips);
+        const size_t end = start == std::string::npos ? start : buf.find('}', start);
+        const size_t key = start == std::string::npos ? start : buf.find("\"showcase\"", start);
+        if (key < end) {
+            const size_t colon = buf.find(':', key);
+            const size_t v0 = colon == std::string::npos ? colon : buf.find('"', colon + 1);
+            const size_t v1 = v0 == std::string::npos ? v0 : buf.find('"', v0 + 1);
+            if (v1 < end) *showcaseOut = buf.substr(v0 + 1, v1 - v0 - 1);
+        }
+    }
     // "nodes" flat map
     size_t b = buf.find("\"nodes\"");
     if (b != std::string::npos) {
@@ -1143,7 +1164,12 @@ void RegisterImportedAnim(mc2::czstring path, TG_TypeMultiShape* out, const Skel
     e.multi = out;
     e.names = bake.names;
     e.plan = mc2skel::BuildPlan(scene, e.names);
-    LoadMechPackage(path, e.nodeManifest, e.aoTexName, e.normalTexName, &e.socketOffsets);  // 1A nodes + AO + NORMALS tex names
+    LoadMechPackage(path, e.nodeManifest, e.aoTexName, e.normalTexName, &e.socketOffsets, &e.showcaseClip);
+    if (!e.showcaseClip.empty() && !clipDurationSec(scene, e.showcaseClip)) {
+        if (mc2_diag::tagRequested("MECH_IMPORT"))
+            mc2::fmt::print_err("[MECH_IMPORT] unknown showcase clip '{}' in '{}'; using fallback\n", e.showcaseClip, path);
+        e.showcaseClip.clear();
+    }
     e.pinnedClip = bake.forcedClip;   // empty -> 1C dynamic selection
     // Initial clip: the pinned clip if any, else idle. Fall back to whatever the
     // scene's first clip is when even idle is absent, so the tick always animates.
@@ -1496,7 +1522,29 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
     // BOTH the clip clock and the motion-driven clip selection, then fall through to
     // re-sample the pose at the frozen clipTimeSec. This re-bakes the SAME pose every
     // paused frame (geometry/skinning still runs) instead of striding in place.
-    if (advanceClock && e.pinnedClip.empty()) {
+    auto* preview = motion.preview ? mc2mechanim::previewAnimation : nullptr;
+    if (preview) {
+        const auto clip = mc2clip::resolveClip(preview->clip, s.activeClip,
+            [&](std::string_view name) { return clipDurationSec(e.scene, std::string(name)).has_value(); });
+        if (s.activeClip != clip) { s.activeClip = clip; s.clipTimeSec = 0; }
+        s.durationSec = clipDurationSec(e.scene, s.activeClip).value_or(0);
+        s.mode = preview->loop ? mc2clip::Mode::Loop : mc2clip::Mode::Once;
+        s.playRate = preview->playing ? preview->rate : 0;
+        if (preview->seek >= 0) { s.clipTimeSec = preview->seek; preview->seek = -1; }
+        if (preview->clips.empty()) for (unsigned i = 0; i < e.scene->mNumAnimations; ++i) {
+            const auto* a = e.scene->mAnimations[i];
+            preview->clips.push_back({a->mName.C_Str(), clipDurationSec(e.scene, a->mName.C_Str()).value_or(0)});
+        }
+    } else if (advanceClock && motion.preview) {
+        mc2clip::Phase phase;
+        const auto gesture = mc2clip::select(motion.gestureId, 0, 0, 0, false, false, "", phase);
+        const auto clip = mc2clip::previewClip(e.showcaseClip, gesture.clip, e.scene->mNumAnimations ? e.scene->mAnimations[0]->mName.C_Str() : "",
+            [&](std::string_view name) { return clipDurationSec(e.scene, std::string(name)).has_value(); });
+        if (s.activeClip != clip) { s.activeClip = clip; s.clipTimeSec = 0; }
+        s.durationSec = clipDurationSec(e.scene, s.activeClip).value_or(1.0f);
+        s.mode = mc2clip::Mode::Loop;
+        s.playRate = 1.0f;
+    } else if (advanceClock && e.pinnedClip.empty()) {
         float speed = 0.0f, turnRate = 0.0f;
         if (s.havePrev) {
             const float ddx = motion.px - s.prevPx, ddy = motion.py - s.prevPy, ddz = motion.pz - s.prevPz;
@@ -1542,11 +1590,15 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
                 s.playRate = mc2clip::strideRate(speed, e.strideSpeed.at(s.activeClip));
         }
     }
-    const bool holdAtEnd = e.pinnedClip.empty() && s.mode == mc2clip::Mode::Once;
-    if (advanceClock) s.clipTimeSec += dt * (e.pinnedClip.empty() ? s.playRate : 1.0f);
+    const bool holdAtEnd = (preview || e.pinnedClip.empty()) && s.mode == mc2clip::Mode::Once;
+    if (advanceClock) s.clipTimeSec += dt * (preview || e.pinnedClip.empty() ? s.playRate : 1.0f);
     if (s.durationSec > 0.0f) {
         if (holdAtEnd) { s.clipTimeSec = std::min(s.clipTimeSec, s.durationSec); }
         else while (s.clipTimeSec >= s.durationSec) s.clipTimeSec -= s.durationSec;
+    }
+    if (preview) {
+        preview->active = s.activeClip; preview->time = s.clipTimeSec; preview->duration = s.durationSec;
+        preview->paletteBones = static_cast<int>(e.invMWrest.size());
     }
     const float frame = s.clipTimeSec * 30.0f;
     double tt = 0, dd = 0;
@@ -1557,6 +1609,7 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
 // per-frame foot-ground lift into s.gpuLift.
 void buildGpuModelDelta(const ImportedAnimEntry& e, ActorAnimState& s,
                         const std::vector<mc2skel::GpuBone>& globals) {
+    mc2mechanim::sizeModelDelta(s.modelDelta, e.invMWrest.size());
     const size_t n = (globals.size() < e.invMWrest.size()) ? globals.size() : e.invMWrest.size();
     // Default: static rest lift (steady torso). MC2_MECH_IMPORT_DYNAMIC_LIFT=1 restores
     // the old per-frame lowest-vertex lift (follows ground but bobs each step).
@@ -1590,10 +1643,14 @@ void mc2mechanim::TickImportedMechs(float dt, unsigned frameStamp, const MechMot
         // PER-ACTOR: each actor instance advances its OWN clip + model-delta palette.
         ActorAnimState& s = e.actors[actorKey];
         if (authoritative) static_cast<mc2::sim::ImportedAnimState&>(s) = *authoritative;
-        if (s.activeClip.empty()) {                 // first tick for this actor
+        if (!clipDurationSec(e.scene, s.activeClip) ||
+            !std::isfinite(s.durationSec) || s.durationSec <= 1e-4f) {
+            // Restored state may refer to a clip absent from this scene.
             s.activeClip   = e.initialClip;
             s.durationSec  = e.initialDuration;
-            s.modelDelta.assign(e.invMWrest.size() * 16, 0.0f);
+            s.clipTimeSec  = 0.0f;
+            s.mode = mc2clip::Mode::Loop;
+            s.locomotion = false;
         }
         if (s.lastFrame == frameStamp && !s.lastGlobals.empty()) return;
         s.lastFrame = frameStamp;
@@ -1622,6 +1679,9 @@ void mc2mechanim::TickImportedMechs(float dt, unsigned frameStamp, const MechMot
                         for (int c = 0; c < 4; ++c) globals[b].m[r * 4 + c] = pose[b][c][r];
             }
             s.lastGlobals = std::move(globals);   // 1A: firepoint/hit-node source
+            mc2clip::publishPreviewPose(motion.preview, e.gpuMode,
+                [&] { buildGpuModelDelta(e, s, s.lastGlobals); },
+                [&] { rebakeImportedPresentation(e, s.lastGlobals); });
         }
         if (authoritative) *authoritative = static_cast<const mc2::sim::ImportedAnimState&>(s);
         // Prune despawned actors' states (untouched for a while).

@@ -1,6 +1,7 @@
 // BattleMech: BattleMech::update, render, renderShadows, hit-location and ejection helpers.
 // Declared in the class headers; shared names in mech_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
+#include "math/sim_math.h"
 #include "mech_internal.h"
 #include "water_wake.h"
 #include "hover_name.h"
@@ -228,7 +229,7 @@ long BattleMech::update (void)
 			float velFactor = 1.0;
 				float velAngle = land->getTerrainAngle(position);
 				velAngle *= DEGREES_TO_RADS;
-				velFactor = cos(velAngle);
+				velFactor = mc2::sim::math::cos(velAngle);
 	
 			float velMult = velMag * velFactor * frameLength;
 			velMult = std::min(velMult, DistanceToWaypoint);
@@ -683,6 +684,25 @@ void BattleMech::extractRenderView (mc2::render_view::RenderView& view)
 {
 	using mc2::render_view::Mode;
 	GameObject::extractRenderView(view);
+	const float footRadius = 4.0f; // approximate foot half-width in world units, independent of chassis extent
+	view.value[0] = mc2::render_view::groundFootprintRadius(footRadius,
+		isJumping() || appearance->isInJump(), getMoveType() == MOVETYPE_AIR || appearance->isJumpAirborne());
+	// Foot nodes are the last entries, including all four on quadrupeds.
+	auto* type = static_cast<Mech3DAppearanceType*>(appearance->getAppearanceType());
+	view.groundFeet.clear();
+	if (view.value[0] > 0.0f) {
+		view.value[0] = footRadius;
+		for (long i = type->getTotalNodes() - type->numFootNodes; i < type->getTotalNodes(); ++i) {
+			const auto foot = appearance->getNodePosition(i);
+			if (foot != glm::vec3(0.0f) && foot != position) view.groundFeet.push_back(foot);
+		}
+		if (view.groundFeet.empty()) {
+			const float yaw = rotation * DEGREES_TO_RADS;
+			const glm::vec3 lateral(std::cos(yaw), -std::sin(yaw), 0.0f);
+			for (float side : {-1.0f, 1.0f})
+				view.groundFeet.push_back(position + lateral * (side * footRadius * 2.0f));
+		}
+	}
 	contactView = mc2::contactVisibility(getContactStatus(Team::home->getId(), true), getTeamId() == Team::home->getId()
 		|| isDestroyed() || isDisabled() || ShowMovers
 		|| (MPlayer && MPlayer->allUnitsDestroyed[MPlayer->commanderID]));
