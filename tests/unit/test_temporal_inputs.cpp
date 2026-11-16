@@ -4,6 +4,7 @@
 #include "doctest.h"
 #include "RenderCore/TemporalInputs.h"
 #include <cmath>
+#include <thread>
 
 namespace T = RenderCore::temporal;
 
@@ -104,4 +105,32 @@ TEST_CASE("temporal: motion vector algebra") {
         CHECK(mv[0] == 0.0f);
         CHECK(mv[1] == 0.0f);
     }
+}
+
+TEST_CASE("temporal: projection padding is zero and atomic snapshots never tear") {
+    const T::Projection a{};
+    const T::Projection b{2.0f,30000.0f,1.2f,false,false,true};
+    CHECK(a.padding==0); CHECK(b.padding==0);
+    std::atomic<T::Projection> value{a};
+    std::atomic<bool> ready{false}, done{false};
+    std::jthread writer([&] {
+        value.store(b,std::memory_order_relaxed);
+        ready.store(true,std::memory_order_release);
+        while (!done.load(std::memory_order_relaxed)) {
+            value.store(a,std::memory_order_relaxed);
+            value.store(b,std::memory_order_relaxed);
+        }
+    });
+    while (!ready.load(std::memory_order_acquire)) std::this_thread::yield();
+    bool coherent=true;
+    for (int i=0; i<20000; ++i) {
+        const auto p=value.load(std::memory_order_relaxed);
+        const bool isA=p.nearZ==a.nearZ && p.farZ==a.farZ && p.fovY==a.fovY &&
+            p.perspective==a.perspective && p.reverseZ==a.reverseZ && p.infiniteFar==a.infiniteFar;
+        const bool isB=p.nearZ==b.nearZ && p.farZ==b.farZ && p.fovY==b.fovY &&
+            p.perspective==b.perspective && p.reverseZ==b.reverseZ && p.infiniteFar==b.infiniteFar;
+        coherent=coherent && (isA || isB) && p.padding==0;
+    }
+    done.store(true,std::memory_order_relaxed); writer.join();
+    CHECK(coherent);
 }
