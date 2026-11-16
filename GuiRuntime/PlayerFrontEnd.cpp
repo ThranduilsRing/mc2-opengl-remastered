@@ -148,7 +148,7 @@ void startImport() {
         std::wstring command = L"py -3 tools/import_campaign.py --auto --deploy .";
         // background-launch: trusted campaign converter, no installer execution or window.
         const bool launched = managed && CreateProcessW(nullptr, command.data(), nullptr, nullptr, TRUE,
-            DETACHED_PROCESS | IDLE_PRIORITY_CLASS | CREATE_SUSPENDED, nullptr, nullptr, &startup, &process) != 0;
+            CREATE_NO_WINDOW | IDLE_PRIORITY_CLASS | CREATE_SUSPENDED, nullptr, nullptr, &startup, &process) != 0;
         const auto launchError = GetLastError();
         if (!launched) return {nullptr, nullptr, static_cast<int>(launchError)};
         if (!AssignProcessToJobObject(job.value, process.hProcess)) {

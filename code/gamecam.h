@@ -44,6 +44,7 @@ class GameCamera : public Camera
 		void renderTacticalArcOverlay();
 		void renderLetterbox();
 		void renderFadeQuad();
+		void refreshCompass();
 		
 	public:
 	
