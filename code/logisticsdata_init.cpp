@@ -120,7 +120,8 @@ void LogisticsData::ensureMechBayDataLoaded( mc2::czstring trigger )
 	SMART_LOAD_TRACE_LOG("Phase B begin trigger=%s", trigger ? trigger : "?");
 	startPhaseB();
 	mc2::prewarm::finish(m_phaseBJob, [] { graphics::pump_loading_events(); });
-	std::printf("[PREWARM_LOGISTICS v1] trigger=%s max_step_ms=%.3f\n", trigger ? trigger : "?", m_phaseBJob->maxStepMs);
+	if (mc2_diag::tagRequested("MECH_PARSE"))
+		std::printf("[PREWARM_LOGISTICS v1] trigger=%s max_step_ms=%.3f\n", trigger ? trigger : "?", m_phaseBJob->maxStepMs);
 }
 
 void LogisticsData::startPhaseB()
