@@ -41,6 +41,7 @@ extern uint32_t g_mc2RenderFrame;   // mclib/tgl.cpp
 #include "../../RenderCore/PropMaterialGpu.h"
 #include "../../RenderCore/PropMaterialRows.h"
 #include "../../RenderCore/PropRecordCache.h"
+#include "../../RenderCore/PropListRoute.h"
 #include "vk_image_resource.h"
 #include "vk_island_util.h"
 #include "gos_visual_capture.h"      // mc2CaptureGaitFreezeActive() (extern "C")
@@ -179,13 +180,15 @@ static_assert(sizeof(PropPacketRow) == 32);
 // The vertex+fragment push block (prop_packet_vk.glsl): the packet-row buffer's device address and the first row of the list one indirect call draws.
 struct PropPacketPush { uint64_t rows; uint32_t base; uint32_t pad; };
 static_assert(sizeof(PropPacketPush) == 16);
-// Draw lists, in command-buffer order: opaque core (no-discard pipeline, early Z), alpha core, fringe, late fringe.
-constexpr uint32_t kListOpaque = 0, kListCore = 1, kListFringe = 2, kListLate = 3, kListCount = 4;
-struct PropRunRow { uint32_t first, count; uint32_t range[kListCount][2]; struct { uint32_t typeId, hasLeaves; } metadata; };   // range[list] = {start, n}
-static_assert(sizeof(PropRunRow) == 48);
+// Draw lists (slot order is the GPU layout, see PropListRoute.h): opaque core (no-discard pipeline, back faces culled, early Z),
+// alpha core, fringe, late fringe, opaque double-sided core (no-discard, nothing culled).
+constexpr uint32_t kListOpaque = PropList::kOpaque, kListCore = PropList::kCore, kListFringe = PropList::kFringe, kListLate = PropList::kLate,
+                   kListOpaqueDS = PropList::kOpaqueDoubleSided, kListCount = PropList::kCount;
+struct PropRunRow { uint32_t first, count; uint32_t range[kListCount][2]; struct { uint32_t typeId, hasLeaves, pad[2]; } metadata; };   // range[list] = {start, n}
+static_assert(sizeof(PropRunRow) == 64);
 struct PropDrawCmd { uint32_t indexCount, instanceCount, firstIndex; int32_t baseVertex; uint32_t firstInstance; };
 static_assert(sizeof(PropDrawCmd) == 20);
-constexpr VkDeviceSize kPropCmdHeader = 16;   // the four list counts precede the commands
+constexpr VkDeviceSize kPropCmdHeader = kListCount * sizeof(uint32_t);   // the list counts precede the commands
 
 struct ColorPropIsland : mc2vk::IslandState {
     mc2vk::OwnedQueryPool coreStats[mc2vk::kMaxFramesInFlight];
@@ -231,6 +234,7 @@ struct ColorPropIsland : mc2vk::IslandState {
     std::vector<int32_t>        packetLayerOff;
     std::vector<int32_t>        packetLayerOn;
     std::vector<int32_t>        packetMaterialIds;
+    std::vector<uint8_t>        materialDoubleSided;   // per authored material row: kDoubleSided (single-sided ones are culled by the opaque pipeline)
     bool authoredReady = false;
     bool authoredAttempted = false;
     std::array<uint32_t, 2> materialFeedKeys{};
@@ -324,7 +328,7 @@ struct ColorPropIsland : mc2vk::IslandState {
     mc2vk::OwnedBuffer vbo, ibo;
     VkFormat t1_fmts[3]{VK_FORMAT_UNDEFINED, VK_FORMAT_UNDEFINED, VK_FORMAT_UNDEFINED};   // dynamic rendering: colour0, normal, object id (UNDEFINED when the id buffer is off)
     VkFormat t1_depthFmt = VK_FORMAT_UNDEFINED;
-    mc2vk::OwnedPipeline planarCorePipe, planarOpaquePipe, planarFringePipe;
+    mc2vk::OwnedPipeline planarCorePipe, planarOpaquePipe, planarOpaqueDsPipe, planarFringePipe;
     mc2vk::OwnedDescriptorSetLayout dsl;
     mc2vk::OwnedDescriptorPool pool;
     // PROP-ARRAY-BUCKETS: the alpha-OFF group's size buckets (binding 3 is an array of kMaxBuckets; an unused slot names bucket 0).
@@ -366,7 +370,7 @@ struct ColorPropIsland : mc2vk::IslandState {
     mc2vk::OwnedShaderModule t1_vert, t1_frag;
     mc2vk::OwnedPipelineLayout playout;
     mc2vk::OwnedPipeline t1_pipe;         // depthWrite ON GEQUAL, 2 outputs, no blend
-    mc2vk::OwnedPipeline t1_opaquePipe;   // t1_pipe with the FS discards compiled out (kOpaqueOnly), so early Z runs
+    mc2vk::OwnedPipeline t1_opaquePipe, t1_opaqueDsPipe;   // t1_pipe with the FS discards compiled out (kOpaqueOnly), so early Z runs; back faces culled / not culled
     mc2vk::OwnedPipeline t1_fringePipe;   // PROP-COVERAGE-1: depth test only, MRT0 alpha-blended, MRT1 masked
     mc2vk::OwnedCommandPool cpool;   // one-shot command buffers only (allocated and freed per use)
     mc2vk::OwnedCommandPool slotPool[mc2vk::kMaxFramesInFlight];   // per-slot pools for cbuf: vkResetCommandPool instead of per-cb reset
@@ -852,6 +856,9 @@ bool cp_import_authored(ColorPropIsland* s, const Mc2ColorPropMaterialFeed* feed
     s->materialBuf = std::move(nextTable);
     s->packetMaterialIds.clear();
     if (have) s->packetMaterialIds.assign(feed->packetMaterialIds, feed->packetMaterialIds + feed->packetCount);
+    s->materialDoubleSided.clear();
+    if (have) for (uint32_t m = 0; m < feed->materialCount; ++m)
+        s->materialDoubleSided.push_back((feed->materials[m].material.flags & RenderCore::MaterialFlags::kDoubleSided) != 0u);
     s->authoredReady = feed != nullptr;
     ++s->materialGeneration;
     write_descriptors(s);
@@ -1316,12 +1323,19 @@ bool init_island(ColorPropIsland* s, int w, int h) {
             vlog("TIER-1 vkCreateGraphicsPipelines failed."); setFallback("tier1_pipeline_failed"); return false;
         }
         mc2vk::nameObject(s->device, s->t1_pipe.get(), "colorprop.tier1Pipe");
-        // Opaque core pipeline: identical state (same depth compare, write and bias), FS discards compiled out.
+        // Opaque core pipelines: identical state (same depth compare, write and bias), FS discards compiled out. The single-sided one culls
+        // back faces in hardware (the FS back-face discard is gone under kOpaqueOnly); the double-sided one (tree materials) culls nothing.
         specData[2] = 1;
+        if (!mc2vk::create(s->t1_opaqueDsPipe, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
+            vlog("TIER-1 opaque double-sided vkCreateGraphicsPipelines failed."); setFallback("tier1_pipeline_failed"); return false;
+        }
+        mc2vk::nameObject(s->device, s->t1_opaqueDsPipe.get(), "colorprop.tier1OpaqueDsPipe");
+        rs.cullMode = VK_CULL_MODE_BACK_BIT;
         if (!mc2vk::create(s->t1_opaquePipe, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
             vlog("TIER-1 opaque vkCreateGraphicsPipelines failed."); setFallback("tier1_pipeline_failed"); return false;
         }
         mc2vk::nameObject(s->device, s->t1_opaquePipe.get(), "colorprop.tier1OpaquePipe");
+        rs.cullMode = VK_CULL_MODE_NONE;
         specData[2] = 0;
 
         // PROP-COVERAGE-1 fringe pipeline: the second pass over the alpha-tested packets that
@@ -1366,6 +1380,8 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         ds.depthWriteEnable = VK_TRUE;
         if (!mc2vk::create(s->planarCorePipe, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) return false;
         planarData[2] = 1;
+        if (!mc2vk::create(s->planarOpaqueDsPipe, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) return false;
+        rs.cullMode = VK_CULL_MODE_BACK_BIT;   // the planar clip (kPlanarReflection) stays in the FS; only the back-face discard moves to culling
         if (!mc2vk::create(s->planarOpaquePipe, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) return false;
     }
 
@@ -1514,6 +1530,7 @@ extern "C" void mc2_vk_color_prop_island_invalidate_geometry() {
     s->materialFeedKeys = {};
     s->packetMaterialsReady = false;
     s->packetMaterialIds.clear();
+    s->materialDoubleSided.clear();
     ++s->mapGeneration;
     ++s->resourceGeneration;
     mc2vk::bumpDescEpoch();   // map change: every descriptor write cache rewrites once
@@ -1719,7 +1736,7 @@ struct PropRecPlan {
     VkQueryPool coreStats = VK_NULL_HANDLE;
     VkRect2D scissor{};
     bool embedded = false;
-    VkImageView views[3], depthView; VkFormat depthFmt; VkPipeline cullPipe, opaquePipe, corePipe, fringePipe;
+    VkImageView views[3], depthView; VkFormat depthFmt; VkPipeline cullPipe, opaquePipe, opaqueDsPipe, corePipe, fringePipe;
     VkPipelineLayout cullLayout, playout; VkDescriptorSet set, groundSet; VkBuffer vbo, ibo, cmdBuf;
     VkDeviceAddress pktAddr; uint32_t nDyn, dynOffsets[3], groundOffsets[4], runCount, drawLimit, listStart[kListCount + 1], counts[kListCount];
     float jx, jy; int w, h; bool hzbCulled;
@@ -1782,6 +1799,7 @@ static bool record_props_cmds(const PropRecPlan& plan, VkCommandBuffer cb) {
     {
         MC2_VK_GPU_SCOPE(opaqueScope, cb, "VKIsl.Props.Opaque");
         drawList(plan.opaquePipe, plan.listStart[kListOpaque], plan.counts[kListOpaque], kListOpaque);
+        drawList(plan.opaqueDsPipe, plan.listStart[kListOpaqueDS], plan.counts[kListOpaqueDS], kListOpaqueDS);
     }
     {
         MC2_VK_GPU_SCOPE(coreScope, cb, "VKIsl.Props.Core");
@@ -1903,9 +1921,13 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std
                         mc2::fmt::print_err("[SUPPORT_CRAFT] event=packet frame={} type={} pipeline=prop indices={} instances={} hzb={} albedo={} firstIndex={} baseVertex={}\n",
                             g_mc2RenderFrame, tid, pkt.indexCount, instCount, hzbCulled, row.layerOff, pkt.firstIndex, pkt.baseVertex);
                     // The core pass draws every packet (alpha-tested ones cut at the coverage threshold).
-                    const bool alphaTestable = row.layerOn >= 0 || row.alphaTest != 0;
-                    opaquePrefix = opaquePrefix && !alphaTestable;
-                    const uint32_t coreList = opaquePrefix ? kListOpaque : kListCore;
+                    // Routed per packet (baked alpha-test bit), not by the type's alpha class: a tree's trunk shares the leaf's alpha-ON type.
+                    const bool doubleSided = row.materialId >= 0 && static_cast<size_t>(row.materialId) < s->materialDoubleSided.size() &&
+                                             s->materialDoubleSided[static_cast<size_t>(row.materialId)] != 0;
+                    const PropList::CoreRoute route = PropList::routeCore(opaquePrefix, row.alphaTest, doubleSided);
+                    const bool alphaTestable = route.alphaTestable;
+                    opaquePrefix = route.opaquePrefix;
+                    const uint32_t coreList = route.list;
                     s->cmdScratch[coreList].push_back(cmd); s->pktScratch[coreList].push_back(row); ++rr.range[coreList][1];
                     if (s_pktDump)
                         mc2::fmt::print(s_pktDump, "{:d},{:d},{:d},{:d},{:.4f},{:.4f},{:d},{:d},{:d},{:d},{:d}\n",
@@ -1928,7 +1950,7 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std
                 }
                 rr.metadata.typeId = tid;
                 rr.metadata.hasLeaves = counted ? 1u : 0u;
-                if (rr.range[kListOpaque][1] + rr.range[kListCore][1] + rr.range[kListFringe][1] + rr.range[kListLate][1] != 0)
+                if (rr.range[kListOpaque][1] + rr.range[kListOpaqueDS][1] + rr.range[kListCore][1] + rr.range[kListFringe][1] + rr.range[kListLate][1] != 0)
                     s->runScratch.push_back(rr);
                 ++typeRuns;
             }
@@ -1990,7 +2012,7 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std
             }
             vkUpdateDescriptorSets(s->device, 3, wr, 0, nullptr);
         }
-        // Rows and commands are laid out opaque, core, fringe, late; the cmd buffer starts with the four list counts.
+        // Rows and commands are laid out in kList order; the cmd buffer starts with the list counts.
         VkDeviceSize pOff = 0, cOff = kPropCmdHeader;
         bool ok = g.cmd.upload(counts, sizeof(counts), 0);
         for (uint32_t list = 0; list < kListCount; ++list) {
@@ -2026,7 +2048,7 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std
     plan.views[1] = reinterpret_cast<VkImageResource*>(s->t1_normalRes)->view.get();
     plan.views[2] = s->t1_haveId ? reinterpret_cast<VkImageResource*>(s->t1_idRes)->view.get() : VK_NULL_HANDLE;
     plan.depthView = reinterpret_cast<VkImageResource*>(s->t1_depthRes)->view.get(); plan.depthFmt = s->t1_depthFmt;
-    plan.cullPipe = s->cullPipe.get(); plan.opaquePipe = s->t1_opaquePipe.get(); plan.corePipe = s->t1_pipe.get(); plan.fringePipe = s->t1_fringePipe.get();
+    plan.cullPipe = s->cullPipe.get(); plan.opaquePipe = s->t1_opaquePipe.get(); plan.opaqueDsPipe = s->t1_opaqueDsPipe.get(); plan.corePipe = s->t1_pipe.get(); plan.fringePipe = s->t1_fringePipe.get();
     plan.cullLayout = s->cullLayout.get(); plan.playout = s->playout.get();
     plan.set = s->set[par]; plan.groundSet = s->groundLighting.set(par);
     plan.vbo = s->vbo.get(); plan.ibo = s->ibo.get(); plan.cmdBuf = cmdBuf; plan.pktAddr = s->gpu[par].pkt.deviceAddress();
@@ -2042,7 +2064,7 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std
         if (target->scissor.extent.width) plan.scissor=target->scissor;
         plan.views[0] = target->color; plan.views[1] = plan.views[2] = VK_NULL_HANDLE;
         plan.depthView = target->depth; plan.depthFmt = VK_FORMAT_D32_SFLOAT;
-        plan.opaquePipe = s->planarOpaquePipe.get(); plan.corePipe = s->planarCorePipe.get(); plan.fringePipe = s->planarFringePipe.get();
+        plan.opaquePipe = s->planarOpaquePipe.get(); plan.opaqueDsPipe = s->planarOpaqueDsPipe.get(); plan.corePipe = s->planarCorePipe.get(); plan.fringePipe = s->planarFringePipe.get();
         plan.jx = plan.jy = 0;
     }
 

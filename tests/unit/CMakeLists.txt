@@ -114,6 +114,7 @@ add_executable(mc2_tests
     test_mech_up_axis.cpp        # mech-up-axis: which component of the mech/prop world normal is up
     test_static_prop_origin.cpp  # prop instance origin layout: translation at [3][7][11]
     test_prop_record_cache.cpp  # prop scene generations and per-frame-slot cache keys
+    test_prop_list_route.cpp  # colour-prop draw-list routing per packet, tier fringe skip
     test_prop_lod_state.cpp  # flat per-instance LOD hysteresis table equals the unordered_map it replaced
     test_prop_lod_evaluation.cpp
     test_searchlight_aim.cpp
