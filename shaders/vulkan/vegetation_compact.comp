@@ -11,6 +11,10 @@
 layout(local_size_x = 64) in;
 #include "include/vegetation_cull_common.glsl"
 shared uint s_sub[64];   // per-subgroup survivor totals for the current 64-instance chunk
+shared uint s_sub2[64];  // per-subgroup kept totals (hash-thinned survivors) for the current chunk
+// Fixed per-instance priority: independent of the camera, so a tiny move only changes survivors whose priority sits at the
+// moving threshold instead of reshuffling the whole region (the old rank-spread pick shifted with every survivor-count change).
+float keepPriority(uint id) { return float((id * 2654435761u) >> 8u) * (1.0 / 16777216.0); }
 // Conservative root test; the vertex shader retains the exact deformation test.
 bool nearFoot(VegInstance i) {
     uint frame = i.atlasFrame;
@@ -45,24 +49,30 @@ void main() {
     if (end <= start) return;
     uint quota = end - start, n = counts[w];
     VegRegion R = region[visList[w]];
-    uint lid = gl_LocalInvocationIndex, seen = 0u;
+    uint lid = gl_LocalInvocationIndex, seen = 0u, kept = 0u;
+    // Under the cap keep the survivors whose fixed priority is below quota/n (a little above it, extras are dropped at the quota);
+    // uncapped (quota == n) every survivor is kept in order, as before.
+    float thr = quota >= n ? 2.0 : min(1.0, float(quota) / float(n) * 1.03);
     for (uint c = R.first; c < R.last; c += 64u) {
         uint id = c + lid;
-        bool keep = id < R.last && (surviveBits[id >> 5u] & (1u << (id & 31u))) != 0u;
-        // Subgroup ballot rank; the per-subgroup totals combine through LDS.
-        uvec4 ballot = subgroupBallot(keep);
-        if (subgroupElect()) s_sub[gl_SubgroupID] = subgroupBallotBitCount(ballot);
+        bool surv = id < R.last && (surviveBits[id >> 5u] & (1u << (id & 31u))) != 0u;
+        bool keep = surv && keepPriority(id) < thr;
+        uvec4 ballot = subgroupBallot(surv), ballot2 = subgroupBallot(keep);
+        if (subgroupElect()) { s_sub[gl_SubgroupID] = subgroupBallotBitCount(ballot); s_sub2[gl_SubgroupID] = subgroupBallotBitCount(ballot2); }
         barrier();
-        uint before = 0u, chunk = 0u;
-        for (uint s = 0u; s < gl_NumSubgroups; ++s) { uint t = s_sub[s]; if (s < gl_SubgroupID) before += t; chunk += t; }
-        uint j = seen + before + subgroupBallotExclusiveBitCount(ballot);   // this survivor's rank in the region
-        if (keep && j < n) {
-            uint slot = mulDiv(j, quota, n);
-            if (mulDiv(j + 1u, quota, n) > slot)
-                dense[start + slot] = id | (nearFoot(unpackVegetation(inst[id])) ? 0x80000000u : 0u);
+        uint before = 0u, chunk = 0u, before2 = 0u, chunk2 = 0u;
+        for (uint s = 0u; s < gl_NumSubgroups; ++s) {
+            uint t = s_sub[s], t2 = s_sub2[s];
+            if (s < gl_SubgroupID) { before += t; before2 += t2; }
+            chunk += t; chunk2 += t2;
         }
-        seen += chunk;
+        uint r = kept + before2 + subgroupBallotExclusiveBitCount(ballot2);   // this survivor's rank among the kept
+        if (keep && r < quota)
+            dense[start + r] = id | (nearFoot(unpackVegetation(inst[id])) ? 0x80000000u : 0u);
+        seen += chunk; kept += chunk2;
         barrier();
         if (seen >= n) break;
     }
+    // Unfilled slots (kept < quota) get the no-geometry marker the vertex stage skips.
+    for (uint r = kept + lid; r < quota; r += 64u) dense[start + r] = 0x7fffffffu;
 }
