@@ -97,6 +97,8 @@ add_executable(mc2_tests
     test_prop_light_contract.cpp
     test_water_planar.cpp
     test_clip_sample.cpp  # glTF clip sampling: STEP / LINEAR / CUBICSPLINE (header-only, no Assimp)
+    test_torso_twist.cpp
+    ${MC2_WORKTREE_ROOT}/mclib/mech_skel_import.cpp
     test_height_sig.cpp  # gameplay_height.sig hash equals the Python writer's test vector (header-only)
     test_render_snap.cpp  # UNIT-VISUAL-SNAP-2 render-only effect-anchor and selection-box lift (header-only)
     test_shadow_bake_math.cpp  # the static shadow bake's mask layout, reach, footprint and caster-window math (header-only, no Vulkan)
@@ -352,6 +354,19 @@ add_executable(mc2_tests
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/gameos_fileio.cpp
 )
 mc2_link_gate(mc2_tests)
+
+# Trigger paths: mclib/mech_skel_import.*, test_torso_twist.cpp.
+# Exercise production FK with synthetic scenes; no importer or game required.
+set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_ALL_EXPORTERS_BY_DEFAULT OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_ZLIB ON CACHE BOOL "" FORCE)
+set(ASSIMP_WARNINGS_AS_ERRORS OFF CACHE BOOL "" FORCE)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(ZLIB_FOUND FALSE)
+add_subdirectory(${MC2_WORKTREE_ROOT}/3rdparty/assimp out/3rdparty/assimp EXCLUDE_FROM_ALL)
+target_link_libraries(mc2_tests PRIVATE assimp::assimp)
 
 # The ABL native-binding headers (ablmc2_internal.h) pull the gui/ and netlib/ headers; only the TUs that include them get those directories.
 set_source_files_properties(test_playmovie_deferral.cpp ${MC2_WORKTREE_ROOT}/code/controlgui_chat.cpp ${MC2_WORKTREE_ROOT}/code/mc2movie.cpp PROPERTIES

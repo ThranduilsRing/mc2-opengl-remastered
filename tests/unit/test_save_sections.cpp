@@ -158,7 +158,7 @@ TEST_CASE("save sections: weapon nodes beyond the legacy cap round trip through 
     write(state);
     REQUIRE(write.good());
     SectionContainer container;
-    container.add(tagAnimation, 3, true, write.bytes());
+    container.add(tagAnimation, 5, true, write.bytes());
     container.add(tagWeaponNodes, 1, true, {});
     SectionContainer back;
     REQUIRE(decodeSections(encoded(container), back));
@@ -189,7 +189,7 @@ TEST_CASE("save sections: rejects malformed, newer and unknown required sections
     auto magic = bytes; magic[0] ^= 1;
     CHECK_FALSE(decodeSections(magic, out, &why)); CHECK(why == "section_magic");
 
-    SectionContainer newer; newer.add(tagAnimation, 4, true, {});
+    SectionContainer newer; newer.add(tagAnimation, 6, true, {});
     CHECK_FALSE(decodeSections(encoded(newer), out, &why)); CHECK(why == "section_version");
 
     SectionContainer terrain; terrain.add(tagObjectSlots, objectSlotsVersion, true, {});
