@@ -98,6 +98,7 @@
     {"module": "scripts/tests/test_deploy_bootstrap.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_deploy_build_layout.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_release_payload.py", "owners": ["release_payload"]},
+    {"module": "scripts/tests/test_release_asset_guard.py", "owners": ["release_payload"]},
     {"module": "scripts/tests/test_deploy_completeness.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_isolated_deploy.py", "owners": ["gate_inputs"]},
     {"module": "scripts/tests/test_deploy_coherence.py", "owners": ["scripts_tests"]},

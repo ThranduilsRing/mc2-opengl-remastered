@@ -1156,6 +1156,7 @@ void MechLabScreen::render(int xOffset, int yOffset)
 		aObject::endGuiBridge();
 	if (!xOffset && !yOffset && mechCamera.hasObject())
 		drawPreviewControls(mechCamera, !bSaveDlg && !bErrorDlg && !pDragComponent && status == RUNNING);
+    if (!xOffset && !yOffset) mechCamera.drawAnimationPanel();
 
 	aObject::beginTextBridge( tbSx, tbSy, 1.3f, tbOx, tbOy );
 	variantList.move( xOffset, yOffset );

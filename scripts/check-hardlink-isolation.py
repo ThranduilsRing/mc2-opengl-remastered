@@ -166,7 +166,7 @@ MUTATED_ROOTS = (
     "cache/content-model",
 )
 MUTATED_FILES = (
-    "scripts/console_child.py",
+    "scripts/console_child.py", "scripts/smoke_lib/child_registry.py",
     "data/terrain_materials.json", "data/visual_tuning.json",
     "data/tgl/spotlight.ini", "data/tgl/marblecliff.ini", "data/tgl/MarbleCliffGLB.glb",
     # stock-tree-upscale: deploy-cooked 1024 sidecars beside the stock 128 TGAs (deploy_payload.tree_upscale_payload, pins in
