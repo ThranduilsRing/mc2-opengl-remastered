@@ -1,4 +1,4 @@
-"""Synthetic fixtures only: no installed BattleTech assets are read or copied."""
+"""Synthetic fixtures only: no installed BattleTech/MW5 assets are read or copied."""
 from pathlib import Path
 import io
 import struct
@@ -26,11 +26,19 @@ FORBIDDEN_NAMES = [
     "MC2Conversions/file.bin", "BattleTech_2018_Dump/file.bin",
     "tools/bt2018_kit/_bin/tool.exe", "tools/bt2018_kit/work/file.bin",
     "tools/bt2018_kit/_bin/roster.json",
+    "mods/mw5_mechs/mech/model.glb", "mods/MW5Other/mod.json",
+    "data/tgl/mw5_fake.tga", "data/tgl/128/mw5_fake.ktx2",
+    "nested/UmodelExport/roster.json", "mw5_extract/file.bin", "nested/mw5-ref/file.bin",
+    *("fake." + ext for ext in ("pak", "utoc", "ucas", "uasset", "uexp", "ubulk", "uptnl",
+                               "usmap", "psk", "pskx", "psa", "uemodel", "ueanim")),
+    "Umodel.exe", "FModel.exe", "CUE4Parse.dll", "oo2core_9_win64.dll", "Oodle.dll",
+    "Weapon_Mech_fake.glb", "fake_SKM.glb", "fake_MSK.tga", "fake_MTI.json",
+    "Timberwolf_fake.glb", "TBR_fake.glb",
+    "tools/mw5_mechs/work/recipe.json", "tools/mw5_kit/_bin/tool.exe",
 ]
 
 
-def fake_glb():
-    payload = b'{"nodes":[{"name":"j_COCKPIT"},{"name":"atlas_moveCore"}]}'
+def fake_glb(payload=b'{"nodes":[{"name":"j_COCKPIT"},{"name":"atlas_moveCore"}]}'):
     payload += b" " * (-len(payload) % 4)
     return struct.pack("<4sIII4s", b"glTF", 2, 20 + len(payload), len(payload), b"JSON") + payload
 
@@ -56,6 +64,37 @@ def test_renamed_content(tmp_path, payload):
     assert_rejected(tmp_path, "innocent.bin", payload)
 
 
+@pytest.mark.parametrize("payload", [
+    b"synthetic pak" + struct.pack("<I", 0x5A6F12E1) + b"x" * 252,
+    b"prefix" + b"-==-" * 4 + b"suffix", struct.pack("<I", 0x9E2A83C1),
+    b"ACTR" + b"HEAD", b"ANIM" + b"HEAD",
+    fake_glb(b'{"asset":{"generator":"tools/mw5_mechs"}}'),
+    *(fake_glb(b'{"nodes":[{"name":"Torso_Twist"},{"name":"' + node + b'"}]}')
+      for node in (b"Foot0_L", b"WeldTarget_R", b"Torso_DM0")),
+])
+@pytest.mark.parametrize("name", ["renamed.bin", "tools/mw5_kit/recipe.json"])
+def test_mw5_renamed_content(tmp_path, name, payload):
+    # Node-only GLBs intentionally contain no animation clips.
+    assert_rejected(tmp_path, name, payload)
+
+
+@pytest.mark.parametrize("payload", [
+    b"x" * (guard.CHUNK_SIZE - 3) + b"-==-" * 4,
+    fake_glb(b'{"padding":"' + b"x" * (guard.CHUNK_SIZE - 40) +
+             b'","asset":{"generator":"tools/mw5_mechs"}}'),
+])
+def test_mw5_chunk_boundaries(tmp_path, payload):
+    assert_rejected(tmp_path, "renamed.bin", payload)
+
+
+def test_mw5_content_scope():
+    for payload in (struct.pack("<I", 0x5A6F12E1) + b"x" * 256,
+                    b"prefix" + struct.pack("<I", 0x9E2A83C1),
+                    fake_glb(b'{"nodes":[{"name":"Torso_Twist"}]}'),
+                    fake_glb(b'{}') + b"Torso_Twist Foot0_L tools/mw5_mechs"):
+        assert guard._inspect("authored.bin", io.BytesIO(payload)) == []
+
+
 @pytest.mark.parametrize("token", guard.TOKENS + guard.NODES)
 def test_chunk_boundary(tmp_path, token):
     prefix = b"atlas_moveCore " if token == b"j_COCKPIT" else b"j_COCKPIT "
@@ -67,6 +106,7 @@ def test_kit_code_only_passes(tmp_path):
     for name in ("tools/bt2018_kit/run.py", "tools/bt2018_mechs/roster.json",
                  "tools/bt2018_mechs/data/weapon_map_v1.json",
                  "tools/bt2018_import/run.bat", "scripts/bt2018_retarget_clips.py",
+                 "tools/mw5_mechs/weapon_mech_map.json", "tools/mw5_kit/tbr_recipe.py",
                  "docs/kit.md", "scripts/tests/test_fixture.py"):
         path = tmp_path / name
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -161,11 +201,13 @@ def test_reads_are_bounded():
     assert guard._inspect("ordinary.bin", BoundedStream(b"clean")) == []
 
 
-def test_negative_control(tmp_path, monkeypatch):
+@pytest.mark.parametrize("payload", [fake_glb(), fake_glb(
+    b'{"nodes":[{"name":"Torso_Twist"},{"name":"Foot0_L"}]}')])
+def test_negative_control(tmp_path, monkeypatch, payload):
     # Exercise the same assertion used by every forbidden fixture with a disabled guard.
     monkeypatch.setattr(guard, "scan", lambda path: [])
     with pytest.raises(AssertionError, match="guard accepted"):
-        assert_rejected(tmp_path, "renamed.bin", fake_glb())
+        assert_rejected(tmp_path, "renamed.bin", payload)
 
 
 def test_tracked_repository_is_clean():
