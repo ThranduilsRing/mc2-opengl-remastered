@@ -366,7 +366,7 @@ glm::vec3 relativePositionToPoint (glm::vec3 point, float angle, float distance,
 			rayLength = glm::length(curRay);
 
 			curPoint3d.x = curPoint.x;
-			curPoint3d.x = curPoint.y;
+			curPoint3d.y = curPoint.y;
 			curPoint3d.z = 0.0;
 
 			land->worldToCell(curPoint3d, cellR, cellC);
@@ -380,7 +380,7 @@ glm::vec3 relativePositionToPoint (glm::vec3 point, float angle, float distance,
 			rayLength = glm::length(curRay);
 
 			curPoint3d.x = curPoint.x;
-			curPoint3d.x = curPoint.y;
+			curPoint3d.y = curPoint.y;
 			curPoint3d.z = 0.0;
 
 			land->worldToCell(curPoint3d, cellR, cellC);
@@ -418,7 +418,7 @@ glm::vec3 relativePositionToPoint (glm::vec3 point, float angle, float distance,
 	}
 	
 	curPoint3d.x = lastGoodPoint.x;
-	curPoint3d.x = lastGoodPoint.y;
+	curPoint3d.y = lastGoodPoint.y;
 	curPoint3d.z = 0.0;
 
 	curPoint3d.z = land->getTerrainElevation(curPoint3d);
