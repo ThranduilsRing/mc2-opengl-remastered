@@ -524,14 +524,16 @@ TEST_CASE("fx_playback/spec index matches linear catalog lookup and first duplic
         auto reference = [lib](const char* name) -> gosFX::Effect::Specification* {
             for (unsigned i = 0; i < lib->Count(); ++i) {
                 auto* spec = lib->At(i);
-                if (spec && !S_stricmp(spec->m_name, name)) return spec;
+                const char* specName = spec ? static_cast<const char*>(spec->m_name) : nullptr;
+                if (specName && !S_stricmp(specName, name)) return spec;
             }
             return nullptr;
         };
         REQUIRE(lib->Count() > 0);
         for (unsigned i = 0; i < lib->Count(); ++i) {
             auto* spec = lib->At(i); if (!spec) continue;
-            std::string name = static_cast<const char*>(spec->m_name), upper = name, lower = name;
+            const char* raw = static_cast<const char*>(spec->m_name); if (!raw) continue;
+            std::string name = raw, upper = name, lower = name;
             for (char& byte : upper) byte = static_cast<char>(std::toupper(static_cast<unsigned char>(byte)));
             for (char& byte : lower) byte = static_cast<char>(std::tolower(static_cast<unsigned char>(byte)));
             for (const auto& query : {name, upper, lower, name.substr(0, name.size() - 1), name + "~"})
@@ -540,6 +542,7 @@ TEST_CASE("fx_playback/spec index matches linear catalog lookup and first duplic
         for (const char* absent : {"__absent_spec_index__", "Spec Index Duplicat", "Spec Index Duplicate~"}) {
             REQUIRE(reference(absent) == nullptr); CHECK(lib->Find(absent) == nullptr);
         }
+        CHECK(lib->Find(nullptr) == nullptr);
         if (duplicates) CHECK(lib->Find("SPEC INDEX DUPLICATE") == lib->At(0));
     };
     std::ifstream file(stock_fixture_path, std::ios::binary); REQUIRE(file.good());
