@@ -224,14 +224,32 @@ double secPerTickOf(const aiAnimation* anim) {
 
 LocalRotation ResolveTorsoTwist(const SkelPlan& plan) {
     LocalRotation result;
-    bool clipAxis = false;
-    // Preorder visits the parent-most animated joint first. Ignore exported
-    // constant/rest channels: they do not identify the authored twist joint.
+    float largestYaw = 0.000174533f; // 0.01 degrees
+    // BT2018's torso is Spine2. Root/pelvis sway and lower-spine pitch
+    // channels in the twist clips must not override the named joint.
+    for (size_t i = 0; i < plan.nodes.size(); ++i)
+        if (std::string_view(plan.nodes[i]->mName.C_Str()) == "j_Spine2") {
+            result.node = static_cast<int>(i);
+            break;
+        }
+    const bool namedTorso = result.node >= 0;
     for (size_t i = 0; i < plan.nodes.size(); ++i) {
+        if (namedTorso) break;
+        if (!std::string_view(plan.nodes[i]->mName.C_Str()).starts_with("j_Spine")) continue;
+        bool belowPelvis = false;
+        for (int p = plan.parent[i]; p >= 0; p = plan.parent[p]) {
+            const std::string_view name(plan.nodes[p]->mName.C_Str());
+            if (name == "j_Pelvis" || name == "pelvis") belowPelvis = true;
+        }
+        if (!belowPelvis) continue;
+        aiMatrix4x4 global = plan.nodes[i]->mTransformation;
+        for (int p = plan.parent[i]; p >= 0; p = plan.parent[p])
+            global = plan.nodes[p]->mTransformation * global;
+        aiMatrix3x3 inverse(global);
+        aiVector3D yawAxis = inverse.Inverse() * aiVector3D(0, 1, 0);
+        yawAxis.Normalize();
         aiVector3D scale, pos; aiQuaternion rest;
         plan.nodes[i]->mTransformation.Decompose(scale, rest, pos);
-        aiVector3D axis;
-        float largest = 0.0f;
         for (const char* name : {"atlas_torsoTwistLeft", "atlas_torsoTwistRight"}) {
             const auto anim = findAnim(plan.scene, name);
             const aiNodeAnim* ch = anim ? plan.chanByNode[*anim][i] : nullptr;
@@ -240,44 +258,22 @@ LocalRotation ResolveTorsoTwist(const SkelPlan& plan) {
                 aiQuaternion inverse = rest;
                 aiQuaternion delta = inverse.Conjugate() * ch->mRotationKeys[k].mValue;
                 delta.Normalize();
-                const aiVector3D v(delta.x, delta.y, delta.z);
-                if (v.SquareLength() > largest) {
-                    largest = v.SquareLength(); axis = v;
-                }
+                // Twist about world-up, excluding pitch/roll and quaternion sign.
+                const float yaw = std::abs(2.0f * std::atan2(
+                    aiVector3D(delta.x, delta.y, delta.z) * yawAxis, std::abs(delta.w)));
+                if (yaw <= largestYaw) continue;
+                result.node = static_cast<int>(i);
+                largestYaw = yaw;
             }
-            if (largest > 1e-8f) break;  // prefer Left's delta from rest
-        }
-        if (largest <= 1e-8f) continue;
-        result.node = static_cast<int>(i);
-        clipAxis = true;
-        axis.Normalize();
-        result.axis = {axis.x, axis.y, axis.z};
-        break;
-    }
-    if (result.node < 0) {
-        for (const char* name : {"j_Spine", "j_Pitch"}) {
-            for (size_t i = 0; i < plan.nodes.size(); ++i)
-                if (name == std::string_view(plan.nodes[i]->mName.C_Str())) {
-                    result.node = static_cast<int>(i); break;
-                }
-            if (result.node >= 0) break;
         }
     }
     if (result.node >= 0) {
         aiMatrix4x4 global = plan.nodes[result.node]->mTransformation;
         for (int p = plan.parent[result.node]; p >= 0; p = plan.parent[p])
             global = plan.nodes[p]->mTransformation * global;
-        aiMatrix3x3 rotation(global);
-        // The importer maps source Y to MC2 Y. Stock positive torso yaw is
-        // right-handed about +Y. Resolve the clip axis's sign in that frame;
-        // quaternion sign (q versus -q) must not reverse the sim's yaw.
-        aiVector3D axis(result.axis[0], result.axis[1], result.axis[2]);
-        if (!clipAxis) {
-            auto inverse = rotation;
-            axis = inverse.Inverse() * aiVector3D(0, 1, 0);
-            axis.Normalize();
-        }
-        if ((rotation * axis).y < 0.0f) axis = -axis;
+        aiMatrix3x3 inverse(global);
+        aiVector3D axis = inverse.Inverse() * aiVector3D(0, 1, 0);
+        axis.Normalize();
         result.axis = {axis.x, axis.y, axis.z};
     }
     return result;

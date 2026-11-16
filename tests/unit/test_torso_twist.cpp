@@ -6,11 +6,11 @@
 namespace {
 struct TwistScene {
     aiScene scene;
-    std::vector<std::string> names{"j_Spine", "muzzle", "j_LFoot", "j_RFoot"};
+    std::vector<std::string> names{"j_Spine2", "muzzle", "j_LFoot", "j_RFoot"};
     TwistScene() {
         auto* root = scene.mRootNode = new aiNode("pelvis");
         root->mNumChildren = 3;
-        root->mChildren = new aiNode*[3]{new aiNode("j_Spine"), new aiNode("j_LFoot"), new aiNode("j_RFoot")};
+        root->mChildren = new aiNode*[3]{new aiNode("j_Spine2"), new aiNode("j_LFoot"), new aiNode("j_RFoot")};
         for (unsigned i = 0; i < 3; ++i) root->mChildren[i]->mParent = root;
         auto* spine = root->mChildren[0];
         // Nonidentity bind orientation: local X is source/MC2 +Y.
@@ -31,7 +31,7 @@ struct TwistScene {
             clip->mNumChannels = 1;
             auto* ch = new aiNodeAnim;
             clip->mChannels = new aiNodeAnim*[1]{ch};
-            ch->mNodeName = "j_Spine";
+            ch->mNodeName = "j_Spine2";
             ch->mNumRotationKeys = 2;
             aiVector3D s, p; aiQuaternion rest;
             spine->mTransformation.Decompose(s, rest, p);
@@ -64,11 +64,45 @@ TEST_CASE("torso twist: production single and blended FK rotate muzzle but prese
         for (size_t foot : {2u, 3u})
             for (int k = 0; k < 16; ++k) CHECK(pose[foot].m[k] == rest[foot].m[k]);
     }
-    // Missing clips fall back to Spine, then Pitch, with an axis in that joint's frame.
+    // The named torso works without diagnostic clips.
     for (auto* clip : {fixture.scene.mAnimations[0], fixture.scene.mAnimations[1]}) clip->mName = "other";
     const auto fallback = mc2skel::ResolveTorsoTwist(*mc2skel::BuildPlan(&fixture.scene, fixture.names));
     CHECK(fallback.node == twist.node);
     CHECK(fallback.axis[0] == doctest::Approx(1));
     fixture.scene.mRootNode->mChildren[0]->mName = "j_Pitch";
-    CHECK(mc2skel::ResolveTorsoTwist(*mc2skel::BuildPlan(&fixture.scene, fixture.names)).node == twist.node);
+    CHECK(mc2skel::ResolveTorsoTwist(*mc2skel::BuildPlan(&fixture.scene, fixture.names)).node == -1);
+}
+
+TEST_CASE("torso twist: pelvis sway cannot capture named or largest descendant spine yaw") {
+    TwistScene f;
+    auto* pelvis = f.scene.mRootNode;
+    auto* torso = pelvis->mChildren[0];
+    auto* lower = new aiNode("j_Spine");
+    lower->mParent = pelvis;
+    lower->mNumChildren = 1;
+    lower->mChildren = new aiNode*[1]{torso};
+    torso->mParent = lower;
+    pelvis->mChildren[0] = lower;
+    for (auto* clip : {f.scene.mAnimations[0], f.scene.mAnimations[1]}) {
+        auto* authored = clip->mChannels[0];
+        delete[] clip->mChannels;
+        clip->mNumChannels = 3;
+        clip->mChannels = new aiNodeAnim*[3]{new aiNodeAnim, new aiNodeAnim, authored};
+        for (unsigned c = 0; c < 2; ++c) {
+            auto* ch = clip->mChannels[c];
+            ch->mNodeName = c == 0 ? "pelvis" : "j_Spine";
+            ch->mNumRotationKeys = 1;
+            ch->mRotationKeys = new aiQuatKey[1]{{0, aiQuaternion(aiVector3D(0, 1, 0), c == 0 ? 1.2f : 1.0f)}};
+        }
+    }
+    auto resolve = [&] { return mc2skel::ResolveTorsoTwist(*mc2skel::BuildPlan(&f.scene, f.names)); };
+    CHECK(resolve().node == 2); // named Spine2 wins over pelvis and lower spine
+    torso->mName = "j_Spine3";
+    for (auto* clip : {f.scene.mAnimations[0], f.scene.mAnimations[1]}) {
+        clip->mChannels[2]->mNodeName = "j_Spine3";
+        clip->mChannels[1]->mRotationKeys[0].mValue = aiQuaternion(aiVector3D(0, 1, 0), 0.2f);
+    }
+    CHECK(resolve().node == 2); // 0.8 rad wins over the first spine's 0.2 rad
+    pelvis->mName = "unrelated_root";
+    CHECK(resolve().node == -1); // no unverified root/subtree fallback
 }
