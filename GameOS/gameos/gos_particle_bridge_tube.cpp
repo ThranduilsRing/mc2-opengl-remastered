@@ -6,7 +6,6 @@
 #include "mlr/mlrtexturepool.hpp"
 #include "mlr/mlrtexture.hpp"
 #include <algorithm>
-#include <map>
 
 namespace {
 struct RibbonRecord {
@@ -21,7 +20,8 @@ std::vector<unsigned short> ribbonIndices;
 std::vector<mc2::fx::RenderVertex> vertices;
 std::vector<uint32_t> elementIndices;
 std::vector<VfxParticleDraw> draws;
-std::map<unsigned, unsigned> resolved;
+struct ResolvedTexture { unsigned mlrHandle, texture; };
+std::vector<ResolvedTexture> resolved;
 
 void appendRibbon(std::vector<mc2::fx::RenderVertex>& vertices, std::vector<VfxParticleDraw>& draws,
                   const float* positions, const float* colors, const float* uvs, unsigned numVerts,
@@ -94,15 +94,18 @@ extern "C" void gos_tube_ribbon_flush_deferred() {
     // camera's ResolveTextures/ForceLoadImages, just like card groups.
     { ZoneScopedN("Tube.Expand");
     for (const auto& r : ribbons) {
-        auto [entryIt, inserted] = resolved.try_emplace(r.mlrHandle, 0);
-        auto& [key, texture] = *entryIt;
-        if (inserted && r.mlrHandle && MidLevelRenderer::MLRTexturePool::Instance) {
-            auto* entry = (*MidLevelRenderer::MLRTexturePool::Instance)[r.mlrHandle];
-            if (entry && entry->GetImage()) texture = entry->GetImage()->GetHandle();
+        auto entryIt = std::find_if(resolved.begin(), resolved.end(), [&](const auto& entry) { return entry.mlrHandle == r.mlrHandle; });
+        if (entryIt == resolved.end()) {
+            resolved.push_back({r.mlrHandle, 0});
+            entryIt = resolved.end() - 1;
+            if (r.mlrHandle && MidLevelRenderer::MLRTexturePool::Instance) {
+                auto* entry = (*MidLevelRenderer::MLRTexturePool::Instance)[r.mlrHandle];
+                if (entry && entry->GetImage()) entryIt->texture = entry->GetImage()->GetHandle();
+            }
         }
         const float* pos = ribbonFloats.data() + r.floatAt;
         appendRibbon(vertices, draws, pos, pos + static_cast<size_t>(r.numVerts) * 3, pos + static_cast<size_t>(r.numVerts) * 7,
-            r.numVerts, ribbonIndices.data() + r.indexAt, r.numIndices, texture, r.mlrHandle == 0, r.blendMode);
+            r.numVerts, ribbonIndices.data() + r.indexAt, r.numIndices, entryIt->texture, r.mlrHandle == 0, r.blendMode);
     } }
     submit(vertices, draws);
     ribbons.clear(); ribbonFloats.clear(); ribbonIndices.clear();
