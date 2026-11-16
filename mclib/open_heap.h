@@ -46,27 +46,42 @@ public:
 	explicit OpenHeap(int expectedNodes = 0)
 	{
 		nodes_.reserve(static_cast<std::size_t>(expectedNodes) + 2);
-		nodes_.push_back(PQNode{0, 0xFFFFFFFFu, 0, 0}); // slot 0 only keeps the positions 1-based
+		nodes_.resize(nodes_.capacity());
+		nodes_[0].node = PQNode{0, 0xFFFFFFFFu, 0, 0}; // slot 0 only keeps the positions 1-based
 	}
 
 	void reserve(int expectedNodes) {
 		const auto capacity = nodes_.capacity();
 		nodes_.reserve(static_cast<std::size_t>(expectedNodes) + 2);
 		allocations_ += nodes_.capacity() != capacity;
+		if (nodes_.capacity() != capacity) {
+			nodes_.resize(nodes_.capacity());
+			rebuildIndex();
+		}
 	}
-	void clear() { nodes_.resize(1); }
-	bool isEmpty() const { return nodes_.size() == 1; }
-	int size() const { return static_cast<int>(nodes_.size()) - 1; }
+	void clear() {
+		for (int i = 1; i <= count_; ++i)
+			setPosition(at(i).id, 0);
+		count_ = 0;
+		duplicateSeen_ = false;
+	}
+	bool isEmpty() const { return count_ == 0; }
+	int size() const { return count_; }
 
 	void insert(const PQNode& item)
 	{
-		if (nodes_.size() == nodes_.capacity()) {
+		if (static_cast<std::size_t>(count_) + 1 == nodes_.capacity()) {
 			++allocations_;
 			if (++growths_ == 1)
 				mc2::fmt::print_err("[PATH v1] event=open_list_growth reserved={:d} needed={:d}\n", mc2::fmt::as_i32(static_cast<long>(nodes_.capacity())),
-					mc2::fmt::as_i32(static_cast<long>(nodes_.size()) + 1));
+					mc2::fmt::as_i32(static_cast<long>(count_) + 2));
+			nodes_.push_back(Slot{}); // same vector growth policy and allocation as the old node buffer
+			nodes_.resize(nodes_.capacity());
+			rebuildIndex();
 		}
-		nodes_.push_back(item);
+		if (!duplicateSeen_ && indexed(item.id) && nodes_[item.id].position != 0)
+			duplicateSeen_ = true;
+		nodes_[static_cast<std::size_t>(++count_)].node = item;
 		upHeap(size());
 	}
 
@@ -75,9 +90,9 @@ public:
 	{
 		if (isEmpty())
 			return std::nullopt;
-		const PQNode result = nodes_[1];
-		nodes_[1] = nodes_.back();
-		nodes_.pop_back();
+		const PQNode result = at(1);
+		setPosition(result.id, 0);
+		nodes_[1].node = at(count_--);
 		if (size() > 0)
 			downHeap(1);
 		return result;
@@ -86,8 +101,10 @@ public:
 	// Position of the first node with this id, or 0 when the heap does not hold it.
 	int find(uint32_t id) const
 	{
+		if (!duplicateSeen_ && indexed(id))
+			return nodes_[id].position;
 		for (int position = 1; position <= size(); ++position)
-			if (nodes_[static_cast<std::size_t>(position)].id == id)
+			if (at(position).id == id)
 				return position;
 		return 0;
 	}
@@ -108,7 +125,7 @@ public:
 	// `position` must be one find() returned with no heap change in between (1 .. size()).
 	void changeAt(int position, int32_t newKey)
 	{
-		PQNode& node = nodes_[static_cast<std::size_t>(position)];
+		PQNode& node = nodes_[static_cast<std::size_t>(position)].node;
 		if (newKey > node.key)
 		{
 			node.key = newKey;
@@ -128,41 +145,64 @@ public:
 	int growths() const { return growths_; }
 	int allocations() const { return allocations_; } // reallocations after construction, including reserve()
 
-	const PQNode& at(int position) const { return nodes_[static_cast<std::size_t>(position)]; }
+	const PQNode& at(int position) const { return nodes_[static_cast<std::size_t>(position)].node; }
 
 private:
+	// Co-allocate the dense index with nodes: one allocation per reserve/growth, as before.
+	// Only ids below the reserved slot count and this bound are indexed. Sparse ids,
+	// including an explicitly inserted filler id, retain the old linear lookup.
+	struct Slot { PQNode node{}; int position = 0; };
+	bool indexed(uint32_t id) const { return id < (1u << 20) && id < nodes_.size(); }
+	void setPosition(uint32_t id, int position) {
+		if (indexed(id)) nodes_[id].position = position;
+	}
+	void place(int position, const PQNode& node) {
+		nodes_[static_cast<std::size_t>(position)].node = node;
+		setPosition(node.id, position);
+	}
+	void rebuildIndex() {
+		// Growth can bring previously sparse live ids into the indexed range.
+		for (int i = 1; i <= count_; ++i) setPosition(at(i).id, 0);
+		for (int i = 1; i <= count_; ++i) {
+			const auto id = at(i).id;
+			if (indexed(id) && nodes_[id].position != 0) duplicateSeen_ = true;
+			setPosition(id, i);
+		}
+	}
 	void upHeap(int index)
 	{
-		const PQNode start = nodes_[static_cast<std::size_t>(index)];
-		while (index > 1 && nodes_[static_cast<std::size_t>(index / 2)].key >= start.key) // bounded at the root: a key below any other cannot run off the top
+		const PQNode start = at(index);
+		while (index > 1 && at(index / 2).key >= start.key) // bounded at the root: a key below any other cannot run off the top
 		{
-			nodes_[static_cast<std::size_t>(index)] = nodes_[static_cast<std::size_t>(index / 2)];
+			place(index, at(index / 2));
 			index /= 2;
 		}
-		nodes_[static_cast<std::size_t>(index)] = start;
+		place(index, start);
 	}
 
 	void downHeap(int index)
 	{
-		const PQNode start = nodes_[static_cast<std::size_t>(index)];
+		const PQNode start = at(index);
 		const int count = size();
 		while (index <= count / 2)
 		{
 			int next = index * 2;
-			if (next < count && nodes_[static_cast<std::size_t>(next)].key > nodes_[static_cast<std::size_t>(next + 1)].key)
+			if (next < count && at(next).key > at(next + 1).key)
 				++next;
-			if (start.key <= nodes_[static_cast<std::size_t>(next)].key)
+			if (start.key <= at(next).key)
 				break;
-			nodes_[static_cast<std::size_t>(index)] = nodes_[static_cast<std::size_t>(next)];
+			place(index, at(next));
 			index = next;
 		}
-		nodes_[static_cast<std::size_t>(index)] = start;
+		place(index, start);
 	}
 
 	int rekeyMisses_ = 0;
 	int growths_ = 0;
 	int allocations_ = 0;
-	std::vector<PQNode> nodes_; // [0] is the filler, [1 .. size()] the heap
+	int count_ = 0;
+	bool duplicateSeen_ = false; // reset only by clear; duplicate positions must use the first linear match
+	std::vector<Slot> nodes_; // [0] is filler, [1 .. count_] heap; all reserved slots hold index entries
 };
 
 } // namespace mc2
