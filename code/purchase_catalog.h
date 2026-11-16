@@ -5,6 +5,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include "objective_text.h"
 
 namespace mc2purchase {
 inline bool mountInstalled(std::string_view type, bool campaign, bool units) {
@@ -28,9 +29,40 @@ inline bool identityMatches(std::string_view pack, std::string_view name,
     return same(name, savedName) && (!savedPack || same(pack, *savedPack));
 }
 
+template<class File>
+void saveInventoryIdentity(File& file, std::string_view pack, std::string_view name,
+    std::string_view chassis, bool designer, const char* pilot = nullptr) {
+    file.writeIdString("Chassis", std::string(chassis).c_str());
+    saveIdentity(file, pack, name);
+    if (pilot) file.writeIdString("Pilot", pilot);
+    file.writeIdBoolean("Designer", designer);
+}
+
+// Prefer every saved variant key; old saves/catalogs retain the first package/name match.
+template<class File, class Range, class Source>
+auto loadInventoryVariant(File& file, Range& variants, Source source) {
+    const auto name = objective_text::readPlain(file, "Variant").value_or(std::string());
+    const auto pack = objective_text::readPlain(file, "PurchasePack");
+    const auto chassis = objective_text::readPlain(file, "Chassis");
+    bool designer = false;
+    const bool hasDesigner = file.readIdBoolean("Designer", designer) == 0;
+    auto fallback = variants.end();
+    for (auto it = variants.begin(); it != variants.end(); ++it) {
+        const auto& variant = **it;
+        const auto candidatePack = source(variant.getFileName());
+        if (!identityMatches(candidatePack, variant.getName(), pack, name)) continue;
+        if (fallback == variants.end()) fallback = it;
+        if ((!hasDesigner || variant.isDesignerMech() == designer) &&
+            (!chassis || identityMatches(candidatePack, variant.getFileName(), pack, *chassis)))
+            return it;
+    }
+    return fallback;
+}
+
 inline bool available(bool campaignUnlocked, std::string_view source) {
     return campaignUnlocked || !source.empty();
 }
+
 
 // Package registration owns imported chassis; otherwise use the winning CSV provider.
 inline std::string source(std::string_view package, std::string_view csvOwner) {
