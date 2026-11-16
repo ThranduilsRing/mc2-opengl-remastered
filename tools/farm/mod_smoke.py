@@ -55,7 +55,6 @@ def main():
         k: v for k, v in env.items() if k.startswith('MC2_')}}, indent=2))
     try:
         # The harness keeps its crash/heartbeat/fingerprint gates and owns the game PID.
-        # background-launch: allow argv is the Python smoke harness, which owns offscreen game launch
         return subprocess.run(argv, cwd=args.harness, env=env, check=False,
                               **console_child.child_kwargs()).returncode
     finally:
