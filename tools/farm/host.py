@@ -6,6 +6,7 @@ import base64
 import csv
 import hashlib
 import io
+import inspect
 import json
 import os
 from pathlib import Path
@@ -16,6 +17,7 @@ import tarfile
 import tempfile
 import time
 import uuid
+import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'scripts'))
 import console_child
@@ -41,10 +43,10 @@ if (-not [IO.Path]::GetFullPath($s).StartsWith([IO.Path]::GetFullPath('%(r)s/sta
 Expand-Archive -LiteralPath "$s/payload.zip" -DestinationPath "$s/delta" -Force
 New-Item -ItemType Directory -Force $w | Out-Null
 foreach ($e in Get-ChildItem $i -Force) {
-  if ($e.Name -in 'mc2.exe','mc2.pdb') { continue }
+  if ($e.Name -in 'mc2.exe','mc2.pdb','crashes','logs','debug_state','savegame','screenshots') { continue }
   $t = Join-Path $w $e.Name
   if ($e.PSIsContainer) {
-    if (Test-Path "$s/delta/$($e.Name)") { Copy-Item $e.FullName $t -Recurse }
+    if ($e.Name -in 'cache','mods' -or (Test-Path "$s/delta/$($e.Name)")) { Copy-Item $e.FullName $t -Recurse }
     else { cmd /c mklink /J "$t" "$($e.FullName)" | Out-Null }
   } elseif ($e.Length -lt 10MB) { Copy-Item $e.FullName $t }
   else { cmd /c mklink /H "$t" "$($e.FullName)" | Out-Null }
@@ -59,6 +61,7 @@ Remove-Item -LiteralPath $s -Recurse -Force
 CLEAN_PS = r"""
 $ErrorActionPreference='SilentlyContinue'
 if (-not (Test-Path '%(r)s/results/%(id)s/result.json')) { exit 0 }  # job not done: leave its tree alone
+if ((Get-Content '%(r)s/results/%(id)s/result.json' -Raw | ConvertFrom-Json).artifacts_collected -eq $false) { exit 0 }
 $w='%(r)s/work/%(id)s'
 $s='%(r)s/stage/%(id)s'
 if (-not [IO.Path]::GetFullPath($w).StartsWith([IO.Path]::GetFullPath('%(r)s/work') + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'unsafe work path' }
@@ -253,6 +256,21 @@ def payload_archive(exe, destination):
         raise ValueError('source HEAD changed while packaging; use a pinned checkout')
 
 
+def staging_required_bytes(install, archive_bytes, expanded_bytes, delta_bytes, exe_bytes, overlays):
+    """Conservative staging peak, matching STAGE_PS copy versus link decisions."""
+    copied = 0
+    for entry in install.iterdir():
+        name = entry.name.casefold()
+        if name in ('mc2.exe', 'mc2.pdb', 'crashes', 'logs', 'debug_state', 'savegame', 'screenshots'):
+            continue
+        if entry.is_dir():
+            if name in ('cache', 'mods') or name in overlays:
+                copied += sum(p.stat().st_size for p in entry.rglob('*') if p.is_file())
+        elif entry.stat().st_size < 10 * 1024**2:
+            copied += entry.stat().st_size
+    return archive_bytes + 2 * (expanded_bytes + delta_bytes) + exe_bytes + copied + 2 * 1024**3
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--host', default='Kaitlyn@192.168.68.107')
@@ -292,6 +310,11 @@ def main():
         return
     if args.action == 'submit':
         job = json.loads(args.job.read_text(encoding='utf-8'))
+        placeholders = re.findall(r'\{(?:ROOT|EXE)(?:_B)?\}', json.dumps(job))
+        if placeholders and not args.exe:
+            parser.error('job uses {ROOT}/{EXE}; supply --exe <lane>/build64-ninja/mc2.exe')
+        if any(p in ('{ROOT_B}', '{EXE_B}') for p in placeholders) and not args.exe_b:
+            parser.error('job uses {ROOT_B}/{EXE_B}; supply --exe-b')
         job_id = uuid.uuid4().hex
         upload = args.job
         if args.data_delta and not args.exe:
@@ -307,12 +330,31 @@ def main():
             payload = Path(tmpdir.name) / 'payload.zip'
             try:
                 payload_archive(args.exe.resolve(), payload)
+                if job.get('type') == 'mod-smoke':
+                    import zipfile
+                    with zipfile.ZipFile(payload, 'a') as archive:
+                        archive.write(Path(__file__).with_name('mod_smoke.py'), 'mod-smoke.py')
                 if args.exe_b:
                     second_id = job_id + '-b'
                     second_payload = Path(tmpdir.name) / 'payload-b.zip'
                     payload_archive(args.exe_b.resolve(), second_payload)
             except ValueError as exc:
                 parser.error(str(exc))
+            if job.get('type') == 'mod-smoke':
+                delta_bytes = sum(p.stat().st_size for p in args.data_delta.rglob('*') if p.is_file()) if args.data_delta else 0
+                with zipfile.ZipFile(payload) as archive:
+                    expanded = sum(info.file_size for info in archive.infolist())
+                    overlays = {info.filename.split('/')[0].casefold() for info in archive.infolist()}
+                if args.data_delta:
+                    overlays.update(p.name.casefold() for p in args.data_delta.iterdir())
+                remote_python(args, 'from pathlib import Path\nimport shutil\n' +
+                              inspect.getsource(staging_required_bytes) +
+                              f'\nrequired = staging_required_bytes(Path({ROOT + "/install"!r}), '
+                              f'{payload.stat().st_size}, {expanded}, {delta_bytes}, '
+                              f'{args.exe.stat().st_size}, {sorted(overlays)!r})\n'
+                              f'free = shutil.disk_usage({ROOT!r}).free\n'
+                              'if free < required: raise RuntimeError("insufficient C:/mc2farm disk space")\n'
+                              'print("farm_free_bytes=" + str(free))\n')
             remote(args, f"New-Item -ItemType Directory -Force {ROOT}/stage/{job_id} | Out-Null")
             scp(args, args.exe, f'{args.host}:{ROOT}/stage/{job_id}/mc2.exe')
             if args.data_delta:

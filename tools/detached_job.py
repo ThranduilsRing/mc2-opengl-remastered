@@ -19,6 +19,9 @@ import os
 import subprocess
 import sys
 import time
+from pathlib import Path
+
+from verified import ledger_lock
 
 DEFAULT_JOBS = "G:/mc2-tmp/jobs"  # drive-path: ok PC-only detached job state (MC2_JOBS_DIR overrides)
 DETACHED_PROCESS = 0x00000008
@@ -37,7 +40,9 @@ def state_path(name):
 
 def read_state(name):
     try:
-        with open(state_path(name), encoding="utf-8") as fh:
+        # Readers must not hold a Windows handle while the supervisor replaces
+        # the snapshot; ordinary Python file opens do not share delete access.
+        with ledger_lock(Path(state_path(name))), open(state_path(name), encoding="utf-8") as fh:
             return json.load(fh)
     except (OSError, ValueError):
         return None
@@ -47,9 +52,10 @@ def write_state(st):
     path = state_path(st["name"])
     os.makedirs(os.path.dirname(path), exist_ok=True)
     tmp = f"{path}.{os.getpid()}.tmp"
-    with open(tmp, "w", encoding="utf-8") as fh:
-        json.dump(st, fh, indent=1)
-    os.replace(tmp, path)
+    with ledger_lock(Path(path)):
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump(st, fh, indent=1)
+        os.replace(tmp, path)
 
 
 def pid_alive(pid):
