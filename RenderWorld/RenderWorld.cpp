@@ -16,6 +16,7 @@
 // RenderWorld/legacy/static_prop_backend.cpp.
 #include "legacy/static_prop_backend.h"
 
+#include <algorithm>
 #include <atomic>
 #include <cstdio>
 #include <cstdlib>
@@ -986,8 +987,9 @@ uint64_t getMechsAliveCount() {
 
 uint32_t getStaticPropSlotCount() {
     std::lock_guard<std::mutex> lock(s_objectRecordsMutex);
+    const uint32_t end = std::min<uint32_t>(s_staticPropRecordEnd, static_cast<uint32_t>(s_objectRecords.size()));
     uint32_t count = 0;
-    for (uint32_t i = 0; i < s_staticPropRecordEnd; ++i) {
+    for (uint32_t i = 0; i < end; ++i) {
         const auto& rec = s_objectRecords[i];
         if (rec.kind == RenderObjectKind::StaticProp) ++count;
     }
@@ -996,9 +998,10 @@ uint32_t getStaticPropSlotCount() {
 
 uint32_t fillStaticPropSlots(StaticPropRecordView* out, uint32_t capacity) {
     std::lock_guard<std::mutex> lock(s_objectRecordsMutex);
+    const uint32_t end = std::min<uint32_t>(s_staticPropRecordEnd, static_cast<uint32_t>(s_objectRecords.size()));
     uint32_t total   = 0;
     uint32_t written = 0;
-    for (uint32_t i = 0; i < s_staticPropRecordEnd; ++i) {
+    for (uint32_t i = 0; i < end; ++i) {
         const RenderObjectRecord& rec = s_objectRecords[i];
         if (rec.kind != RenderObjectKind::StaticProp) continue;
         ++total;

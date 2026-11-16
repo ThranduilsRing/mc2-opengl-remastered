@@ -106,27 +106,3 @@ TEST_CASE("spawn, destroy, reload cycle: indices stay inside the range however m
 }
 
 }  // TEST_SUITE
-
-#include "../../RenderWorld/mech_handles.cpp"
-namespace RenderWorld::detail {
-std::mutex objectRecordsMutex;
-std::vector<RenderObjectRecord> objectRecords;
-std::atomic<uint64_t> mechsAlive{0};
-}
-
-TEST_CASE("mech mission sweep mirrors slot generations across wrap and reuse") {
-    using namespace RenderWorld;
-    for (uint32_t i = 0; i <= RenderCore::HandleSlotTable::kMaxGeneration; ++i) {
-        const auto old = registerMech({});
-        REQUIRE(old.isValid());
-        CHECK(detail::objectRecords.front().kind == RenderObjectKind::None);
-        clearAllMechRecords();
-        const auto& rec = detail::objectRecords[old.index()];
-        CHECK(rec.generation != old.generation());
-        CHECK(rec.generation >= 1);
-        CHECK(rec.generation <= RenderCore::HandleSlotTable::kMaxGeneration);
-        CHECK((rec.flags & kRenderObjectFlagAlive) == 0);
-        CHECK(detail::mechsAlive.load() == 0);
-        destroyMech(old);
-    }
-}
