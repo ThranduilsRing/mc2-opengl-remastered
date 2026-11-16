@@ -1,5 +1,7 @@
 #pragma once
+#include <algorithm>
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 
@@ -34,11 +36,21 @@ struct Event {
 // (the water and non-terrain alpha passes each have two alpha-test buckets).
 // Emit synchronously: Submit retains vkLegacySubmitNode's implicit reset, and
 // ResetVertex records the separate caller assignment, including reset-only work.
-template<class View, class Emit>
-void Schedule(int size, bool software, const Masks& m, View view, Emit emit) {
+// Per-thread scratch reused across frames: capacity is kept, contents are cleared on entry,
+// so the per-frame overlay pass does not allocate once the buffers have grown.
+struct ScheduleScratch {
     std::array<std::vector<int>, 10> buckets;
     std::vector<Node> nodes;
-    nodes.reserve(size);
+};
+template<class View, class Emit>
+void Schedule(int size, bool software, const Masks& m, View view, Emit emit) {
+    static thread_local ScheduleScratch scratch;
+    auto& buckets = scratch.buckets;
+    auto& nodes = scratch.nodes;
+    for (auto& bucket : buckets) bucket.clear();
+    nodes.clear();
+    size = std::max(size, 0);
+    nodes.reserve(static_cast<std::size_t>(size));
     for (int i = 0; i < size; ++i) {
         const Node n = view(i);
         nodes.push_back(n);
