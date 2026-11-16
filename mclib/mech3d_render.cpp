@@ -1,4 +1,5 @@
 #include "render_snap.h"
+#include "mech_texname_derive.h"
 #include "terrain_runtime.h"
 #include <algorithm>
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
@@ -689,7 +690,8 @@ long Mech3DAppearance::render (long depthFixup)
 					(status == OBJECT_STATUS_DESTROYED) ||
 					(status == OBJECT_STATUS_DISABLED);
 				desc.renderFlags    = lightsOut ? 0x2u : 0x0u;  // bit 1
-				if (stockPbr.orm) desc.renderFlags |= kMechRenderFlagOrm | 0x10u;
+				if (mech_texname::useOrm(static_cast<bool>(stockPbr.orm), aoValid,
+					mc2mechanim::ImportedMechOrmTexName(mechType ? mechType->mechShape[currentLOD].get() : nullptr) != nullptr)) desc.renderFlags |= kMechRenderFlagOrm | 0x10u;
 				if (stockPbr.normal) desc.renderFlags |= 0x20u;
 				if (aoValid) desc.renderFlags |= 0x10u;          // AO-1: bit 4 = HAS_AO (handle loaded)
 				if (normalValid) desc.renderFlags |= 0x20u;      // NORMALS-1: bit 5 = HAS_NORMAL (handle loaded)
@@ -1147,7 +1149,8 @@ bool Mech3DAppearance::submitPreviewGpu (bool freshSession)
 	desc.slot7TexHandle = stockPbr.normal ? stockPbr.normal.get() : (normalValid ? static_cast<uint32_t>(normalTextureHandle) : 0u);
 	desc.lightDataIndex = 0u;	// the lab posts its own single light row
 	desc.renderFlags    = 0u;
-	if (stockPbr.orm) desc.renderFlags |= kMechRenderFlagOrm | 0x10u;
+	if (mech_texname::useOrm(static_cast<bool>(stockPbr.orm), aoValid,
+		mc2mechanim::ImportedMechOrmTexName(mechType ? mechType->mechShape[currentLOD].get() : nullptr) != nullptr)) desc.renderFlags |= kMechRenderFlagOrm | 0x10u;
 	if (stockPbr.normal) desc.renderFlags |= 0x20u;
 	if (aoValid) desc.renderFlags |= 0x10u;
 	if (normalValid) desc.renderFlags |= 0x20u;
@@ -1191,7 +1194,8 @@ bool Mech3DAppearance::submitArmGpu (TG_MultiShape* arm, float haze)
 	desc.slot0TexHandle = static_cast<uint32_t>(localTextureHandle);
 	desc.slot6TexHandle = stockPbr.orm ? stockPbr.orm.get() : (aoValid ? static_cast<uint32_t>(aoTextureHandle) : 0u);
 	desc.slot7TexHandle = stockPbr.normal ? stockPbr.normal.get() : (normalValid ? static_cast<uint32_t>(normalTextureHandle) : 0u);
-	if (stockPbr.orm) desc.renderFlags |= kMechRenderFlagOrm | 0x10u;
+	if (mech_texname::useOrm(static_cast<bool>(stockPbr.orm), aoValid,
+		mc2mechanim::ImportedMechOrmTexName(mechType ? mechType->mechShape[currentLOD].get() : nullptr) != nullptr)) desc.renderFlags |= kMechRenderFlagOrm | 0x10u;
 	if (stockPbr.normal) desc.renderFlags |= 0x20u;
 	if (aoValid) desc.renderFlags |= 0x10u;
 	if (normalValid) desc.renderFlags |= 0x20u;

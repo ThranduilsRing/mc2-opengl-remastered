@@ -930,13 +930,14 @@ void Mech3DAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 		return;
 	}
 
-	// AO-1: load the imported-mech AO map once (independent of paint scheme; AO is
-	// linear grayscale, not recolored). Loaded here (before resetPaintScheme's early
+	// Load imported linear ORM (preferred) or grayscale AO once, without recoloring.
+	// Loaded here (before resetPaintScheme's early
 	// returns) so it runs on every path. HAS_AO is asserted at submit ONLY if aoValid,
 	// so a missing/failed AO never darkens the mech (white/no-op fallback).
 	if (!aoValid && mechShape->GetNumShapes() > 0) {
 		const void* aoTypeKey = mechType ? static_cast<const void*>(mechType->mechShape[currentLOD].get()) : nullptr;
-		const char* aoName = mc2mechanim::ImportedMechAoTexName(aoTypeKey);
+		const char* aoName = mc2mechanim::ImportedMechOrmTexName(aoTypeKey);
+		if (!aoName) aoName = mc2mechanim::ImportedMechAoTexName(aoTypeKey);
 		if (aoName && aoName[0]) {
 			char aoPath[1024];
 			auto aoPathEnd = std::format_to_n(aoPath, sizeof(aoPath) - 1, "{}{}" PATH_SEPARATOR, static_cast<const char*>(tglPath), ObjectTextureSize).out;

@@ -876,6 +876,7 @@ struct ImportedAnimEntry {
     std::map<std::string, std::string> nodeManifest;  // 1A: MC2 node name -> source joint
     std::map<std::string, aiVector3D> socketOffsets;  // P10: socket name -> point in its joint's local frame
                                             // (from bt2018_mech_package.json "nodes").
+    std::string ormTexName;                 // materials.orm.tga: linear R=AO, G=roughness, B=metal.
     std::string aoTexName;                  // AO-1: materials.ao.tga (deriveName stem +
                                             // .tga); empty = no AO. Loaded -> unit 6.
     std::string normalTexName;              // NORMALS-1: materials.normal.tga; empty = no
@@ -1054,7 +1055,7 @@ void measureClipStrides(ImportedAnimEntry& e) {
 // <stem>.package.json. Minimal flat-map scan (no JSON dependency; the generator
 // controls the format). Leaves the map empty (→ legacy node lookup) if absent.
 void LoadMechPackage(mc2::czstring glbPath, std::map<std::string, std::string>& out,
-                     std::string& aoOut, std::string& normalOut,
+                     std::string& aoOut, std::string& normalOut, std::string& ormOut,
                      std::map<std::string, aiVector3D>* socketOut = nullptr,
                      std::string* showcaseOut = nullptr) {
     if (!glbPath) return;
@@ -1117,6 +1118,7 @@ void LoadMechPackage(mc2::czstring glbPath, std::map<std::string, std::string>& 
             i = v1 + 1;
         }
     }
+    ormOut = mech_texname::importedOrmName(buf);
     // AO-1: materials.ao.tga (runtime texture name; .ktx2 sidecar resolves it).
     size_t mat = buf.find("\"materials\"");
     if (mat != std::string::npos) {
@@ -1162,7 +1164,7 @@ void RegisterImportedAnim(mc2::czstring path, TG_TypeMultiShape* out, const Skel
     e.multi = out;
     e.names = bake.names;
     e.plan = mc2skel::BuildPlan(scene, e.names);
-    LoadMechPackage(path, e.nodeManifest, e.aoTexName, e.normalTexName, &e.socketOffsets, &e.showcaseClip);
+    LoadMechPackage(path, e.nodeManifest, e.aoTexName, e.normalTexName, e.ormTexName, &e.socketOffsets, &e.showcaseClip);
     if (!e.showcaseClip.empty() && !clipDurationSec(scene, e.showcaseClip)) {
         if (mc2_diag::tagRequested("MECH_IMPORT"))
             mc2::fmt::print_err("[MECH_IMPORT] unknown showcase clip '{}' in '{}'; using fallback\n", e.showcaseClip, path);
@@ -1405,9 +1407,15 @@ float mc2mechanim::ImportedGpuLift(const void* actorKey) {
 
 int mc2mechanim::ImportedGpuLiftAxis() { return mechImportGpuLiftAxis(); }
 
-// AO-1: the imported mech's AO texture name (materials.ao.tga from the package), or
-// nullptr if this type isn't imported / declares no AO. The caller (mech3d
-// resetPaintScheme) loads it via mc2::textures::ready() and binds it on unit 6.
+// ORM replaces the imported grayscale AO in slot 6 when declared.
+const char* mc2mechanim::ImportedMechOrmTexName(const void* typeKey) {
+    for (const ImportedAnimEntry& e : g_importedAnims)
+        if (static_cast<const void*>(e.multi) == typeKey)
+            return e.ormTexName.empty() ? nullptr : e.ormTexName.c_str();
+    return nullptr;
+}
+
+// Legacy AO-only packages retain their existing slot-6 texture and flags.
 const char* mc2mechanim::ImportedMechAoTexName(const void* typeKey) {
     for (const ImportedAnimEntry& e : g_importedAnims)
         if (static_cast<const void*>(e.multi) == typeKey)
