@@ -100,6 +100,8 @@ def test_invalid_pc_seed_cannot_touch_laptop(tmp_path, monkeypatch, files):
 
 
 def test_pack_ships_only_candidate_files_that_differ(tmp_path, monkeypatch):
+    if not laptop_gate.PC_REF.exists():
+        pytest.skip(f"PC reference tree {laptop_gate.PC_REF} is absent on this host")
     gate = tmp_path / "gate"
     install = gate / "drv/E/mc2-installs/install-stock-abc"   # the candidate, not INSTALL (the published v0.4)
     (install / "shaders").mkdir(parents=True)
@@ -198,6 +200,8 @@ def test_driver_exits_zero_only_on_pass(sm, rc):
 
 
 def test_ref_sums_cover_both_pinned_kits_and_refcheck_flags_a_bad_file(tmp_path, monkeypatch):
+    if not laptop_gate.PC_REF.exists():
+        pytest.skip(f"PC reference tree {laptop_gate.PC_REF} is absent on this host")
     text = laptop_gate.ref_sums(ROOT)
     rels = [line.split("  ", 1)[1] for line in text.splitlines()]
     assert any(r.startswith("packages/mc2-industrial-kit/") for r in rels)

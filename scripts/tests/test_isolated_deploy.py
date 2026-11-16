@@ -13,6 +13,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import deploy_payload as dp
 import kit_payload
 import pytest
+from tools import gate_hosts  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
@@ -690,6 +691,8 @@ def test_churned_link_stamps_are_confirmed_by_the_seed_receipt_without_hashing(t
         assert (lane / rel).samefile(seed / rel)
 
 
+@pytest.mark.skipif(gate_hosts.current_host() != "pc",
+                    reason=f"seed-receipt inode sharing needs the PC's NTFS hardlinks (gate host {gate_hosts.current_host()})")
 def test_seed_receipt_does_not_excuse_a_same_size_write_with_restored_mtime(tmp_path, monkeypatch):
     iso, seed, lane, _repo, rels, items = _churned_lane(tmp_path, monkeypatch)
     iso.restamp_seed(seed)

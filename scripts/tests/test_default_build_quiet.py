@@ -12,6 +12,9 @@ spec = importlib.util.spec_from_file_location("quiet", Path(__file__).resolve().
 quiet = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(quiet)
 
+pytestmark = pytest.mark.skipif(not Path("E:/mc2-archive-2026-10/proofs").exists(),
+                                reason="PC-only proofs archive E:/mc2-archive-2026-10/proofs is absent on this host")
+
 
 @pytest.mark.parametrize("problem", ["none", "missing", "diagnostic", "failed", "ambiguous"])
 def test_gate_tier1_quiet_sample_fails_closed(tmp_path, monkeypatch, problem):
