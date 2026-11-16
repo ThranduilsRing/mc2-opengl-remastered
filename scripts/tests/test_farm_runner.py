@@ -155,6 +155,34 @@ def test_host_submit_publishes_only_after_upload(tmp_path, monkeypatch, capsys):
     assert capsys.readouterr().out.strip() == 'a' * 32
 
 
+@pytest.mark.parametrize('token', ['{ROOT}', '{EXE}', '{ROOT_B}', '{EXE_B}'])
+def test_payload_placeholder_needs_exe(tmp_path, monkeypatch, capsys, token):
+    path = tmp_path / 'job.json'
+    path.write_text(json.dumps({'argv': ['python'], 'env': {'PATH_TO_GAME': token}}))
+    monkeypatch.setattr(sys, 'argv', ['host', 'submit', str(path)])
+    monkeypatch.setattr(host, 'remote', lambda *a: pytest.fail('invalid job reached laptop'))
+    monkeypatch.setattr(host, 'scp', lambda *a, **k: pytest.fail('invalid job uploaded'))
+    with pytest.raises(SystemExit) as result:
+        host.main()
+    assert result.value.code == 2
+    assert 'supply --exe' in capsys.readouterr().err
+
+
+def test_mod_smoke_uses_existing_harness_and_live_animation(tmp_path):
+    from tools.farm.mod_smoke import command
+    args = SimpleNamespace(install=tmp_path, harness=tmp_path / 'harness', mod='bt2018_mechs',
+                           mission='mc2_01', seconds=30, steps='save:60,load:90', capture_frame=600)
+    argv, env = command(args, tmp_path / 'result')
+    assert 'run_smoke.py' in argv[1] and '--keep-logs' in argv
+    assert env['MC2_ACTIVE_MOD'] == 'bt2018_mechs'
+    assert env['MC2_SMOKE_FREEZE_ANIM'] == '0'
+    assert env['MC2_BOOT_QUICKSAVE_AT'] == '60' and env['MC2_BOOT_QUICKLOAD_AT'] == '90'
+    assert env['MC2_SAVE_DIR'] == str(tmp_path / 'savegame')
+    args.steps = 'load:60,save:90'
+    with pytest.raises(ValueError, match='follow save'):
+        command(args, tmp_path)
+
+
 def test_host_submit_exe_stages_then_rewrites_job(tmp_path, monkeypatch):
     path = tmp_path / 'job.json'
     path.write_text('{"argv": ["run", "{EXE}", "--out", "{RESULT}/proof"], "env": {"X": "{ROOT}/d"}}')

@@ -41,10 +41,10 @@ if (-not [IO.Path]::GetFullPath($s).StartsWith([IO.Path]::GetFullPath('%(r)s/sta
 Expand-Archive -LiteralPath "$s/payload.zip" -DestinationPath "$s/delta" -Force
 New-Item -ItemType Directory -Force $w | Out-Null
 foreach ($e in Get-ChildItem $i -Force) {
-  if ($e.Name -in 'mc2.exe','mc2.pdb') { continue }
+  if ($e.Name -in 'mc2.exe','mc2.pdb','crashes','logs','debug_state','savegame','screenshots') { continue }
   $t = Join-Path $w $e.Name
   if ($e.PSIsContainer) {
-    if (Test-Path "$s/delta/$($e.Name)") { Copy-Item $e.FullName $t -Recurse }
+    if ($e.Name -in 'cache','mods' -or (Test-Path "$s/delta/$($e.Name)")) { Copy-Item $e.FullName $t -Recurse }
     else { cmd /c mklink /J "$t" "$($e.FullName)" | Out-Null }
   } elseif ($e.Length -lt 10MB) { Copy-Item $e.FullName $t }
   else { cmd /c mklink /H "$t" "$($e.FullName)" | Out-Null }
@@ -292,6 +292,11 @@ def main():
         return
     if args.action == 'submit':
         job = json.loads(args.job.read_text(encoding='utf-8'))
+        placeholders = re.findall(r'\{(?:ROOT|EXE)(?:_B)?\}', json.dumps(job))
+        if placeholders and not args.exe:
+            parser.error('job uses {ROOT}/{EXE}; supply --exe <lane>/build64-ninja/mc2.exe')
+        if any(p in ('{ROOT_B}', '{EXE_B}') for p in placeholders) and not args.exe_b:
+            parser.error('job uses {ROOT_B}/{EXE_B}; supply --exe-b')
         job_id = uuid.uuid4().hex
         upload = args.job
         if args.data_delta and not args.exe:
@@ -307,12 +312,22 @@ def main():
             payload = Path(tmpdir.name) / 'payload.zip'
             try:
                 payload_archive(args.exe.resolve(), payload)
+                if job.get('type') == 'mod-smoke':
+                    import zipfile
+                    with zipfile.ZipFile(payload, 'a') as archive:
+                        archive.write(Path(__file__).with_name('mod_smoke.py'), 'mod-smoke.py')
                 if args.exe_b:
                     second_id = job_id + '-b'
                     second_payload = Path(tmpdir.name) / 'payload-b.zip'
                     payload_archive(args.exe_b.resolve(), second_payload)
             except ValueError as exc:
                 parser.error(str(exc))
+            if job.get('type') == 'mod-smoke':
+                delta_bytes = sum(p.stat().st_size for p in args.data_delta.rglob('*') if p.is_file()) if args.data_delta else 0
+                required = 2 * (payload.stat().st_size + delta_bytes + args.exe.stat().st_size) + 2 * 1024**3
+                remote(args, f"$ErrorActionPreference='Stop'; $free=(Get-PSDrive C).Free; "
+                             f"if ($free -lt {required}) {{ throw 'insufficient C:/mc2farm disk space' }}; "
+                             "Write-Output ('farm_free_bytes=' + $free)")
             remote(args, f"New-Item -ItemType Directory -Force {ROOT}/stage/{job_id} | Out-Null")
             scp(args, args.exe, f'{args.host}:{ROOT}/stage/{job_id}/mc2.exe')
             if args.data_delta:
