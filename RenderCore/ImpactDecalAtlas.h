@@ -13,6 +13,8 @@
 #include "ImpactDecals.h"
 #include "../3rdparty/fastnoiselite/FastNoiseLite.h"
 
+#include <array>
+#include <thread>
 #include <bit>
 #include <cmath>
 #include <cstdint>
@@ -196,46 +198,54 @@ inline Layers generate() {
     const size_t layerBytes = static_cast<size_t>(kSize) * kSize * 4;
     out.surface.resize(layerBytes * kTileCount);
     out.normal.resize(layerBytes * kTileCount);
-    std::vector<float> height(static_cast<size_t>(kSize) * kSize);
+    // All allocation precedes launch; workers own scratch and disjoint output spans.
+    std::array<std::vector<float>, kTileCount> heights;
+    for (auto& height : heights) height.resize(static_cast<size_t>(kSize) * kSize);
+    std::array<std::jthread, kTileCount> workers;
     for (uint32_t layer = 0; layer < kTileCount; ++layer) {
-        const Tile tile = static_cast<Tile>(layer);
-        uint8_t* s = out.surface.data() + layer * layerBytes;
-        uint8_t* nm = out.normal.data() + layer * layerBytes;
-        for (uint32_t y = 0; y < kSize; ++y) {
-            for (uint32_t x = 0; x < kSize; ++x) {
-                const float u = (static_cast<float>(x) + 0.5f) / kSize * 2.0f - 1.0f;
-                const float v = (static_cast<float>(y) + 0.5f) / kSize * 2.0f - 1.0f;
-                const detail::Texel t = detail::paint(tile, u, v);
-                const size_t i = (static_cast<size_t>(y) * kSize + x);
-                height[i] = t.height * t.coverage;
-                s[i * 4 + 0] = detail::u8(t.albedo * 0.5f);
-                s[i * 4 + 1] = detail::u8(t.emissive * t.coverage);
-                s[i * 4 + 2] = detail::u8(t.charAmt);
-                s[i * 4 + 3] = detail::u8(t.coverage);
+        workers[layer] = std::jthread([&, layer] {
+            auto& height = heights[layer];
+            const Tile tile = static_cast<Tile>(layer);
+            uint8_t* s = out.surface.data() + layer * layerBytes;
+            uint8_t* nm = out.normal.data() + layer * layerBytes;
+            for (uint32_t y = 0; y < kSize; ++y) {
+                for (uint32_t x = 0; x < kSize; ++x) {
+                    const float u = (static_cast<float>(x) + 0.5f) / kSize * 2.0f - 1.0f;
+                    const float v = (static_cast<float>(y) + 0.5f) / kSize * 2.0f - 1.0f;
+                    const detail::Texel t = detail::paint(tile, u, v);
+                    const size_t i = (static_cast<size_t>(y) * kSize + x);
+                    height[i] = t.height * t.coverage;
+                    s[i * 4 + 0] = detail::u8(t.albedo * 0.5f);
+                    s[i * 4 + 1] = detail::u8(t.emissive * t.coverage);
+                    s[i * 4 + 2] = detail::u8(t.charAmt);
+                    s[i * 4 + 3] = detail::u8(t.coverage);
+                }
             }
-        }
-        // Tangent normal from the height field; the gain is 'how deep' a unit height reads across one tile.
-        const float gain = 6.0f;
-        for (uint32_t y = 0; y < kSize; ++y) {
-            for (uint32_t x = 0; x < kSize; ++x) {
-                auto H = [&](int xx, int yy) {
-                    xx = xx < 0 ? 0 : (xx >= static_cast<int>(kSize) ? static_cast<int>(kSize) - 1 : xx);
-                    yy = yy < 0 ? 0 : (yy >= static_cast<int>(kSize) ? static_cast<int>(kSize) - 1 : yy);
-                    return height[static_cast<size_t>(yy) * kSize + static_cast<size_t>(xx)];
-                };
-                const float dhx = (H(static_cast<int>(x) + 1, static_cast<int>(y)) - H(static_cast<int>(x) - 1, static_cast<int>(y))) * 0.5f * gain;
-                const float dhy = (H(static_cast<int>(x), static_cast<int>(y) + 1) - H(static_cast<int>(x), static_cast<int>(y) - 1)) * 0.5f * gain;
-                float nx = -dhx, ny = -dhy, nz = 1.0f;
-                const float l = std::sqrt(nx * nx + ny * ny + nz * nz);
-                nx /= l; ny /= l;
-                const size_t i = static_cast<size_t>(y) * kSize + x;
-                nm[i * 4 + 0] = detail::u8(nx * 0.5f + 0.5f);
-                nm[i * 4 + 1] = detail::u8(ny * 0.5f + 0.5f);
-                nm[i * 4 + 2] = detail::u8(height[i] * 0.5f + 0.5f);
-                nm[i * 4 + 3] = detail::u8(0.6f);
+            // Tangent normal from the height field; the gain is 'how deep' a unit height reads across one tile.
+            const float gain = 6.0f;
+            for (uint32_t y = 0; y < kSize; ++y) {
+                for (uint32_t x = 0; x < kSize; ++x) {
+                    auto H = [&](int xx, int yy) {
+                        xx = xx < 0 ? 0 : (xx >= static_cast<int>(kSize) ? static_cast<int>(kSize) - 1 : xx);
+                        yy = yy < 0 ? 0 : (yy >= static_cast<int>(kSize) ? static_cast<int>(kSize) - 1 : yy);
+                        return height[static_cast<size_t>(yy) * kSize + static_cast<size_t>(xx)];
+                    };
+                    const float dhx = (H(static_cast<int>(x) + 1, static_cast<int>(y)) - H(static_cast<int>(x) - 1, static_cast<int>(y))) * 0.5f * gain;
+                    const float dhy = (H(static_cast<int>(x), static_cast<int>(y) + 1) - H(static_cast<int>(x), static_cast<int>(y) - 1)) * 0.5f * gain;
+                    float nx = -dhx, ny = -dhy, nz = 1.0f;
+                    const float l = std::sqrt(nx * nx + ny * ny + nz * nz);
+                    nx /= l; ny /= l;
+                    const size_t i = static_cast<size_t>(y) * kSize + x;
+                    nm[i * 4 + 0] = detail::u8(nx * 0.5f + 0.5f);
+                    nm[i * 4 + 1] = detail::u8(ny * 0.5f + 0.5f);
+                    nm[i * 4 + 2] = detail::u8(height[i] * 0.5f + 0.5f);
+                    nm[i * 4 + 3] = detail::u8(0.6f);
+                }
             }
-        }
+        });
     }
+    // Join before returning: NRVO is optional, so destruction alone is too late.
+    for (auto& worker : workers) worker.join();
     return out;
 }
 
