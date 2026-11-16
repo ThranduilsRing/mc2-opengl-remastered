@@ -1897,6 +1897,7 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std
                 // Opaque core list: the type's packets before its first alpha-testable one. The rest of the type stays in the
                 // alpha core list in packet order, so a coplanar later packet still wins the GEQUAL tie against an earlier one.
                 bool opaquePrefix = true;
+                bool doubleSidedSeen = false;
                 // OBJECT-ID-1: the RenderWorld handle for this type (recipe index, generation 1); 0 when the type has no recipe.
                 const int32_t typeObjectId = static_cast<int32_t>(RenderWorld::objectIdRawForStaticPropRecipe(
                     GpuStaticPropRegistry::getRecipeIndexForType(tr.typeID)));
@@ -1924,9 +1925,10 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std
                     // Routed per packet (baked alpha-test bit), not by the type's alpha class: a tree's trunk shares the leaf's alpha-ON type.
                     const bool doubleSided = row.materialId >= 0 && static_cast<size_t>(row.materialId) < s->materialDoubleSided.size() &&
                                              s->materialDoubleSided[static_cast<size_t>(row.materialId)] != 0;
-                    const PropList::CoreRoute route = PropList::routeCore(opaquePrefix, row.alphaTest, doubleSided);
+                    const PropList::CoreRoute route = PropList::routeCore(opaquePrefix, row.alphaTest, doubleSided, doubleSidedSeen);
                     const bool alphaTestable = route.alphaTestable;
                     opaquePrefix = route.opaquePrefix;
+                    doubleSidedSeen = route.doubleSidedSeen;
                     const uint32_t coreList = route.list;
                     s->cmdScratch[coreList].push_back(cmd); s->pktScratch[coreList].push_back(row); ++rr.range[coreList][1];
                     if (s_pktDump)

@@ -213,7 +213,8 @@ void main() {
         lodOn = max(lodOn, 0.0);
         vec4 texc = textureLod(uAlbedoOn[nonuniformEXT(bucketOn)], vec3(uvSampledOn, float(propBucketLayer(vLayerOn))), lodOn);
         // kOpaqueOnly: an opaque packet of an alpha-mixed type (a trunk): same sample, light floor and class, no cut.
-        if (kOpaqueOnly == 0) cover = propCoverage(texc.a, lodOn);   // PROP-COVERAGE-1 (replaces the Bayer screen-door dither)
+        // An opaque packet routed to the alpha core list for ordering (after an alpha-tested one) samples uncut too.
+        if (kOpaqueOnly == 0 && uPacket.packetAlphaTest != 0) cover = propCoverage(texc.a, lodOn);   // PROP-COVERAGE-1 (replaces the Bayer screen-door dither)
         // ★VK-FLIP-FIELD-REPORT-1 BLACK-FENCE FIX: the alpha-ON group is the ALPHA_TEST
         // class (tree cards / fences / foliage). GL static_prop.frag:339 floors their lit
         // color at max(litRgb, vec3(0.5)) so the dark, light-facing-falloff side doesn't
