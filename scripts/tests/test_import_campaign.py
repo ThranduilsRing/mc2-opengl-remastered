@@ -627,3 +627,135 @@ def test_auto_preserves_foreign_and_live_staging(sample, monkeypatch):
         return original(root)
     monkeypatch.setattr(imp, "inspect_source", inspect)
     assert imp.import_campaign(sample[0], deploy)["status"] == "installed"
+
+
+@pytest.mark.parametrize("reverse", [False, True])
+@pytest.mark.parametrize("mode", ["loose", "archive", "both", "identical", "mco"])
+def test_fix1_source_table_resolution(sample, monkeypatch, mode, reverse):
+    import transfer_mc2x_campaign as transfer
+    source, deploy = sample
+    loose = source / "data/objects/object2.pak"
+    table(loose)
+    raw = loose.read_bytes()
+    if mode == "archive":
+        loose.unlink()
+    archives = [source / "z.fst", source / "a.fst"]
+    if reverse:
+        archives.reverse()
+    if mode in ("loose", "identical"):
+        archives = []
+    for archive in archives:
+        archive.touch()
+    entries = lambda path: [(0, 0, 0, "data/objects/object2.pak", False,
+                            raw if mode == "archive" and Path(path).name == "a.fst" else b"different archived bytes")]
+    monkeypatch.setattr(transfer.fst, "fst_entries", entries)
+    monkeypatch.setattr(imp, "fst_entries", entries)
+    monkeypatch.setattr(transfer.fst, "decompress_entry", lambda *args: args[-1])
+    original = Path.glob
+    monkeypatch.setattr(Path, "glob", lambda p, pattern: iter(archives) if p == source and pattern == "*.fst" else original(p, pattern))
+    ref = deploy / ("mods/mco-compat/data" if mode == "mco" else "mods/mc2x-compat/data")
+    out = deploy / "pack"
+    monkeypatch.setattr(sys, "argv", ["transfer", "--source", str(source), "--out", str(out), "--refs", str(ref), "--fsts", "--delta-fsts"])
+    transfer.main()
+    if mode == "mco":
+        assert not (out / "data/objects/object2.pak").exists()
+    else:
+        assert (out / "data/objects/object2.pak").read_bytes() == raw
+        imp.validate_mc2x_tables(source, imp.source_files(source), [{"first_mission": "demo01"}], [out, ref.parent, deploy])
+
+
+@pytest.mark.parametrize("existing", [False, True])
+@pytest.mark.parametrize("failure", ["missing", "extract", "provenance", "publish"])
+def test_fix1_direct_import_rollback(sample, monkeypatch, existing, failure):
+    import hashlib
+    import mc2x_import as mc2x
+    source, deploy = sample
+    imp.shutil.rmtree(deploy / "mods")
+    mods = deploy / "mods"
+    if existing:
+        for mod in ("mc2x-compat", "cveg"):
+            folder = mods / mod
+            folder.mkdir(parents=True)
+            (folder / "mc2x_import_report.json").write_text('{"generated_by":"mc2x_import"}')
+            (folder / "previous").write_bytes(mod.encode())
+        (mods / ".import_reports/old").mkdir(parents=True)
+        (mods / ".import_reports/old/report").write_bytes(b"old report")
+    snapshot = lambda: {p.relative_to(mods).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in mods.rglob("*") if p.is_file()}
+    before = snapshot()
+    table(source / "data/objects/object2.pak")
+    entries = [] if failure == "missing" else [{"t": "data/objects/object2.pak", "fst": "loose", "s": "data/objects/object2.pak"}]
+    monkeypatch.setattr(mc2x, "validate_source", lambda _: ([], []))
+    monkeypatch.setattr(mc2x, "load_recipe", lambda: {"mods": {"mc2x-compat": entries}})
+    def fail(*args, **kwargs):
+        raise OSError("injected failure")
+    if failure == "extract":
+        monkeypatch.setattr(mc2x, "extract_mod", fail)
+    if failure == "provenance":
+        provenance = mc2x._write_provenance
+        monkeypatch.setattr(mc2x, "_write_provenance", lambda *a: (provenance(*a), fail()))
+    if failure == "publish":
+        rename = mc2x.os.rename
+        def second(src, dst):
+            if Path(src).name == "cveg" and Path(dst) == mods / "cveg":
+                fail()
+            return rename(src, dst)
+        monkeypatch.setattr(mc2x.os, "rename", second)
+    try:
+        result = mc2x.main(["--source", str(source), "--deploy", str(deploy), "--force"])
+    except OSError:
+        result = 2
+    assert result == 2
+    assert snapshot() == before
+    assert not list(deploy.glob(".mc2x-import-*"))
+
+
+@pytest.mark.parametrize("damage", ["symlink", "junction", "dataless"])
+def test_fix1_dependency_rejected_before_validation(sample, monkeypatch, damage):
+    source, deploy = sample
+    imp.import_campaign(source, deploy)
+    dep = deploy / "mods/mc2x-compat"
+    method = "is_junction" if damage == "junction" else "is_symlink"
+    original = getattr(Path, method)
+    if damage == "dataless":
+        imp.shutil.rmtree(dep / "data")
+    else:
+        monkeypatch.setattr(Path, method, lambda p: p == dep or original(p))
+    read = imp.asset_bytes
+    def guarded(layers, name):
+        assert dep not in layers, "read linked dependency"
+        return read(layers, name)
+    monkeypatch.setattr(imp, "asset_bytes", guarded)
+    with pytest.raises(ValueError, match="Missing mc2x-compat; import the full compatibility base first"):
+        imp.import_campaign(source, deploy)
+
+
+@pytest.mark.parametrize("kind", ["layer", "directory", "file", "archive", "fallback"])
+def test_fix1_asset_rejects_links(tmp_path, monkeypatch, kind):
+    layer = tmp_path / "layer"
+    path = layer / ("a.fst" if kind == "archive" else "Data/Objects/Object2.PAK")
+    path.parent.mkdir(parents=True)
+    path.write_bytes(b"target must not be read")
+    linked = {"layer": layer, "directory": layer / "Data", "file": path, "archive": path, "fallback": path}[kind]
+    original = Path.is_symlink
+    monkeypatch.setattr(Path, "is_symlink", lambda p: p == linked or original(p))
+    def forbidden(*args):
+        pytest.fail("read linked target")
+    if kind == "fallback":
+        is_file = Path.is_file
+        exact = layer / "data/objects/object2.pak"
+        monkeypatch.setattr(Path, "is_file", lambda p: False if str(p) == str(exact) else is_file(p))
+    monkeypatch.setattr(Path, "read_bytes", forbidden)
+    monkeypatch.setattr(imp, "fst_entries", forbidden)
+    assert imp.asset_bytes([layer], "data/objects/object2.pak") is None
+
+
+def test_fix1_case_insensitive_loose_fallback(tmp_path, monkeypatch):
+    path = tmp_path / "Data/Objects/Object2.PAK"
+    path.parent.mkdir(parents=True)
+    path.write_bytes(b"loose wins")
+    exact = tmp_path / "data/objects/object2.pak"
+    original = Path.is_file
+    monkeypatch.setattr(Path, "is_file", lambda p: False if str(p) == str(exact) else original(p))
+    (tmp_path / "archive.fst").touch()
+    monkeypatch.setattr(imp, "fst_entries", lambda _: pytest.fail("archive read before loose"))
+    assert imp.asset_bytes([tmp_path], "data/objects/object2.pak") == b"loose wins"

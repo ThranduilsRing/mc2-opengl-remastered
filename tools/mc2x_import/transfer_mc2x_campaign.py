@@ -28,6 +28,7 @@ Usage:
       --out  <deploy>/mods/MC2X-DEE
 """
 import argparse
+from pathlib import Path
 import os
 import sys
 
@@ -90,6 +91,50 @@ CORE_GUI_EXCLUDE = {
     # MC2X installs; new buttonlayout FITs assume 675px -> old strip = garbled sprites / pink UI
     "data/art/mcui_low5.tga",
 }
+
+
+def linked(path):
+    """Reject links in the path itself or any of its parent directories."""
+    path = Path(path)
+    return any(p.is_symlink() or p.is_junction() for p in (path, *path.parents))
+
+
+def loose_asset(layer, name):
+    """Exact spelling first, then a bounded case-insensitive directory walk."""
+    layer = Path(layer)
+    if linked(layer):
+        return None
+    exact = layer / name
+    if not linked(exact) and exact.is_file():
+        return exact
+    current = layer
+    for part in name.replace("\\", "/").split("/"):
+        if not current.is_dir():
+            return None
+        matches = sorted((p for p in current.iterdir() if p.name.casefold() == part.casefold()),
+                         key=lambda p: (p.name != part, p.name))
+        current = next((p for p in matches if not linked(p)), None)
+        if current is None:
+            return None
+    return current if current.is_file() else None
+
+
+def asset_bytes(layers, name, archive_entries=None):
+    """Loose files win; archives use stable case-insensitive filename order."""
+    reader = archive_entries or fst.fst_entries
+    for layer in map(Path, layers):
+        if linked(layer) or not layer.is_dir():
+            continue
+        path = loose_asset(layer, name)
+        if path is not None:
+            return path.read_bytes()
+        archives = sorted((p for p in layer.glob("*.fst") if not linked(p)),
+                          key=lambda p: (p.name.casefold(), p.name))
+        for archive in archives:
+            for off, comp, real, entry, lz, data in reader(archive):
+                if entry.replace("\\", "/").casefold() == name.casefold():
+                    return fst.decompress_entry(off, comp, real, lz, data)
+    return None
 
 
 def rel_norm(p):
@@ -270,6 +315,8 @@ def copy_loose_delta(src_data, refs, out_data, drop_upscale=False, gui_canon=Non
                 for ref in refs)
             if (rel_key in EXCLUDE_REL and not own_table) or rel_key in CORE_GUI_EXCLUDE:
                 continue
+            if own_table:
+                rel = "objects/object2.pak"
             keep_content = _is_campaign_unique_asset(rel)  # colormaps + matched icon set survive both filters
             if gui_canon and _is_canon_gui(rel_key, gui_canon) and not keep_content:
                 continue
@@ -395,6 +442,13 @@ def main():
     if os.path.isdir(src_data):
         n_loose = copy_loose_delta(src_data, args.refs, os.path.join(args.out, "data"),
                                    drop_upscale=args.drop_upscale, gui_canon=gui_canon)
+    if not any(os.path.basename(os.path.dirname(os.path.normpath(ref))).lower() == "mco-compat"
+               for ref in args.refs):
+        own = asset_bytes([src], "data/objects/object2.pak")
+        if own is not None:
+            destination = Path(args.out) / "data/objects/object2.pak"
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(own)
     print("  loose campaign delta: %d files%s"
           % (n_loose, " (--drop-upscale)" if args.drop_upscale else ""))
     _write_marker(args.out, src, total_fst, n_loose, args.drop_upscale, missing=missing_fsts)

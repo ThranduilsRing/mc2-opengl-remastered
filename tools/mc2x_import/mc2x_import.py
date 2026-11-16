@@ -15,7 +15,7 @@ Emits:
 Never writes under <deploy>/data/. Python 3 stdlib only. No emoji.
 """
 from __future__ import annotations
-import argparse, json, os, shutil, sys
+import argparse, json, os, shutil, sys, tempfile
 
 # FROZEN-AWARE: when PyInstaller-frozen, bundled python modules + DATA (recipe, shims/)
 # live under sys._MEIPASS. Dev: they live next to this file.
@@ -174,27 +174,48 @@ def main(argv=None):
     code = _guard(args)
     if code:
         return code
-    for m in ("mc2x-compat", "cveg"):
-        d = os.path.join(args.deploy, "mods", m)
-        if os.path.isdir(d):
-            shutil.rmtree(d)
-    written = {}
-    all_missing = {}
-    for m in ("mc2x-compat", "cveg"):
-        w, miss = extract_mod(args.source, args.deploy, m, recipe["mods"].get(m, []))
-        sh = copy_shims(args.deploy, m)
-        with open(os.path.join(args.deploy, "mods", m, "mod.json"), "w", encoding="utf-8") as f:
-            json.dump(MODJSON[m], f, indent=2)
-        written[m] = w
-        all_missing[m] = miss
-        print(f"  {m}: extracted {len(w)} + {sh} shims, {len(miss)} missing-from-install")
-        for name in miss:
-            print(f"WARNING: {m}: missing recipe file: {name}", file=sys.stderr)
-    _write_provenance(args, written, all_missing)
-    if not os.path.isfile(os.path.join(args.deploy, "mods", "mc2x-compat", "data/objects/object2.pak")):
-        print("ERROR: no data/objects/object2.pak produced for mc2x-compat", file=sys.stderr)
-        return 2
+    os.makedirs(args.deploy, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=".mc2x-import-", dir=args.deploy) as scratch:
+        staged = argparse.Namespace(**vars(args))
+        staged.deploy = os.path.join(scratch, "install")
+        reports = os.path.join(args.deploy, "mods", ".import_reports")
+        actions = []
+        try:
+            if os.path.isdir(reports):
+                shutil.copytree(reports, os.path.join(staged.deploy, "mods", ".import_reports"))
+            written, all_missing = {}, {}
+            for m in ("mc2x-compat", "cveg"):
+                w, miss = extract_mod(args.source, staged.deploy, m, recipe["mods"].get(m, []))
+                sh = copy_shims(staged.deploy, m)
+                with open(os.path.join(staged.deploy, "mods", m, "mod.json"), "w", encoding="utf-8") as f:
+                    json.dump(MODJSON[m], f, indent=2)
+                written[m], all_missing[m] = w, miss
+                print(f"  {m}: extracted {len(w)} + {sh} shims, {len(miss)} missing-from-install")
+                for name in miss:
+                    print(f"WARNING: {m}: missing recipe file: {name}", file=sys.stderr)
+            if not os.path.isfile(os.path.join(staged.deploy, "mods", "mc2x-compat", "data/objects/object2.pak")):
+                print("ERROR: no data/objects/object2.pak produced for mc2x-compat", file=sys.stderr)
+                return 2
+            _write_provenance(staged, written, all_missing)
+            os.makedirs(os.path.join(args.deploy, "mods"), exist_ok=True)
+            for m in ("mc2x-compat", "cveg", ".import_reports"):
+                target = os.path.join(args.deploy, "mods", m)
+                backup = os.path.join(scratch, m)
+                existed = os.path.exists(target)
+                if existed:
+                    os.rename(target, backup)
+                actions.append((target, backup if existed else None))
+                os.rename(os.path.join(staged.deploy, "mods", m), target)
+        except Exception as exc:
+            for target, backup in reversed(actions):
+                if os.path.isdir(target):
+                    shutil.rmtree(target)
+                if backup is not None:
+                    os.replace(backup, target)
+            print(f"ERROR: import failed: {exc}", file=sys.stderr)
+            return 2
     return 0
+
 
 def _write_provenance(args, written, all_missing):
     import datetime

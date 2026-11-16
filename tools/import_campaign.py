@@ -156,16 +156,9 @@ def fill_campaign_object_slots(root, out, refs):
 
 
 def asset_bytes(layers, name):
-    """Resolve a loose or archived asset, campaign before dependencies before base."""
-    for layer in layers:
-        path = layer / name
-        if path.is_file():
-            return path.read_bytes()
-        for archive in layer.glob("*.fst"):
-            for off, comp, real, entry, lz, data in fst_entries(archive):
-                if entry.replace("\\", "/").lower() == name:
-                    return legacy.fst.decompress_entry(off, comp, real, lz, data)
-    return None
+    """Resolve safely with the same loose/archive precedence as the transfer."""
+    import transfer_mc2x_campaign as transfer
+    return transfer.asset_bytes(layers, name, archive_entries=fst_entries)
 
 
 def validate_mc2x_tables(root, files, campaigns, layers):
@@ -353,15 +346,16 @@ def import_campaign(source, deploy):
                     raise ValueError(f"Installed mod has changed or is incomplete: {p}")
             metadata = json.loads((target / "mod.json").read_text())
             dependencies = metadata.get("dependencies", [])
-            if "mc2x-compat" in dependencies:
-                validate_mc2x_tables(root, files, campaigns,
-                                    [target] + [mods / safe_path(d) for d in dependencies] + [deploy])
             for dependency in dependencies:
                 dep = mods / safe_path(dependency)
                 if dep.is_symlink() or dep.is_junction() or not (dep / "data").is_dir():
                     raise ValueError(f"Missing {dependency}; import the full compatibility base first.")
+            if "mc2x-compat" in dependencies:
+                validate_mc2x_tables(root, files, campaigns,
+                                    [target] + [mods / safe_path(d) for d in dependencies] + [deploy])
+            for dependency in dependencies:
                 if dependency == "mc2x-compat":
-                    repair_shared_components(dep, root, scratch)
+                    repair_shared_components(mods / dependency, root, scratch)
             if "mco-compat" in metadata.get("dependencies", []) and saved.get("logistics_art_version") != LOGISTICS_ART_VERSION:
                 import_logistics_art(root, target)
                 saved["logistics_art_version"] = LOGISTICS_ART_VERSION
