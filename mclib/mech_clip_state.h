@@ -51,12 +51,26 @@ inline constexpr int kGestureWalk = 4, kGestureRun = 7, kGestureReverse = 9, kGe
 inline Choice once(std::string_view c) { Choice ch; ch.clip = c.data(); ch.mode = Mode::Once; ch.immediate = true; return ch; }
 inline Choice loop(std::string_view c, bool loco = false) { Choice ch; ch.clip = c.data(); ch.locomotion = loco; return ch; }
 
+// Missing mission bindings keep the actor's current clip, including its clock.
+template<class HasClip>
+std::string_view resolveClip(std::string_view requested, std::string_view active, HasClip hasClip) {
+    return hasClip(requested) ? requested : active;
+}
+
 template<class HasClip>
 std::string_view previewClip(std::string_view showcase, std::string_view gesture,
                              std::string_view first, HasClip hasClip) {
     for (auto name : {showcase, gesture, std::string_view("atlas_moveCoreIdle"), first})
         if (!name.empty() && hasClip(name)) return name;
     return {};
+}
+
+// Preview poses bypass the simulation-to-draw copy, so publish on each sampled tick.
+template<class PublishGpu, class PublishCpu>
+void publishPreviewPose(bool preview, bool gpuMode, PublishGpu publishGpu, PublishCpu publishCpu) {
+    if (!preview) return;
+    if (gpuMode) publishGpu();
+    else publishCpu();
 }
 
 // activeClipFinished: the currently playing Once clip reached its end (drives jump start ->

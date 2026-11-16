@@ -155,7 +155,8 @@ def test_post_load_starts_recorder_after_pose_and_writes_row(harness, monkeypatc
     assert h.events.index("pose.settled") < h.events.index("camera.ack") < h.events.index("recorder.spawn")
     assert h.events.index("recorder.wait") < h.events.index("game.kill")
     argv = h.game_spawn.call_args.args[0]
-    assert int(argv[argv.index("--duration") + 1]) == 330
+    assert int(argv[argv.index("--duration") + 1]) == (
+        30 + capture.POST_LOAD_TIMEOUT + capture.POST_LOAD_COMMAND_TIMEOUT + 2 * capture.POST_LOAD_SETTLE)
     row = capture.json.loads(stats_file.write_text.call_args.args[0])
     assert row["status"] == "PASS" and row["affinity"] == cores and row["job_workers"] == (6 if owner else 1)
     assert h.game_spawn.call_args.kwargs["engine_default_workers"] is owner
@@ -167,6 +168,25 @@ def test_post_load_starts_recorder_after_pose_and_writes_row(harness, monkeypatc
         process.cpu_affinity.assert_called_once_with()
     recorder = h.recorder_spawn.call_args.args[0]
     assert recorder[recorder.index("-s") + 1] == "30"
+
+
+def test_post_load_never_connects_to_an_exited_game(harness, monkeypatch):
+    # Trigger: tools/tracy_capture_compare.py. The old 25 s smoke could expire
+    # during the first draw; a successful recorder handshake is not gameplay.
+    import psutil
+    h = harness
+    monkeypatch.setattr(psutil, "Process", lambda _: Mock(cpu_affinity=lambda *cpus: [26, 27]))
+    monkeypatch.setattr(capture, "owner_capture_mode", lambda: False)
+    monkeypatch.setattr(capture, "wait_post_load", Mock())
+    monkeypatch.setattr(Path, "write_text", Mock())
+    h.install.__truediv__.return_value.read_bytes.return_value = b"exe"
+    def expired(*args, **kwargs):
+        h.children[0].returncode = 0
+    monkeypatch.setattr(capture, "camera_command", expired)
+    with pytest.raises(RuntimeError, match="exited before the post-load recorder"):
+        capture.capture_trace(h.install, "vk", "mc2_01", 10, h.out, post_load=True)
+    h.recorder_spawn.assert_not_called()
+    assert h.events[-1] == "release"
 
 
 @pytest.mark.parametrize("platform,suffix", [("nt", ".exe"), ("posix", "")])

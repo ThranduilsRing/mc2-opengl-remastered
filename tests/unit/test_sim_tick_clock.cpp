@@ -1,10 +1,31 @@
 #include "doctest.h"
 #include "../../code/sim_tick_clock.h"
+#include "../../code/sim_speed.h"
 
 #include <limits>
 
 using mc2::sim::TickClock;
 using mc2::sim::kTickSeconds;
+
+TEST_CASE("sim speed: cycle, clamp and multiplayer disable") {
+    using namespace mc2::sim;
+    for (float speed : {0.5f, 1.f, 2.f, 4.f}) {
+        const float next = speedCycle(speed, false, false);
+        CHECK(next == (speed == 4.f ? 0.5f : speed * 2.f));
+        CHECK(speedCycle(next, true, false) == speed);
+        CHECK(speedCycle(speed, false, true) == speed);
+        CHECK(speedCycle(speed, true, true) == speed);
+        CHECK(speedSet(speed, 2.f, true) == speed);
+        CHECK(speedEffective(speed, true) == 1.f);
+        CHECK(speedEffective(speed, false) == speed);
+    }
+    CHECK(speedCycle(0.25f, false, false) == 0.5f);
+    CHECK(speedCycle(1.5f, false, false) == 2.f);
+    CHECK(speedCycle(1.5f, true, false) == 1.f);
+    CHECK(speedSet(1.f, -1.f, false) == 0.25f);
+    CHECK(speedSet(1.f, 0.5f, false) == 0.5f);
+    CHECK(speedSet(1.f, 9.f, false) == 4.f);
+}
 
 namespace {
 // Total ticks run over `seconds` of real time at a constant frame rate.
