@@ -72,7 +72,11 @@ void SpecLibrary::Load(Stuff::MemoryStream* stream)
     m_nameIndex.reserve(m_effects.size());
     for (unsigned i = 0; i < m_effects.size(); ++i) {
         if (m_effects[i]) {
-            m_nameIndex.try_emplace(static_cast<const char*>(m_effects[i]->m_name), i);
+            // An unset/empty MString is a null C-string (mstring.cpp:467), the same
+            // state the scan's S_stricmp could not accept; index only named specs.
+            if (const char* name = static_cast<const char*>(m_effects[i]->m_name)) {
+                m_nameIndex.try_emplace(name, i);
+            }
         }
     }
 }
