@@ -244,7 +244,7 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
     // corner UV seams, source vertex IDs/light tags and reversed card normals
     // remain separate, while dense imported meshes keep GPU vertex-cache reuse.
     const bool laps = mc2_diag::tagRequested("LOAD_LAPS");
-    const auto dedupeStart = std::chrono::steady_clock::now();
+    const auto dedupeStart = laps ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
     auto vertexIndices = mc2_prop::makeVertexIndex(numTris, selfLitTwoSided);
     uint32_t runStart = 0;
     uint32_t packetCountForThisType = 0;
@@ -328,7 +328,7 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
         runStart = runEnd;
     }
 
-    const auto meshoptStart = std::chrono::steady_clock::now();
+    const auto meshoptStart = laps ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
     if (laps) s_propStagingLaps.dedupeMs += std::chrono::duration<double, std::milli>(meshoptStart - dedupeStart).count();
     // Reorder GPU geometry for the vertex cache / overdraw / fetch. Only this GPU copy changes: triangle and vertex
     // sets are identical, and localVertIdx / aRGBLight travel with each vertex, so sim and hot-colour data are untouched.
@@ -394,13 +394,13 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
 }
 
 void GpuStaticPropBatcher::registerLodGroup(std::span<TG_TypeMultiShape* const> shapes, std::span<const float> distances, bool tree) {
-    struct Lap {
-        bool enabled = mc2_diag::tagRequested("LOAD_LAPS");
-        std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
-        ~Lap() { if (enabled) { ++s_propStagingLaps.lodCalls; s_propStagingLaps.lodMs += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count(); } }
-    } lap;
     const int count = static_cast<int>(std::min(shapes.size(), distances.size()));
     if (shapes.empty() || !shapes[0] || count < 2) return;
+    struct Lap {
+        bool enabled = mc2_diag::tagRequested("LOAD_LAPS");
+        std::chrono::steady_clock::time_point start = enabled ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
+        ~Lap() { if (enabled) { ++s_propStagingLaps.lodCalls; s_propStagingLaps.lodMs += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count(); } }
+    } lap;
     const char* const tag = tree ? "TREE_LOD" : "PROP_LOD";
     auto shapeTypes = [](TG_TypeMultiShape* ms) {
         std::vector<uint32_t> ids;

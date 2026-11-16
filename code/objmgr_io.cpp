@@ -381,7 +381,7 @@ void GameObjectManager::registerStaticPropsForMissionLoad() {
 	ZoneScopedN("GameObjectManager::registerStaticPropsForMissionLoad"); MC2_LOAD_SCOPE("GameObjectManager::registerStaticPropsForMissionLoad");
 	if (!GpuStaticPropRegistry::isMissionLoadRegEnabled()) return;
 	const bool laps = mc2_diag::tagRequested("LOAD_LAPS");
-	const auto lapStart = std::chrono::steady_clock::now();
+	const auto lapStart = laps ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
 	auto arrayStart = lapStart;
 	double arrayMs[4]{};
 
@@ -417,21 +417,21 @@ void GameObjectManager::registerStaticPropsForMissionLoad() {
 		registerOne(terrainObjects[i]);
 	}
 	if (laps) arrayMs[0] = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - arrayStart).count();
-	arrayStart = std::chrono::steady_clock::now();
+	arrayStart = laps ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
 	currentArr = 1;
 	{ ZoneScopedN("StaticPropRegistration buildings"); MC2_LOAD_SCOPE("StaticPropRegistration buildings");
 	for (long i = 0; i < numBuildings; ++i)
 		registerOne(buildings[i]);
 	}
 	if (laps) arrayMs[1] = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - arrayStart).count();
-	arrayStart = std::chrono::steady_clock::now();
+	arrayStart = laps ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
 	currentArr = 2;
 	{ ZoneScopedN("StaticPropRegistration turrets"); MC2_LOAD_SCOPE("StaticPropRegistration turrets");
 	for (long i = 0; i < numTurrets; ++i)
 		registerOne(turrets[i]);
 	}
 	if (laps) arrayMs[2] = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - arrayStart).count();
-	arrayStart = std::chrono::steady_clock::now();
+	arrayStart = laps ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
 	currentArr = 3;
 	{ ZoneScopedN("StaticPropRegistration gates"); MC2_LOAD_SCOPE("StaticPropRegistration gates");
 	for (long i = 0; i < numGates; ++i)
