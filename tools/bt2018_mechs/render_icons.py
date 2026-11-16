@@ -125,8 +125,100 @@ def load_parts(glb: Path):
 # ----------------------------------------------------------------------------- raster
 
 
+SS = 4                                   # HUD supersample: averages the per-face shading of high-poly parts
+LIGHT_FRAC, MID_FRAC = 0.36, 0.28        # stock icon tone mix inside the silhouette (rest is the dark shade)
+
+
+def _hud_render(parts, w, h, rear: bool):
+    """Stock-style HUD cell: dark body, a light highlight on lit faces, dark lines between regions.
+
+    Shading is the mean lit value of SSxSS subsamples (high-poly noise averages out), banded by
+    quantile so every chassis gets the stock tone mix. No grey outline ring: region seams and the
+    silhouette's lower/right edge take the dark shade instead."""
+    lam, reg = _raster(parts, w * SS, h * SS, rear)
+    cov = (reg >= 0).reshape(h, SS, w, SS).sum((1, 3)) / float(SS * SS)
+    lsum = np.where(reg >= 0, lam, 0.0).reshape(h, SS, w, SS).sum((1, 3))
+    lm = lsum / np.maximum(cov * SS * SS, 1)
+    votes = np.zeros((8, h, w))
+    for r in range(8):
+        votes[r] = (reg == r).reshape(h, SS, w, SS).sum((1, 3))
+    region = votes.argmax(0)
+    solid = cov >= 0.5
+    img = np.zeros((h, w, 4), dtype=np.uint8)
+    if not solid.any():
+        return img
+    vals = lm[solid]
+    hi_cut = np.quantile(vals, 1 - LIGHT_FRAC)
+    mid_cut = np.quantile(vals, 1 - LIGHT_FRAC - MID_FRAC)
+    shade = np.where(lm >= hi_cut, 0, np.where(lm >= mid_cut, 1, 2))
+    for dy, dx in ((1, 0), (0, 1)):                      # seam: next pixel down/right is another region or empty
+        nb_solid = np.roll(solid, (-dy, -dx), axis=(0, 1))
+        nb_reg = np.roll(region, (-dy, -dx), axis=(0, 1))
+        seam = solid & (~nb_solid | (nb_reg != region))
+        if dy:
+            seam[-1, :] = True
+        if dx:
+            seam[:, -1] = True
+        shade = np.where(seam, 2, shade)
+    for y, x in zip(*np.nonzero(solid)):
+        img[y, x] = (*region_color(int(region[y, x]), int(shade[y, x])), 255)
+    return img
+
+
+def _raster(parts, w, h, rear: bool):
+    """Per-subsample lit value (signed n.L on the camera-facing normal) and region (-1 empty)."""
+    allp = np.concatenate([p for _, p, _ in parts])
+    lo, hi = allp.min(0), allp.max(0)
+    sx = -1.0 if not rear else 1.0
+    scale = min((w - 2 * SS) / max(hi[0] - lo[0], 1e-6), (h - 2 * SS) / max(hi[1] - lo[1], 1e-6))
+    cx, cy = (hi[0] + lo[0]) / 2, (hi[1] + lo[1]) / 2
+    zbuf = np.full((h, w), -np.inf)
+    lam = np.zeros((h, w))
+    reg = np.full((h, w), -1, dtype=int)
+    view = np.array([0, 0, -1.0 if rear else 1.0])
+    light = np.array([-0.45 * sx, 0.55, 0.7 * view[2]])
+    light /= np.linalg.norm(light)
+    for region, p, tris in parts:
+        if rear and region not in REAR_REGIONS:
+            continue
+        X = (p[:, 0] - cx) * sx * scale + w / 2
+        Y = h / 2 - (p[:, 1] - cy) * scale
+        Z = p[:, 2] if not rear else -p[:, 2]
+        for a, b, c in tris:
+            n = np.cross(p[b] - p[a], p[c] - p[a])
+            nl = np.linalg.norm(n)
+            if nl < 1e-12:
+                continue
+            n /= nl
+            if n @ view < 0:
+                n = -n
+            val = float(n @ light)
+            xs, ys = (X[a], X[b], X[c]), (Y[a], Y[b], Y[c])
+            x0, x1 = max(int(np.floor(min(xs))), 0), min(int(np.ceil(max(xs))), w - 1)
+            y0, y1 = max(int(np.floor(min(ys))), 0), min(int(np.ceil(max(ys))), h - 1)
+            if x0 > x1 or y0 > y1:
+                continue
+            gx, gy = np.meshgrid(np.arange(x0, x1 + 1) + 0.5, np.arange(y0, y1 + 1) + 0.5)
+            d = (ys[1] - ys[2]) * (xs[0] - xs[2]) + (xs[2] - xs[1]) * (ys[0] - ys[2])
+            if abs(d) < 1e-12:
+                continue
+            l0 = ((ys[1] - ys[2]) * (gx - xs[2]) + (xs[2] - xs[1]) * (gy - ys[2])) / d
+            l1 = ((ys[2] - ys[0]) * (gx - xs[2]) + (xs[0] - xs[2]) * (gy - ys[2])) / d
+            inside = (l0 >= 0) & (l1 >= 0) & (1 - l0 - l1 >= 0)
+            if not inside.any():
+                continue
+            z = l0 * Z[a] + l1 * Z[b] + (1 - l0 - l1) * Z[c]
+            win = inside & (z > zbuf[y0:y1 + 1, x0:x1 + 1])
+            zbuf[y0:y1 + 1, x0:x1 + 1][win] = z[win]
+            lam[y0:y1 + 1, x0:x1 + 1][win] = val
+            reg[y0:y1 + 1, x0:x1 + 1][win] = region
+    return lam, reg
+
+
 def render(parts, w, h, rear: bool, mode: str):
     """Orthographic z-buffered raster. mode 'hud' -> exact palette; 'lit' -> shaded RGBA."""
+    if mode == "hud":
+        return _hud_render(parts, w, h, rear)
     allp = np.concatenate([p for _, p, _ in parts])
     lo, hi = allp.min(0), allp.max(0)
     up = 1                                               # glTF Y-up
@@ -178,12 +270,6 @@ def render(parts, w, h, rear: bool, mode: str):
                 v = int(70 + 170 * lam)
                 col = (v, int(v * 0.95), int(v * 0.88))
             img[y0:y1 + 1, x0:x1 + 1][win] = (*col, 255)
-    if mode == "hud":
-        filled = img[:, :, 3] > 0
-        edge = np.zeros_like(filled)
-        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-            edge |= np.roll(filled, (dy, dx), axis=(0, 1)) & ~filled
-        img[edge] = (*OUTLINE, 255)
     return img
 
 
