@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <utility>
+#include "logisticserrors.h"
 
 namespace mc2::components {
 // Cooked namespace and authored cells keep legacy overlays and resized footprints from cropping the new art.
@@ -52,6 +53,18 @@ inline const CookedIcon* cookedIcon(std::string_view file) {
     };
     for (const auto& icon : icons) if (file == icon.source || file == icon.file) return &icon;
     return nullptr;
+}
+
+// Why a placement was refused, in the words the mech lab shows (drop, double-click and Add button).
+inline const char* placementRefusal(int code) {
+    switch (code) {
+        case COMPONENT_TOO_HOT: return "Not enough cooling for this component.";
+        case NO_COMPATIBLE_MOUNT: return "No free hardpoint of this weapon type on this chassis.";
+        case COMPONENT_TOO_HEAVY: return "Over this chassis payload: remove equipment or armor plating.";
+        case INVALID_LOCATION: return "Place the component wholly inside one body location.";
+        case NO_MORE_ARMOR: return "Armor is already at the maximum.";
+        default: return "Component cannot fit here: choose a free valid slot.";
+    }
 }
 
 inline bool restoreGridDrag(bool fromGrid, bool overGrid, bool overInventory, bool cancelled) {
