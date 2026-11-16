@@ -246,3 +246,145 @@ TEST_CASE("OverlayPrestage/load selection matches the first-update metadata purg
     Terrain::mapData = nullptr;
     Terrain::terrainTextures = nullptr;
 }
+
+#include "../../mclib/vk_scene_renderer_overlays_algo.h"
+
+TEST_CASE("OverlayPrestage/overlay event stream equals the legacy scans") {
+    using namespace mc2_overlay_algo;
+    // Recorded renderer inputs. Values are the production MC2_* flag bits.
+    constexpr Masks m{1, 4, 8, 16, 128, 256, 512, 1024, 2048, 4096, 8192};
+    struct RecordedNode {
+        Node view;
+        uint32_t texture, resolvedTexture;
+        std::array<uint32_t, 3> vehicleVertices;
+    };
+    // Independent old scan oracle: no bucket predicates or scheduler helpers.
+    const auto old = [&](std::vector<RecordedNode> nodes, bool software) {
+        std::vector<Event> events;
+        Pass p = Pass::Water;
+        const auto e = [&](Op op, int v = 0, int i = -1, uint32_t count = 0) {
+            events.push_back({op, p, i, 0, count, v});
+        };
+        const auto block = [&](Block b, int i = -1) { e(Op::RenderStateBlock, static_cast<int>(b), i); };
+        const auto begin = [&](Pass pass) { p = pass; e(Op::PassBegin); };
+        const auto reset = [&](int i) { e(Op::ResetVertex, 0, i, nodes[i].view.current); nodes[i].view.current = 0; };
+        const auto submit = [&](int i, int alpha = 0) {
+            const auto& n = nodes[i].view;
+            const uint32_t count = n.current == n.capacity ? n.capacity : n.current;
+            e(Op::Submit, alpha, i, count);
+            nodes[i].view.current = 0; // The existing submit helper's own reset.
+        };
+        block(Block::Initial); begin(Pass::Water);
+        for (int a = 0; a < 2; ++a) {
+            e(Op::AlphaTest, a);
+            for (int i = 0; i < static_cast<int>(nodes.size()); ++i) {
+                const auto& n = nodes[i].view;
+                if ((n.flags & 1) && (n.flags & 4) && (n.flags & 1024) == uint32_t(a * 1024) && n.vertices) {
+                    if (!(n.flags & 2048) && !(n.flags & 4096)) { reset(i); continue; }
+                    block(Block::WaterNode, i); reset(i);
+                }
+            }
+        }
+        e(Op::AlphaTest); e(Op::PassEnd);
+        begin(Pass::NoUnderlayer); block(Block::NoUnderlayer);
+        for (int i = 0; i < static_cast<int>(nodes.size()); ++i) {
+            const auto& n = nodes[i].view;
+            if ((n.flags & 1) && !(n.flags & 4) && (n.flags & 8192) && n.vertices) reset(i);
+        }
+        e(Op::PassEnd); begin(Pass::Shadow); block(Block::Shadow);
+        if (!software) for (int i = 0; i < static_cast<int>(nodes.size()); ++i) {
+            const auto& n = nodes[i].view;
+            if ((n.flags & 8) && (n.flags & 4) && n.vertices) { submit(i); reset(i); }
+        }
+        e(Op::Flush); e(Op::PassEnd); begin(Pass::Alpha); block(Block::Alpha);
+        for (int a = 0; a < 2; ++a) {
+            e(Op::AlphaTest, a);
+            for (int i = 0; i < static_cast<int>(nodes.size()); ++i) {
+                const auto& n = nodes[i].view;
+                if (!(n.flags & 1) && !(n.flags & 8) && !(n.flags & 128) && (n.flags & 4)
+                    && (n.flags & 1024) == uint32_t(a * 1024) && n.vertices) { submit(i, a); reset(i); }
+            }
+        }
+        e(Op::AlphaTest); block(Block::AlphaRestore); e(Op::PassEnd);
+        begin(Pass::Effects); block(Block::Effects);
+        for (int i = 0; i < static_cast<int>(nodes.size()); ++i) {
+            const auto& n = nodes[i].view;
+            if ((n.flags & 16) && n.vertices) { submit(i); reset(i); }
+        }
+        e(Op::PassEnd); begin(Pass::Spotlight); block(Block::Spotlight);
+        for (int i = 0; i < static_cast<int>(nodes.size()); ++i) {
+            const auto& n = nodes[i].view;
+            if ((n.flags & 256) && n.vertices) { submit(i); reset(i); }
+        }
+        e(Op::Flush); e(Op::PassEnd); begin(Pass::Compass); block(Block::Compass);
+        for (int i = 0; i < static_cast<int>(nodes.size()); ++i) {
+            const auto& n = nodes[i].view;
+            if ((n.flags & 128) && n.vertices) reset(i);
+        }
+        e(Op::PassEnd); begin(Pass::Hud); block(Block::Hud);
+        for (int i = 0; i < static_cast<int>(nodes.size()); ++i) {
+            const auto& n = nodes[i].view;
+            if ((n.flags & 512) && n.vertices) reset(i);
+        }
+        block(Block::End); e(Op::PassEnd);
+        return events;
+    };
+    const auto compare = [&](const std::vector<RecordedNode>& nodes, bool software) {
+        const auto expected = old(nodes, software);
+        std::vector<Event> actual;
+        int reads = 0;
+        Schedule(static_cast<int>(nodes.size()), software, m,
+            [&](int i) { ++reads; return nodes[i].view; },
+            [&](Event e) { actual.push_back(e); });
+        CHECK(reads == static_cast<int>(nodes.size()));
+        REQUIRE(actual.size() == expected.size());
+        for (size_t k = 0; k < expected.size(); ++k) {
+            INFO("event ", k);
+            CHECK(actual[k] == expected[k]);
+        }
+        // Expand unchanged helper inputs at each boundary: texture binding,
+        // alpha/source accounting, water mode, render-state block identity,
+        // initial renderer state and vkLegacyRun frame/fog/viewport inputs.
+        // These immutable inputs do not affect membership, but must travel
+        // with the same node, range and boundary in the same order.
+        const auto inputs = [&](const std::vector<Event>& stream) {
+            std::vector<std::array<uint32_t, 16>> trace;
+            uint32_t alpha = 0;
+            for (const auto& e : stream) {
+                if (e.op == Op::AlphaTest) alpha = e.value;
+                std::array<uint32_t, 16> row{uint32_t(e.op), uint32_t(e.pass), uint32_t(e.value),
+                    e.first, e.count, alpha, uint32_t(software), 0x12345678, 1920, 1080};
+                if (e.node >= 0) {
+                    const auto& n = nodes[e.node];
+                    row[10] = n.texture; row[11] = n.resolvedTexture == 0xffffffffu ? 0u : n.resolvedTexture;
+                    row[12] = n.view.flags;
+                    uint32_t remaining = e.count;
+                    const bool vehicle = e.pass == Pass::Alpha && !(n.view.flags & (256 | 16));
+                    for (int c = 0; c < 3; ++c) {
+                        row[13 + c] = vehicle ? (remaining < n.vehicleVertices[c] ? remaining : n.vehicleVertices[c]) : 0;
+                        remaining -= row[13 + c];
+                    }
+                }
+                trace.push_back(row);
+            }
+            return trace;
+        };
+        CHECK(inputs(actual) == inputs(expected));
+    };
+    compare({}, false); compare({}, true);
+    std::vector<RecordedNode> all;
+    constexpr uint32_t bits[]{1, 4, 8, 16, 128, 256, 512, 1024, 2048, 4096, 8192};
+    // Every overlap, each alpha-test state, null/empty/partial/full vertex
+    // ranges, both renderer branches, single nodes and long binding runs.
+    for (uint32_t mask = 0; mask < 2048; ++mask) {
+        uint32_t flags = 0;
+        for (int b = 0; b < 11; ++b) if (mask & (1u << b)) flags |= bits[b];
+        for (uint32_t range = 0; range < 4; ++range) {
+            RecordedNode n{{flags, range != 0, 12, range == 3 ? 12u : range == 2 ? 6u : 0u},
+                mask % 7, mask % 3 ? mask + 100 : 0xffffffffu, {3, 6, 3}};
+            compare({n}, false); compare({n}, true);
+            all.push_back(n);
+        }
+    }
+    compare(all, false); compare(all, true);
+}
