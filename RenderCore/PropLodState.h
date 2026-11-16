@@ -20,71 +20,75 @@ public:
     // Indices survive hash-table growth and dynamic inserts. Erase/clear
     // invalidate bindings; duplicate keys deliberately share one dense value.
     size_t resolve(uint64_t key) {
-        if ((used_ + 1) * 4 > slots_.size() * 3) grow();
+        if ((used_ + 1) * 4 > keys_.size() * 3) grow();
         size_t i = home(key);
-        while (slots_[i].used) {
-            if (slots_[i].key == key) return slots_[i].index;
+        while (occupied_[i]) {
+            if (keys_[i] == key) return indices_[i];
             i = (i + 1) & mask();
         }
         const size_t index = free_.empty() ? values_.size() : free_.back();
         if (free_.empty()) values_.push_back(0);
         else { free_.pop_back(); values_[index] = 0; }
-        slots_[i] = {key, index, 1};
+        keys_[i] = key; indices_[i] = index; occupied_[i] = 1;
         ++used_;
         return index;
     }
     uint8_t& dense(size_t index) { return values_[index]; }
     uint64_t revision() const { return revision_; }
     void erase(uint64_t key) {
-        if (slots_.empty()) return;
+        if (keys_.empty()) return;
         size_t i = home(key);
-        while (slots_[i].used && slots_[i].key != key) i = (i + 1) & mask();
-        if (!slots_[i].used) return;
-        free_.push_back(slots_[i].index);
+        while (occupied_[i] && keys_[i] != key) i = (i + 1) & mask();
+        if (!occupied_[i]) return;
+        free_.push_back(indices_[i]);
         ++revision_;
         // Backward-shift deletion keeps probe chains intact without tombstones.
         size_t j = i;
         for (;;) {
             j = (j + 1) & mask();
-            if (!slots_[j].used) break;
-            const size_t h = home(slots_[j].key);
+            if (!occupied_[j]) break;
+            const size_t h = home(keys_[j]);
             const bool movable = (i <= j) ? (h <= i || h > j) : (h <= i && h > j);
-            if (movable) { slots_[i] = slots_[j]; i = j; }
+            if (movable) { keys_[i] = keys_[j]; indices_[i] = indices_[j]; occupied_[i] = occupied_[j]; i = j; }
         }
-        slots_[i].used = 0;
+        occupied_[i] = 0;
         --used_;
     }
-    void clear() { slots_.clear(); values_.clear(); free_.clear(); used_ = 0; ++revision_; }
+    void clear() { keys_.clear(); indices_.clear(); occupied_.clear(); values_.clear(); free_.clear(); used_ = 0; ++revision_; }
     size_t size() const { return used_; }
     const uint8_t* find(uint64_t key) const {
-        if (slots_.empty()) return nullptr;
+        if (keys_.empty()) return nullptr;
         size_t i = home(key);
-        while (slots_[i].used) {
-            if (slots_[i].key == key) return &values_[slots_[i].index];
+        while (occupied_[i]) {
+            if (keys_[i] == key) return &values_[indices_[i]];
             i = (i + 1) & mask();
         }
         return nullptr;
     }
 private:
-    struct Slot { uint64_t key; size_t index; uint8_t used; };
-    std::vector<Slot> slots_;
+    std::vector<uint64_t> keys_;
+    std::vector<size_t> indices_;
+    std::vector<uint8_t> occupied_;
     std::vector<uint8_t> values_;
     std::vector<size_t> free_;
     uint64_t revision_ = 0;
     size_t used_ = 0;
-    size_t mask() const { return slots_.size() - 1; }
+    size_t mask() const { return keys_.size() - 1; }
     size_t home(uint64_t k) const {   // the key's low bits are the typeID, so mix before masking
         k ^= k >> 33; k *= 0xFF51AFD7ED558CCDull; k ^= k >> 33; k *= 0xC4CEB9FE1A85EC53ull; k ^= k >> 33;
         return static_cast<size_t>(k) & mask();
     }
     void grow() {
-        std::vector<Slot> old;
-        old.swap(slots_);
-        slots_.assign(old.empty() ? 1024 : old.size() * 2, Slot{0, 0, 0});
-        for (const Slot& s : old) if (s.used) {
-            size_t i = home(s.key);
-            while (slots_[i].used) i = (i + 1) & mask();
-            slots_[i] = s;
+        const size_t capacity = keys_.empty() ? 1024 : keys_.size() * 2;
+        // Allocate every array before changing this table; dense indices stay stable.
+        std::vector<uint64_t> nextKeys(capacity);
+        std::vector<size_t> nextIndices(capacity);
+        std::vector<uint8_t> nextOccupied(capacity, 0);
+        keys_.swap(nextKeys); indices_.swap(nextIndices); occupied_.swap(nextOccupied);
+        for (size_t old = 0; old < nextKeys.size(); ++old) if (nextOccupied[old]) {
+            size_t i = home(nextKeys[old]);
+            while (occupied_[i]) i = (i + 1) & mask();
+            keys_[i] = nextKeys[old]; indices_[i] = nextIndices[old]; occupied_[i] = 1;
         }
     }
 };
