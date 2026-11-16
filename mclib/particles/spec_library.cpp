@@ -11,6 +11,7 @@
 #include "gosfx/gosfxheaders.hpp"
 #include "spec_library.h"
 #include "fx_trace/fx_trace.h"
+#include <cctype>
 
 namespace mc2 {
 namespace particles {
@@ -44,6 +45,7 @@ SpecLibrary::SpecLibrary()
 
 SpecLibrary::~SpecLibrary()
 {
+    m_nameIndex.clear();
     for (unsigned i = 0; i < m_effects.size(); ++i) {
         if (m_effects[i]) {
             Unregister_Object(m_effects[i].get());
@@ -67,6 +69,29 @@ void SpecLibrary::Load(Stuff::MemoryStream* stream)
         Check_Object(m_effects[i].get());
         m_effects[i]->m_effectID = i;
     }
+    m_nameIndex.reserve(m_effects.size());
+    for (unsigned i = 0; i < m_effects.size(); ++i) {
+        if (m_effects[i]) {
+            m_nameIndex.try_emplace(static_cast<const char*>(m_effects[i]->m_name), i);
+        }
+    }
+}
+
+size_t SpecLibrary::NameHash::operator()(std::string_view name) const
+{
+    // S_stricmp uses _stricmp/strcasecmp: lowercase bytes in LC_CTYPE.
+    // The engine never changes LC_CTYPE from its initial C locale.
+    size_t hash = 0;
+    for (unsigned char byte : name) {
+        hash = hash * 131 + static_cast<unsigned>(std::tolower(byte));
+    }
+    return hash;
+}
+
+bool SpecLibrary::NameEqual::operator()(std::string_view left, std::string_view right) const
+{
+    // Keys and queries are complete NUL-terminated strings, never substrings.
+    return !S_stricmp(left.data(), right.data());
 }
 
 void SpecLibrary::Save(Stuff::MemoryStream* stream)
@@ -91,17 +116,14 @@ gosFX::Effect::Specification* SpecLibrary::Find(mc2::czstring name)
     // Preserved verbatim from gosFX::EffectLibrary::Find at B1 Stage 2' C1.
     FX_TRACE_SPAWN(name);
 
-    for (unsigned i = 0; i < m_effects.size(); ++i) {
-        gosFX::Effect::Specification* spec = m_effects[i].get();
-        if (spec) {
-            Check_Object(spec);
-            if (!S_stricmp(spec->m_name, name)) {
-                Verify(spec->m_effectID == i);
-                return spec;
-            }
-        }
-    }
-    return nullptr;
+    if (m_nameIndex.empty()) return nullptr;
+    const auto found = m_nameIndex.find(std::string_view(name));
+    if (found == m_nameIndex.end()) return nullptr;
+    const auto& [key, i] = *found;
+    gosFX::Effect::Specification* spec = m_effects[i].get();
+    Check_Object(spec);
+    Verify(spec->m_effectID == i);
+    return spec;
 }
 
 gosFX::Effect::Specification* SpecLibrary::At(unsigned index)
