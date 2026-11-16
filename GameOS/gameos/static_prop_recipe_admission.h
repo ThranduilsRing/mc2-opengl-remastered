@@ -2,6 +2,7 @@
 #include "../../RenderWorld/RenderWorld.h"
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 namespace GpuStaticPropRegistry {
@@ -9,17 +10,17 @@ namespace GpuStaticPropRegistry {
 class StaticPropRecipeAdmission {
 public:
     template<class Emit>
-    int32_t admit(bool eligible, size_t rangeCount, bool recycle,
+    std::optional<size_t> admit(bool eligible, size_t rangeCount, bool recycle,
                   const std::vector<uint32_t>& freeList, Emit emit) {
-        if (!eligible) return -1;
+        if (!eligible) return std::nullopt;
         const size_t index = recycle && !freeList.empty() ? freeList.back() : rangeCount;
         if (RenderWorld::detail::staticPropRecipeIndexFits(index))
-            return static_cast<int32_t>(index);
+            return index;
         if (!exhausted_) {
             exhausted_ = true;
             emit(index);
         }
-        return -1;
+        return std::nullopt;
     }
 
     // Only a live slot returned to the enabled free list ends an episode.

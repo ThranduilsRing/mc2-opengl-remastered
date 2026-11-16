@@ -19,13 +19,13 @@ TEST_CASE("static prop exhaust admission and episode resets") {
             ++logs;
         });
     };
-    for (int i = 0; i < 8; ++i) CHECK(admit(false, full) == -1);
+    for (int i = 0; i < 8; ++i) CHECK_FALSE(admit(false, full));
     CHECK(logs == 0);
-    for (int i = 0; i < 8; ++i) CHECK(admit(true, full) == -1);
+    for (int i = 0; i < 8; ++i) CHECK_FALSE(admit(true, full));
     CHECK(logs == 1);
     CHECK_FALSE(policy.recycleSlot(true, false)); // invalid/repeated invalidation
     CHECK_FALSE(policy.recycleSlot(false, true)); // recycling disabled
-    CHECK(admit(true, full) == -1);
+    CHECK_FALSE(admit(true, full));
     CHECK(logs == 1);
     // Preserve append indices and LIFO reuse, including a completely full range.
     REQUIRE(policy.recycleSlot(true, true));
@@ -34,13 +34,13 @@ TEST_CASE("static prop exhaust admission and episode resets") {
     free.pop_back();
     CHECK(admit(true, full) == 3);
     free.pop_back();
-    CHECK(admit(true, full) == -1);
-    CHECK(admit(true, full) == -1);
+    CHECK_FALSE(admit(true, full));
+    CHECK_FALSE(admit(true, full));
     CHECK(logs == 2);
     policy.reset(); // registry clear, then refill through the last accepted index
     for (size_t i = 0; i < full; ++i) REQUIRE(admit(true, i) == i);
-    CHECK(admit(true, full) == -1);
-    CHECK(admit(true, full) == -1);
+    CHECK_FALSE(admit(true, full));
+    CHECK_FALSE(admit(true, full));
     CHECK(logs == 3);
 }
 

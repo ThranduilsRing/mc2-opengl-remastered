@@ -385,14 +385,14 @@ uint32_t residentCount() {
 
 int32_t registerRecipe(TG_MultiShape* multi,
                        const std::vector<GpuStaticPropInstance>& batch) {
-    const int32_t admittedIndex = s_recipeAdmission.admit(
+    const auto admittedIndex = s_recipeAdmission.admit(
         !batch.empty() && multi && multi->usesTypeMaterials(),
         s_recipeRanges.size(), s_recipeRecycle, s_recipeRangeFreeList,
         [](size_t prospectiveIndex) {
             std::fprintf(stderr, "[RENDER_WORLD] static_prop_recipe_exhausted index=%zu limit=%u\n",
                          prospectiveIndex, RenderWorld::detail::kMechHandleBase);
         });
-    if (admittedIndex < 0) return -1;
+    if (!admittedIndex) return -1;
     RecipeRange rng;
     rng.begin = static_cast<uint32_t>(s_recipes.size());
     rng.count = static_cast<uint32_t>(batch.size());
