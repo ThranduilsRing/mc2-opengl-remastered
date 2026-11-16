@@ -100,6 +100,13 @@ TEST_CASE("carbon_mclib/FIT strings reject missing quotes")
     CHECK(parser.copyString(out, noEnd, sizeof out) == SYNTAX_ERROR);
     CHECK(parser.copyString(out, valid, sizeof out) == NO_ERR);
     CHECK(std::strcmp(out, "ok") == 0);
+    char quoted[] = "\"abc\"";
+    for (unsigned long capacity : {0ul, 1ul, 3ul, 4ul}) {
+        char guarded[] = "ZZZZZ";
+        CHECK(parser.copyString(guarded, quoted, capacity) == (capacity < 4 ? BUFFER_TOO_SMALL : NO_ERR));
+        CHECK(guarded[capacity] == 'Z');
+        if (capacity == 4) CHECK(std::strcmp(guarded, "abc") == 0);
+    }
 }
 
 TEST_CASE("carbon_mclib/short paths append a longer extension once")
