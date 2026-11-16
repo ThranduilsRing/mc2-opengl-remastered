@@ -197,14 +197,32 @@ def read_cmake_text():
 
 
 TCD_RE = re.compile(
-    r"target_compile_definitions\s*\(\s*([A-Za-z_]\w*)\s+"
+    r"target_compile_definitions\s*\(\s*([A-Za-z_][\w.-]*)\s+"
     r"(PRIVATE|PUBLIC|INTERFACE)\s+([^)]*)\)", re.MULTILINE)
+FUNCTION_RE = re.compile(
+    r"\bfunction\s*\(\s*([A-Za-z_]\w*)\s+([A-Za-z_]\w*)\s*\)"
+    r"(.*?)\bendfunction\s*\([^)]*\)", re.IGNORECASE | re.DOTALL)
 
 
 def parse_macro_target_defs(cmake_text):
     """macro -> list of (target, visibility). Strips =VALUE suffixes."""
     defs = {}
-    for cf, text in cmake_text.items():
+    # Expand simple one-parameter helpers at literal call sites, even when
+    # the definition and call live in different CMAKE_FILES. Uncalled bodies
+    # must not contribute definitions of their own.
+    texts = {cf: re.sub(r"#[^\n]*", "", text) for cf, text in cmake_text.items()}
+    functions = [m.groups() for text in texts.values()
+                 for m in FUNCTION_RE.finditer(text)]
+    texts = {cf: FUNCTION_RE.sub("", text) for cf, text in texts.items()}
+    for cf, text in texts.items():
+        expanded = []
+        for name, param, body in functions:
+            calls = re.finditer(r"\b" + re.escape(name)
+                                + r"\s*\(\s*([A-Za-z_][\w.-]*)\s*\)",
+                                text, re.IGNORECASE)
+            expanded.extend(body.replace("${" + param + "}", call.group(1))
+                            for call in calls)
+        text += "\n" + "\n".join(expanded)
         for m in TCD_RE.finditer(text):
             target, vis, body = m.group(1), m.group(2), m.group(3)
             for tok in body.split():
