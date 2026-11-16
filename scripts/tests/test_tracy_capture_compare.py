@@ -175,7 +175,7 @@ def test_post_load_never_connects_to_an_exited_game(harness, monkeypatch):
     # during the first draw; a successful recorder handshake is not gameplay.
     import psutil
     h = harness
-    monkeypatch.setattr(psutil, "Process", lambda _: Mock(cpu_affinity=lambda: [26, 27]))
+    monkeypatch.setattr(psutil, "Process", lambda _: Mock(cpu_affinity=lambda *cpus: [26, 27]))
     monkeypatch.setattr(capture, "owner_capture_mode", lambda: False)
     monkeypatch.setattr(capture, "wait_post_load", Mock())
     monkeypatch.setattr(Path, "write_text", Mock())
