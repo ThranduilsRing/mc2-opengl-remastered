@@ -85,7 +85,7 @@ TEST_CASE("torso twist: real Atlas bearing about sampled axis and unchanged legs
     const char* path = std::getenv("TORSO_PROOF_ATLAS");
     if (!path || !*path) {
         const char* required = std::getenv("TORSO_PROOF_REQUIRED");
-        REQUIRE_MESSAGE(!required || std::strcmp(required, "1") != 0,
+        REQUIRE_MESSAGE((!required || std::strcmp(required, "1") != 0),
             "TORSO_PROOF_REQUIRED=1 needs TORSO_PROOF_ATLAS");
         MESSAGE("SKIP: real Atlas pack not configured; set TORSO_PROOF_ATLAS");
         return;
