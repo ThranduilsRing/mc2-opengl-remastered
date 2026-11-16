@@ -410,13 +410,27 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 		return true;
 	}
 	if (c.line.starts_with("force_state ")) {
-		// force_state <partId> sensor <0..4> | armoff left|right  (needs MC2_TEST_SPAWN=1; pair with freeze_movers so the sim does not rewrite it)
+		// force_state <partId> torso <deg> | sensor <0..4> | armoff left|right (MC2_TEST_SPAWN=1).
 		long pid = 0; char what[16] = {0}, arg[16] = {0};
 		GameObjectPtr obj;
 		if (!mc2::gate::get<"MC2_TEST_SPAWN">()) {
 			c.result = "blocked"; c.note = "needs MC2_TEST_SPAWN=1";
-		} else if (sscanf(c.line.c_str() + 12, "%ld %15s %15s", &pid, what, arg) != 3 || !(obj = ObjectManager->findByPartId(pid)) || !obj->getAppearance()) {
+		} else if (!ObjectManager || sscanf(c.line.c_str() + 12, "%ld %15s %15s", &pid, what, arg) != 3 || !(obj = ObjectManager->findByPartId(pid)) || !obj->getAppearance()) {
 			c.result = "blocked"; c.note = "force_state <partId> sensor <n> | armoff left|right";
+		} else if (!strcmp(what, "torso")) {
+			char* end = nullptr;
+			const float degrees = strtof(arg, &end);
+			int consumed = 0;
+			sscanf(c.line.c_str() + 12, "%*ld %*15s %*15s %n", &consumed);
+			if (obj->getObjectClass() != BATTLEMECH || end == arg || *end ||
+				!std::isfinite(degrees) || c.line[12 + consumed] != '\0') {
+				c.result = "blocked"; c.note = "torso needs a BattleMech and finite degrees";
+			} else {
+				auto* mech = static_cast<BattleMech*>(obj);
+				const float limit = mech->dynamics.max.mech.torsoYaw;
+				mech->torsoRotation = std::clamp(degrees, -limit, limit);
+				c.result = "ok";
+			}
 		} else if (!strcmp(what, "sensor")) {
 			obj->getAppearance()->setSensorLevel(atol(arg));
 			c.result = "ok";

@@ -862,9 +862,15 @@ bool MissionInterfaceManager::uiCmdReadback(UiCmdCtx& c)
 					if (obj->getObjectClass() == BATTLEMECH) {
 						const auto* mech = static_cast<BattleMech*>(obj);
 						GameObjectPtr attackTarget = pilot ? pilot->getAttackTarget() : nullptr;
-						mc2::fmt::to_buf(b, "  mech: heading_deg={:.3f} torso_yaw_deg={:.3f} target={:d}\n",
+						GameObjectPtr currentTarget = pilot ? pilot->getCurrentTarget() : nullptr;
+						mc2::fmt::to_buf(b, "  mech: heading_deg={:.3f} torso_yaw_deg={:.3f} appearance_yaw_deg={:.3f} target={:d} currentTarget={:d} attackPoint={} rotateTorso={:.3f} turn={:d} torsoLimit={:.3f}\n",
 							m->getRotation(), mech->torsoRotation,
-							mc2::fmt::as_i32(attackTarget ? attackTarget->getPartId() : -1L));
+							m->unitAnimation ? m->unitAnimation->torsoRotation : 0.0f,
+							mc2::fmt::as_i32(attackTarget ? attackTarget->getPartId() : -1L),
+							mc2::fmt::as_i32(currentTarget ? currentTarget->getPartId() : -1L),
+							pilot && pilot->getCurTacOrder()->code == TACTICAL_ORDER_ATTACK_POINT,
+							mech->control.settings.mech.rotateTorso, mc2::fmt::as_i32(turn),
+							static_cast<float>(mech->dynamics.max.mech.torsoYaw));
 						extra += b;
 					}
 					mc2::fmt::to_buf(b, "  jump: capable={} range_world={} executing={}\n",
