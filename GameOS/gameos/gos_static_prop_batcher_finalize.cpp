@@ -95,6 +95,7 @@ void GpuStaticPropBatcher::publishGeometry() {
             for (float dist : g.dist) mc2cache::putLE(bytes, std::bit_cast<uint32_t>(dist), 4);
         }
         const auto& l = s_propStagingLaps;
+        if (mc2_diag::tagRequested("LOAD_LAPS"))
         mc2::fmt::print_err("[LOAD_LAPS v1] stage=prop_staging types={} tris={} out_verts={} dedupe_ms={:.3f} meshopt_ms={:.3f} lodgroup_calls={} lodgroup_ms={:.3f} vbo_bytes={} vbo_hash={:016x} ibo_count={} ibo_hash={:016x} packets_hash={:016x} lod_groups={} lod_hash={:016x}\n",
             l.types, l.tris, l.outVerts, l.dedupeMs, l.meshoptMs, l.lodCalls, l.lodMs,
             s_sharedVboBytes, mc2::content::fastHash(s_stagingVbo), s_stagingIbo.size(), iboHash, packetsHash,
