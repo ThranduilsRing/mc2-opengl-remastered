@@ -188,7 +188,7 @@ void retireRecord(uint32_t handleIndex)
 }
 
 // M1.5 T9 / OBJECT-ID-1 (OBJECT_ID_PASSIVE_CANARY): real-rendering validator, one passive log line at canary
-// frame N (no gate: it only reads, and logs once). Samples a grid over the output, expects at least one valid
+// frame N under MC2_DIAG_VERBOSE. Samples a grid over the output, expects at least one valid
 // static-prop hit and at least one background miss, validates every valid handle against s_objectRecords
 // (generation match + alive), and proves recycled-handle rejection: a handle with the generation bumped must be
 // refused by getObjectRecordView (the record table is not mutated).
@@ -749,8 +749,8 @@ void frameBannerTick() {
     const uint64_t f = s_frameCounter.fetch_add(1, std::memory_order_relaxed) + 1;
 
     // M1.5 T9: passive canary fires once at frame 60 (after mission stable).
-    // Must run regardless of trace/summary gating below.
-    if (f == 60u) {
+    // Each pixel lookup waits for the GPU; keep this diagnostic off the default path.
+    if (f == 60u && mc2DiagVerbose()) {
         runPassiveStableFrameCanary();
     }
 
