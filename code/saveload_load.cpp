@@ -21,6 +21,8 @@
 #include "../GameAdapters/VegetationAdapter.h"
 #include "../GameOS/gameos/visual_tuning_profile.h"
 #include "../GameOS/gameos/terrain_material_lib.h"
+#include "../GameOS/gameos/gpu_memory_report.h"
+#include "../GameOS/gameos/vulkan_context.h"
 #include <new>
 
 static void applySaveSections(std::string_view fileName, const mc2::save::SectionContainer& sections, mc2::sim::TacticalOrderQueue& orderQueue);
@@ -81,6 +83,15 @@ void Mission::loadAblAndManagers(MissionLoadFrame& f) {
 
 // Open the terrain pak, load the terrain and re-arm the terrain GPU state.
 void Mission::loadTerrain(MissionLoadFrame& f) {
+#ifdef MC2_VULKAN
+	if (mc2vk::engineVulkanContextValid()) {
+		mc2::gpumem::log("reload_retire_begin");
+		// destroy() retired the old mission inside this still-open frame. No old
+		// mission draws follow: finish submitted work and release it before rebuilding.
+		mc2vk::getOrCreateEngineVulkanContext().drainDeferred("mission_reload");
+		mc2::gpumem::log("reload_retire_end");
+	}
+#endif
 	auto& result = f.result; auto& missionFile = f.missionFile; auto& pakFile = f.pakFile;
 	//------------------------------------------------------------
 	// Start the Terrain System
@@ -828,6 +839,7 @@ void Mission::loadActivateAndFinalize() {
 	if (missionInterface) missionInterface->getControlGui()->prepareHudFrame();
 	mc2::textures::prewarmCpuTextures();
 	mc2PrewarmMissionPipelines();
+	mc2::gpumem::log("reload_restore_complete");
 	{
 		static const bool s_mechRestoreTrace = false;
 		if (s_mechRestoreTrace)
