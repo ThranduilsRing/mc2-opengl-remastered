@@ -64,7 +64,7 @@ import console_child  # noqa: E402  (windowless console children without a conho
 sys.path.insert(0, HERE)
 import _git_util, lane_merge_baseline, lane_merge_conflicts, lane_merge_trust  # noqa: E402  (shared git helpers; the trusted-copy hand-off)
 from lint_slots import LintSlots, cpu_masks, pin_cpus, scratch_dir, sweep_stale_scratch  # noqa: E402
-from lane_precheck import PRECHECK_TREE, Stop, TreeLock, _inside, base_rot, ensure_precheck_tree, failure_line, failure_summary, precheck_scratch_base  # noqa: E402,F401
+from lane_precheck import PRECHECK_TREE, SCRATCH_CLONE_ARGS, Stop, TreeLock, _inside, base_rot, ensure_precheck_tree, failure_line, failure_summary, precheck_scratch_base  # noqa: E402,F401
 from lane_sim_rows import SIM_ROWS, default_sim_install, run_sim_rows, sim_rows_satisfied, sim_sensitive_paths, tip_changed_paths  # noqa: E402,F401
 from lane_merge_stage import STAGE_HELP, bisect, bisect_step, promote, refuse_direct_nifty, stage  # noqa: E402,F401
 
@@ -850,7 +850,7 @@ def regenerate_all(root, *, dry_run=False, base=None):
         proof_root = "E:/mc2-archive-2026-10/proofs" if os.path.isdir("E:/mc2-archive-2026-10/proofs") else None
         with tempfile.TemporaryDirectory(prefix="regen-", dir=proof_root) as scratch:
             snapshot = os.path.join(scratch, "tree")
-            r = run(root, ["git", "clone", "--quiet", "--shared", "--no-checkout", os.path.abspath(root), snapshot])
+            r = run(root, ["git", *SCRATCH_CLONE_ARGS, os.path.abspath(root), snapshot])
             if r.returncode:
                 raise Stop(6, r.stdout)
             sha = git_out(root, "rev-parse", "HEAD")
@@ -993,7 +993,7 @@ def _lint_locked(root: str, ref: str, runner=None) -> int:
     # lint never takes the precheck TreeLock (own shared clones)
     with scratch_dir("lane-lint-", precheck_scratch_base(root)) as scratch:
         snap = os.path.join(scratch, "tree")   # one checkout shared by all rows
-        r = run(root, ["git", "clone", "--quiet", "--shared", "--no-checkout", os.path.abspath(root), snap])
+        r = run(root, ["git", *SCRATCH_CLONE_ARGS, os.path.abspath(root), snap])
         if r.returncode:
             print("LINT FAIL clone failed: " + failure_summary(r.stdout))
             return 1
@@ -1158,7 +1158,7 @@ def precheck(root: str, tip: str, with_link: bool | None = None, sim_rows: bool 
             def chain(i):
                 snapshot = os.path.join(scratch, f"tree{i}")
                 t0 = time.monotonic()
-                r = run(root, ["git", "clone", "--quiet", "--shared", "--no-checkout", os.path.abspath(root), snapshot])
+                r = run(root, ["git", *SCRATCH_CLONE_ARGS, os.path.abspath(root), snapshot])
                 if r.returncode:
                     raise Stop(5, "clone failed: " + failure_summary(r.stdout))
                 git_out(snapshot, "checkout", "--quiet", "--detach", commit)
