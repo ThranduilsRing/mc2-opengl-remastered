@@ -31,6 +31,8 @@
 #include <windows.h>
 #else
 #include <unistd.h>
+#include <spawn.h>
+extern char** environ;
 #include <sys/wait.h>
 #include <signal.h>
 #endif
@@ -55,12 +57,27 @@ std::string campaign, base, texture, campaignFit, pendingStart, pendingMission, 
 bool pickerOpen = false, scanned = false, restart = false, settingsChanged = false;
 std::map<std::string, std::optional<std::string>> inheritedEnv;
 
+struct ImportLaunchResult {
+#ifdef _WIN32
+    HANDLE process = nullptr, job = nullptr;
+#else
+    pid_t process = -1;
+#endif
+    int errorCode = 0;
+};
 struct ImportJob {
-    std::future<int> launch;
+    std::future<ImportLaunchResult> launch;
     template<class Start> void start(Start work) { launch = std::async(std::launch::async, std::move(work)); }
     std::optional<int> launchResult() {
         if (!launch.valid() || launch.wait_for(std::chrono::seconds(0)) != std::future_status::ready) return {};
-        try { return launch.get(); } catch (...) { return 1; }
+        try {
+            const auto result = launch.get();
+            process = result.process;
+#ifdef _WIN32
+            job = result.job;
+#endif
+            return result.errorCode;
+        } catch (...) { return 1; }
     }
 #ifdef _WIN32
     HANDLE process = nullptr, job = nullptr;
@@ -75,7 +92,7 @@ struct ImportJob {
         return static_cast<int>(code);
     }
     ~ImportJob() {
-        if (launch.valid()) launch.wait();
+        if (launch.valid()) { launch.wait(); launchResult(); }
         // Closing the job cancels the converter without waiting during game exit.
         if (job) CloseHandle(job);
         if (process) CloseHandle(process);
@@ -90,7 +107,7 @@ struct ImportJob {
         process = -1;
         return WIFEXITED(status) ? WEXITSTATUS(status) : 1;
     }
-    ~ImportJob() { if (launch.valid()) launch.wait(); if (process > 0) kill(process, SIGTERM); }
+    ~ImportJob() { if (launch.valid()) { launch.wait(); launchResult(); } if (process > 0) kill(process, SIGTERM); }
 #endif
 } importJob;
 bool importStarted = false;
@@ -103,11 +120,11 @@ void startImport() {
     importError.clear();
     importStatus = Json::object();
     // File creation and process/job setup can block too; publish through the future.
-    try { importJob.start([] {
+    try { importJob.start([]() -> ImportLaunchResult {
 #ifdef _WIN32
         SECURITY_ATTRIBUTES security{sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE};
         const auto log = CreateFileW(L"campaign-auto.log", GENERIC_WRITE, FILE_SHARE_READ, &security, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
-        if (log == INVALID_HANDLE_VALUE) return static_cast<int>(GetLastError());
+        if (log == INVALID_HANDLE_VALUE) return {nullptr, nullptr, static_cast<int>(GetLastError())};
         const auto input = CreateFileW(L"NUL", GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, &security, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
         STARTUPINFOW startup{};
         startup.cb = sizeof(startup);
@@ -127,26 +144,22 @@ void startImport() {
         const auto launchError = GetLastError();
         CloseHandle(log);
         if (input != INVALID_HANDLE_VALUE) CloseHandle(input);
-        if (!launched) { if (job) CloseHandle(job); return static_cast<int>(launchError); }
+        if (!launched) { if (job) CloseHandle(job); return {nullptr, nullptr, static_cast<int>(launchError)}; }
         if (!AssignProcessToJobObject(job, process.hProcess)) {
             const auto code = GetLastError();
             TerminateProcess(process.hProcess, code);
             CloseHandle(process.hThread); CloseHandle(process.hProcess); CloseHandle(job);
-            return static_cast<int>(code);
+            return {nullptr, nullptr, static_cast<int>(code)};
         }
-        importJob.process = process.hProcess;
-        importJob.job = job;
         ResumeThread(process.hThread);
         CloseHandle(process.hThread);
-        return 0;
+        return {process.hProcess, job, 0};
 #else
-        const auto child = fork();
-        if (child == 0) {
-            execlp("python3", "python3", "tools/import_campaign.py", "--auto", "--deploy", ".", static_cast<char*>(nullptr));
-            _exit(127);
-        }
-        importJob.process = child;
-        return child > 0 ? 0 : 1;
+        pid_t child = -1;
+        char* const args[] = {const_cast<char*>("python3"), const_cast<char*>("tools/import_campaign.py"),
+            const_cast<char*>("--auto"), const_cast<char*>("--deploy"), const_cast<char*>("."), nullptr};
+        const int code = posix_spawnp(&child, args[0], nullptr, nullptr, args, environ);
+        return {code == 0 ? child : -1, code};
 #endif
     }); } catch (const std::exception& e) { importError = std::string("Could not start campaign importer: ") + e.what(); }
 }

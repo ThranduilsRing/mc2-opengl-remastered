@@ -837,10 +837,14 @@ void SimpleCamera::setVehicle(mc2::czstring fileName,long base, long highlight, 
 	//MUST ALWAYS CALL GET, EVEN IF WE HAVE AN APPEARANCE TYPE OR REFERENCE COUNT DOES NOT INCREASE!
 	GVAppearanceType* appearanceType = nullptr;
 	
-	if ( fileExists( path ) )
-		appearanceType = static_cast<GVAppearanceType*>(appearanceTypeList->getAppearance( GV_TYPE << 24, static_cast<char*>(testName) ));
-	else
-		appearanceType= static_cast<GVAppearanceType*>(appearanceTypeList->getAppearance( GV_TYPE << 24, NoPathFileName.data() ));
+	const bool encExists = fileExists(path);
+	bool encyclopediaModel = false;
+	appearanceType = choosePreviewType(encExists, encyclopediaModel,
+		[&](bool enc) { return static_cast<GVAppearanceType*>(appearanceTypeList->getAppearance(
+			GV_TYPE << 24, enc ? testName : NoPathFileName.data())); },
+		[&](GVAppearanceType* type) { appearanceTypeList->removeAppearance(type); });
+	if (encExists && !encyclopediaModel)
+		MC2_LOG(Assets, Warn, "Preview enc model failed: {}; trying plain INI", NoPathFileName);
 
 	if (!appearanceType || appearanceType->baseShapeLoadFailed)
 	{

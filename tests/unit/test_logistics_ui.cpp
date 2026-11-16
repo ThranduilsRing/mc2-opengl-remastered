@@ -3,6 +3,7 @@
 #include <future>
 #include <chrono>
 #include <optional>
+#include <string>
 #ifdef _WIN32
 #define NOMINMAX
 #include <windows.h>
@@ -61,16 +62,17 @@ TEST_CASE("LogisticsUI/read-only label starts left; editable cursor still scroll
 }
 TEST_CASE("LogisticsUI/import launch publishes completion and errors without blocking") {
     ImportJob job;
-    std::promise<int> completion;
+    std::promise<ImportLaunchResult> completion;
     auto result = completion.get_future();
     job.start([&] { return result.get(); });
     CHECK(job.valid()); CHECK_FALSE(job.poll()); CHECK_FALSE(job.launchResult());
-    completion.set_value(37);
+    ImportLaunchResult failed; failed.errorCode = 37;
+    completion.set_value(failed);
     job.launch.wait();
     CHECK(job.launchResult() == 37); CHECK_FALSE(job.valid());
-    job.start([]() -> int { throw 1; });
+    job.start([]() -> ImportLaunchResult { throw 1; });
     job.launch.wait(); CHECK(job.launchResult() == 1); CHECK_FALSE(job.valid());
-    job.start([] { return 0; });
+    job.start([] { return ImportLaunchResult{}; });
     job.launch.wait(); CHECK(job.launchResult() == 0); CHECK_FALSE(job.valid());
 }
 TEST_CASE("LogisticsUI/missing panel suppresses only its own composite") {
@@ -85,14 +87,42 @@ TEST_CASE("LogisticsUI/missing panel suppresses only its own composite") {
     CHECK(bay.composites == 2);
 }
 #ifdef _WIN32
-TEST_CASE("LogisticsUI/exit waits for launch before closing owned handles") {
-    HANDLE handle = nullptr;
-    {
-        ImportJob job;
-        job.start([&] { handle = job.process = CreateEventW(nullptr, TRUE, FALSE, nullptr); return 0; });
+TEST_CASE("LogisticsUI/future transfers handles for poll and exit cleanup") {
+    for (bool poll : {false, true}) {
+        const auto name = L"MC2ImportOwnership-" + std::to_wstring(GetCurrentProcessId()) + (poll ? L"-poll" : L"-exit");
+        const auto jobName = name + L"-job";
+        {
+            ImportJob job;
+            std::promise<void> release;
+            auto ready = release.get_future();
+            job.start([&]() -> ImportLaunchResult {
+                ready.wait();
+                return {CreateEventW(nullptr, TRUE, FALSE, name.c_str()),
+                    CreateEventW(nullptr, TRUE, FALSE, jobName.c_str()), 0};
+            });
+            CHECK(job.valid()); CHECK_FALSE(job.poll()); CHECK_FALSE(job.launchResult());
+            CHECK(job.process == nullptr); CHECK(job.job == nullptr);
+            release.set_value();
+            job.launch.wait();
+            for (const auto& objectName : {name, jobName}) {
+                const auto live = OpenEventW(SYNCHRONIZE, FALSE, objectName.c_str());
+                CHECK(live != nullptr);
+                if (live) CloseHandle(live);
+            }
+            if (poll) {
+                CHECK(job.process == nullptr); CHECK(job.job == nullptr);
+                CHECK(job.launchResult() == 0);
+                REQUIRE(job.process != nullptr); REQUIRE(job.job != nullptr);
+                CHECK(job.valid());
+                CHECK_FALSE(job.poll()); CHECK(job.valid());
+            }
+        }
+        // Named objects cease to exist after the last owner closes them. No stale HANDLE is used.
+        for (const auto& objectName : {name, jobName}) {
+            const auto remaining = OpenEventW(SYNCHRONIZE, FALSE, objectName.c_str());
+            CHECK(remaining == nullptr);
+            if (remaining) CloseHandle(remaining);
+        }
     }
-    REQUIRE(handle != nullptr);
-    DWORD flags = 0;
-    CHECK_FALSE(GetHandleInformation(handle, &flags));
 }
 #endif

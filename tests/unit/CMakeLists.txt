@@ -773,7 +773,7 @@ set_source_files_properties(test_world_light_tags.cpp PROPERTIES INCLUDE_DIRECTO
 # Trigger paths: gui/aedit.cpp, code/preview_choice.h, GuiRuntime/PlayerFrontEnd.cpp.
 mc2_height_slice(edit_scroll gui/aedit.cpp "void\taEdit::makeCursorVisible()" "int\t\taEdit::findChar(")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/edit_scroll.inc" CONTENT "${edit_scroll}")
-mc2_height_slice(import_job GuiRuntime/PlayerFrontEnd.cpp "struct ImportJob {" "} importJob;")
+mc2_height_slice(import_job GuiRuntime/PlayerFrontEnd.cpp "struct ImportLaunchResult {" "} importJob;")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/import_job.inc" CONTENT "${import_job}};")
 target_sources(mc2_tests PRIVATE test_logistics_ui.cpp)
 set_source_files_properties(test_logistics_ui.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
