@@ -18,9 +18,6 @@
 #include "gosfx/effect.hpp"
 #include <stuff/stuff.hpp>
 #include <memory>
-#include <string>
-#include <string_view>
-#include <unordered_map>
 #include <vector>
 
 namespace mc2 {
@@ -48,16 +45,7 @@ private:
     SpecLibrary(const SpecLibrary&) = delete;
     SpecLibrary& operator=(const SpecLibrary&) = delete;
 
-    struct NameHash {
-        using is_transparent = void;
-        size_t operator()(std::string_view name) const;
-    };
-    struct NameEqual {
-        using is_transparent = void;
-        bool operator()(std::string_view left, std::string_view right) const;
-    };
     std::vector<std::unique_ptr<gosFX::Effect::Specification>> m_effects;
-    std::unordered_map<std::string, unsigned, NameHash, NameEqual> m_nameIndex;
 };
 
 }  // namespace particles

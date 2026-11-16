@@ -12,7 +12,6 @@
 #include "GameOS/gameos/gos_vfx_mesh_bridge.h"
 #include <algorithm>
 #include <bit>
-#include <cctype>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
@@ -514,43 +513,6 @@ std::vector<uint8_t> controlled_catalog(unsigned orientation) {
     const auto* data = static_cast<const uint8_t*>(stream.GetPointer());
     return {data, data + size};
 }
-}
-
-TEST_CASE("fx_playback/spec index matches linear catalog lookup and first duplicate") {
-    Platform platform;
-    auto check = [](std::vector<uint8_t>& bytes, bool duplicates) {
-        Library library(bytes);
-        auto* lib = mc2::particles::SpecLibrary::Instance();
-        auto reference = [lib](const char* name) -> gosFX::Effect::Specification* {
-            for (unsigned i = 0; i < lib->Count(); ++i) {
-                auto* spec = lib->At(i);
-                if (spec && !S_stricmp(spec->m_name, name)) return spec;
-            }
-            return nullptr;
-        };
-        REQUIRE(lib->Count() > 0);
-        for (unsigned i = 0; i < lib->Count(); ++i) {
-            auto* spec = lib->At(i); if (!spec) continue;
-            std::string name = static_cast<const char*>(spec->m_name), upper = name, lower = name;
-            for (char& byte : upper) byte = static_cast<char>(std::toupper(static_cast<unsigned char>(byte)));
-            for (char& byte : lower) byte = static_cast<char>(std::tolower(static_cast<unsigned char>(byte)));
-            for (const auto& query : {name, upper, lower, name.substr(0, name.size() - 1), name + "~"})
-                CHECK(lib->Find(query.c_str()) == reference(query.c_str()));
-        }
-        for (const char* absent : {"__absent_spec_index__", "Spec Index Duplicat", "Spec Index Duplicate~"}) {
-            REQUIRE(reference(absent) == nullptr); CHECK(lib->Find(absent) == nullptr);
-        }
-        if (duplicates) CHECK(lib->Find("SPEC INDEX DUPLICATE") == lib->At(0));
-    };
-    std::ifstream file(stock_fixture_path, std::ios::binary); REQUIRE(file.good());
-    std::vector<uint8_t> bytes{std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
-    check(bytes, false);
-    gosFX::Effect::Specification first, second; first.BuildDefaults(); second.BuildDefaults();
-    first.m_name = "Spec Index Duplicate"; second.m_name = "sPEC iNDEX dUPLICATE";
-    Stuff::DynamicMemoryStream stream(1024 * 1024); gosFX::WriteGFXVersion(&stream); stream << 2u;
-    first.Save(&stream); second.Save(&stream); const auto size = stream.GetBytesUsed(); stream.Rewind();
-    const auto* begin = static_cast<const uint8_t*>(stream.GetPointer());
-    bytes.assign(begin, begin + size); check(bytes, true);
 }
 
 TEST_CASE_FIXTURE(Platform, "fx_playback/stock classes match legacy lifecycle RNG bounds and geometry" * doctest::skip(stock_fixture_missing())) {
