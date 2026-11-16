@@ -21,9 +21,9 @@ PathPrefix boundedPrefix(long steps, long capacity, long row, long col, long doo
     long discard = steps - capacity;
     if (door != -1) { result.door = -1; --discard; }
     while (discard-- > 0) {
-        const auto previous = parent(result.row, result.col);
-        result.row = previous.first;
-        result.col = previous.second;
+        const auto [prevRow, prevCol] = parent(result.row, result.col);
+        result.row = prevRow;
+        result.col = prevCol;
     }
     result.steps = capacity;
     return result;
