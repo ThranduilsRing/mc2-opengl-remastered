@@ -18,8 +18,8 @@ TEST_CASE("carbon correctness: leg effectiveness follows leg damage") {
 }
 
 namespace {
-struct Commander { static Commander* home; int getId() const { return 0; } } home;
-Commander* Commander::home = &home;
+struct Commander { static Commander* home; int getId() const { return 0; } } homeCommander;
+Commander* Commander::home = &homeCommander;
 }
 TEST_CASE("carbon correctness: difficulty distinguishes opposing commanders") {
     bool MPlayer = false;
