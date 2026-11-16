@@ -387,4 +387,6 @@ TEST_CASE("OverlayPrestage/overlay event stream equals the legacy scans") {
         }
     }
     compare(all, false); compare(all, true);
+    // Schedule keeps its scratch across calls: populated -> empty -> populated must match the oracle with no stale rows.
+    compare(all, false); compare({}, false); compare(all, false);
 }
