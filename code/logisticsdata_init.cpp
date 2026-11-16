@@ -551,7 +551,7 @@ void LogisticsData::initVariants()
 	// One line per load: the serial parse is on the startup (or first mech-bay) path, so its cost stays visible.
 	MC2_LOG(Io, Info, "logistics: parsed {} mech files in {} ms", mechJobs.size(),
 		std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - parseStart).count());
-	for (int group = 0; group < 2; ++group) {
+	if (mc2_diag::tagRequested("MECH_PARSE")) for (int group = 0; group < 2; ++group) {
 		const auto& lap = laps[group];
 		MC2_LOG(Io, Info, "[MECH_PARSE v1] kind={} files={} open_ms={} chassis_ms={} variant_ms={} max_step_ms={}",
 			group ? "package" : "stock", lap.files,

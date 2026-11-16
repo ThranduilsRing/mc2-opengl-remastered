@@ -816,8 +816,9 @@ extern "C" void mission_phase_report()
     // the call that prints it -- gate the SINK.
     MC2_DIAGF("%s\n", buf);
     const auto& pumpScope = mc2::loadpump::meter.mission;
-    MC2_LOG(Io, Info, "[LOAD_PUMP v1] max_gap_ms={} phase={} scope=mission mode={} services={}",
-        pumpScope.maxGap, pumpScope.worst, pumpScope.attempted ? "attempted-pump" : "actual-service", pumpScope.services);
+    if (mc2_diag::tagRequested("LOAD_PUMP"))
+        MC2_LOG(Io, Info, "[LOAD_PUMP v1] max_gap_ms={} phase={} scope=mission mode={} services={}",
+            pumpScope.maxGap, pumpScope.worst, pumpScope.attempted ? "attempted-pump" : "actual-service", pumpScope.services);
     {
         const std::string scopes = mc2::load::report();
         MC2_DIAGF("[LOAD_SCOPES v1]%s\n", scopes.c_str());
