@@ -1825,7 +1825,10 @@ def retire_unowned(target_dir, keep, preserve=(), own_shaders=False):
         if any(parts[:len(Path(t).parts)] == tuple(p.casefold() for p in Path(t).parts) for t in EDITOR_SUPPORT_TREES):
             continue
         if retired.is_file():
-            if "crashes" in parts or retired.suffix.lower() in {".dmp", ".mdmp"}:
+            rparts = tuple(part.casefold() for part in resolved.relative_to(root).parts)
+            if ("crashes" in parts or "crashes" in rparts
+                    or retired.suffix.casefold() in {".dmp", ".mdmp"}
+                    or resolved.suffix.casefold() in {".dmp", ".mdmp"}):
                 fail(f"archive crash evidence before deploying: {retired}")
             if sha256_file(retired) != digest:
                 log(f"preserved modified retired payload: {rel}")
@@ -2159,20 +2162,25 @@ def bootstrap_install(src, target, exe_name, pdb_name):
     if rc == 3:
         fail(f"bootstrap: not enough free space for {need / 2**30:.1f} GiB", 3)
     log(f"bootstrap: copying {len(names)} entries ({need / 2**30:.1f} GiB) {src} -> {target}")
-    partial = target + ".partial"
-    if os.path.isdir(partial):
+    parent, basename = os.path.dirname(target), os.path.basename(target)
+    os.makedirs(parent, exist_ok=True)
+    for existing in Path(parent).glob(basename + ".partial*"):
+        log(f"bootstrap: preserved pre-existing staging path: {existing}")
+    partial = tempfile.mkdtemp(prefix=basename + ".partial-", dir=parent)
+    try:
+        for n in names:
+            a, b = os.path.join(src, n), os.path.join(partial, n)
+            if os.path.isdir(a):
+                shutil.copytree(a, b, ignore=lambda directory, names: [name for name in names
+                    if is_deploy_artifact(Path(directory, name).relative_to(src).as_posix())])
+            else:
+                shutil.copy2(a, b)
+        if os.path.isdir(target):
+            os.rmdir(target)  # empty (checked above)
+        os.rename(partial, target)
+    except BaseException:
         shutil.rmtree(partial)
-    os.makedirs(partial)
-    for n in names:
-        a, b = os.path.join(src, n), os.path.join(partial, n)
-        if os.path.isdir(a):
-            shutil.copytree(a, b, ignore=lambda directory, names: [name for name in names
-                if is_deploy_artifact(Path(directory, name).relative_to(src).as_posix())])
-        else:
-            shutil.copy2(a, b)
-    if os.path.isdir(target):
-        os.rmdir(target)  # empty (checked above)
-    os.rename(partial, target)
+        raise
 
 
 def published_shader_sources(source_root, build):
@@ -2276,8 +2284,8 @@ def deploy_from_payload(payload, target, src_root, head):
             if sha256_file(str(src)) != row['sha256']:
                 fail(f'payload file {rel}: sha256 != manifest')
             dst.parent.mkdir(parents=True, exist_ok=True)
-            tmp = dst.with_name(dst.name + '.payload-tmp')
-            unlink_for_replace(tmp)
+            fd, tmp = tempfile.mkstemp(prefix=dst.name + '.payload-', dir=dst.parent)
+            os.close(fd)
             try:
                 shutil.copy2(src, tmp)
                 replace_file(tmp, dst)
@@ -2293,8 +2301,9 @@ def deploy_from_payload(payload, target, src_root, head):
     hashes = {rel: (row['sha256'], int(row['bytes']), None) for rel, row in rows.items()}
     retire_unowned(str(target), hashes, own_shaders=any(rel.startswith('shaders/vulkan/') and rel.endswith('.spv') for rel in rows))
     dst = target / '.deployed_manifest.csv'
-    tmp = dst.with_name(dst.name + '.payload-tmp')
-    unlink_for_replace(tmp)
+    fd, tmp = tempfile.mkstemp(prefix=dst.name + '.payload-', dir=dst.parent)
+    os.close(fd)
+    tmp = Path(tmp)
     try:
         shutil.copy2(manifest, tmp)
         if hashes.keys() - rows.keys():
@@ -2699,10 +2708,11 @@ def prepare_seed_delta(items, target, full_verify=False, allow_legacy=False):
         # The normal deploy still checks the source and copied hash. Privatize
         # first so the isolation guard sees no shared write destinations.
         counts['privatized'] += 1
-        tmp = dst.with_name(dst.name + f'.private-{os.getpid()}')
+        fd, tmp = tempfile.mkstemp(prefix=dst.name + '.private-', dir=dst.parent)
+        os.close(fd)
+        tmp = Path(tmp)
         backup = tmp.with_name(tmp.name + '.shared')
         try:
-            unlink_for_replace(tmp)
             shutil.copy2(dst, tmp)
             os.link(dst, backup)
             try:

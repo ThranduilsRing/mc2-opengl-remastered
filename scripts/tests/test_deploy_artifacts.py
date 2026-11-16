@@ -111,16 +111,31 @@ def test_cli_refuses_golden_before_any_write(tmp_path, monkeypatch, capsys, name
     assert not (tmp_path / name).exists()
 
 
+def directory_alias(destination, alias):
+    if os.name == "nt":
+        import _winapi
+        _winapi.CreateJunction(str(destination), str(alias))
+    else:
+        alias.symlink_to(destination, target_is_directory=True)
+
+
 def test_prune_protects_mod_backup_through_directory_alias(tmp_path):
     backup = tmp_path / "mods/custom/model.glb.orig"
     backup.parent.mkdir(parents=True)
     backup.write_bytes(b"owner")
     alias = tmp_path / "terrain_gen_out"
-    if os.name == "nt":
-        import _winapi
-        _winapi.CreateJunction(str(backup.parent), str(alias))
-    else:
-        alias.symlink_to(backup.parent, target_is_directory=True)
+    directory_alias(backup.parent, alias)
     dp.write_manifest(str(tmp_path), {"terrain_gen_out/model.glb.orig": (dp.sha256_file(backup), 5, None)}, "test")
     dp.retire_unowned(str(tmp_path), {})
     assert backup.read_bytes() == b"owner"
+
+
+def test_prune_refuses_crash_catalog_through_directory_alias(tmp_path):
+    crash = tmp_path / "CrAsHeS/catalog.json"
+    crash.parent.mkdir()
+    crash.write_bytes(b"evidence")
+    directory_alias(crash.parent, tmp_path / "terrain_gen_out")
+    dp.write_manifest(tmp_path, {"terrain_gen_out/catalog.json": (dp.sha256_file(crash), 8, None)}, "test")
+    with pytest.raises(SystemExit):
+        dp.retire_unowned(tmp_path, {})
+    assert crash.read_bytes() == b"evidence"

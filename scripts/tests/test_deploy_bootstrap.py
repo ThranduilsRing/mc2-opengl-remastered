@@ -104,10 +104,19 @@ def test_bootstrap_failed_copy_leaves_no_half_install(tmp_path, monkeypatch):
     monkeypatch.setattr(dp.shutil, "copy2", boom)
     with pytest.raises(OSError):
         dp.bootstrap_install(str(src), str(target), "mc2.exe", "mc2.pdb")
-    assert not target.exists()          # only <target>.partial exists, so the next run copies again
+    assert not target.exists() and not list(tmp_path.glob("lane.partial*"))
     monkeypatch.undo()
     dp.bootstrap_install(str(src), str(target), "mc2.exe", "mc2.pdb")
     assert (target / "textures.fst").is_file() and not Path(str(target) + ".partial").exists()
+
+
+def test_bootstrap_preserves_preexisting_partial_save(tmp_path):
+    src, target = fake_install(tmp_path / "src"), tmp_path / "lane"
+    save = tmp_path / "lane.partial/savegame/x.fit"
+    save.parent.mkdir(parents=True)
+    save.write_bytes(b"owner save")
+    dp.bootstrap_install(str(src), str(target), "mc2.exe", "mc2.pdb")
+    assert save.read_bytes() == b"owner save"
 
 
 def test_concrete_cook_timeout_and_missing_source_are_loud(tmp_path, monkeypatch, capsys):
