@@ -514,3 +514,51 @@ def test_spawn_fixture_uses_a_shipped_pilot_with_combat_skills():
     for skill in ("Gunnery", "Piloting"):
         value = re.search(rf"(?im)^\s*c\s+{skill}\s*=\s*(\d+)", text)
         assert value and int(value.group(1)) > 0, f"spawn pilot needs usable {skill}"
+
+
+# One-shot clips mc2clip::select leaves for locomotion when the sim gesture ends (hits,
+# power-on, get-up). Their last frame is held until then, so it must BE the idle pose.
+# Prone clips (knockdown, downed/death idles) are held on purpose until the sim's GetUp.
+RETURN_TO_IDLE = ("atlas_hitReactLgtFwd", "atlas_hitReactLgtBwd", "atlas_hitReactLgtLeft",
+                  "atlas_hitReactLgtRight", "atlas_shutdownPwron", "atlas_downedGetup")
+
+
+@pytest.mark.parametrize("family", ["atlas", "marauder"])
+def test_one_shot_clips_end_on_the_idle_pose(family):
+    """Trigger: owner 11-16 'stayed leaning back after getting hit'. Held end pose == idle."""
+    pytest.importorskip("pygltflib")
+    from pygltflib import GLTF2
+    from bt2018_retarget_clips import quat_mul, node_bind_rot, accessor_view
+    import numpy as np
+    path = CONVERSIONS / f"{family}.glb"
+    if not path.is_file():
+        pytest.skip(f"set BT2018_CONVERSIONS to a dir with {family}.glb")
+    g = GLTF2().load(str(path)); blob = g.binary_blob()
+    parent = {c: i for i, n in enumerate(g.nodes) for c in (n.children or [])}
+    anims = {a.name: a for a in g.animations}
+
+    def world(clip, last):
+        local = {i: node_bind_rot(g, i) for i in range(len(g.nodes))}
+        a = anims[clip]
+        for ch in a.channels:
+            if ch.target.path == "rotation":
+                k = accessor_view(g, blob, a.samplers[ch.sampler].output)[0]
+                q = np.asarray(k[-1 if last else 0], np.float64)
+                local[ch.target.node] = q / np.linalg.norm(q)
+        out = {}
+        def w(i):
+            if i not in out:
+                out[i] = quat_mul(w(parent[i]), local[i]) if i in parent else local[i]
+            return out[i]
+        for i in local:
+            w(i)
+        return out
+
+    idle = world("atlas_moveCoreIdle", False)
+    for clip in RETURN_TO_IDLE:
+        if clip not in anims:
+            continue
+        end = world(clip, True)
+        worst = max(np.degrees(2 * np.arccos(min(1.0, abs(float(np.dot(end[i], idle[i]))))))
+                    for i in idle)
+        assert worst < 3.0, f"{family} {clip} ends {worst:.1f} deg from idle"
