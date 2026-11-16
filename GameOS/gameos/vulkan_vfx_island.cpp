@@ -40,6 +40,7 @@
 #include "vulkan_shared_scene_depth.h"
 #include "vk_shared_gbuffer_gate.h"
 #include "vulkan_vfx_island.h"
+#include "vulkan_vfx_island_algo.h"
 #include "vulkan_vfx_geometry.h"
 #include "vfx_draw_plan.h"
 #include "vfx_native_batch.h"
@@ -762,16 +763,16 @@ static int run_vfx(
     std::vector<VkDescriptorImageInfo> pageImages;
     auto* groups = reinterpret_cast<VfxIndexedGroup*>(static_cast<uint8_t*>(span.ptr) + groupOff);
     if (indexed) {
+        const mc2vfx::PageOwners<decltype(s->pages)> owners(s->pages, par);
         for (const auto& it : items) {
             const VkDescriptorSet set = *groupPage[it.tag];
             auto page = std::find(pageSets.begin(), pageSets.end(), set);
             if (page == pageSets.end()) {
                 if (pageSets.size() == kSpritePagesPerPool) { indexed = false; break; }
-                const auto resident = std::find_if(s->pages.begin(), s->pages.end(), [&](const auto& entry) { const auto& [pageKey, pageEntry] = entry; return pageEntry.set[par] == set; });
-                if (resident == s->pages.end()) { indexed = false; break; }
+                const auto* resident = owners.find(set);
+                if (resident == nullptr) { indexed = false; break; }
                 pageSets.push_back(set);
-                const auto& [residentKey, residentPage] = *resident;
-                pageImages.push_back({s->samp.get(), residentPage.bound[par], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL});
+                pageImages.push_back({s->samp.get(), resident->bound[par], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL});
                 page = pageSets.end() - 1;
             }
             groups[it.tag] = {{{it.u0, it.v0}, {it.us, it.vs}, it.atlas, it.blend == VFX_ADD_ONE_ONE ? 1u : 0u},
