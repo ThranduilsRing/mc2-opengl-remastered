@@ -112,7 +112,7 @@ bool OwnedBuffer::upload(const void* src, VkDeviceSize bytes, VkDeviceSize offse
     if (!dst) return false;
     std::memcpy(static_cast<uint8_t*>(dst) + offset, src, static_cast<size_t>(bytes));
     vmaFlushAllocation(allocator_, allocation_, offset, bytes);
-    unmap();
+    vmaUnmapMemory(allocator_, allocation_);
     return true;
 }
 

@@ -1,6 +1,6 @@
 // Native crossed-card geometry. Instance culling uses the same CPU block/distance inputs.
 #include "vegetation_card_trim.glsl"
-void mc2VegetationVertex(vec3 i_worldPos, float i_yaw, float i_scale, float i_seed, uint i_atlasFrame, float lodFade, float windFade, float lightZ, float time, float widthScale) {
+void mc2VegetationVertex(vec3 i_worldPos, float i_yaw, float i_scale, float i_seed, uint i_atlasFrame, float lodFade, float windFade, float lightZ, float time, float widthScale, bool nearFoot) {
     uint vi = uint(gl_VertexIndex);
     uint row = (vi%8u)/2u;
     // Bit 3 marks a meadow-field blade (vegetation_clumps.h kFieldBladeBit); its low bits keep the grass layer.
@@ -95,6 +95,34 @@ void mc2VegetationVertex(vec3 i_worldPos, float i_yaw, float i_scale, float i_se
 
 
 
+    v_cardNormal = vec3(sy * vertFactor, -cy * vertFactor, flatFactor);
+    // Rotate grass about its root; retain blade length, coverage and the eased foot margin.
+    if (nearFoot && atlasIdx < 4u && cardRole != 3u && a_card.y > 0.0) {
+    for (uint k = 0u; k < uint(D.grid.w); ++k) {
+        uint base = uint(D.grid.z) + k * 4u;
+        vec3 foot = uintBitsToFloat(uvec3(footprintWords[base], footprintWords[base + 1u], footprintWords[base + 2u]));
+        vec2 away = i_worldPos.xy - foot.xy;
+        float distanceToFoot = length(away), margin = max(1.0, foot.z * 0.25);
+        if (atlasIdx >= 4u || cardRole == 3u || distanceToFoot >= foot.z + margin || a_card.y <= 0.0) continue;
+        vec3 width = vec3(eastFromX, northFromX, 0.0) * effectiveScale;
+        vec3 blade = worldPos - i_worldPos - width;
+        float bladeLength = length(blade);
+        if (bladeLength < 0.0001) continue;
+        vec3 direction = blade / bladeLength;
+        vec2 outward = distanceToFoot > 0.001 ? away / distanceToFoot : vec2(cy, sy);
+        vec3 target = normalize(vec3(outward, 0.04));
+        vec3 axis = cross(direction, target);
+        float axisLength = length(axis);
+        if (axisLength < 0.0001) continue;
+        axis /= axisLength;
+        float angle = acos(clamp(dot(direction, target), -1.0, 1.0)) * (1.0 - smoothstep(foot.z, foot.z + margin, distanceToFoot));
+        float c = cos(angle), s = sin(angle);
+        blade = blade * c + cross(axis, blade) * s + axis * dot(axis, blade) * (1.0 - c);
+        worldPos = i_worldPos + width + blade;
+        v_cardNormal = v_cardNormal * c + cross(axis, v_cardNormal) * s + axis * dot(axis, v_cardNormal) * (1.0 - c);
+    }
+    }
+
     v_shadowWorld = worldPos;
     v_vegData.y  = 1.0 - a_card.y;
     v_vegData.x        = i_seed;
@@ -102,7 +130,6 @@ void mc2VegetationVertex(vec3 i_worldPos, float i_yaw, float i_scale, float i_se
     v_vegAux.x     = lodFade;
     v_vegData.z        = (cardRole == 3u) ? 0.25 : float(cardRole) * 0.5;  // 0=vert, 0.5=tilt, 1=top, 0.25=ground
 
-    v_cardNormal = vec3(sy * vertFactor, -cy * vertFactor, flatFactor);
     v_worldPos = worldPos;
     gl_Position = U.worldToClipGL * vec4(worldPos, 1.0);
 }

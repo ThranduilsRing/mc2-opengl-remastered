@@ -436,6 +436,13 @@ void MainMenu::update()
 		static bool s_menuMarked = false;
 		if ( !s_menuMarked ) { s_menuMarked = true; mc2::fmt::print_out("[VIA_MENU v1] event=main_menu\n"); }
 	}
+    const auto pickedMission = PlayerFrontEnd::takeMissionStart();
+    if (!pickedMission.empty() && LogisticsData::instance) {
+        skipIntro();
+        LogisticsData::instance->setSingleMission(pickedMission.c_str());
+        status = SKIPONENEXT;
+        return;
+    }
     const auto pickedCampaign = PlayerFrontEnd::takeCampaignStart();
     if (!pickedCampaign.empty() && LogisticsData::instance) {
         skipIntro();
@@ -819,7 +826,10 @@ void MainMenu::render()
 {
     if (ImGui::GetCurrentContext()) ImGui::GetIO().MouseDrawCursor = true;
     if (!introMovie && !bOptions && !bDrawMechlopedia)
-        PlayerFrontEnd::drawMainMenu(bDrawBackground && !bLegal);
+        // Owner 11-15: the community/credits panel appears only once the real menu
+        // does, i.e. after the splash logo animation (render() returns early until then).
+        PlayerFrontEnd::drawMainMenu(bDrawBackground && !bLegal &&
+                                     (intro.allAnimObjectsDone() || introOver || bHostLeftDlg));
 	// UI-ASPECT-ANCHOR-1: front-end frame — draw the UI on the 16:9 canvas
 	// (re-asserted every frame; auto-cleared at flushHUDBatch).
 	gos_SetUiCanvasActive( true );

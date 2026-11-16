@@ -153,6 +153,11 @@ TEST_CASE("packet retirement retains a light until its world removal and free") 
     mc2::tick::releaseLight(light, &world, 9);
     CHECK(light == nullptr);
     CHECK_FALSE(world.removed);
+    mc2::tick::releaseLight(light, &world, 9);
     mc2::tick::retireRenderPacket(packet);
     CHECK(world.removed);
+    light = static_cast<int*>(std::malloc(sizeof(int)));
+    REQUIRE(light != nullptr);
+    mc2::tick::releaseLight(light, static_cast<WorldLights*>(nullptr), 9);
+    CHECK(light == nullptr);
 }

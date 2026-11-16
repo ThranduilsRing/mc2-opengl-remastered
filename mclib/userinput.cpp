@@ -570,6 +570,17 @@ void UserInput::update (void)
 void UserInput::initMouseCursors (mc2::czstring mouseFile)
 {
 	ZoneScopedN("UserInput::initMouseCursors");
+	// Menu/load transitions often keep the same cursor art and size class.
+	// A reset still reloads because cursors is null; a different input owner also reloads.
+	static const UserInput* loadedOwner = nullptr;
+	static std::string loadedFile;
+	std::string requestedFile = std::string(artPath) + mouseFile;
+	if (Environment.screenWidth <= 800) requestedFile += 'a';
+	if (cursors && loadedOwner == this && loadedFile == requestedFile) {
+		mouseFrame = 0;
+		syncNativeCursor();
+		return;
+	}
 	if (cursors)
 	{
 		ZoneScopedN("UserInput::initMouseCursors destroyOld");
@@ -587,6 +598,8 @@ void UserInput::initMouseCursors (mc2::czstring mouseFile)
 		ZoneScopedN("UserInput::initMouseCursors initCursors");
 		cursors->initCursors(mouseFile);
 	}
+	loadedOwner = this;
+	loadedFile = std::move(requestedFile);
 
 	mouseFrame = 0;
 	syncNativeCursor();

@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
+import io
 import json
 import os
 from pathlib import Path, PurePosixPath
@@ -12,12 +14,14 @@ import subprocess
 import struct
 import sys
 import tempfile
+import time
 import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "mc2_import"))
 import import_tool as legacy
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import console_child
+from smoke_lib.child_registry import pid_alive
 
 
 def fst_entries(path):
@@ -50,8 +54,9 @@ def safe_path(name):
 def source_files(root):
     """Only inputs used by the converters participate in content identity."""
     result = {}
+    flat = (root / "campaign").is_dir() and (root / "missions").is_dir()
     for directory, dirs, files in os.walk(root, followlinks=False):
-        if Path(directory) == root:
+        if Path(directory) == root and not flat:
             dirs[:] = [name for name in dirs if name.lower() == "data"]
         for name in dirs + files:
             p = Path(directory) / name
@@ -60,6 +65,8 @@ def source_files(root):
         for name in files:
             p = Path(directory) / name
             rel = safe_path(p.relative_to(root).as_posix())
+            if flat:
+                rel = "data/" + rel
             if rel.lower().startswith("data/") or ("/" not in rel and
                     (p.suffix.lower() == ".fst" or name.lower() == "mc2xres.dll")):
                 key = rel.lower()
@@ -219,7 +226,9 @@ def import_campaign(source, deploy):
         raise ValueError(f"Download or folder not found: {source}")
     if not (deploy / "mc2.exe").is_file():
         raise ValueError(f"Game folder has no mc2.exe: {deploy}; use --deploy with your game folder.")
-    if source.is_dir() and (source == deploy or source in deploy.parents or deploy in source.parents):
+    installed_source = source.parent == deploy / "mods"
+    if source.is_dir() and (source == deploy or source in deploy.parents or
+                            (deploy in source.parents and not installed_source)):
         raise ValueError("Source and game folder must be separate, with neither inside the other.")
     mods = deploy / "mods"
     if mods.is_symlink() or mods.is_junction():
@@ -227,6 +236,7 @@ def import_campaign(source, deploy):
     mods.mkdir(exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=".campaign-import-", dir=mods) as scratch:
         scratch = Path(scratch)
+        (scratch / ".import-owner.json").write_text(json.dumps({"pid": os.getpid(), "started": time.time()}), encoding="utf-8")
         if source.is_file():
             unpacked = scratch / "source"
             unpacked.mkdir()
@@ -372,13 +382,111 @@ def import_campaign(source, deploy):
             (staged / "mods" / item).rename(mods / item)
         return {"status": "installed", "mod": mod_id, "compat": compat, "campaigns": campaigns}
 
+def auto_import(deploy):
+    """Discover raw installs; persist progress and source stamps outside their folders."""
+    deploy = Path(deploy).resolve()
+    mods = deploy / "mods"
+    if mods.is_symlink() or mods.is_junction():
+        raise ValueError("Linked mods directory is unsupported.")
+    mods.mkdir(exist_ok=True)
+    status = mods / ".campaign-auto.json"
+    def remove_readonly(func, path, exc):
+        os.chmod(path, 0o700)
+        func(path)
+    for staged in mods.glob(".campaign-import-*"):
+        if staged.is_dir() and not staged.is_symlink() and not staged.is_junction():
+            marker = staged / ".import-owner.json"
+            if marker.is_symlink() or not marker.is_file():
+                continue
+            try:
+                owner = json.loads(marker.read_text(encoding="utf-8"))
+                pid, started = owner["pid"], owner["started"]
+                if type(pid) is not int or pid <= 0 or not isinstance(started, (int, float)):
+                    continue
+                if time.time() - started <= 24 * 3600 and pid_alive(pid):
+                    continue
+            except (OSError, ValueError, KeyError, TypeError):
+                continue
+            shutil.rmtree(staged, onexc=remove_readonly)
+    try:
+        previous = json.loads(status.read_text(encoding="utf-8")) if status.is_file() else {}
+        if not isinstance(previous, dict):
+            previous = {}
+    except (ValueError, OSError):
+        previous = {}
+    state = {"running": True, "message": "Looking for community campaigns...", "sources": {}}
+
+    def publish(message):
+        state["message"] = message
+        temporary = status.with_suffix(".tmp")
+        temporary.write_text(json.dumps(state, indent=2), encoding="utf-8")
+        temporary.replace(status)
+
+    publish(state["message"])
+    candidates = []
+    for source in sorted(mods.iterdir()):
+        if (not source.is_dir() or source.name.startswith(".") or
+                (source / "mod.json").exists() or (source / ".campaign-import.json").exists()):
+            continue
+        roots = [source] + sorted(p for p in source.iterdir() if p.is_dir())
+        archives = any(list(root.glob("*.fst")) for root in roots)
+        campaigns = any(list((root / "data/campaign").glob("*.fit")) or
+                        list((root / "Data/campaign").glob("*.fit")) or
+                        list((root / "campaign").glob("*.fit")) for root in roots)
+        known = re.search(r"mcosetup|omnitech|desert.?fox|carver|mw2.?merc|exodus", source.name, re.I)
+        # A loose single-mission mod is already playable without conversion.
+        if not archives and not campaigns and not (known and not (source / "data/missions").is_dir()):
+            continue
+        candidates.append((not archives, source))
+    for _, source in sorted(candidates):
+        publish(f"Checking {source.name}...")
+        entry = {}
+        output = io.StringIO()
+        started = None
+        try:
+            root = find_root(source)
+            inputs = source_files(root)
+            stamp = hashlib.sha256(json.dumps([
+                (name, p.stat().st_size, p.stat().st_mtime_ns)
+                for name, p in sorted(inputs.items())]).encode()).hexdigest()
+            entry = {"stamp": stamp}
+            saved = previous.get("sources", {}).get(source.name, {})
+            target = saved.get("mod", "")
+            if saved.get("stamp") == stamp and not saved.get("error") and target and (mods / target / ".campaign-import.json").is_file():
+                entry = saved
+            else:
+                publish(f"Importing {source.name} (source files are preserved)...")
+                started = time.perf_counter()
+                with contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):
+                    entry.update(import_campaign(source, deploy))
+                print(f"[CAMPAIGN_AUTO] {source.name}: {entry['status']}", flush=True)
+        except (Exception, SystemExit) as exc:
+            entry["error"] = str(exc) + ("\n" + output.getvalue()[-1600:] if output.tell() else "")
+            print(f"[CAMPAIGN_AUTO] {source.name}: {exc}", file=sys.stderr, flush=True)
+        if output.tell():
+            print(output.getvalue(), flush=True)
+        if started is not None:
+            entry["import_seconds"] = round(time.perf_counter() - started, 3)
+        state["sources"][source.name] = entry
+        publish(f"Checked {source.name}")
+    state["running"] = False
+    publish("Community campaign scan complete.")
+    return state
+
+
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("source", help="Downloaded ZIP or separate campaign install folder")
+    parser.add_argument("source", nargs="?", help="Downloaded ZIP or separate campaign install folder")
+    parser.add_argument("--auto", action="store_true", help="Import raw campaigns found in the game's mods folder")
     parser.add_argument("--deploy", default=str(Path(__file__).resolve().parents[1]), help="Folder containing mc2.exe")
     args = parser.parse_args(argv)
     try:
+        if args.auto:
+            auto_import(args.deploy)
+            return 0
+        if not args.source:
+            parser.error("source is required unless --auto is used")
         result = import_campaign(args.source, args.deploy)
         print(json.dumps(result, indent=2))
         print("Open Campaigns & mods, press Refresh, select the campaign and compatibility base, then Start campaign.")

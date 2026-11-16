@@ -45,6 +45,22 @@ def test_vehicle_payload_has_separate_pin_and_mount(tmp_path, monkeypatch):
     assert all(dst.startswith("mods/mc2-vehicle-kit/") for _, dst, _ in items)
 
 
+def test_runtime_omits_authoring_ir_but_validates_the_source_pin(tmp_path, monkeypatch):
+    manifest, store = package(tmp_path, monkeypatch)
+    ir = store / "content/test.mc2ir.json"
+    ir.parent.mkdir()
+    ir.write_bytes(b"authoring vertices")
+    manifest["files"].append(dict(path="content/test.mc2ir.json", bytes=ir.stat().st_size, sha256=kit.sha(ir)))
+    (tmp_path / kit.MANIFEST).write_text(json.dumps(manifest))
+    runtime, items = kit.payload(tmp_path)
+    assert len(runtime["files"]) == len(items) == 3
+    assert all(not dst.endswith(".mc2ir.json") for _, dst, _ in items)
+    assert ir.read_bytes() == b"authoring vertices"
+    ir.write_bytes(b"corrupt source")
+    with pytest.raises(ValueError, match="pinned kit file"):
+        kit.payload(tmp_path)
+
+
 def test_deploy_copies_only_pinned_files_and_rejects_existing_extras(tmp_path, monkeypatch):
     import deploy_payload as dp
     manifest, store = package(tmp_path, monkeypatch)

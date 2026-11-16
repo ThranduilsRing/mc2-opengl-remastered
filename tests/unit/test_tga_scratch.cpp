@@ -36,6 +36,27 @@ TEST_CASE("undefined terrain types have no mip table")
 	CHECK(mc2::tga::mipData(mips, 1) == nullptr);
 }
 
+TEST_CASE("terrain TGA RLE bounds packets across scanlines")
+{
+    using mc2::tga::decodeRle;
+    unsigned char out[20] = {};
+    const unsigned char run[] = {131, 255, 0, 255}; // four pixels, crossing a two-pixel row
+    REQUIRE(decodeRle(out, 16, run, sizeof(run), 4, 24));
+    CHECK(out[0] == 255); CHECK(out[3] == 0); CHECK(out[12] == 255); CHECK(out[16] == 0);
+    const unsigned char raw[] = {1, 1, 2, 3, 4, 5, 6, 7, 8};
+    REQUIRE(decodeRle(out, 8, raw, sizeof(raw), 2, 32));
+    CHECK(out[3] == 4); CHECK(out[7] == 8);
+    CHECK_FALSE(decodeRle(out, 16, run, sizeof(run), 3, 24));
+    CHECK_FALSE(decodeRle(out, 12, run, sizeof(run), 4, 24));
+    for (std::size_t n = 0; n < sizeof(run); ++n)
+        CHECK_FALSE(decodeRle(out, 16, run, n, 4, 24));
+    for (std::size_t n = 0; n < sizeof(raw); ++n)
+        CHECK_FALSE(decodeRle(out, 8, raw, n, 2, 32));
+    const unsigned char shortImage[] = {128, 1, 2, 3};
+    CHECK_FALSE(decodeRle(out, 16, shortImage, sizeof(shortImage), 4, 24));
+    CHECK_FALSE(decodeRle(out, 16, run, sizeof(run), 4, 16));
+}
+
 TEST_CASE("bodyFits accepts exactly the pixels the header claims")
 {
 	namespace tga = mc2::tga;

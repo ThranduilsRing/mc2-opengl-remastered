@@ -233,13 +233,7 @@ using namespace gos_static_prop_batcher_detail;
 extern const bool s_alphaTrace;
 const float* gos_GetObjectFixBMVPMat4();
 extern const bool s_treeDiagTrace;
-extern const bool s_spotlightRealTrace;
 extern const bool s_globalPoolLegacy;
-extern bool s_baseInstanceSupported;
-extern bool s_v5Armed;
-extern bool s_v5Disarmed;
-extern bool s_v6Armed;
-extern bool s_v6Disarmed;
 extern std::vector<RenderCore::DrawPacket> s_snapV6Packets;
 extern std::vector<StaticPropDispatchMeta> s_snapV6Meta;
 extern uint32_t s_spBuildAttempted;
@@ -277,6 +271,12 @@ extern uint64_t s_sharedIboBytes;
 extern uint64_t s_meshoptTris;
 extern double   s_meshoptMissesBefore;
 extern double   s_meshoptMissesAfter;
+// Per-load staging work, disjoint from the enclosing addObject and registration laps.
+struct PropStagingLaps {
+    uint64_t types = 0, tris = 0, outVerts = 0, lodCalls = 0;
+    double dedupeMs = 0, meshoptMs = 0, lodMs = 0;
+};
+inline PropStagingLaps s_propStagingLaps;
 extern uint32_t s_frameSlot;
 extern size_t   s_instanceCapacity;
 extern size_t   s_colorCapacity;

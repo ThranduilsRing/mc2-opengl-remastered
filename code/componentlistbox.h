@@ -20,6 +20,7 @@ ComponentListBox.h			: Interface for the ComponentListBox component.
 #endif
 
 #include "component_rules.h"
+#include "purchase_catalog.h"
 class LogisticsVariant;
 class LogisticsComponent;
 class LogisticsVehicle;
@@ -120,6 +121,7 @@ public:
 	void destroy() override;
 	void setType( int Type, int orThisType, int orThis, int orThis2 = -1 );
 	virtual void update();
+	void render() override;
 
 	LogisticsComponent* getComponent();
 	int selectFirstAvailableComponent();
@@ -134,6 +136,7 @@ public:
 		ComponentIconListBox& operator=( const ComponentIconListBox& src );
 
 		std::vector<std::unique_ptr<ComponentListItem>> masterComponentList;
+		std::vector<mc2purchase::Group> componentGroups;
 
 		int type;
 

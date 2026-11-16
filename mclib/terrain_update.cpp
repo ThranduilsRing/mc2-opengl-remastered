@@ -648,21 +648,26 @@ long Terrain::update (void)
 
 		// Block-set-change diagnostic: log which (bx,by) blocks are visible whenever
 		// the visible set changes. Fires on change only — no noise when camera is still.
-		// Bitmask: bit = by*terrainChunkSide + bx (25 blocks, fits uint32_t).
+		// Track every chunk; larger maps exceed a single 32-bit mask.
 		{
-			uint32_t blockMask = 0;
+			static std::vector<uint8_t> s_prevBlockSet;
+			const auto blockCount = static_cast<size_t>(s_terrainChunkSide) * s_terrainChunkSide;
+			bool blockSetChanged = s_prevBlockSet.size() != blockCount;
+			s_prevBlockSet.resize(blockCount, 2); // force first print, including an empty set
 			for (int by2 = 0; by2 < s_terrainChunkSide; ++by2)
 				for (int bx2 = 0; bx2 < s_terrainChunkSide; ++bx2)
-					if (s_blockMeta[bx2 + by2 * s_terrainChunkSide].inFrustum)
-						blockMask |= (1u << (by2 * s_terrainChunkSide + bx2));
-			static uint32_t s_prevBlockMask = 0xFFFFFFFF;  // force first print
-			if (blockMask != s_prevBlockMask) {
-				s_prevBlockMask = blockMask;
+				{
+					const auto index = static_cast<size_t>(by2) * s_terrainChunkSide + bx2;
+					const uint8_t visible = s_blockMeta[index].inFrustum ? 1 : 0;
+					blockSetChanged |= s_prevBlockSet[index] != visible;
+					s_prevBlockSet[index] = visible;
+				}
+			if (blockSetChanged) {
 				// Build compact "(bx,by)" list of passing blocks.
 				char buf[256]; int pos = 0;
 				for (int by2 = 0; by2 < s_terrainChunkSide && pos < 200; ++by2)
 					for (int bx2 = 0; bx2 < s_terrainChunkSide && pos < 200; ++bx2)
-						if (blockMask & (1u << (by2 * s_terrainChunkSide + bx2)))
+						if (s_blockMeta[bx2 + by2 * s_terrainChunkSide].inFrustum)
 							pos += mc2::fmt::to_buf_n(buf + pos, sizeof(buf) - pos, "({:d},{:d})", mc2::fmt::as_i32(bx2), mc2::fmt::as_i32(by2));
 				buf[pos] = '\0';
 				// Camera east/north already computed above as eyeX/eyeY.

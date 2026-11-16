@@ -20,6 +20,35 @@ namespace mc2::tga
 // No terrain texture comes near this; a larger size is a corrupt directory entry, not an image.
 inline constexpr std::size_t kMaxFileBytes = static_cast<std::size_t>(1) << 30;
 
+// RLE packets may span scanlines, but never the image or the supplied byte buffers.
+inline bool decodeRle(unsigned char* dest, std::size_t destBytes,
+                      const unsigned char* source, std::size_t sourceBytes,
+                      std::size_t pixels, int depth)
+{
+    if (!dest || !source || !pixels || pixels > destBytes / 4 || (depth != 24 && depth != 32))
+        return false;
+    const std::size_t stride = depth / 8;
+    std::size_t in = 0, out = 0;
+    while (out < pixels) {
+        if (in == sourceBytes) return false;
+        const unsigned packet = source[in++];
+        const std::size_t count = (packet & 127) + 1;
+        const bool repeated = (packet & 128) != 0;
+        const std::size_t needed = (repeated ? 1 : count) * stride;
+        if (count > pixels - out || needed > sourceBytes - in) return false;
+        for (std::size_t i = 0; i < count; ++i) {
+            const auto* pixel = source + in + (repeated ? 0 : i * stride);
+            auto* target = dest + (out + i) * 4;
+            target[0] = pixel[0]; target[1] = pixel[1]; target[2] = pixel[2];
+            target[3] = depth == 32 ? pixel[3]
+                : (pixel[0] == 255 && pixel[1] == 0 && pixel[2] == 255 ? 0 : 255);
+        }
+        in += needed;
+        out += count;
+    }
+    return true;
+}
+
 // Undefined terrain types have no mip table, rather than a table of empty mips.
 template <class PixelT>
 PixelT* mipData(PixelT* const* table, std::size_t level)

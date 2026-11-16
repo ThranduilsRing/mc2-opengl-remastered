@@ -9,6 +9,7 @@
 #pragma once
 
 #include <array>
+#include <cctype>
 #include <cstdint>
 #include <functional>
 #include <map>
@@ -23,6 +24,57 @@ namespace mc2::ui_chrome {
 inline std::array<float, 4> menuCreditsBay(float frameWidth, float frameHeight) {
     return {604 * frameWidth / 800, 292 * frameHeight / 600,
             168 * frameWidth / 800, 248 * frameHeight / 600};
+}
+
+// Owner 11-15: the credits screen shows one collapsible header per source.
+// CREDITS.txt layout: a preamble, then "Sxxx - <source name>" sections, then
+// trailing "SOURCE TABLE ..." / "COMMUNITY LINKS" sections. S001 is the base game.
+struct CreditsSection {
+    std::string title;  // header text (source name; S001 -> base game)
+    std::string body;   // contributor lines, own "[Sxxx]" tag stripped
+};
+struct CreditsDoc {
+    std::string preamble;
+    std::vector<CreditsSection> sections;
+};
+inline CreditsDoc parseCredits(std::string_view text) {
+    CreditsDoc doc;
+    std::string ownTag;
+    std::string* out = &doc.preamble;
+    auto isId = [](std::string_view l) {
+        return l.size() > 7 && l[0] == 'S' && std::isdigit(static_cast<unsigned char>(l[1])) &&
+               std::isdigit(static_cast<unsigned char>(l[2])) && std::isdigit(static_cast<unsigned char>(l[3])) &&
+               l.substr(4, 3) == " - ";
+    };
+    while (!text.empty()) {
+        const size_t nl = text.find('\n');
+        std::string_view line = text.substr(0, nl);
+        text = nl == std::string_view::npos ? std::string_view{} : text.substr(nl + 1);
+        if (!line.empty() && line.back() == '\r') line.remove_suffix(1);
+        if (isId(line) || line.starts_with("SOURCE TABLE") || line == "COMMUNITY LINKS") {
+            CreditsSection s;
+            if (isId(line)) {
+                ownTag = " [" + std::string(line.substr(0, 4)) + "]";
+                s.title = line.substr(0, 4) == "S001" ? std::string("MechCommander 2 - original game credits")
+                                                     : std::string(line.substr(7));
+            } else {
+                ownTag.clear();
+                s.title = line.starts_with("SOURCE TABLE") ? "Source table" : "Community links";
+            }
+            doc.sections.push_back(std::move(s));
+            out = &doc.sections.back().body;
+            continue;
+        }
+        if (out != &doc.preamble && line == "Free forever.") continue;  // the panel prints its own closing line
+        std::string l(line);
+        if (!ownTag.empty() && l.ends_with(ownTag)) l.resize(l.size() - ownTag.size());
+        if (l.empty() && out->empty()) continue;  // no leading blank line in a section
+        *out += l;
+        *out += '\n';
+    }
+    for (auto* s : {&doc.preamble}) while (s->size() > 1 && s->ends_with("\n\n")) s->pop_back();
+    for (auto& s : doc.sections) while (s.body.size() > 1 && s.body.ends_with("\n\n")) s.body.pop_back();
+    return doc;
 }
 
 struct Widget {
@@ -78,6 +130,11 @@ inline uint32_t menuYellow(uint32_t argb) {
            (static_cast<uint32_t>(b + (chroma * 4 + 2) / 5) << 8) | static_cast<uint32_t>(b);
 }
 
+// Button animation colours are authored with their frame art in the stock FIT.
+inline uint32_t menuElementColor(uint32_t argb, bool button) {
+    return button ? argb : menuYellow(argb);
+}
+
 // Animated tint supplies the button colour; warm neutral carrier texels would
 // multiply a second hue into it. Keep their authored shading as luminance.
 inline uint32_t menuTintCarrier(uint32_t argb) {
@@ -105,7 +162,6 @@ inline bool insetChromeCrop(std::string_view path, bool pixelPerfect, bool legac
                             float u1, float v1, float u2, float v2) {
     if (pixelPerfect || legacySpace || (u1 == 0.f && v1 == 0.f && u2 == 1.f && v2 == 1.f)) return false;
     const auto key = sheetKeyFromPath(path);
-    if (key.starts_with("mcl_mm_")) return false; // continuous menu frame strips share authored edge samples
     return nineSlice || key.starts_with("mcl_") || key.starts_with("mcui_universal") || key.starts_with("mcui_mr_");
 }
 

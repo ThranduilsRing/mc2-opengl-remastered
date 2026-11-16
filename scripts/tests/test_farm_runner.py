@@ -120,6 +120,35 @@ def test_timeout_reaps_child(tmp_path):
     assert result['status'] == 'error' and 'TimeoutExpired' in result['error']
 
 
+@pytest.mark.parametrize('copy_fails', [False, True])
+def test_mod_timeout_collects_before_completion(tmp_path, monkeypatch, copy_fails):
+    from tools.farm import runner
+    for folder in ('savegame', 'debug_state', 'crashes'):
+        source = tmp_path / 'work/sample' / folder
+        source.mkdir(parents=True)
+        (source / 'evidence').write_bytes(folder.encode())
+    if copy_fails:
+        def fail_copy(*args, **kwargs):
+            raise OSError('disk full')
+        monkeypatch.setattr(runner.shutil, 'copytree', fail_copy)
+    publish = runner.atomic_json
+    def checked_publish(path, value):
+        if path.name == 'result.json':
+            assert value['artifacts_collected'] is not copy_fails
+            if not copy_fails:
+                for folder in ('savegame', 'debug_state', 'crashes'):
+                    assert (path.parent / folder / 'evidence').read_bytes() == folder.encode()
+        publish(path, value)
+    monkeypatch.setattr(runner, 'atomic_json', checked_publish)
+    result = job(tmp_path, {'type': 'mod-smoke', 'argv': [sys.executable, '-c',
+                          'import time; time.sleep(30)'], 'timeout': .1})
+    assert 'TimeoutExpired' in result['error']
+    assert (tmp_path / 'work/sample/savegame/evidence').exists()
+    if copy_fails:
+        assert 'disk full' in result['artifact_error']
+        assert host.CLEAN_PS.index('.artifacts_collected -eq $false') < host.CLEAN_PS.index('Remove-Item')
+
+
 def test_malformed_job_does_not_block_queue(tmp_path):
     result = job(tmp_path, {'argv': 'must not execute a shell string'})
     assert result['status'] == 'error' and 'ValueError' in result['error']
@@ -153,6 +182,82 @@ def test_host_submit_publishes_only_after_upload(tmp_path, monkeypatch, capsys):
     assert calls[0][-1].endswith('/' + 'a' * 32 + '.upload')
     assert '.upload -Destination' in calls[1] and '.json' in calls[1]
     assert capsys.readouterr().out.strip() == 'a' * 32
+
+
+@pytest.mark.parametrize('token', ['{ROOT}', '{EXE}', '{ROOT_B}', '{EXE_B}'])
+def test_payload_placeholder_needs_exe(tmp_path, monkeypatch, capsys, token):
+    path = tmp_path / 'job.json'
+    path.write_text(json.dumps({'argv': ['python'], 'env': {'PATH_TO_GAME': token}}))
+    monkeypatch.setattr(sys, 'argv', ['host', 'submit', str(path)])
+    monkeypatch.setattr(host, 'remote', lambda *a: pytest.fail('invalid job reached laptop'))
+    monkeypatch.setattr(host, 'scp', lambda *a, **k: pytest.fail('invalid job uploaded'))
+    with pytest.raises(SystemExit) as result:
+        host.main()
+    assert result.value.code == 2
+    assert 'supply --exe' in capsys.readouterr().err
+
+
+def test_mod_smoke_uses_existing_harness_and_live_animation(tmp_path):
+    from tools.farm.mod_smoke import command
+    args = SimpleNamespace(install=tmp_path, harness=tmp_path / 'harness', mod='bt2018_mechs',
+                           mission='mc2_01', seconds=30, steps='save:60,load:90', capture_frame=600)
+    argv, env = command(args, tmp_path / 'result')
+    assert 'run_smoke.py' in argv[1] and '--keep-logs' in argv
+    assert env['MC2_ACTIVE_MOD'] == 'bt2018_mechs'
+    assert env['MC2_SMOKE_FREEZE_ANIM'] == '0'
+    assert env['MC2_BOOT_QUICKSAVE_AT'] == '60' and env['MC2_BOOT_QUICKLOAD_AT'] == '90'
+    assert env['MC2_SAVE_DIR'] == str(tmp_path / 'savegame')
+    args.steps = 'load:60,save:90'
+    with pytest.raises(ValueError, match='follow save'):
+        command(args, tmp_path)
+
+
+def test_mod_smoke_disk_refusal_precedes_upload(tmp_path, monkeypatch):
+    import zipfile
+    path = Path(__file__).resolve().parents[2] / 'tools/farm/mod-smoke.json'
+    exe = tmp_path / 'mc2.exe'
+    exe.write_bytes(b'exe')
+    monkeypatch.setattr(sys, 'argv', ['host', 'submit', str(path), '--exe', str(exe)])
+    def payload(exe, destination):
+        with zipfile.ZipFile(destination, 'w') as archive:
+            archive.writestr('test', b'payload')
+    monkeypatch.setattr(host, 'payload_archive', payload)
+    def refuse(args, code):
+        assert 'disk_usage' in code and 'insufficient' in code
+        raise RuntimeError('disk full')
+    monkeypatch.setattr(host, 'remote_python', refuse)
+    monkeypatch.setattr(host, 'scp', lambda *a, **k: pytest.fail('upload before disk check'))
+    with pytest.raises(RuntimeError, match='disk full'):
+        host.main()
+
+
+def test_mod_disk_admission_counts_expansion_and_large_seed(tmp_path, monkeypatch):
+    import zipfile
+    seed = tmp_path / 'install'
+    for name in ('cache', 'mods', 'data', 'shared'):
+        (seed / name).mkdir(parents=True)
+        with (seed / name / 'large').open('wb') as stream:
+            stream.truncate(64 * 1024**2)
+    (seed / 'options.cfg').write_bytes(b'cfg')
+    exe = tmp_path / 'mc2.exe'; exe.write_bytes(b'exe')
+    delta = tmp_path / 'delta/data'; delta.mkdir(parents=True)
+    (delta / 'new').write_bytes(b'delta')
+    def payload(exe, destination):
+        with zipfile.ZipFile(destination, 'w', zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr('shader/big', b'0' * 1024**2)
+    monkeypatch.setattr(host, 'payload_archive', payload)
+    monkeypatch.setattr(host, 'ROOT', tmp_path.as_posix())
+    def admit(args, code):
+        values = {}
+        exec(code, values)
+        assert values['required'] >= 2 * 1024**3 + 3 * 64 * 1024**2 + 2 * 1024**2 + 16
+        raise RuntimeError('admission tested')
+    monkeypatch.setattr(host, 'remote_python', admit)
+    monkeypatch.setattr(host, 'scp', lambda *a, **k: pytest.fail('upload before admission'))
+    path = Path(__file__).resolve().parents[2] / 'tools/farm/mod-smoke.json'
+    monkeypatch.setattr(sys, 'argv', ['host', 'submit', str(path), '--exe', str(exe), '--data-delta', str(delta.parent)])
+    with pytest.raises(RuntimeError, match='admission tested'):
+        host.main()
 
 
 def test_host_submit_exe_stages_then_rewrites_job(tmp_path, monkeypatch):

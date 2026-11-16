@@ -1344,7 +1344,8 @@ void SensorSystemManager::freeSensor (SensorSystemPtr sensor) {
 
 	sensor->prev = nullptr;
 	sensor->next = freeList;
-	freeList->prev = sensor;
+	if (freeList)
+		freeList->prev = sensor;
 	freeList = sensor;
 }
 
