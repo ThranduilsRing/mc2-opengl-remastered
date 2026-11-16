@@ -15,8 +15,19 @@ import deploy_payload as dp  # noqa: E402
 ROOT = Path(__file__).resolve().parents[2]
 
 
+@pytest.fixture(scope='module')
+def hardlink_support(tmp_path_factory):
+    tmp_path = tmp_path_factory.mktemp('hardlink-probe')
+    source = tmp_path / 'source'
+    source.write_bytes(b'probe')
+    try:
+        os.link(source, tmp_path / 'link')
+    except OSError as exc:
+        pytest.skip(f'Hardlinks unsupported in test temporary directory: {exc}')
+
+
 @pytest.mark.parametrize('receipt', [True, False])
-def test_five_link_payload_detaches_only_with_lane_receipt(tmp_path, monkeypatch, receipt):
+def test_five_link_payload_detaches_only_with_lane_receipt(tmp_path, monkeypatch, receipt, hardlink_support):
     """Audit fringe/bc7 refusal: changed payload and manifest, five links each."""
     monkeypatch.setenv('MC2_COOK_CACHE', str(tmp_path / 'cook-cache'))
     monkeypatch.setenv('MC2_LEAN_SEED', str(tmp_path / 'absent-seed'))
