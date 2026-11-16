@@ -625,28 +625,35 @@ long CSVFile::open (mc2::czstring fName, FileMode _mode, long numChild)
 	// path: seeking every cell through the OS otherwise rescans every row.
 	if (_mode == READ && !inRAM) {
 		const long bytes = getLength();
-		if (bytes < 0 || bytes > 512 * 1024 * 1024) { close(); return FILE_NOT_OPEN; }
-		m_ownedImage.assign(static_cast<size_t>(bytes) + 1, 0);
-		if (read(m_ownedImage.data(), bytes) != bytes) {
-			close();
-			return FILE_NOT_OPEN;
-		}
-		// Disk readLine skips a byte after every CR, even without an LF.
-		// Keep that legacy dialect on disk rather than changing its cells.
-		bool bareCr = false;
-		for (long at = 0; at < bytes; ++at) {
-			if (m_ownedImage[at] == '\r' && m_ownedImage[at + 1] != '\n') {
-				bareCr = true;
-				break;
+		if (bytes < 0) { close(); return FILE_NOT_OPEN; }
+		if (bytes <= 512 * 1024 * 1024) {
+			m_ownedImage.assign(static_cast<size_t>(bytes) + 1, 0);
+			if (read(m_ownedImage.data(), bytes) != bytes) {
+				close();
+				return FILE_NOT_OPEN;
 			}
-		}
-		if (bareCr) {
-			m_ownedImage.clear();
-		} else {
-			fileImage = m_writableImage = m_ownedImage.data();
-			inRAM = true;
-			physicalLength = static_cast<unsigned long>(bytes);
-		}
+			// Disk readLine skips a byte after every CR, even without an LF.
+			// Keep that legacy dialect on disk rather than changing its cells.
+			// A full 2047-byte chunk has legacy disk seek semantics too. Leave
+			// these uncommon inputs uncached, including a terminator at that offset.
+			bool legacyDisk = false;
+			long lineBytes = 0;
+			for (long at = 0; at < bytes; ++at) {
+				const auto ch = m_ownedImage[at];
+				if (lineBytes >= 2047 || (ch == '\r' && m_ownedImage[at + 1] != '\n')) {
+					legacyDisk = true;
+					break;
+				}
+				lineBytes = (ch == '\r' || ch == '\n') ? 0 : lineBytes + 1;
+			}
+			if (legacyDisk || lineBytes >= 2047) {
+				decltype(m_ownedImage)().swap(m_ownedImage);
+			} else {
+				fileImage = m_writableImage = m_ownedImage.data();
+				inRAM = true;
+				physicalLength = static_cast<unsigned long>(bytes);
+			}
+			}
 	}
 	seek(0);
 
@@ -713,7 +720,7 @@ long CSVFile::seekRowCol (DWORD row, DWORD col)
 			if (lf) skip = std::min(skip, static_cast<unsigned long>(lf - begin));
 			at += skip + 1;
 			// Match readLine's CR/LF and 2047-byte chunk boundaries exactly.
-			if (at < size && fileImage[at] == '\n') ++at;
+			if (skip < count && begin[skip] == '\r' && at < size && fileImage[at] == '\n') ++at;
 		}
 		if (at < size) {
 			seek(at);
