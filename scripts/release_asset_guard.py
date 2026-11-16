@@ -6,6 +6,7 @@ import argparse
 import codecs
 from fnmatch import fnmatchcase
 from pathlib import Path, PurePosixPath
+import re
 import struct
 import zipfile
 
@@ -15,6 +16,7 @@ NODES = (b"j_" + b"COCKPIT", b"atlas_" + b"moveCore")
 MW5_GENERATOR = b"tools/" + b"mw5_mechs"
 MW5_NODES = (b"Torso_" + b"Twist", b"Foot0" + b"_", b"Weld" + b"Target_", b"_DM" + b"0")
 PAK_MAGIC = struct.pack("<I", 0x5A6F12E1)
+MC2_PACKET_MAGIC = struct.pack("<I", 0xFEEDFACE)
 IOSTORE_MAGIC = b"-==-" * 4
 UNREAL_MAGICS = (struct.pack("<I", 0x9E2A83C1), b"ACTR" + b"HEAD", b"ANIM" + b"HEAD")
 MAGICS = (b"UnityFS", b"UnityWeb", b"UnityRaw", b"Kaydara FBX Binary")
@@ -29,7 +31,7 @@ NAME_PATTERNS = (
     "*_fbx2gltf.glb", "*.fbx", "*.assets", "*.ress", "versionmanifest.csv",
     "chassisdef_*.json", "mechdef_*.json", "hardpointdatadef_*.json",
     "movedef_*.json", "weapon_*.json", "assetstudio*", "fbx2gltf*", "*fbxsdk*.dll",
-    "*.pak", "*.utoc", "*.ucas", "*.uasset", "*.uexp", "*.ubulk", "*.uptnl", "*.usmap",
+    "*.utoc", "*.ucas", "*.uasset", "*.uexp", "*.ubulk", "*.umap", "*.assetbundle", "*.uptnl", "*.usmap",
     "*.psk", "*.pskx", "*.psa", "*.uemodel", "*.ueanim",
     "umodel*", "fmodel*", "cue4parse*", "oo2core*", "oodle*", "weapon_mech_*",
     "*_skm.*", "*_msk.*", "*_mti.*", "timberwolf_*", "tbr_*",
@@ -95,11 +97,13 @@ def _inspect(name: str, stream, *, reject_archives: bool = False) -> list[str]:
     footer = b""
     tail = b""
     first = True
+    mc2_packet = False
     overlap = max(map(len, TOKENS + NODES + MAGICS + MW5_NODES +
                       (MW5_GENERATOR, IOSTORE_MAGIC))) - 1
     while chunk := stream.read(CHUNK_SIZE):
         json_chunk = chunk
         if first:
+            mc2_packet = chunk.startswith(MC2_PACKET_MAGIC)
             if reject_archives and chunk.startswith(ARCHIVE_MAGICS):
                 return [f"{name}: nested archive not allowed in release payload"]
             if chunk.startswith(MAGICS):
@@ -115,10 +119,13 @@ def _inspect(name: str, stream, *, reject_archives: bool = False) -> list[str]:
             first = False
         if json_remaining:
             json_window = json_tail + json_chunk[:json_remaining]
+            json_tail = json_window[-overlap * 6:]
+            # Normalize ASCII JSON escapes, retaining raw overlap for split escapes.
+            json_window = re.sub(rb'\\u00([0-9a-fA-F]{2})|\\([\\/"])',
+                                 lambda m: bytes([int(m[1], 16)]) if m[1] else m[2], json_window)
             mw5_generator |= MW5_GENERATOR in json_window
             mw5_nodes.update(node for node in MW5_NODES if node in json_window)
             json_remaining = max(0, json_remaining - len(json_chunk))
-            json_tail = json_window[-overlap:]
         if text:
             try:
                 decoder.decode(chunk)
@@ -135,6 +142,8 @@ def _inspect(name: str, stream, *, reject_archives: bool = False) -> list[str]:
         tail = window[-overlap:]
     if PAK_MAGIC in footer:
         reasons.add("Unreal pak footer signature")
+    if PurePosixPath(name).suffix == ".pak" and not mc2_packet:
+        reasons.add("foreign archive: missing MC2 PacketFile magic")
     if mw5_generator or (MW5_NODES[0] in mw5_nodes and mw5_nodes.intersection(MW5_NODES[1:])):
         reasons.add("MW5 GLB signature")
     if text:

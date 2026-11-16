@@ -1,4 +1,4 @@
-"""Synthetic fixtures only: no installed BattleTech/MW5 assets are read or copied."""
+"""Synthetic foreign fixtures only; MC2 PacketFile fixtures are inspected in place."""
 from pathlib import Path
 import io
 import struct
@@ -29,7 +29,7 @@ FORBIDDEN_NAMES = [
     "mods/mw5_mechs/mech/model.glb", "mods/MW5Other/mod.json",
     "data/tgl/mw5_fake.tga", "data/tgl/128/mw5_fake.ktx2",
     "nested/UmodelExport/roster.json", "mw5_extract/file.bin", "nested/mw5-ref/file.bin",
-    *("fake." + ext for ext in ("pak", "utoc", "ucas", "uasset", "uexp", "ubulk", "uptnl",
+    *("fake." + ext for ext in ("pak", "utoc", "ucas", "uasset", "uexp", "ubulk", "umap", "assetbundle", "uptnl",
                                "usmap", "psk", "pskx", "psa", "uemodel", "ueanim")),
     "Umodel.exe", "FModel.exe", "CUE4Parse.dll", "oo2core_9_win64.dll", "Oodle.dll",
     "Weapon_Mech_fake.glb", "fake_SKM.glb", "fake_MSK.tga", "fake_MTI.json",
@@ -50,7 +50,7 @@ def assert_rejected(root, name, payload=b"synthetic fixture"):
     assert guard.scan(root), f"guard accepted {name}"
 
 
-@pytest.mark.parametrize("name", FORBIDDEN_NAMES)
+@pytest.mark.parametrize("name", FORBIDDEN_NAMES, ids=[f"name{i}" for i in range(len(FORBIDDEN_NAMES))])
 def test_forbidden_names(tmp_path, name):
     assert_rejected(tmp_path, name)
 
@@ -59,7 +59,7 @@ def test_forbidden_names(tmp_path, name):
     b"UnityFS\0fixture", b"UnityWeb\0fixture", b"UnityRaw\0fixture",
     b"Kaydara FBX Binary\0fixture", b"prefix chrTxrMech_fake suffix",
     b"chrPrfMech_fake", b"chrMatMech_fake", fake_glb(),
-])
+], ids=["unity-fs", "unity-web", "unity-raw", "fbx", "texture", "profile", "material", "glb"])
 def test_renamed_content(tmp_path, payload):
     assert_rejected(tmp_path, "innocent.bin", payload)
 
@@ -71,8 +71,8 @@ def test_renamed_content(tmp_path, payload):
     fake_glb(b'{"asset":{"generator":"tools/mw5_mechs"}}'),
     *(fake_glb(b'{"nodes":[{"name":"Torso_Twist"},{"name":"' + node + b'"}]}')
       for node in (b"Foot0_L", b"WeldTarget_R", b"Torso_DM0")),
-])
-@pytest.mark.parametrize("name", ["renamed.bin", "tools/mw5_kit/recipe.json"])
+], ids=["pak", "iostore", "unreal", "actor", "anim", "generator", "foot", "weld", "damage"])
+@pytest.mark.parametrize("name", ["renamed.bin", "tools/mw5_kit/recipe.json"], ids=["binary", "recipe"])
 def test_mw5_renamed_content(tmp_path, name, payload):
     # Node-only GLBs intentionally contain no animation clips.
     assert_rejected(tmp_path, name, payload)
@@ -82,7 +82,7 @@ def test_mw5_renamed_content(tmp_path, name, payload):
     b"x" * (guard.CHUNK_SIZE - 3) + b"-==-" * 4,
     fake_glb(b'{"padding":"' + b"x" * (guard.CHUNK_SIZE - 40) +
              b'","asset":{"generator":"tools/mw5_mechs"}}'),
-])
+], ids=["iostore", "glb"])
 def test_mw5_chunk_boundaries(tmp_path, payload):
     assert_rejected(tmp_path, "renamed.bin", payload)
 
@@ -95,7 +95,7 @@ def test_mw5_content_scope():
         assert guard._inspect("authored.bin", io.BytesIO(payload)) == []
 
 
-@pytest.mark.parametrize("token", guard.TOKENS + guard.NODES)
+@pytest.mark.parametrize("token", guard.TOKENS + guard.NODES, ids=["texture", "profile", "material", "cockpit", "core"])
 def test_chunk_boundary(tmp_path, token):
     prefix = b"atlas_moveCore " if token == b"j_COCKPIT" else b"j_COCKPIT "
     payload = prefix + b"x" * (guard.CHUNK_SIZE - len(prefix) - 3) + token
@@ -115,7 +115,8 @@ def test_kit_code_only_passes(tmp_path):
 
 
 @pytest.mark.parametrize("payload", [b"\0chrTxrMech_fake", b"\xffchrTxrMech_fake",
-                                    b"UnityFS\0", fake_glb(), b"chrTxrMech_fake\xc3"])
+                                    b"UnityFS\0", fake_glb(), b"chrTxrMech_fake\xc3"],
+                         ids=["nul", "invalid-utf8", "unity", "glb", "truncated-utf8"])
 def test_binary_cannot_use_text_exception(tmp_path, payload):
     assert_rejected(tmp_path, "tools/bt2018_kit/roster.json", payload)
 
@@ -123,7 +124,7 @@ def test_binary_cannot_use_text_exception(tmp_path, payload):
 @pytest.mark.parametrize("name,payload", [("data/tgl/texture.ktx2", b"chrMatMech_fake"),
                                          ("mods\\BT2018Mechs\\mod.json", b"{}"),
                                          ("./mods/bt2018_mechs/mod.json", b"{}"),
-                                         ("renamed.bin", fake_glb())])
+                                         ("renamed.bin", fake_glb())], ids=["texture", "backslash", "dot", "glb"])
 def test_zip_members(tmp_path, name, payload):
     archive = tmp_path / "package.zip"
     with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as out:
@@ -142,7 +143,8 @@ def test_clean_zip_and_tree(tmp_path):
 
 @pytest.mark.parametrize("magic", [b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08",
                                    b"7z\xbc\xaf\x27\x1c", b"Rar!\x1a\x07\x00",
-                                   b"Rar!\x1a\x07\x01\x00", b"\x1f\x8b"])
+                                   b"Rar!\x1a\x07\x01\x00", b"\x1f\x8b"],
+                         ids=["zip", "zip-empty", "zip-spanned", "7z", "rar4", "rar5", "gzip"])
 def test_archive_magic_any_extension(tmp_path, magic):
     name = "docs/innocent.txt"
     assert guard._inspect(name, io.BytesIO(magic), reject_archives=True) == [
@@ -165,7 +167,8 @@ def test_nested_zip_is_rejected_without_extraction(tmp_path):
     assert "renamed.dat: nested archive not allowed in release payload" in guard.scan(tmp_path)
 
 
-@pytest.mark.parametrize("name", ["tests/unit/fixtures/stock_names.txt", "tools/mech_import/build_marauder.py"])
+@pytest.mark.parametrize("name", ["tests/unit/fixtures/stock_names.txt", "tools/mech_import/build_marauder.py"],
+                         ids=["stock", "marauder"])
 def test_exact_legacy_text_exceptions(name):
     payload = b"chrTxrMech_fake"
     assert guard._inspect(name, io.BytesIO(payload)) == []
@@ -202,12 +205,35 @@ def test_reads_are_bounded():
 
 
 @pytest.mark.parametrize("payload", [fake_glb(), fake_glb(
-    b'{"nodes":[{"name":"Torso_Twist"},{"name":"Foot0_L"}]}')])
+    b'{"nodes":[{"name":"Torso_Twist"},{"name":"Foot0_L"}]}')], ids=["bt", "mw5"])
 def test_negative_control(tmp_path, monkeypatch, payload):
     # Exercise the same assertion used by every forbidden fixture with a disabled guard.
     monkeypatch.setattr(guard, "scan", lambda path: [])
     with pytest.raises(AssertionError, match="guard accepted"):
         assert_rejected(tmp_path, "renamed.bin", payload)
+
+
+def test_mc2_packet_fixture_passes():
+    path = REPO / "editor/tests/goldens/e5a-stock/e5_reference_before.pak"
+    with path.open("rb") as stream:
+        assert guard._inspect(path.name, stream) == []
+
+
+@pytest.mark.parametrize("payload", [b"", b"\xce\xfa\xed", b"\xfe\xed\xfa\xce",
+    b"synthetic UE pak" + struct.pack("<I", 0x5A6F12E1)], ids=["empty", "short", "endian", "ue"])
+def test_foreign_pak_rejected(tmp_path, payload):
+    assert_rejected(tmp_path, "foreign.PAK", payload)
+
+
+@pytest.mark.parametrize("payload", [
+    br'{"asset":{"generator":"tools\/mw5_mechs"}}',
+    br'{"asset":{"generator":"\u0074ools/mw5_mechs"}}',
+    br'{"nodes":[{"name":"\u0054orso_Twist"},{"name":"\u0046oot0_L"}]}',
+    b'{"padding":"' + b"x" * (guard.CHUNK_SIZE - 22 - len(b'{"padding":"","asset":{"generator":"')) +
+    br'","asset":{"generator":"\u0074ools\/mw5_mechs"}}',
+], ids=["slash", "generator-unicode", "nodes-unicode", "split-escape"])
+def test_glb_json_escapes(tmp_path, payload):
+    assert_rejected(tmp_path, "renamed.bin", fake_glb(payload))
 
 
 def test_tracked_repository_is_clean():
