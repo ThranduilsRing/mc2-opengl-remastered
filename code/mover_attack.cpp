@@ -45,7 +45,7 @@ float Mover::calcAttackChance (GameObjectPtr target, long aimLocation, float tar
 	
 	if (!MPlayer && (getCommanderId() == Commander::home->getId()))		//Up the gunnery Skill by the difficulty modifier
 		attackChance = applyDifficultySkill(attackChance,TRUE);
-	else if (!MPlayer && (getCommanderId() == Commander::home->getId()))	//Up the gunnery Skill by the difficulty modifier
+	else if (!MPlayer && (getCommanderId() != Commander::home->getId()))	//Up the gunnery Skill by the difficulty modifier
 		attackChance = applyDifficultySkill(attackChance,FALSE);
 
 	float distanceToTarget = distanceFrom(targetPosition);

@@ -739,6 +739,8 @@ function(mc2_height_slice output source begin end)
 endfunction()
 mc2_height_slice(carbon_leg_armor code/mech.cpp "\t\tcurLeg =" "\n\t\tarmorEffect =")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/carbon_leg_armor.inc" CONTENT "${carbon_leg_armor}")
+mc2_height_slice(carbon_difficulty code/mover_attack.cpp "\tif (!MPlayer && (getCommanderId()" "\n\tfloat distanceToTarget")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/carbon_difficulty.inc" CONTENT "${carbon_difficulty}")
 target_sources(mc2_tests PRIVATE test_carbon_correctness.cpp)
 set_source_files_properties(test_carbon_correctness.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
 # Trigger paths: Gates/gate_rows_0.inc, code/{mover_attack,mech_weapons,gvehicl_weapons}.cpp.

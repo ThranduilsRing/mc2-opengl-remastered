@@ -16,3 +16,22 @@ TEST_CASE("carbon correctness: leg effectiveness follows leg damage") {
     armor[0].curArmor = 100;
     CHECK(effectiveness() == doctest::Approx(0.8));
 }
+
+namespace {
+struct Commander { static Commander* home; int getId() const { return 0; } } home;
+Commander* Commander::home = &home;
+}
+TEST_CASE("carbon correctness: difficulty distinguishes opposing commanders") {
+    bool MPlayer = false;
+    constexpr bool TRUE = true, FALSE = false;
+    int commander = 0;
+    auto getCommanderId = [&] { return commander; };
+    auto applyDifficultySkill = [](float chance, bool player) { return chance + (player ? 10 : -10); };
+    auto attack = [&] { float attackChance = 50;
+#include "carbon_difficulty.inc"
+        return attackChance;
+    };
+    CHECK(attack() == 60);
+    commander = 1; CHECK(attack() == 40);
+    MPlayer = true; CHECK(attack() == 50);
+}
