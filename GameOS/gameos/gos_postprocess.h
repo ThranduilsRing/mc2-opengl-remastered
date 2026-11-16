@@ -33,6 +33,8 @@ public:
     uint64_t getHdriGeneration() const { return hdriCpu_ ? hdriCpuGeneration_ : 0; }
     const struct HdriCpuImage* getHdriCpu() const { return hdriCpu_.get(); }
     void ensureDefaultSky();
+    // Main-only adoption boundary; caller chooses the path and readiness policy.
+    bool adoptHdriCpuImage(std::shared_ptr<struct HdriCpuImage> image, float sunAz, bool sunValid);
 
     float  getSkyYaw()    const { return skyYaw_; }    // WATER-HDRI-REFL-1: cached per-frame
 

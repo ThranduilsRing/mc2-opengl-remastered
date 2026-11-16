@@ -6,6 +6,7 @@
 #include "mc2_czstring.h"
 #include "gos_postprocess_internal.h"
 #include "mc2fmt.h"
+#include "sim_overlap.h"
 
 
 
@@ -85,9 +86,19 @@ void gosPostProcess::loadHdri(mc2::czstring path, float* outSunAz, bool* outSunV
     auto cpu = std::make_shared<HdriCpuImage>();
     const bool decoded = decodeHdriSource(path, outSunAz, outSunValid, cpu.get());
     if (decoded && !cpu->levels.empty()) {
-        cpu->generation = ++hdriCpuGeneration_;
-        hdriCpu_ = std::move(cpu);
+        adoptHdriCpuImage(std::move(cpu), outSunAz ? *outSunAz : 0.0f, outSunValid && *outSunValid);
     }
+}
+
+bool gosPostProcess::adoptHdriCpuImage(std::shared_ptr<HdriCpuImage> image, float sunAz, bool sunValid)
+{
+    mc2::overlap::assertMainThread("HDRI.adopt");
+    if (!image || image->levels.empty()) return false;
+    image->generation = ++hdriCpuGeneration_;
+    hdriCpu_ = std::move(image);
+    hdriBakedSunAz_ = sunAz;
+    hdriBakedSunValid_ = sunValid;
+    return true;
 }
 
 const HdriCpuImage* gos_GetHdriCpuImage()

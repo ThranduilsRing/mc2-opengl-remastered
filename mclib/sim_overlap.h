@@ -33,7 +33,7 @@ void setSimulationFrame(uint32_t frame);        // sim worker only, before each 
 //   Sim    = the overlap worker running banked ticks.
 //   Render = GPU mutation, transferred from Main to the P2 worker until the frame is sealed.
 //   Present = WSI after sealing; the worker can block there while Main records the next frame.
-enum class Owner : uint8_t { Main, Sim, Render, Present };
+enum class Owner : uint8_t { Main, Sim, Render, Present, Prewarm };
 void registerThread(Owner role);   // call once on the thread; the sim worker registers itself
 // P2 transfers GPU mutation ownership at the sealed-frame boundary; WSI has no game-state access.
 void setRenderWorkerOwns(bool owns);

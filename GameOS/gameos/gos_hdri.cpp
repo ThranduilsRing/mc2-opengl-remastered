@@ -25,6 +25,8 @@
 #include "Gates/gate.h"
 #include "Gates/render_options.h"
 #include "mc2fmt.h"
+#include "sim_overlap.h"
+#include "diagnostic_trace.h"
 
 // HDRI-SKY Item 2: scan a decoded equirect RGBA-float buffer for the dominant
 // above-horizon light source and return its GL-equirect azimuth (radians).
@@ -97,15 +99,15 @@ static bool hdriBc6hOn()
 }
 
 // Use the same overlay/FST provider as the cooked-sidecar decision.
-static int loadSourceExr(float** pixels, int* w, int* h, mc2::czstring path, const char** error)
+static std::vector<unsigned char> snapshotExr(mc2::czstring path)
 {
     File source;
-    if (source.open(path) != NO_ERR) return TINYEXR_ERROR_CANT_OPEN_FILE;
+    if (source.open(path) != NO_ERR) return {};
     const long size = source.fileSize();
-    if (size <= 0 || size > 512 * 1024 * 1024) return TINYEXR_ERROR_INVALID_DATA;
+    if (size <= 0 || size > 512 * 1024 * 1024) return {};
     std::vector<unsigned char> bytes(static_cast<size_t>(size));
-    if (source.read(bytes.data(), size) != size) return TINYEXR_ERROR_INVALID_DATA;
-    return LoadEXRFromMemory(pixels, w, h, bytes.data(), bytes.size(), error);
+    if (source.read(bytes.data(), size) != size) return {};
+    return bytes;
 }
 
 // Derive sidecar path: replace trailing ".exr" with ".ktx2".
@@ -202,8 +204,34 @@ void buildRgba16fChain(HdriCpuImage& out, const float* pixels, int w, int h)
 }  // namespace
 
 // Decode source bytes only; the native sky and water owners upload their own images.
-bool decodeHdriSource(mc2::czstring path, float* outSunAzGL, bool* outSunValid, HdriCpuImage* outCpu)
+HdriDecodeInput snapshotHdriSource(mc2::czstring path)
 {
+    mc2::overlap::assertMainThread("HDRI.snapshot");
+    ZoneScopedN("HDRI.snapshot");
+    HdriDecodeInput input;
+    if (!path || !*path) return input;
+    input.path = path;
+    input.cap = mc2::options::current().baseQuality == 0 ? 512 : 1024;
+    input.lowCost = mc2::options::lowCost();
+    if (hdriBc6hOn()) input.cooked = mc2::textures::loadCookedSidecar(path);
+    const bool usable = input.cooked && input.cooked->isCompressed &&
+        (input.cooked->vkFormat == 143 || input.cooked->vkFormat == 144);
+    if (!usable || !input.cooked->hasSunMetadata) input.exr = snapshotExr(path);
+    return input;
+}
+
+bool decodeHdriSource(mc2::czstring path, float* sunAz, bool* sunValid, HdriCpuImage* image)
+{
+    const bool ready = decodeHdriSnapshot(snapshotHdriSource(path), sunAz, sunValid, image);
+    MC2_DIAGFE(stderr, "[HDRI_SKY v1] decoded=%d path=%s\n", ready, path ? path : "");
+    return ready;
+}
+
+bool decodeHdriSnapshot(HdriDecodeInput input, float* outSunAzGL, bool* outSunValid, HdriCpuImage* outCpu)
+{
+    mc2::overlap::assertMainThread("HDRI.decodeSnapshot");
+    ZoneScopedN("HDRI.decodePrivate");
+    const char* path = input.path.c_str();
     if (outSunValid) *outSunValid = false;
     if (!outCpu) return false;
     *outCpu = {};
@@ -215,15 +243,15 @@ bool decodeHdriSource(mc2::czstring path, float* outSunAzGL, bool* outSunValid, 
             if (outSunValid) *outSunValid = true;
         }
     };
-    if (hdriBc6hOn()) {
+    if (input.cooked) {
         char sidecarPath[1024];
-        auto cooked = mc2::textures::loadCookedSidecar(path);
+        auto cooked = std::move(input.cooked);
         if (deriveSidecarKtx2(path, sidecarPath, sizeof(sidecarPath)) && cooked && cooked->isCompressed &&
             (cooked->vkFormat == 143 || cooked->vkFormat == 144)) {
             auto& img = *cooked;
             const size_t count = img.mipCount > 1 && img.mipByteOffsets.size() > 1
                 ? static_cast<size_t>(img.mipByteOffsets[1]) : img.pixels.size();
-            const int cap = mc2::options::current().baseQuality == 0 ? 512 : 1024;
+            const int cap = input.cap;
             const int nw = cap, nh = std::max(1, img.height * cap / img.width);
             size_t cappedBytes = 8;
             for (int mw = nw, mh = nh; mw > 1 || mh > 1;
@@ -231,7 +259,7 @@ bool decodeHdriSource(mc2::czstring path, float* outSunAzGL, bool* outSunValid, 
                  mh = std::max(1, mh / 2))
                 cappedBytes += static_cast<size_t>(mw) * mh * 8;
             // Keep native BC6H when the half-float mip chain would cost more memory.
-            if (mc2::options::lowCost() && img.width > cap && cappedBytes < count) {
+            if (input.lowCost && img.width > cap && cappedBytes < count) {
                 // Single-level 16K BC6H skies otherwise consume 128 MiB EACH in sky and water.
                 // Average one representative 4x4 block per output pixel: bounded load-time work,
                 // no full-size float decode, no extra per-frame sampling or shared-DDR4 residency.
@@ -250,7 +278,6 @@ bool decodeHdriSource(mc2::czstring path, float* outSunAzGL, bool* outSunValid, 
                     }
                 }
                 buildRgba16fChain(*outCpu, rgba.data(), nw, nh);
-                MC2_DIAGFE(stderr, "[HDRI_SKY v1] preset_cap=%d source=%dx%d uploaded=%dx%d\n", cap, img.width, img.height, nw, nh);
             } else {
                 outCpu->format = img.vkFormat == 144 ? HdriCpuImage::Format::Bc6hSfloat : HdriCpuImage::Format::Bc6hUfloat;
                 outCpu->levels.emplace_back(img.pixels.begin(), img.pixels.begin() + static_cast<std::ptrdiff_t>(count));
@@ -263,19 +290,18 @@ bool decodeHdriSource(mc2::czstring path, float* outSunAzGL, bool* outSunValid, 
                 }
             } else if (outSunAzGL) {
                 float* pixels = nullptr; int w = 0, h = 0; const char* error = nullptr;
-                if (loadSourceExr(&pixels, &w, &h, path, &error) == TINYEXR_SUCCESS) scanSun(pixels, w, h);
+                if (!input.exr.empty() && LoadEXRFromMemory(&pixels, &w, &h, input.exr.data(), input.exr.size(), &error) == TINYEXR_SUCCESS) scanSun(pixels, w, h);
                 if (pixels) free(pixels);
                 if (error) FreeEXRErrorMessage(error);
             }
-            MC2_DIAGFE(stderr, "[HDRI_SKY v1] source=bc6h path=%s w=%d h=%d bytes=%zu\n", sidecarPath, img.width, img.height, count);
             return true;
         }
     }
     float* pixels = nullptr; int w = 0, h = 0; const char* error = nullptr;
-    const int result = loadSourceExr(&pixels, &w, &h, path, &error);
+    const int result = input.exr.empty() ? TINYEXR_ERROR_CANT_OPEN_FILE :
+        LoadEXRFromMemory(&pixels, &w, &h, input.exr.data(), input.exr.size(), &error);
     if (result != TINYEXR_SUCCESS || !pixels || w <= 0 || h <= 0 ||
         w > static_cast<int>(RenderCore::kKtxMaxEdge) || h > static_cast<int>(RenderCore::kKtxMaxEdge)) {
-        MC2_DIAGFE(stderr, "[HDRI_SKY v1] enabled=0 reason=decode_failed path=%s error=%s\n", path, error ? error : "invalid_extent");
         if (pixels) free(pixels);
         if (error) FreeEXRErrorMessage(error);
         return false;
@@ -284,6 +310,5 @@ bool decodeHdriSource(mc2::czstring path, float* outSunAzGL, bool* outSunValid, 
     buildRgba16fChain(*outCpu, pixels, w, h);
     free(pixels);
     if (error) FreeEXRErrorMessage(error);
-    MC2_DIAGFE(stderr, "[HDRI_SKY v1] source=rgba16f path=%s w=%d h=%d\n", path, w, h);
     return !outCpu->levels.empty();
 }

@@ -102,6 +102,7 @@ static unsigned int packageHardpointFromCsv(const BattleMech* mech, CSVFile* mec
 
 long BattleMech::init (DWORD variantNum)
 {
+	ZoneScopedN("BattleMech::init(variantNum)");
 	CSVFile mechFile;
 	
 	FullPathFileName csvName;
