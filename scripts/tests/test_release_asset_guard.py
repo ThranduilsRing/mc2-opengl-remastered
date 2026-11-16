@@ -55,6 +55,16 @@ def test_forbidden_names(tmp_path, name):
     assert_rejected(tmp_path, name)
 
 
+@pytest.mark.parametrize("name", [
+    "mods/BT2018Other/texture.dds", "data/tgl/128/BT2018Other.dds",
+    "data/tgl/128/MW5Other.dds", "nested/BT2018Other/texture.dds",
+    "nested/MW5Other/texture.dds", "BT2018Other.dds", "MW5Other.dds",
+])
+@pytest.mark.parametrize("case", [str, str.lower, str.swapcase], ids=["original", "lower", "mixed"])
+def test_asset_prefixes(tmp_path, name, case):
+    assert_rejected(tmp_path, case(name))
+
+
 @pytest.mark.parametrize("payload", [
     b"UnityFS\0fixture", b"UnityWeb\0fixture", b"UnityRaw\0fixture",
     b"Kaydara FBX Binary\0fixture", b"prefix chrTxrMech_fake suffix",
@@ -231,7 +241,9 @@ def test_foreign_pak_rejected(tmp_path, payload):
     br'{"nodes":[{"name":"\u0054orso_Twist"},{"name":"\u0046oot0_L"}]}',
     b'{"padding":"' + b"x" * (guard.CHUNK_SIZE - 22 - len(b'{"padding":"","asset":{"generator":"')) +
     br'","asset":{"generator":"\u0074ools\/mw5_mechs"}}',
-], ids=["slash", "generator-unicode", "nodes-unicode", "split-escape"])
+    br'{"nodes":[{"name":"\u006a_COCKPIT"},{"name":"atlas_moveCore"}]}',
+    br'{"materials":[{"name":"\u0063hrTxrMech_fake"}]}',
+], ids=["slash", "generator-unicode", "nodes-unicode", "split-escape", "hbs-node", "hbs-texture"])
 def test_glb_json_escapes(tmp_path, payload):
     assert_rejected(tmp_path, "renamed.bin", fake_glb(payload))
 

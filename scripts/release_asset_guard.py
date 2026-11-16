@@ -52,12 +52,8 @@ def _path_reason(name: str) -> str | None:
         return "extractor output/tool directory"
     if any(part in {"work", "workdir", "work_dir", ".venv"} for part in parts) and name.startswith(TOOL_DIRS):
         return "kit work directory"
-    for prefix in ("mods/bt2018_mechs/", "mods/bt2018mechs/", "data/tgl/bt2018/"):
-        if name.startswith(prefix):
-            return "BattleTech asset directory"
-    if ((len(parts) > 2 and parts[0] == "mods" and parts[1].startswith("mw5")) or
-            (name.startswith("data/tgl/") and any(part.startswith("mw5_") for part in parts[2:]))):
-        return "MW5 asset directory"
+    if any(part.lower().startswith(("bt2018", "mw5")) for part in parts):
+        return "BattleTech/MW5 asset/tool name"
     if any(fnmatchcase(part, pattern) for part in parts for pattern in NAME_PATTERNS):
         return "forbidden asset/tool name"
     # The reviewed external manifest declares legacy deploy-only chassis files.
@@ -125,6 +121,8 @@ def _inspect(name: str, stream, *, reject_archives: bool = False) -> list[str]:
                                  lambda m: bytes([int(m[1], 16)]) if m[1] else m[2], json_window)
             mw5_generator |= MW5_GENERATOR in json_window
             mw5_nodes.update(node for node in MW5_NODES if node in json_window)
+            content |= any(token.lower() in json_window.lower() for token in TOKENS)
+            nodes.update(node for node in NODES if node in json_window)
             json_remaining = max(0, json_remaining - len(json_chunk))
         if text:
             try:
