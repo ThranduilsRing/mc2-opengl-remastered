@@ -168,6 +168,23 @@ std::string toJson(const Snapshot& s) {
     return buf;
 }
 
+uint64_t drainRetired(std::string_view why) {
+#ifdef MC2_VULKAN
+    if (!mc2vk::engineVulkanContextValid()) return 0;
+    auto& ctx = mc2vk::getOrCreateEngineVulkanContext();
+    const auto before = ctx.deferred().bytes();
+    const auto entries = ctx.deferred().size();
+    ctx.flushUploads();
+    ctx.drainDeferred(why);
+    std::fprintf(stderr, "[VK_RESIDENCY v1] phase=reload_drain why=%.*s entries=%zu released_bytes=%llu deferred_after=%llu\n",
+        static_cast<int>(why.size()), why.data(), entries, static_cast<unsigned long long>(before),
+        static_cast<unsigned long long>(ctx.deferred().bytes()));
+    return before;
+#else
+    return 0;
+#endif
+}
+
 void log(std::string_view phase) {
     if (!SmokeMode::state().enabled && !mc2DiagVerbose()) return;
     const Snapshot snapshot = take();
