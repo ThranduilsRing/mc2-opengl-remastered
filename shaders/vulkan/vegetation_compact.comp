@@ -1,5 +1,5 @@
-// Re-evaluate only surviving regions after the prefix sum. This keeps population
-// order without a population-sized scratch copy; the dense output has a fixed cap.
+// Read the cull pass's cached survivor bits after the prefix sum. Population
+// order and the dense output's fixed cap are unchanged.
 // The region writes only its own slot range [offsets[r], next start): under the visible
 // cap the scan scaled those ranges, so the region keeps an even subset of its survivors
 // (survivor j takes slot floor(j*quota/n)), and a cull/compact disagreement can never
@@ -48,7 +48,7 @@ void main() {
     uint lid = gl_LocalInvocationIndex, seen = 0u;
     for (uint c = R.first; c < R.last; c += 64u) {
         uint id = c + lid;
-        bool keep = id < R.last && survives(unpackVegetation(inst[id]), P.flags.x != 0u);
+        bool keep = id < R.last && (surviveBits[id >> 5u] & (1u << (id & 31u))) != 0u;
         // Subgroup ballot rank; the per-subgroup totals combine through LDS.
         uvec4 ballot = subgroupBallot(keep);
         if (subgroupElect()) s_sub[gl_SubgroupID] = subgroupBallotBitCount(ballot);

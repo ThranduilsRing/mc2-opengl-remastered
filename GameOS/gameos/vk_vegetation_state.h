@@ -103,7 +103,7 @@ public:
 
 private:
     struct Slot {
-        mc2vk::OwnedBuffer counts, offsets, dense, args, stats, visList;
+        mc2vk::OwnedBuffer counts, offsets, dense, args, stats, visList, survive;
         bool statsPending = false;
     };
     bool ensurePipelines(mc2vk::VulkanContext& ctx);

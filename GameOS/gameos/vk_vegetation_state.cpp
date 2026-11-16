@@ -46,6 +46,7 @@ void State::clear(mc2vk::VulkanContext& ctx) {
         if (s.args) ctx.retire(std::move(s.args));
         if (s.stats) ctx.retire(std::move(s.stats));
         if (s.visList) ctx.retire(std::move(s.visList));
+        if (s.survive) ctx.retire(std::move(s.survive));
         s = Slot{};
     }
     instanceCount_ = regionCount_ = 0;
@@ -85,6 +86,8 @@ bool State::upload(mc2vk::VulkanContext& ctx, std::span<const GpuInstance> insta
     }
     const uint32_t instanceCount = static_cast<uint32_t>(instances.size()), regionCount = static_cast<uint32_t>(regions.size());
     const VkBufferUsageFlags kStore = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+    static_assert(kSlots == 3); // vegetationBytes accounts for three population-sized survive bitsets
+    const VkDeviceSize surviveBytes = ((VkDeviceSize(instanceCount) + 31) / 32) * 4;
     mc2vk::OwnedBuffer stageInst, stageReg;
     if (!stageInst.createFilled(ctx.allocator(), ctx.device(), instances.data(), instBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "veg.stage.instances") ||
         !stageReg.createFilled(ctx.allocator(), ctx.device(), regions.data(), regBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "veg.stage.regions") ||
@@ -99,6 +102,7 @@ bool State::upload(mc2vk::VulkanContext& ctx, std::span<const GpuInstance> insta
         if (!s.counts.createDeviceLocal(ctx.allocator(), ctx.device(), VkDeviceSize(regionCount) * 4, kStore, "veg.counts", static_cast<int>(i)) ||
             !s.offsets.createDeviceLocal(ctx.allocator(), ctx.device(), VkDeviceSize(regionCount) * 4, kStore, "veg.offsets", static_cast<int>(i)) ||
             !s.visList.createDeviceLocal(ctx.allocator(), ctx.device(), VkDeviceSize(regionCount) * 4, kStore, "veg.visList", static_cast<int>(i)) ||
+            !s.survive.createDeviceLocal(ctx.allocator(), ctx.device(), surviveBytes, kStore | VK_BUFFER_USAGE_TRANSFER_DST_BIT, "veg.survive", static_cast<int>(i)) ||
             !s.dense.createDeviceLocal(ctx.allocator(), ctx.device(), VkDeviceSize(visibleCapacity) * 4, kStore, "veg.dense", static_cast<int>(i)) ||
             !s.stats.createHostWritable(ctx.allocator(), ctx.device(), 16, VK_BUFFER_USAGE_TRANSFER_DST_BIT, "veg.stats", static_cast<int>(i)) ||
             !s.args.createDeviceLocal(ctx.allocator(), ctx.device(), 64, kStore | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "veg.args", static_cast<int>(i))) {
@@ -125,7 +129,7 @@ bool State::upload(mc2vk::VulkanContext& ctx, std::span<const GpuInstance> insta
     instanceCount_ = instanceCount;
     regionCount_ = regionCount;
     ++generation_;
-    const VkDeviceSize outBytes = VkDeviceSize(visibleCapacity) * 4 * kSlots + VkDeviceSize(regionCount) * 8 * kSlots;
+    const VkDeviceSize outBytes = VkDeviceSize(visibleCapacity) * 4 * kSlots + VkDeviceSize(regionCount) * 8 * kSlots + surviveBytes * kSlots;
     ++stats_.uploads;
     stats_.uploadBytes += instBytes + regBytes;
     stats_.instances = instanceCount;
@@ -141,7 +145,7 @@ bool State::ensurePipelines(mc2vk::VulkanContext& ctx) {
     if (!pipelinesTried_) {
         pipelinesTried_ = true;
         const auto S = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, SD = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, UD = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-        const std::vector<mc2vk::ComputeBinding> bindings{{0, UD}, {1, SD}, {2, S}, {3, S}, {5, S}, {6, S}, {7, S}, {8, S}, {9, S}};
+        const std::vector<mc2vk::ComputeBinding> bindings{{0, UD}, {1, SD}, {2, S}, {3, S}, {5, S}, {6, S}, {7, S}, {8, S}, {9, S}, {10, S}};
         const std::string dir = vk_island_util::spvDir();
         pipelinesOk_ = region_.create(ctx.device(), dir + "vegetation_region.comp.spv", bindings, "veg.region") &&
                        cull_.create(ctx.device(), dir + "vegetation_cull.comp.spv", bindings, "veg.cull") &&
@@ -169,6 +173,7 @@ void State::writeSlotSets(mc2vk::VulkanContext& ctx, uint32_t i) {
     sets_.write(ctx.device(), i, 7, S, slot_[i].dense.get());
     sets_.write(ctx.device(), i, 8, S, slot_[i].args.get());
     sets_.write(ctx.device(), i, 9, S, slot_[i].visList.get());
+    sets_.write(ctx.device(), i, 10, S, slot_[i].survive.get());
     if (drawSets_[i]) {
         const VkDescriptorBufferInfo infos[2] = {{instances_.get(), 0, VK_WHOLE_SIZE}, {slot_[i].dense.get(), 0, VK_WHOLE_SIZE}};
         VkWriteDescriptorSet w[2]{};
@@ -223,13 +228,18 @@ bool State::record(mc2vk::VulkanContext& ctx, VkCommandBuffer cb, uint32_t par, 
     const uint32_t dyn[2] = {static_cast<uint32_t>(span.offset + paramsOff), static_cast<uint32_t>(span.offset + visOff)};
     MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.VegCull");
     const VkPipelineStageFlags cs = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+    // Regions can share a word: clear every bit (including false and invisible results) before atomic cull writes.
+    // The caller has retired this frame slot's previous readers before record().
+    mc2vk::cmdBarrier(cb, cs, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT);
+    vkCmdFillBuffer(cb, slot_[par].survive.get(), 0, VK_WHOLE_SIZE, 0);
+    mc2vk::cmdBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT, cs, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
     // Level 1: one workgroup picks the visible regions and writes the indirect dispatch (args byte 48); level 2 runs over them only.
     region_.bind(cb, set, dyn);
     vkCmdDispatch(cb, 1, 1, 1);
     mc2vk::cmdBarrier(cb, cs, VK_ACCESS_SHADER_WRITE_BIT, cs | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_INDIRECT_COMMAND_READ_BIT);
     cull_.bind(cb, set, dyn);
     vkCmdDispatchIndirect(cb, slot_[par].args.get(), 48);
-    mc2vk::cmdBarrier(cb, cs, VK_ACCESS_SHADER_WRITE_BIT, cs, VK_ACCESS_SHADER_READ_BIT);
+    mc2vk::cmdBarrier(cb, cs, VK_ACCESS_SHADER_WRITE_BIT, cs, VK_ACCESS_SHADER_READ_BIT); // counts, offsets and survive bits -> compact
     compact_.bind(cb, set, dyn);
     vkCmdDispatchIndirect(cb, slot_[par].args.get(), 48);
     mc2vk::cmdBarrier(cb, cs, VK_ACCESS_SHADER_WRITE_BIT,
