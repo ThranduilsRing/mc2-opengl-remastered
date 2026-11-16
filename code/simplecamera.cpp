@@ -37,6 +37,7 @@ SimpleCamera.cpp	: Implementation of the SimpleCamera component.
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 #include "model_credit.h"
+#include "preview_choice.h"
 #include "mech_anim_preview.h"
 #include "imgui.h"
 
@@ -509,6 +510,8 @@ void SimpleCamera::render(long xOffset, long yOffset)
 // image isn't upside down in ImGui's top-left-origin image space.
 void SimpleCamera::drawPreviewToPanel( float panelX, float panelY, float panelW, float panelH ) const
 {
+	// A missing selection owns no pixels in the shared preview target.
+	if (!pObject) return;
 #ifdef MC2_IMGUI
     const uint64_t tex=mc2vk::uiTextureServiceReady() ? mc2_vk_preview_texture() : 0;
 	const float u1 = bounds[0] / 800.f;
@@ -753,11 +756,14 @@ void SimpleCamera::setMech(mc2::czstring fileName, long baseColor, long highligh
 	//MUST ALWAYS CALL GET, EVEN IF WE HAVE AN APPEARANCE TYPE OR REFERENCE COUNT DOES NOT INCREASE!
 	Mech3DAppearanceType* appearanceType = nullptr;
 	
-	const bool encyclopediaModel = fileExists(path);
-	if (encyclopediaModel)
-		appearanceType = static_cast<Mech3DAppearanceType*>(appearanceTypeList->getAppearance( MECH_TYPE << 24, static_cast<char*>(testName) ));
-	else
-		appearanceType = static_cast<Mech3DAppearanceType*>(appearanceTypeList->getAppearance( MECH_TYPE << 24, NoPathFileName.data() ));
+	const bool encExists = fileExists(path);
+	bool encyclopediaModel = false;
+	appearanceType = choosePreviewType(encExists, encyclopediaModel,
+		[&](bool enc) { return static_cast<Mech3DAppearanceType*>(appearanceTypeList->getAppearance(
+			MECH_TYPE << 24, enc ? testName : NoPathFileName.data())); },
+		[&](Mech3DAppearanceType* type) { appearanceTypeList->removeAppearance(type); });
+	if (encExists && !encyclopediaModel)
+		MC2_LOG(Assets, Warn, "Preview enc model failed: {}; trying plain INI", NoPathFileName);
 
 	// A mod chassis with no tgl ini (or an empty base shape) leaves no object, so
 	// hasObject() stays false and the mech lab keeps its silhouette statics.
@@ -835,6 +841,13 @@ void SimpleCamera::setVehicle(mc2::czstring fileName,long base, long highlight, 
 		appearanceType = static_cast<GVAppearanceType*>(appearanceTypeList->getAppearance( GV_TYPE << 24, static_cast<char*>(testName) ));
 	else
 		appearanceType= static_cast<GVAppearanceType*>(appearanceTypeList->getAppearance( GV_TYPE << 24, NoPathFileName.data() ));
+
+	if (!appearanceType || appearanceType->baseShapeLoadFailed)
+	{
+		if (appearanceType) appearanceTypeList->removeAppearance(appearanceType);
+		this->popContext();
+		return;
+	}
 
 	pObject = std::make_unique<GVAppearance>();	
 	pObject->init( appearanceType );
