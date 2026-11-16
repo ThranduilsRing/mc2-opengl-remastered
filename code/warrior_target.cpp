@@ -187,8 +187,10 @@ int32_t TargetPriorityList::calcTarget (MechWarriorPtr pilot, glm::vec3 location
 				if (!obj) {
 					if (list[i].params[2] == -1) {
 						float smallestDistance = 999999.0;
-						for (auto candidate : ObjectManager->nearbyBuildings(pilot->getVehicle()->getPosition(),
-							list[i].params[1] / metersPerWorldUnit)) {
+						static thread_local std::vector<mc2::world::SpatialGrid::Candidate> buildings;
+						ObjectManager->nearbyBuildingsInto(pilot->getVehicle()->getPosition(),
+							list[i].params[1] / metersPerWorldUnit, buildings);
+						for (auto candidate : buildings) {
 							BuildingPtr building = ObjectManager->getEntity<Building>(candidate.id);
 							if (building->isEnemy(pilot->getTeam()))
 								if (building->getObjectType()->getSubType() != BUILDING_SUBTYPE_WALL)

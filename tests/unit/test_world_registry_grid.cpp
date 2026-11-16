@@ -85,6 +85,27 @@ TEST_CASE("WorldGrid/boundaries, invalid coordinates and stable tie order") {
     CHECK(grid.query(0, 0, -1).size() == 31);
 }
 
+TEST_CASE("WorldGrid/queryInto reuses dirty scratch with identical candidates and order") {
+    mc2::world::SpatialGrid grid;
+    for (unsigned i = 0; i < 64; ++i)
+        grid.add(float(int(i % 8) * 512 - 2048), float(int(i / 8) * 512 - 2048), 63 - i, {1, i + 1, 1});
+    grid.finish();
+    std::vector<mc2::world::SpatialGrid::Candidate> scratch(7, {999, {9, 9, 9}});
+    for (int q = 0; q < 64; ++q) {
+        if (q == 56) grid.clear();
+        const float x = q % 4 == 0 ? 1000000.0f + q : float(q * 73 - 2048);
+        const float y = float(q * 41 - 1024);
+        const float radius = q % 4 == 1 ? -1.0f : float(q * 13);
+        const auto expected = grid.query(x, y, radius);
+        grid.queryInto(x, y, radius, scratch);
+        REQUIRE(scratch.size() == expected.size());
+        for (size_t i = 0; i < expected.size(); ++i) {
+            CHECK(scratch[i].ordinal == expected[i].ordinal);
+            CHECK(scratch[i].id == expected[i].id);
+        }
+    }
+}
+
 TEST_CASE("WorldGrid/1024 movers, 300 ticks, deterministic twice") {
     static_assert(MAX_MOVERS == 1024);
     auto run = [] {

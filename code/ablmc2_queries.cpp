@@ -335,6 +335,12 @@ void execGetTarget (void) {
 	ABLi_pushInteger(partID);
 }
 
+static std::vector<int>& weaponQueryScratch() {
+	static thread_local std::vector<int> weapons;
+	weapons.clear();
+	return weapons;
+}
+
 void execGetWeaponsReady (void) {
 
 	const auto output = ABLi_popIntBuf();
@@ -343,7 +349,7 @@ void execGetWeaponsReady (void) {
 	long result = 0;
 	if (CurObject && CurObject->isMover()) {
 		auto* mover = static_cast<MoverPtr>(CurObject);
-		std::vector<int> weapons;
+		auto& weapons = weaponQueryScratch();
 		if (listSize == -1) {
 			weapons.resize(MAX_WEAPONS_PER_MOVER);
 		} else {
@@ -375,7 +381,7 @@ void execGetWeaponsLocked (void) {
 	long result = 0;
 	if (CurObject && CurObject->isMover()) {
 		auto* mover = static_cast<MoverPtr>(CurObject);
-		std::vector<int> weapons;
+		auto& weapons = weaponQueryScratch();
 		if (listSize == -1) {
 			weapons.resize(MAX_WEAPONS_PER_MOVER);
 		} else {
@@ -407,7 +413,7 @@ void execGetWeaponsInRange (void) {
 	long result = 0;
 	if (CurObject && CurObject->isMover()) {
 		auto* mover = static_cast<MoverPtr>(CurObject);
-		std::vector<int> weapons;
+		auto& weapons = weaponQueryScratch();
 		if (listSize == -1) {
 			weapons.resize(MAX_WEAPONS_PER_MOVER);
 		} else {
