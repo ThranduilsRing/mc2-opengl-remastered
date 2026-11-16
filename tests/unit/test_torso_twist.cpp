@@ -2,6 +2,10 @@
 #include "mech_skel_import.h"
 #include "math/mc2_xform.h"
 #include <assimp/scene.h>
+#include <assimp/Importer.hpp>
+#include <algorithm>
+#include <cstdlib>
+#include <cstring>
 #include <cmath>
 
 namespace {
@@ -75,6 +79,53 @@ TEST_CASE("torso twist: production single and blended FK rotate muzzle but prese
     CHECK(fallback.axis[0] == doctest::Approx(1));
     fixture.scene.mRootNode->mChildren[0]->mName = "j_Pitch";
     CHECK(mc2skel::ResolveTorsoTwist(*mc2skel::BuildPlan(&fixture.scene, fixture.names)).node == -1);
+}
+
+TEST_CASE("torso twist: real Atlas bearing about sampled axis and unchanged legs") {
+    const char* path = std::getenv("TORSO_PROOF_ATLAS");
+    if (!path) { MESSAGE("BLOCKED: real Atlas pack not configured"); return; }
+    Assimp::Importer importer;
+    const auto* scene = importer.ReadFile(path, 0);
+    REQUIRE_MESSAGE(scene, std::string(importer.GetErrorString()));
+    std::vector<std::string> names; std::vector<int> parents;
+    std::vector<std::array<float, 16>> offsets;
+    mc2skel::BuildSkeleton(scene, names, parents, offsets);
+    for (const char* n : {"j_Spine2", "j_COCKPIT", "j_RForearm", "j_LForearm",
+             "j_LHip", "j_LThigh", "j_LCalf", "j_LFoot", "j_RHip", "j_RThigh", "j_RCalf", "j_RFoot"})
+        if (std::find(names.begin(), names.end(), n) == names.end()) names.emplace_back(n);
+    const auto plan = mc2skel::BuildPlan(scene, names);
+    auto twist = mc2skel::ResolveTorsoTwist(*plan);
+    REQUIRE(twist.node >= 0);
+    auto index = [&](const char* n) { REQUIRE(scene->mRootNode->FindNode(n)); return std::find(names.begin(), names.end(), n) - names.begin(); };
+    const auto spine = index("j_Spine2");
+    std::vector<mc2skel::GpuBone> rest, pose;
+    REQUIRE(mc2skel::EvaluateClipGpuBones(*plan, "atlas_moveCoreIdle", 0, rest));
+    auto matrix = [](const mc2skel::GpuBone& b) { aiMatrix4x4 m; std::memcpy(&m.a1, b.m, sizeof(b.m)); return m; };
+    const auto base = matrix(rest[spine]);
+    auto axis = aiMatrix3x3(base) * aiVector3D(twist.axis[0], twist.axis[1], twist.axis[2]);
+    axis.Normalize();
+    MESSAGE("Atlas sampled twist axis = ", axis.x, ",", axis.y, ",", axis.z);
+    REQUIRE(axis.y >= std::cos(3.0f * 0.01745329252f));
+    for (float yaw : {30.0f, 0.0f, -30.0f}) {
+        twist.degrees = yaw;
+        REQUIRE(mc2skel::EvaluateClipGpuBones(*plan, "atlas_moveCoreIdle", 0, pose, nullptr, nullptr, &twist));
+        if (yaw == 0) CHECK(std::memcmp(rest.data(), pose.data(), rest.size() * sizeof(rest[0])) == 0);
+        for (const char* n : {"j_COCKPIT", "j_RForearm", "j_LForearm"}) {
+            const auto i = index(n);
+            auto p = matrix(rest[i]) * aiVector3D() - base * aiVector3D();
+            auto q = matrix(pose[i]) * aiVector3D() - matrix(pose[spine]) * aiVector3D();
+            p -= axis * (p * axis); q -= axis * (q * axis);
+            REQUIRE(p.SquareLength() > 1e-12f);
+            REQUIRE(q.SquareLength() > 1e-12f);
+            const float bearing = std::atan2(axis * (p ^ q), p * q) / 0.01745329252f;
+            CAPTURE(n); CAPTURE(yaw); CAPTURE(bearing);
+            REQUIRE(std::abs(bearing - yaw) <= 0.05f);
+        }
+        for (const char* n : {"j_LHip", "j_LThigh", "j_LCalf", "j_LFoot", "j_RHip", "j_RThigh", "j_RCalf", "j_RFoot"}) {
+            const auto i = index(n);
+            CHECK(std::memcmp(&rest[i], &pose[i], sizeof(pose[i])) == 0);
+        }
+    }
 }
 
 TEST_CASE("torso twist: pelvis sway cannot capture named or largest descendant spine yaw") {

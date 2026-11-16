@@ -859,6 +859,14 @@ bool MissionInterfaceManager::uiCmdReadback(UiCmdCtx& c)
 				if (obj->isMover()) {
 					MoverPtr m = static_cast<MoverPtr>(obj);
 					MechWarriorPtr pilot = m->getPilot();
+					if (obj->getObjectClass() == BATTLEMECH) {
+						const auto* mech = static_cast<BattleMech*>(obj);
+						GameObjectPtr attackTarget = pilot ? pilot->getAttackTarget() : nullptr;
+						mc2::fmt::to_buf(b, "  mech: heading_deg={:.3f} torso_yaw_deg={:.3f} target={:d}\n",
+							mech->getRotation(), mech->torsoRotation,
+							mc2::fmt::as_i32(attackTarget ? attackTarget->getPartId() : -1L));
+						extra += b;
+					}
 					mc2::fmt::to_buf(b, "  jump: capable={} range_world={} executing={}\n",
 						m->canJump(), m->getJumpRange(), m->isJumping());
 					extra += b;
