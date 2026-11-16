@@ -18,6 +18,7 @@
 #include "file.h"
 #include "inifile.h"
 #include "packet.h"
+#include "cident.h"
 #include "../../code/model_credit.h"
 #include "../../code/purchase_catalog.h"
 #include "../../code/objective_text.h"
@@ -65,6 +66,52 @@ const char kFitInMemText[] =
 
 TEST_SUITE("FileStack")
 {
+TEST_CASE("carbon_mclib/RAM seek is relative to each file after reads")
+{
+    unsigned char a[] = "abcdef", b[] = "uvwxyz";
+    File first, second;
+    REQUIRE(first.open(a, 6) == NO_ERR);
+    REQUIRE(second.open(b, 6) == NO_ERR);
+    REQUIRE(first.seek(1, SEEK_SET) == NO_ERR);
+    unsigned char byte = 0;
+    REQUIRE(first.read(&byte, 1) == 1);
+    REQUIRE(second.seek(4, SEEK_SET) == NO_ERR);
+    REQUIRE(first.seek(1, SEEK_CUR) == NO_ERR);
+    REQUIRE(first.read(&byte, 1) == 1);
+    CHECK(byte == 'd');
+    REQUIRE(first.seek(-1, SEEK_CUR) == NO_ERR);
+    REQUIRE(first.read(&byte, 1) == 1);
+    CHECK(byte == 'd');
+}
+
+TEST_CASE("carbon_mclib/RAM line with a final delimiter stops at EOF")
+{
+    unsigned char text[] = {'a', '\r'};
+    File file;
+    REQUIRE(file.open(text, sizeof text) == NO_ERR);
+    unsigned char line[8] = {};
+    CHECK(file.readLine(line, 7) == 2);
+    CHECK(std::strcmp(reinterpret_cast<char*>(line), "a") == 0);
+    CHECK(file.getLogicalPosition() == sizeof text);
+}
+
+TEST_CASE("carbon_mclib/FIT strings reject missing quotes")
+{
+    struct Parser : FitIniFile { using FitIniFile::copyString; } parser;
+    char out[16] = {}, noQuote[] = "plain", noEnd[] = "\"unfinished", valid[] = "\"ok\"";
+    CHECK(parser.copyString(out, noQuote, sizeof out) == SYNTAX_ERROR);
+    CHECK(parser.copyString(out, noEnd, sizeof out) == SYNTAX_ERROR);
+    CHECK(parser.copyString(out, valid, sizeof out) == NO_ERR);
+    CHECK(std::strcmp(out, "ok") == 0);
+}
+
+TEST_CASE("carbon_mclib/short paths append a longer extension once")
+{
+    FullPathFileName shortName("", "a", ".fit"), suffixed("", "a.fit", ".fit");
+    CHECK(std::strcmp(shortName, "a.fit") == 0);
+    CHECK(std::strcmp(suffixed, "a.fit") == 0);
+}
+
 // Trigger paths: code/purchase_catalog.h, code/logisticsmech.cpp, code/logisticsdata_save.cpp.
 TEST_CASE("purchase_catalog/full inventory identity survives real FIT save reload")
 {
