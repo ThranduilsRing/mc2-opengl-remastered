@@ -115,6 +115,7 @@ add_executable(mc2_tests
     test_static_prop_origin.cpp  # prop instance origin layout: translation at [3][7][11]
     test_prop_record_cache.cpp  # prop scene generations and per-frame-slot cache keys
     test_prop_lod_state.cpp  # flat per-instance LOD hysteresis table equals the unordered_map it replaced
+    test_prop_lod_evaluation.cpp
     test_searchlight_aim.cpp
     test_cone_beam_links.cpp
     test_beam_lights.cpp
