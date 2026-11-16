@@ -11,6 +11,18 @@
 layout(local_size_x = 64) in;
 #include "include/vegetation_cull_common.glsl"
 shared uint s_sub[64];   // per-subgroup survivor totals for the current 64-instance chunk
+// Conservative root test; the vertex shader retains the exact deformation test.
+bool nearFoot(VegInstance i) {
+    uint frame = i.atlasFrame;
+    uint atlasIdx = (frame & 8u) != 0u ? (frame & 3u) : min(frame & 15u, 7u);
+    if (atlasIdx >= 4u || ((frame >> 4u) & 3u) == 3u) return false;
+    for (uint k = 0u; k < uint(P.grid.w); ++k) {
+        uint base = uint(P.grid.z) + k * 4u;
+        vec3 foot = uintBitsToFloat(uvec3(blockVis[base], blockVis[base + 1u], blockVis[base + 2u]));
+        if (length(i.pos.xy - foot.xy) < (foot.z + max(1.0, foot.z * 0.25)) * 1.01 + 0.05) return true;
+    }
+    return false;
+}
 // floor(a*b/n) for a < n, b <= n without 32-bit overflow: exact long division of the 64-bit product.
 uint mulDiv(uint a, uint b, uint n) {
     uint hi, lo;
@@ -46,7 +58,8 @@ void main() {
         uint j = seen + before + subgroupBallotExclusiveBitCount(ballot);   // this survivor's rank in the region
         if (keep && j < n) {
             uint slot = mulDiv(j, quota, n);
-            if (mulDiv(j + 1u, quota, n) > slot) dense[start + slot] = id;
+            if (mulDiv(j + 1u, quota, n) > slot)
+                dense[start + slot] = id | (nearFoot(unpackVegetation(inst[id])) ? 0x80000000u : 0u);
         }
         seen += chunk;
         barrier();

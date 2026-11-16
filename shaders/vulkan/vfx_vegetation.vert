@@ -32,7 +32,8 @@ invariant gl_Position;
 #include "include/vegetation_vk.glsl"
 
 void main() {
-    VegInstance i = unpackVegetation(inst[dense[gl_InstanceIndex]]);
+    uint denseId = dense[gl_InstanceIndex];
+    VegInstance i = unpackVegetation(inst[denseId & 0x7fffffffu]);
     // Keep rejected fringe slots in the capped list, but emit no geometry.
     if ((i.atlasFrame & 56u) == 40u) {
         gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
@@ -54,5 +55,5 @@ void main() {
     v_color = vec4(0.0);
     // Woody cards retain their silhouette while the fragment stage fades coverage.
     bool woody = (frame & 8u) == 0u && (frame & 15u) >= 4u;
-    mc2VegetationVertex(i.pos, i.yaw, i.scale * (woody ? 1.0 : shrink), i.seed, frame, shrink, windFade, D.misc.z, D.misc.w, widthScale);
+    mc2VegetationVertex(i.pos, i.yaw, i.scale * (woody ? 1.0 : shrink), i.seed, frame, shrink, windFade, D.misc.z, D.misc.w, widthScale, (denseId & 0x80000000u) != 0u);
 }
