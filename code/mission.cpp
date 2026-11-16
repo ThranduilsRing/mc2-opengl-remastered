@@ -1315,7 +1315,7 @@ long Mission::setObjectiveTimer (long objectiveNum, float timeLeft)
 //----------------------------------------------------------------------------------
 float Mission::checkObjectiveTimer (long objectiveNum)
 {
-	gosASSERT((objectiveNum >= 0) || objectiveNum < static_cast<long>(numObjectives));
+	gosASSERT((objectiveNum >= 0) && objectiveNum < static_cast<long>(numObjectives));
 
 	long timerNumber = OBJECTIVE_1_TIMER + objectiveNum;
 	unsigned long timeLeft = 0;
@@ -1331,7 +1331,7 @@ float Mission::checkObjectiveTimer (long objectiveNum)
 //----------------------------------------------------------------------------------
 long Mission::setObjectiveStatus (long objectiveNum, ObjectiveStatus status)
 {
-	gosASSERT((objectiveNum >= 0) || objectiveNum < static_cast<long>(numObjectives));
+	gosASSERT((objectiveNum >= 0) && objectiveNum < static_cast<long>(numObjectives));
 	
 	if (objectives)
 		objectives[objectiveNum].status = status;
@@ -1400,7 +1400,7 @@ ObjectiveStatus Mission::checkObjectiveStatus (long objectiveNum)
 //----------------------------------------------------------------------------------
 long Mission::setObjectiveType (long objectiveNum, ObjectiveType type)
 {
-	gosASSERT((objectiveNum >= 0) || objectiveNum < static_cast<long>(numObjectives));
+	gosASSERT((objectiveNum >= 0) && objectiveNum < static_cast<long>(numObjectives));
 
 	if (objectives)
 		objectives[objectiveNum].type = type;
@@ -1411,7 +1411,7 @@ long Mission::setObjectiveType (long objectiveNum, ObjectiveType type)
 //----------------------------------------------------------------------------------
 ObjectiveType Mission::checkObjectiveType (long objectiveNum)
 {
-	gosASSERT((objectiveNum >= 0) || objectiveNum < static_cast<long>(numObjectives));
+	gosASSERT((objectiveNum >= 0) && objectiveNum < static_cast<long>(numObjectives));
 		
 	ObjectiveType result = PrimaryGoal;
 	
@@ -1424,7 +1424,7 @@ ObjectiveType Mission::checkObjectiveType (long objectiveNum)
 //----------------------------------------------------------------------------------
 void Mission::setObjectivePos (long objectiveNum, float realX, float realY, float realZ)
 {
-	gosASSERT((objectiveNum >= 0) || objectiveNum < static_cast<long>(numObjectives));
+	gosASSERT((objectiveNum >= 0) && objectiveNum < static_cast<long>(numObjectives));
 		
 	if (objectives)
 	{
