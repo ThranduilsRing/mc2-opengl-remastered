@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 """Retarget Atlas clips through model-space bind frames, preserving native clips.
-Recipes may lock identified gun-arm chains to their model-space bind orientation.
+Atlas keys come from the Atlas reference GLB, so the step is idempotent.
 
 Usage:
   py -3 bt2018_retarget_clips.py <target.glb> <atlas_ref.glb> <out.glb>
 """
 import sys
 import copy
-import json
-from pathlib import Path
 import numpy as np
 from pygltflib import GLTF2
 
@@ -73,48 +71,44 @@ def retarget_file(target_path, atlas_path, out_path):
     target_bind = [node_bind_rot(tgt, i) for i in range(len(tgt.nodes))]
     atlas_bind = [node_bind_rot(atl, i) for i in range(len(atl.nodes))]
     target_world, atlas_world = globals_for(tgt, target_bind), globals_for(atl, atlas_bind)
-    recipe = json.loads((Path(__file__).resolve().parents[1] / 'tools/bt2018_mechs/data/retarget.json').read_text())
-    rule = recipe.get(Path(target_path).stem, {})
     parent = parents(tgt)
     tgt_names_rev = {i: n.name for i, n in enumerate(tgt.nodes)}
+    atl_blob = atl.binary_blob()
+    atl_anims = {a.name: a for a in atl.animations}
 
     n_chan = 0
     n_keys = 0
     missing = []
     bone_report = {}
     for anim in tgt.animations:
-        native = not anim.name.startswith('atlas_')
-        locks = rule.get('bind_lock', []) if not native else rule.get('idle_bind_lock', [])
-        if native and (not locks or not anim.name.endswith('_moveCoreIdle')):
+        # Native family clips are authored for this skeleton; Atlas clips are re-derived from
+        # atlas.glb's own keys, so re-running on an already retargeted GLB gives the same bytes.
+        src = atl_anims.get(anim.name)
+        if not anim.name.startswith('atlas_') or src is None:
             continue
-        source = tgt if native else atl
-        atl_names = name_to_index(source)
-        rotation_channels = [c for c in anim.channels if c.target.path == 'rotation']
-        def times(ch):
-            acc = tgt.accessors[anim.samplers[ch.sampler].input]
-            view = tgt.bufferViews[acc.bufferView]
-            return np.frombuffer(blob, '<f4', acc.count, (view.byteOffset or 0) + (acc.byteOffset or 0))
-        grid = np.unique(np.concatenate([times(c) for c in rotation_channels]))
-        local = [np.broadcast_to(q, (len(grid), 4)) for q in (target_bind if native else atlas_bind)]
-        for ch in rotation_channels:
-            bone = tgt.nodes[ch.target.node].name
-            if bone not in atl_names:
-                continue
-            keys, _, _ = accessor_view(tgt, blob, anim.samplers[ch.sampler].output)
-            keys = keys.copy()
+        def times(g, b, a, ch):
+            acc = g.accessors[a.samplers[ch.sampler].input]
+            view = g.bufferViews[acc.bufferView]
+            return np.frombuffer(b, '<f4', acc.count, (view.byteOffset or 0) + (acc.byteOffset or 0))
+        src_rot = [c for c in src.channels if c.target.path == 'rotation']
+        grid = np.unique(np.concatenate([times(atl, atl_blob, src, c) for c in src_rot]))
+        local = [np.broadcast_to(q, (len(grid), 4)) for q in atlas_bind]
+        for ch in src_rot:
+            keys = accessor_view(atl, atl_blob, src.samplers[ch.sampler].output)[0].astype(np.float64)
             for k in range(1, len(keys)):
                 if np.dot(keys[k-1], keys[k]) < 0: keys[k] *= -1
-            q = np.stack([np.interp(grid, times(ch), keys[:, k]) for k in range(4)], axis=-1)
-            local[atl_names[bone]] = q / np.linalg.norm(q, axis=-1, keepdims=True)
-        source_world = globals_for(source, local)
+            q = np.stack([np.interp(grid, times(atl, atl_blob, src, ch), keys[:, k]) for k in range(4)], axis=-1)
+            local[ch.target.node] = q / np.linalg.norm(q, axis=-1, keepdims=True)
+        source_world = globals_for(atl, local)
         posed = {}
         def target_pose(i):
+            # Model space: the target bone turns in the world exactly as the Atlas bone turns
+            # away from its own bind (Wt = Wa * conj(WaBind) * WtBind). A local-frame copy
+            # rotates arms about the wrong axes wherever clavicle/arm bind frames differ.
             if i not in posed:
                 bone = tgt.nodes[i].name
                 inherited = target_pose(parent[i]) if i in parent else np.array([0., 0., 0., 1.])
-                posed[i] = (np.broadcast_to(target_world[i], (len(grid), 4)) if bone in locks else
-                    source_world[i] if native else
-                    quat_mul(quat_mul(source_world[atl_names[bone]], quat_conj(atlas_world[atl_names[bone]])), target_world[i])
+                posed[i] = (quat_mul(quat_mul(source_world[atl_names[bone]], quat_conj(atlas_world[atl_names[bone]])), target_world[i])
                     if bone in atl_names else quat_mul(inherited, target_bind[i]))
             return posed[i]
         for ch in anim.channels:
@@ -128,7 +122,8 @@ def retarget_file(target_path, atlas_path, out_path):
             sampler = anim.samplers[ch.sampler]
             data, base, count = accessor_view(tgt, blob, sampler.output)
             inherited = target_pose(parent[node_idx]) if node_idx in parent else np.array([0., 0., 0., 1.])
-            new = quat_mul(quat_conj(inherited), target_pose(node_idx))[np.searchsorted(grid, times(ch))]
+            at = np.clip(np.searchsorted(grid, times(tgt, blob, anim, ch) - 1e-6), 0, len(grid) - 1)
+            new = quat_mul(quat_conj(inherited), target_pose(node_idx))[at]
             new /= np.linalg.norm(new, axis=-1, keepdims=True)
             # write back into blob
             raw = new.astype("<f4").tobytes()

@@ -344,12 +344,25 @@ def test_cook_retargets_from_the_raw_cache_so_repeat_cooks_match(tmp_path):
     retarget_file(str(raw), str(atlas), str(out))          # the fixed converter's repeat run
     assert out.read_bytes() == first
 
-    legacy = tmp_path / "legacy.glb"                         # the old in-place behaviour, for contrast
-    legacy.write_bytes(raw.read_bytes())
-    retarget_file(str(legacy), str(atlas), str(legacy))
-    once = legacy.read_bytes()
-    retarget_file(str(legacy), str(atlas), str(legacy))
-    assert legacy.read_bytes() != once
+    retarget_file(str(out), str(atlas), str(out))           # re-running on a shipped GLB is a no-op
+    assert out.read_bytes() == first
+
+
+def test_retarget_turns_bones_in_model_space_whatever_the_bind_frame(tmp_path):
+    """Trigger: scripts/bt2018_retarget_clips.py. Owner 11-16: arms wrong except on the Atlas."""
+    pytest.importorskip("pygltflib")
+    from bt2018_retarget_clips import retarget_file, quat_mul, quat_conj
+    from pygltflib import GLTF2
+    import numpy as np
+    s = 0.7071067811865476
+    atlas, mech = tmp_path / "atlas.glb", tmp_path / "mech.glb"
+    _tiny_glb(atlas, (0, 0, 0, 1), [(0, 0, 0, 1), (0, 0, s, s)])   # Atlas: +90 deg about Z
+    _tiny_glb(mech, (s, 0, 0, s), [(0, 0, 0, 1), (0, 0, s, s)])    # bind frame turned 90 about X
+    retarget_file(str(mech), str(atlas), str(mech))
+    g = GLTF2().load(str(mech))
+    key = np.frombuffer(g.binary_blob(), "<f4", 4, 4 * 2 + 16)
+    delta = quat_mul(key, quat_conj(np.array([s, 0, 0, s])))      # world turn away from bind
+    assert np.degrees(2 * np.arccos(min(1.0, abs(float(delta @ [0, 0, s, s]))))) < 0.5
 
 
 # ---------------------------------------------------------------- P6 icons
