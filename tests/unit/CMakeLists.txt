@@ -400,6 +400,7 @@ target_sources(mc2_tests PRIVATE test_platform_portability.cpp)
 # (memory/mc2_path_separator_linux_build.md); the engine builds with it
 # globally on Windows too.
 target_compile_definitions(mc2_tests PRIVATE
+    MC2_NET_RUNTIME_TESTS
     LINUX_BUILD
     _CRT_SECURE_NO_WARNINGS
     # XFORM-CONVENTION-HARNESS-1: mclib/xform_conventions.{h,cpp} pulls the

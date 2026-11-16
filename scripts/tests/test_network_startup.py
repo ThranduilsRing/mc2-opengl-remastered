@@ -73,7 +73,39 @@ def test_lobby_proof_enters_via_widgets_and_keeps_cli_default(tmp_path, monkeypa
         assert ("--host" in captured["argv"]) != lobby
         assert ("MC2_INPUT_SCRIPT" in captured["env"]) == lobby
     assert captured["env"]["MC2_BOOT_TO_SCREEN"] == "mainmenu"
-    assert "click 40 24" in (tmp_path / "lobby.script").read_text()
+    assert (tmp_path / "lobby.script").read_text() == "wait 180\n"
+
+
+def test_lobby_driver_waits_for_listening_and_enabled_controls(tmp_path):
+    from run_mp_loopback_proof import LobbyDriver
+    peers = [tmp_path / "host", tmp_path / "client"]
+    for root in peers:
+        root.mkdir()
+        (root / "lobby.script").write_text("wait 180\n")
+        (root / "stderr.log").write_text("[COOP_UI] Multiplayer 400 300\n[COOP_UI] Host 260 250\n[COOP_UI] Join 310 250\n")
+    driver = LobbyDriver(peers)
+    driver.pump()
+    driver.pump()
+    assert driver.steps == [2, 1]  # Join waits until the host finishes identity work.
+    driver.pump()
+    assert driver.steps == [2, 1]
+    with (peers[0] / "stderr.log").open("a") as log:
+        log.write("[COOP_UI] Listening 0 0\n[COOP_UI] Ready 260 300\n")
+    driver.pump()
+    assert driver.steps == [3, 2]
+    driver.pump()
+    assert driver.steps == [3, 2]  # Ready and Start have not been exposed yet.
+    with (peers[1] / "stderr.log").open("a") as log:
+        log.write("[COOP_UI] Ready 260 300\n")
+    with (peers[0] / "stderr.log").open("a") as log:
+        log.write("[COOP_UI] Start 260 330\n")
+    driver.pump()
+    driver.pump()
+    assert driver.steps == [4, 3]
+    assert [row["control"] for row in driver.actions if row["slot"] == 0] == ["Multiplayer", "Host", "Ready", "Start"]
+    assert [row["control"] for row in driver.actions if row["slot"] == 1] == ["Multiplayer", "Join", "Ready"]
+    assert "click 310.0 250.0" in (peers[1] / "lobby.script").read_text()
+    assert "shot " in (peers[0] / "lobby.script").read_text()
 
 
 def test_mp_loopback_requires_both_desync_reports_at_the_first_bad_tick(tmp_path):

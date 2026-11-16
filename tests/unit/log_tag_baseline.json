@@ -213,6 +213,63 @@
    "count": 1
   },
   {
+   "tag": "ABORT_RELOAD",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "cycle",
+    "phase",
+    "mission",
+    "deferred"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ABORT_RELOAD",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "cycle",
+    "phase",
+    "mission",
+    "play_s",
+    "sim_s"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ABORT_RELOAD",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "cycle",
+    "phase",
+    "next"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ABORT_RELOAD",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "phase",
+    "cycles",
+    "campaign_next"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ABORT_RELOAD",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "phase",
+    "mission"
+   ],
+   "count": 1
+  },
+  {
    "tag": "ACTOR_PBR",
    "ver": -1,
    "stream": "stdout",
@@ -409,6 +466,18 @@
     "oob",
     "clamped",
     "trace"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "AUDIO_ADMIT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "ticks",
+    "id",
+    "path",
+    "channel"
    ],
    "count": 1
   },
@@ -2287,6 +2356,13 @@
    "count": 1
   },
   {
+   "tag": "COOP_UI",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 2
+  },
+  {
    "tag": "CPU_PROJ",
    "ver": 1,
    "stream": "stderr",
@@ -3384,6 +3460,87 @@
     "screen",
     "legacyItems",
     "mirrorOk"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EQUIPMENT_PROBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "EQUIPMENT_PROBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "weapon",
+    "defense",
+    "engine",
+    "armor",
+    "fire",
+    "births",
+    "intercepts",
+    "ammo",
+    "defense_ammo",
+    "top_mps",
+    "max_mps",
+    "armor_total",
+    "engine_master",
+    "attempts",
+    "hits",
+    "debits"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EQUIPMENT_PROBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "weapon",
+    "defense",
+    "engine",
+    "armor",
+    "source",
+    "target"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EQUIPMENT_PROBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "weapon",
+    "index",
+    "actual",
+    "ammo_index",
+    "ammo_master",
+    "valid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EQUIPMENT_PROBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "weapon",
+    "index",
+    "actual",
+    "attempt",
+    "target_valid",
+    "distance",
+    "in_range",
+    "binding",
+    "fire",
+    "refusal",
+    "births",
+    "debit",
+    "hit",
+    "damage"
    ],
    "count": 1
   },
@@ -6253,6 +6410,17 @@
    "count": 1
   },
   {
+   "tag": "MP_ANIM_INIT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "object",
+    "part",
+    "state"
+   ],
+   "count": 1
+  },
+  {
    "tag": "MSL",
    "ver": -1,
    "stream": "stdout",
@@ -8033,6 +8201,30 @@
    "ver": -1,
    "stream": "stdout",
    "keys": [
+    "checkpoint",
+    "flags",
+    "window",
+    "client",
+    "monitor",
+    "drawable"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RES_DIAG",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "checkpoint",
+    "swapchain"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RES_DIAG",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
     "origin",
     "size"
    ],
@@ -8937,19 +9129,6 @@
    "keys": [
     "site",
     "count"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "SIM_RATE",
-   "ver": 1,
-   "stream": "stdout",
-   "keys": [
-    "mode",
-    "real_s",
-    "ticks",
-    "ticks_per_s",
-    "lost_s_per_min"
    ],
    "count": 1
   },
@@ -10198,6 +10377,30 @@
    "stream": "stdout",
    "keys": [
     "errors"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TREE_IMPORT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "TREE_LOD",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 3
+  },
+  {
+   "tag": "TREE_LOD_STATS",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "inst",
+    "tris"
    ],
    "count": 1
   },
@@ -11912,6 +12115,22 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [
+    "instance",
+    "type",
+    "row",
+    "prim",
+    "xy",
+    "bary",
+    "z",
+    "gpu_z"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RT_SCENE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
     "jobs"
    ],
    "count": 1
@@ -12042,6 +12261,21 @@
     "occluded_by",
     "behind_found",
     "passes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RT_SCENE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "ray",
+    "occluder_correct",
+    "moved_origin_z",
+    "hit",
+    "t",
+    "custom",
+    "match"
    ],
    "count": 1
   },
@@ -12844,6 +13078,7 @@
   "CONTENT",
   "CONTENT_COOK",
   "CONTENT_SUMMARY",
+  "COOP_UI",
   "CRASH",
   "CRASHBUNDLE",
   "CULL_PARITY",
@@ -12883,6 +13118,7 @@
   "MOVER",
   "MOVER_COHERENCE",
   "MOVER_FIXTURE",
+  "MP_DESYNC",
   "ORDER_LIVENESS_SUMMARY",
   "PERF",
   "PERF_COUNTERS",
@@ -12900,6 +13136,7 @@
   "SHADER",
   "SHADER ERROR",
   "SHADOW_BAKE",
+  "SHUTDOWN",
   "SIMID",
   "SIM_OVERLAP",
   "SIM_TICK_COST",
@@ -12922,6 +13159,7 @@
   "VIDEO",
   "VISUAL_CAPTURE",
   "VK_CAPABILITY",
+  "VK_DEVICE",
   "VK_ENGINE_CONTEXT",
   "VK_GPU_PASSES",
   "VK_PROFILE",

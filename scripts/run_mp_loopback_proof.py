@@ -131,11 +131,45 @@ def peer_start(install: str, directory: str, slot: int, port: int, ticks: int,
         del argv[option:option + 2]
         env.update(MC2_BOOT_TO_SCREEN="mainmenu", MC2_MENU_CANARY_SKIP_INTRO="1",
                    MC2_WIDTH="1920", MC2_HEIGHT="1080", MC2_INPUT_SCRIPT=str(root / "lobby.script"))
-        # The existing tailed script accepts subsequent widget clicks from the proof driver.
-        script = ["wait 180", "click 40 24", "wait 30", f"shot {root / 'lobby.tga'}"]
+        # run_pair appends clicks at the real controls' reported hit regions.
+        script = ["wait 180"]
         (root / "lobby.script").write_text("\n".join(script) + "\n", encoding="utf-8")
     log = logs.enter_context((root / "launcher.log").open("w", encoding="utf-8"))
     return nofocus.spawn(argv, env=env, cwd=install, stdout=log, stderr=subprocess.STDOUT)
+
+
+class LobbyDriver:
+    """Advance real mouse scripts only as the menu exposes enabled controls."""
+    def __init__(self, peers):
+        self.peers = peers
+        self.steps = [0, 0]
+        self.listening = False
+        self.actions = []
+
+    def pump(self):
+        for slot, root in enumerate(self.peers):
+            path = root / "stderr.log"
+            text = path.read_text(encoding="utf-8", errors="replace") if path.exists() else ""
+            self.listening |= slot == 0 and "[COOP_UI] Listening " in text
+            names = ["Multiplayer", "Host" if slot == 0 else "Join", "Ready"] + (["Start"] if slot == 0 else [])
+            step = self.steps[slot]
+            if step == len(names) or (slot == 1 and step == 1 and not self.listening):
+                continue
+            name = names[step]
+            prefix = f"[COOP_UI] {name} "
+            for line in reversed(text.splitlines()):
+                if not line.startswith(prefix):
+                    continue
+                x, y = map(float, line[len(prefix):].split())
+                if not (0 <= x <= 800 and 0 <= y <= 600):
+                    raise ValueError(f"invalid lobby hit region: {line}")
+                with (root / "lobby.script").open("a", encoding="utf-8") as script:
+                    script.write(f"click {x} {y}\nwait 30\n")
+                    if name == "Ready":
+                        script.write(f"shot {root / 'lobby.tga'}\n")
+                self.actions.append(dict(slot=slot, control=name, x=x, y=y))
+                self.steps[slot] += 1
+                break
 
 
 class ClientShim:
@@ -278,6 +312,7 @@ def run_pair(args, out, kill_peer=None):
     shim = ClientShim(args.loss, args.latency, args.jitter)
     events, ticks = [], [0, 0]
     progress = [[], []]
+    lobby_driver = LobbyDriver(peers) if args.lobby else None
     killed = None
     try:
         with ExitStack() as logs:
@@ -296,6 +331,8 @@ def run_pair(args, out, kill_peer=None):
             offsets = [0, 0]
             while any(proc.poll() is None for proc in processes):
                 now = time.monotonic()
+                if lobby_driver:
+                    lobby_driver.pump()
                 if now - started > args.timeout:
                     raise ValueError("pair exceeded proof timeout")
                 for slot, directory in enumerate(peers):
@@ -341,6 +378,10 @@ def run_pair(args, out, kill_peer=None):
             for directory, proc in zip(peers, processes):
                 proc.wait()
                 (directory / "exit.json").write_text(json.dumps({"rc": proc.returncode, "pid": proc.pid}), encoding="utf-8")
+            if lobby_driver:
+                (out / "menu-flow.json").write_text(json.dumps(lobby_driver.actions, indent=2), encoding="utf-8")
+                if lobby_driver.steps != [4, 3]:
+                    raise ValueError(f"incomplete menu flow: {lobby_driver.steps}")
             if kill_peer:
                 if killed is None:
                     raise ValueError("kill tick was never reached")

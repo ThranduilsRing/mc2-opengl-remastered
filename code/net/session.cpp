@@ -201,19 +201,29 @@ struct Session::Impl {
     std::string error;
     bool initialized = false;
     LinkSetup setup;
+    Session::Timeouts timeouts;
+    std::chrono::steady_clock::time_point teardownDeadline{};
     bool loaded() const { return !loadEpoch || (localLoaded && peerLoadedEpoch == loadEpoch); }
     void service(); // Called only with mutex held.
     ~Impl() {
         { std::lock_guard lock(mutex); stopping = true; }
         wake.notify_one();
         if (worker.joinable()) worker.join();
+        // The owner may destroy a failed session immediately; finish its bounded teardown.
+        while (peer && peer->state != ENET_PEER_STATE_DISCONNECTED && !error.empty()) {
+            service();
+            if (peer->state != ENET_PEER_STATE_DISCONNECTED)
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
         if (host) enet_host_destroy(host);
         if (initialized) enet_deinitialize();
     }
     void fail(std::string message) {
+        if (!error.empty()) return;
         error = std::move(message);
         setup.stop(error);
-        if (peer) { enet_peer_disconnect_later(peer, 1); enet_host_flush(host); }
+        teardownDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeouts.teardown);
+        if (peer) { enet_peer_disconnect(peer, 1); enet_host_flush(host); }
     }
     void transmit(std::span<const std::uint8_t> bytes) {
         auto* outgoing = enet_packet_create(bytes.data(), bytes.size(), ENET_PACKET_FLAG_RELIABLE);
@@ -229,7 +239,12 @@ struct Session::Impl {
         transmit(a.bytes());
     }
 };
-Session::Session() : impl_(std::make_unique<Impl>()) {}
+Session::Session() : Session(Timeouts{}) {}
+Session::Session(Timeouts timeouts) : impl_(std::make_unique<Impl>()) {
+    if (!timeouts.minimum || timeouts.minimum > timeouts.maximum || timeouts.maximum > 10000 ||
+        !timeouts.teardown || timeouts.teardown > 3000) throw std::invalid_argument("invalid MP transport timeouts");
+    impl_->timeouts = timeouts;
+}
 Session::~Session() = default;
 void Session::open(bool hosting, std::string_view endpoint, Identity identity) {
     if (impl_->host) throw std::runtime_error("MP session already open");
@@ -258,6 +273,8 @@ void Session::open(bool hosting, std::string_view endpoint, Identity identity) {
     if (!hosting) {
         impl_->peer = enet_host_connect(impl_->host, &address, 1, protocolVersion);
         if (!impl_->peer) throw std::runtime_error("ENet connect failed");
+        enet_peer_timeout(impl_->peer, 8, impl_->timeouts.minimum, impl_->timeouts.maximum);
+        enet_peer_ping_interval(impl_->peer, (std::max)(1u, (std::min)(250u, impl_->timeouts.minimum / 2)));
     }
     impl_->worker = std::thread([s = impl_.get()] {
         std::unique_lock lock(s->mutex);
@@ -270,7 +287,16 @@ void Session::open(bool hosting, std::string_view endpoint, Identity identity) {
 }
 void Session::Impl::service() {
     auto& s = *this;
-    if (!s.host || !s.error.empty()) return;
+    if (!s.host) return;
+    if (!s.error.empty()) {
+        if (!s.peer || s.peer->state == ENET_PEER_STATE_DISCONNECTED) return;
+        ENetEvent closing{};
+        for (unsigned count = 0; count < 128 && enet_host_service(s.host, &closing, 0) > 0; ++count)
+            if (closing.type == ENET_EVENT_TYPE_RECEIVE) enet_packet_destroy(closing.packet);
+        if (std::chrono::steady_clock::now() >= s.teardownDeadline) enet_peer_reset(s.peer);
+        enet_host_flush(s.host);
+        return;
+    }
     ENetEvent event{};
     // Nonblocking, bounded work; frames and the owner desktop keep running during a stall.
     for (unsigned count = 0; count < 128; ++count) {
@@ -279,7 +305,8 @@ void Session::Impl::service() {
         if (!result) break;
         if (event.type == ENET_EVENT_TYPE_CONNECT) {
             s.peer = event.peer;
-            enet_peer_timeout(s.peer, 8, 120000, 600000);
+            enet_peer_timeout(s.peer, 8, s.timeouts.minimum, s.timeouts.maximum);
+            enet_peer_ping_interval(s.peer, (std::max)(1u, (std::min)(250u, s.timeouts.minimum / 2)));
             const auto packet = hello(s.identity);
             s.transmit(packet);
         } else if (event.type == ENET_EVENT_TYPE_RECEIVE) {
@@ -321,7 +348,6 @@ void Session::Impl::service() {
             s.loadedSent = true;
         }
         if (s.loaded() && !s.missionTransportReady) {
-            enet_peer_timeout(s.peer, 8, 120000, 120000);
             s.missionTransportReady = true;
         }
     }
@@ -352,7 +378,6 @@ void Session::missionLoading(bool loading) {
     if (loading) {
         ++impl_->loadEpoch;
         impl_->localLoaded = impl_->loadedSent = impl_->missionTransportReady = false;
-        if (impl_->peer) enet_peer_timeout(impl_->peer, 8, 120000, 600000);
     } else impl_->localLoaded = true;
 }
 std::uint32_t Session::inputDelay() const { std::lock_guard lock(impl_->mutex); return impl_->setup.delay; }
@@ -361,4 +386,8 @@ std::uint32_t Session::jitter() const { std::lock_guard lock(impl_->mutex); retu
 std::uint32_t Session::measuredRtt() const { std::lock_guard lock(impl_->mutex); return impl_->setup.rtt; }
 std::uint32_t Session::measuredJitter() const { std::lock_guard lock(impl_->mutex); return impl_->setup.jitter; }
 std::string Session::error() const { std::lock_guard lock(impl_->mutex); return impl_->error; }
+bool Session::transportClosed() const {
+    std::lock_guard lock(impl_->mutex);
+    return !impl_->peer || impl_->peer->state == ENET_PEER_STATE_DISCONNECTED;
+}
 }

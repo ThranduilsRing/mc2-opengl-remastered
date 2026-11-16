@@ -1,9 +1,119 @@
 // Trigger paths: code/net/, code/tactical_order_queue.*, code/mission_update.cpp.
 #include "doctest.h"
 #include "net/session.h"
+#include <enet/enet.h>
 #include <chrono>
 #include <thread>
 using namespace mc2;
+namespace mc2::net {
+void testLobbyPeerLoss();
+void testMissionLifecycle();
+}
+TEST_CASE("NetLobby/peer loss after offer restores Host-Join controls") { net::testLobbyPeerLoss(); }
+TEST_CASE("NetRuntime/lobby MP teardown SP teardown second MP has no retained mission state") { net::testMissionLifecycle(); }
+namespace {
+struct RawPeer {
+    ENetHost* host = enet_host_create(nullptr, 1, 1, 0, 0);
+    ENetPeer* peer = nullptr;
+    explicit RawPeer(unsigned port) {
+        ENetAddress address{};
+        enet_address_set_host_ip(&address, "127.0.0.1");
+        address.port = static_cast<enet_uint16>(port);
+        if (host) peer = enet_host_connect(host, &address, 1, net::protocolVersion);
+    }
+    ~RawPeer() { if (host) enet_host_destroy(host); }
+    void send(const save::Bytes& bytes) {
+        auto* packet = enet_packet_create(bytes.data(), bytes.size(), ENET_PACKET_FLAG_RELIABLE);
+        REQUIRE(packet);
+        REQUIRE(enet_peer_send(peer, 0, packet) == 0);
+        enet_host_flush(host);
+    }
+};
+template<class Predicate, class Step> bool until(Predicate done, Step step, unsigned milliseconds = 1500) {
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(milliseconds);
+    while (!done() && std::chrono::steady_clock::now() < deadline) {
+        step();
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    }
+    return done();
+}
+}
+
+TEST_CASE("net unilateral protocol failure disconnects with reliable traffic outstanding") {
+    net::Session host;
+    net::Identity identity{{}, {}, "mc2_01", 7};
+    host.open(true, "127.0.0.1:23471", identity);
+    RawPeer remote(23471);
+    REQUIRE(remote.peer);
+    bool disconnected = false, sent = false;
+    REQUIRE(until([&] { return disconnected; }, [&] {
+        ENetEvent event{};
+        while (enet_host_service(remote.host, &event, 0) > 0) {
+            if (event.type == ENET_EVENT_TYPE_CONNECT && !sent) {
+                // The host's reliable hello is outstanding when this malformed hello arrives.
+                remote.send({0});
+                remote.send(save::Bytes(4096, 1));
+                sent = true;
+            }
+            if (event.type == ENET_EVENT_TYPE_RECEIVE) enet_packet_destroy(event.packet);
+            if (event.type == ENET_EVENT_TYPE_DISCONNECT) disconnected = true;
+        }
+    }, 3000));
+    CHECK(sent);
+    CHECK_FALSE(host.error().empty());
+    CHECK(until([&] { return host.transportClosed(); }, [] {}));
+}
+
+TEST_CASE("net disconnect deadline resets a peer that never services teardown") {
+    net::Session host({50, 200, 80});
+    host.open(true, "127.0.0.1:23472", {{}, {}, "mc2_01", 7});
+    RawPeer remote(23472);
+    REQUIRE(remote.peer);
+    bool receivedHello = false;
+    REQUIRE(until([&] { return receivedHello; }, [&] {
+        ENetEvent event{};
+        while (enet_host_service(remote.host, &event, 0) > 0) {
+            if (event.type == ENET_EVENT_TYPE_RECEIVE) {
+                receivedHello = true;
+                enet_packet_destroy(event.packet);
+            }
+        }
+    }));
+    host.send({}); // A unilateral local protocol error; remote stops servicing entirely.
+    CHECK(host.error() == "MP session is not connected");
+    CHECK_FALSE(host.transportClosed());
+    CHECK(until([&] { return host.transportClosed(); }, [] {}, 500));
+}
+
+TEST_CASE("net transport silence expires independently of live slow mission progress") {
+    SUBCASE("silent peer") {
+        net::Session host({50, 200, 80});
+        host.open(true, "127.0.0.1:23473", {{}, {}, "mc2_01", 7});
+        RawPeer remote(23473);
+        REQUIRE(remote.peer);
+        bool connected = false;
+        REQUIRE(until([&] { return connected; }, [&] {
+            ENetEvent event{};
+            while (enet_host_service(remote.host, &event, 0) > 0) {
+                if (event.type == ENET_EVENT_TYPE_CONNECT) connected = true;
+                if (event.type == ENET_EVENT_TYPE_RECEIVE) enet_packet_destroy(event.packet);
+            }
+        }));
+        REQUIRE(until([&] { return !host.error().empty(); }, [] {}, 1000));
+        CHECK(host.error() == "MP peer disconnected");
+    }
+    SUBCASE("live workers with stalled mission threads") {
+        net::Session host({50, 200, 80}), client({50, 200, 80});
+        host.open(true, "127.0.0.1:23474", {{}, {}, "mc2_01", 7});
+        client.open(false, "127.0.0.1:23474", {{}, {}, "mc2_01", 7});
+        const auto end = std::chrono::steady_clock::now() + std::chrono::milliseconds(600);
+        // No mission progress or pump calls: the workers must still exchange pings.
+        REQUIRE(until([&] { return std::chrono::steady_clock::now() >= end; }, [] {}, 1000));
+        CHECK(host.error().empty()); CHECK(client.error().empty());
+        CHECK(net::progressTimeout(true, 119999) == nullptr);
+        CHECK(net::progressTimeout(true, 120000) != nullptr);
+    }
+}
 auto settled(net::LinkSetup& host, net::LinkSetup& client, std::uint32_t now) {
     CHECK_FALSE(host.begin(now)); CHECK_FALSE(client.begin(now));
     for (unsigned i = 1; i <= 30; ++i) {

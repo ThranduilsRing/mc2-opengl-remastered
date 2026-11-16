@@ -393,7 +393,7 @@ void __stdcall DoGameLogic()
 				if (!coopMission.empty()) {
 					logistics->getMissionBegin()->end();
 					logistics->stop();
-					std::strcpy(missionName, coopMission.c_str());
+					std::snprintf(missionName, sizeof(missionName), "%s", coopMission.c_str());
 					justStartMission = true;
 					logistics->setLogisticsState(log_STARTMISSIONFROMCMDLINE);
 					mission->destroy();

@@ -58,23 +58,29 @@ constexpr const char* progressTimeout(bool connected, std::uint64_t ageMs) {
 // Separate from the retail MultiPlayer object: no client/server sim forks.
 class Session {
 public:
+    // Transport silence is independent of the 120-second agreed-tick policy.
+    struct Timeouts {
+        std::uint32_t minimum = 3000, maximum = 8000, teardown = 3000;
+    };
     Session();
-    ~Session();
+    explicit Session(Timeouts timeouts);
+    virtual ~Session();
     Session(const Session&) = delete;
     Session& operator=(const Session&) = delete;
     // An empty host endpoint binds loopback:23460. Only numeric IPv4 is accepted.
     void open(bool host, std::string_view endpoint, Identity identity);
-    std::vector<save::Bytes> pump();
-    void send(std::span<const std::uint8_t> packet);
+    virtual std::vector<save::Bytes> pump();
+    virtual void send(std::span<const std::uint8_t> packet);
     // Transport negotiated, and (in a mission) both LOADED markers received.
-    bool connected() const;
-    void missionLoading(bool loading);
+    virtual bool connected() const;
+    virtual void missionLoading(bool loading);
     std::uint32_t inputDelay() const;
     std::uint32_t rtt() const;
     std::uint32_t jitter() const;
     std::uint32_t measuredRtt() const;
     std::uint32_t measuredJitter() const;
-    std::string error() const;
+    virtual std::string error() const;
+    bool transportClosed() const;
 private:
     struct Impl;
     std::unique_ptr<Impl> impl_;

@@ -1135,6 +1135,7 @@ void Mission::resetTeamsAndCommanders()
 void Mission::destroy (bool initLogistics)
 {
 	ZoneScopedN("Mission.Destroy");
+    mc2::net::endMission();
     orderRecipients.clear();
     authoredRoutes.clear();
     routeExecutions.clear();

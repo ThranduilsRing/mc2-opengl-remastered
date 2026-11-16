@@ -11,6 +11,10 @@
 #include <map>
 #include <sstream>
 #include <stdexcept>
+#include <utility>
+#ifdef MC2_NET_RUNTIME_TESTS
+#include "doctest.h"
+#endif
 
 namespace mc2::net {
 namespace {
@@ -23,6 +27,8 @@ std::unique_ptr<Session> lobbyTransport;
 LobbyState lobby;
 Identity missionIdentity, lobbyIdentity;
 bool missionHandshakePending = false, fromLobby = false;
+MissionOrigin origin = MissionOrigin::None;
+bool missionRunning = false, coopOpen = false;
 std::vector<save::Bytes> lobbyPending;
 std::chrono::steady_clock::time_point lobbyBegan;
 std::unique_ptr<Lockstep> gate;
@@ -224,6 +230,33 @@ void redirectLogs() {
     setvbuf(stdout, nullptr, _IONBF, 0); setvbuf(stderr, nullptr, _IONBF, 0);
 }
 bool active() { return enabled; }
+MissionOrigin missionOrigin() { return origin; }
+bool& lobbyVisible() { return coopOpen; }
+void endMission() {
+    // takeLobbyStart precedes destruction of the empty front-end Mission object.
+    if (!missionRunning) return;
+    session.reset();
+    gate.reset();
+    enabled = hosting = false;
+    endpoint.clear();
+    orderQueue = nullptr;
+    delayed.clear();
+    admission.reset();
+    playerSubmit = {};
+    targetLookup = {};
+    roster.clear();
+    rosterWatchIds.clear();
+    missionIdentity = lobbyIdentity = {};
+    missionHandshakePending = fromLobby = false;
+    closeLobby();
+    lobbyBegan = began = lastProgress = {};
+    scripted.clear();
+    nextScript = forcedDesyncTick = delayMs = 0;
+    if (trace.is_open()) trace.close();
+    trace.clear();
+    coopOpen = missionRunning = false;
+    origin = MissionOrigin::None;
+}
 void closeLobby() {
     lobbyTransport.reset();
     lobbyPending.clear();
@@ -264,6 +297,9 @@ void pumpLobby() {
     if (lobbyConnected() && lobby.hosting && !lobby.offered) lobbyTransport->send(lobby.offer());
     if (!lobbyConnected() && std::chrono::steady_clock::now() - lobbyBegan >= std::chrono::seconds(600))
         lobby.error = "MP loading timeout (600 seconds)";
+    if (!lobby.error.empty()) {
+        lobby.offered = lobby.localReady = lobby.peerReady = lobby.started = false;
+    }
 }
 void lobbyReady(bool value) {
     if (!lobbyConnected()) return;
@@ -281,7 +317,11 @@ std::string takeLobbyStart() {
     session->missionLoading(true);
     hosting = lobby.hosting;
     enabled = fromLobby = true;
-    return lobby.mission;
+    origin = MissionOrigin::Lobby;
+    coopOpen = false;
+    auto mission = std::move(lobby.mission);
+    lobby = {};
+    return mission;
 }
 int exitStatus() { return status; }
 [[noreturn]] void stop(std::string_view reason) { fail(reason); }
@@ -295,7 +335,10 @@ std::expected<sim::OrderReceipt, sim::OrderError> admitAgreedOrder(sim::Tactical
 }
 std::uint32_t localSlot() { return hosting ? 0u : 1u; }
 void beginMission(std::string_view mission, std::uint32_t seed) {
-    if (!enabled) return;
+    if (!enabled) { origin = MissionOrigin::SinglePlayer; missionRunning = true; return; }
+    if (missionRunning) fail("MP mission already active");
+    missionRunning = true;
+    if (!fromLobby) origin = MissionOrigin::CommandLine;
     // One overall rendezvous cap, including local cold loading and identity work.
     began = lastProgress = std::chrono::steady_clock::now();
     if (session && !fromLobby) fail("MP mission replacement is not supported");
@@ -452,4 +495,100 @@ void stateHashes(std::uint64_t tick, const StateHash& values) {
     flushOutgoing();
     checkError();
 }
+#ifdef MC2_NET_RUNTIME_TESTS
+namespace {
+struct RecordedSession final : Session {
+    std::vector<save::Bytes>& sent;
+    std::vector<save::Bytes> incoming;
+    std::string fault;
+    explicit RecordedSession(std::vector<save::Bytes>& output) : sent(output) {}
+    void send(std::span<const std::uint8_t> bytes) override { sent.emplace_back(bytes.begin(), bytes.end()); }
+    std::vector<save::Bytes> pump() override { return std::exchange(incoming, {}); }
+    bool connected() const override { return fault.empty(); }
+    void missionLoading(bool) override {}
+    std::string error() const override { return fault; }
+};
+struct RuntimeAdmission final : sim::OrderAdmissionValidator {
+    bool permitted(const sim::OrderSource&, const sim::OrderEnvelope&) const override { return true; }
+};
+}
+void testLobbyPeerLoss() {
+    std::vector<save::Bytes> sent;
+    auto transport = std::make_unique<RecordedSession>(sent);
+    transport->fault = "MP peer disconnected";
+    lobbyTransport = std::move(transport);
+    lobby.offered = lobby.localReady = lobby.peerReady = true;
+    pumpLobby();
+    CHECK(lobby.error == "MP peer disconnected");
+    CHECK_FALSE(lobby.offered);
+    CHECK_FALSE(lobby.localReady);
+    CHECK_FALSE(lobby.peerReady);
+    CHECK_FALSE(lobbyConnected());
+    closeLobby();
+}
+void testMissionLifecycle() {
+    const auto previousDirectory = userDirectory;
+    userDirectory = std::filesystem::current_path() / "net-runtime-test";
+    std::filesystem::create_directories(userDirectory);
+    struct Cleanup {
+        std::filesystem::path previous;
+        ~Cleanup() {
+            endMission(); closeLobby();
+            std::filesystem::remove_all(userDirectory);
+            userDirectory = previous;
+        }
+    } cleanup{previousDirectory};
+    sim::TacticalOrderQueue queue;
+    unsigned callbacks = 0;
+    std::vector<save::Bytes> firstSent, secondSent;
+    auto launch = [&](std::vector<save::Bytes>& sent) {
+        lobbyTransport = std::make_unique<RecordedSession>(sent);
+        lobby.hosting = lobby.offered = lobby.localReady = lobby.peerReady = lobby.started = true;
+        lobby.mission = "mc2_01";
+        coopOpen = true;
+        REQUIRE(takeLobbyStart() == "mc2_01");
+        CHECK_FALSE(lobby.started); CHECK_FALSE(lobby.offered); CHECK_FALSE(coopOpen);
+        endMission(); // Destruction of the empty menu Mission must preserve the pending launch.
+        REQUIRE(active());
+        REQUIRE_NOTHROW(beginMission("mc2_01", 12345));
+        CHECK(trace.is_open()); CHECK(trace.good());
+        CHECK(missionOrigin() == MissionOrigin::Lobby);
+        CHECK_FALSE(fromLobby);
+    };
+    auto clean = [&] {
+        CHECK_FALSE(active()); CHECK_FALSE(session); CHECK_FALSE(gate); CHECK_FALSE(orderQueue);
+        CHECK(delayed.empty()); CHECK_FALSE(admission); CHECK_FALSE(playerSubmit); CHECK_FALSE(targetLookup);
+        CHECK(roster.empty()); CHECK(rosterWatchIds.empty()); CHECK_FALSE(missionHandshakePending);
+        CHECK(lobbyPending.empty()); CHECK_FALSE(lobbyTransport); CHECK_FALSE(coopOpen);
+        CHECK_FALSE(trace.is_open()); CHECK(missionOrigin() == MissionOrigin::None);
+        CHECK(scripted.empty()); CHECK(nextScript == 0); CHECK(delayMs == 0); CHECK(forcedDesyncTick == 0);
+    };
+    launch(firstSent);
+    bindQueue(queue, std::make_unique<RuntimeAdmission>(), [&](sim::OrderEnvelope) { ++callbacks; return true; },
+        [&](std::uint32_t) -> std::optional<sim::ObjectRef> { ++callbacks; return {}; });
+    roster = {{1, 1}}; rosterWatchIds = {77};
+    const save::Bytes stale{0xde, 0xad, 0xbe, 0xef};
+    delayed.push_back({std::chrono::steady_clock::now(), stale});
+    lobbyPending.push_back(stale);
+    gate = std::make_unique<Lockstep>(0);
+    scripted.push_back({0, 0, "reject"});
+    delayMs = 250; forcedDesyncTick = 42;
+    REQUIRE(missionHandshakePending); REQUIRE(admission); REQUIRE(playerSubmit); REQUIRE(targetLookup);
+    REQUIRE_FALSE(delayed.empty()); REQUIRE_FALSE(lobbyPending.empty());
+    endMission(); clean();
+    beginMission("mc2_01", 12345);
+    CHECK(missionOrigin() == MissionOrigin::SinglePlayer); CHECK_FALSE(active());
+    endMission(); clean();
+    launch(secondSent);
+    auto* recording = static_cast<RecordedSession*>(session.get());
+    recording->incoming.push_back(hello(missionIdentity));
+    bindQueue(queue, std::make_unique<RuntimeAdmission>(), {}, {});
+    CHECK_FALSE(prepareTick(false)); // Transmits the new mission's sealed batch through the stub.
+    REQUIRE(secondSent.size() >= 2);
+    for (const auto& packet : secondSent) CHECK(packet != stale);
+    CHECK(callbacks == 0);
+    CHECK_FALSE(missionHandshakePending);
+    endMission(); clean();
+}
+#endif
 }

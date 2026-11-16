@@ -3855,6 +3855,7 @@
   "editor/Editor.cpp": 4,
   "editor/EditorData_tacmap.cpp": 1,
   "editor/EditorInterface_editor.cpp": 1,
+  "editor/EditorInterface_wnd.cpp": 1,
   "editor/EditorMFC.cpp": 1,
   "editor/EditorObjectMgr.cpp": 1,
   "editor/EditorObjects.cpp": 1,
