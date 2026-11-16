@@ -1,5 +1,8 @@
 """deploy_payload: a fresh Ninja tree is seeded with its runtime DLLs from real sources; --target names the right flag."""
 import subprocess
+import hashlib
+import json
+import os
 import sys
 import pytest
 from pathlib import Path
@@ -10,6 +13,50 @@ import console_child  # noqa: E402
 import deploy_payload as dp  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+@pytest.mark.parametrize('receipt', [True, False])
+def test_five_link_payload_detaches_only_with_lane_receipt(tmp_path, monkeypatch, receipt):
+    """Audit fringe/bc7 refusal: changed payload and manifest, five links each."""
+    monkeypatch.setenv('MC2_COOK_CACHE', str(tmp_path / 'cook-cache'))
+    monkeypatch.setenv('MC2_LEAN_SEED', str(tmp_path / 'absent-seed'))
+    seed, lane = tmp_path / 'seed', tmp_path / 'lane'
+    seed.mkdir()
+    lane.mkdir()
+    rels = ['mc2.exe', 'runtime.dll', dp.MANIFEST_NAME]
+    for rel in rels:
+        (seed / rel).write_bytes(b'seed bytes')
+        os.link(seed / rel, lane / rel)
+        for n in range(3):
+            os.link(seed / rel, seed / f'{rel}.peer-{n}')
+        assert (lane / rel).stat().st_nlink == 5
+    if receipt:
+        (lane / '.lane-seed.json').write_text(json.dumps({'shared': {}}))
+    source = tmp_path / 'new-payload'
+    source.write_bytes(b'new lane bytes')
+    items = [(str(source), rel, 'support') for rel in rels[:-1]]
+    writes = items + [(None, dp.MANIFEST_NAME, 'manifest')]
+    verified = dp.prepare_seed_delta(writes, str(lane))
+    assert verified == {}
+    if not receipt:
+        # Outside legacy eligibility, owner/box installs still refuse shared writes.
+        with pytest.raises(SystemExit):
+            dp.check_hardlink_isolation(writes, str(lane))
+        assert all((lane / rel).stat().st_nlink == 5 for rel in rels)
+    else:
+        dp.check_hardlink_isolation(writes, str(lane))
+        assert all((lane / rel).stat().st_nlink == 1 for rel in rels)
+        monkeypatch.setattr(dp, 'ensure_terrain_materials', lambda *a: {})
+        monkeypatch.setattr(dp, 'ensure_engine_normal_cooks', lambda *a: None)
+        monkeypatch.setattr(dp, 'retire_unowned', lambda *a, **kw: None)
+        hashes = dp.deploy(items, str(lane), False, verified=verified)
+        dp.write_manifest(str(lane), hashes, 'lane-tip')
+        assert all((lane / rel).read_bytes() == b'new lane bytes' for rel in rels[:-1])
+        assert set(dp.read_manifest(str(lane))) == set(rels[:-1])
+    for rel in rels:
+        assert (seed / rel).read_bytes() == b'seed bytes'
+        assert all((seed / f'{rel}.peer-{n}').read_bytes() == b'seed bytes' for n in range(3))
+    assert not list(lane.glob('*.private-*'))
 
 
 def test_seed_build_dlls_from_3rdparty_and_redist(tmp_path):
