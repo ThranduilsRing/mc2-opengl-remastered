@@ -736,6 +736,29 @@ def test_mission_ready_anchor_pairs_latest_load(starts, valid):
     assert (capture.mission_ready_anchor(loads, active) is None) == valid
 
 
+@pytest.mark.parametrize("duration", [0, -1, None, ""])
+def test_mission_ready_anchor_ignores_trailing_unfinished_interface(duration):
+    loads = [dict(name=capture.MISSION_LOAD_ZONE, ns_since_start=0, ns=10)]
+    active = [dict(name=capture.MISSION_ACTIVE_ZONE, ns_since_start=20, ns=1),
+              dict(name=capture.MISSION_ACTIVE_ZONE, ns_since_start=30, ns=duration)]
+    assert capture.mission_ready_anchor(loads, active) is None
+
+
+def test_mission_ready_anchor_ignores_trailing_interface_without_duration():
+    loads = [dict(name=capture.MISSION_LOAD_ZONE, ns_since_start=0, ns=10)]
+    active = [dict(name=capture.MISSION_ACTIVE_ZONE, ns_since_start=20, ns=1),
+              dict(name=capture.MISSION_ACTIVE_ZONE, ns_since_start=30)]
+    assert capture.mission_ready_anchor(loads, active) is None
+
+
+@pytest.mark.parametrize("duration", [0, -1, None])
+def test_mission_ready_anchor_rejects_unfinished_newer_load(duration):
+    loads = [dict(name=capture.MISSION_LOAD_ZONE, ns_since_start=start, ns=value)
+             for start, value in ((0, 10), (15, duration))]
+    active = [dict(name=capture.MISSION_ACTIVE_ZONE, ns_since_start=20, ns=1)]
+    assert capture.mission_ready_anchor(loads, active) is not None
+
+
 @pytest.mark.parametrize("failure", [None, "rc", "timeout", "oserror", "decode", "unicode", "csv", "empty", "header"])
 @pytest.mark.parametrize("fail_at", [0, 1])
 def test_mission_ready_in_trace_exports(monkeypatch, failure, fail_at):

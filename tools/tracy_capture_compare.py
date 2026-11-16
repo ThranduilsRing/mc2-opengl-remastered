@@ -360,6 +360,17 @@ def mission_ready_anchor(load_rows, active_rows) -> str | None:
                 continue
             duration_key = next((k for k in ("ns", "duration_ns", "exec_time_ns", "duration")
                                  if k in row), None)
+            # An open interface zone cannot anchor readiness, but must not
+            # invalidate an earlier completed interface. Loads stay fail-closed:
+            # an unfinished newer load must not reuse an older load's readiness.
+            if zone == MISSION_ACTIVE_ZONE:
+                if duration_key is None or row[duration_key] in (None, ""):
+                    continue
+                try:
+                    if int(row[duration_key]) <= 0:
+                        continue
+                except (TypeError, ValueError):
+                    return f"{zone}: non-integer duration"
             if duration_key is None:
                 return f"{zone}: missing duration column"
             try:
