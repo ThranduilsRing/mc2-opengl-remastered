@@ -7,6 +7,23 @@
 #include <cmath>
 #include <limits>
 
+#ifdef _WIN32
+#include <process.h>
+#else
+#include <unistd.h>
+#endif
+
+namespace {
+std::filesystem::path surfaceCacheTestDir(const char* name) {
+#ifdef _WIN32
+    const auto pid = _getpid();
+#else
+    const auto pid = getpid();
+#endif
+    return std::filesystem::temp_directory_path() / (std::string(name) + "-" + std::to_string(pid));
+}
+}
+
 TEST_CASE("terrain projected error: plane, interior ridge and partial edge") {
     std::vector<float> heights(21 * 21);
     for (int y = 0; y < 21; ++y) for (int x = 0; x < 21; ++x) heights[x + y * 21] = float(x + 2 * y);
@@ -296,11 +313,11 @@ TEST_CASE("surface cook: breakup alpha is independently invalidated and editable
 
 TEST_CASE("packed surface cache: exact upload and material samples, key changes and damaged files miss") {
     namespace fs = std::filesystem;
-    const auto dir = fs::temp_directory_path() / "mc2_packed_surface_test";
+    const auto dir = surfaceCacheTestDir("mc2_packed_surface_test");
     fs::remove_all(dir);
-    std::vector<uint8_t> sourcePixels{20, 70, 190, 255};
+    std::vector<uint8_t> sourcePixels{20, 170, 40, 255, 180, 70, 20, 255, 210, 210, 210, 255, 20, 70, 190, 255};
     SurfaceCookInput in;
-    in.rgba = sourcePixels; in.colorWidth = in.colorHeight = 1; in.srgb = true;
+    in.rgba = sourcePixels; in.colorWidth = 4; in.colorHeight = 1; in.srgb = true;
     in.worldSpan = 256; in.outputWidth = 2051; in.outputHeight = 3; in.staticBreakup = true;
     const auto surface = mc2terrain::cookSurface(in);
     REQUIRE(surface);
@@ -333,6 +350,11 @@ TEST_CASE("packed surface cache: exact upload and material samples, key changes 
         std::fseek(file, offset, SEEK_SET); const int byte = std::fgetc(file);
         std::fseek(file, offset, SEEK_SET); std::fputc(byte ^ 1, file); std::fclose(file);
         CHECK_FALSE(mc2terrain::loadCachedPackedSurface(dir.string(), key, true));
+        REQUIRE(mc2terrain::storeCachedPackedSurface(dir.string(), *surface, true, upload));
+        const auto healed = mc2terrain::loadCachedPackedSurface(dir.string(), key, true);
+        REQUIRE(healed);
+        CHECK(healed->rgba == hit->rgba);
+        CHECK(mc2terrain::encodeSurfaceAsset(healed->materials) == mc2terrain::encodeSurfaceAsset(hit->materials));
     }
     for (uintmax_t length : {size - 1, uintmax_t(48), uintmax_t(0)}) {
         REQUIRE(mc2terrain::storeCachedPackedSurface(dir.string(), *surface, true, upload));
@@ -346,7 +368,7 @@ TEST_CASE("packed surface cache: exact upload and material samples, key changes 
 
 TEST_CASE("surface cook cache: roundtrip, stale key, corrupt and truncated files, bit-identical output") {
     namespace fs = std::filesystem;
-    const fs::path dir = fs::temp_directory_path() / "mc2_terrain_cache_test";
+    const fs::path dir = surfaceCacheTestDir("mc2_terrain_cache_test");
     fs::remove_all(dir);
     const std::vector<mc2terrain::SurfaceColor> colors = {{0.3f, 0.4f, 0.5f, 1}, {0.6f, 0.2f, 0.1f, 1},
                                                           {0.1f, 0.9f, 0.4f, 1}, {0.5f, 0.5f, 0.5f, 1}};

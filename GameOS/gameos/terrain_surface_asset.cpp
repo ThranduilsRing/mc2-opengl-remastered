@@ -103,8 +103,10 @@ bool storeCachedSurfaceAsset(std::string_view dir, const SurfaceAsset& asset) {
 namespace {
 // Separate kind/version from the float cook. Encoding changes must bump this magic.
 constexpr uint32_t kPackedMagic = 0x31415350; // PSA1
-constexpr mc2cache::CacheKind kPackedKind{"macro-packed-", ".tsp", 6, 48ull + 4096ull * 4096 * 4 + 48 + 1024ull * 1024 * 16};
-uint32_t materialSide(uint32_t side) { return std::min(side, 1024u); }
+constexpr uint32_t materialSide(uint32_t side) { return std::min(side, 1024u); }
+constexpr uint64_t kPackedMaxBytes = kHeaderBytes + static_cast<uint64_t>(SurfaceAsset::kMaxSide) * SurfaceAsset::kMaxSide * 4 +
+    kHeaderBytes + static_cast<uint64_t>(materialSide(SurfaceAsset::kMaxSide)) * materialSide(SurfaceAsset::kMaxSide) * kPixelBytes;
+constexpr mc2cache::CacheKind kPackedKind{"macro-packed-", ".tsp", 6, kPackedMaxBytes};
 }
 
 bool storeCachedPackedSurface(std::string_view dir, const SurfaceAsset& surface, bool srgb, std::span<const uint8_t> rgba) {

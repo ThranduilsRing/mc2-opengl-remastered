@@ -360,6 +360,8 @@ void import_materials(TerrainIsland* s) {
                           control.version == s->materialControlVersion && g_terrainMaterialProfile == s->materialProfile;
     const uint64_t coverageVersion = gos_terrain_indirect_HardSurfaceVersion();
     if (baseSame && coverageVersion == s->materialCoverageVersion) return;
+    // Packed hits retain exactly these center/nearest samples; misses retain the full cook.
+    // Always classify at this capped size so both paths produce identical material bytes.
     const uint32_t w = std::min(surface.width, 1024u);
     const uint32_t h = std::min(surface.height, 1024u);
     if (!baseSame || s->materialW != w || s->materialH != h) {
