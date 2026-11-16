@@ -1213,7 +1213,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 146,
+        "line": 147,
         "role": "uTreeObjectMap",
         "std": null,
         "type": "sampler2DShadow",
@@ -1961,7 +1961,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 76,
+        "line": 77,
         "role": "uAlbedo",
         "std": null,
         "type": "sampler2DArray",
@@ -2386,7 +2386,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 79,
+        "line": 80,
         "role": "uAlbedoOn",
         "std": null,
         "type": "sampler2DArray",
