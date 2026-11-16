@@ -201,9 +201,6 @@ def test_tracy_exe_uses_native_name(tmp_path, monkeypatch, platform, suffix, nam
 
 @pytest.fixture
 def harness(monkeypatch):
-    import psutil
-    monkeypatch.setattr(psutil, "Process", Mock(return_value=SimpleNamespace(net_connections=lambda **k: [
-        SimpleNamespace(status=psutil.CONN_ESTABLISHED, raddr=SimpleNamespace(port=8086))])))
     h = SimpleNamespace(held=False, events=[], logs=[], children=[])
 
     def acquire(label, **kwargs):
@@ -243,7 +240,13 @@ def harness(monkeypatch):
     def recorder_spawn(argv, **kwargs):
         assert h.held
         h.events.append("recorder.spawn")
-        return child("recorder")
+        proc = child("recorder")
+        def poll():
+            if proc.returncode is None and h.clock >= 2:
+                proc.returncode = 0
+            return proc.returncode
+        proc.poll.side_effect = poll
+        return proc
 
     def game_spawn(argv, **kwargs):
         assert h.held
@@ -270,6 +273,7 @@ def harness(monkeypatch):
     monkeypatch.setattr(capture, "Path", Mock(return_value=h.out))
     monkeypatch.setattr(capture, "open", open_log, raising=False)
     monkeypatch.setattr(capture, "tracy_exe", Mock(return_value=Path("tracy-capture.exe")))
+    monkeypatch.setattr(capture, "mission_ready_in_trace", Mock(return_value=None))
     monkeypatch.setattr(capture.host_lease, "acquire", h.acquire)
     monkeypatch.setattr(capture.host_lease, "release", h.release)
     monkeypatch.setattr(capture.host_lease, "holds", lambda: h.held)
@@ -329,6 +333,7 @@ def test_via_menu_ignores_only_its_own_game_stop(harness, exited, recorder_rc, e
             proc.returncode = recorder_rc
             return recorder_rc
         proc.wait.side_effect = wait
+        proc.poll.side_effect = lambda: wait()
         return proc
 
     h.game_spawn.side_effect, h.recorder_spawn.side_effect = game, recorder
@@ -340,6 +345,7 @@ def test_via_menu_ignores_only_its_own_game_stop(harness, exited, recorder_rc, e
 @pytest.mark.parametrize("late", [False, "shutdown", "finalization"])
 def test_via_menu_trace_without_mission_ready_is_invalid(harness, monkeypatch, capsys, late):
     h = harness
+    capture.mission_ready_in_trace.return_value = "no interface after load"
     log = ["[MISSION] t=  0.00s  phase=mission_load_start\n"]
     monkeypatch.setattr(Path, "read_text", lambda *a, **k: log[0])
     original = h.game_spawn.side_effect
@@ -359,64 +365,84 @@ def test_via_menu_trace_without_mission_ready_is_invalid(harness, monkeypatch, c
             proc = spawn_recorder(*args, **kwargs)
             wait = proc.wait.side_effect
             def finish(timeout=None):
-                assert h.clock >= 120  # timed recording ended, process still saving
                 log[0] += "[MISSION] t=177.00s  phase=mission_ready\n"
                 return wait(timeout)
             proc.wait.side_effect = finish
             return proc
         h.recorder_spawn.side_effect = recorder
     assert capture.capture_trace(h.install, "vk", "mc2_01", 120, h.out, via_menu_boot=True) != 0
-    assert "INVALID: no mission_ready inside the recording window" in capsys.readouterr().err
+    error = capsys.readouterr().err
+    assert "INVALID: no mission_ready inside the recording window" in error
+    assert ("log shows ready, trace does not" in error) == bool(late)
     assert ("phase=mission_ready" in log[0]) == bool(late)
     assert "game.kill" in h.events and h.events[-1] == "release"
 
 
-@pytest.mark.parametrize("ready_time,exit_time,expected", [(16, 21, 0), (21, 22, 1), (6, 6, 0)])
-def test_via_menu_uses_connection_window_and_final_read(harness, monkeypatch, ready_time, exit_time, expected):
-    import psutil
+def test_via_menu_between_poll_readiness_uses_trace(harness, monkeypatch):
     h = harness
-    log = "[MISSION] t=1.00s phase=mission_ready\n"
-    monkeypatch.setattr(Path, "read_text", lambda *a, **k: log if h.clock >= ready_time else "")
-    monkeypatch.setattr(psutil.Process.return_value, "net_connections", lambda **k: [
-        SimpleNamespace(status=psutil.CONN_ESTABLISHED, raddr=SimpleNamespace(port=8086))]
-        if h.clock >= 5 else [])
+    monkeypatch.setattr(Path, "read_text", lambda *a, **k:
+                        "[MISSION] t=19.99s phase=mission_ready\n" if h.clock >= 19.99 else "")
     original = h.recorder_spawn.side_effect
     def recorder(*args, **kwargs):
         proc = original(*args, **kwargs)
         def poll():
-            if h.clock >= exit_time:
+            if h.clock >= 20:
                 proc.returncode = 0
             return proc.returncode
         proc.poll.side_effect = poll
         return proc
     h.recorder_spawn.side_effect = recorder
-    # Advance in exact 0.1 s steps so the recorder can exit during sleep.
-    monkeypatch.setattr(capture.time, "sleep", lambda seconds: setattr(h, "clock", round(h.clock + seconds, 1)))
-    assert capture.capture_trace(h.install, "vk", "mc2_01", 15, h.out, via_menu_boot=True) == expected
-    wait_timeout = h.children[0].wait.call_args_list[0].kwargs["timeout"]
-    assert wait_timeout == pytest.approx(105 - h.clock)
+    assert capture.capture_trace(h.install, "vk", "mc2_01", 15, h.out, via_menu_boot=True) == 0
+    assert h.clock == 20
+    capture.mission_ready_in_trace.assert_called_once()
 
 
-def test_via_menu_hung_connection_uses_one_overall_deadline(harness, monkeypatch):
+@pytest.mark.parametrize("fast", [False, True])
+def test_via_menu_never_observes_psutil(harness, monkeypatch, fast):
     import psutil
+    process = Mock(side_effect=psutil.AccessDenied())
+    connections = Mock(side_effect=psutil.AccessDenied())
+    monkeypatch.setattr(psutil, "Process", process)
+    monkeypatch.setattr(psutil, "net_connections", connections)
     h = harness
-    monkeypatch.setattr(psutil.Process.return_value, "net_connections", lambda **k: [])
-    monkeypatch.setattr(Path, "read_text", lambda *a, **k: "")
-    monkeypatch.setattr(capture.time, "sleep", lambda seconds: setattr(h, "clock", round(h.clock + seconds, 1)))
-    original = h.recorder_spawn.side_effect
-    def recorder(*args, **kwargs):
-        proc = original(*args, **kwargs)
-        wait = proc.wait.side_effect
-        def finish(timeout=None):
-            if proc.returncode is None:
-                assert h.clock == 105 and timeout == 0
-                raise subprocess.TimeoutExpired("recorder", timeout)
-            return wait(timeout)
-        proc.wait.side_effect = finish
-        return proc
-    h.recorder_spawn.side_effect = recorder
-    assert capture.capture_trace(h.install, "vk", "mc2_01", 15, h.out, via_menu_boot=True) == 1
-    assert h.clock == 105 and "recorder.kill" in h.events and "game.kill" in h.events
+    if fast:
+        original = h.recorder_spawn.side_effect
+        def recorder(*args, **kwargs):
+            proc = original(*args, **kwargs)
+            proc.returncode = 0
+            return proc
+        h.recorder_spawn.side_effect = recorder
+    assert capture.capture_trace(h.install, "vk", "mc2_01", 15, h.out, via_menu_boot=True) == 0
+    assert "game.kill" in h.events
+    process.assert_not_called()
+    connections.assert_not_called()
+    if fast:
+        assert h.clock == 1
+
+
+@pytest.mark.parametrize("recorder_exit,game_exit,end,expected", [
+    (None, None, 195, 1), (150, None, 150, 0), (None, 30, 150, 1)])
+def test_via_menu_spawn_deadline(harness, recorder_exit, game_exit, end, expected):
+    h = harness
+    spawn_times = {}
+    for name, exit_at in (("recorder", recorder_exit), ("game", game_exit)):
+        spawn = getattr(h, name + "_spawn")
+        original = spawn.side_effect
+        def timed_spawn(*args, _name=name, _exit=exit_at, _spawn=original, **kwargs):
+            proc = _spawn(*args, **kwargs)
+            spawn_times[_name] = h.clock
+            def poll():
+                if _exit is not None and h.clock >= spawn_times["game"] + _exit:
+                    proc.returncode = 0
+                return proc.returncode
+            proc.poll.side_effect = poll
+            return proc
+        spawn.side_effect = timed_spawn
+    assert capture.capture_trace(h.install, "vk", "mc2_01", 15, h.out, via_menu_boot=True) == expected
+    assert h.clock == spawn_times["game"] + end
+    assert ("recorder.kill" in h.events) == (recorder_exit is None)
+    assert ("game.kill" in h.events) == (game_exit is None)
+    h.release.assert_called_once()
 
 
 @pytest.mark.parametrize("which", ["recorder", "game"])
@@ -533,7 +559,7 @@ def test_via_menu_stop_preserves_real_failures(harness, monkeypatch, failure, ca
         recorder_spawn = h.recorder_spawn.side_effect
         def recorder(*args, **kwargs):
             proc = recorder_spawn(*args, **kwargs)
-            proc.wait.side_effect = lambda timeout=None: setattr(proc, "returncode", 2)
+            proc.returncode = 2
             return proc
         h.recorder_spawn.side_effect = recorder
     if failure == "dump":
@@ -663,3 +689,67 @@ def test_tick_capture_waits_for_disconnect_and_requires_budget(harness, monkeypa
     assert "-s" not in recorder_cmd
     assert game_cmd[-3:] == ["--headless", "--ticks", "900"]
     assert h.events[-1] == "release"
+
+
+@pytest.mark.parametrize("key", ["ns", "duration_ns", "exec_time_ns", "duration"])
+@pytest.mark.parametrize("load,active,valid", [
+    (("Mission::init", "10", "10"), ("GameLogic.Mission.Interface", "20", "1"), True),
+    (("Mission::init", "10", "10"), ("GameLogic.Mission.Interface", "19", "1"), False),
+    (None, ("GameLogic.Mission.Interface", "20", "1"), False),
+    (("Mission::init", "10", "10"), None, False),
+    (("Mission::init land->init", "10", "10"), ("GameLogic.Mission.Interface", "20", "1"), False),
+    (("Mission::init", "bad", "10"), ("GameLogic.Mission.Interface", "20", "1"), False),
+    (("Mission::init", "10", "bad"), ("GameLogic.Mission.Interface", "20", "1"), False),
+    (("Mission::init", "10", None), ("GameLogic.Mission.Interface", "20", "1"), False),
+    (("Mission::init", "10", "10"), ("GameLogic.Mission.Interface extra", "20", "1"), False)])
+def test_mission_ready_anchor(key, load, active, valid):
+    def rows(event):
+        if event is None:
+            return []
+        row = dict(name=event[0], ns_since_start=event[1])
+        if event[2] is not None:
+            row[key] = event[2]
+        return [row]
+    assert (capture.mission_ready_anchor(rows(load), rows(active)) is None) == valid
+
+
+@pytest.mark.parametrize("failure", [None, "rc", "timeout", "oserror", "empty", "header"])
+@pytest.mark.parametrize("fail_at", [0, 1])
+def test_mission_ready_in_trace_exports(monkeypatch, failure, fail_at):
+    exports = [SimpleNamespace(returncode=0, stdout=f"name,ns_since_start,ns\n{zone},{start},10\n")
+               for zone, start in ((capture.MISSION_LOAD_ZONE, 10), (capture.MISSION_ACTIVE_ZONE, 20))]
+    if failure:
+        exports[fail_at] = {
+            "rc": SimpleNamespace(returncode=1, stdout=""),
+            "timeout": subprocess.TimeoutExpired("csvexport", 300),
+            "oserror": OSError("export unavailable"),
+            "empty": SimpleNamespace(returncode=0, stdout=""),
+            "header": SimpleNamespace(returncode=0, stdout="name,ns_since_start,ns\n"),
+        }[failure]
+    run = Mock(side_effect=exports)
+    monkeypatch.setattr(capture.subprocess, "run", run)
+    monkeypatch.setattr(capture.nofocus, "hidden_kwargs", lambda: {})
+    reason = capture.mission_ready_in_trace(Path("saved.tracy"), Path("csvexport.exe"))
+    assert (reason is None) == (failure is None)
+    for call, zone in zip(run.call_args_list, (capture.MISSION_LOAD_ZONE, capture.MISSION_ACTIVE_ZONE)):
+        assert call.args[0] == ["csvexport.exe", "-f", zone, "-u", "saved.tracy"]
+        assert call.kwargs == dict(capture_output=True, text=True, timeout=300)
+
+
+def test_via_menu_missing_exporter_precedes_children(harness, monkeypatch):
+    def resolve(name):
+        if name == "tracy-csvexport.exe":
+            raise SystemExit("missing exporter")
+        return Path(name)
+    monkeypatch.setattr(capture, "tracy_exe", resolve)
+    with pytest.raises(SystemExit, match="missing exporter"):
+        capture.capture_trace(harness.install, "vk", "mc2_01", 15, harness.out, via_menu_boot=True)
+    assert not harness.children
+    harness.acquire.assert_not_called()
+
+
+def test_mission_ready_zone_literals_still_exist():
+    root = Path(__file__).resolve().parents[2]
+    for filename, zone in (("mission_init.cpp", capture.MISSION_LOAD_ZONE),
+                           ("mission_update.cpp", capture.MISSION_ACTIVE_ZONE)):
+        assert f'ZoneScopedN("{zone}")' in (root / "code" / filename).read_text(encoding="utf-8")

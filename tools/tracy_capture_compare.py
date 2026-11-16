@@ -99,6 +99,10 @@ DEFAULT_ZONES = [
 # frame-count / FPS proxy used by baseline+regress.
 FRAME_ZONE = "DrawScreen"
 MIN_TRACE_BYTES = 64 * 1024  # a real 15s+ trace is multi-MB; below this = broken capture
+MISSION_LOAD_ZONE = "Mission::init"
+MISSION_ACTIVE_ZONE = "GameLogic.Mission.Interface"
+VIA_MENU_CONNECT_BUDGET = 60
+TRACE_SAVE_BUDGET = 120
 # Below this frame count the arm almost certainly never reached steady-state
 # render inside the recording window -- cold-cache mission load (the FIRST arm on
 # a heavy map like mc2_10 pays the load cost), an early crash, or a VK fail-soft
@@ -346,6 +350,52 @@ def pan_camera(channel, half_map, seconds):
         camera_command(channel, command)
 
 
+def mission_ready_anchor(load_rows, active_rows) -> str | None:
+    """Return a rejection reason unless an exact interface event follows a load."""
+    events = []
+    for rows, zone in ((load_rows, MISSION_LOAD_ZONE), (active_rows, MISSION_ACTIVE_ZONE)):
+        matched = []
+        for row in rows:
+            if row.get("name") != zone:
+                continue
+            duration_key = next((k for k in ("ns", "duration_ns", "exec_time_ns", "duration")
+                                 if k in row), None)
+            if duration_key is None:
+                return f"{zone}: missing duration column"
+            try:
+                matched.append((int(row["ns_since_start"]), int(row[duration_key])))
+            except (KeyError, TypeError, ValueError):
+                return f"{zone}: missing or non-integer timestamp/duration"
+        if not matched:
+            return ("recording did not cover the mission load" if zone == MISSION_LOAD_ZONE
+                    else "recording has no mission interface event")
+        events.append(matched)
+    if any(start >= load_start + duration for load_start, duration in events[0]
+           for start, _ in events[1]):
+        return None
+    return "recording has no mission interface event after the mission load"
+
+
+def mission_ready_in_trace(trace, export_exe) -> str | None:
+    """Fail closed when either unwrapped export cannot prove the readiness anchor."""
+    exports = []
+    for zone in (MISSION_LOAD_ZONE, MISSION_ACTIVE_ZONE):
+        try:
+            # background-launch: allow windowless Tracy csvexport console tool.
+            result = subprocess.run([str(export_exe), "-f", zone, "-u", str(trace)],
+                                    capture_output=True, text=True, timeout=300,
+                                    **nofocus.hidden_kwargs())
+        except (subprocess.TimeoutExpired, OSError) as exc:
+            return f"{zone}: csvexport failed ({exc})"
+        if result.returncode:
+            return f"{zone}: csvexport exited {result.returncode}"
+        rows = list(csv.DictReader(io.StringIO(result.stdout)))
+        if not rows:
+            return f"{zone}: empty csvexport output"
+        exports.append(rows)
+    return mission_ready_anchor(*exports)
+
+
 def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path,
                   extra_env=None, pose=None, fixed_timestep=True, fps_cap=None,
                   show_window: bool = True, ticks: int = 0, via_menu_boot: bool = False,
@@ -363,6 +413,7 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
     out = Path(out).resolve()
     out.parent.mkdir(parents=True, exist_ok=True)
     cap_exe = tracy_exe("tracy-capture.exe")
+    export_exe = tracy_exe("tracy-csvexport.exe") if via_menu_boot else None
 
     if via_menu_boot and ticks:
         sys.exit("ERROR: --via-menu cannot be combined with --ticks (the tick budget is a smoke-mode exit)")
@@ -449,6 +500,9 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
                                engine_default_workers=owner_affinity,
                                show_window=show_window, small_window=False)
         cleanup.callback(_stop_capture_child, gp)
+        if via_menu_boot:
+            overall_deadline = (time.monotonic() + VIA_MENU_CONNECT_BUDGET + seconds
+                                + max(TRACE_SAVE_BUDGET, seconds))
         if post_load:
             import psutil
             process = psutil.Process(gp.pid)
@@ -500,50 +554,28 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
         intentional_stop = False
         if via_menu_boot or post_load:
             if via_menu_boot:
-                import psutil
-                try:
-                    recorder_process = psutil.Process(recorder.pid)
-                except psutil.NoSuchProcess:
-                    recorder_process = None
-                recording_start = recording_deadline = ready_at = None
-                def read_window():
-                    nonlocal recording_start, recording_deadline, ready_at
-                    if recording_start is None and recorder_process is not None and recorder.poll() is None:
-                        # Tracy's -s timer starts at client connection, not Popen.
-                        try:
-                            connections = recorder_process.net_connections(kind="tcp")
-                        except psutil.NoSuchProcess:
-                            connections = []
-                        if any(c.status == psutil.CONN_ESTABLISHED and c.raddr
-                               and c.raddr.port == 8086
-                               for c in connections):
-                            recording_start = time.monotonic()
-                            recording_deadline = recording_start + seconds
-                    game_lf.flush()
-                    window_log = game_log.read_text(encoding="utf-8", errors="replace")
-                    if ready_at is None and re.search(r"^\[MISSION\].*\bphase=mission_ready\s*$", window_log, re.M):
-                        ready_at = time.monotonic()
-                while time.monotonic() < overall_deadline and recorder.poll() is None:
-                    read_window()
-                    if ready_at is not None or (recording_deadline is not None
-                                               and time.monotonic() >= recording_deadline):
+                game_exited = False
+                while recorder.poll() is None:
+                    now = time.monotonic()
+                    if not game_exited and gp.poll() is not None:
+                        overall_deadline = min(overall_deadline, now + TRACE_SAVE_BUDGET)
+                        game_exited = True
+                    if now >= overall_deadline:
+                        rc = 1
+                        _stop_capture_child(recorder)
+                        _stop_capture_child(gp)
                         break
-                    time.sleep(.1)
-                # The recorder may exit during sleep just as readiness is logged.
-                read_window()
-                ready_in_window = (ready_at is not None and recording_start is not None
-                                   and recording_start <= ready_at < recording_deadline)
-            try:
-                recorder.wait(timeout=max(0, overall_deadline - time.monotonic()))
-                rc = int(bool(recorder.returncode))
-            except subprocess.TimeoutExpired:
-                rc = 1
-                _stop_capture_child(recorder)
-                _stop_capture_child(gp)
-            if via_menu_boot:
-                if not ready_in_window:
-                    print(f"INVALID: no mission_ready inside the recording window; see {game_log}", file=sys.stderr)
+                    time.sleep(.25)
+                else:
+                    rc = int(bool(recorder.returncode))
+            else:
+                try:
+                    recorder.wait(timeout=max(0, overall_deadline - time.monotonic()))
+                    rc = int(bool(recorder.returncode))
+                except subprocess.TimeoutExpired:
                     rc = 1
+                    _stop_capture_child(recorder)
+                    _stop_capture_child(gp)
             if recorder.returncode == 0 and gp.poll() is None:
                 intentional_stop = True
                 print(f"[capture] intentional_stop pid={gp.pid} reason=recording_complete")
@@ -585,6 +617,16 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
             size = out.stat().st_size if out.is_file() else 0
             sys.exit(f"ERROR: trace {out} missing or trivial ({size} bytes < "
                      f"{MIN_TRACE_BYTES}); see {cap_log} / {game_log}")
+
+        if via_menu_boot:
+            reason = mission_ready_in_trace(out, export_exe)
+            if reason is not None:
+                ready_logged = re.search(r"^\[MISSION\].*\bphase=mission_ready\s*$", log_text, re.M)
+                diagnostic = ("log shows ready, trace does not: the window ended first, raise --seconds"
+                              if ready_logged else "log does not show ready")
+                print(f"INVALID: no mission_ready inside the recording window ({reason}; "
+                      f"{diagnostic}); see {game_log}", file=sys.stderr)
+                rc = 1
 
         if post_load:
             # Exact per-event frame durations prove the recorder saw gameplay,
