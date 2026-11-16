@@ -1,0 +1,155 @@
+"""Offline Linux-pair contract and lifecycle proofs; no game executable needed."""
+import argparse
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+
+import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import run_mp_pair_linux as pair
+
+
+def options(tmp_path, **changes):
+    values = dict(install=tmp_path, out=tmp_path / "proof", ticks=64, port=23460, timeout=5, combat=False)
+    values.update(changes)
+    return argparse.Namespace(**values)
+
+
+def trace(peer, ticks=64):
+    peer.mkdir(parents=True, exist_ok=True)
+    (peer / "session.trace").write_text("IDENTITY executable=abc content=def\nNETWORK rtt_ms=0\nC 1 00\n" +
+                                      "".join(f"H {t} a b c d {t:x}\n" for t in range(1, ticks + 1)), encoding="utf-8")
+
+
+@pytest.mark.parametrize("slot", [0, 1], ids=["host", "join"])
+@pytest.mark.parametrize("combat", [False, True], ids=["movement", "combat"])
+def test_argv_environment_and_fixture_per_role(tmp_path, monkeypatch, slot, combat):
+    monkeypatch.setenv("MC2_COMMAND_REPLAY_PLAY", "ambient")
+    monkeypatch.setenv("MC2_COMMAND_REPLAY_RECORD", "ambient")
+    args = options(tmp_path, combat=combat)
+    peer = tmp_path / str(slot)
+    argv, env = pair.peer_command(args, peer, slot)
+    assert argv == [str(tmp_path / "mc2"), "--mission", "mc2_01", "--profile", "tier1",
+                    "--duration", "5", "--ticks", "64", "--host" if slot == 0 else "--join",
+                    "127.0.0.1:23460", "--mp-user-dir", str(peer), "--headless"]
+    assert all(env[key] == value for key, value in dict(MC2_SMOKE_FIXED_TIMESTEP="1",
+               MC2_SIM_IDENTITY_TRACE="1", MC2_FORCE_ALL_VISIBLE="0", MC2_DETERMINISTIC_RNG="1", MC2_RNG_SEED="12345").items())
+    assert env["MC2_DIAGNOSTIC_TRACE_FILE"] == str(peer / "diagnostic.jsonl")
+    assert env["MC2_SAVE_DIR"] == str(peer / "saves")
+    assert env["MC2_CAMERA_PARK"] == ("3000,1900,0,60,1700@30" if combat else
+                "2450,-2100,0,60,1200@30" if slot == 0 else "2450,-2100,90,50,1200@30")
+    assert not any(key in env for key in ("MC2_COMMAND_REPLAY_PLAY", "MC2_COMMAND_REPLAY_RECORD"))
+
+
+@pytest.mark.parametrize("case", ["equal", "divergent", "desync", "refusal", "content-refusal", "missing-network", "short", "commands", "exit"])
+def test_verdict_synthetic_traces(tmp_path, case):
+    peers = [tmp_path / "host", tmp_path / "client"]
+    for peer in peers:
+        trace(peer)
+    path = peers[1] / "session.trace"
+    content = path.read_text()
+    codes = [0, 0]
+    if case == "divergent":
+        content = content.replace("H 17 a b", "H 17 z b")
+    elif case == "desync":
+        (peers[0] / "stderr.log").write_text("[MP_DESYNC] tick=17 local=1 remote=2\n")
+    elif case == "refusal":
+        (peers[0] / "stderr.log").write_text("executable SHA-256 mismatch local=abc remote=xyz\n")
+    elif case == "content-refusal":
+        (peers[0] / "stderr.log").write_text("content SHA-256 mismatch local=def remote=xyz\n")
+    elif case == "missing-network":
+        content = content.replace("NETWORK rtt_ms=0\n", "")
+    elif case == "short":
+        content = content.replace("H 64 a b c d 40\n", "")
+    elif case == "commands":
+        content = content.replace("C 1 00", "C 1 ff")
+    elif case == "exit":
+        codes[1] = 1
+    path.write_text(content)
+    verdict = pair.evaluate(peers, 64, codes)
+    assert verdict["result"] == ("PASS" if case == "equal" else "FAIL")
+    if case == "divergent":
+        assert verdict["first_divergent_tick"] == 17
+        assert verdict["first_divergent_field"] == "H[2]"
+        assert verdict["equal_ticks"] == 16
+
+
+@pytest.fixture
+def fake_peer(tmp_path, monkeypatch):
+    stub = tmp_path / "fake_peer.py"
+    stub.write_text('''import argparse, os, pathlib, time
+p = argparse.ArgumentParser()
+p.add_argument('--mp-user-dir')
+p.add_argument('--ticks', type=int)
+a, _ = p.parse_known_args()
+root = pathlib.Path(a.mp_user_dir)
+assert (root / 'orders.txt').is_file()
+assert os.environ['MC2_SAVE_DIR'] == str(root / 'saves')
+assert os.environ['MC2_DIAGNOSTIC_TRACE_FILE'] == str(root / 'diagnostic.jsonl')
+(root / 'stdout.log').write_text('fake stdout')
+(root / 'stderr.log').write_text('fake stderr')
+(root / 'diagnostic.jsonl').write_text('{}\\n')
+(root / 'session.trace').write_text('IDENTITY executable=abc content=def\\nNETWORK rtt_ms=0\\nC 1 00\\n' + ''.join(f'H {t} a b c d {t:x}\\n' for t in range(1, a.ticks + 1 - int(os.environ.get('PAIR_FAKE_SHORT') == root.name))))
+if os.environ.get('PAIR_FAKE_DIE') == root.name:
+    raise SystemExit(2)
+if os.environ.get('PAIR_FAKE_HANG') in ('1', root.name):
+    time.sleep(60)
+''', encoding="utf-8")
+    real_spawn = subprocess.Popen
+    children = []
+
+    def spawn(argv, **kwargs):
+        proc = real_spawn([sys.executable, str(stub), *argv[1:]], **kwargs)
+        children.append(proc)
+        return proc
+
+    monkeypatch.setattr(pair.subprocess, "Popen", spawn)
+    return children
+
+
+@pytest.mark.parametrize("combat", [False, True], ids=["movement", "combat"])
+def test_fake_pair_fixture_creation_and_directory_isolation(tmp_path, fake_peer, combat):
+    args = options(tmp_path, combat=combat)
+    verdict = pair.run_pair(args)
+    # Combat comparison itself is covered by the imported Windows proof; stub has no battle events.
+    assert verdict["result"] == ("FAIL" if combat else "PASS")
+    assert verdict["peer_exit_codes"] == [0, 0]
+    for slot, name in enumerate(("host", "client")):
+        root = args.out / "session" / name
+        assert (root / "orders.txt").read_text().splitlines() == pair.fixture_orders(slot, 64, 0, combat)
+        assert all((root / filename).exists() for filename in
+                   ("stdout.log", "stderr.log", "diagnostic.jsonl", "session.trace", "launcher.log", "saves"))
+    assert len(fake_peer) == 2 and all(proc.poll() == 0 for proc in fake_peer)
+    assert json.loads((args.out / "verdict.json").read_text())["ticks_reached"] == [64, 64]
+
+
+@pytest.mark.parametrize("failure", ["timeout", "peer-dies", "short-peer", "interrupt", "second-spawn"])
+def test_owned_children_reaped_on_every_exit(tmp_path, monkeypatch, fake_peer, failure):
+    monkeypatch.setenv("PAIR_FAKE_HANG", "1")
+    args = options(tmp_path, timeout=0.4)
+    if failure in ("peer-dies", "short-peer"):
+        monkeypatch.setenv("PAIR_FAKE_HANG", "client")
+        monkeypatch.setenv("PAIR_FAKE_DIE" if failure == "peer-dies" else "PAIR_FAKE_SHORT", "host")
+    elif failure in ("interrupt", "second-spawn"):
+        spawn = pair.subprocess.Popen
+
+        def failing_spawn(argv, **kwargs):
+            if fake_peer:
+                if failure == "interrupt":
+                    raise KeyboardInterrupt()
+                raise OSError("synthetic second spawn failure")
+            return spawn(argv, **kwargs)
+
+        monkeypatch.setattr(pair.subprocess, "Popen", failing_spawn)
+    verdict = pair.run_pair(args)
+    assert verdict["result"] == "FAIL"
+    assert fake_peer and all(proc.poll() is not None for proc in fake_peer)
+    assert (args.out / "verdict.json").exists()
+    if failure == "timeout":
+        assert len(fake_peer) == 2
+        assert all(proc.returncode != 0 for proc in fake_peer)
+    if failure in ("peer-dies", "short-peer"):
+        assert fake_peer[1].returncode != 0
