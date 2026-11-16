@@ -294,6 +294,9 @@ TEST_CASE("GPU residency: vegetation thins by stride instead of refusing") {
     // mc2_03 at the default quality: 2.5M instances, ~30k regions in the packed model (16 B instances): about 48 MiB resident.
     const auto q2 = gpuResidencyPolicy(2);
     CHECK(q2.vegetation == vegetationResidentCeiling);   // the upload's own 160 MiB ceiling is the policy
+    // A partial survivor word still consumes one uint in each of the three frame slots.
+    CHECK(vegetationBytes(32, 0) - vegetationBytes(31, 0) == 24);
+    CHECK(vegetationBytes(33, 0) - vegetationBytes(32, 0) == 36);
     CHECK(vegetationBytes(2512462, 30000) < 60 * gpuMiB);
     CHECK(vegetationStride(2512462, 30000, q2.vegetation, 2000 * gpuMiB) == 1);
     CHECK(vegetationStride(9000000, 40000, q2.vegetation, 2000 * gpuMiB) == 1);   // mc2_01 meadow field fits whole
