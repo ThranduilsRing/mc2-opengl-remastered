@@ -192,12 +192,10 @@ def _write_registry(data: dict) -> None:
 # ── Cross-process lock ───────────────────────────────────────────────────────
 # A sidecar lock file guards the whole read-modify-write of the registry so two
 # concurrent sessions cannot both select the same free folder (the check-then-
-# write race). O_CREAT|O_EXCL is atomic on Windows and POSIX. A lock held longer
-# than _LOCK_STALE_SECS is presumed crashed and stolen, so a dead session never
-# deadlocks the pool. _lock_path() is computed at call time so tests that
+# write race). The OS releases the lock when its process exits; elapsed time
+# never proves a holder is dead. _lock_path() is computed at call time so tests that
 # reassign LEASE_REGISTRY_PATH get a matching lock path.
 
-_LOCK_STALE_SECS = 30
 _LOCK_WAIT_SECS = 10
 
 
@@ -207,39 +205,25 @@ def _lock_path() -> Path:
 
 @contextlib.contextmanager
 def _registry_lock():
+    try:
+        from ..build_tokens import _lock_file
+    except ImportError:  # top-level smoke_lib with scripts/ on sys.path
+        from build_tokens import _lock_file
     lp = _lock_path()
     lp.parent.mkdir(parents=True, exist_ok=True)
-    deadline = time.time() + _LOCK_WAIT_SECS
-    acquired = False
-    while True:
-        try:
-            fd = os.open(str(lp), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-            try:
-                os.write(fd, str(os.getpid()).encode())
-            finally:
-                os.close(fd)
-            acquired = True
-            break
-        except FileExistsError:
-            try:
-                if time.time() - os.path.getmtime(lp) > _LOCK_STALE_SECS:
-                    os.unlink(str(lp))  # steal a crashed holder's lock
-                    continue
-            except OSError:
-                pass
-            if time.time() >= deadline:
-                # Give up waiting rather than deadlock; proceed best-effort.
-                _log("[LEASE] WARN: registry lock wait timed out — proceeding unlocked")
-                break
-            time.sleep(0.05)
+    deadline = time.monotonic() + _LOCK_WAIT_SECS
+    # Keep this inode: closing the handle releases the OS lock even on a crash.
+    # Unlinking a lock file lets a waiter lock a different inode concurrently.
+    handle = _lock_file(lp)
+    while handle is None:
+        if time.monotonic() >= deadline:
+            raise TimeoutError(f"deploy lease registry lock unavailable: {lp}")
+        time.sleep(0.05)
+        handle = _lock_file(lp)
     try:
         yield
     finally:
-        if acquired:
-            try:
-                os.unlink(str(lp))
-            except OSError:
-                pass
+        handle.close()
 
 
 # ── Owner identity ─────────────────────────────────────────────────────────────

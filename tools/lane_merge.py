@@ -1048,10 +1048,15 @@ def write_receipt(root: str, tip: str, with_link, verdict: str, sim_rows: dict |
             "verdict": verdict, "link": bool(with_link), "when": time.time()}
     if sim_rows is not None:
         body["sim_rows"] = sim_rows
-    tmp = receipt_path(sha) + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(body, f)
-    os.replace(tmp, receipt_path(sha))
+    tmp = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", dir=PRECHECK_RECEIPTS, delete=False, encoding="utf-8") as f:
+            tmp = f.name
+            json.dump(body, f)
+        os.replace(tmp, receipt_path(sha))
+    finally:
+        if tmp and os.path.exists(tmp):
+            os.unlink(tmp)
 
 
 def missing_receipts(root: str, refs: list[str]) -> list[str]:

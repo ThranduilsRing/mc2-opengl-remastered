@@ -209,9 +209,15 @@ def record_deploy_inputs(target, inputs, hashes, items):
             sources[str(src)] = [[s.st_size, s.st_mtime_ns, s.st_ctime_ns], hashes[rel][0]]
     value = dict(inputs=inputs, manifest=sha256_file(Path(target) / MANIFEST_NAME),
                  outputs=outputs, hashes=inventory, sources=sources)
-    pending = Path(target) / (REUSE_NAME + ".tmp")
-    pending.write_text(json.dumps(value, sort_keys=True), encoding="utf-8")
-    os.replace(pending, Path(target) / REUSE_NAME)
+    pending = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", dir=target, delete=False, encoding="utf-8") as out:
+            pending = Path(out.name)
+            json.dump(value, out, sort_keys=True)
+        os.replace(pending, Path(target) / REUSE_NAME)
+    finally:
+        if pending is not None:
+            pending.unlink(missing_ok=True)
 SHADER_EXTS = (".vert", ".frag", ".tesc", ".tese", ".comp")
 
 # Editor target marker (exe_name match, case-insensitive).
@@ -1709,32 +1715,22 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
         os.makedirs(os.path.dirname(dst) or target_dir, exist_ok=True)
         try:
             copy_started = time.perf_counter()
-            if re.fullmatch(r"data/tgl/[0-9]+/[^/]+\.tga", rel.replace(os.sep, "/")):
-                temporary = None
-                try:
-                    with tempfile.NamedTemporaryFile(dir=os.path.dirname(dst), delete=False) as out:
-                        temporary = out.name
+            temporary = None
+            try:
+                with tempfile.NamedTemporaryFile(dir=os.path.dirname(dst), delete=False) as out:
+                    temporary = out.name
+                    if rel.endswith(".mcasset.json"):
+                        # Normalize checkout line endings before publishing the sidecar.
+                        out.write(Path(src).read_bytes().replace(b"\r\n", b"\n"))
+                if not rel.endswith(".mcasset.json"):
                     shutil.copyfile(src, temporary)
-                    replace_file(temporary, dst)
-                finally:
-                    if temporary and os.path.exists(temporary):
-                        os.unlink(temporary)
-                copy_seconds += time.perf_counter() - copy_started
-            elif rel.endswith(".mcasset.json"):
-                unlink_for_replace(dst)
-                # Authored sidecars ship unchanged except for checkout line endings;
-                # mixed CRLF/LF copies must not change the pinned data fingerprint.
-                with open(src, "rb") as fh:
-                    content = fh.read().replace(b"\r\n", b"\n")
-                with open(dst, "wb") as fh:
-                    fh.write(content)
-                copy_seconds += time.perf_counter() - copy_started
-            else:
-                unlink_for_replace(dst)
-                shutil.copyfile(src, dst)
                 if kind == "exe" and os.name != "nt":
-                    shutil.copymode(src, dst)
-                copy_seconds += time.perf_counter() - copy_started
+                    shutil.copymode(src, temporary)
+                replace_file(temporary, dst)
+            finally:
+                if temporary and os.path.exists(temporary):
+                    os.unlink(temporary)
+            copy_seconds += time.perf_counter() - copy_started
         except PermissionError:
             fail(f"copy refused (file locked?): {dst}\n"
                  "  A process is holding this file. Close it and re-run; "
@@ -1844,17 +1840,24 @@ def retire_unowned(target_dir, keep, preserve=(), own_shaders=False):
 def write_manifest(target_dir, hashes, src_commit):
     ts = datetime.datetime.now().isoformat(timespec="seconds")
     path = os.path.join(target_dir, MANIFEST_NAME)
-    with open(path, "w", newline="") as f:
-        w = csv.writer(f)
-        w.writerow(["manifest_version", MANIFEST_VERSION, "", "", "", ""])
-        w.writerow(["relpath", "sha256", "bytes", "src_commit", "timestamp",
-                    "mtime_ns"])
-        for rel in sorted(hashes):
-            entry = tuple(hashes[rel])
-            h, size = entry[0], entry[1]
-            mtime_ns = entry[2] if len(entry) > 2 else None
-            w.writerow([rel, h, size, src_commit, ts,
-                        "" if mtime_ns is None else mtime_ns])
+    pending = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", dir=target_dir, newline="", delete=False) as f:
+            pending = f.name
+            w = csv.writer(f)
+            w.writerow(["manifest_version", MANIFEST_VERSION, "", "", "", ""])
+            w.writerow(["relpath", "sha256", "bytes", "src_commit", "timestamp",
+                        "mtime_ns"])
+            for rel in sorted(hashes):
+                entry = tuple(hashes[rel])
+                h, size = entry[0], entry[1]
+                mtime_ns = entry[2] if len(entry) > 2 else None
+                w.writerow([rel, h, size, src_commit, ts,
+                            "" if mtime_ns is None else mtime_ns])
+        replace_file(pending, path)
+    finally:
+        if pending and os.path.exists(pending):
+            os.unlink(pending)
     log(f"manifest written: {path} ({len(hashes)} rows, {MANIFEST_VERSION}, "
         f"src_commit {src_commit[:12]})")
 

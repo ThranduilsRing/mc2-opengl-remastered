@@ -1945,7 +1945,8 @@ def main():
             break
 
         # 2s grace for PDB lock release before next spawn.
-        import time as _t; _t.sleep(2)
+        if e is not selected[-1]:
+            import time as _t; _t.sleep(2)
 
     # SMOKE-DEPLOY-TRAP-1: collect RUN-LEVEL failures BEFORE rendering. The
     # report used to be written here, ahead of the fingerprint verdict below,
