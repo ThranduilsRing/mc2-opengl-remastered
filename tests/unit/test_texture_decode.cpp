@@ -55,6 +55,12 @@ TEST_CASE("texture lock: fused BGRA copy matches the legacy word swizzle") {
     mc2tex::writeBgraLockPixels(actual, source);
     CHECK(actual == expected);
     CHECK(source == original);
+    for (const size_t size : {size_t{7}, size_t{12}}) {
+        actual.assign(size, 0xcd);
+        mc2tex::writeBgraLockPixels(actual, std::span<const uint8_t>(source).first(6));
+        CHECK(std::equal(actual.begin(), actual.begin() + 4, expected.begin()));
+        CHECK(std::all_of(actual.begin() + 4, actual.end(), [](uint8_t b) { return b == 0; }));
+    }
     mc2tex::writeBgraLockPixels(actual, {});
     CHECK(actual == std::vector<uint8_t>(actual.size(), 0));
     mc2tex::writeBgraLockPixels({}, {});
