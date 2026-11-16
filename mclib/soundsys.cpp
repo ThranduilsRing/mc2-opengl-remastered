@@ -343,7 +343,7 @@ bool SoundSystem::createWaveResource (HGOSAUDIO *handle, const std::vector<uint8
 	const auto view = parseWaveSamples(wave);
 	MC2_WAVEFORMATEX waveFormat{};
 	if (view)
-		std::memcpy(&waveFormat, view->format.data(), sizeof(waveFormat));
+		std::memcpy(&waveFormat, view->format.data(), std::min(sizeof(waveFormat), view->format.size()));
 	if (waveFormat.nChannels == 0)
 	{
 		MC2_LOG(Audio, Warn, "sound: a sample of {} bytes has no readable wave header; it is not played", wave.size());
