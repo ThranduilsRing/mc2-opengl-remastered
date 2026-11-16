@@ -63,10 +63,7 @@ bool State::upload(mc2vk::VulkanContext& ctx, std::span<const GpuInstance> insta
     clear(ctx);
     if (instances.empty() || regions.empty()) return true;   // an empty population is a valid population
     // Dense IDs reserve bit 31 for the conservative near-foot flag, including release builds.
-    if (instances.size() >= (uint64_t{1} << 31)) {
-        mc2::fmt::print_err("[VEG_GPU] population upload failed: dense ID flag collision\n");
-        return false;
-    }
+    if (instances.size() >= (uint64_t{1} << 31)) return false;
     VkPhysicalDeviceProperties properties{};
     vkGetPhysicalDeviceProperties(ctx.physicalDevice(), &properties);
     const VkDeviceSize maxRange = properties.limits.maxStorageBufferRange;
