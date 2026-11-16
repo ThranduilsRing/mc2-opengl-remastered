@@ -382,12 +382,14 @@ uint32_t residentCount() {
 
 int32_t registerRecipe(TG_MultiShape* multi,
                        const std::vector<GpuStaticPropInstance>& batch) {
-    if (batch.empty() || !multi || !multi->usesTypeMaterials()) return -1;
     const size_t prospectiveIndex = s_recipeRecycle && !s_recipeRangeFreeList.empty()
         ? s_recipeRangeFreeList.back() : s_recipeRanges.size();
-    if (!RenderWorld::detail::staticPropRecipeIndexFits(prospectiveIndex)) {
-        std::fprintf(stderr, "[RENDER_WORLD] static_prop_recipe_exhausted index=%zu limit=%u\n",
-                     prospectiveIndex, RenderWorld::detail::kMechHandleBase);
+    if (batch.empty() || !multi || !multi->usesTypeMaterials()
+        || !RenderWorld::detail::staticPropRecipeIndexFits(prospectiveIndex)) {
+        if (!RenderWorld::detail::staticPropRecipeIndexFits(prospectiveIndex)) {
+            std::fprintf(stderr, "[RENDER_WORLD] static_prop_recipe_exhausted index=%zu limit=%u\n",
+                         prospectiveIndex, RenderWorld::detail::kMechHandleBase);
+        }
         return -1;
     }
     RecipeRange rng;

@@ -442,7 +442,7 @@ void RunMechObjectIdSelfTest() {
             s_objectRecords[propIndex] = saved;
         }
         if (!ok || RenderWorld::detail::staticPropHandle(kMechHandleBase).isValid()) {
-            std::fprintf(stderr, "[MECH_OBJECT_ID_SELFTEST v1] result=FAIL step=boundary index=%u\n", propIndex);
+            MC2_DIAGFE(stderr, "[MECH_OBJECT_ID_SELFTEST v1] result=FAIL step=boundary index=%u\n", propIndex);
             RenderWorld::destroyMech(h);
             return;
         }
@@ -536,7 +536,7 @@ void RunMechObjectIdSelfTest() {
         }
     }
 
-    std::fprintf(stderr,
+    MC2_DIAGFE(stderr,
         "[MECH_OBJECT_ID_SELFTEST v1] result=PASS step=all kind=1 gen=%u handle=0x%08X\n",
         (unsigned)gen, (unsigned)raw);
 }
