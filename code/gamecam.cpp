@@ -770,12 +770,6 @@ void GameCamera::render (void)
 	userInput->setViewport(viewMulX,viewMulY,viewAddX,viewAddY);
 
 	gos_TextSetRegion(viewAddX,viewAddY,viewMulX,viewMulY);
-	//--------------------------------------------------------
-	// Get new viewport values to scale stuff.  No longer uses
-	// VFX stuff for this.  ALL GOS NOW!
-	screenResolution.x = viewMulX;
-	screenResolution.y = viewMulY;
-	calculateProjectionConstants();
 
 	globalScaleFactor = getScaleFactor();
 	globalScaleFactor *= viewMulX / 640.0;		//Scale Mechs to ScreenRES
