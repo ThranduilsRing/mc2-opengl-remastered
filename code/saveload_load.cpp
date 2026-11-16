@@ -820,6 +820,7 @@ void Mission::loadActivateAndFinalize() {
 
 	eye->primeActiveLightsForPrewarm();
 	prewarmStaticPropLightBakes(*ObjectManager, eye);
+	{ ZoneScopedN("Mission::load buildStaticShadowCasterSet"); MC2_LOAD_SCOPE("Mission::load buildStaticShadowCasterSet"); ObjectManager->buildStaticShadowCasterSet(); }
 	GameAdapters::Vegetation::missionLoaded(land, GameMap);
 	// Quickload resumes without Mission::start, which normally arms input and HUD layout.
 	MissionInterfaceManager::armHoverTarget();
