@@ -3,6 +3,7 @@
 #include <vector>
 #include "goal_area_memo.h"
 #include <random>
+#include "sensor_los_cache.h"
 
 namespace {
 struct GoalProvider {
@@ -61,6 +62,47 @@ TEST_CASE("goal area memo differential seeded grids")
 		CHECK(plain.table == cached.table);
 		CHECK(cached.reads < plain.reads);
 	}
+}
+
+TEST_CASE("sensor LOS epoch differential handle reuse")
+{
+	struct Object { int position = 0; } objects[4];
+	mc2::SensorLosCache<Object*, int, std::uint8_t> cache;
+	std::vector<std::pair<Object*, int>> plain;
+	std::mt19937 random(0x4c4f53);
+	int plainLoads = 0, epochLoads = 0;
+	for (int scan = 0; scan < 600; ++scan) {
+		const auto count = random() % 16;
+		plain.assign(count, {});
+		cache.beginScan(count);
+		for (int call = 0; call < 100; ++call) {
+			auto* object = &objects[random() % 4];
+			object->position = static_cast<int>(random());
+			const auto handle = random() % 18;
+			const bool eligible = random() % 4 != 0; // outside scan / non-mover bypass
+			int expected;
+			if (!eligible || handle >= plain.size()) { ++plainLoads; expected = object->position; }
+			else {
+				auto& [identity, position] = plain[handle];
+				if (identity != object) { ++plainLoads; position = object->position; identity = object; }
+				expected = position;
+			}
+			CHECK(cache.get(handle, object, eligible, [&] { ++epochLoads; return object->position; }) == expected);
+			CHECK(epochLoads == plainLoads);
+		}
+	}
+}
+
+TEST_CASE("sensor LOS epoch wrap invalidates untouched identity")
+{
+	int object = 7;
+	mc2::SensorLosCache<int*, int, std::uint8_t> cache;
+	CHECK(cache.get(0, &object, false, [&] { return object; }) == 7);
+	cache.beginScan(2);
+	CHECK(cache.get(0, &object, true, [&] { return object; }) == 7);
+	object = 9;
+	for (int scan = 0; scan < 255; ++scan) cache.beginScan(2);
+	CHECK(cache.get(0, &object, true, [&] { return object; }) == 9);
 }
 
 TEST_CASE("mover LOS epoch table")
