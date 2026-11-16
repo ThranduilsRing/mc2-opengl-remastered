@@ -11,6 +11,9 @@
 #include "mc2fmt.h"
 #include "meshoptimizer.h"
 #include "diagnostic_trace.h"
+#include "../../RenderCore/PropLodEvaluation.h"
+
+namespace { PropLodEvaluation s_lodEvaluated; }
 
 // ---------------------------------------------------------------------------
 // DEBUG-VIEW-REGISTRY-1: static-prop shader mode <-> RenderDebugView mapping.
@@ -64,6 +67,7 @@ void GpuStaticPropBatcher::onMapLoad() {
     s_packets.clear();
     s_packetAlphaBaked.clear();
     s_types.clear();
+    s_lodEvaluated.clear();
     s_perTypePeak.clear();
     s_coalesceFrameSlot = 0;  // reset coalesce ring slot per-mission for hygiene
     s_typeIndex.clear();
@@ -137,6 +141,7 @@ void GpuStaticPropBatcher::onMapUnload() {
     s_sortedPacketOrder.clear(); s_alphaOffCmdCount = s_alphaOnCmdCount = 0;
     s_bucketsByType.clear(); s_persistentStaticStore.clear();
     s_lodGroups.clear(); s_lodMembers.clear(); s_lodState.clear();
+    s_lodEvaluated.clear();
     s_persistentStaticGen = s_staticBaseBuiltGen = 0xFFFFFFFFFFFFFFFFull;
     s_staticBaseInstanceForType.clear();
     onMapLoad();
@@ -397,10 +402,6 @@ void GpuStaticPropBatcher::registerLodGroup(std::span<TG_TypeMultiShape* const> 
     const int count = static_cast<int>(std::min(shapes.size(), distances.size()));
     if (shapes.empty() || !shapes[0] || count < 2) return;
     const char* const tag = tree ? "TREE_LOD" : "PROP_LOD";
-    if (count > kMaxPropLods) {
-        mc2::fmt::print_err("[{}] error: {} LOD levels exceed the limit {}; no LOD group registered\n", tag, mc2::fmt::as_i32(count), mc2::fmt::as_i32(kMaxPropLods));
-        return;
-    }
     auto shapeTypes = [](TG_TypeMultiShape* ms) {
         std::vector<uint32_t> ids;
         for (long i = 0, n = ms->GetNumShapes(); i < n; ++i) {
@@ -411,6 +412,23 @@ void GpuStaticPropBatcher::registerLodGroup(std::span<TG_TypeMultiShape* const> 
         }
         return ids;
     };
+    const std::vector<uint32_t> base = shapeTypes(shapes[0]);
+    if (s_lodEvaluated.containsAll(base)) return;
+    // Resolve all usable levels before memoizing a failure. Shape geometry and
+    // authored distances are immutable after these type registrations resolve.
+    bool resolved = PropLodEvaluation::resolved(base);
+    std::vector<std::vector<uint32_t>> lods(count);
+    for (int k = 1; k < count; ++k) {
+        if (shapes[k] && shapes[k] != shapes[0] && distances[k] > 0.0f) {
+            lods[k] = shapeTypes(shapes[k]);
+            resolved &= PropLodEvaluation::resolved(lods[k]);
+        }
+    }
+    if (count > kMaxPropLods) {
+        s_lodEvaluated.remember(base, resolved);
+        mc2::fmt::print_err("[{}] error: {} LOD levels exceed the limit {}; no LOD group registered\n", tag, mc2::fmt::as_i32(count), mc2::fmt::as_i32(kMaxPropLods));
+        return;
+    }
     // Dark vertices (RGB tag all zero) of a shape: a LOD that is darker than LOD0 would draw black.
     auto darkVerts = [](TG_TypeMultiShape* ms) {
         uint64_t dark = 0, total = 0;
@@ -423,13 +441,10 @@ void GpuStaticPropBatcher::registerLodGroup(std::span<TG_TypeMultiShape* const> 
         }
         return std::pair<uint64_t, uint64_t>(dark, total);
     };
-    const std::vector<uint32_t> base = shapeTypes(shapes[0]);
-    std::vector<std::vector<uint32_t>> lods(count);
     const auto [dark0, total0] = tree ? darkVerts(shapes[0]) : std::pair<uint64_t, uint64_t>(0, 0);
     std::vector<bool> lodDark(count, false);
     for (int k = 1; k < count; ++k) {
         if (shapes[k] && shapes[k] != shapes[0] && distances[k] > 0.0f) {
-            lods[k] = shapeTypes(shapes[k]);
             if (tree) {
                 const auto [dark, total] = darkVerts(shapes[k]);
                 lodDark[k] = total && dark * total0 > (dark0 + total0 / 100) * total;   // dark fraction over LOD0's by more than 1%
@@ -438,6 +453,7 @@ void GpuStaticPropBatcher::registerLodGroup(std::span<TG_TypeMultiShape* const> 
         } else if (tree && k > 1 && shapes[k] && shapes[k] != shapes[0])
             mc2::fmt::print_err("[TREE_LOD] error: lod {} has no switch distance ({}); chain ends before it\n", mc2::fmt::as_i32(k), (distances[k]));
     }
+    s_lodEvaluated.remember(base, resolved);
     for (size_t n = 0; n < base.size(); ++n) {
         if (base[n] == 0xFFFFFFFFu || s_lodGroups.count(base[n])) continue;
         PropLodGroup g{}; g.count = 1; g.tree = tree;
