@@ -183,6 +183,25 @@ def test_mod_smoke_uses_existing_harness_and_live_animation(tmp_path):
         command(args, tmp_path)
 
 
+def test_mod_smoke_disk_refusal_precedes_upload(tmp_path, monkeypatch):
+    import zipfile
+    path = Path(__file__).resolve().parents[2] / 'tools/farm/mod-smoke.json'
+    exe = tmp_path / 'mc2.exe'
+    exe.write_bytes(b'exe')
+    monkeypatch.setattr(sys, 'argv', ['host', 'submit', str(path), '--exe', str(exe)])
+    def payload(exe, destination):
+        with zipfile.ZipFile(destination, 'w') as archive:
+            archive.writestr('test', b'payload')
+    monkeypatch.setattr(host, 'payload_archive', payload)
+    def refuse(args, script):
+        assert 'Get-PSDrive C' in script and 'insufficient' in script
+        raise RuntimeError('disk full')
+    monkeypatch.setattr(host, 'remote', refuse)
+    monkeypatch.setattr(host, 'scp', lambda *a, **k: pytest.fail('upload before disk check'))
+    with pytest.raises(RuntimeError, match='disk full'):
+        host.main()
+
+
 def test_host_submit_exe_stages_then_rewrites_job(tmp_path, monkeypatch):
     path = tmp_path / 'job.json'
     path.write_text('{"argv": ["run", "{EXE}", "--out", "{RESULT}/proof"], "env": {"X": "{ROOT}/d"}}')
