@@ -1,5 +1,6 @@
 #include "doctest.h"
 #include "mech_skel_import.h"
+#include "math/mc2_xform.h"
 #include <assimp/scene.h>
 #include <cmath>
 
@@ -57,7 +58,10 @@ TEST_CASE("torso twist: production single and blended FK rotate muzzle but prese
         else
             REQUIRE(mc2skel::EvaluateClipBlendGpuBones(*plan, "atlas_torsoTwistLeft", 0,
                 "atlas_torsoTwistRight", 0, blend, pose, &twist));
-        // MC2's axis map negates source X/Z. Positive yaw turns forward toward -X.
+        // Case 2 maps source -Z to shape +Z; stock uses row vectors and radians.
+        const auto stock = glm::vec4(0, 0, 1, 0) * mc2::math::rotationMatrix(mc2::math::Euler(0, 0.5235987756f, 0));
+        CHECK(-pose[1].m[3] == doctest::Approx(stock.x));
+        CHECK(-pose[1].m[11] == doctest::Approx(stock.z));
         CHECK(pose[1].m[3] == doctest::Approx(-0.5f));
         CHECK(pose[1].m[7] == doctest::Approx(2));
         CHECK(pose[1].m[11] == doctest::Approx(-std::sqrt(0.75f)));
