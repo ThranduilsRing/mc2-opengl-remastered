@@ -19,7 +19,7 @@ long BattleMech::loadGameSystem (FitIniFilePtr mechFile) {
 	if (result != NO_ERR)
 		return(result);
 
-	result = mechFile->readIdFloat("MaxHeavyMech",MechClassWeights[std::to_underlying(MECH_CLASS_MEDIUM)]);
+	result = mechFile->readIdFloat("MaxMediumMech",MechClassWeights[std::to_underlying(MECH_CLASS_MEDIUM)]);
 	if (result != NO_ERR)
 		return(result);
 
