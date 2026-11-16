@@ -14,6 +14,7 @@
 #include "mc2_czstring.h"
 #include "assimp_importer.h"
 #include "unit_anim_state.h"
+#include "mech_model_delta.h"
 #include "content_ir.h"
 #include "mech_texname_derive.h"  // GLB-TEXNAME-DERIVE-EXTRACT-1 pure name rules
 #include "Gates/gate.h"
@@ -1590,6 +1591,7 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
 // per-frame foot-ground lift into s.gpuLift.
 void buildGpuModelDelta(const ImportedAnimEntry& e, ActorAnimState& s,
                         const std::vector<mc2skel::GpuBone>& globals) {
+    mc2mechanim::sizeModelDelta(s.modelDelta, e.invMWrest.size());
     const size_t n = (globals.size() < e.invMWrest.size()) ? globals.size() : e.invMWrest.size();
     // Default: static rest lift (steady torso). MC2_MECH_IMPORT_DYNAMIC_LIFT=1 restores
     // the old per-frame lowest-vertex lift (follows ground but bobs each step).
@@ -1623,10 +1625,14 @@ void mc2mechanim::TickImportedMechs(float dt, unsigned frameStamp, const MechMot
         // PER-ACTOR: each actor instance advances its OWN clip + model-delta palette.
         ActorAnimState& s = e.actors[actorKey];
         if (authoritative) static_cast<mc2::sim::ImportedAnimState&>(s) = *authoritative;
-        if (s.activeClip.empty()) {                 // first tick for this actor
+        if (!clipDurationSec(e.scene, s.activeClip) ||
+            !std::isfinite(s.durationSec) || s.durationSec <= 1e-4f) {
+            // Restored state may refer to a clip absent from this scene.
             s.activeClip   = e.initialClip;
             s.durationSec  = e.initialDuration;
-            s.modelDelta.assign(e.invMWrest.size() * 16, 0.0f);
+            s.clipTimeSec  = 0.0f;
+            s.mode = mc2clip::Mode::Loop;
+            s.locomotion = false;
         }
         if (s.lastFrame == frameStamp && !s.lastGlobals.empty()) return;
         s.lastFrame = frameStamp;
