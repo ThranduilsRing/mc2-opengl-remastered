@@ -99,6 +99,10 @@ DEFAULT_ZONES = [
 # frame-count / FPS proxy used by baseline+regress.
 FRAME_ZONE = "DrawScreen"
 MIN_TRACE_BYTES = 64 * 1024  # a real 15s+ trace is multi-MB; below this = broken capture
+MISSION_LOAD_ZONE = "Mission::init"
+MISSION_ACTIVE_ZONE = "GameLogic.Mission.Interface"
+VIA_MENU_CONNECT_BUDGET = 60
+TRACE_SAVE_BUDGET = 120
 # Below this frame count the arm almost certainly never reached steady-state
 # render inside the recording window -- cold-cache mission load (the FIRST arm on
 # a heavy map like mc2_10 pays the load cost), an early crash, or a VK fail-soft
@@ -186,7 +190,8 @@ def vary_list(text) -> "list[str]":
     return [k.strip() for k in (text or "").split(",") if k.strip()]
 
 
-def game_env(arm: str, fixed_timestep: bool, fps_cap, pose, extra_env, via_menu_boot: bool = False) -> dict:
+def game_env(arm: str, fixed_timestep: bool, fps_cap, pose, extra_env, via_menu_boot: bool = False,
+             skip_intro: bool = False) -> dict:
     """The environment the game runs under for a trace: the shell's, minus stray backend variables, plus the harness's settings, the pinned
     drawable size, the arm, and the caller's --env entries (which win). A function of its inputs so the pin is testable without an engine."""
     if arm not in ARMS:
@@ -248,7 +253,7 @@ def game_env(arm: str, fixed_timestep: bool, fps_cap, pose, extra_env, via_menu_
               "fail-softs to GL and you profile the wrong present path.")
     if via_menu_boot:
         # The player's path: no smoke mode (so no fixed timestep and no --mission), the main menu starts the stock campaign itself.
-        via_menu.apply_via_menu_env(env)
+        via_menu.apply_via_menu_env(env, skip_intro=skip_intro)
     for kv in (extra_env or []):
         k, sep, v = kv.partition("=")
         if not sep:
@@ -345,10 +350,75 @@ def pan_camera(channel, half_map, seconds):
         camera_command(channel, command)
 
 
+def mission_ready_anchor(load_rows, active_rows) -> str | None:
+    """Return a rejection reason unless an exact interface event follows a load."""
+    events = []
+    for rows, zone in ((load_rows, MISSION_LOAD_ZONE), (active_rows, MISSION_ACTIVE_ZONE)):
+        matched = []
+        for row in rows:
+            if row.get("name") != zone:
+                continue
+            duration_key = next((k for k in ("ns", "duration_ns", "exec_time_ns", "duration")
+                                 if k in row), None)
+            # An open interface zone cannot anchor readiness, but must not
+            # invalidate an earlier completed interface. Loads stay fail-closed:
+            # an unfinished newer load must not reuse an older load's readiness.
+            if zone == MISSION_ACTIVE_ZONE:
+                if duration_key is None or row[duration_key] in (None, ""):
+                    continue
+                try:
+                    if int(row[duration_key]) <= 0:
+                        continue
+                except (TypeError, ValueError):
+                    return f"{zone}: non-integer duration"
+            if duration_key is None:
+                return f"{zone}: missing duration column"
+            try:
+                matched.append((int(row["ns_since_start"]), int(row[duration_key])))
+            except (KeyError, TypeError, ValueError):
+                return f"{zone}: missing or non-integer timestamp/duration"
+            if matched[-1][1] <= 0:
+                return f"{zone}: non-positive duration (unfinished zone)"
+        if not matched:
+            return ("recording did not cover the mission load" if zone == MISSION_LOAD_ZONE
+                    else "recording has no mission interface event")
+        events.append(matched)
+    for start, _ in sorted(events[1]):
+        loads = [(load_start, duration) for load_start, duration in events[0]
+                 if load_start <= start]
+        if loads:
+            # A prior mission must not mask a newer load still in progress.
+            load_start, duration = max(loads)
+            if start >= load_start + duration:
+                return None
+    return "recording has no mission interface event after the mission load"
+
+
+def mission_ready_in_trace(trace, export_exe) -> str | None:
+    """Fail closed when either unwrapped export cannot prove the readiness anchor."""
+    exports = []
+    for zone in (MISSION_LOAD_ZONE, MISSION_ACTIVE_ZONE):
+        try:
+            # background-launch: allow windowless Tracy csvexport console tool.
+            result = subprocess.run([str(export_exe), "-f", zone, "-u", str(trace)],
+                                    capture_output=True, text=True, timeout=300,
+                                    **nofocus.hidden_kwargs())
+            if result.returncode:
+                return f"{zone}: csvexport exited {result.returncode}"
+            rows = list(csv.DictReader(io.StringIO(result.stdout), strict=True))
+        except (subprocess.TimeoutExpired, OSError, UnicodeError, csv.Error) as exc:
+            return f"{zone}: csvexport failed ({exc})"
+        if not rows:
+            return f"{zone}: empty csvexport output"
+        exports.append(rows)
+    return mission_ready_anchor(*exports)
+
+
 def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path,
                   extra_env=None, pose=None, fixed_timestep=True, fps_cap=None,
                   show_window: bool = True, ticks: int = 0, via_menu_boot: bool = False,
-                  spawn_game=None, post_load: bool = False, capture_arm: str = "default", pan: bool = False) -> int:
+                  spawn_game=None, post_load: bool = False, capture_arm: str = "default", pan: bool = False,
+                  skip_intro: bool = False) -> int:
     """Record one trace under the host lease; retain a caller's existing lease.
 
     Free timestep and an uncapped FPS limit measure renderer throughput.
@@ -361,10 +431,13 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
     out = Path(out).resolve()
     out.parent.mkdir(parents=True, exist_ok=True)
     cap_exe = tracy_exe("tracy-capture.exe")
+    export_exe = tracy_exe("tracy-csvexport.exe") if via_menu_boot else None
 
     if via_menu_boot and ticks:
         sys.exit("ERROR: --via-menu cannot be combined with --ticks (the tick budget is a smoke-mode exit)")
-    env = game_env(arm, fixed_timestep, fps_cap, pose, extra_env, via_menu_boot)   # before the recorder starts: a refused --env must leave nothing running
+    if skip_intro and not via_menu_boot:
+        sys.exit("ERROR: --skip-intro requires --via-menu")
+    env = game_env(arm, fixed_timestep, fps_cap, pose, extra_env, via_menu_boot, skip_intro)   # before the recorder starts: a refused --env must leave nothing running
     if pan:
         if not post_load or seconds < 2:
             raise ValueError("pan requires a post-load window of at least two seconds")
@@ -400,6 +473,7 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
                                      **nofocus.hidden_kwargs())
             cleanup.callback(_stop_capture_child, child)
             return child
+        overall_deadline = time.monotonic() + seconds + 90
         recorder = None if post_load else start_recorder()
         if not post_load:
             time.sleep(1.0)
@@ -444,6 +518,9 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
                                engine_default_workers=owner_affinity,
                                show_window=show_window, small_window=False)
         cleanup.callback(_stop_capture_child, gp)
+        if via_menu_boot:
+            overall_deadline = (time.monotonic() + VIA_MENU_CONNECT_BUDGET + seconds
+                                + max(TRACE_SAVE_BUDGET, seconds))
         if post_load:
             import psutil
             process = psutil.Process(gp.pid)
@@ -484,6 +561,7 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
                 # An acknowledged command proves the first render has finished initializing.
                 camera_command(channel, f"bench_view {half_map[1]} {half_map[1]} -45 5853.4658 12.5\n")
             row["measurement_start_epoch"] = time.time()
+            overall_deadline = time.monotonic() + seconds + 90
             recorder = start_recorder()
             if pan:
                 pan_camera(channel, float(half_map[1]), seconds - 1)
@@ -493,12 +571,30 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
         rc = 0
         intentional_stop = False
         if via_menu_boot or post_load:
-            try:
-                recorder.wait(timeout=seconds + 90)
-                rc = int(bool(recorder.returncode))
-            except subprocess.TimeoutExpired:
-                rc = 1
-            if not rc and recorder.returncode == 0 and gp.poll() is None:
+            if via_menu_boot:
+                game_exited = False
+                while recorder.poll() is None:
+                    now = time.monotonic()
+                    if not game_exited and gp.poll() is not None:
+                        overall_deadline = min(overall_deadline, now + TRACE_SAVE_BUDGET)
+                        game_exited = True
+                    if now >= overall_deadline:
+                        rc = 1
+                        _stop_capture_child(recorder)
+                        _stop_capture_child(gp)
+                        break
+                    time.sleep(.25)
+                else:
+                    rc = int(bool(recorder.returncode))
+            else:
+                try:
+                    recorder.wait(timeout=max(0, overall_deadline - time.monotonic()))
+                    rc = int(bool(recorder.returncode))
+                except subprocess.TimeoutExpired:
+                    rc = 1
+                    _stop_capture_child(recorder)
+                    _stop_capture_child(gp)
+            if recorder.returncode == 0 and gp.poll() is None:
                 intentional_stop = True
                 print(f"[capture] intentional_stop pid={gp.pid} reason=recording_complete")
                 _stop_capture_child(gp)
@@ -513,7 +609,8 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
             gp.kill()
             rc = 1
         try:
-            recorder.wait(timeout=60)
+            recorder.wait(timeout=max(0, overall_deadline - time.monotonic())
+                          if via_menu_boot or post_load else 60)
         except subprocess.TimeoutExpired:
             print(f"WARN: tracy-capture still running -- killing OUR spawned pid "
                   f"{recorder.pid} only", file=sys.stderr)
@@ -538,6 +635,16 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
             size = out.stat().st_size if out.is_file() else 0
             sys.exit(f"ERROR: trace {out} missing or trivial ({size} bytes < "
                      f"{MIN_TRACE_BYTES}); see {cap_log} / {game_log}")
+
+        if via_menu_boot and rc == 0:
+            reason = mission_ready_in_trace(out, export_exe)
+            if reason is not None:
+                ready_logged = re.search(r"^\[MISSION\].*\bphase=mission_ready\s*$", log_text, re.M)
+                diagnostic = ("log shows ready, trace does not: the window ended first, raise --seconds"
+                              if ready_logged else "log does not show ready")
+                print(f"INVALID: no mission_ready inside the recording window ({reason}; "
+                      f"{diagnostic}); see {game_log}", file=sys.stderr)
+                rc = 1
 
         if post_load:
             # Exact per-event frame durations prove the recorder saw gameplay,
@@ -596,7 +703,7 @@ def _capture_arm(args, name, out):
         fixed_timestep=not args.free_timestep, fps_cap=args.fps_cap,
         show_window=args.show_window, ticks=args.ticks, via_menu_boot=args.via_menu,
         post_load=not (args.ticks or args.via_menu), capture_arm=name,
-        pan=args.pan,
+        pan=args.pan, skip_intro=args.skip_intro,
     )
     if rc == 0:
         zone_summary(out, csv_out=out.with_suffix(".zones.csv") if args.csv else None)
@@ -1188,6 +1295,8 @@ def main() -> int:
     c.add_argument("--via-menu", action="store_true",
                    help="launch as a player does (boot, main menu, stock campaign, mission; no smoke mode, no --mission, no fixed timestep). "
                         "--seconds must cover menu + mission load (use 90+); the trace includes the front end. [VIA_MENU v1]/[FIRST60 v1] lines are in the .game.log")
+    c.add_argument("--skip-intro", action="store_true",
+                   help="with --via-menu: skip intro/front-end videos; videos play by default")
     c.add_argument("--ticks", type=int, default=0, help="capture this many headless sim ticks, including mission load; no recorder wall-clock cutoff")
     c.add_argument("--csv", action="store_true", help="also write the full per-zone csvexport table next to the trace (default: top-10 summary only)")
     c.add_argument("-o", "--output", required=True, help="output .tracy path")

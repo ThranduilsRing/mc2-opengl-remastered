@@ -598,6 +598,7 @@ def select_missions(entries, missions):
 
 # Owner rule (game runs are about 15 s of in-mission time): a run with no --duration and no tier-declared duration gets this.
 DEFAULT_DURATION_S = 15
+VIA_MENU_TIMEOUT_S = 300  # Front-end videos, menu and mission load share this budget.
 # A freshly deployed exe rebuilds the model cache on its first launch (~85 s measured 2026-10-27): the load cap gets this much extra once.
 COLD_CACHE_EXTRA_GRACE_S = 120
 
@@ -836,8 +837,10 @@ def main():
               f"{args.duration}s, all gates on. Inner-loop check only; run "
               "full --tier tier1 before milestones.", file=sys.stderr)
 
-    # --duration hard cap: 30 s, 60 for a sim_determinism pair (owner 2026-10-13). Every gate is duration-independent.
-    duration_cap = 60 if args.sim_determinism else 30
+    # Front-end runs include videos/loading; ordinary and determinism caps stay 30/60 s.
+    duration_cap = 60 if args.sim_determinism else (VIA_MENU_TIMEOUT_S if args.via_menu else 30)
+    if args.via_menu and args.duration is None:
+        args.duration = duration_cap
     # Mission test runs explicitly request a simulation budget in minutes.
     # Keep longer wall budgets confined to this headless developer fixture.
     if args.headless and os.environ.get("MC2_PLAY_MISSION") == "1":
@@ -845,7 +848,7 @@ def main():
     if args.duration is not None:
         if args.duration > duration_cap:
             print(f"[runner] ERROR: --duration {args.duration} exceeds the hard "
-                  f"cap of {duration_cap}s (60 only with --sim-determinism).",
+                  f"cap of {duration_cap}s (300 with --via-menu, 60 with --sim-determinism, otherwise 30).",
                   file=sys.stderr)
             sys.exit(2)
 
@@ -1385,7 +1388,7 @@ def main():
         from smoke_lib import via_menu as _via
         timestamp = dt.datetime.now().strftime("%Y-%m-%dT%H-%M-%S-%f") + f"-{os.getpid()}"
         artifact_dir = ARTIFACT_ROOT / timestamp
-        summary = _via.run_via_menu(Path(args.exe), artifact_dir, timeout_s=float(args.duration or 300), skip_intro=args.skip_intro, bay_mission=args.via_bay)
+        summary = _via.run_via_menu(Path(args.exe), artifact_dir, timeout_s=float(args.duration), skip_intro=args.skip_intro, bay_mission=args.via_bay)
         if cold_result is not None:
             summary["cold_cache"] = cold_result
         (artifact_dir / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
