@@ -863,7 +863,7 @@ bool MissionInterfaceManager::uiCmdReadback(UiCmdCtx& c)
 						const auto* mech = static_cast<BattleMech*>(obj);
 						GameObjectPtr attackTarget = pilot ? pilot->getAttackTarget() : nullptr;
 						mc2::fmt::to_buf(b, "  mech: heading_deg={:.3f} torso_yaw_deg={:.3f} target={:d}\n",
-							mech->getRotation(), mech->torsoRotation,
+							m->getRotation(), mech->torsoRotation,
 							mc2::fmt::as_i32(attackTarget ? attackTarget->getPartId() : -1L));
 						extra += b;
 					}
