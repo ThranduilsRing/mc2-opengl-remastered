@@ -4,6 +4,8 @@
 #include <chrono>
 #include <optional>
 #include <string>
+#include <memory>
+#include <new>
 #ifdef _WIN32
 #define NOMINMAX
 #include <windows.h>
@@ -87,6 +89,60 @@ TEST_CASE("LogisticsUI/missing panel suppresses only its own composite") {
     CHECK(bay.composites == 2);
 }
 #ifdef _WIN32
+TEST_CASE("LogisticsUI/launch allocation failure closes acquired handles") {
+    const auto name = L"MC2ImportThrow-" + std::to_wstring(GetCurrentProcessId());
+    ImportJob job;
+    job.start([&]() -> ImportLaunchResult {
+        const ImportLaunchResult::Handle log(CreateEventW(nullptr, TRUE, FALSE, name.c_str()));
+        const ImportLaunchResult::Handle input(CreateEventW(nullptr, TRUE, FALSE, (name + L"-input").c_str()));
+        const ImportLaunchResult::Handle managed(CreateEventW(nullptr, TRUE, FALSE, (name + L"-job").c_str()));
+        if (!log.value || !input.value || !managed.value) return {nullptr, nullptr, 99};
+        throw std::bad_alloc(); // Same unwind as the command's wstring allocation.
+    });
+    job.launch.wait();
+    CHECK(job.launchResult() == 1);
+    CHECK_FALSE(job.valid());
+    for (const auto& objectName : {name, name + L"-input", name + L"-job"}) {
+        const auto remaining = OpenEventW(SYNCHRONIZE, FALSE, objectName.c_str());
+        CHECK(remaining == nullptr);
+        if (remaining) CloseHandle(remaining);
+    }
+}
+TEST_CASE("LogisticsUI/pending launch destruction retains state and closes handles") {
+    struct State {
+        std::promise<void> acquired, destroying;
+        std::wstring name = L"MC2ImportPending-" + std::to_wstring(GetCurrentProcessId());
+        bool created = false;
+    };
+    auto state = std::make_shared<State>();
+    const std::weak_ptr<State> captured = state;
+    {
+        struct PendingJob : ImportJob {
+            State& state;
+            explicit PendingJob(State& value) : state(value) {}
+            ~PendingJob() { state.destroying.set_value(); }
+        } job(*state);
+        job.start([state]() -> ImportLaunchResult {
+            const auto process = CreateEventW(nullptr, TRUE, FALSE, state->name.c_str());
+            const auto managed = CreateEventW(nullptr, TRUE, FALSE, (state->name + L"-job").c_str());
+            state->created = process && managed;
+            state->acquired.set_value();
+            state->destroying.get_future().wait();
+            return {process, managed, 0};
+        });
+        state->acquired.get_future().wait();
+        CHECK(state->created);
+        CHECK(job.launch.wait_for(std::chrono::seconds(0)) == std::future_status::timeout);
+    } // Derived destructor releases launch; base destructor collects and closes its handles.
+    CHECK_FALSE(captured.expired());
+    for (const auto& objectName : {state->name, state->name + L"-job"}) {
+        const auto remaining = OpenEventW(SYNCHRONIZE, FALSE, objectName.c_str());
+        CHECK(remaining == nullptr);
+        if (remaining) CloseHandle(remaining);
+    }
+    state.reset();
+    CHECK(captured.expired());
+}
 TEST_CASE("LogisticsUI/future transfers handles for poll and exit cleanup") {
     for (bool poll : {false, true}) {
         const auto name = L"MC2ImportOwnership-" + std::to_wstring(GetCurrentProcessId()) + (poll ? L"-poll" : L"-exit");

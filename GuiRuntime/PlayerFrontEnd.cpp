@@ -59,6 +59,14 @@ std::map<std::string, std::optional<std::string>> inheritedEnv;
 
 struct ImportLaunchResult {
 #ifdef _WIN32
+    struct Handle {
+        HANDLE value;
+        explicit Handle(HANDLE handle) noexcept : value(handle) {}
+        Handle(const Handle&) = delete;
+        Handle& operator=(const Handle&) = delete;
+        ~Handle() { if (value && value != INVALID_HANDLE_VALUE) CloseHandle(value); }
+        HANDLE release() noexcept { const auto handle = value; value = nullptr; return handle; }
+    };
     HANDLE process = nullptr, job = nullptr;
 #else
     pid_t process = -1;
@@ -123,37 +131,35 @@ void startImport() {
     try { importJob.start([]() -> ImportLaunchResult {
 #ifdef _WIN32
         SECURITY_ATTRIBUTES security{sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE};
-        const auto log = CreateFileW(L"campaign-auto.log", GENERIC_WRITE, FILE_SHARE_READ, &security, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
-        if (log == INVALID_HANDLE_VALUE) return {nullptr, nullptr, static_cast<int>(GetLastError())};
-        const auto input = CreateFileW(L"NUL", GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, &security, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+        const ImportLaunchResult::Handle log(CreateFileW(L"campaign-auto.log", GENERIC_WRITE, FILE_SHARE_READ, &security, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr));
+        if (log.value == INVALID_HANDLE_VALUE) return {nullptr, nullptr, static_cast<int>(GetLastError())};
+        const ImportLaunchResult::Handle input(CreateFileW(L"NUL", GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, &security, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
         STARTUPINFOW startup{};
         startup.cb = sizeof(startup);
         startup.dwFlags = STARTF_USESTDHANDLES;
-        startup.hStdOutput = log;
-        startup.hStdError = log;
-        startup.hStdInput = input;
+        startup.hStdOutput = log.value;
+        startup.hStdError = log.value;
+        startup.hStdInput = input.value;
         PROCESS_INFORMATION process{};
-        const auto job = CreateJobObjectW(nullptr, nullptr);
+        ImportLaunchResult::Handle job(CreateJobObjectW(nullptr, nullptr));
         JOBOBJECT_EXTENDED_LIMIT_INFORMATION limits{};
         limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
-        const bool managed = job && SetInformationJobObject(job, JobObjectExtendedLimitInformation, &limits, sizeof(limits));
+        const bool managed = job.value && SetInformationJobObject(job.value, JobObjectExtendedLimitInformation, &limits, sizeof(limits));
         std::wstring command = L"py -3 tools/import_campaign.py --auto --deploy .";
         // background-launch: trusted campaign converter, no installer execution or window.
         const bool launched = managed && CreateProcessW(nullptr, command.data(), nullptr, nullptr, TRUE,
             DETACHED_PROCESS | IDLE_PRIORITY_CLASS | CREATE_SUSPENDED, nullptr, nullptr, &startup, &process) != 0;
         const auto launchError = GetLastError();
-        CloseHandle(log);
-        if (input != INVALID_HANDLE_VALUE) CloseHandle(input);
-        if (!launched) { if (job) CloseHandle(job); return {nullptr, nullptr, static_cast<int>(launchError)}; }
-        if (!AssignProcessToJobObject(job, process.hProcess)) {
+        if (!launched) return {nullptr, nullptr, static_cast<int>(launchError)};
+        if (!AssignProcessToJobObject(job.value, process.hProcess)) {
             const auto code = GetLastError();
             TerminateProcess(process.hProcess, code);
-            CloseHandle(process.hThread); CloseHandle(process.hProcess); CloseHandle(job);
+            CloseHandle(process.hThread); CloseHandle(process.hProcess);
             return {nullptr, nullptr, static_cast<int>(code)};
         }
         ResumeThread(process.hThread);
         CloseHandle(process.hThread);
-        return {process.hProcess, job, 0};
+        return {process.hProcess, job.release(), 0};
 #else
         pid_t child = -1;
         char* const args[] = {const_cast<char*>("python3"), const_cast<char*>("tools/import_campaign.py"),
