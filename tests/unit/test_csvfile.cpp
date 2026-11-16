@@ -288,3 +288,56 @@ TEST_CASE("CSVFile cached reopen matches legacy disk rows and cells")
 		disk.close(); ram.close();
 	}
 }
+
+TEST_CASE("File RAM lines and parent CSV chunk boundaries match disk")
+{
+	struct Temp {
+		std::filesystem::path dir;
+		~Temp() { std::error_code ec; std::filesystem::remove_all(dir, ec); }
+	} temp;
+	do { temp.dir = std::filesystem::temp_directory_path() / ("csv-lines-" + std::to_string(std::random_device{}())); }
+	while (!std::filesystem::create_directory(temp.dir));
+	const auto path = (temp.dir / "input.csv").string();
+	struct Legacy : CSVFile {
+		long openDisk(const char* p) { auto r = File::open(p); return r == NO_ERR ? afterOpen() : r; }
+		unsigned rows() const { return totalRows; }
+		unsigned cols() const { return totalCols; }
+	};
+	std::string inputs[] = { "first\nsecond\n", "first\r\nsecond\r\n", "\n\n", "abcdef\nnext\n",
+		std::string(2046, 'x'), std::string(2047, 'x'), std::string(2048, 'x') };
+	for (const auto& ending : { std::string("\n"), std::string("\r\n") }) {
+		for (unsigned fixture = 0; fixture < 7; ++fixture) {
+			const auto input = fixture < 4 ? inputs[fixture] : inputs[fixture] + ending + "second,row" + ending;
+			CAPTURE(fixture); CAPTURE(ending.size());
+			{ std::ofstream out(path, std::ios::binary); out << input; REQUIRE(out.good()); }
+			for (long limit : { 1L, 3L, 2047L }) {
+				CAPTURE(limit);
+				File disk, ram;
+				REQUIRE(disk.open(path.c_str()) == NO_ERR);
+				REQUIRE(ram.open(input.data(), static_cast<int>(input.size())) == NO_ERR);
+				while (!disk.eof()) {
+					char a[2048]{}, b[2048]{};
+					const auto expected = disk.readLine(reinterpret_cast<MemoryPtr>(a), limit);
+					REQUIRE(ram.readLine(reinterpret_cast<MemoryPtr>(b), limit) == expected);
+					REQUIRE(std::strcmp(a, b) == 0);
+					REQUIRE(ram.getLogicalPosition() == disk.getLogicalPosition());
+					REQUIRE(ram.eof() == disk.eof());
+					if (fixture == 2) { CHECK(expected == 1); CHECK(a[0] == 0); }
+				}
+			}
+			if (fixture < 4) continue;
+			File source;
+			Legacy disk, ram;
+			REQUIRE(source.open(path.c_str()) == NO_ERR);
+			REQUIRE(disk.openDisk(path.c_str()) == NO_ERR);
+			REQUIRE(ram.open(&source, source.fileSize(), -1) == NO_ERR);
+			REQUIRE(ram.rows() == disk.rows()); REQUIRE(ram.cols() == disk.cols());
+			for (unsigned row = 1; row <= disk.rows() + 1; ++row) for (unsigned col = 0; col <= disk.cols() + 1; ++col) {
+				CAPTURE(row); CAPTURE(col); char a[2048]{}, b[2048]{};
+				const auto expected = disk.readString(row, col, a, sizeof(a) - 1);
+				REQUIRE(ram.readString(row, col, b, sizeof(b) - 1) == expected);
+				REQUIRE(std::strcmp(a, b) == 0);
+			}
+		}
+	}
+}

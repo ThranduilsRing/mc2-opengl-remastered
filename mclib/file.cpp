@@ -1101,7 +1101,7 @@ long File::readLine (MemoryPtr buffer, long maxLength)
 			if ( logicalPosition > fileSize() )
 				return READ_PAST_EOF_ERR;
 
-			if (logicalPosition < fileSize() && readAddress[i - 1] == '\r' && readAddress[i] == '\n')
+			if (i - 1 < maxLength && logicalPosition < fileSize() && readAddress[i - 1] == '\r' && readAddress[i] == '\n')
 				logicalPosition+=1;
 		}
 		else

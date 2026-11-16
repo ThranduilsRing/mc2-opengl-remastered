@@ -720,7 +720,7 @@ long CSVFile::seekRowCol (DWORD row, DWORD col)
 			if (lf) skip = std::min(skip, static_cast<unsigned long>(lf - begin));
 			at += skip + 1;
 			// Match readLine's CR/LF and 2047-byte chunk boundaries exactly.
-			if (skip < count && begin[skip] == '\r' && at < size && fileImage[at] == '\n') ++at;
+			if (skip < 2047 && at < size && begin[skip] == '\r' && fileImage[at] == '\n') ++at;
 		}
 		if (at < size) {
 			seek(at);
