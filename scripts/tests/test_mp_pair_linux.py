@@ -11,9 +11,11 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import run_mp_pair_linux as pair
 
+POPEN_CLASS = subprocess.Popen
 
 def options(tmp_path, **changes):
-    values = dict(install=tmp_path, out=tmp_path / "proof", ticks=64, port=23460, timeout=5, combat=False)
+    values = dict(install=tmp_path, out=tmp_path / "proof", ticks=64, port=23460, timeout=5, combat=False,
+                  loss=0, latency=0, jitter=0, stall_ms=0, stall_tick=30, kill_peer=None, kill_tick=30)
     values.update(changes)
     return argparse.Namespace(**values)
 
@@ -34,7 +36,7 @@ def test_argv_environment_and_fixture_per_role(tmp_path, monkeypatch, slot, comb
     argv, env = pair.peer_command(args, peer, slot)
     assert argv == [str(tmp_path / "mc2"), "--mission", "mc2_01", "--profile", "tier1",
                     "--duration", "5", "--ticks", "64", "--host" if slot == 0 else "--join",
-                    "127.0.0.1:23460", "--mp-user-dir", str(peer), "--headless"]
+                    f"127.0.0.1:{23460 + slot}", "--mp-user-dir", str(peer), "--headless"]
     assert all(env[key] == value for key, value in dict(MC2_SMOKE_FIXED_TIMESTEP="1",
                MC2_SIM_IDENTITY_TRACE="1", MC2_FORCE_ALL_VISIBLE="0", MC2_DETERMINISTIC_RNG="1", MC2_RNG_SEED="12345").items())
     assert env["MC2_DIAGNOSTIC_TRACE_FILE"] == str(peer / "diagnostic.jsonl")
@@ -84,8 +86,23 @@ def fake_peer(tmp_path, monkeypatch):
 p = argparse.ArgumentParser()
 p.add_argument('--mp-user-dir')
 p.add_argument('--ticks', type=int)
-a, _ = p.parse_known_args()
+a, unknown = p.parse_known_args()
 root = pathlib.Path(a.mp_user_dir)
+if os.environ.get('PAIR_FAKE_RELAY'):
+    import socket
+    host = '--host' in unknown
+    address = unknown[unknown.index('--host' if host else '--join') + 1]
+    endpoint = ('127.0.0.1', int(address.rsplit(':', 1)[1]))
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as relay:
+        relay.settimeout(2)
+        if host:
+            relay.bind(endpoint)
+            packet, client = relay.recvfrom(100)
+            relay.sendto(packet, client)
+        else:
+            time.sleep(0.1)
+            relay.sendto(b'fault proof', endpoint)
+            assert relay.recvfrom(100)[0] == b'fault proof'
 assert (root / 'orders.txt').is_file()
 assert os.environ['MC2_SAVE_DIR'] == str(root / 'saves')
 assert os.environ['MC2_DIAGNOSTIC_TRACE_FILE'] == str(root / 'diagnostic.jsonl')
@@ -153,3 +170,71 @@ def test_owned_children_reaped_on_every_exit(tmp_path, monkeypatch, fake_peer, f
         assert all(proc.returncode != 0 for proc in fake_peer)
     if failure in ("peer-dies", "short-peer"):
         assert fake_peer[1].returncode != 0
+
+
+@pytest.mark.parametrize("fault", ["--loss=100", "--loss=-1", "--latency=-1", "--latency=inf",
+    "--loss=nan", "--jitter=1", "--stall-ms=-1", "--stall-ms=1 --stall-tick=0",
+    "--stall-ms=1 --stall-tick=64", "--kill-peer=client --kill-tick=0",
+    "--kill-peer=host --kill-tick=64", "--port=65535"])
+def test_shared_fault_bounds(tmp_path, fault):
+    with pytest.raises(SystemExit):
+        pair.main(["--install", str(tmp_path), "--out", str(tmp_path / "out"), "--ticks", "64", *fault.split()])
+
+
+def test_shared_validation_and_fault_forwarding(tmp_path, monkeypatch):
+    import run_mp_loopback_proof as windows
+    assert pair.arguments is windows.arguments and pair.ClientShim is windows.ClientShim
+    captured = []
+    monkeypatch.setattr(pair, "run_pair", lambda args: captured.append(args) or {"result": "PASS"})
+    assert pair.main(["--install", str(tmp_path), "--out", str(tmp_path / "out"), "--ticks", "3000",
+        "--loss", "2", "--latency", "60", "--jitter", "20", "--stall-ms", "2000",
+        "--stall-tick", "1500", "--kill-peer", "host", "--kill-tick", "1500"]) == 0
+    args = captured[0]
+    assert (args.loss, args.latency, args.jitter, args.stall_ms, args.stall_tick,
+            args.kill_peer, args.kill_tick) == (2, 60, 20, 2000, 1500, "host", 1500)
+
+
+@pytest.mark.skipif(os.name == "nt", reason="Linux UDP relay integration runs on the box")
+def test_client_relay_forwards_both_directions(tmp_path, monkeypatch, fake_peer):
+    monkeypatch.setenv("PAIR_FAKE_RELAY", "1")
+    verdict = pair.run_pair(options(tmp_path, latency=10, jitter=2))
+    assert verdict["result"] == "PASS", verdict
+    assert verdict["faults"]["forwarded"] == 2
+    assert 8 <= verdict["faults"]["delay_min_ms"] <= verdict["faults"]["delay_max_ms"] <= 12
+
+
+@pytest.mark.parametrize("victim", ["host", "client"])
+def test_kill_waits_for_survivor_independent_shutdown(tmp_path, monkeypatch, fake_peer, victim):
+    monkeypatch.setenv("PAIR_FAKE_HANG", "1")
+    real_poll = POPEN_CLASS.poll
+    detected = []
+    injected = []
+    real_kill = POPEN_CLASS.kill
+
+    def kill(proc):
+        injected.append(proc.pid)
+        return real_kill(proc)
+
+    def poll(proc):
+        rc = real_poll(proc)
+        if len(fake_peer) == 2 and injected and proc.pid != injected[0] and rc is None:
+            detected.append(proc.pid)
+            # Simulate an engine observing the peer loss after several relay cycles.
+            if len(detected) == 5:
+                real_kill(proc)
+                proc.wait()
+                proc.returncode = 3
+                peer = tmp_path / "proof" / "session" / ("client" if victim == "host" else "host")
+                with (peer / "session.trace").open("a") as log:
+                    log.write("STOP MP peer disconnected\n")
+                rc = 3
+        return rc
+
+    monkeypatch.setattr(POPEN_CLASS, "kill", kill)
+    monkeypatch.setattr(POPEN_CLASS, "poll", poll)
+    verdict = pair.run_pair(options(tmp_path, kill_peer=victim))
+    assert verdict["result"] == "PASS", verdict
+    assert len(injected) == 1 and len(detected) >= 5
+    assert verdict["cleanup_kill"] == [False, False]
+    assert verdict["events"][0]["event"] == "kill"
+    assert verdict["peer_loss_shutdown_seconds"] < 20
