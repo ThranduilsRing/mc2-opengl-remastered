@@ -25,6 +25,12 @@
 
 #include <cstring>
 #include <string>
+#include <algorithm>
+#include <chrono>
+#include <cstdio>
+#include <cstdlib>
+#include <fstream>
+#include <sstream>
 
 #ifndef MC2_TEST_FIXTURE_DIR
 #error "MC2_TEST_FIXTURE_DIR must be defined by tests/unit/CMakeLists.txt"
@@ -235,14 +241,50 @@ TEST_CASE("CSVFile RAM row scans match the disk parser")
 	File source;
 	REQUIRE(source.open(path.c_str()) == NO_ERR);
 	CSVFile memory, disk;
+	struct LegacyCsv : CSVFile {
+		long openDisk(const char* name) {
+			const auto result = File::open(name);
+			return result == NO_ERR ? afterOpen() : result;
+		}
+	} legacy;
 	REQUIRE(memory.open(&source, source.fileSize(), -1) == NO_ERR);
 	REQUIRE(disk.open(path.c_str()) == NO_ERR);
+	REQUIRE(legacy.openDisk(path.c_str()) == NO_ERR);
 	for (unsigned row = 1; row <= 8; ++row) {
 		for (unsigned col = 0; col <= 14; ++col) {
 			char a[256]{}, b[256]{};
 			const auto expected = disk.readString(row, col, a, sizeof(a) - 1);
 			CHECK(memory.readString(row, col, b, sizeof(b) - 1) == expected);
 			if (expected == NO_ERR) CHECK(strcmp(a, b) == 0);
+			CHECK(legacy.readString(row, col, b, sizeof(b) - 1) == expected);
+			if (expected == NO_ERR) CHECK(strcmp(a, b) == 0);
 		}
 	}
+}
+TEST_CASE("CSVFile real variant input dumps match disk and RAM")
+{
+	const char* temp = std::getenv("TEMP"); REQUIRE(temp != nullptr); const std::string root = std::string(temp) + "/csv-ram-image-1";
+	const auto bare = root + "-bare-cr.csv", empty = root + "-empty.csv";
+	{ std::ofstream(bare, std::ios::binary) << "A,B,C\rX,Y,Z\r"; std::ofstream(empty, std::ios::binary); }
+	const char* inputs = std::getenv("INTRO_CSV_PARITY_FILES");
+	std::istringstream paths((inputs ? std::string(inputs) : fixturePath("buildings_smoke.csv")) + ";" + bare + ";" + empty);
+	std::string path;
+	while (std::getline(paths, path, ';')) {
+		struct Legacy : CSVFile { long openDisk(const char* p) { auto r = File::open(p); return r == NO_ERR ? afterOpen() : r; } unsigned rows() const { return totalRows; } } disk;
+		Legacy ram;
+		REQUIRE(disk.openDisk(path.c_str()) == NO_ERR); REQUIRE(ram.open(path.c_str()) == NO_ERR); CHECK(ram.rows() == disk.rows());
+		unsigned columns = 1, width = 1; char ch; std::ifstream raw(path, std::ios::binary);
+		while (raw.get(ch)) { if (ch == ',') ++columns; width = (std::max)(width, columns); if (ch == '\r' || ch == '\n') columns = 1; }
+		auto dump = [&](CSVFile& file) { std::ostringstream out;
+			for (unsigned row = 1; row <= disk.rows() + 1; ++row) for (unsigned col = 0; col <= width + 1; ++col) {
+				char value[2048]{}; auto result = file.readString(row, col, value, sizeof(value) - 1);
+				out << row << ',' << col << ',' << result << ':' << value << '\n';
+			} return out.str(); };
+		const auto begin = std::chrono::steady_clock::now(); const auto before = dump(disk);
+		const auto middle = std::chrono::steady_clock::now(); const auto after = dump(ram); const auto end = std::chrono::steady_clock::now();
+		CHECK(before == after);
+		std::printf("CSV_PARITY path=%s disk_ms=%.3f ram_ms=%.3f equal=%d\n", path.c_str(), std::chrono::duration<double, std::milli>(middle - begin).count(), std::chrono::duration<double, std::milli>(end - middle).count(), before == after);
+		if (const char* output = std::getenv("INTRO_CSV_DUMP_DIR")) { const auto stem = std::string(output) + "/" + std::to_string(std::hash<std::string>{}(path)); std::ofstream(stem + ".before.txt") << before; std::ofstream(stem + ".after.txt") << after; }
+	}
+	std::remove(bare.c_str()); std::remove(empty.c_str());
 }

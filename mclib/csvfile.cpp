@@ -620,7 +620,34 @@ long CSVFile::open (mc2::czstring fName, FileMode _mode, long numChild)
 	long result = File::open(fName,_mode,numChild);
 	if (result != NO_ERR)
 		return(result);
-		
+
+	// Archive CSVs already own an image. Give loose/VFS CSVs the same parser
+	// path: seeking every cell through the OS otherwise rescans every row.
+	if (_mode == READ && !inRAM) {
+		const long bytes = getLength();
+		if (bytes < 0 || bytes > 512 * 1024 * 1024) { close(); return FILE_NOT_OPEN; }
+		m_ownedImage.assign(static_cast<size_t>(bytes) + 1, 0);
+		if (read(m_ownedImage.data(), bytes) != bytes) {
+			close();
+			return FILE_NOT_OPEN;
+		}
+		// Disk readLine skips a byte after every CR, even without an LF.
+		// Keep that legacy dialect on disk rather than changing its cells.
+		bool bareCr = false;
+		for (long at = 0; at < bytes; ++at) {
+			if (m_ownedImage[at] == '\r' && m_ownedImage[at + 1] != '\n') {
+				bareCr = true;
+				break;
+			}
+		}
+		if (bareCr) {
+			m_ownedImage.clear();
+		} else {
+			fileImage = m_writableImage = m_ownedImage.data();
+			inRAM = true;
+			physicalLength = static_cast<unsigned long>(bytes);
+		}
+	}
 	seek(0);
 
 	result = afterOpen();
