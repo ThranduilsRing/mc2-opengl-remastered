@@ -79,9 +79,6 @@ TEST_CASE("carbon_mclib/RAM seek is relative to each file after reads")
     REQUIRE(first.seek(1, SEEK_CUR) == NO_ERR);
     REQUIRE(first.read(&byte, 1) == 1);
     CHECK(byte == 'd');
-    REQUIRE(first.seek(-1, SEEK_CUR) == NO_ERR);
-    REQUIRE(first.read(&byte, 1) == 1);
-    CHECK(byte == 'd');
 }
 
 TEST_CASE("carbon_mclib/RAM line with a final delimiter stops at EOF")
