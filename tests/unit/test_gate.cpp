@@ -70,6 +70,11 @@ TEST_CASE("called shot/default floors and both aimed-hit paths; kill-switch rest
 #include <stdlib.h>
 #include <process.h>   // _spawnl: the strict-exit test runs this exe again
 #include <windows.h>   // GetModuleFileNameA
+#else
+#include <spawn.h>
+#include <sys/wait.h>
+#include <unistd.h>
+extern char** environ;
 #endif
 
 namespace gate = mc2::gate;
@@ -848,37 +853,52 @@ TEST_CASE("strict_exit_child") {
     if (std::getenv("MC2_CONFIG_STRICT") != nullptr) FAIL("dumpConfig returned under strict mode");
 }
 
+#endif
+
 TEST_CASE("diagnostic_trace/concurrent_shutdown") {
     constexpr const char* testName = "-tc=diagnostic_trace/concurrent_shutdown";
     if (!std::getenv("DIAG_TRACE_TEST_CHILD")) {
-        char exe[MAX_PATH]{};
-        REQUIRE(GetModuleFileNameA(nullptr, exe, MAX_PATH) > 0);
         EnvVar child("DIAG_TRACE_TEST_CHILD");
         child.set("1");
+#ifdef _WIN32
+        char exe[MAX_PATH]{};
+        REQUIRE(GetModuleFileNameA(nullptr, exe, MAX_PATH) > 0);
         CHECK(_spawnl(_P_WAIT, exe, exe, testName, nullptr) == 0);
+#else
+        char* args[] = {const_cast<char*>("/proc/self/exe"), const_cast<char*>(testName), nullptr};
+        pid_t pid{};
+        REQUIRE(posix_spawn(&pid, args[0], nullptr, nullptr, args, environ) == 0);
+        int status{};
+        REQUIRE(waitpid(pid, &status, 0) == pid);
+        CHECK(status == 0);
+#endif
         return;
     }
+#ifdef _WIN32
     char temp[MAX_PATH]{};
     REQUIRE(GetTempPathA(MAX_PATH, temp) > 0);
     const std::string path = std::string(temp) + "mc2-diag-" + std::to_string(GetCurrentProcessId()) + ".jsonl";
+#else
+    const char* temp = std::getenv("TMPDIR");
+    REQUIRE(temp != nullptr);
+    const std::string path = std::string(temp) + "/mc2-diag-" + std::to_string(getpid()) + ".jsonl";
+#endif
     EnvVar output("MC2_DIAGNOSTIC_TRACE_FILE"), tags("MC2_DIAG_TAGS");
     output.set(path.c_str()); tags.set("CONFIG");
     gate::invalidateAll();
-    std::atomic<bool> ready{false}, go{false};
+    mc2_diag::init("concurrent-shutdown", 0);
+    std::atomic<bool> active{false}, stop{false};
     std::thread worker([&] {
-        ready.store(true);
-        while (!go.load()) std::this_thread::yield();
-        for (int i = 0; i < 256; ++i) {
+        for (int i = 0; !stop.load(); ++i) {
             (void)mc2_diag::enabled();
             (void)mc2_diag::tagEnabled("CONFIG");
-            mc2_diag::writeEvent("CONFIG", 1, i, "{}");
+            if (mc2_diag::writeEvent("CONFIG", 1, i, "{}")) active.store(true);
             mc2_diag::flush();
         }
     });
-    while (!ready.load()) std::this_thread::yield();
-    go.store(true);
-    mc2_diag::init("concurrent-shutdown", 0);
+    while (!active.load()) std::this_thread::yield();
     mc2_diag::shutdown();
+    stop.store(true);
     worker.join();
     CHECK_FALSE(mc2_diag::enabled());
     CHECK_FALSE(mc2_diag::tagEnabled("CONFIG"));
@@ -886,6 +906,7 @@ TEST_CASE("diagnostic_trace/concurrent_shutdown") {
     CHECK(std::remove(path.c_str()) == 0);
 }
 
+#ifdef _WIN32
 TEST_CASE("an unregistered MC2_ variable under MC2_CONFIG_STRICT=1 ends the process with exit code 78") {
     char exe[MAX_PATH] = {0};
     REQUIRE(GetModuleFileNameA(nullptr, exe, MAX_PATH) > 0);
