@@ -10,10 +10,11 @@
 #include <cstring>
 #include <functional>
 #include <expected>
+#include <cstdlib>
 
 namespace {
 using namespace mc2pkg;
-const auto root = std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
+const auto root = std::filesystem::path(MC2_LAYOUT_SOURCE_ROOT);
 struct MemFit {
     std::string bytes;
     FitIniFile file;
@@ -199,6 +200,43 @@ TEST_CASE("chassis_layout: production FIT adapter old save and exact v1 v2 v1 co
     CHECK_FALSE(readLocationVariant(truncated.file)); CHECK(read.items.size() == 3);
     record.edited = true; CHECK_FALSE(mapLocationsToLegacy(record, specs, 1, 1));
     CHECK(record.classicReadOnly); CHECK(record.items[0].x == original[0].x);
+}
+
+TEST_CASE("chassis_layout: installed stock variants production save round trip") {
+    const auto* install = std::getenv("MC2_GATE_INSTALL");
+    if (!install) { MESSAGE("installed corpus unavailable; MC2_GATE_INSTALL unset"); return; }
+    const auto directory = std::filesystem::path(install) / "data" / "objects";
+    REQUIRE(std::filesystem::is_directory(directory));
+    int chassis = 0, variants = 0, items = 0;
+    const auto path = std::filesystem::temp_directory_path() / "mc2_installed_variant.fit";
+    for (const auto& entry : std::filesystem::directory_iterator(directory)) {
+        if (entry.path().extension() != ".csv") continue;
+        const auto rows = csv(entry.path()); bool found = false;
+        for (std::size_t start = 0; start < rows.size(); ++start) {
+            if (rows[start].empty() || rows[start][0] != "VariantInfo") continue;
+            CAPTURE(entry.path().filename().string(), start); found = true; ++variants;
+            LocationVariant original;
+            for (auto n = start + 1; n < rows.size() && rows[n][0] != "ComponentPlacement"; ++n) {
+                const auto& row = rows[n]; if (row.size() < 5 || row[0].find("Item") != 0) continue;
+                const int id = static_cast<int>(numeric(row[4])); if (id == 255) continue;
+                original.items.push_back({id, static_cast<int>(numeric(row[2])), static_cast<int>(numeric(row[3])), 1});
+            }
+            items += static_cast<int>(original.items.size());
+            FitIniFile saved; REQUIRE(saved.create(path.string().c_str()) == NO_ERR); saved.writeBlock("Variant0");
+            REQUIRE(writeLocationVariant(saved, original)); saved.close();
+            REQUIRE(saved.open(path.string().c_str()) == NO_ERR); REQUIRE(saved.seekBlock("Variant0") == NO_ERR);
+            auto restored = readLocationVariant(saved); REQUIRE(restored); REQUIRE(restored->items.size() == original.items.size());
+            for (std::size_t n = 0; n < original.items.size(); ++n) {
+                CHECK(restored->items[n].id == original.items[n].id);
+                CHECK(restored->items[n].x == original.items[n].x); CHECK(restored->items[n].y == original.items[n].y);
+                CHECK(restored->items[n].legacyLocation == original.items[n].legacyLocation);
+            }
+            saved.close(); std::filesystem::remove(path);
+        }
+        chassis += found;
+    }
+    CHECK(chassis == 68); CHECK(variants == 146);
+    std::cout << "INSTALLED_CHASSIS_CORPUS chassis=" << chassis << " variants=" << variants << " items=" << items << '\n';
 }
 
 TEST_CASE("chassis_layout: every repository stock designer variant uses exact CSV placement") {

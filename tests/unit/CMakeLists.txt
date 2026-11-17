@@ -755,7 +755,9 @@ file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/layout_deployment.inc"
 mc2_height_slice(layout_accept code/logisticsdata_modify.cpp
     "std::expected<void, int> LogisticsData::acceptMechModifications(" "\n\tbool bFound = 0;")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/layout_accept.inc" CONTENT "${layout_accept}\nreturn {};\n}\n")
-set_source_files_properties(test_chassis_layout.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
+set_source_files_properties(test_chassis_layout.cpp PROPERTIES
+    INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}"
+    COMPILE_DEFINITIONS "MC2_LAYOUT_SOURCE_ROOT=\"${MC2_WORKTREE_ROOT}\"")
 mc2_height_slice(carbon_leg_armor code/mech.cpp "\t\tcurLeg =" "\n\t\tarmorEffect = armorHead")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/carbon_leg_armor.inc" CONTENT "${carbon_leg_armor}")
 mc2_height_slice(carbon_difficulty code/mover_attack.cpp "\tif (!MPlayer && (getCommanderId()" "\n\tfloat distanceToTarget")
