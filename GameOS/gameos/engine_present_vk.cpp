@@ -1129,9 +1129,18 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
     const size_t baseBytes = static_cast<size_t>(d.textureWidth) * d.textureHeight * 4u;
     const VkDeviceSize bytes = mipmapped ? (baseBytes * 4u - 4u) / 3u : baseBytes;
     const bool needsUpload = m.serial != d.textureSerial || m.width != d.textureWidth ||
-                             m.height != d.textureHeight || m.bytes != bytes || !m.buffer;
+                             m.height != d.textureHeight || m.bytes != bytes || !m.buffer ||
+                             (m.preparedSource && m.preparedSource != d.textureRgba);
     if (!needsUpload && m.sceneGeneration == sceneGeneration)
+    {
+        if (uploads && mipmapped && !m.firstDrawLogged) {
+            std::fprintf(stderr, "[HUD_FIRST_DRAW] handle=%u serial=%u kind=%u frame=%llu prepared=%d\n",
+                d.textureHandle, d.textureSerial, d.kind, static_cast<unsigned long long>(s.hudMirrorFrameCounter),
+                static_cast<int>(m.preparedSource == d.textureRgba));
+            m.firstDrawLogged = true;
+        }
         return &m;
+    }
     // VK-HUD-MIRRORCOPY-1: the draw carries a shared immutable mirror (refcount
     // bump at queue time); bytes are only dereferenced HERE, on a (handle,serial)
     // change — the >99.9% no-upload case never touches them.
@@ -1139,6 +1148,12 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
     if (!d.textureRgba || d.textureRgba->size() < baseBytes)
         return nullptr;
     ZoneScopedN("HUD.TextureUpload");
+    if (uploads && mipmapped) {
+        ZoneScopedN("HUD.TextureUpload.SynchronousFallback");
+        std::fprintf(stderr, "[HUD_SYNC_FALLBACK] handle=%u serial=%u kind=%u frame=%llu\n",
+            d.textureHandle, d.textureSerial, d.kind, static_cast<unsigned long long>(s.hudMirrorFrameCounter));
+    }
+    m.preparedSource.reset();
     ZoneValue(d.textureHandle);
     char textureInfo[128];
     const int textureInfoSize = std::snprintf(textureInfo, sizeof(textureInfo), "handle=%u serial=%u size=%ux%u kind=%u", d.textureHandle, d.textureSerial, d.textureWidth, d.textureHeight, d.kind);
@@ -1227,7 +1242,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
     {
         const uint64_t now = s.hudMirrorFrameCounter;
         for (auto it = s.hudTextureMirrors.begin(); it != s.hudTextureMirrors.end(); ) {
-            if (it->second.lastFrame + kHudMirrorIdleFrames < now) {
+            if (!it->second.preparedSource && it->second.lastFrame + kHudMirrorIdleFrames < now) {
                 // Idle long enough to count as gone: its descriptor set and buffer leave through the deferred-destroy queue, so a present submit
                 // that is still reading them keeps them alive (a ticket, not the idle window, is the proof).
                 auto& m = it->second;
@@ -2000,9 +2015,22 @@ bool EnginePresentVk::renderNativeCsmShadowDebugOverlay(void* csmArrayView, int 
     return true;
 }
 
+bool EnginePresentVk::prepareHudTexture(const VkHudDraw& draw) {
+    if (!created_ || !impl_ || !draw.textureRgba ||
+        draw.textureRgba->size() != static_cast<size_t>(draw.textureWidth) * draw.textureHeight * 4u)
+        return false;
+    ZoneScopedN("HUD.LoadPrepare");
+    auto* mirror = ensureHudTextureMirror(*impl_, draw, nullptr);
+    if (!mirror) return false;
+    mirror->preparedSource = draw.textureRgba;
+    return true;
+}
+
 bool EnginePresentVk::prewarmPipelines() {
     if (!created_ || !impl_) return false;
     Impl& s=*impl_;
+    // Previous mission's prepared buffers can retire through the normal ticket path.
+    for (auto& entry : s.hudTextureMirrors) entry.second.preparedSource.reset();
     const bool ready = ensureCompositeObjects(s) && ensureHudColorObjects(s) && ensureHudTexObjects(s) &&
         (!ImGui::GetCurrentContext() || ensureImguiVulkan(s)) &&
         s.spatialAA.prepare(*s.ctx, s.scaledComposite.image ? s.scaledComposite : s.sharedImg,

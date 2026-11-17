@@ -146,6 +146,7 @@ public:
     // GuiRuntime can hand draw data to the present owner without learning Vulkan.
     bool prepareImguiVulkanFrame();
     bool prewarmPipelines();
+    bool prepareHudTexture(const VkHudDraw& draw);
     bool renderImguiVulkanDrawData(ImDrawData* drawData);
     bool imguiVulkanReady() const;
     void shutdownImguiVulkanRenderer();

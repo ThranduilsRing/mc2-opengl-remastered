@@ -11,11 +11,33 @@
 #include "ui_texture.h"
 #include "vulkan_context.h"
 #include "vk_texture_residency.h"
+#include "engine_present_vk.h"
 #include "utils/mc2log.h"
 
 
 
 gosRenderer* g_gos_renderer = nullptr;
+
+// Mission finalization owns both the renderer and the immutable source snapshots.
+void gosRendererPrepareHudTextures() {
+    if (!g_gos_renderer) return;
+    auto& present = getOrCreateEnginePresentVk();
+    for (size_t handle = 1; handle < g_gos_renderer->getTextureListSize(); ++handle) {
+        auto* texture = g_gos_renderer->getTexture(static_cast<DWORD>(handle));
+        if (!texture) continue;
+        gosTextureInfo info;
+        texture->getTextureInfo(&info);
+        if (info.width_ != 2048 || info.height_ != 2048 || !texture->ensureRgbaMirror()) continue;
+        VkHudDraw draw;
+        draw.textureHandle = static_cast<uint32_t>(handle);
+        draw.textureSerial = texture->getContentSerial();
+        draw.textureWidth = draw.textureHeight = 2048;
+        draw.textureRgba = texture->getRgbaMirror();
+        const bool ready = present.prepareHudTexture(draw);
+        std::fprintf(stderr, "[HUD_LOAD_PREPARE] handle=%u serial=%u asset=%s ready=%d\n",
+            draw.textureHandle, draw.textureSerial, texture->sourceName(), static_cast<int>(ready));
+    }
+}
 
 static bool isAllConcreteTerrainBatch(const gos_VERTEX* vertices, int count) {
     if (!vertices || count <= 0)

@@ -162,6 +162,8 @@ struct EnginePresentVk::Impl {
         VkDeviceSize bytes = 0;
         VkDescriptorSet set = VK_NULL_HANDLE;
         uint64_t lastFrame = 0;      // VK-HUD-GLYPH-CORRUPTION: eviction watermark
+        std::shared_ptr<const std::vector<uint8_t>> preparedSource;
+        bool firstDrawLogged = false;
     };
     // VK-HUD-GLYPH-CORRUPTION FIX: keyed by (textureHandle<<32 | textureSerial), NOT
     // handle alone. The game re-bakes many distinct runtime strings into ONE reused GL

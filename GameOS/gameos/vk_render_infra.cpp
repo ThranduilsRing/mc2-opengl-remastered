@@ -745,4 +745,6 @@ bool deviceLostLatched() { return state().lossReported.load(); }
 }
 void mc2PrewarmMissionPipelines() {
     if(auto* post=getGosPostProcess()) mc2vk::infra::prewarm(post->getWidth(),post->getHeight());
+    extern void gosRendererPrepareHudTextures();
+    gosRendererPrepareHudTextures();
 }
