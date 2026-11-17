@@ -1214,9 +1214,16 @@ def keep_stock_copy(install, head, candidate=None, root=None):
     return candidate
 
 
-def execute_window(steps, head, dry_run=False, keep_going=False, farm_determinism=False, keep_candidate=False, on_result=None):
+def execute_window(steps, head, dry_run=False, keep_going=False, farm_determinism=False, keep_candidate=False, on_result=None, install=None):
     """Prove a private candidate. Publishing to v0.4 is a separate step (--publish) that runs after the montage has been viewed.
     on_result(rc) runs before the candidate cleanup, so the durable verdict exists even if cleanup fails or hangs."""
+    if install is not None:
+        if not dry_run and any(n.startswith("capture-before") and not e.get("MC2_GATE_SKIP_REASON") for n, _, e in steps):
+            stage_published(install)
+        rc = execute_parallel(steps, head, dry_run, keep_going, farm_determinism=farm_determinism)
+        if on_result:
+            on_result(rc)
+        return rc
     deploy = next((s for s in steps if s[0] == "deploy"), None)
     scheduling = dict(farm_determinism=True) if farm_determinism else {}
     if not deploy or deploy[2].get("MC2_GATE_SKIP_REASON"):
@@ -1739,6 +1746,20 @@ def game_batch():
             pass
 
 
+def check_capture_commit(name, command, head):
+    """Reject candidate-as-baseline and stale after captures before launch or reuse."""
+    if not name.startswith(EXCLUSIVE_PREFIXES):
+        return
+    from exe_fingerprint import extract, sha_agrees
+    install = Path(command[command.index("--install") + 1])
+    fp = extract(install / "mc2.exe")
+    commit = fp.get("sha") if fp.get("present") else None
+    same = sha_agrees(commit, head)
+    if same is None or (same if name.startswith("capture-before") else not same):
+        raise RuntimeError(f"{name}: wrong capture src_commit={commit}; HEAD={head}")
+    print(f"[merge_gate] {name} provenance PASS src_commit={commit} HEAD={head}", flush=True)
+
+
 def execute(steps, head, dry_run=False, runner=run_child, completed=None, device=None):
     """Run every stage and return nonzero if any stage failed. device: MC2_VK_DEVICE for this chain's game rows (None = gate GPU)."""
     if not steps:
@@ -1755,6 +1776,17 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
             completed[name] = status
             failed = True
             continue
+        if not dry_run and not overrides.get("MC2_GATE_SKIP_REASON"):
+            try:
+                check_capture_commit(name, command, head)
+            except RuntimeError as exc:
+                status = f"FAIL: {exc}"
+                print(f"[merge_gate] {status}", flush=True)
+                results.append((name, status, 0.0))
+                completed[name] = status
+                ROW_RESULTS[name] = dict(status=status, seconds=0.0)
+                failed = True
+                continue
         if not dry_run and ACTIVE_STATE and ACTIVE_STATE.reusable(name, command, overrides):
             status = "REUSED: gate-state HEAD/exe/signature match"
             if name == 'mods':
@@ -2191,7 +2223,9 @@ def main(argv=None):
                 print(f"[merge_gate] log: {log_path}", flush=True)
                 started = window.get("started", time.time())
                 scheduling = dict(farm_determinism=True) if args.farm_determinism else {}
-                execute_gate = execute_parallel if args.install else execute_window
+                execute_gate = execute_window
+                if args.install:
+                    scheduling["install"] = args.install
                 if args.keep_candidate and not args.install:
                     scheduling["keep_candidate"] = True
                 exe = ROOT / "build64-ninja/mc2.exe"
