@@ -33361,7 +33361,7 @@ String {
 
 String {
     key = "legacy.mc2res.43224"
-    text = "Zoom In"
+    text = "Faster game speed (+ / =)"
     legacyId = 43224
     legacySymbol = "IDS_HOTKEY25"
     source = "mc2res"
@@ -33372,7 +33372,7 @@ String {
 
 String {
     key = "legacy.mc2res.43225"
-    text = "Zoom Out"
+    text = "Slower game speed (-)"
     legacyId = 43225
     legacySymbol = "IDS_HOTKEY26"
     source = "mc2res"

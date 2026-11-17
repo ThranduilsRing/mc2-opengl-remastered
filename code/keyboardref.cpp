@@ -105,8 +105,12 @@ void KeyboardRef::render()
 	GUI_RECT rect = { 0, 0, Environment.screenWidth, Environment.screenHeight };
 	drawRect( rect, 0xff000000 );
 
-	listBox.render();
 	LogisticsScreen::render();
+	// The defs page composites above legacy HUD draws. Put dynamic rows on it.
+	const bool bridged = defsUiPageUsable();
+	if (bridged) aObject::beginGuiBridgeCanvas();
+	listBox.render();
+	if (bridged) aObject::endGuiBridge();
 }
 
 void KeyboardRef::reseed( MissionInterfaceManager::Command* commands )
@@ -133,13 +137,15 @@ void KeyboardRef::reseed( MissionInterfaceManager::Command* commands )
 		}
 	}
 
-	for (int i = 0; i < MAX_COMMAND; i++ )
+	for (int i = 0; i <= MAX_COMMAND; i++ )
 	{
-		if ( commands[i].hotKeyDescriptionText != -1 )
+		const bool wheel = i == MAX_COMMAND;
+		if ( wheel || commands[i].hotKeyDescriptionText != -1 )
 		{
-			cLoadString( commands[i].hotKeyDescriptionText, descText, 127 );
-			long key = commands[i].key;
-			const char* pKey = gos_DescribeKey( (key & 0x000fffff) << 8 );
+			if (wheel) strcpy(descText, "Zoom in / out (mouse wheel only)");
+			else cLoadString( commands[i].hotKeyDescriptionText, descText, 127 );
+			long key = wheel ? 0 : commands[i].key;
+			const char* pKey = wheel ? "Mouse wheel" : gos_DescribeKey( (key & 0x000fffff) << 8 );
 			strcpy( keysString, pKey );
 
 			if ( ((key & SHIFT)) )

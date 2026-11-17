@@ -4,6 +4,7 @@
 #include "mc2fmt.h"
 #include "net/runtime.h"
 #include "sim_speed.h"
+#include "../GameOS/gameos/gos_visual_capture.h"
 #include "../GameOS/gameos/ui_texture.h"
 #include "../mclib/texture_assets.h"
 #include <cmath>
@@ -86,6 +87,8 @@ void ControlGui::setActiveHudTab( int index, const char* via )
 
 void ControlGui::renderSimSpeedButton()
 {
+	// Clean screenshots suppress the legacy HUD batch, not ImGui windows.
+	if (!drawGUIOn || gos::visual_capture::cleanFrame()) return;
 	// This square belongs to specialist orders while such a unit is selected.
 	for (int id : {LAYMINES, REPAIR, SALVAGE, GUARDTOWER})
 		if (getButton(id)->state != ControlButton::HIDDEN) return;
@@ -155,7 +158,7 @@ void ControlGui::renderSimSpeedButton()
 			ink, value, scale, scale);
 	}
 	if (hover)
-		ImGui::SetTooltip("Sim speed: %gx\nClick: faster; right-click / Shift-click: slower.%s",
+		ImGui::SetTooltip("Sim speed: %gx\nClick / +: faster; right-click / Shift-click / -: slower.%s",
 			simSpeedGetMultiplier(), disabled ? "\nUnavailable in multiplayer." : "");
 	HudImGui::endPanel();
 }
