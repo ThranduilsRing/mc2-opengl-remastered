@@ -1,0 +1,7 @@
+Weapon reference: Sarna.net BattleTechWiki (https://www.sarna.net/wiki/).
+
+The weapon descriptions are original project prose informed by these references;
+Sarna sentences and numerical game statistics were not copied.
+Sarna reference text is licensed CC BY-NC-SA 3.0:
+https://creativecommons.org/licenses/by-nc-sa/3.0/
+Individual descriptions retain the requested (attr: sarna.net) credit.

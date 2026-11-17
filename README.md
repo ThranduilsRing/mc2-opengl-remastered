@@ -222,7 +222,6 @@ The tree combines code from several origins. [LICENSES.md](LICENSES.md) has the 
 
 ## Credits
 
-- Weapon reference: Sarna.net BattleTechWiki
 - **Original game:** Microsoft and FASA Interactive (2001), and Microsoft for the shared-source release that makes all of this possible.
 - **alariq** ([alariq/mc2](https://github.com/alariq/mc2)), Thank you, alariq. I would not have started this without your port, and doing it by hand is well beyond what I haved done
 - **Community creators:** [MechCommander Omnitech by magic](https://www.moddb.com/mods/mechcommander-omnitech) and [MC2X by Wolfman](https://mc2x.net/), who have kept this game alive for more than 20 years. There are additional credits in their credit files. If you have read this far, you should read those as well. There are a LOT of people who have contributed to this game over the years. 
