@@ -159,28 +159,30 @@ public static class Program
             var skeleton = a.Skeleton.Load<USkeleton>() ?? throw new InvalidDataException("Animation skeleton unresolved");
             var sk = skeleton.ReferenceSkeleton;
             // The skeleton asset may carry more bones (virtual/IK) than the mesh; bind clip tracks to mesh bones by name.
-            var skIndex = new Dictionary<string,int>(StringComparer.Ordinal);
-            for (int i=0;i<sk.FinalRefBoneInfo.Length;i++) skIndex[sk.FinalRefBoneInfo[i].Name.Text] = i;
             var mb = mesh.ReferenceSkeleton.FinalRefBoneInfo;
-            var map = new int[mb.Length];
-            for (int i=0;i<mb.Length;i++)
-            {
-                if (!skIndex.TryGetValue(mb[i].Name.Text,out map[i])) throw new InvalidDataException($"Mesh bone {mb[i].Name.Text} missing from clip skeleton");
-                string? want = mb[i].ParentIndex < 0 ? null : mb[mb[i].ParentIndex].Name.Text;
-                int pi = sk.FinalRefBoneInfo[map[i]].ParentIndex;
-                if (want != (pi < 0 ? null : sk.FinalRefBoneInfo[pi].Name.Text)) throw new InvalidDataException($"Bone parent differs: {mb[i].Name.Text}");
-            }
+            var map = Native.BindBones(mb.Select(b=>(b.Name.Text,b.ParentIndex)).ToArray(),
+                sk.FinalRefBoneInfo.Select(b=>(b.Name.Text,b.ParentIndex)).ToArray());
             var clip = skeleton.ConvertAnims(a).Sequences.Single();
             if (clip.Tracks.Count != sk.FinalRefBoneInfo.Length) throw new InvalidDataException($"Missing bone tracks ({clip.Tracks.Count} vs {sk.FinalRefBoneInfo.Length})");
             var pose = clip.RetargetBasePose ?? sk.FinalRefBonePose;
             var tracks = Enumerable.Range(0,mb.Length).Select(i=>{ var t = clip.Tracks[map[i]]; return new Track(i,
                 Native.Keys(t.KeyPos.Select(v=>Local(v,AnimationScale(sk.GetBoneScale(pose,map[i])))).ToArray(),t.KeyPosTime.Length>0?t.KeyPosTime:t.KeyTime,clip.FramesPerSecond,clip.NumFrames),
                 Native.Keys(t.KeyQuat.Select(Q).ToArray(),t.KeyQuatTime.Length>0?t.KeyQuatTime:t.KeyTime,clip.FramesPerSecond,clip.NumFrames),
-                t.KeyScale.All(v=>v.X==0&&v.Y==0&&v.Z==0) ? new Channel([],[]) : // CUE4Parse reports a zero key for tracks without scale
+                !AuthoredScale(a,map[i]) ? new Channel([],[]) : // CUE4Parse reports a zero key for tracks without authored scale
                 Native.Keys(t.KeyScale.Select(V).ToArray(),t.KeyScaleTime.Length>0?t.KeyScaleTime:t.KeyTime,clip.FramesPerSecond,clip.NumFrames)); }).ToArray();
             Directory.CreateDirectory(Path.Combine(output,"clips"));
             Native.Animation(Path.Combine(output,"clips",Native.Id(a.GetPathName())+".bin"),new(clip.NumFrames,clip.FramesPerSecond,tracks));
             Native.Json(Path.Combine(output,"clips",Native.Id(a.GetPathName())+".json"),new { asset=a.GetPathName(), name=a.Name });
+        }
+
+        // True when the compressed data holds scale keys for this skeleton bone (offset != INDEX_NONE), so an
+        // authored zero scale is kept and only tracks without scale are dropped. Other codecs stay on the bridge.
+        static bool AuthoredScale(UAnimSequence a,int bone)
+        {
+            if (a.CompressedDataStructure is not FUECompressedAnimData u) throw new InvalidDataException("Unsupported animation codec: keep on bridge");
+            int track = Array.FindIndex(a.CompressedTrackToSkeletonMapTable,m=>m.BoneTreeIndex == bone);
+            var o = u.CompressedScaleOffsets;
+            return Native.HasScale(o.OffsetData,o.StripSize,track);
         }
 
         static FVector AnimationScale(FVector scale) =>

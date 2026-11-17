@@ -144,3 +144,57 @@ def test_world_pelvis_distinguishes_root_sign(fixture):
     assert world_rotation_delta(fk(nodes, pose)[2], rest[2]) < 1e-5
     pose[1]["rotation"] = psa_quat_to_gltf(keys[0, 0, 3:7], False)
     assert world_rotation_delta(fk(nodes, pose)[2], rest[2]) > 179.99
+
+
+def test_bridge_output_bytes_unchanged(fixture, tmp_path):
+    # SHA-256 of the bridge-path GLB, measured at base 4e47f3af6 before native input was added.
+    import hashlib
+    skm = fixture[0]
+    B.build(skm, tmp_path, tmp_path / "a.glb", "albedo.png")
+    assert hashlib.sha256((tmp_path / "a.glb").read_bytes()).hexdigest() == \
+        "0e06430f334efa2e7bb54b214d2df9ce11aa29047fd9fce2d69b5284b4b74e85"
+
+
+def test_native_input_matches_bridge_on_fixture(fixture, tmp_path):
+    import base64
+    skm, _, psa, qs, _ = fixture
+    g = json.loads(skm.read_text())
+    blob = bytearray((skm.parent / g["buffers"][0]["uri"]).read_bytes())
+    # Native-style doc: no wrapper node, mesh node under the default scene, one LOD, rotation clip, bridge list.
+    nodes = [{k: ([c - 1 for c in v] if k == "children" else v) for k, v in n.items()} for n in g["nodes"][1:]]
+    nodes.append({"name": "mesh_LOD0", "mesh": 0, "skin": 0})
+    while len(blob) % 4:
+        blob.append(0)
+    times = np.array([0, 1 / 30], np.float32)
+    g["bufferViews"].append({"buffer": 0, "byteOffset": len(blob), "byteLength": 8})
+    blob.extend(times.tobytes())
+    g["accessors"].append({"bufferView": len(g["bufferViews"]) - 1, "componentType": 5126, "type": "SCALAR", "count": 2})
+    tin, samplers, channels = len(g["accessors"]) - 1, [], []
+    for i, q in enumerate(qs):
+        g["bufferViews"].append({"buffer": 0, "byteOffset": len(blob), "byteLength": 32})
+        blob.extend(np.array([q, q], np.float32).tobytes())
+        g["accessors"].append({"bufferView": len(g["bufferViews"]) - 1, "componentType": 5126, "type": "VEC4", "count": 2})
+        samplers.append({"input": tin, "output": len(g["accessors"]) - 1, "interpolation": "LINEAR"})
+        channels.append({"sampler": i, "target": {"node": i, "path": "rotation"}})
+    g.update(nodes=nodes, skins=[{**g["skins"][0], "joints": [0, 1, 2, 3]}], scene=0, scenes=[{"nodes": [0, 4]}],
+             animations=[{"name": "TBR_Stand_ANI", "samplers": samplers, "channels": channels}],
+             extras={"materials": [], "loadout": [], "bridge": []},
+             buffers=[{"byteLength": len(blob), "uri": "data:application/octet-stream;base64," + base64.b64encode(blob).decode()}])
+    native = tmp_path / "native.gltf"
+    native.write_text(json.dumps(g))
+    a = B.build(native, None, tmp_path / "n.glb", "albedo.png")
+    b = B.build(skm, tmp_path, tmp_path / "b.glb", "albedo.png")
+    assert [n["name"] for n in a["nodes"]] == [n["name"] for n in b["nodes"]]
+    assert [m["name"] for m in a["meshes"]] == [m["name"] for m in b["meshes"]]
+    assert [x["name"] for x in a["animations"]] == [x["name"] for x in b["animations"]] == ["atlas_moveCoreIdle"]
+    assert [c["target"] for c in a["animations"][0]["channels"]] == [c["target"] for c in b["animations"][0]["channels"]]
+    abuf = (tmp_path / "n.glb").read_bytes()
+    bbuf = (tmp_path / "b.glb").read_bytes()
+    ab, bb = abuf[28 + struct.unpack_from("<I", abuf, 12)[0]:], bbuf[28 + struct.unpack_from("<I", bbuf, 12)[0]:]
+    for ca, cb in zip(a["animations"][0]["channels"], b["animations"][0]["channels"]):
+        qa = B.read_accessor(a, ab, a["animations"][0]["samplers"][ca["sampler"]]["output"])
+        qb = B.read_accessor(b, bb, b["animations"][0]["samplers"][cb["sampler"]]["output"])
+        assert np.max(angle(qa, qb[:len(qa)])) < 1e-4
+    for ma, mb in zip(a["meshes"], b["meshes"]):
+        pa, pb = ma["primitives"][0], mb["primitives"][0]
+        assert np.allclose(B.read_accessor(a, ab, pa["attributes"]["POSITION"]), B.read_accessor(b, bb, pb["attributes"]["POSITION"]))

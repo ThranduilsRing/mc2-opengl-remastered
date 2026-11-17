@@ -107,6 +107,23 @@ def sample(times, values, t, rotation):
     return [i+(j-i)*f for i, j in zip(x, y)]
 
 
+def match_vertices(va, vb, tolerance=1e-4):
+    """One-to-one match within tolerance (two exporters round metres differently); returns the max matched distance."""
+    import numpy as np
+    from scipy.sparse import csr_matrix
+    from scipy.sparse.csgraph import maximum_bipartite_matching
+    from scipy.spatial import cKDTree
+    a, b = np.asarray(va, dtype=np.float64), np.asarray(vb, dtype=np.float64)
+    near = cKDTree(a).query_ball_tree(cKDTree(b), tolerance)
+    rows = [i for i, row in enumerate(near) for _ in row]
+    cols = [j for row in near for j in row]
+    graph = csr_matrix((np.ones(len(rows)), (rows, cols)), shape=(len(a), len(b)))
+    match = maximum_bipartite_matching(graph, perm_type="column")
+    if len(a) != len(b) or (match < 0).any():
+        raise ValueError(f"vertex positions do not match one-to-one within {tolerance}")
+    return float(np.abs(a[match >= 0] - b[match[match >= 0]]).max()) if len(a) else 0.0
+
+
 def compare(candidate, reference, bounds):
     a, b = Asset(candidate), Asset(reference)
     fallbacks = a.doc.get("extras", {}).get("bridge", [])
@@ -121,14 +138,10 @@ def compare(candidate, reference, bounds):
     va, vb = a.vertices(), b.vertices()
     if not va or len(va) != len(vb):
         raise ValueError("vertex count differs or is empty")
-    # Two exporters round metres differently (cm*.01 vs cm/100), so match each side's vertices within 1e-4.
-    from scipy.spatial import cKDTree
-    vertex_error = max(float(cKDTree(vb).query(va)[0].max()), float(cKDTree(va).query(vb)[0].max()))
-    if vertex_error >= 1e-4:
-        raise ValueError(f"vertex position error {vertex_error} >= 1e-4")
+    vertex_error = match_vertices(va, vb)
     ka, kb = a.keys(), b.keys()
-    if not ka or not ka.keys() <= kb.keys():
-        raise ValueError("candidate channel is missing from the reference, or no clips")
+    if not ka or {k[0] for k in ka} != {k[0] for k in kb} or not ka.keys() <= kb.keys():
+        raise ValueError("clip name sets differ, or a candidate channel is missing from the reference")
     # The extractor keeps constant tracks as one key and drops rest-valued channels; the bridge writes every
     # frame of every bone. Compare the candidate sampled at each reference key time (missing channel = rest).
     rest = {n["name"]: n for n in a.doc["nodes"]}
@@ -161,6 +174,7 @@ def compare(candidate, reference, bounds):
             raise ValueError(f"socket outside weapon bounds: {name}")
     return {"status": "PASS", "bones": len(a.bones()), "keys": count,
             "rest_max": rest_error, "vertices": len(va), "vertex_max": vertex_error, "rotation_max_degrees": angle, "sockets": len(sockets),
+            "skipped_sockets": sum(f["kind"] == "socket_skipped" for f in fallbacks),
             "other_bridge_fallbacks": len(fallbacks)}
 
 

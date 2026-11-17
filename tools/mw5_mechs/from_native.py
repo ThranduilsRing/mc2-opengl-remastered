@@ -214,13 +214,20 @@ def convert(source):
             roots.append(len(nodes)-1)
     sockets = json.loads((source/"sockets.json").read_text())
     bone_ids = {b["name"]: i for i, b in enumerate(bones)}
+    used = {n["name"] for n in nodes}
+    skipped = []
     for s in sockets:
-        if s["bone"] not in bone_ids or s["name"] in bone_ids:
-            # Sockets on bones the mesh lacks (the skeleton asset has more bones), and sockets that only
-            # repeat a bone's name (node names must stay unique), stay in sockets.json only.
+        if s["bone"] not in bone_ids:
+            # The skeleton asset has bones the mesh lacks: an explicit socket fallback that parity counts.
+            skipped.append({"kind": "socket_skipped", "asset": s["name"], "reason": f"bone {s['bone']} not in mesh skeleton",
+                            "action": "keep_umodel_bridge"})
             continue
+        name = s["name"] if s["name"] not in used else s["name"] + "_socket"  # node names must stay unique
+        if name in used:
+            raise ValueError(f"duplicate socket name {name}")
+        used.add(name)
         nodes[bone_ids[s["bone"]]].setdefault("children", []).append(len(nodes))
-        nodes.append({"name": s["name"], "translation": basis(s["translation"], .01),
+        nodes.append({"name": name, "translation": basis(s["translation"], .01),
                       "rotation": rotation(s["rotation"]), "scale": basis(s["scale"]), "extras": {"socket": True}})
     for path in sorted((source/"clips").glob("*.bin")):
         channels, samplers = [], []
@@ -235,6 +242,7 @@ def convert(source):
     g.doc.update(scene=0, scenes=[{"nodes": roots}], buffers=[{
         "byteLength": len(g.blob), "uri": "data:application/octet-stream;base64," + base64.b64encode(g.blob).decode()}])
     g.doc["extras"] = {name: json.loads((source/f"{name}.json").read_text()) for name in ("materials", "loadout", "bridge")}
+    g.doc["extras"]["bridge"] = list(g.doc["extras"]["bridge"]) + skipped
     return g.doc
 
 

@@ -96,8 +96,8 @@ MW5_SYNTHETIC_FIXTURE="$TMPDIR/mw5-synthetic" python3 -B -m unittest tools.mw5_m
 
 `MW5Mercs-WindowsNoEditor.pak`, mesh `Timberwolf_SKM` plus `TBR_Stand`,
 `TBR_WalkForward_Straight`, `TBR_RunForward_Straight`: 121 bones, 17488 LOD0
-vertices, 59058 compared clip keys. Max bone rest error 3.8e-5, vertex error
-1.1e-6, rotation key error 0.0198 degrees. Receipt (numbers only):
+vertices, 35705 compared clip keys (translation, rotation; no clip has authored
+scale). Max bone rest error 3.8e-5, vertex error 9.5e-7, rotation key error 0.0198 degrees. Receipt (numbers only):
 `E:/mc2-archive-2026-10/proofs/mw5-native-parity-1/`.
 `build_glb.py --skm <native.gltf>` takes this output directly (`--anim-dir`
 is only for the umodel bridge) and yields the same 33 parts / 93 nodes.
@@ -119,12 +119,15 @@ py -3 -m tools.mw5_mechs.parity \
 ```
 
 It requires equal bone sets, bone world rest error <1e-4, every candidate
-channel present in the reference, **every** rotation key <0.1 degree (sign
+channel present in the reference, equal clip-name sets, **every** rotation key <0.1 degree (sign
 independent) and vector keys <1e-4 with the candidate sampled at each
 reference key time (constant tracks are one key; untracked channels are rest),
-LOD0 vertices (default-scene meshes) matched within 1e-4 (needs scipy), and
+LOD0 vertices (default-scene meshes) matched one-to-one within 1e-4 (needs scipy), and
 every socket inside its bounds. Geometry/animation/socket bridge fallbacks
 prevent a PASS. Counts/errors only. Not covered: normals, UVs, skin weights,
 materials (`TimberWolf_Default_SKN` is not a material instance and stays on the
-bridge), Clans/UE5.5/usmap (**NOT RUN**). Sockets named like a bone, or on bones
-the mesh lacks, stay in `sockets.json` and are not glTF nodes.
+bridge), Clans/UE5.5/usmap (**NOT RUN**). A socket named like a bone becomes
+node `<name>_socket`; a socket on a bone the mesh lacks (2 here) is a
+`socket_skipped` fallback in the glTF extras, counted by parity. Scale tracks are
+kept only where the compressed data has scale keys (authored zero scale stays);
+non-UE animation codecs stay on the bridge.
