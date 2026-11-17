@@ -1,9 +1,11 @@
 // terrain_field_store.cpp - the CPU copy of the terrain fields (see terrain_field_store.h). No GL.
 
 #include "terrain_field_store.h"
+#include "water_shore_cells.h"
 
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 
 #include "mc2fmt.h"
 #include "utils/mc2log.h"
@@ -77,6 +79,10 @@ bool TerrainFieldStore::setVisualHeight(const float* fine, int side, const float
         return false;
     }
     const size_t fineCount = static_cast<size_t>(side) * static_cast<size_t>(side);
+    const auto shoreStart = std::chrono::steady_clock::now();
+    waterShoreCells_ = bakeWaterShoreCells(fine, side);
+    MC2_LOG(Core, Info, "[TERRAIN_FIELDS v1] shore_cells side={} bake_ms={:.3f}", side,
+            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - shoreStart).count());
     visual_.resize(fineCount + static_cast<size_t>(mipFloats));
     std::copy(fine, fine + fineCount, visual_.begin());
     if (mipFloats > 0) std::copy(mipMaxes, mipMaxes + mipFloats, visual_.begin() + (std::ptrdiff_t)fineCount);
@@ -88,6 +94,7 @@ bool TerrainFieldStore::setVisualHeight(const float* fine, int side, const float
 
 void TerrainFieldStore::clearVisualHeight() {
     visual_.clear();
+    waterShoreCells_.clear();
     visualSide_ = 0;
     visualMipFloats_ = 0;
     visualVersion_ = nextVersion();

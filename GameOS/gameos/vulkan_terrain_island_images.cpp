@@ -611,11 +611,12 @@ bool snapshot_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
 // this is a cheap no-op on every other frame. Fail-soft: on any failure
 // visualHeightReady stays false -> UBO visualMode forced 0 -> VS draws undisplaced.
 bool snapshot_visual_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
-    if (!feed.visualHeightCpu || feed.visualHeightBytes == 0) return false;  // bake not live
+    if (!feed.visualHeightCpu || !feed.waterShoreCellsCpu || feed.visualHeightBytes == 0) return false;
+    const VkDeviceSize bytes = 3 * static_cast<VkDeviceSize>(feed.visualHeightBytes);
     if (feed.visualHeightVersion == s->visualHeightVersionCopied && s->visualHeightReady) return true;
     // Ensure capacity (grow-only, like the cement buffer).
-    if (!s->visualHeightBuf || static_cast<VkDeviceSize>(feed.visualHeightBytes) > s->visualHeightCapBytes) {
-        const VkDeviceSize cap = std::bit_ceil(static_cast<uint64_t>(feed.visualHeightBytes) + feed.visualHeightBytes / 4 + 4096);
+    if (!s->visualHeightBuf || bytes > s->visualHeightCapBytes) {
+        const VkDeviceSize cap = std::bit_ceil(static_cast<uint64_t>(bytes + bytes / 4 + 4096));
         if (!replace_host_buffer(s, s->visualHeightBuf, cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "terrain.visualHeightBuf"))
             return false;
         s->visualHeightCapBytes = cap;
@@ -630,6 +631,8 @@ bool snapshot_visual_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     void* p = nullptr;
     if (vmaMapMemory(s->allocator, s->visualHeightBuf.allocation(), &p) != VK_SUCCESS) return false;
     std::memcpy(p, feed.visualHeightCpu, static_cast<size_t>(feed.visualHeightBytes));
+    std::memcpy(static_cast<char*>(p) + feed.visualHeightBytes, feed.waterShoreCellsCpu,
+                static_cast<size_t>(2 * feed.visualHeightBytes));
     vmaUnmapMemory(s->allocator, s->visualHeightBuf.allocation());
     s->visualHeightVersionCopied = feed.visualHeightVersion;
     s->visualHeightReady = true;

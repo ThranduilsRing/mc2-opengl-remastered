@@ -223,14 +223,17 @@ extern "C" int mc2_terrain_tier1_get_load_feed(Mc2TerrainTier1Feed* out)
     // gate is on AND the bake is loaded -- else all-zero (island honors visualMode=0 only,
     // and the capture predicate below never emits mode-2 patches in that case anyway).
     out->visualHeightCpu     = nullptr;
+    out->waterShoreCellsCpu   = nullptr;
     out->visualHeightBytes   = 0;
     out->visualHeightVersion = 0;
     out->visualSide          = 0;
     out->visualDisplaceFar   = 0.0f;
     if (terrainVisualDisplaceGateOn()
-        && s_visualSide > 0 && fields->visualSide() == s_visualSide) {
+        && s_visualSide > 0 && fields->visualSide() == s_visualSide
+        && fields->waterShoreCells().size() == 2 * static_cast<size_t>(s_visualSide) * s_visualSide) {
         // The fine bake only (the mip maxes that follow it are a GL-path geomorph input).
         out->visualHeightCpu     = fields->visualHeight().data();
+        out->waterShoreCellsCpu   = fields->waterShoreCells().data();
         out->visualHeightBytes   = static_cast<uint64_t>(s_visualSide) * static_cast<uint64_t>(s_visualSide) * sizeof(float);
         out->visualHeightVersion = fields->visualHeightVersion();
         out->visualSide          = s_visualSide;

@@ -32,10 +32,13 @@ def test_water_cache_binary32_rounded_tap_escape():
     cached = f32((origin + min(k, 2) + f32(grid(taps[2]) - cells[2])) / 8.0)
     assert original == 64.125 and cached == 64.0
     body = SRC.split("float waterCachedHeight(", 1)[1].split("float waterFineHeight(", 1)[0]
-    guard = "if (any(lessThan(k, ivec2(0))) || any(greaterThan(k, ivec2(2))))"
+    guard = "if (any(lessThan(k, ivec2(0))) || any(greaterThan(k, ivec2(3)))"
     fallback = "return waterFineHeight(worldXY);"
     assert guard in body and fallback in body
     assert body.index(guard) < body.index(fallback) < body.index("waterCell(raw, k)")
+    assert "(k.x == 3 && t.x != 0.0)" in body
+    assert "(k.y == 3 && t.y != 0.0)" in body
+    assert "if (k.x == 3) return vec4(top.ww, bottom.ww);" in SRC
 
 
 def _const(name):

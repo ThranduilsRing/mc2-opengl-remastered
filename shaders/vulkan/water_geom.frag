@@ -82,19 +82,7 @@ vec4 waterCell(mat4 rows, ivec2 k) {
     return k.x == 0 ? vec4(top.xy, bottom.xy)
                    : (k.x == 1 ? vec4(top.yz, bottom.yz) : vec4(top.zw, bottom.zw));
 }
-float waterFineHeight(vec2 worldXY);
-float waterCachedHeight(vec2 worldXY, ivec2 origin, mat4 raw, mat4 surface) {
-    // Keep each tap's coordinate arithmetic and triangle interpolation identical.
-    vec2 grid = clamp(vec2(worldXY.x + uT.halfMap, uT.halfMap - worldXY.y) / 32.0,
-                      vec2(0.0), vec2(uT.visualSide - 1));
-    ivec2 p = min(ivec2(floor(grid)), ivec2(uT.visualSide - 2));
-    vec2 t = grid - vec2(p);
-    ivec2 k = p - origin;
-    // Binary32 tap rounding can escape the three cached cells on either axis.
-    if (any(lessThan(k, ivec2(0))) || any(greaterThan(k, ivec2(3)))
-        || (k.x == 3 && t.x != 0.0) || (k.y == 3 && t.y != 0.0))
-        return waterFineHeight(worldXY);
-    vec4 r = waterCell(raw, k), h = waterCell(surface, k);
+float waterHeightCell(vec4 r, vec4 h, vec2 t) {
     float rawTL = r.x, rawTR = r.y, rawBL = r.z, rawBR = r.w;
     if (abs(rawTR - rawBL) < abs(rawTL - rawBR)) {
         float tr = h.y, bl = h.z;
@@ -109,6 +97,34 @@ float waterCachedHeight(vec2 worldXY, ivec2 origin, mat4 raw, mat4 surface) {
     float b = t.y >= t.x ? h.z : h.y;
     return t.y >= t.x ? a + (d - b) * t.x + (b - a) * t.y
                       : a + (b - a) * t.x + (d - b) * t.y;
+}
+float waterFineHeight(vec2 worldXY);
+float waterCachedHeight(vec2 worldXY, ivec2 origin, mat4 raw, mat4 surface) {
+    // Keep each tap's coordinate arithmetic and triangle interpolation identical.
+    vec2 grid = clamp(vec2(worldXY.x + uT.halfMap, uT.halfMap - worldXY.y) / 32.0,
+                      vec2(0.0), vec2(uT.visualSide - 1));
+    ivec2 p = min(ivec2(floor(grid)), ivec2(uT.visualSide - 2));
+    vec2 t = grid - vec2(p);
+    ivec2 k = p - origin;
+    if (any(lessThan(k, ivec2(0))) || any(greaterThan(k, ivec2(3)))
+        || (k.x == 3 && t.x != 0.0) || (k.y == 3 && t.y != 0.0))
+        return waterFineHeight(worldXY);
+    return waterHeightCell(waterCell(raw, k), waterCell(surface, k), t);
+}
+mat4 waterRawCache(ivec2 p) {
+    mat4 rows;
+    [[unroll]] for (int y = 0; y < 4; ++y)
+        rows[y] = vec4(cliffRawHeight(p + ivec2(0, y)), cliffRawHeight(p + ivec2(1, y)),
+                       cliffRawHeight(p + ivec2(2, y)), cliffRawHeight(p + ivec2(3, y)));
+    return rows;
+}
+float waterRawCenter(vec2 worldXY) {
+    vec2 grid = clamp(vec2(worldXY.x + uT.halfMap, uT.halfMap - worldXY.y) / 32.0,
+                      vec2(0.0), vec2(uT.visualSide - 1));
+    ivec2 p = min(ivec2(floor(grid)), ivec2(uT.visualSide - 2));
+    vec4 r = vec4(cliffRawHeight(p), cliffRawHeight(p + ivec2(1, 0)),
+                  cliffRawHeight(p + ivec2(0, 1)), cliffRawHeight(p + ivec2(1, 1)));
+    return waterHeightCell(r, r, grid - vec2(p));
 }
 float waterFineHeight(vec2 worldXY) {
     vec2 grid = clamp(vec2(worldXY.x + uT.halfMap, uT.halfMap - worldXY.y) / 32.0,
@@ -445,12 +461,25 @@ void main(void)
     mat4 shoreRaw, shoreSurface;
     ivec2 shoreOrigin = ivec2(0);
     float fineCenter = 0.0;
+    bool tent = true;
     if (hasVisual && hasField) {
         vec2 grid = clamp(vec2(WorldPos.x - 32.0 + uT.halfMap, uT.halfMap - (WorldPos.y + 32.0)) / 32.0,
                           vec2(0.0), vec2(uT.visualSide - 1));
         shoreOrigin = min(ivec2(floor(grid)), ivec2(uT.visualSide - 2));
-        waterSurfaceCache(shoreOrigin, shoreRaw, shoreSurface);
-        fineCenter = waterCachedHeight(WorldPos.xy, shoreOrigin, shoreRaw, shoreSurface);
+        int record = uT.visualSide * uT.visualSide + 2 * (shoreOrigin.x + shoreOrigin.y * uT.visualSide);
+        float threshold = heightsFine[record], flat4 = heightsFine[record + 1];
+        bool full = hiresBlendW() != 1.0 || flat4 == 0.0;
+        tent = F.f7.x < threshold;
+        if (full) {
+            waterSurfaceCache(shoreOrigin, shoreRaw, shoreSurface);
+            fineCenter = waterCachedHeight(WorldPos.xy, shoreOrigin, shoreRaw, shoreSurface);
+        } else if (tent) {
+            shoreRaw = waterRawCache(shoreOrigin);
+            shoreSurface = shoreRaw;
+            fineCenter = waterCachedHeight(WorldPos.xy, shoreOrigin, shoreRaw, shoreSurface);
+        } else {
+            fineCenter = waterRawCenter(WorldPos.xy);
+        }
         fieldThick = F.f7.x - fineCenter;
     }
     // Raster depth still owns coverage, including patch stitching and morph.
@@ -470,7 +499,7 @@ void main(void)
     // The fine surface is a 32-unit bilinear grid: its screen gradient jumps per triangle and the contour of its
     // depth is a polygon. Take shoreDepth and its gradient from a 3x3 tent blur of the same height (C1, rounded
     // contours, continuous gradient); coverage and tint keep the raw fine height.
-    if (hasVisual && hasField) {
+    if (hasVisual && hasField && tent) {
         const float gh = 32.0;
         vec2 wp = WorldPos.xy;
         float h00 = waterCachedHeight(wp + vec2(-gh, -gh), shoreOrigin, shoreRaw, shoreSurface);
@@ -486,6 +515,7 @@ void main(void)
         shoreGrad = -vec2((h20 + 2.0 * h21 + h22) - (h00 + 2.0 * h01 + h02),
                           (h02 + 2.0 * h12 + h22) - (h00 + 2.0 * h10 + h20)) / (8.0 * gh);
     }
+    if (hasVisual && hasField && !tent) shoreGrad = vec2(0.0);
     float shoreSlope = max(length(shoreGrad), 0.08);
     float shoreDistance = max(shoreDepth, 0.0) / shoreSlope;
     float foamAA = max(max(length(shoreDx), length(shoreDy)), 1.0);
