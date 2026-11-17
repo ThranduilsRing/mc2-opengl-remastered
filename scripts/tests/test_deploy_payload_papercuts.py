@@ -15,6 +15,43 @@ import deploy_payload as dp  # noqa: E402
 ROOT = Path(__file__).resolve().parents[2]
 
 
+@pytest.mark.parametrize("rel", ["data/ui.fit", "data/editor.csv", "data/editor.txt",
+                                  "tools/mc2_import/shims/corebrain.abx", "run-mc2.bat",
+                                  "scripts/tool.py", "data/config.json"])
+def test_text_deploy_is_identical_across_checkout_eol(tmp_path, monkeypatch, rel):
+    monkeypatch.setattr(dp, "ensure_terrain_materials", lambda t: {})
+    monkeypatch.setattr(dp, "ensure_engine_normal_cooks", lambda t: None)
+    src, target = tmp_path / "source", tmp_path / "install"
+    results = []
+    for content in (b"first\nsecond\n", b"first\r\nsecond\r\n"):
+        src.write_bytes(content)
+        hashes = dp.deploy([(str(src), rel, "support")], str(target), False)
+        results.append(((target / rel).read_bytes(), hashes[rel][:2]))
+    assert results[0] == results[1]
+    assert results[0][0] == b"first\r\nsecond\r\n"
+    src.write_bytes(b"changed\nsecond\n")
+    changed = dp.deploy([(str(src), rel, "support")], str(target), False)
+    assert changed[rel][0] != results[0][1][0]
+
+
+def test_game_deploy_keeps_editor_claims_and_bytes(tmp_path, monkeypatch):
+    monkeypatch.setattr(dp, "ensure_terrain_materials", lambda t: {})
+    monkeypatch.setattr(dp, "ensure_engine_normal_cooks", lambda t: None)
+    rows = {}
+    for rel in ("Mission Editor.exe", "Mission Editor.pdb", "run-editor.bat", "tools/terrain_gen/tool.py"):
+        path = tmp_path / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"editor bytes")
+        rows[rel] = (dp.sha256_file(path), path.stat().st_size)
+    dp.write_manifest(tmp_path, rows, "a" * 40)
+    src = tmp_path / "game-source"
+    src.write_bytes(b"game bytes")
+    hashes = dp.deploy([(str(src), "mc2.exe", "exe")], str(tmp_path), False)
+    for rel, row in rows.items():
+        assert (tmp_path / rel).read_bytes() == b"editor bytes"
+        assert hashes[rel][:2] == row
+
+
 @pytest.fixture(scope='module')
 def hardlink_support(tmp_path_factory):
     tmp_path = tmp_path_factory.mktemp('hardlink-probe')

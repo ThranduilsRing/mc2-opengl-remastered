@@ -152,6 +152,18 @@ def test_capture_identity_ignores_shader_sources_not_data():
     assert ab.manifest_mismatches(a, {**b, "data/a.fit": "d2"}) == ["differs: data/a.fit (A d1 vs B d2)"]
 
 
+def test_game_identity_excludes_only_editor_owned_rows(monkeypatch):
+    monkeypatch.setattr(ab.asset_parity, "intentional_changes", lambda *a: {})
+    editor = {p: "a" * 64 for p in ("Mission Editor.exe", "Mission Editor.pdb", "run-editor.bat",
+                                     "tools/terrain_gen/tool.py")}
+    game = {"data/ui.fit": "a" * 64, "run-mc2.bat": "b" * 64}
+    assert ab.candidate_mismatches({**editor, **game}, game, "a" * 40) == []
+    assert ab.candidate_mismatches(game, {**editor, **game}, "a" * 40) == []
+    changed = {**game, "data/ui.fit": "c" * 64}
+    assert [p for p, _ in ab.candidate_mismatches(game, changed, "a" * 40)] == ["data/ui.fit"]
+    assert [p for p, _ in ab.candidate_mismatches(game, {}, "a" * 40)] == ["data/ui.fit", "run-mc2.bat"]
+
+
 def test_capture_identity_skips_only_deployed_shader_dirs():
     # W137: shaders/include and shaders/spv ship with the exe like shaders/vulkan; any other file under shaders/ still refuses.
     a = {"shaders/include/x.hglsl": "h1", "shaders/spv/p.pkg": "p1", "shaders/lut.dat": "l1", "shaders/fixtures/f.bin": "f1"}

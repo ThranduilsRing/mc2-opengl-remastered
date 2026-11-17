@@ -211,8 +211,9 @@ def _data_mismatch_entries(ma, mb):
     viewer and failed; W136: a window that edits shaders/vulkan sources (.frag, include/*.glsl) failed the same way.
     W137: shaders/include (*.hglsl) and shaders/spv (prebuilt packages) ship with the exe the same way. Only these three
     deployed shader dirs are exempt; any other file under shaders/ (data, fixtures) still refuses."""
+    from deploy_payload import editor_only_payload
     build_outputs = EXECUTABLES | {"mc2.pdb", "mc2_asset_viewer.exe", "mc2_asset_viewer"}
-    skip = lambda p: p in build_outputs or p.startswith(SHADER_BUILD_DIRS)
+    skip = lambda p: p in build_outputs or p.startswith(SHADER_BUILD_DIRS) or editor_only_payload(p)
     ma = {k: v for k, v in ma.items() if not skip(k)}
     mb = {k: v for k, v in mb.items() if not skip(k)}
     entries = [(k, f"only in A: {k}") for k in sorted(ma.keys() - mb.keys())]
@@ -227,7 +228,7 @@ def manifest_mismatches(ma, mb):
 
 
 def candidate_mismatches(ma, mb, commit, install_b=None, baseline=None):
-    """Candidate-only, exact-hash declarations; auxiliary binaries require baseline or declared bytes.
+    """Candidate-only declarations, plus explicitly recorded build-tree auxiliary hash pairs.
 
     An absent auxiliary row in B remains a mismatch. No blanket executable/DLL exclusion.
     """
@@ -246,6 +247,11 @@ def candidate_mismatches(ma, mb, commit, install_b=None, baseline=None):
                 accepted.add(rel)
     remaining = []
     for rel, line in _data_mismatch_entries(ma, mb):
+        if (rel in asset_parity.AUXILIARY
+                and all(re.fullmatch(r"[0-9a-f]{64}", m.get(rel, "")) for m in (ma, mb))
+                and (install_b is None or asset_parity._sha(Path(install_b) / rel) == mb[rel])):
+            print(f"[ab] CLASSIFIED build-tree auxiliary {rel} sha256_A={ma[rel]} sha256_B={mb[rel]}", flush=True)
+            continue
         if rel in accepted:
             print(f"[ab] ACCEPTED candidate asset {rel} sha256={mb[rel]} "
                   f"source={'intentional-asset-changes' if rel in declared else 'install baseline'}", flush=True)

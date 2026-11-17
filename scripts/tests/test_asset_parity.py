@@ -399,7 +399,7 @@ def test_declarations_reject_paths_outside_assets_and_auxiliary(declaration_repo
         ap.intentional_changes(commit, root)
 
 
-def test_ab_auxiliary_requires_baseline_or_declaration(work, declaration_repo, monkeypatch, capsys):
+def test_ab_auxiliary_records_build_tree_hash_pairs(work, declaration_repo, monkeypatch, capsys):
     sys.path.insert(0, str(ROOT / "tools/visual_verify"))
     import ab
     root, base, declare = declaration_repo
@@ -410,15 +410,17 @@ def test_ab_auxiliary_requires_baseline_or_declaration(work, declaration_repo, m
     ma = {rel: "a" * 64 for rel in ap.AUXILIARY}
     mb = {rel: good for rel in ap.AUXILIARY}
     assert ab.candidate_mismatches(ma, mb, base, install, ref) == []
-    assert "source=install baseline" in capsys.readouterr().out
+    output = capsys.readouterr().out
+    for rel in ap.AUXILIARY:
+        assert f"build-tree auxiliary {rel} sha256_A={'a' * 64} sha256_B={good}" in output
     # A copied manifest cannot hide replaced auxiliary bytes.
     (install / "mc2res_64.dll").write_bytes(b"different")
     assert [p for p, _ in ab.candidate_mismatches(ma, mb, base, install, ref)] == ["mc2res_64.dll"]
     mb["mc2res_64.dll"] = hashlib.sha256(b"different").hexdigest()
-    assert ab.candidate_mismatches(ma, mb, base, baseline=ref)
+    assert ab.candidate_mismatches(ma, mb, base, baseline=ref) == []
     candidate = declare({"mc2res_64.dll": mb["mc2res_64.dll"]})
     assert ab.candidate_mismatches(ma, mb, candidate, install, ref) == []
-    assert "source=intentional-asset-changes" in capsys.readouterr().out
+    assert "sha256_B=" + mb["mc2res_64.dll"] in capsys.readouterr().out
     assert ab.candidate_mismatches(ma, {}, candidate, baseline=ref)  # missing B stays refused
     assert ab.candidate_mismatches({"render.dll": "a" * 64}, {"render.dll": good}, base, baseline=ref)
 

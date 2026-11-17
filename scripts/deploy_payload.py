@@ -72,6 +72,36 @@ MANIFEST_NAME = ".deployed_manifest.csv"
 MANIFEST_VERSION = "v1"
 REUSE_NAME = ".deploy-inputs.json"
 
+# Legacy loose text ships as Windows text, independent of checkout autocrlf.
+# Keep native asset sidecars' existing LF convention. Never transform binaries.
+TEXT_PAYLOAD_EXTS = {".fit", ".csv", ".txt", ".abx", ".abl", ".bat", ".py",
+                     ".json", ".md", ".ini", ".cfg", ".xml", ".yaml", ".yml"}
+
+
+def payload_eol(rel):
+    if str(rel).endswith(".mcasset.json"):
+        return "lf"
+    return "crlf" if Path(rel).suffix.lower() in TEXT_PAYLOAD_EXTS else ""
+
+
+def payload_bytes(src, rel):
+    content = Path(src).read_bytes()
+    eol = payload_eol(rel)
+    if eol and b"\0" not in content:
+        content = content.replace(b"\r\n", b"\n")
+        if eol == "crlf":
+            content = content.replace(b"\n", b"\r\n")
+    return content
+
+
+def payload_hash(src, rel):
+    return hashlib.sha256(payload_bytes(src, rel)).hexdigest() if payload_eol(rel) else sha256_file(src)
+
+
+def editor_only_payload(rel):
+    rel = str(rel).replace("\\", "/").casefold()
+    return rel in {"mission editor.exe", "mission editor.pdb", "run-editor.bat"} or rel.startswith("tools/terrain_gen/")
+
 
 @contextmanager
 def deploy_phase(name, timeout=600):
@@ -166,10 +196,7 @@ def reusable_payload(src_root, target, inputs):
                 if actual != expected:
                     return False, f"kit inventory changed: {kit}"
         for src in random.SystemRandom().sample(list(saved["sources"]), min(6, len(saved["sources"]))):
-            content = Path(src).read_bytes()
-            if src.endswith(".mcasset.json"):
-                content = content.replace(b"\r\n", b"\n")
-            if hashlib.sha256(content).hexdigest() != saved["sources"][src][1]:
+            if payload_hash(src, src) != saved["sources"][src][1]:
                 return False, f"sampled kit source mismatch: {src}"
         # Always include both kit packages and their native recipes. Rotate the
         # sample so repeated deploys don't leave the same files unchecked.
@@ -1703,12 +1730,10 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
             log(f"preserved {rel} (existing target copy kept)")
             continue
         def source_hash(path):
-            if rel.endswith(".mcasset.json"):
-                return hashlib.sha256(Path(path).read_bytes().replace(b"\r\n", b"\n")).hexdigest()
-            return sha256_file(path)
+            return payload_hash(path, rel)
 
         s_hash = receipts.digest(src, force=full_verify or kind == "exe", hasher=source_hash,
-                                 variant='lf' if rel.endswith('.mcasset.json') else '')
+                                 variant=payload_eol(rel))
         if not full_verify and os.path.isfile(dst):
             d_hash = receipts.digest(dst, force=kind == "exe", hasher=sha256_file)
             if s_hash == d_hash:
@@ -1724,10 +1749,10 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
             try:
                 with tempfile.NamedTemporaryFile(dir=os.path.dirname(dst), delete=False) as out:
                     temporary = out.name
-                    if rel.endswith(".mcasset.json"):
-                        # Normalize checkout line endings before publishing the sidecar.
-                        out.write(Path(src).read_bytes().replace(b"\r\n", b"\n"))
-                if not rel.endswith(".mcasset.json"):
+                    if payload_eol(rel):
+                        # Normalize checkout line endings before publishing text.
+                        out.write(payload_bytes(src, rel))
+                if not payload_eol(rel):
                     shutil.copyfile(src, temporary)
                 if kind == "exe" and os.name != "nt":
                     shutil.copymode(src, temporary)
@@ -1818,6 +1843,10 @@ def retire_unowned(target_dir, keep, preserve=(), own_shaders=False):
         if not resolved.is_relative_to(root) or resolved == root:
             fail(f"retired payload path escapes target: {rel}")
         parts = tuple(part.casefold() for part in Path(rel).parts)
+        if editor_only_payload(rel):
+            if retired.is_file():
+                keep[rel] = (digest, size, None)
+            continue
         if parts[0] in {"mods", "savegame"} or parts[:2] == ("data", "savegame"):
             continue
         # The game and editor presets share one install: each one's root executables, symbols and launchers are owned by
@@ -2703,7 +2732,8 @@ def prepare_seed_delta(items, target, full_verify=False, allow_legacy=False):
         peer = seed_rows.get(rel.casefold())
         row = shared.get(rel) or peer  # a legacy install (no receipt) is proven by the seed's row when the stamp is identical
         # Full stamp incl. NTFS ChangeTime (pinned by the restored-mtime corruption test); the source side uses receipts.
-        if not full_verify and src is not None and row and Path(src).is_file() and source_rx.digest(src) == row['sha256']:
+        if (not full_verify and src is not None and row and Path(src).is_file()
+                and source_rx.digest(src, hasher=lambda p: payload_hash(p, rel), variant=payload_eol(rel)) == row['sha256']):
             stamp = iso.content_stamp(dst)
             if stamp == row['stamp']:
                 return rel, row['sha256']
