@@ -1095,7 +1095,7 @@ bool MissionInterfaceManager::updateOrderMenu(bool allowOpen, bool overGui)
         // Classic only: AOE right-click orders and Alt-camera remain intact.
         if (useLeftRightMouseProfile || overGui ||
             userInput->wasRightDrag() || !userInput->rightMouseReleased() ||
-            !isMenuAttackTarget(target)) return false;
+            !target || !isMenuAttackTarget(*target)) return false;
         Order captured;
         captured.target = target->getWatchID();
         for (long i = 0; i < Team::home->getRosterSize(); ++i) {
@@ -1150,7 +1150,7 @@ bool MissionInterfaceManager::updateOrderMenu(bool allowOpen, bool overGui)
     const ImVec2 wsz = ImGui::GetWindowSize();
     const ImVec2 wmax(wmin.x + wsz.x, wmin.y + wsz.y);
     const bool inRect = ImGui::IsMouseHoveringRect(wmin, wmax, false);
-    if (clicked) {
+    if (clicked && mc2_diag::tagRequested("ORDER_MENU")) {
         std::fprintf(stderr, "[ORDER_MENU] click mouse=(%.0f,%.0f) rect=(%.0f,%.0f)-(%.0f,%.0f) inRect=%d menuHovered=%d wantMouse=%d choice=%d\n",
             ImGui::GetIO().MousePos.x, ImGui::GetIO().MousePos.y, wmin.x, wmin.y, wmax.x, wmax.y, inRect ? 1 : 0,
             ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) ? 1 : 0,
