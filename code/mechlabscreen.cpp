@@ -2341,7 +2341,7 @@ void MechLabScreen::endDragLocation()
 	}
 	else if ( mc2::components::restoreGridDrag( bDragLeft, false,
 		panel < 0 && componentListBox.pointInside( static_cast<float>( userInput->getMouseX() ), static_cast<float>( userInput->getMouseY() ) ), false ) )
-	{	// a refused drop returns to its slot; a row dropped on the inventory list stays removed (as in the grid view)
+	{	// a drop on empty space or a refused drop returns to its slot; a row dropped on the inventory list stays removed (legacy grid endDrag)
 		addComponent( pDragComponent, selI, selJ );
 		pSelectedComponent = pDragComponent;
 	}
@@ -2385,6 +2385,8 @@ void MechLabScreen::updateLocationInput()
 
 	std::vector<LocItem> items;
 	const int dragPanel = ml::panelAt( static_cast<float>( userInput->getMouseDragX() ), static_cast<float>( userInput->getMouseDragY() ) ).value_or( -1 );
+	// the press origin (not the current hover) picks the drag source: a fast move that leaves the panel before the threshold still drags
+	bool dragStarted = false;
 	if ( !pDragComponent && dragPanel >= 0 && dragPanel < ml::kLocationCount &&
 		input::capture::startsWidgetDrag( userInput->isLeftDrag(), true ) )
 	{
@@ -2400,6 +2402,7 @@ void MechLabScreen::updateLocationInput()
 				selJ = it.y;
 				componentListBox.SelectItem( -1 );
 				beginDrag( it.comp );
+				dragStarted = true;
 				pSelectedComponent = it.comp;
 				bDragLeft = true;
 				removeComponent( it.x, it.y );
@@ -2410,7 +2413,7 @@ void MechLabScreen::updateLocationInput()
 				refuseRemoval();
 		}
 	}
-	if ( s_locHover >= 0 && s_locHover < ml::kLocationCount )
+	if ( !dragStarted && s_locHover >= 0 && s_locHover < ml::kLocationCount )
 	{
 		gatherPanelItems( pVariant, s_locHover, items );
 		const int row = ml::itemRowAt( s_locHover, mx, my, static_cast<int>( items.size() ) ).value_or( -1 );
