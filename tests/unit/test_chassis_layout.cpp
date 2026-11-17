@@ -10,7 +10,7 @@
 #include <cstring>
 #include <functional>
 #include <expected>
-#include <cstdlib>
+#include "Gates/gate_cold.h"
 
 namespace {
 using namespace mc2pkg;
@@ -203,8 +203,8 @@ TEST_CASE("chassis_layout: production FIT adapter old save and exact v1 v2 v1 co
 }
 
 TEST_CASE("chassis_layout: installed stock variants production save round trip") {
-    const auto* install = std::getenv("MC2_GATE_INSTALL");
-    if (!install) { MESSAGE("installed corpus unavailable; MC2_GATE_INSTALL unset"); return; }
+    const auto install = mc2::gate::str<"MC2_GATE_INSTALL">();
+    if (install.empty()) { MESSAGE("installed corpus unavailable; MC2_GATE_INSTALL unset"); return; }
     const auto directory = std::filesystem::path(install) / "data" / "objects";
     REQUIRE(std::filesystem::is_directory(directory));
     int chassis = 0, variants = 0, items = 0;
