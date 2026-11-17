@@ -144,6 +144,12 @@ void write_descriptors(WaterIsland* s, int only) {
             vkUpdateDescriptorSets(s->device, 1, &w4, 0, nullptr);
         }
         vkUpdateDescriptorSets(s->device, 2, w, 0, nullptr);
+        const VkDescriptorBufferInfo surfaceInfo{s->shoreSurface ? s->shoreSurface.get() : s->recipeBuf.get(), 0, VK_WHOLE_SIZE};
+        VkWriteDescriptorSet surfaceWrite{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+        surfaceWrite.dstSet = s->set[i]; surfaceWrite.dstBinding = 14;
+        surfaceWrite.descriptorCount = 1; surfaceWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        surfaceWrite.pBufferInfo = &surfaceInfo;
+        vkUpdateDescriptorSets(s->device, 1, &surfaceWrite, 0, nullptr);
         if (s->reflectionView && s->hdriSampler) {
             const VkDescriptorImageInfo images[]{
                 {s->hdriSampler.get(),s->reflectionView.get(),VK_IMAGE_LAYOUT_GENERAL},

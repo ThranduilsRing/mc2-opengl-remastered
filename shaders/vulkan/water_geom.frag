@@ -27,24 +27,25 @@ float sampleH(int x, int y) {
     return uH.heights[clamp(x, 0, uT.mapSide - 1) + clamp(y, 0, uT.mapSide - 1) * uT.mapSide];
 }
 #include "include/terrain_visual_surface.glsl"
-// Four adjacent surface vertices share the cliff filter's +/-2 raw halo.
-// Consume even and odd rows separately: never retain the full 8x8 halo.
-mat2x4 waterRawRow(ivec2 p) {
-    return mat2x4(vec4(cliffRawHeight(p + ivec2(-2, 0)), cliffRawHeight(p + ivec2(-1, 0)),
-                       cliffRawHeight(p), cliffRawHeight(p + ivec2(1, 0))),
-                  vec4(cliffRawHeight(p + ivec2(2, 0)), cliffRawHeight(p + ivec2(3, 0)),
-                       cliffRawHeight(p + ivec2(4, 0)), cliffRawHeight(p + ivec2(5, 0))));
+layout(set = 0, binding = 14, std430) readonly buffer WaterShoreSurface { float shoreSurface[]; };
+float waterBakedHeight(ivec2 p) {
+    p = clamp(p, ivec2(0), ivec2(uT.visualSide - 1));
+    return shoreSurface[p.x + p.y * uT.visualSide];
 }
-vec4 waterSurfaceRow(ivec2 p, mat2x4 north, mat2x4 row, mat2x4 south) {
-    vec4 c = vec4(row[0].zw, row[1].xy);
-    vec4 n = vec4(north[0].zw, north[1].xy), s = vec4(south[0].zw, south[1].xy);
-    vec4 e = row[1], w = row[0];
-    vec4 rise = max(max(abs(n - c), abs(s - c)), max(abs(e - c), abs(w - c)));
-    vec4 diagonal = north[0] + north[1] + south[0] + south[1];
-    vec4 cardinal = n + s + e + w;
-    vec4 result;
-    [[unroll]] for (int x = 0; x < 4; ++x)
-        result[x] = rise[x] <= 24.0 ? c[x] : cliffFilteredHeight(c[x], cardinal[x], diagonal[x], rise[x]);
+float waterSurfaceHeight(int fx, int fy) {
+    float fine = waterBakedHeight(ivec2(fx, fy));
+    if (hiresBlendW() == 1.0 && hiresEdgeW(fx, fy) == 1.0) return fine;
+    int cx = min(fx / 4, uT.mapSide - 2), cy = min(fy / 4, uT.mapSide - 2);
+    float u = float(fx - cx * 4) * 0.25, v = float(fy - cy * 4) * 0.25;
+    float h00 = sampleH(cx, cy), h10 = sampleH(cx + 1, cy);
+    float h01 = sampleH(cx, cy + 1), h11 = sampleH(cx + 1, cy + 1);
+    float hc = (v >= u) ? h00 + (h11 - h01) * u + (h01 - h00) * v
+                        : h00 + (h10 - h00) * u + (h11 - h10) * v;
+    return mix(hc, fine, hiresBlendW() * hiresEdgeW(fx, fy));
+}
+vec4 waterSurfaceRow(ivec2 p) {
+    vec4 result = vec4(waterBakedHeight(p), waterBakedHeight(p + ivec2(1, 0)),
+                       waterBakedHeight(p + ivec2(2, 0)), waterBakedHeight(p + ivec2(3, 0)));
     // At full displacement, interior vertices have no coarse-surface contribution.
     if (hiresBlendW() == 1.0 && hiresEdgeW(p.x, p.y) == 1.0 && hiresEdgeW(p.x + 3, p.y) == 1.0)
         return result;
@@ -61,17 +62,11 @@ vec4 waterSurfaceRow(ivec2 p, mat2x4 north, mat2x4 row, mat2x4 south) {
     return result;
 }
 void waterSurfaceCache(ivec2 p, out mat4 raw, out mat4 surface) {
-    [[unroll]] for (int parity = 0; parity < 2; ++parity) {
-        ivec2 q = p + ivec2(0, parity);
-        mat2x4 north = waterRawRow(q + ivec2(0, -2));
-        mat2x4 row = waterRawRow(q), south = waterRawRow(q + ivec2(0, 2));
-        raw[parity] = vec4(row[0].zw, row[1].xy);
-        surface[parity] = waterSurfaceRow(q, north, row, south);
-        north = row;
-        row = south;
-        south = waterRawRow(q + ivec2(0, 4));
-        raw[parity + 2] = vec4(row[0].zw, row[1].xy);
-        surface[parity + 2] = waterSurfaceRow(q + ivec2(0, 2), north, row, south);
+    [[unroll]] for (int y = 0; y < 4; ++y) {
+        ivec2 q = p + ivec2(0, y);
+        raw[y] = vec4(cliffRawHeight(q), cliffRawHeight(q + ivec2(1, 0)),
+                      cliffRawHeight(q + ivec2(2, 0)), cliffRawHeight(q + ivec2(3, 0)));
+        surface[y] = waterSurfaceRow(q);
     }
 }
 vec4 waterCell(mat4 rows, ivec2 k) {
@@ -135,16 +130,16 @@ float waterFineHeight(vec2 worldXY) {
     float rawTL = cliffRawHeight(p), rawTR = cliffRawHeight(p + ivec2(1, 0));
     float rawBL = cliffRawHeight(p + ivec2(0, 1)), rawBR = cliffRawHeight(p + ivec2(1, 1));
     if (abs(rawTR - rawBL) < abs(rawTL - rawBR)) {
-        float tr = hiresSurfaceHeight(p.x + 1, p.y), bl = hiresSurfaceHeight(p.x, p.y + 1);
+        float tr = waterSurfaceHeight(p.x + 1, p.y), bl = waterSurfaceHeight(p.x, p.y + 1);
         if (t.x + t.y <= 1.0) {
-            float tl = hiresSurfaceHeight(p.x, p.y);
+            float tl = waterSurfaceHeight(p.x, p.y);
             return tl + (tr - tl) * t.x + (bl - tl) * t.y;
         }
-        float br = hiresSurfaceHeight(p.x + 1, p.y + 1);
+        float br = waterSurfaceHeight(p.x + 1, p.y + 1);
         return br + (bl - br) * (1.0 - t.x) + (tr - br) * (1.0 - t.y);
     }
-    float a = hiresSurfaceHeight(p.x, p.y), d = hiresSurfaceHeight(p.x + 1, p.y + 1);
-    float b = t.y >= t.x ? hiresSurfaceHeight(p.x, p.y + 1) : hiresSurfaceHeight(p.x + 1, p.y);
+    float a = waterSurfaceHeight(p.x, p.y), d = waterSurfaceHeight(p.x + 1, p.y + 1);
+    float b = t.y >= t.x ? waterSurfaceHeight(p.x, p.y + 1) : waterSurfaceHeight(p.x + 1, p.y);
     return t.y >= t.x ? a + (d - b) * t.x + (b - a) * t.y
                       : a + (b - a) * t.x + (d - b) * t.y;
 }
@@ -472,7 +467,9 @@ void main(void)
         float threshold = heightsFine[record], flat4 = heightsFine[record + 1];
         bool full = hiresBlendW() != 1.0 || flat4 == 0.0;
         tent = hiresBlendW() != 1.0 || F.f7.x < threshold; // partial far blend mixes coarse heights: thresholds bound only the fine surface
-        if (full) {
+        if (full && !tent) {
+            fineCenter = waterFineHeight(WorldPos.xy);
+        } else if (full) {
             waterSurfaceCache(shoreOrigin, shoreRaw, shoreSurface);
             fineCenter = waterCachedHeight(WorldPos.xy, shoreOrigin, shoreRaw, shoreSurface);
         } else if (tent) {

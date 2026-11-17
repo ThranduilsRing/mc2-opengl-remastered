@@ -312,6 +312,7 @@ extern "C" int mc2_vk_water_island_run(
         if (!gos_terrain_lighting::GetVkProducerSnapshot(first) || !first.numVertices) nat = nullptr;
     }
     if (!nat) return 0;   // nothing will submit
+    if (!ensure_shore_surface(s)) { setFallback("shore_surface_bake_failed"); s->disabled = true; return 0; }
 
     // Mission reload can destroy the previous bake's view. Refresh the borrowed
     // mask before ANY descriptor rewrite, including the first native thin bind.

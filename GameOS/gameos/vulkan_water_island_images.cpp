@@ -3,10 +3,52 @@
 #include "vulkan_water_island_internal.h"
 #include "gameos.hpp"
 #include <algorithm>
+#include "vk_one_shot.h"
 
 
 
 namespace vk_water_detail {
+
+bool ensure_shore_surface(WaterIsland* s) {
+    const auto* fields = gos_TerrainFieldStore();
+    if (!fields || fields->visualSide() < 2) return true;
+    const int side = fields->visualSide();
+    const uint64_t version = fields->visualHeightVersion();
+    if (s->shoreSurfaceVersion == version && s->shoreSurfaceSide == side) return true;
+    auto& ctx = mc2vk::getOrCreateEngineVulkanContext();
+    // Rare terrain edits can replace buffers still read by the other frame slot.
+    ctx.waitIdle("water shore surface version change");
+    if (!s->shoreCompute) {
+        if (!s->shoreCompute.create(s->device, spv_dir() + "/water_shore_surface.comp.spv",
+                {{0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER}, {1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
+                 {2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER}}, "water.shoreSurface") ||
+            !s->shoreSets.create(s->device, s->shoreCompute, 1, "water.shoreSurface")) return false;
+    }
+    const VkDeviceSize bytes = static_cast<VkDeviceSize>(side) * side * sizeof(float);
+    if (fields->visualHeight().size() < static_cast<size_t>(side) * side) return false;
+    const int params[4]{side, 0, 0, 0};
+    if (!s->shoreRaw.createFilled(s->allocator, s->device, fields->visualHeight().data(), bytes,
+                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "water.shoreRaw") ||
+        !s->shoreSurface.createDeviceLocal(s->allocator, s->device, bytes,
+                                          VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "water.shoreSurface") ||
+        !s->shoreParams.createFilled(s->allocator, s->device, params, sizeof(params),
+                                    VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "water.shoreParams")) return false;
+    s->shoreSets.write(s->device, 0, 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, s->shoreRaw.get());
+    s->shoreSets.write(s->device, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, s->shoreSurface.get());
+    s->shoreSets.write(s->device, 0, 2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, s->shoreParams.get());
+    if (!mc2vk::submitOneShot(ctx, [&](VkCommandBuffer cb) {
+            mc2vk::cmdBarrier(cb, VK_PIPELINE_STAGE_HOST_BIT, VK_ACCESS_HOST_WRITE_BIT,
+                             VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
+            s->shoreCompute.bind(cb, s->shoreSets.set(0));
+            s->shoreCompute.dispatch(cb, (static_cast<uint32_t>(side * side) + 63) / 64);
+            mc2vk::cmdBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
+                             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
+        }, "water shore surface bake")) return false;
+    s->shoreSurfaceVersion = version; s->shoreSurfaceSide = side;
+    write_descriptors(s);
+    vlog("shore surface bake: side=%d version=%llu", side, static_cast<unsigned long long>(version));
+    return true;
+}
 
 bool init_reflection(WaterIsland* s) {
     VkImageCreateInfo image{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};

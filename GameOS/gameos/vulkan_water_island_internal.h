@@ -197,6 +197,11 @@ struct WaterIsland : mc2vk::IslandState {
     // ringBound[par] = the ring buffer they currently point at; a frame whose span came from another buffer re-points them after the slot fence.
     VkBuffer ringBound[mc2vk::kMaxFramesInFlight] = {};
     mc2vk::OwnedBuffer recipeBuf;
+    mc2vk::OwnedBuffer shoreRaw, shoreSurface, shoreParams;
+    mc2vk::ComputePipeline shoreCompute;
+    mc2vk::ComputeSets shoreSets;
+    uint64_t shoreSurfaceVersion = UINT64_MAX;
+    int shoreSurfaceSide = 0;
     mc2vk::OwnedBuffer thinBuf[mc2vk::kMaxFramesInFlight];
     mc2vk::OwnedImage reflectionImage;
     // Independent full-resolution reverse-Z depth; never aliases main scene depth.
@@ -276,6 +281,7 @@ VkShaderModule load_spv(VkDevice device, std::string_view path);
 bool make_buffer(WaterIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, VkBufferUsageFlags usage,
                  std::string_view name, int i0 = -1, int i1 = -1);
 void write_descriptors(WaterIsland* s, int only = -1);
+bool ensure_shore_surface(WaterIsland* s);
 void refresh_hdri_sampler(WaterIsland* s);   // rebuild the mip-biased sampler when the effective resolve state changed
 bool ensure_thin_capacity(WaterIsland* s, uint32_t par, VkDeviceSize bytes);
 bool upload_recipes_device(WaterIsland* s, const void* recipes, uint32_t recipeCount);
