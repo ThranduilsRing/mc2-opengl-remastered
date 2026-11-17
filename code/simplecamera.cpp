@@ -669,7 +669,7 @@ void SimpleCamera::drawAnimationPanel()
 {
     static bool keyHeld = false;
     const auto key = gos_GetKeyStatus(KEY_F9);
-    const bool down = key == KEY_PRESSED || key == KEY_HELD;
+    const bool down = key == KEY_PRESSED || key == KEY_HELD || ImGui::IsKeyDown(ImGuiKey_F9);
     if (down && !keyHeld) {
         animationPreview = {}; animationCamera = animationCamera == this ? nullptr : this;
     }
