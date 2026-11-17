@@ -891,7 +891,7 @@ void BattleMech::Save (PacketFilePtr file, long packetNum)
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!
-	auto bytes = mc2::save::encodeTaggedRecord(mc2::save::MechRecord{data}, mc2::save::mechTag);
+	auto bytes = mc2::save::encodeTaggedRecord(mc2::save::MechRecord{data, heatState, 2}, mc2::save::mechTag);
 	if (bytes.empty()) Fatal(0, "Invalid mech ObjectSlot");
 	file->writePacket(packetNum, bytes.data(), static_cast<unsigned int>(bytes.size()), STORAGE_TYPE_ZLIB);
 }

@@ -338,13 +338,7 @@ void Mission::save (mc2::czstring saveFileName)
     sections.add(mc2::save::tagMapAreas, 1, true, {});
     sections.add(mc2::save::tagMapDoors, 1, true, {});
     sections.add(mc2::save::tagDoorLinks, 1, true, {});
-    // OBJS stays v1 (byte-identical to older builds) unless a terrain object needs counted coverage beyond the legacy buffer.
-    std::uint32_t objectSlotsVer = 1;
-    for (long i = 0; i < ObjectManager->numTerrainObjects; ++i) {
-        auto* terrain = ObjectManager->terrainObjects[i];
-        if (terrain && terrain->numCellsCovered * 2 > std::size(TerrainObjectData{}.cellsCovered)) { objectSlotsVer = mc2::save::objectSlotsVersion; break; }
-    }
-    sections.add(mc2::save::tagObjectSlots, objectSlotsVer, true, {});
+    sections.add(mc2::save::tagObjectSlots, mc2::save::objectSlotsVersion, true, {});
     sections.add(mc2::save::tagWarriorStatic, 1, true, {});
     sections.add(mc2::save::tagWarrior, 1, true, {});
     sections.add(mc2::save::tagAblEnvironment, 1, true, {});

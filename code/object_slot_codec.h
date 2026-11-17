@@ -20,7 +20,7 @@ inline std::optional<int> objectSlotClass(std::span<const std::uint8_t> bytes) {
     Archive a(bytes);
     std::uint32_t tag = 0, version = 0;
     a(tag, version);
-    if (!a.good() || (version != 1 && !(tag == weaponBoltTag && version == 2))) return std::nullopt;
+    if (!a.good() || (version != 1 && !((tag == weaponBoltTag || tag == mechTag) && version == 2))) return std::nullopt;
     for (int c = 0; c < mc2_saved_objects::kClassCount; ++c)
         if (tag == objectSlotTags[c]) return c;
     return std::nullopt;
@@ -28,6 +28,12 @@ inline std::optional<int> objectSlotClass(std::span<const std::uint8_t> bytes) {
 
 template<class Record, class Data>
 bool decodeObjectSlot(std::span<const std::uint8_t> bytes, Data& data, int c) {
+    if constexpr (std::same_as<Record, MechRecord>) {
+        MechRecord record;
+        if (c != mc2_saved_objects::kMech || !decodeTaggedRecord(bytes, record, mechTag)) return false;
+        data = record.value;
+        return true;
+    }
     if constexpr (std::same_as<Record, WeaponBoltRecord>) {
         WeaponBoltRecord record{data};
         return c == mc2_saved_objects::kBolt && readWeaponBoltRecord(bytes, record);

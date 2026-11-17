@@ -2,6 +2,23 @@
 #include "unit_anim_state.h"
 #include "tactical_order_queue.h"
 #include "dteam.h"
+#include "mech_value_codec.h"
+
+TEST_CASE("save fields: heat extension independent member census and omission witnesses") {
+    using T = mc2::heat::State;
+    const auto sample = save_probe::patterned<T>(&T::heatMilli, &T::alphaMask, &T::alphaExpireTick);
+    auto codec = [](auto& a, auto& v) { mc2::save::heatFields(a, v); };
+    CHECK(save_probe::roundtrip(sample, codec, &T::heatMilli, &T::alphaMask, &T::alphaExpireTick));
+    auto omit = [&](auto member) {
+        return [=](auto& a, auto& v) {
+            codec(a, v);
+            if (a.reading()) save_probe::zero(v.*member);
+        };
+    };
+    CHECK_FALSE(save_probe::roundtrip(sample, omit(&T::heatMilli), &T::heatMilli));
+    CHECK_FALSE(save_probe::roundtrip(sample, omit(&T::alphaMask), &T::alphaMask));
+    CHECK_FALSE(save_probe::roundtrip(sample, omit(&T::alphaExpireTick), &T::alphaExpireTick));
+}
 
 namespace mc2clip {
 bool operator==(const Phase& a, const Phase& b) {

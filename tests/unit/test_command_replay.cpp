@@ -81,8 +81,19 @@ TEST_CASE("command replay preserves accepted ingress tick identity and detects s
 
 TEST_CASE("command replay rejects truncated recordings") {
     ReplayEnvironment fixture;
-    { std::ofstream file(fixture.path); file << "MC2REPLAY 1 \"unit\" 123 123 " << mc2_anim_rng::state()
+    { std::ofstream file(fixture.path); file << "MC2REPLAY 2 \"unit\" 123 123 " << mc2_anim_rng::state()
         << " \"unit-mission-mod-fingerprint\"\nH 1 1 2 3 4 5\n"; }
     fixture.playing();
     CHECK_THROWS(mc2::replay::begin("unit", 123));
+}
+
+TEST_CASE("command replay rejects previous and unknown versions with a specific diagnostic") {
+    ReplayEnvironment fixture;
+    fixture.playing();
+    for (unsigned version : {1u, 3u}) {
+        { std::ofstream file(fixture.path); file << "MC2REPLAY " << version << " \"unit\" 123 123 "
+            << mc2_anim_rng::state() << " \"unit-mission-mod-fingerprint\"\n"; }
+        CHECK_THROWS_WITH(mc2::replay::begin("unit", 123),
+            ("unsupported replay format version " + std::to_string(version) + "; expected 2").c_str());
+    }
 }

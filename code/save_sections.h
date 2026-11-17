@@ -65,8 +65,8 @@ inline constexpr std::uint32_t tagWarriorStatic = fourcc('W', 'S', 'T', 'A');
 inline constexpr std::uint32_t tagWarrior = fourcc('W', 'A', 'R', 'R');
 inline constexpr std::uint32_t tagAblEnvironment = fourcc('A', 'B', 'L', 'E');
 inline constexpr std::uint32_t tagObjectSlots = fourcc('O', 'B', 'J', 'S');
-// OBJS v2 permits counted terrain coverage beyond the native 40-pair buffer.
-inline constexpr std::uint32_t objectSlotsVersion = 2;
+// OBJS v3 permits MECH v2 heat extensions; v2 added counted terrain coverage.
+inline constexpr std::uint32_t objectSlotsVersion = 3;
 // Empty required marker: ANIM carries weapon-node tables beyond the legacy cap.
 // Older readers must refuse these saves before entering the legacy object loader.
 inline constexpr std::uint32_t tagWeaponNodes = fourcc('W', 'N', 'O', 'D');
