@@ -524,6 +524,7 @@ TEST_CASE("dumpConfig accepts box harness metadata under strict config") {
         "MC2_GATE_MODS_ROOT", "MC2_GATE_GPU", "MC2_GATE_INSTALL", "MC2_SLOT", "MC2_GATE_PROOFS"};
     gate::DumpOptions opts;
     opts.strict = true;
+    opts.exitOnStrict = false;  // Unrelated host metadata must not terminate the test process.
     const std::string before = capture(opts);
     for (const char* name : names) {
         const auto idx = gate::lookupName(name);
