@@ -2154,6 +2154,19 @@
    "count": 1
   },
   {
+   "tag": "COMPASS_SYNC",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "camX",
+    "camY",
+    "yaw",
+    "pitch"
+   ],
+   "count": 1
+  },
+  {
    "tag": "CONE_AIM_DIAG",
    "ver": 1,
    "stream": "stderr",
