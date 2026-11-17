@@ -754,8 +754,9 @@ static int run_terrain(int w, int h, TerrainIsland* supplied = nullptr,
         }, [&rctx](mc2vk::OwnedPipeline&& pipe) { rctx.retire(std::move(pipe)); });
     s->specSelected = variant ? variant->get() : (target ? s->planarPipe.get() : s->pipe.get());
     if (s->specLoggedKey != specKey.bits || s->specLoggedPipe != s->specSelected || s->specLoggedCompiling != s->specVariants.compiling()) {
-        vlog("[TERRAIN_SPEC] select frame=%llu view=%s key=%llu pipeline=%llu specialized=%d compiling=%d select_us=%.3f",
+        vlog("[TERRAIN_SPEC] select frame=%llu view=%s key=%llu formats=%u,%u,%u pipeline=%llu specialized=%d compiling=%d select_us=%.3f",
             static_cast<unsigned long long>(g_mc2RenderFrame), s->planar ? "reflection" : "main", static_cast<unsigned long long>(specKey.bits),
+            static_cast<unsigned>(s->colorRes->format), static_cast<unsigned>(s->normalRes->format), static_cast<unsigned>(s->depthRes->format),
             static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(s->specSelected)), variant != nullptr, s->specVariants.compiling(),
             std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - specBegin).count());
         s->specLoggedKey = specKey.bits; s->specLoggedPipe = s->specSelected;
