@@ -73,9 +73,9 @@ struct PlaceResult {
 
 // Maximum matching permits omni pods without greedy assignment rejecting a legal
 // loadout. Explicit saved keys are pinned; unmatched legacy keys are allocated.
-inline bool matchLocationMounts(const ChassisLayout& layout, const std::vector<LocationItem>& items,
-                               std::vector<unsigned>& keys) {
-    keys.assign(items.size(), 0);
+inline std::optional<std::vector<unsigned>> matchLocationMounts(
+    const ChassisLayout& layout, const std::vector<LocationItem>& items) {
+    std::vector<unsigned> keys(items.size(), 0);
     for (int loc = 0; loc < 8; ++loc) {
         const auto& mounts = layout.locations[loc].hardpoints;
         std::vector<int> owners(mounts.size(), -1);
@@ -85,9 +85,9 @@ inline bool matchLocationMounts(const ChassisLayout& layout, const std::vector<L
             auto m = std::find_if(mounts.begin(), mounts.end(), [&](const LocationMount& h) {
                 return h.key == item.hardpoint && (h.mask & item.component.mountMask);
             });
-            if (m == mounts.end()) return false;
+            if (m == mounts.end()) return std::nullopt;
             const auto j = static_cast<std::size_t>(m - mounts.begin());
-            if (owners[j] != -1) return false;
+            if (owners[j] != -1) return std::nullopt;
             owners[j] = static_cast<int>(i);
         }
         auto augment = [&](auto&& self, int i, std::vector<bool>& seen) -> bool {
@@ -103,12 +103,12 @@ inline bool matchLocationMounts(const ChassisLayout& layout, const std::vector<L
         for (std::size_t i = 0; i < items.size(); ++i) {
             if (items[i].location != loc || !items[i].component.mountMask || items[i].hardpoint) continue;
             std::vector<bool> seen(mounts.size(), false);
-            if (!augment(augment, static_cast<int>(i), seen)) return false;
+            if (!augment(augment, static_cast<int>(i), seen)) return std::nullopt;
         }
         for (std::size_t j = 0; j < mounts.size(); ++j)
             if (owners[j] >= 0) keys[owners[j]] = mounts[j].key;
     }
-    return true;
+    return keys;
 }
 
 inline PlaceResult checkPlace(const ChassisLayout& layout, const std::vector<LocationItem>& placed,
@@ -153,11 +153,11 @@ inline PlaceResult checkPlace(const ChassisLayout& layout, const std::vector<Loc
     if (electronics > 3) return {PlaceVerdict::TooManyElectronics};
     // resetComponents starts weapon/ammo insertion at 17 and permits 54 entries.
     if (inventory > 72 || weaponsAmmo > 54) return {PlaceVerdict::InventoryLimit};
-    std::vector<unsigned> keys;
-    if (!matchLocationMounts(layout, all, keys)) return {PlaceVerdict::NoFreeHardpoint};
+    const auto keys = matchLocationMounts(layout, all);
+    if (!keys) return {PlaceVerdict::NoFreeHardpoint};
     if (mass > layout.payload + 1e-6) return {PlaceVerdict::OverPayload, mass - layout.payload};
     if (heat > cooling + 1e-6) return {PlaceVerdict::TooHot};
-    return {PlaceVerdict::Legal, 0, cand.slot, keys.back()};
+    return {PlaceVerdict::Legal, 0, cand.slot, keys->back()};
 }
 
 struct VariantItem {
@@ -255,9 +255,8 @@ inline void mapLegacyLocations(const ChassisLayout& layout, LocationVariant& rec
     std::vector<LocationItem> placed;
     for (std::size_t i = 0; i < record.items.size(); ++i)
         placed.push_back({components[i], record.items[i].location, record.items[i].slot, record.items[i].hardpoint});
-    std::vector<unsigned> keys;
-    if (matchLocationMounts(layout, placed, keys))
-        for (std::size_t i = 0; i < record.items.size(); ++i) record.items[i].hardpoint = keys[i];
+    if (const auto keys = matchLocationMounts(layout, placed))
+        for (std::size_t i = 0; i < record.items.size(); ++i) record.items[i].hardpoint = (*keys)[i];
     record.version = 2;
     validateLocations(layout, record, components);
 }
