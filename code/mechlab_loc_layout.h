@@ -50,11 +50,11 @@ inline const char* panelTitle(int p) {
 }
 
 // Dedicated loadout column; the mech owns the unobstructed column to its left.
-inline constexpr float kAreaX = 217, kAreaY = 130, kColW = 156, kRowH = 83, kGap = 4;
+inline constexpr float kAreaX = 217, kAreaY = 150, kColW = 156, kRowH = 78, kGap = 4;
 inline constexpr int kCellW = 52;
 inline constexpr Rect kPreview{25, 116, 184, 377};
-// header strip = title row (16) + mount badge row (12); item rows follow; the last 14 px carry the refusal line.
-inline constexpr float kHeaderH = 28, kRowItemH = 12;
+// Title + mount badges, four normal-font item rows, then a refusal line.
+inline constexpr float kHeaderH = 28, kRowItemH = 12, kRefusalH = 10;
 inline constexpr int kRowsPerColumn = 4;
 
 inline Rect panelRect(int p) {
@@ -69,7 +69,7 @@ inline Rect itemRowRect(int p, int k, int count) {
     const Rect r = panelRect(p);
     const int columns = std::max(1, (count + kRowsPerColumn - 1) / kRowsPerColumn);
     const float width = (r.w - 4) / columns;
-    const float height = (r.h - kHeaderH - 14) / kRowsPerColumn;
+    const float height = (r.h - kHeaderH - kRefusalH) / kRowsPerColumn;
     return {r.x + 2 + (k / kRowsPerColumn) * width,
             r.y + kHeaderH + (k % kRowsPerColumn) * height, width, height};
 }

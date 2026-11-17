@@ -14,7 +14,8 @@ TEST_CASE("mechlab loc: all six torso and twelve CT items are reachable") {
         for (int k = 0; k < count; ++k) {
             const Rect row = itemRowRect(p, k, count);
             CHECK(panelRect(p).contains(row.x, row.y));
-            CHECK(row.y + row.h <= panelRect(p).y + panelRect(p).h - 14);
+            CHECK(row.y + row.h <= panelRect(p).y + panelRect(p).h - kRefusalH);
+            CHECK(row.h >= 10);
             CHECK(itemRowAt(p, row.cx(), row.cy(), count).value_or(-1) == k);
         }
     }
@@ -28,7 +29,7 @@ TEST_CASE("mechlab loc: panels do not overlap and the last item row clears the r
         }
     for (int p = 0; p < kPanelCount; ++p) {
         const Rect last = itemRowRect(p, 11, 12);
-        CHECK(last.y + last.h <= panelRect(p).y + panelRect(p).h - 14.0f);
+        CHECK(last.y + last.h <= panelRect(p).y + panelRect(p).h - kRefusalH);
     }
 }
 

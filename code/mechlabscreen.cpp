@@ -261,7 +261,7 @@ int MechLabScreen::init( FitIniFile& file )
 	}
 	rects[6].moveTo(321, 409);
 	rects[6].resize(2 * ml::kCellW, 64);
-	rects[13].moveTo(ml::kAreaX, ml::kAreaY);
+	rects[13].moveTo(ml::kAreaX, 130);
 	rects[13].resize(316, 344);
 	rects[12].moveTo(27, 495);
 	rects[12].resize(182, 30);
@@ -2573,7 +2573,7 @@ void MechLabScreen::drawLocationView( float tbSx, float tbSy, float tbOx, float 
 			}
 		}
 		if ( cand )
-			text( { r.x + 2, r.y + r.h - 14, r.w - 4, 13 }, s_locReason[p].c_str(), s_locLegal[p] ? 0xff60ff90 : 0xffff7070, 10.f, 0 );
+			text( { r.x + 2, r.y + r.h - ml::kRefusalH, r.w - 4, ml::kRefusalH }, s_locReason[p].c_str(), s_locLegal[p] ? 0xff60ff90 : 0xffff7070, 10.f, 0 );
 	}
 	// The combo text is composited later; cover every panel beneath its expanded list.
 	// left()/top() are parent-relative; the list draws at its global location.
