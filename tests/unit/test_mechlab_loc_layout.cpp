@@ -46,8 +46,10 @@ TEST_CASE("mechlab loc: panels do not overlap and the last item row clears the r
             const Rect ra = panelRect(a), rb = panelRect(b);
             CHECK((ra.x + ra.w <= rb.x || rb.x + rb.w <= ra.x || ra.y + ra.h <= rb.y || rb.y + rb.h <= ra.y));
         }
-    const Rect last = itemRowRect(LeftArm, kMaxItemRows - 1);
-    CHECK(last.y + last.h <= panelRect(LeftArm).y + panelRect(LeftArm).h - 14.0f);
+    for (int p = 0; p < kPanelCount; ++p) {
+        const Rect last = itemRowRect(p, kMaxItemRows - 1);
+        CHECK(last.y + last.h <= panelRect(p).y + panelRect(p).h - 14.0f);
+    }
 }
 
 namespace {
