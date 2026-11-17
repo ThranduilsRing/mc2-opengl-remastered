@@ -2300,7 +2300,8 @@ void MechLabScreen::endDragLocation()
 		selJ = j;
 		pSelectedComponent = pDragComponent;
 	}
-	else if ( bDragLeft )
+	else if ( mc2::components::restoreGridDrag( bDragLeft, false,
+		componentListBox.pointInside( userInput->getMouseX(), userInput->getMouseY() ), false ) )
 	{
 		addComponent( pDragComponent, selI, selJ );
 		pSelectedComponent = pDragComponent;
