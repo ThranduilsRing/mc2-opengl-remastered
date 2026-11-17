@@ -27,6 +27,35 @@ TEST_CASE("prewarm: unbounded logistics steps wait for finish") {
     CHECK(job->complete);
 }
 
+TEST_CASE("prewarm: cancelling pending Phase B releases its coroutine without running") {
+    Service service;
+    int bodies = 0;
+    auto phaseB = [](int& runs, std::shared_ptr<int> lifetime) -> Sequence {
+        ++runs;
+        co_yield *lifetime;
+    };
+    auto lifetime = std::make_shared<int>(0);
+    std::weak_ptr<int> retained = lifetime;
+    auto sequence = std::make_shared<Sequence>(phaseB(bodies, lifetime));
+    auto job = service.submitMain([sequence] { return sequence->step(); });
+    sequence.reset();
+    lifetime.reset();
+    service.pumpMain(4.0, Screen::MainMenu, false);
+    CHECK_FALSE(retained.expired());
+    CHECK_FALSE(job->complete);
+    service.cancelMain(job);
+    CHECK(retained.expired());
+    CHECK(job->complete);
+    CHECK_FALSE(job->step);
+    service.cancelMain(job);
+    service.finish(job);
+    service.pumpMain(4.0, Screen::LoadScreen, false);
+    CHECK(bodies == 0);
+    auto needed = service.submitMain([&] { ++bodies; return false; });
+    service.finish(needed);
+    CHECK(bodies == 1);
+}
+
 TEST_CASE("prewarm: private worker decode adopts on main and never in world") {
     Service service;
     const auto main = std::this_thread::get_id();

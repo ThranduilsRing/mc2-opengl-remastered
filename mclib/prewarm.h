@@ -105,6 +105,14 @@ public:
             } else break;
         } while (std::chrono::steady_clock::now() < until);
     }
+    void cancelMain(const Job& job) {
+        overlap::assertMainThread("prewarm.cancelMain");
+        const auto pending = std::find(main_.begin(), main_.end(), job);
+        if (pending == main_.end()) return;
+        main_.erase(pending);
+        job->step = {}; // Release the suspended coroutine without resuming it.
+        job->complete = true;
+    }
     void finish(const Job& job, const std::function<void()>& pump = {}) {
         while (job && !job->complete) {
             pumpMain(4.0, job->step ? Screen::LoadScreen : Screen::FrontEndMovie, false);
