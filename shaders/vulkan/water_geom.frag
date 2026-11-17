@@ -166,7 +166,7 @@ layout(set = 0, binding = 1, std140) uniform WaterFsParams {
     vec4 f2;              // (GLINT_GAIN, u_waterReflStrength, u_skyYaw, u_waterHdriLod)
     vec4 f3;              // (screenW, screenH, nightDim, animatedShore)
     vec4 DEEP_COLOR;      // .xyz color, .w Half-res reflection enabled
-    vec4 SHALLOW_COLOR;   // .xyz
+    vec4 SHALLOW_COLOR;   // .xyz color, .w baked reflection weather scale B
     // VK-PARITY-WATER-SHORE-1 (WATER-SHORE-EDGE-1): shore-feather inputs.
     vec4 f4;              // (u_shoreMode, u_hasShoreHeight, u_hasShoreMask, u_shoreFeatherWu)
     vec4 f5;              // u_shoreHeightBounds (topLeftX, topLeftY, spanX, spanY)
@@ -175,7 +175,7 @@ layout(set = 0, binding = 1, std140) uniform WaterFsParams {
     // VK-PARITY-F3 (water brightness): GL-default features missing in VK.
     vec4 f8;              // (u_waterEdgeFeather, u_waterEdgeFeatherStrength, u_halfMap, u_waterSkyTintStrength)
     vec4 f9;              // (u_waterSkyTintColor.xyz, u_waterProjAspect)
-    vec4 bake;            // world span, halfMap, reserved
+    vec4 bake;            // world span, halfMap, baked reflection weather scale RG
 } F;
 
 // RUNG-6.5 WATER-REFLECTION PORT: HDRI equirect (copy-once import of GL's
@@ -677,6 +677,7 @@ void main(void)
         vec4 geometry=vec4(0);
         if (F.DEEP_COLOR.w < -0.5) {
             geometry = bakedReflection(WorldPos, rdir);
+            geometry.rgb *= vec3(F.bake.zw, F.SHALLOW_COLOR.w);
         } else if (F.DEEP_COLOR.w > 0.5) {
             vec2 reflectionUV=gl_FragCoord.xy/u_waterScreenSize + reactive.xy*0.015;
             if (all(greaterThan(reflectionUV,vec2(0))) && all(lessThan(reflectionUV,vec2(1)))) {

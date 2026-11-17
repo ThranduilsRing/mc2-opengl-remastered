@@ -108,7 +108,7 @@ struct WaterFsParams {
     float f2[4];             // off 48  GLINT_GAIN, u_waterReflStrength, u_skyYaw, u_waterHdriLod
     float f3[4];             // off 64  screenW, screenH, nightDim, animatedShore
     float DEEP_COLOR[4];     // off 80
-    float SHALLOW_COLOR[4];  // off 96
+    float SHALLOW_COLOR[4];  // off 96 color.rgb, baked reflection weather scale B
     // VK-PARITY-WATER-SHORE-1 (WATER-SHORE-EDGE-1) -- LOCKSTEP with water_geom.frag.
     float f4[4];             // off 112 u_shoreMode, u_hasShoreHeight, u_hasShoreMask, u_shoreFeatherWu
     float f5[4];             // off 128 u_shoreHeightBounds
@@ -117,7 +117,7 @@ struct WaterFsParams {
     // VK-PARITY-F3: LOCKSTEP with water_geom.frag f8/f9.
     float f8[4];             // off 176 edgeFeather, edgeFeatherStrength, halfMap, skyTintStrength
     float f9[4];             // off 192 skyTintColor.xyz, projAspect
-    float bake[4];           // off 208 world span, halfMap, reserved
+    float bake[4];           // off 208 world span, halfMap, baked reflection weather scale RG
 };
 static_assert(sizeof(WaterFsParams) == 224, "WaterFsParams std140 size (water_geom.frag)");
 static_assert(offsetof(WaterFsParams, f0) == 16 && offsetof(WaterFsParams, f3) == 64 &&

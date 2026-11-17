@@ -2153,6 +2153,7 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
     // independently of the shared image fence that may name current-frame terrain.
     Mc2ColorPropLightFeed lightFeed{};
     const bool haveLightFeed = mc2_color_prop_island_get_light_feed(&lightFeed);
+    if (target && target->useTargetView) { lightFeed.poolMoverMax = 0; lightFeed.poolMoverDim = 0; }
     mc2vk::VulkanContext& rctx = mc2vk::getOrCreateEngineVulkanContext();
     const VkDeviceSize ringAlign = rctx.frameAlignment();
     const uint32_t instanceCount = feed.count;

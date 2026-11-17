@@ -9,6 +9,7 @@
 #include <cmath>
 #include <cstdio>
 #include <filesystem>
+#include <chrono>
 
 int gos_GetWaterReflectionQuality();
 
@@ -21,6 +22,9 @@ struct ReflectBake : mc2vk::IslandState {
     bool ready = false;
     std::array<uint64_t, 6> key{};
     std::array<float, 18> light{};
+    std::array<float, 3> bakedRgb{}, scale{1, 1, 1};
+    uint64_t content = 0;
+    std::chrono::steady_clock::time_point lastBake{};
     mc2vk::OwnedImage color, depth, height;
     mc2vk::OwnedImageView colorView, depthView, heightView;
     std::vector<mc2vk::OwnedImageView> mipViews;
@@ -146,21 +150,30 @@ bool prepare_reflect_bake(WaterIsland* s, float water) {
         light[12+i] = feed.missionFlatLight[i];
     }
     light[15] = lighting.rain; light[16] = feed.ambientFloor; light[17] = feed.ambientDayGate;
+    std::array<float, 3> rgb{};
+    for (int i = 0; i < 3; ++i) {
+        rgb[i] = light[3+i] + light[6+i];
+        light[3+i] = light[6+i] = 0;
+    }
+    light[15] = 0; // Weather is applied to the baked tap, with bounded lamp drift.
+    const auto content = GpuStaticPropRegistry::getContentRevision();
+    const auto now = std::chrono::steady_clock::now();
     auto& owner = s->reflectionBake;
     std::string why = "load";
     if (owner) {
         auto& b = *static_cast<ReflectBake*>(owner.get());
-        if (b.ready && b.key == key && b.light == light && b.water == water && b.halfMap == feed.halfMap) return true;
         if (b.ready) {
-            why = b.water != water ? "water" : "halfMap";
-            for (size_t i = 0; i < light.size(); ++i) if (b.light[i] != light[i]) {
-                why = "light[" + std::to_string(i) + "]:" + std::to_string(b.light[i]) + "->" + std::to_string(light[i]);
-                break;
+            bool drift = false;
+            for (int i = 0; i < 3; ++i) {
+                b.scale[i] = b.bakedRgb[i] > 0 ? rgb[i] / b.bakedRgb[i] : 1;
+                drift |= b.scale[i] < 0.9f || b.scale[i] > 1.1f || (b.bakedRgb[i] == 0 && rgb[i] != 0);
             }
-            for (size_t i = 0; i < key.size(); ++i) if (b.key[i] != key[i]) {
-                why = "key[" + std::to_string(i) + "]";
-                break;
-            }
+            bool changed = b.content != content || b.light != light || b.water != water || b.halfMap != feed.halfMap;
+            for (size_t i = 1; i < key.size(); ++i) changed |= b.key[i] != key[i];
+            if (changed) why = "content";
+            else if (drift) why = "drift";
+            else if (b.key[0] != key[0] && now - b.lastBake >= std::chrono::seconds(1)) why = "reveal";
+            else return true;
         }
         // Mission dimensions may change without a window resize.
         if (b.span != 128.0f * (feed.mapSide - 1)) mc2vk::getOrCreateEngineVulkanContext().retire(std::move(owner));
@@ -247,6 +260,7 @@ bool prepare_reflect_bake(WaterIsland* s, float water) {
         } else return false;
     }
     b.key = key; b.light = light; b.water = water; b.ready = true;
+    b.content = content; b.bakedRgb = rgb; b.scale = {1, 1, 1}; b.lastBake = now;
     return true;
 }
 
@@ -257,6 +271,7 @@ void bind_reflect_bake(WaterIsland* s, uint32_t par, WaterFsParams* params) {
     if (!b.ready) return;
     params->DEEP_COLOR[3] = -1; // quality 2: camera-independent reflection
     params->bake[0] = b.span; params->bake[1] = b.halfMap;
+    params->bake[2] = b.scale[0]; params->bake[3] = b.scale[1]; params->SHALLOW_COLOR[3] = b.scale[2];
     const VkDescriptorImageInfo images[] = {
         {s->hdriSampler.get(), b.colorView.get(), VK_IMAGE_LAYOUT_GENERAL},
         {s->hdriSampler.get(), b.heightView.get(), VK_IMAGE_LAYOUT_GENERAL}};
