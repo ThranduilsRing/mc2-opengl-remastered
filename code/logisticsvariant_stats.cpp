@@ -7,6 +7,7 @@
 #include "mc2str.h"
 #include "objective_text.h"
 #include "package_chassis.h"
+#include "logistics_save_version.h"
 #include "purchase_catalog.h"
 
 
@@ -420,7 +421,12 @@ long LogisticsVariant::save( FitIniFile& file, long counter )
 	mc2::fmt::to_buf(tmp, "Variant{:d}", mc2::fmt::as_i32(counter));
 	file.writeBlock( tmp );
 	
-	file.writeIdString( "Chassis", chassis->fileName.c_str() );
+	// A layout-revised package chassis names itself under LayoutChassis, so an older reader (which asks for Chassis) rejects the
+	// block instead of restoring its coordinates on a layout it does not know (code/logistics_save_version.h).
+	const int layoutRev = chassis->getPackage() ? chassis->getPackage()->layoutRev : 1;
+	file.writeIdString( mc2::logistics_save::variantChassisKey( layoutRev ), chassis->fileName.c_str() );
+	if ( mc2::logistics_save::layoutRevised( layoutRev ) )
+		file.writeIdLong( "LayoutRev", layoutRev );
 	file.writeIdString("PurchasePack", mc2purchase::chassisSource(chassis->fileName).c_str());
 	file.writeIdString( "VariantName", variantName.c_str() );
 	file.writeIdLong( "ComponentCount", componentCount );

@@ -320,9 +320,12 @@ int MechLabScreen::init( FitIniFile& file )
 	return true;
 }
 
+namespace { void locResetViewState(); }   // MECHLAB-LOC-1: defined with the location view below
+
 void MechLabScreen::begin()
 {
 	pInspectedComponent = nullptr;
+	locResetViewState();
 	dropRefusalTime = 0.f;
 	dragCancelled = false;
 	previewPaused = false;
@@ -491,9 +494,44 @@ void MechLabScreen::begin()
 
 
 
+	// MECHLAB-LOC-1: a loadout that changed on load because the chassis layout moved on is reported once, on the first lab entry.
+	{
+		const std::vector<LogisticsData::LayoutNote> notes = LogisticsData::instance->takeLayoutNotes();
+		if ( !notes.empty() )
+		{
+			std::string msg = "Mech layouts changed.";
+			for ( const LogisticsData::LayoutNote& n : notes )
+			{
+				if ( !n.replacedWith.empty() )
+				{
+					msg += " " + n.name + " no longer exists and was replaced by " + n.replacedWith + ".";
+					continue;
+				}
+				msg += " " + n.name + ":";
+				for ( const LogisticsVariant::DroppedComponent& d : n.report.dropped )
+					msg += " removed 1 x " + d.name + ",";
+				if ( n.report.moved > 0 )
+					msg += " " + std::to_string( n.report.moved ) + " moved,";
+				msg.back() = '.';
+				if ( n.refund > 0 )
+					msg += " " + std::to_string( n.refund ) + " C-bills refunded.";
+			}
+			static const bool s_soakCheck = mc2::gate::get<"MC2_SOAK_CHECK_SCREENS">();
+			if ( s_soakCheck )   // the soak walk must not be blocked by a modal
+				mc2::fmt::print_err( "[LOADOUT_MIGRATE] report-skipped-soak\n" );
+			else
+			{
+				LogisticsOneButtonDialog::instance()->setText( msg.c_str() );
+				LogisticsOneButtonDialog::instance()->begin();
+				bErrorDlg = true;
+				mc2::fmt::print_err( "[LOADOUT_MIGRATE] report-shown\n" );
+			}
+		}
+	}
 }
 void MechLabScreen::end()
 {
+	locResetViewState();
 	mechCamera.setMech( nullptr );
 	pVariant = nullptr;
 }
@@ -1381,6 +1419,7 @@ void MechLabScreen::updateArmorMeter()
 
 void MechLabScreen::swapVariant()
 {
+	locResetViewState();
 	// variant changed
 	varName = variantList.EditBox().entry();
 
@@ -2197,9 +2236,17 @@ bool MechLabScreen::canRemoveComponent( LogisticsComponent* pComp )
 namespace {
 struct LocItem { LogisticsComponent* comp; long x, y; };
 int s_locHover = -1;
-int s_locScroll[ml::kPanelCount] = {};   // first visible item per panel (overflow scrolling)
 bool s_locLegal[ml::kPanelCount] = {};
 std::string s_locReason[ml::kPanelCount];
+ml::LocViewState s_locView;   // per-panel scroll offsets (first visible item) + the doll icon key
+
+void locResetViewState()   // lab entry/exit and variant swap: no stale scroll, hover, refusal text or icon key
+{
+	s_locView.reset();
+	s_locHover = -1;
+	for ( bool& b : s_locLegal ) b = false;
+	for ( std::string& r : s_locReason ) r.clear();
+}
 
 const mc2pkg::PackageChassis* locPackage(const LogisticsVariant* v)
 {
@@ -2330,7 +2377,7 @@ std::optional<MechLabScreen::PlacedAt> MechLabScreen::placeInPanel( LogisticsCom
 	gatherPanelItems( pVariant, panel, items );
 	for ( size_t k = 0; k < items.size(); ++k )
 		if ( ml::isSelectedInstance( items[k].x, items[k].y, x, y ) )
-			s_locScroll[panel] = ml::scrollToReveal( static_cast<int>( items.size() ), s_locScroll[panel], static_cast<int>( k ) );
+			s_locView.scroll[panel] = ml::scrollToReveal( static_cast<int>( items.size() ), s_locView.scroll[panel], static_cast<int>( k ) );
 	return PlacedAt{ x, y };
 }
 
@@ -2400,7 +2447,7 @@ void MechLabScreen::updateLocationInput()
 	{
 		std::vector<LocItem> origin;
 		gatherPanelItems( pVariant, dragPanel, origin );
-		const int orow = ml::itemIndexAt( dragPanel, static_cast<int>( origin.size() ), s_locScroll[dragPanel],
+		const int orow = ml::itemIndexAt( dragPanel, static_cast<int>( origin.size() ), s_locView.scroll[dragPanel],
 			static_cast<float>( userInput->getMouseDragX() ), static_cast<float>( userInput->getMouseDragY() ) ).value_or( -1 );
 		if ( orow >= 0 && orow < static_cast<int>( origin.size() ) )
 		{
@@ -2426,24 +2473,24 @@ void MechLabScreen::updateLocationInput()
 	{
 		gatherPanelItems( pVariant, s_locHover, items );
 		const int count = static_cast<int>( items.size() );
-		s_locScroll[s_locHover] = ml::clampScroll( count, s_locScroll[s_locHover] );
+		s_locView.scroll[s_locHover] = ml::clampScroll( count, s_locView.scroll[s_locHover] );
 		bool arrowClicked = false;
 		if ( count > ml::kMaxItemRows )
 		{
 			if ( const long wheel = userInput->getMouseWheelDelta() )
 			{
-				s_locScroll[s_locHover] = ml::scrollByWheel( count, s_locScroll[s_locHover], wheel );
+				s_locView.scroll[s_locHover] = ml::scrollByWheel( count, s_locView.scroll[s_locHover], wheel );
 				userInput->clearMouseWheelDelta();
 			}
 			if ( userInput->isLeftClick() )
 				for ( const bool down : { false, true } )
 					if ( ml::scrollArrowRect( s_locHover, down ).contains( mx, my ) )
 					{
-						s_locScroll[s_locHover] = ml::clampScroll( count, s_locScroll[s_locHover] + ( down ? 1 : -1 ) );
+						s_locView.scroll[s_locHover] = ml::clampScroll( count, s_locView.scroll[s_locHover] + ( down ? 1 : -1 ) );
 						arrowClicked = true;
 					}
 		}
-		const int row = arrowClicked ? -1 : ml::itemIndexAt( s_locHover, count, s_locScroll[s_locHover], mx, my ).value_or( -1 );
+		const int row = arrowClicked ? -1 : ml::itemIndexAt( s_locHover, count, s_locView.scroll[s_locHover], mx, my ).value_or( -1 );
 		const LocItem* item = ( row >= 0 && row < static_cast<int>( items.size() ) ) ? &items[row] : nullptr;
 		if ( item )
 			::helpTextID = IDS_HELP_COMP0 + item->comp->getID();
@@ -2581,7 +2628,7 @@ void MechLabScreen::drawLocationView( float tbSx, float tbSy, float tbOx, float 
 		std::vector<LocItem> items;
 		gatherPanelItems( pVariant, p, items );
 		const int itemCount = static_cast<int>( items.size() );
-		const int first = ml::clampScroll( itemCount, s_locScroll[p] );
+		const int first = ml::clampScroll( itemCount, s_locView.scroll[p] );
 		if ( itemCount > ml::kMaxItemRows )
 		{	// overflow: small arrows on the badge row and a "first-last/total" range
 			for ( const bool down : { false, true } )

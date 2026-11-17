@@ -15,6 +15,7 @@ class CSVFile;
 class FitIniFile;
 
 #include <string>
+#include <vector>
 #include <optional>
 #include <functional>
 #include <expected>
@@ -227,10 +228,14 @@ protected:
 		// verdict text either way. Cells + mc2pkg::checkAdd only.
 		struct LocationPlace { bool legal = false; long x = -1; long y = -1; std::string reason; };
 		LocationPlace	packageLocationPlace( LogisticsComponent* pComponent, int regionIndex ) const;
-		// Loader path: keep a saved cell when it is still legal on the current layout, else move it to the first legal
-		// cell, else report nullopt (item dropped to inventory). See mc2::mechlab_loc::migratePlacement.
-		struct MigratedCell { long x = -1; long y = -1; };
-		std::optional<MigratedCell>	packageMigratePlacement( LogisticsComponent* pComponent, long x, long y ) const;
+		// Loader path: install a saved component list. Stock chassis add each item at its saved cell (unchanged).
+		// A package chassis solves the WHOLE loadout against the current regions and mounts (mc2::mechlab_loc::
+		// migrateLoadout): legal loadouts load as saved; otherwise items keep or move cells and only what has no
+		// legal place is dropped, named in `report` with its cost.
+		struct SavedComponent { int id = 0; long x = -1; long y = -1; };
+		struct DroppedComponent { std::string name; int id = 0; long cost = 0; std::string reason; };
+		struct LoadoutReport { int kept = 0, moved = 0; std::vector<DroppedComponent> dropped; };
+		void		setLoadout( const std::vector<SavedComponent>& items, LoadoutReport* report = nullptr );
 
 		int			getFileID() const { return fileID; }
 

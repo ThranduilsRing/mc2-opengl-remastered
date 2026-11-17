@@ -269,6 +269,25 @@ def test_chassis_fit_lists_regions_and_mounts(marauder, marauder_recipe):
     assert 'st ChassisId = "bt2018:marauder"' in text
     assert text.count("[Hardpoint") == 8 and text.count("[Region") == 5
     assert 'st AntiPersonnel = "67,68"' in text
+    assert "l LayoutRev = 2" in text
+
+
+# layout digest -> the mc2.layout_rev it was pinned with. A layout change without a bump would restore old saves' coordinates blindly.
+PINNED_LAYOUTS = {"bt2018:marauder": (2, "5654802e85440433")}
+
+
+def _layout_digest(profile):
+    import hashlib
+    m = profile["mc2"]
+    blob = json.dumps({"grid": m["grid"], "regions": m["regions"],
+                       "hardpoints": [[h["id"], h["location"], h["mount"]] for h in profile["hardpoints"]]}, sort_keys=True)
+    return hashlib.sha256(blob.encode()).hexdigest()[:16]
+
+
+def test_layout_change_requires_a_layout_rev_bump(marauder):
+    rev, digest = PINNED_LAYOUTS[marauder["chassis_id"]]
+    assert marauder["mc2"]["layout_rev"] == rev
+    assert _layout_digest(marauder) == digest, "chassis grid/regions/hardpoints changed: bump mc2.layout_rev in the recipe, then re-pin PINNED_LAYOUTS"
 
 
 def test_appearance_ini_uses_pack_model_and_no_host_meshes(marauder, marauder_recipe):

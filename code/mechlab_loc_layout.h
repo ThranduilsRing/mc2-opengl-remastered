@@ -13,6 +13,7 @@
 #include "package_chassis.h"
 
 #include <algorithm>
+#include <cmath>
 #include <optional>
 #include <cstdio>
 #include <string>
@@ -184,24 +185,114 @@ inline Explained explain(const mc2pkg::PackageChassis& c, const std::vector<mc2p
 
 // ---- saved-layout migration ---------------------------------------------------------------------
 // A loadout saved against an older grid/mount layout of the same chassis id must not restore its old
-// coordinates blindly. Keep the saved cell when it is still free, wholly inside a region and legal
-// (mounts, payload); otherwise move the item to the first legal cell scanning regions in declared order,
-// then rows, then columns. nullopt = nothing legal: the item is dropped (it returns to inventory).
-// Deterministic: the caller feeds items in saved order.
+// coordinates blindly, and one displaced item must not push out items that could have stayed. The whole
+// loadout is solved at once (weapons first, so an unrestricted item can never hold the only cell under a
+// mount): a legal loadout comes back unchanged; otherwise items keep their saved cell when still legal, the
+// rest move to the first legal cell (regions in declared order, rows, then columns), and only what truly
+// has no legal cell or mass budget left is dropped. Deterministic: depends only on the chassis and the list.
 struct Cell { int x = -1, y = -1; };
-inline std::optional<Cell> migratePlacement(const mc2pkg::PackageChassis& c, const std::vector<mc2pkg::Placed>& existing,
-                                                           const mc2pkg::Placed& cand) {
-    if (cand.x >= 0 && cand.y >= 0 && cellsFree(existing, cand.x, cand.y, cand.w, cand.h) &&
-        mc2pkg::checkAdd(c, existing, cand) == mc2pkg::Verdict::Legal)
-        return Cell{cand.x, cand.y};
-    for (size_t ri = 0; ri < c.regions.size(); ++ri) {
-        Candidate cd;
-        cd.w = cand.w; cd.h = cand.h; cd.category = cand.category; cd.ordinal = cand.ordinal; cd.weight = cand.weight;
-        const Explained e = explain(c, existing, cd, static_cast<int>(ri));
-        if (e.reason == Reason::Legal) return Cell{e.x, e.y};
+struct LoadoutItem { mc2pkg::Placed p; bool slot = false; };   // slot = legacy -2/-3 item (jump jet, ECM, sensor): mass only
+struct LoadoutResult {
+    std::vector<Cell> cells;     // parallel to the input; saved cell, new cell, or {-1,-1} when dropped
+    std::vector<char> kept;      // parallel to the input
+    int moved = 0, dropped = 0, droppedWeapons = 0;
+};
+
+inline bool loadoutLegal(const mc2pkg::PackageChassis& c, const std::vector<LoadoutItem>& items) {
+    std::vector<mc2pkg::Placed> grid, all;
+    for (const LoadoutItem& it : items) {
+        all.push_back(it.p);
+        if (it.slot) continue;
+        if (!mc2pkg::regionForFootprint(c, it.p.x, it.p.y, it.p.w, it.p.h)) return false;
+        if (!cellsFree(grid, it.p.x, it.p.y, it.p.w, it.p.h)) return false;
+        grid.push_back(it.p);
     }
-    return std::nullopt;
+    bool ok = false;
+    mc2pkg::assignMounts(c, grid, &ok);
+    return ok && mc2pkg::massUsed(all) <= c.payload + 1e-3f;
 }
+
+namespace detail {
+inline LoadoutResult solveLoadout(const mc2pkg::PackageChassis& c, const std::vector<LoadoutItem>& items, bool sticky) {
+    const size_t n = items.size();
+    LoadoutResult r;
+    r.cells.assign(n, Cell{});
+    r.kept.assign(n, 0);
+    std::vector<mc2pkg::Placed> existing;
+    auto order = [&](auto pred) {   // larger footprint first, then saved index
+        std::vector<size_t> v;
+        for (size_t i = 0; i < n; ++i) if (pred(items[i])) v.push_back(i);
+        std::stable_sort(v.begin(), v.end(), [&](size_t a, size_t b) { return items[a].p.w * items[a].p.h > items[b].p.w * items[b].p.h; });
+        return v;
+    };
+    auto place = [&](size_t i, int x, int y) {
+        mc2pkg::Placed p = items[i].p;
+        p.x = x; p.y = y;
+        existing.push_back(p);
+        r.cells[i] = {x, y};
+        r.kept[i] = 1;
+    };
+    auto keep = [&](size_t i) {
+        const mc2pkg::Placed& p = items[i].p;
+        if (p.x < 0 || p.y < 0 || !cellsFree(existing, p.x, p.y, p.w, p.h) || mc2pkg::checkAdd(c, existing, p) != mc2pkg::Verdict::Legal) return;
+        place(i, p.x, p.y);
+    };
+    auto move = [&](size_t i) {
+        const mc2pkg::Placed& p = items[i].p;
+        Candidate cd;
+        cd.w = p.w; cd.h = p.h; cd.category = p.category; cd.ordinal = p.ordinal; cd.weight = p.weight;
+        for (size_t ri = 0; ri < c.regions.size(); ++ri) {
+            const Explained e = explain(c, existing, cd, static_cast<int>(ri));
+            if (e.reason == Reason::Legal) { place(i, e.x, e.y); return; }
+        }
+    };
+    auto runClass = [&](const std::vector<size_t>& cls) {
+        if (sticky) for (size_t i : cls) keep(i);
+        for (size_t i : cls) if (!r.kept[i]) move(i);
+    };
+    runClass(order([](const LoadoutItem& it) { return !it.slot && it.p.category != mc2pkg::Mount::None; }));   // weapons
+    for (size_t i : order([](const LoadoutItem& it) { return it.slot; })) {                                       // slot items: mass only
+        mc2pkg::Placed probe = items[i].p;
+        probe.x = probe.y = -1; probe.category = mc2pkg::Mount::None;
+        if (mc2pkg::checkAdd(c, existing, probe) == mc2pkg::Verdict::Legal) place(i, -1, -1);
+    }
+    runClass(order([](const LoadoutItem& it) { return !it.slot && it.p.category == mc2pkg::Mount::None; }));   // unrestricted equipment
+    for (size_t i = 0; i < n; ++i) {
+        if (!r.kept[i]) {
+            ++r.dropped;
+            if (!items[i].slot && items[i].p.category != mc2pkg::Mount::None) ++r.droppedWeapons;
+        } else if (!items[i].slot && (r.cells[i].x != items[i].p.x || r.cells[i].y != items[i].p.y)) {
+            ++r.moved;
+        }
+    }
+    return r;
+}
+} // namespace detail
+
+inline LoadoutResult migrateLoadout(const mc2pkg::PackageChassis& c, const std::vector<LoadoutItem>& items) {
+    if (loadoutLegal(c, items)) {
+        LoadoutResult r;
+        for (const LoadoutItem& it : items) { r.cells.push_back({it.p.x, it.p.y}); r.kept.push_back(1); }
+        return r;
+    }
+    LoadoutResult a = detail::solveLoadout(c, items, true);
+    if (a.dropped == 0) return a;
+    LoadoutResult b = detail::solveLoadout(c, items, false);
+    return (b.droppedWeapons < a.droppedWeapons || (b.droppedWeapons == a.droppedWeapons && b.dropped < a.dropped)) ? b : a;
+}
+
+// C-bills returned for the components a migration dropped: the full cost, once per owned mech of that variant.
+inline long layoutRefund(long droppedCost, long mechs) { return droppedCost * mechs; }
+
+// ---- view state (mech-lab location view) --------------------------------------------------------
+// Per-panel scroll offsets and the doll icon key. Reset on entering/leaving the lab and on a variant swap so a
+// stale scroll or a reused variant address can never leak into the next mech.
+struct LocViewState {
+    int scroll[kPanelCount] = {};
+    std::string dollKey;
+    void reset() { for (int& s : scroll) s = 0; dollKey.clear(); }
+    bool needsIcon(std::string_view key) const { return dollKey != key; }
+};
 
 // One short line for a panel (101 legacy px wide at ~10 px text: keep under ~22 characters).
 inline std::string reasonText(const Explained& e, mc2pkg::Mount m, const mc2pkg::Region* r, const Candidate& cand) {

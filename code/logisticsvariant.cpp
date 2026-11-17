@@ -10,6 +10,7 @@ LogisticsVariant.cpp			: Implementation of the LogisticsVariant component.
 #include "mc2fmt.h"
 #include "mc2str.h"
 #include "package_chassis.h"
+#include "../GameOS/gameos/utils/mc2log.h"
 #include <filesystem>
 
 
@@ -421,17 +422,21 @@ int LogisticsVariant::init( CSVFile* file, LogisticsChassis* pChassis, int Varia
 		}
 	}
 
+	// big-first (stock order); the package chassis solves the whole loadout in setLoadout.
+	std::vector<SavedComponent> saved;
 	for ( int j = 4; j > 0; j-- )
 	{
 		for ( int k = 3; k >0; k-- )
 		{
 			for (int i = 0; i < componentCount; i++ )
 			{
-				LogisticsComponent*
-				pComponent = pComps[i];
+				LogisticsComponent* pComponent = pComps[i];
 
-				if ( pComponent&& pComponent->getComponentWidth() == k 
+				if ( pComponent && pComponent->getComponentWidth() == k
 					&& pComponent->getComponentHeight() == j )
+					if (chassis->getPackage())
+						saved.push_back({pComps[i]->getID(), xLocs[i], yLocs[i]});
+					else
 				{
 					if ( !addComponent( pComps[i]->getID(), xLocs[i], yLocs[i] ) )
 					{
@@ -441,8 +446,14 @@ int LogisticsVariant::init( CSVFile* file, LogisticsChassis* pChassis, int Varia
 				}
 			}
 		}
-
 	}
+	LoadoutReport report;
+	if (chassis->getPackage()) {
+		setLoadout( saved, &report );
+		restoreLocationRecord(locationRecord());
+	}
+	for ( const DroppedComponent& d : report.dropped )   // a pack authoring error: designer variants are authored against their own layout
+		MC2_LOG(Core, Warn, "logistics: designer variant '{}' lost component {} ({}): {}", variantName, d.name, d.id, d.reason);
 
 	
 	return 0;
@@ -482,17 +493,7 @@ bool LogisticsVariant::addComponent( int idFromFitFile, long& x, long& y )
 		long componentWidth = pComponent->getComponentWidth();
 		long componentHeight = pComponent->getComponentHeight();
 
-		// A package chassis validates every saved cell against the CURRENT regions and mounts (old-layout saves
-		// are migrated or dropped, never restored blindly).
-		if ( chassis->getPackage() )
-		{
-			const auto cell = packageMigratePlacement( pComponent, x, y );
-			if ( !cell )
-				return false;
-			x = cell->x;
-			y = cell->y;
-		}
-		else if ( x == -1 && y == -1 )
+		if ( x == -1 && y == -1 )
 		{
 			for ( int j = 0; j < chassis->componentAreaHeight && x == -1; j++ )
 			{

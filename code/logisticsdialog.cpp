@@ -1,3 +1,4 @@
+#include "logistics_save_version.h"
 #include <memory>
 #include <fstream>
 #include <algorithm>
@@ -839,7 +840,7 @@ static bool quickReadSaveVersion( std::string_view filePath, long& versionNumber
 bool isCorrectVersionCampaignSave(std::string_view path)
 {
 	long version = 0;
-	return quickReadSaveVersion(path, version) && version == SaveGameVersionNumber;
+	return quickReadSaveVersion(path, version) && mc2::logistics_save::saveVersionReadable(version);
 }
 
 bool LogisticsSaveDialog::isCorrectVersionSaveGame( char* fileName )

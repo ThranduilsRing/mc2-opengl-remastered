@@ -129,17 +129,63 @@ LogisticsVariant::LocationPlace LogisticsVariant::packageLocationPlace( Logistic
     return out;
 }
 
-std::optional<LogisticsVariant::MigratedCell> LogisticsVariant::packageMigratePlacement( LogisticsComponent* pComponent, long x, long y ) const
+// Saved component list -> variant. Stock chassis: each item at its saved cell, exactly as before. Package chassis:
+// the whole loadout is solved against the current regions/mounts (mc2::mechlab_loc::migrateLoadout); the kept items
+// are then added in INPUT order with the solved cells (mount assignment and deployment are order-dependent).
+void LogisticsVariant::setLoadout( const std::vector<SavedComponent>& items, LoadoutReport* report )
 {
     const mc2pkg::PackageChassis* pc = chassis->getPackage();
     if ( !pc )
-        return MigratedCell{ x, y };
-    std::vector<mc2pkg::Placed> existing;
-    existing.reserve( componentCount );
-    for ( int i = 0; i < componentCount; ++i )
-        existing.push_back( placedOf( components[i].component, components[i].xCoord, components[i].yCoord ) );
-    const auto to = mc2::mechlab_loc::migratePlacement( *pc, existing, placedOf( pComponent, x, y ) );
-    if ( !to )
-        return std::nullopt;
-    return MigratedCell{ to->x, to->y };
+    {
+        for ( const SavedComponent& it : items )
+        {
+            long x = it.x;
+            long y = it.y;
+            addComponent( it.id, x, y );
+        }
+        return;
+    }
+    std::vector<LogisticsComponent*> comps;
+    std::vector<mc2::mechlab_loc::LoadoutItem> in;
+    for ( const SavedComponent& it : items )
+    {
+        LogisticsComponent* pComp = LogisticsData::instance->getComponent( it.id ).transform( []( auto ref ) { return &ref.get(); } ).value_or( nullptr );
+        if ( !pComp )
+            continue;   // an unknown component id never loaded in the stock path either
+        mc2::mechlab_loc::LoadoutItem li;
+        li.slot = pComp->getType() == COMPONENT_FORM_JUMPJET || pComp->getType() == COMPONENT_FORM_ECM || pComp->getType() == COMPONENT_FORM_SENSOR;
+        li.p = placedOf( pComp, li.slot ? -1 : it.x, li.slot ? -1 : it.y );
+        if ( li.slot )
+            li.p.category = mc2pkg::Mount::None;
+        comps.push_back( pComp );
+        in.push_back( li );
+    }
+    const mc2::mechlab_loc::LoadoutResult r = mc2::mechlab_loc::migrateLoadout( *pc, in );
+    std::vector<mc2pkg::Placed> placed;
+    for ( size_t i = 0; i < in.size(); ++i )
+    {
+        if ( !r.kept[i] )
+            continue;
+        mc2pkg::Placed p = in[i].p;
+        p.x = r.cells[i].x;
+        p.y = r.cells[i].y;
+        placed.push_back( p );
+        long x = r.cells[i].x;
+        long y = r.cells[i].y;
+        addComponent( comps[i]->getID(), x, y );
+    }
+    if ( !report )
+        return;
+    report->moved = r.moved;
+    report->kept = static_cast<int>( placed.size() );
+    for ( size_t i = 0; i < in.size(); ++i )
+    {
+        if ( r.kept[i] )
+            continue;
+        mc2pkg::Placed probe = in[i].p;
+        probe.x = probe.y = -1;
+        const mc2pkg::Verdict v = mc2pkg::checkAdd( *pc, placed, probe );
+        report->dropped.push_back( { comps[i]->getName(), comps[i]->getID(), comps[i]->getCost(),
+                                     v == mc2pkg::Verdict::Legal ? "no-free-cells" : mc2pkg::verdictName( v ) } );
+    }
 }

@@ -127,48 +127,184 @@ mc2pkg::Placed placedItem(int x, int y, int w, int h, mc2pkg::Mount m, int ord, 
 }
 }
 
-TEST_CASE("mechlab loc: a save made on the old 6x4 layout is migrated or dropped, never restored blindly") {
+// Old saves are in saved order with coordinates of the pre-change 6x4 grid (LA col 0, LT col 1, CT cols 2-3, RT col 4, RA col 5).
+namespace {
+LoadoutItem grid(int x, int y, int w, int h, mc2pkg::Mount m, int ord, float wt) { return {placedItem(x, y, w, h, m, ord, wt), false}; }
+LoadoutItem slotItem(int ord, float wt) { return {placedItem(-1, -1, 1, 1, mc2pkg::Mount::None, ord, wt), true}; }
+constexpr auto E = mc2pkg::Mount::Energy;
+constexpr auto N = mc2pkg::Mount::None;
+
+std::vector<LoadoutItem> astraSixSinks() {
+    return {grid(1, 0, 1, 1, N, 7, 1.0f), grid(1, 1, 1, 1, N, 7, 1.0f), grid(1, 2, 1, 1, N, 7, 1.0f),
+            grid(4, 0, 1, 1, N, 7, 1.0f), grid(4, 1, 1, 1, N, 7, 1.0f), grid(4, 2, 1, 1, N, 7, 1.0f),
+            grid(0, 0, 1, 3, E, 145, 6.0f), grid(5, 0, 1, 3, E, 145, 6.0f),
+            grid(0, 3, 1, 1, E, 156, 1.0f), grid(5, 3, 1, 1, E, 156, 1.0f)};
+}
+std::vector<LoadoutItem> missileMarauder() {
+    return {grid(0, 0, 1, 3, E, 145, 6.0f), grid(0, 3, 1, 1, E, 156, 1.0f), grid(5, 0, 1, 3, E, 145, 6.0f), grid(5, 3, 1, 1, E, 156, 1.0f),
+            grid(1, 0, 1, 2, mc2pkg::Mount::Missile, 60, 5.0f), grid(4, 0, 1, 1, N, 7, 1.0f), grid(4, 1, 1, 1, N, 7, 1.0f)};
+}
+// every invariant of a migration result: kept items in a region, no overlap, mounts ok, payload.
+void checkInvariants(const mc2pkg::PackageChassis& c, const std::vector<LoadoutItem>& in, const LoadoutResult& r) {
+    REQUIRE(r.cells.size() == in.size());
+    std::vector<LoadoutItem> out;
+    for (size_t i = 0; i < in.size(); ++i) {
+        if (!r.kept[i]) continue;
+        LoadoutItem it = in[i];
+        it.p.x = r.cells[i].x; it.p.y = r.cells[i].y;
+        out.push_back(it);
+    }
+    CHECK(loadoutLegal(c, out));
+}
+bool at(const LoadoutResult& r, size_t i, int x, int y) { return r.kept[i] && r.cells[i].x == x && r.cells[i].y == y; }
+const mc2pkg::Region* regionOf(const mc2pkg::PackageChassis& c, const LoadoutResult& r, const std::vector<LoadoutItem>& in, size_t i) {
+    return mc2pkg::regionForFootprint(c, r.cells[i].x, r.cells[i].y, in[i].p.w, in[i].p.h);
+}
+}
+
+TEST_CASE("mechlab loc U1: six heat sinks hold the cells under the arm mounts, nothing is dropped") {
     const mc2pkg::PackageChassis c = marauderShipped();
-    // Old save, in saved order: coordinates of the pre-change 6x4 grid (LA col 0, LT col 1, CT cols 2-3, RT col 4, RA col 5).
-    std::vector<mc2pkg::Placed> saved = {
-        placedItem(0, 0, 1, 3, mc2pkg::Mount::Energy, 145, 6.0f),      // PPC left arm: still legal where it is
-        placedItem(0, 3, 1, 1, mc2pkg::Mount::Energy, 156, 2.0f),      // ML: row 3 is now the left torso (no mounts) -> moves into the arm
-        placedItem(5, 0, 1, 3, mc2pkg::Mount::Energy, 145, 6.0f),      // PPC right arm: col 5 is inside the new right arm
-        placedItem(2, 0, 2, 2, mc2pkg::Mount::Ballistic, 100, 8.0f),   // AC/5 centre torso: the CT lost its ballistic mount -> right torso
-        placedItem(1, 0, 1, 1, mc2pkg::Mount::None, 7, 1.0f),          // heat sinks that sat in the old left torso column
-        placedItem(1, 1, 1, 1, mc2pkg::Mount::None, 7, 1.0f),
-        placedItem(0, 0, 1, 1, mc2pkg::Mount::None, 160, 40.0f),       // does not fit the payload: dropped
+    const auto in = astraSixSinks();
+    CHECK(!loadoutLegal(c, in));
+    const LoadoutResult r = migrateLoadout(c, in);
+    CHECK(r.dropped == 0);
+    checkInvariants(c, in, r);
+    CHECK(at(r, 6, 0, 0));
+    CHECK(at(r, 7, 5, 0));
+    REQUIRE(regionOf(c, r, in, 8));
+    REQUIRE(regionOf(c, r, in, 9));
+    CHECK(regionOf(c, r, in, 8)->location == "LeftArm");
+    CHECK(regionOf(c, r, in, 9)->location == "RightArm");
+    int sinksStayed = 0;
+    for (size_t i = 0; i < 6; ++i) sinksStayed += at(r, i, in[i].p.x, in[i].p.y);
+    CHECK(sinksStayed >= 4);
+}
+
+TEST_CASE("mechlab loc U2: a missile Marauder loses only the missile rack, and the refund is cost x mechs") {
+    const mc2pkg::PackageChassis c = marauderShipped();
+    const auto in = missileMarauder();
+    const LoadoutResult r = migrateLoadout(c, in);
+    CHECK(r.dropped == 1);
+    CHECK(r.droppedWeapons == 1);
+    CHECK(!r.kept[4]);
+    for (size_t i = 0; i < in.size(); ++i) if (i != 4) CHECK(r.kept[i]);
+    mc2pkg::Placed probe = in[4].p;
+    std::vector<mc2pkg::Placed> others;
+    for (size_t i = 0; i < in.size(); ++i) if (r.kept[i]) { mc2pkg::Placed p = in[i].p; p.x = r.cells[i].x; p.y = r.cells[i].y; others.push_back(p); }
+    probe.x = -1; probe.y = -1;
+    CHECK(std::string(mc2pkg::verdictName(mc2pkg::checkAdd(c, others, probe))) == "no-free-mount");
+    checkInvariants(c, in, r);
+    CHECK(layoutRefund(250, 0) == 0);
+    CHECK(layoutRefund(250, 1) == 250);
+    CHECK(layoutRefund(250, 2) == 500);
+}
+
+TEST_CASE("mechlab loc U3: migration is idempotent, a legal loadout is returned unchanged") {
+    const mc2pkg::PackageChassis c = marauderShipped();
+    for (const auto& in : {astraSixSinks(), missileMarauder()}) {
+        const LoadoutResult first = migrateLoadout(c, in);
+        std::vector<LoadoutItem> again;
+        for (size_t i = 0; i < in.size(); ++i) {
+            if (!first.kept[i]) continue;
+            LoadoutItem it = in[i];
+            it.p.x = first.cells[i].x; it.p.y = first.cells[i].y;
+            again.push_back(it);
+        }
+        const LoadoutResult second = migrateLoadout(c, again);
+        CHECK(second.moved == 0);
+        CHECK(second.dropped == 0);
+        REQUIRE(second.cells.size() == again.size());
+        for (size_t i = 0, k = 0; i < in.size(); ++i) {
+            if (!first.kept[i]) continue;
+            CHECK(second.cells[k].x == first.cells[i].x);
+            CHECK(second.cells[k].y == first.cells[i].y);
+            ++k;
+        }
+    }
+    // the shipped MAD-3R loadout on the current layout
+    const std::vector<LoadoutItem> shipped = {grid(0, 0, 1, 3, E, 145, 6.0f), grid(1, 0, 1, 1, E, 156, 1.0f), grid(5, 0, 1, 3, E, 145, 6.0f),
+                                              grid(4, 0, 1, 1, E, 156, 1.0f), grid(2, 0, 1, 1, N, 7, 1.0f), grid(2, 1, 1, 1, N, 7, 1.0f)};
+    REQUIRE(loadoutLegal(c, shipped));
+    const LoadoutResult r = migrateLoadout(c, shipped);
+    CHECK(r.moved == 0);
+    CHECK(r.dropped == 0);
+    for (size_t i = 0; i < shipped.size(); ++i) CHECK(at(r, i, shipped[i].p.x, shipped[i].p.y));
+}
+
+TEST_CASE("mechlab loc U4: the same input migrates to the same result twice") {
+    const mc2pkg::PackageChassis c = marauderShipped();
+    for (const auto& in : {astraSixSinks(), missileMarauder()}) {
+        const LoadoutResult a = migrateLoadout(c, in), b = migrateLoadout(c, in);
+        REQUIRE(a.cells.size() == b.cells.size());
+        for (size_t i = 0; i < a.cells.size(); ++i) {
+            CHECK(a.cells[i].x == b.cells[i].x);
+            CHECK(a.cells[i].y == b.cells[i].y);
+            CHECK(a.kept[i] == b.kept[i]);
+        }
+    }
+}
+
+TEST_CASE("mechlab loc U5: payload pressure drops sinks, never a weapon") {
+    const mc2pkg::PackageChassis c = marauderShipped();   // payload 34
+    std::vector<LoadoutItem> in;
+    for (int i = 0; i < 20; ++i) in.push_back(grid(2 + (i % 2), i / 2, 1, 1, N, 7, 1.0f));   // twenty 1 t sinks first in saved order
+    in.push_back(grid(0, 0, 1, 3, E, 145, 7.0f));
+    in.push_back(grid(5, 0, 1, 3, E, 145, 7.0f));
+    in.push_back(grid(0, 3, 1, 1, E, 156, 6.0f));
+    const LoadoutResult r = migrateLoadout(c, in);   // 20 t of weapons leave room for 14 sinks
+    CHECK(r.droppedWeapons == 0);
+    CHECK(r.dropped == 6);
+    for (size_t i = 20; i < in.size(); ++i) CHECK(r.kept[i]);
+    checkInvariants(c, in, r);
+}
+
+TEST_CASE("mechlab loc U6: slot items count toward mass, never move, and are dropped only when mass forces it") {
+    const mc2pkg::PackageChassis c = marauderShipped();
+    std::vector<LoadoutItem> in = {slotItem(90, 2.0f), grid(0, 3, 1, 1, E, 156, 1.0f), grid(0, 0, 1, 3, E, 145, 6.0f)};   // ML on the old row: forces a migration
+    LoadoutResult r = migrateLoadout(c, in);
+    CHECK(r.dropped == 0);
+    CHECK(r.kept[0]);
+    CHECK(r.cells[0].x == -1);
+    CHECK(r.cells[0].y == -1);
+    in.push_back(grid(1, 0, 1, 1, N, 160, 32.0f));   // 2 + 1 + 6 + 32 > 34: the equipment goes, the slot item stays
+    r = migrateLoadout(c, in);
+    CHECK(r.kept[0]);
+    CHECK(!r.kept[3]);
+    in[0].p.weight = 30.0f;                           // a slot item heavy enough that mass forces a drop of something
+    r = migrateLoadout(c, in);
+    CHECK(r.dropped >= 1);
+    CHECK(mc2pkg::massUsed([&] { std::vector<mc2pkg::Placed> v; for (size_t i = 0; i < in.size(); ++i) if (r.kept[i]) v.push_back(in[i].p); return v; }()) <= c.payload + 1e-3f);
+}
+
+TEST_CASE("mechlab loc U7: when keeping cells fragments a region the packed attempt wins") {
+    const mc2pkg::PackageChassis c = marauderShipped();
+    const int rt = 3;   // RightTorso: ballistic mounts, 2x3 cells at (4,3)
+    REQUIRE(c.regions[rt].location == "RightTorso");
+    const std::vector<LoadoutItem> in = {
+        grid(4, 4, 1, 1, mc2pkg::Mount::Ballistic, 120, 0.5f),   // kept cells split the torso rows
+        grid(5, 4, 1, 1, mc2pkg::Mount::Ballistic, 120, 0.5f),
+        grid(0, 0, 1, 3, mc2pkg::Mount::Ballistic, 100, 5.0f),   // an old-layout cell with no ballistic mount: has to move
     };
-    std::vector<mc2pkg::Placed> loaded;
-    int dropped = 0;
-    for (mc2pkg::Placed it : saved) {
-        const auto to = migratePlacement(c, loaded, it);
-        if (!to) { ++dropped; continue; }
-        it.x = to->x; it.y = to->y;
-        loaded.push_back(it);
-    }
-    CHECK(dropped == 1);
-    REQUIRE(loaded.size() == 6);
-    CHECK(loaded[0].x == 0);   CHECK(loaded[0].y == 0);              // kept
-    CHECK(loaded[1].x == 1);   CHECK(loaded[1].y == 0);              // the ML moved to the arm's second cell column
-    CHECK(loaded[3].x == 4);   CHECK(loaded[3].y == 3);              // the AC/5 left the centre torso for the ballistic right torso
-    bool ok = false;
-    mc2pkg::assignMounts(c, loaded, &ok);
-    CHECK(ok);                                                       // every weapon sits on a mount of its own location
-    for (size_t i = 0; i < loaded.size(); ++i) {
-        CHECK(mc2pkg::regionForFootprint(c, loaded[i].x, loaded[i].y, loaded[i].w, loaded[i].h) != nullptr);
-        for (size_t j = i + 1; j < loaded.size(); ++j)
-            CHECK(cellsFree({loaded[i]}, loaded[j].x, loaded[j].y, loaded[j].w, loaded[j].h));   // no overlap
-    }
-    CHECK(mc2pkg::massUsed(loaded) <= c.payload + 1e-3f);
-    // deterministic: the same save migrates to the same coordinates
-    std::vector<mc2pkg::Placed> again;
-    for (mc2pkg::Placed it : saved) {
-        const auto to = migratePlacement(c, again, it);
-        if (!to) continue;
-        it.x = to->x; it.y = to->y;
-        again.push_back(it);
-    }
-    REQUIRE(again.size() == loaded.size());
-    for (size_t i = 0; i < loaded.size(); ++i) { CHECK(again[i].x == loaded[i].x); CHECK(again[i].y == loaded[i].y); }
+    const LoadoutResult sticky = detail::solveLoadout(c, in, true);
+    const LoadoutResult packed = detail::solveLoadout(c, in, false);
+    CHECK(sticky.droppedWeapons == 1);
+    CHECK(packed.droppedWeapons == 0);
+    const LoadoutResult r = migrateLoadout(c, in);
+    CHECK(r.dropped == 0);
+    CHECK(at(r, 2, 4, 3));
+    checkInvariants(c, in, r);
+}
+
+TEST_CASE("mechlab loc U10: view state resets scrolls and re-keys the doll icon") {
+    LocViewState v;
+    v.scroll[2] = 4; v.scroll[kDoll] = 1;
+    v.dollKey = "mad";
+    CHECK(!v.needsIcon("mad"));
+    CHECK(v.needsIcon("hunchback"));
+    v.reset();
+    for (int s : v.scroll) CHECK(s == 0);
+    CHECK(v.needsIcon("mad"));
+    v.dollKey = "mad";
+    CHECK(!v.needsIcon("mad"));
+    CHECK(v.needsIcon("hunchback"));
 }

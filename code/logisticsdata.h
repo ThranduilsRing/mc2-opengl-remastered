@@ -124,6 +124,22 @@ public:
 
 	std::expected<void, long> loadMech( FitIniFile& file, int& count );
 
+	// A saved variant whose loadout changed on load because the chassis layout moved on (code/mechlab_loc_layout.h
+	// migrateLoadout). `refund` is the C-bills credited for the dropped components (cost x owned mechs of the variant).
+	struct LayoutNote
+	{
+		LogisticsVariant*								variant = nullptr;
+		std::string										name;
+		std::string										chassis;
+		int												layoutRev = 1;
+		LogisticsVariant::LoadoutReport					report;
+		long											mechs = 0;
+		long											refund = 0;
+		std::string										replacedWith;   // set when the saved variant no longer exists and the mech moved to this designer variant
+	};
+	// The notes of the last load()/loadVariant, handed out once (the mech lab shows them on entry).
+	std::vector<LayoutNote>	takeLayoutNotes() { return std::move( layoutNotes ); }
+
 	void				setMissionCompleted();
 	long				updateAvailability();
 
@@ -298,6 +314,7 @@ private:
 	int												resourcePoints; // C-Bills for buying mechs
 
 	std::expected<void, long> loadVariant( FitIniFile& file );
+	std::vector<LayoutNote>	layoutNotes;
 
 
 	
