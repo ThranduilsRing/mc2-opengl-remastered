@@ -362,6 +362,7 @@ add_executable(mc2_tests
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/gameos_fileio.cpp
 )
 mc2_link_gate(mc2_tests)
+add_dependencies(mc2_tests mc2_bv_calibration)
 
 # Trigger paths: mclib/mech_skel_import.*, test_torso_twist.cpp.
 # Exercise production FK with synthetic scenes; no importer or game required.
