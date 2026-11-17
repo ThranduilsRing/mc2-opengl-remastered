@@ -1075,9 +1075,9 @@ void MechLabScreen::render(int xOffset, int yOffset)
 		statics[i].showGUIWindow(false);
 	LogisticsScreen::render(xOffset, yOffset );
 	if (pCurComponent) {
-		auto line = [&](float y, const char* value, unsigned int color) {
+		auto line = [&](float y, std::string_view value, std::uint32_t color) {
 			GuiRuntime::DrawUiText((195 + xOffset) * tbSx + tbOx, (y + yOffset) * tbSy + tbOy,
-				150 * tbSx, 12 * tbSy, value, color, static_cast<int>(10 * tbSy), 0, "");
+				150 * tbSx, 12 * tbSy, value.data(), color, static_cast<int>(10 * tbSy), 0, "");
 		};
 		char value[96];
 		line(60, pCurComponent->getName(), 0xffe8eef4);
@@ -1090,7 +1090,7 @@ void MechLabScreen::render(int xOffset, int yOffset)
 		line(86, value, 0xffe8eef4);
 		mc2::fmt::to_buf(value, "Range {}  Cycle {:.1f}s", pCurComponent->getRange(), pCurComponent->getRecycleTime());
 		line(99, value, 0xffa0c8e0);
-		auto meter = [&](float x, float y, float fraction, unsigned int color) {
+		auto meter = [&](float x, float y, float fraction, std::uint32_t color) {
 			GuiRuntime::DrawUiRect((x + xOffset) * tbSx + tbOx, (y + yOffset) * tbSy + tbOy,
 				70 * tbSx, 2 * tbSy, 0xff25323e, true);
 			GuiRuntime::DrawUiRect((x + xOffset) * tbSx + tbOx, (y + yOffset) * tbSy + tbOy,
