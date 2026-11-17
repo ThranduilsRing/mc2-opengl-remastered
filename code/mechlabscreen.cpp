@@ -299,6 +299,7 @@ int MechLabScreen::init( FitIniFile& file )
 
 void MechLabScreen::begin()
 {
+	pInspectedComponent = nullptr;
 	dropRefusalTime = 0.f;
 	dragCancelled = false;
 	previewPaused = false;
