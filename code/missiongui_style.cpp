@@ -1095,7 +1095,7 @@ bool MissionInterfaceManager::updateOrderMenu(bool allowOpen, bool overGui)
         // Classic only: AOE right-click orders and Alt-camera remain intact.
         if (useLeftRightMouseProfile || overGui ||
             userInput->wasRightDrag() || !userInput->rightMouseReleased() ||
-            !target || !isMenuAttackTarget(*target)) return false;
+            !target || classifyMenuTarget(*target) != MenuTarget::Attackable) return false;
         Order captured;
         captured.target = target->getWatchID();
         for (long i = 0; i < Team::home->getRosterSize(); ++i) {

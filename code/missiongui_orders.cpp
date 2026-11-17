@@ -10,17 +10,17 @@
 
 // The menu opens, and dispatches, on exactly what a classic left-click attack (doAttack) accepts:
 // not friendly to the home team and not a capture target, plus alive.
-bool MissionInterfaceManager::isMenuAttackTarget(GameObject& obj)
+MissionInterfaceManager::MenuTarget MissionInterfaceManager::classifyMenuTarget(GameObject& obj)
 {
-    if (obj.isDestroyed()) return false;
-    if (obj.isCaptureable(Team::home->getId())) return false;
-    return !Team::home->isFriendly(obj.getTeam());
+    if (obj.isDestroyed()) return MenuTarget::Rejected;
+    if (obj.isCaptureable(Team::home->getId())) return MenuTarget::Rejected;
+    return Team::home->isFriendly(obj.getTeam()) ? MenuTarget::Rejected : MenuTarget::Attackable;
 }
 
 void MissionInterfaceManager::dispatchMenuOrder(const mc2::order_menu::Order& captured)
 {
     auto* enemy = ObjectManager->getByWatchID(captured.target);
-    if (!enemy || !isMenuAttackTarget(*enemy)) return; // one shared predicate with the menu gate
+    if (!enemy || classifyMenuTarget(*enemy) != MenuTarget::Attackable) return; // one shared predicate with the menu gate
     if (mc2_diag::tagRequested("ORDER_MENU")) std::fprintf(stderr, "[ORDER_MENU] dispatchMenuOrder recipients=%zu range=%d\n", captured.recipients.size(), static_cast<int>(captured.range));
     FireRangeType range = FIRERANGE_OPTIMAL;
     switch (captured.range) {
