@@ -1146,6 +1146,15 @@ bool MissionInterfaceManager::updateOrderMenu(bool allowOpen, bool overGui)
     ImGui::MenuItem("Attack priority (NOT AVAILABLE)", nullptr, false, false);
     ImGui::Separator();
     row("Cancel", Item::Cancel, true);
+    {   // Keep the whole menu on screen (a right-click near an edge opened it partly off-screen).
+        const ImVec2 disp = ImGui::GetIO().DisplaySize;
+        const ImVec2 p = ImGui::GetWindowPos();
+        const ImVec2 s = ImGui::GetWindowSize();
+        const float maxX = disp.x > s.x ? disp.x - s.x : 0.0f;
+        const float maxY = disp.y > s.y ? disp.y - s.y : 0.0f;
+        const ImVec2 q(p.x < maxX ? p.x : maxX, p.y < maxY ? p.y : maxY);
+        if (q.x != p.x || q.y != p.y) ImGui::SetWindowPos(q);
+    }
     const ImVec2 wmin = ImGui::GetWindowPos();
     const ImVec2 wsz = ImGui::GetWindowSize();
     const ImVec2 wmax(wmin.x + wsz.x, wmin.y + wsz.y);
