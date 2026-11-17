@@ -169,10 +169,6 @@ void flushWindow(uint64_t frame) {
         output += values;
     }
     output += '\n';
-    // pose= goes after the frozen keys: tools/box_gpu_passes.py matches "[VK_GPU_PASSES v1] frame=".
-    mc2::fmt::print_err("[VK_GPU_PASSES v1] frame={} n={} span_ms={:.3f} sum_ms={:.3f} unattributed_ms={:.3f} scopes={} dropped={} overflow={} pose={} |{}",
-        frame, g.windowFrames, g.spanSumMs / n, g.sumSumMs / n, (g.spanSumMs - g.sumSumMs) / n,
-        g.rowCount, g.windowDropped, g.windowOverflow, (g.poseName.empty() ? "-" : g.poseName.c_str()), output);
     if (const uint64_t res = reflectRes.load(std::memory_order_relaxed); res != 0 && !reflectCostDone.load(std::memory_order_relaxed)) {
         for (uint32_t i = 0; i < g.rowCount; ++i) {
             const Row& r = g.rows[i];
@@ -185,7 +181,7 @@ void flushWindow(uint64_t frame) {
             break;
         }
     }
-    if (g.statRowCount != 0) {
+    if (g.statRowCount != 0 && mc2_diag::tagRequested("VK_GPU_TRIS")) {
         std::string tris;
         for (uint32_t i = 0; i < g.statRowCount; ++i) {
             const StatRow& r = g.statRows[i];
@@ -193,8 +189,12 @@ void flushWindow(uint64_t frame) {
             std::snprintf(values, sizeof values, " %s=ia:%.0f/clip:%.0f/fs:%.0f(x%u)", r.name, r.sum[0] / r.frames, r.sum[1] / r.frames, r.sum[2] / r.frames, r.frames);
             tris += values;
         }
-        if (!tris.empty() && mc2_diag::tagRequested("VK_GPU_TRIS")) mc2::fmt::print_err("[VK_GPU_TRIS v1] pose={} frame={} n={} |{}\n", (g.poseName.empty() ? "-" : g.poseName.c_str()), frame, g.windowFrames, tris);
+        if (!tris.empty()) output += std::format("[VK_GPU_TRIS v1] pose={} frame={} n={} |{}\n", (g.poseName.empty() ? "-" : g.poseName.c_str()), frame, g.windowFrames, tris);
     }
+    // pose= goes after the frozen keys: tools/box_gpu_passes.py matches "[VK_GPU_PASSES v1] frame=".
+    mc2::fmt::print_err("[VK_GPU_PASSES v1] frame={} n={} span_ms={:.3f} sum_ms={:.3f} unattributed_ms={:.3f} scopes={} dropped={} overflow={} pose={} |{}",
+        frame, g.windowFrames, g.spanSumMs / n, g.sumSumMs / n, (g.spanSumMs - g.sumSumMs) / n,
+        g.rowCount, g.windowDropped, g.windowOverflow, (g.poseName.empty() ? "-" : g.poseName.c_str()), output);
     for (uint32_t i = 0; i < g.statRowCount; ++i) { g.statRows[i].sum[0] = g.statRows[i].sum[1] = g.statRows[i].sum[2] = 0; g.statRows[i].frames = 0; }
     for (uint32_t i = 0; i < g.rowCount; ++i) { g.rows[i].sumMs = 0; g.rows[i].calls = 0; g.rows[i].frames = 0; }
     g.spanSumMs = g.sumSumMs = 0;
