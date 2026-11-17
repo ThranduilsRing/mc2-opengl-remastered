@@ -83,53 +83,110 @@ def validate_glb(path) -> list[str]:
 _DROPPED = ("_explode", "_dmg", "blip", "indc", "uix")   # mclib/mech_texname_derive.h isDroppedMeshName
 
 
-def opaque_mech_materials(path) -> list[str]:
-    """Set alphaMode OPAQUE on every non-OPAQUE material an intact part uses. The importer reads glTF BLEND/MASK as a
-    leaf cutout and renames the texture 'a_<name>.tga' (assimp_importer.cpp DeriveMC2TextureName), which the pack does
-    not ship: the mech renders flat white (raven_base was BLEND). Returns the fixed material names; rewrites only if needed."""
-    from pygltflib import GLTF2
-    g = GLTF2().load(str(path))
-    used = {p.material for me in g.meshes if not any(k in (me.name or "").lower() for k in _DROPPED)
-            for p in me.primitives if p.material is not None}
-    fixed = [i for i in sorted(used) if g.materials[i].alphaMode not in (None, "OPAQUE")]
-    for i in fixed:
-        g.materials[i].alphaMode = "OPAQUE"
-    if fixed:
-        g.save(str(path))
-    return sorted({g.materials[i].name for i in fixed})
-
-
 def _tga_name(image) -> str:
     """The MC2 texture name the importer derives from a glTF image (mech_texname::deriveName, no alpha prefix)."""
     stem = (image.name or image.uri or "").replace("\\", "/").rsplit("/", 1)[-1].rsplit(".", 1)[0].lower()
     return "".join(c if (c.isalnum() and c.isascii()) or c in "_-" else "_" for c in stem) + ".tga"
 
 
+def _base_tex(g, material):
+    m = g.materials[material] if material is not None else None
+    t = m.pbrMetallicRoughness.baseColorTexture if m is not None and m.pbrMetallicRoughness else None
+    return None if t is None else _tga_name(g.images[g.textures[t.index].source])
+
+
+def _joined_vertex_count(g, blob, prim) -> int:
+    """Vertex count after Assimp's aiProcess_JoinIdenticalVertices: distinct (position, normal, uv, joints, weights)
+    rows of the primitive's accessors; the raw accessor count when the data is not in the BIN chunk."""
+    cols = []
+    for attr in ("POSITION", "NORMAL", "TEXCOORD_0", "JOINTS_0", "WEIGHTS_0"):
+        ai = getattr(prim.attributes, attr, None)
+        if ai is None:
+            continue
+        a = g.accessors[ai]
+        if a.bufferView is None or not blob:
+            return g.accessors[prim.attributes.POSITION].count
+        v = g.bufferViews[a.bufferView]
+        w = _ACCESSOR_SIZE[a.type] * _COMPONENT_SIZE[a.componentType]
+        stride, base = v.byteStride or w, (v.byteOffset or 0) + (a.byteOffset or 0)
+        cols.append([blob[base + i * stride: base + i * stride + w] for i in range(a.count)])
+    return len(set(zip(*cols))) if cols else 0
+
+
+_VARIANT = ("widow", "bha", "sldf")   # assimp_importer.cpp isVariantMat
+
+
+def skin_pick(g):
+    """(texture .tga, [(mesh index, primitive index)]) the engine's skinned import binds to slot 0, or (None, []).
+    Mirrors assimp_importer.cpp (merged skinned mesh): meshes in file order, skinned and not dropped; the first mesh whose
+    material name holds widow/bha/sldf wins outright, else the texture with the most post-join vertices, lexical on ties."""
+    blob = g.binary_blob() if g.buffers else b""
+    skinned = {n.mesh for n in g.nodes if n.mesh is not None and n.skin is not None}
+    count: Counter = Counter()
+    for mi, me in enumerate(g.meshes):
+        if mi not in skinned or any(k in (me.name or "").lower() for k in _DROPPED):
+            continue
+        for p in me.primitives:
+            tex = _base_tex(g, p.material)
+            if tex is None:
+                continue
+            if any(k in (g.materials[p.material].name or "").lower() for k in _VARIANT):
+                return tex, _parts(g, skinned, tex)
+            count[tex] += _joined_vertex_count(g, blob, p)
+    if not count:
+        return None, []
+    best = max(count.values())
+    tex = min(t for t, c in count.items() if c == best)
+    return tex, _parts(g, skinned, tex)
+
+
+def _parts(g, skinned, tex):
+    return [(mi, pi) for mi, me in enumerate(g.meshes) if mi in skinned and not any(k in (me.name or "").lower() for k in _DROPPED)
+            for pi, p in enumerate(me.primitives) if _base_tex(g, p.material) == tex]
+
+
+def opaque_mech_materials(path) -> list[str]:
+    """Set alphaMode OPAQUE on the materials that hold the engine's skin texture (skin_pick) when they are BLEND. The
+    importer reads glTF BLEND/MASK as a leaf cutout and renames the texture 'a_<name>.tga', which the pack does not ship:
+    the mech renders flat white (raven_base was BLEND). Other materials (canopy glass, decals) keep their alpha. A MASK
+    skin material is refused (a real cutout body has no valid slot-0 texture). Returns fixed names; rewrites only if needed."""
+    from pygltflib import GLTF2
+    g = GLTF2().load(str(path))
+    _, prims = skin_pick(g)
+    mats = {g.meshes[mi].primitives[pi].material for mi, pi in prims}
+    for i in sorted(mats):
+        if g.materials[i].alphaMode == "MASK":
+            raise ValueError(f"{Path(path).name}: skin material '{g.materials[i].name or i}' is MASK; the importer would look for an 'a_' texture and no OPAQUE conversion is safe")
+    fixed = [i for i in sorted(mats) if g.materials[i].alphaMode == "BLEND"]
+    for i in fixed:
+        g.materials[i].alphaMode = "OPAQUE"
+    if fixed:
+        g.save(str(path))
+    return sorted({g.materials[i].name or f"#{i}" for i in fixed})
+
+
 def skin_texture_problems(path, texture_dirs=()) -> list[str]:
-    """What the engine's skinned-mech import (assimp_importer.cpp slot-0 pick) needs: every intact part's material has a
-    base colour texture; the texture covering the most vertices is the skin, and its derived .tga must ship in
+    """What the engine's skinned-mech import (assimp_importer.cpp slot-0 pick, see skin_pick) needs: every intact skinned
+    part's material has a base colour texture; the skin materials are OPAQUE; the picked texture's .tga ships in
     texture_dirs (when given). Skin joints and animation targets must not be dedupe-renamed (name-bound everywhere)."""
     from pygltflib import GLTF2
     g = GLTF2().load(str(path))
     bad = []
-    verts: Counter = Counter()
-    for n in g.nodes:
-        if n.mesh is None or n.skin is None or any(k in (g.meshes[n.mesh].name or n.name or "").lower() for k in _DROPPED):
+    skinned = {n.mesh: n.name for n in g.nodes if n.mesh is not None and n.skin is not None}
+    for mi, me in enumerate(g.meshes):
+        if mi not in skinned or any(k in (me.name or "").lower() for k in _DROPPED):
             continue
-        for p in g.meshes[n.mesh].primitives:
-            m = g.materials[p.material] if p.material is not None else None
-            tex = m.pbrMetallicRoughness.baseColorTexture if m is not None and m.pbrMetallicRoughness else None
-            if tex is None:
-                bad.append(f"intact part '{n.name}' uses material {p.material} without a base colour texture")
-                continue
-            if m.alphaMode not in (None, "OPAQUE"):
-                bad.append(f"intact part '{n.name}' material '{m.name}' is {m.alphaMode}: the importer would look for an 'a_' texture")
-            verts[_tga_name(g.images[g.textures[tex.index].source])] += g.accessors[p.attributes.POSITION].count
-    if verts and texture_dirs:
-        skin = verts.most_common(1)[0][0]
-        if not any((Path(d) / skin).is_file() for d in texture_dirs):
-            bad.append(f"skin texture '{skin}' (most vertices) is not in the pack")
-    joints = {j for s in g.skins for j in s.joints} | {c.target.node for a in g.animations for c in a.channels}
+        for p in me.primitives:
+            if _base_tex(g, p.material) is None:
+                bad.append(f"intact part '{skinned[mi]}' uses material {p.material} without a base colour texture")
+    skin, prims = skin_pick(g)
+    for mi, pi in prims:
+        m = g.materials[g.meshes[mi].primitives[pi].material]
+        if m.alphaMode not in (None, "OPAQUE"):
+            bad.append(f"skin material '{m.name}' is {m.alphaMode}: the importer would look for an 'a_' texture")
+    if skin and texture_dirs and not any((Path(d) / skin).is_file() for d in texture_dirs):
+        bad.append(f"skin texture '{skin}' (engine pick) is not in the pack")
+    joints = {j for s in g.skins for j in s.joints} | {c.target.node for a in g.animations for c in a.channels if c.target and c.target.node is not None}
     bad += [f"joint/animation node '{g.nodes[j].name}' was dedupe-renamed" for j in sorted(joints) if "__dup" in (g.nodes[j].name or "")]
     return bad
 

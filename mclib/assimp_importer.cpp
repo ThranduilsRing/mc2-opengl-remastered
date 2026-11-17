@@ -1976,9 +1976,10 @@ long ImportGeometryFromFile(mc2::czstring path, TG_TypeMultiShape* out, bool aut
 			texVerts[*nm] += me->mNumVertices;
 		}
 		if (!gotVariant) {
+			// std::map order + max_element's first-maximum: lexical first on equal counts.
 			unsigned best = 0;
 			for (const auto& [texName, count] : texVerts)
-				if (std::exchange(best, std::max(best, count)) < count) baseTex = texName;
+				if (count > best) std::tie(best, baseTex) = std::tie(count, texName);
 		}
 		asset.materials.push_back({baseTex, false});
 		MECH_SKEL_TRACE("file='%s' mech skin slot0 tex='%s'", path, baseTex.c_str());

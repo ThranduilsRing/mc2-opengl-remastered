@@ -717,3 +717,40 @@ def test_blend_skin_material_is_made_opaque_so_the_importer_keeps_the_real_textu
     assert any("BLEND" in b for b in G.skin_texture_problems(p))
     assert G.opaque_mech_materials(p) == ["base"] and G.opaque_mech_materials(p) == []
     assert not any("BLEND" in b for b in G.skin_texture_problems(p))
+
+
+def _skin_glb(tmp_path, parts):
+    """parts: [(mesh name, material name, alphaMode, image name, vertex count)] -> glb path; one skinned node per mesh."""
+    pg = pytest.importorskip("pygltflib")
+    imgs = sorted({q[3] for q in parts})
+    g = pg.GLTF2(nodes=[pg.Node(name="j")] + [pg.Node(name=f"n{i}", mesh=i, skin=0) for i in range(len(parts))],
+                 skins=[pg.Skin(joints=[0])], textures=[pg.Texture(source=i) for i in range(len(imgs))],
+                 images=[pg.Image(name=n) for n in imgs], accessors=[pg.Accessor(count=q[4]) for q in parts],
+                 meshes=[pg.Mesh(name=q[0], primitives=[pg.Primitive(attributes=pg.Attributes(POSITION=i), material=i)]) for i, q in enumerate(parts)],
+                 materials=[pg.Material(name=q[1], alphaMode=q[2], pbrMetallicRoughness=pg.PbrMetallicRoughness(
+                     baseColorTexture=pg.TextureInfo(index=imgs.index(q[3])))) for q in parts])
+    p = tmp_path / "x.glb"
+    g.save(str(p))
+    return p
+
+
+def test_skin_pick_variant_priority_lexical_ties_and_alpha_scope(tmp_path):
+    """Trigger: glb_guard.skin_pick mirrors assimp_importer.cpp slot-0 pick; opaque_mech_materials touches only the skin material."""
+    from tools.bt2018_mechs import glb_guard as G
+    pg = pytest.importorskip("pygltflib")
+    # canopy glass stays BLEND, body BLEND becomes OPAQUE
+    p = _skin_glb(tmp_path, [("body", "base", "BLEND", "b-base-alb.png", 900), ("canopy", "glass", "BLEND", "c-glass-alb.png", 40)])
+    assert G.opaque_mech_materials(p) == ["base"]
+    g = pg.GLTF2().load(str(p))
+    assert [m.alphaMode for m in g.materials] == ["OPAQUE", "BLEND"]
+    assert G.skin_texture_problems(p) == []                                  # the canopy BLEND is not a skin problem
+    # variant material wins over the larger plain atlas
+    p = _skin_glb(tmp_path, [("body", "x_base", "OPAQUE", "b-base-alb.png", 900), ("arm", "x_widow", "OPAQUE", "a-widow-alb.png", 10)])
+    assert G.skin_pick(pg.GLTF2().load(str(p)))[0] == "a-widow-alb.tga"
+    # equal counts: lexically first texture, not file order
+    p = _skin_glb(tmp_path, [("a", "m1", "OPAQUE", "z-alb.png", 50), ("b", "m2", "OPAQUE", "c-alb.png", 50)])
+    assert G.skin_pick(pg.GLTF2().load(str(p)))[0] == "c-alb.tga"
+    # a MASK skin material is refused, not silently converted
+    p = _skin_glb(tmp_path, [("body", "base", "MASK", "b-base-alb.png", 900)])
+    with pytest.raises(ValueError, match="MASK"):
+        G.opaque_mech_materials(p)
