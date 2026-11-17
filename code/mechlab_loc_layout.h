@@ -53,7 +53,7 @@ inline const char* panelTitle(int p) {
 inline constexpr float kAreaX = 27, kAreaY = 130, kColW = 101, kRowH = 104, kGap = 4;   // starts 15 px below the grid so the toggle clears the variant combo
 // header strip = title row (16) + mount badge row (12); item rows follow; the last 14 px carry the refusal line.
 inline constexpr float kHeaderH = 28, kRowItemH = 12;
-inline constexpr int kRowsPerColumn = 6;
+inline constexpr int kRowsPerColumn = 4;
 
 inline Rect panelRect(int p) {
     // column / row of each panel: arms flank the head, torsos below, legs and the paper doll last.
