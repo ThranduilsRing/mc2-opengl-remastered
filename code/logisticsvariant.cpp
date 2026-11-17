@@ -309,6 +309,7 @@ LogisticsVariant::LogisticsVariant( const LogisticsVariant& src )
 	chassis = src.chassis;
 	availableToUser = src.availableToUser;
 	componentCount = src.componentCount;
+	layoutState = src.layoutState;
 	
 	for ( int i = 0; i < componentCount; ++i )
 	{
@@ -332,6 +333,7 @@ LogisticsVariant& LogisticsVariant::operator=( const LogisticsVariant& src )
 		chassis = src.chassis;
 		availableToUser = src.availableToUser;
 		componentCount = src.componentCount;
+		layoutState = src.layoutState;
 		
 		for ( int i = 0; i < componentCount; ++i )
 		{
@@ -403,6 +405,7 @@ int LogisticsVariant::init( CSVFile* file, LogisticsChassis* pChassis, int Varia
 	LogisticsComponent*  pComps[128];
 	long xLocs[128];
 	long yLocs[128];
+	int sourceItems[128];
 	memset( pComps, 0, sizeof( LogisticsComponent* ) * 128 );
 	long componentCount = 0;
 	
@@ -416,6 +419,7 @@ int LogisticsVariant::init( CSVFile* file, LogisticsChassis* pChassis, int Varia
 			{
 				file->readLong( offset + i, 4, yLocs[componentCount] );
 				file->readLong( offset + i, 3, xLocs[componentCount] );
+				sourceItems[componentCount] = i - 26;
 				pComps[componentCount++] = pComp;
 			}
 		}
@@ -438,6 +442,22 @@ int LogisticsVariant::init( CSVFile* file, LogisticsChassis* pChassis, int Varia
 						char errorString[256];
 						mc2::fmt::to_buf(errorString, "Couldn't add component with id {:d}", mc2::fmt::as_i32(pComponent->getID()));
 					}
+					else
+					{
+						// CSV critical entries name source item indices, not sorted lab indices.
+						static constexpr int locations[] = {0, 4, 5, 2, 3, 1, 6, 7};
+						auto& added = components[this->componentCount - 1];
+						for (int slot = 0; slot < 12 && added.bodyLocation < 0; ++slot)
+							for (int loc = 0; loc < 8 && added.bodyLocation < 0; ++loc) {
+								long index = -1;
+								if (file->readLong(offset + 102 + slot, 2 + loc, index) == NO_ERR && index == sourceItems[i]) {
+									added.bodyLocation = locations[loc]; added.bodySlot = slot;
+								}
+							}
+						char mount[256]{};
+						if (file->readString(offset + 26 + sourceItems[i], 41, mount, sizeof(mount)) == NO_ERR)
+							added.layoutHardpoint = mc2pkg::hardpointKey(mount);
+					}
 				}
 			}
 		}
@@ -445,13 +465,118 @@ int LogisticsVariant::init( CSVFile* file, LogisticsChassis* pChassis, int Varia
 	}
 
 	
+	layoutState.version = 2;
 	return 0;
 
 
 }
 
+namespace {
+mc2pkg::LayoutComponent layoutComponent(const LogisticsComponent& c) {
+	mc2pkg::LayoutComponent result;
+	result.id = c.getID(); result.weight = c.getWeight(); result.heat = c.getHeat();
+	result.width = c.getComponentWidth(); result.height = c.getComponentHeight();
+	if (MasterComponent::masterList && result.id >= 0 && result.id < MasterComponent::numComponents) {
+		auto& master = MasterComponent::masterList[result.id];
+		result.size = static_cast<int>(master.getSize()); result.allowed = 0;
+		for (int loc = 0; loc < 8; ++loc)
+			if (master.getCriticalSpacesReq(loc) > 0) result.allowed |= 1u << loc;
+		result.implicitAmmo = master.getWeaponAmmoMasterId() != 0;
+	}
+	using K = mc2pkg::EquipmentKind;
+	switch (c.getType()) {
+		case COMPONENT_FORM_WEAPON: case COMPONENT_FORM_WEAPON_ENERGY:
+			result.kind = K::Weapon; result.mountMask = mc2pkg::Energy; break;
+		case COMPONENT_FORM_WEAPON_BALLISTIC:
+			result.kind = K::Weapon; result.mountMask = mc2pkg::Ballistic; break;
+		case COMPONENT_FORM_WEAPON_MISSILE:
+			result.kind = K::Weapon; result.mountMask = mc2pkg::Missile; break;
+		case COMPONENT_FORM_AMMO: result.kind = K::Ammo; break;
+		case COMPONENT_FORM_SENSOR: result.kind = K::Sensor; break;
+		case COMPONENT_FORM_ECM: case COMPONENT_FORM_PROBE: case COMPONENT_FORM_JAMMER:
+			result.kind = K::Electronics; break;
+		case COMPONENT_FORM_JUMPJET: result.kind = K::JumpJet; break;
+		case COMPONENT_FORM_ENGINE: result.kind = c.getID() == 1 ? K::Fixed : K::XLEngine; break;
+		case COMPONENT_FORM_HEATSINK: result.kind = K::HeatSink; result.cooling = c.getDamage(); break;
+		case COMPONENT_FORM_BULK: result.kind = K::Armor; break;
+		case COMPONENT_FORM_COCKPIT: case COMPONENT_FORM_LIFESUPPORT: case COMPONENT_FORM_GYROSCOPE:
+		case COMPONENT_FORM_ACTUATOR: case COMPONENT_FORM_POWER_AMPLIFIER: case COMPONENT_FORM_CASE:
+			result.kind = K::Fixed; break;
+		default: break;
+	}
+	return result;
+}
+}
+
+mc2pkg::LocationVariant LogisticsVariant::locationRecord() const {
+	auto record = layoutState;
+	record.items.clear();
+	std::vector<mc2pkg::LayoutComponent> specs;
+	for (int i = 0; i < componentCount; ++i) {
+		const auto& c = components[i];
+		record.items.push_back({c.component->getID(), static_cast<int>(c.xCoord), static_cast<int>(c.yCoord),
+			static_cast<int>(c.location), c.bodyLocation, c.bodySlot, c.layoutHardpoint});
+		specs.push_back(layoutComponent(*c.component));
+	}
+	const auto* package = chassis->getPackage();
+	const std::string stem = std::filesystem::path(chassis->fileName).stem().string();
+	auto loaded = mc2pkg::loadChassisLayout(package ? package->fitPath : "data/defs/chassis/core/" + stem + "/locations.fit");
+	mc2pkg::ChassisLayout layout;
+	if (loaded) layout = std::move(*loaded);
+	else {
+		// Compatibility fallback until lane 3 supplies authored layouts. Do not
+		// invent restrictive hardpoints for mods with no location table.
+		layout.chassisId = package ? package->chassisId : "core:" + stem;
+		layout.source = "derived:legacy";
+		layout.payload = package ? package->payload : std::max(0.0, 0.8 * getMaxWeight() - 7.0);
+		for (int loc = 0; loc < 8; ++loc) {
+			layout.locations[loc].slots = 4096;
+			if (!package) for (int n = 0; n < 12; ++n)
+				layout.locations[loc].hardpoints.push_back({31, mc2pkg::hardpointKey(std::string(mc2pkg::locationNames[loc]) + "." + std::to_string(n)), {}});
+		}
+		if (package) for (const auto& hp : package->hardpoints) {
+			const int loc = mc2pkg::locationIndex(hp.location);
+			if (loc >= 0 && hp.mount != mc2pkg::Mount::None)
+				layout.locations[loc].hardpoints.push_back({1u << static_cast<int>(hp.mount), hp.key, hp.socket});
+		}
+	}
+	layout.maxHeat = chassis->maxHeat;
+	if (record.version < 2) mc2pkg::mapLegacyLocations(layout, record, specs, package);
+	else mc2pkg::validateLocations(layout, record, specs);
+	return record;
+}
+
+bool LogisticsVariant::restoreLocationRecord(mc2pkg::LocationVariant record) {
+	if (record.items.size() > 54) return false;
+	std::vector<LogisticsComponent*> resolved;
+	for (const auto& item : record.items) {
+		auto component = LogisticsData::instance->getComponent(item.id);
+		if (!component) return false; // atomic, never silently drop unknown equipment
+		resolved.push_back(&component->get());
+	}
+	componentCount = static_cast<long>(record.items.size());
+	for (int i = 0; i < componentCount; ++i) {
+		const auto& item = record.items[i]; auto& c = components[i];
+		c.component = resolved[i]; c.xCoord = item.x; c.yCoord = item.y;
+		c.location = static_cast<LOGISTICS_COMPONENT_LOCATION>(item.legacyLocation);
+		c.bodyLocation = item.location; c.bodySlot = item.slot; c.layoutHardpoint = item.hardpoint;
+	}
+	layoutState = std::move(record);
+	layoutState = locationRecord();
+	if (layoutState.version == 2)
+		mc2::fmt::print_out("[CHASSIS_LAYOUT] loaded {} items={:d} grandfathered={:d}\n",
+			chassis->fileName, mc2::fmt::as_i32(componentCount), mc2::fmt::as_i32(layoutState.grandfathered));
+	for (int i = 0; i < componentCount; ++i) {
+		components[i].bodyLocation = layoutState.items[i].location;
+		components[i].bodySlot = layoutState.items[i].slot;
+		components[i].layoutHardpoint = layoutState.items[i].hardpoint;
+	}
+	return true;
+}
+
 bool LogisticsVariant::addComponent( int idFromFitFile, long& x, long& y )
 {
+	if (componentCount >= 54) return false;
 	LogisticsComponent*
 		pComponent = LogisticsData::instance->getComponent( idFromFitFile ).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 
@@ -538,6 +663,10 @@ bool LogisticsVariant::addComponent( int idFromFitFile, long& x, long& y )
 		components[componentCount].location = CHEST;
 	}
 
+	components[componentCount].bodyLocation = -1;
+	components[componentCount].bodySlot = -1;
+	components[componentCount].layoutHardpoint = 0;
+	layoutState.version = 1;
 	components[componentCount].component = pComponent;
 	components[componentCount].xCoord = x;
 	components[componentCount].yCoord = y;

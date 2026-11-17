@@ -135,7 +135,7 @@ long	LogisticsData::save( FitIniFile& file )
 		{
 			if ( !(*vIter)->isDesignerMech() )
 			{
-				(*vIter)->save( file, variantCount );
+				if ((*vIter)->save(file, variantCount) != 0) return -1;
 				variantCount++;
 			}
 		}
@@ -331,36 +331,10 @@ std::expected<void, long> LogisticsData::loadVariant( FitIniFile& file )
 	
 	pVariant->setName( *variantName );
 
-	long componentCount = 0;
-	long x = 0;
-	long y = 0;
-	long location = 0;
-	long id = 0;
-
-	char tmp2[256];
-	
-	// read number of components
-	file.readIdLong( "ComponentCount", componentCount );
-
-	// add those components
-	for ( int i = 0; i < componentCount; i++ )
-	{
-		mc2::fmt::to_buf(tmp, "Component{:d}", mc2::fmt::as_i32(i));
-		file.readIdLong(tmp, id );
-		
-		strcpy( tmp2, tmp );
-		strcat( tmp2, "x" );
-		file.readIdLong( tmp2, x );
-
-		strcpy( tmp2, tmp );
-		strcat( tmp2, "y" );
-		file.readIdLong( tmp2, y );
-
-		strcpy( tmp2, tmp );
-		strcat( tmp2, "Location" );
-		file.readIdLong( tmp2, location );
-
-		pVariant->addComponent( id, x, y );
+	mc2pkg::LocationVariant record;
+	if (!mc2pkg::readLocationVariant(file, record) || !pVariant->restoreLocationRecord(std::move(record))) {
+		variants.pop_back();
+		return std::unexpected(INVALID_FILE_NAME);
 	}
 
 	return {};
