@@ -105,6 +105,11 @@ def test_pack_racks_are_explicit_definitions_with_free_ordinals(tables):
     ordinals = [d["ordinal"] for d in defs]
     assert len(set(ordinals)) == len(ordinals)
     assert all(0 < o < 255 for o in ordinals)
+    for d in defs:
+        description = d["description"]
+        assert description.endswith(" (attr: sarna.net)")
+        assert 2 <= description.removesuffix(" (attr: sarna.net)").count(".") <= 4
+        assert 'st Description="' + description + '"' in C.emit_equipment_def(d)
     lrm10 = C.pack_definition("bt2018:lrm10", wm)
     assert lrm10["damage"] == pytest.approx(6.0)          # 2 x LRM5 (3.0)
     assert lrm10["missile_type"] == "LRM"
