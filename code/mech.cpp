@@ -4,8 +4,72 @@
 // Copyright (C) Microsoft Corporation. All rights reserved.                 //
 //===========================================================================//
 
+#include <cmath>
+#include <array>
 #include "mech_internal.h"
 #include "component_rules.h"
+#include "../GameOS/gameos/utils/mc2log.h"
+
+// Truncate at the data boundary exactly as the lab's integer += Damage does.
+static int labHeatPoints(float value) {
+	if (!std::isfinite(value) || value <= 0) return 0;
+	return static_cast<int>(std::min(value, static_cast<float>(mc2::heat::maxLabPoints)));
+}
+
+void BattleMech::recomputeHeatCapacity() {
+	int points = heatSinkAdjustmentPoints;
+	for (long i = 0; i < numOther; ++i) {
+		const auto& item = inventory[i];
+		auto& component = MasterComponent::masterList[item.masterID];
+		if (component.getForm() == COMPONENT_FORM_HEATSINK && !item.disabled && item.health)
+			points = std::min(mc2::heat::maxLabPoints, points + labHeatPoints(component.getHeatDissipation()));
+	}
+	heatState.recompute(chassisHeatPoints, points);
+}
+
+void BattleMech::setHeatLoadout(std::span<const long> components) {
+	int configured = 0;
+	for (long id : components) {
+		auto& component = MasterComponent::masterList[id];
+		if (component.getForm() == COMPONENT_FORM_HEATSINK)
+			configured = std::min(mc2::heat::maxLabPoints, configured + labHeatPoints(component.getHeatDissipation()));
+	}
+	int represented = 0;
+	for (long i = 0; i < numOther; ++i) {
+		auto& component = MasterComponent::masterList[inventory[i].masterID];
+		if (component.getForm() == COMPONENT_FORM_HEATSINK)
+			represented = std::min(mc2::heat::maxLabPoints, represented + labHeatPoints(component.getHeatDissipation()));
+	}
+	// Legacy resetComponents omits added lab sinks. Retain their cooling without
+	// adding inventory entries (which would change CV, hits, hashes and saves).
+	heatSinkAdjustmentPoints = configured - represented;
+	recomputeHeatCapacity();
+}
+
+void BattleMech::restoreHeatCapacity() {
+	heatState = {}; // phase 1 heat is transient, including when reusing an object
+	chassisHeatPoints = heatSinkAdjustmentPoints = 0;
+	CSVFile file;
+	FullPathFileName path;
+	path.init(objectPath, getObjectType()->getAppearanceTypeName(), ".csv");
+	long points = 0;
+	if (file.open(path) == NO_ERR && file.readLong(4, 5, points) == NO_ERR)
+		chassisHeatPoints = static_cast<int>(std::clamp<long>(points, 0, mc2::heat::maxLabPoints));
+	else
+		MC2_LOG(Sim, Warn, "Heat chassis capacity unavailable: {}; using zero base", static_cast<const char*>(path));
+	// The saved variant name recovers cooling omitted by legacy inventory rebuilds.
+	if (LogisticsData::instance) {
+		auto variant = LogisticsData::instance->getVariant(variantName);
+		if (variant && variant->get().getComponentCount() <= 128) {
+			std::array<long, 128> components{};
+			long count = 0;
+			variant->get().getComponents(count, components.data());
+			setHeatLoadout({components.data(), static_cast<size_t>(count)});
+			return;
+		}
+	}
+	recomputeHeatCapacity();
+}
 
 
 float ContactFadeTime = 2.0f;
@@ -984,6 +1048,7 @@ void BattleMech::Load (MechData *data)
 	// UNITPROFILE-TYPELOAD-SOURCE-1: numJumpJets is authoritative only after Load;
 	// fold it into the type baseline + this instance's runtime via the single owner.
 	refreshDerivedCapabilities();
+	restoreHeatCapacity();
 }
 
 void BattleMech::repairAll (void)
