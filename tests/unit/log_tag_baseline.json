@@ -4474,6 +4474,45 @@
    "count": 1
   },
   {
+   "tag": "HUD_FIRST_DRAW",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "handle",
+    "serial",
+    "kind",
+    "frame",
+    "prepared"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "HUD_LOAD_PREPARE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "handle",
+    "serial",
+    "kind",
+    "wh",
+    "asset",
+    "ready"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "HUD_SYNC_FALLBACK",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "handle",
+    "serial",
+    "kind",
+    "frame"
+   ],
+   "count": 1
+  },
+  {
    "tag": "HUD_FRAME",
    "ver": -1,
    "stream": "log",
@@ -11417,7 +11456,8 @@
     "handle",
     "serial",
     "wh",
-    "verts"
+    "verts",
+    "asset"
    ],
    "count": 1
   },

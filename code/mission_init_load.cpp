@@ -9,6 +9,7 @@
 // Mission: the second half of the Mission::init load sequence -- warriors and brains, movers and parts,
 // terrain objects, commanders, the HUD and the geometry finalize. The first half and the orchestrator are in mission_init.cpp.
 #include "mission_internal.h"
+#include "missiongui.h"
 #include "mission_init_frame.h"
 #include "static_prop_prewarm.h"
 #include "spawn_tree_clear.h"
@@ -1072,8 +1073,13 @@ void Mission::initFinalizeGeometry() {
     // those images now, including effects first seen later along the camera path.
     { ZoneScopedN("TextureSource.PrewarmEffectTextures"); MC2_LOAD_SCOPE("TextureSource.PrewarmEffectTextures");
       if (auto* pool = MidLevelRenderer::MLRTexturePool::Instance) pool->ForceLoadImages(); }
-    { MC2_LOAD_SCOPE("finalize.prewarmPipelines"); mc2PrewarmMissionPipelines(); }
+
+	if (missionCamera) missionCamera->prepareCompass();
+	gos_SetHudScaleActive(true);
+	gos_SetHudCanvasActive(true);
+	if (missionInterface) missionInterface->getControlGui()->prepareHudFrame();
 	{ MC2_LOAD_SCOPE("finalize.prewarmCpuTextures"); mc2::textures::prewarmCpuTextures(); }
+    { MC2_LOAD_SCOPE("finalize.prewarmPipelines"); mc2PrewarmMissionPipelines(); }
 	mission_phase_mark("render_prewarm_ready");
 }
 

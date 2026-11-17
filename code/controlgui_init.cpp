@@ -235,7 +235,7 @@ void ControlGui::bakeFrame()
 			}
 	}
 	auto atlas = std::make_unique<StaticInfo>();
-	atlas->textureHandle = mc2::textures::fromRawPixels(pixels.data(), gos_Texture_Alpha, 0, edge);
+	atlas->textureHandle = mc2::textures::fromRawPixels(pixels.data(), gos_Texture_Alpha, 0, edge, 4, "generated/hud/frame-atlas");
 	if (!atlas->textureHandle || atlas->textureHandle >= mc2::textures::kTextureAssetLimit) {
 		atlas->textureHandle = 0;
 		return;

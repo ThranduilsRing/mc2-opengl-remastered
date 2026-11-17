@@ -232,7 +232,7 @@ void init(std::string first = {}, int cw = 25, int ch = 30) {
         });
         registry.pack();
     }
-    texture = mc2::textures::fromRawPixels(std::bit_cast<DWORD*>(registry.atlas.data()), gos_Texture_Alpha, 0, registry.edge);
+    texture = mc2::textures::fromRawPixels(std::bit_cast<DWORD*>(registry.atlas.data()), gos_Texture_Alpha, 0, registry.edge, 4, "generated/hud/icon-registry");
     mc2::textures::adoptOwned(texture);
     mc2::fmt::print_out("[ICON_REGISTRY] icons={} atlas={}x{}\n", registry.icons.size(), registry.edge, registry.edge);
     if (false || false) {

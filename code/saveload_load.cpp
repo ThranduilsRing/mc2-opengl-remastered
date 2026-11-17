@@ -8,12 +8,15 @@
 // the warriors, parts, teams and objects, the commanders, the HUD and the geometry finalize. The first half and the
 // orchestrator are in saveload.cpp.
 #include "saveload_internal.h"
+#include "missiongui.h"
 #include "mission_load_frame.h"
 #include "static_prop_prewarm.h"
 #include "render_resource_owners.h"
 #include "mc2fmt.h"
 #include "../GameOS/gameos/diagnostic_trace.h"
 #include "tex_resolve_table.h"
+#include "../mclib/texture_assets.h"
+#include "../GameOS/gameos/vk_render_infra.h"
 #include "frame_jobs.h"
 #include "../GameAdapters/VegetationAdapter.h"
 #include "../GameOS/gameos/visual_tuning_profile.h"
@@ -821,6 +824,10 @@ void Mission::loadActivateAndFinalize() {
 	MissionInterfaceManager::armHoverTarget();
 	gos_SetHudScaleActive(true);
 	gos_SetHudCanvasActive(true);
+	if (missionCamera) missionCamera->prepareCompass();
+	if (missionInterface) missionInterface->getControlGui()->prepareHudFrame();
+	mc2::textures::prewarmCpuTextures();
+	mc2PrewarmMissionPipelines();
 	{
 		static const bool s_mechRestoreTrace = false;
 		if (s_mechRestoreTrace)

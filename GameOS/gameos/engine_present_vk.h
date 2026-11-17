@@ -92,6 +92,7 @@ struct VkHudDraw {
     uint32_t textureHeight = 0;
     uint32_t textureFormat = 0;
     uint32_t textureSerial = 0;
+    bool hudAtlas = false;
     uint32_t alphaMode = 0;
     uint32_t textureAddress = 0;
     uint32_t filter = 0;
@@ -146,6 +147,9 @@ public:
     // GuiRuntime can hand draw data to the present owner without learning Vulkan.
     bool prepareImguiVulkanFrame();
     bool prewarmPipelines();
+    bool prepareHudTexture(const VkHudDraw& draw);
+    void releaseHudTextures(uint32_t handle = 0); // zero releases the mission's entire HUD cache
+    void retireHudTextures(std::vector<uint32_t>&& handles);
     bool renderImguiVulkanDrawData(ImDrawData* drawData);
     bool imguiVulkanReady() const;
     void shutdownImguiVulkanRenderer();
