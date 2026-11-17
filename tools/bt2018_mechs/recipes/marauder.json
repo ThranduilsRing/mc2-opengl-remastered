@@ -3,9 +3,8 @@
   "family": "marauder",
   "chassis_id": "bt2018:marauder",
   "provenance": {
-    "gameplay": "AUTHORED. The BattleTech 2018 dump has no chassis, mech, movement or hardpoint JSON for the Marauder (plan section 2). These records follow the dump's ChassisDef/MechDef/MovementCapDef schema with tabletop MAD-3R values (75 t, 300 standard engine, 16 single heat sinks, 184 armour points, 2 PPC, 2 medium lasers, AC/5). They are reviewed authoring, not extracted data; replace them if an owner-held extraction appears.",
-    "model": "BattleTech_2018_Dump/Animator/chrPrfMech_marauderBase-001 -> MC2Conversions/marauder.glb (tools/bt2018_import/convert_all_bt2018.py)",
-    "second_variant": "MAD-3R-L 'Longbow' is a pack-authored loadout (not a canon variant) that exists to exercise a pack-owned rack (bt2018:lrm10)."
+    "gameplay": "MAD-3R hardpoints, slots, armour and structure follow the owner's own BATTLETECH install chassisdef (no HBS data is stored here): arms 2 Energy + 1 AntiPersonnel, right torso 3 Ballistic, no missile mounts. The loadout is the install MAD-3R mechdef (2 PPC, 2 medium lasers, AC/5, 6 single heat sinks); heat sinks sit in the left and centre torsos because the pack has no leg regions. Mech-lab regions are pack-authored (6x6 grid, regions sized for 2-wide icons).",
+    "model": "BattleTech_2018_Dump/Animator/chrPrfMech_marauderBase-001 -> MC2Conversions/marauder.glb (tools/bt2018_import/convert_all_bt2018.py)"
   },
   "chassisdef": {
     "Description": {
@@ -29,11 +28,11 @@
     "MaxJumpjets": 0,
     "Locations": [
       {"Location": "Head",        "Hardpoints": [],                                                              "InventorySlots": 1,  "MaxArmor": 45,  "MaxRearArmor": -1, "InternalStructure": 15},
-      {"Location": "LeftArm",     "Hardpoints": [{"WeaponMount": "Energy"}, {"WeaponMount": "Energy"}],          "InventorySlots": 8,  "MaxArmor": 120, "MaxRearArmor": -1, "InternalStructure": 60},
-      {"Location": "LeftTorso",   "Hardpoints": [{"WeaponMount": "Missile"}],                                    "InventorySlots": 10, "MaxArmor": 160, "MaxRearArmor": 80, "InternalStructure": 80},
-      {"Location": "CenterTorso", "Hardpoints": [{"WeaponMount": "Ballistic"}, {"WeaponMount": "AntiPersonnel"}], "InventorySlots": 4,  "MaxArmor": 230, "MaxRearArmor": 115, "InternalStructure": 115},
-      {"Location": "RightTorso",  "Hardpoints": [{"WeaponMount": "Missile"}],                                    "InventorySlots": 10, "MaxArmor": 160, "MaxRearArmor": 80, "InternalStructure": 80},
-      {"Location": "RightArm",    "Hardpoints": [{"WeaponMount": "Energy"}, {"WeaponMount": "Energy"}],          "InventorySlots": 8,  "MaxArmor": 120, "MaxRearArmor": -1, "InternalStructure": 60},
+      {"Location": "LeftArm",     "Hardpoints": [{"WeaponMount": "Energy"}, {"WeaponMount": "Energy"}, {"WeaponMount": "AntiPersonnel"}], "InventorySlots": 8, "MaxArmor": 120, "MaxRearArmor": -1, "InternalStructure": 60},
+      {"Location": "LeftTorso",   "Hardpoints": [],                                                              "InventorySlots": 10, "MaxArmor": 160, "MaxRearArmor": 80, "InternalStructure": 80},
+      {"Location": "CenterTorso", "Hardpoints": [],                                                              "InventorySlots": 4,  "MaxArmor": 230, "MaxRearArmor": 115, "InternalStructure": 115},
+      {"Location": "RightTorso",  "Hardpoints": [{"WeaponMount": "Ballistic"}, {"WeaponMount": "Ballistic"}, {"WeaponMount": "Ballistic"}], "InventorySlots": 10, "MaxArmor": 160, "MaxRearArmor": 80, "InternalStructure": 80},
+      {"Location": "RightArm",    "Hardpoints": [{"WeaponMount": "Energy"}, {"WeaponMount": "Energy"}, {"WeaponMount": "AntiPersonnel"}], "InventorySlots": 8, "MaxArmor": 120, "MaxRearArmor": -1, "InternalStructure": 60},
       {"Location": "LeftLeg",     "Hardpoints": [],                                                              "InventorySlots": 4,  "MaxArmor": 160, "MaxRearArmor": -1, "InternalStructure": 80},
       {"Location": "RightLeg",    "Hardpoints": [],                                                              "InventorySlots": 4,  "MaxArmor": 160, "MaxRearArmor": -1, "InternalStructure": 80}
     ]
@@ -66,51 +65,27 @@
         {"MountedLocation": "LeftArm",     "ComponentDefID": "Weapon_Laser_MediumLaser_0-STOCK",  "ComponentDefType": "Weapon", "HardpointSlot": 1},
         {"MountedLocation": "RightArm",    "ComponentDefID": "Weapon_PPC_PPC_0-STOCK",            "ComponentDefType": "Weapon", "HardpointSlot": 0},
         {"MountedLocation": "RightArm",    "ComponentDefID": "Weapon_Laser_MediumLaser_0-STOCK",  "ComponentDefType": "Weapon", "HardpointSlot": 1},
-        {"MountedLocation": "CenterTorso", "ComponentDefID": "Weapon_Autocannon_AC5_0-STOCK",     "ComponentDefType": "Weapon", "HardpointSlot": 0},
-        {"MountedLocation": "CenterTorso", "ComponentDefID": "Ammo_AmmunitionBox_Generic_AC5",    "ComponentDefType": "AmmunitionBox", "HardpointSlot": -1},
+        {"MountedLocation": "RightTorso",  "ComponentDefID": "Weapon_Autocannon_AC5_0-STOCK",     "ComponentDefType": "Weapon", "HardpointSlot": 0},
+        {"MountedLocation": "LeftTorso",   "ComponentDefID": "Ammo_AmmunitionBox_Generic_AC5",    "ComponentDefType": "AmmunitionBox", "HardpointSlot": -1},
         {"MountedLocation": "LeftTorso",   "ComponentDefID": "Gear_HeatSink_Generic_Standard",    "ComponentDefType": "HeatSink", "HardpointSlot": -1},
         {"MountedLocation": "LeftTorso",   "ComponentDefID": "Gear_HeatSink_Generic_Standard",    "ComponentDefType": "HeatSink", "HardpointSlot": -1},
         {"MountedLocation": "LeftTorso",   "ComponentDefID": "Gear_HeatSink_Generic_Standard",    "ComponentDefType": "HeatSink", "HardpointSlot": -1},
-        {"MountedLocation": "RightTorso",  "ComponentDefID": "Gear_HeatSink_Generic_Standard",    "ComponentDefType": "HeatSink", "HardpointSlot": -1},
-        {"MountedLocation": "RightTorso",  "ComponentDefID": "Gear_HeatSink_Generic_Standard",    "ComponentDefType": "HeatSink", "HardpointSlot": -1},
-        {"MountedLocation": "RightTorso",  "ComponentDefID": "Gear_HeatSink_Generic_Standard",    "ComponentDefType": "HeatSink", "HardpointSlot": -1}
-      ]
-    },
-    {
-      "ChassisID": "chassisdef_marauder_MAD-3R",
-      "Description": {"Cost": 7900000, "UIName": "Marauder MAD-3R-L Longbow", "Id": "mechdef_marauder_MAD-3R-L", "Name": "Marauder"},
-      "Locations": [
-        {"Location": "Head",        "AssignedArmor": 45,  "AssignedRearArmor": -1},
-        {"Location": "LeftArm",     "AssignedArmor": 100, "AssignedRearArmor": -1},
-        {"Location": "LeftTorso",   "AssignedArmor": 100, "AssignedRearArmor": 30},
-        {"Location": "CenterTorso", "AssignedArmor": 130, "AssignedRearArmor": 45},
-        {"Location": "RightTorso",  "AssignedArmor": 100, "AssignedRearArmor": 30},
-        {"Location": "RightArm",    "AssignedArmor": 100, "AssignedRearArmor": -1},
-        {"Location": "LeftLeg",     "AssignedArmor": 120, "AssignedRearArmor": -1},
-        {"Location": "RightLeg",    "AssignedArmor": 120, "AssignedRearArmor": -1}
-      ],
-      "inventory": [
-        {"MountedLocation": "LeftArm",     "ComponentDefID": "Weapon_PPC_PPC_0-STOCK",            "ComponentDefType": "Weapon", "HardpointSlot": 0},
-        {"MountedLocation": "LeftArm",     "ComponentDefID": "Weapon_Laser_MediumLaser_0-STOCK",  "ComponentDefType": "Weapon", "HardpointSlot": 1},
-        {"MountedLocation": "RightArm",    "ComponentDefID": "Weapon_PPC_PPC_0-STOCK",            "ComponentDefType": "Weapon", "HardpointSlot": 0},
-        {"MountedLocation": "RightArm",    "ComponentDefID": "Weapon_Laser_MediumLaser_0-STOCK",  "ComponentDefType": "Weapon", "HardpointSlot": 1},
-        {"MountedLocation": "LeftTorso",   "ComponentDefID": "Weapon_LRM_LRM10_0-STOCK",          "ComponentDefType": "Weapon", "HardpointSlot": 0},
-        {"MountedLocation": "LeftTorso",   "ComponentDefID": "Ammo_AmmunitionBox_Generic_LRM",    "ComponentDefType": "AmmunitionBox", "HardpointSlot": -1},
-        {"MountedLocation": "RightTorso",  "ComponentDefID": "Gear_HeatSink_Generic_Standard",    "ComponentDefType": "HeatSink", "HardpointSlot": -1},
-        {"MountedLocation": "RightTorso",  "ComponentDefID": "Gear_HeatSink_Generic_Standard",    "ComponentDefType": "HeatSink", "HardpointSlot": -1}
+        {"MountedLocation": "CenterTorso", "ComponentDefID": "Gear_HeatSink_Generic_Standard",    "ComponentDefType": "HeatSink", "HardpointSlot": -1},
+        {"MountedLocation": "CenterTorso", "ComponentDefID": "Gear_HeatSink_Generic_Standard",    "ComponentDefType": "HeatSink", "HardpointSlot": -1},
+        {"MountedLocation": "CenterTorso", "ComponentDefID": "Gear_HeatSink_Generic_Standard",    "ComponentDefType": "HeatSink", "HardpointSlot": -1}
       ]
     }
   ],
   "mc2": {
     "_note": "MC2-side layout for this chassis: mech-lab grid regions per BT location (every component must sit wholly inside one region), weapon-node sockets per location (resolved to animated joints through the model package's node manifest), the appearance source, and the host data the compatibility files borrow until Batch B renders this chassis' own icons.",
     "stem": "bt2018_marauder",
-    "grid": {"width": 6, "height": 4},
+    "grid": {"width": 6, "height": 6},
     "regions": {
-      "LeftArm":     [0, 0, 1, 4],
-      "LeftTorso":   [1, 0, 1, 4],
-      "CenterTorso": [2, 0, 2, 4],
-      "RightTorso":  [4, 0, 1, 4],
-      "RightArm":    [5, 0, 1, 4]
+      "LeftArm":     [0, 0, 2, 3],
+      "LeftTorso":   [0, 3, 2, 3],
+      "CenterTorso": [2, 0, 2, 6],
+      "RightTorso":  [4, 3, 2, 3],
+      "RightArm":    [4, 0, 2, 3]
     },
     "sockets": {
       "LeftArm":     ["weapon_leftarm", "weapon_leftarm2"],
