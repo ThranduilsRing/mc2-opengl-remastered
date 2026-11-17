@@ -8,6 +8,7 @@
 #include <array>
 #include "mech_internal.h"
 #include "component_rules.h"
+#include "../GameOS/gameos/utils/mc2log.h"
 
 // Truncate at the data boundary exactly as the lab's integer += Damage does.
 static int labHeatPoints(float value) {
@@ -55,7 +56,7 @@ void BattleMech::restoreHeatCapacity() {
 	if (file.open(path) == NO_ERR && file.readLong(4, 5, points) == NO_ERR)
 		chassisHeatPoints = static_cast<int>(std::clamp<long>(points, 0, mc2::heat::maxLabPoints));
 	else
-		printf("[HEAT] chassis capacity unavailable: %s; using zero base\n", static_cast<const char*>(path));
+		MC2_LOG(Sim, Warn, "Heat chassis capacity unavailable: {}; using zero base", static_cast<const char*>(path));
 	// The saved variant name recovers cooling omitted by legacy inventory rebuilds.
 	if (LogisticsData::instance) {
 		auto variant = LogisticsData::instance->getVariant(variantName);
