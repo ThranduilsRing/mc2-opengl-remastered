@@ -160,7 +160,7 @@ if(MC2_VULKAN)
         # No layout-affecting header members (extern "C" entry points only).
         # No layout-affecting header members (extern "C" entry points only).
         list(APPEND SOURCES vulkan_water_island.cpp)
-        list(APPEND SOURCES vulkan_water_island_images.cpp vulkan_water_island_init.cpp vulkan_water_island_run.cpp)
+        list(APPEND SOURCES vulkan_water_island_images.cpp vulkan_water_island_init.cpp vulkan_water_island_run.cpp vulkan_water_reflect_bake.cpp)
         # VK-POST-FOG-NATIVE-1 (rung 8.1, VK-RUNG8-LADDER-1): the fog pair (edge+oob)
         # rendered NATIVELY on the shared engine VulkanContext — samples the SHARED
         # scene depth, blends into the SHARED scene color0 in place (zero copies,
