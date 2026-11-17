@@ -61,7 +61,7 @@ public:
 	// distance: Camera::AltitudeTight is static and a second camera on the
 	// same screen (the component picture) rewrites it.
 	void setFramedPose( float fillFrac, float yaw, float pitch )
-	{ fillFrac_ = fillFrac; framedPitch_ = pitch; rotation = yaw; framed_ = true; framedFov_ = 40.f; fudgeX = fudgeY = 0.f; fitIters_ = 40; haveDrawn_ = false; haveGround_ = false; turntableLastT_ = 0.0; }
+	{ fillFrac_ = fillFrac; framedPitch_ = pitch; rotation = yaw; framed_ = true; framedFov_ = 40.f; fudgeX = fudgeY = 0.f; fitIters_ = 40; haveDrawn_ = false; haveGround_ = false; turntableLastT_ = 0.0; maxHalf_ = turnAccum_ = 0.f; widens_ = 0; }
 	// Mech-lab idle turntable (about 10 deg/s on a framed pose); paused while the player drags a component.
 	void setTurntablePaused( bool paused ) { turntablePaused_ = paused; }
 	void setScale( float newScale );
@@ -108,6 +108,8 @@ private:
 	bool				drawOffscreen_ = false;   // PREVIEW-FBO-FIXED-800x600-1
 	float				fillFrac_ = 0.f, framedPitch_ = 0.f, framedAlt_ = 650.f, framedFov_ = 40.f;
 	float				turnRadius_ = 0.f, turnHalfHeight_ = 0.f;
+	float				maxHalf_ = 0.f, turnAccum_ = 0.f;
+	int					widens_ = 0;
 	std::string			fitChassis_;
 	float				drawn_[4] = {};	// last PreviewDraw screen extents (framed only)
 	int					fitIters_ = 0;
