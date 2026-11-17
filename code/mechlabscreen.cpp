@@ -2340,8 +2340,8 @@ void MechLabScreen::endDragLocation()
 		pSelectedComponent = pDragComponent;
 	}
 	else if ( mc2::components::restoreGridDrag( bDragLeft, false,
-		componentListBox.pointInside( userInput->getMouseX(), userInput->getMouseY() ), false ) )
-	{
+		panel < 0 && componentListBox.pointInside( static_cast<float>( userInput->getMouseX() ), static_cast<float>( userInput->getMouseY() ) ), false ) )
+	{	// a refused drop returns to its slot; a row dropped on the inventory list stays removed (as in the grid view)
 		addComponent( pDragComponent, selI, selJ );
 		pSelectedComponent = pDragComponent;
 	}
