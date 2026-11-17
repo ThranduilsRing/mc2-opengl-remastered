@@ -349,7 +349,8 @@ mc2vk::OwnedPipeline build_terrain_pipeline(const TerrainPipelineRecipe& r,
     const mc2::terrain::TerrainSpecKey* key) {
     // The complete main/planar/skirt recipe. No pointers into the island or caller.
     VkVertexInputBindingDescription vib{};
-    vib.binding = 0; vib.stride = (r.skirt ? sizeof(SkirtVertex) : sizeof(LocalVertex)); vib.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+    vib.binding = 0; vib.stride = sizeof(LocalVertex); vib.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+    if (r.skirt) vib.stride = sizeof(SkirtVertex); // fixed recipe, not an uninitialized geometry stride
     VkVertexInputAttributeDescription via[2]{};
     via[0] = {0, 0, VK_FORMAT_R16G16_SINT, 0};
     via[1] = {1, 0, VK_FORMAT_R16_SINT, 4};
