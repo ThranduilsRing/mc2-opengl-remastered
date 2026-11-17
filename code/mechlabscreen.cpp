@@ -2474,6 +2474,12 @@ void MechLabScreen::drawLocationView( float tbSx, float tbSy, float tbOx, float 
 		fill( r, edge, false );
 		if ( doll )
 		{
+			int special = 0;
+			for ( const auto& it : placed ) if ( it.x < 0 || it.y < 0 ) ++special;
+			if ( special ) {
+				text( { r.x + 3, r.y + 4, r.w - 6, 14 }, "+ special (CLASSIC)", 0xffe8eef4, 10.f, 0 );
+				text( { r.x + 3, r.y + 20, r.w - 6, 28 }, "Jump jets / special slots", 0xffa0b0c0, 10.f, 0 );
+			}
 			char buf[64];
 			std::snprintf( buf, sizeof buf, "MASS %.1f / %.1f t", static_cast<double>( mass ), static_cast<double>( pc->payload ) );
 			text( { r.x, r.y + r.h - 14, r.w, 14 }, buf, mass > pc->payload + 1e-3f ? 0xffff6060 : 0xffffd060, 11.f, 2 );
