@@ -1142,7 +1142,7 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
     if (!d.textureRgba || d.textureRgba->size() < baseBytes)
         return nullptr;
     ZoneScopedN("HUD.TextureUpload");
-    if (uploads && mipmapped) {
+    if (uploads && (mipmapped || d.hudAtlas)) {
         ZoneScopedN("HUD.TextureUpload.SynchronousFallback");
         if (mc2_diag::tagRequested("HUD_SYNC_FALLBACK"))
         std::fprintf(stderr, "[HUD_SYNC_FALLBACK] handle=%u serial=%u kind=%u frame=%llu\n",
@@ -1173,6 +1173,10 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
         return nullptr;
     std::memcpy(mapped, mipmapped ? mipPixels.data() : rgba.data(), static_cast<size_t>(bytes));
     vkUnmapMemory(s.dev, m.memory.get());
+    }
+    if (mipmapped) {
+        for (auto& [identity, mirror] : s.hudTextureMirrors)
+            if (static_cast<uint32_t>(identity >> 32) == d.textureHandle) mirror.pinned = identity == key;
     }
     }
     if (!m.set) {
@@ -1241,7 +1245,9 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
     {
         const uint64_t now = s.hudMirrorFrameCounter;
         for (auto it = s.hudTextureMirrors.begin(); it != s.hudTextureMirrors.end(); ) {
-            if (!it->second.preparedSource && it->second.lastFrame + kHudMirrorIdleFrames < now) {
+            const auto handle = static_cast<uint32_t>(it->first >> 32);
+            const bool retired = std::find(s.retiredHudTextures.begin(), s.retiredHudTextures.end(), handle) != s.retiredHudTextures.end();
+            if (retired || (!it->second.pinned && it->second.lastFrame + kHudMirrorIdleFrames < now)) {
                 // Idle long enough to count as gone: its descriptor set and buffer leave through the deferred-destroy queue, so a present submit
                 // that is still reading them keeps them alive (a ticket, not the idle window, is the proof).
                 auto& m = it->second;
@@ -1251,6 +1257,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
                 ++it;
             }
         }
+        s.retiredHudTextures.clear();
     }
 
     }
@@ -1299,7 +1306,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
                     static_cast<int>(mirror->preparedSource == d.textureRgba));
                 mirror->firstDrawLogged = true;
             }
-            mirror->preparedSource.reset(); // First use ends the load-only eviction pin.
+            mirror->preparedSource.reset(); // Drop the source reference; the mission pin remains.
             HudNativeCmd td;
             td.stream = 2;
             td.firstVertex = static_cast<uint32_t>(texVerts.size());
@@ -2031,27 +2038,30 @@ bool EnginePresentVk::prepareHudTexture(const VkHudDraw& draw) {
     auto* mirror = ensureHudTextureMirror(*impl_, draw, nullptr);
     if (!mirror) return false;
     mirror->preparedSource = draw.textureRgba;
+    mirror->pinned = true;
     return true;
 }
 
 void EnginePresentVk::releaseHudTextures(uint32_t handle) {
+    if (!handle) present_thread::waitIdle();
     if (!impl_) return;
     auto& s = *impl_;
     for (auto it = s.hudTextureMirrors.begin(); it != s.hudTextureMirrors.end();) {
         auto& [identity, m] = *it;
         if (handle && static_cast<uint32_t>(identity >> 32) != handle) { ++it; continue; }
-        present_thread::waitIdle();
         s.ctx->retire(HudMirrorRetired{s.dev, s.hudTexPool.get(), std::exchange(m.set, VK_NULL_HANDLE),
             std::move(m.memory), std::move(m.buffer)});
         it = s.hudTextureMirrors.erase(it);
     }
 }
 
+void EnginePresentVk::retireHudTextures(std::vector<uint32_t>&& handles) {
+    if (impl_) impl_->retiredHudTextures.insert(impl_->retiredHudTextures.end(), handles.begin(), handles.end());
+}
+
 bool EnginePresentVk::prewarmPipelines() {
     if (!created_ || !impl_) return false;
     Impl& s=*impl_;
-    // Previous mission's prepared buffers can retire through the normal ticket path.
-    for (auto& [identity, mirror] : s.hudTextureMirrors) mirror.preparedSource.reset();
     const bool ready = ensureCompositeObjects(s) && ensureHudColorObjects(s) && ensureHudTexObjects(s) &&
         (!ImGui::GetCurrentContext() || ensureImguiVulkan(s)) &&
         s.spatialAA.prepare(*s.ctx, s.scaledComposite.image ? s.scaledComposite : s.sharedImg,

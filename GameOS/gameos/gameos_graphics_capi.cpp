@@ -284,7 +284,10 @@ void __stdcall gos_DestroyTexture( DWORD Handle )
 {
     mc2::overlap::requireOwner(mc2::overlap::Owner::Render, "gos_DestroyTexture");   // GPU resource entry: never from the sim worker
     if (mc2vk::present_thread::enabled()) mc2vk::present_thread::forgetTexture(Handle);
-    else if (mc2vk::engineVulkanContextValid()) mc2vk::getOrCreateEngineVulkanContext().textures().forgetLegacyUi(Handle);
+    else {
+        mc2vk::getOrCreateEnginePresentVk().releaseHudTextures(Handle);
+        if (mc2vk::engineVulkanContextValid()) mc2vk::getOrCreateEngineVulkanContext().textures().forgetLegacyUi(Handle);
+    }
     g_gos_renderer->deleteTexture(Handle);
 }
 

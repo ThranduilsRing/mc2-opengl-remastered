@@ -613,6 +613,9 @@ void gosRenderer::flushHUDBatch()
                         tex->ensureRgbaMirror();
                     if (draw.textureWidth != 0 && draw.textureHeight != 0 && tex->hasRgbaMirror())
                         draw.textureRgba = tex->getRgbaMirror();
+                    const std::string_view asset(tex->sourceName());
+                    draw.hudAtlas = asset == "generated/hud/icon-registry" || asset == "generated/hud/frame-atlas" ||
+                        asset.find("a_compass.tga") != std::string_view::npos;
                 }
             }
             draw.alphaMode = call.stateSnapshot[gos_State_AlphaMode];
