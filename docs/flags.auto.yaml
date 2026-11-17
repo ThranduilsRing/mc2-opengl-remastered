@@ -3,7 +3,7 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 430
+gate_count: 428
 registry_entry_count: 123
 verified_count: 399
 flags:
@@ -1065,20 +1065,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_HOST_CORES_PER_SLOT
-    kind: String
-    default: ""
-    rule: Std
-    owner: harness
-    doc: "Harness-owned box wrapper metadata; ignored by the engine."
-    smoke_passthrough: true
-  - name: MC2_HOST_GAME_SLOTS
-    kind: String
-    default: ""
-    rule: Std
-    owner: harness
-    doc: "Harness-owned box wrapper metadata; ignored by the engine."
-    smoke_passthrough: true
   - name: MC2_HUD_IMGUI_TABS
     kind: Bool
     default: false

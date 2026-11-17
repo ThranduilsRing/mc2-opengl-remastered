@@ -521,7 +521,6 @@ TEST_CASE("dumpConfig all lists every row, none only the summary") {
 // Trigger paths: Gates/gate_rows_*.inc and Gates/gate.cpp strict config validation.
 TEST_CASE("dumpConfig accepts box harness metadata under strict config") {
     const char* names[] = {"MC2_TOOLCHAINS", "MC2_RUN_ID", "MC2_BOX_QUOTA_CPUS",
-        "MC2_HOST_GAME_SLOTS", "MC2_HOST_CORES_PER_SLOT",
         "MC2_GATE_MODS_ROOT", "MC2_GATE_GPU", "MC2_GATE_INSTALL", "MC2_SLOT", "MC2_GATE_PROOFS"};
     gate::DumpOptions opts;
     opts.strict = true;
