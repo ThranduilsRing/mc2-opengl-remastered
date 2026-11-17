@@ -51,12 +51,14 @@ def test_proof_scripts_exercise_movement_and_combat(tmp_path, monkeypatch, mode,
             "--install", str(tmp_path), "--out", str(tmp_path / "output")]
     if explicit:
         script = tmp_path / "orders.txt"
-        script.write_text("select all\norder move -4900 -5400\norder attack 706\n")
+        script.write_text(" # comment\n  select all\n\torder move -4900 -5400\norder attack 706\n")
         argv += ["--commands", str(script)]
     monkeypatch.setattr(replay.sys, "argv", argv)
     monkeypatch.setattr(replay, "fingerprint", lambda *args: "test")
     def check_script(args, label, env, expect):
         commands = Path(env["MC2_UI_COMMAND_FILE"]).read_text().splitlines()
+        assert b"\r" not in Path(env["MC2_UI_COMMAND_FILE"]).read_bytes()
+        assert commands[0] == "select all"
         assert any(line.startswith("order move ") for line in commands)
         assert any(line.startswith("order attack ") for line in commands)
         replay.validate_commands("\n".join(commands))
@@ -83,11 +85,37 @@ def test_fixture_rejected_before_fingerprint_or_game(tmp_path, monkeypatch):
 @pytest.mark.parametrize("extra", [{}, {"MC2_UI_COMMAND_FILE": "validated-script"}])
 def test_only_explicit_recording_script_reaches_game(tmp_path, monkeypatch, extra):
     monkeypatch.setenv("MC2_UI_COMMAND_FILE", "inherited-teleport-script")
+    for name in ("RECORD", "PLAY", "TICKS", "FUTURE"):
+        monkeypatch.setenv("MC2_COMMAND_REPLAY_" + name, "inherited")
+    extra = {**extra, "MC2_COMMAND_REPLAY_RECORD": "explicit"}
     def child(*args, env, **kwargs):
         assert env.get("MC2_UI_COMMAND_FILE") == extra.get("MC2_UI_COMMAND_FILE")
+        assert {k: v for k, v in env.items() if k.startswith("MC2_COMMAND_REPLAY_")} == {
+            "MC2_COMMAND_REPLAY_RECORD": "explicit"}
         raise InterruptedError("checked child environment")
     monkeypatch.setattr(replay.subprocess, "run", child)
     args = SimpleNamespace(out=tmp_path, seed=123, content="test", install=tmp_path,
                            mission="mc2_10", duration=30)
     with pytest.raises(InterruptedError, match="checked child environment"):
         replay.run(args, "run", extra, "unused")
+
+
+def test_play_rejects_commands_before_reading_them(tmp_path, monkeypatch):
+    monkeypatch.setattr(replay.sys, "argv", ["command_replay.py", "play", "unused",
+        "--commands", str(tmp_path / "nonexistent")])
+    with pytest.raises(SystemExit) as error:
+        replay.main()
+    assert error.value.code == 2
+
+
+def test_record_failed_marker_overrides_success(tmp_path, monkeypatch):
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
+    (artifacts / "unit.log").write_text(
+        "[COMMAND_REPLAY] record_failed reason=bench_freeze\n[REPLAY_RECORDED v1]\n")
+    monkeypatch.setattr(replay.subprocess, "run", lambda *args, **kwargs: SimpleNamespace(
+        returncode=0, stdout=f"[runner] artifacts: {artifacts}\n", stderr=""))
+    args = SimpleNamespace(out=tmp_path, seed=123, content="test", install=tmp_path,
+                           mission="unit", duration=30)
+    with pytest.raises(RuntimeError, match="replay run failed"):
+        replay.run(args, "run", {}, "[REPLAY_RECORDED v1]")

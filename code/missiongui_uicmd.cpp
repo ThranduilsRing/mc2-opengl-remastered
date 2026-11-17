@@ -207,6 +207,7 @@ void MissionInterfaceManager::processUiCommandChannel()
 		if (mc2::replay::blocksFixtureMutation(line, mc2::replay::active())) {
 			c.result = "blocked";
 			c.note = "fixture mutations are not replayed during command recording";
+			mc2::replay::failRecording(line);
 			mc2::fmt::print(stderr, "UI command refused: {} ({})\n", line, c.note);
 		} else {
 			(void)(uiCmdBasic(c) || uiCmdWorld(c) || uiCmdReadback(c) || uiCmdProbe(c) || uiCmdFixture(c));
