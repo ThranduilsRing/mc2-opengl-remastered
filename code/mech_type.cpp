@@ -5,9 +5,39 @@
 #include "world/visibility_input.h"
 #include "mc2fmt.h"
 
+mc2::heat::Profile BattleMech::heatProfile;
+
+static void loadHeatProfile() {
+	using mc2::heat::Profile;
+	BattleMech::heatProfile = Profile{};
+	FitIniFile file;
+	if (file.open("data/defs/rules/heat.fit") != NO_ERR) {
+		printf("[HEAT] heat.fit missing; using defaults (profile=1 cool=20 window=60 ai=0)\n");
+		return;
+	}
+	Profile p;
+	const bool parsed = file.seekBlock("Heat") == NO_ERR &&
+		file.readIdInt("HeatProfile", p.heatProfile) == NO_ERR &&
+		file.readIdInt("CoolSeconds", p.coolSeconds) == NO_ERR &&
+		file.readIdInt("AlphaWindowTicks", p.alphaWindowTicks) == NO_ERR &&
+		file.readIdInt("AiAlpha", p.aiAlpha) == NO_ERR &&
+		file.seekBlock("Thresholds") == NO_ERR &&
+		file.readIdInt("Count", p.thresholdCount) == NO_ERR;
+	const auto valid = mc2::heat::validatedProfile(p);
+	if (!parsed || !valid) {
+		printf("[HEAT] invalid heat.fit: require HeatProfile=1, CoolSeconds=1..71582788, "
+			"AlphaWindowTicks>0, AiAlpha=0, Thresholds Count=0; using defaults\n");
+		return;
+	}
+	BattleMech::heatProfile = *valid;
+	printf("[HEAT] profile=1 cool=%d window=%d ai=0 thresholds=0\n", p.coolSeconds, p.alphaWindowTicks);
+	// TODO(alpha-order-1): include heat.fit in the content digest with protocol 4.
+}
+
 
 
 long BattleMech::loadGameSystem (FitIniFilePtr mechFile) {
+	loadHeatProfile();
 
 	long result = 0;
 

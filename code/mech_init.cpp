@@ -10,6 +10,8 @@
 void BattleMech::init (bool create) {
 
 	objectClass = BATTLEMECH;
+	heatState = {};
+	chassisHeatPoints = heatSinkAdjustmentPoints = 0;
 	overlayWeightClass = std::to_underlying(OVERLAY_WEIGHT_MECH);
 	cBills = 0;
 	playedHeloDestruct = false;
@@ -868,6 +870,7 @@ long BattleMech::init (FitIniFile* mechFile) {
 	// UNITPROFILE-TYPELOAD-SOURCE-1: numJumpJets is authoritative here; fold it
 	// into the type baseline + this instance's runtime via the single owner.
 	refreshDerivedCapabilities();
+	restoreHeatCapacity();
 
 	return(NO_ERR);
 }
