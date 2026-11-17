@@ -2545,7 +2545,8 @@ bool prewarmProps(std::unique_ptr<mc2vk::IslandState>& state, int w, int h) {
         state = std::move(fresh);
     }
     auto* s = static_cast<PlanarProps*>(state.get());
-    if (!s->inited && !init_island(s, w, h)) return false;
+    // Pipelines borrow the realized scene formats; only recording uses the target extent.
+    if (!s->inited && !init_island(s, main->w, main->h)) return false;
     if (!prepare_mission_resources(s)) return false;
     if (!s->boundsReady) {
         Mc2ShadowGeomFeed geom{};

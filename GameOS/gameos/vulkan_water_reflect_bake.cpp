@@ -127,6 +127,12 @@ float halfFloat(uint16_t v) {
 }
 
 bool prepare_reflect_bake(WaterIsland* s, float water) {
+    auto fail = [](const char* phase) {
+        static bool logged = false;
+        if (!logged) mc2::fmt::print_err("[WATER_BAKE] FAILED phase={}\n", phase);
+        logged = true;
+        return false;
+    };
     if (!s->mapHasWater || gos_GetWaterReflectionQuality() != 2) return true;
     Mc2TerrainTier1Feed feed{};
     gos_terrain_lighting::VkProducerSnapshot lighting{};
@@ -150,7 +156,7 @@ bool prepare_reflect_bake(WaterIsland* s, float water) {
     if (!owner) {
         auto b = std::make_unique<ReflectBake>();
         b->span = 128.0f * (feed.mapSide - 1); b->halfMap = feed.halfMap;
-        if (!initBake(s, *b)) return false;
+        if (!initBake(s, *b)) return fail("init");
         owner = std::move(b);
     }
     auto& b = *static_cast<ReflectBake*>(owner.get());
@@ -164,8 +170,8 @@ bool prepare_reflect_bake(WaterIsland* s, float water) {
     target.useTargetView = true; target.cameraPos = eye;
     target.color = b.colorView.get(); target.depth = b.depthView.get();
     mc2vk::VulkanContext::RecordFn terrain, props;
-    if (!mc2::waterplanar::prepareTerrain(b.terrain, target, terrain) ||
-        !mc2::waterplanar::prepareProps(b.props, target, props)) return false;
+    if (!mc2::waterplanar::prepareTerrain(b.terrain, target, terrain)) return fail("terrain");
+    if (!mc2::waterplanar::prepareProps(b.props, target, props)) return fail("props");
     mc2vk::OwnedBuffer readback;
     const bool dump = mc2::gate::get<"MC2_DEBUG_STATE_DUMP">();
     const VkDeviceSize bytes = static_cast<VkDeviceSize>(b.size) * b.size * 8;
