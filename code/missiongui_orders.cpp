@@ -843,13 +843,13 @@ void MissionInterfaceManager::anchoredZoom(long mx, long my, int (MissionInterfa
 
 int MissionInterfaceManager::gameSpeedUp()
 {
-	simSpeedSetMultiplier(mc2::sim::speedKeyStep(simSpeedGetMultiplier(), KEY_ADD, mc2::net::active()));
+	simSpeedSetMultiplier(mc2::sim::speedKeyStep(simSpeedGetMultiplier(), false, mc2::net::active()));
 	return 1;
 }
 
 int MissionInterfaceManager::gameSpeedDown()
 {
-	simSpeedSetMultiplier(mc2::sim::speedKeyStep(simSpeedGetMultiplier(), KEY_SUBTRACT, mc2::net::active()));
+	simSpeedSetMultiplier(mc2::sim::speedKeyStep(simSpeedGetMultiplier(), true, mc2::net::active()));
 	return 1;
 }
 

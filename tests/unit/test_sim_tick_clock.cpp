@@ -9,22 +9,16 @@ using mc2::sim::kTickSeconds;
 
 TEST_CASE("sim speed: plus/minus keys step and clamp") {
     using mc2::sim::speedKeyStep;
-    for (long key : {long(KEY_ADD), long(KEY_EQUALS), long(0x01000000 | KEY_EQUALS)}) {
-        CHECK(speedKeyStep(1.f, key, false) == 2.f);
-        CHECK(speedKeyStep(2.f, key, false) == 4.f);
-        CHECK(speedKeyStep(4.f, key, false) == 4.f);
-        CHECK(speedKeyStep(0.5f, key, false) == 1.f);
-        CHECK(speedKeyStep(1.f, key, true) == 1.f);
-    }
-    for (long key : {long(KEY_MINUS), long(KEY_SUBTRACT)}) {
-        CHECK(speedKeyStep(4.f, key, false) == 2.f);
-        CHECK(speedKeyStep(2.f, key, false) == 1.f);
-        CHECK(speedKeyStep(1.f, key, false) == 0.5f);
-        CHECK(speedKeyStep(0.5f, key, false) == 0.5f);
-        CHECK(speedKeyStep(1.f, key, true) == 1.f);
-    }
-    CHECK(speedKeyStep(1.f, KEY_PRIOR | 0x100, false) == 1.f);
-    CHECK(speedKeyStep(1.f, KEY_NEXT | 0x100, false) == 1.f);
+    CHECK(speedKeyStep(1.f, false, false) == 2.f);
+    CHECK(speedKeyStep(2.f, false, false) == 4.f);
+    CHECK(speedKeyStep(4.f, false, false) == 4.f);
+    CHECK(speedKeyStep(0.5f, false, false) == 1.f);
+    CHECK(speedKeyStep(1.f, false, true) == 1.f);
+    CHECK(speedKeyStep(4.f, true, false) == 2.f);
+    CHECK(speedKeyStep(2.f, true, false) == 1.f);
+    CHECK(speedKeyStep(1.f, true, false) == 0.5f);
+    CHECK(speedKeyStep(0.5f, true, false) == 0.5f);
+    CHECK(speedKeyStep(1.f, true, true) == 1.f);
 }
 
 TEST_CASE("sim speed: cycle, clamp and multiplayer disable") {
