@@ -2262,7 +2262,7 @@ void MechLabScreen::setLocationView( bool on )
 	updateDiagram();
 }
 
-bool MechLabScreen::placeInPanel( LogisticsComponent* pComponent, int panel )
+bool MechLabScreen::placeInPanel( LogisticsComponent* pComponent, int panel, long& x, long& y )
 {
 	const mc2pkg::PackageChassis* pc = locPackage( pVariant );
 	const int ri = regionOfPanel( pc, panel ).value_or( -1 );
@@ -2273,7 +2273,7 @@ bool MechLabScreen::placeInPanel( LogisticsComponent* pComponent, int panel )
 		place = pVariant->packageLocationPlace( pComponent, ri );
 		reason = place.reason;
 	}
-	long x = place.x, y = place.y;
+	x = place.x; y = place.y;
 	if ( ri < 0 || !place.legal )
 	{
 		showDropRefusal( std::string( ml::panelTitle( panel ) ) + ": " + ( ri < 0 ? "no equipment slots here." : reason ) );
@@ -2286,16 +2286,15 @@ bool MechLabScreen::placeInPanel( LogisticsComponent* pComponent, int panel )
 void MechLabScreen::endDragLocation()
 {
 	const int panel = ml::panelAt( static_cast<float>( userInput->getMouseX() ), static_cast<float>( userInput->getMouseY() ) ).value_or( -1 );
+	long x = -1, y = -1;
 	bool placed = false;
 	if ( panel >= 0 && panel < ml::kLocationCount )
-		placed = placeInPanel( pDragComponent, panel );
+		placed = placeInPanel( pDragComponent, panel, x, y );
 	if ( placed )
 	{
 		componentListBox.SelectItem( -1 );
-		long i = -1, j = -1;
-		pVariant->getComponentLocation( pDragComponent, i, j );
-		selI = i;
-		selJ = j;
+		selI = x;
+		selJ = y;
 		pSelectedComponent = pDragComponent;
 	}
 	else if ( mc2::components::restoreGridDrag( bDragLeft, false,
@@ -2403,7 +2402,15 @@ void MechLabScreen::updateLocationInput()
 				componentListBox.SelectItem( -1 );
 			}
 			else if ( -1 != componentListBox.GetSelectedItem() && componentListBox.getComponent() )
-				placeInPanel( componentListBox.getComponent(), s_locHover );
+				{
+				long x = -1, y = -1;
+				if ( placeInPanel( componentListBox.getComponent(), s_locHover, x, y ) )
+				{
+					selI = x; selJ = y;
+					pSelectedComponent = componentListBox.getComponent();
+					componentListBox.SelectItem( -1 );
+				}
+			}
 		}
 	}
 	if ( userInput->leftMouseReleased() && pDragComponent )
@@ -2503,7 +2510,7 @@ void MechLabScreen::drawLocationView( float tbSx, float tbSy, float tbOx, float 
 		for ( size_t k = 0; k < items.size(); ++k )
 		{
 			ml::Rect row = ml::itemRowRect( p, static_cast<int>( k ), static_cast<int>( items.size() ) );
-			const bool sel = items[k].comp == pSelectedComponent && !pDragComponent;
+			const bool sel = items[k].x == selI && items[k].y == selJ && pSelectedComponent && !pDragComponent;
 			if ( sel ) fill( row, 0x802d6a8f, true );
 			char line[64];
 			const char* name = items[k].comp->getName();

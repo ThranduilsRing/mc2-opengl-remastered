@@ -136,7 +136,7 @@ class MechLabScreen: public LogisticsScreen
 		bool	locationViewActive() const;
 		void	updateLocationInput();
 		void	drawLocationView( float tbSx, float tbSy, float tbOx, float tbOy, int xOffset, int yOffset );
-		bool		placeInPanel( LogisticsComponent* pComponent, int panel );
+		bool		placeInPanel( LogisticsComponent* pComponent, int panel, long& x, long& y );
 		void	endDragLocation();
 		void	setLocationView( bool on );
 
