@@ -12,13 +12,14 @@
 // not friendly to the home team and not a capture target, plus alive.
 MissionInterfaceManager::MenuTarget MissionInterfaceManager::classifyMenuTarget(GameObject& obj)
 {
-    if (obj.isDestroyed()) return MenuTarget::Rejected;
+    if (obj.isDestroyed() || obj.isDisabled()) return MenuTarget::Rejected;
     if (obj.isCaptureable(Team::home->getId())) return MenuTarget::Rejected;
     return Team::home->isFriendly(obj.getTeam()) ? MenuTarget::Rejected : MenuTarget::Attackable;
 }
 
 void MissionInterfaceManager::dispatchMenuOrder(const mc2::order_menu::Order& captured)
 {
+    ZoneScopedN("MIF.OrderMenuDispatch");
     auto* enemy = ObjectManager->getByWatchID(captured.target);
     if (!enemy || classifyMenuTarget(*enemy) != MenuTarget::Attackable) return; // one shared predicate with the menu gate
     if (mc2_diag::tagRequested("ORDER_MENU")) std::fprintf(stderr, "[ORDER_MENU] dispatchMenuOrder recipients=%zu range=%d\n", captured.recipients.size(), static_cast<int>(captured.range));

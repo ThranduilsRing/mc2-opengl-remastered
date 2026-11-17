@@ -1091,6 +1091,7 @@ bool MissionInterfaceManager::updateOrderMenu(bool allowOpen, bool overGui)
     using namespace mc2::order_menu;
     if (!allowOpen && !orderMenu.captured && !orderMenu.draining) return false;
     if (!ImGui::GetCurrentContext()) return false;
+    ZoneNamedN(orderMenuZone, "MIF.OrderMenu", orderMenu.captured || orderMenu.draining); // none while closed
     if (allowOpen) {
         // Classic only: AOE right-click orders and Alt-camera remain intact.
         if (useLeftRightMouseProfile || overGui ||
@@ -1112,7 +1113,14 @@ bool MissionInterfaceManager::updateOrderMenu(bool allowOpen, bool overGui)
     }
     const bool held = ImGui::IsMouseDown(0) || ImGui::IsMouseDown(1) ||
                       ImGui::IsKeyDown(ImGuiKey_Escape) || userInput->getKeyDown(KEY_ESCAPE);
-    if (!orderMenu.consume(held)) return false;
+    if (!orderMenu.consume(held)) return false; // update() runs this frame and handles releases itself
+    // Release edges last one frame and this path skips update(): run the held-mode release
+    // handlers (guard, jump, speed...) here so a key released under the menu cannot stay stuck.
+    for (int i = 0; i < MAX_COMMAND; ++i) {
+        if (commands[i].releaseFunction && commands[i].key != -1 &&
+            gos_GetKeyStatus(gosEnum_KeyIndex(commands[i].key & 0x000fffff)) == KEY_RELEASED)
+            (this->*commands[i].releaseFunction)();
+    }
     if (!orderMenu.captured) return true;
     if (useLeftRightMouseProfile || ImGui::IsKeyPressed(ImGuiKey_Escape) ||
         userInput->getKeyDown(KEY_ESCAPE)) {
