@@ -4,6 +4,7 @@
 #include "gos_terrain_indirect.h"
 #include "vk_one_shot.h"
 #include "texture_decode.h"
+#include "load_scope.h"
 #include "terrain_field_store.h"
 #include "cement_layers.h"
 #include "gameos.hpp"
@@ -148,14 +149,8 @@ void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     // missing/stale cooks regenerate from these same bytes, including BC7's original sampling space.
     if (auto* fields = gos_TerrainFieldStore(); fields && fields->colormapAtlas().version == feed.colormapVersion) {
         const auto& atlas = fields->colormapAtlas();
-        std::vector<uint8_t> decoded;
-        std::span<const uint8_t> rgba = atlas.bytes;
-        if (atlas.vkFormat == mc2terrain::ColormapAtlas::kBc7Unorm || atlas.vkFormat == mc2terrain::ColormapAtlas::kBc7Srgb) {
-            decoded = mc2tex::decodeBc7(atlas.bytes, static_cast<uint32_t>(atlas.width), static_cast<uint32_t>(atlas.height));
-            rgba = decoded;
-        }
         mc2terrain::SurfaceCookInput input;
-        input.rgba = rgba; input.srgb = atlas.vkFormat == mc2terrain::ColormapAtlas::kBc7Srgb;
+        input.srgb = atlas.vkFormat == mc2terrain::ColormapAtlas::kBc7Srgb;
         input.colorWidth = static_cast<uint32_t>(atlas.width); input.colorHeight = static_cast<uint32_t>(atlas.height);
         input.topLeftX = feed.atlasTopLeftX; input.topLeftY = feed.atlasTopLeftY;
         input.worldSpan = feed.atlasOneOverWorldUnits > 0 ? 1.0f / feed.atlasOneOverWorldUnits : 0;
@@ -177,11 +172,32 @@ void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
         }
         const char* cookOrigin = "none";
         const auto resolveT0 = std::chrono::steady_clock::now();
-        const auto key = mc2terrain::surfaceCookSourceHash(input);
-        auto packed = mc2terrain::loadCachedPackedSurface(cacheDir, key, input.srgb);
+        uint64_t key = 0;
+        {
+            MC2_LOAD_SCOPE("cook.terrain.macroKey");
+            key = mc2terrain::packedSurfaceSourceHash(input, atlas.bytes, atlas.vkFormat);
+        }
+        std::optional<mc2terrain::PackedSurfaceAsset> packed;
+        {
+            MC2_LOAD_SCOPE("io.terrain.packedSurface");
+            packed = mc2terrain::loadCachedPackedSurface(cacheDir, key, input.srgb);
+        }
         auto cooked = packed ? std::optional<mc2terrain::SurfaceAsset>{std::move(packed->materials)} :
             std::optional<mc2terrain::SurfaceAsset>{};
-        if (!packed) graphics::loading_work([&] { cooked = mc2terrain::resolveSurfaceAsset(input, mc2terrain::surfaceMissionCook(), cacheDir, &cookOrigin); });
+        std::vector<uint8_t> decoded;
+        if (!packed) {
+            input.rgba = atlas.bytes;
+            if (atlas.vkFormat == mc2terrain::ColormapAtlas::kBc7Unorm || atlas.vkFormat == mc2terrain::ColormapAtlas::kBc7Srgb) {
+                MC2_LOAD_SCOPE("decode.terrain.macroAtlas");
+                decoded = mc2tex::decodeBc7(atlas.bytes, input.colorWidth, input.colorHeight);
+                input.rgba = decoded;
+            }
+            graphics::loading_work([&] {
+                MC2_LOAD_SCOPE("cook.terrain.macroSurface");
+                cooked = mc2terrain::resolveSurfaceAsset(input, mc2terrain::surfaceMissionCook(), cacheDir, &cookOrigin);
+            });
+            if (cooked) cooked->sourceHash = key;
+        }
         if (packed) cookOrigin = "packed-cache";
         const double resolveMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - resolveT0).count();
         if (cooked) {
@@ -202,6 +218,7 @@ void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
                 };
                 std::vector<uint32_t> packedColors;
                 if (!packed) {
+                    MC2_LOAD_SCOPE("cook.terrain.packMacro");
                     packedColors.resize(surface.macroColor.size());
                     // Each texel is a pure function of its own cooked value, so rows pack on the job pool (same bytes at any width).
                     const size_t rowTexels = surface.width;
@@ -217,8 +234,12 @@ void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
                 const double packMs = std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-packStart).count();
                 const std::span<const uint8_t> upload = packed ? std::span<const uint8_t>(packed->rgba) :
                     std::span<const uint8_t>(reinterpret_cast<const uint8_t*>(packedColors.data()), packedColors.size() * sizeof(uint32_t));
-                if (!packed) mc2terrain::storeCachedPackedSurface(cacheDir, surface, input.srgb, upload);
+                if (!packed) {
+                    MC2_LOAD_SCOPE("io.terrain.storePackedSurface");
+                    mc2terrain::storeCachedPackedSurface(cacheDir, surface, input.srgb, upload);
+                }
                 const auto uploadStart = std::chrono::steady_clock::now();
+                MC2_LOAD_SCOPE("upload.terrain.macroSurface");
                 if (upload_colormap_image(s, input.srgb ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UNORM, uploadWidth, uploadHeight,
                         upload.data(), upload.size())) {
                     s->colormapVersionImported = feed.colormapVersion;

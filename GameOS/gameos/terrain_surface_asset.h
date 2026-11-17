@@ -54,6 +54,10 @@ std::optional<PackedSurfaceAsset> loadCachedPackedSurface(std::string_view dir, 
 bool storeCachedPackedSurface(std::string_view dir, const SurfaceAsset& surface, bool srgb, std::span<const uint8_t> rgba);
 
 struct SurfaceCookInput;
+// Persistent identity of the stored atlas and evaluator inputs, before atlas decoding.
+// Generation counters deliberately do not participate. Bump the packed version on encoding changes.
+uint64_t packedSurfaceSourceHash(const SurfaceCookInput& input, std::span<const uint8_t> atlas,
+    uint32_t atlasFormat, uint32_t evaluator = SurfaceAsset::kEvaluator, uint32_t packedVersion = 1);
 // A cook is only a cache hint. The caller passes inputs already resolved by the mission's existing loaders.
 std::optional<SurfaceAsset> resolveSurfaceAsset(const SurfaceCookInput& input, std::span<const uint8_t> candidate,
                                                 const std::string& cacheDir = {}, const char** origin = nullptr);
