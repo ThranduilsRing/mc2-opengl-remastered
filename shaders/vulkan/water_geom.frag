@@ -194,6 +194,7 @@ layout(set = 0, binding = 4) uniform sampler2D u_shoreMask;
 layout(set = 0, binding = 7) uniform sampler2D u_staticMask;
 layout(set = 0, binding = 8) uniform sampler2D u_waterReflection;
 layout(set = 0, binding = 9) uniform sampler2D u_waterReflectHeight;
+layout(set = 0, binding = 17) uniform sampler2DArray u_wavePackets;
 
 vec2 bakedReflectionUV(vec2 p) {
     return vec2(p.x + F.bake.y, F.bake.y - p.y) / F.bake.x;
@@ -374,6 +375,10 @@ const float NEAR_ALPHA0      = 0.04;    // GGX alpha of the calm surface close t
 const float NEAR_SKY_LIFT     = 0.4;    // reflected-sky brightening at full near gloss
 
 PREC vec2 waterWaveSlope(PREC vec2 p, float t, float footprint, float gain, out float unresolvedVar){
+    vec2 packetUv = vec2(p.x + uT.halfMap, uT.halfMap - p.y) / (128.0 * float(uT.mapSide - 1));
+    vec4 packets[3] = vec4[3](textureLod(u_wavePackets, vec3(packetUv, 0), 0),
+                              textureLod(u_wavePackets, vec3(packetUv, 1), 0),
+                              textureLod(u_wavePackets, vec3(packetUv, 2), 0));
     PREC vec2 s = vec2(0.0);
     unresolvedVar = 0.0;
     for (int i = 0; i < WAVE_TRAINS; ++i) {
@@ -384,7 +389,7 @@ PREC vec2 waterWaveSlope(PREC vec2 p, float t, float footprint, float gain, out 
         // Long swells retain their vertex-stage phase and amplitude; unresolved packet energy
         // goes into roughness using the very same local amplitude as the resolved normal.
         float packet = (i < 2) ? 1.0 : mix(WAVE_PACKET_MIN, WAVE_PACKET_MAX,
-            vnoise(p / (WAVE_PACKET_SPAN * w.z) + vec2(float(i) * 19.19, float(i) * 7.73)));
+            packets[(i - 2) / 4][(i - 2) % 4]);
         float a = w.w * gain * packet;
         unresolvedVar += 0.5 * a * a * (1.0 - r * r);
         if (r > 0.0) {

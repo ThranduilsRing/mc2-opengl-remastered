@@ -486,6 +486,7 @@ extern "C" int mc2_vk_water_island_run(
     }
     }   // VK-ISLAND-TRACY-1: close VKIsl.Water.Feed
 
+    if (!prepare_wave_packets(s, par)) { setFallback("wave_packet_bake_failed"); return 0; }
     if (!prepare_reflect_bake(s, nat->waterElevation)) setFallback("reflection_bake_failed");
     reflectThisFrame = false;
     bind_reflect_bake(s, par, reinterpret_cast<WaterFsParams*>(static_cast<uint8_t*>(uboSpan.ptr) + fsUboOff));
