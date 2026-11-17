@@ -14,6 +14,7 @@
 #include <map>
 #include "objmgr_internal.h"
 #include "static_prop_prewarm.h"
+#include "terrain_dirty_queue.h"
 #include "saved_objects_check.h"
 #include "object_slot_codec.h"
 #include "watch_list_save_data.h"
@@ -828,6 +829,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum, bool managerVa
 	// First element in list is NULL (handle of 0 is always NULL)
 	invalidateTerrainTickList();
 	objList = entities.reset(getMaxObjects() + 1);
+	mc2::terrainDirtyQueue().reset(getMaxObjects() + 1);
 	resetPartIdIndex();
 	invalidateSpatialGrid();
 	memset(objList,0,sizeof(GameObjectPtr) * (getMaxObjects() + 1));
