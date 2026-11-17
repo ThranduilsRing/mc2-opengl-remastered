@@ -233,6 +233,7 @@ void GameObjectManager::setNumObjects (long nMechs,
 	staticResident.reset(getMaxObjects() + 1);
 	blockWasActive.assign(Terrain::numObjBlocks, 0);
 	terrainPresentationWorldToClip = glm::mat4{0.0f};
+	terrainAngularSpheres.clear();
 	terrainPresentationHeightEpoch = ~uint64_t{0};
 	terrainPresentationNightFactor = -1.0f;
 	resetPartIdIndex();

@@ -21,6 +21,7 @@
 #include "appearance_rng.h"
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
+#include "angular_cull.h"
 
 // File-scope gate: one gate read per TU, process-start-constant, shared across
 // BldgAppearance::recalcBounds and TreeAppearance::recalcBounds. Matches the
@@ -784,38 +785,11 @@ bool BldgAppearance::recalcBounds (void)
 		unsigned long long _tsA = s_tobjSplitBdOn ? __rdtsc() : 0ULL;
 		if (eye->usePerspective)
 		{
-			glm::vec3 cameraPos;
-			cameraPos.x = -eye->getCameraOrigin().x;
-			cameraPos.y = eye->getCameraOrigin().z;
-			cameraPos.z = eye->getCameraOrigin().y;
-			float vClipConstant = eye->verticalSphereClipConstant;
-			float hClipConstant = eye->horizontalSphereClipConstant;
-
-			glm::vec3 objectCenter;
-			objectCenter = position - cameraPos;
-			objectCenter.z += TerrainRuntime::sampleVisualHeight(position) - TerrainRuntime::sampleGameplayHeight(position);
-			Camera::cameraFrame.trans_to_frame(objectCenter);
-			float distanceToEye = glm::length(objectCenter);
-			float clip_distance = fabs(1.0f / objectCenter.y);
-
-			//Is vertex on Screen OR close enough to screen that its triangle MAY be visible?
-			// Uses the tan of the angle we want above (no atans needed here).
-			float object_angle = fabs(objectCenter.z) * clip_distance;
-			float extent_angle = bldgShape->GetExtentRadius() / distanceToEye;
-			if (object_angle > (vClipConstant + extent_angle))
-			{
-				//In theory, we would return here.  Object is NOT on screen.
-				setVisibilityGatesFromLegacy(false);
-			}
-			else
-			{
-				object_angle = fabs(objectCenter.x) * clip_distance;
-				if (object_angle > (hClipConstant + extent_angle))
-				{
-					//In theory, we would return here.  Object is NOT on screen.
-					setVisibilityGatesFromLegacy(false);
-				}
-			}
+			if (mc2::angularSphereOutside(position,
+                TerrainRuntime::sampleVisualHeight(position) - TerrainRuntime::sampleGameplayHeight(position),
+                bldgShape->GetExtentRadius(), eye->getCameraOrigin(), Camera::cameraFrame,
+                eye->verticalSphereClipConstant, eye->horizontalSphereClipConstant))
+                setVisibilityGatesFromLegacy(false);
 		}
 		if (s_tobjSplitBdOn) g_tobjAngularCyc.fetch_add(__rdtsc() - _tsA, std::memory_order_relaxed);
 		}  // end ANGULAR bracket

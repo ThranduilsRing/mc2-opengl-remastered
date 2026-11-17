@@ -7,6 +7,7 @@
 #include "texture_assets.h"
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
+#include "angular_cull.h"
 #include "battle_bench_sink.h"
 
 void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
@@ -55,6 +56,7 @@ void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		// render accessor (override if present, else stock). Collision (markTerrain/
 		// markLOS) rebuilds this member from stock treeShape[lod] when needed.
 		treeShapeOwner_.reset(appearType->getTreeRenderShape(0)->CreateFrom());
+		markTerrainPresentationDirty();
 		treeShape = treeShapeOwner_.get();
 
 		for (long i=0;i<treeShape->GetNumTextures();i++)
@@ -188,6 +190,7 @@ void TreeAppearance::setObjStatus (long oStatus)
 				}
 				
 				treeShapeOwner_.reset(appearType->getTreeDamageRenderShape()->CreateFrom());
+				markTerrainPresentationDirty();
 				treeShape = treeShapeOwner_.get();
 				beenInView = false; 
 			}
@@ -208,6 +211,7 @@ void TreeAppearance::setObjStatus (long oStatus)
 				// MODEL-OVERRIDE dual-shape: restore per-instance RENDER shape
 				// via the render accessor (override if present, else stock).
 				treeShapeOwner_.reset(appearType->getTreeRenderShape(0)->CreateFrom());
+				markTerrainPresentationDirty();
 				treeShape = treeShapeOwner_.get();
 				beenInView = false;
 			}
@@ -260,6 +264,7 @@ void TreeAppearance::setObjectParameters (const glm::vec3 &pos, float Rot, long 
 {
 	rotation = Rot;
 
+	if (position != pos) markTerrainPresentationDirty();
 	position = pos;
 
 	selected = sel;
@@ -321,38 +326,11 @@ bool TreeAppearance::recalcBounds (void)
 		unsigned long long _tsA = s_tobjSplitBdOn ? __rdtsc() : 0ULL;
 		if (eye->usePerspective)
 		{
-			glm::vec3 cameraPos;
-			cameraPos.x = -eye->getCameraOrigin().x;
-			cameraPos.y = eye->getCameraOrigin().z;
-			cameraPos.z = eye->getCameraOrigin().y;
-			float vClipConstant = eye->verticalSphereClipConstant;
-			float hClipConstant = eye->horizontalSphereClipConstant;
-
-			glm::vec3 objectCenter;
-			objectCenter = position - cameraPos;
-			objectCenter.z += TerrainRuntime::sampleVisibleGroundHeight(position) - TerrainRuntime::sampleGameplayHeight(position);
-			Camera::cameraFrame.trans_to_frame(objectCenter);
-			float distanceToEye = glm::length(objectCenter);
-			float clip_distance = fabs(1.0f / objectCenter.y);
-
-			//Is vertex on Screen OR close enough to screen that its triangle MAY be visible?
-			// Uses the tan of the angle we want above (no atans needed here).
-			float object_angle = fabs(objectCenter.z) * clip_distance;
-			float extent_angle = treeShape->GetExtentRadius() / distanceToEye;
-			if (object_angle > (vClipConstant + extent_angle))
-			{
-				//In theory, we would return here.  Object is NOT on screen.
-				setVisibilityGatesFromLegacy(false);
-			}
-			else
-			{
-				object_angle = fabs(objectCenter.x) * clip_distance;
-				if (object_angle > (hClipConstant + extent_angle))
-				{
-					//In theory, we would return here.  Object is NOT on screen.
-					setVisibilityGatesFromLegacy(false);
-				}
-			}
+			if (mc2::angularSphereOutside(position,
+                TerrainRuntime::sampleVisibleGroundHeight(position) - TerrainRuntime::sampleGameplayHeight(position),
+                treeShape->GetExtentRadius(), eye->getCameraOrigin(), Camera::cameraFrame,
+                eye->verticalSphereClipConstant, eye->horizontalSphereClipConstant))
+                setVisibilityGatesFromLegacy(false);
 		}
 		if (s_tobjSplitBdOn) g_tobjAngularCyc.fetch_add(__rdtsc() - _tsA, std::memory_order_relaxed);
 		}  // end ANGULAR bracket
@@ -592,6 +570,7 @@ void TreeAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 		treeShape = nullptr;
 	
 		treeShapeOwner_.reset(appearType->treeShape[currentLOD]->CreateFrom());
+		markTerrainPresentationDirty();
 		treeShape = treeShapeOwner_.get();
 	}
 
@@ -652,6 +631,7 @@ void TreeAppearance::markLOS (bool clearIt)
 		treeShape = nullptr;
 	
 		treeShapeOwner_.reset(appearType->treeShape[currentLOD]->CreateFrom());
+		markTerrainPresentationDirty();
 		treeShape = treeShapeOwner_.get();
 		los = treeShape;
 	}
