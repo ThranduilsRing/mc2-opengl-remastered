@@ -1139,8 +1139,9 @@ bool MissionInterfaceManager::updateOrderMenu(bool allowOpen, bool overGui)
     std::optional<Item> choice;
     // Rows hit-test against their own rect, so a scripted or otherwise unhovered window still selects.
     const bool clicked = ImGui::IsMouseClicked(0);
-    auto row = [&](const char* label, Item item, bool enabled) {
-        const bool act = ImGui::MenuItem(label, nullptr, false, enabled);
+    auto row = [&](std::string_view label, Item item, bool enabled) {
+        const std::string text(label); // MenuItem needs a NUL-terminated label
+        const bool act = ImGui::MenuItem(text.c_str(), nullptr, false, enabled);
         if (!enabled) return;
         const bool over = ImGui::IsMouseHoveringRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), false);
         if (over) ImGui::GetWindowDrawList()->AddRectFilled(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), IM_COL32(90, 150, 150, 70));
