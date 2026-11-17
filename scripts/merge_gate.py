@@ -1098,12 +1098,23 @@ def stage_published(install, published=PUBLISHED, swap_payload=True):
             shutil.rmtree(install / name, ignore_errors=True)
             shutil.copytree(published / name, install / name)
     if swap_payload:
+        # Capture-before needs the published runtime and declared example mods, including stale seed files.
+        sources = list(published.glob("*.dll"))
+        handler = published / "crashpad_handler.exe"
+        if handler.is_file():
+            sources.append(handler)
+        manifest = published / ".deployed_manifest.csv"
+        if manifest.is_file():
+            import csv
+            with manifest.open(newline="", encoding="utf-8") as stream:
+                sources += [published / r[0] for r in list(csv.reader(stream))[2:]
+                            if r and r[0].startswith("mods/")]
+        for src in sources:
+            dst = install / src.relative_to(published)
+            if not dst.is_file() or hashlib.sha256(dst.read_bytes()).digest() != hashlib.sha256(src.read_bytes()).digest():
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src, dst)
         _forget_swapped_rows(install, published)
-        # The lean seed has no amd_fidelityfx_vk.dll (W126: capture-before ran without FSR AA, a false MAD of 1.2/0.6); give
-        # the old exe the runtime DLLs it shipped with. Only missing ones: the deploy row still owns every DLL it lists.
-        for src in published.glob("*.dll"):
-            if not (install / src.name).exists():
-                shutil.copy2(src, install / src.name)
     textures = install / "data" / "textures"
     textures.mkdir(parents=True, exist_ok=True)
     for src in (published / "data" / "textures").glob("*.burnin.*"):
@@ -1126,10 +1137,16 @@ def _forget_swapped_rows(install, published=PUBLISHED):
         return
     with path.open(newline="", encoding="utf-8") as stream:
         rows = list(csv.reader(stream))
-    keep = rows[:2] + [r for r in rows[2:] if r and not (r[0] == "mc2.exe" or r[0].startswith(("shaders/", "shaders_vk/")))]
+    def swapped(rel):
+        rel = rel.casefold()
+        return (rel in ("mc2.exe", "crashpad_handler.exe") or
+                ("/" not in rel and rel.endswith(".dll")) or
+                rel.startswith(("shaders/", "shaders_vk/", "mods/")))
+
+    keep = rows[:2] + [r for r in rows[2:] if r and not swapped(r[0])]
     with (Path(published) / ".deployed_manifest.csv").open(newline="", encoding="utf-8") as stream:
         published_rows = list(csv.reader(stream))
-    keep += [r for r in published_rows[2:] if r and (r[0] == "mc2.exe" or r[0].startswith(("shaders/", "shaders_vk/")))]
+    keep += [r for r in published_rows[2:] if r and swapped(r[0])]
     with path.open("w", newline="", encoding="utf-8") as stream:
         csv.writer(stream).writerows(keep)
 

@@ -631,7 +631,7 @@ def test_stage_published_gives_capture_before_the_published_dlls(monkeypatch, tm
     monkeypatch.setattr(deploy_payload, "ensure_engine_normal_cooks", fake_cook)
     gate.stage_published(inst, pub)
     assert (inst / "amd_fidelityfx_vk.dll").read_bytes() == b"fsr"
-    assert (inst / "SDL2.dll").read_bytes() == b"seed"
+    assert (inst / "SDL2.dll").read_bytes() == b"pub"
 
 
 def test_stage_published_fails_when_the_cook_leaves_sidecars_missing(monkeypatch, tmp_path):

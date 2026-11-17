@@ -16,6 +16,44 @@ import ab  # noqa: E402
 import console_child  # noqa: E402
 
 
+def test_gate_stages_published_runtime_and_declared_mod_identity(tmp_path, monkeypatch):
+    import csv
+    import merge_gate
+    import deploy_payload
+
+    pub, inst = tmp_path / "published", tmp_path / "candidate"
+    pub.mkdir()
+    inst.mkdir()
+    payload = {"mc2.exe": b"old", "SDL2.dll": b"sdl", "mc2res_64.dll": b"res",
+               "crashpad_handler.exe": b"handler", "mods/example/mod.json": b"{}"}
+    header = [["manifest_version", "v1"], ["relpath", "sha256", "bytes", "src_commit", "timestamp", "mtime_ns"]]
+    published_rows = []
+    for rel, content in payload.items():
+        src = pub / rel
+        src.parent.mkdir(parents=True, exist_ok=True)
+        src.write_bytes(content)
+        published_rows.append([rel, hashlib.sha256(content).hexdigest(), len(content), "old", "t", 0])
+        if rel != "mods/example/mod.json":
+            (inst / rel).write_bytes(b"stale")
+    for target, rows in ((pub, published_rows), (inst, [["sdl2.dll", "stale", 5, "seed", "t", 0],
+                                                    ["data/keep.fit", "keep", 4, "seed", "t", 0]])):
+        with (target / ab.MANIFEST).open("w", newline="") as stream:
+            csv.writer(stream).writerows(header + rows)
+    def cook(target):
+        for name in [f"mat{i}_normal.ktx2" for i in range(6)] + ["engine_normals.cookver"]:
+            (Path(target) / "data/textures" / name).touch()
+    monkeypatch.setattr(deploy_payload, "ensure_engine_normal_cooks", cook)
+    merge_gate.stage_published(inst, pub)
+    assert all((inst / rel).read_bytes() == content for rel, content in payload.items())
+    with (inst / ab.MANIFEST).open(newline="") as stream:
+        rows = list(csv.reader(stream))[2:]
+    assert {r[0] for r in rows} == {*payload, "data/keep.fit"}
+    assert all(r in rows for r in [[str(v) for v in row] for row in published_rows])
+    before, _ = ab.read_manifest(pub)
+    after, _ = ab.read_manifest(inst)
+    assert ab.manifest_mismatches(before, {k: v for k, v in after.items() if k in payload}) == []
+
+
 def _git(repo, *a):
     return subprocess.run(["git", "-C", str(repo), *a], capture_output=True, text=True, check=True,
                           **console_child.child_kwargs(redirected=True)).stdout.strip()
