@@ -53,6 +53,7 @@ add_library(mc2_tglloader STATIC
     "${CMAKE_SOURCE_DIR}/mclib/file.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/vfs.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/vfs_index.cpp"
+    "${CMAKE_SOURCE_DIR}/mclib/pak_zip.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/fastfile.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/ffile.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/packet.cpp"
@@ -124,7 +125,7 @@ target_include_directories(mc2_tglloader PUBLIC
 )
 
 # mc2_gate: the mclib TUs compiled here read their gates through the typed registry.
-target_link_libraries(mc2_tglloader PRIVATE ${MC2_ZLIB} mc2_gate)
+target_link_libraries(mc2_tglloader PRIVATE ${MC2_ZLIB} mc2_gate basisu_transcoder)
 
 # ---------------------------------------------------------------------------
 # End mc2_tglloader

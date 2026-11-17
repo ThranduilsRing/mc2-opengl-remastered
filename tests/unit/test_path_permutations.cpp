@@ -487,6 +487,11 @@ void vfsAuthorFst (const std::string& fstPath, const char* const* names, const s
 }
 std::string vfsBytesOf (const mc2::vfs::Entry& e)
 {
+	if (e.provider == mc2::vfs::Provider::Pak) {
+		auto opened = mc2::vfs::openRead(e.key.c_str());
+		REQUIRE(opened.pakBytes.has_value());
+		return std::string(opened.pakBytes->begin(), opened.pakBytes->end());
+	}
 	if (e.provider == mc2::vfs::Provider::Fst)
 	{
 		// The FST member itself, not File::open (which serves the key's winner: a loose file outranks the FST).

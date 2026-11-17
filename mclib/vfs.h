@@ -14,6 +14,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -22,7 +23,8 @@ class FastFile;
 
 namespace mc2::vfs {
 
-enum class Provider { Mod, Loose, Fst };
+enum class Provider { Mod, Loose, Pak, Fst };
+class PakZip;
 
 const char* providerName(Provider p);
 
@@ -48,6 +50,7 @@ struct Entry {
 	unsigned shadowed = 0;     // lower-precedence candidates behind this one in the chain
 	bool viaStripAlias = false; // served by the size-stripped alias (data/tgl/128/x.tga -> loose data/tgl/x.tga)
 	SourceRecord source;        // authority of this candidate (equals its index in candidates())
+	std::shared_ptr<PakZip> pak;
 };
 
 struct Stats {
@@ -91,7 +94,8 @@ struct OpenedFile {
 	std::string layer;              // "mod", "base-loose", "base-strip", "fastfile"; empty = miss
 	std::string owner;              // mod id, "loose" or "fst" (crash-bundle attribution)
 	std::string physicalPath;
-	bool found() const { return fd != -1 || fst != nullptr; }
+	std::optional<std::vector<uint8_t>> pakBytes;
+	bool found() const { return fd != -1 || fst != nullptr || pakBytes.has_value(); }
 };
 OpenedFile openRead(const char* path, const char* req = nullptr);
 // A file created under data/ after the index was built joins the loose mount (writes stay physical).

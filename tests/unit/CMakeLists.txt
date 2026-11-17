@@ -247,6 +247,8 @@ add_executable(mc2_tests
     ${MC2_WORKTREE_ROOT}/mclib/abl_script_events.cpp  # the ABL reject/clamp log lines (leaf: reads CurModule / execLineNumber, answered by abl_exec_shim.cpp)
     ${MC2_WORKTREE_ROOT}/code/ablmc2_position.cpp  # the ABL position builtins under test (a TU of their own so they link without ablmc2_misc.cpp)
     test_fst_roundtrip.cpp  # MINIMAL-VIABLE-HARNESS-2: FST create/writeFast -> loose-vs-FST ladder
+    test_pak_provider.cpp
+    ${MC2_WORKTREE_ROOT}/mclib/pak_zip.cpp
     test_fst_backslash.cpp  # retail backslash/mixed-case FST members canonicalized in memory at open; stock parity
     test_paths_mod.cpp      # MINIMAL-VIABLE-HARNESS-2: paths.cpp globals + mod-index (mc2::vfs::openRead) resolution
     test_mod_regressions.cpp # quick synthetic regressions; no installed mods or game required
