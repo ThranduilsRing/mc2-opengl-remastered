@@ -2363,7 +2363,7 @@ std::optional<MechLabScreen::PlacedAt> MechLabScreen::placeInPanel( LogisticsCom
 		place = pVariant->packageLocationPlace( pComponent, ri );
 		reason = place.reason;
 	}
-	x = place.x; y = place.y;
+	const long x = place.x, y = place.y;
 	if ( ri < 0 || !place.legal )
 	{
 		showDropRefusal( std::string( ml::panelTitle( panel ) ) + ": " + ( ri < 0 ? "no equipment slots here." : reason ) );
