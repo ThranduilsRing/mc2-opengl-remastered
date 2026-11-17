@@ -1796,11 +1796,17 @@ def retire_unowned(target_dir, keep, preserve=(), own_shaders=False, deploying_t
 
     Manifest rows of the previous deploy are retired only when unchanged. Paths are resolved before unlinking so a malformed
     manifest or a directory junction cannot escape the target. Unmanifested files are never deleted, including shaders
-    and diagnostic output. `own_shaders` is retained for existing callers; it grants no additional ownership."""
+    and diagnostic output. Declared intentional assets are protected even when cooked source files are absent.
+    `own_shaders` is retained for existing callers; it grants no additional ownership."""
+    import asset_parity
+
+    source_root = Path(__file__).resolve().parents[1]
+    intentional = asset_parity.intentional_changes(git_head(source_root), source_root)
     root = Path(target_dir).resolve()
     shared = any(root == Path(preset["target_dir"]).resolve() for preset in TARGET_PRESETS.values())
     previous = read_manifest(target_dir)
     preserved = {p.replace("\\", "/").strip("/").casefold() for p in preserve}
+    preserved.update(p.casefold() for p in intentional)
 
     def protected(rel):
         candidates = [rel]
