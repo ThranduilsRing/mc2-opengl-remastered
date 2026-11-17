@@ -117,6 +117,8 @@ public:
 	int		handleMessage( unsigned long message, unsigned long fromWho ) override;
 
 private:
+	int waterReflectionSelection = -1;
+	int waterDetailSelection = -1;
 	aDropList		resolutionList;
 	aDropList		cardList;
 	bool			bExpanded;

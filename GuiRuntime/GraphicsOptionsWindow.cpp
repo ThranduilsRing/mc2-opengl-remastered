@@ -25,9 +25,9 @@ void draw() {
     // ── Post-Process ──────────────────────────────────────────────────────────
     if (ImGui::CollapsingHeader("Water quality", ImGuiTreeNodeFlags_DefaultOpen)) {
         auto opts = mc2::options::current();
-        const char* reflectionNames[] = {"Off (sky/environment)", "Low", "Medium", "High"};
+        const char* reflectionNames[] = {"Off", "Low", "Medium", "High"};
         const char* detailNames[] = {"Low", "High"};
-        bool changed = ImGui::Combo("Reflection quality", &opts.reflectionQuality, reflectionNames, 4);
+        bool changed = ImGui::Combo("Water reflections", &opts.reflectionQuality, reflectionNames, 4);
         changed |= ImGui::Combo("Water detail", &opts.waterDetail, detailNames, 2);
         static bool saveFailed = false;
         if (changed) {
