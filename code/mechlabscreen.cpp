@@ -2453,8 +2453,8 @@ void MechLabScreen::drawLocationView( float tbSx, float tbSy, float tbOx, float 
 		fill( { t.x, t.y, t.w * 0.5f, t.h }, loc ? 0xff2d6a8f : 0xff15212c, true );
 		fill( { t.x + t.w * 0.5f, t.y, t.w * 0.5f, t.h }, loc ? 0xff15212c : 0xff2d6a8f, true );
 		fill( t, 0xffd0d8e0, false );
-		text( { t.x, t.y + 2, t.w * 0.5f, t.h }, "LOCATIONS", 0xffffffff, 11.f, 1 );
-		text( { t.x + t.w * 0.5f, t.y + 2, t.w * 0.5f, t.h }, "CLASSIC", 0xffffffff, 11.f, 1 );
+		text( { t.x, t.y + 2, t.w * 0.5f, t.h }, "LOCATIONS", 0xffffffff, 11.f, 2 );
+		text( { t.x + t.w * 0.5f, t.y + 2, t.w * 0.5f, t.h }, "CLASSIC", 0xffffffff, 11.f, 2 );
 	}
 	if ( !mc2::options::current().mechLabLocations )
 		return;
@@ -2476,7 +2476,7 @@ void MechLabScreen::drawLocationView( float tbSx, float tbSy, float tbOx, float 
 		{
 			char buf[64];
 			std::snprintf( buf, sizeof buf, "MASS %.1f / %.1f t", static_cast<double>( mass ), static_cast<double>( pc->payload ) );
-			text( { r.x, r.y + r.h - 14, r.w, 14 }, buf, mass > pc->payload + 1e-3f ? 0xffff6060 : 0xffffd060, 11.f, 1 );
+			text( { r.x, r.y + r.h - 14, r.w, 14 }, buf, mass > pc->payload + 1e-3f ? 0xffff6060 : 0xffffd060, 11.f, 2 );
 			continue;
 		}
 		int cells = 0, used = 0;
@@ -2498,7 +2498,7 @@ void MechLabScreen::drawLocationView( float tbSx, float tbSy, float tbOx, float 
 				bx -= 11.f;
 				const ml::Rect b{ bx, r.y + 15, 10, 11 };
 				fill( b, hpUsed[k] ? 0xffb07020 : 0xff2a7a4a, true );
-				text( { b.x, b.y - 1, b.w, b.h }, mountLetter( pc->hardpoints[k].mount ), 0xffffffff, 10.f, 1 );
+				text( { b.x, b.y - 1, b.w, b.h }, mountLetter( pc->hardpoints[k].mount ), 0xffffffff, 10.f, 2 );
 			}
 		if ( !hasSlots )
 		{
@@ -2523,7 +2523,7 @@ void MechLabScreen::drawLocationView( float tbSx, float tbSy, float tbOx, float 
 			GuiRuntime::DrawUiText( nameRect.x, nameRect.y, nameRect.w, nameRect.h,
 				name, 0xffe8eef4, nameSize, 0, "" );
 			std::snprintf( line, sizeof line, "%.1ft", static_cast<double>( items[k].comp->getWeight() ) );
-			text( { row.x + row.w - 28, row.y, 27, row.h }, line, 0xffa0b0c0, 10.f, 2 );
+			text( { row.x + row.w - 28, row.y, 27, row.h }, line, 0xffa0b0c0, 10.f, 1 );
 		}
 		if ( cand )
 			text( { r.x + 2, r.y + r.h - 14, r.w - 4, 13 }, s_locReason[p].c_str(), s_locLegal[p] ? 0xff60ff90 : 0xffff7070, 10.f, 0 );
