@@ -4,6 +4,7 @@
 #include <SDL2/SDL.h>
 #include <string_view>
 #include <functional>
+#include <algorithm>
 
 // SMOKE-NO-CURSOR-STEAL-1: true when this process must NOT touch the OS cursor
 // (no SDL_WarpMouseInWindow, no window mouse-grab, no Win32 ClipCursor).
@@ -80,8 +81,9 @@ struct LoadingPumpStats {
     }
     void pumped(Uint64 now) {
         if (phase.empty()) return;
-        if (now - lastPump > maxGap) {
-            maxGap = now - lastPump;
+        const auto previous = maxGap;
+        maxGap = std::max(maxGap, now - lastPump);
+        if (maxGap != previous) {
             maxPhase = phase;
         }
         lastPump = now;
