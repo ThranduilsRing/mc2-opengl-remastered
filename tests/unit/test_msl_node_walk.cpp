@@ -89,6 +89,34 @@ TEST_CASE("msl_node_walk/an unchanged pose rebuilds nothing; an edit rebuilds on
     CHECK(w.evals == 2); // node 1 and its child 2; the sibling chain 3,4 is untouched
 }
 
+TEST_CASE("msl_node_walk/frozen turn and moved origin updates shapeToWorld")
+{
+    NodeKey key;
+    NodeInput input;
+    glm::mat4 local(1.0f), world(1.0f), inverse(1.0f), origin(1.0f);
+    std::uint32_t genCounter = 0, originGen = 1;
+    const std::int32_t turn = 42;
+    std::int32_t calcedTurn = -1;
+    const auto update = [&] {
+        if (needsNodeEvaluation(calcedTurn, turn, key, originGen)) {
+            evalNode(input, nullptr, 0u, origin, originGen, genCounter, key, local, world, inverse);
+            calcedTurn = turn;
+        }
+    };
+    update();
+    const glm::mat4 oldWorld = world;
+    const auto localGen = key.localGen;
+    CHECK_FALSE(needsNodeEvaluation(calcedTurn, turn, key, originGen));
+    mc2::math::buildTranslation(origin, glm::vec3(100.0f, -50.0f, 7.0f));
+    ++originGen;
+    update();
+    CHECK(calcedTurn == turn);
+    CHECK_FALSE(bitEqual(world, oldWorld));
+    CHECK(bitEqual(world, local * origin));
+    CHECK(bitEqual(inverse, glm::inverse(world)));
+    CHECK(key.localGen == localGen);
+}
+
 // ---- Order cache + keyed walk vs a cache-free reference, on a shape whose node set changes ----
 namespace {
 struct CachedShape {
