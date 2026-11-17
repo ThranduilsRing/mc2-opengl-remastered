@@ -333,6 +333,12 @@ def parse_log(text: str,
             fields = dict(re.findall(r"(\w+)=(-?[\d.]+)(?=\s|$)", line))
             s.load_total_ms = float(fields.pop("total")) if "total" in fields else None
             s.load_split = {k: float(v) for k, v in fields.items()}
+            coverage = re.search(r"\bbytes_coverage=(\w+)", line)
+            if coverage:
+                s.load_split["bytes_coverage"] = coverage.group(1)
+                if coverage.group(1) == "unavailable":
+                    for key in ("bytes_io", "bytes_decode", "bytes_upload"):
+                        s.load_split.pop(key, None)
         if "[PERF_WINDOW v1]" in line:
             s.perf_window = parse_perf_window(line)
         if "[VRAM v1]" in line:

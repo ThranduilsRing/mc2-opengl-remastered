@@ -18,6 +18,13 @@ def test_load_split_log_and_summary():
     assert result["rows"][0]["load_split"] == s.load_split
 
 
+def test_load_split_unavailable_bytes_in_summary():
+    s = logparse.parse_log("[LOAD_SPLIT v1] total=1 other=1 bytes_io=0 bytes_decode=0 bytes_upload=0 bytes_coverage=unavailable")
+    row = report.Row("mc2_01", Verdict(True), s)
+    split = report.render_json([row], tier="lite", profile="", timestamp="")["rows"][0]["load_split"]
+    assert split == {"other": 1.0, "bytes_coverage": "unavailable"}
+
+
 def test_load_split_absent_has_no_summary_fields():
     s = logparse.parse_log("[MISSION] phase=mission_ready")
     row = report.Row("mc2_01", Verdict(True), s)

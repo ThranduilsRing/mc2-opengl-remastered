@@ -21,6 +21,8 @@ TEST_CASE("load_scope/nested partition and lookup") {
     CHECK(kind("TextureSource.CreateCpuTexture") == Kind::decode);
     CHECK(kind("content.loadCached") == Kind::other);
     CHECK(kind("unknown") == Kind::other);
+    CHECK(kind("sim.tree.bounds") == Kind::other);
+    CHECK(kind("sim.tree.textures") == Kind::other);
 }
 TEST_CASE("load_scope/worker exclusive and separate top") {
     auto* outer = entry("cook.worker"); auto* inner = entry("io.worker");
@@ -62,4 +64,27 @@ TEST_CASE("load_scope/inactive overhead") {
     const double ms = (clockNs() - start) / 1e6;
     std::printf("load_scope inactive_10000_ms=%.6f\n", ms);
     CHECK(ms < 1.0);
+}
+TEST_CASE("load_scope/active nested and contended overhead") {
+    auto* e = entry("other.overhead");
+    for (bool nested : {false, true}) {
+        begin(); const auto start = clockNs();
+        for (int i = 0; i < 10000; ++i) {
+            Scope outer(e); if (nested) { Scope inner(e); }
+        }
+        const double ms = (clockNs() - start) / 1e6; report();
+        std::printf("load_scope %s_10000_iterations_ms=%.6f\n", nested ? "nested" : "active", ms);
+        CHECK(e->calls == (nested ? 20000 : 10000));
+    }
+    begin(); std::atomic<int> ready{0}; std::atomic<bool> go{false};
+    auto run = [&] {
+        ready.fetch_add(1); while (!go.load()) std::this_thread::yield();
+        for (int i = 0; i < 10000; ++i) { Scope s(e); }
+    };
+    std::thread a(run), b(run);
+    while (ready.load() != 2) std::this_thread::yield();
+    const auto start = clockNs(); go.store(true); a.join(); b.join();
+    const double ms = (clockNs() - start) / 1e6; report();
+    std::printf("load_scope contended_2x10000_scopes_ms=%.6f\n", ms);
+    CHECK(e->exclusiveCalls[1] == 20000);
 }

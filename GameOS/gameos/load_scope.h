@@ -16,6 +16,7 @@ enum class Kind { io, decode, cook, upload, gpu_wait, sim, pump, other, count };
 inline constexpr const char* kindNames[] = {"io", "decode", "cook", "upload", "gpu_wait", "sim", "pump", "other"};
 struct Rule { std::string_view name; Kind kind; bool prefix = false; };
 inline constexpr Rule rules[] = {
+    {"sim.tree.bounds", Kind::other}, {"sim.tree.textures", Kind::other},
     {"io.", Kind::io, true}, {"decode.", Kind::decode, true}, {"cook.", Kind::cook, true},
     {"upload.", Kind::upload, true}, {"gpuwait.", Kind::gpu_wait, true}, {"sim.", Kind::sim, true},
     {"pump.", Kind::pump, true}, {"TextureSource.Open", Kind::io}, {"TextureSource.Read", Kind::io},
