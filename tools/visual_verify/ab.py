@@ -253,11 +253,11 @@ def _data_mismatch_entries(ma, mb, target=None):
     game = target == "game" or (target is None and bool(EXECUTABLES.intersection(ma))
                                 and bool(EXECUTABLES.intersection(mb)))
     build_outputs = EXECUTABLES | {"mc2.pdb", "mc2_asset_viewer.exe", "mc2_asset_viewer"}
-    if game:
-        for rel in sorted(ma.keys() | mb.keys()):
-            if editor_only_payload(rel) and ma.get(rel) != mb.get(rel):
-                print(f"[ab] ABSENT-BY-DESIGN game target excludes editor-owned payload: {rel}", flush=True)
-    skip = lambda p: p in build_outputs or p.startswith(SHADER_BUILD_DIRS) or (game and editor_only_payload(p))
+    absent_editor = {p for p in ma.keys() ^ mb.keys() if game and editor_only_payload(p)}
+    for rel in sorted(absent_editor):
+        side = "A" if rel not in ma else "B"
+        print(f"[ab] ABSENT-BY-DESIGN editor-owned payload missing only from {side} for game target: {rel}", flush=True)
+    skip = lambda p: p in build_outputs or p.startswith(SHADER_BUILD_DIRS) or p in absent_editor
     ma = {k: v for k, v in ma.items() if not skip(k)}
     mb = {k: v for k, v in mb.items() if not skip(k)}
     entries = [(k, f"only in A: {k}") for k in sorted(ma.keys() - mb.keys())]

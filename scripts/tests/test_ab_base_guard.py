@@ -164,6 +164,24 @@ def test_game_identity_excludes_only_editor_owned_rows(monkeypatch):
     assert [p for p, _ in ab.candidate_mismatches(game, {}, "a" * 40)] == ["data/ui.fit", "run-mc2.bat"]
 
 
+@pytest.mark.parametrize("rel", ["Mission Editor.exe", "Mission Editor.pdb", "run-editor.bat",
+                                 "tools/terrain_gen/tool.py"])
+@pytest.mark.parametrize("archived", [False, True], ids=["install", "archived-capture"])
+def test_game_identity_rejects_changed_shared_editor_rows(tmp_path, repo, monkeypatch, capsys, rel, archived):
+    monkeypatch.setattr(ab.asset_parity, "intentional_changes", lambda *a: {})
+    installs = [_install(tmp_path / side, repo[0], data={rel: value})
+                for side, value in (("a", "original bytes"), ("b", "changed bytes"))]
+    if archived:
+        captures = [tmp_path / (side + "-capture") for side in ("a", "b")]
+        for install, capture_dir in zip(installs, captures):
+            ab.stamp_identity(capture_dir, ab.payload_identity(install))
+        with pytest.raises(SystemExit, match="differs: " + rel):
+            ab.main(["--compare-only", *map(str, captures), "--out-root", str(tmp_path / "cmp")])
+    else:
+        assert any("differs: " + rel in p for p in ab.base_problems(install_a=installs[0], install_b=installs[1]))
+    assert "ABSENT-BY-DESIGN" not in capsys.readouterr().out
+
+
 @pytest.mark.parametrize("replacement", [None, "b" * 64])
 def test_editor_identity_requires_authoring_files(monkeypatch, replacement):
     monkeypatch.setattr(ab.asset_parity, "intentional_changes", lambda *a: {})
