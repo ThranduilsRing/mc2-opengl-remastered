@@ -33,6 +33,8 @@ get_filename_component(MC2_WORKTREE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABS
 
 set_source_files_properties(${MC2_WORKTREE_ROOT}/RenderCore/KtxBasis.cpp PROPERTIES COMPILE_DEFINITIONS NDEBUG)  # vendored basisu asserts do not compile under clang
 add_executable(mc2_tests
+    test_chassis_layout.cpp
+    ${MC2_WORKTREE_ROOT}/code/chassis_layout.cpp
     test_net_session.cpp
     ${MC2_WORKTREE_ROOT}/code/net/session.cpp
     test_net_lockstep.cpp
@@ -738,6 +740,19 @@ function(mc2_height_slice output source begin end)
     set(${output} "${body}" PARENT_SCOPE)
     set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${MC2_WORKTREE_ROOT}/${source}")
 endfunction()
+mc2_height_slice(layout_flat code/logisticsvariant_stats.cpp
+    "int\tLogisticsVariant::getComponents( long& count, long* array )"
+    "std::expected<void, int> LogisticsVariant::removeComponent")
+mc2_height_slice(layout_restore code/logisticsvariant.cpp
+    "bool LogisticsVariant::restoreLocationRecord(" "bool LogisticsVariant::addComponent(")
+mc2_height_slice(layout_mount_helpers code/logisticsvariant_package.cpp
+    "namespace {" "int LogisticsVariant::packageCheck(")
+file(READ "${MC2_WORKTREE_ROOT}/code/logisticsvariant_package.cpp" layout_package_source)
+string(FIND "${layout_package_source}" "int LogisticsVariant::getPackageMounts(" layout_mount_start)
+string(SUBSTRING "${layout_package_source}" ${layout_mount_start} -1 layout_mounts)
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/layout_deployment.inc"
+    CONTENT "${layout_mount_helpers}\n${layout_flat}\n${layout_mounts}\n${layout_restore}")
+set_source_files_properties(test_chassis_layout.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
 mc2_height_slice(carbon_leg_armor code/mech.cpp "\t\tcurLeg =" "\n\t\tarmorEffect = armorHead")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/carbon_leg_armor.inc" CONTENT "${carbon_leg_armor}")
 mc2_height_slice(carbon_difficulty code/mover_attack.cpp "\tif (!MPlayer && (getCommanderId()" "\n\tfloat distanceToTarget")
