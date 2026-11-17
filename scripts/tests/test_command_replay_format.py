@@ -1,6 +1,7 @@
 """Replay format 2 refuses old checkpoints after combat hash coverage expands."""
 import importlib.util
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -22,3 +23,43 @@ def test_current_version(tmp_path):
     path = tmp_path / "replay.txt"
     path.write_text('MC2REPLAY 2 "unit" 123 123 123 "content"\nH 1 1 2 3 4 5\nE 0 1\n')
     assert replay.inspect(path) == {"commands": 0, "checkpoints": 1, "first_tick": 1, "last_tick": 1}
+
+
+@pytest.mark.parametrize("command", ["teleport 512 -2450 -5500", "spawn clone 512 0 0",
+                                    "freeze_movers on", "force_state 512 sensor 4",
+                                    "time_scale 2", "end_mission win"])
+def test_fixture_mutations_are_not_recordable(command):
+    with pytest.raises(ValueError, match="line 3:.*fixture mutations.*not replayed"):
+        replay.validate_commands("select all\norder stop\n" + command)
+
+
+def test_recorded_order_script():
+    replay.validate_commands("select all\r\norder stop\n\nselect 512\n"
+                             "order move -2450 -5500 walk\norder attack 513\n")
+
+
+def test_fixture_rejected_before_fingerprint_or_game(tmp_path, monkeypatch):
+    commands = tmp_path / "commands.txt"
+    commands.write_text("teleport 512 -2450 -5500\norder attack 513\n")
+    output = tmp_path / "output"
+    monkeypatch.setattr(replay.sys, "argv", ["command_replay.py", "record",
+        str(tmp_path / "recording"), "--install", str(tmp_path), "--out", str(output),
+        "--commands", str(commands)])
+    monkeypatch.setattr(replay, "fingerprint", lambda *args: pytest.fail("fingerprinted fixture"))
+    monkeypatch.setattr(replay.subprocess, "run", lambda *args, **kwargs: pytest.fail("launched fixture"))
+    with pytest.raises(ValueError, match="teleport.*only select and order"):
+        replay.main()
+    assert not output.exists()
+
+
+@pytest.mark.parametrize("extra", [{}, {"MC2_UI_COMMAND_FILE": "validated-script"}])
+def test_only_explicit_recording_script_reaches_game(tmp_path, monkeypatch, extra):
+    monkeypatch.setenv("MC2_UI_COMMAND_FILE", "inherited-teleport-script")
+    def child(*args, env, **kwargs):
+        assert env.get("MC2_UI_COMMAND_FILE") == extra.get("MC2_UI_COMMAND_FILE")
+        raise InterruptedError("checked child environment")
+    monkeypatch.setattr(replay.subprocess, "run", child)
+    args = SimpleNamespace(out=tmp_path, seed=123, content="test", install=tmp_path,
+                           mission="mc2_10", duration=30)
+    with pytest.raises(InterruptedError, match="checked child environment"):
+        replay.run(args, "run", extra, "unused")
