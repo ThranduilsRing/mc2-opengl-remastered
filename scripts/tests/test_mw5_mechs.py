@@ -144,3 +144,258 @@ def test_world_pelvis_distinguishes_root_sign(fixture):
     assert world_rotation_delta(fk(nodes, pose)[2], rest[2]) < 1e-5
     pose[1]["rotation"] = psa_quat_to_gltf(keys[0, 0, 3:7], False)
     assert world_rotation_delta(fk(nodes, pose)[2], rest[2]) > 179.99
+
+
+def test_bridge_output_bytes_unchanged(fixture, tmp_path):
+    # Hardpoints intentionally add trueHeightM and mw5Attachments extras; geometry/clips stay unchanged.
+    import hashlib
+    skm = fixture[0]
+    B.build(skm, tmp_path, tmp_path / "a.glb", "albedo.png")
+    assert hashlib.sha256((tmp_path / "a.glb").read_bytes()).hexdigest() == \
+        "d1b685dd64ad0cddb484d5807aa15e6831a4b1ee00f309c79bc9ed44d6bb0f25"
+
+
+def test_native_input_matches_bridge_on_fixture(fixture, tmp_path):
+    import base64
+    skm, _, psa, qs, _ = fixture
+    g = json.loads(skm.read_text())
+    blob = bytearray((skm.parent / g["buffers"][0]["uri"]).read_bytes())
+    # Native-style doc: no wrapper node, mesh node under the default scene, one LOD, rotation clip, bridge list.
+    nodes = [{k: ([c - 1 for c in v] if k == "children" else v) for k, v in n.items()} for n in g["nodes"][1:]]
+    nodes.append({"name": "mesh_LOD0", "mesh": 0, "skin": 0})
+    while len(blob) % 4:
+        blob.append(0)
+    times = np.array([0, 1 / 30], np.float32)
+    g["bufferViews"].append({"buffer": 0, "byteOffset": len(blob), "byteLength": 8})
+    blob.extend(times.tobytes())
+    g["accessors"].append({"bufferView": len(g["bufferViews"]) - 1, "componentType": 5126, "type": "SCALAR", "count": 2})
+    tin, samplers, channels = len(g["accessors"]) - 1, [], []
+    for i, q in enumerate(qs):
+        g["bufferViews"].append({"buffer": 0, "byteOffset": len(blob), "byteLength": 32})
+        blob.extend(np.array([q, q], np.float32).tobytes())
+        g["accessors"].append({"bufferView": len(g["bufferViews"]) - 1, "componentType": 5126, "type": "VEC4", "count": 2})
+        samplers.append({"input": tin, "output": len(g["accessors"]) - 1, "interpolation": "LINEAR"})
+        channels.append({"sampler": i, "target": {"node": i, "path": "rotation"}})
+    g.update(nodes=nodes, skins=[{**g["skins"][0], "joints": [0, 1, 2, 3]}], scene=0, scenes=[{"nodes": [0, 4]}],
+             animations=[{"name": "TBR_Stand_ANI", "samplers": samplers, "channels": channels}],
+             extras={"materials": [], "loadout": [], "bridge": []},
+             buffers=[{"byteLength": len(blob), "uri": "data:application/octet-stream;base64," + base64.b64encode(blob).decode()}])
+    native = tmp_path / "native.gltf"
+    native.write_text(json.dumps(g))
+    a = B.build(native, None, tmp_path / "n.glb", "albedo.png")
+    b = B.build(skm, tmp_path, tmp_path / "b.glb", "albedo.png")
+    assert [n["name"] for n in a["nodes"]] == [n["name"] for n in b["nodes"]]
+    assert [m["name"] for m in a["meshes"]] == [m["name"] for m in b["meshes"]]
+    assert [x["name"] for x in a["animations"]] == [x["name"] for x in b["animations"]] == ["atlas_moveCoreIdle", "atlas_downedGetup", "atlas_hitReactLgtFwd",
+                                                                                              "atlas_hitReactLgtBwd", "atlas_hitReactLgtLeft", "atlas_hitReactLgtRight"]
+    assert all(a["accessors"][s["output"]]["count"] == 1
+               for clip in a["animations"][1:] for s in clip["samplers"])
+    assert [c["target"] for c in a["animations"][0]["channels"]] == [c["target"] for c in b["animations"][0]["channels"]]
+    abuf = (tmp_path / "n.glb").read_bytes()
+    bbuf = (tmp_path / "b.glb").read_bytes()
+    ab, bb = abuf[28 + struct.unpack_from("<I", abuf, 12)[0]:], bbuf[28 + struct.unpack_from("<I", bbuf, 12)[0]:]
+    for ca, cb in zip(a["animations"][0]["channels"], b["animations"][0]["channels"]):
+        qa = B.read_accessor(a, ab, a["animations"][0]["samplers"][ca["sampler"]]["output"])
+        qb = B.read_accessor(b, bb, b["animations"][0]["samplers"][cb["sampler"]]["output"])
+        assert np.max(angle(qa, qb[:len(qa)])) < 1e-4
+    for ma, mb in zip(a["meshes"], b["meshes"]):
+        pa, pb = ma["primitives"][0], mb["primitives"][0]
+        assert np.allclose(B.read_accessor(a, ab, pa["attributes"]["POSITION"]), B.read_accessor(b, bb, pb["attributes"]["POSITION"]))
+
+
+@pytest.mark.parametrize('authored', [True, False])
+def test_attached_muzzle_in_rotated_joint_frame(fixture, tmp_path, authored):
+    from tools.mw5_mechs.sockets import package_nodes
+    skm = fixture[0]
+    hull = json.loads(skm.read_text())
+    # Add a cockpit so the fallback has a known horizontal forward axis.
+    hull['nodes'].append({'name': 'Cockpit', 'translation': [0, 5, 10]})
+    skm.write_text(json.dumps(hull))
+    weapon = json.loads(skm.read_text())
+    weapon['nodes'] = [{'name': 'Root'}, {'name': 'Fire00' if authored else 'tip',
+                                        'translation': [2, 3, 30]}]
+    weapon['materials'] = [{'name': 'weapon_a'}, {'name': 'weapon_b'}]
+    for mesh in weapon['meshes']:
+        for primitive in mesh['primitives']:
+            primitive['material'] = 1
+    wp = tmp_path / 'weapon.gltf'
+    wp.write_text(json.dumps(weapon))
+    out = tmp_path / 'assembled.glb'
+    bone = 'Foot0_Left'
+    doc = B.build(skm, tmp_path, out, 'albedo.png', attachments=[f'{wp}={bone}'])
+    assert len(doc['materials']) == 3
+    assert all(p['material'] == 2 for m in doc['meshes'][2:] for p in m['primitives'])
+    row = dict(node='weapon_0', mesh='weapon', bone=bone, type=4, fires=['Fire00'])
+    nodes, offsets, types, height = package_nodes(out, [row, dict(node=None)])
+    assert nodes['weapon_0'] == 'j_LFoot' and types == {'weapon_0': 4}
+    assert height == 15  # original hull bounds; weapons must not alter this
+    frame = fk(hull['nodes'])[3]
+    point = np.array([float(x) for x in offsets['weapon_0'].split()])
+    if authored:
+        assert np.allclose(point, [2, 3, 30])
+    else:
+        # Independent expected tip: transform every source vertex, select by +Z.
+        verts = np.arange(18).reshape(6, 3)
+        world = (np.c_[verts, np.ones(6)] @ frame.T)[:, :3]
+        expected = verts[np.argmax(world[:, 2])]
+        assert np.allclose(point, expected, atol=1e-4)
+    assert all(len(n['name']) <= 24 for n in doc['nodes'])
+    assert all(not any(s in m['name'].lower() for s in ('_explode', '_dmg', 'blip', 'indc', 'uix'))
+               for m in doc['meshes'])
+    from tools.mw5_mechs.build_pack import emit_ini
+    ini = emit_ini('FITini\n[Bounds]\nf UpperLeftX = 1\nFITend', types)
+    assert 'l NumWeapon = 1' in ini and 'l WeaponType = 4' in ini
+    assert 'weapon_0' in ini and 'f UpperLeftX = 1' in ini
+    with pytest.raises(ValueError, match='not unique'):
+        package_nodes(out, [dict(row, mesh='missing')])
+    with pytest.raises(ValueError, match='joint mismatch'):
+        package_nodes(out, [dict(row, bone='Foot0_Right')])
+    with pytest.raises(ValueError, match='duplicate'):
+        package_nodes(out, [row, row])
+
+
+def test_mirrored_weapon_attachments(fixture, tmp_path):
+    from tools.mw5_mechs.sockets import package_nodes
+    skm = fixture[0]
+    weapon = json.loads(skm.read_text())
+    weapon['nodes'] = [{'name': 'Fire00', 'translation': [2, 3, 30]}]
+    wp = tmp_path / 'weapon.gltf'
+    wp.write_text(json.dumps(weapon))
+    bones = ['Foot0_Left', 'Foot0_Right']
+    out = tmp_path / 'mirrored.glb'
+    B.build(skm, tmp_path, out, 'albedo.png', attachments=[f'{wp}={b}' for b in bones])
+    rows = [dict(node=f'weapon_{i}', mesh='weapon', bone=b, type=4, fires=['Fire00'])
+            for i, b in enumerate(bones)]
+    nodes, offsets, types, _ = package_nodes(out, rows)
+    assert [nodes[r['node']] for r in rows] == ['j_LFoot', 'j_RFoot']
+    assert offsets == {r['node']: '2.0000 3.0000 30.0000' for r in rows}
+    assert types == {r['node']: 4 for r in rows}
+    B.build(skm, tmp_path, out, 'albedo.png', attachments=[f'{wp}={bones[0]}'] * 2)
+    with pytest.raises(ValueError, match='not unique'):
+        package_nodes(out, rows[:1])
+
+
+def test_embedded_native_attachment_uses_lod0(fixture, tmp_path):
+    import base64
+    from tools.mw5_mechs.sockets import load_glb
+    skm = fixture[0]
+    weapon = json.loads(skm.read_text())
+    blob = (tmp_path / weapon['buffers'][0]['uri']).read_bytes()
+    weapon['buffers'][0]['uri'] = 'data:application/octet-stream;base64,' + base64.b64encode(blob).decode()
+    weapon['extras'] = {'bridge': []}
+    weapon['meshes'].append(weapon['meshes'][0])  # retained LOD1 must not add triangles
+    weapon['nodes'] += [{'children': [len(weapon['nodes']) + 1]}, {'mesh': 0}, {'mesh': 1}]
+    weapon['scene'] = 1
+    weapon['scenes'] = [{'nodes': [len(weapon['nodes']) - 1]}, {'nodes': [len(weapon['nodes']) - 3]}]
+    wp = tmp_path / 'embedded.gltf'
+    wp.write_text(json.dumps(weapon))
+    out = tmp_path / 'embedded.glb'
+    B.build(skm, tmp_path, out, 'albedo.png', attachments=[f'{wp}=Foot0_Left'])
+    doc, buf = load_glb(out)
+    attachment = doc['extras']['mw5Attachments'][0]
+    assert attachment['joint'] == 'j_LFoot'
+    primitives = [p for m in attachment['meshes'] for p in doc['meshes'][m]['primitives']]
+    assert sum(len(B.read_accessor(doc, buf, p['indices'])) for p in primitives) == 6
+    assert all(np.all(np.isfinite(B.read_accessor(doc, buf, p['attributes']['POSITION']))) for p in primitives)
+
+
+def test_attachment_requires_resolved_bone(fixture, tmp_path):
+    with pytest.raises(ValueError, match='bone not found'):
+        B.build(fixture[0], tmp_path, tmp_path / 'bad.glb', 'albedo.png',
+                attachments=[f'{fixture[0]}=unresolved'])
+
+
+def test_recipe_entry_point_and_maps(fixture, tmp_path, monkeypatch):
+    from tools.mw5_mechs import build_pack as P
+    skm = fixture[0]
+    recipe = B.load_recipe()
+    recipe["mc2"]["stem"] = "fixture_mech"
+    recipe["mc2"]["model"].update(source_skm=skm.name, anim_dir=".", textures="textures",
+                                     loadout="loadout.json", host_ini="fixture_host")
+    recipe["bone_rename"]["Foot0_Left"] = "fixture_foot"
+    recipe["clips"] = {"Stand": "fixture_idle"}
+    recipe["hold_clips"] = {"fixture_hold": ["Stand", -1]}
+    recipe_path = tmp_path / "recipe.json"
+    recipe_path.write_text(json.dumps(recipe))
+    (tmp_path / "loadout.json").write_text("[]")
+    for tier in ("", "128"):
+        folder = tmp_path / "textures" / tier
+        folder.mkdir(parents=True, exist_ok=True)
+        for tag in ("alb", "nrm"):
+            (folder / f"fixture_mech_{tag}.ktx2").write_bytes(b"synthetic")
+    install = tmp_path / "install"
+    (install / "data/tgl").mkdir(parents=True)
+    (install / "data/tgl/fixture_host.ini").write_text("FITini\n[Bounds]\nf UpperLeftX = 1\nFITend\n")
+    monkeypatch.setattr(sys, "argv", ["build_pack", "--recipe", str(recipe_path), "--install", str(install)])
+    P.main()
+    from tools.mw5_mechs.sockets import load_glb
+    tgl = install / "mods/mw5_mechs/data/tgl"
+    doc, buf = load_glb(tgl / "fixture_mech.glb")
+    assert "fixture_foot" in [n["name"] for n in doc["nodes"]]
+    assert [a["name"] for a in doc["animations"]] == ["fixture_idle", "fixture_hold"]
+    assert all(doc["accessors"][s["output"]]["count"] == 1 for s in doc["animations"][1]["samplers"])
+    assert 'st AnimHost = "fixture_host"' in (tgl / "fixture_host.ini").read_text()
+    pkg = json.loads((tgl / "fixture_mech.package.json").read_text())
+    assert pkg["sourceGlb"] == "fixture_mech.glb"
+
+
+def test_missile_attachment_type(fixture, tmp_path):
+    from tools.mw5_mechs.sockets import package_nodes
+    from tools.mw5_mechs.build_pack import emit_ini
+    weapon = json.loads(fixture[0].read_text())
+    weapon['nodes'] = [{'name': 'Fire00', 'translation': [2, 3, 30]}]
+    wp, out = tmp_path / 'missile.gltf', tmp_path / 'missile.glb'
+    wp.write_text(json.dumps(weapon))
+    B.build(fixture[0], tmp_path, out, 'albedo.png', attachments=[f'{wp}=Foot0_Left'])
+    _, _, types, _ = package_nodes(out, [dict(node='weapon_0', mesh='missile',
+                                             bone='Foot0_Left', type=5, fires=['Fire00'])])
+    assert types == {'weapon_0': 5}
+    assert 'l WeaponType = 5' in emit_ini('FITini\nFITend', types)
+
+
+def test_static_weapon_attachment(fixture, tmp_path):
+    weapon = json.loads(fixture[0].read_text())
+    del weapon['skins']
+    attrs = weapon['meshes'][0]['primitives'][0]['attributes']
+    del attrs['JOINTS_0'], attrs['WEIGHTS_0']
+    wp = tmp_path / 'static.gltf'
+    wp.write_text(json.dumps(weapon))
+    doc = B.build(fixture[0], tmp_path, tmp_path / 'static.glb', 'albedo.png',
+                  attachments=[f'{wp}=Foot0_Left'])
+    entry = doc['extras']['mw5Attachments'][0]
+    assert entry['joint'] == 'j_LFoot' and len(entry['meshes']) == 1
+    mesh = entry['meshes'][0]
+    assert doc['accessors'][doc['meshes'][mesh]['primitives'][0]['indices']]['count'] == 6
+    assert doc['nodes'][doc['skins'][mesh]['joints'][0]]['name'] == 'j_LFoot'
+
+
+def test_bridge_requires_animation_directory(fixture, tmp_path):
+    with pytest.raises(ValueError, match='anim-dir.*bridge'):
+        B.build(fixture[0], None, tmp_path / 'bad.glb', 'albedo.png')
+
+
+def test_parity_sample_normalizes_short_arc():
+    from tools.mw5_mechs.parity import sample
+    q = sample([0, 1], [[0, 0, 0, 1], [0, 0, -1, 0]], .5, True)
+    assert np.linalg.norm(q) == pytest.approx(1)
+    assert np.allclose(q, [0, 0, -np.sqrt(.5), np.sqrt(.5)])
+    assert sample([0, 1], [[0, 0, 0, 1], [0, 0, 0, -1]], .5, True) == [0, 0, 0, 1]
+    assert sample([0, 1], [[0, 2, 4], [2, 4, 6]], .5, False) == [1, 3, 5]
+
+
+def test_empty_native_hold_channel_names_source(fixture, tmp_path):
+    g = json.loads(fixture[0].read_text())
+    g['extras'] = {'bridge': []}
+    g.update(scene=0, scenes=[{'nodes': [0, len(g['nodes'])]}])
+    g['nodes'].append({'name': 'LOD0', 'mesh': 0})
+    for typ in ('SCALAR', 'VEC4'):
+        g['accessors'].append(dict(bufferView=0, componentType=5126, type=typ, count=0))
+    g['animations'] = [dict(name='TBR_Stand_ANI', samplers=[dict(input=len(g['accessors'])-2,
+                           output=len(g['accessors'])-1)],
+                           channels=[dict(sampler=0, target=dict(node=1, path='rotation'))])]
+    native = tmp_path / 'empty.gltf'
+    native.write_text(json.dumps(g))
+    recipe = B.load_recipe()
+    recipe.update(clips={}, hold_clips={'empty_hold': ['Stand', -1]})
+    with pytest.raises(ValueError, match='TBR_Stand_ANI.*Root.*empty'):
+        B.build(native, None, tmp_path / 'bad.glb', 'albedo.png', recipe=recipe)
