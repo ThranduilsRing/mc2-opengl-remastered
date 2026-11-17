@@ -670,6 +670,7 @@ void MechLabScreen::update()
 	const std::string tmp = variantList.EditBox().entry();
 	if ( !mc2::str::iequals( varName, tmp ) )
 	{
+		pInspectedComponent = nullptr;
 		swapVariant();
 	}
 
@@ -679,6 +680,8 @@ void MechLabScreen::update()
 		return;
 
 	// update the list box
+	if ( userInput->isLeftClick() && componentListBox.pointInside(userInput->getMouseX(), userInput->getMouseY()) )
+		pInspectedComponent = nullptr;
 	componentListBox.update();
 	int newSel = componentListBox.GetSelectedItem();
 
@@ -707,6 +710,7 @@ void MechLabScreen::update()
 		}
 	}
 
+	if ( pInspectedComponent ) { pSelectedComponent = nullptr; selI = selJ = -1; }
 	bool bNoDelete = !canRemoveComponent( pSelectedComponent );
 
 
@@ -721,11 +725,11 @@ void MechLabScreen::update()
 	}
 	else
 	{
-		LogisticsComponent* pComp = componentListBox.getComponent();
+		LogisticsComponent* pComp = pInspectedComponent ? pInspectedComponent : componentListBox.getComponent();
 		if ( pComp )
 		{
 			setComponent( pComp );
-			getButton( MB_MSG_ADD )->disable( 0 );
+			getButton( MB_MSG_ADD )->disable( canAddComponent( pComp ) != 0 );
 			getButton( MB_MSG_REMOVE )->disable( 1 );
 		}
 		else
@@ -1365,6 +1369,7 @@ int	MechLabScreen::handleMessage( unsigned long msg, unsigned long who)
 
 	if ( msg == aMSG_SELCHANGED )
 	{
+		pInspectedComponent = nullptr;
 		swapVariant(); 
 		return 1;
 	}
@@ -2335,7 +2340,7 @@ void MechLabScreen::updateLocationInput()
 	const float mx = static_cast<float>( userInput->getMouseX() );
 	const float my = static_cast<float>( userInput->getMouseY() );
 	LogisticsComponent* cand = pDragComponent ? pDragComponent
-		: ( -1 != componentListBox.GetSelectedItem() ? componentListBox.getComponent() : nullptr );
+		: ( pInspectedComponent ? pInspectedComponent : ( -1 != componentListBox.GetSelectedItem() ? componentListBox.getComponent() : nullptr ) );
 	refreshLocationVerdicts( pVariant, cand );
 	s_locHover = ml::panelAt( mx, my ).value_or( -1 );
 
@@ -2396,15 +2401,16 @@ void MechLabScreen::updateLocationInput()
 			{
 				selI = item->x;
 				selJ = item->y;
+				pInspectedComponent = nullptr;
 				pSelectedComponent = item->comp;
 				setComponent( item->comp );
 				soundSystem->playDigitalSample( LOG_SELECT );
 				componentListBox.SelectItem( -1 );
 			}
-			else if ( -1 != componentListBox.GetSelectedItem() && componentListBox.getComponent() )
+			else if ( cand )
 				{
 				long x = -1, y = -1;
-				if ( placeInPanel( componentListBox.getComponent(), s_locHover, x, y ) )
+				if ( placeInPanel( cand, s_locHover, x, y ) )
 				{
 					selI = x; selJ = y;
 					pSelectedComponent = componentListBox.getComponent();
@@ -2433,7 +2439,7 @@ void MechLabScreen::drawLocationView( float tbSx, float tbSy, float tbOx, float 
 		GuiRuntime::DrawUiRect( sr.x, sr.y, sr.w, sr.h, color, filled );
 	};
 	LogisticsComponent* cand = pDragComponent ? pDragComponent
-		: ( -1 != componentListBox.GetSelectedItem() ? componentListBox.getComponent() : nullptr );
+		: ( pInspectedComponent ? pInspectedComponent : ( -1 != componentListBox.GetSelectedItem() ? componentListBox.getComponent() : nullptr ) );
 
 	std::vector<mc2pkg::Placed> placed;
 	std::vector<LogisticsComponent*> comps;

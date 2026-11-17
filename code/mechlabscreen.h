@@ -58,6 +58,7 @@ class MechLabScreen: public LogisticsScreen
 		void	endDrag( );
 
 		int		canAddComponent( LogisticsComponent* pComponent );
+		void inspectComponent( LogisticsComponent* c ) { pInspectedComponent = c; }
 
 		static MechLabScreen* instance() { return s_instance;}
 
@@ -94,6 +95,7 @@ class MechLabScreen: public LogisticsScreen
 
 		LogisticsComponent*	pDragComponent;
 		LogisticsComponent*	pCurComponent;
+		LogisticsComponent* pInspectedComponent = nullptr;
 
 		void showJumpJetItems( bool bShow );
 

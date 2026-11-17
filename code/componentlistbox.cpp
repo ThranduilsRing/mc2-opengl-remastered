@@ -300,6 +300,7 @@ void	ComponentListItem::update()
 		if ( (userInput->isLeftClick() && isInside
 			&& ComponentIconListBox::s_instance->pointInside( userInput->getMouseX(), userInput->getMouseY() ) ) )
 		{
+			MechLabScreen::instance()->inspectComponent( pComponent );
 			setComponent();
 			soundSystem->playDigitalSample( LOG_WRONGBUTTON );
 		}
