@@ -148,11 +148,17 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
     // every (type, LOD) is still one contiguous run (one instanced draw) and the HZB pass sees the same feed.
     static const bool s_lodOn = mc2::gate::get<"MC2_VK_PROP_LOD">();
     static std::unordered_map<uint32_t, std::vector<GpuStaticPropInstance>> s_lodOut;
+    static std::unordered_map<uint32_t, PropLodTierCache<GpuStaticPropInstance, kMaxPropLods>> s_lodCache;
+    std::unordered_map<uint32_t, const std::vector<GpuStaticPropInstance>*> persistentTiers;
     static const bool s_statsOn = mc2_diag::tagRequested("TREE_LOD_STATS");
     const bool lodActive = s_lodOn && !s_lodGroups.empty();
     { ZoneScopedN("VKIsl.Props.MainFeed.LODRoute");
     for (auto& [lodTid, lodVec] : s_lodOut) lodVec.clear();
     if (lodActive) {
+        // Overlapping targets retain the original interleaved group routing.
+        std::unordered_map<uint32_t, unsigned> targetUses;
+        for (const auto& [src, g] : s_lodGroups)
+            for (int tier = 0; tier < g.count; ++tier) ++targetUses[g.target[tier]];
         const RenderCore::ViewPacket mainView = RenderCore::framePackets().copyMainView();
         const RenderCore::ViewUniforms& vu = mainView.uniforms;
         const float cx = vu.cameraWorldPos[0], cy = vu.cameraWorldPos[1], cz = vu.cameraWorldPos[2];
@@ -164,7 +170,7 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
         const float vpScale = mainView.viewport[3] > 0 ? 2160.0f / static_cast<float>(mainView.viewport[3]) : 1.0f;
         float maxTreeD = 0.0f;
         auto route = [&](const GpuStaticPropInstance* b, const GpuStaticPropInstance* e, const PropLodGroup& g,
-                         const size_t* slots, const auto& outputs) {
+                         const size_t* slots, const auto& outputs, uint8_t* snapshots = nullptr) {
             for (; b != e; ++b) {
                 const StaticPropOrigin o = staticPropOriginRender(b->modelMatrix);
                 const float dx = o.x - cx, dy = o.y - cy, dz = o.z - cz;
@@ -173,19 +179,39 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
                 if (s_statsOn && g.tree) maxTreeD = (std::max)(maxTreeD, d);
                 uint8_t& lod = slots ? s_lodState.dense(*slots++) : s_lodState[propLodKey(*b)];
                 propLodAdvance(lod, d, std::span<const float>(g.dist, static_cast<size_t>(g.count)), kBand);
+                if (snapshots) { *snapshots++ = lod; continue; }
                 GpuStaticPropInstance inst = *b;
                 inst.typeID = g.target[lod];
                 outputs[lod]->push_back(inst);
             }
         };
         for (const auto& [src, g] : s_lodGroups) {
+            bool overlapping = false;
+            for (int tier = 0; tier < g.count; ++tier) overlapping |= targetUses[g.target[tier]] > 1;
             std::array<std::vector<GpuStaticPropInstance>*, kMaxPropLods> outputs{};
             for (int tier = 0; tier < g.count; ++tier) outputs[tier] = &s_lodOut[g.target[tier]];
             if (auto it = s_persistentStaticStore.find(src); it != s_persistentStaticStore.end()) {
                 const auto& [stTid, stVec] = *it;
                 auto& slots = s_persistentLodSlots[src];
+                const bool rebound = slots.revision != s_lodState.revision() || slots.indices.size() != stVec.size();
                 slots.bind(s_lodState, std::span<const GpuStaticPropInstance>(stVec), propLodKey);
-                route(stVec.data(), stVec.data() + stVec.size(), g, slots.indices.data(), outputs);
+                if (rebound) {
+                    for (auto cached = s_lodCache.begin(); cached != s_lodCache.end(); ) {
+                        if (!s_lodGroups.count(cached->first)) cached = s_lodCache.erase(cached);
+                        else ++cached;
+                    }
+                }
+                if (overlapping) route(stVec.data(), stVec.data() + stVec.size(), g, slots.indices.data(), outputs);
+                else {
+                    static std::vector<uint8_t> snapshots;
+                    snapshots.resize(stVec.size());
+                    route(stVec.data(), stVec.data() + stVec.size(), g, slots.indices.data(), outputs, snapshots.data());
+                    auto& cache = s_lodCache[src];
+                    cache.refresh(std::span<const GpuStaticPropInstance>(stVec), rebound,
+                        [&](size_t i) { return snapshots[i]; },
+                        [&](GpuStaticPropInstance inst, uint8_t tier) { inst.typeID = g.target[tier]; return inst; });
+                    for (int tier = 0; tier < g.count; ++tier) persistentTiers[g.target[tier]] = &cache.tiers[tier];
+                }
             }
             if (auto bt = s_bucketsByType.find(src); bt != s_bucketsByType.end()) {
                 const auto& [bkTid, pb] = *bt;
@@ -197,11 +223,13 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
         static uint32_t s_statsTick = 0;
         if (s_statsOn && (++s_statsTick <= 3u || s_statsTick % 120u == 0)) {
             uint64_t inst[kMaxPropLods] = {}, tris[kMaxPropLods] = {};
-            for (const auto& [tid, vec] : s_lodOut) {
-                if (!s_lodMembers.contains(tid) || tid >= s_types.size() || !s_types[tid].source) continue;
+            auto countTier = [&](uint32_t tid, const auto& vec) {
+                if (!s_lodMembers.contains(tid) || tid >= s_types.size() || !s_types[tid].source) return;
                 const size_t tier = s_lodMembers.at(tid).tier;
                 inst[tier] += vec.size(); tris[tier] += vec.size() * static_cast<uint64_t>(s_types[tid].source->GetNumTypeTriangles());
-            }
+            };
+            for (const auto& [tid, vec] : s_lodOut) countTier(tid, vec);
+            for (const auto& [tid, vec] : persistentTiers) countTier(tid, *vec);
             mc2::fmt::print_err("[TREE_LOD_STATS] frame={} lodActive={} d={} rowY={} viewport={}x{} inst={} {} {} {} {} tris={} {} {} {} {}\n", mainView.frame, lodActive, maxTreeD, rowY, mainView.viewport[2], mainView.viewport[3], mc2::fmt::as_u64(inst[0]), mc2::fmt::as_u64(inst[1]), mc2::fmt::as_u64(inst[2]), mc2::fmt::as_u64(inst[3]), mc2::fmt::as_u64(inst[4]),
                 mc2::fmt::as_u64(tris[0]), mc2::fmt::as_u64(tris[1]), mc2::fmt::as_u64(tris[2]), mc2::fmt::as_u64(tris[3]), mc2::fmt::as_u64(tris[4]));
         }
@@ -214,20 +242,19 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
     for (const auto& [storeType, storeInsts] : s_persistentStaticStore) typeIds.push_back(storeType);
     for (const auto& [bucketType, bucketRef] : s_bucketsByType) typeIds.push_back(bucketType);
     if (lodActive) for (const auto& [lodTid, lodVec] : s_lodOut) if (!lodVec.empty()) typeIds.push_back(lodTid);
+    if (lodActive) for (const auto& [tid, vec] : persistentTiers) if (!vec->empty()) typeIds.push_back(tid);
     std::sort(typeIds.begin(), typeIds.end());
     typeIds.erase(std::unique(typeIds.begin(), typeIds.end()), typeIds.end());
     }
     { ZoneScopedN("VKIsl.Props.MainFeed.Flatten");
     for (uint32_t tid : typeIds) {
-        if (lodActive && s_lodGroups.count(tid)) {   // a LOD-capable base type: its instances were re-typed above
-            const auto& v = s_lodOut[tid];
-            appendPropFeed(s_colorFeedFlat, feedCursor, std::span<const GpuStaticPropInstance>(v));
-            continue;
-        }
+        if (lodActive) if (auto p = persistentTiers.find(tid); p != persistentTiers.end())
+            appendPropFeed(s_colorFeedFlat, feedCursor, std::span<const GpuStaticPropInstance>(*p->second));
         if (lodActive) if (auto lo = s_lodOut.find(tid); lo != s_lodOut.end()) {
             const auto& [loTid, loVec] = *lo;
             appendPropFeed(s_colorFeedFlat, feedCursor, std::span<const GpuStaticPropInstance>(loVec));
         }
+        if (lodActive && s_lodGroups.count(tid)) continue; // already re-typed above
         auto it = s_persistentStaticStore.find(tid);
         if (it != s_persistentStaticStore.end()) {
             const auto& [storeKey, insts] = *it;

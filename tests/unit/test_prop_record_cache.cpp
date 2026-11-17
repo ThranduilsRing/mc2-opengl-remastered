@@ -3,6 +3,98 @@
 #include <array>
 #include <optional>
 #include "RenderCore/gpu_abi/GpuStaticPropInstance.h"
+#include "RenderCore/PropLodState.h"
+
+namespace {
+struct TierInstance { uint32_t typeID, payload; };
+struct TierFixture {
+    PropLodTierCache<TierInstance, 3> cache;
+    std::vector<TierInstance> store{{0, 11}, {0, 22}};
+    std::vector<uint8_t> snapshots{0, 0};
+    bool frame(bool rebound = false) {
+        const bool rebuilt = cache.refresh(std::span<const TierInstance>(store), rebound,
+            [&](size_t i) { return snapshots[i]; },
+            [](TierInstance inst, uint8_t tier) { inst.typeID = tier + 10; return inst; });
+        std::vector<TierInstance> actual, naive;
+        for (size_t tier = 0; tier < 3; ++tier) {
+            actual.insert(actual.end(), cache.tiers[tier].begin(), cache.tiers[tier].end());
+            for (size_t i = 0; i < store.size(); ++i) if (snapshots[i] == tier) {
+                auto inst = store[i]; inst.typeID = static_cast<uint32_t>(tier + 10);
+                naive.push_back(inst);
+            }
+        }
+        REQUIRE(actual.size() == naive.size());
+        CHECK((actual.empty() || std::memcmp(actual.data(), naive.data(), actual.size() * sizeof(TierInstance)) == 0));
+        return rebuilt;
+    }
+};
+}
+TEST_CASE("prop_lod_tier_cache/unchanged") {
+    TierFixture f;
+    CHECK(f.frame(true));
+    const auto* data = f.cache.tiers[0].data();
+    const auto capacity = f.cache.tiers[0].capacity();
+    for (int frame = 0; frame < 4; ++frame) {
+        CHECK_FALSE(f.frame());
+        CHECK(f.cache.tiers[0].data() == data);
+        CHECK(f.cache.tiers[0].capacity() == capacity);
+    }
+}
+TEST_CASE("prop_lod_tier_cache/threshold") {
+    TierFixture f;
+    CHECK(f.frame(true));
+    const float distances[]{0, 100, 200};
+    propLodAdvance(f.snapshots[1], 120, distances, 0.08f);
+    CHECK(f.frame());
+    CHECK_FALSE(f.frame());
+}
+TEST_CASE("prop_lod_tier_cache/shared_byte_snapshots") {
+    TierFixture f;
+    const float distances[]{0, 100, 200};
+    uint8_t shared = 0;
+    auto advance = [&](size_t i, float distance) {
+        propLodAdvance(shared, distance, distances, 0.08f);
+        f.snapshots[i] = shared;
+    };
+    advance(0, 120); advance(1, 240); // one byte, distinct sequential emissions
+    CHECK(f.frame(true));
+    shared = 0; // dynamic alias writes between frames
+    advance(0, 50); // its own advance does not move the externally changed byte
+    advance(1, 240);
+    CHECK(f.frame());
+    advance(0, 50); advance(1, 240);
+    CHECK_FALSE(f.frame());
+}
+TEST_CASE("prop_lod_tier_cache/rebound_and_empty") {
+    TierFixture f;
+    CHECK(f.frame(true));
+    std::swap(f.store[0], f.store[1]); CHECK(f.frame(true));
+    f.store[0].payload = 33; CHECK(f.frame(true));
+    f.store.clear(); f.snapshots.clear(); CHECK(f.frame());
+    for (const auto& tier : f.cache.tiers) CHECK(tier.empty());
+    CHECK_FALSE(f.frame());
+}
+TEST_CASE("prop_lod_tier_cache/shared_target_dynamic_order") {
+    TierFixture a, b;
+    b.store[0].payload = 33; b.store[1].payload = 44;
+    for (uint32_t frame = 0; frame < 3; ++frame) {
+        CHECK(a.frame(frame == 0) == (frame == 0));
+        CHECK(b.frame(frame == 0) == (frame == 0));
+        const TierInstance da{10, 50 + frame}, db{10, 60 + frame};
+        std::vector<TierInstance> old, routed;
+        for (const auto* group : {&a, &b}) {
+            for (auto inst : group->store) { inst.typeID = 10; old.push_back(inst); }
+            old.push_back(group == &a ? da : db);
+        }
+        // Overlap fallback routes each entire group before the next group.
+        for (const auto* group : {&a, &b}) {
+            routed.insert(routed.end(), group->cache.tiers[0].begin(), group->cache.tiers[0].end());
+            routed.push_back(group == &a ? da : db);
+        }
+        REQUIRE(old.size() == routed.size());
+        CHECK(std::memcmp(old.data(), routed.data(), old.size() * sizeof(TierInstance)) == 0);
+    }
+}
 
 TEST_CASE("prop_feed_equivalence: ordered payload and packet command bytes across lifecycle") {
     std::vector<GpuStaticPropInstance> flat, original;
