@@ -76,13 +76,15 @@ bool vk_water_detail::record_reflection(WaterIsland* s, VkCommandBuffer cb, bool
         VK_ACCESS_2_SHADER_READ_BIT|VK_ACCESS_2_TRANSFER_READ_BIT,VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,VK_ACCESS_2_SHADER_WRITE_BIT);
     mc2vk::infra::bind(cb,VK_PIPELINE_BIND_POINT_COMPUTE,s->maskCompute.get());
     vkCmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_COMPUTE,s->maskLayout.get(),0,1,&s->maskSet,0,nullptr);
-    for (int32_t vertical=0; vertical<2; ++vertical) {
-        const int32_t mode = vertical | (s->reflectionDivisor==2 ? 2 : 0);
+    for (int32_t pass=0; pass<4; ++pass) {
+        const int32_t mode = pass | (s->reflectionDivisor==2 ? 4 : 0);
         vkCmdPushConstants(cb,s->maskLayout.get(),VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof(mode),&mode);
-        vkCmdDispatch(cb,(s->w+15)/16,(s->h+15)/16,1);
+        const int32_t width = pass==3 ? s->w : (s->w+7)/8;
+        const int32_t height = pass==3 ? s->h : (s->h+7)/8;
+        vkCmdDispatch(cb,(width+15)/16,(height+15)/16,1);
         dr::memoryBarrier(ctx,cb,VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,VK_ACCESS_2_SHADER_WRITE_BIT,
-            vertical ? VK_PIPELINE_STAGE_2_TRANSFER_BIT : VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-            vertical ? VK_ACCESS_2_TRANSFER_READ_BIT : VK_ACCESS_2_SHADER_READ_BIT);
+            pass==3 ? VK_PIPELINE_STAGE_2_TRANSFER_BIT : VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+            pass==3 ? VK_ACCESS_2_TRANSFER_READ_BIT : VK_ACCESS_2_SHADER_READ_BIT|VK_ACCESS_2_SHADER_WRITE_BIT);
     }
     }
     {
