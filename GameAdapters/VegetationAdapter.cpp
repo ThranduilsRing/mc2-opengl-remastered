@@ -44,9 +44,6 @@
 #include "../mclib/terrtxm2.h"
 #include "Gates/render_options.h"
 #include <filesystem>
-#ifdef _WIN32
-#include <windows.h>
-#endif
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -152,9 +149,8 @@ const std::optional<mc2::vegetation::Digest>& vegetationExecutableDigest() {
     static const auto digest = []() -> std::optional<mc2::vegetation::Digest> {
         std::filesystem::path path;
 #ifdef _WIN32
-        wchar_t name[32768]; const auto n=GetModuleFileNameW(nullptr,name,32768);
-        if (!n || n>=32768) return std::nullopt;
-        path=std::wstring(name,n);
+        if (!_wpgmptr) return std::nullopt;
+        path=std::filesystem::path(_wpgmptr);
 #else
         path="/proc/self/exe";
 #endif
@@ -250,14 +246,14 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
             SourceInput in; in.mapName=Terrain::terrainName ? Terrain::terrainName : ""; in.seed=seed;
             in.frame={originX,originY,mapSpan,Terrain::worldUnitsPerVertex,Terrain::oneOverWorldUnitsPerVertex,
                 Terrain::waterElevation,gridStep,Terrain::oneOverWorldUnitsMapSide,Terrain::oneOverWorldUnitsPerCell};
-            in.grid={uint64_t(Terrain::realVerticesMapSide),uint64_t(Terrain::halfVerticesMapSide),uint64_t(Terrain::verticesBlockSide),
-                uint64_t(Terrain::blocksMapSide),1,uint64_t(gameMap->getHeight()),uint64_t(gameMap->getWidth()),uint64_t(v.vertices),uint64_t(density)};
+            in.grid={static_cast<uint64_t>(Terrain::realVerticesMapSide),static_cast<uint64_t>(Terrain::halfVerticesMapSide),static_cast<uint64_t>(Terrain::verticesBlockSide),
+                static_cast<uint64_t>(Terrain::blocksMapSide),1,static_cast<uint64_t>(gameMap->getHeight()),static_cast<uint64_t>(gameMap->getWidth()),static_cast<uint64_t>(v.vertices),static_cast<uint64_t>(density)};
             for(long r=0;r<Terrain::realVerticesMapSide;++r) for(long c=0;c<Terrain::realVerticesMapSide;++c) {
                 types.push_back(static_cast<uint32_t>(land->getTerrain(r,c))); elevations.push_back(land->getTerrainElevation(r,c));
             }
             for(long r=0;r<gameMap->getHeight();++r) for(long c=0;c<gameMap->getWidth();++c) {
                 auto& m=gameMap->cellAt(r,c);
-                masks.push_back(uint8_t(m.getOffMap() | (m.getPassable()<<1) | (m.getForest()<<2) | (m.getWall()<<3) | (bool(m.getGate())<<4) | (m.getRoad()<<5)));
+                masks.push_back(static_cast<uint8_t>(m.getOffMap() | (m.getPassable()<<1) | (m.getForest()<<2) | (m.getWall()<<3) | (static_cast<bool>(m.getGate())<<4) | (m.getRoad()<<5)));
             }
             // topLeftVertex parity cancels: ((meshOffset-topLeft)&1) XOR (topLeft&1) == meshOffset&1.
             in.types=types; in.elevations=elevations; in.visible=v.heights; in.masks=masks;

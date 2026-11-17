@@ -123,8 +123,8 @@ inline std::optional<CapacityInterval> capacityInterval(uint64_t c, uint64_t f, 
     if (c >= cap || k > k0 || k0 > 8) return std::nullopt;
     const auto max = UINT64_MAX;
     if (f > (max-c)/81) return std::nullopt;
-    return CapacityInterval{std::max(c+1, c+uint64_t(k)*k*f),
-        f && k < k0 ? c+uint64_t(k+1)*(k+1)*f : max};
+    return CapacityInterval{std::max(c+1, c+static_cast<uint64_t>(k)*k*f),
+        f && k < k0 ? c+static_cast<uint64_t>(k+1)*(k+1)*f : max};
 }
 inline bool cacheAdmission(bool mapPresent, bool legacyAdjustment, bool executableKnown, uint32_t stride = 1) {
     return mapPresent && !legacyAdjustment && executableKnown && stride == 1;
