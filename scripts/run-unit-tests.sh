@@ -94,6 +94,15 @@ else
     run_test "$BUILD_DIR/${UNIT_CFG}mc2_tests.exe" || FAILED=1
 fi
 
+# The report adapter is built with mc2_tests; exercise its wire protocol too.
+if [ "${#DOCTEST_ARGS[@]}" -eq 0 ]; then
+    note "run mc2_bv_calibration"
+    if ! bv="$(printf '0 0 0 0 0 0 0\n' | run_test "$BUILD_DIR/${UNIT_CFG}mc2_bv_calibration.exe" "$ROOT/data/defs/rules/battle_value.fit")" || [ "${bv//$'\r'/}" != "0" ]; then
+        note "FAIL: BV report adapter did not evaluate the empty variant to zero"
+        FAILED=1
+    fi
+fi
+
 if [ "$DOCTEST_ONLY" -eq 1 ]; then
     note "--doctest-only: skipping test_render_contract_3 and the CTest tier"
     exit "$FAILED"
