@@ -469,7 +469,7 @@ void main(void)
         int record = uT.visualSide * uT.visualSide + 2 * (shoreOrigin.x + shoreOrigin.y * uT.visualSide);
         float threshold = heightsFine[record], flat4 = heightsFine[record + 1];
         bool full = hiresBlendW() != 1.0 || flat4 == 0.0;
-        tent = F.f7.x < threshold;
+        tent = hiresBlendW() != 1.0 || F.f7.x < threshold; // partial far blend mixes coarse heights: thresholds bound only the fine surface
         if (full) {
             waterSurfaceCache(shoreOrigin, shoreRaw, shoreSurface);
             fineCenter = waterCachedHeight(WorldPos.xy, shoreOrigin, shoreRaw, shoreSurface);
