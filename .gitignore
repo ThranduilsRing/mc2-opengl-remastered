@@ -235,3 +235,4 @@ tests/smoke/editor/playtest-*/
 
 # stock-tree-upscale: generated 1024 tree sidecars (tools/tree_retexture/gen_stock_trees.py, pins data/kit/tree-upscale.json)
 data/tgl/128/*.ktx2
+/cache/

@@ -49,7 +49,7 @@ def test_precheck_classifies_only_changes_since_play_target(env, monkeypatch, tm
     monkeypatch.setattr(lm, "PRECHECK_RECEIPTS", str(tmp_path / "receipts"))
     assert lm.main(args) == 0
     rec = json.loads((tmp_path / "receipts" / (tip + ".json")).read_text())
-    assert rec["sim_rows"]["paths"] == [] and not rec["sim_rows"]["required"]
+    assert rec["sim_rows"] == {"required": False}
     assert lm.merge_target(str(repo), "claude/nifty-mendeleev") != play
 
 def test_sim_path_classification():
@@ -80,83 +80,14 @@ def sim_tip(repo, tmp_path, monkeypatch, rel="mclib/mech3d.cpp"):
     return lm, sha, str(install)
 
 
-def test_precheck_runs_the_sim_rows_with_the_gates_commands_and_records_them(env, monkeypatch, tmp_path, capsys):
-    repo, _ = env
-    lm, sha, install = sim_tip(repo, tmp_path, monkeypatch)
-    ran = []
-
-    def runner(root, cmd, env=None):
-        ran.append(cmd)
-        return subprocess.CompletedProcess(cmd, 0, "")
-    assert lm.precheck(str(repo), "lane_s", False, sim_install=install, sim_runner=runner, sim_quiet=lambda: None) == 0
-    flat = [" ".join(c) for c in ran]
-    assert len(ran) == 3
-    assert all(install in f for f in flat)
-    sl = [f for f in flat if "saveload_roundtrip.py check" in f]
-    assert len(sl) == 2 and all("--mask tools/save_noise_mask.json" in f for f in sl)
-    assert any("--mission mc2_01" in f for f in sl) and any("--mission mc2_10" in f for f in sl)
-    assert any("sim_determinism.py check mc2_10" in f for f in flat)
-    rec = json.loads((tmp_path / "receipts" / (sha + ".json")).read_text())
-    assert rec["verdict"] == "PASS" and rec["sim_rows"]["required"] and not rec["sim_rows"]["override"]
-    assert rec["sim_rows"]["paths"] == ["mclib/mech3d.cpp"] and set(rec["sim_rows"]["rows"].values()) == {"PASS"}
-    assert lm.missing_receipts(str(repo), ["lane_s"]) == []
 
 
-def test_a_red_sim_row_fails_the_precheck_with_the_first_differing_line(env, monkeypatch, tmp_path, capsys):
-    repo, _ = env
-    lm, sha, install = sim_tip(repo, tmp_path, monkeypatch)
-
-    def runner(root, cmd, env=None):
-        j = " ".join(cmd)
-        bad = "--mission mc2_10" in j and "saveload" in j
-        return subprocess.CompletedProcess(cmd, 1 if bad else 0, "noise\nsave differs at packet 2 offset 77\nmore" if bad else "")
-    assert lm.precheck(str(repo), "lane_s", False, sim_install=install, sim_runner=runner, sim_quiet=lambda: None) == 1
-    out = capsys.readouterr().out
-    assert "PRECHECK FAIL" in out and "saveload-mc2_10: FAIL: save differs at packet 2 offset 77" in out
-    assert not (tmp_path / "receipts" / (sha + ".json")).exists()
 
 
-@pytest.mark.parametrize("case", ["quiet", "no_install", "stale", "lease_rc"])
-def test_infra_problems_are_not_run_and_block_the_receipt(env, monkeypatch, tmp_path, capsys, case):
-    repo, _ = env
-    lm, sha, install = sim_tip(repo, tmp_path, monkeypatch)
-    quiet = (lambda: "GATE QUIET: gate pid 1") if case == "quiet" else (lambda: None)
-    if case == "no_install":
-        install = str(tmp_path / "nope")
-    if case == "stale":
-        import lane_sim_rows as lsr   # the module lane_merge itself imported
-        monkeypatch.setattr(lsr, "stale_install", lambda r, i, s: "install exe was built from another commit")
-    ran = []
-
-    def runner(root, cmd, env=None):
-        ran.append(cmd)
-        return subprocess.CompletedProcess(cmd, 75 if case == "lease_rc" else 0, "GATE QUIET: refusing game run")
-    assert lm.precheck(str(repo), "lane_s", False, sim_install=install, sim_runner=runner, sim_quiet=quiet) == 1
-    out = capsys.readouterr().out
-    assert "NOT RUN" in out and "PRECHECK FAIL" in out and "PRECHECK PASS" not in out
-    if case != "lease_rc":
-        assert ran == []
-    assert not (tmp_path / "receipts" / (sha + ".json")).exists()
-    assert lm.missing_receipts(str(repo), ["lane_s"]) == [sha]
 
 
-def test_no_sim_rows_is_an_explicit_recorded_override(env, monkeypatch, tmp_path):
-    repo, _ = env
-    lm, sha, install = sim_tip(repo, tmp_path, monkeypatch)
-    assert lm.precheck(str(repo), "lane_s", False, sim_rows=False, sim_runner=lambda *a, **k: 1 / 0) == 0
-    rec = json.loads((tmp_path / "receipts" / (sha + ".json")).read_text())
-    assert rec["sim_rows"]["override"] is True and rec["sim_rows"]["required"] and rec["sim_rows"]["rows"] == {}
-    assert lm.missing_receipts(str(repo), ["lane_s"]) == []
 
 
-def test_a_tip_without_sim_paths_runs_no_sim_rows_and_an_old_receipt_cannot_vouch_for_one(env, monkeypatch, tmp_path):
-    repo, _ = env
-    lm, sha, install = sim_tip(repo, tmp_path, monkeypatch, rel="docs/note.md")
-    assert lm.precheck(str(repo), "lane_s", False, sim_runner=lambda *a, **k: 1 / 0) == 0
-    assert json.loads((tmp_path / "receipts" / (sha + ".json")).read_text())["sim_rows"]["required"] is False
-    _branch(repo, "lane_t", "mclib/gvactor.cpp", "y\n", "sim lane 2")
-    lm.write_receipt(str(repo), "lane_t", False, "PASS")
-    assert lm.missing_receipts(str(repo), ["lane_t"]) == [git(repo, "rev-parse", "lane_t")]
 
 
 def test_receipt_path_refuses_a_non_40_hex_sha_and_tests_use_a_private_dir():
@@ -247,3 +178,14 @@ def test_promote_requires_the_day_night_evidence_a_capture_verdict_names(env, mo
     assert "ab" in str(e.value) and "montage.jpg" in str(e.value) and git(repo, "rev-parse", "main") == old
     (ev / "ab/mc2_10_saved_204523/montage.jpg").write_bytes(b"x")
     assert lm.promote(str(repo), "t1", str(vpath)) == 0 and git(repo, "rev-parse", "main") == cand
+
+
+@pytest.mark.parametrize("no_sim", [False, True])
+def test_precheck_records_sim_requirement_without_running_games(env, monkeypatch, tmp_path, no_sim):
+    repo, _ = env
+    lm, sha, install = sim_tip(repo, tmp_path, monkeypatch)
+    assert lm.precheck(str(repo), "lane_s", sim_rows=not no_sim, sim_install=install,
+                       sim_runner=lambda *a, **k: pytest.fail("precheck ran games")) == 0
+    rec = json.loads((tmp_path / "receipts" / (sha + ".json")).read_text())
+    assert rec["sim_rows"] == {"required": True}
+    assert lm.missing_receipts(str(repo), ["lane_s"]) == []
