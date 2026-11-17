@@ -41,7 +41,7 @@ static bool cheatInfiniteMoney() { static const bool on = mc2::gate::get<"MC2_CH
 #include "../Gates/render_options.h"
 #include "../GameOS/gameos/input_capture_policy.h"
 
-static const mc2pkg::PackageChassis* locPackageChassis(const LogisticsVariant* v) { return (v && v->getChassis()) ? v->getChassis()->getPackage() : nullptr; }
+static bool isPackageChassis(const LogisticsVariant* v) { return v && v->getChassis() && v->getChassis()->getPackage(); }
 static std::string dropRefusal;
 static float dropRefusalTime = 0.f;
 static bool dragCancelled = false;
@@ -612,7 +612,7 @@ void MechLabScreen::update()
 	if ( !MPlayer || !ChatWindow::instance()->pointInside(userInput->getMouseX(), userInput->getMouseY()) )
 		LogisticsScreen::update();
 
-	if (!previewOwnsInput && !pDragComponent && locPackageChassis(pVariant) && userInput->isLeftClick() &&
+	if (!previewOwnsInput && !pDragComponent && isPackageChassis(pVariant) && userInput->isLeftClick() &&
 		mc2::mechlab_loc::toggleRect().contains(static_cast<float>(userInput->getMouseX()), static_cast<float>(userInput->getMouseY())))
 		setLocationView(userInput->getMouseX() < mc2::mechlab_loc::toggleRect().cx());
 	if (!previewOwnsInput)
@@ -1079,7 +1079,7 @@ void MechLabScreen::render(int xOffset, int yOffset)
 	// MECHLAB-3D-1: the 3D mech is an ImGui image (opaque FBO); the grid must be drawn on
 	// the same layer afterwards or the image buries it.
 	const bool locOn = locationViewActive();
-	const bool gridBridge = mechCamera.hasObject() || locOn || locPackageChassis(pVariant);
+	const bool gridBridge = mechCamera.hasObject() || locOn || isPackageChassis(pVariant);
 	if ( gridBridge )
 		aObject::beginGuiBridge( tbSx, tbSy, tbOx, tbOy );
 
@@ -1164,7 +1164,7 @@ void MechLabScreen::render(int xOffset, int yOffset)
 			pSelectedComponent = nullptr;
 	}
 
-	if ( locPackageChassis(pVariant) )
+	if ( isPackageChassis(pVariant) )
 		drawLocationView( tbSx, tbSy, tbOx, tbOy, xOffset, yOffset );
 	if ( gridBridge )
 		aObject::endGuiBridge();
@@ -2171,11 +2171,11 @@ const mc2pkg::PackageChassis* locPackage(const LogisticsVariant* v)
 {
 	return (v && v->getChassis()) ? v->getChassis()->getPackage() : nullptr;
 }
-int regionOfPanel(const mc2pkg::PackageChassis* pc, int panel)
+std::optional<int> regionOfPanel(const mc2pkg::PackageChassis* pc, int panel)
 {
 	for (size_t k = 0; pc && k < pc->regions.size(); ++k)
 		if (pc->regions[k].location == ml::panelName(panel)) return static_cast<int>(k);
-	return -1;
+	return std::nullopt;
 }
 void gatherPlaced(LogisticsVariant* v, std::vector<mc2pkg::Placed>& placed, std::vector<LogisticsComponent*>& comps)
 {
@@ -2207,7 +2207,7 @@ void gatherPanelItems(LogisticsVariant* v, int panel, std::vector<LocItem>& out)
 {
 	out.clear();
 	const mc2pkg::PackageChassis* pc = locPackage(v);
-	const int ri = regionOfPanel(pc, panel);
+	const int ri = regionOfPanel(pc, panel).value_or(-1);
 	if (ri < 0) return;
 	std::vector<mc2pkg::Placed> placed;
 	std::vector<LogisticsComponent*> comps;
@@ -2223,11 +2223,14 @@ void refreshLocationVerdicts(LogisticsVariant* v, LogisticsComponent* cand)
 		s_locLegal[p] = false;
 		s_locReason[p].clear();
 		if (!cand || !pc || p >= ml::kLocationCount) continue;
-		const int ri = regionOfPanel(pc, p);
-		long x, y;
+		const int ri = regionOfPanel(pc, p).value_or(-1);
 		if (cand->getType() == COMPONENT_FORM_JUMPJET) s_locReason[p] = "use the ADD button";
 		else if (ri < 0) s_locReason[p] = "no slots here";
-		else s_locLegal[p] = 0 == v->packageLocationPlace(cand, ri, x, y, s_locReason[p]);
+		else {
+			auto place = v->packageLocationPlace(cand, ri);
+			s_locLegal[p] = place.legal;
+			s_locReason[p] = std::move(place.reason);
+		}
 	}
 }
 const char* mountLetter(mc2pkg::Mount m)
@@ -2261,27 +2264,33 @@ void MechLabScreen::setLocationView( bool on )
 	updateDiagram();
 }
 
-int MechLabScreen::placeInPanel( LogisticsComponent* pComponent, int panel )
+bool MechLabScreen::placeInPanel( LogisticsComponent* pComponent, int panel )
 {
 	const mc2pkg::PackageChassis* pc = locPackage( pVariant );
-	const int ri = regionOfPanel( pc, panel );
+	const int ri = regionOfPanel( pc, panel ).value_or( -1 );
 	std::string reason;
-	long x = -1, y = -1;
-	if ( ri < 0 || 0 != pVariant->packageLocationPlace( pComponent, ri, x, y, reason ) )
+	LogisticsVariant::LocationPlace place;
+	if ( ri >= 0 )
+	{
+		place = pVariant->packageLocationPlace( pComponent, ri );
+		reason = place.reason;
+	}
+	const long x = place.x, y = place.y;
+	if ( ri < 0 || !place.legal )
 	{
 		showDropRefusal( std::string( ml::panelTitle( panel ) ) + ": " + ( ri < 0 ? "no equipment slots here." : reason ) );
 		soundSystem->playDigitalSample( LOG_WRONGBUTTON );
-		return -1;
+		return false;
 	}
-	return addComponent( pComponent, x, y );
+	return 0 == addComponent( pComponent, x, y );
 }
 
 void MechLabScreen::endDragLocation()
 {
-	const int panel = ml::panelAt( static_cast<float>( userInput->getMouseX() ), static_cast<float>( userInput->getMouseY() ) );
+	const int panel = ml::panelAt( static_cast<float>( userInput->getMouseX() ), static_cast<float>( userInput->getMouseY() ) ).value_or( -1 );
 	bool placed = false;
 	if ( panel >= 0 && panel < ml::kLocationCount )
-		placed = 0 == placeInPanel( pDragComponent, panel );
+		placed = placeInPanel( pDragComponent, panel );
 	if ( placed )
 	{
 		componentListBox.SelectItem( -1 );
@@ -2330,14 +2339,14 @@ void MechLabScreen::updateLocationInput()
 	LogisticsComponent* cand = pDragComponent ? pDragComponent
 		: ( -1 != componentListBox.GetSelectedItem() ? componentListBox.getComponent() : nullptr );
 	refreshLocationVerdicts( pVariant, cand );
-	s_locHover = ml::panelAt( mx, my );
+	s_locHover = ml::panelAt( mx, my ).value_or( -1 );
 
 	std::vector<LocItem> items;
-	const int dragPanel = ml::panelAt( static_cast<float>( userInput->getMouseDragX() ), static_cast<float>( userInput->getMouseDragY() ) );
+	const int dragPanel = ml::panelAt( static_cast<float>( userInput->getMouseDragX() ), static_cast<float>( userInput->getMouseDragY() ) ).value_or( -1 );
 	if ( s_locHover >= 0 && s_locHover < ml::kLocationCount )
 	{
 		gatherPanelItems( pVariant, s_locHover, items );
-		const int row = ml::itemRowAt( s_locHover, mx, my );
+		const int row = ml::itemRowAt( s_locHover, mx, my ).value_or( -1 );
 		const LocItem* item = ( row >= 0 && row < static_cast<int>( items.size() ) ) ? &items[row] : nullptr;
 		if ( item )
 			::helpTextID = IDS_HELP_COMP0 + item->comp->getID();
@@ -2346,7 +2355,7 @@ void MechLabScreen::updateLocationInput()
 		{
 			std::vector<LocItem> origin;
 			gatherPanelItems( pVariant, dragPanel, origin );
-			const int orow = ml::itemRowAt( dragPanel, static_cast<float>( userInput->getMouseDragX() ), static_cast<float>( userInput->getMouseDragY() ) );
+			const int orow = ml::itemRowAt( dragPanel, static_cast<float>( userInput->getMouseDragX() ), static_cast<float>( userInput->getMouseDragY() ) ).value_or( -1 );
 			if ( orow >= 0 && orow < static_cast<int>( origin.size() ) )
 			{
 				const LocItem it = origin[orow];
@@ -2409,9 +2418,9 @@ void MechLabScreen::drawLocationView( float tbSx, float tbSy, float tbOx, float 
 	if ( !pc )
 		return;
 	auto rectOf = [&]( ml::Rect r ) { r.x += xOffset; r.y += yOffset; return ml::toScreen( r, cv ); };
-	auto text = [&]( ml::Rect r, const char* s, std::uint32_t color, float px, int align ) {
+	auto text = [&]( ml::Rect r, std::string s, std::uint32_t color, float px, int align ) {
 		const ml::Rect sr = rectOf( r );
-		GuiRuntime::DrawUiText( sr.x, sr.y, sr.w, sr.h, s, color, static_cast<int>( px * tbSy ), align, "" );
+		GuiRuntime::DrawUiText( sr.x, sr.y, sr.w, sr.h, s.c_str(), color, static_cast<int>( px * tbSy ), align, "" );
 	};
 	auto fill = [&]( ml::Rect r, std::uint32_t color, bool filled ) {
 		const ml::Rect sr = rectOf( r );
@@ -2447,8 +2456,8 @@ void MechLabScreen::drawLocationView( float tbSx, float tbSy, float tbOx, float 
 	for ( int p = 0; p < ml::kPanelCount; ++p )
 	{
 		const ml::Rect r = ml::panelRect( p );
-		const bool doll = p == ml::Doll;
-		const int ri = doll ? -1 : regionOfPanel( pc, p );
+		const bool doll = p == ml::kDoll;
+		const int ri = doll ? -1 : regionOfPanel( pc, p ).value_or( -1 );
 		const bool hasSlots = ri >= 0;
 		fill( r, 0xe8101820, true );
 		std::uint32_t edge = 0xff5a6a78;

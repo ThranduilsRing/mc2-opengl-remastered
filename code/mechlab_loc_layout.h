@@ -13,6 +13,7 @@
 #include "package_chassis.h"
 
 #include <cmath>
+#include <optional>
 #include <cstdio>
 #include <string>
 #include <string_view>
@@ -40,7 +41,8 @@ inline Canvas canvasFor(int width, int height) {
 inline Rect toScreen(const Rect& r, const Canvas& c) { return {r.x * c.sx + c.ox, r.y * c.sy + c.oy, r.w * c.sx, r.h * c.sy}; }
 inline void screenToLegacy(const Canvas& c, float px, float py, float& lx, float& ly) { lx = (px - c.ox) / c.sx; ly = (py - c.oy) / c.sy; }
 
-enum Panel : int { Head = 0, CenterTorso, LeftTorso, RightTorso, LeftArm, RightArm, LeftLeg, RightLeg, Doll, kPanelCount };
+inline constexpr int kPanelCount = 9;   // 8 BT locations (Head..RightLeg, in panelName order) + the doll
+inline constexpr int kDoll = 8;
 inline constexpr int kLocationCount = 8;
 
 inline const char* panelName(int p) {   // matches the BT location names in package regions
@@ -72,24 +74,24 @@ inline Rect itemRowRect(int p, int k) {
 // LOCATIONS | CLASSIC switch, above the panels.
 inline Rect toggleRect() { return {kAreaX, 96, 150, 17}; }
 
-// Panel under a legacy-canvas point, or -1. Doll is not a drop target but is hit-testable.
-inline int panelAt(float lx, float ly) {
+// Panel under a legacy-canvas point. Doll is not a drop target but is hit-testable.
+inline std::optional<int> panelAt(float lx, float ly) {
     for (int p = 0; p < kPanelCount; ++p)
         if (panelRect(p).contains(lx, ly)) return p;
-    return -1;
+    return std::nullopt;
 }
-// Item row index under a point inside panel p, or -1.
-inline int itemRowAt(int p, float lx, float ly) {
+// Item row index under a point inside panel p.
+inline std::optional<int> itemRowAt(int p, float lx, float ly) {
     for (int k = 0; k < kMaxItemRows; ++k)
         if (itemRowRect(p, k).contains(lx, ly)) return k;
-    return -1;
+    return std::nullopt;
 }
 
-// Panel index of a BT location name; -1 if unknown.
-inline int panelOfLocation(std::string_view name) {
+// Panel index of a BT location name.
+inline std::optional<int> panelOfLocation(std::string_view name) {
     for (int p = 0; p < kLocationCount; ++p)
         if (name == panelName(p)) return p;
-    return -1;
+    return std::nullopt;
 }
 
 // ---- refusal reasons --------------------------------------------------------------------------

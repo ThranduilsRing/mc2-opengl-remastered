@@ -21,7 +21,7 @@ TEST_CASE("mechlab loc: draw rect == hit rect at 800x600, 1080p and 4K") {
                 for (float fy : {0.02f, 0.5f, 0.98f}) {
                     float lx, ly;
                     screenToLegacy(cv, d.x + d.w * fx, d.y + d.h * fy, lx, ly);
-                    CHECK(panelAt(lx, ly) == p);
+                    CHECK(panelAt(lx, ly).value_or(-1) == p);
                 }
             for (int k = 0; k < kMaxItemRows; ++k) {   // item rows sit inside their panel and hit back to themselves
                 const Rect row = itemRowRect(p, k);
@@ -29,14 +29,14 @@ TEST_CASE("mechlab loc: draw rect == hit rect at 800x600, 1080p and 4K") {
                 const Rect dr = toScreen(row, cv);
                 float lx, ly;
                 screenToLegacy(cv, dr.cx(), dr.cy(), lx, ly);
-                CHECK(itemRowAt(p, lx, ly) == k);
+                CHECK(itemRowAt(p, lx, ly).value_or(-1) == k);
             }
         }
         const Rect t = toScreen(toggleRect(), cv);
         float lx, ly;
         screenToLegacy(cv, t.cx(), t.cy(), lx, ly);
         CHECK(toggleRect().contains(lx, ly));
-        CHECK(panelAt(lx, ly) == -1);   // the toggle never overlaps a panel
+        CHECK(!panelAt(lx, ly));   // the toggle never overlaps a panel
     }
 }
 

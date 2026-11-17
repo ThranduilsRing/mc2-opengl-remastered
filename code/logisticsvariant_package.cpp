@@ -102,11 +102,12 @@ int LogisticsVariant::getPackageMounts( long& count, unsigned int* keys ) const
 }
 
 // MECHLAB-LOC-1: location-view placement. Same cells and the same mc2pkg::checkAdd as the grid.
-int LogisticsVariant::packageLocationPlace( LogisticsComponent* pComponent, int regionIndex, long& x, long& y, std::string& reason ) const
+LogisticsVariant::LocationPlace LogisticsVariant::packageLocationPlace( LogisticsComponent* pComponent, int regionIndex ) const
 {
     const mc2pkg::PackageChassis* pc = chassis->getPackage();
+    LocationPlace out;
     if ( !pc )
-        return -1;
+        return out;
     std::vector<mc2pkg::Placed> existing;
     existing.reserve( componentCount );
     for ( int i = 0; i < componentCount; ++i )
@@ -119,10 +120,11 @@ int LogisticsVariant::packageLocationPlace( LogisticsComponent* pComponent, int 
     cand.weight = pComponent->getWeight();
     const mc2::mechlab_loc::Explained e = mc2::mechlab_loc::explain( *pc, existing, cand, regionIndex );
     const mc2pkg::Region* r = ( regionIndex >= 0 && regionIndex < static_cast<int>( pc->regions.size() ) ) ? &pc->regions[regionIndex] : nullptr;
-    reason = mc2::mechlab_loc::reasonText( e, cand.category, r, cand );
+    out.reason = mc2::mechlab_loc::reasonText( e, cand.category, r, cand );
     if ( e.reason != mc2::mechlab_loc::Reason::Legal )
-        return 1;
-    x = e.x;
-    y = e.y;
-    return 0;
+        return out;
+    out.legal = true;
+    out.x = e.x;
+    out.y = e.y;
+    return out;
 }
