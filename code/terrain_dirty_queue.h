@@ -9,6 +9,25 @@
 
 namespace mc2 {
 
+enum TerrainRequeueReason : unsigned {
+    TerrainRequeueDynamic = 1u << 0,
+    TerrainRequeueFalling = 1u << 1,
+    TerrainRequeueFrameLights = 1u << 2,
+    TerrainRequeueLightBake = 1u << 3,
+    TerrainRequeueEffects = 1u << 4,
+    TerrainRequeueReasonCount = 5
+};
+
+inline unsigned terrainRequeueReasons(bool inView, bool staticNow, bool falling,
+    bool hasFrameLights, bool lightBlocker, bool hasEffects) {
+    // Reasons overlap; only visible owners emit frame-local lights.
+    return (inView && !staticNow ? TerrainRequeueDynamic : 0u) |
+        (falling ? TerrainRequeueFalling : 0u) |
+        (inView && hasFrameLights ? TerrainRequeueFrameLights : 0u) |
+        (lightBlocker ? TerrainRequeueLightBake : 0u) |
+        (hasEffects ? TerrainRequeueEffects : 0u);
+}
+
 // Sim mutations enqueue IDs; presentation drains after the simulation joins.
 class TerrainDirtyQueue {
     std::mutex mutex_;
