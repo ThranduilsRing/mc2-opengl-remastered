@@ -925,7 +925,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
-        "line": 62,
+        "line": 162,
         "role": "WaterFsParams",
         "std": "std140",
         "type": "uniform",
@@ -1201,7 +1201,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
-        "line": 99,
+        "line": 199,
         "role": "WaterReactive",
         "std": "std430",
         "type": "buffer",
@@ -1686,7 +1686,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
-        "line": 84,
+        "line": 184,
         "role": "u_hdri",
         "std": null,
         "type": "sampler2D",
@@ -2126,7 +2126,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
-        "line": 88,
+        "line": 188,
         "role": "u_shoreHeightTex",
         "std": null,
         "type": "sampler2D",
@@ -2253,7 +2253,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
-        "line": 89,
+        "line": 189,
         "role": "u_shoreMask",
         "std": null,
         "type": "sampler2D",
@@ -2586,7 +2586,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
-        "line": 92,
+        "line": 192,
         "role": "u_staticMask",
         "std": null,
         "type": "sampler2D",
@@ -2677,7 +2677,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
-        "line": 93,
+        "line": 193,
         "role": "u_waterReflection",
         "std": null,
         "type": "sampler2D",
@@ -2898,7 +2898,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
-        "line": 23,
+        "line": 24,
         "role": "TerrainHeightBuf",
         "std": "std430",
         "type": "buffer",
@@ -2910,7 +2910,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
-        "line": 24,
+        "line": 25,
         "role": "TerrainVisualHeightBuf",
         "std": "std430",
         "type": "buffer",

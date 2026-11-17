@@ -10146,6 +10146,16 @@
   {
    "tag": "TERRAIN_FIELDS",
    "ver": 1,
+   "stream": "log",
+   "keys": [
+    "side",
+    "bake_ms"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_FIELDS",
+   "ver": 1,
    "stream": "stderr",
    "keys": [],
    "count": 2
