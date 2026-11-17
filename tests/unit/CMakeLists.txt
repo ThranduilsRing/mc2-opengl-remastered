@@ -598,6 +598,7 @@ endif()
 target_sources(mc2_tests PRIVATE
     test_save_archive.cpp
     test_terrain_cache_key.cpp
+    test_terrain_spec.cpp
     ${MC2_WORKTREE_ROOT}/code/save_archive.cpp
     test_save_sections.cpp
     test_save_field_omission.cpp

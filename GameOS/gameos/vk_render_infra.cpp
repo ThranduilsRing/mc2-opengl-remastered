@@ -373,10 +373,10 @@ void panel() {
     ImGui::Text("Deferred entries: %zu; allocation denials: %llu",getOrCreateEngineVulkanContext().deferred().size(),s.denied);
     ImGui::TextUnformatted("Live includes resources awaiting GPU completion and transition overlap.");
 }
-void breadcrumb(std::string_view kind,std::string_view name,uint64_t hash,VkCommandBuffer cb) {
+void breadcrumb(std::string_view kind,std::string_view name,uint64_t hash,VkCommandBuffer cb, uint64_t frame) {
     auto& s=state(); const LONG sequence=InterlockedIncrement(&s.cursor); auto& crumb=s.crumbs[static_cast<uint32_t>(sequence)%s.crumbs.size()];
     if(InterlockedCompareExchange(&crumb.writing,1,0)!=0) return;
-    std::snprintf(crumb.text,sizeof(crumb.text),"seq=%ld tick=%ld frame=%llu kind=%.*s name=%.*s hash=%016llx",sequence,::turn,engineVulkanContextNoWait().tracker().frameNo(),static_cast<int>(kind.size()),kind.data(),static_cast<int>(std::min<size_t>(name.size(),230)),name.data(),hash);
+    std::snprintf(crumb.text,sizeof(crumb.text),"seq=%ld tick=%ld frame=%llu kind=%.*s name=%.*s hash=%016llx",sequence,::turn,(frame == UINT64_MAX ? engineVulkanContextNoWait().tracker().frameNo() : frame),static_cast<int>(kind.size()),kind.data(),static_cast<int>(std::min<size_t>(name.size(),230)),name.data(),hash);
     InterlockedExchange(&crumb.writing,0);
     auto retain=[&](auto& ring,volatile LONG& cursor) {
         auto& entry=ring[static_cast<uint32_t>(InterlockedIncrement(&cursor))%ring.size()];
@@ -603,7 +603,8 @@ void shader(VkShaderModule module,std::string_view path,std::span<const uint32_t
 void forgetShader(VkShaderModule module) {
     auto& s=state(); std::lock_guard lock(s.mutex); s.shaders.erase(module);
 }
-VkResult graphics(VkDevice dev,VkPipelineCache,uint32_t n,const VkGraphicsPipelineCreateInfo* info,const VkAllocationCallbacks* allocator,VkPipeline* out) {
+VkResult graphics(VkDevice dev,VkPipelineCache,uint32_t n,const VkGraphicsPipelineCreateInfo* info,const VkAllocationCallbacks* allocator,VkPipeline* out,uint64_t frame) {
+    if (frame == UINT64_MAX) frame = getOrCreateEngineVulkanContext().tracker().frameNo();
     auto& s=state(); std::unique_lock lock(s.mutex); const auto begin=std::chrono::steady_clock::now();
     std::vector<VkGraphicsPipelineCreateInfo> updated(info,info+n);
     std::vector<std::vector<VkPipelineShaderStageCreateInfo>> stages(n); LatestStages latest;
@@ -621,11 +622,12 @@ VkResult graphics(VkDevice dev,VkPipelineCache,uint32_t n,const VkGraphicsPipeli
     lock.lock(); if(--s.compiling==0) s.compileIdle.notify_all();
     if(result!=VK_SUCCESS) { for(uint32_t i=0;i<n;++i) if(out[i]) { vkDestroyPipeline(dev,out[i],allocator); out[i]=VK_NULL_HANDLE; } }
     const double ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count(); s.creationMs+=ms; s.creations+=n; s.dirty=true; mc2_hitch2::stats().pipelineCreates.fetch_add(n,std::memory_order_relaxed);
-    for(uint32_t i=0;i<n;++i) if(out[i]) { auto r=std::make_unique<Recipe>(); r->original=out[i]; r->capture(info[i]); breadcrumb("pipeline","graphics",r->hash); const uint64_t token=++nextPipelineToken; pipelineTokens()[out[i]]=token; recipes()[token]=std::move(r); }
-    if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) mc2::fmt::print_err("[VK_PIPELINE_CREATE v1] kind=graphics count={:d} ms={:.3f} frame={:d}\n",mc2::fmt::as_u32(n),ms,mc2::fmt::as_u64(getOrCreateEngineVulkanContext().tracker().frameNo()));
+    for(uint32_t i=0;i<n;++i) if(out[i]) { auto r=std::make_unique<Recipe>(); r->original=out[i]; r->capture(info[i]); breadcrumb("pipeline","graphics",r->hash,VK_NULL_HANDLE,frame); const uint64_t token=++nextPipelineToken; pipelineTokens()[out[i]]=token; recipes()[token]=std::move(r); }
+    if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) mc2::fmt::print_err("[VK_PIPELINE_CREATE v1] kind=graphics count={:d} ms={:.3f} frame={:d}\n",mc2::fmt::as_u32(n),ms,mc2::fmt::as_u64(frame));
     return result;
 }
-VkResult compute(VkDevice dev,VkPipelineCache,uint32_t n,const VkComputePipelineCreateInfo* info,const VkAllocationCallbacks* allocator,VkPipeline* out) {
+VkResult compute(VkDevice dev,VkPipelineCache,uint32_t n,const VkComputePipelineCreateInfo* info,const VkAllocationCallbacks* allocator,VkPipeline* out,uint64_t frame) {
+    if (frame == UINT64_MAX) frame = getOrCreateEngineVulkanContext().tracker().frameNo();
     auto& s=state(); std::unique_lock lock(s.mutex); const auto begin=std::chrono::steady_clock::now();
     std::vector<VkComputePipelineCreateInfo> updated(info,info+n); LatestStages latest;
     for(auto& item:updated) if(const auto result=latest.update(item.stage); result!=VK_SUCCESS) { std::fill(out,out+n,VK_NULL_HANDLE); return result; }
@@ -637,8 +639,8 @@ VkResult compute(VkDevice dev,VkPipelineCache,uint32_t n,const VkComputePipeline
     lock.lock(); if(--s.compiling==0) s.compileIdle.notify_all();
     if(result!=VK_SUCCESS) { for(uint32_t i=0;i<n;++i) if(out[i]) { vkDestroyPipeline(dev,out[i],allocator); out[i]=VK_NULL_HANDLE; } }
     const double ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count(); s.creationMs+=ms; s.creations+=n; s.dirty=true; mc2_hitch2::stats().pipelineCreates.fetch_add(n,std::memory_order_relaxed);
-    for(uint32_t i=0;i<n;++i) if(out[i]) { auto r=std::make_unique<Recipe>(); r->original=out[i]; r->isCompute=true; r->c=info[i]; r->stage(info[i].stage); if(info[i].pNext) r->reloadable=false; breadcrumb("pipeline","compute",r->hash); const uint64_t token=++nextPipelineToken; pipelineTokens()[out[i]]=token; recipes()[token]=std::move(r); }
-    if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) mc2::fmt::print_err("[VK_PIPELINE_CREATE v1] kind=compute count={:d} ms={:.3f} frame={:d}\n",mc2::fmt::as_u32(n),ms,mc2::fmt::as_u64(getOrCreateEngineVulkanContext().tracker().frameNo())); return result;
+    for(uint32_t i=0;i<n;++i) if(out[i]) { auto r=std::make_unique<Recipe>(); r->original=out[i]; r->isCompute=true; r->c=info[i]; r->stage(info[i].stage); if(info[i].pNext) r->reloadable=false; breadcrumb("pipeline","compute",r->hash,VK_NULL_HANDLE,frame); const uint64_t token=++nextPipelineToken; pipelineTokens()[out[i]]=token; recipes()[token]=std::move(r); }
+    if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) mc2::fmt::print_err("[VK_PIPELINE_CREATE v1] kind=compute count={:d} ms={:.3f} frame={:d}\n",mc2::fmt::as_u32(n),ms,mc2::fmt::as_u64(frame)); return result;
 }
 void setSceneViewport(VkCommandBuffer cb, uint32_t w, uint32_t h) {
     float jpx[2];
