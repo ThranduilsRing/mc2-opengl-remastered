@@ -1360,6 +1360,7 @@ void MissionBegin::updateSoakAutoPurchase() {
 						{
 							auto lower = []( std::string s ) { for ( char& c : s ) c = static_cast<char>( std::tolower( static_cast<unsigned char>( c ) ) ); return s; };
 							const std::string needle = lower( want );
+							bool matched = false;
 							for ( int i = 0; i < mechCount; ++i )
 							{
 								LogisticsVariant* v = pool[ mechIdx[i] ];
@@ -1367,9 +1368,12 @@ void MissionBegin::updateSoakAutoPurchase() {
 								if ( lower( v->getName() ).find( needle ) != std::string::npos || ( pk && lower( pk->stem ).find( needle ) != std::string::npos ) )
 								{
 									pick = v;
+									matched = true;
 									break;
 								}
 							}
+							if ( !matched )
+								mc2::fmt::print_err("[MECH_PREVIEW_CHASSIS] no match for '{}'; falling back to automatic chassis selection\n", want);
 						}
 						if ( !pick )
 							pick = lightest;
