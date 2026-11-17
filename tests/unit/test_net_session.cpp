@@ -276,6 +276,45 @@ TEST_CASE("net LOADED barrier holds the fast peer until the cold peer finishes")
     CHECK(host.error().empty()); CHECK(client.error().empty());
 }
 
+TEST_CASE("net LOADED marker precedes immediate mission input") {
+    net::Session host, client;
+    const net::Identity identity{{}, {}, "mc2_01", 12345};
+    host.open(true, "127.0.0.1:23475", identity);
+    client.open(false, "127.0.0.1:23475", identity);
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    while ((!host.connected() || !client.connected()) && std::chrono::steady_clock::now() < deadline) {
+        host.pump(); client.pump();
+    }
+    REQUIRE(host.connected()); REQUIRE(client.connected());
+    for (unsigned round = 0; round < 25; ++round) {
+        auto& last = round % 2 ? client : host;
+        auto& first = round % 2 ? host : client;
+        host.missionLoading(true); client.missionLoading(true);
+        first.missionLoading(false);
+        deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(50);
+        while (std::chrono::steady_clock::now() < deadline) {
+            host.pump(); client.pump();
+        }
+        last.missionLoading(false);
+        deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+        while (!last.connected() && std::chrono::steady_clock::now() < deadline) last.pump();
+        REQUIRE(last.connected());
+        const save::Bytes payload{0x52, 0x4e, 0x44, static_cast<std::uint8_t>(round)};
+        last.send(payload);
+        bool received = false;
+        deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+        while (!received && std::chrono::steady_clock::now() < deadline) {
+            for (const auto& packet : first.pump()) {
+                REQUIRE(packet == payload);
+                CHECK(first.connected());
+                received = true;
+            }
+        }
+        REQUIRE(received);
+        CHECK(host.error().empty()); CHECK(client.error().empty());
+    }
+}
+
 TEST_CASE("net content identity includes effective mounted art options") {
     const save::Digest files{};
     const auto high = net::contentIdentity(files, false, true);

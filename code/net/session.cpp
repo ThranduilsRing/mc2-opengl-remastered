@@ -203,7 +203,10 @@ struct Session::Impl {
     LinkSetup setup;
     Session::Timeouts timeouts;
     std::chrono::steady_clock::time_point teardownDeadline{};
-    bool loaded() const { return !loadEpoch || (localLoaded && peerLoadedEpoch == loadEpoch); }
+    bool loaded() const {
+        return !loadEpoch ||
+            (localLoaded && loadedSent && peerLoadedEpoch == loadEpoch);
+    }
     void service(); // Called only with mutex held.
     ~Impl() {
         { std::lock_guard lock(mutex); stopping = true; }
@@ -373,6 +376,11 @@ void Session::send(std::span<const std::uint8_t> packet) {
     enet_host_flush(s.host);
 }
 bool Session::connected() const { std::lock_guard lock(impl_->mutex); return impl_->setup.phase == LinkSetup::Phase::Ready && impl_->loaded(); }
+Session::LoadSnapshot Session::loadSnapshot() const {
+    std::lock_guard lock(impl_->mutex);
+    return {impl_->setup.phase == LinkSetup::Phase::Ready, impl_->localLoaded,
+        impl_->loadedSent, impl_->loadEpoch, impl_->peerLoadedEpoch};
+}
 void Session::missionLoading(bool loading) {
     std::lock_guard lock(impl_->mutex);
     if (loading) {

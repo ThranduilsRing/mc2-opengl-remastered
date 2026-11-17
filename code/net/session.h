@@ -71,8 +71,13 @@ public:
     void open(bool host, std::string_view endpoint, Identity identity);
     virtual std::vector<save::Bytes> pump();
     virtual void send(std::span<const std::uint8_t> packet);
-    // Transport negotiated, and (in a mission) both LOADED markers received.
+    // Transport negotiated, and (in a mission) both LOADED markers sent and received.
     virtual bool connected() const;
+    struct LoadSnapshot {
+        bool phaseReady, localLoaded, loadedSent;
+        std::uint32_t loadEpoch, peerLoadedEpoch;
+    };
+    LoadSnapshot loadSnapshot() const;
     virtual void missionLoading(bool loading);
     std::uint32_t inputDelay() const;
     std::uint32_t rtt() const;

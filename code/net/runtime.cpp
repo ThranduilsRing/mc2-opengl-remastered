@@ -427,7 +427,17 @@ bool prepareTick(bool due) {
             missionHandshakePending = false;
         } else {
             if (!gate) {
-                if (!session->connected()) fail("MP input before LOADED barrier");
+                if (!session->connected()) {
+                    const auto snapshot = session->loadSnapshot();
+                    trace << "LOADED failure-time snapshot phase-ready=" << snapshot.phaseReady
+                        << " localLoaded=" << snapshot.localLoaded << " loadedSent=" << snapshot.loadedSent
+                        << " loadEpoch=" << snapshot.loadEpoch << " peerLoadedEpoch=" << snapshot.peerLoadedEpoch
+                        << " packet_size=" << packet.size() << " first_bytes=";
+                    for (std::size_t i = 0; i < packet.size() && i < 4; ++i)
+                        trace << std::hex << std::setw(2) << std::setfill('0') << static_cast<unsigned>(packet[i]);
+                    trace << std::dec << '\n' << std::flush;
+                    fail("MP input before LOADED barrier");
+                }
                 gate = std::make_unique<Lockstep>(localSlot(), session->inputDelay());
             }
             gate->receive(packet);
