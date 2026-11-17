@@ -191,6 +191,9 @@ def build(args, out: Path):
         dst = out / "data" / "tgl" / f"{model['pack_path']}.glb"
         dst.parent.mkdir(parents=True, exist_ok=True)
         retarget_file(str(conv / model["source_glb"]), str(conv / "atlas.glb"), str(dst))
+        from tools.bt2018_mechs import glb_guard
+        for name, n in glb_guard.dedupe_node_names(dst).items():
+            print(f"[bt2018] {dst.name}: renamed {n} duplicate node(s) '{name}' (Assimp rejects repeats)")
         fam = recipe["family"].lower()
         if args.bundles and fam != "atlas":
             from tools.bt2018_extract import bake_clips as BK
@@ -243,6 +246,10 @@ def build(args, out: Path):
         "profiles": {p["chassis_id"]: {"variants": [v["name"] for v in p["variants"]], "report": p["report"]} for p in profiles},
     }
     write_text(out / "content" / "report.json", json.dumps(report, indent=2) + "\n")
+    from tools.bt2018_mechs import glb_guard
+    broken = glb_guard.validate_pack_glbs(out)
+    if broken:
+        sys.exit("pack GLBs the engine importer would reject:\n" + "\n".join(f"  {f}: {'; '.join(b)}" for f, b in broken.items()))
     return report
 
 

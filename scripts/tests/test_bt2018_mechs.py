@@ -616,3 +616,52 @@ def test_hud_icons_have_stock_tone_mix_and_no_outline_ring():
     assert R.palette_ok(img) == [] and not (img[solid][:, :3] == R.OUTLINE).all(1).any()
     green = img[solid][:, 1]
     assert (green == 229).mean() < 0.35 and (green == 83).mean() > 0.4     # dark-dominated like stock
+
+
+# ---------------------------------------------------------------- pack GLB guard
+
+
+def _glb(tmp_path, names, view_len=4):
+    import pygltflib
+    g = pygltflib.GLTF2(nodes=[pygltflib.Node(name=n) for n in names],
+                        buffers=[pygltflib.Buffer(byteLength=4)],
+                        bufferViews=[pygltflib.BufferView(buffer=0, byteOffset=0, byteLength=view_len)])
+    g.set_binary_blob(b"\0\0\0\0")
+    g.save(str(tmp_path / "m.glb"))
+    return tmp_path / "m.glb"
+
+
+def test_duplicate_node_names_are_renamed_deterministically_and_first_keeps_its_name(tmp_path):
+    """Trigger: tools/bt2018_mechs/glb_guard.py (raven.glb: duplicate node name 'VFXCollider_vert' broke Assimp import)."""
+    pytest.importorskip("pygltflib")
+    from pygltflib import GLTF2
+    from tools.bt2018_mechs import glb_guard as G
+    p = _glb(tmp_path, ["j_Root", "VFXCollider_vert", "VFXCollider_vert", "VFXCollider_vert"])
+    assert any("duplicate node name" in b for b in G.validate_glb(p))
+    assert G.dedupe_node_names(p) == {"VFXCollider_vert": 2}
+    assert [n.name for n in GLTF2().load(str(p)).nodes] == ["j_Root", "VFXCollider_vert", "VFXCollider_vert__dup2", "VFXCollider_vert__dup3"]
+    assert G.validate_glb(p) == [] and G.dedupe_node_names(p) == {}
+
+
+def test_pack_guard_flags_out_of_range_buffer_view(tmp_path):
+    """Trigger: glb_guard.validate_pack_glbs (the e7e0ff83b bufferView overrun would have failed the build)."""
+    pytest.importorskip("pygltflib")
+    from tools.bt2018_mechs import glb_guard as G
+    _glb(tmp_path, ["j_Root"], view_len=64)
+    bad = G.validate_pack_glbs(tmp_path)
+    assert "out of range" in " ".join(bad["m.glb"])
+
+
+def test_pack_guard_catches_the_prefix_baker_bug(tmp_path):
+    """Trigger: bake_clips.add_to_glb f8 sizing; the validator alone flags that output."""
+    pygltflib = pytest.importorskip("pygltflib")
+    import numpy as np
+    from tools.bt2018_mechs import glb_guard as G
+    src = _glb(tmp_path, ["j_Root"])
+    g = pygltflib.GLTF2().load(str(src))
+    arr = np.zeros((3, 4))                                   # float64 nbytes written as the view length, f4 bytes stored
+    g.bufferViews.append(pygltflib.BufferView(buffer=0, byteOffset=4, byteLength=arr.nbytes))
+    g.buffers[0].byteLength = 4 + arr.astype("<f4").nbytes
+    g.set_binary_blob(b"\0" * g.buffers[0].byteLength)
+    g.save(str(src))
+    assert G.validate_glb(src)
