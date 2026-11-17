@@ -610,8 +610,11 @@ long SimpleCamera::update()
 					// Estimate the full-turn width from the drawn height; bound root-offset inflation.
 					const float wTurn = turnHalfHeight_ > 0.f
 						? std::min(2.f * turnRadius_ * h / (2.f * turnHalfHeight_), 2.f * w) : w;
-					const float s = std::clamp(std::max(h / (fillFrac_ * rh), wTurn / (0.94f * rw)), 0.5f, 2.f);
+					const float s = std::clamp(std::max(h / (fillFrac_ * rh), std::max(wTurn, w) / (0.94f * rw)), 0.5f, 2.f);
 					framedFov_ = 2.f * std::atan(std::tan(framedFov_ * 0.5f * DEGREES_TO_RADS) * s) / DEGREES_TO_RADS;
+					if (fitIters_ == 0)
+						MC2_LOG(Ui, Info, "[MECH_PREVIEW_FIT] chassis={} turnRadius={} turnHalfHeight={} pxPerUnit={} wTurn={} w={} h={} s={} fov={}",
+							fitChassis_, turnRadius_, turnHalfHeight_, turnHalfHeight_ > 0.f ? h / (2.f * turnHalfHeight_) : 0.f, wTurn, w, h, s, framedFov_);
 					fudgeX += ( bounds[0] + bounds[2] ) * 0.5f - ( drawn_[0] + drawn_[2] ) * 0.5f;
 					fudgeY += bounds[3] - rh * ( 1.f - fillFrac_ ) * 0.35f - drawn_[3];
 				}
@@ -754,6 +757,7 @@ void SimpleCamera::setMech(mc2::czstring fileName, long baseColor, long highligh
 		NoPathFileName = stemOfPath(chassis);
 
 	char testName[256];
+	fitChassis_ = NoPathFileName;
 	strcpy( testName, NoPathFileName.c_str() );
 	strcat( testName, "enc" );
 

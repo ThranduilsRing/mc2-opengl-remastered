@@ -108,6 +108,7 @@ private:
 	bool				drawOffscreen_ = false;   // PREVIEW-FBO-FIXED-800x600-1
 	float				fillFrac_ = 0.f, framedPitch_ = 0.f, framedAlt_ = 650.f, framedFov_ = 40.f;
 	float				turnRadius_ = 0.f, turnHalfHeight_ = 0.f;
+	std::string			fitChassis_;
 	float				drawn_[4] = {};	// last PreviewDraw screen extents (framed only)
 	int					fitIters_ = 0;
 	bool				framed_ = false, haveDrawn_ = false;
