@@ -2242,7 +2242,9 @@ void refreshLocationVerdicts(LogisticsVariant* v, LogisticsComponent* cand)
 		if (cand->getType() == COMPONENT_FORM_JUMPJET) {
 			long x = -1, y = -1;
 			const int refusal = v->canAddComponent(cand, x, y);
-			s_locReason[p] = refusal ? mc2::components::placementRefusal(refusal) : "use ADD for the special slot";
+			s_locReason[p] = refusal == JUMPJETS_NOT_ALLOWED ? "No jump jets" :
+				refusal == ONLY_ONE_JUMPJET_ALLOWED ? "Jets installed" :
+				refusal ? mc2::components::placementRefusal(refusal) : "ADD special slot";
 		}
 		else if (ri < 0) s_locReason[p] = "no slots here";
 		else {
