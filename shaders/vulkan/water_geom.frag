@@ -176,6 +176,7 @@ layout(set = 0, binding = 1, std140) uniform WaterFsParams {
     vec4 f8;              // (u_waterEdgeFeather, u_waterEdgeFeatherStrength, u_halfMap, u_waterSkyTintStrength)
     vec4 f9;              // (u_waterSkyTintColor.xyz, u_waterProjAspect)
     vec4 bake;            // world span, halfMap, baked reflection weather scale RG
+    vec4 debug;           // attribution: 0 normal; 1 march; 2 HDRI; 3 waves; 4 movers; 5 shore; 6 post-discard
 } F;
 
 // RUNG-6.5 WATER-REFLECTION PORT: HDRI equirect (copy-once import of GL's
@@ -456,6 +457,7 @@ vec3 waterPoolLights(vec3 wp, vec3 N, vec3 V, float alpha2, out vec3 spec){
 
 void main(void)
 {
+    int debugMode = int(F.debug.x);
     // o_isWater==1 base-water branch (reflection/HDRI OFF -> skipped).
     float time    = F.f0.x;
     vec3  camPos  = F.f0.yzw;
@@ -502,8 +504,8 @@ void main(void)
         shoreOrigin = min(ivec2(floor(grid)), ivec2(uT.visualSide - 2));
         int record = uT.visualSide * uT.visualSide + 2 * (shoreOrigin.x + shoreOrigin.y * uT.visualSide);
         float threshold = heightsFine[record], flat4 = heightsFine[record + 1];
-        bool full = hiresBlendW() != 1.0 || flat4 == 0.0;
-        tent = hiresBlendW() != 1.0 || F.f7.x < threshold; // partial far blend mixes coarse heights: thresholds bound only the fine surface
+        bool full = debugMode != 5 && (hiresBlendW() != 1.0 || flat4 == 0.0);
+        tent = debugMode != 5 && (hiresBlendW() != 1.0 || F.f7.x < threshold); // partial far blend mixes coarse heights: thresholds bound only the fine surface
         if (full) {
             waterSurfaceCache(shoreOrigin, shoreRaw, shoreSurface);
             fineCenter = waterCachedHeight(WorldPos.xy, shoreOrigin, shoreRaw, shoreSurface);
@@ -559,8 +561,9 @@ void main(void)
     // (default 0.22) and the glint strength follows the glint gain (default 0.30). Low/Potato keeps flat geometry:
     // every train goes to roughness. Before the coverage discard so the normal's derivatives stay defined.
     float      footprint = (uT._lightPad1 != 0) ? 1e9 : max(length(shoreDx), length(shoreDy));
-    float      waveVar;
-    PREC vec2  waveSlope = waterWaveSlope(WorldPos.xy, time, footprint, RIPPLE_GAIN / 0.22, waveVar);
+    float      waveVar = 0.0;
+    PREC vec2  waveSlope = vec2(0.0);
+    if (debugMode != 3) waveSlope = waterWaveSlope(WorldPos.xy, time, footprint, RIPPLE_GAIN / 0.22, waveVar);
     PREC vec3  waveN     = normalize(vec3(-waveSlope, 1.0));  // world-XZ wave trains only: no screen-space or noise gradient
     PREC vec3  vdir      = normalize(cameraPos.xyz - WorldPos);  // MC2 Z-up
     // Specular AA: the normal's own screen-space variance (Kaplanyan-Hoffman) on top of the unresolved train variance.
@@ -589,13 +592,14 @@ void main(void)
                                  WorldPos.xy, F.f7.x);
     }
     if (kWaterDbgPass != 1 && shore <= 0.0) discard;
+    if (debugMode == 6) { FragColor = vec4(0.0); GBuffer1 = vec4(0.0); return; }
     if (kWaterDbgPass == 1 || kWaterDbgPass == 2) {
         FragColor = vec4(1.0, 0.0, 1.0, 1.0); GBuffer1 = vec4(0.0); return;
     }
     if (kReflectionCoverage != 0) { FragColor = vec4(1.0); GBuffer1 = vec4(0.0); return; }
     // Option A: material-local response. Shore coverage/bands and reflection tracing stay independent.
     float reactivePixelWidth = max(length(shoreDx), length(shoreDy));
-    vec3 reactive = reactiveWater(WorldPos.xy, reactivePixelWidth) * waveLOD;
+    vec3 reactive = debugMode == 3 ? vec3(0.0) : reactiveWater(WorldPos.xy, reactivePixelWidth) * waveLOD;
 
     // Night: the scattered light, sky ambient floor, glint, sky tint and reflected sky take the mission's night
     // dim (f3.z, 0 by day), so open water reads as dark as the ground around it instead of daylight teal.
@@ -641,7 +645,7 @@ void main(void)
     }
     // WATER-VISUAL-FIRST-SLICE sky tint (strength 0 default -> mix returns col; GL line 328).
     // Beyond the ripple fade distance a mover shadow is sub-pixel on water: skip the blocker search + PCF there.
-    if (waveLOD > 0.0) {
+    if (debugMode != 4 && waveLOD > 0.0) {
         float moverLit = moverVisibility(WorldPos,vec3(0.0,0.0,1.0));
         col *= mix(moverShadowFloor(0.4),1.0,moverLit);
         sunVis *= moverLit;
@@ -663,7 +667,7 @@ void main(void)
         PREC vec3  waveNormal = normalize(waveN + vec3(reactive.xy, 0.0));
         PREC vec3  rdir       = reflect(-vdir, waveNormal);           // MC2 Z-up
         PREC vec3  skyDir     = vec3(rdir.x, rdir.z, -rdir.y);
-        if (u_waterHdriLod >= 0.0) {
+        if (debugMode != 2 && u_waterHdriLod >= 0.0) {
             skyReflCol = waterEvalHdri(rdir);   // rdir in MC2 Z-up, skyYaw applied inside
         } else {
             skyReflCol = clamp(waterEvalSkySh(skyDir) * (1.0 / 3.14159265), 0.0, 2.0);
@@ -675,7 +679,7 @@ void main(void)
         reflectCol = skyReflCol;   // default reflection = sky (fallback/base)
         //PORT-END:waterReflSetup
         vec4 geometry=vec4(0);
-        if (F.DEEP_COLOR.w < -0.5) {
+        if (debugMode != 1 && F.DEEP_COLOR.w < -0.5) {
             geometry = bakedReflection(WorldPos, rdir);
             geometry.rgb *= vec3(F.bake.zw, F.SHALLOW_COLOR.w);
         } else if (F.DEEP_COLOR.w > 0.5) {

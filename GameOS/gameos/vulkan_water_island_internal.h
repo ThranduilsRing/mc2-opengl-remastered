@@ -118,8 +118,9 @@ struct WaterFsParams {
     float f8[4];             // off 176 edgeFeather, edgeFeatherStrength, halfMap, skyTintStrength
     float f9[4];             // off 192 skyTintColor.xyz, projAspect
     float bake[4];           // off 208 world span, halfMap, baked reflection weather scale RG
+    float debug[4];          // off 224 attribution mode (0 = original shader)
 };
-static_assert(sizeof(WaterFsParams) == 224, "WaterFsParams std140 size (water_geom.frag)");
+static_assert(sizeof(WaterFsParams) == 240, "WaterFsParams std140 size (water_geom.frag)");
 static_assert(offsetof(WaterFsParams, f0) == 16 && offsetof(WaterFsParams, f3) == 64 &&
               offsetof(WaterFsParams, DEEP_COLOR) == 80 && offsetof(WaterFsParams, f4) == 112 &&
               offsetof(WaterFsParams, f7) == 160 && offsetof(WaterFsParams, f9) == 192, "WaterFsParams offsets");
@@ -189,6 +190,11 @@ struct WaterIsland : mc2vk::IslandState {
     mc2vk::DescWriteStamp moverStamp[mc2vk::kMaxFramesInFlight]{};   // binding 24 of set[i]
     VkCommandBuffer   cbuf[mc2vk::kMaxFramesInFlight] = {VK_NULL_HANDLE, VK_NULL_HANDLE};  // allocated from `cpool`, freed with it
     mc2vk::GpuTicket  submitted[mc2vk::kMaxFramesInFlight];   // per engine frame slot: the last submit that used cbuf[slot], set[slot] and buffers[slot]
+    mc2vk::OwnedQueryPool profileStats, profileTimes;
+    int profileMode[mc2vk::kMaxFramesInFlight] = {-1, -1};
+    unsigned profileIssued = 2100;
+    unsigned profileCount[7]{};
+    uint64_t profileFragments[7]{}, profileTicks[7]{};
 
     bool descNeedsThinRewrite = true; // thinBuf realloc -> descriptor rewrite
 
