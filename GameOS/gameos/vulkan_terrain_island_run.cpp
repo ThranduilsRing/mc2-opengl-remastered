@@ -561,8 +561,8 @@ static bool record_terrain(TerrainIsland* s, mc2vk::VulkanContext& rctx, uint32_
     }
     if (gos::visual_capture::active()) {
         vlog("[TERRAIN_SPEC_DRAW] frame=%llu view=%s key=%u pipeline=%llu specialized=%d patches=%u",
-            (unsigned long long)g_mc2RenderFrame, s->planar ? "reflection" : "main", s->specLoggedKey,
-            (unsigned long long)(uintptr_t)plan.pipe,
+            static_cast<unsigned long long>(g_mc2RenderFrame), s->planar ? "reflection" : "main", s->specLoggedKey,
+            static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(plan.pipe)),
             plan.pipe != (s->planar ? s->planarPipe.get() : s->pipe.get()), patchN);
     }
     recordOut = [plan = std::move(plan)](VkCommandBuffer cb) -> bool { return record_terrain_cmds(plan, cb); };
@@ -748,14 +748,14 @@ static int run_terrain(int w, int h, TerrainIsland* supplied = nullptr,
             const auto begin = std::chrono::steady_clock::now();
             auto pipe = build_terrain_pipeline(specRecipe, &specKey);
             vlog("[TERRAIN_SPEC] compile view=%s key=%u ok=%d ms=%.3f", specRecipe.planar ? "reflection" : "main",
-                specKey.bits, bool(pipe), std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - begin).count());
+                specKey.bits, static_cast<bool>(pipe), std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - begin).count());
             return pipe;
         }, [&rctx](mc2vk::OwnedPipeline&& pipe) { rctx.retire(std::move(pipe)); });
     s->specSelected = variant ? variant->get() : (s->planar ? s->planarPipe.get() : s->pipe.get());
     if (s->specLoggedKey != specKey.bits || s->specLoggedPipe != s->specSelected || s->specLoggedCompiling != s->specVariants.compiling()) {
         vlog("[TERRAIN_SPEC] select frame=%llu view=%s key=%u pipeline=%llu specialized=%d compiling=%d select_us=%.3f",
-            (unsigned long long)g_mc2RenderFrame, s->planar ? "reflection" : "main", specKey.bits,
-            (unsigned long long)(uintptr_t)s->specSelected, variant != nullptr, s->specVariants.compiling(),
+            static_cast<unsigned long long>(g_mc2RenderFrame), s->planar ? "reflection" : "main", specKey.bits,
+            static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(s->specSelected)), variant != nullptr, s->specVariants.compiling(),
             std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - specBegin).count());
         s->specLoggedKey = specKey.bits; s->specLoggedPipe = s->specSelected;
         s->specLoggedCompiling = s->specVariants.compiling();

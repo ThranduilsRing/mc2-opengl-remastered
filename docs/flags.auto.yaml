@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 429
-registry_entry_count: 124
-verified_count: 400
+gate_count: 428
+registry_entry_count: 123
+verified_count: 399
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -2661,15 +2661,6 @@ flags:
     owner: terrain
     doc: ""
     verified: true
-  - name: MC2_TERRAIN_SPEC
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: terrain
-    doc: "Terrain fragment specialization; 0 keeps the generic main and reflection pipelines."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_TERRAIN_SPEC, kind: Feature, order: -1, default_on: true}
   - name: MC2_TERRAIN_TESS
     kind: Bool
     default: true

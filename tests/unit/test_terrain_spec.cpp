@@ -36,7 +36,7 @@ TEST_CASE("terrain_spec/key canonicalisation domains and round trip") {
         v = u; v.colormapReady = color; v.detailReady = detail; v.concreteDetail = concrete; v.visualMode = visual;
         const auto k = terrainSpecKey(v); const auto a = k.values();
         uint32_t bits = 0;
-        for (unsigned i = 0; i < a.size(); ++i) bits |= uint32_t(a[i]) << (2*i);
+        for (unsigned i = 0; i < a.size(); ++i) bits |= static_cast<uint32_t>(a[i]) << (2*i);
         CHECK(bits == k.bits); keys.insert(k.bits);
     }
     CHECK(keys.size() == 54);

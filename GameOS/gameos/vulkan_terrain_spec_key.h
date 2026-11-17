@@ -28,7 +28,7 @@ template<class Ubo> TerrainSpecKey terrainSpecKey(const Ubo& u) {
     if (!v[6]) v[7] = v[8] = 0;
     if (!v[10]) v[11] = 0;
     TerrainSpecKey key;
-    for (unsigned i = 0; i < v.size(); ++i) key.bits |= uint32_t(v[i]) << (2 * i);
+    for (unsigned i = 0; i < v.size(); ++i) key.bits |= static_cast<uint32_t>(v[i]) << (2 * i);
     return key;
 }
 

@@ -409,7 +409,7 @@ mc2vk::OwnedPipeline build_terrain_pipeline(const TerrainPipelineRecipe& r,
     std::array<VkSpecializationMapEntry, 14> entries{};
     unsigned n = 0;
     const auto add = [&](uint32_t id, int32_t value) {
-        entries[n] = {id, uint32_t(n * sizeof(int32_t)), sizeof(int32_t)};
+        entries[n] = {id, static_cast<uint32_t>(n * sizeof(int32_t)), sizeof(int32_t)};
         data[n++] = value;
     };
     add(0, r.csmDebug);
