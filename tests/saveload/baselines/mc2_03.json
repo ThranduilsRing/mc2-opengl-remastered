@@ -10,7 +10,7 @@
   "MC2_BOOT_QUICKLOAD_AT": "1400"
  },
  "exe": {
-  "sha": "bcf67e583649",
+  "sha": "5ba99e863181",
   "dirty": 0
  },
  "comparison": {
@@ -51,7 +51,7 @@
  "judged": "first-save-only",
  "resave_present": true,
  "packets": 20000,
- "overall": "499fa99a3065e331",
+ "overall": "a2c71300bf14276a",
  "resave_identical": true,
  "resave_matches_policy": true,
  "runs": [
@@ -252,11 +252,11 @@
    "df3f619804a92fdb"
   ],
   [
-   "MechData",
+   "data",
    3378,
    147,
-   522771,
-   "ef0a90e02df6e6ca"
+   536295,
+   "bb11249c21080745"
   ],
   [
    "GroundVehicleData",
@@ -585,7 +585,7 @@
    6519,
    1,
    616282,
-   "d2a7731aee7339c7"
+   "4a5c6ac29b51b6a4"
   ],
   [
    "empty",
