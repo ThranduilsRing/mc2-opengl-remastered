@@ -367,6 +367,7 @@ public:
 		mc2::order_menu::Menu orderMenu;
 		bool updateOrderMenu(bool allowOpen = false, bool overGui = false);
 		void dispatchMenuOrder(const mc2::order_menu::Order& order);
+		static bool isMenuAttackTarget(GameObject* obj);
 
 		// UI-COMMAND-CHANNEL-1: MC2_UI_COMMAND_FILE polling (see missiongui.cpp)
 		void processUiCommandChannel();

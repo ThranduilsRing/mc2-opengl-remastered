@@ -1095,8 +1095,7 @@ bool MissionInterfaceManager::updateOrderMenu(bool allowOpen, bool overGui)
         // Classic only: AOE right-click orders and Alt-camera remain intact.
         if (useLeftRightMouseProfile || overGui ||
             userInput->wasRightDrag() || !userInput->rightMouseReleased() ||
-            !target || target->getTeam() == Team::home || target->isDisabled() || // same predicate as the classic left-click attack (:554, :848)
-            target->isDestroyed()) return false;
+            !isMenuAttackTarget(target)) return false;
         Order captured;
         captured.target = target->getWatchID();
         for (long i = 0; i < Team::home->getRosterSize(); ++i) {
@@ -1130,16 +1129,34 @@ bool MissionInterfaceManager::updateOrderMenu(bool allowOpen, bool overGui)
     ImGui::TextUnformatted("Classic profile | pause orders: single-player");
     ImGui::Separator();
     std::optional<Item> choice;
-    if (ImGui::MenuItem("Attack (default)")) choice = Item::Attack;
-    if (ImGui::MenuItem("Attack short range")) choice = Item::Short;
-    if (ImGui::MenuItem("Attack medium range")) choice = Item::Medium;
-    if (ImGui::MenuItem("Attack long range")) choice = Item::Long;
+    // Rows hit-test against their own rect, so a scripted or otherwise unhovered window still selects.
+    const bool clicked = ImGui::IsMouseClicked(0);
+    auto row = [&](const char* label, Item item, bool enabled) {
+        const bool act = ImGui::MenuItem(label, nullptr, false, enabled);
+        if (!enabled) return;
+        const bool over = ImGui::IsMouseHoveringRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), false);
+        if (over) ImGui::GetWindowDrawList()->AddRectFilled(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), IM_COL32(90, 150, 150, 70));
+        if (act || (over && clicked)) choice = item;
+    };
+    row("Attack (default)", Item::Attack, true);
+    row("Attack short range", Item::Short, true);
+    row("Attack medium range", Item::Medium, true);
+    row("Attack long range", Item::Long, true);
     ImGui::MenuItem("Alpha strike (heat model pending)", nullptr, false, false);
     ImGui::MenuItem("Attack priority (NOT AVAILABLE)", nullptr, false, false);
     ImGui::Separator();
-    if (ImGui::MenuItem("Cancel")) choice = Item::Cancel;
-    const bool outside = ImGui::IsMouseClicked(0) &&
-        !ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
+    row("Cancel", Item::Cancel, true);
+    const ImVec2 wmin = ImGui::GetWindowPos();
+    const ImVec2 wsz = ImGui::GetWindowSize();
+    const ImVec2 wmax(wmin.x + wsz.x, wmin.y + wsz.y);
+    const bool inRect = ImGui::IsMouseHoveringRect(wmin, wmax, false);
+    if (clicked) {
+        std::fprintf(stderr, "[ORDER_MENU] click mouse=(%.0f,%.0f) rect=(%.0f,%.0f)-(%.0f,%.0f) inRect=%d menuHovered=%d wantMouse=%d choice=%d\n",
+            ImGui::GetIO().MousePos.x, ImGui::GetIO().MousePos.y, wmin.x, wmin.y, wmax.x, wmax.y, inRect ? 1 : 0,
+            ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) ? 1 : 0,
+            ImGui::GetIO().WantCaptureMouse ? 1 : 0, choice ? static_cast<int>(*choice) : -1);
+    }
+    const bool outside = clicked && !inRect && !choice;
     ImGui::End();
     ImGui::PopStyleColor(2);
     if (outside) choice = Item::Cancel;

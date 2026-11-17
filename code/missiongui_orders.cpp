@@ -8,11 +8,20 @@
 #include "camera_elevation.h"
 
 
+// The menu opens, and dispatches, on exactly what a classic left-click attack (doAttack) accepts:
+// not friendly to the home team and not a capture target, plus alive.
+bool MissionInterfaceManager::isMenuAttackTarget(GameObject* obj)
+{
+    if (!obj || obj->isDestroyed()) return false;
+    if (obj->isCaptureable(Team::home->getId())) return false;
+    return !Team::home->isFriendly(obj->getTeam());
+}
+
 void MissionInterfaceManager::dispatchMenuOrder(const mc2::order_menu::Order& captured)
 {
     auto* enemy = ObjectManager->getByWatchID(captured.target);
-    if (!enemy || enemy->isDestroyed() || enemy->isDisabled() ||
-        enemy->getTeam() == Team::home) return; // same predicate as the menu gate and the classic left-click attack
+    if (!isMenuAttackTarget(enemy)) return; // one shared predicate with the menu gate
+    std::fprintf(stderr, "[ORDER_MENU] dispatchMenuOrder recipients=%zu range=%d\n", captured.recipients.size(), static_cast<int>(captured.range));
     FireRangeType range = FIRERANGE_OPTIMAL;
     switch (captured.range) {
     case mc2::order_menu::Range::Short: range = FIRERANGE_SHORT; break;
