@@ -81,6 +81,7 @@ vec4 waterCell(mat4 rows, ivec2 k) {
     return k.x == 0 ? vec4(top.xy, bottom.xy)
                    : (k.x == 1 ? vec4(top.yz, bottom.yz) : vec4(top.zw, bottom.zw));
 }
+float waterFineHeight(vec2 worldXY);
 float waterCachedHeight(vec2 worldXY, ivec2 origin, mat4 raw, mat4 surface) {
     // Keep each tap's coordinate arithmetic and triangle interpolation identical.
     vec2 grid = clamp(vec2(worldXY.x + uT.halfMap, uT.halfMap - worldXY.y) / 32.0,
@@ -88,6 +89,9 @@ float waterCachedHeight(vec2 worldXY, ivec2 origin, mat4 raw, mat4 surface) {
     ivec2 p = min(ivec2(floor(grid)), ivec2(uT.visualSide - 2));
     vec2 t = grid - vec2(p);
     ivec2 k = p - origin;
+    // Binary32 tap rounding can escape the three cached cells on either axis.
+    if (any(lessThan(k, ivec2(0))) || any(greaterThan(k, ivec2(2))))
+        return waterFineHeight(worldXY);
     vec4 r = waterCell(raw, k), h = waterCell(surface, k);
     float rawTL = r.x, rawTR = r.y, rawBL = r.z, rawBR = r.w;
     if (abs(rawTR - rawBL) < abs(rawTL - rawBR)) {
