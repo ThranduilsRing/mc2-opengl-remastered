@@ -1,5 +1,5 @@
 #pragma once
-#include <glm/glm.hpp>
+#include "math/glm_config.h"
 #include <cmath>
 
 namespace mc2 {
