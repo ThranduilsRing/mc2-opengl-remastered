@@ -12,6 +12,7 @@
 #include "vulkan_context.h"
 #include "vk_texture_residency.h"
 #include "engine_present_vk.h"
+#include <cstdio>
 #include "utils/mc2log.h"
 
 
@@ -21,14 +22,14 @@ gosRenderer* g_gos_renderer = nullptr;
 // Mission finalization owns both the renderer and the immutable source snapshots.
 void gosRendererPrepareHudTextures() {
     if (!g_gos_renderer) return;
-    auto& present = getOrCreateEnginePresentVk();
+    auto& present = mc2vk::getOrCreateEnginePresentVk();
     for (size_t handle = 1; handle < g_gos_renderer->getTextureListSize(); ++handle) {
         auto* texture = g_gos_renderer->getTexture(static_cast<DWORD>(handle));
         if (!texture) continue;
         gosTextureInfo info;
         texture->getTextureInfo(&info);
         if (info.width_ != 2048 || info.height_ != 2048 || !texture->ensureRgbaMirror()) continue;
-        VkHudDraw draw;
+        mc2vk::VkHudDraw draw;
         draw.textureHandle = static_cast<uint32_t>(handle);
         draw.textureSerial = texture->getContentSerial();
         draw.textureWidth = draw.textureHeight = 2048;
