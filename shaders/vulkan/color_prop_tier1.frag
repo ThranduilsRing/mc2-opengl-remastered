@@ -267,7 +267,7 @@ void main() {
     if (haveAlbedo && uPacket.materialId >= 0 && uPacket.materialId < uPropMaterials.materials.length()) {
         if (kBaseQuality == 2) {
             float materialCoverage;
-            SurfaceMaterial surface = propSurface(uPacket.materialId, materialAlbedo, materialCoverage);
+            SurfaceMaterial surface = propSurface(uPacket.materialId, materialAlbedo, materialCoverage, !treeMaterial);
             if (materialCoverage > 0.0) {
                 materialAO = mix(1.0, surface.ao, materialCoverage);
                 if (!treeMaterial) rgb = mix(rgb, propAuthoredColor(surface, alphaTestClass,
@@ -307,7 +307,8 @@ void main() {
         vec3 direct = propDecodeColor(vMaterialSun) * (propNightSunWeight(wrap, N) + transmission * propNightDirectShare());
         // SH already contains linear irradiance. Preserve the stock albedo exposure ceiling.
         float forestSky = vTree.z;
-        vec3 irradiance = max(ambient,vec3(0))*vTree.x*materialAO*forestSky + direct*(vTree.w*mix(treeVisibility(N), 1.0, vTree.w)); // above the baked shadow line the crown is lit
+        float vis = vTree.w < 1.0 ? treeVisibility(N) : 1.0;
+        vec3 irradiance = max(ambient,vec3(0))*vTree.x*materialAO*forestSky + direct*(vTree.w*mix(vis, 1.0, vTree.w)); // above the baked shadow line the crown is lit
         // Thin leaves retain sky fill through canopy self-occlusion. Fade it
         // with the night profile rather than making dark forests emissive. Full night keeps 0.35*0.35 (was 0.35*0.2: stock-dark
         // leaf albedo read near-black on night maps such as mc2_10).
@@ -316,7 +317,9 @@ void main() {
         // A light, not brighter albedo; it sits outside the albedo exposure ceiling, which kept stock-dark leaves black.
         vec3 nightFill = propFoliageNightAmbient(normalize(outputNormalStuff), alphaTestClass) * (vTree.x * materialAO * forestSky);
         rgb = propEncodeColor(min(albedo, albedo*irradiance) + albedo*nightFill);
-        rgb += propEncodeColor(albedo) * poolLight + vHighlight.rgb*vHighlight.a;
+        vec3 treePoolLight = vec3(0);
+        if (any(notEqual(poolLight, vec3(0)))) treePoolLight = propEncodeColor(albedo) * poolLight;
+        rgb += treePoolLight + vHighlight.rgb*vHighlight.a;
     }
     if (vWindow.x != 0u && uFrame.nightDarkness > 0.0 && (vMaterialFlags & 1u) == 0u) {
         uint h = vWindow.x ^ vWindow.y;
