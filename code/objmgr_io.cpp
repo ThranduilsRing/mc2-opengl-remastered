@@ -830,6 +830,8 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum, bool managerVa
 	invalidateTerrainTickList();
 	objList = entities.reset(getMaxObjects() + 1);
 	mc2::terrainDirtyQueue().reset(getMaxObjects() + 1);
+	staticResident.reset(getMaxObjects() + 1);
+	blockWasActive.assign(Terrain::numObjBlocks, 0);
 	resetPartIdIndex();
 	invalidateSpatialGrid();
 	memset(objList,0,sizeof(GameObjectPtr) * (getMaxObjects() + 1));
