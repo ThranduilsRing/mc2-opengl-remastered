@@ -160,7 +160,7 @@ if(MC2_VULKAN)
         # No layout-affecting header members (extern "C" entry points only).
         # No layout-affecting header members (extern "C" entry points only).
         list(APPEND SOURCES vulkan_water_island.cpp)
-        list(APPEND SOURCES vulkan_water_island_images.cpp vulkan_water_island_init.cpp vulkan_water_island_run.cpp)
+        list(APPEND SOURCES vulkan_water_island_images.cpp vulkan_water_island_init.cpp vulkan_water_island_run.cpp vulkan_water_reflect_bake.cpp)
         # VK-POST-FOG-NATIVE-1 (rung 8.1, VK-RUNG8-LADDER-1): the fog pair (edge+oob)
         # rendered NATIVELY on the shared engine VulkanContext — samples the SHARED
         # scene depth, blends into the SHARED scene color0 in place (zero copies,
@@ -428,6 +428,9 @@ if(MC2_VULKAN)
     set(MC2_VK_SHADER_BASENAMES edge_fog fog_oob hzb_reduce hzb_cull color_prop_cull shadow_debug_overlay water_geom shadow_prop shadow_prop_alpha shadow_mech shadow_terrain_static color_prop_tier1 terrain_tier1 terrain_tier1_skirt mech_tier1 mech_depth legacy_shape_tier1 terrain_overlay_tier1 terrain_decal_tier1 hdri_sky cloud_shadow shoreline screen_shadow_csm impact_decal postprocess postprocess_visual hud_color hud_tex vfx_particle)
     set(MC2_VK_SPV_OUTPUTS "")
     list(APPEND MC2_VK_SHADER_BASENAMES water_reflection_mask)
+    list(APPEND MC2_VK_SHADER_BASENAMES water_geom_early)
+    set(MC2_VK_SHADER_SRC_ALIAS_water_geom_early_frag water_geom)
+    set(MC2_VK_SHADER_DEFINES_water_geom_early_frag -DWATER_EARLY_TESTS=1)
     list(APPEND MC2_VK_SHADER_BASENAMES vfx_indexed)
     set(MC2_VK_SHADER_SRC_ALIAS_vfx_indexed_vert vfx_particle)
     set(MC2_VK_SHADER_SRC_ALIAS_vfx_indexed_frag vfx_particle)

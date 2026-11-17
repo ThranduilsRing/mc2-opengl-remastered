@@ -82,7 +82,7 @@ bool init_island(WaterIsland* s, int w, int h) {
 
     // ---- Descriptor layout/pool/set (2 UBO + 2 SSBO), both stages. ----
     {
-        VkDescriptorSetLayoutBinding b[14]{};
+        VkDescriptorSetLayoutBinding b[16]{};
         b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
         b[1].binding = 1; b[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
@@ -116,9 +116,11 @@ bool init_island(WaterIsland* s, int w, int h) {
         b[12].binding=13; b[12].descriptorType=VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         b[12].descriptorCount=1; b[12].stageFlags=VK_SHADER_STAGE_FRAGMENT_BIT;
         b[13] = {14, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr};
+        b[14] = {9, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr};
+        b[15] = {17, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr};
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        lci.bindingCount = 14; lci.pBindings = b;
+        lci.bindingCount = 16; lci.pBindings = b;
         if (!mc2vk::create(s->dsl, s->device, [&](VkDescriptorSetLayout* h) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); })) {
             vlog("vkCreateDescriptorSetLayout failed."); return false;
         }
@@ -126,7 +128,7 @@ bool init_island(WaterIsland* s, int w, int h) {
         VkDescriptorPoolSize sizes[5]{};
         sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; sizes[0].descriptorCount = 2 * mc2vk::kMaxFramesInFlight;
         sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; sizes[1].descriptorCount = 4 * mc2vk::kMaxFramesInFlight;
-        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[2].descriptorCount = 6 * mc2vk::kMaxFramesInFlight;
+        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[2].descriptorCount = 8 * mc2vk::kMaxFramesInFlight;
         sizes[3].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; sizes[3].descriptorCount = 1 * mc2vk::kMaxFramesInFlight;
         sizes[4].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE; sizes[4].descriptorCount = mc2vk::kMaxFramesInFlight;
         VkDescriptorPoolCreateInfo pci{};
@@ -236,6 +238,14 @@ bool init_island(WaterIsland* s, int w, int h) {
             vlog("vkCreateGraphicsPipelines failed."); return false;
         }
         mc2vk::nameObject(s->device, s->pipe.get(), "water.pipe");
+        s->fragEarly = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "water_geom_early.frag.spv"));
+        if (!s->fragEarly) { setFallback("spv_load_failed"); return false; }
+        stages[1].module = s->fragEarly.get();
+        if (!mc2vk::create(s->pipeEarly, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
+            vlog("vkCreateGraphicsPipelines early water failed."); return false;
+        }
+        mc2vk::nameObject(s->device, s->pipeEarly.get(), "water.pipeEarly");
+        stages[1].module = s->frag.get();
         if (gos_GetWaterFsDebugMode() == 10 || gos_GetWaterFsDebugMode() == 11) {
             const VkSpecializationMapEntry vsEntry{12, 0, sizeof(int32_t)};
             const VkSpecializationMapEntry fsEntry{13, 0, sizeof(int32_t)};

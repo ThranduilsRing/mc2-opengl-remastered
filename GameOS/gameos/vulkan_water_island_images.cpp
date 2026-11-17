@@ -5,6 +5,8 @@
 #include <algorithm>
 #include "vk_one_shot.h"
 #include <filesystem>
+#include "vulkan_terrain_island.h"
+#include "vk_barrier_batch_vk.h"
 
 
 
@@ -52,10 +54,127 @@ bool ensure_shore_surface(WaterIsland* s) {
     return true;
 }
 
+namespace {
+struct WavePackets : mc2vk::IslandState {
+    float span = 0, halfMap = 0;
+    uint32_t size = 0;
+    bool bound[mc2vk::kMaxFramesInFlight]{};
+    mc2vk::OwnedImage image;
+    mc2vk::OwnedImageView view;
+    mc2vk::OwnedSampler sampler;
+};
+
+bool bakePackets(WaterIsland* s, WavePackets& b) {
+    // Store lattice corners, including both ends of every train's map extent.
+    b.size = static_cast<uint32_t>(b.span / 93.0f) + 3;
+    VkImageCreateInfo ci{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
+    ci.imageType = VK_IMAGE_TYPE_2D; ci.format = VK_FORMAT_R8G8B8A8_UNORM;
+    ci.extent = {b.size, b.size, 1}; ci.mipLevels = 1; ci.arrayLayers = 3;
+    ci.samples = VK_SAMPLE_COUNT_1_BIT; ci.tiling = VK_IMAGE_TILING_OPTIMAL;
+    ci.usage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    VmaAllocationCreateInfo ai{}; ai.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+    if (!b.image.create(s->allocator, s->device, ci, ai, "water.wavePackets")) return false;
+    VkImageViewCreateInfo vi{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+    vi.image = b.image.get(); vi.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY; vi.format = ci.format;
+    vi.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 3};
+    if (!mc2vk::create(b.view, s->device, [&](auto* h) { return vkCreateImageView(s->device, &vi, nullptr, h); })) return false;
+    VkSamplerCreateInfo si{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
+    si.magFilter = si.minFilter = VK_FILTER_LINEAR;
+    si.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+    si.addressModeU = si.addressModeV = si.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    if (!mc2vk::create(b.sampler, s->device, [&](auto* h) { return vkCreateSampler(s->device, &si, nullptr, h); })) return false;
+    mc2vk::OwnedDescriptorSetLayout dsl;
+    mc2vk::OwnedDescriptorPool pool;
+    mc2vk::OwnedPipelineLayout layout;
+    mc2vk::OwnedPipeline pipe;
+    const VkDescriptorSetLayoutBinding bindings[] = {
+        {0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr},
+        {1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr}};
+    VkDescriptorSetLayoutCreateInfo di{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
+    di.bindingCount = 2; di.pBindings = bindings;
+    if (!mc2vk::create(dsl, s->device, [&](auto* h) { return vkCreateDescriptorSetLayout(s->device, &di, nullptr, h); })) return false;
+    const VkDescriptorPoolSize sizes[] = {{VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1}, {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1}};
+    VkDescriptorPoolCreateInfo pi{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
+    pi.maxSets = 1; pi.poolSizeCount = 2; pi.pPoolSizes = sizes;
+    if (!mc2vk::create(pool, s->device, [&](auto* h) { return vkCreateDescriptorPool(s->device, &pi, nullptr, h); })) return false;
+    const VkDescriptorSetLayout raw = dsl.get();
+    VkDescriptorSetAllocateInfo alloc{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
+    alloc.descriptorPool = pool.get(); alloc.descriptorSetCount = 1; alloc.pSetLayouts = &raw;
+    VkDescriptorSet set = VK_NULL_HANDLE;
+    if (MC2_VK_ALLOC_SETS(s->device, &alloc, &set) != VK_SUCCESS) return false;
+    struct Params { float span, halfMap; uint32_t size, pad; };
+    const Params params{b.span, b.halfMap, b.size, 0};
+    mc2vk::OwnedBuffer paramsBuffer;
+    if (!paramsBuffer.createFilled(s->allocator, s->device, &params, sizeof(params), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "water.wavePackets.params")) return false;
+    VkPipelineLayoutCreateInfo li{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
+    li.setLayoutCount = 1; li.pSetLayouts = &raw;
+    if (!mc2vk::create(layout, s->device, [&](auto* h) { return vkCreatePipelineLayout(s->device, &li, nullptr, h); })) return false;
+    mc2vk::OwnedShaderModule shader(s->device, load_spv(s->device, spv_dir() + "water_wave_packets.comp.spv"));
+    if (!shader) return false;
+    VkComputePipelineCreateInfo pc{VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO};
+    pc.stage = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0, VK_SHADER_STAGE_COMPUTE_BIT, shader.get(), "main", nullptr};
+    pc.layout = layout.get();
+    if (!mc2vk::create(pipe, s->device, [&](auto* h) { return mc2vk::infra::compute(s->device, VK_NULL_HANDLE, 1, &pc, nullptr, h); })) return false;
+    const VkDescriptorImageInfo image{VK_NULL_HANDLE, b.view.get(), VK_IMAGE_LAYOUT_GENERAL};
+    VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+    write.dstSet = set; write.dstBinding = 0; write.descriptorCount = 1;
+    write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE; write.pImageInfo = &image;
+    vkUpdateDescriptorSets(s->device, 1, &write, 0, nullptr);
+    const VkDescriptorBufferInfo buffer{paramsBuffer.get(), 0, sizeof(params)};
+    write.dstBinding = 1; write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    write.pImageInfo = nullptr; write.pBufferInfo = &buffer;
+    vkUpdateDescriptorSets(s->device, 1, &write, 0, nullptr);
+    auto& ctx = mc2vk::getOrCreateEngineVulkanContext();
+    if (!mc2vk::submitOneShot(ctx, [&](VkCommandBuffer cb) {
+        mc2vk::sync::cmdImageBarrier(ctx, cb, b.image.get(), vi.subresourceRange,
+            VK_IMAGE_LAYOUT_UNDEFINED, VK_PIPELINE_STAGE_2_NONE, 0,
+            VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT);
+        mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_COMPUTE, pipe.get());
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_COMPUTE, layout.get(), 0, 1, &set, 0, nullptr);
+        vkCmdDispatch(cb, (b.size + 7) / 8, (b.size + 7) / 8, 3);
+        mc2vk::sync::cmdImageBarrier(ctx, cb, b.image.get(), vi.subresourceRange,
+            VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_SHADER_SAMPLED_READ_BIT);
+    }, "water wave packet bake")) return false;
+    vlog("WAVE_PACKETS baked size=%u layers=3 format=RGBA8 span=%.1f halfMap=%.1f MiB=%.2f",
+        b.size, b.span, b.halfMap, static_cast<double>(b.size) * b.size * 12 / (1024 * 1024));
+    return true;
+}
+} // namespace
+
+bool prepare_wave_packets(WaterIsland* s, uint32_t par) {
+    Mc2TerrainTier1Feed feed{};
+    if (!mc2_terrain_tier1_get_load_feed(&feed) || feed.mapSide < 2) return false;
+    const float span = 2.0f * feed.halfMap;
+    auto& owner = s->wavePackets;
+    if (owner) {
+        const auto& b = *static_cast<WavePackets*>(owner.get());
+        // No time, weather, camera or frame input: mission dimensions alone define the bake.
+        if (b.span != span || b.halfMap != feed.halfMap)
+            mc2vk::getOrCreateEngineVulkanContext().retire(std::move(owner));
+    }
+    if (!owner) {
+        auto b = std::make_unique<WavePackets>();
+        b->span = span; b->halfMap = feed.halfMap;
+        if (!bakePackets(s, *b)) return false;
+        owner = std::move(b);
+    }
+    auto& b = *static_cast<WavePackets*>(owner.get());
+    if (!b.bound[par]) {
+        const VkDescriptorImageInfo image{b.sampler.get(), b.view.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+        VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+        write.dstSet = s->set[par]; write.dstBinding = 17; write.descriptorCount = 1;
+        write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; write.pImageInfo = &image;
+        vkUpdateDescriptorSets(s->device, 1, &write, 0, nullptr);
+        b.bound[par] = true;
+    }
+    return true;
+}
+
 bool init_reflection(WaterIsland* s) {
     VkImageCreateInfo image{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
     image.imageType=VK_IMAGE_TYPE_2D; image.format=VK_FORMAT_R16G16B16A16_SFLOAT;
-    image.extent={static_cast<uint32_t>(s->w),static_cast<uint32_t>(s->h),1};   // full resolution
+    image.extent={1,1,1}; // descriptor stand-in; the bake owns reflection attachments
     image.mipLevels=1; image.arrayLayers=1; image.samples=VK_SAMPLE_COUNT_1_BIT;
     image.tiling=VK_IMAGE_TILING_OPTIMAL;
     image.usage=VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;

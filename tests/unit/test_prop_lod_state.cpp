@@ -7,6 +7,8 @@
 #include <cstring>
 #include <atomic>
 #include <array>
+#include "mc2fmt.h"
+#include "diagnostic_trace.h"
 
 static void propLodEraseBakedLight(int32_t) {}
 #define mc2EraseBakedStaticLight propLodEraseBakedLight
@@ -31,6 +33,7 @@ bool ready() { return false; }
 void pin(DWORD) {}
 void unpin(DWORD) {}
 }
+namespace mc2::fmt { using ::mc2::fmt::print_err; }
 std::atomic<uint32_t> g_mc2FrameCounter{0};
 PropLodStateMap s_lodState;
 std::unordered_map<uint32_t, PropLodSlots> s_persistentLodSlots;
@@ -62,7 +65,7 @@ std::vector<RecipeRange> s_recipeRanges;
 std::vector<uint32_t> s_recipeRangeFreeList;
 std::unordered_map<uint32_t, int32_t> s_typeIDToRecipeIndex;
 bool s_recipeRecycle = true;
-uint64_t s_registryGeneration = 0, s_totalPinCalls = 0;
+uint64_t s_registryGeneration = 0, s_totalPinCalls = 0, s_contentRevision = 0;
 void releasePinsForRange(RecipeRange&) {}
 void staticPropRegistryClearMaterialCache() {}
 #define SP_TRACE(...) ((void)0)
@@ -107,14 +110,17 @@ struct PropLodLifecycle {
 TEST_CASE_FIXTURE(PropLodLifecycle, "prop_lod_seams: registry erase and recycle bumps binding revision") {
     TG_MultiShape shape;
     const auto a = prop(10), b = prop(20), c = prop(30);
+    const auto contentRevision = GpuStaticPropRegistry::s_contentRevision;
     const int32_t index = GpuStaticPropRegistry::registerRecipe(&shape, {a});
     REQUIRE(index >= 0);
+    CHECK(GpuStaticPropRegistry::s_contentRevision == contentRevision + 1);
     append({a, b});
     const auto erasedSlot = bind().indices[0];
     s_lodState[propLodKey(a)] = 2;
     s_lodState[propLodKey(b)] = 1;
     const auto revision = s_lodState.revision();
     GpuStaticPropRegistry::invalidate(index);
+    CHECK(GpuStaticPropRegistry::s_contentRevision == contentRevision + 2);
     CHECK(s_lodState.revision() > revision);
     CHECK(s_lodState.find(propLodKey(a)) == nullptr);
     CHECK(GpuStaticPropRegistry::registerRecipe(&shape, {c}) == index);

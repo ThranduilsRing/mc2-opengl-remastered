@@ -7,6 +7,15 @@
 
 namespace wp = mc2::waterplanar;
 
+TEST_CASE("water planar: weather ratio includes terrain rain multiplier") {
+    const float baked = wp::weatherLight(60, 20, 0.6f);
+    const float current = wp::weatherLight(45, 15, 0.8f);
+    CHECK(current / baked == doctest::Approx(1.0f));
+    CHECK(wp::weatherLight(60, 20, 1.5f) == 80);
+    CHECK(wp::weatherLight(60, 20, 0) == 0);
+    CHECK(wp::weatherLight(0, 0, 0.8f) == 0);
+}
+
 TEST_CASE("water planar: padded scissor covers ripple and bilinear lookup bounds") {
     const float bounds[4]{-0.5f,-0.25f,0.25f,0.5f};
     for (const auto size : {std::array<int,2>{3840,2160}, std::array<int,2>{1,1}, std::array<int,2>{1279,719}}) {

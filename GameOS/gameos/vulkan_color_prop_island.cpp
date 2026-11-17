@@ -2159,6 +2159,7 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
     // independently of the shared image fence that may name current-frame terrain.
     Mc2ColorPropLightFeed lightFeed{};
     const bool haveLightFeed = mc2_color_prop_island_get_light_feed(&lightFeed);
+    if (target && target->useTargetView) { lightFeed.poolMoverMax = 0; lightFeed.poolMoverDim = 0; }
     mc2vk::VulkanContext& rctx = mc2vk::getOrCreateEngineVulkanContext();
     const VkDeviceSize ringAlign = rctx.frameAlignment();
     const uint32_t instanceCount = feed.count;
@@ -2420,7 +2421,11 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
         for (int k = 0; k < 4; ++k) u.cameraWorldPos[k] = haveLightFeed ? lightFeed.cameraWorldPos[k] : 0.0f;
         // Diagnostic selector in the unused eye-position component; xyz stays the lighting eye.
         u.cameraWorldPos[3] = static_cast<float>(static_cast<int>(mc2::gate::get<"MC2_PROP_DEBUG_VIEW">()));
-        if (target) u.cameraWorldPos[2] = mc2::waterplanar::wp_mirror_z(u.cameraWorldPos[2], target->water);
+        if (target && target->cameraPos) {
+            u.cameraWorldPos[0] = target->cameraPos[0];
+            u.cameraWorldPos[1] = -target->cameraPos[2];
+            u.cameraWorldPos[2] = target->cameraPos[1];
+        } else if (target) u.cameraWorldPos[2] = mc2::waterplanar::wp_mirror_z(u.cameraWorldPos[2], target->water);
         u.poolF[0] = lightFeed.poolMoverDim; u.poolF[1] = lightFeed.poolMoverScale; u.poolF[2] = lightFeed.poolObjScale; u.poolF[3] = mc2::options::current().shadowQuality == 0 ? 0.0f : objectView ? 2.0f : 1.0f;
         u.poolI[0] = poolN;                  u.poolI[1] = lightFeed.poolSoft;
         u.poolI[2] = lightFeed.poolMoverMax; u.poolI[3] = lightFeed.poolCompress;
@@ -2553,7 +2558,8 @@ bool prewarmProps(std::unique_ptr<mc2vk::IslandState>& state, int w, int h) {
         state = std::move(fresh);
     }
     auto* s = static_cast<PlanarProps*>(state.get());
-    if (!s->inited && !init_island(s, w, h)) return false;
+    // Pipelines borrow the realized scene formats; only recording uses the target extent.
+    if (!s->inited && !init_island(s, main->w, main->h)) return false;
     if (!prepare_mission_resources(s)) return false;
     if (!s->boundsReady) {
         Mc2ShadowGeomFeed geom{};
@@ -2574,7 +2580,7 @@ bool prepareProps(std::unique_ptr<mc2vk::IslandState>& state, const Target& targ
     if (!prewarmProps(state, target.w, target.h)) return false;
     auto* s = static_cast<PlanarProps*>(state.get());
     // Match the object projection; only the view-dependent instance list remains per frame.
-    const float* objectMatrix = gos_GetObjectFixBMVPMat4();
+    const float* objectMatrix = target.useTargetView ? target.mainWorldToClip : gos_GetObjectFixBMVPMat4();
     if (!objectMatrix) return false;
     const View view(objectMatrix, target.water);
     preparePropInstances(view, s->bounds, s->reflectedInstances);
