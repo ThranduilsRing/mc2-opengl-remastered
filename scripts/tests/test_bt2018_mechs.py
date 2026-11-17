@@ -377,6 +377,21 @@ def test_native_clip_baker_decodes_streamed_dense_and_constant_curves():
     assert vals.tolist() == [[1.0, 0.0, 7.0], [2.0, 5.0, 7.0], [5.0, 10.0, 7.0]]
 
 
+def test_baked_clip_buffer_views_stay_inside_the_binary_chunk(tmp_path):
+    """Trigger: bake_clips.add_to_glb. f8 keys once sized views at 2x the f4 bytes written: Assimp rejected 50/51 GLBs (3 mechs drew placeholders)."""
+    pygltflib = pytest.importorskip("pygltflib")
+    import numpy as np
+    from tools.bt2018_extract import bake_clips as B
+    g = pygltflib.GLTF2(nodes=[pygltflib.Node(name="j_Root")], buffers=[pygltflib.Buffer(byteLength=4)])
+    g.set_binary_blob(b"\0\0\0\0")
+    g.save(str(tmp_path / "in.glb"))
+    rots = {"j_Root": np.tile(np.array([0.0, 0.0, 0.0, 1.0]), (3, 1))}   # float64, like the baker's output
+    B.add_to_glb(str(tmp_path / "in.glb"), str(tmp_path / "out.glb"), {"atlas_idle": (0.1, rots)})
+    out = pygltflib.GLTF2().load(str(tmp_path / "out.glb"))
+    end = len(out.binary_blob())
+    assert all(v.byteOffset + v.byteLength <= end for v in out.bufferViews)
+
+
 # ---------------------------------------------------------------- P6 icons
 
 

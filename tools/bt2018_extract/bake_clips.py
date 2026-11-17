@@ -104,8 +104,9 @@ def add_to_glb(src, dst, clips):
     g.animations = [a for a in g.animations if a.name not in clips]
     def put(arr, kind, minmax=False):
         while len(blob) % 4: blob.append(0)
+        arr = np.asarray(arr).astype('<f4')   # the view length must be the f4 bytes written, not the caller's (f8) nbytes
         g.bufferViews.append(BufferView(buffer=0, byteOffset=len(blob), byteLength=arr.nbytes))
-        blob.extend(arr.astype('<f4').tobytes())
+        blob.extend(arr.tobytes())
         g.accessors.append(Accessor(bufferView=len(g.bufferViews) - 1, componentType=5126, count=len(arr), type=kind,
                                     min=[float(arr.min())] if minmax else None, max=[float(arr.max())] if minmax else None))
         return len(g.accessors) - 1
