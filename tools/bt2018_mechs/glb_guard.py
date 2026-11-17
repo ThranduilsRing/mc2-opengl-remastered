@@ -80,12 +80,48 @@ def validate_glb(path) -> list[str]:
     return bad
 
 
+_DROPPED = ("_explode", "_dmg", "blip", "indc", "uix")   # mclib/mech_texname_derive.h isDroppedMeshName
+
+
+def _tga_name(image) -> str:
+    """The MC2 texture name the importer derives from a glTF image (mech_texname::deriveName, no alpha prefix)."""
+    stem = (image.name or image.uri or "").replace("\\", "/").rsplit("/", 1)[-1].rsplit(".", 1)[0].lower()
+    return "".join(c if (c.isalnum() and c.isascii()) or c in "_-" else "_" for c in stem) + ".tga"
+
+
+def skin_texture_problems(path, texture_dirs=()) -> list[str]:
+    """What the engine's skinned-mech import (assimp_importer.cpp slot-0 pick) needs: every intact part's material has a
+    base colour texture; the texture covering the most vertices is the skin, and its derived .tga must ship in
+    texture_dirs (when given). Skin joints and animation targets must not be dedupe-renamed (name-bound everywhere)."""
+    from pygltflib import GLTF2
+    g = GLTF2().load(str(path))
+    bad = []
+    verts: Counter = Counter()
+    for n in g.nodes:
+        if n.mesh is None or n.skin is None or any(k in (g.meshes[n.mesh].name or n.name or "").lower() for k in _DROPPED):
+            continue
+        for p in g.meshes[n.mesh].primitives:
+            m = g.materials[p.material] if p.material is not None else None
+            tex = m.pbrMetallicRoughness.baseColorTexture if m is not None and m.pbrMetallicRoughness else None
+            if tex is None:
+                bad.append(f"intact part '{n.name}' uses material {p.material} without a base colour texture")
+                continue
+            verts[_tga_name(g.images[g.textures[tex.index].source])] += g.accessors[p.attributes.POSITION].count
+    if verts and texture_dirs:
+        skin = verts.most_common(1)[0][0]
+        if not any((Path(d) / skin).is_file() for d in texture_dirs):
+            bad.append(f"skin texture '{skin}' (most vertices) is not in the pack")
+    joints = {j for s in g.skins for j in s.joints} | {c.target.node for a in g.animations for c in a.channels}
+    bad += [f"joint/animation node '{g.nodes[j].name}' was dedupe-renamed" for j in sorted(joints) if "__dup" in (g.nodes[j].name or "")]
+    return bad
+
+
 def validate_pack_glbs(root) -> dict[str, list[str]]:
     """{relative path: problems} for every bad *.glb under root."""
     root = Path(root)
     out = {}
     for p in sorted(root.rglob("*.glb")):
-        bad = validate_glb(p)
+        bad = validate_glb(p) + (skin_texture_problems(p, [root / "data" / "tgl"]) if (root / "data" / "tgl").is_dir() else [])
         if bad:
             out[p.relative_to(root).as_posix()] = bad
     return out

@@ -665,3 +665,39 @@ def test_pack_guard_catches_the_prefix_baker_bug(tmp_path):
     g.set_binary_blob(b"\0" * g.buffers[0].byteLength)
     g.save(str(src))
     assert G.validate_glb(src)
+
+
+def test_pack_guard_picks_the_dominant_skin_texture_and_flags_untextured_parts(tmp_path):
+    """Trigger: glb_guard.skin_texture_problems (raven.glb: first skinned part used the weapons atlas -> untextured white mech)."""
+    pg = pytest.importorskip("pygltflib")
+    from tools.bt2018_mechs import glb_guard as G
+
+    def mat(tex):
+        return pg.Material(pbrMetallicRoughness=pg.PbrMetallicRoughness(baseColorTexture=pg.TextureInfo(index=tex) if tex is not None else None))
+
+    def prim(material, count):
+        return pg.Primitive(attributes=pg.Attributes(POSITION=count), material=material)
+
+    g = pg.GLTF2(
+        nodes=[pg.Node(name="j_Root"), pg.Node(name="forearm", mesh=0, skin=0), pg.Node(name="torso", mesh=1, skin=0),
+               pg.Node(name="torso_dmg", mesh=2, skin=0)],
+        skins=[pg.Skin(joints=[0])],
+        meshes=[pg.Mesh(name="forearm", primitives=[prim(1, 0)]), pg.Mesh(name="torso", primitives=[prim(0, 1)]),
+                pg.Mesh(name="torso_dmg", primitives=[prim(2, 0)])],
+        accessors=[pg.Accessor(count=10), pg.Accessor(count=900)],
+        materials=[mat(0), mat(1), mat(None)],
+        textures=[pg.Texture(source=0), pg.Texture(source=1)],
+        images=[pg.Image(name="chrTxrMech_x-base-alb.png"), pg.Image(name="chrTxrMech_x-weapons-alb.png")])
+    p = tmp_path / "x.glb"
+    g.save(str(p))
+    tex = tmp_path / "tgl"
+    tex.mkdir()
+    assert any("not in the pack" in b and "base-alb" in b for b in G.skin_texture_problems(p, [tex]))   # weapons-first pick would have passed
+    (tex / "chrtxrmech_x-base-alb.tga").write_bytes(b"")
+    assert G.skin_texture_problems(p, [tex]) == []                                                       # _dmg part without texture is dropped, not flagged
+    g.materials[0] = mat(None)
+    g.save(str(p))
+    assert any("without a base colour texture" in b for b in G.skin_texture_problems(p))
+    g.nodes[0].name = "j_Root__dup2"
+    g.save(str(p))
+    assert any("dedupe-renamed" in b for b in G.skin_texture_problems(p))

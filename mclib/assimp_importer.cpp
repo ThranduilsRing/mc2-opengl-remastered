@@ -1962,6 +1962,9 @@ long ImportGeometryFromFile(mc2::czstring path, TG_TypeMultiShape* out, bool aut
 		};
 		std::string baseTex = "NULLTXM";
 		bool gotVariant = false;
+		// Otherwise the texture covering the most vertices wins: the first skinned part can
+		// be a weapon-atlas sub-primitive (Raven's forearm), which left the body untextured.
+		std::map<std::string, unsigned> texVerts;
 		for (unsigned m = 0; m < scene->mNumMeshes; ++m) {
 			const aiMesh* me = scene->mMeshes[m];
 			if (me->mNumVertices == 0 || me->mNumBones == 0 || skelMeshDropped(me->mName.C_Str())) continue;
@@ -1970,7 +1973,12 @@ long ImportGeometryFromFile(mc2::czstring path, TG_TypeMultiShape* out, bool aut
 			auto nm = DeriveMC2TextureName(scene, mat);
 			if (!nm) continue;
 			if (isVariantMat(matName.C_Str())) { baseTex = *nm; gotVariant = true; break; }
-			if (!gotVariant && baseTex == "NULLTXM") baseTex = *nm;
+			texVerts[*nm] += me->mNumVertices;
+		}
+		if (!gotVariant) {
+			unsigned best = 0;
+			for (const auto& [texName, count] : texVerts)
+				if (std::exchange(best, std::max(best, count)) < count) baseTex = texName;
 		}
 		asset.materials.push_back({baseTex, false});
 		MECH_SKEL_TRACE("file='%s' mech skin slot0 tex='%s'", path, baseTex.c_str());
