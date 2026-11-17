@@ -654,7 +654,9 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 							// Reasons overlap: a shared call is charged to each applicable reason, never summed across reasons.
 							return unsigned(inView && !appearance->IsStaticNow()) |
 								(unsigned(walkObj->getFlag(OBJECT_FLAG_FALLING)) << 1) |
-								(unsigned(building && building->hasFrameLights()) << 2) |
+								// Offscreen lights are persistent; only a visible owner emits frame-local effects.
+								// Camera invalidation revisits non-residents when they can become visible again.
+								(unsigned(inView && building && building->hasFrameLights()) << 2) |
 								// Keep frame-local light rows live until the permanent bake exists.
 								(unsigned(building && building->residentRenderBlocker() == BldgAppearance::ResidentBlocker::Light) << 3) |
 								(unsigned(terrainKind && static_cast<TerrainObject*>(walkObj)->hasPresentationEffects()) << 4);
