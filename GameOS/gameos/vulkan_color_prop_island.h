@@ -51,6 +51,7 @@ void mc2_color_prop_island_end_frame(void);
 // geometry finalize until the next map load. Returns 0 before finalize. Lets a backend build its own buffers without a GL
 // readback; implemented by the static-prop batcher (gos_static_prop_batcher_finalize.cpp).
 int mc2_static_prop_geometry_cpu(const void** vbo, uint64_t* vboBytes, const void** ibo, uint64_t* iboBytes);
+
 // Baked packet coverage: 0 opaque, 1 normal core/fringe, 2 explicit late fringe.
 // Both nonzero modes keep LOD-aware coverage and depth-writing opaque cores.
 int mc2_static_prop_packet_alpha_test(uint32_t packet);
@@ -71,6 +72,13 @@ void mc2_vk_color_prop_island_destroy();
 
 #ifdef __cplusplus
 }
+
+// Tree LOD chains: re-type instances of a chain's types to its far tier (reflection feed, shadow bake casters); resort keeps
+// the list typeID-ordered for run-grouped feeds. mc2_static_prop_lod_skips_late: tiers >= 1 take no second (fringe/late) leaf draw (hard cutout only).
+#include <span>
+struct GpuStaticPropInstance;
+void mc2_static_prop_retype_far_tier(std::span<GpuStaticPropInstance> instances, bool resort = true);
+int mc2_static_prop_lod_skips_late(uint32_t typeID);
 #endif
 
 #endif // MC2_VULKAN_COLOR_PROP_ISLAND_H

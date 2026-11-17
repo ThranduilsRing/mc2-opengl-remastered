@@ -64,7 +64,7 @@ import console_child  # noqa: E402  (windowless console children without a conho
 sys.path.insert(0, HERE)
 import _git_util, lane_merge_baseline, lane_merge_conflicts, lane_merge_trust  # noqa: E402  (shared git helpers; the trusted-copy hand-off)
 from lint_slots import LintSlots, cpu_masks, pin_cpus, scratch_dir, sweep_stale_scratch  # noqa: E402
-from lane_precheck import PRECHECK_TREE, Stop, TreeLock, _inside, base_rot, ensure_precheck_tree, failure_line, failure_summary, precheck_scratch_base  # noqa: E402,F401
+from lane_precheck import PRECHECK_TREE, SCRATCH_CLONE_ARGS, Stop, TreeLock, _inside, base_rot, ensure_precheck_tree, failure_line, failure_summary, precheck_scratch_base  # noqa: E402,F401
 from lane_sim_rows import SIM_ROWS, default_sim_install, run_sim_rows, sim_rows_satisfied, sim_sensitive_paths, tip_changed_paths  # noqa: E402,F401
 from lane_merge_stage import STAGE_HELP, bisect, bisect_step, promote, refuse_direct_nifty, stage  # noqa: E402,F401
 
@@ -95,13 +95,14 @@ GENERATORS = [
     ("ownership inventory", "tools/own_inventory.py", ["--write-baseline"]),
     ("Vulkan ownership", "tools/vk_ownership_ledger.py", ["--write"]),
 ]
+GENERATOR_ROWS = dict(zip((g[0] for g in GENERATORS), (
+    "log_tag_census", "pointer_order_scan", "gated_layout_macros", "binding_slots",
+    "shader_interface", "shader_interface", "own_inventory", "vk_ownership")))
 
 # Files that are pure functions of the tree: on conflict the lane's copy is taken and the
 # ratchet --tighten run below regenerates them against the merged result.
 REGENERABLE = {
-    "tools/file_size_ratchet.baseline.json",
     "tools/cxx17_ratchet/baseline.json",
-    "tools/axis_swizzle_ratchet.baseline.json",
     "scripts/gl_shader_variants.json",
 }
 REGENERABLE.update(p for p in ARTIFACTS if p.endswith((".json", ".md")))
@@ -152,13 +153,10 @@ def is_regenerable(path):
     return path in REGENERABLE or is_generated(path) or any(path.startswith(scope + "/") for scope in ARTIFACTS)
 # The baselines the follow-up commit may contain (never a glob over tools/).
 TIGHTENED_BASELINES = [
-    "tools/file_size_ratchet.baseline.json",
     "tools/cxx17_ratchet/baseline.json",
-    "tools/axis_swizzle_ratchet.baseline.json",
 ]
 # (label, script relative to the tools dir, args)
 RATCHETS = [
-    # proof-diet: the file_size and axis_swizzle count gates are cut (the tools stay as advisory reports).
     ("cxx17", "cxx17_ratchet/cxx17_ratchet.py", ["--check", "--worktree"]),
     ("split_map", "split/split_map.py", ["--check"]),
 ]
@@ -784,7 +782,7 @@ def regenerate_derived(root: str, base: str) -> list[str]:
 
     Tighten-only: the log tag census may only gain emitters and the gate population floor may only follow additions
     (or retirements listed in Gates/retired_names.json). Anything else restores the file and stops the window (exit 6)."""
-    changed = list(regenerate_all(root))
+    changed = list(regenerate_all(root, base=base))
     live = Path(root) / LOG_TAG_BASELINE
     old = _git_json(root, "HEAD", LOG_TAG_BASELINE)
     if old is not None and live.is_file():
@@ -844,7 +842,7 @@ def require_clean_generator_inputs(root):
                        + "\n  ".join(path for _, path in dirty))
 
 
-def regenerate_all(root, *, dry_run=False):
+def regenerate_all(root, *, dry_run=False, base=None):
     """Regenerate the committed tree in isolation for dry runs; never bless preexisting edits."""
     if dry_run:
         # A disposable local clone lets every generator use its normal paths and
@@ -852,12 +850,12 @@ def regenerate_all(root, *, dry_run=False):
         proof_root = "E:/mc2-archive-2026-10/proofs" if os.path.isdir("E:/mc2-archive-2026-10/proofs") else None
         with tempfile.TemporaryDirectory(prefix="regen-", dir=proof_root) as scratch:
             snapshot = os.path.join(scratch, "tree")
-            r = run(root, ["git", "clone", "--quiet", "--shared", "--no-checkout", os.path.abspath(root), snapshot])
+            r = run(root, ["git", *SCRATCH_CLONE_ARGS, os.path.abspath(root), snapshot])
             if r.returncode:
                 raise Stop(6, r.stdout)
             sha = git_out(root, "rev-parse", "HEAD")
             git_out(snapshot, "checkout", "--quiet", "--detach", sha)
-            changed = regenerate_all(snapshot)
+            changed = regenerate_all(snapshot, base=base)
             print(f"regenerate-all dry-run at {sha[:9]}: " + (", ".join(changed) or "nothing to change"))
             return changed
     overlaps = artifact_changes(root)
@@ -878,6 +876,17 @@ def regenerate_all(root, *, dry_run=False):
         return label, run(root, [sys.executable, "-B", os.path.join(root, script), *args])
     # Compiled SPIR-V is toolchain-bound: the Linux box's output differs byte-wise from the committed Windows build, so it is skipped there.
     gens = [g for g in GENERATORS if os.name == 'nt' or g[0] != 'SPIR-V pilots']
+    base = base or os.environ.get("MC2_GATE_BASE")
+    if base:
+        import contracts_cache as cc
+        paths = set(lines(git_out(root, "diff", "--name-only", base, "HEAD")))
+        declarations, universe = cc.load_decls(root), cc.Universe(root)
+        gens = [g for g in gens if GENERATOR_ROWS.get(g[0]) not in declarations
+                or paths.intersection(cc.row_inputs(root, universe, g[1], declarations[GENERATOR_ROWS[g[0]]]))
+                or any(cc._match(p, s) for p in paths for s in declarations[GENERATOR_ROWS[g[0]]])]
+    if not gens:
+        print("regenerate-all: no declared inputs changed")
+        return []
     with ThreadPoolExecutor(max_workers=min(REGEN_WORKERS, len(gens))) as pool:
         results = list(pool.map(generate, gens))
     for label, r in results:
@@ -966,7 +975,12 @@ def lint(root: str, ref: str, runner=None) -> int:
 def _lint_locked(root: str, ref: str, runner=None) -> int:
     """`--lint REF`: the precheck's fast local checks (ratchets, callers, early rows, ungated tags)
     run concurrently at REF in shared clones; every red is printed with its fix. No Python suites, no link. Exit 0 = clean."""
+    real_runner = runner is None
     runner, started, failed = runner or run, time.monotonic(), []   # type: ignore[var-annotated]
+    import contracts_cache as cc
+    receipt_tip, rotations = cc.clean_tip(root), []
+    if real_runner:
+        cc.record_tip_pass(root, "lint", receipt_tip, False)
     try:
         sha = git_out(root, "rev-parse", ref + "^{commit}")
         base_ref = git_out(root, "rev-parse", "claude/nifty-mendeleev^{commit}")
@@ -979,7 +993,7 @@ def _lint_locked(root: str, ref: str, runner=None) -> int:
     # lint never takes the precheck TreeLock (own shared clones)
     with scratch_dir("lane-lint-", precheck_scratch_base(root)) as scratch:
         snap = os.path.join(scratch, "tree")   # one checkout shared by all rows
-        r = run(root, ["git", "clone", "--quiet", "--shared", "--no-checkout", os.path.abspath(root), snap])
+        r = run(root, ["git", *SCRATCH_CLONE_ARGS, os.path.abspath(root), snap])
         if r.returncode:
             print("LINT FAIL clone failed: " + failure_summary(r.stdout))
             return 1
@@ -991,6 +1005,8 @@ def _lint_locked(root: str, ref: str, runner=None) -> int:
                 t0 = time.monotonic()
                 r = runner(snap, cmd)
                 rot = base_rot(snap, base_ref, label, cmd, r, runner)
+                if rot:
+                    rotations.append(label)
                 out.append((label, 0 if rot else r.returncode, time.monotonic() - t0, failure_summary(r.stdout), hint))
             return out
         from concurrent.futures import ThreadPoolExecutor
@@ -1007,6 +1023,8 @@ def _lint_locked(root: str, ref: str, runner=None) -> int:
                         failed.append(label)
                     report_lint_row(label, rc, secs, tail, hint)
     print("LINT " + ("FAIL " + ", ".join(failed) if failed else "PASS") + f" WALL={time.monotonic() - started:.0f}s (the precheck still runs the Python suites and the link)")
+    if real_runner:
+        cc.record_tip_pass(root, "lint", receipt_tip, not failed and not rotations and receipt_tip == sha)
     return int(bool(failed))
 
 
@@ -1030,10 +1048,15 @@ def write_receipt(root: str, tip: str, with_link, verdict: str, sim_rows: dict |
             "verdict": verdict, "link": bool(with_link), "when": time.time()}
     if sim_rows is not None:
         body["sim_rows"] = sim_rows
-    tmp = receipt_path(sha) + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(body, f)
-    os.replace(tmp, receipt_path(sha))
+    tmp = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", dir=PRECHECK_RECEIPTS, delete=False, encoding="utf-8") as f:
+            tmp = f.name
+            json.dump(body, f)
+        os.replace(tmp, receipt_path(sha))
+    finally:
+        if tmp and os.path.exists(tmp):
+            os.unlink(tmp)
 
 
 def missing_receipts(root: str, refs: list[str]) -> list[str]:
@@ -1140,7 +1163,7 @@ def precheck(root: str, tip: str, with_link: bool | None = None, sim_rows: bool 
             def chain(i):
                 snapshot = os.path.join(scratch, f"tree{i}")
                 t0 = time.monotonic()
-                r = run(root, ["git", "clone", "--quiet", "--shared", "--no-checkout", os.path.abspath(root), snapshot])
+                r = run(root, ["git", *SCRATCH_CLONE_ARGS, os.path.abspath(root), snapshot])
                 if r.returncode:
                     raise Stop(5, "clone failed: " + failure_summary(r.stdout))
                 git_out(snapshot, "checkout", "--quiet", "--detach", commit)
@@ -1521,7 +1544,7 @@ def merge_tip(root: str, tools_dir: str, p: dict, message: str, resolutions: dic
     semantic = semantic_precheck(root, tools_dir, p["lane_files"]) or lane_merge_baseline.base_baseline_check(root, tools_dir, git_out(root, "rev-parse", "HEAD^1"), ratchets, RATCHET_BASELINES, run, git, lines)
     if semantic:
         return merge_sha, None, semantic
-    artifacts = regenerate_all(root)
+    artifacts = regenerate_all(root, base=p["head"])
     artifact_follow = None
     if artifacts:
         try:

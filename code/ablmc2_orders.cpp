@@ -344,7 +344,7 @@ void execOrderWithdraw(void) {
 	if (!ABLi_getSkipOrder()) {
 		glm::vec3 location;
 		location = glm::vec3(0.0f);
-		ABLi_pushInteger(0);
+		ABLi_pokeInteger(0);
 
 		if (CurWarrior)
 			CurWarrior->orderWithdraw(false, ORDER_ORIGIN_COMMANDER, location);

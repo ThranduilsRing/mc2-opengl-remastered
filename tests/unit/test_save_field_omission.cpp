@@ -22,7 +22,9 @@ bool operator==(const ImportedAnimState& a, const ImportedAnimState& b) {
 
 #define IMPORTED_MEMBERS &T::activeClip, &T::pendingClip, &T::pendingStreak, &T::turnStreak, \
     &T::havePrev, &T::prevPx, &T::prevPy, &T::prevPz, &T::prevHeading, &T::clipTimeSec, \
-    &T::durationSec, &T::lastFrame, &T::phase, &T::mode, &T::locomotion
+    &T::durationSec, &T::lastFrame, &T::phase, &T::mode, &T::locomotion, &T::previousClip, \
+    &T::previousClipTimeSec, &T::fadeTimeSec, &T::playRate, &T::previousPlayRate, \
+    &T::previousDurationSec, &T::previousOnce, &T::fadeSourceLocals
 #define ANIM_MEMBERS &T::mechFrameRate, &T::leftArmOff, &T::rightArmOff, &T::fallen, \
     &T::forceStop, &T::atTransitionToNextGesture, &T::inReverse, &T::inJump, &T::jumpSetup, \
     &T::jumpAirborne, &T::oncePerFrame, &T::lockRotation, &T::velocity, &T::currentStateGoal, \
@@ -35,6 +37,9 @@ bool operator==(const ImportedAnimState& a, const ImportedAnimState& b) {
     &T::destructionSerial, &T::imported
 
 namespace save_probe {
+template<> inline void pattern(std::array<float, 16>& value, unsigned char seed) {
+    for (auto& element : value) pattern(element, seed);
+}
 template<> inline void pattern(mc2clip::Phase& value, unsigned char seed) {
     value = {int(seed), true, true};
 }
@@ -72,10 +77,11 @@ TEST_CASE("save fields: ANIM independent member census") {
         using T = ImportedAnimState;
         imported = save_probe::patterned<T>(IMPORTED_MEMBERS);
         SAVE_FIELD_SHAPE(imported, activeClip, pendingClip, pendingStreak, turnStreak, havePrev,
-            prevPx, prevPy, prevPz, prevHeading, clipTimeSec, durationSec, lastFrame, phase, mode, locomotion);
+            prevPx, prevPy, prevPz, prevHeading, clipTimeSec, durationSec, lastFrame, phase, mode, locomotion,
+            previousClip, previousClipTimeSec, fadeTimeSec, playRate, previousPlayRate, previousDurationSec, previousOnce, fadeSourceLocals);
         SAVE_FIELD_SHAPE(imported.phase, prevGesture, jumpStarted, landing);
         imported.phase = {0x15151515, true, true};
-        CHECK(save_probe::memberBytes<T>(IMPORTED_MEMBERS) + 6 == sizeof(T));
+        CHECK(save_probe::memberBytes<T>(IMPORTED_MEMBERS) + 9 == sizeof(T));
         CHECK(save_probe::roundtrip(imported, [](auto& a, auto& v) { a(v); }, IMPORTED_MEMBERS));
     }
     using T = UnitAnimState;
@@ -89,12 +95,8 @@ TEST_CASE("save fields: ANIM independent member census") {
         velocityMagnitude, gvAnimationState, gvFrameRate, isReversed, isLooping, setFirstFrame,
         canTransition, bdAnimationState, bdFrameRate, withdrawSeconds, smokeLevel, wakeRequested,
         activityEffect, activityLoop, ejectionSerial, destructionSerial, imported);
-    // Native padding differs by ABI: the long members are 4 bytes (LLP64) on Windows, 8 (LP64) on Linux.
-#ifdef _WIN32
+    // Fixed-width animation words give both 64-bit hosts the Windows layout.
     constexpr size_t animPadding = 14;
-#else
-    constexpr size_t animPadding = 26;
-#endif
     CHECK(save_probe::memberBytes<T>(ANIM_MEMBERS) + animPadding == sizeof(T));
     CHECK(save_probe::roundtrip(sample, [](auto& a, auto& v) { a(v); }, ANIM_MEMBERS));
 }

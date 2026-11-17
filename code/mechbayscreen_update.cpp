@@ -101,6 +101,10 @@ void MechBayScreen::drawWeightMeter(long xOffset, long yOffset)
 
 void MechBayScreen::update()
 {
+	if (std::getenv("MECH_PREVIEW_CAPTURE") && !pCurMech) {
+		auto group = LogisticsData::instance->getForceGroup();
+		if (!group.empty()) setMech(group.front(), false);
+	}
 	// MC2_BOOT_TO_MECHLAB harness: once a mech is selected in the bay (e.g. via
 	// MC2_SOAK_AUTO_PURCHASE), auto-click "Modify Mech" to enter the mech lab so
 	// its component palette loads/renders for capture + file-resolve tracing.

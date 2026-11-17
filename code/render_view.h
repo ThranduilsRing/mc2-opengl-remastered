@@ -22,6 +22,11 @@ namespace RenderCore { class FrameArena; }
 
 namespace mc2::render_view {
 
+// Zero radii keep airborne movers out of the vegetation's ground-only XY mask.
+inline constexpr float groundFootprintRadius(float extentRadius, bool jumping, bool airborne) {
+    return jumping || airborne ? 0.0f : (extentRadius < 4.0f ? 4.0f : extentRadius);
+}
+
 struct RenderClock {
     int32_t turn = 0;
     float scenarioTime = 0.0f;
@@ -68,6 +73,7 @@ struct RenderView {
     // Artillery: strike appearance, bomber. A pool reuse on the tick retires both at the join, never mid-draw.
     Appearance* appearances[2]{};
     glm::vec3 position{0.0f};  // sim position
+    std::vector<glm::vec3> groundFeet; // world-space foot locators copied before the next tick
     glm::vec3 aux[3]{};
     uint32_t watchId = 0;
     uint32_t generation = 0;   // obj->generation at extract; the draw skips the view when the slot was re-inited

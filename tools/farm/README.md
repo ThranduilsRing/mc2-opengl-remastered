@@ -1,5 +1,23 @@
 # Farm desktop runner
 
+## Laptop mod-smoke
+
+Copy the required mod folder (read-only source) into
+`E:/mc2-tmp/slot09/delta/mods/<mod-id>`, then run:
+`py -3 tools/farm/host.py submit --exe build64-ninja/mc2.exe --data-delta E:/mc2-tmp/slot09/delta tools/farm/mod-smoke.json`.
+The recipe names `--mod`, `--mission`, `--seconds` (1–30), and optional
+`--steps save:60,load:90` (simulation ticks); copy/edit the JSON for another
+mission or remove `--steps` for a capture only. Set `--capture-frame` to choose
+the live camera screenshot frame (default 600). Animation stays enabled.
+The host checks free disk before uploading and packages the driver with the lane
+payload. The desktop runner takes the existing `queue_lock` before claiming;
+merge windows retain that shared lock. Do not submit during a merge window.
+`wait <id>` then `fetch <id> <proof-directory>` returns smoke logs, a screenshot,
+private saves, debug state and crash dumps; fetch deletes the private payload
+and mod tree. Inspect the log for actual save/load completion and post-load
+play time; a smoke PASS alone does not prove either. Delete the local delta
+after fetching. No mod bytes belong in git or the seeded laptop install.
+
 Paired performance jobs use `host.py submit --exe <arm-A-build>/mc2.exe
 --exe-b <arm-B-build>/mc2.exe --data-delta <delta> tools/farm/perf.json`.
 Place the committed profiling harness under `delta/perf-harness/` (scripts,

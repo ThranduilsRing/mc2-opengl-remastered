@@ -15,5 +15,6 @@ struct Target {
     Mc2GroundLightingFrame ground{};
 };
 bool prepareTerrain(std::unique_ptr<mc2vk::IslandState>& state, Target& target, mc2vk::VulkanContext::RecordFn& record);
+bool prewarmProps(std::unique_ptr<mc2vk::IslandState>& state, int w, int h);
 bool prepareProps(std::unique_ptr<mc2vk::IslandState>& state, const Target& target, mc2vk::VulkanContext::RecordFn& record);
 }

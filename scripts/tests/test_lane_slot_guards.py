@@ -47,6 +47,7 @@ def test_release_takes_short_names():
 
 
 def test_acquire_records_warm_pid_and_no_warm(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(lane_slot, "MAIN_ROOT", str(tmp_path))
     slot = tmp_path / "slot"
     (slot / "build64-ninja").mkdir(parents=True)
     free = {"path": str(slot), "exists": True, "clean": True, "claimed": False, "merged": True, "branch": None}
@@ -63,3 +64,38 @@ def test_acquire_records_warm_pid_and_no_warm(tmp_path, monkeypatch, capsys):
     (slot / "build64-ninja" / "warm.pid").unlink()
     lane_slot.acquire("b", None, no_warm=True)
     assert not (slot / "build64-ninja" / "warm.pid").exists() and "HEAD deadbeef" in capsys.readouterr().out
+
+
+def test_slot_claim_covers_selection_switch_and_registration(tmp_path, monkeypatch):
+    import build_tokens
+    from contextlib import contextmanager
+    held = []
+    @contextmanager
+    def lock(directory):
+        held.append(directory)
+        try:
+            yield
+        finally:
+            held.pop()
+    monkeypatch.setattr(build_tokens, "_queue_lock", lock)
+    monkeypatch.setattr(lane_slot, "MAIN_ROOT", str(tmp_path))
+    monkeypatch.setattr(lane_slot, "strip_stale_excludes", lambda: None)
+    def claims():
+        assert held, "slot selection must hold the acquisition lock"
+        return set()
+    monkeypatch.setattr(lane_slot, "claimed_worktrees", claims)
+    monkeypatch.setattr(lane_slot, "pick_slot", lambda slots: (str(tmp_path), False))
+    monkeypatch.setattr(lane_slot, "SLOT_PATHS", [])
+    monkeypatch.setattr(lane_slot, "branch_plan", lambda *a: (["switch", "b"], "b"))
+    def git(*args):
+        if args[1:] == ("rev-parse", "--git-common-dir"):
+            return 0, str(tmp_path / ".git"), ""
+        assert held
+        return 0, "tip", ""
+    def register(*args, **kwargs):
+        assert held
+    monkeypatch.setattr(lane_slot, "git", git)
+    monkeypatch.setattr(lane_slot, "slot_install", lambda path: "unused")
+    monkeypatch.setitem(sys.modules, "lane_registry", type("M", (), {"register_lane": staticmethod(register)}))
+    lane_slot.acquire("b", no_warm=True)
+    assert not held

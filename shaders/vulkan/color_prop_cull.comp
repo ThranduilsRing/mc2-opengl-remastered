@@ -2,7 +2,7 @@
 // frame's instance feed). It keeps the instances the HZB pass left visible (all of them when HZB is off),
 // writes their slot numbers in order into compact[first + k] (the run's own slot range, so no cross-run
 // counter exists), and writes the surviving count into instanceCount of every indirect command of the run
-// (one command per packet per draw list: opaque core, alpha core, fringe, late fringe). The vertex shader reads
+// (one command per packet per draw list: opaque core, alpha core, fringe, late fringe, opaque double-sided core). The vertex shader reads
 // compact[gl_InstanceIndex]. Ordered: a prefix scan, not atomics, so the draw order and the depth-test
 // outcome are identical to the old uncompacted draw.
 #version 450
@@ -18,12 +18,12 @@ layout(set = 0, binding = 9, std430) readonly buffer HzbVisibility {
     uint visible[];
 } uHzb;
 
-// a = {first, count, opaqueStart, opaqueN}, b = {coreStart, coreN, fringeStart, fringeN}, c = {lateStart, lateN, pad, pad};
-// starts index the command array.
-struct PropRun { uvec4 a; uvec4 b; uvec4 c; };
+// a = {first, count, opaqueStart, opaqueN}, b = {coreStart, coreN, fringeStart, fringeN}, c = {lateStart, lateN, opaqueDsStart, opaqueDsN},
+// d = CPU metadata; starts index the command array.
+struct PropRun { uvec4 a; uvec4 b; uvec4 c; uvec4 d; };
 layout(set = 0, binding = 16, std430) readonly buffer Runs { PropRun r[]; } uRuns;
 layout(set = 0, binding = 17, std430) buffer Compact { uint c[]; } uCompact;
-// Words 0..3 are the four list draw counts (CPU-written); VkDrawIndexedIndirectCommand i is words 4+5i..8+5i
+// Words 0..4 are the five list draw counts (CPU-written); VkDrawIndexedIndirectCommand i is words 5+5i..9+5i
 // {indexCount, instanceCount, firstIndex, baseVertex, firstInstance}.
 layout(set = 0, binding = 18, std430) buffer Cmds { uint w[]; } uCmds;
 
@@ -52,8 +52,8 @@ void main() {
         barrier();
         base += total;
     }
-    const uvec2 ranges[4] = uvec2[4](run.a.zw, run.b.xy, run.b.zw, run.c.xy);
-    for (uint list = 0u; list < 4u; ++list) {
-        for (uint c = lid; c < ranges[list].y; c += 64u) uCmds.w[4u + (ranges[list].x + c) * 5u + 1u] = base;
+    const uvec2 ranges[5] = uvec2[5](run.a.zw, run.b.xy, run.b.zw, run.c.xy, run.c.zw);
+    for (uint list = 0u; list < 5u; ++list) {
+        for (uint c = lid; c < ranges[list].y; c += 64u) uCmds.w[5u + (ranges[list].x + c) * 5u + 1u] = base;
     }
 }

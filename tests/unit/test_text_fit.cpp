@@ -16,10 +16,15 @@ TEST_CASE("text fit: text that fits is unchanged")
 
 TEST_CASE("text fit: modest overflow tightens the pitch, never below 85%")
 {
-    auto f = fitLines(5, 14, 65);   // 70 -> 65: pitch 13 >= floor 11
-    CHECK(f.pitch == 13); CHECK(f.visibleLines == 5); CHECK_FALSE(f.ellipsize);
-    f = fitLines(5, 14, 55);        // pitch 11 == floor
+    auto f = fitLines(5, 14, 65);   // (65-14)/4 = pitch 12 >= floor 11
+    CHECK(f.pitch == 12); CHECK(f.visibleLines == 5); CHECK_FALSE(f.ellipsize);
+    CHECK((f.visibleLines - 1) * f.pitch + 14 <= 65);
+    f = fitLines(5, 14, 58);        // five lines at floor pitch 11 fit exactly
     CHECK(f.pitch == 11); CHECK(f.visibleLines == 5); CHECK_FALSE(f.ellipsize);
+    CHECK((f.visibleLines - 1) * f.pitch + 14 == 58);
+    f = fitLines(5, 14, 55);        // five lines would occupy 58 pixels: drop one
+    CHECK(f.pitch == 11); CHECK(f.visibleLines == 4); CHECK(f.ellipsize);
+    CHECK((f.visibleLines - 1) * f.pitch + 14 <= 55);
 }
 
 TEST_CASE("text fit: hard overflow clips to the lines that fit and ellipsizes")

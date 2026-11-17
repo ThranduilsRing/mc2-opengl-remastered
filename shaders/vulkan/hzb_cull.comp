@@ -64,7 +64,7 @@ bool tinyBox(vec2 lo, vec2 hi) {
     return ext.x <= 0.0 || ext.y <= 0.0 || !covers.x || !covers.y;
 }
 
-// Preserves the CPU reference's keep rules: any unprojectable corner keeps the prop.
+// Reject wholly clipped bounds before the conservative HZB projection keep rules.
 bool propHidden(uint id) {
     GpuStaticPropInstance inst = instances[id];
     if (inst.typeID >= params.typeCount || types[inst.typeID].lo.w == 0) return false;
@@ -75,6 +75,8 @@ bool propHidden(uint id) {
     // Leaf sway is bounded by (1.5, 0.9) world units; add two pixels for jitter/rounding.
     vec2 viewLo = lo, viewHi = hi;
     bool occlusionSafe = true;
+    bool projectable = true;
+    vec3 maxClip = vec3(-3.402823466e+38);
     vec4 swayPad = (inst.flags & 4u) != 0u ? 1.5 * (abs(params.worldToClip[0]) + 0.6 * abs(params.worldToClip[1])) : vec4(0);
     for (int corner = 0; corner < 8; ++corner) {
         vec4 p = vec4((corner & 1) != 0 ? local.hi.x : local.lo.x,
@@ -87,10 +89,14 @@ bool propHidden(uint id) {
         precise vec4 clip = vec4(0);
         for (int a = 0; a < 4; ++a)
             for (int k = 0; k < 4; ++k) clip[a] += params.worldToClip[k][a] * world[k];
-        if (!(clip.w > 1e-5)) return false;
+        if (any(isnan(clip)) || any(isinf(clip))) return false;
+        float biasedZ = clip.z + params.viewportDepth.z * clip.w;
+        float padZ = swayPad.z + abs(params.viewportDepth.z) * swayPad.w;
+        maxClip = max(maxClip, vec3(clip.w + swayPad.w, biasedZ + padZ, clip.w - biasedZ + swayPad.w + padZ));
+        if (!(clip.w > 1e-5)) { projectable = false; continue; }
         vec3 ndc = clip.xyz / clip.w;
         ndc.z += params.viewportDepth.z;
-        if (any(isnan(ndc)) || any(isinf(ndc)) || ndc.z < 0 || ndc.z >= 1) return false;
+        if (any(isnan(ndc)) || any(isinf(ndc)) || ndc.z < 0 || ndc.z >= 1) { projectable = false; continue; }
         if (clip.w > swayPad.w + 1e-5) {
             vec2 margin = (swayPad.xy + abs(ndc.xy) * swayPad.w) / (clip.w - swayPad.w) + 4.0 / params.viewportDepth.xy;
             viewLo = min(viewLo, ndc.xy - margin); viewHi = max(viewHi, ndc.xy + margin);
@@ -100,6 +106,8 @@ bool propHidden(uint id) {
         lo = min(lo, pixels); hi = max(hi, pixels);
         nearest = max(nearest, ndc.z);
     }
+    if (any(lessThan(maxClip, vec3(-1e-5)))) return true;
+    if (!projectable) return false;
     if (any(lessThan(viewHi, vec2(-1))) || any(greaterThan(viewLo, vec2(1)))) return true;
     if (!occlusionSafe) return false;
     if (tinyBox(lo, hi)) return true;

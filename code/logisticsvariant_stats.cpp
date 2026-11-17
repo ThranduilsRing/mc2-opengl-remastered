@@ -7,6 +7,7 @@
 #include "mc2str.h"
 #include "objective_text.h"
 #include "package_chassis.h"
+#include "purchase_catalog.h"
 
 
 int LogisticsVariant::getCost( ) const 
@@ -420,6 +421,7 @@ long LogisticsVariant::save( FitIniFile& file, long counter )
 	file.writeBlock( tmp );
 	
 	file.writeIdString( "Chassis", chassis->fileName.c_str() );
+	file.writeIdString("PurchasePack", mc2purchase::chassisSource(chassis->fileName).c_str());
 	file.writeIdString( "VariantName", variantName.c_str() );
 	file.writeIdLong( "ComponentCount", componentCount );
 

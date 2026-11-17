@@ -5,10 +5,10 @@
 std::uint64_t combatSimulationHash(GameObjectManager& manager)
 {
     mc2::save::Archive state;
-    for (long i = 1; i <= manager.getMaxObjects(); ++i) {
+    for (std::int32_t i = 1; i <= manager.getMaxObjects(); ++i) {
         auto* object = manager.get(i);
         if (!object || !object->getExists()) continue;
-        auto id = object->getPartId();
+        std::int32_t id = object->getPartId();
         auto kind = static_cast<std::uint32_t>(object->getObjectClass());
         auto status = object->getStatus();
         auto position = object->getPosition();

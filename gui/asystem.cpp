@@ -235,9 +235,20 @@ static void renderObjectViaGuiBridge(const gos_VERTEX* location, unsigned long t
 
 	if (glTexture)
 	{
+		float u1 = location[0].u, v1 = location[0].v;
+		float u2 = location[2].u, v2 = location[2].v;
+		const char* name = mc2::textures::name(textureHandle);
+		DWORD tw = 0, th = 0;
+		// Live frame animations bypass the defs crop inset. Undo the legacy
+		// +0.1 bias and keep bilinear taps inside each authored atlas strip.
+		if (name && strstr(name, "mcl_splashscreen_frame_") &&
+			mc2::textures::logicalSize(textureHandle, tw, th) && tw > 0 && th > 0)
+		{
+			u1 += 0.4f / tw; v1 += 0.4f / th;
+			u2 -= 0.6f / tw; v2 -= 0.6f / th;
+		}
 		GuiRuntime::DrawUiImage(glTexture, x, y, w, h,
-								location[0].u, location[0].v,
-								location[2].u, location[2].v,
+								u1, v1, u2, v2,
 								argb);
 	}
 	else

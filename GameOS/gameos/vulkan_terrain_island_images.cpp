@@ -176,10 +176,16 @@ void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
         }
         const char* cookOrigin = "none";
         const auto resolveT0 = std::chrono::steady_clock::now();
-        auto cooked = mc2terrain::resolveSurfaceAsset(input, mc2terrain::surfaceMissionCook(), cacheDir, &cookOrigin);
+        const auto key = mc2terrain::surfaceCookSourceHash(input);
+        auto packed = mc2terrain::loadCachedPackedSurface(cacheDir, key, input.srgb);
+        auto cooked = packed ? std::optional<mc2terrain::SurfaceAsset>{std::move(packed->materials)} :
+            mc2terrain::resolveSurfaceAsset(input, mc2terrain::surfaceMissionCook(), cacheDir, &cookOrigin);
+        if (packed) cookOrigin = "packed-cache";
         const double resolveMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - resolveT0).count();
         if (cooked) {
             const auto source = cooked->sourceHash;
+            const auto uploadWidth = packed ? packed->width : cooked->width;
+            const auto uploadHeight = packed ? packed->height : cooked->height;
             if (fields->setSurfaceAsset(std::move(*cooked), source)) {
                 const auto& surface = fields->surfaceAsset();
                 // The cook output comes from an 8-bit atlas and is only ever sampled at LOD 0, so RGBA8 holds it:
@@ -192,21 +198,27 @@ void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
                     v = std::clamp(v, 0.0f, 1.0f);
                     return toByte(input.srgb ? (v <= 0.0031308f ? v * 12.92f : 1.055f * std::pow(v, 1.0f / 2.4f) - 0.055f) : v);
                 };
-                std::vector<uint32_t> packedColors(surface.macroColor.size());
-                // Each texel is a pure function of its own cooked value, so rows pack on the job pool (same bytes at any width).
-                const size_t rowTexels = surface.width;
-                const int rows = rowTexels ? static_cast<int>(packedColors.size() / rowTexels) : 0;
-                mc2::jobs::parallel_for(mc2::jobs::Domain::Render, rows, 16, 400000, [&](int begin, int end) {
-                    for (size_t i = static_cast<size_t>(begin) * rowTexels; i < static_cast<size_t>(end) * rowTexels; ++i) {
-                        const auto& c = surface.macroColor[i];
-                        packedColors[i] = static_cast<uint32_t>(encode(c[0])) | static_cast<uint32_t>(encode(c[1])) << 8 | static_cast<uint32_t>(encode(c[2])) << 16 |
-                                          static_cast<uint32_t>(toByte(c[3])) << 24;
-                    }
-                });
+                std::vector<uint32_t> packedColors;
+                if (!packed) {
+                    packedColors.resize(surface.macroColor.size());
+                    // Each texel is a pure function of its own cooked value, so rows pack on the job pool (same bytes at any width).
+                    const size_t rowTexels = surface.width;
+                    const int rows = rowTexels ? static_cast<int>(packedColors.size() / rowTexels) : 0;
+                    mc2::jobs::parallel_for(mc2::jobs::Domain::Render, rows, 16, 400000, [&](int begin, int end) {
+                        for (size_t i = static_cast<size_t>(begin) * rowTexels; i < static_cast<size_t>(end) * rowTexels; ++i) {
+                            const auto& c = surface.macroColor[i];
+                            packedColors[i] = static_cast<uint32_t>(encode(c[0])) | static_cast<uint32_t>(encode(c[1])) << 8 | static_cast<uint32_t>(encode(c[2])) << 16 |
+                                              static_cast<uint32_t>(toByte(c[3])) << 24;
+                        }
+                    });
+                }
                 const double packMs = std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-packStart).count();
+                const std::span<const uint8_t> upload = packed ? std::span<const uint8_t>(packed->rgba) :
+                    std::span<const uint8_t>(reinterpret_cast<const uint8_t*>(packedColors.data()), packedColors.size() * sizeof(uint32_t));
+                if (!packed) mc2terrain::storeCachedPackedSurface(cacheDir, surface, input.srgb, upload);
                 const auto uploadStart = std::chrono::steady_clock::now();
-                if (upload_colormap_image(s, input.srgb ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UNORM, surface.width, surface.height,
-                        packedColors.data(), packedColors.size() * sizeof(uint32_t))) {
+                if (upload_colormap_image(s, input.srgb ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UNORM, uploadWidth, uploadHeight,
+                        upload.data(), upload.size())) {
                     s->colormapVersionImported = feed.colormapVersion;
                     s->colormapShoreVersionImported = feed.shoreFieldVersion;
                     s->colormapCookParams = params;
@@ -214,7 +226,7 @@ void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
                     s->colormapBreakup = true;
                     write_descriptors(s);
                     const double uploadMs = std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-uploadStart).count();
-                    vlog("COLORMAP-BASE: cooked macro color %ux%u source=%llu coast=%d origin=%s resolve_ms=%.1f pack_ms=%.1f enqueue_ms=%.1f.", surface.width, surface.height,
+                    vlog("COLORMAP-BASE: cooked macro color %ux%u source=%llu coast=%d origin=%s resolve_ms=%.1f pack_ms=%.1f enqueue_ms=%.1f.", uploadWidth, uploadHeight,
                          static_cast<unsigned long long>(source), static_cast<int>(input.followCoast), cookOrigin, resolveMs, packMs, uploadMs);
                     return;
                 }
@@ -348,6 +360,8 @@ void import_materials(TerrainIsland* s) {
                           control.version == s->materialControlVersion && g_terrainMaterialProfile == s->materialProfile;
     const uint64_t coverageVersion = gos_terrain_indirect_HardSurfaceVersion();
     if (baseSame && coverageVersion == s->materialCoverageVersion) return;
+    // Packed hits retain exactly these center/nearest samples; misses retain the full cook.
+    // Always classify at this capped size so both paths produce identical material bytes.
     const uint32_t w = std::min(surface.width, 1024u);
     const uint32_t h = std::min(surface.height, 1024u);
     if (!baseSame || s->materialW != w || s->materialH != h) {

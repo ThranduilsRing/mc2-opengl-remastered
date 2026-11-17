@@ -193,7 +193,7 @@ MechListBoxItem::MechListBoxItem( LogisticsMech* pRefMech, long count )
 	countText.setText( text );
 
 
-	MechListBox::initIcon( pRefMech, mechIcon );
+	hudArt = MechListBox::initIcon( pRefMech, mechIcon );
 
 	variantName.setText( pMech->getName() );
 	
@@ -316,6 +316,7 @@ MechListBoxItem& MechListBoxItem::operator=( const MechListBoxItem& src )
 		costText = src.costText;
 		line = src.line;
 		mechIcon = src.mechIcon;
+		hudArt = src.hudArt;
 		outline = src.outline;
 		variantName = src.variantName;
 		weightIcon = src.weightIcon;
@@ -444,7 +445,7 @@ void MechListBoxItem::render()
 				if ( !animTime || pChildren[i] != &countText )
 				{
 					long color = animations[bOrange][index].getCurrentColor( animations[bOrange][index].getState());
-					pChildren[i]->setColor( color );
+					pChildren[i]->setColor( unit_icons::logisticsIconColor(pChildren[i] == &mechIcon && hudArt, color) );
 				}
 
 				
@@ -494,11 +495,11 @@ void MechListBoxItem::doAdd()
 	}
 }
 
-void MechListBox::initIcon( LogisticsMech* pMech, aObject& mechIcon )
+bool MechListBox::initIcon( LogisticsMech* pMech, aObject& mechIcon )
 {
 	mechIcon = (MechListBoxItem::s_templateItem->mechIcon);
 
-    unit_icons::apply(mechIcon, MechListBoxItem::s_templateItem->mechIcon,
+    return unit_icons::apply(mechIcon, MechListBoxItem::s_templateItem->mechIcon,
                       pMech->getIconIndex(), pMech->getFileName().c_str());
 
 }

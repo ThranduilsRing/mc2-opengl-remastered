@@ -18,12 +18,30 @@
 
 using namespace mc2::ui_chrome;
 
+TEST_CASE("ui_chrome button frame retains stock paint wells and animation tint") {
+    // Trigger paths: ui_chrome_sheets.{cpp,h}, gui/UiDefs_draw.cpp.
+    Pixels p{3, 96, 4, std::vector<uint8_t>(3 * 96 * 4, 255)};
+    for (int y = 0; y < 96; ++y) {
+        const size_t i = static_cast<size_t>(y) * 12;
+        p.data[i] = 173; p.data[i + 1] = 149; p.data[i + 2] = 125;
+        p.data[i + 4] = p.data[i + 5] = p.data[i + 6] = 0;
+    }
+    const auto authored = p.data;
+    REQUIRE(clearMenuMatte("data/art/gui/mcl_mm_12.png", p));
+    CHECK(p.data == authored);
+    for (uint32_t tint : {0xfff26f00u, 0xffffffffu, 0xffffb481u, 0xff6b6b6bu})
+        CHECK(menuElementColor(tint, true) == tint);
+    CHECK(menuElementColor(0xfff26f00u, false) == menuYellow(0xfff26f00u));
+    CHECK(menuElementColor(0xffdc0000u, false) == 0xffdc0000u);
+}
+
 TEST_CASE("ui_chrome inset excludes whole images and content sprites") {
     const auto inset = [](std::string_view path, bool pixel = false, bool legacy = false, bool nine = false,
                           float u = .25f, float v = .25f, float r = .75f, float b = .75f) {
         return insetChromeCrop(path, pixel, legacy, nine, u, v, r, b);
     };
     CHECK(inset("data/art/gui/mcl_mm_2.png"));
+    CHECK(inset("data/art/gui/mcl_splashscreen_frame_2.png"));
     CHECK(inset("data/art/gui/MCUI_Universal1.tga"));
     CHECK(inset("data/art/ui/panel.png", false, false, true));
     CHECK_FALSE(inset("data/art/gui/mcl_mm_2.png", false, false, false, 0, 0, 1, 1));
@@ -51,6 +69,79 @@ Pixels solid(int w, int h, int ch, uint8_t v) {
     return p;
 }
 }  // namespace
+
+TEST_CASE("ui_chrome shipped credits contain no machine paths") {
+    // Trigger path: CREDITS.txt (displayed verbatim by PlayerFrontEnd).
+    std::ifstream input(std::filesystem::path(MC2_REPO_ROOT) / "CREDITS.txt");
+    REQUIRE(input.good());
+    std::string line;
+    while (std::getline(input, line)) {
+        INFO(line);
+        CHECK(line.find("mc2-opengl") == std::string::npos);
+        // Owner 11-15: credits are MC2 base game + MC2 modding only; libraries live in THIRD_PARTY_NOTICES.txt.
+        CHECK(line.find("3rdparty/") == std::string::npos);
+        for (size_t i = 1; i + 1 < line.size(); ++i)
+            CHECK_FALSE(((i == 1 || line[i-2] == ' ' || line[i-2] == '(') &&
+                                          line[i] == ':' && (line[i+1] == '/' || line[i+1] == '\\') &&
+                                          ((line[i-1] >= 'A' && line[i-1] <= 'Z') ||
+                                           (line[i-1] >= 'a' && line[i-1] <= 'z'))));
+    }
+}
+
+TEST_CASE("ui_chrome credits bay follows the menu frame at 1080p and 4K") {
+    for (float scale : {1.0f, 2.0f}) {
+        const auto r = menuCreditsBay(1920 * scale, 1080 * scale);
+        CHECK(r[0] == doctest::Approx(1449.6f * scale));
+        CHECK(r[1] == doctest::Approx(525.6f * scale));
+        CHECK(r[2] == doctest::Approx(403.2f * scale));
+        CHECK(r[3] == doctest::Approx(446.4f * scale));
+        CHECK(r[0] + r[2] < 1920 * scale);
+        CHECK(r[1] + r[3] < 1080 * scale);
+    }
+}
+
+TEST_CASE("ui_chrome menu openings preserve cable and hazard paint") {
+    Pixels p = solid(256, 256, 3, 0);
+    const size_t cable = (140 * 256 + 170) * 3;
+    p.data[cable] = 64;
+    REQUIRE(clearMenuMatte("data/art/gui/mcl_mm_1.png", p));
+    CHECK(p.data[(140 * 256 + 160) * 4 + 3] == 0);
+    CHECK(p.data[(140 * 256 + 170) * 4 + 3] == 255);
+    CHECK(p.data[(210 * 256 + 80) * 4 + 3] == 255);
+    CHECK(p.data[(40 * 256 + 40) * 4 + 3] == 255);
+    CHECK(p.data[(40 * 256 + 140) * 4 + 3] == 0);
+    p = solid(256, 256, 3, 0);
+    REQUIRE(clearMenuMatte("mcl_mm_2.png", p));
+    CHECK(p.data[(40 * 256 + 40) * 4 + 3] == 0);
+    CHECK(p.data[(140 * 256 + 40) * 4 + 3] == 0);
+    p = solid(256, 256, 3, 0);
+    REQUIRE(clearMenuMatte("mcl_mm_3.png", p));
+    CHECK(p.data[(100 * 256 + 20) * 4 + 3] == 0);
+    CHECK(p.data[(50 * 256 + 140) * 4 + 3] == 255);
+    CHECK(p.data[(220 * 256 + 10) * 4 + 3] == 0);
+    CHECK(p.data[(245 * 256 + 40) * 4 + 3] == 255);
+    CHECK(p.data[(210 * 256 + 110) * 4 + 3] == 0);
+    CHECK(p.data[(220 * 256 + 80) * 4 + 3] == 255);
+    CHECK(p.data[(40 * 256 + 180) * 4 + 3] == 0);
+    CHECK_FALSE(clearMenuMatte("other.png", p));
+}
+
+TEST_CASE("ui_chrome keeps authored gold gradient and red markers") {
+    // Trigger paths: mclib/ui_chrome_sheets.{cpp,h}; source paint is never hue-normalized.
+    Pixels p{3, 1, 4, {255, 210, 40, 255, 255, 120, 20, 128, 220, 0, 0, 255}};
+    const auto authored = p.data;
+    REQUIRE(clearMenuMatte("mcl_mm_2.png", p));
+    CHECK(p.data == authored);
+    for (const auto path : {"mcl_splashscreen_frame_1.png", "mcl_splashscreen_frame_2.png"}) {
+        p = solid(3, 1, 4, 0);
+        p.data[3] = p.data[7] = p.data[11] = 255;
+        p.data[4] = 64;
+        REQUIRE(clearMenuMatte(path, p));
+        CHECK(p.data[3] == 0);
+        CHECK(p.data[7] == 255);
+        CHECK(p.data[11] == 0);
+    }
+}
 
 TEST_CASE("ui_chrome manifest round trip") {
     Manifest m;
@@ -239,4 +330,31 @@ TEST_CASE("ui_chrome checked-in data/art/ui manifest: every widget file exists a
             CHECK(ph == pr.y1 - pr.y0);
         }
     CHECK(widgets > 1000);
+}
+
+TEST_CASE("ui_chrome credits parse into collapsible per-source sections") {
+    // Trigger path: PlayerFrontEnd drawCommunityCredits (owner 11-15: collapsible by source).
+    const auto doc = mc2::ui_chrome::parseCredits(
+        "MECHCOMMANDER 2 - COMMUNITY CREDITS\r\n\r\nIntro line.\n\nS001 - CREDITS.BIK\n\nMitch Gitelman - Producer [S001]\n\n"
+        "S002 - wolfman-MC2X-TCE Readme.pdf\n\nWolfman - MC2X core [S002, S003]\n\nSOURCE TABLE - file -> count\nS001 | CREDITS.BIK -> 214\n\n"
+        "COMMUNITY LINKS\nWolfman: https://mc2x.net/\n\nFree forever.\n");
+    CHECK(doc.preamble == "MECHCOMMANDER 2 - COMMUNITY CREDITS\n\nIntro line.\n");
+    REQUIRE(doc.sections.size() == 4);
+    CHECK(doc.sections[0].title == "MechCommander 2 - original game credits");
+    CHECK(doc.sections[0].body == "Mitch Gitelman - Producer\n");
+    CHECK(doc.sections[1].title == "wolfman-MC2X-TCE Readme.pdf");
+    CHECK(doc.sections[1].body == "Wolfman - MC2X core [S002, S003]\n");
+    CHECK(doc.sections[2].title == "Source table");
+    CHECK(doc.sections[3].title == "Community links");
+    CHECK(doc.sections[3].body.find("Free forever.") == std::string::npos);
+}
+
+TEST_CASE("ui_chrome shipped credits have one section per source") {
+    std::ifstream input(std::filesystem::path(MC2_REPO_ROOT) / "CREDITS.txt", std::ios::binary);
+    REQUIRE(input.good());
+    const auto doc = mc2::ui_chrome::parseCredits(std::string(std::istreambuf_iterator<char>(input), {}));
+    REQUIRE(doc.sections.size() >= 3);
+    CHECK(doc.sections.front().title == "MechCommander 2 - original game credits");
+    CHECK(doc.sections.front().body.find("[S001]") == std::string::npos);
+    for (const auto& s : doc.sections) { INFO(s.title); CHECK(!s.title.empty()); CHECK(!s.body.empty()); }
 }

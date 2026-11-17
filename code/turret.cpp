@@ -2053,6 +2053,7 @@ void Turret::renderView (const mc2::render_view::RenderView& view)
 
 void Turret::destroy (void) 
 {
+	mc2::tick::releaseLight(pointLight, eye, lightId);
 	if (appearance)
 	{
 		releaseAppearance();

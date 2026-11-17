@@ -105,10 +105,11 @@ def install_legacy_string_ids(install: Path):
 
 def build(args, out: Path):
     wm, bp = C.load_tables()
-    recipes = sorted(C.RECIPES.glob("*.json"))
+    from tools.bt2018_mechs import roster
+    recipes = roster.recipes(Path(args.conversions))
     if args.only:
         keep = {s.strip() for s in args.only.split(",")}
-        recipes = [r for r in recipes if r.stem in keep]
+        recipes = [r for r in recipes if r["family"] in keep]
     if not recipes:
         sys.exit("no recipes selected")
 
@@ -120,8 +121,7 @@ def build(args, out: Path):
     out.mkdir(parents=True)
 
     profiles, recipes_loaded = [], []
-    for rp in recipes:
-        recipe = C.load_json(rp)
+    for recipe in recipes:
         profiles.append(C.build_profile(recipe, wm, bp))
         recipes_loaded.append(recipe)
 

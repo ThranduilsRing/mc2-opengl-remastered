@@ -47,3 +47,14 @@ TEST_CASE("commander team: no parts, bad ids, missing commander or missing team 
     notePartTeam(t, 6, 1);
     CHECK(resolvePartTeam(t, 6, false, kMaxTeams, teamsZeroToTwo) == -1);   // commander object missing
 }
+
+
+TEST_CASE("commander team: sparse commander gaps are unused identity rows") {
+    signed char t[kCommanderSlots]; clear(t);
+    for (long c : {0L, 1L, 2L, 7L}) notePartTeam(t, c, c == 1 ? 1 : 0);
+    for (long c = 0; c < kCommanderSlots; ++c)
+        CHECK(unusedIdentity(t, c, c, c) == (c >= 3 && c <= 6));
+    CHECK_FALSE(unusedIdentity(t, 3, 1, 3));
+    CHECK_FALSE(unusedIdentity(t, 8, 8, 8));
+    CHECK_FALSE(unusedIdentity(t, -1, -1, -1));
+}

@@ -394,6 +394,13 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
     out_dir.mkdir(parents=True, exist_ok=True)
     file_mission, marks = _load_bookmarks(bookmarks_path)
     mission_token = file_mission or mission
+    minimum_duration = default_duration(len(marks), trigger_frame, settle)
+    if duration is None:
+        duration = minimum_duration
+    elif duration < minimum_duration:
+        raise ValueError(f"capture duration {duration}s is too short for trigger frame {trigger_frame} "
+                         f"and {len(marks)} bookmarks (settle={settle}); use --duration "
+                         f"{minimum_duration} or omit --duration (budget assumes at least 15 fps)")
     # HARNESS-ISOLATION-1 / bug-2 guard: the engine bookmark iterator
     # (gos_visual_capture.cpp) silently fails to fire the capture for a SINGLE-pose
     # bookmark (engine_capture_fired=True but present=False). A >=2-pose bookmark
@@ -428,8 +435,6 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
     for rj in options_rec["rejected"]:
         print(f"[viscap] WARN render option rejected by the engine's grammar: {rj}", file=sys.stderr)
 
-    if duration is None:
-        duration = default_duration(len(marks), trigger_frame, settle)
     proc_args = [str(exe), "--profile", "stock", "--mission", mission_token,
                  "--duration", str(duration)]
     if classic_assets:
@@ -797,7 +802,9 @@ def capture_path_timing(args) -> int:
     out.parent.mkdir(parents=True, exist_ok=True)
     channel = out.with_suffix(".commands.txt")
     frames = out.with_suffix(".frames.jsonl")
-    channel.write_text(f"bench_output {frames}\n{battle.view_command(battle.CORNER)}\n"
+    parked = env_pin.parse_declarations(args.env_declare).get("MC2_CAMERA_PARK")
+    view = "" if parked else battle.view_command(battle.CORNER)
+    channel.write_text(f"bench_output {frames}\n{view}\n"
                        + args.tracy_commands.replace(";", "\n") + "\n", encoding="utf-8")
     declared = battle.environment(channel, 1920, 1080)
     declared.update(env_pin.parse_declarations(args.env_declare))
@@ -813,7 +820,7 @@ def capture_path_timing(args) -> int:
                              args.tracy_seconds, out,
                              extra_env=[f"{k}={v}" for k, v in declared.items()],
                              fixed_timestep=False, fps_cap=0, show_window=True,
-                             spawn_game=launch, post_load=True)
+                             spawn_game=launch, post_load=True, pose=parked)
     if rc:
         return rc
     tracy.assert_window_was_visible(out, tracy.tracy_exe("tracy-csvexport.exe"), "path timing")
@@ -828,7 +835,7 @@ def capture_path_timing(args) -> int:
                 "p99_ms": ordered[math.ceil(.99 * len(values)) - 1], "max_ms": ordered[-1]}
 
     frame_stats = stats([row["ms"] for row in cpu])
-    result = {"mission": args.mission, "frames": frame_stats,
+    result = {"mission": args.mission, "camera_park": parked, "frames": frame_stats,
               "frames_over_8_33_ms": sum(row["ms"] > 8.33 for row in cpu),
               "frame_table": table(cpu)}
     records = [json.loads(line) for line in frames.read_text(encoding="utf-8").splitlines() if line.strip()]
@@ -843,6 +850,8 @@ def capture_path_timing(args) -> int:
                                   result["tick"]["samples"]) if result["path"] and result["tick"] else None
     out.with_suffix(".timing.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(result, indent=2))
+    if parked:  # Static renderer measurements require rendered frames, not a pathing scenario.
+        return 0 if cpu else 1
     return 0 if len(cpu) >= 1800 and result["tick"] and result["path"] and result["wait_worker"] else 1
 
 

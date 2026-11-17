@@ -1256,14 +1256,16 @@ extern "C" int mc2_vk_shadow_island_load_bake(int, int) {
     if (!s || s->disabled || !s->inited || mc2::options::lowCost()) return 1;
     ZoneScopedN("VKIsl.Shadow.LoadBake");
     const auto t0 = std::chrono::steady_clock::now();
+    const auto deadline = t0 + std::chrono::seconds(4);
     // The family prewarm bound the alpha casters before textures().finishLoading(), when the alpha-ON array was not resident yet; bind it now,
     // or the bake waits for alpha (kMaxAlphaWaitFrames) until the first in-mission frame refreshes it.
     refresh_alpha_casters(s);
     int steps = 0, idle = 0, submits = 0;
     while (s->bake.wantsFrame() && idle < 2 * static_cast<int>(mc2vk::kMaxFramesInFlight) + 2 && steps < 1024
-           && std::chrono::steady_clock::now() - t0 < std::chrono::seconds(4)) {
+           && std::chrono::steady_clock::now() < deadline) {
         const bool before = s->bake.inFlight();
         mc2_vk_shadow_island_submit_frame();
+        s->bake.waitForCacheLoad(deadline);
         ++steps;
         if (s->disabled) break;
         const bool busy = s->bake.inFlight();

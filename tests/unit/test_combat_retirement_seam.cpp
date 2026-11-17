@@ -2,6 +2,7 @@
 #include "mission.h"
 #include "weaponbolt.h"
 #include "carnage.h"
+#include "collsn.h"
 #include "weaponfx.h"
 #include "heap.h"
 #include "team.h"
@@ -259,6 +260,7 @@ struct Bolt : WeaponBolt {
     ObjectTypePtr getObjectType() override { return type; }
     void textureHandles(DWORD mc, DWORD gos) { mcTextureHandle = mc; gosTextureHandle = gos; }
     DWORD textureHandle() const { return mcTextureHandle; }
+    void splashShot() { weaponShot.init(0, -1, 10, 0, 0); }
 };
 
 void loadType(WeaponBoltType& type, std::string_view afterHit, bool beam = false) {
@@ -307,6 +309,44 @@ TEST_CASE("CombatRetirementProduction/texture allocation order never enters bolt
     CHECK(std::memcmp(&resaved, &remastered, sizeof(resaved)) == 0);
 }
 
+// Trigger paths: code/carnage.*, code/weaponbolt*.cpp.
+TEST_CASE("CombatRetirementProduction/splash hits all nearby units and buildings once") {
+    World world;
+    struct Target : GameObject {
+        struct Passive : ObjectType { bool handleCollision(GameObjectPtr, GameObjectPtr) override { return false; } } type;
+        ObjectTypePtr getObjectType() override { return &type; }
+        float getExtentRadius() override { return 0; }
+        void identify(int i) { watchID = i + 1; objectClass = i % 2 ? BUILDING : BATTLEMECH; }
+        float damage = 0;
+        long handleWeaponHit(WeaponShotInfoPtr shot, bool = false) override {
+            damage += shot->damage; return NO_ERR;
+        }
+    } targets[5];
+    ExplosionType type;
+    struct Blast : Carnage {
+        ExplosionType* type;
+        ObjectTypePtr getObjectType() override { return type; }
+    } blast;
+    blast.type = &type; blast.effectId = 0;
+    blast.init(CARNAGE_EXPLOSION);
+    blast.objectClass = EXPLOSION; blast.setExists(true); blast.setPosition(glm::vec3(0), false);
+    blast.setExtentRadius(20); blast.setExplDmg(10); blast.info.explosion.chunkSize = 10;
+    for (int i = 0; i < 5; ++i) {
+        targets[i].setExists(true); targets[i].identify(i);
+        targets[i].setPosition(glm::vec3(i * 9, 0, 0), false);
+    }
+    world.objects->entries[1] = &targets[0];
+    WeaponBoltType boltType;
+    Bolt bolt(boltType);
+    bolt.setAimedTarget(1); bolt.splashShot();
+    REQUIRE(bolt.deliverAimedAreaHit(&blast));
+    CarnageData saved{}; blast.CopyTo(&saved);
+    blast.setCollisionFreeFromWID(0); blast.Load(&saved);
+    for (auto& target : targets) CollisionSystem::detectCollision(&blast, &target);
+    for (int i = 0; i < 5; ++i) CHECK(targets[i].damage == (i < 3 ? 10 : 0));
+    blast.init(CARNAGE_EXPLOSION);
+    CHECK(blast.getCollisionFreeFromWID() == 0);
+}
 TEST_CASE("CombatRetirementProduction/rejected explosion types leave the carnage pool untouched") {
     World world;
     auto& objects = *world.objects;

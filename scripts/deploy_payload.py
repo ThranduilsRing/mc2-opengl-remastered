@@ -191,7 +191,7 @@ def record_deploy_inputs(target, inputs, hashes, items):
     """Publish reuse evidence only after the full deploy and all cooks succeed."""
     from kit_payload import contained_path
     inventory = {rel: row[0] for rel, row in hashes.items()}
-    for name in ("industrial-cook.json", "vehicle-cook.json"):
+    for name in ("industrial-cook.json", "vehicle-cook.json", "trees-cook.json"):
         receipt = Path(target) / "cache/content-model" / name
         if receipt.is_file():
             inventory[receipt.relative_to(target).as_posix()] = sha256_file(receipt)
@@ -209,9 +209,15 @@ def record_deploy_inputs(target, inputs, hashes, items):
             sources[str(src)] = [[s.st_size, s.st_mtime_ns, s.st_ctime_ns], hashes[rel][0]]
     value = dict(inputs=inputs, manifest=sha256_file(Path(target) / MANIFEST_NAME),
                  outputs=outputs, hashes=inventory, sources=sources)
-    pending = Path(target) / (REUSE_NAME + ".tmp")
-    pending.write_text(json.dumps(value, sort_keys=True), encoding="utf-8")
-    os.replace(pending, Path(target) / REUSE_NAME)
+    pending = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", dir=target, delete=False, encoding="utf-8") as out:
+            pending = Path(out.name)
+            json.dump(value, out, sort_keys=True)
+        os.replace(pending, Path(target) / REUSE_NAME)
+    finally:
+        if pending is not None:
+            pending.unlink(missing_ok=True)
 SHADER_EXTS = (".vert", ".frag", ".tesc", ".tese", ".comp")
 
 # Editor target marker (exe_name match, case-insensitive).
@@ -260,6 +266,8 @@ IMPORTED_STRUCTURE_PAYLOAD = [
 # runtime (both readers tolerate absence), but shipping without them silently
 # drops per-mission/material tuning that was authored assuming the file loads.
 GAME_DATA_PAYLOAD = [
+    "CREDITS.txt",
+    "THIRD_PARTY_NOTICES.txt",
     "data/art/asset_sizes.csv",
     *[f"data/art/gui/mcl_cm_op{op}_{view}.tga"
       for op, count in ((1, 6), (2, 3), (3, 4)) for view in range(1, count + 1)],
@@ -815,12 +823,17 @@ def replace_file(src, dst):
     name = os.path.abspath(dst).encode('utf-16-le')
 
     class RenameInfo(ctypes.Structure):
+        # Kernel32 expects a NUL-terminated FileName even though FileNameLength
+        # excludes the terminator. Structure padding is not guaranteed to leave
+        # room for it; otherwise adjacent memory can become part of the path.
         _fields_ = [('Flags', wintypes.DWORD), ('RootDirectory', wintypes.HANDLE),
-                    ('FileNameLength', wintypes.DWORD), ('FileName', ctypes.c_byte * len(name))]
+                    ('FileNameLength', wintypes.DWORD), ('FileName', ctypes.c_byte * (len(name) + 2))]
 
     info = RenameInfo()
     info.Flags = 0x01 | 0x02 | 0x40  # REPLACE_IF_EXISTS | POSIX_SEMANTICS | IGNORE_READONLY_ATTRIBUTE
     info.FileNameLength = len(name)
+    # SetFileInformationByHandle needs a NUL-terminated WCHAR path even though
+    # FileNameLength excludes that terminator. Structure initialization zeros it.
     ctypes.memmove(ctypes.addressof(info) + RenameInfo.FileName.offset, name, len(name))
     handle = kernel.CreateFileW(os.path.abspath(src), 0x00010000, 7, None, 3, 0, None)  # DELETE, share all, OPEN_EXISTING
     if handle == wintypes.HANDLE(-1).value:
@@ -844,6 +857,9 @@ def unlink_for_replace(path):
                     shutil.copy2(path, private)
                     os.chmod(private, mode | stat.S_IWRITE)
                     replace_file(private, path)
+                    # Clear the destination's retained DOS read-only attribute
+                    # only after replacement has detached the shared inode.
+                    os.chmod(path, mode | stat.S_IWRITE)
                 finally:
                     unlink_for_replace(private)
             else:
@@ -1274,7 +1290,8 @@ def check_exe_fresh(exe_src, build_dir, allow_stale_exe, build64_root=None):
 
 
 def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
-                      require_build=True, build64_root=None, code_only=False, cook=None):
+                      require_build=True, build64_root=None, code_only=False, cook=None,
+                      no_example_mods=False):
     """Returns list of (src_abspath, target_relpath, kind).
 
     cook (default: require_build): run the on-demand texture cooks (concrete detail, cliff rock, tree upscale; up to
@@ -1378,7 +1395,12 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
                 rel = os.path.relpath(path, src_root).replace(os.sep, "/")
                 items.append((path, rel, "support"))
 
-    # Portable community importer and its recipes/shims; no Win32 launcher needed.
+    # Portable community importer and docs; the batch launcher is Windows-only.
+    if not native:
+        items.append((os.path.join(src_root, "import-campaign.bat"), "import-campaign.bat", "support"))
+    for rel in ("tools/import_campaign.py", "THIRD_PARTY_NOTICES.txt", "docs/modding/IMPORT-CAMPAIGNS.md",
+                "docs/modding/campaign-import-status.md", "docs/modding/campaign-import-window.jpg"):
+        items.append((os.path.join(src_root, rel), rel, "support"))
     for tree in ("tools/mc2_import", "tools/mc2x_import", "tools/mco_import"):
         for directory, dirs, files in os.walk(os.path.join(src_root, tree)):
             dirs[:] = [d for d in dirs if d != "__pycache__"]
@@ -1389,6 +1411,7 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
                 items.append((path, os.path.relpath(path, src_root).replace(os.sep, "/"), "support"))
 
     items.append((os.path.join(src_root, "scripts", "console_child.py"), "scripts/console_child.py", "support"))
+    items.append((os.path.join(src_root, "scripts", "smoke_lib", "child_registry.py"), "scripts/smoke_lib/child_registry.py", "support"))
     for rel in IMPORTED_STRUCTURE_PAYLOAD:
         p = os.path.join(src_root, rel)
         if require_build and not os.path.isfile(p):
@@ -1401,7 +1424,20 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
             fail(f"game data payload missing in source: {p}")
         items.append((p, rel, "support"))
 
-    for path in sorted((Path(src_root) / "data/art").glob("mcl_mc_*.tga")):
+    # Intentional mip overrides must travel with their committed declarations.
+    import asset_parity
+    for rel, expected in asset_parity.intentional_changes(git_head(src_root), Path(src_root)).items():
+        if re.fullmatch(r"data/tgl/[0-9]+/[^/]+\.tga", rel):
+            p = os.path.join(src_root, rel)
+            # Historical declarations can live only in the published install;
+            # asset_parity still verifies those installed bytes after sync.
+            if not os.path.isfile(p):
+                continue
+            if require_build and sha256_file(p) != expected:
+                fail(f"declared mip asset missing or hash mismatch: {p}")
+            items.append((p, rel, "support"))
+
+    for path in sorted((Path(src_root) / "data/art").glob("mc2_component_*.tga")):
         items.append((str(path), path.relative_to(src_root).as_posix(), "support"))
     # MENU-PLANET-MODERN-1: main-menu backdrop (hi-res tiles + the fit that places them).
     for pat in ("mcl_menu_*.tga", "mcl_sp.fit"):
@@ -1497,7 +1533,10 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
                     items.append((sp, rel, "support"))
     # Example mods (EXAMPLE-MODS-1) -> <target>/mods/<id>/ (launcher add-on
     # checkboxes). Ships with both game and editor installs.
-    items.extend(example_mods_payload(src_root))
+    if no_example_mods:
+        log("[DEPLOY] example mods skipped (--no-example-mods)")
+    else:
+        items.extend(example_mods_payload(src_root))
 
     # Generated unit/equipment definitions -> <target>/data/defs/{units,equipment}/
     # so MC2_*_DEFINITION_SOURCE=generated works from a normal install. Converter
@@ -1520,7 +1559,8 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
                     sp = os.path.join(dirpath, fn)
                     rel = os.path.relpath(sp, src_root).replace(os.sep, "/")
                     items.append((sp, rel, "support"))
-    return items
+    from asset_parity import is_deploy_artifact
+    return [item for item in items if not is_deploy_artifact(item[1])]
 
 
 # ---------------------------------------------------------------------------
@@ -1618,6 +1658,8 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
     at write time. Metadata drift rehashes bytes, including same-size corruption.
     Executables are always hashed on both sides. --full-verify copies everything.
     """
+    from asset_parity import is_deploy_artifact
+    items = [item for item in items if not is_deploy_artifact(item[1])]
     # Retention must reach retire_unowned(), before it can delete static files.
     # Shader inventories still belong entirely to the current build.
     src_hashes = {rel: row for rel, row in (cache or {}).items()
@@ -1678,20 +1720,22 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
         os.makedirs(os.path.dirname(dst) or target_dir, exist_ok=True)
         try:
             copy_started = time.perf_counter()
-            unlink_for_replace(dst)
-            if rel.endswith(".mcasset.json"):
-                # Authored sidecars ship unchanged except for checkout line endings;
-                # mixed CRLF/LF copies must not change the pinned data fingerprint.
-                with open(src, "rb") as fh:
-                    content = fh.read().replace(b"\r\n", b"\n")
-                with open(dst, "wb") as fh:
-                    fh.write(content)
-                copy_seconds += time.perf_counter() - copy_started
-            else:
-                shutil.copyfile(src, dst)
+            temporary = None
+            try:
+                with tempfile.NamedTemporaryFile(dir=os.path.dirname(dst), delete=False) as out:
+                    temporary = out.name
+                    if rel.endswith(".mcasset.json"):
+                        # Normalize checkout line endings before publishing the sidecar.
+                        out.write(Path(src).read_bytes().replace(b"\r\n", b"\n"))
+                if not rel.endswith(".mcasset.json"):
+                    shutil.copyfile(src, temporary)
                 if kind == "exe" and os.name != "nt":
-                    shutil.copymode(src, dst)
-                copy_seconds += time.perf_counter() - copy_started
+                    shutil.copymode(src, temporary)
+                replace_file(temporary, dst)
+            finally:
+                if temporary and os.path.exists(temporary):
+                    os.unlink(temporary)
+            copy_seconds += time.perf_counter() - copy_started
         except PermissionError:
             fail(f"copy refused (file locked?): {dst}\n"
                  "  A process is holding this file. Close it and re-run; "
@@ -1745,13 +1789,29 @@ def retire_unowned(target_dir, keep, preserve=(), own_shaders=False):
     """Retire files the new payload (`keep`, its relpaths) no longer carries.
 
     Manifest rows of the previous deploy are retired only when unchanged. Paths are resolved before unlinking so a malformed
-    manifest or a directory junction cannot escape the target. With `own_shaders` (the payload carries the baked SPIR-V) the
-    build's output list owns shaders/: any file there the payload does not carry is retired, manifest row or not (W129:
-    merge_gate.stage_published copies v0.4's shaders/ and _forget_swapped_rows drops their rows, so dead .spv slipped past the
-    manifest loop and verify_published_identity failed the shader inventory)."""
+    manifest or a directory junction cannot escape the target. Unmanifested files are never deleted, including shaders
+    and diagnostic output. `own_shaders` is retained for existing callers; it grants no additional ownership."""
     root = Path(target_dir).resolve()
-    for rel, (digest, _size, _mtime) in read_manifest(target_dir).items():
-        if rel in keep or rel in preserve:
+    shared = any(root == Path(preset["target_dir"]).resolve() for preset in TARGET_PRESETS.values())
+    previous = read_manifest(target_dir)
+    preserved = {p.replace("\\", "/").strip("/").casefold() for p in preserve}
+
+    def protected(rel):
+        candidates = [rel]
+        resolved = (root / rel).resolve()
+        if resolved.is_relative_to(root):
+            candidates.append(resolved.relative_to(root).as_posix())
+        for candidate in candidates:
+            parts = candidate.replace("\\", "/").casefold().split("/")
+            if (any(p in {"mods", "savegame", "captures", "_pngcap", "_rdoc"} for p in parts)
+                    or parts[-1].endswith(".rdc")
+                    or parts[-1] in {"options.cfg", "prefs.cfg"}
+                    or any("/".join(parts) == p or "/".join(parts).startswith(p + "/") for p in preserved)):
+                return True
+        return False
+
+    for rel, (digest, size, _mtime) in previous.items():
+        if rel in keep or protected(rel):
             continue
         retired = root / rel
         resolved = retired.resolve()
@@ -1760,40 +1820,49 @@ def retire_unowned(target_dir, keep, preserve=(), own_shaders=False):
         parts = tuple(part.casefold() for part in Path(rel).parts)
         if parts[0] in {"mods", "savegame"} or parts[:2] == ("data", "savegame"):
             continue
+        # The game and editor presets share one install: each one's root executables, symbols and launchers are owned by
+        # the other preset's payload, not retired by this one (2026-11-14: an editor deploy pruned mc2.exe/mc2.pdb).
+        if len(parts) == 1 and (parts[0].endswith((".exe", ".pdb")) or (parts[0].startswith("run-") and parts[0].endswith(".bat"))):
+            if shared and retired.is_file():
+                # Carry the previous claim, never bless changed bytes or authorize a source-mtime skip.
+                keep[rel] = (digest, size, None)
+            continue
+        if any(parts[:len(Path(t).parts)] == tuple(p.casefold() for p in Path(t).parts) for t in EDITOR_SUPPORT_TREES):
+            continue
         if retired.is_file():
+            rparts = tuple(part.casefold() for part in resolved.relative_to(root).parts)
+            if ("crashes" in parts or "crashes" in rparts
+                    or retired.suffix.casefold() in {".dmp", ".mdmp"}
+                    or resolved.suffix.casefold() in {".dmp", ".mdmp"}):
+                fail(f"archive crash evidence before deploying: {retired}")
             if sha256_file(retired) != digest:
                 log(f"preserved modified retired payload: {rel}")
                 continue
             retired.unlink()
             log(f"pruned retired payload: {rel}")
-    # W130 review P1: the sweep owns only the baked SPIR-V (shaders/vulkan/*.spv, the W129 defect), never owner or mod files
-    # elsewhere under shaders/, and it resolves like the manifest loop so a junction cannot take it outside the target.
-    spv_root = root / "shaders" / "vulkan"
-    if own_shaders and spv_root.is_dir():
-        for path in sorted(spv_root.glob("*.spv")):
-            rel = path.relative_to(root).as_posix()
-            resolved = path.resolve()
-            if not resolved.is_relative_to(spv_root.resolve()):
-                fail(f"retired shader path escapes target: {rel}")
-            if path.is_file() and rel not in keep and rel not in preserve:
-                path.unlink()
-                log(f"pruned retired payload: {rel}")
 
 
 def write_manifest(target_dir, hashes, src_commit):
     ts = datetime.datetime.now().isoformat(timespec="seconds")
     path = os.path.join(target_dir, MANIFEST_NAME)
-    with open(path, "w", newline="") as f:
-        w = csv.writer(f)
-        w.writerow(["manifest_version", MANIFEST_VERSION, "", "", "", ""])
-        w.writerow(["relpath", "sha256", "bytes", "src_commit", "timestamp",
-                    "mtime_ns"])
-        for rel in sorted(hashes):
-            entry = tuple(hashes[rel])
-            h, size = entry[0], entry[1]
-            mtime_ns = entry[2] if len(entry) > 2 else None
-            w.writerow([rel, h, size, src_commit, ts,
-                        "" if mtime_ns is None else mtime_ns])
+    pending = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", dir=target_dir, newline="", delete=False) as f:
+            pending = f.name
+            w = csv.writer(f)
+            w.writerow(["manifest_version", MANIFEST_VERSION, "", "", "", ""])
+            w.writerow(["relpath", "sha256", "bytes", "src_commit", "timestamp",
+                        "mtime_ns"])
+            for rel in sorted(hashes):
+                entry = tuple(hashes[rel])
+                h, size = entry[0], entry[1]
+                mtime_ns = entry[2] if len(entry) > 2 else None
+                w.writerow([rel, h, size, src_commit, ts,
+                            "" if mtime_ns is None else mtime_ns])
+        replace_file(pending, path)
+    finally:
+        if pending and os.path.exists(pending):
+            os.unlink(pending)
     log(f"manifest written: {path} ({len(hashes)} rows, {MANIFEST_VERSION}, "
         f"src_commit {src_commit[:12]})")
 
@@ -1826,7 +1895,7 @@ def hash_present_payload(items, target_dir):
 
 
 def write_manifest_only(src_root, build_dir, exe_name, pdb_name, target_dir,
-                        build64_root=None):
+                        build64_root=None, no_example_mods=False):
     """Refresh <target>/.deployed_manifest.csv from files ALREADY in target.
 
     No copy, no lock check (we are not writing binaries -- only the CSV).
@@ -1837,7 +1906,8 @@ def write_manifest_only(src_root, build_dir, exe_name, pdb_name, target_dir,
     if not os.path.isdir(target_dir):
         fail(f"target dir does not exist: {target_dir}")
     items = enumerate_payload(src_root, build_dir, exe_name, pdb_name,
-                              require_build=False, build64_root=build64_root)
+                              require_build=False, build64_root=build64_root,
+                              no_example_mods=no_example_mods)
     hashes = hash_present_payload(items, target_dir)
 
     # Merge: keep prior rows for payload files we did not just re-hash but
@@ -2054,9 +2124,14 @@ DEPLOY_ALLOWLIST = {
     "mc2-win64-v0.4",
     "mc2-win64-lane2",
     "mc2-win64-lane3",
-    "mc2-win64-v0.4c",
-    "mc2-win64-0.4c",
 }
+
+
+def refuse_golden_target(target):
+    """Golden installs are read-only, including through a junction or override."""
+    if target and any(p.name.casefold() in {"mc2-win64-v0.4c", "mc2-win64-0.4c"}
+                      for p in (Path(target), *Path(target).parents, Path(target).resolve(), *Path(target).resolve().parents)):
+        fail(f"golden install is never a deploy target: {target}")
 
 
 def implicit_target_refusal(src_root, explicit_target):
@@ -2087,7 +2162,9 @@ def bootstrap_install(src, target, exe_name, pdb_name):
         log(f"bootstrap: {target} already has files; not copying from {src}")
         return
     skip = BOOTSTRAP_SKIP | {exe_name, pdb_name}
-    names = [n for n in sorted(os.listdir(src)) if n not in skip and not n.lower().endswith((".log", ".pdb"))]
+    from asset_parity import is_deploy_artifact
+    names = [n for n in sorted(os.listdir(src)) if n not in skip and not is_deploy_artifact(n)
+             and not n.lower().endswith(".pdb")]
     if exe_name == "mc2":
         names = [n for n in names if n != ".mc2_deploy_lane.json"
                  and not n.lower().endswith((".exe", ".dll", ".bat"))]
@@ -2098,19 +2175,25 @@ def bootstrap_install(src, target, exe_name, pdb_name):
     if rc == 3:
         fail(f"bootstrap: not enough free space for {need / 2**30:.1f} GiB", 3)
     log(f"bootstrap: copying {len(names)} entries ({need / 2**30:.1f} GiB) {src} -> {target}")
-    partial = target + ".partial"
-    if os.path.isdir(partial):
+    parent, basename = os.path.dirname(target), os.path.basename(target)
+    os.makedirs(parent, exist_ok=True)
+    for existing in Path(parent).glob(basename + ".partial*"):
+        log(f"bootstrap: preserved pre-existing staging path: {existing}")
+    partial = tempfile.mkdtemp(prefix=basename + ".partial-", dir=parent)
+    try:
+        for n in names:
+            a, b = os.path.join(src, n), os.path.join(partial, n)
+            if os.path.isdir(a):
+                shutil.copytree(a, b, ignore=lambda directory, names: [name for name in names
+                    if is_deploy_artifact(Path(directory, name).relative_to(src).as_posix())])
+            else:
+                shutil.copy2(a, b)
+        if os.path.isdir(target):
+            os.rmdir(target)  # empty (checked above)
+        os.rename(partial, target)
+    except BaseException:
         shutil.rmtree(partial)
-    os.makedirs(partial)
-    for n in names:
-        a, b = os.path.join(src, n), os.path.join(partial, n)
-        if os.path.isdir(a):
-            shutil.copytree(a, b, ignore=shutil.ignore_patterns("*.log"))
-        else:
-            shutil.copy2(a, b)
-    if os.path.isdir(target):
-        os.rmdir(target)  # empty (checked above)
-    os.rename(partial, target)
+        raise
 
 
 def published_shader_sources(source_root, build):
@@ -2204,6 +2287,9 @@ def deploy_from_payload(payload, target, src_root, head):
         if next(csv.reader(stream), [])[:2] != ['manifest_version', 'v1']:
             fail('unsupported payload manifest')
         rows = {row['relpath']: row for row in csv.DictReader(stream)}
+    from asset_parity import is_deploy_artifact
+    if any(is_deploy_artifact(rel) for rel in rows):
+        fail("payload contains diagnostic or backup artifacts; republish a clean payload")
     staged = payload / 'files'
     for rel, row in rows.items():
         src, dst = staged / rel, target / rel
@@ -2211,8 +2297,8 @@ def deploy_from_payload(payload, target, src_root, head):
             if sha256_file(str(src)) != row['sha256']:
                 fail(f'payload file {rel}: sha256 != manifest')
             dst.parent.mkdir(parents=True, exist_ok=True)
-            tmp = dst.with_name(dst.name + '.payload-tmp')
-            unlink_for_replace(tmp)
+            fd, tmp = tempfile.mkstemp(prefix=dst.name + '.payload-', dir=dst.parent)
+            os.close(fd)
             try:
                 shutil.copy2(src, tmp)
                 replace_file(tmp, dst)
@@ -2225,16 +2311,25 @@ def deploy_from_payload(payload, target, src_root, head):
     if sha256_file(str(exe)) != rows['mc2.exe']['sha256'] or not fp.get('present') \
             or not build_current(fp.get('sha'), head, Path(src_root), bool(fp.get('dirty'))):
         fail(f'{exe}: fingerprint != clean HEAD {head}')
-    retire_unowned(str(target), rows, own_shaders=any(rel.startswith('shaders/vulkan/') and rel.endswith('.spv') for rel in rows))
+    hashes = {rel: (row['sha256'], int(row['bytes']), None) for rel, row in rows.items()}
+    retire_unowned(str(target), hashes, own_shaders=any(rel.startswith('shaders/vulkan/') and rel.endswith('.spv') for rel in rows))
     dst = target / '.deployed_manifest.csv'
-    tmp = dst.with_name(dst.name + '.payload-tmp')
-    unlink_for_replace(tmp)
+    fd, tmp = tempfile.mkstemp(prefix=dst.name + '.payload-', dir=dst.parent)
+    os.close(fd)
+    tmp = Path(tmp)
     try:
         shutil.copy2(manifest, tmp)
+        if hashes.keys() - rows.keys():
+            tmp.chmod(tmp.stat().st_mode | stat.S_IWRITE)
+            with tmp.open('a', newline='', encoding='utf-8') as stream:
+                writer = csv.writer(stream)
+                for rel in sorted(hashes.keys() - rows.keys()):
+                    digest, size, _mtime = hashes[rel]
+                    writer.writerow([rel, digest, size, '', '', ''])
         replace_file(tmp, dst)
     finally:
         unlink_for_replace(tmp)
-    log(f'payload published: {len(rows)} manifest rows, exe sha256 {rows["mc2.exe"]["sha256"]}, fingerprint matches {head[:9]}')
+    log(f'payload published: {len(hashes)} manifest rows, exe sha256 {rows["mc2.exe"]["sha256"]}, fingerprint matches {head[:9]}')
 
 
 def _target_preset(value):
@@ -2311,6 +2406,8 @@ def main():
     ap.add_argument("--require-clean", action="store_true",
                     help="refuse an executable whose embedded fingerprint says "
                          "dirty=1 (built from an uncommitted tree)")
+    ap.add_argument("--no-example-mods", action="store_true",
+                    help="omit bundled example mods from the payload")
     ap.add_argument("--skip-kit", action="store_true",
                     help="lane installs: leave the install's mods/ kit untouched (no pinned-kit payload, no kit reconcile)")
     ap.add_argument("--no-asset-sync", action="store_true",
@@ -2341,6 +2438,8 @@ def main():
                     help="print only verdicts, failures/warnings, artifact paths and the DEPLOY_FINGERPRINT lines; "
                          "the full output goes to a log (path on the last line)")
     args = ap.parse_args()
+    preset_target = TARGET_PRESETS.get(args.target, {}).get("target_dir")
+    refuse_golden_target(args.target_dir or preset_target)
     import quiet_output
     if quiet_output.wanted(args):
         quiet_output.install_quiet(name="deploy_payload")
@@ -2400,7 +2499,7 @@ def main():
 
     if args.write_manifest_only:
         write_manifest_only(src_root, build_dir, exe_name, pdb_name, target,
-                            build64_root=args.build64_root)
+                            build64_root=args.build64_root, no_example_mods=args.no_example_mods)
         return
 
     # DEPLOY-TARGET-GUARD: force deploys to the canonical deploy folders; never create
@@ -2436,7 +2535,6 @@ def main():
         check_locks(target, exe_name, wait_s)
         lease_held = take_folder_lease(target, wait_s)
     try:
-        sweep_stale_private_temps(target)  # stale .private-<pid> temps of killed deploys, under the lease
         if args.from_payload:
             head = args.payload_head or subprocess.check_output(['git', '-C', src_root, 'rev-parse', 'HEAD'],
                                                                 text=True, **console_child.child_kwargs(redirected=True)).strip()
@@ -2625,10 +2723,11 @@ def prepare_seed_delta(items, target, full_verify=False, allow_legacy=False):
         # The normal deploy still checks the source and copied hash. Privatize
         # first so the isolation guard sees no shared write destinations.
         counts['privatized'] += 1
-        tmp = dst.with_name(dst.name + f'.private-{os.getpid()}')
+        fd, tmp = tempfile.mkstemp(prefix=dst.name + '.private-', dir=dst.parent)
+        os.close(fd)
+        tmp = Path(tmp)
         backup = tmp.with_name(tmp.name + '.shared')
         try:
-            unlink_for_replace(tmp)
             shutil.copy2(dst, tmp)
             os.link(dst, backup)
             try:
@@ -2668,33 +2767,6 @@ def prepare_seed_delta(items, target, full_verify=False, allow_legacy=False):
     return verified
 
 
-_PRIVATE_TMP = re.compile(r'\.private-(\d+)$')
-
-
-def sweep_stale_private_temps(target):
-    """Remove `<file>.private-<pid>` temps (see privatize_shared_payload) left by a killed deploy.
-    Only TARGET is walked; a temp whose pid is alive is left alone (another deploy may be running)."""
-    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-    from smoke_lib import child_registry
-    removed = 0
-    for root, _dirs, files in os.walk(target):
-        for name in files:
-            m = _PRIVATE_TMP.search(name)
-            if not m:
-                continue
-            if child_registry.pid_alive(int(m.group(1))):
-                log(f'[DEPLOY] leaving {Path(root) / name}: pid {m.group(1)} is alive')
-                continue
-            try:
-                (Path(root) / name).unlink()
-                removed += 1
-            except OSError as exc:
-                log(f'[DEPLOY] could not remove stale {Path(root) / name}: {exc}')
-    if removed:
-        log(f'[DEPLOY] removed {removed} stale .private-<pid> temp files')
-    return removed
-
-
 def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     with deploy_phase("deploy", 1800):
         return _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name)
@@ -2729,6 +2801,8 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
         reuse, reason = False, "explicit full verification or asset override"
         if not args.classic_assets and not getattr(args, "skip_kit", False):
             inputs = deploy_inputs(src_root)
+            if getattr(args, "no_example_mods", False):
+                inputs["no_example_mods"] = True
             reuse, reason = reusable_payload(src_root, target, inputs)
             if getattr(args, "full_verify", False):
                 reuse, reason = False, "explicit full verification"
@@ -2739,7 +2813,8 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
         (Path(target) / REUSE_NAME).unlink(missing_ok=True)
     with deploy_phase("payload enumeration", 300):
         items = enumerate_payload(src_root, build_dir, exe_name, pdb_name,
-                                  build64_root=args.build64_root, code_only=reuse)
+                                  build64_root=args.build64_root, code_only=reuse,
+                                  no_example_mods=getattr(args, "no_example_mods", False))
     if exe_name != "mc2":
         with deploy_phase("viewer payload", 120):
             items.extend(viewer_payload(build_dir, args.build64_root, source_head, src_root))
@@ -2844,6 +2919,14 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
         fail(f"asset parity: {len(drift.missing)} missing, {len(drift.size)} size-different, "
              f"{len(drift.content)} content-different, {len(drift.extra)} extra file(s) vs {asset_parity.default_ref()} "
              f"(missing e.g. {', '.join(drift.missing[:5])}); rerun without --no-asset-sync to copy them from v0.4", 8)
+    if not reuse and (Path(target) / "data/model_overrides/models.json").is_file():
+        try:
+            with deploy_phase("tree cook", 900):
+                kit_tool = kit_tool or kit_payload.build_importer(src_root)
+                kit_payload.finish_trees(target, kit_tool,
+                    importer_key=kit_payload.importer_source_key(src_root, Path(kit_tool).parent))
+        except (OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
+            log(f"WARN: tree model precook failed: {exc}; runtime will cook missing models")
     installed = os.path.join(target, exe_name)
     require_head_exe(installed, source_head, src_root)
     if sha256_file(installed) != sha256_file(os.path.join(build_dir, exe_name)):
@@ -2863,6 +2946,7 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
         if spv_fails:
             fail("deployed SPIR-V is not the build's SPIR-V:\n  " + "\n  ".join(spv_fails), 4)
         log(f"deployed SPIR-V audit OK: {spv_n} .spv identical to the build, descriptor/push ABI matches")
+    hashes = {rel: row for rel, row in hashes.items() if not asset_parity.is_deploy_artifact(rel)}
     write_manifest(target, hashes, src_commit)
     if reuse:
         # Preserve the verified external source inventory across code-only deploys.

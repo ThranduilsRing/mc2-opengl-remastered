@@ -133,7 +133,7 @@ void InfoWindow::init( FitIniFile& file )
 
     // sebi: WTF??? thank you clang
 	//memset( skillInfos.get(), 0, sizeof( skillInfos ));
-	memset( skillInfos.get(), 0, sizeof( skillInfos ) * 7);
+	memset( skillInfos.get(), 0, sizeof( StaticInfo ) * 7);
 
 	//sebi: ORIG BUG FIX what a reason to clear this and then iterate over it?
 	// obviously clear shoul dbe done after!
@@ -444,7 +444,7 @@ void InfoWindow::renderImGui()
 	ImGui::Begin( "##mc2_info", nullptr,
 		ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
 		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings |
-		ImGuiWindowFlags_NoBackground );
+		ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoNav );
 
 	ImDrawList* dl = ImGui::GetWindowDrawList();
 

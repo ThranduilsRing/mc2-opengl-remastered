@@ -348,7 +348,7 @@ class EditorData
 
 		void makeTacMap(BYTE*& pOutput, long& dataSize, int tacMapSize ); // this allocates memory, below just draws
 		void drawTacMap( BYTE* pDest, long dataSize, int tacMapSize );
-		void loadTacMap(PacketFile *file, BYTE*& pDest, long dataSize, int tacMapSize ); // this allocates memory.  Saves millions of CPU cycles on load 
+		void loadTacMap(PacketFile *file, BYTE*& pDest, long& dataSize, int tacMapSize ); // allocates new[]; caller owns the bitmap
 
 	private:
 

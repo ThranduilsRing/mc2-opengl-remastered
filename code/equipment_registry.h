@@ -417,6 +417,13 @@ inline int resolveLoadoutEquipmentRef(const EquipmentRegistry& reg,
 //                                      EQUIP-ADD-FILL-1's job, not S1's)
 // Pure + engine-free -> doctest target.
 // -------------------------------------------------------------------------
+// Shared by cold logistics and availability; explicit legacy mode keeps its
+// existing access, while package access honors the equipment ADD kill-switch.
+inline bool equipmentPackageAccessAllowed(bool legacyEnabled, bool hasCapability,
+                                           bool addExplicitlyOff) {
+    return legacyEnabled || (hasCapability && !addExplicitlyOff);
+}
+
 inline bool equipmentEnableWireShouldForce(bool defEnabled, long legacyMasterId,
                                            bool rowPopulated) {
     if (!defEnabled) return false;

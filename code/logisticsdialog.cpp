@@ -400,12 +400,22 @@ void	LogisticsOneButtonDialog::setText( int textID, int CancelButton, int OKButt
 	textObjects[0].setText( textID );
 	buttons[0].setText( CancelButton );
 //	buttons[1].setText( OKButton );
-
+	setDefsElementText( "game.mcl_dialog_onebutton.text.text", textObjects[0].textString() );
+	char buttonText[256] = {};
+	cLoadString( CancelButton, buttonText, sizeof(buttonText) );
+	setDefsElementText( "game.mcl_dialog_onebutton.button.cancel_okay_whatever_button", buttonText );
 }
 
 void				LogisticsOneButtonDialog::setText( mc2::czstring mainText )
 {
 	textObjects[0].setText( mainText );
+	if (this == LogisticsLegalDialog::instance()) {
+		setDefsElementText("game.mcl_dialoglegal.text.legal_info", mainText);
+		setDefsElementText("game.mcl_dialoglegal.text.main_header", "MECHCOMMANDER 2");
+		setDefsElementText("game.mcl_dialoglegal.button.accept_button", "OK");
+	} else {
+		setDefsElementText( "game.mcl_dialog_onebutton.text.text", textObjects[0].textString() );
+	}
 }
 
 
@@ -1139,7 +1149,7 @@ void LogisticsSaveDialog::updateCampaignMissionInfo()
 
 	if ( NO_ERR == file.seekBlock( "Group0Mission0" ) )
 	{
-		if ( NO_ERR != file.readIdString( "FileName", fileName, 1023 ) )
+		if ( NO_ERR != file.readIdString( "FileName", fileName, sizeof(fileName) - 1 ) )
 		{				
 			setMission( "" );
 		}		

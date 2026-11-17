@@ -19,6 +19,8 @@ def _run(root, *args):
 @pytest.fixture()
 def repo(tmp_path):
     _run(tmp_path, "init", "-q")
+    _run(tmp_path, "config", "user.name", "t")
+    _run(tmp_path, "config", "user.email", "t@t")
     (tmp_path / "a.txt").write_text("a\n")
     (tmp_path / "b.txt").write_text("b\n")
     _run(tmp_path, "add", "-A")

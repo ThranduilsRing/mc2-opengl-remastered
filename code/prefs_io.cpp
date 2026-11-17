@@ -3,6 +3,7 @@
 #include "platform_io.h"
 #include "platform_str.h"
 #include "prefs.h"
+#include "net/user_paths.h"
 #include "Gates/preferences_cfg.h"
 #include "Gates/render_options_publish.h"
 extern int loadPreferenceHotKeys(FitIniFile&);
@@ -12,7 +13,8 @@ int CPrefs::load(mc2::czstring name) {
     FullPathFileName path;
     path.init("./", name, ".cfg");
     loadedDefault_ = S_stricmp(name, "options") == 0;
-    sourceText_ = mc2::options::cfg::readTextFile(path);
+    const char* namePath = path;
+    sourceText_ = mc2::options::cfg::readTextFile(mc2::net::userFile(namePath).c_str());
     static_cast<mc2::options::Preferences&>(*this) = mc2::options::Preferences{};
     FitIniFile file;
     if (!sourceText_.empty() && file.open(sourceText_.data(), static_cast<int>(sourceText_.size())) == NO_ERR) {
@@ -47,16 +49,19 @@ std::expected<void, int> CPrefs::save() {
 #endif
     if (loadedDefault_ && text == sourceText_ && !sourceText_.empty()) return {};
     // Keep the existing recoverable backup, and never expose a partially written file to the next startup.
-    if (std::FILE* output = std::fopen("options.cfg.tmp", "wb")) {
+    const auto current = mc2::net::userFile("options.cfg");
+    const auto temporary = mc2::net::userFile("options.cfg.tmp");
+    const auto backup = mc2::net::userFile("options.cfg.old");
+    if (std::FILE* output = std::fopen(temporary.c_str(), "wb")) {
         const bool written = std::fwrite(text.data(), 1, text.size(), output) == text.size();
         const bool closed = std::fclose(output) == 0;
-        if (!written || !closed) { std::remove("options.cfg.tmp"); return std::unexpected(-1); }
+        if (!written || !closed) { std::remove(temporary.c_str()); return std::unexpected(-1); }
     } else return std::unexpected(-1);
-    _chmod("options.cfg", _S_IWRITE); _chmod("options.cfg.old", _S_IWRITE);
-    std::remove("options.cfg.old");
-    std::rename("options.cfg", "options.cfg.old");
-    if (std::rename("options.cfg.tmp", "options.cfg") != 0) {
-        std::rename("options.cfg.old", "options.cfg");
+    _chmod(current.c_str(), _S_IWRITE); _chmod(backup.c_str(), _S_IWRITE);
+    std::remove(backup.c_str());
+    std::rename(current.c_str(), backup.c_str());
+    if (std::rename(temporary.c_str(), current.c_str()) != 0) {
+        std::rename(backup.c_str(), current.c_str());
         return std::unexpected(-1);
     }
     sourceText_ = std::move(text); loadedValues_ = values; loadedDefault_ = true;

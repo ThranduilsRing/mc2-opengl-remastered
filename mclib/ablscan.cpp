@@ -1,3 +1,4 @@
+#include "math/sim_math.h"
 //===========================================================================//
 // Copyright (C) Microsoft Corporation. All rights reserved.                 //
 //===========================================================================//
@@ -807,7 +808,7 @@ void getNumber (void) {
 	}
 
 	if (exponent != 0)
-		numberValue *= static_cast<float>(pow(10.0, static_cast<double>(exponent)));
+		numberValue *= static_cast<float>(mc2::sim::math::pow(10.0, static_cast<double>(exponent)));
 
 	//---------------------------
 	// Set the literal's value...

@@ -20,6 +20,7 @@
 #include <vector>
 
 struct aiScene;  // fwd; full def only in the .cpp
+namespace mc2::sim { struct ImportedAnimState; }
 
 namespace mc2skel {
 
@@ -69,10 +70,19 @@ void EvaluateRestGpuBones(const aiScene* scene,
 struct SkelPlan;
 std::shared_ptr<const SkelPlan> BuildPlan(const aiScene* scene, const std::vector<std::string>& boneNames);
 
+// Extra rotation in one node's local frame, after clip sampling, before FK.
+struct LocalRotation {
+    int node = -1;
+    std::array<float, 3> axis{0.0f, 1.0f, 0.0f};
+    float degrees = 0.0f;
+};
+LocalRotation ResolveTorsoTwist(const SkelPlan& plan);
+
 // The MC2_MECH_IMPORT_FORCE_POSE diagnostic lives only in the scene-based overload.
 bool EvaluateClipGpuBones(const SkelPlan& plan, std::string_view clip, float frame,
                           std::vector<GpuBone>& out,
-                          double* outTimeTicks = nullptr, double* outDurTicks = nullptr);
+                          double* outTimeTicks = nullptr, double* outDurTicks = nullptr,
+                          const LocalRotation* extra = nullptr);
 
 // Clip cross-fade: the local TRS of both clips is blended (lerp pos/scale, slerp+normalise rot)
 // by weightB in [0,1] BEFORE the FK walk; joint globals do not interpolate, so this is the only
@@ -81,7 +91,15 @@ bool EvaluateClipGpuBones(const SkelPlan& plan, std::string_view clip, float fra
 bool EvaluateClipBlendGpuBones(const SkelPlan& plan,
                                std::string_view clipA, float frameA,
                                std::string_view clipB, float frameB,
-                               float weightB, std::vector<GpuBone>& out);
+                               float weightB, std::vector<GpuBone>& out,
+                               const LocalRotation* extra = nullptr,
+                               const std::vector<std::array<float, 16>>* source = nullptr,
+                               std::vector<std::array<float, 16>>* locals = nullptr);
+
+// Preserve an interrupted fade before replacing activeClip. Snapshot locals exclude torso yaw.
+void BeginActorClipFade(const SkelPlan& plan, mc2::sim::ImportedAnimState& state);
+bool EvaluateActorClipGpuBones(const SkelPlan& plan, mc2::sim::ImportedAnimState& state,
+                              std::vector<GpuBone>& out, const LocalRotation* extra = nullptr);
 
 void EvaluateRestGpuBones(const SkelPlan& plan, std::vector<GpuBone>& out);
 

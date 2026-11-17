@@ -139,6 +139,7 @@ import os
 import shutil
 import sys
 import tempfile
+from functools import lru_cache
 from pathlib import Path
 
 PREFIX = "[LINK_GUARD]"
@@ -165,13 +166,15 @@ MUTATED_ROOTS = (
     "cache/content-model",
 )
 MUTATED_FILES = (
-    "scripts/console_child.py",
+    "scripts/console_child.py", "scripts/smoke_lib/child_registry.py",
     "data/terrain_materials.json", "data/visual_tuning.json",
     "data/tgl/spotlight.ini", "data/tgl/marblecliff.ini", "data/tgl/MarbleCliffGLB.glb",
     # stock-tree-upscale: deploy-cooked 1024 sidecars beside the stock 128 TGAs (deploy_payload.tree_upscale_payload, pins in
     # data/kit/tree-upscale.json); every deploy may rewrite them, so they are never a shared seed inode.
     "data/tgl/128/a_mapledead.ktx2", "data/tgl/128/a_oak1dead.ktx2", "data/tgl/128/a_palm.ktx2",
     "data/tgl/128/a_treeclump1.ktx2", "data/tgl/128/a_treeclump1l1.ktx2",
+    "docs/modding/IMPORT-CAMPAIGNS.md",
+    "docs/modding/campaign-import-status.md", "docs/modding/campaign-import-window.jpg",
 )
 _MUTATED_FILES_FOLDED = frozenset(rel.casefold() for rel in MUTATED_FILES)
 
@@ -230,8 +233,7 @@ def iter_mutated_relpaths(target: Path, deep: bool = False):
                     yield rel
         return
 
-    # TGL sources remain shared; deploy only changes the three shipped sources
-    # above and cooker stamps. Scan this tree through the same classifier.
+    # Include deploy-written mip overrides as well as source/cooker receipts.
     for path in (target / "data/tgl").rglob("*"):
         rel = path.relative_to(target).as_posix()
         if path.is_file() and rel.casefold() not in _MUTATED_FILES_FOLDED and classify(rel) == "mutated":
@@ -239,6 +241,13 @@ def iter_mutated_relpaths(target: Path, deep: bool = False):
     for rel in MUTATED_FILES:
         if (target / rel).is_file():
             yield rel
+    art = target / "data/art"
+    if art.is_dir():
+        # Loose deploy-written art directly under data/art (see classify); subdirectories are covered by MUTATED_ROOTS.
+        for entry in sorted(os.listdir(art)):
+            rel = f"data/art/{entry}"
+            if (art / entry).is_file() and classify(rel) == "mutated":
+                yield rel
     for root in MUTATED_ROOTS:
         base = target / root if root else target
         if not base.is_dir():
@@ -260,12 +269,29 @@ def iter_mutated_relpaths(target: Path, deep: bool = False):
                         yield rel
 
 
+@lru_cache(maxsize=1)
+def _intentional_assets() -> frozenset[str]:
+    # Use the same committed declarations as deploy's intentional mip block.
+    import asset_parity
+    from deploy_payload import git_head
+
+    root = Path(__file__).resolve().parents[1]
+    return frozenset(rel.casefold() for rel in asset_parity.intentional_changes(git_head(str(root)), root))
+
+
 def classify(rel: str) -> str:
     """'mutated' (must be a private inode) or 'data' (safe to share)."""
     rel = rel.replace("\\", "/").lstrip("/").casefold()
     if rel in _MUTATED_FILES_FOLDED:
         return "mutated"
     if rel.startswith("data/tgl/") and rel.endswith(".cookstamp"):
+        return "mutated"
+    parts = rel.split("/")
+    if len(parts) == 4 and parts[:2] == ["data", "tgl"] and parts[2].isdigit() and rel.endswith(".tga"):
+        return "mutated" if rel in _intentional_assets() else "data"
+    # Loose art directly under data/art (component icons, menu planet tiles): stock art ships inside art.fst, so every
+    # loose file there is a deploy-written override that the next deploy may rewrite; never a shared seed inode.
+    if rel.startswith("data/art/") and rel.count("/") == 2:
         return "mutated"
     # Native recipes publish by temp+rename (cook_cache.cpp), never through an existing inode (a read touches the LRU mtime only when nlink == 1).
     if rel.startswith("cache/content-model/model-") and rel.endswith(".mci"):
