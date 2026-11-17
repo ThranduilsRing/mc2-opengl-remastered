@@ -55,9 +55,9 @@ inline const char* panelTitle(int p) {
 }
 
 // The area the grid used to occupy (mcl_mc.fit Rect13: 27,115 313x345), three columns by three rows.
-inline constexpr float kAreaX = 27, kAreaY = 115, kColW = 101, kRowH = 108, kGap = 5;
+inline constexpr float kAreaX = 27, kAreaY = 130, kColW = 101, kRowH = 104, kGap = 4;   // starts 15 px below the grid so the toggle clears the variant combo
 // header strip = title row (16) + mount badge row (12); item rows follow; the last 14 px carry the refusal line.
-inline constexpr float kHeaderH = 28, kRowItemH = 13;
+inline constexpr float kHeaderH = 28, kRowItemH = 12;
 inline constexpr int kMaxItemRows = 5;
 
 inline Rect panelRect(int p) {
@@ -72,7 +72,7 @@ inline Rect itemRowRect(int p, int k) {
     return {r.x + 2, r.y + kHeaderH + k * kRowItemH, r.w - 4, kRowItemH};
 }
 // LOCATIONS | CLASSIC switch, above the panels.
-inline Rect toggleRect() { return {kAreaX, 96, 150, 17}; }
+inline Rect toggleRect() { return {kAreaX, 113, 150, 15}; }
 
 // Panel under a legacy-canvas point. Doll is not a drop target but is hit-testable.
 inline std::optional<int> panelAt(float lx, float ly) {
