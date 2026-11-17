@@ -104,8 +104,7 @@ inline int scrollByWheel(int count, int scroll, long wheelDelta) {   // engine w
     return clampScroll(count, scroll + (wheelDelta > 0 ? 1 : (wheelDelta < 0 ? -1 : 0)));
 }
 inline int scrollToReveal(int count, int scroll, int index) {
-    if (index < scroll) scroll = index;
-    if (index >= scroll + kMaxItemRows) scroll = index - kMaxItemRows + 1;
+    scroll = std::clamp(scroll, index - kMaxItemRows + 1, index);
     return clampScroll(count, scroll);
 }
 inline Rect scrollArrowRect(int p, bool down) {

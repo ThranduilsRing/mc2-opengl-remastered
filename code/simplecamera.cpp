@@ -825,7 +825,9 @@ void SimpleCamera::setMech(mc2::czstring fileName, long baseColor, long highligh
 	if (auto* shape = static_cast<Mech3DAppearance*>(pObject.get())->previewShape())
 	{
 		const auto lo = shape->GetMinBox(), hi = shape->GetMaxBox(), root = shape->GetRootNodeCenter();
-		turnRadius_ = std::hypot(std::max(std::abs(lo.x), std::abs(hi.x)), std::max(std::abs(lo.z), std::abs(hi.z)))
+		const float halfWidth = std::max(std::abs(lo.x), std::abs(hi.x));
+		const float halfDepth = std::max(std::abs(lo.z), std::abs(hi.z));
+		turnRadius_ = std::hypot(halfWidth, halfDepth)
 			+ 0.5f * std::hypot(root.x, root.z);
 		turnHalfHeight_ = 0.5f * (hi.y - lo.y);
 	}
