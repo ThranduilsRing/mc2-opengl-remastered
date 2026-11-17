@@ -351,6 +351,7 @@ void MissionInterfaceManager::update (void)
 			if (!targetButton)
 			{
 				animationRunning = false;
+				return;
 			}
 
 			userInput->setMouseCursor(mState_TUTORIALS);

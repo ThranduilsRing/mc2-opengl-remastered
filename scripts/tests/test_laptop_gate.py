@@ -15,6 +15,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 import laptop_gate  # noqa: E402
 import deploy_payload  # noqa: E402
+import gate_hosts  # noqa: E402
 
 
 def _manifest(path, files):
@@ -100,6 +101,8 @@ def test_invalid_pc_seed_cannot_touch_laptop(tmp_path, monkeypatch, files):
 
 
 def test_pack_ships_only_candidate_files_that_differ(tmp_path, monkeypatch):
+    if gate_hosts.current_host() != "pc" and not laptop_gate.PC_REF.exists():
+        pytest.skip(f"PC reference tree {laptop_gate.PC_REF} is absent on this host")
     gate = tmp_path / "gate"
     install = gate / "drv/E/mc2-installs/install-stock-abc"   # the candidate, not INSTALL (the published v0.4)
     (install / "shaders").mkdir(parents=True)
@@ -161,6 +164,7 @@ def test_readonly_hardlink_replacement_preserves_source(tmp_path, monkeypatch, r
         expected = b"seed bytes" if route == "seed" else b"new bytes"
         assert dst.read_bytes() == expected
         assert peer.read_bytes() == b"seed bytes"
+        assert not peer.stat().st_mode & stat.S_IWRITE
         assert not os.path.samefile(peer, dst)
         assert deploy_payload.sha256_file(dst) == hashlib.sha256(expected).hexdigest()
     finally:
@@ -197,6 +201,8 @@ def test_driver_exits_zero_only_on_pass(sm, rc):
 
 
 def test_ref_sums_cover_both_pinned_kits_and_refcheck_flags_a_bad_file(tmp_path, monkeypatch):
+    if gate_hosts.current_host() != "pc" and not laptop_gate.PC_REF.exists():
+        pytest.skip(f"PC reference tree {laptop_gate.PC_REF} is absent on this host")
     text = laptop_gate.ref_sums(ROOT)
     rels = [line.split("  ", 1)[1] for line in text.splitlines()]
     assert any(r.startswith("packages/mc2-industrial-kit/") for r in rels)

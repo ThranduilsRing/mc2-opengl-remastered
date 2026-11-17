@@ -9,6 +9,7 @@
 #include "../../RenderCore/FramePackets.h"
 #include "shadow_mover_feed.h"
 #include "../../RenderCore/StaticPropOrigin.h"
+#include "../../RenderCore/PropListRoute.h"
 
 void GpuStaticPropBatcher::captureMoverShadowShape(const void* owner, TG_MultiShape* multi) {
     if (!multi || !multi->listOfShapes || !s_geometryFinalized || g_mechPreviewRenderDepth>0) return;
@@ -123,7 +124,7 @@ void mc2_static_prop_retype_far_tier(std::span<GpuStaticPropInstance> instances,
 int mc2_static_prop_lod_skips_late(uint32_t typeID) {
     if (!s_lodMembers.contains(typeID)) return 0;
     const PropLodMember& m = s_lodMembers.at(typeID);
-    return m.tier >= 3 ? 1 : 0;
+    return PropList::tierSkipsFringe(m.tier) ? 1 : 0;
 }
 
 extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
@@ -200,7 +201,8 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
         }
     }
     }
-    std::vector<uint32_t> typeIds;
+    static std::vector<uint32_t> typeIds;
+    typeIds.clear();
     { ZoneScopedN("VKIsl.Props.MainFeed.TypeOrder");
     typeIds.reserve(s_persistentStaticStore.size() + s_bucketsByType.size());
     for (const auto& [storeType, storeInsts] : s_persistentStaticStore) typeIds.push_back(storeType);

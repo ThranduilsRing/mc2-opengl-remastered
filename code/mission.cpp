@@ -23,6 +23,7 @@
 #include "net/runtime.h"
 #include "net/user_paths.h"
 #include "sim_tick_clock.h"
+#include "sim_speed.h"
 #include <algorithm>
 #include <cstdio>
 #include <vector>
@@ -635,12 +636,6 @@ bool Mission::runOrderIngressFixture() {
 }
 
 
-static float simSpeedClamp(float v)
-{
-	v = std::clamp(v, 0.25f, 4.0f);
-	return v;
-}
-
 static float s_simSpeedRuntime = -1.0f;   // < 0 = unseeded (read env on first use)
 
 float simSpeedGetMultiplier()
@@ -650,14 +645,14 @@ float simSpeedGetMultiplier()
 	{
 		s_simSpeedRuntime = mc2::gate::get<"MC2_SIM_SPEED">();   // the row clamps to [0.25, 4]
 	}
-	return s_simSpeedRuntime;
+	return mc2::sim::speedEffective(s_simSpeedRuntime, mc2::net::active());
 }
 
 void simSpeedSetMultiplier(float v)
 {
     if (mc2::net::active()) return;
 	const float prev = simSpeedGetMultiplier();
-	s_simSpeedRuntime = simSpeedClamp(v);
+	s_simSpeedRuntime = mc2::sim::speedSet(s_simSpeedRuntime, v, mc2::net::active());
 	mc2::fmt::print_err("[SIM-SPEED v1] multiplier={:.2f} (was {:.2f})\n", static_cast<double>(s_simSpeedRuntime), static_cast<double>(prev));
 	fflush(stderr);
 }
@@ -1320,7 +1315,7 @@ long Mission::setObjectiveTimer (long objectiveNum, float timeLeft)
 //----------------------------------------------------------------------------------
 float Mission::checkObjectiveTimer (long objectiveNum)
 {
-	gosASSERT((objectiveNum >= 0) || objectiveNum < static_cast<long>(numObjectives));
+	gosASSERT((objectiveNum >= 0) && objectiveNum < static_cast<long>(numObjectives));
 
 	long timerNumber = OBJECTIVE_1_TIMER + objectiveNum;
 	unsigned long timeLeft = 0;
@@ -1336,7 +1331,7 @@ float Mission::checkObjectiveTimer (long objectiveNum)
 //----------------------------------------------------------------------------------
 long Mission::setObjectiveStatus (long objectiveNum, ObjectiveStatus status)
 {
-	gosASSERT((objectiveNum >= 0) || objectiveNum < static_cast<long>(numObjectives));
+	gosASSERT((objectiveNum >= 0) && objectiveNum < static_cast<long>(numObjectives));
 	
 	if (objectives)
 		objectives[objectiveNum].status = status;
@@ -1405,7 +1400,7 @@ ObjectiveStatus Mission::checkObjectiveStatus (long objectiveNum)
 //----------------------------------------------------------------------------------
 long Mission::setObjectiveType (long objectiveNum, ObjectiveType type)
 {
-	gosASSERT((objectiveNum >= 0) || objectiveNum < static_cast<long>(numObjectives));
+	gosASSERT((objectiveNum >= 0) && objectiveNum < static_cast<long>(numObjectives));
 
 	if (objectives)
 		objectives[objectiveNum].type = type;
@@ -1416,7 +1411,7 @@ long Mission::setObjectiveType (long objectiveNum, ObjectiveType type)
 //----------------------------------------------------------------------------------
 ObjectiveType Mission::checkObjectiveType (long objectiveNum)
 {
-	gosASSERT((objectiveNum >= 0) || objectiveNum < static_cast<long>(numObjectives));
+	gosASSERT((objectiveNum >= 0) && objectiveNum < static_cast<long>(numObjectives));
 		
 	ObjectiveType result = PrimaryGoal;
 	
@@ -1429,7 +1424,7 @@ ObjectiveType Mission::checkObjectiveType (long objectiveNum)
 //----------------------------------------------------------------------------------
 void Mission::setObjectivePos (long objectiveNum, float realX, float realY, float realZ)
 {
-	gosASSERT((objectiveNum >= 0) || objectiveNum < static_cast<long>(numObjectives));
+	gosASSERT((objectiveNum >= 0) && objectiveNum < static_cast<long>(numObjectives));
 		
 	if (objectives)
 	{

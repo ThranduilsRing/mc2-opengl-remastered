@@ -11,6 +11,13 @@
 #include <system_error>
 #include <utility>
 
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
+
 namespace mc2cache {
 
 std::filesystem::path entryPath(std::string_view dir, const CacheKind& kind, uint64_t key) {
@@ -61,7 +68,13 @@ bool writeEntry(std::string_view dir, const CacheKind& kind, uint64_t key, std::
     const bool wrote = std::fwrite(bytes.data(), 1, bytes.size(), f) == bytes.size();
     const bool closed = std::fclose(f) == 0;
     if (!wrote || !closed) { fs::remove(tmp, ec); return false; }
-    fs::rename(tmp, path, ec);   // atomic replace: a crash leaves only a .tmp file, never a partial entry
+    // Windows rename does not replace an existing (possibly damaged) cache entry.
+#ifdef _WIN32
+    if (!MoveFileExW(tmp.c_str(), path.c_str(), MOVEFILE_REPLACE_EXISTING))
+        ec = std::error_code(static_cast<int>(GetLastError()), std::system_category());
+#else
+    fs::rename(tmp, path, ec);
+#endif
     if (ec) { fs::remove(tmp, ec); return false; }
     // Bound disk use per kind: keep the newest maxFiles entries, sweep this kind's stale temp files.
     std::vector<std::pair<fs::file_time_type, fs::path>> entries;

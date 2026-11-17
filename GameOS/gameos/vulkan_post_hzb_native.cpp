@@ -810,14 +810,14 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
                     static_cast<unsigned long long>(s->totalTested), static_cast<unsigned long long>(s->totalCulled), static_cast<unsigned long long>(s->measuredFrames));
         }
     }
-    parity_check(s);   // runs once the pending check frame has completed
+    if (mc2_diag::tagRequested("CULL_PARITY")) parity_check(s); // runs once the pending check frame has completed
     if (!s->instances[slot].upload(feed.instances112, static_cast<uint64_t>(feed.count)*sizeof(GpuStaticPropInstance))) {
         setFallback("instances_upload_failed"); s->disabled = true; return false;
     }
 
     // Check frame: one in kParityEvery. Needs a host-readable copy of every pyramid level (recorded below, after the cull).
     // A pending check still owns `parityMips`: no new check frame until it has run.
-    const bool parityFrame = (g_parity.runs++ % kParityEvery) == 0 && !s->parity.valid;
+    const bool parityFrame = mc2_diag::tagRequested("CULL_PARITY") && (g_parity.runs++ % kParityEvery) == 0 && !s->parity.valid;
     bool parityRecord = false;
     VkDeviceSize parityOffset[64] = {};
     VkDeviceSize visOffset = 0;

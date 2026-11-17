@@ -434,6 +434,12 @@ def checked_files(root, rows, receipts=None):
     return seen
 
 
+def runtime_manifest(manifest):
+    """Keep authored IR in the pinned store; the game consumes GLBs and native recipes."""
+    return dict(manifest, files=[r for r in manifest["files"]
+                                if not (r["path"].startswith("content/") and r["path"].endswith(".mc2ir.json"))])
+
+
 def payload(src_root, manifest_path=MANIFEST, kit_rel=KIT_REL, receipts=None):
     manifest = json.loads((Path(src_root) / manifest_path).read_text(encoding="utf-8"))
     if manifest["schema"] != 1 or not manifest["assets"] or not manifest["files"]:
@@ -446,6 +452,7 @@ def payload(src_root, manifest_path=MANIFEST, kit_rel=KIT_REL, receipts=None):
                 for a in manifest["assets"] for i in range(3)}
     if models != expected:
         raise ValueError("pinned kit asset list differs from its GLB payload")
+    manifest = runtime_manifest(manifest)
     return manifest, [(str(store / r["path"]), (kit_rel / r["path"]).as_posix(), "kit")
                       for r in manifest["files"]]
 
@@ -638,6 +645,7 @@ def finish(target_dir, manifest, tool, cooker=subprocess.run, *, kit_rel=KIT_REL
     Recipes are keyed per model: sha256(GLB) + importer version (importer source closure + import args).
     Lookup order per model: the install's own receipt (a seed carries it), the shared cache, then cook that one
     model and publish it to the shared cache. A model is never recooked because an unrelated file changed."""
+    manifest = runtime_manifest(manifest)
     target = Path(target_dir).resolve()
     kit = target / kit_rel
     hashes = HashReceipts(target / '.deploy-receipts.json')

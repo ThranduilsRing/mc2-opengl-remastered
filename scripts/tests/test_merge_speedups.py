@@ -10,6 +10,7 @@ sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 
 from tools import lane_merge as lm  # noqa: E402
+from tools import gate_hosts  # noqa: E402
 import console_child  # noqa: E402
 import ninja_build  # noqa: E402
 
@@ -79,6 +80,8 @@ def _throwaway_repo(tmp_path):
     def git(*a):
         subprocess.run(["git", "-C", str(tmp_path), "-c", "user.name=t", "-c", "user.email=t@t", *a], check=True, capture_output=True, **console_child.child_kwargs(redirected=True))
     git("init", "-q", "-b", "main")
+    git("config", "user.name", "fixture")
+    git("config", "user.email", "fixture@example.invalid")
     (tmp_path / "a.txt").write_text("a")
     (tmp_path / "ok.py").write_text("import sys; sys.exit(0)")
     (tmp_path / "bad.py").write_text("import sys; print('boom'); sys.exit(1)")
@@ -822,6 +825,21 @@ def test_parallel_gate_respects_inherited_batch_and_failed_deploy(monkeypatch):
     assert gate.execute_parallel(steps, "head") == 1 and seen == steps[:1]
 
 
+def _hardlinks_share_inode():
+    import tempfile
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            a = os.path.join(d, "a")
+            with open(a, "wb") as f:
+                f.write(b"x")
+            os.link(a, os.path.join(d, "b"))
+            return os.path.samefile(a, os.path.join(d, "b")) and os.stat(a).st_nlink == 2
+    except OSError:
+        return False
+
+
+@pytest.mark.skipif(gate_hosts.current_host() != "pc" and not _hardlinks_share_inode(),
+                    reason=f"gate.stock_copy hardlink privacy needs hardlinks that share an inode (gate host {gate_hosts.current_host()})")
 @pytest.mark.parametrize("fail", [False, True])
 def test_stock_copy_is_private_and_always_removed(deploy_tmp_path, fail):
     import merge_gate as gate
@@ -984,7 +1002,8 @@ def test_unit_runner_engine_cache_layout_and_required_coverage(tmp_path, generat
         + "for folder, name in [('model_override', 'model_override_tests'), ('static_natural_skip', 'static_natural_skip_policy_tests')]:\n"
         "    exe = tree / 'tests' / folder / (name + '.exe')\n"
         "    exe.parent.mkdir(parents=True, exist_ok=True)\n"
-        f"    exe.write_text('#!/usr/bin/env bash\\nexit {7 if failure == 'native' else 0}\\n', newline='\\n')\n")
+        f"    exe.write_text('#!/usr/bin/env bash\\nexit {7 if failure == 'native' else 0}\\n', newline='\\n')\n"
+        "    exe.chmod(0o755)\n")
     # A wrong-tree build leaves these failing stale binaries behind.
     for rel in outputs[2:]:
         exe = root / rel

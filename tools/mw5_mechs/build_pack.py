@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Build the personal-use MW5 Mad Cat appearance pack (a mod) from the owner's own extracted files.
 
-Same shape as tools/bt2018_mechs/build_pack.py: the GLB, albedo and sidecar are COPIED into <install>/mods/<mod-id>/;
+Same shape as tools/bt2018_mechs/build_pack.py: the GLB, BC7 maps and sidecar are COPIED into <install>/mods/<mod-id>/;
 nothing in the install's base data is modified. The pack overrides the stock Mad Cat appearance INI
 (data/tgl/madcat.ini) so the stock chassis shows the MW5 Timber Wolf model. Never commit the generated pack.
 
-  py -3 tools/mw5_mechs/build_pack.py --install E:/mc2-installs/mw5-madcat-1 --glb mw5_madcat.glb --albedo mw5_madcat_alb.tga
+  py -3 tools/mw5_mechs/build_pack.py --install <lane-install> --glb mw5_madcat.glb --textures <cooked data/tgl>
 Mount with MC2_MOD_DEPS=mw5_mechs.
 """
 import argparse
@@ -54,7 +54,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--install", required=True)
     ap.add_argument("--glb", required=True)
-    ap.add_argument("--albedo", required=True)
+    ap.add_argument("--textures", required=True, help="directory cooked by cook_textures.py")
     ap.add_argument("--mod-id", default="mw5_mechs")
     a = ap.parse_args()
     inst = Path(a.install)
@@ -66,15 +66,19 @@ def main():
     tgl.mkdir(parents=True, exist_ok=True)
     (tgl / "madcat.ini").write_bytes(emit_ini(host.read_text(encoding="latin-1")).encode("latin-1"))
     shutil.copyfile(a.glb, tgl / f"{STEM}.glb")
-    shutil.copyfile(a.albedo, tgl / f"{STEM}_alb.tga")
-    # The engine resolves mech textures at <tglPath><ObjectTextureSize>/name, so ship every size tier (a root-only file stays unbound).
-    from PIL import Image
-    src = Image.open(a.albedo)
-    for s in (2048, 1024, 512, 256, 128, 64, 32):
-        (tgl / str(s)).mkdir(exist_ok=True)
-        src.resize((s, s), Image.LANCZOS).save(tgl / str(s) / f"{STEM}_alb.tga")
+    for tier in ("", "128"):
+        (tgl / tier).mkdir(exist_ok=True)
+        for tag in ("alb", "nrm"):
+            name = f"{STEM}_{tag}.ktx2"
+            src, dst = Path(a.textures) / tier / name, tgl / tier / name
+            if src.resolve() != dst.resolve():
+                shutil.copyfile(src, dst)
+    materials = {kind: {"tga": f"{STEM}_{tag}.tga", "ktx2": f"{STEM}_{tag}.ktx2",
+                        "logicalFormat": fmt, "container": "bc7"}
+                 for kind, tag, fmt in (("albedo", "alb", "srgb-rgb"), ("normal", "nrm", "linear-normal-xyz"))}
+    materials["normal"].update(source="dump:Texture2D/Timberwolf_Body_NRM.png", skinIndependent=True)
     pkg = {"schema": "bt2018-mech-package/2", "chassisId": "mw5:timberwolf", "sourceGlb": f"{STEM}.glb", "nodes": NODE_MAP,
-           "materials": {}, "featureBits": []}
+           "materials": materials, "featureBits": ["HAS_NORMAL"]}
     (tgl / f"{STEM}.package.json").write_text(json.dumps(pkg, indent=2) + "\n")
     (out / "mod.json").write_text(json.dumps({
         "schema": "mc2-mod/1", "id": a.mod_id, "name": "MechWarrior 5 Mad Cat (personal use)", "version": "0.1.0",

@@ -10,6 +10,7 @@ Code only: inputs and outputs are the owner's own extracted files and stay outsi
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import struct
 import sys
@@ -121,7 +122,10 @@ def read_psa(path):
 def build(skm_path, anim_dir, out_path, image_name, clips=None):
     skm = Path(skm_path)
     g = json.loads(skm.read_text())
-    buf = (skm.parent / g["buffers"][0]["uri"]).read_bytes()
+    uri = g["buffers"][0]["uri"]
+    buf = base64.b64decode(uri.split(",", 1)[1]) if uri.startswith("data:") else (skm.parent / uri).read_bytes()
+    # tools/mw5_mechs/from_native.py output (native extractor) instead of the umodel glTF + PSA bridge
+    native = "bridge" in g.get("extras", {})
     nodes = g["nodes"]
     skin = g["skins"][0]
     joint_nodes = skin["joints"]
@@ -140,7 +144,16 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None):
     # rigid parts: every triangle goes to the dominant bone of its first vertex
     parts = {}
     total_triangles, mixed_triangles, pairs = 0, 0, {}
-    for mesh in g["meshes"]:
+    meshes_in = g["meshes"]
+    if native:  # LOD0 only: the meshes of nodes under the default scene
+        stack, lod0 = list(g["scenes"][0]["nodes"]), []
+        while stack:
+            i = stack.pop()
+            stack += nodes[i].get("children", [])
+            if "mesh" in nodes[i]:
+                lod0.append(meshes_in[nodes[i]["mesh"]])
+        meshes_in = lod0
+    for mesh in meshes_in:
         for pr in mesh["primitives"]:
             at = pr["attributes"]
             pos = read_accessor(g, buf, at["POSITION"]).astype(np.float32)
@@ -163,7 +176,7 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None):
             for b in np.unique(tb):
                 tri = idx[tb == b]
                 used, inv = np.unique(tri.ravel(), return_inverse=True)
-                parts.setdefault(int(b), []).append((pos[used], nrm[used], uv[used], inv.reshape(-1, 3)))
+                parts.setdefault(int(b), []).append((pos[used], nrm[used], uv[used], inv.reshape(-1, 3), pr.get("material", 0)))
 
     for (a, b), count in sorted(pairs.items()):
         print(f"mixed_pair {nodes[joint_nodes[a]]['name']} {nodes[joint_nodes[b]]['name']} {count}")
@@ -179,12 +192,15 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None):
             keep.add(i)
             i = parent.get(i)
     for i, n in enumerate(nodes):
+        if n.get("extras", {}).get("socket"):
+            continue  # native sockets (weapon/damage points) are not rigid parts
         if n["name"] in KEEP_ALWAYS or n["name"] in NODE_MAP.values() or n["name"].startswith(("Forearm_", "Clavicle_", "Upperarm_")):
             j = i
             while j is not None:
                 keep.add(j)
                 j = parent.get(j)
-    keep.discard(0)  # the umodel mesh wrapper node
+    if not native:
+        keep.discard(0)  # the umodel mesh wrapper node
     order = sorted(keep)
     remap = {old: k for k, old in enumerate(order)}
 
@@ -229,18 +245,19 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None):
         if not np.isfinite(drift) or drift >= 1e-4:
             raise ValueError(f"ibm_drift {drift:.9g} >= 1e-4")
         p = [np.concatenate([q[k] for q in plist]) for k in range(3)]
-        base, tris = 0, []
+        base, material_indices = 0, {}
         for q in plist:
-            tris.append(q[3] + base)
+            material_indices.setdefault(q[4], []).append(q[3] + base)
             base += len(q[0])
-        tris = np.concatenate(tris).astype(np.uint32)
         nv = len(p[0])
         attrs = {"POSITION": add(p[0], 5126, "VEC3", 34962, True), "NORMAL": add(p[1], 5126, "VEC3", 34962),
                  "TEXCOORD_0": add(p[2], 5126, "VEC2", 34962),
                  "JOINTS_0": add(np.zeros((nv, 4), np.uint16), 5123, "VEC4", 34962),
                  "WEIGHTS_0": add(np.tile(np.array([1, 0, 0, 0], np.float32), (nv, 1)), 5126, "VEC4", 34962)}
         mname = nm(jn).replace("_DM0", "")
-        meshes.append({"name": mname, "primitives": [{"attributes": attrs, "indices": add(tris.ravel(), 5125, "SCALAR", 34963), "material": 0}]})
+        primitives = [{"attributes": attrs, "indices": add(np.concatenate(indices).astype(np.uint32).ravel(), 5125, "SCALAR", 34963), "material": mat}
+                      for mat, indices in sorted(material_indices.items())]
+        meshes.append({"name": mname, "primitives": primitives})
         skins.append({"joints": [remap[jn]], "inverseBindMatrices": add(ibm.T.astype(np.float32)[None].reshape(1, 16), 5126, "MAT4")})
         mesh_nodes.append({"name": mname + "_n", "mesh": len(meshes) - 1, "skin": len(skins) - 1})
         if len(mesh_nodes[-1]["name"]) > 24:
@@ -256,6 +273,22 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None):
     clip_specs += [(src, clip, frame) for clip, (src, frame) in HOLD_CLIPS.items()]
     for src, clip, hold_frame in clip_specs:
         if clips is not None and src not in clips:
+            continue
+        if native:
+            na = next((a for a in g["animations"] if a["name"] == f"TBR_{src}_ANI"), None)
+            if na is None:
+                continue
+            samplers, channels = [], []
+            for c in na["channels"]:
+                node = remap.get(c["target"]["node"])
+                if c["target"]["path"] != "rotation" or node is None:
+                    continue
+                smp = na["samplers"][c["sampler"]]
+                q = read_accessor(g, buf, smp["output"]).astype(np.float64)
+                tin = add(read_accessor(g, buf, smp["input"]).astype(np.float32), 5126, "SCALAR", None, True)
+                samplers.append({"input": tin, "output": add(q.astype(np.float32), 5126, "VEC4"), "interpolation": "LINEAR"})
+                channels.append({"sampler": len(samplers) - 1, "target": {"node": node, "path": "rotation"}})
+            anims.append({"name": clip, "samplers": samplers, "channels": channels})
             continue
         f = Path(anim_dir) / f"TBR_{src}_ANI.psa"
         if not f.is_file():
@@ -285,7 +318,9 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None):
 
     doc = {"asset": {"version": "2.0", "generator": "tools/mw5_mechs/build_glb.py"},
            "scene": 0, "scenes": [{"nodes": root_nodes}], "nodes": out_nodes, "meshes": meshes, "skins": skins,
-           "materials": [{"name": "mw5_mech", "pbrMetallicRoughness": {"baseColorTexture": {"index": 0}, "metallicFactor": 0.3, "roughnessFactor": 0.55}}],
+           "materials": [{"name": ("mw5_body", "mw5_variant")[i] if i < 2 else m.get("name", f"mw5_material_{i}"),
+                          "pbrMetallicRoughness": {"baseColorTexture": {"index": 0}, "metallicFactor": 0.3, "roughnessFactor": 0.55}}
+                         for i, m in enumerate(g.get("materials") or [{}])],
            "textures": [{"source": 0}], "images": [{"uri": image_name}],
            "accessors": accs, "bufferViews": views, "buffers": [{"byteLength": len(blob)}], "animations": anims}
     js = json.dumps(doc, separators=(",", ":")).encode()
@@ -300,7 +335,7 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--skm", required=True)
-    ap.add_argument("--anim-dir", required=True)
+    ap.add_argument("--anim-dir", default=None, help="PSA directory (umodel bridge); not used with from_native input")
     ap.add_argument("--out", required=True)
     ap.add_argument("--image", required=True)
     ap.add_argument("--clips", default=None, help="comma list of MW5 clip names to include (default all, empty = none)")

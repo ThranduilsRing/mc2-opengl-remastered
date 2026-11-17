@@ -9,8 +9,10 @@ namespace mc2vk::sync {
 // Records every barrier of `batch` in one call and clears it. Nothing is recorded for an empty batch.
 inline void flush(const VulkanContext& ctx, VkCommandBuffer cb, BarrierBatch& batch) {
     if (batch.empty()) return;
-    std::vector<VkImageMemoryBarrier2> images;
-    std::vector<VkBufferMemoryBarrier2> buffers;
+    thread_local std::vector<VkImageMemoryBarrier2> images;
+    thread_local std::vector<VkBufferMemoryBarrier2> buffers;
+    images.clear();
+    buffers.clear();
     images.reserve(batch.images().size());
     buffers.reserve(batch.buffers().size());
     for (const auto& r : batch.images()) {

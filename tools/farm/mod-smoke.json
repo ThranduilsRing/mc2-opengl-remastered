@@ -1,0 +1,16 @@
+{
+  "type": "mod-smoke",
+  "argv": ["python", "{ROOT}/mod-smoke.py", "--install", "{ROOT}", "--harness", "C:/mc2farm/harness", "--mod", "bt2018_mechs", "--mission", "mc2_01", "--seconds", "30", "--steps", "save:60,load:90"],
+  "cwd": "{ROOT}",
+  "timeout": 600,
+  "env": {
+    "MC2_HOST_LEASE_PATH": "C:/mc2farm/host_game_lease.json",
+    "MC2_DEPLOY_LEASE_PATH": "C:/mc2farm/deploy_leases.json",
+    "MC2_CHILD_REGISTRY_DIR": "C:/mc2farm/children",
+    "MC2_HOST_GAME_SLOTS": "1",
+    "MC2_HARNESS_GPU": "any",
+    "MC2_VK_DEVICE": "NVIDIA",
+    "TMP": "C:/mc2farm/tmp",
+    "TEMP": "C:/mc2farm/tmp"
+  }
+}

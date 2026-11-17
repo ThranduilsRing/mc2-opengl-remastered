@@ -1,6 +1,6 @@
 // Native crossed-card geometry. Instance culling uses the same CPU block/distance inputs.
 #include "vegetation_card_trim.glsl"
-void mc2VegetationVertex(vec3 i_worldPos, float i_yaw, float i_scale, float i_seed, uint i_atlasFrame, float lodFade, float windFade, float lightZ, float time, float widthScale) {
+void mc2VegetationVertex(vec3 i_worldPos, float i_yaw, float i_scale, float i_seed, uint i_atlasFrame, float lodFade, float windFade, float lightZ, float time, float widthScale, bool nearFoot) {
     uint vi = uint(gl_VertexIndex);
     uint row = (vi%8u)/2u;
     // Bit 3 marks a meadow-field blade (vegetation_clumps.h kFieldBladeBit); its low bits keep the grass layer.
@@ -97,6 +97,7 @@ void mc2VegetationVertex(vec3 i_worldPos, float i_yaw, float i_scale, float i_se
 
     v_cardNormal = vec3(sy * vertFactor, -cy * vertFactor, flatFactor);
     // Rotate grass about its root; retain blade length, coverage and the eased foot margin.
+    if (nearFoot && atlasIdx < 4u && cardRole != 3u && a_card.y > 0.0) {
     for (uint k = 0u; k < uint(D.grid.w); ++k) {
         uint base = uint(D.grid.z) + k * 4u;
         vec3 foot = uintBitsToFloat(uvec3(footprintWords[base], footprintWords[base + 1u], footprintWords[base + 2u]));
@@ -119,6 +120,7 @@ void mc2VegetationVertex(vec3 i_worldPos, float i_yaw, float i_scale, float i_se
         blade = blade * c + cross(axis, blade) * s + axis * dot(axis, blade) * (1.0 - c);
         worldPos = i_worldPos + width + blade;
         v_cardNormal = v_cardNormal * c + cross(axis, v_cardNormal) * s + axis * dot(axis, v_cardNormal) * (1.0 - c);
+    }
     }
 
     v_shadowWorld = worldPos;

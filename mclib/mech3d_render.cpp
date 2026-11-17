@@ -1128,13 +1128,16 @@ bool Mech3DAppearance::submitPreviewGpu (bool freshSession)
 	// The lab has no map load. A new lab session drops the type records left by the last mission (onMapUnload keeps
 	// them, and their types are freed with the mission) exactly as the next mission's onMapLoad would; then register
 	// this type (idempotent) and build or extend the shared geometry.
-	if (freshSession)
-		batcher.onMapLoad();
-	batcher.registerTypeLod(mechType, static_cast<int>(currentLOD));
-	if (!batcher.isFinalized())
-		batcher.finalizeGeometry();
-	else
-		batcher.finalizePending();
+	{
+		ZoneNamedN(previewRegistration, "Preview.RegisterFinalize", freshSession);
+		if (freshSession)
+			batcher.onMapLoad();
+		batcher.registerTypeLod(mechType, static_cast<int>(currentLOD));
+		if (!batcher.isFinalized())
+			batcher.finalizeGeometry();
+		else
+			batcher.finalizePending();
+	}
 	if (!batcher.isFinalized())
 		return false;
 	mechShape->SetTextureHandle(0, localTextureHandle);

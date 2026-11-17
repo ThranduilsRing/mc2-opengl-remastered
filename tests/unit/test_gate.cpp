@@ -1,4 +1,5 @@
 #include <array>
+#include <atomic>
 // tests/unit/test_gate.cpp
 // GATE-REGISTRY-G1A: the typed gate table's parser, readers, cache and [CONFIG v1] dump.
 //
@@ -845,6 +846,44 @@ TEST_CASE("strict_exit_child") {
     if (std::getenv("GATE_TEST_STRICT_CHILD") == nullptr) return;
     gate::dumpConfig(stderr);
     if (std::getenv("MC2_CONFIG_STRICT") != nullptr) FAIL("dumpConfig returned under strict mode");
+}
+
+TEST_CASE("diagnostic_trace/concurrent_shutdown") {
+    constexpr const char* testName = "-tc=diagnostic_trace/concurrent_shutdown";
+    if (!std::getenv("DIAG_TRACE_TEST_CHILD")) {
+        char exe[MAX_PATH]{};
+        REQUIRE(GetModuleFileNameA(nullptr, exe, MAX_PATH) > 0);
+        EnvVar child("DIAG_TRACE_TEST_CHILD");
+        child.set("1");
+        CHECK(_spawnl(_P_WAIT, exe, exe, testName, nullptr) == 0);
+        return;
+    }
+    char temp[MAX_PATH]{};
+    REQUIRE(GetTempPathA(MAX_PATH, temp) > 0);
+    const std::string path = std::string(temp) + "mc2-diag-" + std::to_string(GetCurrentProcessId()) + ".jsonl";
+    EnvVar output("MC2_DIAGNOSTIC_TRACE_FILE"), tags("MC2_DIAG_TAGS");
+    output.set(path.c_str()); tags.set("CONFIG");
+    gate::invalidateAll();
+    std::atomic<bool> ready{false}, go{false};
+    std::thread worker([&] {
+        ready.store(true);
+        while (!go.load()) std::this_thread::yield();
+        for (int i = 0; i < 256; ++i) {
+            (void)mc2_diag::enabled();
+            (void)mc2_diag::tagEnabled("CONFIG");
+            mc2_diag::writeEvent("CONFIG", 1, i, "{}");
+            mc2_diag::flush();
+        }
+    });
+    while (!ready.load()) std::this_thread::yield();
+    go.store(true);
+    mc2_diag::init("concurrent-shutdown", 0);
+    mc2_diag::shutdown();
+    worker.join();
+    CHECK_FALSE(mc2_diag::enabled());
+    CHECK_FALSE(mc2_diag::tagEnabled("CONFIG"));
+    CHECK_FALSE(mc2_diag::writeEvent("CONFIG", 1, 0, "{}"));
+    CHECK(std::remove(path.c_str()) == 0);
 }
 
 TEST_CASE("an unregistered MC2_ variable under MC2_CONFIG_STRICT=1 ends the process with exit code 78") {

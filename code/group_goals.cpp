@@ -195,7 +195,7 @@ long MoverGroup::calcMoveGoals (glm::vec3 goal, long numMovers, glm::vec3* goalL
 			static long cellShift[8][2] = {{-1, 0}, {-1, 1}, {0, 1}, {1, 1}, {1, 0}, {1, -1}, {0, -1}, {-1, -1}};
 			for (auto & cellShiftElem : cellShift) {
 				long nRow = curRow + cellShiftElem[0];
-				long nCol = curRow + cellShiftElem[1];
+				long nCol = curCol + cellShiftElem[1];
 				if (inMapBounds(nRow, nCol, GOALMAP_DIM, GOALMAP_DIM))
 					goalView[nRow, nCol].clearFlag(GOALFLAG_NO_NEIGHBORS);
 			}
