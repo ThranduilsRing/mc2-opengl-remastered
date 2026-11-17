@@ -175,6 +175,8 @@ bool scriptMouseNorm(float* nx, float* ny, bool* buttons) {
 
 bool scriptActive() { return g_script.active; }
 
+bool inputFocused() { return g_pointer_capture.focused; }
+
 MouseInfo::MouseInfo()
     : x_(0), y_(0), rel_x_(0), rel_y_(0),
      wheel_vert_(0), wheel_hor_(0)

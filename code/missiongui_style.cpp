@@ -1123,6 +1123,7 @@ static void orderMenuLogClose(std::string_view why)
     orderMenuLogLine(line);
 }
 
+static float s_menuDispW = 0, s_menuDispH = 0; // ImGui display size when the menu opened
 static mc2::order_menu::ContextFacts s_lastFacts; // the facts of the latest evaluation, for the close log line
 
 // One predicate for open, every frame and row enable.
@@ -1141,6 +1142,11 @@ bool MissionInterfaceManager::menuContextValid(const mc2::order_menu::Order* cap
     f.mpPaused = MPlayer && isPaused();
     f.placementMode = controlGui.isAddingVehicle() || controlGui.isAddingAirstrike() ||
                       controlGui.isAddingSalvage() || controlGui.isSelectingInfoObject();
+    f.focusLost = !input::inputFocused();
+    if (captured && GuiRuntime::FrameActive()) {
+        const ImVec2 d = ImGui::GetIO().DisplaySize;
+        f.displayChanged = d.x != s_menuDispW || d.y != s_menuDispH;
+    }
     GameObject* tgt = captured ? (ObjectManager ? ObjectManager->getByWatchID(captured->target) : nullptr) : target;
     f.targetAttackable = tgt && classifyMenuTarget(*tgt) == MenuTarget::Attackable;
     if (captured && Team::home) {
@@ -1167,7 +1173,8 @@ bool MissionInterfaceManager::menuContextValid(const mc2::order_menu::Order* cap
 
 void MissionInterfaceManager::orderMenuBeginFrame()
 {
-    ++orderMenuFrame;
+    // ImGui frame clock: advances once per engine frame whether or not this update ran (headless has no menu).
+    orderMenuFrame = GuiRuntime::FrameActive() ? static_cast<std::uint64_t>(ImGui::GetFrameCount()) : orderMenuFrame + 1;
     const bool open = orderMenu.isOpen();
     if (!open && !orderMenu.escClaimed) return;
     const bool ok = !open || menuContextValid(&*orderMenu.captured);
@@ -1176,8 +1183,11 @@ void MissionInterfaceManager::orderMenuBeginFrame()
             ImGui::CloseCurrentPopup();
             ImGui::EndPopup();
         }
-        orderMenuLogClose(*why == mc2::order_menu::CancelReason::Context && !s_lastFacts.selectionMatches
-            ? "selection_changed" : orderMenuReasonName(*why));
+        const char* name = orderMenuReasonName(*why);
+        if (*why == mc2::order_menu::CancelReason::Context)
+            name = !s_lastFacts.selectionMatches ? "selection_changed" : s_lastFacts.focusLost ? "focus_lost"
+                 : s_lastFacts.displayChanged ? "display_changed" : name;
+        orderMenuLogClose(name);
     }
 }
 
@@ -1214,6 +1224,7 @@ void MissionInterfaceManager::orderMenuService(bool overGui)
             orderMenuLogLine(line);
             return;
         }
+        s_menuDispW = ImGui::GetIO().DisplaySize.x; s_menuDispH = ImGui::GetIO().DisplaySize.y;
         orderMenu.open(std::move(captured), orderMenuFrame);
         ImGui::OpenPopup(kOrderMenuPopup);
         s_logRows = true;
@@ -1261,7 +1272,7 @@ void MissionInterfaceManager::orderMenuService(bool overGui)
     }
     ImGui::PopStyleColor(2);
     const bool wasOpen = orderMenu.isOpen();
-    if (auto order = orderMenu.service(orderMenuFrame, popupOpen, choice)) {
+    if (auto order = orderMenu.service(orderMenuFrame, popupOpen || ImGui::IsPopupOpen(kOrderMenuPopup), choice)) {
         orderMenuLogClose("dispatch");
         dispatchMenuOrder(*order);
     } else if (wasOpen && !orderMenu.isOpen() && orderMenu.lastClose) {

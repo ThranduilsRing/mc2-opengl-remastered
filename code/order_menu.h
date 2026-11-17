@@ -32,11 +32,12 @@ struct ContextFacts {
     bool movie = false, tutorialAnimation = false, guiFrozen = false, hotkeyReference = false;
     bool formationLine = false, legacyPauseMenu = false, mpPaused = false, placementMode = false;
     bool targetAttackable = true, selectionMatches = true, recipientAlive = true;
+    bool focusLost = false, displayChanged = false;
 };
 constexpr bool contextValid(const ContextFacts& f) {
     return f.classic && !f.movie && !f.tutorialAnimation && !f.guiFrozen && !f.hotkeyReference &&
            !f.formationLine && !f.legacyPauseMenu && !f.mpPaused && !f.placementMode &&
-           f.targetAttackable && f.selectionMatches && f.recipientAlive;
+           !f.focusLost && !f.displayChanged && f.targetAttackable && f.selectionMatches && f.recipientAlive;
 }
 
 enum class KeyAction { None, Press, Release, Skip };

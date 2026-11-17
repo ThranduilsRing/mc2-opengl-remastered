@@ -62,6 +62,7 @@ void setInputFocus(bool focused);
 bool scriptMouseNorm(float* nx, float* ny, bool* buttons = nullptr);
 // True while an MC2_INPUT_SCRIPT is driving the pointer.
 bool scriptActive();
+bool inputFocused(); // false while the window is unfocused
 
 // Set by the ImGui layer each frame after NewFrame(); gates game mouse input.
 // The capture/focus/modal decisions these flags feed live in

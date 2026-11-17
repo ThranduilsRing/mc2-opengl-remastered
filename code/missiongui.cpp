@@ -420,8 +420,11 @@ void MissionInterfaceManager::init (FitIniFilePtr loader)
 }	
 	
 //--------------------------------------------------------------------------------------
+void orderMenuLogLine(std::string_view); // missiongui_style.cpp
 void MissionInterfaceManager::destroy (void)
 {
+	if (orderMenu.isOpen()) orderMenuLogLine("close reason=teardown");
+	orderMenu = {};
 	moveOrderMarker.reset();
 	releaseMissionSupportPreloads();
 	// [IFACE_PERF v1] flush the partial cost-split window at mission teardown

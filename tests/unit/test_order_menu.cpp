@@ -84,6 +84,8 @@ TEST_CASE("order menu: each context input going false closes the menu") {
     CHECK(closes([] { ContextFacts f; f.targetAttackable = false; return f; }()));
     CHECK(closes([] { ContextFacts f; f.selectionMatches = false; return f; }()));
     CHECK(closes([] { ContextFacts f; f.recipientAlive = false; return f; }()));
+    CHECK(closes([] { ContextFacts f; f.focusLost = true; return f; }()));
+    CHECK(closes([] { ContextFacts f; f.displayChanged = true; return f; }()));
 }
 
 TEST_CASE("order menu: dispatch returns the captured recipients and target with the row's range") {
