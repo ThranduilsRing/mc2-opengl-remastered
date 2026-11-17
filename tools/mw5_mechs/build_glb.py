@@ -23,33 +23,18 @@ if __package__:
 else:
     from ue_basis import psa_quat_to_gltf
 
-# Rest FK: Thigh -> Calf -> Foot0 is 3.483 m + 5.176 m on both sides;
-# Knee and Calf share a pivot (within 0.2 micrometres). Preserve foot descendants.
-RENAME = {"Thigh_Left": "j_LThigh", "Calf_Left": "j_LCalf", "Foot0_Left": "j_LFoot",
-          "Thigh_Right": "j_RThigh", "Calf_Right": "j_RCalf", "Foot0_Right": "j_RFoot",
-          "Torso_Pitch": "j_Spine2", "Cockpit": "j_" + "COCKPIT"}
-KEEP_ALWAYS ={"Root", "Pelvis", "Torso_Twist", "Torso_Animation", "Torso_Pitch", "Cockpit"}
-# MW5 clip (TimberWolf/Animations/TBR_<name>_ANI) -> the engine's hard-coded clip name (mclib/mech_clip_state.h)
-CLIPS = {
-    "Stand": "atlas_" + "moveCoreIdle", "WalkForward_Straight": "atlas_" + "moveCoreWalkFwd",
-    "RunForward_Straight": "atlas_" + "moveCoreRunFwd", "WalkBackward_Straight": "atlas_" + "moveCoreWalkBwd",
-    "WalkForward_LeftLimp": "atlas_" + "moveCoreWalkLimpFwdLeft", "WalkForward_RightLimp": "atlas_" + "moveCoreWalkLimpFwdRight",
-    "Stand_Turn_Left": "atlas_" + "moveCoreTurnLeftIdle", "Stand_Turn_Right": "atlas_" + "moveCoreTurnRightIdle",
-    "Jumpjetting_Neutral": "atlas_moveJumpUpIdle",
-}
-# Reverse selects WalkBwd; the engine has no RunBackward slot. Ragdoll/additive
-# gestures have no full-body source: holds prevent continuing the previous loop.
-# Destination -> (MW5 source, sampled frame); these are poses, not transitions.
-HOLD_CLIPS = {
-    **{"atlas_" + name: ("Falling", -1) for name in (
-        "hitReactKnockdownInpl", "downedIdle", "deathKnockdown", "deathIdle")},
-    **{"atlas_" + name: ("Stand", 0) for name in (
-        "downedGetup", "hitReactLgtFwd", "hitReactLgtBwd", "hitReactLgtLeft", "hitReactLgtRight")},
-    "atlas_" + "moveJumpUpStart": ("Crouch", 0),
-    "atlas_" + "moveJumpDownLand": ("Crouch", -1),
-}
-NODE_MAP = {"joint_torso": "j_Spine2",
-            "cockpit": "j_" + "COCKPIT", "hit_left": "Clavicle_Left", "hit_right": "Clavicle_Right"}
+DEFAULT_RECIPE = Path(__file__).with_name("recipes") / "timberwolf.json"
+
+
+def load_recipe(path=DEFAULT_RECIPE):
+    recipe = json.loads(Path(path).read_text())
+    if recipe["schema"] != "mw5-mech-recipe/1":
+        raise ValueError("unsupported MW5 recipe schema")
+    return recipe
+
+
+# Compatibility for the offline basis verifier; conversion uses its selected recipe.
+CLIPS = load_recipe()["clips"]
 
 
 def quat_to_mat(q):
@@ -147,7 +132,10 @@ def split_parts(g, buf):
     return parts, total, mixed, pairs
 
 
-def build(skm_path, anim_dir, out_path, image_name, clips=None, attachments=()):
+def build(skm_path, anim_dir, out_path, image_name, clips=None, attachments=(), recipe=None):
+    recipe = load_recipe() if recipe is None else recipe
+    rename = recipe["bone_rename"]
+    node_map = recipe["mc2"]["nodes"]
     skm = Path(skm_path)
     g = json.loads(skm.read_text())
     uri = g["buffers"][0]["uri"]
@@ -216,6 +204,7 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None, attachments=()):
     hull = np.concatenate([q[0] for plist in parts.values() for q in plist])
     true_height = float(np.ptp(hull[:, 1]))
     part_joints, part_names, attached = {}, {}, []
+    materials_in = list(g.get("materials") or [{}])
     by_name = {nodes[j]['name']: b for b, j in enumerate(joint_nodes)}
     for ai, spec in enumerate(attachments):
         source, bone = spec.rsplit('=', 1)
@@ -230,9 +219,11 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None, attachments=()):
             return (aworld(apar[i]) if i in apar else np.eye(4)) @ trs_mat(anodes[i])
         target = by_name[bone]
         frame = gmat(joint_nodes[target])
-        entry = {'source': path.stem, 'joint': RENAME.get(bone, bone), 'meshes': [],
+        entry = {'source': path.stem, 'joint': rename.get(bone, bone), 'meshes': [],
                  'sockets': {n['name']: aworld(i)[:3, 3].tolist() for i, n in enumerate(anodes)
                              if n.get('name', '').lower().startswith(('fire', 'muzzle'))}}
+        material_base = len(materials_in)
+        materials_in.extend(ag.get("materials") or [{}])
         weapon_parts, _, mixed, _ = split_parts(ag, abuf)
         if mixed:
             raise ValueError(f"mixed attachment triangle: {path.stem}")
@@ -242,7 +233,7 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None, attachments=()):
             part_names[key] = f'wp{ai:02d}_{len(entry["meshes"]):02d}'
             entry['meshes'].append(key)
             parts[key] = [((np.c_[p, np.ones(len(p))] @ frame.T)[:, :3].astype(np.float32),
-                           (n @ frame[:3, :3].T).astype(np.float32), uv, tri, mat) for p, n, uv, tri, mat in plist]
+                           (n @ frame[:3, :3].T).astype(np.float32), uv, tri, material_base + mat) for p, n, uv, tri, mat in plist]
         attached.append(entry)
 
     keep = set()
@@ -254,7 +245,7 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None, attachments=()):
     for i, n in enumerate(nodes):
         if n.get("extras", {}).get("socket"):
             continue  # native sockets (weapon/damage points) are not rigid parts
-        if n["name"] in KEEP_ALWAYS or n["name"] in NODE_MAP.values() or n["name"].startswith(("Forearm_", "Clavicle_", "Upperarm_")):
+        if n["name"] in recipe["keep_bones"] or n["name"] in node_map.values() or n["name"].startswith(tuple(recipe["keep_prefixes"])):
             j = i
             while j is not None:
                 keep.add(j)
@@ -265,7 +256,7 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None, attachments=()):
     remap = {old: k for k, old in enumerate(order)}
 
     def nm(i):
-        return RENAME.get(nodes[i]["name"], nodes[i]["name"])
+        return rename.get(nodes[i]["name"], nodes[i]["name"])
 
     out_nodes = []
     for old in order:
@@ -333,13 +324,13 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None, attachments=()):
     # Rotation-only clips: shared ActorX basis accounts for the root/child convention.
     name_to_node = {nm(o): remap[o] for o in order}
     anims = []
-    clip_specs = [(src, clip, None) for src, clip in CLIPS.items()]
-    clip_specs += [(src, clip, frame) for clip, (src, frame) in HOLD_CLIPS.items()]
+    clip_specs = [(src, clip, None) for src, clip in recipe["clips"].items()]
+    clip_specs += [(src, clip, frame) for clip, (src, frame) in recipe["hold_clips"].items()]
     for src, clip, hold_frame in clip_specs:
         if clips is not None and src not in clips:
             continue
         if native:
-            na = next((a for a in g["animations"] if a["name"] == f"TBR_{src}_ANI"), None)
+            na = next((a for a in g["animations"] if a["name"] == recipe["clip_pattern"].format(source=src)), None)
             if na is None:
                 continue
             samplers, channels = [], []
@@ -357,7 +348,7 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None, attachments=()):
                 channels.append({"sampler": len(samplers) - 1, "target": {"node": node, "path": "rotation"}})
             anims.append({"name": clip, "samplers": samplers, "channels": channels})
             continue
-        f = Path(anim_dir) / f"TBR_{src}_ANI.psa"
+        f = Path(anim_dir) / (recipe["clip_pattern"].format(source=src) + ".psa")
         if not f.is_file():
             if hold_frame is not None:
                 print(f"fallback_missing {clip} source={f.name}")
@@ -371,7 +362,7 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None, attachments=()):
         samplers, channels = [], []
         tin = add(t, 5126, "SCALAR", None, True)
         for bi, bname in enumerate(bones):
-            node = name_to_node.get(RENAME.get(bname, bname))
+            node = name_to_node.get(rename.get(bname, bname))
             if node is None:
                 continue
             old = order[node]
@@ -387,7 +378,7 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None, attachments=()):
            "scene": 0, "scenes": [{"nodes": root_nodes}], "nodes": out_nodes, "meshes": meshes, "skins": skins,
            "materials": [{"name": ("mw5_body", "mw5_variant")[i] if i < 2 else m.get("name", f"mw5_material_{i}"),
                           "pbrMetallicRoughness": {"baseColorTexture": {"index": 0}, "metallicFactor": 0.3, "roughnessFactor": 0.55}}
-                         for i, m in enumerate(g.get("materials") or [{}])],
+                         for i, m in enumerate(materials_in)],
            "textures": [{"source": 0}], "images": [{"uri": image_name}],
            "accessors": accs, "bufferViews": views, "buffers": [{"byteLength": len(blob)}], "animations": anims,
            "extras": {"trueHeightM": true_height, "mw5Attachments": attached}}

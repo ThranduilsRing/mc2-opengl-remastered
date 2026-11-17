@@ -188,6 +188,8 @@ def test_native_input_matches_bridge_on_fixture(fixture, tmp_path):
     assert [m["name"] for m in a["meshes"]] == [m["name"] for m in b["meshes"]]
     assert [x["name"] for x in a["animations"]] == [x["name"] for x in b["animations"]] == ["atlas_moveCoreIdle", "atlas_downedGetup", "atlas_hitReactLgtFwd",
                                                                                               "atlas_hitReactLgtBwd", "atlas_hitReactLgtLeft", "atlas_hitReactLgtRight"]
+    assert all(a["accessors"][s["output"]]["count"] == 1
+               for clip in a["animations"][1:] for s in clip["samplers"])
     assert [c["target"] for c in a["animations"][0]["channels"]] == [c["target"] for c in b["animations"][0]["channels"]]
     abuf = (tmp_path / "n.glb").read_bytes()
     bbuf = (tmp_path / "b.glb").read_bytes()
@@ -212,11 +214,17 @@ def test_attached_muzzle_in_rotated_joint_frame(fixture, tmp_path, authored):
     weapon = json.loads(skm.read_text())
     weapon['nodes'] = [{'name': 'Root'}, {'name': 'Fire00' if authored else 'tip',
                                         'translation': [2, 3, 30]}]
+    weapon['materials'] = [{'name': 'weapon_a'}, {'name': 'weapon_b'}]
+    for mesh in weapon['meshes']:
+        for primitive in mesh['primitives']:
+            primitive['material'] = 1
     wp = tmp_path / 'weapon.gltf'
     wp.write_text(json.dumps(weapon))
     out = tmp_path / 'assembled.glb'
     bone = 'Foot0_Left'
     doc = B.build(skm, tmp_path, out, 'albedo.png', attachments=[f'{wp}={bone}'])
+    assert len(doc['materials']) == 3
+    assert all(p['material'] == 2 for m in doc['meshes'][2:] for p in m['primitives'])
     row = dict(node='weapon_0', mesh='weapon', bone=bone, type=4, fires=['Fire00'])
     nodes, offsets, types, height = package_nodes(out, [row, dict(node=None)])
     assert nodes['weapon_0'] == 'j_LFoot' and types == {'weapon_0': 4}
@@ -250,3 +258,37 @@ def test_attachment_requires_resolved_bone(fixture, tmp_path):
     with pytest.raises(ValueError, match='bone not found'):
         B.build(fixture[0], tmp_path, tmp_path / 'bad.glb', 'albedo.png',
                 attachments=[f'{fixture[0]}=unresolved'])
+
+
+def test_recipe_entry_point_and_maps(fixture, tmp_path, monkeypatch):
+    from tools.mw5_mechs import build_pack as P
+    skm = fixture[0]
+    recipe = B.load_recipe()
+    recipe["mc2"]["stem"] = "fixture_mech"
+    recipe["mc2"]["model"].update(source_skm=skm.name, anim_dir=".", textures="textures",
+                                     loadout="loadout.json", host_ini="fixture_host")
+    recipe["bone_rename"]["Foot0_Left"] = "fixture_foot"
+    recipe["clips"] = {"Stand": "fixture_idle"}
+    recipe["hold_clips"] = {"fixture_hold": ["Stand", -1]}
+    recipe_path = tmp_path / "recipe.json"
+    recipe_path.write_text(json.dumps(recipe))
+    (tmp_path / "loadout.json").write_text("[]")
+    for tier in ("", "128"):
+        folder = tmp_path / "textures" / tier
+        folder.mkdir(parents=True, exist_ok=True)
+        for tag in ("alb", "nrm"):
+            (folder / f"fixture_mech_{tag}.ktx2").write_bytes(b"synthetic")
+    install = tmp_path / "install"
+    (install / "data/tgl").mkdir(parents=True)
+    (install / "data/tgl/fixture_host.ini").write_text("FITini\n[Bounds]\nf UpperLeftX = 1\nFITend\n")
+    monkeypatch.setattr(sys, "argv", ["build_pack", "--recipe", str(recipe_path), "--install", str(install)])
+    P.main()
+    from tools.mw5_mechs.sockets import load_glb
+    tgl = install / "mods/mw5_mechs/data/tgl"
+    doc, buf = load_glb(tgl / "fixture_mech.glb")
+    assert "fixture_foot" in [n["name"] for n in doc["nodes"]]
+    assert [a["name"] for a in doc["animations"]] == ["fixture_idle", "fixture_hold"]
+    assert all(doc["accessors"][s["output"]]["count"] == 1 for s in doc["animations"][1]["samplers"])
+    assert 'st AnimHost = "fixture_host"' in (tgl / "fixture_host.ini").read_text()
+    pkg = json.loads((tgl / "fixture_mech.package.json").read_text())
+    assert pkg["sourceGlb"] == "fixture_mech.glb"
