@@ -31,9 +31,9 @@ extern char TeamRelations[MAX_TEAMS][MAX_TEAMS];
 extern char versionStamp[];
 
 // MasterComponent keeps form/health private; the explicit-instantiation access trick (no layout or ODR change) lets fixtures seed them.
-template <class Tag, auto Member> struct ComponentPeek { friend constexpr auto peek(Tag) { return Member; } };
-struct PeekForm { friend constexpr auto peek(PeekForm); };
-struct PeekHealth { friend constexpr auto peek(PeekHealth); };
+template <class Tag, auto Member> struct ComponentPeek { friend constexpr decltype(Member) peek(Tag) { return Member; } };
+struct PeekForm { friend constexpr ComponentFormType MasterComponent::* peek(PeekForm); };
+struct PeekHealth { friend constexpr char MasterComponent::* peek(PeekHealth); };
 template struct ComponentPeek<PeekForm, &MasterComponent::form>;
 template struct ComponentPeek<PeekHealth, &MasterComponent::health>;
 
