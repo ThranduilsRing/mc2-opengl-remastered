@@ -2526,8 +2526,15 @@ void MechLabScreen::drawLocationView( float tbSx, float tbSy, float tbOx, float 
 			const bool sel = items[k].comp == pSelectedComponent && !pDragComponent;
 			if ( sel ) fill( row, 0x802d6a8f, true );
 			char line[64];
-			std::snprintf( line, sizeof line, "%.14s", items[k].comp->getName() );
-			text( { row.x + 1, row.y, row.w - 28, row.h }, line, 0xffe8eef4, 10.f, 0 );
+			const char* name = items[k].comp->getName();
+			const ml::Rect nameRect = rectOf( { row.x + 1, row.y, row.w - 28, row.h } );
+			int nameSize = static_cast<int>( 10.f * tbSy );
+			std::vector<std::string> nameLines;
+			while ( nameSize > 1 && GuiRuntime::CalcUiTextWrapLines( name, nameRect.w, nameSize, "", nameLines ) &&
+				nameLines.size() > 1 )
+				--nameSize;
+			GuiRuntime::DrawUiText( nameRect.x, nameRect.y, nameRect.w, nameRect.h,
+				name, 0xffe8eef4, nameSize, 0, "" );
 			std::snprintf( line, sizeof line, "%.1ft", static_cast<double>( items[k].comp->getWeight() ) );
 			text( { row.x + row.w - 28, row.y, 27, row.h }, line, 0xffa0b0c0, 10.f, 2 );
 		}
