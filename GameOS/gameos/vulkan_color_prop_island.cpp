@@ -2412,7 +2412,11 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
         for (int k = 0; k < 4; ++k) u.cameraWorldPos[k] = haveLightFeed ? lightFeed.cameraWorldPos[k] : 0.0f;
         // Diagnostic selector in the unused eye-position component; xyz stays the lighting eye.
         u.cameraWorldPos[3] = static_cast<float>(static_cast<int>(mc2::gate::get<"MC2_PROP_DEBUG_VIEW">()));
-        if (target) u.cameraWorldPos[2] = mc2::waterplanar::wp_mirror_z(u.cameraWorldPos[2], target->water);
+        if (target && target->cameraPos) {
+            u.cameraWorldPos[0] = target->cameraPos[0];
+            u.cameraWorldPos[1] = -target->cameraPos[2];
+            u.cameraWorldPos[2] = target->cameraPos[1];
+        } else if (target) u.cameraWorldPos[2] = mc2::waterplanar::wp_mirror_z(u.cameraWorldPos[2], target->water);
         u.poolF[0] = lightFeed.poolMoverDim; u.poolF[1] = lightFeed.poolMoverScale; u.poolF[2] = lightFeed.poolObjScale; u.poolF[3] = mc2::options::current().shadowQuality == 0 ? 0.0f : objectView ? 2.0f : 1.0f;
         u.poolI[0] = poolN;                  u.poolI[1] = lightFeed.poolSoft;
         u.poolI[2] = lightFeed.poolMoverMax; u.poolI[3] = lightFeed.poolCompress;

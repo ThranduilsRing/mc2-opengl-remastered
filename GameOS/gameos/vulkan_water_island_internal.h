@@ -117,8 +117,9 @@ struct WaterFsParams {
     // VK-PARITY-F3: LOCKSTEP with water_geom.frag f8/f9.
     float f8[4];             // off 176 edgeFeather, edgeFeatherStrength, halfMap, skyTintStrength
     float f9[4];             // off 192 skyTintColor.xyz, projAspect
+    float bake[4];           // off 208 world span, halfMap, reserved
 };
-static_assert(sizeof(WaterFsParams) == 208, "WaterFsParams std140 size (water_geom.frag)");
+static_assert(sizeof(WaterFsParams) == 224, "WaterFsParams std140 size (water_geom.frag)");
 static_assert(offsetof(WaterFsParams, f0) == 16 && offsetof(WaterFsParams, f3) == 64 &&
               offsetof(WaterFsParams, DEEP_COLOR) == 80 && offsetof(WaterFsParams, f4) == 112 &&
               offsetof(WaterFsParams, f7) == 160 && offsetof(WaterFsParams, f9) == 192, "WaterFsParams offsets");
@@ -262,6 +263,7 @@ extern WaterIslandHealth g_health;
 extern int g_waterInitReachedBuild;   // 1 once init_island passed its readiness gates (vk_island_fail_policy.h)
 bool init_reflection(WaterIsland* s);
 bool prepare_reflect_bake(WaterIsland* s, float water);
+void bind_reflect_bake(WaterIsland* s, uint32_t par, WaterFsParams* params);
 bool record_reflection(WaterIsland* s, VkCommandBuffer cb, bool enabled, uint32_t par, const uint32_t (&offsets)[2]);
 extern InteropForbidden g_forbidden;
 extern unsigned long g_depthInGetTexImage;

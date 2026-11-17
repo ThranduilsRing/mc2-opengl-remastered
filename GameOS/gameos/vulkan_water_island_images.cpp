@@ -10,7 +10,7 @@ namespace vk_water_detail {
 bool init_reflection(WaterIsland* s) {
     VkImageCreateInfo image{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
     image.imageType=VK_IMAGE_TYPE_2D; image.format=VK_FORMAT_R16G16B16A16_SFLOAT;
-    image.extent={static_cast<uint32_t>(s->w),static_cast<uint32_t>(s->h),1};   // full resolution
+    image.extent={1,1,1}; // descriptor stand-in; the bake owns reflection attachments
     image.mipLevels=1; image.arrayLayers=1; image.samples=VK_SAMPLE_COUNT_1_BIT;
     image.tiling=VK_IMAGE_TILING_OPTIMAL;
     image.usage=VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
@@ -23,57 +23,6 @@ bool init_reflection(WaterIsland* s) {
         view.image=s->reflectionImage.get(); view.format=image.format;
         if (!mc2vk::create(s->reflectionView,s->device,[&](VkImageView* out){return vkCreateImageView(s->device,&view,nullptr,out);})) return false;
     }
-    // Prewarm can run before water presence is known; dry maps need no depth.
-    if (!s->mapHasWater || s->planarDepthImage) return true;
-    // Coverage must not alias the reflection sampler bound by the water draw.
-    if (!s->coverageImage.create(s->allocator,s->device,image,allocation,"water.reflection.coverage")) return false;
-    view.image=s->coverageImage.get(); view.format=image.format;
-    if (!mc2vk::create(s->coverageView,s->device,[&](VkImageView* out){return vkCreateImageView(s->device,&view,nullptr,out);})) return false;
-    // D32 adds 31.6 MiB at 3840x2160; the existing RGBA16F colour is reused.
-    image.format=VK_FORMAT_D32_SFLOAT;
-    image.usage=VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    if (!s->planarDepthImage.create(s->allocator,s->device,image,allocation,"water.reflection.depth")) return false;
-    view.image=s->planarDepthImage.get(); view.format=image.format;
-    view.subresourceRange.aspectMask=VK_IMAGE_ASPECT_DEPTH_BIT;
-    if (!mc2vk::create(s->planarDepthView,s->device,[&](VkImageView* out){return vkCreateImageView(s->device,&view,nullptr,out);})) {
-        s->planarDepthImage.reset();
-        return false;
-    }
-    const VkDeviceSize bytes = static_cast<VkDeviceSize>(s->w) * s->h * sizeof(float);
-    if (!make_buffer(s, s->maskHorizontal, bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "water.mask.horizontal") ||
-        !make_buffer(s, s->maskDepth, bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "water.mask.depth")) return false;
-    VkDescriptorSetLayoutBinding bindings[3]{};
-    for (uint32_t i=0; i<3; ++i) bindings[i]={i, i==0 ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr};
-    VkDescriptorSetLayoutCreateInfo dsl{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
-    dsl.bindingCount=3; dsl.pBindings=bindings;
-    if (!mc2vk::create(s->maskDsl,s->device,[&](auto* h){return vkCreateDescriptorSetLayout(s->device,&dsl,nullptr,h);})) return false;
-    const VkDescriptorPoolSize sizes[2]{{VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,1},{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,2}};
-    VkDescriptorPoolCreateInfo pool{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
-    pool.maxSets=1; pool.poolSizeCount=2; pool.pPoolSizes=sizes;
-    if (!mc2vk::create(s->maskPool,s->device,[&](auto* h){return vkCreateDescriptorPool(s->device,&pool,nullptr,h);})) return false;
-    const VkDescriptorSetLayout layout=s->maskDsl.get();
-    VkDescriptorSetAllocateInfo alloc{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
-    alloc.descriptorPool=s->maskPool.get(); alloc.descriptorSetCount=1; alloc.pSetLayouts=&layout;
-    if (vkAllocateDescriptorSets(s->device,&alloc,&s->maskSet)!=VK_SUCCESS) return false;
-    const VkDescriptorImageInfo imageInfo{VK_NULL_HANDLE,s->coverageView.get(),VK_IMAGE_LAYOUT_GENERAL};
-    const VkDescriptorBufferInfo buffers[2]{{s->maskHorizontal.get(),0,bytes},{s->maskDepth.get(),0,bytes}};
-    VkWriteDescriptorSet writes[3]{};
-    for (uint32_t i=0; i<3; ++i) {
-        writes[i].sType=VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; writes[i].dstSet=s->maskSet; writes[i].dstBinding=i;
-        writes[i].descriptorCount=1; writes[i].descriptorType=bindings[i].descriptorType;
-        if (i==0) writes[i].pImageInfo=&imageInfo; else writes[i].pBufferInfo=&buffers[i-1];
-    }
-    vkUpdateDescriptorSets(s->device,3,writes,0,nullptr);
-    const VkPushConstantRange push{VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof(int32_t)};
-    VkPipelineLayoutCreateInfo pl{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
-    pl.setLayoutCount=1; pl.pSetLayouts=&layout; pl.pushConstantRangeCount=1; pl.pPushConstantRanges=&push;
-    if (!mc2vk::create(s->maskLayout,s->device,[&](auto* h){return vkCreatePipelineLayout(s->device,&pl,nullptr,h);})) return false;
-    mc2vk::OwnedShaderModule shader(s->device,load_spv(s->device,spv_dir()+"water_reflection_mask.comp.spv"));
-    if (!shader) return false;
-    VkComputePipelineCreateInfo compute{VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO};
-    compute.stage={VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,nullptr,0,VK_SHADER_STAGE_COMPUTE_BIT,shader.get(),"main",nullptr};
-    compute.layout=s->maskLayout.get();
-    if (!mc2vk::create(s->maskCompute,s->device,[&](auto* h){return mc2vk::infra::compute(s->device,VK_NULL_HANDLE,1,&compute,nullptr,h);})) return false;
     return true;
 }
 

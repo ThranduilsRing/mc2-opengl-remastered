@@ -175,6 +175,7 @@ layout(set = 0, binding = 1, std140) uniform WaterFsParams {
     // VK-PARITY-F3 (water brightness): GL-default features missing in VK.
     vec4 f8;              // (u_waterEdgeFeather, u_waterEdgeFeatherStrength, u_halfMap, u_waterSkyTintStrength)
     vec4 f9;              // (u_waterSkyTintColor.xyz, u_waterProjAspect)
+    vec4 bake;            // world span, halfMap, reserved
 } F;
 
 // RUNG-6.5 WATER-REFLECTION PORT: HDRI equirect (copy-once import of GL's
@@ -191,6 +192,39 @@ layout(set = 0, binding = 4) uniform sampler2D u_shoreMask;
 // the shoreline reads, so the shadow runs across the coast without a cut. Read only when F.f7.z says it is bound.
 layout(set = 0, binding = 7) uniform sampler2D u_staticMask;
 layout(set = 0, binding = 8) uniform sampler2D u_waterReflection;
+layout(set = 0, binding = 9) uniform sampler2D u_waterReflectHeight;
+
+vec2 bakedReflectionUV(vec2 p) {
+    return vec2(p.x + F.bake.y, F.bake.y - p.y) / F.bake.x;
+}
+
+vec4 bakedReflection(vec3 origin, vec3 ray) {
+    if (ray.z <= 0.001) return vec4(0);
+    // A conservative max over the whole map bounds the finite ray segment.
+    int lastMip = textureQueryLevels(u_waterReflectHeight) - 1;
+    float maximum = texelFetch(u_waterReflectHeight, ivec2(0), lastMip).r;
+    if (maximum <= 0) return vec4(0);
+    float reach = min(F.bake.x, maximum / ray.z);
+    float previousT = 0;
+    float previousGap = max(origin.z - F.f7.x, 0.0);
+    for (int i = 1; i <= 8; ++i) {
+        // Shorter steps at the receiver retain nearby low banks.
+        float fraction = float(i) / 8.0;
+        float t = reach * fraction * fraction;
+        vec3 p = origin + ray * t;
+        vec2 uv = bakedReflectionUV(p.xy);
+        if (any(lessThan(uv, vec2(0))) || any(greaterThanEqual(uv, vec2(1)))) break;
+        float height = textureLod(u_waterReflectHeight, uv, 0).r;
+        float gap = p.z - F.f7.x - height;
+        if (height > 0 && gap <= 0) {
+            // One secant refinement removes the fixed-step silhouette bands.
+            float hit = mix(previousT, t, clamp(previousGap / max(previousGap - gap, 0.001), 0, 1));
+            return textureLod(u_waterReflection, bakedReflectionUV((origin + ray * hit).xy), 0);
+        }
+        previousT = t; previousGap = gap;
+    }
+    return vec4(0);
+}
 #include "../include/water_shore_edge.hglsl"
 #include "../include/water_reactive.hglsl"
 #include "../include/water_shallow.hglsl"
@@ -641,7 +675,9 @@ void main(void)
         reflectCol = skyReflCol;   // default reflection = sky (fallback/base)
         //PORT-END:waterReflSetup
         vec4 geometry=vec4(0);
-        if (F.DEEP_COLOR.w > 0.5) {
+        if (F.DEEP_COLOR.w < -0.5) {
+            geometry = bakedReflection(WorldPos, rdir);
+        } else if (F.DEEP_COLOR.w > 0.5) {
             vec2 reflectionUV=gl_FragCoord.xy/u_waterScreenSize + reactive.xy*0.015;
             if (all(greaterThan(reflectionUV,vec2(0))) && all(lessThan(reflectionUV,vec2(1)))) {
                 vec2 extent=ceil(u_waterScreenSize/F.DEEP_COLOR.w)/u_waterScreenSize;

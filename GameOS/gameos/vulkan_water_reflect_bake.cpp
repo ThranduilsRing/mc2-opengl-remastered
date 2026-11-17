@@ -237,4 +237,23 @@ bool prepare_reflect_bake(WaterIsland* s, float water) {
     b.key = key; b.light = light; b.water = water; b.ready = true;
     return true;
 }
+
+void bind_reflect_bake(WaterIsland* s, uint32_t par, WaterFsParams* params) {
+    params->DEEP_COLOR[3] = 0;
+    if (!s->reflectionBake || gos_GetWaterReflectionQuality() != 2) return;
+    const auto& b = *static_cast<ReflectBake*>(s->reflectionBake.get());
+    if (!b.ready) return;
+    params->DEEP_COLOR[3] = -1; // quality 2: camera-independent reflection
+    params->bake[0] = b.span; params->bake[1] = b.halfMap;
+    const VkDescriptorImageInfo images[] = {
+        {s->hdriSampler.get(), b.colorView.get(), VK_IMAGE_LAYOUT_GENERAL},
+        {s->hdriSampler.get(), b.heightView.get(), VK_IMAGE_LAYOUT_GENERAL}};
+    VkWriteDescriptorSet writes[2]{};
+    for (int i = 0; i < 2; ++i) {
+        writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; writes[i].dstSet = s->set[par];
+        writes[i].dstBinding = 8 + i; writes[i].descriptorCount = 1;
+        writes[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; writes[i].pImageInfo = &images[i];
+    }
+    vkUpdateDescriptorSets(s->device, 2, writes, 0, nullptr);
+}
 } // namespace vk_water_detail

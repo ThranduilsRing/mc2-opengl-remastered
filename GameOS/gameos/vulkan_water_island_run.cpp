@@ -419,6 +419,8 @@ extern "C" int mc2_vk_water_island_run(
     }   // VK-ISLAND-TRACY-1: close VKIsl.Water.Feed
 
     if (!prepare_reflect_bake(s, nat->waterElevation)) setFallback("reflection_bake_failed");
+    reflectThisFrame = false;
+    bind_reflect_bake(s, par, reinterpret_cast<WaterFsParams*>(static_cast<uint8_t*>(uboSpan.ptr) + fsUboOff));
     s->planarTerrainRecord = {}; s->planarPropsRecord = {};
     if (reflectThisFrame) {
         mc2::waterplanar::Target target;
