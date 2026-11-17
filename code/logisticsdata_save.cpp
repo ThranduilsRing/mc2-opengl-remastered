@@ -371,7 +371,6 @@ std::expected<void, long> LogisticsData::loadVariant( FitIniFile& file )
 	if (package && savedRev < package->layoutRev) {
 		std::vector<LogisticsVariant::SavedComponent> saved;
 		for (const auto& item : record->items) saved.push_back({item.id, item.x, item.y});
-		pVariant->removeAllComponents();
 		pVariant->setLoadout(saved, &report);
 		pVariant->restoreLocationRecord(pVariant->locationRecord());
 	}

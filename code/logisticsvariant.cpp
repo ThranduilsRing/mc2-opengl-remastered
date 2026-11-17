@@ -434,6 +434,7 @@ int LogisticsVariant::init( CSVFile* file, LogisticsChassis* pChassis, int Varia
 
 				if ( pComponent && pComponent->getComponentWidth() == k
 					&& pComponent->getComponentHeight() == j )
+				{
 					if (chassis->getPackage())
 						saved.push_back({pComps[i]->getID(), xLocs[i], yLocs[i]});
 					else
@@ -446,6 +447,7 @@ int LogisticsVariant::init( CSVFile* file, LogisticsChassis* pChassis, int Varia
 				}
 			}
 		}
+	}
 	}
 	LoadoutReport report;
 	if (chassis->getPackage()) {

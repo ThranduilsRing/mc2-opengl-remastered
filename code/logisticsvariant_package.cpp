@@ -134,6 +134,7 @@ LogisticsVariant::LocationPlace LogisticsVariant::packageLocationPlace( Logistic
 // are then added in INPUT order with the solved cells (mount assignment and deployment are order-dependent).
 void LogisticsVariant::setLoadout( const std::vector<SavedComponent>& items, LoadoutReport* report )
 {
+    componentCount = 0;
     const mc2pkg::PackageChassis* pc = chassis->getPackage();
     if ( !pc )
     {
