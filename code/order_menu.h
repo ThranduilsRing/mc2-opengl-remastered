@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <optional>
+#include <utility>
 #include <vector>
 
 namespace mc2::order_menu {
@@ -15,6 +16,7 @@ struct Menu {
     std::optional<Order> captured;
     bool draining = false;
     float x = 0, y = 0;
+    float w = 0, h = 0; // last measured window size, so the clamp runs before the rows hit-test
 
     // Consume the closing frame AND the release, even outside the window.
     bool consume(bool held) {
@@ -23,11 +25,12 @@ struct Menu {
         draining = held;
         return true;
     }
-    std::optional<Order> choose(Item item) {
+    // `held`: a mouse button or Esc is still down; only then is there a release left to swallow.
+    std::optional<Order> choose(Item item, bool held = true) {
         if (!captured || item == Item::Alpha || item == Item::Priority) return std::nullopt;
-        auto order = captured;
+        auto order = std::move(captured);
         captured.reset();
-        draining = true;
+        draining = held;
         switch (item) {
         case Item::Attack: order->range = Range::Optimal; break;
         case Item::Short: order->range = Range::Short; break;

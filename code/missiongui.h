@@ -482,7 +482,7 @@ public:
 
 		void printDebugInfo();
 
-		void doAttack();
+		void doAttack(long rangeOverride = -1); // -1: each mover's own attackRange (classic); else a FireRangeType (order menu)
 		void doJump();
 		void doGuardTower();
 		

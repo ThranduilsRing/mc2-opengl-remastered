@@ -9,7 +9,7 @@
 
 
 // The menu opens, and dispatches, on exactly what a classic left-click attack (doAttack) accepts:
-// not friendly to the home team and not a capture target, plus alive.
+// not friendly to the home team and not a capture target, alive and not disabled (doAttack's caller gates on !isDisabled).
 MissionInterfaceManager::MenuTarget MissionInterfaceManager::classifyMenuTarget(GameObject& obj)
 {
     if (obj.isDestroyed() || obj.isDisabled()) return MenuTarget::Rejected;
@@ -23,33 +23,21 @@ void MissionInterfaceManager::dispatchMenuOrder(const mc2::order_menu::Order& ca
     auto* enemy = ObjectManager->getByWatchID(captured.target);
     if (!enemy || classifyMenuTarget(*enemy) != MenuTarget::Attackable) return; // one shared predicate with the menu gate
     if (mc2_diag::tagRequested("ORDER_MENU")) std::fprintf(stderr, "[ORDER_MENU] dispatchMenuOrder recipients=%zu range=%d\n", captured.recipients.size(), static_cast<int>(captured.range));
-    FireRangeType range = FIRERANGE_OPTIMAL;
+    long range = FIRERANGE_OPTIMAL;
     switch (captured.range) {
     case mc2::order_menu::Range::Short: range = FIRERANGE_SHORT; break;
     case mc2::order_menu::Range::Medium: range = FIRERANGE_MEDIUM; break;
     case mc2::order_menu::Range::Long: range = FIRERANGE_LONG; break;
     default: break;
     }
-    for (auto id : captured.recipients) {
-        auto* object = ObjectManager->getByWatchID(id);
-        if (!object || !object->isMech() || object->isDestroyed() || object->isDisabled()) continue;
-        auto* mover = static_cast<Mover*>(object);
-        if (mover->getTeam() != Team::home || !commanderIsHome(mover->getCommander())) continue;
-        TacticalOrder order;
-        order.init(ORDER_ORIGIN_PLAYER, TACTICAL_ORDER_ATTACK_OBJECT);
-        order.targetWID = enemy->getWatchID();
-        order.attackParams.type = bEnergyWeapons ? ATTACK_CONSERVING_AMMO : ATTACK_TO_DESTROY;
-        order.attackParams.method = ATTACKMETHOD_RANGED;
-        order.attackParams.range = range;
-        order.attackParams.pursue = !controlGui.getFireFromCurrentPos();
-        order.moveParams.wayPath.mode[0] = controlGui.getWalk() ? TRAVEL_MODE_SLOW : TRAVEL_MODE_FAST;
-        order.pack(nullptr, nullptr);
-        if (MPlayer && !MPlayer->isServer()) MPlayer->sendPlayerOrder(&order, false, 1, &mover);
-        else mover->handleTacticalOrder(order);
-    }
+    // One command path: the classic left-click attack (doAttack) issues the order to the selected movers.
+    GameObject* const savedTarget = target;
+    target = enemy;
+    doAttack(range);
+    target = savedTarget;
 }
 
-void MissionInterfaceManager::doAttack()
+void MissionInterfaceManager::doAttack(long rangeOverride)
 {
 
 	if ( userInput->getKeyDown( WAYPOINT_KEY ) || !target )
@@ -165,8 +153,8 @@ void MissionInterfaceManager::doAttack()
 		Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
 		if ( pMover->isSelected() && commanderIsHome(pMover->getCommander()))
 		{
-			tacOrder.attackParams.range = static_cast<FireRangeType>(pMover->attackRange);
-			if (pMover->attackRange == FIRERANGE_CURRENT)
+			tacOrder.attackParams.range = static_cast<FireRangeType>(rangeOverride >= 0 ? rangeOverride : pMover->attackRange);
+			if (tacOrder.attackParams.range == FIRERANGE_CURRENT)
 				tacOrder.attackParams.pursue = false;
 			else if (controlGui.getFireFromCurrentPos())
 				tacOrder.attackParams.pursue = false;

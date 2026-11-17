@@ -1096,13 +1096,13 @@ bool MissionInterfaceManager::updateOrderMenu(bool allowOpen, bool overGui)
         // Classic only: AOE right-click orders and Alt-camera remain intact.
         if (useLeftRightMouseProfile || overGui ||
             userInput->wasRightDrag() || !userInput->rightMouseReleased() ||
+            (MPlayer && isPaused()) || // pause orders are single-player only
             !target || classifyMenuTarget(*target) != MenuTarget::Attackable) return false;
         Order captured;
         captured.target = target->getWatchID();
         for (long i = 0; i < Team::home->getRosterSize(); ++i) {
-            auto* mover = Team::home->getMover(i);
-            if (mover->isSelected() && mover->isMech() && !mover->isDisabled() &&
-                !mover->isDestroyed() && commanderIsHome(mover->getCommander()))
+            auto* mover = Team::home->getMover(i); // any selected own mover, as doAttack issues to
+            if (mover->isSelected() && commanderIsHome(mover->getCommander()))
                 captured.recipients.push_back(mover->getWatchID());
         }
         if (captured.recipients.empty()) return false;
@@ -1110,6 +1110,7 @@ bool MissionInterfaceManager::updateOrderMenu(bool allowOpen, bool overGui)
         const auto cursor = ImGui::GetIO().MousePos;
         orderMenu.x = cursor.x;
         orderMenu.y = cursor.y;
+        orderMenu.w = orderMenu.h = 0.0f;
     }
     const bool held = ImGui::IsMouseDown(0) || ImGui::IsMouseDown(1) ||
                       ImGui::IsKeyDown(ImGuiKey_Escape) || userInput->getKeyDown(KEY_ESCAPE);
@@ -1124,10 +1125,16 @@ bool MissionInterfaceManager::updateOrderMenu(bool allowOpen, bool overGui)
     if (!orderMenu.captured) return true;
     if (useLeftRightMouseProfile || ImGui::IsKeyPressed(ImGuiKey_Escape) ||
         userInput->getKeyDown(KEY_ESCAPE)) {
-        orderMenu.choose(Item::Cancel);
+        orderMenu.choose(Item::Cancel, held);
         return true;
     }
-    ImGui::SetNextWindowPos(ImVec2(orderMenu.x, orderMenu.y), ImGuiCond_Appearing);
+    {   // Keep the whole menu on screen, using the last measured size, before any row hit-tests.
+        const ImVec2 disp = ImGui::GetIO().DisplaySize;
+        float px = orderMenu.x, py = orderMenu.y;
+        if (px + orderMenu.w > disp.x) px = disp.x - orderMenu.w;
+        if (py + orderMenu.h > disp.y) py = disp.y - orderMenu.h;
+        ImGui::SetNextWindowPos(ImVec2(px > 0.0f ? px : 0.0f, py > 0.0f ? py : 0.0f), ImGuiCond_Always);
+    }
     ImGui::SetNextWindowBgAlpha(0.97f);
     ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.035f, 0.065f, 0.075f, 1));
     ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.35f, 0.55f, 0.55f, 1));
@@ -1155,17 +1162,10 @@ bool MissionInterfaceManager::updateOrderMenu(bool allowOpen, bool overGui)
     ImGui::MenuItem("Attack priority (NOT AVAILABLE)", nullptr, false, false);
     ImGui::Separator();
     row("Cancel", Item::Cancel, true);
-    {   // Keep the whole menu on screen (a right-click near an edge opened it partly off-screen).
-        const ImVec2 disp = ImGui::GetIO().DisplaySize;
-        const ImVec2 p = ImGui::GetWindowPos();
-        const ImVec2 s = ImGui::GetWindowSize();
-        const float maxX = disp.x > s.x ? disp.x - s.x : 0.0f;
-        const float maxY = disp.y > s.y ? disp.y - s.y : 0.0f;
-        const ImVec2 q(p.x < maxX ? p.x : maxX, p.y < maxY ? p.y : maxY);
-        if (q.x != p.x || q.y != p.y) ImGui::SetWindowPos(q);
-    }
     const ImVec2 wmin = ImGui::GetWindowPos();
     const ImVec2 wsz = ImGui::GetWindowSize();
+    orderMenu.w = wsz.x;
+    orderMenu.h = wsz.y;
     const ImVec2 wmax(wmin.x + wsz.x, wmin.y + wsz.y);
     const bool inRect = ImGui::IsMouseHoveringRect(wmin, wmax, false);
     if (clicked && mc2_diag::tagRequested("ORDER_MENU")) {
@@ -1179,7 +1179,7 @@ bool MissionInterfaceManager::updateOrderMenu(bool allowOpen, bool overGui)
     ImGui::PopStyleColor(2);
     if (outside) choice = Item::Cancel;
     if (choice) {
-        if (auto order = orderMenu.choose(*choice)) dispatchMenuOrder(*order);
+        if (auto order = orderMenu.choose(*choice, held)) dispatchMenuOrder(*order);
     }
     return true;
 }

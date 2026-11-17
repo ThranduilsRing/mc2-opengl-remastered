@@ -45,3 +45,10 @@ TEST_CASE("order menu disabled alpha and priority cannot dispatch") {
     CHECK_FALSE(menu.choose(Item::Cancel));
     CHECK_FALSE(menu.captured);
 }
+
+TEST_CASE("order menu choose with no button held leaves nothing to drain") {
+    Menu menu;
+    menu.captured = Order{{1}, 2};
+    CHECK(menu.choose(Item::Attack, false));
+    CHECK_FALSE(menu.consume(false)); // the next frame's click is not swallowed
+}
