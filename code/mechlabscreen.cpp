@@ -272,11 +272,12 @@ int MechLabScreen::init( FitIniFile& file )
 	textObjects[12].moveTo(240, 506);
 	textObjects[4].moveTo(27, 499);
 	textObjects[5].moveTo(130, 497);
-	for (int i : {20, 32}) {
-		statics[i].moveTo(217, i == 20 ? 490 : 508);
+	// Legacy FIT indices differ from the generated page's Static20/Static32.
+	for (int i : {21, 33}) {
+		statics[i].moveTo(217, i == 21 ? 490 : 508);
 		statics[i].resize(13, 15);
-		statics[i].setUVs(i == 20 ? 0.f : 108.f, i == 20 ? 221.f : 230.f,
-			i == 20 ? 20.f : 128.f, i == 20 ? 245.f : 254.f);
+		statics[i].setUVs(i == 21 ? 0.f : 108.f, i == 21 ? 221.f : 230.f,
+			i == 21 ? 20.f : 128.f, i == 21 ? 245.f : 254.f);
 	}
 
 	getButton( COMPONENT_FORM_WEAPON_ENERGY )->setPressFX( LOG_VIDEOBUTTONS );

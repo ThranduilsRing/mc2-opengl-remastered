@@ -667,9 +667,13 @@ long SimpleCamera::update()
 
 void SimpleCamera::drawAnimationPanel()
 {
-    if (gos_GetKeyStatus(KEY_F9) == KEY_PRESSED) {
+    static bool keyHeld = false;
+    const auto key = gos_GetKeyStatus(KEY_F9);
+    const bool down = key == KEY_PRESSED || key == KEY_HELD;
+    if (down && !keyHeld) {
         animationPreview = {}; animationCamera = animationCamera == this ? nullptr : this;
     }
+    keyHeld = down;
     if (animationCamera != this) return;
     bool open = true;
     ImGui::SetNextWindowPos(ImVec2(900, 110), ImGuiCond_FirstUseEver);
