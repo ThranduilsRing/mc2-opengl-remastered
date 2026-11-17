@@ -1,5 +1,6 @@
 #include "vulkan_water_island_internal.h"
 #include "vk_water_planar.h"
+#include "water_planar_view.h"
 #include "vulkan_terrain_island.h"
 #include "vk_one_shot.h"
 #include "vk_barrier_batch_vk.h"
