@@ -2537,24 +2537,32 @@ void MechLabScreen::drawLocationView( float tbSx, float tbSy, float tbOx, float 
 			const bool sel = items[k].x == selI && items[k].y == selJ && pSelectedComponent && !pDragComponent;
 			if ( sel ) fill( row, 0x802d6a8f, true );
 			char line[64];
-			const char* name = items[k].comp->getName();
-			const ml::Rect nameRect = rectOf( { row.x + 1, row.y, row.w - 28, row.h } );
-			int nameSize = static_cast<int>( 10.f * tbSy );
+			const bool showWeight = items.size() <= ml::kRowsPerColumn;
+			std::string name = items[k].comp->getName();
+			const ml::Rect nameRect = rectOf( { row.x + 1, row.y, row.w - ( showWeight ? 28 : 2 ), row.h } );
+			const int nameSize = static_cast<int>( 10.f * tbSy );
 			std::vector<std::string> nameLines;
-			while ( nameSize > 1 && GuiRuntime::CalcUiTextWrapLines( name, nameRect.w, nameSize, "", nameLines ) &&
-				nameLines.size() > 1 )
-				--nameSize;
+			bool truncated = false;
+			while ( !name.empty() && GuiRuntime::CalcUiTextWrapLines( ( name + ( truncated ? "..." : "" ) ).c_str(), nameRect.w, nameSize, "", nameLines ) && nameLines.size() > 1 ) {
+				size_t cut = name.size() - 1;
+				while ( cut > 0 && ( static_cast<unsigned char>( name[cut] ) & 0xc0 ) == 0x80 ) --cut;
+				name.resize( cut );
+				truncated = true;
+			}
+			if ( truncated ) name += "...";
 			GuiRuntime::DrawUiText( nameRect.x, nameRect.y, nameRect.w, nameRect.h,
-				name, 0xffe8eef4, nameSize, 0, "" );
-			std::snprintf( line, sizeof line, "%.1ft", static_cast<double>( items[k].comp->getWeight() ) );
-			text( { row.x + row.w - 28, row.y, 27, row.h }, line, 0xffa0b0c0, 10.f, 1 );
+				name.c_str(), 0xffe8eef4, nameSize, 0, "" );
+			if ( showWeight ) {
+				std::snprintf( line, sizeof line, "%.1ft", static_cast<double>( items[k].comp->getWeight() ) );
+				text( { row.x + row.w - 28, row.y, 27, row.h }, line, 0xffa0b0c0, 10.f, 1 );
+			}
 		}
 		if ( cand )
 			text( { r.x + 2, r.y + r.h - 14, r.w - 4, 13 }, s_locReason[p].c_str(), s_locLegal[p] ? 0xff60ff90 : 0xffff7070, 10.f, 0 );
 	}
 	// The combo text is composited later; cover every panel beneath its expanded list.
 	if ( variantList.ListBox().isShowing() ) {
-		const auto& list = variantList.ListBox();
+		auto& list = variantList.ListBox();
 		fill( { list.left(), list.top(), list.width(), list.height() }, 0xff101820, true );
 	}
 }
