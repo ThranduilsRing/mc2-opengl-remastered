@@ -13,7 +13,7 @@ namespace vk_water_detail {
 namespace {
 struct WavePackets : mc2vk::IslandState {
     float span = 0, halfMap = 0;
-    uint32_t size = 1024;
+    uint32_t size = 0;
     bool bound[mc2vk::kMaxFramesInFlight]{};
     mc2vk::OwnedImage image;
     mc2vk::OwnedImageView view;
@@ -21,8 +21,8 @@ struct WavePackets : mc2vk::IslandState {
 };
 
 bool bakePackets(WaterIsland* s, WavePackets& b) {
-    // At least sixteen intervals per shortest (93 wu) noise cell, including edges.
-    while (b.size - 1 < b.span * 16.0f / 93.0f) b.size *= 2;
+    // Store lattice corners, including both ends of every train's map extent.
+    b.size = static_cast<uint32_t>(b.span / 93.0f) + 3;
     VkImageCreateInfo ci{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
     ci.imageType = VK_IMAGE_TYPE_2D; ci.format = VK_FORMAT_R8G8B8A8_UNORM;
     ci.extent = {b.size, b.size, 1}; ci.mipLevels = 1; ci.arrayLayers = 3;
@@ -101,7 +101,7 @@ bool bakePackets(WaterIsland* s, WavePackets& b) {
 bool prepare_wave_packets(WaterIsland* s, uint32_t par) {
     Mc2TerrainTier1Feed feed{};
     if (!mc2_terrain_tier1_get_load_feed(&feed) || feed.mapSide < 2) return false;
-    const float span = 128.0f * (feed.mapSide - 1);
+    const float span = 2.0f * feed.halfMap;
     auto& owner = s->wavePackets;
     if (owner) {
         const auto& b = *static_cast<WavePackets*>(owner.get());

@@ -375,12 +375,7 @@ const float NEAR_ALPHA0      = 0.04;    // GGX alpha of the calm surface close t
 const float NEAR_SKY_LIFT     = 0.4;    // reflected-sky brightening at full near gloss
 
 PREC vec2 waterWaveSlope(PREC vec2 p, float t, float footprint, float gain, out float unresolvedVar){
-    vec2 packetUv = vec2(p.x + uT.halfMap, uT.halfMap - p.y) / (128.0 * float(uT.mapSide - 1));
     float packetSize = float(textureSize(u_wavePackets, 0).x);
-    packetUv = (packetUv * (packetSize - 1.0) + 0.5) / packetSize;
-    vec4 packets[3] = vec4[3](textureLod(u_wavePackets, vec3(packetUv, 0), 0),
-                              textureLod(u_wavePackets, vec3(packetUv, 1), 0),
-                              textureLod(u_wavePackets, vec3(packetUv, 2), 0));
     PREC vec2 s = vec2(0.0);
     unresolvedVar = 0.0;
     for (int i = 0; i < WAVE_TRAINS; ++i) {
@@ -390,8 +385,17 @@ PREC vec2 waterWaveSlope(PREC vec2 p, float t, float footprint, float gain, out 
         // Independent packet envelopes break the global lattice without noise-gradient normals.
         // Long swells retain their vertex-stage phase and amplitude; unresolved packet energy
         // goes into roughness using the very same local amplitude as the resolved normal.
-        float packet = (i < 2) ? 1.0 : mix(WAVE_PACKET_MIN, WAVE_PACKET_MAX,
-            packets[(i - 2) / 4][(i - 2) % 4]);
+        float packet = 1.0;
+        if (i >= 2) {
+            float scale = WAVE_PACKET_SPAN * w.z;
+            vec2 offset = float(i) * vec2(19.19, 7.73);
+            vec2 lattice = p / scale + offset;
+            vec2 origin = floor(vec2(-uT.halfMap) / scale + offset);
+            vec2 f = fract(lattice);
+            vec2 uv = (floor(lattice) - origin + f * f * (3.0 - 2.0 * f) + 0.5) / packetSize;
+            float noise = textureLod(u_wavePackets, vec3(uv, (i - 2) / 4), 0)[(i - 2) % 4];
+            packet = mix(WAVE_PACKET_MIN, WAVE_PACKET_MAX, noise);
+        }
         float a = w.w * gain * packet;
         unresolvedVar += 0.5 * a * a * (1.0 - r * r);
         if (r > 0.0) {
