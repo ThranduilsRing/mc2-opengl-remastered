@@ -50,6 +50,8 @@ L(Presence, "MC2_HEARTBEAT", Bool, false, "gameos", "", "", passthrough | verifi
 P("MC2_HEIGHT", Int, 0, "gameos", "", "", passthrough | verified),
 P("MC2_HITCH_MS", Float, 0.0, "gameos", "", "", passthrough | verified),  // default not derivable from the tree
 L(Presence, "MC2_HITCH_TRACE", Bool, false, "gameos", "", "", passthrough | verified),
+G("MC2_HOST_CORES_PER_SLOT", String, "", "harness", "", "Harness-owned box wrapper metadata; ignored by the engine.", passthrough),
+G("MC2_HOST_GAME_SLOTS", String, "", "harness", "", "Harness-owned box wrapper metadata; ignored by the engine.", passthrough),
 // history: docs/gate-history.md#MC2_HUD_IMGUI_TABS
 L(Lead0, "MC2_HUD_IMGUI_TABS", Bool, false, "code", "", "IN-MISSION-HUD-IMGUI-SCOPE-1 slice C: data-driven command-bar tab registry (code/hudtabregistry.{h,cpp} + wiring in code/controlgui.cpp).", registry(Feature, "MC2_FEATURE_HUD_IMGUI_TABS", -1, false) | verified),
 // history: docs/gate-history.md#MC2_HUD_READABILITY_V1
