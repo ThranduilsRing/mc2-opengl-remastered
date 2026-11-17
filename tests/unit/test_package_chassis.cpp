@@ -201,8 +201,10 @@ TEST_CASE("package chassis: full MAD-3R refuses energy and ballistic on mounts, 
     CHECK(checkAdd(c, noPpc, item(-1, -1, 1, 3, Mount::Energy, 145, 6)) == Verdict::Legal);
 }
 
-TEST_CASE("package chassis: each declared mount of other BT2018 chassis takes exactly its own weapons") {
-    struct Spec { const char* name; int e, b, m; };   // mount counts of the installed pack's chassisdefs
+TEST_CASE("package chassis: synthetic mount mixes take exactly their own weapons") {
+    // Synthetic mount mixes: exercise pure rules without external mod data or the
+    // engine FIT loader. These counts are examples, not an audit of the installed pack.
+    struct Spec { const char* name; int e, b, m; };
     const Spec specs[] = {{"atlas", 2, 1, 2}, {"archer", 2, 0, 2}, {"awesome", 3, 0, 0}, {"kingcrab", 1, 2, 1}, {"warhammer", 4, 0, 1}};
     for (const Spec& s : specs) {
         INFO(s.name);
