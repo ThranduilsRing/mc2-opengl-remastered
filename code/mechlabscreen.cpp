@@ -2164,8 +2164,6 @@ struct LocItem { LogisticsComponent* comp; long x, y; };
 int s_locHover = -1;
 bool s_locLegal[ml::kPanelCount] = {};
 std::string s_locReason[ml::kPanelCount];
-aObject s_dollIcon;
-const LogisticsVariant* s_dollFor = nullptr;
 
 const mc2pkg::PackageChassis* locPackage(const LogisticsVariant* v)
 {
@@ -2469,25 +2467,6 @@ void MechLabScreen::drawLocationView( float tbSx, float tbSy, float tbOx, float 
 		fill( r, edge, false );
 		if ( doll )
 		{
-			if ( s_dollFor != pVariant )
-			{
-				s_dollFor = pVariant;
-				if ( !pc->hudIcon.empty() )
-				{
-					FullPathFileName path;
-					const std::string base = pc->hudIcon + "_40x48";
-					path.init( artPath, base.c_str(), "tga" );
-					s_dollIcon.setTexture( path );
-					s_dollIcon.setUVs( 0.f, 0.f, 40.f, 48.f );
-					s_dollIcon.resize( 80.f, 96.f );
-					s_dollIcon.setColor( 0xffd0e8ff );
-				}
-			}
-			if ( !pc->hudIcon.empty() )
-			{
-				s_dollIcon.moveTo( r.x + ( r.w - 80.f ) * 0.5f + xOffset, r.y + 2.f + yOffset );
-				s_dollIcon.render();
-			}
 			char buf[64];
 			std::snprintf( buf, sizeof buf, "MASS %.1f / %.1f t", static_cast<double>( mass ), static_cast<double>( pc->payload ) );
 			text( { r.x, r.y + r.h - 14, r.w, 14 }, buf, mass > pc->payload + 1e-3f ? 0xffff6060 : 0xffffd060, 11.f, 1 );
