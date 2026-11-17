@@ -26,6 +26,7 @@
 #include "Gates/render_options.h"
 #include "mc2fmt.h"
 #include "sim_overlap.h"
+#include "prewarm.h"
 #include <tracy/Tracy.hpp>
 
 // HDRI-SKY Item 2: scan a decoded equirect RGBA-float buffer for the dominant
@@ -213,23 +214,41 @@ HdriDecodeInput snapshotHdriSource(mc2::czstring path)
     input.path = path;
     input.cap = mc2::options::current().baseQuality == 0 ? 512 : 1024;
     input.lowCost = mc2::options::lowCost();
-    if (hdriBc6hOn()) input.cooked = mc2::textures::loadCookedSidecar(path);
-    const bool usable = input.cooked && input.cooked->isCompressed &&
-        (input.cooked->vkFormat == 143 || input.cooked->vkFormat == 144);
-    if (!usable || !input.cooked->hasSunMetadata) input.exr = snapshotExr(path);
     return input;
 }
 
 bool decodeHdriSource(mc2::czstring path, float* sunAz, bool* sunValid, HdriCpuImage* image)
 {
-    const bool ready = decodeHdriSnapshot(snapshotHdriSource(path), sunAz, sunValid, image);
+    auto input = snapshotHdriSource(path);
+    // Engine providers remain Main-only. Do not move File/FST or the texture cache
+    // onto the worker; only owned bytes cross this boundary.
+    if (path && *path) {
+        if (hdriBc6hOn()) input.cooked = mc2::textures::loadCookedSidecar(path);
+        const bool usable = input.cooked && input.cooked->isCompressed &&
+            (input.cooked->vkFormat == 143 || input.cooked->vkFormat == 144);
+        if (!usable || !input.cooked->hasSunMetadata) input.exr = snapshotExr(path);
+    }
+    bool ready = false;
+    auto job = mc2::prewarm::service().submit([input = std::move(input), &ready, sunAz, sunValid, image]() mutable {
+        auto cpu = std::make_shared<HdriCpuImage>();
+        float az = 0.0f;
+        bool valid = false;
+        const bool decoded = decodeHdriSnapshot(std::move(input), sunAz ? &az : nullptr, &valid, cpu.get());
+        return [cpu, decoded, az, valid, &ready, sunAz, sunValid, image] {
+            ready = decoded;
+            if (image) *image = std::move(*cpu);
+            if (sunAz) *sunAz = az;
+            if (sunValid) *sunValid = valid;
+        };
+    });
+    mc2::prewarm::finish(job);
     MC2_DIAGFE(stderr, "[HDRI_SKY v1] decoded=%d path=%s\n", ready, path ? path : "");
     return ready;
 }
 
 bool decodeHdriSnapshot(HdriDecodeInput input, float* outSunAzGL, bool* outSunValid, HdriCpuImage* outCpu)
 {
-    mc2::overlap::assertMainThread("HDRI.decodeSnapshot");
+    mc2::overlap::assertOwner(mc2::overlap::Owner::Prewarm, "HDRI.decodeSnapshot");
     ZoneScopedN("HDRI.decodePrivate");
     const char* path = input.path.c_str();
     if (outSunValid) *outSunValid = false;

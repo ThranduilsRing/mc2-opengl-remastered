@@ -277,7 +277,7 @@ void Logistics::stop (void)
 //----------------------------------------------------------------------------------
 long Logistics::update (void)
 {
-	if (bMovie || logisticsState != log_SPLASH) mc2::prewarm::pumpMain(4.0);
+	mc2::prewarm::pumpMain(4.0, bMovie ? mc2::prewarm::Screen::CampaignVideo : mc2::prewarm::Screen::Other, mission->isActive());
 	//MUST do this every frame.  The movie movies will play wrong, otherwise!!
 
 	if ( bMovie )

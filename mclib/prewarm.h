@@ -12,8 +12,14 @@
 #include <stdexcept>
 #include <thread>
 #include <utility>
+#include <tracy/Tracy.hpp>
 
 namespace mc2::prewarm {
+enum class Screen { FrontEndMovie, MainMenu, CampaignVideo, LoadScreen, Other, MissionWorld };
+constexpr bool mayPumpMain(Screen screen, bool worldFrame) {
+    return !worldFrame && (screen == Screen::FrontEndMovie || screen == Screen::MainMenu ||
+        screen == Screen::CampaignVideo || screen == Screen::LoadScreen);
+}
 // A main-thread sequence keeps its parser/files and pump meter alive across slices.
 class Sequence {
 public:
@@ -70,8 +76,9 @@ public:
         main_.push_back(job);
         return job;
     }
-    void pumpMain(double budgetMs) {
+    void pumpMain(double budgetMs, Screen screen, bool worldFrame) {
         overlap::assertMainThread("prewarm.pumpMain");
+        if (!mayPumpMain(screen, worldFrame)) return;
         const auto until = std::chrono::steady_clock::now() + std::chrono::duration<double, std::milli>(budgetMs);
         do {
             Job result;
@@ -84,7 +91,9 @@ public:
                 if (result->error) std::rethrow_exception(result->error);
                 if (result->adopt) result->adopt();
                 result->adopt = {};
-            } else if (!main_.empty()) {
+            } else if (screen == Screen::LoadScreen && !main_.empty()) {
+                // CSV opens and variant construction have no bounded resume cost.
+                // Keep the entire sequence for the campaign click/load screen.
                 auto job = main_.front(); main_.pop_front();
                 const auto begin = std::chrono::steady_clock::now();
                 bool more = false;
@@ -98,8 +107,9 @@ public:
         } while (std::chrono::steady_clock::now() < until);
     }
     void finish(const Job& job, const std::function<void()>& pump = {}) {
+        ZoneScopedN("Prewarm.Finish");
         while (job && !job->complete) {
-            pumpMain(4.0);
+            pumpMain(4.0, job->step ? Screen::LoadScreen : Screen::FrontEndMovie, false);
             if (pump) pump();
             if (!job->complete) {
                 std::unique_lock lock(mutex_);
@@ -141,6 +151,6 @@ private:
     bool stop_ = false;
 };
 inline Service& service() { static Service instance; return instance; }
-inline void pumpMain(double budgetMs) { service().pumpMain(budgetMs); }
+inline void pumpMain(double budgetMs, Screen screen, bool worldFrame) { service().pumpMain(budgetMs, screen, worldFrame); }
 inline void finish(const Job& job, const std::function<void()>& pump = {}) { service().finish(job, pump); }
 } // namespace mc2::prewarm

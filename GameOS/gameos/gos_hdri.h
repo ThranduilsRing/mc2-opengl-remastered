@@ -9,8 +9,8 @@
 #include <string>
 #include "../../RenderCore/KtxLoader.h"
 
-// Provider/options snapshot boundary. Both entry points remain Main-only:
-// TinyEXR's B44 tables have unsynchronized process-wide initialization.
+// Options snapshot on Main; private decode on the single prewarm worker.
+// Provider bytes are supplied on Main before submission, preserving File/FST precedence.
 struct HdriDecodeInput {
     std::string path;
     std::optional<RenderCore::KtxImage> cooked;
