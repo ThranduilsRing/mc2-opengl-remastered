@@ -2,6 +2,18 @@
 import pytest
 
 from tools.bv_calibration_report import ranks, spearman, variants, wire
+from tools import bv_calibration_report as report
+
+
+@pytest.mark.parametrize("newline", ["\r", "\r\n", "\n"])
+def test_stock_archive_line_endings(tmp_path, monkeypatch, newline):
+    (tmp_path / "misc.fst").touch()
+    monkeypatch.setattr(report, "fst_entries", lambda _: [
+        (0, 0, 0, "data/objects/fixture.csv", False, b"")])
+    text = f'Name,Value{newline}"two{newline}lines",1{newline}'
+    monkeypatch.setattr(report, "decompress_entry", lambda *args: text.encode("latin-1"))
+    assert report.stock_tables(tmp_path) == {
+        "fixture": [["Name", "Value"], [f"two{newline}lines", "1"]]}
 
 
 def test_tie_aware_rank_correlation():

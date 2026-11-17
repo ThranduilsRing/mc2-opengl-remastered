@@ -44,7 +44,7 @@ def stock_tables(install):
                 texts[Path(key).stem] = decompress_entry(off, comp, real, lz, data).decode("latin-1")
     for path in sorted((install / "data/objects").glob("*.csv")):
         texts[path.stem.lower()] = path.read_text(encoding="latin-1")
-    return {name: list(csv.reader(io.StringIO(text))) for name, text in texts.items()}
+    return {name: list(csv.reader(io.StringIO(text, newline=""))) for name, text in texts.items()}
 
 
 def variants(tables):
