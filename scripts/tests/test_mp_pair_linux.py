@@ -2,6 +2,8 @@
 import argparse
 import json
 import os
+import socket
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 import subprocess
 import sys
@@ -14,7 +16,21 @@ import run_mp_pair_linux as pair
 POPEN_CLASS = subprocess.Popen
 
 def options(tmp_path, **changes):
-    values = dict(install=tmp_path, out=tmp_path / "proof", ticks=64, port=23460, timeout=5, combat=False,
+    # Reserve an OS-selected adjacent pair while checking both endpoints. Never
+    # borrow the fixed game relay ports, including during concurrent pytest runs.
+    while True:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as host, \
+                socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as relay:
+            host.bind(("127.0.0.1", 0))
+            port = host.getsockname()[1]
+            if port >= 65535 or port in (23459, 23460, 23461):
+                continue
+            try:
+                relay.bind(("127.0.0.1", port + 1))
+            except OSError:
+                continue
+            break
+    values = dict(install=tmp_path, out=tmp_path / "proof", ticks=64, port=port, timeout=5, combat=False,
                   loss=0, latency=0, jitter=0, stall_ms=0, stall_tick=30, kill_peer=None, kill_tick=30,
                   lobby=False, render="none")
     values.update(changes)
@@ -37,7 +53,7 @@ def test_argv_environment_and_fixture_per_role(tmp_path, monkeypatch, slot, comb
     argv, env = pair.peer_command(args, peer, slot)
     assert argv == [str(tmp_path / "mc2"), "--mission", "mc2_01", "--profile", "tier1",
                     "--duration", "5", "--ticks", "64", "--host" if slot == 0 else "--join",
-                    f"127.0.0.1:{23460 + slot}", "--mp-user-dir", str(peer), "--headless"]
+                    f"127.0.0.1:{args.port + slot}", "--mp-user-dir", str(peer), "--headless"]
     assert all(env[key] == value for key, value in dict(MC2_SMOKE_FIXED_TIMESTEP="1",
                MC2_SIM_IDENTITY_TRACE="1", MC2_FORCE_ALL_VISIBLE="0", MC2_DETERMINISTIC_RNG="1", MC2_RNG_SEED="12345").items())
     assert env["MC2_DIAGNOSTIC_TRACE_FILE"] == str(peer / "diagnostic.jsonl")
@@ -321,6 +337,21 @@ def test_client_relay_forwards_both_directions(tmp_path, monkeypatch, fake_peer)
     assert verdict["result"] == "PASS", verdict
     assert verdict["faults"]["forwarded"] == 2
     assert 8 <= verdict["faults"]["delay_min_ms"] <= verdict["faults"]["delay_max_ms"] <= 12
+
+
+@pytest.mark.skipif(os.name == "nt", reason="Linux UDP relay integration runs on the box")
+def test_concurrent_fake_pairs_do_not_collide(tmp_path, monkeypatch, fake_peer):
+    monkeypatch.setenv("PAIR_FAKE_RELAY", "1")
+    runs = []
+    for name in ("first", "second"):
+        root = tmp_path / name
+        root.mkdir()
+        runs.append(options(root, latency=10))
+    assert {runs[0].port, runs[0].port + 1}.isdisjoint({runs[1].port, runs[1].port + 1})
+    with ThreadPoolExecutor(max_workers=2) as workers:
+        verdicts = list(workers.map(pair.run_pair, runs))
+    assert all(v["result"] == "PASS" and v["faults"]["forwarded"] == 2 for v in verdicts), verdicts
+    assert len(fake_peer) == 4 and all(p.poll() == 0 for p in fake_peer)
 
 
 @pytest.mark.parametrize("victim", ["host", "client"])
