@@ -205,6 +205,7 @@ struct TerrainIsland : mc2vk::IslandState {
     VkPipeline specSelected = VK_NULL_HANDLE;
     uint32_t specLoggedKey = UINT32_MAX;
     VkPipeline specLoggedPipe = VK_NULL_HANDLE;
+    bool specLoggedCompiling = false;
 
     // VK-TERRAIN-SKIRT (rung 4): second pipeline for skirt strips (2-attribute vertex
     // input: ivec2 localOffset + int isSkirtFlag, mirrors GL's skirt VAO). Shares the

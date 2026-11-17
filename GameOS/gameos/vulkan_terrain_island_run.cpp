@@ -6,6 +6,7 @@
 #include "../../RenderCore/TemporalInputs.h"
 #include "hitch_stats.h"
 #include "terrain_record_cache.h"
+#include "gos_visual_capture.h"
 #include "vk_render_pass_timer.h"
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "mc2fmt.h"
@@ -558,6 +559,12 @@ static bool record_terrain(TerrainIsland* s, mc2vk::VulkanContext& rctx, uint32_
         vlog("terrain indirect draws (first frame): patches=%u skirtEdges=%lu (was %lu vkCmdDrawIndexed) -> %zu patch runs + %zu skirt runs.",
              patchN, skirtDrawnOut, patchN + skirtDrawnOut, st.patchRuns.size(), st.skirtRuns.size());
     }
+    if (gos::visual_capture::active()) {
+        vlog("[TERRAIN_SPEC_DRAW] frame=%llu view=%s key=%u pipeline=%llu specialized=%d patches=%u",
+            (unsigned long long)g_mc2RenderFrame, s->planar ? "reflection" : "main", s->specLoggedKey,
+            (unsigned long long)(uintptr_t)plan.pipe,
+            plan.pipe != (s->planar ? s->planarPipe.get() : s->pipe.get()), patchN);
+    }
     recordOut = [plan = std::move(plan)](VkCommandBuffer cb) -> bool { return record_terrain_cmds(plan, cb); };
     return true;
 }
@@ -745,12 +752,13 @@ static int run_terrain(int w, int h, TerrainIsland* supplied = nullptr,
             return pipe;
         }, [&rctx](mc2vk::OwnedPipeline&& pipe) { rctx.retire(std::move(pipe)); });
     s->specSelected = variant ? variant->get() : (s->planar ? s->planarPipe.get() : s->pipe.get());
-    if (s->specLoggedKey != specKey.bits || s->specLoggedPipe != s->specSelected) {
-        vlog("[TERRAIN_SPEC] select frame=%llu view=%s key=%u pipeline=%llu specialized=%d select_us=%.3f",
+    if (s->specLoggedKey != specKey.bits || s->specLoggedPipe != s->specSelected || s->specLoggedCompiling != s->specVariants.compiling()) {
+        vlog("[TERRAIN_SPEC] select frame=%llu view=%s key=%u pipeline=%llu specialized=%d compiling=%d select_us=%.3f",
             (unsigned long long)g_mc2RenderFrame, s->planar ? "reflection" : "main", specKey.bits,
-            (unsigned long long)(uintptr_t)s->specSelected, variant != nullptr,
+            (unsigned long long)(uintptr_t)s->specSelected, variant != nullptr, s->specVariants.compiling(),
             std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - specBegin).count());
         s->specLoggedKey = specKey.bits; s->specLoggedPipe = s->specSelected;
+        s->specLoggedCompiling = s->specVariants.compiling();
     }
 
     sync_ring_bindings(s, par, uboSpan, lpSpans);
