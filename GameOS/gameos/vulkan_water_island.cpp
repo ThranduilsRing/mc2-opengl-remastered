@@ -280,7 +280,7 @@ extern "C" int mc2_vk_water_island_enabled() {
 
 // Teardown (called from gosPostProcess::destroy or renderer shutdown).
 extern "C" void mc2_vk_water_island_destroy() {
-    if (const WaterIsland* parked = parkedIsland(); parked && parked->profileIssued < 2100)
+    if (const WaterIsland* parked = parkedIsland(); parked && parked->profileIssued < 2400)
         gos_SetWaterFsDebugMode(0);
     vlog("[VK_WATER_TIER1] vulkan_available=%d used_vulkan=%lu used_interop=%lu interop_active=%d "
          "vk2gl_sem=%d validation_errors=%lu thin_records=%lu recipe_count=%lu fallback_reason=\"%s\" "

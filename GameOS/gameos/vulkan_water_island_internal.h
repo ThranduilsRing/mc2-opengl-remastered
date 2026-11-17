@@ -190,11 +190,11 @@ struct WaterIsland : mc2vk::IslandState {
     mc2vk::DescWriteStamp moverStamp[mc2vk::kMaxFramesInFlight]{};   // binding 24 of set[i]
     VkCommandBuffer   cbuf[mc2vk::kMaxFramesInFlight] = {VK_NULL_HANDLE, VK_NULL_HANDLE};  // allocated from `cpool`, freed with it
     mc2vk::GpuTicket  submitted[mc2vk::kMaxFramesInFlight];   // per engine frame slot: the last submit that used cbuf[slot], set[slot] and buffers[slot]
-    mc2vk::OwnedQueryPool profileStats, profileTimes;
+    mc2vk::OwnedQueryPool profileStats, profileTimes, profileSamples;
     int profilePending[mc2vk::kMaxFramesInFlight]{}; // mode + 1; zero means no pending result
-    unsigned profileIssued = 2100;
-    unsigned profileCount[7]{};
-    uint64_t profileFragments[7]{}, profileTicks[7]{};
+    unsigned profileIssued = 2400;
+    unsigned profileCount[8]{};
+    uint64_t profileFragments[8]{}, profileTicks[8]{}, profilePassed[8]{};
 
     bool descNeedsThinRewrite = true; // thinBuf realloc -> descriptor rewrite
 

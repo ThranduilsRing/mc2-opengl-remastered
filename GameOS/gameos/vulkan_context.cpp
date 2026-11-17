@@ -624,6 +624,7 @@ bool VulkanContext::init(bool wantPresent) {
     vkGetPhysicalDeviceFeatures(phys_, &optionalWaterFeatures);
     enableFeatures.features.depthClamp = optionalWaterFeatures.depthClamp;
     enableFeatures.features.pipelineStatisticsQuery = optionalWaterFeatures.pipelineStatisticsQuery;
+    enableFeatures.features.occlusionQueryPrecise = optionalWaterFeatures.occlusionQueryPrecise;
     VkPhysicalDeviceVulkan11Features en11{};
     en11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
     VkPhysicalDeviceVulkan12Features en12{};

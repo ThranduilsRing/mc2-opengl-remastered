@@ -458,6 +458,7 @@ vec3 waterPoolLights(vec3 wp, vec3 N, vec3 V, float alpha2, out vec3 spec){
 void main(void)
 {
     int debugMode = int(F.debug.x);
+    if (debugMode == 7) { FragColor = vec4(0.0); GBuffer1 = vec4(0.0); return; }
     // o_isWater==1 base-water branch (reflection/HDRI OFF -> skipped).
     float time    = F.f0.x;
     vec3  camPos  = F.f0.yzw;

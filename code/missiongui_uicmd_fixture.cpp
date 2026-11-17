@@ -356,12 +356,12 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
         int mode = -1;
         if (c.line == "water_profile") {
             gos_RequestWaterProfile(true);
-            c.result = "ok"; c.note = "water modes 0..6, 300 rendered water draws each";
-        } else if (sscanf(c.line.c_str(), "water_debug %d", &mode) == 1 && mode >= 0 && mode <= 6) {
+            c.result = "ok"; c.note = "water modes 0..7, 300 rendered water draws each";
+        } else if (sscanf(c.line.c_str(), "water_debug %d", &mode) == 1 && mode >= 0 && mode <= 7) {
             gos_SetWaterFsDebugMode(mode);
             c.result = "ok"; c.note = "water debug mode set";
         } else {
-            c.result = "blocked"; c.note = "water_debug <0..6> | water_profile";
+            c.result = "blocked"; c.note = "water_debug <0..7> | water_profile";
         }
         return true;
     }
