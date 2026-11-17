@@ -210,7 +210,10 @@ extern "C" int mc2_vk_water_island_run(
 
     // Lazy init / rebuild on size change.
     mc2vk::VulkanContext& slotCtx = mc2vk::getOrCreateEngineVulkanContext();
-    if (const WaterIsland* parked = parkedIsland(); parked && (parked->w != w || parked->h != h)) slotCtx.retireIsland(mc2vk::IslandSlot::Water);
+    if (const WaterIsland* parked = parkedIsland(); parked && (parked->w != w || parked->h != h)) {
+        if (parked->profileIssued < 2100) gos_SetWaterFsDebugMode(0);
+        slotCtx.retireIsland(mc2vk::IslandSlot::Water);
+    }
     if (!islandSlot()) {
         auto fresh = std::make_unique<WaterIsland>();
         (void)mc2vk::takeLastCreateFailure();
@@ -275,14 +278,15 @@ extern "C" int mc2_vk_water_island_run(
     us_fence_wait = usSince(tFence0);
     // Read only after this slot's previous water submission has retired. Queries
     // measure fragment invocations (including helpers/discard), not visible pixels.
-    if (s->profileMode[par] >= 0) {
-        const int mode = s->profileMode[par];
+    if (s->profilePending[par] && s->profileStats && s->profileTimes) {
+        const int mode = s->profilePending[par] - 1;
         uint64_t fragments = 0, ticks[2]{};
         const auto flags = VK_QUERY_RESULT_64_BIT;
         if (vkGetQueryPoolResults(s->device, s->profileStats.get(), par, 1, sizeof(fragments), &fragments, sizeof(uint64_t), flags) != VK_SUCCESS ||
             vkGetQueryPoolResults(s->device, s->profileTimes.get(), 2 * par, 2, sizeof(ticks), ticks, sizeof(uint64_t), flags) != VK_SUCCESS) {
             vlog("WATER_PROFILE FAIL query results mode=%d", mode);
             gos_RequestWaterProfile(false); s->profileIssued = 2100;
+            gos_SetWaterFsDebugMode(0);
         } else {
             s->profileFragments[mode] += fragments;
             s->profileTicks[mode] += ticks[1] - ticks[0];
@@ -294,10 +298,11 @@ extern "C" int mc2_vk_water_island_run(
                      static_cast<double>(s->profileFragments[mode]) / 300.0);
             }
         }
-        s->profileMode[par] = -1;
+        s->profilePending[par] = 0;
     }
-    if (gos_WaterProfileRequested() && s->profileIssued == 2100 &&
-        s->profileMode[0] < 0 && s->profileMode[1] < 0) {
+    bool profilePending = false;
+    for (int pending : s->profilePending) profilePending |= pending != 0;
+    if (gos_WaterProfileRequested() && s->profileIssued == 2100 && !profilePending) {
         gos_RequestWaterProfile(false);
         VkPhysicalDeviceFeatures features{};
         vkGetPhysicalDeviceFeatures(s->phys, &features);
@@ -315,7 +320,10 @@ extern "C" int mc2_vk_water_island_run(
             for (int mode = 0; mode < 7; ++mode) {
                 s->profileCount[mode] = 0; s->profileFragments[mode] = 0; s->profileTicks[mode] = 0;
             }
-        } else vlog("WATER_PROFILE FAIL fragment statistics unavailable");
+        } else {
+            gos_SetWaterFsDebugMode(0);
+            vlog("WATER_PROFILE FAIL fragment statistics unavailable");
+        }
     }
     const int profileMode = s->profileIssued < 2100 ? static_cast<int>(s->profileIssued / 300) : -1;
     if (profileMode >= 0) gos_SetWaterFsDebugMode(profileMode);
@@ -602,7 +610,7 @@ extern "C" int mc2_vk_water_island_run(
           if (mc2vk::submitGraphics(si, VK_NULL_HANDLE) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
         s->submitted[par] = slotCtx.tracker().now();
         if (profileMode >= 0) {
-            s->profileMode[par] = profileMode;
+            s->profilePending[par] = profileMode + 1;
             if (++s->profileIssued == 2100) gos_SetWaterFsDebugMode(0);
         }
         timerGuard.submitted();

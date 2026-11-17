@@ -191,7 +191,7 @@ struct WaterIsland : mc2vk::IslandState {
     VkCommandBuffer   cbuf[mc2vk::kMaxFramesInFlight] = {VK_NULL_HANDLE, VK_NULL_HANDLE};  // allocated from `cpool`, freed with it
     mc2vk::GpuTicket  submitted[mc2vk::kMaxFramesInFlight];   // per engine frame slot: the last submit that used cbuf[slot], set[slot] and buffers[slot]
     mc2vk::OwnedQueryPool profileStats, profileTimes;
-    int profileMode[mc2vk::kMaxFramesInFlight] = {-1, -1};
+    int profilePending[mc2vk::kMaxFramesInFlight]{}; // mode + 1; zero means no pending result
     unsigned profileIssued = 2100;
     unsigned profileCount[7]{};
     uint64_t profileFragments[7]{}, profileTicks[7]{};
