@@ -33,7 +33,8 @@ const std::vector<std::pair<std::string,std::string>> payloads = {
     {"data/pak/store.bin", "abc"}, {"data/pak/zstd.txt", [] { std::string s; for(int i=0;i<100;++i) s += "hello Zstandard\n"; return s; }()},
     {"data/pak/128/strip.bin", "xyz"}
 };
-// Same tiny FST authored by T1's make_install and packed by the committed CLI.
+// Only changed archives are authored here: compressor output is not portable;
+// unmodified sources use committed bytes matching the pak manifest.
 void author(const fs::path& p, bool changed=false) {
     Bytes toc, body; le(toc, 0xCADDECAF,4); le(toc,payloads.size(),4);
     for (auto [name, raw] : payloads) {
@@ -51,7 +52,8 @@ struct Scratch {
     Scratch() {
         REQUIRE(!fs::exists(root)); fs::create_directories(root/"paks"); fs::current_path(root);
         maxFastFiles=16; numFastFiles=0; fastFiles=static_cast<FastFile**>(std::calloc(16,sizeof(FastFile*)));
-        author("first.fst"); author("second.fst");
+        fs::copy_file(fixtures/"source-fst.bin","first.fst");
+        fs::copy_file(fixtures/"source-fst.bin","second.fst");
         fs::copy_file(fixtures/"stock.mc2pak","paks/stock.mc2pak");
     }
     void mount() { REQUIRE(FastFileInit("first.fst")); REQUIRE(FastFileInit("second.fst")); mc2::vfs::rebuild(); }
@@ -77,7 +79,11 @@ TEST_CASE("pak/identity authority digest and private RAM writes") {
         CHECK(chain[0].provider==mc2::vfs::Provider::Pak);
         CHECK(chain[1].provider==mc2::vfs::Provider::Fst);
         for(size_t i=0;i<chain.size();++i) CHECK(chain[i].source.authorityRank==i);
-        CHECK(read(k.c_str())==raw); CHECK(fileExists(k.c_str())==2);
+        const auto opens=mc2::vfs::pakIo.pakOpens.load();
+        CHECK(fileExists(k.c_str())==2); CHECK(mc2::vfs::pakIo.pakOpens.load()==opens);
+        { File probe; REQUIRE(probe.open(k.c_str())==NO_ERR); }
+        CHECK(mc2::vfs::pakIo.pakOpens.load()==opens+1);
+        CHECK(read(k.c_str())==raw);
         const auto digest=mc2::vfs::contentDigest(k);
         File f; REQUIRE(f.open(k.c_str())==NO_ERR); unsigned char x='X'; CHECK(f.write(&x,1)==1); f.close();
         CHECK(read(k.c_str())==raw);
@@ -95,6 +101,16 @@ TEST_CASE("pak/provenance and earlier archive authority") {
         author("first.fst",true); s.mount();
         CHECK(mc2::vfs::candidates(payloads[0].first)[0].provider==mc2::vfs::Provider::Fst);
         CHECK(read(payloads[0].first.c_str())=="abcchanged");
+    }
+    SUBCASE("size-only source change") {
+        auto bytes=load("first.fst"); bytes.push_back(0); save("first.fst",bytes); s.mount();
+        CHECK(mc2::vfs::candidates(payloads[0].first)[0].provider==mc2::vfs::Provider::Fst);
+        CHECK(read(payloads[0].first.c_str())==payloads[0].second);
+    }
+    SUBCASE("toc-only source change") {
+        auto bytes=load("first.fst"); bytes[8+16+249]=1; save("first.fst",bytes); s.mount();
+        CHECK(mc2::vfs::candidates(payloads[0].first)[0].provider==mc2::vfs::Provider::Fst);
+        CHECK(read(payloads[0].first.c_str())==payloads[0].second);
     }
     SUBCASE("earlier archive adds key over matching later source") {
         // The packed winner came from first.fst; a newly registered earlier archive adds the key.
@@ -145,9 +161,15 @@ TEST_CASE("pak/corruption structural bounds and unsupported fallback") {
         set(bytes,z+24,payloads[1].second.size()+1,4); set(bytes,zl+22,payloads[1].second.size()+1,4);
     }
     save("paks/stock.mc2pak",bytes); s.mount();
+    if(!reject) REQUIRE(mc2::vfs::candidates(payloads[2].first)[0].provider==mc2::vfs::Provider::Pak);
     for(const auto& [name,raw]:payloads) { CHECK(read(name.c_str())==raw); CHECK(read(name.c_str())==raw); }
     if(reject) for(const auto& e:mc2::vfs::candidates(k)) CHECK(e.provider!=mc2::vfs::Provider::Pak);
-    else CHECK(mc2::vfs::candidates(zstd ? payloads[1].first : k)[0].provider!=mc2::vfs::Provider::Pak);
+    else {
+        const auto& damaged=zstd ? payloads[1] : payloads[0];
+        for(const auto& e:mc2::vfs::candidates(damaged.first)) CHECK(e.provider!=mc2::vfs::Provider::Pak);
+        CHECK(mc2::vfs::candidates(payloads[2].first)[0].provider==mc2::vfs::Provider::Pak);
+        CHECK(read(damaged.first.c_str())==damaged.second);
+    }
 }
 TEST_CASE("pak/Store Deflate Zstandard odd offsets and ZIP64 records") {
     Scratch s;
@@ -160,7 +182,7 @@ TEST_CASE("pak/Store Deflate Zstandard odd offsets and ZIP64 records") {
     }
 }
 TEST_CASE("pak/stock_identity") {
-    const char* install=std::getenv("MC2_PAK_IDENTITY_INSTALL");
+    const char* install=std::getenv("PAK_IDENTITY_INSTALL");
     if(!install) return;
     REQUIRE(fs::is_directory(install));
     const auto old=fs::current_path();

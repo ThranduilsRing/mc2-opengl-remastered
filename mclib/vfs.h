@@ -97,7 +97,8 @@ struct OpenedFile {
 	std::optional<std::vector<uint8_t>> pakBytes;
 	bool found() const { return fd != -1 || fst != nullptr || pakBytes.has_value(); }
 };
-OpenedFile openRead(const char* path, const char* req = nullptr);
+// probeOnly reports an indexed pak hit through layer without decoding its bytes.
+OpenedFile openRead(const char* path, const char* req = nullptr, bool probeOnly = false);
 // A file created under data/ after the index was built joins the loose mount (writes stay physical).
 void noteWrite(std::string_view path);
 // Write guard (mod VFS design section 6.3, always on): a CREATE under the stock data/ tree while MC2_ACTIVE_MOD is set logs one

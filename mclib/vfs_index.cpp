@@ -531,7 +531,7 @@ std::optional<Entry> resolve(std::string_view logicalKey, bool (*readable)(const
 	return std::nullopt;
 }
 
-OpenedFile openRead(const char* path, const char* req)
+OpenedFile openRead(const char* path, const char* req, bool probeOnly)
 {
 	OpenedFile r;
 	if (!path || !path[0]) return r;
@@ -557,6 +557,7 @@ OpenedFile openRead(const char* path, const char* req)
 		for (size_t i = 0; i < chain.size() && !done; ++i) {
 			const Entry& e = chain[i];
 			if (e.provider == Provider::Pak) {
+				if (probeOnly && e.pak->find(k)) { r.layer = r.owner = "pak"; done = true; continue; }
 				if (const auto* pe = e.pak->find(k)) r.pakBytes = e.pak->read(*pe);
 				if (r.pakBytes) { r.layer = r.owner = "pak"; done = true; }
 				continue;

@@ -113,12 +113,12 @@ long fileExists (mc2::czstring fName, long destination_mask)
 	fst_normalize_loose_key_inplace(normName);
 
 	// The same resolution as File::open (mclib/vfs.h): 1 = a mod or loose file, 2 = an FST member.
-	const mc2::vfs::OpenedFile opened = mc2::vfs::openRead(normName);
+	const mc2::vfs::OpenedFile opened = mc2::vfs::openRead(normName, nullptr, true);
 	if (opened.fd != -1) {
 		_close(opened.fd);
 		return 1 & destination_mask;
 	}
-	if (opened.fst || opened.pakBytes)
+	if (opened.fst || opened.layer == "pak")
 		return 2 & destination_mask;
 	// A directory (or anything else that stats but does not open as a file) still "exists" for the probe.
 	struct _stat st;

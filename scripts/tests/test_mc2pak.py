@@ -58,6 +58,18 @@ def test_equal_size_zlib():
     assert pak.decode((0, len(raw), len(raw), 'equal', True, compressed)) == raw
     assert pak.decode((0, 3, 3, 'raw', True, b'xyz')) == b'xyz'
 
+def test_committed_fixture_provenance(tmp_path, capsys):
+    fixture = Path(__file__).resolve().parents[2] / 'tests/fixtures/pak'
+    (tmp_path / 'system.cfg').write_text('[FastFiles]\nl NumFastFiles=2\nst File0="first.fst"\nst File1="second.fst"\n')
+    for name in ('first.fst', 'second.fst'):
+        (tmp_path / name).write_bytes((fixture / 'source-fst.bin').read_bytes())
+    args = ['verify', str(fixture / 'stock.mc2pak'), '--against-install', str(tmp_path)]
+    assert pak.main(args) == 0
+    with (tmp_path / 'first.fst').open('ab') as f:
+        f.write(b'\0')
+    assert pak.main(args) == 1
+    assert 'source changed' in capsys.readouterr().err
+
 def test_extract_rejects_traversal(tmp_path):
     archive = tmp_path / 'unsafe.zip'
     with zipfile.ZipFile(archive, 'w') as z:

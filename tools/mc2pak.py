@@ -31,8 +31,8 @@ def safe_path(root, name):
     return target
 
 def writable(path):
-    if path.resolve().is_relative_to(Path('A:/Games/mc2-opengl').resolve()):
-        raise ValueError('writes inside A:/Games/mc2-opengl are forbidden')
+    if path.resolve().is_relative_to(Path('A:/Games/mc2-opengl').resolve()):  # drive-path: ok owner-protected install, never an output default
+        raise ValueError('writes inside A:/Games/mc2-opengl are forbidden')  # drive-path: ok identifies the protected install
 
 def fast_hash(data):
     h, mask = 14695981039346656037, (1 << 64) - 1
