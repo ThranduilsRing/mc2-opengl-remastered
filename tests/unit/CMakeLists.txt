@@ -760,9 +760,8 @@ mc2_height_slice(layout_restore code/logisticsvariant.cpp
     "bool LogisticsVariant::restoreLocationRecord(" "bool LogisticsVariant::addComponent(")
 mc2_height_slice(layout_mount_helpers code/logisticsvariant_package.cpp
     "namespace {" "int LogisticsVariant::packageCheck(")
-file(READ "${MC2_WORKTREE_ROOT}/code/logisticsvariant_package.cpp" layout_package_source)
-string(FIND "${layout_package_source}" "int LogisticsVariant::getPackageMounts(" layout_mount_start)
-string(SUBSTRING "${layout_package_source}" ${layout_mount_start} -1 layout_mounts)
+mc2_height_slice(layout_mounts code/logisticsvariant_package.cpp
+    "int LogisticsVariant::getPackageMounts(" "LogisticsVariant::LocationPlace LogisticsVariant::packageLocationPlace(")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/layout_deployment.inc"
     CONTENT "${layout_mount_helpers}\n${layout_flat}\n${layout_mounts}\n${layout_restore}")
 mc2_height_slice(layout_accept code/logisticsdata_modify.cpp
