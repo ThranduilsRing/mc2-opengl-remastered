@@ -92,6 +92,8 @@ layout(location = 14) out vec4 vTree; // ambient AO, tree material active, fores
 flat layout(location = 15) out uvec2 vWindow; // glass cell ID, stable building seed
 flat layout(location = 16) out uvec3 vTeam;   // team paint 0x00RRGGBB x3 (red, green, blue slot), carried in the instance's fogRGB bits
 flat layout(location = 17) out uint vPacketIdx; // this draw's PropPacket row (packetBase + gl_DrawID)
+// 1 = double-sided pipeline: the lighting runs for the back face too. 0 = single-sided (CULL_BACK): front lighting only.
+layout(constant_id = 11) const int kTwoSided = 1;
 layout(location = 18) out vec3 vBackNormalStuff;
 layout(location = 19) out vec3 vBackArgb;
 
@@ -211,7 +213,7 @@ void main() {
     }
     vNormalStuff = localNormal * mat3(inst.modelMatrix);
     vBackNormalStuff = backNormal * mat3(inst.modelMatrix);
-    for (int side = 0; side < 2; ++side) {
+    for (int side = 0; side < (kTwoSided != 0 ? 2 : 1); ++side) {
     vec3 worldNormalStuff = side == 0 ? vNormalStuff : vBackNormalStuff;
 
     // VK-FLIP-FIELD-REPORT-2 BLACK-FENCE FIX: albedo layer now comes from the

@@ -4,6 +4,7 @@ add_executable(editor_objective_reader_tests EXCLUDE_FROM_ALL
     "${CMAKE_SOURCE_DIR}/code/objective_text.cpp"
     "${CMAKE_SOURCE_DIR}/code/objective_flags.cpp"
     "${CMAKE_SOURCE_DIR}/GameOS/gameos/utils/mc2log.cpp"
+    "${CMAKE_SOURCE_DIR}/GameOS/gameos/cook_cache.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/file.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/vfs.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/vfs_index.cpp"

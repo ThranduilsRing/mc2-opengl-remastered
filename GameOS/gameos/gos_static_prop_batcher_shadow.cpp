@@ -9,6 +9,8 @@
 #include "../../RenderCore/FramePackets.h"
 #include "shadow_mover_feed.h"
 #include "../../RenderCore/StaticPropOrigin.h"
+#include "../../RenderCore/PropListRoute.h"
+#include "../../RenderCore/PropRecordCache.h"
 
 void GpuStaticPropBatcher::captureMoverShadowShape(const void* owner, TG_MultiShape* multi) {
     if (!multi || !multi->listOfShapes || !s_geometryFinalized || g_mechPreviewRenderDepth>0) return;
@@ -123,7 +125,7 @@ void mc2_static_prop_retype_far_tier(std::span<GpuStaticPropInstance> instances,
 int mc2_static_prop_lod_skips_late(uint32_t typeID) {
     if (!s_lodMembers.contains(typeID)) return 0;
     const PropLodMember& m = s_lodMembers.at(typeID);
-    return m.tier >= 3 ? 1 : 0;
+    return PropList::tierSkipsFringe(m.tier) ? 1 : 0;
 }
 
 extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
@@ -131,7 +133,7 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
     if (!out) return 0;
     if (!s_geometryFinalized || s_fatalRegistrationFailure) return 0;
     static std::vector<GpuStaticPropInstance> s_colorFeedFlat;
-    { ZoneScopedN("VKIsl.Props.MainFeed.Clear"); s_colorFeedFlat.clear(); }
+    size_t feedCursor = 0;
 
     // Grouped by typeID for correct per-type geometry addressing (the island issues
     // one type-run per contiguous typeID block via firstInstance). Deterministic
@@ -161,30 +163,35 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
         const float rowY = std::sqrt(m[1] * m[1] + m[5] * m[5] + m[9] * m[9]);
         const float vpScale = mainView.viewport[3] > 0 ? 2160.0f / static_cast<float>(mainView.viewport[3]) : 1.0f;
         float maxTreeD = 0.0f;
-        auto route = [&](const GpuStaticPropInstance* b, const GpuStaticPropInstance* e, const PropLodGroup& g) {
+        auto route = [&](const GpuStaticPropInstance* b, const GpuStaticPropInstance* e, const PropLodGroup& g,
+                         const size_t* slots, const auto& outputs) {
             for (; b != e; ++b) {
                 const StaticPropOrigin o = staticPropOriginRender(b->modelMatrix);
                 const float dx = o.x - cx, dy = o.y - cy, dz = o.z - cz;
                 float d = std::sqrt(dx * dx + dy * dy + dz * dz);
                 if (g.tree && rowY > 1e-6f) d = propLodProjectedDistance(m, o, rowY, vpScale);
                 if (s_statsOn && g.tree) maxTreeD = (std::max)(maxTreeD, d);
-                uint8_t& lod = s_lodState[propLodKey(*b)];
+                uint8_t& lod = slots ? s_lodState.dense(*slots++) : s_lodState[propLodKey(*b)];
                 propLodAdvance(lod, d, std::span<const float>(g.dist, static_cast<size_t>(g.count)), kBand);
                 GpuStaticPropInstance inst = *b;
                 inst.typeID = g.target[lod];
-                s_lodOut[inst.typeID].push_back(inst);
+                outputs[lod]->push_back(inst);
             }
         };
         for (const auto& [src, g] : s_lodGroups) {
+            std::array<std::vector<GpuStaticPropInstance>*, kMaxPropLods> outputs{};
+            for (int tier = 0; tier < g.count; ++tier) outputs[tier] = &s_lodOut[g.target[tier]];
             if (auto it = s_persistentStaticStore.find(src); it != s_persistentStaticStore.end()) {
                 const auto& [stTid, stVec] = *it;
-                route(stVec.data(), stVec.data() + stVec.size(), g);
+                auto& slots = s_persistentLodSlots[src];
+                slots.bind(s_lodState, std::span<const GpuStaticPropInstance>(stVec), propLodKey);
+                route(stVec.data(), stVec.data() + stVec.size(), g, slots.indices.data(), outputs);
             }
             if (auto bt = s_bucketsByType.find(src); bt != s_bucketsByType.end()) {
                 const auto& [bkTid, pb] = *bt;
                 const GpuStaticPropInstance* d0 = pb.instances.data();
                 const uint32_t n  = static_cast<uint32_t>(pb.instances.size());
-                route(d0, d0 + n, g);
+                route(d0, d0 + n, g, nullptr, outputs);
             }
         }
         static uint32_t s_statsTick = 0;
@@ -214,25 +221,26 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
     for (uint32_t tid : typeIds) {
         if (lodActive && s_lodGroups.count(tid)) {   // a LOD-capable base type: its instances were re-typed above
             const auto& v = s_lodOut[tid];
-            s_colorFeedFlat.insert(s_colorFeedFlat.end(), v.begin(), v.end());
+            appendPropFeed(s_colorFeedFlat, feedCursor, std::span<const GpuStaticPropInstance>(v));
             continue;
         }
         if (lodActive) if (auto lo = s_lodOut.find(tid); lo != s_lodOut.end()) {
             const auto& [loTid, loVec] = *lo;
-            s_colorFeedFlat.insert(s_colorFeedFlat.end(), loVec.begin(), loVec.end());
+            appendPropFeed(s_colorFeedFlat, feedCursor, std::span<const GpuStaticPropInstance>(loVec));
         }
         auto it = s_persistentStaticStore.find(tid);
         if (it != s_persistentStaticStore.end()) {
             const auto& [storeKey, insts] = *it;
-            s_colorFeedFlat.insert(s_colorFeedFlat.end(), insts.begin(), insts.end());
+            appendPropFeed(s_colorFeedFlat, feedCursor, std::span<const GpuStaticPropInstance>(insts));
         }
         auto bt = s_bucketsByType.find(tid);
         if (bt != s_bucketsByType.end()) {
             const auto& [bucketKey, b] = *bt;
-            s_colorFeedFlat.insert(s_colorFeedFlat.end(), b.instances.begin(), b.instances.end());
+            appendPropFeed(s_colorFeedFlat, feedCursor, std::span<const GpuStaticPropInstance>(b.instances));
         }
     }
     }
+    s_colorFeedFlat.resize(feedCursor);
     if (s_colorFeedFlat.empty()) return 0;
 
     out->instances112 = s_colorFeedFlat.data();

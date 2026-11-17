@@ -8,12 +8,71 @@
 #include "turret_value_codec.h"
 #include "mech_value_codec.h"
 #include "object_slot_codec.h"
+#include "combat_sim_hash.h"
 #include "world/actor_pool.h"
 #include <cctype>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <regex>
+
+TEST_CASE("heat save/versioned extension preserves high bits and rejects unknown versions") {
+    using namespace mc2::save;
+    MechRecord sample;
+    sample.value.screenPos = Stuff::Vector4D(0, 0, 0, 0);
+    sample.value.objectClass = BATTLEMECH; sample.value.handle = 1;
+    sample.version = 2;
+    sample.heat.heatMilli = 12345; sample.heat.alphaExpireTick = 987654321;
+    sample.heat.capacity = 456000;
+    sample.chassisHeatPoints = 37; sample.heatSinkAdjustmentPoints = -12;
+    for (int i : {0, 63, 64, 71}) sample.heat.alphaMask.set(i);
+    const auto bytes = encodeTaggedRecord(sample, mechTag);
+    REQUIRE_FALSE(bytes.empty());
+    MechRecord decoded;
+    REQUIRE(decodeTaggedRecord(bytes, decoded, mechTag));
+    CHECK(decoded.heat.heatMilli == sample.heat.heatMilli);
+    CHECK(decoded.heat.alphaMask == sample.heat.alphaMask);
+    CHECK(decoded.heat.alphaExpireTick == sample.heat.alphaExpireTick);
+    CHECK(decoded.heat.capacity == 0);
+    CHECK(decoded.chassisHeatPoints == 37); CHECK(decoded.heatSinkAdjustmentPoints == -12);
+    REQUIRE(validObjectSlot(bytes, mc2_saved_objects::kMech, 1));
+    auto unknown = bytes; unknown[4] = 3;
+    CHECK_FALSE(objectSlotClass(unknown));
+    CHECK_FALSE(decodeTaggedRecord(unknown, decoded, mechTag));
+    CHECK_FALSE(decodeTaggedRecord(std::span(bytes).first(bytes.size() - 1), decoded, mechTag));
+    sample.version = 1;
+    REQUIRE(decodeTaggedRecord(encodeTaggedRecord(sample, mechTag), decoded, mechTag));
+    CHECK(decoded.heat.heatMilli == 0);
+    CHECK(decoded.heat.alphaMask.none());
+    CHECK(decoded.heat.alphaExpireTick == 0);
+    CHECK(decoded.chassisHeatPoints == 0); CHECK(decoded.heatSinkAdjustmentPoints == 0);
+}
+
+TEST_CASE("heat hash/each authoritative heat readiness and ammunition field changes bytes") {
+    MechData mover{};
+    mover.numOther = 1; mover.numWeapons = 2; mover.numAmmos = 2; mover.numAmmoTypes = 2;
+    mc2::heat::State heat;
+    auto bytes = [&] {
+        mc2::save::Archive a;
+        combatMoverFields(a, mover); mc2::save::heatFields(a, heat);
+        REQUIRE(a.good()); return a.bytes();
+    };
+    const auto baseline = bytes();
+    CHECK(bytes() == baseline);
+    auto changes = [&](auto& field) {
+        const auto previous = field; field = 7;
+        CHECK(bytes() != baseline); field = previous; CHECK(bytes() == baseline);
+    };
+    changes(heat.heatMilli); changes(heat.alphaExpireTick);
+    for (size_t i = 0; i < 72; ++i) {
+        heat.alphaMask.set(i); CHECK(bytes() != baseline); heat.alphaMask.reset(i);
+    }
+    for (int i : {1, 2}) { changes(mover.inventory[i].readyTime); changes(mover.inventory[i].amount); }
+    for (int i : {3, 4}) changes(mover.inventory[i].amount);
+    for (int i : {0, 1}) changes(mover.ammoTypeTotal[i].curAmount);
+    heat.capacity = 99999;
+    CHECK(bytes() == baseline);
+}
 
 TEST_CASE("called shot/save restore keeps aimed missile impact; v1 defaults to splash") {
     using namespace mc2::save;

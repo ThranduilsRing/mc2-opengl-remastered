@@ -635,7 +635,7 @@ bool sameHit(const ProbeHit& a, const ProbeHit& b) {
     return !a.hit || (a.custom == b.custom && a.row == b.row && a.prim == b.prim && std::abs(a.t - b.t) < 1e-3f);
 }
 
-// MC2_VK_RT_SELFTEST part 3: material rows, albedo layers and alpha cutouts through rt_scene_probe.comp, every ray traced twice (alpha-tested and every
+// MC2_VK_RT_SELFTEST part 3: material rows, albedo layers and alpha cutouts through rt_scene_probe.comp.slang, every ray traced twice (alpha-tested and every
 // candidate committed). props / vegetation: rays along the normal of the type's largest opaque / cutout triangle that has no coplanar twin and sits above
 // the terrain (pickTarget) must report that instance, row, layer and packet (a different triangle of the same row passes; `material info` lines). terrain: an upward ray from below each probe cell must report the tile's row. holes: a 16x16 barycentric grid over each
 // vegetation triangle; a hole is a ray the opaque trace lands on the triangle and the alpha trace passes through. false_holes: grid rays whose opaque

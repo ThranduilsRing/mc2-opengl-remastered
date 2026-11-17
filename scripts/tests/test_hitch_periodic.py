@@ -101,7 +101,10 @@ def test_pass_window_keeps_default_emission_and_one_unflushed_write():
     window = between(src, 'void flushWindow(uint64_t frame)', '// Reads one slot')
     assert window.count('mc2::fmt::print_err(') == 1
     assert 'std::fprintf' not in window and 'std::fflush' not in window
-    assert '[VK_GPU_PASSES v1] frame={} n={} span_ms={:.3f} sum_ms={:.3f} unattributed_ms={:.3f} scopes={} dropped={} overflow={} |{}' in window
+    assert '[VK_GPU_PASSES v1] frame={} n={} span_ms={:.3f} sum_ms={:.3f} unattributed_ms={:.3f} scopes={} dropped={} overflow={} pose={} |{}' in window
+    assert 'if (g.statRowCount != 0 && mc2_diag::tagRequested("VK_GPU_TRIS"))' in window
+    assert 'output += std::format("[VK_GPU_TRIS v1]' in window
+    assert window.index('output += std::format("[VK_GPU_TRIS v1]') < window.index('mc2::fmt::print_err(')
     assert '"=%.3f(x%.1f)"' in window and "output += r.name" in window
     assert 'constexpr uint32_t kLogEvery = 120;' in src
     assert src.count('if (g.windowFrames >= kLogEvery) flushWindow(f);') == 2

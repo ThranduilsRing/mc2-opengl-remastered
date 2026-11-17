@@ -21,6 +21,7 @@ def test_lint_rows_share_precheck_tables():
 
 def _no_branch_needed(monkeypatch):
     """A shared clone in the precheck has no claude/nifty-mendeleev branch: resolve every ref to HEAD's sha."""
+    monkeypatch.setenv("GIT_LFS_SKIP_SMUDGE", "1")  # mocked lint rows never consume Windows prebuilt dependencies
     real = lm.git_out
     monkeypatch.setattr(lm, "git_out", lambda root, *a: real(root, "rev-parse", "HEAD") if a[:1] == ("rev-parse",) else real(root, *a))
 

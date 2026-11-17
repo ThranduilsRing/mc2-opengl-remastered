@@ -124,6 +124,11 @@ long BattleMech::init (DWORD variantNum)
 	name[MAXLEN_MOVER_NAME-1] = '\0';
 
 	mechFile.readInt(10,5,chassisBR);
+	long chassisHeat = 0;
+	mechFile.readLong(4,5,chassisHeat); // same chassis field as LogisticsChassis::init
+	chassisHeatPoints = static_cast<int>(std::clamp<long>(chassisHeat, 0, mc2::heat::maxLabPoints));
+	heatState = {};
+	heatSinkAdjustmentPoints = 0;
 
 	mechFile.readFloat(3,5,tonnage);
 
@@ -600,9 +605,22 @@ long BattleMech::init (DWORD variantNum)
 		}
 	}
 
+	// A chassis CSV whose ComponentPlacement grid omits the sensor item (BT2018 packs built
+	// before the grid was emitted) would leave the mech with no sensor system: it never
+	// spots enemies, so attackers stay undrawn while firing (mc2_18). Use its sensor item.
+	for (long item = 0; !sensorSystem && item < numOther; item++)
+	{
+		if (MasterComponent::masterList[inventory[item].masterID].getForm() != COMPONENT_FORM_SENSOR)
+			continue;
+		sensor = item;
+		sensorSystem = SensorManager->newSensor();
+		sensorSystem->setOwner(this);
+		sensorSystem->setRange(MasterComponent::masterList[inventory[sensor].masterID].getSensorRange());
+	}
+
 	calcAmmoTotals();
 
-	for (long item = numOther; item < (numOther + numWeapons); item++) 
+	for (long item = numOther; item < (numOther + numWeapons); item++)
 	{
 		for (long ammoIndex = 0; ammoIndex < numAmmoTypes; ammoIndex++) 
 		{
@@ -718,6 +736,7 @@ long BattleMech::init (DWORD variantNum)
 	// UNITPROFILE-TYPELOAD-SOURCE-1: numJumpJets is final here (loadout scan
 	// complete). This is the real gameplay mech-load path (init(variantNum)).
 	refreshDerivedCapabilities();
+	recomputeHeatCapacity();
 
 	// LOADOUT-HARDPOINT-JOIN-1 (Phase-2 slice 3): report-only, gated
 	// (MC2_UNIT_PROFILE_DATA). Inventory + body locations are final here. Gathers
@@ -1375,4 +1394,5 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 
 	maxWeaponDamage = calcMaxTargetDamage();
 
+	setHeatLoadout({componentList, static_cast<size_t>(totalComponents)});
 }

@@ -8,6 +8,7 @@
 * CHANGES: Remove temporary Editor renderer trace calls after shader/runtime validation.
 ****************************************************************/
 
+#include <functional>
 #include "gos_render.h"
 
 #ifdef PLATFORM_WINDOWS
@@ -313,6 +314,7 @@ static void PrintRenderer(SDL_RendererInfo * info);
 // hooks must not apply the standalone SDL window policy to the editor shell.
 void set_native_cursor(SDL_Cursor*, bool) {}
 void pump_loading_events() {}
+void loading_work(const std::function<void()>& work) { work(); }
 
 
 void set_verbose(bool is_verbose)

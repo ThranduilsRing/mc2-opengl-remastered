@@ -173,6 +173,10 @@ bool scriptMouseNorm(float* nx, float* ny, bool* buttons) {
     return true;
 }
 
+bool scriptActive() { return g_script.active; }
+
+bool inputFocused() { return g_pointer_capture.focused; }
+
 MouseInfo::MouseInfo()
     : x_(0), y_(0), rel_x_(0), rel_y_(0),
      wheel_vert_(0), wheel_hor_(0)
@@ -281,7 +285,7 @@ void beginUpdateMouseState() {
 
 void setImguiWantsMouse(bool v) {
     s_imguiWantsMouse = v;
-    if (v && !s_gameModalActive && !g_script.active) {
+    if (v && !s_gameModalActive) {
         g_pointer_capture.claim();
         // NewFrame claims after sampling, before game logic consumes the edges.
         for (int i = 0; i < MouseInfo::NUM_BUTTONS; ++i)
@@ -332,7 +336,7 @@ void updateMouseState() {
         if (g_script.btn[1]) button_state |= SDL_BUTTON(SDL_BUTTON_RIGHT);
     }
 
-    button_state = g_pointer_capture.sample(button_state, g_script.active ||
+    button_state = g_pointer_capture.sample(button_state,
         capture::mouseButtonsReachGame({ s_imguiWantsMouse, s_imguiHoversMouse, s_gameModalActive }));
 
     int buttons[] = {SDL_BUTTON_LEFT, SDL_BUTTON_MIDDLE, SDL_BUTTON_RIGHT, SDL_BUTTON_X1, SDL_BUTTON_X2 };

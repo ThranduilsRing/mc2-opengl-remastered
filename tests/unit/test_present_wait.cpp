@@ -3,6 +3,7 @@
 #include "doctest.h"
 #include "present_thread_wait.h"
 #include "present_thread.h"
+#include "gos_render.h"
 
 #include <atomic>
 #include <chrono>
@@ -11,6 +12,62 @@
 
 using namespace std::chrono_literals;
 namespace d = mc2vk::present_thread::detail;
+
+// Trigger paths: code/loadscreen.cpp, GameOS/gameos/gos_render.h.
+TEST_CASE("loading label: wall-time dots and named stages") {
+    CHECK(graphics::loading_dots(0) == 0);
+    CHECK(graphics::loading_dots(333) == 0);
+    CHECK(graphics::loading_dots(334) == 1);
+    CHECK(graphics::loading_dots(667) == 2);
+    CHECK(graphics::loading_dots(1000) == 3);
+    CHECK(graphics::loading_dots(1334) == 0);
+    CHECK(graphics::loading_label("mission_settings_ready") == "Terrain");
+    CHECK(graphics::loading_label("terrain_textures") == "Terrain textures");
+    CHECK(graphics::loading_label("vegetation_pack") == "Vegetation");
+    CHECK(graphics::loading_label("prop_materials") == "Materials");
+    CHECK(graphics::loading_label("mission_ready") == "Ready");
+}
+
+// Trigger paths: gos_render.cpp, present_thread_wait.h, vk_render_infra.cpp, terrtxm2_load.cpp.
+TEST_CASE("loading work: pumps while blocked and joins before returning") {
+    std::atomic<bool> release = false;
+    int pumps = 0, output = 0;
+    const auto mainThread = std::this_thread::get_id();
+    d::workPumping([&] {
+        CHECK(std::this_thread::get_id() != mainThread);
+        while (!release.load()) std::this_thread::yield();
+        output = 42;
+    }, [&] {
+        CHECK(std::this_thread::get_id() == mainThread);
+        if (++pumps == 3) release = true;
+    });
+    CHECK(pumps == 3);
+    CHECK(output == 42);
+}
+
+TEST_CASE("loading work: propagates a worker failure after joining") {
+    CHECK_THROWS_AS(d::workPumping([] { throw std::runtime_error("decode failed"); }, [] {}), std::runtime_error);
+}
+
+// Trigger paths: GameOS/gameos/gos_render.{h,cpp}, gameosmain.cpp.
+TEST_CASE("loading pump: longest actual interval retains its phase and resets") {
+    graphics::LoadingPumpStats stats;
+    stats.begin(1000);
+    stats.pumped(1050);
+    stats.phase = "terrain";
+    stats.pumped(6250);
+    stats.phase = "models";
+    stats.pumped(6300);
+    CHECK(stats.maxGap == 5200);
+    CHECK(stats.maxPhase == "terrain");
+    stats.phase = {};
+    stats.pumped(50000);
+    CHECK(stats.maxGap == 5200);
+    stats.begin(60000);
+    stats.pumped(60099);
+    CHECK(stats.maxGap == 99);
+    CHECK(stats.maxPhase == "mission_load_start");
+}
 
 TEST_CASE("present split: blocked acquire releases Render after exactly one seal") {
     std::mutex mutex;

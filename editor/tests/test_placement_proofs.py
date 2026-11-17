@@ -1285,8 +1285,8 @@ class FrozenParityTests(unittest.TestCase):
             launch.assert_not_called()
 
     def test_owned_marker_reload_requires_clean_current_lane3_executable(self):
-        from scripts.run_editor_smoke import marker_reload_provenance
-        exe = (Path("A:/Games/mc2-opengl/mc2-win64-v0.4") / "Mission Editor.exe").resolve()
+        from scripts.run_editor_smoke import EDITOR_SMOKE_INSTALL, marker_reload_provenance
+        exe = (EDITOR_SMOKE_INSTALL / "Mission Editor.exe").resolve()
         head = "0123456789abcdef"
         with patch("scripts.run_editor_smoke.subprocess.check_output", return_value=head), patch.object(Path, "read_bytes", return_value=b"editor"):
             for fingerprint, observed in (({"present": False, "reason": "banner-absent"}, '"reason": "banner-absent"'),

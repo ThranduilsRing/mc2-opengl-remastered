@@ -31,9 +31,17 @@ def test_kick_follows_draw_screen_and_the_shadow_submit():
 
 def test_hzb_waits_for_its_own_slot():
     # fdb76b75a: frame retirement (beginFrame retires the slot before host writes) replaced the private
-    # per-slot ticket array + wait; the per-slot host-written buffers and sets remain.
+    # per-slot ticket array + wait. 031016eb6 shares the color island's retired
+    # slot buffer with HZB; descriptor sets still belong to that same slot.
     src = read(G / "vulkan_post_hzb_native.cpp")
-    assert re.search(r"OwnedBuffer instances\[mc2vk::kMaxFramesInFlight\]", src)
+    color = read(G / "vulkan_color_prop_island.cpp")
+    assert "mc2vk::OwnedBuffer instances;" in color
+    assert "PropGpu gpu[mc2vk::kMaxFramesInFlight]" in color
+    assert color.index("const uint32_t par = rctx.frameContext().slot;") < color.index("g.instances.upload(feed.instances112, instBytes, 0)") < color.index("pp->runVkPostHzbNative(feed,")
+    assert "reinterpret_cast<void*>(s->gpu[par].instances.get())" in color
+    assert "const uint32_t slot = ctx.frameContext().slot;" in src
+    assert "VkDescriptorBufferInfo instances{reinterpret_cast<VkBuffer>(instancesBuffer), 0," in src
+    assert "instanceWrite.dstSet = s->cullSet[slot]; instanceWrite.dstBinding = 2;" in src
     assert re.search(r"VkDescriptorSet cullSet\[mc2vk::kMaxFramesInFlight\]", src)
     assert "ctx.acquireRecordCommandBuffer()" in src
     assert "submit(si, VK_NULL_HANDLE, &s->lastTicket)" in src

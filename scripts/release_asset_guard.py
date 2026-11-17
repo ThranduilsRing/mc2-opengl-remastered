@@ -39,7 +39,8 @@ NAME_PATTERNS = (
 
 
 def _text_exception(name: str) -> bool:
-    if name in {"tools/bt2018_extract/recon.py", "tools/content_pipeline/frontends/bt2018.py",
+    if name in {"tools/bt2018_extract/recon.py", "tools/bt2018_extract/bake_clips.py",
+                "tests/unit/test_torso_twist.cpp", "tools/content_pipeline/frontends/bt2018.py",
                 "tools/mw5_kit/extract/.gitignore", "tools/mw5_kit/extract/mw5extract.csproj",
                 "tools/mw5_kit/extract/native.cs", "tools/mw5_kit/extract/program.cs"}:
         return True

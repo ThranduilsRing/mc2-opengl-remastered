@@ -1,3 +1,12 @@
+#ifndef TS_useCement
+#define TS_useCement uT.useCement
+#endif
+#ifndef TS_enableShadows
+#define TS_enableShadows uT.enableShadows
+#endif
+#ifndef TS_concreteDetail
+#define TS_concreteDetail uT.concreteDetail
+#endif
 #include "../../include/fog_policy.hglsl"
 
 // CEMENT-MIP-EDGE-1: antialiased "x < 0.5" for the cement transition cut; fw = the cut form's
@@ -23,10 +32,10 @@ vec3 shadeRoadArt(vec4 art, uint road, uint cw, vec2 dx, vec2 dy) {
     }
     color *= vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);
     vec3 normal = vec3(0, 0, 1);
-    float shadow = min(uT.enableShadows != 0 ? terrainStaticShadow(v_worldPos) : 1.0,
+    float shadow = min(TS_enableShadows != 0 ? terrainStaticShadow(v_worldPos) : 1.0,
                        terrainDynamicShadow(v_worldPos, normal));
     vec3 spec = vec3(0);
-    if (uT.concreteDetail != 0) {
+    if (TS_concreteDetail != 0) {
         MaterialDetail detail = cdEval(adoptAlbedo ? CD_LAYER_PAD : CD_LAYER_ROAD, v_worldPos.xy, dx, dy);
         float diffuse;
         cdShade(detail, normalize(uT.terrainLightDir.xyz), uT.ambientDayGate, diffuse, spec);
@@ -59,7 +68,7 @@ float shadeRoadArtTile(out vec3 outColor) {
     outColor = vec3(0.0);
     vec2 roadDx = dFdx(v_worldPos.xy), roadDy = dFdy(v_worldPos.xy);
     int plane = uT.mapSide * uT.mapSide;
-    if (uT.useCement != 0 && uC.cementWordsF.length() >= 2 * plane) {
+    if (TS_useCement != 0 && uC.cementWordsF.length() >= 2 * plane) {
         ivec2 tile = clamp(ivec2(floor(vec2(v_worldPos.x + uT.halfMap, uT.halfMap - v_worldPos.y) / 128.0)),
                            ivec2(0), ivec2(uT.mapSide - 1));
         int index = tile.x + tile.y * uT.mapSide;

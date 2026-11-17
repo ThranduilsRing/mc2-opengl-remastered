@@ -54,7 +54,7 @@ def find_compiler(explicit_glslang, explicit_glslc):
     return (None, None)
 
 
-def compile_one(kind, exe, src_path):
+def compile_one(kind, exe, src_path, defines=()):
     with tempfile.TemporaryDirectory() as td:
         spv = os.path.join(td, "out.spv")
         if src_path.endswith('.slang'):
@@ -69,6 +69,7 @@ def compile_one(kind, exe, src_path):
             cmd = [exe, "--target-env=vulkan1.2", src_path, "-o", spv]
             if os.path.basename(src_path) == "hzb_cull.comp":
                 cmd[2:2] = ["--target-env=vulkan1.1"]
+        cmd.extend("-D" + define for define in defines)
         try:
             proc = subprocess.run(cmd, capture_output=True, text=True, timeout=60, **console_child.child_kwargs(redirected=True))
         except FileNotFoundError:
@@ -109,6 +110,9 @@ def main():
         src = os.path.join(shader_dir, fname)
         ok, out = compile_one(kind, exe, src)
         checked += 1
+        if ok and fname == "vfx_vegetation.frag":
+            ok, out = compile_one(kind, exe, src, ("VEGETATION_SHADE_EARLY_TESTS=1",))
+            checked += 1
         if not ok:
             any_error = True
             print(f"FAIL {fname}")

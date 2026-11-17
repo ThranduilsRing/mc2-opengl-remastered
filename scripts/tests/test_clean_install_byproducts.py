@@ -18,6 +18,8 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 import console_child  # noqa: E402
+sys.path.insert(0, str(ROOT / "tools"))
+import gate_hosts  # noqa: E402
 
 SCRIPT = "scripts/clean_install_byproducts.py"
 
@@ -109,7 +111,9 @@ def test_tracked_name_file_is_kept(tmp_path):
     assert not (install / "data/missions/mc2_01.beauty/visual_height_report.json").exists()
 
 
-@pytest.mark.parametrize("which", ["golden", "golden_nested", "owner_test", "remastered", "archive"])
+@pytest.mark.parametrize("which", ["golden", "golden_nested", "owner_test", *[
+    pytest.param(name, marks=pytest.mark.skipif(os.name != "nt", reason="Protected Windows absolute drive root"))
+    for name in ("remastered", "archive")]])
 def test_refused_roots_exit_2(tmp_path, which):
     if which == "golden":
         byproduct = plant_byproduct(tmp_path / "mc2-win64-v0.4c")
@@ -121,9 +125,13 @@ def test_refused_roots_exit_2(tmp_path, which):
         byproduct = plant_byproduct(tmp_path / "owner-test-lane7")
         install = tmp_path / "owner-test-lane7"
     elif which == "remastered":
+        if gate_hosts.current_host() != "pc" and not Path("A:/Games/MC2 OpenGL Remastered").exists():
+            pytest.skip(f"PC-only install root A:/Games/MC2 OpenGL Remastered (gate host {gate_hosts.current_host()})")
         byproduct = None
         install = Path("A:/Games/MC2 OpenGL Remastered") / "clean-byproducts-test-absent"
     else:
+        if gate_hosts.current_host() != "pc" and not Path("E:/mc2-archive-2026-10").exists():
+            pytest.skip(f"PC-only archive root E:/mc2-archive-2026-10 (gate host {gate_hosts.current_host()})")
         byproduct = None
         install = Path("E:/mc2-archive-2026-10") / "clean-byproducts-test-absent"
     r = run_cli(install, "--apply")

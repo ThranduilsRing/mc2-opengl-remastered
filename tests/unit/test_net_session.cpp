@@ -146,6 +146,19 @@ TEST_CASE("net session handshake accepts only identical protocol/executable/cont
     CHECK(packet[0] == 'M'); CHECK(packet[1] == '2');
     CHECK(packet[packet.size() - 8] == 0x39); // seed precedes the component count
 }
+
+TEST_CASE("net session rejects changed heat profile content with protocol four") {
+    CHECK(net::protocolVersion == 4);
+    net::Identity local, remote;
+    local.mission = "mc2_01";
+    const save::Bytes heatFit{1, 20, 60, 0};
+    auto modifiedHeatFit = heatFit; modifiedHeatFit[1] = 21;
+    local.content = net::contentIdentity(save::sha256(heatFit), false, true);
+    remote = local;
+    remote.content = net::contentIdentity(save::sha256(modifiedHeatFit), false, true);
+    CHECK(remote.content != local.content);
+    CHECK(net::checkHello(net::hello(remote), local) == "content SHA-256 mismatch");
+}
 TEST_CASE("net session handshake rejects truncation, excessive lengths and trailing bytes") {
     const net::Identity id{{}, {}, "mc2_01", 0};
     auto packet = net::hello(id);

@@ -10,7 +10,7 @@
   "MC2_BOOT_QUICKLOAD_AT": "1400"
  },
  "exe": {
-  "sha": "dab109d064ae",
+  "sha": "5ba99e863181",
   "dirty": 0
  },
  "comparison": {
@@ -51,7 +51,7 @@
  "judged": "first-save-only",
  "resave_present": true,
  "packets": 20000,
- "overall": "1717f588d626fb66",
+ "overall": "a2c71300bf14276a",
  "resave_identical": true,
  "resave_matches_policy": true,
  "runs": [
@@ -252,11 +252,11 @@
    "df3f619804a92fdb"
   ],
   [
-   "MechData",
+   "data",
    3378,
    147,
-   522771,
-   "b917157b0d3c035a"
+   536295,
+   "bb11249c21080745"
   ],
   [
    "GroundVehicleData",
@@ -584,8 +584,8 @@
    "sections",
    6519,
    1,
-   540940,
-   "794d77d3a205ea23"
+   616282,
+   "4a5c6ac29b51b6a4"
   ],
   [
    "empty",
@@ -598,7 +598,7 @@
  "about": "digest of the quicksave a round-trip fixture writes; tools/saveload_roundtrip.py --baseline / --check",
  "sim_speed": 2,
  "data_fingerprint": {
-  "digest": "631bc626ca376941",
+  "digest": "dcd8543bf1dabdf6",
   "inputs": [
    "mission.fst",
    "tgl.fst",
@@ -611,7 +611,7 @@
    "data/missions/",
    "data/warriors/"
   ],
-  "stock_digest": "8703ccf15c7c117f",
+  "stock_digest": "f5e613864732c4b4",
   "overlay": {
    "data/missions/gaea_peaks_01.fit": "aa24a7b6e35ae2b2",
    "data/missions/gaea_peaks_01.pak": "af7be4e2f5a9c1c4"

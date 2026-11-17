@@ -5,6 +5,7 @@ P("MC2_TERRAIN_SHORELINE_STRENGTH", Float, 1.0, "terrain", "", "", clampRange(0.
 P("MC2_TERRAIN_SHORELINE_WET_RUN", Float, 16.0, "terrain", "", "", rangeAbove(0.0, 3.4028234663852886e38) | verified),
 P("MC2_TERRAIN_SNOW_BRIGHTNESS_DAMPEN", Float, 0.78, "terrain", "", "Snow brightness dampen: <1 darkens detected-snow fragments.", verified),
 L(Exact1, "MC2_TERRAIN_SOLID_WINDOW_PARITY", Bool, false, "terrain", "", "", verified),
+L(Lead0Kill, "MC2_TERRAIN_SPEC", Bool, true, "terrain", "", "Terrain fragment specialization; 0 keeps the generic main and reflection pipelines.", passthrough | registry(Feature, "MC2_TERRAIN_SPEC", -1, true) | verified),
 // history: docs/gate-history.md#MC2_TERRAIN_TESS
 L(Lead0Kill, "MC2_TERRAIN_TESS", Bool, true, "gameos", "", "TCS/TES terrain tessellation (gameos_graphics.cpp).", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_TESSELLATION", 3, true)),
 // TERRAIN-HIRES-NEAR-1: ships ON (temporary kill-switch, =0 disables).

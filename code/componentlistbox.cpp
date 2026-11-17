@@ -19,7 +19,6 @@ ComponentListBox.cpp			: Implementation of the ComponentListBox component.
 #include "mc2fmt.h"
 #include "../GameOS/gameos/input_capture_policy.h"
 #include "vfs.h"
-#include "imgui.h"
 
 std::unique_ptr<ComponentListItem> ComponentListItem::s_templateItem = nullptr;
 
@@ -399,52 +398,10 @@ void ComponentIconListBox::setType( int newType, int otherNewType, int orThis, i
 		}
 
 	selectFirstAvailableComponent();
-	std::vector<mc2purchase::Item> catalog;
-	for (int i = 0; i < itemCount; ++i) {
-		const auto* component = static_cast<ComponentListItem*>(items[i])->getComponent();
-		catalog.push_back({mc2purchase::componentSource(component->getID()), component->getName(),
-			static_cast<float>(component->getComponentWidth() * component->getComponentHeight())});
-	}
-	componentGroups.clear();
-	if (std::any_of(catalog.begin(), catalog.end(), [](const auto& item) { return !item.source.empty(); }))
-		componentGroups = mc2purchase::group(catalog, "");
-
-}
-
-void ComponentIconListBox::render()
-{
-	if (componentGroups.empty() || !ImGui::GetCurrentContext()) { aListBox::render(); return; }
-	float sx, sy, ox, oy;
-	aObject::getCanvasTransform(sx, sy, ox, oy);
-	ImGui::SetNextWindowPos(ImVec2(globalX() * sx + ox, globalY() * sy + oy));
-	ImGui::SetNextWindowSize(ImVec2(width() * sx, height() * sy));
-	if (ImGui::Begin("##component_sources", nullptr, ImGuiWindowFlags_NoTitleBar |
-		ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings)) {
-		ImGui::SetWindowFontScale(sy * .75f * 1080.f / ImGui::GetIO().DisplaySize.y);
-		for (auto& group : componentGroups) {
-			ImGui::PushID(group.source.c_str());
-			ImGui::SetNextItemOpen(group.open, ImGuiCond_Always);
-			group.open = ImGui::CollapsingHeader((ModDisplayName(group.source) + " (" + std::to_string(group.items.size()) + ")").c_str());
-			if (group.open) for (const auto index : group.items) {
-				auto* item = static_cast<ComponentListItem*>(items[index]);
-				ImGui::PushID(static_cast<int>(index));
-				if (ImGui::Selectable(item->getComponent()->getName(), itemSelected == static_cast<int>(index), ImGuiSelectableFlags_AllowDoubleClick)) {
-					SelectItem(static_cast<int>(index)); item->setComponent();
-					if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) item->doAdd();
-				}
-				if (ImGui::IsItemFocused() && ImGui::IsKeyPressed(ImGuiKey_Enter)) item->doAdd();
-				if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) item->startDrag();
-				ImGui::PopID();
-			}
-			ImGui::PopID();
-		}
-	}
-	ImGui::End();
 }
 
 void ComponentIconListBox::update()
 {
-	if (!componentGroups.empty()) return;
 	aListBox::update();
 
 	if ( itemSelected != -1 )

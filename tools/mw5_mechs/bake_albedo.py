@@ -1,33 +1,48 @@
 #!/usr/bin/env python3
-"""Bake a base-colour texture for an MW5 mech: MW5 ships no albedo, only an RGB paint-zone mask plus
-material parameters. albedo = bare metal where the mask is black, a flat zone colour where it is lit.
+"""Bake MW5 paint from an external JSON of named Unreal material parameters.
 
-  py -3 tools/mw5_mechs/bake_albedo.py --mask Timberwolf_Body_Default_MSK.png --out mw5_madcat_alb.tga [--size 2048]
+JSON: colorSpace="linear", parameters={MetalColorMultiplier: [r,g,b],
+PaintColorMultiplier: [r,g,b], PaintColorPrimary/Secondary/Tertiary: [r,g,b]},
+maskChannels={R: "PaintColorPrimary", G: "PaintColorSecondary",
+B: "PaintColorTertiary", A: "opacity"}. Keep source names/provenance beside it.
+Unreal FLinearColor numbers and mask weights are linear. Blend in linear space,
+then encode RGB to sRGB ONCE. Alpha is linear opacity, not a fourth paint colour.
+The BT cook stores these encoded bytes in BC7 UNORM; mechSurface decodes RGB.
 """
 import argparse
+import json
 
 import numpy as np
 from PIL import Image
 
-METAL = (0.36, 0.35, 0.33)   # BaseMech_MTI MetalColorMultiplier (0.63, 0.62, 0.57) darkened for an albedo
-ZONES = ((0.27, 0.30, 0.21), (0.52, 0.46, 0.30), (0.42, 0.13, 0.10))   # R, G, B zones: olive, tan, dark red
-
-
-def bake(mask_path, size):
-    m = np.asarray(Image.open(mask_path).convert("RGBA").resize((size, size), Image.BILINEAR), dtype=np.float32) / 255.0
+def bake(mask_path, size, paint):
+    if paint["colorSpace"] != "linear" or paint["maskChannels"]["A"] != "opacity":
+        raise ValueError("expected linear Unreal parameters and linear mask alpha")
+    params = {k: np.asarray(v, dtype=np.float32) for k, v in paint["parameters"].items()}
+    if any(v.shape != (3,) or not np.isfinite(v).all() for v in params.values()):
+        raise ValueError("material parameters must be finite RGB triples")
+    # Resize data channels independently: RGBA filtering otherwise premultiplies
+    # RGB by alpha and destroys colour-mask values under transparent pixels.
+    channels = Image.open(mask_path).convert("RGBA").split()
+    m = np.stack([np.asarray(c.resize((size, size), Image.Resampling.BILINEAR)) for c in channels], axis=-1).astype(np.float32) / 255
     out = np.empty(m.shape[:2] + (3,), np.float32)
-    out[:] = METAL
-    for ch, col in zip((0, 1, 2), ZONES):
+    out[:] = params["MetalColorMultiplier"]
+    for ch, channel in enumerate("RGB"):
         w = m[..., ch:ch + 1]
-        out = out * (1 - w) + np.array(col, np.float32) * w
-    srgb = np.clip(out, 0, 1)   # zone/metal values are authored as display colours (the engine lights them; no gamma lift)
-    return Image.fromarray((srgb * 255 + 0.5).astype(np.uint8), "RGB").convert("RGBA")
+        col = params[paint["maskChannels"][channel]] * params["PaintColorMultiplier"]
+        out = out * (1 - w) + col * w
+    out = np.clip(out, 0, 1)
+    srgb = np.where(out <= 0.0031308, out * 12.92, 1.055 * out ** (1 / 2.4) - 0.055)
+    rgba = np.concatenate((srgb, m[..., 3:4]), axis=2)
+    return Image.fromarray((rgba * 255 + 0.5).astype(np.uint8))
 
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--mask", required=True)
     ap.add_argument("--out", required=True)
+    ap.add_argument("--params", required=True, help="external JSON with named linear paint parameters")
     ap.add_argument("--size", type=int, default=2048)
     a = ap.parse_args()
-    bake(a.mask, a.size).save(a.out)
+    with open(a.params, encoding="utf-8") as f:
+        bake(a.mask, a.size, json.load(f)).save(a.out)

@@ -52,7 +52,9 @@ uint32_t snapshot(PassStat* out, uint32_t maxRows, float* spanMs);
 class Scope {
 public:
     // `name` and `file` must be string literals (their data pointers are kept).
-    Scope(VkCommandBuffer cb, std::string_view name, std::string_view file, uint32_t line);
+    // tris: also bracket the scope with a pipeline-statistics query (input-assembly primitives, clipping primitives, fragment-shader invocations),
+    // reported per pass as "[VK_GPU_TRIS v1]"; a no-op when the device lacks pipelineStatisticsQuery. Never nest two tris scopes.
+    Scope(VkCommandBuffer cb, std::string_view name, std::string_view file, uint32_t line, bool tris = false);
     ~Scope() { end(); }
     Scope(const Scope&) = delete;
     Scope& operator=(const Scope&) = delete;
@@ -63,6 +65,8 @@ private:
     VkCommandBuffer cb_ = VK_NULL_HANDLE;
     int32_t         tsIndex_ = -1;     // timestamp pair index inside the frame slot, -1 = not timed
     uint32_t        tsSlot_ = 0;
+    int32_t         statIndex_ = -1;   // pipeline-statistics query index inside the frame slot, -1 = none
+    uint32_t        statSlot_ = 0;
     bool            label_ = false;
     bool            tracy_ = false;
     alignas(16) unsigned char tracyZone_[48];   // tracy::VkCtxScope, built in place by the .cpp
@@ -75,3 +79,5 @@ private:
 #define MC2_VK_GPU_CAT(a, b) MC2_VK_GPU_CAT2(a, b)
 // MC2_VK_GPU_SCOPE(gs, cb, "VKIsl.Terrain");  ...record...  gs.end();   (or let the enclosing scope end it)
 #define MC2_VK_GPU_SCOPE(var, cb, name) ::mc2vk::gpuprof::Scope var((cb), (name), __FILE__, static_cast<uint32_t>(__LINE__))
+// Same, plus a pipeline-statistics query (triangles) for the pass.
+#define MC2_VK_GPU_SCOPE_TRIS(var, cb, name) ::mc2vk::gpuprof::Scope var((cb), (name), __FILE__, static_cast<uint32_t>(__LINE__), true)

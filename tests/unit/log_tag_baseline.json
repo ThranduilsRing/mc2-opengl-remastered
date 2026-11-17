@@ -2154,6 +2154,28 @@
    "count": 1
   },
   {
+   "tag": "COMMAND_REPLAY",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "COMPASS_SYNC",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "camX",
+    "camY",
+    "yaw",
+    "pitch"
+   ],
+   "count": 1
+  },
+  {
    "tag": "CONE_AIM_DIAG",
    "ver": 1,
    "stream": "stderr",
@@ -4464,6 +4486,45 @@
     "skipBand",
     "skipExempt",
     "firstVertYafter"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "HUD_FIRST_DRAW",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "handle",
+    "serial",
+    "kind",
+    "frame",
+    "prepared"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "HUD_LOAD_PREPARE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "handle",
+    "serial",
+    "kind",
+    "wh",
+    "asset",
+    "ready"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "HUD_SYNC_FALLBACK",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "handle",
+    "serial",
+    "kind",
+    "frame"
    ],
    "count": 1
   },
@@ -10151,6 +10212,16 @@
   {
    "tag": "TERRAIN_FIELDS",
    "ver": 1,
+   "stream": "log",
+   "keys": [
+    "side",
+    "bake_ms"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_FIELDS",
+   "ver": 1,
    "stream": "stderr",
    "keys": [],
    "count": 2
@@ -11336,7 +11407,8 @@
     "unattributed_ms",
     "scopes",
     "dropped",
-    "overflow"
+    "overflow",
+    "pose"
    ],
    "count": 1
   },
@@ -11358,6 +11430,17 @@
     "debug_labels",
     "timestamps",
     "tracy_ctx"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_GPU_TRIS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "pose",
+    "frame",
+    "n"
    ],
    "count": 1
   },
@@ -11400,7 +11483,8 @@
     "handle",
     "serial",
     "wh",
-    "verts"
+    "verts",
+    "asset"
    ],
    "count": 1
   },

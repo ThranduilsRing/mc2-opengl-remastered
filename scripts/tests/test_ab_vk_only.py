@@ -16,6 +16,7 @@ import ab  # noqa: E402
 
 @pytest.fixture(autouse=True)
 def ancestry_covered_elsewhere(monkeypatch):
+    monkeypatch.setattr(ab.shutil, "disk_usage", lambda p: type("Usage", (), {"free": 100 * 2**30})())
     monkeypatch.setattr(ab, "commit_order_problem", lambda *args: None)
 
 

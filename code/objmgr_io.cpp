@@ -14,6 +14,7 @@
 #include <map>
 #include "objmgr_internal.h"
 #include "static_prop_prewarm.h"
+#include "terrain_dirty_queue.h"
 #include "saved_objects_check.h"
 #include "object_slot_codec.h"
 #include "watch_list_save_data.h"
@@ -828,6 +829,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum, bool managerVa
 	// First element in list is NULL (handle of 0 is always NULL)
 	invalidateTerrainTickList();
 	objList = entities.reset(getMaxObjects() + 1);
+	mc2::terrainDirtyQueue().reset(getMaxObjects() + 1);
 	resetPartIdIndex();
 	invalidateSpatialGrid();
 	memset(objList,0,sizeof(GameObjectPtr) * (getMaxObjects() + 1));
@@ -1191,7 +1193,15 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum, bool managerVa
 		{
 			//We have a BattleMech.
 			MechData data{};
-			readData.operator()<mc2::save::MechRecord>(data, mc2_saved_objects::kMech);
+			mc2::save::MechRecord record;
+			if (objectValues) {
+				if (!mc2::save::decodeTaggedRecord(slotBytes, record, mc2::save::mechTag))
+					Fatal(0, "Unsupported or invalid mech ObjectSlot version/payload");
+				data = record.value;
+			} else {
+				file->readPacket(packetNum, reinterpret_cast<MemoryPtr>(&data));
+				record.value = data;
+			}
 			packetNum++;
 
 			BattleMechPtr obj = new BattleMech; 
@@ -1204,7 +1214,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum, bool managerVa
 
 				obj->init(true, objType);
 				obj->setExists(true);
-				obj->Load(&data);
+				record.load(*obj);
 			}
 			else
 			{

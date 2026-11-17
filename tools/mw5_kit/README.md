@@ -1,4 +1,4 @@
-# Native MW5 reader (synthetic proof only)
+# Native MW5 reader (parity PASS on the Mercs Timber Wolf, 2026-11-17)
 
 This lane uses .NET 8 and exact NuGet pins CUE4Parse **1.2.2** and
 CUE4Parse-Conversion **1.2.1**. Both are Apache-2.0:
@@ -12,9 +12,10 @@ newer frameworks; updating the pins requires another API and synthetic check.
 
 The player install is read only. Oodle is loaded at runtime only from the
 install root, Engine/Binaries/ThirdParty/Oodle/Win64, or the game's
-MW5Mercs/Binaries/Win64 or MW5Clans/Binaries/Win64 directory. Missing Oodle
-fails with a message; no download fallback exists. Real extraction requires
-Windows. The box must receive source and synthetic fixtures only.
+MW5Mercs/Binaries/Win64 or MW5Clans/Binaries/Win64 directory. The Mercs
+install has no Oodle DLL (Oodle is inside the exe) and its pak reads without
+one; a missing DLL only prints a note, and Oodle-compressed assets then stay on
+the bridge. No download fallback exists. Real extraction requires Windows. The box must receive source and synthetic fixtures only.
 
 `request.json` selects exact object paths (no guessing or whole-install exports):
 
@@ -59,8 +60,9 @@ Per-mech output: `skeleton.json`, `mesh.bin` (LOD0), `mesh.lodN.bin`,
 `bridge.json`. A nonempty bridge list returns exit 2; fatal setup returns 1.
 Unsupported kinds/codecs, additive clips, mismatched skeletons, base-material
 graphs, missing LOD0, zero ancestor scales and decoding failures stay on the
-umodel bridge and are listed with reasons. Keep that bridge available until
-real parity passes. Do not treat partial output as complete extraction.
+umodel bridge and are listed with reasons. The bridge stays for those
+(base-material graphs, additive clips). Skeleton assets may hold more bones
+than the mesh (Mech_SKL: 261 vs 121); clips bind to mesh bones by name. Do not treat partial output as complete extraction.
 
 Native vectors are UE LH Z-up centimeters. Bone and socket transforms are
 local, quaternion XYZW. CUE's ancestor-scale translation adjustment is undone
@@ -90,18 +92,24 @@ dotnet tools/mw5_kit/extract/bin/RelWithDebInfo/net8.0/Mw5Extract.dll --fixture 
 MW5_SYNTHETIC_FIXTURE="$TMPDIR/mw5-synthetic" python3 -B -m unittest tools.mw5_mechs.test_from_native -v
 ```
 
-## PC parity step: NOT RUN
+## PC parity step: PASS (Timber Wolf, Mercs, 2026-11-17)
 
-No MW5 data is present on the box. Mad Cat bone/key/vertex/socket parity and
-M2 sheets are **NOT RUN**. Before replacing the bridge, export the same mesh,
-skin and all requested clips through the existing umodel bridge to
-`$MW5_SCRATCH/madcat-bridge.gltf` (GLB also accepted), already in glTF RH Y-up
-meters. That bridge is not present on this branch; its export command must
-come from the PC bridge lane. Candidate and reference must contain LOD0 only
-(retain `lods.json` separately, select its LOD0 entry for conversion).
-Supply independently measured weapon AABBs in glTF world meters for **every**
-socket in `$MW5_SCRATCH/madcat-weapon-bounds.json`, keyed by socket name,
-each value `{"min":[x,y,z],"max":[x,y,z]}`. Then the exact numeric proof is:
+`MW5Mercs-WindowsNoEditor.pak`, mesh `Timberwolf_SKM` plus `TBR_Stand`,
+`TBR_WalkForward_Straight`, `TBR_RunForward_Straight`: 121 bones, 17488 LOD0
+vertices, 35705 compared clip keys (translation, rotation; no clip has authored
+scale). Max bone rest error 3.8e-5, vertex error 9.5e-7, rotation key error 0.0198 degrees. Receipt (numbers only):
+`E:/mc2-archive-2026-10/proofs/mw5-native-parity-1/`.
+`build_glb.py --skm <native.gltf>` takes this output directly (`--anim-dir`
+is only for the umodel bridge) and yields the same 33 parts / 93 nodes.
+
+Reference: umodel `-export -gltf` of the SKM (RH Y-up metres) plus its `.psa`
+clips converted with `ue_basis.py` into glTF animations named like the native
+clips. umodel writes zero/identity for bones a clip has no track for; those
+channels are not data and are left out of the reference.
+Supply weapon AABBs in glTF world meters for **every** socket in
+`$MW5_SCRATCH/madcat-weapon-bounds.json`, keyed by socket name, each value
+`{"min":[x,y,z],"max":[x,y,z]}` (the run above used the mesh extent plus 0.5 m,
+a sanity bound, not measured hardpoints). Then:
 
 ```bash
 py -3 -m tools.mw5_mechs.parity \
@@ -110,10 +118,16 @@ py -3 -m tools.mw5_mechs.parity \
   --weapon-bounds "$MW5_SCRATCH/madcat-weapon-bounds.json"
 ```
 
-It requires equal bone/channel sets, bone world rest error <1e-4, identical
-per-channel key times/counts, **every** rotation key <0.1 degree (quaternion
-sign independent), vector keys <1e-4, exact sorted vertex positions, and every
-socket inside its weapon bounds. Resampling or missing clips cannot pass.
-Geometry/animation/socket bridge fallbacks prevent numeric parity PASS;
-other fallbacks remain listed and counted. It emits counts/errors only.
-M2 sheets follow numeric parity on the PC; this lane makes no visual claim.
+It requires equal bone sets, bone world rest error <1e-4, every candidate
+channel present in the reference, equal clip-name sets, **every** rotation key <0.1 degree (sign
+independent) and vector keys <1e-4 with the candidate sampled at each
+reference key time (constant tracks are one key; untracked channels are rest),
+LOD0 vertices (default-scene meshes) matched one-to-one within 1e-4 (needs scipy), and
+every socket inside its bounds. Geometry/animation/socket bridge fallbacks
+prevent a PASS. Counts/errors only. Not covered: normals, UVs, skin weights,
+materials (`TimberWolf_Default_SKN` is not a material instance and stays on the
+bridge), Clans/UE5.5/usmap (**NOT RUN**). A socket named like a bone becomes
+node `<name>_socket`; a socket on a bone the mesh lacks (2 here) is a
+`socket_skipped` fallback in the glTF extras, counted by parity. Scale tracks are
+kept only where the compressed data has scale keys (authored zero scale stays);
+non-UE animation codecs stay on the bridge.

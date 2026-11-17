@@ -14,6 +14,7 @@
 
 // Engine side.
 #include "gos_vegetation.h"
+#include "gos_render.h"
 #include "../code/render_view.h"
 
 // Game side -- terrain geometry + type queries.
@@ -197,6 +198,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
     const int side = static_cast<int>(mapSpan/gridStep);
     const long mapSide = static_cast<long>(Terrain::realVerticesMapSide);
     for (int row = 1; row < side-1; ++row) {
+        graphics::pump_loading_events();
         for (int col = 1; col < side-1; ++col) {
             ++diagCellsTotal;
             const auto centre = clumpCandidate(col,row,seed);
@@ -302,6 +304,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
         std::vector<std::pair<int,int>> fieldCells;
         std::vector<float> fieldSlopes(static_cast<size_t>(side)*side, 60.0f);
         for (int row = 1; row < side-1; ++row) {
+            graphics::pump_loading_events();
             for (int col = 1; col < side-1; ++col) {
                 const glm::vec3 pos(originX+(static_cast<float>(col)+0.5f)*gridStep,
                                     originY-(static_cast<float>(row)+0.5f)*gridStep, 0);

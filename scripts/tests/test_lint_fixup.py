@@ -80,6 +80,7 @@ def test_dead_waiter_ticket_does_not_block(tmp_path):
     fh.close()
 
 
+@pytest.mark.skipif(os.name != "nt", reason="Windows NTFS junction via cmd mklink /J")
 def test_sweep_stale_scratch_skips_junctions(tmp_path):
     import subprocess
     import console_child

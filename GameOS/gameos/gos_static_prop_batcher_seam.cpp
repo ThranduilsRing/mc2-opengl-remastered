@@ -132,6 +132,7 @@ bool gos_ProbeStaticInstanceWorld(uint32_t idx, float outXYZ[3]) {
 }
 
 void GpuStaticPropBatcher::clearPersistentStatic() {
+    s_persistentLodSlots.clear();
     // Keep the map + per-type vector capacity; just reset sizes (rebuild refills).
     for (auto& [typeKey, insts] : s_persistentStaticStore) insts.clear();
     s_persistentStaticGen = 0xFFFFFFFFFFFFFFFFull;  // invalid until the rebuild sets it
@@ -150,6 +151,7 @@ void GpuStaticPropBatcher::appendPersistentStaticRange(const GpuStaticPropInstan
         uint32_t j = i;
         while (j < count && arr[j].typeID == typeID) ++j;
         auto& store = s_persistentStaticStore[typeID];
+        s_persistentLodSlots.erase(typeID);
         // NOTE: do NOT reserve(size + n) here — for single-leaf runs that sets
         // capacity to EXACTLY size+1 per call, defeating geometric growth (the 2a
         // reserve-O(N^2) regression). push_back grows geometrically; dirty-only.

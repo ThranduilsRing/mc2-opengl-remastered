@@ -51,11 +51,11 @@ vec3 propDetailNormal(vec3 geometric, vec2 uv, vec3 sampled, float strength) {
 // coverage = the ORM map's alpha: authored coverage, separate from the stock albedo's cutout alpha
 // (zero keeps the legacy material response, including zero new specular); 1 without an ORM map.
 // It comes from the same fetch as orm.rgb, so the material path samples the ORM texture once.
-SurfaceMaterial propSurface(int id, vec3 albedo, out float coverage) {
+SurfaceMaterial propSurface(int id, vec3 albedo, out float coverage, bool needBase) {
     PropMaterialGpu row = uPropMaterials.materials[id];
     vec2 uv = vUv * row.uvScale;
     SurfaceMaterial s;
-    s.baseColor = propDecodeColor(albedo);
+    s.baseColor = needBase ? propDecodeColor(albedo) : vec3(0);
     s.normal = normalize(mc2ToRender(vNormalStuff));
     const bool perTex = kPerTexMaps && (row.material.flags & kMatFlagPerTexture) != 0u;
     if ((kPlanarReflection == 0 || kReflectCutDetail == 0) && row.material.normalTex != 0xffffffffu) {
@@ -92,6 +92,10 @@ bool propHasAuthoredOrm(int id) {
     PropMaterialGpu row = uPropMaterials.materials[id];
     return row.metadata.x != SURF_CLASS_LEGACY_PRELIT
         && row.material.metallicRoughnessTex != 0xffffffffu;
+}
+
+SurfaceMaterial propSurface(int id, vec3 albedo, out float coverage) {
+    return propSurface(id, albedo, coverage, true);
 }
 
 SurfaceMaterial propSurface(int id, vec3 albedo) {

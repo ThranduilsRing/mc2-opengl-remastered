@@ -73,6 +73,11 @@ MANIFEST_VERSION = "v1"
 REUSE_NAME = ".deploy-inputs.json"
 
 
+def editor_only_payload(rel):
+    rel = str(rel).replace("\\", "/").casefold()
+    return rel in {"mission editor.exe", "mission editor.pdb", "run-editor.bat"} or rel.startswith("tools/terrain_gen/")
+
+
 @contextmanager
 def deploy_phase(name, timeout=600):
     """Report progress and terminate this deploy's children if a phase stalls."""
@@ -1651,7 +1656,7 @@ def ensure_terrain_materials(target_dir):
 
 
 def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
-           full_verify=False, code_only=False, verified=None):
+           full_verify=False, code_only=False, verified=None, deploying_target="game"):
     """Copy + verify the payload.
 
     Hash receipts retain source and destination metadata plus the hash verified
@@ -1779,22 +1784,29 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
         log("PDB check OK: deployed PDB matches source hash")
 
     retire_unowned(target_dir, src_hashes, preserve,
+                   deploying_target=deploying_target,
                    own_shaders=any(kind == "shader" and rel.startswith("shaders/vulkan/") and rel.endswith(".spv")
                                    for _src, rel, kind in items))
     receipts.save()
     return src_hashes
 
 
-def retire_unowned(target_dir, keep, preserve=(), own_shaders=False):
+def retire_unowned(target_dir, keep, preserve=(), own_shaders=False, deploying_target="game"):
     """Retire files the new payload (`keep`, its relpaths) no longer carries.
 
     Manifest rows of the previous deploy are retired only when unchanged. Paths are resolved before unlinking so a malformed
     manifest or a directory junction cannot escape the target. Unmanifested files are never deleted, including shaders
-    and diagnostic output. `own_shaders` is retained for existing callers; it grants no additional ownership."""
+    and diagnostic output. Declared intentional assets are protected even when cooked source files are absent.
+    `own_shaders` is retained for existing callers; it grants no additional ownership."""
+    import asset_parity
+
+    source_root = Path(__file__).resolve().parents[1]
+    intentional = asset_parity.intentional_changes(git_head(source_root), source_root)
     root = Path(target_dir).resolve()
     shared = any(root == Path(preset["target_dir"]).resolve() for preset in TARGET_PRESETS.values())
     previous = read_manifest(target_dir)
     preserved = {p.replace("\\", "/").strip("/").casefold() for p in preserve}
+    preserved.update(p.casefold() for p in intentional)
 
     def protected(rel):
         candidates = [rel]
@@ -1818,16 +1830,18 @@ def retire_unowned(target_dir, keep, preserve=(), own_shaders=False):
         if not resolved.is_relative_to(root) or resolved == root:
             fail(f"retired payload path escapes target: {rel}")
         parts = tuple(part.casefold() for part in Path(rel).parts)
+        if deploying_target == "game" and editor_only_payload(rel):
+            if retired.is_file():
+                keep[rel] = (digest, size, None)
+            continue
         if parts[0] in {"mods", "savegame"} or parts[:2] == ("data", "savegame"):
             continue
         # The game and editor presets share one install: each one's root executables, symbols and launchers are owned by
         # the other preset's payload, not retired by this one (2026-11-14: an editor deploy pruned mc2.exe/mc2.pdb).
-        if len(parts) == 1 and (parts[0].endswith((".exe", ".pdb")) or (parts[0].startswith("run-") and parts[0].endswith(".bat"))):
+        if not editor_only_payload(rel) and len(parts) == 1 and (parts[0].endswith((".exe", ".pdb")) or (parts[0].startswith("run-") and parts[0].endswith(".bat"))):
             if shared and retired.is_file():
                 # Carry the previous claim, never bless changed bytes or authorize a source-mtime skip.
                 keep[rel] = (digest, size, None)
-            continue
-        if any(parts[:len(Path(t).parts)] == tuple(p.casefold() for p in Path(t).parts) for t in EDITOR_SUPPORT_TREES):
             continue
         if retired.is_file():
             rparts = tuple(part.casefold() for part in resolved.relative_to(root).parts)
@@ -2877,7 +2891,8 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
         preserve.extend(rel for rel in previous if rel.startswith("mods/"))
     with deploy_phase("payload hash copy and verification", 600):
         hashes = deploy(items, target, args.allow_stale_pdb, preserve=preserve,
-                        cache=cache, full_verify=args.full_verify, code_only=reuse, verified=verified)
+                        cache=cache, full_verify=args.full_verify, code_only=reuse, verified=verified,
+                        deploying_target="editor" if exe_name.casefold() == "mission editor.exe" else "game")
     if getattr(args, "skip_kit", False):
         hashes = {rel: row for rel, row in previous.items() if rel.startswith("mods/")} | hashes
     if kit_manifest:
@@ -2885,7 +2900,7 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
             phase_started = time.perf_counter()
             with deploy_phase("stock texture receipts", 300):
                 kit_payload.reconcile_stock_textures(target,
-                    jobs=int(Path("A:/Games/mc2-ops/JOBS").read_text().strip()))
+                    jobs=kit_payload.jobs_limit())
             log(f"phase stock receipts seconds={time.perf_counter() - phase_started:.3f}")
             phase_started = time.perf_counter()
             with deploy_phase("kit cook", 900):

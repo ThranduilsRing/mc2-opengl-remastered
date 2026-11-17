@@ -619,6 +619,7 @@ def test_affinity_reserves_only_physical_game_cores(monkeypatch):
 
 
 @pytest.mark.parametrize("width,exclusive,expected", [(1, False, 0x30), (1, True, 0x30), (2, False, 0xF0), (2, True, 0xF0)])
+@pytest.mark.skipif(sys.platform != "win32", reason="PC Windows core masks; Linux box preserves its inherited taskset cpuset")
 def test_slot_affinity_reaches_child_process(lease, monkeypatch, width, exclusive, expected):
     import ctypes
     from ctypes import wintypes

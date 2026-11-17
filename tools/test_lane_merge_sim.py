@@ -23,6 +23,35 @@ import lane_merge as lm  # noqa: E402  (tools/ is on sys.path: test_lane_merge i
 
 # ---- G3: sim/save-sensitive paths make --precheck require and run saveload + determinism rows ----
 
+
+@pytest.mark.parametrize("target", ["documented", "active", "explicit", "batch"])
+def test_precheck_classifies_only_changes_since_play_target(env, monkeypatch, tmp_path, target):
+    from tools import lane_merge as lm
+    repo, _ = env
+    precheck_fixture(lm, repo, monkeypatch, None)
+    _branch(repo, "claude/play-test", "code/mission_update.cpp", "play sim change\n", "play")
+    git(repo, "checkout", "-q", "claude/play-test")
+    play = git(repo, "rev-parse", "HEAD")
+    if target == "documented":
+        (repo / "CLAUDE.md").write_text("Play branch: `claude/play-test`\n")
+        git(repo, "add", "CLAUDE.md")
+        git(repo, "commit", "-qm", "play target")
+    git(repo, "checkout", "-qb", "tooling-tip")
+    (repo / "tools").mkdir(exist_ok=True)
+    (repo / "tools/fix.py").write_text("# tooling only\n")
+    git(repo, "add", "tools/fix.py")
+    git(repo, "commit", "-qm", "tooling")
+    tip = git(repo, "rev-parse", "HEAD")
+    if target in {"active", "batch"}:
+        git(repo, "checkout", "-q", "claude/play-test")
+    args = ["--root", str(repo), "--precheck", tip, "--no-link"]
+    args += ["--base", play] if target == "explicit" else ["--batch", tip] if target == "batch" else []
+    monkeypatch.setattr(lm, "PRECHECK_RECEIPTS", str(tmp_path / "receipts"))
+    assert lm.main(args) == 0
+    rec = json.loads((tmp_path / "receipts" / (tip + ".json")).read_text())
+    assert rec["sim_rows"]["paths"] == [] and not rec["sim_rows"]["required"]
+    assert lm.merge_target(str(repo), "claude/nifty-mendeleev") != play
+
 def test_sim_path_classification():
     from tools import lane_merge as lm
     hit = lm.sim_sensitive_paths(["mclib/mech3d_update.cpp", "mclib/gvactor.h", "mclib/msl_shape.cpp", "mclib/appear.h",

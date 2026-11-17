@@ -888,6 +888,7 @@ void GameCamera::render (void)
 			if (compass && (mc2::render_view::clock().turn > 3) && drawCompass)
 			{
 				ZoneScopedN("GameCamera::render compass");
+				refreshCompass();		// same camera the frame renders with (production path; drawOldWay is the legacy one)
 				compass->render(-1);		//Force this to zBuffer in front of everything
 			}
 		}
@@ -1124,7 +1125,10 @@ void GameCamera::render (void)
 		gos_SetRenderState( gos_State_Perspective, 1);
 
 		if (compass && (mc2::render_view::clock().turn > 3) && drawCompass)
+		{
+			refreshCompass();
 			compass->render();
+		}
 	}
 	
 	renderLetterbox();
@@ -1202,6 +1206,51 @@ long cameraLineChanged = 0;
 bool useLOSAngle = true;
 //---------------------------------------------------------------------------
 extern "C" void mc2_save_camera_bookmark(char* outPath, int outPathLen);
+
+// The compass is a world-space HUD shape placed at the camera target. Its pose must be taken from the same camera the frame renders with,
+// so it is refreshed right before it is drawn (not once in update(), where input/ease can still move the camera before render).
+void GameCamera::refreshCompass (void)
+{
+	bool oldFog = useFog;
+	bool oldShadows = useShadows;
+	useFog = false;
+	useShadows = false;
+		
+	if (compass && (mc2::render_view::clock().turn > 3))
+	{
+  		
+   		compass->setObjectParameters(getPosition(),0.0f,false,0,0);
+		compass->scale(0.78f);
+   		compass->setMoverParameters(0.0f);
+   		compass->setGesture(0);
+   		compass->setObjStatus(OBJECT_STATUS_DESTROYED);
+   		compass->setInView(true);
+   		compass->setVisibility(true,true);
+   		compass->setFilterState(true);
+		compass->setIsHudElement();
+   		compass->update();		   //Force it to try and draw or stuff will not work!
+	}
+
+	useFog = oldFog;
+	useShadows = oldShadows;
+	if (compass && (mc2::render_view::clock().turn > 3) && mc2_diag::tagRequested("COMPASS_SYNC"))
+	{
+		extern std::atomic<uint32_t> g_mc2FrameCounter;
+		const glm::vec3 p = getPosition();
+		mc2::fmt::print_err("[COMPASS_SYNC] frame={:d} camX={:.3f} camY={:.3f} yaw={:.4f} pitch={:.4f}\n",
+			mc2::fmt::as_u64(g_mc2FrameCounter.load(std::memory_order_relaxed)), p.x, p.y, cameraRotation, projectionAngle);
+	}
+}
+
+void GameCamera::prepareCompass()
+{
+	if (!compass && appearanceTypeList) {
+		AppearanceType* appearanceType = appearanceTypeList->getAppearance(BLDG_TYPE << 24, "compass");
+		if (!appearanceType) return;
+		compass = std::make_unique<BldgAppearance>();
+		compass->init(appearanceType);
+	}
+}
 
 long GameCamera::update (void)
 {
@@ -1453,12 +1502,7 @@ long GameCamera::update (void)
 		globalFloatHelp->setFloatHelp(ovtext,ovPos,SD_YELLOW,SD_BLACK,1.0f,true,false,false,false);
 	}
 
-	if (!compass)	//Create it!
-	{
-		AppearanceType* appearanceType = appearanceTypeList->getAppearance( BLDG_TYPE << 24, "compass" );
-		compass = std::make_unique<BldgAppearance>();
-		compass->init( appearanceType );
-	}
+	prepareCompass();
 
 	long result = Camera::update();
 	
@@ -1476,28 +1520,6 @@ long GameCamera::update (void)
 	//-fs
 	//forceShadowRecalc = true;
 	
-	bool oldFog = useFog;
-	bool oldShadows = useShadows;
-	useFog = false;
-	useShadows = false;
-		
-	if (compass && (mc2::render_view::clock().turn > 3))
-	{
-  		
-   		compass->setObjectParameters(getPosition(),0.0f,false,0,0);
-		compass->scale(0.78f);
-   		compass->setMoverParameters(0.0f);
-   		compass->setGesture(0);
-   		compass->setObjStatus(OBJECT_STATUS_DESTROYED);
-   		compass->setInView(true);
-   		compass->setVisibility(true,true);
-   		compass->setFilterState(true);
-		compass->setIsHudElement();
-   		compass->update();		   //Force it to try and draw or stuff will not work!
-	}
-
-	useFog = oldFog;
-	useShadows = oldShadows;
 	
 	return result;
 }

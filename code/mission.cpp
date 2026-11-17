@@ -46,6 +46,10 @@ struct MissionOrderAccess {
             object->getWatchID(false) == ref.generation ? static_cast<MoverPtr>(object) : nullptr;
     }
     float simulationTime() const { return scenarioTime; }
+    bool admitsAlpha(MoverPtr mover) const {
+        return mover->getObjectClass() == BATTLEMECH &&
+            static_cast<BattleMech*>(mover)->canAlphaStrike();
+    }
     std::uint32_t validatePlayer(const mc2::sim::OrderEnvelope& e) const;
     mc2::sim::ApplicationOutcome applyPlayer(const mc2::sim::OrderEnvelope& e, mc2::sim::ObjectRef ref) const;
     void installed(const mc2::sim::OrderEnvelope& e, mc2::sim::ObjectRef ref) const {
@@ -139,6 +143,7 @@ mc2::sim::ApplicationOutcome MissionOrderAccess::applyPlayer(
         legacy.attackParams.tactic = tactic_table::sim_to_legacy<::TacticType>(a.tactic);
         legacy.attackParams.aimLocation = a.aimLocation;
         legacy.attackParams.pursue = a.pursue; legacy.attackParams.obliterate = a.obliterate;
+        legacy.attackParams.alpha = a.alpha;
         legacy.attackParams.targetPoint = glm::vec3(a.targetPoint.x, a.targetPoint.y, a.targetPoint.z);
     }
     if (e.payload.target) {
@@ -473,6 +478,7 @@ long Mission::submitPlayerOrder(Mover* mover, const ::TacticalOrder& legacy, boo
         a.type = static_cast<mc2::sim::AttackType>(old.type); a.method = static_cast<mc2::sim::AttackMethod>(old.method);
         a.range = static_cast<FireRange>(old.range); a.tactic = tactic_table::legacy_to_sim<Tactic>(old.tactic);
         a.aimLocation = old.aimLocation; a.pursue = old.pursue; a.obliterate = old.obliterate;
+        a.alpha = old.alpha;
         a.targetPoint = {old.targetPoint.x, old.targetPoint.y, old.targetPoint.z};
     }
     if (legacy.targetWID) {
@@ -681,7 +687,7 @@ long MissionStartTime =	0;			//No Idea
 
 Mission *mission = nullptr;
 std::unique_ptr<Weather> missionWeather;
-std::unique_ptr<Camera> missionCamera;
+std::unique_ptr<GameCamera> missionCamera;
 unsigned long scenarioResult = mis_PLAYING;
 long scenarioEndTurn = -1;
 long MechSalvageChance = 100;
@@ -1131,6 +1137,8 @@ void Mission::destroy (bool initLogistics)
 {
 	ZoneScopedN("Mission.Destroy");
     mc2::net::endMission();
+    extern void gosRendererReleaseHudTextures(uint32_t);
+    gosRendererReleaseHudTextures(0);
     orderRecipients.clear();
     authoredRoutes.clear();
     routeExecutions.clear();

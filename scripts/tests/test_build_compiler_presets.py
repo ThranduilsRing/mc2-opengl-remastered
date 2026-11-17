@@ -349,6 +349,7 @@ def test_external_build_root_reaches_every_output_without_moving_sources(monkeyp
 
 
 def test_external_doctest_output_uses_source_checkout(monkeypatch, tmp_path):
+    monkeypatch.setattr(bch.cn, "cache_cmake_args", lambda root: (["-DMC2_COMPILE_CACHE=ON"], {}))
     calls = record_runs(monkeypatch, bch)
     assert bch.main(["--unit-only", "--compile-cache", "--build-root", str(tmp_path), "-j2"]) == 0
     configure = calls[0][0]

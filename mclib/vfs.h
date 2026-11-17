@@ -71,11 +71,12 @@ std::vector<Entry> candidates(std::string_view logicalKey);
 // unreadable winner falls back to the next provider without changing precedence.
 std::optional<Entry> resolve(std::string_view logicalKey, bool (*readable)(const Entry&) = nullptr);
 // Content identity: the fastHash of the bytes the winning candidate serves for `path` (0 if unreadable).
-// A physical winner is memoised by (path, size, mtime) and re-hashed on any change of either; an FST winner is
-// memoised per index generation. The memo is cleared on every rebuild, which bounds a same-size same-mtime edit to
-// the next rebuild. Hash cost: one read of the file per content change, one stat per query. Never derived from
+// Persisted by (absolute path, size, mtime), or (archive path/size/mtime, member) for FSTs.
+// verify bypasses both memos, including a same-size same-mtime edit. Rebuild drops the in-memory snapshot.
+// Hash cost: one read per stamp miss, stats only on a hit. Never derived from
 // ComputeModDataSignature (file count + max mtime), which is a cache-staleness hint only.
-uint64_t contentDigest(std::string_view path);
+uint64_t contentDigest(std::string_view path, bool verify = false);
+void flushContentDigests(); // atomic snapshot beside the cook caches; failure only costs another hash next run
 // Direct children of dirKey ("data/missions/") whose name ends in ext (".fit", case-insensitive; empty = all),
 // one entry per key, sorted by key.
 std::vector<Entry> enumerate(std::string_view dirKey, std::string_view ext = {});

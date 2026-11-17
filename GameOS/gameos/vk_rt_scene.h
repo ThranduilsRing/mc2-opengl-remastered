@@ -175,7 +175,7 @@ inline constexpr uint32_t kMatMover = 8;
 inline constexpr uint32_t kMatProp = 16;
 inline constexpr float kAlphaCut = 0.5f;      // the raster's mip-0 cut (color_prop_tier1.frag)
 
-// One row per BLAS geometry; std430 twin in shaders/vulkan/rt_scene_probe.comp.
+// One row per BLAS geometry; std430 twin in shaders/vulkan/rt_scene_probe.comp.slang.
 struct MaterialRow {
     int32_t albedoLayer = -1;    // layer in the array kMatAlphaOn selects; -1 = untextured
     uint32_t flags = 0;

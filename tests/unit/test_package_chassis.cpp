@@ -182,3 +182,46 @@ TEST_CASE("package chassis: every weapon_* name maps to a bone present in the GL
     MESSAGE("scanned " << packages << " packages");
     CHECK(packages >= 20);
 }
+
+// Owner 11-16: weapons were refused on the Marauder with no reason. The refusal is the BT mount
+// rule (every Energy/Ballistic mount of the stock MAD-3R is taken) and the 4 t payload slack.
+TEST_CASE("package chassis: full MAD-3R refuses energy and ballistic on mounts, takes a missile rack, armor eats the slack") {
+    const PackageChassis c = marauder();
+    const std::vector<Placed> loaded = mad3r();
+    CHECK(checkAdd(c, loaded, item(2, 2, 1, 1, Mount::Energy, 156, 2)) == Verdict::NoFreeMount);
+    CHECK(checkAdd(c, loaded, item(3, 2, 1, 1, Mount::Ballistic, 100, 1)) == Verdict::NoFreeMount);
+    CHECK(checkAdd(c, loaded, item(1, 3, 1, 1, Mount::Missile, 120, 4)) == Verdict::Legal);   // 30 + 4 = payload
+    std::vector<Placed> plated = loaded;
+    plated.push_back(item(2, 2, 1, 1, Mount::None, 25, 2));
+    plated.push_back(item(3, 2, 1, 1, Mount::None, 25, 2));
+    CHECK(checkAdd(c, plated, item(1, 3, 1, 1, Mount::Missile, 124, 2)) == Verdict::OverPayload);
+    // Removing a PPC frees its arm mount: a PPC auto-places again.
+    std::vector<Placed> noPpc = loaded;
+    noPpc.erase(noPpc.begin());
+    CHECK(checkAdd(c, noPpc, item(-1, -1, 1, 3, Mount::Energy, 145, 6)) == Verdict::Legal);
+}
+
+TEST_CASE("package chassis: each declared mount of other BT2018 chassis takes exactly its own weapons") {
+    struct Spec { const char* name; int e, b, m; };   // mount counts of the installed pack's chassisdefs
+    const Spec specs[] = {{"atlas", 2, 1, 2}, {"archer", 2, 0, 2}, {"awesome", 3, 0, 0}, {"kingcrab", 1, 2, 1}, {"warhammer", 4, 0, 1}};
+    for (const Spec& s : specs) {
+        INFO(s.name);
+        PackageChassis c; c.payload = 99.f;
+        const struct { Mount m; int n; } kinds[] = {{Mount::Energy, s.e}, {Mount::Ballistic, s.b}, {Mount::Missile, s.m}};
+        int col = 0;
+        std::vector<Placed> held;
+        for (const auto& k : kinds) for (int i = 0; i < k.n; ++i, ++col) {
+            const std::string loc = "Loc" + std::to_string(col);
+            c.regions.push_back({loc, col, 0, 1, 4});
+            Hardpoint h; h.id = loc + "." + mountName(k.m) + ".0"; h.location = loc; h.mount = k.m; h.key = hardpointKey(h.id);
+            c.hardpoints.push_back(h);
+        }
+        col = 0;
+        for (const auto& k : kinds) for (int i = 0; i < k.n; ++i, ++col) {
+            const Placed w = item(col, 0, 1, 1, k.m, 100, 1);
+            CHECK(checkAdd(c, held, w) == Verdict::Legal);
+            held.push_back(w);
+        }
+        for (const auto& k : kinds) CHECK(checkAdd(c, held, item(0, 3, 1, 1, k.m, 100, 1)) == Verdict::NoFreeMount);   // all mounts taken
+    }
+}

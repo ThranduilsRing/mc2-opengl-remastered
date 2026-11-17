@@ -16,6 +16,44 @@ import ab  # noqa: E402
 import console_child  # noqa: E402
 
 
+def test_gate_stages_published_runtime_and_declared_mod_identity(tmp_path, monkeypatch):
+    import csv
+    import merge_gate
+    import deploy_payload
+
+    pub, inst = tmp_path / "published", tmp_path / "candidate"
+    pub.mkdir()
+    inst.mkdir()
+    payload = {"mc2.exe": b"old", "SDL2.dll": b"sdl", "mc2res_64.dll": b"res",
+               "crashpad_handler.exe": b"handler", "mods/example/mod.json": b"{}"}
+    header = [["manifest_version", "v1"], ["relpath", "sha256", "bytes", "src_commit", "timestamp", "mtime_ns"]]
+    published_rows = []
+    for rel, content in payload.items():
+        src = pub / rel
+        src.parent.mkdir(parents=True, exist_ok=True)
+        src.write_bytes(content)
+        published_rows.append([rel, hashlib.sha256(content).hexdigest(), len(content), "old", "t", 0])
+        if rel != "mods/example/mod.json":
+            (inst / rel).write_bytes(b"stale")
+    for target, rows in ((pub, published_rows), (inst, [["sdl2.dll", "stale", 5, "seed", "t", 0],
+                                                    ["data/keep.fit", "keep", 4, "seed", "t", 0]])):
+        with (target / ab.MANIFEST).open("w", newline="") as stream:
+            csv.writer(stream).writerows(header + rows)
+    def cook(target):
+        for name in [f"mat{i}_normal.ktx2" for i in range(6)] + ["engine_normals.cookver"]:
+            (Path(target) / "data/textures" / name).touch()
+    monkeypatch.setattr(deploy_payload, "ensure_engine_normal_cooks", cook)
+    merge_gate.stage_published(inst, pub)
+    assert all((inst / rel).read_bytes() == content for rel, content in payload.items())
+    with (inst / ab.MANIFEST).open(newline="") as stream:
+        rows = list(csv.reader(stream))[2:]
+    assert {r[0] for r in rows} == {*payload, "data/keep.fit"}
+    assert all(r in rows for r in [[str(v) for v in row] for row in published_rows])
+    before, _ = ab.read_manifest(pub)
+    after, _ = ab.read_manifest(inst)
+    assert ab.manifest_mismatches(before, {k: v for k, v in after.items() if k in payload}) == []
+
+
 def _git(repo, *a):
     return subprocess.run(["git", "-C", str(repo), *a], capture_output=True, text=True, check=True,
                           **console_child.child_kwargs(redirected=True)).stdout.strip()
@@ -93,6 +131,26 @@ def test_mixed_asset_commits_refused(tmp_path, repo):
         ab.payload_identity(install)
 
 
+@pytest.mark.parametrize("auxiliary", sorted(ab.asset_parity.AUXILIARY))
+def test_exe_auxiliary_rows_do_not_define_asset_commit(tmp_path, auxiliary):
+    published, candidate, third = "1" * 40, "2" * 40, "3" * 40
+    install = Path(_install(tmp_path / "i", candidate))
+    manifest = install / ab.MANIFEST
+    text = manifest.read_text()
+    text = text.replace(f",2,{candidate},t,0", f",2,{published},t,0", 1)
+    for rel in sorted(ab.asset_parity.AUXILIARY):
+        text += f"{rel},{hashlib.sha256(b'aux').hexdigest()},3,{published},t,0\n"
+    manifest.write_text(text)
+    payload, commit = ab.asset_parity.manifest_assets(install)
+    assert commit == candidate
+    assert ab.asset_parity.AUXILIARY <= payload.keys()
+    manifest.write_text(text.replace(
+        f"{auxiliary},{hashlib.sha256(b'aux').hexdigest()},3,{published},t,0",
+        f"{auxiliary},{hashlib.sha256(b'aux').hexdigest()},3,{third},t,0"))
+    with pytest.raises(ValueError, match="ambiguous asset commit"):
+        ab.asset_parity.manifest_assets(install)
+
+
 def test_named_repo_bookmarks_need_no_install_seed(tmp_path, monkeypatch):
     monkeypatch.setattr(ab, "ROOT", tmp_path)
     bookmarks = tmp_path / "tests/visual/bookmarks"
@@ -150,6 +208,100 @@ def test_capture_identity_ignores_shader_sources_not_data():
     b = {"mc2.exe": "2", "shaders/vulkan/t.frag": "s2", "shaders/vulkan/include/x.glsl": "g2", "data/a.fit": "d1"}
     assert ab.manifest_mismatches(a, b) == []
     assert ab.manifest_mismatches(a, {**b, "data/a.fit": "d2"}) == ["differs: data/a.fit (A d1 vs B d2)"]
+
+
+def test_game_identity_excludes_only_editor_owned_rows(monkeypatch):
+    monkeypatch.setattr(ab.asset_parity, "intentional_changes", lambda *a: {})
+    editor = {p: "a" * 64 for p in ("Mission Editor.exe", "Mission Editor.pdb", "run-editor.bat",
+                                     "tools/terrain_gen/tool.py")}
+    game = {"mc2.exe": "e" * 64, "data/ui.fit": "a" * 64, "run-mc2.bat": "b" * 64}
+    assert ab.candidate_mismatches({**editor, **game}, game, "a" * 40) == []
+    assert ab.candidate_mismatches(game, {**editor, **game}, "a" * 40) == []
+    changed = {**game, "data/ui.fit": "c" * 64}
+    assert [p for p, _ in ab.candidate_mismatches(game, changed, "a" * 40)] == ["data/ui.fit"]
+    assert [p for p, _ in ab.candidate_mismatches(game, {}, "a" * 40)] == ["data/ui.fit", "run-mc2.bat"]
+
+
+@pytest.mark.parametrize("rel", ["Mission Editor.exe", "Mission Editor.pdb", "run-editor.bat",
+                                 "tools/terrain_gen/tool.py"])
+@pytest.mark.parametrize("archived", [False, True], ids=["install", "archived-capture"])
+def test_game_identity_rejects_changed_shared_editor_rows(tmp_path, repo, monkeypatch, capsys, rel, archived):
+    monkeypatch.setattr(ab.asset_parity, "intentional_changes", lambda *a: {})
+    installs = [_install(tmp_path / side, repo[0], data={rel: value})
+                for side, value in (("a", "original bytes"), ("b", "changed bytes"))]
+    if archived:
+        captures = [tmp_path / (side + "-capture") for side in ("a", "b")]
+        for install, capture_dir in zip(installs, captures):
+            ab.stamp_identity(capture_dir, ab.payload_identity(install))
+        with pytest.raises(SystemExit, match="differs: " + rel):
+            ab.main(["--compare-only", *map(str, captures), "--out-root", str(tmp_path / "cmp")])
+    else:
+        assert any("differs: " + rel in p for p in ab.base_problems(install_a=installs[0], install_b=installs[1]))
+    assert "ABSENT-BY-DESIGN" not in capsys.readouterr().out
+
+
+def test_game_identity_case_mismatched_editor_row_is_not_absent(capsys):
+    # Carbon P2: the same editor file spelled differently on each side must not be excused as absent-by-design.
+    a = {"mc2.exe": "e" * 64, "Mission Editor.exe": "a" * 64}
+    b = {"mc2.exe": "e" * 64, "mission editor.exe": "b" * 64}
+    lines = dict(ab._data_mismatch_entries(a, b, target="game"))
+    assert "Mission Editor.exe" in lines and "mission editor.exe" in lines
+    assert "ABSENT-BY-DESIGN" not in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("replacement", [None, "b" * 64])
+def test_editor_identity_requires_authoring_files(monkeypatch, replacement):
+    monkeypatch.setattr(ab.asset_parity, "intentional_changes", lambda *a: {})
+    rel = "tools/terrain_gen/tool.py"
+    a = {"Mission Editor.exe": "e" * 64, rel: "a" * 64}
+    b = {"Mission Editor.exe": "f" * 64, **({rel: replacement} if replacement else {})}
+    assert rel in dict(ab.candidate_mismatches(a, b, "a" * 40))
+    # Even a shared game/editor install stays strict when comparing the editor target.
+    assert rel in dict(ab.candidate_mismatches({**a, "mc2.exe": "e" * 64},
+                                             {**b, "mc2.exe": "e" * 64}, "a" * 40, target="editor"))
+
+
+@pytest.mark.parametrize("rel,after,accepted", [
+    ("data/ui.fit", b"first\nsecond\n", True),
+    ("data/ui.fit", b"first\nseconX\n", False),
+    ("data/binary.fit", b"first\nsecond\n\0", False),
+    ("data/control.fit", b"first\nsecond\n\x01", False),
+    ("data/undefined.fit", b"first\nsecond\n\x81", False),
+    ("data/cp1252.fit", b"first\nsecond\n\x93", True),
+    ("data/utf8.fit", "first\nsecond\n\u00e9".encode(), True),
+    *[("data/file." + ext, b"first\nsecond\n", False)
+      for ext in ("exe", "dll", "pdb", "spv", "ktx2", "png", "tga", "bin")],
+])
+def test_eol_identity_is_narrow_and_logged(tmp_path, monkeypatch, capsys, rel, after, accepted):
+    monkeypatch.setattr(ab.asset_parity, "intentional_changes", lambda *a: {})
+    monkeypatch.setattr(ab, "ROOT", tmp_path / "absent-checkout")
+    installs = [tmp_path / side for side in ("a", "b")]
+    manifests = []
+    before = after.replace(b"\n", b"\r\n") if rel != "data/ui.fit" else b"first\r\nsecond\r\n"
+    for install, content in zip(installs, (before, after)):
+        path = install / rel
+        path.parent.mkdir(parents=True)
+        path.write_bytes(content)
+        manifests.append({rel: hashlib.sha256(content).hexdigest()})
+    receipt = []
+    mismatches = ab.candidate_mismatches(*manifests, "a" * 40, installs[1], installs[0],
+                                       install_a=installs[0], identity_receipt=receipt)
+    assert (mismatches == []) == accepted
+    if accepted:
+        expected = dict(path=rel, sha256_A=manifests[0][rel], sha256_B=manifests[1][rel],
+                        normalized_sha256=hashlib.sha256(after).hexdigest())
+        assert receipt == [expected]
+        output = capsys.readouterr().out
+        assert "EOL-ONLY" in output and all(str(value) in output for value in expected.values())
+        ab.compare(installs[0], installs[1], tmp_path / "cmp", [], identity_receipt=receipt)
+        assert json.loads((tmp_path / "cmp/summary.json").read_text())["eol_equivalences"] == [expected]
+        # Historical captures can use checkout bytes only when both raw hashes reconstruct exactly.
+        monkeypatch.setattr(ab, "ROOT", installs[1])
+        assert ab.candidate_mismatches(*manifests, "a" * 40, baseline=tmp_path / "absent") == []
+        (installs[1] / rel).write_bytes(b"stale manifest\n")
+        assert ab.candidate_mismatches(*manifests, "a" * 40, installs[1], installs[0])
+    else:
+        assert receipt == []
 
 
 def test_capture_identity_skips_only_deployed_shader_dirs():

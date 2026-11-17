@@ -1,0 +1,20 @@
+FITini
+
+[Variant0]
+st Chassis = "atlas"
+st VariantName = "Legacy coordinates"
+l ComponentCount = 3
+l Component0 = 40
+l Component0x = 4
+l Component0y = 1
+l Component0Location = 1
+l Component1 = 7
+l Component1x = 0
+l Component1y = 3
+l Component1Location = 1
+l Component2 = 13
+l Component2x = -3
+l Component2y = -3
+l Component2Location = 0
+
+FITend

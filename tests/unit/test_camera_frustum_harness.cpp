@@ -7,6 +7,57 @@
 #include <string>
 #include <vector>
 #include "camera_frustum_math.h"
+#include "tacmap_footprint.h"
+#include "../../3rdparty/glm/glm/ext/matrix_transform.hpp"
+
+// Trigger paths: mclib/tacmap_footprint.h, code/gametacmap.cpp.
+TEST_CASE("tacmap_footprint/corner_unprojection") {
+    glm::dmat4 projection(0.0);
+    projection[0][0] = projection[1][1] = 1.0; // 90 degree FOV, square
+    projection[2][3] = -1.0;
+    projection[3][2] = 1.0; // infinite reverse-Z, near=1
+    const auto camera = [&](glm::dvec3 eye, glm::dvec3 up) {
+        return glm::mat4(glm::transpose(projection * glm::lookAt(eye, glm::dvec3(0), up)));
+    };
+    const auto top = camera({0, 0, 10}, {0, 1, 0});
+    const auto square = mc2::tacmapFootprint(top, 0, 100);
+    REQUIRE(square.size() == 4);
+    for (const auto& p : square) {
+        CHECK(std::abs(p.x) == doctest::Approx(10));
+        CHECK(std::abs(p.y) == doctest::Approx(10));
+        CHECK(p.z == 0);
+    }
+    SUBCASE("zoom and look-at elevation") {
+        const auto smaller = mc2::tacmapFootprint(top, 5, 100);
+        REQUIRE(smaller.size() == 4);
+        for (const auto& p : smaller) {
+            CHECK(std::abs(p.x) == doctest::Approx(5));
+            CHECK(std::abs(p.y) == doctest::Approx(5));
+        }
+    }
+    for (const glm::dvec3 eye : {glm::dvec3(0, -5, 10), glm::dvec3(5, 0, 10),
+                                glm::dvec3(0, -10, 1), glm::dvec3(10, 0, 1)}) {
+        const auto view = camera(eye, {0, 0, 1});
+        const auto polygon = mc2::tacmapFootprint(view, 0, 100);
+        REQUIRE(polygon.size() >= 3);
+        CHECK(polygon.size() <= 9);
+        bool mapEdge = false;
+        for (const auto& p : polygon) {
+            CHECK(std::isfinite(p.x));
+            CHECK(std::isfinite(p.y));
+            CHECK(std::abs(p.x) <= 100.00001);
+            CHECK(std::abs(p.y) <= 100.00001);
+            const glm::dvec4 clip = glm::dvec4(p, 1) * glm::dmat4(view);
+            CHECK(clip.w > 0);
+            CHECK(std::abs(clip.x / clip.w) <= 1.00001);
+            CHECK(std::abs(clip.y / clip.w) <= 1.00001);
+            CHECK(clip.z / clip.w <= 1.00001);
+            mapEdge |= std::abs(p.x) > 99.999 || std::abs(p.y) > 99.999;
+        }
+        if (eye.z == 1) CHECK(mapEdge); // horizon rays stop at map bounds
+    }
+    CHECK(mc2::tacmapFootprint(glm::mat4(0), 0, 100).empty());
+}
 
 namespace {
 namespace cf = camera_frustum_math;

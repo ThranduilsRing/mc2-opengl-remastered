@@ -5,6 +5,20 @@
 
 namespace tw = tacorder_wire;
 
+TEST_CASE("tacorder_wire: alpha uses method 3 and preserves normal words") {
+	CHECK(tw::pack_word0(-1, tw::encode_method(0, false), 1, 0, false, 0, 16) == 0x11000010u);
+	CHECK(tw::pack_word0(-1, tw::encode_method(0, true), 1, 0, false, 0, 16) == 0x1D000010u);
+	CHECK(tw::decode_method(3).method == 0);
+	CHECK(tw::decode_method(3).alpha);
+	for (int method = 0; method < 3; ++method) {
+		CHECK(tw::encode_method(method, false) == method);
+		CHECK_FALSE(tw::decode_method(method).alpha);
+	}
+	CHECK(tw::encode_method(1, true) == -1);
+	CHECK(tw::encode_method(2, true) == -1);
+	CHECK(tw::encode_method(3, false) == -1);
+}
+
 namespace {
 constexpr int32_t kGuard = 10;            // TACTICAL_ORDER_GUARD
 constexpr int32_t kRecover = 26;          // TACTICAL_ORDER_RECOVER, the highest order code

@@ -436,6 +436,9 @@ if(MC2_VULKAN)
     list(APPEND MC2_VK_SHADER_BASENAMES aa_smaa_edges aa_smaa_weights aa_smaa_blend aa_fxaa)
     list(APPEND MC2_VK_SHADER_BASENAMES motion_vectors motion_vectors_debug)
     list(APPEND MC2_VK_SHADER_BASENAMES vegetation_region vegetation_cull vegetation_compact vfx_vegetation)
+    list(APPEND MC2_VK_SHADER_BASENAMES vfx_vegetation_shade)
+    set(MC2_VK_SHADER_SRC_ALIAS_vfx_vegetation_shade_frag vfx_vegetation)
+    set(MC2_VK_SHADER_DEFINES_vfx_vegetation_shade_frag -DVEGETATION_SHADE_EARLY_TESTS=1)
     list(APPEND MC2_VK_SHADER_BASENAMES mech_skin)
     list(APPEND MC2_VK_SHADER_BASENAMES shadow_bake_pcss shadow_bake_terrain_march shadow_bake_resolve shadow_bake_bc4)
     # Output stages that bake from another basename's source: the skirt pipeline needs its
@@ -445,7 +448,6 @@ if(MC2_VULKAN)
     # Mech-lab panel pass: mech_tier1.frag baked with -DMECH_PREVIEW=1 (no terrain set 1,
     # in-shader exposure/tonemap for the RGBA8 preview target). Loaded by vulkan_mech_island.cpp.
     list(APPEND MC2_VK_SHADER_BASENAMES mech_preview mech_backdrop)
-    list(APPEND MC2_VK_SHADER_BASENAMES rt_smoke rt_scene_probe)
     set(MC2_VK_SHADER_SRC_ALIAS_mech_preview_frag mech_tier1)
     set(MC2_VK_SHADER_DEFINES_mech_preview_frag -DMECH_PREVIEW=1)
     # hzb_cull.comp uses subgroup arithmetic (SPIR-V 1.3); glslang defaults to Vulkan 1.0 / SPIR-V 1.0. Engine floor is Vulkan 1.2.

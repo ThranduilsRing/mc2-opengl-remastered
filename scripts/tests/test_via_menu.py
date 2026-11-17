@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import sys
+import pytest
 from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parents[1]
@@ -91,6 +92,7 @@ def test_cold_cache_verdict_needs_a_slowdown(tmp_path, monkeypatch):
     assert not r.ok and "not flushed" in r.note
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows administrator standby-cache purge")
 def test_cold_cache_without_admin_reports_it(tmp_path, monkeypatch):
     f = tmp_path / "big.fst"
     f.write_bytes(b"\0" * (9 * 1024 * 1024))

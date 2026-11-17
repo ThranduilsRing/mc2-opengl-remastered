@@ -45,7 +45,7 @@ float Mover::calcAttackChance (GameObjectPtr target, long aimLocation, float tar
 	
 	if (!MPlayer && (getCommanderId() == Commander::home->getId()))		//Up the gunnery Skill by the difficulty modifier
 		attackChance = applyDifficultySkill(attackChance,TRUE);
-	else if (!MPlayer && (getCommanderId() == Commander::home->getId()))	//Up the gunnery Skill by the difficulty modifier
+	else if (!MPlayer && (getCommanderId() != Commander::home->getId()))	//Up the gunnery Skill by the difficulty modifier
 		attackChance = applyDifficultySkill(attackChance,FALSE);
 
 	float distanceToTarget = distanceFrom(targetPosition);
@@ -630,6 +630,9 @@ bool Mover::recover (void) {
 				for (long j = 0; j < NumLocationCriticalSpaces[i]; j++)
 					if (body[i].criticalSpaces[j].inventoryID < 255)
 						body[i].criticalSpaces[j].hit = inventory[body[i].criticalSpaces[j].inventoryID].disabled;
+
+			if (getObjectClass() == BATTLEMECH)
+				static_cast<BattleMechPtr>(this)->recomputeHeatCapacity(); // restored sinks cool again
 
 			if (getCommanderId() == Commander::home->getId()) 
 			{

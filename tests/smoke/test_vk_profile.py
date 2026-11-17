@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 OK_LINE = ('[VK_PROFILE v1] verdict=ok device="AMD Radeon RX 7900 XTX" api=1.4.0 instance_api=1.3.0 floor=1.2 required_missing=- wanted_missing=- '
            "items=api_1_2:core,swapchain:ext,limits:limit,timeline_semaphore:core,buffer_device_address:core,descriptor_indexing:core,"
-           "dynamic_rendering:core,synchronization2:core,independent_blend:core,subgroup_compute:limit,memory_budget:ext,sampler_anisotropy:core,indirect_draw:core,depth_formats:core "
+           "dynamic_rendering:core,synchronization2:core,independent_blend:core,subgroup_compute:limit,memory_budget:ext,sampler_anisotropy:core,pipeline_statistics:core,indirect_draw:core,depth_formats:core "
            "enabled=timelineSemaphore,bufferDeviceAddress,descriptorIndexing,"
            "runtimeDescriptorArray,shaderSampledImageArrayNonUniformIndexing,descriptorBindingPartiallyBound,dynamicRendering,synchronization2,independentBlend,samplerAnisotropy,multiDrawIndirect,drawIndirectFirstInstance,drawIndirectCount,shaderDrawParameters "
            "extensions=VK_KHR_swapchain,VK_EXT_memory_budget")

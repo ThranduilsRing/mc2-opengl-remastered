@@ -4,6 +4,7 @@
 #include "mech_internal.h"
 #include "Gates/gate.h"
 #include "mc2fmt.h"
+#include "../GameOS/gameos/diagnostic_trace.h"
 #include "net/runtime.h"
 
 
@@ -208,6 +209,13 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 
 	// Weapon must recycle...
 	startWeaponRecycle(weaponIndex);
+	// A Streak miss recycles without discharging. Ordinary misses still fire.
+	if (hitRoll < attackChance || !isStreakMissile) {
+		const auto charged = heatState.discharge(weaponIndex, getWeaponHeat(weaponIndex), mission->alphaTick());
+		if (charged && mc2_diag::tagRequested("ALPHA_HEAT"))
+			mc2::fmt::print_err("[ALPHA_HEAT v1] event=charge mech={} weapon={} cost={} heat={} tick={}\n",
+			getWatchID(false), weaponIndex, charged, heatState.heatMilli, mission->alphaTick());
+	}
 	
 	WeaponBoltPtr weaponFX = nullptr;
 	if (hitRoll < attackChance) {

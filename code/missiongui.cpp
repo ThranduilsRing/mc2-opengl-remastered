@@ -144,10 +144,10 @@ MissionInterfaceManager::Command		MissionInterfaceManager::commands[MAX_COMMAND]
 		KEY_DOWN | 0x100,			-1,	-1,						false,		&MissionInterfaceManager::scrollDown, nullptr, IDS_HOTKEY_TRACKD,
 		KEY_LEFT | 0x100,			-1,	-1,						false,		&MissionInterfaceManager::scrollLeft, nullptr, IDS_HOTKEY_TRACKL,
 		KEY_RIGHT | 0x100,	 		-1,	-1,						false,		&MissionInterfaceManager::scrollRight, nullptr, IDS_HOTKEY_TRACKR,
-		KEY_SUBTRACT,		-1,	-1,						false,		&MissionInterfaceManager::zoomOut,nullptr, 43225,
-		KEY_MINUS,			-1,	-1,						false,		&MissionInterfaceManager::zoomOut,nullptr, -1,
-		KEY_ADD,			-1,	-1,						false,		&MissionInterfaceManager::zoomIn,nullptr, 43224,
-		SHIFT | KEY_EQUALS,			-1,	-1,				false,		&MissionInterfaceManager::zoomIn,nullptr, -1,
+		KEY_SUBTRACT,		-1,	-1,						true,		&MissionInterfaceManager::gameSpeedDown,nullptr, 43225,
+		KEY_MINUS,			-1,	-1,						true,		&MissionInterfaceManager::gameSpeedDown,nullptr, -1,
+		KEY_ADD,			-1,	-1,						true,		&MissionInterfaceManager::gameSpeedUp,nullptr, 43224,
+		SHIFT | KEY_EQUALS,			-1,	-1,				true,		&MissionInterfaceManager::gameSpeedUp,nullptr, -1,
 		KEY_LEFT | SHIFT | 0x100, 	-1,	-1,						false,		&MissionInterfaceManager::rotateLeft, nullptr, IDS_HOTKEY_ROTATEL,
 		KEY_RIGHT | SHIFT | 0x100,	-1,	-1,						false,		&MissionInterfaceManager::rotateRight, nullptr, IDS_HOTKEY_ROTATER,
 		KEY_UP | SHIFT | 0x100,	-1,	-1,						false,		&MissionInterfaceManager::tiltUp, nullptr, IDS_HOTKEY_TILTU,
@@ -215,15 +215,18 @@ MissionInterfaceManager::Command		MissionInterfaceManager::commands[MAX_COMMAND]
 		KEY_RETURN,			-1, -1,						true,		&MissionInterfaceManager::handleChatKey, nullptr, IDS_HOTKEY_CHAT,
 		SHIFT | KEY_RETURN,	-1, -1,				true,		&MissionInterfaceManager::handleTeamChatKey, nullptr, IDS_HOTKEY_CHAT_TEAM,
 		KEY_E | SHIFT,				-1,	-1,						false,		&MissionInterfaceManager::addVisibleToSelection, nullptr, -1,
-		KEY_EQUALS,			-1,	-1,				false,		&MissionInterfaceManager::zoomIn,nullptr, -1,
+		KEY_EQUALS,			-1,	-1,				true,		&MissionInterfaceManager::gameSpeedUp,nullptr, -1,
 		ALT | KEY_PERIOD, -1, -1,						false, &MissionInterfaceManager::rotateObjectLeft, nullptr, -1,
 		ALT | KEY_COMMA, -1, -1,				false,	&MissionInterfaceManager::rotateObjectRight, nullptr, -1,
-		KEY_PAUSE,		-1, -1,						true,		&MissionInterfaceManager::togglePause, nullptr, -1
+		KEY_PAUSE,		-1, -1,						true,		&MissionInterfaceManager::togglePause, nullptr, -1,
+		KEY_Q,		mState_GENERIC_ATTACK, mState_ATTACK_LOS,	true,	&MissionInterfaceManager::alphaStrike, nullptr, -1
 
 };
 
 void MissionInterfaceManager::init (void)
 {
+	orderMenu = {};
+	orderMenuFrame = 0;
 	realRotation = 0.0;
 	dragStart = glm::vec3(0.0f);
 	dragEnd = glm::vec3(0.0f);
@@ -420,8 +423,11 @@ void MissionInterfaceManager::init (FitIniFilePtr loader)
 }	
 	
 //--------------------------------------------------------------------------------------
+void orderMenuLogLine(std::string_view); // missiongui_style.cpp
 void MissionInterfaceManager::destroy (void)
 {
+	if (orderMenu.isOpen()) orderMenuLogLine("close reason=teardown");
+	orderMenu = {};
 	moveOrderMarker.reset();
 	releaseMissionSupportPreloads();
 	// [IFACE_PERF v1] flush the partial cost-split window at mission teardown

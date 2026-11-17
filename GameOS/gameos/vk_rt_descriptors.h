@@ -22,14 +22,14 @@ struct BindingDesc {
     const char* name;
 };
 
-// shaders/vulkan/rt_smoke.comp: set 0. A ray-query pass puts the TLAS at binding 0 and its buffers after it.
+// shaders/vulkan/rt_smoke.comp.slang: set 0. A ray-query pass puts the TLAS at binding 0 and its buffers after it.
 inline constexpr std::array<BindingDesc, 3> kSmokeBindings = {{
     {0, BindingKind::AccelerationStructure, "tlas"},
     {1, BindingKind::StorageBuffer, "rays"},       // in: 2 x vec4 per ray (origin.xyz + tMin, direction.xyz + tMax)
     {2, BindingKind::StorageBuffer, "results"},    // out: 1 x vec4 per ray (x = hit flag, y = t, z = primitive id, w = instance custom index)
 }};
 
-// shaders/vulkan/rt_scene_probe.comp: the RT scene material probe (vk_rt_scene.cpp, MC2_VK_RT_SELFTEST). Push constants: kSceneProbePushBytes.
+// shaders/vulkan/rt_scene_probe.comp.slang: the RT scene material probe (vk_rt_scene.cpp, MC2_VK_RT_SELFTEST). Push constants: kSceneProbePushBytes.
 inline constexpr std::array<BindingDesc, 13> kSceneProbeBindings = {{
     {0, BindingKind::AccelerationStructure, "tlas"},
     {1, BindingKind::StorageBuffer, "rays"},       // in: as kSmokeBindings

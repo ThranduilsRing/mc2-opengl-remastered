@@ -32,6 +32,7 @@ const std::unordered_set<std::string>& knownTags() {
     // Immortal (leaked on purpose): tagRequested() -> parseTagsEnv() calls this from atexit handlers, after a destructible static would be gone.
     static const auto* tags = std::make_unique<std::unordered_set<std::string>>(std::initializer_list<std::string>{
         "ABL_NEWPOWER_PART",
+        "ALPHA_HEAT", // alpha-order heat events (arm/charge/cold/ui). Opt-in.
         "LOAD_LAPS", // one-shot [LOAD_LAPS v1] line per mission load (terrain_objects sub-laps). Opt-in.
         "SUPPORT_PRELOAD_LATE", // late mech-class types registered by the support warm and the shared-buffer rebuild that absorbs them. Opt-in.
         "SUPPORT_CRAFT", // Bounded recovery-craft appearance, geometry and native draw trace. Opt-in.
@@ -50,6 +51,7 @@ const std::unordered_set<std::string>& knownTags() {
         "DEVICE",
         "SHADER_COMPILE",
         "CAPTURE_FOCUS",
+        "COMPASS_SYNC",   // [COMPASS_SYNC]: per-frame compass camera position/yaw/pitch at the render-time refresh. Opt-in.
         "LOGISTICS",
         "FRAME_JOBS",
         "CURSOR_TARGET",
@@ -68,6 +70,9 @@ const std::unordered_set<std::string>& knownTags() {
         "VK_DESC_ALLOC",  // [VK_DESC_ALLOC]: a failed vkAllocateDescriptorSets with pool and call site (vk_owned.h). Opt-in.
         "VK_DESC_POOL", // [VK_DESC_POOL v1]: descriptor pool chain length per island at mission unload (vk_owned.h DescPoolChain). Opt-in.
         "TEXTURE_TIER", // Resolved texture quality tier + device VRAM, one line at Vulkan device init. Opt-in.
+        "HUD_LOAD_PREPARE", // Load-time HUD texture identity and readiness. Opt-in.
+        "HUD_FIRST_DRAW", // First gameplay use and prepared snapshot validation. Opt-in.
+        "HUD_SYNC_FALLBACK", // Synchronous atlas upload during gameplay. Opt-in.
         "VK_SHUTDOWN", // VK shutdown-order trace: one line per island retire and per image-owner destroy ([VK_ENGINE_CONTEXT] / [VK_IMAGE_RESOURCE]). Opt-in.
         "COMMANDER_TEAM", // [COMMANDER_TEAM v1]: a commander the logistics table cannot place takes the team its parts declare (code/mission_init.cpp). Opt-in.
         "RNG",      // DETERMINISTIC-RNG-1: per gos_rand() result (compile-gated by MC2_RNG_TRACE). Opt-in.

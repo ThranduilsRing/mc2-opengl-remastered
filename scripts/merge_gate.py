@@ -1098,12 +1098,23 @@ def stage_published(install, published=PUBLISHED, swap_payload=True):
             shutil.rmtree(install / name, ignore_errors=True)
             shutil.copytree(published / name, install / name)
     if swap_payload:
+        # Capture-before needs the published runtime and declared example mods, including stale seed files.
+        sources = list(published.glob("*.dll"))
+        handler = published / "crashpad_handler.exe"
+        if handler.is_file():
+            sources.append(handler)
+        manifest = published / ".deployed_manifest.csv"
+        if manifest.is_file():
+            import csv
+            with manifest.open(newline="", encoding="utf-8") as stream:
+                sources += [published / r[0] for r in list(csv.reader(stream))[2:]
+                            if r and r[0].startswith("mods/")]
+        for src in sources:
+            dst = install / src.relative_to(published)
+            if not dst.is_file() or hashlib.sha256(dst.read_bytes()).digest() != hashlib.sha256(src.read_bytes()).digest():
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src, dst)
         _forget_swapped_rows(install, published)
-        # The lean seed has no amd_fidelityfx_vk.dll (W126: capture-before ran without FSR AA, a false MAD of 1.2/0.6); give
-        # the old exe the runtime DLLs it shipped with. Only missing ones: the deploy row still owns every DLL it lists.
-        for src in published.glob("*.dll"):
-            if not (install / src.name).exists():
-                shutil.copy2(src, install / src.name)
     textures = install / "data" / "textures"
     textures.mkdir(parents=True, exist_ok=True)
     for src in (published / "data" / "textures").glob("*.burnin.*"):
@@ -1126,10 +1137,22 @@ def _forget_swapped_rows(install, published=PUBLISHED):
         return
     with path.open(newline="", encoding="utf-8") as stream:
         rows = list(csv.reader(stream))
-    keep = rows[:2] + [r for r in rows[2:] if r and not (r[0] == "mc2.exe" or r[0].startswith(("shaders/", "shaders_vk/")))]
+    def swapped(rel):
+        rel = rel.casefold()
+        return (rel in ("mc2.exe", "crashpad_handler.exe") or
+                ("/" not in rel and rel.endswith(".dll")) or
+                rel.startswith(("shaders/", "shaders_vk/", "mods/")))
+
+    keep = rows[:2] + [r for r in rows[2:] if r and not swapped(r[0])]
     with (Path(published) / ".deployed_manifest.csv").open(newline="", encoding="utf-8") as stream:
         published_rows = list(csv.reader(stream))
-    keep += [r for r in published_rows[2:] if r and (r[0] == "mc2.exe" or r[0].startswith(("shaders/", "shaders_vk/")))]
+    # Candidate-only swapped files (a DLL or mod file the published install lacks) would stay loadable with no row:
+    # delete them so capture-before runs exactly the published runtime (Astra 1117a P2).
+    published_names = {r[0].casefold() for r in published_rows[2:] if r}
+    for r in rows[2:]:
+        if r and swapped(r[0]) and r[0].casefold() not in published_names and not (Path(published) / r[0]).exists():
+            (Path(install) / r[0]).unlink(missing_ok=True)
+    keep += [r for r in published_rows[2:] if r and swapped(r[0])]
     with path.open("w", newline="", encoding="utf-8") as stream:
         csv.writer(stream).writerows(keep)
 
@@ -1214,9 +1237,16 @@ def keep_stock_copy(install, head, candidate=None, root=None):
     return candidate
 
 
-def execute_window(steps, head, dry_run=False, keep_going=False, farm_determinism=False, keep_candidate=False, on_result=None):
+def execute_window(steps, head, dry_run=False, keep_going=False, farm_determinism=False, keep_candidate=False, on_result=None, install=None):
     """Prove a private candidate. Publishing to v0.4 is a separate step (--publish) that runs after the montage has been viewed.
     on_result(rc) runs before the candidate cleanup, so the durable verdict exists even if cleanup fails or hangs."""
+    if install is not None:
+        if not dry_run and any(n.startswith("capture-before") and not e.get("MC2_GATE_SKIP_REASON") for n, _, e in steps):
+            stage_published(install)
+        rc = execute_parallel(steps, head, dry_run, keep_going, farm_determinism=farm_determinism)
+        if on_result:
+            on_result(rc)
+        return rc
     deploy = next((s for s in steps if s[0] == "deploy"), None)
     scheduling = dict(farm_determinism=True) if farm_determinism else {}
     if not deploy or deploy[2].get("MC2_GATE_SKIP_REASON"):
@@ -1739,6 +1769,20 @@ def game_batch():
             pass
 
 
+def check_capture_commit(name, command, head):
+    """Reject candidate-as-baseline and stale after captures before launch or reuse."""
+    if not name.startswith(EXCLUSIVE_PREFIXES):
+        return
+    from exe_fingerprint import extract, sha_agrees
+    install = Path(command[command.index("--install") + 1])
+    fp = extract(install / "mc2.exe")
+    commit = fp.get("sha") if fp.get("present") else None
+    same = sha_agrees(commit, head)
+    if same is None or (same if name.startswith("capture-before") else not same):
+        raise RuntimeError(f"{name}: wrong capture src_commit={commit}; HEAD={head}")
+    print(f"[merge_gate] {name} provenance PASS src_commit={commit} HEAD={head}", flush=True)
+
+
 def execute(steps, head, dry_run=False, runner=run_child, completed=None, device=None):
     """Run every stage and return nonzero if any stage failed. device: MC2_VK_DEVICE for this chain's game rows (None = gate GPU)."""
     if not steps:
@@ -1755,6 +1799,17 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
             completed[name] = status
             failed = True
             continue
+        if not dry_run and not overrides.get("MC2_GATE_SKIP_REASON"):
+            try:
+                check_capture_commit(name, command, head)
+            except RuntimeError as exc:
+                status = f"FAIL: {exc}"
+                print(f"[merge_gate] {status}", flush=True)
+                results.append((name, status, 0.0))
+                completed[name] = status
+                ROW_RESULTS[name] = dict(status=status, seconds=0.0)
+                failed = True
+                continue
         if not dry_run and ACTIVE_STATE and ACTIVE_STATE.reusable(name, command, overrides):
             status = "REUSED: gate-state HEAD/exe/signature match"
             if name == 'mods':
@@ -2191,7 +2246,9 @@ def main(argv=None):
                 print(f"[merge_gate] log: {log_path}", flush=True)
                 started = window.get("started", time.time())
                 scheduling = dict(farm_determinism=True) if args.farm_determinism else {}
-                execute_gate = execute_parallel if args.install else execute_window
+                execute_gate = execute_window
+                if args.install:
+                    scheduling["install"] = args.install
                 if args.keep_candidate and not args.install:
                     scheduling["keep_candidate"] = True
                 exe = ROOT / "build64-ninja/mc2.exe"

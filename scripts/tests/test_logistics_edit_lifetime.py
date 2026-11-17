@@ -55,9 +55,11 @@ struct LogisticsMech {
     int forceGroup;
     // Never reuse a freed mech's address: a reused address would make a stale pointer look live.
     static void* operator new(std::size_t n) { return std::malloc(n); }
-    static void operator delete(void*) {}
     LogisticsMech(LogisticsVariant* v, int fg): variant(v), forceGroup(fg) { live.insert(this); }
     ~LogisticsMech() { live.erase(this); }
+    // Keep destroyed addresses quarantined for this short-lived probe. Otherwise
+    // allocator reuse can make a stale pointer appear live in the address set.
+    static void operator delete(void*) noexcept {}
     int getForceGroup() { return forceGroup; }
     const std::string& getName() { return variant->name; }
     LogisticsVariant* getVariant() { return variant; }

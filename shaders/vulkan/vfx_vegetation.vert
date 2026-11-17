@@ -33,6 +33,7 @@ invariant gl_Position;
 
 void main() {
     uint denseId = dense[gl_InstanceIndex];
+    if (denseId == 0x7fffffffu) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }   // unfilled thinned slot: no geometry
     VegInstance i = unpackVegetation(inst[denseId & 0x7fffffffu]);
     // Keep rejected fringe slots in the capped list, but emit no geometry.
     if ((i.atlasFrame & 56u) == 40u) {

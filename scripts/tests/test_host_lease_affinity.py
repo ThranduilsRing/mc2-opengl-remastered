@@ -9,6 +9,8 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 from scripts.smoke_lib import host_lease  # noqa: E402
 
+pytestmark = pytest.mark.skipif(os.name != "nt", reason="Windows kernel32 process affinity API")
+
 
 class _Fn:
     """A kernel32 function slot: callable, and accepts the .argtypes/.restype assignments the module makes."""

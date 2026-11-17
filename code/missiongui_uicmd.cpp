@@ -144,6 +144,7 @@ struct ExplosionProbe {
 // as MC2_BOOT_PAUSED above. Registered (Trace).
 void MissionInterfaceManager::processUiCommandChannel()
 {
+	if (mc2::replay::playing()) return;
 	extern std::atomic<uint32_t> g_mc2FrameCounter;
     void mc2EquipmentProbeTick();
     mc2EquipmentProbeTick();
@@ -203,7 +204,14 @@ void MissionInterfaceManager::processUiCommandChannel()
 		UiCmdCtx c{line};
 		// Groups run in the original verb-chain order: prefix matches are order-sensitive
 		// ("order move " before "order ", "list buildings" before "list").
-		(void)(uiCmdBasic(c) || uiCmdWorld(c) || uiCmdReadback(c) || uiCmdProbe(c) || uiCmdFixture(c));
+		if (mc2::replay::blocksFixtureMutation(line, mc2::replay::active())) {
+			c.result = "blocked";
+			c.note = "fixture mutations are not replayed during command recording";
+			mc2::replay::failRecording(line);
+			mc2::fmt::print(stderr, "UI command refused: {} ({})\n", line, c.note);
+		} else {
+			(void)(uiCmdBasic(c) || uiCmdWorld(c) || uiCmdReadback(c) || uiCmdProbe(c) || uiCmdFixture(c));
+		}
 		const char* result = c.result;
 		const std::string& note = c.note;
 		const std::string& extra = c.extra;
@@ -472,6 +480,9 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 			eye->projectForScreenXY(pos, sp);
 			gos_TestSetRawMouse(sp.x * Environment.drawableWidth / Environment.screenWidth, sp.y * Environment.drawableHeight / Environment.screenHeight);	// sp is logical; the raw mouse is in window points
 			result = "ok";
+			char sb[64]; // 800x600 script space, for scripted clicks
+			std::snprintf(sb, sizeof sb, "screen=(%.0f,%.0f) w=%.3f", sp.x * 800.0f / Environment.screenWidth, sp.y * 600.0f / Environment.screenHeight, sp.w);
+			note = sb;
 		}
 	}
 	else if (line.compare(0, 11, "order jump ") == 0) {
@@ -529,6 +540,19 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 				mc2::fmt::to_buf(b, "{:d} unit(s) -> ({:.1f},{:.1f}) {}", mc2::fmt::as_i32(sel), x, y, mc2::fmt::safe(walk ? "walk" : "run"));
 				note = b;
 			}
+		}
+	}
+	else if (line.compare(0, 12, "order alpha ") == 0) {
+		const std::string arg = line.substr(12);
+		char* end = nullptr;
+		const long tid = strtol(arg.c_str(), &end, 10);
+		if (arg.empty() || !end || *end != '\0') {
+			note = "order alpha <targetPartId>";
+		} else {
+			GameObjectPtr tobj = ObjectManager->findByPartId(tid);
+			if (!tobj) { result = "blocked"; note = "no such target"; }
+			else if (alphaStrike(tobj)) result = "ok";
+			else { result = "blocked"; note = "no alpha order issued"; }
 		}
 	}
 	else if (line.compare(0, 13, "order attack ") == 0) {
@@ -859,6 +883,20 @@ bool MissionInterfaceManager::uiCmdReadback(UiCmdCtx& c)
 				if (obj->isMover()) {
 					MoverPtr m = static_cast<MoverPtr>(obj);
 					MechWarriorPtr pilot = m->getPilot();
+					if (obj->getObjectClass() == BATTLEMECH) {
+						const auto* mech = static_cast<BattleMech*>(obj);
+						GameObjectPtr attackTarget = pilot ? pilot->getAttackTarget() : nullptr;
+						GameObjectPtr currentTarget = pilot ? pilot->getCurrentTarget() : nullptr;
+						mc2::fmt::to_buf(b, "  mech: heading_deg={:.3f} torso_yaw_deg={:.3f} appearance_yaw_deg={:.3f} target={:d} currentTarget={:d} attackPoint={} rotateTorso={:.3f} turn={:d} torsoLimit={:.3f}\n",
+							m->getRotation(), mech->torsoRotation,
+							m->unitAnimation ? m->unitAnimation->torsoRotation : 0.0f,
+							mc2::fmt::as_i32(attackTarget ? attackTarget->getPartId() : -1L),
+							mc2::fmt::as_i32(currentTarget ? currentTarget->getPartId() : -1L),
+							pilot && pilot->getCurTacOrder()->code == TACTICAL_ORDER_ATTACK_POINT,
+							mech->control.settings.mech.rotateTorso, mc2::fmt::as_i32(turn),
+							static_cast<float>(mech->dynamics.max.mech.torsoYaw));
+						extra += b;
+					}
 					mc2::fmt::to_buf(b, "  jump: capable={} range_world={} executing={}\n",
 						m->canJump(), m->getJumpRange(), m->isJumping());
 					extra += b;
@@ -913,7 +951,7 @@ bool MissionInterfaceManager::uiCmdReadback(UiCmdCtx& c)
 		// FREEZE-MOVERS-1: frozen/frozenAt ride the EXISTING readback rather
 		// than adding a verb, so assert_mission can gate an A/B arm on "the
 		// movers really were pinned, at the frame I asked for".
-		mc2::fmt::to_buf(b, "  frame={:d} scenarioTime={:.2f} simSpeed={:.2f} fixedTimestep={:d} status={:d} paused={:d} movers={:d} frozen={:d} frozenAt={:d} missionFrame={:d}\n", mc2::fmt::as_u32(static_cast<unsigned long>(g_mc2FrameCounter.load(std::memory_order_relaxed))), static_cast<double>(scenarioTime), static_cast<double>(simSpeedGetMultiplier()), mc2::fmt::as_i32(SmokeMode::fixedTimestepEnabled() ? 1 : 0), mc2::fmt::as_i32(mission ? mission->getStatus() : -1L), mc2::fmt::as_i32(isPaused() ? 1 : 0), mc2::fmt::as_i32(ObjectManager ? ObjectManager->getNumMovers() : -1L), mc2::fmt::as_i32(mc2FreezeMoversActive()), mc2::fmt::as_i32(mc2FreezeMoversEngagedAt()), mc2::fmt::as_i32(mc2FreezeMoversMissionFrame()));
+		mc2::fmt::to_buf(b, "  frame={:d} scenarioTime={:.2f} simSpeed={:.2f} fixedTimestep={:d} status={:d} paused={:d} movers={:d} frozen={:d} frozenAt={:d} missionFrame={:d} movie={:d}\n", mc2::fmt::as_u32(static_cast<unsigned long>(g_mc2FrameCounter.load(std::memory_order_relaxed))), static_cast<double>(scenarioTime), static_cast<double>(simSpeedGetMultiplier()), mc2::fmt::as_i32(SmokeMode::fixedTimestepEnabled() ? 1 : 0), mc2::fmt::as_i32(mission ? mission->getStatus() : -1L), mc2::fmt::as_i32(isPaused() ? 1 : 0), mc2::fmt::as_i32(ObjectManager ? ObjectManager->getNumMovers() : -1L), mc2::fmt::as_i32(mc2FreezeMoversActive()), mc2::fmt::as_i32(mc2FreezeMoversEngagedAt()), mc2::fmt::as_i32(mc2FreezeMoversMissionFrame()), mc2::fmt::as_i32(eye && eye->inMovieMode ? 1 : 0));
 		extra += b;
 		if (Team::home) {
 			mc2::fmt::to_buf(b, "  objectives: status={:d}\n", mc2::fmt::as_i32(static_cast<int>(Team::home->objectives.Status())));

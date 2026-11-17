@@ -101,7 +101,7 @@ def _inside(path: str, root: str) -> bool:
 
 def precheck_scratch_base(root: str) -> str | None:
     """Scratch parent for the fast path: G:/mc2-tmp (lane-rules), else the OS temp dir. Never inside the main worktree."""
-    base = "G:/mc2-tmp" if os.path.isdir("G:/mc2-tmp") else None
+    base = "G:/mc2-tmp" if os.name == "nt" and os.path.isdir("G:/mc2-tmp") else None
     if _inside(base or tempfile.gettempdir(), root):
         raise Stop(5, f"precheck scratch {base or tempfile.gettempdir()} is inside {root}")
     return base

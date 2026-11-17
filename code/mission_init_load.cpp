@@ -9,6 +9,7 @@
 // Mission: the second half of the Mission::init load sequence -- warriors and brains, movers and parts,
 // terrain objects, commanders, the HUD and the geometry finalize. The first half and the orchestrator are in mission_init.cpp.
 #include "mission_internal.h"
+#include "missiongui.h"
 #include "mission_init_frame.h"
 #include "static_prop_prewarm.h"
 #include "spawn_tree_clear.h"
@@ -16,6 +17,7 @@
 #include "mc2fmt.h"
 #include "../mclib/content_ir.h"
 #include "../mclib/texture_assets.h"
+#include "../mclib/mlr/mlrtexturepool.hpp"
 
 #include "content_error.h"
 #include "../GameOS/gameos/load_scope.h"
@@ -1014,6 +1016,7 @@ void Mission::initFinalizeGeometry() {
 	// Seed gameplay attachments before the first LOS/weapon query. Camera
 	// extraction must never supply a mover's initial node palette.
 	for (long i = 1; i <= ObjectManager->getMaxObjects(); ++i) {
+		graphics::pump_loading_events();
 		auto* object = ObjectManager->get(i);
 		if (!object || !object->getExists()) continue;
 		auto* appearance = object->getAppearance();
@@ -1032,7 +1035,9 @@ void Mission::initFinalizeGeometry() {
 	// mission. Safe here: GL context is live (textures/shadow FBOs already
 	// exist by this point) and this is the unconditional tail of map-load.
 	{ MC2_LOAD_SCOPE("finalize.staticPropGeometry"); GameAdapters::StaticProp::finalizeGeometry(); }
+	graphics::pump_loading_events();
 	{ MC2_LOAD_SCOPE("finalize.mechGeometry"); GpuMechBatcher::instance().finalizeGeometry(); }
+	graphics::pump_loading_events();
 
 
 
@@ -1064,8 +1069,17 @@ void Mission::initFinalizeGeometry() {
     // The load barrier bakes the static shadows (F1); they key on the terrain sun, which the first frame's camera sets. Set the same one now.
     { const glm::vec3 sun = eye->sunDirection(); gos_SetTerrainLightDir(sun.x, sun.y, sun.z);
       MC2_LOAD_SCOPE("finalize.forestOcclusion"); GpuStaticPropRegistry::bakeForestOcclusion(sun.x, sun.y, sun.z); } // forest light bake needs the sun
-    { MC2_LOAD_SCOPE("finalize.prewarmPipelines"); mc2PrewarmMissionPipelines(); }
+    // Effect specifications register their images before actors spawn. Admit
+    // those images now, including effects first seen later along the camera path.
+    { ZoneScopedN("TextureSource.PrewarmEffectTextures"); MC2_LOAD_SCOPE("TextureSource.PrewarmEffectTextures");
+      if (auto* pool = MidLevelRenderer::MLRTexturePool::Instance) pool->ForceLoadImages(); }
+
+	if (missionCamera) missionCamera->prepareCompass();
+	gos_SetHudScaleActive(true);
+	gos_SetHudCanvasActive(true);
+	if (missionInterface) missionInterface->getControlGui()->prepareHudFrame();
 	{ MC2_LOAD_SCOPE("finalize.prewarmCpuTextures"); mc2::textures::prewarmCpuTextures(); }
+    { MC2_LOAD_SCOPE("finalize.prewarmPipelines"); mc2PrewarmMissionPipelines(); }
 	mission_phase_mark("render_prewarm_ready");
 }
 

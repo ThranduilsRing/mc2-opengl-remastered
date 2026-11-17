@@ -35,6 +35,7 @@ def make_symlink(link, target, is_dir):
         pytest.skip(f"symlink not permitted on this host: {exc}")
 
 
+@pytest.mark.skipif(os.name != "nt", reason="Windows NTFS junction via cmd mklink /J")
 def test_junction_is_detected(tmp_path):
     target = tmp_path / "target"
     target.mkdir()
@@ -68,6 +69,7 @@ def test_missing_path_is_false(tmp_path):
     assert fs_links.is_link_or_junction(tmp_path / "absent") is False
 
 
+@pytest.mark.skipif(os.name != "nt", reason="Windows NTFS junction via cmd mklink /J")
 def test_walk_no_links_prunes_junction_dirs(tmp_path):
     outside = tmp_path / "outside"
     outside.mkdir()
