@@ -1095,7 +1095,7 @@ bool MissionInterfaceManager::updateOrderMenu(bool allowOpen, bool overGui)
         // Classic only: AOE right-click orders and Alt-camera remain intact.
         if (useLeftRightMouseProfile || overGui ||
             userInput->wasRightDrag() || !userInput->rightMouseReleased() ||
-            !target || !Team::home->isEnemy(target->getTeam()) || target->isDisabled() ||
+            !target || target->getTeam() == Team::home || target->isDisabled() || // same predicate as the classic left-click attack (:554, :848)
             target->isDestroyed()) return false;
         Order captured;
         captured.target = target->getWatchID();
