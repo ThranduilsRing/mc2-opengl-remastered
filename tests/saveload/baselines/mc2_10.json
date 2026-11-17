@@ -10,7 +10,7 @@
   "MC2_BOOT_QUICKLOAD_AT": "1400"
  },
  "exe": {
-  "sha": "bd60f88c7f47",
+  "sha": "bcf67e583649",
   "dirty": 0
  },
  "comparison": {
@@ -48,10 +48,10 @@
   }
  },
  "mask": "tools/save_noise_mask.json",
- "judged": "first-save-and-resave",
+ "judged": "first-save-only",
  "resave_present": true,
  "packets": 20000,
- "overall": "1bdb53856fb2459c",
+ "overall": "fb5570b9cc248a9b",
  "resave_identical": true,
  "resave_matches_policy": true,
  "runs": [
@@ -74,21 +74,21 @@
    3,
    256,
    787279,
-   "46fc229237a59fdb"
+   "cc8cb7e235c85df3"
   ],
   [
    "data",
    259,
    256,
    48573,
-   "831178a106bafedf"
+   "d0391e5d4df67c06"
   ],
   [
    "data",
    515,
    256,
    28097,
-   "25d00e9c0e47846e"
+   "f052cf961d2adc19"
   ],
   [
    "data",
@@ -102,14 +102,14 @@
    1027,
    256,
    279915,
-   "abc29aa52ec5014b"
+   "c59d671ce9b8ceb6"
   ],
   [
    "data",
    1283,
    256,
    35416,
-   "7fb1b0231d429e61"
+   "a4df99a3ea899509"
   ],
   [
    "data",
@@ -123,7 +123,7 @@
    1795,
    256,
    21255,
-   "55422dec2dded8dd"
+   "26f5d372785161c7"
   ],
   [
    "data",
@@ -137,7 +137,7 @@
    2307,
    256,
    277269,
-   "9ce7721df3cce0e2"
+   "4fc4ec81378482bb"
   ],
   [
    "data",
@@ -171,22 +171,22 @@
    "data",
    3587,
    25,
-   56453,
-   "1b58db0c8ec60f48"
+   56462,
+   "57b67f4286882c8e"
   ],
   [
    "StaticMechWarriorData",
    3612,
    1,
    48,
-   "501695613f1708f9"
+   "18d5421af93d8426"
   ],
   [
    "MechWarriorData",
    3613,
    256,
-   4843736,
-   "570bcb0e54a885de"
+   4843548,
+   "ae5b4cef18d5f9ef"
   ],
   [
    "TeamStaticData",
@@ -207,7 +207,7 @@
    3872,
    1,
    68,
-   "a78f9fbb4955dac4"
+   "c5997a95765f714f"
   ],
   [
    "empty",
@@ -221,14 +221,14 @@
    3874,
    147,
    522771,
-   "d8564a15187d2642"
+   "d71f27cb5e5dee3b"
   ],
   [
    "GroundVehicleData",
    4021,
    157,
    472829,
-   "1e633da10a84ea71"
+   "cec8e98a59ac9f6f"
   ],
   [
    "TerrainObjectData",
@@ -242,7 +242,7 @@
    4264,
    1,
    550,
-   "8f23b1882952695f"
+   "4ebc7f845e625737"
   ],
   [
    "TerrainObjectData",
@@ -263,7 +263,7 @@
    4316,
    1,
    550,
-   "19dc6fc114090f4b"
+   "6c08c69c1329e09c"
   ],
   [
    "BuildingData",
@@ -284,7 +284,7 @@
    4438,
    2,
    1100,
-   "28ecce6780c9a542"
+   "564b533453055ef9"
   ],
   [
    "TerrainObjectData",
@@ -326,7 +326,7 @@
    4628,
    1,
    550,
-   "cdcf57688e381d98"
+   "b3db131c58452b89"
   ],
   [
    "TerrainObjectData",
@@ -340,7 +340,7 @@
    4642,
    1,
    550,
-   "c5d9457a0187b2bd"
+   "a4399bd7703c1408"
   ],
   [
    "BuildingData",
@@ -368,7 +368,7 @@
    4752,
    1,
    550,
-   "6a1c9c5dbd9eb52b"
+   "81d83fd3c572a841"
   ],
   [
    "TerrainObjectData",
@@ -389,14 +389,14 @@
    4766,
    11,
    5027,
-   "c325f8001efc6127"
+   "e75be18eeb839a59"
   ],
   [
    "TurretData",
    4777,
    2,
    1100,
-   "c705cc22f5c9bf33"
+   "fe7c20fd639b8894"
   ],
   [
    "TerrainObjectData",
@@ -410,7 +410,7 @@
    4796,
    1,
    550,
-   "c8fce448348b8070"
+   "63b1f7fa9ea8483c"
   ],
   [
    "TerrainObjectData",
@@ -424,14 +424,14 @@
    4807,
    2,
    1100,
-   "751ce678f4cf66c0"
+   "f957c1e91bb47503"
   ],
   [
    "TerrainObjectData",
    4809,
    3,
    1371,
-   "6811cf1352a99a3d"
+   "4974c0ea9b0480fc"
   ],
   [
    "BuildingData",
@@ -445,14 +445,14 @@
    4813,
    40,
    18280,
-   "f6481736b37c9d8b"
+   "757da1254e1e4831"
   ],
   [
    "TurretData",
    4853,
    1,
    550,
-   "dbb4256df3ae5616"
+   "d0eb398afff16bd8"
   ],
   [
    "TerrainObjectData",
@@ -466,28 +466,28 @@
    4861,
    1,
    550,
-   "0fdc429bdc18e183"
+   "d649ed0b164cb0db"
   ],
   [
    "TerrainObjectData",
    4862,
    107,
    48899,
-   "ec6d09019ffbfdf4"
+   "1a47167a38e2e2b8"
   ],
   [
    "BuildingData",
    4969,
    20,
    9620,
-   "ea687f0879d2101c"
+   "d0b823b3c02bce8b"
   ],
   [
    "TurretData",
    4989,
    1,
    550,
-   "bd742d145d418f84"
+   "f0de1e239b3f74e5"
   ],
   [
    "TerrainObjectData",
@@ -508,7 +508,7 @@
    5046,
    6,
    3300,
-   "6d2abef965fabfef"
+   "f1b73f4a241ea2fa"
   ],
   [
    "BuildingData",
@@ -522,7 +522,7 @@
    5053,
    1,
    550,
-   "3a25c5969c62ef8b"
+   "f6ec0963ab6fad22"
   ],
   [
    "TerrainObjectData",
@@ -571,7 +571,7 @@
    5521,
    1,
    550,
-   "59dbefa42cce023a"
+   "ffa9d5feba678b9c"
   ],
   [
    "TerrainObjectData",
@@ -585,7 +585,7 @@
    5627,
    1,
    550,
-   "3e7b956b901d7b2b"
+   "90c456da069c6b0d"
   ],
   [
    "BuildingData",
@@ -599,21 +599,21 @@
    5650,
    2,
    1100,
-   "7765aabb8e530593"
+   "4e7da302ac300e05"
   ],
   [
    "TerrainObjectData",
    5652,
    19,
    8683,
-   "97180d9442da2a26"
+   "0ac5ef215a91441d"
   ],
   [
    "TurretData",
    5671,
    2,
    1100,
-   "9ff99fdfd3c3e0d4"
+   "187402ebd34eb2cb"
   ],
   [
    "BuildingData",
@@ -627,7 +627,7 @@
    5674,
    19,
    8683,
-   "7c0944a0b48f6ae5"
+   "b2574d4445b9a095"
   ],
   [
    "BuildingData",
@@ -711,7 +711,7 @@
    6233,
    4,
    2200,
-   "7b312e8b52a5059e"
+   "610532ee36f272ac"
   ],
   [
    "BuildingData",
@@ -753,14 +753,14 @@
    6807,
    100,
    57700,
-   "88bebd52c5122fe2"
+   "7cf66e8f1cf865aa"
   ],
   [
    "CarnageData",
    6907,
    50,
    19750,
-   "c18429b1cc65db5e"
+   "8fb21dfb73451c38"
   ],
   [
    "ArtilleryData",
@@ -774,7 +774,7 @@
    7087,
    1,
    12868,
-   "4c3ed5c8df6f9652"
+   "8ec9de3f9334aa0a"
   ],
   [
    "StaticCommanderData",
@@ -808,8 +808,8 @@
    "sections",
    7095,
    1,
-   557280,
-   "9a8fc837f4027bc9"
+   634826,
+   "d565a94972373426"
   ],
   [
    "empty",
@@ -822,7 +822,7 @@
  "about": "digest of the quicksave a round-trip fixture writes; tools/saveload_roundtrip.py --baseline / --check",
  "sim_speed": 2,
  "data_fingerprint": {
-  "digest": "631bc626ca376941",
+  "digest": "dcd8543bf1dabdf6",
   "inputs": [
    "mission.fst",
    "tgl.fst",
@@ -835,7 +835,7 @@
    "data/missions/",
    "data/warriors/"
   ],
-  "stock_digest": "8703ccf15c7c117f",
+  "stock_digest": "f5e613864732c4b4",
   "overlay": {
    "data/missions/gaea_peaks_01.fit": "aa24a7b6e35ae2b2",
    "data/missions/gaea_peaks_01.pak": "af7be4e2f5a9c1c4"
