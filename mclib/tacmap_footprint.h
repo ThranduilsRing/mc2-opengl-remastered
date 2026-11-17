@@ -22,9 +22,9 @@ inline std::vector<glm::dvec3> tacmapFootprint(const glm::mat4& worldToClip,
         return glm::dvec3(p) / p.w;
     };
     const std::array<glm::dvec2, 4> corners = {{{-1, 1}, {-1, -1}, {1, -1}, {1, 1}}};
-    std::array<glm::dvec3, 4> near, along;
+    std::array<glm::dvec3, 4> nearPts, along;   // not `near`: platform_windef.h defines it empty
     for (int i = 0; i < 4; ++i) {
-        near[i] = unproject(corners[i].x, corners[i].y, 1.0);
+        nearPts[i] = unproject(corners[i].x, corners[i].y, 1.0);
         along[i] = unproject(corners[i].x, corners[i].y, 0.5);
     }
     const glm::dvec3 inside = unproject(0, 0, 0.5);
@@ -32,10 +32,10 @@ inline std::vector<glm::dvec3> tacmapFootprint(const glm::mat4& worldToClip,
         {halfMap, -halfMap, elevation}, {halfMap, halfMap, elevation},
         {-halfMap, halfMap, elevation}};
     for (int edge = 0; edge < 5 && !polygon.empty(); ++edge) {
-        const glm::dvec3 origin = near[edge % 4];
+        const glm::dvec3 origin = nearPts[edge % 4];
         glm::dvec3 normal = edge < 4
-            ? glm::cross(near[(edge + 1) % 4] - origin, along[edge] - origin)
-            : glm::cross(near[1] - near[0], near[2] - near[0]);
+            ? glm::cross(nearPts[(edge + 1) % 4] - origin, along[edge] - origin)
+            : glm::cross(nearPts[1] - nearPts[0], nearPts[2] - nearPts[0]);
         if (glm::dot(normal, inside - origin) < 0) normal = -normal;
         std::vector<glm::dvec3> clipped;
         glm::dvec3 previous = polygon.back();
