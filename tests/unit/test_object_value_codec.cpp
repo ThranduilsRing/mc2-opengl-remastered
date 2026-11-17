@@ -24,6 +24,7 @@ TEST_CASE("heat save/versioned extension preserves high bits and rejects unknown
     sample.version = 2;
     sample.heat.heatMilli = 12345; sample.heat.alphaExpireTick = 987654321;
     sample.heat.capacity = 456000;
+    sample.chassisHeatPoints = 37; sample.heatSinkAdjustmentPoints = -12;
     for (int i : {0, 63, 64, 71}) sample.heat.alphaMask.set(i);
     const auto bytes = encodeTaggedRecord(sample, mechTag);
     REQUIRE_FALSE(bytes.empty());
@@ -33,6 +34,7 @@ TEST_CASE("heat save/versioned extension preserves high bits and rejects unknown
     CHECK(decoded.heat.alphaMask == sample.heat.alphaMask);
     CHECK(decoded.heat.alphaExpireTick == sample.heat.alphaExpireTick);
     CHECK(decoded.heat.capacity == 0);
+    CHECK(decoded.chassisHeatPoints == 37); CHECK(decoded.heatSinkAdjustmentPoints == -12);
     REQUIRE(validObjectSlot(bytes, mc2_saved_objects::kMech, 1));
     auto unknown = bytes; unknown[4] = 3;
     CHECK_FALSE(objectSlotClass(unknown));
@@ -43,6 +45,7 @@ TEST_CASE("heat save/versioned extension preserves high bits and rejects unknown
     CHECK(decoded.heat.heatMilli == 0);
     CHECK(decoded.heat.alphaMask.none());
     CHECK(decoded.heat.alphaExpireTick == 0);
+    CHECK(decoded.chassisHeatPoints == 0); CHECK(decoded.heatSinkAdjustmentPoints == 0);
 }
 
 TEST_CASE("heat hash/each authoritative heat readiness and ammunition field changes bytes") {

@@ -372,7 +372,8 @@ public:
     Tick completedTick() const { return completed_; }
     std::optional<Tick> executingTick() const { return executing_; }
     void serialize(Archive& a);
-    bool restore(std::span<const std::uint8_t> bytes, Tick completed, save::Diagnostic diagnostic = {});
+    bool restore(std::span<const std::uint8_t> bytes, Tick completed, save::Diagnostic diagnostic = {},
+                 std::uint32_t version = 2); // ORDQ payload version
 private:
     std::vector<OrderEnvelope> pending_;
     std::vector<OrderSource> sources_;

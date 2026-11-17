@@ -73,6 +73,7 @@ void BattleMech::setHeatLoadout(std::span<const long> components) {
 
 void BattleMech::restoreHeatCapacity() {
 	heatState = {}; // phase 1 heat is transient, including when reusing an object
+	heatCapacityRestored = false;
 	rederiveHeatCapacity();
 }
 
@@ -921,7 +922,7 @@ void BattleMech::Save (PacketFilePtr file, long packetNum)
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!
-	auto bytes = mc2::save::encodeTaggedRecord(mc2::save::MechRecord{data, heatState, 2}, mc2::save::mechTag);
+	auto bytes = mc2::save::encodeTaggedRecord(mc2::save::MechRecord{data, heatState, 2, chassisHeatPoints, heatSinkAdjustmentPoints}, mc2::save::mechTag);
 	if (bytes.empty()) Fatal(0, "Invalid mech ObjectSlot");
 	file->writePacket(packetNum, bytes.data(), static_cast<unsigned int>(bytes.size()), STORAGE_TYPE_ZLIB);
 }

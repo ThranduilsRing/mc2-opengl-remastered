@@ -68,6 +68,7 @@ TEST_CASE("heat production/real mech Save and Load preserve heat on reused objec
         mech.heatState.heatMilli = 12345;
         mech.heatState.alphaMask.set(64); mech.heatState.alphaMask.set(71);
         mech.heatState.alphaExpireTick = 777;
+        mech.chassisHeatPoints = 30; mech.heatSinkAdjustmentPoints = 12; // lab sinks the legacy inventory omits; this fixture has no logistics
         PacketFile file;
         REQUIRE(file.create(path.c_str()) == NO_ERR);
         file.reserve(1); mech.Save(&file, 0); file.close();
@@ -81,10 +82,12 @@ TEST_CASE("heat production/real mech Save and Load preserve heat on reused objec
         REQUIRE(saved.version == 2);
         for (int repeat = 0; repeat < 2; ++repeat) {
             mech.heatState.heatMilli = 99999; mech.heatState.alphaMask.set();
+            mech.chassisHeatPoints = mech.heatSinkAdjustmentPoints = 0;
             saved.load(mech);
             CHECK(mech.heatState.heatMilli == 12345);
             CHECK(mech.heatState.alphaMask == saved.heat.alphaMask);
             CHECK(mech.heatState.alphaExpireTick == 777);
+            CHECK(mech.heatSinkAdjustmentPoints == 12); CHECK(mech.heatState.capacity == 42000);
             releaseSensor();
         }
         saved.version = 1;
@@ -93,6 +96,7 @@ TEST_CASE("heat production/real mech Save and Load preserve heat on reused objec
         saved.load(mech);
         CHECK(mech.heatState.heatMilli == 0); CHECK(mech.heatState.alphaMask.none());
         CHECK(mech.heatState.alphaExpireTick == 0);
+        CHECK(mech.heatSinkAdjustmentPoints == 0); // legacy records re-derive
         releaseSensor();
         MechData native = saved.value; // native legacy ABI, without an extension
         mech.heatState.heatMilli = 123; mech.heatState.alphaMask.set(); mech.heatState.alphaExpireTick = 9;

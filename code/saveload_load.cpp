@@ -634,10 +634,10 @@ void Mission::loadLogistics(MissionLoadFrame& f) {
 
 	removeSaveScratchFile(tmpName);
 
-	// Objects restored before the saved variants existed; re-derive heat capacity now (heat/mask/expiry kept).
+	// Legacy mech records were restored before the saved variants existed; re-derive their heat capacity now.
 	for (auto* mech : std::span(ObjectManager->mechs, ObjectManager->maxMechs))
 		if (mech && mech->getExists()) {
-			mech->rederiveHeatCapacity();
+			if (!mech->heatCapacityRestored) mech->rederiveHeatCapacity(); // legacy records only
 			if (mc2_diag::tagRequested("ALPHA_HEAT"))
 				mc2::fmt::print_err("[ALPHA_HEAT v1] event=load mech={} capacity={} heat={} mask={} expire={}\n",
 					mech->getWatchID(false), mech->heatState.capacity, mech->heatState.heatMilli,
