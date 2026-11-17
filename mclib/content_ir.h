@@ -11,7 +11,7 @@
 #include <vector>
 
 namespace mc2::content {
-inline constexpr uint32_t cookerVersion = 5;  // 5: fastHash replaces byte-wise FNV in keys and digests
+inline constexpr uint32_t cookerVersion = 6;  // 6: skinned-mech slot-0 texture = most vertices; 5: fastHash replaces byte-wise FNV in keys and digests
 struct Material {
     std::string textureName;
     bool alpha = false;
