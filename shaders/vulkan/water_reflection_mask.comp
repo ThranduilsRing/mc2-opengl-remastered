@@ -6,17 +6,32 @@ layout(std430, set = 0, binding = 2) writeonly buffer Depth { float depth[]; };
 layout(push_constant) uniform Params { int vertical; } P;
 void main() {
     ivec2 p = ivec2(gl_GlobalInvocationID.xy), size = imageSize(coverage);
-    if (any(greaterThanEqual(p, size))) return;
-    bool vertical = (P.vertical & 1) != 0, halfRes = (P.vertical & 2) != 0;
-    if (vertical && halfRes && any(notEqual(p % 2, ivec2(0)))) return;
-    // Extra texel covers both the bilinear footprint and the downsample footprint.
-    int radius = int(ceil(float(vertical ? size.y : size.x) * 0.009)) + (halfRes ? 2 : 1);
-    bool wet = false;
-    for (int i = -radius; i <= radius && !wet; ++i) {
-        ivec2 q = clamp(p + (vertical ? ivec2(0,i) : ivec2(i,0)), ivec2(0), size-1);
-        wet = vertical ? horizontal[q.y*size.x+q.x] != 0.0 : imageLoad(coverage,q).a != 0.0;
+    ivec2 blocks = (size + 7) / 8;
+    int mode = P.vertical & 3, count = blocks.x * blocks.y;
+    bool halfRes = (P.vertical & 4) != 0;
+    if (any(greaterThanEqual(p, mode == 3 ? size : blocks))) return;
+    if (mode == 3) {
+        if (halfRes && any(notEqual(p % 2, ivec2(0)))) return;
+        bool wet = horizontal[(p.y/8)*blocks.x+p.x/8] != 0.0;
+        depth[halfRes ? (p.y/2)*size.x+p.x/2 : p.y*size.x+p.x] = wet ? 0.0 : 1.0;
+        return;
     }
-    int index = p.y*size.x+p.x;
-    if (vertical) depth[halfRes ? (p.y/2)*size.x+p.x/2 : index] = wet ? 0.0 : 1.0;
-    else horizontal[index] = wet ? 1.0 : 0.0;
+    bool wet = false;
+    if (mode == 0) {
+        for (int y = 0; y < 8 && !wet; ++y)
+            for (int x = 0; x < 8 && !wet; ++x) {
+                ivec2 q = p*8 + ivec2(x,y);
+                if (all(lessThan(q,size))) wet = imageLoad(coverage,q).a != 0.0;
+            }
+        horizontal[p.y*blocks.x+p.x] = wet ? 1.0 : 0.0;
+        return;
+    }
+    bool vertical = mode == 2;
+    // Round the original pixel radius up to blocks: the mask stays a superset.
+    int radius = (int(ceil(float(vertical ? size.y : size.x) * 0.009)) + (halfRes ? 2 : 1) + 7) / 8;
+    for (int i = -radius; i <= radius && !wet; ++i) {
+        ivec2 q = clamp(p + (vertical ? ivec2(0,i) : ivec2(i,0)), ivec2(0), blocks-1);
+        wet = horizontal[(vertical ? count : 0)+q.y*blocks.x+q.x] != 0.0;
+    }
+    horizontal[(vertical ? 0 : count)+p.y*blocks.x+p.x] = wet ? 1.0 : 0.0;
 }
