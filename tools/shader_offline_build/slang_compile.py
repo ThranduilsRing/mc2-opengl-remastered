@@ -106,7 +106,7 @@ def source_bundle(src: Path):
 RESOURCE_RE = re.compile(
     r'(?:\[\[\s*vk::binding\s*\(\s*(\d+)\s*,\s*(\d+)\s*\)\s*\]\]\s*)?'
     r'\b(ConstantBuffer|(?:RW)?StructuredBuffer|(?:RW)?ByteAddressBuffer|'
-    r'(?:RW)?Texture\w*|SamplerState|SamplerComparisonState)'
+    r'(?:RW)?Texture\w*|Sampler\d\w*|SamplerState|SamplerComparisonState)'
     r'\s*(?:<([^;]+?)>)?\s+(\w+)\s*(?:\[[^]]*\])?\s*;')
 
 
@@ -114,7 +114,7 @@ def resource_bindings(text):
     for m in RESOURCE_RE.finditer(uncomment(text)):
         binding, desc_set, kind, typ, name = m.groups()
         ns = ('ubo' if kind == 'ConstantBuffer' else 'ssbo' if 'Buffer' in kind
-              else 'image' if kind.startswith('RWTexture') else 'sampler' if kind.startswith('Sampler') else 'texture')
+              else 'image' if kind.startswith('RWTexture') else 'sampler' if kind.startswith('Sampler') and not kind[7:8].isdigit() else 'texture')  # SamplerND = combined image sampler
         yield {'binding': int(binding) if binding is not None else None,
                'set': int(desc_set) if desc_set is not None else None,
                'namespace': ns, 'name': name, 'type': typ,

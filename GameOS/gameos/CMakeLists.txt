@@ -445,7 +445,6 @@ if(MC2_VULKAN)
     # Mech-lab panel pass: mech_tier1.frag baked with -DMECH_PREVIEW=1 (no terrain set 1,
     # in-shader exposure/tonemap for the RGBA8 preview target). Loaded by vulkan_mech_island.cpp.
     list(APPEND MC2_VK_SHADER_BASENAMES mech_preview mech_backdrop)
-    list(APPEND MC2_VK_SHADER_BASENAMES rt_smoke rt_scene_probe)
     set(MC2_VK_SHADER_SRC_ALIAS_mech_preview_frag mech_tier1)
     set(MC2_VK_SHADER_DEFINES_mech_preview_frag -DMECH_PREVIEW=1)
     # hzb_cull.comp uses subgroup arithmetic (SPIR-V 1.3); glslang defaults to Vulkan 1.0 / SPIR-V 1.0. Engine floor is Vulkan 1.2.

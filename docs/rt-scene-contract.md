@@ -21,7 +21,7 @@ Tree sway is not applied. Props without a recipe and IDs that do not fit are dro
 
 ## Material lookup
 
-`MaterialRow` (32 bytes, std430 twin in `shaders/vulkan/rt_scene_probe.comp`): `albedoLayer, flags, alphaCut, materialId, uvScaleX, uvScaleY, firstIndex, packet`.
+`MaterialRow` (32 bytes, std430 twin in `shaders/vulkan/rt_scene_probe.comp.slang`): `albedoLayer, flags, alphaCut, materialId, uvScaleX, uvScaleY, firstIndex, packet`.
 
 | Rows | Content |
 |---|---|
@@ -39,7 +39,7 @@ The material table and the uv-index buffer are published with the TLAS and retir
 
 - A packet is a **cutout** when the raster cuts it: an alpha-ON packet always, an alpha-OFF packet when it is alpha-tested and textured (`packetIsCutout`). Vegetation and fences are cutouts.
 - Cutout geometries are built without `VK_GEOMETRY_OPAQUE_BIT_KHR`. Every other geometry (terrain, opaque props, movers) is OPAQUE.
-- A consumer must run the any-hit equivalent in its `rayQueryProceedEXT` loop: for a candidate triangle, commit it unless its row has `kMatCutout` and the albedo alpha at the hit is below `alphaCut` (0.5). `rt_scene_probe.comp` is the reference loop.
+- A consumer must run the any-hit equivalent in its `rayQueryProceedEXT` loop: for a candidate triangle, commit it unless its row has `kMatCutout` and the albedo alpha at the hit is below `alphaCut` (0.5). `rt_scene_probe.comp.slang` is the reference loop.
 - Shadow-style consumers may use `gl_RayFlagsOpaqueEXT` only if they accept that leaves block like solid quads.
 - A prop type built before the colour-prop material feed is ready (bounded wait, `kMatWaitCalls`) is untextured and opaque; the ledger line says `why=props_untextured`.
 
