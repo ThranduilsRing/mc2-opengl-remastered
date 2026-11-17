@@ -383,6 +383,7 @@ public:
 		int attackMedium();
 		int attackLong();
 		int alphaStrike();
+		int alphaStrike(GameObjectPtr alphaTarget);
 		int defaultAttack();
 		int jump();
 		int stopJump();

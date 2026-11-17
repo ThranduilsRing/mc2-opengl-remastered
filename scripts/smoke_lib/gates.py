@@ -206,7 +206,7 @@ def evaluate(s: LogSummary, cfg: GateConfig, *,
     # A run whose ONLY red is perf_counter (no pixel/SIMID/save/validation/content bucket) is a PASS with a recorded warning (owner rule
     # 2026-11-01: perf_counter-only reds are not gate failures). Every other bucket stays strict.
     warnings: List[str] = list(window_warnings)
-    if buckets == ["perf_counter"]:
+    if set(buckets) == {"perf_counter"}:
         warnings += [d for d in details if d.startswith("perf counters over ceiling")]
         buckets, details = [], [d for d in details if not d.startswith("perf counters over ceiling")]
     passed = not buckets and s.smoke_summary_result == "pass" and exit_code == 0
