@@ -141,6 +141,7 @@ void GpuStaticPropBatcher::onMapUnload() {
     s_sortedPacketOrder.clear(); s_alphaOffCmdCount = s_alphaOnCmdCount = 0;
     s_bucketsByType.clear(); s_persistentStaticStore.clear();
     s_lodGroups.clear(); s_lodMembers.clear(); s_lodState.clear();
+    s_persistentLodSlots.clear();
     s_lodEvaluated.clear();
     s_persistentStaticGen = s_staticBaseBuiltGen = 0xFFFFFFFFFFFFFFFFull;
     s_staticBaseInstanceForType.clear();
