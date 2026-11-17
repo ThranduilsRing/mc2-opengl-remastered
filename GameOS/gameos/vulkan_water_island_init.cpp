@@ -238,6 +238,14 @@ bool init_island(WaterIsland* s, int w, int h) {
             vlog("vkCreateGraphicsPipelines failed."); return false;
         }
         mc2vk::nameObject(s->device, s->pipe.get(), "water.pipe");
+        s->fragEarly = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "water_geom_early.frag.spv"));
+        if (!s->fragEarly) { setFallback("spv_load_failed"); return false; }
+        stages[1].module = s->fragEarly.get();
+        if (!mc2vk::create(s->pipeEarly, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
+            vlog("vkCreateGraphicsPipelines early water failed."); return false;
+        }
+        mc2vk::nameObject(s->device, s->pipeEarly.get(), "water.pipeEarly");
+        stages[1].module = s->frag.get();
         if (gos_GetWaterFsDebugMode() == 10 || gos_GetWaterFsDebugMode() == 11) {
             const VkSpecializationMapEntry vsEntry{12, 0, sizeof(int32_t)};
             const VkSpecializationMapEntry fsEntry{13, 0, sizeof(int32_t)};

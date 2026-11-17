@@ -244,9 +244,9 @@ struct WaterIsland : mc2vk::IslandState {
     float                 sampBias = 0.0f;   // mip bias hdriSampler was built with
     mc2vk::ResidentTextureRef shHTexture;
     mc2vk::ResidentTextureRef shMTexture;
-    mc2vk::OwnedShaderModule vert, frag;
+    mc2vk::OwnedShaderModule vert, frag, fragEarly;
     mc2vk::OwnedPipelineLayout playout;
-    mc2vk::OwnedPipeline pipe;
+    mc2vk::OwnedPipeline pipe, pipeEarly;
     mc2vk::OwnedPipeline debugWater[3];
     mc2vk::OwnedCommandPool cpool[mc2vk::kMaxFramesInFlight];   // per-slot pools: vkResetCommandPool per frame; cpool[0] also serves the synchronous one-shot
 

@@ -14,6 +14,10 @@
 #version 450
 #extension GL_GOOGLE_include_directive : require
 #extension GL_EXT_control_flow_attributes : require
+#ifdef WATER_EARLY_TESTS
+// Fine-surface coverage comes from scene depth; its shore discard is dead.
+layout(early_fragment_tests) in;
+#endif
 layout(constant_id = 11) const int kReflectionCoverage = 0;
 layout(constant_id = 13) const int kWaterDbgPass = 0;
 #define PREC highp
