@@ -231,8 +231,11 @@ def test_owned_children_reaped_on_every_exit(tmp_path, monkeypatch, fake_peer, f
     assert set(verdict["peer_stdio"]) == {"host", "client"}
     if failure in ("client-dies", "short-client"):
         assert verdict["wall_seconds"] < 2
-        assert verdict["peer_stdio"]["client"] == {
-            "stdout": "fake stdoutlauncher stdout\n", "stderr": "fake stderrlauncher stderr\n"}
+        stdio = verdict["peer_stdio"]["client"]
+        assert stdio["stdout"] == "fake stdoutlauncher stdout\n"
+        assert stdio["stderr"].startswith("fake stderr")
+        assert stdio["stderr"].endswith("launcher stderr\n")
+        assert ("[COOP_UI] Ready" in stdio["stderr"]) == lobby
     assert fake_peer and all(proc.poll() is not None for proc in fake_peer)
     assert (args.out / "verdict.json").exists()
     if failure == "timeout":
