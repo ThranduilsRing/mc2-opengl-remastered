@@ -350,6 +350,21 @@ void mc2BenchWalk(GameObjectManager& om, int rounds);   // code/objmgr_misc.cpp
 // Test-only fixtures and determinism verbs (spawn, teleport, freeze_movers, set_light, animate). Returns true when a verb of this group matched.
 bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 {
+    if (c.line == "water_profile" || c.line.starts_with("water_debug ")) {
+        extern void gos_SetWaterFsDebugMode(int);
+        extern void gos_RequestWaterProfile(bool);
+        int mode = -1;
+        if (c.line == "water_profile") {
+            gos_RequestWaterProfile(true);
+            c.result = "ok"; c.note = "water modes 0..7, 300 rendered water draws each";
+        } else if (sscanf(c.line.c_str(), "water_debug %d", &mode) == 1 && mode >= 0 && mode <= 7) {
+            gos_SetWaterFsDebugMode(mode);
+            c.result = "ok"; c.note = "water debug mode set";
+        } else {
+            c.result = "blocked"; c.note = "water_debug <0..7> | water_profile";
+        }
+        return true;
+    }
     if (c.line.starts_with("equipment_probe ")) {
         long chassis = 0;
         EquipmentProbe job{};

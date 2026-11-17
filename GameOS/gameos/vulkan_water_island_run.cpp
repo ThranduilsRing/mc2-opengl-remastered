@@ -13,6 +13,7 @@
 #include "vulkan_shadow_island_live.h"   // the bake mask
 #include "vulkan_mover_shadow.h"
 #include "gos_terrain_lod_chunk.h"   // gos_WaterShoreMode
+#include "vulkan_terrain_island.h"
 #include "terrain_field_store.h"
 void gos_GetTerrainChunkGridInfo(int* mapSide, float* halfMap);
 #include "mc2_diag_verbose.h"
@@ -27,6 +28,9 @@ void gos_GetTerrainChunkGridInfo(int* mapSide, float* halfMap);
 const float* gos_GetObjectFixBMVPMat4();
 int gos_GetWaterReflectionQuality();
 int gos_GetWaterFsDebugMode();
+void gos_SetWaterFsDebugMode(int);
+bool gos_WaterProfileRequested();
+void gos_RequestWaterProfile(bool);
 
 bool vk_water_detail::record_reflection(WaterIsland* s, VkCommandBuffer cb, bool enabled, uint32_t par, const uint32_t (&offsets)[2]) {
     auto barrier=[&](VkImage image,VkImageAspectFlags aspect,VkImageLayout from,VkImageLayout to,
@@ -218,7 +222,10 @@ extern "C" int mc2_vk_water_island_run(
 
     // Lazy init / rebuild on size change.
     mc2vk::VulkanContext& slotCtx = mc2vk::getOrCreateEngineVulkanContext();
-    if (const WaterIsland* parked = parkedIsland(); parked && (parked->w != w || parked->h != h)) slotCtx.retireIsland(mc2vk::IslandSlot::Water);
+    if (const WaterIsland* parked = parkedIsland(); parked && (parked->w != w || parked->h != h)) {
+        if (parked->profileIssued < 2400) gos_SetWaterFsDebugMode(0);
+        slotCtx.retireIsland(mc2vk::IslandSlot::Water);
+    }
     if (!islandSlot()) {
         auto fresh = std::make_unique<WaterIsland>();
         (void)mc2vk::takeLastCreateFailure();
@@ -281,6 +288,66 @@ extern "C" int mc2_vk_water_island_run(
     { ZoneScopedN("VKIsl.Water.FenceWait"); mc2::battlebench::WaitScope gpuWait1(mc2::battlebench::WaitGpuMainNs);   // VK-ISLAND-TRACY-1: deferred retire of the slot
       if (!vk_island_util::waitStrike(s->waitStrikes, s->disabled, slotCtx.wait(s->submitted[par], 5000000000ull, "water submission slot"), "VK_WATER")) { setFallback("submission_slot_timeout"); vlog("LOUD: submission slot wait timed out (5 s); skipping this frame, will retry next frame."); return 0; } }
     us_fence_wait = usSince(tFence0);
+    // Read only after this slot's previous water submission has retired. Queries
+    // measure fragment invocations (including helpers/discard), not visible pixels.
+    if (s->profilePending[par] && s->profileStats && s->profileTimes && s->profileSamples) {
+        const int mode = s->profilePending[par] - 1;
+        uint64_t fragments = 0, samples = 0, ticks[2]{};
+        const auto flags = VK_QUERY_RESULT_64_BIT;
+        if (vkGetQueryPoolResults(s->device, s->profileSamples.get(), par, 1, sizeof(samples), &samples, sizeof(uint64_t), flags) != VK_SUCCESS ||
+            vkGetQueryPoolResults(s->device, s->profileStats.get(), par, 1, sizeof(fragments), &fragments, sizeof(uint64_t), flags) != VK_SUCCESS ||
+            vkGetQueryPoolResults(s->device, s->profileTimes.get(), 2 * par, 2, sizeof(ticks), ticks, sizeof(uint64_t), flags) != VK_SUCCESS) {
+            vlog("WATER_PROFILE FAIL query results mode=%d", mode);
+            gos_RequestWaterProfile(false); s->profileIssued = 2400;
+            gos_SetWaterFsDebugMode(0);
+        } else {
+            s->profileFragments[mode] += fragments;
+            s->profilePassed[mode] += samples;
+            s->profileTicks[mode] += ticks[1] - ticks[0];
+            if (++s->profileCount[mode] == 300) {
+                VkPhysicalDeviceProperties props{};
+                vkGetPhysicalDeviceProperties(s->phys, &props);
+                Mc2TerrainTier1Feed feed{};
+                mc2_terrain_tier1_get_frame_feed(&feed);
+                vlog("WATER_PROFILE mode=%d frames=300 gpu_ms=%.6f fragment_invocations=%.3f samples_passed=%.3f visible_quads=%u visualDisplaceFar=%.6f", mode,
+                     static_cast<double>(s->profileTicks[mode]) * props.limits.timestampPeriod / 300.0e6,
+                     static_cast<double>(s->profileFragments[mode]) / 300.0,
+                     static_cast<double>(s->profilePassed[mode]) / 300.0,
+                     s->native ? s->native->lastVisible() : 0u, feed.visualDisplaceFar);
+            }
+        }
+        s->profilePending[par] = 0;
+    }
+    bool profilePending = false;
+    for (int pending : s->profilePending) profilePending |= pending != 0;
+    if (gos_WaterProfileRequested() && s->profileIssued == 2400 && !profilePending) {
+        gos_RequestWaterProfile(false);
+        VkPhysicalDeviceFeatures features{};
+        vkGetPhysicalDeviceFeatures(s->phys, &features);
+        VkQueryPoolCreateInfo qi{VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO};
+        qi.queryType = VK_QUERY_TYPE_PIPELINE_STATISTICS; qi.queryCount = mc2vk::kMaxFramesInFlight;
+        qi.pipelineStatistics = VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT;
+        bool ready = features.pipelineStatisticsQuery && features.occlusionQueryPrecise;
+        if (ready && !s->profileStats)
+            ready = mc2vk::create(s->profileStats, s->device, [&](auto* h) { return vkCreateQueryPool(s->device, &qi, nullptr, h); });
+        qi.queryType = VK_QUERY_TYPE_OCCLUSION; qi.pipelineStatistics = 0;
+        if (ready && !s->profileSamples)
+            ready = mc2vk::create(s->profileSamples, s->device, [&](auto* h) { return vkCreateQueryPool(s->device, &qi, nullptr, h); });
+        qi.queryType = VK_QUERY_TYPE_TIMESTAMP; qi.queryCount *= 2; qi.pipelineStatistics = 0;
+        if (ready && !s->profileTimes)
+            ready = mc2vk::create(s->profileTimes, s->device, [&](auto* h) { return vkCreateQueryPool(s->device, &qi, nullptr, h); });
+        if (ready) {
+            s->profileIssued = 0;
+            for (int mode = 0; mode < 8; ++mode) {
+                s->profileCount[mode] = 0; s->profileFragments[mode] = 0; s->profileTicks[mode] = 0; s->profilePassed[mode] = 0;
+            }
+        } else {
+            gos_SetWaterFsDebugMode(0);
+            vlog("WATER_PROFILE FAIL fragment statistics or precise occlusion unavailable");
+        }
+    }
+    const int profileMode = s->profileIssued < 2400 ? static_cast<int>(s->profileIssued / 300) : -1;
+    if (profileMode >= 0) gos_SetWaterFsDebugMode(profileMode);
     const auto ground = mc2_vk_ground_lighting_frame();
     if (!ground) return 0;
     s->groundLighting.copy(s->device, par, *ground);
@@ -338,6 +405,7 @@ extern "C" int mc2_vk_water_island_run(
         std::memcpy(&vsLocal, vsParams, sizeof(WaterVsParams));
         WaterFsParams fsLocal;
         std::memcpy(&fsLocal, fsParams, sizeof(WaterFsParams));
+        fsLocal.debug[0] = static_cast<float>(gos_GetWaterFsDebugMode());
         // Shore mode 3: flat water plane in the VS only when the hi-res height sidecar
         // is really imported (mirrors GL u_shoreFlat = mode==3 && shTex != 0).
         const bool shoreSdf = static_cast<int>(fsLocal.f4[0] + 0.5f) == 3 &&
@@ -430,6 +498,10 @@ extern "C" int mc2_vk_water_island_run(
     }
     }   // VK-ISLAND-TRACY-1: close VKIsl.Water.Feed
 
+    if (!prepare_wave_packets(s, par)) { setFallback("wave_packet_bake_failed"); return 0; }
+    if (!prepare_reflect_bake(s, nat->waterElevation)) setFallback("reflection_bake_failed");
+    reflectThisFrame = false;
+    bind_reflect_bake(s, par, reinterpret_cast<WaterFsParams*>(static_cast<uint8_t*>(uboSpan.ptr) + fsUboOff));
     s->planarTerrainRecord = {}; s->planarPropsRecord = {};
     if (reflectThisFrame) {
         mc2::waterplanar::Target target;
@@ -511,12 +583,26 @@ extern "C" int mc2_vk_water_island_run(
         if (!record_reflection(s,cb,reflectThisFrame,par,uboOffsets)) {
             vkEndCommandBuffer(cb); setFallback("planar_record_failed"); s->disabled = true; return 0;
         }
+        if (profileMode >= 0) {
+            vkCmdResetQueryPool(cb, s->profileSamples.get(), par, 1);
+            vkCmdResetQueryPool(cb, s->profileStats.get(), par, 1);
+            vkCmdResetQueryPool(cb, s->profileTimes.get(), 2 * par, 2);
+            vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, s->profileTimes.get(), 2 * par);
+        }
         // All attachments LOAD: no clear values.
         MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Water");
+        static constexpr const char* modeZones[] = {"VKIsl.Water.Mode0", "VKIsl.Water.Mode1", "VKIsl.Water.Mode2",
+            "VKIsl.Water.Mode3", "VKIsl.Water.Mode4", "VKIsl.Water.Mode5", "VKIsl.Water.Mode6", "VKIsl.Water.Mode7"};
+        mc2vk::gpuprof::Scope modeScope(profileMode >= 0 ? cb : VK_NULL_HANDLE,
+            profileMode >= 0 ? modeZones[profileMode] : "VKIsl.Water.Idle", __FILE__, __LINE__);
         mc2vk::VulkanContext& dctx = mc2vk::engineVulkanContextNoWait();
         mc2vk::dynrender::beginSceneLoad(dctx, cb, static_cast<uint32_t>(w), static_cast<uint32_t>(h), s->sColorRes->view.get(), s->sNormalRes->view.get(), s->sDepthRes->view.get(), s->sceneDepthFmt);
         mc2vk::infra::setSceneViewport(cb, static_cast<uint32_t>(w), static_cast<uint32_t>(h));
         mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
+        if (profileMode >= 0) {
+            vkCmdBeginQuery(cb, s->profileStats.get(), par, 0);
+            vkCmdBeginQuery(cb, s->profileSamples.get(), par, VK_QUERY_CONTROL_PRECISE_BIT);
+        }
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], 2, uboOffsets);
         const auto groundSet = s->groundLighting.set(par);
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 1, 1, &groundSet, 4, ground->offsets.data());
@@ -528,8 +614,15 @@ extern "C" int mc2_vk_water_island_run(
         } else {
             mc2::battlebench::add(mc2::battlebench::DrawWater), vkCmdDrawIndirect(cb, s->native->drawArgs(par), 0, 1, 16);
         }
+        if (profileMode >= 0) {
+            vkCmdEndQuery(cb, s->profileSamples.get(), par);
+            vkCmdEndQuery(cb, s->profileStats.get(), par);
+        }
         mc2vk::dynrender::end(dctx, cb);
+        modeScope.end();
         gpuScope.end();
+        if (profileMode >= 0)
+            vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, s->profileTimes.get(), 2 * par + 1);
         vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_Water);
         if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
         }   // VK-ISLAND-TRACY-1: close VKIsl.Water.Record
@@ -546,6 +639,10 @@ extern "C" int mc2_vk_water_island_run(
         { ZoneScopedN("VKIsl.Water.Submit");   // VK-ISLAND-TRACY-1: vkQueueSubmit
           if (mc2vk::submitGraphics(si, VK_NULL_HANDLE) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
         s->submitted[par] = slotCtx.tracker().now();
+        if (profileMode >= 0) {
+            s->profilePending[par] = profileMode + 1;
+            if (++s->profileIssued == 2400) gos_SetWaterFsDebugMode(0);
+        }
         timerGuard.submitted();
         us_submit = usSince(tSubmit0);
 

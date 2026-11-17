@@ -277,6 +277,8 @@ void staticPropRegistryClearMaterialCache();
 // 2b Stage 2: monotonic registry generation (bumped on spawn/despawn/immutable-field
 // write). A clean generation across frames means the persistent static store is reusable.
 uint64_t getRegistryGeneration();
+// Structural content only; lazy visibility/material stamps do not change this.
+uint64_t getContentRevision();
 
 
 // Returns GpuStaticPropInstance.flags for the first leaf of this recipe.

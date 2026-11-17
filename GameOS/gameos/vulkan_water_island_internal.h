@@ -108,7 +108,7 @@ struct WaterFsParams {
     float f2[4];             // off 48  GLINT_GAIN, u_waterReflStrength, u_skyYaw, u_waterHdriLod
     float f3[4];             // off 64  screenW, screenH, nightDim, animatedShore
     float DEEP_COLOR[4];     // off 80
-    float SHALLOW_COLOR[4];  // off 96
+    float SHALLOW_COLOR[4];  // off 96 color.rgb, baked reflection weather scale B
     // VK-PARITY-WATER-SHORE-1 (WATER-SHORE-EDGE-1) -- LOCKSTEP with water_geom.frag.
     float f4[4];             // off 112 u_shoreMode, u_hasShoreHeight, u_hasShoreMask, u_shoreFeatherWu
     float f5[4];             // off 128 u_shoreHeightBounds
@@ -117,8 +117,10 @@ struct WaterFsParams {
     // VK-PARITY-F3: LOCKSTEP with water_geom.frag f8/f9.
     float f8[4];             // off 176 edgeFeather, edgeFeatherStrength, halfMap, skyTintStrength
     float f9[4];             // off 192 skyTintColor.xyz, projAspect
+    float bake[4];           // off 208 world span, halfMap, baked reflection weather scale RG
+    float debug[4];          // off 224 attribution mode (0 = original shader)
 };
-static_assert(sizeof(WaterFsParams) == 208, "WaterFsParams std140 size (water_geom.frag)");
+static_assert(sizeof(WaterFsParams) == 240, "WaterFsParams std140 size (water_geom.frag)");
 static_assert(offsetof(WaterFsParams, f0) == 16 && offsetof(WaterFsParams, f3) == 64 &&
               offsetof(WaterFsParams, DEEP_COLOR) == 80 && offsetof(WaterFsParams, f4) == 112 &&
               offsetof(WaterFsParams, f7) == 160 && offsetof(WaterFsParams, f9) == 192, "WaterFsParams offsets");
@@ -188,6 +190,11 @@ struct WaterIsland : mc2vk::IslandState {
     mc2vk::DescWriteStamp moverStamp[mc2vk::kMaxFramesInFlight]{};   // binding 24 of set[i]
     VkCommandBuffer   cbuf[mc2vk::kMaxFramesInFlight] = {VK_NULL_HANDLE, VK_NULL_HANDLE};  // allocated from `cpool`, freed with it
     mc2vk::GpuTicket  submitted[mc2vk::kMaxFramesInFlight];   // per engine frame slot: the last submit that used cbuf[slot], set[slot] and buffers[slot]
+    mc2vk::OwnedQueryPool profileStats, profileTimes, profileSamples;
+    int profilePending[mc2vk::kMaxFramesInFlight]{}; // mode + 1; zero means no pending result
+    unsigned profileIssued = 2400;
+    unsigned profileCount[8]{};
+    uint64_t profileFragments[8]{}, profileTicks[8]{}, profilePassed[8]{};
 
     bool descNeedsThinRewrite = true; // thinBuf realloc -> descriptor rewrite
 
@@ -248,6 +255,8 @@ struct WaterIsland : mc2vk::IslandState {
     // Whole reflected views own their descriptors, compaction and draw buffers.
     // Their slot writes are protected by this water island's submission tickets.
     std::unique_ptr<mc2vk::IslandState> planarTerrain, planarProps;
+    std::unique_ptr<mc2vk::IslandState> reflectionBake;
+    std::unique_ptr<mc2vk::IslandState> wavePackets;
     mc2vk::VulkanContext::RecordFn planarTerrainRecord, planarPropsRecord;
     std::unique_ptr<mc2vk::NativeProducers> native;
     bool     nativeFailed = false;
@@ -265,6 +274,9 @@ namespace vk_water_detail {
 extern WaterIslandHealth g_health;
 extern int g_waterInitReachedBuild;   // 1 once init_island passed its readiness gates (vk_island_fail_policy.h)
 bool init_reflection(WaterIsland* s);
+bool prepare_wave_packets(WaterIsland* s, uint32_t par);
+bool prepare_reflect_bake(WaterIsland* s, float water);
+void bind_reflect_bake(WaterIsland* s, uint32_t par, WaterFsParams* params);
 bool record_reflection(WaterIsland* s, VkCommandBuffer cb, bool enabled, uint32_t par, const uint32_t (&offsets)[2]);
 extern InteropForbidden g_forbidden;
 extern unsigned long g_depthInGetTexImage;
