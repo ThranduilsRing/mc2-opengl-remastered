@@ -178,7 +178,7 @@ bool owns(Owner domain) {
                                (me == Owner::Main && !g_renderThread.load(std::memory_order_acquire));
     case Owner::Present: return me == Owner::Present || (me == Owner::Main && !g_presentThread.load(std::memory_order_acquire));
     case Owner::Sim:    return me == Owner::Sim || (me == Owner::Main && !g_inFlight.load(std::memory_order_acquire));
-    case Owner::Prewarm: return false; // a registered role with no engine domain
+    case Owner::Prewarm: return me == Owner::Prewarm; // private decode only; no engine domain
     }
     return false;
 }
