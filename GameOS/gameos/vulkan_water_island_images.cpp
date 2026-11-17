@@ -93,7 +93,7 @@ bool bakePackets(WaterIsland* s, WavePackets& b) {
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_SHADER_SAMPLED_READ_BIT);
     }, "water wave packet bake")) return false;
     vlog("WAVE_PACKETS baked size=%u layers=3 format=RGBA8 span=%.1f halfMap=%.1f MiB=%.2f",
-        b.size, b.span, b.halfMap, double(b.size) * b.size * 12 / (1024 * 1024));
+        b.size, b.span, b.halfMap, static_cast<double>(b.size) * b.size * 12 / (1024 * 1024));
     return true;
 }
 } // namespace
