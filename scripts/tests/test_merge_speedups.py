@@ -352,6 +352,7 @@ def test_gate_dry_run_never_executes(monkeypatch, capsys):
 def test_gate_reports_all_failed_stages(monkeypatch, capsys, tmp_path):
     from contextlib import contextmanager
     import merge_gate as gate
+    monkeypatch.setattr(gate, "check_capture_commit", lambda *a: None)  # synthetic launch commands
     monkeypatch.setenv("MC2_HOST_LEASE_PATH", str(tmp_path / "lease.json"))
     @contextmanager
     def batch():
@@ -1061,6 +1062,7 @@ def test_only_capture_stages_take_the_exclusive_hold_one_at_a_time(monkeypatch):
     monkeypatch.delenv("MC2_HOST_LEASE_BATCH", raising=False)
     from contextlib import contextmanager
     import merge_gate as gate
+    monkeypatch.setattr(gate, "check_capture_commit", lambda *a: None)  # synthetic launch commands
     calls = []
     @contextmanager
     def batch():
@@ -1159,6 +1161,7 @@ def test_gate_base_refused_when_nifty_unresolvable(tmp_path, monkeypatch):
 def test_blocked_capture_reports_missing_proof_without_launching(monkeypatch, capsys):
     from contextlib import contextmanager
     import merge_gate as gate
+    monkeypatch.setattr(gate, "check_capture_commit", lambda *a: None)  # synthetic launch commands
     @contextmanager
     def unavailable():
         raise RuntimeError("fixture: FIFO queue busy")
