@@ -74,6 +74,23 @@ def test_cook_and_ktx_only_pack(tmp_path, monkeypatch, fixture):
     assert not list(tgl.rglob("*.tga"))
 
 
+def test_cook_uses_recipe_stem(tmp_path, monkeypatch):
+    recipe = B.load_recipe()
+    recipe['mc2']['stem'] = 'fixture_mech'
+    alb, nrm = tmp_path / 'alb.png', tmp_path / 'nrm.png'
+    Image.new('RGBA', (2, 2), (97, 53, 21, 255)).save(alb)
+    Image.new('RGB', (2, 2), (128, 128, 0)).save(nrm)
+    def encode(ktx, png, out, uastc):
+        Path(out).write_bytes(b'synthetic-cooked')
+        return True
+    monkeypatch.setattr(C, 'cook_one_png', encode)
+    deploy = tmp_path / 'cooked'
+    C.cook('ktx.exe', alb, nrm, deploy, tmp_path / 'scratch', recipe=recipe)
+    assert sorted(p.relative_to(deploy).as_posix() for p in deploy.rglob('*.ktx2')) == [
+        '128/fixture_mech_alb.ktx2', '128/fixture_mech_nrm.ktx2',
+        'fixture_mech_alb.ktx2', 'fixture_mech_nrm.ktx2']
+
+
 def test_source_material_survives_rigid_split(fixture, tmp_path):
     skm = fixture[0]
     g = json.loads(skm.read_text())

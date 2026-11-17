@@ -16,8 +16,7 @@ from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.bt2018_import.cook_ktx2_textures import cook_one_png  # noqa: E402
-
-STEM = "mw5_madcat"
+from tools.mw5_mechs.build_glb import DEFAULT_RECIPE, load_recipe  # noqa: E402
 
 
 def normal_image(src, size=2048):
@@ -29,13 +28,14 @@ def normal_image(src, size=2048):
     return Image.fromarray(np.uint8(np.clip((xyz * .5 + .5) * 255 + .5, 0, 255))).convert("RGBA")
 
 
-def cook(ktx, albedo, normal, deploy, scratch):
+def cook(ktx, albedo, normal, deploy, scratch, recipe=None):
+    recipe = load_recipe() if recipe is None else recipe
     deploy, scratch = Path(deploy), Path(scratch)
     scratch.mkdir(parents=True, exist_ok=True)
     images = {"alb": Image.open(albedo).convert("RGBA").resize((2048, 2048), Image.Resampling.LANCZOS),
               "nrm": normal_image(normal)}
     for tag, img in images.items():
-        stem = f"{STEM}_{tag}"
+        stem = f"{recipe['mc2']['stem']}_{tag}"
         png, cooked = scratch / f"{stem}.png", scratch / f"{stem}.ktx2"
         img.save(png)
         if not cook_one_png(str(ktx), str(png), str(cooked), str(scratch / f"{stem}.uastc.ktx2")):
@@ -50,5 +50,6 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__)
     for name in ("ktx", "albedo", "normal", "deploy", "scratch"):
         ap.add_argument("--" + name, required=True)
+    ap.add_argument("--recipe", type=Path, default=DEFAULT_RECIPE)
     a = ap.parse_args()
-    cook(a.ktx, a.albedo, a.normal, a.deploy, a.scratch)
+    cook(a.ktx, a.albedo, a.normal, a.deploy, a.scratch, load_recipe(a.recipe))

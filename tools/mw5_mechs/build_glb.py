@@ -130,9 +130,12 @@ def split_parts(g, buf):
             at = pr['attributes']
             pos, nrm, uv = [read_accessor(g, buf, at[k]).astype(np.float32)
                             for k in ('POSITION', 'NORMAL', 'TEXCOORD_0')]
-            j = read_accessor(g, buf, at['JOINTS_0']).astype(int)
-            w = read_accessor(g, buf, at['WEIGHTS_0'])
-            dom = j[np.arange(len(j)), np.argmax(w, axis=1)]
+            if 'JOINTS_0' not in at and 'WEIGHTS_0' not in at:
+                dom = np.zeros(len(pos), dtype=int)  # static weapon: one rigid part
+            else:
+                j = read_accessor(g, buf, at['JOINTS_0']).astype(int)
+                w = read_accessor(g, buf, at['WEIGHTS_0'])
+                dom = j[np.arange(len(j)), np.argmax(w, axis=1)]
             idx = read_accessor(g, buf, pr['indices']).astype(np.int64).reshape(-1, 3)
             total += len(idx)
             for corners in dom[idx]:
@@ -159,6 +162,8 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None, attachments=(), 
     buf = read_buffer(g, skm)
     # tools/mw5_mechs/from_native.py output (native extractor) instead of the umodel glTF + PSA bridge
     native = "bridge" in g.get("extras", {})
+    if not native and anim_dir is None and clips != []:
+        raise ValueError("--anim-dir is required for bridge input with animation clips")
     nodes = g["nodes"]
     skin = g["skins"][0]
     joint_nodes = skin["joints"]
@@ -349,6 +354,8 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None, attachments=(), 
                 smp = na["samplers"][c["sampler"]]
                 q = read_accessor(g, buf, smp["output"]).astype(np.float64)
                 times = read_accessor(g, buf, smp["input"]).astype(np.float32)
+                if not len(q) or not len(times):
+                    raise ValueError(f"{na['name']} channel {nodes[c['target']['node']]['name']} rotation: empty keys")
                 if hold_frame is not None:
                     q, times = q[[hold_frame]], np.zeros(1, np.float32)
                 tin = add(times, 5126, "SCALAR", None, True)

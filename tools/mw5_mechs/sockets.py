@@ -66,7 +66,7 @@ def package_nodes(glb, loadout, recipe=None):
         nodes[name] = joint
         offsets[name] = ' '.join(f'{v:.4f}' for v in local)
         types[name] = int(row['type'])
-        if types[name] not in (1, 2, 4):
+        if types[name] not in (1, 2, 4, 5):
             raise ValueError(f'unsupported weapon type: {types[name]}')
     height = float(g['extras']['trueHeightM'])
     if not np.isfinite(height) or height <= 0:

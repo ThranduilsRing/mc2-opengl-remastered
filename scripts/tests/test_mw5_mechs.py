@@ -337,3 +337,65 @@ def test_recipe_entry_point_and_maps(fixture, tmp_path, monkeypatch):
     assert 'st AnimHost = "fixture_host"' in (tgl / "fixture_host.ini").read_text()
     pkg = json.loads((tgl / "fixture_mech.package.json").read_text())
     assert pkg["sourceGlb"] == "fixture_mech.glb"
+
+
+def test_missile_attachment_type(fixture, tmp_path):
+    from tools.mw5_mechs.sockets import package_nodes
+    from tools.mw5_mechs.build_pack import emit_ini
+    weapon = json.loads(fixture[0].read_text())
+    weapon['nodes'] = [{'name': 'Fire00', 'translation': [2, 3, 30]}]
+    wp, out = tmp_path / 'missile.gltf', tmp_path / 'missile.glb'
+    wp.write_text(json.dumps(weapon))
+    B.build(fixture[0], tmp_path, out, 'albedo.png', attachments=[f'{wp}=Foot0_Left'])
+    _, _, types, _ = package_nodes(out, [dict(node='weapon_0', mesh='missile',
+                                             bone='Foot0_Left', type=5, fires=['Fire00'])])
+    assert types == {'weapon_0': 5}
+    assert 'l WeaponType = 5' in emit_ini('FITini\nFITend', types)
+
+
+def test_static_weapon_attachment(fixture, tmp_path):
+    weapon = json.loads(fixture[0].read_text())
+    del weapon['skins']
+    attrs = weapon['meshes'][0]['primitives'][0]['attributes']
+    del attrs['JOINTS_0'], attrs['WEIGHTS_0']
+    wp = tmp_path / 'static.gltf'
+    wp.write_text(json.dumps(weapon))
+    doc = B.build(fixture[0], tmp_path, tmp_path / 'static.glb', 'albedo.png',
+                  attachments=[f'{wp}=Foot0_Left'])
+    entry = doc['extras']['mw5Attachments'][0]
+    assert entry['joint'] == 'j_LFoot' and len(entry['meshes']) == 1
+    mesh = entry['meshes'][0]
+    assert doc['accessors'][doc['meshes'][mesh]['primitives'][0]['indices']]['count'] == 6
+    assert doc['nodes'][doc['skins'][mesh]['joints'][0]]['name'] == 'j_LFoot'
+
+
+def test_bridge_requires_animation_directory(fixture, tmp_path):
+    with pytest.raises(ValueError, match='anim-dir.*bridge'):
+        B.build(fixture[0], None, tmp_path / 'bad.glb', 'albedo.png')
+
+
+def test_parity_sample_normalizes_short_arc():
+    from tools.mw5_mechs.parity import sample
+    q = sample([0, 1], [[0, 0, 0, 1], [0, 0, -1, 0]], .5, True)
+    assert np.linalg.norm(q) == pytest.approx(1)
+    assert np.allclose(q, [0, 0, -np.sqrt(.5), np.sqrt(.5)])
+    assert sample([0, 1], [[0, 0, 0, 1], [0, 0, 0, -1]], .5, True) == [0, 0, 0, 1]
+    assert sample([0, 1], [[0, 2, 4], [2, 4, 6]], .5, False) == [1, 3, 5]
+
+
+def test_empty_native_hold_channel_names_source(fixture, tmp_path):
+    g = json.loads(fixture[0].read_text())
+    g['extras'] = {'bridge': []}
+    g.update(scene=0, scenes=[{'nodes': [0, len(g['nodes'])]}])
+    g['nodes'].append({'name': 'LOD0', 'mesh': 0})
+    for typ in ('SCALAR', 'VEC4'):
+        g['accessors'].append(dict(bufferView=0, componentType=5126, type=typ, count=0))
+    g['animations'] = [dict(name='TBR_Stand_ANI', samplers=[dict(input=len(g['accessors'])-2,
+                           output=len(g['accessors'])-1)],
+                           channels=[dict(sampler=0, target=dict(node=1, path='rotation'))])]
+    native = tmp_path / 'empty.gltf'
+    native.write_text(json.dumps(g))
+    recipe = B.load_recipe()
+    recipe.update(clips={}, hold_clips={'empty_hold': ['Stand', -1]})
+    with pytest.raises(ValueError, match='TBR_Stand_ANI.*Root.*empty'):
+        B.build(native, None, tmp_path / 'bad.glb', 'albedo.png', recipe=recipe)

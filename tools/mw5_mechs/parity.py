@@ -104,7 +104,11 @@ def sample(times, values, t, rotation):
     x, y = values[lo], values[hi]
     if rotation and sum(i*j for i, j in zip(x, y)) < 0:
         y = [-v for v in y]
-    return [i+(j-i)*f for i, j in zip(x, y)]
+    result = [i+(j-i)*f for i, j in zip(x, y)]
+    if rotation:
+        norm = math.sqrt(sum(v*v for v in result))
+        result = [v / norm for v in result]
+    return result
 
 
 def match_vertices(va, vb, tolerance=1e-4):
