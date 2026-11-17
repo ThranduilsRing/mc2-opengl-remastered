@@ -585,3 +585,19 @@ def test_one_shot_clips_end_on_the_idle_pose(family):
         worst = max(np.degrees(2 * np.arccos(min(1.0, abs(float(np.dot(end[i], idle[i]))))))
                     for i in idle)
         assert worst < 3.0, f"{family} {clip} ends {worst:.1f} deg from idle"
+
+
+def test_hud_icons_have_stock_tone_mix_and_no_outline_ring():
+    """Trigger: tools/bt2018_mechs/render_icons.py (owner 11-16: icons read too bright and busy)."""
+    from tools.bt2018_mechs import render_icons as R
+    import numpy as np
+    rng = np.random.default_rng(1)
+    parts = []
+    for region, (cx, cy) in {6: (0, 3), 2: (2, 3), 3: (-2, 3), 0: (0.6, 1), 1: (-0.6, 1)}.items():
+        v = rng.normal(size=(300, 3)) * 0.35 + [cx, cy, 0]       # jittered "high-poly" blob: noisy normals
+        parts.append((region, v, np.array([[i, i + 1, i + 2] for i in range(0, 297, 3)])))
+    img = R.hud_strip(parts, 25, 30)[:30]
+    solid = img[:, :, 3] > 0
+    assert R.palette_ok(img) == [] and not (img[solid][:, :3] == R.OUTLINE).all(1).any()
+    green = img[solid][:, 1]
+    assert (green == 229).mean() < 0.35 and (green == 83).mean() > 0.4     # dark-dominated like stock
