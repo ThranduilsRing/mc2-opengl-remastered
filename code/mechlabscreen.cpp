@@ -2341,13 +2341,6 @@ void MechLabScreen::updateLocationInput()
 
 	std::vector<LocItem> items;
 	const int dragPanel = ml::panelAt( static_cast<float>( userInput->getMouseDragX() ), static_cast<float>( userInput->getMouseDragY() ) ).value_or( -1 );
-	if ( s_locHover >= 0 && s_locHover < ml::kLocationCount )
-	{
-		gatherPanelItems( pVariant, s_locHover, items );
-		const int row = ml::itemRowAt( s_locHover, mx, my, static_cast<int>( items.size() ) ).value_or( -1 );
-		const LocItem* item = ( row >= 0 && row < static_cast<int>( items.size() ) ) ? &items[row] : nullptr;
-		if ( item )
-			::helpTextID = IDS_HELP_COMP0 + item->comp->getID();
 		if ( !pDragComponent && dragPanel >= 0 && dragPanel < ml::kLocationCount &&
 			input::capture::startsWidgetDrag( userInput->isLeftDrag(), true ) )
 		{
@@ -2373,7 +2366,14 @@ void MechLabScreen::updateLocationInput()
 					refuseRemoval();
 			}
 		}
-		else if ( userInput->isLeftDoubleClick() )
+	if ( s_locHover >= 0 && s_locHover < ml::kLocationCount )
+	{
+		gatherPanelItems( pVariant, s_locHover, items );
+		const int row = ml::itemRowAt( s_locHover, mx, my, static_cast<int>( items.size() ) ).value_or( -1 );
+		const LocItem* item = ( row >= 0 && row < static_cast<int>( items.size() ) ) ? &items[row] : nullptr;
+		if ( item )
+			::helpTextID = IDS_HELP_COMP0 + item->comp->getID();
+		if ( userInput->isLeftDoubleClick() )
 		{
 			if ( item )
 			{
