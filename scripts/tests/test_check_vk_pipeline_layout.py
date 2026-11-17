@@ -70,6 +70,26 @@ def test_current_tree_has_no_errors():
     assert vkpl.main(["--quiet"]) == 0
 
 
+@pytest.mark.parametrize("extra", [
+    "layout(set=0, binding=31) uniform sampler2D extraBinding;",
+    "layout(location=1) in vec2 extraInput;",
+    "layout(location=1) out vec4 extraOutput;",
+    "layout(push_constant) uniform ExtraPush { vec4 value; } pc;",
+])
+def test_water_early_interface_mismatch_fails(tmp_path, capsys, extra):
+    source = tmp_path / "water_geom.frag"
+    source.write_text("#version 450\nlayout(location=0) out vec4 color;\n"
+                      "#ifdef WATER_EARLY_TESTS\n" + extra + "\n#endif\n"
+                      "void main() { color = vec4(1); }\n", encoding="utf-8")
+    cpp = tmp_path / "empty.cpp"
+    cpp.write_text("", encoding="utf-8")
+    assert vkpl.main(["--shader-dir", str(tmp_path), "--cpp", str(cpp), "--quiet"]) == 1
+    assert "WATER_EARLY_TESTS interface/layout differs" in capsys.readouterr().out
+    source.write_text("#version 450\nlayout(location=0) out vec4 color;\n"
+                      "void main() { color = vec4(1); }\n", encoding="utf-8")
+    assert vkpl.main(["--shader-dir", str(tmp_path), "--cpp", str(cpp), "--quiet"]) == 0
+
+
 def test_resolver_accessor_and_sizeof(env):
     _, sym = env
     assert sym.eval("mc2_static_prop_vertex_stride()", "x") == 40

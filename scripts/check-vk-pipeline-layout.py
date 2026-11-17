@@ -65,7 +65,6 @@ VBO_CONTRACT = {
 # (MC2_VK_SHADER_SRC_ALIAS_*) bakes them from another shader, so they reflect identically.
 SPV_ALIASES = {
     "vfx_vegetation_shade.frag": "vfx_vegetation.frag",  # early tests only; identical descriptor ABI
-    "water_geom_early.frag": "water_geom.frag",  # early tests only; identical descriptor ABI
     "terrain_tier1_skirt.frag": "terrain_tier1.frag",
     "mech_preview.frag": "mech_tier1.frag",   # -DMECH_PREVIEW=1; same set-0 layout, set 1 unused
 }
@@ -333,10 +332,10 @@ def type_size(types, tname, base_scalar):
     return None
 
 
-def reflect_shader(glslc, cross, src, outdir, incdir):
-    base = os.path.basename(src)
+def reflect_shader(glslc, cross, src, outdir, incdir, defines=(), alias=None):
+    base = alias or os.path.basename(src)
     spv = os.path.join(outdir, base + ".spv")
-    r = subprocess.run([glslc, "-I", incdir, src, "-o", spv], capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
+    r = subprocess.run([glslc, "-I", incdir, src, "-o", spv] + ["-D" + define for define in defines], capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     if r.returncode != 0:
         return base, None, "glslc failed: " + r.stderr.strip().splitlines()[0] if r.stderr.strip() else "glslc failed"
     r = subprocess.run([cross, spv, "--reflect"], capture_output=True, text=True)
@@ -344,6 +343,8 @@ def reflect_shader(glslc, cross, src, outdir, incdir):
         return base, None, "spirv-cross failed"
     d = json.loads(r.stdout)
     info = {"inputs": {}, "bindings": {}, "push": None, "stage": base.rsplit(".", 1)[-1]}
+    # Retain full resource/block types and outputs for define-variant ABI checks.
+    info["layout"] = {k: d[k] for k in ("types", "outputs", "push_constants", *REFLECT_KEYS) if k in d}
     for it in d.get("inputs", []):
         info["inputs"][it["location"]] = (it["type"], it["name"])
     for key, kind in REFLECT_KEYS.items():
@@ -379,6 +380,16 @@ def compile_all(shader_dir, sdk, tmp):
                 out[base] = info
             else:
                 errs[base] = err
+    water = os.path.join(shader_dir, "water_geom.frag")
+    if os.path.isfile(water):
+        alias, info, err = reflect_shader(glslc, cross, water, tmp, incdir,
+                                          ("WATER_EARLY_TESTS=1",), "water_geom_early.frag")
+        if info is None:
+            errs[alias] = err
+        else:
+            out[alias] = info
+            if "water_geom.frag" in out and info != out["water_geom.frag"]:
+                errs[alias] = "WATER_EARLY_TESTS interface/layout differs from water_geom.frag"
     for alias, real in SPV_ALIASES.items():
         if real in out:
             out[alias] = out[real]
