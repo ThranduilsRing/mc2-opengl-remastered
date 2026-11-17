@@ -654,6 +654,7 @@ bool VulkanContext::init(bool wantPresent) {
     {
         enableFeatures.features.independentBlend = featureEnabled("independentBlend") ? VK_TRUE : VK_FALSE;
         enableFeatures.features.samplerAnisotropy = featureEnabled("samplerAnisotropy") ? VK_TRUE : VK_FALSE;
+        enableFeatures.features.pipelineStatisticsQuery = featureEnabled("pipelineStatisticsQuery") ? VK_TRUE : VK_FALSE;
         enableFeatures.features.shaderSampledImageArrayDynamicIndexing = featureEnabled("shaderSampledImageArrayDynamicIndexing") ? VK_TRUE : VK_FALSE;
         enableFeatures.features.multiDrawIndirect = featureEnabled("multiDrawIndirect") ? VK_TRUE : VK_FALSE;
         enableFeatures.features.drawIndirectFirstInstance = featureEnabled("drawIndirectFirstInstance") ? VK_TRUE : VK_FALSE;

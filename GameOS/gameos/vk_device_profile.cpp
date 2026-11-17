@@ -32,6 +32,7 @@ DeviceCaps gather(VkPhysicalDevice pd, uint32_t instanceApi) {
     vkGetPhysicalDeviceFeatures(pd, &core10);
     c.independentBlend = core10.independentBlend == VK_TRUE;
     c.samplerAnisotropy = core10.samplerAnisotropy == VK_TRUE;
+    c.pipelineStatisticsQuery = core10.pipelineStatisticsQuery == VK_TRUE;
     c.shaderSampledImageArrayDynamicIndexing = core10.shaderSampledImageArrayDynamicIndexing == VK_TRUE;
     c.multiDrawIndirect = core10.multiDrawIndirect == VK_TRUE;
     c.drawIndirectFirstInstance = core10.drawIndirectFirstInstance == VK_TRUE;
