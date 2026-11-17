@@ -602,15 +602,17 @@ long SimpleCamera::update()
 				haveDrawn_ = false;
 				--fitIters_;
 				const float rw = bounds[2] - bounds[0], rh = bounds[3] - bounds[1];
-				const float h = drawn_[3] - drawn_[1];
-				if ( h > 1.f )
+				const float w = drawn_[2] - drawn_[0], h = drawn_[3] - drawn_[1];
+				if ( w > 1.f && h > 1.f )
 				{
-					// Bound every yaw by a cylinder around the rotation axis. Its enclosing sphere
-					// supplies the nearest possible depth, including the camera pitch and model height.
-					const float halfTan = std::tan(framedFov_ * 0.5f * DEGREES_TO_RADS) * 0.94f * rw / viewMulX;
-					const float minDistance = std::hypot(turnRadius_, turnHalfHeight_) + turnRadius_ / halfTan;
-					framedAlt_ = std::max(minDistance, framedAlt_ * std::clamp(h / (fillFrac_ * rh), 0.5f, 2.f));
-					fudgeX = 0.f;
+					// Size ~ 1/tan(fov/2) at a fixed distance (a long lens: moving the camera in distorts the
+					// model and pushes it into the near plane); then centre across, feet just above the bottom edge.
+					// Estimate the full-turn width from the drawn height; bound root-offset inflation.
+					const float wTurn = turnHalfHeight_ > 0.f
+						? std::min(2.f * turnRadius_ * h / (2.f * turnHalfHeight_), 2.f * w) : w;
+					const float s = std::clamp(std::max(h / (fillFrac_ * rh), wTurn / (0.94f * rw)), 0.5f, 2.f);
+					framedFov_ = 2.f * std::atan(std::tan(framedFov_ * 0.5f * DEGREES_TO_RADS) * s) / DEGREES_TO_RADS;
+					fudgeX += ( bounds[0] + bounds[2] ) * 0.5f - ( drawn_[0] + drawn_[2] ) * 0.5f;
 					fudgeY += bounds[3] - rh * ( 1.f - fillFrac_ ) * 0.35f - drawn_[3];
 				}
 			}
