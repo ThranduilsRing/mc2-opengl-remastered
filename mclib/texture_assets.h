@@ -35,7 +35,7 @@ DWORD sourceId(DWORD asset);
 void commitTickTextures(); // main only, after joining the tick
 void prewarmCpuTextures(); // mission load only, before gameplay can change the view
 DWORD fromPixels(DWORD* pixels, gos_TextureFormat format, DWORD hints, DWORD width, DWORD bytesPerPixel=4);
-DWORD fromRawPixels(DWORD* pixels, gos_TextureFormat format, DWORD hints, DWORD width, DWORD bytesPerPixel=4);
+DWORD fromRawPixels(DWORD* pixels, gos_TextureFormat format, DWORD hints, DWORD width, DWORD bytesPerPixel=4, const char* name=nullptr);
 long save(DWORD asset,mc2::czstring path);
 long refresh(mc2::czstring match,long& missing);
 DWORD uvScale(DWORD asset);

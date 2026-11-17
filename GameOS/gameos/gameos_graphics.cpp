@@ -35,6 +35,7 @@ void gosRendererPrepareHudTextures() {
         draw.textureWidth = draw.textureHeight = 2048;
         draw.textureRgba = texture->getRgbaMirror();
         const bool ready = present.prepareHudTexture(draw);
+        if (mc2_diag::tagRequested("HUD_LOAD_PREPARE"))
         std::fprintf(stderr, "[HUD_LOAD_PREPARE] handle=%u serial=%u asset=%s ready=%d\n",
             draw.textureHandle, draw.textureSerial, texture->sourceName(), static_cast<int>(ready));
     }

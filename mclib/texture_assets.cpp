@@ -466,7 +466,7 @@ DWORD sourceId(DWORD asset) {
     return source->cpuTexture;
 }
 namespace {
-DWORD pixels(DWORD* data, gos_TextureFormat format, DWORD hints, DWORD width, DWORD bytesPerPixel) {
+DWORD pixels(DWORD* data, gos_TextureFormat format, DWORD hints, DWORD width, DWORD bytesPerPixel, const char* name=nullptr) {
     if (!RenderCore::activeTextureService || !data || !width ||
         width>RenderCore::kKtxMaxEdge || bytesPerPixel!=4 || static_cast<size_t>(width)*width*4>kMaxSourceBytes) return kInvalidAsset;
     auto source=std::make_shared<TextureSource>();
@@ -474,6 +474,7 @@ DWORD pixels(DWORD* data, gos_TextureFormat format, DWORD hints, DWORD width, DW
     source->bytes=std::make_shared<const Bytes>(begin,begin+static_cast<size_t>(width)*width*4);
     source->width=source->height=source->logicalWidth=source->logicalHeight=width;
     source->format=format; source->hints=hints;
+    if (name) source->name=name;
     auto& store=sourceStore();
     const auto asset=store.publish(std::move(source));
     if (mc2::tick::collecting() || mc2::overlap::onSimWorker()) store.requestCreate(asset);
@@ -483,8 +484,8 @@ DWORD pixels(DWORD* data, gos_TextureFormat format, DWORD hints, DWORD width, DW
 DWORD fromPixels(DWORD* data, gos_TextureFormat format, DWORD hints, DWORD width, DWORD bytesPerPixel) {
     return pixels(data,format,hints,width,bytesPerPixel);
 }
-DWORD fromRawPixels(DWORD* data, gos_TextureFormat format, DWORD hints, DWORD width, DWORD bytesPerPixel) {
-    return pixels(data,format,hints,width,bytesPerPixel);
+DWORD fromRawPixels(DWORD* data, gos_TextureFormat format, DWORD hints, DWORD width, DWORD bytesPerPixel, const char* name) {
+    return pixels(data,format,hints,width,bytesPerPixel,name);
 }
 long save(DWORD asset, mc2::czstring path) {
     auto source=liveSource(asset);

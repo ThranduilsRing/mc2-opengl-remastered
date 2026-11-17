@@ -3,6 +3,7 @@
 #include "engine_present_vk.h"
 #include "hud_command_merge.h"
 #include "hud_texture_mips.h"
+#include "diagnostic_trace.h"
 #include "present_thread.h"
 #include "../../mclib/battle_bench_wait.h"
 #include "../../mclib/sim_overlap.h"
@@ -56,7 +57,6 @@
 #include <vector>
 extern uint32_t g_mc2RenderFrame;
 extern uint32_t g_mc2FxFireCaptureFrame;
-extern uint32_t g_mc2RenderFrame;
 
 namespace mc2vk {
 namespace {
@@ -1144,6 +1144,7 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
     ZoneScopedN("HUD.TextureUpload");
     if (uploads && mipmapped) {
         ZoneScopedN("HUD.TextureUpload.SynchronousFallback");
+        if (mc2_diag::tagRequested("HUD_SYNC_FALLBACK"))
         std::fprintf(stderr, "[HUD_SYNC_FALLBACK] handle=%u serial=%u kind=%u frame=%llu\n",
             d.textureHandle, d.textureSerial, d.kind, static_cast<unsigned long long>(s.hudMirrorFrameCounter));
     }
@@ -1292,6 +1293,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
             if (!mirror || !mirror->set)
                 continue;
             if (d.textureWidth == 2048 && d.textureHeight == 2048 && !mirror->firstDrawLogged) {
+                if (mc2_diag::tagRequested("HUD_FIRST_DRAW"))
                 std::fprintf(stderr, "[HUD_FIRST_DRAW] handle=%u serial=%u kind=%u frame=%u prepared=%d\n",
                     d.textureHandle, d.textureSerial, d.kind, ::g_mc2RenderFrame,
                     static_cast<int>(mirror->preparedSource == d.textureRgba));
@@ -2034,7 +2036,7 @@ bool EnginePresentVk::prewarmPipelines() {
     if (!created_ || !impl_) return false;
     Impl& s=*impl_;
     // Previous mission's prepared buffers can retire through the normal ticket path.
-    for (auto& entry : s.hudTextureMirrors) entry.second.preparedSource.reset();
+    for (auto& [identity, mirror] : s.hudTextureMirrors) mirror.preparedSource.reset();
     const bool ready = ensureCompositeObjects(s) && ensureHudColorObjects(s) && ensureHudTexObjects(s) &&
         (!ImGui::GetCurrentContext() || ensureImguiVulkan(s)) &&
         s.spatialAA.prepare(*s.ctx, s.scaledComposite.image ? s.scaledComposite : s.sharedImg,
