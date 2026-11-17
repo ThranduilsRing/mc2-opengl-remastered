@@ -1,9 +1,10 @@
 // First level converts native reverse-Z D32 into height above the water.
 // Later levels conservatively reduce the previous R16F level, including odd edges.
 [[vk::binding(0, 0)]] Texture2D<float> source;
-[[vk::binding(1, 0), vk::image_format("r16f")]] RWTexture2D<float> destination;
+[[vk::image_format("r16f")]]
+[[vk::binding(1, 0)]] RWTexture2D<float> destination;
 struct Params { int2 size; int fromDepth; float heightRange; };
-[[vk::push_constant]] ConstantBuffer<Params> P;
+[[vk::binding(2, 0)]] ConstantBuffer<Params> P;
 
 [shader("compute")]
 [numthreads(8, 8, 1)]

@@ -1,5 +1,6 @@
 #include "vulkan_water_island_internal.h"
 #include "vk_water_planar.h"
+#include "vulkan_terrain_island.h"
 #include "vk_one_shot.h"
 #include "vk_barrier_batch_vk.h"
 #include "vk_gpu_profile.h"
@@ -23,6 +24,7 @@ struct ReflectBake : mc2vk::IslandState {
     mc2vk::OwnedImage color, depth, height;
     mc2vk::OwnedImageView colorView, depthView, heightView;
     std::vector<mc2vk::OwnedImageView> mipViews;
+    std::vector<mc2vk::OwnedBuffer> params;
     mc2vk::OwnedDescriptorSetLayout dsl;
     mc2vk::OwnedDescriptorPool pool;
     mc2vk::OwnedPipelineLayout layout;
@@ -68,19 +70,20 @@ bool initBake(WaterIsland* s, ReflectBake& b) {
     }
     const VkDescriptorSetLayoutBinding bindings[] = {
         {0, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr},
-        {1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr}};
+        {1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr},
+        {2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr}};
     VkDescriptorSetLayoutCreateInfo di{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
-    di.bindingCount = 2; di.pBindings = bindings;
+    di.bindingCount = 3; di.pBindings = bindings;
     if (!mc2vk::create(b.dsl, s->device, [&](auto* h) { return vkCreateDescriptorSetLayout(s->device, &di, nullptr, h); })) return false;
     const VkDescriptorPoolSize sizes[] = {{VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, static_cast<uint32_t>(b.levels)},
-                                        {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, static_cast<uint32_t>(b.levels)}};
+                                        {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, static_cast<uint32_t>(b.levels)},
+                                        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, static_cast<uint32_t>(b.levels)}};
     VkDescriptorPoolCreateInfo pi{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
-    pi.maxSets = b.levels; pi.poolSizeCount = 2; pi.pPoolSizes = sizes;
+    pi.maxSets = b.levels; pi.poolSizeCount = 3; pi.pPoolSizes = sizes;
     if (!mc2vk::create(b.pool, s->device, [&](auto* h) { return vkCreateDescriptorPool(s->device, &pi, nullptr, h); })) return false;
     const VkDescriptorSetLayout dsl = b.dsl.get();
-    const VkPushConstantRange push{VK_SHADER_STAGE_COMPUTE_BIT, 0, 16};
     VkPipelineLayoutCreateInfo li{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
-    li.setLayoutCount = 1; li.pSetLayouts = &dsl; li.pushConstantRangeCount = 1; li.pPushConstantRanges = &push;
+    li.setLayoutCount = 1; li.pSetLayouts = &dsl;
     if (!mc2vk::create(b.layout, s->device, [&](auto* h) { return vkCreatePipelineLayout(s->device, &li, nullptr, h); })) return false;
     mc2vk::OwnedShaderModule shader(s->device, load_spv(s->device, spv_dir() + "water_reflect_bake_mips.comp.spv"));
     if (!shader) return false;
@@ -89,6 +92,7 @@ bool initBake(WaterIsland* s, ReflectBake& b) {
     ci.layout = b.layout.get();
     if (!mc2vk::create(b.pipe, s->device, [&](auto* h) { return mc2vk::infra::compute(s->device, VK_NULL_HANDLE, 1, &ci, nullptr, h); })) return false;
     b.sets.resize(b.levels);
+    b.params.resize(b.levels);
     for (int i = 0; i < b.levels; ++i) {
         VkDescriptorSetAllocateInfo alloc{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
         alloc.descriptorPool = b.pool.get(); alloc.descriptorSetCount = 1; alloc.pSetLayouts = &dsl;
@@ -96,12 +100,18 @@ bool initBake(WaterIsland* s, ReflectBake& b) {
         const VkDescriptorImageInfo images[] = {
             {VK_NULL_HANDLE, i ? b.mipViews[i-1].get() : b.depthView.get(), VK_IMAGE_LAYOUT_GENERAL},
             {VK_NULL_HANDLE, b.mipViews[i].get(), VK_IMAGE_LAYOUT_GENERAL}};
-        VkWriteDescriptorSet writes[2]{};
-        for (int j = 0; j < 2; ++j) {
+        const int size = (std::max)(1, b.size >> i);
+        const struct { int w, h, fromDepth; float range; } params{size, size, i == 0, kHeightRange};
+        static_assert(sizeof(params) == 16);
+        if (!b.params[i].createFilled(s->allocator, s->device, &params, sizeof(params), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "water.bake.params")) return false;
+        const VkDescriptorBufferInfo buffer{b.params[i].get(), 0, sizeof(params)};
+        VkWriteDescriptorSet writes[3]{};
+        for (int j = 0; j < 3; ++j) {
             writes[j].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; writes[j].dstSet = b.sets[i]; writes[j].dstBinding = j;
-            writes[j].descriptorCount = 1; writes[j].descriptorType = bindings[j].descriptorType; writes[j].pImageInfo = &images[j];
+            writes[j].descriptorCount = 1; writes[j].descriptorType = bindings[j].descriptorType;
+            if (j == 2) writes[j].pBufferInfo = &buffer; else writes[j].pImageInfo = &images[j];
         }
-        vkUpdateDescriptorSets(s->device, 2, writes, 0, nullptr);
+        vkUpdateDescriptorSets(s->device, 3, writes, 0, nullptr);
     }
     VkQueryPoolCreateInfo qi{VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO};
     qi.queryType = VK_QUERY_TYPE_TIMESTAMP; qi.queryCount = 2;
@@ -183,9 +193,7 @@ bool prepare_reflect_bake(WaterIsland* s, float water) {
         mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_COMPUTE, b.pipe.get());
         for (int i = 0; i < b.levels; ++i) {
             const int size = (std::max)(1, b.size >> i);
-            const struct { int w, h, fromDepth; float range; } push{size, size, i == 0, kHeightRange};
             vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_COMPUTE, b.layout.get(), 0, 1, &b.sets[i], 0, nullptr);
-            vkCmdPushConstants(cb, b.layout.get(), VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(push), &push);
             vkCmdDispatch(cb, (size+7)/8, (size+7)/8, 1);
             transition(b.height.get(), VK_IMAGE_ASPECT_COLOR_BIT, i, 1, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL);
         }
