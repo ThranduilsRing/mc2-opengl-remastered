@@ -201,9 +201,40 @@ def commit_order_problem(older, newer, what_older, what_newer):
 
 
 SHADER_BUILD_DIRS = ("shaders/vulkan/", "shaders/include/", "shaders/spv/")
+EOL_TEXT_EXTS = {".fit", ".csv", ".txt", ".abx", ".abl", ".bat", ".py",
+                 ".json", ".md", ".ini", ".cfg", ".xml", ".yaml", ".yml"}
 
 
-def _data_mismatch_entries(ma, mb):
+def eol_equivalence(rel, sha_a, sha_b, *roots):
+    """Prove both raw hashes from NUL-free text bytes, without changing deployed bytes.
+
+    A checkout can witness historical captures too: accept an LF/CRLF reconstruction
+    only when its entire raw hash matches the recorded manifest hash.
+    """
+    if Path(rel).suffix.lower() not in EOL_TEXT_EXTS or not all(
+            re.fullmatch(r"[0-9a-f]{64}", sha or "") for sha in (sha_a, sha_b)):
+        return None
+    witnessed = {}
+    for root in roots:
+        if root is None:
+            continue
+        root = Path(root).resolve()
+        path = (root / rel).resolve()
+        if not path.is_relative_to(root) or not path.is_file():
+            continue
+        content = path.read_bytes()
+        if b"\0" in content:
+            continue
+        normalized = content.replace(b"\r\n", b"\n")
+        digest = hashlib.sha256(normalized).hexdigest()
+        for raw in (content, normalized, normalized.replace(b"\n", b"\r\n")):
+            witnessed[hashlib.sha256(raw).hexdigest()] = digest
+    if sha_a in witnessed and witnessed.get(sha_b) == witnessed[sha_a]:
+        return dict(path=rel, sha256_A=sha_a, sha256_B=sha_b, normalized_sha256=witnessed[sha_a])
+    return None
+
+
+def _data_mismatch_entries(ma, mb, target=None):
     """[(relpath, line)] for every data file that differs between manifests A and B, ignoring the build under test: mc2.exe,
     everything under shaders/vulkan/ (the .spv and the sources they compile from ship together with the exe) and the build
     outputs that never change a capture's pixels (mc2.pdb pairs with mc2.exe; mc2_asset_viewer.exe is not launched by a
@@ -212,8 +243,10 @@ def _data_mismatch_entries(ma, mb):
     W137: shaders/include (*.hglsl) and shaders/spv (prebuilt packages) ship with the exe the same way. Only these three
     deployed shader dirs are exempt; any other file under shaders/ (data, fixtures) still refuses."""
     from deploy_payload import editor_only_payload
+    game = target == "game" or (target is None and bool(EXECUTABLES.intersection(ma))
+                                and bool(EXECUTABLES.intersection(mb)))
     build_outputs = EXECUTABLES | {"mc2.pdb", "mc2_asset_viewer.exe", "mc2_asset_viewer"}
-    skip = lambda p: p in build_outputs or p.startswith(SHADER_BUILD_DIRS) or editor_only_payload(p)
+    skip = lambda p: p in build_outputs or p.startswith(SHADER_BUILD_DIRS) or (game and editor_only_payload(p))
     ma = {k: v for k, v in ma.items() if not skip(k)}
     mb = {k: v for k, v in mb.items() if not skip(k)}
     entries = [(k, f"only in A: {k}") for k in sorted(ma.keys() - mb.keys())]
@@ -227,7 +260,8 @@ def manifest_mismatches(ma, mb):
     return [line for _, line in _data_mismatch_entries(ma, mb)]
 
 
-def candidate_mismatches(ma, mb, commit, install_b=None, baseline=None):
+def candidate_mismatches(ma, mb, commit, install_b=None, baseline=None, install_a=None,
+                         identity_receipt=None, target=None):
     """Candidate-only declarations, plus explicitly recorded build-tree auxiliary hash pairs.
 
     An absent auxiliary row in B remains a mismatch. No blanket executable/DLL exclusion.
@@ -246,7 +280,23 @@ def candidate_mismatches(ma, mb, commit, install_b=None, baseline=None):
             if install_b is None or asset_parity._sha(Path(install_b) / rel) == mb[rel]:
                 accepted.add(rel)
     remaining = []
-    for rel, line in _data_mismatch_entries(ma, mb):
+    for rel, line in _data_mismatch_entries(ma, mb, target):
+        source_rel = "examples/" + rel if rel.startswith("mods/") else rel
+        equivalent = None
+        if (Path(rel).suffix.lower() in EOL_TEXT_EXTS and rel in ma and rel in mb
+                and all(root is None or ((Path(root) / rel).is_file()
+                        and asset_parity._sha(Path(root) / rel) == manifest.get(rel))
+                        for root, manifest in ((install_a, ma), (install_b, mb)))):
+            equivalent = eol_equivalence(rel, ma.get(rel), mb.get(rel), install_a, install_b, baseline)
+            if equivalent is None:
+                equivalent = eol_equivalence(source_rel, ma.get(rel), mb.get(rel), ROOT)
+        if equivalent:
+            equivalent["path"] = rel
+            print(f"[ab] EOL-ONLY {rel} sha256_A={ma[rel]} sha256_B={mb[rel]} "
+                  f"normalized_sha256={equivalent['normalized_sha256']}", flush=True)
+            if identity_receipt is not None:
+                identity_receipt.append(equivalent)
+            continue
         if (rel in asset_parity.AUXILIARY
                 and all(re.fullmatch(r"[0-9a-f]{64}", m.get(rel, "")) for m in (ma, mb))
                 and (install_b is None or asset_parity._sha(Path(install_b) / rel) == mb[rel])):
@@ -385,7 +435,7 @@ def exe_a_base_check(commit_a, commit_b):
     return None, None
 
 
-def base_problems(install_a=None, install_b=None, exe_a=None, exe_b=None, install=None):
+def base_problems(install_a=None, install_b=None, exe_a=None, exe_b=None, install=None, identity_receipt=None):
     """Reasons the two sides are not a same-base A/B. Install mode: A's commit must be an ancestor of B's and the data/shader
     manifests must match. Exe-swap mode: each exe's commit must descend from the install's deployed commit."""
     problems = []
@@ -399,7 +449,8 @@ def base_problems(install_a=None, install_b=None, exe_a=None, exe_b=None, instal
         if not ma or not mb:
             problems.append(f"{MANIFEST} missing in " + " and ".join(d for d, m in ((install_a, ma), (install_b, mb)) if not m))
         else:
-            diffs = [line for _, line in candidate_mismatches(ma, mb, cb, install_b, install)]
+            diffs = [line for _, line in candidate_mismatches(ma, mb, cb, install_b, install,
+                                                           install_a, identity_receipt)]
             if diffs:
                 problems.append(f"{len(diffs)} data/shader manifest mismatch(es) besides mc2.exe and shaders/vulkan/*.spv: "
                                 + "; ".join(diffs[:20]) + (" ..." if len(diffs) > 20 else ""))
@@ -559,7 +610,7 @@ def stamp_cross_base(img: Image.Image, text: str = "CROSS-BASE") -> Image.Image:
 
 
 def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None, cross_base=False, data_delta_accepted=None,
-            exe_a_base_mismatch=None, exe_a_swap=None, hud=False, data_parity=None):
+            exe_a_base_mismatch=None, exe_a_swap=None, hud=False, data_parity=None, identity_receipt=None):
     """Returns the compared rows; compare.problems lists missing/empty evidence (callers exit nonzero on it)."""
     if not bookmarks:
         bookmarks = discover_bookmarks(gl_dir, vk_dir)
@@ -635,7 +686,7 @@ def compare(gl_dir: Path, vk_dir: Path, out: Path, crops, bookmarks=None, cross_
     (out / "summary.json").write_text(json.dumps(
         {"gl": str(gl_dir), "vk": str(vk_dir), "threshold": THRESH, "cross_base": cross_base, "hud": hud,
          "data_delta_accepted": list(data_delta_accepted or []), "exe_a_base_mismatch": exe_a_base_mismatch,
-         "exe_a_swap": exe_a_swap, "data_parity": data_parity,
+         "exe_a_swap": exe_a_swap, "data_parity": data_parity, "eol_equivalences": list(identity_receipt or []),
          "cross_data": bool(data_parity and data_parity.get("cross_data")),
          "rows": rows, "problems": problems,
          "gpu": {"a": gpu_a, "b": gpu_b, "same": gpu_a == gpu_b}}, indent=2))
@@ -1274,13 +1325,15 @@ def main(argv=None):
             sys.exit("--crop needs 4 comma-separated fractions")
     stamp = time.strftime("%Y%m%d_%H%M%S")
     out = Path(a.out_root) if a.out_root else ROOT / "tests/visual/captures" / f"ab_{stamp}"
+    identity_receipt = []
     if a.compare_only:
         try:
             ia, ib = [captured_identity(Path(d)) for d in a.compare_only]
         except ValueError as exc:
             sys.exit(f"ab.py: {exc}")
         bad = [p for p in [commit_order_problem(ia["commit"], ib["commit"], "capture A", "capture B")] if p]
-        entries = candidate_mismatches(ia["manifest"], ib["manifest"], ib["commit"], baseline=a.install)
+        entries = candidate_mismatches(ia["manifest"], ib["manifest"], ib["commit"], baseline=a.install,
+                                       identity_receipt=identity_receipt)
         accepted_delta = []
         if a.allow_data_delta and not bad:
             # the merge gate's before (published v0.4) vs after (candidate): B descends from A, so a data difference is the
@@ -1305,11 +1358,11 @@ def main(argv=None):
         if bad and not a.allow_base_mismatch:
             sys.exit("ab.py: mismatched capture identities: " + "; ".join(bad))
         compare(Path(a.compare_only[0]), Path(a.compare_only[1]), out, crops,
-                cross_base=bool(bad), data_delta_accepted=accepted_delta, hud=a.hud)
+                cross_base=bool(bad), data_delta_accepted=accepted_delta, hud=a.hud, identity_receipt=identity_receipt)
         sys.exit(1 if getattr(compare, "problems", None) else 0)
     if not a.bookmarks:
         sys.exit("--bookmarks required")
-    bad = base_problems(a.install_a, a.install_b, a.exe_a, a.exe_b, a.install)
+    bad = base_problems(a.install_a, a.install_b, a.exe_a, a.exe_b, a.install, identity_receipt)
     if bad and not a.allow_base_mismatch:
         sys.exit("ab.py: refusing an A/B across different bases:\n  " + "\n  ".join(bad)
                  + "\n  fix: deploy side A's base to the install (so both sides run the same base), or pass --allow-base-mismatch"
@@ -1351,7 +1404,8 @@ def main(argv=None):
         for line in capture_commit_report(identities[0]["commit"], identities[1]["commit"], worktree_head()):
             print(line, flush=True)
         compare(out / "a", out / "b", out / "cmp", crops, [s.strip() for s in a.bookmarks.split(",") if s.strip()],
-                cross_base=bool(bad), exe_a_base_mismatch=exe_a_base_mismatch, exe_a_swap=exe_a_swap, hud=a.hud, data_parity=dpar)
+                cross_base=bool(bad), exe_a_base_mismatch=exe_a_base_mismatch, exe_a_swap=exe_a_swap, hud=a.hud,
+                data_parity=dpar, identity_receipt=identity_receipt)
         rc = 1 if getattr(compare, "problems", None) else 0
     finally:
         cleanup_stage(a.staged, keep=a.keep_stage)  # a/, b/ and cmp/ stay; the 13 GB stage goes, pass or fail

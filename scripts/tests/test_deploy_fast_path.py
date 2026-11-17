@@ -186,7 +186,6 @@ def test_failed_publish_keeps_previous_payload(tmp_path, monkeypatch, rel):
 
 def test_partial_copy_keeps_previous_payload(tmp_path, monkeypatch):
     src, target, rel = _setup(tmp_path, monkeypatch)
-    rel = "data/copy.bin"  # Exercise raw copyfile failure; text uses the normalization writer.
     monkeypatch.setattr(dp, "ensure_engine_normal_cooks", lambda target: None)
     dst = Path(target) / rel
     dst.parent.mkdir()
@@ -304,19 +303,17 @@ def test_full_verify_copies_even_unchanged_files(tmp_path, monkeypatch):
     src, target, rel = _setup(tmp_path, monkeypatch)
     cache = _cache_after(src, target, rel, _deploy(src, target, rel, cache={}))
     copies = []
-    real_copy = dp.replace_file
+    real_copy = dp.shutil.copyfile
 
     def counting_copy(a, b, *args, **kwargs):
-        copies.append(b)
+        copies.append(a)
         return real_copy(a, b, *args, **kwargs)
 
-    monkeypatch.setattr(dp, "replace_file", counting_copy)
+    monkeypatch.setattr(dp.shutil, "copyfile", counting_copy)
     _deploy(src, target, rel, cache=cache)
     assert copies == [], "fast path must skip the unchanged file"
     _deploy(src, target, rel, cache=cache, full_verify=True)
-    assert [os.path.normcase(os.path.normpath(c)) for c in copies] == [
-        os.path.normcase(os.path.normpath(str(Path(target) / rel)))
-    ], "--full-verify must publish the unchanged file again"
+    assert copies == [src], "--full-verify must copy the unchanged file again"
 
 
 def test_lane_worktree_must_name_its_install():
