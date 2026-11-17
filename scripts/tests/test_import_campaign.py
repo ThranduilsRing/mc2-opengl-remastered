@@ -33,6 +33,29 @@ def sample(tmp_path):
     return source, deploy
 
 
+def test_omnitech_logistics_portrait_icon_and_kitfox_name(tmp_path):
+    from PIL import Image
+    source, out = tmp_path / "source", tmp_path / "mod"
+    art = source / "data/art"
+    (art / "mechicons").mkdir(parents=True)
+    (out / "data/objects").mkdir(parents=True)
+    (out / "data/objects/uller.csv").write_text(
+        "BaseChassisInfo,\nIdentification,\nMechName,Kitfox\nHouseID,4\nDescIndex,32072\n")
+    (art / "mcl_gn_deploymentteams.fit").write_text(
+        '[PilotIcon]\nl Width = 33 // authored size\nl Height = 46\nst FileName = "pilots_high"\n')
+    portrait = Image.new("RGBA", (512, 512), "red")
+    portrait.paste("blue", (33, 46, 66, 92))  # PictureIndex 13, twelve columns.
+    portrait.save(art / "pilots_high.tga")
+    Image.new("RGBA", (40, 48), "green").save(art / "mechicons/Kitfox.tga")
+    imp.import_logistics_art(source, out)
+    pilot = Image.open(out / "data/art/pilots/13.png")
+    assert pilot.size == (33, 46) and pilot.getpixel((16, 23)) == (0, 0, 255, 255)
+    mech = Image.open(out / "data/art/mechicons/uller.png")
+    assert mech.size == (40, 48) and mech.getpixel((20, 24)) == (0, 128, 0, 255)
+    names = (out / "data/defs/text/en_us/z_mco_mech_names.fit").read_text()
+    assert 'legacyId = 32072' in names and 'text = "Kitfox"' in names
+
+
 def test_folder_zip_same_identity_idempotent_and_read_only(sample, tmp_path):
     source, deploy = sample
     before = imp.digest(imp.source_files(source))

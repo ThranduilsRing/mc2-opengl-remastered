@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import csv
 import hashlib
 import io
 import json
@@ -22,6 +23,8 @@ import import_tool as legacy
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import console_child
 from smoke_lib.child_registry import pid_alive
+
+LOGISTICS_ART_VERSION = 2
 
 
 def fst_entries(path):
@@ -153,6 +156,44 @@ def fill_campaign_object_slots(root, out, refs):
         destination = out / "data/objects/object2.pak"
         destination.parent.mkdir(parents=True, exist_ok=True)
         write_pak(str(destination), slots)
+
+
+def import_logistics_art(root, out):
+    """Keep Omnitech's authored content independent of the stock UI's grid sizes."""
+    from PIL import Image
+    sys.path.insert(0, str(Path(__file__).resolve().parent / "mco_import"))
+    from build_mco_compat import build_mech_names_fit, _MECH_ICON_MAP
+    objects = out / "data/objects"
+    build_mech_names_fit(str(objects), str(out / "data/defs/text/en_us"))
+    art = root / "data/art"
+    icons = {p.stem.lower(): p for p in (art / "mechicons").glob("*.[tT][gG][aA]")}
+    for path in objects.glob("*.csv"):
+        rows = list(csv.reader(io.StringIO(path.read_text(encoding="latin1"))))
+        name = next((r[1].strip().lower() for r in rows if len(r) > 1 and r[0] == "MechName"), "")
+        source = icons.get(_MECH_ICON_MAP.get(path.stem.lower(), name))
+        if source:
+            dest = out / f"data/art/mechicons/{path.stem.lower()}.png"
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            Image.open(source).convert("RGBA").save(dest)
+    layout = art / "mcl_gn_deploymentteams.fit"
+    if not layout.is_file():
+        return
+    block = re.search(r"(?is)\[PilotIcon\](.*?)(?=\[|\Z)", layout.read_text(encoding="latin1"))
+    if not block:
+        return
+    def value(key):
+        return re.search(r"(?im)^\s*\w+\s+" + key + r'\s*=\s*("[^"]+"|\w+)', block[1])[1].strip('"')
+    source = art / (value("FileName").lower().removesuffix(".tga") + ".tga")
+    if source.is_file():
+        image = Image.open(source).convert("RGBA")
+        w, h = int(value("Width")), int(value("Height"))
+        dest = out / "data/art/pilots"
+        dest.mkdir(parents=True, exist_ok=True)
+        # Pilot PictureIndex uses twelve columns, including padded source sheets.
+        for index in range(12 * (image.height // h)):
+            x, y = index % 12 * w, index // 12 * h
+            image.crop((x, y, x + w, y + h)).save(dest / f"{index:02}.png")
+    print(f"[CAMPAIGN_ART] token={LOGISTICS_ART_VERSION} cache=miss")
 
 
 def repair_shared_components(existing, root, scratch):
@@ -303,6 +344,13 @@ def import_campaign(source, deploy):
                     raise ValueError(f"Missing {dependency}; import the full compatibility base first.")
                 if dependency == "mc2x-compat":
                     repair_shared_components(dep, root, scratch)
+            if "mco-compat" in metadata.get("dependencies", []) and saved.get("logistics_art_version") != LOGISTICS_ART_VERSION:
+                import_logistics_art(root, target)
+                saved["logistics_art_version"] = LOGISTICS_ART_VERSION
+                saved["files"] = {p.relative_to(target).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+                                  for p in target.rglob("*") if p.is_file() and not p.name.startswith(".")}
+                receipt.write_text(json.dumps(saved), encoding="utf-8")
+                return {"status": "installed", "mod": mod_id, "campaigns": campaigns}
             return {"status": "unchanged", "mod": mod_id, "campaigns": campaigns}
         probe = legacy.classify(str(root))
         if probe["action"] == "reject":
@@ -356,6 +404,7 @@ def import_campaign(source, deploy):
             raise ValueError(f"Campaign transfer failed: {rc}")
         if compat == "mco-compat":
             fill_campaign_object_slots(root, out, refs)
+            import_logistics_art(root, out)
         available = available_assets(out) | available_assets(deploy)
         for ref in refs[:-1] if len(refs) > 1 else []:
             available |= available_assets(Path(ref).parent)
@@ -377,7 +426,8 @@ def import_campaign(source, deploy):
         (out / "mod.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
         hashes = {p.relative_to(out).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
                   for p in out.rglob("*") if p.is_file()}
-        (out / ".campaign-import.json").write_text(json.dumps({"source_sha256": fingerprint, "files": hashes}), encoding="utf-8")
+        (out / ".campaign-import.json").write_text(json.dumps({"source_sha256": fingerprint, "files": hashes,
+            "logistics_art_version": LOGISTICS_ART_VERSION}), encoding="utf-8")
         for item in pending + [mod_id]:
             (staged / "mods" / item).rename(mods / item)
         return {"status": "installed", "mod": mod_id, "compat": compat, "campaigns": campaigns}
