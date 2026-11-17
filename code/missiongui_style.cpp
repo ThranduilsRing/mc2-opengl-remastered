@@ -1120,7 +1120,11 @@ bool MissionInterfaceManager::updateOrderMenu(bool allowOpen, bool overGui)
     for (int i = 0; i < MAX_COMMAND; ++i) {
         if (commands[i].releaseFunction && commands[i].key != -1 &&
             gos_GetKeyStatus(gosEnum_KeyIndex(commands[i].key & 0x000fffff)) == KEY_RELEASED)
+        {
             (this->*commands[i].releaseFunction)();
+            if (mc2_diag::tagRequested("ORDER_MENU"))
+                std::fprintf(stderr, "[ORDER_MENU] release handled cmd=%d guard=%d jump=%d\n", i, controlGui.getGuard() ? 1 : 0, controlGui.getJump() ? 1 : 0);
+        }
     }
     if (!orderMenu.captured) return true;
     if (useLeftRightMouseProfile || ImGui::IsKeyPressed(ImGuiKey_Escape) ||
