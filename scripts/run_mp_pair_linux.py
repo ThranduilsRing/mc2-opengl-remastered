@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Linux headless lockstep pair runner; run under slot.sh N --game."""
+"""Linux headless or rendered lobby lockstep pair runner; run under slot.sh N --game."""
 from __future__ import annotations
 
 from contextlib import ExitStack
@@ -13,7 +13,7 @@ import subprocess
 import sys
 import time
 
-from run_mp_loopback_proof import ClientShim, arguments, compare_traces, fixture_orders, read_trace
+from run_mp_loopback_proof import ClientShim, LobbyDriver, arguments, compare_traces, fixture_orders, read_trace
 from smoke_lib.runner import FORCED_ENV, SOFT_ENV, POPPED_ENV, unregistered_ambient
 
 
@@ -37,7 +37,16 @@ def peer_command(args, root, slot):
     argv = [str(args.install / "mc2"), "--mission", "mc2_01", "--profile", "tier1",
             "--duration", str(args.timeout), "--ticks", str(args.ticks),
             "--host" if slot == 0 else "--join", f"127.0.0.1:{args.port + slot}",
-            "--mp-user-dir", str(root), "--headless"]
+            "--mp-user-dir", str(root)]
+    if args.lobby:
+        option = argv.index("--host" if slot == 0 else "--join")
+        del argv[option:option + 2]
+        env.update(MC2_BOOT_TO_SCREEN="mainmenu", MC2_MENU_CANARY_SKIP_INTRO="1",
+                   MC2_DIAG_TAGS="COOP_UI", MC2_WIDTH="1920", MC2_HEIGHT="1080",
+                   MC2_INPUT_SCRIPT=str(root / "lobby.script"))
+        (root / "lobby.script").write_text("wait 180\n", encoding="utf-8")
+    else:
+        argv.append("--headless")
     return argv, env
 
 
@@ -188,6 +197,7 @@ def run_pair(args):
     killed = None
     transport_exit = None
     last_tick_wall = [None, None]
+    lobby = LobbyDriver(peers) if args.lobby else None
     try:
         with ExitStack() as logs:
             relay = logs.enter_context(socket.socket(socket.AF_INET, socket.SOCK_DGRAM))
@@ -200,6 +210,8 @@ def run_pair(args):
                 # background-launch: allow Linux headless peers under slot.sh --game; only owned PIDs are stopped
                 processes.append(subprocess.Popen(argv, cwd=args.install, env=env, stdout=log, stderr=err))
             while True:
+                if lobby:
+                    lobby.pump()
                 now = time.monotonic()
                 elapsed = now - started
                 if elapsed > args.timeout:
@@ -271,6 +283,11 @@ def run_pair(args):
     receipt = dict(events=events, cleanup_kill=cleanup, exit_wall_seconds=exits,
                    last_tick_wall=last_tick_wall, faults=shim.receipt())
     result = evaluate_run(args, peers, codes, ticks, receipt)
+    if lobby:
+        (args.out / "menu-flow.json").write_text(json.dumps(
+            dict(steps=lobby.steps, actions=lobby.actions), indent=2) + "\n", encoding="utf-8")
+        if lobby.steps != [4, 3]:
+            failure = failure or "incomplete lobby flow: expected steps [4, 3]"
     if failure:
         result.update(result="FAIL", runner_error=failure)
         result["first_failing_line"] = result["first_failing_line"] or failure
@@ -329,9 +346,11 @@ def evaluate_run(args, peers, codes, ticks, receipt):
 def main(argv=None):
     args = arguments(argv)
     if (args.role != "both" or args.address != "127.0.0.1"
-            or args.render != "none" or args.wall_clock or args.force_desync
+            or args.render != ("both" if args.lobby else "none") or args.wall_clock or args.force_desync
             or args.client_install != args.install or args.kill_peer == "both"):
-        raise SystemExit("Linux pair supports one headless loopback pair per invocation")
+        raise SystemExit("Linux pair supports headless or --lobby --render both loopback peers")
+    if args.lobby and (args.loss or args.latency or args.jitter or args.stall_ms or args.kill_peer):
+        raise SystemExit("Lobby peers connect directly on 23460; fault injection requires headless peers")
     if args.compare_only:
         original = json.loads((args.out / "verdict.json").read_text(encoding="utf-8"))
         peers = [args.out / "session" / name for name in ("host", "client")]

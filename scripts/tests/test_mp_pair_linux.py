@@ -15,7 +15,8 @@ POPEN_CLASS = subprocess.Popen
 
 def options(tmp_path, **changes):
     values = dict(install=tmp_path, out=tmp_path / "proof", ticks=64, port=23460, timeout=5, combat=False,
-                  loss=0, latency=0, jitter=0, stall_ms=0, stall_tick=30, kill_peer=None, kill_tick=30)
+                  loss=0, latency=0, jitter=0, stall_ms=0, stall_tick=30, kill_peer=None, kill_tick=30,
+                  lobby=False, render="none")
     values.update(changes)
     return argparse.Namespace(**values)
 
@@ -44,6 +45,18 @@ def test_argv_environment_and_fixture_per_role(tmp_path, monkeypatch, slot, comb
     assert env["MC2_CAMERA_PARK"] == ("3000,1900,0,60,1700@30" if combat else
                 "2450,-2100,0,60,1200@30" if slot == 0 else "2450,-2100,90,50,1200@30")
     assert not any(key in env for key in ("MC2_COMMAND_REPLAY_PLAY", "MC2_COMMAND_REPLAY_RECORD"))
+
+
+@pytest.mark.parametrize("slot", [0, 1])
+def test_lobby_argv_environment(tmp_path, slot):
+    argv, env = pair.peer_command(options(tmp_path, lobby=True, render="both"), tmp_path, slot)
+    assert not any(flag in argv for flag in ("--host", "--join", "--headless"))
+    assert argv[-2:] == ["--mp-user-dir", str(tmp_path)]
+    assert {key: env[key] for key in ("MC2_BOOT_TO_SCREEN", "MC2_MENU_CANARY_SKIP_INTRO",
+            "MC2_DIAG_TAGS", "MC2_WIDTH", "MC2_HEIGHT", "MC2_INPUT_SCRIPT")} == dict(
+            MC2_BOOT_TO_SCREEN="mainmenu", MC2_MENU_CANARY_SKIP_INTRO="1", MC2_DIAG_TAGS="COOP_UI",
+            MC2_WIDTH="1920", MC2_HEIGHT="1080", MC2_INPUT_SCRIPT=str(tmp_path / "lobby.script"))
+    assert (tmp_path / "lobby.script").read_text() == "wait 180\n"
 
 
 @pytest.mark.parametrize("case", ["equal", "divergent", "desync", "refusal", "content-refusal", "missing-network", "short", "commands", "exit", "truncated-command", "truncated-combat", "gapped-tick", "unequal-row"])
@@ -144,6 +157,17 @@ assert os.environ['MC2_SAVE_DIR'] == str(root / 'saves')
 assert os.environ['MC2_DIAGNOSTIC_TRACE_FILE'] == str(root / 'diagnostic.jsonl')
 (root / 'stdout.log').write_text('fake stdout')
 (root / 'stderr.log').write_text('fake stderr')
+if os.environ.get('MC2_INPUT_SCRIPT') and not os.environ.get('PAIR_FAKE_INCOMPLETE'):
+    names = ['Multiplayer', 'Host' if root.name == 'host' else 'Join', 'Ready']
+    if root.name == 'host':
+        names.append('Start')
+    for step, name in enumerate(names):
+        with (root / 'stderr.log').open('a') as log:
+            log.write('\\n[COOP_UI] ' + name + ' 100 100\\n')
+            if name == 'Host':
+                log.write('[COOP_UI] Listening 127.0.0.1:23460\\n')
+        while pathlib.Path(os.environ['MC2_INPUT_SCRIPT']).read_text().count('click ') <= step:
+            time.sleep(0.01)
 (root / 'diagnostic.jsonl').write_text('{}\\n')
 (root / 'session.trace').write_text('IDENTITY executable=abc content=def\\nNETWORK rtt_ms=0\\nC 1 00\\n' + ''.join(f'H {t} a b c d {t:x}\\n' for t in range(1, a.ticks + 1 - int(os.environ.get('PAIR_FAKE_SHORT') == root.name))))
 if os.environ.get('PAIR_FAKE_DIE') == root.name:
@@ -180,9 +204,10 @@ def test_fake_pair_fixture_creation_and_directory_isolation(tmp_path, fake_peer,
 
 
 @pytest.mark.parametrize("failure", ["timeout", "peer-dies", "short-peer", "client-dies", "short-client", "interrupt", "second-spawn"])
-def test_owned_children_reaped_on_every_exit(tmp_path, monkeypatch, fake_peer, failure):
+@pytest.mark.parametrize("lobby", [False, True])
+def test_owned_children_reaped_on_every_exit(tmp_path, monkeypatch, fake_peer, failure, lobby):
     monkeypatch.setenv("PAIR_FAKE_HANG", "1")
-    args = options(tmp_path, timeout=0.4)
+    args = options(tmp_path, timeout=0.4, lobby=lobby, render="both" if lobby else "none")
     if failure in ("peer-dies", "short-peer"):
         monkeypatch.setenv("PAIR_FAKE_HANG", "client")
         monkeypatch.setenv("PAIR_FAKE_DIE" if failure == "peer-dies" else "PAIR_FAKE_SHORT", "host")
@@ -217,6 +242,22 @@ def test_owned_children_reaped_on_every_exit(tmp_path, monkeypatch, fake_peer, f
         assert fake_peer[1].returncode != 0
 
 
+@pytest.mark.parametrize("incomplete", [False, True])
+def test_fake_lobby_flow_receipt(tmp_path, monkeypatch, fake_peer, incomplete):
+    if incomplete:
+        monkeypatch.setenv("PAIR_FAKE_INCOMPLETE", "1")
+    args = options(tmp_path, lobby=True, render="both")
+    result = pair.run_pair(args)
+    flow = json.loads((args.out / "menu-flow.json").read_text())
+    assert result["result"] == ("FAIL" if incomplete else "PASS")
+    assert (flow["steps"] == [4, 3]) is not incomplete
+    if not incomplete:
+        for slot, names in ((0, ["Multiplayer", "Host", "Ready", "Start"]),
+                            (1, ["Multiplayer", "Join", "Ready"])):
+            assert [a["control"] for a in flow["actions"] if a["slot"] == slot] == names
+    assert len(fake_peer) == 2 and all(p.poll() is not None for p in fake_peer)
+
+
 def test_platform_guard_before_output_creation(tmp_path, monkeypatch):
     monkeypatch.setattr(pair.sys, "platform", "win32")
     with pytest.raises(RuntimeError, match="Linux only"):
@@ -225,7 +266,7 @@ def test_platform_guard_before_output_creation(tmp_path, monkeypatch):
 
 
 def test_module_description():
-    assert pair.__doc__ == "Linux headless lockstep pair runner; run under slot.sh N --game."
+    assert pair.__doc__ == "Linux headless or rendered lobby lockstep pair runner; run under slot.sh N --game."
 
 
 def test_stop_reaps_all_owned_processes_after_second_interrupt():
