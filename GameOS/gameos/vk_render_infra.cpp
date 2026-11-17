@@ -5,6 +5,7 @@
 #include "vulkan_context.h"
 #include "vk_upscalers.h"
 #include "diagnostic_trace.h"
+#include "load_scope.h"
 #include "engine_present_vk.h"
 #include "vk_owned.h"
 #include "vk_material_sampler.h"
@@ -26,6 +27,7 @@ extern uint32_t g_mc2RenderFrame;   // mclib/tgl.cpp
 #include <algorithm>
 #include <array>
 #include <atomic>
+#include <cassert>
 #include <chrono>
 #include <condition_variable>
 #include <cstdio>
@@ -284,6 +286,7 @@ void defer(uint64_t key) {
     auto& s=state(); std::lock_guard lock(s.mutex); auto it=s.allocations.find(key);
     if(it==s.allocations.end()) return;
     auto& [allocationKey,a]=*it;
+    assert(!a.deferred && "GPU allocation retired twice");
     if(!a.deferred) { a.deferred=true; s.deferredBytes+=a.bytes; }
 }
 bool admit(uint64_t bytes) {
@@ -690,6 +693,7 @@ void prewarm(int width,int height) {
     const double pipelineMsBefore=s.creationMs;
     const auto warm = [&](std::string_view family, int (*prepare)(int,int)) {
         const auto started=std::chrono::steady_clock::now();
+        mc2::load::Scope loadScope(mc2::load::entry(family));   // family names are literals
         const int ready=prepare(width,height);
         if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_LOAD_RESOURCE v1] family=%.*s ready=%d ms=%.3f\n",static_cast<int>(family.size()),family.data(),ready,
             std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-started).count());

@@ -121,25 +121,3 @@ int S_snprintf(char *str, size_t size, const char *format, ...)
 
 	return count;
 }
-
-#if 0
-int S_sprintf(char *str, const char *format, ...)
-{
-	assert(str && format);
-
-	va_list ap;
-	// this will not work correctly!
-	// can use approach from idStr, but for now just disable this function at all
-	size_t l = strlen(str);
-
-	va_start(ap, format);	
-	int count = S_vsnprintf(str, l - 1, format, ap);
-	va_end(ap);
-	str[l-1]='\0';
-
-	// warn if string is truncated
-	//if(count > l-1) warn
-
-	return count;
-}
-#endif

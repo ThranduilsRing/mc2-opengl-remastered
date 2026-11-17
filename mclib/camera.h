@@ -332,6 +332,9 @@ class Camera
 		DWORD					fogColor;				//Color of FOG.
 		float            		cameraAltitude;
 		float					cameraAltitudeDesired;	//What would I like the camera to be at!  Maybe smaller due to low angle!
+		float                   altitudeVelocity = 0.0f, altitudeLast = 0.0f;
+		float                   pitchGoal = 0.0f, pitchVelocity = 0.0f, pitchLast = 0.0f;
+		bool                    pitchActive = false;
 
 		// [MOUSE-ANCHORED-ZOOM-1 v2] eased zoom-anchor state (see beginZoomAnchor / update()).
 		bool					zoomAnchorActive = false;
@@ -1801,6 +1804,8 @@ class Camera
 			// off the parked pose after the hard set.
 			scrollSmoothActive = false;
 			rotSmoothActive = false;
+			pitchActive = false;
+			altitudeVelocity = 0.0f;
 		}
 
 		void setGoalRotation (glm::vec3 goalRot)

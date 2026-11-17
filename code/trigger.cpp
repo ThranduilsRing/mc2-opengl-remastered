@@ -66,7 +66,7 @@ long TriggerAreaManager::add (long ULrow, long ULcol, long LRrow, long LRcol, lo
 
 void TriggerAreaManager::remove (long areaHandle) {
 
-	if (triggerAreas[areaHandle].param == std::to_underlying(TRIGGER_AREA_NONE))
+	if (triggerAreas[areaHandle].type == std::to_underlying(TRIGGER_AREA_NONE))
 		return;
 
 	std::array<long, 4> tileDims;

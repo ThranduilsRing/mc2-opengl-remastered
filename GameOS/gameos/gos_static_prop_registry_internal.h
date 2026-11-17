@@ -50,6 +50,8 @@ extern bool mc2PeekStaticLightSlotSummary(int32_t recipeIndex, int* outNumLights
 // gos_static_prop_batcher.cpp). File-scope for the same LNK2019 reason.
 extern bool mc2PeekStaticPropTypeInfo(uint32_t typeID, const char** outName,
                                       int* outAlphaClass);
+// Tree crown dims of a type: local crown Y, radius, signed half height (false if not a tree).
+extern bool mc2PeekStaticPropTreeCanopy(uint32_t typeID, float out[3]);
 
 #define SP_TRACE(fmt, ...) \
     do { if (s_trace) { printf("[STATIC_PROP] " fmt "\n", ##__VA_ARGS__); \

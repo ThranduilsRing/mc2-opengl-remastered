@@ -51,6 +51,16 @@ def test_frame_tails_spikes_and_bursts_are_not_window_means(evidence):
     assert report["load_ms"] == 123.4
 
 
+def test_props_bucket_includes_separate_late_fringe_pass(evidence):
+    # Trigger: scripts/run_battle_bench.py PASSES / summarize.
+    for row in evidence[1]:
+        if row["type"] == "gpu":
+            row["passes"] = {"VKIsl.Props": 2, "VKIsl.Props.LateFringe": 48}
+    props = summarize(evidence)["gpu_passes"]["props"]
+    assert set(props["scopes"]) == {"VKIsl.Props", "VKIsl.Props.LateFringe"}
+    assert props["timing"]["max_ms"] == 50
+
+
 def test_incomplete_timestamp_frame_refused(evidence):
     for r in [r for r in evidence[1] if r["type"] == "gpu"][:5]:   # 5 of 100 frames: over the 1% tolerance
         r["valid"] = 0

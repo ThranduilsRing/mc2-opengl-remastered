@@ -7,12 +7,11 @@ used to leave out the pre-baked data the game reads from v0.4: the terrain trans
 transition textures at load (127 s on mc2_01, and the concrete/shore areas then differ from v0.4), so every lane A/B and
 smoke look differed from v0.4 for data reasons, not code reasons.
 
-The seed is "v0.4 data minus the exe": PARITY below names that data. `--refresh-seed` copies it from v0.4 (read only) into
-the seed and records a parity snapshot (SNAPSHOT_NAME, {relpath: sha256}) beside it. `make-isolated-deploy.py` checks the
-SEED against its own snapshot BEFORE the build (`require_seed`), never against live v0.4, so v0.4 drifting after a refresh does
-not block lanes. The merge-gate v0.4 deploy (deploy_payload --target game / --from-payload) refreshes the seed and snapshot
-afterwards (`after_v04_deploy`) or prints the exact command. Not parity (deploy-managed or per-install): the exe/dll/shader payload, mods, cache/, the
-runtime-written dirs.
+PARITY below names the shared data. `--refresh-seed` copies it and the manifest-listed deploy payload from v0.4 (read only)
+into the seed using atomic file replacement, and records a parity snapshot (SNAPSHOT_NAME, {relpath: sha256}) beside it.
+`make-isolated-deploy.py` checks the SEED against its own snapshot BEFORE the build (`require_seed`), never against live v0.4,
+so v0.4 drifting after a refresh does not block lanes. The merge-gate v0.4 deploy refreshes the seed and snapshot afterwards
+(`after_v04_deploy`) or prints the exact command. Payload follows the deployed manifest; runtime-written dirs remain per-install.
 
   py -3 scripts/seed_parity.py --check E:/mc2-installs/<install>
   py -3 scripts/seed_parity.py --refresh-seed E:/mc2-installs/_lean-seed
@@ -20,12 +19,14 @@ runtime-written dirs.
 from __future__ import annotations
 
 import argparse
+import csv
 import hashlib
 import json
 import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -129,22 +130,48 @@ def differing(install: Path, ref: Path, workers: int = 6) -> list[tuple[str, str
     return sorted(problems, key=lambda kr: kr[1])
 
 
+def _atomic_copy(src: Path, dst: Path) -> None:
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(dir=dst.parent, suffix=".tmp", delete=False) as stream:
+        tmp = Path(stream.name)
+    try:
+        shutil.copy2(src, tmp)
+        os.replace(tmp, dst)
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
 def refresh_seed(seed: Path, ref: Path, dry_run: bool = False) -> int:
-    """Copy every parity file that is missing or different from `ref` into `seed`. Never writes `ref`."""
+    """Refresh parity data and manifested payload; replace inodes, publishing the manifest last."""
+    from kit_payload import contained_path
+
     seed, ref = seed.resolve(), ref.resolve()
     if seed == ref or seed in ref.parents or ref in seed.parents:
         raise SystemExit(f"{PREFIX} FAIL: seed and reference must be different trees ({seed} / {ref})")
-    todo = [rel for _kind, rel in differing(seed, ref)]
-    for rel in todo:
+    todo = {rel for _kind, rel in differing(seed, ref)}
+    manifest = ref / ".deployed_manifest.csv"
+    if manifest.is_file():
+        with manifest.open(encoding="utf-8-sig", newline="") as stream:
+            if next(csv.reader(stream), [])[:2] != ["manifest_version", "v1"]:
+                raise SystemExit(f"{PREFIX} FAIL: unsupported payload manifest {manifest}")
+            rows = list(csv.DictReader(stream))
+        if not any(row["relpath"].casefold() == "mc2.exe" for row in rows):
+            raise SystemExit(f"{PREFIX} FAIL: payload manifest missing mc2.exe")
+        for row in rows:
+            rel = row["relpath"]
+            src, dst = contained_path(ref, rel), contained_path(seed, rel)
+            if src.stat().st_size != int(row["bytes"]) or _sha(src) != row["sha256"]:
+                raise SystemExit(f"{PREFIX} FAIL: payload manifest mismatch {src}")
+            if not dst.is_file() or dst.stat().st_size != src.stat().st_size or _sha(dst) != row["sha256"]:
+                todo.add(rel)
+    for rel in sorted(todo):
         if not dry_run:
-            dst = seed / rel
-            dst.parent.mkdir(parents=True, exist_ok=True)
-            if dst.exists():
-                dst.unlink()          # a hardlinked seed file must not be rewritten through its inode
-            shutil.copy2(ref / rel, dst)
-    print(f"{PREFIX} {'would copy' if dry_run else 'copied'} {len(todo)} parity file(s) {ref} -> {seed}")
+            _atomic_copy(contained_path(ref, rel), contained_path(seed, rel))
+    print(f"{PREFIX} {'would copy' if dry_run else 'copied'} {len(todo)} parity/payload file(s) {ref} -> {seed}")
     if not dry_run:
         print(f"{PREFIX} snapshot: {write_snapshot(seed)} parity file hash(es) recorded in {seed / SNAPSHOT_NAME}")
+        if manifest.is_file():
+            _atomic_copy(manifest, seed / manifest.name)
     return len(todo)
 
 
@@ -207,7 +234,7 @@ def after_v04_deploy(target, seed: Path | None = None, ref: Path | None = None) 
             raise OSError(f"seed {seed} not found")
         refresh_seed(seed, ref)
         return True
-    except (OSError, SystemExit) as exc:
+    except (OSError, ValueError, SystemExit) as exc:
         print(f"{PREFIX} seed NOT refreshed after the v0.4 deploy ({exc}); run: {refresh_command(seed)}")
         return False
 

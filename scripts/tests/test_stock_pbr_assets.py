@@ -21,7 +21,7 @@ def test_stock_pbr_loader_inputs(kind, count):
         stem = albedo.name.removesuffix("_albedo.png")
         maps = [albedo.with_name(f"{stem}_{suffix}.png") for suffix in ("albedo", "normal", "orm")]
         images = [np.asarray(Image.open(p).convert("RGB")) for p in maps]
-        edge = 256 if stem == "jeep" else 512
+        edge = 256 if stem == "jeep" else 512 if kind == "vehicle" or stem == "ghoul" else 2048  # ghoul: no 2048 set
         assert all(image.shape == (edge, edge, 3) for image in images), stem
         # Lossless albedo must retain paint-mask primaries. No lossy albedo cook is shipped.
         if kind == "mech":

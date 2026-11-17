@@ -187,6 +187,8 @@ struct UiElement {
     // GameOSPage::setListItemColors (e.g. the encyclopedia weapon loadout,
     // which colors items by weapon range).
     std::vector<unsigned int> itemColors;
+    bool scrollDragging = false;
+    float scrollGrabY = 0.0f;
     int selectedIndex = -1;
     int scrollOffset = 0;
     unsigned int highlightColor = 0xff3a5f8a;

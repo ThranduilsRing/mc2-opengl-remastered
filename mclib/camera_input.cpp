@@ -4,6 +4,7 @@
 
 #include "camera_internal.h"
 #include "sim_trace.h"
+#include "camera_elevation.h"
 
 long Camera::getCameraTargetId(void)
 {
@@ -71,181 +72,6 @@ void Camera::setPosition(glm::vec3 newPosition, bool swoopy)
 		}
 	}
 
-#if 0 //Used to restrict camera to the diamond.  Not used Anymore!	
-	//--------------------------------------------------------------
-	// Use a different clip constant for the corner to clip them
-	// off diagonally!  Or the designers must wet them!!!!!
-	float maxVisual = Terrain::worldUnitsPerVertex * Terrain::blocksMapSide * Terrain::verticesBlockSide / 2;
-	float zoomOutClip = 550.0;
-	float zoomInClip = 375.0;
-	float MAX_CORNER_DISTANCE = 1300.0;
-	
-	glm::vec3 cornerPos1(maxVisual,0,0), cornerPos2(0,maxVisual,0), cornerPos3(-maxVisual,0,0), cornerPos4(0,-maxVisual,0);
-	glm::vec3 distance1, distance2, distance3, distance4;
-
-	distance1.Subtract(newPosition,cornerPos1);
-	distance2.Subtract(newPosition,cornerPos2);
-	distance3.Subtract(newPosition,cornerPos3);
-	distance4.Subtract(newPosition,cornerPos4);
-
-	float dist1 = distance1.GetLength();
-	float dist2 = distance2.GetLength();
-	float dist3 = distance3.GetLength();
-	float dist4 = distance4.GetLength();
-	
-	if (newScaleFactor <= 0.5)
-	{
-		float realMaxDistance = zoomOutClip + MAX_CORNER_DISTANCE;
-		float clipConstant = zoomOutClip;
-		if (dist1 < realMaxDistance)
-		{
-			clipConstant = dist1 - MAX_CORNER_DISTANCE;
-		}
-		else if (dist2 < realMaxDistance)
-		{
-			clipConstant = dist2 - MAX_CORNER_DISTANCE;
-		}
-		else if (dist3 < realMaxDistance)
-		{
-			clipConstant = dist3 - MAX_CORNER_DISTANCE;
-		}
-		else if (dist4 < realMaxDistance)
-		{
-			clipConstant = dist4 - MAX_CORNER_DISTANCE;
-		}
-		
-		if (clipConstant > 0.0)
-		{
-			zoomOutClip = MAX_CORNER_DISTANCE - (clipConstant / zoomOutClip * (MAX_CORNER_DISTANCE-zoomOutClip));
-		}
-		else
-		{
-			zoomOutClip = MAX_CORNER_DISTANCE;
-		}
-	}
-	else
-	{
-		float realMaxDistance = zoomInClip + MAX_CORNER_DISTANCE;
-		float clipConstant = zoomInClip;
-		if (dist1 < realMaxDistance)
-		{
-			clipConstant = dist1 - MAX_CORNER_DISTANCE;
-		}
-		else if (dist2 < realMaxDistance)
-		{
-			clipConstant = dist2 - MAX_CORNER_DISTANCE;
-		}
-		else if (dist3 < realMaxDistance)
-		{
-			clipConstant = dist3 - MAX_CORNER_DISTANCE;
-		}
-		else if (dist4 < realMaxDistance)
-		{
-			clipConstant = dist4 - MAX_CORNER_DISTANCE;
-		}
-		
-		if (clipConstant > 0.0)
-		{
-			zoomInClip = MAX_CORNER_DISTANCE - (clipConstant / zoomInClip * (MAX_CORNER_DISTANCE-zoomInClip));
-		}
-		else
-		{
-			zoomInClip = MAX_CORNER_DISTANCE;
-		}
-	}
-	
-	//--------------------------------------------------------------
-	// New camera clip code here.  Actually easy once thought out!
-	if (newScaleFactor <= 0.5)
-		maxVisual -= zoomOutClip;
-	else
-		maxVisual -= zoomInClip;
-		
-	float clipChk1 = newPosition.y - newPosition.x;
-	float clipChk2 = newPosition.y + newPosition.x;
-	
-	bool clipA = (clipChk1 > maxVisual);
-	bool clipB = (clipChk1 < -maxVisual);
-	bool clipC = (clipChk2 > maxVisual);
-	bool clipD = (clipChk2 < -maxVisual);
-	
-	if (!clipA && !clipB && !clipC && !clipD)
-		return;		//No worries.  Camera on MAP.
-		
-	//------------------------------------------------------------
-	// Simple checks first.  Off of the corner.  Force to corner.
-	if (clipA && clipD)
-	{
-		position.x = -maxVisual;
-		position.y = 0.0;
-		return;
-	}
-	
-	if (clipA && clipC)
-	{
-		position.x = 0.0;
-		position.y = maxVisual;
-		return;
-	}
-	
-	if (clipB && clipD)
-	{
-		position.x = 0;
-		position.y = -maxVisual;
-		return;
-	}
-	
-	if (clipB && clipC)
-	{
-		position.x = maxVisual;
-		position.y = 0;
-		return;
-	}
-	
-	//---------------------------------------------------
-	// Calc based on Single Clip value
-	if (clipA)
-	{
-		float newX = (newPosition.y + newPosition.x - maxVisual) / 2.0;
-		float newY = newX + maxVisual;
-		position.x = newX;
-		position.y = newY;
-		return;
-	}
-	
-	if (clipB)
-	{
-		float newX = (newPosition.y + newPosition.x + maxVisual) / 2.0;
-		float newY = newX - maxVisual;
-		position.x = newX;
-		position.y = newY;
-		return;
-	}
-	
-	if (clipC)
-	{
-		float newX = (-newPosition.y + newPosition.x + maxVisual) / 2.0;
-		float newY = -newX + maxVisual;
-		position.x = newX;
-		position.y = newY;
-		return;
-	}
-	
-	if (clipD)
-	{
-		float newX = (-newPosition.y + newPosition.x - maxVisual) / 2.0;
-		float newY = -newX - maxVisual;
-		position.x = newX;
-		position.y = newY;
-		return;
-	}
-
-#ifdef _DEBUG
-	bool CameraClipImpossible = FALSE;
-#endif
-
-	gosASSERT(CameraClipImpossible);
-#endif
 }
 
 //---------------------------------------------------------------------------
@@ -296,10 +122,8 @@ void Camera::ZoomIn (float amount)
 		// Momentum boosts fast scrolling up to ~2.5x; slow scroll stays at 1x.
 		s_scrollMomentum += 1.0f;
 		s_scrollMomentum = std::min(s_scrollMomentum, 5.0f);
-		float speedMult = 1.0f + s_scrollMomentum * 0.3f;
-		float sf = newScaleFactor > 0.01f ? newScaleFactor : 0.01f;
-		float altRange = max(1.0f, cameraAltitudeDesired - AltitudeMinimum);
-		cameraAltitudeDesired -= altRange * (amount / sf) * 0.045f * speedMult;
+		cameraAltitudeDesired = mc2cam::zoomElevationTarget(cameraAltitudeDesired,
+			AltitudeMinimum, amount, newScaleFactor, s_scrollMomentum);
 		cameraAltitudeDesired = std::max(cameraAltitudeDesired, AltitudeMinimum);
 		// cameraAltitude lerps toward cameraAltitudeDesired in update()
 	}
@@ -324,10 +148,8 @@ void Camera::ZoomOut (float amount)
 		// Momentum boosts fast scrolling up to ~2.5x; slow scroll stays at 1x.
 		s_scrollMomentum += 1.0f;
 		s_scrollMomentum = std::min(s_scrollMomentum, 5.0f);
-		float speedMult = 1.0f + s_scrollMomentum * 0.3f;
-		float sf = newScaleFactor > 0.01f ? newScaleFactor : 0.01f;
-		float altRange = max(1.0f, testMax - cameraAltitudeDesired);
-		cameraAltitudeDesired += altRange * (amount / sf) * 0.045f * speedMult;
+		cameraAltitudeDesired = mc2cam::zoomElevationTarget(cameraAltitudeDesired,
+			testMax, amount, newScaleFactor, s_scrollMomentum);
 		cameraAltitudeDesired = std::min(cameraAltitudeDesired, testMax);
 		// cameraAltitude lerps toward cameraAltitudeDesired in update()
 	}
@@ -451,6 +273,7 @@ void Camera::ZoomMax (void)
 //---------------------------------------------------------------------------
 void Camera::tiltValue (float value)
 {
+	pitchActive = false;
 	projectionAngle = value;
 	if (usePerspective)
 	{
@@ -467,32 +290,24 @@ void Camera::tiltValue (float value)
 //---------------------------------------------------------------------------
 void Camera::tiltUp (float amount)
 {
-	projectionAngle -= amount;
-	if (usePerspective)
-	{
-		projectionAngle = std::max(projectionAngle, MIN_PERSPECTIVE);
+	if (!pitchActive || projectionAngle != pitchLast) {
+		pitchGoal = pitchLast = projectionAngle;
+		pitchVelocity = 0.0f;
 	}
-	else
-	{
-		projectionAngle = std::max(projectionAngle, MIN_ORTHO);
-	}
-
-	calculateProjectionConstants();
+	pitchActive = true;
+	pitchGoal = std::clamp(pitchGoal - amount, usePerspective ? MIN_PERSPECTIVE : MIN_ORTHO, MAX_PERSPECTIVE);
 }
 
 //---------------------------------------------------------------------------
 void Camera::tiltDown (float amount)
 {
-	projectionAngle += amount;
-
-	projectionAngle = std::min(projectionAngle, MAX_PERSPECTIVE);
-
-	calculateProjectionConstants();
+	tiltUp(-amount);
 }
 
 //---------------------------------------------------------------------------
 void Camera::tiltNormal (void)
 {
+	pitchActive = false;
 	projectionAngle = NORM_PERSPECTIVE;
 	calculateProjectionConstants();
 }

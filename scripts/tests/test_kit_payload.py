@@ -45,6 +45,22 @@ def test_vehicle_payload_has_separate_pin_and_mount(tmp_path, monkeypatch):
     assert all(dst.startswith("mods/mc2-vehicle-kit/") for _, dst, _ in items)
 
 
+def test_runtime_omits_authoring_ir_but_validates_the_source_pin(tmp_path, monkeypatch):
+    manifest, store = package(tmp_path, monkeypatch)
+    ir = store / "content/test.mc2ir.json"
+    ir.parent.mkdir()
+    ir.write_bytes(b"authoring vertices")
+    manifest["files"].append(dict(path="content/test.mc2ir.json", bytes=ir.stat().st_size, sha256=kit.sha(ir)))
+    (tmp_path / kit.MANIFEST).write_text(json.dumps(manifest))
+    runtime, items = kit.payload(tmp_path)
+    assert len(runtime["files"]) == len(items) == 3
+    assert all(not dst.endswith(".mc2ir.json") for _, dst, _ in items)
+    assert ir.read_bytes() == b"authoring vertices"
+    ir.write_bytes(b"corrupt source")
+    with pytest.raises(ValueError, match="pinned kit file"):
+        kit.payload(tmp_path)
+
+
 def test_deploy_copies_only_pinned_files_and_rejects_existing_extras(tmp_path, monkeypatch):
     import deploy_payload as dp
     manifest, store = package(tmp_path, monkeypatch)
@@ -252,10 +268,13 @@ def test_kit_copy_rejects_unsafe_destinations(tmp_path, monkeypatch, problem):
         outside = tmp_path / "outside"
         target.mkdir()
         outside.mkdir()
-        # Windows junctions require no symlink privilege.
-        result = subprocess.run(["cmd", "/c", "mklink", "/J", str(target / "mods"), str(outside)],
-                                capture_output=True, **kit.console_child.child_kwargs(redirected=True))
-        assert result.returncode == 0
+        if sys.platform == "win32":
+            # Windows junctions require no symlink privilege.
+            result = subprocess.run(["cmd", "/c", "mklink", "/J", str(target / "mods"), str(outside)],
+                                    capture_output=True, **kit.console_child.child_kwargs(redirected=True))
+            assert result.returncode == 0
+        else:
+            (target / "mods").symlink_to(outside, target_is_directory=True)
         monkeypatch.setattr(dp, "ensure_terrain_materials", lambda *a: {})
         monkeypatch.setattr(dp, "ensure_engine_normal_cooks", lambda *a: None)
         with pytest.raises(ValueError, match="unsafe"):
@@ -393,6 +412,25 @@ def test_ref_root_reroots_only_the_reference_store(monkeypatch):
     assert kit.ref_path("D:/store/k") == "D:/store/k"
 
 
+@pytest.mark.parametrize("source", ["configured", "windows", "linux", "serial"])
+def test_jobs_limit_sources(tmp_path, monkeypatch, source):
+    monkeypatch.delenv("MC2_JOBS_FILE", raising=False)
+    monkeypatch.delenv("JOBS", raising=False)
+    config = tmp_path / "JOBS"
+    if source in ("configured", "windows"):
+        config.write_text("3\n")
+    if source == "configured":
+        monkeypatch.setenv("MC2_JOBS_FILE", str(config))
+    else:
+        def default_path(value):
+            assert value == "A:/Games/mc2-ops/JOBS"
+            return config
+        monkeypatch.setattr(kit, "Path", default_path)
+    if source == "linux":
+        monkeypatch.setenv("JOBS", "2")
+    assert kit.jobs_limit() == dict(configured=3, windows=3, linux=2, serial=1)[source]
+
+
 def test_cook_cache_root_follows_the_gate_e_root(monkeypatch):
     # The farm laptop has no E: drive (W138d laptop gate: deploy failed "device is not ready: E:\mc2-cook-cache").
     monkeypatch.delenv("MC2_COOK_CACHE", raising=False)
@@ -447,3 +485,55 @@ def test_receipt_save_skips_when_replace_never_succeeds(tmp_path, monkeypatch, m
     assert not (tmp_path / "t.json").exists()
     assert not list(tmp_path.glob("*.tmp"))
     assert "receipt" in capsys.readouterr().out.lower()
+
+
+@pytest.mark.parametrize("failure", [None, "cook", "oversize"])
+def test_loose_tree_lods_use_native_cache_without_claiming_other_files(tmp_path, monkeypatch, capsys, failure):
+    root = tmp_path / "data/model_overrides"
+    root.mkdir(parents=True)
+    for rel in ("tree.glb", "lod.glb", "unrelated.glb", "detail.ktx2"):
+        (root / rel).write_bytes(rel.encode())
+    (root / "models.json").write_text(json.dumps(dict(overrides=[dict(
+        replaces="tree:palm", source="tree.glb", materials={"version": 2},
+        lods=[dict(source="lod.glb")]), dict(replaces="building:other", source="unrelated.glb")])) )
+    tool = tmp_path / "tool.exe"
+    tool.write_bytes(b"tool")
+    calls = []
+    def cook(command, **kwargs):
+        calls.append(command)
+        if failure and command[1].endswith("tree.glb"):
+            if failure == "cook":
+                return SimpleNamespace(returncode=1, stdout="", stderr="broken tree")
+        assert command[2:] == ["--no-ground", "--static-prop"]
+        key = hashlib.sha256(command[1].encode()).hexdigest()[:16]
+        cache = tmp_path / "cache/content-model"
+        (cache / f"model-{key}.mci").write_bytes(b"recipe")
+        if failure == "oversize" and command[1].endswith("tree.glb"):
+            with (cache / f"model-{key}.mci").open("wb") as stream:
+                stream.truncate(kit.MODEL_RECIPE_MAX_BYTES + 1)
+        return SimpleNamespace(returncode=0, stdout=f"[CONTENT_COOK] key={key}", stderr="")
+    for _ in range(1 if failure else 2):
+        kit.finish_trees(tmp_path, tool, cook)
+    assert len(calls) == 2
+    receipt = json.loads((tmp_path / "cache/content-model/trees-cook.json").read_text())
+    assert set(receipt["recipes"]) == ({"lod.glb"} if failure else {"tree.glb", "lod.glb"})
+    out = capsys.readouterr().out
+    assert "pinned tree models verified" in out
+    if failure:
+        assert "WARN: tree model cook skipped" in out
+    assert not (tmp_path / "cache/content-model/vehicle-cook.json").exists()
+    (root / "models.json").write_text(json.dumps(dict(overrides=[dict(
+        replaces="tree:palm", source="../escape.glb", materials={"version": 2})])))
+    with pytest.raises(ValueError, match="unsafe"):
+        kit.finish_trees(tmp_path, tool, cook)
+
+
+def test_recipe_reader_cap_matches_native_reader(tmp_path):
+    assert kit.MODEL_RECIPE_MAX_BYTES == 512 << 20
+    source = (Path(__file__).resolve().parents[2] / "mclib/content_ir.cpp").read_text()
+    assert 'kind{"model-", ".mci", 4096, 512ull << 20}' in source
+    path = tmp_path / "large.mci"
+    with path.open("wb") as stream:
+        stream.truncate(kit.MODEL_RECIPE_MAX_BYTES + 1)
+    with pytest.raises(ValueError, match="exceeds reader cap"):
+        kit._model_row(path)

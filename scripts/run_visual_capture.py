@@ -394,6 +394,13 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
     out_dir.mkdir(parents=True, exist_ok=True)
     file_mission, marks = _load_bookmarks(bookmarks_path)
     mission_token = file_mission or mission
+    minimum_duration = default_duration(len(marks), trigger_frame, settle)
+    if duration is None:
+        duration = minimum_duration
+    elif duration < minimum_duration:
+        raise ValueError(f"capture duration {duration}s is too short for trigger frame {trigger_frame} "
+                         f"and {len(marks)} bookmarks (settle={settle}); use --duration "
+                         f"{minimum_duration} or omit --duration (budget assumes at least 15 fps)")
     # HARNESS-ISOLATION-1 / bug-2 guard: the engine bookmark iterator
     # (gos_visual_capture.cpp) silently fails to fire the capture for a SINGLE-pose
     # bookmark (engine_capture_fired=True but present=False). A >=2-pose bookmark
@@ -428,8 +435,6 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
     for rj in options_rec["rejected"]:
         print(f"[viscap] WARN render option rejected by the engine's grammar: {rj}", file=sys.stderr)
 
-    if duration is None:
-        duration = default_duration(len(marks), trigger_frame, settle)
     proc_args = [str(exe), "--profile", "stock", "--mission", mission_token,
                  "--duration", str(duration)]
     if classic_assets:

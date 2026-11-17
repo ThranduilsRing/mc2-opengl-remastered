@@ -132,20 +132,19 @@ void drawCameraBookmarkSave() {
 // Draw the Copy All button and copy the inspector text to the clipboard.
 void drawCopyAll(const RenderWorld::LookupResult& lk) {
     if (ImGui::Button("Copy All")) {
-        char buf[3072];
-        int  n = 0;
-        n += mc2::fmt::to_buf_n(buf+n, sizeof(buf)-n, "ObjID raw: 0x{:08X}  valid: {}{}{}\n", mc2::fmt::as_u32(lk.rawObjectId), mc2::fmt::safe(lk.isValid ? "yes" : "no"), mc2::fmt::safe((!lk.isValid && lk.lookupFailReason) ? "  reason: " : ""), mc2::fmt::safe((!lk.isValid && lk.lookupFailReason) ? lk.lookupFailReason : ""));
-        n += mc2::fmt::to_buf_n(buf+n, sizeof(buf)-n, "Kind: {}\n", mc2::fmt::safe(pickKindName(s_selection.pickKind)));
-        n += mc2::fmt::to_buf_n(buf+n, sizeof(buf)-n, "Handle: 0x{:08X}  idx {:d} / gen {:d}\n", mc2::fmt::as_u32(s_selection.handle.raw()), mc2::fmt::as_u32(s_selection.handle.index()), mc2::fmt::as_u32(s_selection.handle.generation()));
+        std::string buf;
+        buf += std::format("ObjID raw: 0x{:08X}  valid: {}{}{}\n", mc2::fmt::as_u32(lk.rawObjectId), mc2::fmt::safe(lk.isValid ? "yes" : "no"), mc2::fmt::safe((!lk.isValid && lk.lookupFailReason) ? "  reason: " : ""), mc2::fmt::safe((!lk.isValid && lk.lookupFailReason) ? lk.lookupFailReason : ""));
+        buf += std::format("Kind: {}\n", mc2::fmt::safe(pickKindName(s_selection.pickKind)));
+        buf += std::format("Handle: 0x{:08X}  idx {:d} / gen {:d}\n", mc2::fmt::as_u32(s_selection.handle.raw()), mc2::fmt::as_u32(s_selection.handle.index()), mc2::fmt::as_u32(s_selection.handle.generation()));
         if (lk.worldPosValid)
-            n += mc2::fmt::to_buf_n(buf+n, sizeof(buf)-n, "World: ({:.1f}, {:.1f}, {:.1f})\n", lk.worldX, lk.worldY, lk.worldZ);
-        n += mc2::fmt::to_buf_n(buf+n, sizeof(buf)-n, "Mesh: 0x{:08X}  Mat: 0x{:08X}  LOD: {:d}  Pipeline: {:d}\nDrawPacket: {:d}  PathReason: 0x{:08X}  GameObjID: {:d}\n", mc2::fmt::as_u32(lk.meshHandleBits), mc2::fmt::as_u32(lk.materialHandleBits), mc2::fmt::as_u32(static_cast<unsigned>(lk.lodLevel)), mc2::fmt::as_u32(static_cast<unsigned>(lk.pipelineId)), mc2::fmt::as_u32(lk.drawPacketIndex), mc2::fmt::as_u32(lk.pathReasonCode), mc2::fmt::as_u32(lk.gameObjectId));
+            buf += std::format("World: ({:.1f}, {:.1f}, {:.1f})\n", lk.worldX, lk.worldY, lk.worldZ);
+        buf += std::format("Mesh: 0x{:08X}  Mat: 0x{:08X}  LOD: {:d}  Pipeline: {:d}\nDrawPacket: {:d}  PathReason: 0x{:08X}  GameObjID: {:d}\n", mc2::fmt::as_u32(lk.meshHandleBits), mc2::fmt::as_u32(lk.materialHandleBits), mc2::fmt::as_u32(static_cast<unsigned>(lk.lodLevel)), mc2::fmt::as_u32(static_cast<unsigned>(lk.pipelineId)), mc2::fmt::as_u32(lk.drawPacketIndex), mc2::fmt::as_u32(lk.pathReasonCode), mc2::fmt::as_u32(lk.gameObjectId));
         if (s_selection.kind == RenderWorld::RenderObjectKind::StaticProp
                 && s_staticPropData.populated) {
-            n += mc2::fmt::to_buf_n(buf+n, sizeof(buf)-n, "RecipeIdx: {:d}  Shape: {}\n", mc2::fmt::as_i32(s_staticPropData.recipeIndex), mc2::fmt::safe(s_staticPropData.shapeName[0] ? s_staticPropData.shapeName : "(unknown)"));
+            buf += std::format("RecipeIdx: {:d}  Shape: {}\n", mc2::fmt::as_i32(s_staticPropData.recipeIndex), mc2::fmt::safe(s_staticPropData.shapeName[0] ? s_staticPropData.shapeName : "(unknown)"));
             if (s_staticPropData.materialGpuPopulated) {
                 const auto& mg = s_staticPropData.materialGpu;
-                n += mc2::fmt::to_buf_n(buf+n, sizeof(buf)-n, "MatIdx: {:d}  albedo: {:d}  normal: {:d}  mrTex: {:d}  emit: {:d}\nflags: 0x{:08X}  baseColor: {:.3f}  metallic: {:.3f}  rough: {:.3f}\n", mc2::fmt::as_u32(s_staticPropData.materialIdx), mc2::fmt::as_u32(mg.albedoTex), mc2::fmt::as_u32(mg.normalTex), mc2::fmt::as_u32(mg.metallicRoughnessTex), mc2::fmt::as_u32(mg.emissiveTex), mc2::fmt::as_u32(mg.flags), mg.baseColorFactor, mg.metallicFactor, mg.roughnessFactor);
+                buf += std::format("MatIdx: {:d}  albedo: {:d}  normal: {:d}  mrTex: {:d}  emit: {:d}\nflags: 0x{:08X}  baseColor: {:.3f}  metallic: {:.3f}  rough: {:.3f}\n", mc2::fmt::as_u32(s_staticPropData.materialIdx), mc2::fmt::as_u32(mg.albedoTex), mc2::fmt::as_u32(mg.normalTex), mc2::fmt::as_u32(mg.metallicRoughnessTex), mc2::fmt::as_u32(mg.emissiveTex), mc2::fmt::as_u32(mg.flags), mg.baseColorFactor, mg.metallicFactor, mg.roughnessFactor);
             }
         }
         if (s_selection.kind == RenderWorld::RenderObjectKind::Mech
@@ -158,10 +157,10 @@ void drawCopyAll(const RenderWorld::LookupResult& lk) {
                             ? s_mechData.chassisClass : 0;
             const int csi = (s_mechData.conStat >= 0 && s_mechData.conStat < 6)
                             ? s_mechData.conStat : 0;
-            n += mc2::fmt::to_buf_n(buf+n, sizeof(buf)-n, "Variant: {}  Name: {}\nClass: {}  TeamID: {:d}  Pilot: {}\nStatus: {}{}{}\nSensor: {}\nArmor: {:.0f} / {:.0f}  Structure: {:.0f} / {:.0f}\n", mc2::fmt::safe(s_mechData.variantName[0] ? s_mechData.variantName : "(none)"), mc2::fmt::safe(s_mechData.longName[0]    ? s_mechData.longName    : "(none)"), mc2::fmt::safe(cnames[ci]), mc2::fmt::as_i32(s_mechData.teamId), mc2::fmt::safe(s_mechData.pilotName[0]   ? s_mechData.pilotName   : "(none)"), mc2::fmt::safe(s_mechData.destroyed ? "DESTROYED " : ""), mc2::fmt::safe(s_mechData.disabled  ? "disabled "  : ""), mc2::fmt::safe((!s_mechData.destroyed && !s_mechData.disabled && !s_mechData.crippled)
+            buf += std::format("Variant: {}  Name: {}\nClass: {}  TeamID: {:d}  Pilot: {}\nStatus: {}{}{}\nSensor: {}\nArmor: {:.0f} / {:.0f}  Structure: {:.0f} / {:.0f}\n", mc2::fmt::safe(s_mechData.variantName[0] ? s_mechData.variantName : "(none)"), mc2::fmt::safe(s_mechData.longName[0]    ? s_mechData.longName    : "(none)"), mc2::fmt::safe(cnames[ci]), mc2::fmt::as_i32(s_mechData.teamId), mc2::fmt::safe(s_mechData.pilotName[0]   ? s_mechData.pilotName   : "(none)"), mc2::fmt::safe(s_mechData.destroyed ? "DESTROYED " : ""), mc2::fmt::safe(s_mechData.disabled  ? "disabled "  : ""), mc2::fmt::safe((!s_mechData.destroyed && !s_mechData.disabled && !s_mechData.crippled)
                     ? "OK" : (s_mechData.crippled ? "crippled" : "")), mc2::fmt::safe(snames[csi]), s_mechData.totalCurArmor, s_mechData.totalMaxArmor, s_mechData.totalCurStr, s_mechData.totalMaxStr);
         }
-        ImGui::SetClipboardText(buf);
+        ImGui::SetClipboardText(buf.c_str());
     }
 }
 

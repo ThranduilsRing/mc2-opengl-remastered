@@ -1,4 +1,5 @@
 #include "vk_texture_residency.h"
+#include "vk_texture_table.h"
 #include "hitch_stats.h"
 #include "present_thread.h"
 #include "vk_texture_pending.h"
@@ -28,7 +29,7 @@ void invalidateUiImage(RenderCore::TextureHandle handle) {
     if (engineVulkanContextValid()) getOrCreateEngineVulkanContext().textures().invalidate(handle);
 }
 void TextureResidency::invalidate(RenderCore::TextureHandle handle) {
-    table_->erase(handle);
+    table_->invalidate(handle);
     auto it=residents_.find(handle.raw());
     if (it!=residents_.end()) { auto& [raw,resident]=*it; if (resident.image) ctx_.retire(std::move(resident.image)); residents_.erase(it); }
 }
@@ -37,7 +38,8 @@ void requestUiImage(RenderCore::TextureHandle handle, std::function<std::shared_
 }
 void TextureResidency::requestDecoded(RenderCore::TextureHandle handle, std::function<std::shared_ptr<const RenderCore::KtxImage>()> decode) {
     if (!service_.isLive(handle) || residents_.contains(handle.raw())) return;
-    auto [it,inserted]=residents_.emplace(handle.raw(),Resident{{},0,false});
+    const auto slot=table_->reserve(handle); if (!slot) return;
+    auto [it,inserted]=residents_.emplace(handle.raw(),Resident{{},slot,false});
     auto& [raw,resident]=*it;
     resident.highPriority=true; resident.contentVersion=service_.contentVersion(handle);
     worker_.request(handle,std::move(decode),resident.contentVersion);
@@ -61,13 +63,14 @@ TextureResidency::TextureResidency(VulkanContext& ctx, RenderCore::TextureServic
 TextureResidency::~TextureResidency() { service_.onRetired={}; }
 void TextureResidency::attach(RenderCore::TextureHandle handle, std::shared_ptr<const RenderCore::KtxImage> image, bool useMips) {
     if (!service_.isLive(handle) || residents_.contains(handle.raw())) return;
-    residents_.emplace(handle.raw(),Resident{{},0,useMips});
+    const auto slot=table_->reserve(handle); if (!slot) return;
+    residents_.emplace(handle.raw(),Resident{{},slot,useMips});
     residents_.at(handle.raw()).contentVersion=service_.contentVersion(handle);
     if (image) pending_.push_back({handle,std::move(image),service_.contentVersion(handle)});
 }
 
 ResidentTextureRef TextureResidency::createRenderTarget(uint32_t width, uint32_t height) {
-    if (table_->full(uploading_.size())) return {};
+    if (table_->full()) return {};
     auto image=std::make_shared<Image>();
     if (!image->image.createSampled2D(ctx_.allocator(),ctx_.device(),VK_FORMAT_R8G8B8A8_UNORM,width,height,1,
                                     VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,"ui.preview")) return {};
@@ -98,13 +101,18 @@ uint64_t TextureResidency::legacyUiId(uint32_t gosHandle, uint32_t width, uint32
 bool TextureResidency::init() {
     VkPhysicalDeviceProperties props{}; vkGetPhysicalDeviceProperties(ctx_.physicalDevice(), &props);
     const auto& l = props.limits;
-    capacity_ = std::min({4096u, l.maxPerStageDescriptorSamplers, l.maxPerStageDescriptorSampledImages,
-                         l.maxDescriptorSetSamplers, l.maxDescriptorSetSampledImages, l.maxPerStageResources});
-    if (capacity_ < 2) return false;
-    // The slot table is residency admission accounting only. No pipeline binds a bindless texture set (every island writes its own
-    // per-draw descriptors from view()), so no VkDescriptorSet mirrors the table: the per-flight 4096-entry rewrite it used to get on
-    // every residency revision is gone. A future bindless consumer creates one set with UPDATE_AFTER_BIND | PARTIALLY_BOUND.
-    table_ = std::make_unique<RenderCore::TextureDescriptorTable>(capacity_);
+    // Reserve room for each consumer's existing resources in addition to the two image arrays.
+    constexpr uint32_t reserve = 32;
+    const auto room = [](uint32_t limit) { return limit > reserve ? (limit - reserve) / 2 : 0u; };
+    capacity_ = std::min({4096u, room(l.maxPerStageDescriptorSampledImages),
+                         room(l.maxDescriptorSetSampledImages), room(l.maxPerStageResources)});
+    if (mc2_diag::tagRequested("VK_CAPABILITY"))
+    std::fprintf(stderr, "[VK_CAPABILITY] maxPerStageDescriptorSampledImages=%u maxPerStageDescriptorSamplers=%u maxDescriptorSetSampledImages=%u maxDescriptorSetSamplers=%u maxPerStageResources=%u\n",
+                 l.maxPerStageDescriptorSampledImages, l.maxPerStageDescriptorSamplers,
+                 l.maxDescriptorSetSampledImages, l.maxDescriptorSetSamplers, l.maxPerStageResources);
+    if (capacity_ < 2 || l.maxPerStageDescriptorSamplers < kTexSamplerCount + reserve || l.maxDescriptorSetSamplers < kTexSamplerCount + reserve) return false;
+    // One descriptor set per flight, replayed only after that flight's fence. No update-after-bind.
+    table_ = std::make_unique<RenderCore::TextureDescriptorTable>(capacity_, kMaxFramesInFlight);
     RenderCore::KtxImage image; image.width=image.height=2; image.mipCount=1; image.vkFormat=37; image.mipByteOffsets={0};
     // Async residency is normal during screen changes. Keep the checkerboard
     // diagnostic opt-in; players see a blank image until the upload publishes.
@@ -117,9 +125,17 @@ bool TextureResidency::init() {
     flat.pixels={128,128,255,255}; arrayPlaceholder_=upload(flat,false,nullptr,1,true);
     if (!arrayPlaceholder_) return false;
     table_->placeholder(placeholder_);
+    descriptorTable_ = std::make_unique<TextureTable>(ctx_, *this, *table_, capacity_);
+    if (!descriptorTable_->init()) return false;
     if (mc2_diag::tagRequested("VK_TEXTURE_SERVICE"))
         MC2_LOG(Vk, Info, "[VK_TEXTURE_SERVICE v1] capacity={} placeholder=0 legacy_boundary=P9", capacity_);
     return true;
+}
+
+void TextureResidency::beginFrame(uint64_t frame, uint32_t frameSlot) {
+    table_->beginFrame(frame);
+    pump();
+    descriptorTable_->beginFrame(frameSlot);
 }
 
 std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCore::KtxImage& image, bool useMips, Upload* async, uint32_t layers, bool arrayView, bool vegetation) {
@@ -248,7 +264,8 @@ ResidentTextureRef TextureResidency::acquire(const RenderCore::TextureKey& key, 
     auto handle=service_.acquire(key,RenderCore::kNoTextureNode,dimensions);
     if (!handle.isValid()) return {};
     if (residents_.contains(handle.raw())) return ResidentTextureRef(*this,handle,arrayView);
-    residents_.emplace(handle.raw(),Resident{{},0,mc2tex::wantsMipmaps(key.hints),layers,arrayView});
+    const auto slot=table_->reserve(handle); if (!slot) { service_.release(handle); return {}; }
+    residents_.emplace(handle.raw(),Resident{{},slot,mc2tex::wantsMipmaps(key.hints),layers,arrayView});
     residents_.at(handle.raw()).contentVersion=service_.contentVersion(handle);
     residents_.at(handle.raw()).vegetation=key.source.starts_with("vegetation:P2|");
     pending_.push_back({handle,std::make_shared<RenderCore::KtxImage>(image),service_.contentVersion(handle)});
@@ -259,7 +276,8 @@ ResidentTextureRef TextureResidency::requestKtx(const RenderCore::TextureKey& ke
     auto handle=service_.acquire(key,RenderCore::kNoTextureNode,dimensions);
     if (!handle.isValid()) return {};
     if (!residents_.contains(handle.raw())) {
-        residents_.emplace(handle.raw(),Resident{{},0,mc2tex::wantsMipmaps(key.hints)});
+        const auto slot=table_->reserve(handle); if (!slot) { service_.release(handle); return {}; }
+        residents_.emplace(handle.raw(),Resident{{},slot,mc2tex::wantsMipmaps(key.hints)});
         residents_.at(handle.raw()).contentVersion=service_.contentVersion(handle);
         worker_.request(handle,std::move(bytes),service_.contentVersion(handle));
     }
@@ -302,8 +320,7 @@ void TextureResidency::pump() {
         // A screen can request many images at once. Spread staging across
         // frames instead of draining the decoded queue on its first render.
         // Always allow one image so large textures still make progress.
-        return table_->full(uploading_.size()) ||
-            (uploading_.size()>firstNew && std::chrono::steady_clock::now()-started>std::chrono::milliseconds(2));
+        return uploading_.size()>firstNew && std::chrono::steady_clock::now()-started>std::chrono::milliseconds(2);
     },[this](const Pending& p, Upload& next) {
         const auto& r=residents_.at(p.handle.raw());
         return static_cast<bool>(upload(*p.image,r.useMips,&next,r.layers,r.arrayView,r.vegetation));
@@ -385,6 +402,17 @@ ResidentTextureRef TextureResidency::acquirePixels(uint32_t width,uint32_t heigh
     image.isCompressed=compressed; image.blockSizeBytes=(format>=131 && format<=134)?8:compressed?16:0;
     image.pixels.assign(static_cast<const uint8_t*>(bytes),static_cast<const uint8_t*>(bytes)+count);
     if (mipmaps && !compressed && (format==VK_FORMAT_R8G8B8A8_UNORM || format==VK_FORMAT_R8G8B8A8_SRGB)) {
+        // First-use mech materials enter here during shadow packing. Keep their
+        // spatial mip work on the existing decode worker, like cooked textures.
+        auto handle=service_.acquire(key,RenderCore::kNoTextureNode,{width,height,width,height});
+        if (!handle.isValid()) return {};
+        if (residents_.contains(handle.raw())) return ResidentTextureRef(*this,handle,arrayView);
+        const auto slot=table_->reserve(handle);
+        if (!slot) { service_.release(handle); return {}; }
+        residents_.emplace(handle.raw(),Resident{{},slot,true,layers,arrayView});
+        const auto version=service_.contentVersion(handle);
+        residents_.at(handle.raw()).contentVersion=version;
+        worker_.request(handle,[image=std::move(image),width,height,layers]() mutable -> std::shared_ptr<const RenderCore::KtxImage> {
         std::vector<uint8_t> current=image.pixels;
         uint32_t w=width,h=height;
         while (w>1 || h>1) {
@@ -399,6 +427,9 @@ ResidentTextureRef TextureResidency::acquirePixels(uint32_t width,uint32_t heigh
             image.mipByteOffsets.push_back(image.pixels.size()); image.pixels.insert(image.pixels.end(),next.begin(),next.end()); ++image.mipCount;
             current=std::move(next); w=std::max(1u,w/2);h=std::max(1u,h/2);
         }
+        return std::make_shared<RenderCore::KtxImage>(std::move(image));
+        },version);
+        return ResidentTextureRef(*this,handle,arrayView);
     }
     auto ref=acquire(key,image,{width,height,width,height},layers,arrayView);
     if (ref) { auto& r=residents_.at(ref.get().raw()); r.layers=layers; r.arrayView=arrayView; }

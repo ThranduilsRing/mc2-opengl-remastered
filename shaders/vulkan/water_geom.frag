@@ -14,11 +14,40 @@
 #version 450
 #extension GL_GOOGLE_include_directive : require
 layout(constant_id = 11) const int kReflectionCoverage = 0;
+layout(constant_id = 13) const int kWaterDbgPass = 0;
 #define PREC highp
 #define TERRAIN_RESOURCE_SET 1
 #define TERRAIN_OBJECT_RECEIVER 1
 #include "include/terrain_frame_vk.glsl"
 #include "../include/render_contract.hglsl"
+layout(set = 1, binding = 1, std430) readonly buffer TerrainHeightBuf { float heights[]; } uH;
+layout(set = 1, binding = 10, std430) readonly buffer TerrainVisualHeightBuf { float heightsFine[]; };
+float sampleH(int x, int y) {
+    return uH.heights[clamp(x, 0, uT.mapSide - 1) + clamp(y, 0, uT.mapSide - 1) * uT.mapSide];
+}
+#include "include/terrain_visual_surface.glsl"
+float waterFineHeight(vec2 worldXY) {
+    vec2 grid = clamp(vec2(worldXY.x + uT.halfMap, uT.halfMap - worldXY.y) / 32.0,
+                      vec2(0.0), vec2(uT.visualSide - 1));
+    ivec2 p = min(ivec2(floor(grid)), ivec2(uT.visualSide - 2));
+    vec2 t = grid - vec2(p);
+    // Patch indices choose the flatter diagonal from RAW bake heights.
+    float rawTL = cliffRawHeight(p), rawTR = cliffRawHeight(p + ivec2(1, 0));
+    float rawBL = cliffRawHeight(p + ivec2(0, 1)), rawBR = cliffRawHeight(p + ivec2(1, 1));
+    if (abs(rawTR - rawBL) < abs(rawTL - rawBR)) {
+        float tr = hiresSurfaceHeight(p.x + 1, p.y), bl = hiresSurfaceHeight(p.x, p.y + 1);
+        if (t.x + t.y <= 1.0) {
+            float tl = hiresSurfaceHeight(p.x, p.y);
+            return tl + (tr - tl) * t.x + (bl - tl) * t.y;
+        }
+        float br = hiresSurfaceHeight(p.x + 1, p.y + 1);
+        return br + (bl - br) * (1.0 - t.x) + (tr - br) * (1.0 - t.y);
+    }
+    float a = hiresSurfaceHeight(p.x, p.y), d = hiresSurfaceHeight(p.x + 1, p.y + 1);
+    float b = t.y >= t.x ? hiresSurfaceHeight(p.x, p.y + 1) : hiresSurfaceHeight(p.x + 1, p.y);
+    return t.y >= t.x ? a + (d - b) * t.x + (b - a) * t.y
+                      : a + (b - a) * t.x + (d - b) * t.y;
+}
 
 layout(location = 0) in PREC vec4  Color;
 layout(location = 1) in PREC vec2  Texcoord;
@@ -249,7 +278,13 @@ float waterGgxSpec(vec3 N, vec3 V, vec3 L, float alpha2){
 
 // Lamp and weapon pool lights reflected by the wave normal: the same grid cell walk and attenuation as the terrain
 // pool term, with the GGX lobe toward each light instead of the flat diffuse pool.
-vec3 waterLampSpec(vec3 wp, vec3 N, vec3 V, float alpha2){
+// WATER-POOL-FUSE-1: ONE walk of the cell's lights returns both terms. Before, the GGX walk and tlp_terrainPoolLight
+// (flat diffuse pool, surfaceNormal==macroNormal, no contact shadow, no local-shadow atlas) each re-fetched every light and
+// re-ran the same attenuation and spot cone: with 48 mechs firing that doubled the water pass. Both bodies are kept
+// term-for-term (tlp_terrainPoolLight in terrain_light_pool.hglsl): `spec` is the lamp specular sum, the return is the
+// pool term with the soft-compress / dither tail.
+vec3 waterPoolLights(vec3 wp, vec3 N, vec3 V, float alpha2, out vec3 spec){
+    spec = vec3(0.0);
     int  lo = 0, hi = uT.numPoolLights;
     bool indexed = false;
     if (uT.lightGridDim > 0) {
@@ -262,7 +297,7 @@ vec3 waterLampSpec(vec3 wp, vec3 N, vec3 V, float alpha2){
         indexed = true;
     }
     if (TLP_POOL_BUDGET > 0) hi = min(hi, lo + TLP_POOL_BUDGET);
-    vec3 s = vec3(0.0);
+    vec3 pool = vec3(0.0), poolMover = vec3(0.0);
     for (int k = lo; k < hi; ++k) {
         int i = indexed ? int(lightGridIndices[k]) : k;
         if (i >= uT.numPoolLights || poolLights[i].lightType == 0u) continue;
@@ -274,10 +309,15 @@ vec3 waterLampSpec(vec3 wp, vec3 N, vec3 V, float alpha2){
                          poolLights[i].farDistance, poolLights[i].oneOverDistance, len, falloff)) continue;
         falloff = lpa_spotCone(vtl, poolLights[i].lightType, len, poolLights[i].farDistance, falloff);
         if (falloff <= 0.0) continue;
-        vec3 plCol = poolLights[i].color * poolLights[i].intensity * (mover ? uT.lightPoolMoverDim : 1.0);
-        s += plCol * (falloff * waterGgxSpec(N, V, -vtl / max(len, 1e-3), alpha2));
+        vec3 plCol = poolLights[i].color * poolLights[i].intensity;
+        if (mover) plCol *= uT.lightPoolMoverDim;
+        spec += plCol * (falloff * waterGgxSpec(N, V, -vtl / max(len, 1e-3), alpha2));
+        if (mover && uT.lightPoolMoverMax != 0) { poolMover = max(poolMover, plCol * falloff); continue; }
+        pool += plCol * falloff;
     }
-    return s;
+    pool += poolMover;
+    if (uT.lightPoolCompress != 0) return lpa_dither(vec3(1.0) - exp(-1.6 * pool));
+    return lpa_dither(min(pool, vec3(1.0)));
 }
 
 void main(void)
@@ -310,6 +350,10 @@ void main(void)
     float fieldThick;
     const bool hasField = wse_fieldThickness(int(F.f4.x + 0.5), int(F.f4.y + 0.5), u_shoreHeightTex, F.f5,
                                              WorldPos.xy, F.f7.x, fieldThick);
+    const bool hasVisual = uT.visualMode != 0 && uT.visualSide > 1;
+    // Rasterized terrain depth owns the coast, including its LOD, stitching and morph.
+    // The static fine surface remains a softness fallback, never a second coast.
+    float softnessThick = hasVisual && !hasField ? F.f7.x - waterFineHeight(WorldPos.xy) : fieldThick;
     const float fieldThickFw = fwidth(fieldThick);
     PREC float tintThick = hasField ? max(fieldThick, 0.0) : WaterThickness;
     // Recover horizontal shore distance from the depth field already sampled above.
@@ -350,19 +394,20 @@ void main(void)
     PREC float shoreBlend = max(alphaDepth, 1.0);
     PREC float shore = smoothstep(-shoreBlend * 0.5, shoreBlend, WaterThickness);
     // WATER-SHORE-EDGE-1 / WATER-SHORE-MASK-1: shared with the GL FS.
-    if (hasField) {
-        // SHORE-FIELD-1: the coast is the field's zero crossing as a crisp ~3 px antialiased edge.
-        // The old depth feather (smoothstep over featherWu of DEPTH) spread hundreds of wu wide on
-        // gentle shelves (mc2_17) and let coarse terrain decide the visible line elsewhere. Shallow
-        // water keeps some translucency through a 0.55..1 depth softness floor.
-        float edgeAA = smoothstep(0.0, max(3.0 * fieldThickFw, 1e-3), fieldThick);
-        shore = edgeAA * mix(0.55, 1.0, smoothstep(0.0, max(F.f4.w, 0.5), fieldThick));
+    if (hasField || hasVisual) {
+        // Retain the authored softness. Only coarse terrain needs the field's edge;
+        // a static height-field edge disagrees with stitched/morphed visual patches.
+        float edgeAA = hasVisual ? 1.0 : smoothstep(0.0, max(3.0 * fieldThickFw, 1e-3), fieldThick);
+        shore = edgeAA * mix(0.55, 1.0, smoothstep(0.0, max(F.f4.w, 0.5), softnessThick));
     } else {
         shore = wse_shoreFeather(shore, int(F.f4.x + 0.5), int(F.f4.y + 0.5), int(F.f4.z + 0.5),
                                  u_shoreHeightTex, u_shoreMask, F.f5, F.f6, F.f4.w,
                                  WorldPos.xy, F.f7.x);
     }
-    if (shore <= 0.0) discard;
+    if (kWaterDbgPass != 1 && shore <= 0.0) discard;
+    if (kWaterDbgPass == 1 || kWaterDbgPass == 2) {
+        FragColor = vec4(1.0, 0.0, 1.0, 1.0); GBuffer1 = vec4(0.0); return;
+    }
     if (kReflectionCoverage != 0) { FragColor = vec4(1.0); GBuffer1 = vec4(0.0); return; }
     // Option A: material-local response. Shore coverage/bands and reflection tracing stay independent.
     float reactivePixelWidth = max(length(shoreDx), length(shoreDy));
@@ -473,18 +518,20 @@ void main(void)
         Ls = normalize(vec3(Ls.xy, max(Ls.z, max(uT.shadowMinSunSin, 0.05))));
         vec3  sunRad = Color.bgra.rgb * (1.0 - 0.5 * clamp(F.f3.z / 0.6, 0.0, 1.0));
         col += min(sunRad * (SUN_SPEC_GAIN * glintScale * sunVis * waterGgxSpec(waveN, vdir, Ls, specAlpha2)), vec3(4.0));
-        if (uT.numPoolLights > 0 && nightSky < 1.0)
-            col += min(waterLampSpec(WorldPos, waveN, vdir, specAlpha2) * (LAMP_SPEC_GAIN * glintScale), vec3(4.0));
+        // The lamp specular and the flat pool term come from one light walk (waterPoolLights), added right after the sun glint.
+        if (uT.numPoolLights > 0 && nightSky < 1.0) {
+            vec3 lampSpec;
+            vec3 poolTerm = waterPoolLights(WorldPos, waveN, vdir, specAlpha2, lampSpec);
+            col += min(lampSpec * (LAMP_SPEC_GAIN * glintScale), vec3(4.0));
+            col += poolTerm;
+        }
     }
 
-    // The same local pools cross the shoreline; apply after sky reflection so
-    // the reflected sky cannot erase lamps, then let fog/shore alpha attenuate.
-    if (uT.numPoolLights > 0 && nightSky < 1.0) {
-        float contact = 0.0;
-        col += tlp_terrainPoolLight(WorldPos, uT.numPoolLights, uT.lightGridDim,
-            vec2(uT.lightGridMinX, uT.lightGridMinY), vec2(uT.lightGridInvCellX, uT.lightGridInvCellY),
-            uT.lightPoolSoft, uT.lightPoolMoverDim, uT.lightPoolMoverScale,
-            uT.lightPoolMoverMax, uT.lightPoolCompress, 0.0, contact, vec3(0,0,1), vec3(0,0,1), false, 0.0);
+    // (The local pools cross the shoreline too: they were added after the sky reflection above, so the reflected sky
+    // cannot erase lamps, and fog/shore alpha below still attenuate them.)
+    if (kWaterDbgPass == 3) {
+        FragColor = vec4(vec3(dot(col, vec3(0.2126, 0.7152, 0.0722))), 1.0);
+        GBuffer1 = vec4(0.5, 0.5, 1.0, 0.875); return;
     }
     if (F.fog_color.x > 0.0 || F.fog_color.y > 0.0 || F.fog_color.z > 0.0 || F.fog_color.w > 0.0)
         col = mix(F.fog_color.rgb, col, FogValue);

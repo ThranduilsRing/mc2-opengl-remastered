@@ -203,7 +203,7 @@ class WeaponBolt : public GameObject
 
 			// Only fireWeapon sets this for successful gated area-effect aimed shots,
 			// preserving the target lost by connect()'s position-bolt conversion.
-			// Transient: WeaponBoltData omits it; loaded bolts use stock splash.
+			// Persisted in tagged BOLT v2; legacy saves default to stock splash.
 			GameObjectWatchID	aimedTargetWID;
 			std::unique_ptr<glm::vec3>		targetPosition;
 			float				distanceToTarget;
@@ -339,7 +339,7 @@ class WeaponBolt : public GameObject
 		void setTarget (GameObjectPtr who);
 		void setTargetPosition (glm::vec3 pos);
 
-		void connect (GameObjectPtr source, GameObjectPtr dest, WeaponShotInfo* shotInfo = nullptr, long sourceHS = 0, long targetHS = 0)
+		void connect (GameObjectPtr source, GameObjectPtr dest, WeaponShotInfo* shotInfo = nullptr, long sourceHS = 0, long targetHS = 0, bool expandSalvo = true)
 		{
 			ownerWID = source->getWatchID();
 			targetWID = dest->getWatchID();
@@ -370,8 +370,11 @@ class WeaponBolt : public GameObject
 				glm::vec3 targetLoc;
 				targetLoc = ObjectManager->getByWatchID(targetWID)->getPosition();
 				setTargetPosition(targetLoc);
-				targetWID = 0;
+				if (weaponShot.masterId < 0 || MasterComponent::masterList[weaponShot.masterId].getForm() != COMPONENT_FORM_WEAPON_MISSILE)
+					targetWID = 0;
 			}
+
+			if (expandSalvo) splitSalvo(source, dest, sourceHS, targetHS);
 
 			//Reset Node recycle time to either BASE or beam duration.
 			GameObjectPtr myOwner = ObjectManager->getByWatchID(ownerWID);
@@ -381,7 +384,7 @@ class WeaponBolt : public GameObject
 				myOwner->appearance->setWeaponNodeRecycle(sourceHS,BASE_NODE_RECYCLE_TIME);
 		}
 		
-		void connect (GameObjectPtr source, glm::vec3 targetLoc, WeaponShotInfo* shotInfo = nullptr, long sourceHS = 0)
+		void connect (GameObjectPtr source, glm::vec3 targetLoc, WeaponShotInfo* shotInfo = nullptr, long sourceHS = 0, bool expandSalvo = true)
 		{
 			ownerWID = source->getWatchID();
 			targetWID = 0;
@@ -392,6 +395,7 @@ class WeaponBolt : public GameObject
 			
 			if (shotInfo)
 				weaponShot = *shotInfo;
+			if (expandSalvo) splitSalvo(source, nullptr, sourceHS, 0);
 				
 			//Reset Node recycle time to either BASE or beam duration.
 			GameObjectPtr myOwner = ObjectManager->getByWatchID(ownerWID);
@@ -401,6 +405,8 @@ class WeaponBolt : public GameObject
 				myOwner->appearance->setWeaponNodeRecycle(sourceHS,BASE_NODE_RECYCLE_TIME);
 		}
 
+		void splitSalvo(GameObjectPtr source, GameObjectPtr dest, long sourceHS, long targetHS);
+
 		// fireWeapon calls after connect() resets the flag, only for gated successful aimed hits.
 		void setAimedTarget (GameObjectWatchID tgtWID)
 		{
@@ -409,11 +415,11 @@ class WeaponBolt : public GameObject
 
 		// Delivers weaponShot to the aimed target on arrival (single-player only).
 		// True requires a cosmetic (zero-damage) explosion to avoid duplicate damage.
-		bool deliverAimedAreaHit (void);
+			bool deliverAimedAreaHit (CarnagePtr explosion);
 
 		virtual void Save (PacketFilePtr file, long packetNum);
 
-		void Load (WeaponBoltData *data);
+		void Load (WeaponBoltData *data, GameObjectWatchID savedAimedTarget = 0);
 
 		void CopyTo (WeaponBoltData *data);
 

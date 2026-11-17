@@ -106,7 +106,8 @@ def test_asset_precheck_json_failure_and_timeout(tmp_path, monkeypatch):
     assert calls[0][1]['timeout'] == 55
     assert calls[0][0][1] == str(tmp_path.resolve())
     for stdout, code in [('not JSON', 0), ('{}', 0), ('{"loaded":0,"failures":[]}', 0),
-                         ('{"loaded":2,"failures":[]}', 7)]:
+                         ('{"loaded":2,"failures":[]}', 7),
+                         (json.dumps(dict(loaded=2, failures=[], log='[CONTENT] kind=object_type path=pak/1 msg=bad')), 0)]:
         monkeypatch.setattr(ms.subprocess, 'run', lambda *a, **kw: SimpleNamespace(returncode=code, stdout=stdout, stderr=''))
         assert ms.asset_precheck(tmp_path / 'probe.exe', tmp_path)['failures']
     monkeypatch.setattr(ms.subprocess, 'run', lambda *a, **kw: (_ for _ in ()).throw(ms.subprocess.TimeoutExpired(a[0], 55)))
@@ -137,7 +138,7 @@ def test_asset_load_real_packet_fixture(tmp_path):
     write_packet(packet.replace(b'[BuildingData]', b'[MissingData]'))
     report = ms.asset_precheck(exe, tmp_path)
     assert report['failures'], report
-    assert 'ObjectTypeManager.load' in report.get('log', ''), report
+    assert 'unusable object type; invisible terrain placeholder' in report.get('log', ''), report
     pak.unlink()
     assert ms.asset_precheck(exe, tmp_path)['failures']
 

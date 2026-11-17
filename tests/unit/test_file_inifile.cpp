@@ -18,6 +18,9 @@
 #include "file.h"
 #include "inifile.h"
 #include "packet.h"
+#include "../../code/model_credit.h"
+#include "../../code/purchase_catalog.h"
+#include "../../code/objective_text.h"
 
 #include <cstdio>
 #include <cstring>
@@ -62,6 +65,103 @@ const char kFitInMemText[] =
 
 TEST_SUITE("FileStack")
 {
+// Trigger paths: code/purchase_catalog.h, code/logisticsmech.cpp, code/logisticsdata_save.cpp.
+TEST_CASE("purchase_catalog/full inventory identity survives real FIT save reload")
+{
+    struct Variant {
+        std::string chassis;
+        bool designer;
+        std::string getName() const { return "Atlas"; }
+        const std::string& getFileName() const { return chassis; }
+        bool isDesignerMech() const { return designer; }
+    } other{"other.csv", false}, stock{"atlas.csv", true}, custom{"atlas.csv", false};
+    std::vector<Variant*> variants{&other, &stock, &custom};
+    const auto source = [](const auto&) { return std::string("mco"); };
+    const auto path = scratchPath("inventory_identity.fit");
+    for (const bool designer : {false, true}) {
+        {
+            FitIniFile out;
+            REQUIRE(out.create(path.c_str()) == NO_ERR);
+            out.writeBlock("Inventory0");
+            mc2purchase::saveInventoryIdentity(out, "MCO", "ATLAS", "ATLAS.CSV", designer);
+            out.writeBlock("Legacy");
+            mc2purchase::saveIdentity(out, "mco", "Atlas");
+            out.writeBlock("NoPack");
+            out.writeIdString("Variant", "Atlas");
+            out.writeBlock("Fallback");
+            mc2purchase::saveInventoryIdentity(out, "mco", "Atlas", "missing.csv", designer);
+            out.writeBlock("Missing");
+            mc2purchase::saveIdentity(out, "missing-pack", "Atlas");
+            out.close();
+        }
+        FitIniFile in;
+        REQUIRE(in.open(path.c_str()) == NO_ERR);
+        REQUIRE(in.seekBlock("Inventory0") == NO_ERR);
+        auto restored = mc2purchase::loadInventoryVariant(in, variants, source);
+        REQUIRE(restored != variants.end());
+        CHECK(*restored == (designer ? &stock : &custom));
+        REQUIRE(in.seekBlock("Legacy") == NO_ERR);
+        CHECK(*mc2purchase::loadInventoryVariant(in, variants, source) == &other);
+        REQUIRE(in.seekBlock("NoPack") == NO_ERR);
+        CHECK(*mc2purchase::loadInventoryVariant(in, variants, source) == &other);
+        REQUIRE(in.seekBlock("Fallback") == NO_ERR);
+        CHECK(*mc2purchase::loadInventoryVariant(in, variants, source) == &other);
+        REQUIRE(in.seekBlock("Missing") == NO_ERR);
+        CHECK(mc2purchase::loadInventoryVariant(in, variants, source) == variants.end());
+        in.close();
+    }
+    remove(path.c_str());
+}
+
+// Trigger paths: code/purchase_catalog.h, code/logisticsmech.cpp, code/logisticsdata_save.cpp.
+TEST_CASE("purchase_catalog/pack purchase survives real FIT save reload with duplicate names")
+{
+    const auto path = scratchPath("purchase.fit");
+    {
+        FitIniFile out;
+        REQUIRE(out.create(path.c_str()) == NO_ERR);
+        out.writeBlock("Inventory0");
+        mc2purchase::saveIdentity(out, "bt2018", "Atlas");
+        out.close();
+    }
+    {
+        FitIniFile in;
+        REQUIRE(in.open(path.c_str()) == NO_ERR);
+        REQUIRE(in.seekBlock("Inventory0") == NO_ERR);
+        const auto pack = objective_text::readPlain(in, "PurchasePack");
+        const auto name = objective_text::readPlain(in, "Variant");
+        REQUIRE(pack == "bt2018");
+        REQUIRE(name == "Atlas");
+        const std::vector<mc2purchase::Item> variants = {{"", "Atlas"}, {"other", "Atlas"}, {"bt2018", "Atlas"}};
+        const auto restored = std::find_if(variants.begin(), variants.end(), [&](const auto& variant) {
+            return mc2purchase::identityMatches(variant.source, variant.name, pack, *name);
+        });
+        REQUIRE(restored != variants.end());
+        CHECK(restored->source == "bt2018");
+        in.close();
+    }
+    remove(path.c_str());
+}
+
+// Trigger paths: code/model_credit.h and code/simplecamera.cpp.
+TEST_CASE("ModelCredit/appearance manifest requires real author and source")
+{
+    auto read = [](const char* fields) {
+        std::string text = std::string("FITini\r\n[ModelCredit]\r\n") + fields + "FITend\r\n";
+        FitIniFile fit;
+        REQUIRE(fit.open(text.data(), static_cast<int>(text.size())) == NO_ERR);
+        return readModelCredit(fit);
+    };
+    CHECK(read("st Author = \"Karl\"\r\nst Source = \"Wolfman TCE p.4\"\r\n") ==
+          "Model by: Karl (Wolfman TCE p.4)");
+    CHECK(read("st Author = \"Wolfman\"\r\n").empty());
+    CHECK(read("st Source = \"TCE\"\r\n").empty());
+    CHECK(read("st Author = \"\"\r\nst Source = \"TCE\"\r\n").empty());
+    std::string stock = "FITini\r\n[TGLData]\r\nst FileName = \"Atlas\"\r\nFITend\r\n";
+    FitIniFile fit;
+    REQUIRE(fit.open(stock.data(), static_cast<int>(stock.size())) == NO_ERR);
+    CHECK(readModelCredit(fit).empty());
+}
 
 TEST_CASE("FitIniFile parses a .fit fixture from disk")
 {

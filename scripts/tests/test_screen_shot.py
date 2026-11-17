@@ -35,6 +35,15 @@ def test_verdict_parsing():
     assert ss.parse_verdict("[SCREEN_SHOT v1] OK screen=a w=1 h=1")[0] == "OK"
 
 
+def test_preview_routes(tmp_path):
+    lab, _ = ss.build_env("loadout@120", tmp_path / "lab.tga")
+    assert lab["MC2_BOOT_TO_SCREEN"] == "bay"
+    assert all(lab[k] == "1" for k in ("MC2_SOAK_AUTOWIN", "MC2_SOAK_AUTO_PURCHASE", "MC2_BOOT_TO_MECHLAB"))
+    enc, _ = ss.build_env("encyclopedia@120", tmp_path / "enc.tga")
+    assert enc["MC2_BOOT_TO_SCREEN"] == "encyclopedia"
+    assert "MC2_BOOT_TO_BAY" not in enc and "MC2_SOAK_AUTOWIN" not in enc
+
+
 def _tga(path, pixels):
     hdr = bytes([0, 0, 2]) + bytes(9) + struct.pack("<HH", 1, max(len(pixels) // 3, 1)) + bytes([24, 0])
     path.write_bytes(hdr + bytes(pixels))

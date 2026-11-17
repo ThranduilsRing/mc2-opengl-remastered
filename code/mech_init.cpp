@@ -395,7 +395,7 @@ long BattleMech::init (FitIniFile* mechFile) {
 		float crashYield = 0.0;
 		result = mechFile->readIdFloat("CrashYieldTime", crashYield);
 		if (result == NO_ERR)
-			crashYieldTime = crashSize;
+			crashYieldTime = crashYield;
 	}
 
 	result = mechFile->seekBlock("MaxArmorPoints");

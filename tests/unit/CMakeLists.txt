@@ -22,21 +22,32 @@
 cmake_minimum_required(VERSION 3.16)
 project(mc2_tests CXX)
 
+enable_language(C)
+# Mc2Standalone first: its MC2_COMPILE_CACHE /Zi -> /Z7 swap must reach enet's C flags, or sccache
+# fails to collect enet.pdb in cached harness trees.
 include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/Mc2Standalone.cmake")
+add_subdirectory(../../3rdparty/enet enet EXCLUDE_FROM_ALL)
 
 # Resolve the worktree root (this CMakeLists lives at <root>/tests/unit/).
 get_filename_component(MC2_WORKTREE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 
 set_source_files_properties(${MC2_WORKTREE_ROOT}/RenderCore/KtxBasis.cpp PROPERTIES COMPILE_DEFINITIONS NDEBUG)  # vendored basisu asserts do not compile under clang
 add_executable(mc2_tests
+    test_net_session.cpp
+    ${MC2_WORKTREE_ROOT}/code/net/session.cpp
+    test_net_lockstep.cpp
+    ${MC2_WORKTREE_ROOT}/code/net/lockstep.cpp
+    ${MC2_WORKTREE_ROOT}/code/net/runtime.cpp
     test_fog_policy.cpp
     test_water_reactive.cpp
     test_fx_native.cpp
+    test_window_mode.cpp
     ${MC2_WORKTREE_ROOT}/mclib/fx/fx_render.cpp
     ${MC2_WORKTREE_ROOT}/mclib/fx/fx_format.cpp
     ${MC2_WORKTREE_ROOT}/mclib/fx/fx_catalog.cpp
     ${MC2_WORKTREE_ROOT}/mclib/fx/fx_curve.cpp
     ${MC2_WORKTREE_ROOT}/mclib/fx/fx_mesh_data.cpp
+    test_component_rules.cpp
     test_support_craft.cpp
     test_jump_target.cpp
     test_path_work.cpp
@@ -47,6 +58,7 @@ add_executable(mc2_tests
     test_present_handoff.cpp
     test_terrain_record_cache.cpp  # H8 terrain-submit-cut: record cache (static camera 0 rebuilds, one dirty = one)
     test_present_wait.cpp  # PRESENT-HARDEN: pumped bounded main waits, failure seen at seal, start-spaced cap pacing
+    test_loading_pump_meter.cpp
     test_commander_team.cpp # COMMANDER-TEAM: commanderPartTeam fallback (first part wins, team 0, non-home team, no parts)
     test_pilot_kill_result.cpp
     test_soft_splash.cpp
@@ -60,6 +72,8 @@ add_executable(mc2_tests
     test_runtime_bridge_protocol.cpp
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/runtime_bridge_protocol.cpp
     test_building_gameplay_observation.cpp
+    test_sim_math.cpp
+    ${MC2_WORKTREE_ROOT}/3rdparty/detmath/openlibm.cpp
     test_main.cpp           # owns DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
     test_abl_callback_address.cpp
     test_crash_bundle.cpp
@@ -73,6 +87,7 @@ add_executable(mc2_tests
     test_mover_los_epoch.cpp
     test_screen_pick.cpp
     test_camera_start_pick.cpp
+    test_camera_elevation.cpp
     test_spawn_tree_clear.cpp
     test_quality_presets.cpp
     test_rendercore.cpp     # RENDERCORE-UNIT-TESTS-1: GL-free substrate invariants
@@ -82,6 +97,8 @@ add_executable(mc2_tests
     test_prop_light_contract.cpp
     test_water_planar.cpp
     test_clip_sample.cpp  # glTF clip sampling: STEP / LINEAR / CUBICSPLINE (header-only, no Assimp)
+    test_torso_twist.cpp
+    ${MC2_WORKTREE_ROOT}/mclib/mech_skel_import.cpp
     test_height_sig.cpp  # gameplay_height.sig hash equals the Python writer's test vector (header-only)
     test_render_snap.cpp  # UNIT-VISUAL-SNAP-2 render-only effect-anchor and selection-box lift (header-only)
     test_shadow_bake_math.cpp  # the static shadow bake's mask layout, reach, footprint and caster-window math (header-only, no Vulkan)
@@ -97,7 +114,9 @@ add_executable(mc2_tests
     test_mech_up_axis.cpp        # mech-up-axis: which component of the mech/prop world normal is up
     test_static_prop_origin.cpp  # prop instance origin layout: translation at [3][7][11]
     test_prop_record_cache.cpp  # prop scene generations and per-frame-slot cache keys
+    test_prop_list_route.cpp  # colour-prop draw-list routing per packet, tier fringe skip
     test_prop_lod_state.cpp  # flat per-instance LOD hysteresis table equals the unordered_map it replaced
+    test_prop_lod_evaluation.cpp
     test_searchlight_aim.cpp
     test_cone_beam_links.cpp
     test_beam_lights.cpp
@@ -156,6 +175,7 @@ add_executable(mc2_tests
     test_startup_work.cpp  # PC night startup: bounded dedup, appearance noise, TGA scratch reuse
     test_hardpoint.cpp        # HARDPOINT-ID-SCHEMA-1: HardpointId join key + weapon-tag/damage-location link (offline)
     test_package_chassis.cpp  # BT2018-FIRST-CLASS P3/P7: package chassis regions/mounts/payload + type-number allocation (offline)
+    test_purchase_catalog.cpp
     test_mech_clip_state.cpp  # BT2018-FIRST-CLASS P9: imported-mech clip state machine + stride matching (offline)
     test_mech_wreck.cpp
     test_getweaponnode_adapter.cpp  # GETWEAPONNODE-HARDPOINT-ADAPTER-1: chooseWeaponNode() authoritative-with-fallback (offline)
@@ -191,6 +211,7 @@ add_executable(mc2_tests
     test_file_family_contract.cpp   # step 4 B3.0: the File family's name/child/buffer contract before B3.1
     test_pak_read_exact.cpp     # step 4 B4.1: mc2::pak::readExact, the size-checked packet read of the move maps (malformed pak rejected with one log line)
     test_tga_scratch.cpp        # step 4 B4.2a: the whole-file read and the TGA body-size check of the terrain texture loaders
+    test_terrain_overlay_tiles.cpp  # overlay-load-used-tiles-1: used-tile derivation of the overlay loader
     test_globalmap_limits.cpp   # step 4 B4.1c: the range checks of every count a global move map reads from a pak, plus the zeroed owner helper
     test_terrain_part_chunk.cpp
     test_texture_ref.cpp        # step 4 B5.1: mc2::BasicTextureRef, one release per adopted texture node reference
@@ -206,6 +227,7 @@ add_executable(mc2_tests
     test_mc2str.cpp         # mc2::str helpers (from_c, ASCII-fold equality/order, ascii_lower/upper) + the stock-identifier corpus against the old compare
     test_resource_strings.cpp
     test_resource_messages.cpp  # typed resource messages over the real catalog (MC2Strings.cpp linked)
+    test_text_fit.cpp       # drawText bounded-region fit math (header-only)
     test_abl_include_path.cpp  # ABL #include_ next to the including script: mixed separators, OConst.abi (Windows regression)
     test_abl_concat.cpp     # ABL concat(): the append never writes past the script variable's declared size
     test_abl_position.cpp   # ABL getRelativePositionToObject: the REAL binding against a scripted argument queue (abl_exec_shim.cpp)
@@ -334,6 +356,19 @@ add_executable(mc2_tests
 )
 mc2_link_gate(mc2_tests)
 
+# Trigger paths: mclib/mech_skel_import.*, test_torso_twist.cpp.
+# Exercise production FK with synthetic scenes; no importer or game required.
+set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_ALL_EXPORTERS_BY_DEFAULT OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_ZLIB ON CACHE BOOL "" FORCE)
+set(ASSIMP_WARNINGS_AS_ERRORS OFF CACHE BOOL "" FORCE)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(ZLIB_FOUND FALSE)
+add_subdirectory(${MC2_WORKTREE_ROOT}/3rdparty/assimp out/3rdparty/assimp EXCLUDE_FROM_ALL)
+target_link_libraries(mc2_tests PRIVATE assimp::assimp)
+
 # The ABL native-binding headers (ablmc2_internal.h) pull the gui/ and netlib/ headers; only the TUs that include them get those directories.
 set_source_files_properties(test_playmovie_deferral.cpp ${MC2_WORKTREE_ROOT}/code/controlgui_chat.cpp ${MC2_WORKTREE_ROOT}/code/mc2movie.cpp PROPERTIES
     INCLUDE_DIRECTORIES "${MC2_WORKTREE_ROOT}/gui;${MC2_WORKTREE_ROOT}/netlib;${MC2_WORKTREE_ROOT}/3rdparty/tracy")
@@ -412,6 +447,7 @@ endif()
 mc2_asan_runtime(mc2_tests)
 
 if(NOT WIN32)
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/printf_corpus_gen.inc")
     file(READ "${CMAKE_CURRENT_SOURCE_DIR}/printf_corpus_gen.inc" _native_corpus)
     string(REPLACE "std::snprintf(" "corpusSnprintf(" _native_corpus "${_native_corpus}")
     file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/printf_corpus_native.inc" CONTENT "${_native_corpus}")
@@ -550,6 +586,7 @@ endif()
 # Save schema and ABL output bounds exercise their shared production helpers.
 target_sources(mc2_tests PRIVATE
     test_save_archive.cpp
+    test_terrain_cache_key.cpp
     ${MC2_WORKTREE_ROOT}/code/save_archive.cpp
     test_save_sections.cpp
     test_save_field_omission.cpp
@@ -591,6 +628,7 @@ target_sources(vfx_lifecycle_tests PRIVATE
 set_source_files_properties("${MC2_WORKTREE_ROOT}/tools/vfx_oracle/lifecycle_platform.cpp"
     PROPERTIES COMPILE_DEFINITIONS "gos_particle_bridge_flush=vfx_test_unused_particle_bridge_flush")
 target_sources(mc2_tests PRIVATE test_vfx_frozen_driver.cpp)
+target_link_libraries(mc2_tests PRIVATE enet)
 target_sources(mc2_tests PRIVATE
     test_sim_rng.cpp test_tactical_order_queue.cpp test_mission_order_ingress.cpp test_authored_route.cpp
     test_command_replay.cpp test_tacorder_wire.cpp test_tactic_table.cpp
@@ -700,6 +738,25 @@ function(mc2_height_slice output source begin end)
     set(${output} "${body}" PARENT_SCOPE)
     set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${MC2_WORKTREE_ROOT}/${source}")
 endfunction()
+mc2_height_slice(carbon_leg_armor code/mech.cpp "\t\tcurLeg =" "\n\t\tarmorEffect = armorHead")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/carbon_leg_armor.inc" CONTENT "${carbon_leg_armor}")
+mc2_height_slice(carbon_difficulty code/mover_attack.cpp "\tif (!MPlayer && (getCommanderId()" "\n\tfloat distanceToTarget")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/carbon_difficulty.inc" CONTENT "${carbon_difficulty}")
+target_sources(mc2_tests PRIVATE test_carbon_correctness.cpp)
+set_source_files_properties(test_carbon_correctness.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
+# Trigger paths: Gates/gate_rows_0.inc, code/{mover_attack,mech_weapons,gvehicl_weapons}.cpp.
+mc2_height_slice(called_floors code/mover_attack.cpp "static const bool s_calledShotFix =" "\t\tswitch (aimLocation)")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/called_floors.inc" CONTENT "${called_floors}")
+foreach(shooter mech gvehicl)
+    mc2_height_slice(called_hit code/${shooter}_weapons.cpp "static const bool s_calledShotFix =" "\n\t\t\t\t}\n\t\t\t\telse {\n\t\t\t\t\tweaponFX->connect(this, *targetPoint")
+    file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/called_${shooter}.inc" CONTENT "${called_hit}")
+endforeach()
+set_source_files_properties(test_gate.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
+# Trigger paths: code/weaponbolt*, code/object_slot_codec.h, code/objmgr_io.cpp.
+mc2_height_slice(aimed_impact code/weaponbolt.cpp "bool WeaponBolt::deliverAimedAreaHit" "void WeaponBolt::finishNow")
+string(REPLACE "WeaponBolt::deliverAimedAreaHit" "impact" aimed_impact "${aimed_impact}")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/aimed_impact.inc" CONTENT "${aimed_impact}")
+set_source_files_properties(test_object_value_codec.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
 # Trigger paths: code/controlgui_init.cpp and tests/unit/test_hud_frame.cpp.
 mc2_height_slice(hud_frame_bake code/controlgui_init.cpp
     "void ControlGui::bakeFrame()" "void ControlGui::initStatics(")
@@ -721,12 +778,26 @@ mc2_height_slice(camera_release_object code/simplecamera.cpp
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/camera_release_object.inc" CONTENT "${camera_release_object}")
 target_sources(mc2_tests PRIVATE test_world_light_tags.cpp ${MC2_WORKTREE_ROOT}/mclib/spotlight_diag.cpp)
 set_source_files_properties(test_world_light_tags.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
+# Trigger paths: gui/aedit.cpp, code/preview_choice.h, GuiRuntime/PlayerFrontEnd.cpp.
+mc2_height_slice(edit_scroll gui/aedit.cpp "void\taEdit::makeCursorVisible()" "int\t\taEdit::findChar(")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/edit_scroll.inc" CONTENT "${edit_scroll}")
+mc2_height_slice(import_job GuiRuntime/PlayerFrontEnd.cpp "struct ImportLaunchResult {" "} importJob;")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/import_job.inc" CONTENT "${import_job}};")
+target_sources(mc2_tests PRIVATE test_logistics_ui.cpp)
+set_source_files_properties(test_logistics_ui.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
+mc2_height_slice(preview_panel_guard code/simplecamera.cpp
+    "void SimpleCamera::drawPreviewToPanel(" "#ifdef MC2_IMGUI\n    const uint64_t tex=")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/preview_panel_guard.inc" CONTENT "${preview_panel_guard}++composites; }")
 mc2_height_slice(overlay_static_upload GameOS/gameos/vulkan_terrain_island_overlay.cpp
     "bool ovl_prepare_static(" "bool ovl_init(")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/overlay_static_upload.inc" CONTENT "${overlay_static_upload}")
 mc2_height_slice(hud_warm_variants GameOS/gameos/engine_present_vk.cpp
     "struct WarmVariant {" "for (const auto& variant : variants)")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/hud_warm_variants.inc" CONTENT "${hud_warm_variants}")
+mc2_height_slice(cursor_reload mclib/userinput.cpp
+    "void UserInput::initMouseCursors (" "void UserInput::setMouseScale (")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/cursor_reload.inc" CONTENT "${cursor_reload}")
+set_source_files_properties(test_cursor_map.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
 mc2_height_slice(overlay_road_inputs GameOS/gameos/gos_terrain_indirect_cement.cpp
     "static bool TileIsRoadArt(" "void PopulateRecipeCementWords()")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/overlay_road_inputs.inc" CONTENT "${overlay_road_inputs}")
@@ -772,6 +843,9 @@ mc2_height_slice(repair_sensor_remove code/contact.cpp
     "void TeamSensorSystem::removeSensor (SensorSystemPtr sensor)" "void TeamSensorSystem::update (void)")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/repair_vehicle_acquire.inc" CONTENT "${repair_vehicle_acquire}")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/repair_sensor_remove.inc" CONTENT "${repair_sensor_remove}")
+mc2_height_slice(repair_sensor_pool code/contact.cpp
+    "SensorSystemPtr SensorSystemManager::newSensor (void)" "void SensorSystemManager::destroy (void)")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/repair_sensor_pool.inc" CONTENT "${repair_sensor_pool}")
 target_sources(mc2_tests PRIVATE test_repair_deploy.cpp)
 set_source_files_properties(test_repair_deploy.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
 mc2_height_slice(radio_playback code/gamesound.cpp
@@ -792,3 +866,67 @@ mc2_height_slice(terrain_tick mclib/bdactor_update.cpp "    if (!simPresentation
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/terrain_anim_access.inc" CONTENT "${terrain_anim_access}")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/terrain_tick.inc" CONTENT "${terrain_tick}\n} return TRUE;")
 set_source_files_properties(test_terrain_dirty_queue.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
+
+# Keep all production objects in the full tier; scoped links extract only needed
+# objects from the same archive. Stubs (including allocation overrides) are
+# object-linked so the CRT cannot silently replace the allocation probe.
+get_target_property(mc2_unit_sources mc2_tests SOURCES)
+add_library(mc2_unit_config INTERFACE)
+foreach(prop INCLUDE_DIRECTORIES COMPILE_DEFINITIONS COMPILE_OPTIONS COMPILE_FEATURES)
+    get_target_property(value mc2_tests ${prop})
+    if(value)
+        set_property(TARGET mc2_unit_config PROPERTY INTERFACE_${prop} "${value}")
+    endif()
+endforeach()
+get_target_property(mc2_unit_libraries mc2_tests LINK_LIBRARIES)
+target_link_libraries(mc2_unit_config INTERFACE ${mc2_unit_libraries})
+set(mc2_unit_cases)
+set(mc2_unit_support_sources)
+set(mc2_unit_stub_sources test_main.cpp heap_shim.cpp abl_exec_shim.cpp alloc_probe_new.cpp session_stubs.cpp shape_stubs.cpp)
+foreach(source IN LISTS mc2_unit_sources)
+    if(source IN_LIST mc2_unit_stub_sources)
+        continue()
+    endif()
+    get_filename_component(name "${source}" NAME)
+    if(name MATCHES "^test_.*[.]cpp$")
+        list(APPEND mc2_unit_cases "${source}")
+    else()
+        list(APPEND mc2_unit_support_sources "${source}")
+    endif()
+endforeach()
+add_library(mc2_unit_stubs OBJECT ${mc2_unit_stub_sources})
+add_library(mc2_unit_support OBJECT ${mc2_unit_support_sources})
+foreach(target mc2_unit_stubs mc2_unit_support)
+    target_link_libraries(${target} PRIVATE mc2_unit_config)
+endforeach()
+set_source_files_properties(session_stubs.cpp PROPERTIES
+    INCLUDE_DIRECTORIES "${MC2_WORKTREE_ROOT}/gui;${MC2_WORKTREE_ROOT}/netlib;${MC2_WORKTREE_ROOT}/3rdparty/tracy")
+add_library(mc2_unit_archive STATIC $<TARGET_OBJECTS:mc2_unit_support>)
+target_link_libraries(mc2_unit_archive PUBLIC mc2_unit_config)
+set_property(TARGET mc2_tests PROPERTY SOURCES "${mc2_unit_cases}")
+target_link_libraries(mc2_tests PRIVATE mc2_unit_stubs mc2_unit_support)
+
+set(MC2_UNIT_ONLY_SOURCES "" CACHE STRING "Unit test sources for mc2_tests_selected")
+if(MC2_UNIT_ONLY_SOURCES)
+    foreach(source IN LISTS MC2_UNIT_ONLY_SOURCES)
+        if(NOT source IN_LIST mc2_unit_cases)
+            message(FATAL_ERROR "Selected unit source is absent from the full tier: ${source}")
+        endif()
+    endforeach()
+    add_executable(mc2_tests_selected ${MC2_UNIT_ONLY_SOURCES})
+    target_link_libraries(mc2_tests_selected PRIVATE mc2_unit_stubs mc2_unit_archive)
+    if("test_vfx_frozen_driver.cpp" IN_LIST MC2_UNIT_ONLY_SOURCES)
+        add_dependencies(mc2_tests_selected vfx_lifecycle_tests vfx_combat_trace_tests)
+    endif()
+    get_target_property(mc2_unit_link_options mc2_tests LINK_OPTIONS)
+    if(mc2_unit_link_options)
+        target_link_options(mc2_tests_selected PRIVATE ${mc2_unit_link_options})
+    endif()
+    if(WIN32)
+        add_custom_command(TARGET mc2_tests_selected POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "$<TARGET_FILE:SDL2::SDL2>" "$<TARGET_FILE:SDL2_mixer::SDL2_mixer>"
+                "$<TARGET_FILE_DIR:mc2_tests_selected>")
+    endif()
+    mc2_asan_runtime(mc2_tests_selected)
+endif()

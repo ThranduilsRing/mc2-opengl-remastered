@@ -699,6 +699,19 @@ TEST_CASE("object_light_row_harness/non_rainy_missions_are_immune_to_bake_time")
 
 namespace slr = static_light_row;
 
+TEST_CASE("object_light_row_harness/render_liveness_does_not_preserve_dynamic_rows") {
+    // LookoutTower, blown-arm fixture: the last update allocated 998, then
+    // settled presentation skipped updates while render continued every frame.
+    CHECK_FALSE(slr::needsResubmit(998, 997, 404, 404));
+    CHECK(slr::needsResubmit(998, 997, 404, 406));
+    // Reuse is invalid even if unrelated arm/actor appends make 998 in range.
+    CHECK(slr::needsResubmit(998, 997, 406, 407));
+    CHECK(slr::needsResubmit(997, 997, 406, 407));
+    CHECK_FALSE(slr::needsResubmit(996, 997, 404, 407));
+    CHECK_FALSE(slr::needsResubmit(191, 997, 404, 407));
+    CHECK(slr::needsResubmit(slr::kNoLightIndex, 997, 404, 407));
+}
+
 TEST_CASE("object_light_row_harness/light_index_resolution_falls_back_on_sentinel") {
     const uint32_t kS = slr::kNoLightIndex;
 

@@ -23,8 +23,9 @@ layout(local_size_x=1) in;
 struct Gpu { float weight; };
 layout(set=1, binding=0, std430) buffer Payload { Gpu value; } payload;
 layout(set=1, binding=1, rgba8) uniform writeonly image2D destination;
-layout(set=1, binding=2) uniform sampler2D source;
-void main() { imageStore(destination, ivec2(0), texture(source, vec2(0)) * payload.value.weight); }
+layout(set=1, binding=2) uniform texture2D source;
+layout(set=1, binding=3) uniform sampler sourceSampler;
+void main() { imageStore(destination, ivec2(0), texture(sampler2D(source, sourceSampler), vec2(0)) * payload.value.weight); }
 ''')
     (tmp_path / 'Gpu.h').write_text('// @gpu std430 glsl=Gpu\nstruct Gpu {\nfloat weight;\n};\n')
     monkeypatch.setattr(gpu_abi_gen, 'STRUCTS', [('Gpu.h', '', '')])
@@ -38,7 +39,7 @@ void main() { imageStore(destination, ivec2(0), texture(source, vec2(0)) * paylo
     census.write_text(json.dumps({'occupancy': {
         f'set1:binding{i}': [{'type': typ, 'role': name, 'file': 'probe.comp'}]
         for i, typ, name in ((0, 'buffer', 'Payload'), (1, 'image2D', 'destination'),
-                             (2, 'sampler2D', 'source'))}}))
+                             (2, 'texture2D', 'source'), (3, 'sampler', 'sourceSampler'))}}))
     monkeypatch.setattr(sys, 'argv', ['build_variants', '--root', str(tmp_path),
                                     '--pilots', str(manifest), '--quiet'])
     assert build_variants.main() == 0

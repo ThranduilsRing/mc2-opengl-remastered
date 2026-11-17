@@ -1,0 +1,377 @@
+MECHCOMMANDER 2 - COMMUNITY CREDITS
+
+MCO / MechCommander Omnitech authors - corebrain compatibility script
+tools/mc2_import/shims/corebrain.abx: original compiled MCO corebrain,
+from the user-supplied Omnitech distribution; original authors retain credit.
+Project and source downloads: https://www.moddb.com/mods/mechcommander-omnitech
+Community campaigns themselves are supplied and installed by the player.
+
+Every person is listed once, grouped by their first source file.
+All additional sources are retained beside their name. Source IDs resolve in the table below.
+Named contributors, handles and patrons are retained; organisations are acknowledged in source notes.
+Original rights and licence notices continue to apply. Free forever.
+
+S001 - CREDITS.BIK
+
+Mitch Gitelman - Producer [S001]
+Frank Savage - Development lead [S001]
+Glenn Doren - Development [S001]
+Heidi Gaertner - Development and pilot video [S001]
+Mike Hsieh - Development [S001]
+Melody Litovkin - Additional development and pilot video [S001]
+Mike Lyons - Additional development [S001]
+Mike Lee - Design lead [S001]
+Derek Carroll - Design and pilot voice [S001]
+David Fung - Design [S001]
+Jeremy Hill - Design [S001]
+Jason Janicki - Design and pilot voice [S001]
+Erik Johnson - Design and pilot voice [S001]
+Michael Turner - Design [S001]
+Sage Merrill - Additional design and pilot voice [S001]
+Leigh Kellogg - Art lead and pilot voice [S001]
+Steve Allen - Art and pilot voice/video [S001]
+Dorje Bellbrook - Art and pilot video [S001]
+Adam Crockett - Art [S001]
+Charles Dines - Art [S001]
+Greg Onychuk - Senior artist [S001]
+Steve Scott - Art and pilot voice/video [S001]
+Patrick Watje - Art [S001]
+David Choi - Additional art [S001]
+Stuart Compton - Additional art [S001]
+Mark Forrer - Additional art [S001]
+Steve Hartley - Additional art [S001]
+Brennan Priest - Additional art [S001]
+Vic Bonilla Carrillo - Additional video production [S001]
+Todd Lussen - Additional video production [S001]
+Duane Decker - Audio lead and music [S001]
+Pete Comley - Additional sound design [S001]
+Kevin Fettes - Test lead [S001]
+Rob Baldwin - Test [S001]
+Mark Bartlett - Test [S001]
+Sean Kellogg - Test and pilot voice [S001]
+Steve Larson - Test [S001]
+Matthew Shimabuku - Test [S001]
+Aaron Ueland - Test and pilot voice [S001]
+Marty Wright - Test [S001]
+Jaime Pirnie - Multiplayer test lead [S001]
+Scott Bell - Multiplayer testing [S001]
+TJ Duez - Multiplayer testing [S001]
+Shawn Johnson - Multiplayer testing [S001]
+Paul Gradwohl - Configuration test lead [S001]
+Brad Burns - Configuration test [S001]
+Kevin Connolly - Configuration test [S001]
+Dan Hitchcock - Configuration test [S001]
+Tysan James - Configuration test [S001]
+Eric Nylund - User education lead [S001]
+Tom Brush - User education [S001]
+Chris Burns - User education [S001]
+Jeannie Davison - User education [S001]
+Dana Fos - User education and pilot voice/video [S001]
+Robert Silence - User education [S001]
+Jennifer Buxler - Localization program manager [S001]
+Kazuyuki Shibuya - US localization [S001]
+Steve Belton - Ireland localization [S001]
+Niamh Butler - Ireland localization [S001]
+Darragh Canavan - Ireland localization [S001]
+Julian Duffy - Ireland localization [S001]
+Brian Fox - Ireland localization [S001]
+Cillian Gibbons - Ireland localization [S001]
+Cosmin Grecu - Ireland localization [S001]
+Fionnuala Keegan - Ireland localization [S001]
+Sandro Magliocco - Ireland localization [S001]
+John O'Sullivan - Ireland localization [S001]
+Jason Shirley - Ireland localization [S001]
+Greg Ward - Ireland localization [S001]
+Yutaka Hasegawa - Japan localization [S001]
+Han Baek Choi - Korea localization [S001]
+Kyoung Ho Han - Korea localization [S001]
+Jin Yong Jeong - Korea localization [S001]
+Ji Young Kim - Korea localization [S001]
+In Goo Kwon - Korea localization [S001]
+Joon Ho Lee - Korea localization [S001]
+Dupre Deng - Taiwan localization [S001]
+Christine Lin - Taiwan localization [S001]
+Tahila Lin - Taiwan localization [S001]
+Andy Liu - Taiwan localization [S001]
+Ming-I Peng - Taiwan localization [S001]
+Andy Glaister - GameOS [S001]
+Jim Reichert - GameOS [S001]
+Matt Esget - The Zone [S001]
+Neal Hallgarth - The Zone [S001]
+Chris Hadden - EBU setup [S001]
+Randy Shedden - EBU setup [S001]
+Ramon Romero - User testing lead [S001]
+Ken Bachman - User testing [S001]
+Lance Davis - User testing [S001]
+Kyle Drexel - User testing [S001]
+Bill Fulton - User testing [S001]
+Jerome Hagen - User testing [S001]
+Kevin Keeker - User testing [S001]
+Fred Northup - User testing [S001]
+Randy Pagulayan - User testing [S001]
+Jeff Perini - User testing [S001]
+Dina Suda - User testing [S001]
+Matt Alderman - Beta coordination [S001]
+Steve Kastner - Technical support [S001]
+Jon Kimmich - Product planning [S001]
+Rick Mehler - Marketing product manager [S001]
+Steve Fowler - Marketing [S001]
+Andrew Jenkins - Marketing [S001]
+Justin Kirby - Marketing [S001]
+Jama Cantrell - Legal [S001]
+Sue Stickney - Legal [S001]
+Judy Weston - Legal [S001]
+Eric Adams - Worm voice [S001]
+Jennifer Allen - Shadow voice [S001]
+Steve Alliston - Payback voice [S001]
+Lisa Ambler - Longshot voice [S001]
+Lang Beeck - Chopper voice [S001]
+Robbie Booth - Claymore voice/video [S001]
+Erika Carlson - Jinx voice/video [S001]
+Robin Gitelman - Dagger voice [S001]
+Matt Gradwohl - Mother voice/video [S001]
+Douglas Herring - Bandit leader voice, creative content management [S001]
+Lori Johnson - Flash voice [S001]
+Matthew Johnson - Partisan voice [S001]
+Steve Lacey - Nuke voice [S001]
+Duane Molitor - Twitch voice [S001]
+Mary Kay Olmela - Ghost voice [S001]
+Charlie Peterson - Psycho voice [S001]
+Mike Pondsmith - Steel voice/video [S001]
+Steve Robinson - Palerider voice [S001]
+Tom Steinke - Meat voice [S001]
+Michelle Gamboa Stenson - Venom voice/video [S001]
+Lex Story - Air traffic controller voice [S001]
+Alison Stroll - Computer voice [S001]
+Martin Wright - Steiner officer voice [S001]
+Meiji Yugawa - Hacksaw voice [S001]
+Melathia Campbell - Flash video [S001]
+Bob Crocco - Nuke video [S001]
+Brenda Diaz - Shadow video [S001]
+Andrew Flavel - Psycho video [S001]
+Mike Jones - Bubba video [S001]
+Joe Kelsay - Chopper video [S001]
+Brian Lemon - Twitch video [S001]
+James Mayo - Meat video [S001]
+James McDaniel - Rooster video [S001]
+Ty Robert - Palerider video [S001]
+Steven Robinson - Hacksaw video [S001]
+Pradipto Roy - Cobra video [S001]
+Jonathan Sposato - Payback video [S001]
+Jeff Stevens - Creep video [S001]
+Yvette Wagner - Longshot video [S001]
+Tarquin Cardona - Cinematic director and director of photography [S001]
+Rudy Callegari - Cinematic producer [S001]
+Bob Fagan - Cinematic and post-production producer [S001]
+Linda Pahlman - Head of production and second assistant director [S001]
+Taylor Lawrence - Line producer/AD [S001]
+Gretchen Goddard - Production manager [S001]
+Toy Newkirk - Coordinator and commentator 3 [S001]
+Susan Tyler - Casting [S001]
+Vincent Paciera - A.C. [S001]
+Andy Rawson - Gaffer [S001]
+Allen Compton - Best boy [S001]
+Brad Boyer - Key grip [S001]
+Rod Farley - Best boy [S001]
+Eric Sederwitz - Swing [S001]
+Doug Shulman - Sound [S001]
+Peter Thoren - Playback/VTR [S001]
+Britta Martinez - Script [S001]
+Sean Aldridge - Teleprompter [S001]
+Michael Buege - Production design [S001]
+David Lotz - Prop master [S001]
+Brad Morrison - Props [S001]
+Shira Harter - Stylist [S001]
+Sal Salamone - Assistant stylist [S001]
+Miriam Yukich - Hair/makeup [S001]
+Elif Girgin - Assistant hair/makeup [S001]
+Shawn Carson - Production assistant [S001]
+Vic Coleman - Production assistant [S001]
+Clarence Lile - Craft service [S001]
+Joel Ayala - Sound engineer [S001]
+Leo Coller - Editor [S001]
+Rick Diets - Colonel Renard [S001]
+Corinne Chooey - Ambassador Yee [S001]
+Marian Lee Stryker - Mandrissa Cho [S001]
+Derrick Blanton - Jason Cho [S001]
+Trisha Kara - Major Susan Kelly [S001]
+Kenneth Dixon - Baxter [S001]
+Trisha Mann - Tactical officer Diaz [S001]
+Joe Sabatino - Weapons officer Cash [S001]
+Amanda Collins - Archon Katrina Steiner [S001]
+Peter Moore - McLaughlin [S001]
+Richard Ransbottom - Barnes [S001]
+Brett Stimely - Commentator 1 [S001]
+Aashna Patel - Commentator 2 [S001]
+Jim Miller - Reporter 1 [S001]
+Rick Reardon - Reporter 2 [S001]
+Sue Ota - Reporter 3 [S001]
+Sheila Scott - Reporter 4 [S001]
+Melanie Jayne - Extra [S001]
+Ian Ellis Martin - Extra [S001]
+Robert Carlson - Extra [S001]
+Kane Ng - Extra [S001]
+William W. Ryan III - Extra [S001]
+Joanna Tisell - Extra [S001]
+Sita Verma - Extra [S001]
+Stuart Moulder - General manager [S001]
+Craig Henry - Development management [S001]
+Yasmine Nelson - Localization management [S001]
+Eric Straub - Studio X [S001]
+Jo Tyo - User education management [S001]
+Edward Ventura - Business development [S001]
+Joanne Williams - Print production [S001]
+Randall Bills - Special thanks [S001]
+Paul Ota - Special thanks [S001]
+Bryan Nystul - Special thanks [S001]
+Jordan Weisman - Special thanks [S001]
+Mort Weisman - Special thanks [S001]
+Jule Zuccotti - Special thanks [S001]
+
+S002 - wolfman-MC2X-TCE Readme.pdf
+
+Wolfman - MC2X core and campaigns; MC2X scripting; Campaign design; Buildings, copters and tunnel textures; MC2X Warrior Brain Tool adaptation; MechSwapper suggestions, corrections and sanity checks; MC2 Warrior Brain Tool adaptation and template library [S002, S003, S004, S005, S006, S019, S021, S023, S025, S035, S038, S099, S100, S101, S102, S103, S104, S105, S106]
+Battlemaster - MC2X contributions [S002, S003, S004, S005, S102]
+Karl - Mechs including Fafnir, Lupus, Hellfire, MadCat MK3, Bloodkite, Naga, Owens and Sunder; Mechs, icons, purchase-file editor, buildings, campaigns and textures [S002, S003, S004, S005, S025, S102]
+Vlada "Magic" Stevanovic - MC2 inventory, buildings, vehicles, turrets, mechs, scripting insights and map sizes; Unofficial patch and Exodus campaign; Unofficial MC2 patch and Exodus; Omnitech development; Campaign adaptation [S002, S003, S004, S005, S007, S016, S017, S018, S024, S025, S030, S038, S102]
+Paul - Scenery Pack, buildings, structures and monorail; Scenery Pack [S002, S003, S004, S005, S099, S100, S101, S102, S103]
+Rollin - Building set, Battlefield Intelligence System textbox, QuickSave and editor resize fixes; Message box [S002, S003, S004, S005, S025, S102]
+Starman01 - Mechhangar, prop vehicles, Uziel, Argus, Thanatos, Mobile Turret Control and Command Vehicle model; Vehicles, turrets and terrain [S002, S003, S004, S005, S025, S102]
+Raven IIC - Champion mech and inventory additions [S002, S003, S004, S005, S102]
+Mechlab - MC2 add-ons; Desert Fox campaign [S002, S032]
+
+S003 - MC2X-CVE-G Readme.pdf
+
+Aetrion - MC2X community contributor (specific work not stated in the source) [S003, S004, S005]
+Dege - dgVoodoo [S003, S005]
+Marceror - Expanded Exodus story [S003, S004, S005, S025]
+Tyberius44 - MC2X community contributor (specific work not stated in the source) [S003, S005]
+VossieWulf - MC2X community contributor (specific work not stated in the source) [S003, S004, S005]
+
+S025 - MechCommander Omnitech (version.txt)
+
+ThorC - MC1 pilots and Gargoyle model reference [S025]
+Cipher - Mech icons [S025]
+Zarax - ZaraxTowers model [S025]
+d4f_mac - Main menu and loading art [S025]
+
+S030 - MechCommander Omnitech mission (e_4_7.fit)
+
+Mike Turner - Map design [S030]
+mantis - Map design [S030]
+
+S033 - alariq mc2 OpenGL/Linux port (README.md)
+
+alariq - Open-source engine and Linux port; OpenGL/Linux port on which this project builds [S033, S034, S038]
+
+S035 - MC2 Synapses / Warrior Brain Tool (readme.txt)
+
+Jussi Saarivirta - MC2 Synapses, original tool; MC2 Warrior Brain Tool / MC2 Synapses; Original MC2 Synapses author [S035, S099, S100, S101, S103, S105, S106]
+
+S038 - MechCommander 2 Vulkan, this project (README.md)
+
+Alexbeav - D3F fonts, multi-monitor input, SDL events and FMV reference [S038]
+Methuselas - Mission Editor and UI Editor [S038]
+ThranduilsRing - Remaster and engine work [S038]
+
+S099 - wolfman-MC2X-DEE Readme.txt
+
+Poison - Revised MechSwapper [S099, S100, S101, S103]
+
+S101 - wolfman-MC2X-HPE Readme.txt
+
+haloman - Houdini Project beta testing and recommendations [S101]
+
+S103 - wolfman-MC2X-RWC Readme.txt
+
+StarFox - Rebirth of the White Company campaign design [S103]
+
+S104 - MechSwapper_Documentattion_2.5.pdf
+
+Mechronom - MechSwapper 2.5 author [S104]
+Crowfoot - Identified MechSwapper .NET 2.0 requirement [S104]
+
+SOURCE TABLE - file -> individual names count
+Counts include people also credited by another source; each person appears only once above.
+
+S001 | CREDITS.BIK -> 214
+  Stock MC2 credits movie: every credit card transcribed from decoded 400x300 frames at 3-second spacing; role spellings retained. Microsoft / FASA Interactive; Soundelux DMG, Digital Arts NYC, Bright Pictures, Mix Magic Post Sound and Arc Video edit house. Our fans.
+S002 | wolfman-MC2X-TCE Readme.pdf -> 9
+  2011 revision 03, thanks, Features and Inventory sections; fictional pilot names are not contributor credits.
+S003 | MC2X-CVE-G Readme.pdf -> 13
+S004 | wolfman-MC2X-REAP3 Readme.pdf -> 11
+S005 | MC2X Readme.pdf -> 13
+S006 | MC2X Advanced Scripting Options.pdf -> 1
+S007 | Brain_Library.txt -> 1
+S008 | gamesys.txt -> 0
+  Archive readme/document; no contributor names stated.
+S009 | Zoom Out.txt -> 0
+  Archive readme/document; no contributor names stated.
+S010 | Weapons.txt -> 0
+  Archive readme/document; no contributor names stated.
+S011 | Mechs.txt -> 0
+  Archive readme/document; no contributor names stated.
+S012 | art-mechs.exe is missing (direct broken link inside).txt -> 0
+  Archive readme/document; no contributor names stated.
+S013 | Mechlab.txt -> 0
+  Archive readme/document; no contributor names stated.
+S014 | Carver V.txt -> 0
+  Archive readme/document; no contributor names stated.
+S015 | FixABL.txt -> 0
+  Archive readme/document; no contributor names stated.
+S016 | readme_exodus.txt -> 1
+S017 | How to install.txt -> 1
+S018 | How to install.txt -> 1
+S019 | Dark Rain_readme.txt -> 1
+S020 | Magic_Unofficial_dropshipcommand.com.txt -> 0
+  Archive readme/document; no contributor names stated.
+S021 | Pictures of Rebellion_readme.txt -> 1
+S022 | Sarna.net.txt -> 0
+  Archive readme/document; no contributor names stated.
+S023 | TangoMaster_readme.txt -> 1
+S024 | Unofficial_MechCommander_2_Patch_by_Magic.htm -> 1
+S025 | version.txt -> 10
+S026 | End install text.txt -> 0
+  MCO team / original rights holders; no individual attribution stated.
+S027 | MCO EULA.txt -> 0
+  MCO team / original rights holders; no individual attribution stated.
+S028 | MCO Requirements.txt -> 0
+  MCO team / original rights holders; no individual attribution stated.
+S029 | How to create purchase and salvage files for MCO.txt -> 0
+  MCO team / original rights holders; no individual attribution stated.
+S030 | e_4_7.fit -> 3
+S031 | Readme.txt -> 0
+  Original MC2 development team; Omnitech adaptation by MCO team.
+S032 | Readme.txt -> 1
+S033 | README.md -> 1
+S034 | README.md -> 1
+S035 | readme.txt -> 2
+S036 | README.txt -> 0
+  Gamesys tuning; no individual named in this readme.
+S037 | README.txt -> 0
+  Weapons/equipment tuning; no individual named in this readme.
+S038 | README.md -> 6
+  Original game: Microsoft / FASA Interactive. Development tooling: Claude Code / Anthropic.
+S044 | ASSIGNMENT: credits-overlay-1 -> 0
+  Sarna.net and its contributors: attribution for weapon descriptions, as required by owner assignment. https://www.sarna.net/; no individual byline supplied locally.
+S099 | wolfman-MC2X-DEE Readme.txt -> 4
+S100 | wolfman-MC2X Readme.txt -> 4
+S101 | wolfman-MC2X-HPE Readme.txt -> 5
+S102 | wolfman-MC2X-MCE Readme.pdf -> 8
+  Explicit thanks on page 1; existing specific contribution descriptions retained.
+S103 | wolfman-MC2X-RWC Readme.txt -> 5
+S104 | MechSwapper_Documentattion_2.5.pdf -> 3
+  PDF header says By Mechronom; installation note credits Crowfoot from DSC. SHA256 identical in DEE, DWE, HPE and RWC; counted once. Poison is credited separately by package readmes; no alias inferred.
+S105 | readme.txt -> 2
+  Byte-identical copy in HPE; each distinct file counted once.
+S106 | readme.txt -> 2
+  Byte-identical copy in RWC; each distinct file counted once.
+
+COMMUNITY LINKS
+Wolfman: https://mc2x.net/ (README.md; HTTP 200 verified during this session).
+Magic / MechCommander Omnitech: NOT FOUND (current files-page verification failed).
+  Archive End install text.txt and README.md identify https://www.moddb.com/mods/mechcommander-omnitech.
+  One plain request to /files returned HTTP 403; no clickable link is shipped for an unverified page.
+alariq: https://github.com/alariq/mc2 (README.md and alariq git remote).
+
+Free forever.

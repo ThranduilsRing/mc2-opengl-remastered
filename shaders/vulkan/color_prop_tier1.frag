@@ -99,7 +99,7 @@ layout(location = 10) in vec3 vMaterialSeed;
 flat layout(location = 11) in vec3 vMaterialAmbient;
 flat layout(location = 12) in vec3 vMaterialSun;
 flat layout(location = 13) in uint vMaterialFlags;
-layout(location = 14) in vec3 vTree;
+layout(location = 14) in vec4 vTree;
 flat layout(location = 15) in uvec2 vWindow;
 flat layout(location = 16) in uvec3 vTeam;
 
@@ -191,7 +191,7 @@ void main() {
     // of main() for why the distinction exists and what its granularity is.
     bool alphaTestClass = false;
     float cover = 1.0;   // PROP-COVERAGE-1 blend alpha (1 in the core pass)
-    if (kOpaqueOnly == 0 && uFrame.materialReadyOn != 0 && vLayerOn >= 0) {
+    if (uFrame.materialReadyOn != 0 && vLayerOn >= 0) {
         alphaTestClass = true;
         // ALPHA-ON group (alpha-MIXED buildings): sample the alpha-ON array and apply the
         // SAME 0.5 alpha-test discard the GL producer uses (static_prop.frag:236:
@@ -211,7 +211,9 @@ void main() {
         float lodOn = 0.5 * log2(max(max(dot(duv1, duv1), dot(duv2, duv2)), 1e-12));
         lodOn = max(lodOn, 0.0);
         vec4 texc = textureLod(uAlbedoOn[nonuniformEXT(bucketOn)], vec3(uvSampledOn, float(propBucketLayer(vLayerOn))), lodOn);
-        cover = propCoverage(texc.a, lodOn);   // PROP-COVERAGE-1 (replaces the Bayer screen-door dither)
+        // kOpaqueOnly: an opaque packet of an alpha-mixed type (a trunk): same sample, light floor and class, no cut.
+        // An opaque packet routed to the alpha core list for ordering (after an alpha-tested one) samples uncut too.
+        if (kOpaqueOnly == 0 && uPacket.packetAlphaTest != 0) cover = propCoverage(texc.a, lodOn);   // PROP-COVERAGE-1 (replaces the Bayer screen-door dither)
         // ★VK-FLIP-FIELD-REPORT-1 BLACK-FENCE FIX: the alpha-ON group is the ALPHA_TEST
         // class (tree cards / fences / foliage). GL static_prop.frag:339 floors their lit
         // color at max(litRgb, vec3(0.5)) so the dark, light-facing-falloff side doesn't
@@ -286,15 +288,24 @@ void main() {
         vec3 tint = macro / max(dot(macro,vec3(0.299,0.587,0.114)),0.01);
         vec3 albedo = propDecodeColor(materialAlbedo * mix(vec3(1),tint,0.25));
         vec3 sh[9]; for (int k=0;k<9;++k) sh[k]=uEnv.shDiffuse[k].xyz;
-        vec3 ambient = uFrame.iblShStrength > 0.0 ? evalShL2(normalize(outputNormalStuff),sh)*uFrame.iblShStrength : vec3(0);
+        // The environment carries the unrotated probe. Evaluate it in the sun's
+        // frame so its strong directional sky fill agrees with the shadow map.
+        vec3 skyNormal = normalize(outputNormalStuff);
+        vec2 sunAxis = vec2(-L.x, L.y), probeAxis = vec2(sh[3].r, sh[2].r);
+        if (dot(sunAxis,sunAxis) > 1e-8 && dot(probeAxis,probeAxis) > 1e-8) {
+            float angle = atan(sunAxis.y,sunAxis.x) - atan(probeAxis.y,probeAxis.x);
+            float c = cos(angle), s = sin(angle);
+            skyNormal.xz = mat2(c,-s,s,c) * skyNormal.xz;
+        }
+        vec3 ambient = uFrame.iblShStrength > 0.0 ? evalShL2(skyNormal,sh)*uFrame.iblShStrength : vec3(0);
         // Crown normals describe the canopy volume: keep the terrain sun's side.
         // Backlit leaves receive transmission and sky fill below.
         float wrap = max((dot(N,L)+0.5)/1.5,0.0);
         float transmission = alphaTestClass ? 0.08*max(dot(-N,L),0.0) : 0.0;
         vec3 direct = propDecodeColor(vMaterialSun) * (propNightSunWeight(wrap, N) + transmission * propNightDirectShare());
         // SH already contains linear irradiance. Preserve the stock albedo exposure ceiling.
-        float forestSky = mix(0.7, 1.0, vTree.z);
-        vec3 irradiance = max(ambient,vec3(0))*vTree.x*materialAO*forestSky + direct*treeVisibility(N)*vTree.z;
+        float forestSky = vTree.z;
+        vec3 irradiance = max(ambient,vec3(0))*vTree.x*materialAO*forestSky + direct*(vTree.w*mix(treeVisibility(N), 1.0, vTree.w)); // above the baked shadow line the crown is lit
         // Thin leaves retain sky fill through canopy self-occlusion. Fade it
         // with the night profile rather than making dark forests emissive. Full night keeps 0.35*0.35 (was 0.35*0.2: stock-dark
         // leaf albedo read near-black on night maps such as mc2_10).
@@ -384,6 +395,7 @@ void main() {
     // inline only rc_pixelHandlesOwnShadow / rc_isStaticPropNoSelfShadow and have no
     // RECEIVE opt-in at all. Closing the granularity gap needs a per-packet alpha bit
     // on the feed; it is not required for class correctness and is NOT done here.
-    oGBuffer1 = vec4(normalize(treeMaterial ? mc2ToRender(outputNormalStuff) : outputNormalStuff) * 0.5 + 0.5, treeMaterial ? 1.0 : alphaTestClass ? 0.1875 : 0.25);
+    // Trees handle their own shadow, but must occlude ground HUD separately from terrain (1.0).
+    oGBuffer1 = vec4(normalize(treeMaterial ? mc2ToRender(outputNormalStuff) : outputNormalStuff) * 0.5 + 0.5, treeMaterial ? 0.96875 : alphaTestClass ? 0.1875 : 0.25);
     oObjectId = uint(uPacket.objectId);
 }

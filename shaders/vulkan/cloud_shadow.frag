@@ -128,7 +128,8 @@ void main()
     int   oct      = clamp(u_cloudOctaves, 1, 6);
     float tWrapped = mod(u_time, 1000.0);
 
-    vec2  uv    = worldPos.xz * u_cloudScale + tWrapped * u_cloudScroll;
+    // MC2 is Z-up: sample both ground axes so flat terrain retains 2D clouds.
+    vec2  uv    = worldPos.xy * u_cloudScale + tWrapped * u_cloudScroll;
     float n     = fbm(uv, oct) * 0.5 + 0.5;
     float clear = smoothstep(u_cloudThreshold.x, u_cloudThreshold.y, n);
     float factor = mix(1.0 - u_cloudStrength, 1.0, clear);

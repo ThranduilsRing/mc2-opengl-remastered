@@ -14,8 +14,8 @@
 // a few patches undisplaced) is not mirrored: the traced surface is displaced everywhere the bake exists. TLAS space is MC2 world (x, y, z up).
 // BUILD FLAGS: every static BLAS is PREFER_FAST_TRACE | ALLOW_COMPACTION (no ALLOW_UPDATE) and is compacted when that saves >= 10%; the TLAS is rebuilt
 // (never refit) when membership changes.
-// LIFETIME: builds are blocking one-shots on map load and when the registry generation or the terrain key changes (a stall then; moving them to the frame's
-// own command buffer is a part-2 follow-up). Replacements are built into new owners and published only when the whole set succeeded; the replaced TLAS,
+// LIFETIME: map-load and terrain builds use blocking one-shots. Prop membership and new types publish on the graphics frame queue, including mover-less
+// frames; compaction queries are read without waiting on later frames. Replacements use new owners; the replaced TLAS,
 // then the replaced BLASes, retire through VulkanContext::retire. A failed build keeps the last valid snapshot (never a partial membership) and stops
 // retrying until the inputs change. Without RT capability and a registered consumer, nothing is collected, uploaded or built.
 // MATERIALS (part 3, docs/rt-scene-contract.md): one MaterialRow per BLAS geometry in one storage buffer published with the TLAS. A hit's row is
@@ -49,6 +49,7 @@ struct Demand {
     constexpr bool needed(bool capable) const { return capable && consumers != 0; }
 };
 constexpr bool updateNeeded(bool snapshotValid, bool changed) { return !snapshotValid || changed; }
+constexpr bool deferPropBuild(bool snapshotValid, bool sameGeometry) { return snapshotValid && sameGeometry; }
 
 inline constexpr uint32_t kTerrainObjectId = 0;
 inline constexpr uint32_t kMechIdFirst = 0x10000;   // the movers: kMechIdFirst + scene-table slot
@@ -251,6 +252,8 @@ void noteTerrain(const TerrainSource& t);
 // The colour-prop island once its map geometry is resident (`propVbo` = its VBO's device address, 0 when the VBO lacks BDA usage): builds the missing type
 // BLASes and rebuilds the TLAS when the registry generation moved. Main thread.
 void updateProps(uint64_t propVbo);
+// Scene flush, after the static-prop feed and before mechs; runs on mover-less frames too.
+void recordFrame();
 // Map unload (the prop geometry is going away): retires every prop BLAS, the records and the TLAS, and every mover.
 void invalidateProps();
 

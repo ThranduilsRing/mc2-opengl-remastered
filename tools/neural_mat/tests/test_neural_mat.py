@@ -14,6 +14,7 @@ sys.path.insert(0, str(ROOT))
 
 from tools.neural_mat import (enhance, export_nmat, fit_latents, golden_vectors, licence_gate,  # noqa: E402
                               quantize, reference_decode, sample_params, train)
+from tools import gate_hosts  # noqa: E402
 
 FIXTURE = Path(__file__).parent / "fixtures" / "matsynth_metadata.json"
 # sha256 of the exported tiny .nmat (torch CPU, 1 thread, fixed seeds). A different torch/CPU build may legitimately
@@ -88,6 +89,8 @@ def test_tiny_pipeline_under_60s_with_fixed_hash(tmp_path):
     (tmp_path / "again").mkdir()
     digest2 = _tiny(tmp_path / "again")[-1]
     assert digest == digest2                                           # deterministic
+    if gate_hosts.current_host() != "pc":
+        pytest.skip(f"TINY_HASH is pinned to the PC's torch/CPU numerics (gate host {gate_hosts.current_host()})")
     assert digest == TINY_HASH, digest
 
 

@@ -7,6 +7,7 @@
 #include "abl_exec_shim.h"
 
 #include "ablmc2_internal.h"
+#include <span>
 
 namespace abl_test {
 
@@ -59,3 +60,14 @@ GameObject* GameObjectManager::findByPartId(long) { return nullptr; }  // the te
 glm::vec3 Mover::relativePosition(float, float, unsigned long) { return glm::vec3(); }
 
 glm::vec3 relativePositionToPoint(glm::vec3, float, float, unsigned long) { return glm::vec3(); }
+
+std::span<float>* queuedOutput = nullptr;
+
+// Existing position tests explicitly model real[3]; new calls carry their declared extent.
+std::span<float> ABLi_popRealBuf(void) {
+	if (queuedOutput) return *queuedOutput;
+	auto& queue = abl_test::args().realPtrs;
+	auto* address = queue.front();
+	queue.pop_front();
+	return address ? std::span<float>{address, 3} : std::span<float>{};
+}

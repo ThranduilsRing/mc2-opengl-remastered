@@ -10,8 +10,8 @@ campaign script, pilots, campaign music). Stock + MC2X shared content already
 lives in the deploy base + mc2x-compat, so the campaign mod only needs:
 
   1. the campaign missions -> extracted from mission.fst (data\\missions\\*.fit/.pak)
-  2. the loose campaign delta -> files under the install's data/ whose path is NOT
-     already provided by mc2x-compat or the base deploy (warriors, purchase, ops
+  2. the loose campaign delta -> files under the install's data/ whose bytes differ
+     from the first dependency providing that path (warriors, purchase, ops
      script, pilots, campaign-only art/sound/csv).
 
 object2.pak and data/art/buildings.csv are EXCLUDED (mc2x-compat owns the object
@@ -45,8 +45,7 @@ EXCLUDE_REL = {
 # reads them from there.  Older MC2X installs (DWE, HPE, DEE era) ship
 # incompatible old-format versions inside art.fst that cause jumbled GUI, no
 # mouse cursor, and pink mech bay when the mod overrides the base.
-# Exclusion is belt-and-suspenders: in_refs() will also skip them when
-# mc2x-compat is present, but explicit exclusion prevents poisoning even if
+# Explicit exclusion prevents poisoning even if
 # refs are incomplete.
 CORE_GUI_EXCLUDE = {
     # buttonlayout FITs — control positions/sprites; old format = jumbled layout
@@ -97,21 +96,22 @@ def rel_norm(p):
     return p.replace("\\", "/").lower()
 
 
-def in_refs(name, refs):
+def in_refs(name, refs, content):
     rel = name.replace("\\", "/")
     # strip leading "data/" so we can test against ref dirs that ARE the data dir
     sub = rel[5:] if rel.lower().startswith("data/") else rel
     for ref in refs:
-        if os.path.isfile(os.path.join(ref, sub.replace("/", os.sep))):
-            return True
-        if os.path.isfile(os.path.join(ref, rel.replace("/", os.sep))):
-            return True
+        for candidate in (sub, rel):
+            path = os.path.join(ref, candidate.replace("/", os.sep))
+            if os.path.isfile(path):
+                with open(path, "rb") as stream:
+                    return stream.read() == content
     return False
 
 
 def extract_fst(fst_path, out_root, refs=None, drop_upscale=False, gui_canon=None):
     """Extract entries of an FST into out_root, preserving its data\\... path.
-    If refs is given, skip entries already provided by a ref data dir (delta only).
+    If refs is given, skip entries identical to the first providing ref (delta only).
     drop_upscale -> skip entries under data/{textures,art,tgl} (upscale dirs).
     gui_canon -> skip data/art/* entries whose basename is canonical GUI (owned by
     base art.fst / compat); the engine must always use OUR GUI, never the campaign's."""
@@ -129,14 +129,14 @@ def extract_fst(fst_path, out_root, refs=None, drop_upscale=False, gui_canon=Non
             continue
         if drop_upscale and sub.startswith(UPSCALE_DIRS) and not keep_content:
             continue
-        if refs and in_refs(name, refs):
-            continue
         seen.add(rn)
         out_path = os.path.join(out_root, name.replace("\\", os.sep))
         try:
             content = fst.decompress_entry(off, comp, real, is_lz, data)
         except Exception as e:
             print("  WARN: %s: %s" % (name, e))
+            continue
+        if refs and in_refs(name, refs, content):
             continue
         os.makedirs(os.path.dirname(out_path), exist_ok=True)
         with open(out_path, "wb") as f:
@@ -180,19 +180,31 @@ def _is_campaign_unique_asset(sub):
 # pilots.csv lives in the install's misc.fst, is NOT loose, and has no base/compat
 # fallback -> without it LogisticsData::initPilots builds an empty pilot pool, so
 # AVAILABLE PILOTS is empty and the deployment screen can never be filled to LAUNCH.
-# Only roster CSVs here -- overlaying all of misc.fst (mech/weapon/building csvs) onto
-# base regresses logistics, the same class of breakage as buildings.csv/object2.pak.
-MISC_ROSTER = {"data/objects/pilots.csv"}
+# MC2X renamed compbas.csv to mc2xcomp.csv; our engine still opens compbas.csv.
+# Keep the campaign's weapon/ammo definitions with its object loadouts.
+MISC_ROSTER = {"data/objects/pilots.csv": "data/objects/pilots.csv",
+               "data/objects/compbas.csv": "data/objects/compbas.csv",
+               "data/objects/mc2xcomp.csv": "data/objects/compbas.csv"}
+
+
+def campaign_roster(entries):
+    """Keep authored unit profiles with their component table; exclude misc GUI data."""
+    return {**{rel_norm(e[3]): rel_norm(e[3]) for e in entries if e[3]
+               and rel_norm(e[3]).startswith("data/objects/")
+               and rel_norm(e[3]).endswith(".csv")}, **MISC_ROSTER}
 
 
 def extract_fst_whitelist(fst_path, out_root, include):
     """Extract ONLY entries whose normalized name is in `include` (lowercased
     'data/...' paths). Surgical roster pull; everything else in the FST is ignored."""
     n = 0
-    for off, comp, real, name, is_lz, data in fst.fst_entries(fst_path):
+    entries = sorted(fst.fst_entries(fst_path), key=lambda entry:
+                     rel_norm(entry[3] or "") == "data/objects/mc2xcomp.csv")
+    for off, comp, real, name, is_lz, data in entries:
         if not name or rel_norm(name) not in include:
             continue
-        out_path = os.path.join(out_root, name.replace("\\", os.sep))
+        target = include[rel_norm(name)] if isinstance(include, dict) else name
+        out_path = os.path.join(out_root, target.replace("\\", os.sep).replace("/", os.sep))
         try:
             content = fst.decompress_entry(off, comp, real, is_lz, data)
         except Exception as e:
@@ -241,16 +253,18 @@ def build_canonical_gui_basenames(deploy_root, refs):
 
 
 def copy_loose_delta(src_data, refs, out_data, drop_upscale=False, gui_canon=None):
-    """Copy files under src_data whose rel path is absent in every ref dir.
+    """Copy files under src_data whose bytes differ from the first providing ref.
     drop_upscale -> also exclude the loose data/{textures,art,tgl} trees (base+compat own them).
     gui_canon -> skip data/art/* files that are canonical GUI (use OUR GUI, not the campaign's)."""
     import shutil
     n = 0
     for root, _, files in os.walk(src_data):
-        for fn in files:
+        for fn in sorted(files, key=lambda name: name.lower() == "mc2xcomp.csv"):
             sp = os.path.join(root, fn)
             rel = os.path.relpath(sp, src_data).replace("\\", "/")
             rel_key = ("data/" + rel).lower()
+            if rel_key == "data/objects/mc2xcomp.csv":
+                rel = "objects/compbas.csv"
             if rel_key in EXCLUDE_REL or rel_key in CORE_GUI_EXCLUDE:
                 continue
             keep_content = _is_campaign_unique_asset(rel)  # colormaps + matched icon set survive both filters
@@ -258,9 +272,10 @@ def copy_loose_delta(src_data, refs, out_data, drop_upscale=False, gui_canon=Non
                 continue
             if drop_upscale and rel.lower().startswith(UPSCALE_DIRS) and not keep_content:
                 continue
-            if any(os.path.isfile(os.path.join(ref, rel.replace("/", os.sep))) for ref in refs):
-                continue
             out = os.path.join(out_data, rel.replace("/", os.sep))
+            with open(sp, "rb") as stream:
+                if not os.path.isfile(out) and in_refs(rel, refs, stream.read()):
+                    continue
             os.makedirs(os.path.dirname(out), exist_ok=True)
             shutil.copy2(sp, out)
             n += 1
@@ -364,7 +379,8 @@ def main():
     # Surgical roster pull from misc.fst (campaign pilots.csv; see MISC_ROSTER).
     misc_path = os.path.join(src, "misc.fst")
     if os.path.isfile(misc_path):
-        n_misc = extract_fst_whitelist(misc_path, args.out, MISC_ROSTER)
+        roster = campaign_roster(fst.fst_entries(misc_path))
+        n_misc = extract_fst_whitelist(misc_path, args.out, roster)
         if n_misc:
             print("  extracted misc.fst roster (pilots.csv): %d file(s)" % n_misc)
             total_fst += n_misc

@@ -1077,7 +1077,7 @@ long Mover::setPathRangeLock (bool set, long range) {
 			setPathRangeLock(false);
 		if (path && (path->numSteps > 0)) {
 			long start = path->curStep;
-			long lastStep = start + range;
+			long lastStep = start + std::min<long>(range, MAX_LOCK_RANGE);
 			lastStep = std::min(lastStep, path->numStepsWhenNotPaused);
 			pathLockLength = 0;
 			for (long i = start; i < lastStep; i++) {

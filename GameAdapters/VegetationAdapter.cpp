@@ -14,6 +14,7 @@
 
 // Engine side.
 #include "gos_vegetation.h"
+#include "../code/render_view.h"
 
 // Game side -- terrain geometry + type queries.
 #include "../mclib/terrain.h"
@@ -37,6 +38,7 @@
 #include <cmath>     // sinf, fmodf, fabsf
 #include <fstream>
 #include "mc2fmt.h"
+#include "../code/job_system.h"
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -45,6 +47,7 @@
 // VEG-CEMENT-1: sub-cell hard-surface coverage from the decal/overlay bake
 // (GameOS/gameos/gos_terrain_indirect_mine_decal.cpp; C-linkage forwarders).
 extern float gos_terrain_indirect_HardSurfaceCoverage(float wx, float wy);
+extern float gos_terrain_indirect_HardSurfaceCoverageReadOnly(float wx, float wy);
 extern void  gos_terrain_indirect_HardSurfaceStats(int* alpha, int* pure, int* noImage);
 
 namespace {
@@ -248,7 +251,8 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                 if (ir<0 || ic<0 || ir>=mapSide || ic>=mapSide) { ++instRejHard; continue; }
                 if (classifyTerrainType(land->getTerrain(ir,ic)) == VegDensity::kHard)
                     { ++instRejHard; continue; }
-                const float elevation = TerrainRuntime::sampleVisualHeight(instPos);   // visual surface (nifty), not the sim grid
+                const float elevation = TerrainRuntime::sampleVisibleGroundHeight(instPos);
+                if (!TerrainRuntime::visibleGroundSupports(instPos, member.scale)) { ++instRejSlope; continue; }
                 bool occupied = false;
                 if (gameMap) {
                     int cr=0,cc=0;
@@ -274,7 +278,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                 GosVegetation::Instance inst;
                 inst.x = instWx-originX-mapSpan*0.5f;
                 inst.y = instWy-originY+mapSpan*0.5f;
-                inst.z = elevation+0.5f;
+                inst.z = elevation-0.5f;
                 inst.yaw = clumpRoll(col,row,seed,salt)*6.2831853f;
                 inst.scale = member.scale;
                 unsigned frame = member.frame;
@@ -309,7 +313,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                 // "sparse" everywhere); the fragment stage drops blades whose root colour
                 // is not vegetation. Snow keeps its clumps only.
                 if (classifyTerrainType(code) == VegDensity::kHard || code == MC_TUNDRA_TYPE) continue;
-                if (TerrainRuntime::sampleVisualHeight(pos) <= Terrain::waterElevation+kBeachMarginWU) continue;
+                if (TerrainRuntime::sampleVisibleGroundHeight(pos) <= Terrain::waterElevation+kBeachMarginWU) continue;
                 fieldCells.emplace_back(col,row);
                 glm::vec3 normal;
                 fieldSlopes[static_cast<size_t>(row)*side+col] = land->getTerrainAngle(pos,&normal);
@@ -328,7 +332,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
             land->worldToTileCell(pos,tr,tc,sr,sc);
             if (tr<0 || tc<0 || tr>=mapSide || tc>=mapSide ||
                 classifyTerrainType(land->getTerrain(tr,tc))==VegDensity::kHard) return true;
-            if (TerrainRuntime::sampleVisualHeight(pos)<=Terrain::waterElevation+kBeachMarginWU) return true;
+            if (TerrainRuntime::sampleVisibleGroundHeight(pos)<=Terrain::waterElevation+kBeachMarginWU) return true;
             if (gameMap) {
                 int cr=0,cc=0;
                 land->worldToCell(pos,cr,cc);
@@ -336,8 +340,19 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
             }
             return gos_terrain_indirect_HardSurfaceCoverage(pos.x,pos.y)>=kHardFalloffLo;
         });
-        for (const auto& [col,row] : fieldCells) {
-            if (fieldSide == 0) break;
+        // Finish lazy coverage updates before workers read terrain and static masks.
+        (void)gos_terrain_indirect_HardSurfaceCoverage(originX, originY);
+        struct FieldBatch {
+            std::vector<GosVegetation::Instance> instances;
+            int gaps = 0, flowers = 0;
+        };
+        // Fixed batches merge in cell order, preserving upload order and the clump budget.
+        const auto field = mc2::jobs::parallel_reduce<FieldBatch>(mc2::jobs::Domain::Render,
+            fieldSide ? static_cast<int>(fieldCells.size()) : 0, 64, 12000, {},
+            [&](int begin, int end, FieldBatch& batch) {
+        batch.instances.reserve(static_cast<size_t>(end-begin)*fieldSide*fieldSide);
+        for (int cell = begin; cell < end; ++cell) {
+            const auto [col,row] = fieldCells[static_cast<size_t>(cell)];
             const float slope = fieldSlopes[static_cast<size_t>(row)*side+col];
             for (int j = 0; j < fieldSide*fieldSide; ++j) {
                 const auto blade = fieldBlade(col,row,seed,j,fieldSide,gridStep,*fieldRecipe);
@@ -349,21 +364,22 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                 // and a gentle height swell instead of tall tufts.
                 const float tuft = macroZone(bx+static_cast<float>(seed&1023u), by, 14.0f);
                 const float tuftHeight = fieldTuftHeight(tuft);
-                if (tuftHeight <= 0.0f) { ++fieldGaps; continue; }
+                if (tuftHeight <= 0.0f) { ++batch.gaps; continue; }
                 const bool flower = macroZone(bx+911.0f, by-377.0f+static_cast<float>(seed&2047u), 45.0f) > 0.74f &&
                                     blade.seed < 0.4f;
                 int ir=0,ic=0,isr=0,isc=0;
                 land->worldToTileCell(bpos,ir,ic,isr,isc);
                 if (ir<0 || ic<0 || ir>=mapSide || ic>=mapSide ||
                     classifyTerrainType(land->getTerrain(ir,ic)) == VegDensity::kHard) continue;
-                const float elevation = TerrainRuntime::sampleVisualHeight(bpos);
+                const float elevation = TerrainRuntime::sampleVisibleGroundHeight(bpos);
+                if (!TerrainRuntime::visibleGroundSupports(bpos, blade.scale*2.0f)) continue;
                 bool occupied = false;
                 if (gameMap) {
                     int cr=0,cc=0;
                     land->worldToCell(bpos,cr,cc);
                     occupied = !gameMap->inBounds(cr,cc) || clumpStaticOccupied(gameMap->cellAt(cr,cc), true);
                 }
-                const float coverage = gos_terrain_indirect_HardSurfaceCoverage(bx,by);
+                const float coverage = gos_terrain_indirect_HardSurfaceCoverageReadOnly(bx,by);
                 if (!clumpSurfaceAllowed(true,elevation<=Terrain::waterElevation+kBeachMarginWU,
                                          occupied,coverage,slope,false)) continue;
                 const float edgeProbability = fieldEdgeProbability(edge.distance(bx-originX,originY-by),
@@ -371,18 +387,25 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                 GosVegetation::Instance inst;
                 inst.x = bx-originX-mapSpan*0.5f;
                 inst.y = by-originY+mapSpan*0.5f;
-                inst.z = elevation+0.25f;
+                inst.z = elevation-0.5f;
                 inst.yaw = blade.yaw;
                 inst.scale = blade.scale * (flower ? 0.55f : tuftHeight);   // flowers sit on short stalks
                 // role 0: the shader bends field blades downwind; bit 2 = white wildflower heads.
                 inst.atlasFrame = blade.frame | (flower ? kFieldFlowerBit : 0u);
                 inst.atlasFrame |= fieldEdgeRole(edgeProbability,hashf(bx+71.0f,by-137.0f));
-                fieldFlowers += flower ? 1 : 0;
+                batch.flowers += flower ? 1 : 0;
                 inst.seed = blade.seed;
-                instances.push_back(inst);
-                ++fieldBlades;
+                batch.instances.push_back(inst);
             }
         }
+            }, [&](FieldBatch& total, const FieldBatch& batch) {
+                instances.insert(instances.end(), batch.instances.begin(), batch.instances.end());
+                fieldBlades += static_cast<int>(batch.instances.size());
+                total.gaps += batch.gaps;
+                total.flowers += batch.flowers;
+            });
+        fieldGaps = field.gaps;
+        fieldFlowers = field.flowers;
     }
     const double fieldMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - fieldT0).count();
     MC2_DIAGFE(stderr,
@@ -482,6 +505,22 @@ void GameAdapters::Vegetation::flush(const float* terrainLightDir_4f, float time
         GosVegetation::setBlockVisibility(s_visBuffer.data(),
                                           static_cast<uint32_t>(blockCount));
     }
+
+    // Snapshot values: no live sim reads while the next tick is in flight.
+    static thread_local std::vector<GosVegetation::Footprint> footprints;
+    footprints.clear();
+    const float halfMap = Terrain::worldUnitsMapSide * 0.5f;
+    for (const auto& unit : mc2::render_view::list().movers) {
+        using mc2::render_view::Mode;
+        if (unit.value[0] <= 0.0f || (unit.mode != Mode::Full && unit.mode != Mode::Own && unit.mode != Mode::Fade)) continue;
+        const auto addFoot = [&](const glm::vec3& foot) {
+            footprints.push_back({foot.x - Terrain::mapTopLeft3d.x - halfMap,
+                                  foot.y - Terrain::mapTopLeft3d.y + halfMap, unit.value[0], 0.0f});
+        };
+        if (unit.groundFeet.empty()) addFoot(unit.position); // ground vehicles
+        else for (const auto& foot : unit.groundFeet) addFoot(foot);
+    }
+    GosVegetation::setUnitFootprints(footprints);
 
     // Emit first-frame draw_health event (MCP-queryable).
     static int s_flushCallCount = 0;

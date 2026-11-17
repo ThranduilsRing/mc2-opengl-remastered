@@ -124,6 +124,7 @@ bool EditorData::clear()
 	// while actor TG_MultiShape pointers are still valid.
 	EditorBridge::endMissionRenderResources();                 // steps 1-6 — game lines 3272-3283
 	EditorDataTrace("[EDITOR_SHUTDOWN] phase=gpu_batchers_unloaded");
+	GameAdapters::Vegetation::missionUnloaded();
 	GameAdapters::StaticProp::endMission();
 	GameAdapters::Mech::endMission();
 	EditorDataTrace("[EDITOR_SHUTDOWN] phase=render_adapters_ended");

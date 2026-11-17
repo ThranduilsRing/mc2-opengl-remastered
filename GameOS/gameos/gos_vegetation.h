@@ -1,8 +1,19 @@
 #pragma once
 #include "mc2_czstring.h"
 #include <cstdint>
+#include <span>
+#include <vector>
+#include <cstring>
 
 namespace GosVegetation {
+
+    struct Footprint { float x, y, radius, pad; }; // terrain-chunk XY, WU
+    static_assert(sizeof(Footprint) == 16);
+    inline void packUnitFootprints(std::vector<uint32_t>& words, uint32_t blocks, std::span<const Footprint> data) {
+        words.resize(blocks + data.size() * 4u);
+        if (!data.empty()) std::memcpy(words.data() + blocks, data.data(), data.size_bytes());
+    }
+    void setUnitFootprints(std::span<const Footprint> data);
 
     struct Instance {
         float x, y, z;       // terrain-chunk space: x=east_centered, y=north_centered, z=elevation

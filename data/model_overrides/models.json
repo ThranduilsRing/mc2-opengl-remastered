@@ -63,72 +63,29 @@
       "doubleSided": true
      }
     ]
-   }
-  },
-  {
-   "type": "model",
-   "replaces": "tree:palm1",
-   "renderOnly": true,
-   "fallback": "stock",
-   "scale": 1.0,
-   "source": "island_tree_02/pristine_intact_lod0.glb",
-   "materials": {
-    "version": 2,
-    "slots": [
-     {
-      "slot": 0,
-      "reviewed": true,
-      "class": "wood",
-      "alphaMode": "OPAQUE",
-      "normalStrength": 1.0,
-      "aoStrength": 1.0,
-      "roughness": 0.8,
-      "metallic": 0.0,
-      "uvScale": [
-       1.0,
-       1.0
-      ],
-      "normal": "island_tree_02/detail/0_normal.ktx2",
-      "orm": "island_tree_02/detail/0_orm.ktx2",
-      "doubleSided": true
-     },
-     {
-      "slot": 1,
-      "reviewed": true,
-      "class": "wood",
-      "alphaMode": "MASK",
-      "normalStrength": 1.0,
-      "aoStrength": 1.0,
-      "roughness": 0.8,
-      "metallic": 0.0,
-      "uvScale": [
-       1.0,
-       1.0
-      ],
-      "alphaCutoff": 0.5,
-      "normal": "island_tree_02/detail/1_normal.ktx2",
-      "orm": "island_tree_02/detail/1_orm.ktx2",
-      "doubleSided": true
-     },
-     {
-      "slot": 2,
-      "reviewed": true,
-      "class": "wood",
-      "alphaMode": "OPAQUE",
-      "normalStrength": 0.5,
-      "aoStrength": 1.0,
-      "roughness": 0.8,
-      "metallic": 0.0,
-      "uvScale": [
-       1.0,
-       1.0
-      ],
-      "normal": "island_tree_02/detail/2_normal.ktx2",
-      "orm": "island_tree_02/detail/2_orm.ktx2",
-      "doubleSided": true
-     }
-    ]
-   }
+   },
+   "lods": [
+    {
+     "lod": 1,
+     "source": "island_tree_01/pristine_intact_lod1.glb",
+     "distance": 144.0
+    },
+    {
+     "lod": 2,
+     "source": "island_tree_01/pristine_intact_lod2.glb",
+     "distance": 216.0
+    },
+    {
+     "lod": 3,
+     "source": "island_tree_01/pristine_intact_lod3.glb",
+     "distance": 308.6
+    },
+    {
+     "lod": 4,
+     "source": "island_tree_01/pristine_intact_far.glb",
+     "distance": 1620.0
+    }
+   ]
   },
   {
    "type": "model",
@@ -193,7 +150,29 @@
       "doubleSided": true
      }
     ]
-   }
+   },
+   "lods": [
+    {
+     "lod": 1,
+     "source": "island_tree_03/pristine_intact_lod1.glb",
+     "distance": 144.0
+    },
+    {
+     "lod": 2,
+     "source": "island_tree_03/pristine_intact_lod2.glb",
+     "distance": 216.0
+    },
+    {
+     "lod": 3,
+     "source": "island_tree_03/pristine_intact_lod3.glb",
+     "distance": 308.6
+    },
+    {
+     "lod": 4,
+     "source": "island_tree_03/pristine_intact_far.glb",
+     "distance": 1620.0
+    }
+   ]
   },
   {
    "type": "model",
@@ -258,7 +237,29 @@
       "doubleSided": true
      }
     ]
-   }
+   },
+   "lods": [
+    {
+     "lod": 1,
+     "source": "jacaranda_tree/pristine_intact_lod1.glb",
+     "distance": 144.0
+    },
+    {
+     "lod": 2,
+     "source": "jacaranda_tree/pristine_intact_lod2.glb",
+     "distance": 216.0
+    },
+    {
+     "lod": 3,
+     "source": "jacaranda_tree/pristine_intact_lod3.glb",
+     "distance": 308.6
+    },
+    {
+     "lod": 4,
+     "source": "jacaranda_tree/pristine_intact_far.glb",
+     "distance": 1620.0
+    }
+   ]
   },
   {
    "type": "model",
@@ -323,72 +324,29 @@
       "doubleSided": true
      }
     ]
-   }
-  },
-  {
-   "type": "model",
-   "replaces": "tree:palms",
-   "renderOnly": true,
-   "fallback": "stock",
-   "scale": 1.0,
-   "source": "island_tree_02/pristine_palms_lod0.glb",
-   "materials": {
-    "version": 2,
-    "slots": [
-     {
-      "slot": 0,
-      "reviewed": true,
-      "class": "wood",
-      "alphaMode": "OPAQUE",
-      "normalStrength": 1.0,
-      "aoStrength": 1.0,
-      "roughness": 0.8,
-      "metallic": 0.0,
-      "uvScale": [
-       1.0,
-       1.0
-      ],
-      "normal": "island_tree_02/detail/0_normal.ktx2",
-      "orm": "island_tree_02/detail/0_orm.ktx2",
-      "doubleSided": true
-     },
-     {
-      "slot": 1,
-      "reviewed": true,
-      "class": "wood",
-      "alphaMode": "MASK",
-      "normalStrength": 1.0,
-      "aoStrength": 1.0,
-      "roughness": 0.8,
-      "metallic": 0.0,
-      "uvScale": [
-       1.0,
-       1.0
-      ],
-      "alphaCutoff": 0.5,
-      "normal": "island_tree_02/detail/1_normal.ktx2",
-      "orm": "island_tree_02/detail/1_orm.ktx2",
-      "doubleSided": true
-     },
-     {
-      "slot": 2,
-      "reviewed": true,
-      "class": "wood",
-      "alphaMode": "OPAQUE",
-      "normalStrength": 0.5,
-      "aoStrength": 1.0,
-      "roughness": 0.8,
-      "metallic": 0.0,
-      "uvScale": [
-       1.0,
-       1.0
-      ],
-      "normal": "island_tree_02/detail/2_normal.ktx2",
-      "orm": "island_tree_02/detail/2_orm.ktx2",
-      "doubleSided": true
-     }
-    ]
-   }
+   },
+   "lods": [
+    {
+     "lod": 1,
+     "source": "tree_small_02/pristine_intact_lod1.glb",
+     "distance": 144.0
+    },
+    {
+     "lod": 2,
+     "source": "tree_small_02/pristine_intact_lod2.glb",
+     "distance": 216.0
+    },
+    {
+     "lod": 3,
+     "source": "tree_small_02/pristine_intact_lod3.glb",
+     "distance": 308.6
+    },
+    {
+     "lod": 4,
+     "source": "tree_small_02/pristine_intact_far.glb",
+     "distance": 1620.0
+    }
+   ]
   }
  ]
 }

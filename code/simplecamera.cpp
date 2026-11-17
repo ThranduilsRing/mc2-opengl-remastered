@@ -30,13 +30,22 @@ SimpleCamera.cpp	: Implementation of the SimpleCamera component.
 // sebi: !NB remove when assert(0 && "test") is removed below
 #include <cassert>
 #include <chrono>
+#include <cstdlib>
 #include <algorithm>
 #include <filesystem>
 #include <string>
 #include "Gates/gate.h"
 #include "mc2fmt.h"
+#include "model_credit.h"
+#include "preview_choice.h"
+#include "mech_anim_preview.h"
+#include "imgui.h"
+
+static SimpleCamera* animationCamera = nullptr;
+static mc2mechanim::PreviewAnimation animationPreview;
 
 // Screen-space extents of the last PreviewDraw (mclib/tgl.cpp, filled in preview_draw.cpp).
+
 extern bool g_previewCaptureBounds;
 extern bool g_previewBoundsOnly;
 extern float g_previewBoundsMinX, g_previewBoundsMaxX, g_previewBoundsMinY, g_previewBoundsMaxY;
@@ -47,15 +56,22 @@ void ProbeGatherLightsForList(TG_LightPtr* lights, unsigned long nLights, TG_HWL
 // panel mech per frame (the batcher snapshot holds one flush); a second camera that frame keeps its CPU draw.
 // Returns true when a request was posted; the CPU draw may still be needed until the island reports a draw.
 static bool postMechPreviewGpu( Camera& cam, Mech3DAppearance* mech, float vpX, float vpY, float vpW, float vpH,
-                                float groundX, float groundY, float groundH )
+                                float groundX, float groundY, float groundH, const float* clipRect )
 {
 	static uint32_t s_lastFrame = 0xffffffffu;
+	static TG_InstanceId s_lastShape;
 	const uint32_t frame = g_mc2FrameCounter.load( std::memory_order_relaxed );
 	if ( frame == s_lastFrame || !mc2_vk_mech_preview_usable() )
 		return false;
-	// A gap in panel frames is a new lab visit: the batcher still holds the last mission's (freed) types.
-	const bool freshSession = s_lastFrame == 0xffffffffu || frame != s_lastFrame + 1;
+	// Selection releases the old type; its address can be reused while the panel keeps rendering.
+	// Shape generations distinguish replacements even when both type and instance addresses repeat.
+	const auto* shape = mech->previewShape();
+	if (!shape)
+		return false;
+	const auto shapeId = shape->stableId();
+	const bool freshSession = shapeId != s_lastShape || s_lastFrame == 0xffffffffu || frame != s_lastFrame + 1;
 	s_lastFrame = frame;
+	s_lastShape = shapeId;
 	if ( !mech->submitPreviewGpu( freshSession ) )
 		return false;	// batcher not finalized or no shape: the CPU mech draw stays on
 	GpuMechBatcher::instance().flush();
@@ -75,6 +91,9 @@ static bool postMechPreviewGpu( Camera& cam, Mech3DAppearance* mech, float vpX, 
 	q.vpX = static_cast<int>( lroundf( vpX ) ); q.vpY = static_cast<int>( lroundf( vpY ) );
 	q.vpW = static_cast<int>( lroundf( vpW ) ); q.vpH = static_cast<int>( lroundf( vpH ) );
 	q.exposure = 1.0f;
+	// The mech panel only: the backdrop must not cover the other camera's box in the shared preview target.
+	q.clipX = static_cast<int>( lroundf( clipRect[0] ) ); q.clipY = static_cast<int>( lroundf( clipRect[1] ) );
+	q.clipW = static_cast<int>( lroundf( clipRect[2] - clipRect[0] ) ); q.clipH = static_cast<int>( lroundf( clipRect[3] - clipRect[1] ) );
 	q.groundX = groundX; q.groundY = groundY; q.groundH = groundH;
 	if ( gosPostProcess* pp = getGosPostProcess() )
 	{
@@ -124,6 +143,8 @@ SimpleCamera::SimpleCamera()
 // The appearance destructor reads appearanceTypeList: with no list (outside a mission) the object is left unfreed, as before B7o.5.
 void SimpleCamera::releaseObject()
 {
+    if (animationCamera == this) animationPreview = {};
+	modelCredit_.clear();
 	if (appearanceTypeList)
 	{
 		// Appearance-owned lamps belong to this preview camera, even when it is not rendering.
@@ -138,6 +159,7 @@ void SimpleCamera::releaseObject()
 
 SimpleCamera::~SimpleCamera()
 {
+    if (animationCamera == this) animationCamera = nullptr;
 
 	// sebi: added this condition ecause  appearanceTypeList used inside destructor
 	releaseObject();
@@ -404,7 +426,7 @@ void SimpleCamera::render(long xOffset, long yOffset)
 					haveGround_ = true;
 				}
 				if ( labMech && postMechPreviewGpu( *this, labMech, offsetX, offsetY, viewMulX, viewMulY,
-				                                   haveGround_ ? groundC_[0] : 0.f, groundC_[1], haveGround_ ? groundH_ : 0.f ) )
+				                                   haveGround_ ? groundC_[0] : 0.f, groundC_[1], haveGround_ ? groundH_ : 0.f, bounds ) )
 					gpuDraws = mc2_vk_mech_preview_drew_last() != 0;
 				// With the GPU path drawing, PreviewDraw only projects (the framing bounds below).
 				g_previewBoundsOnly = gpuDraws;
@@ -488,6 +510,8 @@ void SimpleCamera::render(long xOffset, long yOffset)
 // image isn't upside down in ImGui's top-left-origin image space.
 void SimpleCamera::drawPreviewToPanel( float panelX, float panelY, float panelW, float panelH ) const
 {
+	// A missing selection owns no pixels in the shared preview target.
+	if (!pObject) return;
 #ifdef MC2_IMGUI
     const uint64_t tex=mc2vk::uiTextureServiceReady() ? mc2_vk_preview_texture() : 0;
 	const float u1 = bounds[0] / 800.f;
@@ -506,6 +530,17 @@ void SimpleCamera::drawPreviewToPanel( float panelX, float panelY, float panelW,
 		return;
 
 	bool ok = GuiRuntime::DrawUiImage( tex, panelX, panelY, panelW, panelH, u1, v1, u2, v2, 0xffffffff );
+	if (pObject && !modelCredit_.empty())
+	{
+		const int size = std::max(16, static_cast<int>(panelH * 0.052f));
+		std::vector<std::string> lines;
+		GuiRuntime::CalcUiTextWrapLines(modelCredit_.c_str(), panelW - 16.f, size, "", lines);
+		const float height = (static_cast<float>(lines.size()) + 0.5f) * size * 1.3f;
+		const float y = panelY + panelH - height;
+		GuiRuntime::DrawUiRect(panelX, y, panelW, height, 0xee000000, true);
+		GuiRuntime::DrawUiText(panelX + 8.f, y + 2.f, panelW - 16.f, height,
+			modelCredit_.c_str(), 0xffffff40, size, 0, "");
+	}
 	if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 	{
 		bool f = mc2::log::enabled(mc2::log::Cat::Ui, mc2::log::Level::Info);
@@ -519,6 +554,9 @@ void SimpleCamera::drawPreviewToPanel( float panelX, float panelY, float panelW,
 ////////////////////////////////////////////////
 long SimpleCamera::update()
 {
+	const float savedFrameLength = frameLength;
+	const bool capture = std::getenv("MECH_PREVIEW_CAPTURE") != nullptr;
+	if (capture) { frameLength = 1.f / 60.f; rotation = 30.f; rotationIncrement = 0; turntablePaused_ = true; }
 	if ( pObject )
 	{
 		// MERGE-CONFLICT-UI-PHASE1: see matching note in SimpleCamera::render() above —
@@ -608,7 +646,9 @@ long SimpleCamera::update()
 
 		pObject->setObjectParameters(mechPos, rotation, 0, 0, 0);
 	
+        if (animationCamera == this) mc2mechanim::previewAnimation = &animationPreview;
 		pObject->update();
+        if (animationCamera == this) mc2mechanim::previewAnimation = nullptr;
 		pObject->setVisibility(true,true);
 
 		if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
@@ -621,7 +661,40 @@ long SimpleCamera::update()
 
 	}
 
+	frameLength = savedFrameLength;
 	return 0;
+}
+
+void SimpleCamera::drawAnimationPanel()
+{
+    if (ImGui::IsKeyPressed(ImGuiKey_F9, false)) {
+        animationPreview = {}; animationCamera = animationCamera == this ? nullptr : this;
+    }
+    if (animationCamera != this) return;
+    bool open = true;
+    ImGui::SetNextWindowPos(ImVec2(900, 110), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(600, 410), ImGuiCond_FirstUseEver);
+    if (ImGui::Begin("Mech animation prototype (F9)", &open)) {
+        auto& a = animationPreview;
+        if (ImGui::BeginCombo("Clip", a.active.c_str())) {
+            for (const auto& clip : a.clips) {
+                ImGui::PushID(clip.name.c_str());
+                if (ImGui::Selectable(clip.name.c_str(), a.active == clip.name)) a.clip = clip.name;
+                ImGui::SameLine(); ImGui::Text("%.3f s", clip.duration);
+                ImGui::PopID();
+            }
+            ImGui::EndCombo();
+        }
+        ImGui::Checkbox("Play", &a.playing); ImGui::SameLine(); ImGui::Checkbox("Loop", &a.loop);
+        ImGui::Checkbox("Pause turntable", &turntablePaused_);
+        float time = a.time;
+        if (ImGui::SliderFloat("Time (s)", &time, 0, a.duration)) a.seek = time;
+        ImGui::SliderFloat("Speed", &a.rate, .25f, 2.f, "%.2fx");
+        if (ImGui::Button("Step 1/30 s")) { a.playing = false; a.seek = std::min(a.time + 1.f / 30.f, a.duration); }
+        ImGui::Text("%.3f / %.3f s | palette: %d bones", a.time, a.duration, a.paletteBones);
+    }
+    ImGui::End();
+    if (!open) animationCamera = nullptr;
 }
 
 // File name without directory or extension (the _splitpath fname part).
@@ -670,6 +743,8 @@ void SimpleCamera::setMech(mc2::czstring fileName, long baseColor, long highligh
 	}
 
 	std::string NoPathFileName = stemOfPath(fileName);
+	if (const auto* chassis = std::getenv("MECH_PREVIEW_CAPTURE"); chassis && *chassis)
+		NoPathFileName = stemOfPath(chassis);
 
 	char testName[256];
 	strcpy( testName, NoPathFileName.c_str() );
@@ -681,10 +756,14 @@ void SimpleCamera::setMech(mc2::czstring fileName, long baseColor, long highligh
 	//MUST ALWAYS CALL GET, EVEN IF WE HAVE AN APPEARANCE TYPE OR REFERENCE COUNT DOES NOT INCREASE!
 	Mech3DAppearanceType* appearanceType = nullptr;
 	
-	if ( fileExists( path ) )
-		appearanceType = static_cast<Mech3DAppearanceType*>(appearanceTypeList->getAppearance( MECH_TYPE << 24, static_cast<char*>(testName) ));
-	else
-		appearanceType = static_cast<Mech3DAppearanceType*>(appearanceTypeList->getAppearance( MECH_TYPE << 24, NoPathFileName.data() ));
+	const bool encExists = fileExists(path);
+	bool encyclopediaModel = false;
+	appearanceType = choosePreviewType(encExists, encyclopediaModel,
+		[&](bool enc) { return static_cast<Mech3DAppearanceType*>(appearanceTypeList->getAppearance(
+			MECH_TYPE << 24, enc ? testName : NoPathFileName.data())); },
+		[&](Mech3DAppearanceType* type) { appearanceTypeList->removeAppearance(type); });
+	if (encExists && !encyclopediaModel)
+		MC2_LOG(Assets, Warn, "Preview enc model failed: {}; trying plain INI", NoPathFileName);
 
 	// A mod chassis with no tgl ini (or an empty base shape) leaves no object, so
 	// hasObject() stays false and the mech lab keeps its silhouette statics.
@@ -693,9 +772,16 @@ void SimpleCamera::setMech(mc2::czstring fileName, long baseColor, long highligh
 		if ( appearanceType )
 			appearanceTypeList->removeAppearance( appearanceType );
 		this->popContext();
+
 		return;
 	}
 
+	// Credit the selected asset; an encyclopedia replacement may have another author.
+	if (!encyclopediaModel)
+		path.init(tglPath, NoPathFileName.c_str(), ".ini");
+	FitIniFile manifest;
+	if (manifest.open(path) == NO_ERR)
+		modelCredit_ = readModelCredit(manifest);
 	pObject = std::make_unique<Mech3DAppearance>();
 	pObject->init( appearanceType );
 	pObject->setGestureGoal(2);
@@ -751,10 +837,21 @@ void SimpleCamera::setVehicle(mc2::czstring fileName,long base, long highlight, 
 	//MUST ALWAYS CALL GET, EVEN IF WE HAVE AN APPEARANCE TYPE OR REFERENCE COUNT DOES NOT INCREASE!
 	GVAppearanceType* appearanceType = nullptr;
 	
-	if ( fileExists( path ) )
-		appearanceType = static_cast<GVAppearanceType*>(appearanceTypeList->getAppearance( GV_TYPE << 24, static_cast<char*>(testName) ));
-	else
-		appearanceType= static_cast<GVAppearanceType*>(appearanceTypeList->getAppearance( GV_TYPE << 24, NoPathFileName.data() ));
+	const bool encExists = fileExists(path);
+	bool encyclopediaModel = false;
+	appearanceType = choosePreviewType(encExists, encyclopediaModel,
+		[&](bool enc) { return static_cast<GVAppearanceType*>(appearanceTypeList->getAppearance(
+			GV_TYPE << 24, enc ? testName : NoPathFileName.data())); },
+		[&](GVAppearanceType* type) { appearanceTypeList->removeAppearance(type); });
+	if (encExists && !encyclopediaModel)
+		MC2_LOG(Assets, Warn, "Preview enc model failed: {}; trying plain INI", NoPathFileName);
+
+	if (!appearanceType || appearanceType->baseShapeLoadFailed)
+	{
+		if (appearanceType) appearanceTypeList->removeAppearance(appearanceType);
+		this->popContext();
+		return;
+	}
 
 	pObject = std::make_unique<GVAppearance>();	
 	pObject->init( appearanceType );

@@ -361,7 +361,12 @@ void EditorObjectMgr::primeAllBuildingAppearanceTypes()
 				                       ? (int)tat->treeRenderShapeLodCount : MAX_LODS;
 				for (int lod = 0; lod < lodCount; ++lod)
 				{
-					EditorBridge::registerStaticPropShape(tat->treeShape[lod].get());
+					// Overrides have more LOD slots than the stock shape array.
+					if (lod < MAX_LODS)
+						EditorBridge::registerStaticPropShape(tat->treeShape[lod].get());
+					else
+						EditorObjMgrTrace("primeAllBuildingAppearanceTypes: skip stock shape name=%s lod=%d stockLods=%d",
+							bldg.fileName, lod, MAX_LODS);
 					TG_TypeMultiShape* tRenderShape = tat->getTreeRenderShape(lod);
 					EditorBridge::registerStaticPropShape(tRenderShape);
 					if (tRenderShape)

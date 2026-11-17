@@ -44,13 +44,20 @@ float groundElevation(const glm::vec3& worldPos)
 static std::vector<float> s_cpuVisualHeight;
 static int s_cpuVisualV = 0;
 
+#include "shaders/vulkan/include/terrain_cliff_surface.glsl"
+static std::vector<float> s_cpuGroundHeight;
 void setCpuVisualHeight(const float* vh, int V)
 {
 	if (vh && V > 1) { s_cpuVisualHeight.assign(vh, vh + static_cast<size_t>(V) * static_cast<size_t>(V)); s_cpuVisualV = V; }
 	else { s_cpuVisualHeight.clear(); s_cpuVisualV = 0; }
+	s_cpuGroundHeight.resize(s_cpuVisualHeight.size());
+	auto raw = [V](int x, int y) { return s_cpuVisualHeight[std::clamp(y, 0, V-1)*V + std::clamp(x, 0, V-1)]; };
+	auto out = s_cpuGroundHeight.begin();
+	for (int y=0; y<s_cpuVisualV; ++y) for (int x=0; x<s_cpuVisualV; ++x)
+		*out++ = cliffVisualHeight(raw, x, y);
 }
 
-float sampleVisualHeight(const glm::vec3& worldPos)
+static float sampleSurface(const glm::vec3& worldPos, const std::vector<float>& surface, bool triangles)
 {
 	if (!land || s_cpuVisualV < 2) return sampleGameplayHeight(worldPos);
 	const float inv = 4.0f / Terrain::worldUnitsPerVertex;
@@ -62,9 +69,19 @@ float sampleVisualHeight(const glm::vec3& worldPos)
 	if (x0 >= s_cpuVisualV - 1) x0 = s_cpuVisualV - 2;
 	if (y0 >= s_cpuVisualV - 1) y0 = s_cpuVisualV - 2;
 	const float tx = fx - static_cast<float>(x0), ty = fy - static_cast<float>(y0);
-	const float* p = s_cpuVisualHeight.data() + static_cast<size_t>(y0) * s_cpuVisualV + x0;
-	const float v = (p[0] * (1 - tx) + p[1] * tx) * (1 - ty) + (p[s_cpuVisualV] * (1 - tx) + p[s_cpuVisualV + 1] * tx) * ty;
-	return v;
+	const float* p = surface.data() + static_cast<size_t>(y0) * s_cpuVisualV + x0;
+	if (triangles) return ty >= tx ? p[0] + (p[s_cpuVisualV+1]-p[s_cpuVisualV])*tx + (p[s_cpuVisualV]-p[0])*ty
+	                              : p[0] + (p[1]-p[0])*tx + (p[s_cpuVisualV+1]-p[1])*ty;
+	return (p[0] * (1 - tx) + p[1] * tx) * (1 - ty) + (p[s_cpuVisualV] * (1 - tx) + p[s_cpuVisualV + 1] * tx) * ty;
+}
+float sampleVisualHeight(const glm::vec3& worldPos) { return sampleSurface(worldPos, s_cpuVisualHeight, false); }
+float sampleVisibleGroundHeight(const glm::vec3& worldPos) { return sampleSurface(worldPos, s_cpuGroundHeight, true); }
+bool visibleGroundSupports(const glm::vec3& pos, float radius)
+{
+	const float h = sampleVisibleGroundHeight(pos);
+	for (const auto& d : {glm::vec3(radius,0,0), glm::vec3(-radius,0,0), glm::vec3(0,radius,0), glm::vec3(0,-radius,0)})
+		if (h - sampleVisibleGroundHeight(pos+d) > radius) return false;
+	return true;
 }
 
 float visualHeightDelta(const glm::vec3& worldPos)
@@ -76,6 +93,11 @@ float visualHeightDelta(const glm::vec3& worldPos)
 float decalElevation(const glm::vec3& worldPos)
 {
 	return sampleVisualHeight(worldPos);
+}
+
+float markerElevation(const glm::vec3& worldPos)
+{
+	return std::max(sampleVisualHeight(worldPos), land ? Terrain::waterElevation : 0.0f);
 }
 
 float cameraClearanceHeight(const glm::vec3& eye, const glm::vec3 (&nearOffsets)[4], float minimum)

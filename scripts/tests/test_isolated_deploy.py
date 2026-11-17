@@ -13,6 +13,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import deploy_payload as dp
 import kit_payload
 import pytest
+from tools import gate_hosts  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
@@ -39,7 +40,7 @@ def test_fresh_install_covers_deploy_payload(tmp_path, monkeypatch):
         rels.update(rel for _, rel, _ in dp.enumerate_payload(
             str(ROOT), str(tmp_path / "build"), exe, "mc2.pdb",
             require_build=False))
-    manifest = json.loads((ROOT / kit_payload.MANIFEST).read_text())
+    manifest = kit_payload.runtime_manifest(json.loads((ROOT / kit_payload.MANIFEST).read_text()))
     rels.update((kit_payload.KIT_REL / row["path"]).as_posix()
                 for row in manifest["files"])
     # Outputs written after payload copying, including cooked sidecars/receipts.
@@ -188,7 +189,9 @@ def test_stale_inventory_still_copies_saved_bookmarks(tmp_path, monkeypatch):
     # Simulate an inventory written before the bookmark rule existed.
     cache = src / '.lane-seed-inventory.json'
     cache.write_text(json.dumps(dict(
-        identity=iso.file_sha(src / '.deployed_manifest.csv'),
+        # e52e0d410: the inventory identity is manifest sha + ':' + sha of the declared-asset set.
+        identity=iso.file_sha(src / '.deployed_manifest.csv') + ':'
+        + hashlib.sha256('\n'.join(sorted(iso.declared_asset_paths())).encode()).hexdigest(),
         links=[r for r in links if not r[0].startswith('saved_bookmarks/')],
         copies=[r for r in copies if not r[0].startswith('saved_bookmarks/')])))
     monkeypatch.setattr(iso, 'plan', lambda *a: pytest.fail('stale seed re-walked'))
@@ -207,6 +210,27 @@ def test_seed_rejects_tampered_payload_and_missing_manifest(tmp_path):
     (tmp_path / '.deployed_manifest.csv').unlink()
     with pytest.raises(SystemExit):
         iso.verified_seed(tmp_path)
+
+
+@pytest.mark.parametrize('rel', ['mc2.exe', 'runtime.dll'])
+@pytest.mark.parametrize('after_verification', [False, True])
+def test_stale_seed_payload_rejected_before_or_during_copy(tmp_path, capsys, rel, after_verification):
+    iso = lean_tool()
+    src, dst = tmp_path / 'seed', tmp_path / 'lane'
+    lean_fixture(src)
+    rows = iso.verified_seed(src, use_cache=True)
+    # Reproduce stale bytes, including the race between verification and copy.
+    (src / rel).write_bytes(b'changed')
+    with pytest.raises(SystemExit) as exc:
+        if after_verification:
+            iso.build(src, dst, [], [(rel, 7)], rows)
+        else:
+            iso.verified_seed(src, use_cache=True)
+    assert exc.value.code == (4 if after_verification else 2)
+    message = 'copied manifest hash mismatch' if after_verification else 'seed manifest hash mismatch'
+    assert f'{message}: {rel}' in capsys.readouterr().err
+    assert not (dst / '.lane-seed.json').exists()
+    assert not (dst / '.deployed_manifest.csv').exists()
 
 
 # W138 merge: the W137 pinned-cook seed test is superseded by test_kit_seed_preserves_only_pinned_sources_and_verified_recipes
@@ -304,7 +328,9 @@ def test_kit_seed_preserves_only_pinned_sources_and_verified_recipes(tmp_path, m
     pinned = repo / 'data/kit/industrial-kit.json'
     pinned.parent.mkdir(parents=True)
     pinned.write_text(json.dumps({'files': [{'path': 'model.glb', 'bytes': 5,
-                                           'sha256': iso.file_sha(path)}]}))
+                                           'sha256': iso.file_sha(path)},
+                                          {'path': 'content/offline.mc2ir.json', 'bytes': 123,
+                                           'sha256': '0' * 64}]}))  # authoring IR is absent from runtime seeds
     cache = source / 'cache/content-model'
     cache.mkdir(parents=True)
     recipe = cache / 'model-123.mci'
@@ -665,6 +691,20 @@ def test_churned_link_stamps_are_confirmed_by_the_seed_receipt_without_hashing(t
         assert (lane / rel).samefile(seed / rel)
 
 
+def _hardlinks_share_inode():
+    import tempfile
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            a = Path(d) / "a"
+            a.write_bytes(b"x")
+            os.link(a, Path(d) / "b")
+            return a.samefile(Path(d) / "b") and a.stat().st_nlink == 2
+    except OSError:
+        return False
+
+
+@pytest.mark.skipif(gate_hosts.current_host() != "pc" and not _hardlinks_share_inode(),
+                    reason=f"seed-receipt inode sharing needs hardlinks that share an inode (gate host {gate_hosts.current_host()})")
 def test_seed_receipt_does_not_excuse_a_same_size_write_with_restored_mtime(tmp_path, monkeypatch):
     iso, seed, lane, _repo, rels, items = _churned_lane(tmp_path, monkeypatch)
     iso.restamp_seed(seed)

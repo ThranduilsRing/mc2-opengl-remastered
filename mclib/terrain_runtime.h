@@ -52,9 +52,13 @@ namespace TerrainRuntime
 
 	// Bilinear accepted 4x bake, falling back to gameplay outside it or without a bake.
 	float sampleVisualHeight(const glm::vec3& worldPos);
+	// Filtered TL-BR visual ground shared with terrain LOD0 and vegetation placement.
+	float sampleVisibleGroundHeight(const glm::vec3& worldPos);
+	bool visibleGroundSupports(const glm::vec3& worldPos, float radius);
 
 	// Footprints/contact blobs follow the same visual surface as the terrain.
 	float decalElevation(const glm::vec3& worldPos);
+	float markerElevation(const glm::vec3& worldPos);
 	// Minimum eye Z covering the eye and near-plane footprint, including ridges
 	// between corners. No bake preserves the legacy eye-only sim/water clamp.
 	float cameraClearanceHeight(const glm::vec3& eye, const glm::vec3 (&nearOffsets)[4], float minimum);

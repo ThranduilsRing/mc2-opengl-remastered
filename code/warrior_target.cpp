@@ -259,9 +259,8 @@ int32_t TargetPriorityList::calcTarget (MechWarriorPtr pilot, glm::vec3 location
 			case TARGET_PRIORITY_TURRET: {
 				float shortestDistance = 999999.0;
 				GameObjectPtr closestTurret = nullptr;
-                int i;
-				for (i = 0; i < ObjectManager->getNumTurrets(); i++) {
-					GameObjectPtr turret = static_cast<GameObjectPtr>(ObjectManager->getTurret(i));
+				for (int turretIndex = 0; turretIndex < ObjectManager->getNumTurrets(); turretIndex++) {
+					GameObjectPtr turret = static_cast<GameObjectPtr>(ObjectManager->getTurret(turretIndex));
 					if (!turret->getTeam()->isFriendly(pilot->getTeam())/* && turret->isCaptureable(pilot->getTeam()->getId())*/) {
 						float distance = pilot->getVehicle()->distanceFrom(turret->getPosition());
 						if (distance < shortestDistance) {

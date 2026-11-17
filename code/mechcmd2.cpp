@@ -11,6 +11,7 @@
 
 #include "mechcmd2_internal.h"
 #include "prefs_init.h"
+#include "net/user_paths.h"
 #include "startup_preload.h"
 #include "render_resource_owners.h"
 #include "Gates/gate.h"
@@ -319,7 +320,7 @@ void __stdcall InitializeGameEngine()
 
 	// Deterministic preference init (replaces the hardware sniffer): a missing options.cfg gets the fixed
 	// default set, an existing options.cfg is never touched, a missing orgprefs.cfg is re-seeded.
-	mc2::prefs::initPreferences(".");
+	mc2::prefs::initPreferences(mc2::net::userDirectory.empty() ? std::filesystem::path(".") : mc2::net::userDirectory);
 
 	//Seed the random Number generator.
 	// DETERMINISTIC-RNG-1: under MC2_DETERMINISTIC_RNG the startup seed must be
@@ -639,11 +640,11 @@ void __stdcall InitializeGameEngine()
 		FitIniFile prefsFile;
 		FitIniFile optsFile;
 	
-		long prefsOpenResult = prefsFile.open("prefs.cfg");
+		long prefsOpenResult = prefsFile.open(mc2::net::userFile("prefs.cfg").c_str());
 	
 		gosASSERT (prefsOpenResult == NO_ERR);
 		
-		prefsOpenResult = optsFile.open("options.cfg");
+		prefsOpenResult = optsFile.open(mc2::net::userFile("options.cfg").c_str());
 		
 		gosASSERT (prefsOpenResult == NO_ERR);
 		

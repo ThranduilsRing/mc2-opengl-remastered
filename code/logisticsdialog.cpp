@@ -400,12 +400,22 @@ void	LogisticsOneButtonDialog::setText( int textID, int CancelButton, int OKButt
 	textObjects[0].setText( textID );
 	buttons[0].setText( CancelButton );
 //	buttons[1].setText( OKButton );
-
+	setDefsElementText( "game.mcl_dialog_onebutton.text.text", textObjects[0].textString() );
+	char buttonText[256] = {};
+	cLoadString( CancelButton, buttonText, sizeof(buttonText) );
+	setDefsElementText( "game.mcl_dialog_onebutton.button.cancel_okay_whatever_button", buttonText );
 }
 
 void				LogisticsOneButtonDialog::setText( mc2::czstring mainText )
 {
 	textObjects[0].setText( mainText );
+	if (this == LogisticsLegalDialog::instance()) {
+		setDefsElementText("game.mcl_dialoglegal.text.legal_info", mainText);
+		setDefsElementText("game.mcl_dialoglegal.text.main_header", "MECHCOMMANDER 2");
+		setDefsElementText("game.mcl_dialoglegal.button.accept_button", "OK");
+	} else {
+		setDefsElementText( "game.mcl_dialog_onebutton.text.text", textObjects[0].textString() );
+	}
 }
 
 
@@ -602,8 +612,12 @@ void LogisticsSaveDialog::beginCampaign()
 		aListItem* pItem = gameListBox.GetItem( 0 );
 		if ( pItem )
 		{
-			pItem->select();
-			edits[0].setEntry( (static_cast<aTextListItem*>(pItem))->getText() );
+			gameListBox.SelectItem( 0 );
+			const char* text = (static_cast<aTextListItem*>(pItem))->getText();
+			if ( hasDefsEditBox() )
+				setDefsEditText( kSvEditKey, text ? text : "" );
+			else
+				edits[0].setEntry( text );
 			selectedName = mc2::str::from_c( ( (static_cast<aLocalizedListItem*>(pItem))->getHiddenText() ) );
 		}
 	}
@@ -1038,7 +1052,9 @@ void LogisticsSaveDialog::update()
 	
 	}
 	
-	gameListBox.update();
+	const bool defsList = getDefsListItemCount( "game.mcl_sm.list.game_list" ) > 0;
+	if ( !defsList )
+		gameListBox.update();
 
 	if ( hasDefsUiPage() )
 	{
@@ -1061,7 +1077,7 @@ void LogisticsSaveDialog::update()
 			selectedName = mc2::str::from_c( (static_cast<aLocalizedListItem*>(gameListBox.GetItem( defsItem )))->getHiddenText() );
 			updateMissionInfo();
 		}
-		else if ( userInput->isLeftClick() )
+		else if ( !defsList && userInput->isLeftClick() )
 		{
 			// No v2 list present — use legacy list-click path for item selection.
 			// Buttons are already handled by defsUiPage->update(), so there's no
@@ -1133,7 +1149,7 @@ void LogisticsSaveDialog::updateCampaignMissionInfo()
 
 	if ( NO_ERR == file.seekBlock( "Group0Mission0" ) )
 	{
-		if ( NO_ERR != file.readIdString( "FileName", fileName, 1023 ) )
+		if ( NO_ERR != file.readIdString( "FileName", fileName, sizeof(fileName) - 1 ) )
 		{				
 			setMission( "" );
 		}		

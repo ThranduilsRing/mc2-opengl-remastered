@@ -423,7 +423,7 @@ static void copy_file_to_clipboard(mc2::czstring path)
     CloseHandle(h);
 
     // Convert to UTF-16 for CF_UNICODETEXT
-    int wlen = MultiByteToWideChar(CP_UTF8, 0, bufA, -1, nullptr, 0);
+    int wlen = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, bufA, -1, nullptr, 0);
     if (wlen <= 0) {
         // fallback: treat as ACP
         wlen = MultiByteToWideChar(CP_ACP, 0, bufA, -1, nullptr, 0);
@@ -431,7 +431,7 @@ static void copy_file_to_clipboard(mc2::czstring path)
     HGLOBAL hMemW = GlobalAlloc(GMEM_MOVEABLE, static_cast<size_t>(wlen) * sizeof(WCHAR));
     if (hMemW) {
         WCHAR* bufW = static_cast<WCHAR*>(GlobalLock(hMemW));
-        int ok = MultiByteToWideChar(CP_UTF8, 0, bufA, -1, bufW, wlen);
+        int ok = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, bufA, -1, bufW, wlen);
         if (ok <= 0) MultiByteToWideChar(CP_ACP, 0, bufA, -1, bufW, wlen);
         GlobalUnlock(hMemW);
     }
@@ -440,9 +440,9 @@ static void copy_file_to_clipboard(mc2::czstring path)
 
     if (hMemW && OpenClipboard(nullptr)) {
         EmptyClipboard();
-        SetClipboardData(CF_UNICODETEXT, hMemW);
+        if (!SetClipboardData(CF_UNICODETEXT, hMemW)) GlobalFree(hMemW);
         CloseClipboard();
-        // ownership transfers to clipboard — don't free hMemW
+        // Only a successful SetClipboardData transfers ownership.
     } else if (hMemW) {
         GlobalFree(hMemW);
     }

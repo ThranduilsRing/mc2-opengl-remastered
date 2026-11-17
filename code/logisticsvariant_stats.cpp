@@ -2,21 +2,13 @@
 // Declared in the class headers; shared names in logisticsvariant_internal.h.
 #include "logisticsvariant_internal.h"
 #include <array>
+#include "component_rules.h"
 #include "mc2fmt.h"
 #include "mc2str.h"
 #include "objective_text.h"
 #include "package_chassis.h"
+#include "purchase_catalog.h"
 
-
-// Next discrete move-speed class up the 5/10/15/19/23/27/31/35 ladder.
-static long bumpSpeedClass( long s )
-{
-	static const long ladder[] = { 5, 10, 15, 19, 23, 27, 31, 35 };
-	for ( int i = 0; i < 7; i++ )
-		if ( s <= ladder[i] )
-			return ladder[i + 1];
-	return s;   // already top class
-}
 
 int LogisticsVariant::getCost( ) const 
 {
@@ -108,9 +100,6 @@ int LogisticsVariant::getArmor( ) const
 
 bool LogisticsVariant::hasXLEngine() const
 {
-	static const bool s_engineXL = mc2::gate::get<"MC2_ENGINE_XL">();
-	if ( !s_engineXL )
-		return false;
 	for ( int i = 0; i < componentCount; ++i )
 		if ( components[i].component->getType() == COMPONENT_FORM_ENGINE )
 			return true;
@@ -121,7 +110,7 @@ long LogisticsVariant::effectiveSpeed() const
 {
 	long s = static_cast<long>(chassis->speed);
 	if ( hasXLEngine() )
-		s = bumpSpeedClass( s );
+		s = mc2::components::nextSpeedClass( s );
 	return s;
 }
 
@@ -432,6 +421,7 @@ long LogisticsVariant::save( FitIniFile& file, long counter )
 	file.writeBlock( tmp );
 	
 	file.writeIdString( "Chassis", chassis->fileName.c_str() );
+	file.writeIdString("PurchasePack", mc2purchase::chassisSource(chassis->fileName).c_str());
 	file.writeIdString( "VariantName", variantName.c_str() );
 	file.writeIdLong( "ComponentCount", componentCount );
 

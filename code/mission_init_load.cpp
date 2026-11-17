@@ -2,6 +2,7 @@
 #include "../GameOS/gameos/gos_render.h"
 #include "../GameOS/gameos/vk_render_infra.h"
 #include "../GameOS/gameos/diagnostic_trace.h"
+#include "../GameOS/gameos/gos_static_prop_registry.h"
 #include <atomic>
 #include <chrono>
 #include "../GameAdapters/SkyRenderAdapter.h"
@@ -17,6 +18,7 @@
 #include "../mclib/texture_assets.h"
 
 #include "content_error.h"
+#include "../GameOS/gameos/load_scope.h"
 
 using enum MissionLoadType;
 
@@ -601,6 +603,7 @@ void Mission::initObjectCounts(MissionLoadType loadType, MissionInitFrame& f) {
 	long numVehicles = 0;
 	for (int i = 1; i < (numParts + 1); i++) 
 	{
+		graphics::pump_loading_events();
 		ObjectTypePtr objType = ObjectManager->loadObjectType(parts[i].objNumber, parts[i].csvFile[0] != '\0');
 		if (!objType)
 			objType = ObjectManager->getObjectType(parts[i].objNumber);
@@ -685,6 +688,7 @@ void Mission::initSpawnActors(MissionLoadType loadType) {
 	for (long t = 0; t < 8; t++)
 		for (long i = 1; i < (numParts + 1); i++) 
 		{
+			graphics::pump_loading_events();
 			bool loadEm = true;
 			if (loadType == MISSION_LOAD_MP_LOGISTICS)
 				loadEm = false;
@@ -738,14 +742,14 @@ void Mission::initTerrainObjectsLoad(char (*commandersToLoad)[3], MissionInitFra
 	mission_phase_mark("actor_spawn_ready"); // LOAD-PHASE-FACTS-1: mover/vehicle/part object init done
 
 	{
-		ZoneScopedN("Mission::init ObjectManager::loadTerrainObjects");
+		ZoneScopedN("Mission::init ObjectManager::loadTerrainObjects"); MC2_LOAD_SCOPE("Mission::init ObjectManager::loadTerrainObjects");
 		const auto lapT0 = std::chrono::steady_clock::now();
 		ObjectManager->loadTerrainObjects(&pakFile, loadProgress, 30);
 		if (mc2_diag::tagRequested("LOAD_LAPS")) mc2::content::reportLoadLaps("terrain_objects",
 			std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - lapT0).count(), f.missionName);
 	}
 	mission_phase_mark("terrain_objects_ready");
-	{ ZoneScopedN("Mission::init ObjectManager::primeTerrainObjectsForMissionLoad"); ObjectManager->primeTerrainObjectsForMissionLoad(loadProgress, 2.0f); }
+	{ ZoneScopedN("Mission::init ObjectManager::primeTerrainObjectsForMissionLoad"); MC2_LOAD_SCOPE("Mission::init ObjectManager::primeTerrainObjectsForMissionLoad"); ObjectManager->primeTerrainObjectsForMissionLoad(loadProgress, 2.0f); }
 	// Movers were placed before trees existed. Do the same tree contact as
 	// walking, before static registration can retain an intact spawn tree.
 	unsigned spawnTrees = 0;
@@ -760,7 +764,7 @@ void Mission::initTerrainObjectsLoad(char (*commandersToLoad)[3], MissionInitFra
 			});
 	}
 	if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) mc2::fmt::print_err("[SPAWN_TREES] cleared={}\n", spawnTrees);
-	{ ZoneScopedN("Mission::init Track B static-prop registration walk"); ObjectManager->registerStaticPropsForMissionLoad(); }
+	{ ZoneScopedN("Mission::init Track B static-prop registration walk"); MC2_LOAD_SCOPE("Mission::init Track B static-prop registration walk"); ObjectManager->registerStaticPropsForMissionLoad(); }
 	mission_phase_mark("texture_prewarm_ready"); // LOAD-PHASE-FACTS-1: terrain-object load + static-prop residency prewarm done
 
 	loadProgress = 98.0f;
@@ -938,7 +942,7 @@ void Mission::initInterface(MissionInitFrame& f) {
 	missionInterface = new MissionInterfaceManager;
 	gosASSERT(missionInterface != nullptr);
 	
-	missionInterface->initTacMap( &pakFile, 2 );
+	{ MC2_LOAD_SCOPE("interface.initTacMap"); missionInterface->initTacMap( &pakFile, 2 ); }
 	
 	FullPathFileName missionScreenName;
 	missionScreenName.init(artPath,"missionScrn",".fit");
@@ -948,8 +952,8 @@ void Mission::initInterface(MissionInitFrame& f) {
 	if (result != NO_ERR)
 		STOP(("Unable to open mission screen layout %s", static_cast<const char*>(missionScreenName)));
 	
-	missionInterface->init(&missionLoader);
-	missionInterface->initMechs();
+	{ MC2_LOAD_SCOPE("interface.init"); missionInterface->init(&missionLoader); }
+	{ MC2_LOAD_SCOPE("interface.initMechs"); missionInterface->initMechs(); }
 	missionLoader.close();
 
 	// MISSION-START-HOVER-TARGET-LIFETIME-1: this MissionInterfaceManager is freshly
@@ -971,7 +975,7 @@ void Mission::initInterface(MissionInitFrame& f) {
 		tempNumSpecialAreas = 0;
 	}
 
-	Mover::initOptimalCells(32);
+	{ MC2_LOAD_SCOPE("interface.initOptimalCells"); Mover::initOptimalCells(32); }
 
 
 	if (CombatLog)
@@ -1019,6 +1023,7 @@ void Mission::initFinalizeGeometry() {
 		appearance->setObjectParameters(object->getPosition(), object->getRotation(), object->drawFlags, team, relation);
 		appearance->refreshSimPose();
 	}
+	MC2_LOAD_SCOPE("finalize.total");
 	ObjectManager->snapshotMoverPoses();
 	ObjectManager->extractRenderSnapshots();
 	// All actors have been spawned and have called registerType() into the
@@ -1026,8 +1031,8 @@ void Mission::initFinalizeGeometry() {
 	// submit()/flush() can reference immutable geometry for the rest of the
 	// mission. Safe here: GL context is live (textures/shadow FBOs already
 	// exist by this point) and this is the unconditional tail of map-load.
-	GameAdapters::StaticProp::finalizeGeometry();
-	GpuMechBatcher::instance().finalizeGeometry();
+	{ MC2_LOAD_SCOPE("finalize.staticPropGeometry"); GameAdapters::StaticProp::finalizeGeometry(); }
+	{ MC2_LOAD_SCOPE("finalize.mechGeometry"); GpuMechBatcher::instance().finalizeGeometry(); }
 
 
 
@@ -1038,10 +1043,10 @@ void Mission::initFinalizeGeometry() {
 	// mission.cpp:3589 before we reach here). Guarded by MC2_STATIC_REG_PREWARM=1.
 	// updateLights() is called first so activeLights is populated (numActiveLights > 0);
 	// without it activeLights is empty at load time and SetLightList gets zero lights.
-	{ ZoneScopedN("Mission::init prewarmStaticPropLightBakes");
+	{ ZoneScopedN("Mission::init prewarmStaticPropLightBakes"); MC2_LOAD_SCOPE("Mission::init prewarmStaticPropLightBakes");
 	  eye->primeActiveLightsForPrewarm();
 	  prewarmStaticPropLightBakes(*ObjectManager, eye); }
-	{ ZoneScopedN("Mission::init buildStaticShadowCasterSet");
+	{ ZoneScopedN("Mission::init buildStaticShadowCasterSet"); MC2_LOAD_SCOPE("Mission::init buildStaticShadowCasterSet");
 	  ObjectManager->buildStaticShadowCasterSet(); }
 	mission_phase_mark("gpu_finalize_ready"); // LOAD-PHASE-FACTS-1: geometry finalize + indirect-buffer build + light-bake prewarm done
 
@@ -1049,7 +1054,7 @@ void Mission::initFinalizeGeometry() {
 	// land and GameMap are both stable by this point (terrain init + MOVE_readData
 	// both completed above). No-op when MC2_VEGETATION_CARDS is unset.
 	const auto vegetationStart = std::chrono::steady_clock::now();
-	GameAdapters::Vegetation::missionLoaded(land, GameMap);
+	{ MC2_LOAD_SCOPE("finalize.vegetation"); GameAdapters::Vegetation::missionLoaded(land, GameMap); }
 	if (mc2_diag::tagRequested("LOAD_TIMING"))
 		mc2::fmt::print_out("[LOAD_TIMING] load=Vegetation::missionLoaded elapsed_ms={:.3f}\n",
 			std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - vegetationStart).count());
@@ -1057,9 +1062,10 @@ void Mission::initFinalizeGeometry() {
     // load barrier so sky/water upload the mission HDRI rather than the boot sky.
     GameAdapters::Sky::setSkyNumber(static_cast<int>(theSkyNumber));
     // The load barrier bakes the static shadows (F1); they key on the terrain sun, which the first frame's camera sets. Set the same one now.
-    { const glm::vec3 sun = eye->sunDirection(); gos_SetTerrainLightDir(sun.x, sun.y, sun.z); }
-    mc2PrewarmMissionPipelines();
-	mc2::textures::prewarmCpuTextures();
+    { const glm::vec3 sun = eye->sunDirection(); gos_SetTerrainLightDir(sun.x, sun.y, sun.z);
+      MC2_LOAD_SCOPE("finalize.forestOcclusion"); GpuStaticPropRegistry::bakeForestOcclusion(sun.x, sun.y, sun.z); } // forest light bake needs the sun
+    { MC2_LOAD_SCOPE("finalize.prewarmPipelines"); mc2PrewarmMissionPipelines(); }
+	{ MC2_LOAD_SCOPE("finalize.prewarmCpuTextures"); mc2::textures::prewarmCpuTextures(); }
 	mission_phase_mark("render_prewarm_ready");
 }
 

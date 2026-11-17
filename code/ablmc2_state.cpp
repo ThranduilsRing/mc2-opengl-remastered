@@ -23,7 +23,7 @@ void execSetObjectActive(void) {
 		long numObjects = getMovers(objectId1, moverList);
 		for (long i = 0; i < numObjects; i++)
 			if (moverList[i]->getAwake() != active) {
-				object1->setAwake(active);
+				moverList[i]->setAwake(active);
 #ifdef USE_IFACE
 				theInterface->ActivateMech(moverList[i]->getPartId());
 #endif
@@ -187,6 +187,8 @@ void execObjectRemove (void) {
 		else
 			ABLi_pushInteger(1);
 	}
+	else
+		ABLi_pushInteger(1);
 }
 
 void execCreateInfantry (void) {
@@ -264,8 +266,8 @@ void execSetCurrentBRValue (void) {
 	//		PARAMS:	integer, integer
 	//		Returns: None
 
-	long objectNum = g_ablExec->tos->integer;
-	long newBRValue = g_ablExec->tos->integer;
+	long objectNum = ABLi_popInteger();
+	long newBRValue = ABLi_popInteger();
 
 	GameObjectPtr object1 = getObject(objectNum);
 	if (object1)
@@ -447,7 +449,7 @@ void execSetObjectDamage (void) {
 	//Sets the damage level of the object passed in
 	//Note that the damage can only be given, not taken away!
 	//		PARAMS:	integer, integer
-	//		Returns: none
+	//		Returns: integer (result)
 
 	long objectNum = ABLi_popInteger();
 	long dmgPercentage = ABLi_popInteger();
@@ -474,6 +476,7 @@ void execSetObjectDamage (void) {
 				obj->handleWeaponHit(&shot);
 		}
 	}
+	ABLi_pushInteger(obj ? 0 : 1);
 }	
 
 void execGetGlobalValue (void) {

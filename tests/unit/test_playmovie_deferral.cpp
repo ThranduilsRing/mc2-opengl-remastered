@@ -109,6 +109,21 @@ void aEdit::render() {}
 void aObject::move(float, float) {}
 void aText::render() {}
 
+TEST_CASE("VideoDecodeBudget bounds catch-up and demux work between UI updates") {
+    const VideoDecodeBudget::Clock::time_point start{};
+    VideoDecodeBudget operations(start);
+    unsigned count = 0;
+    while (operations.take(start)) ++count;
+    CHECK(count == 128);
+    CHECK_FALSE(operations.take(start));
+    VideoDecodeBudget deadline(start);
+    CHECK(deadline.take(start + std::chrono::milliseconds(1)));
+    CHECK_FALSE(deadline.take(start + std::chrono::milliseconds(2)));
+    CHECK_FALSE(deadline.take(start + std::chrono::seconds(30)));
+    VideoDecodeBudget nextUpdate(start + std::chrono::seconds(30));
+    CHECK(nextUpdate.take(start + std::chrono::seconds(30)));
+}
+
 TEST_CASE("ControlGui::playMovie from the sim worker defers the decoder open to the main-thread commit") {
     // ControlGui's constructor loads GUI assets; playMovie only needs the zero state a fresh object has for these members.
     alignas(ControlGui) static unsigned char storage[sizeof(ControlGui)];

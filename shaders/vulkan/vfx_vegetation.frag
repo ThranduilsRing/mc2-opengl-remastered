@@ -18,6 +18,7 @@ layout(location = 6) in vec3 v_worldPos;
 layout(location = 7) flat in vec3 v_rootPos;
 layout(location = 8) flat in uint v_atlasLayer;
 layout(location = 9) in vec3 v_shadowWorld;
+layout(constant_id = 0) const bool kDepthOnly = false;   // the depth pre-pass pipeline: same alpha tests, no shading
 layout(location = 0) out vec4 o_color;
 layout(location = 1) out vec4 o_normal;
 
@@ -55,6 +56,10 @@ void main() {
     // into speckles; lift alpha with the sampled mip level (spatial, per pixel) to keep its cover.
     float alphaLift = 1.0 + 0.30 * max(textureQueryLod(uAtlas, v_uv).x, 0.0);
     if (texel.a * alphaLift < 0.5) discard;
+    // Spatial coverage fade: no history or frame-dependent noise, and no shrinking bushes.
+    float coverageRank = fract(52.9829189 * fract(dot(floor(gl_FragCoord.xy), vec2(0.06711056, 0.00583715))));
+    if (v_atlasLayer >= 4u && v_vegAux.x <= coverageRank) discard;
+    if (kDepthOnly) return;
     vec3 macro = rootMacro();
     // Cards are painted in the mission palette (data/vegetation/palettes/mc2_01.json):
     // their own hue and value separate species and contrast with the ground. The
@@ -125,4 +130,5 @@ void main() {
     vec3 lit = uT.lightingEnabled != 0 ? shadeGround(albedo, rootN, normalLight, shadow, 0.0, v_worldPos, rootN, false, 0.0) : albedo;
     o_color = vec4(lit, 1.0);
     o_normal = rc_gbuffer1_shadowHandled(N);
+    o_normal.a = 0.9375; // Grass remains shadow-handled (>0.5), distinct from solid trees for ground UI.
 }

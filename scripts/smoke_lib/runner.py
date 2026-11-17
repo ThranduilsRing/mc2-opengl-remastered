@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import os
+import json
 import queue
 import subprocess
 import sys
 import threading
 import time
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import List, Optional
 
 from . import nofocus, stall, vk_validation
@@ -264,6 +265,22 @@ def _build_argv(base_exe: List[str], cfg: RunConfig) -> List[str]:
     ] + (["--ticks", str(cfg.ticks)] if cfg.ticks > 0 else []) + (["--headless"] if cfg.headless else [])
 
 
+def box_validation_layer(env: dict) -> str:
+    """Pin box smoke to the SDK, including runs outside box_run's validation row."""
+    if sys.platform != "linux" or env.get("MC2_TOOLCHAINS") != "/workspace/toolchains":
+        return ""
+    layers = PurePosixPath(env["MC2_TOOLCHAINS"]) / "vvl-1.4.350.0/explicit_layer.d"
+    manifest = Path(layers / "VkLayer_khronos_validation.json")
+    layer = json.loads(manifest.read_text())["layer"]
+    if layer["api_version"] != "1.4.350" or not Path(layer["library_path"]).is_file():
+        raise RuntimeError(f"Box validation SDK missing or mismatched: {manifest}")
+    env["VK_LAYER_PATH"] = str(layers)
+    env.pop("VK_ADD_LAYER_PATH", None)
+    return (f"[runner] validation_layer manifest={manifest} api={layer['api_version']} "
+            f"impl={layer['implementation_version']} library={layer['library_path']} "
+            f"preset={env.get('MC2_VULKAN_VALIDATION', 'off')} VK_ADD_LAYER_PATH=<unset>")
+
+
 def run_one(cfg: RunConfig) -> RunResult:
     # Test fixtures (fake_mc2_*.py) don't parse argv; if the caller already
     # embedded ANY smoke flag, assume they've embedded all of them and pass
@@ -276,6 +293,8 @@ def run_one(cfg: RunConfig) -> RunResult:
     argv = list(cfg.exe) if has_embedded else _build_argv(cfg.exe, cfg)
 
     env = os.environ.copy()
+    env.update(cfg.env_extra)
+    layer_selection = box_validation_layer(env)
     for _k in unregistered_ambient(env, cfg.env_extra):
         env.pop(_k, None)
     for _k, _v in FORCED_ENV.items():
@@ -285,6 +304,8 @@ def run_one(cfg: RunConfig) -> RunResult:
     for _k in POPPED_ENV:
         env.pop(_k, None)
     env.update(cfg.env_extra)
+    if layer_selection:
+        print(layer_selection, flush=True)
     # [PERF_COUNTERS v1] / [CULL_PARITY v1] print only with their diag tag (docs/plans/2026-11-02-quiet-tags.md). MC2_DIAG_TAGS replaces the engine's
     # default list, so restate it. Every runner-owned run (smoke, bench, census, profilers) turns the tags on; a quiet sample does not.
     if not (cfg.quiet_default or os.environ.get("MC2_SMOKE_QUIET_DEFAULT") == "1"):
@@ -333,9 +354,9 @@ def run_one(cfg: RunConfig) -> RunResult:
     # process is killed — the pipe handle stays open until the OS cleans it up.
     # To allow the walltime cap to fire promptly we push reads onto a background
     # daemon thread and poll a queue with a short timeout on the main thread.
-    lines: list[str] = []
+    lines: list[str] = [layer_selection] if layer_selection else []
     firewall = FirewallGuard(Path(argv[0]))
-    line_wallclocks: list[float] = []
+    line_wallclocks: list[float] = [0.0] if layer_selection else []
     killed = False
     line_q: queue.Queue[tuple] = queue.Queue()
     reader = threading.Thread(target=_reader_thread,
@@ -390,6 +411,7 @@ def run_one(cfg: RunConfig) -> RunResult:
         stem=cfg.stem,
         diag_tags=frozenset(t.strip() for t in env.get("MC2_DIAG_TAGS", "").split(",") if t.strip()),
         vegetation_expected=vegetation_expected,
+        presentation_disabled=env.get("MC2_PRESENTATION_DISABLED", "").lower() in ("1", "true", "yes", "on"),
         content_error_budget=cfg.content_error_budget,
     )
     verdict = evaluate(summary, gcfg, exit_code=proc.returncode,

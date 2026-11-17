@@ -273,8 +273,7 @@ void main() {
     // colormap base only, byte-identical to the colormap-only frame.
     if (uT.useCement != 0) {
         // CEMENT-MIP-EDGE-1: the road "outline". Derivatives come from the CONTINUOUS tile UV in uniform
-        // control flow (a fract()ed UV would blow them up at every tile wrap). Cement art is a mip-less
-        // texture array (CEMENT-ARRAY-1), sampled at lod 0 with no cell borders to bleed across.
+        // control flow (a fract()ed UV would blow them up at every tile wrap).
         vec2  cCont    = vec2(v_worldPos.x, -v_worldPos.y) / uT.cementWUPT;
         vec2  cGx      = dFdx(cCont), cGy = dFdy(cCont);
         // CEMENT-MIP-EDGE-1: per-pixel tile-UV footprint, for the antialiased transition cut below
@@ -289,7 +288,7 @@ void main() {
             bool isTransition = (cw & 0x40000000u) != 0u;
             vec2 cTileUV  = fract(vec2(v_worldPos.x, -v_worldPos.y) / uT.cementWUPT);
             // CEMENT-ARRAY-1: one array layer per cell, so the tile UV samples directly (no cell borders to inset).
-            vec4 cementTexel = textureLod(u_cementArt, vec3(cTileUV, float(cLayerIdx)), 0.0); cdRoad = 1.0 - smoothstep(0.20, 0.30, dot(cementTexel.rgb, vec3(0.299, 0.587, 0.114)));
+            vec4 cementTexel = textureGrad(u_cementArt, vec3(cTileUV, float(cLayerIdx)), cGx, cGy); cdRoad = 1.0 - smoothstep(0.20, 0.30, dot(cementTexel.rgb, vec3(0.299, 0.587, 0.114)));
             vec3 cementColor = cementTexel.rgb * vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);  // CEMENT-NIGHT-LIGHT-1
             // CEMENT-ALPHA-LAND-1 (terrain_lod_chunk.frag:1009-1015): OWN_ALPHA transition.
             // Word bit23 => the atlas cell carries its own coverage in alpha; composite OVER base.
@@ -359,7 +358,7 @@ void main() {
                 bool dnTransition = (dnw & 0x40000000u) != 0u;
                 if (dnValid && !dnTransition) {
                     uint dLayerIdx = dnw & 0xFFFFu;
-                    base = textureLod(u_cementArt, vec3(dTileUV, float(dLayerIdx)), 0.0).rgb * vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);  // CEMENT-NIGHT-LIGHT-1
+                    base = textureGrad(u_cementArt, vec3(dTileUV, float(dLayerIdx)), cGx, cGy).rgb * vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);  // CEMENT-NIGHT-LIGHT-1
                     pureConcrete = true;
                     cementHit = true;   // as GL's diag-connect branch
                 }

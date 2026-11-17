@@ -20,19 +20,8 @@ def cycles(samples=24):
     scene.cycles.samples=samples
     scene.cycles.use_denoising=True
     scene.render.threads_mode='FIXED';scene.render.threads=12
-    # Device discovery is local and falls back to CPU without changing the art.
-    prefs=bpy.context.preferences.addons['cycles'].preferences
-    for backend in ['OPTIX','CUDA','HIP']:
-        try:
-            prefs.compute_device_type=backend;prefs.get_devices()
-            gpu=[d for d in prefs.devices if d.type!='CPU']
-            if gpu:
-                for d in prefs.devices:d.use=d.type!='CPU'
-                scene.cycles.device='GPU'
-                print('[scifi] Cycles',backend,[d.name for d in gpu],flush=True)
-                break
-        except (TypeError,RuntimeError):
-            continue
+    sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'blender_pipeline'));import blender_gpu
+    blender_gpu.apply(scene)   # second (non-display) GPU only; fails loud, never the display GPU
     scene.view_settings.view_transform='AgX'
     return scene
 
