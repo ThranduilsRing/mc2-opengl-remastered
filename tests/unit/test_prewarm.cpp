@@ -31,11 +31,13 @@ TEST_CASE("prewarm: private worker decode adopts on main and never in world") {
     Service service;
     const auto main = std::this_thread::get_id();
     std::thread::id decodeThread, adoptThread;
+    bool privateOwner = false;
     std::atomic<bool> decoded{false};
     int unrelatedSteps = 0;
     auto logistics = service.submitMain([&] { ++unrelatedSteps; return false; });
     auto job = service.submit([&] {
         mc2::overlap::assertOwner(mc2::overlap::Owner::Prewarm, "prewarm.test.decode");
+        privateOwner = mc2::overlap::isOwner(mc2::overlap::Owner::Prewarm);
         decodeThread = std::this_thread::get_id();
         decoded.store(true);
         return [&] { adoptThread = std::this_thread::get_id(); };
@@ -46,6 +48,7 @@ TEST_CASE("prewarm: private worker decode adopts on main and never in world") {
     CHECK(adoptThread == std::thread::id{});
     service.finish(job);
     CHECK(decodeThread != main);
+    CHECK(privateOwner);
     CHECK(adoptThread == main);
     CHECK(unrelatedSteps == 0);
     service.finish(logistics);
