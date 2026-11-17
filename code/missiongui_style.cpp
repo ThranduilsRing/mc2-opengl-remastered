@@ -1143,7 +1143,7 @@ bool MissionInterfaceManager::menuContextValid(const mc2::order_menu::Order* cap
     f.placementMode = controlGui.isAddingVehicle() || controlGui.isAddingAirstrike() ||
                       controlGui.isAddingSalvage() || controlGui.isSelectingInfoObject();
     f.focusLost = !input::inputFocused();
-    if (captured && GuiRuntime::FrameActive()) {
+    if (captured && orderMenu.isOpen() && GuiRuntime::FrameActive()) { // baseline is captured at open
         const ImVec2 d = ImGui::GetIO().DisplaySize;
         f.displayChanged = d.x != s_menuDispW || d.y != s_menuDispH;
     }
