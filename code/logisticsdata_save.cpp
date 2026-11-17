@@ -135,7 +135,7 @@ long	LogisticsData::save( FitIniFile& file )
 		{
 			if ( !(*vIter)->isDesignerMech() )
 			{
-				if ((*vIter)->save(file, variantCount) != 0) return -1;
+				if (const long rc = (*vIter)->save(file, variantCount); rc != 0) return rc;
 				variantCount++;
 			}
 		}
