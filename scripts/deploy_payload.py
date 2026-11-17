@@ -2885,7 +2885,7 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
             phase_started = time.perf_counter()
             with deploy_phase("stock texture receipts", 300):
                 kit_payload.reconcile_stock_textures(target,
-                    jobs=int(Path("A:/Games/mc2-ops/JOBS").read_text().strip()))
+                    jobs=kit_payload.jobs_limit())
             log(f"phase stock receipts seconds={time.perf_counter() - phase_started:.3f}")
             phase_started = time.perf_counter()
             with deploy_phase("kit cook", 900):

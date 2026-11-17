@@ -269,6 +269,7 @@ def test_only_the_green_stages_get_a_receipt_when_one_stage_is_skipped(tmp_path,
     assert nightly_gate.write_receipts(str(tmp_path), False, stages) == [] and not (tmp_path / "receipt.json").exists()
 
 
+@pytest.mark.skipif(os.name != "nt", reason="Windows Task Scheduler launcher registration")
 def test_task_xml_template_resolves_the_launcher_at_registration(tmp_path):
     import nightly_gate_task as t
     raw = open(os.path.join(ROOT, "scripts", "nightly_gate.task.xml"), encoding="utf-8").read()

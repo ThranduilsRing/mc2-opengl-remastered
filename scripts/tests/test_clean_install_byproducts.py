@@ -111,7 +111,9 @@ def test_tracked_name_file_is_kept(tmp_path):
     assert not (install / "data/missions/mc2_01.beauty/visual_height_report.json").exists()
 
 
-@pytest.mark.parametrize("which", ["golden", "golden_nested", "owner_test", "remastered", "archive"])
+@pytest.mark.parametrize("which", ["golden", "golden_nested", "owner_test", *[
+    pytest.param(name, marks=pytest.mark.skipif(os.name != "nt", reason="Protected Windows absolute drive root"))
+    for name in ("remastered", "archive")]])
 def test_refused_roots_exit_2(tmp_path, which):
     if which == "golden":
         byproduct = plant_byproduct(tmp_path / "mc2-win64-v0.4c")

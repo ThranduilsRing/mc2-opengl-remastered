@@ -71,6 +71,7 @@ def test_link_failure_falls_back_to_copy(tmp_path, monkeypatch, capsys):
 
 
 def _stage_setup(tmp_path, monkeypatch):
+    monkeypatch.setattr(ab.shutil, "disk_usage", lambda p: type("Usage", (), {"free": 100 * 2**30})())
     inst = _install(tmp_path / "inst")
     import hashlib
     rows = "".join(f"{p},{hashlib.sha256((inst / p).read_bytes()).hexdigest()},1,{'a' * 40}\n" for p in ["mc2.exe", "shaders/vulkan/x.spv"])

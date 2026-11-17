@@ -128,7 +128,8 @@ def test_compare_says_different_when_no_replayed_frame_matches(tmp_path):
     assert vk_replay.main(["compare", "--live", str(live), "--shots", str(shots)]) == 0
 
 
-def test_dry_run_prints_the_commands_and_runs_nothing(tmp_path, capsys):
+def test_dry_run_prints_the_commands_and_runs_nothing(tmp_path, capsys, monkeypatch):
+    monkeypatch.setenv("VULKAN_SDK", "C:/fixture/VulkanSDK")
     rc = vk_replay.main(["proof", "--install", "A:/inst", "--bookmark", "mc2_01_saved_205644", "--out", str(tmp_path / "o"), "--dry-run"])
     out = capsys.readouterr().out
     assert rc == 0 and "GFXRECON_CAPTURE_FRAMES" in out and "--swapchain" in out and "offscreen" in out
@@ -186,7 +187,8 @@ def test_the_live_png_is_chosen_by_its_sidecar_not_by_name_order(tmp_path):
     assert vk_replay.find_live_png(tmp_path, "mc2_01_saved_1").name == "mc2_01_saved_1_dup.png"
 
 
-def test_the_proof_replays_the_frames_it_recorded(tmp_path, capsys):
+def test_the_proof_replays_the_frames_it_recorded(tmp_path, capsys, monkeypatch):
+    monkeypatch.setenv("VULKAN_SDK", "C:/fixture/VulkanSDK")
     rc = vk_replay.main(["proof", "--install", "A:/inst", "--bookmark", "mc2_01_saved_205644", "--out", str(tmp_path / "o"), "--frames", "440-500", "--dry-run"])
     out = capsys.readouterr().out
     assert rc == 0 and "1-61" in out

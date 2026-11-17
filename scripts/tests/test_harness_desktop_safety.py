@@ -17,6 +17,7 @@ import os
 import subprocess
 import sys
 import types
+import pytest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -298,6 +299,7 @@ def _mock_desktop(monkeypatch, idle_s):
     return fake
 
 
+@pytest.mark.skipif(os.name != "nt", reason="Windows user32 cursor and idle-time APIs")
 def test_pointer_write_is_skipped_while_user_is_active(monkeypatch):
     for idle_s in (0.0, 1.0, 4.999):
         fake = _mock_desktop(monkeypatch, idle_s=idle_s)
@@ -306,6 +308,7 @@ def test_pointer_write_is_skipped_while_user_is_active(monkeypatch):
         assert fake.writes == []
 
 
+@pytest.mark.skipif(os.name != "nt", reason="Windows user32 cursor and idle-time APIs")
 def test_many_attempts_while_the_user_is_active_write_nothing(monkeypatch):
     fake = _mock_desktop(monkeypatch, idle_s=0.2)
     for _ in range(50):
@@ -313,6 +316,7 @@ def test_many_attempts_while_the_user_is_active_write_nothing(monkeypatch):
     assert fake.writes == []
 
 
+@pytest.mark.skipif(os.name != "nt", reason="Windows user32 cursor and idle-time APIs")
 def test_pointer_write_proceeds_when_user_is_idle(monkeypatch):
     fake = _mock_desktop(monkeypatch, idle_s=60.0)
     assert not win_input.user_is_active()
@@ -326,6 +330,7 @@ def test_unknown_idle_time_blocks_pointer_writes(monkeypatch):
     assert win_input.user_is_active()
 
 
+@pytest.mark.skipif(os.name != "nt", reason="Windows user32 cursor and idle-time APIs")
 def test_failed_idle_query_never_writes_pointer(monkeypatch):
     fake = _mock_desktop(monkeypatch, idle_s=60.0)
     monkeypatch.setattr(fake, "GetLastInputInfo", lambda ref: 0)
@@ -343,6 +348,7 @@ def test_agent_launch_cannot_override_pointer_safety(monkeypatch):
     assert env["MC2_WIDTH"] == "1600"
 
 
+@pytest.mark.skipif(os.name != "nt", reason="Windows user32 cursor API")
 def test_nofocus_pointer_write_goes_through_the_guarded_write(monkeypatch):
     fake = _mock_desktop(monkeypatch, idle_s=1.0)
     assert nofocus.set_cursor_pos(5, 5, restoring=True) is False
@@ -367,6 +373,7 @@ def test_off_switch_makes_every_entry_point_a_noop_with_no_win32_call(monkeypatc
     assert win_input.find_foreign_game_pids() == []
 
 
+@pytest.mark.skipif(os.name != "nt", reason="Tripwire for Windows-only input entry points")
 def test_every_win32_entry_raises_under_pytest_without_the_off_switch(monkeypatch):
     monkeypatch.delenv("MC2_CURSOR_GUARD_OFF", raising=False)
     for call in (win_input.get_cursor_pos, win_input.find_foreign_game_pids, lambda: win_input.set_cursor_pos((1, 1))):
@@ -422,6 +429,7 @@ def test_live_runner_reused_pid_or_other_image_blocks_the_kill():
     assert not _may(_rec(), alive=lambda p: False)[0]
 
 
+@pytest.mark.skipif(os.name != "nt", reason="Windows os.kill uses TerminateProcess; POSIX uses signal zero")
 def test_pid_alive_never_signals_on_windows(monkeypatch):
     def _boom(*a, **k):
         raise AssertionError("os.kill is TerminateProcess on Windows; liveness must not call it")
@@ -450,6 +458,7 @@ def test_nofocus_records_only_engine_children(tmp_path, monkeypatch):
 
 # ------------------------------------------------- synthetic input needs a user-present session
 
+@pytest.mark.skipif(os.name != "nt", reason="Windows user32 keyboard input")
 def test_game_auto_key_and_chord_do_nothing_in_a_background_session(monkeypatch, capsys):
     import game_auto
 
@@ -465,6 +474,7 @@ def test_game_auto_key_and_chord_do_nothing_in_a_background_session(monkeypatch,
     assert capsys.readouterr().out.count("skipped (background mode") == 2
 
 
+@pytest.mark.skipif(os.name != "nt", reason="Windows user32 keyboard input")
 def test_game_auto_keys_are_sent_when_the_session_opts_in(monkeypatch):
     import game_auto
 
