@@ -8,6 +8,7 @@ instead of sparkle or a highlight that averages away.
 from pathlib import Path
 import math
 import re
+import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 SRC = (ROOT / "shaders/vulkan/water_geom.frag").read_text(encoding="utf-8")
@@ -148,3 +149,64 @@ def test_stochastic_packets_are_bounded_continuous_and_conserve_local_variance()
     assert samples[0] != samples[1]  # no repeating, globally uniform wave-train amplitudes
     for boundary in (-2, 0, 3):
         assert abs(_packet_noise(boundary - 1e-6, .37) - _packet_noise(boundary + 1e-6, .37)) < 1e-8
+
+
+@pytest.mark.parametrize("storage", ["rgba8", "rgba16"])
+def test_baked_packet_parity(storage):
+    """Float32 GLSL arithmetic versus texel-centred bake and bilinear sampling.
+
+    This is a numerical/mapping oracle, not a GPU compiler conformance test.
+    Include map edges: clamp-to-edge must meet the same envelope error bound.
+    """
+    np = pytest.importorskip("numpy")
+    f = np.float32
+    bake = (ROOT / "shaders/vulkan/water_wave_packets.comp.slang").read_text()
+    assert "precise float3 q" not in bake
+    wavelengths = [float(v) for v in re.search(r"wavelengths\[10\] = \{([^}]+)", bake)[1].split(",")]
+    assert wavelengths == [w[2] for w in TRAINS[2:]]
+    assert "j = tid.z * 4 + c" in bake and "float(j + 2)" in bake
+
+    def fract(v):
+        return v - np.floor(v)
+
+    def noise(x, y):
+        ix, iy = np.floor(x), np.floor(y)
+        fx, fy = fract(x), fract(y)
+        fx, fy = fx * fx * (f(3) - f(2) * fx), fy * fy * (f(3) - f(2) * fy)
+
+        def h(x, y):
+            qx, qy = fract(x * f(.1031)), fract(y * f(.1031))
+            d = (qx * (qy + f(33.33)) + qy * (qx + f(33.33))) + qx * (qx + f(33.33))
+            a, b = qx + d, qy + d
+            return fract((a + b) * a)
+
+        a, b, c, d = h(ix, iy), h(ix + f(1), iy), h(ix, iy + f(1)), h(ix + f(1), iy + f(1))
+        return (a * (f(1) - fx) + b * fx) * (f(1) - fy) + (c * (f(1) - fx) + d * fx) * fy
+
+    span, half, size = f(12672), f(6400), 2048
+    rng = np.random.default_rng(431)
+    grid = rng.uniform(0, span, (2, 100000)).astype(f)
+    # Explicit corners and both outer rows/columns, in addition to interior samples.
+    edge = np.linspace(0, span, 4097, dtype=f)
+    grid = np.concatenate((grid, np.array([edge, edge * 0]), np.array([edge, edge * 0 + span]),
+                           np.array([edge * 0, edge]), np.array([edge * 0 + span, edge])), axis=1)
+    x, y = grid[0] - half, half - grid[1]
+    uv = np.array([x + half, half - y]) / span * f(size) - f(.5)
+    cell, weight = np.floor(uv), fract(uv)
+    errors = []
+    for j, wavelength in enumerate(wavelengths):
+        scale, ox, oy = f(6) * f(wavelength), f(j + 2) * f(19.19), f(j + 2) * f(7.73)
+        analytic = noise(x / scale + ox, y / scale + oy)
+        texels = []
+        for dx, dy in ((0, 0), (1, 0), (0, 1), (1, 1)):
+            tx = (np.clip(cell[0] + f(dx), 0, size - 1) + f(.5)) * (span / f(size)) - half
+            ty = half - (np.clip(cell[1] + f(dy), 0, size - 1) + f(.5)) * (span / f(size))
+            v = noise(tx / scale + ox, ty / scale + oy)
+            texels.append(np.rint(v * f(255)) / f(255) if storage == "rgba8" else v.astype(np.float16).astype(f))
+        a, b, c, d = texels
+        wx, wy = weight
+        sampled = (a * (f(1) - wx) + b * wx) * (f(1) - wy) + (c * (f(1) - wx) + d * wx) * wy
+        error = np.abs(analytic - sampled)
+        errors.append(float(error.max()))
+        print(f"{storage} train={j + 2} samples={error.size} max={error.max():.9f} mean={error.mean():.9f}")
+    assert max(errors) <= 2 / 255
