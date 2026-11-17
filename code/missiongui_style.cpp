@@ -1086,6 +1086,69 @@ void MissionInterfaceManager::updateWaypoints (void)
    	}
 }
 
+bool MissionInterfaceManager::updateOrderMenu(bool allowOpen, bool overGui)
+{
+    using namespace mc2::order_menu;
+    if (!allowOpen && !orderMenu.captured && !orderMenu.draining) return false;
+    if (!ImGui::GetCurrentContext()) return false;
+    if (allowOpen) {
+        // Classic only: AOE right-click orders and Alt-camera remain intact.
+        if (useLeftRightMouseProfile || overGui ||
+            userInput->wasRightDrag() || !userInput->rightMouseReleased() ||
+            !target || !Team::home->isEnemy(target->getTeam()) || target->isDisabled() ||
+            target->isDestroyed()) return false;
+        Order captured;
+        captured.target = target->getWatchID();
+        for (long i = 0; i < Team::home->getRosterSize(); ++i) {
+            auto* mover = Team::home->getMover(i);
+            if (mover->isSelected() && mover->isMech() && !mover->isDisabled() &&
+                !mover->isDestroyed() && commanderIsHome(mover->getCommander()))
+                captured.recipients.push_back(mover->getWatchID());
+        }
+        if (captured.recipients.empty()) return false;
+        orderMenu.captured = std::move(captured);
+        const auto cursor = ImGui::GetIO().MousePos;
+        orderMenu.x = cursor.x;
+        orderMenu.y = cursor.y;
+    }
+    const bool held = ImGui::IsMouseDown(0) || ImGui::IsMouseDown(1) ||
+                      ImGui::IsKeyDown(ImGuiKey_Escape) || userInput->getKeyDown(KEY_ESCAPE);
+    if (!orderMenu.consume(held)) return false;
+    if (!orderMenu.captured) return true;
+    if (useLeftRightMouseProfile || ImGui::IsKeyPressed(ImGuiKey_Escape) ||
+        userInput->getKeyDown(KEY_ESCAPE)) {
+        orderMenu.choose(Item::Cancel);
+        return true;
+    }
+    ImGui::SetNextWindowPos(ImVec2(orderMenu.x, orderMenu.y), ImGuiCond_Appearing);
+    ImGui::SetNextWindowBgAlpha(0.97f);
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.035f, 0.065f, 0.075f, 1));
+    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.35f, 0.55f, 0.55f, 1));
+    ImGui::Begin("Order menu (prototype)", nullptr,
+        ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
+        ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove);
+    ImGui::TextUnformatted("Classic profile | pause orders: single-player");
+    ImGui::Separator();
+    std::optional<Item> choice;
+    if (ImGui::MenuItem("Attack (default)")) choice = Item::Attack;
+    if (ImGui::MenuItem("Attack short range")) choice = Item::Short;
+    if (ImGui::MenuItem("Attack medium range")) choice = Item::Medium;
+    if (ImGui::MenuItem("Attack long range")) choice = Item::Long;
+    ImGui::MenuItem("Alpha strike (heat model pending)", nullptr, false, false);
+    ImGui::MenuItem("Attack priority (NOT AVAILABLE)", nullptr, false, false);
+    ImGui::Separator();
+    if (ImGui::MenuItem("Cancel")) choice = Item::Cancel;
+    const bool outside = ImGui::IsMouseClicked(0) &&
+        !ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
+    ImGui::End();
+    ImGui::PopStyleColor(2);
+    if (outside) choice = Item::Cancel;
+    if (choice) {
+        if (auto order = orderMenu.choose(*choice)) dispatchMenuOrder(*order);
+    }
+    return true;
+}
+
 int MissionInterfaceManager::update( bool leftClickedClick, bool rightClickedClick, int MouseX, int MouseY, GameObject* pTarget, bool bLOS )
 {
 	ZoneScopedN("MIF.Commands");

@@ -413,6 +413,9 @@ void MissionInterfaceManager::update (void)
 		return;
 	}
 
+	// Order menu owns input before camera, HUD, hotkeys and world dispatch.
+	if (updateOrderMenu()) return;
+
 	//---------------------------------------------------
 	// Tactical overview: advance the blend-state and drive the camera from the
 	// current blend. Hotkey detection lives in GameCamera::update (a proven
@@ -955,6 +958,7 @@ void MissionInterfaceManager::update (void)
 		// in the space the pick (findObjectByMouse) and the user actually use.
 		updateTarget(bRawGui);
 	}
+	if (updateOrderMenu(true, bRawGui)) return;
 
 	{ ZoneScopedN("MIF.PostTarget");
 	attilaXAxis 	= userInput->getAttilaXAxis();  

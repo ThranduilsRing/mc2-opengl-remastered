@@ -33,6 +33,7 @@ get_filename_component(MC2_WORKTREE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABS
 
 set_source_files_properties(${MC2_WORKTREE_ROOT}/RenderCore/KtxBasis.cpp PROPERTIES COMPILE_DEFINITIONS NDEBUG)  # vendored basisu asserts do not compile under clang
 add_executable(mc2_tests
+    test_order_menu.cpp
     test_net_session.cpp
     ${MC2_WORKTREE_ROOT}/code/net/session.cpp
     test_net_lockstep.cpp

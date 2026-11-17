@@ -25,6 +25,7 @@
 #ifndef MISSIONGUI_H
 #define MISSIONGUI_H
 #include <memory>
+#include "order_menu.h"
 //--------------------------------------------------------------------------------------
 // Include Files
 #ifndef MCLIB_H
@@ -362,6 +363,10 @@ public:
 		void Load (FitIniFilePtr file);
 
 	private:
+
+		mc2::order_menu::Menu orderMenu;
+		bool updateOrderMenu(bool allowOpen = false, bool overGui = false);
+		void dispatchMenuOrder(const mc2::order_menu::Order& order);
 
 		// UI-COMMAND-CHANNEL-1: MC2_UI_COMMAND_FILE polling (see missiongui.cpp)
 		void processUiCommandChannel();

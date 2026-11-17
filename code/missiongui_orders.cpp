@@ -8,6 +8,37 @@
 #include "camera_elevation.h"
 
 
+void MissionInterfaceManager::dispatchMenuOrder(const mc2::order_menu::Order& captured)
+{
+    auto* enemy = ObjectManager->getByWatchID(captured.target);
+    if (!enemy || enemy->isDestroyed() || enemy->isDisabled() ||
+        !Team::home->isEnemy(enemy->getTeam())) return;
+    FireRangeType range = FIRERANGE_OPTIMAL;
+    switch (captured.range) {
+    case mc2::order_menu::Range::Short: range = FIRERANGE_SHORT; break;
+    case mc2::order_menu::Range::Medium: range = FIRERANGE_MEDIUM; break;
+    case mc2::order_menu::Range::Long: range = FIRERANGE_LONG; break;
+    default: break;
+    }
+    for (auto id : captured.recipients) {
+        auto* object = ObjectManager->getByWatchID(id);
+        if (!object || !object->isMech() || object->isDestroyed() || object->isDisabled()) continue;
+        auto* mover = static_cast<Mover*>(object);
+        if (mover->getTeam() != Team::home || !commanderIsHome(mover->getCommander())) continue;
+        TacticalOrder order;
+        order.init(ORDER_ORIGIN_PLAYER, TACTICAL_ORDER_ATTACK_OBJECT);
+        order.targetWID = enemy->getWatchID();
+        order.attackParams.type = bEnergyWeapons ? ATTACK_CONSERVING_AMMO : ATTACK_TO_DESTROY;
+        order.attackParams.method = ATTACKMETHOD_RANGED;
+        order.attackParams.range = range;
+        order.attackParams.pursue = !controlGui.getFireFromCurrentPos();
+        order.moveParams.wayPath.mode[0] = controlGui.getWalk() ? TRAVEL_MODE_SLOW : TRAVEL_MODE_FAST;
+        order.pack(nullptr, nullptr);
+        if (MPlayer && !MPlayer->isServer()) MPlayer->sendPlayerOrder(&order, false, 1, &mover);
+        else mover->handleTacticalOrder(order);
+    }
+}
+
 void MissionInterfaceManager::doAttack()
 {
 
