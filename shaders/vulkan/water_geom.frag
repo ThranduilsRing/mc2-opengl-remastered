@@ -76,8 +76,9 @@ void waterSurfaceCache(ivec2 p, out mat4 raw, out mat4 surface) {
 }
 vec4 waterCell(mat4 rows, ivec2 k) {
     // Constant component accesses avoid dynamically indexing a per-fragment array.
-    vec4 top = k.y == 0 ? rows[0] : (k.y == 1 ? rows[1] : rows[2]);
+    vec4 top = k.y == 0 ? rows[0] : (k.y == 1 ? rows[1] : (k.y == 3 ? rows[3] : rows[2]));
     vec4 bottom = k.y == 0 ? rows[1] : (k.y == 1 ? rows[2] : rows[3]);
+    if (k.x == 3) return vec4(top.ww, bottom.ww);
     return k.x == 0 ? vec4(top.xy, bottom.xy)
                    : (k.x == 1 ? vec4(top.yz, bottom.yz) : vec4(top.zw, bottom.zw));
 }
@@ -90,7 +91,8 @@ float waterCachedHeight(vec2 worldXY, ivec2 origin, mat4 raw, mat4 surface) {
     vec2 t = grid - vec2(p);
     ivec2 k = p - origin;
     // Binary32 tap rounding can escape the three cached cells on either axis.
-    if (any(lessThan(k, ivec2(0))) || any(greaterThan(k, ivec2(2))))
+    if (any(lessThan(k, ivec2(0))) || any(greaterThan(k, ivec2(3)))
+        || (k.x == 3 && t.x != 0.0) || (k.y == 3 && t.y != 0.0))
         return waterFineHeight(worldXY);
     vec4 r = waterCell(raw, k), h = waterCell(surface, k);
     float rawTL = r.x, rawTR = r.y, rawBL = r.z, rawBR = r.w;
