@@ -2,8 +2,10 @@
 // Declared in the class headers; shared names in missiongui_shared_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "missiongui_shared_internal.h"
+#include "net/runtime.h"
 #include "render_view.h"
 #include "mc2fmt.h"
+#include "camera_elevation.h"
 
 
 void MissionInterfaceManager::doAttack()
@@ -566,6 +568,7 @@ int MissionInterfaceManager::eject()
 
 int MissionInterfaceManager::bigAirStrike()
 {
+	if (mc2::net::active()) return 0;
 	glm::vec3 v = makeAirStrikeTarget( wPos );
 
 	IfaceCallStrike (ARTILLERY_LARGE,&v,nullptr);
@@ -574,6 +577,7 @@ int MissionInterfaceManager::bigAirStrike()
 }
 int MissionInterfaceManager::smlAirStrike()
 {
+	if (mc2::net::active()) return 0;
 	glm::vec3 v = makeAirStrikeTarget( wPos );
 
 	IfaceCallStrike (ARTILLERY_SMALL,&v,nullptr);
@@ -582,6 +586,7 @@ int MissionInterfaceManager::smlAirStrike()
 }
 int MissionInterfaceManager::snsAirStrike()
 {
+	if (mc2::net::active()) return 0;
 	glm::vec3 v = makeAirStrikeTarget( wPos );
 
 	IfaceCallStrike (ARTILLERY_SENSOR,&v,nullptr);
@@ -767,30 +772,26 @@ int MissionInterfaceManager::handleOrders( TacticalOrder& order)
 
 int MissionInterfaceManager::scrollUp()
 {
-	float frameFactor = frameLength / baseFrameLength;
-	float scrollFactor = scrollInc / eye->getScaleFactor() * frameFactor;
+	float scrollFactor = mc2cam::panStep(scrollInc, eye->getScaleFactor(), frameLength, baseFrameLength);
 	eye->moveUp(scrollFactor);
 	return 1;
 }
 
 int MissionInterfaceManager::scrollDown()
 {
-	float frameFactor = frameLength / baseFrameLength;
-	float scrollFactor = scrollInc / eye->getScaleFactor() * frameFactor;
+	float scrollFactor = mc2cam::panStep(scrollInc, eye->getScaleFactor(), frameLength, baseFrameLength);
 	eye->moveDown(scrollFactor);
 	return 1;
 }
 int MissionInterfaceManager::scrollLeft()
 {
-	float frameFactor = frameLength / baseFrameLength;
-	float scrollFactor = scrollInc / eye->getScaleFactor() * frameFactor;
+	float scrollFactor = mc2cam::panStep(scrollInc, eye->getScaleFactor(), frameLength, baseFrameLength);
 	eye->moveLeft(scrollFactor);
 	return 1;
 }
 int MissionInterfaceManager::scrollRight()
 {
-	float frameFactor = frameLength / baseFrameLength;
-	float scrollFactor = scrollInc / eye->getScaleFactor() * frameFactor;
+	float scrollFactor = mc2cam::panStep(scrollInc, eye->getScaleFactor(), frameLength, baseFrameLength);
 	eye->moveRight(scrollFactor);
 	return 1;
 }
@@ -853,15 +854,13 @@ int MissionInterfaceManager::zoomIn()
 }
 int MissionInterfaceManager::zoomChoiceOut()
 {
-	float frameFactor = frameLength / baseFrameLength;
-	eye->ZoomOut(zoomInc * frameFactor * 18.0f * eye->getScaleFactor());
+	eye->ZoomOut(mc2cam::wheelZoomAmount(zoomInc, baseFrameLength, eye->getScaleFactor()));
 
 	return 1;
 }
 int MissionInterfaceManager::zoomChoiceIn()
 {
-	float frameFactor = frameLength / baseFrameLength;
-	eye->ZoomIn(zoomInc * frameFactor * 18.0f * eye->getScaleFactor());
+	eye->ZoomIn(mc2cam::wheelZoomAmount(zoomInc, baseFrameLength, eye->getScaleFactor()));
  	return 1;
 }
 int MissionInterfaceManager::rotateLeft()
@@ -908,14 +907,14 @@ int MissionInterfaceManager::tiltUp()
 {
 	float frameFactor = frameLength / baseFrameLength;
 	float scrollFactor = scrollInc / eye->getScaleFactor() * frameFactor;
-	eye->tiltDown(scrollFactor * frameFactor * 30.0f);
+	eye->tiltDown(scrollFactor * 15.0f);
 	return 1;
 }
 int MissionInterfaceManager::tiltDown()
 {
 	float frameFactor = frameLength / baseFrameLength;
 	float scrollFactor = scrollInc / eye->getScaleFactor() * frameFactor;
-	eye->tiltUp(scrollFactor * frameFactor * 30.0f);
+	eye->tiltUp(scrollFactor * 15.0f);
 	return 1;
 	
 }
@@ -1107,6 +1106,7 @@ void MissionInterfaceManager::doMove(const glm::vec3& pos)
 
 bool MissionInterfaceManager::makePatrolPath()
 {
+	if (mc2::net::active()) return false;
 	Team* pTeam = Team::home;
 	for (long i=0;i<pTeam->getRosterSize();i++)
 	{
@@ -1215,6 +1215,7 @@ void MissionInterfaceManager::selectForceGroup( int forceGroup, bool deselect )
 }
 void MissionInterfaceManager::makeForceGroup( int forceGroup )
 {
+	if (mc2::net::active()) return;
 	Team* pTeam = Team::home;
 
 	for (int i=0;i<pTeam->getRosterSize();i++)

@@ -1,6 +1,6 @@
 # The lifecycle probe needs the real class hierarchy in a separate executable:
 # mc2_tests already has independent platform/heap shims and allocation overrides.
-file(GLOB VFX_LIFECYCLE_SOURCES
+file(GLOB VFX_LIFECYCLE_SOURCES CONFIGURE_DEPENDS
     "${MC2_WORKTREE_ROOT}/mclib/gosfx/*.cpp"
     "${MC2_WORKTREE_ROOT}/mclib/mlr/*.cpp"
     "${MC2_WORKTREE_ROOT}/mclib/particles/*.cpp"

@@ -1,3 +1,4 @@
+#include "math/sim_math.h"
 // GroundVehicle: the per-frame update, the GPU-lagged visibility gate, and Save/CopyTo/Load.
 // Declared in the class headers; shared names in gvehicl_internal.h.
 #include <algorithm>
@@ -6,6 +7,7 @@
 #include "hover_name.h"
 #include "tacticaloverview.h"
 #include "Gates/gate.h"
+#include "water_wake.h"
 
 
 // C3: env-gated lifecycle routing killswitch (same env var as objmgr.cpp).
@@ -335,13 +337,13 @@ long GroundVehicle::update (void)
 		up.z = 1.0f;
 
 		float pitchAngle = glm::dot(up, pitchK);
-		pitchAngle = acos(pitchAngle) * RADS_TO_DEGREES;
+		pitchAngle = mc2::sim::math::acos(pitchAngle) * RADS_TO_DEGREES;
 		if (pitchK.y < 0.0f)
 			pitchAngle = -pitchAngle;
 
 		bool useHillFactor = (moveLevel == 0) || (!GameMap->getShallowWater(cellPositionRow, cellPositionCol) && !GameMap->getDeepWater(cellPositionRow, cellPositionCol));
 		if (useHillFactor) {
-			float pitch = sin(pitchAngle * DEGREES_TO_RADS);
+			float pitch = mc2::sim::math::sin(pitchAngle * DEGREES_TO_RADS);
 			if ( (pitch != 0.0f))
 			{
 				float hillFactor = pitch * velMag * gvHillSpeedFactor;
@@ -496,8 +498,9 @@ long GroundVehicle::update (void)
 			feedSimHalf(0.0f, 0.0f);
 			int watercellR, watercellC;
 			land->worldToCell(position,watercellR, watercellC);
-			if (GameMap->getDeepWater(watercellR, watercellC) || 
-				GameMap->getShallowWater(watercellR, watercellC))
+			const auto wakeVelocity = getVelocity();
+			if (mc2::waterreactive::shouldEmit(getStatus() == OBJECT_STATUS_NORMAL, wakeVelocity.x, wakeVelocity.y) &&
+				(GameMap->getDeepWater(watercellR, watercellC) || GameMap->getShallowWater(watercellR, watercellC)))
 			{
 				appearance->startWaterWake();
 			}
@@ -696,6 +699,7 @@ void GroundVehicle::extractRenderView (mc2::render_view::RenderView& view)
 {
 	using mc2::render_view::Mode;
 	GameObject::extractRenderView(view);
+	view.value[0] = mc2::render_view::groundFootprintRadius(getExtentRadius(), false, getMoveType() == MOVETYPE_AIR);
 	contactView = mc2::contactVisibility(getContactStatus(Team::home->getId(), true), getTeamId() == Team::home->getId()
 		|| isDestroyed() || isDisabled() || ShowMovers
 		|| (MPlayer && MPlayer->allUnitsDestroyed[MPlayer->commanderID]));

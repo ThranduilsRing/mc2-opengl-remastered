@@ -40,35 +40,10 @@ const float* gos_GetObjectFixBMVPMat4() {
 // reset per process lifetime; format matches both call sites verbatim.
 extern const bool s_treeDiagTrace = mc2::gate::get<"MC2_TREE_DIAG_TRACE">();
 
-// MC2_SPOTLIGHT_REAL_TRACE=1 — (E) SpotLight_ → real illumination baseline counter.
-// Stage 0 instrumentation (T0.1, plan 2026-05-20). Counts per-frame static-prop
-// submitMultiShape events where the child has isSpotlight==true (i.e. the per-instance
-// shape whose source typeShape carried the "SpotLight_*" node-name prefix and that
-// the CPU path tags via tgl.cpp:259/475). First-hit is always-on (one-line stderr
-// confirms a SpotLight_ child was observed at least once even without the env);
-// per-frame and 600-frame summary streams are env-gated to keep the log quiet by
-// default. Pattern mirrors the [INSTR v1] schema family + the 600-frame window
-// used by [OBJBATCHER v1] / [TGL_POOL v1].
-extern const bool s_spotlightRealTrace = false;
-
 // MC2_STATIC_PROP_GLOBAL_POOL_LEGACY=1 — forces the legacy per-type-cap
 // coalesce layout (keeps existing path; new global-pool path is disabled).
 // Env-read once at process start; survives until soak completes.
 extern const bool s_globalPoolLegacy = mc2::gate::get<"MC2_STATIC_PROP_GLOBAL_POOL_LEGACY">();
-
-// DrawPacket v5: per-draw-call substitutive dispatch.
-// Always on (gate retired).
-// Extension: ARB_base_instance (GL 4.2 core, available on all tier1 GPUs).
-// GLboolean: GL_TRUE on any GL 4.2+ context. Evaluated lazily via GLEW at first use.
-// Safe: GLEW is initialized before any batcher code runs (gos_Init() order).
-bool s_baseInstanceSupported = false;  // set on first gate-ON flush
-bool s_v5Armed      = false;  // true once gate-arm checks have run
-bool s_v5Disarmed   = false;  // true if gate-arm check failed for session
-
-// DrawPacket v7: canonical packet+meta array dispatch. The legacy multidraw only runs when v6 disarms
-// (a context without ARB_base_instance, a missing drawID uniform).
-bool s_v6Armed    = false;
-bool s_v6Disarmed = false;
 
 // v3 snapshot build: separate dispatch arrays for snapshot-built path.
 // Reused each flush via resize() — no heap alloc after first frame.

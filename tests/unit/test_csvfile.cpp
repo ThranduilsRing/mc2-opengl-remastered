@@ -25,6 +25,10 @@
 
 #include <cstring>
 #include <string>
+#include <algorithm>
+#include <filesystem>
+#include <random>
+#include <fstream>
 
 #ifndef MC2_TEST_FIXTURE_DIR
 #error "MC2_TEST_FIXTURE_DIR must be defined by tests/unit/CMakeLists.txt"
@@ -46,9 +50,7 @@ TEST_SUITE("CsvFile")
 
 // The fixture (tests/unit/fixtures/buildings_smoke.csv) mirrors the real
 // Buildings.csv column contract read by logisticsdata.cpp. CRLF line endings
-// on purpose: File::readLine only skips a trailing '\r' before the '\n', so an
-// LF-only CSV produces phantom empty rows -- stock Excel-exported CSVs are
-// always CRLF, and matching that is part of the contract.
+// on purpose, matching stock Excel-exported CSVs.
 //   row 1 = header  (Name,Notes,NameID,Type,FitID,...,Scale)
 //   row 2 = madcat   MECH    nameID 101  fitID 5001  scale 1.0   (clean cols)
 //   row 3 = ranger   VEHICLE nameID 102  fitID 5002  scale 0.75  (clean cols)
@@ -235,14 +237,107 @@ TEST_CASE("CSVFile RAM row scans match the disk parser")
 	File source;
 	REQUIRE(source.open(path.c_str()) == NO_ERR);
 	CSVFile memory, disk;
+	struct LegacyCsv : CSVFile {
+		long openDisk(const char* name) {
+			const auto result = File::open(name);
+			return result == NO_ERR ? afterOpen() : result;
+		}
+	} legacy;
 	REQUIRE(memory.open(&source, source.fileSize(), -1) == NO_ERR);
 	REQUIRE(disk.open(path.c_str()) == NO_ERR);
+	REQUIRE(legacy.openDisk(path.c_str()) == NO_ERR);
 	for (unsigned row = 1; row <= 8; ++row) {
 		for (unsigned col = 0; col <= 14; ++col) {
 			char a[256]{}, b[256]{};
 			const auto expected = disk.readString(row, col, a, sizeof(a) - 1);
 			CHECK(memory.readString(row, col, b, sizeof(b) - 1) == expected);
 			if (expected == NO_ERR) CHECK(strcmp(a, b) == 0);
+			CHECK(legacy.readString(row, col, b, sizeof(b) - 1) == expected);
+			if (expected == NO_ERR) CHECK(strcmp(a, b) == 0);
+		}
+	}
+}
+TEST_CASE("CSVFile cached reopen matches legacy disk rows and cells")
+{
+	struct Temp {
+		std::filesystem::path dir;
+		~Temp() { std::error_code ec; std::filesystem::remove_all(dir, ec); }
+	} temp;
+	do { temp.dir = std::filesystem::temp_directory_path() / ("csv-parity-" + std::to_string(std::random_device{}())); }
+	while (!std::filesystem::create_directory(temp.dir));
+	const auto path = (temp.dir / "input.csv").string();
+	struct Legacy : CSVFile {
+		long openDisk(const char* p) { auto r = File::open(p); return r == NO_ERR ? afterOpen() : r; }
+		unsigned rows() const { return totalRows; }
+		unsigned cols() const { return totalCols; }
+	} disk, ram;
+	const std::string inputs[] = { "A,B\n\nC,D\nE,F\n", "\n\n\nA,B\n\n", "A,B\r\n\r\nC,D\r\n",
+		"A,B\r\n\nC,D\nE,F\r\n", "A,B\nC,D", "\"A,\nB\",C\nD,E\n", "A,B\rX,Y\r", "",
+		std::string(2046, 'x') + "\n\nC,D\n", std::string(2047, 'x') + "\n\nC,D\n",
+		std::string(2047, 'x') + "\r\nC,D\n", std::string(4096, 'x') + "\nC,D\n", "new,cells\nlast,row\n" };
+	for (const auto& input : inputs) {
+		CAPTURE(input.size());
+		{ std::ofstream out(path, std::ios::binary); out << input; REQUIRE(out.good()); }
+		REQUIRE(disk.openDisk(path.c_str()) == NO_ERR); REQUIRE(ram.open(path.c_str()) == NO_ERR);
+		CHECK(ram.rows() == disk.rows()); CHECK(ram.cols() == disk.cols());
+		for (unsigned row = 1; row <= disk.rows() + 1; ++row) for (unsigned col = 0; col <= disk.cols() + 1; ++col) {
+			CAPTURE(row); CAPTURE(col); char a[2048]{}, b[2048]{};
+			const auto expected = disk.readString(row, col, a, sizeof(a) - 1);
+			CHECK(ram.readString(row, col, b, sizeof(b) - 1) == expected); CHECK(std::strcmp(a, b) == 0);
+		}
+		disk.close(); ram.close();
+	}
+}
+
+TEST_CASE("File RAM lines and parent CSV chunk boundaries match disk")
+{
+	struct Temp {
+		std::filesystem::path dir;
+		~Temp() { std::error_code ec; std::filesystem::remove_all(dir, ec); }
+	} temp;
+	do { temp.dir = std::filesystem::temp_directory_path() / ("csv-lines-" + std::to_string(std::random_device{}())); }
+	while (!std::filesystem::create_directory(temp.dir));
+	const auto path = (temp.dir / "input.csv").string();
+	struct Legacy : CSVFile {
+		long openDisk(const char* p) { auto r = File::open(p); return r == NO_ERR ? afterOpen() : r; }
+		unsigned rows() const { return totalRows; }
+		unsigned cols() const { return totalCols; }
+	};
+	std::string inputs[] = { "first\nsecond\n", "first\r\nsecond\r\n", "\n\n", "abcdef\nnext\n",
+		std::string(2046, 'x'), std::string(2047, 'x'), std::string(2048, 'x') };
+	for (const auto& ending : { std::string("\n"), std::string("\r\n") }) {
+		for (unsigned fixture = 0; fixture < 7; ++fixture) {
+			const auto input = fixture < 4 ? inputs[fixture] : inputs[fixture] + ending + "second,row" + ending;
+			CAPTURE(fixture); CAPTURE(ending.size());
+			{ std::ofstream out(path, std::ios::binary); out << input; REQUIRE(out.good()); }
+			for (long limit : { 1L, 3L, 2047L }) {
+				CAPTURE(limit);
+				File disk, ram;
+				REQUIRE(disk.open(path.c_str()) == NO_ERR);
+				REQUIRE(ram.open(input.data(), static_cast<int>(input.size())) == NO_ERR);
+				while (!disk.eof()) {
+					char a[2048]{}, b[2048]{};
+					const auto expected = disk.readLine(reinterpret_cast<MemoryPtr>(a), limit);
+					REQUIRE(ram.readLine(reinterpret_cast<MemoryPtr>(b), limit) == expected);
+					REQUIRE(std::strcmp(a, b) == 0);
+					REQUIRE(ram.getLogicalPosition() == disk.getLogicalPosition());
+					REQUIRE(ram.eof() == disk.eof());
+					if (fixture == 2) { CHECK(expected == 1); CHECK(a[0] == 0); }
+				}
+			}
+			if (fixture < 4) continue;
+			File source;
+			Legacy disk, ram;
+			REQUIRE(source.open(path.c_str()) == NO_ERR);
+			REQUIRE(disk.openDisk(path.c_str()) == NO_ERR);
+			REQUIRE(ram.open(&source, source.fileSize(), -1) == NO_ERR);
+			REQUIRE(ram.rows() == disk.rows()); REQUIRE(ram.cols() == disk.cols());
+			for (unsigned row = 1; row <= disk.rows() + 1; ++row) for (unsigned col = 0; col <= disk.cols() + 1; ++col) {
+				CAPTURE(row); CAPTURE(col); char a[2048]{}, b[2048]{};
+				const auto expected = disk.readString(row, col, a, sizeof(a) - 1);
+				REQUIRE(ram.readString(row, col, b, sizeof(b) - 1) == expected);
+				REQUIRE(std::strcmp(a, b) == 0);
+			}
 		}
 	}
 }

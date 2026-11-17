@@ -5,7 +5,9 @@
 #include <memory>
 #include <string_view>
 #include "mc2video.h"
+#include "../GameOS/gameos/gos_render.h"
 #include "gos_crashbundle.h"
+#include "gos_profiler.h"
 
 #include <cstdio>
 #include <cstring>
@@ -15,6 +17,7 @@
 #include <SDL2/SDL_mixer.h>
 
 #include "file.h"   // fileExists
+#include "vfs.h"
 #include "gameos.hpp"  // gos_NewEmptyTexture, gos_DestroyTexture, gos_Texture_Alpha, RECT_TEX, gosHint_DisableMipmap, DWORD
 #include "soundsys.h"  // SoundSystem — PCM push adapter (Task 12)
 extern char moviePath[80];  // defined in mclib/paths.cpp
@@ -164,6 +167,10 @@ bool resolveVideoCandidate(mc2::czstring shortName, bool preferUpscaled,
     auto tryEmit = [&](const Slot& s) -> bool {
         char tmp[1024];
         mc2::fmt::to_buf(tmp, "{}{}{}", mc2::fmt::safe(moviePath), mc2::fmt::safe(shortName), mc2::fmt::safe(s.ext));
+        // FFmpeg opens native paths, unlike File::open: preserve case and mod precedence.
+        const auto entry = mc2::vfs::lookup(tmp);
+        if (entry && !entry->physicalPath.empty())
+            mc2::fmt::to_buf(tmp, "{}", entry->physicalPath);
         if (s.looseRequired && !fileExists(tmp)) return false;
         if (viableSoFar == index) {
             mc2::fmt::to_buf_n(outPath, outPathSize, "{}", mc2::fmt::safe(tmp));
@@ -234,6 +241,8 @@ struct VideoSession {
     SwrContext*      swr       = nullptr;
     int              aOutRate     = 0;
     int              aOutChannels = 0;
+    uint8_t*         aPCM = nullptr;
+    size_t           aPCMBytes = 0;
     bool             audioStreamStarted = false;
     bool             audioEOF = false;
     bool             audioFlushing = false;
@@ -248,6 +257,7 @@ struct VideoSession {
     // Failure-handling log-once flags — Task 16
     bool             loggedDegenerateRect     = false;
     bool             loggedVideoDecodeError   = false;
+    bool             loggedPresented = false;
 
     // Lifecycle
     bool             paused   = false;
@@ -371,6 +381,7 @@ static void computeLetterboxQuad(int srcW, int srcH, double sar,
 
 VideoSession* video_open(const VideoOpenParams& p, VideoOpenResult* out)
 {
+    graphics::window_checkpoint("video_before");
     if (out) memset(out, 0, sizeof(*out));
     if (!g_ffmpegAvailable || !p.resolvedPath) return nullptr;
 
@@ -488,6 +499,7 @@ void video_close(VideoSession* s)
 {
     std::unique_ptr<VideoSession> sessionOwner(s);
     if (!s) return;
+    graphics::window_checkpoint("video_after");
     if (s->audioStreamStarted && soundSystem) {
         reinterpret_cast<SoundSystem*>(soundSystem)->endVideoPCMStream();
         s->audioStreamStarted = false;
@@ -506,6 +518,7 @@ void video_close(VideoSession* s)
     if (s->aFmt)   { avformat_close_input(&s->aFmt); }
     if (s->swr)     { swr_free(&s->swr); }
     if (s->fmt)     { avformat_close_input(&s->fmt); }
+    av_free(s->aPCM);
     sessionOwner.reset();
 }
 
@@ -574,12 +587,14 @@ static int logOnceDecodeError(VideoSession* s, mc2::czstring where, int ret)
 //-----------------------------------------------------------------------------
 // Decode-one-frame helper
 // Pulls packets and decodes until one video frame is produced in
-// s->vFrame, or EOF. Returns: 1 = frame produced, -1 = EOF/error.
+// s->vFrame, or EOF. Returns: 1 = frame, 0 = yield, -1 = EOF/error.
 // Audio has its own demux cursor, so holding video cannot starve the mixer.
 //-----------------------------------------------------------------------------
-static int decodeNextVideoFrame(VideoSession* s)
+static int decodeNextVideoFrame(VideoSession* s, VideoDecodeBudget& budget)
 {
+    ZoneScopedN("Video.DecodeFrame");
     for (;;) {
+        if (!budget.take()) return 0;
         int ret = avcodec_receive_frame(s->vCodec, s->vFrame);
         if (ret == 0) return 1;
         if (ret != AVERROR(EAGAIN) && ret != AVERROR_EOF) return logOnceDecodeError(s, "avcodec_receive_frame", ret);
@@ -604,11 +619,13 @@ static int decodeNextVideoFrame(VideoSession* s)
 }
 
 // Keep half a second queued, independently of video presentation or the sim tick.
-static void bufferAudio(VideoSession* s)
+static void bufferAudio(VideoSession* s, VideoDecodeBudget& budget)
 {
+    ZoneScopedN("Video.Audio.Fill");
     if (!s->audioStreamStarted || s->audioEOF || s->audioStallLogged) return;
     auto* snd = reinterpret_cast<SoundSystem*>(soundSystem);
     while (s->audioFramesQueued - snd->videoPCMSamplesConsumed() < s->aOutRate / 2) {
+        if (!budget.take()) return;
         int ret = avcodec_receive_frame(s->aCodec, s->aFrame);
         bool draining = ret == AVERROR_EOF;
         if (ret == 0 || draining) {
@@ -622,10 +639,18 @@ static void bufferAudio(VideoSession* s)
                 swr_get_delay(s->swr, s->aCodec->sample_rate) + count,
                 s->aOutRate, s->aCodec->sample_rate, AV_ROUND_UP));
             if (capacity <= 0) { s->audioEOF = draining; if (draining) return; continue; }
-            uint8_t* pcm = static_cast<uint8_t*>(av_malloc(capacity * s->aOutChannels * sizeof(int16_t)));
+            const size_t bytes = capacity * s->aOutChannels * sizeof(int16_t);
+            if (bytes > s->aPCMBytes) {
+                auto* replacement = static_cast<uint8_t*>(av_malloc(bytes));
+                if (!replacement) { markAudioStalled(s, "PCM allocation error"); return; }
+                av_free(s->aPCM);
+                s->aPCM = replacement;
+                s->aPCMBytes = bytes;
+            }
+            uint8_t* pcm = s->aPCM;
             int frames = swr_convert(s->swr, &pcm, capacity,
                 draining ? nullptr : const_cast<const uint8_t**>(af->extended_data), count);
-            if (frames < 0) { av_free(pcm); markAudioStalled(s, "swr_convert error"); return; }
+            if (frames < 0) { markAudioStalled(s, "swr_convert error"); return; }
             if (s->audioSidecar) {
                 const float gain = (snd->getDigitalMasterVolume() / 256.0f) * (snd->getBettyVolume() / 256.0f);
                 auto* samples = std::bit_cast<int16_t*>(pcm);
@@ -636,13 +661,13 @@ static void bufferAudio(VideoSession* s)
             if (frames > 0 && s->audioFramesQueued == 0)
                 startup_phase("first_audio_queued");
             s->audioFramesQueued += frames;
-            av_free(pcm);
             if (draining && frames == 0) { s->audioEOF = true; return; }
             continue;
         }
         if (ret != AVERROR(EAGAIN)) { markAudioStalled(s, "audio decode error"); return; }
         do {
             av_packet_unref(s->aPkt);
+            if (!budget.take()) return;
             ret = av_read_frame(s->aFmt, s->aPkt);
         } while (ret >= 0 && s->aPkt->stream_index != s->aStream);
         if (ret == AVERROR_EOF && !s->audioFlushing) {
@@ -699,10 +724,12 @@ static void uploadFrameToTexture(VideoSession* s)
 //-----------------------------------------------------------------------------
 bool video_update(VideoSession* s)
 {
+    ZoneScopedN("Video.Update");
     if (!s || s->eof) return true;
     if (s->paused) return false;
 
-    bufferAudio(s);
+    VideoDecodeBudget budget;
+    bufferAudio(s, budget);
     double masterNow = videoMasterClock(s);
 
     // Future frames remain pending until their presentation time.
@@ -719,7 +746,8 @@ bool video_update(VideoSession* s)
 
     // Decode ahead for presentation; severely late frames need no upload.
     for (;;) {
-        int r = decodeNextVideoFrame(s);
+        int r = decodeNextVideoFrame(s, budget);
+        if (r == 0) return false; // Deferred work keeps the decoder and pending packets intact.
         if (r < 0) {
             // Keep the final picture until its duration and the audio tail finish.
             if (masterNow < s->decodedPTS + 1.0 / s->fps ||
@@ -831,6 +859,11 @@ void video_render(VideoSession* s)
     fillQ(vq[2], s->quadX1, s->quadY1, 1.0f, 1.0f);
     fillQ(vq[3], s->quadX0, s->quadY1, 0.0f, 1.0f);
     gos_DrawQuads(vq, 4);
+    if (!s->loggedPresented) {
+        graphics::window_checkpoint("video_during");
+        VIDEO_LOG("first_frame_presented path={}", mc2::fmt::safe(s->fmt->url));
+        s->loggedPresented = true;
+    }
 }
 void video_pause(VideoSession* s, bool paused)
 {

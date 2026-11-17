@@ -22,3 +22,19 @@ def test_module_is_selectable_by_any_spelling(name):
 def test_unknown_module_still_refused():
     with pytest.raises(ValueError, match="unknown test module: test_zzz"):
         rst.select_modules(MODULES, DATA, ["test_zzz"])
+
+
+def test_direct_owner_is_excluded_only_when_it_runs():
+    assert rst.select_modules(MODULES, DATA) == MODULES[:1]
+    assert rst.select_modules(MODULES, DATA, active_owners={"direct"}) == MODULES[:1]
+    assert rst.select_modules(MODULES, DATA, active_owners=set()) == MODULES
+
+
+def test_failed_module_is_not_rerun(monkeypatch, capsys):
+    monkeypatch.setattr(sys, "argv", ["runner", "test_a"])
+    monkeypatch.setattr(rst, "discover", lambda: MODULES)
+    monkeypatch.setattr(rst, "load_ownership", lambda: DATA)
+    monkeypatch.setattr(rst.rtt, "run_all", lambda *a: [(MODULES[0], 1, ["test_a::failed"], "first failure")])
+    monkeypatch.setattr(rst.subprocess, "run", lambda *a, **k: pytest.fail("failure rerun"))
+    assert rst.main() == 1
+    assert "first failure" in capsys.readouterr().out

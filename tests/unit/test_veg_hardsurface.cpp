@@ -9,8 +9,37 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <cmath>
+#include <limits>
 
 using namespace mc2::vegetation;
+
+TEST_CASE("vegetation near-foot flag conservatively covers boundary and field roles") {
+    for (uint32_t frame = 0; frame < 256; ++frame) {
+        const uint32_t atlas = (frame & 8u) ? (frame & 3u) : std::min(frame & 15u, 7u);
+        const uint32_t role = (frame >> 4u) & 3u;
+        const bool eligible = atlas < 4u && role != 3u;
+        if (frame & 8u) CHECK(atlas < 4u);
+        if (role == 3u) CHECK_FALSE(eligible);
+        for (float radius : {0.0f, 0.25f, 1.0f, 4.0f, 32.0f, 256.0f}) {
+            const float edge = radius + std::max(1.0f, radius * 0.25f);
+            const float conservative = edge * 1.01f + 0.05f;
+            for (float distance : {0.0f, std::nextafter(edge, 0.0f), edge,
+                                   std::nextafter(edge, std::numeric_limits<float>::infinity()), conservative}) {
+                const bool flag = eligible && distance < conservative;
+                for (float height : {0.0f, 0.333333f, 0.666667f, 1.0f}) {
+                    const bool deforms = eligible && distance < edge && height > 0;
+                    if (deforms) CHECK(flag);
+                    if (!flag) CHECK_FALSE(deforms);
+                }
+            }
+        }
+    }
+    for (uint32_t id : {0u, 1u, 524287u, 0x7ffffffeu}) {
+        CHECK(((id | 0x80000000u) & 0x7fffffffu) == id);
+        CHECK((id & 0x7fffffffu) == id);
+    }
+}
 
 TEST_CASE("VegFieldEdge/road shore and cell boundaries keep the interior identical") {
     // A straight road, a circular lake and a missing candidate rectangle.

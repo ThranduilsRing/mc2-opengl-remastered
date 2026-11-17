@@ -11,6 +11,7 @@ SimpleCamera.h		: Interface for the camera that renders a single object
 #include"camera.h"
 
 #include <memory>
+#include <string>
 
 class ObjectAppearance;
 
@@ -35,6 +36,7 @@ public:
 	void render() override;
 	virtual void render(long xOffset, long yOffset);
 	long update() override;
+    void drawAnimationPanel();
 
 	// PREVIEW-FBO-FIXED-800x600-1: opt a defs/ImGui page's use of this camera into
 	// rendering the mech preview into a fixed 800x600 offscreen texture instead
@@ -66,6 +68,7 @@ public:
 	void setRotation( float rotation );
 	void zoomIn( float howMuch ); // scale for things that can't 
 
+	void rotateBy(float degrees) { rotation += degrees; if (rotation > 360.f) rotation -= 360.f; if (rotation < -360.f) rotation += 360.f; }
 	void setInMission (void)
 	{
 		bIsInMission = true;
@@ -92,6 +95,7 @@ public:
 private:
 
 	std::unique_ptr<ObjectAppearance>	pObject;	// B7o.5: owned; released only through releaseObject()
+	std::string modelCredit_;
 	void releaseObject();
 	Camera*				oldCam;
 	float				rotation;

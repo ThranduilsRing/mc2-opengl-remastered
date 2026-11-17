@@ -102,6 +102,7 @@ def test_threaded_writers_preserve_every_capture(tmp_path):
     with ThreadPoolExecutor(max_workers=8) as pool:
         list(pool.map(write, range(24)))
     assert set(verified.latest_proof(path)["captures"]) == {f"cap-{i}" for i in range(24)}
+    assert path.with_name(path.name + ".lock").read_bytes() == b""
 
 
 def test_process_writers_preserve_every_capture(tmp_path):

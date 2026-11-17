@@ -535,6 +535,8 @@ void __stdcall DoGameLogic()
 	
 
 		}
+		extern void mc2AbortReloadFixtureUpdate();
+		mc2AbortReloadFixtureUpdate();
 	
 		DEBUGWINS_update();
 	

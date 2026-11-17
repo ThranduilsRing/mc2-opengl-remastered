@@ -52,7 +52,7 @@ void MissionInterfaceManager::Load (FitIniFilePtr file)
 		file->readIdFloat("VtolPosY",vPos[vtolNum].y);
 		file->readIdFloat("VtolPosZ",vPos[vtolNum].z);
 
-		file->readIdLong("VehicleID",vehicleID[vtolNum]);
+		file->readIdInt("VehicleID",vehicleID[vtolNum]);
 
 		if (vehicleID[vtolNum] != 147)		//NOT a recovery vehicle.  Standard VTOL
 		{

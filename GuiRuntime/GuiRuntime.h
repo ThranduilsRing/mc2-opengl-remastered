@@ -38,6 +38,7 @@ namespace GuiRuntime {
     // size so pages fill the window at any resolution.  Returns false (and
     // zeroes) when no ImGui context/frame is available.
     bool GetDisplaySize(float& w, float& h);
+    float GetMouseWheelDelta();
 
     // Draw data/defs UI text using ImGui's built-in font atlas.  This is the
     // cross-platform font path for UI Editor FITs: no SDL2_ttf, no FreeType DLL,

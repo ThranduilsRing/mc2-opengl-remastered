@@ -5,6 +5,8 @@
 #ifndef MATHFUNC_H
 #define MATHFUNC_H
 
+#include "math/sim_math.h"
+
 #ifndef STUFF_STUFF_HPP
 #include<stuff/stuff.hpp>
 #endif
@@ -144,41 +146,12 @@ inline float mc2_atan2 (float f1, float f2)
 	//f2 is always assumed positive here!!!
 	if (f2 > Stuff::SMALL)
 	{
-        result = atan2f(f1, f2);
+        result = mc2::sim::math::atan2(f1, f2);
 	}
 	
 	return result;
 }
 
-// sebi: implemented in math.h
-#if 0
-//---------------------------------------------------------------------------
-inline float fmax (float f1, float f2)
-{
-	if (f1 > f2)
-		return f1;
-	else
-		return f2;
-}
-
-//---------------------------------------------------------------------------
-inline float fmin (float f1, float f2)
-{
-	if (f1 < f2)
-		return f1;
-	else
-		return f2;
-}
-#endif
-
-#if 0 // defined in vec.h
-#ifndef max
-template<typename T> T max(const T& a, const T& b) { return a > b ? a : b; }
-#endif
-#ifndef min
-template<typename T> T min(const T& a, const T& b) { return a < b ? a : b; }
-#endif
-#endif
 
 //---------------------------------------------------------------------------
 inline float sign2 (float f1)

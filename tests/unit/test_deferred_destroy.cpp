@@ -5,6 +5,9 @@
 #include "vk_deferred_destroy.h"
 
 #include <vector>
+#include <barrier>
+#include <functional>
+#include <thread>
 
 using namespace mc2vk;
 
@@ -130,4 +133,48 @@ TEST_CASE("negative control: destroying at retire fails the use-after-retire che
     CHECK(g_live == 0);
 }
 
+// Trigger paths: vk_deferred_destroy.h and VulkanContext retirement/ownership handoff.
+TEST_CASE("destructors may retire more owners during collect and drain") {
+    struct Reenter { std::function<void()> release; ~Reenter() { release(); } };
+    for (bool drain : {false, true}) {
+        g_live = 0; g_destroyOrder.clear();
+        CompletionTracker ct; DeferredDestroy dd;
+        auto owner = std::make_unique<Reenter>();
+        owner->release = [&] {
+            CHECK(dd.size() == 0); // no active erase/pop may still name this holder
+            CHECK(dd.bytes() == 0);
+            for (int i = 0; i < 256; ++i) dd.retire(ct, Probe(i), 8); // force reallocation
+        };
+        dd.retireAfter(ct, {}, std::move(owner), 32);
+        ct.beginFrame(); // owners created by the destructor must wait for this frame
+        CHECK((drain ? dd.drainAll() : dd.collect(ct)) == (drain ? 257 : 1));
+        CHECK(dd.size() == (drain ? 0 : 256));
+        CHECK(dd.bytes() == (drain ? 0 : 2048));
+        dd.drainAll();
+        CHECK(g_live == 0);
+        CHECK(g_destroyOrder.front() == 255);
+        CHECK(g_destroyOrder.back() == 0);
+    }
+}
+TEST_CASE("concurrent retire and collect obey Render ownership transfers") {
+    using namespace mc2::overlap;
+    g_live = 0; g_destroyOrder.clear();
+    CompletionTracker ct; DeferredDestroy dd; std::barrier handoff(2);
+    registerThread(Owner::Main); setRenderWorkerOwns(false);
+    std::thread present([&] {
+        for (int i = 0; i < 10000; ++i) {
+            handoff.arrive_and_wait(); registerThread(Owner::Render);
+            ct.endFrame(); dd.sealFrame(ct.frameTicket(ct.frameNo()));
+            ct.setCompleted(QueueKind::Graphics, ct.lastSubmitted(QueueKind::Graphics));
+            CHECK(dd.collect(ct) == 2);
+            setRenderWorkerOwns(false); registerThread(Owner::Present); handoff.arrive_and_wait();
+        }
+    });
+    for (int i = 0; i < 10000; ++i) {
+        ct.beginFrame(); ct.noteSubmit(QueueKind::Graphics);
+        dd.retire(ct, Probe(i), 16); dd.retireAfter(ct, ct.now(), Probe(i), 16);
+        setRenderWorkerOwns(true); handoff.arrive_and_wait(); handoff.arrive_and_wait();
+    }
+    present.join(); CHECK(g_live == 0); CHECK(dd.bytes() == 0); CHECK(dd.size() == 0);
+}
 }  // TEST_SUITE

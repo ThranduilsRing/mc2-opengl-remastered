@@ -16,6 +16,7 @@ add_library(editor_document STATIC
     document/ObjectCatalog.cpp
     document/ResourceNames.cpp
     document/PlacementPolicy.cpp
+    document/MissionPackage.cpp
 )
 target_compile_features(editor_document PUBLIC cxx_std_23)
 target_include_directories(editor_document PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/document")
@@ -56,6 +57,7 @@ set(editor_document_test_sources tests/test_main.cpp tests/test_document.cpp tes
     tests/test_brain_paths.cpp
     tests/test_placement.cpp
     tests/test_objectives.cpp
+    "${CMAKE_SOURCE_DIR}/code/save_archive.cpp"
     "${CMAKE_SOURCE_DIR}/code/brain_missionfit_oporbd.cpp")
 add_executable(editor_document_tests ${editor_document_test_sources})
 target_compile_features(editor_document_tests PRIVATE cxx_std_23)
@@ -211,6 +213,7 @@ find_package(SDL2_ttf REQUIRED)
 find_package(ZLIB REQUIRED)
 
 target_link_libraries(EditRel PRIVATE
+    editor_document
     mclib
     gosfx
     mlr

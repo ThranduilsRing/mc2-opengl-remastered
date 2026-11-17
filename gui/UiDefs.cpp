@@ -585,33 +585,32 @@ void UiDefs::GameOSPage::update(LogisticsScreen* target, int xOffset, int yOffse
         }
     }
 
-    // GuiList scrollbar click: click inside the right kScrollbarLocalW-unit band
-    // of a list scrolls to the proportional position. Must be checked before the
-    // item-select pass so a scrollbar click doesn't also change selection.
-    if (clicked && !clickConsumed) {
-        for (UiElement& e : impl->elements) {
-            if (e.kind != UiElement::List || e.items.empty())
-                continue;
-            if (!pointInRect(e.rect, mx, my))
-                continue;
-
-            const int sbBandX = e.rect.x + e.rect.w - kScrollbarLocalW;
-            if (mx < sbBandX)
-                continue;
-
-            const int rowH = e.itemHeight > 0 ? e.itemHeight : (e.fontSize + 6);
-            if (rowH <= 0)
-                continue;
-            const int visRows = e.rect.h / rowH;
-            const int maxScroll = std::max(0, static_cast<int>(e.items.size()) - visRows);
-            if (maxScroll <= 0)
-                continue;
-
-            const float trackRelY = static_cast<float>(my - e.rect.y) / static_cast<float>(e.rect.h);
-            const float clamped = std::max(0.0f, std::min(1.0f, trackRelY));
-            e.scrollOffset = static_cast<int>(std::round(clamped * static_cast<float>(maxScroll)));
+    // Use the same thumb geometry as drawUiListElement; retain the grab point.
+    for (UiElement& e : impl->elements) {
+        if (e.kind != UiElement::List || e.items.empty()) continue;
+        if (released) e.scrollDragging = false;
+        const int rowH = e.itemHeight > 0 ? e.itemHeight : e.fontSize + 6;
+        const int rows = rowH > 0 ? e.rect.h / rowH : 0;
+        const int maxScroll = std::max(0, static_cast<int>(e.items.size()) - rows);
+        if (rows <= 0 || maxScroll == 0) { e.scrollDragging = false; continue; }
+        const float thumbH = std::min(static_cast<float>(e.rect.h), std::max(
+            static_cast<float>(kScrollbarLocalW), static_cast<float>(e.rect.h * rows) / e.items.size()));
+        const float travel = e.rect.h - thumbH;
+        const float thumbY = e.rect.y + travel * e.scrollOffset / maxScroll;
+        if (clicked && !clickConsumed && pointInRect(e.rect, mx, my) &&
+            mx >= e.rect.x + e.rect.w - kScrollbarLocalW) {
+            if (my >= thumbY && my < thumbY + thumbH) {
+                e.scrollDragging = true;
+                e.scrollGrabY = my - thumbY;
+            } else {
+                e.scrollOffset = std::clamp(e.scrollOffset + (my < thumbY ? -rows : rows), 0, maxScroll);
+            }
             clickConsumed = true;
-            break;
+        }
+        if (e.scrollDragging && travel > 0.0f) {
+            e.scrollOffset = std::clamp(static_cast<int>(std::round(
+                (my - e.rect.y - e.scrollGrabY) * maxScroll / travel)), 0, maxScroll);
+            clickConsumed = true;
         }
     }
 
@@ -661,7 +660,9 @@ void UiDefs::GameOSPage::update(LogisticsScreen* target, int xOffset, int yOffse
     // Mouse wheel: scroll GuiList and expanded GuiCombo popups.
     // getMouseWheelDelta() > 0 = scroll down = increase scrollOffset.
     {
-        const long wheelDelta = userInput->getMouseWheelDelta();
+        float wheelDelta = static_cast<float>(userInput->getMouseWheelDelta());
+        // ImGui may own the SDL wheel while its edit window overlaps a page.
+        if (wheelDelta == 0) wheelDelta = -GuiRuntime::GetMouseWheelDelta();
         if (wheelDelta != 0) {
             const int delta = (wheelDelta > 0) ? 3 : -3;
             for (UiElement& e : impl->elements) {
@@ -821,12 +822,9 @@ void UiDefs::GameOSPage::render(int xOffset, int yOffset)
                                                e.legacyDisabledAnimLoops,
                                                e.animTimeDisabled)
                             : 0xffffffff;
-                        // When the art is NOT animated, tint it with the button's
-                        // own colour (colorArgb) rather than white -- so a frame
-                        // that needs a base tint (e.g. the red DEFAULT button) stays
-                        // that colour and doesn't vanish on hover. White-tinted
-                        // sprites have colorArgb=white, so they are unaffected.
-                        artTint = e.legacyAnimateBmp  ? ac : e.textColor;
+                        // Stock aButton: the bitmap is white unless AnimateBmp drives it. The text colour
+                        // (blue on Load/Cancel/Close) must never tint the art.
+                        artTint = e.legacyAnimateBmp  ? ac : 0xffffffffu;
                         textCol = e.legacyAnimateText ? ac : e.disabledTextColor;
                         if (e.uvDisabledX >= 0) { stateUvX = e.uvDisabledX; stateUvY = e.uvDisabledY; }
                         break;
@@ -846,12 +844,9 @@ void UiDefs::GameOSPage::render(int xOffset, int yOffset)
                                                    e.animTimeHighlightPressed);
                         else
                             ac = 0xffffffff;
-                        // When the art is NOT animated, tint it with the button's
-                        // own colour (colorArgb) rather than white -- so a frame
-                        // that needs a base tint (e.g. the red DEFAULT button) stays
-                        // that colour and doesn't vanish on hover. White-tinted
-                        // sprites have colorArgb=white, so they are unaffected.
-                        artTint = e.legacyAnimateBmp  ? ac : e.textColor;
+                        // Stock aButton: the bitmap is white unless AnimateBmp drives it. The text colour
+                        // (blue on Load/Cancel/Close) must never tint the art.
+                        artTint = e.legacyAnimateBmp  ? ac : 0xffffffffu;
                         textCol = e.legacyAnimateText ? ac : e.pressedTextColor;
                         if (e.uvPressedX >= 0) { stateUvX = e.uvPressedX; stateUvY = e.uvPressedY; }
                         break;
@@ -864,12 +859,9 @@ void UiDefs::GameOSPage::render(int xOffset, int yOffset)
                                                e.legacyPressedAnimLoops,
                                                e.animTimePressed)
                             : 0xffffffff;
-                        // When the art is NOT animated, tint it with the button's
-                        // own colour (colorArgb) rather than white -- so a frame
-                        // that needs a base tint (e.g. the red DEFAULT button) stays
-                        // that colour and doesn't vanish on hover. White-tinted
-                        // sprites have colorArgb=white, so they are unaffected.
-                        artTint = e.legacyAnimateBmp  ? ac : e.textColor;
+                        // Stock aButton: the bitmap is white unless AnimateBmp drives it. The text colour
+                        // (blue on Load/Cancel/Close) must never tint the art.
+                        artTint = e.legacyAnimateBmp  ? ac : 0xffffffffu;
                         textCol = e.legacyAnimateText ? ac : e.pressedTextColor;
                         if (e.uvPressedX >= 0) { stateUvX = e.uvPressedX; stateUvY = e.uvPressedY; }
                         break;
@@ -882,12 +874,9 @@ void UiDefs::GameOSPage::render(int xOffset, int yOffset)
                                                e.legacyHighlightAnimLoops,
                                                e.animTimeHover)
                             : 0xffffffff;
-                        // When the art is NOT animated, tint it with the button's
-                        // own colour (colorArgb) rather than white -- so a frame
-                        // that needs a base tint (e.g. the red DEFAULT button) stays
-                        // that colour and doesn't vanish on hover. White-tinted
-                        // sprites have colorArgb=white, so they are unaffected.
-                        artTint = e.legacyAnimateBmp  ? ac : e.textColor;
+                        // Stock aButton: the bitmap is white unless AnimateBmp drives it. The text colour
+                        // (blue on Load/Cancel/Close) must never tint the art.
+                        artTint = e.legacyAnimateBmp  ? ac : 0xffffffffu;
                         textCol = e.legacyAnimateText ? ac : e.highlightTextColor;
                         if (e.uvHoverX >= 0) { stateUvX = e.uvHoverX; stateUvY = e.uvHoverY; }
                         break;
@@ -900,12 +889,9 @@ void UiDefs::GameOSPage::render(int xOffset, int yOffset)
                                                e.legacyNormalAnimLoops,
                                                e.animTimeNormal)
                             : 0xffffffff;
-                        // When the art is NOT animated, tint it with the button's
-                        // own colour (colorArgb) rather than white -- so a frame
-                        // that needs a base tint (e.g. the red DEFAULT button) stays
-                        // that colour and doesn't vanish on hover. White-tinted
-                        // sprites have colorArgb=white, so they are unaffected.
-                        artTint = e.legacyAnimateBmp  ? ac : e.textColor;
+                        // Stock aButton: the bitmap is white unless AnimateBmp drives it. The text colour
+                        // (blue on Load/Cancel/Close) must never tint the art.
+                        artTint = e.legacyAnimateBmp  ? ac : 0xffffffffu;
                         textCol = e.legacyAnimateText ? ac : e.textColor;
                         break;
                     }
@@ -969,28 +955,13 @@ void UiDefs::GameOSPage::render(int xOffset, int yOffset)
             sr.x, sr.y, sr.w, sr.h,
             e.editBuffer, static_cast<std::size_t>(e.maxLength + 1),
             e.fillColor, e.borderColor, e.textColor,
-            e.fontSize, e.fontPath.c_str(),
+            scaledFontSize(e.fontSize, s), e.fontPath.c_str(),
             e.focusRequested);
         e.focusRequested = false;
 
-        // The InputText window renders below the page's foreground draw list, so
-        // an opaque panel rect can cover it. When the box isn't being actively
-        // edited, redraw its text in the foreground so the value stays visible
-        // (e.g. the Load Game selected-save name over its black backing rect).
-        if (!e.editBoxActive && e.editBuffer[0]) {
-            UiElement disp = e;
-            disp.kind = UiElement::Text;
-            disp.hasTextRect = false;
-            disp.text = e.editBuffer;
-            renderTextElement(disp, xOffset, yOffset, e.textColor, s);
-        }
     }
 
-    // commit draw-output telemetry. A loaded
-    // non-passthrough page that emitted zero draw commands means the owning
-    // screen would show only the black-clear -- log once, loud; the owning
-    // LogisticsScreen consults lastRenderProducedOutput() next frame and
-    // fail-softs to the legacy screen.
+    // A loaded page with no draw output yields to the legacy screen next frame.
     impl->hasRendered = true;
     impl->lastRenderDrawCount = drawn;
     if (drawn == 0 && !impl->legacyPassthrough && !impl->zeroDrawLogged) {

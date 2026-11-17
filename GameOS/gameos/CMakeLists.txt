@@ -146,7 +146,7 @@ set(SOURCES ${SOURCES}
 if(MC2_VULKAN)
     # VK-P13-SELECTOR-1 / T2: the standalone SHARED engine Vulkan context
     # (instance/device/queue/VMA owned HERE). Entirely #ifdef MC2_VULKAN.
-    list(APPEND SOURCES vulkan_context.cpp vk_texture_residency.cpp vk_render_infra.cpp)
+    list(APPEND SOURCES vulkan_context.cpp vk_texture_residency.cpp vk_texture_table.cpp vk_render_infra.cpp)
     list(APPEND SOURCES vk_device_profile.cpp)
     list(APPEND SOURCES "${CMAKE_SOURCE_DIR}/3rdparty/vk_bootstrap/VkBootstrap.cpp")
     # VULKAN-VMA-INTEGRATION-1: single VMA_IMPLEMENTATION TU (header-only lib).
@@ -456,7 +456,6 @@ if(MC2_VULKAN)
     file(GLOB MC2_VK_SHADER_INCLUDES CONFIGURE_DEPENDS
         "${MC2_VK_SHADER_SRC_DIR}/include/*.glsl"
         "${CMAKE_SOURCE_DIR}/3rdparty/smaa/SMAA.hlsl"
-        "${CMAKE_SOURCE_DIR}/3rdparty/fastnoiselite/FastNoiseLite.glsl"
         "${CMAKE_SOURCE_DIR}/shaders/include/*.hglsl")
     if(MC2_GLSLANG_VALIDATOR OR MC2_GLSLC)
         foreach(_base ${MC2_VK_SHADER_BASENAMES})

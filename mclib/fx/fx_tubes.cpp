@@ -65,17 +65,24 @@ void Instance::initialize_tube() {
     upper -= 99;
     if (upper > 0) tube_u_bias_ = static_cast<float>(std::floor(0.5f - upper));
 }
-std::vector<glm::vec3> tube_template(uint32_t type) {
-    switch (type) {
-    case 0: case 1: return {{1, 0, 0}, {-1, 0, 0}};
-    case 2: return {{0, 0, 1}, {-0.8660254f, 0, -0.5f}, {0.8660254f, 0, -0.5f}, {0, 0, 1}};
-    case 3: return {{0, 0, 1}, {-1, 0, 0}, {0, 0, -1}, {1, 0, 0}, {0, 0, 1}};
-    case 4: return {{0, 0, 0}, {0, 0, 1}, {-1, 0, 0}, {0, 0, -1}, {1, 0, 0}};
-    case 5: return {{0, 0, 1}, {-0.9510565f, 0, 0.309017f}, {-0.58778525f, 0, -0.8090167f},
+std::span<const glm::vec3> tube_template(uint32_t type) {
+    static constexpr glm::vec3 line[] = {{1, 0, 0}, {-1, 0, 0}};
+    static constexpr glm::vec3 triangle[] = {{0, 0, 1}, {-0.8660254f, 0, -0.5f}, {0.8660254f, 0, -0.5f}, {0, 0, 1}};
+    static constexpr glm::vec3 square[] = {{0, 0, 1}, {-1, 0, 0}, {0, 0, -1}, {1, 0, 0}, {0, 0, 1}};
+    static constexpr glm::vec3 fan[] = {{0, 0, 0}, {0, 0, 1}, {-1, 0, 0}, {0, 0, -1}, {1, 0, 0}};
+    static constexpr glm::vec3 pentagon[] = {{0, 0, 1}, {-0.9510565f, 0, 0.309017f}, {-0.58778525f, 0, -0.8090167f},
         {0.58778525f, 0, -0.8090167f}, {0.9510565f, 0, 0.309017f}, {0, 0, 1}};
-    case 6: return {{0, 0, 1}, {-0.8660254f, 0, 0.5f}, {-0.8660254f, 0, -0.5f},
+    static constexpr glm::vec3 hexagon[] = {{0, 0, 1}, {-0.8660254f, 0, 0.5f}, {-0.8660254f, 0, -0.5f},
         {0, 0, -1}, {0.8660254f, 0, -0.5f}, {0.8660254f, 0, 0.5f}, {0, 0, 1}};
-    case 7: return {{0, 0, -1}, {0, 0, 1}};
+    static constexpr glm::vec3 vertical[] = {{0, 0, -1}, {0, 0, 1}};
+    switch (type) {
+    case 0: case 1: return line;
+    case 2: return triangle;
+    case 3: return square;
+    case 4: return fan;
+    case 5: return pentagon;
+    case 6: return hexagon;
+    case 7: return vertical;
     default: throw std::invalid_argument("FX tube profile type");
     }
 }

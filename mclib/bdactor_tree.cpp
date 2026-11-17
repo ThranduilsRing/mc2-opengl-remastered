@@ -330,7 +330,7 @@ bool TreeAppearance::recalcBounds (void)
 
 			glm::vec3 objectCenter;
 			objectCenter = position - cameraPos;
-			objectCenter.z += TerrainRuntime::sampleVisualHeight(position) - TerrainRuntime::sampleGameplayHeight(position);
+			objectCenter.z += TerrainRuntime::sampleVisibleGroundHeight(position) - TerrainRuntime::sampleGameplayHeight(position);
 			Camera::cameraFrame.trans_to_frame(objectCenter);
 			float distanceToEye = glm::length(objectCenter);
 			float clip_distance = fabs(1.0f / objectCenter.y);
@@ -419,7 +419,7 @@ long TreeAppearance::update (bool animate)
 
 	glm::vec3 xlatPosition;
 	mc2ToRender(xlatPosition, position);
-	xlatPosition.y += TerrainRuntime::sampleVisualHeight(position) - TerrainRuntime::sampleGameplayHeight(position);
+	xlatPosition.y += TerrainRuntime::sampleVisibleGroundHeight(position) - TerrainRuntime::sampleGameplayHeight(position);
 
 	if (!fogLightSet)
 	{

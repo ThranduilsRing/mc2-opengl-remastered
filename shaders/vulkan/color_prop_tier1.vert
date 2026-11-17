@@ -13,6 +13,7 @@
 #extension GL_GOOGLE_include_directive : require
 #extension GL_ARB_shader_draw_parameters : require
 #extension GL_EXT_buffer_reference : require
+layout(constant_id = 0) const int kBaseQuality = 2;
 
 layout(location = 0) in vec3 a_position;
 layout(location = 1) in vec3 a_normal;
@@ -87,10 +88,12 @@ layout(location = 10) out vec3 vMaterialSeed;
 flat layout(location = 11) out vec3 vMaterialAmbient;
 flat layout(location = 12) out vec3 vMaterialSun;
 flat layout(location = 13) out uint vMaterialFlags;
-layout(location = 14) out vec3 vTree; // ambient AO, tree material active, forest sun visibility
+layout(location = 14) out vec4 vTree; // ambient AO, tree material active, forest sky/sun visibility
 flat layout(location = 15) out uvec2 vWindow; // glass cell ID, stable building seed
 flat layout(location = 16) out uvec3 vTeam;   // team paint 0x00RRGGBB x3 (red, green, blue slot), carried in the instance's fogRGB bits
 flat layout(location = 17) out uint vPacketIdx; // this draw's PropPacket row (packetBase + gl_DrawID)
+layout(location = 18) out vec3 vBackNormalStuff;
+layout(location = 19) out vec3 vBackArgb;
 
 // Per-type hot-colour magic: the emission colours of the three night tags (windows, outside building lights, building base lights), taken from the type's ini.
 // Three vec4 per type in the order pink, yellow, green; indexed by inst.typeID. Same table the GL prop shader reads.
@@ -123,6 +126,10 @@ vec3 hotColorBaseLight(uint startV, vec3 colouredSeed, bool lightsOut, vec3 pink
         else if (nightFactor > kSmall) outLight = green * nightFactor;
     } else if (startV == 0xffff0000u || startV == 0xff0000ffu) {
         // blink tags: dark
+    } else if (startV == 0xfeffffffu) {
+        // Synthetic imported building body fill: preserve day brightness, but
+        // match the former black seed exactly at full night (not the 20% bake).
+        if (!lightsOut) outLight = colouredSeed * (1.0 - uFrame.nightDarkness);
     } else if ((startV & 0x00ffffffu) != 0u) {
         // Any other light colour is authored vertex light (hangars, terminals carry a near-white bake): it is environment
         // light, not a lamp, so the night dims it like the sun and ambient -- by day it is added as authored.
@@ -170,19 +177,27 @@ void main() {
     vec3 canopy = uFrame.hotTableReady != 0 && canopyBase + 2u < uint(uTypeHot.c.length())
         ? vec3(uTypeHot.c[canopyBase].w, uTypeHot.c[canopyBase+1u].w, uTypeHot.c[canopyBase+2u].w) : vec3(0);
     bool tree = uFrame.poolF.w > 0.0 && canopy.y > 0.0 && (inst.flags & 2u) == 0u;
-    vTree = vec3(1.0, tree ? 1.0 : 0.0, 1.0);
-    vec2 forestSun = vec2(-uFrame.terrainSunMC2.x, uFrame.terrainSunMC2.y);
-    vec4 forestDirection = max(vec4(forestSun.x, -forestSun.x, forestSun.y, -forestSun.y), vec4(0));
-    forestDirection /= max(dot(forestDirection, vec4(1)), 1e-6);
-    vec4 forestHorizon = vec4((inst.flags >> 8u) & 63u, (inst.flags >> 14u) & 63u,
-                              (inst.flags >> 20u) & 63u, (inst.flags >> 26u) & 63u) / 63.0;
-    float forestShade = tree ? dot(forestDirection, forestHorizon) : 0.0;
-    float forestSunVisibility = 1.0 - 0.92 * forestShade;
-    vTree.z = forestSunVisibility;
+    vTree = vec4(1.0, tree ? 1.0 : 0.0, 1.0, 1.0);
+    // Forest light bake (flags[8..31]): sun shadow-line height, crown-base and crown-top sky occlusion.
+    // hn = vertex height in tree-top units (crown centre 0.65, crown top 1.0); crowns are lit above the shadow line.
+    float forestSky = 1.0, forestSun = 1.0;
+    if (tree) {
+        float hn = 0.65 + sign(canopy.z) * (a_position.y - canopy.x) / (2.0 * abs(canopy.z));
+        vec3 bake = vec3((inst.flags >> 8u) & 255u, (inst.flags >> 16u) & 255u, inst.flags >> 24u) / 255.0;
+        float line = bake.x * 1.25;   // lit once hn clears the shadow line; an unshadowed edge tree is lit from the ground up
+        forestSun = mix(0.02, 1.0, max(smoothstep(line - 0.05, line + 0.2, hn), 1.0 - smoothstep(0.0, 0.1, line)));
+        forestSky = pow(1.0 - mix(bake.y, bake.z, smoothstep(0.3, 1.0, hn)), 3.0); // contrast: deep interior falls off fast
+    }
+    vTree.z = forestSky;
+    vTree.w = forestSun;
     vec3 localNormal = a_normal;
+    vec3 backNormal = -a_normal;
     if (tree && (inst.flags & 4u) != 0u) {
         vec3 crown = vec3(a_position.x / canopy.y, (a_position.y - canopy.x) / abs(canopy.z), a_position.z / canopy.y);
-        if (dot(crown,crown) > 1e-6) localNormal = normalize(mix(normalize(a_normal), normalize(crown), 0.7));
+        if (dot(crown,crown) > 1e-6) {
+            localNormal = normalize(mix(normalize(a_normal), normalize(crown), 0.7));
+            backNormal = normalize(mix(-normalize(a_normal), normalize(crown), 0.7));
+        }
         vTree.x = mix(0.65, 1.0, clamp(0.5 + sign(canopy.z) * (a_position.y - canopy.x) / (2.0 * abs(canopy.z)), 0.0, 1.0));
     }
     // Single-level stock-leaf sway; trunk and baked shadows remain fixed.
@@ -194,8 +209,10 @@ void main() {
         clip.z += uFrame.objectDepthBias * clip.w;
         gl_Position = clip; vWorldPos = world_mc2;
     }
-    vec3 worldNormalStuff = localNormal * mat3(inst.modelMatrix);
-    vNormalStuff = worldNormalStuff;
+    vNormalStuff = localNormal * mat3(inst.modelMatrix);
+    vBackNormalStuff = backNormal * mat3(inst.modelMatrix);
+    for (int side = 0; side < 2; ++side) {
+    vec3 worldNormalStuff = side == 0 ? vNormalStuff : vBackNormalStuff;
 
     // VK-FLIP-FIELD-REPORT-2 BLACK-FENCE FIX: albedo layer now comes from the
     // per-PACKET push constant (this draw's own layer), not a per-type SSBO lookup
@@ -236,6 +253,7 @@ void main() {
     vTeam = floatBitsToUint(inst.fogRGB.xyz);
     if ((inst.flags & kFlagIsWindow) != 0u) {
         vArgb = surfaceEncodeSrgb(surfaceDecodeSrgb(seed) + surfaceDecodeSrgb(inst.aRGBHighlight.rgb));
+        vBackArgb = vArgb;
         return;
     }
 
@@ -269,6 +287,15 @@ void main() {
     vSunDirStuff = sunDirFed;
     vSunColor = sunFound ? sunColorFed : vec3(0.0);
 
+    // Medium/High tree fragments replace the legacy vertex colour, including
+    // both faces' SH evaluations. Keep their material sun/seed and normals.
+    // Low/Potato still consume vArgb; missing albedo uses the teal fallback.
+    if (kBaseQuality == 2 && tree) {
+        vArgb = vec3(0);
+        vBackArgb = vec3(0);
+        return;
+    }
+
     vec3 iblTerm = vec3(0.0);
     if (uFrame.iblShStrength > 0.0) {
         vec3 shCoeffs[9];
@@ -290,7 +317,9 @@ void main() {
     // SH evaluates irradiance, not reflected radiance. Apply the Lambert BRDF
     // once, and decode authored light bytes before summing with linear SH.
     vec3 linearLight = surfaceDecodeSrgb(seed) * propDirFactor
-        + (max(iblTerm, vec3(0.0)) * (1.0 - 0.3 * forestShade) + surfaceDecodeSrgb(sunTerm) * forestSunVisibility * propNightSunWeight(ndl, nMC2)) / 3.14159265
+        + (max(iblTerm, vec3(0.0)) * forestSky + surfaceDecodeSrgb(sunTerm) * vTree.w * propNightSunWeight(ndl, nMC2)) / 3.14159265
         + surfaceDecodeSrgb(inst.aRGBHighlight.rgb);
-    vArgb = surfaceEncodeSrgb(linearLight); // retain the legacy encoded albedo multiplier
+    if (side == 0) vArgb = surfaceEncodeSrgb(linearLight);
+    else vBackArgb = surfaceEncodeSrgb(linearLight);
+    }
 }

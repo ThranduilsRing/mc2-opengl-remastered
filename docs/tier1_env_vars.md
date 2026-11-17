@@ -1,5 +1,7 @@
 # Tier-1 instrumentation env vars
 
+Dev preview capture: `MECH_PREVIEW_CAPTURE=<chassis tgl stem>` selects the preview model, pauses rotation at 30 degrees and advances it at 1/60 s per update. With `MC2_SHOT_SCREEN`, `MECH_PREVIEW_FRAMES=N` (1..120, default 1) saves N frames spaced 15 updates (0.25 s) apart; subsequent paths append `.1.tga`, `.2.tga`, etc. Launch through `scripts/run_visual_capture.py --screen mechbay@60` or `--screen loadout@60`. These are capture controls, not feature gates.
+
 > s68/P9: Retired GL sources are cited with Git object syntax (`8064c6930:path`) so the historical implementation remains inspectable.
 
 > **STATUS: Verified current as of 2026-07-09 (nifty HEAD, build pipeline). Includes MC2_TERRAIN_LOD_CHUNK (default ON), options.cfg ShadowCSM (default ON), asset-mod payload vars (HDRI_BC6H, BUILDING_PBR), diagnostic JSONL trace, and the Vulkan-prep / frame-graph-executor / render-backend-iface seam gates. Match against RendererFeatureRegistry.h for new feature gates. Bump this date whenever gates are added or edited below.**
@@ -643,7 +645,7 @@ lights should remain visible at every angle instead of blinking out.
   - Both readers say so: `gos_GetWaterReflectionGate()` returns `(v && v[0]=='0') ? 0 : 1`, and `gos_GetWaterReflStrength()` resolves an unset value to **1.5**, not 0 (`GameOS/gameos/gameos_graphics.cpp:2885,2898`, WATER-REFL-DEFAULT-ON).
   - This bullet asserted the opposite for the whole life of that flip. BACKEND-DEFAULT-PARITY-1 found it: the gate-default checker attributed a written claim only when *every* reader of the var was classifiable, and the strength resolver is an idiom it cannot read — so one unreadable sibling made the entire variable unauditable. The rule now compares against the classified readers when they agree.
 - `MC2_WATER_REFLECTION_RT=1` — mirrored terrain fill into reflection RT. Default **OFF**.
-- `MC2_WATER_DEBUG_MODE=N` — MDI water frag debug (0=Final,1=Tint,2=Alpha,3=Normal,4=Depth,5=Shore,6=Lighting,7=ReflSH,8=ReflRT,9=ReflBlend).
+- `MC2_WATER_DEBUG_MODE=N` — Vulkan water: 0=Final (also 1-9; legacy material views are inactive), 10=scene-depth/coverage magenta difference with cull bypass, 11=same difference with shipping cull. Set at startup; debug pipelines are created only for 10/11. Mode 10 versus 11 measures cull holes, not colour or opacity.
 
 ## VFX gates
 

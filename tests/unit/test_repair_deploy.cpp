@@ -20,6 +20,8 @@ template<Key> bool get() { return false; }
 int rejectedSensors = 0;
 #define MC2_LOG_ONCE(...) (++rejectedSensors)
 struct SensorSystem {
+    SensorSystem* prev = nullptr;
+    SensorSystem* next = nullptr;
     long index = -1;
     int clears = 0;
     long getMasterIndex() const { return index; }
@@ -37,6 +39,13 @@ struct TeamSensorSystem {
 };
 #include "repair_sensor_remove.inc"
 #undef MC2_LOG_ONCE
+struct SensorSystemManager {
+    long freeSensors = 0;
+    SensorSystemPtr freeList = nullptr;
+    SensorSystemPtr newSensor();
+    void freeSensor(SensorSystemPtr sensor);
+};
+#include "repair_sensor_pool.inc"
 
 struct GroundVehicle {
     long team = -1;
@@ -104,6 +113,26 @@ TEST_CASE("repair deployment detaches legacy campaign slot before replacing its 
     CHECK(slot.watchID == 0);
     CHECK(manager.rebuildCollidableList);
     CHECK(manager.newVehicle() == nullptr);
+}
+
+TEST_CASE("sensor pool recycles an exhausted free list") {
+    SensorSystem a, b;
+    a.next = &b; b.prev = &a;
+    SensorSystemManager pool{2, &a};
+    CHECK(pool.newSensor() == &a);
+    CHECK(pool.newSensor() == &b);
+    CHECK(pool.newSensor() == nullptr);
+    pool.freeSensor(&a);
+    CHECK(pool.freeSensors == 1);
+    CHECK(pool.freeList == &a);
+    CHECK(a.prev == nullptr); CHECK(a.next == nullptr);
+    pool.freeSensor(&b);
+    CHECK(pool.freeSensors == 2);
+    CHECK(pool.freeList == &b);
+    CHECK(a.prev == &b); CHECK(b.next == &a);
+    CHECK(pool.newSensor() == &b);
+    CHECK(a.prev == nullptr);
+    CHECK(pool.newSensor() == &a);
 }
 
 TEST_CASE("repair deployment rejects a replacement sensor without touching team membership") {

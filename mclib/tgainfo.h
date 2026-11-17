@@ -54,8 +54,6 @@ struct TGAFileHeader
 
 #pragma pack()
 
-void tgaDecomp (MemoryPtr dest, MemoryPtr source, TGAFileHeader *tga_header);
-
 void loadTGATexture (FilePtr tgaFile, MemoryPtr ourRAM, long width, long height);
 void loadTGAMask (FilePtr tgaFile, MemoryPtr ourRAM, long width, long height);
 

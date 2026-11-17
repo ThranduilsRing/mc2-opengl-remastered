@@ -10,6 +10,7 @@ VS-generator trees; tools/build_all_targets.py passes it by default.
 """
 import argparse
 import fnmatch
+import json
 import os
 from pathlib import Path
 import re
@@ -46,7 +47,6 @@ REGISTERED_HARNESSES = [
 ]
 PY_HARNESSES = [
     "tools/deploy_asset_contract_harness/deploy_asset_contract_harness.py",
-    "tools/deploy_release_tree_contract_harness/deploy_release_tree_contract_harness.py",
     "tools/mech_glb_pack_contract_harness/mech_glb_pack_contract_harness.py",
     "tools/shader_variant_matrix_harness/shader_variant_matrix_harness.py",
 ]
@@ -69,7 +69,7 @@ def case_owner(only):
     hits = set()
     for path in (REPO_ROOT / "tests/unit").glob("test_*.cpp"):
         names = pattern.findall(path.read_text(encoding="utf-8", errors="replace"))
-        if any(fnmatch.filter(names, item) for item in only if item not in REGISTERED_HARNESSES):
+        if any(fnmatch.filter(names, item + "/*" if item in REGISTERED_HARNESSES else item) for item in only):
             hits.add(path.relative_to(REPO_ROOT).as_posix())
     return sorted(hits)
 
@@ -147,16 +147,37 @@ UNIT_RUN_TIMEOUT_S = 900  # a hung doctest exit once held the MSVC pdb for 80 mi
 TREE_LOCK_WAIT_S = 1800   # a cold mc2_tests build in the other holder (harnesses step) finishes well inside this
 
 
+def prepare_unit_tree(bdir, configure):
+    """Reuse configure arguments; CMake's build system tracks source/include changes."""
+    receipt = bdir / "mc2_unit_configure.json"
+    signature = json.dumps(configure)
+    configured = ((bdir / "CMakeCache.txt").is_file() and receipt.is_file()
+                  and receipt.read_text(encoding="utf-8") == signature)
+    return configured, receipt, signature
+
+
 def print_failed_cases(log_path):
-    """Echo the doctest failure headers (file:line + TEST CASE name) and the summary from a captured run."""
+    """Echo the failing doctest cases (file:line + TEST CASE name) and the summary from a captured run.
+
+    doctest prints a case header for any case that logs a MESSAGE, and a should_fail negative control prints its
+    ERROR lines yet counts as passed (its failed assertions still show in the summary), so only a case with an
+    ERROR line that is not a declared should_fail control is listed as failing."""
     try:
         lines = Path(log_path).read_text(errors="replace").splitlines()
     except OSError:
         return
+    expected = set()
+    for src in (REPO_ROOT / "tests" / "unit").glob("*.cpp"):
+        expected.update(re.findall(r'TEST_CASE\("([^"]+)"\s*\*\s*doctest::should_fail', src.read_text(errors="replace")))
     print("---- failing doctest cases (file:line, name) ----")
     for i, ln in enumerate(lines):
-        if ln.startswith("TEST CASE:"):
-            print((lines[i - 1] + "  " if i else "") + ln)
+        if not ln.startswith("TEST CASE:"):
+            continue
+        name = ln[len("TEST CASE:"):].strip()
+        end = next((j for j in range(i + 1, len(lines)) if lines[j].startswith("=====")), len(lines))
+        if name in expected or not any("ERROR" in x for x in lines[i + 1:end]):
+            continue
+        print((lines[i - 1] + "  " if i else "") + ln)
     print("\n".join(ln for ln in lines if ln.startswith("[doctest]")))
 
 
@@ -198,34 +219,58 @@ def build_and_run_unit_tests(config, run, asan=False, only=None, preset=None,
     bdir = Path(build_root or REPO_ROOT) / (("build-cc-" + tree.removeprefix("build64-")) if cache else bd.tree_name(tree, preset))
     cm = cmake_exe()
     cache_env = None
+    target = "mc2_tests_selected" if only else "mc2_tests"
+    sources = [Path(owner).name for owner in case_owner(only)] if only else []
+    if only and not sources:
+        return False, "selection has no unit source owners"
+    selection = "-DMC2_UNIT_ONLY_SOURCES=" + ";".join(sources)
     if cache:
         cfg, cache_env = cached_configure(REPO_ROOT / "tests/unit", bdir, ["-DMC2_ASAN=" + ("ON" if asan else "OFF")])
-        commands = [cfg, bd.build_args(cm, bdir, config, ["mc2_tests"], jobs or "2", "ninja", keep_going)]
+        commands = [cfg, bd.build_args(cm, bdir, config, [target], jobs or "2", "ninja", keep_going)]
     else:
         commands = [
             [cm] + bd.configure_args(REPO_ROOT, REPO_ROOT / "tests/unit", bdir, preset) +
             ["-DMC2_ASAN=" + ("ON" if asan else "OFF")],
-            bd.build_args(cm, bdir, config, ["mc2_tests"], jobs, preset, keep_going),
+            bd.build_args(cm, bdir, config, [target], jobs, preset, keep_going),
         ]
+    commands[0].append(selection)
     # One configure+build per tree: merge_gate overlaps the contracts board (audio_music_stream builds mc2_tests with --only)
     # with the harnesses step, and two MSBuilds in one tree fail on the shared PDB (C1041, W138 laptop gate).
     lock = TreeLock(str(bdir.parent), bdir.name)
     if not lock.acquire(TREE_LOCK_WAIT_S):
         return False, f"build failed:\nanother build held {bdir.name} for {TREE_LOCK_WAIT_S}s ({lock.holder()})"
     try:
+        configured, receipt, signature = prepare_unit_tree(bdir, commands[0])
+        if configured and preset:
+            try:
+                bd.verify_compiler(bdir, preset)
+            except RuntimeError as exc:
+                return False, str(exc)
+        if configured:
+            commands[0] = None
+        else:
+            receipt.unlink(missing_ok=True)
         built = _configure_and_build(commands, cache, preset, log_dir, jobs, keep_going, cache_env, only, timings, bdir)
+        if not built and not configured and (bdir / "CMakeCache.txt").is_file():
+            receipt.write_text(signature, encoding="utf-8")
+        if built:
+            return False, built
+        if not run:
+            return True, f"built in {time.monotonic() - started:.0f}s"
+        # Hold the tree lock through counting and execution: a concurrent selection in the
+        # same tree would otherwise relink mc2_tests_selected under this run (Astra 1115 P2).
+        return _run_unit_exe(bdir, config, preset, only, asan, started, target)
     finally:
         lock.close()
-    if built:
-        return False, built
-    if not run:
-        return True, f"built in {time.monotonic() - started:.0f}s"
-    return _run_unit_exe(bdir, config, preset, only, asan, started)
 
 
 def _configure_and_build(commands, cache, preset, log_dir, jobs, keep_going, cache_env, only, timings, bdir):
     """Run configure then build; None on success, else the "<stage> failed:" detail."""
     for stage, command in zip(("configure", "build"), commands):
+        if command is None:
+            if only:
+                print("[contracts] configure reused (build system tracks inputs)")
+            continue
         phase_started = time.monotonic()
         if cache or preset or log_dir is not None or jobs or keep_going:
             rc, output = bd.run(command, REPO_ROOT, "mc2_tests", stage, log_dir,
@@ -250,16 +295,18 @@ def _configure_and_build(commands, cache, preset, log_dir, jobs, keep_going, cac
     return None
 
 
-def _run_unit_exe(bdir, config, preset, only, asan, started):
+def _run_unit_exe(bdir, config, preset, only, asan, started, target="mc2_tests"):
     suffix = ".exe" if os.name == "nt" else ""
-    exe = bdir / config / ("mc2_tests" + suffix)
+    exe = bdir / config / (target + suffix)
     if not exe.is_file():
-        exe = bdir / ("mc2_tests" + suffix)
+        exe = bdir / (target + suffix)
     if preset and not exe.is_file():
         return False, f"requested compiler binary missing in {bdir}"
     command = [str(exe), "--no-breaks"]
-    env = dict(os.environ)
-    if not only and env.get("MC2_GATE_NIGHTLY") != "1":
+    # Tests own their MC2_* settings, including strict-config fault injection.
+    # Ambient launcher/player options can otherwise terminate the suite with 78.
+    env = {key: value for key, value in os.environ.items() if not key.upper().startswith("MC2_")}
+    if not only and os.environ.get("MC2_GATE_NIGHTLY") != "1":
         command += ["--test-case-exclude=vfx_frozen/*,fx_playback/*oracle*,vfx_oracle/*,package chassis:*,present mailbox stress:*"]
     if only:
         command += ["--test-case=" + test_case_filter(only)]
@@ -436,9 +483,17 @@ def main(argv=None):
         ok = True
         print("[contracts] Python-only selection; native units are not rerun")
     else:
+        import contracts_cache as cc
+        receipt_tip = cc.clean_tip(str(REPO_ROOT))
+        full_unit = args.run and not (args.only or args.asan)
+        if args.run:
+            # A selective failure contradicts any earlier full-unit PASS too.
+            cc.record_tip_pass(str(REPO_ROOT), "native_unit", receipt_tip, False)
         ok, info = build_and_run_unit_tests(args.config, args.run, args.asan, args.only,
                                            preset=args.preset, keep_going=args.keep_going,
                                            log_dir=args.log_dir, jobs=args.jobs, cache=args.compile_cache, build_root=args.build_root)
+        if full_unit:
+            cc.record_tip_pass(str(REPO_ROOT), "native_unit", receipt_tip, ok)
         print(f"  [{'PASS' if ok else 'FAIL'}] mc2_tests: {info}")
         if not ok:
             return 1

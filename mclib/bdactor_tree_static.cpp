@@ -185,7 +185,7 @@ void TreeAppearance::registerStatic() {
 	rot = mc2::math::quatFromEuler(mc2::math::Euler(pitchAngle, yawAngle, 0.0f));
 	glm::vec3 xlatPosition;
 	xlatPosition.x = -position.x;
-	xlatPosition.y = TerrainRuntime::sampleVisualHeight(position);
+	xlatPosition.y = TerrainRuntime::sampleVisibleGroundHeight(position);
 	xlatPosition.z = position.y;
 
 	// TREE-OVERRIDE-LOD-MVP M-A (load-bearing): build the recipe AND capture the
@@ -210,8 +210,8 @@ void TreeAppearance::registerStatic() {
 	// it, exactly as the single-LOD abort did before).
 	bool anyRegistered = false;
 	const bool damaged = status == OBJECT_STATUS_DESTROYED || status == OBJECT_STATUS_DISABLED;
-	const bool _treeRegIsOverride = damaged ? appearType->treeDmgRenderShape != nullptr : appearType->treeRenderShapeLodCount > 0;
-	const int lodCount = !damaged && _treeRegIsOverride ? static_cast<int>(appearType->treeRenderShapeLodCount) : 1;
+	// Override LOD chains are drawn by the batcher (registerLodGroup re-types instances by camera distance); an instance registers LOD0 only.
+	const int lodCount = 1;
 	for (int lod = 0; lod < lodCount && lod < MAX_LODS; ++lod) {
 		// Render-instance for THIS LOD: reuse treeShape for LOD0; temp for >0.
 		std::unique_ptr<TG_MultiShape> temporaryLod;
@@ -470,7 +470,7 @@ bool TreeAppearance::prewarmStaticLightBake(Camera* cam)
 	// is overridden in touchSerialCommit (registerStatic path uses position directly).
 	glm::vec3 xlatPosition;
 	mc2ToRender(xlatPosition, position);
-	xlatPosition.y += TerrainRuntime::sampleVisualHeight(position) - TerrainRuntime::sampleGameplayHeight(position);
+	xlatPosition.y += TerrainRuntime::sampleVisibleGroundHeight(position) - TerrainRuntime::sampleGameplayHeight(position);
 
 	float yawAngle   = (rotation * DEGREES_TO_RADS) + (yaw * DEGREES_TO_RADS);
 	float pitchAngle = (pitch    * DEGREES_TO_RADS);

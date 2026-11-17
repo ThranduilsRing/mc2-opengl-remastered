@@ -34,6 +34,14 @@
 
 
 #include <cstdint>
+#ifdef __cplusplus
+#include <atomic>
+#include <cstdio>
+#include "diagnostic_trace.h"
+// Inventory-only call-site counter: first call and every 1024th log one line when MC2_DIAG_TAGS=LEGACY_SITE (quiet by default; no per-element zones).
+#define MC2_LEGACY_SITE(name) do { static std::atomic<uint64_t> n_; const uint64_t v_ = ++n_; \
+    if ((v_ == 1 || (v_ & 1023) == 0) && mc2_diag::tagRequested("LEGACY_SITE")) { std::fprintf(stderr, "[LEGACY_SITE v1] site=%s calls=%llu\n", name, static_cast<unsigned long long>(v_)); std::fflush(stderr); } } while (0)
+#endif
 
 #ifdef __cplusplus
 extern "C" {

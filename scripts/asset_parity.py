@@ -5,7 +5,7 @@ A lane install deployed with --skip-kit (E:/mc2-installs/quiet-A) was missing 80
 files and had 2,354 textures of a different size; its captures showed stock concrete. Every lane deploy
 now compares data/, assets/ and the root *.fst archives with the v0.4 install by path and size, plus
 sha256 for a sampled subset, SYNCS missing or different files from v0.4 (read only), and deletes
-unowned extras after reporting dry-run counts. With
+reports unowned extras without deleting them. With
 --no-asset-sync the deploy fails instead, naming the counts.
 
 The one-line `[ASSET_PARITY] OK|SYNCED|FAIL|SKIPPED ...` verdict is printed by deploy_payload and
@@ -37,6 +37,8 @@ ROOT_SUFFIX = ".fst"
 EXCLUDED = ("data/textures/_txm_cache_bak/", "data/textures/txm_backup/")
 SAMPLE_FILES = 256
 SAMPLE_BYTES = 32 << 20
+# Paths named per category in a FAIL detail (the one-line verdict stays parseable).
+DETAIL_LIMIT = 8
 # Per-install receipts written by the kit reconcile; not asset content.
 SKIP_SUFFIXES = (".cookstamp",)
 # v0.4 is the read-only reference; the golden install is never a parity target either.
@@ -92,6 +94,16 @@ def manifest_assets(install: Path | str) -> tuple[dict[str, str], str | None]:
     commits = {row["src_commit"] for row in entries if row["relpath"] in {"mc2.exe", "mc2", "mc2.elf"}}
     if len(commits) != 1:
         raise ValueError(f"missing/ambiguous executable commit: {path}")
+    # Exe-only A/B stages retain the data rows of the source install. Their
+    # declarations belong to that data commit, even when the executable is older.
+    asset_commits = {row["src_commit"] for row in entries
+                     if row["relpath"].startswith(("data/", "assets/"))
+                     or row["relpath"] in AUXILIARY
+                     or ("/" not in row["relpath"] and row["relpath"].endswith(ROOT_SUFFIX))}
+    if asset_commits:
+        if len(asset_commits) != 1:
+            raise ValueError(f"missing/ambiguous asset commit: {path}")
+        commits = asset_commits
     return {row["relpath"]: row["sha256"] for row in entries}, commits.pop()
 
 
@@ -104,11 +116,14 @@ def owned_paths(install: Path | str, payload: dict[str, str] | None = None,
         declared = intentional_changes(commit) if declared is None else declared
     expected = dict(payload)
     expected.update(declared or {})
+    bad = [f"{rel} ({_why(install / rel, sha)})" for rel, sha in (declared or {}).items()
+           if not (install / rel).is_file() or _sha(install / rel) != sha]
+    if bad:
+        raise ValueError(_bad_message("INTENTIONAL ASSET hash mismatch", bad))
     for rel, sha in (declared or {}).items():
-        if not (install / rel).is_file() or _sha(install / rel) != sha:
-            raise ValueError(f"INTENTIONAL ASSET hash mismatch: {rel}")
         print(f"{PREFIX} INTENTIONAL ASSET ACCEPTED {rel} sha256={sha}", flush=True)
     owned = set()
+    bad = []
     for rel, sha in expected.items():
         low = _norm(rel)
         if not (low.startswith(("data/", "assets/")) or ("/" not in low and low.endswith(ROOT_SUFFIX))):
@@ -117,9 +132,25 @@ def owned_paths(install: Path | str, payload: dict[str, str] | None = None,
         if not path.is_relative_to(install.resolve()) or not re.fullmatch(r"[0-9a-f]{64}", sha):
             raise ValueError(f"invalid owned payload path/hash: {rel}")
         if not path.is_file() or _sha(path) != sha:
-            raise ValueError(f"owned payload missing or hash mismatch: {rel}")
+            bad.append(f"{rel} ({_why(path, sha)})")
+            continue
         owned.add(low)
+    if bad:
+        raise ValueError(_bad_message("owned payload missing or hash mismatch", bad))
     return owned
+
+
+def _why(path: Path, sha: str) -> str:
+    """Short reason a pinned file fails: absent, or the actual vs expected sha prefix."""
+    if not path.is_file():
+        return f"absent, want sha256={sha[:12]}"
+    return f"sha256={_sha(path)[:12]}, want {sha[:12]}"
+
+
+def _bad_message(head: str, bad: list[str], limit: int = DETAIL_LIMIT) -> str:
+    """One error naming EVERY failing pinned path (first `limit`), so one run shows the whole census."""
+    more = f"; +{len(bad) - limit} more" if len(bad) > limit else ""
+    return f"{head}: {len(bad)} file(s): " + "; ".join(bad[:limit]) + more
 
 
 def default_ref() -> Path:
@@ -138,9 +169,27 @@ def _norm(rel: str) -> str:
     return rel.replace("\\", "/").lstrip("/").casefold()
 
 
+def is_deploy_artifact(rel: str) -> bool:
+    """Payload-only exclusions; never deletion authority. Arbitrary backup/model names are valid.
+
+    data/tgl/_aoktxtmp is the AO workspace (tools/bt2018_import/cook_ao_from_package.py:59).
+    """
+    parts = _norm(rel).rstrip("/").split("/")
+    name = parts[-1]
+    return (parts[0] in {"logs", "debug_state", "crashes", "_rdoc", "_pngcap", "dev_shell_out", "terrain_gen_out"}
+            or parts[:3] == ["data", "tgl", "_aoktxtmp"]
+            or name.endswith((".rdc", ".dmp", ".mdmp"))
+            or (len(parts) == 1 and (name in {"bt_gamma.log", "bt_nodediag.log", "editor-catalog-trace.log",
+                "editor-startup.log", "launcher.log", "logistics_debug.log", "mc2-strings.log", "tgl.fst.slim-2026-06-12"}
+                or re.fullmatch(r"harness_[a-z0-9_]+_(?:stdout|stderr)\.txt", name) is not None
+                or name.startswith(("stdout", "stderr")) and name.endswith((".txt", ".out", ".err", ".log"))))
+            or (parts[:3] in (["mods", "mc2-industrial-kit", "content"], ["mods", "mc2-vehicle-kit", "content"])
+                and name.endswith(".mc2ir.json")))
+
+
 def is_excluded(rel: str) -> bool:
     low = _norm(rel)
-    return any(low.startswith(prefix) for prefix in EXCLUDED)
+    return is_deploy_artifact(rel) or any(low.startswith(prefix) for prefix in EXCLUDED)
 
 
 def is_exempt(install: Path | str, ref: Path | str | None = None) -> bool:
@@ -192,7 +241,7 @@ class Result:
 
     @property
     def ok(self) -> bool:
-        return not (self.missing or self.size or self.content or self.extra)
+        return not (self.missing or self.size or self.content)
 
 
 def sample_rels(rels: list[str], limit: int = SAMPLE_FILES) -> list[str]:
@@ -268,6 +317,34 @@ def verdict_line(result: Result, ref: Path | str, status: str | None = None) -> 
         line += f" deleted={result.deleted}"
     return line
 
+def detail_lines(result: Result, install: Path | str, ref: Path | str, limit: int = DETAIL_LIMIT) -> list[str]:
+    """Actionable lines under a FAIL verdict: first `limit` paths per category and the likely cause.
+
+    A reference file newer than the install's manifest means v0.4 changed after this deploy (a merge-gate
+    deploy or a v0.4 run wrote it): redeploying syncs it. An extra is a file v0.4 and the payload do not
+    list (earlier deploy into a reused install, or a runtime cache): it is reported, never deleted."""
+    install, ref = Path(install), Path(ref)
+    lines = []
+    for name, rels in (("missing", result.missing), ("size", result.size),
+                       ("content", result.content), ("extra", result.extra)):
+        if rels:
+            more = f" (+{len(rels) - limit} more)" if len(rels) > limit else ""
+            lines.append(f"{PREFIX}   {name}: " + ", ".join(rels[:limit]) + more)
+    try:
+        deployed = (install / ".deployed_manifest.csv").stat().st_mtime
+        newer = [rel for rel in result.missing + result.size + result.content
+                 if (ref / rel).is_file() and (ref / rel).stat().st_mtime > deployed]
+    except OSError:
+        newer = []
+    if newer:
+        lines.append(f"{PREFIX}   cause: {len(newer)} of the missing/size/content files are newer in {ref.as_posix()} "
+                     "than this install's deploy (the reference moved); redeploy or run asset_parity.py --sync")
+    elif result.extra and not (result.missing or result.size or result.content):
+        lines.append(f"{PREFIX}   cause: extras are not in {ref.as_posix()} or the payload manifest; "
+                     "unowned files are preserved for owner review")
+    return lines
+
+
 def _copy(src: Path, dst: Path) -> None:
     """Copy one file atomically: a shared hardlink in dst is replaced, never written through."""
     dst.parent.mkdir(parents=True, exist_ok=True)
@@ -289,7 +366,7 @@ def sync(install: Path | str, ref: Path | str, result: Result, jobs: int = 4) ->
     index = reference_index(ref)
     sizes = {rel: size for rel, size in index.values()}
     todo = result.missing + result.size + result.content
-    # Print the complete mutation count before the first copy or deletion.
+    # Extras are advisory: only deploy's previous manifest can authorize retirement.
     print(verdict_line(result, ref, status="DRY_RUN"), flush=True)
 
     def one(rel: str) -> int:
@@ -299,14 +376,7 @@ def sync(install: Path | str, ref: Path | str, result: Result, jobs: int = 4) ->
     with ThreadPoolExecutor(max_workers=max(1, jobs)) as pool:
         written = list(pool.map(one, todo))
     result.synced, result.synced_bytes = len(written), sum(written)
-    for rel in result.extra:
-        path = install / rel
-        path.chmod(path.stat().st_mode | stat.S_IWRITE)
-        path.unlink()
-        result.deleted += 1
-        print(f"{PREFIX} deleted {rel}", flush=True)
     result.missing, result.size, result.content = [], [], []
-    result.extra = []
     return result
 
 
@@ -317,9 +387,27 @@ def enforce(install: Path | str, ref: Path | str | None = None, sync_missing: bo
     ref = Path(ref) if ref is not None else default_ref()
     if is_exempt(install, ref) or not ref.is_dir():
         return None
+    repaired = []
+    # Declarations pin published cooks that a lean seed or a host without cook sources may lack.
+    if sync_missing:
+        if declared is None:
+            _, commit = manifest_assets(install)
+            declared = intentional_changes(commit)
+        for rel, expected in (declared or {}).items():
+            dst = Path(install) / rel
+            if not dst.is_file() or _sha(dst) != expected:
+                source = ref / rel
+                if not source.is_file() or _sha(source) != expected:
+                    raise ValueError(f"INTENTIONAL ASSET reference hash mismatch: {rel}")
+                if not dst.resolve().is_relative_to(Path(install).resolve()):
+                    raise ValueError(f"invalid owned payload path/hash: {rel}")
+                _copy(source, dst)
+                repaired.append(rel)
     result = compare(install, ref, skip=skip, payload=payload, declared=declared)
     if sync_missing and not result.ok:
         result = sync(install, ref, result, jobs)
+    result.synced += len(repaired)
+    result.synced_bytes += sum((Path(install) / rel).stat().st_size for rel in repaired)
     return result
 
 
@@ -344,7 +432,7 @@ def main(argv=None) -> int:
     ap.add_argument("install", help="lane install to check")
     group = ap.add_mutually_exclusive_group(required=True)
     group.add_argument("--check", action="store_true", help="report counts only; never copies")
-    group.add_argument("--sync", action="store_true", help="copy missing/different files and delete unowned extras")
+    group.add_argument("--sync", action="store_true", help="copy missing/different files; report extras without deleting")
     ap.add_argument("--ref", default=None, help="reference install (default: %s)" % default_ref())
     args = ap.parse_args(argv)
     ref = Path(args.ref) if args.ref else default_ref()
@@ -355,10 +443,10 @@ def main(argv=None) -> int:
     if not ref.is_dir():
         print(f"{PREFIX} SKIPPED reference not found: {ref.as_posix()}")
         return 0
-    result = compare(install, ref)
-    if args.sync and not result.ok:
-        result = sync(install, ref, result, jobs())
+    result = enforce(install, ref, sync_missing=args.sync, jobs=jobs())
     print(verdict_line(result, ref))
+    for line in detail_lines(result, install, ref):
+        print(line)
     return 0 if result.ok else 1
 
 

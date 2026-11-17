@@ -34,6 +34,7 @@ void EditorResetMissionCamera();
 #include <gameos.hpp>
 #include "../GameAdapters/StaticPropRenderAdapter.h"
 #include "../GameAdapters/MechRenderAdapter.h"
+#include "../GameAdapters/VegetationAdapter.h"
 
 #include <stdarg.h>
 #include <stdlib.h>

@@ -187,11 +187,26 @@ def private_copy_rel(rel: str) -> bool:
     return rel.casefold().startswith('saved_bookmarks/')
 
 
+_DECLARED = None
+
+
+def declared_asset_paths():
+    """Lower-cased relpaths of intentional-asset-changes.json at this tip (asset parity enforces them on deploy)."""
+    global _DECLARED
+    if _DECLARED is None:
+        _DECLARED = {k.replace('\\', '/').casefold() for k in seed_parity.declared_assets()}
+    return _DECLARED
+
+
 def seed_member(rel, guard, manifest):
     """Only runtime data and manifested payload enter the lean seed projection."""
     low = rel.casefold()
     if low.startswith('mods/') and not low.startswith(('mods/mc2-industrial-kit/', 'mods/mc2-vehicle-kit/')):
         return False
+    if low in declared_asset_paths():
+        # Declared install assets (model_overrides cooks, data/tgl textures): deploy's asset parity requires them,
+        # so a lane install without them fails its first deploy (11-14: three lanes BLOCKED on broadleaf-maple/cook.json).
+        return True
     if low in manifest or low == '.deployed_manifest.csv':
         # PDBs are deploy/debug outputs, never runtime seed inputs.
         return not low.endswith('.pdb')
@@ -417,7 +432,7 @@ def kit_seed_members(src, seed, use_cache=False):
             continue
         if installed.is_file() and installed.read_bytes().replace(b'\r\n', b'\n') != pinned.read_bytes().replace(b'\r\n', b'\n'):
             fail(f'stale {name} seed kit; refresh from published nifty using deploy_payload.py --seed-owner-test --seed-source (see docs/plans/lane-install-fast.md)', 2)
-        manifest = json.loads(pinned.read_text(encoding='utf-8'))
+        manifest = kit_payload.runtime_manifest(json.loads(pinned.read_text(encoding='utf-8')))
         check(root, manifest['files'])
         for row in manifest['files']:
             member = f'mods/mc2-{name}-kit/{row["path"]}'
@@ -444,7 +459,10 @@ def seed_plan(src, guard, seed, use_cache=True):
     inventory. Delete the inventory after manually changing unmanifested stock.
     """
     cache = src / '.lane-seed-inventory.json'
-    identity = file_sha(src / '.deployed_manifest.csv')
+    # The projection also depends on the declared-asset set (seed_member admits it), so a new declaration
+    # invalidates an inventory written before it existed.
+    declared = hashlib.sha256('\n'.join(sorted(declared_asset_paths())).encode()).hexdigest()
+    identity = file_sha(src / '.deployed_manifest.csv') + ':' + declared
     try:
         previous = json.loads(cache.read_text()) if use_cache else {}
         if previous.get('identity') == identity:

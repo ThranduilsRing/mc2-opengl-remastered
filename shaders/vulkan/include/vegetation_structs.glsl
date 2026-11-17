@@ -50,20 +50,13 @@ float vegLodScale(VegInstance i, VegParamsData p) {
     float clipW = dot(p.clipRow, vec4(i.pos, 1.0));
     if (clipW <= 0.001) return 0.0;
     float pixels = vegPixels(i, p);
-    // Terrain LOD is discrete; only the continuous cover metric controls density.
-    // Grass (meadow-field blades, atlas bit 3, and clump grass, layers 0-3) is the carpet (owner ref 3:
-    // "actually add grass", then "speckly / not solid - add density"): grass cover fades continuously
-    // toward subpixel sizes (the vertex stage widens field blades). Woody cards keep 3-12 px.
+    // Every instanced vegetation card shares the grass range and continuous projected cover.
     bool fieldCard = (i.atlasFrame & 8u) != 0u;
-    bool grassCard = fieldCard || (i.atlasFrame & 15u) < 4u;
-    // Scale both ends: grass reaches 12x as far with a 12x-long fade (owner 11-13: 4x the old 3x), woody cards keep their range.
-    float distanceScale = grassCard ? 12.0 : 1.0;
+    const float distanceScale = 12.0;
     float distanceFade = 1.0 - smoothstep(p.misc.x * distanceScale, p.cam.w * distanceScale, length(i.pos - p.cam.xyz));
     float thin = fieldCard ? vegFieldThin(i, p) : 1.0;
-    // No second, short range cutoff for grass: projected cover converges smoothly to zero.
     float cover = fieldCard ? smoothstep(0.0, 1.0, pixels) : smoothstep(0.0, 2.0, pixels);
-    float density = grassCard ? min(min(distanceFade, thin), cover)
-                              : min(distanceFade, smoothstep(3.0, 12.0, pixels));
+    float density = min(min(distanceFade, thin), cover);
     float rank = fract(i.seed * 17.371 + 0.137);
     return clamp((density - rank) / 0.15, 0.0, 1.0);
 }

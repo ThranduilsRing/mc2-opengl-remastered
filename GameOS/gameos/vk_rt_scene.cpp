@@ -1,5 +1,5 @@
 // vk_rt_scene.cpp -- the Vulkan half of the persistent ray-visible scene (see vk_rt_scene.h for the policy). Owns, in IslandSlot::RtScene: one compacted BLAS
-// per static-prop type, one per terrain chunk, and the TLAS over the whole registry. Every build is a blocking one-shot; a replacement set is built into new
+// per static-prop type, one per terrain chunk, and the TLAS over the whole registry. Map-load builds block; prop updates use the frame queue. Replacements use new
 // owners and published only when the TLAS over it was built, then the replaced TLAS and BLASes retire through VulkanContext::retire.
 #include "vk_rt_scene.h"
 
@@ -23,6 +23,8 @@
 #include "gos_static_prop_registry.h"
 #include "utils/mc2log.h"
 #include "vk_one_shot.h"
+#include "vk_gpu_profile.h"
+#include <tracy/Tracy.hpp>
 #include "vk_rt_acceleration.h"
 #include "vk_rt_selftest.h"
 #include "vulkan_color_prop_island.h"
@@ -154,6 +156,18 @@ struct Mover {
 class State final : public IslandState {
 public:
     ScratchArena scratch;
+    VkCommandBuffer frameCmd = VK_NULL_HANDLE;
+    bool frameWork = false;
+    uint64_t queuedVbo = 0;
+    bool compactedDirty = false;
+    struct Compaction {
+        OwnedQueryPool query;
+        uint64_t frame = 0;
+        std::vector<uint32_t> types;
+        std::vector<VkDeviceAddress> addresses;
+    };
+    std::vector<Compaction> compactions;
+    std::vector<std::pair<uint32_t, AccelStructure>> compacted;
     // Movers (part 2). The mover TLAS is rebuilt in the mech frame command buffer every frame over the static instances + every live mover.
     std::vector<VkAccelerationStructureInstanceKHR> pendingInst, staticInst;   // the static TLAS's instances (built / published)
     std::vector<Mover> movers;                      // sorted by key
@@ -239,7 +253,7 @@ const char* g_failStage = "none";   // the last scene-build failure point, print
 std::string g_failWhy;   // the failed check and its values (takeLastRecordFailure), printed after the stage
 
 bool buildStatic(VulkanContext& ctx, State& s, const std::vector<std::vector<TriangleGeometry>>& geos, std::string_view name, std::vector<AccelStructure>& out,
-                 BuildStats& st) {
+                 BuildStats& st, std::span<const uint32_t> types = {}) {
     out.clear();
     out.resize(geos.size());
     if (std::all_of(geos.begin(), geos.end(), [](const std::vector<TriangleGeometry>& g) { return g.empty(); })) return true;
@@ -253,7 +267,7 @@ bool buildStatic(VulkanContext& ctx, State& s, const std::vector<std::vector<Tri
     OwnedQueryPool qp = createCompactionQueryPool(ctx, static_cast<uint32_t>(geos.size()));
     if (!qp) { g_failStage = "query_pool"; return false; }
     bool ok = true;
-    const bool submitted = submitOneShot(ctx, [&](VkCommandBuffer cmd) {
+    auto record = [&](VkCommandBuffer cmd) {
         recordBarrier(ctx, cmd, Phase::Upload, Phase::Blas);
         // One build call per scratch group, each BLAS on its own scratch sub-range (scratchBatchPlan), instead of one call and one barrier per BLAS.
         uint32_t calls = 0;
@@ -270,7 +284,25 @@ bool buildStatic(VulkanContext& ctx, State& s, const std::vector<std::vector<Tri
         recordBarrier(ctx, cmd, Phase::Blas, Phase::Tlas);   // the compaction query below reads the built structures
         for (size_t i = 0; i < geos.size(); ++i)
             if (out[i]) recordCompactionQuery(ctx, cmd, qp.get(), static_cast<uint32_t>(i), out[i]);
-    }, "rt_scene blas");
+    };
+    if (s.frameCmd) {
+        s.frameWork = true;
+        record(s.frameCmd);
+        State::Compaction pending;
+        pending.query = std::move(qp);
+        pending.frame = ctx.frameContext().frame;
+        pending.types.assign(types.begin(), types.end());
+        for (const auto& a : out) {
+            pending.addresses.push_back(a ? a.address() : 0);
+            st.builtBytes += a ? a.size() : 0;
+        }
+        st.finalBytes = st.builtBytes;
+        s.compactions.push_back(std::move(pending));
+        s.scratch.retireStale(ctx);
+        if (!ok) retireEach(ctx, out);
+        return ok;
+    }
+    const bool submitted = submitOneShot(ctx, record, "rt_scene blas");
     s.scratch.retireStale(ctx);
     if (!submitted || !ok) {
         if (!submitted) g_failStage = "blas_submit";
@@ -391,17 +423,19 @@ std::optional<AccelStructure> buildTlas(VulkanContext& ctx, State& s, const std:
         retirePending(ctx, s);
         return std::nullopt;
     }
-    // Fable p34 section 3: the TLAS is PREFER_FAST_BUILD and fully rebuilt (never refit). The static scene rebuilds it on every membership change; the
-    // per-frame rebuild in the frame command buffer arrives with movers (part 2), the first members that change every frame.
+    // Membership changes always use BUILD, including the static publish on mover-less frames.
     BuildFlags flags;
     flags.preferFastTrace = false;
     bool ok = false;
-    const bool submitted = submitOneShot(ctx, [&](VkCommandBuffer cmd) {
+    auto record = [&](VkCommandBuffer cmd) {
         recordBarrier(ctx, cmd, Phase::Upload, Phase::Tlas);
         if (!recordTlasBuild(ctx, cmd, buf.deviceAddress(), instanceCount, flags, "rt_scene.tlas", tlas, s.scratch)) { g_failStage = "tlas_record"; g_failWhy = takeLastRecordFailure(); return; }
         recordBarrier(ctx, cmd, Phase::Tlas, Phase::Consumer);
         ok = true;
-    }, "rt_scene tlas");
+    };
+    bool submitted = true;
+    if (s.frameCmd) { s.frameWork = true; record(s.frameCmd); }
+    else submitted = submitOneShot(ctx, record, "rt_scene tlas");
     s.scratch.retireStale(ctx);
     ctx.retire(std::move(buf));
     if (!submitted || !ok) {
@@ -434,6 +468,8 @@ void logPublish(const State& s, std::string_view why, const BuildStats& st, doub
          s.scratch.capacity(), instanceBytes, s.materialBytes, 1 + s.propRows.size() + s.terrainBlas.size(), cutouts,
          blasBytes + tlasBytes + s.scratch.capacity() + instanceBytes + s.materialBytes, st.buildCalls, st.scratchSpan, ms);
 }
+
+bool terrainOccluder(const State& s, uint32_t id, uint32_t prim, float x, float y, float z);
 
 // MC2_VK_RT_SELFTEST: once the scene holds terrain and props, fixed downward rays at known props and terrain vertices; logs every hit.
 void probe(VulkanContext& ctx, State& s) {
@@ -491,6 +527,17 @@ void probe(VulkanContext& ctx, State& s) {
             }
             MC2_EVENT(Vk, "VK_RT_SCENE", 1, "probe ray={} occluded_by=0x{:x} behind_found={} passes={}", i, idx, match ? 1 : 0, passes);
         }
+        if (!isProp && hit && !match && idx != kTerrainObjectId) {
+            const ProbePoint& p = s.terrainProbe[i - props];
+            // Only move below an occluder independently confirmed in the CPU source geometry at the reported GPU hit.
+            const bool correct = terrainOccluder(s, idx, static_cast<uint32_t>(o[2]), p.x, p.y, kTop - o[1]);
+            float r[4] = {};
+            const float ray[8] = {p.x, p.y, p.h + 1.0f, 0.0f, 0.0f, 0.0f, -1.0f, 2.0f};
+            if (correct && kTop - o[1] > p.h + 1.0f && traceRays(ctx, s.tlas.get(), ray, r))
+                match = r[0] != 0.0f && static_cast<uint32_t>(r[3]) == kTerrainObjectId && std::abs(r[1] - 1.0f) < 0.1f;
+            MC2_EVENT(Vk, "VK_RT_SCENE", 1, "probe terrain ray={} occluder_correct={} moved_origin_z={:.3f} hit={} t={:.3f} custom=0x{:x} match={}",
+                      i, correct ? 1 : 0, p.h + 1.0f, r[0], r[1], static_cast<uint32_t>(r[3]), match ? 1 : 0);
+        }
         (isProp ? propOk : terrainOk) += match ? 1u : 0u;
         MC2_EVENT(Vk, "VK_RT_SCENE", 1, "probe ray={} kind={} origin=({:.1f},{:.1f}) hit={} t={:.2f} prim={} custom=0x{:x} expect=0x{:x} expect_t={:.2f} match={}", i,
              isProp ? "prop" : "terrain", rays[static_cast<size_t>(i) * 8], rays[static_cast<size_t>(i) * 8 + 1], hit ? 1 : 0, o[1], static_cast<uint32_t>(o[2]), idx, expect[i],
@@ -516,6 +563,48 @@ bool worldTri(const float t[12], const float v[9], WorldTri& w) {
     if (!(len > 1e-4f)) return false;
     for (float& c : w.n) c /= len;
     return true;
+}
+
+// Validate the original hit against CPU vertices and current placements, independently of BLAS/TLAS contents.
+bool terrainOccluder(const State& s, uint32_t id, uint32_t prim, float x, float y, float z) {
+    Mc2ShadowGeomFeed feed{};
+    const void *vb = nullptr, *ib = nullptr;
+    uint64_t vbBytes = 0, ibBytes = 0;
+    if (!mc2_shadow_island_get_geometry_feed(&feed) || !feed.vertexStride ||
+        !mc2_static_prop_geometry_cpu(&vb, &vbBytes, &ib, &ibBytes) || !vb) return false;
+    for (size_t i = 0; i < s.instances.size(); ++i) {
+        const uint32_t ty = s.instances[i].typeID;
+        if (s.objectIds[i] != id || ty >= s.typeRowBase.size() || ty >= feed.typeCount) continue;
+        float t[12];
+        propTransform(s.instances[i].modelMatrix, t);
+        for (size_t row = s.typeRowBase[ty]; row < s.propRows.size(); ++row) {
+            const MaterialRow& m = s.propRows[row];
+            if (m.packet >= feed.typeFirstPacket[ty] + feed.typePacketCount[ty]) break;
+            if (m.packet >= feed.packetCount || prim >= feed.packets[m.packet].indexCount / 3) continue;
+            const size_t at = static_cast<size_t>(m.firstIndex) + 3ull * prim;
+            if (at + 2 >= s.uvIndices.size()) continue;
+            float v[9];
+            bool valid = true;
+            for (size_t k = 0; k < 3; ++k) {
+                const size_t offset = static_cast<size_t>(s.uvIndices[at + k]) * feed.vertexStride;
+                if (offset + 12 > vbBytes) { valid = false; break; }
+                std::memcpy(v + 3 * k, static_cast<const uint8_t*>(vb) + offset, 12);
+            }
+            WorldTri w{};
+            if (!valid || !worldTri(t, v, w)) continue;
+            const float bx = w.b[0] - w.a[0], by = w.b[1] - w.a[1], cx = w.c[0] - w.a[0], cy = w.c[1] - w.a[1];
+            const float det = bx * cy - by * cx;
+            if (std::abs(det) < 1e-6f) continue;
+            const float u = ((x - w.a[0]) * cy - (y - w.a[1]) * cx) / det;
+            const float vWeight = (bx * (y - w.a[1]) - by * (x - w.a[0])) / det;
+            const float cpuZ = w.a[2] + u * (w.b[2] - w.a[2]) + vWeight * (w.c[2] - w.a[2]);
+            if (u < 0 || vWeight < 0 || u + vWeight > 1 || std::abs(cpuZ - z) > 0.1f) continue;
+            MC2_EVENT(Vk, "VK_RT_SCENE", 1, "probe occluder CPU instance={} type={} row={} prim={} xy=({:.3f},{:.3f}) bary=({:.6f},{:.6f}) z={:.3f} gpu_z={:.3f}",
+                      i, ty, row, prim, x, y, u, vWeight, cpuZ, z);
+            return true;
+        }
+    }
+    return false;
 }
 
 // A ray along -normal through barycentric (u, v) of `w`, starting 2 units off the surface: no neighbour above can occlude it (the 1/8 object-ID miss).
@@ -952,7 +1041,7 @@ void noteTerrain(const TerrainSource& t) {
     probeMaterials(*ctx, s);
 }
 
-void updateProps(uint64_t propVbo) {
+static void updatePropsNow(uint64_t propVbo) {
     if (!demanded()) return;
     VulkanContext* ctx = rayContext();
     if (!ctx || propVbo == 0) return;
@@ -962,8 +1051,8 @@ void updateProps(uint64_t propVbo) {
         s.propVbo = propVbo;
     }
     const uint64_t gen = GpuStaticPropRegistry::getRegistryGeneration();
-    if (gen == s.propGen || gen == s.propGenFailed) {
-        probeMaterials(*ctx, s);   // MC2_VK_RT_SELFTEST: retried until the island's albedo arrays exist
+    if (!s.compactedDirty && (gen == s.propGen || gen == s.propGenFailed)) {
+        if (!s.frameCmd) probeMaterials(*ctx, s);   // frame builds must be submitted before a blocking diagnostic trace
         return;
     }
     Mc2ShadowGeomFeed feed{};
@@ -1002,10 +1091,10 @@ void updateProps(uint64_t propVbo) {
     for (size_t i = 0; sameInstances && i < inst.size(); ++i)
         sameInstances = samePlacement({inst[i].typeID, ids[i], inst[i].modelMatrix},
                                      {s.instances[i].typeID, s.objectIds[i], s.instances[i].modelMatrix});
-    if (!updateNeeded(s.propGen != kNone, !types.empty() || !sameInstances)) {
+    if (!updateNeeded(s.propGen != kNone, s.compactedDirty || !types.empty() || !sameInstances)) {
         s.propGen = gen;   // registry light/fog writes are irrelevant to RT
         s.propGenFailed = kNone;
-        probeMaterials(*ctx, s);
+        if (!s.frameCmd) probeMaterials(*ctx, s);
         return;
     }
     // Materials: the colour-prop island's packet routing (layer per packet, alpha class per type, uv crop). A new type waits a bounded number of calls
@@ -1110,11 +1199,12 @@ void updateProps(uint64_t propVbo) {
                     g.opaque = pg.opaque;
                     geos[i].push_back(g);
                 }
-            ok = buildStatic(*ctx, s, geos, "rt_scene.prop", built, st);
+            ok = buildStatic(*ctx, s, geos, "rt_scene.prop", built, st, types);
         }
     }
     if (ib) ctx->retire(std::move(ib));
     std::vector<std::pair<uint32_t, AccelStructure>> added;
+    added.swap(s.compacted);
     for (size_t i = 0; i < built.size(); ++i) added.emplace_back(types[i], std::move(built[i]));
 
     // The TLAS reads the new snapshot; on failure the previous instances / records stay published.
@@ -1129,19 +1219,22 @@ void updateProps(uint64_t propVbo) {
         for (auto& [ty, a] : added)
             if (a) ctx->retire(std::move(a));
         s.propGenFailed = gen;
+        s.compactedDirty = false;
         MC2_EVENT(Vk, "VK_RT_SCENE", 1, "FAIL prop build gen={} types={} instances={} stage={} why={}; keeping the last snapshot", gen, types.size(), inst.size(), g_failStage, g_failWhy);
         return;
     }
     if (s.tlas) ctx->retire(std::move(s.tlas));
     s.tlas = std::move(*tlas);
-    // Appending prop rows moves every terrain row. A retained mover TLAS must
-    // never be queried with the new table and its old terrain offsets.
-    if (!moverRowsCompatible(static_cast<uint32_t>(s.propRows.size()), static_cast<uint32_t>(rows.size())) && s.moverTlas)
+    // The retained mover TLAS has the old membership, BLAS addresses and terrain row offsets.
+    if (s.moverTlas)
         ctx->retire(std::move(s.moverTlas));
     s.staticInst = std::move(s.pendingInst);
     s.moverTlasDirty = true;
     publishMaterials(*ctx, s);
-    for (auto& [ty, a] : added) s.propBlas[ty] = std::move(a);   // new types only: no published BLAS is replaced
+    for (auto& [ty, a] : added) {
+        if (s.propBlas[ty]) ctx->retire(std::move(s.propBlas[ty]));
+        s.propBlas[ty] = std::move(a);
+    }
     if (!types.empty() && !haveMat) ++s.propsWithoutMaterial;
     if (!types.empty()) {
         s.propRows = std::move(newRows);
@@ -1157,9 +1250,82 @@ void updateProps(uint64_t propVbo) {
     s.tlasInstances = count;
     s.tlasProps = props;
     s.dropped = dropped;
+    s.compactedDirty = false;
+    s.probed = s.matProbed = false;
     logPublish(s, haveMat || types.empty() ? "props" : "props_untextured", st, msSince(t0));
-    probe(*ctx, s);
-    probeMaterials(*ctx, s);
+    if (!s.frameCmd) {
+        probe(*ctx, s);
+        probeMaterials(*ctx, s);
+    }
+}
+
+void updateProps(uint64_t propVbo) {
+    if (!demanded() || !propVbo) return;
+    State& s = State::instance();
+    if (!deferPropBuild(s.propGen != kNone, propVbo == s.propVbo)) updatePropsNow(propVbo);
+    else if (const uint64_t gen = GpuStaticPropRegistry::getRegistryGeneration(); gen != s.propGen && gen != s.propGenFailed) s.queuedVbo = propVbo;
+    else probeMaterials(*rayContext(), s);
+}
+
+// Called by the scene flush even when the mech island draws nothing. The pool belongs to the frame slot; no one-shot wait or private queue.
+void recordFrame() {
+    if (!demanded() || !State::exists()) return;
+    auto& ctx = *rayContext();
+    State& s = State::instance();
+    if (!s.queuedVbo && s.compactions.empty() && !s.compactedDirty) return;
+    const VkCommandBuffer cmd = ctx.acquireRecordCommandBuffer();
+    VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    if (!cmd || vkBeginCommandBuffer(cmd, &bi) != VK_SUCCESS) return;
+    s.frameCmd = cmd;
+    s.frameWork = false;
+    recordBarrier(ctx, cmd, frameRebuildBarrier());
+    if (!s.compactions.empty()) {
+        ZoneScopedN("RT.AsyncCompaction.Record");
+        std::vector<std::pair<uint32_t, VkDeviceSize>> copies;
+        for (size_t b = 0; b < s.compactions.size();) {
+            auto& batch = s.compactions[b];
+            bool ready = ctx.frameContext().frame > batch.frame;
+            for (size_t i = 0; ready && i < batch.types.size(); ++i) {
+                if (!batch.addresses[i]) continue;
+                VkDeviceSize bytes = 0;
+                const VkResult r = vkGetQueryPoolResults(ctx.device(), batch.query.get(), static_cast<uint32_t>(i), 1, sizeof(bytes), &bytes, sizeof(bytes), VK_QUERY_RESULT_64_BIT);
+                if (r == VK_NOT_READY) { ready = false; break; }
+                const uint32_t type = batch.types[i];
+                if (r == VK_SUCCESS && type < s.propBlas.size() && s.propBlas[type].address() == batch.addresses[i] && worthCompacting(s.propBlas[type].size(), bytes))
+                    copies.emplace_back(type, bytes);
+                batch.addresses[i] = 0;
+            }
+            if (!ready) { ++b; continue; }
+            ctx.retire(std::move(batch.query));
+            s.compactions.erase(s.compactions.begin() + b);
+        }
+        if (!copies.empty()) {
+            MC2_VK_GPU_SCOPE(compactionScope, cmd, "RT.AsyncCompaction");
+            // A profiler query must be submitted even if every copy allocation fails.
+            s.frameWork |= mc2vk::gpuprof::active();
+            for (const auto& [type, bytes] : copies) {
+                AccelStructure compact;
+                if (recordCompactCopy(ctx, cmd, s.propBlas[type], bytes, "rt_scene.prop", compact)) {
+                    s.frameWork = true;
+                    s.compacted.emplace_back(type, std::move(compact));
+                    s.compactedDirty = true;
+                }
+            }
+        }
+    }
+    recordBarrier(ctx, cmd, Phase::Copy, Phase::Tlas);
+    if (s.queuedVbo || s.compactedDirty) updatePropsNow(s.queuedVbo ? s.queuedVbo : s.propVbo);
+    s.queuedVbo = 0;
+    s.frameCmd = VK_NULL_HANDLE;
+    if (vkEndCommandBuffer(cmd) != VK_SUCCESS) { invalidateProps(); return; }
+    if (!s.frameWork) return;   // raster-only registry writes need no submit
+    VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+    si.commandBufferCount = 1;
+    si.pCommandBuffers = &cmd;
+    if (ctx.submit(si, VK_NULL_HANDLE) != VK_SUCCESS) { invalidateProps(); return; }
+    probe(ctx, s);
+    probeMaterials(ctx, s);
 }
 
 void invalidateProps() {
@@ -1167,6 +1333,12 @@ void invalidateProps() {
     VulkanContext& ctx = mc2vk::getOrCreateEngineVulkanContext();
     State& s = State::instance();
     // The TLAS references the prop BLASes: it retires first. Terrain BLASes stay; the next updateProps (or noteTerrain) republishes a TLAS.
+    for (auto& pending : s.compactions) ctx.retire(std::move(pending.query));
+    s.compactions.clear();
+    for (auto& [ty, a] : s.compacted) if (a) ctx.retire(std::move(a));
+    s.compacted.clear();
+    s.queuedVbo = 0;
+    s.compactedDirty = false;
     if (s.tlas) ctx.retire(std::move(s.tlas));
     dropAllMovers(ctx, s);   // the mover TLAS references the prop BLASes too; the mech geometry goes away with the map
     s.staticInst.clear();

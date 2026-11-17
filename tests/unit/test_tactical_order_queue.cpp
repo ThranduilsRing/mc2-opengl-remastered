@@ -296,6 +296,30 @@ TEST_CASE("application authority handle validation results acknowledgements and 
     CHECK(afterRetirement.receipts()[0].results[0].reasonCode == 88);
 }
 
+TEST_CASE("targeted orders retain approach speed and flags through save restore") {
+    Permit permit;
+    for (auto kind : {OrderKind::Capture, OrderKind::Refit, OrderKind::GetFixed,
+                      OrderKind::Recover, OrderKind::LoadIntoCarrier, OrderKind::AttackObject}) {
+        for (auto mode : {TravelMode::Slow, TravelMode::Fast}) {
+            TacticalOrderQueue queue;
+            REQUIRE(queue.registerSource({1,SourceKind::UI}));
+            auto e = order();
+            e.payload.kind = kind;
+            e.payload.target = ObjectRef{4,9};
+            if (kind == OrderKind::AttackObject) e.payload.attack.emplace();
+            auto& move = e.payload.move.emplace();
+            move.wayPath = {{{100,200,0}},0,{mode}};
+            move.faceObject = true; move.wait = true; move.fromArea = 7;
+            REQUIRE(queue.submit(e, permit));
+            TacticalOrderQueue restored;
+            REQUIRE(restored.restore(wire(queue), 0));
+            REQUIRE(restored.snapshotPending().size() == 1);
+            CHECK(restored.snapshotPending()[0] == e);
+            CHECK(restored.snapshotPending()[0].payload.move->wayPath.mode[0] == mode);
+        }
+    }
+}
+
 TEST_CASE("Guard accepts object and point path goals and rejects missing or malformed goals") {
     Permit permit; Application application;
     for (bool objectTarget : {false, true}) {
@@ -599,3 +623,34 @@ TEST_CASE("application can submit next tick while receipts grow without invalida
     REQUIRE(queue.endTick());
 }
 } // TEST_SUITE
+
+// MP-0: the drained order stream (what every lockstep peer applies) must not depend on the
+// wall-clock order in which sources delivered their envelopes.
+TEST_CASE("drain order is independent of cross-source admission order and survives wire round trip") {
+    auto run = [](const std::vector<std::pair<std::uint32_t, std::uint64_t>>& arrival) {
+        Permit permit; TacticalOrderQueue queue(3);
+        REQUIRE(queue.registerSource({5, SourceKind::Peer}));
+        REQUIRE(queue.registerSource({1, SourceKind::UI}));
+        REQUIRE(queue.registerSource({3, SourceKind::ABL, InstanceId{42}}));
+        for (auto [src, seq] : arrival) {
+            auto envelope = order(src, seq, 4);
+            if (src == 3) envelope.issuer = InstanceId{42};
+            REQUIRE(queue.submit(envelope, permit));
+        }
+        auto batch = queue.beginTick(4); REQUIRE(batch);
+        Bytes stream;
+        for (OrderEnvelope e : *batch) {
+            mc2::save::Archive a; a(e); REQUIRE(a.finish());
+            OrderEnvelope back; REQUIRE(mc2::save::decodeRecord(a.bytes(), back));
+            CHECK(back == e);
+            stream.insert(stream.end(), a.bytes().begin(), a.bytes().end());
+        }
+        return stream;
+    };
+    const auto a = run({{1,0},{1,1},{3,0},{5,0},{5,1}});
+    const auto b = run({{5,0},{3,0},{5,1},{1,0},{1,1}});
+    const auto c = run({{3,0},{1,0},{5,0},{1,1},{5,1}});
+    CHECK(!a.empty());
+    CHECK(a == b);
+    CHECK(a == c);
+}

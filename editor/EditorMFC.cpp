@@ -503,6 +503,19 @@ bool EditorBackgroundLaunch()
 	return mc2::gate::get<"MC2_NO_ACTIVATE">() || mc2::gate::get<"MC2_WINDOW_OFFSCREEN">();
 }
 
+// FastFiles must be mounted before testing appearance resolution.
+void EditorCheckTglAssets()
+{
+	extern long fileExists(const char* fName, long destination_mask);
+	const long kFileOnDiskOrFst = 1 /*FILE_ON_DISK*/ | 2 /*FILE_ON_FST*/;
+	if (!fileExists("data/tgl/anubis.tgl", kFileOnDiskOrFst))
+	{
+		EarlyTrace("InitializeGameEngine: WARNING tgl appearances unresolvable after FastFile mount");
+		extern void EditorSetStartupWarning(const char* text);
+		EditorSetStartupWarning("No game assets in data\\tgl. Open a Mod Project or run from a complete install.");
+	}
+}
+
 BOOL EditorMFCApp::InitInstance()
 {
 	editor_set_default_env_vars();
@@ -534,35 +547,6 @@ BOOL EditorMFCApp::InitInstance()
 	fprintf(stderr, "[EDITOR_CLI v1] event=parsed mission=\"%s\" frames=%ld exit_on_load_fail=%d\n",
 		g_cliMissionPath.c_str(), g_cliFramesLimit, g_cliExitOnLoadFail ? 1 : 0);
 	fflush(stderr);
-
-	// Empty-install guard: an editor run from an asset-less install (no data/tgl/*.ini)
-	// with no mod active will CTD the moment it loads any real mission's mechs/objects.
-	// Warn up front instead of letting the user chase a mysterious crash (this exact
-	// trap cost a long debug detour: the 0.4c editor install ships 0 tgl appearances).
-	{
-		// Probe REAL asset resolution rather than just loose data\tgl\*.ini files.
-		// Stock installs ship tgl appearances as data/tgl/<name>.tgl packed inside
-		// the tgl.fst FastFile (and/or under an active mod overlay), so the loose-dir
-		// scan reported a false "no assets" warning even though missions render fine.
-		// fileExists() walks the SAME priority chain a real load uses:
-		//   active mod  ->  base data/  ->  FastFile (tgl.fst).
-		// Use forward slashes -- FST keys are stored slash-normalized (file.cpp:746).
-		// 'anubis' is a canonical Clan-mech appearance present in every install.
-		extern long fileExists(const char* fName, long destination_mask);
-		const long kFileOnDiskOrFst = 1 /*FILE_ON_DISK*/ | 2 /*FILE_ON_FST*/;
-		bool canResolveTgl = (fileExists("data/tgl/anubis.tgl", kFileOnDiskOrFst) != 0);
-
-		if (!canResolveTgl)
-		{
-			EarlyTrace("InitInstance: WARNING tgl appearances unresolvable (no loose data/tgl, no tgl.fst, no mod) -- mission loads will likely CTD");
-			// Non-blocking: surface as a persistent dismissable ImGui banner in the
-			// editor HUD instead of a modal the user must click OK on every launch.
-			extern void EditorSetStartupWarning(const char* text);
-			EditorSetStartupWarning(
-				"No game assets in data\\tgl -- stock missions will crash. "
-				"Open a Mod Project or run from a complete install.");
-		}
-	}
 
 	// Auto-reopen the last Mod Project (interactive only -- never in a headless smoke, and
 	// ReopenLastIfAny opens NO dialogs regardless). Binds save-dir default + remounts the mod.

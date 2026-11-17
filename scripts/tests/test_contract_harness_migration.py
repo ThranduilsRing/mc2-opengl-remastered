@@ -12,7 +12,12 @@ from tools import build_contract_harnesses as builder
 
 
 @pytest.fixture(autouse=True)
-def production_seam(monkeypatch):
+def production_seam(monkeypatch, tmp_path):
+    import contracts_cache
+    monkeypatch.setattr(contracts_cache, "clean_tip", lambda *a: None)  # mocked native runs cannot certify this checkout
+    monkeypatch.setattr(builder, "prepare_unit_tree", lambda *a: (False, tmp_path / "receipt", "[]"))
+    # Hermetic: never run a real (possibly stale) mc2_tests_selected binary left in the build tree.
+    monkeypatch.setattr(builder, "matched_case_count", lambda *a: 1)
     seam = Mock(return_value=True)
     monkeypatch.setattr(builder, "build_and_run_order_seam", seam)
     return seam
@@ -33,14 +38,30 @@ def record_runs(monkeypatch, codes):
     return commands
 
 
-def test_selection_filters_the_shared_binary(monkeypatch):
+def test_selection_builds_only_the_selected_sources(monkeypatch):
     commands = record_runs(monkeypatch, [0, 0, 0])
     selected = ["icon_atlas_harness", "job_system_harness"]
     assert builder.main(["--run", "--unit", "--only", selected[0], "--only", selected[1]]) == 0
     assert len(commands) == 3
-    assert "--target" in commands[1][0] and "mc2_tests" in commands[1][0]
+    assert "--target" in commands[1][0] and "mc2_tests_selected" in commands[1][0]
+    assert "-DMC2_UNIT_ONLY_SOURCES=test_icon_atlas_harness.cpp;test_job_system_harness.cpp" in commands[0][0]
+    assert "mc2_tests_selected" in commands[2][0][0]
     assert commands[2][0][-1] == "--test-case=icon_atlas_harness/*,job_system_harness/*"
     assert commands[2][1]["cwd"] == ROOT
+
+
+# Trigger: tools/build_contract_harnesses.py exact-tip native evidence.
+def test_failed_selection_invalidates_full_unit_pass(monkeypatch, tmp_path):
+    import contracts_cache as cc
+    monkeypatch.setattr(cc, "clean_tip", lambda *a: "a" * 40)
+    monkeypatch.setattr(cc, "cache_path", lambda *a: str(tmp_path / "pass-cache.json"))
+    monkeypatch.setattr(builder, "build_and_run_unit_tests", lambda *a, **k: (True, "full"))
+    assert builder.main(["--run", "--unit-only"]) == 0
+    assert cc.tip_passed(str(ROOT), "native_unit")
+    monkeypatch.setattr(builder, "build_and_run_unit_tests", lambda *a, **k: (False, "selected"))
+    assert builder.main(["--run", "--only", "AudioBackend/*"]) == 1
+    assert not cc.tip_passed(str(ROOT), "native_unit")
+    assert "audio_music_stream" in cc.affected_rows(str(ROOT), ["tests/unit/test_audio_backend.cpp"])
 
 
 @pytest.mark.parametrize("nightly", [False, True])
@@ -50,6 +71,22 @@ def test_slow_cases_only_join_the_nightly_default(monkeypatch, nightly):
     assert builder.main(["--run", "--unit-only"]) == 0
     excludes = [a for a in commands[2][0] if a.startswith("--test-case-exclude=")]
     assert bool(excludes) == (not nightly)
+
+
+# Trigger: tools/build_contract_harnesses.py child environment and rc handling.
+@pytest.mark.parametrize("rc", [0, 78, 1])
+def test_unit_child_owns_mc2_environment(monkeypatch, rc):
+    monkeypatch.setenv("MC2_UNKNOWN_AMBIENT_OPTION", "1")
+    monkeypatch.setenv("MC2_CONFIG_STRICT", "1")
+    monkeypatch.setenv("MC2_ACTIVE_MOD", "owner-mod")
+    monkeypatch.setenv("mc2_lowercase_option", "1")
+    monkeypatch.setenv("PATH", "system-tools")
+    commands = record_runs(monkeypatch, [0, 0, rc])
+    assert builder.main(["--run", "--unit-only"]) == (0 if rc == 0 else 1)
+    child_env = commands[2][1]["env"]
+    assert not any(key.upper().startswith("MC2_") for key in child_env)
+    assert child_env["PATH"] == "system-tools"
+    assert builder.os.environ["MC2_CONFIG_STRICT"] == "1"
 
 
 @pytest.mark.parametrize("codes,expected_calls", [([1], 1), ([0, 1], 2), ([0, 0, 1], 3)])

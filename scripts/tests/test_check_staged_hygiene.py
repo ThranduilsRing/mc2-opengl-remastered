@@ -310,6 +310,25 @@ def test_default_task_range_covers_all_commits_since_merge_base(repo, capsys):
     assert f"RANGE {base}.." in output and "0x08" in output
 
 
+@pytest.mark.parametrize("bad", [False, True])
+def test_precheck_scratch_refs_preserve_hygiene(repo, capsys, bad):
+    from tools.lane_precheck import SCRATCH_CLONE_ARGS
+    baseline(repo, "file.txt", b"old\n")
+    for branch in ("claude/nifty-mendeleev", "claude/play-1113"):
+        git(repo, "branch", branch)
+    baseline(repo, "file.txt", b"bad\x08\n" if bad else b"clean\n")
+    source = repo
+    for depth in range(2):  # precheck chain, then its base-rot comparison clone
+        clone = repo.with_name(f"{repo.name}-clone{depth}")
+        git(source, *SCRATCH_CLONE_ARGS, str(source), str(clone))
+        git(clone, "checkout", "--quiet", "--detach", "HEAD")
+        for branch in ("claude/nifty-mendeleev", "claude/play-1113"):
+            git(clone, "show-ref", "--verify", f"refs/heads/{branch}")
+        assert hygiene.main(["--repo", str(clone), "--range"]) == int(bad)
+        assert ("0x08" in capsys.readouterr().out) == bad
+        source = clone
+
+
 def test_default_main_branch_range_checks_last_commit(repo, capsys):
     baseline(repo, "old.txt", b"bad\x08\n")
     git(repo, "checkout", "--quiet", "-b", "claude/nifty-mendeleev")

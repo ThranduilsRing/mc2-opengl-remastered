@@ -13,6 +13,11 @@ inline void notePartTeam(signed char (&table)[kCommanderSlots], long commanderID
         table[commanderID] = static_cast<signed char>(teamID);
 }
 
+// Logistics supplies identity rows even for gaps in sparse authored commander IDs.
+inline bool unusedIdentity(const signed char (&table)[kCommanderSlots], long commander, long team, long row) {
+    return commander >= 0 && commander < kCommanderSlots && commander == row && team == row && table[commander] < 0;
+}
+
 // The team the commander's parts declared, or -1 when none is usable (commander missing, no parts, id outside [0, maxTeams), or
 // teamExists(team) is false). teamExists is the loader's "Team::teams[t] != nullptr".
 template <typename TeamExists>

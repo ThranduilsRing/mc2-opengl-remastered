@@ -6,6 +6,39 @@
 
 #include <string>
 
+TEST_CASE("save sections: animation legacy integers use the Windows wire width") {
+    using namespace mc2::save;
+    mc2::sim::UnitAnimState state;
+    state.currentStateGoal = -1;
+    state.currentGestureId = 0x12345678;
+    state.nodeUsed = {-1, 0x12345678};
+    Archive output;
+    output(state);
+    REQUIRE(output.good());
+    // Five state/gesture words follow float + eleven bools + velocity.
+    REQUIRE(output.bytes().size() >= 27);
+    CHECK(output.bytes()[19] == 0xff);
+    CHECK(output.bytes()[22] == 0xff);
+    CHECK(output.bytes()[23] == 0x78);
+    CHECK(output.bytes()[26] == 0x12);
+    auto empty = state;
+    empty.nodeUsed.clear();
+    Archive baseline;
+    baseline(empty);
+    CHECK(output.bytes().size() == baseline.bytes().size() + 8);
+    mc2::sim::UnitAnimState restored;
+    Archive input(output.bytes());
+    input(restored);
+    REQUIRE(input.finish());
+    CHECK(restored.currentStateGoal == -1);
+    CHECK(restored.currentGestureId == 0x12345678);
+    CHECK(restored.nodeUsed == state.nodeUsed);
+    std::uint64_t tick = 0x123456789abcdef0ull;
+    Archive wide;
+    wide(tick);
+    CHECK(wide.bytes().size() == 8);
+}
+
 TEST_CASE("save sections: WRLD requires complete unique classified mover membership") {
     using mc2::save::SavedMoverLists;
     const SavedMoverLists rebuilt{{}, {}, {2, 4, 6, 8}, {2}, {4, 6}}; // 8 is neutral.
@@ -125,7 +158,7 @@ TEST_CASE("save sections: weapon nodes beyond the legacy cap round trip through 
     write(state);
     REQUIRE(write.good());
     SectionContainer container;
-    container.add(tagAnimation, 3, true, write.bytes());
+    container.add(tagAnimation, 5, true, write.bytes());
     container.add(tagWeaponNodes, 1, true, {});
     SectionContainer back;
     REQUIRE(decodeSections(encoded(container), back));
@@ -156,7 +189,7 @@ TEST_CASE("save sections: rejects malformed, newer and unknown required sections
     auto magic = bytes; magic[0] ^= 1;
     CHECK_FALSE(decodeSections(magic, out, &why)); CHECK(why == "section_magic");
 
-    SectionContainer newer; newer.add(tagAnimation, 4, true, {});
+    SectionContainer newer; newer.add(tagAnimation, 6, true, {});
     CHECK_FALSE(decodeSections(encoded(newer), out, &why)); CHECK(why == "section_version");
 
     SectionContainer terrain; terrain.add(tagObjectSlots, objectSlotsVersion, true, {});

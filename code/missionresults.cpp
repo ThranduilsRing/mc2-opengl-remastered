@@ -15,6 +15,7 @@ MissionResults.cpp			: Implementation of the MissionResults component.
 #include"logisticsdata.h"
 #include"salvagemecharea.h"
 #include"pilotreviewarea.h"
+#include"screen_settle_capture.h"
 #include"gamesound.h"
 #include "../resource.h"
 #include"../GuiRuntime/GuiRuntime.h"   // GetDisplaySize (MECH-ICON-BLANK-1 gui bridge)
@@ -172,7 +173,7 @@ void MissionResults::update()
 				fflush(stdout);
 				pSalvageScreen->handleMessage( 101, 101 );
 			}
-			else if ( pPilotScreen )
+			else if ( pPilotScreen && ( !mc2::screen_settle::promotionCaptureActive() || pPilotScreen->listFinished() ) )   // promotion capture: wait for the scroll (and any promotion panel) to run out
 			{
 				mc2::fmt::print_out("[SOAK] results dismiss screen=pilot\n");
 				fflush(stdout);

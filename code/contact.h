@@ -134,12 +134,12 @@ class SensorSystem {
 
 	public:
 
-		long					id;
+		int32_t					id;
 		TeamSensorSystemPtr		master;
-		long					masterIndex;
+		int32_t					masterIndex;
 		GameObjectPtr			owner;
 		float					range;
-		long					skill;
+		int32_t					skill;
 		bool					broken;
 		bool					notShutdown;
 		bool					hasLOSCapability;
@@ -150,9 +150,9 @@ class SensorSystem {
 		float					lastScanUpdate;
 
 		uint32_t			contacts[MAX_CONTACTS_PER_SENSOR];
-		long					numContacts;
-		long					numExclusives;
-		long					totalContacts;
+		int32_t					numContacts;
+		int32_t					numExclusives;
+		int32_t					totalContacts;
 
 		SensorSystemPtr			prev;
 		SensorSystemPtr			next;
@@ -259,22 +259,22 @@ class TeamSensorSystem {
 
 	public:
 
-		long				teamId;
-		long				nextContactId;
-		long				numContactUpdatesPerPass;
-		long				curContactUpdate;
-		long				contacts[MAX_MOVERS];
+		int32_t				teamId;
+		int32_t				nextContactId;
+		int32_t				numContactUpdatesPerPass;
+		int32_t				curContactUpdate;
+		int32_t				contacts[MAX_MOVERS];
 		//long				allContacts[MAX_MOVERS];
-		long				numContacts;
+		int32_t				numContacts;
 		//long				numAllContacts;
-		long				numEnemyContacts;
+		int32_t				numEnemyContacts;
 		SensorSystemPtr		sensors[MAX_SENSORS_PER_TEAM];
-		long				numSensors;
+		int32_t				numSensors;
 		bool				capLoggedThisMission;
 		SystemTrackerPtr	ecms;
-		long				numEcms;
+		int32_t				numEcms;
 		SystemTrackerPtr	jammers;
-		long				numJammers;
+		int32_t				numJammers;
 
 		static bool			homeTeamInContact;
 
@@ -349,13 +349,13 @@ class SensorSystemManager {
 	
 	protected:
 		
-		long					freeSensors;			//How many sensors are currently free
+		int32_t					freeSensors;			//How many sensors are currently free
 		std::unique_ptr<std::unique_ptr<SensorSystem>[]>	sensorPool;	//Pool of ALL sensors
 		SensorSystemPtr			freeList;				//List of available sensors
 		std::unique_ptr<TeamSensorSystem>	teamSensors[MAX_TEAMS];
 		ECMInfo					ecms[MAX_ECMS];
-		long					numEcms;
-		long 					teamToUpdate;
+		int32_t					numEcms;
+		int32_t 					teamToUpdate;
 		static float			updateFrequency;
 		
 	public:

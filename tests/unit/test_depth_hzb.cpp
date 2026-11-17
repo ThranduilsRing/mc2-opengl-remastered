@@ -349,7 +349,20 @@ TEST_CASE("HZB prop bounds keep near-clipped, offscreen, missing and invalid geo
     SUBCASE("screen edge") { instance.modelMatrix[3] = 1.f; }
     SUBCASE("missing type") { instance.typeID = 1; }
     SUBCASE("not finite") { clip[0] = std::numeric_limits<float>::quiet_NaN(); }
-    SUBCASE("behind eye") { clip[15] = -1; }
     const auto projected = mc2hzb::project_prop(instance,clip,0,box,101,79,8);
     CHECK(projected.keep == 1);
+}
+
+TEST_CASE("HZB prop bounds wholly behind the eye are not force-kept") {
+    // intro-alpha-props-1: homogeneous rejection drops bounds whose every corner has w < 0
+    // (nothing can rasterize), so keep is 0 (not force-kept); near-plane straddlers stay kept (case above).
+    GpuStaticPropInstance instance{};
+    for (int i = 0; i < 4; ++i) instance.modelMatrix[i*5] = 1;
+    float clip[16] = {};
+    for (int i = 0; i < 4; ++i) clip[i*5] = 1;
+    clip[14] = .5f;
+    clip[15] = -1;
+    const mc2hzb::PropBounds box[] = {{{-.1f,-.1f,-.1f},{.1f,.1f,.1f},true}};
+    const auto projected = mc2hzb::project_prop(instance,clip,0,box,101,79,8);
+    CHECK(projected.keep == 0);
 }

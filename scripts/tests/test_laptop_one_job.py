@@ -16,11 +16,17 @@ import detached_job  # noqa: E402
 HEAD = "a" * 40
 
 
-def _fake_pc(monkeypatch, tmp_path, gate_verdict, sim_rc):
+SIM_ROWS = ["determinism-mc2_01", "determinism-mc2_03", "determinism-mc2_10", "determinism-mc2_24",
+            "saveload-mc2_03", "saveload-mc2_10"]
+
+
+def _fake_pc(monkeypatch, tmp_path, gate_verdict, sim_rc, diff_paths="mclib/movemgr.cpp"):
+    # 69ecfebc2: the default run adds the sim rows only when the diff is sim-sensitive (or promotes a mission),
+    # so the fake candidate diff names a sim-sensitive path unless a test says otherwise.
     calls = []
     monkeypatch.setattr(laptop_gate, "cooked_preflight", lambda: None)
     monkeypatch.setattr(laptop_gate, "PROOFS", tmp_path)
-    monkeypatch.setattr(laptop_gate.subprocess, "check_output", lambda *a, **k: HEAD + "\n")
+    monkeypatch.setattr(laptop_gate.subprocess, "check_output", lambda cmd, *a, **k: (diff_paths + "\0") if "diff" in cmd else HEAD + "\n")
     monkeypatch.setattr(laptop_gate.subprocess, "run", lambda *a, **k: SimpleNamespace(returncode=0))
     for name in ("provision", "seed", "seed_ref", "sync_mods", "sync_tree", "scp"):
         monkeypatch.setattr(laptop_gate, name, lambda *a, _n=name, **k: calls.append(_n))
@@ -43,9 +49,15 @@ def test_default_run_ends_with_sim_on_the_same_head(tmp_path, monkeypatch):
     calls = _fake_pc(monkeypatch, tmp_path, "PASS", 0)
     assert laptop_gate.pc_main(_args()) == 0
     sims = [c for c in calls if isinstance(c, tuple)]
-    assert sims == [("sim", "W", HEAD, [], False)]
+    assert sims == [("sim", "W", HEAD, SIM_ROWS, True)]   # sim-sensitive diff: the six rows, a/b pair
     assert calls.index("ssh RUN") < calls.index(sims[0])   # after the gate run, no second provision/push
     assert calls.count("provision") == 2   # pc_main's own two (bin-only + full); the sim step adds none
+
+
+def test_default_run_skips_sim_when_the_diff_is_not_sim_sensitive(tmp_path, monkeypatch):
+    calls = _fake_pc(monkeypatch, tmp_path, "PASS", 0, diff_paths="docs/README.md")
+    assert laptop_gate.pc_main(_args()) == 0
+    assert not [c for c in calls if isinstance(c, tuple)]
 
 
 def test_red_sim_fails_the_run_and_red_gate_skips_sim(tmp_path, monkeypatch):

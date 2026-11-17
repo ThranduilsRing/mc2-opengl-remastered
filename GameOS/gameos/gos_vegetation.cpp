@@ -30,6 +30,7 @@ auto cell(const GosVegetation::Instance& i) {
     return std::pair{static_cast<int>(std::floor(i.x/128.0f)),static_cast<int>(std::floor(i.y/128.0f))};
 }
 std::vector<uint32_t> visibility(1024, 2u);
+uint32_t visibilityBlocks = 1024, footprintCount = 0;
 bool initialized = false, atlasReady = false, summaryEmitted = false;
 uint32_t peak = 0;
 int frameDraws = 0, sessionDraws = 0;
@@ -260,7 +261,12 @@ void GosVegetation::uploadInstances(const Instance* data, uint32_t count) {
     }
 }
 void GosVegetation::setBlockVisibility(const uint32_t* data, uint32_t count) {
-    if (data && count) visibility.assign(data, data+count);
+    visibilityBlocks = count;
+    visibility.assign(data, data + count);
+}
+void GosVegetation::setUnitFootprints(std::span<const Footprint> data) {
+    footprintCount = static_cast<uint32_t>(data.size());
+    packUnitFootprints(visibility, visibilityBlocks, data);
 }
 void GosVegetation::flush(float lx, float ly, float lz, float lw, float time,
     float cx, float cy, float cz, float halfMap, float blockSide, int chunkSide) {
@@ -291,6 +297,7 @@ void GosVegetation::flush(float lx, float ly, float lz, float lw, float time,
     cp.misc[2]=std::max(lz,0.0f);
     cp.misc[3]=time;
     cp.grid[0]=halfMap; cp.grid[1]=blockSide;
+    cp.grid[2]=static_cast<float>(visibilityBlocks); cp.grid[3]=static_cast<float>(footprintCount);
     cp.counts[3]=chunkSide>0 ? static_cast<uint32_t>(chunkSide) : 0u;
     cp.flags[0]=force ? 1u : 0u;
     cp.flags[2]=trimCards ? 1u : 0u;

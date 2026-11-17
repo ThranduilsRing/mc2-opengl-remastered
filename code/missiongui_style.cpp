@@ -287,11 +287,11 @@ void MissionInterfaceManager::updateVTol()
     }
     if (!mc2::replay::active()) return;
     mc2::save::Archive state;
-    for (long i = 0; i < MAX_TEAMS; ++i) {
+    for (std::int32_t i = 0; i < MAX_TEAMS; ++i) {
         bool active = paintingVtol[i] && vTol[i] != nullptr;
         state(active);
         if (!active) continue;
-        auto recovered = mechToRecover[i] ? mechToRecover[i]->getWatchID() : 0;
+        std::uint32_t recovered = mechToRecover[i] ? mechToRecover[i]->getWatchID() : 0;
         state(i, vehicleID[i], vehicleDropped[i], mechRecovered[i], vTolTime[i],
               vPos[i].x, vPos[i].y, vPos[i].z, recovered, *vTol[i]->simulationAnimation());
     }

@@ -20,11 +20,13 @@
 #include "render_resource_owners.h"
 #include "mc2fmt.h"
 #include "command_replay.h"
+#include "net/runtime.h"
+#include "net/user_paths.h"
 #include "sim_tick_clock.h"
+#include "sim_speed.h"
 #include <algorithm>
 #include <cstdio>
 #include <vector>
-#include <thread>
 #include <chrono>
 
 #include "../GameOS/gameos/gos_dev_shell.h"
@@ -50,6 +52,27 @@ struct MissionOrderAccess {
     }
 };
 using MissionOrderApplication = mc2::sim::MoverOrderApplication<::TacticalOrder, MissionOrderAccess>;
+struct PeerAdmission final : mc2::sim::OrderAdmissionValidator {
+    Mission& owner;
+    explicit PeerAdmission(Mission& mission) : owner(mission) {}
+    bool permitted(const mc2::sim::OrderSource& source, const mc2::sim::OrderEnvelope& e) const override {
+        if (!mc2::net::active() || source.kind != mc2::sim::SourceKind::Peer ||
+            source.sourceId < mc2::net::peerSourceBase || source.sourceId >= mc2::net::peerSourceBase + 2) return false;
+        auto ui = source;
+        ui.kind = mc2::sim::SourceKind::UI;
+        const MissionOrderAccess access{owner};
+        const MissionOrderApplication application(access);
+        auto reason = access.validatePlayer(e);
+        for (std::uint32_t i = 0; !reason && i < e.recipients.size(); ++i)
+            reason = application.validateRecipient(e, e.recipients[i], i);
+        if (reason) {
+            mc2::fmt::print_err("Multiplayer live admission rejected: tick={} source={} sequence={} reason={}\n",
+                e.applyTick, e.sourceId, e.sequence, reason);
+            return false;
+        }
+        return application.permitted(ui, e);
+    }
+};
 static_assert(std::to_underlying(TACTICAL_ORDER_NONE) == 0 && std::to_underlying(TACTICAL_ORDER_STOP) == 11 && std::to_underlying(TACTICAL_ORDER_MOVETO_POINT) == 2);
 static_assert(std::to_underlying(TACTICAL_ORDER_TRAVERSE_PATH) == 6 && std::to_underlying(TACTICAL_ORDER_PATROL_PATH) == 7);
 static_assert(ORDER_ORIGIN_PLAYER == 0 && ORDER_ORIGIN_COMMANDER == 1);
@@ -63,6 +86,16 @@ GameObject* playerOrderTarget(mc2::sim::ObjectRef ref) {
 }
 std::uint32_t MissionOrderAccess::validatePlayer(const mc2::sim::OrderEnvelope& e) const {
     using namespace mc2::sim;
+    if (mc2::net::active()) {
+        if (e.sourceId < mc2::net::peerSourceBase || e.sourceId >= mc2::net::peerSourceBase + 2 ||
+            e.issuer != OrderIssuer{CommanderId{0}}) return static_cast<std::uint32_t>(MoverOrderRejection::Permission);
+        for (auto ref : e.recipients) {
+            auto* mover = resolve(ref);
+            if (!mover || mover->getTeamId() != 0 || mover->getCommanderId() != 0 ||
+                !mc2::net::owns(ref, e.sourceId - mc2::net::peerSourceBase))
+                return static_cast<std::uint32_t>(MoverOrderRejection::Permission);
+        }
+    }
     if (e.queueMode != QueueMode::Replace && e.queueMode != QueueMode::Append)
         return static_cast<std::uint32_t>(MoverOrderRejection::UnsupportedMode);
     if (e.payload.kind < OrderKind::Wait || e.payload.kind > OrderKind::Recover ||
@@ -386,6 +419,13 @@ std::expected<mc2::sim::MissionReceipt, mc2::sim::OrderError> Mission::submitMis
     std::uint64_t session, mc2::sim::OrderEnvelope envelope) {
     MissionOrderApplication application(MissionOrderAccess{*this});
     if (session != orderSession()) return std::unexpected(mc2::sim::OrderError::Permission);
+    if (mc2::net::active() && envelope.payload.origin == mc2::sim::OrderOrigin::Player) {
+        for (auto ref : envelope.recipients)
+            if (!mc2::net::owns(ref, mc2::net::localSlot())) return std::unexpected(mc2::sim::OrderError::Permission);
+        if (!mc2::net::submitLocal(std::move(envelope))) return std::unexpected(mc2::sim::OrderError::Permission);
+        // Network admission has no local receipt until both peers seal the batch.
+        return mc2::sim::MissionReceipt{session, 0};
+    }
     const auto result = mc2::replay::submit(orderIngress.queue(), std::move(envelope), application);
     if (!result) return std::unexpected(result.error());
     return mc2::sim::MissionReceipt{session, result->receiptId};
@@ -414,7 +454,7 @@ long Mission::submitPlayerOrder(Mover* mover, const ::TacticalOrder& legacy, boo
     const bool attacking = p.kind == OrderKind::AttackObject || p.kind == OrderKind::AttackPoint;
     const bool moving = (p.kind >= OrderKind::MoveToPoint && p.kind <= OrderKind::Guard) ||
         p.kind == OrderKind::Withdraw || p.kind == OrderKind::Scramble;
-    if (moving || attacking || p.kind == OrderKind::Wait) {
+    if (moving || attacking || p.kind == OrderKind::Wait || legacy.targetWID) {
         auto& m = p.move.emplace();
         const auto& old = legacy.moveParams;
         if (old.wayPath.numPoints < 0 || old.wayPath.numPoints > MAX_WAYPTS) return 1;
@@ -438,6 +478,13 @@ long Mission::submitPlayerOrder(Mover* mover, const ::TacticalOrder& legacy, boo
         auto* target = ObjectManager->getByWatchID(legacy.targetWID);
         if (!target || target->getPartId() <= 0) return 1;
         p.target = ObjectRef{static_cast<std::uint32_t>(target->getPartId()), static_cast<std::uint32_t>(target->getWatchID(false))};
+        // Target orders carry their approach speed in mode[0], even without
+        // legacy waypoints. Pair it with the target position for the queue.
+        if (p.move && p.move->wayPath.points.empty()) {
+            const auto position = target->getPosition();
+            p.move->wayPath.points.push_back({position.x, position.y, position.z});
+            p.move->wayPath.mode.push_back(static_cast<TravelMode>(legacy.moveParams.wayPath.mode[0]));
+        }
     }
     const auto admitted = submitMissionOrder(orderSession(), std::move(e));
     if (!admitted) mc2::fmt::print_err("[ORDER_INGRESS v1] player_rejected part={} reason={}\n",
@@ -458,32 +505,6 @@ bool Mission::tickBudgetSpent(uint64_t begin) {
 // mission_update.cpp, which is sim code and may not read the wall clock.
 double Mission::pollRealFrameSeconds(float harnessFrameSeconds) {
 	const bool firstFrame = (LastTimeGetTime == 0xffffffff);
-	// Diagnostic only: measure wall-paced ticks, optionally stalling the render
-	// scheduler for 200 ms every two seconds. Never perturb the harness clock.
-	static const int probe = mc2::gate::get<"MC2_SIM_RATE_PROBE">();
-	if (probe && !SmokeMode::fixedTimestepEnabled()) {
-		using Clock = std::chrono::steady_clock;
-		static auto started = Clock::now(), stalled = started;
-		static long firstTurn = turn;
-		if (firstFrame || turn < firstTurn) {
-			started = stalled = Clock::now();
-			firstTurn = turn;
-		}
-		if (probe == 2 &&
-		    std::chrono::duration<double>(Clock::now() - stalled).count() >= 2.0) {
-			stalled = Clock::now();
-			std::this_thread::sleep_for(std::chrono::milliseconds(200));
-		}
-		const double elapsed = std::chrono::duration<double>(Clock::now() - started).count();
-		if (elapsed >= 10.0) {
-			const long ticks = turn - firstTurn;
-			mc2::fmt::print_out("[SIM_RATE v1] mode={} real_s={:.6f} ticks={} ticks_per_s={:.4f} lost_s_per_min={:.4f}\n",
-				probe, elapsed, ticks, ticks / elapsed, 60.0 * (1.0 - ticks / (30.0 * elapsed)));
-			std::fflush(stdout);
-			started = Clock::now();
-			firstTurn = turn;
-		}
-	}
 	const DWORD now = timeGetTime();
 	const double seconds = SmokeMode::fixedTimestepEnabled() ? static_cast<double>(harnessFrameSeconds)
 		: (firstFrame ? 0.0 : static_cast<double>(now - LastTimeGetTime) / 1000.0);
@@ -615,27 +636,23 @@ bool Mission::runOrderIngressFixture() {
 }
 
 
-static float simSpeedClamp(float v)
-{
-	v = std::clamp(v, 0.25f, 4.0f);
-	return v;
-}
-
 static float s_simSpeedRuntime = -1.0f;   // < 0 = unseeded (read env on first use)
 
 float simSpeedGetMultiplier()
 {
+    if (mc2::net::active()) return 1.0f;
 	if (s_simSpeedRuntime < 0.0f)
 	{
 		s_simSpeedRuntime = mc2::gate::get<"MC2_SIM_SPEED">();   // the row clamps to [0.25, 4]
 	}
-	return s_simSpeedRuntime;
+	return mc2::sim::speedEffective(s_simSpeedRuntime, mc2::net::active());
 }
 
 void simSpeedSetMultiplier(float v)
 {
+    if (mc2::net::active()) return;
 	const float prev = simSpeedGetMultiplier();
-	s_simSpeedRuntime = simSpeedClamp(v);
+	s_simSpeedRuntime = mc2::sim::speedSet(s_simSpeedRuntime, v, mc2::net::active());
 	mc2::fmt::print_err("[SIM-SPEED v1] multiplier={:.2f} (was {:.2f})\n", static_cast<double>(s_simSpeedRuntime), static_cast<double>(prev));
 	fflush(stderr);
 }
@@ -949,6 +966,27 @@ extern long NumGameObjectsToDisplay;
 
 void Mission::start (void)
 {
+	if (mc2::net::active()) {
+        std::vector<mc2::sim::ObjectRef> roster;
+        std::vector<std::uint32_t> watchIds;
+        for (long i = 0; i < ObjectManager->getNumMovers(); ++i) {
+            auto* mover = ObjectManager->getMover(i);
+            if (mover->getTeamId() != 0 || mover->getCommanderId() != 0) continue;
+            const auto binding = std::ranges::find(orderRecipients, mover, &OrderRecipientBinding::mover);
+            if (binding != orderRecipients.end() && resolveOrderRecipient(binding->ref)) {
+                roster.push_back(binding->ref);
+                watchIds.push_back(mover->getWatchID(false));
+            }
+        }
+        mc2::net::setRoster(std::move(roster), std::move(watchIds));
+        mc2::net::bindQueue(orderIngress.queue(), std::make_unique<PeerAdmission>(*this),
+            [this](mc2::sim::OrderEnvelope envelope) { return submitMissionOrder(orderSession(), std::move(envelope)).has_value(); },
+            [](std::uint32_t part) -> std::optional<mc2::sim::ObjectRef> {
+                auto* target = ObjectManager->findByPartId(part);
+                if (!target || !target->getExists() || target->isDestroyed()) return {};
+                return mc2::sim::ObjectRef{part, static_cast<std::uint32_t>(target->getWatchID(false))};
+            });
+    }
 	active = true;
 	mission_phase_mark("mission_ready");
 	mission_phase_report(); // LOAD-PHASE-FACTS-1: emit consolidated [LOAD_PHASES v1] line
@@ -1277,7 +1315,7 @@ long Mission::setObjectiveTimer (long objectiveNum, float timeLeft)
 //----------------------------------------------------------------------------------
 float Mission::checkObjectiveTimer (long objectiveNum)
 {
-	gosASSERT((objectiveNum >= 0) || objectiveNum < static_cast<long>(numObjectives));
+	gosASSERT((objectiveNum >= 0) && objectiveNum < static_cast<long>(numObjectives));
 
 	long timerNumber = OBJECTIVE_1_TIMER + objectiveNum;
 	unsigned long timeLeft = 0;
@@ -1293,7 +1331,7 @@ float Mission::checkObjectiveTimer (long objectiveNum)
 //----------------------------------------------------------------------------------
 long Mission::setObjectiveStatus (long objectiveNum, ObjectiveStatus status)
 {
-	gosASSERT((objectiveNum >= 0) || objectiveNum < static_cast<long>(numObjectives));
+	gosASSERT((objectiveNum >= 0) && objectiveNum < static_cast<long>(numObjectives));
 	
 	if (objectives)
 		objectives[objectiveNum].status = status;
@@ -1362,7 +1400,7 @@ ObjectiveStatus Mission::checkObjectiveStatus (long objectiveNum)
 //----------------------------------------------------------------------------------
 long Mission::setObjectiveType (long objectiveNum, ObjectiveType type)
 {
-	gosASSERT((objectiveNum >= 0) || objectiveNum < static_cast<long>(numObjectives));
+	gosASSERT((objectiveNum >= 0) && objectiveNum < static_cast<long>(numObjectives));
 
 	if (objectives)
 		objectives[objectiveNum].type = type;
@@ -1373,7 +1411,7 @@ long Mission::setObjectiveType (long objectiveNum, ObjectiveType type)
 //----------------------------------------------------------------------------------
 ObjectiveType Mission::checkObjectiveType (long objectiveNum)
 {
-	gosASSERT((objectiveNum >= 0) || objectiveNum < static_cast<long>(numObjectives));
+	gosASSERT((objectiveNum >= 0) && objectiveNum < static_cast<long>(numObjectives));
 		
 	ObjectiveType result = PrimaryGoal;
 	
@@ -1386,7 +1424,7 @@ ObjectiveType Mission::checkObjectiveType (long objectiveNum)
 //----------------------------------------------------------------------------------
 void Mission::setObjectivePos (long objectiveNum, float realX, float realY, float realZ)
 {
-	gosASSERT((objectiveNum >= 0) || objectiveNum < static_cast<long>(numObjectives));
+	gosASSERT((objectiveNum >= 0) && objectiveNum < static_cast<long>(numObjectives));
 		
 	if (objectives)
 	{

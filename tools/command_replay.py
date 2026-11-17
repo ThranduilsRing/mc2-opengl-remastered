@@ -55,7 +55,8 @@ def run(args, label: str, extra: dict[str, str], expect: str) -> dict:
                MC2_RNG_SEED=str(args.seed), MC2_REPLAY_CONTENT=args.content,
                MC2_SMOKE_REQUIRE_FINGERPRINT="1", MC2_MISSION_SPLIT="1")
     env.update(extra)
-    command = [sys.executable, str(ROOT / "scripts/run_smoke.py"), "--exe", str(args.install / "mc2.exe"),
+    executable = args.install / ("mc2.exe" if sys.platform == "win32" else "mc2")
+    command = [sys.executable, str(ROOT / "scripts/run_smoke.py"), "--exe", str(executable),
                "--mission", args.mission, "--duration", str(args.duration), "--keep-logs"]
     result = subprocess.run(command, cwd=ROOT, env=env, capture_output=True, text=True,
                             errors="replace", **console_child.child_kwargs(redirected=True))

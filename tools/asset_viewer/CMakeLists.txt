@@ -48,6 +48,7 @@ add_library(mc2_tglloader STATIC
     "${CMAKE_SOURCE_DIR}/mclib/tgl_types.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/cident.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/mathfunc.cpp"
+    "${CMAKE_SOURCE_DIR}/3rdparty/detmath/openlibm.cpp"
     "${CMAKE_SOURCE_DIR}/GameOS/src/platform_str.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/file.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/vfs.cpp"

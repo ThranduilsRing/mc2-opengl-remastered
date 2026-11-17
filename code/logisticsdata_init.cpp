@@ -8,6 +8,8 @@
 #include "content_error.h"
 #include "../GameOS/gameos/diagnostic_trace.h"
 #include "package_chassis.h"
+#include "../GameOS/gameos/gos_render.h"
+#include "../GameOS/gameos/loading_pump_meter.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 
 #include <chrono>
@@ -194,6 +196,31 @@ void LogisticsData::initComponents()
 
 	// EQUIP-ADD-FILL-1 (S2): second consumer of the ADD pass -- the filled rows
 	// are NOT in compbas.csv, so append them here too (gate OFF -> empty list).
+	// Cold logistics constructs variants before Mission::init. Materialize ADD
+	// rows now using the same table, sensor scale and overlay order as missions.
+	// Without an ADD-enabled package (or explicit legacy gates), stock is untouched.
+	const bool equipmentAdd = equipmentPackageAccessAllowed(
+		mc2UnitProfileDataEnabled() && mc2EquipmentAddEnabled(),
+		ModCapabilityMounted("equipment_add"),
+		mc2::gate::state<"MC2_EQUIPMENT_ADD">() == mc2::gate::Tri::Off);
+	if (equipmentAdd && !MasterComponent::masterList)
+	{
+		FullPathFileName gameSystemPath;
+		gameSystemPath.init(missionPath, "gamesys", ".fit");
+		FitIniFile gameSystem;
+		float sensorRange = 0.0f;
+		if (gameSystem.open(gameSystemPath) != NO_ERR ||
+			gameSystem.seekBlock("General") != NO_ERR ||
+			gameSystem.readIdFloat("BaseSensorRange", sensorRange) != NO_ERR)
+			STOP(("LogisticsData::initComponents: missing BaseSensorRange in %s", static_cast<const char*>(gameSystemPath)));
+		if (MasterComponent::loadMasterList(componentPath, 255, sensorRange) != NO_ERR)
+			STOP(("LogisticsData::initComponents: unable to load %s", componentPath));
+		overlayGeneratedEquipmentStatsIfEnabled();
+		applyEquipmentAddFillIfEnabled(sensorRange);
+		buildAndDumpEquipmentRegistryIfEnabled();
+		dumpFireExecutorProofIfEnabled();
+	}
+
 	appendEquipmentAddFillComponents();
 }
 
@@ -327,6 +354,8 @@ static bool readCsvFileName( CSVFile& f, int row, char* out, size_t cap )
 
 void LogisticsData::initVariants()
 {
+	graphics::begin_variant_load();
+	struct PumpReport { ~PumpReport() { graphics::end_variant_load(); } } pumpReport;
 	char variantPath[256];
 	strcpy( variantPath, artPath );
 	strcat( variantPath, "buildings.csv" );
@@ -366,12 +395,14 @@ void LogisticsData::initVariants()
 		int chassisId;
 		LogisticsChassis* chassis = nullptr;
 		std::vector<std::unique_ptr<LogisticsVariant>> varList;
+		bool package = false;
 	};
 	std::vector<MechJob> mechJobs;
 
 	int i = 1;
 	while( true )
 	{
+		graphics::pump_loading_events();
 		long fitID;
 		long nameID = 0;
 		variantFile.readLong( i, 3, nameID );
@@ -461,6 +492,7 @@ void LogisticsData::initVariants()
 		std::string csvPath = std::string(objectPath) + pc.stem + ".csv";
 		for (char& ch : csvPath) ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
 		mechJobs.push_back({ csvPath, pc.objTypeNum, pc.scale, chassisID++ });
+		mechJobs.back().package = true;
 	}
 
 	// The mech CSVs are parsed on this thread, one after another. WHY: a FastFile archive reads through one shared FILE*
@@ -468,9 +500,22 @@ void LogisticsData::initVariants()
 	// seek and read. Under host load a chassis file then failed to parse, its variants were missing, and every mech of that
 	// variant got the 10 C-Bill fallback in Mech::init (mc2_16 save, BUGS-FOUND-FIXED).
 	const auto parseStart = std::chrono::steady_clock::now();
+	using Clock = std::chrono::steady_clock;
+	struct ParseLaps { Clock::duration open{}, chassis{}, variants{}, maxStep{}; int files = 0; };
+	ParseLaps laps[2]; // Stock and package timings remain separately attributable.
+	auto& pumpScope = mc2::loadpump::meter.variants;
+	pumpScope.mark(SDL_GetTicks64(), "initVariants.parse");
 	for (auto& job : mechJobs) {
+		auto& lap = laps[job.package ? 1 : 0];
+		++lap.files;
+		graphics::pump_loading_events();
+		const auto openStart = Clock::now();
 		CSVFile mechFile;
-		if (const long openResult = mechFile.open(job.path.c_str()); openResult != NO_ERR)
+		const long openResult = mechFile.open(job.path.c_str());
+		const auto chassisStart = Clock::now();
+		lap.open += chassisStart - openStart;
+		lap.maxStep = std::max(lap.maxStep, chassisStart - openStart);
+		if (openResult != NO_ERR)
 		{
 			MC2_LOG(Io, Warn, "logistics: mech file {} did not open (error {:#x}); its chassis and variants are skipped", job.path, static_cast<unsigned long>(openResult));
 			continue;
@@ -480,11 +525,16 @@ void LogisticsData::initVariants()
 		job.chassis->init(&mechFile, job.chassisId);
 		job.chassis->setFitID(job.fitID);
 		job.chassis->setScale(job.scale);
+		const auto variantStart = Clock::now();
+		lap.chassis += variantStart - chassisStart;
+		lap.maxStep = std::max(lap.maxStep, variantStart - chassisStart);
 
 		int row = 23;
 		char buffer[256];
 		int varCount = 0;
 		while (NO_ERR == mechFile.readString(row, 2, buffer, 256)) {
+			graphics::pump_loading_events();
+			const auto singleVariantStart = Clock::now();
 			auto pVariant = std::make_unique_for_overwrite<LogisticsVariant>();
 			if (0 == pVariant->init(&mechFile, job.chassis, varCount))
 				job.varList.push_back(std::move(pVariant));
@@ -494,11 +544,22 @@ void LogisticsData::initVariants()
 			}
 			varCount++;
 			row += 97;
+			lap.maxStep = std::max(lap.maxStep, Clock::now() - singleVariantStart);
 		}
+		lap.variants += Clock::now() - variantStart;
 	}
 	// One line per load: the serial parse is on the startup (or first mech-bay) path, so its cost stays visible.
 	MC2_LOG(Io, Info, "logistics: parsed {} mech files in {} ms", mechJobs.size(),
 		std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - parseStart).count());
+	if (mc2_diag::tagRequested("MECH_PARSE")) for (int group = 0; group < 2; ++group) {
+		const auto& lap = laps[group];
+		MC2_LOG(Io, Info, "[MECH_PARSE v1] kind={} files={} open_ms={} chassis_ms={} variant_ms={} max_step_ms={}",
+			group ? "package" : "stock", lap.files,
+			std::chrono::duration_cast<std::chrono::milliseconds>(lap.open).count(),
+			std::chrono::duration_cast<std::chrono::milliseconds>(lap.chassis).count(),
+			std::chrono::duration_cast<std::chrono::milliseconds>(lap.variants).count(),
+			std::chrono::duration_cast<std::chrono::milliseconds>(lap.maxStep).count());
+	}
 
 	// Serial merge in original buildings.csv order.
 	for (auto& job : mechJobs) {

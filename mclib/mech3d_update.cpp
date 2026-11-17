@@ -546,7 +546,7 @@ long Mech3DAppearance::update (bool animate)
 
 		leftArm->SetFogRGB(0xffffffff);
 		leftArm->TransformMultiShape_HierarchyOnly(&xlatPosition,&qRotation);
-		leftArm->ReserveCpuDraw();
+		poseArmForDraw(leftArm);
 			
 		if (leftArmSmoke)
 		{
@@ -623,7 +623,7 @@ long Mech3DAppearance::update (bool animate)
 
 		rightArm->SetFogRGB(0xffffffff);
 		rightArm->TransformMultiShape_HierarchyOnly(&xlatPosition,&qRotation);
-		rightArm->ReserveCpuDraw();
+		poseArmForDraw(rightArm);
 		
 		if (rightArmSmoke)
 		{

@@ -42,6 +42,13 @@ namespace static_light_row {
 // ("sentinel; flush() patches per-frame").
 static const uint32_t kNoLightIndex = 0xFFFFFFFFu;
 
+// Only the baked prefix survives a frame reset. A still-in-range dynamic index
+// can already belong to another actor, so table count is not a freshness test.
+inline bool needsResubmit(uint32_t index, uint32_t bakedEnd, uint32_t cachedFrame, uint32_t frame)
+{
+    return index >= bakedEnd && cachedFrame != frame;
+}
+
 enum class Class {
     kHealthy    = 0,  // a real, baked, in-range row
     kSentinel   = 1,  // index is kNoLightIndex -> int(-1) -> OOB read -> zeros

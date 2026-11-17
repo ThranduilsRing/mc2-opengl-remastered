@@ -11,6 +11,7 @@
 
 #include "weaponbolt_internal.h"
 #include "soft_splash.h"
+#include "carnage.h"
 #include "gvehicl.h"
 #include "warrior.h"
 #include "../mclib/cmponent.h"
@@ -351,6 +352,8 @@ bool WeaponBolt::isVisible (void)
 void WeaponBolt::traceCombat(std::string_view event, std::string_view reason,
                               GameObjectPtr target, const WeaponShotInfo* shot)
 {
+    void mc2EquipmentProbeEvent(std::string_view event, unsigned long target);
+    mc2EquipmentProbeEvent(event, target ? target->getWatchID(false) : 0);
     combatTrace.write("bolt", getHandle(), turn, event, reason, position,
         [this] { return getFlag(OBJECT_FLAG_JUSTCREATED) ? nullptr : &laserPosition; }, target, shot);
 }
@@ -394,7 +397,23 @@ void WeaponBolt::armRetireDeadline()
             policy.ticks ? std::format("{}", *policy.ticks) : std::string("null")));
 }
 
-// Only the authoritative side submits damage; its trace must precede the target's response.
+// Each projectile owns its share of the rack damage and can be intercepted independently.
+void WeaponBolt::splitSalvo(GameObjectPtr source, GameObjectPtr dest, long sourceHS, long targetHS)
+{
+	if (weaponShot.masterId < 0) return;
+	auto& component = MasterComponent::masterList[weaponShot.masterId];
+	if (component.getForm() != COMPONENT_FORM_WEAPON_MISSILE || component.isDefensiveWeapon()) return;
+	const long count = component.getWeaponAmmoAmount();
+	if (count <= 1) return;
+	weaponShot.damage /= static_cast<float>(count);
+	for (long round = 1; round < count; ++round) {
+		auto* bolt = ObjectManager->createWeaponBolt(effectId);
+		if (!bolt) break;
+		if (dest) bolt->connect(source, dest, &weaponShot, sourceHS, targetHS, false);
+		else bolt->connect(source, *targetPosition, &weaponShot, sourceHS, false);
+	}
+}
+
 void WeaponBolt::submitDamage(GameObjectPtr target)
 {
     if (MPlayer) {
@@ -547,7 +566,7 @@ void WeaponBolt::Save (PacketFilePtr file, long packetNum)
 	MC2_SAVE_STRUCT(WeaponBoltData, data);
 	CopyTo(&data);
 
-	auto bytes = mc2::save::encodeTaggedRecord(mc2::save::WeaponBoltRecord{data}, mc2::save::weaponBoltTag);
+	auto bytes = mc2::save::encodeTaggedRecord(mc2::save::WeaponBoltRecord{data, aimedTargetWID}, mc2::save::weaponBoltTag);
 	if (bytes.empty()) Fatal(0, "Invalid bolt ObjectSlot");
 	file->writePacket(packetNum, bytes.data(), static_cast<unsigned int>(bytes.size()), STORAGE_TYPE_ZLIB);
 }
@@ -601,11 +620,12 @@ void WeaponBolt::CopyTo (WeaponBoltData *data)
 }
 
 //---------------------------------------------------------------------------
-void WeaponBolt::Load (WeaponBoltData *data)
+void WeaponBolt::Load (WeaponBoltData *data, GameObjectWatchID savedAimedTarget)
 {
 	// All supported save versions use the same reserved handle slots. Ignore
 	// legacy nonzero values; init resolved this bolt type's textures for this run.
 	GameObject::Load(data); 
+	aimedTargetWID = savedAimedTarget;
 
 	ownerWID = data->ownerWID;
 	hotSpotNumber = data->hotSpotNumber;
@@ -655,8 +675,8 @@ void WeaponBolt::Load (WeaponBoltData *data)
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
 // Successful gated area-effect aimed shots retain weaponShot.hitLocation in single-player;
-// ordinary position-bolt explosions randomize the location. Multiplayer keeps stock splash.
-bool WeaponBolt::deliverAimedAreaHit (void)
+// Only that target is excluded from the blast; neighbours keep stock splash.
+bool WeaponBolt::deliverAimedAreaHit (CarnagePtr explosion)
 {
 	if (!aimedTargetWID)
 		return false;
@@ -672,6 +692,8 @@ bool WeaponBolt::deliverAimedAreaHit (void)
 		return false;
 
 	traceCombat("damage", "aimed_area", aimedTarget, &weaponShot);
+	// This existing exclusion is saved with the explosion, including its delay.
+	if (explosion) explosion->setCollisionFreeFromWID(tgtWID);
 	aimedTarget->handleWeaponHit(&weaponShot);
 	return true;
 }
@@ -691,7 +713,8 @@ void WeaponBolt::finishNow (void)
         mc2::tick::releaseEffect(gosEffect);
         mc2::tick::releaseLight(pointLight, eye, lightId);
 		GameObjectPtr target = ObjectManager->getByWatchID(targetWID);
-		if (target)
+		if (target && !((static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectDmg > 0.0f &&
+			(static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectRad > 0.0f))
 		{
 			submitDamage(target);
 		}
@@ -700,17 +723,17 @@ void WeaponBolt::finishNow (void)
 			((static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectDmg > 0.0f) &&
 			((static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectRad > 0.0f))
 		{
-			// Aimed-hit explosions stay cosmetic to avoid duplicate damage.
-			float areaDmg = (static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectDmg;
-			if (deliverAimedAreaHit())
-				areaDmg = 0.0f;
+			// The located target takes one hit; the explosion still damages neighbours.
+			float areaDmg = weaponShot.masterId >= 0 && MasterComponent::masterList[weaponShot.masterId].getForm() == COMPONENT_FORM_WEAPON_MISSILE
+				? weaponShot.damage : (static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectDmg;
 
 			//Create the explosion here.  HIT or MISS, its the same one!!
 			// Damage is done by explosion NOT by hit!
-			ObjectManager->createExplosion((static_cast<WeaponBoltTypePtr>(getObjectType()))->hitEffectObjNum,
+			auto* explosion = ObjectManager->createExplosion((static_cast<WeaponBoltTypePtr>(getObjectType()))->hitEffectObjNum,
 											nullptr,*targetPosition,
 											areaDmg,
 											(static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectRad);
+			deliverAimedAreaHit(explosion);
 		}
 
 		applySoftSplash(target ? target->getPosition() : (targetPosition ? *targetPosition : position), targetWID);

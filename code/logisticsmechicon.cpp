@@ -40,6 +40,7 @@ LogisticsMechIcon& LogisticsMechIcon::operator =( const LogisticsMechIcon& src )
 		chassisName = src.chassisName;
 		iconConnector = src.iconConnector;
 		icon = src.icon;
+		hudArt = src.hudArt;
 		pilotIcon = src.pilotIcon;
 		outline = src.outline;
 		for ( int i = 0; i < ICON_ANIM_COUNT; i++ )
@@ -129,7 +130,7 @@ void LogisticsMechIcon::setMech( LogisticsMech* pNewMech )
 
 	if ( pMech )
 	{
-        unit_icons::apply(icon, s_pTemplateIcon->icon, pMech->getIconIndex(), pMech->getFileName().c_str());
+        hudArt = unit_icons::apply(icon, s_pTemplateIcon->icon, pMech->getIconIndex(), pMech->getFileName().c_str());
 
 		chassisName.setText( pMech->getChassisName() );
 
@@ -200,7 +201,7 @@ void LogisticsMechIcon::renderObject( aObject& obj, long animIndex, long xOffset
 		color = animations[animIndex].getCurrentColor(animations[animIndex].getState());
 	}
 
-	obj.setColor( color );
+	obj.setColor( unit_icons::logisticsIconColor(&obj == &icon && hudArt, color) );
 	obj.render( xOffset, yOffset );
 }
 

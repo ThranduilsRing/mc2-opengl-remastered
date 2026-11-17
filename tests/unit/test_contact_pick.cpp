@@ -4,6 +4,7 @@
 #include "../../mclib/contact_visibility.h"
 #include "../../mclib/pick_occlusion.h"
 #include <filesystem>
+#include "../../code/pick_query.h"
 #include <fstream>
 #include <iterator>
 
@@ -228,4 +229,92 @@ TEST_CASE("contact pick: first ridge wins over the fixed point far valley")
     const double vertical[3] = {0, 0, -1};
     REQUIRE(mc2::firstTerrainHit(origin, vertical, lo, hi, 0.125, height, t));
     CHECK(t == doctest::Approx(10));
+}
+
+TEST_CASE("pick stack: enemy mover under a tree canopy beats the nearer tree and prop")
+{
+    using mc2::PickRank;
+    // Cursor ray enters a huge island-tree box (t=5) and a prop (t=6) before the enemy mech (t=40).
+    const PickRank tree{false, 5.0, 4, 10}, prop{false, 6.0, 1, 11}, enemy{true, 40.0, 0, 99};
+    CHECK(mc2::pickStackBefore(enemy, tree));
+    CHECK(mc2::pickStackBefore(enemy, prop));
+    CHECK_FALSE(mc2::pickStackBefore(tree, enemy));
+    // Unit in the open (no scenery on the ray): unchanged, mover is the only candidate.
+    CHECK_FALSE(mc2::pickStackBefore(enemy, enemy));
+    // Friendly and enemy movers: depth then priority, as before.
+    const PickRank friendlyNear{true, 20.0, 2, 5}, enemyFar{true, 40.0, 0, 6};
+    CHECK(mc2::pickStackBefore(friendlyNear, enemyFar));
+    CHECK(mc2::pickStackBefore(PickRank{true, 20.0, 0, 7}, PickRank{true, 20.0, 2, 5}));
+    // An ineligible mover (unseen contact) does not outrank a visible static object.
+    CHECK(mc2::pickStackBefore(PickRank{false, 6.0, 1, 11}, PickRank{false, 40.0, 0, 3}));
+}
+
+TEST_CASE("pick stack: a unit the cursor hits outranks a farther-forgiven-but-nearer one")
+{
+    using mc2::PickRank;
+    // Grazing view: A stands in front (t=100) and is only reached by padded-rect forgiveness; B (t=140) is hit exactly.
+    const PickRank forgivenNear{true, 100.0, 0, 1, true}, exactFar{true, 140.0, 2, 2, false};
+    CHECK(mc2::pickStackBefore(exactFar, forgivenNear));
+    CHECK_FALSE(mc2::pickStackBefore(forgivenNear, exactFar));
+    // Two exact (or two forgiven) hits still resolve by depth.
+    CHECK(mc2::pickStackBefore(PickRank{true, 100.0, 2, 1, false}, PickRank{true, 140.0, 0, 2, false}));
+    CHECK(mc2::pickStackBefore(PickRank{true, 100.0, 2, 1, true}, PickRank{true, 140.0, 0, 2, true}));
+    // Scenery stays behind any eligible mover, forgiven or not.
+    CHECK(mc2::pickStackBefore(forgivenNear, PickRank{false, 5.0, 1, 3, false}));
+}
+
+TEST_CASE("pick occlusion: a mover slightly behind the visual surface at its feet is still pickable")
+{
+    // Observed on mc2_01: object_t 1318.7 vs terrain_t 1313.1 for a visible enemy under the cursor.
+    CHECK_FALSE(mc2::pickBeforeSurface(1318.7, 1313.1));
+    const double lo[3] = {-5, -10, 0}, hi[3] = {5, 10, 20};
+    const double feet[3] = {0, 0, 1}, ridge[3] = {-20, 0, 1};
+    CHECK(mc2::pickMoverBeforeSurface(1318.7, 1313.1, feet, lo, hi));
+    CHECK_FALSE(mc2::pickMoverBeforeSurface(1400.0, 1313.1, feet, lo, hi));
+    // Regression: the old diagonal slack accepted t=120 behind a ridge at t=100.
+    CHECK_FALSE(mc2::pickMoverBeforeSurface(120, 100, ridge, lo, hi));
+    CHECK(mc2::pickMoverBeforeSurface(99, 100, ridge, lo, hi));
+    const double sideRidge[3] = {0, 11, 1};
+    CHECK_FALSE(mc2::pickMoverBeforeSurface(120, 100, sideRidge, lo, hi));
+}
+
+TEST_CASE("contact pick: attack through trees, repair and disabled capture at four camera yaws")
+{
+    struct Vec { double x, y, z; };
+    for (int scenario = 0; scenario < 3; ++scenario) {
+        const char* action = scenario == 0 ? "attack through trees" : scenario == 1 ? "repair own mech" : "capture disabled Starslayer";
+        CAPTURE(action);
+        const Vec authoredLo{-8, -12, 0}, authoredHi{8, 12, scenario == 2 ? 8.0 : 60.0};
+        const auto lo = mc2::pickBoundsInMc2(true, authoredLo), hi = mc2::pickBoundsInMc2(true, authoredHi);
+        const double lower[3] = {lo.x, lo.y, lo.z}, upper[3] = {hi.x, hi.y, hi.z};
+        const auto oldLo = mc2::pickBoundsInMc2(false, authoredLo), oldHi = mc2::pickBoundsInMc2(false, authoredHi);
+        const double wrongLo[3] = {oldLo.x, oldLo.y, oldLo.z}, wrongHi[3] = {oldHi.x, oldHi.y, oldHi.z};
+        const double yawDirections[4][2] = {{0, -1}, {1, 0}, {0, 1}, {-1, 0}};
+        for (int yaw = 0; yaw < 4; ++yaw) {
+            CAPTURE(yaw * 90);
+            const auto& d = yawDirections[yaw];
+            const double origin[3] = {100*d[0], 100*d[1], hi.z*0.65+50}, ray[3] = {-d[0], -d[1], -0.5};
+            double mechT;
+            REQUIRE(mc2::pickBoxHit(origin, ray, lower, upper, mechT));
+            const double feet[3] = {6*d[0], 6*d[1], 0};
+            REQUIRE(mc2::pickMoverBeforeSurface(mechT, mechT-1, feet, lower, upper));
+            // Old positive-Y footprint fails at0 degrees, succeeds after90: view-dependent rejection.
+            CHECK(mc2::pickMoverBeforeSurface(mechT, mechT-1, feet, wrongLo, wrongHi) == (yaw != 0));
+            const double ridge[3] = {30*d[0], 30*d[1], 0};
+            CHECK_FALSE(mc2::pickMoverBeforeSurface(mechT, mechT-1, ridge, lower, upper));
+            const mc2::PickRank mech{true, mechT, scenario == 2 ? 3 : scenario, 1};
+            const mc2::PickRank* hover = nullptr;
+            mc2::pick::refreshHover(false, hover, [] {}, [&] {
+                if (scenario == 0) {
+                    const double treeLo[3] = {50*d[0]-20, 50*d[1]-20, 0}, treeHi[3] = {50*d[0]+20, 50*d[1]+20, 100};
+                    double treeT;
+                    REQUIRE(mc2::pickBoxHit(origin, ray, treeLo, treeHi, treeT));
+                    REQUIRE(treeT < mechT);
+                    CHECK(mc2::pickStackBefore(mech, mc2::PickRank{false, treeT, 4, 2}));
+                }
+                return &mech;
+            });
+            CHECK(hover == &mech);
+        }
+    }
 }

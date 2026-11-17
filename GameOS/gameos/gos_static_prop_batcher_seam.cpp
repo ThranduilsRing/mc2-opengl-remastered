@@ -611,8 +611,8 @@ uint32_t batcher_getCoalesceFrameSlot() { return s_coalesceFrameSlot; }  // diag
 
 void batcher_getStaticPropOpaqueDebugState(StaticPropOpaqueDebugState* out) {
     if (!out) return;
-    out->snapshotDispatchDefault     = !s_v6Disarmed;
-    out->legacyDispatch              = s_v6Disarmed;
+    out->snapshotDispatchDefault     = true;
+    out->legacyDispatch              = false;
     out->materialGpuEnabled          = s_materialGpuEnabled;
     out->materialGpuSample           = s_materialGpuSampleEnabled;
     out->iblShEnabled                = iblShEnabled();
@@ -775,5 +775,12 @@ bool mc2PeekStaticPropTypeInfo(uint32_t typeID, const char** outName, int* outAl
     if (outName && t.source)
         *outName = const_cast<TG_TypeShape*>(t.source)->getNodeId();
     if (outAlphaClass) *outAlphaClass = static_cast<int>(t.alphaClass);
+    return true;
+}
+
+bool mc2PeekStaticPropTreeCanopy(uint32_t typeID, float out[3])
+{
+    if (typeID >= s_types.size() || s_types[typeID].treeCanopy[1] <= 0.0f) return false;
+    for (int i = 0; i < 3; ++i) out[i] = s_types[typeID].treeCanopy[i];
     return true;
 }

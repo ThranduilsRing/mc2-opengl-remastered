@@ -1,7 +1,9 @@
 // BattleMech: BattleMech::update, render, renderShadows, hit-location and ejection helpers.
 // Declared in the class headers; shared names in mech_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
+#include "math/sim_math.h"
 #include "mech_internal.h"
+#include "water_wake.h"
 #include "hover_name.h"
 #include "tacticaloverview.h"
 #include "appearance_rng.h"
@@ -218,7 +220,7 @@ long BattleMech::update (void)
 
 		if (!appearance->isJumpAirborne())
 		{
-			float velMag = appearance->getVelocityMagnitude();
+			float velMag = appearance->getVelocityMagnitude() * engineSpeedScale();
 			if (emergencyStop)
 				velMag = 0.0;
 	
@@ -227,7 +229,7 @@ long BattleMech::update (void)
 			float velFactor = 1.0;
 				float velAngle = land->getTerrainAngle(position);
 				velAngle *= DEGREES_TO_RADS;
-				velFactor = cos(velAngle);
+				velFactor = mc2::sim::math::cos(velAngle);
 	
 			float velMult = velMag * velFactor * frameLength;
 			velMult = std::min(velMult, DistanceToWaypoint);
@@ -343,7 +345,7 @@ long BattleMech::update (void)
 		control.settings.mech.gestureGoal = -1;
 		updateDynamics();
 
-		float velMag = appearance->getVelocityMagnitude();
+		float velMag = appearance->getVelocityMagnitude() * engineSpeedScale();
 
 		glm::vec3 vel = getRotationVector();
 		vel *= velMag * worldUnitsPerMeter;
@@ -397,7 +399,7 @@ long BattleMech::update (void)
 		control.settings.mech.gestureGoal = -1;
 		updateDynamics();
 
-		float velMag = appearance->getVelocityMagnitude();
+		float velMag = appearance->getVelocityMagnitude() * engineSpeedScale();
 
 		glm::vec3 vel = getRotationVector();
 		vel *= velMag * worldUnitsPerMeter;
@@ -480,8 +482,9 @@ long BattleMech::update (void)
 	// Water wake is a request on the sim animation state (the effect is created in presentation).
 	int watercellR, watercellC;
 	land->worldToCell(position,watercellR, watercellC);
-	if (GameMap->getDeepWater(watercellR, watercellC) ||
-		GameMap->getShallowWater(watercellR, watercellC))
+	const auto wakeVelocity = getVelocity();
+	if (mc2::waterreactive::shouldEmit(getStatus() == OBJECT_STATUS_NORMAL, wakeVelocity.x, wakeVelocity.y) &&
+		(GameMap->getDeepWater(watercellR, watercellC) || GameMap->getShallowWater(watercellR, watercellC)))
 	{
 		appearance->startWaterWake();
 	}
@@ -681,6 +684,25 @@ void BattleMech::extractRenderView (mc2::render_view::RenderView& view)
 {
 	using mc2::render_view::Mode;
 	GameObject::extractRenderView(view);
+	const float footRadius = 4.0f; // approximate foot half-width in world units, independent of chassis extent
+	view.value[0] = mc2::render_view::groundFootprintRadius(footRadius,
+		isJumping() || appearance->isInJump(), getMoveType() == MOVETYPE_AIR || appearance->isJumpAirborne());
+	// Foot nodes are the last entries, including all four on quadrupeds.
+	auto* type = static_cast<Mech3DAppearanceType*>(appearance->getAppearanceType());
+	view.groundFeet.clear();
+	if (view.value[0] > 0.0f) {
+		view.value[0] = footRadius;
+		for (long i = type->getTotalNodes() - type->numFootNodes; i < type->getTotalNodes(); ++i) {
+			const auto foot = appearance->getNodePosition(i);
+			if (foot != glm::vec3(0.0f) && foot != position) view.groundFeet.push_back(foot);
+		}
+		if (view.groundFeet.empty()) {
+			const float yaw = rotation * DEGREES_TO_RADS;
+			const glm::vec3 lateral(std::cos(yaw), -std::sin(yaw), 0.0f);
+			for (float side : {-1.0f, 1.0f})
+				view.groundFeet.push_back(position + lateral * (side * footRadius * 2.0f));
+		}
+	}
 	contactView = mc2::contactVisibility(getContactStatus(Team::home->getId(), true), getTeamId() == Team::home->getId()
 		|| isDestroyed() || isDisabled() || ShowMovers
 		|| (MPlayer && MPlayer->allUnitsDestroyed[MPlayer->commanderID]));

@@ -1,4 +1,6 @@
 #include "gos_render.h"
+#include "loading_pump_meter.h"
+#include "gos_smoke.h"
 #include "mc2fmt.h"
 
 #ifdef PLATFORM_WINDOWS
@@ -16,6 +18,7 @@
 #include "mc2fmt.h"
 #include "diagnostic_trace.h"
 #include "present_thread_wait.h"
+#include "engine_present_vk.h"
 #include "present_thread.h"
 
 // FIXME: think how to make it better when different parts need window
@@ -244,11 +247,13 @@ void end_loading_events()
 
 void pump_loading_events()
 {
+    auto& meter = mc2::loadpump::meter;
+    if (SmokeMode::state().headless) {
+        meter.service(SDL_GetTicks64(), true);
+        return;
+    }
     if (!g_sdl_window || SDL_ThreadID() != g_window_thread) return;
-    static Uint32 lastPump = 0;
-    const Uint32 now = SDL_GetTicks();
-    if (now - lastPump < 50) return;
-    lastPump = now;
+    if (!meter.due(SDL_GetTicks64())) return;
     const Uint64 stamp = SDL_GetTicks64();
     if (!s_loadPumps.phase.empty() && stamp - s_loadPumps.lastPump >= 250)
         mc2::fmt::print_out("[LOAD_PUMP] gap_ms={} phase={}\n",
@@ -256,6 +261,22 @@ void pump_loading_events()
     s_loadPumps.pumped(stamp);
     // Pump only: do not consume quit/focus/input events or reenter the game mid-load.
     SDL_PumpEvents();
+    meter.service(SDL_GetTicks64(), false);
+}
+
+void begin_variant_load()
+{
+    mc2::loadpump::meter.variants.begin(SDL_GetTicks64(), "initVariants.catalog", SmokeMode::state().headless);
+    pump_loading_events();
+}
+
+void end_variant_load()
+{
+    auto& scope = mc2::loadpump::meter.variants;
+    scope.end(SDL_GetTicks64());
+    if (mc2_diag::tagRequested("LOAD_PUMP"))
+        MC2_LOG(Io, Info, "[LOAD_PUMP v1] max_gap_ms={} phase={} scope=initVariants mode={} services={}",
+            scope.maxGap, scope.worst, scope.attempted ? "attempted-pump" : "actual-service", scope.services);
 }
 
 void refresh_mouse_grab()
@@ -378,6 +399,43 @@ void enforce_window_offscreen(RenderWindowHandle rw_handle)
 }
 
 //==============================================================================
+void window_checkpoint(std::string_view why, bool restore)
+{
+    if (!g_sdl_window) return;
+#ifdef PLATFORM_WINDOWS
+    SDL_SysWMinfo wm{};
+    SDL_VERSION(&wm.version);
+    if (!SDL_GetWindowWMInfo(g_sdl_window, &wm)) return;
+    const HWND hwnd = wm.info.win.window;
+    MONITORINFO monitor{};
+    monitor.cbSize = sizeof(monitor);
+    if (!GetMonitorInfo(MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST), &monitor)) return;
+    // Repair only fullscreen, preserving Z order and the owner's active app.
+    if (restore && !window_offscreen_requested() &&
+        (SDL_GetWindowFlags(g_sdl_window) & SDL_WINDOW_FULLSCREEN)) {
+        const RECT& r = monitor.rcMonitor;
+        SetWindowPos(hwnd, nullptr, r.left, r.top, r.right - r.left, r.bottom - r.top,
+                     SWP_NOACTIVATE | SWP_NOZORDER | SWP_NOOWNERZORDER);
+    }
+    if (!mc2::gate::get<"MC2_RES_DIAG">()) return;
+    RECT window{}, client{};
+    GetWindowRect(hwnd, &window);
+    GetClientRect(hwnd, &client);
+    int dw = 0, dh = 0;
+    SDL_GetWindowSizeInPixels(g_sdl_window, &dw, &dh);
+    mc2::fmt::print_out("[RES_DIAG] checkpoint={} flags={} window={},{},{},{} client={},{},{},{} monitor={},{},{},{} drawable={}x{}\n",
+        why, SDL_GetWindowFlags(g_sdl_window), window.left, window.top, window.right, window.bottom,
+        client.left, client.top, client.right, client.bottom,
+        monitor.rcMonitor.left, monitor.rcMonitor.top, monitor.rcMonitor.right, monitor.rcMonitor.bottom, dw, dh);
+#ifdef MC2_VULKAN
+    // Extents are stable after the worker seals, until main queues the next frame.
+    mc2vk::present_thread::waitSealed();
+    const auto& health = mc2vk::getOrCreateEnginePresentVk().health();
+    mc2::fmt::print_out("[RES_DIAG] checkpoint={} swapchain={}x{}\n", why, health.extent_w, health.extent_h);
+#endif
+#endif
+}
+
 void set_verbose(bool is_verbose)
 {
     VERBOSE_VIDEO = is_verbose;
@@ -400,6 +458,10 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
     // = 2x the desktop (windowRect measured -968,-571..2888,1628), so the user
     // saw a center crop ("zoomed in" menus, top rows cut) while the backbuffer
     // rendered correctly. MC2_DPI_UNAWARE=1 restores the legacy behavior.
+    // Alt-tab must retain the desktop-sized surface without staying above other apps.
+    SDL_SetHint(SDL_HINT_VIDEO_MINIMIZE_ON_FOCUS_LOSS, "0");
+    SDL_SetHint(SDL_HINT_ALLOW_TOPMOST, "0");
+
 
     if (VERBOSE_VIDEO) {
         n = SDL_GetNumVideoDrivers();
@@ -677,7 +739,9 @@ bool resize_window(RenderWindowHandle rw_handle, int width, int height)
     RenderWindow* rw = static_cast<RenderWindow*>(rw_handle);
     assert(rw);
 
-    SDL_SetWindowSize(rw->window_, width, height);
+    // A logical/video canvas change must not resize the desktop fullscreen surface.
+    if (!(SDL_GetWindowFlags(rw->window_) & SDL_WINDOW_FULLSCREEN))
+        SDL_SetWindowSize(rw->window_, width, height);
     rw->width_ = width;
     rw->height_ = height;
     // NOFOCUS-HARDEN-1: SDL re-centres on resize. Re-assert SYNCHRONOUSLY here
@@ -709,13 +773,15 @@ bool set_window_fullscreen(RenderWindowHandle rw_handle, bool fullscreen)
 
     Uint32 flags = fullscreen ? /*SDL_WINDOW_FULLSCREEN*/ SDL_WINDOW_FULLSCREEN_DESKTOP : 0;
 
-    if(0 != SDL_SetWindowFullscreen(rw->window_, flags)) {
+    const Uint32 current = SDL_GetWindowFlags(rw->window_) & SDL_WINDOW_FULLSCREEN_DESKTOP;
+    if (current != flags && SDL_SetWindowFullscreen(rw->window_, flags) != 0) {
         MC2_LOG(Render, Error, "SDL_SetWindowFullscreen: {}", mc2::fmt::safe(SDL_GetError()));
         return false;
     }
 
     // Leaving fullscreen restores the pre-fullscreen (visible) origin; re-assert.
     apply_offscreen_position(rw->window_);
+    window_checkpoint("mode_after", fullscreen);
 
     if (rw->window_ == g_sdl_window) {
         refresh_mouse_grab();

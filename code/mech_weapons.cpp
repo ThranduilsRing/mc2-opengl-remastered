@@ -4,6 +4,7 @@
 #include "mech_internal.h"
 #include "Gates/gate.h"
 #include "mc2fmt.h"
+#include "net/runtime.h"
 
 
 // ISSUE-17 (MC2_FIRE_DECISION_TRACE, default OFF = byte-identical): fireWeapon
@@ -14,6 +15,8 @@
 // classifiable headlessly. Pairs with the 'nofire' event in combatDecisionTree.
 static void fireGateTrace (unsigned long wid, long weaponIndex, mc2::czstring site)
 {
+	void mc2EquipmentProbeEvent(std::string_view event, unsigned long target);
+	mc2EquipmentProbeEvent(site, wid);
 	static const bool s_fireDecisionTrace =
 		mc2::gate::get<"MC2_FIRE_DECISION_TRACE">();
 	if (!s_fireDecisionTrace || !mc2_diag::tagEnabled("COMBAT"))
@@ -299,7 +302,7 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 				if (target)
 				{
 					weaponFX->connect(this, target, &curShotInfo, sourceHotSpot, targetHotSpot);
-					// ISSUE-9 S2 (MC2_CALLED_SHOT_FIX, default OFF): successful AIMED
+                    // ISSUE-9 S2 (MC2_CALLED_SHOT_FIX, default ON; =0 restores stock): successful AIMED
 					// missile shot — flag the bolt so an area-effect (LRM) arrival
 					// honors the called location (curShotInfo.hitLocation ==
 					// aimLocation here) instead of a randomly-located explosion.
@@ -621,6 +624,7 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 	if (getGroup())
 		getGroup()->handleMateFiredWeapon(getWatchID());
 
+	mc2::net::combatEvent("fire", getWatchID(false), target ? target->getWatchID(false) : 0, 0);
 	return(NO_ERR);
 }
 

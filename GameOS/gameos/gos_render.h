@@ -135,9 +135,13 @@ void                apply_os_cursor_policy  (std::string_view why, bool focused)
 void                set_native_cursor       (SDL_Cursor* cursor, bool visible);
 // Main-thread checkpoints during synchronous loads; queues input without running game logic.
 void                pump_loading_events     ();
+// Independent lazy logistics scope; includes entry and exit gaps.
+void                begin_variant_load      ();
+void                end_variant_load        ();
 void                destroy_window          (RenderWindowHandle rw_handle);
 bool                set_window_fullscreen   (RenderWindowHandle rw_handle, bool fullscreen);
 // NOFOCUS-HARDEN-1: true when MC2_WINDOW_OFFSCREEN is set -- the window is
+void                window_checkpoint(std::string_view why, bool restore = false);
 // created off the visible desktop and must be kept there. See gos_render.cpp.
 bool                window_offscreen_requested();
 // Re-assert the offscreen origin after any external window-mode change. No-op

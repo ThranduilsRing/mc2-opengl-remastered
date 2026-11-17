@@ -213,6 +213,63 @@
    "count": 1
   },
   {
+   "tag": "ABORT_RELOAD",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "cycle",
+    "phase",
+    "mission",
+    "deferred"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ABORT_RELOAD",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "cycle",
+    "phase",
+    "mission",
+    "play_s",
+    "sim_s"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ABORT_RELOAD",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "cycle",
+    "phase",
+    "next"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ABORT_RELOAD",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "phase",
+    "cycles",
+    "campaign_next"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ABORT_RELOAD",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "phase",
+    "mission"
+   ],
+   "count": 1
+  },
+  {
    "tag": "ACTOR_PBR",
    "ver": -1,
    "stream": "stdout",
@@ -409,6 +466,18 @@
     "oob",
     "clamped",
     "trace"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "AUDIO_ADMIT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "ticks",
+    "id",
+    "path",
+    "channel"
    ],
    "count": 1
   },
@@ -2028,6 +2097,15 @@
    "count": 1
   },
   {
+   "tag": "CINEMATIC_END",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "turn"
+   ],
+   "count": 1
+  },
+  {
    "tag": "COLORMAP",
    "ver": -1,
    "stream": "stdout",
@@ -3388,6 +3466,87 @@
    "count": 1
   },
   {
+   "tag": "EQUIPMENT_PROBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "EQUIPMENT_PROBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "weapon",
+    "defense",
+    "engine",
+    "armor",
+    "fire",
+    "births",
+    "intercepts",
+    "ammo",
+    "defense_ammo",
+    "top_mps",
+    "max_mps",
+    "armor_total",
+    "engine_master",
+    "attempts",
+    "hits",
+    "debits"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EQUIPMENT_PROBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "weapon",
+    "defense",
+    "engine",
+    "armor",
+    "source",
+    "target"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EQUIPMENT_PROBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "weapon",
+    "index",
+    "actual",
+    "ammo_index",
+    "ammo_master",
+    "valid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EQUIPMENT_PROBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "weapon",
+    "index",
+    "actual",
+    "attempt",
+    "target_valid",
+    "distance",
+    "in_range",
+    "binding",
+    "fire",
+    "refusal",
+    "births",
+    "debit",
+    "hit",
+    "damage"
+   ],
+   "count": 1
+  },
+  {
    "tag": "ESMOKE",
    "ver": 1,
    "stream": "buffer",
@@ -4302,6 +4461,19 @@
    "count": 1
   },
   {
+   "tag": "HUD_FRAME",
+   "ver": -1,
+   "stream": "log",
+   "keys": [
+    "pieces",
+    "textures",
+    "atlas",
+    "submissions",
+    "scale"
+   ],
+   "count": 1
+  },
+  {
    "tag": "HZB_CAM",
    "ver": 1,
    "stream": "stderr",
@@ -5090,6 +5262,57 @@
    "count": 1
   },
   {
+   "tag": "LOAD_LAPS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "stage",
+    "total_ms",
+    "terrainObjects_ms",
+    "buildings_ms",
+    "turrets_ms",
+    "gates_ms"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LOAD_LAPS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "stage",
+    "type",
+    "objects",
+    "type_cache_misses",
+    "active_ms",
+    "first_ms"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LOAD_LAPS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "stage",
+    "types",
+    "tris",
+    "out_verts",
+    "dedupe_ms",
+    "meshopt_ms",
+    "lodgroup_calls",
+    "lodgroup_ms",
+    "vbo_bytes",
+    "vbo_hash",
+    "ibo_count",
+    "ibo_hash",
+    "packets_hash",
+    "lod_groups",
+    "lod_hash"
+   ],
+   "count": 1
+  },
+  {
    "tag": "LOAD_PHASES",
    "ver": 1,
    "stream": "buffer",
@@ -5097,6 +5320,19 @@
     "total"
    ],
    "count": 1
+  },
+  {
+   "tag": "LOAD_PUMP",
+   "ver": 1,
+   "stream": "log",
+   "keys": [
+    "max_gap_ms",
+    "phase",
+    "scope",
+    "mode",
+    "services"
+   ],
+   "count": 2
   },
   {
    "tag": "LOAD_TIMING",
@@ -5439,7 +5675,7 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [],
-   "count": 5
+   "count": 6
   },
   {
    "tag": "MECH_IMPORT",
@@ -5523,6 +5759,20 @@
    "count": 1
   },
   {
+   "tag": "MECH_PARSE",
+   "ver": 1,
+   "stream": "log",
+   "keys": [
+    "kind",
+    "files",
+    "open_ms",
+    "chassis_ms",
+    "variant_ms",
+    "max_step_ms"
+   ],
+   "count": 1
+  },
+  {
    "tag": "MECH_PICK_SELFTEST",
    "ver": 1,
    "stream": "stderr",
@@ -5601,6 +5851,16 @@
    "keys": [
     "software",
     "pos"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MENU_READY",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "animation_complete",
+    "buttons_drawn"
    ],
    "count": 1
   },
@@ -6080,6 +6340,27 @@
     "worst_call_overflow",
     "chunk_size",
     "node_threshold"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MOVE_MARKER",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "pos",
+    "until"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MOVE_MARKER",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "visible",
+    "rotation",
+    "time"
    ],
    "count": 1
   },
@@ -7422,6 +7703,34 @@
    "count": 1
   },
   {
+   "tag": "PROP_CORE_STATS",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "slot",
+    "raster_triangles",
+    "fragment_invocations",
+    "invocations_per_pixel"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PROP_CORE_TYPE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "type",
+    "instances",
+    "first",
+    "packets",
+    "triangles",
+    "hzb"
+   ],
+   "count": 1
+  },
+  {
    "tag": "PROP_LIGHT_PROBE",
    "ver": 1,
    "stream": "stderr",
@@ -7626,33 +7935,6 @@
     "count",
     "firstTypeID",
     "multi"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "RENDERER_FEATURES",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "env"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "RENDERER_FEATURES",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "ssbo",
-    "tess",
-    "compute",
-    "indirect",
-    "bindless",
-    "clipctrl",
-    "dsa",
-    "max_color_attach",
-    "max_ssbo_bind",
-    "max_tess_level"
    ],
    "count": 1
   },
@@ -7991,6 +8273,30 @@
     "renderStatusInfo",
     "objectiveTime",
     "resultsTime"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RES_DIAG",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "checkpoint",
+    "flags",
+    "window",
+    "client",
+    "monitor",
+    "drawable"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RES_DIAG",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "checkpoint",
+    "swapchain"
    ],
    "count": 1
   },
@@ -9310,19 +9616,6 @@
    "count": 1
   },
   {
-   "tag": "SPOTLIGHT_REAL_TRACE",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "site",
-    "frames",
-    "window_spotlight_submits",
-    "mono_spotlight_submits"
-   ],
-   "count": 1
-  },
-  {
    "tag": "SPOT_DIAG",
    "ver": 1,
    "stream": "stderr",
@@ -10155,6 +10448,35 @@
    "count": 1
   },
   {
+   "tag": "TREE_IMPORT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "TREE_LOD",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 3
+  },
+  {
+   "tag": "TREE_LOD_STATS",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "lodActive",
+    "d",
+    "rowY",
+    "viewport",
+    "inst",
+    "tris"
+   ],
+   "count": 1
+  },
+  {
    "tag": "TREE_REG_DIAG",
    "ver": 1,
    "stream": "stderr",
@@ -10858,6 +11180,19 @@
    "stream": "stderr",
    "keys": [
     "snapshot"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_CAPABILITY",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "maxPerStageDescriptorSampledImages",
+    "maxPerStageDescriptorSamplers",
+    "maxDescriptorSetSampledImages",
+    "maxDescriptorSetSamplers",
+    "maxPerStageResources"
    ],
    "count": 1
   },
@@ -11852,6 +12187,22 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [
+    "instance",
+    "type",
+    "row",
+    "prim",
+    "xy",
+    "bary",
+    "z",
+    "gpu_z"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RT_SCENE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
     "jobs"
    ],
    "count": 1
@@ -11982,6 +12333,21 @@
     "occluded_by",
     "behind_found",
     "passes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RT_SCENE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "ray",
+    "occluder_correct",
+    "moved_origin_z",
+    "hit",
+    "t",
+    "custom",
+    "match"
    ],
    "count": 1
   },
@@ -12177,6 +12543,41 @@
    "count": 1
   },
   {
+   "tag": "VK_TEXTABLE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "capacity",
+    "sets",
+    "samplers"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_TEXTABLE_FRAME",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "slot",
+    "writes",
+    "full",
+    "stale"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_TEXTABLE_REWRITE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "slot",
+    "writes",
+    "us"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VK_TEXTURE_SERVICE",
    "ver": 1,
    "stream": "log",
@@ -12334,16 +12735,6 @@
    "keys": [
     "event",
     "path"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "VPL_REDUCE",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "reason"
    ],
    "count": 1
   },
@@ -12788,6 +13179,7 @@
   "MOVER",
   "MOVER_COHERENCE",
   "MOVER_FIXTURE",
+  "MP_DESYNC",
   "ORDER_LIVENESS_SUMMARY",
   "PERF",
   "PERF_COUNTERS",
@@ -12805,6 +13197,7 @@
   "SHADER",
   "SHADER ERROR",
   "SHADOW_BAKE",
+  "SHUTDOWN",
   "SIMID",
   "SIM_OVERLAP",
   "SIM_TICK_COST",
@@ -12827,6 +13220,7 @@
   "VIDEO",
   "VISUAL_CAPTURE",
   "VK_CAPABILITY",
+  "VK_DEVICE",
   "VK_ENGINE_CONTEXT",
   "VK_GPU_PASSES",
   "VK_PROFILE",
