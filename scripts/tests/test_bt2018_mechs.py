@@ -344,12 +344,37 @@ def test_cook_retargets_from_the_raw_cache_so_repeat_cooks_match(tmp_path):
     retarget_file(str(raw), str(atlas), str(out))          # the fixed converter's repeat run
     assert out.read_bytes() == first
 
-    legacy = tmp_path / "legacy.glb"                         # the old in-place behaviour, for contrast
-    legacy.write_bytes(raw.read_bytes())
-    retarget_file(str(legacy), str(atlas), str(legacy))
-    once = legacy.read_bytes()
-    retarget_file(str(legacy), str(atlas), str(legacy))
-    assert legacy.read_bytes() != once
+    retarget_file(str(out), str(atlas), str(out))           # re-running on a shipped GLB is a no-op
+    assert out.read_bytes() == first
+
+
+def test_retarget_turns_bones_in_model_space_whatever_the_bind_frame(tmp_path):
+    """Trigger: scripts/bt2018_retarget_clips.py. Owner 11-16: arms wrong except on the Atlas."""
+    pytest.importorskip("pygltflib")
+    from bt2018_retarget_clips import retarget_file, quat_mul, quat_conj
+    from pygltflib import GLTF2
+    import numpy as np
+    s = 0.7071067811865476
+    atlas, mech = tmp_path / "atlas.glb", tmp_path / "mech.glb"
+    _tiny_glb(atlas, (0, 0, 0, 1), [(0, 0, 0, 1), (0, 0, s, s)])   # Atlas: +90 deg about Z
+    _tiny_glb(mech, (s, 0, 0, s), [(0, 0, 0, 1), (0, 0, s, s)])    # bind frame turned 90 about X
+    retarget_file(str(mech), str(atlas), str(mech))
+    g = GLTF2().load(str(mech))
+    key = np.frombuffer(g.binary_blob(), "<f4", 4, 4 * 2 + 16)
+    delta = quat_mul(key, quat_conj(np.array([s, 0, 0, s])))      # world turn away from bind
+    assert np.degrees(2 * np.arccos(min(1.0, abs(float(delta @ [0, 0, s, s]))))) < 0.5
+
+
+def test_native_clip_baker_decodes_streamed_dense_and_constant_curves():
+    """Trigger: tools/bt2018_extract/bake_clips.py (native BT clips replace Atlas retargets)."""
+    from tools.bt2018_extract import bake_clips as B
+    # one streamed curve: key at t=0 value 1 slope 2, key at t=1 constant 5; one constant curve 7
+    words = struct.unpack("<14I", struct.pack("<fi i4f fi i4f", 0.0, 1, 0, 0, 0, 2.0, 1.0, 1.0, 1, 0, 0, 0, 0, 5.0))
+    clip = {"m_StreamedClip": {"data": list(words), "curveCount": 1},
+            "m_DenseClip": {"m_CurveCount": 1, "m_SampleArray": [0.0, 10.0], "m_BeginTime": 0.0, "m_SampleRate": 1.0},
+            "m_ConstantClip": {"data": [7.0]}}
+    vals = B.sample_clip({"m_MuscleClip": {"m_Clip": {"data": clip}}}, [0.0, 0.5, 1.0])
+    assert vals.tolist() == [[1.0, 0.0, 7.0], [2.0, 5.0, 7.0], [5.0, 10.0, 7.0]]
 
 
 # ---------------------------------------------------------------- P6 icons
@@ -512,3 +537,51 @@ def test_spawn_fixture_uses_a_shipped_pilot_with_combat_skills():
     for skill in ("Gunnery", "Piloting"):
         value = re.search(rf"(?im)^\s*c\s+{skill}\s*=\s*(\d+)", text)
         assert value and int(value.group(1)) > 0, f"spawn pilot needs usable {skill}"
+
+
+# One-shot clips mc2clip::select leaves for locomotion when the sim gesture ends (hits,
+# power-on, get-up). Their last frame is held until then, so it must BE the idle pose.
+# Prone clips (knockdown, downed/death idles) are held on purpose until the sim's GetUp.
+RETURN_TO_IDLE = ("atlas_hitReactLgtFwd", "atlas_hitReactLgtBwd", "atlas_hitReactLgtLeft",
+                  "atlas_hitReactLgtRight", "atlas_shutdownPwron", "atlas_downedGetup")
+
+
+@pytest.mark.parametrize("family", ["atlas", "marauder"])
+def test_one_shot_clips_end_on_the_idle_pose(family):
+    """Trigger: owner 11-16 'stayed leaning back after getting hit'. Held end pose == idle."""
+    pytest.importorskip("pygltflib")
+    from pygltflib import GLTF2
+    from bt2018_retarget_clips import quat_mul, node_bind_rot, accessor_view
+    import numpy as np
+    path = CONVERSIONS / f"{family}.glb"
+    if not path.is_file():
+        pytest.skip(f"set BT2018_CONVERSIONS to a dir with {family}.glb")
+    g = GLTF2().load(str(path)); blob = g.binary_blob()
+    parent = {c: i for i, n in enumerate(g.nodes) for c in (n.children or [])}
+    anims = {a.name: a for a in g.animations}
+
+    def world(clip, last):
+        local = {i: node_bind_rot(g, i) for i in range(len(g.nodes))}
+        a = anims[clip]
+        for ch in a.channels:
+            if ch.target.path == "rotation":
+                k = accessor_view(g, blob, a.samplers[ch.sampler].output)[0]
+                q = np.asarray(k[-1 if last else 0], np.float64)
+                local[ch.target.node] = q / np.linalg.norm(q)
+        out = {}
+        def w(i):
+            if i not in out:
+                out[i] = quat_mul(w(parent[i]), local[i]) if i in parent else local[i]
+            return out[i]
+        for i in local:
+            w(i)
+        return out
+
+    idle = world("atlas_moveCoreIdle", False)
+    for clip in RETURN_TO_IDLE:
+        if clip not in anims:
+            continue
+        end = world(clip, True)
+        worst = max(np.degrees(2 * np.arccos(min(1.0, abs(float(np.dot(end[i], idle[i]))))))
+                    for i in idle)
+        assert worst < 3.0, f"{family} {clip} ends {worst:.1f} deg from idle"
