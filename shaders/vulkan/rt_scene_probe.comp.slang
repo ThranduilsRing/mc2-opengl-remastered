@@ -70,7 +70,9 @@ float alphaOffAt(int layer, float2 uv)
 
 float2 vertexUv(uint v)
 {
-    float* f = (float*)(uint64_t(pc.vbo.x) | (uint64_t(pc.vbo.y) << 32));
+    uint2 addr = pc.vbo;
+    // uint2 -> device address by OpBitcast (SPV_KHR_physical_storage_buffer); a uint64_t cast would need the shaderInt64 feature, which the device does not enable.
+    float* f = spirv_asm { result : $$float* = OpBitcast $addr };
     uint base = (v * pc.stride + 24u) / 4u;
     return float2(f[base], f[base + 1u]);
 }
