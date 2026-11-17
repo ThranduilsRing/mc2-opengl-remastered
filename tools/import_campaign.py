@@ -224,8 +224,8 @@ def import_campaign(source, deploy):
     source, deploy = Path(source).resolve(), Path(deploy).resolve()
     if not source.exists():
         raise ValueError(f"Download or folder not found: {source}")
-    if not (deploy / "mc2.exe").is_file():
-        raise ValueError(f"Game folder has no mc2.exe: {deploy}; use --deploy with your game folder.")
+    if not any((deploy / name).is_file() for name in ("mc2.exe", "mc2")):
+        raise ValueError(f"Game folder has no mc2 executable: {deploy}; use --deploy with your game folder.")
     installed_source = source.parent == deploy / "mods"
     if source.is_dir() and (source == deploy or source in deploy.parents or
                             (deploy in source.parents and not installed_source)):

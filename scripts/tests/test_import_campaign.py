@@ -33,8 +33,11 @@ def sample(tmp_path):
     return source, deploy
 
 
-def test_omnitech_logistics_portrait_icon_and_kitfox_name(tmp_path):
+def test_omnitech_logistics_portrait_icon_and_kitfox_name(tmp_path, sample):
     from PIL import Image
+    original, deploy = sample
+    (deploy / "mc2.exe").rename(deploy / "mc2")
+    assert imp.import_campaign(original, deploy)["status"] == "installed"
     source, out = tmp_path / "source", tmp_path / "mod"
     art = source / "data/art"
     (art / "mechicons").mkdir(parents=True)
