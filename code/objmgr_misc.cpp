@@ -588,7 +588,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 		ZoneNamedN(walkZone, "Presentation.Terrain.Walk", true);
 		const mc2::battlebench::ScopeNs walkNs{mc2::battlebench::WalkPresNs};   // D2 census: the walk alone, not the sweeps above
 		uint64_t walkVisited = 0, walkRecalc = 0, walkGround = 0, walkTouch = 0, walkUpdate = 0;   // [PERF_COUNTERS v1] plain locals, folded once below
-		uint64_t dirtyCounts[5]{}, dirtyNs[5]{};
+		uint64_t dirtyCounts[5]{};
 		auto& dirty = mc2::terrainDirtyQueue();
 		const glm::mat4 worldToClip = eye ? eye->getWorldToClip() : glm::mat4{0.0f};
 		const float nightFactor = eye ? eye->nightFactor : 0.0f;
@@ -651,7 +651,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 						const bool terrainKind = kind == TERRAINOBJECT || kind == TREE || kind == BRIDGE || kind == BUILDING;
 						auto dirtyReasons = [&]() {
 							auto* building = appearance->getAppearanceClass() == BUILDING_APPR_TYPE ? static_cast<BldgAppearance*>(appearance) : nullptr;
-							// Reasons overlap: a shared call is charged to each applicable reason, never summed across reasons.
+							// Reasons overlap: an object is counted once under each reason that applies.
 							return static_cast<unsigned>(inView && !appearance->IsStaticNow()) |
 								(static_cast<unsigned>(walkObj->getFlag(OBJECT_FLAG_FALLING)) << 1) |
 								// Offscreen lights are persistent; only a visible owner emits frame-local effects.
@@ -687,15 +687,10 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 
                             // Skips the copy and effects when the sim state is unchanged since the last present.
                             appearance->presentSettledAnimation();
-                            const unsigned callReasons = dirtyReasons();
-                            const auto callStart = std::chrono::steady_clock::now();
                             if (appearance->IsStaticNow() && !walkObj->getFlag(OBJECT_FLAG_FALLING))
                                 { appearance->touch(); ++walkTouch; }
                             else
                                 { appearance->update(false); ++walkUpdate; }
-                            const auto callNs = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - callStart).count());
-                            for (unsigned reason = 0; reason < 5; ++reason)
-                                if (callReasons & (1u << reason)) dirtyNs[reason] += callNs;
 							appearance->setVisibility(true, true);
 						}
 						// Offscreen bake recovery waits for camera invalidation, as update()
@@ -713,10 +708,8 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 		namespace bb = mc2::battlebench;
 		bb::add(bb::WalkVisited, walkVisited); bb::add(bb::WalkRecalc, walkRecalc); bb::add(bb::WalkGround, walkGround);
 		bb::add(bb::WalkTouch, walkTouch); bb::add(bb::WalkUpdate, walkUpdate);
-		for (unsigned reason = 0; reason < 5; ++reason) {
+		for (unsigned reason = 0; reason < 5; ++reason)
 			bb::add(static_cast<bb::Field>(std::to_underlying(bb::WalkDirtyDynamic) + reason), dirtyCounts[reason]);
-			bb::add(static_cast<bb::Field>(std::to_underlying(bb::WalkDirtyDynamicNs) + reason), dirtyNs[reason]);
-		}
 	}
 
 	if (movers)

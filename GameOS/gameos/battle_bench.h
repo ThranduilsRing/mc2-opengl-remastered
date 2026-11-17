@@ -105,8 +105,7 @@ inline void endFrame(double ms) {
         "\"extract_bytes\":%llu,\"heap_allocs\":%llu,"
         "\"draws\":{\"props\":%llu,\"terrain\":%llu,\"water\":%llu,\"mech_depth\":%llu,\"mech_color\":%llu,\"legacy\":%llu,\"sky\":%llu,\"vfx\":%llu,\"shadow\":%llu},"
         "\"walk\":{\"visited\":%llu,\"recalc\":%llu,\"ground\":%llu,\"touch\":%llu,\"update\":%llu,\"pres_ms\":%.6f,\"extract_ms\":%.6f,\"render_ms\":%.6f},"
-        "\"dirty\":{\"dynamic\":%llu,\"falling\":%llu,\"frame_lights\":%llu,\"light_bake\":%llu,\"effects\":%llu,"
-        "\"dynamic_ms\":%.6f,\"falling_ms\":%.6f,\"frame_lights_ms\":%.6f,\"light_bake_ms\":%.6f,\"effects_ms\":%.6f},"
+        "\"dirty\":{\"dynamic\":%llu,\"falling\":%llu,\"frame_lights\":%llu,\"light_bake\":%llu,\"effects\":%llu},"
         "\"pres\":{\"acquire_ms\":%.6f,\"tail_ms\":%.6f,\"hud_ms\":%.6f,\"imgui_ms\":%.6f,\"blit_ms\":%.6f,\"submit_ms\":%.6f,"
         "\"collect_ms\":%.6f,\"boundary_ms\":%.6f,\"composite_wait_ms\":%.6f,\"queue_present_ms\":%.6f,"
         "\"acquire_t0\":%.4f,\"acquire_t1\":%.4f,\"cwait_t0\":%.4f,\"cwait_t1\":%.4f}}\n",
@@ -122,8 +121,6 @@ inline void endFrame(double ms) {
         u(WalkVisited), u(WalkRecalc), u(WalkGround), u(WalkTouch), u(WalkUpdate),
         u(WalkPresNs) / 1.0e6, u(WalkExtractNs) / 1.0e6, u(WalkRenderNs) / 1.0e6,
         u(WalkDirtyDynamic), u(WalkDirtyFalling), u(WalkDirtyFrameLights), u(WalkDirtyLightBake), u(WalkDirtyEffects),
-        u(WalkDirtyDynamicNs) / 1.0e6, u(WalkDirtyFallingNs) / 1.0e6, u(WalkDirtyFrameLightsNs) / 1.0e6,
-        u(WalkDirtyLightBakeNs) / 1.0e6, u(WalkDirtyEffectsNs) / 1.0e6,
         u(PresAcquireNs) / 1.0e6, u(PresTailNs) / 1.0e6, u(PresTailHudNs) / 1.0e6, u(PresTailImguiNs) / 1.0e6, u(PresTailBlitNs) / 1.0e6,
         u(PresTailSubmitNs) / 1.0e6, u(PresCollectNs) / 1.0e6, u(PresBoundaryNs) / 1.0e6, u(PresCompositeWaitNs) / 1.0e6, u(PresQueuePresentNs) / 1.0e6,
         msIntoFrame(workerWaitNs[0].load(std::memory_order_relaxed)), msIntoFrame(workerWaitNs[1].load(std::memory_order_relaxed)),
