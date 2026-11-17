@@ -429,10 +429,14 @@ void main(void)
     // SHORE-FIELD-1: deep/shallow tint from the smooth shore field (mode 3), not the coarse
     // per-vertex thickness -- no more deep-water diamonds around single low vertices.
     // Evaluated for every fragment (uniform control flow) so its screen derivative is defined.
-    float fieldThick;
-    const bool hasField = wse_fieldThickness(int(F.f4.x + 0.5), int(F.f4.y + 0.5), u_shoreHeightTex, F.f5,
-                                             WorldPos.xy, F.f7.x, fieldThick);
     const bool hasVisual = uT.visualMode != 0 && uT.visualSide > 1;
+    float fieldThick = 0.0;
+    vec2 hn = vec2((WorldPos.x - F.f5.x) / max(F.f5.z, 1e-5),
+                   (F.f5.y - WorldPos.y) / max(F.f5.w, 1e-5));
+    const bool hasField = int(F.f4.x + 0.5) == 3 && int(F.f4.y + 0.5) != 0
+                      && !(hn.x < 0.0 || hn.x > 1.0 || hn.y < 0.0 || hn.y > 1.0);
+    if (hasField && !hasVisual)
+        fieldThick = F.f7.x - wse_bicubicHeight(u_shoreHeightTex, hn);
     // The cooked SDF predates raster-depth coverage. Its zero crossing can sit on
     // dry land, leaving a shallow strip and a detached foam contour in wet pixels.
     // Read shore inputs from the same filtered fine surface as the terrain.
