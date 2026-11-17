@@ -121,6 +121,18 @@ def test_mp_shim_zero_faults_passes_every_packet():
     assert shim.receipt()["dropped"] == 0
 
 
+def test_mp_slot_port_default_and_explicit_precedence(tmp_path, monkeypatch):
+    from run_mp_loopback_proof import arguments
+    base = ["--install", str(tmp_path), "--out", str(tmp_path / "proof")]
+    for slot, expected in ((None, 23460), ("0", 23460), ("3", 23490)):
+        if slot is None:
+            monkeypatch.delenv("MC2_SLOT", raising=False)
+        else:
+            monkeypatch.setenv("MC2_SLOT", slot)
+        assert arguments(base).port == expected
+        assert arguments(base + ["--port", "25000"]).port == 25000
+
+
 def test_mp_lan_arguments(tmp_path):
     import pytest
     from run_mp_loopback_proof import arguments

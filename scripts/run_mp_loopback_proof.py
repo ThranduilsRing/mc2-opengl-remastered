@@ -179,7 +179,7 @@ def parser():
     ap.add_argument("--wall-clock", action="store_true", help="normal clock, at least 900 ticks, assert 30 Hz +/-5%%")
     ap.add_argument("--out", required=True, type=Path)
     ap.add_argument("--ticks", type=int, default=18000)
-    ap.add_argument("--port", type=int, default=23460)
+    ap.add_argument("--port", type=int, default=23460 + 10 * int(os.environ.get("MC2_SLOT", "0")))
     ap.add_argument("--timeout", type=int, default=1200)
     ap.add_argument("--render", choices=("none", "host", "client", "both"), default="none")
     ap.add_argument("--force-desync", type=int, default=0)

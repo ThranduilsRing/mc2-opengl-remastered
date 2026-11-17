@@ -206,8 +206,10 @@ def test_tooling_only_regex_covers_build_inputs():
     ([False, True], [], 0, 2), ([False, False], [], 0, 1),
     ([], ["-n"], 0, 1), ([False], [], 7, 1),
 ])
-def test_build_compacts_new_growth_without_compiling_twice(monkeypatch, guards, flags, returncode, count):
+def test_build_compacts_new_growth_without_compiling_twice(monkeypatch, tmp_path, guards, flags, returncode, count):
     monkeypatch.delenv("MC2_NINJA_TREE", raising=False)
+    tree_lock = ninja_build.TreeLock
+    monkeypatch.setattr(ninja_build, "TreeLock", lambda root, tree: tree_lock(str(tmp_path), "tree"))
     monkeypatch.setattr(sys, "argv", [ninja_build.__file__, "mc2", "-j1", *flags])
     pending = iter(guards)
     monkeypatch.setattr(ninja_build, "drop_oversize_pdb", lambda *a: next(pending))
@@ -502,7 +504,7 @@ def test_gate_proofs_dir_routes_log_and_commands(tmp_path, monkeypatch):
     monkeypatch.setattr(gate, "git", lambda *a: "head")
     seen = []
     monkeypatch.setattr(gate, "execute", lambda steps, *a: seen.extend(steps) or 0)
-    assert gate.main(["--dry-run", "--full", "--base", "head", "--proofs-dir", str(tmp_path)]) == 0
+    assert gate.main(["--dry-run", "--nightly", "--base", "head", "--proofs-dir", str(tmp_path)]) == 0
     assert (tmp_path / "gate.log").is_file()
     assert str(tmp_path / "before") in next(c for n, c, _ in seen if n == "capture-before")
 
@@ -524,7 +526,7 @@ def test_reused_before_evidence_never_launches_old_classic_exe(tmp_path, monkeyp
     monkeypatch.setattr(gate, "git", lambda *a: "head")
     seen = []
     monkeypatch.setattr(gate, "execute", lambda steps, *a: seen.extend(steps) or 0)
-    args = ["--dry-run", "--full", "--base", "head", "--before-dir", str(before), "--expect-pre-exe-sha", "a" * 64,
+    args = ["--dry-run", "--full", "--declared-view", "mc2_01_saved_205644", "--base", "head", "--before-dir", str(before), "--expect-pre-exe-sha", "a" * 64,
             "--proofs-dir", str(tmp_path / "proof")]
     assert gate.main(args) == 0
     assert not any(n.startswith("capture-before") for n, _, _ in seen)

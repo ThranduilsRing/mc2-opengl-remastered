@@ -64,13 +64,19 @@ def test_every_runner_command_pins_the_gpu():
 
 
 @pytest.fixture
-def detected_pair(monkeypatch):
+def detected_pair(monkeypatch, tmp_path):
     from smoke_lib import gpu_adapters
     rows = (dict(name="AMD Radeon RX 7900 XTX", uuid=DISPLAY, luid=b"display!", display=True),
             dict(name="AMD Radeon RX 7900 XTX", uuid=SECOND, luid=b"compute!", display=False))
     monkeypatch.setattr(gpu_adapters, "adapters", lambda: rows)
+    monkeypatch.setattr(host_lease, "_gpu_adapters", lambda: gpu_adapters)
     monkeypatch.setattr(gpu_adapters.sys, "platform", "win32")
     monkeypatch.setattr(host_lease, "redirected", lambda: False)
+    for key in (host_lease.BATCH_ENV, "MC2_VK_DEVICE", "MC2_LANE_UUID", "MC2_HARNESS_GPU", "MC2_SLOT"):
+        monkeypatch.delenv(key, raising=False)
+    monkeypatch.setenv("MC2_HOST_LEASE_PATH", str(tmp_path / "lease.json"))
+    monkeypatch.setattr(host_lease, "GPU_SPLIT_PATH", tmp_path / "GPU_SPLIT")
+    monkeypatch.setattr(host_lease, "runtime_lane_adapter", lambda: rows[1])
     gpu_adapters.lane_adapter.cache_clear()
     yield rows
     gpu_adapters.lane_adapter.cache_clear()
