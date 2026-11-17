@@ -129,7 +129,7 @@ float halfFloat(uint16_t v) {
 bool prepare_reflect_bake(WaterIsland* s, float water) {
     auto fail = [](const char* phase) {
         static bool logged = false;
-        if (!logged) mc2::fmt::print_err("[WATER_BAKE] FAILED phase={}\n", phase);
+        if (!logged && mc2_diag::tagRequested("WATER_BAKE")) mc2::fmt::print_err("[WATER_BAKE] FAILED phase={}\n", phase);
         logged = true;
         return false;
     };
@@ -217,7 +217,7 @@ bool prepare_reflect_bake(WaterIsland* s, float water) {
     VkPhysicalDeviceProperties properties{}; vkGetPhysicalDeviceProperties(s->phys, &properties);
     const double ms = (timestamps[1] - timestamps[0]) * properties.limits.timestampPeriod / 1.0e6;
     const double mb = static_cast<double>(b.size) * b.size * (12 + 8.0/3) / (1024*1024);
-    mc2::fmt::print_err("[WATER_BAKE] size={}x{} ms={:.3f} MB={:.3f} registry={}\n", b.size, b.size, ms, mb, key[0]);
+    if (mc2_diag::tagRequested("WATER_BAKE")) mc2::fmt::print_err("[WATER_BAKE] size={}x{} ms={:.3f} MB={:.3f} registry={}\n", b.size, b.size, ms, mb, key[0]);
     if (dump) {
         std::vector<uint16_t> pixels(static_cast<size_t>(bytes / 2));
         if (!readback.read(pixels.data(), bytes)) return false;
