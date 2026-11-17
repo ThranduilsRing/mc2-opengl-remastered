@@ -12,6 +12,7 @@
 #include "static_prop_prewarm.h"
 #include "render_resource_owners.h"
 #include "mc2fmt.h"
+#include "../GameOS/gameos/diagnostic_trace.h"
 #include "tex_resolve_table.h"
 #include "frame_jobs.h"
 #include "../GameAdapters/VegetationAdapter.h"
@@ -635,7 +636,13 @@ void Mission::loadLogistics(MissionLoadFrame& f) {
 
 	// Objects restored before the saved variants existed; re-derive heat capacity now (heat/mask/expiry kept).
 	for (auto* mech : std::span(ObjectManager->mechs, ObjectManager->maxMechs))
-		if (mech && mech->getExists()) mech->rederiveHeatCapacity();
+		if (mech && mech->getExists()) {
+			mech->rederiveHeatCapacity();
+			if (mc2_diag::tagRequested("ALPHA_HEAT"))
+				mc2::fmt::print_err("[ALPHA_HEAT v1] event=load mech={} capacity={} heat={} mask={} expire={}\n",
+					mech->getWatchID(false), mech->heatState.capacity, mech->heatState.heatMilli,
+					mech->heatState.alphaMask.count(), mech->heatState.alphaExpireTick);
+		}
 
 	//-------------------------------------------------------------------------------------------
 	// Load the CurrentMission number in logistics cause Heidi don't save it with logisticsData.
