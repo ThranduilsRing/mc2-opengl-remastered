@@ -374,7 +374,7 @@ uint64_t contentDigest(std::string_view path, bool verify)
 	if (const auto e = resolve(k, [](const Entry& candidate) {
 		if (candidate.provider == Provider::Fst) return true;
 		std::error_code ec;
-		return std::filesystem::is_regular_file(candidate.physicalPath, ec) && _access(candidate.physicalPath.c_str(), 4) == 0;
+		return std::filesystem::is_regular_file(candidate.physicalPath, ec) && std::ifstream(candidate.physicalPath, std::ios::binary).is_open();
 	})) {
 		if (e->provider == Provider::Fst) {
 			fst = true;
