@@ -144,6 +144,7 @@ struct ExplosionProbe {
 // as MC2_BOOT_PAUSED above. Registered (Trace).
 void MissionInterfaceManager::processUiCommandChannel()
 {
+	if (mc2::replay::playing()) return;
 	extern std::atomic<uint32_t> g_mc2FrameCounter;
     void mc2EquipmentProbeTick();
     mc2EquipmentProbeTick();
@@ -203,7 +204,14 @@ void MissionInterfaceManager::processUiCommandChannel()
 		UiCmdCtx c{line};
 		// Groups run in the original verb-chain order: prefix matches are order-sensitive
 		// ("order move " before "order ", "list buildings" before "list").
-		(void)(uiCmdBasic(c) || uiCmdWorld(c) || uiCmdReadback(c) || uiCmdProbe(c) || uiCmdFixture(c));
+		if (mc2::replay::blocksFixtureMutation(line, mc2::replay::active())) {
+			c.result = "blocked";
+			c.note = "fixture mutations are not replayed during command recording";
+			mc2::replay::failRecording(line);
+			mc2::fmt::print(stderr, "UI command refused: {} ({})\n", line, c.note);
+		} else {
+			(void)(uiCmdBasic(c) || uiCmdWorld(c) || uiCmdReadback(c) || uiCmdProbe(c) || uiCmdFixture(c));
+		}
 		const char* result = c.result;
 		const std::string& note = c.note;
 		const std::string& extra = c.extra;

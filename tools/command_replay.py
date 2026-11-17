@@ -51,12 +51,29 @@ def inspect(path: Path) -> dict:
     return {"commands": len(commands), "checkpoints": len(hashes), "first_tick": ticks[0], "last_tick": ticks[-1]}
 
 
+def validate_commands(script: str) -> None:
+    """Only selection and recorded order ingress are supported; fixtures bypass it."""
+    for number, line in enumerate(script.splitlines(), 1):
+        line = line.strip()
+        if line.startswith("#"):
+            continue
+        if line and not re.fullmatch(
+                r"select .+|order (?:stop|hold_fire|powerup|powerdown|withdraw)|order (?:move|attack|jump) .+", line):
+            raise ValueError(f"command script line {number}: unsupported replay command {line!r}; "
+                             "only select and order stop/move/attack/jump/hold_fire/powerup/powerdown/withdraw are recorded; "
+                             "fixture mutations such as teleport are not replayed")
+
+
 def run(args, label: str, extra: dict[str, str], expect: str) -> dict:
     output = args.out / label
     output.mkdir(parents=True, exist_ok=False)
     env = dict(os.environ, MC2_SMOKE_FIXED_TIMESTEP="1", MC2_DETERMINISTIC_RNG="1",
                MC2_RNG_SEED=str(args.seed), MC2_REPLAY_CONTENT=args.content,
                MC2_SMOKE_REQUIRE_FINGERPRINT="1", MC2_MISSION_SPLIT="1")
+    env.pop("MC2_UI_COMMAND_FILE", None)  # Playback must consume envelopes, not inherited fixtures.
+    for name in list(env):
+        if name.upper().startswith("MC2_COMMAND_REPLAY_"):
+            del env[name]
     env.update(extra)
     executable = args.install / ("mc2.exe" if sys.platform == "win32" else "mc2")
     command = [sys.executable, str(ROOT / "scripts/run_smoke.py"), "--exe", str(executable),
@@ -72,7 +89,8 @@ def run(args, label: str, extra: dict[str, str], expect: str) -> dict:
             log = source.read_text(errors="replace")
             (output / "engine.log").write_text(log, encoding="utf-8")
     divergence = re.search(r"\[REPLAY_DIVERGED v1\] ([^\n]+)", log)
-    ok = result.returncode == 0 and expect in log and not divergence
+    ok = (result.returncode == 0 and expect in log and not divergence
+          and "[COMMAND_REPLAY] record_failed reason=" not in log)
     report = {"label": label, "ok": ok, "smoke_exit": result.returncode,
               "first_divergence": divergence.group(1) if divergence else None, "env": extra}
     (output / "result.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
@@ -94,6 +112,8 @@ def main() -> int:
     parser.add_argument("--out", type=Path)
     parser.add_argument("--commands", type=Path, help="existing UI command channel script for the recording")
     args = parser.parse_args()
+    if args.mode == "play" and args.commands:
+        parser.error("--commands is only supported when recording")
     if args.mode == "inspect":
         print(json.dumps(inspect(args.replay), indent=2))
         return 0
@@ -102,6 +122,10 @@ def main() -> int:
     args.install = args.install.resolve()
     args.replay = args.replay.resolve()
     args.out = args.out.resolve()
+    script_text = (args.commands.read_text(encoding="utf-8") if args.commands else
+                   "select all\norder move -4900 -5400\norder attack 706\n")
+    if args.mode in ("record", "proof"):
+        validate_commands(script_text)
     args.out.mkdir(parents=True, exist_ok=False)
     args.content = fingerprint(args.install, args.mission)
     reports = []
@@ -111,7 +135,9 @@ def main() -> int:
         env = {"MC2_COMMAND_REPLAY_RECORD": str(args.replay), "MC2_COMMAND_REPLAY_TICKS": str(args.ticks),
                "MC2_FPS_CAP": "30"}
         script = args.out / "commands.txt"
-        script.write_bytes(args.commands.read_bytes() if args.commands else b"select all\norder stop\n")
+        script.write_text("".join(line.strip() + "\n" for line in script_text.splitlines()
+                                  if line.strip() and not line.lstrip().startswith("#")),
+                          encoding="utf-8", newline="\n")
         env["MC2_UI_COMMAND_FILE"] = str(script)
         reports.append(run(args, "record", env, "[REPLAY_RECORDED v1]"))
     metadata = inspect(args.replay)

@@ -125,6 +125,13 @@ bool active() { return !session.complete && (session.playback || session.record.
 bool playing() { return session.playback && !session.complete; }
 bool complete() { return session.complete; }
 bool failed() { return session.failed; }
+void failRecording(std::string_view reason) {
+    if (!session.record.is_open() || session.failed) return;
+    session.failed = true;
+    std::fprintf(stderr, "[COMMAND_REPLAY] record_failed reason=%.*s\n",
+        static_cast<int>(reason.size()), reason.data());
+    std::fflush(stderr);
+}
 
 std::expected<sim::OrderReceipt, sim::OrderError> submit(sim::TacticalOrderQueue& queue,
     sim::OrderEnvelope envelope, const sim::OrderAdmissionValidator& validator) {
@@ -150,6 +157,7 @@ void pump(sim::TacticalOrderQueue& queue, const sim::OrderAdmissionValidator& va
     }
 }
 void hashes(std::uint64_t tick, const std::array<std::uint64_t, 5>& values) {
+    if (session.failed) return;
     if (session.record.is_open()) {
         session.record << "H " << std::dec << tick << std::hex;
         for (auto value : values) session.record << ' ' << value;

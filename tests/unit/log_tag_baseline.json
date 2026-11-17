@@ -2154,6 +2154,15 @@
    "count": 1
   },
   {
+   "tag": "COMMAND_REPLAY",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "reason"
+   ],
+   "count": 1
+  },
+  {
    "tag": "COMPASS_SYNC",
    "ver": -1,
    "stream": "stderr",
