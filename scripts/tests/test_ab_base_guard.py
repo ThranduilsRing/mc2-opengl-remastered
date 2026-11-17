@@ -182,6 +182,15 @@ def test_game_identity_rejects_changed_shared_editor_rows(tmp_path, repo, monkey
     assert "ABSENT-BY-DESIGN" not in capsys.readouterr().out
 
 
+def test_game_identity_case_mismatched_editor_row_is_not_absent(capsys):
+    # Carbon P2: the same editor file spelled differently on each side must not be excused as absent-by-design.
+    a = {"mc2.exe": "e" * 64, "Mission Editor.exe": "a" * 64}
+    b = {"mc2.exe": "e" * 64, "mission editor.exe": "b" * 64}
+    lines = dict(ab._data_mismatch_entries(a, b, target="game"))
+    assert "Mission Editor.exe" in lines and "mission editor.exe" in lines
+    assert "ABSENT-BY-DESIGN" not in capsys.readouterr().out
+
+
 @pytest.mark.parametrize("replacement", [None, "b" * 64])
 def test_editor_identity_requires_authoring_files(monkeypatch, replacement):
     monkeypatch.setattr(ab.asset_parity, "intentional_changes", lambda *a: {})

@@ -253,7 +253,12 @@ def _data_mismatch_entries(ma, mb, target=None):
     game = target == "game" or (target is None and bool(EXECUTABLES.intersection(ma))
                                 and bool(EXECUTABLES.intersection(mb)))
     build_outputs = EXECUTABLES | {"mc2.pdb", "mc2_asset_viewer.exe", "mc2_asset_viewer"}
-    absent_editor = {p for p in ma.keys() ^ mb.keys() if game and editor_only_payload(p)}
+    # Single-side absence is judged on canonical keys (slashes + casefold, as editor_only_payload does): a row present on
+    # both sides under different spelling is not absent and stays in the strict comparison (it refuses as only-in-A/B).
+    norm = lambda p: str(p).replace("\\", "/").casefold()
+    na, nb = {norm(k) for k in ma}, {norm(k) for k in mb}
+    absent_editor = {p for p in ma.keys() ^ mb.keys()
+                     if game and editor_only_payload(p) and ((norm(p) in na) != (norm(p) in nb))}
     for rel in sorted(absent_editor):
         side = "A" if rel not in ma else "B"
         print(f"[ab] ABSENT-BY-DESIGN editor-owned payload missing only from {side} for game target: {rel}", flush=True)
