@@ -543,7 +543,7 @@ void invalidate(int32_t regIdx) {
     ::mc2EraseBakedStaticLight(regIdx);
     ++s_registryGeneration;   // 2b Stage 2: despawn = structural change
     ++s_contentRevision;
-    if (mc2_diag::tagRequested("WATER_BAKE")) mc2::fmt::print_err("[WATER_CONTENT] revision={} source=invalidate regIdx={}\n", s_contentRevision, regIdx);
+    if (mc2_diag::tagRequested("WATER_BAKE")) mc2::fmt::print_err("[WATER_CONTENT] revision={} source=invalidate regIdx={} name={} wasLive={}\n", s_contentRevision, regIdx, rng.shapeName, wasLive);
     // RECIPE-SLOT-RECYCLE: return the now-tombstoned slot to the free-list so the
     // next registerRecipe() reuses this regIdx instead of growing the array.
     if (s_recipeRecycle && wasLive)

@@ -172,15 +172,23 @@ bool prepare_reflect_bake(WaterIsland* s, float water) {
             }
             source.clear();
             if (b.content != content) source += "registry;";
-            for (size_t i = 0; i < light.size(); ++i)
-                if (b.light[i] != light[i]) source += "light[" + std::to_string(i) + "];";
+            // Weather also quantizes the flat-pad light in gamecam.cpp. Treat
+            // those steps as bounded lighting refreshes, not geometry edits.
+            bool flatLightChanged = false;
+            for (size_t i = 0; i < light.size(); ++i) {
+                if (i >= 12 && i <= 14) flatLightChanged |= b.light[i] != light[i];
+                else if (b.light[i] != light[i]) source += "light[" + std::to_string(i) + "];";
+            }
             if (b.water != water) source += "water;";
             if (b.halfMap != feed.halfMap) source += "halfMap;";
             for (size_t i = 1; i < key.size(); ++i)
                 if (b.key[i] != key[i]) source += "key[" + std::to_string(i) + "];";
             if (!source.empty()) why = "content";
             else if (drift) why = "drift";
-            else if (b.key[0] != key[0] && now - b.lastBake >= std::chrono::seconds(1)) why = "reveal";
+            else if ((b.key[0] != key[0] || flatLightChanged) && now - b.lastBake >= std::chrono::seconds(1)) {
+                why = "reveal";
+                source = flatLightChanged ? "flatLight" : "visibility";
+            }
             else return true;
         }
         // Mission dimensions may change without a window resize.
