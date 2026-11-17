@@ -4,6 +4,7 @@
 #include "gameos.hpp"
 #include <algorithm>
 #include "vk_one_shot.h"
+#include <filesystem>
 
 
 
@@ -19,7 +20,7 @@ bool ensure_shore_surface(WaterIsland* s) {
     // Rare terrain edits can replace buffers still read by the other frame slot.
     ctx.waitIdle("water shore surface version change");
     if (!s->shoreCompute) {
-        if (!s->shoreCompute.create(s->device, spv_dir() + "/water_shore_surface.comp.spv",
+        if (!s->shoreCompute.create(s->device, (std::filesystem::path(spv_dir()) / "water_shore_surface.comp.spv").string(),
                 {{0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER}, {1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER},
                  {2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER}}, "water.shoreSurface") ||
             !s->shoreSets.create(s->device, s->shoreCompute, 1, "water.shoreSurface")) return false;
