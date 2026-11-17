@@ -1,0 +1,36 @@
+{
+  "defines": [],
+  "outputs": [],
+  "shader": "shaders/vulkan/water_reflection_mask.comp",
+  "ssbos": [
+    {
+      "binding": 1,
+      "members": [
+        {
+          "array_stride": 4,
+          "matrix_stride": null,
+          "name": "horizontal",
+          "offset": 0,
+          "type": "float"
+        }
+      ],
+      "name": "Horizontal"
+    },
+    {
+      "binding": 2,
+      "members": [
+        {
+          "array_stride": 4,
+          "matrix_stride": null,
+          "name": "depth",
+          "offset": 0,
+          "type": "float"
+        }
+      ],
+      "name": "Depth"
+    }
+  ],
+  "stage": "comp",
+  "ubos": [],
+  "variant": "default"
+}

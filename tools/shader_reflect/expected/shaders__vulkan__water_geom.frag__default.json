@@ -15,6 +15,19 @@
   "shader": "shaders/vulkan/water_geom.frag",
   "ssbos": [
     {
+      "binding": 1,
+      "members": [
+        {
+          "array_stride": 4,
+          "matrix_stride": null,
+          "name": "heights",
+          "offset": 0,
+          "type": "float"
+        }
+      ],
+      "name": "TerrainHeightBuf"
+    },
+    {
       "binding": 4,
       "members": [
         {
@@ -28,6 +41,19 @@
       "name": "TerrainCementBuf"
     },
     {
+      "binding": 10,
+      "members": [
+        {
+          "array_stride": 4,
+          "matrix_stride": null,
+          "name": "heightsFine",
+          "offset": 0,
+          "type": "float"
+        }
+      ],
+      "name": "TerrainVisualHeightBuf"
+    },
+    {
       "binding": 11,
       "members": [
         {
@@ -35,7 +61,7 @@
           "matrix_stride": null,
           "name": "poolLights",
           "offset": 0,
-          "type": "_1283"
+          "type": "_2992"
         }
       ],
       "name": "TerrainLightPoolVK"
@@ -74,7 +100,7 @@
           "matrix_stride": null,
           "name": "stamps",
           "offset": 0,
-          "type": "_2252"
+          "type": "_2302"
         },
         {
           "array_stride": 4,

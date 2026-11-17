@@ -1149,7 +1149,7 @@ void LogisticsSaveDialog::updateCampaignMissionInfo()
 
 	if ( NO_ERR == file.seekBlock( "Group0Mission0" ) )
 	{
-		if ( NO_ERR != file.readIdString( "FileName", fileName, 1023 ) )
+		if ( NO_ERR != file.readIdString( "FileName", fileName, sizeof(fileName) - 1 ) )
 		{				
 			setMission( "" );
 		}		

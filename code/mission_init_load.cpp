@@ -604,6 +604,7 @@ void Mission::initObjectCounts(MissionLoadType loadType, MissionInitFrame& f) {
 	long numVehicles = 0;
 	for (int i = 1; i < (numParts + 1); i++) 
 	{
+		graphics::pump_loading_events();
 		ObjectTypePtr objType = ObjectManager->loadObjectType(parts[i].objNumber, parts[i].csvFile[0] != '\0');
 		if (!objType)
 			objType = ObjectManager->getObjectType(parts[i].objNumber);
@@ -688,6 +689,7 @@ void Mission::initSpawnActors(MissionLoadType loadType) {
 	for (long t = 0; t < 8; t++)
 		for (long i = 1; i < (numParts + 1); i++) 
 		{
+			graphics::pump_loading_events();
 			bool loadEm = true;
 			if (loadType == MISSION_LOAD_MP_LOGISTICS)
 				loadEm = false;

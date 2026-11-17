@@ -119,6 +119,24 @@ def test_enumerate_payload_needs_only_game(tmp_path):
     assert not any("__pycache__" in r or r.endswith((".pyc", ".pyo")) for r in rel)
 
 
+def test_deploy_no_example_mods_payload_and_manifest(tmp_path, monkeypatch, capsys):
+    # Trigger paths: scripts/deploy_payload.py, examples/mods/.
+    build = str(_ninja_tree(tmp_path))
+    default = dp.enumerate_payload(str(ROOT), build, "mc2.exe", "mc2.pdb")
+    examples = {rel for _, rel, _ in default if rel.startswith("mods/")}
+    assert examples
+    monkeypatch.setattr(dp, "example_mods_payload", lambda *a: pytest.fail("examples enumerated"))
+    lean = dp.enumerate_payload(str(ROOT), build, "mc2.exe", "mc2.pdb", no_example_mods=True)
+    assert {rel for _, rel, _ in lean} == {rel for _, rel, _ in default} - examples
+    assert "[DEPLOY] example mods skipped (--no-example-mods)" in capsys.readouterr().out
+    target = tmp_path / "install"
+    for _, rel, _ in lean:
+        _touch(target / rel)
+    dp.write_manifest_only(str(ROOT), build, "mc2.exe", "mc2.pdb", str(target), no_example_mods=True)
+    assert not any(rel.startswith("mods/") for rel in dp.read_manifest(str(target)))
+    assert dp.verify_only(str(target), strict=True) == 0
+
+
 def test_approved_road_art_is_deployed_and_parity_owned(tmp_path):
     # Trigger paths: scripts/deploy_payload.py, data/textures/256Overlays/.
     from scripts import asset_parity

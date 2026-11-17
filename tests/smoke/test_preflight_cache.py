@@ -16,6 +16,23 @@ from scripts.smoke_lib import preflight_cache as pc
 from scripts import console_child
 
 
+def test_overlapping_cache_writers_do_not_share_temps(tmp_path, monkeypatch):
+    import os
+    path = tmp_path / "cache.json"
+    replace = os.replace
+    pending = []
+    def overlapping(src, dst):
+        pending.append(str(src))
+        if len(pending) == 1:
+            pc.save_cache(path, {"head": "second"}, {})
+        replace(src, dst)
+    monkeypatch.setattr(os, "replace", overlapping)
+    pc.save_cache(path, {"head": "first"}, {"ok": True})
+    assert len(set(pending)) == 2
+    assert pc.load_cache(path)["fingerprint"] == {"head": "first"}
+    assert len(list(tmp_path.iterdir())) == 1
+
+
 def _git_init_with_commit(root: Path) -> str:
     subprocess.run(["git", "init", "-q"], cwd=root, check=True, **console_child.child_kwargs())
     subprocess.run(["git", "config", "user.email", "t@example.com"], cwd=root, check=True, **console_child.child_kwargs())

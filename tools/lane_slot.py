@@ -203,6 +203,20 @@ HOOK_SEEDED_FILE = ".claude/agents/mc2-lane.md"   # seeded into every worktree b
 
 
 def acquire(branch, base=None, reset_branch=False, no_warm=False):
+    from build_tokens import _queue_lock
+    # A separate process-owned lock avoids nesting register_lane's store lock.
+    # Keep selection, branch switch and registration in one critical section.
+    rc, common, err = git(MAIN_ROOT, "rev-parse", "--git-common-dir")
+    if rc:
+        sys.exit("acquire: cannot locate the shared git directory: " + err)
+    directory = (Path(MAIN_ROOT) / common).resolve() / "slot-acquire"
+    directory.mkdir(parents=True, exist_ok=True)
+    with _queue_lock(directory):
+        path = _claim_slot(branch, base, reset_branch)
+    return _warm_slot(path, no_warm)
+
+
+def _claim_slot(branch, base, reset_branch):
     strip_stale_excludes()
     claimed = claimed_worktrees()
     picked = pick_slot([slot_info(p, claimed) for p in SLOT_PATHS])
@@ -225,6 +239,10 @@ def acquire(branch, base=None, reset_branch=False, no_warm=False):
     except Exception as e:  # noqa: BLE001
         sys.exit(f"acquire: lane registration failed: {e}; the slot is unclaimed, so another acquire could take it. "
                  f"Fix the registry and re-run `acquire --branch {branch}`")
+    return path
+
+
+def _warm_slot(path, no_warm):
     print(f"[lane_slot] install {slot_install(path)} (deploy with --allow-new-target)")
     if re.fullmatch(r"mc2-slot\d\d", os.path.basename(norm(path))):
         import scratch_reap  # noqa: PLC0415
