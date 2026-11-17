@@ -215,6 +215,10 @@ def convert(source):
     sockets = json.loads((source/"sockets.json").read_text())
     bone_ids = {b["name"]: i for i, b in enumerate(bones)}
     for s in sockets:
+        if s["bone"] not in bone_ids or s["name"] in bone_ids:
+            # Sockets on bones the mesh lacks (the skeleton asset has more bones), and sockets that only
+            # repeat a bone's name (node names must stay unique), stay in sockets.json only.
+            continue
         nodes[bone_ids[s["bone"]]].setdefault("children", []).append(len(nodes))
         nodes.append({"name": s["name"], "translation": basis(s["translation"], .01),
                       "rotation": rotation(s["rotation"]), "scale": basis(s["scale"]), "extras": {"socket": True}})
