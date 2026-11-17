@@ -153,7 +153,7 @@ struct Evaluation {
 // The facility ids, in the order the log line lists them. One place, so the table, the line and the tests cannot drift.
 inline constexpr std::string_view kItemIds[] = {"api_1_2", "swapchain", "limits", "timeline_semaphore", "buffer_device_address", "descriptor_indexing",
                                                 "dynamic_rendering", "synchronization2", "independent_blend", "subgroup_compute", "memory_budget", "sampler_anisotropy",
-                                                "indirect_draw", "depth_formats"};
+                                                "pipeline_statistics", "indirect_draw", "depth_formats"};
 
 inline constexpr std::string_view kExtDynamicRendering = "VK_KHR_dynamic_rendering";
 inline constexpr std::string_view kExtSynchronization2 = "VK_KHR_synchronization2";
