@@ -75,8 +75,10 @@ vec3 tlp_terrainPoolLight(vec3 wp, int numPoolLights,
                          poolLights[i].farDistance, poolLights[i].oneOverDistance, len, falloff)) continue;
         falloff = lpa_spotCone(vtl, poolLights[i].lightType, len, poolLights[i].farDistance, falloff);   // LOCAL-LIGHTS-1/3
         if (falloff <= 0.0) continue;
-        falloff *= lpa_localShadow(wp, poolLights[i].position, poolLights[i].lightType, poolLights[i].farDistance);   // LOCAL-LIGHTS-2
         vec3 plCol = poolLights[i].color * poolLights[i].intensity;
+        // Zero radiance needs no shadow sample; mover contact/AO still runs below.
+        if (any(notEqual(plCol, vec3(0.0))))
+            falloff *= lpa_localShadow(wp, poolLights[i].position, poolLights[i].lightType, poolLights[i].farDistance);   // LOCAL-LIGHTS-2
 #ifdef TLP_LAMP_NORMAL
         // Resolve once, only after a lamp can contribute. No second light walk.
         if (resolveNormal && falloff > 0.0 && any(greaterThan(plCol, vec3(0)))) {
