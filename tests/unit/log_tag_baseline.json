@@ -404,6 +404,71 @@
    "count": 1
   },
   {
+   "tag": "ALPHA_HEAT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "mech",
+    "capacity",
+    "heat",
+    "mask",
+    "expire"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ALPHA_HEAT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "mech",
+    "tick",
+    "heat"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ALPHA_HEAT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "mech",
+    "tick",
+    "weapons",
+    "heat"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ALPHA_HEAT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "mech",
+    "weapon",
+    "cost",
+    "heat",
+    "tick"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ALPHA_HEAT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "target",
+    "fallback",
+    "issued"
+   ],
+   "count": 2
+  },
+  {
    "tag": "ANIMOVERRIDE",
    "ver": -1,
    "stream": "stderr",
@@ -470,14 +535,25 @@
    "count": 1
   },
   {
-   "tag": "AUDIO_ADMIT",
+   "tag": "AUDIO_CUE",
    "ver": -1,
    "stream": "stderr",
    "keys": [
-    "ticks",
-    "id",
+    "resource",
     "path",
-    "channel"
+    "caller"
+   ],
+   "count": 3
+  },
+  {
+   "tag": "AUDIO_CUE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "resource",
+    "path",
+    "file",
+    "caller"
    ],
    "count": 1
   },
@@ -490,6 +566,32 @@
     "channel"
    ],
    "count": 1
+  },
+  {
+   "tag": "AUDIO_START",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "ticks",
+    "id",
+    "resource",
+    "path",
+    "channel",
+    "caller"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "AUDIO_START",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "ticks",
+    "path",
+    "channel",
+    "caller"
+   ],
+   "count": 2
   },
   {
    "tag": "AUTHORED_ORDER",
@@ -2078,6 +2180,16 @@
     "paved_no_cement",
     "any_overlay",
     "cement_total"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CHASSIS_LAYOUT",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "items",
+    "grandfathered"
    ],
    "count": 1
   },
@@ -4496,6 +4608,19 @@
    "count": 1
   },
   {
+   "tag": "HUD_FRAME",
+   "ver": -1,
+   "stream": "log",
+   "keys": [
+    "pieces",
+    "textures",
+    "atlas",
+    "submissions",
+    "scale"
+   ],
+   "count": 1
+  },
+  {
    "tag": "HUD_LOAD_PREPARE",
    "ver": -1,
    "stream": "stderr",
@@ -4518,19 +4643,6 @@
     "serial",
     "kind",
     "frame"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "HUD_FRAME",
-   "ver": -1,
-   "stream": "log",
-   "keys": [
-    "pieces",
-    "textures",
-    "atlas",
-    "submissions",
-    "scale"
    ],
    "count": 1
   },
@@ -4596,6 +4708,16 @@
    "stream": "stderr",
    "keys": [
     "n"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ICON_DECODE_CACHE",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "key",
+    "sources"
    ],
    "count": 1
   },
@@ -5379,6 +5501,26 @@
    "stream": "buffer",
    "keys": [
     "total"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LOAD_PUMP",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "gap_ms",
+    "phase"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LOAD_PUMP",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "max_gap_ms",
+    "phase"
    ],
    "count": 1
   },
@@ -6977,6 +7119,13 @@
     "stalled",
     "verdict"
    ],
+   "count": 1
+  },
+  {
+   "tag": "ORDER_MENU",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
    "count": 1
   },
   {
@@ -11416,17 +11565,6 @@
    "count": 1
   },
   {
-   "tag": "VK_GPU_TRIS",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "pose",
-    "frame",
-    "n"
-   ],
-   "count": 1
-  },
-  {
    "tag": "VK_HUD_AUDIT",
    "ver": 1,
    "stream": "stderr",
@@ -12925,6 +13063,63 @@
    "count": 1
   },
   {
+   "tag": "WATER_BAKE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "phase"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_BAKE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "size",
+    "ms",
+    "MB",
+    "registry",
+    "why",
+    "source"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_CONTENT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "revision",
+    "source"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_CONTENT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "revision",
+    "source",
+    "regIdx"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_CONTENT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "revision",
+    "source",
+    "regIdx",
+    "name",
+    "wasLive"
+   ],
+   "count": 1
+  },
+  {
    "tag": "WATER_DEBUG",
    "ver": 1,
    "stream": "stderr",
@@ -13002,6 +13197,18 @@
     "thickness_min",
     "thickness_max",
     "waterElevation"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_QUALITY",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "reflection",
+    "detail",
+    "legacy",
+    "apply"
    ],
    "count": 1
   },
@@ -13220,6 +13427,7 @@
   "ASSET_SCALE",
   "BUILD_FINGERPRINT",
   "CAMERA_PARK",
+  "COMMAND_REPLAY",
   "CONFIG",
   "CONTENT",
   "CONTENT_COOK",
