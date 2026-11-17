@@ -268,12 +268,12 @@ int MechLabScreen::init( FitIniFile& file )
 	payloadIcon.resize(ml::kCellW, LogisticsComponent::YICON_FACTOR);
 	mechCamera.init(ml::kPreview.x, ml::kPreview.y,
 		ml::kPreview.x + ml::kPreview.w, ml::kPreview.y + ml::kPreview.h);
-	textObjects[11].moveTo(240, 494);
-	textObjects[12].moveTo(240, 511);
+	textObjects[11].moveTo(240, 488);
+	textObjects[12].moveTo(240, 506);
 	textObjects[4].moveTo(27, 499);
 	textObjects[5].moveTo(130, 497);
 	for (int i : {20, 32}) {
-		statics[i].moveTo(217, i == 20 ? 496 : 513);
+		statics[i].moveTo(217, i == 20 ? 490 : 508);
 		statics[i].resize(20, 15);
 	}
 
@@ -1053,8 +1053,8 @@ void MechLabScreen::render(int xOffset, int yOffset)
 	// DEFS-METER-BRIDGE-1: stat bars on the ImGui layer (raw gos draws are
 	// buried under the defs page).
 	aObject::beginGuiBridge( tbSx, tbSy, tbOx, tbOy );
-	attributeMeters[5].render(xOffset + 176, yOffset + 16);
-	attributeMeters[6].render(xOffset + 176, yOffset + 28);
+	attributeMeters[5].render(xOffset + 176, yOffset + 11);
+	attributeMeters[6].render(xOffset + 176, yOffset + 22);
 	aObject::endGuiBridge();
 
 	if ( !xOffset && !yOffset )
@@ -1089,7 +1089,7 @@ void MechLabScreen::render(int xOffset, int yOffset)
 			mc2::fmt::to_buf(value, "Heat {:.1f}  Damage {:.1f}", pCurComponent->getHeat(), pCurComponent->getDamage());
 		line(86, value, 0xffe8eef4);
 		mc2::fmt::to_buf(value, "Range {}  Cycle {:.1f}s", pCurComponent->getRange(), pCurComponent->getRecycleTime());
-		line(99, value, 0xffa0c8e0);
+		line(99, pCurComponent->getType() == COMPONENT_FORM_HEATSINK ? "" : value, 0xffa0c8e0);
 		auto meter = [&](float x, float y, float fraction, std::uint32_t color) {
 			GuiRuntime::DrawUiRect((x + xOffset) * tbSx + tbOx, (y + yOffset) * tbSy + tbOy,
 				70 * tbSx, 2 * tbSy, 0xff25323e, true);
@@ -1098,7 +1098,8 @@ void MechLabScreen::render(int xOffset, int yOffset)
 		};
 		meter(195, 97, pCurComponent->getHeat() / LogisticsComponent::MAX_HEAT, 0xffff6040);
 		meter(270, 97, pCurComponent->getDamage() / LogisticsComponent::MAX_DAMAGE, 0xff80c8ff);
-		meter(195, 110, (pCurComponent->getRange() + 1) / 3.f, 0xff80c8ff);
+		if (pCurComponent->getType() != COMPONENT_FORM_HEATSINK)
+			meter(195, 110, (pCurComponent->getRange() + 1) / 3.f, 0xff80c8ff);
 	}
 
 	if ( MPlayer && ChatWindow::instance() )

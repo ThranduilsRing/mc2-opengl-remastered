@@ -62,7 +62,7 @@ inline Rect panelRect(int p) {
     static constexpr int col[] = {0, 1, 0, 1, 0, 1, 0, 1};
     static constexpr int row[] = {0, 0, 1, 1, 2, 2, 3, 3};
     if (p < 0 || p >= kPanelCount) return {};
-    if (p == kDoll) return {kAreaX, 478, 316, 16};
+    if (p == kDoll) return {kAreaX, 476, 316, 14};
     return {kAreaX + col[p] * (kColW + kGap), kAreaY + row[p] * (kRowH + kGap), kColW, kRowH};
 }
 inline Rect itemRowRect(int p, int k, int count) {
@@ -74,7 +74,7 @@ inline Rect itemRowRect(int p, int k, int count) {
             r.y + kHeaderH + (k % kRowsPerColumn) * height, width, height};
 }
 // LOCATIONS | CLASSIC switch, above the panels.
-inline Rect toggleRect() { return {kAreaX, 113, 150, 15}; }
+inline Rect toggleRect() { return {kAreaX, 113, 134, 15}; }
 
 // Panel under a legacy-canvas point. Doll is not a drop target but is hit-testable.
 inline std::optional<int> panelAt(float lx, float ly) {
