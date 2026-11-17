@@ -1245,12 +1245,12 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
     {
         const uint64_t now = s.hudMirrorFrameCounter;
         for (auto it = s.hudTextureMirrors.begin(); it != s.hudTextureMirrors.end(); ) {
-            const auto handle = static_cast<uint32_t>(it->first >> 32);
+            auto& [identity, m] = *it;
+            const auto handle = static_cast<uint32_t>(identity >> 32);
             const bool retired = std::find(s.retiredHudTextures.begin(), s.retiredHudTextures.end(), handle) != s.retiredHudTextures.end();
-            if (retired || (!it->second.pinned && it->second.lastFrame + kHudMirrorIdleFrames < now)) {
+            if (retired || (!m.pinned && m.lastFrame + kHudMirrorIdleFrames < now)) {
                 // Idle long enough to count as gone: its descriptor set and buffer leave through the deferred-destroy queue, so a present submit
                 // that is still reading them keeps them alive (a ticket, not the idle window, is the proof).
-                auto& m = it->second;
                 s.ctx->retire(HudMirrorRetired{s.dev, s.hudTexPool.get(), std::exchange(m.set, VK_NULL_HANDLE), std::move(m.memory), std::move(m.buffer)});
                 it = s.hudTextureMirrors.erase(it);
             } else {
