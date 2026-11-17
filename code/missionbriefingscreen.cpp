@@ -131,24 +131,27 @@ void MissionBriefingScreen::render(int xOffset, int yOffset )
 	// they don't linger on top of the loading screen until the next page loads.
 	if ( !isShowing() )
 		return;
+	LogisticsScreen::render( xOffset, yOffset );
 
 	// PREVIEW-FBO-FIXED-800x600-1: no defs/ImGui placement rect known for this
 	// camera; composite via the same real-resolution ratio used elsewhere
 	// (GuiRuntime::GetDisplaySize / Environment.screenWidth,Height), applied to
 	// camera.bounds[] (unscaled legacy 800x600 rect from camera.init() above).
+	if (camera.hasObject())
 	{
-		// UI-ASPECT-ANCHOR-1: canvas-aware composite transform (see aObject).
+		// Stock Rect4 is the preview window; the adjacent controls stay outside it.
 		float sx = 1.f, sy = 1.f, cox = 0.f, coy = 0.f;
 		aObject::getCanvasTransform( sx, sy, cox, coy );
+		float px = camera.bounds[0] * sx + cox, py = camera.bounds[1] * sy + coy;
+		float pw = (camera.bounds[2] - camera.bounds[0]) * sx;
+		float ph = (camera.bounds[3] - camera.bounds[1]) * sy;
+		getDefsElementScreenRect("game.mcl_mn.rect.thin_line_divider_between_obj_animation_and_play_stop_pause_buttons", px, py, pw, ph);
 		camera.setPreviewOffscreen( true );
 		camera.render();
-		camera.drawPreviewToPanel(
-			camera.bounds[0] * sx + cox, camera.bounds[1] * sy + coy,
-			(camera.bounds[2] - camera.bounds[0]) * sx,
-			(camera.bounds[3] - camera.bounds[1]) * sy );
+		const bool clipped = GuiRuntime::PushUiClipRect(px, py, pw, ph);
+		camera.drawPreviewToPanel(px, py, pw, ph);
+		if (clipped) GuiRuntime::PopUiClipRect();
 	}
-
-	LogisticsScreen::render( xOffset, yOffset );
 
 	// Re-sync objective line colours each frame so the auto-cycling selection (which
 	// recolours the hidden listbox items) shows in the defs GuiList.
