@@ -7,6 +7,7 @@
 #include "terrain_field_store.h"
 #include "cement_layers.h"
 #include "gameos.hpp"
+#include "gos_render.h"
 #include <array>
 #include <bit>
 #include <filesystem>
@@ -179,7 +180,8 @@ void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
         const auto key = mc2terrain::surfaceCookSourceHash(input);
         auto packed = mc2terrain::loadCachedPackedSurface(cacheDir, key, input.srgb);
         auto cooked = packed ? std::optional<mc2terrain::SurfaceAsset>{std::move(packed->materials)} :
-            mc2terrain::resolveSurfaceAsset(input, mc2terrain::surfaceMissionCook(), cacheDir, &cookOrigin);
+            std::optional<mc2terrain::SurfaceAsset>{};
+        if (!packed) graphics::loading_work([&] { cooked = mc2terrain::resolveSurfaceAsset(input, mc2terrain::surfaceMissionCook(), cacheDir, &cookOrigin); });
         if (packed) cookOrigin = "packed-cache";
         const double resolveMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - resolveT0).count();
         if (cooked) {

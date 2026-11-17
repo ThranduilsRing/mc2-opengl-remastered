@@ -1015,6 +1015,7 @@ void Mission::initFinalizeGeometry() {
 	// Seed gameplay attachments before the first LOS/weapon query. Camera
 	// extraction must never supply a mover's initial node palette.
 	for (long i = 1; i <= ObjectManager->getMaxObjects(); ++i) {
+		graphics::pump_loading_events();
 		auto* object = ObjectManager->get(i);
 		if (!object || !object->getExists()) continue;
 		auto* appearance = object->getAppearance();
@@ -1033,7 +1034,9 @@ void Mission::initFinalizeGeometry() {
 	// mission. Safe here: GL context is live (textures/shadow FBOs already
 	// exist by this point) and this is the unconditional tail of map-load.
 	{ MC2_LOAD_SCOPE("finalize.staticPropGeometry"); GameAdapters::StaticProp::finalizeGeometry(); }
+	graphics::pump_loading_events();
 	{ MC2_LOAD_SCOPE("finalize.mechGeometry"); GpuMechBatcher::instance().finalizeGeometry(); }
+	graphics::pump_loading_events();
 
 
 

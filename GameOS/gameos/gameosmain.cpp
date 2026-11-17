@@ -731,6 +731,40 @@ extern float frameRate;
 static Uint64 g_mission_t0 = 0;
 static unsigned g_missionTraceFrames = 5;
 static Uint64 g_missionReadyTrace = 0;
+static graphics::RenderWindowHandle g_loadingWindow = nullptr;
+static void (*g_loadingDraw)() = nullptr;
+
+void graphics::set_loading_draw(void (*draw)()) { g_loadingDraw = draw; }
+
+void graphics::redraw_loading_screen()
+{
+    if (!g_loadingWindow || !g_loadingDraw || loading_phase().empty()) return;
+    static Uint64 lastDraw = 0;
+    static bool drawing = false;
+    const auto now = SDL_GetTicks64();
+    if (drawing || now - lastDraw < 100) return;
+    lastDraw = now;
+    drawing = true;
+    // Only explicit safe checkpoints enter here: no world update, input or resource-loading callback.
+    mc2vk::present_thread::waitSealed();
+    auto* pp = getGosPostProcess();
+    if (pp) pp->beginScene();
+    (void)mc2_vk_scene_clear(pp ? pp->getWidth() : Environment.drawableWidth,
+                            pp ? pp->getHeight() : Environment.drawableHeight);
+    gos_RendererBeginFrame();
+    gos_SetRenderState(gos_State_IsHUD, 1);
+    g_loadingDraw();
+    gos_SetRenderState(gos_State_IsHUD, 0);
+    gos_RendererEndFrame();
+    if (pp) pp->endScene();
+    gos_RendererFlushHUDBatch();
+    // The present owns a frame boundary; retain the ordinary host clocks and handle retirement.
+    gos::host::advanceFrameCounter();
+    gos::host::presentOrSwap(g_loadingWindow, g_mc2RenderFrame);
+    mc2vk::present_thread::waitSealed();
+    gos::host::retirePresentHandles(g_mc2RenderFrame);
+    drawing = false;
+}
 
 // Loading runs on the window's main thread. Service OS messages without
 // dispatching game input against the partially constructed mission.
@@ -740,6 +774,7 @@ extern "C" void mission_load_pump()
     if (SmokeMode::state().headless) return;
     static mc2::loadpump::CursorThrottle cursorThrottle;
     if (!cursorThrottle.due(SDL_GetTicks64())) return;
+    graphics::redraw_loading_screen();
     // The sprite cannot advance during synchronous loading; use the OS arrow.
     // The central policy preserves the unattended harness cursor guard.
     graphics::apply_os_cursor_policy("mission_load", false);
@@ -762,6 +797,7 @@ namespace {
 
 extern "C" void mission_phase_begin()
 {
+    graphics::begin_loading_events();
     mc2::loadpump::meter.mission.begin(SDL_GetTicks64(), "mission_load_start", SmokeMode::state().headless);
     mission_load_pump();
     g_missionTraceFrames = 5;
@@ -777,6 +813,7 @@ extern "C" void mission_phase_begin()
 extern "C" void mission_phase_mark(mc2::czstring name)
 {
     mission_load_pump();
+    graphics::loading_events_phase(name);
     auto& pumpScope = mc2::loadpump::meter.mission;
     pumpScope.mark(SDL_GetTicks64(), name);
     if (strcmp(name, "mission_ready") == 0) pumpScope.end(SDL_GetTicks64());
@@ -798,6 +835,7 @@ extern "C" void mission_phase_mark(mc2::czstring name)
 // for the first mark), so the numbers sum to the final mark's total.
 extern "C" void mission_phase_report()
 {
+    graphics::end_loading_events();
     if (g_sdl_window)
         graphics::apply_os_cursor_policy("mission_ready", !g_focus_lost);
     g_missionTraceFrames = 0;
@@ -978,6 +1016,7 @@ int main(int argc, char** argv)
     const bool headless = SmokeMode::state().headless;
     graphics::RenderWindowHandle win = headless ? graphics::RenderWindowHandle{} : graphics::create_window("mc2", w, h,
         Environment.fullScreen == 0);
+    g_loadingWindow = win;
     if(!win && !headless)
         return 1;
 
