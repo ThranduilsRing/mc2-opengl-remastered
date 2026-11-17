@@ -147,9 +147,21 @@ bool prepare_reflect_bake(WaterIsland* s, float water) {
     }
     light[15] = lighting.rain; light[16] = feed.ambientFloor; light[17] = feed.ambientDayGate;
     auto& owner = s->reflectionBake;
+    std::string why = "load";
     if (owner) {
         auto& b = *static_cast<ReflectBake*>(owner.get());
         if (b.ready && b.key == key && b.light == light && b.water == water && b.halfMap == feed.halfMap) return true;
+        if (b.ready) {
+            why = b.water != water ? "water" : "halfMap";
+            for (size_t i = 0; i < light.size(); ++i) if (b.light[i] != light[i]) {
+                why = "light[" + std::to_string(i) + "]:" + std::to_string(b.light[i]) + "->" + std::to_string(light[i]);
+                break;
+            }
+            for (size_t i = 0; i < key.size(); ++i) if (b.key[i] != key[i]) {
+                why = "key[" + std::to_string(i) + "]";
+                break;
+            }
+        }
         // Mission dimensions may change without a window resize.
         if (b.span != 128.0f * (feed.mapSide - 1)) mc2vk::getOrCreateEngineVulkanContext().retire(std::move(owner));
     }
@@ -217,7 +229,7 @@ bool prepare_reflect_bake(WaterIsland* s, float water) {
     VkPhysicalDeviceProperties properties{}; vkGetPhysicalDeviceProperties(s->phys, &properties);
     const double ms = (timestamps[1] - timestamps[0]) * properties.limits.timestampPeriod / 1.0e6;
     const double mb = static_cast<double>(b.size) * b.size * (12 + 8.0/3) / (1024*1024);
-    if (mc2_diag::tagRequested("WATER_BAKE")) mc2::fmt::print_err("[WATER_BAKE] size={}x{} ms={:.3f} MB={:.3f} registry={}\n", b.size, b.size, ms, mb, key[0]);
+    if (mc2_diag::tagRequested("WATER_BAKE")) mc2::fmt::print_err("[WATER_BAKE] size={}x{} ms={:.3f} MB={:.3f} registry={} why={}\n", b.size, b.size, ms, mb, key[0], why);
     if (dump) {
         std::vector<uint16_t> pixels(static_cast<size_t>(bytes / 2));
         if (!readback.read(pixels.data(), bytes)) return false;

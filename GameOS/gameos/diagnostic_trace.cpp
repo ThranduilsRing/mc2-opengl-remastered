@@ -37,6 +37,7 @@ const std::unordered_set<std::string>& knownTags() {
         "SUPPORT_CRAFT", // Bounded recovery-craft appearance, geometry and native draw trace. Opt-in.
         "GPU_CULL",
         "LIGHTBAKE_PROOF",
+        "WATER_BAKE", // Reflection bake cost and invalidation reason. Opt-in.
         "ANIM_GATE",
         "TerrainLOD_prod",
         "TERRAIN_ACTIVE_AB",
