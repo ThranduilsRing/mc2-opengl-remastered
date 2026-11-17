@@ -315,6 +315,13 @@ TEST_CASE("HUD atlas mips preserve premultiplication rounding and immutable sour
     CHECK(std::all_of(full.begin(), full.end(), [](uint8_t value) { return value == 255; }));
 }
 
+TEST_CASE("HUD atlas mips reject invalid dimensions and short buffers") {
+    CHECK(mc2hud::premultipliedMips({}, 0).empty());
+    CHECK(mc2hud::premultipliedMips(std::vector<uint8_t>(3 * 3 * 4), 3).empty());
+    CHECK(mc2hud::premultipliedMips(std::vector<uint8_t>(6 * 6 * 4), 6).empty());
+    CHECK(mc2hud::premultipliedMips(std::vector<uint8_t>(2 * 2 * 4 - 1), 2).empty());
+}
+
 TEST_CASE("HUD atlas SIMD mips match scalar bytes") {
     const auto reference = [](const std::vector<uint8_t>& rgba, size_t side) {
         const size_t base = side * side * 4;

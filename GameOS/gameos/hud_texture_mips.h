@@ -10,19 +10,23 @@
 namespace mc2hud {
 // Power-of-two RGBA8 atlas. Keep filtering in cached CPU memory: mapped
 // HOST_COHERENT storage can be uncached, making the read/modify/write pass stall.
+// Reject invalid dimensions or short buffers; divide before multiplying to avoid overflow.
 inline std::vector<uint8_t> premultipliedMips(const std::vector<uint8_t>& rgba, size_t side) {
+    if (side == 0 || (side & (side - 1)) != 0 || side > rgba.size() / side / 4)
+        return {};
     const size_t baseBytes = side * side * 4;
-    std::vector<uint8_t> result((baseBytes * 4 - 4) / 3);
+    std::vector<uint8_t> result(baseBytes + (baseBytes - 4) / 3);
     std::memcpy(result.data(), rgba.data(), baseBytes);
     auto* pixels = result.data();
     size_t i = 0;
 #if defined(__SSE2__) || defined(_M_X64)
     const auto zero = _mm_setzero_si128();
     const auto rounding = _mm_set1_epi16(128);
+    const auto filterRounding = _mm_set1_epi16(2);
     const auto alphaMask = _mm_set1_epi32(static_cast<int>(0xff000000u));
     for (; i + 16 <= baseBytes; i += 16) {
         const auto src = _mm_loadu_si128(reinterpret_cast<const __m128i*>(pixels + i));
-        auto premultiply = [&](auto lanes) {
+        auto premultiply = [&](const __m128i lanes) {
             const auto alpha = _mm_shufflehi_epi16(_mm_shufflelo_epi16(lanes, 255), 255);
             auto product = _mm_add_epi16(_mm_mullo_epi16(lanes, alpha), rounding);
             // Exact rounded division by 255 for all 8-bit products.
@@ -46,10 +50,10 @@ inline std::vector<uint8_t> premultipliedMips(const std::vector<uint8_t>& rgba, 
                 const auto* row = pixels + offset + (2*y*w + 2*x)*4;
                 const auto top = _mm_loadu_si128(reinterpret_cast<const __m128i*>(row));
                 const auto bottom = _mm_loadu_si128(reinterpret_cast<const __m128i*>(row + w*4));
-                auto filter = [&](auto a, auto b) {
+                auto filter = [filterRounding](const __m128i a, const __m128i b) {
                     auto sum = _mm_add_epi16(a, b);
                     sum = _mm_add_epi16(sum, _mm_srli_si128(sum, 8));
-                    return _mm_srli_epi16(_mm_add_epi16(sum, _mm_set1_epi16(2)), 2);
+                    return _mm_srli_epi16(_mm_add_epi16(sum, filterRounding), 2);
                 };
                 const auto lo = filter(_mm_unpacklo_epi8(top, zero), _mm_unpacklo_epi8(bottom, zero));
                 const auto hi = filter(_mm_unpackhi_epi8(top, zero), _mm_unpackhi_epi8(bottom, zero));
