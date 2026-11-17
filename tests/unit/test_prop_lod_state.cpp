@@ -5,6 +5,179 @@
 #include <unordered_map>
 #include "RenderCore/gpu_abi/GpuStaticPropInstance.h"
 #include <cstring>
+#include <atomic>
+#include <array>
+
+static void propLodEraseBakedLight(int32_t) {}
+#define mc2EraseBakedStaticLight propLodEraseBakedLight
+namespace {
+// Compile the production lifecycle functions verbatim. Only unrelated renderer,
+// texture and shape services are stand-ins; LOD state and slot bindings are real.
+using DWORD = uint32_t;
+struct TG_InstanceId { uint64_t value = 1; };
+struct TG_MultiShape {
+    bool usesTypeMaterials() const { return true; }
+    TG_InstanceId stableId() const { return {}; }
+    long GetNumTextures() const { return 0; }
+    DWORD GetTextureHandle(long) const { return 0xffffffffu; }
+    void setCachedFrame(uint32_t) {}
+};
+struct TglInstanceRegistry {
+    static TglInstanceRegistry& get() { static TglInstanceRegistry r; return r; }
+    TG_MultiShape* resolve(TG_InstanceId) { return nullptr; }
+};
+namespace mc2::textures {
+bool ready() { return false; }
+void pin(DWORD) {}
+void unpin(DWORD) {}
+}
+std::atomic<uint32_t> g_mc2FrameCounter{0};
+PropLodStateMap s_lodState;
+std::unordered_map<uint32_t, PropLodSlots> s_persistentLodSlots;
+std::unordered_map<uint32_t, std::vector<GpuStaticPropInstance>> s_persistentStaticStore;
+std::vector<int> s_types(1);
+uint64_t s_persistentStaticGen = 0, s_staticBaseBuiltGen = 0;
+// Non-LOD resources touched by onMapUnload; no graphics service is invoked.
+std::vector<int> s_coalescePinnedNodes, s_packetTexArrayLayer, s_packetUvScaleX, s_packetUvScaleY,
+    s_typeInstanceCountPrevFrame, s_packetMaterialIdx, s_materialGpuTable, s_materialInventory,
+    s_sortedPacketOrder, s_bucketsByType, s_lodGroups, s_lodMembers, s_lodEvaluated,
+    s_staticBaseInstanceForType;
+bool s_materialGpuSidecarValid = false;
+int s_alphaOffCmdCount = 0, s_alphaOnCmdCount = 0;
+class GpuStaticPropBatcher {
+    std::array<int, 2> albedoArrays_{};
+    int albedoKey_ = 0;
+public:
+    static GpuStaticPropBatcher& instance() { static GpuStaticPropBatcher b; return b; }
+    void clearPersistentStatic();
+    void appendPersistentStaticRange(const GpuStaticPropInstance*, uint32_t);
+    void forgetLodState(const GpuStaticPropInstance&);
+    void onMapUnload();
+    void onMapLoad() {} // resource initialization is outside the lifecycle seam
+};
+namespace GpuStaticPropRegistry {
+#include "prop_lod_range.inc"
+std::vector<GpuStaticPropInstance> s_recipes;
+std::vector<RecipeRange> s_recipeRanges;
+std::vector<uint32_t> s_recipeRangeFreeList;
+std::unordered_map<uint32_t, int32_t> s_typeIDToRecipeIndex;
+bool s_recipeRecycle = true;
+uint64_t s_registryGeneration = 0, s_totalPinCalls = 0;
+void releasePinsForRange(RecipeRange&) {}
+void staticPropRegistryClearMaterialCache() {}
+#define SP_TRACE(...) ((void)0)
+#define TEX_LC_PIN(...) ((void)0)
+#include "prop_lod_register.inc"
+#include "prop_lod_invalidate.inc"
+#undef TEX_LC_PIN
+#undef SP_TRACE
+}
+#include "prop_lod_store.inc"
+#include "prop_lod_forget.inc"
+#include "prop_lod_unload.inc"
+
+struct PropLodLifecycle {
+    GpuStaticPropBatcher& batcher = GpuStaticPropBatcher::instance();
+    PropLodLifecycle() { reset(); }
+    ~PropLodLifecycle() { reset(); }
+    void reset() {
+        batcher.onMapUnload();
+        GpuStaticPropRegistry::s_recipes.clear();
+        GpuStaticPropRegistry::s_recipeRanges.clear();
+        GpuStaticPropRegistry::s_recipeRangeFreeList.clear();
+        GpuStaticPropRegistry::s_typeIDToRecipeIndex.clear();
+    }
+    static GpuStaticPropInstance prop(float x) {
+        GpuStaticPropInstance p{};
+        p.modelMatrix[3] = x;
+        return p;
+    }
+    PropLodSlots& bind() {
+        auto& slots = s_persistentLodSlots[0];
+        slots.bind(s_lodState, std::span<const GpuStaticPropInstance>(s_persistentStaticStore[0]), propLodKey);
+        return slots;
+    }
+    void append(std::initializer_list<GpuStaticPropInstance> props) {
+        batcher.appendPersistentStaticRange(props.begin(), static_cast<uint32_t>(props.size()));
+    }
+};
+}
+#undef mc2EraseBakedStaticLight
+
+TEST_CASE_FIXTURE(PropLodLifecycle, "prop_lod_seams: registry erase and recycle bumps binding revision") {
+    TG_MultiShape shape;
+    const auto a = prop(10), b = prop(20), c = prop(30);
+    const int32_t index = GpuStaticPropRegistry::registerRecipe(&shape, {a});
+    REQUIRE(index >= 0);
+    append({a, b});
+    const auto erasedSlot = bind().indices[0];
+    s_lodState[propLodKey(a)] = 2;
+    s_lodState[propLodKey(b)] = 1;
+    const auto revision = s_lodState.revision();
+    GpuStaticPropRegistry::invalidate(index);
+    CHECK(s_lodState.revision() > revision);
+    CHECK(s_lodState.find(propLodKey(a)) == nullptr);
+    CHECK(GpuStaticPropRegistry::registerRecipe(&shape, {c}) == index);
+    CHECK(s_lodState.resolve(propLodKey(c)) == erasedSlot);
+    s_lodState[propLodKey(c)] = 4;
+    // Unchanged store count: only the erase revision can force this rebind.
+    CHECK(s_lodState.dense(bind().indices[0]) == 0);
+    CHECK(s_lodState.dense(bind().indices[1]) == 1);
+    CHECK(s_lodState[propLodKey(c)] == 4);
+}
+
+TEST_CASE_FIXTURE(PropLodLifecycle, "prop_lod_seams: persistent rebuild handles same-count reorder and replacement") {
+    const auto a = prop(10), b = prop(20), c = prop(30);
+    append({a, b});
+    bind();
+    s_lodState[propLodKey(a)] = 1;
+    s_lodState[propLodKey(b)] = 2;
+    const auto revision = s_lodState.revision();
+    batcher.clearPersistentStatic();
+    CHECK(s_persistentLodSlots.empty());
+    CHECK(s_persistentStaticStore[0].empty());
+    CHECK(s_persistentStaticGen == UINT64_MAX);
+    SUBCASE("save reload reorders equal-count recipes") { append({b, a}); }
+    SUBCASE("save reload replaces an equal-count recipe") { append({c, a}); }
+    CHECK(s_lodState.revision() == revision); // no erase to rescue stale bindings
+    const auto& store = s_persistentStaticStore[0];
+    const auto& slots = bind();
+    for (size_t i = 0; i < store.size(); ++i)
+        CHECK(s_lodState.dense(slots.indices[i]) == s_lodState[propLodKey(store[i])]);
+    CHECK(s_lodState.dense(slots.indices[1]) == 1);
+}
+
+TEST_CASE_FIXTURE(PropLodLifecycle, "prop_lod_seams: persistent dynamic transitions discard cached bindings") {
+    const auto a = prop(10), b = prop(20);
+    append({a});
+    bind();
+    s_lodState[propLodKey(a)] = 2;
+    // Persistent -> dynamic: rebuild removes A; its keyed hysteresis survives.
+    batcher.clearPersistentStatic();
+    append({b});
+    CHECK(s_lodState.dense(bind().indices[0]) == 0);
+    CHECK(s_lodState[propLodKey(a)] == 2);
+    s_lodState[propLodKey(a)] = 1; // dynamic keyed route advances hysteresis
+    // Dynamic -> persistent: append must invalidate even an existing binding.
+    append({a});
+    CHECK(s_persistentLodSlots.count(0) == 0);
+    CHECK(s_lodState.dense(bind().indices[1]) == 1);
+}
+
+TEST_CASE_FIXTURE(PropLodLifecycle, "prop_lod_seams: mission teardown clears hysteresis and persistent bindings") {
+    const auto a = prop(10);
+    append({a});
+    bind();
+    s_lodState[propLodKey(a)] = 2;
+    const auto revision = s_lodState.revision();
+    batcher.onMapUnload();
+    CHECK(s_lodState.size() == 0);
+    CHECK(s_lodState.revision() > revision);
+    CHECK(s_persistentLodSlots.empty());
+    CHECK(s_persistentStaticStore.empty());
+    append({a});
+    CHECK(s_lodState.dense(bind().indices[0]) == 0);
+}
 
 TEST_CASE("prop_lod_state: dense bindings survive growth and invalidate on erase or reload") {
     PropLodStateMap state;

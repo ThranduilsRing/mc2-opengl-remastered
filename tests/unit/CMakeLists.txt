@@ -738,6 +738,22 @@ function(mc2_height_slice output source begin end)
     set(${output} "${body}" PARENT_SCOPE)
     set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${MC2_WORKTREE_ROOT}/${source}")
 endfunction()
+mc2_height_slice(prop_lod_range GameOS/gameos/gos_static_prop_registry_internal.h
+    "struct RecipeRange {" "// Registry gates")
+mc2_height_slice(prop_lod_register GameOS/gameos/gos_static_prop_registry.cpp
+    "int32_t registerRecipe(" "void markVisible(")
+mc2_height_slice(prop_lod_invalidate GameOS/gameos/gos_static_prop_registry.cpp
+    "void invalidate(int32_t regIdx)" "// 2b Stage 2: monotonic dirty signal")
+mc2_height_slice(prop_lod_store GameOS/gameos/gos_static_prop_batcher_seam.cpp
+    "void GpuStaticPropBatcher::clearPersistentStatic()" "bool GpuStaticPropBatcher::buildRecipeFromShape(")
+mc2_height_slice(prop_lod_forget GameOS/gameos/gos_static_prop_batcher_shadow.cpp
+    "static uint64_t propLodKey(" "void mc2_static_prop_retype_far_tier(")
+mc2_height_slice(prop_lod_unload GameOS/gameos/gos_static_prop_batcher_mapload.cpp
+    "void GpuStaticPropBatcher::onMapUnload()" "//\n// Packet enumeration:")
+foreach(part range register invalidate store forget unload)
+    file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/prop_lod_${part}.inc" CONTENT "${prop_lod_${part}}")
+endforeach()
+set_source_files_properties(test_prop_lod_state.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
 mc2_height_slice(carbon_leg_armor code/mech.cpp "\t\tcurLeg =" "\n\t\tarmorEffect = armorHead")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/carbon_leg_armor.inc" CONTENT "${carbon_leg_armor}")
 mc2_height_slice(carbon_difficulty code/mover_attack.cpp "\tif (!MPlayer && (getCommanderId()" "\n\tfloat distanceToTarget")
