@@ -980,3 +980,5 @@ if(MC2_UNIT_ONLY_SOURCES)
     endif()
     mc2_asan_runtime(mc2_tests_selected)
 endif()
+
+target_sources(mc2_tests PRIVATE test_veg_population_cache.cpp)

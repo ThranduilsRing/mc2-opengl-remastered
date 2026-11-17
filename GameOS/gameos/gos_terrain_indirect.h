@@ -324,6 +324,7 @@ struct HardSurfaceDirty {
 };
 HardSurfaceDirty TakeHardSurfaceDirty();
 float HardSurfaceCoverage(float wx, float wy);
+std::array<uint8_t, 32> HardSurfaceContentDigest();
 void  HardSurfaceStats(int* alpha, int* pure, int* noImage);
 bool  DrawDecalStatic();
 

@@ -5,7 +5,8 @@
 // (mclib/) and engine-side headers (GameOS/gameos/).
 
 #include "VegetationAdapter.h"
-#include "vegetation_budget.h"
+#include "vegetation_population_cache.h"
+#include "../GameOS/gameos/load_scope.h"
 #include "vegetation_noise.h"
 #include "vegetation_clumps.h"
 #include "vegetation_hardsurface.h"
@@ -48,6 +49,7 @@
 // VEG-CEMENT-1: sub-cell hard-surface coverage from the decal/overlay bake
 // (GameOS/gameos/gos_terrain_indirect_mine_decal.cpp; C-linkage forwarders).
 extern float gos_terrain_indirect_HardSurfaceCoverage(float wx, float wy);
+extern std::array<uint8_t, 32> gos_terrain_indirect_HardSurfaceContentDigest();
 extern float gos_terrain_indirect_HardSurfaceCoverageReadOnly(float wx, float wy);
 extern void  gos_terrain_indirect_HardSurfaceStats(int* alpha, int* pure, int* noImage);
 
@@ -195,6 +197,11 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
             if (i == 0) fieldRecipe = readFieldRecipe(doc);   // only the temperate biome carpets its ground
         }
     }
+    GosVegetation::UploadInfo uploadInfo;
+    uploadInfo.maxInst = static_cast<uint32_t>(maxInst);
+    const auto hsDigest = gos_terrain_indirect_HardSurfaceContentDigest();
+    uploadInfo.hsHash = mc2cache::getLE(hsDigest, 0, 8);
+    const auto placeT0 = std::chrono::steady_clock::now();
     const int side = static_cast<int>(mapSpan/gridStep);
     const long mapSide = static_cast<long>(Terrain::realVerticesMapSide);
     for (int row = 1; row < side-1; ++row) {
@@ -415,8 +422,8 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
         "[VEG v3] field blades=%d side=%d gaps=%d flowers=%d ms=%.1f shrubs_placed=%d shrubs_moved_off_meadow=%d clumps_gated=%d shrubs_thinned=%d\n",
         fieldBlades, fieldSide, fieldGaps, fieldFlowers, fieldMs, woodyPlaced, woodyGated, clumpsGated, woodyThinned);
 
-    GosVegetation::uploadInstances(instances.data(),
-                                   static_cast<uint32_t>(instances.size()));
+    uploadInfo.placeMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now()-placeT0).count();
+    GosVegetation::uploadInstances(instances.data(), static_cast<uint32_t>(instances.size()), &uploadInfo);
 
     const unsigned instCount = static_cast<unsigned>(instances.size());
 

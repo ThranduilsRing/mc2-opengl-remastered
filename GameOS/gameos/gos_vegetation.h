@@ -5,6 +5,7 @@
 #include <vector>
 #include <cstring>
 
+namespace mc2::vegetation { struct Population; }
 namespace GosVegetation {
 
     struct Footprint { float x, y, radius, pad; }; // terrain-chunk XY, WU
@@ -39,7 +40,15 @@ namespace GosVegetation {
     // Most instances the placement may produce: the requested cap, the storage-buffer limit and what fits the residency preset + live GPU headroom,
     // so a big map places only what will be resident instead of placing everything and thinning it at upload. mapSpan bounds the region count.
     uint32_t populationCapacity(uint32_t requested, float mapSpan);
-    void uploadInstances(const Instance* instances, uint32_t count);
+    struct UploadInfo {
+        const char* cache = "off";
+        const char* reason = "calibration";
+        uint64_t key = 0, hsHash = 0;
+        uint32_t maxInst = 0;
+        double placeMs = 0, buildMs = 0, keyMs = 0, readMs = 0, writeMs = 0, uploadMs = 0;
+    };
+    bool uploadPopulation(const mc2::vegetation::Population&, UploadInfo* info = nullptr);
+    void uploadInstances(const Instance* instances, uint32_t count, UploadInfo* info = nullptr);
 
     // Per-block visibility: 1=draw, 0=cull.  Derived from Terrain::s_blockMeta[i].lodLevel.
     // Call once per frame before flush().  blockCount = s_terrainChunkSide^2.
