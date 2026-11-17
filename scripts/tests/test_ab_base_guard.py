@@ -180,6 +180,10 @@ def test_editor_identity_requires_authoring_files(monkeypatch, replacement):
     ("data/ui.fit", b"first\nsecond\n", True),
     ("data/ui.fit", b"first\nseconX\n", False),
     ("data/binary.fit", b"first\nsecond\n\0", False),
+    ("data/control.fit", b"first\nsecond\n\x01", False),
+    ("data/undefined.fit", b"first\nsecond\n\x81", False),
+    ("data/cp1252.fit", b"first\nsecond\n\x93", True),
+    ("data/utf8.fit", "first\nsecond\n\u00e9".encode(), True),
     *[("data/file." + ext, b"first\nsecond\n", False)
       for ext in ("exe", "dll", "pdb", "spv", "ktx2", "png", "tga", "bin")],
 ])
@@ -188,7 +192,7 @@ def test_eol_identity_is_narrow_and_logged(tmp_path, monkeypatch, capsys, rel, a
     monkeypatch.setattr(ab, "ROOT", tmp_path / "absent-checkout")
     installs = [tmp_path / side for side in ("a", "b")]
     manifests = []
-    before = b"first\r\nsecond\r\n" + (b"\0" if b"\0" in after else b"")
+    before = after.replace(b"\n", b"\r\n") if rel != "data/ui.fit" else b"first\r\nsecond\r\n"
     for install, content in zip(installs, (before, after)):
         path = install / rel
         path.parent.mkdir(parents=True)

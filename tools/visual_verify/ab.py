@@ -206,7 +206,7 @@ EOL_TEXT_EXTS = {".fit", ".csv", ".txt", ".abx", ".abl", ".bat", ".py",
 
 
 def eol_equivalence(rel, sha_a, sha_b, *roots):
-    """Prove both raw hashes from NUL-free text bytes, without changing deployed bytes.
+    """Prove both raw hashes from strictly decoded text, without changing deployed bytes.
 
     A checkout can witness historical captures too: accept an LF/CRLF reconstruction
     only when its entire raw hash matches the recorded manifest hash.
@@ -223,7 +223,14 @@ def eol_equivalence(rel, sha_a, sha_b, *roots):
         if not path.is_relative_to(root) or not path.is_file():
             continue
         content = path.read_bytes()
-        if b"\0" in content:
+        try:
+            text = content.decode("utf-8", errors="strict")
+        except UnicodeDecodeError:
+            try:
+                text = content.decode("cp1252", errors="strict")
+            except UnicodeDecodeError:
+                continue
+        if any((ord(c) < 32 and c not in "\t\r\n") or 127 <= ord(c) <= 159 for c in text):
             continue
         normalized = content.replace(b"\r\n", b"\n")
         digest = hashlib.sha256(normalized).hexdigest()
@@ -246,6 +253,10 @@ def _data_mismatch_entries(ma, mb, target=None):
     game = target == "game" or (target is None and bool(EXECUTABLES.intersection(ma))
                                 and bool(EXECUTABLES.intersection(mb)))
     build_outputs = EXECUTABLES | {"mc2.pdb", "mc2_asset_viewer.exe", "mc2_asset_viewer"}
+    if game:
+        for rel in sorted(ma.keys() | mb.keys()):
+            if editor_only_payload(rel) and ma.get(rel) != mb.get(rel):
+                print(f"[ab] ABSENT-BY-DESIGN game target excludes editor-owned payload: {rel}", flush=True)
     skip = lambda p: p in build_outputs or p.startswith(SHADER_BUILD_DIRS) or (game and editor_only_payload(p))
     ma = {k: v for k, v in ma.items() if not skip(k)}
     mb = {k: v for k, v in mb.items() if not skip(k)}
@@ -262,10 +273,7 @@ def manifest_mismatches(ma, mb):
 
 def candidate_mismatches(ma, mb, commit, install_b=None, baseline=None, install_a=None,
                          identity_receipt=None, target=None):
-    """Candidate-only declarations, plus explicitly recorded build-tree auxiliary hash pairs.
-
-    An absent auxiliary row in B remains a mismatch. No blanket executable/DLL exclusion.
-    """
+    """Only candidate declarations or proven text EOL equivalence excuse data drift."""
     declared = asset_parity.intentional_changes(commit, ROOT)
     mb = dict(mb)
     if install_b is not None:
@@ -275,10 +283,6 @@ def candidate_mismatches(ma, mb, commit, install_b=None, baseline=None, install_
         mb.update(declared)
     accepted = {rel for rel, sha in declared.items() if mb.get(rel) == sha}
     baseline = Path(baseline) if baseline else asset_parity.default_ref()
-    for rel in asset_parity.AUXILIARY:
-        if (baseline / rel).is_file() and mb.get(rel) == asset_parity._sha(baseline / rel):
-            if install_b is None or asset_parity._sha(Path(install_b) / rel) == mb[rel]:
-                accepted.add(rel)
     remaining = []
     for rel, line in _data_mismatch_entries(ma, mb, target):
         source_rel = "examples/" + rel if rel.startswith("mods/") else rel
@@ -297,14 +301,9 @@ def candidate_mismatches(ma, mb, commit, install_b=None, baseline=None, install_
             if identity_receipt is not None:
                 identity_receipt.append(equivalent)
             continue
-        if (rel in asset_parity.AUXILIARY
-                and all(re.fullmatch(r"[0-9a-f]{64}", m.get(rel, "")) for m in (ma, mb))
-                and (install_b is None or asset_parity._sha(Path(install_b) / rel) == mb[rel])):
-            print(f"[ab] CLASSIFIED build-tree auxiliary {rel} sha256_A={ma[rel]} sha256_B={mb[rel]}", flush=True)
-            continue
         if rel in accepted:
             print(f"[ab] ACCEPTED candidate asset {rel} sha256={mb[rel]} "
-                  f"source={'intentional-asset-changes' if rel in declared else 'install baseline'}", flush=True)
+                  "source=intentional-asset-changes", flush=True)
         else:
             remaining.append((rel, line))
     return remaining

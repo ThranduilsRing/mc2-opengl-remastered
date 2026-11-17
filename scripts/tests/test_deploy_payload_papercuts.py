@@ -55,22 +55,37 @@ def test_deploy_preserves_asset_declaration_and_shader_publication(tmp_path, mon
     dp.verify_published_identity(target, repo, head)
 
 
-def test_game_deploy_keeps_editor_claims_and_bytes(tmp_path, monkeypatch):
+@pytest.mark.parametrize("drop_editor_file", [False, True])
+def test_game_editor_game_ownership_lifecycle(tmp_path, monkeypatch, drop_editor_file):
     monkeypatch.setattr(dp, "ensure_terrain_materials", lambda t: {})
     monkeypatch.setattr(dp, "ensure_engine_normal_cooks", lambda t: None)
-    rows = {}
+    target = tmp_path / "install"
+    game = tmp_path / "game-source"
+    game.write_bytes(b"game bytes")
+    game_items = [(str(game), "mc2.exe", "exe")]
+    def publish(items, deploying_target):
+        hashes = dp.deploy(items, str(target), False, deploying_target=deploying_target)
+        dp.write_manifest(target, hashes, "a" * 40)
+        return hashes
+    publish(game_items, "game")
+    items, rows = [], {}
     for rel in ("Mission Editor.exe", "Mission Editor.pdb", "run-editor.bat", "tools/terrain_gen/tool.py"):
         path = tmp_path / rel
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b"editor bytes")
         rows[rel] = (dp.sha256_file(path), path.stat().st_size)
-    dp.write_manifest(tmp_path, rows, "a" * 40)
-    src = tmp_path / "game-source"
-    src.write_bytes(b"game bytes")
-    hashes = dp.deploy([(str(src), "mc2.exe", "exe")], str(tmp_path), False)
+        items.append((str(path), rel, "support"))
+    monkeypatch.setattr(dp, "TARGET_PRESETS", {"game": {"target_dir": str(target)}})
+    publish(items, "editor")
+    assert (target / "mc2.exe").read_bytes() == b"game bytes"
+    hashes = publish(game_items, "game")
     for rel, row in rows.items():
-        assert (tmp_path / rel).read_bytes() == b"editor bytes"
+        assert (target / rel).read_bytes() == b"editor bytes"
         assert hashes[rel][:2] == row
+    if drop_editor_file:
+        hashes = publish([], "editor")
+        for rel in rows:
+            assert rel not in hashes and not (target / rel).exists()
 
 
 @pytest.fixture(scope='module')
