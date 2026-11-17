@@ -393,6 +393,7 @@ std::expected<void, int> LogisticsVariant::removeComponent( long xCoord, long yC
 	}
 
 	componentCount --;
+	layoutState.version = 1;
 
 	return {};
 }
@@ -415,35 +416,15 @@ int		LogisticsVariant::addComponent( LogisticsComponent* pComponent, long& xCoor
 
 long LogisticsVariant::save( FitIniFile& file, long counter )
 {
+	const auto record = locationRecord();
 	char tmp[256];
-	char tmp2[256];
 	mc2::fmt::to_buf(tmp, "Variant{:d}", mc2::fmt::as_i32(counter));
 	file.writeBlock( tmp );
 	
 	file.writeIdString( "Chassis", chassis->fileName.c_str() );
 	file.writeIdString("PurchasePack", mc2purchase::chassisSource(chassis->fileName).c_str());
 	file.writeIdString( "VariantName", variantName.c_str() );
-	file.writeIdLong( "ComponentCount", componentCount );
-
-	for ( int i = 0; i < componentCount; i++ )
-	{
-		mc2::fmt::to_buf(tmp, "Component{:d}", mc2::fmt::as_i32(i));
-		file.writeIdLong(tmp, components[i].component->getID() );
-		
-		strcpy( tmp2, tmp );
-		strcat( tmp2, "x" );
-		file.writeIdLong( tmp2, components[i].xCoord );
-
-		strcpy( tmp2, tmp );
-		strcat( tmp2, "y" );
-		file.writeIdLong( tmp2, components[i].yCoord );
-
-		strcpy( tmp2, tmp );
-		strcat( tmp2, "Location" );
-		file.writeIdLong( tmp2, components[i].location );
-	}
-
-	return 0;
+	return mc2pkg::writeLocationVariant(file, record) ? 0 : -1;
 }
 
 void LogisticsVariant::setName( std::string name )
