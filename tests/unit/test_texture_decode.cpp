@@ -315,6 +315,59 @@ TEST_CASE("HUD atlas mips preserve premultiplication rounding and immutable sour
     CHECK(std::all_of(full.begin(), full.end(), [](uint8_t value) { return value == 255; }));
 }
 
+TEST_CASE("HUD atlas SIMD mips match scalar bytes") {
+    const auto reference = [](const std::vector<uint8_t>& rgba, size_t side) {
+        const size_t base = side * side * 4;
+        auto pixels = rgba;
+        pixels.resize((base * 4 - 4) / 3);
+        for (size_t i = 0; i < base; i += 4)
+            for (size_t c = 0; c < 3; ++c)
+                pixels[i+c] = (static_cast<uint32_t>(pixels[i+c]) * pixels[i+3] + 127u) / 255u;
+        size_t offset = 0, next = base;
+        for (size_t w = side; w > 1; w /= 2) {
+            for (size_t y = 0; y < w/2; ++y) for (size_t x = 0; x < w/2; ++x)
+                for (size_t c = 0; c < 4; ++c) {
+                    const size_t p = offset + (2*y*w + 2*x)*4 + c;
+                    pixels[next + (y*(w/2)+x)*4+c] = (static_cast<uint32_t>(pixels[p]) + pixels[p+4] + pixels[p+w*4] + pixels[p+w*4+4] + 2u) / 4u;
+                }
+            offset = next; next += (w/2)*(w/2)*4;
+        }
+        return pixels;
+    };
+    uint32_t seed = 0x12345678;
+    for (size_t side : {1u, 2u, 4u, 8u, 32u, 256u, 2048u}) {
+        std::vector<uint8_t> pixels(side * side * 4);
+        for (auto& value : pixels) {
+            seed = seed * 1664525u + 1013904223u;
+            value = static_cast<uint8_t>(seed >> 24);
+        }
+        const auto original = pixels;
+        CHECK(mc2hud::premultipliedMips(pixels, side) == reference(pixels, side));
+        CHECK(pixels == original);
+    }
+    // Exhaust every color/alpha product, including the division rounding boundaries.
+    std::vector<uint8_t> products(256 * 256 * 4);
+    for (size_t a = 0; a < 256; ++a) for (size_t c = 0; c < 256; ++c) {
+        const auto i = (a*256+c)*4;
+        products[i] = products[i+1] = products[i+2] = static_cast<uint8_t>(c);
+        products[i+3] = static_cast<uint8_t>(a);
+    }
+    CHECK(mc2hud::premultipliedMips(products, 256) == reference(products, 256));
+    // Exercise real decoded artwork as well as synthetic rounding boundaries.
+    auto root = std::filesystem::current_path();
+    while (!std::filesystem::exists(root / "RenderCore/StockPbr.h") && root != root.parent_path())
+        root = root.parent_path();
+    const auto path = root / "data/textures/mech_pbr/anubis_albedo.png";
+    std::ifstream input(path, std::ios::binary);
+    REQUIRE(input.is_open());
+    const std::vector<uint8_t> bytes((std::istreambuf_iterator<char>(input)), {});
+    const auto decoded = mc2tex::decodeMemory(bytes.data(), bytes.size(), "anubis_albedo.png", gos_Texture_Alpha, gosHint_DontShrink);
+    REQUIRE(decoded);
+    REQUIRE(decoded->width == 2048);
+    REQUIRE(decoded->height == decoded->width);
+    CHECK(mc2hud::premultipliedMips(decoded->pixels, 2048) == reference(decoded->pixels, 2048));
+}
+
 TEST_CASE("mip box filter: non-square and 1-texel edges, malformed input rejected") {
     std::vector<uint8_t> row = {10, 0, 0, 0, 20, 0, 0, 0, 30, 0, 0, 0, 41, 0, 0, 0};   // 4x1
     const auto half = mc2tex::boxDownsampleRgba8(row, 4, 1);
