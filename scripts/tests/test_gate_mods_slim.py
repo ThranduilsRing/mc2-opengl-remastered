@@ -109,3 +109,51 @@ def test_nightly_without_a_window_keeps_the_slim_row(monkeypatch):
     assert why is None
     cmd = plan["cmd"]
     assert cmd[cmd.index("--window") + 1] == "136" and "mods-slim" in cmd[cmd.index("--stages") + 1:]
+
+
+@pytest.mark.parametrize("paths,extra", [
+    (["docs/notes.md"], set()),
+    (["code/mission_update.cpp"], {"determinism-mc2_24", "saveload-mc2_01"}),
+    (["code/mc2movie.cpp"], {"player-path"}),
+    (["code/mission_update.cpp", "code/mainmenu.cpp", "data/defs/ui.fit"],
+     {"determinism-mc2_24", "saveload-mc2_01", "player-path"}),
+])
+def test_merge_stage_budget_pin(paths, extra):
+    scheduled = gate.plan(1)
+    planned = [s for s in scheduled if gate.tier_includes(s[0], 0)]
+    steps, _ = gate.promote_for_diff(planned, scheduled, planned, paths, [], False)
+    assert gate.promoted_stages(paths) == extra
+    assert {n for n, _, _ in steps} == {"editor", "contracts", "harnesses", "deploy", "tier1"} | extra
+
+
+@pytest.mark.parametrize("reused", [False, True])
+def test_declared_visuals_never_capture_before(monkeypatch, reused, capsys):
+    import capture_reuse
+    monkeypatch.setattr(capture_reuse, "restore", lambda *a, **k: "verified" if reused else None)
+    steps = gate.merge_visuals(gate.plan(1))
+    assert [n for n, _, _ in steps] == ["capture-after", "compare-captures"] if reused else [n for n, _, _ in steps] == ["capture-after"]
+    if not reused:
+        assert "VISUAL after-only:" in capsys.readouterr().out
+    assert gate.advisory_status("compare-captures", "FAIL", 0).startswith(gate.ADVISORY_PREFIX)
+    assert gate.advisory_status("compare-captures", "FAIL", 1) == "FAIL"
+
+
+def test_gate_budget_is_advisory_and_excludes_lease_wait(monkeypatch, capsys):
+    monkeypatch.setattr(gate, "ROW_RESULTS", {"tier1": {"seconds": 900}})
+    gate.gate_budget(0, 1300, 200)
+    gate.gate_budget(1, 1300, 0)
+    assert not capsys.readouterr().out
+    gate.gate_budget(0, 1300, 0)
+    assert "[GATE_BUDGET] OVER" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("tier", [0, 1])
+def test_visual_compare_only_blocks_nightly(monkeypatch, tier):
+    monkeypatch.setattr(gate, "git", lambda *a: "head")
+    monkeypatch.setattr(gate, "log_lease_holders", lambda: None)
+    monkeypatch.setattr(gate, "FAILED_STAGES", [])
+    monkeypatch.setattr(gate, "ROW_RESULTS", {})
+    result = types.SimpleNamespace(returncode=1, stdout="MAD and montage path")
+    assert gate.execute([("compare-captures", ["compare"], {"MC2_GATE_TIER": str(tier)})], "head",
+                        runner=lambda *a, **k: result) == tier
+    assert bool(gate.FAILED_STAGES) == bool(tier)

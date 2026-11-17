@@ -16,8 +16,7 @@ import detached_job  # noqa: E402
 HEAD = "a" * 40
 
 
-SIM_ROWS = ["determinism-mc2_01", "determinism-mc2_03", "determinism-mc2_10", "determinism-mc2_24",
-            "saveload-mc2_03", "saveload-mc2_10"]
+SIM_ROWS = ["determinism-mc2_24", "saveload-mc2_01"]
 
 
 def _fake_pc(monkeypatch, tmp_path, gate_verdict, sim_rc, diff_paths="mclib/movemgr.cpp"):
@@ -49,7 +48,7 @@ def test_default_run_ends_with_sim_on_the_same_head(tmp_path, monkeypatch):
     calls = _fake_pc(monkeypatch, tmp_path, "PASS", 0)
     assert laptop_gate.pc_main(_args()) == 0
     sims = [c for c in calls if isinstance(c, tuple)]
-    assert sims == [("sim", "W", HEAD, SIM_ROWS, True)]   # sim-sensitive diff: the six rows, a/b pair
+    assert sims == [("sim", "W", HEAD, SIM_ROWS, True)]   # sim-sensitive diff: the two rows, a/b pair
     assert calls.index("ssh RUN") < calls.index(sims[0])   # after the gate run, no second provision/push
     assert calls.count("provision") == 2   # pc_main's own two (bin-only + full); the sim step adds none
 

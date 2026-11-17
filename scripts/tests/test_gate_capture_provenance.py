@@ -9,13 +9,14 @@ import merge_gate as gate
 import exe_fingerprint
 
 
-def test_explicit_install_stages_published_before_capture(monkeypatch, tmp_path):
+@pytest.mark.parametrize("capture", [True, False])
+def test_explicit_install_stages_published_before_capture(monkeypatch, tmp_path, capture):
     events = []
-    steps = [("capture-before", ["capture", "--install", str(tmp_path)], {})]
-    monkeypatch.setattr(gate, "stage_published", lambda install: events.append(("stage", install)))
+    steps = [("capture-before" if capture else "deploy", ["capture", "--install", str(tmp_path)], {})]
+    monkeypatch.setattr(gate, "stage_published", lambda install, swap_payload: events.append(("stage", install, swap_payload)))
     monkeypatch.setattr(gate, "execute_parallel", lambda *a, **k: events.append(("execute", a[0])) or 0)
     assert gate.execute_window(steps, "a" * 40, install=tmp_path) == 0
-    assert events == [("stage", tmp_path), ("execute", steps)]
+    assert events == [("stage", tmp_path, capture), ("execute", steps)]
 
 
 @pytest.mark.parametrize("name,commit,passes", [

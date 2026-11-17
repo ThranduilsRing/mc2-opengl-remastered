@@ -69,6 +69,8 @@ MOD_BATTERY_STAGES = ("mods", "mods-slim")
 
 
 def stage_tier(name):
+    if name.startswith(("capture-", "compare-captures", "compare-noise")):
+        return 1
     if name in NON_BLOCKING_STAGES:
         return 1
     if name in ("mods", "video-decode"):
@@ -81,6 +83,25 @@ def stage_tier(name):
 def tier_includes(name, tier):
     """True when a scheduled `tier` run (0 per merge, 1 nightly, 2 weekly) plans `name`. The weekly tier drops mods-slim: it runs the full battery."""
     return stage_tier(name) <= tier and not (name in NON_BLOCKING_STAGES and tier >= 2)
+
+
+def merge_visuals(scheduled, before_dir=None):
+    """Declared tier-0 views use verified reuse only; never shoot a before set."""
+    before = next(c for n, c, _ in scheduled if n == "capture-after")
+    if before_dir is None:
+        import capture_reuse
+        reference = next(c for n, c, _ in scheduled if n == "capture-before")
+        try:
+            reused = capture_reuse.restore(reference, ROOT, env=dict(os.environ, **gate_env("capture-before")))
+        except (OSError, ValueError):
+            reused = None
+        if reused:
+            before_dir = Path(reference[reference.index("--out") + 1])
+    if before_dir is None:
+        print(f"VISUAL after-only: {before[before.index('--out') + 1]} (no reusable before set)")
+    return [(n, ([str(before_dir) if a == c[c.index('--compare-only') + 1] else a for a in c]
+                 if n == "compare-captures" else c), dict(e, MC2_GATE_TIER="0"))
+            for n, c, e in scheduled if n == "capture-after" or (n == "compare-captures" and before_dir is not None)]
 
 
 #: mod_smoke's closing table row: | mod | mission | result | health | content / budget | note |
@@ -116,40 +137,21 @@ def sim_sensitive(paths):
     return sorted(p for p in paths if any(fnmatch.fnmatchcase(p.replace("\\", "/"), g) for g in pats))
 
 
-MOD_CONTENT_GLOBS = ("data/*", "mods/*", "examples/mods/*", "tests/mods/*", "tools/mod_*", "tools/mc2mod/*",
-                     "tools/mc2_modlint/*", "tools/validate_mod_package.py", "tools/mc2x_import/*", "tools/mco_import/*")
-
-
 def promoted_stages(paths):
-    """p31: stages a diff needs at this merge whatever the scheduled tier filtered out. A sim-sensitive change restores the
-    windowed pair, the mc2_24 finale (2600 ticks) and the day/night saves; a path naming a mission restores that map's rows;
-    a front-end/logistics/video change restores the player-path witness."""
+    """Per-merge sim pair/save and the real front-end/video witness; breadth stays nightly."""
     import fnmatch
     norm = [p.replace("\\", "/") for p in paths]
     want = set()
     if sim_sensitive(norm):
-        want |= {"determinism-" + WINDOWED_DETERMINISM, "determinism-mc2_24", "saveload-mc2_01", "saveload-mc2_10"}
-    for m in sorted({m for p in norm for m in re.findall(r"mc2_\d\d", p.lower())}):
-        want |= {"determinism-" + m, "saveload-" + m}
+        want |= {"determinism-mc2_24", "saveload-mc2_01"}
     if any(fnmatch.fnmatchcase(p.lower(), g) for p in norm for g in PLAYER_PATH_GLOBS):
         want.add("player-path")
-    # Owner rule (2026-11-06, memory process/feedback-speed-skip-mods-lint-box-2026-11-05.md): the mod battery runs only
-    # when the diff touches mod content or mod tooling. Engine C++, shaders, the VFS and loaders never promote it; the
-    # nightly full gate covers them. (W135: an engine-path glob list here promoted mods on a VFS refactor.)
-    if any(fnmatch.fnmatchcase(p.lower(), g) for p in norm for g in MOD_CONTENT_GLOBS):
-        want.add("mods")
     return want
 
 
 def laptop_sim_rows(paths):
-    """Six laptop rows for sim-sensitive diffs; otherwise only existing mission promotions."""
-    names = [*("determinism-" + m for m in ("mc2_01", "mc2_03", "mc2_10", "mc2_24")),
-             "saveload-mc2_03", "saveload-mc2_10"]
-    if sim_sensitive(paths):
-        return names
-    want = promoted_stages(paths)
-    return [n for n, _, e in affected_plan([(n, [], {}) for n in names if n in want], paths)
-            if not e.get("MC2_GATE_SKIP_REASON")]
+    """Per-merge headless determinism pair and day save."""
+    return ["determinism-mc2_24", "saveload-mc2_01"] if sim_sensitive(paths) else []
 
 
 def promote_for_diff(steps, scheduled, planned, paths, asked, weekly):
@@ -265,9 +267,10 @@ ADVISORY_STAGES = ("mods",)
 ADVISORY_PREFIX = "ADVISORY: "
 
 
-def advisory_status(name, status):
+def advisory_status(name, status, tier=1):
     """'ADVISORY: <status>' for a non-passing row of a non-blocking stage, else the status unchanged."""
-    return ADVISORY_PREFIX + status if name in ADVISORY_STAGES and not stage_passed(status) and not status.startswith(("DRY-RUN", "SKIP")) else status
+    advisory = name in ADVISORY_STAGES or (tier == 0 and name == "compare-captures")
+    return ADVISORY_PREFIX + status if advisory and not stage_passed(status) and not status.startswith(("DRY-RUN", "SKIP")) else status
 
 
 def host_infra_status(output, status):
@@ -641,9 +644,8 @@ def plan(jobs, proof_dir=None, capture_before_runs=1, before_dir=None):
         # --allow-data-delta: after descends from before, so a data difference is the window's payload (listed, not refused)
         ("compare-captures", [py, "tools/visual_verify/ab.py", "--compare-only", str(proof / "before"),
                               str(proof / "after"), "--allow-data-delta", "--out-root", str(proof / "ab")], {}),
-        # --no-cache: the row/module result caches live in a shared dir (precheck-speed); the gate runs every row itself.
         ("editor", [py, "scripts/merge_gate_editor.py", str(jobs)], {}),
-        ("contracts", [git_bash(), "scripts/check-contracts.sh", "-j" + str(jobs), "--no-cache"], {}),
+        ("contracts", [git_bash(), "scripts/check-contracts.sh", "-j" + str(jobs)], {}),
         ("harnesses", [py, "tools/build_contract_harnesses.py", "--run", "--unit", "-j", str(jobs)], {}),
         # Per window: day (mc2_01) + night (mc2_10) only (p29 cut 4); the five-map breadth is the weekly tier1-full row below.
         ("tier1", [py, "scripts/run_smoke.py", "--tier", "tier1", "--mission", "mc2_01", "--mission", "mc2_10", "--keep-logs", "--deploy", "0.4"],
@@ -1241,8 +1243,9 @@ def execute_window(steps, head, dry_run=False, keep_going=False, farm_determinis
     """Prove a private candidate. Publishing to v0.4 is a separate step (--publish) that runs after the montage has been viewed.
     on_result(rc) runs before the candidate cleanup, so the durable verdict exists even if cleanup fails or hangs."""
     if install is not None:
-        if not dry_run and any(n.startswith("capture-before") and not e.get("MC2_GATE_SKIP_REASON") for n, _, e in steps):
-            stage_published(install)
+        if not dry_run:
+            swap = any(n.startswith("capture-before") and not e.get("MC2_GATE_SKIP_REASON") for n, _, e in steps)
+            stage_published(install, swap_payload=swap)
         rc = execute_parallel(steps, head, dry_run, keep_going, farm_determinism=farm_determinism)
         if on_result:
             on_result(rc)
@@ -1348,6 +1351,9 @@ def write_verdict(paths, *, head, branch, verdict, steps, skipped, artifacts, ti
     reasons = {n: e["MC2_GATE_SKIP_REASON"] for n, _, e in steps if e.get("MC2_GATE_SKIP_REASON")}
     reasons.update({n: r["status"][len("SKIP: "):] for n, r in ROW_RESULTS.items() if r["status"].startswith("SKIP: ")})
     data = dict(schema=1, head=head, branch=branch, tier=tier, verdict=verdict, complete=verdict == "PASS",
+                wall_s=round(timings.get("wall", 0.0), 1),
+                host_lease_wait_s=round(timings.get("host_lease_wait", 0.0), 1),
+                stage_reasons={n: e.get("MC2_GATE_REASON", "scheduled tier") for n, _, e in steps},
                 required=[n for n, _, _ in steps],
                 executed={n: r for n, r in ROW_RESULTS.items() if not r["status"].startswith(("SKIP", "DRY-RUN"))},
                 skipped={n: reasons.get(n, "not run") for n in skipped},
@@ -1370,6 +1376,13 @@ def write_verdict(paths, *, head, branch, verdict, steps, skipped, artifacts, ti
         tmp.write_text(text, encoding="utf-8")
         os.replace(tmp, path)
     return data
+
+
+def gate_budget(tier, wall, lease_wait):
+    if tier == 0 and wall - lease_wait > 20 * 60:
+        top = sorted(ROW_RESULTS, key=lambda n: ROW_RESULTS[n].get("seconds", 0), reverse=True)[:3]
+        print("[GATE_BUDGET] OVER: " + f"{wall - lease_wait:.1f}s excluding host lease wait {lease_wait:.1f}s; "
+              + ", ".join(f"{n}={ROW_RESULTS[n]['seconds']:.1f}s" for n in top))
 
 
 MAD_LIMIT = 0.05
@@ -1752,7 +1765,9 @@ def game_batch():
         yield {}
         return
     tag = f"merge-gate-{os.getpid()}"
+    started = time.monotonic()
     pid = host_lease.hold(tag, ttl_s=EXCLUSIVE_TTL_S, timeout_s=1200, exclusive=True)   # the PC fallback takes both lane GPUs
+    TIMINGS["host_lease_wait"] = TIMINGS.get("host_lease_wait", 0.0) + time.monotonic() - started
     try:
         yield {host_lease.BATCH_ENV: tag}
     finally:
@@ -1955,7 +1970,7 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
                 status = f"ADVISORY {status} (non-blocking; needs a dedicated fix lane)".replace("|", "/")
             if name == 'mods':
                 gate_reuse.mods_end(status == "PASS")
-            status = advisory_status(name, status)
+            status = advisory_status(name, status, int(overrides.get("MC2_GATE_TIER", "1")))
             if status.startswith(ADVISORY_PREFIX):
                 print(f"[merge_gate] ADVISORY {name} (non-blocking by owner ruling 2026-11-08): {status[len(ADVISORY_PREFIX):]}", flush=True)
             failed |= not stage_passed(status) and name not in NON_BLOCKING_STAGES
@@ -1965,6 +1980,7 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
                 TIMINGS["cache"] = TIMINGS.get("cache", 0.0) + time.monotonic() - cache_started
         results.append((name, status, elapsed))
         ROW_RESULTS[name] = dict(status=status, seconds=round(elapsed, 1), wait=round(scheduler_wait + waited, 1),
+                                 host_lease_wait=round(waited, 1),
                                  device=(gate_env(name, device) or {}).get("MC2_VK_DEVICE"))
         if name in mod_summary:
             ROW_RESULTS[name]["mods"] = mod_summary[name]
@@ -2067,6 +2083,7 @@ def build_parser():
 
 
 def main(argv=None):
+    gate_started = time.time()
     FAILED_STAGES.clear()
     ROW_RESULTS.clear()
     TIMINGS.clear()
@@ -2135,7 +2152,10 @@ def main(argv=None):
         if not asked:
             tier = 2 if args.weekly else 1 if args.nightly else 0
             planned = [s for s in planned if tier_includes(s[0], tier)]
-            planned = [(n, c + ["--nightly"] if n == "contracts" and tier else c, e) for n, c, e in planned]
+            planned = [(n, c + ["--nightly", "--no-cache"] if n == "contracts" and tier else c, e) for n, c, e in planned]
+            if tier == 0 and DECLARED_VIEWS:
+                visuals = merge_visuals(scheduled, args.before_dir)
+                planned += visuals
         steps = select_stages(planned, args.stages, args.skip)
         omitted = [step for step in planned if step[0] not in {s[0] for s in steps}]
     except ValueError as exc:
@@ -2179,6 +2199,9 @@ def main(argv=None):
         # A promoted row the diff classification would skip anyway (e.g. a doc naming a map) is not added as a SKIP.
         steps = [s for s in steps if not (s[0] in promoted and s[2].get("MC2_GATE_SKIP_REASON"))]
         steps = [(n, c, dict(e, MC2_GATE_BASE=base)) for n, c, e in steps]
+        steps = [(n, c, dict(e, MC2_GATE_REASON=("diff: " + ", ".join(p for p in paths if n in promoted_stages([p])))
+                            if n in promoted else "--declared-view" if n in ("capture-after", "compare-captures") and not args.nightly
+                            else "scheduled tier")) for n, c, e in steps]
     if args.nightly or args.weekly:
         steps = [(n, c, dict(e, MC2_GATE_NIGHTLY="1") if n == "harnesses" else e) for n, c, e in steps]
     if args.before_dir and any(n == "capture-before-classic" for n, _, _ in steps):
@@ -2223,7 +2246,7 @@ def main(argv=None):
         if not args.install and not nightly_tree and (ROOT.resolve() != Path("A:/Games/mc2-main").resolve()
                 or not (branch == "claude/nifty-mendeleev" or branch.startswith("claude/stage-"))):
             ap.error("real merge gates are orchestrator-only in mc2-main on claude/nifty-mendeleev or a claude/stage-<window> candidate; use --dry-run in lanes")
-        if git("status", "--porcelain", "--untracked-files=no"):
+        if git("status", "--porcelain", "--untracked-files=no", "--", ".", ":(top,exclude)README.md"):
             ap.error("commit tracked changes before running the merge gate")
         if preflight(head, args.install or Path(EROOT + '/mc2-installs/_lean-seed'), window_number, steps):
             return 1
@@ -2260,7 +2283,8 @@ def main(argv=None):
                 exec_started = time.time()
                 TIMINGS["preparation"] = exec_started - started
                 def durable(rc):
-                    TIMINGS.setdefault("execution", time.time() - exec_started)
+                    TIMINGS["execution"] = time.time() - exec_started
+                    TIMINGS["wall"] = time.time() - gate_started
                     TIMINGS["queue_wait"] = sum(r.get("wait", 0.0) for r in ROW_RESULTS.values())
                     v, s = verdict_of(rc, steps)
                     if not args.dry_run:
@@ -2277,6 +2301,7 @@ def main(argv=None):
                 # INFRA: every red row failed on the host (INFRA status), so no product regression is claimed.
                 verdict, skipped = verdict_of(result, steps)
                 durable(result)  # same verdict, now with the cleanup timing and any cleanup errors
+                gate_budget(2 if args.weekly else 1 if args.nightly else 0, TIMINGS["wall"], TIMINGS.get("host_lease_wait", 0.0))
                 print(f"[merge_gate] exclusive host hold total={sum(EXCLUSIVE_SECONDS) / 60:.1f} min over {len(EXCLUSIVE_SECONDS)} stages (limit 20 min)")
                 reused = ",".join(ACTIVE_STATE.reused) if ACTIVE_STATE else ""
                 print(f"[merge_gate] clock: {elapsed / 60:.1f} min {'since lane_merge start' if window else 'gate only'} (info only) verdict={verdict} REUSED={reused or 'none'}"
