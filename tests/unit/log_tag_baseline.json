@@ -11318,7 +11318,8 @@
     "unattributed_ms",
     "scopes",
     "dropped",
-    "overflow"
+    "overflow",
+    "pose"
    ],
    "count": 1
   },
@@ -11340,6 +11341,17 @@
     "debug_labels",
     "timestamps",
     "tracy_ctx"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_GPU_TRIS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "pose",
+    "frame",
+    "n"
    ],
    "count": 1
   },
