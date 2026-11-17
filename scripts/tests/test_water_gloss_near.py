@@ -45,6 +45,23 @@ def _const(name):
     return float(re.search(r"const float\s+" + name + r"\s*=\s*([0-9.]+)", SRC)[1])
 
 
+def test_shore_bake_bounds_cover_shader_foam():
+    bake = (ROOT / "GameOS/gameos/water_shore_cells.h").read_text(encoding="utf-8")
+    number = r"([0-9.]+)"
+    slope = float(re.search(r"float shoreSlope = max\(length\(shoreGrad\), " + number, SRC)[1])
+    shelf = re.search(r"float shelfFade = smoothstep\(" + number + r", " + number, SRC)
+    reach = re.search(r"float nearShore = .*smoothstep\(" + number + r", " + number, SRC)
+    cutoff = float(re.search(r"gradient <= " + number + r"f", bake)[1])
+    bound = re.search(number + r"f \* \(std::max\)\(gradient, " + number + r"f\)", bake)
+    assert cutoff == round(float(shelf[1]) - 0.0001, 4)
+    assert slope == float(shelf[2]) == float(bound[2])
+    assert float(reach[1]) < float(reach[2]) == float(bound[1])
+    bounds = re.search(r"upper / 16\.0f \+ " + number + r"f \* \(std::max\)\(gradient, " + number + r"f\)", bake)
+    assert cutoff < float(shelf[1]) <= float(shelf[2]) == slope
+    assert float(bounds[1]) == float(reach[2]) > float(reach[1])
+    assert float(bounds[2]) == slope
+
+
 F0, FLOOR = _const("REFL_F0"), _const("NEAR_REFL_FLOOR")
 START, END = _const("NEAR_GLOSS_START"), _const("NEAR_GLOSS_END")
 
