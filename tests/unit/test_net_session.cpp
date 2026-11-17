@@ -38,6 +38,7 @@ TEST_CASE("net session handshake accepts only identical protocol/executable/cont
 TEST_CASE("net session rejects changed heat profile content with protocol four") {
     CHECK(net::protocolVersion == 4);
     net::Identity local, remote;
+    local.mission = "mc2_01";
     const save::Bytes heatFit{1, 20, 60, 0};
     auto modifiedHeatFit = heatFit; modifiedHeatFit[1] = 21;
     local.content = net::contentIdentity(save::sha256(heatFit), false, true);
