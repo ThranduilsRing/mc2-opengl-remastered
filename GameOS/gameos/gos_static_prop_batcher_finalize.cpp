@@ -72,7 +72,7 @@ void GpuStaticPropBatcher::publishGeometry() {
 
     s_sharedVboBytes = static_cast<uint64_t>(s_stagingVbo.size());
     s_sharedIboBytes = static_cast<uint64_t>(s_stagingIbo.size()) * sizeof(uint32_t);
-    if (mc2_diag::tagRequested("LOAD_LAPS")) {
+    if (mc2_diag::tagRequested("LOAD_LAPS") || std::getenv("MC2_DEBUG_STATE_DUMP")) {
         // Canonical LE fields, no pointers/padding. Hash each complete stream once in every run.
         std::vector<uint8_t> bytes;
         for (uint32_t index : s_stagingIbo) mc2cache::putLE(bytes, index, 4);
@@ -95,11 +95,10 @@ void GpuStaticPropBatcher::publishGeometry() {
             for (float dist : g.dist) mc2cache::putLE(bytes, std::bit_cast<uint32_t>(dist), 4);
         }
         const auto& l = s_propStagingLaps;
-        if (mc2_diag::tagRequested("LOAD_LAPS"))
-        mc2::fmt::print_err("[LOAD_LAPS v1] stage=prop_staging types={} tris={} out_verts={} dedupe_ms={:.3f} meshopt_ms={:.3f} lodgroup_calls={} lodgroup_ms={:.3f} vbo_bytes={} vbo_hash={:016x} ibo_count={} ibo_hash={:016x} packets_hash={:016x} lod_groups={} lod_hash={:016x}\n",
+        mc2::fmt::print_err("[LOAD_LAPS v1] stage=prop_staging types={} tris={} out_verts={} dedupe_ms={:.3f} meshopt_ms={:.3f} lodgroup_calls={} lodgroup_ms={:.3f} vbo_bytes={} vbo_hash={:016x} ibo_count={} ibo_hash={:016x} packets_hash={:016x} lod_groups={} lod_hash={:016x} blob_hits={} blob_misses={} blob_bytes={}\n",
             l.types, l.tris, l.outVerts, l.dedupeMs, l.meshoptMs, l.lodCalls, l.lodMs,
             s_sharedVboBytes, mc2::content::fastHash(s_stagingVbo), s_stagingIbo.size(), iboHash, packetsHash,
-            s_lodGroups.size(), mc2::content::fastHash(bytes));
+            s_lodGroups.size(), mc2::content::fastHash(bytes), l.blobHits, l.blobMisses, l.blobBytes);
     }
     s_stagingVbo.shrink_to_fit();
     s_stagingIbo.shrink_to_fit();

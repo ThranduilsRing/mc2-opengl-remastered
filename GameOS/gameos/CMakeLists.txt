@@ -30,6 +30,7 @@ set(SOURCES ${SOURCES}
     static_caster_set.cpp
     terrain_surface_asset.cpp
     cook_cache.cpp
+    prop_mesh_cache.cpp
     shadow_mask_asset.cpp
     terrain_surface_cook.cpp
     gameos_graphics_params.cpp

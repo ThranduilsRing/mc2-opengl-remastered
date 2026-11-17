@@ -274,6 +274,7 @@ extern double   s_meshoptMissesAfter;
 // Per-load staging work, disjoint from the enclosing addObject and registration laps.
 struct PropStagingLaps {
     uint64_t types = 0, tris = 0, outVerts = 0, lodCalls = 0;
+    uint64_t blobHits = 0, blobMisses = 0, blobBytes = 0;
     double dedupeMs = 0, meshoptMs = 0, lodMs = 0;
 };
 inline PropStagingLaps s_propStagingLaps;
