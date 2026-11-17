@@ -12,7 +12,7 @@ void MissionInterfaceManager::dispatchMenuOrder(const mc2::order_menu::Order& ca
 {
     auto* enemy = ObjectManager->getByWatchID(captured.target);
     if (!enemy || enemy->isDestroyed() || enemy->isDisabled() ||
-        !Team::home->isEnemy(enemy->getTeam())) return;
+        enemy->getTeam() == Team::home) return; // same predicate as the menu gate and the classic left-click attack
     FireRangeType range = FIRERANGE_OPTIMAL;
     switch (captured.range) {
     case mc2::order_menu::Range::Short: range = FIRERANGE_SHORT; break;
