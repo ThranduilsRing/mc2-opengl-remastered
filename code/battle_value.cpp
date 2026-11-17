@@ -96,7 +96,7 @@ int compute(const Layout& layout, const Variant& variant, const Components& comp
 #include <iostream>
 int main(int argc, char** argv) {
     if (argc != 2) return 2;
-    std::ifstream file(argv[1]);
+    std::ifstream file(argv[1]); // path-audit: loose-only; offline evaluator's explicit profile argument.
     const auto profile = mc2bv::readProfile(file);
     if (!profile) return 2;
     std::string line;

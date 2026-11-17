@@ -374,7 +374,7 @@ uint64_t contentDigest(std::string_view path, bool verify)
 	if (const auto e = resolve(k, [](const Entry& candidate) {
 		if (candidate.provider == Provider::Fst) return true;
 		std::error_code ec;
-		return std::filesystem::is_regular_file(candidate.physicalPath, ec) && std::ifstream(candidate.physicalPath, std::ios::binary).is_open();
+		return std::filesystem::is_regular_file(candidate.physicalPath, ec) && std::ifstream(candidate.physicalPath, std::ios::binary).is_open(); // path-audit: loose-only; probe the normalized ladder candidate's physical file.
 	})) {
 		if (e->provider == Provider::Fst) {
 			fst = true;
