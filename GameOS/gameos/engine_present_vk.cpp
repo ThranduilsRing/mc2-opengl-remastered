@@ -2035,12 +2035,12 @@ bool EnginePresentVk::prepareHudTexture(const VkHudDraw& draw) {
 }
 
 void EnginePresentVk::releaseHudTextures(uint32_t handle) {
-    present_thread::waitIdle();
     if (!impl_) return;
     auto& s = *impl_;
     for (auto it = s.hudTextureMirrors.begin(); it != s.hudTextureMirrors.end();) {
-        if (handle && static_cast<uint32_t>(it->first >> 32) != handle) { ++it; continue; }
-        auto& m = it->second;
+        auto& [identity, m] = *it;
+        if (handle && static_cast<uint32_t>(identity >> 32) != handle) { ++it; continue; }
+        present_thread::waitIdle();
         s.ctx->retire(HudMirrorRetired{s.dev, s.hudTexPool.get(), std::exchange(m.set, VK_NULL_HANDLE),
             std::move(m.memory), std::move(m.buffer)});
         it = s.hudTextureMirrors.erase(it);

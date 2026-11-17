@@ -50,7 +50,6 @@ void gosRendererPrepareHudTextures() {
 }
 
 void gosRendererReleaseHudTextures(uint32_t handle) {
-    mc2vk::present_thread::waitIdle();
     mc2vk::getOrCreateEnginePresentVk().releaseHudTextures(handle);
 }
 
