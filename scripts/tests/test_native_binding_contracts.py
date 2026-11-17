@@ -179,3 +179,13 @@ def test_macro_states_reject_dead_elif_and_commented_guards():
     assert states[10] is None
     assert states[14] is None
     assert states[16] == {'GUARD': '1', 'LIVE': '4', 'GOOD': '11'}
+
+
+def test_terrain_specialization_constant_abi():
+    import re
+    from pathlib import Path
+    text = (Path(__file__).resolve().parents[2] / "shaders/vulkan/terrain_tier1.frag").read_text()
+    constants = {int(i): int(v) for i, v in re.findall(
+        r"layout\(constant_id\s*=\s*(\d+)\)\s*const int \w+\s*=\s*(-?\d+)", text)}
+    assert {i: constants[i] for i in (0,10,11,12,13,14)} == {0:0,10:0,11:1,12:1,13:1,14:1}
+    assert all(constants[i] == -1 for i in range(20,32))

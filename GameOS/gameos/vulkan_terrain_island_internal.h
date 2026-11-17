@@ -17,6 +17,7 @@
 #include "vk_image_resource.h"
 #include "vk_island_util.h"
 #include "vk_owned.h"
+#include "vulkan_terrain_spec_key.h"
 #include "vk_texture_residency.h"
 #include "vk_gpu_timestamps.h"   // VK-DRAW-PERF-1: MC2_VK_GPU_TIMESTAMPS GPU segment timers
 #include "vulkan_context.h"
@@ -199,6 +200,12 @@ struct TerrainIsland : mc2vk::IslandState {
     mc2vk::OwnedShaderModule    vert;
     mc2vk::OwnedShaderModule    frag;
 
+    // Drain before the shader/layout/device owners disappear.
+    mc2::terrain::TerrainSpecVariants<mc2vk::OwnedPipeline> specVariants;
+    VkPipeline specSelected = VK_NULL_HANDLE;
+    uint32_t specLoggedKey = UINT32_MAX;
+    VkPipeline specLoggedPipe = VK_NULL_HANDLE;
+
     // VK-TERRAIN-SKIRT (rung 4): second pipeline for skirt strips (2-attribute vertex
     // input: ivec2 localOffset + int isSkirtFlag, mirrors GL's skirt VAO). Shares the
     // SAME descriptor set / pipeline layout / renderpass as the main pipeline (only
@@ -341,7 +348,7 @@ struct TerrainIsland : mc2vk::IslandState {
     std::unique_ptr<OvlState> ovl;
 
     TerrainIsland() = default;
-    ~TerrainIsland() override { gpuTimer.destroy(); }
+    ~TerrainIsland() override { specVariants.drain(); gpuTimer.destroy(); }
 };
 
 const uint32_t kOvlTexPerPool = 480;   // textures per pool of the overlay's descriptor chain
@@ -407,6 +414,18 @@ bool init_island(TerrainIsland* s, int w, int h);
 bool snapshot_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 VkCommandBuffer begin_oneshot(TerrainIsland* s);
 void end_oneshot(TerrainIsland* s, VkCommandBuffer cb);
+// Value snapshot: pointed-to create structs are built on the worker.
+struct TerrainPipelineRecipe {
+    VkDevice device;
+    VkShaderModule vert, frag;
+    VkPipelineLayout layout;
+    VkFormat color, normal, depth;
+    int32_t csmDebug;
+    bool planar = false, skirt = false;
+};
+mc2vk::OwnedPipeline build_terrain_pipeline(const TerrainPipelineRecipe& recipe,
+    const mc2::terrain::TerrainSpecKey* key = nullptr);
+
 bool create_colormap_sampler(TerrainIsland* s);
 bool upload_sampled_image(TerrainIsland* s, mc2vk::ResidentTextureRef& outTexture, VkFormat fmt, uint32_t width, uint32_t height, const void* bytes, VkDeviceSize byteCount);
 bool upload_colormap_image(TerrainIsland* s, VkFormat fmt, uint32_t width, uint32_t height, const void* bytes, VkDeviceSize byteCount);

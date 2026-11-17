@@ -19,6 +19,32 @@ layout(constant_id = 14) const int kReflectCutMovers = 1;
 vec3 mv_lampPoolNormal(vec3 wp, vec3 macroN, float lod);
 #define TLP_LAMP_NORMAL mv_lampPoolNormal
 #include "include/terrain_frame_vk.glsl"   // TerrainFrameUBO + set-0 resources + CSM shadow helpers
+
+// -1 preserves the uniform path for generic and skirt pipelines.
+layout(constant_id = 20) const int kSp_colormapReady = -1;
+#define TS_colormapReady (kSp_colormapReady < 0 ? uT.colormapReady : kSp_colormapReady)
+layout(constant_id = 21) const int kSp_useCement = -1;
+#define TS_useCement (kSp_useCement < 0 ? uT.useCement : kSp_useCement)
+layout(constant_id = 22) const int kSp_useTransitionMask = -1;
+#define TS_useTransitionMask (kSp_useTransitionMask < 0 ? uT.useTransitionMask : kSp_useTransitionMask)
+layout(constant_id = 23) const int kSp_cementDiagConnect = -1;
+#define TS_cementDiagConnect (kSp_cementDiagConnect < 0 ? uT.cementDiagConnect : kSp_cementDiagConnect)
+layout(constant_id = 24) const int kSp_lightingEnabled = -1;
+#define TS_lightingEnabled (kSp_lightingEnabled < 0 ? uT.lightingEnabled : kSp_lightingEnabled)
+layout(constant_id = 25) const int kSp_enableShadows = -1;
+#define TS_enableShadows (kSp_enableShadows < 0 ? uT.enableShadows : kSp_enableShadows)
+layout(constant_id = 26) const int kSp_detailEnabled = -1;
+#define TS_detailEnabled (kSp_detailEnabled < 0 ? uT.detailEnabled : kSp_detailEnabled)
+layout(constant_id = 27) const int kSp_detailReady = -1;
+#define TS_detailReady (kSp_detailReady < 0 ? uT.detailReady : kSp_detailReady)
+layout(constant_id = 28) const int kSp_concreteDetail = -1;
+#define TS_concreteDetail (kSp_concreteDetail < 0 ? uT.concreteDetail : kSp_concreteDetail)
+layout(constant_id = 29) const int kSp_visualMode = -1;
+#define TS_visualMode (kSp_visualMode < 0 ? uT.visualMode : kSp_visualMode)
+layout(constant_id = 30) const int kSp_shorelineOn = -1;
+#define TS_shorelineOn (kSp_shorelineOn < 0 ? uT.shorelineOn : kSp_shorelineOn)
+layout(constant_id = 31) const int kSp_shorelineHasMask = -1;
+#define TS_shorelineHasMask (kSp_shorelineHasMask < 0 ? uT.shorelineHasMask : kSp_shorelineHasMask)
 #undef TLP_LAMP_NORMAL
 #include "include/ground_lighting.glsl"
 #include "include/concrete_detail_vk.glsl"
@@ -36,12 +62,12 @@ layout(set = 0, binding = 15) uniform sampler2D u_materialWeights;
 // VK-TERRAIN-DETAIL: the material tangent-space detail-normal array (VK copy-once
 // import of GL terrain_normal_array_tex_, a 9-layer RGBA8 GL_TEXTURE_2D_ARRAY,
 // GL_REPEAT). Layers per include/terrain_mat_layers.hglsl. Dummy 1x1 until imported
-// (uT.detailReady gates the sample).
+// (TS_detailReady gates the sample).
 layout(set = 0, binding = 6) uniform sampler2DArray u_matNormalArray;
 layout(set = 0, binding = 1, std430) readonly buffer TerrainHeightBuf {
     float heights[];
 } uH;
-// TERRAIN-SHORELINE-V3: optional mask sidecar (G wet, B foam, A valid); read only while uT.shorelineHasMask != 0.
+// TERRAIN-SHORELINE-V3: optional mask sidecar (G wet, B foam, A valid); read only while TS_shorelineHasMask != 0.
 layout(set = 0, binding = 14) uniform sampler2D u_shorelineMask;
 
 // Material layer indices (mirror shaders/include/terrain_mat_layers.hglsl).
@@ -84,7 +110,7 @@ vec3 mv_smoothTerrainNormal(vec2 worldXY) {
     vec2 gradient = textureLod(u_macroGradient, (cell + 1.5) / float(uT.mapSide + 2), 0.0).rg;
     // TERRAIN-HIRES-NEAR-1: with the 4x bake live, shade from the bake's own gradient
     // (central differences at 32 wu, bilinear between fine vertices), same convention.
-    if (uT.visualMode != 0) {
+    if (TS_visualMode != 0) {
         vec2  fc = vec2(worldXY.x + uT.halfMap, uT.halfMap - worldXY.y) / 32.0;
         ivec2 i0 = ivec2(floor(fc));
         vec2  f  = fc - vec2(i0);
@@ -207,7 +233,7 @@ vec3 mv_lampPoolNormal(vec3 wp, vec3 macroN, float lod) {
     if (footprint >= 0.707107) return macroN;
     vec2 uv = vec2((wp.x - uT.atlasTopLeftX) * uT.atlasOneOverWorldUnits,
                    (uT.atlasTopLeftY - wp.y) * uT.atlasOneOverWorldUnits);
-    vec4 m = uT.colormapReady != 0 ? textureLod(u_materialWeights, uv, 0.0) : vec4(0);
+    vec4 m = TS_colormapReady != 0 ? textureLod(u_materialWeights, uv, 0.0) : vec4(0);
     vec4 w = vec4(max(1.0 - m.x - m.y - m.w, 0.0), m.x, m.y, m.w);
     // Keep the lamp consumer small: one XY-only tap with explicit isotropic
     // LOD, no sun/POM/anti-tile call graph inside the light loop.
@@ -250,7 +276,7 @@ void main() {
     // concrete is a SEPARATE dynamic map, still deferred here.)
     bool pureConcrete = false;
     bool cementHit = false;   // a solid cement atlas texel won (the shoreline wet band skips it, as GL)
-    if (uT.colormapReady != 0) {
+    if (TS_colormapReady != 0) {
         // The shared cook already applied the original nine-tap blur and coast-color repair.
         vec2 uv = vec2((v_worldPos.x - uT.atlasTopLeftX) * uT.atlasOneOverWorldUnits,
                        (uT.atlasTopLeftY - v_worldPos.y) * uT.atlasOneOverWorldUnits);
@@ -269,9 +295,9 @@ void main() {
     // CEMENT-HARD-EDGE-1 marching-squares transition cut, and CEMENT-DIAG-CONNECT-1.
     // Fed by the per-vertex cement-word SSBO (uC) + the REPEAT-sampled cement texture array.
     // The overlay-sidecar composite (GL :626-642) is STILL DEFERRED (not fed here).
-    // uT.useCement==0 (gate off / atlas or words not ready) -> whole block skipped ->
+    // TS_useCement==0 (gate off / atlas or words not ready) -> whole block skipped ->
     // colormap base only, byte-identical to the colormap-only frame.
-    if (uT.useCement != 0) {
+    if (TS_useCement != 0) {
         // CEMENT-MIP-EDGE-1: the road "outline". Derivatives come from the CONTINUOUS tile UV in uniform
         // control flow (a fract()ed UV would blow them up at every tile wrap).
         vec2  cCont    = vec2(v_worldPos.x, -v_worldPos.y) / uT.cementWUPT;
@@ -298,7 +324,7 @@ void main() {
                 base = mix(base, cementColor, cOwnA);
                 if (cOwnA > 0.5) { cementHit = true; pureConcrete = true; }
             } else if (isTransition) {
-                if (uT.useTransitionMask != 0) {
+                if (TS_useTransitionMask != 0) {
                     float u = cTileUV.x, v = cTileUV.y;
                     // Cook stores vertex-corner coverage as maskId = cfg-1 (neighbour words would invent corner wedges).
                     int cfg = int((cw >> 24u) & 63u) + 1;
@@ -346,9 +372,9 @@ void main() {
             }
         }
 
-        // CEMENT-DIAG-CONNECT-1 (gate uT.cementDiagConnect): fill this tile's corner
+        // CEMENT-DIAG-CONNECT-1 (gate TS_cementDiagConnect): fill this tile's corner
         // quadrant toward a diagonally adjacent SOLID cement tile. Off by default.
-        if (uT.cementDiagConnect != 0 && !cementHit) {
+        if (TS_cementDiagConnect != 0 && !cementHit) {
             vec2 dTileUV = fract(vec2(v_worldPos.x, -v_worldPos.y) / uT.cementWUPT);
             int dnX = (dTileUV.x > 0.5) ? (ctX + 1) : (ctX - 1);
             int dnY = (dTileUV.y > 0.5) ? (ctY + 1) : (ctY - 1);
@@ -369,7 +395,7 @@ void main() {
     // ★VK-TERRAIN-LIGHTING compose. Mirrors terrain_lod_chunk.frag:889-928 (the NdotL
     // relief band + baked static sun shadow, cement flat-lit). Terrain
     // normal is the flat-up (0,0,1) the GBuffer1 encodes and GL's calcShadow uses as
-    // shadowN. Gate uT.lightingEnabled==0 -> lit==base (identity) -> byte-identical to
+    // shadowN. Gate TS_lightingEnabled==0 -> lit==base (identity) -> byte-identical to
     // the pre-lighting frame. DEFERRED vs GL: detail-normal/POM/macro-variation relief,
     // the DYNAMIC (mech/building) shadow, and hemisphere ambient fill.
     // VK-PARITY-F3: GL baseColor pipeline (terrain_lod_chunk.frag:1546-1565,1628,1636-1663,
@@ -385,7 +411,7 @@ void main() {
     vec3 baseNormal = mv_smoothTerrainNormal(v_worldPos.xy);
     vec3 prelitBase = base;
     float delitShare = pureConcrete || cementHit ? 0.0 : smoothstep(0.85, 0.55, abs(baseNormal.z));
-    if (delitShare > 0.0 && uT.colormapReady != 0) {
+    if (delitShare > 0.0 && TS_colormapReady != 0) {
         float gain = cliffDelightGain(dot(base, vec3(0.299, 0.587, 0.114)), cliffReferenceLuma(v_worldPos.xy));
         base *= mix(1.0, gain, delitShare);
     }
@@ -416,7 +442,7 @@ void main() {
         }
         // World-space two-octave break-up noise (non-snow, non-concrete).
         float noiseBlend = cookedBreakup;
-        if (uT.colormapReady < 2) {
+        if (TS_colormapReady < 2) {
             float lowFreq = fbm(v_worldPos.xy * 0.0035, 3) * 0.5 + 0.5;
             float highFreq = fbm(v_worldPos.xy * 0.018, 2) * 0.5 + 0.5;
             noiseBlend = mix(lowFreq, highFreq, 0.55);
@@ -434,7 +460,7 @@ void main() {
         float slopeClean = smoothstep(0.80, 0.92, abs(baseNormal.z));   // steep ground keeps the cliff/rock look
         float wMottle = clamp(natural, 0.0, 1.0) * (1.0 - materialSnow) * (1.0 - F3pc) * (cementHit ? 0.0 : 1.0) * slopeClean;
         float coastDry = 0.0;
-        if (uT.shorelineOn != 0) {
+        if (TS_shorelineOn != 0) {
             float aboveW = v_worldPos.z - uT.shorelineWaterElev;
             float nzm = clamp(abs(baseNormal.z), 0.0, 0.9995);
             float horiz = max(aboveW, 0.0) * (nzm / max(sqrt(max(1.0 - nzm * nzm, 1e-6)), 0.03));
@@ -467,7 +493,7 @@ void main() {
         max(dot(cliffDx.xy, cliffDx.xy), dot(cliffDy.xy, cliffDy.xy))))));
     vec3 lit = base;
     vec3 gbufN = vec3(0.0, 0.0, 1.0);   // GBuffer1 rgb: the lit surface normal (flat-up when lighting is off)
-    if (uT.lightingEnabled != 0) {
+    if (TS_lightingEnabled != 0) {
         vec3 lightDir = uT.terrainLightDir.xyz;
         // Colormaps are prelit: authored burnins, or sources baked by the loader.
         // Only detail relative to the macro normal may modulate that illumination.
@@ -475,10 +501,10 @@ void main() {
         vec3 N = vec3(0.0, 0.0, 1.0);                            // flat-up terrain normal (default)
         bool resolveLampNormal = false;
         vec3 dbgBaseN = vec3(0.0, 0.0, 1.0); vec3 dbgDN = vec3(0.0);  // CSM-BLACKOUT-RECON-1 taps
-        if (uT.detailEnabled != 0 && !pureConcrete) {
+        if (TS_detailEnabled != 0 && !pureConcrete) {
             vec3 baseN = baseNormal;
             vec3 dN    = vec3(0.0);
-            if ((kPlanarReflection == 0 || kReflectCutDetail == 0) && uT.detailReady != 0 && uT.detailStrength != 0.0) {
+            if ((kPlanarReflection == 0 || kReflectCutDetail == 0) && TS_detailReady != 0 && uT.detailStrength != 0.0) {
                 if (mv_needDetail(baseN, lightDir, materialW, materialSnow, v_worldPos, normalLightFloor)) {
                     dN = mv_detailNormal(materialW, materialSnow, v_worldPos.xy, baseN.z, detailUvDx, detailUvDy);
                 } else {
@@ -489,9 +515,9 @@ void main() {
             vec3 pert = macroPert + vec3(dN.xy * uT.detailStrength, 0.0);
             N = normalize(pert);
             float blocked = crTerrainCliff(v_worldPos.xy);
-            if ((uT.concreteDetail & 2) != 0) crApply(baseN, cliffDx * MATV_CLIFF_TS, cliffDy * MATV_CLIFF_TS, cliffLod, blocked, N, baseColor);
-            else if (uT.detailReady >= 2) mv_cliffMaterial(baseN, cliffLod, blocked, N, baseColor);
-            if (uT.detailReady != 0) crNavigable(baseN, cliffDx * MATV_CLIFF_TS, cliffDy * MATV_CLIFF_TS,
+            if ((TS_concreteDetail & 2) != 0) crApply(baseN, cliffDx * MATV_CLIFF_TS, cliffDy * MATV_CLIFF_TS, cliffLod, blocked, N, baseColor);
+            else if (TS_detailReady >= 2) mv_cliffMaterial(baseN, cliffLod, blocked, N, baseColor);
+            if (TS_detailReady != 0) crNavigable(baseN, cliffDx * MATV_CLIFF_TS, cliffDy * MATV_CLIFF_TS,
                                                (1.0 - blocked) * max(materialW.x, cliffRockWeight(abs(baseN.z))), N, baseColor);
             if (kPlanarReflection != 0 && kReflectCutDetail != 0) N = normalize(macroPert);
             dbgBaseN = baseN; dbgDN = dN;                        // CSM-BLACKOUT-RECON-1 taps
@@ -514,13 +540,13 @@ void main() {
         // fragments skip the material detail-normal fetches, so the two concrete fetches replace them (no net fetch increase).
         vec3 cdSpec = vec3(0.0);
         vec2 cdWpDx = dFdx(v_worldPos.xy), cdWpDy = dFdy(v_worldPos.xy);   // uniform flow, late: nothing extra stays live through the detail-normal block
-        if ((kPlanarReflection == 0 || kReflectCutDetail == 0) && uT.concreteDetail != 0 && pureConcrete) cdApply(cdRoad > 0.5 ? CD_LAYER_ROAD : CD_LAYER_PAD, v_worldPos.xy, cdWpDx, cdWpDy, lightDir, 1.0, baseColor, normalLight, cdSpec, N);
+        if ((kPlanarReflection == 0 || kReflectCutDetail == 0) && TS_concreteDetail != 0 && pureConcrete) cdApply(cdRoad > 0.5 ? CD_LAYER_ROAD : CD_LAYER_PAD, v_worldPos.xy, cdWpDx, cdWpDy, lightDir, 1.0, baseColor, normalLight, cdSpec, N);
         gbufN = N;
 
         // Static ground mask and current-frame movers share the same visibility
         // floor. Cement receives both, exactly like the surrounding terrain.
         vec3 shadowN=baseNormal;
-        float staticS=uT.enableShadows!=0?terrainStaticShadow(v_worldPos):1.0;
+        float staticS=TS_enableShadows!=0?terrainStaticShadow(v_worldPos):1.0;
         float dynS=kPlanarReflection != 0 && kReflectCutMovers != 0 ? 1.0 : terrainDynamicShadow(v_worldPos,shadowN);
         float shadow = min(mix(staticS, mix(1.0, staticS, cliffSun), cliffShare), dynS);
         // CSM-BLACKOUT-RECON-1: one-shot debug viz (env MC2_SHADOW_DEBUG_MODE=N).
@@ -564,7 +590,7 @@ void main() {
         // TERRAIN-SHORELINE-V3/V4 (terrain_lod_chunk.frag, after the edge feather): wet and foam bands measured as the
         // HORIZONTAL run from the waterline through the macro slope, with static fbm jitter on the run, a fade-in over the
         // first 1.5 wu above the water, the optional mask modulator, a 12-20 deg slope guard and a beach affinity term.
-        if (uT.shorelineOn != 0) {
+        if (TS_shorelineOn != 0) {
             float aboveWater = v_worldPos.z - uT.shorelineWaterElev;
             vec3  macroN     = baseNormal;
             float nzc        = clamp(abs(macroN.z), 0.0, 0.9995);
@@ -580,7 +606,7 @@ void main() {
                 float aboveFade = smoothstep(0.0, 1.5, horizDist);
                 slWet  *= aboveFade;
                 slFoam *= aboveFade;
-                if (uT.shorelineHasMask != 0) {
+                if (TS_shorelineHasMask != 0) {
                     vec2 slUV = vec2((v_worldPos.x - uT.shorelineBoundsX) / max(uT.shorelineBoundsW, 1e-5),
                                      (uT.shorelineBoundsY - v_worldPos.y) / max(uT.shorelineBoundsH, 1e-5));
                     if (slUV.x >= 0.0 && slUV.x <= 1.0 && slUV.y >= 0.0 && slUV.y <= 1.0) {

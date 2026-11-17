@@ -582,6 +582,10 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "TERRAIN-OVERLAY-V2-PARITY-1: override the overlay_v2 sidecar path (default data/missions/<stem>.beauty/overlay_v2.png).",
     },
     {
+        "MC2_TERRAIN_SPEC", "MC2_TERRAIN_SPEC", EnvVarKind::Feature, true,
+        "Terrain fragment specialization; 0 keeps the generic main and reflection pipelines.",
+    },
+    {
         "MC2_TERRAIN_VISUAL_DISPLACE", "MC2_TERRAIN_VISUAL_DISPLACE", EnvVarKind::Feature, true,
         "TERRAIN-HIRES-NEAR-1: draw the 4x visual height bake on VK terrain at every LOD (LOD0 at 4x density); no bake = unchanged.",
     },

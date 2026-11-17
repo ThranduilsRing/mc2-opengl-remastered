@@ -345,6 +345,97 @@ void sync_ring_bindings(TerrainIsland* s, uint32_t par, const mc2vk::FrameAlloc&
     s->groundFrameNo = mc2vk::getOrCreateEngineVulkanContext().tracker().frameNo();
 }
 
+mc2vk::OwnedPipeline build_terrain_pipeline(const TerrainPipelineRecipe& r,
+    const mc2::terrain::TerrainSpecKey* key) {
+    // The complete main/planar/skirt recipe. No pointers into the island or caller.
+    VkVertexInputBindingDescription vib{};
+    vib.binding = 0; vib.stride = (r.skirt ? sizeof(SkirtVertex) : sizeof(LocalVertex)); vib.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+    VkVertexInputAttributeDescription via[2]{};
+    via[0] = {0, 0, VK_FORMAT_R16G16_SINT, 0};
+    via[1] = {1, 0, VK_FORMAT_R16_SINT, 4};
+    VkPipelineVertexInputStateCreateInfo vin{};
+    vin.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    vin.vertexBindingDescriptionCount = 1; vin.pVertexBindingDescriptions = &vib;
+    vin.vertexAttributeDescriptionCount = r.skirt ? 2 : 1; vin.pVertexAttributeDescriptions = via;
+
+    VkPipelineInputAssemblyStateCreateInfo ia{};
+    ia.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+
+    VkPipelineViewportStateCreateInfo vps{};
+    vps.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    vps.viewportCount = 1; vps.scissorCount = 1;
+
+    VkPipelineRasterizationStateCreateInfo rs{};
+    rs.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    rs.polygonMode = VK_POLYGON_MODE_FILL;
+    rs.cullMode = VK_CULL_MODE_NONE;                        // double-sided (terrainMVP X-flip)
+    rs.frontFace = r.planar ? VK_FRONT_FACE_CLOCKWISE : VK_FRONT_FACE_COUNTER_CLOCKWISE;         // authored CCW
+    rs.lineWidth = 1.0f;
+
+    VkPipelineMultisampleStateCreateInfo ms{};
+    ms.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+    VkPipelineDepthStencilStateCreateInfo ds{};
+    ds.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    ds.depthTestEnable = VK_TRUE;
+    ds.depthWriteEnable = VK_TRUE;
+    ds.depthCompareOp = r.planar ? VK_COMPARE_OP_GREATER : VK_COMPARE_OP_GREATER_OR_EQUAL;    // reverse-Z GEQUAL
+
+    VkPipelineColorBlendAttachmentState cba[2]{};
+    for (auto & cbaElem : cba) {
+        cbaElem.blendEnable = VK_FALSE;                      // opaque in-place overwrite
+        cbaElem.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                                VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    }
+    VkPipelineColorBlendStateCreateInfo cb{};
+    cb.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    cb.attachmentCount = 2; cb.pAttachments = cba;
+
+    VkDynamicState dyn[2] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+    VkPipelineDynamicStateCreateInfo dsci{};
+    dsci.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dsci.dynamicStateCount = 2; dsci.pDynamicStates = dyn;
+
+    VkPipelineShaderStageCreateInfo stages[2]{};
+    stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = r.vert; stages[0].pName = "main";
+    stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = r.frag; stages[1].pName = "main";
+    if (r.planar) cba[1].colorWriteMask = 0;
+    std::array<int32_t, 14> data{};
+    std::array<VkSpecializationMapEntry, 14> entries{};
+    unsigned n = 0;
+    const auto add = [&](uint32_t id, int32_t value) {
+        entries[n] = {id, uint32_t(n * sizeof(int32_t)), sizeof(int32_t)};
+        data[n++] = value;
+    };
+    add(0, r.csmDebug);
+    if (r.planar) add(10, 1);
+    if (key) {
+        const auto values = key->values();
+        for (unsigned i = 0; i < values.size(); ++i) add(20 + i, values[i]);
+    }
+    const VkSpecializationInfo spec{n, entries.data(), n * sizeof(int32_t), data.data()};
+    stages[1].pSpecializationInfo = &spec;
+    VkGraphicsPipelineCreateInfo gp{};
+    gp.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    gp.stageCount = 2; gp.pStages = stages;
+    gp.pVertexInputState = &vin; gp.pInputAssemblyState = &ia;
+    gp.pViewportState = &vps; gp.pRasterizationState = &rs;
+    gp.pMultisampleState = &ms; gp.pDepthStencilState = &ds; gp.pColorBlendState = &cb;
+    gp.pDynamicState = &dsci;
+    const VkFormat formats[2] = {r.planar ? VK_FORMAT_R16G16B16A16_SFLOAT : r.color,
+                                r.planar ? VK_FORMAT_UNDEFINED : r.normal};
+    const auto rendering = mc2vk::dynrender::pipelineInfo(2, formats, r.planar ? VK_FORMAT_D32_SFLOAT : r.depth);
+    gp.pNext = &rendering;
+    gp.layout = r.layout;
+    mc2vk::OwnedPipeline pipe;
+    mc2vk::create(pipe, r.device, [&](auto* h) { return mc2vk::infra::graphics(r.device, VK_NULL_HANDLE, 1, &gp, nullptr, h); });
+    return pipe;
+}
+
 // One-time init: fetch shared GBuffer, build LOAD renderpass/framebuffer/pipeline.
 bool init_island(TerrainIsland* s, int w, int h) {
     s->w = w; s->h = h;
@@ -591,99 +682,14 @@ bool init_island(TerrainIsland* s, int w, int h) {
             vlog("vkCreatePipelineLayout failed."); return false;
         }
 
-        // Mirror the GL terrain VAO: loc0 ivec2 (int16 lx,ly), stride 4, integer.
-        VkVertexInputBindingDescription vib{};
-        vib.binding = 0; vib.stride = sizeof(LocalVertex); vib.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-        VkVertexInputAttributeDescription via{};
-        via.location = 0; via.binding = 0; via.format = VK_FORMAT_R16G16_SINT; via.offset = 0;
-        VkPipelineVertexInputStateCreateInfo vin{};
-        vin.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-        vin.vertexBindingDescriptionCount = 1; vin.pVertexBindingDescriptions = &vib;
-        vin.vertexAttributeDescriptionCount = 1; vin.pVertexAttributeDescriptions = &via;
-
-        VkPipelineInputAssemblyStateCreateInfo ia{};
-        ia.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-        ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-
-        VkPipelineViewportStateCreateInfo vps{};
-        vps.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-        vps.viewportCount = 1; vps.scissorCount = 1;
-
-        VkPipelineRasterizationStateCreateInfo rs{};
-        rs.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-        rs.polygonMode = VK_POLYGON_MODE_FILL;
-        rs.cullMode = VK_CULL_MODE_NONE;                        // double-sided (terrainMVP X-flip)
-        rs.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;         // authored CCW
-        rs.lineWidth = 1.0f;
-
-        VkPipelineMultisampleStateCreateInfo ms{};
-        ms.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-        ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-
-        VkPipelineDepthStencilStateCreateInfo ds{};
-        ds.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-        ds.depthTestEnable = VK_TRUE;
-        ds.depthWriteEnable = VK_TRUE;
-        ds.depthCompareOp = VK_COMPARE_OP_GREATER_OR_EQUAL;    // reverse-Z GEQUAL
-
-        VkPipelineColorBlendAttachmentState cba[2]{};
-        for (auto & cbaElem : cba) {
-            cbaElem.blendEnable = VK_FALSE;                      // opaque in-place overwrite
-            cbaElem.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-                                    VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-        }
-        VkPipelineColorBlendStateCreateInfo cb{};
-        cb.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-        cb.attachmentCount = 2; cb.pAttachments = cba;
-
-        VkDynamicState dyn[2] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
-        VkPipelineDynamicStateCreateInfo dsci{};
-        dsci.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-        dsci.dynamicStateCount = 2; dsci.pDynamicStates = dyn;
-
-        VkPipelineShaderStageCreateInfo stages[2]{};
-        stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = s->vert.get(); stages[0].pName = "main";
-        stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = s->frag.get(); stages[1].pName = "main";
-        // vk-present-instance 8: constant_id 0 = csm debug viz mode (was a per-draw UBO branch).
         const int32_t csmDebugSpec = std::atoi(mc2::gate::str<"MC2_SHADOW_DEBUG_MODE">().c_str());
-        const VkSpecializationMapEntry csmDebugEntry{0, 0, sizeof(int32_t)};
-        VkSpecializationInfo csmDebugInfo{1, &csmDebugEntry, sizeof(int32_t), &csmDebugSpec};
-        stages[1].pSpecializationInfo = &csmDebugInfo;
-        VkGraphicsPipelineCreateInfo gp{};
-        gp.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-        gp.stageCount = 2; gp.pStages = stages;
-        gp.pVertexInputState = &vin; gp.pInputAssemblyState = &ia;
-        gp.pViewportState = &vps; gp.pRasterizationState = &rs;
-        gp.pMultisampleState = &ms; gp.pDepthStencilState = &ds; gp.pColorBlendState = &cb;
-        gp.pDynamicState = &dsci;
-        const VkFormat sceneFmts[2] = { s->colorRes->format, s->normalRes->format };
-        const VkPipelineRenderingCreateInfo prci = mc2vk::dynrender::pipelineInfo(2, sceneFmts, s->depthRes->format);
-        gp.pNext = &prci;
-        gp.layout = s->playout.get(); gp.renderPass = VK_NULL_HANDLE; gp.subpass = 0;
-        if (!mc2vk::create(s->pipe, s->device, [&](auto* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
-            vlog("vkCreateGraphicsPipelines failed."); setFallback("pipeline_failed"); return false;
-        }
+        TerrainPipelineRecipe recipe{s->device, s->vert.get(), s->frag.get(), s->playout.get(),
+            s->colorRes->format, s->normalRes->format, s->depthRes->format, csmDebugSpec};
+        s->pipe = build_terrain_pipeline(recipe);
+        recipe.planar = true;
+        s->planarPipe = build_terrain_pipeline(recipe);
+        if (!s->pipe || !s->planarPipe) { setFallback("pipeline_failed"); return false; }
         mc2vk::nameObject(s->device, s->pipe.get(), "terrain.pipe");
-
-        // Same materials and descriptors; absent MRT1 is not a reflection allocation.
-        const int32_t planarSpec[2] = {csmDebugSpec, 1};
-        const VkSpecializationMapEntry planarEntries[2] = {{0, 0, sizeof(int32_t)}, {10, sizeof(int32_t), sizeof(int32_t)}};
-        const VkSpecializationInfo planarInfo{2, planarEntries, sizeof(planarSpec), planarSpec};
-        stages[1].pSpecializationInfo = &planarInfo;
-        const VkFormat planarFormats[2] = {VK_FORMAT_R16G16B16A16_SFLOAT, VK_FORMAT_UNDEFINED};
-        const auto planarRendering = mc2vk::dynrender::pipelineInfo(2, planarFormats, VK_FORMAT_D32_SFLOAT);
-        gp.pNext = &planarRendering;
-        cba[1].colorWriteMask = 0;
-        rs.frontFace = VK_FRONT_FACE_CLOCKWISE; // mirror determinant -1 (terrain stays double-sided)
-        ds.depthCompareOp = VK_COMPARE_OP_GREATER; // 1.0 is the mask's unconditionally blocked depth
-        if (!mc2vk::create(s->planarPipe, s->device, [&](auto* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) return false;
-        gp.pNext = &prci;
-        stages[1].pSpecializationInfo = &csmDebugInfo;
-        cba[1].colorWriteMask = cba[0].colorWriteMask;
-        rs.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-        ds.depthCompareOp = VK_COMPARE_OP_GREATER_OR_EQUAL;
 
         // VK-TERRAIN-SKIRT (rung 4): second pipeline, same layout/renderpass/raster/
         // depth/blend state as above -- only the shader modules + vertex-input state
@@ -695,34 +701,10 @@ bool init_island(TerrainIsland* s, int w, int h) {
             setFallback("spv_load_failed"); return false;
         }
 
-        VkVertexInputBindingDescription svib{};
-        svib.binding = 0; svib.stride = sizeof(SkirtVertex); svib.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-        VkVertexInputAttributeDescription svia[2]{};
-        svia[0].location = 0; svia[0].binding = 0; svia[0].format = VK_FORMAT_R16G16_SINT;  svia[0].offset = 0;
-        svia[1].location = 1; svia[1].binding = 0; svia[1].format = VK_FORMAT_R16_SINT;      svia[1].offset = 4;
-        VkPipelineVertexInputStateCreateInfo svin{};
-        svin.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-        svin.vertexBindingDescriptionCount = 1; svin.pVertexBindingDescriptions = &svib;
-        svin.vertexAttributeDescriptionCount = 2; svin.pVertexAttributeDescriptions = svia;
-
-        VkPipelineShaderStageCreateInfo sstages[2]{};
-        sstages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        sstages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; sstages[0].module = s->skirtVert.get(); sstages[0].pName = "main";
-        sstages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        sstages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; sstages[1].module = s->skirtFrag.get(); sstages[1].pName = "main";
-
-        VkGraphicsPipelineCreateInfo sgp{};
-        sgp.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-        sgp.stageCount = 2; sgp.pStages = sstages;
-        sgp.pVertexInputState = &svin; sgp.pInputAssemblyState = &ia;
-        sgp.pViewportState = &vps; sgp.pRasterizationState = &rs;
-        sgp.pMultisampleState = &ms; sgp.pDepthStencilState = &ds; sgp.pColorBlendState = &cb;
-        sgp.pDynamicState = &dsci;
-        sgp.pNext = &prci;
-        sgp.layout = s->playout.get(); sgp.renderPass = VK_NULL_HANDLE; sgp.subpass = 0;
-        if (!mc2vk::create(s->skirtPipe, s->device, [&](auto* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &sgp, nullptr, h); })) {
-            vlog("vkCreateGraphicsPipelines (skirt) failed."); setFallback("pipeline_failed"); return false;
-        }
+        recipe.vert = s->skirtVert.get(); recipe.frag = s->skirtFrag.get();
+        recipe.planar = false; recipe.skirt = true;
+        s->skirtPipe = build_terrain_pipeline(recipe);
+        if (!s->skirtPipe) { setFallback("pipeline_failed"); return false; }
         mc2vk::nameObject(s->device, s->skirtPipe.get(), "terrain.skirtPipe");
     }
 

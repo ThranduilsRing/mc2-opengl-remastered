@@ -467,7 +467,7 @@ static bool record_terrain(TerrainIsland* s, mc2vk::VulkanContext& rctx, uint32_
     { float jpx[2]; RenderCore::temporal::sceneJitterPixels(g_mc2RenderFrame, jpx); plan.jx = jpx[0]; plan.jy = jpx[1]; }   // temporal AA: sub-pixel viewport offset, zero with no consumer
     plan.ctx = &rctx; plan.colorView = s->colorRes->view.get(); plan.normalView = s->normalRes->view.get(); plan.depthView = s->depthRes->view.get();
     plan.depthFormat = s->depthRes->format;
-    plan.pipe = s->pipe.get(); plan.skirtPipe = s->skirtPipe.get();
+    plan.pipe = s->specSelected; plan.skirtPipe = s->skirtPipe.get();
     plan.playout = s->playout.get(); plan.set = s->set[par]; plan.w = w; plan.h = h;
     plan.scissor={{0,0},{static_cast<uint32_t>(w),static_cast<uint32_t>(h)}};
     std::copy_n(dynOffs, 4, plan.dynOffs);
@@ -477,7 +477,7 @@ static bool record_terrain(TerrainIsland* s, mc2vk::VulkanContext& rctx, uint32_
         if (reflected->scissor.extent.width) plan.scissor=reflected->scissor;
         plan.colorView = reflected->color; plan.normalView = VK_NULL_HANDLE; plan.depthView = reflected->depth;
         plan.depthFormat = VK_FORMAT_D32_SFLOAT;
-        plan.pipe = s->planarPipe.get(); plan.skirtPipe = VK_NULL_HANDLE;
+        plan.skirtPipe = VK_NULL_HANDLE;
         plan.jx = plan.jy = 0; // spatial reflection, independent of any main-view jitter
         std::fill_n(plan.clearColor, 4, 0.0f); // alpha zero means no reflected geometry (sky fallback)
         plan.timerPool = VK_NULL_HANDLE; plan.timerCount = 0;
@@ -730,6 +730,29 @@ static int run_terrain(int w, int h, TerrainIsland* supplied = nullptr,
     TerrainFrameUBO common{};
     fill_frame_ubo(s, feed, Mc2TerrainTier1Patch{}, vkPoolLights, vkGridDim, common);
     std::memcpy(uboSpan.ptr, &common, sizeof(common));
+    // Resolve on the render owner, before record_terrain copies a deferred plan.
+    // A miss uses generic immediately, even when readiness changes mid-compile.
+    const auto specBegin = std::chrono::steady_clock::now();
+    const auto specKey = mc2::terrain::terrainSpecKey(common);
+    const TerrainPipelineRecipe specRecipe{s->device, s->vert.get(), s->frag.get(), s->playout.get(),
+        s->colorRes->format, s->normalRes->format, s->depthRes->format, common.csmDebugMode, s->planar};
+    const auto* variant = s->specVariants.select(specKey, mc2::gate::get<"MC2_TERRAIN_SPEC">(),
+        [specRecipe, specKey] {
+            const auto begin = std::chrono::steady_clock::now();
+            auto pipe = build_terrain_pipeline(specRecipe, &specKey);
+            vlog("[TERRAIN_SPEC] compile view=%s key=%u ok=%d ms=%.3f", specRecipe.planar ? "reflection" : "main",
+                specKey.bits, bool(pipe), std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - begin).count());
+            return pipe;
+        }, [&rctx](mc2vk::OwnedPipeline&& pipe) { rctx.retire(std::move(pipe)); });
+    s->specSelected = variant ? variant->get() : (s->planar ? s->planarPipe.get() : s->pipe.get());
+    if (s->specLoggedKey != specKey.bits || s->specLoggedPipe != s->specSelected) {
+        vlog("[TERRAIN_SPEC] select frame=%llu view=%s key=%u pipeline=%llu specialized=%d select_us=%.3f",
+            (unsigned long long)g_mc2RenderFrame, s->planar ? "reflection" : "main", specKey.bits,
+            (unsigned long long)(uintptr_t)s->specSelected, variant != nullptr,
+            std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - specBegin).count());
+        s->specLoggedKey = specKey.bits; s->specLoggedPipe = s->specSelected;
+    }
+
     sync_ring_bindings(s, par, uboSpan, lpSpans);
     if (mc2_terrain_feed_observation_enabled()) {
         // Preserve the observation boundary's expanded legacy feed for exact A/B.
