@@ -16,6 +16,17 @@
 
 namespace mc2lod {
 
+// Exact inputs of the CPU angular activity mask. Heights, recipes and object
+// membership are not inputs; those consumers still run against live data.
+struct ActivityKey {
+    std::array<float, 13> camera; // position, frame i/j/k, horizontal clip
+    std::array<long, 4> grid;     // block count/side, vertices/block, half map
+    float vertexScale;
+    bool operator==(const ActivityKey& other) const {
+        return camera == other.camera && grid == other.grid && vertexScale == other.vertexScale;
+    }
+};
+
 constexpr int kLodStepCount = 6;
 constexpr int kLodSteps[kLodStepCount] = {1, 2, 4, 5, 10, 20};
 

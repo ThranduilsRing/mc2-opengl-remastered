@@ -5,6 +5,7 @@
 #include "terrain_internal.h"
 #include "mc2fmt.h"
 #include "vulkan_terrain_island.h"
+#include "terrain_lod_rules.h"
 
 
 float cosineEyeHalfFOV = 0.0f;
@@ -261,68 +262,80 @@ void Terrain::geometry (void)
 		const long nB = numObjBlocks;
 		const long nV = realVerticesMapSide * realVerticesMapSide;
 		static std::vector<uint8_t> s_prodBlock;
-		s_prodBlock.assign(nB, 0);
+		const auto& frame = Camera::cameraFrame;
+		const mc2lod::ActivityKey activityKey{
+			{cameraPos.x, cameraPos.y, cameraPos.z,
+			 frame.i.x, frame.i.y, frame.i.z, frame.j.x, frame.j.y, frame.j.z,
+			 frame.k.x, frame.k.y, frame.k.z, hClipConstant},
+			{nB, blocksMapSide, verticesBlockSide, halfVerticesMapSide}, worldUnitsPerVertex};
+		static std::optional<mc2lod::ActivityKey> s_activityKey;
+		// Reuse only the pure angular mask. Replay the live sinks after the
+		// mission's per-frame clears; recipe/terrain revisions remain live there.
+		if (!s_activityKey || !(*s_activityKey == activityKey)) {
+			s_prodBlock.assign(nB, 0);
 
-		const float hMapW      = static_cast<float>(halfVerticesMapSide) * worldUnitsPerVertex;
-		// [LOW-CAMERA-TERRAIN-CULL-1 v2] The angular solid-window producer (this
-		// loop) is the SECOND terrain visibility gate — independent of the frustum
-		// inFrustum set we relaxed via MC2_LOWCAM_TERRAIN_NEAR. At grazing pitch,
-		// near terrain spread SIDEWAYS of the look vector falls just past the
-		// unconditional near-field bypass and outside the horizontal cone -> dropped.
-		// Widen the near-field bypass radius (purely additive: only admits more
-		// blocks; dilation/superset invariants preserved). Default 4x; =1 = stock.
-		static const float s_lowCamSolidNear = 6.0f;
-		const float kNearField = 768.0f * s_lowCamSolidNear;   // CLIP_THRESHOLD_DISTANCE
-		const float kExtent    = 384.0f;   // VERTEX_EXTENT_RADIUS
-		const float blockR     = (verticesBlockSide * 0.5f) * worldUnitsPerVertex * 1.5f;
+			const float hMapW      = static_cast<float>(halfVerticesMapSide) * worldUnitsPerVertex;
+			// [LOW-CAMERA-TERRAIN-CULL-1 v2] The angular solid-window producer (this
+			// loop) is the SECOND terrain visibility gate — independent of the frustum
+			// inFrustum set we relaxed via MC2_LOWCAM_TERRAIN_NEAR. At grazing pitch,
+			// near terrain spread SIDEWAYS of the look vector falls just past the
+			// unconditional near-field bypass and outside the horizontal cone -> dropped.
+			// Widen the near-field bypass radius (purely additive: only admits more
+			// blocks; dilation/superset invariants preserved). Default 4x; =1 = stock.
+			static const float s_lowCamSolidNear = 6.0f;
+			const float kNearField = 768.0f * s_lowCamSolidNear;   // CLIP_THRESHOLD_DISTANCE
+			const float kExtent    = 384.0f;   // VERTEX_EXTENT_RADIUS
+			const float blockR     = (verticesBlockSide * 0.5f) * worldUnitsPerVertex * 1.5f;
 
-		// Base-active: angular-cone replication of legacy onScreenR (identical to 8a).
-		for (long b = 0; b < nB; ++b)
-		{
-			const long bx = b % blocksMapSide, by = b / blocksMapSide;
-			glm::vec3 bc(
-				(static_cast<float>(bx * verticesBlockSide) + verticesBlockSide * 0.5f) * worldUnitsPerVertex - hMapW,
-				hMapW - (static_cast<float>(by * verticesBlockSide) + verticesBlockSide * 0.5f) * worldUnitsPerVertex,
-				cameraPos.z);
-			glm::vec3 oc; oc = bc - cameraPos;
-			Camera::cameraFrame.trans_to_frame(oc);
-			glm::vec3 cv = oc; cv.z = 0.0f;
-			const float distClip = glm::length(cv);
-			bool act = (distClip <= (kNearField + blockR));
-			if (!act)
-			{
-				const float distEye = glm::length(oc);
-				if (fabs(oc.y) > 1.0e-3f && distEye > 1.0e-3f)
-				{
-					const float clip_distance = fabsf(1.0f / oc.y);
-					const float extent_angle  = kExtent / distEye;
-					const float angR          = blockR * clip_distance;
-					const float hAng          = fabsf(oc.x) * clip_distance;
-					if (hAng <= (hClipConstant + extent_angle + angR)) act = true;
-				}
-				else act = true;
-			}
-			if (act) s_prodBlock[b] = 1;
-		}
-
-		// 1-block neighbor dilation (closes frustum-edge sliver FN; FP-safe).
-		{
-			const long bms = blocksMapSide;
-			static std::vector<uint8_t> dil;
-			dil.assign(nB, 0);
+			// Base-active: angular-cone replication of legacy onScreenR (identical to 8a).
 			for (long b = 0; b < nB; ++b)
 			{
-				if (!s_prodBlock[b]) continue;
-				const long bx = b % bms, by = b / bms;
-				for (long dy = -1; dy <= 1; ++dy)
-				for (long dx = -1; dx <= 1; ++dx)
+				const long bx = b % blocksMapSide, by = b / blocksMapSide;
+				glm::vec3 bc(
+					(static_cast<float>(bx * verticesBlockSide) + verticesBlockSide * 0.5f) * worldUnitsPerVertex - hMapW,
+					hMapW - (static_cast<float>(by * verticesBlockSide) + verticesBlockSide * 0.5f) * worldUnitsPerVertex,
+					cameraPos.z);
+				glm::vec3 oc; oc = bc - cameraPos;
+				Camera::cameraFrame.trans_to_frame(oc);
+				glm::vec3 cv = oc; cv.z = 0.0f;
+				const float distClip = glm::length(cv);
+				bool act = (distClip <= (kNearField + blockR));
+				if (!act)
 				{
-					const long nx = bx + dx, ny = by + dy;
-					if (nx < 0 || ny < 0 || nx >= bms || ny >= bms) continue;
-					dil[nx + ny * bms] = 1;
+					const float distEye = glm::length(oc);
+					if (fabs(oc.y) > 1.0e-3f && distEye > 1.0e-3f)
+					{
+						const float clip_distance = fabsf(1.0f / oc.y);
+						const float extent_angle  = kExtent / distEye;
+						const float angR          = blockR * clip_distance;
+						const float hAng          = fabsf(oc.x) * clip_distance;
+						if (hAng <= (hClipConstant + extent_angle + angR)) act = true;
+					}
+					else act = true;
 				}
+				if (act) s_prodBlock[b] = 1;
 			}
-			s_prodBlock.swap(dil);
+
+			// 1-block neighbor dilation (closes frustum-edge sliver FN; FP-safe).
+			{
+				const long bms = blocksMapSide;
+				static std::vector<uint8_t> dil;
+				dil.assign(nB, 0);
+				for (long b = 0; b < nB; ++b)
+				{
+					if (!s_prodBlock[b]) continue;
+					const long bx = b % bms, by = b / bms;
+					for (long dy = -1; dy <= 1; ++dy)
+					for (long dx = -1; dx <= 1; ++dx)
+					{
+						const long nx = bx + dx, ny = by + dy;
+						if (nx < 0 || ny < 0 || nx >= bms || ny >= bms) continue;
+						dil[nx + ny * bms] = 1;
+					}
+				}
+				s_prodBlock.swap(dil);
+			}
+			s_activityKey = activityKey;
 		}
 
 		// SINK: write PRODUCTION inside the O(active-blocks x span) loop. The live
