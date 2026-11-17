@@ -1107,19 +1107,19 @@ static const char* orderMenuReasonName(mc2::order_menu::CancelReason why)
 }
 
 // One [ORDER_MENU] line: stderr, and the live JSONL trace (the smoke runner only hands back stderr at exit).
-void orderMenuLogLine(const char* text)
+void orderMenuLogLine(std::string_view text)
 {
     if (!mc2_diag::tagRequested("ORDER_MENU")) return;
     std::fprintf(stderr, "[ORDER_MENU] %s\n", text);
     char json[640];
-    std::snprintf(json, sizeof json, "{\"msg\":\"%s\"}", text);
+    std::snprintf(json, sizeof json, "{\"msg\":\"%.*s\"}", static_cast<int>(text.size()), text.data());
     mc2_diag::writeEvent("ORDER_MENU", 1, 0, json);
 }
 
-static void orderMenuLogClose(const char* why)
+static void orderMenuLogClose(std::string_view why)
 {
     char line[96];
-    std::snprintf(line, sizeof line, "close reason=%s", why);
+    std::snprintf(line, sizeof line, "close reason=%.*s", static_cast<int>(why.size()), why.data());
     orderMenuLogLine(line);
 }
 

@@ -8,6 +8,7 @@
 #include "camera_elevation.h"
 #include <algorithm>
 #include <span>
+#include <string_view>
 #include <vector>
 
 
@@ -35,7 +36,7 @@ static void collectHomeMovers(std::vector<Mover*>& out, const std::vector<std::u
 	}
 }
 
-void orderMenuLogLine(const char* text); // missiongui_style.cpp
+void orderMenuLogLine(std::string_view text); // missiongui_style.cpp
 
 void MissionInterfaceManager::dispatchMenuOrder(const mc2::order_menu::Order& captured)
 {
