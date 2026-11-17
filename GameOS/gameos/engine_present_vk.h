@@ -147,6 +147,7 @@ public:
     bool prepareImguiVulkanFrame();
     bool prewarmPipelines();
     bool prepareHudTexture(const VkHudDraw& draw);
+    void releaseHudTextures(uint32_t handle = 0); // zero releases the mission's entire HUD cache
     bool renderImguiVulkanDrawData(ImDrawData* drawData);
     bool imguiVulkanReady() const;
     void shutdownImguiVulkanRenderer();

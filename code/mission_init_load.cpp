@@ -9,6 +9,7 @@
 // Mission: the second half of the Mission::init load sequence -- warriors and brains, movers and parts,
 // terrain objects, commanders, the HUD and the geometry finalize. The first half and the orchestrator are in mission_init.cpp.
 #include "mission_internal.h"
+#include "missiongui.h"
 #include "mission_init_frame.h"
 #include "static_prop_prewarm.h"
 #include "spawn_tree_clear.h"
@@ -1064,7 +1065,10 @@ void Mission::initFinalizeGeometry() {
     // The load barrier bakes the static shadows (F1); they key on the terrain sun, which the first frame's camera sets. Set the same one now.
     { const glm::vec3 sun = eye->sunDirection(); gos_SetTerrainLightDir(sun.x, sun.y, sun.z);
       MC2_LOAD_SCOPE("finalize.forestOcclusion"); GpuStaticPropRegistry::bakeForestOcclusion(sun.x, sun.y, sun.z); } // forest light bake needs the sun
-	missionCamera->prepareCompass(); // Its first update otherwise creates this HUD material after prewarm.
+	if (missionCamera) missionCamera->prepareCompass();
+	gos_SetHudScaleActive(true);
+	gos_SetHudCanvasActive(true);
+	if (missionInterface) missionInterface->getControlGui()->prepareHudFrame();
 	{ MC2_LOAD_SCOPE("finalize.prewarmCpuTextures"); mc2::textures::prewarmCpuTextures(); }
     { MC2_LOAD_SCOPE("finalize.prewarmPipelines"); mc2PrewarmMissionPipelines(); }
 	mission_phase_mark("render_prewarm_ready");

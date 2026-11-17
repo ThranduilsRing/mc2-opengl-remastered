@@ -134,6 +134,8 @@ class gosRenderer {
         gosTexture* getTextureIfPresent(size_t handle) const { return handle < textureList_.size() ? textureList_[handle] : nullptr; }
 
         void deleteTexture(DWORD texture_id) {
+            extern void gosRendererReleaseHudTextures(uint32_t);
+            gosRendererReleaseHudTextures(static_cast<uint32_t>(texture_id));
             // FIXME: bad use object list, with stable ids
             // to not waste space
             gosASSERT(textureList_.size() > texture_id);

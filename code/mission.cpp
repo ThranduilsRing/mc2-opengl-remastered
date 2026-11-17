@@ -1124,6 +1124,8 @@ void Mission::resetTeamsAndCommanders()
 void Mission::destroy (bool initLogistics)
 {
 	ZoneScopedN("Mission.Destroy");
+    extern void gosRendererReleaseHudTextures(uint32_t);
+    gosRendererReleaseHudTextures(0);
     orderRecipients.clear();
     authoredRoutes.clear();
     routeExecutions.clear();

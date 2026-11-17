@@ -1299,6 +1299,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
                     static_cast<int>(mirror->preparedSource == d.textureRgba));
                 mirror->firstDrawLogged = true;
             }
+            mirror->preparedSource.reset(); // First use ends the load-only eviction pin.
             HudNativeCmd td;
             td.stream = 2;
             td.firstVertex = static_cast<uint32_t>(texVerts.size());
@@ -2022,6 +2023,7 @@ bool EnginePresentVk::renderNativeCsmShadowDebugOverlay(void* csmArrayView, int 
 }
 
 bool EnginePresentVk::prepareHudTexture(const VkHudDraw& draw) {
+    present_thread::waitIdle();
     if (!created_ || !impl_ || !draw.textureRgba ||
         draw.textureRgba->size() != static_cast<size_t>(draw.textureWidth) * draw.textureHeight * 4u)
         return false;
@@ -2030,6 +2032,19 @@ bool EnginePresentVk::prepareHudTexture(const VkHudDraw& draw) {
     if (!mirror) return false;
     mirror->preparedSource = draw.textureRgba;
     return true;
+}
+
+void EnginePresentVk::releaseHudTextures(uint32_t handle) {
+    present_thread::waitIdle();
+    if (!impl_) return;
+    auto& s = *impl_;
+    for (auto it = s.hudTextureMirrors.begin(); it != s.hudTextureMirrors.end();) {
+        if (handle && static_cast<uint32_t>(it->first >> 32) != handle) { ++it; continue; }
+        auto& m = it->second;
+        s.ctx->retire(HudMirrorRetired{s.dev, s.hudTexPool.get(), std::exchange(m.set, VK_NULL_HANDLE),
+            std::move(m.memory), std::move(m.buffer)});
+        it = s.hudTextureMirrors.erase(it);
+    }
 }
 
 bool EnginePresentVk::prewarmPipelines() {

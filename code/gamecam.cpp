@@ -1244,8 +1244,9 @@ void GameCamera::refreshCompass (void)
 
 void GameCamera::prepareCompass()
 {
-	if (!compass) {
+	if (!compass && appearanceTypeList) {
 		AppearanceType* appearanceType = appearanceTypeList->getAppearance(BLDG_TYPE << 24, "compass");
+		if (!appearanceType) return;
 		compass = std::make_unique<BldgAppearance>();
 		compass->init(appearanceType);
 	}
