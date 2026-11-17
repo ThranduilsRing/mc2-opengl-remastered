@@ -1373,7 +1373,7 @@ void MissionBegin::updateSoakAutoPurchase() {
 								}
 							}
 							if ( !matched )
-								mc2::fmt::print_err("[MECH_PREVIEW_CHASSIS] no match for '{}'; falling back to automatic chassis selection\n", want);
+								mc2::fmt::print_err("MECH_PREVIEW_CHASSIS: no match for '{}'; falling back to automatic chassis selection\n", want);
 						}
 						if ( !pick )
 							pick = lightest;
