@@ -5,8 +5,47 @@
 #include "logistics_save_version.h"
 
 #include <string>
+#include <map>
 
 using namespace mc2::logistics_save;
+
+namespace {
+struct SavedCell { int id; long x, y; };
+struct CellFile {
+    std::map<std::string, long> values;
+    long readIdLong(const char* key, long& value) {
+        const auto found = values.find(key);
+        if (found == values.end()) return 1;
+        value = found->second;
+        return 0;
+    }
+};
+}
+
+TEST_CASE("logistics save version: read saved cells without the newer chassis-layout codec") {
+    CellFile file{{{"ComponentCount", 2}, {"Component0", 145}, {"Component0x", 4}, {"Component0y", 5},
+                   {"Component1", 13}, {"Component1x", -3}, {"Component1y", -3}}};
+    const auto items = readComponentCells<SavedCell>(file);
+    REQUIRE(items);
+    REQUIRE(items->size() == 2);
+    CHECK((*items)[0].id == 145);
+    CHECK((*items)[0].x == 4);
+    CHECK((*items)[0].y == 5);
+    CHECK((*items)[1].id == 13);
+    CHECK((*items)[1].x == -3);
+    CHECK((*items)[1].y == -3);
+    file.values.erase("Component1y");
+    CHECK_FALSE(readComponentCells<SavedCell>(file));
+    file.values["ComponentCount"] = 55;
+    CHECK_FALSE(readComponentCells<SavedCell>(file));
+    file.values["ComponentCount"] = -1;
+    CHECK_FALSE(readComponentCells<SavedCell>(file));
+    file.values["ComponentCount"] = 0;
+    REQUIRE(readComponentCells<SavedCell>(file));
+    CHECK(readComponentCells<SavedCell>(file)->empty());
+    file.values.erase("ComponentCount");
+    CHECK_FALSE(readComponentCells<SavedCell>(file));
+}
 
 TEST_CASE("logistics save version U8: 10005 only for a revised layout, both readable, older readers refuse 10005") {
     CHECK(saveVersionFor(false) == 10004);

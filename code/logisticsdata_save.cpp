@@ -359,20 +359,30 @@ std::expected<void, long> LogisticsData::loadVariant( FitIniFile& file )
 	
 	pVariant->setName( *variantName );
 
-	auto record = mc2pkg::readLocationVariant(file);
-	if (!record || !pVariant->restoreLocationRecord(*record)) {
+	auto saved = mc2::logistics_save::readComponentCells<LogisticsVariant::SavedComponent>(file);
+	if (!saved) {
 		variants.pop_back();
 		return std::unexpected(INVALID_FILE_NAME);
+	}
+	for (const auto& item : *saved) {
+		if (!getComponent(item.id)) {
+			variants.pop_back();
+			return std::unexpected(INVALID_FILE_NAME);
+		}
 	}
 	long savedRev = 1;
 	file.readIdLong("LayoutRev", savedRev);
 	const auto* package = pChassis->getPackage();
 	LogisticsVariant::LoadoutReport report;
 	if (package && savedRev < package->layoutRev) {
-		std::vector<LogisticsVariant::SavedComponent> saved;
-		for (const auto& item : record->items) saved.push_back({item.id, item.x, item.y});
-		pVariant->setLoadout(saved, &report);
-		pVariant->restoreLocationRecord(pVariant->locationRecord());
+		pVariant->setLoadout(*saved, &report);
+	} else {
+		for (auto item : *saved) {
+			if (!pVariant->addComponent(item.id, item.x, item.y)) {
+				variants.pop_back();
+				return std::unexpected(INVALID_FILE_NAME);
+			}
+		}
 	}
 	if ( report.moved > 0 || !report.dropped.empty() )
 	{

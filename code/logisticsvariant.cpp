@@ -452,7 +452,6 @@ int LogisticsVariant::init( CSVFile* file, LogisticsChassis* pChassis, int Varia
 	LoadoutReport report;
 	if (chassis->getPackage()) {
 		setLoadout( saved, &report );
-		restoreLocationRecord(locationRecord());
 	}
 	for ( const DroppedComponent& d : report.dropped )   // a pack authoring error: designer variants are authored against their own layout
 		MC2_LOG(Core, Warn, "logistics: designer variant '{}' lost component {} ({}): {}", variantName, d.name, d.id, d.reason);
