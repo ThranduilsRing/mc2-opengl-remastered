@@ -2202,6 +2202,29 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
             }
         }
     }
+    // Upload before HZB: both readers use the same retired slot and 112B rows.
+    const clk::time_point tInstanceUpload0 = clk::now();
+    {
+        ZoneScopedN("VK-props-instance-upload");   // VK-FLIP-FIELD-REPORT-1: per-frame instance SSBO staging
+        auto& g = s->gpu[par];
+        if (!g.instances || instBytes > g.instanceCap) {
+            g.instances.reset();
+            g.instanceCap = std::max<VkDeviceSize>(instBytes + instBytes / 2, sizeof(GpuStaticPropInstance));
+            if (!make_buffer(s, g.instances, g.instanceCap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true,
+                             "colorprop.instances", static_cast<int>(par))) {
+                setFallback("instance_buffer_failed"); s->disabled = true; return 0;
+            }
+            s->ringBound[par][1] = VK_NULL_HANDLE; // allocator may recycle the same VkBuffer handle
+        }
+        // The retired slot receives the published bytes directly. Keeping a
+        // second CPU snapshot costs more than the upload it would avoid.
+        if (!g.instances.upload(feed.instances112, instBytes, 0)) {
+            setFallback("instance_upload_failed"); s->disabled = true; return 0;
+        }
+    }
+    g_health.instRecords = instanceCount;
+    const double instanceUploadUs = usSince(tInstanceUpload0);
+
     const uint64_t typeGeneration = [&] { ZoneScopedN("VKIsl.Props.TypeGeneration"); return s->typeSource.update(std::span(
         static_cast<const GpuStaticPropInstance*>(feed.instances112), instanceCount), [](uint32_t type) {
             return (static_cast<uint64_t>(type) << 32) |
@@ -2260,7 +2283,7 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
     uint64_t hzbMaskGeneration = 0;
     gosPostProcess* pp = getGosPostProcess();
     const bool hzbCulled = [&] { ZoneScopedN("VKIsl.Props.HzbPrepare");
-        return !target && pp && pp->runVkPostHzbNative(feed, s->mapGeneration, &hzbMask, &hzbMaskGeneration); }();
+        return !target && pp && pp->runVkPostHzbNative(feed, s->mapGeneration, reinterpret_cast<void*>(s->gpu[par].instances.get()), &hzbMask, &hzbMaskGeneration); }();
     VkDescriptorBufferInfo maskInfo{hzbCulled ? reinterpret_cast<VkBuffer>(hzbMask) : s->hotBuf.get(),0,VK_WHOLE_SIZE};
     VkWriteDescriptorSet maskWrite{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
     maskWrite.dstSet = s->set[par]; maskWrite.dstBinding = 9; maskWrite.descriptorCount = 1;
@@ -2335,27 +2358,6 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
     const unsigned long f0c = g_forbidden.glReadPixels;
 
     const clk::time_point tStage0 = clk::now();
-    // ---- 1) Upload the per-frame color instances into slot `par` (grouped by typeID). ----
-    {
-        ZoneScopedN("VK-props-instance-upload");   // VK-FLIP-FIELD-REPORT-1: per-frame instance SSBO staging
-        auto& g = s->gpu[par];
-        if (!g.instances || instBytes > g.instanceCap) {
-            g.instances.reset();
-            g.instanceCap = std::max<VkDeviceSize>(instBytes + instBytes / 2, sizeof(GpuStaticPropInstance));
-            if (!make_buffer(s, g.instances, g.instanceCap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true,
-                             "colorprop.instances", static_cast<int>(par))) {
-                setFallback("instance_buffer_failed"); s->disabled = true; return 0;
-            }
-            s->ringBound[par][1] = VK_NULL_HANDLE; // allocator may recycle the same VkBuffer handle
-        }
-        // The retired slot receives the published bytes directly. Keeping a
-        // second CPU snapshot costs more than the upload it would avoid.
-        if (!g.instances.upload(feed.instances112, instBytes, 0)) {
-            setFallback("instance_upload_failed"); s->disabled = true; return 0;
-        }
-    }
-    g_health.instRecords = instanceCount;
-
     // ---- 2) Upload the per-frame UBO (worldToClipGL + bias; instBase=0). ----
     {
         ColorFrameUBO u{};
@@ -2451,7 +2453,7 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
     s->lateParity = par; s->lateDynCount = nDyn;
     std::copy_n(dynOffsets, nDyn, s->lateOffsets);
     std::copy_n(ground->offsets.data(), 4, s->lateGroundOffsets);
-    g_health.stageInstUs = usSince(tStage0);
+    g_health.stageInstUs = instanceUploadUs + usSince(tStage0);
     // VK-FLIP-FIELD-REPORT-1: the instance+UBO staging above is the per-frame prop
     // upload cost (a coarse zone for it would nest cleanly; kept as the usSince metric
     // to avoid an extra scope around the two vmaMap blocks).
