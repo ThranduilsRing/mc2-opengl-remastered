@@ -2238,7 +2238,11 @@ void refreshLocationVerdicts(LogisticsVariant* v, LogisticsComponent* cand)
 		s_locReason[p].clear();
 		if (!cand || !pc || p >= ml::kLocationCount) continue;
 		const int ri = regionOfPanel(pc, p).value_or(-1);
-		if (cand->getType() == COMPONENT_FORM_JUMPJET) s_locReason[p] = "use the ADD button";
+		if (cand->getType() == COMPONENT_FORM_JUMPJET) {
+			long x = -1, y = -1;
+			const int refusal = v->canAddComponent(cand, x, y);
+			s_locReason[p] = refusal ? mc2::components::placementRefusal(refusal) : "use ADD for the special slot";
+		}
 		else if (ri < 0) s_locReason[p] = "no slots here";
 		else {
 			auto place = v->packageLocationPlace(cand, ri);

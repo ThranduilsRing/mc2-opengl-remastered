@@ -112,6 +112,8 @@ TEST_CASE("components/refusal text names the package-chassis reason") {
     using mc2::components::placementRefusal;
     CHECK(std::string_view(placementRefusal(NO_COMPATIBLE_MOUNT)).find("hardpoint") != std::string_view::npos);
     CHECK(std::string_view(placementRefusal(COMPONENT_TOO_HEAVY)).find("payload") != std::string_view::npos);
+    CHECK(std::string_view(placementRefusal(JUMPJETS_NOT_ALLOWED)).find("cannot mount jump jets") != std::string_view::npos);
+    CHECK(std::string_view(placementRefusal(ONLY_ONE_JUMPJET_ALLOWED)).find("already installed") != std::string_view::npos);
     CHECK(std::string_view(placementRefusal(COMPONENT_TOO_HOT)).find("cooling") != std::string_view::npos);
     CHECK(std::string_view(placementRefusal(COMPONENT_SLOT_FULL)).find("free valid slot") != std::string_view::npos);
 }
