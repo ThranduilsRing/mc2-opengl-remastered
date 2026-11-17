@@ -51,10 +51,9 @@ void gos_TerrainLodChunk_UploadVisualDampStatic(const float* damp01, int side)
 
 bool gos_TerrainLodChunk_VisualDampWanted()
 {
-    static const bool s_displaceGate = mc2::gate::get<"MC2_TERRAIN_VISUAL_DISPLACE">();
-    static const bool s_dampGate = mc2::gate::get<"MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE">();
-    return s_displaceGate && s_dampGate
-           && s_visualDampSide > 0 && !s_visualDampStatic.empty();
+    // The combined CPU map has no reader or Vulkan upload. Do not request
+    // per-frame mover extraction and stamping until a renderer consumes it.
+    return false;
 }
 
 // Per-frame mover stamps. combined = min(static, smoothstep(inner, inner+radius,

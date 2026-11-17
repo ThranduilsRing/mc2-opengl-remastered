@@ -479,6 +479,10 @@ void InitializeGameEngine()
 			}
 		}
 
+		// The startup probe uses the same mounted archives as mission loads.
+		extern void EditorCheckTglAssets();
+		EditorCheckTglAssets();
+
 		result = systemFile->seekBlock("CameraSettings");
 		if (result == NO_ERR)
 		{

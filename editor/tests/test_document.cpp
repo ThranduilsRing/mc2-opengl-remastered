@@ -1,5 +1,8 @@
 #include "../../tests/unit/doctest.h"
 #include "CommandHistory.h"
+#include "MissionPackage.h"
+#include "TestInputs.h"
+#include <nlohmann/json.hpp>
 
 #include <algorithm>
 #include <bit>
@@ -254,4 +257,63 @@ int q3DocumentTests()
 TEST_CASE("document/Q3 lossless syntax, history and publication")
 {
     CHECK(q3DocumentTests() == 0);
+}
+
+// Trigger: MissionPackage.* and EditorInterface_imgui.cpp's package action.
+TEST_CASE("package/saved mission round trip and export refusal")
+{
+    namespace fs = std::filesystem;
+    using mc2::editor_package::exportMissionPackage;
+    auto document = MissionDocument::decode(fixtureFit(), fixturePak(), "fixture", {});
+    REQUIRE(document);
+    const auto directory = fs::absolute(fs::path("scratch/package-roundtrip") /
+        std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+    fs::create_directories(directory);
+    REQUIRE(document->save(directory / "authored", {}));
+    { std::ofstream sidecar(directory / "authored.foliage.json"); sidecar << "{\"instances\":[]}"; }
+    const auto read = [](const fs::path& path) {
+        std::ifstream input(path, std::ios::binary);
+        return std::string(std::istreambuf_iterator<char>{input}, {});
+    };
+    std::string status;
+    REQUIRE(exportMissionPackage(directory / "authored.pak", directory / "mods", "roundtrip", {}, status));
+    const auto root = directory / "mods/roundtrip";
+    auto reloaded = MissionDocument::read(root / "data/missions/authored.fit", root / "data/missions/authored.pak", {});
+    REQUIRE(reloaded);
+    CHECK(reloaded->fitBytes() == document->fitBytes());
+    CHECK(reloaded->archive().originalBytes == document->archive().originalBytes);
+    CHECK(read(root / "data/missions/authored.foliage.json") == "{\"instances\":[]}");
+    const auto manifest = nlohmann::json::parse(read(root / "package.json"));
+    CHECK(manifest["schema"] == "mc2-package/1");
+    CHECK(manifest["files"].size() == 5);
+    CHECK(read(root / "data/campaign/roundtrip.fit").find("st FileName = \"authored\"") != std::string::npos);
+    CHECK_FALSE(exportMissionPackage(directory / "authored.pak", directory / "mods", "roundtrip", {}, status));
+    CHECK(read(root / "package.json") == manifest.dump(2) + '\n');
+    for (const auto* id : {"../escape", "", "UPPER", "bad.", "a/b"})
+        CHECK_FALSE(exportMissionPackage(directory / "authored.pak", directory / "mods", id, {}, status));
+    CHECK_FALSE(exportMissionPackage(directory / "missing.pak", directory / "mods", "missing", {}, status));
+    CHECK_FALSE(fs::exists(directory / "mods/missing"));
+    REQUIRE(exportMissionPackage(directory / "authored.pak", directory / "mods", "dependent", {"sample_equipment"}, status));
+    CHECK(nlohmann::json::parse(read(directory / "mods/dependent/mod.json"))["dependencies"][0] == "sample_equipment");
+    CHECK_FALSE(exportMissionPackage(directory / "authored.pak", directory / "mods", "self", {"self"}, status));
+    std::cout << "PACKAGE_PROOF=" << root.string() << '\n';
+}
+
+TEST_CASE("package/stock bytes export intact" * doctest::test_suite("stock-fixture"))
+{
+    namespace fs = std::filesystem;
+    const auto directory = fs::absolute(fs::path("scratch/package-stock") /
+        std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+    const auto source = editor::tests::inputs().stockDirectory / "mc2_01.pak";
+    std::string status;
+    REQUIRE(mc2::editor_package::exportMissionPackage(source, directory, "exported-stock", {}, status));
+    for (const auto* suffix : {".fit", ".pak"}) {
+        const auto read = [](const fs::path& path) {
+            std::ifstream input(path, std::ios::binary);
+            return std::string(std::istreambuf_iterator<char>{input}, {});
+        };
+        CHECK(read(source.parent_path() / (std::string("mc2_01") + suffix)) ==
+            read(directory / "exported-stock/data/missions" / (std::string("mc2_01") + suffix)));
+    }
+    std::cout << "STOCK_PACKAGE_PROOF=" << (directory / "exported-stock").string() << '\n';
 }

@@ -14,6 +14,8 @@
 
 #include<string.h>
 #include<gameos.hpp>
+#include "tga_scratch.h"
+#include "content_error.h"
 //---------------------------------------------------------------------------
 using RGB = struct _RGB
 {
@@ -21,136 +23,6 @@ using RGB = struct _RGB
 	unsigned char g;
 	unsigned char b;
 };
-
-//---------------------------------------------------------------------------
-void tgaDecomp(MemoryPtr dest, MemoryPtr source, TGAFileHeader *tga_header)
-{
-	//---------------------------------------------------------------------
-	// Display Image based on Format 10 (0x0a).  RLE true color.
-
-	//----------------------------------------------
-	// Parse RLE data -- Check for RLE/RAW byte
-	MemoryPtr data_offset = source;
-	long currentHeight = 0;
-	long currentWidth = 0;
-	while (currentHeight != tga_header->height)
-	{
-		while (currentWidth != tga_header->width)
-		{
-			byte rep_count = *data_offset;
-			data_offset++;
-			RGB rgb;
-				
-			//----------------------------------------------------------
-			// Only an RLE packet if MSbit is 1
-			if (rep_count >= 128)
-			{
-				rep_count ^= 0x80;
-
-				rgb.b = *data_offset;
-				data_offset++;
-				rgb.g = *data_offset;
-				data_offset++;
-				rgb.r = *data_offset;
-				data_offset++;
-		
-				//-------------------------
-				// One more for Alpha Data
-				// Use later for aliasing
-				byte alpha = 0;
-				if (tga_header->pixel_depth == 32)
-				{
-					alpha = *data_offset;
-					data_offset++;
-				}
-						
-				for (long i=0;i<rep_count+1;i++)
-				{
-					*dest = rgb.b;
-					dest++;
-					*dest = rgb.g;
-					dest++;
-					*dest = rgb.r;
-					dest++;
-					
-					if (tga_header->pixel_depth == 32)
-					{
-						*dest = alpha;
-						dest++;
-					}
-					else
-					{
-						//---------------------
-						// Assume a color key.
-						// r 0xff, g 0x00, b 0xff is alpha 0 (Hot Pink)
-						// all else is alpha 0xff
-						if ((rgb.r == 0xff) && (rgb.g == 0x0) && (rgb.b == 0xff))
-							*dest = 0x0;
-						else
-							*dest = 0xff;
-
-						dest++;
-					}
-						
-					currentWidth++;
-				}
-			}
-			else
-			{
-				for (int i=0;i<rep_count+1;i++)
-				{
-					rgb.b = *data_offset;
-					data_offset++;
-					rgb.g = *data_offset;
-					data_offset++;
-					rgb.r = *data_offset;
-					data_offset++;
-					
-					//-------------------------
-					// One more for Alpha Data
-					// Use later for aliasing
-					byte alpha = 0;
-					if (tga_header->pixel_depth == 32)
-					{
-						alpha = *data_offset;
-						data_offset++;
-					}
-					
-					*dest = rgb.b;
-					dest++;
-					*dest = rgb.g;
-					dest++;
-					*dest = rgb.r;
-					dest++;
-					
-					if (tga_header->pixel_depth == 32)
-					{
-						*dest = alpha;
-						dest++;
-					}
-					else
-					{
-						//---------------------
-						// Assume a color key.
-						// r 0xff, g 0x00, b 0xff is alpha 0 (Hot Pink)
-						// all else is alpha 0xff
-						if ((rgb.r == 0xff) && (rgb.g == 0x0) && (rgb.b == 0xff))
-							*dest = 0x0;
-						else
-							*dest = 0xff;
-
-						dest++;
-					}
-						
-					currentWidth++;
-				}
-			}
-		}
-
-		currentWidth = 0;
-		currentHeight++;
-	}
-}	
 
 //---------------------------------------------------------------------------
 void flipTopToBottom (MemoryPtr buffer, BYTE depth, long width, long height)
@@ -205,16 +77,16 @@ void tgaCopy (MemoryPtr dest, MemoryPtr src, long size)
 //---------------------------------------------------------------------------
 void loadTGATexture (FilePtr tgaFile, MemoryPtr ourRAM, long width, long height)
 {
-	MemoryPtr tgaBuffer = static_cast<MemoryPtr>(malloc(tgaFile->fileSize()));
-
-	tgaFile->read(tgaBuffer,tgaFile->fileSize());
-
-	//---------------------------------------
-	// Parse out TGAHeader.
-	TGAFileHeader *header = reinterpret_cast<TGAFileHeader *>(tgaBuffer);
-
-	gosASSERT(header->width == width);
-	gosASSERT(header->height == height);
+	std::vector<unsigned char> bytes;
+	TGAFileHeader info{};
+	if (!mc2::tga::loadTga(*tgaFile, bytes, info, "loadTGATexture")) return;
+	const TGAFileHeader* header = &info;
+	if (width <= 0 || height <= 0 || header->width != width || header->height != height ||
+	    (header->pixel_depth != 24 && header->pixel_depth != 32)) {
+		mc2::content::error(mc2::content::Kind::Texture, tgaFile->getFilename(), "invalid TGA dimensions or depth");
+		return;
+	}
+	MemoryPtr tgaBuffer = bytes.data();
 
 	switch (header->image_type)
 	{
@@ -231,6 +103,7 @@ void loadTGATexture (FilePtr tgaFile, MemoryPtr ourRAM, long width, long height)
 			// This is just a bitmap.  Copy it into ourRAM.
 			MemoryPtr image = tgaBuffer + sizeof(TGAFileHeader);
 
+			if (!mc2::tga::tgaPixelsPresent(bytes, info, "loadTGATexture")) return;
 			if (header->pixel_depth == 32)
 				memcpy(ourRAM,image,width * height * 4);
 			else
@@ -269,7 +142,13 @@ void loadTGATexture (FilePtr tgaFile, MemoryPtr ourRAM, long width, long height)
 		case RLE_TRUE:
 		{
 			MemoryPtr image = tgaBuffer + sizeof(TGAFileHeader);
-			tgaDecomp(ourRAM,image,header);
+			const std::size_t pixels = static_cast<std::size_t>(width) * height;
+			if (!mc2::tga::decodeRle(ourRAM, pixels * 4, image, bytes.size() - sizeof(TGAFileHeader),
+			                         pixels, header->pixel_depth)) {
+				memset(ourRAM, 0, pixels * 4);
+				mc2::content::error(mc2::content::Kind::Texture, tgaFile->getFilename(), "invalid TGA RLE packet");
+				return;
+			}
 
 			//------------------------------------------------------------------------
 			// Must check image_descriptor to see if we need to un upside down image.
@@ -295,7 +174,7 @@ void loadTGATexture (FilePtr tgaFile, MemoryPtr ourRAM, long width, long height)
 		break;
 	}
 
-	free(tgaBuffer);
+
 }	
 
 void loadTGAMask (FilePtr tgaFile, MemoryPtr ourRAM, long width, long height)

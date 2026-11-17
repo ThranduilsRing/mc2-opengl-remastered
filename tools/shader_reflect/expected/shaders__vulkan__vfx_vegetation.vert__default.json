@@ -11,7 +11,7 @@
           "matrix_stride": null,
           "name": "inst",
           "offset": 0,
-          "type": "_886"
+          "type": "_1125"
         }
       ],
       "name": "VegInst"
@@ -28,6 +28,19 @@
         }
       ],
       "name": "VegDense"
+    },
+    {
+      "binding": 3,
+      "members": [
+        {
+          "array_stride": 4,
+          "matrix_stride": null,
+          "name": "footprintWords",
+          "offset": 0,
+          "type": "uint"
+        }
+      ],
+      "name": "VegFootprints"
     }
   ],
   "stage": "vert",
@@ -67,7 +80,7 @@
           "matrix_stride": null,
           "name": "D",
           "offset": 0,
-          "type": "_320"
+          "type": "_301"
         }
       ],
       "name": "VegDrawParams"

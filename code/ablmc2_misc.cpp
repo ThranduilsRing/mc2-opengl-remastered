@@ -215,7 +215,8 @@ void execGetRepairState (void) {
 		}
 	}
 	cur *= 100;
-	ABLi_pokeInteger(cur / max);
+	if (max > 0)
+		ABLi_pokeInteger(cur / max);
 }
 
 void execIsTeamTargeting (void) {

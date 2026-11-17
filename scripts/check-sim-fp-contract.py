@@ -54,13 +54,13 @@ def check_entry(command, is_clang=None):
     """Return a list of problems for one compile command line."""
     tokens = command.split()
     if is_clang is None:
-        is_clang = bool(tokens) and os.path.basename(tokens[0].strip('"')).lower().startswith("clang-cl")
+        is_clang = bool(tokens) and tokens[0].strip('"').replace('\\', '/').rsplit('/', 1)[-1].lower().startswith("clang-cl")
     problems = []
     for t in tokens:
         if FORBIDDEN_RE.search(t):
             problems.append(f"forbidden flag {t}")
     fps = [m.group(1).lower() for m in (FP_RE.match(t) for t in tokens) if m]
-    compiler = os.path.basename(tokens[0].strip('"')).lower() if tokens else ""
+    compiler = tokens[0].strip('"').replace('\\', '/').rsplit('/', 1)[-1].lower() if tokens else ""
     native = bool(re.fullmatch(r"(?:c\+\+|g\+\+|gcc|cc|clang(?:\+\+)?)(?:-\d+(?:\.\d+)*)?", compiler))
     if native:
         if "-fno-fast-math" not in tokens:

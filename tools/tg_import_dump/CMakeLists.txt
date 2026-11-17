@@ -59,6 +59,7 @@ add_executable(tg_import_dump
     ${MC2_ROOT}/mclib/tgl_types.cpp
     ${MC2_ROOT}/mclib/cident.cpp
     ${MC2_ROOT}/mclib/mathfunc.cpp
+    ${MC2_ROOT}/3rdparty/detmath/openlibm.cpp
     ${MC2_ROOT}/GameOS/src/platform_str.cpp
     ${MC2_ROOT}/mclib/file.cpp
     ${MC2_ROOT}/mclib/vfs.cpp

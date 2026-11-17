@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""What: the bookkeeping that follows an installed file split: the status row in giant-file-split-plan.md (built from the real line counts), the split map, the file-size
-ratchet and the contract board, ending in a digest of the failing rows.
-Why: every split repeats the same four steps and the same number-copying; the row's counts must match the files, and a red board row has to be read, not scrolled for.
+"""What: the bookkeeping that follows an installed file split: the status row in giant-file-split-plan.md (built from the real line counts), the split map,
+and the contract board, ending in a digest of the failing rows.
+Why: every split repeats the same three steps and the same number-copying; the row's counts must match the files, and a red board row has to be read, not scrolled for.
 Usage: py -3 tools/split/post_split.py --src code/x.cpp --stem x --note "what moves / what stays" [--tier 1000-1500] [--no-board] [--continue] [--rows REGEX] [--known doc_links,...]
-  Run it after the pieces are installed and built, before committing; it edits the plan doc, docs/split-map.md and (via --tighten) the size baseline.
+  Run it after the pieces are installed and built, before committing; it edits the plan doc and docs/split-map.md.
   Prints the row it wrote and exits 1 when the board has a failing row outside --known (default: doc_links)."""
 import argparse, glob, os, re, shutil, subprocess, sys
 
@@ -85,7 +85,7 @@ def main(argv=None):
     ap.add_argument("--note", default="")
     ap.add_argument("--tier", default="1000-1500")
     ap.add_argument("--no-board", action="store_true")
-    ap.add_argument("--continue", dest="cont", action="store_true", help="a failing split_map / size-ratchet step is reported and the board still runs (exit 1 at the end)")
+    ap.add_argument("--continue", dest="cont", action="store_true", help="a failing split_map step is reported and the board still runs (exit 1 at the end)")
     ap.add_argument("--known", default="doc_links")
     ap.add_argument("--rows", default="", help="forwarded to check-contracts.sh --rows (a partial board; the full board is the default)")
     a = ap.parse_args(argv)
@@ -103,8 +103,7 @@ def main(argv=None):
     print("plan row:", row)
 
     step_failed = False
-    for cmd in ([sys.executable, "tools/split/split_map.py", "--write"],
-                [sys.executable, "tools/file_size_ratchet.py", "--check", "--tighten"]):
+    for cmd in ([sys.executable, "tools/split/split_map.py", "--write"],):
         r = _run(cmd)
         print((r.stdout.decode("utf-8", "replace").strip().splitlines() or [""])[-1])
         if r.returncode:

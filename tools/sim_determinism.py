@@ -129,8 +129,7 @@ def render_only_sidecar_sizes(pins_path: str = TREE_UPSCALE_PINS) -> dict:
 
 
 def baseline_path(mission: str) -> str:
-    directory = os.path.join(BASELINE_DIR, "linux") if sys.platform == "linux" else BASELINE_DIR
-    return os.path.join(directory, mission + ".json")
+    return os.path.join(BASELINE_DIR, mission + ".json")
 
 
 def _sha256(path: str) -> str:

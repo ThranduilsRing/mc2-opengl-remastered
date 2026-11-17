@@ -25,7 +25,7 @@ doc_links: docs CLAUDE.md AGENTS.md README.md scripts/check-doc-links.py
 golden_coverage: .
 asset_manifests: .
 asset_manifest_fixtures: .
-stock_mission_data: data tests/missions tools/mc2x_import scripts/check-stock-mission-data.py
+stock_mission_data: glob:tools/*.py glob:scripts/*.py
 scripts_tests: .
 tools_tests: .
 sim_include_firewall: @CPP scripts/check_sim_include_firewall.py scripts/sim_include_baseline.json scripts/tests/test_sim_include_firewall.py
@@ -69,6 +69,8 @@ merge_speedups: tools/lane_merge.py tools/lane_merge_stage.py tools/laptop_gate.
 module_test_cache: scripts/module_test_cache.py scripts/run_tools_tests.py scripts/run_scripts_tests.py
 run_scripts_tests_names: scripts/run_scripts_tests.py
 gated_layout_macros: @CPP
+binding_slots: shaders GameOS/gameos/vulkan_mech_island.cpp scripts/check-binding-slots.py
+vk_ownership: GameOS/gameos tools/vk_ownership_ledger.py
 counter_honesty: @CPP scripts/check-counter-honesty.py
 own_inventory: @CPP
 pointer_order_scan: @CPP

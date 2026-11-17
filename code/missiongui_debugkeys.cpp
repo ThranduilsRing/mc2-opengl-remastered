@@ -1,6 +1,7 @@
 // MissionInterfaceManager: debug windows and cheats, damage keys, hotkey save/load and the chat keys.
 // Declared in the class headers; shared names in missiongui_shared_internal.h.
 #include "missiongui_shared_internal.h"
+#include "net/runtime.h"
 #include "mc2fmt.h"
 #include "Gates/render_options_cfg.h"
 
@@ -87,6 +88,7 @@ int MissionInterfaceManager::pageGameObjectWindow3() {
 }
 
 int MissionInterfaceManager::rotateObjectLeft () {
+	if (mc2::net::active()) return 0;
 
 	#ifndef FINAL
 	static double lastTime = 0.0;
@@ -100,6 +102,7 @@ int MissionInterfaceManager::rotateObjectLeft () {
 }
 
 int MissionInterfaceManager::rotateObjectRight () {
+	if (mc2::net::active()) return 0;
 
 	#ifndef FINAL
 	static double lastTime = 0.0;
@@ -172,6 +175,7 @@ int MissionInterfaceManager::showMovers() {
 }
 
 int MissionInterfaceManager::cullPathAreas () {
+	if (mc2::net::active()) return 0;
 
 	#ifndef FINAL
 	static double lastTime = 0.0;
@@ -184,6 +188,7 @@ int MissionInterfaceManager::cullPathAreas () {
 }
 
 int MissionInterfaceManager::zeroHPrime() {
+	if (mc2::net::active()) return 0;
 
 	static double lastTime = 0.0;
 	if ((lastTime + 0.5) < gos_GetElapsedTime()) {
@@ -194,6 +199,7 @@ int MissionInterfaceManager::zeroHPrime() {
 }
 
 int MissionInterfaceManager::calcValidAreaTable() {
+	if (mc2::net::active()) return 0;
 
 	static double lastTime = 0.0;
 	if ((lastTime + 0.5) < gos_GetElapsedTime()) {
@@ -204,6 +210,7 @@ int MissionInterfaceManager::calcValidAreaTable() {
 }
 
 int MissionInterfaceManager::teleport() {
+	if (mc2::net::active()) return 0;
 	
 	#ifndef FINAL
 	static double lastTime = 0.0;
@@ -249,6 +256,7 @@ int MissionInterfaceManager::globalMapLog () {
 }
 
 int MissionInterfaceManager::brainDead () {
+	if (mc2::net::active()) return 0;
 
 	#ifndef FINAL
 	static double lastTime = 0.0;
@@ -262,6 +270,7 @@ int MissionInterfaceManager::brainDead () {
 }
 
 int MissionInterfaceManager::goalPlan() {
+	if (mc2::net::active()) return 0;
 	
 	#ifndef FINAL
 	static double lastTime = 0.0;
@@ -287,6 +296,7 @@ int MissionInterfaceManager::goalPlan() {
 }
 
 int MissionInterfaceManager::enemyGoalPlan() {
+	if (mc2::net::active()) return 0;
 	
 	#ifndef FINAL
 	static double lastTime = 0.0;
@@ -324,6 +334,7 @@ int MissionInterfaceManager::showVictim () {
 }
 
 void damageObject (GameObjectPtr victim, float damage) {
+	if (mc2::net::active()) return;
 
 	WeaponShotInfo shot;
 	switch (victim->getObjectClass()) {
@@ -734,6 +745,7 @@ void MissionInterfaceManager::drawHotKey( const char* keyString, const char* des
 
 void MissionInterfaceManager::doGuardTower()
 {
+	if (mc2::net::active()) return;
 
 	for (long i = 0; i < Team::home->getRosterSize(); i++)
 	{

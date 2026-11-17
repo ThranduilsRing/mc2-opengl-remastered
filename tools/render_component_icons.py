@@ -6,12 +6,15 @@ from mathutils import Vector, Matrix
 from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont, ImageOps
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from ase_to_glb import parse_ase
+from blender_pipeline.blender_gpu import apply as apply_gpu
 src, out, proof = map(Path, sys.argv[sys.argv.index('--') + 1:])
 out.mkdir(parents=True, exist_ok=True); proof.mkdir(parents=True, exist_ok=True)
 rows = list(csv.reader((src / 'art/compbas.csv').open()))[1:]
 icons = {r[23].lower(): r for r in rows if len(r) > 28 and r[23].lower().endswith('.tga')}
+srm = next(r.copy() for r in rows if len(r) > 28 and r[0] == '124')
+srm[23] = 'mcl_mc_srmpack.tga'; icons.setdefault(srm[23], srm)
 sheet = Image.new('RGB', (3840, 2160), (23, 29, 35)); draw = ImageDraw.Draw(sheet)
-font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 18, layout_engine=ImageFont.Layout.BASIC)
+font = ImageFont.truetype(os.environ.get('ICON_FONT', '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'), 18, layout_engine=ImageFont.Layout.BASIC)
 inventory = []
 ROLL_SIGN = -1
 RANGE_RGB = {'short': (110, 124, 0), 'medium': (0, 83, 146), 'long': (198, 28, 0)}
@@ -37,6 +40,7 @@ for index, (name, row) in enumerate(sorted(icons.items())):
     if not model.exists() or (os.environ.get('ICON_ONLY') and Path(name).stem not in os.environ['ICON_ONLY'].split(',')): continue
     bpy.ops.wm.read_factory_settings(use_empty=True)
     scene = bpy.context.scene; scene.render.engine = 'CYCLES'; scene.cycles.samples = 64
+    apply_gpu(scene)
     scene.cycles.use_denoising = False; scene.render.film_transparent = True
     scene.world = bpy.data.worlds.new('Studio'); scene.world.use_nodes = True
     scene.world.node_tree.nodes['Background'].inputs[0].default_value = (.22,.25,.3,1)
@@ -86,7 +90,7 @@ for index, (name, row) in enumerate(sorted(icons.items())):
     rendered = Image.open(scene.render.filepath).convert('RGBA')
     bbox = rendered.getbbox(); assert 0 < bbox[0] < bbox[2] < rendered.width and 0 < bbox[1] < bbox[3] < rendered.height, name
     framed = stock_frame(w, h, rgb, rendered.getchannel('A')); framed.alpha_composite(rendered)
-    canvas = Image.new('RGBA',(old.width*4,old.height*4)); canvas.paste(framed,(0,0)); canvas.transpose(Image.Transpose.FLIP_TOP_BOTTOM).save(out/name, compression='tga_rle')
+    canvas = Image.new('RGBA',(old.width*4,old.height*4)); canvas.paste(framed,(0,0)); canvas.transpose(Image.Transpose.FLIP_TOP_BOTTOM).save(out/name.replace('mcl_mc_', 'mc2_component_', 1), compression='tga_rle')
     assert canvas.getchannel('A').getextrema()[1] == 255
     x, y = (index%8)*480, (index//8)*420
     draw.text((x+12,y+8),row[2],font=font,fill='white'); draw.text((x+12,y+34),f'{w}x{h} cells | old / new',font=font,fill='#91a9bb')

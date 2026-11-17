@@ -1,3 +1,4 @@
+#include "math/sim_math.h"
 #include <algorithm>
 
 #include "render_view.h"
@@ -73,8 +74,8 @@ void Mover::initOptimalCells (long numIncrements) {
 	for (long r = 0; r < MAX_ATTACK_CELLRANGE; r++)
 		for (long i = 0; i < numIncrements; i++) {
 			double incrementRadians = incrementDegrees * static_cast<double>(i) * degreesToRadians;
-			doptimalCells[r][i][0] = sin(incrementRadians) * static_cast<double>(r);
-			doptimalCells[r][i][1] = cos(incrementRadians) * static_cast<double>(r);
+			doptimalCells[r][i][0] = mc2::sim::math::sin(incrementRadians) * static_cast<double>(r);
+			doptimalCells[r][i][1] = mc2::sim::math::cos(incrementRadians) * static_cast<double>(r);
 		}
 
 	// Due to double rounding errors, we munge the numbers a little before

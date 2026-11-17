@@ -30,13 +30,22 @@ SimpleCamera.cpp	: Implementation of the SimpleCamera component.
 // sebi: !NB remove when assert(0 && "test") is removed below
 #include <cassert>
 #include <chrono>
+#include <cstdlib>
 #include <algorithm>
 #include <filesystem>
 #include <string>
 #include "Gates/gate.h"
 #include "mc2fmt.h"
+#include "model_credit.h"
+#include "preview_choice.h"
+#include "mech_anim_preview.h"
+#include "imgui.h"
+
+static SimpleCamera* animationCamera = nullptr;
+static mc2mechanim::PreviewAnimation animationPreview;
 
 // Screen-space extents of the last PreviewDraw (mclib/tgl.cpp, filled in preview_draw.cpp).
+
 extern bool g_previewCaptureBounds;
 extern bool g_previewBoundsOnly;
 extern float g_previewBoundsMinX, g_previewBoundsMaxX, g_previewBoundsMinY, g_previewBoundsMaxY;
@@ -134,6 +143,8 @@ SimpleCamera::SimpleCamera()
 // The appearance destructor reads appearanceTypeList: with no list (outside a mission) the object is left unfreed, as before B7o.5.
 void SimpleCamera::releaseObject()
 {
+    if (animationCamera == this) animationPreview = {};
+	modelCredit_.clear();
 	if (appearanceTypeList)
 	{
 		// Appearance-owned lamps belong to this preview camera, even when it is not rendering.
@@ -148,6 +159,7 @@ void SimpleCamera::releaseObject()
 
 SimpleCamera::~SimpleCamera()
 {
+    if (animationCamera == this) animationCamera = nullptr;
 
 	// sebi: added this condition ecause  appearanceTypeList used inside destructor
 	releaseObject();
@@ -498,6 +510,8 @@ void SimpleCamera::render(long xOffset, long yOffset)
 // image isn't upside down in ImGui's top-left-origin image space.
 void SimpleCamera::drawPreviewToPanel( float panelX, float panelY, float panelW, float panelH ) const
 {
+	// A missing selection owns no pixels in the shared preview target.
+	if (!pObject) return;
 #ifdef MC2_IMGUI
     const uint64_t tex=mc2vk::uiTextureServiceReady() ? mc2_vk_preview_texture() : 0;
 	const float u1 = bounds[0] / 800.f;
@@ -516,6 +530,17 @@ void SimpleCamera::drawPreviewToPanel( float panelX, float panelY, float panelW,
 		return;
 
 	bool ok = GuiRuntime::DrawUiImage( tex, panelX, panelY, panelW, panelH, u1, v1, u2, v2, 0xffffffff );
+	if (pObject && !modelCredit_.empty())
+	{
+		const int size = std::max(16, static_cast<int>(panelH * 0.052f));
+		std::vector<std::string> lines;
+		GuiRuntime::CalcUiTextWrapLines(modelCredit_.c_str(), panelW - 16.f, size, "", lines);
+		const float height = (static_cast<float>(lines.size()) + 0.5f) * size * 1.3f;
+		const float y = panelY + panelH - height;
+		GuiRuntime::DrawUiRect(panelX, y, panelW, height, 0xee000000, true);
+		GuiRuntime::DrawUiText(panelX + 8.f, y + 2.f, panelW - 16.f, height,
+			modelCredit_.c_str(), 0xffffff40, size, 0, "");
+	}
 	if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 	{
 		bool f = mc2::log::enabled(mc2::log::Cat::Ui, mc2::log::Level::Info);
@@ -529,6 +554,9 @@ void SimpleCamera::drawPreviewToPanel( float panelX, float panelY, float panelW,
 ////////////////////////////////////////////////
 long SimpleCamera::update()
 {
+	const float savedFrameLength = frameLength;
+	const bool capture = std::getenv("MECH_PREVIEW_CAPTURE") != nullptr;
+	if (capture) { frameLength = 1.f / 60.f; rotation = 30.f; rotationIncrement = 0; turntablePaused_ = true; }
 	if ( pObject )
 	{
 		// MERGE-CONFLICT-UI-PHASE1: see matching note in SimpleCamera::render() above —
@@ -618,7 +646,9 @@ long SimpleCamera::update()
 
 		pObject->setObjectParameters(mechPos, rotation, 0, 0, 0);
 	
+        if (animationCamera == this) mc2mechanim::previewAnimation = &animationPreview;
 		pObject->update();
+        if (animationCamera == this) mc2mechanim::previewAnimation = nullptr;
 		pObject->setVisibility(true,true);
 
 		if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
@@ -631,7 +661,40 @@ long SimpleCamera::update()
 
 	}
 
+	frameLength = savedFrameLength;
 	return 0;
+}
+
+void SimpleCamera::drawAnimationPanel()
+{
+    if (ImGui::IsKeyPressed(ImGuiKey_F9, false)) {
+        animationPreview = {}; animationCamera = animationCamera == this ? nullptr : this;
+    }
+    if (animationCamera != this) return;
+    bool open = true;
+    ImGui::SetNextWindowPos(ImVec2(900, 110), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(600, 410), ImGuiCond_FirstUseEver);
+    if (ImGui::Begin("Mech animation prototype (F9)", &open)) {
+        auto& a = animationPreview;
+        if (ImGui::BeginCombo("Clip", a.active.c_str())) {
+            for (const auto& clip : a.clips) {
+                ImGui::PushID(clip.name.c_str());
+                if (ImGui::Selectable(clip.name.c_str(), a.active == clip.name)) a.clip = clip.name;
+                ImGui::SameLine(); ImGui::Text("%.3f s", clip.duration);
+                ImGui::PopID();
+            }
+            ImGui::EndCombo();
+        }
+        ImGui::Checkbox("Play", &a.playing); ImGui::SameLine(); ImGui::Checkbox("Loop", &a.loop);
+        ImGui::Checkbox("Pause turntable", &turntablePaused_);
+        float time = a.time;
+        if (ImGui::SliderFloat("Time (s)", &time, 0, a.duration)) a.seek = time;
+        ImGui::SliderFloat("Speed", &a.rate, .25f, 2.f, "%.2fx");
+        if (ImGui::Button("Step 1/30 s")) { a.playing = false; a.seek = std::min(a.time + 1.f / 30.f, a.duration); }
+        ImGui::Text("%.3f / %.3f s | palette: %d bones", a.time, a.duration, a.paletteBones);
+    }
+    ImGui::End();
+    if (!open) animationCamera = nullptr;
 }
 
 // File name without directory or extension (the _splitpath fname part).
@@ -680,6 +743,8 @@ void SimpleCamera::setMech(mc2::czstring fileName, long baseColor, long highligh
 	}
 
 	std::string NoPathFileName = stemOfPath(fileName);
+	if (const auto* chassis = std::getenv("MECH_PREVIEW_CAPTURE"); chassis && *chassis)
+		NoPathFileName = stemOfPath(chassis);
 
 	char testName[256];
 	strcpy( testName, NoPathFileName.c_str() );
@@ -691,10 +756,14 @@ void SimpleCamera::setMech(mc2::czstring fileName, long baseColor, long highligh
 	//MUST ALWAYS CALL GET, EVEN IF WE HAVE AN APPEARANCE TYPE OR REFERENCE COUNT DOES NOT INCREASE!
 	Mech3DAppearanceType* appearanceType = nullptr;
 	
-	if ( fileExists( path ) )
-		appearanceType = static_cast<Mech3DAppearanceType*>(appearanceTypeList->getAppearance( MECH_TYPE << 24, static_cast<char*>(testName) ));
-	else
-		appearanceType = static_cast<Mech3DAppearanceType*>(appearanceTypeList->getAppearance( MECH_TYPE << 24, NoPathFileName.data() ));
+	const bool encExists = fileExists(path);
+	bool encyclopediaModel = false;
+	appearanceType = choosePreviewType(encExists, encyclopediaModel,
+		[&](bool enc) { return static_cast<Mech3DAppearanceType*>(appearanceTypeList->getAppearance(
+			MECH_TYPE << 24, enc ? testName : NoPathFileName.data())); },
+		[&](Mech3DAppearanceType* type) { appearanceTypeList->removeAppearance(type); });
+	if (encExists && !encyclopediaModel)
+		MC2_LOG(Assets, Warn, "Preview enc model failed: {}; trying plain INI", NoPathFileName);
 
 	// A mod chassis with no tgl ini (or an empty base shape) leaves no object, so
 	// hasObject() stays false and the mech lab keeps its silhouette statics.
@@ -703,9 +772,16 @@ void SimpleCamera::setMech(mc2::czstring fileName, long baseColor, long highligh
 		if ( appearanceType )
 			appearanceTypeList->removeAppearance( appearanceType );
 		this->popContext();
+
 		return;
 	}
 
+	// Credit the selected asset; an encyclopedia replacement may have another author.
+	if (!encyclopediaModel)
+		path.init(tglPath, NoPathFileName.c_str(), ".ini");
+	FitIniFile manifest;
+	if (manifest.open(path) == NO_ERR)
+		modelCredit_ = readModelCredit(manifest);
 	pObject = std::make_unique<Mech3DAppearance>();
 	pObject->init( appearanceType );
 	pObject->setGestureGoal(2);
@@ -761,10 +837,21 @@ void SimpleCamera::setVehicle(mc2::czstring fileName,long base, long highlight, 
 	//MUST ALWAYS CALL GET, EVEN IF WE HAVE AN APPEARANCE TYPE OR REFERENCE COUNT DOES NOT INCREASE!
 	GVAppearanceType* appearanceType = nullptr;
 	
-	if ( fileExists( path ) )
-		appearanceType = static_cast<GVAppearanceType*>(appearanceTypeList->getAppearance( GV_TYPE << 24, static_cast<char*>(testName) ));
-	else
-		appearanceType= static_cast<GVAppearanceType*>(appearanceTypeList->getAppearance( GV_TYPE << 24, NoPathFileName.data() ));
+	const bool encExists = fileExists(path);
+	bool encyclopediaModel = false;
+	appearanceType = choosePreviewType(encExists, encyclopediaModel,
+		[&](bool enc) { return static_cast<GVAppearanceType*>(appearanceTypeList->getAppearance(
+			GV_TYPE << 24, enc ? testName : NoPathFileName.data())); },
+		[&](GVAppearanceType* type) { appearanceTypeList->removeAppearance(type); });
+	if (encExists && !encyclopediaModel)
+		MC2_LOG(Assets, Warn, "Preview enc model failed: {}; trying plain INI", NoPathFileName);
+
+	if (!appearanceType || appearanceType->baseShapeLoadFailed)
+	{
+		if (appearanceType) appearanceTypeList->removeAppearance(appearanceType);
+		this->popContext();
+		return;
+	}
 
 	pObject = std::make_unique<GVAppearance>();	
 	pObject->init( appearanceType );

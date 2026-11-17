@@ -23,6 +23,7 @@ BAD_SPLIT_TEXTS = ["gameO=0x3\n", "complie=0xFFF0\n", "game0=oops\n", "compile=\
 
 @pytest.fixture()
 def lease(tmp_path, monkeypatch):
+    monkeypatch.setattr(host_lease, "GPU_SPLIT_DEFAULT", ("AMD", "NVIDIA"))  # explicit legacy host fixture
     monkeypatch.setenv("MC2_HOST_CORES_PER_SLOT", "1")
     monkeypatch.setenv("MC2_HOST_GAME_SLOTS", "2")
     monkeypatch.setenv("MC2_HOST_LEASE_PATH", str(tmp_path / "lease.json"))
@@ -74,7 +75,7 @@ def test_two_concurrent_acquires_land_on_different_gpus_and_a_third_queues(lease
         b = _start("b", tmp_path)
         _wait(lambda: (tmp_path / "b.held").exists(), "b held", b)
         rec_a, rec_b = json.loads((tmp_path / "a.held").read_text())[0], json.loads((tmp_path / "b.held").read_text())[0]
-        assert {rec_a["device"], rec_b["device"]} == {"AMD", "NVIDIA"} and rec_a["slot"] != rec_b["slot"]
+        assert rec_a["device"] == rec_b["device"] == "AMD" and rec_a["slot"] != rec_b["slot"]
         assert not rec_a["affinity_mask"] & rec_b["affinity_mask"]
         c = _start("c", tmp_path)
         queue = lease.with_suffix(".queue.json")

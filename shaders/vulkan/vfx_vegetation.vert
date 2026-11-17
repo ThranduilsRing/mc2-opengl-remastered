@@ -15,6 +15,7 @@ layout(set = 0, binding = 0, std140) uniform VfxVsParams {
 layout(std430, set = 2, binding = 0) readonly buffer VegInst { PackedVegInstance inst[]; };
 layout(std430, set = 2, binding = 1) readonly buffer VegDense { uint dense[]; };
 layout(set = 2, binding = 2, std140) uniform VegDrawParams { VegParamsData D; };   // the frame's cull parameters
+layout(std430, set = 2, binding = 3) readonly buffer VegFootprints { uint footprintWords[]; };
 
 layout(location = 0) out vec2 v_uv;
 layout(location = 1) out vec4 v_color;
@@ -26,12 +27,13 @@ layout(location = 6) out vec3 v_worldPos;
 layout(location = 7) flat out vec3 v_rootPos;
 layout(location = 8) flat out uint v_atlasLayer;
 layout(location = 9) out vec3 v_shadowWorld;
-// The depth pre-pass and the shading pass must produce bit-identical depth (the shading pass tests GREATER_OR_EQUAL against it).
+// The depth pre-pass and the shading pass must produce bit-identical depth (the shading pass tests EQUAL against it).
 invariant gl_Position;
 #include "include/vegetation_vk.glsl"
 
 void main() {
-    VegInstance i = unpackVegetation(inst[dense[gl_InstanceIndex]]);
+    uint denseId = dense[gl_InstanceIndex];
+    VegInstance i = unpackVegetation(inst[denseId & 0x7fffffffu]);
     // Keep rejected fringe slots in the capped list, but emit no geometry.
     if ((i.atlasFrame & 56u) == 40u) {
         gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
@@ -53,5 +55,5 @@ void main() {
     v_color = vec4(0.0);
     // Woody cards retain their silhouette while the fragment stage fades coverage.
     bool woody = (frame & 8u) == 0u && (frame & 15u) >= 4u;
-    mc2VegetationVertex(i.pos, i.yaw, i.scale * (woody ? 1.0 : shrink), i.seed, frame, shrink, windFade, D.misc.z, D.misc.w, widthScale);
+    mc2VegetationVertex(i.pos, i.yaw, i.scale * (woody ? 1.0 : shrink), i.seed, frame, shrink, windFade, D.misc.z, D.misc.w, widthScale, (denseId & 0x80000000u) != 0u);
 }

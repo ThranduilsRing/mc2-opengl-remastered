@@ -196,23 +196,99 @@ def read_cmake_text():
     return text
 
 
-TCD_RE = re.compile(
-    r"target_compile_definitions\s*\(\s*([A-Za-z_]\w*)\s+"
-    r"(PRIVATE|PUBLIC|INTERFACE)\s+([^)]*)\)", re.MULTILINE)
+CM_LITERAL_RE = re.compile(
+    r'#?\[(=*)\[.*?\]\1\]|#[^\n]*|"(?:\\.|[^"\\])*"', re.DOTALL)
+
+
+def cmake_commands(text):
+    """Read statement commands, keeping comments and literal contents opaque."""
+    literals = {}
+
+    def hide(match):
+        value = match.group()
+        if value.startswith("#"):
+            return re.sub(r"[^\n]", " ", value)
+        key = "__cmake_literal_%d__" % len(literals)
+        literals[key] = (value[1:-1] if value.startswith('"') else
+                         value[len(match[1]) + 2:-(len(match[1]) + 2)])
+        return key + "\n" * value.count("\n")
+
+    masked = CM_LITERAL_RE.sub(hide, text)
+    consumed = 0
+    for match in re.finditer(r"^[ \t]*([A-Za-z_]\w*)\s*\(", masked, re.MULTILINE):
+        if match.start() < consumed:
+            continue
+        depth = 1
+        for end in range(match.end(), len(masked)):
+            depth += (masked[end] == "(") - (masked[end] == ")")
+            if not depth:
+                break
+        else:
+            raise ValueError("unterminated CMake command: " + match[1])
+        consumed = end + 1
+        args = [literals.get(arg, arg) for arg in masked[match.end():end].split()]
+        yield match[1].lower(), args, masked.count("\n", 0, match.start()) + 1
 
 
 def parse_macro_target_defs(cmake_text):
-    """macro -> list of (target, visibility). Strips =VALUE suffixes."""
+    """macro -> (target, visibility, file); expand literal helper calls only.
+
+    This remains a textual coverage approximation, not a CMake interpreter.
+    Nested definitions and recursive helpers fail rather than grant coverage.
+    """
     defs = {}
+    helpers, commands = {}, {}
     for cf, text in cmake_text.items():
-        for m in TCD_RE.finditer(text):
-            target, vis, body = m.group(1), m.group(2), m.group(3)
-            for tok in body.split():
-                tok = tok.strip()
-                if not tok.startswith("MC2_"):
-                    continue
-                macro = tok.split("=", 1)[0]
-                defs.setdefault(macro, []).append((target, vis, cf))
+        commands[cf] = []
+        definition = None
+        for name, args, line in cmake_commands(text):
+            if name in ("function", "macro"):
+                if definition or not args:
+                    raise ValueError("unsupported nested/empty CMake definition in " + cf)
+                if args[0].lower() in helpers:
+                    raise ValueError("unsupported CMake construct in layout coverage: "
+                                     "%s:%d (duplicate helper %s)" % (cf, line, args[0]))
+                definition = (name, args, [])
+            elif name in ("endfunction", "endmacro"):
+                if not definition or name != "end" + definition[0]:
+                    raise ValueError("unbalanced CMake definition in " + cf)
+                _, signature, body = definition
+                helpers[signature[0].lower()] = (signature[1:], body, cf)
+                definition = None
+            else:
+                (definition[2] if definition else commands[cf]).append((name, args, line))
+        if definition:
+            raise ValueError("unterminated CMake definition in " + cf)
+
+    def expand(name, args, cf, active=()):
+        if name in helpers:
+            if name in active:
+                raise ValueError("recursive CMake helper: " + name)
+            params, body, helper_cf = helpers[name]
+            for command, _, line in body:
+                if command == "return":
+                    raise ValueError("unsupported CMake construct in layout coverage: "
+                                     "%s:%d (return in helper %s)" % (helper_cf, line, name))
+            if len(params) != len(args) or not all(
+                    re.fullmatch(r"[A-Za-z_][\w.-]*", arg) for arg in args):
+                return
+            for command, values, _ in body:
+                for param, value in zip(params, args):
+                    values = [v.replace("${" + param + "}", value) for v in values]
+                expand(command, values, cf, active + (name,))
+        elif name == "target_compile_definitions" and len(args) >= 3:
+            target, vis = args[0], None
+            if not re.fullmatch(r"[A-Za-z_][\w.-]*", target):
+                return
+            for tok in args[1:]:
+                if tok in ("PRIVATE", "PUBLIC", "INTERFACE"):
+                    vis = tok
+                elif vis and tok.startswith("MC2_"):
+                    defs.setdefault(tok.split("=", 1)[0], []).append((target, vis, cf))
+
+    for cf, body in commands.items():
+        for name, args, _ in body:
+            expand(name, args, cf)
     return defs
 
 
@@ -504,7 +580,11 @@ def main():
     write = "--write" in sys.argv
 
     cmake_text = read_cmake_text()
-    macro_defs = parse_macro_target_defs(cmake_text)
+    try:
+        macro_defs = parse_macro_target_defs(cmake_text)
+    except ValueError as exc:
+        print("GATED-LAYOUT-MACRO-GUARD: FAIL: %s" % exc, file=sys.stderr)
+        return 1
 
     rows, violations = analyze(macro_defs)
     out_rel = "docs/render-backend-seams/gated-layout-macros.md"

@@ -565,7 +565,7 @@ void EditorData::makeTacMap(BYTE*& pReturn, long& dataSize, int tacMapSize )
 	// 24 Bits of color at Cell resolution.
 	long outputSize = 128 * 128 * 4;
 
-	BYTE* pOutput = (BYTE*)malloc( outputSize + sizeof( TGAFileHeader ) );
+	BYTE* pOutput = new BYTE[ outputSize + sizeof( TGAFileHeader ) ];
 	pReturn = pOutput;
 	BYTE* pShrunken = pOutput + sizeof( TGAFileHeader );
 	
@@ -589,28 +589,18 @@ void EditorData::makeTacMap(BYTE*& pReturn, long& dataSize, int tacMapSize )
 }
 
 //---------------------------------------------------------------------------
-void EditorData::loadTacMap(PacketFile *file, BYTE*& pReturn, long dataSize, int tacMapSize )
+void EditorData::loadTacMap(PacketFile *file, BYTE*& pReturn, long& dataSize, int tacMapSize )
 {
-	// the bitmap is always 128 * 128, the size of the tac map can be anything,
-	// the edges will be filled in with transparency
-	
-	long outputSize = 128 * 128 * 4;
-
-	BYTE* pOutput = new BYTE[ outputSize + sizeof( TGAFileHeader )];
-	pReturn = pOutput;
-	BYTE* pShrunken = pOutput + sizeof( TGAFileHeader );
-	
-	dataSize = outputSize + sizeof( TGAFileHeader );
-
-	memset( pShrunken, 0, outputSize );
-
-	if ((file->seekPacket(3) == NO_ERR) && (file->getPacketSize() != 0))
+	dataSize = 128 * 128 * 4 + sizeof( TGAFileHeader );
+	// Reject malformed packet sizes before reading into the fixed-size bitmap.
+	if ((file->seekPacket(3) == NO_ERR) && (file->getPacketSize() == dataSize))
 	{
-		file->readPacket(3,pOutput);
+		pReturn = new BYTE[dataSize];
+		file->readPacket(3, pReturn);
 	}
 	else
 	{
-		makeTacMap(pReturn,dataSize,tacMapSize);
+		makeTacMap(pReturn, dataSize, tacMapSize);
 	}
 }
 

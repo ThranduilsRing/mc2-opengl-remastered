@@ -59,8 +59,9 @@
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_EXT_buffer_reference : require
 layout(constant_id = 0) const int kBaseQuality = 2; // Potato / Low / Medium+High
-// 1 = the opaque core pipeline: its packets have no alpha-ON layer, no per-packet alpha-test bit and are not
-// fringe rows, so every discard below is dead for them. Compiling the discards out lets the driver run early Z.
+// 1 = the opaque core pipelines: their packets have no per-packet alpha-test bit and are not fringe rows (they may sit in an
+// alpha-ON type, and then sample that array uncut), so every discard below is dead for them. Back faces are culled by the
+// pipeline, not discarded. Compiling the discards out lets the driver run early Z.
 layout(constant_id = 2) const int kOpaqueOnly = 0;
 layout(constant_id = 10) const int kPlanarReflection = 0;
 layout(constant_id = 12) const int kReflectCutDetail = 1;
@@ -79,9 +80,13 @@ layout(set = 0, binding = 3) uniform sampler2DArray uAlbedo[PROP_ALPHA_ON_BUCKET
 layout(set = 0, binding = 6) uniform sampler2DArray uAlbedoOn[PROP_ALPHA_ON_BUCKETS];
 
 layout(location = 0) in vec2 vUv;
-layout(location = 1) in vec3 vNormalStuff;
+layout(location = 1) in vec3 vFrontNormalStuff;
+layout(location = 18) in vec3 vBackNormalStuff;
+layout(location = 19) in vec3 vBackArgb;
+#define vNormalStuff (gl_FrontFacing ? vFrontNormalStuff : vBackNormalStuff)
+#define vArgb (gl_FrontFacing ? vFrontArgb : vBackArgb)
 flat layout(location = 2) in int  vLayer;
-layout(location = 3) in vec3 vArgb;   // VERTEX-BAKED lit color (GL default prop model)
+layout(location = 3) in vec3 vFrontArgb; // VERTEX-BAKED lit color
 flat layout(location = 4) in int  vLayerOn;  // alpha-ON albedo array layer (-1 = none)
 flat layout(location = 5) in vec2 vUvScale;  // FENCE-UVSCALE-1: this packet's uvScaleX/Y
 layout(location = 6) in vec3 vWorldPos;
@@ -172,6 +177,9 @@ float treeVisibility(vec3 N) {
     return visibility;
 }
 void main() {
+    // kOpaqueOnly pipelines reject back faces by culling (single-sided packets) or not at all (double-sided): no discard, so early Z runs.
+    if (kOpaqueOnly == 0 && !gl_FrontFacing && (uPacket.materialId < 0 || uPacket.materialId >= uPropMaterials.materials.length() ||
+        (uPropMaterials.materials[uPacket.materialId].material.flags & kMatFlagDoubleSided) == 0u)) discard;
     if (kPlanarReflection != 0 && vWorldPos.z < uT.shorelineWaterElev) discard;
     vec3 rgb;
     vec3 materialAlbedo = vec3(0);
@@ -184,7 +192,7 @@ void main() {
     // of main() for why the distinction exists and what its granularity is.
     bool alphaTestClass = false;
     float cover = 1.0;   // PROP-COVERAGE-1 blend alpha (1 in the core pass)
-    if (kOpaqueOnly == 0 && uFrame.materialReadyOn != 0 && vLayerOn >= 0) {
+    if (uFrame.materialReadyOn != 0 && vLayerOn >= 0) {
         alphaTestClass = true;
         // ALPHA-ON group (alpha-MIXED buildings): sample the alpha-ON array and apply the
         // SAME 0.5 alpha-test discard the GL producer uses (static_prop.frag:236:
@@ -204,7 +212,9 @@ void main() {
         float lodOn = 0.5 * log2(max(max(dot(duv1, duv1), dot(duv2, duv2)), 1e-12));
         lodOn = max(lodOn, 0.0);
         vec4 texc = textureLod(uAlbedoOn[nonuniformEXT(bucketOn)], vec3(uvSampledOn, float(propBucketLayer(vLayerOn))), lodOn);
-        cover = propCoverage(texc.a, lodOn);   // PROP-COVERAGE-1 (replaces the Bayer screen-door dither)
+        // kOpaqueOnly: an opaque packet of an alpha-mixed type (a trunk): same sample, light floor and class, no cut.
+        // An opaque packet routed to the alpha core list for ordering (after an alpha-tested one) samples uncut too.
+        if (kOpaqueOnly == 0 && uPacket.packetAlphaTest != 0) cover = propCoverage(texc.a, lodOn);   // PROP-COVERAGE-1 (replaces the Bayer screen-door dither)
         // ★VK-FLIP-FIELD-REPORT-1 BLACK-FENCE FIX: the alpha-ON group is the ALPHA_TEST
         // class (tree cards / fences / foliage). GL static_prop.frag:339 floors their lit
         // color at max(litRgb, vec3(0.5)) so the dark, light-facing-falloff side doesn't

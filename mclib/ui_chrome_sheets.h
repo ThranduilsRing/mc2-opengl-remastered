@@ -9,6 +9,7 @@
 #pragma once
 
 #include <array>
+#include <cctype>
 #include <cstdint>
 #include <functional>
 #include <map>
@@ -18,6 +19,63 @@
 #include <vector>
 
 namespace mc2::ui_chrome {
+
+// Inner right-hand bay in the menu's authored 800x600 frame.
+inline std::array<float, 4> menuCreditsBay(float frameWidth, float frameHeight) {
+    return {604 * frameWidth / 800, 292 * frameHeight / 600,
+            168 * frameWidth / 800, 248 * frameHeight / 600};
+}
+
+// Owner 11-15: the credits screen shows one collapsible header per source.
+// CREDITS.txt layout: a preamble, then "Sxxx - <source name>" sections, then
+// trailing "SOURCE TABLE ..." / "COMMUNITY LINKS" sections. S001 is the base game.
+struct CreditsSection {
+    std::string title;  // header text (source name; S001 -> base game)
+    std::string body;   // contributor lines, own "[Sxxx]" tag stripped
+};
+struct CreditsDoc {
+    std::string preamble;
+    std::vector<CreditsSection> sections;
+};
+inline CreditsDoc parseCredits(std::string_view text) {
+    CreditsDoc doc;
+    std::string ownTag;
+    std::string* out = &doc.preamble;
+    auto isId = [](std::string_view l) {
+        return l.size() > 7 && l[0] == 'S' && std::isdigit(static_cast<unsigned char>(l[1])) &&
+               std::isdigit(static_cast<unsigned char>(l[2])) && std::isdigit(static_cast<unsigned char>(l[3])) &&
+               l.substr(4, 3) == " - ";
+    };
+    while (!text.empty()) {
+        const size_t nl = text.find('\n');
+        std::string_view line = text.substr(0, nl);
+        text = nl == std::string_view::npos ? std::string_view{} : text.substr(nl + 1);
+        if (!line.empty() && line.back() == '\r') line.remove_suffix(1);
+        if (isId(line) || line.starts_with("SOURCE TABLE") || line == "COMMUNITY LINKS") {
+            CreditsSection s;
+            if (isId(line)) {
+                ownTag = " [" + std::string(line.substr(0, 4)) + "]";
+                s.title = line.substr(0, 4) == "S001" ? std::string("MechCommander 2 - original game credits")
+                                                     : std::string(line.substr(7));
+            } else {
+                ownTag.clear();
+                s.title = line.starts_with("SOURCE TABLE") ? "Source table" : "Community links";
+            }
+            doc.sections.push_back(std::move(s));
+            out = &doc.sections.back().body;
+            continue;
+        }
+        if (out != &doc.preamble && line == "Free forever.") continue;  // the panel prints its own closing line
+        std::string l(line);
+        if (!ownTag.empty() && l.ends_with(ownTag)) l.resize(l.size() - ownTag.size());
+        if (l.empty() && out->empty()) continue;  // no leading blank line in a section
+        *out += l;
+        *out += '\n';
+    }
+    for (auto* s : {&doc.preamble}) while (s->size() > 1 && s->ends_with("\n\n")) s->pop_back();
+    for (auto& s : doc.sections) while (s.body.size() > 1 && s.body.ends_with("\n\n")) s.body.pop_back();
+    return doc;
+}
 
 struct Widget {
     std::string name;       // file stem under data/art/ui/<sheet>/
@@ -60,6 +118,34 @@ struct Pixels {
 
 // Returns false (and leaves `px` empty) when the widget file is absent or undecodable.
 using WidgetLoader = std::function<bool(const Sheet& sheet, const Widget& widget, Pixels& px)>;
+// Stock menu paint spans amber through green in the source art. Share the
+// outer-chrome yellow (48 degrees HSV), retaining saturation, value and alpha.
+inline uint32_t menuYellow(uint32_t argb) {
+    const int r = (argb >> 16) & 255, g = (argb >> 8) & 255, b = argb & 255;
+    const int hi = r > g ? r : g, lo = r < g ? r : g;
+    const int chroma = hi - b;
+    if (b >= lo || chroma * 100 < hi * 35 ||
+        (g - b) * 100 < (r - b) * 10 || (r - b) * 100 < (g - b) * 67) return argb;
+    return (argb & 0xff000000u) | (static_cast<uint32_t>(hi) << 16) |
+           (static_cast<uint32_t>(b + (chroma * 4 + 2) / 5) << 8) | static_cast<uint32_t>(b);
+}
+
+// Button animation colours are authored with their frame art in the stock FIT.
+inline uint32_t menuElementColor(uint32_t argb, bool button) {
+    return button ? argb : menuYellow(argb);
+}
+
+// Animated tint supplies the button colour; warm neutral carrier texels would
+// multiply a second hue into it. Keep their authored shading as luminance.
+inline uint32_t menuTintCarrier(uint32_t argb) {
+    const int r = (argb >> 16) & 255, g = (argb >> 8) & 255, b = argb & 255;
+    if (r < g || g < b || (r - b) * 2 > r) return argb;
+    return (argb & 0xff000000u) | (static_cast<uint32_t>(r) * 0x010101u);
+}
+
+
+// Remove the baked matte only from stock main-menu/dialog chrome, preserving button wells.
+bool clearMenuMatte(std::string_view path, Pixels& px);
 
 // Pastes every widget at its rect. All-or-nothing: one missing or wrong-sized widget fails the whole sheet.
 bool composeSheet(const Sheet& sheet, const WidgetLoader& load, Pixels& out, std::string* err = nullptr);

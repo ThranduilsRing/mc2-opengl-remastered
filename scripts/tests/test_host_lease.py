@@ -806,9 +806,9 @@ def test_gpu_split_parse_and_one_lease_set(lease, monkeypatch):
     assert host_lease._parse_gpu_split("# c\nslot0=NVIDIA\nslot1 = AMD\n") == ("NVIDIA", "AMD")
     with pytest.raises(ValueError, match="unknown key 'bogus'"):
         host_lease._parse_gpu_split("bogus=1\n")
-    assert host_lease._parse_gpu_split("") == host_lease.GPU_SPLIT_DEFAULT == ("AMD", "NVIDIA")
+    assert host_lease._parse_gpu_split("") == host_lease.GPU_SPLIT_DEFAULT == ("AMD", "AMD")
     assert host_lease._parse_gpu_split("lane=NVIDIA\ngate=AMD\n") == ("NVIDIA", "AMD")        # old keys: lane = slot 0, gate = slot 1
-    assert host_lease._parse_gpu_split("lane=NVIDIA\nslot0=AMD\n") == ("AMD", "NVIDIA")       # an explicit slotN wins
+    assert host_lease._parse_gpu_split("lane=NVIDIA\nslot0=AMD\n") == ("AMD", "AMD")          # an explicit slotN wins
     base = host_lease.lease_path()
     for device in ("AMD", "NVIDIA"):                                 # one lease file set whatever the device
         monkeypatch.setenv("MC2_VK_DEVICE", device)

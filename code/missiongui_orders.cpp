@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in missiongui_shared_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "missiongui_shared_internal.h"
+#include "net/runtime.h"
 #include "render_view.h"
 #include "mc2fmt.h"
 #include "camera_elevation.h"
@@ -567,6 +568,7 @@ int MissionInterfaceManager::eject()
 
 int MissionInterfaceManager::bigAirStrike()
 {
+	if (mc2::net::active()) return 0;
 	glm::vec3 v = makeAirStrikeTarget( wPos );
 
 	IfaceCallStrike (ARTILLERY_LARGE,&v,nullptr);
@@ -575,6 +577,7 @@ int MissionInterfaceManager::bigAirStrike()
 }
 int MissionInterfaceManager::smlAirStrike()
 {
+	if (mc2::net::active()) return 0;
 	glm::vec3 v = makeAirStrikeTarget( wPos );
 
 	IfaceCallStrike (ARTILLERY_SMALL,&v,nullptr);
@@ -583,6 +586,7 @@ int MissionInterfaceManager::smlAirStrike()
 }
 int MissionInterfaceManager::snsAirStrike()
 {
+	if (mc2::net::active()) return 0;
 	glm::vec3 v = makeAirStrikeTarget( wPos );
 
 	IfaceCallStrike (ARTILLERY_SENSOR,&v,nullptr);
@@ -1102,6 +1106,7 @@ void MissionInterfaceManager::doMove(const glm::vec3& pos)
 
 bool MissionInterfaceManager::makePatrolPath()
 {
+	if (mc2::net::active()) return false;
 	Team* pTeam = Team::home;
 	for (long i=0;i<pTeam->getRosterSize();i++)
 	{
@@ -1210,6 +1215,7 @@ void MissionInterfaceManager::selectForceGroup( int forceGroup, bool deselect )
 }
 void MissionInterfaceManager::makeForceGroup( int forceGroup )
 {
+	if (mc2::net::active()) return;
 	Team* pTeam = Team::home;
 
 	for (int i=0;i<pTeam->getRosterSize();i++)

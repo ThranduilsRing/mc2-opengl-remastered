@@ -1500,18 +1500,6 @@
    "new_array": 0,
    "owners": []
   },
-  "LogisticsMech": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/mechpurchasescreen.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
   "LogisticsMechIcon": {
    "delete": 0,
    "delete_array": 0,
@@ -2174,10 +2162,10 @@
      "new": 2
     },
     "code/mechpurchasescreen.cpp": {
-     "new": 3
+     "new": 2
     }
    },
-   "new": 7,
+   "new": 6,
    "new_array": 0,
    "owners": []
   },
@@ -3855,6 +3843,7 @@
   "editor/Editor.cpp": 4,
   "editor/EditorData_tacmap.cpp": 1,
   "editor/EditorInterface_editor.cpp": 1,
+  "editor/EditorInterface_wnd.cpp": 1,
   "editor/EditorMFC.cpp": 1,
   "editor/EditorObjectMgr.cpp": 1,
   "editor/EditorObjects.cpp": 1,
