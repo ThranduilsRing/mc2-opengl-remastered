@@ -12,7 +12,6 @@
 #include <stdexcept>
 #include <thread>
 #include <utility>
-#include <tracy/Tracy.hpp>
 
 namespace mc2::prewarm {
 enum class Screen { FrontEndMovie, MainMenu, CampaignVideo, LoadScreen, Other, MissionWorld };
@@ -107,7 +106,6 @@ public:
         } while (std::chrono::steady_clock::now() < until);
     }
     void finish(const Job& job, const std::function<void()>& pump = {}) {
-        ZoneScopedN("Prewarm.Finish");
         while (job && !job->complete) {
             pumpMain(4.0, job->step ? Screen::LoadScreen : Screen::FrontEndMovie, false);
             if (pump) pump();
