@@ -9,6 +9,7 @@
 
 #include "mc2fmt.h"
 #include "utils/mc2log.h"
+#include "diagnostic_trace.h"
 
 namespace mc2terrain {
 namespace {
@@ -81,8 +82,9 @@ bool TerrainFieldStore::setVisualHeight(const float* fine, int side, const float
     const size_t fineCount = static_cast<size_t>(side) * static_cast<size_t>(side);
     const auto shoreStart = std::chrono::steady_clock::now();
     waterShoreCells_ = bakeWaterShoreCells(fine, side);
-    MC2_LOG(Core, Info, "[TERRAIN_FIELDS v1] shore_cells side={} bake_ms={:.3f}", side,
-            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - shoreStart).count());
+    if (mc2_diag::tagRequested("TERRAIN_FIELDS"))
+        MC2_LOG(Core, Info, "[TERRAIN_FIELDS v1] shore_cells side={} bake_ms={:.3f}", side,
+                std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - shoreStart).count());
     visual_.resize(fineCount + static_cast<size_t>(mipFloats));
     std::copy(fine, fine + fineCount, visual_.begin());
     if (mipFloats > 0) std::copy(mipMaxes, mipMaxes + mipFloats, visual_.begin() + (std::ptrdiff_t)fineCount);
