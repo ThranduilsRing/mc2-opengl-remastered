@@ -826,6 +826,11 @@ def test_skin_pick_counts_post_join_referenced_vertices_of_every_compared_attrib
         assert _pick(_bin_glb([a, dict(mesh="b", mat=1, pos=_verts(2))], mats)) == "a-alb.tga", attr    # 4 distinct beat 2
         a = dict(mesh="a", mat=0, pos=same, attrs={"NORMAL": nrm})
         assert _pick(_bin_glb([a, dict(mesh="b", mat=1, pos=_verts(2))], mats)) == "b-alb.tga", attr    # without it they join to 1
+    # TEXCOORD_8 / COLOR_8 are past Assimp's eight-channel limit: ignored, so the four vertices still join to 1
+    for attr, rows in (("TEXCOORD_8", [(0.0, 0.0), (0.5, 0.0), (0.0, 0.5), (0.5, 0.5)]),
+                       ("COLOR_8", [(1.0, 0.0, 0.0, 1.0), (0.0, 1.0, 0.0, 1.0), (0.0, 0.0, 1.0, 1.0), (1.0, 1.0, 1.0, 1.0)])):
+        a = dict(mesh="a", mat=0, pos=same, attrs={"NORMAL": nrm, attr: rows})
+        assert _pick(_bin_glb([a, dict(mesh="b", mat=1, pos=_verts(2))], mats)) == "b-alb.tga", attr
     # sparse accessor: the override rows are the vertices (a base-only read would see 1 zero vertex)
     assert _pick(_bin_glb([dict(mesh="a", mat=0, pos=_verts(5)), dict(mesh="b", mat=1, pos=_verts(3))], mats, sparse_pos=True)) == "a-alb.tga"
 

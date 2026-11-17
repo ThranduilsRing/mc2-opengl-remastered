@@ -183,7 +183,7 @@ def _used_vertices(g, blob, prim, n):
 def _joined_vertex_count(g, blob, prim) -> int:
     """Vertex count of the aiMesh after aiProcess_JoinIdenticalVertices (the importer's flags, assimp_importer.cpp): the
     distinct rows over the referenced vertices of everything Assimp's CompareVerticesAlmostEqual compares, i.e. position,
-    normal, tangent (carries the bitangent sign), every TEXCOORD_n and COLOR_n. Bone joints/weights are not compared.
+    normal, tangent (carries the bitangent sign), every TEXCOORD_n and COLOR_n with n <= 7 (Assimp reads at most eight of each). Bone joints/weights are not compared.
     Attributes whose count differs from POSITION are ignored, as the glTF2 importer does. Raises UnsupportedGlb."""
     at = prim.attributes
     if at.POSITION is None:
@@ -194,7 +194,7 @@ def _joined_vertex_count(g, blob, prim) -> int:
         names.append("NORMAL")
         if at.TANGENT is not None and g.accessors[at.TANGENT].count == n:
             names.append("TANGENT")
-    extra = sorted(k for k, v in vars(at).items() if v is not None and re.fullmatch(r"(TEXCOORD|COLOR)_\d+", k))
+    extra = sorted(k for k, v in vars(at).items() if v is not None and re.fullmatch(r"(TEXCOORD|COLOR)_[0-7]", k))
     names += [k for k in extra if g.accessors[getattr(at, k)].count == n]
     cols = [_accessor_rows(g, blob, getattr(at, k)) for k in names]
     return len({tuple(tuple(x + 0.0 for x in c[i]) for c in cols) for i in _used_vertices(g, blob, prim, n)})
