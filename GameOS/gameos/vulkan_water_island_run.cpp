@@ -290,8 +290,8 @@ extern "C" int mc2_vk_water_island_run(
                 VkPhysicalDeviceProperties props{};
                 vkGetPhysicalDeviceProperties(s->phys, &props);
                 vlog("WATER_PROFILE mode=%d frames=300 gpu_ms=%.6f fragment_invocations=%.3f", mode,
-                     double(s->profileTicks[mode]) * props.limits.timestampPeriod / 300.0e6,
-                     double(s->profileFragments[mode]) / 300.0);
+                     static_cast<double>(s->profileTicks[mode]) * props.limits.timestampPeriod / 300.0e6,
+                     static_cast<double>(s->profileFragments[mode]) / 300.0);
             }
         }
         s->profileMode[par] = -1;
@@ -317,7 +317,7 @@ extern "C" int mc2_vk_water_island_run(
             }
         } else vlog("WATER_PROFILE FAIL fragment statistics unavailable");
     }
-    const int profileMode = s->profileIssued < 2100 ? int(s->profileIssued / 300) : -1;
+    const int profileMode = s->profileIssued < 2100 ? static_cast<int>(s->profileIssued / 300) : -1;
     if (profileMode >= 0) gos_SetWaterFsDebugMode(profileMode);
     const auto ground = mc2_vk_ground_lighting_frame();
     if (!ground) return 0;
