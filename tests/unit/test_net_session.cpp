@@ -147,8 +147,8 @@ TEST_CASE("net session handshake accepts only identical protocol/executable/cont
     CHECK(packet[packet.size() - 8] == 0x39); // seed precedes the component count
 }
 
-TEST_CASE("net session rejects changed heat profile content with protocol four") {
-    CHECK(net::protocolVersion == 4);
+TEST_CASE("net session rejects changed heat profile content with protocol five") {
+    CHECK(net::protocolVersion == 5);
     net::Identity local, remote;
     local.mission = "mc2_01";
     const save::Bytes heatFit{1, 20, 60, 0};
