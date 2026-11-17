@@ -160,6 +160,7 @@ bool prepare_reflect_bake(WaterIsland* s, float water) {
     const auto now = std::chrono::steady_clock::now();
     auto& owner = s->reflectionBake;
     std::string why = "load";
+    std::string source = "mission";
     if (owner) {
         auto& b = *static_cast<ReflectBake*>(owner.get());
         if (b.ready) {
@@ -168,9 +169,15 @@ bool prepare_reflect_bake(WaterIsland* s, float water) {
                 b.scale[i] = b.bakedRgb[i] > 0 ? rgb[i] / b.bakedRgb[i] : 1;
                 drift |= b.scale[i] < 0.9f || b.scale[i] > 1.1f || (b.bakedRgb[i] == 0 && rgb[i] != 0);
             }
-            bool changed = b.content != content || b.light != light || b.water != water || b.halfMap != feed.halfMap;
-            for (size_t i = 1; i < key.size(); ++i) changed |= b.key[i] != key[i];
-            if (changed) why = "content";
+            source.clear();
+            if (b.content != content) source += "registry;";
+            for (size_t i = 0; i < light.size(); ++i)
+                if (b.light[i] != light[i]) source += "light[" + std::to_string(i) + "];";
+            if (b.water != water) source += "water;";
+            if (b.halfMap != feed.halfMap) source += "halfMap;";
+            for (size_t i = 1; i < key.size(); ++i)
+                if (b.key[i] != key[i]) source += "key[" + std::to_string(i) + "];";
+            if (!source.empty()) why = "content";
             else if (drift) why = "drift";
             else if (b.key[0] != key[0] && now - b.lastBake >= std::chrono::seconds(1)) why = "reveal";
             else return true;
@@ -242,7 +249,7 @@ bool prepare_reflect_bake(WaterIsland* s, float water) {
     VkPhysicalDeviceProperties properties{}; vkGetPhysicalDeviceProperties(s->phys, &properties);
     const double ms = (timestamps[1] - timestamps[0]) * properties.limits.timestampPeriod / 1.0e6;
     const double mb = static_cast<double>(b.size) * b.size * (12 + 8.0/3) / (1024*1024);
-    if (mc2_diag::tagRequested("WATER_BAKE")) mc2::fmt::print_err("[WATER_BAKE] size={}x{} ms={:.3f} MB={:.3f} registry={} why={}\n", b.size, b.size, ms, mb, key[0], why);
+    if (mc2_diag::tagRequested("WATER_BAKE")) mc2::fmt::print_err("[WATER_BAKE] size={}x{} ms={:.3f} MB={:.3f} registry={} why={} source={}\n", b.size, b.size, ms, mb, key[0], why, source);
     if (dump) {
         std::vector<uint16_t> pixels(static_cast<size_t>(bytes / 2));
         if (!readback.read(pixels.data(), bytes)) return false;
