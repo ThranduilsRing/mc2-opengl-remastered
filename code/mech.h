@@ -11,9 +11,9 @@
 #ifndef MECH_H
 #define MECH_H
 
-#ifndef MCLIB_H
 #include <span>
 #include "heat_model.h"
+#ifndef MCLIB_H
 #include"mclib.h"
 #endif
 
