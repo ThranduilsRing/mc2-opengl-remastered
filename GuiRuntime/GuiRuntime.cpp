@@ -515,7 +515,12 @@ void GuiRuntime::NewFrame() {
         }
     }
     ImGui::GetIO().MouseDrawCursor = false;
+    // NoMouse only protects the SDL backend (capture/warp) above. A scripted
+    // pointer must hit-test like a real one, so lift it for NewFrame only.
+    const bool liftNoMouse = input::scriptActive() && (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_NoMouse);
+    if (liftNoMouse) ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
     ImGui::NewFrame();
+    if (liftNoMouse) ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouse;
     if (!s_editorMode) {
         const ImGuiViewport* vp = ImGui::GetMainViewport();
         for (ImGuiWindow* window : ImGui::GetCurrentContext()->Windows) {

@@ -210,3 +210,21 @@ TEST_CASE("input_capture_policy: dialog keys retain their release during text ca
     edge = input::capture::keyboardEdge(edge, false, true, blocked, true);
     CHECK(edge == Edge::Released);
 }
+
+TEST_CASE("input_capture_policy: held game gesture survives a menu opening") {
+    PointerCapture pointer;
+    CHECK(pointer.sample(1, true) == 1);
+    CHECK(pointer.sample(1, true) == 1);
+    pointer.claim(); // the menu opens mid-gesture: nothing new was pressed
+    CHECK(pointer.sample(1, false) == 1);
+    Edge edge = pointer.edge(Edge::Held, 1, pointer.sample(0, false));
+    CHECK(edge == Edge::Released);
+}
+
+TEST_CASE("input_capture_policy: press while captured is Free through release") {
+    PointerCapture pointer;
+    CHECK(pointer.sample(1, false) == 0);
+    pointer.claim();
+    CHECK(pointer.edge(Edge::Free, 1, pointer.sample(1, false)) == Edge::Free);
+    CHECK(pointer.edge(Edge::Free, 1, pointer.sample(0, false)) == Edge::Free);
+}
