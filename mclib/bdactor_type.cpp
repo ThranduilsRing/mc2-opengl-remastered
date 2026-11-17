@@ -661,6 +661,7 @@ void BldgAppearanceType::setAnimation (TG_MultiShapePtr shape, DWORD animationNu
 
 void TreeAppearanceType::init (mc2::czstring fileName)
 {
+	loadInstanceObserved = false;
 	AppearanceType::init(fileName);
 
 	FullPathFileName iniName;

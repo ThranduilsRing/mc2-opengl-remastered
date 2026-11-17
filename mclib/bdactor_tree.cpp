@@ -8,6 +8,7 @@
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
 #include "battle_bench_sink.h"
+#include "../GameOS/gameos/load_scope.h"
 
 void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 {
@@ -51,12 +52,23 @@ void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 
 	if (appearType)
 	{
+		const bool first = !appearType->loadInstanceObserved;
+		appearType->loadInstanceObserved = true;
+		static auto* cloneFirst = mc2::load::entry("tree.clone.first");
+		static auto* cloneRest = mc2::load::entry("tree.clone.further");
+		{
+		mc2::load::Scope scope(first ? cloneFirst : cloneRest);
 		// MODEL-OVERRIDE dual-shape: build the per-instance RENDER shape from the
 		// render accessor (override if present, else stock). Collision (markTerrain/
 		// markLOS) rebuilds this member from stock treeShape[lod] when needed.
 		treeShapeOwner_.reset(appearType->getTreeRenderShape(0)->CreateFrom());
 		treeShape = treeShapeOwner_.get();
+		}
 
+		static auto* texturesFirst = mc2::load::entry("tree.textures.first");
+		static auto* texturesRest = mc2::load::entry("tree.textures.further");
+		{
+		mc2::load::Scope scope(first ? texturesFirst : texturesRest);
 		for (long i=0;i<treeShape->GetNumTextures();i++)
 		{
 			char txmName[1024];
@@ -91,6 +103,11 @@ void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			}
 		}
 		
+		}
+		static auto* boundsFirst = mc2::load::entry("tree.bounds.first");
+		static auto* boundsRest = mc2::load::entry("tree.bounds.further");
+		{
+		mc2::load::Scope scope(first ? boundsFirst : boundsRest);
 		glm::vec3 boxCoords[8];
 		glm::vec3 nodeCenter = treeShape->GetRootNodeCenter();
 
@@ -157,6 +174,10 @@ void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		// getTreeRenderShape clamps unpopulated indices back to LOD0). Stock
 		// types keep the full MAX_LODS loop: getTreeRenderShape(i) returns the
 		// distinct stock treeShape[i] per LOD, all of which must register.
+		}
+		static auto* registerFirst = mc2::load::entry("tree.register.first");
+		static auto* registerRest = mc2::load::entry("tree.register.further");
+		mc2::load::Scope scope(first ? registerFirst : registerRest);
 		appearType->registerRenderShapes();
 	}
 

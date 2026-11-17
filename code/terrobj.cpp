@@ -194,6 +194,7 @@ void g_staticUpdateEmitSummary(uint32_t frame) {
 // per-frame roll via g_tobjSplitRollAndMaybeEmit() (static_update_counters.h).
 // Probe points in mclib/bdactor.cpp use extern-declarations to reach these.
 #include "platform_intrinsics.h"
+#include "../GameOS/gameos/load_scope.h"
 #include <stdlib.h>
 #include <stdio.h>
 static bool s_tobjSplitEnabled = false;
@@ -1182,6 +1183,7 @@ class InvisibleContentAppearance final : public Appearance {
 }
 
 void TerrainObject::init (bool create, ObjectTypePtr objType) {
+	MC2_LOAD_SCOPE("TerrainObject::init");
 
 	GameObject::init(true, objType);
 	if (!objType->getAppearanceTypeName() && objType->getExtentRadius() == 0.0f) {

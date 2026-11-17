@@ -569,6 +569,7 @@ class BldgAppearance : public ObjectAppearance
 class TreeAppearanceType : public AppearanceType
 {
 	public:
+		bool loadInstanceObserved = false;
 	
 		std::unique_ptr<TG_TypeMultiShape> treeShape[MAX_LODS];
 		float						lodDistance[MAX_LODS];
