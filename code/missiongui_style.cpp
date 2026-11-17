@@ -1110,7 +1110,7 @@ static const char* orderMenuReasonName(mc2::order_menu::CancelReason why)
 void orderMenuLogLine(std::string_view text)
 {
     if (!mc2_diag::tagRequested("ORDER_MENU")) return;
-    std::fprintf(stderr, "[ORDER_MENU] %s\n", text);
+    std::fprintf(stderr, "[ORDER_MENU] %.*s\n", static_cast<int>(text.size()), text.data());
     char json[640];
     std::snprintf(json, sizeof json, "{\"msg\":\"%.*s\"}", static_cast<int>(text.size()), text.data());
     mc2_diag::writeEvent("ORDER_MENU", 1, 0, json);
@@ -1138,7 +1138,7 @@ bool MissionInterfaceManager::menuContextValid(const mc2::order_menu::Order* cap
     f.hotkeyReference = bDrawHotKeys;
     f.formationLine = TacticalOverview::formationLineEnabled() &&
                       g_tacticalOverview.flState() != TacticalOverview::FL_IDLE;
-    f.legacyPauseMenu = isPaused() && !isPausedWithoutMenu() && !PauseWindow::imguiPauseEnabled();
+    f.pauseMenu = isPaused() && !isPausedWithoutMenu();
     f.mpPaused = MPlayer && isPaused();
     f.placementMode = controlGui.isAddingVehicle() || controlGui.isAddingAirstrike() ||
                       controlGui.isAddingSalvage() || controlGui.isSelectingInfoObject();
@@ -1149,6 +1149,9 @@ bool MissionInterfaceManager::menuContextValid(const mc2::order_menu::Order* cap
     }
     GameObject* tgt = captured ? (ObjectManager ? ObjectManager->getByWatchID(captured->target) : nullptr) : target;
     f.targetAttackable = tgt && classifyMenuTarget(*tgt) == MenuTarget::Attackable;
+    if (captured && f.targetAttackable && tgt->isMover() && !ShowMovers && !(MPlayer && MPlayer->allUnitsDestroyed[MPlayer->commanderID]) &&
+        static_cast<Mover*>(tgt)->conStat < CONTACT_SENSOR_QUALITY_1)
+        f.targetAttackable = false; // sensor contact lost while open: the same fog predicate as the CPU pick
     if (captured && Team::home) {
         std::size_t next = 0;
         bool same = true, anyAlive = false;
@@ -1207,7 +1210,6 @@ void MissionInterfaceManager::orderMenuService(bool overGui)
         else if (target->isDisabled()) refuse = "target_disabled";
         else if (target->isCaptureable(Team::home->getId())) refuse = "target_capturable";
         else if (Team::home->isFriendly(target->getTeam())) refuse = "target_friendly";
-        else if (!menuContextValid(nullptr)) refuse = "context";
         Order captured;
         captured.target = target->getWatchID();
         if (!refuse) {
@@ -1217,6 +1219,7 @@ void MissionInterfaceManager::orderMenuService(bool overGui)
                     captured.recipients.push_back(mover->getWatchID());
             }
             if (captured.recipients.empty()) refuse = "no_selection";
+            else if (!menuContextValid(&captured)) refuse = "context"; // recipients first so recipientAlive is real
         }
         if (refuse) {
             char line[96];
@@ -1243,8 +1246,10 @@ void MissionInterfaceManager::orderMenuService(bool overGui)
             if (ImGui::MenuItem(label, nullptr, false, enabled)) choice = item;
             if (rowIndex < 5) {
                 const ImVec2 lo = ImGui::GetItemRectMin(), hi = ImGui::GetItemRectMax(), disp = ImGui::GetIO().DisplaySize;
-                centres[rowIndex][0] = (lo.x + hi.x) * 0.5f / disp.x * 800.0f;
-                centres[rowIndex][1] = (lo.y + hi.y) * 0.5f / disp.y * 600.0f;
+                if (disp.x > 0.0f && disp.y > 0.0f) {
+                    centres[rowIndex][0] = (lo.x + hi.x) * 0.5f / disp.x * 800.0f;
+                    centres[rowIndex][1] = (lo.y + hi.y) * 0.5f / disp.y * 600.0f;
+                }
             }
             ++rowIndex;
         };

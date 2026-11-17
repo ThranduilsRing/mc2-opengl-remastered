@@ -224,6 +224,8 @@ MissionInterfaceManager::Command		MissionInterfaceManager::commands[MAX_COMMAND]
 
 void MissionInterfaceManager::init (void)
 {
+	orderMenu = {};
+	orderMenuFrame = 0;
 	realRotation = 0.0;
 	dragStart = glm::vec3(0.0f);
 	dragEnd = glm::vec3(0.0f);

@@ -43,7 +43,7 @@ void MissionInterfaceManager::dispatchMenuOrder(const mc2::order_menu::Order& ca
     ZoneScopedN("MIF.OrderMenuDispatch");
     auto* enemy = ObjectManager->getByWatchID(captured.target);
     if (!enemy || classifyMenuTarget(*enemy) != MenuTarget::Attackable) return; // one shared predicate with the menu gate
-    long range = FIRERANGE_OPTIMAL;
+    long range = -1; // Attack (default): each mover's own attackRange, as classic doAttack
     switch (captured.range) {
     case mc2::order_menu::Range::Short: range = FIRERANGE_SHORT; break;
     case mc2::order_menu::Range::Medium: range = FIRERANGE_MEDIUM; break;

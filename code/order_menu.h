@@ -30,13 +30,13 @@ constexpr TargetClass classify(const TargetFacts& t) {
 struct ContextFacts {
     bool classic = true;
     bool movie = false, tutorialAnimation = false, guiFrozen = false, hotkeyReference = false;
-    bool formationLine = false, legacyPauseMenu = false, mpPaused = false, placementMode = false;
+    bool formationLine = false, pauseMenu = false, mpPaused = false, placementMode = false;
     bool targetAttackable = true, selectionMatches = true, recipientAlive = true;
     bool focusLost = false, displayChanged = false;
 };
 constexpr bool contextValid(const ContextFacts& f) {
     return f.classic && !f.movie && !f.tutorialAnimation && !f.guiFrozen && !f.hotkeyReference &&
-           !f.formationLine && !f.legacyPauseMenu && !f.mpPaused && !f.placementMode &&
+           !f.formationLine && !f.pauseMenu && !f.mpPaused && !f.placementMode &&
            !f.focusLost && !f.displayChanged && f.targetAttackable && f.selectionMatches && f.recipientAlive;
 }
 
