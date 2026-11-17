@@ -409,6 +409,8 @@ public:
 		int scrollLeft();
 		int scrollRight();
 		int zoomOut();
+		int gameSpeedUp();
+		int gameSpeedDown();
 		int zoomIn();
 		int zoomChoiceOut();
 		int zoomChoiceIn();
