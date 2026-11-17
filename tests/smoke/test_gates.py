@@ -17,6 +17,18 @@ def test_clean_pass():
     v = evaluate(_base(), CFG, exit_code=0, walltime_s=31)
     assert v.passed and v.buckets == []
 
+def test_run_mean_and_window_perf_reds_remain_warnings():
+    s = _base()
+    s.perf_counters = {"draws": 20.0}
+    s.perf_window = {"complete": True, "ticks": [10, 20], "draws": 20.0}
+    cfg = GateConfig(stem="alpha", perf_ceilings={"alpha": {"draws": 10.0}},
+                     window_ceilings={"ticks": [10, 20], "stems": {"alpha": {"draws": 10.0}}})
+    v = evaluate(s, cfg, exit_code=0, walltime_s=31)
+    assert v.passed and v.buckets == [] and len(v.warnings) == 2
+    s.shader_errors = 1
+    v = evaluate(s, cfg, exit_code=0, walltime_s=31)
+    assert not v.passed and "shader_error" in v.buckets
+
 def test_missing_instr_banner_fails():
     s = _base(); s.instr_banner_seen = False
     v = evaluate(s, CFG, exit_code=0, walltime_s=31)

@@ -92,6 +92,14 @@ public:
         if (e.payload.move && e.payload.kind != OrderKind::AttackObject && e.payload.kind != OrderKind::AttackPoint &&
             (mover->isDisabled() || !mover->canMove()))
             return reason(MoverOrderRejection::CannotMove);
+        if (e.payload.attack && e.payload.attack->alpha) {
+            if (e.payload.origin != OrderOrigin::Player ||
+                e.payload.attack->method != AttackMethod::Ranged)
+                return reason(MoverOrderRejection::UnsupportedPayload);
+            if constexpr (requires { access_.admitsAlpha(mover); }) {
+                if (!access_.admitsAlpha(mover)) return reason(MoverOrderRejection::HandlerFailure);
+            } else return reason(MoverOrderRejection::UnsupportedPayload);
+        }
         return 0;
     }
     ApplicationOutcome applyRecipient(const OrderEnvelope& e, ObjectRef ref, std::uint32_t ordinal) override {
@@ -503,6 +511,9 @@ class Mission
 		MoverPtr resolveOrderRecipient(mc2::sim::ObjectRef ref);
 		std::uint64_t orderSession() const { return orderIngress.session(); }
 		bool orderTickExecuting() const { return orderIngress.queue().executingTick().has_value(); }
+		std::uint64_t alphaTick() const {
+			return orderIngress.queue().executingTick().value_or(orderIngress.queue().completedTick());
+		}
 		long submitPlayerOrder(Mover* mover, const TacticalOrder& order, bool queued);
 		std::optional<mc2::sim::ObjectRef> orderRecipient(long partId) const;
 		std::expected<mc2::sim::MissionReceipt, mc2::sim::OrderError> submitMissionOrder(

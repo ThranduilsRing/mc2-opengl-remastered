@@ -49,13 +49,22 @@ inline void heatFields(Archive& a, mc2::heat::State& v) {
 }
 struct MechRecord {
     MechData value{};
-    mc2::heat::State heat{}; // capacity/dissipation are derived, never serialized
+    mc2::heat::State heat{}; // capacity is recomputed from the two v2 inputs below
     std::uint32_t version = 1;
+    // v2 capacity inputs. Restore must not depend on a logistics name lookup.
+    std::int32_t chassisHeatPoints = 0, heatSinkAdjustmentPoints = 0;
     void load(BattleMech& mech) {
         mech.Load(&value); // reconstruct capacity, including on reused objects
         mech.heatState.heatMilli = heat.heatMilli;
         mech.heatState.alphaMask = heat.alphaMask;
         mech.heatState.alphaExpireTick = heat.alphaExpireTick;
+        if (version >= 2) { // saved inputs are authoritative; the logistics re-derive serves legacy records only
+            mech.chassisHeatPoints = std::clamp(chassisHeatPoints, 0, mc2::heat::maxLabPoints);
+            mech.heatSinkAdjustmentPoints = std::clamp(heatSinkAdjustmentPoints,
+                -mc2::heat::maxLabPoints, mc2::heat::maxLabPoints);
+            mech.heatCapacityRestored = true;
+            mech.recomputeHeatCapacity();
+        }
     }
     void serialize(Archive& a) {
         auto& v = value;
@@ -77,7 +86,7 @@ struct MechRecord {
         a(v.damageAfterDisabled, v.numArmorComponents, v.cBills);
         mechAppearanceFields(a, v.apData);
         if (a.reading()) v.damageThisFrame = 0;
-        if (version >= 2) heatFields(a, heat);
+        if (version >= 2) { heatFields(a, heat); a(chassisHeatPoints, heatSinkAdjustmentPoints); }
         else if (a.reading()) heat = {};
     }
 };

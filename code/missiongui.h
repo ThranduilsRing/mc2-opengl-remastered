@@ -58,7 +58,7 @@ using enum COMMAND_KEY_INDEX;
 void *gMalloc (long size);
 void gFree (void *me);
 
-inline constexpr int MAX_COMMAND = 107;
+inline constexpr int MAX_COMMAND = 108;
 //--------------------------------------------------------------------------------------
 struct UiCmdCtx;
 
@@ -383,6 +383,7 @@ public:
 		int attackMedium();
 		int attackLong();
 		int alphaStrike();
+		int alphaStrike(GameObjectPtr alphaTarget);
 		int defaultAttack();
 		int jump();
 		int stopJump();

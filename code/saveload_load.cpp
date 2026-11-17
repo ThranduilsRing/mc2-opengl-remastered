@@ -12,6 +12,7 @@
 #include "static_prop_prewarm.h"
 #include "render_resource_owners.h"
 #include "mc2fmt.h"
+#include "../GameOS/gameos/diagnostic_trace.h"
 #include "tex_resolve_table.h"
 #include "frame_jobs.h"
 #include "../GameAdapters/VegetationAdapter.h"
@@ -633,6 +634,16 @@ void Mission::loadLogistics(MissionLoadFrame& f) {
 
 	removeSaveScratchFile(tmpName);
 
+	// Legacy mech records were restored before the saved variants existed; re-derive their heat capacity now.
+	for (auto* mech : std::span(ObjectManager->mechs, ObjectManager->maxMechs))
+		if (mech && mech->getExists()) {
+			if (!mech->heatCapacityRestored) mech->rederiveHeatCapacity(); // legacy records only
+			if (mc2_diag::tagRequested("ALPHA_HEAT"))
+				mc2::fmt::print_err("[ALPHA_HEAT v1] event=load mech={} capacity={} heat={} mask={} expire={}\n",
+					mech->getWatchID(false), mech->heatState.capacity, mech->heatState.heatMilli,
+					mech->heatState.alphaMask.count(), mech->heatState.alphaExpireTick);
+		}
+
 	//-------------------------------------------------------------------------------------------
 	// Load the CurrentMission number in logistics cause Heidi don't save it with logisticsData.
 	long currentMissionNum = 0;
@@ -737,6 +748,7 @@ static void applySaveSections(std::string_view fileName, const mc2::save::Sectio
     } // default: the animation state the restored objects rebuilt from their own records
     if (const auto* orders = sections.find(mc2::save::tagOrders)) {
         mc2::save::Archive archive(orders->payload);
+        archive.sectionVersion = orders->version;
         auto queue = orderQueue;
         queue.serialize(archive);
         if (archive.finish()) orderQueue = std::move(queue);

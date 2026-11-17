@@ -531,6 +531,19 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 			}
 		}
 	}
+	else if (line.compare(0, 12, "order alpha ") == 0) {
+		const std::string arg = line.substr(12);
+		char* end = nullptr;
+		const long tid = strtol(arg.c_str(), &end, 10);
+		if (arg.empty() || !end || *end != '\0') {
+			note = "order alpha <targetPartId>";
+		} else {
+			GameObjectPtr tobj = ObjectManager->findByPartId(tid);
+			if (!tobj) { result = "blocked"; note = "no such target"; }
+			else if (alphaStrike(tobj)) result = "ok";
+			else { result = "blocked"; note = "no alpha order issued"; }
+		}
+	}
 	else if (line.compare(0, 13, "order attack ") == 0) {
 		const std::string arg = line.substr(13);
 		char* end = nullptr;
@@ -927,7 +940,7 @@ bool MissionInterfaceManager::uiCmdReadback(UiCmdCtx& c)
 		// FREEZE-MOVERS-1: frozen/frozenAt ride the EXISTING readback rather
 		// than adding a verb, so assert_mission can gate an A/B arm on "the
 		// movers really were pinned, at the frame I asked for".
-		mc2::fmt::to_buf(b, "  frame={:d} scenarioTime={:.2f} simSpeed={:.2f} fixedTimestep={:d} status={:d} paused={:d} movers={:d} frozen={:d} frozenAt={:d} missionFrame={:d}\n", mc2::fmt::as_u32(static_cast<unsigned long>(g_mc2FrameCounter.load(std::memory_order_relaxed))), static_cast<double>(scenarioTime), static_cast<double>(simSpeedGetMultiplier()), mc2::fmt::as_i32(SmokeMode::fixedTimestepEnabled() ? 1 : 0), mc2::fmt::as_i32(mission ? mission->getStatus() : -1L), mc2::fmt::as_i32(isPaused() ? 1 : 0), mc2::fmt::as_i32(ObjectManager ? ObjectManager->getNumMovers() : -1L), mc2::fmt::as_i32(mc2FreezeMoversActive()), mc2::fmt::as_i32(mc2FreezeMoversEngagedAt()), mc2::fmt::as_i32(mc2FreezeMoversMissionFrame()));
+		mc2::fmt::to_buf(b, "  frame={:d} scenarioTime={:.2f} simSpeed={:.2f} fixedTimestep={:d} status={:d} paused={:d} movers={:d} frozen={:d} frozenAt={:d} missionFrame={:d} movie={:d}\n", mc2::fmt::as_u32(static_cast<unsigned long>(g_mc2FrameCounter.load(std::memory_order_relaxed))), static_cast<double>(scenarioTime), static_cast<double>(simSpeedGetMultiplier()), mc2::fmt::as_i32(SmokeMode::fixedTimestepEnabled() ? 1 : 0), mc2::fmt::as_i32(mission ? mission->getStatus() : -1L), mc2::fmt::as_i32(isPaused() ? 1 : 0), mc2::fmt::as_i32(ObjectManager ? ObjectManager->getNumMovers() : -1L), mc2::fmt::as_i32(mc2FreezeMoversActive()), mc2::fmt::as_i32(mc2FreezeMoversEngagedAt()), mc2::fmt::as_i32(mc2FreezeMoversMissionFrame()), mc2::fmt::as_i32(eye && eye->inMovieMode ? 1 : 0));
 		extra += b;
 		if (Team::home) {
 			mc2::fmt::to_buf(b, "  objectives: status={:d}\n", mc2::fmt::as_i32(static_cast<int>(Team::home->objectives.Status())));

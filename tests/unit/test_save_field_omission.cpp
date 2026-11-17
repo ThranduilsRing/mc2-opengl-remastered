@@ -180,12 +180,13 @@ TEST_CASE("save fields: ORDQ nested payloads independent member census") {
     {
         using T = TacAttackParams;
         attack = save_probe::patterned<T>(&T::type, &T::method, &T::range, &T::tactic,
-            &T::aimLocation, &T::pursue, &T::obliterate, &T::targetPoint);
-        SAVE_FIELD_SHAPE(attack, type, method, range, tactic, aimLocation, pursue, obliterate, targetPoint);
+            &T::aimLocation, &T::pursue, &T::obliterate, &T::alpha, &T::targetPoint);
+        attack.method = mc2::sim::AttackMethod::Ranged;
+        SAVE_FIELD_SHAPE(attack, type, method, range, tactic, aimLocation, pursue, obliterate, alpha, targetPoint);
         CHECK(save_probe::memberBytes<T>(&T::type, &T::method, &T::range, &T::tactic,
-            &T::aimLocation, &T::pursue, &T::obliterate, &T::targetPoint) + 2 == sizeof(T));
+            &T::aimLocation, &T::pursue, &T::obliterate, &T::alpha, &T::targetPoint) + 1 == sizeof(T));
         CHECK(save_probe::roundtrip(attack, [](auto& a, auto& v) { a(v); }, &T::type,
-            &T::method, &T::range, &T::tactic, &T::aimLocation, &T::pursue, &T::obliterate, &T::targetPoint));
+            &T::method, &T::range, &T::tactic, &T::aimLocation, &T::pursue, &T::obliterate, &T::alpha, &T::targetPoint));
     }
     using T = mc2::sim::TacticalOrder;
 #define ORDER_MEMBERS &T::orderId, &T::origin, &T::kind, &T::unitOrder, &T::subOrder, \

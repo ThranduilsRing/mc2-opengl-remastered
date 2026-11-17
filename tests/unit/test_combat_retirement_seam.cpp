@@ -30,6 +30,13 @@ extern bool renderObjects;
 extern char TeamRelations[MAX_TEAMS][MAX_TEAMS];
 extern char versionStamp[];
 
+// MasterComponent keeps form/health private; the explicit-instantiation access trick (no layout or ODR change) lets fixtures seed them.
+template <class Tag, auto Member> struct ComponentPeek { friend constexpr decltype(Member) peek(Tag) { return Member; } };
+struct PeekForm { friend constexpr ComponentFormType MasterComponent::* peek(PeekForm); };
+struct PeekHealth { friend constexpr char MasterComponent::* peek(PeekHealth); };
+template struct ComponentPeek<PeekForm, &MasterComponent::form>;
+template struct ComponentPeek<PeekHealth, &MasterComponent::health>;
+
 TEST_CASE("heat production/real mech Save and Load preserve heat on reused objects and clear legacy state") {
     using namespace mc2::save;
     struct Mech : BattleMech {
@@ -44,7 +51,7 @@ TEST_CASE("heat production/real mech Save and Load preserve heat on reused objec
     SensorManager->init(false);
     auto* oldComponents = MasterComponent::masterList;
     MasterComponent component;
-    component.stats.sensor.range = 0;
+    component.setSensorRange(0);
     MasterComponent::masterList = &component;
     auto* oldPilot = MechWarrior::warriorList[0];
     MechWarrior pilot;
@@ -61,6 +68,7 @@ TEST_CASE("heat production/real mech Save and Load preserve heat on reused objec
         mech.heatState.heatMilli = 12345;
         mech.heatState.alphaMask.set(64); mech.heatState.alphaMask.set(71);
         mech.heatState.alphaExpireTick = 777;
+        mech.chassisHeatPoints = 30; mech.heatSinkAdjustmentPoints = 12; // lab sinks the legacy inventory omits; this fixture has no logistics
         PacketFile file;
         REQUIRE(file.create(path.c_str()) == NO_ERR);
         file.reserve(1); mech.Save(&file, 0); file.close();
@@ -74,10 +82,12 @@ TEST_CASE("heat production/real mech Save and Load preserve heat on reused objec
         REQUIRE(saved.version == 2);
         for (int repeat = 0; repeat < 2; ++repeat) {
             mech.heatState.heatMilli = 99999; mech.heatState.alphaMask.set();
+            mech.chassisHeatPoints = mech.heatSinkAdjustmentPoints = 0;
             saved.load(mech);
             CHECK(mech.heatState.heatMilli == 12345);
             CHECK(mech.heatState.alphaMask == saved.heat.alphaMask);
             CHECK(mech.heatState.alphaExpireTick == 777);
+            CHECK(mech.heatSinkAdjustmentPoints == 12); CHECK(mech.heatState.capacity == 42000);
             releaseSensor();
         }
         saved.version = 1;
@@ -86,6 +96,7 @@ TEST_CASE("heat production/real mech Save and Load preserve heat on reused objec
         saved.load(mech);
         CHECK(mech.heatState.heatMilli == 0); CHECK(mech.heatState.alphaMask.none());
         CHECK(mech.heatState.alphaExpireTick == 0);
+        CHECK(mech.heatSinkAdjustmentPoints == 0); // legacy records re-derive
         releaseSensor();
         MechData native = saved.value; // native legacy ABI, without an extension
         mech.heatState.heatMilli = 123; mech.heatState.alphaMask.set(); mech.heatState.alphaExpireTick = 9;
@@ -95,6 +106,64 @@ TEST_CASE("heat production/real mech Save and Load preserve heat on reused objec
         releaseSensor();
     }
     std::filesystem::remove(path);
+    MechWarrior::warriorList[0] = oldPilot;
+    MasterComponent::masterList = oldComponents;
+    SensorManager = std::move(oldSensors);
+    GameObject::initialize = oldInitialize;
+}
+
+TEST_CASE("heat production/capacity re-derive keeps heat and tracks sink loss and recovery") {
+    using namespace mc2::save;
+    struct Mech : BattleMech {
+        BattleMechType type;
+        Mech() { type.setAppearanceTypeName("heat-capacity-test-missing"); }
+        ObjectTypePtr getObjectType() override { return &type; }
+    };
+    const bool oldInitialize = GameObject::initialize;
+    GameObject::initialize = true;
+    auto oldSensors = std::move(SensorManager);
+    SensorManager = std::make_unique<SensorSystemManager>();
+    SensorManager->init(false);
+    auto* oldComponents = MasterComponent::masterList;
+    MasterComponent components[2];
+    components[0].setSensorRange(0);
+    components[1].*peek(PeekForm{}) = COMPONENT_FORM_HEATSINK;
+    components[1].*peek(PeekHealth{}) = 1;
+    components[1].setHeatDissipation(3.0f);
+    MasterComponent::masterList = components;
+    auto* oldPilot = MechWarrior::warriorList[0];
+    MechWarrior pilot;
+    MechWarrior::warriorList[0] = &pilot;
+    {
+        Mech mech;
+        MechRecord seed;
+        seed.value.teamId = -1;
+        seed.value.screenPos = Stuff::Vector4D(0, 0, 0, 0);
+        seed.load(mech);
+        SensorManager->freeSensor(mech.sensorSystem); mech.sensorSystem = nullptr;
+        mech.numOther = 1;
+        mech.inventory[0].masterID = 1;
+        mech.inventory[0].health = 1;
+        mech.inventory[0].disabled = false;
+        mech.rederiveHeatCapacity();
+        const auto full = mech.heatState.capacity;
+        CHECK(full > 0);
+        mech.heatState.heatMilli = 555; mech.heatState.alphaMask.set(3); mech.heatState.alphaExpireTick = 42;
+        mech.inventory[0].disabled = true; // sink destroyed
+        mech.recomputeHeatCapacity();
+        CHECK(mech.heatState.capacity < full);
+        mech.inventory[0].disabled = false; // Mover::recover / repairAll restore it
+        mech.recomputeHeatCapacity();
+        CHECK(mech.heatState.capacity == full);
+        mech.rederiveHeatCapacity(); // post-logistics save-load pass
+        CHECK(mech.heatState.capacity == full);
+        CHECK(mech.heatState.heatMilli == 555);
+        CHECK(mech.heatState.alphaMask.test(3));
+        CHECK(mech.heatState.alphaExpireTick == 42);
+        mech.restoreHeatCapacity(); // object restore path still starts cold
+        CHECK(mech.heatState.heatMilli == 0);
+        CHECK(mech.heatState.capacity == full);
+    }
     MechWarrior::warriorList[0] = oldPilot;
     MasterComponent::masterList = oldComponents;
     SensorManager = std::move(oldSensors);

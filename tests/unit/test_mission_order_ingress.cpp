@@ -1,6 +1,7 @@
 #include "doctest.h"
 #include "mission_init_frame.h"
 #include "tactical_order_queue.h"
+#include "heat_model.h"
 
 #include <algorithm>
 
@@ -49,8 +50,30 @@ struct ActorAccess {
         return binding.resolve(ref, [&](std::uint32_t) { return &actor; }, actor.watchId);
     }
     float simulationTime() const { return 12.5f; }
+    bool admitsAlpha(ActorEndpoint* recipient) const {
+        mc2::heat::State state; state.capacity = recipient->mobile ? 10000 : 0;
+        mc2::heat::Salvo salvo;
+        if (recipient->exists && !recipient->disabled) salvo.include(0, 4.9f);
+        return state.admits(salvo);
+    }
 };
 using ProductionAdapter = MoverOrderApplication<::TacticalOrder, ActorAccess>;
+struct AlphaAccess : ActorAccess {
+    mc2::heat::State& heat;
+    bool admitsAlpha(ActorEndpoint*) const {
+        mc2::heat::Salvo salvo; salvo.include(0, 4.9f);
+        return heat.admits(salvo);
+    }
+    std::uint32_t validatePlayer(const OrderEnvelope&) const { return 0; }
+    ApplicationOutcome applyPlayer(const OrderEnvelope& e, ObjectRef) const {
+        CHECK(e.payload.kind == OrderKind::AttackObject);
+        CHECK(e.payload.attack->alpha);
+        mc2::heat::Salvo salvo; salvo.include(0, 4.9f);
+        REQUIRE(heat.arm(salvo, 0, mc2::heat::Profile{}));
+        ++actor.calls;
+        return {RecipientStatus::Applied, 0};
+    }
+};
 struct LiveIngress {
     MissionOrderIngress ingress;
     ActorEndpoint actor;
@@ -82,6 +105,54 @@ struct LiveIngress {
 }
 
 TEST_SUITE("MissionOrderIngress") {
+TEST_CASE("player ranged alpha attack object is admitted and applied on its tick") {
+    LiveIngress live;
+    mc2::heat::State heat; heat.capacity = 10000;
+    MoverOrderApplication<::TacticalOrder, AlphaAccess> adapter{{{live.actor, live.binding}, heat}};
+    REQUIRE(live.ingress.queue().registerSource({2, SourceKind::UI}));
+    auto e = live.order(); e.sourceId = 2; e.payload.move.reset();
+    e.payload.origin = OrderOrigin::Player; e.payload.kind = OrderKind::AttackObject;
+    e.payload.target = ObjectRef{2,1}; e.payload.attack.emplace().alpha = true;
+    e.payload.attack->method = mc2::sim::AttackMethod::Ranged;
+    const auto receipt = live.ingress.submit(live.ingress.session(), e, adapter);
+    REQUIRE(receipt); CHECK(live.actor.calls == 0);
+    REQUIRE(live.ingress.beginSimulationTick(true, false, false, adapter));
+    CHECK(live.ingress.queue().receipts().front().applyTick == 1);
+    CHECK(live.ingress.queue().receipts().front().applicationStatus == ApplicationStatus::Installed);
+    CHECK(live.actor.calls == 1); CHECK(heat.alphaMask.any());
+    REQUIRE(live.ingress.completeSimulationTick());
+}
+TEST_CASE("second alpha while the salvo is armed is a handler failure") {
+    LiveIngress live;
+    mc2::heat::State heat; heat.capacity = 10000; heat.alphaMask.set(0);
+    MoverOrderApplication<::TacticalOrder, AlphaAccess> adapter{{{live.actor, live.binding}, heat}};
+    auto e = live.order(); e.payload.origin = OrderOrigin::Player;
+    e.payload.kind = OrderKind::AttackObject; e.payload.attack.emplace().alpha = true;
+    CHECK(adapter.validateRecipient(e, {1,1}, 0) ==
+        static_cast<std::uint32_t>(MoverOrderRejection::HandlerFailure));
+}
+TEST_CASE("alpha from a non-player origin or a non-ranged method is unsupported") {
+    LiveIngress live;
+    auto e = live.order(); e.payload.kind = OrderKind::AttackObject;
+    e.payload.attack.emplace().alpha = true;
+    CHECK(live.adapter.validateRecipient(e, {1,1}, 0) ==
+        static_cast<std::uint32_t>(MoverOrderRejection::UnsupportedPayload));
+    e.payload.origin = OrderOrigin::Player; e.payload.attack->method = mc2::sim::AttackMethod::DFA;
+    CHECK(live.adapter.validateRecipient(e, {1,1}, 0) ==
+        static_cast<std::uint32_t>(MoverOrderRejection::UnsupportedPayload));
+}
+TEST_CASE("alpha admission uses the production validator and rechecks live state") {
+    LiveIngress live;
+    auto e = live.order(); e.payload.origin = OrderOrigin::Player;
+    e.payload.kind = OrderKind::AttackPoint; e.payload.attack.emplace().alpha = true;
+    CHECK(live.adapter.validateRecipient(e, {1,1}, 0) == 0);
+    live.actor.mobile = false;
+    CHECK(live.adapter.validateRecipient(e, {1,1}, 0) != 0);
+    live.actor.mobile = true; live.actor.disabled = true;
+    CHECK(live.adapter.validateRecipient(e, {1,1}, 0) != 0);
+    live.actor.disabled = false; e.payload.attack->method = mc2::sim::AttackMethod::DFA;
+    CHECK(live.adapter.validateRecipient(e, {1,1}, 0) != 0);
+}
 TEST_CASE("production admission permission malformed payload and typed legacy conversion") {
     LiveIngress live;
     auto wrong = live.order(); wrong.issuer = CommanderId{8};

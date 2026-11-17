@@ -334,9 +334,14 @@ class BattleMech : public Mover {
 		mc2::heat::State heatState;
 		int chassisHeatPoints = 0;
 		int heatSinkAdjustmentPoints = 0; // logical lab sinks minus legacy inventory sinks
+		bool heatCapacityRestored = false; // set by a MECH v2 restore; cleared by restoreHeatCapacity
 		static mc2::heat::Profile heatProfile;
 		void recomputeHeatCapacity();
+		mc2::heat::Salvo alphaSalvo();
+		bool canAlphaStrike();
+		bool armAlphaStrike();
 		void restoreHeatCapacity();
+		void rederiveHeatCapacity();
 		void setHeatLoadout(std::span<const long> components);
 
 		char				chassisClass;					// none, light, medium, heavy, assault

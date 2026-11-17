@@ -16,7 +16,7 @@ CENSUS(WayPath, numPoints, curPoint, points, mode)
 CENSUS(TacOrderMoveParams, wayPath, faceObject, wait, mode, escapeTile, jump,
     fromArea, keepMoving)
 CENSUS(TacOrderAttackParams, type, method, range, tactic, aimLocation, pursue,
-    obliterate, targetPoint)
+    obliterate, alpha, targetPoint)
 CENSUS(TacticalOrder, id, time, delayedTime, lastTime, unitOrder, subOrder,
     origin, code, moveParams, attackParams, targetWID, targetObjectClass,
     selectionIndex, stage, statusCode, lastMoveGoal, pointLocalMoverId, groupFlags, data)
@@ -99,6 +99,9 @@ void fillAll(MechWarriorData& v) {
     for (auto& t : v.tacOrder) t.moveParams.wayPath.numPoints = MAX_WAYPTS;
     v.lastTacOrder.moveParams.wayPath.numPoints = MAX_WAYPTS;
     v.curTacOrder.moveParams.wayPath.numPoints = MAX_WAYPTS;
+    for (auto& t : v.tacOrder) { t.attackParams.method = ATTACKMETHOD_RANGED; t.attackParams.alpha = true; }
+    v.lastTacOrder.attackParams.method = v.curTacOrder.attackParams.method = ATTACKMETHOD_RANGED;
+    v.lastTacOrder.attackParams.alpha = v.curTacOrder.attackParams.alpha = true;
 }
 }
 

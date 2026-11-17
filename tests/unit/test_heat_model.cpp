@@ -1,8 +1,53 @@
 #include "doctest.h"
 #include "heat_model.h"
+#include "mech_value_codec.h"
 #include <array>
 
 using namespace mc2::heat;
+
+TEST_CASE("heat/alpha admission accounts per-component truncation and wide sums") {
+    State state;
+    state.capacity = 7000;
+    Salvo salvo;
+    salvo.include(4, 3.9f); salvo.include(71, 4.8f);
+    CHECK(salvo.cost == 7000);
+    CHECK(state.admits(salvo));
+    state.heatMilli = 1; CHECK_FALSE(state.admits(salvo));
+    state.heatMilli = 0; CHECK_FALSE(state.admits(Salvo{}));
+    CHECK(weaponCost(0.99f) == 0);
+    Salvo huge;
+    for (int i = 0; i < inventorySize; ++i) huge.include(i, float(INT32_MAX));
+    CHECK(huge.cost > INT32_MAX);
+    state.capacity = INT32_MAX; CHECK_FALSE(state.admits(huge));
+}
+
+TEST_CASE("heat/alpha arms once and charges only discharged weapons before expiry") {
+    State state;
+    state.capacity = 10000;
+    Salvo salvo; salvo.include(4, 3.9f); salvo.include(71, 4.8f);
+    REQUIRE(state.arm(salvo, 10, Profile{}));
+    CHECK_FALSE(state.arm(salvo, 10, Profile{})); // same-tick duplicate/replacement
+    CHECK(state.alphaExpireTick == 70);
+    mc2::save::Archive writer; mc2::save::heatFields(writer, state);
+    State reloaded; reloaded.capacity = state.capacity;
+    mc2::save::Archive reader(writer.bytes()); mc2::save::heatFields(reader, reloaded);
+    REQUIRE(reader.finish());
+    CHECK_FALSE(reloaded.arm(salvo, 11, Profile{}));
+    CHECK(reloaded.alphaExpireTick == 70);
+    CHECK(state.discharge(4, 3.9f, 11) == 3000); // hit or ordinary miss
+    CHECK(state.discharge(4, 3.9f, 11) == 0);
+    CHECK(state.heatMilli == 3000);
+    CHECK_FALSE(state.arm(salvo, 12, Profile{})); // pending salvo cannot be overwritten
+    state.capacity = 1000; // lost sink: an already armed shot still pays its heat
+    CHECK(state.discharge(71, 4.8f, 69) == 4000);
+    CHECK(state.heatMilli == 7000);
+    state = {}; state.capacity = 10000;
+    REQUIRE(state.arm(salvo, 10, Profile{}));
+    state.expire(69); CHECK(state.alphaMask.any());
+    // Streak no-fire never calls discharge. Expiry is inclusive and costs nothing.
+    CHECK(state.discharge(4, 3.9f, 70) == 0);
+    CHECK(state.alphaMask.none()); CHECK(state.heatMilli == 0);
+}
 
 TEST_CASE("heat/capacity matches lab integer accumulation") {
     // Stock chassis Heat Index (atlas.csv row 4 col 5) and single/double/Clan sinks.

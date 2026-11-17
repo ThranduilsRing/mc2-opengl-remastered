@@ -371,9 +371,10 @@ void Mission::save (mc2::czstring saveFileName)
     }
     {
         mc2::save::Archive orders;
+        orders.sectionVersion = 2;
         orderIngress.queue().serialize(orders);
         if (!orders.good()) Fatal(0, "ORDQ save section failed");
-        sections.add(mc2::save::tagOrders, 1, true, orders.bytes());
+        sections.add(mc2::save::tagOrders, 2, true, orders.bytes());
     }
     if (auto brain = mc2::save::saveBrainSection(); !brain.empty())
         sections.add(mc2::save::tagBrain, mc2::save::brainSectionVersion, false, std::move(brain));

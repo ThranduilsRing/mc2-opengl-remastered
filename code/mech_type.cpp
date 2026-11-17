@@ -32,7 +32,7 @@ static void loadHeatProfile() {
 	}
 	BattleMech::heatProfile = *valid;
 	MC2_LOG(Sim, Info, "Heat profile=1 cool={} window={} ai=0 thresholds=0", p.coolSeconds, p.alphaWindowTicks);
-	// TODO(alpha-order-1): include heat.fit in the content digest with protocol 4.
+	// net::contentHash includes loose data/**/*.fit, including this profile.
 }
 
 
