@@ -568,13 +568,13 @@ void drawMainMenu(bool showCredits) {
     }
     if (!base.empty()) ImGui::TextWrapped("Required base: %s", base.c_str());
     if (!texture.empty()) ImGui::TextWrapped("Texture pack: %s", texture.c_str());
-    std::string selectedTitle = campaign.empty() ? "Stock campaign" : campaignFit;
+    std::string selectedTitle = campaign.empty() && campaignFit == "campaign" ? "Stock campaign" : campaignFit;
     for (const auto& pack : packs) if (pack.id == campaign && pack.campaigns.contains(campaignFit))
         selectedTitle = campaignTitle("", pack.campaigns.at(campaignFit).title, campaignFit);
     ImGui::SeparatorText("CAMPAIGN SETUP");
     ImGui::PushItemWidth(235 * scale);
     if (ImGui::BeginCombo("Campaign", selectedTitle.c_str())) {
-        for (const auto& choice : campaignChoices(packs)) {
+        for (const auto& choice : campaignChoices(packs, campaigns(""))) {
             ImGui::PushID(choice.pack.c_str());
             ImGui::PushID(choice.fit.c_str());
             if (ImGui::Selectable(choice.title.c_str(), campaign == choice.pack && campaignFit == choice.fit)) {

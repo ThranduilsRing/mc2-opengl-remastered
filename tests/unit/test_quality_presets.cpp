@@ -26,6 +26,18 @@ TEST_CASE("campaign picker/all pack FIT pairs select independently including sto
 }
 
 // Trigger: GuiRuntime/PlayerSettings.h and PlayerFrontEnd.cpp selection/restart handling.
+TEST_CASE("campaign picker/discovered stock FITs retain archived fallback and deduplicate") {
+    using namespace PlayerFrontEnd;
+    struct Pack { std::string id, kind; std::map<std::string, CampaignInfo> campaigns; };
+    const auto choices = campaignChoices(std::vector<Pack>{}, {"campaign", "second", "second"});
+    REQUIRE(choices.size() == 2);
+    CHECK((choices[0].pack.empty() && choices[0].fit == "campaign"));
+    CHECK((choices[1].pack.empty() && choices[1].fit == "second" && choices[1].title == "second"));
+    std::string pack = "addon", fit;
+    selectCampaign(choices[1], pack, fit);
+    CHECK((pack.empty() && fit == "second"));
+}
+
 TEST_CASE("campaign picker/disable invalid enabled addon") {
     using namespace PlayerFrontEnd;
     CHECK(packToggleAllowed(true, "Missing dependency"));

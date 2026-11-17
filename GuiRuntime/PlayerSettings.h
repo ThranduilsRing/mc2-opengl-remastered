@@ -90,8 +90,13 @@ struct CampaignChoice {
     std::string pack, fit, title;
 };
 template<class Packs>
-std::vector<CampaignChoice> campaignChoices(const Packs& packs) {
+std::vector<CampaignChoice> campaignChoices(const Packs& packs, const std::vector<std::string>& stockFits = {}) {
     std::vector<CampaignChoice> choices{{"", "campaign", "Stock campaign"}};
+    for (const auto& fit : stockFits) {
+        bool found = false;
+        for (const auto& choice : choices) if (choice.fit == fit) found = true;
+        if (!found) choices.push_back({"", fit, fit});
+    }
     for (const auto& pack : packs) {
         if (pack.kind != "campaign") continue;
         for (const auto& [fit, info] : pack.campaigns)

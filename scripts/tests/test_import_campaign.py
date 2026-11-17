@@ -103,6 +103,25 @@ def test_mc2x_coverage_pack_over_compat_all_first_missions(sample, damage):
     assert not list((deploy / "mods").glob("synthetic-*"))
 
 
+def test_direct_import_compat_table_prefers_loose_over_archive(sample, monkeypatch):
+    import mc2x_import as mc2x
+    import transfer_mc2x_campaign as transfer
+    source, deploy = sample
+    deploy = deploy / "direct"
+    loose = source / "data/objects/object2.pak"
+    table(loose)
+    (source / "misc.fst").touch()
+    archived = b"stale archived table"
+    monkeypatch.setattr(transfer.fst, "fst_entries", lambda _: [
+        (0, 0, len(archived), "data/objects/object2.pak", False, archived)])
+    monkeypatch.setattr(transfer.fst, "decompress_entry", lambda *args: args[-1])
+    monkeypatch.setattr(mc2x, "validate_source", lambda _: ([], []))
+    monkeypatch.setattr(mc2x, "load_recipe", lambda: {"mods": {"mc2x-compat": [
+        {"t": "data/objects/object2.pak", "fst": "misc.fst", "s": "data/objects/object2.pak"}]}})
+    assert mc2x.main(["--source", str(source), "--deploy", str(deploy), "--force"]) == 0
+    assert (deploy / "mods/mc2x-compat/data/objects/object2.pak").read_bytes() == loose.read_bytes()
+
+
 @pytest.mark.parametrize("existing", [False, True])
 def test_missing_table_fails_new_and_unchanged_with_existing_compat(sample, existing):
     source, deploy = sample

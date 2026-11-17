@@ -25,6 +25,7 @@ _BASE = getattr(sys, "_MEIPASS", _HERE)   # bundle root when frozen, else this f
 sys.path.insert(0, _BASE if _FROZEN else _HERE)
 import fst        # local: FST/pak read helpers
 import manifest   # local: provenance + marker
+from transfer_mc2x_campaign import asset_bytes
 
 RECIPE_PATH = os.path.join(_BASE, "mc2x_recipe.json")
 SHIMS_DIR = os.path.join(_BASE, "shims")
@@ -72,6 +73,13 @@ def extract_mod(source, deploy, mod_id, entries):
     by_fst = {}   # fst_name -> {src_name_lower: [target_rel, ...]}
     for e in entries:
         fstn, src, tgt = e["fst"], e["s"], e["t"]
+        if tgt.lower() == "data/objects/object2.pak":
+            content = asset_bytes([source], src)
+            if content is None:
+                missing.append(tgt)
+            else:
+                written.append(_write(root, tgt, content))
+            continue
         if fstn == "loose":
             sp = os.path.join(source, src.replace("/", os.sep))
             if os.path.isfile(sp):
