@@ -152,6 +152,100 @@ def test_capture_identity_ignores_shader_sources_not_data():
     assert ab.manifest_mismatches(a, {**b, "data/a.fit": "d2"}) == ["differs: data/a.fit (A d1 vs B d2)"]
 
 
+def test_game_identity_excludes_only_editor_owned_rows(monkeypatch):
+    monkeypatch.setattr(ab.asset_parity, "intentional_changes", lambda *a: {})
+    editor = {p: "a" * 64 for p in ("Mission Editor.exe", "Mission Editor.pdb", "run-editor.bat",
+                                     "tools/terrain_gen/tool.py")}
+    game = {"mc2.exe": "e" * 64, "data/ui.fit": "a" * 64, "run-mc2.bat": "b" * 64}
+    assert ab.candidate_mismatches({**editor, **game}, game, "a" * 40) == []
+    assert ab.candidate_mismatches(game, {**editor, **game}, "a" * 40) == []
+    changed = {**game, "data/ui.fit": "c" * 64}
+    assert [p for p, _ in ab.candidate_mismatches(game, changed, "a" * 40)] == ["data/ui.fit"]
+    assert [p for p, _ in ab.candidate_mismatches(game, {}, "a" * 40)] == ["data/ui.fit", "run-mc2.bat"]
+
+
+@pytest.mark.parametrize("rel", ["Mission Editor.exe", "Mission Editor.pdb", "run-editor.bat",
+                                 "tools/terrain_gen/tool.py"])
+@pytest.mark.parametrize("archived", [False, True], ids=["install", "archived-capture"])
+def test_game_identity_rejects_changed_shared_editor_rows(tmp_path, repo, monkeypatch, capsys, rel, archived):
+    monkeypatch.setattr(ab.asset_parity, "intentional_changes", lambda *a: {})
+    installs = [_install(tmp_path / side, repo[0], data={rel: value})
+                for side, value in (("a", "original bytes"), ("b", "changed bytes"))]
+    if archived:
+        captures = [tmp_path / (side + "-capture") for side in ("a", "b")]
+        for install, capture_dir in zip(installs, captures):
+            ab.stamp_identity(capture_dir, ab.payload_identity(install))
+        with pytest.raises(SystemExit, match="differs: " + rel):
+            ab.main(["--compare-only", *map(str, captures), "--out-root", str(tmp_path / "cmp")])
+    else:
+        assert any("differs: " + rel in p for p in ab.base_problems(install_a=installs[0], install_b=installs[1]))
+    assert "ABSENT-BY-DESIGN" not in capsys.readouterr().out
+
+
+def test_game_identity_case_mismatched_editor_row_is_not_absent(capsys):
+    # Carbon P2: the same editor file spelled differently on each side must not be excused as absent-by-design.
+    a = {"mc2.exe": "e" * 64, "Mission Editor.exe": "a" * 64}
+    b = {"mc2.exe": "e" * 64, "mission editor.exe": "b" * 64}
+    lines = dict(ab._data_mismatch_entries(a, b, target="game"))
+    assert "Mission Editor.exe" in lines and "mission editor.exe" in lines
+    assert "ABSENT-BY-DESIGN" not in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("replacement", [None, "b" * 64])
+def test_editor_identity_requires_authoring_files(monkeypatch, replacement):
+    monkeypatch.setattr(ab.asset_parity, "intentional_changes", lambda *a: {})
+    rel = "tools/terrain_gen/tool.py"
+    a = {"Mission Editor.exe": "e" * 64, rel: "a" * 64}
+    b = {"Mission Editor.exe": "f" * 64, **({rel: replacement} if replacement else {})}
+    assert rel in dict(ab.candidate_mismatches(a, b, "a" * 40))
+    # Even a shared game/editor install stays strict when comparing the editor target.
+    assert rel in dict(ab.candidate_mismatches({**a, "mc2.exe": "e" * 64},
+                                             {**b, "mc2.exe": "e" * 64}, "a" * 40, target="editor"))
+
+
+@pytest.mark.parametrize("rel,after,accepted", [
+    ("data/ui.fit", b"first\nsecond\n", True),
+    ("data/ui.fit", b"first\nseconX\n", False),
+    ("data/binary.fit", b"first\nsecond\n\0", False),
+    ("data/control.fit", b"first\nsecond\n\x01", False),
+    ("data/undefined.fit", b"first\nsecond\n\x81", False),
+    ("data/cp1252.fit", b"first\nsecond\n\x93", True),
+    ("data/utf8.fit", "first\nsecond\n\u00e9".encode(), True),
+    *[("data/file." + ext, b"first\nsecond\n", False)
+      for ext in ("exe", "dll", "pdb", "spv", "ktx2", "png", "tga", "bin")],
+])
+def test_eol_identity_is_narrow_and_logged(tmp_path, monkeypatch, capsys, rel, after, accepted):
+    monkeypatch.setattr(ab.asset_parity, "intentional_changes", lambda *a: {})
+    monkeypatch.setattr(ab, "ROOT", tmp_path / "absent-checkout")
+    installs = [tmp_path / side for side in ("a", "b")]
+    manifests = []
+    before = after.replace(b"\n", b"\r\n") if rel != "data/ui.fit" else b"first\r\nsecond\r\n"
+    for install, content in zip(installs, (before, after)):
+        path = install / rel
+        path.parent.mkdir(parents=True)
+        path.write_bytes(content)
+        manifests.append({rel: hashlib.sha256(content).hexdigest()})
+    receipt = []
+    mismatches = ab.candidate_mismatches(*manifests, "a" * 40, installs[1], installs[0],
+                                       install_a=installs[0], identity_receipt=receipt)
+    assert (mismatches == []) == accepted
+    if accepted:
+        expected = dict(path=rel, sha256_A=manifests[0][rel], sha256_B=manifests[1][rel],
+                        normalized_sha256=hashlib.sha256(after).hexdigest())
+        assert receipt == [expected]
+        output = capsys.readouterr().out
+        assert "EOL-ONLY" in output and all(str(value) in output for value in expected.values())
+        ab.compare(installs[0], installs[1], tmp_path / "cmp", [], identity_receipt=receipt)
+        assert json.loads((tmp_path / "cmp/summary.json").read_text())["eol_equivalences"] == [expected]
+        # Historical captures can use checkout bytes only when both raw hashes reconstruct exactly.
+        monkeypatch.setattr(ab, "ROOT", installs[1])
+        assert ab.candidate_mismatches(*manifests, "a" * 40, baseline=tmp_path / "absent") == []
+        (installs[1] / rel).write_bytes(b"stale manifest\n")
+        assert ab.candidate_mismatches(*manifests, "a" * 40, installs[1], installs[0])
+    else:
+        assert receipt == []
+
+
 def test_capture_identity_skips_only_deployed_shader_dirs():
     # W137: shaders/include and shaders/spv ship with the exe like shaders/vulkan; any other file under shaders/ still refuses.
     a = {"shaders/include/x.hglsl": "h1", "shaders/spv/p.pkg": "p1", "shaders/lut.dat": "l1", "shaders/fixtures/f.bin": "f1"}
