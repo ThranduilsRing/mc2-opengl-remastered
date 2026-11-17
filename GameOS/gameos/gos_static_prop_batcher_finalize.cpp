@@ -72,7 +72,7 @@ void GpuStaticPropBatcher::publishGeometry() {
 
     s_sharedVboBytes = static_cast<uint64_t>(s_stagingVbo.size());
     s_sharedIboBytes = static_cast<uint64_t>(s_stagingIbo.size()) * sizeof(uint32_t);
-    if (mc2_diag::tagRequested("LOAD_LAPS") || std::getenv("MC2_DEBUG_STATE_DUMP")) {
+    if (mc2_diag::tagRequested("LOAD_LAPS") || mc2::gate::get<"MC2_DEBUG_STATE_DUMP">()) {
         // Canonical LE fields, no pointers/padding. Hash each complete stream once in every run.
         std::vector<uint8_t> bytes;
         for (uint32_t index : s_stagingIbo) mc2cache::putLE(bytes, index, 4);

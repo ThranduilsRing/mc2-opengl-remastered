@@ -21,8 +21,8 @@ bool valid(const PropMeshBlob& b) {
 bool canAppend(const PropMeshBlob& b, size_t vertexBytes, size_t indexCount, size_t packetCount) {
     constexpr auto u32 = std::numeric_limits<uint32_t>::max();
     constexpr auto i32 = std::numeric_limits<int32_t>::max();
-    return valid(b) && vertexBytes % kVertexStride == 0 && vertexBytes / kVertexStride <= size_t(i32) &&
-        b.vertices.size() / kVertexStride <= size_t(i32) - vertexBytes / kVertexStride &&
+    return valid(b) && vertexBytes % kVertexStride == 0 && vertexBytes / kVertexStride <= static_cast<size_t>(i32) &&
+        b.vertices.size() / kVertexStride <= static_cast<size_t>(i32) - vertexBytes / kVertexStride &&
         indexCount <= u32 && b.indices.size() <= u32 - indexCount &&
         packetCount <= u32 && b.packets.size() <= u32 - packetCount;
 }
@@ -33,8 +33,8 @@ std::vector<uint8_t> encode(uint64_t source, const PropMeshBlob& b) {
     std::vector<uint8_t> out;
     out.reserve(static_cast<size_t>(size));
     for (uint32_t x : {0x424d5050u, kVersion, kProducer, kVertexStride}) mc2cache::putLE(out, x, 4);
-    for (uint64_t x : {source, uint64_t(0), uint64_t(b.vertices.size()), uint64_t(b.indices.size()),
-                      uint64_t(b.packets.size()), b.triangles, std::bit_cast<uint64_t>(b.missesBefore),
+    for (uint64_t x : {source, static_cast<uint64_t>(0), static_cast<uint64_t>(b.vertices.size()), static_cast<uint64_t>(b.indices.size()),
+                      static_cast<uint64_t>(b.packets.size()), b.triangles, std::bit_cast<uint64_t>(b.missesBefore),
                       std::bit_cast<uint64_t>(b.missesAfter)}) mc2cache::putLE(out, x, 8);
     out.insert(out.end(), b.vertices.begin(), b.vertices.end());
     for (auto i : b.indices) mc2cache::putLE(out, i, 4);

@@ -29,7 +29,7 @@ template<class Vertex, class Triangle>
 uint64_t key(std::span<const Vertex> vertices, std::span<const Triangle> triangles,
              bool selfLitTwoSided, bool alphaTestOn) {
     std::vector<uint8_t> header;
-    for (uint32_t v : {kVersion, kProducer, kVertexStride, uint32_t(selfLitTwoSided), uint32_t(alphaTestOn)})
+    for (uint32_t v : {kVersion, kProducer, kVertexStride, static_cast<uint32_t>(selfLitTwoSided), static_cast<uint32_t>(alphaTestOn)})
         mc2cache::putLE(header, v, 4);
     mc2cache::putLE(header, vertices.size(), 8);
     mc2cache::putLE(header, triangles.size(), 8);

@@ -246,7 +246,7 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
     // preserving authored triangle order. Reuse byte-identical packed vertices:
     // corner UV seams, source vertex IDs/light tags and reversed card normals
     // remain separate, while dense imported meshes keep GPU vertex-cache reuse.
-    const bool laps = mc2_diag::tagRequested("LOAD_LAPS") || std::getenv("MC2_DEBUG_STATE_DUMP");
+    const bool laps = mc2_diag::tagRequested("LOAD_LAPS") || mc2::gate::get<"MC2_DEBUG_STATE_DUMP">();
     uint64_t blobKey;
     {
         MC2_LOAD_SCOPE("cook.prop.key");
