@@ -2552,4 +2552,9 @@ void MechLabScreen::drawLocationView( float tbSx, float tbSy, float tbOx, float 
 		if ( cand )
 			text( { r.x + 2, r.y + r.h - 14, r.w - 4, 13 }, s_locReason[p].c_str(), s_locLegal[p] ? 0xff60ff90 : 0xffff7070, 10.f, 0 );
 	}
+	// The combo text is composited later; cover every panel beneath its expanded list.
+	if ( variantList.ListBox().isShowing() ) {
+		const auto& list = variantList.ListBox();
+		fill( { list.left(), list.top(), list.width(), list.height() }, 0xff101820, true );
+	}
 }
