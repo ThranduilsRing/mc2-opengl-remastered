@@ -962,17 +962,32 @@ def report_lint_row(label: str, rc: int, secs: float, tail: str, hint: str) -> N
 REGEN_WORKERS = 4   # regenerate_all's inner pool; counted against a lint's CPU budget
 
 
-def lint(root: str, ref: str, runner=None) -> int:
+def merge_target(root: str, base: str | None = None) -> str:
+    """Explicit target, active play branch, documented play branch, then legacy nifty."""
+    if base:
+        return git_out(root, "rev-parse", base + "^{commit}")
+    branch = git(root, "symbolic-ref", "--quiet", "--short", "HEAD").stdout.strip()
+    if branch.startswith("claude/play-"):
+        return git_out(root, "rev-parse", branch + "^{commit}")
+    guide = Path(root, "CLAUDE.md")
+    if guide.is_file():
+        match = re.search(r"\bclaude/play-[\w.-]+", guide.read_text(encoding="utf-8"))
+        if match:
+            return git_out(root, "rev-parse", match[0] + "^{commit}")
+    return git_out(root, "rev-parse", "claude/nifty-mendeleev^{commit}")
+
+
+def lint(root: str, ref: str, runner=None, base: str | None = None) -> int:
     """One host slot per lint run (granted FIFO by LintSlots), after sweeping dead lints' scratch."""
     sweep_stale_scratch([precheck_scratch_base(root), "E:/mc2-archive-2026-10/proofs"])
     hold = LintSlots().acquire()   # host-wide JOBS cap across all `--lint` processes, released when this run ends
     try:
-        return _lint_locked(root, ref, runner)
+        return _lint_locked(root, ref, runner, base)
     finally:
         hold.close()
 
 
-def _lint_locked(root: str, ref: str, runner=None) -> int:
+def _lint_locked(root: str, ref: str, runner=None, base: str | None = None) -> int:
     """`--lint REF`: the precheck's fast local checks (ratchets, callers, early rows, ungated tags)
     run concurrently at REF in shared clones; every red is printed with its fix. No Python suites, no link. Exit 0 = clean."""
     real_runner = runner is None
@@ -983,7 +998,7 @@ def _lint_locked(root: str, ref: str, runner=None) -> int:
         cc.record_tip_pass(root, "lint", receipt_tip, False)
     try:
         sha = git_out(root, "rev-parse", ref + "^{commit}")
-        base_ref = git_out(root, "rev-parse", "claude/nifty-mendeleev^{commit}")
+        base_ref = merge_target(root, base)
         base_ref = git_out(root, "merge-base", sha, base_ref)
     except Stop as exc:
         print("LINT FAIL " + str(exc))
@@ -1075,7 +1090,7 @@ def missing_receipts(root: str, refs: list[str]) -> list[str]:
 
 
 def precheck(root: str, tip: str, with_link: bool | None = None, sim_rows: bool = True, sim_install: str | None = None,
-             sim_runner=None, sim_quiet=None) -> int:
+             sim_runner=None, sim_quiet=None, base: str | None = None) -> int:
     """Grade the virtual nifty merge, including Python suites, without merging it.
 
     Checks (minutes): conflict check, 5 ratchets, callers refresh+check and Python suites in disposable shared
@@ -1110,8 +1125,9 @@ def precheck(root: str, tip: str, with_link: bool | None = None, sim_rows: bool 
             failed.append(label + ":" + failure_summary(r.stdout).replace("\n", " "))
 
     try:
+        base_ref = merge_target(root, base)
         def virtual():
-            base = git_out(root, "rev-parse", "claude/nifty-mendeleev^{commit}")
+            base = base_ref
             sha = git_out(root, "rev-parse", tip + "^{commit}")
             tree, conflicts = virtual_merge(root, sha, base)
             if tree is None or conflicts is None:
@@ -1123,7 +1139,6 @@ def precheck(root: str, tip: str, with_link: bool | None = None, sim_rows: bool 
                 raise Stop(5, "cannot create virtual commit")
             return commit
         commit = timed("virtual-merge", virtual)
-        base_ref = git_out(root, "rev-parse", "claude/nifty-mendeleev^{commit}")
         scope_base = git_out(root, "merge-base", tip, base_ref)
         if with_link is None:
             with_link = compiled_inputs_changed(root, base_ref, commit)
@@ -1182,7 +1197,7 @@ def precheck(root: str, tip: str, with_link: bool | None = None, sim_rows: bool 
         failed.append(str(exc).replace("\n", " "))
     sim = {"required": False, "override": not sim_rows, "paths": [], "install": None, "rows": {}}
     try:
-        sim["paths"] = sim_sensitive_paths(tip_changed_paths(root, tip))
+        sim["paths"] = sim_sensitive_paths(tip_changed_paths(root, tip, merge_target(root, base)))
         sim["required"] = bool(sim["paths"])
     except (Stop, OSError, KeyError, ValueError, RuntimeError) as exc:
         failed.append("sim-rows: cannot classify the tip's paths: " + str(exc).replace("\n", " "))
@@ -1432,6 +1447,7 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("ref", nargs="?", help="lane tip: sha or branch")
     ap.add_argument("--lint", metavar="REF", help="seconds-fast subset of --precheck (ratchets, callers, early rows, ungated tags) with a fix per red; run it before --precheck")
     ap.add_argument("--precheck", metavar="TIP", help="offline virtual nifty merge: conflicts, ratchets, callers, Python suites (fast, no native build; --with-link adds links)")
+    ap.add_argument("--base", help="--lint/--precheck merge target (default: active/documented play branch, then nifty)")
     ap.add_argument("--with-link", action="store_true",
                     help="with --precheck: also link mc2, mc2fx, mc2fx_preview incrementally in the warm tree "
                          "($MC2_PRECHECK_TREE, default E:/mc2-installs/_precheck/tree; first use is a one-time cold build)")
@@ -1572,10 +1588,11 @@ def main(argv: list[str] | None = None) -> int:
     if (rc := lane_merge_trust.delegate(args, list(sys.argv[1:] if argv is None else argv))) is not None:
         return rc
     if args.lint:
-        return lint(args.root, args.lint)
+        return lint(args.root, args.lint, **({"base": args.base or "HEAD"} if args.base or args.batch else {}))
     if args.precheck:
         return precheck(args.root, args.precheck, True if args.with_link else False if args.no_link else None,
-                        not args.no_sim_rows, args.sim_install)
+                        not args.no_sim_rows, args.sim_install,
+                        **({"base": args.base or "HEAD"} if args.base or args.batch else {}))
     if args.pre_gate:
         return pre_gate(args.root, args.exe)
     try:
