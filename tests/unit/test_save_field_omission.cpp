@@ -155,9 +155,9 @@ TEST_CASE("save fields: team roster tail retains every watch ID") {
 
 TEST_CASE("save fields: ORDQ nested payloads independent member census") {
     using namespace mc2::sim;
-    WayPath path;
+    mc2::sim::WayPath path;
     {
-        using T = WayPath;
+        using T = mc2::sim::WayPath;
         path = save_probe::patterned<T>(&T::points, &T::curPoint, &T::mode);
         path.curPoint = 1;
         SAVE_FIELD_SHAPE(path, points, curPoint, mode);
@@ -187,7 +187,7 @@ TEST_CASE("save fields: ORDQ nested payloads independent member census") {
         CHECK(save_probe::roundtrip(attack, [](auto& a, auto& v) { a(v); }, &T::type,
             &T::method, &T::range, &T::tactic, &T::aimLocation, &T::pursue, &T::obliterate, &T::targetPoint));
     }
-    using T = TacticalOrder;
+    using T = mc2::sim::TacticalOrder;
 #define ORDER_MEMBERS &T::orderId, &T::origin, &T::kind, &T::unitOrder, &T::subOrder, \
     &T::move, &T::attack, &T::target, &T::formationOrdinal, &T::groupFlags, &T::support
     auto sample = save_probe::patterned<T>(&T::orderId, &T::origin, &T::unitOrder,
