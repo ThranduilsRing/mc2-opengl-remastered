@@ -2524,7 +2524,16 @@ void MechLabScreen::updateLocationInput()
 				componentListBox.SelectItem( -1 );
 			}
 			else if ( !arrowClicked && -1 != componentListBox.GetSelectedItem() && componentListBox.getComponent() )
-				placeInPanel( componentListBox.getComponent(), s_locHover );
+			{
+				LogisticsComponent* component = componentListBox.getComponent();
+				if ( const auto placed = placeInPanel( component, s_locHover ) )
+				{
+					selI = placed->x; selJ = placed->y;
+					pSelectedComponent = component;
+					pInspectedComponent = nullptr;
+					componentListBox.SelectItem( -1 );
+				}
+			}
 		}
 	}
 	if ( userInput->leftMouseReleased() && pDragComponent )

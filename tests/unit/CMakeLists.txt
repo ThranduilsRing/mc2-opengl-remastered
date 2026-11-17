@@ -740,23 +740,6 @@ function(mc2_height_slice output source begin end)
     set(${output} "${body}" PARENT_SCOPE)
     set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${MC2_WORKTREE_ROOT}/${source}")
 endfunction()
-mc2_height_slice(layout_flat code/logisticsvariant_stats.cpp
-    "int\tLogisticsVariant::getComponents( long& count, long* array )"
-    "std::expected<void, int> LogisticsVariant::removeComponent")
-mc2_height_slice(layout_restore code/logisticsvariant.cpp
-    "bool LogisticsVariant::restoreLocationRecord(" "bool LogisticsVariant::addComponent(")
-mc2_height_slice(layout_mount_helpers code/logisticsvariant_package.cpp
-    "namespace {" "int LogisticsVariant::packageCheck(")
-mc2_height_slice(layout_mounts code/logisticsvariant_package.cpp
-    "int LogisticsVariant::getPackageMounts(" "// MECHLAB-LOC-1: location-view placement.")
-file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/layout_deployment.inc"
-    CONTENT "${layout_mount_helpers}\n${layout_flat}\n${layout_mounts}\n${layout_restore}")
-mc2_height_slice(layout_accept code/logisticsdata_modify.cpp
-    "std::expected<void, int> LogisticsData::acceptMechModifications(" "\n\tbool bFound = 0;")
-file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/layout_accept.inc" CONTENT "${layout_accept}\nreturn {};\n}\n")
-set_source_files_properties(test_chassis_layout.cpp PROPERTIES
-    INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}"
-    COMPILE_DEFINITIONS "MC2_LAYOUT_SOURCE_ROOT=\"${MC2_WORKTREE_ROOT}\"")
 mc2_height_slice(prop_lod_range GameOS/gameos/gos_static_prop_registry_internal.h
     "struct RecipeRange {" "// Registry gates")
 mc2_height_slice(prop_lod_register GameOS/gameos/gos_static_prop_registry.cpp

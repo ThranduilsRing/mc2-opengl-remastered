@@ -71,24 +71,25 @@ TEST_CASE("mechlab loc: each panel names why it refuses a part") {
     CHECK(reasonText(e, mc2pkg::Mount::None, &c.regions[2], heavy) == "over payload by 3.0 t");
 }
 
-TEST_CASE("mechlab loc: overflow scrolling reaches every item of a full 12-cell location") {
-    CHECK(maxScroll(5) == 0);
-    CHECK(maxScroll(6) == 1);
-    CHECK(maxScroll(12) == 7);
-    CHECK(clampScroll(6, 9) == 1);
-    CHECK(clampScroll(6, -3) == 0);
-    CHECK(scrollByWheel(6, 0, 100) == 1);      // wheel back -> later items
-    CHECK(scrollByWheel(6, 1, 100) == 1);      // clamped at the end
-    CHECK(scrollByWheel(6, 1, -100) == 0);
-    CHECK(scrollToReveal(6, 0, 5) == 1);       // a 6th item scrolled into view
-    CHECK(scrollToReveal(12, 7, 0) == 0);
+TEST_CASE("mechlab loc: column layout preserves scrolling beyond twelve visible items") {
+    CHECK(maxScroll(12) == 0);
+    CHECK(maxScroll(13) == 1);
+    CHECK(clampScroll(13, 9) == 1);
+    CHECK(clampScroll(13, -3) == 0);
+    CHECK(scrollByWheel(13, 0, 100) == 1);
+    CHECK(scrollByWheel(13, 1, 100) == 1);
+    CHECK(scrollByWheel(13, 1, -100) == 0);
+    CHECK(scrollToReveal(13, 0, 12) == 1);
+    CHECK(scrollToReveal(13, 1, 0) == 0);
     const int ct = panelOfLocation("CenterTorso").value();
-    for (int scroll : {0, 1}) {                // the 6th item is selectable once scrolled; the 1st is hidden then
-        const Rect row4 = itemRowRect(ct, kMaxItemRows - 1);
-        CHECK(itemIndexAt(ct, 6, scroll, row4.cx(), row4.cy()).value() == scroll + kMaxItemRows - 1);
+    for (int scroll : {0, 1}) {
+        for (int row = 0; row < kMaxItemRows; ++row) {
+            const Rect r = itemRowRect(ct, row, kMaxItemRows);
+            CHECK(itemIndexAt(ct, 13, scroll, r.cx(), r.cy()).value() == scroll + row);
+        }
     }
-    const Rect row5 = itemRowRect(ct, 4);
-    CHECK(!itemIndexAt(ct, 3, 0, row5.cx(), row5.cy()));   // empty row: no item
+    const Rect empty = itemRowRect(ct, 3, 3);
+    CHECK(!itemIndexAt(ct, 3, 0, empty.cx(), empty.cy()));
 }
 
 TEST_CASE("mechlab loc: a dropped item selects its placed instance, so Remove targets the moved copy") {
