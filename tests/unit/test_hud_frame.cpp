@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <memory>
+#include <string_view>
 #include <vector>
 
 namespace {
@@ -20,7 +21,7 @@ std::vector<std::shared_ptr<RenderCore::KtxImage>> images;
 std::vector<DWORD> uploaded;
 DWORD atlasEdge = 0;
 auto image(DWORD handle) { return images.at(handle); }
-DWORD fromRawPixels(DWORD* pixels, int, int, DWORD edge) {
+DWORD fromRawPixels(DWORD* pixels, int, int, DWORD edge, DWORD, std::string_view) {
     atlasEdge = edge;
     uploaded.assign(pixels, pixels + static_cast<size_t>(edge) * edge);
     return 10;
