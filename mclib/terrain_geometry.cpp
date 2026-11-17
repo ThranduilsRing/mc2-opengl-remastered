@@ -286,12 +286,12 @@ void Terrain::geometry (void)
 				cameraPos.z);
 			glm::vec3 oc; oc = bc - cameraPos;
 			Camera::cameraFrame.trans_to_frame(oc);
-			const float distEye = glm::length(oc);
 			glm::vec3 cv = oc; cv.z = 0.0f;
 			const float distClip = glm::length(cv);
 			bool act = (distClip <= (kNearField + blockR));
 			if (!act)
 			{
+				const float distEye = glm::length(oc);
 				if (fabs(oc.y) > 1.0e-3f && distEye > 1.0e-3f)
 				{
 					const float clip_distance = fabsf(1.0f / oc.y);
