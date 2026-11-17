@@ -103,11 +103,29 @@ def read_psa(path):
     return names, keys, float(rate), nframes
 
 
+def read_buffer(g, path):
+    uri = g["buffers"][0]["uri"]
+    return base64.b64decode(uri.split(",", 1)[1]) if uri.startswith("data:") else (Path(path).parent / uri).read_bytes()
+
+
+def selected_meshes(g):
+    if "bridge" not in g.get("extras", {}):
+        return g["meshes"]
+    # Native exports retain extra LODs outside the default scene.
+    stack, meshes = list(g["scenes"][g.get("scene", 0)]["nodes"]), []
+    while stack:
+        node = g["nodes"][stack.pop()]
+        stack += node.get("children", [])
+        if "mesh" in node:
+            meshes.append(g["meshes"][node["mesh"]])
+    return meshes
+
+
 def split_parts(g, buf):
     """The same dominant-first-corner split for hulls and attached weapons."""
     parts, pairs = {}, {}
     total, mixed = 0, 0
-    for mesh in g['meshes']:
+    for mesh in selected_meshes(g):
         for pr in mesh['primitives']:
             at = pr['attributes']
             pos, nrm, uv = [read_accessor(g, buf, at[k]).astype(np.float32)
@@ -138,8 +156,7 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None, attachments=(), 
     node_map = recipe["mc2"]["nodes"]
     skm = Path(skm_path)
     g = json.loads(skm.read_text())
-    uri = g["buffers"][0]["uri"]
-    buf = base64.b64decode(uri.split(",", 1)[1]) if uri.startswith("data:") else (skm.parent / uri).read_bytes()
+    buf = read_buffer(g, skm)
     # tools/mw5_mechs/from_native.py output (native extractor) instead of the umodel glTF + PSA bridge
     native = "bridge" in g.get("extras", {})
     nodes = g["nodes"]
@@ -160,16 +177,7 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None, attachments=(), 
     # rigid parts: every triangle goes to the dominant bone of its first vertex
     parts = {}
     total_triangles, mixed_triangles, pairs = 0, 0, {}
-    meshes_in = g["meshes"]
-    if native:  # LOD0 only: the meshes of nodes under the default scene
-        stack, lod0 = list(g["scenes"][0]["nodes"]), []
-        while stack:
-            i = stack.pop()
-            stack += nodes[i].get("children", [])
-            if "mesh" in nodes[i]:
-                lod0.append(meshes_in[nodes[i]["mesh"]])
-        meshes_in = lod0
-    for mesh in meshes_in:
+    for mesh in selected_meshes(g):
         for pr in mesh["primitives"]:
             at = pr["attributes"]
             pos = read_accessor(g, buf, at["POSITION"]).astype(np.float32)
@@ -212,7 +220,7 @@ def build(skm_path, anim_dir, out_path, image_name, clips=None, attachments=(), 
             raise ValueError(f"attachment bone not found: {bone}")
         path = Path(source)
         ag = json.loads(path.read_text())
-        abuf = (path.parent / ag['buffers'][0]['uri']).read_bytes()
+        abuf = read_buffer(ag, path)
         anodes = ag['nodes']
         apar = {c: i for i, n in enumerate(anodes) for c in n.get('children', [])}
         def aworld(i):

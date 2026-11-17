@@ -254,6 +254,51 @@ def test_attached_muzzle_in_rotated_joint_frame(fixture, tmp_path, authored):
         package_nodes(out, [row, row])
 
 
+def test_mirrored_weapon_attachments(fixture, tmp_path):
+    from tools.mw5_mechs.sockets import package_nodes
+    skm = fixture[0]
+    weapon = json.loads(skm.read_text())
+    weapon['nodes'] = [{'name': 'Fire00', 'translation': [2, 3, 30]}]
+    wp = tmp_path / 'weapon.gltf'
+    wp.write_text(json.dumps(weapon))
+    bones = ['Foot0_Left', 'Foot0_Right']
+    out = tmp_path / 'mirrored.glb'
+    B.build(skm, tmp_path, out, 'albedo.png', attachments=[f'{wp}={b}' for b in bones])
+    rows = [dict(node=f'weapon_{i}', mesh='weapon', bone=b, type=4, fires=['Fire00'])
+            for i, b in enumerate(bones)]
+    nodes, offsets, types, _ = package_nodes(out, rows)
+    assert [nodes[r['node']] for r in rows] == ['j_LFoot', 'j_RFoot']
+    assert offsets == {r['node']: '2.0000 3.0000 30.0000' for r in rows}
+    assert types == {r['node']: 4 for r in rows}
+    B.build(skm, tmp_path, out, 'albedo.png', attachments=[f'{wp}={bones[0]}'] * 2)
+    with pytest.raises(ValueError, match='not unique'):
+        package_nodes(out, rows[:1])
+
+
+def test_embedded_native_attachment_uses_lod0(fixture, tmp_path):
+    import base64
+    from tools.mw5_mechs.sockets import load_glb
+    skm = fixture[0]
+    weapon = json.loads(skm.read_text())
+    blob = (tmp_path / weapon['buffers'][0]['uri']).read_bytes()
+    weapon['buffers'][0]['uri'] = 'data:application/octet-stream;base64,' + base64.b64encode(blob).decode()
+    weapon['extras'] = {'bridge': []}
+    weapon['meshes'].append(weapon['meshes'][0])  # retained LOD1 must not add triangles
+    weapon['nodes'] += [{'children': [len(weapon['nodes']) + 1]}, {'mesh': 0}, {'mesh': 1}]
+    weapon['scene'] = 1
+    weapon['scenes'] = [{'nodes': [len(weapon['nodes']) - 1]}, {'nodes': [len(weapon['nodes']) - 3]}]
+    wp = tmp_path / 'embedded.gltf'
+    wp.write_text(json.dumps(weapon))
+    out = tmp_path / 'embedded.glb'
+    B.build(skm, tmp_path, out, 'albedo.png', attachments=[f'{wp}=Foot0_Left'])
+    doc, buf = load_glb(out)
+    attachment = doc['extras']['mw5Attachments'][0]
+    assert attachment['joint'] == 'j_LFoot'
+    primitives = [p for m in attachment['meshes'] for p in doc['meshes'][m]['primitives']]
+    assert sum(len(B.read_accessor(doc, buf, p['indices'])) for p in primitives) == 6
+    assert all(np.all(np.isfinite(B.read_accessor(doc, buf, p['attributes']['POSITION']))) for p in primitives)
+
+
 def test_attachment_requires_resolved_bone(fixture, tmp_path):
     with pytest.raises(ValueError, match='bone not found'):
         B.build(fixture[0], tmp_path, tmp_path / 'bad.glb', 'albedo.png',

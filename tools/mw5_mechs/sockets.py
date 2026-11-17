@@ -39,12 +39,13 @@ def package_nodes(glb, loadout, recipe=None):
         if name in nodes or len(name) > 24:
             raise ValueError(f'duplicate or overlong weapon node: {name}')
         matches = [a for a in attached if a['source'] == mesh]
+        joint = rename.get(row['bone'], row['bone'])
+        if matches and not any(a['joint'] == joint for a in matches):
+            raise ValueError(f'attachment joint mismatch: {mesh}')
+        matches = [a for a in matches if a['joint'] == joint]
         if len(matches) != 1:
             raise ValueError(f'weapon attachment not unique: {mesh}')
         a = matches[0]
-        joint = rename.get(row['bone'], row['bone'])
-        if a['joint'] != joint:
-            raise ValueError(f'attachment joint mismatch: {mesh}')
         authored = [a['sockets'][s] for s in row.get('fires', []) if s in a['sockets']]
         if authored:
             # MC2 has one fire point per weapon node; use the first authored barrel.
