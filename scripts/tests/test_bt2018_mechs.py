@@ -701,3 +701,19 @@ def test_pack_guard_picks_the_dominant_skin_texture_and_flags_untextured_parts(t
     g.nodes[0].name = "j_Root__dup2"
     g.save(str(p))
     assert any("dedupe-renamed" in b for b in G.skin_texture_problems(p))
+
+
+def test_blend_skin_material_is_made_opaque_so_the_importer_keeps_the_real_texture_name(tmp_path):
+    """Trigger: glb_guard.opaque_mech_materials (raven_base was BLEND: importer asked for 'a_...tga', mech rendered white)."""
+    pg = pytest.importorskip("pygltflib")
+    from tools.bt2018_mechs import glb_guard as G
+    g = pg.GLTF2(nodes=[pg.Node(name="j"), pg.Node(name="torso", mesh=0, skin=0)], skins=[pg.Skin(joints=[0])],
+                 meshes=[pg.Mesh(name="torso", primitives=[pg.Primitive(attributes=pg.Attributes(POSITION=0), material=0)])],
+                 accessors=[pg.Accessor(count=3)], materials=[pg.Material(name="base", alphaMode="BLEND",
+                 pbrMetallicRoughness=pg.PbrMetallicRoughness(baseColorTexture=pg.TextureInfo(index=0)))],
+                 textures=[pg.Texture(source=0)], images=[pg.Image(name="x-base-alb.png")])
+    p = tmp_path / "x.glb"
+    g.save(str(p))
+    assert any("BLEND" in b for b in G.skin_texture_problems(p))
+    assert G.opaque_mech_materials(p) == ["base"] and G.opaque_mech_materials(p) == []
+    assert not any("BLEND" in b for b in G.skin_texture_problems(p))

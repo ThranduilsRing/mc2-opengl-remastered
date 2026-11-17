@@ -83,6 +83,22 @@ def validate_glb(path) -> list[str]:
 _DROPPED = ("_explode", "_dmg", "blip", "indc", "uix")   # mclib/mech_texname_derive.h isDroppedMeshName
 
 
+def opaque_mech_materials(path) -> list[str]:
+    """Set alphaMode OPAQUE on every non-OPAQUE material an intact part uses. The importer reads glTF BLEND/MASK as a
+    leaf cutout and renames the texture 'a_<name>.tga' (assimp_importer.cpp DeriveMC2TextureName), which the pack does
+    not ship: the mech renders flat white (raven_base was BLEND). Returns the fixed material names; rewrites only if needed."""
+    from pygltflib import GLTF2
+    g = GLTF2().load(str(path))
+    used = {p.material for me in g.meshes if not any(k in (me.name or "").lower() for k in _DROPPED)
+            for p in me.primitives if p.material is not None}
+    fixed = [i for i in sorted(used) if g.materials[i].alphaMode not in (None, "OPAQUE")]
+    for i in fixed:
+        g.materials[i].alphaMode = "OPAQUE"
+    if fixed:
+        g.save(str(path))
+    return sorted({g.materials[i].name for i in fixed})
+
+
 def _tga_name(image) -> str:
     """The MC2 texture name the importer derives from a glTF image (mech_texname::deriveName, no alpha prefix)."""
     stem = (image.name or image.uri or "").replace("\\", "/").rsplit("/", 1)[-1].rsplit(".", 1)[0].lower()
@@ -106,6 +122,8 @@ def skin_texture_problems(path, texture_dirs=()) -> list[str]:
             if tex is None:
                 bad.append(f"intact part '{n.name}' uses material {p.material} without a base colour texture")
                 continue
+            if m.alphaMode not in (None, "OPAQUE"):
+                bad.append(f"intact part '{n.name}' material '{m.name}' is {m.alphaMode}: the importer would look for an 'a_' texture")
             verts[_tga_name(g.images[g.textures[tex.index].source])] += g.accessors[p.attributes.POSITION].count
     if verts and texture_dirs:
         skin = verts.most_common(1)[0][0]

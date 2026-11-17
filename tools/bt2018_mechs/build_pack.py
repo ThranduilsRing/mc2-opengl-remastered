@@ -194,6 +194,8 @@ def build(args, out: Path):
         from tools.bt2018_mechs import glb_guard
         for name, n in glb_guard.dedupe_node_names(dst).items():
             print(f"[bt2018] {dst.name}: renamed {n} duplicate node(s) '{name}' (Assimp rejects repeats)")
+        for name in glb_guard.opaque_mech_materials(dst):
+            print(f"[bt2018] {dst.name}: material '{name}' set OPAQUE (BLEND/MASK makes the importer look for an a_ texture)")
         fam = recipe["family"].lower()
         if args.bundles and fam != "atlas":
             from tools.bt2018_extract import bake_clips as BK
