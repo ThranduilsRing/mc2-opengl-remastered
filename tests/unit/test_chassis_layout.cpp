@@ -241,10 +241,11 @@ TEST_CASE("chassis_layout: installed stock variants production save round trip")
 
 TEST_CASE("chassis_layout: every repository stock designer variant uses exact CSV placement") {
     const auto directory = root / "tools/unit_converter/tests/fixtures/stock/objects";
-    const auto compRows = csv(directory / "compbas.csv");
+    auto compRows = csv(directory / "compbas.csv");
     std::map<int, LayoutComponent> comp;
     for (std::size_t i = 1; i < compRows.size(); ++i) {
-        if (compRows[i].size() < 29 || compRows[i][0].empty()) continue;
+        if (compRows[i][0].empty()) continue;
+        compRows[i].resize(std::max<std::size_t>(29, compRows[i].size()));
         auto c = csvComponent(compRows[i]); comp[c.id] = c;
     }
     int chassisCount = 0, variantCount = 0, itemCount = 0;

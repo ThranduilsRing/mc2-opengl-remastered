@@ -77,7 +77,7 @@ std::optional<LocationVariant> readLocationVariant(FitIniFile& f) {
     int count = 0;
     if (!number(f, "ComponentCount", count, 0, 54)) return std::nullopt;
     long version = 1;
-    f.readIdLong("LayoutVersion", version);
+    if (f.readIdLong("LayoutVersion", version) != NO_ERR) version = 1;
     if (version != 1 && version != 2) return std::nullopt;
     result.version = static_cast<int>(version);
     for (int i = 0; i < count; ++i) {
