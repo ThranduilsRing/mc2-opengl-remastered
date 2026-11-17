@@ -2,6 +2,46 @@
 #include "doctest.h"
 #include <array>
 #include <optional>
+#include "RenderCore/gpu_abi/GpuStaticPropInstance.h"
+
+TEST_CASE("prop_feed_equivalence: ordered payload and packet command bytes across lifecycle") {
+    std::vector<GpuStaticPropInstance> flat, original;
+    PropTypeGeneration oldTypes, newTypes;
+    for (uint32_t frame = 0; frame < 12; ++frame) {
+        CAPTURE(frame);
+        std::vector<GpuStaticPropInstance> blocks[3];
+        for (uint32_t block = 0; block < 3; ++block) {
+            const uint32_t count = frame == 8 || frame == 9 ? 0 : frame == 4 ? 1 : frame == 3 ? 7 : 3;
+            blocks[block].resize(count);
+            for (uint32_t i = 0; i < count; ++i) {
+                auto& inst = blocks[block][i];
+                std::memset(&inst, 0, sizeof(inst));
+                inst.typeID = block + (frame == 2 ? 4 : 0);
+                inst.modelMatrix[12] = static_cast<float>(i + (frame == 2 ? 100 : 0));
+                inst.flags = frame == 5 ? 7 : 1;
+            }
+        }
+        original.clear(); size_t cursor = 0;
+        for (const auto& block : blocks) {
+            original.insert(original.end(), block.begin(), block.end());
+            appendPropFeed(flat, cursor, std::span<const GpuStaticPropInstance>(block));
+        }
+        flat.resize(cursor);
+        REQUIRE(flat.size() == original.size());
+        CHECK((flat.empty() || std::memcmp(flat.data(), original.data(), flat.size() * sizeof(flat[0])) == 0));
+        const auto a = std::span<const GpuStaticPropInstance>(original), b = std::span<const GpuStaticPropInstance>(flat);
+        CHECK(oldTypes.update(a) == newTypes.update(b));
+        auto commands = [&](auto feed) {
+            std::vector<std::array<uint32_t, 8>> bytes;
+            for (uint32_t i = 0; i < feed.size();) {
+                uint32_t end = i + 1; while (end < feed.size() && feed[end].typeID == feed[i].typeID) ++end;
+                bytes.push_back({3, end - i, 0, 0, i, feed[i].typeID, frame >= 6 ? 2u : 1u, frame >= 7 ? 2u : 1u}); i = end;
+            }
+            return bytes;
+        };
+        CHECK(commands(a) == commands(b));
+    }
+}
 
 TEST_CASE("prop_record_cache: population patch preserves packets and absolute ranges") {
     struct Command { uint32_t firstInstance, instanceCount, packet; };
