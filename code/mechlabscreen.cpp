@@ -1156,7 +1156,8 @@ void MechLabScreen::render(int xOffset, int yOffset)
 		aObject::endGuiBridge();
 	if (!xOffset && !yOffset && mechCamera.hasObject())
 		drawPreviewControls(mechCamera, !bSaveDlg && !bErrorDlg && !pDragComponent && status == RUNNING);
-    if (!xOffset && !yOffset) mechCamera.drawAnimationPanel();
+    // The F9 animation window is an ImGui window and would sit above the legacy save/error dialogs.
+    if (!xOffset && !yOffset && !bSaveDlg && !bErrorDlg) mechCamera.drawAnimationPanel();
 
 	aObject::beginTextBridge( tbSx, tbSy, 1.3f, tbOx, tbOy );
 	variantList.move( xOffset, yOffset );
@@ -1790,6 +1791,10 @@ int MechLabScreen::addComponent( LogisticsComponent* pComponent, long& x, long& 
 	if ( pComponent )
 		retVal = pVariant->addComponent( pComponent, x, y );
 
+	// Every entry (drop, double-click, Add button) says why it was refused.
+	if ( retVal != NO_ERR )
+		showDropRefusal( mc2::components::placementRefusal( retVal ) );
+
 	updateDiagram();
 
 	return retVal;
@@ -1848,13 +1853,7 @@ void MechLabScreen::endDrag( )
 		
 		if ( mc2::components::finishGridDrop(x, y, bDragLeft, selI, selJ,
 			[this](long& i, long& j) {
-				const int result = addComponent(pDragComponent, i, j);
-				if (result != NO_ERR) {
-					showDropRefusal(result == COMPONENT_TOO_HOT
-						? "Not enough cooling for this component."
-						: "Component cannot fit here: choose a free valid slot.");
-				}
-				return result;
+				return addComponent(pDragComponent, i, j);
 			}) )
 		{
 			componentListBox.SelectItem( -1 );

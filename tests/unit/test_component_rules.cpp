@@ -107,3 +107,11 @@ TEST_CASE("components/AMS honors cooldown ammo and damage") {
     CHECK_FALSE(canIntercept(false, 10, 10, 0));
     CHECK_FALSE(canIntercept(true, 10, 10, 1));
 }
+
+TEST_CASE("components/refusal text names the package-chassis reason") {
+    using mc2::components::placementRefusal;
+    CHECK(std::string_view(placementRefusal(NO_COMPATIBLE_MOUNT)).find("hardpoint") != std::string_view::npos);
+    CHECK(std::string_view(placementRefusal(COMPONENT_TOO_HEAVY)).find("payload") != std::string_view::npos);
+    CHECK(std::string_view(placementRefusal(COMPONENT_TOO_HOT)).find("cooling") != std::string_view::npos);
+    CHECK(std::string_view(placementRefusal(COMPONENT_SLOT_FULL)).find("free valid slot") != std::string_view::npos);
+}
