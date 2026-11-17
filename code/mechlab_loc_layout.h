@@ -12,7 +12,7 @@
 
 #include "package_chassis.h"
 
-#include <cmath>
+#include <algorithm>
 #include <optional>
 #include <cstdio>
 #include <string>
@@ -33,13 +33,8 @@ struct Canvas {
     float sx = 1, sy = 1, ox = 0, oy = 0;
 };
 
-// The lab's legacy canvas is 800x600, scaled to fit the window height and centred horizontally.
-inline Canvas canvasFor(int width, int height) {
-    const float s = std::fmin(width / 800.0f, height / 600.0f);
-    return {s, s, (width - 800.0f * s) * 0.5f, (height - 600.0f * s) * 0.5f};
-}
 inline Rect toScreen(const Rect& r, const Canvas& c) { return {r.x * c.sx + c.ox, r.y * c.sy + c.oy, r.w * c.sx, r.h * c.sy}; }
-inline void screenToLegacy(const Canvas& c, float px, float py, float& lx, float& ly) { lx = (px - c.ox) / c.sx; ly = (py - c.oy) / c.sy; }
+
 
 inline constexpr int kPanelCount = 9;   // 8 BT locations (Head..RightLeg, in panelName order) + the doll
 inline constexpr int kDoll = 8;
@@ -58,7 +53,7 @@ inline const char* panelTitle(int p) {
 inline constexpr float kAreaX = 27, kAreaY = 130, kColW = 101, kRowH = 104, kGap = 4;   // starts 15 px below the grid so the toggle clears the variant combo
 // header strip = title row (16) + mount badge row (12); item rows follow; the last 14 px carry the refusal line.
 inline constexpr float kHeaderH = 28, kRowItemH = 12;
-inline constexpr int kMaxItemRows = 5;
+inline constexpr int kRowsPerColumn = 6;
 
 inline Rect panelRect(int p) {
     // column / row of each panel: arms flank the head, torsos below, legs and the paper doll last.
@@ -67,9 +62,13 @@ inline Rect panelRect(int p) {
     if (p < 0 || p >= kPanelCount) return {};
     return {kAreaX + col[p] * (kColW + kGap), kAreaY + row[p] * (kRowH + kGap), kColW, kRowH};
 }
-inline Rect itemRowRect(int p, int k) {
+inline Rect itemRowRect(int p, int k, int count) {
     const Rect r = panelRect(p);
-    return {r.x + 2, r.y + kHeaderH + k * kRowItemH, r.w - 4, kRowItemH};
+    const int columns = std::max(1, (count + kRowsPerColumn - 1) / kRowsPerColumn);
+    const float width = (r.w - 4) / columns;
+    const float height = (r.h - kHeaderH - 14) / kRowsPerColumn;
+    return {r.x + 2 + (k / kRowsPerColumn) * width,
+            r.y + kHeaderH + (k % kRowsPerColumn) * height, width, height};
 }
 // LOCATIONS | CLASSIC switch, above the panels.
 inline Rect toggleRect() { return {kAreaX, 113, 150, 15}; }
@@ -81,9 +80,9 @@ inline std::optional<int> panelAt(float lx, float ly) {
     return std::nullopt;
 }
 // Item row index under a point inside panel p.
-inline std::optional<int> itemRowAt(int p, float lx, float ly) {
-    for (int k = 0; k < kMaxItemRows; ++k)
-        if (itemRowRect(p, k).contains(lx, ly)) return k;
+inline std::optional<int> itemRowAt(int p, float lx, float ly, int count) {
+    for (int k = 0; k < count; ++k)
+        if (itemRowRect(p, k, count).contains(lx, ly)) return k;
     return std::nullopt;
 }
 

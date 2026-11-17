@@ -2347,7 +2347,7 @@ void MechLabScreen::updateLocationInput()
 	if ( s_locHover >= 0 && s_locHover < ml::kLocationCount )
 	{
 		gatherPanelItems( pVariant, s_locHover, items );
-		const int row = ml::itemRowAt( s_locHover, mx, my ).value_or( -1 );
+		const int row = ml::itemRowAt( s_locHover, mx, my, static_cast<int>( items.size() ) ).value_or( -1 );
 		const LocItem* item = ( row >= 0 && row < static_cast<int>( items.size() ) ) ? &items[row] : nullptr;
 		if ( item )
 			::helpTextID = IDS_HELP_COMP0 + item->comp->getID();
@@ -2356,7 +2356,7 @@ void MechLabScreen::updateLocationInput()
 		{
 			std::vector<LocItem> origin;
 			gatherPanelItems( pVariant, dragPanel, origin );
-			const int orow = ml::itemRowAt( dragPanel, static_cast<float>( userInput->getMouseDragX() ), static_cast<float>( userInput->getMouseDragY() ) ).value_or( -1 );
+			const int orow = ml::itemRowAt( dragPanel, static_cast<float>( userInput->getMouseDragX() ), static_cast<float>( userInput->getMouseDragY() ), static_cast<int>( origin.size() ) ).value_or( -1 );
 			if ( orow >= 0 && orow < static_cast<int>( origin.size() ) )
 			{
 				const LocItem it = origin[orow];
@@ -2521,9 +2521,9 @@ void MechLabScreen::drawLocationView( float tbSx, float tbSy, float tbOx, float 
 		}
 		std::vector<LocItem> items;
 		gatherPanelItems( pVariant, p, items );
-		for ( size_t k = 0; k < items.size() && k < static_cast<size_t>( ml::kMaxItemRows ); ++k )
+		for ( size_t k = 0; k < items.size(); ++k )
 		{
-			ml::Rect row = ml::itemRowRect( p, static_cast<int>( k ) );
+			ml::Rect row = ml::itemRowRect( p, static_cast<int>( k ), static_cast<int>( items.size() ) );
 			const bool sel = items[k].comp == pSelectedComponent && !pDragComponent;
 			if ( sel ) fill( row, 0x802d6a8f, true );
 			char line[64];

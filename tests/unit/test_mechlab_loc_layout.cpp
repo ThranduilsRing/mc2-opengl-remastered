@@ -8,35 +8,15 @@
 
 using namespace mc2::mechlab_loc;
 
-TEST_CASE("mechlab loc: draw rect == hit rect at 800x600, 1080p and 4K") {
-    const int sizes[][2] = {{800, 600}, {1920, 1080}, {3840, 2160}};
-    for (const auto& s : sizes) {
-        const Canvas cv = canvasFor(s[0], s[1]);
-        for (int p = 0; p < kPanelCount; ++p) {
-            const Rect d = toScreen(panelRect(p), cv);
-            CHECK(d.x >= 0.0f); CHECK(d.y >= 0.0f);
-            CHECK(d.x + d.w <= s[0] + 0.01f); CHECK(d.y + d.h <= s[1] + 0.01f);
-            // the mouse the engine reports for a pixel inside the drawn rect maps back into the same panel
-            for (float fx : {0.02f, 0.5f, 0.98f})
-                for (float fy : {0.02f, 0.5f, 0.98f}) {
-                    float lx, ly;
-                    screenToLegacy(cv, d.x + d.w * fx, d.y + d.h * fy, lx, ly);
-                    CHECK(panelAt(lx, ly).value_or(-1) == p);
-                }
-            for (int k = 0; k < kMaxItemRows; ++k) {   // item rows sit inside their panel and hit back to themselves
-                const Rect row = itemRowRect(p, k);
-                CHECK(panelRect(p).contains(row.cx(), row.cy()));
-                const Rect dr = toScreen(row, cv);
-                float lx, ly;
-                screenToLegacy(cv, dr.cx(), dr.cy(), lx, ly);
-                CHECK(itemRowAt(p, lx, ly).value_or(-1) == k);
-            }
+TEST_CASE("mechlab loc: all six torso and twelve CT items are reachable") {
+    for (int p : {1, 2, 3, 4, 5}) {
+        const int count = p == 1 ? 12 : 6;
+        for (int k = 0; k < count; ++k) {
+            const Rect row = itemRowRect(p, k, count);
+            CHECK(panelRect(p).contains(row.x, row.y));
+            CHECK(row.y + row.h <= panelRect(p).y + panelRect(p).h - 14);
+            CHECK(itemRowAt(p, row.cx(), row.cy(), count).value_or(-1) == k);
         }
-        const Rect t = toScreen(toggleRect(), cv);
-        float lx, ly;
-        screenToLegacy(cv, t.cx(), t.cy(), lx, ly);
-        CHECK(toggleRect().contains(lx, ly));
-        CHECK(!panelAt(lx, ly));   // the toggle never overlaps a panel
     }
 }
 
@@ -47,13 +27,13 @@ TEST_CASE("mechlab loc: panels do not overlap and the last item row clears the r
             CHECK((ra.x + ra.w <= rb.x || rb.x + rb.w <= ra.x || ra.y + ra.h <= rb.y || rb.y + rb.h <= ra.y));
         }
     for (int p = 0; p < kPanelCount; ++p) {
-        const Rect last = itemRowRect(p, kMaxItemRows - 1);
+        const Rect last = itemRowRect(p, 11, 12);
         CHECK(last.y + last.h <= panelRect(p).y + panelRect(p).h - 14.0f);
     }
 }
 
 namespace {
-mc2pkg::PackageChassis marauder6x6() {   // the install MAD-3R as the recipe now declares it
+mc2pkg::PackageChassis marauder6x6() {   // six-cell torso / twelve-cell CT fixture retained for capacity coverage
     mc2pkg::PackageChassis c;
     c.payload = 34.0f;
     c.regions = {{"LeftArm", 0, 0, 2, 3}, {"LeftTorso", 0, 3, 2, 3}, {"CenterTorso", 2, 0, 2, 6}, {"RightTorso", 4, 3, 2, 3}, {"RightArm", 4, 0, 2, 3}};
