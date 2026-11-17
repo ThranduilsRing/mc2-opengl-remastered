@@ -19,6 +19,13 @@
 namespace mc2::net {
 namespace {
 bool enabled = false, hosting = false;
+bool explicitUserDirectory = false, ownsUserDirectory = false;
+std::filesystem::path previousUserDirectory;
+void restoreUserDirectory() {
+    if (!ownsUserDirectory) return;
+    userDirectory = std::move(previousUserDirectory);
+    ownsUserDirectory = false;
+}
 int status = 0;
 std::string endpoint;
 std::filesystem::path executable;
@@ -52,6 +59,7 @@ std::deque<DelayedPacket> delayed;
     std::fprintf(stderr, "Multiplayer stopped: %.*s\n", static_cast<int>(reason.size()), reason.data());
     if (trace) { trace << "STOP " << reason << '\n' << std::flush; }
     std::fflush(nullptr);
+    restoreUserDirectory();
     status = 3;
     throw SessionStopped{};
 }
@@ -191,6 +199,7 @@ void configure(int argc, char** argv) {
             else if (!hosting) throw std::runtime_error("--join requires IP:port");
         } else if (arg == "--mp-user-dir") {
             if (i + 1 == argc) throw std::runtime_error("missing MP argument value");
+            if (!ownsUserDirectory) explicitUserDirectory = true;
             userDirectory = std::filesystem::absolute(argv[++i]);
         }
     }
@@ -268,23 +277,31 @@ void closeLobby() {
     lobbyTransport.reset();
     lobbyPending.clear();
     lobby = {};
+    restoreUserDirectory();
 }
 const LobbyState& lobbyState() { return lobby; }
 bool lobbyConnected() { return lobbyTransport && lobbyTransport->connected() && lobby.error.empty(); }
+namespace {
+void prepareLobbyDirectory() {
+    if (!explicitUserDirectory) {
+        previousUserDirectory = userDirectory;
+        ownsUserDirectory = true;
+        const auto stamp = std::chrono::system_clock::now().time_since_epoch().count();
+        auto directory = std::filesystem::absolute("mp-sessions/" + std::to_string(stamp)).string();
+        auto exe = executable.string();
+        std::string option = "--mp-user-dir";
+        char* args[] = {exe.data(), option.data(), directory.data()};
+        configure(3, args);
+    }
+}
+}
 void openLobby(bool host, std::string_view address, std::string_view mission) {
     closeLobby();
     lobby.hosting = host;
     lobby.mission = mission;
     try {
         if (enabled) throw std::runtime_error("MP mission already active");
-        if (userDirectory.empty()) {
-            const auto stamp = std::chrono::system_clock::now().time_since_epoch().count();
-            auto directory = std::filesystem::absolute("mp-sessions/" + std::to_string(stamp)).string();
-            auto exe = executable.string();
-            std::string option = "--mp-user-dir";
-            char* args[] = {exe.data(), option.data(), directory.data()};
-            configure(3, args);
-        }
+        prepareLobbyDirectory();
         Identity identity{executableHash(), {}, "lobby", 0};
         identity.content = contentHash(identity.components);
         lobbyIdentity = identity;
@@ -293,19 +310,26 @@ void openLobby(bool host, std::string_view address, std::string_view mission) {
         lobbyBegan = std::chrono::steady_clock::now();
     } catch (const std::exception& error) { lobby.error = error.what(); }
     catch (const SessionStopped&) { lobby.error = "MP content identity could not be read"; status = 0; }
+    if (!lobby.error.empty()) {
+        lobbyTransport.reset();
+        restoreUserDirectory();
+    }
 }
 void pumpLobby() {
-    if (!lobbyTransport || !lobby.error.empty() || lobby.started) return;
+    if (!lobbyTransport || lobby.started) return;
     for (const auto& packet : lobbyTransport->pump()) {
         if (lobby.started) lobbyPending.push_back(packet);
         else lobby.receive(packet);
     }
     if (!lobbyTransport->error().empty()) lobby.error = lobbyTransport->error();
     if (lobbyConnected() && lobby.hosting && !lobby.offered) lobbyTransport->send(lobby.offer());
-    if (!lobbyConnected() && std::chrono::steady_clock::now() - lobbyBegan >= std::chrono::seconds(600))
+    if (lobby.error.empty() && !lobbyConnected() && std::chrono::steady_clock::now() - lobbyBegan >= std::chrono::seconds(600))
         lobby.error = "MP loading timeout (600 seconds)";
     if (!lobby.error.empty()) {
         lobby.offered = lobby.localReady = lobby.peerReady = lobby.started = false;
+        lobbyTransport.reset();
+        lobbyPending.clear();
+        restoreUserDirectory();
     }
 }
 void lobbyReady(bool value) {
@@ -521,7 +545,8 @@ struct RecordedSession final : Session {
     explicit RecordedSession(std::vector<save::Bytes>& output) : sent(output) {}
     void send(std::span<const std::uint8_t> bytes) override { sent.emplace_back(bytes.begin(), bytes.end()); }
     std::vector<save::Bytes> pump() override { return std::exchange(incoming, {}); }
-    bool connected() const override { return fault.empty(); }
+    bool ready = true;
+    bool connected() const override { return ready && fault.empty(); }
     void missionLoading(bool) override {}
     std::string error() const override { return fault; }
 };
@@ -544,6 +569,113 @@ void testLobbyPeerLoss() {
     CHECK_FALSE(lobbyConnected());
     closeLobby();
     lobbyBegan = {};
+}
+void testUserDirectoryLifecycle() {
+    const auto previous = userDirectory;
+    const auto previousExe = executable;
+    const auto previousExplicit = explicitUserDirectory;
+    explicitUserDirectory = false;
+    const auto root = std::filesystem::current_path() / "net-directory-test";
+    std::filesystem::create_directories(root);
+    struct Cleanup {
+        std::filesystem::path previous, exe, root, cwd;
+        bool explicitDirectory;
+        ~Cleanup() {
+            fromLobby = false; endMission(); closeLobby();
+            userDirectory = previous; executable = exe;
+            explicitUserDirectory = explicitDirectory;
+            std::filesystem::current_path(cwd);
+            std::filesystem::remove_all(root);
+        }
+    } cleanup{previous, previousExe, root, std::filesystem::current_path(), previousExplicit};
+    userDirectory = root / "single-player";
+    executable = root / "missing-exe";
+    const auto original = userDirectory;
+    const auto cwd = std::filesystem::current_path();
+    std::filesystem::current_path(root);
+    std::vector<std::string> paths;
+    for (const auto* name : {"prefs.cfg", "options.cfg", "prefs.cfg.tmp", "prefs.cfg.bak", "options.cfg.tmp", "options.cfg.bak"})
+        paths.push_back(userFile(name));
+    auto restored = [&] {
+        CHECK(userDirectory == original);
+        unsigned i = 0;
+        for (const auto* name : {"prefs.cfg", "options.cfg", "prefs.cfg.tmp", "prefs.cfg.bak", "options.cfg.tmp", "options.cfg.bak"})
+            CHECK(userFile(name) == paths[i++]);
+    };
+    auto redirect = [&] {
+        prepareLobbyDirectory();
+        CHECK(userDirectory != original);
+    };
+    SUBCASE("cancel and repeated cleanup and re-entry") {
+        redirect(); closeLobby(); restored(); closeLobby(); restored();
+        redirect(); closeLobby(); restored();
+    }
+    SUBCASE("replacement and both open catches") {
+        redirect(); openLobby(true, "", "mc2_01");
+        CHECK_FALSE(lobby.error.empty()); restored();
+        // A non-directory parent forces configure to fail after assigning the redirect.
+        closeLobby();
+        const auto cwd = std::filesystem::current_path();
+        std::filesystem::create_directories(root / "partial");
+        std::filesystem::current_path(root / "partial");
+        std::ofstream("mp-sessions") << "block";
+        openLobby(true, "", "mc2_01");
+        std::filesystem::current_path(cwd);
+        CHECK_FALSE(lobby.error.empty()); restored();
+    }
+    SUBCASE("protocol transport and timeout failures retain reason") {
+        std::vector<save::Bytes> sent;
+        for (int kind = 0; kind != 3; ++kind) {
+            redirect();
+            auto transport = std::make_unique<RecordedSession>(sent);
+            if (kind == 0) transport->incoming.push_back({0xff});
+            if (kind == 1) transport->fault = "MP peer disconnected";
+            lobbyTransport = std::move(transport);
+            lobbyBegan = std::chrono::steady_clock::now() - std::chrono::seconds(601);
+            if (kind == 2) static_cast<RecordedSession*>(lobbyTransport.get())->ready = false;
+            pumpLobby();
+            CHECK_FALSE(lobby.error.empty());
+            if (kind == 1) CHECK(lobby.error == "MP peer disconnected");
+            if (kind == 2) CHECK(lobby.error == "MP loading timeout (600 seconds)");
+            restored();
+            pumpLobby(); restored(); closeLobby();
+        }
+    }
+    SUBCASE("handoff keeps isolation until actual mission teardown") {
+        redirect(); const auto isolated = userDirectory;
+        std::vector<save::Bytes> sent;
+        lobbyTransport = std::make_unique<RecordedSession>(sent);
+        lobby.started = true; lobby.mission = "mc2_01";
+        REQUIRE(takeLobbyStart() == "mc2_01");
+        CHECK(userDirectory == isolated);
+        endMission(); CHECK(userDirectory == isolated);
+        beginMission("mc2_01", 12345);
+        CHECK(userDirectory == isolated);
+        endMission(); restored(); endMission(); restored();
+    }
+    SUBCASE("failed startup restores immediately") {
+        redirect();
+        std::vector<save::Bytes> sent;
+        lobbyTransport = std::make_unique<RecordedSession>(sent);
+        lobby.started = true; lobby.mission = "mc2_01";
+        REQUIRE(takeLobbyStart() == "mc2_01");
+        std::filesystem::create_directory(userDirectory / "session.trace");
+        CHECK_THROWS_AS(beginMission("mc2_01", 12345), SessionStopped);
+        restored();
+    }
+    SUBCASE("ordinary single player and explicit override") {
+        beginMission("mc2_01", 12345); endMission(); restored();
+        auto exe = executable.string(), option = std::string("--mp-user-dir"), directory = (root / "explicit").string();
+        char* args[] = {exe.data(), option.data(), directory.data()};
+        configure(3, args);
+        const auto explicitDir = userDirectory;
+        prepareLobbyDirectory(); CHECK(userDirectory == explicitDir);
+        closeLobby(); CHECK(userDirectory == explicitDir);
+        openLobby(true, "", "mc2_01"); CHECK(userDirectory == explicitDir);
+        beginMission("mc2_01", 12345); endMission(); CHECK(userDirectory == explicitDir);
+        CHECK_THROWS_AS(stop("explicit directory failure"), SessionStopped);
+        CHECK(userDirectory == explicitDir);
+    }
 }
 void testMissionLifecycle() {
     const auto previousDirectory = userDirectory;

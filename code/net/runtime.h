@@ -22,6 +22,7 @@ bool active();
 enum class MissionOrigin { None, SinglePlayer, CommandLine, Lobby };
 MissionOrigin missionOrigin();
 bool& lobbyVisible();
+inline bool lobbyFrontEndEligible(bool drawBackground) { return drawBackground; }
 void endMission();
 std::uint32_t localSlot();
 void beginMission(std::string_view mission, std::uint32_t seed);

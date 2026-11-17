@@ -382,7 +382,7 @@ int	MainMenu::handleMessage( unsigned long what, unsigned long who )
 			}
 			break;
 		case MM_MSG_MULTIPLAYER:
-			coopOpen = true;
+			coopOpen = mc2::net::lobbyFrontEndEligible(bDrawBackground);
 			break;
 
 		case MM_MSG_RETURN_TO_GAME:
@@ -576,7 +576,7 @@ void MainMenu::update()
 	else
 		getButton( MM_MSG_SAVE )->disable( false );
 
-	getButton( MM_MSG_MULTIPLAYER )->disable( false );
+	getButton( MM_MSG_MULTIPLAYER )->disable( !mc2::net::lobbyFrontEndEligible(bDrawBackground) );
 
 	if ( introMovie )
 	{

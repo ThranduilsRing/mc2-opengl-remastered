@@ -1,6 +1,7 @@
 // Trigger paths: code/net/, code/tactical_order_queue.*, code/mission_update.cpp.
 #include "doctest.h"
 #include "net/session.h"
+#include "net/runtime.h"
 #include <enet/enet.h>
 #include <chrono>
 #include <thread>
@@ -8,7 +9,13 @@ using namespace mc2;
 namespace mc2::net {
 void testLobbyPeerLoss();
 void testMissionLifecycle();
+void testUserDirectoryLifecycle();
 }
+TEST_CASE("NetLobby/front-end eligibility rejects campaign logistics") {
+    CHECK(net::lobbyFrontEndEligible(true));
+    CHECK_FALSE(net::lobbyFrontEndEligible(false));
+}
+TEST_CASE("NetRuntime/automatic user directory lifecycle") { net::testUserDirectoryLifecycle(); }
 TEST_CASE("NetLobby/peer loss after offer restores Host-Join controls") { net::testLobbyPeerLoss(); }
 TEST_CASE("NetRuntime/lobby MP teardown SP teardown second MP has no retained mission state") { net::testMissionLifecycle(); }
 namespace {
