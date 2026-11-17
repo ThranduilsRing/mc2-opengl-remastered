@@ -46,8 +46,12 @@ template<class Pipe> class TerrainSpecVariants {
     bool failed_ = false;
 public:
     ~TerrainSpecVariants() { drain(); }
-    void drain() { if (pending_.valid()) { try { pending_.get(); } catch (...) {} } }
-    // Never blocks; completion from an old generation is discarded.
+    // Caller must ensure GPU idle before destroying cached or pending pipelines.
+    void drain() {
+        if (pending_.valid()) { try { pending_.get(); } catch (...) {} }
+        for (auto& e : entries_) e.pipe = {};
+    }
+    // Never blocks; completion from an old generation is retired by select().
     template<class Retire> void invalidate(Retire retire) {
         ++generation_; stable_ = 0;
         for (auto& e : entries_) if (e.pipe) retire(std::move(e.pipe));
@@ -68,7 +72,7 @@ public:
                         if (dest->pipe) retire(std::move(dest->pipe));
                         dest->key = result.key; dest->pipe = std::move(result.pipe); dest->used = clock_;
                     }
-                }
+                } else if (result.pipe) retire(std::move(result.pipe));
             } catch (...) { failed_ = true; }
         }
         if (!stable_ || key != observed_) { observed_ = key; stable_ = 1; }

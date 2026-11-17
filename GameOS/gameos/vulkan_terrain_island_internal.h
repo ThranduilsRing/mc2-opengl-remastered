@@ -349,6 +349,8 @@ struct TerrainIsland : mc2vk::IslandState {
     std::unique_ptr<OvlState> ovl;
 
     TerrainIsland() = default;
+    // retireIsland waits for GPU idle before reset (vulkan_context.cpp); failed
+    // initialization also waits before fresh.reset (vulkan_terrain_island_run.cpp).
     ~TerrainIsland() override { specVariants.drain(); gpuTimer.destroy(); }
 };
 

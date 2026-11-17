@@ -99,15 +99,18 @@ TEST_CASE("terrain_spec/sticky compile failure and stale generation") {
         stable(t, k, fail); CHECK(finish(t, k, fail) == nullptr); CHECK(t.failed());
         stable(t, k, fail); CHECK(calls == 1);
     }
-    SUBCASE("stale completion discarded") {
+    SUBCASE("stale completion retired") {
         Table t; std::promise<void> release; auto gate = release.get_future().share();
+        unsigned retired = 0;
+        auto countRetire = [&](Pipe&& p) { REQUIRE(p); CHECK(*p == 1); ++retired; p.reset(); };
         auto compile = [gate] { gate.wait(); return std::make_unique<int>(1); };
-        stable(t, k, compile); t.invalidate(retire); release.set_value();
+        stable(t, k, compile); t.invalidate(countRetire); CHECK(retired == 0); release.set_value();
         // Disable new launches while draining the stale completion.
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
-        do { t.select(k, false, compile, retire); std::this_thread::yield(); }
+        do { t.select(k, false, compile, countRetire); std::this_thread::yield(); }
         while (t.compiling() && std::chrono::steady_clock::now() < deadline);
         REQUIRE_FALSE(t.compiling()); CHECK_FALSE(t.failed());
+        CHECK(retired == 1);
         CHECK(tick(t, k, compile) == nullptr);
     }
 }

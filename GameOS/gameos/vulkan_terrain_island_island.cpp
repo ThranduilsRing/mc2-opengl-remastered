@@ -412,14 +412,14 @@ mc2vk::OwnedPipeline build_terrain_pipeline(const TerrainPipelineRecipe& r,
         entries[n] = {id, static_cast<uint32_t>(n * sizeof(int32_t)), sizeof(int32_t)};
         data[n++] = value;
     };
-    add(0, r.csmDebug);
+    if (!r.skirt) add(0, r.csmDebug);
     if (r.planar) add(10, 1);
     if (key) {
         const auto values = key->values();
         for (unsigned i = 0; i < values.size(); ++i) add(20 + i, values[i]);
     }
     const VkSpecializationInfo spec{n, entries.data(), n * sizeof(int32_t), data.data()};
-    stages[1].pSpecializationInfo = &spec;
+    stages[1].pSpecializationInfo = n ? &spec : nullptr;
     VkGraphicsPipelineCreateInfo gp{};
     gp.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
     gp.stageCount = 2; gp.pStages = stages;
@@ -687,9 +687,10 @@ bool init_island(TerrainIsland* s, int w, int h) {
         TerrainPipelineRecipe recipe{s->device, s->vert.get(), s->frag.get(), s->playout.get(),
             s->colorRes->format, s->normalRes->format, s->depthRes->format, csmDebugSpec};
         s->pipe = build_terrain_pipeline(recipe);
+        if (!s->pipe) { vlog("vkCreateGraphicsPipelines failed."); setFallback("pipeline_failed"); return false; }
         recipe.planar = true;
         s->planarPipe = build_terrain_pipeline(recipe);
-        if (!s->pipe || !s->planarPipe) { setFallback("pipeline_failed"); return false; }
+        if (!s->planarPipe) { vlog("vkCreateGraphicsPipelines (planar) failed."); setFallback("pipeline_failed"); return false; }
         mc2vk::nameObject(s->device, s->pipe.get(), "terrain.pipe");
 
         // VK-TERRAIN-SKIRT (rung 4): second pipeline, same layout/renderpass/raster/
@@ -705,7 +706,7 @@ bool init_island(TerrainIsland* s, int w, int h) {
         recipe.vert = s->skirtVert.get(); recipe.frag = s->skirtFrag.get();
         recipe.planar = false; recipe.skirt = true;
         s->skirtPipe = build_terrain_pipeline(recipe);
-        if (!s->skirtPipe) { setFallback("pipeline_failed"); return false; }
+        if (!s->skirtPipe) { vlog("vkCreateGraphicsPipelines (skirt) failed."); setFallback("pipeline_failed"); return false; }
         mc2vk::nameObject(s->device, s->skirtPipe.get(), "terrain.skirtPipe");
     }
 
