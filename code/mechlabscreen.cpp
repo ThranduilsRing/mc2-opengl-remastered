@@ -2619,7 +2619,7 @@ void MechLabScreen::drawLocationView( float tbSx, float tbSy, float tbOx, float 
 				name.c_str(), 0xffe8eef4, nameSize, 0, "" );
 			if ( showWeight ) {
 				std::snprintf( line, sizeof line, "%.1ft", static_cast<double>( items[k].comp->getWeight() ) );
-				text( { row.x + row.w - 28, row.y, 27, row.h }, line, 0xffa0b0c0, 10.f, 1 );
+				text( { row.x + row.w - 28, row.y, 27, row.h }, line, 0xffa0b0c0, 10.f, 2 );
 			}
 		}
 		if ( cand )
