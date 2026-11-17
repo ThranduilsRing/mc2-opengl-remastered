@@ -1222,8 +1222,15 @@ void MissionInterfaceManager::orderMenuService(bool overGui)
             else if (!menuContextValid(&captured)) refuse = "context"; // recipients first so recipientAlive is real
         }
         if (refuse) {
-            char line[96];
+            char line[160];
             std::snprintf(line, sizeof line, "open_refused reason=%s", refuse);
+            if (refuse[0] == 'c') { // context: say which fact blocked
+                const auto& f = s_lastFacts;
+                const size_t n = std::strlen(line);
+                std::snprintf(line + n, sizeof line - n, " focusLost=%d displayChanged=%d pauseMenu=%d targetAttackable=%d selectionMatches=%d recipientAlive=%d other=%d",
+                    f.focusLost, f.displayChanged, f.pauseMenu, f.targetAttackable, f.selectionMatches, f.recipientAlive,
+                    !f.classic || f.movie || f.tutorialAnimation || f.guiFrozen || f.hotkeyReference || f.formationLine || f.mpPaused || f.placementMode);
+            }
             orderMenuLogLine(line);
             return;
         }
