@@ -634,6 +634,41 @@ def test_stage_published_gives_capture_before_the_published_dlls(monkeypatch, tm
     assert (inst / "SDL2.dll").read_bytes() == b"pub"
 
 
+def test_stage_published_removes_candidate_only_swapped_files(monkeypatch, tmp_path):
+    # Astra 1117a P2: a DLL or mod file only the candidate carries must not stay loadable without a manifest row.
+    import csv
+    import merge_gate as gate
+    import deploy_payload
+    from pathlib import Path
+    pub, inst = tmp_path / "pub", tmp_path / "inst"
+    (pub / "data" / "textures").mkdir(parents=True)
+    (inst / "mods" / "x").mkdir(parents=True)
+    (pub / "mc2.exe").write_bytes(b"old")
+    (pub / ".deployed_manifest.csv").write_text(
+        "manifest_version,v1\nrelpath,sha256,bytes,src_commit,timestamp,mtime_ns\nmc2.exe,old-exe,3,old,t,0\n")
+    (inst / "extra.dll").write_bytes(b"cand")
+    (inst / "mods" / "x" / "m.fit").write_bytes(b"cand")
+    (inst / "data").mkdir()
+    (inst / "data" / "keep.fit").write_bytes(b"k")
+    with (inst / ".deployed_manifest.csv").open("w", newline="") as f:
+        csv.writer(f).writerows([["manifest_version", "v1", "", "", "", ""],
+                                 ["relpath", "sha256", "bytes", "src_commit", "timestamp", "mtime_ns"],
+                                 ["mc2.exe", "a", "3", "h", "t", "1"],
+                                 ["extra.dll", "b", "4", "h", "t", "1"],
+                                 ["mods/x/m.fit", "c", "4", "h", "t", "1"],
+                                 ["data/keep.fit", "d", "1", "h", "t", "1"]])
+
+    def fake_cook(target):
+        tex = Path(target) / "data" / "textures"
+        for n in [f"mat{i}_normal.ktx2" for i in range(6)] + ["engine_normals.cookver"]:
+            (tex / n).write_bytes(b"k")
+    monkeypatch.setattr(deploy_payload, "ensure_engine_normal_cooks", fake_cook)
+    gate.stage_published(inst, pub)
+    assert not (inst / "extra.dll").exists() and not (inst / "mods" / "x" / "m.fit").exists()
+    assert (inst / "data" / "keep.fit").exists()
+    assert set(deploy_payload.read_manifest(str(inst))) == {"mc2.exe", "data/keep.fit"}
+
+
 def test_stage_published_fails_when_the_cook_leaves_sidecars_missing(monkeypatch, tmp_path):
     import merge_gate as gate
     import deploy_payload

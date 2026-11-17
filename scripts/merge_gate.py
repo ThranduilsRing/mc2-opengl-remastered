@@ -1146,6 +1146,12 @@ def _forget_swapped_rows(install, published=PUBLISHED):
     keep = rows[:2] + [r for r in rows[2:] if r and not swapped(r[0])]
     with (Path(published) / ".deployed_manifest.csv").open(newline="", encoding="utf-8") as stream:
         published_rows = list(csv.reader(stream))
+    # Candidate-only swapped files (a DLL or mod file the published install lacks) would stay loadable with no row:
+    # delete them so capture-before runs exactly the published runtime (Astra 1117a P2).
+    published_names = {r[0].casefold() for r in published_rows[2:] if r}
+    for r in rows[2:]:
+        if r and swapped(r[0]) and r[0].casefold() not in published_names and not (Path(published) / r[0]).exists():
+            (Path(install) / r[0]).unlink(missing_ok=True)
     keep += [r for r in published_rows[2:] if r and swapped(r[0])]
     with path.open("w", newline="", encoding="utf-8") as stream:
         csv.writer(stream).writerows(keep)
