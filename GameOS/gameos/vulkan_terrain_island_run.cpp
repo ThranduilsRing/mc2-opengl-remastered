@@ -407,7 +407,7 @@ static bool record_terrain_cmds(const TerrainRecPlan& p, VkCommandBuffer cb) {
     // FAR-BAND-BLACK-1 FIX: attachment 2 clears to reverse-Z far. The native prefix
     // clear path also clears color0 and normal here, matching the GL frame-entry
     // clear plus clearGBuffer1 sentinel before terrain draws into the shared GBuffer.
-    MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Terrain");
+    MC2_VK_GPU_SCOPE(gpuScope, cb, p.embedded ? "VKIsl.Terrain.Refl" : "VKIsl.Terrain");
     terrain_begin_scene_pass(*p.ctx, cb, p.w, p.h, p.clearColor, p.colorView, p.normalView, p.depthView, p.depthFormat, p.embedded);
 
     VkViewport vp{p.jx, p.jy, static_cast<float>(p.w), static_cast<float>(p.h), 0.0f, 1.0f};
@@ -439,7 +439,7 @@ static bool record_terrain_cmds(const TerrainRecPlan& p, VkCommandBuffer cb) {
         }
     };
     {
-        MC2_VK_GPU_SCOPE(patchScope, cb, "VKIsl.Terrain.Patches");
+        MC2_VK_GPU_SCOPE_TRIS(patchScope, cb, p.embedded ? "VKIsl.Terrain.Refl.Patches" : "VKIsl.Terrain.Patches");
         drawRuns(p.patchRuns);
     }
     if (!p.skirtRuns.empty()) {
