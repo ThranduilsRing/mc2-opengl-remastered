@@ -28,6 +28,8 @@
 #include "../GameOS/gameos/utils/mc2log.h"
 #include "mc2fmt.h"
 #include "fast_hash.h"
+#include "../GameOS/gameos/cook_cache.h"
+#include <bit>
 #include <filesystem>
 #include <fstream>
 #include <span>
@@ -57,11 +59,42 @@ struct Index {
 Index g_index;
 std::mutex g_indexMutex;
 
-// Content-digest memo (see contentDigest): key -> stamp + digest; cleared by every buildLocked().
-struct DigestStamp { uint64_t size = 0; int64_t mtime = 0; uint64_t generation = 0; bool physical = false; };
+// Content-digest memo: provider identity -> stat stamp + digest, persisted between runs.
+struct DigestStamp { uint64_t size = 0; int64_t mtime = 0; };
 std::mutex g_digestMutex;
 std::map<std::string, std::pair<DigestStamp, uint64_t>> g_digestMemo;
-uint64_t g_digestGeneration = 1;
+bool g_digestLoaded = false, g_digestDirty = false;
+constexpr mc2cache::CacheKind digestKind{"digests-", ".memo", 1, 16 * 1024 * 1024};
+constexpr std::string_view digestDir = "cache/vfs";
+
+// One bounded, checksummed snapshot. A partial or incompatible snapshot is a miss in its entirety.
+void loadDigestsLocked()
+{
+	if (g_digestLoaded) return;
+	g_digestLoaded = true;
+	const auto bytes = mc2cache::readEntry(digestDir, digestKind, 1);
+	if (!bytes || bytes->size() < 16) return;
+	const std::span<const uint8_t> data(*bytes);
+	if (mc2cache::getLE(data, 0, 8) != mc2::content::fastHash(data.subspan(8)) ||
+	    mc2cache::getLE(data, 8, 4) != 1) return;
+	size_t pos = 16;
+	const auto count = mc2cache::getLE(data, 12, 4);
+	decltype(g_digestMemo) loaded;
+	for (uint64_t i = 0; i < count; ++i) {
+		if (data.size() - pos < 28) return;
+		const auto length = mc2cache::getLE(data, pos, 4);
+		DigestStamp stamp;
+		stamp.size = mc2cache::getLE(data, pos + 4, 8);
+		stamp.mtime = std::bit_cast<int64_t>(mc2cache::getLE(data, pos + 12, 8));
+		const auto digest = mc2cache::getLE(data, pos + 20, 8);
+		pos += 28;
+		if (!length || length > 8192 || length > data.size() - pos || !digest) return;
+		std::string name(reinterpret_cast<const char*>(data.data() + pos), length);
+		pos += length;
+		loaded.emplace(std::move(name), std::pair{stamp, digest});
+	}
+	if (pos == data.size()) g_digestMemo = std::move(loaded);
+}
 static std::atomic<uint64_t> g_generation{1};
 
 void put(Index& ix, const std::string& k, Provider p, const std::string& mount,
@@ -122,7 +155,8 @@ void buildLocked()
 	{
 		std::lock_guard<std::mutex> dl(g_digestMutex);
 		g_digestMemo.clear();
-		++g_digestGeneration;
+		g_digestLoaded = false;
+		g_digestDirty = false;
 	}
 	g_generation.fetch_add(1, std::memory_order_relaxed);
 
@@ -307,42 +341,72 @@ std::vector<Entry> candidates(std::string_view logicalKey)
 	return out;
 }
 
-uint64_t contentDigest(std::string_view path)
+void flushContentDigests()
+{
+	std::lock_guard<std::mutex> dl(g_digestMutex);
+	if (!g_digestDirty) return;
+	std::vector<uint8_t> bytes;
+	mc2cache::putLE(bytes, 0, 8);
+	mc2cache::putLE(bytes, 1, 4);
+	mc2cache::putLE(bytes, g_digestMemo.size(), 4);
+	for (const auto& [name, memo] : g_digestMemo) {
+		const auto& [stamp, digest] = memo;
+		mc2cache::putLE(bytes, name.size(), 4);
+		mc2cache::putLE(bytes, stamp.size, 8);
+		mc2cache::putLE(bytes, static_cast<uint64_t>(stamp.mtime), 8);
+		mc2cache::putLE(bytes, digest, 8);
+		bytes.insert(bytes.end(), name.begin(), name.end());
+	}
+	const auto hash = mc2::content::fastHash(std::span<const uint8_t>(bytes).subspan(8));
+	for (unsigned i = 0; i < 8; ++i) bytes[i] = static_cast<uint8_t>(hash >> (8 * i));
+	if (bytes.size() <= digestKind.maxBytes && mc2cache::writeEntry(digestDir, digestKind, 1, bytes))
+		g_digestDirty = false;
+}
+
+uint64_t contentDigest(std::string_view path, bool verify)
 {
 	if (path.empty()) return 0;
 	const std::string k = key(path);
-	// The winner is what File::open serves: first candidate whose file opens (FST always accepted).
+	// Follow provider precedence with stat probes; memo hits must not open the source.
 	std::string physical;
 	bool fst = false;
-	if (const auto e = resolve(k)) {
-		if (e->provider == Provider::Fst) fst = true; else physical = e->physicalPath;
+	std::string archive;
+	if (const auto e = resolve(k, [](const Entry& candidate) {
+		if (candidate.provider == Provider::Fst) return true;
+		std::error_code ec;
+		return std::filesystem::is_regular_file(candidate.physicalPath, ec) && std::ifstream(candidate.physicalPath, std::ios::binary).is_open();
+	})) {
+		if (e->provider == Provider::Fst) {
+			fst = true;
+			archive = e->mountName.substr(4);
+		} else physical = e->physicalPath;
 	} else {
 		physical = std::string(path);   // not indexed (absolute path or written after the build): the file itself
 	}
 	DigestStamp stamp;
-	stamp.physical = !fst;
-	if (fst) {
-		std::lock_guard<std::mutex> dl(g_digestMutex);
-		stamp.generation = g_digestGeneration;
-	} else {
+	{
 		std::error_code ec;
-		const auto size = std::filesystem::file_size(physical, ec);
+		const auto source = fst ? archive : physical;
+		const auto size = std::filesystem::file_size(source, ec);
 		if (ec) return 0;
-		const auto mt = std::filesystem::last_write_time(physical, ec);
+		const auto mt = std::filesystem::last_write_time(source, ec);
 		if (ec) return 0;
 		stamp.size = size;
 		stamp.mtime = static_cast<int64_t>(mt.time_since_epoch().count());
 	}
-	const std::string memoKey = fst ? k : physical;
+	std::error_code pathError;
+	const auto source = std::filesystem::absolute(fst ? archive : physical, pathError).lexically_normal().generic_string();
+	if (pathError) return 0;
+	const std::string memoKey = fst ? "fst:" + source + "\n" + k : "file:" + source;
 	{
 		std::lock_guard<std::mutex> dl(g_digestMutex);
+		loadDigestsLocked();
 		const auto it = g_digestMemo.find(memoKey);
-		if (it != g_digestMemo.end()) {
+		if (!verify && it != g_digestMemo.end()) {
 			const auto& [storedKey, memo] = *it;
 			const auto& [memoStamp, memoDigest] = memo;
 			(void)storedKey;
-			if (memoStamp.physical == stamp.physical && memoStamp.size == stamp.size && memoStamp.mtime == stamp.mtime &&
-			    memoStamp.generation == stamp.generation) return memoDigest;
+			if (memoStamp.size == stamp.size && memoStamp.mtime == stamp.mtime) return memoDigest;
 		}
 	}
 	// Miss: hash the content once.
@@ -371,9 +435,13 @@ uint64_t contentDigest(std::string_view path)
 		}
 		if (total != stamp.size) return 0;   // changed while hashing: no memo, the caller retries
 	}
+	std::error_code stampError;
+	const auto finalTime = std::filesystem::last_write_time(fst ? archive : physical, stampError);
+	if (stampError || static_cast<int64_t>(finalTime.time_since_epoch().count()) != stamp.mtime) return 0;
 	if (!digest) digest = 1;
 	std::lock_guard<std::mutex> dl(g_digestMutex);
 	g_digestMemo[memoKey] = {stamp, digest};
+	g_digestDirty = true;
 	return digest;
 }
 
