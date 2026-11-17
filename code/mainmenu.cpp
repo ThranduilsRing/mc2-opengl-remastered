@@ -1017,9 +1017,11 @@ void MainMenu::render()
 		!xDelta && !yDelta && !promptToQuit && !promptToDisconnect) {
 		const auto* button = getButton(MM_MSG_MULTIPLAYER);
 		float x = button->globalLeft(), y = button->globalTop(), w = button->width(), h = button->height();
-		getDefsElementScreenRect("game.mcl_mm.button.multiplayer", x, y, w, h);
-		coopProofWidget("Multiplayer", x, y, x + w, y + h,
-			static_cast<float>(Environment.screenWidth), static_cast<float>(Environment.screenHeight));
+		float width = Environment.screenWidth, height = Environment.screenHeight;
+		// Defs rectangles use the actual display, which can differ from the legacy screen mode.
+		if (getDefsElementScreenRect("game.mcl_mm.button.multiplayer", x, y, w, h))
+			GuiRuntime::GetDisplaySize(width, height);
+		coopProofWidget("Multiplayer", x, y, x + w, y + h, width, height);
 	}
 	if ( promptToQuit || promptToDisconnect )
 	{

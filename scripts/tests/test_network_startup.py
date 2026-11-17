@@ -77,6 +77,16 @@ def test_lobby_proof_enters_via_widgets_and_keeps_cli_default(tmp_path, monkeypa
     assert (tmp_path / "lobby.script").read_text() == "wait 180\n"
 
 
+def test_lobby_multiplayer_hit_region_uses_defs_display_dimensions():
+    # The retained 800x600 Environment mode is not the 1920x1080 defs rectangle's space.
+    source = (ROOT / "code/mainmenu.cpp").read_text()
+    region = source[source.index('getButton(MM_MSG_MULTIPLAYER);', source.index('void MainMenu::render()')):]
+    region = region[:region.index('\n\t}')]
+    dimensions = re.search(r'GuiRuntime::GetDisplaySize\((\w+), (\w+)\)', region)
+    assert dimensions, "physical defs rectangles need actual display dimensions"
+    assert re.search(r'coopProofWidget\("Multiplayer",[^;]*, ' + dimensions[1] + ', ' + dimensions[2] + r'\);', region)
+
+
 def test_lobby_driver_waits_for_listening_and_enabled_controls(tmp_path):
     from run_mp_loopback_proof import LobbyDriver
     peers = [tmp_path / "host", tmp_path / "client"]
