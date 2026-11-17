@@ -17,6 +17,7 @@
 #define TERRAIN_RUNTIME_H
 
 #include "math/glm_config.h"
+#include <span>
 
 namespace TerrainRuntime
 {
@@ -48,6 +49,8 @@ namespace TerrainRuntime
 	// UNIT-VISUAL-SNAP-1 (render only): visual-bake height minus gameplay height at worldPos; 0 when no
 	// bake is loaded or outside the map. Mech/vehicle MODEL draw heights add this; sim never reads it.
 	float visualHeightDelta(const glm::vec3& worldPos);
+	struct GroundHeightView { std::span<const float> heights; int vertices; };
+	GroundHeightView groundHeightView();
 	void setCpuVisualHeight(const float* vh, int V);   // nullptr clears (mission start / bake rejected)
 
 	// Bilinear accepted 4x bake, falling back to gameplay outside it or without a bake.
