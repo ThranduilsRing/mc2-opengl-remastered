@@ -30,6 +30,13 @@ extern bool renderObjects;
 extern char TeamRelations[MAX_TEAMS][MAX_TEAMS];
 extern char versionStamp[];
 
+// MasterComponent keeps form/health private; the explicit-instantiation access trick (no layout or ODR change) lets fixtures seed them.
+template <class Tag, auto Member> struct ComponentPeek { friend constexpr auto peek(Tag) { return Member; } };
+struct PeekForm { friend constexpr auto peek(PeekForm); };
+struct PeekHealth { friend constexpr auto peek(PeekHealth); };
+template struct ComponentPeek<PeekForm, &MasterComponent::form>;
+template struct ComponentPeek<PeekHealth, &MasterComponent::health>;
+
 TEST_CASE("heat production/real mech Save and Load preserve heat on reused objects and clear legacy state") {
     using namespace mc2::save;
     struct Mech : BattleMech {
@@ -44,7 +51,7 @@ TEST_CASE("heat production/real mech Save and Load preserve heat on reused objec
     SensorManager->init(false);
     auto* oldComponents = MasterComponent::masterList;
     MasterComponent component;
-    component.stats.sensor.range = 0;
+    component.setSensorRange(0);
     MasterComponent::masterList = &component;
     auto* oldPilot = MechWarrior::warriorList[0];
     MechWarrior pilot;
@@ -115,9 +122,9 @@ TEST_CASE("heat production/capacity re-derive keeps heat and tracks sink loss an
     SensorManager->init(false);
     auto* oldComponents = MasterComponent::masterList;
     MasterComponent components[2];
-    components[0].stats.sensor.range = 0;
-    components[1].form = COMPONENT_FORM_HEATSINK;
-    components[1].health = 1;
+    components[0].setSensorRange(0);
+    components[1].*peek(PeekForm{}) = COMPONENT_FORM_HEATSINK;
+    components[1].*peek(PeekHealth{}) = 1;
     components[1].setHeatDissipation(3.0f);
     MasterComponent::masterList = components;
     auto* oldPilot = MechWarrior::warriorList[0];
