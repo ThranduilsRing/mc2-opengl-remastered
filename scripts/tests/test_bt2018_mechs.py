@@ -349,12 +349,52 @@ def test_cook_retargets_from_the_raw_cache_so_repeat_cooks_match(tmp_path):
     retarget_file(str(raw), str(atlas), str(out))          # the fixed converter's repeat run
     assert out.read_bytes() == first
 
-    legacy = tmp_path / "legacy.glb"                         # the old in-place behaviour, for contrast
-    legacy.write_bytes(raw.read_bytes())
-    retarget_file(str(legacy), str(atlas), str(legacy))
-    once = legacy.read_bytes()
-    retarget_file(str(legacy), str(atlas), str(legacy))
-    assert legacy.read_bytes() != once
+    retarget_file(str(out), str(atlas), str(out))           # re-running on a shipped GLB is a no-op
+    assert out.read_bytes() == first
+
+
+def test_retarget_turns_bones_in_model_space_whatever_the_bind_frame(tmp_path):
+    """Trigger: scripts/bt2018_retarget_clips.py. Owner 11-16: arms wrong except on the Atlas."""
+    pytest.importorskip("pygltflib")
+    from bt2018_retarget_clips import retarget_file, quat_mul, quat_conj
+    from pygltflib import GLTF2
+    import numpy as np
+    s = 0.7071067811865476
+    atlas, mech = tmp_path / "atlas.glb", tmp_path / "mech.glb"
+    _tiny_glb(atlas, (0, 0, 0, 1), [(0, 0, 0, 1), (0, 0, s, s)])   # Atlas: +90 deg about Z
+    _tiny_glb(mech, (s, 0, 0, s), [(0, 0, 0, 1), (0, 0, s, s)])    # bind frame turned 90 about X
+    retarget_file(str(mech), str(atlas), str(mech))
+    g = GLTF2().load(str(mech))
+    key = np.frombuffer(g.binary_blob(), "<f4", 4, 4 * 2 + 16)
+    delta = quat_mul(key, quat_conj(np.array([s, 0, 0, s])))      # world turn away from bind
+    assert np.degrees(2 * np.arccos(min(1.0, abs(float(delta @ [0, 0, s, s]))))) < 0.5
+
+
+def test_native_clip_baker_decodes_streamed_dense_and_constant_curves():
+    """Trigger: tools/bt2018_extract/bake_clips.py (native BT clips replace Atlas retargets)."""
+    from tools.bt2018_extract import bake_clips as B
+    # one streamed curve: key at t=0 value 1 slope 2, key at t=1 constant 5; one constant curve 7
+    words = struct.unpack("<14I", struct.pack("<fi i4f fi i4f", 0.0, 1, 0, 0, 0, 2.0, 1.0, 1.0, 1, 0, 0, 0, 0, 5.0))
+    clip = {"m_StreamedClip": {"data": list(words), "curveCount": 1},
+            "m_DenseClip": {"m_CurveCount": 1, "m_SampleArray": [0.0, 10.0], "m_BeginTime": 0.0, "m_SampleRate": 1.0},
+            "m_ConstantClip": {"data": [7.0]}}
+    vals = B.sample_clip({"m_MuscleClip": {"m_Clip": {"data": clip}}}, [0.0, 0.5, 1.0])
+    assert vals.tolist() == [[1.0, 0.0, 7.0], [2.0, 5.0, 7.0], [5.0, 10.0, 7.0]]
+
+
+def test_baked_clip_buffer_views_stay_inside_the_binary_chunk(tmp_path):
+    """Trigger: bake_clips.add_to_glb. f8 keys once sized views at 2x the f4 bytes written: Assimp rejected 50/51 GLBs (3 mechs drew placeholders)."""
+    pygltflib = pytest.importorskip("pygltflib")
+    import numpy as np
+    from tools.bt2018_extract import bake_clips as B
+    g = pygltflib.GLTF2(nodes=[pygltflib.Node(name="j_Root")], buffers=[pygltflib.Buffer(byteLength=4)])
+    g.set_binary_blob(b"\0\0\0\0")
+    g.save(str(tmp_path / "in.glb"))
+    rots = {"j_Root": np.tile(np.array([0.0, 0.0, 0.0, 1.0]), (3, 1))}   # float64, like the baker's output
+    B.add_to_glb(str(tmp_path / "in.glb"), str(tmp_path / "out.glb"), {"atlas_idle": (0.1, rots)})
+    out = pygltflib.GLTF2().load(str(tmp_path / "out.glb"))
+    end = len(out.binary_blob())
+    assert all(v.byteOffset + v.byteLength <= end for v in out.bufferViews)
 
 
 # ---------------------------------------------------------------- P6 icons
@@ -470,6 +510,29 @@ def test_roster_equipment_resolves_without_external_dump(tables, tmp_path):
     assert [i for i in stock_ids if i in stock | added] == stock_ids
 
 
+def test_every_roster_chassis_places_its_sensor_and_items(tables, tmp_path):
+    """mc2_18 invisible attackers: an empty ComponentPlacement grid left BT2018 mechs with
+    no sensor system. Trigger: tools/bt2018_mechs/{roster.py,data/roster.json,compile.py}."""
+    from tools.bt2018_mechs import roster
+    rows = C.load_json(C.DATA / "roster.json")
+    manifest = [{"btname": f, "glb": f + ".glb", "tga": f + ".tga"} for f in rows if not f.startswith("_")]
+    (tmp_path / "conversions_manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    recipes = roster.recipes(tmp_path)
+    assert len(recipes) == 51
+    for index, recipe in enumerate(recipes):
+        p = C.build_profile(recipe, *tables)
+        csv_rows = list(csv.reader(io.StringIO(C.emit_csv(p, recipe, index))))
+        for v in range(len(p["variants"])):
+            base = 97 * v
+            items = {i: int(csv_rows[25 + base + i][4]) for i in range(72)}
+            placed = {int(csv_rows[101 + base + s][c]) for s in range(12) for c in range(1, 9)
+                      if csv_rows[101 + base + s][c]}
+            assert items[12] == 13 and int(csv_rows[103 + base][1]) == 12, p["family"]  # Head Slot3
+            assert {i for i, mid in items.items() if mid != C.EMPTY_MASTER} <= placed, p["family"]
+            if p["mc2"]["jump_capable"]:
+                assert items[C.JUMP_ITEM_FIRST] != C.EMPTY_MASTER, p["family"]
+
+
 def test_spawn_fixture_uses_a_shipped_pilot_with_combat_skills():
     """A missing pilot leaves zero skills and turns weapon status into 0/0."""
     import hashlib
@@ -494,3 +557,301 @@ def test_spawn_fixture_uses_a_shipped_pilot_with_combat_skills():
     for skill in ("Gunnery", "Piloting"):
         value = re.search(rf"(?im)^\s*c\s+{skill}\s*=\s*(\d+)", text)
         assert value and int(value.group(1)) > 0, f"spawn pilot needs usable {skill}"
+
+
+# One-shot clips mc2clip::select leaves for locomotion when the sim gesture ends (hits,
+# power-on, get-up). Their last frame is held until then, so it must BE the idle pose.
+# Prone clips (knockdown, downed/death idles) are held on purpose until the sim's GetUp.
+RETURN_TO_IDLE = ("atlas_hitReactLgtFwd", "atlas_hitReactLgtBwd", "atlas_hitReactLgtLeft",
+                  "atlas_hitReactLgtRight", "atlas_shutdownPwron", "atlas_downedGetup")
+
+
+@pytest.mark.parametrize("family", ["atlas", "marauder"])
+def test_one_shot_clips_end_on_the_idle_pose(family):
+    """Trigger: owner 11-16 'stayed leaning back after getting hit'. Held end pose == idle."""
+    pytest.importorskip("pygltflib")
+    from pygltflib import GLTF2
+    from bt2018_retarget_clips import quat_mul, node_bind_rot, accessor_view
+    import numpy as np
+    path = CONVERSIONS / f"{family}.glb"
+    if not path.is_file():
+        pytest.skip(f"set BT2018_CONVERSIONS to a dir with {family}.glb")
+    g = GLTF2().load(str(path)); blob = g.binary_blob()
+    parent = {c: i for i, n in enumerate(g.nodes) for c in (n.children or [])}
+    anims = {a.name: a for a in g.animations}
+
+    def world(clip, last):
+        local = {i: node_bind_rot(g, i) for i in range(len(g.nodes))}
+        a = anims[clip]
+        for ch in a.channels:
+            if ch.target.path == "rotation":
+                k = accessor_view(g, blob, a.samplers[ch.sampler].output)[0]
+                q = np.asarray(k[-1 if last else 0], np.float64)
+                local[ch.target.node] = q / np.linalg.norm(q)
+        out = {}
+        def w(i):
+            if i not in out:
+                out[i] = quat_mul(w(parent[i]), local[i]) if i in parent else local[i]
+            return out[i]
+        for i in local:
+            w(i)
+        return out
+
+    idle = world("atlas_moveCoreIdle", False)
+    for clip in RETURN_TO_IDLE:
+        if clip not in anims:
+            continue
+        end = world(clip, True)
+        worst = max(np.degrees(2 * np.arccos(min(1.0, abs(float(np.dot(end[i], idle[i]))))))
+                    for i in idle)
+        assert worst < 3.0, f"{family} {clip} ends {worst:.1f} deg from idle"
+
+
+def test_hud_icons_have_stock_tone_mix_and_no_outline_ring():
+    """Trigger: tools/bt2018_mechs/render_icons.py (owner 11-16: icons read too bright and busy)."""
+    from tools.bt2018_mechs import render_icons as R
+    import numpy as np
+    rng = np.random.default_rng(1)
+    parts = []
+    for region, (cx, cy) in {6: (0, 3), 2: (2, 3), 3: (-2, 3), 0: (0.6, 1), 1: (-0.6, 1)}.items():
+        v = rng.normal(size=(300, 3)) * 0.35 + [cx, cy, 0]       # jittered "high-poly" blob: noisy normals
+        parts.append((region, v, np.array([[i, i + 1, i + 2] for i in range(0, 297, 3)])))
+    img = R.hud_strip(parts, 25, 30)[:30]
+    solid = img[:, :, 3] > 0
+    assert R.palette_ok(img) == [] and not (img[solid][:, :3] == R.OUTLINE).all(1).any()
+    green = img[solid][:, 1]
+    assert (green == 229).mean() < 0.35 and (green == 83).mean() > 0.4     # dark-dominated like stock
+
+
+# ---------------------------------------------------------------- pack GLB guard
+
+
+def _glb(tmp_path, names, view_len=4):
+    import pygltflib
+    g = pygltflib.GLTF2(nodes=[pygltflib.Node(name=n) for n in names],
+                        buffers=[pygltflib.Buffer(byteLength=4)],
+                        bufferViews=[pygltflib.BufferView(buffer=0, byteOffset=0, byteLength=view_len)])
+    g.set_binary_blob(b"\0\0\0\0")
+    g.save(str(tmp_path / "m.glb"))
+    return tmp_path / "m.glb"
+
+
+def test_duplicate_node_names_are_renamed_deterministically_and_first_keeps_its_name(tmp_path):
+    """Trigger: tools/bt2018_mechs/glb_guard.py (raven.glb: duplicate node name 'VFXCollider_vert' broke Assimp import)."""
+    pytest.importorskip("pygltflib")
+    from pygltflib import GLTF2
+    from tools.bt2018_mechs import glb_guard as G
+    p = _glb(tmp_path, ["j_Root", "VFXCollider_vert", "VFXCollider_vert", "VFXCollider_vert"])
+    assert any("duplicate node name" in b for b in G.validate_glb(p))
+    assert G.dedupe_node_names(p) == {"VFXCollider_vert": 2}
+    assert [n.name for n in GLTF2().load(str(p)).nodes] == ["j_Root", "VFXCollider_vert", "VFXCollider_vert__dup2", "VFXCollider_vert__dup3"]
+    assert G.validate_glb(p) == [] and G.dedupe_node_names(p) == {}
+
+
+def test_pack_guard_flags_out_of_range_buffer_view(tmp_path):
+    """Trigger: glb_guard.validate_pack_glbs (the e7e0ff83b bufferView overrun would have failed the build)."""
+    pytest.importorskip("pygltflib")
+    from tools.bt2018_mechs import glb_guard as G
+    _glb(tmp_path, ["j_Root"], view_len=64)
+    bad = G.validate_pack_glbs(tmp_path)
+    assert "out of range" in " ".join(bad["m.glb"])
+
+
+def test_pack_guard_catches_the_prefix_baker_bug(tmp_path):
+    """Trigger: bake_clips.add_to_glb f8 sizing; the validator alone flags that output."""
+    pygltflib = pytest.importorskip("pygltflib")
+    import numpy as np
+    from tools.bt2018_mechs import glb_guard as G
+    src = _glb(tmp_path, ["j_Root"])
+    g = pygltflib.GLTF2().load(str(src))
+    arr = np.zeros((3, 4))                                   # float64 nbytes written as the view length, f4 bytes stored
+    g.bufferViews.append(pygltflib.BufferView(buffer=0, byteOffset=4, byteLength=arr.nbytes))
+    g.buffers[0].byteLength = 4 + arr.astype("<f4").nbytes
+    g.set_binary_blob(b"\0" * g.buffers[0].byteLength)
+    g.save(str(src))
+    assert G.validate_glb(src)
+
+
+def _bin_glb(prims, mats, sparse_pos=False):
+    """Binary-backed skinned GLB (in memory). prims: [dict(mesh=name, mat=material index, pos=[(x, y, z)], idx=None | [ints],
+    attrs={attribute: rows of floats})]; mats: [(material name, alphaMode, image name)]. One skinned node per mesh."""
+    pg = pytest.importorskip("pygltflib")
+    blob, views, accs = bytearray(), [], []
+
+    def put(data):
+        while len(blob) % 4:
+            blob.append(0)
+        views.append(pg.BufferView(buffer=0, byteOffset=len(blob), byteLength=len(data)))
+        blob.extend(data)
+        return len(views) - 1
+
+    def floats(rows, typ):
+        accs.append(pg.Accessor(bufferView=put(b"".join(struct.pack(f"<{len(r)}f", *r) for r in rows)), componentType=5126, count=len(rows), type=typ))
+        return len(accs) - 1
+
+    meshes = []
+    for d in prims:
+        a = pg.Attributes()
+        if sparse_pos:   # no base data; every vertex comes from the sparse override
+            n = len(d["pos"])
+            accs.append(pg.Accessor(componentType=5126, count=n, type="VEC3", sparse=pg.Sparse(
+                count=n, indices=pg.AccessorSparseIndices(bufferView=put(struct.pack(f"<{n}H", *range(n))), componentType=5123),
+                values=pg.AccessorSparseValues(bufferView=put(b"".join(struct.pack("<3f", *r) for r in d["pos"]))))))
+            a.POSITION = len(accs) - 1
+        else:
+            a.POSITION = floats(d["pos"], "VEC3")
+        for k, rows in d.get("attrs", {}).items():
+            setattr(a, k, floats(rows, {2: "VEC2", 3: "VEC3", 4: "VEC4"}[len(rows[0])]))
+        idx = None
+        if d.get("idx") is not None:
+            accs.append(pg.Accessor(bufferView=put(struct.pack(f"<{len(d['idx'])}H", *d["idx"])), componentType=5123, count=len(d["idx"]), type="SCALAR"))
+            idx = len(accs) - 1
+        meshes.append(pg.Mesh(name=d["mesh"], primitives=[pg.Primitive(attributes=a, indices=idx, material=d["mat"])]))
+    imgs = sorted({m[2] for m in mats})
+    g = pg.GLTF2(nodes=[pg.Node(name="j")] + [pg.Node(name=f"n{i}", mesh=i, skin=0) for i in range(len(prims))],
+                 skins=[pg.Skin(joints=[0])], meshes=meshes, accessors=accs, bufferViews=views,
+                 buffers=[pg.Buffer(byteLength=len(blob))], textures=[pg.Texture(source=i) for i in range(len(imgs))],
+                 images=[pg.Image(name=n) for n in imgs],
+                 materials=[pg.Material(name=m[0], alphaMode=m[1], pbrMetallicRoughness=pg.PbrMetallicRoughness(
+                     baseColorTexture=pg.TextureInfo(index=imgs.index(m[2])))) for m in mats])
+    g.set_binary_blob(bytes(blob))
+    return g
+
+
+def _verts(n, shift=0.0):
+    return [(float(i) + shift, 0.0, 0.0) for i in range(n)]
+
+
+def _save(g, tmp_path):
+    p = tmp_path / "x.glb"
+    g.save(str(p))
+    return p
+
+
+def test_pack_guard_picks_the_dominant_skin_texture_and_flags_untextured_parts(tmp_path):
+    """Trigger: glb_guard.skin_texture_problems (raven.glb: first skinned part used the weapons atlas -> untextured white mech)."""
+    pg = pytest.importorskip("pygltflib")
+    from tools.bt2018_mechs import glb_guard as G
+    g = _bin_glb([dict(mesh="forearm", mat=1, pos=_verts(3)), dict(mesh="torso", mat=0, pos=_verts(30)),
+                  dict(mesh="torso_dmg", mat=2, pos=_verts(3))],
+                 [("base", None, "chrTxrMech_x-base-alb.png"), ("weapons", None, "chrTxrMech_x-weapons-alb.png"), ("none", None, "chrTxrMech_x-weapons-alb.png")])
+    g.materials[2].pbrMetallicRoughness.baseColorTexture = None
+    p = _save(g, tmp_path)
+    tex = tmp_path / "tgl"
+    tex.mkdir()
+    assert any("not in the pack" in b and "base-alb" in b for b in G.skin_texture_problems(p, [tex]))   # weapons-first pick would have passed
+    (tex / "chrtxrmech_x-base-alb.tga").write_bytes(b"")
+    assert G.skin_texture_problems(p, [tex]) == []                                                       # _dmg part without texture is dropped, not flagged
+    g.materials[0] = pg.Material(name="base")
+    p = _save(g, tmp_path)
+    assert any("without a base colour texture" in b for b in G.skin_texture_problems(p))
+    g.nodes[0].name = "j_Root__dup2"
+    p = _save(g, tmp_path)
+    assert any("dedupe-renamed" in b for b in G.skin_texture_problems(p))
+
+
+def test_blend_skin_material_is_made_opaque_so_the_importer_keeps_the_real_texture_name(tmp_path):
+    """Trigger: glb_guard.opaque_mech_materials (raven_base was BLEND: importer asked for 'a_...tga', mech rendered white)."""
+    from tools.bt2018_mechs import glb_guard as G
+    p = _save(_bin_glb([dict(mesh="torso", mat=0, pos=_verts(3))], [("base", "BLEND", "x-base-alb.png")]), tmp_path)
+    assert any("BLEND" in b for b in G.skin_texture_problems(p))
+    assert G.opaque_mech_materials(p) == ["base"] and G.opaque_mech_materials(p) == []
+    assert not any("BLEND" in b for b in G.skin_texture_problems(p))
+
+
+def _pick(g):
+    from tools.bt2018_mechs import glb_guard as G
+    return G.skin_pick(g)[0]
+
+
+def test_skin_pick_variant_priority_lexical_ties_and_alpha_scope(tmp_path):
+    """Trigger: glb_guard.skin_pick mirrors assimp_importer.cpp slot-0 pick; opaque_mech_materials touches only the skin material."""
+    from tools.bt2018_mechs import glb_guard as G
+    pg = pytest.importorskip("pygltflib")
+    # canopy glass stays BLEND, body BLEND becomes OPAQUE
+    g = _bin_glb([dict(mesh="body", mat=0, pos=_verts(9)), dict(mesh="canopy", mat=1, pos=_verts(4))],
+                 [("base", "BLEND", "b-base-alb.png"), ("glass", "BLEND", "c-glass-alb.png")])
+    p = _save(g, tmp_path)
+    assert G.opaque_mech_materials(p) == ["base"]
+    assert [m.alphaMode for m in pg.GLTF2().load(str(p)).materials] == ["OPAQUE", "BLEND"]
+    assert G.skin_texture_problems(p) == []                                  # the canopy BLEND is not a skin problem
+    # variant material wins over the larger plain atlas
+    g = _bin_glb([dict(mesh="body", mat=0, pos=_verts(9)), dict(mesh="arm", mat=1, pos=_verts(2))],
+                 [("x_base", "OPAQUE", "b-base-alb.png"), ("x_widow", "OPAQUE", "a-widow-alb.png")])
+    assert _pick(g) == "a-widow-alb.tga"
+    # equal counts: lexically first texture, not file order
+    g = _bin_glb([dict(mesh="a", mat=0, pos=_verts(5)), dict(mesh="b", mat=1, pos=_verts(5))],
+                 [("m1", "OPAQUE", "z-alb.png"), ("m2", "OPAQUE", "c-alb.png")])
+    assert _pick(g) == "c-alb.tga"
+    # a MASK skin material is refused, not silently converted
+    p = _save(_bin_glb([dict(mesh="body", mat=0, pos=_verts(9))], [("base", "MASK", "b-base-alb.png")]), tmp_path)
+    with pytest.raises(ValueError, match="MASK"):
+        G.opaque_mech_materials(p)
+
+
+def test_skin_pick_alpha_prefix_decides_ties_like_the_engine_and_the_guard_fails_the_missing_texture(tmp_path):
+    """Trigger: glb_guard.skin_pick/_tga_name; equal-count OPAQUE b vs BLEND z is a_z.tga in the engine (DeriveMC2TextureName)."""
+    from tools.bt2018_mechs import glb_guard as G
+    g = _bin_glb([dict(mesh="p", mat=0, pos=_verts(5)), dict(mesh="q", mat=1, pos=_verts(5))],
+                 [("m1", "OPAQUE", "b-alb.png"), ("m2", "BLEND", "z-alb.png")])
+    assert _pick(g) == "a_z-alb.tga"                                          # 'a_z' sorts before 'b': a plain-name pick would say b
+    p = _save(g, tmp_path)
+    tex = tmp_path / "tgl"
+    tex.mkdir()
+    (tex / "b-alb.tga").write_bytes(b"")
+    bad = G.skin_texture_problems(p, [tex])                                   # validation is engine-equivalent and runs first
+    assert any("BLEND" in b for b in bad) and any("a_z-alb.tga" in b and "not in the pack" in b for b in bad)
+    assert G.opaque_mech_materials(p) == ["m2"]                               # repair re-picks after the change: b wins the tie
+    assert _pick(__import__("pygltflib").GLTF2().load(str(p))) == "b-alb.tga" and G.skin_texture_problems(p, [tex]) == []
+    # an OPAQUE body and a BLEND decal on one atlas are two engine keys; the decal is not clobbered
+    g = _bin_glb([dict(mesh="body", mat=0, pos=_verts(9)), dict(mesh="decal", mat=1, pos=_verts(2))],
+                 [("base", "OPAQUE", "x-alb.png"), ("decal", "BLEND", "x-alb.png")])
+    p = _save(g, tmp_path)
+    assert _pick(g) == "x-alb.tga" and G.opaque_mech_materials(p) == []
+
+
+def test_skin_pick_counts_post_join_referenced_vertices_of_every_compared_attribute(tmp_path):
+    """Trigger: glb_guard._joined_vertex_count mirrors aiProcess_JoinIdenticalVertices (indices, tangent, uv1, colour, sparse)."""
+    mats = [("m1", "OPAQUE", "a-alb.png"), ("m2", "OPAQUE", "b-alb.png")]
+    # deduplication: 12 raw vertices that are 2 distinct positions lose to 3 distinct ones
+    dup = [(0.0, 0.0, 0.0), (1.0, 0.0, 0.0)] * 6
+    assert _pick(_bin_glb([dict(mesh="a", mat=0, pos=dup), dict(mesh="b", mat=1, pos=_verts(3))], mats)) == "b-alb.tga"
+    # indices: 100 buffer vertices of which only 2 are referenced lose to 3 distinct; 2 distinct referenced tie-breaks lexically
+    assert _pick(_bin_glb([dict(mesh="a", mat=0, pos=_verts(100), idx=[0, 1, 1]), dict(mesh="b", mat=1, pos=_verts(3))], mats)) == "b-alb.tga"
+    assert _pick(_bin_glb([dict(mesh="a", mat=0, pos=_verts(100), idx=[0, 1, 1]), dict(mesh="b", mat=1, pos=_verts(2))], mats)) == "a-alb.tga"
+    # a face with an out-of-range index is dropped by the importer
+    assert _pick(_bin_glb([dict(mesh="a", mat=0, pos=_verts(5), idx=[0, 1, 2, 3, 4, 99]), dict(mesh="b", mat=1, pos=_verts(4))], mats)) == "b-alb.tga"
+    # one position with differing TEXCOORD_1 / TANGENT / COLOR_0 stays separate (needs a NORMAL for the tangent to count)
+    same = [(0.0, 0.0, 0.0)] * 4
+    nrm = [(0.0, 0.0, 1.0)] * 4
+    for attr, rows in (("TEXCOORD_1", [(0.0, 0.0), (0.5, 0.0), (0.0, 0.5), (0.5, 0.5)]),
+                       ("COLOR_0", [(1.0, 0.0, 0.0, 1.0), (0.0, 1.0, 0.0, 1.0), (0.0, 0.0, 1.0, 1.0), (1.0, 1.0, 1.0, 1.0)]),
+                       ("TANGENT", [(1.0, 0.0, 0.0, 1.0), (1.0, 0.0, 0.0, -1.0), (0.0, 1.0, 0.0, 1.0), (0.0, 1.0, 0.0, -1.0)])):
+        a = dict(mesh="a", mat=0, pos=same, attrs={"NORMAL": nrm, attr: rows})
+        assert _pick(_bin_glb([a, dict(mesh="b", mat=1, pos=_verts(2))], mats)) == "a-alb.tga", attr    # 4 distinct beat 2
+        a = dict(mesh="a", mat=0, pos=same, attrs={"NORMAL": nrm})
+        assert _pick(_bin_glb([a, dict(mesh="b", mat=1, pos=_verts(2))], mats)) == "b-alb.tga", attr    # without it they join to 1
+    # TEXCOORD_8 / COLOR_8 are past Assimp's eight-channel limit: ignored, so the four vertices still join to 1
+    for attr, rows in (("TEXCOORD_8", [(0.0, 0.0), (0.5, 0.0), (0.0, 0.5), (0.5, 0.5)]),
+                       ("COLOR_8", [(1.0, 0.0, 0.0, 1.0), (0.0, 1.0, 0.0, 1.0), (0.0, 0.0, 1.0, 1.0), (1.0, 1.0, 1.0, 1.0)])):
+        a = dict(mesh="a", mat=0, pos=same, attrs={"NORMAL": nrm, attr: rows})
+        assert _pick(_bin_glb([a, dict(mesh="b", mat=1, pos=_verts(2))], mats)) == "b-alb.tga", attr
+    # sparse accessor: the override rows are the vertices (a base-only read would see 1 zero vertex)
+    assert _pick(_bin_glb([dict(mesh="a", mat=0, pos=_verts(5)), dict(mesh="b", mat=1, pos=_verts(3))], mats, sparse_pos=True)) == "a-alb.tga"
+
+
+def test_skin_pick_rejects_layouts_it_cannot_decode_instead_of_guessing(tmp_path):
+    """Trigger: glb_guard._buffer/_read; no silent fallback to raw counts for external buffers or overruns."""
+    from tools.bt2018_mechs import glb_guard as G
+    g = _bin_glb([dict(mesh="a", mat=0, pos=_verts(3))], [("m1", "OPAQUE", "a-alb.png")])
+    g.buffers[0].uri = "mech.bin"
+    with pytest.raises(G.UnsupportedGlb, match="external file"):
+        G.skin_pick(g)
+    g = _bin_glb([dict(mesh="a", mat=0, pos=_verts(3))], [("m1", "OPAQUE", "a-alb.png")])
+    g.accessors[0].count = 400
+    with pytest.raises(G.UnsupportedGlb, match="past its data"):
+        G.skin_pick(g)
+    import base64
+    g = _bin_glb([dict(mesh="a", mat=0, pos=_verts(3))], [("m1", "OPAQUE", "a-alb.png")])
+    g.buffers[0].uri = "data:application/octet-stream;base64," + base64.b64encode(g.binary_blob()).decode()
+    assert _pick(g) == "a-alb.tga"                                            # data: buffers decode

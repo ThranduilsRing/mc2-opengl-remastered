@@ -605,9 +605,22 @@ long BattleMech::init (DWORD variantNum)
 		}
 	}
 
+	// A chassis CSV whose ComponentPlacement grid omits the sensor item (BT2018 packs built
+	// before the grid was emitted) would leave the mech with no sensor system: it never
+	// spots enemies, so attackers stay undrawn while firing (mc2_18). Use its sensor item.
+	for (long item = 0; !sensorSystem && item < numOther; item++)
+	{
+		if (MasterComponent::masterList[inventory[item].masterID].getForm() != COMPONENT_FORM_SENSOR)
+			continue;
+		sensor = item;
+		sensorSystem = SensorManager->newSensor();
+		sensorSystem->setOwner(this);
+		sensorSystem->setRange(MasterComponent::masterList[inventory[sensor].masterID].getSensorRange());
+	}
+
 	calcAmmoTotals();
 
-	for (long item = numOther; item < (numOther + numWeapons); item++) 
+	for (long item = numOther; item < (numOther + numWeapons); item++)
 	{
 		for (long ammoIndex = 0; ammoIndex < numAmmoTypes; ammoIndex++) 
 		{

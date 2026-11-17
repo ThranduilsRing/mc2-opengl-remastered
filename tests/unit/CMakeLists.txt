@@ -367,10 +367,11 @@ mc2_link_gate(mc2_tests)
 add_dependencies(mc2_tests mc2_bv_calibration)
 
 # Trigger paths: mclib/mech_skel_import.*, test_torso_twist.cpp.
-# Exercise production FK with synthetic scenes; no importer or game required.
+# Exercise production FK with synthetic scenes and the lane's real Atlas pack.
 set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
 set(ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_GLTF_IMPORTER ON CACHE BOOL "" FORCE)
 set(ASSIMP_BUILD_ALL_EXPORTERS_BY_DEFAULT OFF CACHE BOOL "" FORCE)
 set(ASSIMP_BUILD_ZLIB ON CACHE BOOL "" FORCE)
 set(ASSIMP_WARNINGS_AS_ERRORS OFF CACHE BOOL "" FORCE)
