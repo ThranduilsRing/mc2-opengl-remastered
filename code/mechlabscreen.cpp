@@ -612,10 +612,10 @@ void MechLabScreen::update()
 	if ( !MPlayer || !ChatWindow::instance()->pointInside(userInput->getMouseX(), userInput->getMouseY()) )
 		LogisticsScreen::update();
 
-	if (!previewOwnsInput && !pDragComponent && isPackageChassis(pVariant) && userInput->isLeftClick() &&
+	if (!previewOwnsInput && !variantList.pointInside(userInput->getMouseX(), userInput->getMouseY()) && !pDragComponent && isPackageChassis(pVariant) && userInput->isLeftClick() &&
 		mc2::mechlab_loc::toggleRect().contains(static_cast<float>(userInput->getMouseX()), static_cast<float>(userInput->getMouseY())))
 		setLocationView(userInput->getMouseX() < mc2::mechlab_loc::toggleRect().cx());
-	if (!previewOwnsInput)
+	if (!previewOwnsInput && !variantList.pointInside(userInput->getMouseX(), userInput->getMouseY()))
 	{
 		if (locationViewActive()) updateLocationInput();
 		else updateDiagramInput();
