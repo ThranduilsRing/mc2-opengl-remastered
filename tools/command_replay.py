@@ -55,9 +55,10 @@ def validate_commands(script: str) -> None:
     """Only selection and recorded order ingress are supported; fixtures bypass it."""
     for number, line in enumerate(script.splitlines(), 1):
         line = line.rstrip()
-        if line and not re.fullmatch(r"select .+|order stop|order (?:move|attack) .+", line):
+        if line and not re.fullmatch(
+                r"select .+|order (?:stop|hold_fire|powerup|powerdown|withdraw)|order (?:move|attack|jump) .+", line):
             raise ValueError(f"command script line {number}: unsupported replay command {line!r}; "
-                             "only select and order stop/move/attack are recorded; "
+                             "only select and order stop/move/attack/jump/hold_fire/powerup/powerdown/withdraw are recorded; "
                              "fixture mutations such as teleport are not replayed")
 
 

@@ -33,6 +33,12 @@ def test_fixture_mutations_are_not_recordable(command):
         replay.validate_commands("select all\norder stop\n" + command)
 
 
+@pytest.mark.parametrize("command", ["order jump -2450 -5500", "order hold_fire",
+                                    "order powerup", "order powerdown", "order withdraw"])
+def test_normal_player_order_is_recordable(command):
+    replay.validate_commands("select 512\n" + command + "\n")
+
+
 def test_recorded_order_script():
     replay.validate_commands("select all\r\norder stop\n\nselect 512\n"
                              "order move -2450 -5500 walk\norder attack 513\n")
