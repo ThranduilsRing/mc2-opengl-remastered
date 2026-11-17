@@ -57,13 +57,13 @@ namespace {
 bool previewPaused = false;
 int previewHeld = -1;
 float previewHoldTime = 0.f;
-// Legacy canvas coordinates, shared by drawing and input; below the payload grid.
+// Legacy canvas coordinates, shared by drawing and input; below the preview.
 int previewButton(const SimpleCamera& camera)
 {
-	const float x = userInput->getMouseX() - (camera.bounds[2] - 92.f);
-	const float y = userInput->getMouseY() - (camera.bounds[3] - 28.f);
+	const float x = userInput->getMouseX() - (camera.bounds[0] + 3.f);
+	const float y = userInput->getMouseY() - (camera.bounds[3] + 27.f);
 	const int column = static_cast<int>(x);
-	return x >= 0.f && x < 86.f && y >= 0.f && y < 22.f && column % 30 < 26 ? column / 30 : -1;
+	return x >= 0.f && x < 86.f && y >= 0.f && y < 14.f && column % 30 < 26 ? column / 30 : -1;
 }
 void drawPreviewControls(const SimpleCamera& camera, bool enabled)
 {
@@ -71,22 +71,22 @@ void drawPreviewControls(const SimpleCamera& camera, bool enabled)
 	aObject::getCanvasTransform(sx, sy, ox, oy);
 	for (int i = 0; i < 3; ++i)
 	{
-		const float x = (camera.bounds[2] - 92.f + i * 30.f) * sx + ox;
-		const float y = (camera.bounds[3] - 28.f) * sy + oy;
+		const float x = (camera.bounds[0] + 3.f + i * 30.f) * sx + ox;
+		const float y = (camera.bounds[3] + 27.f) * sy + oy;
 		const unsigned color = enabled ? 0xffffb04a : 0xff805830;
-		GuiRuntime::DrawUiRect(x, y, 26.f * sx, 22.f * sy,
+		GuiRuntime::DrawUiRect(x, y, 26.f * sx, 14.f * sy,
 			enabled && previewButton(camera) == i ? 0xff56321a : 0xff17120d, true);
-		GuiRuntime::DrawUiRect(x, y, 26.f * sx, 22.f * sy, color, false);
+		GuiRuntime::DrawUiRect(x, y, 26.f * sx, 14.f * sy, color, false);
 		if (i == 1 && !previewPaused)
 		{
-			GuiRuntime::DrawUiRect(x + 9.f * sx, y + 6.f * sy, 3.f * sx, 10.f * sy, color, true);
-			GuiRuntime::DrawUiRect(x + 15.f * sx, y + 6.f * sy, 3.f * sx, 10.f * sy, color, true);
+			GuiRuntime::DrawUiRect(x + 9.f * sx, y + 3.f * sy, 3.f * sx, 8.f * sy, color, true);
+			GuiRuntime::DrawUiRect(x + 15.f * sx, y + 3.f * sy, 3.f * sx, 8.f * sy, color, true);
 		}
 		else
 		{
 			const float tip = i == 0 ? 8.f : 18.f, base = i == 0 ? 17.f : 9.f;
-			GuiRuntime::DrawUiTriangleVerts(x + tip * sx, y + 11.f * sy,
-				x + base * sx, y + 6.f * sy, x + base * sx, y + 16.f * sy, color);
+			GuiRuntime::DrawUiTriangleVerts(x + tip * sx, y + 7.f * sy,
+				x + base * sx, y + 3.f * sy, x + base * sx, y + 11.f * sy, color);
 		}
 	}
 }
@@ -274,7 +274,9 @@ int MechLabScreen::init( FitIniFile& file )
 	textObjects[5].moveTo(130, 497);
 	for (int i : {20, 32}) {
 		statics[i].moveTo(217, i == 20 ? 490 : 508);
-		statics[i].resize(20, 15);
+		statics[i].resize(13, 15);
+		statics[i].setUVs(i == 20 ? 0.f : 108.f, i == 20 ? 221.f : 230.f,
+			i == 20 ? 20.f : 128.f, i == 20 ? 245.f : 254.f);
 	}
 
 	getButton( COMPONENT_FORM_WEAPON_ENERGY )->setPressFX( LOG_VIDEOBUTTONS );
@@ -1201,6 +1203,12 @@ void MechLabScreen::render(int xOffset, int yOffset)
     if (!xOffset && !yOffset && !bSaveDlg && !bErrorDlg) mechCamera.drawAnimationPanel();
 
 	aObject::beginTextBridge( tbSx, tbSy, 1.3f, tbOx, tbOy );
+	// Back the expanded list in both views, including stock chassis.
+	if (variantList.ListBox().isShowing()) {
+		auto& list = variantList.ListBox();
+		GuiRuntime::DrawUiRect((list.globalX() + xOffset) * tbSx + tbOx,
+			(list.globalY() + yOffset) * tbSy + tbOy, list.width() * tbSx, list.height() * tbSy, 0xff101820, true);
+	}
 	variantList.move( xOffset, yOffset );
 	variantList.render();
 	variantList.move( -xOffset, -yOffset );
@@ -1217,7 +1225,7 @@ void MechLabScreen::render(int xOffset, int yOffset)
 		const GUI_RECT footprint = {static_cast<long>(dragIcon.left()), static_cast<long>(dragIcon.top()),
 			static_cast<long>(dragIcon.right()), static_cast<long>(dragIcon.bottom())};
 		drawEmptyRect(footprint, 0xffffffff, 0xffffffff);
-		if (rects[13].pointInside(userInput->getMouseX(), userInput->getMouseY()))
+		if (!locOn && rects[13].pointInside(userInput->getMouseX(), userInput->getMouseY()))
 		{
 			const GUI_RECT target = {static_cast<long>(selRect->left()), static_cast<long>(selRect->top()),
 				static_cast<long>(selRect->right()), static_cast<long>(selRect->bottom())};
@@ -2251,6 +2259,7 @@ void refreshLocationVerdicts(LogisticsVariant* v, LogisticsComponent* cand)
 		if (cand->getType() == COMPONENT_FORM_JUMPJET) {
 			long x = -1, y = -1;
 			const int refusal = v->canAddComponent(cand, x, y);
+			s_locLegal[p] = !refusal;
 			s_locReason[p] = refusal == JUMPJETS_NOT_ALLOWED ? "No jump jets" :
 				refusal == ONLY_ONE_JUMPJET_ALLOWED ? "Jets installed" :
 				refusal ? mc2::components::placementRefusal(refusal) : "ADD special slot";
@@ -2370,6 +2379,8 @@ void MechLabScreen::updateLocationInput()
 		: ( pInspectedComponent ? pInspectedComponent : ( -1 != componentListBox.GetSelectedItem() ? componentListBox.getComponent() : nullptr ) );
 	refreshLocationVerdicts( pVariant, cand );
 	s_locHover = ml::panelAt( mx, my ).value_or( -1 );
+	if (cand && s_locHover >= 0 && s_locHover < ml::kLocationCount && !s_locLegal[s_locHover])
+		showDropRefusal(s_locReason[s_locHover]);
 
 	std::vector<LocItem> items;
 	const int dragPanel = ml::panelAt( static_cast<float>( userInput->getMouseDragX() ), static_cast<float>( userInput->getMouseDragY() ) ).value_or( -1 );
@@ -2574,12 +2585,6 @@ void MechLabScreen::drawLocationView( float tbSx, float tbSy, float tbOx, float 
 			}
 		}
 		if ( cand )
-			text( { r.x + 2, r.y + r.h - ml::kRefusalH, r.w - 4, ml::kRefusalH }, s_locReason[p].c_str(), s_locLegal[p] ? 0xff60ff90 : 0xffff7070, 10.f, 0 );
-	}
-	// The combo text is composited later; cover every panel beneath its expanded list.
-	// left()/top() are parent-relative; the list draws at its global location.
-	if ( variantList.ListBox().isShowing() ) {
-		auto& list = variantList.ListBox();
-		fill( { static_cast<float>( list.globalX() ), static_cast<float>( list.globalY() ), list.width(), list.height() }, 0xff101820, true );
+			text( { r.x + 2, r.y + r.h - ml::kRefusalH, r.w - 4, ml::kRefusalH }, s_locLegal[p] ? s_locReason[p].c_str() : "See status line", s_locLegal[p] ? 0xff60ff90 : 0xffff7070, 10.f, 0 );
 	}
 }

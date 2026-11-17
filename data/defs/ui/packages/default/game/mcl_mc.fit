@@ -2057,15 +2057,15 @@ GuiImage {
     layer = "art"
     aliasOverride = "mcl_mc_1"
     sourceControlType = "Static20"
-    rect = "217,490,20,15"
-    legacyLocalRect = "217,490,20,15"
+    rect = "217,490,13,15"
+    legacyLocalRect = "217,490,13,15"
     legacyRectSource = "xywh"
     texture = "data/art/gui/mcl_mc_1.png"
     legacyTexture = "mcl_mc_1.tga"
     uiPackage = "default"
     rectModel = "legacy_imgui.modern_rect_v1"
-    controlRect = "217,490,20,15"
-    artRect = "217,490,20,15"
+    controlRect = "217,490,13,15"
+    artRect = "217,490,13,15"
     artLayer = "control_art"
     helpDescLegacyId = 29066
     helpDescKey = "legacy.mc2res.29066"
@@ -2075,7 +2075,7 @@ GuiImage {
     helpDescMissing = false
     uvX = 0
     uvY = 221
-    uvWidth = 135
+    uvWidth = 20
     uvHeight = 24
 }
 
@@ -2338,15 +2338,15 @@ GuiImage {
     layer = "art"
     aliasOverride = "icon for heat"
     sourceControlType = "Static32"
-    rect = "217,508,20,15"
-    legacyLocalRect = "217,508,20,15"
+    rect = "217,508,13,15"
+    legacyLocalRect = "217,508,13,15"
     legacyRectSource = "xywh"
     texture = "data/art/gui/mcl_mc_2.png"
     legacyTexture = "mcl_mc_2.tga"
     uiPackage = "default"
     rectModel = "legacy_imgui.modern_rect_v1"
-    controlRect = "217,508,20,15"
-    artRect = "217,508,20,15"
+    controlRect = "217,508,13,15"
+    artRect = "217,508,13,15"
     artLayer = "control_art"
     helpDescLegacyId = 29065
     helpDescKey = "legacy.mc2res.29065"
@@ -2356,7 +2356,7 @@ GuiImage {
     helpDescMissing = false
     uvX = 108
     uvY = 230
-    uvWidth = 135
+    uvWidth = 20
     uvHeight = 24
 }
 
