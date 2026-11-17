@@ -10,6 +10,7 @@
 #include "shadow_mover_feed.h"
 #include "../../RenderCore/StaticPropOrigin.h"
 #include "../../RenderCore/PropListRoute.h"
+#include "../../RenderCore/PropRecordCache.h"
 
 void GpuStaticPropBatcher::captureMoverShadowShape(const void* owner, TG_MultiShape* multi) {
     if (!multi || !multi->listOfShapes || !s_geometryFinalized || g_mechPreviewRenderDepth>0) return;
@@ -132,7 +133,7 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
     if (!out) return 0;
     if (!s_geometryFinalized || s_fatalRegistrationFailure) return 0;
     static std::vector<GpuStaticPropInstance> s_colorFeedFlat;
-    { ZoneScopedN("VKIsl.Props.MainFeed.Clear"); s_colorFeedFlat.clear(); }
+    size_t feedCursor = 0;
 
     // Grouped by typeID for correct per-type geometry addressing (the island issues
     // one type-run per contiguous typeID block via firstInstance). Deterministic
@@ -220,25 +221,26 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
     for (uint32_t tid : typeIds) {
         if (lodActive && s_lodGroups.count(tid)) {   // a LOD-capable base type: its instances were re-typed above
             const auto& v = s_lodOut[tid];
-            s_colorFeedFlat.insert(s_colorFeedFlat.end(), v.begin(), v.end());
+            appendPropFeed(s_colorFeedFlat, feedCursor, std::span<const GpuStaticPropInstance>(v));
             continue;
         }
         if (lodActive) if (auto lo = s_lodOut.find(tid); lo != s_lodOut.end()) {
             const auto& [loTid, loVec] = *lo;
-            s_colorFeedFlat.insert(s_colorFeedFlat.end(), loVec.begin(), loVec.end());
+            appendPropFeed(s_colorFeedFlat, feedCursor, std::span<const GpuStaticPropInstance>(loVec));
         }
         auto it = s_persistentStaticStore.find(tid);
         if (it != s_persistentStaticStore.end()) {
             const auto& [storeKey, insts] = *it;
-            s_colorFeedFlat.insert(s_colorFeedFlat.end(), insts.begin(), insts.end());
+            appendPropFeed(s_colorFeedFlat, feedCursor, std::span<const GpuStaticPropInstance>(insts));
         }
         auto bt = s_bucketsByType.find(tid);
         if (bt != s_bucketsByType.end()) {
             const auto& [bucketKey, b] = *bt;
-            s_colorFeedFlat.insert(s_colorFeedFlat.end(), b.instances.begin(), b.instances.end());
+            appendPropFeed(s_colorFeedFlat, feedCursor, std::span<const GpuStaticPropInstance>(b.instances));
         }
     }
     }
+    s_colorFeedFlat.resize(feedCursor);
     if (s_colorFeedFlat.empty()) return 0;
 
     out->instances112 = s_colorFeedFlat.data();
