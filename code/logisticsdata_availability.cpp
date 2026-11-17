@@ -20,19 +20,6 @@ std::string mc2purchase::chassisSource(std::string_view csvPath)
 	return source(package ? package->modId : std::string_view{}, owner ? owner : "");
 }
 
-std::string mc2purchase::componentSource(int ordinal)
-{
-	for (const auto& row : equipmentAddFillRows())
-		if (row.ordinal == ordinal) {
-			const auto path = equipmentDefPathForQualifiedId(row.qualifiedId);
-			const char* owner = LookupModOwner(path.c_str());
-			return owner ? owner : "";
-		}
-	const char* owner = LookupModOwner("data/objects/compbas.csv");
-	return owner ? owner : "";
-}
-
-
 long LogisticsData::updateAvailability()
 {
 

@@ -29,7 +29,6 @@ struct EnvVarDef {
 static const EnvVarDef k_envVars[] = {
     // --- Rendering ---
     { "RemasteredBuildings",         "Building art: Remastered (off: Classic)", true, nullptr, "Rendering", "0", true },
-    { "MechLabLocations",            "Mech lab: Locations view (off: Classic grid)", true, nullptr, "Rendering", "0", true },
     { "StockOverlayConcrete",        "Concrete: Stock overlay (off: new detail)", true, nullptr, "Rendering", nullptr, true },
     // Rows marked `true` in the last column are options.cfg settings (Gates/render_options.h), not environment variables: the key is the
     // options.cfg key and the engine reads it once at startup through CPrefs. The dialog starts such a row from the engine's own default for

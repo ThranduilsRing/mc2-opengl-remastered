@@ -112,5 +112,4 @@ inline std::vector<Group> group(const std::vector<Item>& items, std::string_view
 
 // Engine adapter, kept out of the pure grouping/availability rules above.
 std::string chassisSource(std::string_view csvPath);
-std::string componentSource(int ordinal);
 }
