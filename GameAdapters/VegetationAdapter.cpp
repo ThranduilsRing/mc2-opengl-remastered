@@ -237,10 +237,11 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
     // Legacy Phong/displacement can read normals/images: conservatively bypass even when their current amplitude is zero.
     const bool legacy=Terrain::terrainTextures2 && (!mc2::options::current().cpuPhongRetire ||
         (Terrain::terrainTextures2->cpuColorMap && Terrain::terrainTextures2->cpuDispAlpha));
-    const auto& exe=vegetationExecutableDigest();
-    const bool eligible=cacheAdmission(gameMap!=nullptr,legacy,exe.has_value());
+    bool eligible=false;
     {
         MC2_LOAD_SCOPE("cook.veg.key");
+        const auto& exe=vegetationExecutableDigest();
+        eligible=cacheAdmission(gameMap!=nullptr,legacy,exe.has_value());
         const auto hsDigest=gos_terrain_indirect_HardSurfaceContentDigest();
         uploadInfo.hsHash=fileKey(hsDigest);
         if(eligible) {
