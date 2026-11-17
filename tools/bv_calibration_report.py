@@ -18,6 +18,8 @@ import sys
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
+sys.path.insert(0, str(REPO / "scripts"))
+import console_child  # noqa: E402  (windowless helper child; scripts/console_child.py)
 from tools.mc2x_import.fst import fst_entries, decompress_entry
 
 
@@ -148,7 +150,8 @@ def main():
     if not data:
         raise ValueError("no stock variants found")
     result = subprocess.run([str(args.evaluator.resolve()), str(REPO / "data/defs/rules/battle_value.fit")],
-                            input="\n".join(map(wire, data)) + "\n", text=True, capture_output=True, check=True)
+                            input="\n".join(map(wire, data)) + "\n", text=True, capture_output=True, check=True,
+                            **console_child.child_kwargs(redirected=True))
     bv = list(map(int, result.stdout.splitlines()))
     if len(bv) != len(data):
         raise ValueError("evaluator row count mismatch")
