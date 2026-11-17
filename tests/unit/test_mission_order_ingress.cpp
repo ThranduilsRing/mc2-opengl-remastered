@@ -98,7 +98,7 @@ TEST_CASE("alpha admission uses the production validator and rechecks live state
     CHECK(live.adapter.validateRecipient(e, {1,1}, 0) != 0);
     live.actor.mobile = true; live.actor.disabled = true;
     CHECK(live.adapter.validateRecipient(e, {1,1}, 0) != 0);
-    live.actor.disabled = false; e.payload.attack->method = AttackMethod::DFA;
+    live.actor.disabled = false; e.payload.attack->method = mc2::sim::AttackMethod::DFA;
     CHECK(live.adapter.validateRecipient(e, {1,1}, 0) != 0);
 }
 TEST_CASE("production admission permission malformed payload and typed legacy conversion") {

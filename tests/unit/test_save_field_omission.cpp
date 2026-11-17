@@ -181,7 +181,7 @@ TEST_CASE("save fields: ORDQ nested payloads independent member census") {
         using T = TacAttackParams;
         attack = save_probe::patterned<T>(&T::type, &T::method, &T::range, &T::tactic,
             &T::aimLocation, &T::pursue, &T::obliterate, &T::alpha, &T::targetPoint);
-        attack.method = AttackMethod::Ranged;
+        attack.method = mc2::sim::AttackMethod::Ranged;
         SAVE_FIELD_SHAPE(attack, type, method, range, tactic, aimLocation, pursue, obliterate, alpha, targetPoint);
         CHECK(save_probe::memberBytes<T>(&T::type, &T::method, &T::range, &T::tactic,
             &T::aimLocation, &T::pursue, &T::obliterate, &T::alpha, &T::targetPoint) + 1 == sizeof(T));
