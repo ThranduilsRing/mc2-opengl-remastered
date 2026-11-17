@@ -602,14 +602,15 @@ long SimpleCamera::update()
 				haveDrawn_ = false;
 				--fitIters_;
 				const float rw = bounds[2] - bounds[0], rh = bounds[3] - bounds[1];
-				const float w = drawn_[2] - drawn_[0], h = drawn_[3] - drawn_[1];
-				if ( w > 1.f && h > 1.f )
+				const float h = drawn_[3] - drawn_[1];
+				if ( h > 1.f )
 				{
-					// Size ~ 1/tan(fov/2) at a fixed distance (a long lens: moving the camera in distorts the
-					// model and pushes it into the near plane); then centre across, feet just above the bottom edge.
-					const float s = std::clamp( std::max( h / ( fillFrac_ * rh ), w / ( 0.94f * rw ) ), 0.5f, 2.f );
-					framedFov_ = 2.f * std::atan( std::tan( framedFov_ * 0.5f * DEGREES_TO_RADS ) * s ) / DEGREES_TO_RADS;
-					fudgeX += ( bounds[0] + bounds[2] ) * 0.5f - ( drawn_[0] + drawn_[2] ) * 0.5f;
+					// Bound every yaw by a cylinder around the rotation axis. Its enclosing sphere
+					// supplies the nearest possible depth, including the camera pitch and model height.
+					const float halfTan = std::tan(framedFov_ * 0.5f * DEGREES_TO_RADS) * 0.94f * rw / viewMulX;
+					const float minDistance = std::hypot(turnRadius_, turnHalfHeight_) + turnRadius_ / halfTan;
+					framedAlt_ = std::max(minDistance, framedAlt_ * std::clamp(h / (fillFrac_ * rh), 0.5f, 2.f));
+					fudgeX = 0.f;
 					fudgeY += bounds[3] - rh * ( 1.f - fillFrac_ ) * 0.35f - drawn_[3];
 				}
 			}
@@ -747,7 +748,7 @@ void SimpleCamera::setMech(mc2::czstring fileName, long baseColor, long highligh
 	}
 
 	std::string NoPathFileName = stemOfPath(fileName);
-	if (const auto* chassis = std::getenv("MECH_PREVIEW_CAPTURE"); chassis && *chassis)
+	if (const auto* chassis = std::getenv("MECH_PREVIEW_CAPTURE"); chassis && *chassis && std::strcmp(chassis, "1") != 0)
 		NoPathFileName = stemOfPath(chassis);
 
 	char testName[256];
@@ -791,6 +792,14 @@ void SimpleCamera::setMech(mc2::czstring fileName, long baseColor, long highligh
 	pObject->setGestureGoal(2);
 	pObject->resetPaintScheme( highlight1, highlight2, baseColor );
 	pObject->rotation = rotation;
+	turnRadius_ = turnHalfHeight_ = 0.f;
+	if (auto* shape = static_cast<Mech3DAppearance*>(pObject.get())->previewShape())
+	{
+		const auto lo = shape->GetMinBox(), hi = shape->GetMaxBox(), root = shape->GetRootNodeCenter();
+		turnRadius_ = std::hypot(std::max(std::abs(lo.x), std::abs(hi.x)), std::max(std::abs(lo.z), std::abs(hi.z)))
+			+ 0.5f * std::hypot(root.x, root.z);
+		turnHalfHeight_ = std::max(std::abs(lo.y), std::abs(hi.y)) + 0.5f * std::abs(root.y);
+	}
 
 	activate();
 		
