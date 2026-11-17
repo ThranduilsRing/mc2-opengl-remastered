@@ -203,7 +203,7 @@ struct TerrainIsland : mc2vk::IslandState {
     // Drain before the shader/layout/device owners disappear.
     mc2::terrain::TerrainSpecVariants<mc2vk::OwnedPipeline> specVariants;
     VkPipeline specSelected = VK_NULL_HANDLE;
-    uint32_t specLoggedKey = UINT32_MAX;
+    uint64_t specLoggedKey = UINT64_MAX;
     VkPipeline specLoggedPipe = VK_NULL_HANDLE;
     bool specLoggedCompiling = false;
 
@@ -423,6 +423,7 @@ struct TerrainPipelineRecipe {
     VkFormat color, normal, depth;
     int32_t csmDebug;
     bool planar = false, skirt = false;
+    uint64_t frame = UINT64_MAX;
 };
 mc2vk::OwnedPipeline build_terrain_pipeline(const TerrainPipelineRecipe& recipe,
     const mc2::terrain::TerrainSpecKey* key = nullptr);

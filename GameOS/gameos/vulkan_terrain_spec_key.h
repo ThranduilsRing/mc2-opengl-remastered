@@ -6,29 +6,29 @@
 #include <utility>
 
 namespace mc2::terrain {
-// Only for common fragment UBOs produced by fill_frame_ubo: lighting/detail
-// producer constraints also govern road shading outside the lighting block.
+// Preserve every shader input, including road shading outside the lighting block.
 // Two bits per field preserve 0/1/2 readiness, 0/1/3 detail and 0/2 visualMode.
 struct TerrainSpecKey {
-    uint32_t bits = 0;
+    uint64_t bits = 0;
+    std::array<uint32_t, 3> formats{};
+    bool valid() const { return !(bits & (uint64_t{1} << 25)); }
     std::array<int32_t, 12> values() const {
         std::array<int32_t, 12> out{};
         for (unsigned i = 0; i < out.size(); ++i) out[i] = (bits >> (2 * i)) & 3u;
         return out;
     }
-    bool operator==(TerrainSpecKey b) const { return bits == b.bits; }
+    bool operator==(TerrainSpecKey b) const { return bits == b.bits && formats == b.formats; }
     bool operator!=(TerrainSpecKey b) const { return !(*this == b); }
 };
-template<class Ubo> TerrainSpecKey terrainSpecKey(const Ubo& u) {
+template<class Ubo> TerrainSpecKey terrainSpecKey(const Ubo& u, bool planar = false, std::array<uint32_t, 3> formats = {}) {
     std::array<int32_t, 12> v{{u.colormapReady, u.useCement, u.useTransitionMask,
         u.cementDiagConnect, u.lightingEnabled, u.enableShadows, u.detailEnabled,
         u.detailReady, u.concreteDetail, u.visualMode, u.shorelineOn, u.shorelineHasMask}};
-    if (!v[1]) v[2] = v[3] = 0;
-    if (!v[4]) v[5] = v[6] = v[7] = v[8] = v[11] = 0;
-    if (!v[6]) v[7] = v[8] = 0;
-    if (!v[10]) v[11] = 0;
-    TerrainSpecKey key;
-    for (unsigned i = 0; i < v.size(); ++i) key.bits |= static_cast<uint32_t>(v[i]) << (2 * i);
+    TerrainSpecKey key{(uint64_t{static_cast<uint32_t>(u.csmDebugMode)} << 32) | (uint64_t{planar} << 24), formats};
+    for (unsigned i = 0; i < v.size(); ++i) {
+        if (v[i] < 0 || v[i] > 3) return {uint64_t{1} << 25}; // generic preserves unsupported values
+        key.bits |= static_cast<uint64_t>(v[i]) << (2 * i);
+    }
     return key;
 }
 
@@ -48,7 +48,10 @@ public:
     ~TerrainSpecVariants() { drain(); }
     void drain() { if (pending_.valid()) { try { pending_.get(); } catch (...) {} } }
     // Never blocks; completion from an old generation is discarded.
-    void invalidate() { ++generation_; stable_ = 0; }
+    template<class Retire> void invalidate(Retire retire) {
+        ++generation_; stable_ = 0;
+        for (auto& e : entries_) if (e.pipe) retire(std::move(e.pipe));
+    }
     bool compiling() const { return pending_.valid(); }
     bool failed() const { return failed_; }
     template<class Compile, class Retire>
@@ -70,7 +73,7 @@ public:
         }
         if (!stable_ || key != observed_) { observed_ = key; stable_ = 1; }
         else if (stable_ < 30) ++stable_;
-        if (!enabled) return nullptr;
+        if (!enabled || !key.valid()) return nullptr;
         for (auto& e : entries_) if (e.pipe && e.key == key) { e.used = clock_; return &e.pipe; }
         if (stable_ >= 30 && !failed_ && !pending_.valid()) {
             const auto generation = generation_;

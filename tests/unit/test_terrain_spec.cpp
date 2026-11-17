@@ -16,21 +16,33 @@ static TerrainFrameUBO shipping() {
     u.concreteDetail = 3;
     return u;
 }
-TEST_CASE("terrain_spec/key canonicalisation domains and round trip") {
+TEST_CASE("terrain_spec/key separates every shader state and round trips") {
     auto u = shipping();
     const auto key = terrainSpecKey(u);
     CHECK(key.values() == std::array<int32_t,12>{{2,1,1,0,1,1,1,2,3,2,1,0}});
-    auto v = u; v.useCement = 0; v.useTransitionMask = 1; v.cementDiagConnect = 1;
-    auto w = v; w.useTransitionMask = w.cementDiagConnect = 0;
-    CHECK(terrainSpecKey(v) == terrainSpecKey(w));
-    v = u; v.lightingEnabled = 0;
-    w = v; w.enableShadows = w.detailEnabled = w.detailReady = w.concreteDetail = w.shorelineHasMask = 0;
-    CHECK(terrainSpecKey(v) == terrainSpecKey(w));
-    v = u; v.detailEnabled = 0; w = v; w.detailReady = w.concreteDetail = 0;
-    CHECK(terrainSpecKey(v) == terrainSpecKey(w));
-    v = u; v.shorelineOn = 0; v.shorelineHasMask = 1; w = v; w.shorelineHasMask = 0;
-    CHECK(terrainSpecKey(v) == terrainSpecKey(w));
-    std::set<uint32_t> keys;
+    int32_t TerrainFrameUBO::* fields[] = {&TerrainFrameUBO::colormapReady,
+        &TerrainFrameUBO::useCement, &TerrainFrameUBO::useTransitionMask, &TerrainFrameUBO::cementDiagConnect,
+        &TerrainFrameUBO::lightingEnabled, &TerrainFrameUBO::enableShadows, &TerrainFrameUBO::detailEnabled,
+        &TerrainFrameUBO::detailReady, &TerrainFrameUBO::concreteDetail, &TerrainFrameUBO::visualMode,
+        &TerrainFrameUBO::shorelineOn, &TerrainFrameUBO::shorelineHasMask, &TerrainFrameUBO::csmDebugMode};
+    for (auto field : fields) { auto changed = u; changed.*field ^= 1; CHECK(terrainSpecKey(changed) != key); }
+    CHECK(terrainSpecKey(u, true) != key);
+    for (unsigned i = 0; i < 3; ++i) {
+        std::array<uint32_t, 3> formats{}; formats[i] = 1;
+        CHECK(terrainSpecKey(u, false, formats) != key);
+    }
+    auto v = u;
+    for (int lighting : {0,1}) for (int detail : {0,1}) {
+        v = u; v.lightingEnabled = lighting; v.detailEnabled = detail;
+        auto w = v; w.enableShadows = 0; CHECK(terrainSpecKey(v) != terrainSpecKey(w));
+        w = v; w.concreteDetail = 0; CHECK(terrainSpecKey(v) != terrainSpecKey(w));
+    }
+    for (auto field : fields) for (int value : {-1,4}) {
+        if (field == &TerrainFrameUBO::csmDebugMode) continue; // full signed 32-bit domain
+        v = u; v.*field = value; CHECK_FALSE(terrainSpecKey(v).valid());
+    }
+    v = u; v.csmDebugMode = -1; CHECK(terrainSpecKey(v).valid()); CHECK(terrainSpecKey(v) != key);
+    std::set<uint64_t> keys;
     for (int color = 0; color < 3; ++color) for (int detail = 0; detail < 3; ++detail)
     for (int concrete : {0,1,3}) for (int visual : {0,2}) {
         v = u; v.colormapReady = color; v.detailReady = detail; v.concreteDetail = concrete; v.visualMode = visual;
@@ -90,7 +102,7 @@ TEST_CASE("terrain_spec/sticky compile failure and stale generation") {
     SUBCASE("stale completion discarded") {
         Table t; std::promise<void> release; auto gate = release.get_future().share();
         auto compile = [gate] { gate.wait(); return std::make_unique<int>(1); };
-        stable(t, k, compile); t.invalidate(); release.set_value();
+        stable(t, k, compile); t.invalidate(retire); release.set_value();
         // Disable new launches while draining the stale completion.
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
         do { t.select(k, false, compile, retire); std::this_thread::yield(); }
@@ -122,4 +134,15 @@ TEST_CASE("terrain_spec/four entry LRU retires only the least recently used") {
     REQUIRE_FALSE(t.compiling()); CHECK(retired == 1);
     REQUIRE(select({1})); CHECK(select({2}) == nullptr); CHECK(calls == 5);
     CHECK(t.select({1}, false, compile, retire) == nullptr);
+}
+
+TEST_CASE("terrain_spec/invalidation retires cached entries and invalid keys stay generic") {
+    Table t; int retired = 0;
+    auto compile = [] { return std::make_unique<int>(1); };
+    const auto key = terrainSpecKey(shipping());
+    stable(t, key, compile); REQUIRE(finish(t, key, compile));
+    t.invalidate([&](Pipe&& p) { ++retired; p.reset(); });
+    CHECK(retired == 1); CHECK(tick(t, key, compile) == nullptr);
+    const TerrainSpecKey invalid{uint64_t{1} << 25};
+    stable(t, invalid, compile); CHECK_FALSE(t.compiling()); CHECK(tick(t, invalid, compile) == nullptr);
 }

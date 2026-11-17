@@ -433,7 +433,7 @@ mc2vk::OwnedPipeline build_terrain_pipeline(const TerrainPipelineRecipe& r,
     gp.pNext = &rendering;
     gp.layout = r.layout;
     mc2vk::OwnedPipeline pipe;
-    mc2vk::create(pipe, r.device, [&](auto* h) { return mc2vk::infra::graphics(r.device, VK_NULL_HANDLE, 1, &gp, nullptr, h); });
+    mc2vk::create(pipe, r.device, [&](auto* h) { return mc2vk::infra::graphics(r.device, VK_NULL_HANDLE, 1, &gp, nullptr, h, r.frame); });
     return pipe;
 }
 

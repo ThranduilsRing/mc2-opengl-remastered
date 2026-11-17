@@ -560,8 +560,8 @@ static bool record_terrain(TerrainIsland* s, mc2vk::VulkanContext& rctx, uint32_
              patchN, skirtDrawnOut, patchN + skirtDrawnOut, st.patchRuns.size(), st.skirtRuns.size());
     }
     if (gos::visual_capture::active()) {
-        vlog("[TERRAIN_SPEC_DRAW] frame=%llu view=%s key=%u pipeline=%llu specialized=%d patches=%u",
-            static_cast<unsigned long long>(g_mc2RenderFrame), s->planar ? "reflection" : "main", s->specLoggedKey,
+        vlog("[TERRAIN_SPEC_DRAW] frame=%llu view=%s key=%llu pipeline=%llu specialized=%d patches=%u",
+            static_cast<unsigned long long>(g_mc2RenderFrame), s->planar ? "reflection" : "main", static_cast<unsigned long long>(s->specLoggedKey),
             static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(plan.pipe)),
             plan.pipe != (s->planar ? s->planarPipe.get() : s->pipe.get()), patchN);
     }
@@ -740,21 +740,22 @@ static int run_terrain(int w, int h, TerrainIsland* supplied = nullptr,
     // Resolve on the render owner, before record_terrain copies a deferred plan.
     // A miss uses generic immediately, even when readiness changes mid-compile.
     const auto specBegin = std::chrono::steady_clock::now();
-    const auto specKey = mc2::terrain::terrainSpecKey(common);
+    const auto specKey = mc2::terrain::terrainSpecKey(common, target != nullptr,
+        {static_cast<uint32_t>(s->colorRes->format), static_cast<uint32_t>(s->normalRes->format), static_cast<uint32_t>(s->depthRes->format)});
     const TerrainPipelineRecipe specRecipe{s->device, s->vert.get(), s->frag.get(), s->playout.get(),
-        s->colorRes->format, s->normalRes->format, s->depthRes->format, common.csmDebugMode, s->planar};
+        s->colorRes->format, s->normalRes->format, s->depthRes->format, common.csmDebugMode, target != nullptr, false, rctx.tracker().frameNo()};
     const auto* variant = s->specVariants.select(specKey, mc2::gate::get<"MC2_TERRAIN_SPEC">(),
         [specRecipe, specKey] {
             const auto begin = std::chrono::steady_clock::now();
             auto pipe = build_terrain_pipeline(specRecipe, &specKey);
-            vlog("[TERRAIN_SPEC] compile view=%s key=%u ok=%d ms=%.3f", specRecipe.planar ? "reflection" : "main",
-                specKey.bits, static_cast<bool>(pipe), std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - begin).count());
+            vlog("[TERRAIN_SPEC] compile view=%s key=%llu ok=%d ms=%.3f", specRecipe.planar ? "reflection" : "main",
+                static_cast<unsigned long long>(specKey.bits), static_cast<bool>(pipe), std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - begin).count());
             return pipe;
         }, [&rctx](mc2vk::OwnedPipeline&& pipe) { rctx.retire(std::move(pipe)); });
-    s->specSelected = variant ? variant->get() : (s->planar ? s->planarPipe.get() : s->pipe.get());
+    s->specSelected = variant ? variant->get() : (target ? s->planarPipe.get() : s->pipe.get());
     if (s->specLoggedKey != specKey.bits || s->specLoggedPipe != s->specSelected || s->specLoggedCompiling != s->specVariants.compiling()) {
-        vlog("[TERRAIN_SPEC] select frame=%llu view=%s key=%u pipeline=%llu specialized=%d compiling=%d select_us=%.3f",
-            static_cast<unsigned long long>(g_mc2RenderFrame), s->planar ? "reflection" : "main", specKey.bits,
+        vlog("[TERRAIN_SPEC] select frame=%llu view=%s key=%llu pipeline=%llu specialized=%d compiling=%d select_us=%.3f",
+            static_cast<unsigned long long>(g_mc2RenderFrame), s->planar ? "reflection" : "main", static_cast<unsigned long long>(specKey.bits),
             static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(s->specSelected)), variant != nullptr, s->specVariants.compiling(),
             std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - specBegin).count());
         s->specLoggedKey = specKey.bits; s->specLoggedPipe = s->specSelected;

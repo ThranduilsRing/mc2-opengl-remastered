@@ -38,8 +38,8 @@ VkPipelineCache cacheHandle();
 void deviceLost();
 // True once any thread saw VK_ERROR_DEVICE_LOST. The device never comes back: callers stop queue work and the host exits at the next frame top.
 bool deviceLostLatched();
-VkResult graphics(VkDevice, VkPipelineCache, uint32_t, const VkGraphicsPipelineCreateInfo*, const VkAllocationCallbacks*, VkPipeline*);
-VkResult compute(VkDevice, VkPipelineCache, uint32_t, const VkComputePipelineCreateInfo*, const VkAllocationCallbacks*, VkPipeline*);
+VkResult graphics(VkDevice, VkPipelineCache, uint32_t, const VkGraphicsPipelineCreateInfo*, const VkAllocationCallbacks*, VkPipeline*, uint64_t frame = UINT64_MAX);
+VkResult compute(VkDevice, VkPipelineCache, uint32_t, const VkComputePipelineCreateInfo*, const VkAllocationCallbacks*, VkPipeline*, uint64_t frame = UINT64_MAX);
 void shader(VkShaderModule, std::string_view path, std::span<const uint32_t> code);
 void forgetShader(VkShaderModule);
 void bind(VkCommandBuffer, VkPipelineBindPoint, VkPipeline);
@@ -63,7 +63,7 @@ uint32_t imageLimit();
 uint32_t shadowTier(uint32_t requested, uint64_t bytesPerTexel, uint32_t copies = 1);
 std::string ledgerJson();
 void panel();
-void breadcrumb(std::string_view kind, std::string_view name, uint64_t hash = 0, VkCommandBuffer cb = VK_NULL_HANDLE);
+void breadcrumb(std::string_view kind, std::string_view name, uint64_t hash = 0, VkCommandBuffer cb = VK_NULL_HANDLE, uint64_t frame = UINT64_MAX);
 // Crash-path safe: copies preformatted snapshots, never calls the driver or allocates.
 void crashSnapshot(std::string_view folder);
 }
