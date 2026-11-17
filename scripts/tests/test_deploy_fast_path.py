@@ -314,7 +314,9 @@ def test_full_verify_copies_even_unchanged_files(tmp_path, monkeypatch):
     _deploy(src, target, rel, cache=cache)
     assert copies == [], "fast path must skip the unchanged file"
     _deploy(src, target, rel, cache=cache, full_verify=True)
-    assert copies == [str(Path(target) / rel)], "--full-verify must publish the unchanged file again"
+    assert [os.path.normcase(os.path.normpath(c)) for c in copies] == [
+        os.path.normcase(os.path.normpath(str(Path(target) / rel)))
+    ], "--full-verify must publish the unchanged file again"
 
 
 def test_lane_worktree_must_name_its_install():
