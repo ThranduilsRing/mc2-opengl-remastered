@@ -201,6 +201,8 @@ TEST_CASE("mechlab loc U2: a missile Marauder loses only the missile rack, and t
 }
 
 TEST_CASE("mechlab loc U3: migration is idempotent, a legal loadout is returned unchanged") {
+    CHECK(savedLayoutAction(2, 3) == SavedLayoutAction::Migrate);
+    CHECK(savedLayoutAction(3, 3) == SavedLayoutAction::Restore);
     const mc2pkg::PackageChassis c = marauderShipped();
     for (const auto& in : {astraSixSinks(), missileMarauder()}) {
         const LoadoutResult first = migrateLoadout(c, in);
@@ -230,6 +232,12 @@ TEST_CASE("mechlab loc U3: migration is idempotent, a legal loadout is returned 
     CHECK(r.moved == 0);
     CHECK(r.dropped == 0);
     for (size_t i = 0; i < shipped.size(); ++i) CHECK(at(r, i, shipped[i].p.x, shipped[i].p.y));
+}
+
+TEST_CASE("mechlab loc: downgrade skips the saved layout for the pack default") {
+    CHECK(savedLayoutAction(3, 2) == SavedLayoutAction::PackDefault);
+    CHECK(savedLayoutAction(3, 1) == SavedLayoutAction::PackDefault);
+    CHECK(savedLayoutAction(2, 1) == SavedLayoutAction::PackDefault);
 }
 
 TEST_CASE("mechlab loc U4: the same input migrates to the same result twice") {

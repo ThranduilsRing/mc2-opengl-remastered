@@ -190,6 +190,12 @@ inline Explained explain(const mc2pkg::PackageChassis& c, const std::vector<mc2p
 // rest move to the first legal cell (regions in declared order, rows, then columns), and only what truly
 // has no legal cell or mass budget left is dropped. Deterministic: depends only on the chassis and the list.
 struct Cell { int x = -1, y = -1; };
+enum class SavedLayoutAction { Restore, Migrate, PackDefault };
+inline SavedLayoutAction savedLayoutAction(long savedRev, int installedRev) {
+    return savedRev > installedRev ? SavedLayoutAction::PackDefault
+        : savedRev < installedRev ? SavedLayoutAction::Migrate : SavedLayoutAction::Restore;
+}
+
 struct LoadoutItem { mc2pkg::Placed p; bool slot = false; };   // slot = legacy -2/-3 item (jump jet, ECM, sensor): mass only
 struct LoadoutResult {
     std::vector<Cell> cells;     // parallel to the input; saved cell, new cell, or {-1,-1} when dropped

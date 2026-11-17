@@ -71,7 +71,7 @@ class MechLabScreen: public LogisticsScreen
 		MechLabScreen( const MechLabScreen& src );
 		MechLabScreen& operator=( const MechLabScreen& echLabScreen );
 		static MechLabScreen*	s_instance;
-		
+
 		static std::unique_ptr<LogisticsVariantDialog> saveDlg;
 		static std::unique_ptr<LogisticsAcceptVariantDialog> acceptDlg;
 
@@ -107,7 +107,7 @@ class MechLabScreen: public LogisticsScreen
 		aObject				selRects[2][5];
 		aObject				selJumpJetRect;
 		aObject*			selRect;
-		
+
 		bool				bSaveDlg;
 		bool				bDragLeft ;
 
@@ -149,7 +149,7 @@ class MechLabScreen: public LogisticsScreen
 
 		void	diagramToScreen( long i, long j, long& x, long& y  );
 		int		selectFirstDiagramComponent();
-		int		selectFirstLBComponent(); 
+		int		selectFirstLBComponent();
 		void	updateDiagramInput();
 		void	swapVariant();
 		void	updateHeatMeter();

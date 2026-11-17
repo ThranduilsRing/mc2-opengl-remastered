@@ -352,6 +352,15 @@ std::expected<void, long> LogisticsData::loadVariant( FitIniFile& file )
 		return std::unexpected(INVALID_FILE_NAME);
 	}
 
+	long savedRev = 1;
+	file.readIdLong("LayoutRev", savedRev);
+	const auto* package = pChassis->getPackage();
+	const auto layoutAction = mc2::mechlab_loc::savedLayoutAction(savedRev, package ? package->layoutRev : 1);
+	if (layoutAction == mc2::mechlab_loc::SavedLayoutAction::PackDefault) {
+		MC2_LOG(Core, Warn, "logistics: skipping saved variant '{}' layout rev {} newer than installed {}; using pack default", *variantName, savedRev, package ? package->layoutRev : 1);
+		return {};
+	}
+
 	// create the variant, add to the list
 	auto variant = std::make_unique<LogisticsVariant>( pChassis, 0 );
 	LogisticsVariant* pVariant = variant.get();
@@ -370,11 +379,8 @@ std::expected<void, long> LogisticsData::loadVariant( FitIniFile& file )
 			return std::unexpected(INVALID_FILE_NAME);
 		}
 	}
-	long savedRev = 1;
-	file.readIdLong("LayoutRev", savedRev);
-	const auto* package = pChassis->getPackage();
 	LogisticsVariant::LoadoutReport report;
-	if (package && savedRev < package->layoutRev) {
+	if (package && layoutAction == mc2::mechlab_loc::SavedLayoutAction::Migrate) {
 		std::vector<LogisticsVariant::SavedComponent> saved;
 		for (const auto& item : record->items)
 			saved.push_back({item.id, item.x, item.y});

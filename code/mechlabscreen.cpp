@@ -2599,13 +2599,17 @@ void MechLabScreen::drawLocationView( float tbSx, float tbSy, float tbOx, float 
 		{
 			int special = 0;
 			for ( const auto& it : placed ) if ( it.x < 0 || it.y < 0 ) ++special;
-			if ( special && r.h > 40 ) {
-				text( { r.x + 3, r.y + 4, r.w - 6, 14 }, "+ special (CLASSIC)", 0xffe8eef4, 10.f, 0 );
-				text( { r.x + 3, r.y + 20, r.w - 6, 28 }, "Jump jets / special slots", 0xffa0b0c0, 10.f, 0 );
-			}
 			char buf[64];
 			std::snprintf( buf, sizeof buf, "MASS %.1f / %.1f t", static_cast<double>( mass ), static_cast<double>( pc->payload ) );
-			text( { r.x, r.y + r.h - 14, r.w, 14 }, buf, mass > pc->payload + 1e-3f ? 0xffff6060 : 0xffffd060, 11.f, 2 );
+			std::string strip = buf;
+			if ( special ) strip += " | " + std::to_string( special ) + " special: CLASSIC";
+			const ml::Rect stripRect = rectOf( { r.x + 3, r.y, r.w - 6, r.h } );
+			const int stripSize = static_cast<int>( 10.f * tbSy );
+			std::vector<std::string> lines;
+			while ( !strip.empty() && GuiRuntime::CalcUiTextWrapLines( strip.c_str(), stripRect.w, stripSize, "", lines ) && lines.size() > 1 )
+				strip.pop_back();
+			GuiRuntime::DrawUiText( stripRect.x, stripRect.y, stripRect.w, stripRect.h, strip.c_str(),
+				mass > pc->payload + 1e-3f ? 0xffff6060 : 0xffffd060, stripSize, 2, "" );
 			continue;
 		}
 		int cells = 0, used = 0;
