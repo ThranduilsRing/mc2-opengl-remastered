@@ -762,6 +762,7 @@ static int run_terrain(int w, int h, TerrainIsland* supplied = nullptr,
     ZoneNamedN(zTerrRec, "VK-terrain-record-submit", true);   // VK-FLIP-FIELD-REPORT-1: CPU record+queue-submit (to fn return)
     // TERRAIN-HIRES-NEAR-DIAG: diagonal-fitted mode-1 meshes are keyed to one bake; a rebake (rare) drops them.
     const bool diagLive = feed.visualHeightCpu && feed.visualSide > 1 && s->visualHeightReady
+        && feed.waterShoreCellsCpu
         && static_cast<uint64_t>(feed.visualHeightBytes) >= static_cast<uint64_t>(feed.visualSide) * feed.visualSide * sizeof(float);
     if (diagLive && s->diagPatchVersion != feed.visualHeightVersion) {
         if (!s->diagPatchCache.empty()) { mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_diag_patch_rebake"); s->diagPatchCache.clear(); }

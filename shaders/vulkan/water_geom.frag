@@ -13,6 +13,7 @@
 // -- value inlined (render_contract.hglsl) so the VK shader needs no GL include.
 #version 450
 #extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_control_flow_attributes : require
 layout(constant_id = 11) const int kReflectionCoverage = 0;
 layout(constant_id = 13) const int kWaterDbgPass = 0;
 #define PREC highp
@@ -26,6 +27,105 @@ float sampleH(int x, int y) {
     return uH.heights[clamp(x, 0, uT.mapSide - 1) + clamp(y, 0, uT.mapSide - 1) * uT.mapSide];
 }
 #include "include/terrain_visual_surface.glsl"
+// Four adjacent surface vertices share the cliff filter's +/-2 raw halo.
+// Consume even and odd rows separately: never retain the full 8x8 halo.
+mat2x4 waterRawRow(ivec2 p) {
+    return mat2x4(vec4(cliffRawHeight(p + ivec2(-2, 0)), cliffRawHeight(p + ivec2(-1, 0)),
+                       cliffRawHeight(p), cliffRawHeight(p + ivec2(1, 0))),
+                  vec4(cliffRawHeight(p + ivec2(2, 0)), cliffRawHeight(p + ivec2(3, 0)),
+                       cliffRawHeight(p + ivec2(4, 0)), cliffRawHeight(p + ivec2(5, 0))));
+}
+vec4 waterSurfaceRow(ivec2 p, mat2x4 north, mat2x4 row, mat2x4 south) {
+    vec4 c = vec4(row[0].zw, row[1].xy);
+    vec4 n = vec4(north[0].zw, north[1].xy), s = vec4(south[0].zw, south[1].xy);
+    vec4 e = row[1], w = row[0];
+    vec4 rise = max(max(abs(n - c), abs(s - c)), max(abs(e - c), abs(w - c)));
+    vec4 diagonal = north[0] + north[1] + south[0] + south[1];
+    vec4 cardinal = n + s + e + w;
+    vec4 result;
+    [[unroll]] for (int x = 0; x < 4; ++x)
+        result[x] = rise[x] <= 24.0 ? c[x] : cliffFilteredHeight(c[x], cardinal[x], diagonal[x], rise[x]);
+    // At full displacement, interior vertices have no coarse-surface contribution.
+    if (hiresBlendW() == 1.0 && hiresEdgeW(p.x, p.y) == 1.0 && hiresEdgeW(p.x + 3, p.y) == 1.0)
+        return result;
+    [[unroll]] for (int x = 0; x < 4; ++x) {
+        int fx = p.x + x, fy = p.y;
+        int cx = min(fx / 4, uT.mapSide - 2), cy = min(fy / 4, uT.mapSide - 2);
+        float u = float(fx - cx * 4) * 0.25, v = float(fy - cy * 4) * 0.25;
+        float h00 = sampleH(cx, cy), h10 = sampleH(cx + 1, cy);
+        float h01 = sampleH(cx, cy + 1), h11 = sampleH(cx + 1, cy + 1);
+        float hc = (v >= u) ? h00 + (h11 - h01) * u + (h01 - h00) * v
+                            : h00 + (h10 - h00) * u + (h11 - h10) * v;
+        result[x] = mix(hc, result[x], hiresBlendW() * hiresEdgeW(fx, fy));
+    }
+    return result;
+}
+void waterSurfaceCache(ivec2 p, out mat4 raw, out mat4 surface) {
+    [[unroll]] for (int parity = 0; parity < 2; ++parity) {
+        ivec2 q = p + ivec2(0, parity);
+        mat2x4 north = waterRawRow(q + ivec2(0, -2));
+        mat2x4 row = waterRawRow(q), south = waterRawRow(q + ivec2(0, 2));
+        raw[parity] = vec4(row[0].zw, row[1].xy);
+        surface[parity] = waterSurfaceRow(q, north, row, south);
+        north = row;
+        row = south;
+        south = waterRawRow(q + ivec2(0, 4));
+        raw[parity + 2] = vec4(row[0].zw, row[1].xy);
+        surface[parity + 2] = waterSurfaceRow(q + ivec2(0, 2), north, row, south);
+    }
+}
+vec4 waterCell(mat4 rows, ivec2 k) {
+    // Constant component accesses avoid dynamically indexing a per-fragment array.
+    vec4 top = k.y == 0 ? rows[0] : (k.y == 1 ? rows[1] : (k.y == 3 ? rows[3] : rows[2]));
+    vec4 bottom = k.y == 0 ? rows[1] : (k.y == 1 ? rows[2] : rows[3]);
+    if (k.x == 3) return vec4(top.ww, bottom.ww);
+    return k.x == 0 ? vec4(top.xy, bottom.xy)
+                   : (k.x == 1 ? vec4(top.yz, bottom.yz) : vec4(top.zw, bottom.zw));
+}
+float waterHeightCell(vec4 r, vec4 h, vec2 t) {
+    float rawTL = r.x, rawTR = r.y, rawBL = r.z, rawBR = r.w;
+    if (abs(rawTR - rawBL) < abs(rawTL - rawBR)) {
+        float tr = h.y, bl = h.z;
+        if (t.x + t.y <= 1.0) {
+            float tl = h.x;
+            return tl + (tr - tl) * t.x + (bl - tl) * t.y;
+        }
+        float br = h.w;
+        return br + (bl - br) * (1.0 - t.x) + (tr - br) * (1.0 - t.y);
+    }
+    float a = h.x, d = h.w;
+    float b = t.y >= t.x ? h.z : h.y;
+    return t.y >= t.x ? a + (d - b) * t.x + (b - a) * t.y
+                      : a + (b - a) * t.x + (d - b) * t.y;
+}
+float waterFineHeight(vec2 worldXY);
+float waterCachedHeight(vec2 worldXY, ivec2 origin, mat4 raw, mat4 surface) {
+    // Keep each tap's coordinate arithmetic and triangle interpolation identical.
+    vec2 grid = clamp(vec2(worldXY.x + uT.halfMap, uT.halfMap - worldXY.y) / 32.0,
+                      vec2(0.0), vec2(uT.visualSide - 1));
+    ivec2 p = min(ivec2(floor(grid)), ivec2(uT.visualSide - 2));
+    vec2 t = grid - vec2(p);
+    ivec2 k = p - origin;
+    if (any(lessThan(k, ivec2(0))) || any(greaterThan(k, ivec2(3)))
+        || (k.x == 3 && t.x != 0.0) || (k.y == 3 && t.y != 0.0))
+        return waterFineHeight(worldXY);
+    return waterHeightCell(waterCell(raw, k), waterCell(surface, k), t);
+}
+mat4 waterRawCache(ivec2 p) {
+    mat4 rows;
+    [[unroll]] for (int y = 0; y < 4; ++y)
+        rows[y] = vec4(cliffRawHeight(p + ivec2(0, y)), cliffRawHeight(p + ivec2(1, y)),
+                       cliffRawHeight(p + ivec2(2, y)), cliffRawHeight(p + ivec2(3, y)));
+    return rows;
+}
+float waterRawCenter(vec2 worldXY) {
+    vec2 grid = clamp(vec2(worldXY.x + uT.halfMap, uT.halfMap - worldXY.y) / 32.0,
+                      vec2(0.0), vec2(uT.visualSide - 1));
+    ivec2 p = min(ivec2(floor(grid)), ivec2(uT.visualSide - 2));
+    vec4 r = vec4(cliffRawHeight(p), cliffRawHeight(p + ivec2(1, 0)),
+                  cliffRawHeight(p + ivec2(0, 1)), cliffRawHeight(p + ivec2(1, 1)));
+    return waterHeightCell(r, r, grid - vec2(p));
+}
 float waterFineHeight(vec2 worldXY) {
     vec2 grid = clamp(vec2(worldXY.x + uT.halfMap, uT.halfMap - worldXY.y) / 32.0,
                       vec2(0.0), vec2(uT.visualSide - 1));
@@ -347,14 +447,41 @@ void main(void)
     // SHORE-FIELD-1: deep/shallow tint from the smooth shore field (mode 3), not the coarse
     // per-vertex thickness -- no more deep-water diamonds around single low vertices.
     // Evaluated for every fragment (uniform control flow) so its screen derivative is defined.
-    float fieldThick;
-    const bool hasField = wse_fieldThickness(int(F.f4.x + 0.5), int(F.f4.y + 0.5), u_shoreHeightTex, F.f5,
-                                             WorldPos.xy, F.f7.x, fieldThick);
     const bool hasVisual = uT.visualMode != 0 && uT.visualSide > 1;
+    float fieldThick = 0.0;
+    vec2 hn = vec2((WorldPos.x - F.f5.x) / max(F.f5.z, 1e-5),
+                   (F.f5.y - WorldPos.y) / max(F.f5.w, 1e-5));
+    const bool hasField = int(F.f4.x + 0.5) == 3 && int(F.f4.y + 0.5) != 0
+                      && !(hn.x < 0.0 || hn.x > 1.0 || hn.y < 0.0 || hn.y > 1.0);
+    if (hasField && !hasVisual)
+        fieldThick = F.f7.x - wse_bicubicHeight(u_shoreHeightTex, hn);
     // The cooked SDF predates raster-depth coverage. Its zero crossing can sit on
     // dry land, leaving a shallow strip and a detached foam contour in wet pixels.
     // Read shore inputs from the same filtered fine surface as the terrain.
-    if (hasVisual && hasField) fieldThick = F.f7.x - waterFineHeight(WorldPos.xy);
+    mat4 shoreRaw, shoreSurface;
+    ivec2 shoreOrigin = ivec2(0);
+    float fineCenter = 0.0;
+    bool tent = true;
+    if (hasVisual && hasField) {
+        vec2 grid = clamp(vec2(WorldPos.x - 32.0 + uT.halfMap, uT.halfMap - (WorldPos.y + 32.0)) / 32.0,
+                          vec2(0.0), vec2(uT.visualSide - 1));
+        shoreOrigin = min(ivec2(floor(grid)), ivec2(uT.visualSide - 2));
+        int record = uT.visualSide * uT.visualSide + 2 * (shoreOrigin.x + shoreOrigin.y * uT.visualSide);
+        float threshold = heightsFine[record], flat4 = heightsFine[record + 1];
+        bool full = hiresBlendW() != 1.0 || flat4 == 0.0;
+        tent = hiresBlendW() != 1.0 || F.f7.x < threshold; // partial far blend mixes coarse heights: thresholds bound only the fine surface
+        if (full) {
+            waterSurfaceCache(shoreOrigin, shoreRaw, shoreSurface);
+            fineCenter = waterCachedHeight(WorldPos.xy, shoreOrigin, shoreRaw, shoreSurface);
+        } else if (tent) {
+            shoreRaw = waterRawCache(shoreOrigin);
+            shoreSurface = shoreRaw;
+            fineCenter = waterCachedHeight(WorldPos.xy, shoreOrigin, shoreRaw, shoreSurface);
+        } else {
+            fineCenter = waterRawCenter(WorldPos.xy);
+        }
+        fieldThick = F.f7.x - fineCenter;
+    }
     // Raster depth still owns coverage, including patch stitching and morph.
     float softnessThick = hasVisual && !hasField ? F.f7.x - waterFineHeight(WorldPos.xy) : fieldThick;
     const float fieldThickFw = fwidth(fieldThick);
@@ -372,16 +499,23 @@ void main(void)
     // The fine surface is a 32-unit bilinear grid: its screen gradient jumps per triangle and the contour of its
     // depth is a polygon. Take shoreDepth and its gradient from a 3x3 tent blur of the same height (C1, rounded
     // contours, continuous gradient); coverage and tint keep the raw fine height.
-    if (hasVisual && hasField) {
+    if (hasVisual && hasField && tent) {
         const float gh = 32.0;
         vec2 wp = WorldPos.xy;
-        float h00 = waterFineHeight(wp + vec2(-gh, -gh)), h10 = waterFineHeight(wp + vec2(0.0, -gh)), h20 = waterFineHeight(wp + vec2(gh, -gh));
-        float h01 = waterFineHeight(wp + vec2(-gh, 0.0)), h11 = waterFineHeight(wp),                  h21 = waterFineHeight(wp + vec2(gh, 0.0));
-        float h02 = waterFineHeight(wp + vec2(-gh, gh)),  h12 = waterFineHeight(wp + vec2(0.0, gh)),   h22 = waterFineHeight(wp + vec2(gh, gh));
+        float h00 = waterCachedHeight(wp + vec2(-gh, -gh), shoreOrigin, shoreRaw, shoreSurface);
+        float h10 = waterCachedHeight(wp + vec2(0.0, -gh), shoreOrigin, shoreRaw, shoreSurface);
+        float h20 = waterCachedHeight(wp + vec2(gh, -gh), shoreOrigin, shoreRaw, shoreSurface);
+        float h01 = waterCachedHeight(wp + vec2(-gh, 0.0), shoreOrigin, shoreRaw, shoreSurface);
+        float h11 = fineCenter;
+        float h21 = waterCachedHeight(wp + vec2(gh, 0.0), shoreOrigin, shoreRaw, shoreSurface);
+        float h02 = waterCachedHeight(wp + vec2(-gh, gh), shoreOrigin, shoreRaw, shoreSurface);
+        float h12 = waterCachedHeight(wp + vec2(0.0, gh), shoreOrigin, shoreRaw, shoreSurface);
+        float h22 = waterCachedHeight(wp + vec2(gh, gh), shoreOrigin, shoreRaw, shoreSurface);
         shoreDepth = F.f7.x - (h00 + 2.0 * h10 + h20 + 2.0 * h01 + 4.0 * h11 + 2.0 * h21 + h02 + 2.0 * h12 + h22) / 16.0;
         shoreGrad = -vec2((h20 + 2.0 * h21 + h22) - (h00 + 2.0 * h01 + h02),
                           (h02 + 2.0 * h12 + h22) - (h00 + 2.0 * h10 + h20)) / (8.0 * gh);
     }
+    if (hasVisual && hasField && !tent) shoreGrad = vec2(0.0);
     float shoreSlope = max(length(shoreGrad), 0.08);
     float shoreDistance = max(shoreDepth, 0.0) / shoreSlope;
     float foamAA = max(max(length(shoreDx), length(shoreDy)), 1.0);
