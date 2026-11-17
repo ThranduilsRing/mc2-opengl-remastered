@@ -11,6 +11,7 @@
 #include <cstdio>
 #include <filesystem>
 #include <chrono>
+#include <string_view>
 
 int gos_GetWaterReflectionQuality();
 
@@ -132,7 +133,7 @@ float halfFloat(uint16_t v) {
 }
 
 bool prepare_reflect_bake(WaterIsland* s, float water) {
-    auto fail = [](const char* phase) {
+    auto fail = [](std::string_view phase) {
         static bool logged = false;
         if (!logged && mc2_diag::tagRequested("WATER_BAKE")) mc2::fmt::print_err("[WATER_BAKE] FAILED phase={}\n", phase);
         logged = true;
