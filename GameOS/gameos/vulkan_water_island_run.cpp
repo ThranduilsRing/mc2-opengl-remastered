@@ -50,6 +50,8 @@ bool vk_water_detail::record_reflection(WaterIsland* s, VkCommandBuffer cb, bool
     // Coverage uses the same displaced water vertices, shoreline discard and main-view depth test.
     auto& ctx=mc2vk::engineVulkanContextNoWait();
     namespace dr=mc2vk::dynrender;
+    {
+    MC2_VK_GPU_SCOPE(coverageScope,cb,"VKIsl.Water.Reflection.Coverage");
     dr::Pass coverage;
     coverage.area={{0,0},{static_cast<uint32_t>(s->w),static_cast<uint32_t>(s->h)}};
     coverage.colorCount=2;
@@ -65,6 +67,9 @@ bool vk_water_detail::record_reflection(WaterIsland* s, VkCommandBuffer cb, bool
     vkCmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,s->playout.get(),0,1,&s->set[par],2,offsets);
     vkCmdDrawIndirect(cb,s->native->drawArgs(par),0,1,16);
     dr::end(ctx,cb);
+    }
+    {
+    MC2_VK_GPU_SCOPE(maskScope,cb,"VKIsl.Water.Reflection.Mask");
     barrier(s->coverageImage.get(),VK_IMAGE_ASPECT_COLOR_BIT,VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,VK_IMAGE_LAYOUT_GENERAL,
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_SHADER_READ_BIT);
     dr::memoryBarrier(ctx,cb,VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT|VK_PIPELINE_STAGE_2_TRANSFER_BIT,
@@ -79,6 +84,9 @@ bool vk_water_detail::record_reflection(WaterIsland* s, VkCommandBuffer cb, bool
             vertical ? VK_PIPELINE_STAGE_2_TRANSFER_BIT : VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
             vertical ? VK_ACCESS_2_TRANSFER_READ_BIT : VK_ACCESS_2_SHADER_READ_BIT);
     }
+    }
+    {
+    MC2_VK_GPU_SCOPE(depthCopyScope,cb,"VKIsl.Water.Reflection.DepthCopy");
     barrier(s->planarDepthImage.get(),VK_IMAGE_ASPECT_DEPTH_BIT,
         s->planarDepthInitialized ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -93,6 +101,7 @@ bool vk_water_detail::record_reflection(WaterIsland* s, VkCommandBuffer cb, bool
         VK_PIPELINE_STAGE_TRANSFER_BIT,VK_ACCESS_TRANSFER_WRITE_BIT,
         VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
         VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
+    }
     barrier(s->reflectionImage.get(),VK_IMAGE_ASPECT_COLOR_BIT,VK_IMAGE_LAYOUT_GENERAL,VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,VK_ACCESS_SHADER_READ_BIT,VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
     s->planarDepthInitialized = true;
