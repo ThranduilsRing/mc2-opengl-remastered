@@ -160,6 +160,17 @@ def _hud_render(parts, w, h, rear: bool):
         if dx:
             seam[:, -1] = True
         shade = np.where(seam, 2, shade)
+    # 1px black gap: where a lower-ranked part (leg < arm < head < torso) touches a higher one, drop its pixel
+    rank = np.array([0, 0, 1, 1, 3, 3, 3, 2])[region]
+    gap = np.zeros_like(solid)
+    for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        nb_solid = np.roll(solid, (dy, dx), axis=(0, 1))
+        nb_reg = np.roll(region, (dy, dx), axis=(0, 1))
+        gap |= solid & nb_solid & (nb_reg != region) & (rank < np.array([0, 0, 1, 1, 3, 3, 3, 2])[nb_reg])
+    for r in range(8):                                   # never erase a region entirely
+        if (solid & (region == r)).any() and not (solid & ~gap & (region == r)).any():
+            gap[region == r] = False
+    solid = solid & ~gap
     for y, x in zip(*np.nonzero(solid)):
         img[y, x] = (*region_color(int(region[y, x]), int(shade[y, x])), 255)
     return img
