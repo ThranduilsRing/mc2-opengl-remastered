@@ -448,6 +448,8 @@ void main(void)
     // per-vertex thickness -- no more deep-water diamonds around single low vertices.
     // Evaluated for every fragment (uniform control flow) so its screen derivative is defined.
     const bool hasVisual = uT.visualMode != 0 && uT.visualSide > 1;
+    // Visual-surface shore coverage is always positive; depth owns its silhouette.
+    if (kReflectionCoverage != 0 && hasVisual) { FragColor = vec4(1.0); GBuffer1 = vec4(0.0); return; }
     float fieldThick = 0.0;
     vec2 hn = vec2((WorldPos.x - F.f5.x) / max(F.f5.z, 1e-5),
                    (F.f5.y - WorldPos.y) / max(F.f5.w, 1e-5));
