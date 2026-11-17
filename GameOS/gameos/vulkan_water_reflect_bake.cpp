@@ -152,7 +152,7 @@ bool prepare_reflect_bake(WaterIsland* s, float water) {
     light[15] = lighting.rain; light[16] = feed.ambientFloor; light[17] = feed.ambientDayGate;
     std::array<float, 3> rgb{};
     for (int i = 0; i < 3; ++i) {
-        rgb[i] = light[3+i] + light[6+i];
+        rgb[i] = mc2::waterplanar::weatherLight(light[3+i], light[6+i], lighting.rain);
         light[3+i] = light[6+i] = 0;
     }
     light[15] = 0; // Weather is applied to the baked tap, with bounded lamp drift.
