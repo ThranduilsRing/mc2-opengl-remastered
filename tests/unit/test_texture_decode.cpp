@@ -364,8 +364,6 @@ TEST_CASE("HUD atlas SIMD mips match scalar bytes") {
     auto root = std::filesystem::current_path();
     while (!std::filesystem::exists(root / "RenderCore/StockPbr.h") && root != root.parent_path())
         root = root.parent_path();
-    if (!std::filesystem::exists(root / "RenderCore/StockPbr.h"))
-        root = std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
     const auto path = root / "data/textures/mech_pbr/anubis_albedo.png";
     std::ifstream input(path, std::ios::binary);
     REQUIRE(input.is_open());
