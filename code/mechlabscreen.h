@@ -110,7 +110,6 @@ class MechLabScreen: public LogisticsScreen
 		bool				bSaveDlg;
 		bool				bDragLeft ;
 
-		SimpleCamera		camera;
 		SimpleCamera		mechCamera;	// MECHLAB-3D-1: the posed 3D mech behind the weapon grid (replaces the Static50-53 silhouette)
 
 		std::string			varName;

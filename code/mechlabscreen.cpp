@@ -41,6 +41,7 @@ static bool cheatInfiniteMoney() { static const bool on = mc2::gate::get<"MC2_CH
 #include "../Gates/render_options.h"
 #include "../GameOS/gameos/input_capture_policy.h"
 
+namespace ml = mc2::mechlab_loc;
 static bool isPackageChassis(const LogisticsVariant* v) { return v && v->getChassis() && v->getChassis()->getPackage(); }
 static std::string dropRefusal;
 static float dropRefusalTime = 0.f;
@@ -253,9 +254,30 @@ int MechLabScreen::init( FitIniFile& file )
 	variantList.setParent( this );
 	variantList.setHelpID( IDS_HELP_MC_VARIANT_DROP_DOWN_LIST_BOX );
 
-	camera.init( rects[4].left(), rects[4].top(), rects[4].right(), rects[4].bottom() );
-	// MECHLAB-3D-1: Static50-53 (mcl_mc.fit) tile one rect, x25 y116 w315 h347.
-	mechCamera.init( 25.f, 116.f, 340.f, 463.f );
+	// Grid drawing, selection and drag conversion consume these same rects.
+	for (int i = 7; i <= 11; ++i) {
+		rects[i].moveTo(ml::kAreaX + (i - 7) * ml::kCellW / 2, 364);
+		rects[i].resize(ml::kCellW, LogisticsComponent::YICON_FACTOR);
+	}
+	rects[6].moveTo(321, 409);
+	rects[6].resize(2 * ml::kCellW, 64);
+	rects[13].moveTo(ml::kAreaX, ml::kAreaY);
+	rects[13].resize(316, 344);
+	rects[12].moveTo(27, 495);
+	rects[12].resize(182, 30);
+	payloadIcon.resize(ml::kCellW, LogisticsComponent::YICON_FACTOR);
+	mechCamera.init(ml::kPreview.x, ml::kPreview.y,
+		ml::kPreview.x + ml::kPreview.w, ml::kPreview.y + ml::kPreview.h);
+	attributeMeters[5].moveTo(337, 513);
+	attributeMeters[6].moveTo(337, 496);
+	textObjects[11].moveTo(240, 494);
+	textObjects[12].moveTo(240, 511);
+	textObjects[4].moveTo(27, 499);
+	textObjects[5].moveTo(130, 497);
+	for (int i : {20, 32}) {
+		statics[i].moveTo(217, i == 20 ? 496 : 513);
+		statics[i].resize(20, 15);
+	}
 
 	getButton( COMPONENT_FORM_WEAPON_ENERGY )->setPressFX( LOG_VIDEOBUTTONS );
 	getButton( COMPONENT_FORM_WEAPON_BALLISTIC )->setPressFX( LOG_VIDEOBUTTONS );
@@ -280,9 +302,9 @@ int MechLabScreen::init( FitIniFile& file )
 			if ( fileExists( path ) )
 			{
 				selRects[j][i].setTexture( path );
-				selRects[j][i].resize( (j+1) * LogisticsComponent::XICON_FACTOR, (i+1) * LogisticsComponent::YICON_FACTOR );
+				selRects[j][i].resize( (j+1) * ml::kCellW, (i+1) * LogisticsComponent::YICON_FACTOR );
 				// now need to set the UV's
-				selRects[j][i].setUVs( 0, 0, selRects[j][i].width(), selRects[j][i].height()  );
+				selRects[j][i].setUVs( 0, 0, (j+1) * 48, (i+1) * 32 );
 			}
 
 		}
@@ -290,9 +312,9 @@ int MechLabScreen::init( FitIniFile& file )
 
 	path.init( artPath, "mcl_mc_jumpjets_selection", ".tga" );
 	selJumpJetRect.setTexture( path );
-	selJumpJetRect.resize( 2 * LogisticsComponent::XICON_FACTOR, 2 * LogisticsComponent::YICON_FACTOR );
+	selJumpJetRect.resize( 2 * ml::kCellW, 2 * LogisticsComponent::YICON_FACTOR );
 	// now need to set the UV's
-	selJumpJetRect.setUVs( 0, 0, selJumpJetRect.width(), selJumpJetRect.height()  );
+	selJumpJetRect.setUVs( 0, 0, 96, 64 );
 
 	return true;
 }
@@ -471,7 +493,6 @@ void MechLabScreen::begin()
 }
 void MechLabScreen::end()
 {
-	camera.setMech( nullptr );
 	mechCamera.setMech( nullptr );
 	pVariant = nullptr;
 }
@@ -581,8 +602,7 @@ void MechLabScreen::update()
 		return;
 
 	
-	camera.update();
-	const int previewHit = !locationViewActive() && mechCamera.hasObject() && !pDragComponent ? previewButton(mechCamera) : -1;
+	const int previewHit = mechCamera.hasObject() && !pDragComponent ? previewButton(mechCamera) : -1;
 	const bool previewDown = userInput->getMouseLeftButtonState() == MC2_MOUSE_DOWN;
 	static bool previewWasDown = false;
 	if (previewDown && !previewWasDown && previewHit >= 0)
@@ -817,7 +837,7 @@ void MechLabScreen::updateDiagramInput()
 				x -= pDragComponent->getComponentWidth()/2;
 				y -= pDragComponent->getComponentHeight()/2;
 
-				if ( mouseX - screenX > LogisticsComponent::XICON_FACTOR/2
+				if ( mouseX - screenX > ml::kCellW/2
 					&& pDragComponent->getComponentWidth()/2)
 				{
 					x += 1;
@@ -1035,58 +1055,57 @@ void MechLabScreen::render(int xOffset, int yOffset)
 	// DEFS-METER-BRIDGE-1: stat bars on the ImGui layer (raw gos draws are
 	// buried under the defs page).
 	aObject::beginGuiBridge( tbSx, tbSy, tbOx, tbOy );
-	for (auto & attributeMeter : attributeMeters)
-		attributeMeter.render(xOffset, yOffset);
+	for (int i : {5, 6})
+		attributeMeters[i].render(xOffset, yOffset);
 	aObject::endGuiBridge();
 
 	if ( !xOffset && !yOffset )
 	{
-		// PREVIEW-FBO-FIXED-800x600-1: no defs/ImGui placement rect for this
-		// camera in mcl_mc.fit -- same situation as Mech Bay. Render offscreen
-		// (fixed 800x600, matches camera.bounds[]/init() unscaled legacy math
-		// unchanged) and composite via the same tbSx/tbSy real-resolution ratio
-		// already used for this screen's text bridge.
-		// MECHLAB-3D-1: both cameras share ONE preview texture that clears per pass;
-		// hold the pass so the mech and the component render into the same batch.
-		const bool mech3d = mechCamera.hasObject();
-		mc2_vk_preview_hold( 1 );
-		if ( mech3d )
+		if ( mechCamera.hasObject() )
 		{
 			mechCamera.setPreviewOffscreen( true );
 			mechCamera.render();
-		}
-		camera.setPreviewOffscreen( true );
-		camera.render();
-		mc2_vk_preview_hold( -1 );
-		// Backdrop hook (later phase): a mech bay backdrop would be drawn here, before the mech.
-		if ( mech3d )
 			mechCamera.drawPreviewToPanel(
 				mechCamera.bounds[0] * tbSx + tbOx, mechCamera.bounds[1] * tbSy + tbOy,
 				(mechCamera.bounds[2] - mechCamera.bounds[0]) * tbSx,
 				(mechCamera.bounds[3] - mechCamera.bounds[1]) * tbSy );
-		camera.drawPreviewToPanel(
-			camera.bounds[0] * tbSx + tbOx, camera.bounds[1] * tbSy + tbOy,
-			(camera.bounds[2] - camera.bounds[0]) * tbSx,
-			(camera.bounds[3] - camera.bounds[1]) * tbSy );
+		}
 	}
 
+	for (int i : {6, 7, 8, 9, 10, 13, 15, 16}) textObjects[i].showGUIWindow(false);
+	for (int i : {16, 22, 23, 24, 26, 29, 30, 31, 34, 47, 48, 49, 50, 51, 52, 53, 54, 55})
+		statics[i].showGUIWindow(false);
 	LogisticsScreen::render(xOffset, yOffset );
+	if (pCurComponent) {
+		auto line = [&](float y, const char* value, unsigned int color) {
+			GuiRuntime::DrawUiText((195 + xOffset) * tbSx + tbOx, (y + yOffset) * tbSy + tbOy,
+				150 * tbSx, 12 * tbSy, value, color, static_cast<int>(10 * tbSy), 0, "");
+		};
+		char value[96];
+		line(60, pCurComponent->getName(), 0xffe8eef4);
+		mc2::fmt::to_buf(value, "Cost {}", pCurComponent->getCost());
+		line(73, value, 0xffffd060);
+		if (pCurComponent->getType() == COMPONENT_FORM_HEATSINK)
+			mc2::fmt::to_buf(value, "Cooling +{:.1f}", pCurComponent->getDamage());
+		else
+			mc2::fmt::to_buf(value, "Heat {:.1f}  Damage {:.1f}", pCurComponent->getHeat(), pCurComponent->getDamage());
+		line(86, value, 0xffe8eef4);
+		mc2::fmt::to_buf(value, "Range {}  Cycle {:.1f}s", pCurComponent->getRange(), pCurComponent->getRecycleTime());
+		line(99, value, 0xffa0c8e0);
+		auto meter = [&](float x, float y, float fraction, unsigned int color) {
+			GuiRuntime::DrawUiRect((x + xOffset) * tbSx + tbOx, (y + yOffset) * tbSy + tbOy,
+				70 * tbSx, 2 * tbSy, 0xff25323e, true);
+			GuiRuntime::DrawUiRect((x + xOffset) * tbSx + tbOx, (y + yOffset) * tbSy + tbOy,
+				70 * tbSx * std::clamp(fraction, 0.f, 1.f), 2 * tbSy, color, true);
+		};
+		meter(195, 97, pCurComponent->getHeat() / LogisticsComponent::MAX_HEAT, 0xffff6040);
+		meter(270, 97, pCurComponent->getDamage() / LogisticsComponent::MAX_DAMAGE, 0xff80c8ff);
+		meter(195, 110, (pCurComponent->getRange() + 1) / 3.f, 0xff80c8ff);
+	}
 
 	if ( MPlayer && ChatWindow::instance() )
 		ChatWindow::instance()->render(xOffset, yOffset);
 
-	// Mech paperdoll background: the defs page suppresses these legacy statics, so
-	// draw them explicitly here -- on the GameOS layer, BEFORE the component slots
-	// below, so the paperdoll sits BEHIND the slots (not covering them).
-	for ( int i = 50; i < 54 && !mechCamera.hasObject(); i++ )
-	{
-		statics[i].move( xOffset, yOffset );
-		statics[i].render();
-		statics[i].move( -xOffset, -yOffset );
-	}
-
-	// MECHLAB-3D-1: the 3D mech is an ImGui image (opaque FBO); the grid must be drawn on
-	// the same layer afterwards or the image buries it.
 	const bool locOn = locationViewActive();
 	const bool gridBridge = mechCamera.hasObject() || locOn || isPackageChassis(pVariant);
 	if ( gridBridge )
@@ -1177,7 +1196,7 @@ void MechLabScreen::render(int xOffset, int yOffset)
 		drawLocationView( tbSx, tbSy, tbOx, tbOy, xOffset, yOffset );
 	if ( gridBridge )
 		aObject::endGuiBridge();
-	if (!locOn && !xOffset && !yOffset && mechCamera.hasObject())
+	if (!xOffset && !yOffset && mechCamera.hasObject())
 		drawPreviewControls(mechCamera, !bSaveDlg && !bErrorDlg && !pDragComponent && status == RUNNING);
     // The F9 animation window is an ImGui window and would sit above the legacy save/error dialogs.
     if (!xOffset && !yOffset && !bSaveDlg && !bErrorDlg) mechCamera.drawAnimationPanel();
@@ -1520,9 +1539,6 @@ void	MechLabScreen::setComponent( LogisticsComponent* pComponent, bool bMessageF
 	char text[64];
 	if ( pCurComponent )
 	{
-		//set the little spinning figure
-		// uncomment this when the art is in, if ever...
-		camera.setComponent( pCurComponent->getPictureFileName() );
 		textObjects[6].setText( pComponent->getName() );
 
 
@@ -1854,7 +1870,7 @@ void MechLabScreen::beginDrag( LogisticsComponent* pComponent )
 
 			dragIcon.setTexture( path );
 			dragIcon.setComponent(*pComponent);
-			dragIcon.resize( sizeX * LogisticsComponent::XICON_FACTOR, sizeY * LogisticsComponent::YICON_FACTOR);
+			dragIcon.resize( sizeX * ml::kCellW, sizeY * LogisticsComponent::YICON_FACTOR);
 			dragIcon.setUVs( 0.f, 0.f, sizeX * 48.f, sizeY * 32.f );
 			dragIcon.setColor( 0xffffffff );
 
@@ -1947,7 +1963,7 @@ void MechLabScreen::getMouseDiagramCoords( long screenX, long screenY, long& x, 
 	long minX = rects[7 + 6-width].left();
 	long maxY = rects[7].bottom();
 	long minY = maxY - height * LogisticsComponent::YICON_FACTOR;
-	long maxX = minX + width * LogisticsComponent::XICON_FACTOR;
+	long maxX = minX + width * ml::kCellW;
 
 	long mouseX = screenX;
 	long mouseY = screenY;
@@ -1967,7 +1983,7 @@ void MechLabScreen::getMouseDiagramCoords( long screenX, long screenY, long& x, 
 //		&& mouseY >= minY && mouseY <= maxY )
 	{
 		// specificly, which square are we in
-		x = (mouseX - minX)/LogisticsComponent::XICON_FACTOR;
+		x = (mouseX - minX)/ml::kCellW;
 		y = (mouseY - minY)/LogisticsComponent::YICON_FACTOR;
 	}
 	
@@ -1996,7 +2012,7 @@ void MechLabScreen::diagramToScreen( long i, long j, long& x, long& y  )
 	long maxY = rects[7].bottom();
 	long minY = maxY - height * LogisticsComponent::YICON_FACTOR;
 
-	x = minX + i * LogisticsComponent::XICON_FACTOR;
+	x = minX + i * ml::kCellW;
 	y = minY + j * LogisticsComponent::YICON_FACTOR;
 
 
@@ -2025,7 +2041,7 @@ void MechLabScreen::updateDiagram()
 	{
 		LogisticsComponent* pComponent = LogisticsData::instance->getComponent( IDArray[i] ).transform([](auto ref) { return &ref.get(); }).value_or(nullptr);
 
-		long xLoc = minX + xLocs[i] * LogisticsComponent::XICON_FACTOR;
+		long xLoc = minX + xLocs[i] * ml::kCellW;
 		long yLoc = minY + yLocs[i] * LogisticsComponent::YICON_FACTOR;
 
 		if ( pComponent->getType() == COMPONENT_FORM_JUMPJET )
@@ -2046,7 +2062,7 @@ void MechLabScreen::updateDiagram()
 
 		componentIcons[i].setTexture( path );
 		componentIcons[i].setComponent(*pComponent);
-		componentIcons[i].resize( sizeX * LogisticsComponent::XICON_FACTOR, sizeY * LogisticsComponent::YICON_FACTOR );
+		componentIcons[i].resize( sizeX * ml::kCellW, sizeY * LogisticsComponent::YICON_FACTOR );
 		componentIcons[i].setUVs( 0.f, 0.f, sizeX * 48.f, sizeY * 32.f );
 		componentIcons[i].moveTo( xLoc, yLoc );
 		componentIcons[i].setColor( 0xffffffff );
@@ -2095,7 +2111,7 @@ int MechLabScreen::selectFirstDiagramComponent()
 				count++;
 				bFound = true;
 				pSelectedComponent = pComp;
-				camera.setComponent( pComp->getPictureFileName() );
+
 				break;
 			}
 		}
@@ -2117,11 +2133,6 @@ int MechLabScreen::selectFirstLBComponent()
 	selI = selJ = -1;
 	pSelectedComponent = nullptr;
 	int index =  componentListBox.selectFirstAvailableComponent();
-	if ( index != -1 )
-	{
-		LogisticsComponent* pComp = componentListBox.getComponent( );
-		camera.setComponent( pComp->getPictureFileName() );
-	}
 	return index;
 }
 void MechLabScreen::removeComponent( long i, long j )
@@ -2175,7 +2186,6 @@ bool MechLabScreen::canRemoveComponent( LogisticsComponent* pComp )
 // MECHLAB-LOC-1: location view (package / BT2018 chassis). Layout, hit rects and refusal reasons
 // are the pure code/mechlab_loc_layout.h; every rect below is drawn AND hit-tested from it.
 //*************************************************************************************************
-namespace ml = mc2::mechlab_loc;
 namespace {
 struct LocItem { LogisticsComponent* comp; long x, y; };
 int s_locHover = -1;
@@ -2501,7 +2511,7 @@ void MechLabScreen::drawLocationView( float tbSx, float tbSy, float tbOx, float 
 		{
 			int special = 0;
 			for ( const auto& it : placed ) if ( it.x < 0 || it.y < 0 ) ++special;
-			if ( special ) {
+			if ( special && r.h > 40 ) {
 				text( { r.x + 3, r.y + 4, r.w - 6, 14 }, "+ special (CLASSIC)", 0xffe8eef4, 10.f, 0 );
 				text( { r.x + 3, r.y + 20, r.w - 6, 28 }, "Jump jets / special slots", 0xffa0b0c0, 10.f, 0 );
 			}

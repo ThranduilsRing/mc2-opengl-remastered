@@ -49,17 +49,20 @@ inline const char* panelTitle(int p) {
     return (p >= 0 && p < kPanelCount) ? n[p] : "";
 }
 
-// The area the grid used to occupy (mcl_mc.fit Rect13: 27,115 313x345), three columns by three rows.
-inline constexpr float kAreaX = 27, kAreaY = 130, kColW = 101, kRowH = 104, kGap = 4;   // starts 15 px below the grid so the toggle clears the variant combo
+// Dedicated loadout column; the mech owns the unobstructed column to its left.
+inline constexpr float kAreaX = 217, kAreaY = 130, kColW = 156, kRowH = 83, kGap = 4;
+inline constexpr int kCellW = 52;
+inline constexpr Rect kPreview{25, 116, 184, 377};
 // header strip = title row (16) + mount badge row (12); item rows follow; the last 14 px carry the refusal line.
 inline constexpr float kHeaderH = 28, kRowItemH = 12;
 inline constexpr int kRowsPerColumn = 4;
 
 inline Rect panelRect(int p) {
-    // column / row of each panel: arms flank the head, torsos below, legs and the paper doll last.
-    static constexpr int col[] = {1, 1, 0, 2, 0, 2, 0, 2, 1};
-    static constexpr int row[] = {0, 1, 1, 1, 0, 0, 2, 2, 2};
+    // Paired locations, then a compact mass/special-slot strip beneath them.
+    static constexpr int col[] = {0, 1, 0, 1, 0, 1, 0, 1};
+    static constexpr int row[] = {0, 0, 1, 1, 2, 2, 3, 3};
     if (p < 0 || p >= kPanelCount) return {};
+    if (p == kDoll) return {kAreaX, 478, 316, 16};
     return {kAreaX + col[p] * (kColW + kGap), kAreaY + row[p] * (kRowH + kGap), kColW, kRowH};
 }
 inline Rect itemRowRect(int p, int k, int count) {
