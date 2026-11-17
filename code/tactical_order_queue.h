@@ -167,12 +167,15 @@ struct TacAttackParams {
     FireRange range = FireRange::Default;
     Tactic tactic = Tactic::None;
     std::int32_t aimLocation = -1;
-    bool pursue = false, obliterate = false;
+    bool pursue = false, obliterate = false, alpha = false;
     save::Vec3 targetPoint;
     void serialize(Archive& a) {
         orderCodec::tag(a, type, 0u, 3u); orderCodec::tag(a, method, 0u, 2u);
         orderCodec::tag(a, range, -4, 3); orderCodec::tag(a, tactic, static_cast<std::uint32_t>(tactic_table::kMinValue), static_cast<std::uint32_t>(tactic_table::kMaxValue));
         a(aimLocation, pursue, obliterate, targetPoint);
+        if (a.sectionVersion >= 2) a(alpha);
+        else if (a.reading()) alpha = false;
+        if (alpha && method != AttackMethod::Ranged) a.reject("order_alpha_method");
     }
     bool operator==(const TacAttackParams&) const = default;
 };

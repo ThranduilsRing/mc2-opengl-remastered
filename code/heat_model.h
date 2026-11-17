@@ -7,6 +7,7 @@
 // fractional mod values to milli-heat first. Chassis maxHeat is already integer.
 #include <algorithm>
 #include <bitset>
+#include <cmath>
 #include <cstdint>
 #include <limits>
 #include <optional>
@@ -38,6 +39,21 @@ inline int32_t capacityMilli(int chassisPoints, int workingSinkPoints) {
         std::numeric_limits<int32_t>::max()));
 }
 
+// Match the lab: truncate EACH component before converting to milli-heat.
+inline int32_t weaponCost(float points) {
+    if (!std::isfinite(points) || points <= 0) return 0;
+    return static_cast<int32_t>(std::min(points, float(maxLabPoints))) * 1000;
+}
+
+struct Salvo {
+    std::bitset<inventorySize> mask;
+    int64_t cost = 0;
+    void include(int index, float heat) {
+        mask.set(index);
+        cost += weaponCost(heat);
+    }
+};
+
 inline int32_t dissipate(int32_t heatMilli, int32_t capacity, int coolSeconds) {
     const int64_t ticks = int64_t{std::max(1, coolSeconds)} * ticksPerSecond;
     const int64_t loss = std::max<int64_t>(1, capacity / ticks);
@@ -49,6 +65,28 @@ struct State {
     std::bitset<inventorySize> alphaMask;
     uint64_t alphaExpireTick = 0;
     int32_t capacity = 0; // derived, never saved
+
+    bool admits(const Salvo& salvo) const {
+        return alphaMask.none() && salvo.mask.any() &&
+            int64_t{heatMilli} + salvo.cost <= capacity;
+    }
+    bool arm(const Salvo& salvo, uint64_t now, const Profile& p) {
+        if (!admits(salvo) || now > UINT64_MAX - uint64_t(p.alphaWindowTicks)) return false;
+        alphaMask = salvo.mask;
+        alphaExpireTick = now + p.alphaWindowTicks;
+        return true;
+    }
+    void expire(uint64_t now) {
+        if (now >= alphaExpireTick) alphaMask.reset();
+    }
+    int32_t discharge(int index, float points, uint64_t now) {
+        expire(now);
+        if (!alphaMask.test(index)) return 0;
+        alphaMask.reset(index);
+        const auto cost = weaponCost(points);
+        heatMilli = static_cast<int32_t>(std::min<int64_t>(INT32_MAX, int64_t{heatMilli} + cost));
+        return cost;
+    }
 
     void recompute(int chassisPoints, int workingSinkPoints) {
         capacity = capacityMilli(chassisPoints, workingSinkPoints);

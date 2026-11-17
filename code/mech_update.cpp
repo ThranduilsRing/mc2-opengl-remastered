@@ -21,7 +21,12 @@ constexpr int GestureGoalFallenBackward = 8;
 long BattleMech::update (void)
 {
     ZoneScopedN("GameLogic.Mech.Update");
+    const auto previousHeat = heatState.heatMilli;
+    heatState.expire(mission->alphaTick());
     heatState.tick(heatProfile);
+    if (previousHeat > 0 && heatState.heatMilli == 0)
+        mc2::fmt::print_err("[ALPHA_HEAT v1] event=cold mech={} tick={} heat=0\n",
+            getWatchID(false), mission->alphaTick());
     unitAnimation = appearance->pinnedSimulationAnimation();
     simulationPose = appearance->simPose;
 

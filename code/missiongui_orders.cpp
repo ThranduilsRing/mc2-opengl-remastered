@@ -178,7 +178,35 @@ int MissionInterfaceManager::attackLong()
 
 int MissionInterfaceManager::alphaStrike()
 {
-	return 0;
+	auto* alphaTarget = target;
+	if (!alphaTarget) {
+		for (long i = 0; Team::home && i < Team::home->getRosterSize(); ++i) {
+			auto* mover = Team::home->getMover(i);
+			if (mover->isSelected() && commanderIsHome(mover->getCommander()) && mover->getPilot()) {
+				alphaTarget = mover->getPilot()->getCurTacOrder()->getTarget();
+				if (alphaTarget) break;
+			}
+		}
+	}
+	if (!alphaTarget || alphaTarget->isDestroyed()) return 0;
+	TacticalOrder order;
+	order.init(ORDER_ORIGIN_PLAYER, TACTICAL_ORDER_ATTACK_OBJECT);
+	order.targetWID = alphaTarget->getWatchID();
+	order.attackParams.alpha = true;
+	order.moveParams.wayPath.mode[0] = controlGui.getWalk() ? TRAVEL_MODE_SLOW : TRAVEL_MODE_FAST;
+	int issued = 0;
+	for (long i = 0; Team::home && i < Team::home->getRosterSize(); ++i) {
+		auto* mover = Team::home->getMover(i);
+		if (!mover->isSelected() || !commanderIsHome(mover->getCommander()) ||
+			mover->getObjectClass() != BATTLEMECH) continue;
+		order.attackParams.range = static_cast<FireRangeType>(mover->attackRange);
+		order.attackParams.pursue = mover->attackRange != FIRERANGE_CURRENT && !controlGui.getFireFromCurrentPos();
+		order.pack(nullptr, nullptr);
+		if (MPlayer && !MPlayer->isServer()) MPlayer->sendPlayerOrder(&order, false, 1, &mover);
+		else mover->handleTacticalOrder(order);
+		++issued;
+	}
+	return issued ? 1 : 0;
 }
 int MissionInterfaceManager::defaultAttack()
 {

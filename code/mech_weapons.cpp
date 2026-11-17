@@ -208,6 +208,12 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 
 	// Weapon must recycle...
 	startWeaponRecycle(weaponIndex);
+	// A Streak miss recycles without discharging. Ordinary misses still fire.
+	if (hitRoll < attackChance || !isStreakMissile) {
+		const auto charged = heatState.discharge(weaponIndex, getWeaponHeat(weaponIndex), mission->alphaTick());
+		if (charged) mc2::fmt::print_err("[ALPHA_HEAT v1] event=charge mech={} weapon={} cost={} heat={} tick={}\n",
+			getWatchID(false), weaponIndex, charged, heatState.heatMilli, mission->alphaTick());
+	}
 	
 	WeaponBoltPtr weaponFX = nullptr;
 	if (hitRoll < attackChance) {

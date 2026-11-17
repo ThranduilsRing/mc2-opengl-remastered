@@ -737,6 +737,7 @@ static void applySaveSections(std::string_view fileName, const mc2::save::Sectio
     } // default: the animation state the restored objects rebuilt from their own records
     if (const auto* orders = sections.find(mc2::save::tagOrders)) {
         mc2::save::Archive archive(orders->payload);
+        archive.sectionVersion = orders->version;
         auto queue = orderQueue;
         queue.serialize(archive);
         if (archive.finish()) orderQueue = std::move(queue);

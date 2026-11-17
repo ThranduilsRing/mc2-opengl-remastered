@@ -1,6 +1,7 @@
 #include "doctest.h"
 #include "mission_init_frame.h"
 #include "tactical_order_queue.h"
+#include "heat_model.h"
 
 #include <algorithm>
 
@@ -49,6 +50,12 @@ struct ActorAccess {
         return binding.resolve(ref, [&](std::uint32_t) { return &actor; }, actor.watchId);
     }
     float simulationTime() const { return 12.5f; }
+    bool admitsAlpha(ActorEndpoint* recipient) const {
+        mc2::heat::State state; state.capacity = recipient->mobile ? 10000 : 0;
+        mc2::heat::Salvo salvo;
+        if (recipient->exists && !recipient->disabled) salvo.include(0, 4.9f);
+        return state.admits(salvo);
+    }
 };
 using ProductionAdapter = MoverOrderApplication<::TacticalOrder, ActorAccess>;
 struct LiveIngress {
@@ -82,6 +89,18 @@ struct LiveIngress {
 }
 
 TEST_SUITE("MissionOrderIngress") {
+TEST_CASE("alpha admission uses the production validator and rechecks live state") {
+    LiveIngress live;
+    auto e = live.order(); e.payload.origin = OrderOrigin::Player;
+    e.payload.kind = OrderKind::AttackPoint; e.payload.attack.emplace().alpha = true;
+    CHECK(live.adapter.validateRecipient(e, {1,1}, 0) == 0);
+    live.actor.mobile = false;
+    CHECK(live.adapter.validateRecipient(e, {1,1}, 0) != 0);
+    live.actor.mobile = true; live.actor.disabled = true;
+    CHECK(live.adapter.validateRecipient(e, {1,1}, 0) != 0);
+    live.actor.disabled = false; e.payload.attack->method = AttackMethod::DFA;
+    CHECK(live.adapter.validateRecipient(e, {1,1}, 0) != 0);
+}
 TEST_CASE("production admission permission malformed payload and typed legacy conversion") {
     LiveIngress live;
     auto wrong = live.order(); wrong.issuer = CommanderId{8};

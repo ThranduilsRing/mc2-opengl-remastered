@@ -336,6 +336,9 @@ class BattleMech : public Mover {
 		int heatSinkAdjustmentPoints = 0; // logical lab sinks minus legacy inventory sinks
 		static mc2::heat::Profile heatProfile;
 		void recomputeHeatCapacity();
+		mc2::heat::Salvo alphaSalvo();
+		bool canAlphaStrike();
+		bool armAlphaStrike();
 		void restoreHeatCapacity();
 		void setHeatLoadout(std::span<const long> components);
 

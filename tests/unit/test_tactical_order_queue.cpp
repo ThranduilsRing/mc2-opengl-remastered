@@ -83,6 +83,27 @@ Bytes wire(TacticalOrderQueue& queue) {
     REQUIRE(a.finish());
     return a.bytes();
 }
+
+TEST_CASE("alpha pending order reload preserves the request; ORDQ v1 defaults it off") {
+    Permit permit; TacticalOrderQueue queue;
+    REQUIRE(queue.registerSource({1, SourceKind::UI}));
+    auto e = order(); e.payload.kind = OrderKind::AttackPoint;
+    e.payload.origin = OrderOrigin::Player; e.payload.attack.emplace().alpha = true;
+    REQUIRE(queue.submitNext(e, permit));
+    auto bytes = wire(queue);
+    TacticalOrderQueue restored;
+    REQUIRE(restored.restore(bytes, 0));
+    CHECK(restored.snapshotPending()[0].payload.attack->alpha);
+    mc2::save::Archive legacy; legacy.sectionVersion = 1; legacy(queue);
+    REQUIRE(legacy.good());
+    mc2::save::Archive read(legacy.bytes()); read.sectionVersion = 1;
+    TacticalOrderQueue old; read(old);
+    REQUIRE(read.finish());
+    CHECK_FALSE(old.snapshotPending()[0].payload.attack->alpha);
+    auto& attack = *e.payload.attack; attack.method = AttackMethod::Ramming;
+    mc2::save::Archive unsupported; unsupported(e);
+    CHECK_FALSE(unsupported.good());
+}
 // The individual codecs leave cross-record consistency to the owning queue.
 Bytes ingress(std::vector<OrderEnvelope> pending, std::vector<OrderSource> sources,
               std::vector<OrderReceipt> receipts, std::uint64_t nextId = 1) {

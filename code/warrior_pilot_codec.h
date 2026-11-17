@@ -4,6 +4,7 @@
 #include <utility>
 #include "warrior_value_codec.h"
 #include "tacorder_terrain_queue.h"
+#include "tacorder_wire.h"
 
 namespace mc2::save {
 inline constexpr auto warriorDataTag = fourcc('W', 'A', 'R', 'R');
@@ -72,7 +73,20 @@ public:
             v.fromArea, v.keepMoving);
     }
     void field(TacOrderAttackParams& v) {
-        (*this)(v.type, v.method, v.range, v.tactic, v.aimLocation, v.pursue,
+        // Store alpha in the existing method word, preserving old pilot layout.
+        field(v.type);
+        auto method = tacorder_wire::encode_method(std::to_underlying(v.method), v.alpha);
+        if (!a.reading() && method < 0) a.reject("warrior_alpha_method");
+        a(method);
+        if (a.reading() && a.good()) {
+            if (method < 0 || method > 3) ++badOrderEnums_;
+            else {
+                const auto decoded = tacorder_wire::decode_method(method);
+                v.method = static_cast<AttackMethod>(decoded.method);
+                v.alpha = decoded.alpha;
+            }
+        }
+        (*this)(v.range, v.tactic, v.aimLocation, v.pursue,
             v.obliterate, v.targetPoint);
     }
     void field(TacticalOrder& v) {

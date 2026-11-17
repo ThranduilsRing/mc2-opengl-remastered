@@ -16,6 +16,29 @@ static int labHeatPoints(float value) {
 	return static_cast<int>(std::min(value, static_cast<float>(mc2::heat::maxLabPoints)));
 }
 
+mc2::heat::Salvo BattleMech::alphaSalvo() {
+	mc2::heat::Salvo salvo;
+	for (int w = numOther; w < numOther + numWeapons && w < mc2::heat::inventorySize; ++w)
+		if (inventory[w].health && !inventory[w].disabled && getWeaponShots(w) != 0)
+			salvo.include(w, getWeaponHeat(w));
+	return salvo;
+}
+
+bool BattleMech::canAlphaStrike() {
+	return getExists() && !isDisabled() && !isDestroyed() && heatState.admits(alphaSalvo());
+}
+
+bool BattleMech::armAlphaStrike() {
+	if (!mission || !mission->orderTickExecuting() || !canAlphaStrike() ||
+		!heatState.arm(alphaSalvo(), mission->alphaTick(), heatProfile)) return false;
+	for (int w = numOther; w < numOther + numWeapons && w < mc2::heat::inventorySize; ++w)
+		if (heatState.alphaMask.test(w)) inventory[w].readyTime = scenarioTime;
+	fprintf(stderr, "[ALPHA_HEAT v1] event=arm mech=%ld tick=%llu weapons=%zu heat=%d\n",
+		getWatchID(false), static_cast<unsigned long long>(mission->alphaTick()),
+		heatState.alphaMask.count(), heatState.heatMilli);
+	return true;
+}
+
 void BattleMech::recomputeHeatCapacity() {
 	int points = heatSinkAdjustmentPoints;
 	for (long i = 0; i < numOther; ++i) {

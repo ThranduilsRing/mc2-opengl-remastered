@@ -218,7 +218,8 @@ MissionInterfaceManager::Command		MissionInterfaceManager::commands[MAX_COMMAND]
 		KEY_EQUALS,			-1,	-1,				false,		&MissionInterfaceManager::zoomIn,nullptr, -1,
 		ALT | KEY_PERIOD, -1, -1,						false, &MissionInterfaceManager::rotateObjectLeft, nullptr, -1,
 		ALT | KEY_COMMA, -1, -1,				false,	&MissionInterfaceManager::rotateObjectRight, nullptr, -1,
-		KEY_PAUSE,		-1, -1,						true,		&MissionInterfaceManager::togglePause, nullptr, -1
+		KEY_PAUSE,		-1, -1,						true,		&MissionInterfaceManager::togglePause, nullptr, -1,
+		KEY_Q,		mState_GENERIC_ATTACK, mState_ATTACK_LOS,	false,	&MissionInterfaceManager::alphaStrike, nullptr, -1
 
 };
 
