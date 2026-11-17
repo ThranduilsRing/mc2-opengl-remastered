@@ -1,6 +1,7 @@
 #pragma once
 #include "../GameOS/gameos/gos_vegetation.h"
 #include "vegetation_budget.h"
+#include "vegetation_clumps.h"
 #include "../mclib/fast_hash.h"
 #include <algorithm>
 #include <cmath>
@@ -84,5 +85,97 @@ inline Population buildPopulation(std::span<const GosVegetation::Instance> data,
 }
 template<class T> inline uint64_t populationHash(const std::vector<T>& v) {
     return mc2::content::fastHash({reinterpret_cast<const uint8_t*>(v.data()), v.size() * sizeof(T)});
+}
+
+struct SourceInput {
+    std::string_view mapName;
+    uint32_t seed = 0;
+    // originXY, mapSpan, wupv, invWupv, water, gridStep, invMapSpan, invCellWU.
+    std::array<float, 9> frame{};
+    // realVertices, halfVertices, verticesBlockSide, blocksMapSide, mapPresent, mapH, mapW, visualV, density.
+    std::array<uint64_t, 9> grid{};
+    std::span<const uint32_t> types;
+    std::span<const float> elevations, visible;
+    std::span<const uint8_t> masks;
+    std::array<ClumpRecipe, 4> recipes{};
+    std::optional<FieldRecipe> field;
+    mc2::save::Digest hardSurface{};
+};
+inline SourceBytes serializeSource(const SourceInput& in) {
+    SourceBytes s; s.text(in.mapName); s.word(in.seed);
+    for (auto f : in.frame) s.scalar(f);
+    for (auto n : in.grid) s.word(n);
+    s.word(in.types.size()); for (auto t : in.types) mc2cache::putLE(s.bytes,t,4);
+    s.word(in.elevations.size()); for (auto f : in.elevations) s.scalar(f);
+    s.word(in.visible.size()); for (auto f : in.visible) s.scalar(f);
+    s.raw(in.masks); s.raw(in.hardSurface);
+    for (const auto& r : in.recipes) { s.scalar(r.radius); s.scalar(r.treeChance); s.scalar(r.moistureBias); s.word(r.grass); }
+    s.word(in.field.has_value()); if (in.field) { s.scalar(in.field->spacing); s.scalar(in.field->height); }
+    return s;
+}
+inline constexpr uint32_t kFormat = 1;
+// Placement/classification/grid/beach; clumps/noise/hardsurface; packInstance;
+// sort key, 128-WU cells and region maths. Executable SHA also guards toolchain/code changes.
+inline constexpr uint32_t kProducer = 1;
+using Digest = mc2::save::Digest;
+struct CapacityInterval { uint64_t lo = 0, hi = 0; bool contains(uint64_t n) const { return n >= lo && n < hi; } };
+inline std::optional<CapacityInterval> capacityInterval(uint64_t c, uint64_t f, uint32_t k, uint32_t k0, uint64_t cap) {
+    if (c >= cap || k > k0 || k0 > 8) return std::nullopt;
+    const auto max = UINT64_MAX;
+    if (f > (max-c)/81) return std::nullopt;
+    return CapacityInterval{std::max(c+1, c+uint64_t(k)*k*f),
+        f && k < k0 ? c+uint64_t(k+1)*(k+1)*f : max};
+}
+inline bool cacheAdmission(bool mapPresent, bool legacyAdjustment, bool executableKnown, uint32_t stride = 1) {
+    return mapPresent && !legacyAdjustment && executableKnown && stride == 1;
+}
+struct PopulationRecord {
+    Population population;
+    CapacityInterval interval;
+    std::array<int32_t, 25> counters{};
+};
+inline constexpr uint64_t kBlobMagic = 0x31424f4c42504756ull;
+inline constexpr size_t kBlobHeader = 196;
+inline uint64_t fileKey(const Digest& d) { return mc2cache::getLE(d, 0, 8); }
+inline Digest sourceDigest(const SourceBytes& inputs, const Digest& exe, uint32_t producer = kProducer, uint32_t format = kFormat) {
+    SourceBytes s; s.word(format); s.word(producer); s.raw(exe); s.raw(inputs.bytes); return s.digest();
+}
+inline std::vector<uint8_t> encode(const PopulationRecord& r, const Digest& source) {
+    static_assert(std::endian::native == std::endian::little, "GPU payload requires little endian");
+    std::vector<uint8_t> out;
+    auto put = [&](uint64_t v, unsigned n) { mc2cache::putLE(out, v, n); };
+    put(kBlobMagic,8); put(kFormat,4); put(kProducer,4); out.insert(out.end(),source.begin(),source.end());
+    put(r.population.instances.size(),8); put(r.population.regions.size(),8); put(16,4); put(32,4);
+    put(r.interval.lo,8); put(r.interval.hi,8);
+    put(mc2::content::fastHash({reinterpret_cast<const uint8_t*>(r.population.regions.data()),r.population.regions.size()*32},populationHash(r.population.instances)),8);
+    for (auto c : r.counters) put(static_cast<uint32_t>(c),4);
+    auto append = [&](const auto& v) { const auto* p = reinterpret_cast<const uint8_t*>(v.data()); if (!v.empty()) out.insert(out.end(),p,p+v.size()*sizeof(v[0])); };
+    append(r.population.instances); append(r.population.regions); return out;
+}
+inline std::optional<PopulationRecord> decode(std::span<const uint8_t> b, const Digest& source, uint64_t maxInst) {
+    if (b.size() < kBlobHeader) return std::nullopt;
+    auto get = [&](size_t pos, unsigned n) { return mc2cache::getLE(b,pos,n); };
+    if (get(0,8)!=kBlobMagic || get(8,4)!=kFormat || get(12,4)!=kProducer || !std::equal(source.begin(),source.end(),b.begin()+16)) return std::nullopt;
+    const uint64_t n=get(48,8), m=get(56,8);
+    if (n >= (1ull<<31) || m > 65535 || get(64,4)!=16 || get(68,4)!=32) return std::nullopt;
+    const auto payload=b.subspan(kBlobHeader);
+    if (n > payload.size()/16 || m > (payload.size()-n*16)/32 || n*16+m*32!=payload.size()) return std::nullopt;
+    CapacityInterval interval{get(72,8),get(80,8)};
+    if (!interval.contains(maxInst) || get(88,8)!=mc2::content::fastHash(payload)) return std::nullopt;
+    uint32_t end=0;
+    for (uint64_t i=0;i<m;++i) {
+        const size_t pos=kBlobHeader+n*16+i*32;
+        for (size_t j=0;j<16;j+=4) if (!std::isfinite(std::bit_cast<float>(static_cast<uint32_t>(get(pos+j,4))))) return std::nullopt;
+        const auto first=get(pos+16,4), last=get(pos+20,4);
+        if (first!=end || last<=first || last>n) return std::nullopt;
+        end=static_cast<uint32_t>(last);
+    }
+    if (end!=n) return std::nullopt;
+    PopulationRecord r; r.interval=interval;
+    for (size_t i=0;i<r.counters.size();++i) { r.counters[i]=std::bit_cast<int32_t>(static_cast<uint32_t>(get(96+i*4,4))); if(r.counters[i]<0) return std::nullopt; }
+    r.population.instances.resize(n); r.population.regions.resize(m);
+    if(n) std::memcpy(r.population.instances.data(),payload.data(),n*16);
+    if(m) std::memcpy(r.population.regions.data(),payload.data()+n*16,m*32);
+    return r;
 }
 } // namespace mc2::vegetation
