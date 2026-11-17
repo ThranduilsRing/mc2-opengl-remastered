@@ -618,7 +618,11 @@ void MechLabScreen::update()
 	if (!previewOwnsInput && !variantList.pointInside(userInput->getMouseX(), userInput->getMouseY()))
 	{
 		if (locationViewActive()) updateLocationInput();
-		else updateDiagramInput();
+		else {
+			if ( userInput->isLeftClick() && rects[13].pointInside(userInput->getMouseX(), userInput->getMouseY()) )
+				pInspectedComponent = nullptr;
+			updateDiagramInput();
+		}
 	}
 
 
@@ -1484,6 +1488,12 @@ int	MechLabScreen::handleMessage( unsigned long msg, unsigned long who)
 	return 0;
 }
 
+void MechLabScreen::inspectComponent( LogisticsComponent* c )
+{
+	pInspectedComponent = c;
+	if ( c ) showDropRefusal( mc2::components::placementRefusal( canAddComponent(c) ) );
+}
+
 void	MechLabScreen::setComponent( LogisticsComponent* pComponent, bool bMessageFromLB )
 {
 	if ( bMessageFromLB && canAddComponent( pComponent ) ) // if they clicked on a disabled item
@@ -1825,6 +1835,7 @@ int MechLabScreen::addComponent( LogisticsComponent* pComponent, long& x, long& 
 
 void MechLabScreen::beginDrag( LogisticsComponent* pComponent )
 {
+	pInspectedComponent = nullptr;
 	if ( !pDragComponent && !dragCancelled )
 	{
 		pDragComponent = pComponent;
@@ -2346,31 +2357,31 @@ void MechLabScreen::updateLocationInput()
 
 	std::vector<LocItem> items;
 	const int dragPanel = ml::panelAt( static_cast<float>( userInput->getMouseDragX() ), static_cast<float>( userInput->getMouseDragY() ) ).value_or( -1 );
-		if ( !pDragComponent && dragPanel >= 0 && dragPanel < ml::kLocationCount &&
-			input::capture::startsWidgetDrag( userInput->isLeftDrag(), true ) )
+	if ( !pDragComponent && dragPanel >= 0 && dragPanel < ml::kLocationCount &&
+		input::capture::startsWidgetDrag( userInput->isLeftDrag(), true ) )
+	{
+		std::vector<LocItem> origin;
+		gatherPanelItems( pVariant, dragPanel, origin );
+		const int orow = ml::itemRowAt( dragPanel, static_cast<float>( userInput->getMouseDragX() ), static_cast<float>( userInput->getMouseDragY() ), static_cast<int>( origin.size() ) ).value_or( -1 );
+		if ( orow >= 0 && orow < static_cast<int>( origin.size() ) )
 		{
-			std::vector<LocItem> origin;
-			gatherPanelItems( pVariant, dragPanel, origin );
-			const int orow = ml::itemRowAt( dragPanel, static_cast<float>( userInput->getMouseDragX() ), static_cast<float>( userInput->getMouseDragY() ), static_cast<int>( origin.size() ) ).value_or( -1 );
-			if ( orow >= 0 && orow < static_cast<int>( origin.size() ) )
+			const LocItem it = origin[orow];
+			if ( canRemoveComponent( it.comp ) )
 			{
-				const LocItem it = origin[orow];
-				if ( canRemoveComponent( it.comp ) )
-				{
-					selI = it.x;
-					selJ = it.y;
-					componentListBox.SelectItem( -1 );
-					beginDrag( it.comp );
-					pSelectedComponent = it.comp;
-					bDragLeft = true;
-					removeComponent( it.x, it.y );
-					setComponent( it.comp );
-					updateDiagram();
-				}
-				else
-					refuseRemoval();
+				selI = it.x;
+				selJ = it.y;
+				componentListBox.SelectItem( -1 );
+				beginDrag( it.comp );
+				pSelectedComponent = it.comp;
+				bDragLeft = true;
+				removeComponent( it.x, it.y );
+				setComponent( it.comp );
+				updateDiagram();
 			}
+			else
+				refuseRemoval();
 		}
+	}
 	if ( s_locHover >= 0 && s_locHover < ml::kLocationCount )
 	{
 		gatherPanelItems( pVariant, s_locHover, items );
@@ -2408,12 +2419,13 @@ void MechLabScreen::updateLocationInput()
 				componentListBox.SelectItem( -1 );
 			}
 			else if ( cand )
-				{
+			{
 				long x = -1, y = -1;
 				if ( placeInPanel( cand, s_locHover, x, y ) )
 				{
 					selI = x; selJ = y;
-					pSelectedComponent = componentListBox.getComponent();
+					pSelectedComponent = cand;
+					pInspectedComponent = nullptr;
 					componentListBox.SelectItem( -1 );
 				}
 			}
