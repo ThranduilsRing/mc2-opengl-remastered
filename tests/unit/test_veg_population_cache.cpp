@@ -103,5 +103,5 @@ TEST_CASE("veg population producer tripwire") {
     const auto packed=packInstance(1,2,3,0.5f,4,7,0.3f); s.word(packed.heightScale); s.word(packed.appearance);
     const auto p=buildPopulation(std::vector<GosVegetation::Instance>{{1,2,3,0.5f,4,7,0.3f},{-1,2,3,0.5f,4,7,0.3f}},1);
     s.word(populationHash(p.instances)); s.word(populationHash(p.regions));
-    MESSAGE("producer golden=" << mc2::content::fastHash(s.bytes));
+    CHECK_MESSAGE(mc2::content::fastHash(s.bytes)==15669633845614351006ull, "placement output changed: bump kProducer");
 }
