@@ -131,6 +131,7 @@ class gosRenderer {
         // assert in getTexture() for bogus handle values seen on
         // TG_TinyTexture entries that were never loaded (e.g. 0xFFFFFFFF).
         size_t getTextureListSize() const { return textureList_.size(); }
+        gosTexture* getTextureIfPresent(size_t handle) const { return handle < textureList_.size() ? textureList_[handle] : nullptr; }
 
         void deleteTexture(DWORD texture_id) {
             // FIXME: bad use object list, with stable ids

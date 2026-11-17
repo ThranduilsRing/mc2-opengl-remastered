@@ -56,6 +56,8 @@
 #include <vector>
 extern uint32_t g_mc2RenderFrame;
 extern uint32_t g_mc2FxFireCaptureFrame;
+extern uint32_t g_mc2RenderFrame;
+
 namespace mc2vk {
 namespace {
 void plog(const char* fmt, ...) {
@@ -1132,15 +1134,7 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
                              m.height != d.textureHeight || m.bytes != bytes || !m.buffer ||
                              (m.preparedSource && m.preparedSource != d.textureRgba);
     if (!needsUpload && m.sceneGeneration == sceneGeneration)
-    {
-        if (uploads && mipmapped && !m.firstDrawLogged) {
-            std::fprintf(stderr, "[HUD_FIRST_DRAW] handle=%u serial=%u kind=%u frame=%llu prepared=%d\n",
-                d.textureHandle, d.textureSerial, d.kind, static_cast<unsigned long long>(s.hudMirrorFrameCounter),
-                static_cast<int>(m.preparedSource == d.textureRgba));
-            m.firstDrawLogged = true;
-        }
         return &m;
-    }
     // VK-HUD-MIRRORCOPY-1: the draw carries a shared immutable mirror (refcount
     // bump at queue time); bytes are only dereferenced HERE, on a (handle,serial)
     // change — the >99.9% no-upload case never touches them.
@@ -1154,6 +1148,10 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
             d.textureHandle, d.textureSerial, d.kind, static_cast<unsigned long long>(s.hudMirrorFrameCounter));
     }
     m.preparedSource.reset();
+    if (m.buffer) {
+        s.ctx->retire(HudMirrorRetired{s.dev, s.hudTexPool.get(), std::exchange(m.set, VK_NULL_HANDLE),
+            std::move(m.memory), std::move(m.buffer)});
+    }
     ZoneValue(d.textureHandle);
     char textureInfo[128];
     const int textureInfoSize = std::snprintf(textureInfo, sizeof(textureInfo), "handle=%u serial=%u size=%ux%u kind=%u", d.textureHandle, d.textureSerial, d.textureWidth, d.textureHeight, d.kind);
@@ -1293,6 +1291,12 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
             memoMirror = mirror;
             if (!mirror || !mirror->set)
                 continue;
+            if (d.textureWidth == 2048 && d.textureHeight == 2048 && !mirror->firstDrawLogged) {
+                std::fprintf(stderr, "[HUD_FIRST_DRAW] handle=%u serial=%u kind=%u frame=%u prepared=%d\n",
+                    d.textureHandle, d.textureSerial, d.kind, ::g_mc2RenderFrame,
+                    static_cast<int>(mirror->preparedSource == d.textureRgba));
+                mirror->firstDrawLogged = true;
+            }
             HudNativeCmd td;
             td.stream = 2;
             td.firstVertex = static_cast<uint32_t>(texVerts.size());

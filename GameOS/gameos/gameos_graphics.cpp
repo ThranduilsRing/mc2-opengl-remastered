@@ -24,7 +24,7 @@ void gosRendererPrepareHudTextures() {
     if (!g_gos_renderer) return;
     auto& present = mc2vk::getOrCreateEnginePresentVk();
     for (size_t handle = 1; handle < g_gos_renderer->getTextureListSize(); ++handle) {
-        auto* texture = g_gos_renderer->getTexture(static_cast<DWORD>(handle));
+        auto* texture = g_gos_renderer->getTextureIfPresent(handle);
         if (!texture) continue;
         gosTextureInfo info;
         texture->getTextureInfo(&info);
