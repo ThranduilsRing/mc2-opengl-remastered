@@ -35,8 +35,10 @@ std::optional<Profile> readProfile(std::istream& input) {
         if (type == "FITini" || type == "[BattleValue]" || type == "FITend") continue;
         double value{};
         if ((type != "l" && type != "f") || !(row >> key >> equals >> value) ||
-            equals != "=" || (row >> extra) || !values.emplace(key, value).second)
+            equals != "=" || (row >> extra))
             return std::nullopt;
+        const auto [entry, inserted] = values.emplace(key, value);
+        if (!inserted) return std::nullopt;
     }
     const std::vector<std::string> keys{"BvProfile", "Armor", "Structure", "DefensiveEquipment",
         "DefenseSpeed", "Jump", "OffenseSpeed", "Unsustained", "AmmoPerShot", "AmmoCap"};
