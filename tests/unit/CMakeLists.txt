@@ -22,6 +22,11 @@
 cmake_minimum_required(VERSION 3.16)
 project(mc2_tests CXX)
 
+# Informational BV core and offline calibration adapter share the same function.
+add_executable(mc2_bv_calibration ../../code/battle_value.cpp)
+target_compile_definitions(mc2_bv_calibration PRIVATE MC2_BV_REPORT_MAIN)
+target_compile_features(mc2_bv_calibration PRIVATE cxx_std_17)
+
 enable_language(C)
 # Mc2Standalone first: its MC2_COMPILE_CACHE /Zi -> /Z7 swap must reach enet's C flags, or sccache
 # fails to collect enet.pdb in cached harness trees.
@@ -33,6 +38,8 @@ get_filename_component(MC2_WORKTREE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABS
 
 set_source_files_properties(${MC2_WORKTREE_ROOT}/RenderCore/KtxBasis.cpp PROPERTIES COMPILE_DEFINITIONS NDEBUG)  # vendored basisu asserts do not compile under clang
 add_executable(mc2_tests
+    test_battle_value.cpp
+    ../../code/battle_value.cpp
     test_net_session.cpp
     ${MC2_WORKTREE_ROOT}/code/net/session.cpp
     test_net_lockstep.cpp
@@ -355,6 +362,7 @@ add_executable(mc2_tests
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/gameos_fileio.cpp
 )
 mc2_link_gate(mc2_tests)
+add_dependencies(mc2_tests mc2_bv_calibration)
 
 # Trigger paths: mclib/mech_skel_import.*, test_torso_twist.cpp.
 # Exercise production FK with synthetic scenes; no importer or game required.
