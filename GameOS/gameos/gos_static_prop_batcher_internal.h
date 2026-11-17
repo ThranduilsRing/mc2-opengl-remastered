@@ -282,6 +282,7 @@ extern size_t   s_instanceCapacity;
 extern size_t   s_colorCapacity;
 extern std::unordered_map<uint32_t, PerTypeBucket> s_bucketsByType;
 extern std::unordered_map<uint32_t, std::vector<GpuStaticPropInstance>> s_persistentStaticStore;
+extern std::unordered_map<uint32_t, PropLodSlots> s_persistentLodSlots;
 extern uint64_t s_persistentStaticGen;
 extern std::vector<GpuStaticPropInstance> s_lastBuiltBatch;
 extern std::vector<GpuStaticPropPacket>                   s_packets;

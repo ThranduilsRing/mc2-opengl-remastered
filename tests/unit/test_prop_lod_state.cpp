@@ -3,6 +3,76 @@
 #include <cstdint>
 #include <random>
 #include <unordered_map>
+#include "RenderCore/gpu_abi/GpuStaticPropInstance.h"
+#include <cstring>
+
+TEST_CASE("prop_lod_state: dense bindings survive growth and invalidate on erase or reload") {
+    PropLodStateMap state;
+    PropLodSlots slots;
+    const std::vector<uint64_t> keys{3, 7, 3};
+    auto bind = [&] { slots.bind(state, std::span<const uint64_t>(keys), [](uint64_t k) { return k; }); };
+    bind();
+    CHECK(slots.indices[0] == slots.indices[2]);
+    state.dense(slots.indices[0]) = 2;
+    for (uint64_t k = 10; k < 10000; ++k) state[k] = 1;
+    bind();
+    CHECK(state.dense(slots.indices[0]) == 2);
+    state.erase(3);
+    state[123456] = 4; // recycle the erased dense slot before rebinding
+    bind();
+    CHECK(state.dense(slots.indices[0]) == 0);
+    CHECK(state[123456] == 4);
+    state.clear(); bind();
+    CHECK(state.dense(slots.indices[1]) == 0);
+}
+
+TEST_CASE("prop_lod_state: cached persistent route matches keyed route through lifecycle and camera motion") {
+    PropLodStateMap oldState, denseState;
+    PropLodSlots slots;
+    std::vector<GpuStaticPropInstance> persistent(4), dynamic;
+    for (size_t i = 0; i < persistent.size(); ++i) {
+        auto& inst = persistent[i];
+        inst.typeID = 5; inst.actorTint = static_cast<uint32_t>(i + 1);
+        inst.modelMatrix[3] = static_cast<float>((i / 2) * 200); // duplicate keys, distinct full payload
+        inst.fogRGB[2] = static_cast<float>(i); inst.flags = static_cast<uint32_t>(i);
+    }
+    auto key = [](const GpuStaticPropInstance& inst) { return static_cast<uint64_t>(inst.modelMatrix[3]) * 256 + inst.typeID; };
+    const float dist[] = {0, 100, 300};
+    const uint32_t target[] = {5, 9, 9}; // destination sharing across tiers
+    for (int frame = 0; frame < 90; ++frame) {
+        if (frame == 20) { // despawn a duplicate leaf, then reuse its registry slot
+            oldState.erase(key(persistent[0])); denseState.erase(key(persistent[0]));
+            persistent[0].modelMatrix[3] = 600; slots = {};
+        }
+        if (frame == 30) { std::reverse(persistent.begin(), persistent.end()); persistent.shrink_to_fit(); slots = {}; }
+        if (frame == 40) { dynamic.push_back(persistent.back()); persistent.pop_back(); slots = {}; }
+        if (frame == 50) { persistent.push_back(dynamic.back()); dynamic.clear(); slots = {}; }
+        if (frame == 60) { oldState.clear(); denseState.clear(); slots = {}; } // mission/save reload
+        const float camera = frame < 10 ? 0.0f : static_cast<float>((frame % 30) * 21);
+        std::unordered_map<uint32_t, std::vector<GpuStaticPropInstance>> oldOut, denseOut;
+        std::vector<GpuStaticPropInstance>* outputs[] = {&denseOut[5], &denseOut[9], &denseOut[9]};
+        slots.bind(denseState, std::span<const GpuStaticPropInstance>(persistent), key);
+        auto route = [&](const auto& instances, bool cached) {
+            size_t i = 0;
+            for (const auto& inst : instances) {
+                uint8_t& old = oldState[key(inst)];
+                uint8_t& dense = cached ? denseState.dense(slots.indices[i]) : denseState[key(inst)];
+                const float distance = std::abs(inst.modelMatrix[3] - camera);
+                propLodAdvance(old, distance, dist, 0.08f); propLodAdvance(dense, distance, dist, 0.08f);
+                CHECK(old == dense);
+                auto a = inst, b = inst; a.typeID = target[old]; b.typeID = target[dense];
+                oldOut[a.typeID].push_back(a); outputs[dense]->push_back(b); ++i;
+            }
+        };
+        route(persistent, true); route(dynamic, false);
+        CHECK(oldState.size() == denseState.size());
+        for (uint32_t type : {5u, 9u}) {
+            const auto& a = oldOut[type]; const auto& b = denseOut[type];
+            REQUIRE(a.size() == b.size());
+            for (size_t i = 0; i < a.size(); ++i) CHECK(std::memcmp(&a[i], &b[i], sizeof(a[i])) == 0);
+        }
+    }
+}
 
 TEST_CASE("prop_lod_state: flat map matches std::unordered_map under insert, erase and grow") {
     PropLodStateMap flat;
