@@ -34,6 +34,20 @@ struct Permit : mc2::sim::OrderAdmissionValidator {
 };
 }
 
+TEST_CASE("command replay blocks fixture mutations only during recording") {
+    for (const auto command : {"teleport 512 -2450 -5500", "spawn clone 0 0", "freeze_movers on",
+                               "freeze_movers", "force_state 512 sensor 4", "time_scale 2", "end_mission win"}) {
+        CAPTURE(command);
+        CHECK(mc2::replay::blocksFixtureMutation(command, true));
+        CHECK_FALSE(mc2::replay::blocksFixtureMutation(command, false));
+    }
+    for (const auto command : {"select all", "order move 0 0", "order attack 513", "order jump 0 0",
+                               "order hold_fire", "order powerup", "order powerdown", "order withdraw", "status"}) {
+        CAPTURE(command);
+        CHECK_FALSE(mc2::replay::blocksFixtureMutation(command, true));
+    }
+}
+
 TEST_CASE("command replay preserves accepted ingress tick identity and detects subsystem divergence") {
     using namespace mc2::sim;
     ReplayEnvironment fixture;

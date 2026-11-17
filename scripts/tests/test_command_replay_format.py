@@ -44,6 +44,28 @@ def test_recorded_order_script():
                              "order move -2450 -5500 walk\norder attack 513\n")
 
 
+@pytest.mark.parametrize("mode", ["record", "proof"])
+@pytest.mark.parametrize("explicit", [False, True])
+def test_proof_scripts_exercise_movement_and_combat(tmp_path, monkeypatch, mode, explicit):
+    argv = ["command_replay.py", mode, str(tmp_path / "recording"),
+            "--install", str(tmp_path), "--out", str(tmp_path / "output")]
+    if explicit:
+        script = tmp_path / "orders.txt"
+        script.write_text("select all\norder move -4900 -5400\norder attack 706\n")
+        argv += ["--commands", str(script)]
+    monkeypatch.setattr(replay.sys, "argv", argv)
+    monkeypatch.setattr(replay, "fingerprint", lambda *args: "test")
+    def check_script(args, label, env, expect):
+        commands = Path(env["MC2_UI_COMMAND_FILE"]).read_text().splitlines()
+        assert any(line.startswith("order move ") for line in commands)
+        assert any(line.startswith("order attack ") for line in commands)
+        replay.validate_commands("\n".join(commands))
+        raise InterruptedError("checked proof commands")
+    monkeypatch.setattr(replay, "run", check_script)
+    with pytest.raises(InterruptedError, match="checked proof commands"):
+        replay.main()
+
+
 def test_fixture_rejected_before_fingerprint_or_game(tmp_path, monkeypatch):
     commands = tmp_path / "commands.txt"
     commands.write_text("teleport 512 -2450 -5500\norder attack 513\n")

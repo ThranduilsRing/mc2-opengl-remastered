@@ -4,6 +4,11 @@
 #include <string_view>
 
 namespace mc2::replay {
+inline bool blocksFixtureMutation(std::string_view command, bool recording) {
+    const auto verb = command.substr(0, command.find_first_of(" \t"));
+    return recording && (verb == "teleport" || verb == "spawn" || verb == "freeze_movers" ||
+                         verb == "force_state" || verb == "time_scale" || verb == "end_mission");
+}
 void begin(std::string_view mission, std::uint32_t seed);
 bool active();
 bool playing();

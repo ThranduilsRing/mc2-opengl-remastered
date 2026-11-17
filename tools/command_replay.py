@@ -114,7 +114,8 @@ def main() -> int:
     args.install = args.install.resolve()
     args.replay = args.replay.resolve()
     args.out = args.out.resolve()
-    script_text = args.commands.read_text(encoding="utf-8") if args.commands else "select all\norder stop\n"
+    script_text = (args.commands.read_text(encoding="utf-8") if args.commands else
+                   "select all\norder move -4900 -5400\norder attack 706\n")
     if args.mode in ("record", "proof"):
         validate_commands(script_text)
     args.out.mkdir(parents=True, exist_ok=False)
