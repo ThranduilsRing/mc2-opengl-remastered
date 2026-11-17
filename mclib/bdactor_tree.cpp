@@ -4,6 +4,7 @@
 #include <atomic>
 #include <optional>
 #include "bdactor_internal.h"
+#include "../GameOS/gameos/load_scope.h"
 #include "texture_assets.h"
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
@@ -11,6 +12,7 @@
 
 void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 {
+    MC2_LOAD_SCOPE("sim.tree.init");
 	Appearance::init(tree,obj);
 	appearType = static_cast<TreeAppearanceType *>(tree);
 
@@ -54,9 +56,10 @@ void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		// MODEL-OVERRIDE dual-shape: build the per-instance RENDER shape from the
 		// render accessor (override if present, else stock). Collision (markTerrain/
 		// markLOS) rebuilds this member from stock treeShape[lod] when needed.
-		treeShapeOwner_.reset(appearType->getTreeRenderShape(0)->CreateFrom());
+		{ MC2_LOAD_SCOPE("sim.tree.clone"); treeShapeOwner_.reset(appearType->getTreeRenderShape(0)->CreateFrom()); }
 		treeShape = treeShapeOwner_.get();
 
+		{ MC2_LOAD_SCOPE("sim.tree.textures");
 		for (long i=0;i<treeShape->GetNumTextures();i++)
 		{
 			char txmName[1024];
@@ -91,6 +94,8 @@ void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			}
 		}
 		
+		}
+		MC2_LOAD_SCOPE("sim.tree.bounds");
 		glm::vec3 boxCoords[8];
 		glm::vec3 nodeCenter = treeShape->GetRootNodeCenter();
 

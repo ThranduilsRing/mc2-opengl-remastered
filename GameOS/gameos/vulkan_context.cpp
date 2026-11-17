@@ -1,4 +1,5 @@
 #include "../../RenderCore/TextureService.h"
+#include "load_scope.h"
 // vulkan_context.cpp
 //
 // VK-P13-SELECTOR-1 / T2 -- the standalone shared engine Vulkan context.
@@ -783,7 +784,7 @@ void VulkanContext::waitIdle(std::string_view why) const {
     const auto lock = lockSubmit(submitMutex_);
     flushPendingLocked();
     const auto presentLock = lockSubmit(presentMutex_);   // device idle externally synchronizes every queue
-    const VkResult r = vkDeviceWaitIdle(device_);
+    const VkResult r = [&] { MC2_LOAD_SCOPE("gpuwait.deviceIdle"); return vkDeviceWaitIdle(device_); }();
     if (r == VK_SUCCESS) hostSyncedGfx_ = (std::max)(hostSyncedGfx_, tracker_.lastSubmitted(QueueKind::Graphics));   // an idle device is a host sync point for everything submitted
     {
         auto& hs = mc2_hitch2::stats();
@@ -854,6 +855,7 @@ VkResult VulkanContext::present(VkQueue queue, const VkPresentInfoKHR& info) con
 
 GpuTicket VulkanContext::flushUploadsLocked() const {
     if (!uploads_.pending()) return {};
+    MC2_LOAD_SCOPE("upload.record");
     OwnedCommandPool pool;
     VkCommandBuffer cb = VK_NULL_HANDLE;
     if (!uploads_.build(*this, pool, cb)) return {};
@@ -1077,7 +1079,7 @@ bool VulkanContext::wait(const GpuTicket& t, uint64_t timeoutNs, std::string_vie
     wi.pSemaphores = &gfxTimeline_;
     wi.pValues = &t.gfx;
     const auto waitT0 = std::chrono::steady_clock::now();
-    const VkResult r = vkWaitSemaphores(device_, &wi, timeoutNs);
+    const VkResult r = [&] { MC2_LOAD_SCOPE("gpuwait.timeline"); return vkWaitSemaphores(device_, &wi, timeoutNs); }();
     // Only a wait that blocked is counted; a one-shot caller's open scope counts its own.
     if (!mc2_hitch2::inOneShotScope()) mc2_hitch2::noteWait(mc2_hitch2::kSlot, why, std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - waitT0).count());
     if (r != VK_SUCCESS) ctxlog("timeline wait for %.*s ended with VkResult=%d (ticket gfx=%llu).", static_cast<int>(why.size()), why.data(), static_cast<int>(r), static_cast<unsigned long long>(t.gfx));

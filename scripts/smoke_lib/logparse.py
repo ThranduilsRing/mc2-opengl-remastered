@@ -219,6 +219,8 @@ class PerfRow:
 
 @dataclass
 class LogSummary:
+    load_split: Optional[dict] = None
+    load_total_ms: Optional[float] = None
     instr_banner_seen: bool = False
     smoke_banner_seen: bool = False
     mission_resolve_seen: bool = False
@@ -327,6 +329,10 @@ def parse_log(text: str,
             s.simid_frames += 1
         if "[PERF_COUNTERS v1]" in line:
             s.perf_counters = parse_perf_counters(line)
+        if "[LOAD_SPLIT v1]" in line:
+            fields = dict(re.findall(r"(\w+)=(-?[\d.]+)(?=\s|$)", line))
+            s.load_total_ms = float(fields.pop("total")) if "total" in fields else None
+            s.load_split = {k: float(v) for k, v in fields.items()}
         if "[PERF_WINDOW v1]" in line:
             s.perf_window = parse_perf_window(line)
         if "[VRAM v1]" in line:

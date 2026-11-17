@@ -233,19 +233,23 @@ void GameObjectManager::loadTerrainObjects (PacketFile* terrainFile,
 			// Count actual cache misses separately: countObject normally loaded these types already.
 			const bool miss = laps && !objTypeManager->get(data->objTypeNum, false);
 			const auto start = laps ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
+			{ static auto* first = mc2::load::entry("sim.addObject.first");
+			  static auto* rest = mc2::load::entry("sim.addObject.rest");
+			  mc2::load::Scope objectScope(byType[data->objTypeNum].objects ? rest : first);
 			addObject( data, 
 				curTerrainObjectIndex, curBuildingIndex, 
 				curTurretIndex, curGateIndex, handles[2 * data->blockNumber], 
 				handles[(2 * data->blockNumber) + 1] 
 				);
+			}
+			auto& lap = byType[data->objTypeNum];
 			if (laps) {
 				const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
-				auto& lap = byType[data->objTypeNum];
 				if (!lap.objects) lap.firstMs = ms;
-				++lap.objects;
 				lap.misses += miss;
 				lap.ms += ms;
 			}
+			++lap.objects;
 
 			data++;
 			progress += increment;

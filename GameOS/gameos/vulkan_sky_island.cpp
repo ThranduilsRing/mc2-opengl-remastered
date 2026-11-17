@@ -7,6 +7,7 @@
 #endif
 
 #include <volk.h>
+#include "load_scope.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 
@@ -361,10 +362,12 @@ extern "C" int mc2_vk_sky_island_prewarm(int w,int h) {
     if(!ctx.valid() || w<=0 || h<=0) return 0;
     auto& slot=ctx.islandSlot(mc2vk::IslandSlot::Sky);
     if(!slot) {
+        MC2_LOAD_SCOPE("sky.init");
         auto fresh=std::make_unique<Island>();
         if(!init_island(fresh.get(),w,h)) { ctx.waitIdle("sky_prewarm_failure"); return 0; }
         slot=std::move(fresh);
     }
+    MC2_LOAD_SCOPE("sky.hdri");
     return ensure_hdri(static_cast<Island*>(slot.get()), mc2vk::hdriCpuGeneration()) ? 1 : 0;
 }
 
