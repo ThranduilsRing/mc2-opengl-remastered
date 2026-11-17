@@ -223,6 +223,9 @@ protected:
 		// BT2018-FIRST-CLASS P7: package chassis rules (code/package_chassis.h). Weapon hardpoint
 		// keys in getComponents() order (0 for non-weapons) -- what deployment hands BattleMech.
 		int			getPackageMounts( long& count, unsigned int* keys ) const;
+		// MECHLAB-LOC-1: first legal cell for pComponent inside package region `regionIndex` (0 = found,
+		// x/y set); otherwise nonzero with the short refusal text in `reason`. Cells + mc2pkg::checkAdd only.
+		int			packageLocationPlace( LogisticsComponent* pComponent, int regionIndex, long& x, long& y, std::string& reason ) const;
 
 		int			getFileID() const { return fileID; }
 

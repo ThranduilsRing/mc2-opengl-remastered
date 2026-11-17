@@ -36,8 +36,12 @@ static bool cheatInfiniteMoney() { static const bool on = mc2::gate::get<"MC2_CH
 #include "mc2fmt.h"
 #include "mc2str.h"
 #include "component_rules.h"
+#include "mechlab_loc_layout.h"
+#include "package_chassis.h"
+#include "../Gates/render_options.h"
 #include "../GameOS/gameos/input_capture_policy.h"
 
+static const mc2pkg::PackageChassis* locPackageChassis(const LogisticsVariant* v) { return (v && v->getChassis()) ? v->getChassis()->getPackage() : nullptr; }
 static std::string dropRefusal;
 static float dropRefusalTime = 0.f;
 static bool dragCancelled = false;
@@ -608,7 +612,14 @@ void MechLabScreen::update()
 	if ( !MPlayer || !ChatWindow::instance()->pointInside(userInput->getMouseX(), userInput->getMouseY()) )
 		LogisticsScreen::update();
 
-	if (!previewOwnsInput) updateDiagramInput();
+	if (!previewOwnsInput && !pDragComponent && locPackageChassis(pVariant) && userInput->isLeftClick() &&
+		mc2::mechlab_loc::toggleRect().contains(static_cast<float>(userInput->getMouseX()), static_cast<float>(userInput->getMouseY())))
+		setLocationView(userInput->getMouseX() < mc2::mechlab_loc::toggleRect().cx());
+	if (!previewOwnsInput)
+	{
+		if (locationViewActive()) updateLocationInput();
+		else updateDiagramInput();
+	}
 
 
 	variantList.update();
@@ -1067,12 +1078,13 @@ void MechLabScreen::render(int xOffset, int yOffset)
 
 	// MECHLAB-3D-1: the 3D mech is an ImGui image (opaque FBO); the grid must be drawn on
 	// the same layer afterwards or the image buries it.
-	const bool gridBridge = mechCamera.hasObject();
+	const bool locOn = locationViewActive();
+	const bool gridBridge = mechCamera.hasObject() || locOn || locPackageChassis(pVariant);
 	if ( gridBridge )
 		aObject::beginGuiBridge( tbSx, tbSy, tbOx, tbOy );
 
 	// figure where components go
-	if ( pVariant )
+	if ( pVariant && !locOn )
 	{
 		int width = pVariant->getComponentAreaWidth();
 		long minX = rects[7 + 6-width].left();
@@ -1107,11 +1119,11 @@ void MechLabScreen::render(int xOffset, int yOffset)
 
 
 
-	for (int i = 0; i < componentCount; i++ )
+	for (int i = 0; i < componentCount && !locOn; i++ )
 		componentIcons[i].render(xOffset, yOffset);
 
 	// Selection and drag outlines share storage; only the drag owns it while held.
-	if ( pSelectedComponent && pVariant && !pDragComponent )
+	if ( pSelectedComponent && pVariant && !pDragComponent && !locOn )
 	{
 		long i = selI;
 		long j = selJ;
@@ -1152,6 +1164,8 @@ void MechLabScreen::render(int xOffset, int yOffset)
 			pSelectedComponent = nullptr;
 	}
 
+	if ( locPackageChassis(pVariant) )
+		drawLocationView( tbSx, tbSy, tbOx, tbOy, xOffset, yOffset );
 	if ( gridBridge )
 		aObject::endGuiBridge();
 	if (!xOffset && !yOffset && mechCamera.hasObject())
@@ -1469,9 +1483,12 @@ void	MechLabScreen::setComponent( LogisticsComponent* pComponent, bool bMessageF
 {
 	if ( bMessageFromLB && canAddComponent( pComponent ) ) // if they clicked on a disabled item
 	{
-		componentListBox.SelectItem( -1 );
-		selI = selJ = -1;
-		pSelectedComponent = nullptr;
+		if ( !locationViewActive() ) // location view keeps it selected: every panel shows why it refuses
+		{
+			componentListBox.SelectItem( -1 );
+			selI = selJ = -1;
+			pSelectedComponent = nullptr;
+		}
 
 		getButton( MB_MSG_ADD )->disable( true );
 	}
@@ -1841,6 +1858,11 @@ void MechLabScreen::beginDrag( LogisticsComponent* pComponent )
 
 void MechLabScreen::endDrag( )
 {
+	if ( pDragComponent && locationViewActive() )
+	{
+		endDragLocation();
+		return;
+	}
 
 	float mouseX = userInput->getMouseX();
 	float mouseY = userInput->getMouseY();
@@ -2131,3 +2153,376 @@ bool MechLabScreen::canRemoveComponent( LogisticsComponent* pComp )
 
 //*************************************************************************************************
 // end of file ( MechLabScreen.cpp )
+
+//*************************************************************************************************
+// MECHLAB-LOC-1: location view (package / BT2018 chassis). Layout, hit rects and refusal reasons
+// are the pure code/mechlab_loc_layout.h; every rect below is drawn AND hit-tested from it.
+//*************************************************************************************************
+namespace ml = mc2::mechlab_loc;
+namespace {
+struct LocItem { LogisticsComponent* comp; long x, y; };
+int s_locHover = -1;
+bool s_locLegal[ml::kPanelCount] = {};
+std::string s_locReason[ml::kPanelCount];
+aObject s_dollIcon;
+const LogisticsVariant* s_dollFor = nullptr;
+
+const mc2pkg::PackageChassis* locPackage(const LogisticsVariant* v)
+{
+	return (v && v->getChassis()) ? v->getChassis()->getPackage() : nullptr;
+}
+int regionOfPanel(const mc2pkg::PackageChassis* pc, int panel)
+{
+	for (size_t k = 0; pc && k < pc->regions.size(); ++k)
+		if (pc->regions[k].location == ml::panelName(panel)) return static_cast<int>(k);
+	return -1;
+}
+void gatherPlaced(LogisticsVariant* v, std::vector<mc2pkg::Placed>& placed, std::vector<LogisticsComponent*>& comps)
+{
+	placed.clear();
+	comps.clear();
+	long ids[128], xs[128], ys[128];
+	LogisticsComponent* arr[128];
+	long n = 128, n2 = 128;
+	if (v->getComponentsWithLocation(n, ids, xs, ys) != 0 || v->getComponents(n2, arr) != 0) return;
+	for (long i = 0; i < n && i < n2; ++i)
+	{
+		mc2pkg::Placed p;
+		p.x = static_cast<int>(xs[i]); p.y = static_cast<int>(ys[i]);
+		p.w = arr[i]->getComponentWidth(); p.h = arr[i]->getComponentHeight();
+		switch (arr[i]->getType())
+		{
+			case COMPONENT_FORM_WEAPON_ENERGY: case COMPONENT_FORM_WEAPON: p.category = mc2pkg::Mount::Energy; break;
+			case COMPONENT_FORM_WEAPON_BALLISTIC: p.category = mc2pkg::Mount::Ballistic; break;
+			case COMPONENT_FORM_WEAPON_MISSILE: p.category = mc2pkg::Mount::Missile; break;
+			default: break;
+		}
+		p.ordinal = arr[i]->getID();
+		p.weight = arr[i]->getWeight();
+		placed.push_back(p);
+		comps.push_back(arr[i]);
+	}
+}
+void gatherPanelItems(LogisticsVariant* v, int panel, std::vector<LocItem>& out)
+{
+	out.clear();
+	const mc2pkg::PackageChassis* pc = locPackage(v);
+	const int ri = regionOfPanel(pc, panel);
+	if (ri < 0) return;
+	std::vector<mc2pkg::Placed> placed;
+	std::vector<LogisticsComponent*> comps;
+	gatherPlaced(v, placed, comps);
+	for (size_t i = 0; i < placed.size(); ++i)
+		if (placed[i].x >= 0 && pc->regions[ri].contains(placed[i].x, placed[i].y))
+			out.push_back({comps[i], placed[i].x, placed[i].y});
+}
+void refreshLocationVerdicts(LogisticsVariant* v, LogisticsComponent* cand)
+{
+	const mc2pkg::PackageChassis* pc = locPackage(v);
+	for (int p = 0; p < ml::kPanelCount; ++p) {
+		s_locLegal[p] = false;
+		s_locReason[p].clear();
+		if (!cand || !pc || p >= ml::kLocationCount) continue;
+		const int ri = regionOfPanel(pc, p);
+		long x, y;
+		if (cand->getType() == COMPONENT_FORM_JUMPJET) s_locReason[p] = "use the ADD button";
+		else if (ri < 0) s_locReason[p] = "no slots here";
+		else s_locLegal[p] = 0 == v->packageLocationPlace(cand, ri, x, y, s_locReason[p]);
+	}
+}
+const char* mountLetter(mc2pkg::Mount m)
+{
+	switch (m) {
+		case mc2pkg::Mount::Energy: return "E";
+		case mc2pkg::Mount::Ballistic: return "B";
+		case mc2pkg::Mount::Missile: return "M";
+		case mc2pkg::Mount::AntiPersonnel: return "A";
+		default: return "?";
+	}
+}
+}
+
+bool MechLabScreen::locationViewActive() const
+{
+	return locPackage(pVariant) && mc2::options::current().mechLabLocations;
+}
+
+void MechLabScreen::setLocationView( bool on )
+{
+	if ( mc2::options::current().mechLabLocations == on || pDragComponent )
+		return;
+	const auto previous = prefs.render;
+	prefs.render.mechLabLocations = on;
+	if ( !prefs.save() )
+		prefs.render = previous;
+	auto options = mc2::options::current();
+	options.mechLabLocations = on;
+	mc2::options::publish( options );
+	updateDiagram();
+}
+
+int MechLabScreen::placeInPanel( LogisticsComponent* pComponent, int panel )
+{
+	const mc2pkg::PackageChassis* pc = locPackage( pVariant );
+	const int ri = regionOfPanel( pc, panel );
+	std::string reason;
+	long x = -1, y = -1;
+	if ( ri < 0 || 0 != pVariant->packageLocationPlace( pComponent, ri, x, y, reason ) )
+	{
+		showDropRefusal( std::string( ml::panelTitle( panel ) ) + ": " + ( ri < 0 ? "no equipment slots here." : reason ) );
+		soundSystem->playDigitalSample( LOG_WRONGBUTTON );
+		return -1;
+	}
+	return addComponent( pComponent, x, y );
+}
+
+void MechLabScreen::endDragLocation()
+{
+	const int panel = ml::panelAt( static_cast<float>( userInput->getMouseX() ), static_cast<float>( userInput->getMouseY() ) );
+	bool placed = false;
+	if ( panel >= 0 && panel < ml::kLocationCount )
+		placed = 0 == placeInPanel( pDragComponent, panel );
+	if ( placed )
+	{
+		componentListBox.SelectItem( -1 );
+		long i = -1, j = -1;
+		pVariant->getComponentLocation( pDragComponent, i, j );
+		selI = i;
+		selJ = j;
+		pSelectedComponent = pDragComponent;
+	}
+	else if ( bDragLeft )
+	{
+		addComponent( pDragComponent, selI, selJ );
+		pSelectedComponent = pDragComponent;
+	}
+	else if ( -1 == componentListBox.GetSelectedItem() && -1 == selI )
+		selectFirstLBComponent();
+	updateDiagram();
+	pDragComponent = nullptr;
+	bDragLeft = 0;
+}
+
+void MechLabScreen::updateLocationInput()
+{
+	auto refuseRemoval = [this]() {
+		showDropRefusal("Not enough cooling: remove weapons first.");
+		soundSystem->playDigitalSample( LOG_WRONGBUTTON );
+	};
+	if ( pDragComponent && ( gos_GetKeyStatus( KEY_LMOUSE ) == KEY_FREE ||
+		userInput->isRightClick() || userInput->getKeyDown( KEY_ESCAPE ) ) )
+	{
+		if ( mc2::components::restoreGridDrag( bDragLeft, false, false, true ) )
+		{
+			addComponent( pDragComponent, selI, selJ );
+			pSelectedComponent = pDragComponent;
+		}
+		pDragComponent = nullptr;
+		bDragLeft = false;
+		dragCancelled = true;
+		updateDiagram();
+		return;
+	}
+	if ( dragCancelled )
+		return;
+	const float mx = static_cast<float>( userInput->getMouseX() );
+	const float my = static_cast<float>( userInput->getMouseY() );
+	LogisticsComponent* cand = pDragComponent ? pDragComponent
+		: ( -1 != componentListBox.GetSelectedItem() ? componentListBox.getComponent() : nullptr );
+	refreshLocationVerdicts( pVariant, cand );
+	s_locHover = ml::panelAt( mx, my );
+
+	std::vector<LocItem> items;
+	const int dragPanel = ml::panelAt( static_cast<float>( userInput->getMouseDragX() ), static_cast<float>( userInput->getMouseDragY() ) );
+	if ( s_locHover >= 0 && s_locHover < ml::kLocationCount )
+	{
+		gatherPanelItems( pVariant, s_locHover, items );
+		const int row = ml::itemRowAt( s_locHover, mx, my );
+		const LocItem* item = ( row >= 0 && row < static_cast<int>( items.size() ) ) ? &items[row] : nullptr;
+		if ( item )
+			::helpTextID = IDS_HELP_COMP0 + item->comp->getID();
+		if ( !pDragComponent && dragPanel >= 0 && dragPanel < ml::kLocationCount &&
+			input::capture::startsWidgetDrag( userInput->isLeftDrag(), true ) )
+		{
+			std::vector<LocItem> origin;
+			gatherPanelItems( pVariant, dragPanel, origin );
+			const int orow = ml::itemRowAt( dragPanel, static_cast<float>( userInput->getMouseDragX() ), static_cast<float>( userInput->getMouseDragY() ) );
+			if ( orow >= 0 && orow < static_cast<int>( origin.size() ) )
+			{
+				const LocItem it = origin[orow];
+				if ( canRemoveComponent( it.comp ) )
+				{
+					selI = it.x;
+					selJ = it.y;
+					componentListBox.SelectItem( -1 );
+					beginDrag( it.comp );
+					pSelectedComponent = it.comp;
+					bDragLeft = true;
+					removeComponent( it.x, it.y );
+					setComponent( it.comp );
+					updateDiagram();
+				}
+				else
+					refuseRemoval();
+			}
+		}
+		else if ( userInput->isLeftDoubleClick() )
+		{
+			if ( item )
+			{
+				if ( canRemoveComponent( item->comp ) )
+				{
+					removeComponent( item->x, item->y );
+					componentListBox.SelectItem( -1 );
+					pSelectedComponent = nullptr;
+					selI = selJ = -1;
+					if ( -1 == selectFirstDiagramComponent() )
+						selectFirstLBComponent();
+				}
+				else
+					refuseRemoval();
+			}
+		}
+		else if ( userInput->isLeftClick() )
+		{
+			if ( item )
+			{
+				selI = item->x;
+				selJ = item->y;
+				pSelectedComponent = item->comp;
+				setComponent( item->comp );
+				soundSystem->playDigitalSample( LOG_SELECT );
+				componentListBox.SelectItem( -1 );
+			}
+			else if ( -1 != componentListBox.GetSelectedItem() && componentListBox.getComponent() )
+				placeInPanel( componentListBox.getComponent(), s_locHover );
+		}
+	}
+	if ( userInput->leftMouseReleased() && pDragComponent )
+		endDrag();
+}
+
+void MechLabScreen::drawLocationView( float tbSx, float tbSy, float tbOx, float tbOy, int xOffset, int yOffset )
+{
+	const ml::Canvas cv{ tbSx, tbSy, tbOx, tbOy };
+	const mc2pkg::PackageChassis* pc = locPackage( pVariant );
+	if ( !pc )
+		return;
+	auto rectOf = [&]( ml::Rect r ) { r.x += xOffset; r.y += yOffset; return ml::toScreen( r, cv ); };
+	auto text = [&]( ml::Rect r, const char* s, std::uint32_t color, float px, int align ) {
+		const ml::Rect sr = rectOf( r );
+		GuiRuntime::DrawUiText( sr.x, sr.y, sr.w, sr.h, s, color, static_cast<int>( px * tbSy ), align, "" );
+	};
+	auto fill = [&]( ml::Rect r, std::uint32_t color, bool filled ) {
+		const ml::Rect sr = rectOf( r );
+		GuiRuntime::DrawUiRect( sr.x, sr.y, sr.w, sr.h, color, filled );
+	};
+	LogisticsComponent* cand = pDragComponent ? pDragComponent
+		: ( -1 != componentListBox.GetSelectedItem() ? componentListBox.getComponent() : nullptr );
+
+	std::vector<mc2pkg::Placed> placed;
+	std::vector<LogisticsComponent*> comps;
+	gatherPlaced( pVariant, placed, comps );
+	const float mass = mc2pkg::massUsed( placed );
+	// mounts in use per hardpoint: the same deterministic assignment deployment uses.
+	const std::vector<int> mountOf = mc2pkg::assignMounts( *pc, placed );
+	std::vector<bool> hpUsed( pc->hardpoints.size(), false );
+	for ( int m : mountOf )
+		if ( m >= 0 ) hpUsed[m] = true;
+
+	// toggle (package chassis only; stock chassis keep the grid and show none)
+	{
+		const ml::Rect t = ml::toggleRect();
+		const bool loc = mc2::options::current().mechLabLocations;
+		fill( t, 0xff15212c, true );
+		fill( { t.x, t.y, t.w * 0.5f, t.h }, loc ? 0xff2d6a8f : 0xff15212c, true );
+		fill( { t.x + t.w * 0.5f, t.y, t.w * 0.5f, t.h }, loc ? 0xff15212c : 0xff2d6a8f, true );
+		fill( t, 0xffd0d8e0, false );
+		text( { t.x, t.y + 2, t.w * 0.5f, t.h }, "LOCATIONS", 0xffffffff, 11.f, 1 );
+		text( { t.x + t.w * 0.5f, t.y + 2, t.w * 0.5f, t.h }, "CLASSIC", 0xffffffff, 11.f, 1 );
+	}
+	if ( !mc2::options::current().mechLabLocations )
+		return;
+
+	for ( int p = 0; p < ml::kPanelCount; ++p )
+	{
+		const ml::Rect r = ml::panelRect( p );
+		const bool doll = p == ml::Doll;
+		const int ri = doll ? -1 : regionOfPanel( pc, p );
+		const bool hasSlots = ri >= 0;
+		fill( r, 0xe8101820, true );
+		std::uint32_t edge = 0xff5a6a78;
+		if ( cand && !doll )
+			edge = s_locLegal[p] ? 0xff40ff80 : 0xffff4040;
+		else if ( p == s_locHover && !doll )
+			edge = 0xffd0d8e0;
+		fill( r, edge, false );
+		if ( doll )
+		{
+			if ( s_dollFor != pVariant )
+			{
+				s_dollFor = pVariant;
+				if ( !pc->hudIcon.empty() )
+				{
+					FullPathFileName path;
+					const std::string base = pc->hudIcon + "_40x48";
+					path.init( artPath, base.c_str(), "tga" );
+					s_dollIcon.setTexture( path );
+					s_dollIcon.setUVs( 0.f, 0.f, 40.f, 48.f );
+					s_dollIcon.resize( 80.f, 96.f );
+					s_dollIcon.setColor( 0xffd0e8ff );
+				}
+			}
+			if ( !pc->hudIcon.empty() )
+			{
+				s_dollIcon.moveTo( r.x + ( r.w - 80.f ) * 0.5f + xOffset, r.y + 2.f + yOffset );
+				s_dollIcon.render();
+			}
+			char buf[64];
+			std::snprintf( buf, sizeof buf, "MASS %.1f / %.1f t", static_cast<double>( mass ), static_cast<double>( pc->payload ) );
+			text( { r.x, r.y + r.h - 14, r.w, 14 }, buf, mass > pc->payload + 1e-3f ? 0xffff6060 : 0xffffd060, 11.f, 1 );
+			continue;
+		}
+		int cells = 0, used = 0;
+		if ( hasSlots ) {
+			cells = pc->regions[ri].w * pc->regions[ri].h;
+			for ( const mc2pkg::Placed& it : placed )
+				if ( it.x >= 0 && pc->regions[ri].contains( it.x, it.y ) ) used += it.w * it.h;
+		}
+		char head[48];
+		if ( hasSlots )
+			std::snprintf( head, sizeof head, "%s %d/%d", ml::panelTitle( p ), used, cells );
+		else
+			std::snprintf( head, sizeof head, "%s", ml::panelTitle( p ) );
+		text( { r.x + 3, r.y + 2, r.w - 6, 13 }, head, hasSlots ? 0xffffffff : 0xff808890, 11.f, 0 );
+		float bx = r.x + r.w - 3.f;
+		for ( size_t k = pc->hardpoints.size(); k-- > 0; )
+			if ( pc->hardpoints[k].location == ml::panelName( p ) )
+			{
+				bx -= 11.f;
+				const ml::Rect b{ bx, r.y + 15, 10, 11 };
+				fill( b, hpUsed[k] ? 0xffb07020 : 0xff2a7a4a, true );
+				text( { b.x, b.y - 1, b.w, b.h }, mountLetter( pc->hardpoints[k].mount ), 0xffffffff, 10.f, 1 );
+			}
+		if ( !hasSlots )
+		{
+			text( { r.x + 3, r.y + 30, r.w - 6, 13 }, "no equipment slots", 0xff808890, 10.f, 0 );
+			continue;
+		}
+		std::vector<LocItem> items;
+		gatherPanelItems( pVariant, p, items );
+		for ( size_t k = 0; k < items.size() && k < static_cast<size_t>( ml::kMaxItemRows ); ++k )
+		{
+			ml::Rect row = ml::itemRowRect( p, static_cast<int>( k ) );
+			const bool sel = items[k].comp == pSelectedComponent && !pDragComponent;
+			if ( sel ) fill( row, 0x802d6a8f, true );
+			char line[64];
+			std::snprintf( line, sizeof line, "%.14s", items[k].comp->getName() );
+			text( { row.x + 1, row.y, row.w - 28, row.h }, line, 0xffe8eef4, 10.f, 0 );
+			std::snprintf( line, sizeof line, "%.1ft", static_cast<double>( items[k].comp->getWeight() ) );
+			text( { row.x + row.w - 28, row.y, 27, row.h }, line, 0xffa0b0c0, 10.f, 2 );
+		}
+		if ( cand )
+			text( { r.x + 2, r.y + r.h - 14, r.w - 4, 13 }, s_locReason[p].c_str(), s_locLegal[p] ? 0xff60ff90 : 0xffff7070, 10.f, 0 );
+	}
+}

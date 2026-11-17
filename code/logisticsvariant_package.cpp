@@ -3,6 +3,7 @@
 // LogisticsComponent placements to it. Stock chassis (getPackage() == nullptr) never reach here.
 #include "logisticsvariant_internal.h"
 #include "package_chassis.h"
+#include "mechlab_loc_layout.h"
 
 namespace {
 
@@ -97,5 +98,31 @@ int LogisticsVariant::getPackageMounts( long& count, unsigned int* keys ) const
     for ( int i = 0; i < componentCount; ++i )
         keys[i] = mounts[i] >= 0 ? pc->hardpoints[mounts[i]].key : 0u;
     count = componentCount;
+    return 0;
+}
+
+// MECHLAB-LOC-1: location-view placement. Same cells and the same mc2pkg::checkAdd as the grid.
+int LogisticsVariant::packageLocationPlace( LogisticsComponent* pComponent, int regionIndex, long& x, long& y, std::string& reason ) const
+{
+    const mc2pkg::PackageChassis* pc = chassis->getPackage();
+    if ( !pc )
+        return -1;
+    std::vector<mc2pkg::Placed> existing;
+    existing.reserve( componentCount );
+    for ( int i = 0; i < componentCount; ++i )
+        existing.push_back( placedOf( components[i].component, components[i].xCoord, components[i].yCoord ) );
+    mc2::mechlab_loc::Candidate cand;
+    cand.w = pComponent->getComponentWidth();
+    cand.h = pComponent->getComponentHeight();
+    cand.category = categoryOf( pComponent );
+    cand.ordinal = pComponent->getID();
+    cand.weight = pComponent->getWeight();
+    const mc2::mechlab_loc::Explained e = mc2::mechlab_loc::explain( *pc, existing, cand, regionIndex );
+    const mc2pkg::Region* r = ( regionIndex >= 0 && regionIndex < static_cast<int>( pc->regions.size() ) ) ? &pc->regions[regionIndex] : nullptr;
+    reason = mc2::mechlab_loc::reasonText( e, cand.category, r, cand );
+    if ( e.reason != mc2::mechlab_loc::Reason::Legal )
+        return 1;
+    x = e.x;
+    y = e.y;
     return 0;
 }

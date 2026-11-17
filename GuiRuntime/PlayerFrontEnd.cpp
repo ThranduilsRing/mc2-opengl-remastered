@@ -687,7 +687,7 @@ void drawOptions() {
     ImGui::Text("Approximate fixed VRAM: %d MB (excludes mission textures/geometry)",
         256 + 96 + 8 + shadowMB[std::clamp(draft.shadowQuality, 0, 2)]);
     for (const auto& option : mc2::options::kOptions) {
-        const char* label = std::string_view(option.key) == "RemasteredBuildings" ? "Remastered buildings (off: Classic)" : option.key;
+        const char* label = std::string_view(option.key) == "RemasteredBuildings" ? "Remastered buildings (off: Classic)" : std::string_view(option.key) == "MechLabLocations" ? "Mech lab: Locations view (off: Classic grid)" : option.key;
         if (option.kind == mc2::options::Kind::Bool) ImGui::Checkbox(label, &(draft.*option.b));
         else if (option.kind == mc2::options::Kind::Long) {
             if (std::string_view(option.key) == "SpatialAA") {

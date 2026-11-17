@@ -132,6 +132,14 @@ class MechLabScreen: public LogisticsScreen
 		bool				bErrorDlg;
 
 
+		// MECHLAB-LOC-1: location view (package chassis); layout + hit rects in mechlab_loc_layout.h
+		bool	locationViewActive() const;
+		void	updateLocationInput();
+		void	drawLocationView( float tbSx, float tbSy, float tbOx, float tbOy, int xOffset, int yOffset );
+		int		placeInPanel( LogisticsComponent* pComponent, int panel );
+		void	endDragLocation();
+		void	setLocationView( bool on );
+
 		// HELPER FUNCTIONS
 		void getMouseDiagramCoords( long& x, long& y );
 		void getMouseDiagramCoords( long screenX, long screenY, long& x, long& y );

@@ -59,6 +59,8 @@ struct RenderOptions {
     // Texture quality tier (docs/texture-tiers-overlay-pbr-design.md): -1 Auto (by device VRAM, resolved by textureTier()), 0 Low (stock
     // resolution), 1 Medium, 2 High, 3 Ultra.
     int textureQuality = -1;
+    // Mech lab view for package (BT2018) chassis: true = LOCATIONS (per-limb slots), false = CLASSIC grid. A player setting; ships ON.
+    bool mechLabLocations = true;
     bool operator==(const RenderOptions&) const = default;
 };
 
@@ -102,6 +104,7 @@ inline constexpr Option kOptions[] = {
     detail::longOpt ("ImpactDecals",                  &RenderOptions::impactDecals, 0, 2),
     detail::boolOpt ("StockOverlayConcrete",          &RenderOptions::stockOverlayConcrete),
     detail::longOpt ("TextureQuality",                &RenderOptions::textureQuality, -1, 3),
+    detail::boolOpt ("MechLabLocations",              &RenderOptions::mechLabLocations),
 };
 
 inline constexpr std::size_t kOptionCount = sizeof(kOptions) / sizeof(kOptions[0]);
