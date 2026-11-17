@@ -26,6 +26,72 @@ float sampleH(int x, int y) {
     return uH.heights[clamp(x, 0, uT.mapSide - 1) + clamp(y, 0, uT.mapSide - 1) * uT.mapSide];
 }
 #include "include/terrain_visual_surface.glsl"
+// Four adjacent surface vertices share the cliff filter's +/-2 raw halo.
+// Consume even and odd rows separately: never retain the full 8x8 halo.
+mat2x4 waterRawRow(ivec2 p) {
+    return mat2x4(vec4(cliffRawHeight(p + ivec2(-2, 0)), cliffRawHeight(p + ivec2(-1, 0)),
+                       cliffRawHeight(p), cliffRawHeight(p + ivec2(1, 0))),
+                  vec4(cliffRawHeight(p + ivec2(2, 0)), cliffRawHeight(p + ivec2(3, 0)),
+                       cliffRawHeight(p + ivec2(4, 0)), cliffRawHeight(p + ivec2(5, 0))));
+}
+vec4 waterSurfaceRow(ivec2 p, mat2x4 north, mat2x4 row, mat2x4 south) {
+    vec4 c = vec4(row[0].zw, row[1].xy);
+    vec4 n = vec4(north[0].zw, north[1].xy), s = vec4(south[0].zw, south[1].xy);
+    vec4 e = row[1], w = row[0];
+    vec4 rise = max(max(abs(n - c), abs(s - c)), max(abs(e - c), abs(w - c)));
+    vec4 diagonal = north[0] + north[1] + south[0] + south[1];
+    vec4 cardinal = n + s + e + w;
+    vec4 result;
+    for (int x = 0; x < 4; ++x) {
+        float fine = rise[x] <= 24.0 ? c[x] : cliffFilteredHeight(c[x], cardinal[x], diagonal[x], rise[x]);
+        int fx = p.x + x, fy = p.y;
+        int cx = min(fx / 4, uT.mapSide - 2), cy = min(fy / 4, uT.mapSide - 2);
+        float u = float(fx - cx * 4) * 0.25, v = float(fy - cy * 4) * 0.25;
+        float h00 = sampleH(cx, cy), h10 = sampleH(cx + 1, cy);
+        float h01 = sampleH(cx, cy + 1), h11 = sampleH(cx + 1, cy + 1);
+        float hc = (v >= u) ? h00 + (h11 - h01) * u + (h01 - h00) * v
+                            : h00 + (h10 - h00) * u + (h11 - h10) * v;
+        result[x] = mix(hc, fine, hiresBlendW() * hiresEdgeW(fx, fy));
+    }
+    return result;
+}
+void waterSurfaceCache(ivec2 p, out mat4 raw, out mat4 surface) {
+    for (int parity = 0; parity < 2; ++parity) {
+        ivec2 q = p + ivec2(0, parity);
+        mat2x4 north = waterRawRow(q + ivec2(0, -2));
+        mat2x4 row = waterRawRow(q), south = waterRawRow(q + ivec2(0, 2));
+        raw[parity] = vec4(row[0].zw, row[1].xy);
+        surface[parity] = waterSurfaceRow(q, north, row, south);
+        north = row;
+        row = south;
+        south = waterRawRow(q + ivec2(0, 4));
+        raw[parity + 2] = vec4(row[0].zw, row[1].xy);
+        surface[parity + 2] = waterSurfaceRow(q + ivec2(0, 2), north, row, south);
+    }
+}
+float waterCachedHeight(vec2 worldXY, ivec2 origin, mat4 raw, mat4 surface) {
+    // Keep each tap's coordinate arithmetic and triangle interpolation identical.
+    vec2 grid = clamp(vec2(worldXY.x + uT.halfMap, uT.halfMap - worldXY.y) / 32.0,
+                      vec2(0.0), vec2(uT.visualSide - 1));
+    ivec2 p = min(ivec2(floor(grid)), ivec2(uT.visualSide - 2));
+    vec2 t = grid - vec2(p);
+    ivec2 k = p - origin;
+    float rawTL = raw[k.y][k.x], rawTR = raw[k.y][k.x + 1];
+    float rawBL = raw[k.y + 1][k.x], rawBR = raw[k.y + 1][k.x + 1];
+    if (abs(rawTR - rawBL) < abs(rawTL - rawBR)) {
+        float tr = surface[k.y][k.x + 1], bl = surface[k.y + 1][k.x];
+        if (t.x + t.y <= 1.0) {
+            float tl = surface[k.y][k.x];
+            return tl + (tr - tl) * t.x + (bl - tl) * t.y;
+        }
+        float br = surface[k.y + 1][k.x + 1];
+        return br + (bl - br) * (1.0 - t.x) + (tr - br) * (1.0 - t.y);
+    }
+    float a = surface[k.y][k.x], d = surface[k.y + 1][k.x + 1];
+    float b = t.y >= t.x ? surface[k.y + 1][k.x] : surface[k.y][k.x + 1];
+    return t.y >= t.x ? a + (d - b) * t.x + (b - a) * t.y
+                      : a + (b - a) * t.x + (d - b) * t.y;
+}
 float waterFineHeight(vec2 worldXY) {
     vec2 grid = clamp(vec2(worldXY.x + uT.halfMap, uT.halfMap - worldXY.y) / 32.0,
                       vec2(0.0), vec2(uT.visualSide - 1));
@@ -354,7 +420,17 @@ void main(void)
     // The cooked SDF predates raster-depth coverage. Its zero crossing can sit on
     // dry land, leaving a shallow strip and a detached foam contour in wet pixels.
     // Read shore inputs from the same filtered fine surface as the terrain.
-    if (hasVisual && hasField) fieldThick = F.f7.x - waterFineHeight(WorldPos.xy);
+    mat4 shoreRaw, shoreSurface;
+    ivec2 shoreOrigin = ivec2(0);
+    float fineCenter = 0.0;
+    if (hasVisual && hasField) {
+        vec2 grid = clamp(vec2(WorldPos.x - 32.0 + uT.halfMap, uT.halfMap - (WorldPos.y + 32.0)) / 32.0,
+                          vec2(0.0), vec2(uT.visualSide - 1));
+        shoreOrigin = min(ivec2(floor(grid)), ivec2(uT.visualSide - 2));
+        waterSurfaceCache(shoreOrigin, shoreRaw, shoreSurface);
+        fineCenter = waterCachedHeight(WorldPos.xy, shoreOrigin, shoreRaw, shoreSurface);
+        fieldThick = F.f7.x - fineCenter;
+    }
     // Raster depth still owns coverage, including patch stitching and morph.
     float softnessThick = hasVisual && !hasField ? F.f7.x - waterFineHeight(WorldPos.xy) : fieldThick;
     const float fieldThickFw = fwidth(fieldThick);
@@ -375,9 +451,15 @@ void main(void)
     if (hasVisual && hasField) {
         const float gh = 32.0;
         vec2 wp = WorldPos.xy;
-        float h00 = waterFineHeight(wp + vec2(-gh, -gh)), h10 = waterFineHeight(wp + vec2(0.0, -gh)), h20 = waterFineHeight(wp + vec2(gh, -gh));
-        float h01 = waterFineHeight(wp + vec2(-gh, 0.0)), h11 = waterFineHeight(wp),                  h21 = waterFineHeight(wp + vec2(gh, 0.0));
-        float h02 = waterFineHeight(wp + vec2(-gh, gh)),  h12 = waterFineHeight(wp + vec2(0.0, gh)),   h22 = waterFineHeight(wp + vec2(gh, gh));
+        float h00 = waterCachedHeight(wp + vec2(-gh, -gh), shoreOrigin, shoreRaw, shoreSurface);
+        float h10 = waterCachedHeight(wp + vec2(0.0, -gh), shoreOrigin, shoreRaw, shoreSurface);
+        float h20 = waterCachedHeight(wp + vec2(gh, -gh), shoreOrigin, shoreRaw, shoreSurface);
+        float h01 = waterCachedHeight(wp + vec2(-gh, 0.0), shoreOrigin, shoreRaw, shoreSurface);
+        float h11 = fineCenter;
+        float h21 = waterCachedHeight(wp + vec2(gh, 0.0), shoreOrigin, shoreRaw, shoreSurface);
+        float h02 = waterCachedHeight(wp + vec2(-gh, gh), shoreOrigin, shoreRaw, shoreSurface);
+        float h12 = waterCachedHeight(wp + vec2(0.0, gh), shoreOrigin, shoreRaw, shoreSurface);
+        float h22 = waterCachedHeight(wp + vec2(gh, gh), shoreOrigin, shoreRaw, shoreSurface);
         shoreDepth = F.f7.x - (h00 + 2.0 * h10 + h20 + 2.0 * h01 + 4.0 * h11 + 2.0 * h21 + h02 + 2.0 * h12 + h22) / 16.0;
         shoreGrad = -vec2((h20 + 2.0 * h21 + h22) - (h00 + 2.0 * h01 + h02),
                           (h02 + 2.0 * h12 + h22) - (h00 + 2.0 * h10 + h20)) / (8.0 * gh);
