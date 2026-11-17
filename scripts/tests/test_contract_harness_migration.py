@@ -111,7 +111,7 @@ def test_shell_unit_child_owns_mc2_environment(tmp_path, rc):
     exe.chmod(0o755)
     env = dict(os.environ, MC2_CMAKE=str(cmake), MC2_UNIT_BUILD_DIR=str(build.parent),
                MC2_HOST_CORES_PER_SLOT="2", MC2_HOST_GAME_SLOTS="1", mc2_unknown="1")
-    result = subprocess.run([bash, str(ROOT / "scripts/run-unit-tests.sh"), "--doctest-only",
+    result = subprocess.run([bash, str(ROOT / "scripts/run-unit-tests.sh"), "--doctest-only",  # background-launch: allow bash runs the repo unit-test script against a fake cmake/exe fixture; no engine, captured stdio
                              "--test-case=strict-config"], env=env, capture_output=True, text=True)
     assert result.returncode == (0 if rc == 0 else 1), result.stdout + result.stderr
 
