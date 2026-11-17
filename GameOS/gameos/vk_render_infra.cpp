@@ -518,6 +518,9 @@ void reload() {
     if(moduleName == "vfx_vegetation.frag.spv" || moduleName == "vfx_vegetation_shade.frag.spv") {
         fail("vegetation_fragment_requires_atomic_pair"); return;
     }
+    if(moduleName == "water_geom.frag.spv" || moduleName == "water_geom_early.frag.spv") {
+        fail("water_fragment_requires_define_preserving_atomic_pair"); return;
+    }
     for(const auto& name : {path, candidate}) {
         const auto resolved = std::filesystem::weakly_canonical(name, fileError);
         const auto relative = resolved.lexically_relative(shaderDir);

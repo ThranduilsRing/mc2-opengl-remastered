@@ -598,9 +598,13 @@ extern "C" int mc2_vk_water_island_run(
         mc2vk::VulkanContext& dctx = mc2vk::engineVulkanContextNoWait();
         mc2vk::dynrender::beginSceneLoad(dctx, cb, static_cast<uint32_t>(w), static_cast<uint32_t>(h), s->sColorRes->view.get(), s->sNormalRes->view.get(), s->sDepthRes->view.get(), s->sceneDepthFmt);
         mc2vk::infra::setSceneViewport(cb, static_cast<uint32_t>(w), static_cast<uint32_t>(h));
-        // Only the fine visual surface guarantees shore >= 0.55 (no discard).
-        const auto* waterFields = gos_TerrainFieldStore();
-        const bool earlyWater = waterFields && waterFields->visualSide() > 1;
+        // Match the bound terrain UBO: only its GPU-ready fine surface makes discard dead.
+        const bool earlyWater = ground->visualWaterEligible;
+        static int lastEarlyWater = -1;
+        if (lastEarlyWater != static_cast<int>(earlyWater)) {
+            vlog("WATER_MODULE selected=%s uploaded_visual_eligible=%d", earlyWater ? "early" : "standard", static_cast<int>(earlyWater));
+            lastEarlyWater = static_cast<int>(earlyWater);
+        }
         mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, earlyWater ? s->pipeEarly.get() : s->pipe.get());
         if (profileMode >= 0) {
             vkCmdBeginQuery(cb, s->profileStats.get(), par, 0);
