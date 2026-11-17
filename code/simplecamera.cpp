@@ -667,7 +667,7 @@ long SimpleCamera::update()
 
 void SimpleCamera::drawAnimationPanel()
 {
-    if (ImGui::IsKeyPressed(ImGuiKey_F9, false)) {
+    if (gos_GetKeyStatus(KEY_F9) == KEY_PRESSED) {
         animationPreview = {}; animationCamera = animationCamera == this ? nullptr : this;
     }
     if (animationCamera != this) return;
