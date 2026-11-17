@@ -102,6 +102,8 @@ def payload_identity(install):
     """Verify the executable and every deployed SPIR-V byte before attributing captures."""
     install = Path(install)
     files, commit = read_manifest(install)
+    if len(EXECUTABLES.intersection(files)) != 1:
+        raise ValueError(f"{install}: payload identity requires exactly one game executable")
     exe = payload_executable(files, install)
     payload ={p: sha for p, sha in files.items()
                if p == exe or (p.startswith("shaders/vulkan/") and p.endswith(".spv"))}

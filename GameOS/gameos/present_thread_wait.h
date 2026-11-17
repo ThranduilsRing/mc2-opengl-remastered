@@ -9,9 +9,20 @@
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
+#include <future>
 
 namespace mc2vk::present_thread::detail {
 using Clock = std::chrono::steady_clock;
+
+// Keep the window thread responsive while a synchronous driver/decoder call runs.
+// get() joins before the caller's captured inputs or output storage can expire.
+template<class Work, class Pump>
+void workPumping(Work&& work, Pump&& pump) {
+    auto result = std::async(std::launch::async, std::forward<Work>(work));
+    while (result.wait_for(std::chrono::milliseconds(25)) != std::future_status::ready)
+        pump();
+    result.get();
+}
 
 // Wait for pred() with `lock` held on entry and on return. Returns false only when `limit` passed with pred() still false.
 template <class Pred, class Pump>

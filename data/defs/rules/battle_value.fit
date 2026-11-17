@@ -1,0 +1,14 @@
+FITini
+[BattleValue]
+// MC2 informational rating v1. All coefficients authored for this project.
+l BvProfile = 1
+f Armor = 2.0
+f Structure = 1.5
+f DefensiveEquipment = 1.0
+f DefenseSpeed = 0.01
+f Jump = 0.05
+f OffenseSpeed = 0.005
+f Unsustained = 0.25
+f AmmoPerShot = 0.002
+f AmmoCap = 0.10
+FITend

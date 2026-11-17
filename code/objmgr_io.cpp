@@ -1193,7 +1193,15 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum, bool managerVa
 		{
 			//We have a BattleMech.
 			MechData data{};
-			readData.operator()<mc2::save::MechRecord>(data, mc2_saved_objects::kMech);
+			mc2::save::MechRecord record;
+			if (objectValues) {
+				if (!mc2::save::decodeTaggedRecord(slotBytes, record, mc2::save::mechTag))
+					Fatal(0, "Unsupported or invalid mech ObjectSlot version/payload");
+				data = record.value;
+			} else {
+				file->readPacket(packetNum, reinterpret_cast<MemoryPtr>(&data));
+				record.value = data;
+			}
 			packetNum++;
 
 			BattleMechPtr obj = new BattleMech; 
@@ -1206,7 +1214,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum, bool managerVa
 
 				obj->init(true, objType);
 				obj->setExists(true);
-				obj->Load(&data);
+				record.load(*obj);
 			}
 			else
 			{

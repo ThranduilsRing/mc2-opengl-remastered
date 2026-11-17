@@ -6,6 +6,7 @@
 #include "render_view.h"
 #include "mc2fmt.h"
 #include "camera_elevation.h"
+#include "sim_speed.h"
 
 
 void MissionInterfaceManager::doAttack()
@@ -838,6 +839,18 @@ void MissionInterfaceManager::anchoredZoom(long mx, long my, int (MissionInterfa
 	if (!haveA)
 		return;
 	eye->beginZoomAnchor(A, eye->getCameraAltitude(), eye->getPosition());
+}
+
+int MissionInterfaceManager::gameSpeedUp()
+{
+	simSpeedSetMultiplier(mc2::sim::speedKeyStep(simSpeedGetMultiplier(), false, mc2::net::active()));
+	return 1;
+}
+
+int MissionInterfaceManager::gameSpeedDown()
+{
+	simSpeedSetMultiplier(mc2::sim::speedKeyStep(simSpeedGetMultiplier(), true, mc2::net::active()));
+	return 1;
 }
 
 int MissionInterfaceManager::zoomOut()

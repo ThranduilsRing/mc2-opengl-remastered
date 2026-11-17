@@ -59,11 +59,13 @@
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_EXT_buffer_reference : require
 layout(constant_id = 0) const int kBaseQuality = 2; // Potato / Low / Medium+High
-// 1 = the opaque core pipelines: their packets have no per-packet alpha-test bit and are not fringe rows (they may sit in an
-// alpha-ON type, and then sample that array uncut), so every discard below is dead for them. Back faces are culled by the
-// pipeline, not discarded. Compiling the discards out lets the driver run early Z.
+// 1 = the opaque core pipeline: its packets have no alpha-ON layer, no per-packet alpha-test bit and are not
+// fringe rows, so every discard below is dead for them. Compiling the discards out lets the driver run early Z.
 layout(constant_id = 2) const int kOpaqueOnly = 0;
 layout(constant_id = 10) const int kPlanarReflection = 0;
+// 1 = the double-sided pipeline (cull none; the packet's material has kDoubleSided): back faces are shaded with the back-face lighting.
+// 0 = the single-sided pipelines (CULL_BACK): only front faces reach the fragment shader, so there is no back-face branch or discard.
+layout(constant_id = 11) const int kTwoSided = 1;
 layout(constant_id = 12) const int kReflectCutDetail = 1;
 layout(constant_id = 13) const int kReflectCutPools = 1;
 layout(constant_id = 14) const int kReflectCutMovers = 1;
@@ -83,8 +85,8 @@ layout(location = 0) in vec2 vUv;
 layout(location = 1) in vec3 vFrontNormalStuff;
 layout(location = 18) in vec3 vBackNormalStuff;
 layout(location = 19) in vec3 vBackArgb;
-#define vNormalStuff (gl_FrontFacing ? vFrontNormalStuff : vBackNormalStuff)
-#define vArgb (gl_FrontFacing ? vFrontArgb : vBackArgb)
+#define vNormalStuff ((kTwoSided == 0 || gl_FrontFacing) ? vFrontNormalStuff : vBackNormalStuff)
+#define vArgb ((kTwoSided == 0 || gl_FrontFacing) ? vFrontArgb : vBackArgb)
 flat layout(location = 2) in int  vLayer;
 layout(location = 3) in vec3 vFrontArgb; // VERTEX-BAKED lit color
 flat layout(location = 4) in int  vLayerOn;  // alpha-ON albedo array layer (-1 = none)
@@ -177,9 +179,6 @@ float treeVisibility(vec3 N) {
     return visibility;
 }
 void main() {
-    // kOpaqueOnly pipelines reject back faces by culling (single-sided packets) or not at all (double-sided): no discard, so early Z runs.
-    if (kOpaqueOnly == 0 && !gl_FrontFacing && (uPacket.materialId < 0 || uPacket.materialId >= uPropMaterials.materials.length() ||
-        (uPropMaterials.materials[uPacket.materialId].material.flags & kMatFlagDoubleSided) == 0u)) discard;
     if (kPlanarReflection != 0 && vWorldPos.z < uT.shorelineWaterElev) discard;
     vec3 rgb;
     vec3 materialAlbedo = vec3(0);
@@ -294,8 +293,10 @@ void main() {
         vec3 skyNormal = normalize(outputNormalStuff);
         vec2 sunAxis = vec2(-L.x, L.y), probeAxis = vec2(sh[3].r, sh[2].r);
         if (dot(sunAxis,sunAxis) > 1e-8 && dot(probeAxis,probeAxis) > 1e-8) {
-            float angle = atan(sunAxis.y,sunAxis.x) - atan(probeAxis.y,probeAxis.x);
-            float c = cos(angle), s = sin(angle);
+            // Relative unit axes give the same rotation without per-fragment trigonometry.
+            float invLengths = inversesqrt(dot(sunAxis,sunAxis) * dot(probeAxis,probeAxis));
+            float c = dot(sunAxis,probeAxis) * invLengths;
+            float s = (sunAxis.y*probeAxis.x - sunAxis.x*probeAxis.y) * invLengths;
             skyNormal.xz = mat2(c,-s,s,c) * skyNormal.xz;
         }
         vec3 ambient = uFrame.iblShStrength > 0.0 ? evalShL2(skyNormal,sh)*uFrame.iblShStrength : vec3(0);

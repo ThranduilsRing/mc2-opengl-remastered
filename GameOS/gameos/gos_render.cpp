@@ -17,6 +17,7 @@
 #include "Gates/gate_cold.h"   // raw<>()
 #include "mc2fmt.h"
 #include "diagnostic_trace.h"
+#include "present_thread_wait.h"
 #include "engine_present_vk.h"
 #include "present_thread.h"
 
@@ -212,6 +213,38 @@ void set_native_cursor(SDL_Cursor* cursor, bool visible)
     apply_os_cursor_policy("shape", g_sdl_window && (SDL_GetWindowFlags(g_sdl_window) & SDL_WINDOW_INPUT_FOCUS));
 }
 
+static LoadingPumpStats s_loadPumps;
+
+void loading_work(const std::function<void()>& work)
+{
+    if (SDL_ThreadID() != g_window_thread || s_loadPumps.phase.empty()) {
+        work();
+        return;
+    }
+    mc2vk::present_thread::detail::workPumping(work, [] {
+        mc2vk::present_thread::pumpWindowMessages();
+    });
+}
+
+std::string_view loading_phase() { return s_loadPumps.phase; }
+
+void begin_loading_events()
+{
+    s_loadPumps.begin(SDL_GetTicks64());
+}
+
+void loading_events_phase(std::string_view phase) {
+    if (!s_loadPumps.phase.empty()) s_loadPumps.phase = phase;
+}
+
+void end_loading_events()
+{
+    pump_loading_events();
+    mc2::fmt::print_out("[LOAD_PUMP] max_gap_ms={} phase={}\n", s_loadPumps.maxGap,
+        s_loadPumps.maxPhase.empty() ? "no_window" : s_loadPumps.maxPhase);
+    s_loadPumps.phase = {};
+}
+
 void pump_loading_events()
 {
     auto& meter = mc2::loadpump::meter;
@@ -221,6 +254,11 @@ void pump_loading_events()
     }
     if (!g_sdl_window || SDL_ThreadID() != g_window_thread) return;
     if (!meter.due(SDL_GetTicks64())) return;
+    const Uint64 stamp = SDL_GetTicks64();
+    if (!s_loadPumps.phase.empty() && stamp - s_loadPumps.lastPump >= 250)
+        mc2::fmt::print_out("[LOAD_PUMP] gap_ms={} phase={}\n",
+            stamp - s_loadPumps.lastPump, s_loadPumps.phase);
+    s_loadPumps.pumped(stamp);
     // Pump only: do not consume quit/focus/input events or reenter the game mid-load.
     SDL_PumpEvents();
     meter.service(SDL_GetTicks64(), false);

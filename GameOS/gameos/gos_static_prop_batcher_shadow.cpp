@@ -162,30 +162,35 @@ extern "C" int mc2_color_prop_island_get_frame_feed(Mc2ColorPropFeed* out) {
         const float rowY = std::sqrt(m[1] * m[1] + m[5] * m[5] + m[9] * m[9]);
         const float vpScale = mainView.viewport[3] > 0 ? 2160.0f / static_cast<float>(mainView.viewport[3]) : 1.0f;
         float maxTreeD = 0.0f;
-        auto route = [&](const GpuStaticPropInstance* b, const GpuStaticPropInstance* e, const PropLodGroup& g) {
+        auto route = [&](const GpuStaticPropInstance* b, const GpuStaticPropInstance* e, const PropLodGroup& g,
+                         const size_t* slots, const auto& outputs) {
             for (; b != e; ++b) {
                 const StaticPropOrigin o = staticPropOriginRender(b->modelMatrix);
                 const float dx = o.x - cx, dy = o.y - cy, dz = o.z - cz;
                 float d = std::sqrt(dx * dx + dy * dy + dz * dz);
                 if (g.tree && rowY > 1e-6f) d = propLodProjectedDistance(m, o, rowY, vpScale);
                 if (s_statsOn && g.tree) maxTreeD = (std::max)(maxTreeD, d);
-                uint8_t& lod = s_lodState[propLodKey(*b)];
+                uint8_t& lod = slots ? s_lodState.dense(*slots++) : s_lodState[propLodKey(*b)];
                 propLodAdvance(lod, d, std::span<const float>(g.dist, static_cast<size_t>(g.count)), kBand);
                 GpuStaticPropInstance inst = *b;
                 inst.typeID = g.target[lod];
-                s_lodOut[inst.typeID].push_back(inst);
+                outputs[lod]->push_back(inst);
             }
         };
         for (const auto& [src, g] : s_lodGroups) {
+            std::array<std::vector<GpuStaticPropInstance>*, kMaxPropLods> outputs{};
+            for (int tier = 0; tier < g.count; ++tier) outputs[tier] = &s_lodOut[g.target[tier]];
             if (auto it = s_persistentStaticStore.find(src); it != s_persistentStaticStore.end()) {
                 const auto& [stTid, stVec] = *it;
-                route(stVec.data(), stVec.data() + stVec.size(), g);
+                auto& slots = s_persistentLodSlots[src];
+                slots.bind(s_lodState, std::span<const GpuStaticPropInstance>(stVec), propLodKey);
+                route(stVec.data(), stVec.data() + stVec.size(), g, slots.indices.data(), outputs);
             }
             if (auto bt = s_bucketsByType.find(src); bt != s_bucketsByType.end()) {
                 const auto& [bkTid, pb] = *bt;
                 const GpuStaticPropInstance* d0 = pb.instances.data();
                 const uint32_t n  = static_cast<uint32_t>(pb.instances.size());
-                route(d0, d0 + n, g);
+                route(d0, d0 + n, g, nullptr, outputs);
             }
         }
         static uint32_t s_statsTick = 0;

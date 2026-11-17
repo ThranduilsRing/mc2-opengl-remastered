@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from importlib.machinery import EXTENSION_SUFFIXES
 from types import SimpleNamespace
 
 import pytest
@@ -70,7 +71,7 @@ def test_namespace_and_repository_shadow_are_rejected(root):
     assert collect(spec=namespace)["RenderDoc Python module"]["status"] == "not found"
     repo_module = str(host.ROOT / "tools/renderdoc/__init__.py")
     assert collect(files={repo_module}, spec=SimpleNamespace(origin=repo_module))["RenderDoc Python module"]["status"] == "not found"
-    real = str(root / "renderdoc.pyd")
+    real = str(root / ("renderdoc" + EXTENSION_SUFFIXES[0]))
     assert collect(files={real}, spec=SimpleNamespace(origin=real))["RenderDoc Python module"]["path"] == real
 
 

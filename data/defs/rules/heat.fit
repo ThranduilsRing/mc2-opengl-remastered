@@ -1,0 +1,12 @@
+FITini
+
+[Heat]
+l HeatProfile = 1
+l CoolSeconds = 20
+l AlphaWindowTicks = 60
+l AiAlpha = 0
+
+[Thresholds]
+l Count = 0
+
+FITend

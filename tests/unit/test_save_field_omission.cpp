@@ -2,6 +2,23 @@
 #include "unit_anim_state.h"
 #include "tactical_order_queue.h"
 #include "dteam.h"
+#include "mech_value_codec.h"
+
+TEST_CASE("save fields: heat extension independent member census and omission witnesses") {
+    using T = mc2::heat::State;
+    const auto sample = save_probe::patterned<T>(&T::heatMilli, &T::alphaMask, &T::alphaExpireTick);
+    auto codec = [](auto& a, auto& v) { mc2::save::heatFields(a, v); };
+    CHECK(save_probe::roundtrip(sample, codec, &T::heatMilli, &T::alphaMask, &T::alphaExpireTick));
+    auto omit = [&](auto member) {
+        return [=](auto& a, auto& v) {
+            codec(a, v);
+            if (a.reading()) save_probe::zero(v.*member);
+        };
+    };
+    CHECK_FALSE(save_probe::roundtrip(sample, omit(&T::heatMilli), &T::heatMilli));
+    CHECK_FALSE(save_probe::roundtrip(sample, omit(&T::alphaMask), &T::alphaMask));
+    CHECK_FALSE(save_probe::roundtrip(sample, omit(&T::alphaExpireTick), &T::alphaExpireTick));
+}
 
 namespace mc2clip {
 bool operator==(const Phase& a, const Phase& b) {
@@ -138,9 +155,9 @@ TEST_CASE("save fields: team roster tail retains every watch ID") {
 
 TEST_CASE("save fields: ORDQ nested payloads independent member census") {
     using namespace mc2::sim;
-    WayPath path;
+    mc2::sim::WayPath path;
     {
-        using T = WayPath;
+        using T = mc2::sim::WayPath;
         path = save_probe::patterned<T>(&T::points, &T::curPoint, &T::mode);
         path.curPoint = 1;
         SAVE_FIELD_SHAPE(path, points, curPoint, mode);
@@ -170,7 +187,7 @@ TEST_CASE("save fields: ORDQ nested payloads independent member census") {
         CHECK(save_probe::roundtrip(attack, [](auto& a, auto& v) { a(v); }, &T::type,
             &T::method, &T::range, &T::tactic, &T::aimLocation, &T::pursue, &T::obliterate, &T::targetPoint));
     }
-    using T = TacticalOrder;
+    using T = mc2::sim::TacticalOrder;
 #define ORDER_MEMBERS &T::orderId, &T::origin, &T::kind, &T::unitOrder, &T::subOrder, \
     &T::move, &T::attack, &T::target, &T::formationOrdinal, &T::groupFlags, &T::support
     auto sample = save_probe::patterned<T>(&T::orderId, &T::origin, &T::unitOrder,

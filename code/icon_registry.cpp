@@ -1,5 +1,6 @@
 #include "mc2_czstring.h"
 #include "icon_registry.h"
+#include "icon_decode_cache.h"
 #include "asystem.h"
 #include "file.h"
 #include "inifile.h"
@@ -8,13 +9,16 @@
 #include "../mclib/texture_assets.h"
 #include "../RenderCore/KtxLoader.h"
 #include "../GameOS/gameos/texture_decode.h"
+#include "../GameOS/gameos/gos_render.h"
 #include "mc2fmt.h"
 #include "Gates/gate.h"
 #include "vfs.h"
+#include "../GameOS/gameos/load_scope.h"
 #include <filesystem>
 #include <unordered_map>
 #include <set>
 #include <bit>
+#include <array>
 
 namespace unit_icons {
 namespace {
@@ -65,6 +69,7 @@ Pixels load(std::string path, bool hud = false) {
 }
 
 void addSheet(std::string path, int cw, int ch, int stripRows = 0) {
+    graphics::pump_loading_events();
     if (!stripRows && sourceScale.contains(path)) return;
     auto src = load(path, stripRows != 0);
     if (src.data.empty()) return;
@@ -126,6 +131,7 @@ int cachedSheetRank(std::string_view sheet) {
 }
 void init(std::string first = {}, int cw = 25, int ch = 30) {
     if (texture) return;
+    MC2_LOAD_SCOPE("icons.init");
     std::vector<uint32_t> missing(16 * 16);
     for (int y = 0; y < 16; ++y)
         for (int x = 0; x < 16; ++x) missing[y * 16 + x] = ((x / 4 + y / 4) % 2) ? 0xffff00ff : 0xff202020;
@@ -155,19 +161,58 @@ void init(std::string first = {}, int cw = 25, int ch = 30) {
         const auto* info = fastFiles[i]->getFilesInfo();
         for (long j = 0; j < fastFiles[i]->getNumFiles(); ++j) collect(info[j].pfe->name, &loose);
     }
-    for (const auto& path : loose) {
+    uint64_t decodeKey = iconDecodeVersion;
+    bool cacheable = true;
+    { MC2_LOAD_SCOPE("icons.key");
+      for (const auto& path : loose) {
+        const auto digest = mc2::vfs::contentDigest(path);
+        cacheable = cacheable && digest != 0;
+        decodeKey = iconDecodeKey(decodeKey, path, digest, LookupModPriority(path.c_str()));
+      }
+    }
+    // These are exact decoded source pixels, independent of resolution, sheet
+    // layout and atlas coordinates. Packing and all texture mutations stay here.
+    std::array<char, 1024> userDir{};
+    const std::string cacheDir = gos_GetUserDataDirectory(userDir)
+        ? (std::filesystem::path(userDir.data()) / "cache" / "icons").generic_string() : std::string{};
+    Registry cachedIcons;
+    std::map<std::string, int> cachedRanks;
+    const bool cacheHit = [&] {
+        MC2_LOAD_SCOPE("icons.cacheRead");
+        if (!cacheable) return false;
+        const auto bytes = mc2cache::readEntry(cacheDir, iconDecodeKind, decodeKey);
+        return bytes && decodeIcons(*bytes, decodeKey, cachedIcons, cachedRanks);
+    }();
+    { MC2_LOAD_SCOPE("icons.decode");
+      for (const auto& path : loose) {
+        graphics::pump_loading_events();
         const bool pilot = path.starts_with("data/art/pilots/");
         auto relative = path.substr(std::string(pilot ? "data/art/pilots/" : "data/art/mechicons/").size());
         relative = relative.substr(0, relative.find_last_of('.'));
         const std::string key = pilot ? "pilot/" + relative : relative.starts_with("hud/") ? relative : "mech/" + relative;
         const int priority = LookupModPriority(path.c_str());
         if (namedPriority.contains(key) && namedPriority[key] <= priority) continue;
-        auto src = load(path, key.starts_with("hud/") || pilot);
-        if (!src.data.empty()) {
-            registry.add(key, src.w, src.h, src.data);
+        const bool raw = key.starts_with("hud/") || pilot;
+        Pixels src;
+        if (raw && cachedRanks.contains(key) && cachedRanks.at(key) == priority) {
+            auto& icon = cachedIcons.icons.at(key);
+            src.w = icon.width; src.h = icon.height;
+            src.data = std::move(icon.pixels);
+        } else src = load(path, raw);
+        if (!src.data.empty() && registry.add(key, src.w, src.h, src.data)) {
             namedPriority[key] = priority;
-        }
+        } else if (raw) cacheable = false;
+      }
+      if (!cacheHit && cacheable) {
+        auto rawRanks = namedPriority;
+        std::erase_if(rawRanks, [](const auto& item) {
+            const auto& [key, rank] = item;
+            return !key.starts_with("hud/") && !key.starts_with("pilot/");
+        });
+        mc2cache::writeEntry(cacheDir, iconDecodeKind, decodeKey, encodeIcons(registry, rawRanks, decodeKey));
+      }
     }
+    mc2::fmt::print_out("[ICON_DECODE_CACHE] {} key={:016x} sources={}\n", cacheHit ? "hit" : "miss", decodeKey, loose.size());
     damageIcons.resize(kDamageSlots);
     for (int i = 0; i < kDamageSlots; ++i) {
         const int cell = i % kDamagePerPage;
@@ -178,7 +223,8 @@ void init(std::string first = {}, int cw = 25, int ch = 30) {
         page = mc2::textures::fromRawPixels(std::bit_cast<DWORD*>(blankPage.data()), gos_Texture_Alpha, 0, kDamageEdge);
         mc2::textures::adoptOwned(page);
     }
-    if (!registry.pack() || registry.edge > 8192) {
+    const bool packed = [&] { MC2_LOAD_SCOPE("icons.pack"); return registry.pack(); }();
+    if (!packed || registry.edge > 8192) {
         mc2::fmt::print_err("[ICON_REGISTRY] atlas exceeds texture source capacity; using placeholder\n");
         std::erase_if(registry.icons, [](const auto& item) {
             const auto& [key, icon] = item;

@@ -200,6 +200,7 @@ def test_driver_exits_zero_only_on_pass(sm, rc):
     assert laptop_gate.exit_code(sm) == rc
 
 
+@pytest.mark.skipif(os.name != "nt", reason="Pinned PC reference kits under E:/mc2-ref; no mods on the Linux box")
 def test_ref_sums_cover_both_pinned_kits_and_refcheck_flags_a_bad_file(tmp_path, monkeypatch):
     if gate_hosts.current_host() != "pc" and not laptop_gate.PC_REF.exists():
         pytest.skip(f"PC reference tree {laptop_gate.PC_REF} is absent on this host")

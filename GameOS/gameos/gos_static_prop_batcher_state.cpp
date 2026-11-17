@@ -26,6 +26,7 @@ std::unordered_map<uint32_t, PerTypeBucket> s_bucketsByType;
 // Persistent per-type static instance store, read directly by the native feed.
 // Rebuilt only when the registry generation or visible set changes.
 std::unordered_map<uint32_t, std::vector<GpuStaticPropInstance>> s_persistentStaticStore;
+std::unordered_map<uint32_t, PropLodSlots> s_persistentLodSlots;
 uint64_t s_persistentStaticGen = 0xFFFFFFFFFFFFFFFFull;  // sentinel = never built
 
 // Stage 3.C: per-submitMultiShape batch accumulator. Cleared at the start

@@ -475,6 +475,7 @@ def test_verify_runs_build_then_doctest_and_stops_at_the_first_failure(tmp_path)
     assert verdict == "OK" and calls == ["ninja_build.py", "run-unit-tests.sh"]
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows Git Bash discovery must reject WSL launchers")
 def test_git_bash_never_picks_the_wsl_launcher():
     lm = _load_module()
     gitexe = "C:\\Program Files\\Git\\cmd\\git.exe"

@@ -1,5 +1,6 @@
 """Scratch lifecycle and packaging guard, using an isolated mod tree."""
 import json
+import os
 from pathlib import Path
 from unittest.mock import patch
 
@@ -84,6 +85,7 @@ def test_hidden_entries_stay_unpromoted(mod):
     assert (mod / "data/visible.txt").exists()
 
 
+@pytest.mark.skipif(os.name != "nt", reason="Windows NTFS junction via cmd mklink /J")
 def test_nested_junction_in_scratch_is_refused(mod, tmp_path):
     import subprocess
     outside = tmp_path / "outside"

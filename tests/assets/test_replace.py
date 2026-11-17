@@ -218,6 +218,7 @@ def _provenance(cube):
         "source_url": "local:pytest-cube", "license": "test-fixture", "orientation_reviewed": True}))
 
 
+@pytest.mark.skipif(os.name != "nt", reason="Canonical BC7 package cook requires Windows texconv.exe")
 def test_package_cooks_through_the_canonical_pipeline(cube, entry, artifact_root, monkeypatch):
     """The catalog frontend fits; tools/content_pipeline cooks. The runtime GLB's world geometry is
     the fitted candidate, node transforms baked, authored normals kept (no faceting)."""
@@ -256,6 +257,7 @@ def test_package_cooks_through_the_canonical_pipeline(cube, entry, artifact_root
         package(entry, spec, cube, "good", allow_stock_damage=True)
 
 
+@pytest.mark.skipif(os.name != "nt", reason="Canonical BC7 package cook requires Windows texconv.exe")
 def test_destroyed_candidate_rides_the_same_package(cube, entry, artifact_root, monkeypatch):
     from tools.assets.replace import package
     from tools.content_pipeline import cache

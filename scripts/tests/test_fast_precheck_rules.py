@@ -96,6 +96,7 @@ def test_precheck_link_defaults_and_flags():
 
 def test_precheck_auto_link_follows_compiled_inputs(monkeypatch):
     seen = {}
+    monkeypatch.setattr(lm, "tip_changed_paths", lambda *a: [])
     monkeypatch.setattr(lm, "git_out", lambda root, *a: "a" * 40)
     monkeypatch.setattr(lm, "virtual_merge", lambda *a, **k: ("tree", []))
     monkeypatch.setattr(lm, "virtual_head", lambda *a, **k: "vcommit")

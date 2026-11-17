@@ -23,6 +23,7 @@ def test_default_root_is_on_e():
     assert str(stage_root.default_root("mod_smoke")).replace("\\", "/").endswith("/mod_smoke-stage")
 
 
+@pytest.mark.skipif(os.name != "nt", reason="Windows G: drive containment")
 def test_g_staging_is_allowed_only_under_lane_temp(monkeypatch):
     usage = namedtuple("usage", "total used free")
     monkeypatch.setattr(stage_root.shutil, "disk_usage", lambda p: usage(0, 0, 20 * 2**30))

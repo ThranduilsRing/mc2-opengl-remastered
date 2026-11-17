@@ -36,6 +36,7 @@ constexpr uint32_t kRing = kReadLag + 1;
 constexpr uint32_t kMaxScopes = 96;    // scopes one frame may time; more are drawn untimed and counted
 constexpr uint32_t kQueriesPerSlot = kMaxScopes * 2;
 constexpr uint32_t kLogEvery = 120;    // frames per [VK_GPU_PASSES v1] line
+constexpr uint32_t kMaxStats = 16;     // pipeline-statistics scopes (triangle counts) one frame may record
 constexpr uint32_t kMaxNames = 128;   // pass names plus one "gap:" row per pass that follows idle GPU time
 
 struct Row {
@@ -48,6 +49,8 @@ struct Row {
     bool     seeded = false;
     uint64_t lastSeen = 0;     // value of State::reads when the pass last ran (overlay expiry)
 };
+
+struct StatRow { const char* name = nullptr; double sum[3] = {}; uint32_t frames = 0; };   // input-assembly prims, clipping prims, fragment invocations
 
 struct State {
     VulkanContext*  ctx = nullptr;
@@ -63,6 +66,15 @@ struct State {
     uint64_t        benchFrames[kRing] = {};
     std::atomic<uint64_t> frame{0};
     uint64_t        reads = 0;               // frames read back; rows idle for kStaleFrames reads drop out of the overlay snapshot
+    // pipeline statistics (triangles per pass), a wanted device feature: a second pool of kMaxStats queries per ring slot
+    VkQueryPool     statPool = VK_NULL_HANDLE;
+    std::atomic<uint32_t> statCount[kRing]{};
+    const char*     statNames[kRing][kMaxStats] = {};
+    StatRow         statRows[kMaxStats * 4];
+    uint32_t        statRowCount = 0;
+    uint32_t        poseSkip = 0;    // reads still to discard after poseBegin (they belong to the previous pose)
+    std::string     poseName;
+    uint32_t        statUsed = 0;    // stat queries of the slot readSlot just read (the caller resets them)
     // frameEnd's query-reset / Tracy-collect submit: one persistent pool, a command buffer per ring slot, each reused once its last submit completed
     // (a pool created and destroyed per frame cost ~3 ms while Tracy was connected).
     OwnedCommandPool endPool[kRing];   // one pool per ring slot: vkResetCommandPool instead of per-cb reset
@@ -90,7 +102,7 @@ State g;
 // they are ordered by program order; the owner can move between main and the present worker, so the hand-off is atomic anyway: the
 // payload is written before the release store of tailFrame and read after its acquire load.
 std::atomic<uint64_t> tailFrame{~0ull};
-std::atomic<uint32_t> tailFirst{0}, tailCount{0};
+std::atomic<uint32_t> tailFirst{0}, tailCount{0}, tailStatFirst{0}, tailStatCount{0};
 std::atomic<bool>     tailSubmitted{false};
 
 // WATER-REFLECT-TIER: the water reflection pass cost per resolution, logged once per mission. The island publishes the target size each
@@ -157,9 +169,10 @@ void flushWindow(uint64_t frame) {
         output += values;
     }
     output += '\n';
-    mc2::fmt::print_err("[VK_GPU_PASSES v1] frame={} n={} span_ms={:.3f} sum_ms={:.3f} unattributed_ms={:.3f} scopes={} dropped={} overflow={} |{}",
+    // pose= goes after the frozen keys: tools/box_gpu_passes.py matches "[VK_GPU_PASSES v1] frame=".
+    mc2::fmt::print_err("[VK_GPU_PASSES v1] frame={} n={} span_ms={:.3f} sum_ms={:.3f} unattributed_ms={:.3f} scopes={} dropped={} overflow={} pose={} |{}",
         frame, g.windowFrames, g.spanSumMs / n, g.sumSumMs / n, (g.spanSumMs - g.sumSumMs) / n,
-        g.rowCount, g.windowDropped, g.windowOverflow, output);
+        g.rowCount, g.windowDropped, g.windowOverflow, (g.poseName.empty() ? "-" : g.poseName.c_str()), output);
     if (const uint64_t res = reflectRes.load(std::memory_order_relaxed); res != 0 && !reflectCostDone.load(std::memory_order_relaxed)) {
         for (uint32_t i = 0; i < g.rowCount; ++i) {
             const Row& r = g.rows[i];
@@ -172,6 +185,17 @@ void flushWindow(uint64_t frame) {
             break;
         }
     }
+    if (g.statRowCount != 0) {
+        std::string tris;
+        for (uint32_t i = 0; i < g.statRowCount; ++i) {
+            const StatRow& r = g.statRows[i];
+            if (r.frames == 0) continue;
+            std::snprintf(values, sizeof values, " %s=ia:%.0f/clip:%.0f/fs:%.0f(x%u)", r.name, r.sum[0] / r.frames, r.sum[1] / r.frames, r.sum[2] / r.frames, r.frames);
+            tris += values;
+        }
+        if (!tris.empty() && mc2_diag::tagRequested("VK_GPU_TRIS")) mc2::fmt::print_err("[VK_GPU_TRIS v1] pose={} frame={} n={} |{}\n", (g.poseName.empty() ? "-" : g.poseName.c_str()), frame, g.windowFrames, tris);
+    }
+    for (uint32_t i = 0; i < g.statRowCount; ++i) { g.statRows[i].sum[0] = g.statRows[i].sum[1] = g.statRows[i].sum[2] = 0; g.statRows[i].frames = 0; }
     for (uint32_t i = 0; i < g.rowCount; ++i) { g.rows[i].sumMs = 0; g.rows[i].calls = 0; g.rows[i].frames = 0; }
     g.spanSumMs = g.sumSumMs = 0;
     g.windowFrames = g.windowDropped = g.windowOverflow = 0;
@@ -180,6 +204,23 @@ void flushWindow(uint64_t frame) {
 // Reads one slot and folds it into the window. `used` is how many scopes the slot recorded (all are reset afterwards).
 void readSlot(uint32_t slot, uint32_t& used) {
     ZoneScopedN("VKIsl.Present.Tail.Blit.Profile.QueryCollection");
+    g.statUsed = std::min<uint32_t>(g.statCount[slot].exchange(0, std::memory_order_relaxed), kMaxStats);
+    const bool skipRead = g.poseSkip != 0 && g.count[slot].load(std::memory_order_relaxed) != 0;
+    if (skipRead) --g.poseSkip;
+    if (const uint32_t nStat = g.statUsed; nStat != 0 && g.statPool && !skipRead) {
+        uint64_t sr[kMaxStats * 4] = {};   // per query: ia prims, clip prims, fs invocations, availability
+        const VkResult rr = vkGetQueryPoolResults(g.device, g.statPool, slot * kMaxStats, nStat, sizeof sr, sr, 4 * sizeof(uint64_t),
+                                                  VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WITH_AVAILABILITY_BIT);
+        for (uint32_t i = 0; i < nStat && (rr == VK_SUCCESS || rr == VK_NOT_READY); ++i) {
+            if (sr[i * 4 + 3] == 0) continue;
+            StatRow* row = nullptr;
+            for (uint32_t k = 0; k < g.statRowCount; ++k) if (std::strcmp(g.statRows[k].name, g.statNames[slot][i]) == 0) { row = &g.statRows[k]; break; }
+            if (!row && g.statRowCount < kMaxStats * 4) { row = &g.statRows[g.statRowCount++]; row->name = g.statNames[slot][i]; }
+            if (!row) continue;
+            for (int c = 0; c < 3; ++c) row->sum[c] += static_cast<double>(sr[i * 4 + c]);
+            ++row->frames;
+        }
+    }
     const uint32_t recorded = g.count[slot].exchange(0);
     if (recorded > kMaxScopes) g.windowOverflow += recorded - kMaxScopes;
     used = std::min<uint32_t>(recorded, kMaxScopes);
@@ -217,7 +258,7 @@ void readSlot(uint32_t slot, uint32_t& used) {
         if (k == nNames && nNames < kMaxNames) { nameOf[nNames] = nm; ++nNames; }
         if (k < nNames) { perName[k] += ms; ++callsOf[k]; iv[ivN++] = {rb, re, k}; }
     }
-    if (!any) return;
+    if (!any || skipRead) return;
     {   // Union coverage (nested scopes count once) and the idle gaps, charged to the pass that starts after each gap.
         std::sort(iv, iv + ivN, [](const Iv& a, const Iv& b) { return a.b < b.b; });
         double gapOf[kMaxNames] = {};
@@ -285,6 +326,23 @@ void noteWaterReflection(uint32_t w, uint32_t h) {
 }
 void rearmWaterReflectionCost() { reflectRes.store(0, std::memory_order_relaxed); reflectCostDone.store(false, std::memory_order_relaxed); }
 
+// Per-pose proof windows (gos_visual_capture.cpp declares these itself): poseBegin drops the pending window and the next few reads (frames of the
+// previous pose); poseEnd logs the window under the pose name.
+void poseBegin() {
+    if (!g.timers) return;
+    for (uint32_t i = 0; i < g.rowCount; ++i) { g.rows[i].sumMs = 0; g.rows[i].calls = 0; g.rows[i].frames = 0; }
+    for (uint32_t i = 0; i < g.statRowCount; ++i) { g.statRows[i].sum[0] = g.statRows[i].sum[1] = g.statRows[i].sum[2] = 0; g.statRows[i].frames = 0; }
+    g.spanSumMs = g.sumSumMs = 0;
+    g.windowFrames = g.windowDropped = g.windowOverflow = 0;
+    g.poseSkip = kReadLag + 1;
+}
+void poseEnd(std::string_view name) {
+    if (!g.timers || g.windowFrames == 0) return;
+    g.poseName = name;
+    flushWindow(g.frame.load(std::memory_order_relaxed));
+    g.poseName.clear();
+}
+
 uint32_t snapshot(PassStat* out, uint32_t maxRows, float* spanMs) {
     if (spanMs) *spanMs = static_cast<float>(g.spanEma);
     uint32_t n = 0;
@@ -330,6 +388,17 @@ void init(VulkanContext& ctx) {
             g.timers = submitOneShot(ctx, [&](VkCommandBuffer cb) { vkCmdResetQueryPool(cb, pool, 0, n); }, "gpuprof_reset");
             if (!g.timers) { vkDestroyQueryPool(g.device, g.pool, nullptr); g.pool = VK_NULL_HANDLE; }
         }
+        if (g.timers && profile::featureEnabled(ctx.profile(), "pipelineStatisticsQuery")) {
+            VkQueryPoolCreateInfo sci{VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO};
+            sci.queryType = VK_QUERY_TYPE_PIPELINE_STATISTICS;
+            sci.queryCount = kRing * kMaxStats;
+            sci.pipelineStatistics = VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT | VK_QUERY_PIPELINE_STATISTIC_CLIPPING_PRIMITIVES_BIT |
+                                     VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT;
+            if (vkCreateQueryPool(g.device, &sci, nullptr, &g.statPool) == VK_SUCCESS) {
+                const VkQueryPool sp = g.statPool; const uint32_t sn = sci.queryCount;
+                if (!submitOneShot(ctx, [&](VkCommandBuffer cb) { vkCmdResetQueryPool(cb, sp, 0, sn); }, "gpuprof_stat_reset")) { vkDestroyQueryPool(g.device, g.statPool, nullptr); g.statPool = VK_NULL_HANDLE; }
+            }
+        }
         std::fprintf(stderr, "[VK_GPU_PASSES v1] timestamps %s ns_per_tick=%.3f scopes_per_frame=%u\n", g.timers ? "armed" : "unavailable",
                      g.nsPerTick, kMaxScopes);
     }
@@ -369,6 +438,8 @@ void shutdown(VulkanContext& ctx) {
 #ifdef TRACY_ENABLE
     if (g.tracy) { tracy::DestroyVkContext(g.tracy); g.tracy = nullptr; }
 #endif
+    if (g.timers && g.windowFrames != 0) flushWindow(g.frame.load(std::memory_order_relaxed));   // a short run still reports its partial window
+    if (g.statPool) { vkDestroyQueryPool(g.device, g.statPool, nullptr); g.statPool = VK_NULL_HANDLE; }
     if (g.pool) { vkDestroyQueryPool(g.device, g.pool, nullptr); g.pool = VK_NULL_HANDLE; }
     for (OwnedCommandPool& p : g.endPool) p.reset();
     g.endPoolsReady = false;
@@ -389,15 +460,19 @@ bool recordFrameEnd(VkCommandBuffer cb) {
     if (!g.timers && !tracyLive) return false;
     const uint64_t f = g.frame.load(std::memory_order_relaxed);
     uint32_t used = 0;
+    g.statUsed = 0;
     const uint32_t rslot = static_cast<uint32_t>((f + kRing - kReadLag) % kRing);
     if (g.timers && f >= kReadLag) {
         readSlot(rslot, used);
         if (g.windowFrames >= kLogEvery) flushWindow(f);
     }
     if (used) vkCmdResetQueryPool(cb, g.pool, rslot * kQueriesPerSlot, used * 2);
+    if (g.statUsed) vkCmdResetQueryPool(cb, g.statPool, rslot * kMaxStats, g.statUsed);
 #ifdef TRACY_ENABLE
     if (tracyLive) { ZoneScopedN("VKIsl.Present.Tail.Blit.Profile.TracyCollection"); TracyVkCollect(g.tracy, cb); }
 #endif
+    tailStatFirst.store(rslot * kMaxStats, std::memory_order_relaxed);
+    tailStatCount.store(g.statUsed, std::memory_order_relaxed);
     tailFirst.store(rslot * kQueriesPerSlot, std::memory_order_relaxed);
     tailCount.store(used * 2, std::memory_order_relaxed);
     tailSubmitted.store(false, std::memory_order_relaxed);
@@ -417,8 +492,9 @@ void frameEnd() {
         // Recorded into this frame's present tail. A refused submit never ran the reset: issue it now so the slot does not read stale.
         const uint32_t first = tailFirst.load(std::memory_order_relaxed), count = tailCount.load(std::memory_order_relaxed);
         if (!tailSubmitted.load(std::memory_order_acquire) && count != 0) {
-            const VkQueryPool pool = g.pool;
-            submitOneShot(*g.ctx, [&](VkCommandBuffer one) { vkCmdResetQueryPool(one, pool, first, count); }, "gpuprof_reset_late");
+            const VkQueryPool pool = g.pool, sp = g.statPool;
+            const uint32_t sFirst = tailStatFirst.load(std::memory_order_relaxed), sCount = tailStatCount.load(std::memory_order_relaxed);
+            submitOneShot(*g.ctx, [&](VkCommandBuffer one) { vkCmdResetQueryPool(one, pool, first, count); if (sCount) vkCmdResetQueryPool(one, sp, sFirst, sCount); }, "gpuprof_reset_late");
         }
         tailFrame.store(~0ull, std::memory_order_release);
         g.frame.fetch_add(1, std::memory_order_relaxed);
@@ -432,6 +508,7 @@ void frameEnd() {
 
     const uint64_t f = g.frame.load(std::memory_order_relaxed);
     uint32_t used = 0;
+    g.statUsed = 0;
     const uint32_t rslot = static_cast<uint32_t>((f + kRing - kReadLag) % kRing);
     if (g.timers && f >= kReadLag) {
         readSlot(rslot, used);
@@ -465,6 +542,7 @@ void frameEnd() {
             bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
             if (vkResetCommandPool(g.device, g.endPool[cslot].get(), 0) == VK_SUCCESS && vkBeginCommandBuffer(cb, &bi) == VK_SUCCESS) {
                 if (used) vkCmdResetQueryPool(cb, g.pool, rslot * kQueriesPerSlot, used * 2);
+                if (g.statUsed) vkCmdResetQueryPool(cb, g.statPool, rslot * kMaxStats, g.statUsed);
 #ifdef TRACY_ENABLE
                 if (tracyLive) { ZoneScopedN("VKIsl.Present.Tail.Blit.Profile.TracyCollection"); TracyVkCollect(g.tracy, cb); }
 #endif
@@ -480,13 +558,14 @@ void frameEnd() {
             // The slot's end command buffer did not retire in time: the read-out queries still must be reset or the slot reads stale next lap.
             const VkQueryPool pool = g.pool;
             const uint32_t first = rslot * kQueriesPerSlot, count = used * 2;
-            submitOneShot(*g.ctx, [&](VkCommandBuffer one) { vkCmdResetQueryPool(one, pool, first, count); }, "gpuprof_reset_late");
+            const VkQueryPool sp = g.statPool; const uint32_t sFirst = rslot * kMaxStats, sCount = g.statUsed;
+            submitOneShot(*g.ctx, [&](VkCommandBuffer one) { vkCmdResetQueryPool(one, pool, first, count); if (sCount) vkCmdResetQueryPool(one, sp, sFirst, sCount); }, "gpuprof_reset_late");
         }
     }
     g.frame.fetch_add(1, std::memory_order_relaxed);
 }
 
-Scope::Scope(VkCommandBuffer cb, std::string_view nameSv, [[maybe_unused]] std::string_view file, [[maybe_unused]] uint32_t line) {
+Scope::Scope(VkCommandBuffer cb, std::string_view nameSv, [[maybe_unused]] std::string_view file, [[maybe_unused]] uint32_t line, bool tris) {
     infra::breadcrumb("pass", nameSv, 0, cb);
     const char* name = nameSv.data();
     if (cb == VK_NULL_HANDLE || g.device == VK_NULL_HANDLE) return;
@@ -509,6 +588,15 @@ Scope::Scope(VkCommandBuffer cb, std::string_view nameSv, [[maybe_unused]] std::
             tsIndex_ = static_cast<int32_t>(idx);
             vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, g.pool, (slot * kMaxScopes + idx) * 2);
         }
+        if (tris && g.statPool) {
+            const uint32_t sidx = g.statCount[slot].fetch_add(1, std::memory_order_relaxed);
+            if (sidx < kMaxStats) {
+                g.statNames[slot][sidx] = name;
+                statSlot_ = slot;
+                statIndex_ = static_cast<int32_t>(sidx);
+                vkCmdBeginQuery(cb, g.statPool, slot * kMaxStats + sidx, 0);
+            }
+        }
     }
 #ifdef TRACY_ENABLE
     if (g.tracy && tracy::GetProfiler().IsConnected()) {
@@ -523,6 +611,10 @@ void Scope::end() {
 #ifdef TRACY_ENABLE
     if (tracy_) { zone(tracyZone_)->~VkCtxScope(); tracy_ = false; }
 #endif
+    if (statIndex_ >= 0) {
+        vkCmdEndQuery(cb_, g.statPool, statSlot_ * kMaxStats + static_cast<uint32_t>(statIndex_));
+        statIndex_ = -1;
+    }
     if (tsIndex_ >= 0) {
         vkCmdWriteTimestamp(cb_, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, g.pool, (tsSlot_ * kMaxScopes + static_cast<uint32_t>(tsIndex_)) * 2 + 1);
         tsIndex_ = -1;

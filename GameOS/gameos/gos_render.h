@@ -3,6 +3,8 @@
 
 #include <SDL2/SDL.h>
 #include <string_view>
+#include <functional>
+#include <algorithm>
 
 // SMOKE-NO-CURSOR-STEAL-1: true when this process must NOT touch the OS cursor
 // (no SDL_WarpMouseInWindow, no window mouse-grab, no Win32 ClipCursor).
@@ -67,6 +69,52 @@ bool gos_WindowUserVisible(SDL_Window* window);
 bool gos_CursorCaptureForbidden(SDL_Window* window, const char** reason);
 
 namespace graphics {
+
+// Tracks actual pumps, rather than checkpoint calls skipped by the throttle.
+struct LoadingPumpStats {
+    Uint64 lastPump = 0, maxGap = 0;
+    std::string_view phase, maxPhase;
+    void begin(Uint64 now) {
+        lastPump = now;
+        maxGap = 0;
+        phase = maxPhase = "mission_load_start";
+    }
+    void pumped(Uint64 now) {
+        if (phase.empty()) return;
+        const auto previous = maxGap;
+        maxGap = std::max(maxGap, now - lastPump);
+        if (maxGap != previous) {
+            maxPhase = phase;
+        }
+        lastPump = now;
+    }
+};
+void begin_loading_events();
+void loading_events_phase(std::string_view phase);
+void end_loading_events();
+void loading_work(const std::function<void()>& work);
+void set_loading_draw(void (*draw)());
+void redraw_loading_screen();
+std::string_view loading_phase();
+constexpr unsigned loading_dots(Uint64 milliseconds) { return (milliseconds * 3 / 1000) % 4; }
+constexpr std::string_view loading_label(std::string_view phase) {
+    if (phase == "mission_ready" || phase == "render_prewarm_ready") return "Ready";
+    if (phase == "terrain_ready") return "Pathfinding";
+    if (phase == "actor_spawn_ready") return "Terrain objects";
+    if (phase == "terrain_objects_ready" || phase == "texture_prewarm_ready") return "Textures";
+    if (phase == "terrain_textures") return "Terrain textures";
+    if (phase == "mission_settings_ready" || phase.starts_with("terrain")) return "Terrain";
+    if (phase == "mission_support_ready") return "Geometry";
+    if (phase == "prop_materials" || phase == "props") return "Materials";
+    if (phase == "gpu_finalize_ready" || phase.starts_with("vegetation")) return "Vegetation";
+    if (phase == "mechs") return "Mechs";
+    if (phase == "legacy") return "Objects";
+    if (phase == "sky") return "Sky";
+    if (phase == "water") return "Water";
+    if (phase == "shadows" || phase == "shadow_bake") return "Shadows";
+    if (phase == "postprocess") return "Effects";
+    return "Mission";
+}
 
 struct RenderWindow;
 

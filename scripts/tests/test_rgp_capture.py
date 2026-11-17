@@ -1,5 +1,9 @@
 import json, sys
 from pathlib import Path
+import pytest
+
+if sys.platform != "win32":
+    pytest.skip("Windows Radeon GPU Profiler APPDATA presets", allow_module_level=True)
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "perf"))
 import rgp_capture

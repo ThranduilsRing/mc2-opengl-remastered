@@ -15,21 +15,33 @@
 class PropLodStateMap {
 public:
     uint8_t& operator[](uint64_t key) {
+        return dense(resolve(key));
+    }
+    // Indices survive hash-table growth and dynamic inserts. Erase/clear
+    // invalidate bindings; duplicate keys deliberately share one dense value.
+    size_t resolve(uint64_t key) {
         if ((used_ + 1) * 4 > slots_.size() * 3) grow();
         size_t i = home(key);
         while (slots_[i].used) {
-            if (slots_[i].key == key) return slots_[i].val;
+            if (slots_[i].key == key) return slots_[i].index;
             i = (i + 1) & mask();
         }
-        slots_[i] = {key, 0, 1};
+        const size_t index = free_.empty() ? values_.size() : free_.back();
+        if (free_.empty()) values_.push_back(0);
+        else { free_.pop_back(); values_[index] = 0; }
+        slots_[i] = {key, index, 1};
         ++used_;
-        return slots_[i].val;
+        return index;
     }
+    uint8_t& dense(size_t index) { return values_[index]; }
+    uint64_t revision() const { return revision_; }
     void erase(uint64_t key) {
         if (slots_.empty()) return;
         size_t i = home(key);
         while (slots_[i].used && slots_[i].key != key) i = (i + 1) & mask();
         if (!slots_[i].used) return;
+        free_.push_back(slots_[i].index);
+        ++revision_;
         // Backward-shift deletion keeps probe chains intact without tombstones.
         size_t j = i;
         for (;;) {
@@ -42,20 +54,23 @@ public:
         slots_[i].used = 0;
         --used_;
     }
-    void clear() { slots_.clear(); used_ = 0; }
+    void clear() { slots_.clear(); values_.clear(); free_.clear(); used_ = 0; ++revision_; }
     size_t size() const { return used_; }
     const uint8_t* find(uint64_t key) const {
         if (slots_.empty()) return nullptr;
         size_t i = home(key);
         while (slots_[i].used) {
-            if (slots_[i].key == key) return &slots_[i].val;
+            if (slots_[i].key == key) return &values_[slots_[i].index];
             i = (i + 1) & mask();
         }
         return nullptr;
     }
 private:
-    struct Slot { uint64_t key; uint8_t val; uint8_t used; };
+    struct Slot { uint64_t key; size_t index; uint8_t used; };
     std::vector<Slot> slots_;
+    std::vector<uint8_t> values_;
+    std::vector<size_t> free_;
+    uint64_t revision_ = 0;
     size_t used_ = 0;
     size_t mask() const { return slots_.size() - 1; }
     size_t home(uint64_t k) const {   // the key's low bits are the typeID, so mix before masking
@@ -66,8 +81,26 @@ private:
         std::vector<Slot> old;
         old.swap(slots_);
         slots_.assign(old.empty() ? 1024 : old.size() * 2, Slot{0, 0, 0});
-        used_ = 0;
-        for (const Slot& s : old) if (s.used) (*this)[s.key] = s.val;
+        for (const Slot& s : old) if (s.used) {
+            size_t i = home(s.key);
+            while (slots_[i].used) i = (i + 1) & mask();
+            slots_[i] = s;
+        }
+    }
+};
+
+// Rebuilt store order is only an alignment, never an identity. Resolve every
+// leaf's original key again after a store edit or state invalidation.
+struct PropLodSlots {
+    std::vector<size_t> indices;
+    uint64_t revision = UINT64_MAX;
+    template<class Instance, class Key>
+    void bind(PropLodStateMap& state, std::span<const Instance> instances, Key key) {
+        if (revision == state.revision() && indices.size() == instances.size()) return;
+        indices.clear();
+        indices.reserve(instances.size());
+        for (const auto& inst : instances) indices.push_back(state.resolve(key(inst)));
+        revision = state.revision();
     }
 };
 

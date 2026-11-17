@@ -7,6 +7,20 @@
 using mc2::sim::TickClock;
 using mc2::sim::kTickSeconds;
 
+TEST_CASE("sim speed: plus/minus keys step and clamp") {
+    using mc2::sim::speedKeyStep;
+    CHECK(speedKeyStep(1.f, false, false) == 2.f);
+    CHECK(speedKeyStep(2.f, false, false) == 4.f);
+    CHECK(speedKeyStep(4.f, false, false) == 4.f);
+    CHECK(speedKeyStep(0.5f, false, false) == 1.f);
+    CHECK(speedKeyStep(1.f, false, true) == 1.f);
+    CHECK(speedKeyStep(4.f, true, false) == 2.f);
+    CHECK(speedKeyStep(2.f, true, false) == 1.f);
+    CHECK(speedKeyStep(1.f, true, false) == 0.5f);
+    CHECK(speedKeyStep(0.5f, true, false) == 0.5f);
+    CHECK(speedKeyStep(1.f, true, true) == 1.f);
+}
+
 TEST_CASE("sim speed: cycle, clamp and multiplayer disable") {
     using namespace mc2::sim;
     for (float speed : {0.5f, 1.f, 2.f, 4.f}) {

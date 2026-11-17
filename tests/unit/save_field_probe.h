@@ -41,6 +41,9 @@ template<class T> void pattern(T& value, unsigned char seed) {
     else if constexpr (std::is_same_v<T, unsigned long>) value = static_cast<std::uint32_t>(0x01010101u * seed);
     else if constexpr (std::is_integral_v<T>) std::memset(&value, seed, sizeof(value));
     else if constexpr (std::is_same_v<T, std::string>) value.assign(3, char(seed));
+    else if constexpr (requires { value.flip(); value.set(0); }) {
+        for (size_t i = 0; i < value.size(); ++i) value[i] = (i + seed) % 3 != 0;
+    }
     else if constexpr (requires { value.resize(2); }) {
         value.resize(2);
         for (auto& item : value) pattern(item, seed);

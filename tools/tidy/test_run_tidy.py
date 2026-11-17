@@ -46,6 +46,7 @@ def test_fix_refuses_checks_outside_the_safe_set_and_repo_wide_runs(capsys):
 
 
 def test_not_linux_is_infra_never_a_pass(monkeypatch, capsys):
-    monkeypatch.setattr(sys, "platform", "win32")
+    from types import SimpleNamespace
+    monkeypatch.setattr(rt, "sys", SimpleNamespace(platform="win32", stderr=sys.stderr))
     assert rt.main([]) == 3
     assert "INFRA" in capsys.readouterr().err

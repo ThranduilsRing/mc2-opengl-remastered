@@ -19,6 +19,7 @@ extern uint32_t g_mc2RenderFrame;   // mclib/tgl.cpp
 #include "Gates/render_options.h"
 #include "Gates/gate_cold.h"
 #include "gos_postprocess.h"
+#include "gos_render.h"
 #include "diagnostic_trace.h"
 #include "RenderCore/GpuResidencyPolicy.h"
 #include "platform_windows.h"
@@ -511,6 +512,12 @@ void reload() {
     if(fileError) { fail("shader_directory"); return; }
     const auto originalPath = std::filesystem::weakly_canonical(path, fileError);
     if(fileError) { fail("invalid_original_path"); return; }
+    // validated-v1 carries only one module. These variants share coverage/discard
+    // code, so neither may reload until the protocol can publish both atomically.
+    const auto moduleName = originalPath.filename();
+    if(moduleName == "vfx_vegetation.frag.spv" || moduleName == "vfx_vegetation_shade.frag.spv") {
+        fail("vegetation_fragment_requires_atomic_pair"); return;
+    }
     for(const auto& name : {path, candidate}) {
         const auto resolved = std::filesystem::weakly_canonical(name, fileError);
         const auto relative = resolved.lexically_relative(shaderDir);
@@ -609,7 +616,8 @@ VkResult graphics(VkDevice dev,VkPipelineCache,uint32_t n,const VkGraphicsPipeli
     // The driver compile (the slow part) runs outside the infra mutex so binds and lookups on other threads never wait behind it; the pipeline cache is internally synchronized.
     const VkPipelineCache cache=s.cache; ++s.compiling;
     lock.unlock();
-    const VkResult result=vkCreateGraphicsPipelines(dev,cache,n,info,allocator,out);
+    VkResult result;
+    ::graphics::loading_work([&] { result=vkCreateGraphicsPipelines(dev,cache,n,info,allocator,out); });
     lock.lock(); if(--s.compiling==0) s.compileIdle.notify_all();
     if(result!=VK_SUCCESS) { for(uint32_t i=0;i<n;++i) if(out[i]) { vkDestroyPipeline(dev,out[i],allocator); out[i]=VK_NULL_HANDLE; } }
     const double ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count(); s.creationMs+=ms; s.creations+=n; s.dirty=true; mc2_hitch2::stats().pipelineCreates.fetch_add(n,std::memory_order_relaxed);
@@ -624,7 +632,8 @@ VkResult compute(VkDevice dev,VkPipelineCache,uint32_t n,const VkComputePipeline
     info=updated.data();
     const VkPipelineCache cache=s.cache; ++s.compiling;
     lock.unlock();   // compile outside the infra mutex, as in graphics()
-    const VkResult result=vkCreateComputePipelines(dev,cache,n,info,allocator,out);
+    VkResult result;
+    ::graphics::loading_work([&] { result=vkCreateComputePipelines(dev,cache,n,info,allocator,out); });
     lock.lock(); if(--s.compiling==0) s.compileIdle.notify_all();
     if(result!=VK_SUCCESS) { for(uint32_t i=0;i<n;++i) if(out[i]) { vkDestroyPipeline(dev,out[i],allocator); out[i]=VK_NULL_HANDLE; } }
     const double ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count(); s.creationMs+=ms; s.creations+=n; s.dirty=true; mc2_hitch2::stats().pipelineCreates.fetch_add(n,std::memory_order_relaxed);
@@ -692,6 +701,7 @@ void prewarm(int width,int height) {
     auto& s=state(); const auto begin=std::chrono::steady_clock::now(); const uint64_t before=s.creations;
     const double pipelineMsBefore=s.creationMs;
     const auto warm = [&](std::string_view family, int (*prepare)(int,int)) {
+        ::graphics::pump_loading_events();
         const auto started=std::chrono::steady_clock::now();
         mc2::load::Scope loadScope(mc2::load::entry(family));   // family names are literals
         const int ready=prepare(width,height);

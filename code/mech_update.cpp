@@ -21,6 +21,7 @@ constexpr int GestureGoalFallenBackward = 8;
 long BattleMech::update (void)
 {
     ZoneScopedN("GameLogic.Mech.Update");
+    heatState.tick(heatProfile);
     unitAnimation = appearance->pinnedSimulationAnimation();
     simulationPose = appearance->simPose;
 
