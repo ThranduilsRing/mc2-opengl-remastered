@@ -1,7 +1,1 @@
-Weapon reference: Sarna.net BattleTechWiki (https://www.sarna.net/wiki/).
-
-Weapon descriptions use original project prose informed by these references.
-Individual descriptions retain the requested (attr: sarna.net) credit.
-Sarna's copyright policy identifies its reference text as GNU FDL:
-https://www.sarna.net/wiki/Policy:Copyrights
-No Sarna text is reproduced in this credits file.
+Weapon facts cross-checked against Sarna.net (BattleTech wiki); descriptions are original text.

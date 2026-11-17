@@ -289,7 +289,7 @@ String {
 
 String {
     key = "mechlopedia.component.003_c_xl_fusion_engine.description"
-    text = "The Inner Sphere XL fusion engine uses lightweight shielding to free tonnage for armor and weapons. Its larger installation occupies more of the torso than a standard engine. (attr: sarna.net)"
+    text = "More torso space must be reserved when fitting this Inner Sphere power plant. Lighter radiation shielding reduces engine mass, leaving tonnage available for the rest of the loadout. (attr: sarna.net)"
     legacyId = 34002
     legacySymbol = "IDS_COMPENCYCLO3"
     legacyKey = "legacy.mc2res.34002"
@@ -1027,7 +1027,7 @@ String {
 
 String {
     key = "mechlopedia.component.012_small_jump_jet.description"
-    text = "Jump jets use engine power to propel a 'Mech over obstacles. This equipment belongs to the medium jump jet class; the chassis determines the installation required. (attr: sarna.net)"
+    text = "An obstacle need not force a detour when a BattleMech carries jump equipment. These medium-class jets draw on the reactor for brief airborne movement; fit the class required by the chassis. (attr: sarna.net)"
     legacyId = 34011
     legacySymbol = "IDS_COMPENCYCLO12"
     legacyKey = "legacy.mc2res.34011"
@@ -10954,7 +10954,7 @@ String {
 
 String {
     key = "mechlopedia.component.134_clan_sr_missile_6.description"
-    text = "The Clan SRM pack delivers short-range missile fire against nearby targets. Clan construction makes the launcher lighter and more compact than comparable Inner Sphere equipment. (attr: sarna.net)"
+    text = "Close combat is the role of this Clan missile pack. Its mounting saves both mass and space compared with an Inner Sphere launcher of similar capacity. (attr: sarna.net)"
     legacyId = 34133
     legacySymbol = "IDS_COMPENCYCLO134"
     legacyKey = "legacy.mc2res.34133"
@@ -18584,7 +18584,7 @@ String {
 
 String {
     key = "mechlopedia.component.228_thunderbolt_missile_ammo.description"
-    text = "This ammunition supplies the Long Tom cannon. The Long Tom cannon lobs explosive artillery shells along an indirect firing arc. (attr: sarna.net)"
+    text = "Explosive shells for the Long Tom cannon are carried in this ammunition bin. Their arcing flight lets the gun bombard a target from above. (attr: sarna.net)"
     legacyId = 34227
     legacySymbol = "IDS_COMPENCYCLO228"
     legacyKey = "legacy.mc2res.34227"
