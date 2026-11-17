@@ -340,6 +340,7 @@ class BattleMech : public Mover {
 		bool canAlphaStrike();
 		bool armAlphaStrike();
 		void restoreHeatCapacity();
+		void rederiveHeatCapacity();
 		void setHeatLoadout(std::span<const long> components);
 
 		char				chassisClass;					// none, light, medium, heavy, assault

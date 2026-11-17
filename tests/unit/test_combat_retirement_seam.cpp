@@ -101,6 +101,64 @@ TEST_CASE("heat production/real mech Save and Load preserve heat on reused objec
     GameObject::initialize = oldInitialize;
 }
 
+TEST_CASE("heat production/capacity re-derive keeps heat and tracks sink loss and recovery") {
+    using namespace mc2::save;
+    struct Mech : BattleMech {
+        BattleMechType type;
+        Mech() { type.setAppearanceTypeName("heat-capacity-test-missing"); }
+        ObjectTypePtr getObjectType() override { return &type; }
+    };
+    const bool oldInitialize = GameObject::initialize;
+    GameObject::initialize = true;
+    auto oldSensors = std::move(SensorManager);
+    SensorManager = std::make_unique<SensorSystemManager>();
+    SensorManager->init(false);
+    auto* oldComponents = MasterComponent::masterList;
+    MasterComponent components[2];
+    components[0].stats.sensor.range = 0;
+    components[1].form = COMPONENT_FORM_HEATSINK;
+    components[1].health = 1;
+    components[1].setHeatDissipation(3.0f);
+    MasterComponent::masterList = components;
+    auto* oldPilot = MechWarrior::warriorList[0];
+    MechWarrior pilot;
+    MechWarrior::warriorList[0] = &pilot;
+    {
+        Mech mech;
+        MechRecord seed;
+        seed.value.teamId = -1;
+        seed.value.screenPos = Stuff::Vector4D(0, 0, 0, 0);
+        seed.load(mech);
+        SensorManager->freeSensor(mech.sensorSystem); mech.sensorSystem = nullptr;
+        mech.numOther = 1;
+        mech.inventory[0].masterID = 1;
+        mech.inventory[0].health = 1;
+        mech.inventory[0].disabled = false;
+        mech.rederiveHeatCapacity();
+        const auto full = mech.heatState.capacity;
+        CHECK(full > 0);
+        mech.heatState.heatMilli = 555; mech.heatState.alphaMask.set(3); mech.heatState.alphaExpireTick = 42;
+        mech.inventory[0].disabled = true; // sink destroyed
+        mech.recomputeHeatCapacity();
+        CHECK(mech.heatState.capacity < full);
+        mech.inventory[0].disabled = false; // Mover::recover / repairAll restore it
+        mech.recomputeHeatCapacity();
+        CHECK(mech.heatState.capacity == full);
+        mech.rederiveHeatCapacity(); // post-logistics save-load pass
+        CHECK(mech.heatState.capacity == full);
+        CHECK(mech.heatState.heatMilli == 555);
+        CHECK(mech.heatState.alphaMask.test(3));
+        CHECK(mech.heatState.alphaExpireTick == 42);
+        mech.restoreHeatCapacity(); // object restore path still starts cold
+        CHECK(mech.heatState.heatMilli == 0);
+        CHECK(mech.heatState.capacity == full);
+    }
+    MechWarrior::warriorList[0] = oldPilot;
+    MasterComponent::masterList = oldComponents;
+    SensorManager = std::move(oldSensors);
+    GameObject::initialize = oldInitialize;
+}
+
 struct CombatRetirementSeam {
     static bool rejects(Mission& owner, const char* path) {
         MissionLoadFrame frame{};

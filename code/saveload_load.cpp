@@ -633,6 +633,10 @@ void Mission::loadLogistics(MissionLoadFrame& f) {
 
 	removeSaveScratchFile(tmpName);
 
+	// Objects restored before the saved variants existed; re-derive heat capacity now (heat/mask/expiry kept).
+	for (auto* mech : std::span(ObjectManager->mechs, ObjectManager->maxMechs))
+		if (mech && mech->getExists()) mech->rederiveHeatCapacity();
+
 	//-------------------------------------------------------------------------------------------
 	// Load the CurrentMission number in logistics cause Heidi don't save it with logisticsData.
 	long currentMissionNum = 0;

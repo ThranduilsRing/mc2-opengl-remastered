@@ -73,6 +73,11 @@ void BattleMech::setHeatLoadout(std::span<const long> components) {
 
 void BattleMech::restoreHeatCapacity() {
 	heatState = {}; // phase 1 heat is transient, including when reusing an object
+	rederiveHeatCapacity();
+}
+
+// Capacity only: heat, alpha mask and expiry are untouched (save load calls this after logistics restore).
+void BattleMech::rederiveHeatCapacity() {
 	chassisHeatPoints = heatSinkAdjustmentPoints = 0;
 	CSVFile file;
 	FullPathFileName path;
@@ -1110,6 +1115,7 @@ void BattleMech::repairAll (void)
 	}
 
 	calcAmmoTotals();
+	recomputeHeatCapacity();
 
 	// We need to set the status states for legs and torso based upon our current
 	// condition...
