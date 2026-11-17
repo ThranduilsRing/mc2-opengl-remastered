@@ -662,12 +662,13 @@ void gosRenderer::flushHUDBatch()
             // collision (mirror keyed by handle -> last-upload-wins -> stale glyphs)
             // is directly visible. Gated by MC2_VK_HUD_DRAW_DUMP (env token
             // memoized once per process: VK-HUD-GATE-HOIST-1).
-            if (s_hudDrawDumpEnv) {
+            if (s_hudDrawDumpEnv || mc2_diag::tagRequested("HUD_FIRST_DRAW")) {
                 static unsigned s_hudDumpLines = 0;
                 if (s_hudDumpLines < 400 && draw.textureHandle != 0 &&
                     draw.textureHandle != INVALID_TEXTURE_ID) {
                     ++s_hudDumpLines;
-                    mc2::fmt::print_err("[VK_HUD_DRAW_DUMP] batchseq={:d} kind={:d} handle={:d} serial={:d} wh={:d}x{:d} verts={:d}\n", mc2::fmt::as_u32(s_hudDumpLines), mc2::fmt::as_u32(draw.kind), mc2::fmt::as_u32(draw.textureHandle), mc2::fmt::as_u32(draw.textureSerial), mc2::fmt::as_u32(draw.textureWidth), mc2::fmt::as_u32(draw.textureHeight), mc2::fmt::as_size(draw.vertices.size()));
+                    const auto* texture = getTextureIfPresent(draw.textureHandle);
+                    mc2::fmt::print_err("[VK_HUD_DRAW_DUMP] batchseq={:d} kind={:d} handle={:d} serial={:d} wh={:d}x{:d} verts={:d} asset={}\n", mc2::fmt::as_u32(s_hudDumpLines), mc2::fmt::as_u32(draw.kind), mc2::fmt::as_u32(draw.textureHandle), mc2::fmt::as_u32(draw.textureSerial), mc2::fmt::as_u32(draw.textureWidth), mc2::fmt::as_u32(draw.textureHeight), mc2::fmt::as_size(draw.vertices.size()), texture ? texture->sourceName() : "<retired>");
                 }
             }
             nativeDraws.push_back(std::move(draw));
