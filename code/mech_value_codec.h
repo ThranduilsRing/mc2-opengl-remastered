@@ -38,8 +38,25 @@ inline void mechAppearanceFields(Archive& a, MechAppearanceData& v) {
     }
 }
 inline constexpr auto mechTag = fourcc('M', 'E', 'C', 'H');
+inline void heatFields(Archive& a, mc2::heat::State& v) {
+    a(v.heatMilli);
+    for (std::size_t i = 0; i < v.alphaMask.size(); ++i) {
+        bool bit = v.alphaMask[i];
+        a(bit);
+        if (a.reading()) v.alphaMask[i] = bit;
+    }
+    a(v.alphaExpireTick);
+}
 struct MechRecord {
     MechData value{};
+    mc2::heat::State heat{}; // capacity/dissipation are derived, never serialized
+    std::uint32_t version = 1;
+    void load(BattleMech& mech) {
+        mech.Load(&value); // reconstruct capacity, including on reused objects
+        mech.heatState.heatMilli = heat.heatMilli;
+        mech.heatState.alphaMask = heat.alphaMask;
+        mech.heatState.alphaExpireTick = heat.alphaExpireTick;
+    }
     void serialize(Archive& a) {
         auto& v = value;
         moverFields(a, v);
@@ -60,8 +77,26 @@ struct MechRecord {
         a(v.damageAfterDisabled, v.numArmorComponents, v.cBills);
         mechAppearanceFields(a, v.apData);
         if (a.reading()) v.damageThisFrame = 0;
+        if (version >= 2) heatFields(a, heat);
+        else if (a.reading()) heat = {};
     }
 };
+inline Bytes encodeTaggedRecord(MechRecord record, std::uint32_t tag) {
+    Archive a;
+    a(tag, record.version, record);
+    return a.good() && tag == mechTag && (record.version == 1 || record.version == 2) ? a.bytes() : Bytes{};
+}
+inline bool decodeTaggedRecord(std::span<const std::uint8_t> bytes, MechRecord& record, std::uint32_t expected) {
+    Archive a(bytes);
+    std::uint32_t tag = 0;
+    MechRecord staged;
+    a(tag, staged.version);
+    if (!a.good() || tag != mechTag || tag != expected || (staged.version != 1 && staged.version != 2)) return false;
+    a(staged);
+    if (!a.finish()) return false;
+    record = std::move(staged);
+    return true;
+}
 // Derived: damageThisFrame -> 0 (CopyTo starts a new damage accumulation turn).
 // Appearance debug stepping flags and sensorLevel -> 0 (CopyTo never writes
 // them; copyFrom never reads them). Appearance status -> 0: copyFrom lets the

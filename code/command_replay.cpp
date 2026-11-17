@@ -74,7 +74,7 @@ void begin(std::string_view mission, std::uint32_t seed) {
     if (!record.empty()) {
         session.record.open(record, std::ios::trunc);
         if (!session.record) throw std::runtime_error("cannot open replay recorder");
-        session.record << "MC2REPLAY 1 " << std::quoted(std::string(mission)) << ' ' << seed << ' '
+        session.record << "MC2REPLAY 2 " << std::quoted(std::string(mission)) << ' ' << seed << ' '
                        << mc2GetSimRngState() << ' ' << mc2_anim_rng::state() << ' ' << std::quoted(content) << '\n' << std::flush;
         return;
     }
@@ -83,7 +83,9 @@ void begin(std::string_view mission, std::uint32_t seed) {
     unsigned version = 0;
     std::uint32_t recordedSeed = 0, initialSim = 0, initialAnim = 0;
     file >> magic >> version >> std::quoted(recordedMission) >> recordedSeed >> initialSim >> initialAnim >> std::quoted(recordedContent);
-    if (!file || magic != "MC2REPLAY" || version != 1 || recordedMission != mission || recordedSeed != seed ||
+    if (magic == "MC2REPLAY" && version != 2)
+        throw std::runtime_error("unsupported replay format version " + std::to_string(version) + "; expected 2");
+    if (!file || magic != "MC2REPLAY" || recordedMission != mission || recordedSeed != seed ||
         initialSim != mc2GetSimRngState() || initialAnim != mc2_anim_rng::state() || recordedContent != content)
         throw std::runtime_error("replay mission, RNG or content fingerprint mismatch");
     std::string line;

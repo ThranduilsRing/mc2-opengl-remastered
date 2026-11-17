@@ -36,8 +36,11 @@ def fingerprint(install: Path, mission: str) -> str:
 
 def inspect(path: Path) -> dict:
     lines = path.read_text(encoding="utf-8").splitlines()
-    if not lines or not lines[0].startswith("MC2REPLAY 1 "):
-        raise ValueError("unsupported replay header")
+    if not lines or not lines[0].startswith("MC2REPLAY "):
+        raise ValueError("invalid replay header")
+    version = lines[0].split()[1]
+    if version != "2":
+        raise ValueError(f"unsupported replay format version {version}; expected 2")
     commands = [line for line in lines[1:] if line.startswith("C ")]
     hashes = [line for line in lines[1:] if line.startswith("H ")]
     if not hashes or lines[-1] != f"E {len(commands)} {len(hashes)}":
