@@ -69,40 +69,22 @@ void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		static auto* texturesRest = mc2::load::entry("tree.textures.further");
 		{
 		mc2::load::Scope scope(first ? texturesFirst : texturesRest);
-		for (long i=0;i<treeShape->GetNumTextures();i++)
-		{
-			char txmName[1024];
-			treeShape->GetTextureName(i,txmName,256);
-	
+		appearType->textureBindings.apply(*treeShape, [](mc2::czstring txmName, bool alpha) {
 			char texturePath[1024];
 			mc2::fmt::to_buf(texturePath, "{}{:d}" PATH_SEPARATOR "", mc2::fmt::safe(tglPath), mc2::fmt::as_i32(ObjectTextureSize));
-	
 			FullPathFileName textureName;
 			textureName.init(texturePath,txmName,"");
-	
-			if (textureOrKtxSidecarExists(textureName))
-			{
-				if (S_strnicmp(txmName,"a_",2) == 0)
-				{
-					DWORD gosTextureHandle = mc2::textures::load(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink);
-					gosASSERT(gosTextureHandle != 0xffffffff);
-					treeShape->SetTextureHandle(i,gosTextureHandle);
-					treeShape->SetTextureAlpha(i,true);
-				}
-				else
-				{
-					DWORD gosTextureHandle = mc2::textures::load(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink);
-					gosASSERT(gosTextureHandle != 0xffffffff);
-					treeShape->SetTextureHandle(i,gosTextureHandle);
-					treeShape->SetTextureAlpha(i,false);
-				}
+			TreeTextureBindings::Binding binding;
+			if (textureOrKtxSidecarExists(textureName)) {
+				binding.handle = mc2::textures::load(textureName, alpha ? gos_Texture_Alpha : gos_Texture_Solid,
+					gosHint_DisableMipmap | gosHint_DontShrink);
+				gosASSERT(binding.handle != 0xffffffff);
+				binding.present = true;
+				binding.alpha = alpha;
 			}
-			else
-			{
-				treeShape->SetTextureHandle(i,0xffffffff);
-			}
-		}
-		
+			return binding;
+		});
+
 		}
 		static auto* boundsFirst = mc2::load::entry("tree.bounds.first");
 		static auto* boundsRest = mc2::load::entry("tree.bounds.further");
