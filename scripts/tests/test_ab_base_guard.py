@@ -131,6 +131,26 @@ def test_mixed_asset_commits_refused(tmp_path, repo):
         ab.payload_identity(install)
 
 
+@pytest.mark.parametrize("auxiliary", sorted(ab.asset_parity.AUXILIARY))
+def test_exe_auxiliary_rows_do_not_define_asset_commit(tmp_path, auxiliary):
+    published, candidate, third = "1" * 40, "2" * 40, "3" * 40
+    install = Path(_install(tmp_path / "i", candidate))
+    manifest = install / ab.MANIFEST
+    text = manifest.read_text()
+    text = text.replace(f",2,{candidate},t,0", f",2,{published},t,0", 1)
+    for rel in sorted(ab.asset_parity.AUXILIARY):
+        text += f"{rel},{hashlib.sha256(b'aux').hexdigest()},3,{published},t,0\n"
+    manifest.write_text(text)
+    payload, commit = ab.asset_parity.manifest_assets(install)
+    assert commit == candidate
+    assert ab.asset_parity.AUXILIARY <= payload.keys()
+    manifest.write_text(text.replace(
+        f"{auxiliary},{hashlib.sha256(b'aux').hexdigest()},3,{published},t,0",
+        f"{auxiliary},{hashlib.sha256(b'aux').hexdigest()},3,{third},t,0"))
+    with pytest.raises(ValueError, match="ambiguous asset commit"):
+        ab.asset_parity.manifest_assets(install)
+
+
 def test_named_repo_bookmarks_need_no_install_seed(tmp_path, monkeypatch):
     monkeypatch.setattr(ab, "ROOT", tmp_path)
     bookmarks = tmp_path / "tests/visual/bookmarks"
