@@ -14,6 +14,10 @@
 #version 450
 #extension GL_GOOGLE_include_directive : require
 #extension GL_EXT_control_flow_attributes : require
+#ifdef WATER_EARLY_TESTS
+// Fine-surface coverage comes from scene depth; its shore discard is dead.
+layout(early_fragment_tests) in;
+#endif
 layout(constant_id = 11) const int kReflectionCoverage = 0;
 layout(constant_id = 13) const int kWaterDbgPass = 0;
 #define PREC highp
@@ -27,24 +31,25 @@ float sampleH(int x, int y) {
     return uH.heights[clamp(x, 0, uT.mapSide - 1) + clamp(y, 0, uT.mapSide - 1) * uT.mapSide];
 }
 #include "include/terrain_visual_surface.glsl"
-// Four adjacent surface vertices share the cliff filter's +/-2 raw halo.
-// Consume even and odd rows separately: never retain the full 8x8 halo.
-mat2x4 waterRawRow(ivec2 p) {
-    return mat2x4(vec4(cliffRawHeight(p + ivec2(-2, 0)), cliffRawHeight(p + ivec2(-1, 0)),
-                       cliffRawHeight(p), cliffRawHeight(p + ivec2(1, 0))),
-                  vec4(cliffRawHeight(p + ivec2(2, 0)), cliffRawHeight(p + ivec2(3, 0)),
-                       cliffRawHeight(p + ivec2(4, 0)), cliffRawHeight(p + ivec2(5, 0))));
+layout(set = 0, binding = 14, std430) readonly buffer WaterShoreSurface { float shoreSurface[]; };
+float waterBakedHeight(ivec2 p) {
+    p = clamp(p, ivec2(0), ivec2(uT.visualSide - 1));
+    return shoreSurface[p.x + p.y * uT.visualSide];
 }
-vec4 waterSurfaceRow(ivec2 p, mat2x4 north, mat2x4 row, mat2x4 south) {
-    vec4 c = vec4(row[0].zw, row[1].xy);
-    vec4 n = vec4(north[0].zw, north[1].xy), s = vec4(south[0].zw, south[1].xy);
-    vec4 e = row[1], w = row[0];
-    vec4 rise = max(max(abs(n - c), abs(s - c)), max(abs(e - c), abs(w - c)));
-    vec4 diagonal = north[0] + north[1] + south[0] + south[1];
-    vec4 cardinal = n + s + e + w;
-    vec4 result;
-    [[unroll]] for (int x = 0; x < 4; ++x)
-        result[x] = rise[x] <= 24.0 ? c[x] : cliffFilteredHeight(c[x], cardinal[x], diagonal[x], rise[x]);
+float waterSurfaceHeight(int fx, int fy) {
+    float fine = waterBakedHeight(ivec2(fx, fy));
+    if (hiresBlendW() == 1.0 && hiresEdgeW(fx, fy) == 1.0) return fine;
+    int cx = min(fx / 4, uT.mapSide - 2), cy = min(fy / 4, uT.mapSide - 2);
+    float u = float(fx - cx * 4) * 0.25, v = float(fy - cy * 4) * 0.25;
+    float h00 = sampleH(cx, cy), h10 = sampleH(cx + 1, cy);
+    float h01 = sampleH(cx, cy + 1), h11 = sampleH(cx + 1, cy + 1);
+    float hc = (v >= u) ? h00 + (h11 - h01) * u + (h01 - h00) * v
+                        : h00 + (h10 - h00) * u + (h11 - h10) * v;
+    return mix(hc, fine, hiresBlendW() * hiresEdgeW(fx, fy));
+}
+vec4 waterSurfaceRow(ivec2 p) {
+    vec4 result = vec4(waterBakedHeight(p), waterBakedHeight(p + ivec2(1, 0)),
+                       waterBakedHeight(p + ivec2(2, 0)), waterBakedHeight(p + ivec2(3, 0)));
     // At full displacement, interior vertices have no coarse-surface contribution.
     if (hiresBlendW() == 1.0 && hiresEdgeW(p.x, p.y) == 1.0 && hiresEdgeW(p.x + 3, p.y) == 1.0)
         return result;
@@ -61,17 +66,11 @@ vec4 waterSurfaceRow(ivec2 p, mat2x4 north, mat2x4 row, mat2x4 south) {
     return result;
 }
 void waterSurfaceCache(ivec2 p, out mat4 raw, out mat4 surface) {
-    [[unroll]] for (int parity = 0; parity < 2; ++parity) {
-        ivec2 q = p + ivec2(0, parity);
-        mat2x4 north = waterRawRow(q + ivec2(0, -2));
-        mat2x4 row = waterRawRow(q), south = waterRawRow(q + ivec2(0, 2));
-        raw[parity] = vec4(row[0].zw, row[1].xy);
-        surface[parity] = waterSurfaceRow(q, north, row, south);
-        north = row;
-        row = south;
-        south = waterRawRow(q + ivec2(0, 4));
-        raw[parity + 2] = vec4(row[0].zw, row[1].xy);
-        surface[parity + 2] = waterSurfaceRow(q + ivec2(0, 2), north, row, south);
+    [[unroll]] for (int y = 0; y < 4; ++y) {
+        ivec2 q = p + ivec2(0, y);
+        raw[y] = vec4(cliffRawHeight(q), cliffRawHeight(q + ivec2(1, 0)),
+                      cliffRawHeight(q + ivec2(2, 0)), cliffRawHeight(q + ivec2(3, 0)));
+        surface[y] = waterSurfaceRow(q);
     }
 }
 vec4 waterCell(mat4 rows, ivec2 k) {
@@ -135,16 +134,16 @@ float waterFineHeight(vec2 worldXY) {
     float rawTL = cliffRawHeight(p), rawTR = cliffRawHeight(p + ivec2(1, 0));
     float rawBL = cliffRawHeight(p + ivec2(0, 1)), rawBR = cliffRawHeight(p + ivec2(1, 1));
     if (abs(rawTR - rawBL) < abs(rawTL - rawBR)) {
-        float tr = hiresSurfaceHeight(p.x + 1, p.y), bl = hiresSurfaceHeight(p.x, p.y + 1);
+        float tr = waterSurfaceHeight(p.x + 1, p.y), bl = waterSurfaceHeight(p.x, p.y + 1);
         if (t.x + t.y <= 1.0) {
-            float tl = hiresSurfaceHeight(p.x, p.y);
+            float tl = waterSurfaceHeight(p.x, p.y);
             return tl + (tr - tl) * t.x + (bl - tl) * t.y;
         }
-        float br = hiresSurfaceHeight(p.x + 1, p.y + 1);
+        float br = waterSurfaceHeight(p.x + 1, p.y + 1);
         return br + (bl - br) * (1.0 - t.x) + (tr - br) * (1.0 - t.y);
     }
-    float a = hiresSurfaceHeight(p.x, p.y), d = hiresSurfaceHeight(p.x + 1, p.y + 1);
-    float b = t.y >= t.x ? hiresSurfaceHeight(p.x, p.y + 1) : hiresSurfaceHeight(p.x + 1, p.y);
+    float a = waterSurfaceHeight(p.x, p.y), d = waterSurfaceHeight(p.x + 1, p.y + 1);
+    float b = t.y >= t.x ? waterSurfaceHeight(p.x, p.y + 1) : waterSurfaceHeight(p.x + 1, p.y);
     return t.y >= t.x ? a + (d - b) * t.x + (b - a) * t.y
                       : a + (b - a) * t.x + (d - b) * t.y;
 }
@@ -166,7 +165,7 @@ layout(set = 0, binding = 1, std140) uniform WaterFsParams {
     vec4 f2;              // (GLINT_GAIN, u_waterReflStrength, u_skyYaw, u_waterHdriLod)
     vec4 f3;              // (screenW, screenH, nightDim, animatedShore)
     vec4 DEEP_COLOR;      // .xyz color, .w Half-res reflection enabled
-    vec4 SHALLOW_COLOR;   // .xyz
+    vec4 SHALLOW_COLOR;   // .xyz color, .w baked reflection weather scale B
     // VK-PARITY-WATER-SHORE-1 (WATER-SHORE-EDGE-1): shore-feather inputs.
     vec4 f4;              // (u_shoreMode, u_hasShoreHeight, u_hasShoreMask, u_shoreFeatherWu)
     vec4 f5;              // u_shoreHeightBounds (topLeftX, topLeftY, spanX, spanY)
@@ -175,6 +174,8 @@ layout(set = 0, binding = 1, std140) uniform WaterFsParams {
     // VK-PARITY-F3 (water brightness): GL-default features missing in VK.
     vec4 f8;              // (u_waterEdgeFeather, u_waterEdgeFeatherStrength, u_halfMap, u_waterSkyTintStrength)
     vec4 f9;              // (u_waterSkyTintColor.xyz, u_waterProjAspect)
+    vec4 bake;            // world span, halfMap, baked reflection weather scale RG
+    vec4 debug;           // attribution: 0 normal; 1 march; 2 HDRI; 3 waves; 4 movers; 5 shore; 6 post-discard
 } F;
 
 // RUNG-6.5 WATER-REFLECTION PORT: HDRI equirect (copy-once import of GL's
@@ -191,6 +192,40 @@ layout(set = 0, binding = 4) uniform sampler2D u_shoreMask;
 // the shoreline reads, so the shadow runs across the coast without a cut. Read only when F.f7.z says it is bound.
 layout(set = 0, binding = 7) uniform sampler2D u_staticMask;
 layout(set = 0, binding = 8) uniform sampler2D u_waterReflection;
+layout(set = 0, binding = 9) uniform sampler2D u_waterReflectHeight;
+layout(set = 0, binding = 17) uniform sampler2DArray u_wavePackets;
+
+vec2 bakedReflectionUV(vec2 p) {
+    return vec2(p.x + F.bake.y, F.bake.y - p.y) / F.bake.x;
+}
+
+vec4 bakedReflection(vec3 origin, vec3 ray) {
+    if (ray.z <= 0.001) return vec4(0);
+    // A conservative max over the whole map bounds the finite ray segment.
+    int lastMip = textureQueryLevels(u_waterReflectHeight) - 1;
+    float maximum = texelFetch(u_waterReflectHeight, ivec2(0), lastMip).r;
+    if (maximum <= 0) return vec4(0);
+    float reach = min(F.bake.x, maximum / ray.z);
+    float previousT = 0;
+    float previousGap = max(origin.z - F.f7.x, 0.0);
+    for (int i = 1; i <= 8; ++i) {
+        // Shorter steps at the receiver retain nearby low banks.
+        float fraction = float(i) / 8.0;
+        float t = reach * fraction * fraction;
+        vec3 p = origin + ray * t;
+        vec2 uv = bakedReflectionUV(p.xy);
+        if (any(lessThan(uv, vec2(0))) || any(greaterThanEqual(uv, vec2(1)))) break;
+        float height = textureLod(u_waterReflectHeight, uv, 0).r;
+        float gap = p.z - F.f7.x - height;
+        if (height > 0 && gap <= 0) {
+            // One secant refinement removes the fixed-step silhouette bands.
+            float hit = mix(previousT, t, clamp(previousGap / max(previousGap - gap, 0.001), 0, 1));
+            return textureLod(u_waterReflection, bakedReflectionUV((origin + ray * hit).xy), 0);
+        }
+        previousT = t; previousGap = gap;
+    }
+    return vec4(0);
+}
 #include "../include/water_shore_edge.hglsl"
 #include "../include/water_reactive.hglsl"
 #include "../include/water_shallow.hglsl"
@@ -339,6 +374,7 @@ const float NEAR_ALPHA0      = 0.04;    // GGX alpha of the calm surface close t
 const float NEAR_SKY_LIFT     = 0.4;    // reflected-sky brightening at full near gloss
 
 PREC vec2 waterWaveSlope(PREC vec2 p, float t, float footprint, float gain, out float unresolvedVar){
+    float packetSize = float(textureSize(u_wavePackets, 0).x);
     PREC vec2 s = vec2(0.0);
     unresolvedVar = 0.0;
     for (int i = 0; i < WAVE_TRAINS; ++i) {
@@ -348,8 +384,17 @@ PREC vec2 waterWaveSlope(PREC vec2 p, float t, float footprint, float gain, out 
         // Independent packet envelopes break the global lattice without noise-gradient normals.
         // Long swells retain their vertex-stage phase and amplitude; unresolved packet energy
         // goes into roughness using the very same local amplitude as the resolved normal.
-        float packet = (i < 2) ? 1.0 : mix(WAVE_PACKET_MIN, WAVE_PACKET_MAX,
-            vnoise(p / (WAVE_PACKET_SPAN * w.z) + vec2(float(i) * 19.19, float(i) * 7.73)));
+        float packet = 1.0;
+        if (i >= 2) {
+            float scale = WAVE_PACKET_SPAN * w.z;
+            vec2 offset = float(i) * vec2(19.19, 7.73);
+            vec2 lattice = p / scale + offset;
+            vec2 origin = floor(vec2(-uT.halfMap) / scale + offset);
+            vec2 f = fract(lattice);
+            vec2 uv = (floor(lattice) - origin + f * f * (3.0 - 2.0 * f) + 0.5) / packetSize;
+            float noise = textureLod(u_wavePackets, vec3(uv, (i - 2) / 4), 0)[(i - 2) % 4];
+            packet = mix(WAVE_PACKET_MIN, WAVE_PACKET_MAX, noise);
+        }
         float a = w.w * gain * packet;
         unresolvedVar += 0.5 * a * a * (1.0 - r * r);
         if (r > 0.0) {
@@ -422,6 +467,8 @@ vec3 waterPoolLights(vec3 wp, vec3 N, vec3 V, float alpha2, out vec3 spec){
 
 void main(void)
 {
+    int debugMode = int(F.debug.x);
+    if (debugMode == 7) { FragColor = vec4(0.0); GBuffer1 = vec4(0.0); return; }
     // o_isWater==1 base-water branch (reflection/HDRI OFF -> skipped).
     float time    = F.f0.x;
     vec3  camPos  = F.f0.yzw;
@@ -470,9 +517,11 @@ void main(void)
         shoreOrigin = min(ivec2(floor(grid)), ivec2(uT.visualSide - 2));
         int record = uT.visualSide * uT.visualSide + 2 * (shoreOrigin.x + shoreOrigin.y * uT.visualSide);
         float threshold = heightsFine[record], flat4 = heightsFine[record + 1];
-        bool full = hiresBlendW() != 1.0 || flat4 == 0.0;
-        tent = hiresBlendW() != 1.0 || F.f7.x < threshold; // partial far blend mixes coarse heights: thresholds bound only the fine surface
-        if (full) {
+        bool full = debugMode != 5 && (hiresBlendW() != 1.0 || flat4 == 0.0);
+        tent = debugMode != 5 && (hiresBlendW() != 1.0 || F.f7.x < threshold); // partial far blend mixes coarse heights: thresholds bound only the fine surface
+        if (full && !tent) {
+            fineCenter = waterFineHeight(WorldPos.xy);
+        } else if (full) {
             waterSurfaceCache(shoreOrigin, shoreRaw, shoreSurface);
             fineCenter = waterCachedHeight(WorldPos.xy, shoreOrigin, shoreRaw, shoreSurface);
         } else if (tent) {
@@ -527,8 +576,9 @@ void main(void)
     // (default 0.22) and the glint strength follows the glint gain (default 0.30). Low/Potato keeps flat geometry:
     // every train goes to roughness. Before the coverage discard so the normal's derivatives stay defined.
     float      footprint = (uT._lightPad1 != 0) ? 1e9 : max(length(shoreDx), length(shoreDy));
-    float      waveVar;
-    PREC vec2  waveSlope = waterWaveSlope(WorldPos.xy, time, footprint, RIPPLE_GAIN / 0.22, waveVar);
+    float      waveVar = 0.0;
+    PREC vec2  waveSlope = vec2(0.0);
+    if (debugMode != 3) waveSlope = waterWaveSlope(WorldPos.xy, time, footprint, RIPPLE_GAIN / 0.22, waveVar);
     PREC vec3  waveN     = normalize(vec3(-waveSlope, 1.0));  // world-XZ wave trains only: no screen-space or noise gradient
     PREC vec3  vdir      = normalize(cameraPos.xyz - WorldPos);  // MC2 Z-up
     // Specular AA: the normal's own screen-space variance (Kaplanyan-Hoffman) on top of the unresolved train variance.
@@ -557,13 +607,14 @@ void main(void)
                                  WorldPos.xy, F.f7.x);
     }
     if (kWaterDbgPass != 1 && shore <= 0.0) discard;
+    if (debugMode == 6) { FragColor = vec4(0.0); GBuffer1 = vec4(0.0); return; }
     if (kWaterDbgPass == 1 || kWaterDbgPass == 2) {
         FragColor = vec4(1.0, 0.0, 1.0, 1.0); GBuffer1 = vec4(0.0); return;
     }
     if (kReflectionCoverage != 0) { FragColor = vec4(1.0); GBuffer1 = vec4(0.0); return; }
     // Option A: material-local response. Shore coverage/bands and reflection tracing stay independent.
     float reactivePixelWidth = max(length(shoreDx), length(shoreDy));
-    vec3 reactive = reactiveWater(WorldPos.xy, reactivePixelWidth) * waveLOD;
+    vec3 reactive = (debugMode == 3 || F.debug.y > 0.5) ? vec3(0.0) : reactiveWater(WorldPos.xy, reactivePixelWidth) * waveLOD;
 
     // Night: the scattered light, sky ambient floor, glint, sky tint and reflected sky take the mission's night
     // dim (f3.z, 0 by day), so open water reads as dark as the ground around it instead of daylight teal.
@@ -609,7 +660,7 @@ void main(void)
     }
     // WATER-VISUAL-FIRST-SLICE sky tint (strength 0 default -> mix returns col; GL line 328).
     // Beyond the ripple fade distance a mover shadow is sub-pixel on water: skip the blocker search + PCF there.
-    if (waveLOD > 0.0) {
+    if (debugMode != 4 && waveLOD > 0.0) {
         float moverLit = moverVisibility(WorldPos,vec3(0.0,0.0,1.0));
         col *= mix(moverShadowFloor(0.4),1.0,moverLit);
         sunVis *= moverLit;
@@ -631,7 +682,7 @@ void main(void)
         PREC vec3  waveNormal = normalize(waveN + vec3(reactive.xy, 0.0));
         PREC vec3  rdir       = reflect(-vdir, waveNormal);           // MC2 Z-up
         PREC vec3  skyDir     = vec3(rdir.x, rdir.z, -rdir.y);
-        if (u_waterHdriLod >= 0.0) {
+        if (debugMode != 2 && u_waterHdriLod >= 0.0) {
             skyReflCol = waterEvalHdri(rdir);   // rdir in MC2 Z-up, skyYaw applied inside
         } else {
             skyReflCol = clamp(waterEvalSkySh(skyDir) * (1.0 / 3.14159265), 0.0, 2.0);
@@ -643,7 +694,10 @@ void main(void)
         reflectCol = skyReflCol;   // default reflection = sky (fallback/base)
         //PORT-END:waterReflSetup
         vec4 geometry=vec4(0);
-        if (F.DEEP_COLOR.w > 0.5) {
+        if (debugMode != 1 && F.DEEP_COLOR.w < -0.5) {
+            geometry = bakedReflection(WorldPos, rdir);
+            geometry.rgb *= vec3(F.bake.zw, F.SHALLOW_COLOR.w);
+        } else if (F.DEEP_COLOR.w > 0.5) {
             vec2 reflectionUV=gl_FragCoord.xy/u_waterScreenSize + reactive.xy*0.015;
             if (all(greaterThan(reflectionUV,vec2(0))) && all(lessThan(reflectionUV,vec2(1)))) {
                 vec2 extent=ceil(u_waterScreenSize/F.DEEP_COLOR.w)/u_waterScreenSize;
@@ -674,7 +728,7 @@ void main(void)
         vec3  sunRad = Color.bgra.rgb * (1.0 - 0.5 * clamp(F.f3.z / 0.6, 0.0, 1.0));
         col += min(sunRad * (SUN_SPEC_GAIN * glintScale * sunVis * waterGgxSpec(waveN, vdir, Ls, specAlpha2)), vec3(4.0));
         // The lamp specular and the flat pool term come from one light walk (waterPoolLights), added right after the sun glint.
-        if (uT.numPoolLights > 0 && nightSky < 1.0) {
+        if (F.debug.y < 0.5 && uT.numPoolLights > 0 && nightSky < 1.0) {
             vec3 lampSpec;
             vec3 poolTerm = waterPoolLights(WorldPos, waveN, vdir, specAlpha2, lampSpec);
             col += min(lampSpec * (LAMP_SPEC_GAIN * glintScale), vec3(4.0));

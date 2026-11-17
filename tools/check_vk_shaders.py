@@ -113,6 +113,9 @@ def main():
         if ok and fname == "vfx_vegetation.frag":
             ok, out = compile_one(kind, exe, src, ("VEGETATION_SHADE_EARLY_TESTS=1",))
             checked += 1
+        if ok and fname == "water_geom.frag":
+            ok, out = compile_one(kind, exe, src, ("WATER_EARLY_TESTS=1",))
+            checked += 1
         if not ok:
             any_error = True
             print(f"FAIL {fname}")

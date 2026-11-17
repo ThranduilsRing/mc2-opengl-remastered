@@ -21,7 +21,7 @@ def values(**changes):
 
 def test_table_has_the_engines_options_with_their_defaults():
     t = {o.key: o for o in rop.table()}
-    assert len(t) == 22
+    assert len(t) == 24
     assert t["StockOverlayConcrete"].default is False
     assert t["TextureQuality"].default == -1 and (t["TextureQuality"].lo, t["TextureQuality"].hi) == (-1, 3)
     assert t["BaseQuality"].default == 2 and (t["BaseQuality"].lo, t["BaseQuality"].hi) == (0, 2)
@@ -36,6 +36,16 @@ def test_table_has_the_engines_options_with_their_defaults():
     assert t["PostCASSharpness"].default == 0.5 and t["PostCASSharpness"].hi == 1.0
     assert t["TonemapMode"].kind == "long" and (t["TonemapMode"].lo, t["TonemapMode"].hi) == (0, 3)
     assert t["StaticPropIblSunRotateFloor"].default == 0.45
+
+
+def test_water_detail_does_not_alias_bake_weather_scale():
+    run = (ROOT / "GameOS/gameos/vulkan_water_island_run.cpp").read_text()
+    bake = (ROOT / "GameOS/gameos/vulkan_water_reflect_bake.cpp").read_text()
+    shader = (ROOT / "shaders/vulkan/water_geom.frag").read_text()
+    assert "fsLocal.debug[1] = mc2::options::current().waterDetail" in run
+    assert "params->SHALLOW_COLOR[3] = b.scale[2]" in bake
+    assert "F.debug.y < 0.5" in shader and "F.debug.y > 0.5" in shader
+    assert "F.SHALLOW_COLOR.w < 0.5" not in shader
 
 
 def test_python_grammar_agrees_with_the_doctest_case_table():

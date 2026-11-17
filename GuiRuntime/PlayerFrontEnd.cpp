@@ -697,8 +697,11 @@ void drawOptions() {
                 const char* labels[] = {"Off", "SMAA 1x", "FXAA", "CMAA2", "FSR 3.1 native AA"};
                 ImGui::Combo("Anti-aliasing", &(draft.*option.l), labels, IM_ARRAYSIZE(labels));
             } else if (std::string_view(option.key) == "WaterReflections") {
-                const char* labels[] = {"Off", "Sky only", "Half-res"};
-                ImGui::Combo("Water reflections", &(draft.*option.l), labels, 3);
+                continue; // Legacy material/profile switch; player budget controls follow.
+            } else if (std::string_view(option.key) == "ReflectionQuality") {
+                continue; // The live Water quality section owns these controls.
+            } else if (std::string_view(option.key) == "WaterDetail") {
+                continue;
             } else if (std::string_view(option.key) == "TextureQuality") {
                 const char* labels[] = {"Auto (by VRAM)", "Low", "Medium", "High", "Ultra"};
                 int idx = std::clamp(static_cast<int>(draft.*option.l) + 1, 0, 4);
@@ -732,6 +735,9 @@ void drawOptions() {
         ImGui::TreePop();
     }
     if (ImGui::Button("Save player settings")) {
+        // Do not overwrite live water edits with this section's older draft.
+        draft.reflectionQuality = mc2::options::current().reflectionQuality;
+        draft.waterDetail = mc2::options::current().waterDetail;
         if (!saveRenderOptions || !saveRenderOptions(draft)) error = "Could not save options.cfg.";
         else if (saveSettings()) { settingsChanged = true; error = "Saved. Restart the game to apply player settings."; }
     }

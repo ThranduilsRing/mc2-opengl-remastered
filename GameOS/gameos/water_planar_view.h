@@ -6,6 +6,11 @@
 #include "../../shaders/include/water_planar.hglsl"
 
 namespace mc2::waterplanar {
+// Terrain lighting applies rain after the weather-adjusted sun/ambient sum.
+inline float weatherLight(float sun, float ambient, float rain) {
+    return (sun + ambient) * (std::min)(rain, 1.0f);
+}
+
 // Pixel bounds include every possible ripple lookup and bilinear neighbour.
 inline std::array<int,4> paddedPixels(const float* ndc, int w, int h) {
     std::array<int,4> pixels{};

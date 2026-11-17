@@ -9,7 +9,7 @@ float mc2NightLightFactor();   // mclib/camera.cpp: 0 day .. 1 full night
 
 namespace { int waterReflectionQuality = -1; }
 int gos_GetWaterReflectionQuality() {
-    const int quality = waterReflectionQuality < 0 ? mc2::options::current().waterReflections : waterReflectionQuality;
+    const int quality = waterReflectionQuality < 0 ? (mc2::options::current().reflectionQuality > 0 ? 2 : 0) : waterReflectionQuality;
     if (!mc2::gate::get<"MC2_WATER_REFLECTION">()) return 0;
     return quality == 2 && !mc2::gate::get<"MC2_WATER_REFLECTION_RT">() ? 1 : quality;
 }
@@ -42,6 +42,9 @@ int gos_GetWaterFsDebugMode()
     return g_waterFsDebugMode;
 }
 void gos_SetWaterFsDebugMode(int m) { g_waterFsDebugMode = (m < 0) ? 0 : m; }
+namespace { bool waterProfileRequested = false; }
+bool gos_WaterProfileRequested() { return waterProfileRequested; }
+void gos_RequestWaterProfile(bool enabled) { waterProfileRequested = enabled; }
 
 // WATER-TUNING-UI-1: runtime-tunable MDI water material params. Defaults MUST
 // match the former compile-time consts in gos_terrain_water_mdi.frag EXACTLY
@@ -256,7 +259,7 @@ void gosRenderer::renderWaterFastPath(
 
     // Pack VS/FS UBO params LOCKSTEP with water_geom.{vert,frag}.
     struct VkWaterVsP { float m[16]; float p0[4],p1[4],p2[4],p3[4]; } vsP{};
-    struct VkWaterFsP { float fog[4],f0[4],f1[4],f2[4],f3[4],deep[4],shallow[4],f4[4],f5[4],f6[4],f7[4],f8[4],f9[4]; } fsP{};
+    struct VkWaterFsP { float fog[4],f0[4],f1[4],f2[4],f3[4],deep[4],shallow[4],f4[4],f5[4],f6[4],f7[4],f8[4],f9[4],bake[4],debug[4]; } fsP{};
     memcpy(vsP.m, wMvpWaterMdi, 16 * sizeof(float));
     vsP.p0[0]=waterElevation; vsP.p0[1]=alphaDepth; vsP.p0[2]=mapTopLeftX; vsP.p0[3]=mapTopLeftY;
     vsP.p1[0]=frameCos; vsP.p1[1]=maxMinUV; vsP.p1[2]=oneOverTF; vsP.p1[3]=cloudOffsetX;

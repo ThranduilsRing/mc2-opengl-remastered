@@ -102,6 +102,33 @@ TEST_CASE("Preferences/unchanged options.cfg retains every byte") {
     const auto snapshot = mc2::options::preferenceSnapshot(reloaded, nextRender);
     CHECK(mc2::options::rewritePreferences(updated, snapshot, snapshot) == updated);
 }
+TEST_CASE("Preferences/water quality defaults and all levels persist") {
+    using namespace mc2::options;
+    CHECK(RenderOptions{}.reflectionQuality == 3);
+    CHECK(RenderOptions{}.waterDetail == 1);
+    const std::string source = "FITini\n[MechCommander2]\nst ModOwned = \"keep\"\nFITend\n";
+    Preferences settings;
+    RenderOptions original;
+    const auto before = preferenceSnapshot(settings, original);
+    for (int reflection = 0; reflection <= 3; ++reflection) {
+        for (int detail = 0; detail <= 1; ++detail) {
+            auto changed = original;
+            changed.reflectionQuality = reflection;
+            changed.waterDetail = detail;
+            const auto text = rewritePreferences(source, before, preferenceSnapshot(settings, changed));
+            Preferences reloadedSettings;
+            RenderOptions reloaded;
+            load(text, reloadedSettings, reloaded);
+            CHECK(reloaded == changed);
+            CHECK(text.find("st ModOwned = \"keep\"") != std::string::npos);
+        }
+    }
+    RenderOptions invalid;
+    std::vector<Reject> rejected;
+    cfg::loadFromText(invalid, "[MechCommander2]\nl ReflectionQuality = 4\nl WaterDetail = -1\n", &rejected);
+    CHECK(rejected.size() == 2);
+    CHECK(invalid == original);
+}
 TEST_CASE("Preferences/string edits and newly created files retain the FIT grammar") {
     const std::string text = "FITini\n[MechCommander2]\nST PlayerName0 = \"Before\"\n[Keyboard]\nl Key0 = 7\nFITend\n";
     Preferences settings; RenderOptions render;

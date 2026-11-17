@@ -76,6 +76,7 @@ const bool s_perInstanceLight =
 // to the static-prop registry (spawn/despawn/immutable-field write). A clean
 // generation across frames means the persistent static store is reusable.
 static uint64_t s_registryGeneration = 0;
+static uint64_t s_contentRevision = 0;
 
 
 
@@ -395,6 +396,8 @@ int32_t registerRecipe(TG_MultiShape* multi,
     rng.noShadow          = false;        // SHADOW-FOLIAGE: casts unless setRecipeNoShadow(true)
     s_recipes.insert(s_recipes.end(), batch.begin(), batch.end());
     ++s_registryGeneration;   // 2b Stage 2: spawn = structural change
+    ++s_contentRevision;
+    if (mc2_diag::tagRequested("WATER_BAKE")) mc2::fmt::print_err("[WATER_CONTENT] revision={} source=registerRecipe\n", s_contentRevision);
     // RECIPE-SLOT-RECYCLE: reuse a tombstoned regIdx when available (caps max regIdx
     // -> caps the baked-light high-water S -> caps the per-frame light upload/scan).
     // The reused slot's parallel arrays are reset; leaf storage still appends (rng.begin
@@ -539,6 +542,8 @@ void invalidate(int32_t regIdx) {
     // multi-swap lazily re-bakes the same position-derived constant.
     ::mc2EraseBakedStaticLight(regIdx);
     ++s_registryGeneration;   // 2b Stage 2: despawn = structural change
+    ++s_contentRevision;
+    if (mc2_diag::tagRequested("WATER_BAKE")) mc2::fmt::print_err("[WATER_CONTENT] revision={} source=invalidate regIdx={} name={} wasLive={}\n", s_contentRevision, regIdx, rng.shapeName, wasLive);
     // RECIPE-SLOT-RECYCLE: return the now-tombstoned slot to the free-list so the
     // next registerRecipe() reuses this regIdx instead of growing the array.
     if (s_recipeRecycle && wasLive)
@@ -550,6 +555,7 @@ void invalidate(int32_t regIdx) {
 // re-push can be skipped. Bumped on spawn (registerRecipe), despawn (invalidate),
 // and immutable-field write (markVisible light/extent change).
 uint64_t getRegistryGeneration() { return s_registryGeneration; }
+uint64_t getContentRevision() { return s_contentRevision; }
 
 // STATICPROP-SNAPSHOT-BRIDGE-COMPARE-1: submitted-prop set version.
 
@@ -778,6 +784,8 @@ bool staticPropSetAllLeafMatrices(int32_t recipeIndex, const float in[16]) {
         memcpy(s_recipes[rng.begin + i].modelMatrix, in, sizeof(float) * 16);
     }
     ++s_registryGeneration;   // force persistent-static store rebuild next flush
+    ++s_contentRevision;
+    if (mc2_diag::tagRequested("WATER_BAKE")) mc2::fmt::print_err("[WATER_CONTENT] revision={} source=staticPropSetAllLeafMatrices regIdx={}\n", s_contentRevision, recipeIndex);
     return true;
 }
 

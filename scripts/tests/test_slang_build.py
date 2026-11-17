@@ -272,6 +272,23 @@ def test_vk_gate_routes_slang_without_glsl_compiler(tmp_path, monkeypatch, capsy
     assert exit.value.code == 1 and 'bad binding' in capsys.readouterr().out
 
 
+def test_vk_gate_compiles_water_early_and_propagates_failure(tmp_path, monkeypatch):
+    sys.path.insert(0, os.path.join(ROOT, 'tools'))
+    import check_vk_shaders as gate
+    (tmp_path / 'water_geom.frag').write_text('')
+    calls = []
+    monkeypatch.setattr(gate, 'find_compiler', lambda *a: ('glslc', 'glslc'))
+    def compile_one(kind, exe, src, defines=()):
+        calls.append(defines)
+        return not defines, 'early compile failed'
+    monkeypatch.setattr(gate, 'compile_one', compile_one)
+    monkeypatch.setattr(sys, 'argv', ['check_vk_shaders', '--shader-dir', str(tmp_path)])
+    with pytest.raises(SystemExit) as exit:
+        gate.main()
+    assert exit.value.code == 1
+    assert calls == [(), ('WATER_EARLY_TESTS=1',)]
+
+
 def test_cmake_bakes_slang_with_import_and_validator_dependencies():
     cmake = Path(ROOT, 'GameOS/gameos/CMakeLists.txt').read_text()
     assert '"${MC2_VK_SHADER_SRC_DIR}/*.comp.slang"' in cmake

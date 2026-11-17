@@ -31,6 +31,8 @@
 #include "vk_one_shot.h"   // STEP 3.4P: recipe upload
 #include "hitch_stats.h"
 
+void gos_SetWaterFsDebugMode(int);
+
 
 
 
@@ -144,17 +146,24 @@ void write_descriptors(WaterIsland* s, int only) {
             vkUpdateDescriptorSets(s->device, 1, &w4, 0, nullptr);
         }
         vkUpdateDescriptorSets(s->device, 2, w, 0, nullptr);
+        const VkDescriptorBufferInfo surfaceInfo{s->shoreSurface ? s->shoreSurface.get() : s->recipeBuf.get(), 0, VK_WHOLE_SIZE};
+        VkWriteDescriptorSet surfaceWrite{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+        surfaceWrite.dstSet = s->set[i]; surfaceWrite.dstBinding = 14;
+        surfaceWrite.descriptorCount = 1; surfaceWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        surfaceWrite.pBufferInfo = &surfaceInfo;
+        if (surfaceInfo.buffer) vkUpdateDescriptorSets(s->device, 1, &surfaceWrite, 0, nullptr);
         if (s->reflectionView && s->hdriSampler) {
             const VkDescriptorImageInfo images[]{
                 {s->hdriSampler.get(),s->reflectionView.get(),VK_IMAGE_LAYOUT_GENERAL},
-                {VK_NULL_HANDLE,s->reflectionView.get(),VK_IMAGE_LAYOUT_GENERAL}};
-            VkWriteDescriptorSet writes[2]{};
-            for (int k=0;k<2;++k) {
+                {VK_NULL_HANDLE,s->reflectionView.get(),VK_IMAGE_LAYOUT_GENERAL},
+                {s->hdriSampler.get(),s->reflectionView.get(),VK_IMAGE_LAYOUT_GENERAL}};
+            VkWriteDescriptorSet writes[3]{};
+            for (int k=0;k<3;++k) {
                 writes[k].sType=VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; writes[k].dstSet=s->set[i];
-                writes[k].dstBinding=k==0 ? 8 : 11; writes[k].descriptorCount=1; writes[k].pImageInfo=&images[k];
+                writes[k].dstBinding=k==0 ? 8 : k==1 ? 11 : 9; writes[k].descriptorCount=1; writes[k].pImageInfo=&images[k];
                 writes[k].descriptorType=k==1 ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE : VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             }
-            vkUpdateDescriptorSets(s->device,2,writes,0,nullptr);
+            vkUpdateDescriptorSets(s->device,3,writes,0,nullptr);
         }
         // VK-PARITY-WATER-SHORE-1: bindings 3/4 (shore height / mask), once imported.
         if (s->shHTexture && s->shMTexture && s->hdriSampler) {
@@ -277,6 +286,8 @@ extern "C" int mc2_vk_water_island_enabled() {
 
 // Teardown (called from gosPostProcess::destroy or renderer shutdown).
 extern "C" void mc2_vk_water_island_destroy() {
+    if (const WaterIsland* parked = parkedIsland(); parked && parked->profileIssued < 2400)
+        gos_SetWaterFsDebugMode(0);
     vlog("[VK_WATER_TIER1] vulkan_available=%d used_vulkan=%lu used_interop=%lu interop_active=%d "
          "vk2gl_sem=%d validation_errors=%lu thin_records=%lu recipe_count=%lu fallback_reason=\"%s\" "
          "vk_draws=%lu forbidden_copyBufToImg=%lu forbidden_copyImgToBuf=%lu forbidden_getTexImage=%lu "

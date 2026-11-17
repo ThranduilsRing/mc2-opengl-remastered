@@ -764,6 +764,7 @@ static int run_terrain(int w, int h, TerrainIsland* supplied = nullptr,
     }
 
     sync_ring_bindings(s, par, uboSpan, lpSpans);
+    s->groundFrame.visualWaterEligible = common.visualMode != 0 && common.visualSide > 1;
     if (mc2_terrain_feed_observation_enabled()) {
         // Preserve the observation boundary's expanded legacy feed for exact A/B.
         std::vector<TerrainFrameUBO> expanded(patchCount, common);
@@ -915,6 +916,8 @@ bool prepareTerrain(std::unique_ptr<mc2vk::IslandState>& state, Target& target, 
     auto* s = static_cast<PlanarTerrain*>(state.get());
     if (!prepareTerrainView(s->view, target.mainWorldToClip, target.water)) return false;
     auto feed = s->view.feed();
+    if (target.useTargetView) { feed.lightPoolMoverMax = 0; feed.lightPoolMoverDim = 0; }
+    if (target.cameraPos) std::copy_n(target.cameraPos, 3, feed.cameraPosMC2);
     feed.shorelineWaterElev = target.water;
     return run_terrain(target.w, target.h, s, &feed, &target, &record) != 0;
 }

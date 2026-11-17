@@ -8,12 +8,12 @@ void main() {
     ivec2 p = ivec2(gl_GlobalInvocationID.xy), size = imageSize(coverage);
     ivec2 blocks = (size + 7) / 8;
     int mode = P.vertical & 3, count = blocks.x * blocks.y;
-    bool halfRes = (P.vertical & 4) != 0;
+    int divisor = (P.vertical >> 2) + 1;
     if (any(greaterThanEqual(p, mode == 3 ? size : blocks))) return;
     if (mode == 3) {
-        if (halfRes && any(notEqual(p % 2, ivec2(0)))) return;
+        if (any(notEqual(p % divisor, ivec2(0)))) return;
         bool wet = horizontal[(p.y/8)*blocks.x+p.x/8] != 0.0;
-        depth[halfRes ? (p.y/2)*size.x+p.x/2 : p.y*size.x+p.x] = wet ? 0.0 : 1.0;
+        depth[(p.y/divisor)*size.x+p.x/divisor] = wet ? 0.0 : 1.0;
         return;
     }
     bool wet = false;
@@ -28,7 +28,7 @@ void main() {
     }
     bool vertical = mode == 2;
     // Round the original pixel radius up to blocks: the mask stays a superset.
-    int radius = (int(ceil(float(vertical ? size.y : size.x) * 0.009)) + (halfRes ? 2 : 1) + 7) / 8;
+    int radius = (int(ceil(float(vertical ? size.y : size.x) * 0.009)) + divisor + 7) / 8;
     for (int i = -radius; i <= radius && !wet; ++i) {
         ivec2 q = clamp(p + (vertical ? ivec2(0,i) : ivec2(i,0)), ivec2(0), blocks-1);
         wet = horizontal[(vertical ? count : 0)+q.y*blocks.x+q.x] != 0.0;

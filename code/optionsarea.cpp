@@ -11,6 +11,7 @@ OptionsArea.cpp			: Implementation of the OptionsArea component.
 #include"optionsarea.h"
 #include "Gates/gate.h"
 #include "../GuiRuntime/GuiRuntime.h"
+#include "../GuiRuntime/PlayerFrontEnd.h"
 #include"prefs.h"
 #include"inifile.h"
 #include"userinput.h"
@@ -587,6 +588,22 @@ void OptionsGraphics::update()
 	if (hasDefsUiPage()) {
 		static const std::string kResKey  = "game.mcl_optionsgraphics.combo.resolution";
 		static const std::string kCardKey = "game.mcl_optionsgraphics.combo.video_card";
+		static const std::string kReflectionKey = "game.mcl_optionsgraphics.combo.water_reflections";
+		static const std::string kDetailKey = "game.mcl_optionsgraphics.combo.water_detail";
+		auto water = mc2::options::current();
+		if (getDefsListItemCount(kReflectionKey) == 0) {
+			setDefsListItems(kReflectionKey, {"High", "Medium", "Low", "Off"});
+			waterReflectionSelection = -1;
+		}
+		if (getDefsListItemCount(kDetailKey) == 0) {
+			setDefsListItems(kDetailKey, {"High", "Low"});
+			waterDetailSelection = -1;
+		}
+		// Refresh from the shared live values after edits in Ctrl+Shift+G.
+		if (waterReflectionSelection != 3 - water.reflectionQuality)
+			setDefsListSelection(kReflectionKey, 3 - water.reflectionQuality);
+		if (waterDetailSelection != 1 - water.waterDetail)
+			setDefsListSelection(kDetailKey, 1 - water.waterDetail);
 
 		// Safety net: begin() may have run before the v2 page was ready, or the
 		// page may have been reloaded.  Populate items if the combo is empty.
@@ -614,6 +631,23 @@ void OptionsGraphics::update()
 		}
 
 		LogisticsScreen::update();
+		const int reflection = getDefsListSelection(kReflectionKey);
+		const int detail = getDefsListSelection(kDetailKey);
+		if (reflection >= 0 && reflection < 4 && detail >= 0 && detail < 2 &&
+			(reflection != 3 - water.reflectionQuality || detail != 1 - water.waterDetail)) {
+			water.reflectionQuality = 3 - reflection;
+			water.waterDetail = 1 - detail;
+			if (PlayerFrontEnd::saveRenderOptions && PlayerFrontEnd::saveRenderOptions(water)) {
+				mc2::options::publish(water);
+			} else {
+				water = mc2::options::current();
+				setDefsListSelection(kReflectionKey, 3 - water.reflectionQuality);
+				setDefsListSelection(kDetailKey, 1 - water.waterDetail);
+				setDefsElementText("game.mcl_optionsgraphics.text.water_status", "Could not save water quality.");
+			}
+		}
+		waterReflectionSelection = 3 - water.reflectionQuality;
+		waterDetailSelection = 1 - water.waterDetail;
 		const int guiResSel  = getDefsListSelection(kResKey);
 		if (guiResSel >= 0 && guiResSel != resolutionList.GetSelectedItem())
 			resolutionList.SelectItem(guiResSel);

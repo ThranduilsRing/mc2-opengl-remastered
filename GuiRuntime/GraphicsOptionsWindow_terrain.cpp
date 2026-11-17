@@ -536,10 +536,6 @@ void drawStaticPropTuningSection() {
 // ignores them. Defaults match the shader consts EXACTLY; Reset buttons
 // restore them (so the default render stays byte-identical).
 void drawWaterSection() {
-    const char* reflectionModes[] = {"Off", "Sky only", "Half-res"};
-    int reflectionQuality = gos_GetWaterReflectionQuality();
-    if (ImGui::Combo("Reflections##water", &reflectionQuality, reflectionModes, 3))
-        gos_SetWaterReflectionQuality(reflectionQuality);
     ImGui::SeparatorText("Debug View (MDI path)");
     {
         const char* kWaterModes[] = {
