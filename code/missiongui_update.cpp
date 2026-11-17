@@ -236,6 +236,7 @@ void MissionInterfaceManager::update (void)
 	// movie-mode early return so commands are still consumed (and acked
 	// blocked) during the intro swoop instead of piling up.
 	processUiCommandChannel();
+	orderMenuBeginFrame(); // once per frame, before any early return below
 
 	// VK-FIELD-SELECT-1 test hook: MC2_VK_SELECT_TEST=1 auto-selects the visible
 	// home lance every frame so the deterministic headless capture (which ignores
@@ -412,9 +413,6 @@ void MissionInterfaceManager::update (void)
 		controlGui.update( isPaused() && !isPausedWithoutMenu(), false );
 		return;
 	}
-
-	// Order menu owns input before camera, HUD, hotkeys and world dispatch.
-	if (updateOrderMenu()) return;
 
 	//---------------------------------------------------
 	// Tactical overview: advance the blend-state and drive the camera from the
@@ -958,7 +956,7 @@ void MissionInterfaceManager::update (void)
 		// in the space the pick (findObjectByMouse) and the user actually use.
 		updateTarget(bRawGui);
 	}
-	if (updateOrderMenu(true, bRawGui)) return;
+	orderMenuService(bRawGui); // no early return: the menu never skips game code
 
 	{ ZoneScopedN("MIF.PostTarget");
 	attilaXAxis 	= userInput->getAttilaXAxis();  

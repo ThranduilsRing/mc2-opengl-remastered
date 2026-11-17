@@ -7,8 +7,11 @@
 #include "appearance_rng.h"
 #include "command_replay.h"
 #include "tick_commit.h"
+#include <algorithm>
 #include <string_view>
 #include <cstring>
+#include "../GuiRuntime/GuiRuntime.h"
+#include "mc2_czstring.h"
 
 namespace {
 // Bounded, NUL-terminated copy (replaces MSVC-only strncpy_s(_TRUNCATE) so the Linux box build compiles).
@@ -1086,106 +1089,184 @@ void MissionInterfaceManager::updateWaypoints (void)
    	}
 }
 
-bool MissionInterfaceManager::updateOrderMenu(bool allowOpen, bool overGui)
+// Order menu glue. The menu owns the pointer (a real ImGui popup, claimed by the engine's PointerCapture layer)
+// and the Esc key (press filter at the command loop). It never skips game code and never filters a release.
+static constexpr const char* kOrderMenuPopup = "Order menu (prototype)";
+
+static const char* orderMenuReasonName(mc2::order_menu::CancelReason why)
+{
+    using mc2::order_menu::CancelReason;
+    switch (why) {
+    case CancelReason::Esc: return "esc";
+    case CancelReason::Dismissed: return "imgui_dismiss";
+    case CancelReason::Context: return "context";
+    case CancelReason::Watchdog: return "watchdog";
+    case CancelReason::CancelRow: return "cancel";
+    }
+    return "unknown";
+}
+
+// One [ORDER_MENU] line: stderr, and the live JSONL trace (the smoke runner only hands back stderr at exit).
+void orderMenuLogLine(const char* text)
+{
+    if (!mc2_diag::tagRequested("ORDER_MENU")) return;
+    std::fprintf(stderr, "[ORDER_MENU] %s\n", text);
+    char json[640];
+    std::snprintf(json, sizeof json, "{\"msg\":\"%s\"}", text);
+    mc2_diag::writeEvent("ORDER_MENU", 1, 0, json);
+}
+
+static void orderMenuLogClose(const char* why)
+{
+    char line[96];
+    std::snprintf(line, sizeof line, "close reason=%s", why);
+    orderMenuLogLine(line);
+}
+
+static mc2::order_menu::ContextFacts s_lastFacts; // the facts of the latest evaluation, for the close log line
+
+// One predicate for open, every frame and row enable.
+bool MissionInterfaceManager::menuContextValid(const mc2::order_menu::Order* captured)
 {
     using namespace mc2::order_menu;
-    if (!allowOpen && !orderMenu.captured && !orderMenu.draining) return false;
-    if (!ImGui::GetCurrentContext()) return false;
-    ZoneNamedN(orderMenuZone, "MIF.OrderMenu", orderMenu.captured || orderMenu.draining); // none while closed
-    if (allowOpen) {
-        // Classic only: AOE right-click orders and Alt-camera remain intact.
-        if (useLeftRightMouseProfile || overGui ||
-            userInput->wasRightDrag() || !userInput->rightMouseReleased() ||
-            (MPlayer && isPaused()) || // pause orders are single-player only
-            !target || classifyMenuTarget(*target) != MenuTarget::Attackable) return false;
+    ContextFacts f;
+    f.classic = !useLeftRightMouseProfile;
+    f.movie = eye && eye->inMovieMode;
+    f.tutorialAnimation = animationRunning;
+    f.guiFrozen = guiFrozen;
+    f.hotkeyReference = bDrawHotKeys;
+    f.formationLine = TacticalOverview::formationLineEnabled() &&
+                      g_tacticalOverview.flState() != TacticalOverview::FL_IDLE;
+    f.legacyPauseMenu = isPaused() && !isPausedWithoutMenu() && !PauseWindow::imguiPauseEnabled();
+    f.mpPaused = MPlayer && isPaused();
+    f.placementMode = controlGui.isAddingVehicle() || controlGui.isAddingAirstrike() ||
+                      controlGui.isAddingSalvage() || controlGui.isSelectingInfoObject();
+    GameObject* tgt = captured ? (ObjectManager ? ObjectManager->getByWatchID(captured->target) : nullptr) : target;
+    f.targetAttackable = tgt && classifyMenuTarget(*tgt) == MenuTarget::Attackable;
+    if (captured && Team::home) {
+        std::size_t next = 0;
+        bool same = true, anyAlive = false;
+        for (long i = 0; i < Team::home->getRosterSize(); ++i) {
+            auto* mover = Team::home->getMover(i);
+            if (!commanderIsHome(mover->getCommander())) continue;
+            const auto id = mover->getWatchID();
+            if (mover->isSelected()) {
+                if (next >= captured->recipients.size() || captured->recipients[next] != id) same = false;
+                ++next;
+            }
+            if (std::find(captured->recipients.begin(), captured->recipients.end(), id) != captured->recipients.end() &&
+                !mover->isDestroyed() && !mover->isDisabled())
+                anyAlive = true;
+        }
+        f.selectionMatches = same && next == captured->recipients.size();
+        f.recipientAlive = anyAlive;
+    }
+    s_lastFacts = f;
+    return contextValid(f);
+}
+
+void MissionInterfaceManager::orderMenuBeginFrame()
+{
+    ++orderMenuFrame;
+    const bool open = orderMenu.isOpen();
+    if (!open && !orderMenu.escClaimed) return;
+    const bool ok = !open || menuContextValid(&*orderMenu.captured);
+    if (auto why = orderMenu.beginFrame(orderMenuFrame, ok, userInput->getKeyDown(KEY_ESCAPE))) {
+        if (GuiRuntime::FrameActive() && ImGui::BeginPopup(kOrderMenuPopup)) {
+            ImGui::CloseCurrentPopup();
+            ImGui::EndPopup();
+        }
+        orderMenuLogClose(*why == mc2::order_menu::CancelReason::Context && !s_lastFacts.selectionMatches
+            ? "selection_changed" : orderMenuReasonName(*why));
+    }
+}
+
+void MissionInterfaceManager::orderMenuService(bool overGui)
+{
+    using namespace mc2::order_menu;
+    if (!GuiRuntime::FrameActive()) return;
+    static bool s_logRows = false;
+    if (!orderMenu.isOpen()) {
+        if (!userInput->rightMouseReleased() || !target) return;
+        const char* refuse = nullptr;
+        if (useLeftRightMouseProfile) refuse = "profile";
+        else if (overGui) refuse = "over_gui";
+        else if (userInput->wasRightDrag()) refuse = "drag";
+        else if (userInput->getMouseLeftButtonState() == MC2_MOUSE_DOWN) refuse = "button_down";
+        else if (target->isDestroyed()) refuse = "target_destroyed";
+        else if (target->isDisabled()) refuse = "target_disabled";
+        else if (target->isCaptureable(Team::home->getId())) refuse = "target_capturable";
+        else if (Team::home->isFriendly(target->getTeam())) refuse = "target_friendly";
+        else if (!menuContextValid(nullptr)) refuse = "context";
         Order captured;
         captured.target = target->getWatchID();
-        for (long i = 0; i < Team::home->getRosterSize(); ++i) {
-            auto* mover = Team::home->getMover(i); // any selected own mover, as doAttack issues to
-            if (mover->isSelected() && commanderIsHome(mover->getCommander()))
-                captured.recipients.push_back(mover->getWatchID());
+        if (!refuse) {
+            for (long i = 0; i < Team::home->getRosterSize(); ++i) {
+                auto* mover = Team::home->getMover(i); // any selected own mover, as doAttack issues to
+                if (mover->isSelected() && commanderIsHome(mover->getCommander()))
+                    captured.recipients.push_back(mover->getWatchID());
+            }
+            if (captured.recipients.empty()) refuse = "no_selection";
         }
-        if (captured.recipients.empty()) return false;
-        orderMenu.captured = std::move(captured);
-        const auto cursor = ImGui::GetIO().MousePos;
-        orderMenu.x = cursor.x;
-        orderMenu.y = cursor.y;
-        orderMenu.w = orderMenu.h = 0.0f;
-    }
-    const bool held = ImGui::IsMouseDown(0) || ImGui::IsMouseDown(1) ||
-                      ImGui::IsKeyDown(ImGuiKey_Escape) || userInput->getKeyDown(KEY_ESCAPE);
-    if (!orderMenu.consume(held)) return false; // update() runs this frame and handles releases itself
-    // Release edges last one frame and this path skips update(): run the held-mode release
-    // handlers (guard, jump, speed...) here so a key released under the menu cannot stay stuck.
-    for (int i = 0; i < MAX_COMMAND; ++i) {
-        if (commands[i].releaseFunction && commands[i].key != -1 &&
-            gos_GetKeyStatus(gosEnum_KeyIndex(commands[i].key & 0x000fffff)) == KEY_RELEASED)
-        {
-            (this->*commands[i].releaseFunction)();
-            if (mc2_diag::tagRequested("ORDER_MENU"))
-                std::fprintf(stderr, "[ORDER_MENU] release handled cmd=%d guard=%d jump=%d\n", i, controlGui.getGuard() ? 1 : 0, controlGui.getJump() ? 1 : 0);
+        if (refuse) {
+            char line[96];
+            std::snprintf(line, sizeof line, "open_refused reason=%s", refuse);
+            orderMenuLogLine(line);
+            return;
         }
+        orderMenu.open(std::move(captured), orderMenuFrame);
+        ImGui::OpenPopup(kOrderMenuPopup);
+        s_logRows = true;
     }
-    if (!orderMenu.captured) return true;
-    if (useLeftRightMouseProfile || ImGui::IsKeyPressed(ImGuiKey_Escape) ||
-        userInput->getKeyDown(KEY_ESCAPE)) {
-        orderMenu.choose(Item::Cancel, held);
-        return true;
-    }
-    {   // Keep the whole menu on screen, using the last measured size, before any row hit-tests.
-        const ImVec2 disp = ImGui::GetIO().DisplaySize;
-        float px = orderMenu.x, py = orderMenu.y;
-        if (px + orderMenu.w > disp.x) px = disp.x - orderMenu.w;
-        if (py + orderMenu.h > disp.y) py = disp.y - orderMenu.h;
-        ImGui::SetNextWindowPos(ImVec2(px > 0.0f ? px : 0.0f, py > 0.0f ? py : 0.0f), ImGuiCond_Always);
-    }
-    ImGui::SetNextWindowBgAlpha(0.97f);
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.035f, 0.065f, 0.075f, 1));
+    ZoneScopedN("MIF.OrderMenu");
+    ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.035f, 0.065f, 0.075f, 0.97f));
     ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.35f, 0.55f, 0.55f, 1));
-    ImGui::Begin("Order menu (prototype)", nullptr,
-        ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
-        ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove);
-    ImGui::TextUnformatted("Classic profile | pause orders: single-player");
-    ImGui::Separator();
+    const bool popupOpen = ImGui::BeginPopup(kOrderMenuPopup,
+        ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoNav);
     std::optional<Item> choice;
-    // Rows hit-test against their own rect, so a scripted or otherwise unhovered window still selects.
-    const bool clicked = ImGui::IsMouseClicked(0);
-    auto row = [&](std::string_view label, Item item, bool enabled) {
-        const std::string text(label); // MenuItem needs a NUL-terminated label
-        const bool act = ImGui::MenuItem(text.c_str(), nullptr, false, enabled);
-        if (!enabled) return;
-        const bool over = ImGui::IsMouseHoveringRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), false);
-        if (over) ImGui::GetWindowDrawList()->AddRectFilled(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), IM_COL32(90, 150, 150, 70));
-        if (act || (over && clicked)) choice = item;
-    };
-    row("Attack (default)", Item::Attack, true);
-    row("Attack short range", Item::Short, true);
-    row("Attack medium range", Item::Medium, true);
-    row("Attack long range", Item::Long, true);
-    ImGui::MenuItem("Alpha strike (heat model pending)", nullptr, false, false);
-    ImGui::MenuItem("Attack priority (NOT AVAILABLE)", nullptr, false, false);
-    ImGui::Separator();
-    row("Cancel", Item::Cancel, true);
-    const ImVec2 wmin = ImGui::GetWindowPos();
-    const ImVec2 wsz = ImGui::GetWindowSize();
-    orderMenu.w = wsz.x;
-    orderMenu.h = wsz.y;
-    const ImVec2 wmax(wmin.x + wsz.x, wmin.y + wsz.y);
-    const bool inRect = ImGui::IsMouseHoveringRect(wmin, wmax, false);
-    if (clicked && mc2_diag::tagRequested("ORDER_MENU")) {
-        std::fprintf(stderr, "[ORDER_MENU] click mouse=(%.0f,%.0f) rect=(%.0f,%.0f)-(%.0f,%.0f) inRect=%d menuHovered=%d wantMouse=%d choice=%d\n",
-            ImGui::GetIO().MousePos.x, ImGui::GetIO().MousePos.y, wmin.x, wmin.y, wmax.x, wmax.y, inRect ? 1 : 0,
-            ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) ? 1 : 0,
-            ImGui::GetIO().WantCaptureMouse ? 1 : 0, choice ? static_cast<int>(*choice) : -1);
+    if (popupOpen) {
+        const bool canAttack = !userInput->getKeyDown(WAYPOINT_KEY); // classic issueAttack refuses while queueing waypoints
+        float centres[5][2] = {};
+        int rowIndex = 0;
+        auto row = [&](mc2::czstring label, Item item, bool enabled) {
+            if (ImGui::MenuItem(label, nullptr, false, enabled)) choice = item;
+            if (rowIndex < 5) {
+                const ImVec2 lo = ImGui::GetItemRectMin(), hi = ImGui::GetItemRectMax(), disp = ImGui::GetIO().DisplaySize;
+                centres[rowIndex][0] = (lo.x + hi.x) * 0.5f / disp.x * 800.0f;
+                centres[rowIndex][1] = (lo.y + hi.y) * 0.5f / disp.y * 600.0f;
+            }
+            ++rowIndex;
+        };
+        ImGui::TextUnformatted("Classic profile | pause orders: single-player");
+        ImGui::Separator();
+        row("Attack (default)", Item::Attack, canAttack);
+        row("Attack short range", Item::Short, canAttack);
+        row("Attack medium range", Item::Medium, canAttack);
+        row("Attack long range", Item::Long, canAttack);
+        ImGui::MenuItem("Alpha strike (heat model pending)", nullptr, false, false);
+        ImGui::MenuItem("Attack priority (NOT AVAILABLE)", nullptr, false, false);
+        ImGui::Separator();
+        row("Cancel", Item::Cancel, true);
+        if (s_logRows && ImGui::GetWindowSize().x > 1.0f) {
+            s_logRows = false;
+            char line[320];
+            std::snprintf(line, sizeof line, "open rows(800x600) attack=(%.0f,%.0f) short=(%.0f,%.0f) medium=(%.0f,%.0f) long=(%.0f,%.0f) cancel=(%.0f,%.0f) recipients=%zu target=%u",
+                centres[0][0], centres[0][1], centres[1][0], centres[1][1], centres[2][0], centres[2][1],
+                centres[3][0], centres[3][1], centres[4][0], centres[4][1],
+                orderMenu.captured ? orderMenu.captured->recipients.size() : std::size_t{0},
+                orderMenu.captured ? static_cast<unsigned>(orderMenu.captured->target) : 0u);
+            orderMenuLogLine(line);
+        }
+        ImGui::EndPopup();
     }
-    const bool outside = clicked && !inRect && !choice;
-    ImGui::End();
     ImGui::PopStyleColor(2);
-    if (outside) choice = Item::Cancel;
-    if (choice) {
-        if (auto order = orderMenu.choose(*choice, held)) dispatchMenuOrder(*order);
+    const bool wasOpen = orderMenu.isOpen();
+    if (auto order = orderMenu.service(orderMenuFrame, popupOpen, choice)) {
+        orderMenuLogClose("dispatch");
+        dispatchMenuOrder(*order);
+    } else if (wasOpen && !orderMenu.isOpen() && orderMenu.lastClose) {
+        orderMenuLogClose(orderMenuReasonName(*orderMenu.lastClose));
     }
-    return true;
 }
 
 int MissionInterfaceManager::update( bool leftClickedClick, bool rightClickedClick, int MouseX, int MouseY, GameObject* pTarget, bool bLOS )
@@ -1264,6 +1345,9 @@ int MissionInterfaceManager::update( bool leftClickedClick, bool rightClickedCli
 		int key = commands[i].key;
 		if ( userInput->getKeyDown( gosEnum_KeyIndex(key & 0x0000000ff) ) )
 		{
+			// The order menu claims Esc for its own cancel; releases are never filtered (the release branch below).
+			if ( orderMenu.pressBlocked( (key & 0x0000000ff) == KEY_ESCAPE ) )
+				continue;
 			// check for shifts and stuff
 			// must check way pt first, because it can be shift or ctrl
 			if ( (key & WAYPT) )

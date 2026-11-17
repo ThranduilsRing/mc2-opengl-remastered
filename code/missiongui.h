@@ -25,6 +25,7 @@
 #ifndef MISSIONGUI_H
 #define MISSIONGUI_H
 #include <memory>
+#include <span>
 #include "order_menu.h"
 //--------------------------------------------------------------------------------------
 // Include Files
@@ -365,7 +366,10 @@ public:
 	private:
 
 		mc2::order_menu::Menu orderMenu;
-		bool updateOrderMenu(bool allowOpen = false, bool overGui = false);
+		std::uint64_t orderMenuFrame = 0;
+		void orderMenuBeginFrame();
+		void orderMenuService(bool overGui);
+		bool menuContextValid(const mc2::order_menu::Order* captured);
 		void dispatchMenuOrder(const mc2::order_menu::Order& order);
 		enum class MenuTarget { Rejected, Attackable };
 		static MenuTarget classifyMenuTarget(GameObject& obj);
@@ -482,7 +486,8 @@ public:
 
 		void printDebugInfo();
 
-		void doAttack(long rangeOverride = -1); // -1: each mover's own attackRange (classic); else a FireRangeType (order menu)
+		void doAttack();
+		void issueAttack(GameObject& tgt, std::span<Mover* const> recipients, long rangeOverride); // -1: each mover's own attackRange (classic); else a FireRangeType (order menu)
 		void doJump();
 		void doGuardTower();
 		
