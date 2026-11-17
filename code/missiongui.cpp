@@ -225,6 +225,8 @@ MissionInterfaceManager::Command		MissionInterfaceManager::commands[MAX_COMMAND]
 
 void MissionInterfaceManager::init (void)
 {
+	orderMenu = {};
+	orderMenuFrame = 0;
 	realRotation = 0.0;
 	dragStart = glm::vec3(0.0f);
 	dragEnd = glm::vec3(0.0f);
@@ -421,8 +423,11 @@ void MissionInterfaceManager::init (FitIniFilePtr loader)
 }	
 	
 //--------------------------------------------------------------------------------------
+void orderMenuLogLine(std::string_view); // missiongui_style.cpp
 void MissionInterfaceManager::destroy (void)
 {
+	if (orderMenu.isOpen()) orderMenuLogLine("close reason=teardown");
+	orderMenu = {};
 	moveOrderMarker.reset();
 	releaseMissionSupportPreloads();
 	// [IFACE_PERF v1] flush the partial cost-split window at mission teardown

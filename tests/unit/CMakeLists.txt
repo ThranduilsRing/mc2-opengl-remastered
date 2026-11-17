@@ -42,6 +42,7 @@ add_executable(mc2_tests
     ../../code/battle_value.cpp
     test_chassis_layout.cpp
     ${MC2_WORKTREE_ROOT}/code/chassis_layout.cpp
+    test_order_menu.cpp
     test_net_session.cpp
     ${MC2_WORKTREE_ROOT}/code/net/session.cpp
     test_net_lockstep.cpp
