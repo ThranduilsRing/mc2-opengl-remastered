@@ -21,6 +21,7 @@ void gos_GetTerrainChunkGridInfo(int* mapSide, float* halfMap);
 #include "../../RenderCore/water_reactive.h"
 #include "../../mclib/timing.h"
 #include "vk_water_planar.h"
+#include "Gates/render_options.h"
 #include "water_planar_view.h"
 
 
@@ -77,7 +78,7 @@ bool vk_water_detail::record_reflection(WaterIsland* s, VkCommandBuffer cb, bool
     mc2vk::infra::bind(cb,VK_PIPELINE_BIND_POINT_COMPUTE,s->maskCompute.get());
     vkCmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_COMPUTE,s->maskLayout.get(),0,1,&s->maskSet,0,nullptr);
     for (int32_t pass=0; pass<4; ++pass) {
-        const int32_t mode = pass | (s->reflectionDivisor==2 ? 4 : 0);
+        const int32_t mode = pass | ((s->reflectionDivisor-1) << 2);
         vkCmdPushConstants(cb,s->maskLayout.get(),VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof(mode),&mode);
         const int32_t width = pass==3 ? s->w : (s->w+7)/8;
         const int32_t height = pass==3 ? s->h : (s->h+7)/8;
@@ -343,7 +344,7 @@ extern "C" int mc2_vk_water_island_run(
         const bool shoreSdf = static_cast<int>(fsLocal.f4[0] + 0.5f) == 3 &&
                               s->shHReal && s->shHSdf;
         float bounds[4]{};
-        reflectThisFrame=s->mapHasWater && gos_GetWaterReflectionQuality()==2
+        reflectThisFrame=s->mapHasWater && gos_GetWaterReflectionQuality()==2 && mc2::options::current().reflectionQuality>0
             && WaterStream::NativeWaterInFrustum(*nat,shoreSdf,bounds);
         const auto pixels=mc2::waterplanar::paddedPixels(bounds,w,h);
         s->reflectionScissor={{pixels[0],pixels[1]},{static_cast<uint32_t>(pixels[2]-pixels[0]),static_cast<uint32_t>(pixels[3]-pixels[1])}};
@@ -378,7 +379,9 @@ extern "C" int mc2_vk_water_island_run(
         camera[32] = nat->waterElevation;
         static const bool hold = mc2::gate::get<"MC2_WATER_REFLECTION_HOLD">();
         const bool still = objectCamera && std::memcmp(camera,s->reflectionCamera,sizeof(camera))==0;
-        const int divisor = 1;   // owner 11-13: reflections stay full resolution while the camera moves (no half-res motion)
+        const int quality = mc2::options::current().reflectionQuality;
+        const int divisor = quality == 1 ? 4 : quality == 2 ? 2 : 1;
+        fsLocal.SHALLOW_COLOR[3] = mc2::options::current().waterDetail == 0 ? 1.0f : 0.0f;
         // No cheap bake/content epoch: bound stale light, scene and leaf sway to four frames.
         const bool reuse = hold && still && s->reflectionValid && s->reflectionDivisor==divisor && s->nativeFrames%4!=0;
         std::memcpy(s->reflectionCamera,camera,sizeof(camera));
@@ -447,6 +450,7 @@ extern "C" int mc2_vk_water_island_run(
                 return mc2::waterplanar::prepareTerrain(s->planarTerrain, target, s->planarTerrainRecord);
             }() || ![&] {
                 ZoneScopedN("Water.PlanarPropsPrepare");
+                if (mc2::options::current().reflectionQuality == 1) return true;
                 return mc2::waterplanar::prepareProps(s->planarProps, target, s->planarPropsRecord);
             }()) {
             setFallback("planar_view_prepare_failed");

@@ -560,7 +560,7 @@ void main(void)
     if (kReflectionCoverage != 0) { FragColor = vec4(1.0); GBuffer1 = vec4(0.0); return; }
     // Option A: material-local response. Shore coverage/bands and reflection tracing stay independent.
     float reactivePixelWidth = max(length(shoreDx), length(shoreDy));
-    vec3 reactive = reactiveWater(WorldPos.xy, reactivePixelWidth) * waveLOD;
+    vec3 reactive = F.SHALLOW_COLOR.w > 0.5 ? vec3(0.0) : reactiveWater(WorldPos.xy, reactivePixelWidth) * waveLOD;
 
     // Night: the scattered light, sky ambient floor, glint, sky tint and reflected sky take the mission's night
     // dim (f3.z, 0 by day), so open water reads as dark as the ground around it instead of daylight teal.
@@ -671,7 +671,7 @@ void main(void)
         vec3  sunRad = Color.bgra.rgb * (1.0 - 0.5 * clamp(F.f3.z / 0.6, 0.0, 1.0));
         col += min(sunRad * (SUN_SPEC_GAIN * glintScale * sunVis * waterGgxSpec(waveN, vdir, Ls, specAlpha2)), vec3(4.0));
         // The lamp specular and the flat pool term come from one light walk (waterPoolLights), added right after the sun glint.
-        if (uT.numPoolLights > 0 && nightSky < 1.0) {
+        if (F.SHALLOW_COLOR.w < 0.5 && uT.numPoolLights > 0 && nightSky < 1.0) {
             vec3 lampSpec;
             vec3 poolTerm = waterPoolLights(WorldPos, waveN, vdir, specAlpha2, lampSpec);
             col += min(lampSpec * (LAMP_SPEC_GAIN * glintScale), vec3(4.0));

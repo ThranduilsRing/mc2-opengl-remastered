@@ -359,6 +359,9 @@ void visualTuning_applyProfile(mc2::czstring missionName) {
     int count = 0;
     for (const auto& [key,value] : s_environment.legacyTuning) applyKey(key.c_str(),value,count);
     s_appliedKeys = count;
+    const auto& waterOptions = mc2::options::current();
+    mc2::fmt::print_err("[WATER_QUALITY] reflection={} detail={} legacy={} apply=live\n",
+        waterOptions.reflectionQuality, waterOptions.waterDetail, gos_GetWaterReflectionQuality());
     for (const auto& diagnostic : s_environment.diagnostics)
         mc2::fmt::print_err("[VisualTuning] {}\n",diagnostic);
     mc2::fmt::print_err("[MissionEnvironment] mission='{}' schema=2 sourceSchema={} hash={} color={} providers={} keys={}\n",

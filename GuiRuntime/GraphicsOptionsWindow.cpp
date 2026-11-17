@@ -23,6 +23,20 @@ void draw() {
     }
 
     // ── Post-Process ──────────────────────────────────────────────────────────
+    if (ImGui::CollapsingHeader("Water quality", ImGuiTreeNodeFlags_DefaultOpen)) {
+        auto opts = mc2::options::current();
+        const char* reflectionNames[] = {"Off (sky/environment)", "Low", "Medium", "High"};
+        const char* detailNames[] = {"Low", "High"};
+        bool changed = ImGui::Combo("Reflection quality", &opts.reflectionQuality, reflectionNames, 4);
+        changed |= ImGui::Combo("Water detail", &opts.waterDetail, detailNames, 2);
+        static bool saveFailed = false;
+        if (changed) {
+            saveFailed = !PlayerFrontEnd::saveRenderOptions || !PlayerFrontEnd::saveRenderOptions(opts);
+            if (!saveFailed) mc2::options::publish(opts);
+        }
+        ImGui::TextUnformatted("Saved automatically; applies live.");
+        if (saveFailed) ImGui::TextUnformatted("Could not save water quality.");
+    }
     PlayerFrontEnd::drawOptions();
     if (ImGui::CollapsingHeader("Post-Process")) {
         gosPostProcess* pp = getGosPostProcess();
