@@ -1150,7 +1150,7 @@ bool MissionInterfaceManager::menuContextValid(const mc2::order_menu::Order* cap
     GameObject* tgt = captured ? (ObjectManager ? ObjectManager->getByWatchID(captured->target) : nullptr) : target;
     f.targetAttackable = tgt && classifyMenuTarget(*tgt) == MenuTarget::Attackable;
     if (captured && f.targetAttackable && tgt->isMover() && !ShowMovers && !(MPlayer && MPlayer->allUnitsDestroyed[MPlayer->commanderID]) &&
-        static_cast<Mover*>(tgt)->conStat < CONTACT_SENSOR_QUALITY_1)
+        !static_cast<Mover*>(tgt)->contactView.blip)
         f.targetAttackable = false; // sensor contact lost while open: the same fog predicate as the CPU pick
     if (captured && Team::home) {
         std::size_t next = 0;
