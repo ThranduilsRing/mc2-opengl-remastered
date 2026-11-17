@@ -2197,6 +2197,7 @@ bool MechLabScreen::canRemoveComponent( LogisticsComponent* pComp )
 namespace {
 struct LocItem { LogisticsComponent* comp; long x, y; };
 int s_locHover = -1;
+int s_locScroll[ml::kPanelCount] = {};   // first visible item per panel (overflow scrolling)
 bool s_locLegal[ml::kPanelCount] = {};
 std::string s_locReason[ml::kPanelCount];
 
@@ -2304,7 +2305,7 @@ void MechLabScreen::setLocationView( bool on )
 	updateDiagram();
 }
 
-bool MechLabScreen::placeInPanel( LogisticsComponent* pComponent, int panel, long& x, long& y )
+std::optional<MechLabScreen::PlacedAt> MechLabScreen::placeInPanel( LogisticsComponent* pComponent, int panel )
 {
 	const mc2pkg::PackageChassis* pc = locPackage( pVariant );
 	const int ri = regionOfPanel( pc, panel ).value_or( -1 );
@@ -2320,23 +2321,30 @@ bool MechLabScreen::placeInPanel( LogisticsComponent* pComponent, int panel, lon
 	{
 		showDropRefusal( std::string( ml::panelTitle( panel ) ) + ": " + ( ri < 0 ? "no equipment slots here." : reason ) );
 		soundSystem->playDigitalSample( LOG_WRONGBUTTON );
-		return false;
+		return std::nullopt;
 	}
-	return 0 == addComponent( pComponent, x, y );
+	if ( 0 != addComponent( pComponent, x, y ) )
+		return std::nullopt;
+	// the placed INSTANCE: its cell is what Remove, selection and the highlight use (several copies share one component)
+	std::vector<LocItem> items;
+	gatherPanelItems( pVariant, panel, items );
+	for ( size_t k = 0; k < items.size(); ++k )
+		if ( ml::isSelectedInstance( items[k].x, items[k].y, x, y ) )
+			s_locScroll[panel] = ml::scrollToReveal( static_cast<int>( items.size() ), s_locScroll[panel], static_cast<int>( k ) );
+	return PlacedAt{ x, y };
 }
 
 void MechLabScreen::endDragLocation()
 {
 	const int panel = ml::panelAt( static_cast<float>( userInput->getMouseX() ), static_cast<float>( userInput->getMouseY() ) ).value_or( -1 );
-	long x = -1, y = -1;
-	bool placed = false;
+	std::optional<PlacedAt> placed;
 	if ( panel >= 0 && panel < ml::kLocationCount )
-		placed = placeInPanel( pDragComponent, panel, x, y );
+		placed = placeInPanel( pDragComponent, panel );
 	if ( placed )
 	{
 		componentListBox.SelectItem( -1 );
-		selI = x;
-		selJ = y;
+		selI = placed->x;
+		selJ = placed->y;
 		pSelectedComponent = pDragComponent;
 	}
 	else if ( mc2::components::restoreGridDrag( bDragLeft, false,
@@ -2392,7 +2400,8 @@ void MechLabScreen::updateLocationInput()
 	{
 		std::vector<LocItem> origin;
 		gatherPanelItems( pVariant, dragPanel, origin );
-		const int orow = ml::itemRowAt( dragPanel, static_cast<float>( userInput->getMouseDragX() ), static_cast<float>( userInput->getMouseDragY() ), static_cast<int>( origin.size() ) ).value_or( -1 );
+		const int orow = ml::itemIndexAt( dragPanel, static_cast<int>( origin.size() ), s_locScroll[dragPanel],
+			static_cast<float>( userInput->getMouseDragX() ), static_cast<float>( userInput->getMouseDragY() ) ).value_or( -1 );
 		if ( orow >= 0 && orow < static_cast<int>( origin.size() ) )
 		{
 			const LocItem it = origin[orow];
@@ -2416,7 +2425,25 @@ void MechLabScreen::updateLocationInput()
 	if ( !dragStarted && s_locHover >= 0 && s_locHover < ml::kLocationCount )
 	{
 		gatherPanelItems( pVariant, s_locHover, items );
-		const int row = ml::itemRowAt( s_locHover, mx, my, static_cast<int>( items.size() ) ).value_or( -1 );
+		const int count = static_cast<int>( items.size() );
+		s_locScroll[s_locHover] = ml::clampScroll( count, s_locScroll[s_locHover] );
+		bool arrowClicked = false;
+		if ( count > ml::kMaxItemRows )
+		{
+			if ( const long wheel = userInput->getMouseWheelDelta() )
+			{
+				s_locScroll[s_locHover] = ml::scrollByWheel( count, s_locScroll[s_locHover], wheel );
+				userInput->clearMouseWheelDelta();
+			}
+			if ( userInput->isLeftClick() )
+				for ( const bool down : { false, true } )
+					if ( ml::scrollArrowRect( s_locHover, down ).contains( mx, my ) )
+					{
+						s_locScroll[s_locHover] = ml::clampScroll( count, s_locScroll[s_locHover] + ( down ? 1 : -1 ) );
+						arrowClicked = true;
+					}
+		}
+		const int row = arrowClicked ? -1 : ml::itemIndexAt( s_locHover, count, s_locScroll[s_locHover], mx, my ).value_or( -1 );
 		const LocItem* item = ( row >= 0 && row < static_cast<int>( items.size() ) ) ? &items[row] : nullptr;
 		if ( item )
 			::helpTextID = IDS_HELP_COMP0 + item->comp->getID();
@@ -2449,17 +2476,8 @@ void MechLabScreen::updateLocationInput()
 				soundSystem->playDigitalSample( LOG_SELECT );
 				componentListBox.SelectItem( -1 );
 			}
-			else if ( cand )
-			{
-				long x = -1, y = -1;
-				if ( placeInPanel( cand, s_locHover, x, y ) )
-				{
-					selI = x; selJ = y;
-					pSelectedComponent = cand;
-					pInspectedComponent = nullptr;
-					componentListBox.SelectItem( -1 );
-				}
-			}
+			else if ( !arrowClicked && -1 != componentListBox.GetSelectedItem() && componentListBox.getComponent() )
+				placeInPanel( componentListBox.getComponent(), s_locHover );
 		}
 	}
 	if ( userInput->leftMouseReleased() && pDragComponent )
@@ -2562,10 +2580,26 @@ void MechLabScreen::drawLocationView( float tbSx, float tbSy, float tbOx, float 
 		}
 		std::vector<LocItem> items;
 		gatherPanelItems( pVariant, p, items );
-		for ( size_t k = 0; k < items.size(); ++k )
+		const int itemCount = static_cast<int>( items.size() );
+		const int first = ml::clampScroll( itemCount, s_locScroll[p] );
+		if ( itemCount > ml::kMaxItemRows )
+		{	// overflow: small arrows on the badge row and a "first-last/total" range
+			for ( const bool down : { false, true } )
+			{
+				const ml::Rect a = ml::scrollArrowRect( p, down );
+				const bool can = down ? first < ml::maxScroll( itemCount ) : first > 0;
+				fill( a, can ? 0xff2d6a8f : 0xff20303c, true );
+				text( { a.x, a.y - 1, a.w, a.h }, down ? "v" : "^", can ? 0xffffffff : 0xff607080, 10.f, 1 );
+			}
+			char rng[24];
+			std::snprintf( rng, sizeof rng, "%d-%d/%d", first + 1, first + ml::kMaxItemRows, itemCount );
+			text( { r.x + 28, r.y + 15, 38, 11 }, rng, 0xffa0b0c0, 9.f, 0 );
+		}
+		for ( int rowIndex = 0; rowIndex < ml::kMaxItemRows && first + rowIndex < itemCount; ++rowIndex )
 		{
-			ml::Rect row = ml::itemRowRect( p, static_cast<int>( k ), static_cast<int>( items.size() ) );
-			const bool sel = items[k].x == selI && items[k].y == selJ && pSelectedComponent && !pDragComponent;
+			const int k = first + rowIndex;
+			ml::Rect row = ml::itemRowRect( p, rowIndex, std::min( itemCount, ml::kMaxItemRows ) );
+			const bool sel = ml::isSelectedInstance( items[k].x, items[k].y, selI, selJ ) && pSelectedComponent && !pDragComponent;
 			if ( sel ) fill( row, 0x802d6a8f, true );
 			char line[64];
 			const bool showWeight = items.size() <= ml::kRowsPerColumn;

@@ -1,6 +1,7 @@
 #ifndef MECHLABSCREEN_H
 #define MECHLABSCREEN_H
 #include <memory>
+#include <optional>
 /*************************************************************************************************\
 MechLabScreen.h			: Interface for the MechLabScreen component.
 //---------------------------------------------------------------------------//
@@ -137,7 +138,8 @@ class MechLabScreen: public LogisticsScreen
 		bool	locationViewActive() const;
 		void	updateLocationInput();
 		void	drawLocationView( float tbSx, float tbSy, float tbOx, float tbOy, int xOffset, int yOffset );
-		bool		placeInPanel( LogisticsComponent* pComponent, int panel, long& x, long& y );
+		struct PlacedAt { long x = -1; long y = -1; };
+		std::optional<PlacedAt>	placeInPanel( LogisticsComponent* pComponent, int panel );
 		void	endDragLocation();
 		void	setLocationView( bool on );
 

@@ -482,7 +482,17 @@ bool LogisticsVariant::addComponent( int idFromFitFile, long& x, long& y )
 		long componentWidth = pComponent->getComponentWidth();
 		long componentHeight = pComponent->getComponentHeight();
 
-		if ( x == -1 && y == -1 )
+		// A package chassis validates every saved cell against the CURRENT regions and mounts (old-layout saves
+		// are migrated or dropped, never restored blindly).
+		if ( chassis->getPackage() )
+		{
+			const auto cell = packageMigratePlacement( pComponent, x, y );
+			if ( !cell )
+				return false;
+			x = cell->x;
+			y = cell->y;
+		}
+		else if ( x == -1 && y == -1 )
 		{
 			for ( int j = 0; j < chassis->componentAreaHeight && x == -1; j++ )
 			{

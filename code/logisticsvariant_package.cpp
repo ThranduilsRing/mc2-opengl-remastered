@@ -128,3 +128,18 @@ LogisticsVariant::LocationPlace LogisticsVariant::packageLocationPlace( Logistic
     out.y = e.y;
     return out;
 }
+
+std::optional<LogisticsVariant::MigratedCell> LogisticsVariant::packageMigratePlacement( LogisticsComponent* pComponent, long x, long y ) const
+{
+    const mc2pkg::PackageChassis* pc = chassis->getPackage();
+    if ( !pc )
+        return MigratedCell{ x, y };
+    std::vector<mc2pkg::Placed> existing;
+    existing.reserve( componentCount );
+    for ( int i = 0; i < componentCount; ++i )
+        existing.push_back( placedOf( components[i].component, components[i].xCoord, components[i].yCoord ) );
+    const auto to = mc2::mechlab_loc::migratePlacement( *pc, existing, placedOf( pComponent, x, y ) );
+    if ( !to )
+        return std::nullopt;
+    return MigratedCell{ to->x, to->y };
+}

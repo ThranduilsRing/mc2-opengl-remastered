@@ -3,8 +3,9 @@
 // BT2018-FIRST-CLASS P3/P7: the pure package-chassis rules (code/package_chassis.h) every
 // legality caller shares -- mech lab drop/auto-place, deployment mount assignment, and the
 // runtime object-type allocation. The fixture mirrors the generated bt2018:marauder
-// chassisdef.fit (tools/bt2018_mechs/recipes/marauder.json): a 6x4 grid split into five
-// location regions, 2+2 Energy arm mounts, one Missile per side torso, Ballistic + AP centre.
+// chassisdef.fit (tools/bt2018_mechs/recipes/marauder.json): a 6x6 grid split into five
+// location regions, 2 Energy + 1 AntiPersonnel per arm, 3 Ballistic in the right torso, no
+// missile mounts, none in the left/centre torso.
 #include "doctest.h"
 #include "package_chassis.h"
 #include "equipment_registry.h"
@@ -20,20 +21,21 @@ PackageChassis marauder() {
     c.tonnage = 75.0f;
     c.emptyMass = 41.0f;
     c.payload = 34.0f;
-    c.regions = {{"LeftArm", 0, 0, 1, 4}, {"LeftTorso", 1, 0, 1, 4}, {"CenterTorso", 2, 0, 2, 4},
-                 {"RightTorso", 4, 0, 1, 4}, {"RightArm", 5, 0, 1, 4}};
+    c.regions = {{"LeftArm", 0, 0, 2, 3}, {"LeftTorso", 0, 3, 2, 3}, {"CenterTorso", 2, 0, 2, 6},
+                 {"RightTorso", 4, 3, 2, 3}, {"RightArm", 4, 0, 2, 3}};
     auto hp = [&](const char* id, const char* loc, Mount m, const char* sock) {
         Hardpoint h; h.id = id; h.location = loc; h.mount = m; h.socket = sock; h.key = hardpointKey(id);
         c.hardpoints.push_back(h);
     };
     hp("LeftArm.Energy.0", "LeftArm", Mount::Energy, "weapon_leftarm");
     hp("LeftArm.Energy.1", "LeftArm", Mount::Energy, "weapon_leftarm2");
-    hp("LeftTorso.Missile.0", "LeftTorso", Mount::Missile, "weapon_lefttorso");
-    hp("CenterTorso.Ballistic.0", "CenterTorso", Mount::Ballistic, "weapon_centertorso");
-    hp("CenterTorso.AntiPersonnel.0", "CenterTorso", Mount::AntiPersonnel, "weapon_centertorso2");
-    hp("RightTorso.Missile.0", "RightTorso", Mount::Missile, "weapon_righttorso");
+    hp("LeftArm.AntiPersonnel.0", "LeftArm", Mount::AntiPersonnel, "weapon_leftarm3");
+    hp("RightTorso.Ballistic.0", "RightTorso", Mount::Ballistic, "weapon_righttorso");
+    hp("RightTorso.Ballistic.1", "RightTorso", Mount::Ballistic, "weapon_righttorso2");
+    hp("RightTorso.Ballistic.2", "RightTorso", Mount::Ballistic, "weapon_righttorso3");
     hp("RightArm.Energy.0", "RightArm", Mount::Energy, "weapon_rightarm");
     hp("RightArm.Energy.1", "RightArm", Mount::Energy, "weapon_rightarm2");
+    hp("RightArm.AntiPersonnel.0", "RightArm", Mount::AntiPersonnel, "weapon_rightarm3");
     c.antiPersonnelOrdinals = {67, 68};
     return c;
 }
@@ -43,13 +45,15 @@ Placed item(int x, int y, int w, int h, Mount cat, int ord, float wt) {
     return p;
 }
 
-// MAD-3R as the compiler places it: PPC+ML per arm, AC5 centre, 3 heat sinks per side torso.
+// MAD-3R as the shipped recipe places it: PPC+ML per arm, AC5 in the right torso, its ammo and three
+// heat sinks in the left torso, three heat sinks in the centre torso. 31 t of the 34 t payload.
 std::vector<Placed> mad3r() {
-    return {item(0, 0, 1, 3, Mount::Energy, 145, 6), item(0, 3, 1, 1, Mount::Energy, 156, 2),
-            item(5, 0, 1, 3, Mount::Energy, 145, 6), item(5, 3, 1, 1, Mount::Energy, 156, 2),
-            item(2, 0, 2, 2, Mount::Ballistic, 100, 8),
-            item(1, 0, 1, 1, Mount::None, 7, 1), item(1, 1, 1, 1, Mount::None, 7, 1), item(1, 2, 1, 1, Mount::None, 7, 1),
-            item(4, 0, 1, 1, Mount::None, 7, 1), item(4, 1, 1, 1, Mount::None, 7, 1), item(4, 2, 1, 1, Mount::None, 7, 1)};
+    return {item(0, 0, 1, 3, Mount::Energy, 145, 6), item(1, 0, 1, 1, Mount::Energy, 156, 2),
+            item(4, 0, 1, 3, Mount::Energy, 145, 6), item(5, 0, 1, 1, Mount::Energy, 156, 2),
+            item(4, 3, 2, 2, Mount::Ballistic, 100, 8),
+            item(0, 3, 1, 1, Mount::None, 160, 1),
+            item(1, 3, 1, 1, Mount::None, 7, 1), item(0, 4, 1, 1, Mount::None, 7, 1), item(1, 4, 1, 1, Mount::None, 7, 1),
+            item(2, 0, 1, 1, Mount::None, 7, 1), item(3, 0, 1, 1, Mount::None, 7, 1), item(2, 1, 1, 1, Mount::None, 7, 1)};
 }
 
 } // namespace
@@ -62,43 +66,46 @@ TEST_CASE("package chassis: the stock MAD-3R loadout mounts every weapon on a de
     CHECK(c.hardpoints[m[0]].id == "LeftArm.Energy.0");
     CHECK(c.hardpoints[m[1]].id == "LeftArm.Energy.1");
     CHECK(c.hardpoints[m[2]].id == "RightArm.Energy.0");
-    CHECK(c.hardpoints[m[4]].id == "CenterTorso.Ballistic.0");
-    CHECK(m[5] == -1);   // heat sinks take no mount
-    CHECK(massUsed(mad3r()) == doctest::Approx(30.0f));
+    CHECK(c.hardpoints[m[4]].id == "RightTorso.Ballistic.0");
+    CHECK(m[5] == -1);   // ammo and heat sinks take no mount
+    CHECK(massUsed(mad3r()) == doctest::Approx(31.0f));
 }
 
 TEST_CASE("package chassis: wrong mount type, wrong location and overweight are refused") {
     const PackageChassis c = marauder();
     std::vector<Placed> base = mad3r();
-    // A third energy weapon in the left arm: the arm has two Energy mounts, both used.
-    base.erase(base.begin() + 1);   // free one LA cell (the ML at 0,3)
-    CHECK(checkAdd(c, base, item(0, 3, 1, 1, Mount::Energy, 156, 2)) == Verdict::Legal);
-    CHECK(checkAdd(c, mad3r(), item(1, 3, 1, 1, Mount::Energy, 156, 2)) == Verdict::NoFreeMount);   // LT has only Missile
-    CHECK(checkAdd(c, mad3r(), item(1, 3, 1, 1, Mount::Missile, 120, 2)) == Verdict::Legal);        // LRM5 in LT: legal
-    CHECK(checkAdd(c, mad3r(), item(0, 2, 2, 2, Mount::Ballistic, 100, 1)) == Verdict::OutsideRegion); // straddles LA/LT
-    CHECK(checkAdd(c, mad3r(), item(1, 3, 1, 1, Mount::Missile, 120, 5)) == Verdict::OverPayload);  // 30 + 5 > 34
-    CHECK(checkAdd(c, mad3r(), item(1, 3, 1, 1, Mount::None, 25, 2)) == Verdict::Legal);             // armour plate
+    // The arm has two Energy mounts: with the medium laser removed one is free again.
+    base.erase(base.begin() + 1);
+    CHECK(checkAdd(c, base, item(1, 0, 1, 1, Mount::Energy, 156, 2)) == Verdict::Legal);
+    CHECK(checkAdd(c, mad3r(), item(1, 1, 1, 1, Mount::Energy, 156, 2)) == Verdict::NoFreeMount);   // both arm Energy mounts used
+    CHECK(checkAdd(c, mad3r(), item(0, 5, 1, 1, Mount::Energy, 156, 2)) == Verdict::NoFreeMount);   // LT has no mounts at all
+    CHECK(checkAdd(c, mad3r(), item(0, 5, 1, 1, Mount::Missile, 120, 2)) == Verdict::NoFreeMount);  // the shipped Marauder has no missile mounts
+    CHECK(checkAdd(c, mad3r(), item(1, 2, 2, 2, Mount::Ballistic, 100, 1)) == Verdict::OutsideRegion); // straddles LA/CT/LT
+    CHECK(checkAdd(c, mad3r(), item(1, 5, 1, 1, Mount::None, 25, 4)) == Verdict::OverPayload);      // 31 + 4 > 34
+    CHECK(checkAdd(c, mad3r(), item(1, 5, 1, 1, Mount::None, 25, 3)) == Verdict::Legal);            // 31 + 3 = payload
 }
 
 TEST_CASE("package chassis: anti-personnel items prefer the AP mount, then their category") {
     const PackageChassis c = marauder();
-    std::vector<Placed> v = {item(2, 2, 1, 1, Mount::Ballistic, 67, 0.5f),     // machine gun (AP capable)
-                             item(2, 0, 2, 2, Mount::Ballistic, 100, 8)};      // AC5
+    std::vector<Placed> v = {item(0, 0, 1, 1, Mount::Ballistic, 67, 0.5f),     // machine gun (AP capable) in the left arm
+                             item(4, 3, 2, 2, Mount::Ballistic, 100, 8)};      // AC5 in the right torso
     bool ok = false;
     const std::vector<int> m = assignMounts(c, v, &ok);
     REQUIRE(ok);
     CHECK(c.hardpoints[m[0]].mount == Mount::AntiPersonnel);
     CHECK(c.hardpoints[m[1]].mount == Mount::Ballistic);
-    // A second AP-capable MG falls back to... nothing: the Ballistic mount is the AC5's.
-    v.push_back(item(3, 2, 1, 1, Mount::Ballistic, 67, 0.5f));
+    // A second AP-capable MG in the arm: the AP mount is taken and the arm has no Ballistic mount.
+    v.push_back(item(1, 0, 1, 1, Mount::Ballistic, 67, 0.5f));
     assignMounts(c, v, &ok);
     CHECK_FALSE(ok);
 }
 
 TEST_CASE("package chassis: auto-place probing finds a region with a free compatible mount") {
     const PackageChassis c = marauder();
-    Placed lrm = item(-1, -1, 1, 2, Mount::Missile, 60, 4);
-    CHECK(checkAdd(c, mad3r(), lrm) == Verdict::Legal);
+    Placed lrm = item(-1, -1, 1, 2, Mount::Missile, 60, 3);
+    CHECK(checkAdd(c, mad3r(), lrm) == Verdict::NoFreeMount);   // no missile mounts on the shipped layout
+    Placed ac = item(-1, -1, 2, 3, Mount::Ballistic, 101, 3);
+    CHECK(checkAdd(c, mad3r(), ac) == Verdict::Legal);          // two Ballistic mounts remain in the right torso
     Placed ppc = item(-1, -1, 1, 3, Mount::Energy, 145, 1);
     CHECK(checkAdd(c, mad3r(), ppc) == Verdict::NoFreeMount);   // all four Energy mounts are used
 }
@@ -184,17 +191,16 @@ TEST_CASE("package chassis: every weapon_* name maps to a bone present in the GL
 }
 
 // Owner 11-16: weapons were refused on the Marauder with no reason. The refusal is the BT mount
-// rule (every Energy/Ballistic mount of the stock MAD-3R is taken) and the 4 t payload slack.
-TEST_CASE("package chassis: full MAD-3R refuses energy and ballistic on mounts, takes a missile rack, armor eats the slack") {
+// rule (every Energy mount of the stock MAD-3R is taken) and the 3 t payload slack.
+TEST_CASE("package chassis: full MAD-3R refuses energy on mounts, takes a ballistic, armor eats the slack") {
     const PackageChassis c = marauder();
     const std::vector<Placed> loaded = mad3r();
-    CHECK(checkAdd(c, loaded, item(2, 2, 1, 1, Mount::Energy, 156, 2)) == Verdict::NoFreeMount);
-    CHECK(checkAdd(c, loaded, item(3, 2, 1, 1, Mount::Ballistic, 100, 1)) == Verdict::NoFreeMount);
-    CHECK(checkAdd(c, loaded, item(1, 3, 1, 1, Mount::Missile, 120, 4)) == Verdict::Legal);   // 30 + 4 = payload
+    CHECK(checkAdd(c, loaded, item(1, 1, 1, 1, Mount::Energy, 156, 2)) == Verdict::NoFreeMount);
+    CHECK(checkAdd(c, loaded, item(4, 5, 1, 1, Mount::Ballistic, 100, 1)) == Verdict::Legal);   // 31 + 1: a Ballistic mount remains
+    CHECK(checkAdd(c, loaded, item(0, 5, 1, 1, Mount::Missile, 120, 1)) == Verdict::NoFreeMount);
     std::vector<Placed> plated = loaded;
-    plated.push_back(item(2, 2, 1, 1, Mount::None, 25, 2));
-    plated.push_back(item(3, 2, 1, 1, Mount::None, 25, 2));
-    CHECK(checkAdd(c, plated, item(1, 3, 1, 1, Mount::Missile, 124, 2)) == Verdict::OverPayload);
+    plated.push_back(item(0, 5, 1, 1, Mount::None, 25, 3));
+    CHECK(checkAdd(c, plated, item(4, 5, 1, 1, Mount::Ballistic, 100, 1)) == Verdict::OverPayload);
     // Removing a PPC frees its arm mount: a PPC auto-places again.
     std::vector<Placed> noPpc = loaded;
     noPpc.erase(noPpc.begin());

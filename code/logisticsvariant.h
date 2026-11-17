@@ -227,6 +227,10 @@ protected:
 		// verdict text either way. Cells + mc2pkg::checkAdd only.
 		struct LocationPlace { bool legal = false; long x = -1; long y = -1; std::string reason; };
 		LocationPlace	packageLocationPlace( LogisticsComponent* pComponent, int regionIndex ) const;
+		// Loader path: keep a saved cell when it is still legal on the current layout, else move it to the first legal
+		// cell, else report nullopt (item dropped to inventory). See mc2::mechlab_loc::migratePlacement.
+		struct MigratedCell { long x = -1; long y = -1; };
+		std::optional<MigratedCell>	packageMigratePlacement( LogisticsComponent* pComponent, long x, long y ) const;
 
 		int			getFileID() const { return fileID; }
 

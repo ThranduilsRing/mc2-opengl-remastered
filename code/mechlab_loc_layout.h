@@ -56,6 +56,7 @@ inline constexpr Rect kPreview{25, 116, 184, 377};
 // Title + mount badges, four normal-font item rows, then a refusal line.
 inline constexpr float kHeaderH = 28, kRowItemH = 12, kRefusalH = 10;
 inline constexpr int kRowsPerColumn = 4;
+inline constexpr int kMaxItemRows = 12;
 
 inline Rect panelRect(int p) {
     // Paired locations, then a compact mass/special-slot strip beneath them.
@@ -88,6 +89,37 @@ inline std::optional<int> itemRowAt(int p, float lx, float ly, int count) {
         if (itemRowRect(p, k, count).contains(lx, ly)) return k;
     return std::nullopt;
 }
+
+// ---- overflow scrolling: a 12-cell location can hold more than kMaxItemRows items -------------
+// `scroll` is the index of the first visible item. Wheel over a panel, or the small arrows that
+// sit on the (empty) left of the mount-badge row, move it; items are addressed by (scroll + row),
+// so drawing and hit-testing cannot disagree.
+inline int maxScroll(int count) { return count > kMaxItemRows ? count - kMaxItemRows : 0; }
+inline int clampScroll(int count, int scroll) {
+    const int m = maxScroll(count);
+    return scroll < 0 ? 0 : (scroll > m ? m : scroll);
+}
+inline int scrollByWheel(int count, int scroll, long wheelDelta) {   // engine wheel: positive = back = later items
+    return clampScroll(count, scroll + (wheelDelta > 0 ? 1 : (wheelDelta < 0 ? -1 : 0)));
+}
+inline int scrollToReveal(int count, int scroll, int index) {
+    if (index < scroll) scroll = index;
+    if (index >= scroll + kMaxItemRows) scroll = index - kMaxItemRows + 1;
+    return clampScroll(count, scroll);
+}
+inline Rect scrollArrowRect(int p, bool down) {
+    const Rect r = panelRect(p);
+    return {r.x + 3 + (down ? 12.0f : 0.0f), r.y + 15, 10, 11};
+}
+// Item index (not row) under a point inside panel p, honouring the scroll; nullopt when no item is there.
+inline std::optional<int> itemIndexAt(int p, int count, int scroll, float lx, float ly) {
+    const auto row = itemRowAt(p, lx, ly, std::min(count, kMaxItemRows));
+    if (!row) return std::nullopt;
+    const int i = clampScroll(count, scroll) + *row;
+    return i < count ? std::optional<int>(i) : std::nullopt;
+}
+// The highlighted item is the placed INSTANCE (its cell), not every copy of the same component.
+inline bool isSelectedInstance(long itemX, long itemY, long selX, long selY) { return itemX == selX && itemY == selY; }
 
 // Panel index of a BT location name.
 inline std::optional<int> panelOfLocation(std::string_view name) {
@@ -148,6 +180,27 @@ inline Explained explain(const mc2pkg::PackageChassis& c, const std::vector<mc2p
         }
     e.reason = anyFree ? Reason::NoFreeMount : Reason::RegionFull;
     return e;
+}
+
+// ---- saved-layout migration ---------------------------------------------------------------------
+// A loadout saved against an older grid/mount layout of the same chassis id must not restore its old
+// coordinates blindly. Keep the saved cell when it is still free, wholly inside a region and legal
+// (mounts, payload); otherwise move the item to the first legal cell scanning regions in declared order,
+// then rows, then columns. nullopt = nothing legal: the item is dropped (it returns to inventory).
+// Deterministic: the caller feeds items in saved order.
+struct Cell { int x = -1, y = -1; };
+inline std::optional<Cell> migratePlacement(const mc2pkg::PackageChassis& c, const std::vector<mc2pkg::Placed>& existing,
+                                                           const mc2pkg::Placed& cand) {
+    if (cand.x >= 0 && cand.y >= 0 && cellsFree(existing, cand.x, cand.y, cand.w, cand.h) &&
+        mc2pkg::checkAdd(c, existing, cand) == mc2pkg::Verdict::Legal)
+        return Cell{cand.x, cand.y};
+    for (size_t ri = 0; ri < c.regions.size(); ++ri) {
+        Candidate cd;
+        cd.w = cand.w; cd.h = cand.h; cd.category = cand.category; cd.ordinal = cand.ordinal; cd.weight = cand.weight;
+        const Explained e = explain(c, existing, cd, static_cast<int>(ri));
+        if (e.reason == Reason::Legal) return Cell{e.x, e.y};
+    }
+    return std::nullopt;
 }
 
 // One short line for a panel (101 legacy px wide at ~10 px text: keep under ~22 characters).
