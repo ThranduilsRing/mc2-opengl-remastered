@@ -130,6 +130,8 @@ def test_refused_roots_exit_2(tmp_path, which):
         byproduct = None
         install = Path("A:/Games/MC2 OpenGL Remastered") / "clean-byproducts-test-absent"
     else:
+        if gate_hosts.current_host() != "pc" and not Path("E:/mc2-archive-2026-10").exists():
+            pytest.skip(f"PC-only archive root E:/mc2-archive-2026-10 (gate host {gate_hosts.current_host()})")
         byproduct = None
         install = Path("E:/mc2-archive-2026-10") / "clean-byproducts-test-absent"
     r = run_cli(install, "--apply")
