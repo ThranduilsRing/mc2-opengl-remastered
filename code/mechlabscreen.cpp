@@ -268,8 +268,6 @@ int MechLabScreen::init( FitIniFile& file )
 	payloadIcon.resize(ml::kCellW, LogisticsComponent::YICON_FACTOR);
 	mechCamera.init(ml::kPreview.x, ml::kPreview.y,
 		ml::kPreview.x + ml::kPreview.w, ml::kPreview.y + ml::kPreview.h);
-	attributeMeters[5].moveTo(337, 513);
-	attributeMeters[6].moveTo(337, 496);
 	textObjects[11].moveTo(240, 494);
 	textObjects[12].moveTo(240, 511);
 	textObjects[4].moveTo(27, 499);
@@ -1055,8 +1053,8 @@ void MechLabScreen::render(int xOffset, int yOffset)
 	// DEFS-METER-BRIDGE-1: stat bars on the ImGui layer (raw gos draws are
 	// buried under the defs page).
 	aObject::beginGuiBridge( tbSx, tbSy, tbOx, tbOy );
-	for (int i : {5, 6})
-		attributeMeters[i].render(xOffset, yOffset);
+	attributeMeters[5].render(xOffset + 176, yOffset + 16);
+	attributeMeters[6].render(xOffset + 176, yOffset + 28);
 	aObject::endGuiBridge();
 
 	if ( !xOffset && !yOffset )
