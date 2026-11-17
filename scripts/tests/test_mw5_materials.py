@@ -40,7 +40,7 @@ def test_rg_normal_flip_and_reconstruction(tmp_path):
     assert np.all(xyz[:, 2] >= 0)
 
 
-def test_cook_and_ktx_only_pack(tmp_path, monkeypatch):
+def test_cook_and_ktx_only_pack(tmp_path, monkeypatch, fixture):
     alb, nrm = tmp_path / "alb.png", tmp_path / "nrm.png"
     Image.new("RGBA", (2, 2), (97, 53, 21, 255)).save(alb)
     Image.new("RGB", (2, 2), (128, 128, 0)).save(nrm)
@@ -60,8 +60,10 @@ def test_cook_and_ktx_only_pack(tmp_path, monkeypatch):
     (inst / "data/tgl").mkdir(parents=True)
     (inst / "data/tgl/madcat.ini").write_text("FITini\n[Gestures]\nl NumGestures = 1\nFITend\n")
     glb = tmp_path / "test.glb"
-    glb.write_bytes(b"synthetic")
-    monkeypatch.setattr(sys, "argv", ["build_pack", "--install", str(inst), "--glb", str(glb), "--textures", str(cooked)])
+    B.build(fixture[0], tmp_path, glb, "mw5_madcat_alb.png")
+    loadout = tmp_path / "loadout.json"
+    loadout.write_text("[]")
+    monkeypatch.setattr(sys, "argv", ["build_pack", "--install", str(inst), "--glb", str(glb), "--textures", str(cooked), "--loadout", str(loadout)])
     P.main()
     tgl = inst / "mods/mw5_mechs/data/tgl"
     pkg = json.loads((tgl / "mw5_madcat.package.json").read_text())

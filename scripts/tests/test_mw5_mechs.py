@@ -147,12 +147,12 @@ def test_world_pelvis_distinguishes_root_sign(fixture):
 
 
 def test_bridge_output_bytes_unchanged(fixture, tmp_path):
-    # SHA-256 of the bridge-path GLB, measured at base 4e47f3af6 before native input was added.
+    # Hardpoints intentionally add trueHeightM and mw5Attachments extras; geometry/clips stay unchanged.
     import hashlib
     skm = fixture[0]
     B.build(skm, tmp_path, tmp_path / "a.glb", "albedo.png")
     assert hashlib.sha256((tmp_path / "a.glb").read_bytes()).hexdigest() == \
-        "0e06430f334efa2e7bb54b214d2df9ce11aa29047fd9fce2d69b5284b4b74e85"
+        "d1b685dd64ad0cddb484d5807aa15e6831a4b1ee00f309c79bc9ed44d6bb0f25"
 
 
 def test_native_input_matches_bridge_on_fixture(fixture, tmp_path):
@@ -186,7 +186,8 @@ def test_native_input_matches_bridge_on_fixture(fixture, tmp_path):
     b = B.build(skm, tmp_path, tmp_path / "b.glb", "albedo.png")
     assert [n["name"] for n in a["nodes"]] == [n["name"] for n in b["nodes"]]
     assert [m["name"] for m in a["meshes"]] == [m["name"] for m in b["meshes"]]
-    assert [x["name"] for x in a["animations"]] == [x["name"] for x in b["animations"]] == ["atlas_moveCoreIdle"]
+    assert [x["name"] for x in a["animations"]] == [x["name"] for x in b["animations"]] == ["atlas_moveCoreIdle", "atlas_downedGetup", "atlas_hitReactLgtFwd",
+                                                                                              "atlas_hitReactLgtBwd", "atlas_hitReactLgtLeft", "atlas_hitReactLgtRight"]
     assert [c["target"] for c in a["animations"][0]["channels"]] == [c["target"] for c in b["animations"][0]["channels"]]
     abuf = (tmp_path / "n.glb").read_bytes()
     bbuf = (tmp_path / "b.glb").read_bytes()
@@ -198,3 +199,54 @@ def test_native_input_matches_bridge_on_fixture(fixture, tmp_path):
     for ma, mb in zip(a["meshes"], b["meshes"]):
         pa, pb = ma["primitives"][0], mb["primitives"][0]
         assert np.allclose(B.read_accessor(a, ab, pa["attributes"]["POSITION"]), B.read_accessor(b, bb, pb["attributes"]["POSITION"]))
+
+
+@pytest.mark.parametrize('authored', [True, False])
+def test_attached_muzzle_in_rotated_joint_frame(fixture, tmp_path, authored):
+    from tools.mw5_mechs.sockets import package_nodes
+    skm = fixture[0]
+    hull = json.loads(skm.read_text())
+    # Add a cockpit so the fallback has a known horizontal forward axis.
+    hull['nodes'].append({'name': 'Cockpit', 'translation': [0, 5, 10]})
+    skm.write_text(json.dumps(hull))
+    weapon = json.loads(skm.read_text())
+    weapon['nodes'] = [{'name': 'Root'}, {'name': 'Fire00' if authored else 'tip',
+                                        'translation': [2, 3, 30]}]
+    wp = tmp_path / 'weapon.gltf'
+    wp.write_text(json.dumps(weapon))
+    out = tmp_path / 'assembled.glb'
+    bone = 'Foot0_Left'
+    doc = B.build(skm, tmp_path, out, 'albedo.png', attachments=[f'{wp}={bone}'])
+    row = dict(node='weapon_0', mesh='weapon', bone=bone, type=4, fires=['Fire00'])
+    nodes, offsets, types, height = package_nodes(out, [row, dict(node=None)])
+    assert nodes['weapon_0'] == 'j_LFoot' and types == {'weapon_0': 4}
+    assert height == 15  # original hull bounds; weapons must not alter this
+    frame = fk(hull['nodes'])[3]
+    point = np.array([float(x) for x in offsets['weapon_0'].split()])
+    if authored:
+        assert np.allclose(point, [2, 3, 30])
+    else:
+        # Independent expected tip: transform every source vertex, select by +Z.
+        verts = np.arange(18).reshape(6, 3)
+        world = (np.c_[verts, np.ones(6)] @ frame.T)[:, :3]
+        expected = verts[np.argmax(world[:, 2])]
+        assert np.allclose(point, expected, atol=1e-4)
+    assert all(len(n['name']) <= 24 for n in doc['nodes'])
+    assert all(not any(s in m['name'].lower() for s in ('_explode', '_dmg', 'blip', 'indc', 'uix'))
+               for m in doc['meshes'])
+    from tools.mw5_mechs.build_pack import emit_ini
+    ini = emit_ini('FITini\n[Bounds]\nf UpperLeftX = 1\nFITend', types)
+    assert 'l NumWeapon = 1' in ini and 'l WeaponType = 4' in ini
+    assert 'weapon_0' in ini and 'f UpperLeftX = 1' in ini
+    with pytest.raises(ValueError, match='not unique'):
+        package_nodes(out, [dict(row, mesh='missing')])
+    with pytest.raises(ValueError, match='joint mismatch'):
+        package_nodes(out, [dict(row, bone='Foot0_Right')])
+    with pytest.raises(ValueError, match='duplicate'):
+        package_nodes(out, [row, row])
+
+
+def test_attachment_requires_resolved_bone(fixture, tmp_path):
+    with pytest.raises(ValueError, match='bone not found'):
+        B.build(fixture[0], tmp_path, tmp_path / 'bad.glb', 'albedo.png',
+                attachments=[f'{fixture[0]}=unresolved'])
