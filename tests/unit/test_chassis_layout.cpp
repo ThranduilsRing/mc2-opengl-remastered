@@ -214,7 +214,7 @@ TEST_CASE("chassis_layout: installed stock variants production save round trip")
         const auto rows = csv(entry.path()); bool found = false;
         for (std::size_t start = 0; start < rows.size(); ++start) {
             if (rows[start].empty() || rows[start][0] != "VariantInfo") continue;
-            CAPTURE(entry.path().filename().string(), start); found = true; ++variants;
+            const auto csvName = entry.path().filename().string(); CAPTURE(csvName); CAPTURE(start); found = true; ++variants;
             LocationVariant original;
             for (auto n = start + 1; n < rows.size() && rows[n][0] != "ComponentPlacement"; ++n) {
                 const auto& row = rows[n]; if (row.size() < 5 || row[0].find("Item") != 0) continue;
