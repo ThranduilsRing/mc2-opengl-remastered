@@ -652,14 +652,14 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 						auto dirtyReasons = [&]() {
 							auto* building = appearance->getAppearanceClass() == BUILDING_APPR_TYPE ? static_cast<BldgAppearance*>(appearance) : nullptr;
 							// Reasons overlap: a shared call is charged to each applicable reason, never summed across reasons.
-							return unsigned(inView && !appearance->IsStaticNow()) |
-								(unsigned(walkObj->getFlag(OBJECT_FLAG_FALLING)) << 1) |
+							return static_cast<unsigned>(inView && !appearance->IsStaticNow()) |
+								(static_cast<unsigned>(walkObj->getFlag(OBJECT_FLAG_FALLING)) << 1) |
 								// Offscreen lights are persistent; only a visible owner emits frame-local effects.
 								// Camera invalidation revisits non-residents when they can become visible again.
-								(unsigned(inView && building && building->hasFrameLights()) << 2) |
+								(static_cast<unsigned>(inView && building && building->hasFrameLights()) << 2) |
 								// Keep frame-local light rows live until the permanent bake exists.
-								(unsigned(building && building->residentRenderBlocker() == BldgAppearance::ResidentBlocker::Light) << 3) |
-								(unsigned(terrainKind && static_cast<TerrainObject*>(walkObj)->hasPresentationEffects()) << 4);
+								(static_cast<unsigned>(building && building->residentRenderBlocker() == BldgAppearance::ResidentBlocker::Light) << 3) |
+								(static_cast<unsigned>(terrainKind && static_cast<TerrainObject*>(walkObj)->hasPresentationEffects()) << 4);
 							};
 						if (inView)
 						{
