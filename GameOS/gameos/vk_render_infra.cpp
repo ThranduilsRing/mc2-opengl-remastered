@@ -512,6 +512,12 @@ void reload() {
     if(fileError) { fail("shader_directory"); return; }
     const auto originalPath = std::filesystem::weakly_canonical(path, fileError);
     if(fileError) { fail("invalid_original_path"); return; }
+    // validated-v1 carries only one module. These variants share coverage/discard
+    // code, so neither may reload until the protocol can publish both atomically.
+    const auto moduleName = originalPath.filename();
+    if(moduleName == "vfx_vegetation.frag.spv" || moduleName == "vfx_vegetation_shade.frag.spv") {
+        fail("vegetation_fragment_requires_atomic_pair"); return;
+    }
     for(const auto& name : {path, candidate}) {
         const auto resolved = std::filesystem::weakly_canonical(name, fileError);
         const auto relative = resolved.lexically_relative(shaderDir);

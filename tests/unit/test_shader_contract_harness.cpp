@@ -96,6 +96,23 @@ static std::set<std::string> scanSourceShaderRefs(const fs::path& root) {
     return refs;
 }
 
+TEST_CASE("shader_contract_harness/vegetation_fragment_reload_rejects_both_variants") {
+    const auto infra = readFile(repoRoot() / "GameOS/gameos/vk_render_infra.cpp");
+    const auto guard = infra.find("const auto moduleName = originalPath.filename();");
+    const auto end = infra.find("for(const auto& name : {path, candidate})", guard);
+    REQUIRE(guard != std::string::npos);
+    REQUIRE(end != std::string::npos);
+    const auto rejection = infra.substr(guard, end - guard);
+    CHECK(rejection.find("moduleName == \"vfx_vegetation.frag.spv\" || moduleName == \"vfx_vegetation_shade.frag.spv\"") != std::string::npos);
+    CHECK(rejection.find("fail(\"vegetation_fragment_requires_atomic_pair\"); return;") != std::string::npos);
+    // Reject before reading a candidate or publishing any pipeline/override.
+    CHECK(end < infra.find("std::ifstream in(candidate"));
+    CHECK(end < infra.find("s.overrides[path]="));
+    const auto owner = readFile(repoRoot() / "GameOS/gameos/vulkan_vfx_island.cpp");
+    CHECK(owner.find("spv_dir() + \"vfx_vegetation.frag.spv\"") != std::string::npos);
+    CHECK(owner.find("spv_dir() + \"vfx_vegetation_shade.frag.spv\"") != std::string::npos);
+}
+
 TEST_CASE("shader_contract_harness/water_raw_saddle_diagonal") {
     const auto shader = readFile(repoRoot() / "shaders/vulkan/water_geom.frag");
     REQUIRE_FALSE(shader.empty());

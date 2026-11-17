@@ -1,6 +1,10 @@
 // Opaque cutouts sharing the terrain's current lighting and shadow inputs.
 #version 450
 #extension GL_GOOGLE_include_directive : require
+#ifdef VEGETATION_SHADE_EARLY_TESTS
+// Shade only: EQUAL, no depth/stencil writes; retain both cutout predicates below.
+layout(early_fragment_tests) in;
+#endif
 #define PREC highp
 #define TERRAIN_RESOURCE_SET 3
 #include "../include/render_contract.hglsl"
