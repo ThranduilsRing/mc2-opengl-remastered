@@ -4,6 +4,7 @@
 #include <span>
 #include <vector>
 #include <cstring>
+#include <functional>
 
 namespace mc2::vegetation { struct Population; }
 namespace GosVegetation {
@@ -47,7 +48,9 @@ namespace GosVegetation {
         uint32_t maxInst = 0;
         double placeMs = 0, buildMs = 0, keyMs = 0, readMs = 0, writeMs = 0, uploadMs = 0;
     };
-    bool uploadPopulation(const mc2::vegetation::Population&, UploadInfo* info = nullptr);
+    uint32_t populationStride(const mc2::vegetation::Population&);
+    mc2::vegetation::Population buildResidentPopulation(std::span<const Instance>);
+    bool uploadPopulation(const mc2::vegetation::Population&, UploadInfo* info = nullptr, const std::function<void()>& afterUpload = {});
     void uploadInstances(const Instance* instances, uint32_t count, UploadInfo* info = nullptr);
 
     // Per-block visibility: 1=draw, 0=cull.  Derived from Terrain::s_blockMeta[i].lodLevel.

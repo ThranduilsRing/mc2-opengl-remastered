@@ -214,7 +214,11 @@ uint32_t GosVegetation::populationCapacity(uint32_t requested, float mapSpan) {
 
 static_assert(sizeof(mc2::vegetation::PopulationRegion) == sizeof(mc2veg::GpuRegion));
 static_assert(offsetof(mc2::vegetation::PopulationRegion, first) == offsetof(mc2veg::GpuRegion, first));
-bool GosVegetation::uploadPopulation(const mc2::vegetation::Population& population, UploadInfo* info) {
+uint32_t GosVegetation::populationStride(const mc2::vegetation::Population& p) { return mc2veg::State::strideFor(p.instances.size(),p.regions.size()); }
+mc2::vegetation::Population GosVegetation::buildResidentPopulation(std::span<const Instance> data) {
+    return mc2::vegetation::buildPopulationWith(data, [](size_t n, size_t m) { return mc2veg::State::strideFor(n,m); });
+}
+bool GosVegetation::uploadPopulation(const mc2::vegetation::Population& population, UploadInfo* info, const std::function<void()>& afterUpload) {
     if (!initialized || !mc2vk::engineVulkanContextValid()) return false;
     populationCount = 0;
     UploadInfo fallback;
@@ -226,6 +230,7 @@ bool GosVegetation::uploadPopulation(const mc2::vegetation::Population& populati
         ok = mc2veg::State::instance().upload(mc2vk::getOrCreateEngineVulkanContext(), population.instances, population.regions);
     }
     d.uploadMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now()-t).count();
+    if(ok && afterUpload && mc2veg::State::instance().instanceCount()==population.instances.size()) afterUpload();
     mc2::fmt::print_err("[VEG_GPU] population identity: cache={} reason={} key={:016x} instances={} regions={} inst_hash={:016x} region_hash={:016x} hs_hash={:016x} max_inst={} place_ms={:.3f} build_ms={:.3f} key_ms={:.3f} read_ms={:.3f} write_ms={:.3f} upload_ms={:.3f}\n",
         d.cache, d.reason, d.key, population.instances.size(), population.regions.size(),
         mc2::vegetation::populationHash(population.instances), mc2::vegetation::populationHash(population.regions), d.hsHash,
@@ -242,7 +247,7 @@ void GosVegetation::uploadInstances(const Instance* data, uint32_t count, Upload
     mc2::vegetation::Population population;
     {
         MC2_LOAD_SCOPE("cook.veg.build");
-        population = mc2::vegetation::buildPopulationWith({data, count}, [](size_t n, size_t m) { return mc2veg::State::strideFor(n, m); });
+        population = buildResidentPopulation({data,count});
     }
     if (info) info->buildMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now()-t).count();
     if (population.stride > 1) mc2::fmt::print_err("[VK_RESIDENCY v1] thinned=vegetation stride={} instances={}->{}\n", population.stride, count, population.instances.size());
