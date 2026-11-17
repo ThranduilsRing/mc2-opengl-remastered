@@ -1386,7 +1386,7 @@ TEST_CASE("render option keys are unique and findable") {
     CHECK(mo::find("NotAnOption") == nullptr);
     CHECK(mo::find("cpuphongretire") == mo::find("CpuPhongRetire"));   // keys are case-insensitive like options.cfg
     CHECK(mo::find("PostCAS") != mo::find("PostCASSharpness"));
-    CHECK(mo::kOptionCount == 22);   // includes StockOverlayConcrete and TextureQuality
+    CHECK(mo::kOptionCount == 24);   // includes reflection quality and water detail
 }
 
 TEST_CASE("render option values outside their bounds, NaN and garbage are rejected and change nothing") {
