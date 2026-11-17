@@ -13,6 +13,7 @@
 // -- value inlined (render_contract.hglsl) so the VK shader needs no GL include.
 #version 450
 #extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_control_flow_attributes : require
 layout(constant_id = 11) const int kReflectionCoverage = 0;
 layout(constant_id = 13) const int kWaterDbgPass = 0;
 #define PREC highp
@@ -42,8 +43,12 @@ vec4 waterSurfaceRow(ivec2 p, mat2x4 north, mat2x4 row, mat2x4 south) {
     vec4 diagonal = north[0] + north[1] + south[0] + south[1];
     vec4 cardinal = n + s + e + w;
     vec4 result;
-    for (int x = 0; x < 4; ++x) {
-        float fine = rise[x] <= 24.0 ? c[x] : cliffFilteredHeight(c[x], cardinal[x], diagonal[x], rise[x]);
+    [[unroll]] for (int x = 0; x < 4; ++x)
+        result[x] = rise[x] <= 24.0 ? c[x] : cliffFilteredHeight(c[x], cardinal[x], diagonal[x], rise[x]);
+    // At full displacement, interior vertices have no coarse-surface contribution.
+    if (hiresBlendW() == 1.0 && hiresEdgeW(p.x, p.y) == 1.0 && hiresEdgeW(p.x + 3, p.y) == 1.0)
+        return result;
+    [[unroll]] for (int x = 0; x < 4; ++x) {
         int fx = p.x + x, fy = p.y;
         int cx = min(fx / 4, uT.mapSide - 2), cy = min(fy / 4, uT.mapSide - 2);
         float u = float(fx - cx * 4) * 0.25, v = float(fy - cy * 4) * 0.25;
@@ -51,12 +56,12 @@ vec4 waterSurfaceRow(ivec2 p, mat2x4 north, mat2x4 row, mat2x4 south) {
         float h01 = sampleH(cx, cy + 1), h11 = sampleH(cx + 1, cy + 1);
         float hc = (v >= u) ? h00 + (h11 - h01) * u + (h01 - h00) * v
                             : h00 + (h10 - h00) * u + (h11 - h10) * v;
-        result[x] = mix(hc, fine, hiresBlendW() * hiresEdgeW(fx, fy));
+        result[x] = mix(hc, result[x], hiresBlendW() * hiresEdgeW(fx, fy));
     }
     return result;
 }
 void waterSurfaceCache(ivec2 p, out mat4 raw, out mat4 surface) {
-    for (int parity = 0; parity < 2; ++parity) {
+    [[unroll]] for (int parity = 0; parity < 2; ++parity) {
         ivec2 q = p + ivec2(0, parity);
         mat2x4 north = waterRawRow(q + ivec2(0, -2));
         mat2x4 row = waterRawRow(q), south = waterRawRow(q + ivec2(0, 2));
@@ -69,6 +74,13 @@ void waterSurfaceCache(ivec2 p, out mat4 raw, out mat4 surface) {
         surface[parity + 2] = waterSurfaceRow(q + ivec2(0, 2), north, row, south);
     }
 }
+vec4 waterCell(mat4 rows, ivec2 k) {
+    // Constant component accesses avoid dynamically indexing a per-fragment array.
+    vec4 top = k.y == 0 ? rows[0] : (k.y == 1 ? rows[1] : rows[2]);
+    vec4 bottom = k.y == 0 ? rows[1] : (k.y == 1 ? rows[2] : rows[3]);
+    return k.x == 0 ? vec4(top.xy, bottom.xy)
+                   : (k.x == 1 ? vec4(top.yz, bottom.yz) : vec4(top.zw, bottom.zw));
+}
 float waterCachedHeight(vec2 worldXY, ivec2 origin, mat4 raw, mat4 surface) {
     // Keep each tap's coordinate arithmetic and triangle interpolation identical.
     vec2 grid = clamp(vec2(worldXY.x + uT.halfMap, uT.halfMap - worldXY.y) / 32.0,
@@ -76,19 +88,19 @@ float waterCachedHeight(vec2 worldXY, ivec2 origin, mat4 raw, mat4 surface) {
     ivec2 p = min(ivec2(floor(grid)), ivec2(uT.visualSide - 2));
     vec2 t = grid - vec2(p);
     ivec2 k = p - origin;
-    float rawTL = raw[k.y][k.x], rawTR = raw[k.y][k.x + 1];
-    float rawBL = raw[k.y + 1][k.x], rawBR = raw[k.y + 1][k.x + 1];
+    vec4 r = waterCell(raw, k), h = waterCell(surface, k);
+    float rawTL = r.x, rawTR = r.y, rawBL = r.z, rawBR = r.w;
     if (abs(rawTR - rawBL) < abs(rawTL - rawBR)) {
-        float tr = surface[k.y][k.x + 1], bl = surface[k.y + 1][k.x];
+        float tr = h.y, bl = h.z;
         if (t.x + t.y <= 1.0) {
-            float tl = surface[k.y][k.x];
+            float tl = h.x;
             return tl + (tr - tl) * t.x + (bl - tl) * t.y;
         }
-        float br = surface[k.y + 1][k.x + 1];
+        float br = h.w;
         return br + (bl - br) * (1.0 - t.x) + (tr - br) * (1.0 - t.y);
     }
-    float a = surface[k.y][k.x], d = surface[k.y + 1][k.x + 1];
-    float b = t.y >= t.x ? surface[k.y + 1][k.x] : surface[k.y][k.x + 1];
+    float a = h.x, d = h.w;
+    float b = t.y >= t.x ? h.z : h.y;
     return t.y >= t.x ? a + (d - b) * t.x + (b - a) * t.y
                       : a + (b - a) * t.x + (d - b) * t.y;
 }
