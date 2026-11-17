@@ -187,7 +187,7 @@ def test_marauder_profile_keeps_bt_identity_and_raw_values(marauder):
                               "CenterTorso": 23, "LeftLeg": 16, "RightLeg": 16}
     assert m["speed"]["walk_mp"] == 4 and m["speed"]["run_mp"] == 6 and m["speed"]["mc2_class"] == 19
     assert m["payload"] == 34 and m["empty_mass"] == 41
-    assert len(marauder["hardpoints"]) == 10   # arms 2E+1AP each, right torso 3 Ballistic (the install MAD-3R)
+    assert len(marauder["hardpoints"]) == 10   # install MAD-3R mounts plus the pack Longbow left torso missile mount
     assert marauder["report"] == []
 
 
@@ -233,7 +233,7 @@ def test_illegal_loadouts_are_refused_consistently(tables, marauder_recipe):
     def overweight(r):   # payload comes from the reference (first) variant, so the heavy one is a second mechdef
         r["mechdefs"].append(copy.deepcopy(r["mechdefs"][0]))
         for _ in range(5):
-            r["mechdefs"][1]["inventory"].append({"MountedLocation": "CenterTorso", "ComponentDefID": "Gear_HeatSink_Generic_Standard", "HardpointSlot": -1})
+            r["mechdefs"][-1]["inventory"].append({"MountedLocation": "CenterTorso", "ComponentDefID": "Gear_HeatSink_Generic_Standard", "HardpointSlot": -1})
 
     def no_region(r):
         del r["mc2"]["regions"]["RightTorso"]
