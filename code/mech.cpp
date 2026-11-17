@@ -8,6 +8,8 @@
 #include <array>
 #include "mech_internal.h"
 #include "component_rules.h"
+#include "mc2fmt.h"
+#include "../GameOS/gameos/diagnostic_trace.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 
 // Truncate at the data boundary exactly as the lab's integer += Damage does.
@@ -33,9 +35,9 @@ bool BattleMech::armAlphaStrike() {
 		!heatState.arm(alphaSalvo(), mission->alphaTick(), heatProfile)) return false;
 	for (int w = numOther; w < numOther + numWeapons && w < mc2::heat::inventorySize; ++w)
 		if (heatState.alphaMask.test(w)) inventory[w].readyTime = scenarioTime;
-	fprintf(stderr, "[ALPHA_HEAT v1] event=arm mech=%ld tick=%llu weapons=%zu heat=%d\n",
-		getWatchID(false), static_cast<unsigned long long>(mission->alphaTick()),
-		heatState.alphaMask.count(), heatState.heatMilli);
+	if (mc2_diag::tagRequested("ALPHA_HEAT"))
+		mc2::fmt::print_err("[ALPHA_HEAT v1] event=arm mech={} tick={} weapons={} heat={}\n",
+			getWatchID(false), mission->alphaTick(), heatState.alphaMask.count(), heatState.heatMilli);
 	return true;
 }
 

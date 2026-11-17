@@ -79,6 +79,7 @@
 
 #include <algorithm>
 #include "mc2fmt.h"
+#include <cerrno>
 #include "tacorder_wire.h"
 #include "tactic_table.h"
 
@@ -423,7 +424,7 @@ long TacticalOrder::pack (MoverGroupPtr group, MoverPtr point) {
 	// First data DWORD (bit layout in tacorder_wire.h; GUARD without a target packs the sentinel)...
 	const auto method = tacorder_wire::encode_method(std::to_underlying(attackParams.method), attackParams.alpha);
 	if (method < 0 || (attackParams.alpha && code != TACTICAL_ORDER_ATTACK_OBJECT &&
-		code != TACTICAL_ORDER_ATTACK_POINT)) return -1;
+		code != TACTICAL_ORDER_ATTACK_POINT)) return EINVAL;
 	data[0] = tacorder_wire::pack_word0(attackParams.aimLocation, method,
 		std::to_underlying(attackParams.type), static_cast<uint32_t>(groupFlags), unitOrder, std::to_underlying(origin),
 		tacorder_wire::encode_code(std::to_underlying(code), targetWID != 0));

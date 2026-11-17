@@ -9,6 +9,7 @@
 #include "appearance_rng.h"
 #include "Gates/gate.h"
 #include "mc2fmt.h"
+#include "../GameOS/gameos/diagnostic_trace.h"
 #include "gos_profiler.h"
 
 // MC2_GPU_CULL_LIFECYCLE=1 routes AI canBeSeen() combat gates to GPU-lagged visibility (same env var as objmgr.cpp).
@@ -24,7 +25,7 @@ long BattleMech::update (void)
     const auto previousHeat = heatState.heatMilli;
     heatState.expire(mission->alphaTick());
     heatState.tick(heatProfile);
-    if (previousHeat > 0 && heatState.heatMilli == 0)
+    if (previousHeat > 0 && heatState.heatMilli == 0 && mc2_diag::tagRequested("ALPHA_HEAT"))
         mc2::fmt::print_err("[ALPHA_HEAT v1] event=cold mech={} tick={} heat=0\n",
             getWatchID(false), mission->alphaTick());
     unitAnimation = appearance->pinnedSimulationAnimation();

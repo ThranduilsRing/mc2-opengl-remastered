@@ -42,7 +42,7 @@ inline int32_t capacityMilli(int chassisPoints, int workingSinkPoints) {
 // Match the lab: truncate EACH component before converting to milli-heat.
 inline int32_t weaponCost(float points) {
     if (!std::isfinite(points) || points <= 0) return 0;
-    return static_cast<int32_t>(std::min(points, float(maxLabPoints))) * 1000;
+    return static_cast<int32_t>(std::min(points, static_cast<float>(maxLabPoints))) * 1000;
 }
 
 struct Salvo {
@@ -71,7 +71,7 @@ struct State {
             int64_t{heatMilli} + salvo.cost <= capacity;
     }
     bool arm(const Salvo& salvo, uint64_t now, const Profile& p) {
-        if (!admits(salvo) || now > UINT64_MAX - uint64_t(p.alphaWindowTicks)) return false;
+        if (!admits(salvo) || now > UINT64_MAX - static_cast<uint64_t>(p.alphaWindowTicks)) return false;
         alphaMask = salvo.mask;
         alphaExpireTick = now + p.alphaWindowTicks;
         return true;
