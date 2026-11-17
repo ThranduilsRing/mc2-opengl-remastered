@@ -135,7 +135,7 @@ struct PopulationRecord {
     std::array<int32_t, 25> counters{};
 };
 inline constexpr uint64_t kBlobMagic = 0x31424f4c42504756ull;
-inline constexpr size_t kBlobHeader = 196;
+inline constexpr size_t kBlobHeader = 204;
 inline uint64_t fileKey(const Digest& d) { return mc2cache::getLE(d, 0, 8); }
 inline Digest sourceDigest(const SourceBytes& inputs, const Digest& exe, uint32_t producer = kProducer, uint32_t format = kFormat) {
     SourceBytes s; s.word(format); s.word(producer); s.raw(exe); s.raw(inputs.bytes); return s.digest();
@@ -149,12 +149,14 @@ inline std::vector<uint8_t> encode(const PopulationRecord& r, const Digest& sour
     put(r.interval.lo,8); put(r.interval.hi,8);
     put(mc2::content::fastHash({reinterpret_cast<const uint8_t*>(r.population.regions.data()),r.population.regions.size()*32},populationHash(r.population.instances)),8);
     for (auto c : r.counters) put(static_cast<uint32_t>(c),4);
+    put(mc2::content::fastHash(out),8);
     auto append = [&](const auto& v) { const auto* p = reinterpret_cast<const uint8_t*>(v.data()); if (!v.empty()) out.insert(out.end(),p,p+v.size()*sizeof(v[0])); };
     append(r.population.instances); append(r.population.regions); return out;
 }
 inline std::optional<PopulationRecord> decode(std::span<const uint8_t> b, const Digest& source, uint64_t maxInst) {
     if (b.size() < kBlobHeader) return std::nullopt;
     auto get = [&](size_t pos, unsigned n) { return mc2cache::getLE(b,pos,n); };
+    if (get(196,8)!=mc2::content::fastHash(b.first(196))) return std::nullopt;
     if (get(0,8)!=kBlobMagic || get(8,4)!=kFormat || get(12,4)!=kProducer || !std::equal(source.begin(),source.end(),b.begin()+16)) return std::nullopt;
     const uint64_t n=get(48,8), m=get(56,8);
     if (n >= (1ull<<31) || m > 65535 || get(64,4)!=16 || get(68,4)!=32) return std::nullopt;

@@ -36,7 +36,7 @@ TEST_CASE("veg population codec identity and stale blobs") {
     CHECK(std::memcmp(hit->population.regions.data(),r.population.regions.data(),r.population.regions.size()*32)==0);
     auto wrong=d; wrong[31]=1; CHECK_FALSE(decode(b,wrong,10));
     CHECK_FALSE(decode(b,d,9)); CHECK(decode(b,d,99)); CHECK_FALSE(decode(b,d,100));
-    for(size_t offset : {size_t(8),size_t(12),size_t(48),size_t(56),kBlobHeader}) {
+    for(size_t offset : {size_t(8),size_t(12),size_t(48),size_t(56),size_t(72),kBlobHeader}) {
         auto bad=b; bad[offset]^=255; CHECK_FALSE(decode(bad,d,10));
     }
     for(size_t size : {size_t(0),kBlobHeader-1,b.size()-1}) CHECK_FALSE(decode(std::span(b).first(size),d,10));
