@@ -96,9 +96,12 @@ def manifest_assets(install: Path | str) -> tuple[dict[str, str], str | None]:
         raise ValueError(f"missing/ambiguous executable commit: {path}")
     # Exe-only A/B stages retain the data rows of the source install. Their
     # declarations belong to that data commit, even when the executable is older.
+    # AUXILIARY binaries stamped with the executable's commit travel with the exe (merge_gate
+    # stage_published swaps them in from the published install), not with the data.
+    exe_commit = next(iter(commits))
     asset_commits = {row["src_commit"] for row in entries
                      if row["relpath"].startswith(("data/", "assets/"))
-                     or row["relpath"] in AUXILIARY
+                     or (row["relpath"] in AUXILIARY and row["src_commit"] != exe_commit)
                      or ("/" not in row["relpath"] and row["relpath"].endswith(ROOT_SUFFIX))}
     if asset_commits:
         if len(asset_commits) != 1:
