@@ -204,3 +204,26 @@ def test_cleanup_reports_a_stuck_file_instead_of_raising(tmp_path, monkeypatch, 
     monkeypatch.setattr(ab.shutil, "rmtree", stuck_rmtree)
     ab.cleanup_stage([d])
     assert "NOT fully removed" in capsys.readouterr().out
+
+
+def test_disk_guard_reserve_env_override(tmp_path, monkeypatch, capsys):
+    """MC2_AB_DISK_RESERVE_GB replaces the 30 GB PC reserve (the box sets it); an explicit min_free_gb still wins."""
+    free = ab.shutil.disk_usage(tmp_path).free
+    monkeypatch.setenv("MC2_AB_DISK_RESERVE_GB", str(free / ab.GB + 1))
+    with pytest.raises(SystemExit, match="DISK_GUARD"):
+        ab.disk_guard(tmp_path / "stage", 0)
+    monkeypatch.setenv("MC2_AB_DISK_RESERVE_GB", "0")
+    ab.disk_guard(tmp_path / "stage", 1)
+    assert "-> ok" in capsys.readouterr().out
+    ab.disk_guard(tmp_path / "stage", 1, min_free_gb=0)
+
+
+def test_data_tree_skips_linux_top_level_binary(tmp_path):
+    """The box's extensionless Linux `mc2` (and .so/.debug) is the exe side of an A/B, never fingerprinted data."""
+    (tmp_path / "data").mkdir()
+    (tmp_path / "data" / "a.fit").write_text("x")
+    for name in ("mc2", "mc2.exe", "mc2.pdb", "libfoo.so", "mc2.debug"):
+        (tmp_path / name).write_bytes(b"bin")
+    files = ab.data_tree_files(tmp_path)
+    assert "data/a.fit" in files
+    assert not {"mc2", "mc2.exe", "mc2.pdb", "libfoo.so", "mc2.debug"} & set(files)

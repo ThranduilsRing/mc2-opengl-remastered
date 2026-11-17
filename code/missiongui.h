@@ -138,7 +138,7 @@ public:
 		bool						isDragging;
 		float						vTolSpeed;
 		const char*					vehicleFile;
-		long						vehicleID[MAX_TEAMS];
+		int32_t						vehicleID[MAX_TEAMS];
 		glm::vec3				dragStart;
 		glm::vec3				dragEnd;
 		bool						selectClicked;			// left click

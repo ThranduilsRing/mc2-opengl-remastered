@@ -1,6 +1,7 @@
 // Editor: ImGui key mapping and the toolbar, companion, info, place and mission-tools panels.
 // Declared in the class headers; shared names in EditorInterface_internal.h.
 #include "EditorInterface_internal.h"
+#include "document/MissionPackage.h"
 
 
 
@@ -1177,37 +1178,11 @@ void EditorInterface::renderMissionToolsImGui()
 	if (!haveMission) ImGui::BeginDisabled();
 	if (ImGui::Button("Build Package", ImVec2(-1.f, 0.f)))
 	{
-		// Derive <dir>/<base>.pak, then copy <base>.{pak,fit,burnin.jpg,foliage.json}
-		// that exist into <modsRoot>/<modName>/missions/. Additive + reversible
-		// (delete the folder to undo). Never deletes or overwrites outside dest.
-		std::string src(missionPath);
-		size_t slash = src.find_last_of("/\\");
-		std::string srcDir  = (slash != std::string::npos) ? src.substr(0, slash) : std::string(".");
-		std::string fileNm  = (slash != std::string::npos) ? src.substr(slash + 1) : src;
-		size_t dot = fileNm.find_last_of('.');
-		std::string base = (dot != std::string::npos) ? fileNm.substr(0, dot) : fileNm;
-
-		char destDir[900];
-		snprintf(destDir, sizeof(destDir), "%s/%s/missions", s_modsRoot, s_modName);
-
-		char lvl[900];
-		snprintf(lvl, sizeof(lvl), "%s", s_modsRoot);                         CreateDirectoryA(lvl, nullptr);
-		snprintf(lvl, sizeof(lvl), "%s/%s", s_modsRoot, s_modName);           CreateDirectoryA(lvl, nullptr);
-		CreateDirectoryA(destDir, nullptr);
-
-		const char* exts[] = { ".pak", ".fit", ".burnin.jpg", ".foliage.json" };
-		int copied = 0;
-		for (int i = 0; i < (int)(sizeof(exts) / sizeof(exts[0])); ++i)
-		{
-			char srcF[900], dstF[1000];
-			snprintf(srcF, sizeof(srcF), "%s/%s%s", srcDir.c_str(), base.c_str(), exts[i]);
-			snprintf(dstF, sizeof(dstF), "%s/%s%s", destDir, base.c_str(), exts[i]);
-			// CopyFileA(bFailIfExists=FALSE) overwrites only inside our dest dir.
-			if (CopyFileA(srcF, dstF, FALSE))
-				++copied;
-		}
-		snprintf(s_pkgStatus, sizeof(s_pkgStatus),
-		         "Copied %d file(s) to %s", copied, destDir);
+		std::vector<std::string> dependencies;
+		if (haveMod) dependencies.emplace_back(activeMod);
+		std::string status;
+		mc2::editor_package::exportMissionPackage(missionPath, s_modsRoot, s_modName, dependencies, status);
+		snprintf(s_pkgStatus, sizeof(s_pkgStatus), "%s", status.c_str());
 	}
 	if (!haveMission) ImGui::EndDisabled();
 

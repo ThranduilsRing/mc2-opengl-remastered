@@ -83,6 +83,7 @@ void ActivateModForMission(mc2::czstring missionFitKey);
 void DeactivateMod();
 // Diagnostic: returns owning mod id for a data path, or nullptr if not in mod index.
 const char* LookupModOwner(mc2::czstring dataPath);
+std::string ModDisplayName(std::string_view modId);
 // Root archive supplying this normalized member; empty when absent.
 std::string LookupArchivePath(std::string_view dataPath);
 // Winning loose provider for metadata/editing. Base fallback is not editable

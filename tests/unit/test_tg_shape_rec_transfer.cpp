@@ -51,8 +51,7 @@ TEST_CASE("TG_Light/source color and intensity stay separate") {
 
 // ~TG_Shape calls the out-of-line destroy() (tgl.cpp, GL dependent); here it counts, so the real-node tests below see every
 // TG_Shape the records destroy (the fake-node tests release their dummies before any record goes, so it never runs for them).
-namespace { int g_shapeDestroys = 0; }
-void TG_Shape::destroy (void) { ++g_shapeDestroys; }
+extern int g_shapeDestroys;
 
 namespace {
 // The node is only moved, never dereferenced, by transferFrom: an aligned dummy stands in for a TG_Shape. Since B7o.6b the record

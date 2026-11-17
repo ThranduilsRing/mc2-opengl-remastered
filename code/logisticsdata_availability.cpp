@@ -5,10 +5,32 @@
 #include "mc2fmt.h"
 #include "mc2str.h"
 #include "package_chassis.h"
+#include "purchase_catalog.h"
+#include "unitprofile.h"
+#include "equipment_registry.h"
 #include <filesystem>
 
 #include <format>
 #include <string>
+
+std::string mc2purchase::chassisSource(std::string_view csvPath)
+{
+	const auto* package = packageChassisByStem(std::filesystem::path(csvPath).stem().string());
+	const char* owner = LookupModOwner(std::string(csvPath).c_str());
+	return source(package ? package->modId : std::string_view{}, owner ? owner : "");
+}
+
+std::string mc2purchase::componentSource(int ordinal)
+{
+	for (const auto& row : equipmentAddFillRows())
+		if (row.ordinal == ordinal) {
+			const auto path = equipmentDefPathForQualifiedId(row.qualifiedId);
+			const char* owner = LookupModOwner(path.c_str());
+			return owner ? owner : "";
+		}
+	const char* owner = LookupModOwner("data/objects/compbas.csv");
+	return owner ? owner : "";
+}
 
 
 long LogisticsData::updateAvailability()
@@ -196,33 +218,14 @@ long LogisticsData::updateAvailability()
 		}
 	}
 
-	// BT2018-FIRST-CLASS P4: a package chassis declares its own availability (chassisdef.fit
-	// [Chassis] Purchasable) instead of every campaign's purchase file naming it. The same
-	// component rule as the [Mechs] block applies: a variant whose equipment is not yet
-	// available in this campaign stays out of the shop.
+	// Loaded mod chassis are sold as complete mechs, independently of campaign equipment unlocks.
 	for (auto & variant : variants)
 	{
-		const std::string stem = std::filesystem::path( variant->getFileName() ).stem().string();
-		const mc2pkg::PackageChassis* pc = packageChassisByStem( stem );
-		if ( !pc || !pc->purchasable || variant->isAvailable() )
+		if ( variant->isAvailable() || !mc2purchase::available(false, mc2purchase::chassisSource(variant->getFileName())) )
 			continue;
-		componentCount = 255;
-		bool bRight = true;
-		variant->getComponents( componentCount, componentArray );
-		for ( int i = 0; i < componentCount; i++ )
-		{
-			if ( componentArray[i] < 0 || componentArray[i] >= 255 || !available[componentArray[i]] )
-			{
-				bRight = false;
-				break;
-			}
-		}
-		if ( bRight )
-		{
-			variant->setAvailable( true );
-			if ( !(variant->getID() >> 16) )
-				newMechAvailableCount++;
-		}
+		variant->setAvailable( true );
+		if ( !(variant->getID() >> 16) )
+			newMechAvailableCount++;
 	}
 
 	if ( newMechAvailableCount != oldMechAvailableCount )

@@ -4,6 +4,7 @@
 #include <array>
 #include "mc2fmt.h"
 #include "sim_trace.h"
+#include "net/runtime.h"
 
 
 bool BattleMech::hitInventoryItem (long itemIndex, bool setupOnly) {
@@ -956,5 +957,6 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 
 	*shotInfo = startShotInfo;
 
+	mc2::net::combatEvent("damage", shotInfo->attackerWID, getWatchID(false), shotInfo->damage);
 	return(NO_ERR);
 }

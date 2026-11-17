@@ -203,7 +203,7 @@ class WeaponBolt : public GameObject
 
 			// Only fireWeapon sets this for successful gated area-effect aimed shots,
 			// preserving the target lost by connect()'s position-bolt conversion.
-			// Transient: WeaponBoltData omits it; loaded bolts use stock splash.
+			// Persisted in tagged BOLT v2; legacy saves default to stock splash.
 			GameObjectWatchID	aimedTargetWID;
 			std::unique_ptr<glm::vec3>		targetPosition;
 			float				distanceToTarget;
@@ -415,11 +415,11 @@ class WeaponBolt : public GameObject
 
 		// Delivers weaponShot to the aimed target on arrival (single-player only).
 		// True requires a cosmetic (zero-damage) explosion to avoid duplicate damage.
-		bool deliverAimedAreaHit (void);
+			bool deliverAimedAreaHit (CarnagePtr explosion);
 
 		virtual void Save (PacketFilePtr file, long packetNum);
 
-		void Load (WeaponBoltData *data);
+		void Load (WeaponBoltData *data, GameObjectWatchID savedAimedTarget = 0);
 
 		void CopyTo (WeaponBoltData *data);
 

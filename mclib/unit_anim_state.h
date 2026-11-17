@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <array>
 #include <memory>
 #include <vector>
 #include <string>
@@ -18,7 +19,13 @@ struct ImportedAnimState {
     mc2clip::Phase phase;
     mc2clip::Mode mode = mc2clip::Mode::Loop;
     bool locomotion = false;
+    std::string previousClip;
+    float previousClipTimeSec = 0, fadeTimeSec = 0;
+    float playRate = 1, previousPlayRate = 1, previousDurationSec = 1;
+    bool previousOnce = false;
+    std::vector<std::array<float, 16>> fadeSourceLocals; // interrupted fade, pre-twist node locals
     template<class Archive> void serialize(Archive& a) {
+        if (a.reading()) fadeSourceLocals.clear();
         std::vector<uint8_t> active(activeClip.begin(), activeClip.end()), pending(pendingClip.begin(), pendingClip.end());
         a.sequence(active, 256); a.sequence(pending, 256);
         if (a.reading()) {
@@ -33,6 +40,18 @@ struct ImportedAnimState {
             if (modeInt != 0 && modeInt != 1) { a.reject("clip_mode"); return; }
             mode = modeInt == 1 ? mc2clip::Mode::Once : mc2clip::Mode::Loop;
         }
+        if (a.sectionVersion < 4) {
+            if (a.reading()) {
+                previousClip.clear(); previousClipTimeSec = fadeTimeSec = 0;
+                playRate = previousPlayRate = previousDurationSec = 1; previousOnce = false;
+            }
+            return;
+        }
+        std::vector<uint8_t> previous(previousClip.begin(), previousClip.end());
+        a.sequence(previous, 256);
+        if (a.reading()) previousClip.assign(previous.begin(), previous.end());
+        a(previousClipTimeSec, fadeTimeSec, playRate, previousPlayRate, previousDurationSec, previousOnce);
+        if (a.sectionVersion >= 5) a.sequence(fadeSourceLocals, 4096);
     }
 };
 // Advanced only by the fixed tick; copied into immutable render snapshots.
@@ -50,17 +69,17 @@ struct UnitAnimState {
     bool oncePerFrame{};
     bool lockRotation{};
     float velocity{};
-    long currentStateGoal{};
-    long currentGestureId{};
-    long transitionState{};
-    long oldStateGoal{};
-    long hitGestureId{};
+    int32_t currentStateGoal{};
+    int32_t currentGestureId{};
+    int32_t transitionState{};
+    int32_t oldStateGoal{};
+    int32_t hitGestureId{};
     float currentFrame{};
     uint32_t lastAnimAdvanceFrame{};
     float idleTime{};
     glm::vec3 jumpDestination{};
     glm::vec3 jumpVelocity{};
-    std::vector<long> nodeUsed{};
+    std::vector<int32_t> nodeUsed{};
     std::vector<float> nodeRecycle{};
     bool inCombatMode{};
     float torsoRotation{};
@@ -68,18 +87,18 @@ struct UnitAnimState {
     float pitch{};
     float roll{};
     float velocityMagnitude{};
-    long gvAnimationState{};
+    int32_t gvAnimationState{};
     float gvFrameRate{};
     bool isReversed{};
     bool isLooping{};
     bool setFirstFrame{};
     bool canTransition{};
-    long bdAnimationState = 0;
+    int32_t bdAnimationState = 0;
     float bdFrameRate = 0;
     float withdrawSeconds = 0;
-    long smokeLevel = 0;
+    int32_t smokeLevel = 0;
     bool wakeRequested = false;
-    long activityEffect = -1;
+    int32_t activityEffect = -1;
     bool activityLoop = false;
     uint32_t ejectionSerial = 0;
     uint32_t destructionSerial = 0;

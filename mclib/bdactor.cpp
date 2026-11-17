@@ -939,9 +939,9 @@ void BldgAppearance::updateSimPose()
     else
         shape->ClearAnimation();
     shape->SetFrameNum(anim.currentFrame);
-    auto aim = mc2::math::quatFromEuler(mc2::math::Euler(anim.pitch * DEGREES_TO_RADS, anim.turretRotation * DEGREES_TO_RADS, 0.0f));
+    auto aim = mc2::math::quatFromEulerSim(mc2::math::Euler(anim.pitch * DEGREES_TO_RADS, anim.turretRotation * DEGREES_TO_RADS, 0.0f));
     shape->SetNodeRotation(appearType->rotationalNodeId, &aim);
-    auto root = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, rotation * DEGREES_TO_RADS, 0.0f));
+    auto root = mc2::math::quatFromEulerSim(mc2::math::Euler(0.0f, rotation * DEGREES_TO_RADS, 0.0f));
     glm::vec3 translation; mc2ToRender(translation, position);
     // Marking and animation advancement can both request a pose in one turn.
     shape->InvalidateHierarchy();

@@ -67,6 +67,7 @@ private:
 	aText		chassisName;
 	aObject		iconConnector;
 	aObject		icon;
+	bool hudArt = false;
 	aObject		pilotIcon;
 	aObject		outline;
 

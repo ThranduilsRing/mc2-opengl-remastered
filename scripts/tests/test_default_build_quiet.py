@@ -12,6 +12,13 @@ spec = importlib.util.spec_from_file_location("quiet", Path(__file__).resolve().
 quiet = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(quiet)
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
+import gate_hosts  # noqa: E402
+
+needs_proofs_archive = pytest.mark.skipif(
+    gate_hosts.current_host() != "pc" and not Path("E:/mc2-archive-2026-10/proofs").exists(),
+    reason="PC-only proofs archive E:/mc2-archive-2026-10/proofs is absent on this host")
+
 
 @pytest.mark.parametrize("problem", ["none", "missing", "diagnostic", "failed", "ambiguous"])
 def test_gate_tier1_quiet_sample_fails_closed(tmp_path, monkeypatch, problem):
@@ -29,6 +36,7 @@ def test_gate_tier1_quiet_sample_fails_closed(tmp_path, monkeypatch, problem):
     assert quiet.main() == (0 if problem == "none" else 1)
 
 
+@needs_proofs_archive
 @pytest.mark.parametrize("rc,logs", [(2, True), (0, False), (0, True)])
 def test_fresh_smoke_requires_success_and_new_logs(tmp_path, monkeypatch, rc, logs):
     monkeypatch.setattr(quiet.tempfile, "mkdtemp", lambda **kw: str(tmp_path))

@@ -2,8 +2,97 @@
 #include <string_view>
 #include <cstddef>
 #include <cstdint>
+#include <utility>
 
 namespace mc2::components {
+// Cooked namespace and authored cells keep legacy overlays and resized footprints from cropping the new art.
+struct CookedIcon { std::string_view source; const char* file; int width, height; };
+inline const CookedIcon* cookedIcon(std::string_view file) {
+    static constexpr CookedIcon icons[] = {
+        {"mcl_mc_armorplating.tga", "mc2_component_armorplating.tga", 1, 1},
+        {"mcl_mc_clanerlargelaser.tga", "mc2_component_clanerlargelaser.tga", 1, 2},
+        {"mcl_mc_clanerlaser.tga", "mc2_component_clanerlaser.tga", 1, 1},
+        {"mcl_mc_clanerppc.tga", "mc2_component_clanerppc.tga", 1, 3},
+        {"mcl_mc_clangaussrifle.tga", "mc2_component_clangaussrifle.tga", 2, 4},
+        {"mcl_mc_clanheavylargelaser.tga", "mc2_component_clanheavylargelaser.tga", 1, 2},
+        {"mcl_mc_clanheavylaser.tga", "mc2_component_clanheavylaser.tga", 1, 1},
+        {"mcl_mc_clanlrmrack.tga", "mc2_component_clanlrmrack.tga", 1, 1},
+        {"mcl_mc_clanpulselargelaser.tga", "mc2_component_clanpulselargelaser.tga", 1, 2},
+        {"mcl_mc_clanpulselaser.tga", "mc2_component_clanpulselaser.tga", 1, 1},
+        {"mcl_mc_clanstreaksrmpack.tga", "mc2_component_clanstreaksrmpack.tga", 1, 1},
+        {"mcl_mc_clanultraheavyautocannon.tga", "mc2_component_clanultraheavyautocannon.tga", 2, 4},
+        {"mcl_mc_clanultralightautocannon.tga", "mc2_component_clanultralightautocannon.tga", 2, 2},
+        {"mcl_mc_clanultramediumautocannon.tga", "mc2_component_clanultramediumautocannon.tga", 2, 3},
+        {"mcl_mc_erlargelaser.tga", "mc2_component_erlargelaser.tga", 1, 2},
+        {"mcl_mc_erlaser.tga", "mc2_component_erlaser.tga", 1, 1},
+        {"mcl_mc_erppc.tga", "mc2_component_erppc.tga", 1, 3},
+        {"mcl_mc_flamerarray.tga", "mc2_component_flamerarray.tga", 1, 1},
+        {"mcl_mc_gaussrifle.tga", "mc2_component_gaussrifle.tga", 2, 4},
+        {"mcl_mc_heatsink.tga", "mc2_component_heatsink.tga", 1, 1},
+        {"mcl_mc_heavyautocannon.tga", "mc2_component_heavyautocannon.tga", 2, 4},
+        {"mcl_mc_jumpjets.tga", "mc2_component_jumpjets.tga", 2, 2},
+        {"mcl_mc_largelaser.tga", "mc2_component_largelaser.tga", 1, 2},
+        {"mcl_mc_laser.tga", "mc2_component_laser.tga", 1, 1},
+        {"mcl_mc_lightautocannon.tga", "mc2_component_lightautocannon.tga", 2, 2},
+        {"mcl_mc_lightgaussrifle.tga", "mc2_component_lightgaussrifle.tga", 2, 3},
+        {"mcl_mc_longtomcannon.tga", "mc2_component_longtomcannon.tga", 2, 5},
+        {"mcl_mc_lrmrack.tga", "mc2_component_lrmrack.tga", 1, 1},
+        {"mcl_mc_mediumautocannon.tga", "mc2_component_mediumautocannon.tga", 2, 3},
+        {"mcl_mc_mgarray.tga", "mc2_component_mgarray.tga", 1, 1},
+        {"mcl_mc_ppc.tga", "mc2_component_ppc.tga", 1, 3},
+        {"mcl_mc_pulselargelaser.tga", "mc2_component_pulselargelaser.tga", 1, 2},
+        {"mcl_mc_pulselaser.tga", "mc2_component_pulselaser.tga", 1, 1},
+        {"mcl_mc_srmpack.tga", "mc2_component_srmpack.tga", 1, 1},
+        {"mcl_mc_streaksrmpack.tga", "mc2_component_streaksrmpack.tga", 1, 1},
+        {"mcl_mc_swarmlrmrack.tga", "mc2_component_swarmlrmrack.tga", 1, 1},
+        {"mcl_mc_thunderboltmissile.tga", "mc2_component_thunderboltmissile.tga", 2, 4},
+        {"mcl_mc_ultraheavyautocannon.tga", "mc2_component_ultraheavyautocannon.tga", 2, 4},
+        {"mcl_mc_ultralightautocannon.tga", "mc2_component_ultralightautocannon.tga", 2, 2},
+        {"mcl_mc_ultramediumautocannon.tga", "mc2_component_ultramediumautocannon.tga", 2, 3},
+    };
+    for (const auto& icon : icons) if (file == icon.source || file == icon.file) return &icon;
+    return nullptr;
+}
+
+inline bool restoreGridDrag(bool fromGrid, bool overGrid, bool overInventory, bool cancelled) {
+    return fromGrid && (cancelled || (!overGrid && !overInventory));
+}
+
+inline bool coolingAllowsRemoval(float maximum, float removed, float heat) {
+    return maximum - removed >= heat;
+}
+
+// A removed grid item is placed once: at the destination, or back at its source.
+// Copy the source because placement callbacks can change the UI selection.
+template<class Add>
+inline bool finishGridDrop(long& x, long& y, bool fromGrid,
+                           long sourceX, long sourceY, Add add) {
+    if (add(x, y) == 0) return true;
+    if (!fromGrid) return false;
+    x = sourceX;
+    y = sourceY;
+    return add(x, y) == 0;
+}
+
+// Lowercase legacy launcher aliases resolve to the one-cell model cook.
+inline const char* launcherIcon(std::string_view file) {
+    constexpr std::pair<std::string_view, const char*> families[] = {
+        {"clanlrm", "mcl_mc_clanlrmrack.tga"}, {"swarmlrm", "mcl_mc_swarmlrmrack.tga"},
+        {"lrm", "mcl_mc_lrmrack.tga"}, {"clanstreaksrm", "mcl_mc_clanstreaksrmpack.tga"},
+        {"streaksrm", "mcl_mc_streaksrmpack.tga"}, {"srm", "mcl_mc_srmpack.tga"}};
+    for (const auto& [family, icon] : families) if (file.find(family) != file.npos) return icon;
+    return nullptr;
+}
+// Variants without stock models share the same textured family preview as their icons.
+inline const char* previewModel(std::string_view file) {
+    constexpr std::pair<std::string_view, const char*> families[] = {
+        {"clanlrm", "mcl_mc_clanlrmrack"}, {"swarmlrm", "mcl_mc_swarmlrmrack"},
+        {"lrm", "mcl_mc_lrmrack"}, {"clanstreaksrm", "mcl_mc_clanstreaksrmpack"},
+        {"streaksrm", "mcl_mc_streaksrmpack"}, {"srm", "mcl_mc_srmpack"},
+        {"clanlightlbx", "mcl_mc_clanultralightautocannon"}, {"xlengine", "mcl_mc_heatsink"}};
+    for (const auto& [family, model] : families) if (file.find(family) != file.npos) return model;
+    return nullptr;
+}
 // Inactive storage can contain a previous loadout. Unmapped live components
 // are preserved without indexing the logistics table with a missing location.
 template<std::size_t N, class Item, class Location, class Logistics>

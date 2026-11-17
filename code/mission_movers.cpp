@@ -588,6 +588,7 @@ long Mission::addMover (MoverInitData* moveSpec, LogisticsMech* mechData)
 	}
 
 	bMech->resetComponents(totalComponents,componentList);
+	std::free(componentList);
 	bMech->setPendingPackageMounts({});
 	
 	return moverHandle;
@@ -738,6 +739,8 @@ bool IsGateDisabled (int objectWID) {
 	if (objectWID < 1)
 		return(false);
 	GameObjectPtr obj = ObjectManager->getByWatchID(objectWID);
+	if (!obj)
+		return(false);
 	if (obj && obj->isDisabled())
 		return(true);
 	if (obj->isBuilding()) {

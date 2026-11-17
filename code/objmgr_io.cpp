@@ -11,6 +11,7 @@
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include <memory>
 #include <span>
+#include <map>
 #include "objmgr_internal.h"
 #include "static_prop_prewarm.h"
 #include "saved_objects_check.h"
@@ -222,18 +223,36 @@ void GameObjectManager::loadTerrainObjects (PacketFile* terrainFile,
 		increment = progressRange/totalObjCount;
 	{
 		ZoneScopedN("GameObjectManager::loadTerrainObjects addObjectLoop"); MC2_LOAD_SCOPE("GameObjectManager::loadTerrainObjects addObjectLoop");
+		const bool laps = mc2_diag::tagRequested("LOAD_LAPS");
+		struct TypeLap { long objects = 0, misses = 0; double ms = 0, firstMs = 0; };
+		std::map<long, TypeLap> byType;
 		for (int i = 0; i < totalObjCount; ++i )
 		{
 			mission_load_pump();
+			// Count actual cache misses separately: countObject normally loaded these types already.
+			const bool miss = laps && !objTypeManager->get(data->objTypeNum, false);
+			const auto start = laps ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
 			addObject( data, 
 				curTerrainObjectIndex, curBuildingIndex, 
 				curTurretIndex, curGateIndex, handles[2 * data->blockNumber], 
 				handles[(2 * data->blockNumber) + 1] 
 				);
+			if (laps) {
+				const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+				auto& lap = byType[data->objTypeNum];
+				if (!lap.objects) lap.firstMs = ms;
+				++lap.objects;
+				lap.misses += miss;
+				lap.ms += ms;
+			}
 
 			data++;
 			progress += increment;
 		}
+		if (mc2_diag::tagRequested("LOAD_LAPS"))
+		for (const auto& [type, lap] : byType)
+			mc2::fmt::print_err("[LOAD_LAPS v1] stage=addObject type={} objects={} type_cache_misses={} active_ms={:.3f} first_ms={:.3f}\n",
+				type, lap.objects, lap.misses, lap.ms, lap.firstMs);
 	}
 
 	handles.reset();
@@ -361,6 +380,10 @@ void GameObjectManager::primeTerrainObjectsForMissionLoad (volatile float& progr
 void GameObjectManager::registerStaticPropsForMissionLoad() {
 	ZoneScopedN("GameObjectManager::registerStaticPropsForMissionLoad"); MC2_LOAD_SCOPE("GameObjectManager::registerStaticPropsForMissionLoad");
 	if (!GpuStaticPropRegistry::isMissionLoadRegEnabled()) return;
+	const bool laps = mc2_diag::tagRequested("LOAD_LAPS");
+	const auto lapStart = laps ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
+	auto arrayStart = lapStart;
+	double arrayMs[4]{};
 
 	int totalEnumerated = 0, totalRegistered = 0, totalSkipped = 0;
 	// Per-array counts distinguish missing appearances from failed registrations.
@@ -389,17 +412,36 @@ void GameObjectManager::registerStaticPropsForMissionLoad() {
 	};
 
 	currentArr = 0;
+	{ ZoneScopedN("StaticPropRegistration terrainObjects"); MC2_LOAD_SCOPE("StaticPropRegistration terrainObjects");
 	for (long i = 0; i < numTerrainObjects; ++i)
 		registerOne(terrainObjects[i]);
+	}
+	if (laps) arrayMs[0] = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - arrayStart).count();
+	arrayStart = laps ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
 	currentArr = 1;
+	{ ZoneScopedN("StaticPropRegistration buildings"); MC2_LOAD_SCOPE("StaticPropRegistration buildings");
 	for (long i = 0; i < numBuildings; ++i)
 		registerOne(buildings[i]);
+	}
+	if (laps) arrayMs[1] = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - arrayStart).count();
+	arrayStart = laps ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
 	currentArr = 2;
+	{ ZoneScopedN("StaticPropRegistration turrets"); MC2_LOAD_SCOPE("StaticPropRegistration turrets");
 	for (long i = 0; i < numTurrets; ++i)
 		registerOne(turrets[i]);
+	}
+	if (laps) arrayMs[2] = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - arrayStart).count();
+	arrayStart = laps ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
 	currentArr = 3;
+	{ ZoneScopedN("StaticPropRegistration gates"); MC2_LOAD_SCOPE("StaticPropRegistration gates");
 	for (long i = 0; i < numGates; ++i)
 		registerOne(gates[i]);
+	}
+	if (mc2_diag::tagRequested("LOAD_LAPS")) {
+		arrayMs[3] = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - arrayStart).count();
+		mc2::fmt::print_err("[LOAD_LAPS v1] stage=static_prop_registration total_ms={:.3f} terrainObjects_ms={:.3f} buildings_ms={:.3f} turrets_ms={:.3f} gates_ms={:.3f}\n",
+			std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - lapStart).count(), arrayMs[0], arrayMs[1], arrayMs[2], arrayMs[3]);
+	}
 
 	MC2_DIAGFE(stderr,
 		"[STATIC_PROP_REG v1] event=mission_load enumerated=%d registered=%d skipped=%d\n",
@@ -1199,7 +1241,10 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum, bool managerVa
 		{
 			//We have a WeaponBolt.
 			WeaponBoltData data{};
-			readData.operator()<mc2::save::WeaponBoltRecord>(data, mc2_saved_objects::kBolt);
+			mc2::save::WeaponBoltRecord record{data};
+			if (objectValues) {
+				if (!mc2::save::readWeaponBoltRecord(slotBytes, record)) Fatal(0, "Invalid bolt ObjectSlot payload");
+			} else file->readPacket(packetNum, reinterpret_cast<MemoryPtr>(&data));
 			packetNum++;
 
 			WeaponBoltPtr obj = new WeaponBolt; 
@@ -1212,7 +1257,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum, bool managerVa
 
 				obj->init(true, objType);
 				obj->setExists(true);
-				obj->Load(&data);
+				obj->Load(&data, record.aimedTargetWID);
 			}
 			else
 			{

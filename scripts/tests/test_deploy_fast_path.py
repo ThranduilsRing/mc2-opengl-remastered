@@ -140,9 +140,90 @@ def _deploy(src, target, rel, *, cache, full_verify=False, preserve=()):
                      cache=cache, full_verify=full_verify)
 
 
+def test_mip_publish_replaces_link_only_after_copy(tmp_path, monkeypatch):
+    src, target, _ = _setup(tmp_path, monkeypatch)
+    monkeypatch.setattr(dp, "ensure_engine_normal_cooks", lambda target: None)
+    rel = "data/tgl/128/a_cp_island_tree_01_1.tga"
+    dst = Path(target) / rel
+    dst.parent.mkdir(parents=True)
+    seed = tmp_path / "seed.tga"
+    seed.write_bytes(b"seed-bytes")
+    os.link(seed, dst)
+    copy = dp.shutil.copyfile
+    def checked_copy(source, destination):
+        assert dst.exists() and dst.stat().st_nlink == 2
+        assert Path(destination) != dst
+        return copy(source, destination)
+    monkeypatch.setattr(dp.shutil, "copyfile", checked_copy)
+    _deploy(src, target, rel, cache={})
+    assert dst.read_bytes() == Path(src).read_bytes()
+    assert seed.read_bytes() == b"seed-bytes"
+    assert dst.stat().st_nlink == seed.stat().st_nlink == 1
+
+
 def _cache_after(src, target, rel, values, src_commit="abc123"):
     dp.write_manifest(target, values, src_commit)
     return dp.read_manifest(target)
+
+
+@pytest.mark.parametrize("rel", ["data/plain.bin", "mc2.exe", "data/a.mcasset.json"])
+def test_failed_publish_keeps_previous_payload(tmp_path, monkeypatch, rel):
+    src, target, _ = _setup(tmp_path, monkeypatch)
+    monkeypatch.setattr(dp, "ensure_engine_normal_cooks", lambda target: None)
+    dst = Path(target) / rel
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    dst.write_bytes(b"previous")
+    def refuse(staged, live):
+        assert Path(staged).read_bytes() == Path(src).read_bytes()
+        assert dst.read_bytes() == b"previous"
+        raise OSError("publish interrupted")
+    monkeypatch.setattr(dp, "replace_file", refuse)
+    with pytest.raises(OSError, match="publish interrupted"):
+        _deploy(src, target, rel, cache={})
+    assert dst.read_bytes() == b"previous"
+    assert set(dst.parent.iterdir()) == {dst}
+
+
+def test_partial_copy_keeps_previous_payload(tmp_path, monkeypatch):
+    src, target, rel = _setup(tmp_path, monkeypatch)
+    monkeypatch.setattr(dp, "ensure_engine_normal_cooks", lambda target: None)
+    dst = Path(target) / rel
+    dst.parent.mkdir()
+    dst.write_bytes(b"previous")
+    def interrupted(source, destination):
+        Path(destination).write_bytes(b"partial")
+        raise OSError("disk full")
+    monkeypatch.setattr(dp.shutil, "copyfile", interrupted)
+    with pytest.raises(OSError, match="disk full"):
+        _deploy(src, target, rel, cache={})
+    assert dst.read_bytes() == b"previous"
+    assert set(dst.parent.iterdir()) == {dst}
+
+
+def test_failed_manifest_serialization_keeps_previous_manifest(tmp_path):
+    path = tmp_path / dp.MANIFEST_NAME
+    path.write_bytes(b"previous")
+    with pytest.raises(IndexError):
+        dp.write_manifest(tmp_path, {"invalid": ()}, "abc")
+    assert path.read_bytes() == b"previous"
+    assert set(tmp_path.iterdir()) == {path}
+
+
+def test_concurrent_reuse_receipts_have_private_temps(recorded_payload, monkeypatch):
+    target, inputs, output, source = recorded_payload
+    hashes = {output.relative_to(target).as_posix(): (dp.sha256_file(output), 3)}
+    items = [(str(source), next(iter(hashes)), "kit")]
+    replace = dp.os.replace
+    pending = []
+    def overlapping(src, dst):
+        pending.append(str(src))
+        if len(pending) == 1:
+            dp.record_deploy_inputs(target, inputs, hashes, items)
+        replace(src, dst)
+    monkeypatch.setattr(dp.os, "replace", overlapping)
+    dp.record_deploy_inputs(target, inputs, hashes, items)
+    assert len(set(pending)) == 2
+    assert dp.reusable_payload("unused", target, inputs)[0]
 
 
 def test_unchanged_file_is_skipped_and_manifest_round_trips(tmp_path, monkeypatch):

@@ -1018,7 +1018,7 @@ long TeamSensorSystem::getContacts (GameObjectPtr looker, int* contactList, int 
 		return(0);
 
 	// A team can hold MAX_CONTACTS_PER_TEAM contacts and every one may pass the criteria, so the buffers are that long; the caller's contactList must be too.
-	static_assert(sizeof(TeamSensorSystem::contacts) / sizeof(long) == MAX_CONTACTS_PER_TEAM, "getContacts buffers follow the team contact list");
+	static_assert(sizeof(TeamSensorSystem::contacts) / sizeof(int32_t) == MAX_CONTACTS_PER_TEAM, "getContacts buffers follow the team contact list");
 	mc2::Scored scored[MAX_CONTACTS_PER_TEAM];
 
 	float CV = 0;
@@ -1344,7 +1344,8 @@ void SensorSystemManager::freeSensor (SensorSystemPtr sensor) {
 
 	sensor->prev = nullptr;
 	sensor->next = freeList;
-	freeList->prev = sensor;
+	if (freeList)
+		freeList->prev = sensor;
 	freeList = sensor;
 }
 

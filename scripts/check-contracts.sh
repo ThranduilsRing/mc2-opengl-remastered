@@ -77,6 +77,7 @@ NIGHTLY=0   # --nightly adds the rows that never failed in 90 gate logs (run_nig
 ROWS_RE=""
 SKIP_RE=""
 ROWS_SKIPPED=0
+MATCHED_SKIPPED=0
 _ARGS=()
 while [ $# -gt 0 ]; do
     if [ "$1" = "--rows" ]; then
@@ -206,7 +207,10 @@ SEEN_LABELS=""
 SEEN_CMDS=""
 
 _row_selected() {   # 0 = run this row (no --rows filter, or the label matches)
-    if [ -n "$SKIP_RE" ] && [[ "$1" =~ $SKIP_RE ]]; then ROWS_SKIPPED=$((ROWS_SKIPPED + 1)); return 1; fi
+    if [ -n "$SKIP_RE" ] && [[ "$1" =~ $SKIP_RE ]]; then
+        if [ -z "$ROWS_RE" ] || [[ "$1" =~ $ROWS_RE ]]; then MATCHED_SKIPPED=$((MATCHED_SKIPPED + 1)); fi
+        ROWS_SKIPPED=$((ROWS_SKIPPED + 1)); return 1
+    fi
     [ -z "$ROWS_RE" ] && return 0
     if [[ "$1" =~ $ROWS_RE ]]; then return 0; fi
     ROWS_SKIPPED=$((ROWS_SKIPPED + 1))
@@ -412,7 +416,16 @@ run_check() {
     return 0
 }
 
-run_nightly() { [ "$NIGHTLY" -eq 1 ] || return 0; run_check "$@"; }
+NIGHTLY_MATCHES=()
+run_nightly() {
+    if [ "$NIGHTLY" -ne 1 ]; then
+        if [ -n "$SKIP_RE" ] && [[ "$1" =~ $SKIP_RE ]]; then _row_selected "$1" || :; fi
+        if [ -n "$ROWS_RE" ] && [[ "$1" =~ $ROWS_RE ]] &&
+           { [ -z "$SKIP_RE" ] || ! [[ "$1" =~ $SKIP_RE ]]; }; then NIGHTLY_MATCHES+=("$1"); fi
+        return 0
+    fi
+    run_check "$@"
+}
 
 # Explicit --rows is an offline proof request. Otherwise use the existing input
 # declarations as trigger paths; missing declarations run only at night.
@@ -698,6 +711,7 @@ _selftest_rows() {
     pass)
         run_check     "st_pass_talks" 'printf "%s\n" ST-STDOUT-SENTINEL'
         run_check_tri "st_tri_pass"   'printf "%s\n" ST-STDOUT-SENTINEL-TRI'
+        run_nightly   "st_nightly_only" 'printf "%s\n" ST-NIGHTLY-SENTINEL'
         ;;
     fail)
         run_check     "st_fail_talks"  'printf "%s\n" "note: a preamble line" "ERROR: ST-DIGEST-SENTINEL blew up" "trailing noise"; exit 1'
@@ -825,6 +839,39 @@ _fail_reason_selftest() {
     _st_want "(d2) ...its header"                "$out" "--- st_pass_talks ---"
     _st_want "(d2) ...and the tri-state runner prints too" \
              "$out" "ST-STDOUT-SENTINEL-TRI"
+
+    # Explicit selection must fail closed and only suggest --nightly for real matches.
+    local pattern
+    for pattern in '^st_nightly_only$' '^st_missing$'; do
+        rc=0
+        out="$(CONTRACTS_SELFTEST=1 SELFTEST_SCENARIO=pass TMPDIR="$td" \
+               bash "$self" --selftest-render --quiet --rows "$pattern" 2>&1)" || rc=$?
+        [ "$rc" -ne 0 ] && _st_ok "zero-row selection fails: $pattern" || _st_bad "zero rows exited 0: $pattern"
+        if [ "$pattern" = '^st_nightly_only$' ]; then
+            _st_want "nightly-only remedy" "$out" 'add --nightly'
+        else
+            _st_absent "unknown row has no nightly remedy" "$out" 'add --nightly'
+        fi
+    done
+    rc=0
+    out="$(CONTRACTS_SELFTEST=1 SELFTEST_SCENARIO=pass TMPDIR="$td" \
+           bash "$self" --selftest-render --quiet --nightly --rows '^st_nightly_only$' 2>&1)" || rc=$?
+    [ "$rc" -eq 0 ] && _st_ok "--nightly selects nightly row" || _st_bad "--nightly did not select nightly row"
+    _st_absent "selected nightly row has no remedy" "$out" 'add --nightly'
+
+    rc=0
+    out="$(CONTRACTS_SELFTEST=1 SELFTEST_SCENARIO=pass TMPDIR="$td" \
+           bash "$self" --selftest-render --quiet --rows '^st_nightly_only$' --skip-rows '^st_nightly_only$' 2>&1)" || rc=$?
+    [ "$rc" -ne 0 ] && _st_ok "skipped nightly selection fails closed" || _st_bad "skipped nightly selection exited 0"
+    _st_absent "skipped nightly row has no remedy" "$out" 'add --nightly'
+    _st_want "skipped selection explains match" "$out" 'Rows matched but were skipped'
+    _st_absent "skipped selection is not an unknown label" "$out" 'No row label matched'
+    rc=0
+    out="$(CONTRACTS_SELFTEST=1 SELFTEST_SCENARIO=pass TMPDIR="$td" \
+           bash "$self" --selftest-render --quiet --rows '^st_pass_talks$' --skip-rows '^st_pass_talks$' 2>&1)" || rc=$?
+    [ "$rc" -ne 0 ] && _st_ok "skipped normal selection fails closed" || _st_bad "skipped normal selection exited 0"
+    _st_want "skipped normal selection explains match" "$out" 'Rows matched but were skipped'
+    _st_absent "skipped normal selection is not an unknown label" "$out" 'No row label matched'
 
     rm -rf "$td"
 
@@ -967,9 +1014,6 @@ run_nightly "cxx17_ratchet"            "py -3 tools/cxx17_ratchet/cxx17_ratchet.
 # lines occurring twice) may only fall. PMD CPD (>= 60 tokens) on the COMMITTED tip vs the merge base, no
 # baseline file; runs on the box (or streams the trees there from the PC); no PMD/box = INFRA, never a pass.
 # Selftest lives in scripts/tests (scripts_tests row).
-# proof-diet (owner 2026-11-07): the axis_swizzle count gate, the journal_comment ratchet and the file_size gate are cut as
-# gates (a count that only falls is not a defect, and transform coverage lives in tests/unit/test_xform_convention.cpp and
-# test_static_prop_origin.cpp). tools/axis_swizzle_ratchet.py and tools/file_size_ratchet.py stay as on-demand advisory reports.
 # docs/split-map.md (old file -> pieces -> what each holds) is generated from tools/split/allow/*.json and the pieces' header comments.
 run_nightly "split_map"                 "py -3 tools/split/split_map.py --check"
 # Comment de-bloat guard (giant-file-split-plan.md, "Comment de-bloat pass"): proves the lexer, protection rules and
@@ -1535,9 +1579,14 @@ run_check "gate_farm"                  "py -3 -B -m pytest scripts/tests/test_ga
 run_nightly "gate_inputs"                "py -3 -B -m pytest scripts/tests/test_gate_preflight.py scripts/tests/test_deploy_seed.py scripts/tests/test_kit_payload.py scripts/tests/test_isolated_deploy.py -q -p no:cacheprovider"
 run_nightly "gate_receipts"              "py -3 -B -m pytest scripts/tests/test_gate_state.py -q -p no:cacheprovider"
 # Aggregate Python suites run in tools/lane_merge.py --precheck, before the merge window.
-run_nightly "release_payload"            "py -3 -B -m pytest scripts/tests/test_release_payload.py -q -p no:cacheprovider"
+# Trigger: scripts/release_asset_guard.py, scripts/test_release_zip_install.py,
+# scripts/build_release.sh, scripts/tests/test_release_{payload,asset_guard}.py,
+# docs/testing/mech_glb_external_pack.json, scripts/test_ownership.json.
+run_nightly "release_payload"            "py -3 -B -m pytest scripts/tests/test_release_payload.py scripts/tests/test_release_asset_guard.py -q -p no:cacheprovider"
 run_nightly "mission_cpu_profile"        "py -3 -B -m pytest scripts/tests/test_mission_cpu_profile.py scripts/tests/test_paired_cpu.py scripts/tests/test_host_lease.py -q -p no:cacheprovider"
 run_nightly "runtime_bridge"             "py -3 -B -m pytest scripts/tests/test_runtime_bridge.py scripts/tests/test_runtime_bridge_socket.py -q -p no:cacheprovider"
+# Trigger: tools/import_campaign.py, tools/mc2x_import, scripts/tests/test_import_campaign.py, import-campaign.bat.
+run_check "campaign_import"            "py -3 -B -m pytest scripts/tests/test_import_campaign.py -q -p no:cacheprovider"
 run_check "mod_smoke"                  "py -3 -B -m pytest scripts/tests/test_mod_smoke.py scripts/tests/test_stage_root.py tests/smoke/test_mod_smoke_staging.py -q -p no:cacheprovider"
 run_nightly "content_error_stock"        "py -3 -B -m pytest scripts/tests/test_content_error.py -q -p no:cacheprovider"
 run_nightly "network_startup"            "py -3 -B -m pytest scripts/tests/test_network_startup.py scripts/tests/test_firewall_dialog.py -q -p no:cacheprovider"
@@ -1565,9 +1614,9 @@ run_nightly "abl_static_alloc"           "_host_need clang++ && py -3 -B -m pyte
 # (assembles release zips + launches a smoke; not an offline contract).
 # tools_tests retains its known-failure exit-code handling in lane_merge precheck.
 run_check "logistics_art"               "py -3 -B tools/test_cook_logistics_art.py -q -p no:cacheprovider"
-run_check_tri "kit_art"                 "py -3 scripts/run_tools_tests.py --suite art --jobs 3 --base \"$_ART_BASE\""
-run_nightly "scripts_tests"            "py -3 scripts/run_scripts_tests.py"
-if [ "$NIGHTLY" -eq 1 ]; then run_check_tri "tools_tests" "py -3 scripts/run_tools_tests.py --base ''"; fi
+run_check_tri "kit_art"                 "py -3 scripts/run_tools_tests.py --suite art --base \"$_ART_BASE\""
+run_check "scripts_tests"              "py -3 scripts/run_scripts_tests.py --base \"$_ART_BASE\""
+run_check_tri "tools_tests"            "py -3 scripts/run_tools_tests.py --base \"$_ART_BASE\""
 run_nightly "anim_parity"                 "py -3 -B -m pytest tools/anim_parity/test_audit.py tools/content_pipeline/tests -q -p no:cacheprovider"
 run_nightly "ktx2_valid"                  "py -3 -B tools/mc2texcook/check_ktx2_valid.py"
 run_check "sim_include_firewall"        "py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py"
@@ -1661,7 +1710,14 @@ if [ -n "$ROWS_RE" ] || [ -n "$SKIP_RE" ]; then
     echo "  PARTIAL BOARD: --rows '$ROWS_RE' ran $((PASS_COUNT + FAIL_COUNT + KNOWN_COUNT)) row(s) and skipped $ROWS_SKIPPED."
     echo "  This is NOT a green board; run the full board (no --rows) before committing a batch."
     if [ "$((PASS_COUNT + FAIL_COUNT + KNOWN_COUNT))" -eq 0 ]; then
-        echo "  No row label matched '$ROWS_RE' -- nothing was checked."
+        if [ "$MATCHED_SKIPPED" -gt 0 ]; then
+            echo "  Rows matched but were skipped by --skip-rows '$SKIP_RE' -- nothing was checked."
+        else
+            echo "  No row label matched '$ROWS_RE' -- nothing was checked."
+        fi
+        if [ "${#NIGHTLY_MATCHES[@]}" -gt 0 ]; then
+            echo "  Matching row(s) are nightly-only: ${NIGHTLY_MATCHES[*]}; add --nightly."
+        fi
         FAIL_COUNT=$((FAIL_COUNT + 1))
     fi
 fi

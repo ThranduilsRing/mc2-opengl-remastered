@@ -57,6 +57,7 @@ private:
 	aAnimGroup		animations[2][ANIMATION_COUNT];
 	
 	aObject		mechIcon;
+	bool hudArt = false;
 	aText		chassisName;
 	aText		variantName;
 	aText		countText;
@@ -113,7 +114,7 @@ public:
 
 	LogisticsMech* getCurrentMech();
 
-	static void initIcon( LogisticsMech* pMec, aObject& icon );
+	static bool initIcon( LogisticsMech* pMec, aObject& icon );
 
 	long AddItem(std::unique_ptr<aListItem> itemString) override;
 	long AddItem(aListItem* itemString) override { return AddItem(std::unique_ptr<aListItem>(itemString)); }

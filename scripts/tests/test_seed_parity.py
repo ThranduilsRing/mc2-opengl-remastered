@@ -200,3 +200,107 @@ def test_lane_install_build_checks_the_seed_before_building(tmp_path, monkeypatc
         iso.main(["--from", str(src), "--to", str(tmp_path / "lane")])
     assert seen == [("seed", src.resolve())]           # failed before the seed was even verified, nothing built
     assert not (tmp_path / "lane").exists()
+
+
+@pytest.mark.parametrize("after_deploy", [False, True])
+@pytest.mark.parametrize("shared", [False, True])
+@pytest.mark.parametrize("publish", [False, True])
+def test_payload_refresh_after_game_and_editor_preserves_old_hardlinks(tmp_path, monkeypatch, after_deploy, shared, publish):
+    # Trigger paths: scripts/seed_parity.py, scripts/deploy_payload.py.
+    import deploy_payload as dp
+    monkeypatch.setattr(dp, "ensure_terrain_materials", lambda target: {})
+    monkeypatch.setattr(dp, "ensure_engine_normal_cooks", lambda target: None)
+    payload = {"mc2.exe": b"new game", "mc2.pdb": b"symbols", "runtime.dll": b"dll",
+               "shaders/vulkan/main.spv": b"shader", "EditRel.exe": b"editor"}
+    source = tree(tmp_path / "build", payload)
+    ref = tree(tmp_path / "v04", {"options.cfg": b"new options"})
+    monkeypatch.setattr(dp, "TARGET_PRESETS", {"game": {"target_dir": str(ref if shared else tmp_path / "other")}})
+    import exe_fingerprint
+    monkeypatch.setattr(exe_fingerprint, "extract", lambda p: {"present": True, "sha": "fixture"})
+    monkeypatch.setattr(exe_fingerprint, "build_current", lambda *a: True)
+    for names in (("mc2.exe", "mc2.pdb", "runtime.dll", "shaders/vulkan/main.spv"),
+                  ("EditRel.exe", "runtime.dll", "shaders/vulkan/main.spv")):
+        if shared and "mc2.pdb" not in names:
+            (ref / "mc2.pdb").write_bytes(b"altered symbols")
+        items = [(str(source / rel), rel, "pdb" if rel.endswith(".pdb") else "exe") for rel in names]
+        hashes = dp.deploy(items, str(ref), False, full_verify=True)
+        dp.write_manifest(str(ref), hashes, "fixture")
+    assert (ref / "mc2.exe").read_bytes() == payload["mc2.exe"]
+    if not shared:
+        assert set(dp.read_manifest(ref)) == set(names)
+    if publish:
+        package = tree(tmp_path / "package/files", {"mc2.exe": payload["mc2.exe"]}).parent
+        dp.write_manifest(package, {"mc2.exe": (sp._sha(source / "mc2.exe"), len(payload["mc2.exe"]), None)}, "fixture")
+        dp.deploy_from_payload(package, ref, tmp_path, "fixture")
+        payload = {rel: data for rel, data in payload.items() if rel.endswith((".exe", ".pdb"))}
+    if not shared:
+        assert set(dp.read_manifest(ref)) == ({"mc2.exe"} if publish else set(names))
+        return
+    assert set(dp.read_manifest(ref)) == set(payload)
+    assert dp.read_manifest(ref)["mc2.pdb"][2] is None
+    assert dp.read_manifest(ref)["mc2.pdb"] == (sp._sha(source / "mc2.pdb"), len(payload["mc2.pdb"]), None)
+    (ref / "mc2.pdb").write_bytes(payload["mc2.pdb"])
+    seed = tree(tmp_path / "seed", {"mc2.exe": b"old game", ".deployed_manifest.csv": b"old manifest"})
+    old = tmp_path / "old-lane"
+    old.mkdir()
+    for rel in ("mc2.exe", ".deployed_manifest.csv"):
+        os.link(seed / rel, old / rel)
+    before = {p: p.read_bytes() for p in ref.rglob("*") if p.is_file()}
+    assert sp.main(["--ref", str(ref), "--refresh-seed", str(seed), "--dry-run"]) == 0
+    assert (seed / "mc2.exe").read_bytes() == b"old game"
+    assert not (seed / sp.SNAPSHOT_NAME).exists()
+    if after_deploy:
+        assert sp.after_v04_deploy(ref, seed, ref)
+    else:
+        assert sp.main(["--ref", str(ref), "--refresh-seed", str(seed)]) == 0
+    assert all((seed / rel).read_bytes() == data for rel, data in payload.items())
+    assert (seed / ".deployed_manifest.csv").read_bytes() == (ref / ".deployed_manifest.csv").read_bytes()
+    assert (old / "mc2.exe").read_bytes() == b"old game"
+    assert (old / ".deployed_manifest.csv").read_bytes() == b"old manifest"
+    assert before == {p: p.read_bytes() for p in ref.rglob("*") if p.is_file()}
+    assert sp.refresh_seed(seed, ref) == 0
+    sp.require_seed(seed)
+
+
+def test_failed_atomic_copy_keeps_seed_file_and_cleans_temp(tmp_path, monkeypatch):
+    # Trigger path: scripts/seed_parity.py.
+    source = tree(tmp_path / "ref", {"mc2.exe": b"new"})
+    seed = tree(tmp_path / "seed", {"mc2.exe": b"old"})
+    os.link(seed / "mc2.exe", tmp_path / "old-exe")
+    def failed_replace(src, dst):
+        assert Path(src).suffix == ".tmp"
+        assert (seed / "mc2.exe").read_bytes() == b"old"
+        raise OSError("replace failed")
+    monkeypatch.setattr(sp.os, "replace", failed_replace)
+    with pytest.raises(OSError, match="replace failed"):
+        sp._atomic_copy(source / "mc2.exe", seed / "mc2.exe")
+    assert (seed / "mc2.exe").read_bytes() == (tmp_path / "old-exe").read_bytes() == b"old"
+    assert list(seed.iterdir()) == [seed / "mc2.exe"]
+
+
+@pytest.mark.parametrize("failure", ["missing-exe", "mismatch", "mid-loop", "escape"])
+def test_refresh_failure_keeps_publication_records(tmp_path, monkeypatch, capsys, failure):
+    # Trigger paths: scripts/seed_parity.py, scripts/deploy_payload.py.
+    import deploy_payload as dp
+    ref = tree(tmp_path / "ref", {"mc2.exe": b"new", "mc2.pdb": b"pdb"})
+    seed = tree(tmp_path / "seed", {"mc2.exe": b"old", ".deployed_manifest.csv": b"old manifest", sp.SNAPSHOT_NAME: b"old snapshot"})
+    rows = {rel: (sp._sha(ref / rel), (ref / rel).stat().st_size) for rel in ("mc2.exe", "mc2.pdb")}
+    if failure == "missing-exe":
+        rows.pop("mc2.exe")
+    elif failure == "mismatch":
+        rows["mc2.pdb"] = ("wrong", 3)
+    elif failure == "escape":
+        rows["../outside"] = ("wrong", 3)
+    dp.write_manifest(ref, rows, "fixture")
+    copy = sp._atomic_copy
+    if failure == "mid-loop":
+        def fail_second(src, dst):
+            if src.name == "mc2.pdb":
+                raise OSError("mid-loop failure")
+            copy(src, dst)
+        monkeypatch.setattr(sp, "_atomic_copy", fail_second)
+    assert not sp.after_v04_deploy(ref, seed, ref)
+    assert "seed NOT refreshed" in capsys.readouterr().out
+    assert (seed / ".deployed_manifest.csv").read_bytes() == b"old manifest"
+    assert (seed / sp.SNAPSHOT_NAME).read_bytes() == b"old snapshot"
+    assert (seed / "mc2.exe").read_bytes() == (b"new" if failure == "mid-loop" else b"old")

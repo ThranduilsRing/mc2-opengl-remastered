@@ -1,6 +1,7 @@
 // ControlGui: pause, tab switch, movie / pilot video, rollover help text and the chat window.
 // Declared in the class headers; shared names in controlgui_internal.h.
 #include "controlgui_internal.h"
+#include "net/runtime.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 
 #include <string>
@@ -178,6 +179,7 @@ void ControlGui::setRolloverHelpText( unsigned long textID )
 
 void	ControlGui::toggleHoldPosition()
 {
+	if (mc2::net::active()) return;
 	if ( getButton( CUR_RANGE )->state == ControlButton::ENABLED )
 	{
 		setRange( FIRERANGE_CURRENT );

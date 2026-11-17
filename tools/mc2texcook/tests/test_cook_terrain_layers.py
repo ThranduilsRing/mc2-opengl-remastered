@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import os
+import pytest
 import shutil
 import sys
 import tempfile
@@ -70,6 +71,12 @@ def _make_test_image(width=8, height=8, mode='RGB'):
 # 1. Manifest schema validation
 # ---------------------------------------------------------------------------
 
+_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+sys.path.insert(0, os.path.join(_ROOT, "tools"))
+import gate_hosts  # noqa: E402
+_GATE_HOST = gate_hosts.current_host()
+
+
 class TestManifestSchema(unittest.TestCase):
 
     def setUp(self):
@@ -77,6 +84,10 @@ class TestManifestSchema(unittest.TestCase):
             self.manifest = json.load(f)
 
     def test_manifest_is_valid(self):
+        missing = sorted({e['source_dir'] for e in self.manifest['layers'].values()
+                          if e.get('source_dir') and not os.path.exists(e['source_dir'])})
+        if missing and _GATE_HOST != "pc":
+            pytest.skip(f"PC-only terrain source packs absent on this host: {', '.join(missing)}")
         errors = ctl.validate_manifest(self.manifest)
         self.assertEqual(errors, [], f'manifest validation errors: {errors}')
 

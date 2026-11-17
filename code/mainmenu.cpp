@@ -36,6 +36,7 @@ struct DDSURFACEDESC2 {
 #include "../GuiRuntime/GuiRuntime.h"
 #include "imgui.h"
 extern CPrefs prefs;
+#include "screen_settle_capture.h"
 
 
 constexpr int MM_MSG_NEW_CAMPAIGN = 90;
@@ -435,6 +436,13 @@ void MainMenu::update()
 		static bool s_menuMarked = false;
 		if ( !s_menuMarked ) { s_menuMarked = true; mc2::fmt::print_out("[VIA_MENU v1] event=main_menu\n"); }
 	}
+    const auto pickedMission = PlayerFrontEnd::takeMissionStart();
+    if (!pickedMission.empty() && LogisticsData::instance) {
+        skipIntro();
+        LogisticsData::instance->setSingleMission(pickedMission.c_str());
+        status = SKIPONENEXT;
+        return;
+    }
     const auto pickedCampaign = PlayerFrontEnd::takeCampaignStart();
     if (!pickedCampaign.empty() && LogisticsData::instance) {
         skipIntro();
@@ -818,7 +826,10 @@ void MainMenu::render()
 {
     if (ImGui::GetCurrentContext()) ImGui::GetIO().MouseDrawCursor = true;
     if (!introMovie && !bOptions && !bDrawMechlopedia)
-        PlayerFrontEnd::drawMainMenu();
+        // Owner 11-15: the community/credits panel appears only once the real menu
+        // does, i.e. after the splash logo animation (render() returns early until then).
+        PlayerFrontEnd::drawMainMenu(bDrawBackground && !bLegal &&
+                                     (intro.allAnimObjectsDone() || introOver || bHostLeftDlg));
 	// UI-ASPECT-ANCHOR-1: front-end frame — draw the UI on the 16:9 canvas
 	// (re-asserted every frame; auto-cleared at flushHUDBatch).
 	gos_SetUiCanvasActive( true );
@@ -922,6 +933,16 @@ void MainMenu::render()
 		singleLoadDlg.render();
 	else
 		LogisticsSaveDialog::instance()->render();
+	if ( !xDelta && !yDelta && !bSave && !bLoad && !bLoadSingle && !bLoadCampaign && !bLegal )
+	{
+		static bool markedReady = false;
+		if ( !markedReady )
+		{
+			markedReady = true;
+			mc2::fmt::print_out("[MENU_READY v1] animation_complete=1 buttons_drawn=1\n");
+		}
+		mc2::screen_settle::tickFrontEnd(-1, -1);
+	}
  
 	if ( promptToQuit || promptToDisconnect )
 	{

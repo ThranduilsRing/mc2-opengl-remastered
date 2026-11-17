@@ -206,20 +206,21 @@ def gpu_hint(out: dict) -> "Optional[str]":
     except ImportError:
         from smoke_lib import host_lease
     # runners scrub the child env; read the shell too
-    return host_lease.pin_device(host_lease.device_hint({k: os.environ.get(k, "") for k in ("MC2_HARNESS_GPU", "MC2_IN_GATE")} | out))
+    return host_lease.pin_device(out.get("MC2_VK_DEVICE") or host_lease.device_hint(
+        {k: os.environ.get(k, "") for k in ("MC2_HARNESS_GPU", "MC2_IN_GATE")} | out))
 
 
 def route_gpu(out: dict, perf: bool = False) -> None:
-    """Force a GPU only when asked (explicit MC2_VK_DEVICE or MC2_HARNESS_GPU=2070|xtx). Otherwise the lease slot a run wins
-    decides: slot 0 = 7900 XTX, slot 1 = RTX 2070 SUPER (A:/Games/mc2-ops/GPU_SPLIT), injected by spawn() after the hold.
-
-    MC2_HARNESS_GPU = auto (default) | xtx | 2070 | any overrides. An explicit MC2_VK_DEVICE wins.
-    The engine reads MC2_VK_DEVICE (a device-name substring): the Vulkan loader on this host ignores
-    VK_LOADER_DRIVERS_SELECT and the engine takes the first discrete device, always the 7900 XTX.
-    """
+    """On the dual-XTX PC defer to the lease, then pin its runtime name@uuid."""
+    try:
+        from . import host_lease
+    except ImportError:
+        from smoke_lib import host_lease
+    if host_lease.runtime_lane_adapter():
+        out.pop("MC2_VK_DEVICE", None)
     hint = gpu_hint(out)
     if hint:
-        out.setdefault("MC2_VK_DEVICE", hint)
+        out["MC2_VK_DEVICE"] = hint
 
 
 def gpu_mismatch(out: dict, perf: bool, devices: "Sequence[str]", log_text: str = "") -> "Optional[str]":
@@ -486,7 +487,7 @@ def spawn(argv: Sequence[str], *, show_window: bool = False,
         dev = host_lease.held_device()   # the slot this run won decides its GPU unless one was forced
         if dev and not child_env.get("MC2_VK_DEVICE"):
             child_env["MC2_VK_DEVICE"] = dev
-        if child_env.get("MC2_VK_DEVICE"):   # two identical XTXs: pin the non-display one by UUID (host_lease.lane_uuid)
+        if child_env.get("MC2_VK_DEVICE"):   # two identical XTXs: preserve the acquired slot's UUID
             child_env["MC2_VK_DEVICE"] = host_lease.pin_device(child_env["MC2_VK_DEVICE"])
         engine = any(exe_guard.engine_kind(a) is not None for a in argv)
         if engine and sys.platform == "win32":
