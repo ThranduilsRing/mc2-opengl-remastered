@@ -21,8 +21,8 @@ struct WavePackets : mc2vk::IslandState {
 };
 
 bool bakePackets(WaterIsland* s, WavePackets& b) {
-    // At least eight texels per shortest (93 wu) noise cell, even on large maps.
-    while (b.size < b.span * 8.0f / 93.0f) b.size *= 2;
+    // At least sixteen intervals per shortest (93 wu) noise cell, including edges.
+    while (b.size - 1 < b.span * 16.0f / 93.0f) b.size *= 2;
     VkImageCreateInfo ci{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
     ci.imageType = VK_IMAGE_TYPE_2D; ci.format = VK_FORMAT_R8G8B8A8_UNORM;
     ci.extent = {b.size, b.size, 1}; ci.mipLevels = 1; ci.arrayLayers = 3;
@@ -92,7 +92,8 @@ bool bakePackets(WaterIsland* s, WavePackets& b) {
             VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_SHADER_SAMPLED_READ_BIT);
     }, "water wave packet bake")) return false;
-    vlog("WAVE_PACKETS baked size=%u layers=3 format=RGBA8 span=%.1f halfMap=%.1f", b.size, b.span, b.halfMap);
+    vlog("WAVE_PACKETS baked size=%u layers=3 format=RGBA8 span=%.1f halfMap=%.1f MiB=%.2f",
+        b.size, b.span, b.halfMap, double(b.size) * b.size * 12 / (1024 * 1024));
     return true;
 }
 } // namespace

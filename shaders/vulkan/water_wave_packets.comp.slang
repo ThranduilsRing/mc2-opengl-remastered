@@ -5,7 +5,6 @@ struct Params { float span; float halfMap; uint size; uint pad; };
 [[vk::binding(1, 0)]] ConstantBuffer<Params> P;
 
 float h21(float2 ip) {
-    // Match the fragment GLSL hash's contraction rules; precise changes its random seeds.
     float3 q = frac(float3(ip.x, ip.y, ip.x) * 0.1031);
     q += dot(q, q.yzx + 33.33);
     return frac((q.x + q.y) * q.z);
@@ -22,7 +21,7 @@ static const float wavelengths[10] = {23.1, 15.5, 52.4, 35.3, 23.8, 16.0, 54.0, 
 [numthreads(8, 8, 1)]
 void main(uint3 tid : SV_DispatchThreadID) {
     if (any(tid.xy >= P.size) || tid.z >= 3) return;
-    float2 grid = (float2(tid.xy) + 0.5) * (P.span / float(P.size));
+    float2 grid = float2(tid.xy) * (P.span / float(P.size - 1));
     float2 p = float2(grid.x - P.halfMap, P.halfMap - grid.y);
     float4 result = 0;
     for (uint c = 0; c < 4; ++c) {

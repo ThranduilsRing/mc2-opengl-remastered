@@ -376,6 +376,8 @@ const float NEAR_SKY_LIFT     = 0.4;    // reflected-sky brightening at full nea
 
 PREC vec2 waterWaveSlope(PREC vec2 p, float t, float footprint, float gain, out float unresolvedVar){
     vec2 packetUv = vec2(p.x + uT.halfMap, uT.halfMap - p.y) / (128.0 * float(uT.mapSide - 1));
+    float packetSize = float(textureSize(u_wavePackets, 0).x);
+    packetUv = (packetUv * (packetSize - 1.0) + 0.5) / packetSize;
     vec4 packets[3] = vec4[3](textureLod(u_wavePackets, vec3(packetUv, 0), 0),
                               textureLod(u_wavePackets, vec3(packetUv, 1), 0),
                               textureLod(u_wavePackets, vec3(packetUv, 2), 0));
