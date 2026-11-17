@@ -46,7 +46,6 @@ static int s_cpuVisualV = 0;
 
 #include "shaders/vulkan/include/terrain_cliff_surface.glsl"
 static std::vector<float> s_cpuGroundHeight;
-GroundHeightView groundHeightView() { return {s_cpuGroundHeight, s_cpuVisualV}; }
 void setCpuVisualHeight(const float* vh, int V)
 {
 	if (vh && V > 1) { s_cpuVisualHeight.assign(vh, vh + static_cast<size_t>(V) * static_cast<size_t>(V)); s_cpuVisualV = V; }
@@ -189,5 +188,7 @@ bool parityGateEnabled()
 {
 	return false;
 }
+
+GroundHeightView groundHeightView() { return {s_cpuGroundHeight, s_cpuVisualV}; }
 
 } // namespace TerrainRuntime
