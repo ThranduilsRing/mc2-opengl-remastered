@@ -35,10 +35,10 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/test_release_zip_install.py` | 263 | `nofocus.run` | offscreen |
 | `scripts/tests/test_abl_static_alloc.py` | 87 | `nofocus.run` | offscreen |
 | `scripts/tests/test_gpu_routing.py` | 60 | `nofocus.spawn` | offscreen |
-| `scripts/tests/test_harness_desktop_safety.py` | 172 | `nofocus.spawn` | offscreen |
-| `scripts/tests/test_harness_desktop_safety.py` | 442 | `nofocus.spawn` | offscreen |
-| `scripts/tests/test_harness_desktop_safety.py` | 446 | `nofocus.spawn` | offscreen |
-| `scripts/tests/test_harness_desktop_safety.py` | 497 | `nofocus.run` | offscreen |
+| `scripts/tests/test_harness_desktop_safety.py` | 173 | `nofocus.spawn` | offscreen |
+| `scripts/tests/test_harness_desktop_safety.py` | 450 | `nofocus.spawn` | offscreen |
+| `scripts/tests/test_harness_desktop_safety.py` | 454 | `nofocus.spawn` | offscreen |
+| `scripts/tests/test_harness_desktop_safety.py` | 507 | `nofocus.run` | offscreen |
 | `scripts/tests/test_host_lease.py` | 98 | `nofocus.spawn` | offscreen |
 | `scripts/tests/test_nofocus_env.py` | 47 | `nofocus.spawn` | offscreen |
 | `scripts/tests/test_nofocus_env.py` | 78 | `nofocus.spawn` | offscreen |
@@ -52,7 +52,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `tools/campaign_save_roundtrip.py` | 178 | `nofocus.spawn` | offscreen |
 | `tools/import_campaign.py` | 250 | `subprocess.run` **raw, allowed:** innoextract console archive reader only; never runs the installer or engine | offscreen |
 | `tools/menu_oracle.py` | 110 | `nofocus.spawn` | desktop-composite |
-| `tools/mod_smoke.py` | 1061 | `nofocus.run` | offscreen |
+| `tools/mod_smoke.py` | 1064 | `nofocus.run` | offscreen |
 | `tools/perf/mission_cpu_profile.py` | 224 | `subprocess.Popen` **raw, allowed:** Tracy console recorder, never an engine. | offscreen |
 | `tools/perf/mission_cpu_profile.py` | 260 | `subprocess.Popen` **raw, allowed:** Tracy CSV console exporter, never an engine. | offscreen |
 | `tools/perf/rgp_capture.py` | 66 | `subprocess.Popen` **raw, allowed:** RDS console service, never an engine. | offscreen |

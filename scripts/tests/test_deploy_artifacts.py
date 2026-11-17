@@ -15,6 +15,30 @@ BAD = ("logs/a.txt", "debug_state/state.json", "LAUNCHER.LOG",
        "harness_bay_stdout.txt", "harness_encyclopedia_stderr.txt")
 
 
+@pytest.mark.parametrize("manifest_rel", ["data/tgl/tree.ktx2", "DATA\\TGL\\TREE.KTX2"])
+def test_retire_preserves_declared_asset_without_cooked_source(tmp_path, monkeypatch, manifest_rel):
+    source, target = tmp_path / "source", tmp_path / "target"
+    monkeypatch.setattr(dp, "__file__", str(source / "scripts/deploy_payload.py"))
+    monkeypatch.setattr(dp, "git_head", lambda root: "a" * 40)
+
+    def declarations(commit, root):
+        assert commit == "a" * 40 and root == source
+        assert not (root / "data/tgl/tree.ktx2").exists()
+        return {"data/tgl/tree.ktx2": "b" * 64}
+
+    monkeypatch.setattr(ap, "intentional_changes", declarations)
+    rows = {}
+    for rel in (manifest_rel, "data/tgl/retired.ktx2"):
+        path = target / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"cooked texture")
+        rows[rel] = (dp.sha256_file(path), path.stat().st_size, None)
+    dp.write_manifest(str(target), rows, "test")
+    dp.retire_unowned(str(target), {})
+    assert (target / manifest_rel).read_bytes() == b"cooked texture"
+    assert not (target / "data/tgl/retired.ktx2").exists()
+
+
 @pytest.mark.parametrize("owned", [False, True])
 def test_deploy_filters_artifacts_and_preserves_unowned_files(tmp_path, monkeypatch, owned):
     monkeypatch.setattr(dp, "ensure_terrain_materials", lambda _: {})

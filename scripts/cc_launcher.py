@@ -61,6 +61,7 @@ def include_dirs(args):
 
 def remap(path, own, roots, incs):
     """path: one replayed include path (str). Returns the path in this checkout, or path unchanged when none is found."""
+    path = path.replace("\\", "/")
     if os.path.exists(path) and norm(path).startswith(norm(own)):
         return path
     n = norm(path)

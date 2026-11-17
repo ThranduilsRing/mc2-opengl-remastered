@@ -59,6 +59,15 @@ fi
 FAILED=0
 note() { echo "[run-unit-tests] $*"; }
 
+# Tests own their MC2_* settings, including strict-config fault injection.
+# A subshell preserves the runner's build options for the remaining tiers.
+run_test() (
+    while IFS= read -r name; do
+        case "${name^^}" in MC2_*) unset "$name" ;; esac
+    done < <(compgen -e)
+    "$@"
+)
+
 # ---------------------------------------------------------------------------
 # Tier 1 -- standalone, GL-free (build64-tests/)
 # ---------------------------------------------------------------------------
@@ -80,9 +89,18 @@ fi
 
 note "run mc2_tests"
 if [ "${#DOCTEST_ARGS[@]}" -gt 0 ]; then
-    "$BUILD_DIR/${UNIT_CFG}mc2_tests.exe" "${DOCTEST_ARGS[@]}" || FAILED=1
+    run_test "$BUILD_DIR/${UNIT_CFG}mc2_tests.exe" "${DOCTEST_ARGS[@]}" || FAILED=1
 else
-    "$BUILD_DIR/${UNIT_CFG}mc2_tests.exe" || FAILED=1
+    run_test "$BUILD_DIR/${UNIT_CFG}mc2_tests.exe" || FAILED=1
+fi
+
+# The report adapter is built with mc2_tests; exercise its wire protocol too.
+if [ "${#DOCTEST_ARGS[@]}" -eq 0 ]; then
+    note "run mc2_bv_calibration"
+    if ! bv="$(printf '0 0 0 0 0 0 0\n' | run_test "$BUILD_DIR/${UNIT_CFG}mc2_bv_calibration.exe" "$ROOT/data/defs/rules/battle_value.fit")" || [ "${bv//$'\r'/}" != "0" ]; then
+        note "FAIL: BV report adapter did not evaluate the empty variant to zero"
+        FAILED=1
+    fi
 fi
 
 if [ "$DOCTEST_ONLY" -eq 1 ]; then
@@ -102,7 +120,7 @@ else
         "$CMAKE" --build "$BUILD_DIR" --config "$CFG" --target test_render_contract_3 --parallel "$JOBS"
     fi
     note "run test_render_contract_3"
-    "$BUILD_DIR/${UNIT_CFG}test_render_contract_3.exe" || FAILED=1
+    run_test "$BUILD_DIR/${UNIT_CFG}test_render_contract_3.exe" || FAILED=1
 fi
 
 # ---------------------------------------------------------------------------
@@ -135,10 +153,10 @@ else
         "$CMAKE" --build "$ENGINE_BUILD" --config "$CFG" --target model_override_tests static_natural_skip_policy_tests --parallel "$JOBS"
     fi
     note "run model_override_tests"
-    "$ENGINE_BUILD/tests/model_override/${ENGINE_CFG}model_override_tests.exe" \
+    run_test "$ENGINE_BUILD/tests/model_override/${ENGINE_CFG}model_override_tests.exe" \
         "$ROOT/tests/model_override/fixtures" || FAILED=1
     note "run static_natural_skip_policy_tests"
-    "$ENGINE_BUILD/tests/static_natural_skip/${ENGINE_CFG}static_natural_skip_policy_tests.exe" || FAILED=1
+    run_test "$ENGINE_BUILD/tests/static_natural_skip/${ENGINE_CFG}static_natural_skip_policy_tests.exe" || FAILED=1
 fi
 
 if [ "$FAILED" -ne 0 ]; then

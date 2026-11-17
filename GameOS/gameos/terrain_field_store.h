@@ -73,6 +73,7 @@ public:
 
     // Fine bake (side^2 floats) followed by the mip maxes, the layout the shaders index.
     const std::vector<float>& visualHeight() const { return visual_; }
+    const std::vector<float>& waterShoreCells() const { return waterShoreCells_; }
     int visualSide() const { return visualSide_; }
     int visualMipFloats() const { return visualMipFloats_; }
     uint64_t visualHeightVersion() const { return visualVersion_; }
@@ -124,6 +125,7 @@ private:
     std::vector<uint32_t> cement_;
     uint64_t cementVersion_ = 0;
     std::vector<float> visual_;
+    std::vector<float> waterShoreCells_;
     int visualSide_ = 0;
     int visualMipFloats_ = 0;
     uint64_t visualVersion_ = 0;

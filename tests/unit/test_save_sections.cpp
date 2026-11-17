@@ -194,7 +194,7 @@ TEST_CASE("save sections: rejects malformed, newer and unknown required sections
 
     SectionContainer terrain; terrain.add(tagObjectSlots, objectSlotsVersion, true, {});
     REQUIRE(decodeSections(encoded(terrain), out, &why));
-    CHECK(out.find(tagObjectSlots)->version == 2);
+    CHECK(out.find(tagObjectSlots)->version == objectSlotsVersion);
     SectionContainer futureTerrain; futureTerrain.add(tagObjectSlots, objectSlotsVersion + 1, true, {});
     CHECK_FALSE(decodeSections(encoded(futureTerrain), out, &why)); CHECK(why == "section_version");
 

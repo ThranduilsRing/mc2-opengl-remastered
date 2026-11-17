@@ -3,6 +3,7 @@
 #include "engine_present_vk.h"
 #include "hud_command_merge.h"
 #include "hud_texture_mips.h"
+#include "diagnostic_trace.h"
 #include "present_thread.h"
 #include "../../mclib/battle_bench_wait.h"
 #include "../../mclib/sim_overlap.h"
@@ -56,6 +57,7 @@
 #include <vector>
 extern uint32_t g_mc2RenderFrame;
 extern uint32_t g_mc2FxFireCaptureFrame;
+
 namespace mc2vk {
 namespace {
 void plog(const char* fmt, ...) {
@@ -1129,7 +1131,8 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
     const size_t baseBytes = static_cast<size_t>(d.textureWidth) * d.textureHeight * 4u;
     const VkDeviceSize bytes = mipmapped ? (baseBytes * 4u - 4u) / 3u : baseBytes;
     const bool needsUpload = m.serial != d.textureSerial || m.width != d.textureWidth ||
-                             m.height != d.textureHeight || m.bytes != bytes || !m.buffer;
+                             m.height != d.textureHeight || m.bytes != bytes || !m.buffer ||
+                             (m.preparedSource && m.preparedSource != d.textureRgba);
     if (!needsUpload && m.sceneGeneration == sceneGeneration)
         return &m;
     // VK-HUD-MIRRORCOPY-1: the draw carries a shared immutable mirror (refcount
@@ -1139,6 +1142,17 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
     if (!d.textureRgba || d.textureRgba->size() < baseBytes)
         return nullptr;
     ZoneScopedN("HUD.TextureUpload");
+    if (uploads && (mipmapped || d.hudAtlas)) {
+        ZoneScopedN("HUD.TextureUpload.SynchronousFallback");
+        if (mc2_diag::tagRequested("HUD_SYNC_FALLBACK"))
+        std::fprintf(stderr, "[HUD_SYNC_FALLBACK] handle=%u serial=%u kind=%u frame=%llu\n",
+            d.textureHandle, d.textureSerial, d.kind, static_cast<unsigned long long>(s.hudMirrorFrameCounter));
+    }
+    m.preparedSource.reset();
+    if (m.buffer) {
+        s.ctx->retire(HudMirrorRetired{s.dev, s.hudTexPool.get(), std::exchange(m.set, VK_NULL_HANDLE),
+            std::move(m.memory), std::move(m.buffer)});
+    }
     ZoneValue(d.textureHandle);
     char textureInfo[128];
     const int textureInfoSize = std::snprintf(textureInfo, sizeof(textureInfo), "handle=%u serial=%u size=%ux%u kind=%u", d.textureHandle, d.textureSerial, d.textureWidth, d.textureHeight, d.kind);
@@ -1159,6 +1173,10 @@ EnginePresentVk::Impl::HudTextureMirror* ensureHudTextureMirror(EnginePresentVk:
         return nullptr;
     std::memcpy(mapped, mipmapped ? mipPixels.data() : rgba.data(), static_cast<size_t>(bytes));
     vkUnmapMemory(s.dev, m.memory.get());
+    }
+    if (mipmapped) {
+        for (auto& [identity, mirror] : s.hudTextureMirrors)
+            if (static_cast<uint32_t>(identity >> 32) == d.textureHandle) mirror.pinned = identity == key;
     }
     }
     if (!m.set) {
@@ -1227,16 +1245,19 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
     {
         const uint64_t now = s.hudMirrorFrameCounter;
         for (auto it = s.hudTextureMirrors.begin(); it != s.hudTextureMirrors.end(); ) {
-            if (it->second.lastFrame + kHudMirrorIdleFrames < now) {
+            auto& [identity, m] = *it;
+            const auto handle = static_cast<uint32_t>(identity >> 32);
+            const bool retired = std::find(s.retiredHudTextures.begin(), s.retiredHudTextures.end(), handle) != s.retiredHudTextures.end();
+            if (retired || (!m.pinned && m.lastFrame + kHudMirrorIdleFrames < now)) {
                 // Idle long enough to count as gone: its descriptor set and buffer leave through the deferred-destroy queue, so a present submit
                 // that is still reading them keeps them alive (a ticket, not the idle window, is the proof).
-                auto& m = it->second;
                 s.ctx->retire(HudMirrorRetired{s.dev, s.hudTexPool.get(), std::exchange(m.set, VK_NULL_HANDLE), std::move(m.memory), std::move(m.buffer)});
                 it = s.hudTextureMirrors.erase(it);
             } else {
                 ++it;
             }
         }
+        s.retiredHudTextures.clear();
     }
 
     }
@@ -1278,6 +1299,14 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
             memoMirror = mirror;
             if (!mirror || !mirror->set)
                 continue;
+            if (d.textureWidth == 2048 && d.textureHeight == 2048 && !mirror->firstDrawLogged) {
+                if (mc2_diag::tagRequested("HUD_FIRST_DRAW"))
+                std::fprintf(stderr, "[HUD_FIRST_DRAW] handle=%u serial=%u kind=%u frame=%u prepared=%d\n",
+                    d.textureHandle, d.textureSerial, d.kind, ::g_mc2RenderFrame,
+                    static_cast<int>(mirror->preparedSource == d.textureRgba));
+                mirror->firstDrawLogged = true;
+            }
+            mirror->preparedSource.reset(); // Drop the source reference; the mission pin remains.
             HudNativeCmd td;
             td.stream = 2;
             td.firstVertex = static_cast<uint32_t>(texVerts.size());
@@ -1998,6 +2027,36 @@ bool EnginePresentVk::renderNativeCsmShadowDebugOverlay(void* csmArrayView, int 
     s.pendingShadowDebugView = arrayView;
     s.pendingShadowDebugLayer = layer < 0 ? 0 : layer;
     return true;
+}
+
+bool EnginePresentVk::prepareHudTexture(const VkHudDraw& draw) {
+    present_thread::waitIdle();
+    if (!created_ || !impl_ || !draw.textureRgba ||
+        draw.textureRgba->size() != static_cast<size_t>(draw.textureWidth) * draw.textureHeight * 4u)
+        return false;
+    ZoneScopedN("HUD.LoadPrepare");
+    auto* mirror = ensureHudTextureMirror(*impl_, draw, nullptr);
+    if (!mirror) return false;
+    mirror->preparedSource = draw.textureRgba;
+    mirror->pinned = true;
+    return true;
+}
+
+void EnginePresentVk::releaseHudTextures(uint32_t handle) {
+    if (!handle) present_thread::waitIdle();
+    if (!impl_) return;
+    auto& s = *impl_;
+    for (auto it = s.hudTextureMirrors.begin(); it != s.hudTextureMirrors.end();) {
+        auto& [identity, m] = *it;
+        if (handle && static_cast<uint32_t>(identity >> 32) != handle) { ++it; continue; }
+        s.ctx->retire(HudMirrorRetired{s.dev, s.hudTexPool.get(), std::exchange(m.set, VK_NULL_HANDLE),
+            std::move(m.memory), std::move(m.buffer)});
+        it = s.hudTextureMirrors.erase(it);
+    }
+}
+
+void EnginePresentVk::retireHudTextures(std::vector<uint32_t>&& handles) {
+    if (impl_) impl_->retiredHudTextures.insert(impl_->retiredHudTextures.end(), handles.begin(), handles.end());
 }
 
 bool EnginePresentVk::prewarmPipelines() {

@@ -551,8 +551,9 @@ void TacticalOrderQueue::serialize(Archive& a) {
     if (a.good()) *this = std::move(candidate);
 }
 bool TacticalOrderQueue::restore(std::span<const std::uint8_t> bytes, Tick completed,
-                                 save::Diagnostic diagnostic) {
+                                 save::Diagnostic diagnostic, std::uint32_t version) {
     Archive a(bytes, std::move(diagnostic));
+    a.sectionVersion = version; // not the Archive's animation-schema default
     if (executing_) { a.reject("order_restore_executing"); return false; }
     TacticalOrderQueue candidate(completed);
     a(candidate);

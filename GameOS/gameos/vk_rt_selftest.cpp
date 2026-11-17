@@ -1,6 +1,6 @@
 // vk_rt_selftest.cpp -- one-shot GPU proof of the ray-tracing infrastructure (MC2_VK_RT_SELFTEST=1, test hook only; renders nothing).
 //
-// Builds a one-triangle BLAS and a one-instance TLAS, traces four known rays through shaders/vulkan/rt_smoke.comp and checks hit / miss, t, primitive id and
+// Builds a one-triangle BLAS and a one-instance TLAS, traces four known rays through shaders/vulkan/rt_smoke.comp.slang and checks hit / miss, t, primitive id and
 // instance custom index. Then refits both structures (update) and re-traces, and compact-copies the BLAS into a fresh TLAS and re-traces. Logs one
 // [VK_RT_SELFTEST v1] line. Every submit waits (vk_one_shot), so the scratch and the structures are released at scope exit with no GPU use in flight.
 

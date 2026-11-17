@@ -22,6 +22,11 @@
 cmake_minimum_required(VERSION 3.16)
 project(mc2_tests CXX)
 
+# Informational BV core and offline calibration adapter share the same function.
+add_executable(mc2_bv_calibration ../../code/battle_value.cpp)
+target_compile_definitions(mc2_bv_calibration PRIVATE MC2_BV_REPORT_MAIN)
+target_compile_features(mc2_bv_calibration PRIVATE cxx_std_17)
+
 enable_language(C)
 # Mc2Standalone first: its MC2_COMPILE_CACHE /Zi -> /Z7 swap must reach enet's C flags, or sccache
 # fails to collect enet.pdb in cached harness trees.
@@ -33,6 +38,11 @@ get_filename_component(MC2_WORKTREE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABS
 
 set_source_files_properties(${MC2_WORKTREE_ROOT}/RenderCore/KtxBasis.cpp PROPERTIES COMPILE_DEFINITIONS NDEBUG)  # vendored basisu asserts do not compile under clang
 add_executable(mc2_tests
+    test_battle_value.cpp
+    ../../code/battle_value.cpp
+    test_chassis_layout.cpp
+    ${MC2_WORKTREE_ROOT}/code/chassis_layout.cpp
+    test_order_menu.cpp
     test_net_session.cpp
     ${MC2_WORKTREE_ROOT}/code/net/session.cpp
     test_net_lockstep.cpp
@@ -357,12 +367,14 @@ add_executable(mc2_tests
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/gameos_fileio.cpp
 )
 mc2_link_gate(mc2_tests)
+add_dependencies(mc2_tests mc2_bv_calibration)
 
 # Trigger paths: mclib/mech_skel_import.*, test_torso_twist.cpp.
-# Exercise production FK with synthetic scenes; no importer or game required.
+# Exercise production FK with synthetic scenes and the lane's real Atlas pack.
 set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
 set(ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_GLTF_IMPORTER ON CACHE BOOL "" FORCE)
 set(ASSIMP_BUILD_ALL_EXPORTERS_BY_DEFAULT OFF CACHE BOOL "" FORCE)
 set(ASSIMP_BUILD_ZLIB ON CACHE BOOL "" FORCE)
 set(ASSIMP_WARNINGS_AS_ERRORS OFF CACHE BOOL "" FORCE)
@@ -589,6 +601,7 @@ endif()
 target_sources(mc2_tests PRIVATE
     test_save_archive.cpp
     test_terrain_cache_key.cpp
+    test_terrain_spec.cpp
     ${MC2_WORKTREE_ROOT}/code/save_archive.cpp
     test_save_sections.cpp
     test_save_field_omission.cpp
@@ -632,7 +645,7 @@ set_source_files_properties("${MC2_WORKTREE_ROOT}/tools/vfx_oracle/lifecycle_pla
 target_sources(mc2_tests PRIVATE test_vfx_frozen_driver.cpp)
 target_link_libraries(mc2_tests PRIVATE enet)
 target_sources(mc2_tests PRIVATE
-    test_sim_rng.cpp test_tactical_order_queue.cpp test_mission_order_ingress.cpp test_authored_route.cpp
+    test_heat_model.cpp test_sim_rng.cpp test_tactical_order_queue.cpp test_mission_order_ingress.cpp test_authored_route.cpp
     test_command_replay.cpp test_tacorder_wire.cpp test_tactic_table.cpp
     ${MC2_WORKTREE_ROOT}/code/command_replay.cpp
     ${MC2_WORKTREE_ROOT}/code/sim_rng.cpp
@@ -740,6 +753,24 @@ function(mc2_height_slice output source begin end)
     set(${output} "${body}" PARENT_SCOPE)
     set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${MC2_WORKTREE_ROOT}/${source}")
 endfunction()
+mc2_height_slice(layout_flat code/logisticsvariant_stats.cpp
+    "int\tLogisticsVariant::getComponents( long& count, long* array )"
+    "std::expected<void, int> LogisticsVariant::removeComponent")
+mc2_height_slice(layout_restore code/logisticsvariant.cpp
+    "bool LogisticsVariant::restoreLocationRecord(" "bool LogisticsVariant::addComponent(")
+mc2_height_slice(layout_mount_helpers code/logisticsvariant_package.cpp
+    "namespace {" "int LogisticsVariant::packageCheck(")
+file(READ "${MC2_WORKTREE_ROOT}/code/logisticsvariant_package.cpp" layout_package_source)
+string(FIND "${layout_package_source}" "int LogisticsVariant::getPackageMounts(" layout_mount_start)
+string(SUBSTRING "${layout_package_source}" ${layout_mount_start} -1 layout_mounts)
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/layout_deployment.inc"
+    CONTENT "${layout_mount_helpers}\n${layout_flat}\n${layout_mounts}\n${layout_restore}")
+mc2_height_slice(layout_accept code/logisticsdata_modify.cpp
+    "std::expected<void, int> LogisticsData::acceptMechModifications(" "\n\tbool bFound = 0;")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/layout_accept.inc" CONTENT "${layout_accept}\nreturn {};\n}\n")
+set_source_files_properties(test_chassis_layout.cpp PROPERTIES
+    INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}"
+    COMPILE_DEFINITIONS "MC2_LAYOUT_SOURCE_ROOT=\"${MC2_WORKTREE_ROOT}\"")
 mc2_height_slice(prop_lod_range GameOS/gameos/gos_static_prop_registry_internal.h
     "struct RecipeRange {" "// Registry gates")
 mc2_height_slice(prop_lod_register GameOS/gameos/gos_static_prop_registry.cpp
@@ -869,6 +900,9 @@ set_source_files_properties(test_repair_deploy.cpp PROPERTIES INCLUDE_DIRECTORIE
 mc2_height_slice(radio_playback code/gamesound.cpp
     "void GameSoundSystem::playNoiseClip (void)" "// End of radio playback")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/radio_playback.inc" CONTENT "${radio_playback}")
+mc2_height_slice(voiceover_playback mclib/soundsys.cpp
+    "bool SoundSystem::isPlayingVoiceOver (void)" "bool SoundSystem::isDigitalMusicPlaying (void)")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/voiceover_playback.inc" CONTENT "${voiceover_playback}")
 target_sources(mc2_tests PRIVATE test_radio_playback.cpp)
 set_source_files_properties(test_radio_playback.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
 mc2_height_slice(tree_dynamic_default mclib/bdactor_internal.h

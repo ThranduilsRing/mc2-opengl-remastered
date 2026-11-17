@@ -15,6 +15,79 @@ import deploy_payload as dp  # noqa: E402
 ROOT = Path(__file__).resolve().parents[2]
 
 
+@pytest.mark.parametrize("rel", ["data/ui.fit", "data/editor.csv", "data/editor.txt",
+                                  "tools/mc2_import/shims/corebrain.abx", "run-mc2.bat",
+                                  "scripts/tool.py", "data/config.json"])
+def test_text_deploy_preserves_source_bytes(tmp_path, monkeypatch, rel):
+    monkeypatch.setattr(dp, "ensure_terrain_materials", lambda t: {})
+    monkeypatch.setattr(dp, "ensure_engine_normal_cooks", lambda t: None)
+    src, target = tmp_path / "source", tmp_path / "install"
+    for content in (b"first\nsecond\n", b"first\r\nsecond\r\n"):
+        src.write_bytes(content)
+        hashes = dp.deploy([(str(src), rel, "support")], str(target), False)
+        assert (target / rel).read_bytes() == content
+        assert hashes[rel][:2] == (dp.sha256_file(src), len(content))
+
+
+def test_deploy_preserves_asset_declaration_and_shader_publication(tmp_path, monkeypatch):
+    import asset_parity
+    import exe_fingerprint
+    monkeypatch.setattr(dp, "ensure_terrain_materials", lambda t: {})
+    monkeypatch.setattr(dp, "ensure_engine_normal_cooks", lambda t: None)
+    repo, target = tmp_path / "repo", tmp_path / "install"
+    files = {"build64-ninja/mc2.exe": b"EXE", "build64-ninja/shaders/vulkan/test.spv": b"SPV",
+             "shaders/spv/spirv_index.json": b'{"index": 1}\r\n',
+             "shaders/spv/spirv_package.json": b'{"package": 1}\r\n',
+             "data/art/asset_sizes.csv": (ROOT / "data/art/asset_sizes.csv").read_bytes()}
+    items = []
+    for rel, data in files.items():
+        src = repo / rel
+        src.parent.mkdir(parents=True, exist_ok=True)
+        src.write_bytes(data)
+        items.append((str(src), rel.removeprefix("build64-ninja/"), "support"))
+    hashes = dp.deploy(items, str(target), False)
+    head = "a" * 40
+    dp.write_manifest(target, hashes, head)
+    declared = {"data/art/asset_sizes.csv": json.loads((ROOT / "intentional-asset-changes.json").read_text())[
+        "data/art/asset_sizes.csv"]}
+    assert declared.keys() <= asset_parity.owned_paths(target, declared=declared)
+    monkeypatch.setattr(exe_fingerprint, "extract", lambda p: dict(present=True, dirty=0, sha=head))
+    dp.verify_published_identity(target, repo, head)
+
+
+@pytest.mark.parametrize("drop_editor_file", [False, True])
+def test_game_editor_game_ownership_lifecycle(tmp_path, monkeypatch, drop_editor_file):
+    monkeypatch.setattr(dp, "ensure_terrain_materials", lambda t: {})
+    monkeypatch.setattr(dp, "ensure_engine_normal_cooks", lambda t: None)
+    target = tmp_path / "install"
+    game = tmp_path / "game-source"
+    game.write_bytes(b"game bytes")
+    game_items = [(str(game), "mc2.exe", "exe")]
+    def publish(items, deploying_target):
+        hashes = dp.deploy(items, str(target), False, deploying_target=deploying_target)
+        dp.write_manifest(target, hashes, "a" * 40)
+        return hashes
+    publish(game_items, "game")
+    items, rows = [], {}
+    for rel in ("Mission Editor.exe", "Mission Editor.pdb", "run-editor.bat", "tools/terrain_gen/tool.py"):
+        path = tmp_path / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"editor bytes")
+        rows[rel] = (dp.sha256_file(path), path.stat().st_size)
+        items.append((str(path), rel, "support"))
+    monkeypatch.setattr(dp, "TARGET_PRESETS", {"game": {"target_dir": str(target)}})
+    publish(items, "editor")
+    assert (target / "mc2.exe").read_bytes() == b"game bytes"
+    hashes = publish(game_items, "game")
+    for rel, row in rows.items():
+        assert (target / rel).read_bytes() == b"editor bytes"
+        assert hashes[rel][:2] == row
+    if drop_editor_file:
+        hashes = publish([], "editor")
+        for rel in rows:
+            assert rel not in hashes and not (target / rel).exists()
+
+
 @pytest.fixture(scope='module')
 def hardlink_support(tmp_path_factory):
     tmp_path = tmp_path_factory.mktemp('hardlink-probe')

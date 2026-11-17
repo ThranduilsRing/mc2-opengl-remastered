@@ -19,6 +19,9 @@
 #include <string>
 #include <vector>
 extern bool gos_CreateAudio();
+#if defined(_WIN32)
+#include <io.h>
+#endif
 extern void gos_DestroyAudio();
 namespace {
 struct AudioDevice {
@@ -403,3 +406,35 @@ TEST_CASE("AudioBackend/Microsoft ADPCM music decodes and loops as resident PCM"
     CHECK(stream->read(std::as_writable_bytes(std::span(out))) == sizeof(out));
     for (short sample : out) CHECK(sample == 1000);
 }
+#if defined(_WIN32)
+TEST_CASE("AudioBackend/start log counts plays but not pause or resume") {
+    AudioDevice device;
+    REQUIRE(gos_CreateAudio());
+    Clip clip;
+    gosAudio_AssignResourceToChannel(0, clip.handle);
+    const auto path = std::filesystem::temp_directory_path() / ("mc2-audio-start-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + ".log");
+    std::FILE* log = std::fopen(path.string().c_str(), "w+b"); REQUIRE(log != nullptr);
+    std::fflush(stderr);
+    const int saved = _dup(_fileno(stderr)); REQUIRE(saved >= 0);
+    REQUIRE(_dup2(_fileno(log), _fileno(stderr)) == 0);
+    gosAudio_SetChannelPlayMode(0, gosAudio_Loop);
+    gosAudio_SetChannelPlayMode(0, gosAudio_Pause);
+    gosAudio_SetChannelPlayMode(0, gosAudio_Continue);
+    gosAudio_SetChannelPlayMode(0, gosAudio_PlayOnce);
+    gosAudio_SetChannelPlayMode(0, gosAudio_Stop);
+    gosAudio_AssignResourceToChannel(0, nullptr);
+    gosAudio_SetChannelPlayMode(0, gosAudio_PlayOnce);
+    std::fflush(stderr);
+    const int restored = _dup2(saved, _fileno(stderr)); _close(saved);
+    std::rewind(log);
+    std::array<char, 4096> text{};
+    const auto length = std::fread(text.data(), 1, text.size(), log); std::fclose(log);
+    std::filesystem::remove(path);
+    REQUIRE(restored == 0);
+    const std::string starts(text.data(), length);
+    const auto first = starts.find("[AUDIO_START]"); REQUIRE(first != std::string::npos);
+    const auto second = starts.find("[AUDIO_START]", first + 1); REQUIRE(second != std::string::npos);
+    CHECK(starts.find("[AUDIO_START]", second + 1) == std::string::npos);
+    CHECK(starts.find("path=memory channel=0 caller=") != std::string::npos);
+}
+#endif

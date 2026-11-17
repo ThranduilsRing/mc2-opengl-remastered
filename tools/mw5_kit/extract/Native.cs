@@ -13,6 +13,26 @@ public record Clip(int frames, float fps, Track[] tracks);
 
 public static class Native
 {
+    // Maps each mesh bone to its index in the (possibly larger) clip skeleton by name; parents must agree.
+    public static int[] BindBones((string name, int parent)[] mesh, (string name, int parent)[] skeleton)
+    {
+        var index = new Dictionary<string, int>(StringComparer.Ordinal);
+        for (int i = 0; i < skeleton.Length; i++) index[skeleton[i].name] = i;
+        var map = new int[mesh.Length];
+        for (int i = 0; i < mesh.Length; i++)
+        {
+            if (!index.TryGetValue(mesh[i].name, out map[i])) throw new InvalidDataException($"Mesh bone {mesh[i].name} missing from clip skeleton");
+            string? want = mesh[i].parent < 0 ? null : mesh[mesh[i].parent].name;
+            int p = skeleton[map[i]].parent;
+            if (want != (p < 0 ? null : skeleton[p].name)) throw new InvalidDataException($"Bone parent differs: {mesh[i].name}");
+        }
+        return map;
+    }
+
+    // UE compressed scale offsets: one (offset, count) strip per compressed track; offset -1 = no scale keys.
+    public static bool HasScale(int[]? offsets, int stripSize, int track) =>
+        track >= 0 && offsets is { Length: > 0 } && (track + 1) * stripSize <= offsets.Length && offsets[track * stripSize] >= 0;
+
     public static void Json(string path, object value) =>
         File.WriteAllText(path, JsonConvert.SerializeObject(value, Formatting.Indented));
 
@@ -98,6 +118,13 @@ public static class Native
             throw new Exception("uniform sparse time");
         try { Keys([[1,2,3],[4,5,6]], [1], 30); throw new Exception("bad timing accepted"); }
         catch (InvalidDataException) { }
+        var mesh = new[] { ("root", -1), ("a", 0) };
+        var wide = new[] { ("root", -1), ("virtual", 0), ("a", 0), ("b", 2) };
+        if (!BindBones(mesh, wide).SequenceEqual([0, 2])) throw new Exception("bone remap by name");
+        foreach (var bad in new[] { new[] { ("root", -1), ("a", 1) }, new[] { ("root", -1), ("b", 0) } })
+            try { BindBones(bad, wide); throw new Exception("bad bone binding accepted"); } catch (InvalidDataException) { }
+        if (HasScale([-1, 0, 4, 2], 2, 0) || !HasScale([-1, 0, 4, 2], 2, 1) || HasScale([-1, 0], 2, 1) || HasScale(null, 2, 0) || HasScale([4, 2], 2, -1))
+            throw new Exception("authored vs absent scale");
         Console.WriteLine("PASS native writers and key timing; synthetic fixture emitted");
     }
 }

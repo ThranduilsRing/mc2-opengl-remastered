@@ -495,6 +495,7 @@ class ControlGui
 		public:
 
 		// UI-COMMAND-CHANNEL-1: pause-window access for the file command
+		void prepareHudFrame() { bakeFrame(); }
 		// channel (missiongui.cpp) — routes `press pause.*` through the same
 		// PauseWindow::handleClick the ImGui/legacy buttons use.
 		PauseWindow* getPauseWnd() { return pauseWnd.get(); }

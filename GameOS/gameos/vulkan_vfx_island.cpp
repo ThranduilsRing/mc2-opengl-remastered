@@ -174,7 +174,7 @@ struct VfxIsland : mc2vk::IslandState {
     VkBuffer         ringBound[kVfxSlots][2] = {};
     mc2vk::DescWriteStamp moverStamp[kVfxSlots]{};   // binding 24 of set[i]
     mc2vk::DescWriteStamp maskStamp[kVfxSlots]{};    // binding 17 of set[i] (bake mask or the white fallback)
-    mc2vk::OwnedShaderModule vert, frag, vegFrag;
+    mc2vk::OwnedShaderModule vert, frag, vegFrag, vegShadeFrag;
     mc2vk::OwnedSampler samp;
     mc2vk::OwnedSampler vegetationSampler;
     float vegBias = 0.0f; uint32_t vegGen = 0, vegBoundGen[kVfxSlots] = {};   // bias the vegetation sampler was built with; per-slot rewrite generation
@@ -378,7 +378,7 @@ mc2vk::OwnedPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive, bo
     stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = vegetation ? s->vegVert.get() : s->vert.get(); stages[0].pName = "main";
     stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = vegetation ? s->vegFrag.get() : s->frag.get(); stages[1].pName = "main";
+    stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = vegetation ? (depthOnly ? s->vegFrag.get() : s->vegShadeFrag.get()) : s->frag.get(); stages[1].pName = "main";
     if (indexed) { stages[0].module = s->indexedVert.get(); stages[1].module = s->indexedFrag.get(); }
     const VkBool32 depthOnlyConst = VK_TRUE;
     const VkSpecializationMapEntry depthOnlyEntry{0, 0, sizeof(VkBool32)};
@@ -479,8 +479,11 @@ bool init_island(VfxIsland* s, int w, int h) {
     {
         s->vert = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "vfx_particle.vert.spv"));
         s->frag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "vfx_particle.frag.spv"));
-        if (GosVegetation::isEnabled()) s->vegFrag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "vfx_vegetation.frag.spv"));
-        if (!s->vert || !s->frag || (GosVegetation::isEnabled() && !s->vegFrag)) { setFallback("spv_load_failed"); return false; }
+        if (GosVegetation::isEnabled()) {
+            s->vegFrag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "vfx_vegetation.frag.spv"));
+            s->vegShadeFrag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "vfx_vegetation_shade.frag.spv"));
+        }
+        if (!s->vert || !s->frag || (GosVegetation::isEnabled() && (!s->vegFrag || !s->vegShadeFrag))) { setFallback("spv_load_failed"); return false; }
         // Sprite pages: set 1 = one combined sampler (LINEAR, no mips -- the FS samples level 0 like the GL path).
         VkSamplerCreateInfo sci{};
         sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;

@@ -1,6 +1,7 @@
 // Production radio state machine; only the device and queue endpoints are seams.
 #include "doctest.h"
 #include <array>
+#include <atomic>
 #include <memory>
 #include <vector>
 
@@ -27,7 +28,13 @@ struct RadioData {
     std::array<RadioClip, 16> data{}, noise{};
     Pilot* pilot = nullptr;
 };
-struct SoundSystem { void update() {} };
+struct { std::atomic<bool> active{false}; } g_va;
+struct SoundSystem {
+    void* stream3Handle = nullptr;
+    void update() {}
+    bool isPlayingVoiceOver();
+};
+#include "voiceover_playback.inc"
 struct GameSoundSystem : SoundSystem {
     std::unique_ptr<RadioData> currentMessage, queued;
     unsigned messagesInQueue = 0, currentFragment = 0;
@@ -93,4 +100,28 @@ TEST_CASE("MissionAudio/an empty opening speech fragment completes without resta
     sound.update();
     CHECK(sound.currentMessage == nullptr);
     CHECK(sound.plays.empty());
+}
+
+TEST_CASE("MissionAudio/campaign briefing and mc2_01 voices start once without overlap") {
+    SoundSystem sound;
+    std::array<int, 4> starts{}; // campaign intro, V1A, V1C, tut_1cii
+    int next = 0, remaining = 0;
+    for (int tick = 0; tick < 450; ++tick) {
+        if (remaining && --remaining == 0) {
+            g_va.active = false;
+            sound.stream3Handle = nullptr;
+        }
+        // mc2_01 stages 12 and 14 wait for NOT isPlayingVoiceOver.
+        // Keep each decoder busy beyond the script's 2 s / 1.5 s delays.
+        if (!sound.isPlayingVoiceOver() && next < 4) {
+            CHECK(remaining == 0);
+            ++starts[next];
+            if (next < 3) g_va.active = true;
+            else sound.stream3Handle = &sound;
+            remaining = 90;
+            ++next;
+        }
+    }
+    CHECK(starts == std::array<int, 4>{1, 1, 1, 1});
+    CHECK_FALSE(sound.isPlayingVoiceOver());
 }

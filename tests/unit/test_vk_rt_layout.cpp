@@ -155,7 +155,7 @@ TEST_CASE("rt layout: the ray-query binding table is valid and starts with the T
     CHECK_FALSE(bindingsAreValid(nullptr, 0));
 }
 
-TEST_CASE("rt layout: the scene material probe table matches rt_scene_probe.comp") {
+TEST_CASE("rt layout: the scene material probe table matches rt_scene_probe.comp.slang") {
     CHECK(bindingsAreValid(kSceneProbeBindings.data(), static_cast<uint32_t>(kSceneProbeBindings.size())));
     REQUIRE(kSceneProbeBindings.size() == 13);   // 6..9 alpha-ON, 5 + 10..12 alpha-OFF size buckets (PROP-ARRAY-BUCKETS)
     CHECK(kSceneProbeBindings[0].kind == BindingKind::AccelerationStructure);

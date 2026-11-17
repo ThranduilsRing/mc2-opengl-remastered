@@ -4,7 +4,7 @@
 #include <optional>
 
 namespace mc2::net {
-inline constexpr std::uint32_t protocolVersion = 3;
+inline constexpr std::uint32_t protocolVersion = 4;
 inline constexpr std::size_t maxPacketBytes = 256 * 1024;
 struct Identity {
     save::Digest executable{}, content{};

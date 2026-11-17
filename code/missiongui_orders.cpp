@@ -6,11 +6,66 @@
 #include "render_view.h"
 #include "mc2fmt.h"
 #include "camera_elevation.h"
+#include "sim_speed.h"
+#include <algorithm>
+#include <span>
+#include <string_view>
+#include <vector>
 
 
+// The menu opens, and dispatches, on exactly what a classic left-click attack (doAttack) accepts:
+// not friendly to the home team and not a capture target, alive and not disabled (doAttack's caller gates on !isDisabled).
+MissionInterfaceManager::MenuTarget MissionInterfaceManager::classifyMenuTarget(GameObject& obj)
+{
+    return mc2::order_menu::classify({obj.isDestroyed(), obj.isDisabled(), obj.isCaptureable(Team::home->getId()),
+                                      Team::home->isFriendly(obj.getTeam())}) == mc2::order_menu::TargetClass::Attackable
+        ? MenuTarget::Attackable : MenuTarget::Rejected;
+}
+
+// Walks the home roster in order and keeps the movers in `wanted` (null: every selected one), as doAttack always has.
+static void collectHomeMovers(std::vector<Mover*>& out, const std::vector<std::uint32_t>* wanted)
+{
+	for (long i = 0; i < Team::home->getRosterSize(); i++)
+	{
+		Mover* pMover = static_cast<Mover*>(Team::home->getMover( i ));
+		if (!commanderIsHome(pMover->getCommander())) continue;
+		if (wanted) {
+			if (std::find(wanted->begin(), wanted->end(), pMover->getWatchID()) == wanted->end()) continue;
+			if (pMover->isDestroyed() || pMover->isDisabled()) continue;
+		} else if (!pMover->isSelected()) continue;
+		out.push_back(pMover);
+	}
+}
+
+void orderMenuLogLine(std::string_view text); // missiongui_style.cpp
+
+void MissionInterfaceManager::dispatchMenuOrder(const mc2::order_menu::Order& captured)
+{
+    ZoneScopedN("MIF.OrderMenuDispatch");
+    auto* enemy = ObjectManager->getByWatchID(captured.target);
+    if (!enemy || classifyMenuTarget(*enemy) != MenuTarget::Attackable) return; // one shared predicate with the menu gate
+    long range = -1; // Attack (default): each mover's own attackRange, as classic doAttack
+    switch (captured.range) {
+    case mc2::order_menu::Range::Short: range = FIRERANGE_SHORT; break;
+    case mc2::order_menu::Range::Medium: range = FIRERANGE_MEDIUM; break;
+    case mc2::order_menu::Range::Long: range = FIRERANGE_LONG; break;
+    default: break;
+    }
+    std::vector<Mover*> recipients;
+    collectHomeMovers(recipients, &captured.recipients);
+    if (mc2_diag::tagRequested("ORDER_MENU")) {
+        char line[128];
+        std::snprintf(line, sizeof line, "dispatch recipients=%zu issued=%zu target=%u range=%ld",
+            captured.recipients.size(), recipients.size(), static_cast<unsigned>(captured.target), range);
+        orderMenuLogLine(line);
+    }
+    if (recipients.empty()) return;
+    issueAttack(*enemy, recipients, range);
+}
+
+// Classic left-click attack: same guard, same recipients in roster order, same behaviour as before the menu existed.
 void MissionInterfaceManager::doAttack()
 {
-
 	if ( userInput->getKeyDown( WAYPOINT_KEY ) || !target )
 	{
 		soundSystem->playDigitalSample( INVALID_GUI );
@@ -53,25 +108,34 @@ void MissionInterfaceManager::doAttack()
 		}
 	}
 
+	std::vector<Mover*> recipients;
+	collectHomeMovers(recipients, nullptr);
+	issueAttack(*target, recipients, -1);
+}
+
+// rangeOverride: -1 = each mover's own attackRange (classic); else a FireRangeType (order menu).
+void MissionInterfaceManager::issueAttack(GameObject& tgt, std::span<Mover* const> recipients, long rangeOverride)
+{
+
 	TacticalOrder tacOrder;
-	bool bCapture =  target->isCaptureable(Team::home->getId());
+	bool bCapture =  tgt.isCaptureable(Team::home->getId());
 	bool bFireFromCurrentPos = controlGui.getCurrentRange() == FIRERANGE_CURRENT ? 1 : 0;
 	if ( controlGui.getFireFromCurrentPos() )
 		bFireFromCurrentPos = true;
 
 	if (!bCapture)
 	{
-		if (!Team::home->isFriendly( target->getTeam() ))
+		if (!Team::home->isFriendly( tgt.getTeam() ))
 		{
 			tacOrder.init(ORDER_ORIGIN_PLAYER, TACTICAL_ORDER_ATTACK_OBJECT );
-			tacOrder.targetWID = target->getWatchID();
+			tacOrder.targetWID = tgt.getWatchID();
 			tacOrder.attackParams.type = bEnergyWeapons ? ATTACK_CONSERVING_AMMO : ATTACK_TO_DESTROY;
 			tacOrder.attackParams.method = ATTACKMETHOD_RANGED;
 			tacOrder.attackParams.range = FIRERANGE_OPTIMAL;
 			tacOrder.attackParams.pursue = !bFireFromCurrentPos;
 			tacOrder.moveParams.wayPath.mode[0] = controlGui.getWalk() ?  TRAVEL_MODE_SLOW : TRAVEL_MODE_FAST;
 
-			target->getAppearance()->flashBuilding(1.3f,0.2f,0xffff0000);
+			tgt.getAppearance()->flashBuilding(1.3f,0.2f,0xffff0000);
 		}
 		else
 		{
@@ -82,15 +146,13 @@ void MissionInterfaceManager::doAttack()
 	}
 	else
 	{
-		for (long i = 0; i < Team::home->getRosterSize(); i++)
+		for (Mover* pMover : recipients)
 		{
-			Mover* pMover = static_cast<Mover*>(Team::home->getMover( i ));
-			if ( pMover->isSelected() && commanderIsHome(pMover->getCommander()) )
 			{
 				if ((pMover->getObjectClass() == BATTLEMECH) && 
 					(pMover->getMoveType() == MOVETYPE_GROUND))
 				{
-					if ( target->getCaptureBlocker(pMover) )
+					if ( tgt.getCaptureBlocker(pMover) )
 					{
 						soundSystem->playDigitalSample( INVALID_GUI );
 						return;
@@ -108,7 +170,7 @@ void MissionInterfaceManager::doAttack()
 		}
 		
 		tacOrder.init(ORDER_ORIGIN_PLAYER, TACTICAL_ORDER_CAPTURE );
-		tacOrder.targetWID = target->getWatchID();
+		tacOrder.targetWID = tgt.getWatchID();
 		tacOrder.attackParams.type = ATTACK_NONE;
 		tacOrder.attackParams.method = ATTACKMETHOD_RAMMING;
 		tacOrder.attackParams.pursue = true;
@@ -117,15 +179,11 @@ void MissionInterfaceManager::doAttack()
 	
 	soundSystem->playDigitalSample(BUTTON5);
 
-	Team* pTeam = Team::home;
-	
-	for (long i = 0; i < pTeam->getRosterSize(); i++)
+	for (Mover* pMover : recipients)
 	{
-		Mover* pMover = static_cast<Mover*>(pTeam->getMover( i ));
-		if ( pMover->isSelected() && commanderIsHome(pMover->getCommander()))
 		{
-			tacOrder.attackParams.range = static_cast<FireRangeType>(pMover->attackRange);
-			if (pMover->attackRange == FIRERANGE_CURRENT)
+			tacOrder.attackParams.range = static_cast<FireRangeType>(rangeOverride >= 0 ? rangeOverride : pMover->attackRange);
+			if (tacOrder.attackParams.range == FIRERANGE_CURRENT)
 				tacOrder.attackParams.pursue = false;
 			else if (controlGui.getFireFromCurrentPos())
 				tacOrder.attackParams.pursue = false;
@@ -178,7 +236,48 @@ int MissionInterfaceManager::attackLong()
 
 int MissionInterfaceManager::alphaStrike()
 {
-	return 0;
+	return alphaStrike(target);
+}
+
+int MissionInterfaceManager::alphaStrike(GameObjectPtr alphaTarget)
+{
+	bool fallback = false;
+	if (!alphaTarget) {
+		for (long i = 0; Team::home && i < Team::home->getRosterSize(); ++i) {
+			auto* mover = Team::home->getMover(i);
+			if (mover->isSelected() && commanderIsHome(mover->getCommander()) && mover->getPilot()) {
+				alphaTarget = mover->getPilot()->getCurTacOrder()->getTarget();
+				if (alphaTarget) { fallback = true; break; }
+			}
+		}
+	}
+	if (!alphaTarget || alphaTarget->isDestroyed()) {
+		if (mc2_diag::tagRequested("ALPHA_HEAT"))
+			mc2::fmt::print_err("[ALPHA_HEAT v1] event=ui target={} fallback={} issued=0\n",
+				alphaTarget ? alphaTarget->getPartId() : 0, fallback ? 1 : 0);
+		return 0;
+	}
+	TacticalOrder order;
+	order.init(ORDER_ORIGIN_PLAYER, TACTICAL_ORDER_ATTACK_OBJECT);
+	order.targetWID = alphaTarget->getWatchID();
+	order.attackParams.alpha = true;
+	order.moveParams.wayPath.mode[0] = controlGui.getWalk() ? TRAVEL_MODE_SLOW : TRAVEL_MODE_FAST;
+	int issued = 0;
+	for (long i = 0; Team::home && i < Team::home->getRosterSize(); ++i) {
+		auto* mover = Team::home->getMover(i);
+		if (!mover->isSelected() || !commanderIsHome(mover->getCommander()) ||
+			mover->getObjectClass() != BATTLEMECH) continue;
+		order.attackParams.range = static_cast<FireRangeType>(mover->attackRange);
+		order.attackParams.pursue = mover->attackRange != FIRERANGE_CURRENT && !controlGui.getFireFromCurrentPos();
+		order.pack(nullptr, nullptr);
+		if (MPlayer && !MPlayer->isServer()) MPlayer->sendPlayerOrder(&order, false, 1, &mover);
+		else mover->handleTacticalOrder(order);
+		++issued;
+	}
+	if (mc2_diag::tagRequested("ALPHA_HEAT"))
+		mc2::fmt::print_err("[ALPHA_HEAT v1] event=ui target={} fallback={} issued={}\n",
+			alphaTarget->getPartId(), fallback ? 1 : 0, issued);
+	return issued ? 1 : 0;
 }
 int MissionInterfaceManager::defaultAttack()
 {
@@ -838,6 +937,18 @@ void MissionInterfaceManager::anchoredZoom(long mx, long my, int (MissionInterfa
 	if (!haveA)
 		return;
 	eye->beginZoomAnchor(A, eye->getCameraAltitude(), eye->getPosition());
+}
+
+int MissionInterfaceManager::gameSpeedUp()
+{
+	simSpeedSetMultiplier(mc2::sim::speedKeyStep(simSpeedGetMultiplier(), false, mc2::net::active()));
+	return 1;
+}
+
+int MissionInterfaceManager::gameSpeedDown()
+{
+	simSpeedSetMultiplier(mc2::sim::speedKeyStep(simSpeedGetMultiplier(), true, mc2::net::active()));
+	return 1;
 }
 
 int MissionInterfaceManager::zoomOut()

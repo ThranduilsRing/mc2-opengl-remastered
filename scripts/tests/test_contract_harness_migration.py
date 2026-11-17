@@ -89,6 +89,33 @@ def test_unit_child_owns_mc2_environment(monkeypatch, rc):
     assert builder.os.environ["MC2_CONFIG_STRICT"] == "1"
 
 
+@pytest.mark.parametrize("rc", [0, 78])
+def test_shell_unit_child_owns_mc2_environment(tmp_path, rc):
+    import os
+    import shutil
+    import subprocess
+    bash = shutil.which("bash")
+    if not bash or os.name == "nt":
+        pytest.skip("POSIX shell fixture; exercised on the box")
+    build = tmp_path / "unit" / "RelWithDebInfo"
+    build.mkdir(parents=True)
+    cmake = tmp_path / "cmake"
+    cmake.write_text('#!/usr/bin/env bash\n[[ "$MC2_HOST_CORES_PER_SLOT" == 2 ]]\n')
+    exe = build / "mc2_tests.exe"
+    exe.write_text('#!/usr/bin/env bash\n'
+                   'while IFS= read -r name; do\n'
+                   'case "${name^^}" in MC2_*) exit 99 ;; esac\ndone < <(compgen -e)\n'
+                   '[[ "$1" == --test-case=strict-config ]] || exit 98\n'
+                   f'exit {rc}\n')
+    cmake.chmod(0o755)
+    exe.chmod(0o755)
+    env = dict(os.environ, MC2_CMAKE=str(cmake), MC2_UNIT_BUILD_DIR=str(build.parent),
+               MC2_HOST_CORES_PER_SLOT="2", MC2_HOST_GAME_SLOTS="1", mc2_unknown="1")
+    result = subprocess.run([bash, str(ROOT / "scripts/run-unit-tests.sh"), "--doctest-only",  # background-launch: allow bash runs the repo unit-test script against a fake cmake/exe fixture; no engine, captured stdio
+                             "--test-case=strict-config"], env=env, capture_output=True, text=True)
+    assert result.returncode == (0 if rc == 0 else 1), result.stdout + result.stderr
+
+
 @pytest.mark.parametrize("codes,expected_calls", [([1], 1), ([0, 1], 2), ([0, 0, 1], 3)])
 def test_native_failures_do_not_run_stale_binaries_or_python(monkeypatch, codes, expected_calls, production_seam):
     commands = record_runs(monkeypatch, codes)

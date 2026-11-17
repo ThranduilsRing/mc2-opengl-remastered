@@ -19,6 +19,7 @@ class FitIniFile;
 #include <optional>
 #include <functional>
 #include <expected>
+#include "chassis_layout.h"
 
 #pragma warning (disable:4514)
 
@@ -133,6 +134,8 @@ protected:
 		long										yCoord;
 		LOGISTICS_COMPONENT_LOCATION location;
 		LogisticsComponent*				component;
+		int bodyLocation = -1, bodySlot = -1;
+		unsigned int layoutHardpoint = 0;
 	};
 	
 
@@ -198,6 +201,9 @@ protected:
 		const std::string&	getFileName() const { return chassis->fileName; }
 
 		long			save( FitIniFile& file, long counter );
+		mc2pkg::LocationVariant locationRecord() const;
+		bool restoreLocationRecord(mc2pkg::LocationVariant record);
+		bool isLayoutGrandfathered() const { return locationRecord().grandfathered; }
 
 		const LogisticsChassis* getChassis() const { return chassis; }
 		bool			addComponent( int idFromFitFile, long& x, long& y );
@@ -256,6 +262,7 @@ protected:
 		
 		long				componentCount;
 		LogisticsChassis::ComponentInfo		components[54]; // I count a max of 54 components, might want to check though
+		mc2pkg::LocationVariant layoutState;
 
 		bool				availableToUser;
 		bool				bDesignerMech;

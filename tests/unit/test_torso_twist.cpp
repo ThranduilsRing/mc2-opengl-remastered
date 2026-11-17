@@ -1,16 +1,24 @@
 #include "doctest.h"
 #include "mech_skel_import.h"
+#include "math/mc2_xform.h"
 #include <assimp/scene.h>
+#include <assimp/Importer.hpp>
+#include <algorithm>
+#include <cstdlib>
+#include <cstring>
 #include <cmath>
+#include <cstdio>
+#include <filesystem>
+#include <array>
 
 namespace {
 struct TwistScene {
     aiScene scene;
-    std::vector<std::string> names{"j_Spine", "muzzle", "j_LFoot", "j_RFoot"};
+    std::vector<std::string> names{"j_Spine2", "muzzle", "j_LFoot", "j_RFoot"};
     TwistScene() {
         auto* root = scene.mRootNode = new aiNode("pelvis");
         root->mNumChildren = 3;
-        root->mChildren = new aiNode*[3]{new aiNode("j_Spine"), new aiNode("j_LFoot"), new aiNode("j_RFoot")};
+        root->mChildren = new aiNode*[3]{new aiNode("j_Spine2"), new aiNode("j_LFoot"), new aiNode("j_RFoot")};
         for (unsigned i = 0; i < 3; ++i) root->mChildren[i]->mParent = root;
         auto* spine = root->mChildren[0];
         // Nonidentity bind orientation: local X is source/MC2 +Y.
@@ -31,7 +39,7 @@ struct TwistScene {
             clip->mNumChannels = 1;
             auto* ch = new aiNodeAnim;
             clip->mChannels = new aiNodeAnim*[1]{ch};
-            ch->mNodeName = "j_Spine";
+            ch->mNodeName = "j_Spine2";
             ch->mNumRotationKeys = 2;
             aiVector3D s, p; aiQuaternion rest;
             spine->mTransformation.Decompose(s, rest, p);
@@ -57,18 +65,189 @@ TEST_CASE("torso twist: production single and blended FK rotate muzzle but prese
         else
             REQUIRE(mc2skel::EvaluateClipBlendGpuBones(*plan, "atlas_torsoTwistLeft", 0,
                 "atlas_torsoTwistRight", 0, blend, pose, &twist));
-        // MC2's axis map negates source X/Z. Positive yaw turns forward toward -X.
+        // Case 2 maps source -Z to shape +Z; stock uses row vectors and radians.
+        const auto stock = glm::vec4(0, 0, 1, 0) * mc2::math::rotationMatrix(mc2::math::Euler(0, 0.5235987756f, 0));
+        CHECK(-pose[1].m[3] == doctest::Approx(stock.x));
+        CHECK(-pose[1].m[11] == doctest::Approx(stock.z));
         CHECK(pose[1].m[3] == doctest::Approx(-0.5f));
         CHECK(pose[1].m[7] == doctest::Approx(2));
         CHECK(pose[1].m[11] == doctest::Approx(-std::sqrt(0.75f)));
         for (size_t foot : {2u, 3u})
             for (int k = 0; k < 16; ++k) CHECK(pose[foot].m[k] == rest[foot].m[k]);
     }
-    // Missing clips fall back to Spine, then Pitch, with an axis in that joint's frame.
+    // The named torso works without diagnostic clips.
     for (auto* clip : {fixture.scene.mAnimations[0], fixture.scene.mAnimations[1]}) clip->mName = "other";
     const auto fallback = mc2skel::ResolveTorsoTwist(*mc2skel::BuildPlan(&fixture.scene, fixture.names));
     CHECK(fallback.node == twist.node);
     CHECK(fallback.axis[0] == doctest::Approx(1));
     fixture.scene.mRootNode->mChildren[0]->mName = "j_Pitch";
-    CHECK(mc2skel::ResolveTorsoTwist(*mc2skel::BuildPlan(&fixture.scene, fixture.names)).node == twist.node);
+    CHECK(mc2skel::ResolveTorsoTwist(*mc2skel::BuildPlan(&fixture.scene, fixture.names)).node == -1);
+}
+
+TEST_CASE("torso twist: real Atlas bearing about sampled axis and unchanged legs") {
+    const char* path = std::getenv("TORSO_PROOF_ATLAS");
+    if (!path || !*path) {
+        const char* required = std::getenv("TORSO_PROOF_REQUIRED");
+        REQUIRE_MESSAGE((!required || std::strcmp(required, "1") != 0),
+            "TORSO_PROOF_REQUIRED=1 needs TORSO_PROOF_ATLAS");
+        MESSAGE("SKIP: real Atlas pack not configured; set TORSO_PROOF_ATLAS");
+        return;
+    }
+    Assimp::Importer importer;
+    const auto* scene = importer.ReadFile(path, 0);
+    REQUIRE_MESSAGE(scene, std::string(importer.GetErrorString()));
+    std::vector<std::string> names; std::vector<int> parents;
+    std::vector<std::array<float, 16>> offsets;
+    mc2skel::BuildSkeleton(scene, names, parents, offsets);
+    for (const char* n : {"j_Spine2", "j_COCKPIT", "j_RForearm", "j_LForearm",
+             "j_LHip", "j_LThigh", "j_LCalf", "j_LFoot", "j_RHip", "j_RThigh", "j_RCalf", "j_RFoot"})
+        if (std::find(names.begin(), names.end(), n) == names.end()) names.emplace_back(n);
+    const auto plan = mc2skel::BuildPlan(scene, names);
+    auto twist = mc2skel::ResolveTorsoTwist(*plan);
+    REQUIRE(twist.node >= 0);
+    auto index = [&](const char* n) { REQUIRE(scene->mRootNode->FindNode(n)); return std::find(names.begin(), names.end(), n) - names.begin(); };
+    const auto spine = index("j_Spine2");
+    std::vector<mc2skel::GpuBone> rest, pose;
+    REQUIRE(mc2skel::EvaluateClipGpuBones(*plan, "atlas_moveCoreIdle", 0, rest));
+    auto matrix = [](const mc2skel::GpuBone& b) { aiMatrix4x4 m; std::memcpy(&m.a1, b.m, sizeof(b.m)); return m; };
+    const auto base = matrix(rest[spine]);
+    auto axis = aiMatrix3x3(base) * aiVector3D(twist.axis[0], twist.axis[1], twist.axis[2]);
+    axis.Normalize();
+    MESSAGE("Atlas sampled twist axis = ", axis.x, ",", axis.y, ",", axis.z);
+    REQUIRE(axis.y >= std::cos(3.0f * 0.01745329252f));
+    for (float yaw : {30.0f, 0.0f, -30.0f}) {
+        twist.degrees = yaw;
+        REQUIRE(mc2skel::EvaluateClipGpuBones(*plan, "atlas_moveCoreIdle", 0, pose, nullptr, nullptr, &twist));
+        if (yaw == 0) CHECK(std::memcmp(rest.data(), pose.data(), rest.size() * sizeof(rest[0])) == 0);
+        for (const char* n : {"j_COCKPIT", "j_RForearm", "j_LForearm"}) {
+            const auto i = index(n);
+            auto p = matrix(rest[i]) * aiVector3D() - base * aiVector3D();
+            auto q = matrix(pose[i]) * aiVector3D() - matrix(pose[spine]) * aiVector3D();
+            p -= axis * (p * axis); q -= axis * (q * axis);
+            REQUIRE(p.SquareLength() > 1e-12f);
+            REQUIRE(q.SquareLength() > 1e-12f);
+            const float bearing = std::atan2(axis * (p ^ q), p * q) / 0.01745329252f;
+            CAPTURE(n); CAPTURE(yaw); CAPTURE(bearing);
+            REQUIRE(std::abs(bearing - yaw) <= 0.05f);
+        }
+        for (const char* n : {"j_LHip", "j_LThigh", "j_LCalf", "j_LFoot", "j_RHip", "j_RThigh", "j_RCalf", "j_RFoot"}) {
+            const auto i = index(n);
+            CHECK(std::memcmp(&rest[i], &pose[i], sizeof(pose[i])) == 0);
+        }
+    }
+}
+
+TEST_CASE("torso twist: pelvis sway cannot capture named or largest descendant spine yaw") {
+    TwistScene f;
+    auto* pelvis = f.scene.mRootNode;
+    auto* torso = pelvis->mChildren[0];
+    auto* lower = new aiNode("j_Spine");
+    lower->mParent = pelvis;
+    lower->mNumChildren = 1;
+    lower->mChildren = new aiNode*[1]{torso};
+    torso->mParent = lower;
+    pelvis->mChildren[0] = lower;
+    for (auto* clip : {f.scene.mAnimations[0], f.scene.mAnimations[1]}) {
+        auto* authored = clip->mChannels[0];
+        delete[] clip->mChannels;
+        clip->mNumChannels = 3;
+        clip->mChannels = new aiNodeAnim*[3]{new aiNodeAnim, new aiNodeAnim, authored};
+        for (unsigned c = 0; c < 2; ++c) {
+            auto* ch = clip->mChannels[c];
+            ch->mNodeName = c == 0 ? "pelvis" : "j_Spine";
+            ch->mNumRotationKeys = 1;
+            ch->mRotationKeys = new aiQuatKey[1]{{0, aiQuaternion(aiVector3D(0, 1, 0), c == 0 ? 1.2f : 1.0f)}};
+        }
+    }
+    auto resolve = [&] { return mc2skel::ResolveTorsoTwist(*mc2skel::BuildPlan(&f.scene, f.names)); };
+    CHECK(resolve().node == 2); // named Spine2 wins over pelvis and lower spine
+    torso->mName = "j_Spine3";
+    for (auto* clip : {f.scene.mAnimations[0], f.scene.mAnimations[1]}) {
+        clip->mChannels[2]->mNodeName = "j_Spine3";
+        clip->mChannels[1]->mRotationKeys[0].mValue = aiQuaternion(aiVector3D(0, 1, 0), 0.2f);
+    }
+    CHECK(resolve().node == 2); // 0.8 rad wins over the first spine's 0.2 rad
+    pelvis->mName = "unrelated_root";
+    CHECK(resolve().node == -1); // no unverified root/subtree fallback
+}
+
+// Roster check on the installed pack. Set TORSO_PROOF_PACK_DIR to a directory of
+// bt2018 *.glb (copy them to scratch; no HBS bytes in git). Skips when unset.
+TEST_CASE("torso twist: every installed pack family twists above the hips, legs untouched") {
+    const char* dir = std::getenv("TORSO_PROOF_PACK_DIR");
+    if (!dir || !*dir) {
+        MESSAGE("SKIP: pack GLBs not configured; set TORSO_PROOF_PACK_DIR");
+        return;
+    }
+    std::vector<std::filesystem::path> files;
+    for (const auto& e : std::filesystem::directory_iterator(dir))
+        if (e.path().extension() == ".glb") files.push_back(e.path());
+    std::sort(files.begin(), files.end());
+    REQUIRE(!files.empty());
+    std::printf("TWIST_TABLE family twist_joint axis_model\n");
+    for (const auto& file : files) {
+        Assimp::Importer importer;
+        const auto* scene = importer.ReadFile(file.string().c_str(), 0);
+        const std::string family = file.stem().string();
+        REQUIRE_MESSAGE(scene, family);
+        std::vector<std::string> names; std::vector<int> parents;
+        std::vector<std::array<float, 16>> offsets;
+        mc2skel::BuildSkeleton(scene, names, parents, offsets);
+        const char* leg[] = {"j_Pelvis", "j_LHip", "j_LThigh", "j_LCalf", "j_LFoot",
+                             "j_RHip", "j_RThigh", "j_RCalf", "j_RFoot"};
+        for (const char* n : leg)
+            if (std::find(names.begin(), names.end(), n) == names.end()) names.emplace_back(n);
+        const auto plan = mc2skel::BuildPlan(scene, names);
+        auto twist = mc2skel::ResolveTorsoTwist(*plan);
+        // Plan nodes are the scene tree in preorder; flatten it the same way.
+        std::vector<const aiNode*> flat; std::vector<int> par;
+        auto walk = [&](auto&& self, const aiNode* n, int parent) -> void {
+            const int me = static_cast<int>(flat.size());
+            flat.push_back(n); par.push_back(parent);
+            for (unsigned c = 0; c < n->mNumChildren; ++c) self(self, n->mChildren[c], me);
+        };
+        walk(walk, scene->mRootNode, -1);
+        CAPTURE(family);
+        if (twist.node < 0) {
+            std::printf("TWIST_TABLE %s NONE (no twist; safe fallback)\n", family.c_str());
+            continue;
+        }
+        const std::string jn = flat[twist.node]->mName.C_Str();
+        CHECK(jn != "j_Pelvis");
+        CHECK(jn != "pelvis");
+        CHECK(par[twist.node] >= 0); // not the root
+        // Above the hips: the pelvis is an ancestor and no hip is inside the twisted subtree.
+        bool pelvisAbove = false;
+        for (int p = par[twist.node]; p >= 0; p = par[p])
+            if (std::string_view(flat[p]->mName.C_Str()) == "j_Pelvis") pelvisAbove = true;
+        CHECK(pelvisAbove);
+        for (const char* hip : {"j_LHip", "j_RHip"})
+            for (size_t i = 0; i < flat.size(); ++i)
+                if (std::string_view(flat[i]->mName.C_Str()) == hip)
+                    for (int p = par[i]; p >= 0; p = par[p]) CHECK(p != twist.node);
+        aiMatrix4x4 global = flat[twist.node]->mTransformation;
+        for (int p = par[twist.node]; p >= 0; p = par[p])
+            global = flat[p]->mTransformation * global;
+        auto axis = aiMatrix3x3(global) * aiVector3D(twist.axis[0], twist.axis[1], twist.axis[2]);
+        axis.Normalize();
+        std::printf("TWIST_TABLE %s %s (%.3f,%.3f,%.3f)\n", family.c_str(), jn.c_str(), axis.x, axis.y, axis.z);
+        CHECK(axis.y >= std::cos(3.0f * 0.01745329252f)); // world-up yaw
+        std::vector<mc2skel::GpuBone> rest, pos, neg;
+        if (!mc2skel::EvaluateClipGpuBones(*plan, "atlas_moveCoreIdle", 0, rest)) {
+            std::printf("TWIST_TABLE %s idle clip missing; legs check skipped\n", family.c_str());
+            continue;
+        }
+        twist.degrees = 30;
+        REQUIRE(mc2skel::EvaluateClipGpuBones(*plan, "atlas_moveCoreIdle", 0, pos, nullptr, nullptr, &twist));
+        twist.degrees = -30;
+        REQUIRE(mc2skel::EvaluateClipGpuBones(*plan, "atlas_moveCoreIdle", 0, neg, nullptr, nullptr, &twist));
+        for (const char* n : leg) {
+            const auto i = std::find(names.begin(), names.end(), n) - names.begin();
+            CAPTURE(n);
+            CHECK(std::memcmp(&rest[i], &pos[i], sizeof(rest[i])) == 0);
+            CHECK(std::memcmp(&rest[i], &neg[i], sizeof(rest[i])) == 0);
+        }
+        // The twist must actually move something above the hips.
+        CHECK(std::memcmp(rest.data(), pos.data(), rest.size() * sizeof(rest[0])) != 0);
+    }
 }

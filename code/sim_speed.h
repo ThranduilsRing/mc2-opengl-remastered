@@ -12,4 +12,9 @@ inline float speedCycle(float speed, bool down, bool multiplayer) {
     return down ? (speed > 2.f ? 2.f : speed > 1.f ? 1.f : speed > 0.5f ? 0.5f : 4.f)
         : (speed < 0.5f ? 0.5f : speed < 1.f ? 1.f : speed < 2.f ? 2.f : speed < 4.f ? 4.f : 0.5f);
 }
+// Keyboard stepping shares the button's steps, but stops at either end (no wrap).
+inline float speedKeyStep(float speed, bool down, bool multiplayer) {
+    const bool atEnd = down ? speed <= 0.5f : speed >= 4.f;
+    return atEnd ? speed : speedCycle(speed, down, multiplayer);
+}
 }

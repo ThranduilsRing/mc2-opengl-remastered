@@ -44,6 +44,7 @@ class GameCamera : public Camera
 		void renderTacticalArcOverlay();
 		void renderLetterbox();
 		void renderFadeQuad();
+		void refreshCompass();
 		
 	public:
 	
@@ -73,6 +74,7 @@ class GameCamera : public Camera
 		long activate (void) override;
 		
 		long update (void) override;
+		void prepareCompass();
 		void moveLeft(float amount) override
 		{
 			targetObject = nullptr;

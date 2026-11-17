@@ -180,14 +180,16 @@ def test_nested_zip_is_rejected_without_extraction(tmp_path):
 @pytest.mark.parametrize("name", [
     "tests/unit/fixtures/stock_names.txt", "tools/mech_import/build_marauder.py",
     "tools/bt2018_extract/recon.py", "tools/content_pipeline/frontends/bt2018.py",
+    "tools/bt2018_extract/bake_clips.py", "tests/unit/test_torso_twist.cpp",
     "tools/mw5_kit/extract/.gitignore", "tools/mw5_kit/extract/mw5extract.csproj",
     "tools/mw5_kit/extract/native.cs", "tools/mw5_kit/extract/program.cs",
-], ids=["stock", "marauder", "recon", "frontend", "gitignore", "csproj", "native", "program"])
+], ids=["stock", "marauder", "recon", "frontend", "bake", "torso", "gitignore", "csproj", "native", "program"])
 def test_exact_text_exceptions(name):
     payload = b"chrTxrMech_fake"
     assert guard._inspect(name, io.BytesIO(payload)) == []
     assert guard._inspect("other/" + name, io.BytesIO(payload))
     assert guard._inspect(name, io.BytesIO(b"\0" + payload))
+    assert guard._inspect(name, io.BytesIO(fake_glb()))
 
 
 def test_unreadable_and_unsafe_inputs_fail_closed(tmp_path):

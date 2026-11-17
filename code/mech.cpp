@@ -4,8 +4,103 @@
 // Copyright (C) Microsoft Corporation. All rights reserved.                 //
 //===========================================================================//
 
+#include <cmath>
+#include <array>
 #include "mech_internal.h"
 #include "component_rules.h"
+#include "mc2fmt.h"
+#include "../GameOS/gameos/diagnostic_trace.h"
+#include "../GameOS/gameos/utils/mc2log.h"
+
+// Truncate at the data boundary exactly as the lab's integer += Damage does.
+static int labHeatPoints(float value) {
+	if (!std::isfinite(value) || value <= 0) return 0;
+	return static_cast<int>(std::min(value, static_cast<float>(mc2::heat::maxLabPoints)));
+}
+
+mc2::heat::Salvo BattleMech::alphaSalvo() {
+	mc2::heat::Salvo salvo;
+	for (int w = numOther; w < numOther + numWeapons && w < mc2::heat::inventorySize; ++w)
+		if (inventory[w].health && !inventory[w].disabled && getWeaponShots(w) != 0)
+			salvo.include(w, getWeaponHeat(w));
+	return salvo;
+}
+
+bool BattleMech::canAlphaStrike() {
+	return getExists() && !isDisabled() && !isDestroyed() && heatState.admits(alphaSalvo());
+}
+
+bool BattleMech::armAlphaStrike() {
+	if (!mission || !mission->orderTickExecuting() || !canAlphaStrike() ||
+		!heatState.arm(alphaSalvo(), mission->alphaTick(), heatProfile)) return false;
+	for (int w = numOther; w < numOther + numWeapons && w < mc2::heat::inventorySize; ++w)
+		if (heatState.alphaMask.test(w)) inventory[w].readyTime = scenarioTime;
+	if (mc2_diag::tagRequested("ALPHA_HEAT"))
+		mc2::fmt::print_err("[ALPHA_HEAT v1] event=arm mech={} tick={} weapons={} heat={}\n",
+			getWatchID(false), mission->alphaTick(), heatState.alphaMask.count(), heatState.heatMilli);
+	return true;
+}
+
+void BattleMech::recomputeHeatCapacity() {
+	int points = heatSinkAdjustmentPoints;
+	for (long i = 0; i < numOther; ++i) {
+		const auto& item = inventory[i];
+		auto& component = MasterComponent::masterList[item.masterID];
+		if (component.getForm() == COMPONENT_FORM_HEATSINK && !item.disabled && item.health)
+			points = std::min(mc2::heat::maxLabPoints, points + labHeatPoints(component.getHeatDissipation()));
+	}
+	heatState.recompute(chassisHeatPoints, points);
+}
+
+void BattleMech::setHeatLoadout(std::span<const long> components) {
+	int configured = 0;
+	for (long id : components) {
+		auto& component = MasterComponent::masterList[id];
+		if (component.getForm() == COMPONENT_FORM_HEATSINK)
+			configured = std::min(mc2::heat::maxLabPoints, configured + labHeatPoints(component.getHeatDissipation()));
+	}
+	int represented = 0;
+	for (long i = 0; i < numOther; ++i) {
+		auto& component = MasterComponent::masterList[inventory[i].masterID];
+		if (component.getForm() == COMPONENT_FORM_HEATSINK)
+			represented = std::min(mc2::heat::maxLabPoints, represented + labHeatPoints(component.getHeatDissipation()));
+	}
+	// Legacy resetComponents omits added lab sinks. Retain their cooling without
+	// adding inventory entries (which would change CV, hits, hashes and saves).
+	heatSinkAdjustmentPoints = configured - represented;
+	recomputeHeatCapacity();
+}
+
+void BattleMech::restoreHeatCapacity() {
+	heatState = {}; // phase 1 heat is transient, including when reusing an object
+	heatCapacityRestored = false;
+	rederiveHeatCapacity();
+}
+
+// Capacity only: heat, alpha mask and expiry are untouched (save load calls this after logistics restore).
+void BattleMech::rederiveHeatCapacity() {
+	chassisHeatPoints = heatSinkAdjustmentPoints = 0;
+	CSVFile file;
+	FullPathFileName path;
+	path.init(objectPath, getObjectType()->getAppearanceTypeName(), ".csv");
+	long points = 0;
+	if (file.open(path) == NO_ERR && file.readLong(4, 5, points) == NO_ERR)
+		chassisHeatPoints = static_cast<int>(std::clamp<long>(points, 0, mc2::heat::maxLabPoints));
+	else
+		MC2_LOG(Sim, Warn, "Heat chassis capacity unavailable: {}; using zero base", static_cast<const char*>(path));
+	// The saved variant name recovers cooling omitted by legacy inventory rebuilds.
+	if (LogisticsData::instance) {
+		auto variant = LogisticsData::instance->getVariant(variantName);
+		if (variant && variant->get().getComponentCount() <= 128) {
+			std::array<long, 128> components{};
+			long count = 0;
+			variant->get().getComponents(count, components.data());
+			setHeatLoadout({components.data(), static_cast<size_t>(count)});
+			return;
+		}
+	}
+	recomputeHeatCapacity();
+}
 
 
 float ContactFadeTime = 2.0f;
@@ -827,7 +922,7 @@ void BattleMech::Save (PacketFilePtr file, long packetNum)
 	CopyTo(&data);
 
 	//PacketNum incremented in ObjectManager!!
-	auto bytes = mc2::save::encodeTaggedRecord(mc2::save::MechRecord{data}, mc2::save::mechTag);
+	auto bytes = mc2::save::encodeTaggedRecord(mc2::save::MechRecord{data, heatState, 2, chassisHeatPoints, heatSinkAdjustmentPoints}, mc2::save::mechTag);
 	if (bytes.empty()) Fatal(0, "Invalid mech ObjectSlot");
 	file->writePacket(packetNum, bytes.data(), static_cast<unsigned int>(bytes.size()), STORAGE_TYPE_ZLIB);
 }
@@ -984,6 +1079,7 @@ void BattleMech::Load (MechData *data)
 	// UNITPROFILE-TYPELOAD-SOURCE-1: numJumpJets is authoritative only after Load;
 	// fold it into the type baseline + this instance's runtime via the single owner.
 	refreshDerivedCapabilities();
+	restoreHeatCapacity();
 }
 
 void BattleMech::repairAll (void)
@@ -1020,6 +1116,7 @@ void BattleMech::repairAll (void)
 	}
 
 	calcAmmoTotals();
+	recomputeHeatCapacity();
 
 	// We need to set the status states for legs and torso based upon our current
 	// condition...

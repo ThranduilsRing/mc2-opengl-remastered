@@ -1,6 +1,7 @@
 #include "combat_sim_hash.h"
 #include "objmgr_internal.h"
 #include "save_archive.h"
+#include "mech_value_codec.h"
 
 std::uint64_t combatSimulationHash(GameObjectManager& manager)
 {
@@ -17,6 +18,11 @@ std::uint64_t combatSimulationHash(GameObjectManager& manager)
         auto tangible = object->getTangible();
         auto falling = object->getFlag(OBJECT_FLAG_FALLING);
         state(i, id, kind, status, position.x, position.y, position.z, rotation, damage, tangible, falling);
+        if (auto* mover = dynamic_cast<Mover*>(object)) combatMoverFields(state, *mover);
+        if (auto* mech = dynamic_cast<BattleMech*>(object)) {
+            mc2::save::heatFields(state, mech->heatState);
+            state(mech->heatState.capacity, mech->chassisHeatPoints, mech->heatSinkAdjustmentPoints);
+        }
         if (auto* bolt = dynamic_cast<WeaponBolt*>(object)) {
             auto hash = bolt->simulationHash(); state(i, hash);
         } else if (auto* explosion = dynamic_cast<Carnage*>(object)) {

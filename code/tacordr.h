@@ -225,8 +225,11 @@ struct _TacOrderAttackParams {
 	int32_t			aimLocation;
 	bool			pursue;
 	bool			obliterate;
+	bool			alpha; // uses existing padding; legacy value-codec layout is unchanged
 	glm::vec3	targetPoint;
 }; using TacOrderAttackParams = _TacOrderAttackParams;
+static_assert(sizeof(TacOrderAttackParams) == 36);
+static_assert(offsetof(TacOrderAttackParams, targetPoint) == 24);
 
 class TacticalOrder {
 

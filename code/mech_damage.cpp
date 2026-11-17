@@ -88,6 +88,7 @@ bool BattleMech::hitInventoryItem (long itemIndex, bool setupOnly) {
 				heatDissipation = calcHeatDissipation();
 				damageHotSpot = 1;
 #endif
+				recomputeHeatCapacity();
 				break;
 			case COMPONENT_FORM_WEAPON:
 			case COMPONENT_FORM_WEAPON_ENERGY:

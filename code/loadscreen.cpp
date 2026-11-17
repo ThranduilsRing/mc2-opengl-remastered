@@ -24,7 +24,10 @@ struct DDSURFACEDESC2 {
 #include"mission.h"
 #include"gamesound.h"
 #include "Gates/gate.h"
+#include "Gates/gate_cold.h"
 #include "mc2fmt.h"
+#include "gos_render.h"
+#include "gos_screenshot.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 float loadProgress = 0.0f;
 
@@ -40,6 +43,7 @@ TGAFileHeader* LoadScreen::mergedTexture = nullptr;
 TGAFileHeader* LoadScreen::waitingForPlayersMemory = nullptr;
 // Owners of the raw TGA buffers the pointers above alias (the header + pixels live in one char block).
 static std::unique_ptr<char[]> s_progressBackgroundBuf, s_progressTextureBuf, s_mergedTextureBuf, s_waitingForPlayersBuf;
+static LoadScreen* s_loadingScreen = nullptr;
 
 std::unique_ptr<LoadScreen> LoadScreenWrapper::enterScreen = nullptr;
 std::unique_ptr<LoadScreen> LoadScreenWrapper::exitScreen = nullptr;
@@ -380,6 +384,10 @@ LoadScreen::LoadScreen(  )
 
 LoadScreen::~LoadScreen()
 {
+	if (s_loadingScreen == this) {
+		s_loadingScreen = nullptr;
+		graphics::set_loading_draw(nullptr);
+	}
 	s_progressBackgroundBuf.reset();
 	s_progressTextureBuf.reset();
 	s_mergedTextureBuf.reset();
@@ -444,6 +452,11 @@ void LoadScreen::init(FitIniFile& file, DWORD neverFlush)
 
 	// Stock keeps the "LOADING" text in AnimObject18; MCO ships it as Text0 and has no AnimObjects.
 	text.init( &file, NO_ERR == file.seekBlock( "AnimObject18" ) ? "AnimObject18" : "Text0" );
+	s_loadingScreen = this;
+	graphics::set_loading_draw([] {
+		gos_SetUiCanvasActive(true);
+		if (s_loadingScreen) s_loadingScreen->render(0, 0);
+	});
 	
 
 	if ( animObjectsCount )
@@ -541,13 +554,39 @@ void LoadScreen::update()
 void LoadScreen::render( int x, int y )
 {
 	//ignoring animation information...
-	LogisticsScreen::render();
+	if (graphics::loading_phase().empty()) LogisticsScreen::render();
+	else LogisticsScreen::renderLegacy();
 
 	// MCO's mcl_loadingscreen.fit has no AnimObjects: animObjects is null, so no slide offset.
 	int curX = animObjectsCount ? static_cast<int>(animObjects[0].animInfo.getXDelta()) : 0;
 	int curY = animObjectsCount ? static_cast<int>(animObjects[0].animInfo.getYDelta()) : 0;
+	const auto phase = graphics::loading_phase();
+	if (!phase.empty()) curX = curY = 0;
 	text.move( x + curX, y + curY );
-	text.render( );
+	// Keep the stock localized label, font and colour; only the trailing dots vary with wall time.
+	std::string label = text.text;
+	while (!label.empty() && (label.back() == '.' || label.back() == ' ')) label.pop_back();
+	label += " " + std::string(graphics::loading_dots(SDL_GetTicks64()), '.');
+	const int boxWidth = std::max(static_cast<int>(text.width()), static_cast<int>(text.font.width("Terrain textures")));
+	const int boxX = std::clamp(static_cast<int>(text.x() + (text.width() - boxWidth) / 2), 0,
+	                          std::max(0, Environment.screenWidth - boxWidth));
+	const int lineHeight = static_cast<int>(text.font.height()) + 2;
+	const int boxY = std::min(static_cast<int>(text.y()), Environment.screenHeight - 2 * lineHeight);
+	text.font.render(label.c_str(), boxX, boxY, boxWidth, lineHeight, text.getColor(), false, text.alignment);
+	if (!phase.empty()) {
+		const auto stage = graphics::loading_label(phase);
+		text.font.render(stage.data(), boxX, boxY + lineHeight, boxWidth, lineHeight, text.getColor(), false, text.alignment);
+		// Reuse the existing multi-frame loading capture option; captures are actual presented frames.
+		if (mc2::gate::get<"MC2_SCREENSHOT_AT_FRAME">() == -5) {
+			static Uint64 lastShot = 0;
+			static unsigned shot = 0;
+			const auto now = SDL_GetTicks64();
+			if (shot < 5 && now - lastShot >= 350) {
+				const auto path = mc2::gate::str<"MC2_SCREENSHOT_PATH">() + ".loading" + std::to_string(++shot) + ".tga";
+				if (gos::screenshot::request(path.c_str())) lastShot = now;
+			}
+		}
+	}
 	text.move( -x - curX, -y - curY);
 }
 

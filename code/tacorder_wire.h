@@ -8,6 +8,15 @@
 
 namespace tacorder_wire {
 
+// All 32 bits of word 0 are occupied. Method 3 carries ranged alpha.
+constexpr int32_t encode_method(int32_t method, bool alpha) {
+	return method < 0 || method > 2 || (alpha && method != 0) ? -1 : alpha ? 3 : method;
+}
+struct DecodedMethod { int32_t method; bool alpha; };
+constexpr DecodedMethod decode_method(int32_t wire) {
+	return wire == 3 ? DecodedMethod{0, true} : DecodedMethod{wire, false};
+}
+
 inline constexpr int32_t kCodeBits = 5;
 inline constexpr int32_t kOriginBits = 2;
 inline constexpr int32_t kUnitOrderBits = 1;

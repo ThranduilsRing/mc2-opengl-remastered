@@ -3,12 +3,12 @@
  "frames": 800,
  "chain_schema": 2,
  "chain": "2f1a915d5ab98830",
- "full": "420ea762510a2386",
- "visible_chain": "6cdfb2254bdaaea5",
- "sha": "761b7c3ba372",
+ "full": "9eda310abab40842",
+ "visible_chain": "440f771fd5237496",
+ "sha": "bcf67e583649",
  "seed": "0x157EB29B",
  "data_fingerprint": {
-  "digest": "ce7928df840e5311",
+  "digest": "dcd8543bf1dabdf6",
   "inputs": [
    "mission.fst",
    "tgl.fst",
@@ -21,7 +21,7 @@
    "data/missions/",
    "data/warriors/"
   ],
-  "stock_digest": "1c74588878defb45",
+  "stock_digest": "f5e613864732c4b4",
   "overlay": {
    "data/missions/gaea_peaks_01.fit": "aa24a7b6e35ae2b2",
    "data/missions/gaea_peaks_01.pak": "af7be4e2f5a9c1c4"

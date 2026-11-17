@@ -1,3 +1,9 @@
+#ifndef TS_colormapReady
+#define TS_colormapReady uT.colormapReady
+#endif
+#ifndef TS_detailReady
+#define TS_detailReady uT.detailReady
+#endif
 // Cliff material (triplanar POM + CC0 rock layer) split out of terrain_tier1.frag to keep it under the shader line ratchet.
 // Included mid-file: depends on mv_sampleAntiTileArr, the set-0 resources and uT from terrain_frame_vk.glsl.
 // Cliff faces: triplanar parallax-occlusion march of ONE world plane (GL terrain_lod_chunk.frag cliffParallaxPlane). viewPlane is the view
@@ -158,12 +164,12 @@ void crApply(vec3 macroN, vec3 wpDx, vec3 wpDy, vec3 planeLod, float blocked, in
     // Full rock coverage replaces both outputs of the older three-plane POM.
     // Its palette also replaces baseColor when a colormap is bound. Preserve
     // the older material through every transition and the missing-colormap path.
-    if ((m < 1.0 || uT.colormapReady == 0) && uT.detailReady >= 2)
+    if ((m < 1.0 || TS_colormapReady == 0) && TS_detailReady >= 2)
         mv_cliffMaterial(macroN, planeLod, blocked, N, baseColor);
     if (m <= 0.0) return;
     // Palette tone: four colormap taps ~160 wu around the face average out the vertical smear.
     vec3 tone = baseColor;
-    if (uT.colormapReady != 0) {
+    if (TS_colormapReady != 0) {
         vec2 c = vec2((wp.x - uT.atlasTopLeftX) * uT.atlasOneOverWorldUnits, (uT.atlasTopLeftY - wp.y) * uT.atlasOneOverWorldUnits);
         float o = 160.0 * uT.atlasOneOverWorldUnits;
         tone = 0.25 * (textureLod(u_colormap, c + vec2(o, o), 0.0).rgb + textureLod(u_colormap, c + vec2(-o, o), 0.0).rgb

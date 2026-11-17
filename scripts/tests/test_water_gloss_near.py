@@ -6,9 +6,39 @@ The reflected-sky lift supplies near gloss without adding a second broad sun lob
 """
 from pathlib import Path
 import re
+import struct
 
 ROOT = Path(__file__).resolve().parents[2]
 SRC = (ROOT / "shaders/vulkan/water_geom.frag").read_text(encoding="utf-8")
+
+
+def test_water_cache_binary32_rounded_tap_escape():
+    # Astra P1: independently rounded tap additions can skip a fine-grid cell.
+    def f32(x):
+        return struct.unpack("f", struct.pack("f", x))[0]
+
+    def grid(x):
+        return f32(f32(x + 16384.0) / 32.0)
+
+    wp = f32(-0.0006)
+    taps = [f32(wp + offset) for offset in (-32.0, 0.0, 32.0)]
+    cells = [int(grid(x)) for x in taps]
+    assert cells == [510, 511, 513]
+    origin = cells[0]
+    k = cells[2] - origin
+    assert k == 3
+    # H(x,y)=x/8 on fine-grid vertices: interpolation of the +32 tap.
+    original = f32(grid(taps[2]) / 8.0)
+    cached = f32((origin + min(k, 2) + f32(grid(taps[2]) - cells[2])) / 8.0)
+    assert original == 64.125 and cached == 64.0
+    body = SRC.split("float waterCachedHeight(", 1)[1].split("float waterFineHeight(", 1)[0]
+    guard = "if (any(lessThan(k, ivec2(0))) || any(greaterThan(k, ivec2(3)))"
+    fallback = "return waterFineHeight(worldXY);"
+    assert guard in body and fallback in body
+    assert body.index(guard) < body.index(fallback) < body.index("waterCell(raw, k)")
+    assert "(k.x == 3 && t.x != 0.0)" in body
+    assert "(k.y == 3 && t.y != 0.0)" in body
+    assert "if (k.x == 3) return vec4(top.ww, bottom.ww);" in SRC
 
 
 def _const(name):

@@ -32,6 +32,7 @@ struct Packet {
     bool verify;
     int fps;
     std::vector<ResidentTextureRef> retiredTextures;
+    std::vector<uint32_t> retiredHudTextures;
 };
 std::mutex mutex;
 std::condition_variable changed;
@@ -45,6 +46,7 @@ std::string failure;
 Packet packet{};
 int paceFps = 0;
 std::vector<ResidentTextureRef> retiredTextures;
+std::vector<uint32_t> retiredHudTextures;
 
 // Past kStall the session rolls back to the inline present (as before). Past kHung the worker is not coming back: a frozen game is worse
 // than an exit that names the wait, so leave unless a debugger holds the worker.
@@ -128,6 +130,7 @@ void run() {
         next.retiredTextures.clear();
         const auto started = detail::Clock::now();
         auto& present = getOrCreateEnginePresentVk();
+        present.retireHudTextures(std::move(next.retiredHudTextures));
         if (infra::deviceLostLatched()) {
             // No further queue work on a lost device: decline the frame and let main end the session.
             reportFailure("Vulkan device lost");
@@ -203,7 +206,7 @@ void enqueue(uint32_t width, uint32_t height, bool verify, uint32_t renderFrame,
     if (engineVulkanContextValid()) getOrCreateEngineVulkanContext().resolveRecorded();
     std::lock_guard lock(mutex);
     assert(detail::canEnqueue(pending, sealed));
-    packet = {width, height, renderFrame, fireFrame, verify, paceFps, std::move(retiredTextures)};
+    packet = {width, height, renderFrame, fireFrame, verify, paceFps, std::move(retiredTextures), std::move(retiredHudTextures)};
     sealed = false;
     pending = true;
     mc2::overlap::setRenderWorkerOwns(true);
@@ -225,6 +228,7 @@ void pace(int fps) {
 }
 void forgetTexture(uint32_t handle) {
     mc2::overlap::assertMainThread("present_thread::forgetTexture");
+    retiredHudTextures.push_back(handle);
     auto retired = getOrCreateEngineVulkanContext().textures().detachLegacyUi(handle);
     for (auto& texture : retired) retiredTextures.push_back(std::move(texture));
 }
@@ -259,5 +263,7 @@ void stop() {
     mc2::overlap::setRenderWorkerOwns(false);
     mc2::overlap::setPresentWorkerRegistered(false);
     retiredTextures.clear();
+    for (const auto handle : retiredHudTextures) getOrCreateEnginePresentVk().releaseHudTextures(handle);
+    retiredHudTextures.clear();
 }
 }

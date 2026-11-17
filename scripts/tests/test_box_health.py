@@ -258,7 +258,8 @@ def test_quiet_slot_claim_drain_release(box):
     assert not (box.locks / "quiet").exists()
 
 
-def test_quiet_slot_live_and_device_verdict(tmp_path):
+def test_quiet_slot_live_and_device_verdict(tmp_path, monkeypatch):
+    monkeypatch.setattr(run_job, "gpu_name", lambda: "RTX 4060")
     q = tmp_path / "quiet"
     assert not run_job.quiet_slot_live(str(q))
     q.write_text("1 2 t\n")

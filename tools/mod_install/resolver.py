@@ -371,6 +371,21 @@ def load_config(
 # Core resolve function
 # ---------------------------------------------------------------------------
 
+def _base_file(game_dir, key):
+    """Resolve legacy case-insensitive keys without lowercasing on-disk paths."""
+    path = Path(game_dir)
+    for part in key.split("/"):
+        direct = path / part
+        if direct.exists():
+            path = direct
+            continue
+        if not path.is_dir():
+            return str(direct)
+        matches = sorted(p for p in path.iterdir() if p.name.lower() == part)
+        path = matches[0] if matches else direct
+    return str(path)
+
+
 def resolve(req: str, config: ResolverConfig) -> dict:
     """
     Resolve a single path request to a JSONL-schema record dict.
@@ -416,21 +431,21 @@ def resolve(req: str, config: ResolverConfig) -> dict:
             # The shadowed map records mod ids that lost at index time.
             shadowed_list = [f"mod:{sid}" for sid in config.shadowed.get(key, [])]
             # Also check if the base-loose file exists (it would be shadowed too)
-            base_path = os.path.join(config.game_dir, key.replace("/", os.sep))
+            base_path = _base_file(config.game_dir, key)
             if os.path.isfile(base_path):
                 shadowed_list.append("base-loose")
             return _result(f"mod:{mod_id}", abs_path, shadowed_list)
         # mod-miss: fall through to base
 
     # Base loose file (mirrors file.cpp:780)
-    base_path = os.path.join(config.game_dir, key.replace("/", os.sep))
+    base_path = _base_file(config.game_dir, key)
     if os.path.isfile(base_path):
         return _result("base-loose", base_path.replace("\\", "/"))
 
     # Numeric-size-subdir strip (mirrors file.cpp:788-806)
     stripped = _strip_size_subdir(key)
     if stripped is not None:
-        stripped_path = os.path.join(config.game_dir, stripped.replace("/", os.sep))
+        stripped_path = _base_file(config.game_dir, stripped)
         if os.path.isfile(stripped_path):
             return _result("base-strip", stripped_path.replace("\\", "/"))
 

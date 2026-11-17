@@ -66,9 +66,17 @@ class Asset:
         return {self.doc["nodes"][i]["name"] for s in self.doc["skins"] for i in s["joints"]}
 
     def vertices(self):
-        # One position array may be shared by multiple material sections.
-        ids = {p["attributes"]["POSITION"] for m in self.doc["meshes"] for p in m["primitives"]}
-        # Reference and candidate must select LOD0 only for this proof.
+        # One position array may be shared by multiple material sections. Only meshes reachable from the
+        # default scene count: from_native keeps extra LODs out of it, so this selects LOD0.
+        nodes, seen, stack, meshes = self.doc["nodes"], set(), list(self.doc["scenes"][self.doc.get("scene", 0)]["nodes"]), set()
+        while stack:
+            i = stack.pop()
+            if i not in seen:
+                seen.add(i)
+                stack += nodes[i].get("children", [])
+                if "mesh" in nodes[i]:
+                    meshes.add(nodes[i]["mesh"])
+        ids = {p["attributes"]["POSITION"] for i in meshes for p in self.doc["meshes"][i]["primitives"]}
         return sorted(v for i in ids for v in self.values(i))
 
     def keys(self):
@@ -85,6 +93,41 @@ class Asset:
         return result
 
 
+def sample(times, values, t, rotation):
+    """Linear sample, held at both ends; rotations are normalised lerps on the shorter arc."""
+    if t <= times[0] or len(times) == 1:
+        return values[0]
+    if t >= times[-1]:
+        return values[-1]
+    hi = next(i for i, k in enumerate(times) if k >= t)
+    lo, f = hi-1, (t-times[hi-1])/(times[hi]-times[hi-1])
+    x, y = values[lo], values[hi]
+    if rotation and sum(i*j for i, j in zip(x, y)) < 0:
+        y = [-v for v in y]
+    result = [i+(j-i)*f for i, j in zip(x, y)]
+    if rotation:
+        norm = math.sqrt(sum(v*v for v in result))
+        result = [v / norm for v in result]
+    return result
+
+
+def match_vertices(va, vb, tolerance=1e-4):
+    """One-to-one match within tolerance (two exporters round metres differently); returns the max matched distance."""
+    import numpy as np
+    from scipy.sparse import csr_matrix
+    from scipy.sparse.csgraph import maximum_bipartite_matching
+    from scipy.spatial import cKDTree
+    a, b = np.asarray(va, dtype=np.float64), np.asarray(vb, dtype=np.float64)
+    near = cKDTree(a).query_ball_tree(cKDTree(b), tolerance)
+    rows = [i for i, row in enumerate(near) for _ in row]
+    cols = [j for row in near for j in row]
+    graph = csr_matrix((np.ones(len(rows)), (rows, cols)), shape=(len(a), len(b)))
+    match = maximum_bipartite_matching(graph, perm_type="column")
+    if len(a) != len(b) or (match < 0).any():
+        raise ValueError(f"vertex positions do not match one-to-one within {tolerance}")
+    return float(np.abs(a[match >= 0] - b[match[match >= 0]]).max()) if len(a) else 0.0
+
+
 def compare(candidate, reference, bounds):
     a, b = Asset(candidate), Asset(reference)
     fallbacks = a.doc.get("extras", {}).get("bridge", [])
@@ -96,19 +139,26 @@ def compare(candidate, reference, bounds):
     rest_error = max(abs(x-y) for name in a.bones() for ra, rb in zip(wa[name], wb[name]) for x, y in zip(ra, rb))
     if rest_error >= 1e-4:
         raise ValueError(f"bone rest error {rest_error} >= 1e-4")
-    if not a.vertices() or a.vertices() != b.vertices():
-        raise ValueError("sorted vertex set differs")
+    va, vb = a.vertices(), b.vertices()
+    if not va or len(va) != len(vb):
+        raise ValueError("vertex count differs or is empty")
+    vertex_error = match_vertices(va, vb)
     ka, kb = a.keys(), b.keys()
-    if not ka or ka.keys() != kb.keys():
-        raise ValueError("clip/channel set differs or is empty")
+    if not ka or {k[0] for k in ka} != {k[0] for k in kb} or not ka.keys() <= kb.keys():
+        raise ValueError("clip name sets differ, or a candidate channel is missing from the reference")
+    # The extractor keeps constant tracks as one key and drops rest-valued channels; the bridge writes every
+    # frame of every bone. Compare the candidate sampled at each reference key time (missing channel = rest).
+    rest = {n["name"]: n for n in a.doc["nodes"]}
+    default = {"translation": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1]}
     angle = 0.0
     count = 0
-    for key, (times, values) in ka.items():
-        rt, rv = kb[key]
-        if times != rt or len(values) != len(rv):
-            raise ValueError(f"key times/count differ: {key}")
-        for x, y in zip(values, rv):
+    for key, (rt, rv) in kb.items():
+        times, values = ka.get(key) or ([(0.0,)], [tuple(rest[key[1]].get(key[2], default[key[2]]))])
+        times = [k[0] for k in times]
+        rt = [k[0] for k in rt]
+        for t, y in zip(rt, rv):
             count += 1
+            x = sample(times, values, t, key[2] == "rotation")
             if key[2] == "rotation":
                 norm = math.sqrt(sum(v*v for v in x)*sum(v*v for v in y))
                 if norm == 0:
@@ -127,7 +177,8 @@ def compare(candidate, reference, bounds):
         if any(not lo <= v <= hi for lo, v, hi in zip(box["min"], position, box["max"])):
             raise ValueError(f"socket outside weapon bounds: {name}")
     return {"status": "PASS", "bones": len(a.bones()), "keys": count,
-            "rest_max": rest_error, "rotation_max_degrees": angle, "sockets": len(sockets),
+            "rest_max": rest_error, "vertices": len(va), "vertex_max": vertex_error, "rotation_max_degrees": angle, "sockets": len(sockets),
+            "skipped_sockets": sum(f["kind"] == "socket_skipped" for f in fallbacks),
             "other_bridge_fallbacks": len(fallbacks)}
 
 

@@ -9,6 +9,28 @@
 
 using namespace mc2lod;
 
+TEST_CASE("terrain activity cache: sub-block motion, rotation, clip and grid changes invalidate") {
+    const ActivityKey key{{100, 200, 300, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0.75f},
+                          {900, 30, 20, 300}, 128.0f};
+    CHECK(key == key);
+    for (size_t i = 0; i < key.camera.size(); ++i) {
+        auto changed = key;
+        changed.camera[i] = std::nextafter(changed.camera[i], 1000.0f);
+        CHECK_FALSE(key == changed);
+    }
+    for (size_t i = 0; i < key.grid.size(); ++i) {
+        auto changed = key;
+        ++changed.grid[i];
+        CHECK_FALSE(key == changed);
+    }
+    auto changed = key;
+    changed.vertexScale *= 2;
+    CHECK_FALSE(key == changed);
+    changed = key;
+    changed.camera[0] = std::numeric_limits<float>::quiet_NaN();
+    CHECK_FALSE(changed == changed); // A non-finite camera must never reuse a mask.
+}
+
 namespace {
 
 float edgeField(int i) {  // deterministic rough heights; no two neighbours collinear

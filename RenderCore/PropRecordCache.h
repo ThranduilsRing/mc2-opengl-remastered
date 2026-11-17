@@ -3,7 +3,21 @@
 #include <cstdint>
 #include <cstring>
 #include <span>
+#include <type_traits>
 #include <vector>
+
+// Rebuild the ordered feed in place. Unchanged blocks already contain exactly
+// the bytes the consumer needs; changed blocks and new tails are copied normally.
+template<class Instance>
+void appendPropFeed(std::vector<Instance>& flat, size_t& cursor, std::span<const Instance> next) {
+    static_assert(std::is_trivially_copyable_v<Instance>);
+    const size_t available = flat.size() - cursor;
+    const size_t reuse = available < next.size() ? available : next.size();
+    if (reuse && std::memcmp(flat.data() + cursor, next.data(), reuse * sizeof(Instance)) != 0)
+        std::memcpy(flat.data() + cursor, next.data(), reuse * sizeof(Instance));
+    if (reuse < next.size()) flat.insert(flat.end(), next.begin() + reuse, next.end());
+    cursor += next.size();
+}
 
 struct PropRecordCacheKey {
     uint64_t scene = 0, material = 0, resource = 0;

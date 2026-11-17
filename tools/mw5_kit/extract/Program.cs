@@ -54,9 +54,11 @@ public static class Program
                 Path.Combine(install,"MW5Mercs","Binaries","Win64"), Path.Combine(install,"MW5Clans","Binaries","Win64") }
                 .Where(Directory.Exists).SelectMany(p=>Directory.EnumerateFiles(p,"oo2core_*_win64.dll",SearchOption.TopDirectoryOnly))
                 .OrderByDescending(p=>p,StringComparer.Ordinal).FirstOrDefault();
-            if (dll == null) throw new FileNotFoundException("Oodle DLL missing in the player's install; install the game's runtime. No DLL is downloaded or bundled.");
-            if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Player Oodle DLL needs Windows. Box supports synthetic fixtures only.");
-            OodleHelper.Initialize(dll);
+            if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Real extraction needs Windows. Box supports synthetic fixtures only.");
+            // MW5 Mercs has no Oodle DLL (Oodle is inside the exe). Paks without Oodle blocks still read;
+            // Oodle-compressed assets then fail per asset and stay on the bridge. Nothing is downloaded.
+            if (dll != null) OodleHelper.Initialize(dll);
+            else Console.Error.WriteLine("mw5_extract: no Oodle DLL in the install; Oodle-compressed assets stay on the bridge.");
             var ue = a.GetValueOrDefault("--ue","4.26");
             var game = ue switch { "4.26"=>EGame.GAME_UE4_26, "5.5"=>EGame.GAME_UE5_5, _=>throw new ArgumentException("Unsupported UE version") };
             if (ue == "5.5" && !a.ContainsKey("--usmap")) throw new ArgumentException("UE5.5 requires the player's matching --usmap");
@@ -156,19 +158,31 @@ public static class Program
             if (a.AdditiveAnimType != EAdditiveAnimationType.AAT_None) throw new InvalidDataException("Additive clip stays on bridge");
             var skeleton = a.Skeleton.Load<USkeleton>() ?? throw new InvalidDataException("Animation skeleton unresolved");
             var sk = skeleton.ReferenceSkeleton;
-            if (!sk.FinalRefBoneInfo.Select(b=>(b.Name.Text,b.ParentIndex)).SequenceEqual(
-                mesh.ReferenceSkeleton.FinalRefBoneInfo.Select(b=>(b.Name.Text,b.ParentIndex))))
-                throw new InvalidDataException("Clip and mesh skeleton differ");
+            // The skeleton asset may carry more bones (virtual/IK) than the mesh; bind clip tracks to mesh bones by name.
+            var mb = mesh.ReferenceSkeleton.FinalRefBoneInfo;
+            var map = Native.BindBones(mb.Select(b=>(b.Name.Text,b.ParentIndex)).ToArray(),
+                sk.FinalRefBoneInfo.Select(b=>(b.Name.Text,b.ParentIndex)).ToArray());
             var clip = skeleton.ConvertAnims(a).Sequences.Single();
-            if (clip.Tracks.Count != sk.FinalRefBoneInfo.Length) throw new InvalidDataException("Missing bone tracks");
+            if (clip.Tracks.Count != sk.FinalRefBoneInfo.Length) throw new InvalidDataException($"Missing bone tracks ({clip.Tracks.Count} vs {sk.FinalRefBoneInfo.Length})");
             var pose = clip.RetargetBasePose ?? sk.FinalRefBonePose;
-            var tracks = clip.Tracks.Select((t,i)=>new Track(i,
-                Native.Keys(t.KeyPos.Select(v=>Local(v,AnimationScale(sk.GetBoneScale(pose,i)))).ToArray(),t.KeyPosTime.Length>0?t.KeyPosTime:t.KeyTime,clip.FramesPerSecond,clip.NumFrames),
+            var tracks = Enumerable.Range(0,mb.Length).Select(i=>{ var t = clip.Tracks[map[i]]; return new Track(i,
+                Native.Keys(t.KeyPos.Select(v=>Local(v,AnimationScale(sk.GetBoneScale(pose,map[i])))).ToArray(),t.KeyPosTime.Length>0?t.KeyPosTime:t.KeyTime,clip.FramesPerSecond,clip.NumFrames),
                 Native.Keys(t.KeyQuat.Select(Q).ToArray(),t.KeyQuatTime.Length>0?t.KeyQuatTime:t.KeyTime,clip.FramesPerSecond,clip.NumFrames),
-                Native.Keys(t.KeyScale.Select(V).ToArray(),t.KeyScaleTime.Length>0?t.KeyScaleTime:t.KeyTime,clip.FramesPerSecond,clip.NumFrames))).ToArray();
+                !AuthoredScale(a,map[i]) ? new Channel([],[]) : // CUE4Parse reports a zero key for tracks without authored scale
+                Native.Keys(t.KeyScale.Select(V).ToArray(),t.KeyScaleTime.Length>0?t.KeyScaleTime:t.KeyTime,clip.FramesPerSecond,clip.NumFrames)); }).ToArray();
             Directory.CreateDirectory(Path.Combine(output,"clips"));
             Native.Animation(Path.Combine(output,"clips",Native.Id(a.GetPathName())+".bin"),new(clip.NumFrames,clip.FramesPerSecond,tracks));
             Native.Json(Path.Combine(output,"clips",Native.Id(a.GetPathName())+".json"),new { asset=a.GetPathName(), name=a.Name });
+        }
+
+        // True when the compressed data holds scale keys for this skeleton bone (offset != INDEX_NONE), so an
+        // authored zero scale is kept and only tracks without scale are dropped. Other codecs stay on the bridge.
+        static bool AuthoredScale(UAnimSequence a,int bone)
+        {
+            if (a.CompressedDataStructure is not FUECompressedAnimData u) throw new InvalidDataException("Unsupported animation codec: keep on bridge");
+            int track = Array.FindIndex(a.CompressedTrackToSkeletonMapTable,m=>m.BoneTreeIndex == bone);
+            var o = u.CompressedScaleOffsets;
+            return Native.HasScale(o.OffsetData,o.StripSize,track);
         }
 
         static FVector AnimationScale(FVector scale) =>

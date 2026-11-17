@@ -4,10 +4,41 @@
 #include "mech_internal.h"
 #include "world/visibility_input.h"
 #include "mc2fmt.h"
+#include "../GameOS/gameos/utils/mc2log.h"
+
+mc2::heat::Profile BattleMech::heatProfile;
+
+static void loadHeatProfile() {
+	using mc2::heat::Profile;
+	BattleMech::heatProfile = Profile{};
+	FitIniFile file;
+	if (file.open("data/defs/rules/heat.fit") != NO_ERR) {
+		MC2_LOG(Sim, Info, "heat.fit missing; using defaults (profile=1 cool=20 window=60 ai=0)");
+		return;
+	}
+	Profile p;
+	const bool parsed = file.seekBlock("Heat") == NO_ERR &&
+		file.readIdInt("HeatProfile", p.heatProfile) == NO_ERR &&
+		file.readIdInt("CoolSeconds", p.coolSeconds) == NO_ERR &&
+		file.readIdInt("AlphaWindowTicks", p.alphaWindowTicks) == NO_ERR &&
+		file.readIdInt("AiAlpha", p.aiAlpha) == NO_ERR &&
+		file.seekBlock("Thresholds") == NO_ERR &&
+		file.readIdInt("Count", p.thresholdCount) == NO_ERR;
+	const auto valid = mc2::heat::validatedProfile(p);
+	if (!parsed || !valid) {
+		MC2_LOG(Sim, Warn, "Invalid heat.fit: require HeatProfile=1, CoolSeconds=1..71582788, "
+			"AlphaWindowTicks>0, AiAlpha=0, Thresholds Count=0; using defaults");
+		return;
+	}
+	BattleMech::heatProfile = *valid;
+	MC2_LOG(Sim, Info, "Heat profile=1 cool={} window={} ai=0 thresholds=0", p.coolSeconds, p.alphaWindowTicks);
+	// net::contentHash includes loose data/**/*.fit, including this profile.
+}
 
 
 
 long BattleMech::loadGameSystem (FitIniFilePtr mechFile) {
+	loadHeatProfile();
 
 	long result = 0;
 

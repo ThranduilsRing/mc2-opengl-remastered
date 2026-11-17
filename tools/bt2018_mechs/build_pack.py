@@ -178,13 +178,32 @@ def build(args, out: Path):
     for rel, text in files.items():
         write_text(out / rel, text)
 
-    # Assets: copied from the owner's converted files, never generated or edited here.
+    # Assets: copied from the owner's converted files. With --bundles each state plays the
+    # family's own BT clip, baked from the player's bundle under the Atlas state name (BT's
+    # override controller maps <family>_X onto atlas_X); a state without one keeps the
+    # model-space Atlas retarget.
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+    from bt2018_retarget_clips import retarget_file
+    sources = {}
     assets = {}
     for p, recipe in zip(profiles, recipes_loaded):
         model = recipe["mc2"]["model"]
         dst = out / "data" / "tgl" / f"{model['pack_path']}.glb"
         dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(conv / model["source_glb"], dst)
+        retarget_file(str(conv / model["source_glb"]), str(conv / "atlas.glb"), str(dst))
+        from tools.bt2018_mechs import glb_guard
+        for name, n in glb_guard.dedupe_node_names(dst).items():
+            print(f"[bt2018] {dst.name}: renamed {n} duplicate node(s) '{name}' (Assimp rejects repeats)")
+        for name in glb_guard.opaque_mech_materials(dst):
+            print(f"[bt2018] {dst.name}: material '{name}' set OPAQUE (BLEND/MASK makes the importer look for an a_ texture)")
+        fam = recipe["family"].lower()
+        if args.bundles and fam != "atlas":
+            from tools.bt2018_extract import bake_clips as BK
+            raw = Path(args.bundles)
+            cand = [raw / f"chrprfmech_{fam}base-001"] + [raw / b for b in ("heavymetal", "flashpoint", "urbanwarfare")]
+            native = next((n for n in (BK.native_clips(str(b), fam) for b in cand if b.is_file()) if n), {})
+            BK.add_to_glb(str(dst), str(dst), {"atlas_" + k.split("_", 1)[1]: v for k, v in native.items()})
+            sources[fam] = len(native)
         assets[str(dst.relative_to(out)).replace("\\", "/")] = sha256(dst)
         for t in model["textures"]:
             dst = out / "data" / "tgl" / Path(t).name
@@ -223,11 +242,16 @@ def build(args, out: Path):
         "generated": {rel: hashlib.sha256(t.encode("utf-8")).hexdigest() for rel, t in sorted(files.items())},
         "assets": dict(sorted(assets.items())),
         "stock_references_unmodified": stock_refs,
+        "native_clip_counts": sources,
         "balance_profile": bp["id"],
         "weapon_map_version": wm["version"],
         "profiles": {p["chassis_id"]: {"variants": [v["name"] for v in p["variants"]], "report": p["report"]} for p in profiles},
     }
     write_text(out / "content" / "report.json", json.dumps(report, indent=2) + "\n")
+    from tools.bt2018_mechs import glb_guard
+    broken = glb_guard.validate_pack_glbs(out)
+    if broken:
+        sys.exit("pack GLBs the engine importer would reject:\n" + "\n".join(f"  {f}: {'; '.join(b)}" for f, b in broken.items()))
     return report
 
 
@@ -240,6 +264,7 @@ def main():
     ap.add_argument("--out", default="")
     ap.add_argument("--only", default="")
     ap.add_argument("--no-icons", action="store_true", help="skip the offline icon render (P6)")
+    ap.add_argument("--bundles", default="", help="BT assetbundles dir: bake native clips (py -3.12, UnityPy 1.25.0)")
     ap.add_argument("--check", action="store_true", help="rebuild into a temp dir and compare with the existing mod")
     args = ap.parse_args()
     out = Path(args.out) if args.out else Path(args.install) / "mods" / args.mod_id

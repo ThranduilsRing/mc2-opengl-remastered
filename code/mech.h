@@ -11,8 +11,9 @@
 #ifndef MECH_H
 #define MECH_H
 
-#ifndef MCLIB_H
 #include <span>
+#include "heat_model.h"
+#ifndef MCLIB_H
 #include"mclib.h"
 #endif
 
@@ -329,6 +330,19 @@ class BattleMech : public Mover {
 	//Data Members
 	
 	public:
+
+		mc2::heat::State heatState;
+		int chassisHeatPoints = 0;
+		int heatSinkAdjustmentPoints = 0; // logical lab sinks minus legacy inventory sinks
+		bool heatCapacityRestored = false; // set by a MECH v2 restore; cleared by restoreHeatCapacity
+		static mc2::heat::Profile heatProfile;
+		void recomputeHeatCapacity();
+		mc2::heat::Salvo alphaSalvo();
+		bool canAlphaStrike();
+		bool armAlphaStrike();
+		void restoreHeatCapacity();
+		void rederiveHeatCapacity();
+		void setHeatLoadout(std::span<const long> components);
 
 		char				chassisClass;					// none, light, medium, heavy, assault
 		int32_t             chassisBR;						// chassis Battle Rating

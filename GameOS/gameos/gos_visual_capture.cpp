@@ -47,6 +47,8 @@
 #include "mc2_czstring.h"
 #include "gos_visual_capture.h"
 #include "visual_capture_live_settle.h"
+#include <string_view>
+namespace mc2vk::gpuprof { void poseBegin(); void poseEnd(std::string_view name); }   // vk_gpu_profile.cpp
 extern float scenarioTime;   // mclib/timing.h; CAPTURE-LIVE-CLOCK reads it to time the live settle
 
 #include "gos_smoke.h"
@@ -886,6 +888,7 @@ void onPostRenderFrame(unsigned int frame, int sceneW, int sceneH) {
         }
         if (!g_replay.teleported) {
             apply_bookmark(g_replay.marks[g_replay.idx]);
+            mc2vk::gpuprof::poseBegin();   // per-pose GPU pass / triangle window
             g_replay.teleported = true;
             g_replay.settleCount = 0;
             g_replay.extendCount = 0;
@@ -963,6 +966,7 @@ void onPostRenderFrame(unsigned int frame, int sceneW, int sceneH) {
         }
         char base[256];
         mc2::fmt::to_buf(base, "{}_{}", g_replay.mission.c_str(), safeName.c_str());
+        mc2vk::gpuprof::poseEnd(safeName);
         capture_to(g_replay.dir, base, g_replay.mission, bm.name,
                    frame, sceneW, sceneH,
                    g_replay.triggerFrame, deterministic);

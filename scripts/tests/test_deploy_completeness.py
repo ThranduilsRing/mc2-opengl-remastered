@@ -27,6 +27,7 @@ def test_native_dependencies_and_data_are_required(tmp_path, monkeypatch):
         "cannot read ELF dependencies: invalid ELF"]
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows case-insensitive runtime DLL filenames")
 def test_completeness(tmp_path, monkeypatch):
     monkeypatch.setattr(dp, "_pe_imports", lambda path: set())  # the fake MZ exe is not a PE
     build, target = tmp_path / "build", tmp_path / "target"

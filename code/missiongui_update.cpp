@@ -239,6 +239,7 @@ void MissionInterfaceManager::update (void)
 	// movie-mode early return so commands are still consumed (and acked
 	// blocked) during the intro swoop instead of piling up.
 	processUiCommandChannel();
+	orderMenuBeginFrame(); // once per frame, before any early return below
 
 	// VK-FIELD-SELECT-1 test hook: MC2_VK_SELECT_TEST=1 auto-selects the visible
 	// home lance every frame so the deterministic headless capture (which ignores
@@ -958,6 +959,7 @@ void MissionInterfaceManager::update (void)
 		// in the space the pick (findObjectByMouse) and the user actually use.
 		updateTarget(bRawGui);
 	}
+	orderMenuService(bRawGui); // no early return: the menu never skips game code
 
 	{ ZoneScopedN("MIF.PostTarget");
 	attilaXAxis 	= userInput->getAttilaXAxis();  

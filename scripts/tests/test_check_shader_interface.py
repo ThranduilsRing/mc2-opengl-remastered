@@ -20,7 +20,7 @@ import check_shader_interface as csi  # noqa: E402
 COPIED = ["shaders", "tools/shader_offline_build/pilots.json", "tools/shader_reflect/expected", "tools/shader_schema",
           "docs/render-backend-seams/binding-slot-occupancy.json", "RenderCore/gpu_abi", "RenderCore/MaterialGpu.h",
           "GameOS/gameos/gos_vegetation.cpp", "GameOS/gameos/vk_vegetation_state.h", "GameOS/gameos/CMakeLists.txt",
-          "scripts/shader_interface_rules.json"]
+          "scripts/shader_interface_rules.json", "GameOS/gameos/vulkan_vfx_island.cpp"]
 SPV = "shaders/spv"
 VEG = "GameOS/gameos/gos_vegetation.cpp"
 VEG_H = "GameOS/gameos/vk_vegetation_state.h"
@@ -177,6 +177,10 @@ CASES = [
     ("v not baked", "rules", lambda r: _sub(r, "GameOS/gameos/CMakeLists.txt", "vegetation_compact", "vegetation_kompact", 99), True, True),
     ("v source missing", "rules", lambda r: [p.unlink() for p in (r / "shaders/vulkan").glob("vegetation_region.*")], True, True),
     ("v clean", "rules", lambda r: None, False, False),
+    ("v shade selection", "rules", lambda r: _sub(r, "GameOS/gameos/vulkan_vfx_island.cpp", "depthOnly ? s->vegFrag.get() : s->vegShadeFrag.get()", "s->vegShadeFrag.get()"), True, False),
+    ("v shade alpha", "rules", lambda r: _sub(r, "shaders/vulkan/vfx_vegetation.frag", "if (texel.a * alphaLift < 0.5) discard;", ""), True, False),
+    ("v shade spatial", "rules", lambda r: _sub(r, "shaders/vulkan/vfx_vegetation.frag", "if (v_atlasLayer >= 4u && v_vegAux.x <= coverageRank) discard;", ""), True, False),
+    ("v early depth writes", "rules", lambda r: _sub(r, "shaders/vulkan/vfx_vegetation.frag", "#ifdef VEGETATION_SHADE_EARLY_TESTS", "#if 1"), True, False),
 ]
 
 

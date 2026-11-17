@@ -6,6 +6,101 @@
 
 #include <algorithm>
 #include <vector>
+#include <cmath>
+#include <random>
+#include "water_shore_cells.h"
+
+namespace shore_reference {
+#include "../../shaders/vulkan/include/terrain_cliff_surface.glsl"
+
+float smooth(float a, float b, float x) {
+    const float t = std::clamp((x - a) / (b - a), 0.0f, 1.0f);
+    return t * t * (3.0f - 2.0f * t);
+}
+template<class Raw> float height(Raw raw, int side, float wx, float wy, float half) {
+    const float gx = std::clamp((wx + half) / 32.0f, 0.0f, float(side - 1));
+    const float gy = std::clamp((half - wy) / 32.0f, 0.0f, float(side - 1));
+    const int x = (std::min)(int(std::floor(gx)), side - 2), y = (std::min)(int(std::floor(gy)), side - 2);
+    const float u = gx - x, v = gy - y;
+    const float tl = cliffVisualHeight(raw, x, y), tr = cliffVisualHeight(raw, x + 1, y);
+    const float bl = cliffVisualHeight(raw, x, y + 1), br = cliffVisualHeight(raw, x + 1, y + 1);
+    if (std::abs(raw(x + 1, y) - raw(x, y + 1)) < std::abs(raw(x, y) - raw(x + 1, y + 1))) {
+        if (u + v <= 1.0f) return tl + (tr - tl) * u + (bl - tl) * v;
+        return br + (bl - br) * (1.0f - u) + (tr - br) * (1.0f - v);
+    }
+    const float b = v >= u ? bl : tr;
+    return v >= u ? tl + (br - b) * u + (b - tl) * v : tl + (b - tl) * u + (br - b) * v;
+}
+template<class Raw> float nearShore(Raw raw, int side, float wx, float wy, float half, float elev) {
+    const float h00 = height(raw, side, wx - 32.0f, wy - 32.0f, half);
+    const float h10 = height(raw, side, wx, wy - 32.0f, half);
+    const float h20 = height(raw, side, wx + 32.0f, wy - 32.0f, half);
+    const float h01 = height(raw, side, wx - 32.0f, wy, half);
+    const float h11 = height(raw, side, wx, wy, half);
+    const float h21 = height(raw, side, wx + 32.0f, wy, half);
+    const float h02 = height(raw, side, wx - 32.0f, wy + 32.0f, half);
+    const float h12 = height(raw, side, wx, wy + 32.0f, half);
+    const float h22 = height(raw, side, wx + 32.0f, wy + 32.0f, half);
+    const float depth = elev - (h00 + 2.0f*h10 + h20 + 2.0f*h01 + 4.0f*h11 + 2.0f*h21 + h02 + 2.0f*h12 + h22)/16.0f;
+    const float gx = -((h20 + 2.0f*h21 + h22) - (h00 + 2.0f*h01 + h02))/256.0f;
+    const float gy = -((h02 + 2.0f*h12 + h22) - (h00 + 2.0f*h10 + h20))/256.0f;
+    const float g = std::sqrt(gx*gx + gy*gy);
+    return (1.0f - smooth(36.0f, 100.0f, (std::max)(depth, 0.0f)/(std::max)(g, 0.08f))) * smooth(0.04f, 0.08f, g);
+}
+} // namespace shore_reference
+
+TEST_CASE("water shore cells: conservative against B nine taps and exact flat vertices") {
+    constexpr int side = 49;
+    const float inf = (std::numeric_limits<float>::max)();
+    std::mt19937 rng(0x5a07);
+    std::uniform_real_distribution<float> random(-120.0f, 120.0f);
+    size_t finite = 0, flat = 0, skipped = 0;
+    for (int field = 0; field < 80; ++field) {
+        std::vector<float> fine(side * side);
+        const float base = random(rng), sx = random(rng) * 0.05f, sy = random(rng) * 0.05f;
+        for (int y = 0; y < side; ++y) for (int x = 0; x < side; ++x) {
+            float h = base;
+            if (field % 4 == 1) h += sx * x + sy * y;
+            if (field % 4 == 2) h += random(rng);
+            if (field % 4 == 3) h += (x > 24 ? 160.0f : 0.0f) + sy * y;
+            fine[x + y * side] = h;
+        }
+        const auto raw = [&](int x, int y) {
+            return fine[std::clamp(x, 0, side - 1) + std::clamp(y, 0, side - 1) * side];
+        };
+        const auto records = mc2terrain::bakeWaterShoreCells(fine.data(), side);
+        REQUIRE(records.size() == 2 * fine.size());
+        for (int y = 0; y < side; ++y) for (int x = 0; x < side; ++x) {
+            const size_t i = 2 * (x + y * side);
+            if (x == side - 1 || y == side - 1) {
+                REQUIRE(records[i] == inf); REQUIRE(records[i + 1] == 0.0f);
+            }
+            if (records[i + 1] == 1.0f) {
+                ++flat;
+                for (int v = 0; v < 4; ++v) for (int u = 0; u < 4; ++u)
+                    REQUIRE(shore_reference::cliffVisualHeight(raw, x + u, y + v) == raw(x + u, y + v));
+            }
+        }
+        // Include boundaries and their immediate binary32 neighbours, both axes.
+        const float fractions[] = {0.0f, 0.25f, 0.5f, 0.99999994f, 1.0f};
+        const float half = (field & 1) ? 32768.0f : 768.0f;
+        for (int y = 0; y < side - 1; ++y) for (int x = 0; x < side - 1; ++x)
+            for (float f : fractions) {
+                const float wx = (x + f) * 32.0f - half, wy = half - (y + f) * 32.0f;
+                const int ox = (std::min)(int(std::floor(std::clamp((wx - 32.0f + half)/32.0f, 0.0f, float(side-1)))), side-2);
+                const int oy = (std::min)(int(std::floor(std::clamp((half - (wy + 32.0f))/32.0f, 0.0f, float(side-1)))), side-2);
+                const float threshold = records[2 * (ox + oy * side)];
+                if (threshold == inf) continue; // always tent, including coarse border blend
+                ++finite;
+                const float elev = threshold == -inf ? base + random(rng) : threshold;
+                CAPTURE(field); CAPTURE(x); CAPTURE(y); CAPTURE(f); CAPTURE(threshold); CAPTURE(elev);
+                REQUIRE(shore_reference::nearShore(raw, side, wx, wy, half, elev) == 0.0f);
+                REQUIRE(shore_reference::nearShore(raw, side, wx, wy, half, elev + 32.0f) == 0.0f);
+                if (threshold == -inf) ++skipped;
+            }
+    }
+    CHECK(finite > 10000); CHECK(flat > 1000); CHECK(skipped > 1000);
+}
 
 TEST_CASE("terrain fields: a height patch lands row by row and changes the version") {
     mc2terrain::TerrainFieldStore store;
@@ -51,6 +146,9 @@ TEST_CASE("terrain fields: the visual bake is the fine field followed by the mip
     CHECK(store.visualSide() == 2);
     CHECK(store.visualMipFloats() == 2);
     CHECK(store.visualHeight() == std::vector<float>{1, 2, 3, 4, 7, 8});
+    CHECK(store.waterShoreCells().size() == 8);
+    CHECK(store.waterShoreCells()[0] == (std::numeric_limits<float>::max)());
+    CHECK(store.waterShoreCells()[1] == 0.0f);
 
     const uint32_t words[] = {0x80000001u, 0};
     REQUIRE(store.setCementWords(words, 2));

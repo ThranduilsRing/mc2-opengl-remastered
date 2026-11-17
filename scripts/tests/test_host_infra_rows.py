@@ -1,6 +1,7 @@
 """laptop-rows-green: a row whose tool cannot exist on the host exits 77 with a HOST_INFRA line (never 0), and the board
 only turns that into INFRA under MC2_HOST_INFRA_OK=1 (the farm laptop's gate env); the PC keeps it red."""
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -21,7 +22,7 @@ def test_missing_ktx_is_host_infra_77_never_a_pass(monkeypatch, capsys):
 
 def _bash():
     for cand in (os.environ.get("MC2_BASH"), "C:/Program Files/Git/bin/bash.exe", "bash"):
-        if cand:
+        if cand and shutil.which(cand):
             return cand
 
 

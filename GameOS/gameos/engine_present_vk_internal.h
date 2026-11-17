@@ -162,6 +162,9 @@ struct EnginePresentVk::Impl {
         VkDeviceSize bytes = 0;
         VkDescriptorSet set = VK_NULL_HANDLE;
         uint64_t lastFrame = 0;      // VK-HUD-GLYPH-CORRUPTION: eviction watermark
+        std::shared_ptr<const std::vector<uint8_t>> preparedSource;
+        bool firstDrawLogged = false;
+        bool pinned = false;
     };
     // VK-HUD-GLYPH-CORRUPTION FIX: keyed by (textureHandle<<32 | textureSerial), NOT
     // handle alone. The game re-bakes many distinct runtime strings into ONE reused GL
@@ -173,6 +176,7 @@ struct EnginePresentVk::Impl {
     // clean). A per-(handle,serial) mirror gives each distinct bake its own persistent
     // buffer+descriptor for the frame. Entries are evicted a few frames after last use.
     std::unordered_map<uint64_t, HudTextureMirror> hudTextureMirrors;
+    std::vector<uint32_t> retiredHudTextures;
     uint64_t hudMirrorFrameCounter = 0;
 
     bool            compositeVkFailed = false;

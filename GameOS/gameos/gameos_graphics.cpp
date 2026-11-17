@@ -11,11 +11,47 @@
 #include "ui_texture.h"
 #include "vulkan_context.h"
 #include "vk_texture_residency.h"
+#include "engine_present_vk.h"
+#include "present_thread.h"
+#include <cstdio>
 #include "utils/mc2log.h"
 
 
 
 gosRenderer* g_gos_renderer = nullptr;
+
+// Mission finalization owns both the renderer and the immutable source snapshots.
+void gosRendererPrepareHudTextures() {
+    if (!g_gos_renderer) return;
+    mc2vk::present_thread::waitIdle(); // Sealing alone still permits the worker's present tail.
+    auto& present = mc2vk::getOrCreateEnginePresentVk();
+    for (size_t handle = 1; handle < g_gos_renderer->getTextureListSize(); ++handle) {
+        auto* texture = g_gos_renderer->getTextureIfPresent(handle);
+        if (!texture) continue;
+        gosTextureInfo info;
+        texture->getTextureInfo(&info);
+        const std::string_view asset(texture->sourceName());
+        if (asset != "generated/hud/icon-registry" && asset != "generated/hud/frame-atlas" &&
+            asset.find("a_compass.tga") == std::string_view::npos) continue;
+        if (!texture->ensureRgbaMirror()) continue;
+        mc2vk::VkHudDraw draw;
+        draw.kind = static_cast<uint32_t>(asset == "generated/hud/frame-atlas" ? kHudQuadBatch : kHudTriBatch);
+        draw.textureHandle = static_cast<uint32_t>(handle);
+        draw.textureSerial = texture->getContentSerial();
+        draw.textureWidth = info.width_;
+        draw.textureHeight = info.height_;
+        draw.textureRgba = texture->getRgbaMirror();
+        const bool ready = present.prepareHudTexture(draw);
+        if (mc2_diag::tagRequested("HUD_LOAD_PREPARE"))
+        std::fprintf(stderr, "[HUD_LOAD_PREPARE] handle=%u serial=%u kind=%u wh=%ux%u asset=%s ready=%d\n",
+            draw.textureHandle, draw.textureSerial, draw.kind, draw.textureWidth, draw.textureHeight,
+            texture->sourceName(), static_cast<int>(ready));
+    }
+}
+
+void gosRendererReleaseHudTextures(uint32_t handle) {
+    mc2vk::getOrCreateEnginePresentVk().releaseHudTextures(handle);
+}
 
 static bool isAllConcreteTerrainBatch(const gos_VERTEX* vertices, int count) {
     if (!vertices || count <= 0)

@@ -64,6 +64,7 @@ VBO_CONTRACT = {
 # Baked SPIR-V names that have no source file of their own: GameOS/gameos/CMakeLists.txt
 # (MC2_VK_SHADER_SRC_ALIAS_*) bakes them from another shader, so they reflect identically.
 SPV_ALIASES = {
+    "vfx_vegetation_shade.frag": "vfx_vegetation.frag",  # early tests only; identical descriptor ABI
     "terrain_tier1_skirt.frag": "terrain_tier1.frag",
     "mech_preview.frag": "mech_tier1.frag",   # -DMECH_PREVIEW=1; same set-0 layout, set 1 unused
 }

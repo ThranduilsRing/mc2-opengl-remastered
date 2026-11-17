@@ -138,6 +138,7 @@ class gosTexture {
         }
 
         uint32_t getContentSerial() const { return content_serial_; }
+        const char* sourceName() const { return filename_ ? filename_ : (texname_ ? texname_ : "<unnamed>"); }
         bool wantsMipmaps() const { return mc2tex::wantsMipmaps(hints_); }
         void markContentMutated() { ++content_serial_; }
         // VK-HUD-MIRRORCOPY-1: the mirror is held as a shared immutable vector so

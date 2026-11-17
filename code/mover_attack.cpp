@@ -631,6 +631,9 @@ bool Mover::recover (void) {
 					if (body[i].criticalSpaces[j].inventoryID < 255)
 						body[i].criticalSpaces[j].hit = inventory[body[i].criticalSpaces[j].inventoryID].disabled;
 
+			if (getObjectClass() == BATTLEMECH)
+				static_cast<BattleMechPtr>(this)->recomputeHeatCapacity(); // restored sinks cool again
+
 			if (getCommanderId() == Commander::home->getId()) 
 			{
 				getPilot()->radioMessage(RADIO_REFIT_DONE, TRUE);

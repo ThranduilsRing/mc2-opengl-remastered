@@ -148,7 +148,7 @@ void startImport() {
         std::wstring command = L"py -3 tools/import_campaign.py --auto --deploy .";
         // background-launch: trusted campaign converter, no installer execution or window.
         const bool launched = managed && CreateProcessW(nullptr, command.data(), nullptr, nullptr, TRUE,
-            DETACHED_PROCESS | IDLE_PRIORITY_CLASS | CREATE_SUSPENDED, nullptr, nullptr, &startup, &process) != 0;
+            CREATE_NO_WINDOW | IDLE_PRIORITY_CLASS | CREATE_SUSPENDED, nullptr, nullptr, &startup, &process) != 0;
         const auto launchError = GetLastError();
         if (!launched) return {nullptr, nullptr, static_cast<int>(launchError)};
         if (!AssignProcessToJobObject(job.value, process.hProcess)) {
@@ -492,11 +492,14 @@ void drawMainMenu(bool showCredits) {
             scan();
         }
     }
-    ImGui::Begin("Campaign tools", nullptr, ImGuiWindowFlags_NoNav | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings);
+    // Owner 11-16: no box behind the buttons; the buttons keep their own frames.
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0));
+    ImGui::Begin("Campaign tools", nullptr, ImGuiWindowFlags_NoNav | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoSavedSettings);
     if (ImGui::Button("Campaigns & mods")) pickerOpen = !pickerOpen;
     ImGui::SameLine();
     if (ImGui::Button("Graphics")) GraphicsOptionsWindow::setOpen(true);
     ImGui::End();
+    ImGui::PopStyleColor();
     if (!pickerOpen) return;
     if (!scanned) scan();
     const float scale = std::clamp(viewport->WorkSize.y / 1080.0f, 0.75f, 2.0f);

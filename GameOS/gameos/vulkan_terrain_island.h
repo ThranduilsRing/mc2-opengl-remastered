@@ -158,7 +158,8 @@ struct Mc2TerrainTier1Feed {
     // (MC2_VK_TERRAIN_VISUALDISPLACE_FAR) is off or the bake isn't loaded -> island
     // draws undisplaced (fail-soft; GL also keeps displaced patches in that case).
     const float*                visualHeightCpu;       // terrain field store: visual bake + mip maxes (null = not loaded)
-    uint64_t                    visualHeightBytes;     // visualSide*visualSide*sizeof(float)
+    uint64_t                    visualHeightBytes;     // fine bytes only; excludes GL mip tail
+    const float*                waterShoreCellsCpu;    // 2*visualSide^2 floats, appended by VK snapshot
     uint64_t                    visualHeightVersion;   // bumps on UploadVisualHeightFull (snapshot key)
     int32_t                     visualSide;            // V = (mapSide-1)*4+1 (0 = bake not loaded)
     float                       visualDisplaceFar;     // MC2_TERRAIN_VISUAL_DISPLACE_FAR fade, 0..1 (GL default 1)

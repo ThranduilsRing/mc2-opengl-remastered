@@ -79,6 +79,7 @@
 
 #include <algorithm>
 #include "mc2fmt.h"
+#include <cerrno>
 #include "tacorder_wire.h"
 #include "tactic_table.h"
 
@@ -217,6 +218,7 @@ void TacticalOrder::init (void) {
 	attackParams.aimLocation = -1;
 	attackParams.pursue = true;
 	attackParams.obliterate = false;
+	attackParams.alpha = false;
 	attackParams.targetPoint = glm::vec3(0.0f);
 	targetWID = 0;
 	targetObjectClass = BASEOBJECT;
@@ -420,7 +422,10 @@ long TacticalOrder::pack (MoverGroupPtr group, MoverPtr point) {
 
 	//--------------------
 	// First data DWORD (bit layout in tacorder_wire.h; GUARD without a target packs the sentinel)...
-	data[0] = tacorder_wire::pack_word0(attackParams.aimLocation, std::to_underlying(attackParams.method),
+	const auto method = tacorder_wire::encode_method(std::to_underlying(attackParams.method), attackParams.alpha);
+	if (method < 0 || (attackParams.alpha && code != TACTICAL_ORDER_ATTACK_OBJECT &&
+		code != TACTICAL_ORDER_ATTACK_POINT)) return EINVAL;
+	data[0] = tacorder_wire::pack_word0(attackParams.aimLocation, method,
 		std::to_underlying(attackParams.type), static_cast<uint32_t>(groupFlags), unitOrder, std::to_underlying(origin),
 		tacorder_wire::encode_code(std::to_underlying(code), targetWID != 0));
 
@@ -563,7 +568,9 @@ long TacticalOrder::unpack (void) {
 	tempData >>= TACORDERCHUNK_ATTACKTYPE_BITS;
 
 	const int32_t rawMethod = static_cast<int32_t>(tempData & TACORDERCHUNK_ATTACKMETHOD_MASK);
-	attackParams.method = enum_in_domain(AttackMethod{}, rawMethod) ? static_cast<AttackMethod>(rawMethod) : ATTACKMETHOD_RANGED;
+	const auto method = tacorder_wire::decode_method(rawMethod);
+	attackParams.method = static_cast<AttackMethod>(method.method);
+	attackParams.alpha = method.alpha;
 	tempData >>= TACORDERCHUNK_ATTACKMETHOD_BITS;
 
 	attackParams.aimLocation = (tempData & TACORDERCHUNK_AIMLOCATION_MASK) - 2;
@@ -754,6 +761,21 @@ void Mission::dispatchOwnedRoute(MechWarrior* warrior, mc2::sim::RouteExecution&
 }
 
 long TacticalOrder::execute (MechWarriorPtr warrior, long& message) {
+
+	if (attackParams.alpha) {
+		// Consume the request in both the executing copy and its saved source.
+		attackParams.alpha = false;
+		warrior->getTacOrder(warrior->getOrderState())->attackParams.alpha = false;
+		auto* vehicle = warrior->getVehicle();
+		if (origin != ORDER_ORIGIN_PLAYER ||
+			(code != TACTICAL_ORDER_ATTACK_OBJECT && code != TACTICAL_ORDER_ATTACK_POINT) ||
+			attackParams.method != ATTACKMETHOD_RANGED || vehicle->getObjectClass() != BATTLEMECH ||
+			!static_cast<BattleMech*>(vehicle)->armAlphaStrike()) {
+			code = TACTICAL_ORDER_NONE;
+			message = RADIO_ILLEGAL_ORDER;
+			return TACORDER_FAILURE;
+		}
+	}
 
 	long result = TACORDER_FAILURE;
 	message = -1;
@@ -1847,6 +1869,7 @@ GameObjectPtr TacticalOrder::getTarget (void) {
 //---------------------------------------------------------------------------
 
 bool TacticalOrder::equals (TacticalOrder* tacOrder) {
+	if (attackParams.alpha != tacOrder->attackParams.alpha) return false;
 
 	if (code != tacOrder->code)
 		return(false);
