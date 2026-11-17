@@ -41,7 +41,8 @@ bool ensure_shore_surface(WaterIsland* s) {
             mc2vk::cmdBarrier(cb, VK_PIPELINE_STAGE_HOST_BIT, VK_ACCESS_HOST_WRITE_BIT,
                              VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
             s->shoreCompute.bind(cb, s->shoreSets.set(0));
-            s->shoreCompute.dispatch(cb, (static_cast<uint32_t>(side * side) + 63) / 64);
+            const uint32_t groups = (static_cast<uint32_t>(side) + 7) / 8;
+            s->shoreCompute.dispatch(cb, groups, groups);
             mc2vk::cmdBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
                              VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
         }, "water shore surface bake")) return false;

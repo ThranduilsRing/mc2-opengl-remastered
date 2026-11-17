@@ -39,6 +39,7 @@ public:
     // vkCmdBindPipeline + vkCmdBindDescriptorSets(set 0), with the dynamic offsets of the layout's _DYNAMIC bindings in binding order.
     void bind(VkCommandBuffer cb, VkDescriptorSet set, std::span<const uint32_t> dynamicOffsets = {}) const;
     void dispatch(VkCommandBuffer cb, uint32_t groupsX) const { vkCmdDispatch(cb, groupsX, 1, 1); }
+    void dispatch(VkCommandBuffer cb, uint32_t groupsX, uint32_t groupsY) const { vkCmdDispatch(cb, groupsX, groupsY, 1); }
 
 private:
     OwnedShaderModule         module_;
