@@ -520,7 +520,8 @@ mc2pkg::LocationVariant LogisticsVariant::locationRecord() const {
 	}
 	const auto* package = chassis->getPackage();
 	const std::string stem = std::filesystem::path(chassis->fileName).stem().string();
-	auto loaded = mc2pkg::loadChassisLayout(package ? package->fitPath : "data/defs/chassis/core/" + stem + "/locations.fit");
+	const auto layoutPath = std::filesystem::path("data") / "defs" / "chassis" / "core" / stem / "locations.fit";
+	auto loaded = mc2pkg::loadChassisLayout(package ? package->fitPath : layoutPath.generic_string());
 	mc2pkg::ChassisLayout layout;
 	if (loaded) layout = std::move(*loaded);
 	else {
@@ -535,9 +536,9 @@ mc2pkg::LocationVariant LogisticsVariant::locationRecord() const {
 				layout.locations[loc].hardpoints.push_back({31, mc2pkg::hardpointKey(std::string(mc2pkg::locationNames[loc]) + "." + std::to_string(n)), {}});
 		}
 		if (package) for (const auto& hp : package->hardpoints) {
-			const int loc = mc2pkg::locationIndex(hp.location);
-			if (loc >= 0 && hp.mount != mc2pkg::Mount::None)
-				layout.locations[loc].hardpoints.push_back({1u << static_cast<int>(hp.mount), hp.key, hp.socket});
+			const auto loc = mc2pkg::locationIndex(hp.location);
+			if (loc && hp.mount != mc2pkg::Mount::None)
+				layout.locations[*loc].hardpoints.push_back({1u << static_cast<int>(hp.mount), hp.key, hp.socket});
 		}
 	}
 	layout.maxHeat = chassis->maxHeat;

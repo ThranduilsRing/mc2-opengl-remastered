@@ -752,6 +752,9 @@ string(FIND "${layout_package_source}" "int LogisticsVariant::getPackageMounts("
 string(SUBSTRING "${layout_package_source}" ${layout_mount_start} -1 layout_mounts)
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/layout_deployment.inc"
     CONTENT "${layout_mount_helpers}\n${layout_flat}\n${layout_mounts}\n${layout_restore}")
+mc2_height_slice(layout_accept code/logisticsdata_modify.cpp
+    "std::expected<void, int> LogisticsData::acceptMechModifications(" "\n\tbool bFound = 0;")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/layout_accept.inc" CONTENT "${layout_accept}\nreturn {};\n}\n")
 set_source_files_properties(test_chassis_layout.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
 mc2_height_slice(carbon_leg_armor code/mech.cpp "\t\tcurLeg =" "\n\t\tarmorEffect = armorHead")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/carbon_leg_armor.inc" CONTENT "${carbon_leg_armor}")

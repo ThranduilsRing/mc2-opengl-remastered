@@ -281,6 +281,10 @@ std::expected<void, int> LogisticsData::acceptMechModifications( mc2::czstring n
 {
 	if ( !currentlyModifiedMech )
 		return std::unexpected(-1);
+	// Reject before changing money, names or inventory. Campaign persistence
+	// still keeps grandfathered equipment; reusing its old variant is allowed.
+	if (!modifiedVariant || !mc2pkg::canSaveLocationVariant(modifiedVariant->locationRecord()))
+		return std::unexpected(INVALID_VARIANT);
 
 	bool bFound = 0;
 	if ( oldVariant )

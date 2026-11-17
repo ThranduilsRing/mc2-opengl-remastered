@@ -19,11 +19,16 @@ class FitIniFile;
 namespace mc2pkg {
 inline constexpr std::array<const char*, 8> locationNames = {
     "Head", "CenterTorso", "LeftTorso", "RightTorso", "LeftArm", "RightArm", "LeftLeg", "RightLeg"};
-inline int locationIndex(std::string_view name) {
+inline std::optional<int> locationIndex(std::string_view name) {
     for (int i = 0; i < 8; ++i) if (name == locationNames[i]) return i;
-    return -1;
+    return std::nullopt;
 }
-enum WeaponMask : unsigned { Energy = 1, Ballistic = 2, Missile = 4, AntiPersonnel = 8, AMS = 16 };
+enum class WeaponMask : unsigned { Energy = 1, Ballistic = 2, Missile = 4, AntiPersonnel = 8, AMS = 16 };
+inline constexpr unsigned Energy = static_cast<unsigned>(WeaponMask::Energy);
+inline constexpr unsigned Ballistic = static_cast<unsigned>(WeaponMask::Ballistic);
+inline constexpr unsigned Missile = static_cast<unsigned>(WeaponMask::Missile);
+inline constexpr unsigned AntiPersonnel = static_cast<unsigned>(WeaponMask::AntiPersonnel);
+inline constexpr unsigned AMS = static_cast<unsigned>(WeaponMask::AMS);
 struct LocationMount { unsigned mask = 0, key = 0; std::string socket; };
 struct ChassisLocation {
     int slots = 0, structure = 0, armorMax = 0, armorRearMax = 0;
@@ -169,7 +174,7 @@ struct LocationVariant {
 inline bool canSaveLocationVariant(const LocationVariant& record) { return !record.grandfathered; }
 // Shared production FIT adapters. A malformed record fails atomically; legality
 // is checked AFTER restoring the complete list, never by addComponent/grid fit.
-bool readLocationVariant(FitIniFile&, LocationVariant&);
+std::optional<LocationVariant> readLocationVariant(FitIniFile&);
 bool writeLocationVariant(FitIniFile&, const LocationVariant&);
 
 inline bool validateLocations(const ChassisLayout& layout, LocationVariant& record,
@@ -225,12 +230,12 @@ inline void mapLegacyLocations(const ChassisLayout& layout, LocationVariant& rec
         else if (c.kind == EquipmentKind::JumpJet) { item.location = 6; item.slot = 3; }
         else if (c.kind == EquipmentKind::XLEngine) { item.location = 1; item.slot = 0; }
         else if (c.kind == EquipmentKind::Weapon || c.kind == EquipmentKind::Ammo) {
-            if (cursor < roundRobin.size()) { item.location = roundRobin[cursor].first; item.slot = roundRobin[cursor].second; }
+            if (cursor < roundRobin.size()) { const auto [location, slot] = roundRobin[cursor]; item.location = location; item.slot = slot; }
             cursor += 1 + static_cast<int>(c.implicitAmmo);
         } else { item.location = -1; item.slot = -1; }
         if (package && c.kind != EquipmentKind::Fixed) {
             const auto* region = regionForFootprint(*package, item.x, item.y, c.width, c.height);
-            if (region) { item.location = locationIndex(region->location); item.slot = next[item.location >= 0 ? item.location : 0]++; }
+            if (region) { item.location = locationIndex(region->location).value_or(-1); item.slot = next[item.location >= 0 ? item.location : 0]++; }
         }
     }
     // Heat sinks/armor have no resetComponents inventory entry. Give their lab
@@ -297,7 +302,7 @@ inline bool mapLocationsToLegacy(LocationVariant& record, const std::vector<Layo
             if (c.width <= 0 || c.height <= 0) break;
             if (package) {
                 const auto* r = regionForFootprint(*package, x, y, c.width, c.height);
-                if (!r || locationIndex(r->location) != item.location) continue;
+                if (!r || locationIndex(r->location).value_or(-1) != item.location) continue;
             }
             bool free = true;
             for (int dy = 0; dy < c.height; ++dy) for (int dx = 0; dx < c.width; ++dx)

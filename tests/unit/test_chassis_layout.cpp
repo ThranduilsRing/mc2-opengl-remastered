@@ -9,6 +9,7 @@
 #include <iostream>
 #include <cstring>
 #include <functional>
+#include <expected>
 
 namespace {
 using namespace mc2pkg;
@@ -172,7 +173,7 @@ TEST_CASE("chassis_layout: schema requires payload and all locations") {
 TEST_CASE("chassis_layout: production FIT adapter old save and exact v1 v2 v1 coordinates") {
     FitIniFile old; REQUIRE(old.open((root / "tests/unit/fixtures/chassis_legacy.fit").string().c_str()) == NO_ERR);
     REQUIRE(old.seekBlock("Variant0") == NO_ERR);
-    LocationVariant record; REQUIRE(readLocationVariant(old, record)); CHECK(record.version == 1);
+    auto decoded = readLocationVariant(old); REQUIRE(decoded); auto record = *decoded; CHECK(record.version == 1);
     const auto original = record.items;
     auto energy = weapon(); LayoutComponent sink; sink.id = 7; sink.kind = EquipmentKind::HeatSink;
     LayoutComponent sensor; sensor.id = 13; sensor.kind = EquipmentKind::Sensor;
@@ -184,7 +185,7 @@ TEST_CASE("chassis_layout: production FIT adapter old save and exact v1 v2 v1 co
       record.armor[10] = 217; record.items[0].hardpoint = 0xfedcba98u;
       REQUIRE(writeLocationVariant(out, record)); out.close(); }
     FitIniFile saved; REQUIRE(saved.open(path.string().c_str()) == NO_ERR); REQUIRE(saved.seekBlock("Variant0") == NO_ERR);
-    LocationVariant read; REQUIRE(readLocationVariant(saved, read));
+    auto savedRecord = readLocationVariant(saved); REQUIRE(savedRecord); auto read = *savedRecord;
     CHECK(read.version == 2); CHECK(read.armor[10] == 217); CHECK(read.items[0].hardpoint == 0xfedcba98u);
     REQUIRE(read.items.size() == original.size());
     for (std::size_t i = 0; i < original.size(); ++i) {
@@ -195,7 +196,7 @@ TEST_CASE("chassis_layout: production FIT adapter old save and exact v1 v2 v1 co
     saved.close(); std::filesystem::remove(path);
     MemFit truncated("[Variant0]\r\nl ComponentCount = 1\r\nl Component0 = 40");
     REQUIRE(truncated.file.seekBlock("Variant0") == NO_ERR);
-    CHECK_FALSE(readLocationVariant(truncated.file, read)); CHECK(read.items.size() == 3);
+    CHECK_FALSE(readLocationVariant(truncated.file)); CHECK(read.items.size() == 3);
     record.edited = true; CHECK_FALSE(mapLocationsToLegacy(record, specs, 1, 1));
     CHECK(record.classicReadOnly); CHECK(record.items[0].x == original[0].x);
 }
@@ -264,6 +265,32 @@ TEST_CASE("chassis_layout: every repository stock designer variant uses exact CS
         }
         for (std::size_t n = 0; n < variants.size(); ++n) {
             CAPTURE(n); CHECK(validateLocations(layout, variants[n], components[n]));
+            const auto& original = variants[n];
+            const auto path = std::filesystem::temp_directory_path() / ("mc2_stock_layout_" + std::to_string(n) + ".fit");
+            {
+                FitIniFile saved;
+                REQUIRE(saved.create(path.string().c_str()) == NO_ERR);
+                saved.writeBlock("Variant0");
+                REQUIRE(writeLocationVariant(saved, original));
+                saved.close();
+            }
+            FitIniFile saved;
+            REQUIRE(saved.open(path.string().c_str()) == NO_ERR);
+            REQUIRE(saved.seekBlock("Variant0") == NO_ERR);
+            auto savedRecord = readLocationVariant(saved);
+            REQUIRE(savedRecord);
+            auto restored = *savedRecord;
+            REQUIRE(restored.items.size() == original.items.size());
+            CHECK(validateLocations(layout, restored, components[n]));
+            for (std::size_t i = 0; i < original.items.size(); ++i) {
+                CHECK(restored.items[i].id == original.items[i].id);
+                CHECK(restored.items[i].x == original.items[i].x);
+                CHECK(restored.items[i].y == original.items[i].y);
+                CHECK(restored.items[i].location == original.items[i].location);
+                CHECK(restored.items[i].slot == original.items[i].slot);
+            }
+            saved.close();
+            std::filesystem::remove(path);
         }
     }
     CHECK(chassisCount == 1); CHECK(variantCount == 3);
@@ -282,9 +309,13 @@ struct LogisticsComponent {
     int getComponentWidth() const { return 1; } int getComponentHeight() const { return 1; }
     float getWeight() const { return 1; }
 };
+struct LogisticsVariant;
 struct LogisticsData {
     static LogisticsData* instance;
     std::vector<LogisticsComponent> components;
+    LogisticsVariant* modifiedVariant = nullptr;
+    void* currentlyModifiedMech = nullptr;
+    std::expected<void, int> acceptMechModifications(const char* name);
     std::optional<std::reference_wrapper<LogisticsComponent>> getComponent(int id) {
         for (auto& c : components) if (c.id == id) return c;
         return std::nullopt;
@@ -314,6 +345,8 @@ struct LogisticsVariant {
     auto locationRecord() const { return layoutState; } // legality is covered by the shared validator cases
 };
 #include "layout_deployment.inc"
+constexpr int INVALID_VARIANT = 1027;
+#include "layout_accept.inc"
 }
 
 TEST_CASE("chassis_layout: production restore retains grandfathered items and Phase A deployment bytes") {
@@ -334,6 +367,12 @@ TEST_CASE("chassis_layout: production restore retains grandfathered items and Ph
     changed.armor.fill(255);
     for (auto& item : changed.items) { item.location = 7; item.slot = 11; item.hardpoint = 0xdeadbeef; }
     REQUIRE(v.restoreLocationRecord(changed)); CHECK(v.componentCount == 3); CHECK(v.layoutState.grandfathered);
+    database.modifiedVariant = &v;
+    database.currentlyModifiedMech = &v;
+    const auto rejected = database.acceptMechModifications("invalid");
+    REQUIRE_FALSE(rejected); CHECK(rejected.error() == INVALID_VARIANT);
+    v.layoutState.grandfathered = false;
+    CHECK(database.acceptMechModifications("legal"));
     count = 54; v.getComponents(count, idsAfter); count = 54; REQUIRE(v.getPackageMounts(count, mountsAfter) == 0);
     CHECK(std::memcmp(idsBefore, idsAfter, sizeof(idsBefore)) == 0);
     CHECK(std::memcmp(mountsBefore, mountsAfter, sizeof(mountsBefore)) == 0);

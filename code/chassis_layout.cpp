@@ -3,16 +3,16 @@
 
 namespace mc2pkg {
 namespace {
-std::string text(FitIniFile& f, const std::string& key) {
+std::string text(FitIniFile& f, std::string_view key) {
     char value[512]{};
     return f.readIdString(key, value, sizeof(value) - 1) == NO_ERR ? value : "";
 }
-bool number(FitIniFile& f, const std::string& key, int& out, int low, int high) {
+bool number(FitIniFile& f, std::string_view key, int& out, int low, int high) {
     long value = 0;
     if (f.readIdLong(key, value) != NO_ERR || value < low || value > high) return false;
     out = static_cast<int>(value); return true;
 }
-unsigned maskOf(const std::string& text) {
+unsigned maskOf(std::string_view text) {
     unsigned mask = 0;
     std::size_t begin = 0;
     while (begin < text.size()) {
@@ -28,7 +28,7 @@ unsigned maskOf(const std::string& text) {
 }
 }
 std::optional<ChassisLayout> readChassisLayout(FitIniFile& f, std::string* error) {
-    auto fail = [&](const std::string& why) -> std::optional<ChassisLayout> {
+    auto fail = [&](std::string_view why) -> std::optional<ChassisLayout> {
         if (error) *error = why; return std::nullopt;
     };
     ChassisLayout out;
@@ -72,13 +72,13 @@ std::optional<ChassisLayout> loadChassisLayout(std::string_view path, std::strin
     return readChassisLayout(f, error); // FitIniFile uses the normal mounted VFS
 }
 
-bool readLocationVariant(FitIniFile& f, LocationVariant& out) {
+std::optional<LocationVariant> readLocationVariant(FitIniFile& f) {
     LocationVariant result;
     int count = 0;
-    if (!number(f, "ComponentCount", count, 0, 54)) return false;
+    if (!number(f, "ComponentCount", count, 0, 54)) return std::nullopt;
     long version = 1;
     f.readIdLong("LayoutVersion", version);
-    if (version != 1 && version != 2) return false;
+    if (version != 1 && version != 2) return std::nullopt;
     result.version = static_cast<int>(version);
     for (int i = 0; i < count; ++i) {
         VariantItem item;
@@ -86,38 +86,38 @@ bool readLocationVariant(FitIniFile& f, LocationVariant& out) {
         if (!number(f, key, item.id, 0, 65535) ||
             !number(f, key + "x", item.x, -32768, 32767) ||
             !number(f, key + "y", item.y, -32768, 32767) ||
-            !number(f, key + "Location", item.legacyLocation, 0, 2)) return false;
+            !number(f, key + "Location", item.legacyLocation, 0, 2)) return std::nullopt;
         if (version == 2) {
             if (!number(f, key + "Loc", item.location, -1, 7) ||
-                !number(f, key + "Slot", item.slot, -1, 11)) return false;
+                !number(f, key + "Slot", item.slot, -1, 11)) return std::nullopt;
             // FIT's ul writer narrows through as_i32. Decimal text preserves
             // all 32 hash bits identically on Windows and Linux.
             const auto hp = text(f, key + "Hp");
-            if (hp.empty() || hp.size() > 10) return false;
+            if (hp.empty() || hp.size() > 10) return std::nullopt;
             std::uint64_t value = 0;
             for (char digit : hp) {
-                if (digit < '0' || digit > '9') return false;
+                if (digit < '0' || digit > '9') return std::nullopt;
                 value = value * 10 + static_cast<unsigned>(digit - '0');
             }
-            if (value > 0xffffffffu) return false;
+            if (value > 0xffffffffu) return std::nullopt;
             item.hardpoint = static_cast<unsigned>(value);
         }
         result.items.push_back(item);
     }
     if (version == 2) {
         for (int i = 0; i < 11; ++i)
-            if (!number(f, "Armor" + std::to_string(i), result.armor[i], 0, 255)) return false;
+            if (!number(f, "Armor" + std::to_string(i), result.armor[i], 0, 255)) return std::nullopt;
         long grandfathered = 0, edited = 0;
         f.readIdLong("LayoutGrandfathered", grandfathered);
         f.readIdLong("LayoutEdited", edited);
         result.grandfathered = grandfathered != 0; result.edited = edited != 0;
     }
-    out = std::move(result); return true;
+    return result;
 }
 bool writeLocationVariant(FitIniFile& f, const LocationVariant& record) {
     if (record.items.size() > 54) return false;
     bool ok = true;
-    auto write = [&](const std::string& key, long value) { if (f.writeIdLong(key, value) <= 0) ok = false; };
+    auto write = [&](std::string_view key, long value) { if (f.writeIdLong(key, value) <= 0) ok = false; };
     write("LayoutVersion", 2);
     write("ComponentCount", static_cast<long>(record.items.size()));
     write("LayoutGrandfathered", record.grandfathered); write("LayoutEdited", record.edited);
@@ -125,7 +125,7 @@ bool writeLocationVariant(FitIniFile& f, const LocationVariant& record) {
         const auto& item = record.items[i]; const auto key = "Component" + std::to_string(i);
         write(key, item.id); write(key + "x", item.x); write(key + "y", item.y);
         write(key + "Location", item.legacyLocation); write(key + "Loc", item.location); write(key + "Slot", item.slot);
-        if (f.writeIdString(key + "Hp", std::to_string(item.hardpoint).c_str()) <= 0) ok = false;
+        if (f.writeIdString((key + "Hp").c_str(), std::to_string(item.hardpoint).c_str()) <= 0) ok = false;
     }
     for (int i = 0; i < 11; ++i) write("Armor" + std::to_string(i), record.armor[i]);
     return ok;

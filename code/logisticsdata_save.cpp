@@ -331,8 +331,8 @@ std::expected<void, long> LogisticsData::loadVariant( FitIniFile& file )
 	
 	pVariant->setName( *variantName );
 
-	mc2pkg::LocationVariant record;
-	if (!mc2pkg::readLocationVariant(file, record) || !pVariant->restoreLocationRecord(std::move(record))) {
+	auto record = mc2pkg::readLocationVariant(file);
+	if (!record || !pVariant->restoreLocationRecord(std::move(*record))) {
 		variants.pop_back();
 		return std::unexpected(INVALID_FILE_NAME);
 	}
