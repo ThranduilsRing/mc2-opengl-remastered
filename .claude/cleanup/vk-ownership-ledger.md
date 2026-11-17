@@ -14,7 +14,7 @@ code and the proof of a finished conversion, not a leak detector.
 
 | Island | Files | Created | Released | Imbalance | Manual | Kinds out of balance |
 |---|---:|---:|---:|---:|---:|---|
-| color_prop | 2 | 0 | 0 | +0 | 0 | - |
+| color_prop | 2 | 1 | 0 | +1 | 1 | QueryPool 1/0 |
 | legacy_shape | 2 | 0 | 0 | +0 | 0 | - |
 | mech | 2 | 0 | 0 | +0 | 0 | - |
 | post_fog | 1 | 0 | 0 | +0 | 0 | - |
@@ -34,22 +34,24 @@ code and the proof of a finished conversion, not a leak detector.
 | textures | 2 | 0 | 0 | +0 | 0 | - |
 | render_infra | 2 | 11 | 10 | +1 | 21 | Pipeline 4/5, PipelineCache 2/1, Sampler 1/0 |
 
-Total over all islands: created 15, released 12, imbalance +3.
+Total over all islands: created 16, released 12, imbalance +4.
 
 ## Files
 
 | File | Created | Released | Imbalance |
 |---|---:|---:|---:|
+| `vulkan_color_prop_island.cpp` | 1 | 0 | +1 |
 | `engine_present_vk_imgui.cpp` | 1 | 0 | +1 |
 | `vulkan_context.cpp` | 3 | 2 | +1 |
 | `vk_render_infra.cpp` | 11 | 10 | +1 |
 
 ## Conversion order
 
-Converted (the shared context is the root owner of the instance, device and allocator and is not an island): color_prop, image_resource, legacy_shape, light_feed, mech, post_fog, post_hzb, post_screenfx, post_ssao, shadow, shared_scene, sky, terrain, textures, vfx, water. Remaining, smallest hand-written footprint first (the batch list of the ownership rewrite):
+Converted (the shared context is the root owner of the instance, device and allocator and is not an island): image_resource, legacy_shape, light_feed, mech, post_fog, post_hzb, post_screenfx, post_ssao, shadow, shared_scene, sky, terrain, textures, vfx, water. Remaining, smallest hand-written footprint first (the batch list of the ownership rewrite):
 
-1. present (1 manual tokens)
-2. render_infra (21 manual tokens)
+1. color_prop (1 manual tokens)
+2. present (1 manual tokens)
+3. render_infra (21 manual tokens)
 
 ## Owner types (`vk_owned.h/.cpp`)
 
@@ -84,13 +86,13 @@ Release tokens inside the destructors of the owner types: every one runs once, f
 | legacy_shape | CommandBuffers | 1 | 0 |
 | mech | CommandBuffers | 1 | 0 |
 | post_fog | CommandBuffers | 1 | 0 |
-| post_hzb | CommandBuffers | 1 | 0 |
 | post_screenfx | CommandBuffers | 1 | 0 |
 | shadow | CommandBuffers | 1 | 0 |
 | sky | CommandBuffers | 2 | 1 |
 | terrain | CommandBuffers | 3 | 1 |
 | vfx | CommandBuffers | 1 | 0 |
 | water | CommandBuffers | 1 | 0 |
+| water | DescriptorSets | 1 | 0 |
 | present | CommandBuffers | 4 | 0 |
 | present | DescriptorSets | 0 | 2 |
 | context | Allocator | 1 | 1 |

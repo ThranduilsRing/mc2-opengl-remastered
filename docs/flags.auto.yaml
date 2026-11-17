@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 428
 registry_entry_count: 123
-verified_count: 400
+verified_count: 399
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -1094,7 +1094,6 @@ flags:
     rule: Lead0
     owner: code
     doc: "SIM-SPEED-BUTTON-1: double-gated sim-speed tab (MC2_HUD_SIM_SPEED; needs MC2_HUD_IMGUI_TABS like every registry consumer)."
-    verified: true
   - name: MC2_HZB_BUILD
     kind: Bool
     default: true

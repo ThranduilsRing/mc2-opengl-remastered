@@ -20,6 +20,7 @@ sys.path.insert(0, str(ROOT / "tools" / "box" / "filler"))
 sys.path.insert(0, str(ROOT / "scripts"))
 import box_run
 import console_child
+import gate_hosts
 
 BOX = ROOT / "tools" / "box"
 BASH = shutil.which("bash") or "bash"   # not a bare "bash": on Windows CreateProcess finds the WSL launcher, which mangles $ in -c text
@@ -89,6 +90,22 @@ def guard():
     return between(box_run.REMOTE, "#@@DISK_GUARD@@", "#@@END_DISK_GUARD@@")
 
 
+def _bash_runs_stub_df():
+    """The guard's real precondition: bash can invoke a stub df placed first on PATH."""
+    import tempfile
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / "df").write_text('#!/bin/sh\necho Avail\necho "7G"\n')
+            (Path(d) / "df").chmod(0o755)
+            r = bash("df -BG --output=avail /workspace | tail -1 | tr -dc 0-9",
+                     env={"PATH": f"{Path(d).as_posix()}{os.pathsep}{os.environ['PATH']}"})
+            return r.stdout.strip() == "7"
+    except OSError:
+        return False
+
+
+@pytest.mark.skipif(gate_hosts.current_host() != "pc" and not _bash_runs_stub_df(),
+                    reason="bash cannot invoke the stub df on this gate host")
 @pytest.mark.parametrize("avail,floor,rc", [(5, None, 77), (14, None, 77), (15, None, 0), (40, None, 0), (20, "30", 77), (20, "10", 0)])
 def test_disk_guard_floor(avail, floor, rc, tmp_path):
     (tmp_path / "df").write_text(f'#!/bin/sh\necho Avail\necho "{avail}G"\n')   # a fake df first on PATH
@@ -125,8 +142,8 @@ def lanes(tmp_path):
     (w / "lanes" / ".box_lane_zz_t.sh").write_text("x")
     m = tmp_path / "m.git"
     subprocess.run(["git", "init", "-q", "--bare", str(m)], check=True, **console_child.child_kwargs())
-    for key, value in (("user.name", "t"), ("user.email", "t@t")):
-        subprocess.run(["git", "-C", str(m), "config", key, value], check=True, **console_child.child_kwargs())
+    subprocess.run(["git", "-C", str(m), "config", "user.name", "test"], check=True, **console_child.child_kwargs())
+    subprocess.run(["git", "-C", str(m), "config", "user.email", "test@localhost"], check=True, **console_child.child_kwargs())
     (w / "locks").mkdir()
     q = tmp_path / "queue.txt"      # stand-in for `pueue status --json`: one line of command/path/label per queued or running task
     q.write_text("")

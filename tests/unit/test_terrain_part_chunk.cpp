@@ -322,6 +322,7 @@ TEST_CASE("a pre-change R2 animation record (v2, no selector memory) loads with 
 	v3.imported.mode = mc2clip::Mode::Once;
 	v3.imported.locomotion = true;
 	mc2::save::Archive current;
+	current.sectionVersion = 3;
 	current(v3);
 	REQUIRE(current.good());
 	// Synthesised v2 blob: a v2 archive writes the record without the selector memory.
@@ -350,8 +351,38 @@ TEST_CASE("a pre-change R2 animation record (v2, no selector memory) loads with 
 	bad[bad.size() - 5] = 2;
 	mc2::sim::UnitAnimState rejected;
 	mc2::save::Archive badRead(bad);
+	badRead.sectionVersion = 3;
 	badRead(rejected);
 	CHECK_FALSE(badRead.good());
+}
+
+TEST_CASE("clip fade state round trips v4 and defaults in v2/v3") {
+	mc2::sim::UnitAnimState src;
+	src.imported.previousClip = "atlas_moveCoreWalkFwd";
+	src.imported.previousClipTimeSec = 0.75f;
+	src.imported.fadeTimeSec = 0.05f;
+	src.imported.playRate = 2;
+	src.imported.previousPlayRate = 1.5f;
+	src.imported.previousDurationSec = 3;
+	src.imported.previousOnce = true;
+	for (unsigned version : {2u, 3u, 4u}) {
+		mc2::save::Archive write;
+		write.sectionVersion = version;
+		write(src);
+		REQUIRE(write.good());
+		mc2::sim::UnitAnimState dst;
+		mc2::save::Archive read(write.bytes());
+		read.sectionVersion = version;
+		read(dst);
+		REQUIRE(read.finish());
+		CHECK(dst.imported.previousClip == (version == 4 ? src.imported.previousClip : ""));
+		CHECK(dst.imported.previousClipTimeSec == (version == 4 ? 0.75f : 0));
+		CHECK(dst.imported.fadeTimeSec == (version == 4 ? 0.05f : 0));
+		CHECK(dst.imported.playRate == (version == 4 ? 2 : 1));
+		CHECK(dst.imported.previousPlayRate == (version == 4 ? 1.5f : 1));
+		CHECK(dst.imported.previousDurationSec == (version == 4 ? 3 : 1));
+		CHECK(dst.imported.previousOnce == (version == 4));
+	}
 }
 
 TEST_CASE("a cursor of -1 (replan failed on a complex route) saves and loads; below -1 is rejected") {
@@ -377,6 +408,7 @@ TEST_CASE("a dev-window v2 record (v3 layout stamped version 2) fails the v2 par
 	src.imported.mode = mc2clip::Mode::Once;
 	src.imported.locomotion = true;
 	mc2::save::Archive oldWindow;      // de4413807..f8b4174c3 wrote exactly the v3 field list
+	oldWindow.sectionVersion = 3;
 	oldWindow(src);
 	REQUIRE(oldWindow.good());
 	mc2::sim::UnitAnimState asV2;
@@ -478,6 +510,7 @@ TEST_CASE("v3 section with several records: reading it as v2 is rejected so the 
 		return a.finish();
 	};
 	mc2::save::Archive w;
+	w.sectionVersion = 3;
 	uint32_t none = 0, count = 3;
 	w(none, none, none, none, count);
 	for (int32_t handle : {2, 5, 9}) {

@@ -82,11 +82,13 @@ bool NativeProducers::init(const VulkanContext& ctx, uint32_t numVertices, uint3
     if (!makeDevice(lightOut_, static_cast<VkDeviceSize>(numVertices) * 8u, kStorage | dst | src, "producers.lightOut")) return false;
     // Preserve the old zero pack for holes between visible rows. Such vertices
     // have version zero until first visited, so they need no per-frame upload.
-    const std::vector<gos_terrain_lighting::GpuTerrainVertexInput> zeroInputs(numVertices);
     for (uint32_t p = 0; p < kSlots; ++p) {
-        const VkDeviceSize bytes = static_cast<VkDeviceSize>(numVertices) * sizeof(zeroInputs[0]);
-        if (!lightIn_[p].createGpuRead(allocator_, device_, bytes, kStorage, "producers.lightIn", static_cast<int>(p)) ||
-            !lightIn_[p].upload(zeroInputs.data(), bytes)) return false;
+        const VkDeviceSize bytes = static_cast<VkDeviceSize>(numVertices) * sizeof(gos_terrain_lighting::GpuTerrainVertexInput);
+        if (!lightIn_[p].createGpuRead(allocator_, device_, bytes, kStorage, "producers.lightIn", static_cast<int>(p))) return false;
+        void* mapped = lightIn_[p].map();
+        if (!mapped) return false;
+        std::memset(mapped, 0, static_cast<size_t>(bytes));
+        lightIn_[p].unmap();
         vertexUploads_[p].reset(numVertices);
         if (!argsUbo_[p].createGpuRead(allocator_, device_, sizeof(VkDrawArgsParams), kUniform, "producers.argsUbo", static_cast<int>(p))) return false;
         VkDrawArgsParams ap{{static_cast<int32_t>(maxThin_), 6, 0, 0}};

@@ -271,14 +271,16 @@ void init(mc2::czstring sessionId, int pid) {
 }
 
 bool enabled() {
-    const DiagState& s = state();
+    DiagState& s = state();
+    std::lock_guard<std::mutex> lock(s.mtx);
     return s.initialized && !s.disabled && s.file != nullptr;
 }
 
 bool tagEnabled(mc2::czstring tag) {
     if (!tag) return false;
-    const DiagState& s = state();
-    if (!enabled()) return false;
+    DiagState& s = state();
+    std::lock_guard<std::mutex> lock(s.mtx);
+    if (!s.initialized || s.disabled || !s.file) return false;
     if (s.allTags) return true;
     return s.enabledTags.count(tag) > 0;
 }
@@ -318,6 +320,7 @@ bool writeEvent(mc2::czstring tag, int version, uint64_t frame, mc2::czstring da
     if (!tag || !dataJson) return false;
 
     DiagState& s = state();
+    std::lock_guard<std::mutex> lock(s.mtx);
 
     if (!s.initialized || s.disabled || !s.file) return false;
     if (!s.allTags && s.enabledTags.count(tag) == 0) return false;
@@ -346,9 +349,6 @@ bool writeEvent(mc2::czstring tag, int version, uint64_t frame, mc2::czstring da
 
     const std::string lineStr = line.str();
 
-    std::lock_guard<std::mutex> lock(s.mtx);
-    if (!s.file) return false;
-
     const size_t written = fwrite(lineStr.c_str(), 1, lineStr.size(), s.file);
     fflush(s.file);  // Line-buffered: flush after each event for crash-survival
 
@@ -357,6 +357,7 @@ bool writeEvent(mc2::czstring tag, int version, uint64_t frame, mc2::czstring da
 
 void flush() {
     DiagState& s = state();
+    std::lock_guard<std::mutex> lock(s.mtx);
     if (s.file) fflush(s.file);
 }
 

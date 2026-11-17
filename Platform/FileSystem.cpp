@@ -147,7 +147,9 @@ void SaveDataToRegistry(const char* keyName, void* pData, std::uint32_t szData)
 
 bool GetUserDataDirectory(std::span<char> user_dir)
 {
-    const int len = static_cast<int>(user_dir.size());
+    if (user_dir.empty())
+        return false;
+    const size_t len = user_dir.size();
 	const int cfg_dir_size = 1024;
     char cfg_dir[cfg_dir_size] = {0};
     struct stat st;

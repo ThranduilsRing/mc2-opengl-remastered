@@ -1,6 +1,6 @@
 {
   "summary": {
-    "glsl_blocks_with_binding": 297,
+    "glsl_blocks_with_binding": 305,
     "native_pairs": 4,
     "fails": 0,
     "warns": 1
@@ -391,7 +391,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_prop.vert",
-        "line": 48,
+        "line": 49,
         "role": "ShadowFrameUBO",
         "std": "std140",
         "type": "uniform",
@@ -554,7 +554,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.vert",
-        "line": 53,
+        "line": 54,
         "role": "WaterVsParams",
         "std": "std140",
         "type": "uniform",
@@ -606,7 +606,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 57,
+        "line": 58,
         "role": "Instances",
         "std": "std430",
         "type": "buffer",
@@ -631,6 +631,16 @@
         "std": "std140",
         "type": "uniform",
         "source": "shaders/vulkan/fog_oob.frag",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/hud_tex.frag",
+        "line": 6,
+        "role": "sceneNormal",
+        "std": null,
+        "type": "sampler2D",
+        "source": "shaders/vulkan/hud_tex.frag",
         "branch": {}
       },
       {
@@ -825,7 +835,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/shadow_prop.vert",
-        "line": 63,
+        "line": 64,
         "role": "Instances",
         "std": "std430",
         "type": "buffer",
@@ -915,7 +925,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
-        "line": 33,
+        "line": 62,
         "role": "WaterFsParams",
         "std": "std140",
         "type": "uniform",
@@ -925,7 +935,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.vert",
-        "line": 63,
+        "line": 64,
         "role": "WaterFsParams",
         "std": "std140",
         "type": "uniform",
@@ -992,6 +1002,36 @@
         "std": "std430",
         "type": "buffer",
         "source": "shaders/vulkan/terrain_tier1_skirt.vert",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/vegetation_compact.comp",
+        "line": 12,
+        "role": "VegSurvive",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/include/vegetation_cull_common.glsl",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/vegetation_cull.comp",
+        "line": 12,
+        "role": "VegSurvive",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/include/vegetation_cull_common.glsl",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/vegetation_region.comp",
+        "line": 12,
+        "role": "VegSurvive",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/include/vegetation_cull_common.glsl",
         "branch": {}
       }
     ],
@@ -1161,7 +1201,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
-        "line": 70,
+        "line": 99,
         "role": "WaterReactive",
         "std": "std430",
         "type": "buffer",
@@ -1173,7 +1213,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 142,
+        "line": 147,
         "role": "uTreeObjectMap",
         "std": null,
         "type": "sampler2DShadow",
@@ -1239,7 +1279,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 136,
+        "line": 143,
         "role": "Compact",
         "std": "std430",
         "type": "buffer",
@@ -1391,11 +1431,21 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 63,
+        "line": 64,
         "role": "TypeAlbedoLayer",
         "std": "std430",
         "type": "buffer",
         "source": "shaders/vulkan/color_prop_tier1.vert",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/hud_tex.frag",
+        "line": 7,
+        "role": "sceneDepth",
+        "std": null,
+        "type": "sampler2D",
+        "source": "shaders/vulkan/hud_tex.frag",
         "branch": {}
       },
       {
@@ -1636,7 +1686,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
-        "line": 55,
+        "line": 84,
         "role": "u_hdri",
         "std": null,
         "type": "sampler2D",
@@ -1911,7 +1961,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 76,
+        "line": 77,
         "role": "uAlbedo",
         "std": null,
         "type": "sampler2DArray",
@@ -2076,7 +2126,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
-        "line": 59,
+        "line": 88,
         "role": "u_shoreHeightTex",
         "std": null,
         "type": "sampler2D",
@@ -2203,7 +2253,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
-        "line": 60,
+        "line": 89,
         "role": "u_shoreMask",
         "std": null,
         "type": "sampler2D",
@@ -2215,7 +2265,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 69,
+        "line": 70,
         "role": "TypeAlbedoLayerOn",
         "std": "std430",
         "type": "buffer",
@@ -2324,7 +2374,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.vert",
-        "line": 34,
+        "line": 35,
         "role": "WaterRecipeBuf",
         "std": "std430",
         "type": "buffer",
@@ -2336,7 +2386,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 79,
+        "line": 80,
         "role": "uAlbedoOn",
         "std": null,
         "type": "sampler2DArray",
@@ -2435,7 +2485,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.vert",
-        "line": 44,
+        "line": 45,
         "role": "WaterThinBuf",
         "std": "std430",
         "type": "buffer",
@@ -2447,7 +2497,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 97,
+        "line": 100,
         "role": "TypeHotColors",
         "std": "std430",
         "type": "buffer",
@@ -2536,7 +2586,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
-        "line": 63,
+        "line": 92,
         "role": "u_staticMask",
         "std": null,
         "type": "sampler2D",
@@ -2627,7 +2677,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
-        "line": 64,
+        "line": 93,
         "role": "u_waterReflection",
         "std": null,
         "type": "sampler2D",
@@ -2844,6 +2894,28 @@
         "branch": {
           "2": 0
         }
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/water_geom.frag",
+        "line": 23,
+        "role": "TerrainHeightBuf",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/water_geom.frag",
+        "branch": {}
+      }
+    ],
+    "set1:binding10": [
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/water_geom.frag",
+        "line": 24,
+        "role": "TerrainVisualHeightBuf",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/water_geom.frag",
+        "branch": {}
       }
     ],
     "set1:binding11": [
@@ -3277,6 +3349,18 @@
         "role": "VegDrawParams",
         "std": "std140",
         "type": "uniform",
+        "source": "shaders/vulkan/vfx_vegetation.vert",
+        "branch": {}
+      }
+    ],
+    "set2:binding3": [
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/vfx_vegetation.vert",
+        "line": 18,
+        "role": "VegFootprints",
+        "std": "std430",
+        "type": "buffer",
         "source": "shaders/vulkan/vfx_vegetation.vert",
         "branch": {}
       }

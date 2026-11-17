@@ -161,7 +161,8 @@ std::expected<void, int> LogisticsData::removeVariant( mc2::czstring varName )
 	LogisticsVariant* pVar = nullptr;
 
 	const std::string wanted = mc2::str::from_c( varName );
-	if ( mc2::str::iequals( currentlyModifiedMech->getName(), wanted ) || mc2::str::iequals( oldVariant->getName(), wanted ) )
+	if ( (currentlyModifiedMech && mc2::str::iequals( currentlyModifiedMech->getName(), wanted )) ||
+		 (oldVariant && mc2::str::iequals( oldVariant->getName(), wanted )) )
 		return std::unexpected(-1);
 
     auto vIter = variants.begin();

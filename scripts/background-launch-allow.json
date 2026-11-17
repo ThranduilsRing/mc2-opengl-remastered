@@ -35,6 +35,7 @@
     "tools/tracy_capture_compare.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10"
   },
   "direct_spawn": {
+    "tools/farm/mod_smoke.py": "Runs only sys.executable scripts/run_smoke.py with console_child; that harness owns offscreen launch, leases and game PID cleanup.",
     "tools/import_campaign.py": "Runs only innoextract --extract with console_child and captured stdio; never executes the supplied installer or the game.",
     "scripts/tests/test_campaign_marker_selection.py": "Runs only the compiled mission-selection input fixture and its C++ compiler through console_child with captured stdio; never the game or a visible window.",
     "scripts/tests/test_font_shutdown_lifetime.py": "Runs only the compiled renderer lifetime unit fixture through console_child.child_kwargs; never the game or a visible window.",

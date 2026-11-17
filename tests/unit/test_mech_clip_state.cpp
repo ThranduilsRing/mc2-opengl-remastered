@@ -7,9 +7,99 @@
 #include "doctest.h"
 #include "mech_clip_state.h"
 #include "mech_grounding.h"
+#include "mech_model_delta.h"
+#include "unit_anim_state.h"
+#include "mech_skel_import.h"
+#include "save_archive.h"
+#include <assimp/scene.h>
 #include <string>
 
 using namespace mc2clip;
+
+// Trigger: interrupted/restored fades in assimp_importer.cpp and mech_skel_import.cpp.
+TEST_CASE("clip state: interrupted local fade and missing outgoing restore publish immediately") {
+    aiScene scene;
+    scene.mRootNode = new aiNode("root");
+    scene.mRootNode->mNumChildren = 1;
+    scene.mRootNode->mChildren = new aiNode*[1]{new aiNode("tip")};
+    auto* tip = scene.mRootNode->mChildren[0];
+    tip->mParent = scene.mRootNode; tip->mTransformation.a4 = 2;
+    scene.mNumAnimations = 3;
+    scene.mAnimations = new aiAnimation*[3];
+    for (unsigned i = 0; i < 3; ++i) {
+        auto* clip = scene.mAnimations[i] = new aiAnimation;
+        clip->mName = i == 0 ? "A" : i == 1 ? "B" : "C";
+        clip->mDuration = 1; clip->mTicksPerSecond = 1;
+        clip->mNumChannels = 1; clip->mChannels = new aiNodeAnim*[1]{new aiNodeAnim};
+        auto* ch = clip->mChannels[0]; ch->mNodeName = "root";
+        ch->mNumRotationKeys = 1;
+        ch->mRotationKeys = new aiQuatKey[1]{{0, aiQuaternion(aiVector3D(0, 1, 0), i * 0.8f)}};
+    }
+    const auto plan = mc2skel::BuildPlan(&scene, {"root", "tip"});
+    mc2::sim::ImportedAnimState state;
+    state.activeClip = "B"; state.previousClip = "A"; state.fadeTimeSec = 0.075f;
+    const mc2skel::LocalRotation twist{0, {0, 1, 0}, 20};
+    std::vector<mc2skel::GpuBone> displayed, pose;
+    REQUIRE(mc2skel::EvaluateActorClipGpuBones(*plan, state, displayed, &twist));
+    SUBCASE("interrupt at 50 percent, save/load, then interrupt again") {
+        mc2skel::BeginActorClipFade(*plan, state); state.activeClip = "C";
+        REQUIRE_FALSE(state.fadeSourceLocals.empty());
+        for (unsigned version : {2u, 3u, 4u}) {
+            mc2::save::Archive legacyWrite; legacyWrite.sectionVersion = version; legacyWrite(state);
+            auto legacy = state;
+            mc2::save::Archive legacyRead(legacyWrite.bytes()); legacyRead.sectionVersion = version;
+            legacyRead(legacy); REQUIRE(legacyRead.finish()); CHECK(legacy.fadeSourceLocals.empty());
+        }
+        for (int interruption = 0; interruption < 2; ++interruption) {
+            mc2::save::Archive write; write(state); REQUIRE(write.good());
+            mc2::sim::ImportedAnimState restored;
+            mc2::save::Archive read(write.bytes()); read(restored); REQUIRE(read.finish());
+            CHECK(restored.fadeSourceLocals == state.fadeSourceLocals);
+            REQUIRE(mc2skel::EvaluateActorClipGpuBones(*plan, restored, pose, &twist));
+            for (size_t b = 0; b < pose.size(); ++b)
+                for (int k = 0; k < 16; ++k)
+                    CHECK(pose[b].m[k] == doctest::Approx(displayed[b].m[k]).epsilon(1e-5));
+            state = restored; state.fadeTimeSec = 0.075f;
+            REQUIRE(mc2skel::EvaluateActorClipGpuBones(*plan, state, displayed, &twist));
+            mc2skel::BeginActorClipFade(*plan, state); state.activeClip = "A";
+        }
+    }
+    SUBCASE("missing outgoing clip on first paused evaluation") {
+        state.previousClip = "missing";
+        mc2::save::Archive write; write(state);
+        mc2::save::Archive read(write.bytes()); read(state); REQUIRE(read.finish());
+        REQUIRE(mc2skel::EvaluateActorClipGpuBones(*plan, state, pose, &twist));
+        CHECK(state.previousClip.empty()); CHECK(state.fadeSourceLocals.empty());
+        REQUIRE(mc2skel::EvaluateClipGpuBones(*plan, "B", 0, displayed, nullptr, nullptr, &twist));
+        for (size_t b = 0; b < pose.size(); ++b)
+            for (int k = 0; k < 16; ++k) CHECK(pose[b].m[k] == displayed[b].m[k]);
+    }
+}
+
+// Trigger: imported preview pose publication in mclib/assimp_importer.cpp.
+TEST_CASE("preview publication: CPU geometry changes across ticks; GPU stays on palette path") {
+    glm::vec4 published(0), vertex(1, 2, 3, 1);
+    glm::mat4 sampled(1);
+    int cpu = 0, gpu = 0;
+    const auto tick = [&](bool preview, bool gpuMode, float x) {
+        sampled[3].x = x;
+        publishPreviewPose(preview, gpuMode, [&] { ++gpu; }, [&] { published = sampled * vertex; ++cpu; });
+    };
+    tick(true, false, 1); const auto first = published;
+    tick(true, false, 2); CHECK(published.x == first.x + 1); CHECK(cpu == 2); CHECK(gpu == 0);
+    tick(true, true, 3); tick(false, false, 4);
+    CHECK(published.x == first.x + 1); CHECK(cpu == 2); CHECK(gpu == 1);
+}
+
+TEST_CASE("preview resolver: missing binding retains the mission active clip") {
+    const auto has = [](std::string_view clip) { return clip == "atlas_moveCoreIdle" || clip == "atlas_moveCoreWalkFwd"; };
+    Phase phase;
+    const auto walk = select(kGestureWalk, 10, 0, 0, false, false, "atlas_moveCoreIdle", phase);
+    CHECK(resolveClip(walk.clip, "atlas_moveCoreIdle", has) == "atlas_moveCoreWalkFwd");
+    const auto death = select(kGestureFallForward, 0, 0, 0, true, false, "atlas_moveCoreIdle", phase);
+    CHECK(resolveClip(death.clip, "atlas_moveCoreIdle", has) == "atlas_moveCoreIdle");
+    CHECK(resolveClip("", "atlas_moveCoreIdle", has) == "atlas_moveCoreIdle");
+}
 
 TEST_CASE("preview showcase: manifest, gesture, idle, first clip fallback") {
     const auto has = [](std::string_view s) { return s == "show" || s == "walk" || s == "atlas_moveCoreIdle" || s == "first"; };
@@ -18,6 +108,30 @@ TEST_CASE("preview showcase: manifest, gesture, idle, first clip fallback") {
     CHECK(previewClip("unknown", "walk", "first", has) == "walk");
     CHECK(previewClip("unknown", "missing", "first", has) == "atlas_moveCoreIdle");
     CHECK(previewClip("", "missing", "first", [](auto s) { return s == "first"; }) == "first");
+}
+
+TEST_CASE("imported palette: restored clip with no presentation storage") {
+    struct Entry : mc2::sim::ImportedAnimState { std::vector<float> modelDelta; };
+    mc2::sim::ImportedAnimState saved;
+    saved.activeClip = "atlas_moveCoreWalkFwd";
+    saved.clipTimeSec = 0.5f;
+    Entry actor;
+    static_cast<mc2::sim::ImportedAnimState&>(actor) = saved;
+    REQUIRE(actor.modelDelta.empty());
+    Entry draw = actor; // CopyImportedActorPose rebuilds the draw palette.
+    mc2mechanim::sizeModelDelta(draw.modelDelta, 3);
+    REQUIRE(draw.modelDelta.size() == 48);
+    draw.modelDelta.at(47) = 7.0f; // last matrix is writable after restore
+    mc2mechanim::sizeModelDelta(draw.modelDelta, 3);
+    CHECK(draw.modelDelta.at(47) == 7.0f);
+    CHECK(draw.activeClip == saved.activeClip);
+    CHECK(draw.clipTimeSec == saved.clipTimeSec);
+    mc2mechanim::sizeModelDelta(draw.modelDelta, 4);
+    CHECK(draw.modelDelta.at(63) == 0.0f);
+    mc2mechanim::sizeModelDelta(draw.modelDelta, 1);
+    CHECK(draw.modelDelta.size() == 16);
+    mc2mechanim::sizeModelDelta(draw.modelDelta, 0);
+    CHECK(draw.modelDelta.empty());
 }
 
 TEST_CASE("imported grounding: soles contact, reverse knees and torso motion survive") {
@@ -136,4 +250,55 @@ TEST_CASE("clip state: stride matching removes planted-foot drift across speeds"
     CHECK(strideRate(0.0f, clipStride) == doctest::Approx(0.35f));
     CHECK(strideRate(100.0f, clipStride) == doctest::Approx(2.0f));
     CHECK(strideRate(5.0f, 0.0f) == doctest::Approx(1.0f));
+}
+
+TEST_CASE("clip state: park and power transitions have their own clips") {
+    Phase ph;
+    CHECK(std::string(pick(kGesturePark, ph).clip) == "atlas_shutdownIdle");
+    CHECK(pick(kGesturePark, ph).mode == Mode::Loop);
+    CHECK(std::string(pick(kGestureStandToPark, ph).clip) == "atlas_shutdownPwroff");
+    CHECK(std::string(pick(kGestureParkToStand, ph).clip) == "atlas_shutdownPwron");
+    CHECK(pick(kGestureStandToPark, ph).mode == Mode::Once);
+    CHECK(pick(kGestureParkToStand, ph).mode == Mode::Once);
+}
+
+TEST_CASE("clip state: destroyed non-fall gestures hold death idle") {
+    for (int gesture = 0; gesture <= 24; ++gesture) {
+        if (gesture == kGestureFallForward || gesture == kGestureFallBackward) continue;
+        Phase ph;
+        const auto c = pick(gesture, ph, 20, true);
+        CHECK(std::string(c.clip) == "atlas_deathIdle");
+        CHECK(c.mode == Mode::Loop);
+        CHECK(c.immediate);
+    }
+}
+
+TEST_CASE("clip state: landing yields immediately above one unit per second") {
+    Phase ph;
+    pick(kGestureJump, ph);
+    CHECK(std::string(pick(2, ph, 1).clip) == "atlas_moveJumpDownLand");
+    CHECK(std::string(pick(kGestureRun, ph, 1.01f, false, false, "atlas_moveJumpDownLand").clip) == "atlas_moveCoreRunFwd");
+    CHECK_FALSE(ph.landing);
+}
+
+TEST_CASE("clip state: one-shots fit stock gesture time with safe bounds") {
+    for (auto clip : {"atlas_hitReactLgtFwd", "atlas_downedGetup", "atlas_hitReactKnockdownInpl", "atlas_shutdownPwron"}) {
+        CHECK(onceRate(clip, 2, 30, 30) == 2);
+        CHECK(onceRate(clip, 0.1f, 30, 30) == 0.5f);
+        CHECK(onceRate(clip, 9, 30, 30) == 3);
+        CHECK(onceRate(clip, 2, 0, 30) == 1);
+        CHECK(onceRate(clip, 2, 30, 0) == 1);
+    }
+    CHECK(onceRate("atlas_moveJumpDownLand", 4, 0, 0) == 2);
+}
+
+TEST_CASE("clip state: fades use longer prone transitions and advance outgoing clips") {
+    CHECK(fadeDuration("walk", "run") == 0.15f);
+    for (auto prone : {"atlas_downedIdle", "atlas_downedGetup", "atlas_deathIdle", "atlas_deathKnockdown", "atlas_hitReactKnockdownInpl"}) {
+        CHECK(fadeDuration("walk", prone) == 0.25f);
+        CHECK(fadeDuration(prone, "walk") == 0.25f);
+    }
+    CHECK(advanceClipTime(0.5f, 0.1f, 2, 1, Mode::Loop) == doctest::Approx(0.7f));
+    CHECK(advanceClipTime(0.9f, 0.1f, 2, 1, Mode::Loop) == doctest::Approx(0.1f));
+    CHECK(advanceClipTime(0.9f, 0.1f, 2, 1, Mode::Once) == 1);
 }

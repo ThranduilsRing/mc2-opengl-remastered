@@ -1073,6 +1073,10 @@ def asset_precheck(exe: Path, staged: Path) -> dict:
             raise ValueError('invalid asset-load report')
         if proc.returncode and not report['failures']:
             report['failures'].append(f'exit {proc.returncode}')
+        # ObjectTypeManager can return a placeholder after rejecting a packet.
+        # A positive load count must not hide its structured content errors.
+        if content_signatures(report.get('log', '')):
+            report['failures'].append('asset loader reported content errors')
         if report['loaded'] <= 0 and not report['failures']:
             report['failures'].append('no object types loaded')
         return report

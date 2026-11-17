@@ -611,13 +611,6 @@ void Camera::render (void)
 	tglView.SetViewport(viewMulX,viewMulY,viewAddX,viewAddY);
 
 	userInput->setViewport(viewMulX,viewMulY,viewAddX,viewAddY);
-	
-	//--------------------------------------------------------
-	// Get new viewport values to scale stuff.  No longer uses
-	// VFX stuff for this.  ALL GOS NOW!
-	screenResolution.x = viewMulX;
-	screenResolution.y = viewMulY;
-	calculateProjectionConstants();
 
 	globalScaleFactor = getScaleFactor();
 	globalScaleFactor *= viewMulX / Environment.screenWidth;		//Scale Mechs to ScreenRES

@@ -1,6 +1,7 @@
 #include "mc2_czstring.h"
 #include "../../code/net/runtime.h"
 #include "load_scope.h"
+#include "loading_pump_meter.h"
 #include "../../GuiRuntime/PlayerFrontEnd.h"
 #include <memory>
 #include <atomic>
@@ -735,12 +736,10 @@ static Uint64 g_missionReadyTrace = 0;
 // dispatching game input against the partially constructed mission.
 extern "C" void mission_load_pump()
 {
+    graphics::pump_loading_events();
     if (SmokeMode::state().headless) return;
-    static Uint64 lastPump = 0;
-    const Uint64 now = SDL_GetTicks64();
-    if (now - lastPump < 50) return;
-    lastPump = now;
-    SDL_PumpEvents();
+    static mc2::loadpump::CursorThrottle cursorThrottle;
+    if (!cursorThrottle.due(SDL_GetTicks64())) return;
     // The sprite cannot advance during synchronous loading; use the OS arrow.
     // The central policy preserves the unattended harness cursor guard.
     graphics::apply_os_cursor_policy("mission_load", false);
@@ -763,6 +762,7 @@ namespace {
 
 extern "C" void mission_phase_begin()
 {
+    mc2::loadpump::meter.mission.begin(SDL_GetTicks64(), "mission_load_start", SmokeMode::state().headless);
     mission_load_pump();
     g_missionTraceFrames = 5;
     g_missionReadyTrace = 0;
@@ -777,6 +777,9 @@ extern "C" void mission_phase_begin()
 extern "C" void mission_phase_mark(mc2::czstring name)
 {
     mission_load_pump();
+    auto& pumpScope = mc2::loadpump::meter.mission;
+    pumpScope.mark(SDL_GetTicks64(), name);
+    if (strcmp(name, "mission_ready") == 0) pumpScope.end(SDL_GetTicks64());
     const Uint64 now = SDL_GetPerformanceCounter();
     const double freq = static_cast<double>(SDL_GetPerformanceFrequency());
     const double elapsed = static_cast<double>((now - g_mission_t0)) / freq;
@@ -814,6 +817,10 @@ extern "C" void mission_phase_report()
     // several snprintf appends, so the tag literal is not the format string of
     // the call that prints it -- gate the SINK.
     MC2_DIAGF("%s\n", buf);
+    const auto& pumpScope = mc2::loadpump::meter.mission;
+    if (mc2_diag::tagRequested("LOAD_PUMP"))
+        MC2_LOG(Io, Info, "[LOAD_PUMP v1] max_gap_ms={} phase={} scope=mission mode={} services={}",
+            pumpScope.maxGap, pumpScope.worst, pumpScope.attempted ? "attempted-pump" : "actual-service", pumpScope.services);
     {
         const std::string scopes = mc2::load::report();
         MC2_DIAGF("[LOAD_SCOPES v1]%s\n", scopes.c_str());

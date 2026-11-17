@@ -13,6 +13,20 @@ sys.path.insert(0, str(ROOT / "tools"))
 from smoke_lib import cold_cache, via_menu  # noqa: E402
 
 
+def test_tracy_intro_default_and_explicit_skip(monkeypatch):
+    import tracy_capture_compare as tracy
+    monkeypatch.setenv("MC2_MENU_CANARY_SKIP_INTRO", "1")
+    calls = []
+    monkeypatch.setattr(tracy, "capture_trace", lambda *a, **kw: calls.append(kw) or 1)
+    for flags, skip in [([], False), (["--skip-intro"], True)]:
+        monkeypatch.setattr(sys, "argv", ["tracy", "capture", "--install", "unused",
+                                        "-o", "unused.tracy", "--via-menu", *flags])
+        assert tracy.main() == 1
+        assert calls[-1]["via_menu_boot"] and calls[-1]["skip_intro"] is skip
+        env = tracy.game_env("vk", True, None, None, [], True, skip)
+        assert (env.get("MC2_MENU_CANARY_SKIP_INTRO") == "1") is skip
+
+
 def test_via_menu_env_drops_smoke_mode_and_boots_the_campaign():
     env = {"MC2_SMOKE_MODE": "1", "MC2_SMOKE_FIXED_TIMESTEP": "1", "MC2_BOOT_TO_MISSION": "x", "KEEP": "1"}
     via_menu.apply_via_menu_env(env)
