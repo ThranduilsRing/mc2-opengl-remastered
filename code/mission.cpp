@@ -680,7 +680,7 @@ long MissionStartTime =	0;			//No Idea
 
 Mission *mission = nullptr;
 std::unique_ptr<Weather> missionWeather;
-std::unique_ptr<Camera> missionCamera;
+std::unique_ptr<GameCamera> missionCamera;
 unsigned long scenarioResult = mis_PLAYING;
 long scenarioEndTurn = -1;
 long MechSalvageChance = 100;
