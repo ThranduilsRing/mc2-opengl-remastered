@@ -2,7 +2,7 @@
 [[vk::image_format("rgba8")]]
 [[vk::binding(0, 0)]] RWTexture2DArray<float4> packets;
 struct Params { float span; float halfMap; uint size; uint pad; };
-[[vk::push_constant]] ConstantBuffer<Params> P;
+[[vk::binding(1, 0)]] ConstantBuffer<Params> P;
 
 float h21(float2 ip) {
     precise float3 q = frac(float3(ip.x, ip.y, ip.x) * 0.1031);

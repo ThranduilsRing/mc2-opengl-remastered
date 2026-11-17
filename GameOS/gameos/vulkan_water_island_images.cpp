@@ -43,13 +43,15 @@ bool bakePackets(WaterIsland* s, WavePackets& b) {
     mc2vk::OwnedDescriptorPool pool;
     mc2vk::OwnedPipelineLayout layout;
     mc2vk::OwnedPipeline pipe;
-    const VkDescriptorSetLayoutBinding binding{0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr};
+    const VkDescriptorSetLayoutBinding bindings[] = {
+        {0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr},
+        {1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr}};
     VkDescriptorSetLayoutCreateInfo di{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
-    di.bindingCount = 1; di.pBindings = &binding;
+    di.bindingCount = 2; di.pBindings = bindings;
     if (!mc2vk::create(dsl, s->device, [&](auto* h) { return vkCreateDescriptorSetLayout(s->device, &di, nullptr, h); })) return false;
-    const VkDescriptorPoolSize size{VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1};
+    const VkDescriptorPoolSize sizes[] = {{VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1}, {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1}};
     VkDescriptorPoolCreateInfo pi{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
-    pi.maxSets = 1; pi.poolSizeCount = 1; pi.pPoolSizes = &size;
+    pi.maxSets = 1; pi.poolSizeCount = 2; pi.pPoolSizes = sizes;
     if (!mc2vk::create(pool, s->device, [&](auto* h) { return vkCreateDescriptorPool(s->device, &pi, nullptr, h); })) return false;
     const VkDescriptorSetLayout raw = dsl.get();
     VkDescriptorSetAllocateInfo alloc{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
@@ -58,9 +60,10 @@ bool bakePackets(WaterIsland* s, WavePackets& b) {
     if (MC2_VK_ALLOC_SETS(s->device, &alloc, &set) != VK_SUCCESS) return false;
     struct Params { float span, halfMap; uint32_t size, pad; };
     const Params params{b.span, b.halfMap, b.size, 0};
-    const VkPushConstantRange push{VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(params)};
+    mc2vk::OwnedBuffer paramsBuffer;
+    if (!paramsBuffer.createFilled(s->allocator, s->device, &params, sizeof(params), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "water.wavePackets.params")) return false;
     VkPipelineLayoutCreateInfo li{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
-    li.setLayoutCount = 1; li.pSetLayouts = &raw; li.pushConstantRangeCount = 1; li.pPushConstantRanges = &push;
+    li.setLayoutCount = 1; li.pSetLayouts = &raw;
     if (!mc2vk::create(layout, s->device, [&](auto* h) { return vkCreatePipelineLayout(s->device, &li, nullptr, h); })) return false;
     mc2vk::OwnedShaderModule shader(s->device, load_spv(s->device, spv_dir() + "water_wave_packets.comp.spv"));
     if (!shader) return false;
@@ -73,6 +76,10 @@ bool bakePackets(WaterIsland* s, WavePackets& b) {
     write.dstSet = set; write.dstBinding = 0; write.descriptorCount = 1;
     write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE; write.pImageInfo = &image;
     vkUpdateDescriptorSets(s->device, 1, &write, 0, nullptr);
+    const VkDescriptorBufferInfo buffer{paramsBuffer.get(), 0, sizeof(params)};
+    write.dstBinding = 1; write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    write.pImageInfo = nullptr; write.pBufferInfo = &buffer;
+    vkUpdateDescriptorSets(s->device, 1, &write, 0, nullptr);
     auto& ctx = mc2vk::getOrCreateEngineVulkanContext();
     if (!mc2vk::submitOneShot(ctx, [&](VkCommandBuffer cb) {
         mc2vk::sync::cmdImageBarrier(ctx, cb, b.image.get(), vi.subresourceRange,
@@ -80,7 +87,6 @@ bool bakePackets(WaterIsland* s, WavePackets& b) {
             VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT);
         mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_COMPUTE, pipe.get());
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_COMPUTE, layout.get(), 0, 1, &set, 0, nullptr);
-        vkCmdPushConstants(cb, layout.get(), VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(params), &params);
         vkCmdDispatch(cb, (b.size + 7) / 8, (b.size + 7) / 8, 3);
         mc2vk::sync::cmdImageBarrier(ctx, cb, b.image.get(), vi.subresourceRange,
             VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
