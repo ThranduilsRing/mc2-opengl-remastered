@@ -2566,7 +2566,7 @@ bool prepareProps(std::unique_ptr<mc2vk::IslandState>& state, const Target& targ
     if (!prewarmProps(state, target.w, target.h)) return false;
     auto* s = static_cast<PlanarProps*>(state.get());
     // Match the object projection; only the view-dependent instance list remains per frame.
-    const float* objectMatrix = gos_GetObjectFixBMVPMat4();
+    const float* objectMatrix = target.useTargetView ? target.mainWorldToClip : gos_GetObjectFixBMVPMat4();
     if (!objectMatrix) return false;
     const View view(objectMatrix, target.water);
     preparePropInstances(view, s->bounds, s->reflectedInstances);

@@ -882,6 +882,7 @@ bool prepareTerrain(std::unique_ptr<mc2vk::IslandState>& state, Target& target, 
     auto* s = static_cast<PlanarTerrain*>(state.get());
     if (!prepareTerrainView(s->view, target.mainWorldToClip, target.water)) return false;
     auto feed = s->view.feed();
+    if (target.cameraPos) std::copy_n(target.cameraPos, 3, feed.cameraPosMC2);
     feed.shorelineWaterElev = target.water;
     return run_terrain(target.w, target.h, s, &feed, &target, &record) != 0;
 }

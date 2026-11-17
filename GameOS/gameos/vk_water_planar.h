@@ -10,6 +10,9 @@ struct Target {
     int divisor = 1; // moving reflection uses a subrectangle of the full-size attachments
     float water = 0;
     const float* mainWorldToClip = nullptr;
+    // Camera-independent bake: use the target projection for props as well.
+    bool useTargetView = false;
+    const float* cameraPos = nullptr; // optional terrain eye in Stuff/Y-up space
     VkImageView color = VK_NULL_HANDLE, depth = VK_NULL_HANDLE;
     VkRect2D scissor{};
     Mc2GroundLightingFrame ground{};
