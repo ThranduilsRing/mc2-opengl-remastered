@@ -105,10 +105,13 @@ void updateSaveFixtures()
 			static bool s_qlDone = false;
 			// An intro camera can delay both thresholds. Keep the requested gap
 			// after the actual save, so load never races it or reads an older file.
+			// capture --load arms the quicksave at 10^9 (never fires): a planted load,
+			// quickloaded at s_qlAt with no prior quicksave, then re-saved.
+			const bool planted = s_qsAt >= 1000000000L;
 			const long requestedGap = std::max(1L, s_qlAt - s_qsAt);
-			const long loadAt = s_qsAt > 0 && s_qsIssuedAt >= 0
+			const long loadAt = s_qsAt > 0 && !planted && s_qsIssuedAt >= 0
 				? std::max(s_qlAt, s_qsIssuedAt + requestedGap) : s_qlAt;
-			if (!s_qlDone && (s_qsAt <= 0 || s_qsIssuedAt >= 0) &&
+			if (!s_qlDone && (s_qsAt <= 0 || planted || s_qsIssuedAt >= 0) &&
 				turn >= loadAt &&
 				eye && !eye->inMovieMode) {
 				s_qlDone = true;
