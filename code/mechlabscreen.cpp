@@ -581,7 +581,7 @@ void MechLabScreen::update()
 
 	
 	camera.update();
-	const int previewHit = mechCamera.hasObject() && !pDragComponent ? previewButton(mechCamera) : -1;
+	const int previewHit = !locationViewActive() && mechCamera.hasObject() && !pDragComponent ? previewButton(mechCamera) : -1;
 	const bool previewDown = userInput->getMouseLeftButtonState() == MC2_MOUSE_DOWN;
 	static bool previewWasDown = false;
 	if (previewDown && !previewWasDown && previewHit >= 0)
@@ -1168,7 +1168,7 @@ void MechLabScreen::render(int xOffset, int yOffset)
 		drawLocationView( tbSx, tbSy, tbOx, tbOy, xOffset, yOffset );
 	if ( gridBridge )
 		aObject::endGuiBridge();
-	if (!xOffset && !yOffset && mechCamera.hasObject())
+	if (!locOn && !xOffset && !yOffset && mechCamera.hasObject())
 		drawPreviewControls(mechCamera, !bSaveDlg && !bErrorDlg && !pDragComponent && status == RUNNING);
     // The F9 animation window is an ImGui window and would sit above the legacy save/error dialogs.
     if (!xOffset && !yOffset && !bSaveDlg && !bErrorDlg) mechCamera.drawAnimationPanel();
