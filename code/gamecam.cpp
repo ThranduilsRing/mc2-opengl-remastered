@@ -1242,6 +1242,15 @@ void GameCamera::refreshCompass (void)
 	}
 }
 
+void GameCamera::prepareCompass()
+{
+	if (!compass) {
+		AppearanceType* appearanceType = appearanceTypeList->getAppearance(BLDG_TYPE << 24, "compass");
+		compass = std::make_unique<BldgAppearance>();
+		compass->init(appearanceType);
+	}
+}
+
 long GameCamera::update (void)
 {
 	// BOOKMARK-SAVE-BUTTON-1 test hook: MC2_BOOKMARK_SAVE_TEST=1 triggers one
@@ -1492,12 +1501,7 @@ long GameCamera::update (void)
 		globalFloatHelp->setFloatHelp(ovtext,ovPos,SD_YELLOW,SD_BLACK,1.0f,true,false,false,false);
 	}
 
-	if (!compass)	//Create it!
-	{
-		AppearanceType* appearanceType = appearanceTypeList->getAppearance( BLDG_TYPE << 24, "compass" );
-		compass = std::make_unique<BldgAppearance>();
-		compass->init( appearanceType );
-	}
+	prepareCompass();
 
 	long result = Camera::update();
 	

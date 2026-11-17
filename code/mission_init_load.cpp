@@ -1064,6 +1064,7 @@ void Mission::initFinalizeGeometry() {
     // The load barrier bakes the static shadows (F1); they key on the terrain sun, which the first frame's camera sets. Set the same one now.
     { const glm::vec3 sun = eye->sunDirection(); gos_SetTerrainLightDir(sun.x, sun.y, sun.z);
       MC2_LOAD_SCOPE("finalize.forestOcclusion"); GpuStaticPropRegistry::bakeForestOcclusion(sun.x, sun.y, sun.z); } // forest light bake needs the sun
+	missionCamera->prepareCompass(); // Its first update otherwise creates this HUD material after prewarm.
 	{ MC2_LOAD_SCOPE("finalize.prewarmCpuTextures"); mc2::textures::prewarmCpuTextures(); }
     { MC2_LOAD_SCOPE("finalize.prewarmPipelines"); mc2PrewarmMissionPipelines(); }
 	mission_phase_mark("render_prewarm_ready");
