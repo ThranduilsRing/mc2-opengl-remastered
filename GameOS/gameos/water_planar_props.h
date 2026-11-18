@@ -2,6 +2,11 @@
 
 #include "water_planar_view.h"
 #include "../../RenderCore/hzb_prop_bounds.h"
+#include <algorithm>
+#include <array>
+#include <bit>
+#include <cmath>
+#include <cstdint>
 #include <limits>
 #include <cstring>
 #include <span>
@@ -98,12 +103,86 @@ inline bool propIntersects(const View& view, const GpuStaticPropInstance& instan
 // reflected visibility: neither main-view HZB nor shadow flags are reusable here.
 class ReflectionPropsCache {
     struct Entry { size_t recipe, range; WorldPropBounds world; };
+    // Per-frame cull index: valid-bounds entries bucketed into a grid over
+    // world axes 0,1, stored contiguously per cell. Every entry keeps its index
+    // in order_, so survivors are emitted in the stable type order via a bitmap.
+    struct CellEntry { std::array<float, 3> lo, hi; uint32_t idx, range; };
+    struct Cell { std::array<float, 3> lo, hi; float minHiZ; uint32_t begin, end; };
     std::vector<Entry> order_;
+    std::vector<CellEntry> cellEntries_;
+    std::vector<Cell> cells_;
+    std::vector<uint32_t> unbounded_;   // invalid bounds: kept in every view (conservative)
+    std::vector<uint64_t> bits_;
+    std::vector<uint8_t> rangeMulti_;
     std::vector<mc2hzb::PropBounds> geometry_;
     const void *recipes_ = nullptr, *ranges_ = nullptr;
     size_t recipeCount_ = 0, rangeCount_ = 0;
     uint64_t generation_ = 0;
     bool ready_ = false;
+
+    void buildGrid() {
+        cellEntries_.clear(); cells_.clear(); unbounded_.clear();
+        constexpr float kMax = (std::numeric_limits<float>::max)();
+        size_t valid = 0;
+        float cmin[2] = {kMax, kMax}, cmax[2] = {-kMax, -kMax};
+        for (size_t i = 0; i < order_.size(); ++i) {
+            const auto& w = order_[i].world;
+            if (!w.valid) { unbounded_.push_back(static_cast<uint32_t>(i)); continue; }
+            ++valid;
+            for (int a = 0; a < 2; ++a) {
+                const float c = 0.5f * (w.lo[a] + w.hi[a]);
+                cmin[a] = (std::min)(cmin[a], c); cmax[a] = (std::max)(cmax[a], c);
+            }
+        }
+        if (valid == 0) return;
+        const int g = (std::max)(1, (std::min)(48, static_cast<int>(std::sqrt(static_cast<float>(valid) / 24.0f))));
+        float inv[2];
+        for (int a = 0; a < 2; ++a) inv[a] = cmax[a] > cmin[a] ? static_cast<float>(g) / (cmax[a] - cmin[a]) : 0.0f;
+        auto cellOf = [&](const WorldPropBounds& w) {
+            int c[2];
+            for (int a = 0; a < 2; ++a)
+                c[a] = std::clamp(static_cast<int>((0.5f * (w.lo[a] + w.hi[a]) - cmin[a]) * inv[a]), 0, g - 1);
+            return static_cast<size_t>(c[1]) * g + c[0];
+        };
+        std::vector<uint32_t> start(static_cast<size_t>(g) * g + 1, 0);
+        for (const auto& e : order_) if (e.world.valid) ++start[cellOf(e.world) + 1];
+        for (size_t c = 1; c < start.size(); ++c) start[c] += start[c - 1];
+        cellEntries_.resize(valid);
+        std::vector<uint32_t> fill(start.begin(), start.end() - 1);
+        for (size_t i = 0; i < order_.size(); ++i) {   // ascending: each cell list stays sorted by idx
+            const auto& e = order_[i];
+            if (!e.world.valid) continue;
+            cellEntries_[fill[cellOf(e.world)]++] = {e.world.lo, e.world.hi, static_cast<uint32_t>(i),
+                                                      static_cast<uint32_t>(e.range)};
+        }
+        for (size_t c = 0; c + 1 < start.size(); ++c) {
+            if (start[c] == start[c + 1]) continue;
+            Cell cell{{kMax, kMax, kMax}, {-kMax, -kMax, -kMax}, kMax, start[c], start[c + 1]};
+            for (uint32_t k = cell.begin; k < cell.end; ++k) {
+                for (int a = 0; a < 3; ++a) {
+                    cell.lo[a] = (std::min)(cell.lo[a], cellEntries_[k].lo[a]);
+                    cell.hi[a] = (std::max)(cell.hi[a], cellEntries_[k].hi[a]);
+                }
+                cell.minHiZ = (std::min)(cell.minHiZ, cellEntries_[k].hi[2]);
+            }
+            cells_.push_back(cell);
+        }
+    }
+
+    // Every member box lies inside the cell box, so when the cell's least
+    // favourable corner passes each plane (same float operation order as
+    // View::intersects, monotone per term) every member passes bit-for-bit.
+    static bool fullyInside(const View& view, const Cell& c) {
+        if (wp_clip_distance(c.minHiZ, view.waterElevation) < 0.0f) return false;
+        const float lo[3] = {c.lo[0], c.lo[1], (std::max)(c.lo[2], view.waterElevation)};
+        for (const auto& p : view.planes) {
+            float distance = p[3];
+            for (int axis = 0; axis < 3; ++axis)
+                distance += p[axis] * (p[axis] >= 0.0f ? lo[axis] : c.hi[axis]);
+            if (distance < 0.0f) return false;
+        }
+        return true;
+    }
 public:
     template <class Range>
     bool collect(std::span<const GpuStaticPropInstance> recipes, std::span<const Range> ranges,
@@ -130,18 +209,32 @@ public:
             std::stable_sort(order_.begin(), order_.end(), [&](const Entry& a, const Entry& b) {
                 return recipes[a.recipe].typeID < recipes[b.recipe].typeID;
             });
+            buildGrid();
             geometry_.assign(bounds.begin(), bounds.end());
             recipes_ = recipes.data(); recipeCount_ = recipes.size();
             ranges_ = ranges.data(); rangeCount_ = ranges.size();
             generation_ = generation; ready_ = true;
         }
+        // A TGL borrow can expire independently of the recipe revision: resolve
+        // it once per range per frame, not once per entry.
+        rangeMulti_.assign(ranges.size(), 0);
+        for (size_t r = 0; r < ranges.size(); ++r) rangeMulti_[r] = ranges[r].multi() ? 1 : 0;
+        bits_.assign((order_.size() + 63) / 64, 0);
+        auto set = [&](size_t i) { bits_[i >> 6] |= uint64_t{1} << (i & 63); };
+        for (const uint32_t i : unbounded_) if (rangeMulti_[order_[i].range]) set(i);
+        for (const auto& cell : cells_) {
+            if (!view.intersects(cell.lo, cell.hi)) continue;
+            const bool all = fullyInside(view, cell);
+            for (uint32_t k = cell.begin; k < cell.end; ++k) {
+                const auto& e = cellEntries_[k];
+                if (rangeMulti_[e.range] && (all || view.intersects(e.lo, e.hi))) set(e.idx);
+            }
+        }
         out.clear();
         out.reserve(order_.size());
-        for (const auto& e : order_) {
-            // A TGL borrow can expire independently of the recipe revision.
-            if (ranges[e.range].multi() && (!e.world.valid || view.intersects(e.world.lo, e.world.hi)))
-                out.push_back(recipes[e.recipe]);
-        }
+        for (size_t w = 0; w < bits_.size(); ++w)
+            for (uint64_t m = bits_[w]; m; m &= m - 1)
+                out.push_back(recipes[order_[(w << 6) + static_cast<size_t>(std::countr_zero(m))].recipe]);
         return rebuild;
     }
 };

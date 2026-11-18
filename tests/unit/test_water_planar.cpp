@@ -490,3 +490,47 @@ TEST_CASE("water planar: the uploaded debug.z carries each level's march steps a
     REQUIRE(at != std::string::npos);
     CHECK(std::atoi(src.c_str() + at + std::strlen("int steps = F.debug.z > 0.5 ? int(F.debug.z) : ")) == wp::kHighSteps);
 }
+
+// Trigger paths: water_planar_props.h and gos_static_prop_registry.cpp.
+// Reference = the pre-grid collect: stable type order, per-entry multi() and view test.
+TEST_CASE("water planar: grid collect matches the linear reference bit for bit") {
+    constexpr uint32_t kTypes = 9;
+    std::vector<mc2hzb::PropBounds> bounds(kTypes);
+    for (uint32_t t = 0; t < kTypes; ++t)
+        bounds[t] = {{-2.f - t, -1.f, -2.f}, {2.f + t, 3.f + t, 2.f}, t != 4};   // type 4: unknown bounds
+    uint32_t seed = 12345;
+    auto rnd = [&] { seed = seed * 1664525u + 1013904223u; return static_cast<float>(seed >> 8) / 16777216.0f; };
+    std::vector<GpuStaticPropInstance> recipes;
+    for (uint32_t i = 0; i < 3000; ++i) {
+        recipes.push_back(propAt(static_cast<uint32_t>(rnd() * kTypes), (rnd() - 0.5f) * 800, (rnd() - 0.5f) * 800, rnd() * 40));
+        recipes.back().actorTint = i;   // identity marker: checks order and payload
+    }
+    std::vector<RecipeRange> ranges{{0, 1000}, {1000, 500, false}, {1500, 700}, {2200, 0}, {2200, 800}};
+    std::vector<GpuStaticPropInstance> out, expect;
+    wp::ReflectionPropsCache cache;
+    size_t partial = 0, total = 0;
+    for (int v = 0; v < 24; ++v) {
+        glm::mat4 main{1};
+        const float s = 0.002f * (1.0f + 6.0f * rnd());
+        main[0][0] = s; main[1][1] = s; main[2][2] = 0.001f + 0.01f * rnd();
+        main[3][0] = (rnd() - 0.5f) * 1.5f; main[3][1] = (rnd() - 0.5f) * 1.5f; main[3][2] = -1.0f * rnd();
+        if (v == 0) { main[0][0] = main[1][1] = 1e-5f; main[3][0] = main[3][1] = 0; }   // everything inside
+        const float water = 10.0f + 20.0f * rnd();
+        const wp::View view(glm::value_ptr(main), water);
+        struct Ent { size_t recipe, range; };
+        std::vector<Ent> all;
+        for (size_t r = 0; r < ranges.size(); ++r)
+            for (size_t i = ranges[r].begin; i < ranges[r].begin + ranges[r].count; ++i) all.push_back({i, r});
+        std::stable_sort(all.begin(), all.end(), [&](const Ent& a, const Ent& b) { return recipes[a.recipe].typeID < recipes[b.recipe].typeID; });
+        expect.clear();
+        for (const auto& e : all)
+            if (ranges[e.range].multi() && wp::propIntersects(view, recipes[e.recipe], bounds)) expect.push_back(recipes[e.recipe]);
+        cache.collect(std::span<const GpuStaticPropInstance>(recipes), std::span<const RecipeRange>(ranges), 1, view, bounds, out);
+        REQUIRE(out.size() == expect.size());
+        CHECK(std::memcmp(out.data(), expect.data(), out.size() * sizeof(out[0])) == 0);
+        partial += !out.empty() && out.size() < all.size() - 500;
+        total += out.size();
+    }
+    CHECK(partial >= 3);   // views that cull part of the set exercise cells and the per-entry path
+    CHECK(total > 0);
+}
