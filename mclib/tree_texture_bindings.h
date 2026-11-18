@@ -23,7 +23,7 @@ public:
             }
             ready_ = true;
         }
-        for (std::size_t i = 0; i < bindings_.size(); ++i) {
+        for (std::uint32_t i = 0; i < bindings_.size(); ++i) {
             const auto& binding = bindings_[i];
             shape.SetTextureHandle(i, binding.handle);
             // Legacy missing-texture handling deliberately preserves alpha.
