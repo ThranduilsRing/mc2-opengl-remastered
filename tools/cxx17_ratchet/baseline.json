@@ -144,7 +144,7 @@
    "LG03": 165,
    "LG04": 15,
    "LG05": 121,
-   "LG06": 68,
+   "LG06": 69,
    "LG07": 2,
    "LG08": 1,
    "LG09": 3,
@@ -1341,6 +1341,7 @@
   },
   "code/actor.h": {},
   "code/appearance_owner.h": {},
+  "code/armor_alloc.h": {},
   "code/artillery_value_codec.h": {},
   "code/artlry.cpp": {
    "LG03": 1
@@ -1690,6 +1691,7 @@
   "code/logistics_begin.cpp": {},
   "code/logistics_csv.h": {},
   "code/logistics_internal.h": {},
+  "code/logistics_save_version.h": {},
   "code/logisticscomponent.cpp": {
    "LG17": 1
   },
@@ -1847,6 +1849,7 @@
   },
   "code/mechicon_package_hud.cpp": {},
   "code/mechicon_package_hud.h": {},
+  "code/mechlab_loc_layout.h": {},
   "code/mechlabscreen.cpp": {
    "LG05": 7,
    "LG11": 1
@@ -1904,7 +1907,7 @@
   },
   "code/missionbegin.cpp": {
    "LG03": 10,
-   "LG06": 3,
+   "LG06": 4,
    "LG10": 1
   },
   "code/missionbegin.h": {
@@ -3458,7 +3461,7 @@
    "LG20": 1
   }
  },
- "head": "fa7d427fa",
+ "head": "ab395479f",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

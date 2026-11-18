@@ -519,6 +519,13 @@
    "count": 1
   },
   {
+   "tag": "ARMOR",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 1
+  },
+  {
    "tag": "ASSET_SCALE",
    "ver": 1,
    "stream": "file",
@@ -5381,6 +5388,62 @@
    "count": 1
   },
   {
+   "tag": "LOADOUT_MIGRATE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 2
+  },
+  {
+   "tag": "LOADOUT_MIGRATE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "saved",
+    "now"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LOADOUT_MIGRATE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "variant",
+    "chassis",
+    "layout_rev",
+    "kept",
+    "moved",
+    "dropped"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LOADOUT_MIGRATE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "variant",
+    "component",
+    "id",
+    "cost",
+    "reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LOADOUT_MIGRATE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "variant",
+    "mechs",
+    "cbills",
+    "balance"
+   ],
+   "count": 1
+  },
+  {
    "tag": "LOADPATH",
    "ver": -1,
    "stream": "stderr",
@@ -6106,6 +6169,20 @@
     "reason",
     "before",
     "after"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MECH_PREVIEW_FIT",
+   "ver": -1,
+   "stream": "log",
+   "keys": [
+    "chassis",
+    "maxHalfW",
+    "limit",
+    "rectHalf",
+    "widens",
+    "fov"
    ],
    "count": 1
   },
@@ -9909,7 +9986,7 @@
     "tons",
     "src"
    ],
-   "count": 1
+   "count": 2
   },
   {
    "tag": "SOAK",
@@ -13325,7 +13402,8 @@
     "MB",
     "registry",
     "why",
-    "source"
+    "source",
+    "level"
    ],
    "count": 1
   },

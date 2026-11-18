@@ -1131,7 +1131,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
-        "line": 234,
+        "line": 235,
         "role": "WaterReactive",
         "std": "std430",
         "type": "buffer",
