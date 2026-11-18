@@ -92,7 +92,7 @@ struct CampaignChoice {
 };
 template<class Packs>
 std::vector<CampaignChoice> campaignChoices(const Packs& packs, const std::vector<std::string>& stockFits = {},
-                                           const std::function<bool(const std::string&)>& hidden = {}) {
+                                           const std::function<bool(std::string_view)>& hidden = {}) {
     std::vector<CampaignChoice> choices{{"", "campaign", "Stock campaign"}};
     for (const auto& fit : stockFits) {
         bool found = false;

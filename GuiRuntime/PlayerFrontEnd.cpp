@@ -528,7 +528,8 @@ void drawMainMenu(bool showCredits) {
         const auto fits = campaigns(id);
         campaignFit = fits.empty() ? "" : fits.front();
     };
-    auto importSource = [&](const std::string& id) {
+    auto importSource = [&](std::string_view view) {
+        const std::string id(view);
         return importStatus.contains("sources") && importStatus["sources"].contains(id) && !importStatus["sources"][id].contains("error");
     };
     ImGui::BeginTable("##campaignLayout", 2, ImGuiTableFlags_SizingStretchProp);

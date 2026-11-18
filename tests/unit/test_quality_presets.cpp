@@ -247,7 +247,7 @@ TEST_CASE("campaign picker/import-source folders are not listed as campaigns") {
     struct Pack { std::string id, kind; std::map<std::string, CampaignInfo> campaigns; };
     const std::vector<Pack> packs{{"exodus-dca4afc8", "campaign", {{"campaign", {"Exodus"}}}},
         {"mcosetup628(1)", "campaign", {{"campaign", {"Exodus"}}}}};  // manifest-less source folder
-    const auto choices = campaignChoices(packs, {}, [](const std::string& id) { return id == "mcosetup628(1)"; });
+    const auto choices = campaignChoices(packs, {}, [](std::string_view id) { return id == "mcosetup628(1)"; });
     REQUIRE(choices.size() == 2);
     CHECK(choices[1].pack == "exodus-dca4afc8");
 }
