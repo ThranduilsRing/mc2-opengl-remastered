@@ -2618,15 +2618,18 @@ bool prewarmProps(std::unique_ptr<mc2vk::IslandState>& state, int w, int h) {
 }
 bool prepareProps(std::unique_ptr<mc2vk::IslandState>& state, const Target& target, mc2vk::VulkanContext::RecordFn& record) {
     record = {};
-    if (!prewarmProps(state, target.w, target.h)) return false;
+    bool prewarmed;
+    { ZoneScopedN("Water.PlanarProps.Prewarm"); prewarmed = prewarmProps(state, target.w, target.h); }
+    if (!prewarmed) return false;
     auto* s = static_cast<PlanarProps*>(state.get());
     // Match the object projection; only the view-dependent instance list remains per frame.
     const float* objectMatrix = target.useTargetView ? target.mainWorldToClip : gos_GetObjectFixBMVPMat4();
     if (!objectMatrix) return false;
     const View view(objectMatrix, target.water);
     preparePropInstances(view, s->bounds, s->reflectedInstances);
-    mc2_static_prop_retype_far_tier(std::span<GpuStaticPropInstance>(s->reflectedInstances));
+    { ZoneScopedN("Water.PlanarProps.Retype"); mc2_static_prop_retype_far_tier(std::span<GpuStaticPropInstance>(s->reflectedInstances)); }
     if (s->reflectedInstances.empty()) return true;
+    ZoneScopedN("Water.PlanarProps.RunProps");
     Mc2ColorPropFeed feed{};
     feed.instances112 = s->reflectedInstances.data();
     feed.count = static_cast<uint32_t>(s->reflectedInstances.size());

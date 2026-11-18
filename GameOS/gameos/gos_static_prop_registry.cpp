@@ -13,14 +13,17 @@
 #include "../../RenderCore/StaticPropOrigin.h"
 #include "../../mclib/texture_assets.h"
 #include "water_planar_props.h"
+#include <tracy/Tracy.hpp>
 
 void mc2::waterplanar::preparePropInstances(const View& reflected, std::span<const mc2hzb::PropBounds> bounds,
                                           std::vector<GpuStaticPropInstance>& out)
 {
     static ReflectionPropsCache cache;
-    cache.collect(std::span<const GpuStaticPropInstance>(GpuStaticPropRegistry::s_recipes),
+    ZoneScopedN("Water.PlanarProps.Collect");
+    const bool rebuilt = cache.collect(std::span<const GpuStaticPropInstance>(GpuStaticPropRegistry::s_recipes),
         std::span<const GpuStaticPropRegistry::RecipeRange>(GpuStaticPropRegistry::s_recipeRanges),
         GpuStaticPropRegistry::getRegistryGeneration(), reflected, bounds, out);
+    if (rebuilt) { ZoneScopedN("Water.PlanarProps.RebuiltMarker"); }
 }
 
 
