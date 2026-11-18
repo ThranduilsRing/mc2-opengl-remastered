@@ -676,9 +676,10 @@ void Mission::updateSoakAutoWin() {
 		}
 		if (!s_soakWinEmitted && scenarioTime > winAfter)
 		{
-			// Harness only: resolve the primary objectives as a real win does, so
+			// Harness only: mark the primary objectives successful so
 			// LogisticsData::setMissionCompleted() pays their ResourcePoints (it
 			// pays only OS_SUCCESSFUL objectives; Status(objectives) needs IsActive).
+			// Unlike a real win, the setter skips success actions (flags, new tech).
 			if (!MPlayer && Team::home) {
 				int resolved = 0;
 				for (CObjective* pObjective : Team::home->objectives) {
