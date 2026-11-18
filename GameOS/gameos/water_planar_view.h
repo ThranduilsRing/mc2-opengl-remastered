@@ -11,6 +11,13 @@ inline float weatherLight(float sun, float ambient, float rain) {
     return (sun + ambient) * (std::min)(rain, 1.0f);
 }
 
+// What each Reflection quality level (options.cfg ReflectionQuality 0 Off, 1 Low, 2 Medium, 3 High) asks of the
+// reflection bake: whether it exists, its resolution divisor, whether static props are drawn into it, and how many
+// ray-march steps the water shader takes through its height map.
+struct BakePlan { bool bake; int sizeDivisor; bool props; int marchSteps; };
+inline BakePlan bakePlan(int) { return {true, 1, true, 8}; }
+inline int bakeSize(int fullSize, const BakePlan& plan) { return (std::max)(1, fullSize / plan.sizeDivisor); }
+
 // Pixel bounds include every possible ripple lookup and bilinear neighbour.
 inline std::array<int,4> paddedPixels(const float* ndc, int w, int h) {
     std::array<int,4> pixels{};

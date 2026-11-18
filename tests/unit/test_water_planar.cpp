@@ -440,3 +440,20 @@ TEST_CASE("water planar: cached bounds are reselected after camera and water cha
     REQUIRE(view.prepare(f.source, glm::value_ptr(f.main), 0));
     CHECK(view.feed().patchCount == 4);
 }
+
+TEST_CASE("water planar: each reflection quality level changes the bake and the uploaded march steps") {
+    const auto off = wp::bakePlan(0), low = wp::bakePlan(1), medium = wp::bakePlan(2), high = wp::bakePlan(3);
+    CHECK_FALSE(off.bake);
+    CHECK(low.bake); CHECK(medium.bake); CHECK(high.bake);
+    // High is the shipped look: full-size bake, props, 8 march steps.
+    CHECK(wp::bakeSize(1000, high) == 1000);
+    CHECK(high.props); CHECK(high.marchSteps == 8);
+    // Each lower level is strictly cheaper on every axis the levels own.
+    CHECK(wp::bakeSize(1000, medium) < wp::bakeSize(1000, high));
+    CHECK(wp::bakeSize(1000, low) < wp::bakeSize(1000, medium));
+    CHECK(medium.props); CHECK_FALSE(low.props);
+    CHECK(medium.marchSteps < high.marchSteps);
+    CHECK(low.marchSteps < medium.marchSteps);
+    CHECK(wp::bakeSize(1, low) == 1);
+    CHECK(wp::bakePlan(99).marchSteps == high.marchSteps);
+}
