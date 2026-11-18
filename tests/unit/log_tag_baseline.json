@@ -8165,6 +8165,7 @@
    "keys": [
     "frame",
     "slot",
+    "ia_primitives",
     "raster_triangles",
     "fragment_invocations",
     "invocations_per_pixel"
