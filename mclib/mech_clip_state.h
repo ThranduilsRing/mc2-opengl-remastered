@@ -61,8 +61,9 @@ std::string_view resolveClip(std::string_view requested, std::string_view active
 template<class HasClip>
 std::string_view previewClip(std::string_view showcase, std::string_view first, HasClip hasClip) {
     // A preview actor never leaves gesture 0 (Park = the crouched atlas_shutdownIdle), so the gesture must not pick its clip:
-    // a pack without clips.showcase (the owner's v0.4 Marauder) showed the powered-down pose. Default = the compiler's showcase.
-    for (auto name : {showcase, std::string_view("atlas_moveCoreWalkFwd"), std::string_view("atlas_moveCoreIdle"), first})
+    // a pack without clips.showcase (the owner's v0.4 Marauder) showed the powered-down pose. Default = the idle clip: the
+    // Atlas-authored walk pitches pelvis +7 and Spine2 +13 deg forward (nose-down on the Marauder); idle stays within 1 deg of bind.
+    for (auto name : {showcase, std::string_view("atlas_moveCoreIdle"), std::string_view("atlas_moveCoreWalkFwd"), first})
         if (!name.empty() && hasClip(name)) return name;
     return {};
 }

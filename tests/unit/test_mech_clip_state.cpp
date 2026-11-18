@@ -104,9 +104,9 @@ TEST_CASE("preview resolver: missing binding retains the mission active clip") {
 TEST_CASE("preview showcase: manifest, default walk, idle, first clip fallback (never the park gesture's shutdown pose)") {
     const auto has = [](std::string_view s) { return s == "show" || s == "atlas_shutdownIdle" || s == "atlas_moveCoreWalkFwd" || s == "atlas_moveCoreIdle" || s == "first"; };
     CHECK(previewClip("show", "first", has) == "show");
-    CHECK(previewClip("", "first", has) == "atlas_moveCoreWalkFwd");   // pack without clips.showcase
-    CHECK(previewClip("unknown", "first", has) == "atlas_moveCoreWalkFwd");
-    CHECK(previewClip("", "first", [](auto s) { return s == "atlas_moveCoreIdle" || s == "atlas_shutdownIdle"; }) == "atlas_moveCoreIdle");
+    CHECK(previewClip("", "first", has) == "atlas_moveCoreIdle");   // pack without clips.showcase: upright idle, not the forward-pitched walk
+    CHECK(previewClip("unknown", "first", has) == "atlas_moveCoreIdle");
+    CHECK(previewClip("", "first", [](auto s) { return s == "atlas_moveCoreWalkFwd" || s == "atlas_shutdownIdle"; }) == "atlas_moveCoreWalkFwd");
     CHECK(previewClip("", "first", [](auto s) { return s == "first"; }) == "first");
 }
 
