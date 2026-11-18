@@ -124,6 +124,9 @@ protected:
 	MechAppearance*		appearance; 
 
 	const mc2pkg::PackageChassis* package = nullptr;
+	// Parsed locations.fit / package layout, loaded once per chassis object (a content reload recreates the chassis).
+	mutable std::optional<mc2pkg::ChassisLayout> layoutCache;
+	mutable bool layoutCacheLoaded = false;
 
 	friend class		LogisticsVariant;
 	friend class		LogisticsMech;

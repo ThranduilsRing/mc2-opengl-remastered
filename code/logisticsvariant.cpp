@@ -554,9 +554,13 @@ mc2pkg::LocationVariant LogisticsVariant::locationRecord() const {
 	const auto* package = chassis->getPackage();
 	const std::string stem = std::filesystem::path(chassis->fileName).stem().string();
 	const auto layoutPath = std::filesystem::path("data") / "defs" / "chassis" / "core" / stem / "locations.fit";
-	auto loaded = mc2pkg::loadChassisLayout(package ? package->fitPath : layoutPath.generic_string());
+	if (!chassis->layoutCacheLoaded) {   // the sheet asks ~10x per frame: parse the FIT once per chassis
+		chassis->layoutCache = mc2pkg::loadChassisLayout(package ? package->fitPath : layoutPath.generic_string());
+		chassis->layoutCacheLoaded = true;
+	}
+	const auto& loaded = chassis->layoutCache;
 	mc2pkg::ChassisLayout layout;
-	if (loaded) layout = std::move(*loaded);
+	if (loaded) layout = *loaded;
 	else {
 		// Compatibility fallback until lane 3 supplies authored layouts. Do not
 		// invent restrictive hardpoints for mods with no location table.
