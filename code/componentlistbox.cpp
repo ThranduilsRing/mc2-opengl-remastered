@@ -72,10 +72,11 @@ ComponentListItem::ComponentListItem( LogisticsComponent* pComp )
 
 		// Stock look: the warning (HEAT EXCEEDED) is centred over the icon area, below the name line.
 		const long iconTop = icon.top() - outline.top();
+		const long kWarnPad = 8;   // one word (EXCEEDED) is a little wider than the narrowest icons
 		// Confined to the icon: full-row width ran across the cost/heat numbers; the text bridge wraps and
 		// shrinks it to fit the icon rect.
-		disabledText.resize( icon.width(), icon.height() );
-		disabledText.moveTo( icon.left() - outline.left(), iconTop );
+		disabledText.resize( icon.width() + 2 * kWarnPad, icon.height() );
+		disabledText.moveTo( icon.left() - outline.left() - kWarnPad, iconTop );
 		disabledText.alignment = 2;
 
 
