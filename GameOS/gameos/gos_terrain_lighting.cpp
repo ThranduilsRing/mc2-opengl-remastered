@@ -242,7 +242,10 @@ static void BuildLightGrid(uint32_t numLights) {
     static const float contactShadow=mc2::gate::get<"MC2_MOVER_CONTACT_SHADOW">();
     if(moverMax && contactShadow==0.0f) {
         gos_terrain_lighting::GridMoverDominance dominance(std::span{s_lightBuf}.first(numLights),poolSoft,moverScale);
-        std::vector<uint32_t> compact;compact.reserve(s_gridIndices.size());
+        // appendFrameLights is called only by the main-thread render extract.
+        // After swap this holds the old input; discard it before every rebuild.
+        static std::vector<uint32_t> compact;
+        compact.clear();compact.reserve(s_gridIndices.size());
         for(uint32_t c=0;c<cells;++c) {
             const uint32_t first=s_gridHeader[2*c],count=s_gridHeader[2*c+1];
             const uint32_t begin=static_cast<uint32_t>(compact.size());

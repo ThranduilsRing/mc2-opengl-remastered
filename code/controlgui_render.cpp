@@ -4,6 +4,7 @@
 #include <algorithm>
 #include "sim_overlap.h"
 #include "controlgui_internal.h"
+#include "hud_join.h"
 #include "mc2fmt.h"
 #include "terrain_runtime.h"
 
@@ -479,6 +480,8 @@ void ControlGui::extractHudSnapshot()
     hud.objectiveStatus = OS_SUCCESSFUL;
     hud.objectiveCount = Team::home ? Team::home->objectives.Count() : 0;
     if (!Team::home || !ObjectManager) return;
+    const auto barStatuses = mc2::hud_join::barStatusIndex(mc2::render_view::list().movers,
+        mc2::render_view::Mode::Full, mc2::render_view::Mode::Own);
     for (int i = 0; i < ObjectManager->numMovers; ++i) {
         Mover* m = ObjectManager->getMover(i);
         if (!m) continue;
@@ -494,10 +497,10 @@ void ControlGui::extractHudSnapshot()
         row.name = m->getName();
         row.health = m->getAppearance() ? m->getAppearance()->barStatus : 0;
         // Object draws used to set barStatus before the HUD. Read that same pending value at extract.
-        for (const auto& view : mc2::render_view::list().movers)
-            if (view.obj == m && (view.mode == mc2::render_view::Mode::Full || view.mode == mc2::render_view::Mode::Own)) {
-                row.health = view.barStatus; break;
-            }
+        if (const auto found = barStatuses.find(m); found != barStatuses.end()) {
+            const auto& [object, health] = *found;
+            row.health = health;
+        }
         for (int g = 0; g < 10; ++g) if (m->isInUnitGroup(g)) row.groups |= 1u << g;
         auto* sensor = m->getSensorSystem();
         row.sensorRange = sensor ? sensor->getRange() : 0;
@@ -515,10 +518,13 @@ void ControlGui::extractHudSnapshot()
             row.orderStatus = extractMoverHudStatus(m);
         }
     }
+    const auto moverIndices = mc2::hud_join::moverIndex(hud.movers);
     for (long i = 0; i < Team::home->getRosterSize(); ++i) {
         const auto* object = Team::home->getMover(i);
-        for (size_t j = 0; j < hud.movers.size(); ++j)
-            if (hud.movers[j].object == object) { hud.roster.push_back(j); break; }
+        if (const auto found = moverIndices.find(object); found != moverIndices.end()) {
+            const auto& [key, index] = *found;
+            hud.roster.push_back(index);
+        }
     }
     if (auto* sys = SensorManager ? SensorManager->getTeamSensor(Team::home->getId()) : nullptr)
         for (int i = 0; i < sys->numSensors; ++i) {

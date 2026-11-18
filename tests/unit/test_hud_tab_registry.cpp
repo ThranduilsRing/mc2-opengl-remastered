@@ -10,6 +10,63 @@
 #include "doctest.h"
 
 #include "hudtabregistry.h"
+#include "../../code/hud_join.h"
+#include <array>
+#include <random>
+#include <vector>
+
+TEST_CASE("HUDJoinDifferential")
+{
+    struct Other { virtual ~Other() = default; };
+    struct Object { virtual ~Object() = default; };
+    struct Mover : Other, Object {};
+    struct View { const Object* obj; int mode; float barStatus; };
+    struct Row { const Object* object; };
+    std::array<Mover, 8> objects{};
+    const auto compare = [&](const std::vector<View>& views, const std::vector<Row>& rows) {
+        const auto bars = mc2::hud_join::barStatusIndex(views, 1, 2);
+        const auto movers = mc2::hud_join::moverIndex(rows);
+        std::vector<std::size_t> expectedRoster, actualRoster;
+        // Null and absent objects are roster entries too; preserve roster order.
+        for (int i = -1; i < 8; ++i) {
+            const auto* object = i < 0 ? nullptr : &objects[i];
+            float expected = -1, actual = -1;
+            for (const auto& view : views)
+                if (view.obj == object && (view.mode == 1 || view.mode == 2)) {
+                    expected = view.barStatus; break;
+                }
+            if (const auto found = bars.find(object); found != bars.end()) {
+                const auto& [key, value] = *found;
+                actual = value;
+            }
+            CHECK(actual == expected);
+            for (std::size_t j = 0; j < rows.size(); ++j)
+                if (rows[j].object == object) { expectedRoster.push_back(j); break; }
+            if (const auto found = movers.find(object); found != movers.end()) {
+                const auto& [key, value] = *found;
+                actualRoster.push_back(value);
+            }
+        }
+        CHECK(actualRoster == expectedRoster);
+    };
+    compare({}, {});
+    compare({{&objects[0], 0, 9}, {&objects[0], 1, 3}, {&objects[0], 2, 7},
+             {nullptr, 2, 4}}, {{&objects[0]}, {&objects[0]}, {nullptr}, {nullptr}});
+    std::mt19937 random(0x485544);
+    const auto pointer = [&]() -> const Object* {
+        const auto i = random() % 9;
+        return i == 8 ? nullptr : &objects[i];
+    };
+    for (int trial = 0; trial < 400; ++trial) {
+        std::vector<View> views;
+        std::vector<Row> rows;
+        const auto count = random() % 64;
+        for (unsigned i = 0; i < count; ++i)
+            views.push_back({pointer(), static_cast<int>(random() % 4), static_cast<float>(random() % 100)});
+        for (unsigned i = 0, n = random() % 64; i < n; ++i) rows.push_back({pointer()});
+        compare(views, rows);
+    }
+}
 
 namespace
 {
