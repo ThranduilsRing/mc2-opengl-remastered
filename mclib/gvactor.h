@@ -361,6 +361,8 @@ class GVAppearance : public ObjectAppearance
 			destroy();
 		}
 
+		void prewarmGpuTextures (void);   // mission load: upload the textures the first batcher submit would
+
 		virtual void setPaintScheme (void);
 
 		virtual void setPaintScheme (DWORD red, DWORD green, DWORD blue);

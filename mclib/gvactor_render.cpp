@@ -323,6 +323,13 @@ long GVAppearance::render (long depthFixup)
 	return NO_ERR;
 }
 
+void GVAppearance::prewarmGpuTextures()
+{
+	gpuMechPrewarmTextureSlot(static_cast<uint32_t>(localTextureHandle));
+	if (stockPbr.orm) gpuMechPrewarmTextureSlot(stockPbr.orm.get());
+	if (stockPbr.normal) gpuMechPrewarmTextureSlot(stockPbr.normal.get());
+}
+
 // Hand the stock body to the mech batcher: it reads the node matrices only; the paint texture, light row and
 // haze ride the instance. False declines (no paint texture, light row missing or out of range): the caller
 // draws on the CPU.

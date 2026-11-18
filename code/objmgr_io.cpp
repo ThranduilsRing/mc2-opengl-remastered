@@ -13,6 +13,8 @@
 #include <span>
 #include <map>
 #include "objmgr_internal.h"
+#include "mech3d.h"
+#include "gvactor.h"
 #include "static_prop_prewarm.h"
 #include "terrain_dirty_queue.h"
 #include "saved_objects_check.h"
@@ -1529,4 +1531,17 @@ bool GameObjectManager::restoreAnimationState(const std::vector<uint8_t>& bytes,
     mc2RestoreSimRngState(state); RestoreSimRandomDraws(draws);
     mc2_anim_rng::restore(animState, animDraws);
     return true;
+}
+
+// Mission load: the first GPU mech flush uploads every mover's paint/AO/normal textures inside the first drawn frame
+// (110-256 ms on mc2_01/mc2_24). Realize them behind the loading screen; the lazy path stays as the fallback.
+void prewarmMoverGpuTextures(GameObjectManager& objects)
+{
+	ZoneScopedN("GameObjectManager::prewarmMoverGpuTextures"); MC2_LOAD_SCOPE("GameObjectManager::prewarmMoverGpuTextures");
+	for (long i = 0; objects.mechs && i < objects.numMechs; ++i)
+		if (objects.mechs[i] && objects.mechs[i]->getExists())
+			if (auto* app = dynamic_cast<Mech3DAppearance*>(objects.mechs[i]->getAppearance())) app->prewarmGpuTextures();
+	for (long i = 0; objects.vehicles && i < objects.numVehicles; ++i)
+		if (objects.vehicles[i] && objects.vehicles[i]->getExists())
+			if (auto* app = dynamic_cast<GVAppearance*>(objects.vehicles[i]->getAppearance())) app->prewarmGpuTextures();
 }

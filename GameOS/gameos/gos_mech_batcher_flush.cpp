@@ -464,6 +464,12 @@ void MechFlushFrame::validateMaterialTable() {
     }
 }
 
+void gpuMechPrewarmTextureSlot(uint32_t slot) {
+    if (slot == 0u || slot == UINT32_MAX || !mc2::textures::ready()) return;
+    ZoneScopedN("DSP.MechPack.PrewarmTexture");
+    if (const DWORD handle = mc2::textures::sourceId(slot)) gos_GetMaterialTextureId(handle);
+}
+
 // One run per draw call, with the LIVE slot-0 paint texture (and the per-type AO / normal maps) resolved this frame.
 void MechFlushFrame::collectRuns() {
     static MechRunCache<DrawCall> cache;

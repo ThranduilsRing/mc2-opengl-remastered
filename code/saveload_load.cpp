@@ -829,6 +829,7 @@ void Mission::loadActivateAndFinalize() {
 	if (missionCamera) missionCamera->prepareCompass();
 	if (missionInterface) missionInterface->getControlGui()->prepareHudFrame();
 	mc2::textures::prewarmCpuTextures();
+	prewarmMoverGpuTextures(*ObjectManager); prewarmHudSheets();
 	mc2PrewarmMissionPipelines();
 	mc2::gpumem::log("reload_restore_complete");
 	{

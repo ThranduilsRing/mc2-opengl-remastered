@@ -1079,6 +1079,7 @@ void Mission::initFinalizeGeometry() {
 	gos_SetHudCanvasActive(true);
 	if (missionInterface) missionInterface->getControlGui()->prepareHudFrame();
 	{ MC2_LOAD_SCOPE("finalize.prewarmCpuTextures"); mc2::textures::prewarmCpuTextures(); }
+	{ MC2_LOAD_SCOPE("finalize.prewarmFirstFrame"); prewarmMoverGpuTextures(*ObjectManager); prewarmHudSheets(); }
     { MC2_LOAD_SCOPE("finalize.prewarmPipelines"); mc2PrewarmMissionPipelines(); }
 	mission_phase_mark("render_prewarm_ready");
 }
