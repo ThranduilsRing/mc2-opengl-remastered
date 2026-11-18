@@ -2503,7 +2503,7 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [],
-   "count": 6
+   "count": 2
   },
   {
    "tag": "CPU_PROJ",
@@ -3494,6 +3494,28 @@
   {
    "tag": "EDITOR_LEGACY_PLACEMENT",
    "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "family",
+    "fit_id",
+    "stem",
+    "x",
+    "y",
+    "z",
+    "input_team",
+    "team",
+    "painted",
+    "undo",
+    "redo",
+    "saved",
+    "removed",
+    "reopened"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EDITOR_LEGACY_PLACEMENT",
+   "ver": 1,
    "stream": "file",
    "keys": [
     "family",
@@ -3510,6 +3532,41 @@
     "saved",
     "removed",
     "reopened"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EDITOR_MODEL",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "mission",
+    "field",
+    "offset",
+    "reason",
+    "rejected"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EDITOR_OBJECTIVE_REFERENCE",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "entry",
+    "reason",
+    "preserved"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EDITOR_OBJECTIVE_WARNING",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "field",
+    "warning",
+    "preserved"
    ],
    "count": 1
   },
@@ -4957,7 +5014,7 @@
     "spc",
     "lmouse"
    ],
-   "count": 3
+   "count": 1
   },
   {
    "tag": "INVIEW_CONFLATION",
@@ -6098,7 +6155,7 @@
     "animation_complete",
     "buttons_drawn"
    ],
-   "count": 3
+   "count": 1
   },
   {
    "tag": "MIF_SPLIT",
@@ -10977,6 +11034,29 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [
+    "cache",
+    "reason",
+    "key",
+    "instances",
+    "regions",
+    "inst_hash",
+    "region_hash",
+    "hs_hash",
+    "max_inst",
+    "place_ms",
+    "build_ms",
+    "key_ms",
+    "read_ms",
+    "write_ms",
+    "upload_ms"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VEG_GPU",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
     "instances",
     "regions"
    ],
@@ -11231,7 +11311,7 @@
    "keys": [
     "event"
    ],
-   "count": 3
+   "count": 1
   },
   {
    "tag": "VIDEO",
@@ -11674,6 +11754,17 @@
     "debug_labels",
     "timestamps",
     "tracy_ctx"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_GPU_TRIS",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "pose",
+    "frame",
+    "n"
    ],
    "count": 1
   },
@@ -12781,6 +12872,13 @@
    "count": 1
   },
   {
+   "tag": "VK_RT_SELFTEST",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [],
+   "count": 1
+  },
+  {
    "tag": "VK_SCENE_READBACK",
    "ver": -1,
    "stream": "stderr",
@@ -13504,6 +13602,16 @@
    "keys": [
     "wet_recipe",
     "bounds"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WORLD_ORDER",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "tick",
+    "seq"
    ],
    "count": 1
   },
