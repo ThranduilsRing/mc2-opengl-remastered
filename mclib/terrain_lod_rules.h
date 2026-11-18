@@ -16,6 +16,19 @@
 
 namespace mc2lod {
 
+// Visit the contiguous vertex rows of a block, clipped to the map.
+template <typename Fn>
+void forEachBlockVertexRow(long block, long blocksMapSide, long verticesBlockSide,
+                           long verticesMapSide, Fn fn)
+{
+    const long rowStart = (block / blocksMapSide) * verticesBlockSide;
+    const long colStart = (block % blocksMapSide) * verticesBlockSide;
+    const long count = std::min(verticesBlockSide, verticesMapSide - colStart);
+    if (count <= 0) return;
+    for (long row = rowStart; row < rowStart + verticesBlockSide && row < verticesMapSide; ++row)
+        fn(row * verticesMapSide + colStart, count);
+}
+
 // Exact inputs of the CPU angular activity mask. Heights, recipes and object
 // membership are not inputs; those consumers still run against live data.
 struct ActivityKey {

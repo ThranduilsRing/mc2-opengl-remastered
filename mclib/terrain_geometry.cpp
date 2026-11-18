@@ -172,13 +172,8 @@ void Terrain::geometry (void)
 			fflush(stderr);
 		}
 	}
-	// Approach A (lag-free): reset the per-frame camera-windowed solid
-	// recipe-index window IMMEDIATELY before the slim loop that fills it.
-	// The slim loop runs BEFORE gos_terrain_indirect::ComputeDispatch()
-	// (called later in geometry()), so the window collected here is consumed
-	// by THIS frame's dispatch — same-frame, no 1-frame lag.  The append
-	// (inside the `if (rv->clipInfo)` block below) rides the existing slim
-	// iteration; NO new per-frame walk is introduced.
+	// Reset the candidate window consumed only by terrain feed observation.
+	const bool observe = mc2_terrain_feed_observation_enabled();
 	gos_terrain_indirect::BeginFrameSolidWindow();
 	const bool s_solidNarrowOn = gos_terrain_indirect::SolidWindowEnabled();
 
@@ -260,7 +255,6 @@ void Terrain::geometry (void)
 		ZoneScopedN("Terrain::geometry chunkActiveProd");
 		GeoScope _gsChunk(GP_CHUNKPROD);
 		const long nB = numObjBlocks;
-		const long nV = realVerticesMapSide * realVerticesMapSide;
 		static std::vector<uint8_t> s_prodBlock;
 		const auto& frame = Camera::cameraFrame;
 		const mc2lod::ActivityKey activityKey{
@@ -338,46 +332,27 @@ void Terrain::geometry (void)
 			s_activityKey = activityKey;
 		}
 
-		// SINK: write PRODUCTION inside the O(active-blocks x span) loop. The live
-		// solid window was cleared this frame by BeginFrameSolidWindow() (in the
-		// slimReduce block above, which still runs but iterates zero vertices).
+		// SINK: fill production activity rows; collect candidates only for feed observation.
 		const bool solidOn = gos_terrain_indirect::SolidWindowEnabled();
-		// Without a ready recipe table RecipeForVertexNum is null for every vertex, so the per-vertex probe adds nothing and
-		// a block's vertex rows are plain contiguous fills (a big map has ~850 active blocks = ~340k probes per frame).
-		const bool probeRecipes = solidOn && gos_terrain_indirect::IsDenseRecipeReady();
+		const bool collectWindow = solidOn && gos_terrain_indirect::IsDenseRecipeReady() && observe;
 		long pBlocks = 0, pVerts = 0, pWin = 0;
 		for (long b = 0; b < nB; ++b)
 		{
 			if (!s_prodBlock[b]) continue;
 			objBlockInfo[b].active = true;
 			++pBlocks;
-			const long bx = b % blocksMapSide, by = b / blocksMapSide;
-			const long rowStart = by * verticesBlockSide, colStart = bx * verticesBlockSide;
-			if (!probeRecipes)
-			{
-				const long colEnd = std::min(colStart + verticesBlockSide, static_cast<long>(realVerticesMapSide));
-				for (long row = rowStart; row < rowStart + verticesBlockSide && row < realVerticesMapSide; ++row)
-				{
-					const long vn0 = row * realVerticesMapSide + colStart;
-					if (colEnd <= colStart || vn0 < 0 || vn0 + (colEnd - colStart) > nV) continue;
-					std::fill_n(&objVertexActive[vn0], colEnd - colStart, true);
-					pVerts += colEnd - colStart;
-				}
-				continue;
-			}
-			for (long row = rowStart; row < rowStart + verticesBlockSide && row < realVerticesMapSide; ++row)
-			for (long col = colStart; col < colStart + verticesBlockSide && col < realVerticesMapSide; ++col)
-			{
-				const long vn = row * realVerticesMapSide + col;
-				if (vn < 0 || vn >= nV) continue;
-				objVertexActive[vn] = true;
-				++pVerts;
-				if (solidOn && gos_terrain_indirect::RecipeForVertexNum(static_cast<int32_t>(vn)))
-				{
-					gos_terrain_indirect::AppendSolidWindowCandidate(static_cast<int32_t>(vn));
-					++pWin;
-				}
-			}
+			mc2lod::forEachBlockVertexRow(b, blocksMapSide, verticesBlockSide, realVerticesMapSide,
+				[&](long firstVertex, long count) {
+					std::fill_n(&objVertexActive[firstVertex], count, true);
+					pVerts += count;
+					if (collectWindow)
+						for (long vn = firstVertex; vn < firstVertex + count; ++vn)
+							if (gos_terrain_indirect::RecipeForVertexNum(static_cast<int32_t>(vn)))
+							{
+								gos_terrain_indirect::AppendSolidWindowCandidate(static_cast<int32_t>(vn));
+								++pWin;
+							}
+				});
 		}
 
 		// Telemetry — guards the silent "obj-active empty under flag" failure mode.
@@ -589,7 +564,7 @@ void Terrain::geometry (void)
 		}
 	}
 
-	if (mc2_terrain_feed_observation_enabled() && objBlockInfo && objVertexActive) {
+	if (observe && objBlockInfo && objVertexActive) {
 		extern uint32_t g_mc2RenderFrame;
 		std::vector<uint8_t> blocks(static_cast<size_t>(numObjBlocks));
 		for (long b = 0; b < numObjBlocks; ++b) blocks[b] = objBlockInfo[b].active ? 1 : 0;

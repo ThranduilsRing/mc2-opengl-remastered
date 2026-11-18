@@ -9,6 +9,40 @@
 
 using namespace mc2lod;
 
+TEST_CASE("terrain_activity_rows/equivalent") {
+    for (const auto grid : {std::array<long, 3>{120, 20, 6}, {100, 20, 6}, {7, 3, 3}}) {
+        const long side = grid[0], span = grid[1], blocks = grid[2];
+        for (long b = 0; b < blocks * blocks; ++b) {
+            std::vector<long> actual, expected;
+            forEachBlockVertexRow(b, blocks, span, side, [&](long first, long count) {
+                for (long vn = first; vn < first + count; ++vn) actual.push_back(vn);
+            });
+            const long rowStart = (b / blocks) * span, colStart = (b % blocks) * span;
+            for (long row = rowStart; row < rowStart + span && row < side; ++row)
+            for (long col = colStart; col < colStart + span && col < side; ++col) {
+                const long vn = row * side + col;
+                if (vn < 0 || vn >= side * side) continue;
+                expected.push_back(vn);
+            }
+            CHECK(actual == expected);
+            for (long vn : actual) { CHECK(vn >= 0); CHECK(vn < side * side); }
+        }
+    }
+}
+
+TEST_CASE("terrain_activity_rows/clipped") {
+    long calls = 0;
+    forEachBlockVertexRow(5, 6, 20, 100, [&](long, long) { ++calls; });
+    forEachBlockVertexRow(30, 6, 20, 100, [&](long, long) { ++calls; });
+    CHECK(calls == 0);
+    std::vector<long> firsts, counts;
+    forEachBlockVertexRow(5, 3, 3, 7, [&](long first, long count) {
+        firsts.push_back(first); counts.push_back(count);
+    });
+    CHECK(firsts == std::vector<long>{27, 34, 41});
+    CHECK(counts == std::vector<long>{1, 1, 1});
+}
+
 TEST_CASE("terrain activity cache: sub-block motion, rotation, clip and grid changes invalidate") {
     const ActivityKey key{{100, 200, 300, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0.75f},
                           {900, 30, 20, 300}, 128.0f};
