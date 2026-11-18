@@ -341,3 +341,19 @@ TEST_CASE("static caster set: a shape swap resets the churn count but a moving o
     }
     CHECK(set.isMoverOwner(&obj));
 }
+
+TEST_CASE("static caster set: resolve without the hash returns the same leaves") {
+    RecipeFeed feed;
+    feed.add(1, 10); feed.add(2, 20);
+    int tree = 0, bldg = 0;
+    mc2shadow::StaticCasterSet set;
+    set.beginRebuild();
+    set.add({&tree, 1, 1});
+    set.add({&bldg, 2, 2, mc2shadow::CasterKind::Building});
+    set.endRebuild();
+    std::vector<GpuStaticPropInstance> hashed, bare;
+    set.resolve(hashed);
+    set.resolve(bare, false);
+    REQUIRE(bare.size() == hashed.size());
+    for (size_t i = 0; i < bare.size(); ++i) CHECK(bare[i].typeID == hashed[i].typeID);
+}

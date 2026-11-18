@@ -264,7 +264,7 @@ void StaticCasterSet::appendMoverLeaves(std::vector<GpuStaticPropInstance>& leav
         if (!moverPropFeed().contains(movers_[i].owner,frame)) GpuStaticPropRegistry::getRecipeShadowLeaves(movers_[i].recipeIndex,leaves);
 }
 
-uint64_t StaticCasterSet::resolve(std::vector<GpuStaticPropInstance>& leaves) const {
+uint64_t StaticCasterSet::resolve(std::vector<GpuStaticPropInstance>& leaves, bool wantHash) const {
     leaves.clear();
     uint64_t h = fnv1a(nullptr, 0);
     std::vector<GpuStaticPropInstance> one;
@@ -272,12 +272,14 @@ uint64_t StaticCasterSet::resolve(std::vector<GpuStaticPropInstance>& leaves) co
         const StaticCasterEntry& e = entries_[i];
         one.clear();
         if (GpuStaticPropRegistry::getRecipeShadowLeaves(e.recipeIndex, one) == 0) continue;
-        h = fnv1a(&e.gameHandle, sizeof(e.gameHandle), h);
-        h = fnv1a(&e.kind, sizeof(e.kind), h);
-        h = fnv1a(&e.damageState, sizeof(e.damageState), h);
-        for (const GpuStaticPropInstance& leaf : one) {
-            h = fnv1a(&leaf.typeID, sizeof(leaf.typeID), h);
-            h = fnv1a(leaf.modelMatrix, sizeof(leaf.modelMatrix), h);
+        if (wantHash) {
+            h = fnv1a(&e.gameHandle, sizeof(e.gameHandle), h);
+            h = fnv1a(&e.kind, sizeof(e.kind), h);
+            h = fnv1a(&e.damageState, sizeof(e.damageState), h);
+            for (const GpuStaticPropInstance& leaf : one) {
+                h = fnv1a(&leaf.typeID, sizeof(leaf.typeID), h);
+                h = fnv1a(leaf.modelMatrix, sizeof(leaf.modelMatrix), h);
+            }
         }
         leaves.insert(leaves.end(), one.begin(), one.end());
     }
