@@ -46,6 +46,7 @@ import ctypes
 import datetime
 import glob
 import hashlib
+import itertools
 import importlib.util
 import json
 import os
@@ -806,20 +807,60 @@ def check_hardlink_isolation(items, target):
              "MC2_DEPLOY_ALLOW_SHARED_LINKS=1 to bypass deliberately.")
 
 
-_ASIDES = []  # '<name>.old-<pid>' entries this process renamed aside and could not delete yet
+ASIDE_RECEIPT = ".deploy-asides.json"
+_ASIDE_RE = re.compile(r"\.old-\d+(-\d+)?$")
+_ASIDE_COUNTER = itertools.count(1)
+_ASIDE_TARGET = [None]  # the install this process is deploying into; set once its folder lease is held
 
 
-def retry_asides():
-    """Delete the asides this process created; one still held is logged and left."""
-    for path in list(_ASIDES):
+def _aside_receipt_path(target_dir):
+    return os.path.join(target_dir, ASIDE_RECEIPT)
+
+
+def _read_aside_receipt(target_dir):
+    try:
+        with open(_aside_receipt_path(target_dir), encoding="utf-8") as f:
+            data = json.load(f)
+        return [p for p in data if isinstance(p, str)] if isinstance(data, list) else []
+    except (OSError, ValueError):
+        return []
+
+
+def _write_aside_receipt(target_dir, paths):
+    receipt = _aside_receipt_path(target_dir)
+    try:
+        if paths:
+            with open(receipt, "w", encoding="utf-8") as f:
+                json.dump(sorted(set(paths)), f)
+        elif os.path.exists(receipt):
+            os.unlink(receipt)
+    except OSError as e:
+        log(f"WARNING: could not update {receipt}: {e}")
+
+
+def record_aside(aside, target_dir=None):
+    """Remember a held aside in the install's receipt so a later deploy deletes it."""
+    root = target_dir or _ASIDE_TARGET[0] or os.path.dirname(aside)
+    _write_aside_receipt(root, _read_aside_receipt(root) + [os.path.abspath(aside)])
+
+
+def sweep_asides(target_dir):
+    """Delete the asides listed in the install's receipt. Only names matching .old-<pid>[-<n>] inside target_dir are touched; one still held stays listed."""
+    root = os.path.normcase(os.path.abspath(target_dir))
+    keep, listed = [], _read_aside_receipt(target_dir)
+    for path in listed:
+        full = os.path.normcase(os.path.abspath(path))
+        if not _ASIDE_RE.search(full) or os.path.commonpath([root, full]) != root or full == root:
+            continue  # not ours to delete: dropped from the receipt, never unlinked
         try:
             os.unlink(path)
-            _ASIDES.remove(path)
         except FileNotFoundError:
-            _ASIDES.remove(path)
+            pass
         except OSError:
             log(f"WARNING: old link still held, left in place: {path}")
-            _ASIDES.remove(path)
+            keep.append(path)
+    if listed:
+        _write_aside_receipt(target_dir, keep)
 
 
 def replace_file(src, dst):
@@ -837,7 +878,7 @@ def replace_file(src, dst):
             shared = False
         if not shared:
             raise
-        aside = f"{dst}.old-{os.getpid()}"
+        aside = f"{dst}.old-{os.getpid()}-{next(_ASIDE_COUNTER)}"
         try:
             os.replace(dst, aside)
         except OSError as e:
@@ -854,7 +895,7 @@ def replace_file(src, dst):
     try:
         os.unlink(aside)
     except OSError:
-        _ASIDES.append(aside)  # still held; retried once at the end of deploy()
+        record_aside(aside)  # still held; the next deploy into this install (or this one's finally) deletes it
 
 
 def _replace_in_place(src, dst):
@@ -1834,7 +1875,7 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
     else:
         log("PDB check OK: deployed PDB matches source hash")
 
-    retry_asides()
+    sweep_asides(target_dir)
     retire_unowned(target_dir, src_hashes, preserve,
                    deploying_target=deploying_target,
                    own_shaders=any(kind == "shader" and rel.startswith("shaders/vulkan/") and rel.endswith(".spv")
@@ -2179,6 +2220,16 @@ TARGET_PRESETS = {
         "ninja_subdir": os.path.join("build64-ninja", "out", "editor"),
     },
 }
+
+def is_v04_game_publish(target, exe_name):
+    """True when this deploy lands the game exe in the v0.4 preset install, however the target was spelled."""
+    game = TARGET_PRESETS["game"]
+    try:
+        same_dir = os.path.normcase(os.path.realpath(target)) == os.path.normcase(os.path.realpath(game["target_dir"]))
+    except (OSError, TypeError, ValueError):
+        return False
+    return same_dir and os.path.basename(str(exe_name)).casefold() in ("mc2", "mc2.exe")
+
 
 # DEPLOY-TARGET-GUARD: deploy ONLY to one of the canonical deploy folders. Each full
 # install is ~5GB; spinning up a per-lane/per-experiment deploy folder (e.g.
@@ -2603,8 +2654,10 @@ def main():
     with deploy_phase("locks and folder lease", max(120, wait_s + 30)):
         check_locks(target, exe_name, wait_s)
         lease_held = take_folder_lease(target, wait_s)
-    if getattr(args, "verdict", None) and (args.from_payload or getattr(args, "target", None) != "game"):
-        print("WARNING: --verdict is ignored (it applies only to a --target game build deploy)", file=sys.stderr)
+        _ASIDE_TARGET[0] = target
+        sweep_asides(target)
+    if getattr(args, "verdict", None) and (args.from_payload or not is_v04_game_publish(target, exe_name)):
+        print("WARNING: --verdict is ignored (it applies only to a v0.4 game build deploy)", file=sys.stderr)
     try:
         if args.from_payload:
             head = args.payload_head or subprocess.check_output(['git', '-C', src_root, 'rev-parse', 'HEAD'],
@@ -2617,6 +2670,8 @@ def main():
         seed_parity.after_v04_deploy(target)
     finally:
         if lease_held:
+            sweep_asides(target)
+            _ASIDE_TARGET[0] = None
             release_folder_lease(target)
 
 
@@ -2848,11 +2903,28 @@ def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
 
 
 def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
-    if getattr(args, "target", None) == "game" and not args.allow_new_target and not getattr(args, "allow_unverified_exe", False):
+    v04 = is_v04_game_publish(target, exe_name)
+    unverified_marker = os.path.join(target, ".deployed_manifest.unverified.json")
+    if v04 and getattr(args, "allow_unverified_exe", False):
+        log("WARNING: --allow-unverified-exe on a v0.4 publish: the exe is not checked against the gate verdict (recorded in .deployed_manifest.unverified.json)")
+        try:
+            with open(unverified_marker, "w", encoding="utf-8") as f:
+                json.dump({"allow_unverified_exe": True, "head": git_head(src_root),
+                           "time": datetime.datetime.now().isoformat(timespec="seconds")}, f)
+        except OSError as e:
+            log(f"WARNING: could not record the unverified publish: {e}")
+    elif v04:
         why = verdict_exe_refusal(src_root, os.path.join(build_dir, exe_name), git_head(src_root),
                                   getattr(args, "verdict", None))
         if why:
-            fail(f"v0.4 publish refused: {why}. Publish the exe the gate tested, or pass --allow-unverified-exe.")
+            fail(f"v0.4 publish refused: {why}. Deploy the exe the gate tested: the gated tree's build dir, or "
+                 f"--verdict <gated tree or proof dir>/gate-verdict.json. Rebuilt after the gate: re-run the gate.")
+        try:
+            os.unlink(unverified_marker)
+        except OSError:
+            pass
+    if v04:
+        args.require_clean = True
     seed_build_dlls(build_dir, src_root)
     check_exe_fresh(os.path.join(build_dir, exe_name), build_dir, args.allow_stale_exe,
                     build64_root=args.build64_root)
