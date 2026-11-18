@@ -50,5 +50,23 @@ inline bool step(Allocation& a, int i, int delta, const Allocation& cap, int poo
     a[i] += delta;
     return true;
 }
+// Shared production reset adapter: explicit values never enter legacy subtraction.
+struct FactoryBaseline {
+    Allocation base{};
+    bool valid = false, explicitApplied = false;
+    template<class Armor> void capture(const Armor* armor) {
+        for (int i=0; i<11; ++i) base[i] = armor[i].maxArmor;
+        valid = true; explicitApplied = false;
+    }
+    template<class Armor, class Count> void restore(Armor* armor, Count& count) {
+        if (!valid || !explicitApplied) return;
+        for (int i=0; i<11; ++i) armor[i].curArmor = armor[i].maxArmor = base[i];
+        count = 0; explicitApplied = false;
+    }
+    template<class Armor> void apply(Armor* armor, const int* values) {
+        for (int i=0; i<11; ++i) armor[i].curArmor = armor[i].maxArmor = values[i];
+        explicitApplied = true;
+    }
+};
 } // namespace mc2::armor
 #endif

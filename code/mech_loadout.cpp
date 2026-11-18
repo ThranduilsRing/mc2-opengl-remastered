@@ -7,20 +7,21 @@
 #include "package_chassis.h"
 #include "component_rules.h"
 #include <optional>
+#include "armor_alloc.h"
 
 
 constexpr float ARMOR_POINTS_PER_NEWARMOR = 32.0f;
-constexpr float ARMOR_HEAD_PERCENT = 0.0f;
-constexpr float ARMOR_CTORSO_PERCENT = 0.17f;
-constexpr float ARMOR_RTORSO_PERCENT = 0.125f;
-constexpr float ARMOR_LTORSO_PERCENT = 0.125f;
-constexpr float ARMOR_LARM_PERCENT = 0.12f;
-constexpr float ARMOR_RARM_PERCENT = 0.12f;
-constexpr float ARMOR_LLEG_PERCENT = 0.13f;
-constexpr float ARMOR_RLEG_PERCENT = 0.13f;
-constexpr float ARMOR_RCTORSO_PERCENT = 0.03f;
-constexpr float ARMOR_RLTORSO_PERCENT = 0.02f;
-constexpr float ARMOR_RRTORSO_PERCENT = 0.02f;
+constexpr float ARMOR_HEAD_PERCENT = mc2::armor::shares[0];
+constexpr float ARMOR_CTORSO_PERCENT = mc2::armor::shares[1];
+constexpr float ARMOR_RTORSO_PERCENT = mc2::armor::shares[3];
+constexpr float ARMOR_LTORSO_PERCENT = mc2::armor::shares[2];
+constexpr float ARMOR_LARM_PERCENT = mc2::armor::shares[4];
+constexpr float ARMOR_RARM_PERCENT = mc2::armor::shares[5];
+constexpr float ARMOR_LLEG_PERCENT = mc2::armor::shares[6];
+constexpr float ARMOR_RLEG_PERCENT = mc2::armor::shares[7];
+constexpr float ARMOR_RCTORSO_PERCENT = mc2::armor::shares[8];
+constexpr float ARMOR_RLTORSO_PERCENT = mc2::armor::shares[9];
+constexpr float ARMOR_RRTORSO_PERCENT = mc2::armor::shares[10];
 
 // LOADOUT-EQUIPMENT-ID-ALIAS-1 (equipment arc, engine slice E5).
 // ADDITIVE string-id branch beside the legacy numeric MasterID column. The stock
@@ -181,6 +182,8 @@ long BattleMech::init (DWORD variantNum)
 
 	mechFile.readUChar(18,11,armor[MECH_ARMOR_LOCATION_RRTORSO].maxArmor);
 
+	armorBaseline.capture(armor);
+	hasPendingArmorAllocation = false;
 	unsigned char currentArmor;
 	mechFile.readUChar(115 + (97 * variantNum),2,currentArmor);
 	armor[MECH_ARMOR_LOCATION_HEAD].curArmor = currentArmor;
@@ -848,6 +851,7 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 
 	appearance->resetWeaponNodes();
 		
+	armorBaseline.restore(armor, numArmorComponents);
 	//If we added Armor to the mech, remove the armor so that player's new armor
 	// components are all that is added, adjust the max and current armor settings.
 	if (numArmorComponents)
@@ -1201,6 +1205,8 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 		armor[MECH_ARMOR_LOCATION_RRTORSO].curArmor = armor[MECH_ARMOR_LOCATION_RRTORSO].maxArmor;
 	}
 	
+	if (hasPendingArmorAllocation) armorBaseline.apply(armor, pendingArmorAllocation);
+	hasPendingArmorAllocation = false;
 	// Save records retain the legacy count of 32-point armor units.
 	numArmorComponents = static_cast<int32_t>(newArmorPoints / ARMOR_POINTS_PER_NEWARMOR);
 

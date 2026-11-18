@@ -8,6 +8,10 @@ TEST_CASE("armor allocation preserves legacy arithmetic") {
         auto a = legacyDistribution(atlas, n * 32);
         for (int i = 0; i < 11; ++i) CHECK(a[i] == atlas[i] + static_cast<int>(shares[i] * (n * 32)));
     }
+    CHECK(legacyDistribution(atlas,0) == atlas);
+    CHECK(legacyDistribution(atlas,32) == Allocation{9,16,13,13,11,11,13,13,4,2,2});
+    CHECK(legacyDistribution(atlas,160) == Allocation{9,38,29,29,27,27,29,29,8,5,5});
+    CHECK(legacyDistribution(atlas,352) == Allocation{9,70,53,53,50,50,54,54,14,9,9});
     CHECK(total(atlas) == 80);
     CHECK(total(legacyDistribution(atlas,32)) == 107);
 }
@@ -42,4 +46,32 @@ TEST_CASE("armor normalisation is deterministic after removing plating") {
     Allocation saturated; saturated.fill(999);
     auto b = normalise(saturated,atlas,cap,432);
     CHECK(total(b) <= 432);
+}
+
+TEST_CASE("armor production baseline adapter preserves reset transitions") {
+    struct Armor { int maxArmor = 0, curArmor = 0; } armor[11];
+    FactoryBaseline baseline;
+    for (int i=0;i<11;++i) armor[i].maxArmor = atlas[i];
+    baseline.capture(armor);
+    int count = 0;
+    for (int points : {0,32,64}) {
+        const auto legacy = legacyDistribution(atlas,points);
+        for (int i=0;i<11;++i) armor[i].curArmor = armor[i].maxArmor = legacy[i];
+        count = points/32;
+        baseline.restore(armor,count); // legacy -> legacy: untouched subtraction inputs
+        CHECK(count == points/32);
+        for (int i=0;i<11;++i) CHECK(armor[i].maxArmor == legacy[i]);
+        Allocation explicitValues{}; explicitValues[1] = 40;
+        baseline.apply(armor,explicitValues.data()); // legacy -> explicit
+        CHECK(baseline.explicitApplied);
+        baseline.restore(armor,count); // explicit -> explicit or legacy
+        CHECK(count == 0);
+        for (int i=0;i<11;++i) CHECK(armor[i].maxArmor == atlas[i]);
+        baseline.apply(armor,explicitValues.data());
+        baseline.restore(armor,count);
+        for (int i=0;i<11;++i) CHECK(armor[i].maxArmor == atlas[i]);
+        Allocation zero{}; baseline.apply(armor,zero.data());
+        CHECK(armor[1].maxArmor == 0);
+        baseline.restore(armor,count);
+    }
 }

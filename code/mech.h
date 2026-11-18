@@ -10,6 +10,7 @@
 
 #ifndef MECH_H
 #define MECH_H
+#include "armor_alloc.h"
 
 #include <span>
 #include "heat_model.h"
@@ -687,6 +688,10 @@ class BattleMech : public Mover {
 		// setPendingPackageMounts() before resetComponents(); keys are in component-list order.
 		bool isPackageChassis (void) const;
 		void setPendingPackageMounts (std::span<const unsigned int> keys);
+		void setPendingArmorAllocation(std::span<const int> values);
+		int pendingArmorAllocation[11] = {};
+		bool hasPendingArmorAllocation = false;
+		mc2::armor::FactoryBaseline armorBaseline;
 		unsigned int pendingPackageMounts[MAX_MOVER_INVENTORY_ITEMS] = {};
 		long numPendingPackageMounts = 0;
 
