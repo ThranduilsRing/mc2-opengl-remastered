@@ -23,11 +23,6 @@ public:
 		static void renderListsTerrainSolid (RenderSubmissions& submissions);
 		static void renderListsGpuStaticProps (RenderSubmissions& submissions);
 		static void renderListsOverlayBatches (RenderSubmissions& submissions);
-		static void renderListsOverlaysWaterLoops (RenderSubmissions& submissions);
-		static void renderListsOverlaysNoUnderlayer (RenderSubmissions& submissions);
-		static void renderListsOverlaysShadowBlobs (RenderSubmissions& submissions);
-		static void renderListsOverlaysNonTerrainAlpha (RenderSubmissions& submissions);
-		static void renderListsOverlaysVfxHudSubmit (RenderSubmissions& submissions);
 		static void renderListsOverlaysOld (RenderSubmissions& submissions);
 		// VK legacy-shape island queue / run (defined only under MC2_VULKAN_ISLAND).
 		static void vkLegacySubmitNode (RenderSubmissions& submissions, long i, uint32_t pass, uint32_t alphaTest);
