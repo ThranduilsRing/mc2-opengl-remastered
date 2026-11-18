@@ -24,6 +24,7 @@
 #include "world/spatial_grid.h"
 #include "objmgr_watch_policy.h"  // OBJMGR-WATCH-POLICY-EXTRACT-1: shared watch bounds/index policy
 #include "static_resident_set.h"   // static-world-s2
+#include "angular_cull.h"
 // Pooled actor ownership (turrets and gates); see spawnTurret and spawnGate.
 #include "world/actor_pool.h"
 #include "terrain_tick_list.h"      // SIM-TICK-CUT: active list for updateTerrainObjects
@@ -187,6 +188,7 @@ class GameObjectManager {
 
 	public:
 		glm::mat4 terrainPresentationWorldToClip{0.0f};
+		std::vector<mc2::AngularSphere> terrainAngularSpheres;
 		uint64_t terrainPresentationHeightEpoch = ~uint64_t{0};
 		float terrainPresentationNightFactor = -1.0f;
 		bool terrainPresentationIsNight = false;

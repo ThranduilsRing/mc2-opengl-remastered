@@ -2,7 +2,18 @@
 #include "terrain_dirty_queue.h"
 #include "unit_anim_state.h"
 #include "unit_animation_tick.h"
+#include "angular_cull.h"
+#include <cstring>
 namespace {
+struct AngularFrame {
+    glm::vec3 i{1,0,0}, j{0,1,0}, k{0,0,1};
+    void trans_to_frame(glm::vec3& v) {
+        float x = v.x, y = v.y, z = v.z;
+        v.x = i.x*x + i.y*y + i.z*z;
+        v.y = j.x*x + j.y*y + j.z*z;
+        v.z = k.x*x + k.y*y + k.z*z;
+    }
+};
 bool simPresentationPass = false;
 uint32_t turn = 42;
 float frameLength = 1.0f / 30;
@@ -36,6 +47,64 @@ TEST_CASE("terrain_dirty_queue/gesture ignores stale draw status") {
         for (int sim : {1, 2}) { a.simStatus = sim; a.gesture(); CHECK_FALSE(a.admitted); } }
     simPresentationPass = true; a.status = 0; a.gesture(); CHECK(a.admitted);
     a.status = 1; a.gesture(); CHECK_FALSE(a.admitted); simPresentationPass = false;
+}
+TEST_CASE("terrain_dirty_queue/prefilter asks only unmarked non-residents") {
+    mc2::TerrainDirtyQueue q; q.reset(5);
+    q.mark(1); q.setResident(2); q.setResident(3);
+    std::vector<long> asked;
+    q.markBlockNonResident(1, 4, [](long) {}, [](long h) { return h == 3; },
+        [&](long h) { asked.push_back(h); return true; });
+    CHECK(asked == std::vector<long>{4});
+    CHECK(q.drain() == std::vector<long>{1,3});
+}
+TEST_CASE("terrain_dirty_queue/prefilter skip neither binds nor drains") {
+    mc2::TerrainDirtyQueue q; q.reset(3);
+    unsigned binds = 0;
+    q.markBlockNonResident(1, 2, [&](long) { ++binds; }, [](long) { return false; },
+        [](long) { return true; });
+    CHECK(binds == 0); CHECK(q.drain().empty());
+}
+TEST_CASE("terrain_dirty_queue/prefilter later mark still drains") {
+    mc2::TerrainDirtyQueue q; q.reset(3);
+    q.markBlockNonResident(1, 2, [](long) {}, [](long) { return false; }, [](long) { return true; });
+    q.mark(2);
+    CHECK(q.drain() == std::vector<long>{2});
+}
+TEST_CASE("terrain_dirty_queue/prefilter angular inputs and legacy bits") {
+    AngularFrame frame;
+    for (const glm::vec3 pos : {glm::vec3{0,10,0}, glm::vec3{0,10,30}, glm::vec3{30,10,0}}) {
+        const bool outside = mc2::angularSphereOutside(pos, 0, 1, glm::vec3{0}, frame, 1, 1);
+        CHECK(outside == (pos.x != 0 || pos.z != 0));
+        CHECK(mc2::lastAngularTest.valid);
+        CHECK(mc2::lastAngularTest.position == pos);
+        CHECK(mc2::lastAngularTest.heightDelta == 0);
+        CHECK(mc2::lastAngularTest.radius == 1);
+        CHECK(mc2::lastAngularTest.outside == outside);
+    }
+    // The old inline expression, including rounding after subtraction and then addition.
+    frame.i = {0.8f,0.6f,0}; frame.j = {-0.6f,0.8f,0};
+    const glm::vec3 origin{12345.125f, 299.75f, -8192.5f}, pos{-12344.875f,-8178.25f,300.125f};
+    const float heightDelta = 0.375001f, radius = 2.25f;
+    glm::vec3 cameraPos;
+    cameraPos.x = -origin.x; cameraPos.y = origin.z; cameraPos.z = origin.y;
+    glm::vec3 objectCenter;
+    objectCenter = pos - cameraPos;
+    objectCenter.z += heightDelta;
+    frame.trans_to_frame(objectCenter);
+    float distanceToEye = glm::length(objectCenter);
+    float clip_distance = fabs(1.0f / objectCenter.y);
+    float object_angle = fabs(objectCenter.z) * clip_distance;
+    float extent_angle = radius / distanceToEye;
+    bool outside = false;
+    if (object_angle > (0.2f + extent_angle)) outside = true;
+    else {
+        object_angle = fabs(objectCenter.x) * clip_distance;
+        if (object_angle > (0.3f + extent_angle)) outside = true;
+    }
+    CHECK(mc2::angularSphereOutside(pos, heightDelta, radius, origin, frame, 0.2f, 0.3f) == outside);
+    CHECK(std::memcmp(&mc2::lastAngularTest.objectCenter, &objectCenter, sizeof(objectCenter)) == 0);
+    CHECK(mc2::lastAngularTest.heightDelta == heightDelta);
+    CHECK(mc2::lastAngularTest.radius == radius);
 }
 TEST_CASE("terrain_dirty_queue/unchanged tick keeps residency; animation wakes next frame") {
     Appearance a;

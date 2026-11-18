@@ -50,10 +50,15 @@ public:
     // Camera-dependent LOD can retain its recipe until a camera move crosses a LOD boundary.
     template <class Bind, class Wake>
     void markBlockNonResident(long firstHandle, long count, Bind&& bind, Wake&& wake) {
+        markBlockNonResident(firstHandle, count, bind, wake, [](long) { return false; });
+    }
+    template <class Bind, class Wake, class Skip>
+    void markBlockNonResident(long firstHandle, long count, Bind&& bind, Wake&& wake, Skip&& skip) {
         const std::lock_guard lock(mutex_);
         for (long handle = std::max(firstHandle, 0L); handle < firstHandle + count; ++handle) {
             if (static_cast<std::size_t>(handle) >= marked_.size()) break;
             if (marked_[handle] || (resident_[handle] && !wake(handle))) continue;
+            if (!resident_[handle] && skip(handle)) continue;
             resident_[handle] = renderResident_[handle] = 0;
             bind(handle);
             marked_[handle] = 1;

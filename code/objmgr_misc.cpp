@@ -589,6 +589,10 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 		const mc2::battlebench::ScopeNs walkNs{mc2::battlebench::WalkPresNs};   // D2 census: the walk alone, not the sweeps above
 		uint64_t walkVisited = 0, walkRecalc = 0, walkGround = 0, walkTouch = 0, walkUpdate = 0;   // [PERF_COUNTERS v1] plain locals, folded once below
 		uint64_t dirtyCounts[5]{};
+		uint64_t prefilterSkip = 0, prefilterMiss = 0;
+		const bool cullParity = mc2_diag::tagRequested("CULL_PARITY");
+		if (terrainAngularSpheres.size() != static_cast<size_t>(getMaxObjects() + 1))
+			terrainAngularSpheres.assign(getMaxObjects() + 1, {});
 		auto& dirty = mc2::terrainDirtyQueue();
 		const glm::mat4 worldToClip = eye ? eye->getWorldToClip() : glm::mat4{0.0f};
 		const float nightFactor = eye ? eye->nightFactor : 0.0f;
@@ -599,6 +603,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 		// non-residents only.
 		const bool fullInvalidate = TerrainRuntime::g_heightEpoch != terrainPresentationHeightEpoch ||
 			mc2::terrainNightFullInvalidate(terrainPresentationNightFactor, nightFactor, terrainPresentationIsNight, isNight);
+		if (fullInvalidate) std::fill(terrainAngularSpheres.begin(), terrainAngularSpheres.end(), mc2::AngularSphere{});
 		if (fullInvalidate || nightFactor != terrainPresentationNightFactor || worldToClip != terrainPresentationWorldToClip) {
 			ZoneScopedN("Presentation.Terrain.Invalidate");
 			auto bind = [this](long h) {
@@ -617,6 +622,16 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 						if (!a || a->getAppearanceClass() != BUILDING_APPR_TYPE) return false;
 						const auto* b = static_cast<BldgAppearance*>(a);
 						return b->currentLOD != b->desiredRenderLOD();
+					}, [&](long h) {
+						const auto& sphere = terrainAngularSpheres[h];
+						auto* a = objList[h] ? objList[h]->getAppearance() : nullptr;
+						if (!sphere.valid || !a || a->inView || !eye || !eye->usePerspective) return false;
+						if (!mc2::angularSphereOutside(sphere.position, sphere.heightDelta, sphere.radius,
+							eye->getCameraOrigin(), Camera::cameraFrame, eye->verticalSphereClipConstant,
+							eye->horizontalSphereClipConstant)) return false;
+						if (cullParity && a->recalcBounds()) { ++prefilterMiss; return false; }
+						++prefilterSkip;
+						return true;
 					});
 				}
 			}
@@ -647,7 +662,9 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 						appearance->flushSimEvents();
 						++walkVisited;
 						if (countVisits) ++walkByClass[kind];
+						mc2::lastAngularTest.valid = false;
 						const bool inView = appearance->recalcBounds();
+						const auto angularTest = mc2::lastAngularTest;
 						const bool terrainKind = kind == TERRAINOBJECT || kind == TREE || kind == BRIDGE || kind == BUILDING;
 						auto dirtyReasons = [&]() {
 							auto* building = appearance->getAppearanceClass() == BUILDING_APPR_TYPE ? static_cast<BldgAppearance*>(appearance) : nullptr;
@@ -696,6 +713,12 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 						// Offscreen bake recovery waits for camera invalidation, as update()
 						// above cannot service it until recalcBounds admits the object.
 						const unsigned requeueReasons = dirtyReasons();
+						auto& sphere = terrainAngularSpheres[objIndex];
+						sphere = angularTest;
+						// Building collision helpers can replace bldgShape without a dirty mark outside this fence.
+						// Keep that class on the ordinary walk until those writers have a cache invalidation contract.
+						sphere.valid = appearance->getAppearanceClass() == TREE_APPR_TYPE &&
+							!inView && angularTest.valid && angularTest.outside && requeueReasons == 0;
 						for (unsigned reason = 0; reason < 5; ++reason)
 							if (requeueReasons & (1u << reason)) ++dirtyCounts[reason];
 						if (requeueReasons)
@@ -708,6 +731,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 		namespace bb = mc2::battlebench;
 		bb::add(bb::WalkVisited, walkVisited); bb::add(bb::WalkRecalc, walkRecalc); bb::add(bb::WalkGround, walkGround);
 		bb::add(bb::WalkTouch, walkTouch); bb::add(bb::WalkUpdate, walkUpdate);
+		bb::add(bb::WalkPrefilterSkip, prefilterSkip); bb::add(bb::WalkPrefilterMiss, prefilterMiss);
 		for (unsigned reason = 0; reason < 5; ++reason)
 			bb::add(static_cast<bb::Field>(std::to_underlying(bb::WalkDirtyDynamic) + reason), dirtyCounts[reason]);
 	}
