@@ -109,7 +109,7 @@ private:
 	float				fillFrac_ = 0.f, framedPitch_ = 0.f, framedAlt_ = 650.f, framedFov_ = 40.f;
 	float				turnRadius_ = 0.f, turnHalfHeight_ = 0.f;
 	float				maxHalf_ = 0.f, turnAccum_ = 0.f;
-	float				swayBase_ = 0.f, swayPhase_ = 0.f;   // idle turntable swings +-55 deg about the framed yaw
+	float				swayBase_ = 0.f, swayPhase_ = 0.f;   // idle turntable swings +-30 deg about the framed yaw
 	int					widens_ = 0;
 	std::string			fitChassis_;
 	float				drawn_[4] = {};	// last PreviewDraw screen extents (framed only)

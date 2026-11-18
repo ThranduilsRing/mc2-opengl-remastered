@@ -17,17 +17,19 @@ void main() {
     vec3 col;
     if (p.y < hy) {
         float t = p.y / hy;
-        col = mix(vec3(0.045, 0.055, 0.070), vec3(0.105, 0.120, 0.140), t);
-        col *= 1.0 - 0.45 * band(fract(p.x * 3.0 + 0.5) - 0.5, 0.012);               // tall panel seams
-        col += vec3(0.030, 0.034, 0.040) * (band(t - 0.34, 0.010) + band(t - 0.68, 0.010));   // horizontal seam bands
-        col += vec3(0.60, 0.63, 0.68) * band(p.y - 0.045, 0.030) * smoothstep(0.0, 0.35, 0.7 - abs(p.x - 0.5));   // light strip
-        col += vec3(0.060, 0.068, 0.080) * smoothstep(0.30, 0.0, p.y);                  // light spill down the wall
+        col = mix(vec3(0.16, 0.19, 0.24), vec3(0.30, 0.34, 0.40), t);
+        float pan = abs(fract(p.x * 3.0 + 0.5) - 0.5);                               // 3 bulkhead panels, recessed centres
+        col *= 0.80 + 0.30 * smoothstep(0.0, 0.18, pan);
+        col *= 1.0 - 0.60 * band(pan, 0.010);                                         // tall panel seams
+        col += vec3(0.10, 0.11, 0.13) * (band(t - 0.34, 0.012) + band(t - 0.68, 0.012));   // horizontal seam bands
+        col += vec3(1.0, 0.97, 0.88) * band(p.y - 0.045, 0.030) * smoothstep(0.0, 0.35, 0.7 - abs(p.x - 0.5));   // light strip
+        col += vec3(0.16, 0.17, 0.19) * smoothstep(0.35, 0.0, p.y);                  // light spill down the wall
     } else {
         float d = (p.y - hy) / max(1.0 - hy, 0.001);         // 0 at the wall, 1 at the panel bottom
         float depth = 1.0 / (0.12 + d);                      // large far away
         float line = max(band(fract((p.x - 0.5) * depth * 0.55 + 0.5) - 0.5, 0.035 * (0.3 + d)), band(fract(depth * 0.9) - 0.5, 0.05));
-        col = mix(vec3(0.060, 0.066, 0.078), vec3(0.030, 0.034, 0.042), d);
-        col += vec3(0.050, 0.058, 0.072) * line * (1.0 - d * 0.6);
+        col = mix(vec3(0.16, 0.17, 0.20), vec3(0.07, 0.08, 0.10), d);
+        col += vec3(0.16, 0.18, 0.22) * line * (1.0 - d * 0.6);
         float haz = 1.0 - smoothstep(0.0, 0.012, p.y - hy);   // hazard line where the wall meets the floor
         float stripe = step(0.5, fract((p.x + (p.y - hy) * 6.0) * 24.0));
         col = mix(col, mix(vec3(0.07, 0.055, 0.02), vec3(0.45, 0.32, 0.05), stripe), haz);

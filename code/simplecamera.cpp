@@ -610,11 +610,11 @@ long SimpleCamera::update()
 					// model and pushes it into the near plane); then centre across, feet just above the bottom edge.
 					// Estimate the full-turn width from the drawn height; bound root-offset inflation.
 					const float wTurn = turnHalfHeight_ > 0.f
-						? std::min(2.f * turnRadius_ * h / (2.f * turnHalfHeight_), 1.3f * w) : w;	// the swing is +-55 deg, not a full turn
+						? std::min(2.f * turnRadius_ * h / (2.f * turnHalfHeight_), 1.15f * w) : w;	// the swing is +-30 deg, not a full turn
 					const float s = std::clamp(std::max({h / (fillFrac_ * rh), wTurn / (0.94f * rw), w / (0.94f * rw)}), 0.5f, 2.f);
 					framedFov_ = 2.f * std::atan(std::tan(framedFov_ * 0.5f * DEGREES_TO_RADS) * s) / DEGREES_TO_RADS;
 					fudgeX += ( bounds[0] + bounds[2] ) * 0.5f - ( drawn_[0] + drawn_[2] ) * 0.5f;
-					fudgeY += bounds[3] - rh * ( 1.f - fillFrac_ ) * 0.35f - drawn_[3];
+					fudgeY += ( bounds[1] + bounds[3] ) * 0.5f - ( drawn_[1] + drawn_[3] ) * 0.5f;	// centred vertically
 				}
 			}
 			else if (haveDrawn_ && fitIters_ == 0)
@@ -627,7 +627,7 @@ long SimpleCamera::update()
 				{
 					const float s = std::min(half / (0.47f * rw), 2.f);
 					framedFov_ = 2.f * std::atan(std::tan(framedFov_ * 0.5f * DEGREES_TO_RADS) * s) / DEGREES_TO_RADS;
-					fudgeY += bounds[3] - (bounds[3] - bounds[1]) * (1.f - fillFrac_) * 0.35f - drawn_[3];
+					fudgeY += ( bounds[1] + bounds[3] ) * 0.5f - ( drawn_[1] + drawn_[3] ) * 0.5f;
 					++widens_;
 				}
 			}
@@ -650,7 +650,7 @@ long SimpleCamera::update()
 			if ( fitIters_ == 0 && !turntablePaused_ && turntableLastT_ > 0.0 )
 			{
 				const float step = 10.f * static_cast<float>(std::min(now - turntableLastT_, 0.1));
-				swayPhase_ += step / 55.f; rotation = swayBase_ + 55.f * std::sin(swayPhase_);	// +-55 deg swing, peak 10 deg/s
+				swayPhase_ += step / 30.f; rotation = swayBase_ + 30.f * std::sin(swayPhase_);	// +-30 deg swing, peak 10 deg/s
 				const float previousTurn = turnAccum_;
 				turnAccum_ += step;
 				if (previousTurn < 360.f && turnAccum_ >= 360.f)

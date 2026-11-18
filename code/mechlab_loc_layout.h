@@ -51,7 +51,7 @@ inline const char* panelTitle(int p) {
 }
 
 // Record-sheet geometry, shared by drawing and input in legacy canvas coordinates.
-inline constexpr float kDx = 56;   // record sheet shifted right by kDx; the freed width goes to the mech preview (narrower component list)
+inline constexpr float kDx = 72;   // record sheet shifted right by kDx; the freed width goes to the mech preview (narrower component list)
 inline constexpr float kAreaX = 217 + kDx, kAreaY = 150, kColW = 102, kGap = 5;
 inline constexpr int kCellW = 52;
 inline constexpr Rect kPreview{25,130,184 + kDx,363};   // below the LOCATIONS | CLASSIC strip
