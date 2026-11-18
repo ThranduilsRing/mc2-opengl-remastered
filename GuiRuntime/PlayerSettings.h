@@ -106,6 +106,14 @@ std::vector<CampaignChoice> campaignChoices(const Packs& packs, const std::vecto
     }
     return choices;
 }
+// A saved last_campaign that is hidden (import source) or no longer installed falls back to stock ("").
+template<class Packs>
+std::string validSavedCampaign(const Packs& packs, std::string_view saved,
+                               const std::function<bool(std::string_view)>& hidden = {}) {
+    if (saved.empty()) return {};
+    for (const auto& pack : packs) if (pack.id == saved) return hidden && hidden(saved) ? std::string() : std::string(saved);
+    return {};
+}
 inline void selectCampaign(const CampaignChoice& choice, std::string& pack, std::string& fit) {
     pack = choice.pack;
     fit = choice.fit;

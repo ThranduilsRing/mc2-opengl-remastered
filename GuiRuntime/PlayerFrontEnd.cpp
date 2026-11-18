@@ -226,6 +226,11 @@ std::vector<std::string> campaigns(std::string_view id) {
     if (id.empty() && std::find(result.begin(), result.end(), "campaign") == result.end()) result.insert(result.begin(), "campaign");
     return result;
 }
+bool importSourceHidden(std::string_view view) {
+    const std::string id(view);
+    return importStatus.contains("sources") && importStatus["sources"].contains(id) && !importStatus["sources"][id].contains("error");
+}
+void autoBase();
 void scan() {
     packs.clear();
     campaign = env(mc2::gate::name<"MC2_ACTIVE_MOD">()).value_or("");
@@ -290,6 +295,13 @@ void scan() {
     std::stable_sort(packs.begin(), packs.end(), [](const Pack& a, const Pack& b) {
         return (a.kind == "campaign") > (b.kind == "campaign");
     });
+    if (const auto valid = validSavedCampaign(packs, campaign, importSourceHidden); valid != campaign) {
+        campaign = valid;
+        autoBase();
+        settings["last_campaign"] = campaign;
+        settings["last_base"] = base;
+        saveSettings();
+    }
     const auto fits = campaigns(campaign);
     campaignFit = fits.empty() ? "" : fits.front();
     scanned = true;
@@ -528,10 +540,7 @@ void drawMainMenu(bool showCredits) {
         const auto fits = campaigns(id);
         campaignFit = fits.empty() ? "" : fits.front();
     };
-    auto importSource = [&](std::string_view view) {
-        const std::string id(view);
-        return importStatus.contains("sources") && importStatus["sources"].contains(id) && !importStatus["sources"][id].contains("error");
-    };
+    auto importSource = importSourceHidden;
     ImGui::BeginTable("##campaignLayout", 2, ImGuiTableFlags_SizingStretchProp);
     ImGui::TableSetupColumn("Library", ImGuiTableColumnFlags_WidthFixed, 300 * scale);
     ImGui::TableSetupColumn("Details");

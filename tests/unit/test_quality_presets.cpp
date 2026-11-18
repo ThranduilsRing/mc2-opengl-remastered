@@ -251,3 +251,13 @@ TEST_CASE("campaign picker/import-source folders are not listed as campaigns") {
     REQUIRE(choices.size() == 2);
     CHECK(choices[1].pack == "exodus-dca4afc8");
 }
+
+TEST_CASE("campaign picker/saved import-source campaign resets to stock") {
+    using namespace PlayerFrontEnd;
+    struct Pack { std::string id; };
+    const std::vector<Pack> packs{{"exodus-dca4afc8"}, {"mcosetup628(1)"}};
+    const auto hidden = [](std::string_view id) { return id == "mcosetup628(1)"; };
+    CHECK(validSavedCampaign(packs, "mcosetup628(1)", hidden).empty());
+    CHECK(validSavedCampaign(packs, "exodus-dca4afc8", hidden) == "exodus-dca4afc8");
+    CHECK(validSavedCampaign(packs, "gone", hidden).empty());
+}
