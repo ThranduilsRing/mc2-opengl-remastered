@@ -14,6 +14,10 @@ Checks run by default only for touched logic: `scripts/contracts-cache-inputs.tx
 
 `gate-verdict.json` records wall seconds, per-stage seconds, stage reasons and measured host lease wait separately. A tier-0 gate over 20 minutes excluding host lease wait prints advisory `[GATE_BUDGET] OVER` and its three longest stages; the orchestrator opens an infrastructure lane when it fires. Logs are UTF-8.
 
+## Publishing to v0.4 (`deploy_payload.py --target game`)
+
+The publish refuses an exe that is not the one the newest gate PASSed for HEAD. By default it reads `<src>/build64-ninja/gate-verdict.json`; a PASS from a stage or lane tree is passed explicitly with `--verdict <path>/gate-verdict.json`. It is accepted only if `verdict` is PASS, its `head` equals the deploying tree's HEAD and `artifacts.exe_sha256` equals the sha256 of the exe being deployed; anything else refuses as before (`--allow-unverified-exe` is unchanged). Install DLLs that are hardlinks into the shared pool are never written through: when the replace is refused (a running mc2.exe maps the shared inode) the old entry is renamed aside to `<name>.old-<pid>` and a private copy takes its place; leftovers are swept on the next deploy. If even the rename fails the deploy stops naming the file as hardlinked and possibly mapped by a running process.
+
 ## Mods (owner 2026-11-08)
 
 "We can add a SLIM mod check to the merge gates at night, but they are not critical. I'd rather let them break and do a dedicated fix."
