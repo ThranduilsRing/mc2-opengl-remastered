@@ -179,8 +179,9 @@ extern "C" int mc2_vk_water_island_prewarm(int w,int h) {
     if (![&] { MC2_LOAD_SCOPE("water.native"); return prepareNative(s, ctx); }()) return 0;
     if (![&] { MC2_LOAD_SCOPE("water.planarProps"); return mc2::waterplanar::prewarmProps(s->planarProps, w, h); }()) return 0;
     // The live planar terrain island is otherwise created inside the first drawn frame; its lazy creation stays the fallback.
-    if (s->mapHasWater && gos_GetWaterReflectionQuality()==2 && mc2::options::current().reflectionQuality>0 &&
-        ![&] { MC2_LOAD_SCOPE("water.planarTerrain"); return mc2::waterplanar::prewarmTerrain(s->planarTerrain, w, h); }()) return 0;
+    if (s->mapHasWater && gos_GetWaterReflectionQuality()==2 && reflect_live_active()) {
+        MC2_LOAD_SCOPE("water.planarTerrain"); (void)mc2::waterplanar::prewarmTerrain(s->planarTerrain, w, h);
+    }
     MC2_LOAD_SCOPE("water.warmDispatch");
     // Exercise cull/args now as well as creating their pipelines: the first
     // gameplay dispatch must not pay driver first-use work or buffer clears.

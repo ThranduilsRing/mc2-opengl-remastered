@@ -24,6 +24,8 @@
 #include "mc2fmt.h"
 #include "../GameOS/gameos/static_caster_set.h"
 #include "../GameOS/gameos/load_scope.h"
+#include "../GameOS/gameos/gos_render.h"
+#include "../GameOS/gameos/gos_mech_batcher.h"
 
 extern "C" void mission_load_pump();
 
@@ -1538,10 +1540,11 @@ bool GameObjectManager::restoreAnimationState(const std::vector<uint8_t>& bytes,
 void prewarmMoverGpuTextures(GameObjectManager& objects)
 {
 	ZoneScopedN("GameObjectManager::prewarmMoverGpuTextures"); MC2_LOAD_SCOPE("GameObjectManager::prewarmMoverGpuTextures");
-	for (long i = 0; objects.mechs && i < objects.numMechs; ++i)
+	// Stop when GPU headroom is short: the rest upload lazily with the first flush, in-view content first.
+	for (long i = 0; objects.mechs && i < objects.numMechs && gpuMechPrewarmHasRoom(); ++i)
 		if (objects.mechs[i] && objects.mechs[i]->getExists())
-			if (auto* app = dynamic_cast<Mech3DAppearance*>(objects.mechs[i]->getAppearance())) app->prewarmGpuTextures();
-	for (long i = 0; objects.vehicles && i < objects.numVehicles; ++i)
+			if (auto* app = dynamic_cast<Mech3DAppearance*>(objects.mechs[i]->getAppearance())) { app->prewarmGpuTextures(); graphics::pump_loading_events(); }
+	for (long i = 0; objects.vehicles && i < objects.numVehicles && gpuMechPrewarmHasRoom(); ++i)
 		if (objects.vehicles[i] && objects.vehicles[i]->getExists())
-			if (auto* app = dynamic_cast<GVAppearance*>(objects.vehicles[i]->getAppearance())) app->prewarmGpuTextures();
+			if (auto* app = dynamic_cast<GVAppearance*>(objects.vehicles[i]->getAppearance())) { app->prewarmGpuTextures(); graphics::pump_loading_events(); }
 }

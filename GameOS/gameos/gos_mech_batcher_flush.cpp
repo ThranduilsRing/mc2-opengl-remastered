@@ -9,6 +9,7 @@
 #include "ui_texture.h"
 #include "mech_run_cache.h"
 #include "gos_profiler.h"
+#include "vk_render_infra.h"
 
 // ---------------------------------------------------------------------------
 // submitActor (Task 6) — bone staging + texture capture
@@ -462,6 +463,11 @@ void MechFlushFrame::validateMaterialTable() {
             MC2_DIAG_FPUTS(buf, stderr);
         }
     }
+}
+
+bool gpuMechPrewarmHasRoom() {
+    constexpr uint64_t kReserve = 768ull << 20;   // left free for terrain, props and the first frames
+    return mc2vk::infra::headroom() >= kReserve;
 }
 
 void gpuMechPrewarmTextureSlot(uint32_t slot) {

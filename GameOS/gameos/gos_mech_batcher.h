@@ -247,6 +247,8 @@ struct GpuMechShadingParams {
 void gpuMechShadingParams(GpuMechShadingParams* out);
 // Mission load: realize the GPU image of a mech/vehicle texture slot (what the first flush's run inputs would do lazily).
 void gpuMechPrewarmTextureSlot(uint32_t slot);
+// False once GPU headroom is short: the load-time mover prewarm stops so in-view content keeps priority on small cards.
+bool gpuMechPrewarmHasRoom();
 
 // Forward declarations so this header compiles without render_snapshot.h.
 struct ExtractedMechPacket;
