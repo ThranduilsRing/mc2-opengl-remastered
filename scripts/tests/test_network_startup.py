@@ -62,6 +62,63 @@ def test_mp_loopback_uses_the_runner_environment_boundary(tmp_path, monkeypatch)
     assert captured["env"]["MC2_CONFIG_STRICT"] == "1"
 
 
+def test_lobby_proof_enters_via_widgets_and_keeps_cli_default(tmp_path, monkeypatch):
+    from contextlib import ExitStack
+    import run_mp_loopback_proof as proof
+    captured = {}
+    monkeypatch.setattr(proof.nofocus, "spawn", lambda argv, **kw: captured.update(argv=argv, **kw))
+    for lobby in (False, True):
+        with ExitStack() as logs:
+            proof.peer_start(str(tmp_path), str(tmp_path), 0, 23460, 64, 120, True, logs, lobby=lobby)
+        assert ("--host" in captured["argv"]) != lobby
+        assert ("MC2_INPUT_SCRIPT" in captured["env"]) == lobby
+    assert captured["env"]["MC2_BOOT_TO_SCREEN"] == "mainmenu"
+    assert captured["env"]["MC2_DIAG_TAGS"] == "COOP_UI"
+    assert (tmp_path / "lobby.script").read_text() == "wait 180\n"
+
+
+def test_lobby_multiplayer_hit_region_uses_defs_display_dimensions():
+    # The retained 800x600 Environment mode is not the 1920x1080 defs rectangle's space.
+    source = (ROOT / "code/mainmenu.cpp").read_text()
+    region = source[source.index('getButton(MM_MSG_MULTIPLAYER);', source.index('void MainMenu::render()')):]
+    region = region[:region.index('\n\t}')]
+    dimensions = re.search(r'GuiRuntime::GetDisplaySize\((\w+), (\w+)\)', region)
+    assert dimensions, "physical defs rectangles need actual display dimensions"
+    assert re.search(r'coopProofWidget\("Multiplayer",[^;]*, ' + dimensions[1] + ', ' + dimensions[2] + r'\);', region)
+
+
+def test_lobby_driver_waits_for_listening_and_enabled_controls(tmp_path):
+    from run_mp_loopback_proof import LobbyDriver
+    peers = [tmp_path / "host", tmp_path / "client"]
+    for root in peers:
+        root.mkdir()
+        (root / "lobby.script").write_text("wait 180\n")
+        (root / "stderr.log").write_text("[COOP_UI] Multiplayer 400 300\n[COOP_UI] Host 260 250\n[COOP_UI] Join 310 250\n")
+    driver = LobbyDriver(peers)
+    driver.pump()
+    driver.pump()
+    assert driver.steps == [2, 1]  # Join waits until the host finishes identity work.
+    driver.pump()
+    assert driver.steps == [2, 1]
+    with (peers[0] / "stderr.log").open("a") as log:
+        log.write("[COOP_UI] Listening 0 0\n[COOP_UI] Ready 260 300\n")
+    driver.pump()
+    assert driver.steps == [3, 2]
+    driver.pump()
+    assert driver.steps == [3, 2]  # Ready and Start have not been exposed yet.
+    with (peers[1] / "stderr.log").open("a") as log:
+        log.write("[COOP_UI] Ready 260 300\n")
+    with (peers[0] / "stderr.log").open("a") as log:
+        log.write("[COOP_UI] Start 260 330\n")
+    driver.pump()
+    driver.pump()
+    assert driver.steps == [4, 3]
+    assert [row["control"] for row in driver.actions if row["slot"] == 0] == ["Multiplayer", "Host", "Ready", "Start"]
+    assert [row["control"] for row in driver.actions if row["slot"] == 1] == ["Multiplayer", "Join", "Ready"]
+    assert "click 310.0 250.0" in (peers[1] / "lobby.script").read_text()
+    assert "shot " in (peers[0] / "lobby.script").read_text()
+
+
 def test_mp_loopback_requires_both_desync_reports_at_the_first_bad_tick(tmp_path):
     import pytest
     from run_mp_loopback_proof import compare_traces
@@ -177,13 +234,13 @@ def test_mp_combat_attacks_and_requires_fire_and_damage_for_both_owners(tmp_path
         compare_traces(*peers, 2, combat=True)
 
 
-def test_mp_handshake_deadline_starts_when_the_loaded_mission_pumps():
+def test_mp_rendezvous_deadline_includes_loading_and_is_not_reset_by_pumps():
     runtime = (ROOT / "code/net/runtime.cpp").read_text()
     begin = runtime.split("void beginMission(", 1)[1].split("void setRoster", 1)[0]
     pump = runtime.split("bool prepareTick(", 1)[1]
-    assert "began = std::chrono::steady_clock::now()" not in begin
-    assert pump.index("began = std::chrono::steady_clock::now()") < pump.index("session->pump()")
-    assert "began == std::chrono::steady_clock::time_point{}" in pump
+    assert begin.index("began = lastProgress = std::chrono::steady_clock::now()") < begin.index("session->open(")
+    assert "began =" not in pump
+    assert pump.index("progressTimeout(false,") < pump.index("session->pump()")
 
 
 def test_mp_trace_bounds_frame_exit_overshoot(tmp_path):

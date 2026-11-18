@@ -3,17 +3,34 @@
 #include <charconv>
 #include <stdexcept>
 #include <algorithm>
+#include <mutex>
+#include <condition_variable>
+#include <thread>
+#include <chrono>
 
 namespace mc2::net {
 namespace {
 constexpr std::uint32_t magic = 0x314e324d; // M2N1, little endian fields
+constexpr std::uint32_t loadedMagic = 0x44414f4c; // LOAD, reserved transport control
 void fields(save::Archive& a, std::uint32_t& tag, std::uint32_t& version, Identity& id) {
     a(tag, version, id.executable, id.content);
     std::vector<std::uint8_t> name(id.mission.begin(), id.mission.end());
     a.sequence(name, 128);
     if (a.reading()) id.mission.assign(name.begin(), name.end());
     a(id.seed);
+    a.sequence(id.components, 256, [](save::Archive& archive, Identity::Component& component) {
+        std::vector<std::uint8_t> name(component.name.begin(), component.name.end());
+        archive.sequence(name, 128);
+        if (archive.reading()) component.name.assign(name.begin(), name.end());
+        archive(component.digest);
+    });
 }
+}
+std::string digestText(const save::Digest& digest) {
+    constexpr char hex[] = "0123456789abcdef";
+    std::string result;
+    for (const auto byte : digest) { result += hex[byte >> 4]; result += hex[byte & 15]; }
+    return result;
 }
 save::Digest contentIdentity(const save::Digest& files, bool lowCost, bool remasteredBuildings) {
     save::Archive manifest;
@@ -30,7 +47,7 @@ save::Bytes hello(const Identity& identity) {
     return a.bytes();
 }
 std::string checkHello(std::span<const std::uint8_t> packet, const Identity& local) {
-    if (packet.size() > 208) return "handshake size";
+    if (packet.size() > 48 * 1024) return "handshake size";
     save::Archive a(packet);
     Identity remote;
     std::uint32_t tag = 0, version = 0;
@@ -38,7 +55,19 @@ std::string checkHello(std::span<const std::uint8_t> packet, const Identity& loc
     if (!a.finish() || tag != magic || remote.mission.empty()) return "malformed handshake";
     if (version != protocolVersion) return "protocol version mismatch";
     if (remote.executable != local.executable) return "executable SHA-256 mismatch";
-    if (remote.content != local.content) return "content SHA-256 mismatch";
+    if (remote.content != local.content) {
+        std::string reason = "content SHA-256 mismatch";
+        for (const auto& component : local.components) {
+            const auto peer = std::ranges::find(remote.components, component.name, &Identity::Component::name);
+            if (peer == remote.components.end() || peer->digest != component.digest)
+                reason += "\n" + component.name + " local=" + digestText(component.digest) +
+                    " peer=" + (peer == remote.components.end() ? "missing" : digestText(peer->digest));
+        }
+        for (const auto& component : remote.components)
+            if (std::ranges::find(local.components, component.name, &Identity::Component::name) == local.components.end())
+                reason += "\n" + component.name + " local=missing peer=" + digestText(component.digest);
+        return reason;
+    }
     if (remote.mission != local.mission) return "mission mismatch";
     if (remote.seed != local.seed) return "seed mismatch";
     return {};
@@ -46,6 +75,52 @@ std::string checkHello(std::span<const std::uint8_t> packet, const Identity& loc
 std::uint32_t delayForRtt(std::uint32_t rtt, std::uint32_t jitter) {
     const auto budget = static_cast<std::uint64_t>(rtt) + 2ull * jitter;
     return static_cast<std::uint32_t>(std::clamp<std::uint64_t>((budget * 30 + 999) / 1000 + 2, 3, 12));
+}
+save::Bytes LobbyState::offer() {
+    if (!hosting) return {};
+    save::Archive a;
+    std::uint32_t kind = 2;
+    std::vector<std::uint8_t> name(mission.begin(), mission.end());
+    a(kind); a.sequence(name, 32);
+    offered = true;
+    return a.bytes();
+}
+save::Bytes LobbyState::ready(bool value) {
+    if (!offered || started || !error.empty()) return {};
+    localReady = value;
+    save::Archive a;
+    std::uint32_t kind = 1;
+    a(kind, value);
+    return a.bytes();
+}
+save::Bytes LobbyState::start() {
+    if (!hosting || !canStart()) return {};
+    started = true;
+    save::Archive a;
+    std::uint32_t kind = 3;
+    a(kind);
+    return a.bytes();
+}
+void LobbyState::receive(std::span<const std::uint8_t> packet) {
+    if (!error.empty()) return;
+    save::Archive a(packet);
+    std::uint32_t kind = 0;
+    a(kind);
+    if (kind == 2 && !hosting && !offered) {
+        std::vector<std::uint8_t> name;
+        a.sequence(name, 32);
+        const std::string selected(name.begin(), name.end());
+        if (selected.size() != 6 || selected.substr(0, 4) != "mc2_" ||
+            selected.substr(4) < "01" || selected.substr(4) > "24") a.reject("stock mission required");
+        if (a.finish()) { mission = selected; offered = true; return; }
+    } else if (kind == 1 && offered && !started) {
+        bool value = false;
+        a(value);
+        if (a.finish()) { peerReady = value; return; }
+    } else if (kind == 3 && !hosting && canStart()) {
+        if (a.finish()) { started = true; return; }
+    }
+    error = "MP invalid lobby message or premature start";
 }
 void LinkSetup::stop(std::string_view reason) {
     if (error.empty()) error = reason;
@@ -109,20 +184,49 @@ std::optional<LinkSetup::Control> LinkSetup::receive(Control message, std::uint3
     return {};
 }
 struct Session::Impl {
+    // open() initializes before publishing to worker; destruction joins before cleanup.
+    // mutex protects every field below, all ENet calls, setup, identity and packet queues.
+    // worker itself is owner-thread-only; no reference into protected state escapes.
+    mutable std::mutex mutex;
+    std::condition_variable wake;
+    std::thread worker;
+    bool stopping = false;
+    std::vector<save::Bytes> received;
+    std::size_t queuedBytes = 0;
+    std::uint32_t loadEpoch = 0, peerLoadedEpoch = 0;
+    bool localLoaded = false, loadedSent = false, missionTransportReady = false;
     ENetHost* host = nullptr;
     ENetPeer* peer = nullptr;
     Identity identity;
     std::string error;
     bool initialized = false;
     LinkSetup setup;
+    Session::Timeouts timeouts;
+    std::chrono::steady_clock::time_point teardownDeadline{};
+    bool loaded() const {
+        return !loadEpoch ||
+            (localLoaded && loadedSent && peerLoadedEpoch == loadEpoch);
+    }
+    void service(); // Called only with mutex held.
     ~Impl() {
+        { std::lock_guard lock(mutex); stopping = true; }
+        wake.notify_one();
+        if (worker.joinable()) worker.join();
+        // The owner may destroy a failed session immediately; finish its bounded teardown.
+        while (peer && peer->state != ENET_PEER_STATE_DISCONNECTED && !error.empty()) {
+            service();
+            if (peer->state != ENET_PEER_STATE_DISCONNECTED)
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
         if (host) enet_host_destroy(host);
         if (initialized) enet_deinitialize();
     }
     void fail(std::string message) {
+        if (!error.empty()) return;
         error = std::move(message);
         setup.stop(error);
-        if (peer) { enet_peer_disconnect_now(peer, 1); enet_host_flush(host); }
+        teardownDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeouts.teardown);
+        if (peer) { enet_peer_disconnect(peer, 1); enet_host_flush(host); }
     }
     void transmit(std::span<const std::uint8_t> bytes) {
         auto* outgoing = enet_packet_create(bytes.data(), bytes.size(), ENET_PACKET_FLAG_RELIABLE);
@@ -138,7 +242,12 @@ struct Session::Impl {
         transmit(a.bytes());
     }
 };
-Session::Session() : impl_(std::make_unique<Impl>()) {}
+Session::Session() : Session(Timeouts{}) {}
+Session::Session(Timeouts timeouts) : impl_(std::make_unique<Impl>()) {
+    if (!timeouts.minimum || timeouts.minimum > timeouts.maximum || timeouts.maximum > 10000 ||
+        !timeouts.teardown || timeouts.teardown > 3000) throw std::invalid_argument("invalid MP transport timeouts");
+    impl_->timeouts = timeouts;
+}
 Session::~Session() = default;
 void Session::open(bool hosting, std::string_view endpoint, Identity identity) {
     if (impl_->host) throw std::runtime_error("MP session already open");
@@ -167,13 +276,30 @@ void Session::open(bool hosting, std::string_view endpoint, Identity identity) {
     if (!hosting) {
         impl_->peer = enet_host_connect(impl_->host, &address, 1, protocolVersion);
         if (!impl_->peer) throw std::runtime_error("ENet connect failed");
+        enet_peer_timeout(impl_->peer, 8, impl_->timeouts.minimum, impl_->timeouts.maximum);
+        enet_peer_ping_interval(impl_->peer, (std::max)(1u, (std::min)(250u, impl_->timeouts.minimum / 2)));
     }
+    impl_->worker = std::thread([s = impl_.get()] {
+        std::unique_lock lock(s->mutex);
+        while (!s->stopping) {
+            try { s->service(); }
+            catch (const std::exception& error) { s->fail(error.what()); }
+            s->wake.wait_for(lock, std::chrono::milliseconds(5), [s] { return s->stopping; });
+        }
+    });
 }
-std::vector<save::Bytes> Session::pump() {
-    auto& s = *impl_;
-    std::vector<save::Bytes> received;
-    if (!s.host || !s.error.empty()) return received;
-    s.control(s.setup.frame(enet_time_get()));
+void Session::Impl::service() {
+    auto& s = *this;
+    if (!s.host) return;
+    if (!s.error.empty()) {
+        if (!s.peer || s.peer->state == ENET_PEER_STATE_DISCONNECTED) return;
+        ENetEvent closing{};
+        for (unsigned count = 0; count < 128 && enet_host_service(s.host, &closing, 0) > 0; ++count)
+            if (closing.type == ENET_EVENT_TYPE_RECEIVE) enet_packet_destroy(closing.packet);
+        if (std::chrono::steady_clock::now() >= s.teardownDeadline) enet_peer_reset(s.peer);
+        enet_host_flush(s.host);
+        return;
+    }
     ENetEvent event{};
     // Nonblocking, bounded work; frames and the owner desktop keep running during a stall.
     for (unsigned count = 0; count < 128; ++count) {
@@ -182,7 +308,8 @@ std::vector<save::Bytes> Session::pump() {
         if (!result) break;
         if (event.type == ENET_EVENT_TYPE_CONNECT) {
             s.peer = event.peer;
-            enet_peer_timeout(s.peer, 8, 5000, 15000);
+            enet_peer_timeout(s.peer, 8, s.timeouts.minimum, s.timeouts.maximum);
+            enet_peer_ping_interval(s.peer, (std::max)(1u, (std::min)(250u, s.timeouts.minimum / 2)));
             const auto packet = hello(s.identity);
             s.transmit(packet);
         } else if (event.type == ENET_EVENT_TYPE_RECEIVE) {
@@ -200,30 +327,75 @@ std::vector<save::Bytes> Session::pump() {
                     s.control(s.setup.receive(message, enet_time_get()));
                     if (!s.setup.error.empty()) s.fail(s.setup.error);
                 }
+            } else if (packet.size() == 8 && packet[0] == 'L' && packet[1] == 'O' && packet[2] == 'A' && packet[3] == 'D') {
+                save::Archive a(packet);
+                std::uint32_t kind = 0, epoch = 0;
+                a(kind, epoch);
+                if (!a.finish() || !epoch || epoch > s.loadEpoch + 1) s.fail("MP invalid LOADED marker");
+                else s.peerLoadedEpoch = epoch; // May arrive before the lobby main thread starts loading.
             } else if (packet.size() > maxPacketBytes) s.fail("MP packet exceeds limit");
-            else received.emplace_back(packet.begin(), packet.end());
+            else if (s.queuedBytes + packet.size() > 2 * maxPacketBytes) s.fail("MP receive queue exceeds limit");
+            else { s.received.emplace_back(packet.begin(), packet.end()); s.queuedBytes += packet.size(); }
             enet_packet_destroy(event.packet);
             if (!s.error.empty()) break;
         } else if (event.type == ENET_EVENT_TYPE_DISCONNECT) {
             s.fail("MP peer disconnected"); break;
         }
     }
+    if (s.error.empty() && s.setup.phase == LinkSetup::Phase::Ready && s.loadEpoch) {
+        if (s.localLoaded && !s.loadedSent) {
+            save::Archive a;
+            auto kind = loadedMagic;
+            a(kind, s.loadEpoch);
+            s.transmit(a.bytes());
+            s.loadedSent = true;
+        }
+        if (s.loaded() && !s.missionTransportReady) {
+            s.missionTransportReady = true;
+        }
+    }
     enet_host_flush(s.host);
+}
+std::vector<save::Bytes> Session::pump() {
+    auto& s = *impl_;
+    std::lock_guard lock(s.mutex);
+    // Timing still measures real main-thread frames, not the worker's polling cadence.
+    if (s.host && s.error.empty()) s.control(s.setup.frame(enet_time_get()));
+    std::vector<save::Bytes> received;
+    received.swap(s.received);
+    s.queuedBytes = 0;
     return received;
 }
 void Session::send(std::span<const std::uint8_t> packet) {
     auto& s = *impl_;
+    std::lock_guard lock(s.mutex);
     if (!s.error.empty()) return;
-    if (!connected()) { s.fail("MP session is not connected"); return; }
+    if (s.setup.phase != LinkSetup::Phase::Ready) { s.fail("MP session is not connected"); return; }
     if (packet.empty() || packet.size() > maxPacketBytes) { s.fail("invalid MP packet size"); return; }
     s.transmit(packet);
     enet_host_flush(s.host);
 }
-bool Session::connected() const { return impl_->setup.phase == LinkSetup::Phase::Ready; }
-std::uint32_t Session::inputDelay() const { return impl_->setup.delay; }
-std::uint32_t Session::rtt() const { return impl_->peer ? impl_->peer->roundTripTime : 0; }
-std::uint32_t Session::jitter() const { return impl_->peer ? impl_->peer->roundTripTimeVariance : 0; }
-std::uint32_t Session::measuredRtt() const { return impl_->setup.rtt; }
-std::uint32_t Session::measuredJitter() const { return impl_->setup.jitter; }
-const std::string& Session::error() const { return impl_->error; }
+bool Session::connected() const { std::lock_guard lock(impl_->mutex); return impl_->setup.phase == LinkSetup::Phase::Ready && impl_->loaded(); }
+Session::LoadSnapshot Session::loadSnapshot() const {
+    std::lock_guard lock(impl_->mutex);
+    return {impl_->setup.phase == LinkSetup::Phase::Ready, impl_->localLoaded,
+        impl_->loadedSent, impl_->loadEpoch, impl_->peerLoadedEpoch};
+}
+void Session::missionLoading(bool loading) {
+    std::lock_guard lock(impl_->mutex);
+    if (loading) {
+        ++impl_->loadEpoch;
+        impl_->localLoaded = impl_->loadedSent = impl_->missionTransportReady = false;
+    } else impl_->localLoaded = true;
+}
+std::uint32_t Session::inputDelay() const { std::lock_guard lock(impl_->mutex); return impl_->setup.delay; }
+std::uint32_t Session::rtt() const { std::lock_guard lock(impl_->mutex); return impl_->peer ? impl_->peer->roundTripTime : 0; }
+std::uint32_t Session::jitter() const { std::lock_guard lock(impl_->mutex); return impl_->peer ? impl_->peer->roundTripTimeVariance : 0; }
+std::uint32_t Session::measuredRtt() const { std::lock_guard lock(impl_->mutex); return impl_->setup.rtt; }
+std::uint32_t Session::measuredJitter() const { std::lock_guard lock(impl_->mutex); return impl_->setup.jitter; }
+std::string Session::error() const { std::lock_guard lock(impl_->mutex); return impl_->error; }
+bool Session::transportClosed() const {
+    std::lock_guard lock(impl_->mutex);
+    return !impl_->peer || impl_->peer->state == ENET_PEER_STATE_DISCONNECTED;
+}
 }

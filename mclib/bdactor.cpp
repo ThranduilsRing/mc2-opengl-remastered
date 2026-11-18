@@ -621,7 +621,10 @@ void BldgAppearance::setGesture (unsigned long gestureId)
 		return;
 
 	// Check if object destroyed.  If so, no animation!
-	if ((status == OBJECT_STATUS_DESTROYED) || (status == OBJECT_STATUS_DISABLED))
+	// The draw status can lag while peers wait at mission start. Gameplay
+	// gesture admission must use the tick copy, regardless of presentation.
+	const long animationStatus = simPresentationPass ? status : simStatusView();
+	if ((animationStatus == OBJECT_STATUS_DESTROYED) || (animationStatus == OBJECT_STATUS_DISABLED))
 		return;
 		
 	if (gestureId == static_cast<const Appearance&>(*this).unitAnim().bdAnimationState)

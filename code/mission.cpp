@@ -32,6 +32,7 @@
 #include "../GameOS/gameos/gos_dev_shell.h"
 #include <algorithm>
 #include <limits>
+#include <imgui.h>
 
 namespace {
 struct MissionOrderAccess {
@@ -804,6 +805,11 @@ void Mission::forceTerminate (unsigned long result) {
 
 long Mission::render (void)
 {
+    if (mc2::net::waitingForPeer() && ImGui::GetCurrentContext()) {
+        const auto* viewport = ImGui::GetMainViewport();
+        ImGui::GetForegroundDrawList()->AddText(ImVec2(viewport->WorkPos.x + 24, viewport->WorkPos.y + 24),
+            IM_COL32(255, 255, 255, 255), "Waiting for other player");
+    }
 	mc2::sim::PresentationScope presentationScope;
 	ZoneScopedN("Camera.UpdateRenderers Mission.render");
 	if (mc2::render_view::clock().missionActive)   // the extracted flag: the overlapped tick can end the mission mid-draw
@@ -1130,6 +1136,7 @@ void Mission::resetTeamsAndCommanders()
 void Mission::destroy (bool initLogistics)
 {
 	ZoneScopedN("Mission.Destroy");
+    mc2::net::endMission();
     extern void gosRendererReleaseHudTextures(uint32_t);
     gosRendererReleaseHudTextures(0);
     orderRecipients.clear();

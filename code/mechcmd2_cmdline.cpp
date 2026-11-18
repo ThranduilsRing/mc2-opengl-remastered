@@ -4,6 +4,7 @@
 #include "mechcmd2_internal.h"
 #include "net/runtime.h"
 #include "mc2fmt.h"
+#include "Gates/gate_cold.h"
 
 
 static long textToLong (char *num)
@@ -275,7 +276,7 @@ void __stdcall GetGameOSEnvironment(mc2::czstring CommandLine )
 	ParseCommandLine(CommandLine);
 
 	if (SmokeMode::state().enabled) {
-		if (!justStartMission) {
+		if (!justStartMission && mc2::gate::str<"MC2_BOOT_TO_SCREEN">() != "mainmenu") {
 			justStartMission = true;
 			strncpy(missionName, SmokeMode::state().mission.c_str(), sizeof(missionName) - 1);
 			missionName[sizeof(missionName) - 1] = '\0';

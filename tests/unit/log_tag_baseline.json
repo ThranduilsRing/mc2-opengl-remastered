@@ -2499,6 +2499,13 @@
    "count": 1
   },
   {
+   "tag": "COOP_UI",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 6
+  },
+  {
    "tag": "CPU_PROJ",
    "ver": 1,
    "stream": "stderr",
@@ -4950,7 +4957,7 @@
     "spc",
     "lmouse"
    ],
-   "count": 1
+   "count": 3
   },
   {
    "tag": "INVIEW_CONFLATION",
@@ -6091,7 +6098,7 @@
     "animation_complete",
     "buttons_drawn"
    ],
-   "count": 1
+   "count": 3
   },
   {
    "tag": "MIF_SPLIT",
@@ -6725,6 +6732,17 @@
     "astar_global_ns",
     "calcMovePath_calls",
     "offmap_noops"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MP_ANIM_INIT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "object",
+    "part",
+    "state"
    ],
    "count": 1
   },
@@ -11213,7 +11231,7 @@
    "keys": [
     "event"
    ],
-   "count": 1
+   "count": 3
   },
   {
    "tag": "VIDEO",
@@ -13527,6 +13545,7 @@
   "CONTENT",
   "CONTENT_COOK",
   "CONTENT_SUMMARY",
+  "COOP_UI",
   "CRASH",
   "CRASHBUNDLE",
   "CULL_PARITY",

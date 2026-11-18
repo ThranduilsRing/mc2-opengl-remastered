@@ -35,8 +35,87 @@ struct DDSURFACEDESC2 {
 #include "../GuiRuntime/PlayerFrontEnd.h"
 #include "../GuiRuntime/GuiRuntime.h"
 #include "imgui.h"
+#include "net/runtime.h"
+#include "diagnostic_trace.h"
+#include <set>
 extern CPrefs prefs;
 #include "screen_settle_capture.h"
+
+namespace {
+bool& coopOpen = mc2::net::lobbyVisible();
+// Report real hit regions to the tailed mouse script; never activate controls here.
+void coopProofWidget(std::string_view name, float left, float top, float right, float bottom, float width, float height) {
+    if (mc2::gate::str<"MC2_INPUT_SCRIPT">().empty()) return;
+    static std::set<std::string> reported;
+    const auto [position, inserted] = reported.emplace(name);
+    if (inserted && mc2_diag::tagRequested("COOP_UI"))
+        std::fprintf(stderr, "[COOP_UI] %.*s %.3f %.3f\n", static_cast<int>(name.size()), name.data(), (left + right) * 400 / width, (top + bottom) * 300 / height);
+}
+void coopProofItem(std::string_view name) {
+    const auto a = ImGui::GetItemRectMin(), b = ImGui::GetItemRectMax();
+    const auto size = ImGui::GetIO().DisplaySize;
+    coopProofWidget(name, a.x, a.y, b.x, b.y, size.x, size.y);
+}
+void drawCoopLobby() {
+    if (!ImGui::GetCurrentContext()) return;
+    const auto* viewport = ImGui::GetMainViewport();
+    const float scale = viewport->WorkSize.y / 1080.0f;
+    if (!coopOpen) return;
+    mc2::net::pumpLobby();
+    ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + viewport->WorkSize.x * 0.5f,
+        viewport->WorkPos.y + viewport->WorkSize.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+    ImGui::SetNextWindowSize(ImVec2(740 * scale, 520 * scale));
+    ImGui::Begin("Co-op lobby", &coopOpen, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse);
+    ImGui::SetWindowFontScale(scale);
+    static char endpoint[64] = "127.0.0.1:23460";
+    static int selected = 0;
+    const auto& state = mc2::net::lobbyState();
+    ImGui::TextUnformatted("MECHCOMMANDER 2 / CO-OP");
+    ImGui::Separator();
+    if (!state.offered && !mc2::net::lobbyConnected()) {
+        ImGui::InputText("IP:port", endpoint, sizeof(endpoint));
+        ImGui::TextWrapped("Host: enter this PC's LAN IPv4 address and port. Join: enter the host's address.");
+        const auto missionName = [](int index) {
+            char name[16]; std::snprintf(name, sizeof(name), "mc2_%02d", index + 1);
+            return std::string(name);
+        };
+        if (ImGui::BeginCombo("Stock mission", missionName(selected).c_str())) {
+            for (int i = 0; i < 24; ++i)
+                if (ImGui::Selectable(missionName(i).c_str(), selected == i)) selected = i;
+            ImGui::EndCombo();
+        }
+        if (ImGui::Button("Host game")) {
+            mc2::net::openLobby(true, endpoint, missionName(selected));
+            if (state.error.empty() && mc2_diag::tagRequested("COOP_UI")) std::fprintf(stderr, "[COOP_UI] Listening 0 0\n");
+        }
+        coopProofItem("Host");
+        ImGui::SameLine();
+        if (ImGui::Button("Join game")) mc2::net::openLobby(false, endpoint, "mc2_01");
+        coopProofItem("Join");
+        ImGui::TextWrapped("Waiting for a peer after Host or Join. Both players must use identical content.");
+    }
+    if (state.offered && state.error.empty()) {
+        ImGui::Text("Mission: %s", state.mission.c_str());
+        ImGui::Text("Host: %s", (state.hosting ? state.localReady : state.peerReady) ? "READY" : "not ready");
+        ImGui::Text("Player 2: %s", (state.hosting ? state.peerReady : state.localReady) ? "READY" : "not ready");
+        bool ready = state.localReady;
+        if (ImGui::Checkbox("I'm ready", &ready)) mc2::net::lobbyReady(ready);
+        if (!state.localReady) coopProofItem("Ready");
+        if (state.hosting) {
+            ImGui::BeginDisabled(!state.canStart());
+            if (ImGui::Button("Start mission")) mc2::net::lobbyStart();
+            if (state.canStart()) coopProofItem("Start");
+            ImGui::EndDisabled();
+        } else ImGui::TextUnformatted("The host starts when both players are ready.");
+    }
+    ImGui::PushTextWrapPos();
+    if (!state.error.empty()) ImGui::TextUnformatted(state.error.c_str());
+    ImGui::PopTextWrapPos();
+    if (ImGui::Button("Back (Esc)") || ImGui::IsKeyPressed(ImGuiKey_Escape) || userInput->getKeyDown(KEY_ESCAPE)) coopOpen = false;
+    ImGui::End();
+    if (!coopOpen) mc2::net::closeLobby();
+}
+}
 
 
 constexpr int MM_MSG_NEW_CAMPAIGN = 90;
@@ -303,20 +382,7 @@ int	MainMenu::handleMessage( unsigned long what, unsigned long who )
 			}
 			break;
 		case MM_MSG_MULTIPLAYER:
-			if ( MPlayer )
-			{
-				LogisticsOKDialog::instance()->setText( IDS_PROMPT_TO_DISCONNECT, IDS_DIALOG_NO, IDS_DIALOG_YES );
-				LogisticsOKDialog::instance()->begin();
-				endResult = who;
-				promptToDisconnect = true;
-			}
-			else
-			{
-				endAnim.begin();
-				beginAnim.end();
-				endResult = MULTIPLAYERRESTART;
-				LogisticsData::instance->startMultiPlayer();
-			}
+			coopOpen = mc2::net::lobbyFrontEndEligible(bDrawBackground);
 			break;
 
 		case MM_MSG_RETURN_TO_GAME:
@@ -432,6 +498,7 @@ void MainMenu::skipIntro()
 
 void MainMenu::update()
 {
+    if (coopOpen) return;
 	{	// via-menu timing marker (scripts/run_smoke.py --via-menu reads its wallclock stamp): the first time the main menu runs
 		static bool s_menuMarked = false;
 		if ( !s_menuMarked ) { s_menuMarked = true; mc2::fmt::print_out("[VIA_MENU v1] event=main_menu\n"); }
@@ -509,7 +576,7 @@ void MainMenu::update()
 	else
 		getButton( MM_MSG_SAVE )->disable( false );
 
-	getButton( MM_MSG_MULTIPLAYER )->disable( true );
+	getButton( MM_MSG_MULTIPLAYER )->disable( !mc2::net::lobbyFrontEndEligible(bDrawBackground) );
 
 	if ( introMovie )
 	{
@@ -825,11 +892,13 @@ bool MainMenu::occludesLogisticsScreens() const
 void MainMenu::render()
 {
     if (ImGui::GetCurrentContext()) ImGui::GetIO().MouseDrawCursor = true;
-    if (!introMovie && !bOptions && !bDrawMechlopedia)
+    if (!introMovie && !bOptions && !bDrawMechlopedia && !coopOpen)
         // Owner 11-15: the community/credits panel appears only once the real menu
         // does, i.e. after the splash logo animation (render() returns early until then).
         PlayerFrontEnd::drawMainMenu(bDrawBackground && !bLegal &&
                                      (intro.allAnimObjectsDone() || introOver || bHostLeftDlg));
+    if (!introMovie && bDrawBackground && !bOptions && !bDrawMechlopedia)
+        if (coopOpen) drawCoopLobby();
 	// UI-ASPECT-ANCHOR-1: front-end frame — draw the UI on the 16:9 canvas
 	// (re-asserted every frame; auto-cleared at flushHUDBatch).
 	gos_SetUiCanvasActive( true );
@@ -944,6 +1013,16 @@ void MainMenu::render()
 		mc2::screen_settle::tickFrontEnd(-1, -1);
 	}
  
+	if (!coopOpen && !bOptions && !bDrawMechlopedia && !bLoad && !bSave && !bLoadSingle && !bLoadCampaign &&
+		!xDelta && !yDelta && !promptToQuit && !promptToDisconnect) {
+		const auto* button = getButton(MM_MSG_MULTIPLAYER);
+		float x = button->globalLeft(), y = button->globalTop(), w = button->width(), h = button->height();
+		float width = Environment.screenWidth, height = Environment.screenHeight;
+		// Defs rectangles use the actual display, which can differ from the legacy screen mode.
+		if (getDefsElementScreenRect("game.mcl_mm.button.multiplayer", x, y, w, h))
+			GuiRuntime::GetDisplaySize(width, height);
+		coopProofWidget("Multiplayer", x, y, x + w, y + h, width, height);
+	}
 	if ( promptToQuit || promptToDisconnect )
 	{
 		LogisticsOKDialog::instance()->render();

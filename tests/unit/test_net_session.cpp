@@ -1,7 +1,126 @@
 // Trigger paths: code/net/, code/tactical_order_queue.*, code/mission_update.cpp.
 #include "doctest.h"
 #include "net/session.h"
+#include "net/runtime.h"
+#include <enet/enet.h>
+#include <chrono>
+#include <thread>
 using namespace mc2;
+namespace mc2::net {
+void testLobbyPeerLoss();
+void testMissionLifecycle();
+void testUserDirectoryLifecycle();
+}
+TEST_CASE("NetLobby/front-end eligibility rejects campaign logistics") {
+    CHECK(net::lobbyFrontEndEligible(true));
+    CHECK_FALSE(net::lobbyFrontEndEligible(false));
+}
+TEST_CASE("NetRuntime/automatic user directory lifecycle") { net::testUserDirectoryLifecycle(); }
+TEST_CASE("NetLobby/peer loss after offer restores Host-Join controls") { net::testLobbyPeerLoss(); }
+TEST_CASE("NetRuntime/lobby MP teardown SP teardown second MP has no retained mission state") { net::testMissionLifecycle(); }
+namespace {
+struct RawPeer {
+    ENetHost* host = enet_host_create(nullptr, 1, 1, 0, 0);
+    ENetPeer* peer = nullptr;
+    explicit RawPeer(unsigned port) {
+        ENetAddress address{};
+        enet_address_set_host_ip(&address, "127.0.0.1");
+        address.port = static_cast<enet_uint16>(port);
+        if (host) peer = enet_host_connect(host, &address, 1, net::protocolVersion);
+    }
+    ~RawPeer() { if (host) enet_host_destroy(host); }
+    void send(const save::Bytes& bytes) {
+        auto* packet = enet_packet_create(bytes.data(), bytes.size(), ENET_PACKET_FLAG_RELIABLE);
+        REQUIRE(packet);
+        REQUIRE(enet_peer_send(peer, 0, packet) == 0);
+        enet_host_flush(host);
+    }
+};
+template<class Predicate, class Step> bool until(Predicate done, Step step, unsigned milliseconds = 1500) {
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(milliseconds);
+    while (!done() && std::chrono::steady_clock::now() < deadline) {
+        step();
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    }
+    return done();
+}
+}
+
+TEST_CASE("net unilateral protocol failure disconnects with reliable traffic outstanding") {
+    net::Session host;
+    net::Identity identity{{}, {}, "mc2_01", 7};
+    host.open(true, "127.0.0.1:23471", identity);
+    RawPeer remote(23471);
+    REQUIRE(remote.peer);
+    bool disconnected = false, sent = false;
+    REQUIRE(until([&] { return disconnected; }, [&] {
+        ENetEvent event{};
+        while (enet_host_service(remote.host, &event, 0) > 0) {
+            if (event.type == ENET_EVENT_TYPE_CONNECT && !sent) {
+                // The host's reliable hello is outstanding when this malformed hello arrives.
+                remote.send({0});
+                remote.send(save::Bytes(4096, 1));
+                sent = true;
+            }
+            if (event.type == ENET_EVENT_TYPE_RECEIVE) enet_packet_destroy(event.packet);
+            if (event.type == ENET_EVENT_TYPE_DISCONNECT) disconnected = true;
+        }
+    }, 3000));
+    CHECK(sent);
+    CHECK_FALSE(host.error().empty());
+    CHECK(until([&] { return host.transportClosed(); }, [] {}));
+}
+
+TEST_CASE("net disconnect deadline resets a peer that never services teardown") {
+    net::Session host({50, 200, 80});
+    host.open(true, "127.0.0.1:23472", {{}, {}, "mc2_01", 7});
+    RawPeer remote(23472);
+    REQUIRE(remote.peer);
+    bool receivedHello = false;
+    REQUIRE(until([&] { return receivedHello; }, [&] {
+        ENetEvent event{};
+        while (enet_host_service(remote.host, &event, 0) > 0) {
+            if (event.type == ENET_EVENT_TYPE_RECEIVE) {
+                receivedHello = true;
+                enet_packet_destroy(event.packet);
+            }
+        }
+    }));
+    host.send({}); // A unilateral local protocol error; remote stops servicing entirely.
+    CHECK(host.error() == "MP session is not connected");
+    CHECK_FALSE(host.transportClosed());
+    CHECK(until([&] { return host.transportClosed(); }, [] {}, 500));
+}
+
+TEST_CASE("net transport silence expires independently of live slow mission progress") {
+    SUBCASE("silent peer") {
+        net::Session host({50, 200, 80});
+        host.open(true, "127.0.0.1:23473", {{}, {}, "mc2_01", 7});
+        RawPeer remote(23473);
+        REQUIRE(remote.peer);
+        bool connected = false;
+        REQUIRE(until([&] { return connected; }, [&] {
+            ENetEvent event{};
+            while (enet_host_service(remote.host, &event, 0) > 0) {
+                if (event.type == ENET_EVENT_TYPE_CONNECT) connected = true;
+                if (event.type == ENET_EVENT_TYPE_RECEIVE) enet_packet_destroy(event.packet);
+            }
+        }));
+        REQUIRE(until([&] { return !host.error().empty(); }, [] {}, 1000));
+        CHECK(host.error() == "MP peer disconnected");
+    }
+    SUBCASE("live workers with stalled mission threads") {
+        net::Session host({50, 200, 80}), client({50, 200, 80});
+        host.open(true, "127.0.0.1:23474", {{}, {}, "mc2_01", 7});
+        client.open(false, "127.0.0.1:23474", {{}, {}, "mc2_01", 7});
+        const auto end = std::chrono::steady_clock::now() + std::chrono::milliseconds(600);
+        // No mission progress or pump calls: the workers must still exchange pings.
+        REQUIRE(until([&] { return std::chrono::steady_clock::now() >= end; }, [] {}, 1000));
+        CHECK(host.error().empty()); CHECK(client.error().empty());
+        CHECK(net::progressTimeout(true, 119999) == nullptr);
+        CHECK(net::progressTimeout(true, 120000) != nullptr);
+    }
+}
 auto settled(net::LinkSetup& host, net::LinkSetup& client, std::uint32_t now) {
     CHECK_FALSE(host.begin(now)); CHECK_FALSE(client.begin(now));
     for (unsigned i = 1; i <= 30; ++i) {
@@ -32,11 +151,11 @@ TEST_CASE("net session handshake accepts only identical protocol/executable/cont
     auto wrong = packet; wrong[4] = net::protocolVersion + 1;
     CHECK(net::checkHello(wrong, id) == "protocol version mismatch");
     CHECK(packet[0] == 'M'); CHECK(packet[1] == '2');
-    CHECK(packet[packet.size() - 4] == 0x39); // fixed-width LE uint32 seed
+    CHECK(packet[packet.size() - 8] == 0x39); // seed precedes the component count
 }
 
-TEST_CASE("net session rejects changed heat profile content with protocol four") {
-    CHECK(net::protocolVersion == 4);
+TEST_CASE("net session rejects changed heat profile content with protocol five") {
+    CHECK(net::protocolVersion == 5);
     net::Identity local, remote;
     local.mission = "mc2_01";
     const save::Bytes heatFit{1, 20, 60, 0};
@@ -109,16 +228,98 @@ TEST_CASE("net setup refuses premature or malformed timing agreement and retains
     CHECK(host.phase == net::LinkSetup::Phase::Stopped);
 }
 TEST_CASE("net timeout bounds permit transient packet loss but end an unresponsive session") {
-    CHECK(net::progressTimeout(false, 59999) == nullptr);
-    REQUIRE(net::progressTimeout(false, 60000));
-    CHECK(std::string_view(net::progressTimeout(false, 60000)) == "MP handshake timeout");
-    CHECK(net::progressTimeout(true, 14999) == nullptr);
-    REQUIRE(net::progressTimeout(true, 15000));
+    // RCA: host finished at 82.6 s; the cold client finished at 208.8 s.
+    CHECK(net::progressTimeout(false, 208800 - 82600) == nullptr);
+    CHECK(net::progressTimeout(false, 599999) == nullptr);
+    REQUIRE(net::progressTimeout(false, 600000));
+    CHECK(net::progressTimeout(true, 27000) == nullptr);
+    CHECK(net::progressTimeout(true, 119999) == nullptr);
+    REQUIRE(net::progressTimeout(true, 120000));
     net::Session unopened;
     const save::Bytes packet{1};
     CHECK_NOTHROW(unopened.send(packet));
     CHECK(unopened.error() == "MP session is not connected");
     CHECK_FALSE(unopened.connected());
+}
+
+TEST_CASE("net transport services identity while both mission threads are loading") {
+    net::Session host, client;
+    net::Identity identity{{}, {}, "mc2_01", 12345};
+    host.open(true, "127.0.0.1:23469", identity);
+    ++identity.seed;
+    client.open(false, "127.0.0.1:23469", identity);
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    // Neither peer calls pump: the main threads are occupied by cold loading.
+    while (host.error().empty() && client.error().empty() && std::chrono::steady_clock::now() < deadline)
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    CHECK((host.error() == "seed mismatch" || client.error() == "seed mismatch"));
+}
+
+TEST_CASE("net LOADED barrier holds the fast peer until the cold peer finishes") {
+    net::Session host, client;
+    const net::Identity identity{{}, {}, "mc2_01", 12345};
+    host.open(true, "127.0.0.1:23470", identity);
+    client.open(false, "127.0.0.1:23470", identity);
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(3);
+    auto settle = [&] {
+        while ((!host.connected() || !client.connected()) && std::chrono::steady_clock::now() < deadline) {
+            host.pump(); client.pump();
+            std::this_thread::sleep_for(std::chrono::milliseconds(2));
+        }
+    };
+    settle();
+    REQUIRE(host.connected()); REQUIRE(client.connected());
+    host.missionLoading(true); client.missionLoading(true);
+    host.missionLoading(false);
+    // The host is loaded; the client main thread is still inside its loader.
+    for (unsigned i = 0; i < 20; ++i) {
+        host.pump();
+        CHECK_FALSE(host.connected()); CHECK_FALSE(client.connected());
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    }
+    client.missionLoading(false);
+    settle();
+    CHECK(host.connected()); CHECK(client.connected());
+    CHECK(host.error().empty()); CHECK(client.error().empty());
+}
+
+TEST_CASE("net LOADED marker precedes immediate mission input") {
+    net::Session host, client;
+    const net::Identity identity{{}, {}, "mc2_01", 12345};
+    host.open(true, "127.0.0.1:23475", identity);
+    client.open(false, "127.0.0.1:23475", identity);
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    while ((!host.connected() || !client.connected()) && std::chrono::steady_clock::now() < deadline) {
+        host.pump(); client.pump();
+    }
+    REQUIRE(host.connected()); REQUIRE(client.connected());
+    for (unsigned round = 0; round < 25; ++round) {
+        auto& last = round % 2 ? client : host;
+        auto& first = round % 2 ? host : client;
+        host.missionLoading(true); client.missionLoading(true);
+        first.missionLoading(false);
+        deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(50);
+        while (std::chrono::steady_clock::now() < deadline) {
+            host.pump(); client.pump();
+        }
+        last.missionLoading(false);
+        deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+        while (!last.connected() && std::chrono::steady_clock::now() < deadline) last.pump();
+        REQUIRE(last.connected());
+        const save::Bytes payload{0x52, 0x4e, 0x44, static_cast<std::uint8_t>(round)};
+        last.send(payload);
+        bool received = false;
+        deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+        while (!received && std::chrono::steady_clock::now() < deadline) {
+            for (const auto& packet : first.pump()) {
+                REQUIRE(packet == payload);
+                CHECK(first.connected());
+                received = true;
+            }
+        }
+        REQUIRE(received);
+        CHECK(host.error().empty()); CHECK(client.error().empty());
+    }
 }
 
 TEST_CASE("net content identity includes effective mounted art options") {
@@ -127,6 +328,25 @@ TEST_CASE("net content identity includes effective mounted art options") {
     CHECK(high == net::contentIdentity(files, false, true));
     CHECK(high != net::contentIdentity(files, true, true));
     CHECK(high != net::contentIdentity(files, false, false));
+}
+
+TEST_CASE("net content refusal names differing and missing components with both digests") {
+    net::Identity local{{}, {}, "mc2_01", 0};
+    local.components = {{"mission.fst", {}}, {"data/missions", {}}};
+    auto remote = local;
+    remote.content[0] = 1;
+    remote.components[0].digest[0] = 0xab;
+    remote.components.erase(remote.components.begin() + 1);
+    remote.components.push_back({"mods/extra", {}});
+    const auto reason = net::checkHello(net::hello(remote), local);
+    CHECK(reason.find("mission.fst local=" + net::digestText(local.components[0].digest)) != std::string::npos);
+    CHECK(reason.find("peer=ab00") != std::string::npos);
+    CHECK(reason.find("data/missions local=") != std::string::npos);
+    CHECK(reason.find("peer=missing") != std::string::npos);
+    CHECK(reason.find("mods/extra local=missing peer=") != std::string::npos);
+    CHECK(net::digestText(local.content).size() == 64);
+    remote.components.resize(257);
+    CHECK_THROWS(net::hello(remote));
 }
 
 TEST_CASE("net timing ignores a transient post-load frame stall") {
@@ -143,6 +363,34 @@ TEST_CASE("net timing ignores a transient post-load frame stall") {
     CHECK(host.rtt == 11);
     CHECK(host.jitter == 1);
     CHECK(host.delay == 3);
+}
+
+TEST_CASE("net lobby releases only two ready players and validates host mission and start authority") {
+    net::LobbyState host, client;
+    host.hosting = true;
+    host.mission = "mc2_10";
+    CHECK(host.start().empty());
+    CHECK(client.ready(true).empty());
+    client.receive(host.offer());
+    CHECK(client.mission == "mc2_10");
+    client.receive(host.ready(true));
+    CHECK(host.start().empty());
+    host.receive(client.ready(true));
+    CHECK(host.canStart());
+    host.receive(client.ready(false));
+    CHECK_FALSE(host.canStart());
+    host.receive(client.ready(true));
+    CHECK(client.start().empty());
+    const auto startPacket = host.start();
+    client.receive(startPacket);
+    CHECK(host.started); CHECK(client.started);
+    net::LobbyState premature;
+    premature.receive(startPacket);
+    CHECK_FALSE(premature.error.empty());
+    net::LobbyState invalid;
+    host.mission = "../mod";
+    invalid.receive(host.offer());
+    CHECK_FALSE(invalid.error.empty());
 }
 
 TEST_CASE("net timing waits for thirty consecutive sub-50ms frames on both peers") {

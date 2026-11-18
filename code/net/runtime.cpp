@@ -8,16 +8,36 @@
 #include <cstdlib>
 #include <fstream>
 #include <iomanip>
+#include <map>
 #include <sstream>
 #include <stdexcept>
+#include <utility>
+#ifdef MC2_NET_RUNTIME_TESTS
+#include "doctest.h"
+#endif
 
 namespace mc2::net {
 namespace {
 bool enabled = false, hosting = false;
+bool explicitUserDirectory = false, ownsUserDirectory = false;
+std::filesystem::path previousUserDirectory;
+void restoreUserDirectory() {
+    if (!ownsUserDirectory) return;
+    userDirectory = std::move(previousUserDirectory);
+    ownsUserDirectory = false;
+}
 int status = 0;
 std::string endpoint;
 std::filesystem::path executable;
 std::unique_ptr<Session> session;
+std::unique_ptr<Session> lobbyTransport;
+LobbyState lobby;
+Identity missionIdentity, lobbyIdentity;
+bool missionHandshakePending = false, fromLobby = false;
+MissionOrigin origin = MissionOrigin::None;
+bool missionRunning = false, coopOpen = false;
+std::vector<save::Bytes> lobbyPending;
+std::chrono::steady_clock::time_point lobbyBegan;
 std::unique_ptr<Lockstep> gate;
 std::vector<sim::ObjectRef> roster;
 std::vector<std::uint32_t> rosterWatchIds;
@@ -39,6 +59,7 @@ std::deque<DelayedPacket> delayed;
     std::fprintf(stderr, "Multiplayer stopped: %.*s\n", static_cast<int>(reason.size()), reason.data());
     if (trace) { trace << "STOP " << reason << '\n' << std::flush; }
     std::fflush(nullptr);
+    restoreUserDirectory();
     status = 3;
     throw SessionStopped{};
 }
@@ -49,7 +70,7 @@ save::Digest executableHash() {
     if (!file.eof() && file.fail()) fail("cannot read MP executable");
     return save::sha256(bytes);
 }
-save::Digest contentHash() {
+save::Digest contentHash(std::vector<Identity::Component>& components) {
     // Inherited limitation: this disk-tree digest is not the mounted VFS identity.
     // Content-addressed tree: paths, lengths and fixed 1 MiB chunk digests.
     // Bound memory even for multi-gigabyte packed stock content.
@@ -70,12 +91,21 @@ save::Digest contentHash() {
     std::ranges::sort(files);
     if (files.empty()) fail("MP content manifest is empty");
     save::Archive manifest;
+    std::map<std::string, save::Archive> groups;
+    std::ofstream listing(userFile("content-digests.tsv"), std::ios::trunc);
+    if (!listing) fail("cannot write MP content diagnostics");
     save::Bytes buffer(1024 * 1024);
     for (const auto& path : files) {
         auto name = path.generic_string();
         auto length = static_cast<std::uint64_t>(std::filesystem::file_size(path));
         std::vector<std::uint8_t> nameBytes(name.begin(), name.end());
         manifest(nameBytes, length);
+        const auto slash = name.find('/');
+        const auto boundary = slash == std::string::npos ? slash : name.find('/', slash + 1);
+        auto& group = groups[name.substr(0, boundary)];
+        group(nameBytes, length);
+        save::Archive fileManifest;
+        fileManifest(length);
         std::ifstream file(path, std::ios::binary);  // path-audit: loose-only (byte hash of on-disk content)
         if (!file) fail("cannot hash MP content: " + name);
         while (file) {
@@ -83,10 +113,22 @@ save::Digest contentHash() {
             if (file.gcount()) {
                 auto digest = save::sha256(std::span(buffer).first(static_cast<std::size_t>(file.gcount())));
                 manifest(digest);
+                group(digest);
+                fileManifest(digest);
             }
         }
         if (!file.eof()) fail("cannot read MP content: " + name);
+        listing << name << '\t' << length << '\t' << digestText(save::sha256(fileManifest.bytes())) << '\n';
     }
+    for (const auto& [name, group] : groups) {
+        if (!group.good()) fail("MP content component exceeds limit");
+        components.push_back({name, save::sha256(group.bytes())});
+    }
+    save::Archive options;
+    auto lowCost = mc2::options::lowCost();
+    auto buildings = mc2::options::current().remasteredBuildings;
+    options(lowCost, buildings);
+    components.push_back({"render-options", save::sha256(options.bytes())});
     if (!manifest.good()) fail("MP content manifest exceeds limit");
     return contentIdentity(save::sha256(manifest.bytes()), mc2::options::lowCost(),
         mc2::options::current().remasteredBuildings);
@@ -157,13 +199,11 @@ void configure(int argc, char** argv) {
             else if (!hosting) throw std::runtime_error("--join requires IP:port");
         } else if (arg == "--mp-user-dir") {
             if (i + 1 == argc) throw std::runtime_error("missing MP argument value");
+            if (!ownsUserDirectory) explicitUserDirectory = true;
             userDirectory = std::filesystem::absolute(argv[++i]);
         }
     }
-    if (!enabled) {
-        if (!userDirectory.empty()) throw std::runtime_error("MP arguments require --host or --join");
-        return;
-    }
+    if (!enabled && userDirectory.empty()) return;
     if (userDirectory.empty()) throw std::runtime_error("MP requires a unique --mp-user-dir");
     std::filesystem::create_directories(userDirectory);
     // Immutable startup settings are copied once; all subsequent preference writes are private.
@@ -193,12 +233,127 @@ void configure(int argc, char** argv) {
     }
 }
 void redirectLogs() {
-    if (!enabled) return;
+    if (userDirectory.empty()) return;
     if (!std::freopen(userFile("stdout.log").c_str(), "w", stdout) ||
         !std::freopen(userFile("stderr.log").c_str(), "w", stderr)) throw std::runtime_error("cannot isolate MP logs");
     setvbuf(stdout, nullptr, _IONBF, 0); setvbuf(stderr, nullptr, _IONBF, 0);
 }
 bool active() { return enabled; }
+MissionOrigin missionOrigin() { return origin; }
+bool& lobbyVisible() { return coopOpen; }
+void endMission() {
+    // takeLobbyStart precedes destruction of the empty front-end Mission object.
+    switch (missionOrigin()) {
+    case MissionOrigin::None: return;
+    case MissionOrigin::Lobby:
+        if (fromLobby) return;
+        break;
+    case MissionOrigin::CommandLine:
+    case MissionOrigin::SinglePlayer: break;
+    }
+    session.reset();
+    gate.reset();
+    enabled = hosting = false;
+    endpoint.clear();
+    orderQueue = nullptr;
+    delayed.clear();
+    admission.reset();
+    playerSubmit = {};
+    targetLookup = {};
+    roster.clear();
+    rosterWatchIds.clear();
+    missionIdentity = lobbyIdentity = {};
+    missionHandshakePending = fromLobby = false;
+    closeLobby();
+    lobbyBegan = began = lastProgress = {};
+    scripted.clear();
+    nextScript = forcedDesyncTick = delayMs = 0;
+    if (trace.is_open()) trace.close();
+    trace.clear();
+    coopOpen = missionRunning = false;
+    origin = MissionOrigin::None;
+}
+void closeLobby() {
+    lobbyTransport.reset();
+    lobbyPending.clear();
+    lobby = {};
+    restoreUserDirectory();
+}
+const LobbyState& lobbyState() { return lobby; }
+bool lobbyConnected() { return lobbyTransport && lobbyTransport->connected() && lobby.error.empty(); }
+namespace {
+void prepareLobbyDirectory() {
+    if (!explicitUserDirectory) {
+        previousUserDirectory = userDirectory;
+        ownsUserDirectory = true;
+        const auto stamp = std::chrono::system_clock::now().time_since_epoch().count();
+        auto directory = std::filesystem::absolute("mp-sessions/" + std::to_string(stamp)).string();
+        auto exe = executable.string();
+        std::string option = "--mp-user-dir";
+        char* args[] = {exe.data(), option.data(), directory.data()};
+        configure(3, args);
+    }
+}
+}
+void openLobby(bool host, std::string_view address, std::string_view mission) {
+    closeLobby();
+    lobby.hosting = host;
+    lobby.mission = mission;
+    try {
+        if (enabled) throw std::runtime_error("MP mission already active");
+        prepareLobbyDirectory();
+        Identity identity{executableHash(), {}, "lobby", 0};
+        identity.content = contentHash(identity.components);
+        lobbyIdentity = identity;
+        lobbyTransport = std::make_unique<Session>();
+        lobbyTransport->open(host, address, std::move(identity));
+        lobbyBegan = std::chrono::steady_clock::now();
+    } catch (const std::exception& error) { lobby.error = error.what(); }
+    catch (const SessionStopped&) { lobby.error = "MP content identity could not be read"; status = 0; }
+    if (!lobby.error.empty()) {
+        lobbyTransport.reset();
+        restoreUserDirectory();
+    }
+}
+void pumpLobby() {
+    if (!lobbyTransport || lobby.started) return;
+    for (const auto& packet : lobbyTransport->pump()) {
+        if (lobby.started) lobbyPending.push_back(packet);
+        else lobby.receive(packet);
+    }
+    if (!lobbyTransport->error().empty()) lobby.error = lobbyTransport->error();
+    if (lobbyConnected() && lobby.hosting && !lobby.offered) lobbyTransport->send(lobby.offer());
+    if (lobby.error.empty() && !lobbyConnected() && std::chrono::steady_clock::now() - lobbyBegan >= std::chrono::seconds(600))
+        lobby.error = "MP loading timeout (600 seconds)";
+    if (!lobby.error.empty()) {
+        lobby.offered = lobby.localReady = lobby.peerReady = lobby.started = false;
+        lobbyTransport.reset();
+        lobbyPending.clear();
+        restoreUserDirectory();
+    }
+}
+void lobbyReady(bool value) {
+    if (!lobbyConnected()) return;
+    const auto packet = lobby.ready(value);
+    if (!packet.empty()) lobbyTransport->send(packet);
+}
+void lobbyStart() {
+    if (!lobbyConnected()) return;
+    const auto packet = lobby.start();
+    if (!packet.empty()) lobbyTransport->send(packet);
+}
+std::string takeLobbyStart() {
+    if (!lobby.started || !lobbyTransport || !lobby.error.empty()) return {};
+    session = std::move(lobbyTransport);
+    session->missionLoading(true);
+    hosting = lobby.hosting;
+    enabled = fromLobby = true;
+    origin = MissionOrigin::Lobby;
+    coopOpen = false;
+    auto mission = std::move(lobby.mission);
+    lobby = {};
+    return mission;
+}
 int exitStatus() { return status; }
 [[noreturn]] void stop(std::string_view reason) { fail(reason); }
 std::expected<sim::OrderReceipt, sim::OrderError> admitAgreedOrder(sim::TacticalOrderQueue& queue,
@@ -211,19 +366,37 @@ std::expected<sim::OrderReceipt, sim::OrderError> admitAgreedOrder(sim::Tactical
 }
 std::uint32_t localSlot() { return hosting ? 0u : 1u; }
 void beginMission(std::string_view mission, std::uint32_t seed) {
-    if (!enabled) return;
-    if (session) fail("MP mission replacement is not supported");
+    if (!enabled) { origin = MissionOrigin::SinglePlayer; missionRunning = true; return; }
+    if (missionRunning) fail("MP mission already active");
+    missionRunning = true;
+    if (!fromLobby) origin = MissionOrigin::CommandLine;
+    // One overall rendezvous cap, including local cold loading and identity work.
+    began = lastProgress = std::chrono::steady_clock::now();
+    if (session && !fromLobby) fail("MP mission replacement is not supported");
     trace.open(userFile("session.trace"), std::ios::trunc);
     if (!trace) fail("cannot open MP trace");
-    Identity identity{executableHash(), contentHash(), std::string(mission), seed};
+    Identity identity = fromLobby ? lobbyIdentity : Identity{executableHash(), {}, {}, 0};
+    identity.mission = mission;
+    identity.seed = seed;
+    if (!fromLobby) identity.content = contentHash(identity.components);
+    for (const auto& component : identity.components)
+        trace << "CONTENT " << component.name << ' ' << digestText(component.digest) << '\n';
     trace << "IDENTITY executable=";
     for (const auto byte : identity.executable) trace << std::hex << std::setw(2) << std::setfill('0') << static_cast<unsigned>(byte);
     trace << " content=";
     for (const auto byte : identity.content) trace << std::hex << std::setw(2) << std::setfill('0') << static_cast<unsigned>(byte);
     trace << std::dec << " mission=" << mission << " seed=" << seed << '\n' << std::flush;
-    session = std::make_unique<Session>();
-    try { session->open(hosting, endpoint, identity); }
-    catch (const std::exception& error) { fail(error.what()); }
+    if (fromLobby) {
+        missionIdentity = identity;
+        missionHandshakePending = true;
+        session->send(hello(identity));
+        fromLobby = false;
+    } else {
+        session = std::make_unique<Session>();
+        try { session->open(hosting, endpoint, identity); }
+        catch (const std::exception& error) { fail(error.what()); }
+        session->missionLoading(true);
+    }
     std::fprintf(stderr, "Multiplayer: slot=%u mission=%s seed=%u awaiting peer\n", localSlot(), identity.mission.c_str(), seed);
 }
 void setRoster(std::vector<sim::ObjectRef> initial, std::vector<std::uint32_t> watchIds) {
@@ -256,27 +429,55 @@ void bindQueue(sim::TacticalOrderQueue& queue, std::unique_ptr<sim::OrderAdmissi
 std::uint64_t nextTick() { return gate ? gate->completed() + 1 : 1; }
 bool prepareTick(bool due) {
     if (!session) fail("MP mission session was not initialized");
-    // beginMission precedes cold asset loading, which can exceed the handshake deadline.
-    if (began == std::chrono::steady_clock::time_point{}) {
-        began = std::chrono::steady_clock::now();
-        lastProgress = began;
+    // This first main-thread tick is the local LOADED milestone; it never resets the cap.
+    session->missionLoading(false);
+    if (!gate) {
+        const auto overallAge = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - began).count();
+        if (const auto* timeout = progressTimeout(false, static_cast<std::uint64_t>(overallAge))) fail(timeout);
     }
     if (!orderQueue || !admission) fail("MP order queue was not bound");
     auto& queue = *orderQueue;
     const auto& validator = *admission;
-    const auto packets = session->pump();
-    if (!gate && session->connected()) {
+    auto packets = std::move(lobbyPending);
+    lobbyPending.clear();
+    auto incoming = session->pump();
+    packets.insert(packets.end(), std::make_move_iterator(incoming.begin()), std::make_move_iterator(incoming.end()));
+    const bool hadGate = gate != nullptr;
+    for (const auto& packet : packets) {
+        if (missionHandshakePending) {
+            const auto error = checkHello(packet, missionIdentity);
+            if (!error.empty()) fail(error);
+            missionHandshakePending = false;
+        } else {
+            if (!gate) {
+                if (!session->connected()) {
+                    const auto snapshot = session->loadSnapshot();
+                    trace << "LOADED failure-time snapshot phase-ready=" << snapshot.phaseReady
+                        << " localLoaded=" << snapshot.localLoaded << " loadedSent=" << snapshot.loadedSent
+                        << " loadEpoch=" << snapshot.loadEpoch << " peerLoadedEpoch=" << snapshot.peerLoadedEpoch
+                        << " packet_size=" << packet.size() << " first_bytes=";
+                    for (std::size_t i = 0; i < packet.size() && i < 4; ++i)
+                        trace << std::hex << std::setw(2) << std::setfill('0') << static_cast<unsigned>(packet[i]);
+                    trace << std::dec << '\n' << std::flush;
+                    fail("MP input before LOADED barrier");
+                }
+                gate = std::make_unique<Lockstep>(localSlot(), session->inputDelay());
+            }
+            gate->receive(packet);
+        }
+    }
+    if (!gate && session->connected() && !missionHandshakePending) {
         gate = std::make_unique<Lockstep>(localSlot(), session->inputDelay());
+    }
+    if (gate && !hadGate) {
         lastProgress = std::chrono::steady_clock::now();
+        trace << "LOADED both peers; rendezvous_ms=" << std::chrono::duration_cast<std::chrono::milliseconds>(lastProgress - began).count() << '\n';
         trace << "NETWORK rtt_ms=" << session->rtt() << " jitter_ms=" << session->jitter()
               << " input_delay=" << session->inputDelay() << " measured_rtt_ms=" << session->measuredRtt()
               << " measured_jitter_ms=" << session->measuredJitter() << '\n' << std::flush;
     }
     if (!gate && !session->error().empty()) fail(session->error());
-    for (const auto& packet : packets) {
-        if (!gate) fail("MP data before timing agreement");
-        gate->receive(packet);
-    }
     // A final divergent hash and disconnect can arrive in the same pump.
     // Preserve the first divergent tick before reporting transport failure or timeout.
     if (gate) checkError();
@@ -313,6 +514,10 @@ bool prepareTick(bool due) {
     }
     return true;
 }
+bool waitingForPeer() {
+    // Runtime and UI state are main-thread-only; the transport exposes copied snapshots.
+    return enabled && session && (!gate || std::chrono::steady_clock::now() - lastProgress >= std::chrono::milliseconds(500));
+}
 void stateHashes(std::uint64_t tick, const StateHash& values) {
     if (!enabled) return;
     if (!gate || tick != gate->completed() + 1) fail("MP state hash tick mismatch");
@@ -331,4 +536,217 @@ void stateHashes(std::uint64_t tick, const StateHash& values) {
     flushOutgoing();
     checkError();
 }
+#ifdef MC2_NET_RUNTIME_TESTS
+namespace {
+struct RecordedSession final : Session {
+    std::vector<save::Bytes>& sent;
+    std::vector<save::Bytes> incoming;
+    std::string fault;
+    explicit RecordedSession(std::vector<save::Bytes>& output) : sent(output) {}
+    void send(std::span<const std::uint8_t> bytes) override { sent.emplace_back(bytes.begin(), bytes.end()); }
+    std::vector<save::Bytes> pump() override { return std::exchange(incoming, {}); }
+    bool ready = true;
+    bool connected() const override { return ready && fault.empty(); }
+    void missionLoading(bool) override {}
+    std::string error() const override { return fault; }
+};
+struct RuntimeAdmission final : sim::OrderAdmissionValidator {
+    bool permitted(const sim::OrderSource&, const sim::OrderEnvelope&) const override { return true; }
+};
+}
+void testLobbyPeerLoss() {
+    std::vector<save::Bytes> sent;
+    auto transport = std::make_unique<RecordedSession>(sent);
+    transport->fault = "MP peer disconnected";
+    lobbyTransport = std::move(transport);
+    lobbyBegan = std::chrono::steady_clock::now();
+    lobby.offered = lobby.localReady = lobby.peerReady = true;
+    pumpLobby();
+    CHECK(lobby.error == "MP peer disconnected");
+    CHECK_FALSE(lobby.offered);
+    CHECK_FALSE(lobby.localReady);
+    CHECK_FALSE(lobby.peerReady);
+    CHECK_FALSE(lobbyConnected());
+    closeLobby();
+    lobbyBegan = {};
+}
+void testUserDirectoryLifecycle() {
+    const auto previous = userDirectory;
+    const auto previousExe = executable;
+    const auto previousExplicit = explicitUserDirectory;
+    explicitUserDirectory = false;
+    const auto root = std::filesystem::current_path() / "net-directory-test";
+    std::filesystem::create_directories(root);
+    struct Cleanup {
+        std::filesystem::path previous, exe, root, cwd;
+        bool explicitDirectory;
+        ~Cleanup() {
+            fromLobby = false; endMission(); closeLobby();
+            userDirectory = previous; executable = exe;
+            explicitUserDirectory = explicitDirectory;
+            std::filesystem::current_path(cwd);
+            std::filesystem::remove_all(root);
+        }
+    } cleanup{previous, previousExe, root, std::filesystem::current_path(), previousExplicit};
+    userDirectory = root / "single-player";
+    executable = root / "missing-exe";
+    const auto original = userDirectory;
+    const auto cwd = std::filesystem::current_path();
+    std::filesystem::current_path(root);
+    std::vector<std::string> paths;
+    for (const auto* name : {"prefs.cfg", "options.cfg", "prefs.cfg.tmp", "prefs.cfg.bak", "options.cfg.tmp", "options.cfg.bak"})
+        paths.push_back(userFile(name));
+    auto restored = [&] {
+        CHECK(userDirectory == original);
+        unsigned i = 0;
+        for (const auto* name : {"prefs.cfg", "options.cfg", "prefs.cfg.tmp", "prefs.cfg.bak", "options.cfg.tmp", "options.cfg.bak"})
+            CHECK(userFile(name) == paths[i++]);
+    };
+    auto redirect = [&] {
+        prepareLobbyDirectory();
+        CHECK(userDirectory != original);
+    };
+    SUBCASE("cancel and repeated cleanup and re-entry") {
+        redirect(); closeLobby(); restored(); closeLobby(); restored();
+        redirect(); closeLobby(); restored();
+    }
+    SUBCASE("replacement and both open catches") {
+        redirect(); openLobby(true, "", "mc2_01");
+        CHECK_FALSE(lobby.error.empty()); restored();
+        // A non-directory parent forces configure to fail after assigning the redirect.
+        closeLobby();
+        const auto cwd = std::filesystem::current_path();
+        std::filesystem::create_directories(root / "partial");
+        std::filesystem::current_path(root / "partial");
+        std::ofstream("mp-sessions") << "block";
+        openLobby(true, "", "mc2_01");
+        std::filesystem::current_path(cwd);
+        CHECK_FALSE(lobby.error.empty()); restored();
+    }
+    SUBCASE("protocol transport and timeout failures retain reason") {
+        std::vector<save::Bytes> sent;
+        for (int kind = 0; kind != 3; ++kind) {
+            redirect();
+            auto transport = std::make_unique<RecordedSession>(sent);
+            if (kind == 0) transport->incoming.push_back({0xff});
+            if (kind == 1) transport->fault = "MP peer disconnected";
+            lobbyTransport = std::move(transport);
+            lobbyBegan = std::chrono::steady_clock::now() - std::chrono::seconds(601);
+            if (kind == 2) static_cast<RecordedSession*>(lobbyTransport.get())->ready = false;
+            pumpLobby();
+            CHECK_FALSE(lobby.error.empty());
+            if (kind == 1) CHECK(lobby.error == "MP peer disconnected");
+            if (kind == 2) CHECK(lobby.error == "MP loading timeout (600 seconds)");
+            restored();
+            pumpLobby(); restored(); closeLobby();
+        }
+    }
+    SUBCASE("handoff keeps isolation until actual mission teardown") {
+        redirect(); const auto isolated = userDirectory;
+        std::vector<save::Bytes> sent;
+        lobbyTransport = std::make_unique<RecordedSession>(sent);
+        lobby.started = true; lobby.mission = "mc2_01";
+        REQUIRE(takeLobbyStart() == "mc2_01");
+        CHECK(userDirectory == isolated);
+        endMission(); CHECK(userDirectory == isolated);
+        beginMission("mc2_01", 12345);
+        CHECK(userDirectory == isolated);
+        endMission(); restored(); endMission(); restored();
+    }
+    SUBCASE("failed startup restores immediately") {
+        redirect();
+        std::vector<save::Bytes> sent;
+        lobbyTransport = std::make_unique<RecordedSession>(sent);
+        lobby.started = true; lobby.mission = "mc2_01";
+        REQUIRE(takeLobbyStart() == "mc2_01");
+        std::filesystem::create_directory(userDirectory / "session.trace");
+        CHECK_THROWS_AS(beginMission("mc2_01", 12345), SessionStopped);
+        restored();
+    }
+    SUBCASE("ordinary single player and explicit override") {
+        beginMission("mc2_01", 12345); endMission(); restored();
+        auto exe = executable.string(), option = std::string("--mp-user-dir"), directory = (root / "explicit").string();
+        char* args[] = {exe.data(), option.data(), directory.data()};
+        configure(3, args);
+        const auto explicitDir = userDirectory;
+        prepareLobbyDirectory(); CHECK(userDirectory == explicitDir);
+        closeLobby(); CHECK(userDirectory == explicitDir);
+        openLobby(true, "", "mc2_01"); CHECK(userDirectory == explicitDir);
+        beginMission("mc2_01", 12345); endMission(); CHECK(userDirectory == explicitDir);
+        CHECK_THROWS_AS(stop("explicit directory failure"), SessionStopped);
+        CHECK(userDirectory == explicitDir);
+    }
+}
+void testMissionLifecycle() {
+    const auto previousDirectory = userDirectory;
+    userDirectory = std::filesystem::current_path() / "net-runtime-test";
+    std::filesystem::create_directories(userDirectory);
+    struct Cleanup {
+        std::filesystem::path previous;
+        ~Cleanup() {
+            endMission(); closeLobby();
+            std::filesystem::remove_all(userDirectory);
+            userDirectory = previous;
+        }
+    } cleanup{previousDirectory};
+    sim::TacticalOrderQueue queue;
+    unsigned callbacks = 0;
+    std::vector<save::Bytes> firstSent, secondSent;
+    auto launch = [&](std::vector<save::Bytes>& sent) {
+        lobbyTransport = std::make_unique<RecordedSession>(sent);
+        lobby.hosting = lobby.offered = lobby.localReady = lobby.peerReady = lobby.started = true;
+        lobby.mission = "mc2_01";
+        coopOpen = true;
+        REQUIRE(takeLobbyStart() == "mc2_01");
+        CHECK_FALSE(lobby.started); CHECK_FALSE(lobby.offered); CHECK_FALSE(coopOpen);
+        endMission(); // Destruction of the empty menu Mission must preserve the pending launch.
+        REQUIRE(active());
+        REQUIRE_NOTHROW(beginMission("mc2_01", 12345));
+        CHECK(trace.is_open()); CHECK(trace.good());
+        CHECK(missionOrigin() == MissionOrigin::Lobby);
+        CHECK_FALSE(fromLobby);
+    };
+    auto clean = [&] {
+        CHECK_FALSE(active()); CHECK_FALSE(session); CHECK_FALSE(gate); CHECK_FALSE(orderQueue);
+        CHECK(delayed.empty()); CHECK_FALSE(admission); CHECK_FALSE(playerSubmit); CHECK_FALSE(targetLookup);
+        CHECK(roster.empty()); CHECK(rosterWatchIds.empty()); CHECK_FALSE(missionHandshakePending);
+        CHECK(lobbyPending.empty()); CHECK_FALSE(lobbyTransport); CHECK_FALSE(coopOpen);
+        CHECK_FALSE(trace.is_open()); CHECK(missionOrigin() == MissionOrigin::None);
+        CHECK(scripted.empty()); CHECK(nextScript == 0); CHECK(delayMs == 0); CHECK(forcedDesyncTick == 0);
+    };
+    launch(firstSent);
+    bindQueue(queue, std::make_unique<RuntimeAdmission>(), [&](sim::OrderEnvelope) { ++callbacks; return true; },
+        [&](std::uint32_t) -> std::optional<sim::ObjectRef> { ++callbacks; return {}; });
+    roster = {{1, 1}}; rosterWatchIds = {77};
+    const save::Bytes stale{0xde, 0xad, 0xbe, 0xef};
+    delayed.push_back({std::chrono::steady_clock::now(), stale});
+    lobbyPending.push_back(stale);
+    gate = std::make_unique<Lockstep>(0);
+    scripted.push_back({0, 0, "reject"});
+    delayMs = 250; forcedDesyncTick = 42;
+    REQUIRE(missionHandshakePending); REQUIRE(admission); REQUIRE(playerSubmit); REQUIRE(targetLookup);
+    REQUIRE_FALSE(delayed.empty()); REQUIRE_FALSE(lobbyPending.empty());
+    endMission(); clean();
+    beginMission("mc2_01", 12345);
+    CHECK(missionOrigin() == MissionOrigin::SinglePlayer); CHECK_FALSE(active());
+    endMission(); clean();
+    launch(secondSent);
+    auto* recording = static_cast<RecordedSession*>(session.get());
+    recording->incoming.push_back(hello(missionIdentity));
+    bindQueue(queue, std::make_unique<RuntimeAdmission>(), {}, {});
+    CHECK_FALSE(prepareTick(false)); // Transmits the new mission's sealed batch through the stub.
+    REQUIRE(secondSent.size() >= 2);
+    for (const auto& packet : secondSent) CHECK(packet != stale);
+    CHECK(callbacks == 0);
+    CHECK_FALSE(missionHandshakePending);
+    endMission(); clean();
+    // Command-line missions use the same complete cleanup without a lobby launch.
+    origin = MissionOrigin::CommandLine;
+    enabled = true;
+    session = std::make_unique<RecordedSession>(secondSent);
+    CHECK(missionOrigin() == MissionOrigin::CommandLine);
+    CHECK_FALSE(missionRunning); // The durable origin, not this flag, selects teardown.
+    endMission(); clean();
+}
+#endif
 }

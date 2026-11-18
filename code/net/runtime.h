@@ -10,7 +10,20 @@ std::expected<sim::OrderReceipt, sim::OrderError> admitAgreedOrder(sim::Tactical
     sim::OrderEnvelope, const sim::OrderAdmissionValidator&);
 void configure(int argc, char** argv);
 void redirectLogs();
+void openLobby(bool host, std::string_view endpoint, std::string_view mission);
+void closeLobby();
+const LobbyState& lobbyState();
+bool lobbyConnected();
+void pumpLobby();
+void lobbyReady(bool value);
+void lobbyStart();
+std::string takeLobbyStart();
 bool active();
+enum class MissionOrigin { None, SinglePlayer, CommandLine, Lobby };
+MissionOrigin missionOrigin();
+bool& lobbyVisible();
+inline bool lobbyFrontEndEligible(bool drawBackground) { return drawBackground; }
+void endMission();
 std::uint32_t localSlot();
 void beginMission(std::string_view mission, std::uint32_t seed);
 void setRoster(std::vector<sim::ObjectRef> roster, std::vector<std::uint32_t> watchIds);
@@ -22,6 +35,7 @@ using TargetLookup = std::function<std::optional<sim::ObjectRef>(std::uint32_t)>
 bool submitScriptOrder(sim::OrderEnvelope envelope, const PlayerSubmit& submit);
 void bindQueue(sim::TacticalOrderQueue& queue, std::unique_ptr<sim::OrderAdmissionValidator> validator, PlayerSubmit submit, TargetLookup target);
 bool prepareTick(bool due = true);
+bool waitingForPeer();
 std::uint64_t nextTick();
 void stateHashes(std::uint64_t tick, const StateHash& values);
 }
