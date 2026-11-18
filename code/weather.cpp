@@ -503,7 +503,8 @@ void Weather::render (void)
 
 		if (s_rainBatchMode) {
 			// --- BATCHED PATH: collect all visible streaks, one draw call ---
-			std::vector<gos_VERTEX> batchVerts;
+			static std::vector<gos_VERTEX> batchVerts;
+			batchVerts.clear();
 			batchVerts.reserve(currentRainDrops * 2);
 
 			for (long i = 0; i < currentRainDrops; i++)
