@@ -2,7 +2,6 @@
 
 #include "water_planar_view.h"
 #include "../../RenderCore/hzb_prop_bounds.h"
-#include <tracy/Tracy.hpp>
 #include <limits>
 #include <cstring>
 #include <span>
@@ -110,13 +109,11 @@ public:
     bool collect(std::span<const GpuStaticPropInstance> recipes, std::span<const Range> ranges,
                  uint64_t generation, const View& view, std::span<const mc2hzb::PropBounds> bounds,
                  std::vector<GpuStaticPropInstance>& out) {
-        bool sameGeometry;
-        { ZoneScopedN("DIAG.Collect.GeomCompare");
-        sameGeometry = geometry_.size() == bounds.size() &&
+        const bool sameGeometry = geometry_.size() == bounds.size() &&
             std::equal(geometry_.begin(), geometry_.end(), bounds.begin(), [](const auto& a, const auto& b) {
                 return a.valid == b.valid && std::memcmp(a.lo, b.lo, sizeof(a.lo)) == 0 &&
                     std::memcmp(a.hi, b.hi, sizeof(a.hi)) == 0;
-            }); }
+            });
         const bool rebuild = !ready_ || generation_ != generation || recipes_ != recipes.data() ||
             recipeCount_ != recipes.size() || ranges_ != ranges.data() || rangeCount_ != ranges.size() || !sameGeometry;
         if (rebuild) {
@@ -138,9 +135,8 @@ public:
             ranges_ = ranges.data(); rangeCount_ = ranges.size();
             generation_ = generation; ready_ = true;
         }
-        ZoneScopedN("DIAG.Collect.Filter");
         out.clear();
-        { ZoneScopedN("DIAG.Collect.Reserve"); out.reserve(order_.size()); }
+        out.reserve(order_.size());
         for (const auto& e : order_) {
             // A TGL borrow can expire independently of the recipe revision.
             if (ranges[e.range].multi() && (!e.world.valid || view.intersects(e.world.lo, e.world.hi)))
