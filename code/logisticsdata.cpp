@@ -41,6 +41,7 @@ LogisticsData::LogisticsData()
 
 LogisticsData::~LogisticsData()
 {
+	mc2::prewarm::service().cancelMain(m_phaseBJob);
 	variants.clear();
 	vehicles.clear();
 	inventory.clear();
@@ -61,6 +62,7 @@ LogisticsData::~LogisticsData()
 
 void				LogisticsData::startNewCampaign( mc2::czstring fileName )
 {
+	ensureMechBayDataLoaded("campaign-start");
 #ifndef VIEWER
 	if ( MPlayer )
 	{

@@ -7,6 +7,7 @@
 #include "package_chassis.h"
 #include "component_rules.h"
 #include <optional>
+#include <tracy/Tracy.hpp>
 
 
 constexpr float ARMOR_POINTS_PER_NEWARMOR = 32.0f;
@@ -102,6 +103,7 @@ static unsigned int packageHardpointFromCsv(const BattleMech* mech, CSVFile* mec
 
 long BattleMech::init (DWORD variantNum)
 {
+	ZoneScopedN("BattleMech::init(variantNum)");
 	CSVFile mechFile;
 	
 	FullPathFileName csvName;

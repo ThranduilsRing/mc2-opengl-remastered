@@ -277,6 +277,7 @@ void Logistics::stop (void)
 //----------------------------------------------------------------------------------
 long Logistics::update (void)
 {
+	mc2::prewarm::pumpMain(4.0, bMovie ? mc2::prewarm::Screen::CampaignVideo : mc2::prewarm::Screen::Other, mission->isActive());
 	//MUST do this every frame.  The movie movies will play wrong, otherwise!!
 
 	if ( bMovie )

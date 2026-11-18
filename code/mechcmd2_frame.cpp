@@ -6,6 +6,7 @@
 // Declared in the class headers; shared names in mechcmd2_internal.h.
 #include "mechcmd2_internal.h"
 #include "render_resource_owners.h"
+#include "prewarm.h"
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 #include "screen_settle_capture.h"
@@ -292,6 +293,7 @@ void __stdcall TerminateGameEngine()
 		//
 		//
 		stopStartupPreload();
+		mc2::prewarm::service().shutdown();
 		FastFileFini();
 
 		//
