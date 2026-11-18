@@ -590,7 +590,9 @@ struct CompileTransaction {
 		auto found = allocationIndex.find(address);
 		if (found == allocationIndex.end())
 			return;
-		auto& entry = allocations[found->second];
+		const auto& [indexedAddress, slot] = *found;
+		(void)indexedAddress;
+		auto& entry = allocations[slot];
 		if (entry.heap == heap) {
 			entry.address = nullptr;
 			allocationIndex.erase(found);

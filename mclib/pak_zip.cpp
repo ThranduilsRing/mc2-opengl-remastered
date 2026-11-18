@@ -150,7 +150,8 @@ void PakZip::parse() {
         auto disk = v.get(at + 34, 2), local = v.get(at + 42, 4);
         v.bounds(at + 46, nl + xl + cl); require(at + 46 + nl + xl + cl <= tail);
         auto name = v.str(at + 46, nl), k = key(name);
-        require(!k.empty() && name.find('\0') == std::string::npos && names.insert(k).second);
+        require(!k.empty() && name.find('\0') == std::string::npos && !names.contains(k));
+        names.insert(k);
         zip64({v.p + at + 46 + nl, xl}, size, packed, local, disk);
         require(disk == 0 && size <= kMaxInRamImage && packed <= kMaxInRamImage);
         v.bounds(local, 30); require(local < cd && v.get(local, 4) == 0x04034b50);
@@ -191,7 +192,8 @@ void PakZip::parse() {
                    s.at("size").get<uint64_t>(), s.at("entries").get<uint64_t>()};
         require(src.name == key(src.name) && src.name.find('/') == std::string::npos &&
                 src.tocHash.size() == 16 && src.tocHash.find_first_not_of("0123456789abcdef") == std::string::npos &&
-                sourceNames.insert(src.name).second);
+                !sourceNames.contains(src.name));
+        sourceNames.insert(src.name);
         sources_.push_back(std::move(src));
     }
     for (const auto& [k, e] : entries_) require(k == "mc2pak.json" || sourceNames.count(e.source) == 1);

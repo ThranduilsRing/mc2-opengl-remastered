@@ -21,8 +21,11 @@ public:
         : cursor(text), prefix(recordPrefix), format(idFormat) {}
 
     char* find(int id) {
-        if (auto it = first.find(id); it != first.end())
-            return it->second;
+        if (auto it = first.find(id); it != first.end()) {
+            const auto& [key, text] = *it;
+            (void)key;
+            return text;
+        }
         while (cursor) {
             char* hit = std::strstr(cursor, prefix);
             if (!hit) {
@@ -47,8 +50,11 @@ public:
                 if (std::strncmp(suffix, needle, std::strlen(needle)) == 0)
                     first.try_emplace(value, hit);
             }
-            if (auto it = first.find(id); it != first.end())
-                return it->second;
+            if (auto it = first.find(id); it != first.end()) {
+                const auto& [key, text] = *it;
+                (void)key;
+                return text;
+            }
         }
         return nullptr;
     }
