@@ -907,6 +907,9 @@ mc2_height_slice(voiceover_playback mclib/soundsys.cpp
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/voiceover_playback.inc" CONTENT "${voiceover_playback}")
 target_sources(mc2_tests PRIVATE test_radio_playback.cpp)
 set_source_files_properties(test_radio_playback.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
+# Mission-load exclusive accounting (standalone header).
+target_sources(mc2_tests PRIVATE test_load_scope.cpp)
+target_sources(mc2_tests PRIVATE test_tree_texture_bindings.cpp)
 mc2_height_slice(tree_dynamic_default mclib/bdactor_internal.h
     "template <mc2::gate::Name n>" "inline constexpr float SPINRATE")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/tree_dynamic_default.inc" CONTENT "${tree_dynamic_default}")
@@ -984,7 +987,3 @@ if(MC2_UNIT_ONLY_SOURCES)
     endif()
     mc2_asan_runtime(mc2_tests_selected)
 endif()
-# Mission-load exclusive accounting (standalone header).
-target_sources(mc2_tests PRIVATE test_load_scope.cpp)
-
-target_sources(mc2_tests PRIVATE test_tree_texture_bindings.cpp)

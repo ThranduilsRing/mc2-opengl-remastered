@@ -21,8 +21,9 @@ TEST_CASE("load_scope/nested partition and lookup") {
     CHECK(kind("TextureSource.CreateCpuTexture") == Kind::decode);
     CHECK(kind("content.loadCached") == Kind::other);
     CHECK(kind("unknown") == Kind::other);
-    CHECK(kind("sim.tree.bounds") == Kind::other);
-    CHECK(kind("sim.tree.textures") == Kind::other);
+    CHECK(kind("tree.textures.first") == Kind::other);
+    CHECK(kind("tree.bounds.first") == Kind::other);
+    CHECK(kind("tree.clone.further") == Kind::sim);
 }
 TEST_CASE("load_scope/worker exclusive and separate top") {
     auto* outer = entry("cook.worker"); auto* inner = entry("io.worker");
