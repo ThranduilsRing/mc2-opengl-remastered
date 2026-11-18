@@ -126,7 +126,8 @@ def test_checked_in_manifest_matches_files():
                 x, y, w, h = ent["rect"]
                 W, H = sh["size"]
                 box = split.padded_box(x, y, x + w, y + h, W, H, pad)
-                assert im.size == (box[2] - box[0], box[3] - box[1])
+                k = sh.get("scale", 1)   # mclib/ui_chrome_sheets.cpp composeSheet: widget files are `scale` x the 1x padded box
+                assert im.size == ((box[2] - box[0]) * k, (box[3] - box[1]) * k)
             n += 1
     assert n > 1000
 
@@ -139,5 +140,6 @@ def test_every_stock_fit_rect_of_a_listed_sheet_resolves_to_a_widget():
     m = json.loads((ROOT / "data" / "art" / "ui" / "manifest.json").read_text())
     for key, sh in m["sheets"].items():
         have = {tuple(e["rect"]) for e in sh["widgets"].values()}
-        missing = set(uses[key]) - have
+        screens = set(sh["screens"])   # a screen left out of the sheet on purpose (mcl_cm_standinop on MCL_CM_5) is not checked
+        missing = {r for r, refs in uses[key].items() if any(stem in screens for stem, _, _ in refs)} - have
         assert not missing, (key, sorted(missing)[:3])
