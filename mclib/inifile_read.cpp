@@ -543,16 +543,18 @@ long FitIniFile::copyString (char *dest, char *src, unsigned long bufLen)
 	unsigned long offset = 0;
 	//---------------------
 	// Find starting Quote
-	while (*src != '"')
+	while (*src && *src != '"')
 	{
 		src++;
 	}
 	
+	if (!*src)
+		return SYNTAX_ERROR;
 	src++;		//One more to get to first character past quote.
 	
 	//---------------------------------------
 	// Copy each character until close quote
-	while (*src != '"' && offset < bufLen)
+	while (*src && *src != '"' && offset < bufLen)
 	{
 		dest[offset] = *src;
 		src++;
@@ -569,7 +571,7 @@ long FitIniFile::copyString (char *dest, char *src, unsigned long bufLen)
 	//---------------------------------
 	// otherwise, NULL term and return	
 	dest[offset] = '\0';
-	return(NO_ERR);
+	return *src == '"' ? NO_ERR : SYNTAX_ERROR;
 }
 
 //---------------------------------------------------------------------------

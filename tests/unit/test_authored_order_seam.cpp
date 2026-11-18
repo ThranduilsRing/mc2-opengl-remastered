@@ -255,6 +255,21 @@ TEST_CASE("ABLExec/stack overflow stops every push with both softfail flags enab
     SUBCASE("boolean") { checkPush([] { pushBoolean(true); }); CHECK(storage[3].integer == 1); }
 }
 
+TEST_CASE("CarbonABL/binary array assignment uses declared byte extents") {
+    CompileFixture fixture;
+    fixture.sources["arrays.abl"] = "module arrays;\nvar\nstatic integer[3] source;\n"
+        "static integer[3] destination;\ncode\ndestination = source;\nendmodule.\n";
+    const int handle = ABLi_preProcess("arrays.abl");
+    REQUIRE(handle >= 0);
+    ABLModule module;
+    REQUIRE(module.init(handle) == ABL_NO_ERR);
+    const int source[] = {0, 0x11223344, -9};
+    std::memcpy(module.getStaticData()[0].address, source, sizeof(source));
+    std::memset(module.getStaticData()[1].address, 0xa5, sizeof(source));
+    module.execute();
+    CHECK(std::memcmp(module.getStaticData()[1].address, source, sizeof(source)) == 0);
+}
+
 TEST_CASE("ABLCompile/syntax rejection rolls back before the next compile") {
     extern int32_t NumModulesRegistered;
     extern ModuleEntryPtr ModuleRegistry;

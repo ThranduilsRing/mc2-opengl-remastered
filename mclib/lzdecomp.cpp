@@ -107,8 +107,8 @@ static size_t LZDecompClassicLZW_(MemoryPtr dest, MemoryPtr src, size_t srcLen, 
     constexpr int MAX_BITS_C = 12;
 
     // Dictionary: each entry has 16-bit parent chain + 8-bit suffix. Max 4096 entries.
-    static unsigned short parentTbl[4096];
-    static unsigned char  suffixTbl[4096];
+    static thread_local unsigned short parentTbl[4096];
+    static thread_local unsigned char  suffixTbl[4096];
 
     if (srcLen < 2) return 0;
     MemoryPtr destStart = dest;

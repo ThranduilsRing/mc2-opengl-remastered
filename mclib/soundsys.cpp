@@ -335,129 +335,16 @@ long SoundSystem::init (mc2::czstring soundFileName)
 	return(NO_ERR);
 }
 
-//////////////////////////////////////////////////////////////////
-//
-// wave_ParseWaveMemory
-//   Parses a chunk of memory into the header and samples.
-//   This is done by looking for the "fmt " and "data"
-//   fields in the memory.
-//
-//////////////////////////////////////////////////////////////////
-bool wave_ParseWaveMemory(MemoryPtr lpChunkOfMemory, MC2_WAVEFORMATEX** lplpWaveHeader, MemoryPtr* lplpWaveSamples,DWORD *lpcbWaveSize)
-{
-    DWORD 	*pdw;
-    DWORD 	*pdwEnd;
-    DWORD   dwRiff;
-    DWORD   dwType;
-    DWORD   dwLength;
-
-    // Set defaults to NULL or zero
-    if (*lplpWaveHeader)
-        *lplpWaveHeader = nullptr;
-
-    if (*lplpWaveSamples)
-        *lplpWaveSamples = nullptr;
-
-    if (lpcbWaveSize)
-        *lpcbWaveSize = 0;
-
-    // Set up DWORD pointers to the start of the chunk
-    // of memory.
-    pdw = reinterpret_cast<DWORD *>(lpChunkOfMemory);
-
-    // Get the type and length of the chunk of memory
-    dwRiff = *pdw++;
-    dwLength = *pdw++;
-    dwType = *pdw++;
-
-    // Using the mmioFOURCC macro (part of Windows SDK), ensure
-    // that this is a RIFF WAVE chunk of memory
-    if (dwRiff != 0x46464952)
-      return FALSE;      // not even RIFF
-
-    if (dwType != 0x45564157)
-      return FALSE;      // not a WAV
-
-    // Find the pointer to the end of the chunk of memory
-    pdwEnd = reinterpret_cast<DWORD *>((reinterpret_cast<BYTE *>(pdw) + dwLength-4));
-
-    // Run through the bytes looking for the tags
-    while (pdw < pdwEnd)
-      {
-      dwType   = *pdw++;
-      dwLength = *pdw++;
-
-      switch (dwType)
-        {
-        // Found the format part
-        case 0x20746d66:
-
-          if (*lplpWaveHeader == nullptr)
-            {
-            if (dwLength < sizeof(MC2_WAVEFORMATEX))
-              return FALSE; // something's wrong! Not a WAV
-
-            // Set the lplpWaveHeader to point to this part of
-            // the memory chunk
-            *lplpWaveHeader = reinterpret_cast<MC2_WAVEFORMATEX*>(pdw);
-
-            // Check to see if the other two items have been
-            // filled out yet (the bits and the size of the
-            // bits). If so, then this chunk of memory has
-            // been parsed out and we can exit
-            if ((!lplpWaveSamples || *lplpWaveSamples) &&
-                (!lpcbWaveSize || *lpcbWaveSize))
-              {
-              return TRUE;
-              }
-            }
-          break;
-
-        // Found the samples
-        case 0x61746164:
-
-          if ((lplpWaveSamples && !*lplpWaveSamples) ||
-              (lpcbWaveSize && !*lpcbWaveSize))
-            {
-            // Point the samples pointer to this part of the
-            // chunk of memory.
-            if (*lplpWaveSamples == nullptr)
-				*lplpWaveSamples = reinterpret_cast<MemoryPtr>(pdw);
-
-            // Set the size of the wave
-            if (lpcbWaveSize)    *lpcbWaveSize = dwLength;
-
-            // Make sure we have our header pointer set up.
-            // If we do, we can exit
-            if (lplpWaveHeader)
-              return TRUE;
-            }
-          break;
-
-        } // End case
-
-      // Move the pointer through the chunk of memory
-      pdw = reinterpret_cast<DWORD *>((reinterpret_cast<BYTE *>(pdw) + ((dwLength+1)&~1)));
-      }
-
-  // Failed! If we made it here, we did not get all the peices
-  // of the wave
-  return FALSE;
-}
-
 //---------------------------------------------------------------------------
 // Creates the audio resource for a wave held in memory. A wave without a readable header creates nothing and is logged, so a
 // damaged sample is silent instead of read past its buffer.
 bool SoundSystem::createWaveResource (HGOSAUDIO *handle, const std::vector<uint8_t>& wave)
 {
-	constexpr size_t MIN_WAVE_BYTES = 44;			// RIFF header plus the format chunk
-	MC2_WAVEFORMATEX *waveFormat = nullptr;
-	MemoryPtr dataOffset = nullptr;
-	DWORD length = 0;
-
-	if (wave.size() < MIN_WAVE_BYTES ||
-		!wave_ParseWaveMemory(const_cast<MemoryPtr>(wave.data()),&waveFormat,&dataOffset,&length) ||
-		!waveFormat || !dataOffset || waveFormat->nChannels == 0)
+	const auto view = parseWaveSamples(wave);
+	MC2_WAVEFORMATEX waveFormat{};
+	if (view)
+		std::memcpy(&waveFormat, view->format.data(), std::min(sizeof(waveFormat), view->format.size()));
+	if (waveFormat.nChannels == 0)
 	{
 		MC2_LOG(Audio, Warn, "sound: a sample of {} bytes has no readable wave header; it is not played", wave.size());
 		return false;
@@ -465,14 +352,15 @@ bool SoundSystem::createWaveResource (HGOSAUDIO *handle, const std::vector<uint8
 
 	gosAudio_Format soundFormat;
 	soundFormat.wFormatTag = 1;				//PCM
-	soundFormat.nChannels = waveFormat->nChannels;
-	soundFormat.nSamplesPerSec = waveFormat->nSamplesPerSec;
-	soundFormat.nAvgBytesPerSec = waveFormat->nAvgBytesPerSec;
-	soundFormat.nBlockAlign = waveFormat->nBlockAlign;
-	soundFormat.wBitsPerSample = waveFormat->nBlockAlign / waveFormat->nChannels * 8;
+	soundFormat.nChannels = waveFormat.nChannels;
+	soundFormat.nSamplesPerSec = waveFormat.nSamplesPerSec;
+	soundFormat.nAvgBytesPerSec = waveFormat.nAvgBytesPerSec;
+	soundFormat.nBlockAlign = waveFormat.nBlockAlign;
+	soundFormat.wBitsPerSample = waveFormat.nBlockAlign / waveFormat.nChannels * 8;
 	soundFormat.cbSize = 0;
 
-	gosAudio_CreateResource(handle,gosAudio_UserMemory, nullptr, &soundFormat,dataOffset,length);
+	gosAudio_CreateResource(handle,gosAudio_UserMemory, nullptr, &soundFormat,
+		const_cast<MemoryPtr>(view->samples.data()), static_cast<DWORD>(view->samples.size()));
 	return true;
 }
 

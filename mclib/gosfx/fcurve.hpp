@@ -376,14 +376,18 @@ namespace gosFX {
 			ComputeValue(Stuff::Scalar time, Stuff::Scalar) const
 				{
 					Check_Object(this);
-					const CurveKey &key = (*this)[GetKeyIndex(time)];
+					if (m_keys.empty()) return 0.0f;
+					const int index = GetKeyIndex(time);
+					const CurveKey &key = (*this)[index < 0 ? 0 : index];
 					return key.ComputeValue(time - key.m_time);
 				}
 		Stuff::Scalar
 			ComputeSlope(Stuff::Scalar time) const
 				{
 					Check_Object(this);
-					const CurveKey &key = (*this)[GetKeyIndex(time)];
+					if (m_keys.empty()) return 0.0f;
+					const int index = GetKeyIndex(time);
+					const CurveKey &key = (*this)[index < 0 ? 0 : index];
 					return key.ComputeSlope(time - key.m_time);
 				}
 

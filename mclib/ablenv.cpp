@@ -372,7 +372,7 @@ UserFile* UserFile::getNewFile (void) {
 			fileHandle = i;
 			break;
 		}
-	return(files[i]);
+	return fileHandle >= 0 ? files[fileHandle] : nullptr;
 }
 
 //---------------------------------------------------------------------------
@@ -1448,7 +1448,7 @@ void buildRoutineList (SymTableNodePtr curSymbol, ModuleInfo* moduleInfo) {
 	if (curSymbol) {
 		buildRoutineList(curSymbol->left, moduleInfo);
 		if (curSymbol->defn.key == DFN_FUNCTION) {
-			if (moduleInfo->numRoutines < 1024) {
+			if (moduleInfo->numRoutines < static_cast<long>(sizeof(moduleInfo->routineInfo) / sizeof(moduleInfo->routineInfo[0]))) {
 				strcpy(moduleInfo->routineInfo[moduleInfo->numRoutines].name, curSymbol->name);
 				moduleInfo->routineInfo[moduleInfo->numRoutines].codeSegmentSize = curSymbol->defn.info.routine.codeSegmentSize;
 				moduleInfo->numRoutines++;
@@ -1466,6 +1466,7 @@ void ABLModule::getInfo (ModuleInfo* moduleInfo) {
 	strcpy(moduleInfo->fileName, ModuleRegistry[handle].fileName);
 
 	moduleInfo->numRoutines = 0;
+	moduleInfo->totalCodeSegmentSize = 0;
 	buildRoutineList(ModuleRegistry[handle].moduleIdPtr->defn.info.routine.localSymTable, moduleInfo);
 	for (long i = 0; i < moduleInfo->numRoutines; i++)
 		moduleInfo->totalCodeSegmentSize += moduleInfo->routineInfo[i].codeSegmentSize;

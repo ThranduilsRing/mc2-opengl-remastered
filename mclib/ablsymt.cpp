@@ -361,14 +361,17 @@ SymTableNodePtr searchSymTableDisplay (mc2::czstring name) {
 	if (separator) {
 		*separator = '\0';
 		SymTableNodePtr libraryNodePtr = searchSymTable(dup_name, SymTableDisplay[0]);
-		if (!libraryNodePtr)
+		if (!libraryNodePtr) {
+			free(dup_name);
 			return(nullptr);
+		}
 		//-------------------------------------
 		// Now, search for the member symbol...
 		char* memberName = separator + 1;
 		SymTableNodePtr memberNodePtr = searchSymTable(memberName, libraryNodePtr->defn.info.routine.localSymTable);
 		if (memberNodePtr)
 			recordLibraryUsed(memberNodePtr);
+		free(dup_name);
 		return(memberNodePtr);
 		}
 	else {	

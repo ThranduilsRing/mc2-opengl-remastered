@@ -206,6 +206,11 @@ long MoveMap::calcEscapePath (const mc2_move::PathQuery& query, mc2_move::Solver
 		}
 #endif
 
+		if (numCells > MAX_STEPS_PER_MOVEPATH) {
+			path->init();
+			return 0;
+		}
+
 		path->init();
 		if (numCells) {
 			

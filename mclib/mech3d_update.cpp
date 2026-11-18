@@ -955,9 +955,9 @@ void Mech3DAppearance::startSmoking (long smokeLvl)
 
 			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 
-			if (smokeLvl > 0)
+			if (smokeLvl > 0 && criticalSmoke)
 				criticalSmoke->Start(&info);
-			else
+			else if (smokeEffect)
 				smokeEffect->Start(&info);
 		}
 	}
