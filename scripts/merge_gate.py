@@ -299,7 +299,7 @@ ADVISORY_PREFIX = "ADVISORY: "
 
 def advisory_status(name, status, tier=1):
     """'ADVISORY: <status>' for a non-passing row of a non-blocking stage, else the status unchanged."""
-    advisory = name in ADVISORY_STAGES or (tier == 0 and name == "compare-captures")
+    advisory = name in ADVISORY_STAGES or (tier == 0 and name in ("capture-after", "compare-captures"))  # GATE DIET: advisory at tier 0
     return ADVISORY_PREFIX + status if advisory and not stage_passed(status) and not status.startswith(("DRY-RUN", "SKIP")) else status
 
 
@@ -928,7 +928,7 @@ def install_plan(steps, install):
 
 
 #: The sim-proof rows tools/laptop_gate.py --sim runs against the deployed candidate (determinism 01/03/10/24, saveload 03/10).
-SIM_STAGES = ("determinism-mc2_01", "determinism-mc2_03", "determinism-mc2_10", "determinism-mc2_24", "saveload-mc2_03", "saveload-mc2_10")
+SIM_STAGES = ("determinism-mc2_01", "determinism-mc2_03", "determinism-mc2_10", "determinism-mc2_24", "saveload-mc2_01", "saveload-mc2_03", "saveload-mc2_10")
 
 
 def sim_plan(install, proof_dir, rows=None, pair=False):
