@@ -84,3 +84,5 @@ def test_launcher_remaps_slot_roots():
     sys.path.insert(0, os.path.join(ROOT, "scripts"))
     import cc_launcher  # noqa: E402
     assert cc_launcher.FOREIGN_ROOT.match("A:/Games/mc2-slot07/mclib/x.h")
+    # G:/mc2-wt/<lane> trees filled the cache too; unmapped, their live headers hid this checkout's edits (stale objects)
+    assert cc_launcher.FOREIGN_ROOT.match("G:/mc2-wt/carbon-followups-1/code/objmgr.h")
