@@ -42,6 +42,7 @@ PRINTF_LIKE = {
     "OutputDebugStringA": (None, 0, "debugger"), "OutputDebugString": (None, 0, "debugger"),
     "snprintf": (None, 2, "buffer"), "_snprintf": (None, 2, "buffer"), "sprintf": (None, 1, "buffer"),
     "_snprintf_s": (None, 3, "buffer"), "to_buf": (None, 1, "buffer"), "to_buf_n": (None, 2, "buffer"), "format_to_n": (None, 2, "buffer"),
+    "format": (None, 0, "buffer"), "format_to": (None, 1, "buffer"),
     "print_err": (None, 0, "stderr"), "print_out": (None, 0, "stdout"), "print": (0, 1, None),
 }
 EVENT_MACROS = {"MC2_EVENT": "stderr", "MC2_EVENT_OUT": "stdout", "MC2_EVENT_NOVER": "stderr", "MC2_EVENT_NOVER_OUT": "stdout"}
@@ -58,7 +59,7 @@ _PRINTF_FIELD = re.compile(r"%%|%[-+ #0-9.*]*(?:hh|h|ll|l|z|j|t|L|I64|I32)?[A-Za
 _STD_FIELD = re.compile(r"\{\{|\}\}|\{[^{}]*\}")
 _LITERAL = {"%%": "%", "{{": "{", "}}": "}"}
 #: callees whose format is a std::format string; every other format in the census is a printf one (a `{` in it is just a brace)
-STD_FORMAT_CALLEES = {"to_buf", "to_buf_n", "format_to_n", "print_err", "print_out", "print"} | LOG_MACROS
+STD_FORMAT_CALLEES = {"to_buf", "to_buf_n", "format", "format_to", "format_to_n", "print_err", "print_out", "print"} | LOG_MACROS
 _NAME_RE = "|".join(sorted(list(PRINTF_LIKE) + list(EVENT_MACROS) + sorted(LOG_MACROS) + ["SPEW"], key=len, reverse=True))
 _EVENT_TMPL = re.compile(r'event\s*<\s*"([A-Z][A-Z0-9_]*)"\s*,\s*(-?\d+)\s*>\s*\(\s*(?:::)?(?:mc2::log::)?Stream::(Err|Out|Dbg)\s*,\s*((?:"(?:\\.|[^"\\\n])*"\s*)+)')
 
@@ -98,7 +99,7 @@ def census_of_text(text: str):
         lit = cxx_calls.string_literal_parts(m.group(4)) or ""
         out[record(m.group(1), m.group(2), {"Err": "stderr", "Out": "stdout", "Dbg": "debugger"}[m.group(3)], lit, True)] += 1
     names = set(PRINTF_LIKE) | set(EVENT_MACROS) | LOG_MACROS | {"SPEW"}
-    for call in cxx_calls.find_calls(text, names, ("std::", "mc2::fmt::")):
+    for call in cxx_calls.find_calls(text, names, ("std::", "mc2::fmt::", "fmt::")):
         name = call.name
         if name in EVENT_MACROS:
             if len(call.args) < 4:
