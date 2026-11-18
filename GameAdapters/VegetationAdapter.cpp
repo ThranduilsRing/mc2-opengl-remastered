@@ -274,7 +274,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
             in.types=types; in.elevations=elevations; in.masks=masks;
             in.visible=v.heights;
             in.recipes=recipes; in.field=fieldRecipe; in.hardSurface=hsDigest;
-            const auto inputs=serializeSource(in, [](const char* name, auto work) {
+            const auto inputs=serializeSource(in, [](std::string_view name, auto work) {
                 mc2::load::Scope scope(mc2::load::entry(name)); work();
             });
             { MC2_LOAD_SCOPE("cook.veg.key.digest"); source=sourceDigest(inputs,*exe); }

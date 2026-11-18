@@ -107,7 +107,7 @@ struct SourceInput {
     mc2::save::Digest hardSurface{};
 };
 struct SourceGroup {
-    template<class F> void operator()(const char*, F&& work) const { work(); }
+    template<class F> void operator()(std::string_view, F&& work) const { work(); }
 };
 template<class Group = SourceGroup>
 inline SourceBytes serializeSource(const SourceInput& in, Group group = {}) {
