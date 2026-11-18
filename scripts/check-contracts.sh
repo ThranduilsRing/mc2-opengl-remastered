@@ -933,6 +933,7 @@ fi
 # fast hermetic half that used to be its own row (flag_registry_drift) was a strict subset and is retired.
 
 run_check "log_tag_census"                 "py -3 tools/log_tag_census.py --check"
+run_check "campaign_marker"                "py -3 tools/gen_campaign_marker.py --check"   # the checked-in mcl_cm_5 reticle PNGs are what the generator cooks
 run_nightly "abl_writer_census"              "py -3 tools/abl_writer_census.py --check"
 run_nightly "analyze_dangling"              "[ -f \"\${MC2_TOOL_CLANG_CL:-C:/Program Files/LLVM/bin/clang-cl.exe}\" ] || { echo \"HOST_INFRA: clang-cl (LLVM) is not on this host\"; exit 77; }; py -3 tests/analyze/analyze_dangling.py"   # lifetime gate: clang-cl catches the seeded dangling-pointer shapes, the clean twin is silent (notes section 5)
 run_nightly "estring_callsites"          "py -3 tests/analyze/estring_callsites.py --check"   # step 4 B1: every remaining call-site row still names its kind on its line; a converted file leaves the list through --drop
