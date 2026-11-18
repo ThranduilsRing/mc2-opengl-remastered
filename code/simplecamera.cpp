@@ -610,7 +610,7 @@ long SimpleCamera::update()
 					// model and pushes it into the near plane); then centre across, feet just above the bottom edge.
 					// Estimate the full-turn width from the drawn height; bound root-offset inflation.
 					const float wTurn = turnHalfHeight_ > 0.f
-						? std::min(2.f * turnRadius_ * h / (2.f * turnHalfHeight_), 2.f * w) : w;
+						? std::min(2.f * turnRadius_ * h / (2.f * turnHalfHeight_), 1.3f * w) : w;	// the swing is +-55 deg, not a full turn
 					const float s = std::clamp(std::max({h / (fillFrac_ * rh), wTurn / (0.94f * rw), w / (0.94f * rw)}), 0.5f, 2.f);
 					framedFov_ = 2.f * std::atan(std::tan(framedFov_ * 0.5f * DEGREES_TO_RADS) * s) / DEGREES_TO_RADS;
 					fudgeX += ( bounds[0] + bounds[2] ) * 0.5f - ( drawn_[0] + drawn_[2] ) * 0.5f;
@@ -650,7 +650,7 @@ long SimpleCamera::update()
 			if ( fitIters_ == 0 && !turntablePaused_ && turntableLastT_ > 0.0 )
 			{
 				const float step = 10.f * static_cast<float>(std::min(now - turntableLastT_, 0.1));
-				rotation = std::fmod(rotation + step, 360.f);
+				swayPhase_ += step / 55.f; rotation = swayBase_ + 55.f * std::sin(swayPhase_);	// +-55 deg swing, peak 10 deg/s
 				const float previousTurn = turnAccum_;
 				turnAccum_ += step;
 				if (previousTurn < 360.f && turnAccum_ >= 360.f)

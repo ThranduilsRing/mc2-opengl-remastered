@@ -12,7 +12,7 @@ TEST_CASE("mechlab loc: record sheet uses the same contained geometry at every r
     for (const Canvas cv : {Canvas{1,1,0,0},Canvas{2.4f,1.8f,0,0},Canvas{4.8f,3.6f,0,0}}) {
         for (int p=0;p<8;++p) {
             const auto box=panelRect(p);
-            CHECK(box.x >= 217); CHECK(box.x+box.w <= 533);
+            CHECK(box.x >= 217+kDx); CHECK(box.x+box.w <= 533+kDx);
             CHECK(box.y >= 150); CHECK(box.y+box.h <= 476);
             for (int q=p+1;q<8;++q) {
                 const auto other=panelRect(q);

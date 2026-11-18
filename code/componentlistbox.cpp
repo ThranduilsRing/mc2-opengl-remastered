@@ -14,6 +14,7 @@ ComponentListBox.cpp			: Implementation of the ComponentListBox component.
 #include"mclib.h"
 #include"logisticsdata.h"
 #include"mechlabscreen.h"
+#include"mechlab_loc_layout.h"
 #include"gamesound.h"
 #include"logisticserrors.h"
 #include "mc2fmt.h"
@@ -145,7 +146,16 @@ int ComponentListItem::init( FitIniFile& file )
 		assignAnimation( file, 5, animName, &s_templateItem->heatIcon );
 
 		s_templateItem->disabledText.init( &file, "ComponentDisabledText" );
-		
+
+		// The stock fit (read directly, not through the defs overlay) is 210 wide; the list is kDx narrower.
+		const float dx = mc2::mechlab_loc::kDx;
+		auto& t = *s_templateItem;
+		t.outline.resize( t.outline.width() - static_cast<long>(dx), t.outline.height() );
+		t.name.resize( t.name.width() - static_cast<long>(dx), t.name.height() );
+		t.disabledText.resize( t.disabledText.width() - static_cast<long>(dx), t.disabledText.height() );
+		for ( aObject* o : { static_cast<aObject*>(&t.costText), static_cast<aObject*>(&t.heatText), &t.costIcon, &t.heatIcon } )
+			o->move( -dx, 0 );
+
 	}
 
 	return 0;
@@ -391,9 +401,11 @@ void ComponentIconListBox::setType( int newType, int otherNewType, int orThis, i
 					 masterComponentElem->getComponent()->getType() == orThis ||
 					 ( orThis2 != -1 && masterComponentElem->getComponent()->getType() == orThis2 ) )
 				{
-					if ( masterComponentElem->globalX() > globalX() )
+					// Template items sit at the stock list origin; the list is kDx narrower on its left.
+					const long listOriginX = globalX() - static_cast<long>(mc2::mechlab_loc::kDx);
+					if ( masterComponentElem->globalX() > listOriginX )
 					{
-						masterComponentElem->move( -globalX(), 0 );
+						masterComponentElem->move( -listOriginX, 0 );
 					}
 					addSortedItem( masterComponentElem.get() );
 				}

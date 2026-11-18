@@ -51,20 +51,21 @@ inline const char* panelTitle(int p) {
 }
 
 // Record-sheet geometry, shared by drawing and input in legacy canvas coordinates.
-inline constexpr float kAreaX = 217, kAreaY = 150, kColW = 102, kGap = 5;
+inline constexpr float kDx = 56;   // record sheet shifted right by kDx; the freed width goes to the mech preview (narrower component list)
+inline constexpr float kAreaX = 217 + kDx, kAreaY = 150, kColW = 102, kGap = 5;
 inline constexpr int kCellW = 52;
-inline constexpr Rect kPreview{25,116,184,377};
+inline constexpr Rect kPreview{25,130,184 + kDx,363};   // below the LOCATIONS | CLASSIC strip
 inline constexpr float kHeaderH = 58, kRowItemH = 11, kRefusalH = 0;
 inline constexpr int kRowsPerColumn = 8, kMaxItemRows = 8;
 inline Rect panelRect(int p) {
     static constexpr Rect boxes[]{
-        {324,150,102,96}, {324,250,102,150},
-        {217,258,102,118}, {431,258,102,118},
-        {217,150,102,104}, {431,150,102,104},
-        {217,380,102,96}, {431,380,102,96}, {217,476,316,14}};
+        {324+kDx,150,102,96}, {324+kDx,250,102,150},
+        {217+kDx,258,102,118}, {431+kDx,258,102,118},
+        {217+kDx,150,102,104}, {431+kDx,150,102,104},
+        {217+kDx,380,102,96}, {431+kDx,380,102,96}, {217+kDx,476,316,14}};
     return p >= 0 && p < kPanelCount ? boxes[p] : Rect{};
 }
-inline constexpr Rect summaryRect() { return {324,404,102,72}; }
+inline constexpr Rect summaryRect() { return {324+kDx,404,102,72}; }
 inline bool torso(int p) { return p >= 1 && p <= 3; }
 inline int visibleRows(int p) { return p == 1 ? 8 : (torso(p) ? 5 : (p == 4 || p == 5 ? 4 : 3)); }
 inline float equipmentY(int p) { return torso(p) ? 68.f : 56.f; }
@@ -85,7 +86,7 @@ inline Rect itemRowRect(int p, int k, int) {
     const auto r = panelRect(p);
     return {r.x+2,r.y+equipmentY(p)+k*(torso(p) ? 9.f : kRowItemH),r.w-4,torso(p) ? 9.f : kRowItemH};
 }// LOCATIONS | CLASSIC switch, above the panels.
-inline Rect toggleRect() { return {kAreaX, 113, 134, 15}; }
+inline Rect toggleRect() { return {217, 113, 134, 15}; }   // stock x: stays clear of REMOVE
 
 // Panel under a legacy-canvas point. Doll is not a drop target but is hit-testable.
 inline std::optional<int> panelAt(float lx, float ly) {
