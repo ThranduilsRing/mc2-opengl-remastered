@@ -138,3 +138,27 @@ TEST_CASE("visible static store clears nonempty empty different populations and 
     CHECK(store.instances[0] == 3);
     CHECK(signature == beforeFrozen);
 }
+
+TEST_CASE("VisibilityHistory: transition stats equal full rescan with duplicate IDs and OR") {
+    VisibilityHistory h(8);
+    for (uint32_t frame=0; frame<6; ++frame) {
+        h.advance();
+        REQUIRE(h.consume([&](uint32_t slot, VisibilityHistory::Sample& s) {
+            if (slot!=frame%3) return false;
+            s.ids={0,1,1,2,2,7,19,999};
+            s.bits={0,0,static_cast<uint8_t>(frame%2),1,0,0,1,0};
+            s.count=8; return true;
+        })==VisibilityTier::Tier1_NMinusOne);
+        for (uint32_t cap : {0u,1u,8u,32u,1001u}) for (bool useOr : {false,true}) {
+            const auto stats=h.buildSnapshot(cap,useOr,true);
+            uint32_t visible=0, invisible=0;
+            for (uint32_t id=1; id<cap; ++id) {
+                if (h.isVisible(id)) ++visible; else ++invisible;
+            }
+            CHECK(stats.visible==visible); CHECK(stats.invisible==invisible);
+            const auto quiet=h.buildSnapshot(cap,useOr,false);
+            CHECK(quiet.visible==0); CHECK(quiet.invisible==0);
+            CHECK(quiet.orAdmits==stats.orAdmits); CHECK(quiet.overflow==stats.overflow);
+        }
+    }
+}
