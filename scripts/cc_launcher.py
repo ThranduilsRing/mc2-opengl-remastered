@@ -31,10 +31,12 @@ def include_dirs(args):
     dirs = []
     it = iter(args)
     for a in it:
-        if a in ("/I", "-I"):
+        if a in ("/I", "-I", "/external:I", "-external:I"):
             a = next(it, "")
         elif a[:2] in ("/I", "-I"):
             a = a[2:]
+        elif a[:11] in ("/external:I", "-external:I"):
+            a = a[11:]
         else:
             continue
         if a:
@@ -42,29 +44,43 @@ def include_dirs(args):
     return dirs
 
 
-def remap(path, own, incs):
+def outside_dirs(own, incs, environ=None):
+    """Normalised directories this compile searches that lie OUTSIDE the checkout (INCLUDE env + every -I not under own)."""
+    own_n = norm(own) + os.sep
+    env = os.environ if environ is None else environ
+    cands = [d for d in env.get("INCLUDE", "").split(os.pathsep) if d] + list(incs)
+    return tuple(n + os.sep for n in (norm(d) for d in cands) if not (n + os.sep).startswith(own_n))
+
+
+def remap(path, own, incs, outside=None):
     """path: one replayed include path (str). Returns the path in this checkout, or path unchanged when none is found.
 
-    Root-agnostic: a path not under this checkout is mapped by its longest trailing part that exists here (>= 2 components
-    under the checkout root, any length under this command line's own -I directories for generated headers). System and SDK
-    headers have no counterpart and stay as printed."""
+    A path under a directory this compile searches outside the checkout (INCLUDE env, foreign -I) is a system/SDK header and
+    is returned unchanged without any search. Otherwise root-agnostic: the longest trailing part (>= 2 components) that is a
+    FILE under the checkout root; this command line's own -I directories under the checkout also match a file (any length,
+    for generated headers)."""
     path = path.replace("\\", "/")
     own_n = norm(own) + os.sep
     n = norm(path)
     if n.startswith(own_n):
         return path
+    if outside is None:
+        outside = outside_dirs(own, incs)
+    if any(n.startswith(d) for d in outside):
+        return path
     parts = [p for p in path.split("/") if p]
     if len(parts) > 1 and path[1:2] == ":":
         parts = parts[1:]
+    own_incs = [d for d in incs if (norm(d) + os.sep).startswith(own_n)]
     for i in range(len(parts)):
         sub = os.sep.join(parts[i:])
         if len(parts) - i >= 2:
             cand = os.path.join(own, sub)
-            if os.path.exists(cand):
+            if os.path.isfile(cand):
                 return cand
-        for d in incs:
+        for d in own_incs:
             cand = os.path.join(d, sub)
-            if os.path.exists(cand) and norm(cand).startswith(own_n):
+            if os.path.isfile(cand):
                 return cand
     return path
 
@@ -72,6 +88,7 @@ def remap(path, own, incs):
 def main():
     own, sccache, cmd = sys.argv[1], sys.argv[2], sys.argv[3:]
     incs = include_dirs(cmd)
+    outside = outside_dirs(own, incs)
     proc = subprocess.run([sccache] + cmd, stdout=subprocess.PIPE, **console_child.child_kwargs(redirected=True))
     out = proc.stdout
     if PREFIX in out:
@@ -85,7 +102,7 @@ def main():
                     path = stripped.decode("mbcs")
                 except UnicodeDecodeError:
                     continue
-                new = remap(path, own, incs)
+                new = remap(path, own, incs, outside)
                 if new != path:
                     eol = b"\r" if ln.endswith(b"\r") else b""
                     lines[i] = PREFIX + lead + new.encode("mbcs") + eol
