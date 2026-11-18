@@ -1,4 +1,4 @@
-#include "Gates/preferences_legacy.h"
+﻿#include "Gates/preferences_legacy.h"
 #define MECHLABSCREEN_CPP
 /*************************************************************************************************\
 MechLabScreen.cpp			: Implementation of the MechLabScreen component.
