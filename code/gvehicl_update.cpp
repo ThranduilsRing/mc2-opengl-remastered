@@ -58,9 +58,12 @@ long GroundVehicle::update (void)
 	if (recoverBuddyWID && !ObjectManager->getByWatchID(recoverBuddyWID))
 		recoverBuddyWID = 0;
 
-	refreshPositionNormal();
+	{
+		ZoneScopedN("GameLogic.Units.Vehicles PreLock");
+		refreshPositionNormal();
 
-	updatePathLock(false);
+		updatePathLock(false);
+	}
 
 	if (timeToClearSelection != 0.0 && scenarioTime > timeToClearSelection)
 	{
@@ -176,6 +179,7 @@ long GroundVehicle::update (void)
 			feedSimHalf(dRot.x, dRot.z);
 			}
  
+			ZoneScopedN("GameLogic.Units.Vehicles DestroyStart");
 			if (!appearance->playDestruction())
 			{
 				if ((static_cast<GroundVehicleTypePtr>(getObjectType()))->explDmg > 0.0f)
@@ -231,7 +235,10 @@ long GroundVehicle::update (void)
 			*/
 			
 			if (!MPlayer && getAwake())
+			{
+				ZoneScopedN("GameLogic.Units.Vehicles CreatePilot");
 				createVehiclePilot();
+			}
 
 			commitPush();
 			return(1);
@@ -401,13 +408,22 @@ long GroundVehicle::update (void)
 	setPosition(newPosition);
 	updateTurret(NewRotation);
 
-	updateDynamics();
+	{
+		ZoneScopedN("GameLogic.Units.Vehicles Dynamics");
+		updateDynamics();
+	}
 
 	if (!isDisabled())
+	{
+		ZoneScopedN("GameLogic.Units.Vehicles PostLock");
 		updatePathLock(true);
+	}
 
 	sweepTime += frameLength;
-	mineCheck();
+	{
+		ZoneScopedN("GameLogic.Units.Vehicles MineCheck");
+		mineCheck();
+	}
 	if (!MPlayer || MPlayer->isServer()) 
 	{
 		if (mineLayer != 0)

@@ -765,11 +765,21 @@ void GameObjectManager::updateMoverWalk(MoverPtr (&removeList)[MAX_MOVERS], long
 			if (mover && mover->getExists())
 			{
 				MC2_WORLD_UPDATE("vehicles", mover);
-				long updateRet_instr = mover->update();
-				invalidateSpatialGrid(false);
+				long updateRet_instr;
+				{
+					ZoneScopedN("GameLogic.Units.Vehicles Update");
+					updateRet_instr = mover->update();
+				}
+				{
+					ZoneScopedN("GameLogic.Units.Vehicles GridInval");
+					invalidateSpatialGrid(false);
+				}
 				mover->lastUpdateRet = static_cast<int32_t>(updateRet_instr);
 				if (!updateRet_instr)
+				{
+					ZoneScopedN("GameLogic.Units.Vehicles Destroy");
 					MC2_DESTROY(mover, "update_false");
+				}
 				if (mover->getFlag(OBJECT_FLAG_REMOVED))
 					removeList[numRemoved++] = mover;
 			}
