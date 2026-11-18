@@ -74,7 +74,12 @@ inline Rect armorRowRect(int p, bool rear) {
 }
 inline Rect stepperRect(int p, bool rear, bool plus) {
     const auto r = armorRowRect(p,rear);
-    return {r.x+(plus ? 65.f : 35.f),r.y,11,11};
+    return {r.x+(plus ? 59.f : 26.f),r.y,11,11};
+}
+// Armor value: centred in the panel (and between the steppers), vertically on the stepper row.
+inline Rect armorValueRect(int p, bool rear) {
+    const auto r = armorRowRect(p,rear);
+    return {r.x+37.f,r.y-.5f,22,12};
 }
 inline Rect itemRowRect(int p, int k, int) {
     const auto r = panelRect(p);

@@ -1232,7 +1232,7 @@ void MechLabScreen::render(int xOffset, int yOffset)
 			pSelectedComponent = nullptr;
 	}
 
-	if ( isPackageChassis(pVariant) )
+	if ( pVariant )
 		drawLocationView( tbSx, tbSy, tbOx, tbOy, xOffset, yOffset );
 	if ( gridBridge )
 		aObject::endGuiBridge();
@@ -2623,8 +2623,8 @@ void MechLabScreen::drawLocationView(float tbSx, float tbSy, float tbOx, float t
 			if (rear && !ml::torso(p)) continue;
 			const int loc = rear ? p+7 : p;
 			const auto row = ml::armorRowRect(p,rear);
-			text({row.x,row.y,34,12},ml::torso(p) ? (rear ? "REAR" : "FRONT") : "ARMOR");
-			text({row.x+46,row.y,19,12},std::to_string(allocation[loc]),0xffffffff,9,2);
+			text({row.x,row.y,25,12},ml::torso(p) ? (rear ? "REAR" : "FRONT") : "ARMOR");
+			text(ml::armorValueRect(p,rear),std::to_string(allocation[loc]),0xffffffff,9,2);
 			for (bool plus : {false,true}) {
 				const auto b = ml::stepperRect(p,rear,plus);
 				const bool can = editable && (plus ? mc2::armor::available(allocation,loc,cap,pool)>0 : allocation[loc]>0);
