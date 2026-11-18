@@ -21,6 +21,7 @@
 #include "vulkan_context.h"
 #include "vk_barrier_batch_vk.h"
 #include "vulkan_shadow_island_live.h"
+#include "vulkan_shadow_island_live_algo.h"
 #include "vk_depth_caster_pipeline.h"
 #include "vulkan_color_prop_island.h"
 #include "vulkan_shadow_mech_casters.h"
@@ -157,6 +158,7 @@ struct ShadowIsland : mc2vk::IslandState {
     const void* stagedInstances = nullptr;
     uint32_t    stagedInstanceCount = 0;
     std::vector<InstRun> instRuns;
+    mc2shadow::InstanceOrder instanceOrder;
     // Foliage and fence casters. Per packet of the shared geometry: the layer of the colour island's alpha-ON array that the packet's colour-pass fragments sample,
     // and the UV sub-region scale (layer < 0: an opaque packet). Built once per map from the colour island's material feed; the array view is re-bound whenever the
     // colour island hands out a different one. Until both exist a frame draws those packets opaque (a solid shadow), as the first frames of a map always did.
@@ -665,6 +667,7 @@ static bool stage_instances(ShadowIsland* s, const void* instances, uint32_t ins
         return false;
     }
     if (instanceCount == 0) {
+        s->instanceOrder.clear();
         s->instRuns.clear();
         s->stagedInstances = instances;
         s->stagedInstanceCount = 0;
@@ -674,9 +677,7 @@ static bool stage_instances(ShadowIsland* s, const void* instances, uint32_t ins
     const VkDeviceSize instBytes = static_cast<VkDeviceSize>(instanceCount) * sizeof(GpuStaticPropInstance);
     if (!ensure_inst_capacity(s, s->parity, instBytes)) { s->disabled = true; return false; }
     const GpuStaticPropInstance* insts = static_cast<const GpuStaticPropInstance*>(instances);
-    std::vector<uint32_t> order(instanceCount);
-    for (uint32_t k = 0; k < instanceCount; ++k) order[k] = k;
-    std::sort(order.begin(), order.end(), [insts](uint32_t a, uint32_t b) { return insts[a].typeID < insts[b].typeID; });
+    const auto& order = s->instanceOrder.update(std::span(insts, instanceCount));
     void* mapped = nullptr;
     if (vmaMapMemory(s->allocator, s->instBuf[s->parity].allocation(), &mapped) != VK_SUCCESS) { setFallback("inst_map_failed"); s->disabled = true; return false; }
     copy_sorted_instances(mapped, s->instCapBytes[s->parity], insts, order);
