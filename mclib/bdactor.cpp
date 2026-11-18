@@ -12,7 +12,8 @@
 #include <utility>
 #include <mutex>
 #include <string>
-#include <unordered_set>
+#include <unordered_map>
+#include "vfs.h"
 #include "texture_assets.h"
 #ifndef BDACTOR_H
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
@@ -69,18 +70,22 @@ static bool textureOrKtxSidecarExistsUncached(mc2::czstring tgaPath)
 }
 
 // fileExists opens the file through the VFS (disk or FST); the destroy path probed every texture of the rubble
-// shape for every building (6-25 ms on the presentation thread, one frame each). Existence only ever turns
-// true for a path and the loader resolves independently, so hits are remembered.
+// shape for every building (6-25 ms on the presentation thread, one frame each; a missing texture costs a full
+// failed ladder every time). The answer only changes when the VFS index is rebuilt, so both results are
+// remembered per index generation.
 bool textureOrKtxSidecarExists(mc2::czstring tgaPath)
 {
-	static std::mutex hitsMutex;
-	static std::unordered_set<std::string> hits;
+	static std::mutex memoMutex;
+	static std::unordered_map<std::string, bool> memo;
+	static uint64_t memoGeneration = ~uint64_t{0};
 	{
-		const std::lock_guard lock(hitsMutex);
-		if (hits.contains(tgaPath)) return true;
+		const std::lock_guard lock(memoMutex);
+		const uint64_t generation = mc2::vfs::generation();
+		if (generation != memoGeneration) { memo.clear(); memoGeneration = generation; }
+		if (const auto it = memo.find(tgaPath); it != memo.end()) return it->second;
 	}
 	const bool exists = textureOrKtxSidecarExistsUncached(tgaPath);
-	if (exists) { const std::lock_guard lock(hitsMutex); hits.emplace(tgaPath); }
+	{ const std::lock_guard lock(memoMutex); memo.insert_or_assign(tgaPath, exists); }
 	return exists;
 }
 
