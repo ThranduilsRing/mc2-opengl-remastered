@@ -988,3 +988,5 @@ endif()
 target_sources(mc2_tests PRIVATE test_load_scope.cpp)
 
 target_sources(mc2_tests PRIVATE test_tree_texture_bindings.cpp)
+
+target_sources(mc2_tests PRIVATE test_veg_population_cache.cpp)

@@ -18,7 +18,7 @@
 
 #include <cstdint>
 #include <span>
-#include "../../GameAdapters/vegetation_budget.h"
+#include "../../GameAdapters/vegetation_population_cache.h"
 
 namespace mc2vk { class VulkanContext; }
 
@@ -26,10 +26,7 @@ namespace mc2veg {
 
 // LOCKSTEP with PackedVegInstance / VegRegion in vegetation_structs.glsl.
 using GpuInstance = mc2::vegetation::PackedInstance;
-struct GpuRegion {
-    float x, y, z, radius;
-    uint32_t first, last, pad0, pad1;   // [first, last) in the population order
-};
+using GpuRegion = mc2::vegetation::PopulationRegion;
 static_assert(sizeof(GpuRegion) == 32);
 
 // LOCKSTEP with VegParams in vegetation_cull_common.glsl (std140, 176 B).

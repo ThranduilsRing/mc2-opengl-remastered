@@ -9,6 +9,7 @@
 #include <mdspan>
 #include "../../GameAdapters/vegetation_hardsurface.h"
 #include "terrain_field_store.h"
+#include "../../GameAdapters/vegetation_population_cache.h"
 
 namespace {
 struct MineVert { float pos[3]; float uv[2]; uint32_t layer; };
@@ -855,6 +856,12 @@ float HardSurfaceCoverage(float wx, float wy) {
     return HardSurfaceCoverageReadOnly(wx, wy);
 }
 
+std::array<uint8_t, 32> HardSurfaceContentDigest() {
+    if (!g_hs.built) BuildHardSurfaceField();
+    FlushHardSurfaceTiles();
+    return mc2::vegetation::hardSurfaceDigest(g_hs.side, g_hs.half, g_hs.wupv, g_hs.blockOf, g_hs.texels);
+}
+
 void InvalidateHardSurfaceField() {
     g_hs = HardSurfaceField{};
     g_hsPending.clear(); g_hsDirty.clear(); g_hsDirtyAll = true;
@@ -967,6 +974,9 @@ uint64_t gos_terrain_indirect_HardSurfaceVersion() {
 }
 void gos_terrain_indirect_MarkDecalDirtyTile(long row, long col) {
     gos_terrain_indirect::MarkDecalDirtyTile(row, col);
+}
+std::array<uint8_t, 32> gos_terrain_indirect_HardSurfaceContentDigest() {
+    return gos_terrain_indirect::HardSurfaceContentDigest();
 }
 float gos_terrain_indirect_HardSurfaceCoverage(float wx, float wy) {
     return gos_terrain_indirect::HardSurfaceCoverage(wx, wy);

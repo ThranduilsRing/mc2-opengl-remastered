@@ -7,7 +7,10 @@
 #include "vulkan_context.h"
 #include "texture_decode.h"
 #include "vegetation_cutout.h"
-#include "../../GameAdapters/vegetation_budget.h"
+#include "../../GameAdapters/vegetation_population_cache.h"
+#include "load_scope.h"
+#include "diagnostic_trace.h"
+#include <chrono>
 #include "../../RenderCore/KtxLoader.h"
 #include <optional>
 #include <string>
@@ -26,9 +29,6 @@
 extern const float* gos_GetTerrainMVPMat4();
 namespace {
 uint32_t populationCount = 0;   // instances resident on the device
-auto cell(const GosVegetation::Instance& i) {
-    return std::pair{static_cast<int>(std::floor(i.x/128.0f)),static_cast<int>(std::floor(i.y/128.0f))};
-}
 std::vector<uint32_t> visibility(1024, 2u);
 uint32_t visibilityBlocks = 1024, footprintCount = 0;
 bool initialized = false, atlasReady = false, summaryEmitted = false;
@@ -213,52 +213,47 @@ uint32_t GosVegetation::populationCapacity(uint32_t requested, float mapSpan) {
     return lo;
 }
 
-void GosVegetation::uploadInstances(const Instance* data, uint32_t count) {
+static_assert(sizeof(mc2::vegetation::PopulationRegion) == sizeof(mc2veg::GpuRegion));
+static_assert(offsetof(mc2::vegetation::PopulationRegion, first) == offsetof(mc2veg::GpuRegion, first));
+uint32_t GosVegetation::populationStride(const mc2::vegetation::Population& p) { return mc2veg::State::strideFor(p.instances.size(),p.regions.size()); }
+mc2::vegetation::Population GosVegetation::buildResidentPopulation(std::span<const Instance> data) {
+    return mc2::vegetation::buildPopulationWith(data, [](size_t n, size_t m) { return mc2veg::State::strideFor(n,m); });
+}
+bool GosVegetation::uploadPopulation(const mc2::vegetation::Population& population, UploadInfo* info, const std::function<void()>& afterUpload) {
+    if (!initialized || !mc2vk::engineVulkanContextValid()) return false;
+    populationCount = 0;
+    UploadInfo fallback;
+    auto& d = info ? *info : fallback;
+    const auto t = std::chrono::steady_clock::now();
+    bool ok;
+    {
+        MC2_LOAD_SCOPE("upload.veg.population");
+        ok = mc2veg::State::instance().upload(mc2vk::getOrCreateEngineVulkanContext(), population.instances, population.regions);
+    }
+    d.uploadMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now()-t).count();
+    if(ok && afterUpload && mc2veg::State::instance().instanceCount()==population.instances.size()) afterUpload();
+    // Quiet by default: the identity row hashes both full buffers (30-110 MB); MC2_DIAG_TAGS=VEG_GPU prints it.
+    if (mc2_diag::tagRequested("VEG_GPU")) mc2::fmt::print_err("[VEG_GPU] population identity: cache={} reason={} key={:016x} instances={} regions={} inst_hash={:016x} region_hash={:016x} hs_hash={:016x} max_inst={} place_ms={:.3f} build_ms={:.3f} key_ms={:.3f} read_ms={:.3f} write_ms={:.3f} upload_ms={:.3f}\n",
+        d.cache, d.reason, d.key, population.instances.size(), population.regions.size(),
+        mc2::vegetation::populationHash(population.instances), mc2::vegetation::populationHash(population.regions), d.hsHash,
+        d.maxInst, d.placeMs, d.buildMs, d.keyMs, d.readMs, d.writeMs, d.uploadMs);
+    if (ok) { populationCount = static_cast<uint32_t>(population.instances.size()); peak = std::max(peak, populationCount); }
+    return ok;
+}
+void GosVegetation::uploadInstances(const Instance* data, uint32_t count, UploadInfo* info) {
     if (!initialized) return;
     populationCount = 0;
     if (!mc2vk::engineVulkanContextValid()) return;
-    mc2veg::State& gpu = mc2veg::State::instance();
-    if (!data || !count) { gpu.clear(mc2vk::getOrCreateEngineVulkanContext()); return; }
-    // Placement is immutable between uploads. Group nearby clumps once so the device walk rejects regions instead of revisiting the whole map.
-    std::vector<Instance> sorted(data, data + count);
-    std::sort(sorted.begin(), sorted.end(), [](const auto& a, const auto& b) { return cell(a) < cell(b); });
-    // Over the preset ceiling or the live GPU headroom: keep every Nth clump (the sort keeps the thinning even per cell) instead of dropping all vegetation.
+    if (!data || !count) { mc2veg::State::instance().clear(mc2vk::getOrCreateEngineVulkanContext()); return; }
+    const auto t = std::chrono::steady_clock::now();
+    mc2::vegetation::Population population;
     {
-        size_t regions0 = 0;
-        for (size_t k = 0; k < sorted.size(); ++k) if (k == 0 || cell(sorted[k]) != cell(sorted[k - 1])) ++regions0;
-        const uint32_t stride = mc2veg::State::strideFor(sorted.size(), regions0);
-        if (stride > 1) {
-            const size_t before = sorted.size();
-            size_t kept = 0;
-            for (size_t k = 0; k < sorted.size(); k += stride) sorted[kept++] = sorted[k];
-            sorted.resize(kept);
-            mc2::fmt::print_err("[VK_RESIDENCY v1] thinned=vegetation stride={:d} instances={:d}->{:d}\n", mc2::fmt::as_u32(stride), mc2::fmt::as_u64(before), mc2::fmt::as_u64(kept));
-        }
+        MC2_LOAD_SCOPE("cook.veg.build");
+        population = buildResidentPopulation({data,count});
     }
-    std::vector<mc2veg::GpuInstance> gpuInstances(sorted.size());
-    for (size_t k = 0; k < sorted.size(); ++k) {
-        const auto& i = sorted[k];
-        gpuInstances[k] = mc2::vegetation::packInstance(i.x, i.y, i.z, i.yaw, i.scale, i.atlasFrame, i.seed);
-    }
-    std::vector<mc2veg::GpuRegion> gpuRegions;
-    for (size_t begin = 0; begin < sorted.size();) {
-        size_t end = begin + 1;
-        const auto key = cell(sorted[begin]);
-        while (end < sorted.size() && cell(sorted[end]) == key) ++end;
-        float lo = sorted[begin].z, hi = lo, pad = 0.0f;
-        for (size_t j = begin; j < end; ++j) {
-            lo = std::min(lo, sorted[j].z); hi = std::max(hi, sorted[j].z);
-            pad = std::max(pad, 1.5f * sorted[j].scale);
-        }
-        const auto [cellX, cellY] = key;
-        gpuRegions.push_back({(cellX + 0.5f) * 128.0f, (cellY + 0.5f) * 128.0f, (lo + hi) * 0.5f,
-            std::sqrt(2.0f * 64.0f * 64.0f + (hi - lo) * (hi - lo) * 0.25f) + pad, static_cast<uint32_t>(begin), static_cast<uint32_t>(end), 0u, 0u});
-        begin = end;
-    }
-    if (gpu.upload(mc2vk::getOrCreateEngineVulkanContext(), gpuInstances, gpuRegions)) {
-        populationCount = static_cast<uint32_t>(sorted.size());
-        peak = std::max(peak, populationCount);
-    }
+    if (info) info->buildMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now()-t).count();
+    if (population.stride > 1) mc2::fmt::print_err("[VK_RESIDENCY v1] thinned=vegetation stride={} instances={}->{}\n", population.stride, count, population.instances.size());
+    uploadPopulation(population, info);
 }
 void GosVegetation::setBlockVisibility(const uint32_t* data, uint32_t count) {
     visibilityBlocks = count;

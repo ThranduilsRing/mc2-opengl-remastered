@@ -5,7 +5,8 @@
 // (mclib/) and engine-side headers (GameOS/gameos/).
 
 #include "VegetationAdapter.h"
-#include "vegetation_budget.h"
+#include "vegetation_population_cache.h"
+#include "../GameOS/gameos/load_scope.h"
 #include "vegetation_noise.h"
 #include "vegetation_clumps.h"
 #include "vegetation_hardsurface.h"
@@ -14,6 +15,7 @@
 
 // Engine side.
 #include "gos_vegetation.h"
+#include "build_identity.h"
 #include "gos_render.h"
 #include "../code/render_view.h"
 
@@ -40,6 +42,9 @@
 #include <fstream>
 #include "mc2fmt.h"
 #include "../code/job_system.h"
+#include "../mclib/terrtxm2.h"
+#include "Gates/render_options.h"
+#include <filesystem>
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -48,6 +53,7 @@
 // VEG-CEMENT-1: sub-cell hard-surface coverage from the decal/overlay bake
 // (GameOS/gameos/gos_terrain_indirect_mine_decal.cpp; C-linkage forwarders).
 extern float gos_terrain_indirect_HardSurfaceCoverage(float wx, float wy);
+extern std::array<uint8_t, 32> gos_terrain_indirect_HardSurfaceContentDigest();
 extern float gos_terrain_indirect_HardSurfaceCoverageReadOnly(float wx, float wy);
 extern void  gos_terrain_indirect_HardSurfaceStats(int* alpha, int* pure, int* noImage);
 
@@ -139,6 +145,30 @@ void GameAdapters::Vegetation::missionUnloaded()
     GosVegetation::uploadInstances(nullptr, 0);
 }
 
+namespace {
+const std::optional<mc2::vegetation::Digest>& vegetationBuildDigest() {
+    static const auto digest = []() -> std::optional<mc2::vegetation::Digest> {
+        if (!MC2_BUILD_GIT_SHA[0] || std::string_view(MC2_BUILD_GIT_SHA)=="unknown") return std::nullopt;
+        // The deployed engine's compiled fingerprint includes commit and build time.
+        if (!MC2_BUILD_GIT_DIRTY)
+            return mc2::vegetation::buildIdentity(MC2_BUILD_FP_LITERAL, false);
+        std::filesystem::path path;
+#ifdef _WIN32
+        if (!_wpgmptr) return std::nullopt;
+        path=std::filesystem::path(_wpgmptr);
+#else
+        path="/proc/self/exe";
+#endif
+        std::error_code ec;
+        const auto size=std::filesystem::file_size(path,ec); if(ec) return std::nullopt;
+        const auto modified=std::filesystem::last_write_time(path,ec); if(ec) return std::nullopt;
+        return mc2::vegetation::buildIdentity(MC2_BUILD_FP_LITERAL, true, size,
+            static_cast<uint64_t>(modified.time_since_epoch().count()));
+    }();
+    return digest;
+}
+}
+
 void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
 {
     if (!land) return;
@@ -160,7 +190,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                                                         (std::max)(density,44), (std::min)(maxInst, 4750000));
 
     std::vector<GosVegetation::Instance> instances;
-    instances.reserve(static_cast<size_t>(maxInst));
+
 
     // Classification uses getTerrain() tile type codes — no pre-built map needed.
     // This is always available as long as mapData is initialized (which it is at
@@ -195,6 +225,85 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
             if (i == 0) fieldRecipe = readFieldRecipe(doc);   // only the temperate biome carpets its ground
         }
     }
+    GosVegetation::UploadInfo uploadInfo;
+    uploadInfo.maxInst = static_cast<uint32_t>(maxInst);
+    PopulationRecord record;
+    int fieldBlades = 0, fieldSide = 0, fieldGaps = 0, fieldFlowers = 0;
+    std::array<int*,25> counters{&diagCellsTotal,&diagOOB,&diagHard,&diagNotGreen,&diagOverlay,&diagWater,
+        &diagWeeds,&diagCoverKept,&instTriedTotal,&instRejWater,&instRejHard,&instRejNoneFringe,&instRejOverlay,&instRejSlope,
+        &woodyPlaced,&woodyGated,&clumpsGated,&woodyThinned,&fieldBlades,&fieldSide,&fieldGaps,&fieldFlowers,&hsAlpha,&hsPure,&hsNoImg};
+    const auto keyT0=std::chrono::steady_clock::now();
+    Digest source{};
+    // Legacy Phong/displacement can read normals/images: conservatively bypass even when their current amplitude is zero.
+    const bool legacy=Terrain::terrainTextures2 && (!mc2::options::current().cpuPhongRetire ||
+        (Terrain::terrainTextures2->cpuColorMap && Terrain::terrainTextures2->cpuDispAlpha));
+    bool eligible=false;
+    {
+        MC2_LOAD_SCOPE("cook.veg.key");
+        const auto& exe=vegetationBuildDigest();
+        eligible=cacheAdmission(gameMap!=nullptr,legacy,exe.has_value());
+        Digest hsDigest;
+        { MC2_LOAD_SCOPE("cook.veg.key.hs"); hsDigest=gos_terrain_indirect_HardSurfaceContentDigest(); }
+        uploadInfo.hsHash=fileKey(hsDigest);
+        if(eligible) {
+            std::vector<uint32_t> types; std::vector<float> elevations; std::vector<uint8_t> masks;
+            const auto v=TerrainRuntime::groundHeightView();
+            SourceInput in;
+            { MC2_LOAD_SCOPE("cook.veg.key.map");
+            in.mapName=Terrain::terrainName ? Terrain::terrainName : ""; in.seed=seed;
+            in.frame={originX,originY,mapSpan,Terrain::worldUnitsPerVertex,Terrain::oneOverWorldUnitsPerVertex,
+                Terrain::waterElevation,gridStep,Terrain::oneOverWorldUnitsMapSide,Terrain::oneOverWorldUnitsPerCell};
+            in.grid={static_cast<uint64_t>(Terrain::realVerticesMapSide),static_cast<uint64_t>(Terrain::halfVerticesMapSide),static_cast<uint64_t>(Terrain::verticesBlockSide),
+                static_cast<uint64_t>(Terrain::blocksMapSide),1,static_cast<uint64_t>(gameMap->getHeight()),static_cast<uint64_t>(gameMap->getWidth()),static_cast<uint64_t>(v.vertices),static_cast<uint64_t>(density)};
+            }
+            { MC2_LOAD_SCOPE("cook.veg.key.types");
+            types.reserve(static_cast<size_t>(Terrain::realVerticesMapSide)*Terrain::realVerticesMapSide);
+            for(long r=0;r<Terrain::realVerticesMapSide;++r) for(long c=0;c<Terrain::realVerticesMapSide;++c)
+                types.push_back(static_cast<uint32_t>(land->getTerrain(r,c))); }
+            { MC2_LOAD_SCOPE("cook.veg.key.heights");
+            elevations.reserve(types.size());
+            for(long r=0;r<Terrain::realVerticesMapSide;++r) for(long c=0;c<Terrain::realVerticesMapSide;++c)
+                elevations.push_back(land->getTerrainElevation(r,c)); }
+            { MC2_LOAD_SCOPE("cook.veg.key.masks");
+            masks.reserve(static_cast<size_t>(gameMap->getHeight())*gameMap->getWidth());
+            for(long r=0;r<gameMap->getHeight();++r) for(long c=0;c<gameMap->getWidth();++c) {
+                auto& m=gameMap->cellAt(r,c);
+                masks.push_back(static_cast<uint8_t>(m.getOffMap() | (m.getPassable()<<1) | (m.getForest()<<2) | (m.getWall()<<3) | (static_cast<bool>(m.getGate())<<4) | (m.getRoad()<<5)));
+            } }
+            // topLeftVertex parity cancels: ((meshOffset-topLeft)&1) XOR (topLeft&1) == meshOffset&1.
+            in.types=types; in.elevations=elevations; in.masks=masks;
+            in.visible=v.heights;
+            in.recipes=recipes; in.field=fieldRecipe; in.hardSurface=hsDigest;
+            const auto inputs=serializeSource(in, [](std::string_view name, auto work) {
+                mc2::load::Scope scope(mc2::load::entry(name)); work();
+            });
+            { MC2_LOAD_SCOPE("cook.veg.key.digest"); source=sourceDigest(inputs,*exe); }
+            uploadInfo.key=fileKey(source);
+        }
+    }
+    uploadInfo.keyMs=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-keyT0).count();
+    // 160 MiB instances + 2 MiB regions + 1 MiB header rounding; 16 entries <= 2.547 GiB. No aggregate byte budget in cook_cache.
+    constexpr mc2cache::CacheKind cacheKind{"veg-",".vpb",16,163ull*1024*1024};
+    bool hit=false;
+    if(eligible) {
+        const auto t=std::chrono::steady_clock::now();
+        MC2_LOAD_SCOPE("io.veg.blobRead");
+        if(auto bytes=mc2cache::readEntry("cache/veg-population",cacheKind,uploadInfo.key)) {
+            if(auto decoded=decode(*bytes,source,maxInst); decoded && GosVegetation::populationStride(decoded->population)==1) {
+                record=std::move(*decoded); hit=true;
+                for(size_t i=0;i<counters.size();++i) *counters[i]=record.counters[i];
+            }
+        }
+        uploadInfo.readMs=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-t).count();
+    }
+    uploadInfo.cache=eligible ? (hit ? "hit" : "miss") : "bypass";
+    uploadInfo.reason=eligible ? (hit ? "verified" : "absent_or_invalid") : (!gameMap ? "editor" : legacy ? "legacy_surface" : "exe_unknown");
+    uint64_t clumpCount=0, candidateCells=0;
+    double fieldMs=0;
+    const auto placeT0=std::chrono::steady_clock::now();
+    if(!hit) {
+    MC2_LOAD_SCOPE("cook.veg.placement");
+    instances.reserve(static_cast<size_t>(maxInst));
     const int side = static_cast<int>(mapSpan/gridStep);
     const long mapSide = static_cast<long>(Terrain::realVerticesMapSide);
     for (int row = 1; row < side-1; ++row) {
@@ -297,7 +406,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
 
     // Meadow field: a stratified carpet of blades over open temperate ground,
     // after the clumps so its budget is exactly the capacity they left.
-    int fieldBlades = 0, fieldSide = 0, fieldGaps = 0, fieldFlowers = 0;
+    clumpCount=instances.size();
     const auto fieldT0 = std::chrono::steady_clock::now();
     if (fieldRecipe) {
         constexpr float kBeachMarginWU = 8.0f;   // keep the shoreline sand bare
@@ -322,6 +431,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                 fieldSlopes[static_cast<size_t>(row)*side+col] = land->getTerrainAngle(pos,&normal);
             }
         }
+        candidateCells=fieldCells.size();
         const long budget = static_cast<long>(maxInst) - static_cast<long>(instances.size());
         fieldSide = fieldBladeSide(gridStep, fieldRecipe->spacing, budget, static_cast<long>(fieldCells.size()));
         // Include the old whole-cell cut in the mask: its straight seams need
@@ -410,15 +520,31 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
         fieldGaps = field.gaps;
         fieldFlowers = field.flowers;
     }
-    const double fieldMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - fieldT0).count();
+    fieldMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - fieldT0).count();
+    uploadInfo.placeMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now()-placeT0).count();
+    }
+    if(!hit) {
+        const auto t=std::chrono::steady_clock::now();
+        { MC2_LOAD_SCOPE("cook.veg.build"); record.population=GosVegetation::buildResidentPopulation(instances); }
+        uploadInfo.buildMs=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-t).count();
+        if(clumpCount>=static_cast<uint64_t>(maxInst) || record.population.stride!=1) { uploadInfo.cache="bypass"; uploadInfo.reason=record.population.stride!=1 ? "stride" : "clump_cap"; }
+        for(size_t i=0;i<counters.size();++i) record.counters[i]=*counters[i];
+    }
+    GosVegetation::uploadPopulation(record.population,&uploadInfo,[&] {
+        if(hit || !eligible || record.population.stride!=1) return;
+        const uint32_t k0=fieldRecipe ? static_cast<uint32_t>(std::clamp(static_cast<int>(std::lround(gridStep/fieldRecipe->spacing)),0,8)) : 0;
+        const auto interval=capacityInterval(clumpCount,candidateCells,fieldSide,k0,maxInst);
+        if(!interval) return;
+        record.interval=*interval;
+        const auto t=std::chrono::steady_clock::now();
+        { MC2_LOAD_SCOPE("io.veg.blobWrite"); mc2cache::writeEntry("cache/veg-population",cacheKind,uploadInfo.key,encode(record,source)); }
+        uploadInfo.writeMs=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-t).count();
+    });
     MC2_DIAGFE(stderr,
         "[VEG v3] field blades=%d side=%d gaps=%d flowers=%d ms=%.1f shrubs_placed=%d shrubs_moved_off_meadow=%d clumps_gated=%d shrubs_thinned=%d\n",
         fieldBlades, fieldSide, fieldGaps, fieldFlowers, fieldMs, woodyPlaced, woodyGated, clumpsGated, woodyThinned);
 
-    GosVegetation::uploadInstances(instances.data(),
-                                   static_cast<uint32_t>(instances.size()));
-
-    const unsigned instCount = static_cast<unsigned>(instances.size());
+    const unsigned instCount = static_cast<unsigned>(hit ? record.population.instances.size() : instances.size());
 
     // Always log: needed to diagnose zero-instance cases without re-running.
     MC2_DIAGFE(stderr,

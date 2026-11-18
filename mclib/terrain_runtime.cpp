@@ -189,4 +189,6 @@ bool parityGateEnabled()
 	return false;
 }
 
+GroundHeightView groundHeightView() { return {s_cpuGroundHeight, s_cpuVisualV}; }
+
 } // namespace TerrainRuntime
