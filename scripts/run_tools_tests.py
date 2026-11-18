@@ -71,7 +71,7 @@ EXCLUDE = {
 
 PYTEST = [sys.executable, "-B", "-m", "pytest", "-q", "-p", "no:cacheprovider",
           "--tb=short", "-rfEs"]
-TIMEOUT_S = 1200  # box_hygiene: 479 s alone, over 600 s under precheck load
+TIMEOUT_S = int(os.environ.get("MC2_TOOLS_TEST_TIMEOUT_S") or 1200)  # box_hygiene: 479 s alone, over 600 s under precheck load; --timeout-s / env override
 
 
 ART_PREFIXES = ("tools/scifi_kit/", "tools/blender_pipeline/", "tools/kit/", "tools/mc2data/", "tools/content_pipeline/", "tools/ase_to_glb.py", "tools/asset_cook/", "tools/material_cook/", "tools/mc2texcook/", "tools/mc2x_import/", "release_assets_src/", "examples/mods/", "mods/", "gameassets/", "data/")
@@ -259,11 +259,15 @@ def main() -> int:
     ap.add_argument("--jobs", type=int,
                     default=int(os.environ.get("MC2_TEST_JOBS", "") or default_jobs()))
     ap.add_argument("--list", action="store_true", help="print modules and exit")
+    ap.add_argument("--timeout-s", type=int, help="per-module timeout (default 1200, or MC2_TOOLS_TEST_TIMEOUT_S)")
     ap.add_argument("--suite", choices=("tools", "art", "all"), default="tools")
     ap.add_argument("--base", default=os.environ.get("MC2_GATE_BASE"), help="run only tests mapped to this committed diff; omitted = nightly/full suite")
     ap.add_argument("--no-cache", action="store_true", help="run every module (also CONTRACTS_NO_CACHE=1)")
     ap.add_argument("--report", action="store_true", help="print cache hits and the opaque (whole-tree) modules")
     args = ap.parse_args()
+    if args.timeout_s:
+        global TIMEOUT_S
+        TIMEOUT_S = args.timeout_s
 
     mods = discover(args.suite)
     if args.base:

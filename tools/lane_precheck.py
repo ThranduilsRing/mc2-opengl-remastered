@@ -121,6 +121,8 @@ class TreeLock:
             fcntl.flock(self.fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
 
     def __enter__(self):
+        if os.environ.get("MC2_TEST_NO_TREELOCK") == "1" and os.environ.get("PYTEST_CURRENT_TEST"):   # pytest children only; the gate never sets both
+            return self
         os.makedirs(os.path.dirname(os.path.abspath(self.path)), exist_ok=True)
         self.fh = open(self.path, "a+")
         deadline = self.clock() + self.wait_s
@@ -139,6 +141,8 @@ class TreeLock:
                 self.sleep(5)
 
     def __exit__(self, *exc):
+        if self.fh is None:
+            return
         self.fh.close()   # closing drops the OS lock
 
 

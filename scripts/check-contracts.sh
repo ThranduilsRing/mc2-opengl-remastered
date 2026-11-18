@@ -1617,9 +1617,9 @@ run_nightly "abl_static_alloc"           "_host_need clang++ && py -3 -B -m pyte
 # (assembles release zips + launches a smoke; not an offline contract).
 # tools_tests retains its known-failure exit-code handling in lane_merge precheck.
 run_check "logistics_art"               "py -3 -B tools/test_cook_logistics_art.py -q -p no:cacheprovider"
-run_check_tri "kit_art"                 "py -3 scripts/run_tools_tests.py --suite art --base \"$_ART_BASE\""
+run_check_tri "kit_art"                 "py -3 scripts/run_tools_tests.py --suite art --timeout-s 900 --base \"$_ART_BASE\""
 run_check "scripts_tests"              "py -3 scripts/run_scripts_tests.py --base \"$_ART_BASE\""
-run_check_tri "tools_tests"            "py -3 scripts/run_tools_tests.py --base \"$_ART_BASE\""
+run_check_tri "tools_tests"            "py -3 scripts/run_tools_tests.py --timeout-s 900 --base \"$_ART_BASE\""
 run_nightly "anim_parity"                 "py -3 -B -m pytest tools/anim_parity/test_audit.py tools/content_pipeline/tests -q -p no:cacheprovider"
 run_nightly "ktx2_valid"                  "py -3 -B tools/mc2texcook/check_ktx2_valid.py"
 run_check "sim_include_firewall"        "py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py"

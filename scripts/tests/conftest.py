@@ -95,13 +95,23 @@ class NoLock:
     def holder(self):
         return "test"
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return None
+
 
 @pytest.fixture(autouse=True)
 def stub_harness_tree_lock(request, monkeypatch):
-    """Tests reaching build_contract_harnesses never wait on the real build tree lock (stalled ~805 s twice in the gate).
+    """Tests never wait on the real build/precheck tree locks (stalled ~805 s twice in the gate): every TreeLock in an
+    already-imported module is stubbed in-process, and MC2_TEST_NO_TREELOCK=1 makes the real classes no-ops in subprocess
+    children (honoured only when PYTEST_CURRENT_TEST is set, so the gate itself always locks).
     Opt out with @pytest.mark.real_treelock (tests of the lock itself; they must use temp-dir locks)."""
     if request.node.get_closest_marker("real_treelock"):
+        monkeypatch.delenv("MC2_TEST_NO_TREELOCK", raising=False)
         return
+    monkeypatch.setenv("MC2_TEST_NO_TREELOCK", "1")
     for name in ("tools.build_contract_harnesses", "build_contract_harnesses"):
         mod = sys.modules.get(name)
         if mod is None and name.startswith("tools."):
@@ -109,5 +119,9 @@ def stub_harness_tree_lock(request, monkeypatch):
                 mod = importlib.import_module(name)
             except ImportError:
                 continue
+        if mod is not None and hasattr(mod, "TreeLock"):
+            monkeypatch.setattr(mod, "TreeLock", NoLock)
+    for name in ("ninja_build", "scripts.ninja_build", "lane_merge", "tools.lane_merge", "lane_precheck", "tools.lane_precheck"):
+        mod = sys.modules.get(name)
         if mod is not None and hasattr(mod, "TreeLock"):
             monkeypatch.setattr(mod, "TreeLock", NoLock)
