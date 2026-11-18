@@ -19,6 +19,11 @@ struct SourceBytes {
     void text(std::string_view v) { raw({reinterpret_cast<const uint8_t*>(v.data()), v.size()}); }
     auto digest() const { return mc2::save::sha256(bytes); }
 };
+inline auto buildIdentity(std::string_view fingerprint, bool dirty, uint64_t size = 0, uint64_t modified = 0) {
+    SourceBytes s; s.text(fingerprint); s.word(dirty);
+    if (dirty) { s.word(size); s.word(modified); }
+    return s.digest();
+}
 inline mc2::save::Digest hardSurfaceDigest(int64_t side, int64_t half, float wupv,
     std::span<const int32_t> blocks, std::span<const uint8_t> texels) {
     SourceBytes s; s.word(side); s.word(half); s.scalar(wupv); s.word(blocks.size());
@@ -101,21 +106,28 @@ struct SourceInput {
     std::optional<FieldRecipe> field;
     mc2::save::Digest hardSurface{};
 };
-inline SourceBytes serializeSource(const SourceInput& in) {
+struct SourceGroup {
+    template<class F> void operator()(const char*, F&& work) const { work(); }
+};
+template<class Group = SourceGroup>
+inline SourceBytes serializeSource(const SourceInput& in, Group group = {}) {
     SourceBytes s; s.text(in.mapName); s.word(in.seed);
     for (auto f : in.frame) s.scalar(f);
     for (auto n : in.grid) s.word(n);
-    s.word(in.types.size()); for (auto t : in.types) mc2cache::putLE(s.bytes,t,4);
-    s.word(in.elevations.size()); for (auto f : in.elevations) s.scalar(f);
-    s.word(in.visible.size()); for (auto f : in.visible) s.scalar(f);
-    s.raw(in.masks); s.raw(in.hardSurface);
+    group("cook.veg.key.types", [&] { s.word(in.types.size()); for (auto t : in.types) mc2cache::putLE(s.bytes,t,4); });
+    group("cook.veg.key.heights", [&] { s.word(in.elevations.size()); for (auto f : in.elevations) s.scalar(f); });
+    group("cook.veg.key.visual", [&] { s.word(in.visible.size()); for (auto f : in.visible) s.scalar(f); });
+    group("cook.veg.key.masks", [&] { s.raw(in.masks); });
+    s.raw(in.hardSurface);
+    group("cook.veg.key.config", [&] {
     for (const auto& r : in.recipes) { s.scalar(r.radius); s.scalar(r.treeChance); s.scalar(r.moistureBias); s.word(r.grass); }
     s.word(in.field.has_value()); if (in.field) { s.scalar(in.field->spacing); s.scalar(in.field->height); }
+    });
     return s;
 }
 inline constexpr uint32_t kFormat = 1;
 // Placement/classification/grid/beach; clumps/noise/hardsurface; packInstance;
-// sort key, 128-WU cells and region maths. Executable SHA also guards toolchain/code changes.
+// sort key, 128-WU cells and region maths. Compiled build identity also guards code/toolchain changes.
 inline constexpr uint32_t kProducer = 1;
 using Digest = mc2::save::Digest;
 struct CapacityInterval { uint64_t lo = 0, hi = 0; bool contains(uint64_t n) const { return n >= lo && n < hi; } };

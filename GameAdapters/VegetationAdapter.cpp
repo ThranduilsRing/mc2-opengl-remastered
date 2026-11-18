@@ -15,6 +15,7 @@
 
 // Engine side.
 #include "gos_vegetation.h"
+#include "build_identity.h"
 #include "gos_render.h"
 #include "../code/render_view.h"
 
@@ -145,8 +146,12 @@ void GameAdapters::Vegetation::missionUnloaded()
 }
 
 namespace {
-const std::optional<mc2::vegetation::Digest>& vegetationExecutableDigest() {
+const std::optional<mc2::vegetation::Digest>& vegetationBuildDigest() {
     static const auto digest = []() -> std::optional<mc2::vegetation::Digest> {
+        if (!MC2_BUILD_GIT_SHA[0] || std::string_view(MC2_BUILD_GIT_SHA)=="unknown") return std::nullopt;
+        // The deployed engine's compiled fingerprint includes commit and build time.
+        if (!MC2_BUILD_GIT_DIRTY)
+            return mc2::vegetation::buildIdentity(MC2_BUILD_FP_LITERAL, false);
         std::filesystem::path path;
 #ifdef _WIN32
         if (!_wpgmptr) return std::nullopt;
@@ -154,12 +159,11 @@ const std::optional<mc2::vegetation::Digest>& vegetationExecutableDigest() {
 #else
         path="/proc/self/exe";
 #endif
-        std::ifstream file(path,std::ios::binary|std::ios::ate);
-        if (!file) return std::nullopt;
-        const auto size=file.tellg(); if(size<=0 || size>512*1024*1024) return std::nullopt;
-        std::vector<uint8_t> bytes(static_cast<size_t>(size)); file.seekg(0);
-        if (!file.read(reinterpret_cast<char*>(bytes.data()),bytes.size())) return std::nullopt;
-        return mc2::save::sha256(bytes);
+        std::error_code ec;
+        const auto size=std::filesystem::file_size(path,ec); if(ec) return std::nullopt;
+        const auto modified=std::filesystem::last_write_time(path,ec); if(ec) return std::nullopt;
+        return mc2::vegetation::buildIdentity(MC2_BUILD_FP_LITERAL, true, size,
+            static_cast<uint64_t>(modified.time_since_epoch().count()));
     }();
     return digest;
 }
@@ -236,29 +240,45 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
     bool eligible=false;
     {
         MC2_LOAD_SCOPE("cook.veg.key");
-        const auto& exe=vegetationExecutableDigest();
+        const auto& exe=vegetationBuildDigest();
         eligible=cacheAdmission(gameMap!=nullptr,legacy,exe.has_value());
-        const auto hsDigest=gos_terrain_indirect_HardSurfaceContentDigest();
+        Digest hsDigest;
+        { MC2_LOAD_SCOPE("cook.veg.key.hs"); hsDigest=gos_terrain_indirect_HardSurfaceContentDigest(); }
         uploadInfo.hsHash=fileKey(hsDigest);
         if(eligible) {
             std::vector<uint32_t> types; std::vector<float> elevations; std::vector<uint8_t> masks;
             const auto v=TerrainRuntime::groundHeightView();
-            SourceInput in; in.mapName=Terrain::terrainName ? Terrain::terrainName : ""; in.seed=seed;
+            SourceInput in;
+            { MC2_LOAD_SCOPE("cook.veg.key.map");
+            in.mapName=Terrain::terrainName ? Terrain::terrainName : ""; in.seed=seed;
             in.frame={originX,originY,mapSpan,Terrain::worldUnitsPerVertex,Terrain::oneOverWorldUnitsPerVertex,
                 Terrain::waterElevation,gridStep,Terrain::oneOverWorldUnitsMapSide,Terrain::oneOverWorldUnitsPerCell};
             in.grid={static_cast<uint64_t>(Terrain::realVerticesMapSide),static_cast<uint64_t>(Terrain::halfVerticesMapSide),static_cast<uint64_t>(Terrain::verticesBlockSide),
                 static_cast<uint64_t>(Terrain::blocksMapSide),1,static_cast<uint64_t>(gameMap->getHeight()),static_cast<uint64_t>(gameMap->getWidth()),static_cast<uint64_t>(v.vertices),static_cast<uint64_t>(density)};
-            for(long r=0;r<Terrain::realVerticesMapSide;++r) for(long c=0;c<Terrain::realVerticesMapSide;++c) {
-                types.push_back(static_cast<uint32_t>(land->getTerrain(r,c))); elevations.push_back(land->getTerrainElevation(r,c));
             }
+            { MC2_LOAD_SCOPE("cook.veg.key.types");
+            types.reserve(static_cast<size_t>(Terrain::realVerticesMapSide)*Terrain::realVerticesMapSide);
+            for(long r=0;r<Terrain::realVerticesMapSide;++r) for(long c=0;c<Terrain::realVerticesMapSide;++c)
+                types.push_back(static_cast<uint32_t>(land->getTerrain(r,c))); }
+            { MC2_LOAD_SCOPE("cook.veg.key.heights");
+            elevations.reserve(types.size());
+            for(long r=0;r<Terrain::realVerticesMapSide;++r) for(long c=0;c<Terrain::realVerticesMapSide;++c)
+                elevations.push_back(land->getTerrainElevation(r,c)); }
+            { MC2_LOAD_SCOPE("cook.veg.key.masks");
+            masks.reserve(static_cast<size_t>(gameMap->getHeight())*gameMap->getWidth());
             for(long r=0;r<gameMap->getHeight();++r) for(long c=0;c<gameMap->getWidth();++c) {
                 auto& m=gameMap->cellAt(r,c);
                 masks.push_back(static_cast<uint8_t>(m.getOffMap() | (m.getPassable()<<1) | (m.getForest()<<2) | (m.getWall()<<3) | (static_cast<bool>(m.getGate())<<4) | (m.getRoad()<<5)));
-            }
+            } }
             // topLeftVertex parity cancels: ((meshOffset-topLeft)&1) XOR (topLeft&1) == meshOffset&1.
-            in.types=types; in.elevations=elevations; in.visible=v.heights; in.masks=masks;
+            in.types=types; in.elevations=elevations; in.masks=masks;
+            in.visible=v.heights;
             in.recipes=recipes; in.field=fieldRecipe; in.hardSurface=hsDigest;
-            source=sourceDigest(serializeSource(in),*exe); uploadInfo.key=fileKey(source);
+            const auto inputs=serializeSource(in, [](const char* name, auto work) {
+                mc2::load::Scope scope(mc2::load::entry(name)); work();
+            });
+            { MC2_LOAD_SCOPE("cook.veg.key.digest"); source=sourceDigest(inputs,*exe); }
+            uploadInfo.key=fileKey(source);
         }
     }
     uploadInfo.keyMs=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-keyT0).count();

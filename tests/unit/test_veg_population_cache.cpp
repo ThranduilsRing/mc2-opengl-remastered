@@ -93,6 +93,23 @@ TEST_CASE("veg population source identity covers every input") {
     CHECK(hardSurfaceDigest(2,1,128,blocks,texels)==hs);
 }
 
+TEST_CASE("veg population compiled build identity") {
+    const SourceBytes inputs;
+    const auto clean=buildIdentity("commit-a|build-1",false);
+    CHECK(sourceDigest(inputs,clean)!=sourceDigest(inputs,buildIdentity("commit-b|build-1",false)));
+    CHECK(sourceDigest(inputs,clean)!=sourceDigest(inputs,buildIdentity("commit-a|build-2",false)));
+    CHECK(clean==buildIdentity("commit-a|build-1",false,123,456));
+    const auto dirty=buildIdentity("commit-a|build-1",true,123,456);
+    CHECK(dirty!=clean);
+    CHECK(dirty!=buildIdentity("commit-a|build-1",true,124,456));
+    CHECK(dirty!=buildIdentity("commit-a|build-1",true,123,457));
+    PopulationRecord record; record.interval={1,101};
+    record.population=buildPopulation(std::vector<GosVegetation::Instance>{{1,2,3,1,5,1,0.3f}},1);
+    const auto blob=encode(record,sourceDigest(inputs,clean));
+    REQUIRE(decode(blob,sourceDigest(inputs,clean),100));
+    CHECK_FALSE(decode(blob,sourceDigest(inputs,buildIdentity("commit-b|build-1",false)),100));
+}
+
 TEST_CASE("veg population producer tripwire") {
     SourceBytes s;
     const auto centre=clumpCandidate(7,9,42); s.scalar(centre.x); s.scalar(centre.y); s.word(centre.priority);
