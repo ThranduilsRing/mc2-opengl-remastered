@@ -38,7 +38,7 @@ long TG_MultiShape::TransformMultiShape_BuildRecipe (glm::vec3 *pos, glm::quat *
     for (const int idx : walkOrder_)
     {
         TG_ShapeRec& rec = listOfShapes[idx];
-        if (rec.calcedThisFrame != turn)
+        if (mc2::msl::needsNodeEvaluation(rec.calcedThisFrame, turn, rec.walkKey, walkOriginGen_))
         {
             const bool isRoot = rec.parentNode == nullptr;
             mc2::msl::NodeInput in;
