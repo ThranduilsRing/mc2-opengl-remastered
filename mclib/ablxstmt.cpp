@@ -250,15 +250,19 @@ void execAssignmentStatement (SymTableNodePtr idPtr) {
 		char* dest = reinterpret_cast<char*>(targetPtr);
 		char* src = g_ablExec->tos->address;
 		// Copy no more than the source holds: a literal shorter than the variable must not be read past its end.
-		const int srclen = static_cast<int>(strlen(src) + 1);
 		long size = targetTypePtr->size;
 		if (targetTypePtr->info.array.elementTypePtr == CharTypePtr) {
 			// A string longer than the variable is cut and stays terminated: the text is read later with strlen.
 			if (const size_t dropped = abl::copyBounded(std::span<char>(dest, static_cast<size_t>(size)), std::string_view(src)))
 				abl::reportTruncated("assign_truncated", static_cast<size_t>(size), dropped);
 			}
-		else
-			memcpy(dest, src, /*size*/srclen<size?srclen:size);
+		else {
+			if (!expressionTypePtr || expressionTypePtr->form != FRM_ARRAY ||
+				expressionTypePtr->size < 0 || size < 0)
+				runtimeError(ABL_ERR_RUNTIME_INVALID_FUNCTION_ARGUMENT);
+			else
+				memcpy(dest, src, size < expressionTypePtr->size ? size : expressionTypePtr->size);
+			}
 		}
 	else if ((targetTypePtr == IntegerTypePtr) || (targetTypePtr->form == FRM_ENUM)) {
 		//------------------------------------------------------

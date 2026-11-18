@@ -4,6 +4,7 @@
 #include "mclib/script_music.h"
 
 #include <cstring>
+#include <algorithm>
 #include <span>
 #include <vector>
 
@@ -86,4 +87,57 @@ TEST_CASE("wavDurationSeconds: anything that is not a readable WAVE header is 0"
 	CHECK(wavDurationSeconds(notRiff) == 0.0);
 	const auto zeroRate = wavHeader(0, 1764000);
 	CHECK(wavDurationSeconds(zeroRate) == 0.0);
+}
+
+TEST_CASE("WaveSamples: bounded playback chunks preserve sample offsets")
+{
+	for (unsigned extra : {0u, 1u, 32u, 33u})
+	{
+		auto bytes = wavHeader(176400, 4, extra);
+		bytes.insert(bytes.end(), {1, 2, 3, 4});
+		const unsigned riffSize = static_cast<unsigned>(bytes.size() - 8);
+		for (int i = 0; i < 4; ++i)
+			bytes[4 + i] = static_cast<unsigned char>(riffSize >> (8 * i));
+		const auto view = parseWaveSamples(bytes);
+		REQUIRE(view.has_value());
+		CHECK(view->format.data() == bytes.data() + 20);
+		CHECK(view->samples.data() == bytes.data() + bytes.size() - 4);
+		CHECK(view->samples.size() == 4);
+		for (std::size_t n = 0; n < bytes.size(); ++n)
+		{
+			CHECK_FALSE(parseWaveSamples(std::span<const unsigned char>(bytes).first(n)).has_value());
+		}
+		// The packet may have bytes following the RIFF container.
+		bytes.push_back(99);
+		CHECK(parseWaveSamples(bytes).has_value());
+	}
+}
+
+TEST_CASE("WaveSamples: reject hostile chunk sizes and missing format")
+{
+	auto bytes = wavHeader(176400, 4);
+	bytes.insert(bytes.end(), {1, 2, 3, 4});
+	bytes[4] = 40;
+	REQUIRE(parseWaveSamples(bytes).has_value());
+	for (std::size_t field : {std::size_t{4}, std::size_t{16}, std::size_t{40}})
+	{
+		auto bad = bytes;
+		std::memset(bad.data() + field, 0xff, 4);
+		CHECK_FALSE(parseWaveSamples(bad).has_value());
+	}
+	bytes[4] = 3;
+	CHECK_FALSE(parseWaveSamples(bytes).has_value());
+	bytes[4] = 40;
+	bytes[16] = 13;
+	CHECK_FALSE(parseWaveSamples(bytes).has_value());
+	bytes[16] = 16;
+	std::memcpy(bytes.data() + 12, "JUNK", 4);
+	CHECK_FALSE(parseWaveSamples(bytes).has_value());
+	std::memcpy(bytes.data() + 12, "fmt ", 4);
+	// RIFF permits data before fmt; return only after finding both.
+	std::rotate(bytes.begin() + 12, bytes.begin() + 36, bytes.end());
+	const auto view = parseWaveSamples(bytes);
+	REQUIRE(view.has_value());
+	CHECK(view->samples.data() == bytes.data() + 20);
+	CHECK(view->format.data() == bytes.data() + 32);
 }

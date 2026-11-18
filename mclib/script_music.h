@@ -12,6 +12,64 @@
 #include <cstddef>
 #include <cstdint>
 #include <span>
+#include <optional>
+
+struct WaveSampleView
+{
+	std::span<const unsigned char> format;
+	std::span<const unsigned char> samples;
+};
+
+// Playback needs complete chunks, unlike the header-only duration query below.
+// Bound every read by both the packet and the enclosing RIFF chunk.
+inline std::optional<WaveSampleView> parseWaveSamples(std::span<const unsigned char> bytes)
+{
+	if (bytes.size() < 12)
+		return std::nullopt;
+	auto u32 = [bytes](std::size_t at) -> std::uint32_t {
+		return std::uint32_t{bytes[at]} | (std::uint32_t{bytes[at + 1]} << 8)
+			| (std::uint32_t{bytes[at + 2]} << 16) | (std::uint32_t{bytes[at + 3]} << 24);
+	};
+	if (u32(0) != 0x46464952 || u32(8) != 0x45564157)
+		return std::nullopt;
+	const std::size_t riffSize = u32(4);
+	if (riffSize < 4 || riffSize > bytes.size() - 8)
+		return std::nullopt;
+	const std::size_t end = 8 + riffSize;
+	WaveSampleView found;
+	bool haveData = false;
+	std::size_t at = 12;
+	while (end - at >= 8)
+	{
+		const auto tag = u32(at);
+		const std::size_t length = u32(at + 4);
+		at += 8;
+		if (length > end - at)
+			return std::nullopt;
+		if (tag == 0x20746d66 && found.format.empty())
+		{
+			// The engine consumes the first 14 bytes of WAVEFORMAT.
+			if (length < 14)
+				return std::nullopt;
+			found.format = bytes.subspan(at, length);
+		}
+		else if (tag == 0x61746164 && !haveData)
+		{
+			found.samples = bytes.subspan(at, length);
+			haveData = true;
+		}
+		if (!found.format.empty() && haveData)
+			return found;
+		at += length;
+		if (length & 1u)
+		{
+			if (at == end)
+				return std::nullopt;
+			++at;
+		}
+	}
+	return std::nullopt;
+}
 
 struct ScriptMusic
 {

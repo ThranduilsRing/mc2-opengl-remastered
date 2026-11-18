@@ -8,6 +8,7 @@
 
 #include "ablmc2_internal.h"
 #include "stuff/mstring.hpp"
+#include "stuff/scalar.hpp"
 
 #include <cmath>
 #include <cstring>
@@ -52,4 +53,12 @@ TEST_CASE("CastCensus/double2long rounds half to even through the representation
 	const double values[] = {0.0, 0.4, 0.5, 1.5, 2.5, -0.5, -1.5, -2.5, 3.49999, 1234567.5, -1234567.5, 2147483647.0, -2147483648.0, 99.9};
 	for (double v : values)
 		CHECK_MESSAGE(double2long(v) == static_cast<int>(std::nearbyint(v)), "value " << v);
+}
+
+TEST_CASE("CastCensus/WORD conversion preserves legacy half-even rounding") {
+	for (unsigned n = 0; n < 65536; ++n) {
+		CHECK(Stuff::Truncate_Float_To_Word(static_cast<float>(n)) == (n & ~1u));
+		for (float fraction : {0.25f, 0.5f, 0.75f})
+			CHECK(Stuff::Truncate_Float_To_Word(static_cast<float>(n) + fraction) == n);
+	}
 }

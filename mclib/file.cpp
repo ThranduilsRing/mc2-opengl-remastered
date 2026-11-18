@@ -679,10 +679,10 @@ void File::deleteFile (void)
 		close();
 }
 
-long newPosition = 0;
 //---------------------------------------------------------------------------
 long File::seek (long pos, long from)
 {
+	long newPosition = logicalPosition;
 	switch (from)
 	{
 		case SEEK_SET:
