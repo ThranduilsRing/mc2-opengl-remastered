@@ -614,10 +614,19 @@ void MechLabScreen::update()
 		{
 			if ( pCurDialog->getStatus() == YES )
 			{
-				LogisticsData::instance->acceptMechModifications( pCurDialog->getFileName().c_str() );
+				const auto accepted = LogisticsData::instance->acceptMechModifications( pCurDialog->getFileName().c_str() );
 				pCurDialog->end();
-				status = UP;
 				bSaveDlg = 0;
+				if ( accepted )
+					status = UP;
+				else
+				{	// keep the lab open with the edits intact and say why nothing was saved
+					LogisticsOneButtonDialog::instance()->setText( accepted.error() == INVALID_VARIANT
+						? "The variant was not saved: its layout or armor is not valid for this chassis. Your changes are still open."
+						: "The variant was not saved. Your changes are still open." );
+					LogisticsOneButtonDialog::instance()->begin();
+					bErrorDlg = true;
+				}
 			}
 			else if ( pCurDialog->getStatus() == NO )
 			{
