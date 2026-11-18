@@ -968,7 +968,7 @@ static void record_local_shadows(ShadowIsland* s) {
     const auto& casterSet = mc2shadow::staticCasterSet();
     // Static lamp tiles refresh once per submitted, drained caster/height burst.
     if (casterSet.version() != L.leavesVersion || s->bake.objectGeneration() != L.leavesGeneration) {
-        casterSet.resolve(L.leaves);
+        casterSet.resolve(L.leaves, false);
         L.leavesVersion = casterSet.version();
         L.leavesGeneration = s->bake.objectGeneration();
         for (auto& k : L.bakedKey) k = 0;

@@ -698,7 +698,8 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
         live.push_back(i);
         casterTop = (std::max)(casterTop, hi.z);
     }
-    if (casterTop < -1e29f) casterTop = terrainTop_;
+    // Object-only rebuilds skip the box loop; keep casterTop_ = highest caster top (terrain only when none), as base.
+    if (recordedMask_ && casterTop < -1e29f) casterTop = terrainTop_;
     casterTop_ = casterTop;
 
     // Object receivers always use current gameplay leaves.
@@ -717,6 +718,7 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
         instanceBox(leaf.modelMatrix, typeBounds_[leaf.typeID].mn, typeBounds_[leaf.typeID].mx, lo, hi);
         casterTop_ = (std::max)(casterTop_, hi.z);
     }
+    if (casterTop_ < -1e29f) casterTop_ = terrainTop_;
     objectRuns_.clear();
     appendRuns(objectRuns_, objTypes, 0);
     const double resolveMs = std::chrono::duration<double, std::milli>(clk::now() - tResolve).count();
@@ -1336,7 +1338,7 @@ void ShadowBake::releaseIncremental() {
 void ShadowBake::rebuildLive() {
     liveStale_ = false;
     std::vector<GpuStaticPropInstance> all;
-    mc2shadow::staticCasterSet().resolve(all);
+    mc2shadow::staticCasterSet().resolve(all, false);
     liveLeaves_.clear(); liveBoxes_.clear(); liveTops_.clear(); liveIdx_.clear();
     for (const GpuStaticPropInstance& leaf : all) appendLive(leaf);
 }
