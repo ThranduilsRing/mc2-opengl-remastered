@@ -806,22 +806,24 @@ def check_hardlink_isolation(items, target):
              "MC2_DEPLOY_ALLOW_SHARED_LINKS=1 to bypass deliberately.")
 
 
-def sweep_old_links(directory):
-    """Best-effort delete of '<name>.old-<pid>' files a previous deploy renamed aside (still mapped back then)."""
-    try:
-        names = os.listdir(directory)
-    except OSError:
-        return
-    for name in names:
-        if ".old-" in name and name.rsplit(".old-", 1)[1].isdigit():
-            try:
-                os.unlink(os.path.join(directory, name))
-            except OSError:
-                pass
+_ASIDES = []  # '<name>.old-<pid>' entries this process renamed aside and could not delete yet
+
+
+def retry_asides():
+    """Delete the asides this process created; one still held is logged and left."""
+    for path in list(_ASIDES):
+        try:
+            os.unlink(path)
+            _ASIDES.remove(path)
+        except FileNotFoundError:
+            _ASIDES.remove(path)
+        except OSError:
+            log(f"WARNING: old link still held, left in place: {path}")
+            _ASIDES.remove(path)
 
 
 def replace_file(src, dst):
-    """Replace a destination; a hardlinked one that a running process maps is renamed aside, never written through.
+    """Replace a destination; a hardlinked one whose replace is refused is renamed aside, never written through.
 
     The shared pool inode keeps its bytes: only this install's directory entry is swapped for a private copy.
     """
@@ -840,7 +842,7 @@ def replace_file(src, dst):
             os.replace(dst, aside)
         except OSError as e:
             raise PermissionError(first.errno, f"{dst} is hardlinked and could not be renamed aside "
-                                  f"(mapped by a running process?): {e}") from e
+                                  f"(in use by another process, open handle on this path): {e}") from e
     try:
         _replace_in_place(src, dst)
     except OSError:
@@ -852,7 +854,7 @@ def replace_file(src, dst):
     try:
         os.unlink(aside)
     except OSError:
-        pass  # still mapped; the next deploy sweeps *.old-*
+        _ASIDES.append(aside)  # still held; retried once at the end of deploy()
 
 
 def _replace_in_place(src, dst):
@@ -1720,7 +1722,6 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
                   if not rel.startswith(("shaders/", "shaders_vk/"))} if code_only else ensure_terrain_materials(target_dir)
     if not code_only:
         ensure_engine_normal_cooks(target_dir)
-    sweep_old_links(target_dir)
     shader_mismatches = []
     pdb_problem = None
     preserve = {p.replace(os.sep, "/") for p in preserve}
@@ -1833,6 +1834,7 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
     else:
         log("PDB check OK: deployed PDB matches source hash")
 
+    retry_asides()
     retire_unowned(target_dir, src_hashes, preserve,
                    deploying_target=deploying_target,
                    own_shaders=any(kind == "shader" and rel.startswith("shaders/vulkan/") and rel.endswith(".spv")
@@ -2601,6 +2603,8 @@ def main():
     with deploy_phase("locks and folder lease", max(120, wait_s + 30)):
         check_locks(target, exe_name, wait_s)
         lease_held = take_folder_lease(target, wait_s)
+    if getattr(args, "verdict", None) and (args.from_payload or getattr(args, "target", None) != "game"):
+        print("WARNING: --verdict is ignored (it applies only to a --target game build deploy)", file=sys.stderr)
     try:
         if args.from_payload:
             head = args.payload_head or subprocess.check_output(['git', '-C', src_root, 'rev-parse', 'HEAD'],
@@ -2725,7 +2729,7 @@ def verdict_exe_refusal(src_root, exe_src, head, verdict_path=None):
     except (OSError, ValueError, AttributeError):
         return f"no readable gate verdict at {path}"
     if v.get("verdict") != "PASS" or v.get("head") != head:
-        return f"newest gate verdict is {v.get('verdict')} for {str(v.get('head'))[:9]}, not PASS for HEAD {head[:9]}"
+        return f"{'gate verdict ' + path if verdict_path else 'newest gate verdict'} is {v.get('verdict')} for {str(v.get('head'))[:9]}, not PASS for HEAD {head[:9]}"
     have = sha256_file(exe_src) if os.path.isfile(exe_src) else None
     if not want or have != want:
         return f"exe sha256 {str(have)[:12]} is not the gated {str(want)[:12]} (rebuilt after the gate?)"
