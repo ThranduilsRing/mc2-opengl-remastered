@@ -43,6 +43,28 @@ def test_remap_foreign_dead_root(tmp_path):
     assert cl.remap("C:/Program Files/sdk/vector", str(own), []) == "C:/Program Files/sdk/vector"
 
 
+def test_remap_system_headers_not_hijacked(tmp_path, monkeypatch):
+    own = tmp_path / "own"
+    (own / "compat").mkdir(parents=True)
+    (own / "compat" / "time.h").write_text("x")
+    (own / "ios").mkdir()
+    (own / "code").mkdir()
+    (own / "code" / "x.h").write_text("x")
+    sdk = "C:/Windows Kits/10/Include/ucrt"
+    monkeypatch.setenv("INCLUDE", sdk.replace("/", "\\") + os.pathsep + "C:/MSVC/include")
+    incs = [str(own / "compat")]
+    assert cl.remap(sdk + "/time.h", str(own), incs) == sdk + "/time.h"
+    assert cl.remap("C:/MSVC/include/ios", str(own), incs) == "C:/MSVC/include/ios"
+    assert Path(cl.remap("E:/mc2-wt/foreign/code/x.h", str(own), incs)) == own / "code" / "x.h"
+    assert cl.remap("E:/mc2-wt/foreign/ios", str(own), incs) == "E:/mc2-wt/foreign/ios"  # a dir is not a header
+    calls = []
+    real = os.path.isfile
+    monkeypatch.setattr(os.path, "isfile", lambda p: calls.append(p) or real(p))
+    monkeypatch.setattr(os.path, "exists", lambda p: calls.append(p) or True)
+    assert cl.remap(sdk + "/um/deep/Psapi.h", str(own), incs) == sdk + "/um/deep/Psapi.h"
+    assert len(calls) <= 5
+
+
 @pytest.mark.skipif(not os.path.exists(cn.NINJA), reason="ninja.exe not installed")
 def test_header_edit_rebuilds_after_cache_replay_from_deleted_tree(tmp_path):
     own = tmp_path / "treeB"
