@@ -118,7 +118,7 @@ struct WaterFsParams {
     float f8[4];             // off 176 edgeFeather, edgeFeatherStrength, halfMap, skyTintStrength
     float f9[4];             // off 192 skyTintColor.xyz, projAspect
     float bake[4];           // off 208 world span, halfMap, baked reflection weather scale RG
-    float debug[4];          // off 224 attribution mode (0 = original shader)
+    float debug[4];          // off 224 x attribution mode (0 = original shader), y waterDetail off, z baked-reflection march steps (0 = 8), w unused
 };
 static_assert(sizeof(WaterFsParams) == 240, "WaterFsParams std140 size (water_geom.frag)");
 static_assert(offsetof(WaterFsParams, f0) == 16 && offsetof(WaterFsParams, f3) == 64 &&

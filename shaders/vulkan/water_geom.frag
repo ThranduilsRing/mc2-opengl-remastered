@@ -175,7 +175,7 @@ layout(set = 0, binding = 1, std140) uniform WaterFsParams {
     vec4 f8;              // (u_waterEdgeFeather, u_waterEdgeFeatherStrength, u_halfMap, u_waterSkyTintStrength)
     vec4 f9;              // (u_waterSkyTintColor.xyz, u_waterProjAspect)
     vec4 bake;            // world span, halfMap, baked reflection weather scale RG
-    vec4 debug;           // attribution: 0 normal; 1 march; 2 HDRI; 3 waves; 4 movers; 5 shore; 6 post-discard
+    vec4 debug;           // x attribution (z = baked-reflection march steps, 0 = 8, from Reflection quality); x: 0 normal; 1 march; 2 HDRI; 3 waves; 4 movers; 5 shore; 6 post-discard
 } F;
 
 // RUNG-6.5 WATER-REFLECTION PORT: HDRI equirect (copy-once import of GL's
@@ -208,9 +208,10 @@ vec4 bakedReflection(vec3 origin, vec3 ray) {
     float reach = min(F.bake.x, maximum / ray.z);
     float previousT = 0;
     float previousGap = max(origin.z - F.f7.x, 0.0);
-    for (int i = 1; i <= 8; ++i) {
+    int steps = F.debug.z > 0.5 ? int(F.debug.z) : 8;   // reflection quality: Low 4, Medium 6, High 8
+    for (int i = 1; i <= steps; ++i) {
         // Shorter steps at the receiver retain nearby low banks.
-        float fraction = float(i) / 8.0;
+        float fraction = float(i) / float(steps);
         float t = reach * fraction * fraction;
         vec3 p = origin + ray * t;
         vec2 uv = bakedReflectionUV(p.xy);

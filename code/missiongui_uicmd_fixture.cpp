@@ -6,6 +6,7 @@
 #include "bldng.h"
 #include "../mclib/texture_assets.h"
 #include "Gates/gate.h"
+#include "Gates/render_options.h"
 #include "Gates/preferences_values.h"
 #include "mc2fmt.h"
 #include "../RenderCore/TextureService.h"
@@ -350,6 +351,18 @@ void mc2BenchWalk(GameObjectManager& om, int rounds);   // code/objmgr_misc.cpp
 // Test-only fixtures and determinism verbs (spawn, teleport, freeze_movers, set_light, animate). Returns true when a verb of this group matched.
 bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 {
+    if (c.line.starts_with("reflection_quality ")) {   // the publish the Options window makes on a Reflection quality change (live, no save)
+        int level = -1;
+        if (sscanf(c.line.c_str() + 19, "%d", &level) == 1 && level >= 0 && level <= 3) {
+            auto options = mc2::options::current();
+            options.reflectionQuality = level;
+            mc2::options::publish(options);
+            c.result = "ok"; c.note = "reflection quality published";
+        } else {
+            c.result = "blocked"; c.note = "reflection_quality <0..3>";
+        }
+        return true;
+    }
     if (c.line == "water_profile" || c.line.starts_with("water_debug ")) {
         extern void gos_SetWaterFsDebugMode(int);
         extern void gos_RequestWaterProfile(bool);

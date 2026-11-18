@@ -2,6 +2,11 @@
 #include "water_planar_view.h"
 #include "water_planar_terrain.h"
 #include "water_planar_props.h"
+#include <cstdlib>
+#include <cstring>
+#include <filesystem>
+#include <fstream>
+#include <sstream>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
@@ -439,4 +444,42 @@ TEST_CASE("water planar: cached bounds are reselected after camera and water cha
     CHECK(view.feed().patchCount == 0);
     REQUIRE(view.prepare(f.source, glm::value_ptr(f.main), 0));
     CHECK(view.feed().patchCount == 4);
+}
+
+TEST_CASE("water planar: each reflection quality level changes the bake and the uploaded march steps") {
+    const auto low = wp::bakePlan(1), medium = wp::bakePlan(2), high = wp::bakePlan(3);
+    // High is the shipped look: full-size bake, props, 8 march steps.
+    CHECK(wp::bakeSize(1000, high) == 1000);
+    CHECK(high.props); CHECK(high.marchSteps == 8);
+    // Each lower level is strictly cheaper on every axis the levels own.
+    CHECK(wp::bakeSize(1000, medium) < wp::bakeSize(1000, high));
+    CHECK(wp::bakeSize(1000, low) < wp::bakeSize(1000, medium));
+    CHECK(medium.props); CHECK_FALSE(low.props);
+    CHECK(medium.marchSteps < high.marchSteps);
+    CHECK(low.marchSteps < medium.marchSteps);
+    CHECK(wp::bakeSize(1, low) == 1);
+    CHECK(wp::bakePlan(99).marchSteps == high.marchSteps);
+    CHECK(wp::bakePlan(0).marchSteps == low.marchSteps);   // bakeLevel clamps to 1..3
+}
+
+TEST_CASE("water planar: Off is sky-only, never level 0, and never the full bake") {
+    CHECK(wp::effectiveReflectionQuality(0, 2) == 1);
+    CHECK(wp::effectiveReflectionQuality(3, 2) == 2);
+    CHECK(wp::effectiveReflectionQuality(1, 2) == 2);
+    CHECK(wp::effectiveReflectionQuality(3, 0) == 0);
+    CHECK(wp::effectiveReflectionQuality(0, 2) == 1);  // Off + unset legacy (defaults 2) keeps sky
+    CHECK(wp::effectiveReflectionQuality(0, 0) == 0);  // explicit legacy Off
+}
+
+TEST_CASE("water planar: the uploaded debug.z carries each level's march steps and the shader fallback is High") {
+    CHECK(wp::uploadedDebugZ(wp::bakePlan(1)) == 4.0f);
+    CHECK(wp::uploadedDebugZ(wp::bakePlan(2)) == 6.0f);
+    CHECK(wp::uploadedDebugZ(wp::bakePlan(3)) == static_cast<float>(wp::kHighSteps));
+    std::ifstream input(std::filesystem::path(MC2_REPO_ROOT) / "shaders/vulkan/water_geom.frag");
+    REQUIRE(input.good());
+    std::ostringstream text; text << input.rdbuf();
+    const auto src = text.str();
+    const auto at = src.find("int steps = F.debug.z > 0.5 ? int(F.debug.z) : ");
+    REQUIRE(at != std::string::npos);
+    CHECK(std::atoi(src.c_str() + at + std::strlen("int steps = F.debug.z > 0.5 ? int(F.debug.z) : ")) == wp::kHighSteps);
 }
