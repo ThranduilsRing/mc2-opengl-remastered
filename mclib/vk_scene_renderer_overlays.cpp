@@ -1,82 +1,61 @@
 #include "vk_scene_renderer.h"
-// mc2::VkSceneRenderer::renderLists phase 12: the legacy overlay pass (water loops, no-underlayer,
-// shadow blobs, non-terrain alpha, vfx / hud submit).
-
+// Legacy overlay state blocks and emit bodies are dispatched by a pure schedule.
 #include "vk_scene_renderer_internal.h"
+#include "vk_scene_renderer_overlays_algo.h"
 
-void mc2::VkSceneRenderer::renderListsOverlaysWaterLoops (RenderSubmissions& submissions)
+void mc2::VkSceneRenderer::renderListsOverlaysOld (RenderSubmissions& submissions)
 {
-    // sebi: split in 2 parts, first draw objects which have alpha test off, then with alpha test on
+    ZoneScopedN("Render.Overlays");
+    using namespace mc2_overlay_algo;
+    constexpr Masks masks{MC2_ISTERRAIN, MC2_DRAWALPHA, MC2_ISSHADOWS,
+        MC2_ISEFFECTS, MC2_ISCOMPASS, MC2_ISSPOTLGT, MC2_ISHUDLMNT,
+        MC2_ALPHATEST, MC2_ISWATER, MC2_ISWATERDETAIL, MC2_GPUOVERLAY};
+    Schedule(submissions.nextAvailableVertexNode, Environment.Renderer == 3, masks,
+        [&](int i) {
+            const auto& n = submissions.masterVertexNodes[i];
+            return Node{static_cast<uint32_t>(n.flags), n.vertices != nullptr,
+                static_cast<uint32_t>(n.numVertices),
+                n.vertices ? static_cast<uint32_t>(n.currentVertex - n.vertices) : 0u};
+        },
+        [&](const Event& event) {
+            const int i = event.node;
+            const int states = event.value;
+            switch (event.op) {
+            case Op::RenderStateBlock:
+                switch (static_cast<Block>(event.value)) {
+                case Block::Initial: {
+	if (Environment.Renderer == 3)
 	{
-	ZoneScopedN("RenderLists.TerrainAlphaWaterLoops");
-    for(int states = 0; states < 2; ++states)
-    {
-        gos_SetRenderState( gos_State_AlphaTest, states);
+		//Do NOT draw the water as transparent in software
+		gos_SetRenderState( gos_State_TextureAddress, gos_TextureWrap );
+	}
+	else
+	{
+		gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
+		gos_SetRenderState( gos_State_TextureAddress, gos_TextureWrap );
+	}
 
-        for (int i=0;i<submissions.nextAvailableVertexNode;i++)
-        {
-            if ((submissions.masterVertexNodes[i].flags & MC2_ISTERRAIN) &&
-                    (submissions.masterVertexNodes[i].flags & MC2_DRAWALPHA) &&
-                    (submissions.masterVertexNodes[i].flags & MC2_ALPHATEST)==states*MC2_ALPHATEST &&
-                    (submissions.masterVertexNodes[i].vertices))
-            {
-                // The legacy non-water terrain alpha/detail layer sits on the original
-                // flat terrain plane and shows through displaced tess terrain as the
-                // dark striped under-pattern. Keep water passes, but drop this layer.
-                if (!(submissions.masterVertexNodes[i].flags & MC2_ISWATER) &&
-                    !(submissions.masterVertexNodes[i].flags & MC2_ISWATERDETAIL)) {
-                    submissions.masterVertexNodes[i].currentVertex = submissions.masterVertexNodes[i].vertices;
-                    continue;
+                    break;
                 }
-
+                case Block::WaterNode: {
                 {
                     int waterMode = 0;
                     if (submissions.masterVertexNodes[i].flags & MC2_ISWATER) waterMode = 1;
                     else if (submissions.masterVertexNodes[i].flags & MC2_ISWATERDETAIL) waterMode = 2;
                     gos_SetRenderState(gos_State_Water, waterMode);
                 }
-
-                submissions.masterVertexNodes[i].currentVertex = submissions.masterVertexNodes[i].vertices;
-            }
-        }
-    }
-    //reset alpha test at the end
-    gos_SetRenderState( gos_State_AlphaTest, 0);
-	} // end RenderLists.TerrainAlphaWaterLoops
-}
-
-void mc2::VkSceneRenderer::renderListsOverlaysNoUnderlayer (RenderSubmissions& submissions)
-{
-	//<< sebi: added this section to draw objects which do not have terrain underlayer (those are added in quad.cpp, see (*) there )
-	{ ZoneScopedN("Render.NoUnderlayer");
+                    break;
+                }
+                case Block::NoUnderlayer: {
 	if (Environment.Renderer != 3)
 	{
 		gos_SetRenderState( gos_State_ShadeMode, gos_ShadeGouraud);
 		gos_SetRenderState(	gos_State_ZWrite, 1);
 	}
 
-	for (int i=0;i<submissions.nextAvailableVertexNode;i++)
-	{
-		if ((submissions.masterVertexNodes[i].flags & MC2_ISTERRAIN) &&
-			!(submissions.masterVertexNodes[i].flags & MC2_DRAWALPHA) &&
-			(submissions.masterVertexNodes[i].flags & MC2_GPUOVERLAY) &&
-			(submissions.masterVertexNodes[i].vertices))
-		{
-			submissions.masterVertexNodes[i].currentVertex = submissions.masterVertexNodes[i].vertices;
-		}
-	}
-	} // end ZoneScopedN("Render.NoUnderlayer")
-	//<< sebi: end of added block
-}
-
-void mc2::VkSceneRenderer::renderListsOverlaysShadowBlobs (RenderSubmissions& submissions)
-{
-	// Cement overlays (MC2_ISCRATERS|MC2_ISTERRAIN) and decals (!MC2_ISTERRAIN|MC2_ISCRATERS)
-	// are now drawn by gos_DrawTerrainOverlays() and gos_DrawDecals() before Render.Overlays.
-	// The old Render.CraterOverlays and non-terrain crater loops are removed.
-
-	{
-	ZoneScopedN("RenderLists.ShadowBlobs");
+                    break;
+                }
+                case Block::Shadow: {
 	if (Environment.Renderer == 3)
 	{
 		gos_SetRenderState( gos_State_TextureAddress, gos_TextureWrap );
@@ -96,28 +75,9 @@ void mc2::VkSceneRenderer::renderListsOverlaysShadowBlobs (RenderSubmissions& su
 		gos_SetRenderState( gos_State_ZCompare, 2);
 	}
 
-	//NEVER draw shadows in Software.
-	if (Environment.Renderer != 3)
-	{
-		for (int i=0;i<submissions.nextAvailableVertexNode;i++)
-		{
-			 if	((submissions.masterVertexNodes[i].flags & MC2_ISSHADOWS) &&
-				(submissions.masterVertexNodes[i].flags & MC2_DRAWALPHA) &&
-				(submissions.masterVertexNodes[i].vertices))
-			{
-				vkLegacySubmitNode(submissions, i, MC2_LEGACY_PASS_SHADOW, 0);
-				submissions.masterVertexNodes[i].currentVertex = submissions.masterVertexNodes[i].vertices;
-			}
-		}
-	}
-	vkLegacyRun(submissions);   // VK-PARITY-F1: queued legacy blob-shadow nodes -> shared GBuffer
-	} // end RenderLists.ShadowBlobs
-}
-
-void mc2::VkSceneRenderer::renderListsOverlaysNonTerrainAlpha (RenderSubmissions& submissions)
-{
-	{
-	ZoneScopedN("RenderLists.NonTerrainAlphaLoops");
+                    break;
+                }
+                case Block::Alpha: {
 	gos_SetRenderState( gos_State_ZCompare, 1);
 	if (Environment.Renderer != 3)
 	{
@@ -128,39 +88,18 @@ void mc2::VkSceneRenderer::renderListsOverlaysNonTerrainAlpha (RenderSubmissions
 		gos_SetRenderState(	gos_State_ZWrite, 0);
 	}
 
-    // sebi: split in 2 parts, first draw objects which have alpha test off, then with alpha test on
-    for(int states = 0; states < 2; ++states)
-    {
-        gos_SetRenderState( gos_State_AlphaTest, states);
-        for (int i=0;i<submissions.nextAvailableVertexNode;i++)
-        {
-            if (!(submissions.masterVertexNodes[i].flags & MC2_ISTERRAIN) &&
-                    !(submissions.masterVertexNodes[i].flags & MC2_ISSHADOWS) &&
-                    !(submissions.masterVertexNodes[i].flags & MC2_ISCOMPASS) &&
-                    (submissions.masterVertexNodes[i].flags & MC2_DRAWALPHA) &&
-                    (submissions.masterVertexNodes[i].flags & MC2_ALPHATEST)==states*MC2_ALPHATEST &&
-                    (submissions.masterVertexNodes[i].vertices))
-            {
-                vkLegacySubmitNode(submissions, i, MC2_LEGACY_PASS_ALPHA, static_cast<uint32_t>(states));
-                submissions.masterVertexNodes[i].currentVertex = submissions.masterVertexNodes[i].vertices;
-            }
-        }
-    }
-    //reset alpha test at the end
-    gos_SetRenderState( gos_State_AlphaTest, 0);
+                    break;
+                }
+                case Block::AlphaRestore: {
 	if (Environment.Renderer != 3)
 	{
 		// Restore legacy depth-write state for downstream passes (they
 		// inherit render state from this block).
 		gos_SetRenderState(	gos_State_ZWrite, 1);
 	}
-	} // end RenderLists.NonTerrainAlphaLoops
-}
-
-void mc2::VkSceneRenderer::renderListsOverlaysVfxHudSubmit (RenderSubmissions& submissions)
-{
-	{
-	ZoneScopedN("RenderLists.VfxHudSubmit");
+                    break;
+                }
+                case Block::Effects: {
 	if (Environment.Renderer == 3)
 	{
 		gos_SetRenderState( gos_State_ShadeMode, gos_ShadeGouraud);
@@ -183,85 +122,61 @@ void mc2::VkSceneRenderer::renderListsOverlaysVfxHudSubmit (RenderSubmissions& s
 		gos_SetRenderState(	gos_State_ZWrite, 0);
 		gos_SetRenderState( gos_State_MonoEnable, 0);
 	}
-				
-	for (int i=0;i<submissions.nextAvailableVertexNode;i++)
-	{
-		if ((submissions.masterVertexNodes[i].flags & MC2_ISEFFECTS) &&
-			(submissions.masterVertexNodes[i].vertices))
-		{
-			vkLegacySubmitNode(submissions, i, MC2_LEGACY_PASS_ADD, 0);
-			submissions.masterVertexNodes[i].currentVertex = submissions.masterVertexNodes[i].vertices;
-		}
-	}
-	
-	// Spotlight cones are blended/additive: no depth writes during the draw.
-	// Downstream state is unchanged -- the post-loop reset below already
-	// sets ZWrite 0 (legacy behavior).
+                    break;
+                }
+                case Block::Spotlight: {
 	gos_SetRenderState(	gos_State_ZWrite, 0);
 
-	for (int i=0;i<submissions.nextAvailableVertexNode;i++)
-	{
-		if ((submissions.masterVertexNodes[i].flags & MC2_ISSPOTLGT) &&
-			(submissions.masterVertexNodes[i].vertices))
-		{
-			vkLegacySubmitNode(submissions, i, MC2_LEGACY_PASS_ADD, 0);
-			submissions.masterVertexNodes[i].currentVertex = submissions.masterVertexNodes[i].vertices;
-		}
-	}
-	
-	vkLegacyRun(submissions);   // VK-PARITY-F1: queued legacy alpha + additive effect / spotlight-cone nodes
+                    break;
+                }
+                case Block::Compass: {
 	gos_SetRenderState( gos_State_ZWrite, 0);
 	gos_SetRenderState( gos_State_ZCompare, 0);
 	gos_SetRenderState( gos_State_Perspective, 1);
 	gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
 	gos_SetRenderState( gos_State_AlphaTest, 1);
 	
-	for (int i=0;i<submissions.nextAvailableVertexNode;i++)
-	{
-		if ((submissions.masterVertexNodes[i].flags & MC2_ISCOMPASS) &&
-			(submissions.masterVertexNodes[i].vertices))
-		{
-			submissions.masterVertexNodes[i].currentVertex = submissions.masterVertexNodes[i].vertices;
-		}
-	}
-	
+                    break;
+                }
+                case Block::Hud: {
 	gos_SetRenderState( gos_State_Filter, gos_FilterNone);
-	
-	for (int i=0;i<submissions.nextAvailableVertexNode;i++)
-	{
-		if ((submissions.masterVertexNodes[i].flags & MC2_ISHUDLMNT) &&
-			(submissions.masterVertexNodes[i].vertices))
-		{
-			submissions.masterVertexNodes[i].currentVertex = submissions.masterVertexNodes[i].vertices;
-		}
-	}
 
-	//Must turn zCompare back on for FXs
+                    break;
+                }
+                case Block::End: {
 	gos_SetRenderState( gos_State_ZCompare, 1 );
 
-	// Reset terrain extra buffer after rendering — will be re-filled during next frame's TerrainQuad::draw() calls
-	} // end RenderLists.VfxHudSubmit
-}
-
-void mc2::VkSceneRenderer::renderListsOverlaysOld (RenderSubmissions& submissions)
-{
-	{
-		ZoneScopedN("Render.Overlays");
-	if (Environment.Renderer == 3)
-	{
-		//Do NOT draw the water as transparent in software
-		gos_SetRenderState( gos_State_TextureAddress, gos_TextureWrap );
-	}
-	else
-	{
-		gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
-		gos_SetRenderState( gos_State_TextureAddress, gos_TextureWrap );
-	}
-	
-	renderListsOverlaysWaterLoops(submissions);
-	renderListsOverlaysNoUnderlayer(submissions);
-	renderListsOverlaysShadowBlobs(submissions);
-	renderListsOverlaysNonTerrainAlpha(submissions);
-	renderListsOverlaysVfxHudSubmit(submissions);
-	} // end Render.Overlays zone
+                    break;
+                }
+                }
+                break;
+            case Op::AlphaTest:
+                gos_SetRenderState( gos_State_AlphaTest, states);
+                break;
+            case Op::Submit:
+                switch (event.pass) {
+                case Pass::Shadow:
+                vkLegacySubmitNode(submissions, i, MC2_LEGACY_PASS_SHADOW, 0);
+                    break;
+                case Pass::Alpha:
+                vkLegacySubmitNode(submissions, i, MC2_LEGACY_PASS_ALPHA, static_cast<uint32_t>(states));
+                    break;
+                case Pass::Effects:
+                case Pass::Spotlight:
+                vkLegacySubmitNode(submissions, i, MC2_LEGACY_PASS_ADD, 0);
+                    break;
+                default: break; // Reset-only passes never submit.
+                }
+                break;
+            case Op::ResetVertex:
+                submissions.masterVertexNodes[i].currentVertex = submissions.masterVertexNodes[i].vertices;
+                break;
+            case Op::Flush:
+                vkLegacyRun(submissions);
+                break;
+            case Op::PassBegin:
+            case Op::PassEnd:
+                break; // Ordering markers; state changes have their own events.
+            }
+        });
 }
