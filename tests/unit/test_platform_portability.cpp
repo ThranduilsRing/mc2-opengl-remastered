@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <fstream>
 #include <type_traits>
+#include "platform_str.h"
 #include "../../Platform/FileSystem.cpp"
 
 TEST_CASE("platform/user directory rejects an empty span") {
@@ -137,4 +138,27 @@ TEST_CASE("platform/file handles and atomic replacement preserve bytes")
     CHECK(std::string(bytes, count) == "hello");
     REQUIRE(ReadFile(file.value, bytes, sizeof(bytes), &count, nullptr));
     CHECK(count == 0);
+}
+
+TEST_CASE("platform/S_strcmp and S_strncmp order both ways (vehicle-chassis false positive)")
+{
+    CHECK(S_strncmp("Fusion Engine", "vehicle", 7) != 0);   // 'F' < 'v' used to compare equal
+    CHECK(S_strncmp("1", "vehicle", 7) < 0);
+    CHECK(S_strncmp("zeta", "vehicle", 7) > 0);
+    CHECK(S_strncmp("vehicle sensors", "vehicle", 7) == 0);
+    CHECK(S_strcmp("abc", "abd") < 0);
+    CHECK(S_strcmp("abd", "abc") > 0);
+    CHECK(S_strcmp("abc", "abc") == 0);
+    CHECK(S_strcmp("abc", "abcd") < 0);                      // strict prefix
+    CHECK(S_strcmp("abcd", "abc") > 0);
+    CHECK(S_strcmp("", "a") < 0);
+    CHECK(S_strncmp("veh", "vehicle", 7) < 0);               // prefix shorter than n
+    CHECK(S_strncmp("", "vehicle", 7) < 0);
+    CHECK(S_strncmp("vehicle", "veh", 7) > 0);
+    CHECK(S_strncmp("zzz", "aaa", 0) == 0);                  // n == 0 compares nothing
+    CHECK(S_strncmp("vehicle", "vehicle", 100) == 0);        // n longer than both strings
+    CHECK(S_strncmp("abc", "abd", 100) < 0);
+    CHECK(S_strncmp("Vehicle", "vehicle", 7) < 0);           // case sensitive ('V' < 'v')
+    CHECK(S_strncmp("vehicle", "Vehicle", 7) > 0);
+    CHECK(S_strcmp("\xe9", "a") > 0);                        // unsigned char ordering
 }
