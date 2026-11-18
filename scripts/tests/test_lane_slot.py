@@ -80,9 +80,25 @@ def test_foreign_root_warns(monkeypatch, capsys):
     assert "WARNING" not in capsys.readouterr().out
 
 
-def test_launcher_remaps_slot_roots():
+def test_launcher_remaps_any_foreign_root(tmp_path, monkeypatch):
     sys.path.insert(0, os.path.join(ROOT, "scripts"))
     import cc_launcher  # noqa: E402
-    assert cc_launcher.FOREIGN_ROOT.match("A:/Games/mc2-slot07/mclib/x.h")
-    # G:/mc2-wt/<lane> trees filled the cache too; unmapped, their live headers hid this checkout's edits (stale objects)
-    assert cc_launcher.FOREIGN_ROOT.match("G:/mc2-wt/carbon-followups-1/code/objmgr.h")
+    monkeypatch.delenv("SCCACHE_BASEDIRS", raising=False)
+    own, foreign = tmp_path / "own", tmp_path / "wt" / "lane-x"
+    nested = own / ".claude" / "worktrees" / "x"
+    for base in (own, foreign, nested):
+        (base / "code").mkdir(parents=True)
+        (base / "code" / "x.h").write_text("x")
+    sdk = tmp_path / "sdk" / "um" / "windows.h"
+    sdk.parent.mkdir(parents=True)
+    sdk.write_text("x")
+    own_x = own / "code" / "x.h"
+    assert cc_launcher.remap(str(foreign / "code" / "x.h"), str(own), []) == str(own_x)
+    # a path under own but not own + separator (sibling prefix) is foreign, not own
+    sib = tmp_path / "own-old" / "code"
+    sib.mkdir(parents=True)
+    (sib / "x.h").write_text("x")
+    assert cc_launcher.remap(str(sib / "x.h"), str(own), []) == str(own_x)
+    # nested worktree inside own is under own: kept
+    assert cc_launcher.remap(str(nested / "code" / "x.h"), str(own), []) == str(nested / "code" / "x.h").replace("\\", "/")
+    assert cc_launcher.remap(str(sdk), str(own), []) == str(sdk).replace("\\", "/")

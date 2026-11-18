@@ -36,11 +36,11 @@ def test_remap_foreign_dead_root(tmp_path):
     own = tmp_path / "own"
     (own / "mclib").mkdir(parents=True)
     (own / "mclib" / "h.h").write_text("x")
-    got = cl.remap(f"{DEAD_ROOT}/mclib/h.h", str(own), [], [])
+    got = cl.remap(f"{DEAD_ROOT}/mclib/h.h", str(own), [])
     assert Path(got) == own / "mclib" / "h.h"
     # Other drives and spellings of an archived build are covered; system headers are not touched.
-    assert Path(cl.remap("E:\\mc2-archive-x\\builds\\old\\mclib\\h.h", str(own), [], [])) == own / "mclib" / "h.h"
-    assert cl.remap("C:/Program Files/sdk/vector", str(own), [], []) == "C:/Program Files/sdk/vector"
+    assert Path(cl.remap("E:\\mc2-archive-x\\builds\\old\\mclib\\h.h", str(own), [])) == own / "mclib" / "h.h"
+    assert cl.remap("C:/Program Files/sdk/vector", str(own), []) == "C:/Program Files/sdk/vector"
 
 
 @pytest.mark.skipif(not os.path.exists(cn.NINJA), reason="ninja.exe not installed")
