@@ -676,6 +676,20 @@ void Mission::updateSoakAutoWin() {
 		}
 		if (!s_soakWinEmitted && scenarioTime > winAfter)
 		{
+			// Harness only: resolve the primary objectives as a real win does, so
+			// LogisticsData::setMissionCompleted() pays their ResourcePoints (it
+			// pays only OS_SUCCESSFUL objectives; Status(objectives) needs IsActive).
+			if (!MPlayer && Team::home) {
+				int resolved = 0;
+				for (CObjective* pObjective : Team::home->objectives) {
+					if (pObjective->Priority() == 1) {
+						pObjective->IsActive(true);
+						pObjective->Status(OS_SUCCESSFUL);
+						++resolved;
+					}
+				}
+				mc2::fmt::print_out("[SOAK] autowin primary objectives resolved={:d}\n", mc2::fmt::as_i32(resolved));
+			}
 			if (mc2::gate::get<"MC2_SOAK_AUTOWIN_COUNTDOWN">()) {
 				// Take the normal results countdown (resultsDone on the sim worker) instead of the instant end.
 				terminationResult = mis_PLAYER_WIN_BIG;
