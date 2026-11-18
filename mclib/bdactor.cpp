@@ -10,6 +10,9 @@
 #include <bit>
 #include <cstdint>
 #include <utility>
+#include <mutex>
+#include <string>
+#include <unordered_set>
 #include "texture_assets.h"
 #ifndef BDACTOR_H
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
@@ -47,8 +50,9 @@ uint32_t s_animStateToStateGesture = 0;
 // MC2_TEXMGR_KTX_PRIMARY is enabled). bdactor-only by design: mech/vehicle paint
 // (CPU_RGBA_REQUIRED, gos_LockTexture rewrite) must stay .tga and is NOT routed
 // here. See docs/texture-residency-registry-recon.md.
-bool textureOrKtxSidecarExists(mc2::czstring tgaPath)
+static bool textureOrKtxSidecarExistsUncached(mc2::czstring tgaPath)
 {
+	ZoneScopedN("Bldg.TextureExistsProbe");
 	if (fileExists(tgaPath))
 		return true;
 	const bool ktxPrimary = (1 != 0);   // default mode 1
@@ -62,6 +66,22 @@ bool textureOrKtxSidecarExists(mc2::czstring tgaPath)
 	if (dot && (!slash || dot > slash)) *dot = 0;
 	if (strlen(ktx) + 6 < sizeof(ktx)) strcat(ktx, ".ktx2");
 	return fileExists(ktx);
+}
+
+// fileExists opens the file through the VFS (disk or FST); the destroy path probed every texture of the rubble
+// shape for every building (6-25 ms on the presentation thread, one frame each). Existence only ever turns
+// true for a path and the loader resolves independently, so hits are remembered.
+bool textureOrKtxSidecarExists(mc2::czstring tgaPath)
+{
+	static std::mutex hitsMutex;
+	static std::unordered_set<std::string> hits;
+	{
+		const std::lock_guard lock(hitsMutex);
+		if (hits.contains(tgaPath)) return true;
+	}
+	const bool exists = textureOrKtxSidecarExistsUncached(tgaPath);
+	if (exists) { const std::lock_guard lock(hitsMutex); hits.emplace(tgaPath); }
+	return exists;
 }
 
 bool staticRegIsNaturalBuildingName(mc2::czstring name)
