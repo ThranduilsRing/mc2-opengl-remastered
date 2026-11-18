@@ -33,7 +33,7 @@ static bool textureOrKtxSidecarExists(mc2::czstring tgaPath);
 namespace {
 // GVAppearance::init probes each texture with fileExists (a full vfs open) per instance: 11 ms of sensor-shape probes per
 // ejected pilot on the sim worker (vehicle-hitch-1). Texture presence is fixed for the process, so each path is probed once.
-bool gvTextureExistsCached(const char* path, bool orKtxSidecar)
+bool gvTextureExistsCached(mc2::czstring path, bool orKtxSidecar)
 {
     static std::mutex mutex;
     static std::unordered_map<std::string, bool> cache;
@@ -41,8 +41,8 @@ bool gvTextureExistsCached(const char* path, bool orKtxSidecar)
     key += orKtxSidecar ? "|k" : "|t";
     {
         std::lock_guard<std::mutex> lock(mutex);
-        if (auto it = cache.find(key); it != cache.end())
-            return it->second;
+        if (cache.contains(key))
+            return cache.at(key);
     }
     const bool exists = orKtxSidecar ? textureOrKtxSidecarExists(path) : (fileExists(path) != 0);
     std::lock_guard<std::mutex> lock(mutex);
