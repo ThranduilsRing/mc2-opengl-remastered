@@ -369,7 +369,7 @@ struct ColorPropIsland : mc2vk::IslandState {
     mc2vk::OwnedBuffer materialBuf;
     mc2vk::OwnedShaderModule t1_vert, t1_frag;
     mc2vk::OwnedPipelineLayout playout;
-    mc2vk::OwnedPipeline t1_pipe;         // depthWrite ON GEQUAL, 2 outputs, no blend
+    mc2vk::OwnedPipeline t1_pipe;         // colour pass at depth EQUAL, no depth write (after the core depth pre-pass), 2 outputs, no blend
     mc2vk::OwnedPipeline t1_opaquePipe;   // t1_pipe with the FS discards compiled out (kOpaqueOnly), so early Z runs
     mc2vk::OwnedPipeline t1_fringePipe;   // PROP-COVERAGE-1: depth test only, MRT0 alpha-blended, MRT1 masked
     mc2vk::OwnedPipeline t1_depthPipe, t1_depthDblPipe;   // core depth pre-pass (kDepthOnly: colour masked, depth write); t1_pipe/t1_dblPipe are the colour pass at depth EQUAL
@@ -2227,7 +2227,7 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
     // No cached slot data is overwritten until BOTH submissions above retire.
     if (!target && propPerfGateRequested()) {
         if (s->coreStats[par]) {
-            uint64_t values[3]{}; // result order follows the statistic bit order: IA primitives, clipping primitives, FS invocations
+            uint64_t values[3]{}; // result order follows the statistic bit order: IA primitives, clipping primitives, FS invocations (colour pass only: fragment_invocations excludes the depth pre-pass)
             if (s->coreStatsRecorded[par] && vkGetQueryPoolResults(s->device, s->coreStats[par].get(), 0, 1, sizeof(values), values, sizeof(values), VK_QUERY_RESULT_64_BIT) == VK_SUCCESS &&
                 g_mc2RenderFrame % 120 == 0 && mc2_diag::tagRequested("PROP_CORE_STATS"))
                 mc2::fmt::print_err("[PROP_CORE_STATS] frame={} slot={} ia_primitives={} raster_triangles={} fragment_invocations={} invocations_per_pixel={:.3f}\n",
