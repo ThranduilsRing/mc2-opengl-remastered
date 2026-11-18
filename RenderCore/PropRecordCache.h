@@ -1,10 +1,35 @@
 #pragma once
 #include <cstddef>
+#include <array>
 #include <cstdint>
 #include <cstring>
 #include <span>
 #include <type_traits>
 #include <vector>
+
+// tierOf must use snapshots taken immediately after each instance's advance:
+// another instance (including a dynamic one) can share and move its state byte.
+template<class Instance, size_t Tiers>
+struct PropLodTierCache {
+    std::vector<uint8_t> emitted;
+    std::array<std::vector<Instance>, Tiers> tiers;
+
+    template<class TierOf, class Retype>
+    bool refresh(std::span<const Instance> store, bool rebound, TierOf tierOf, Retype retype) {
+        bool changed = rebound || emitted.size() != store.size();
+        for (size_t i = 0; i < store.size(); ++i)
+            changed |= i >= emitted.size() || emitted[i] != tierOf(i);
+        if (!changed) return false;
+        emitted.resize(store.size());
+        for (auto& tier : tiers) tier.clear();
+        for (size_t i = 0; i < store.size(); ++i) {
+            const uint8_t tier = tierOf(i);
+            emitted[i] = tier;
+            tiers[tier].push_back(retype(store[i], tier));
+        }
+        return true;
+    }
+};
 
 // Rebuild the ordered feed in place. Unchanged blocks already contain exactly
 // the bytes the consumer needs; changed blocks and new tails are copied normally.
