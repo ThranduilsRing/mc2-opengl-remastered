@@ -15,14 +15,18 @@ inline float weatherLight(float sun, float ambient, float rain) {
 // reflection bake: whether it exists, its resolution divisor, whether static props are drawn into it, and how many
 // ray-march steps the water shader takes through its height map.
 struct BakePlan { bool bake; int sizeDivisor; bool props; int marchSteps; };
+// The shader march step count of the shipped bake; water_geom.frag falls back to this literal when debug.z is 0.
+constexpr int kHighSteps = 8;
 inline BakePlan bakePlan(int level) {
     switch (level < 0 ? 0 : level > 3 ? 3 : level) {
         case 0: return {false, 1, false, 0};
         case 1: return {true, 4, false, 4};   // Low: quarter-size bake, terrain only
         case 2: return {true, 2, true, 6};    // Medium: half-size bake with props
-        default: return {true, 1, true, 8};   // High: the shipped bake
+        default: return {true, 1, true, kHighSteps};   // High: the shipped bake
     }
 }
+// The value the water UBO carries in WaterFsParams::debug[2] (shader F.debug.z) for a plan.
+inline float uploadedDebugZ(const BakePlan& plan) { return static_cast<float>(plan.marchSteps); }
 inline int bakeSize(int fullSize, const BakePlan& plan) { return (std::max)(1, fullSize / plan.sizeDivisor); }
 
 // Pixel bounds include every possible ripple lookup and bilinear neighbour.

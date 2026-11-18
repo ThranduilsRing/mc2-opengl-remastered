@@ -175,7 +175,7 @@ layout(set = 0, binding = 1, std140) uniform WaterFsParams {
     vec4 f8;              // (u_waterEdgeFeather, u_waterEdgeFeatherStrength, u_halfMap, u_waterSkyTintStrength)
     vec4 f9;              // (u_waterSkyTintColor.xyz, u_waterProjAspect)
     vec4 bake;            // world span, halfMap, baked reflection weather scale RG
-    vec4 debug;           // attribution: 0 normal; 1 march; 2 HDRI; 3 waves; 4 movers; 5 shore; 6 post-discard
+    vec4 debug;           // x attribution (z = baked-reflection march steps, 0 = 8, from Reflection quality); x: 0 normal; 1 march; 2 HDRI; 3 waves; 4 movers; 5 shore; 6 post-discard
 } F;
 
 // RUNG-6.5 WATER-REFLECTION PORT: HDRI equirect (copy-once import of GL's

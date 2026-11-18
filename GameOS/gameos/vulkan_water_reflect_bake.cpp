@@ -300,7 +300,7 @@ void bind_reflect_bake(WaterIsland* s, uint32_t par, WaterFsParams* params) {
     const auto& b = *static_cast<ReflectBake*>(s->reflectionBake.get());
     if (!b.ready) return;
     params->DEEP_COLOR[3] = -1; // quality 2: camera-independent reflection
-    params->debug[2] = static_cast<float>(b.plan.marchSteps);
+    params->debug[2] = mc2::waterplanar::uploadedDebugZ(b.plan);
     params->bake[0] = b.span; params->bake[1] = b.halfMap;
     params->bake[2] = b.scale[0]; params->bake[3] = b.scale[1]; params->SHALLOW_COLOR[3] = b.scale[2];
     const VkDescriptorImageInfo images[] = {
