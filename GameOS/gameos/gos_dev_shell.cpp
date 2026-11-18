@@ -48,8 +48,23 @@ void registerCommand(mc2::czstring name, CommandHandler fn)
 // Non-Windows builds: inert stubs (winsock-only v0; revisit at the
 // mac/linux port together with the rest of the platform layer).
 bool pollCommands(uint32_t) { return false; }
-void scheduleScreenshot(const char*) {}
-void capturePendingScreenshot(uint32_t) {}
+// The UI-command `screenshot <name>` verb still works: it writes dev_shell_out/<name>.tga through the Vulkan present readback.
+static std::string s_stubShotPath;
+void scheduleScreenshot(const char* name) {
+    if (!name || !s_stubShotPath.empty()) return;
+    std::string base;
+    for (const char* c = name; *c; ++c)
+        if ((*c >= 'a' && *c <= 'z') || (*c >= 'A' && *c <= 'Z') || (*c >= '0' && *c <= '9') || *c == '_' || *c == '-') base += *c;
+    if (base.empty()) return;
+    std::error_code ec; std::filesystem::create_directory("dev_shell_out", ec);
+    s_stubShotPath = "dev_shell_out/" + base + ".tga";
+}
+void capturePendingScreenshot(uint32_t) {
+    if (s_stubShotPath.empty()) return;
+    const std::string path = std::move(s_stubShotPath);
+    s_stubShotPath.clear();
+    gos::screenshot::request(path.c_str());
+}
 #else
 
 namespace {
