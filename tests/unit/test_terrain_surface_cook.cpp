@@ -2,10 +2,18 @@
 #include <filesystem>
 #include <cstdio>
 #include "terrain_surface_cook.h"
+#include "texture_decode.h"
 
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <cstdlib>
+#include <cstring>
+#include <fstream>
+#define STB_IMAGE_STATIC
+#define STB_IMAGE_IMPLEMENTATION
+#define STBI_ONLY_JPEG
+#include "../../3rdparty/stb/stb_image.h"
 
 #ifdef _WIN32
 #include <process.h>
@@ -311,59 +319,233 @@ TEST_CASE("surface cook: breakup alpha is independently invalidated and editable
     CHECK(mc2terrain::evaluateSurfaceBreakup(0, 0) == doctest::Approx(0.5));
 }
 
+TEST_CASE("packed surface stored key: content and every evaluator dependency invalidate independently") {
+    std::vector<uint8_t> atlas(16, 71);
+    std::vector<float> shore{0, 1, 2, 3};
+    SurfaceCookInput in;
+    in.colorWidth = in.colorHeight = 2; in.outputWidth = in.outputHeight = 4;
+    in.topLeftX = -128; in.topLeftY = 128; in.worldSpan = 256;
+    in.shore = shore; in.shoreWidth = in.shoreHeight = 2;
+    in.shoreBounds = {-128, 128, 256, 256}; in.waterElevation = 1;
+    in.followCoast = in.staticBreakup = in.srgb = true;
+    const auto key = mc2terrain::packedSurfaceSourceHash(in, atlas, 146);
+    REQUIRE(key != 0);
+    const auto changed = [&](const SurfaceCookInput& other) {
+        CHECK(mc2terrain::packedSurfaceSourceHash(other, atlas, 146) != key);
+    };
+    atlas[0] ^= 1; changed(in); atlas[0] ^= 1;
+    CHECK(mc2terrain::packedSurfaceSourceHash(in, atlas, 145) != key);
+    CHECK(mc2terrain::packedSurfaceSourceHash(in, atlas, 146, mc2terrain::SurfaceAsset::kEvaluator + 1) != key);
+    CHECK(mc2terrain::packedSurfaceSourceHash(in, atlas, 146, mc2terrain::SurfaceAsset::kEvaluator, 2) != key);
+    for (auto field : {&SurfaceCookInput::colorWidth, &SurfaceCookInput::colorHeight,
+                      &SurfaceCookInput::outputWidth, &SurfaceCookInput::outputHeight}) {
+        auto other = in; ++(other.*field); changed(other);
+    }
+    for (auto field : {&SurfaceCookInput::topLeftX, &SurfaceCookInput::topLeftY,
+                      &SurfaceCookInput::worldSpan, &SurfaceCookInput::waterElevation}) {
+        auto other = in; other.*field += 1; changed(other);
+    }
+    for (auto field : {&SurfaceCookInput::followCoast, &SurfaceCookInput::staticBreakup, &SurfaceCookInput::srgb}) {
+        auto other = in; other.*field = !(other.*field); changed(other);
+    }
+    for (size_t i = 0; i < 4; ++i) {
+        auto other = in; other.shoreBounds[i] += 1; changed(other);
+        shore[i] += 1; changed(in); shore[i] -= 1; // same generation and bounds, changed texels
+    }
+    auto reshaped = in; reshaped.shoreWidth = 4; reshaped.shoreHeight = 1;
+    CHECK(mc2terrain::packedSurfaceSourceHash(reshaped, atlas, 146) == 0);
+    std::vector<float> expanded(6, 0);
+    for (bool width : {false, true}) {
+        auto other = in; other.shore = expanded;
+        (width ? other.shoreWidth : other.shoreHeight) = 3; changed(other);
+    }
+    // Independent allocations/history stand in for a second process; no generation or address is accepted.
+    const auto atlasCopy = atlas; const auto shoreCopy = shore;
+    auto recreated = in; recreated.shore = shoreCopy;
+    CHECK(mc2terrain::packedSurfaceSourceHash(recreated, atlasCopy, 146) == key);
+}
+
 TEST_CASE("packed surface cache: exact upload and material samples, key changes and damaged files miss") {
     namespace fs = std::filesystem;
+    for (bool bc7 : {false, true}) for (bool srgb : {false, true}) {
     const auto dir = surfaceCacheTestDir("mc2_packed_surface_test");
     fs::remove_all(dir);
     std::vector<uint8_t> sourcePixels{20, 170, 40, 255, 180, 70, 20, 255, 210, 210, 210, 255, 20, 70, 190, 255};
+    const auto stored = sourcePixels;
+    if (bc7) sourcePixels = mc2tex::decodeBc7(stored, 4, 4);
     SurfaceCookInput in;
-    in.rgba = sourcePixels; in.colorWidth = 4; in.colorHeight = 1; in.srgb = true;
+    in.rgba = sourcePixels; in.colorWidth = 4; in.colorHeight = bc7 ? 4 : 1; in.srgb = srgb;
     in.worldSpan = 256; in.outputWidth = 2051; in.outputHeight = 3; in.staticBreakup = true;
-    const auto surface = mc2terrain::cookSurface(in);
+    const std::vector<float> shore{-2, 3, 4, -1};
+    in.shore = shore; in.shoreWidth = in.shoreHeight = 2;
+    in.shoreBounds = {0, 0, 256, 256}; in.waterElevation = 1; in.followCoast = true;
+    // Independently decode and evaluate the old path before the stored-byte key exists.
+    const auto legacyPixels = bc7 ? mc2tex::decodeBc7(stored, 4, 4) : stored;
+    auto legacyInput = in; legacyInput.rgba = legacyPixels;
+    auto legacy = mc2terrain::resolveSurfaceAsset(legacyInput, {});
+    REQUIRE(legacy);
+    auto surface = mc2terrain::cookSurface(in);
     REQUIRE(surface);
-    const auto key = surface->sourceHash;
-    sourcePixels[0] ^= 1;
-    CHECK(mc2terrain::surfaceCookSourceHash(in) != key);
-    sourcePixels[0] ^= 1;
-    in.srgb = false;
-    CHECK(mc2terrain::surfaceCookSourceHash(in) != key);
-    in.srgb = true;
-    std::vector<uint8_t> upload(surface->macroColor.size() * 4);
-    for (size_t i = 0; i < upload.size(); ++i) upload[i] = static_cast<uint8_t>(i);
-    REQUIRE(mc2terrain::storeCachedPackedSurface(dir.string(), *surface, true, upload));
-    const auto hit = mc2terrain::loadCachedPackedSurface(dir.string(), key, true);
+    const auto legacyKey = legacy->sourceHash;
+    const auto key = mc2terrain::packedSurfaceSourceHash(in, stored, bc7 ? 146 : 43);
+    surface->sourceHash = key;
+    in.srgb = !srgb;
+    CHECK(mc2terrain::packedSurfaceSourceHash(in, stored, bc7 ? 146 : 43) != key);
+    in.srgb = srgb;
+    const auto pack = [srgb](const mc2terrain::SurfaceAsset& asset) {
+    std::vector<uint8_t> bytes(asset.macroColor.size() * 4);
+    for (size_t i = 0; i < asset.macroColor.size(); ++i) for (size_t c = 0; c < 4; ++c) {
+        const float v = std::clamp(asset.macroColor[i][c], 0.0f, 1.0f);
+        const float encoded = c < 3 && srgb ? (v <= 0.0031308f ? v * 12.92f : 1.055f * std::pow(v, 1.0f / 2.4f) - 0.055f) : v;
+        bytes[i * 4 + c] = static_cast<uint8_t>(std::lround(encoded * 255.0f));
+    }
+    return bytes;
+    };
+    const auto upload = pack(*surface);
+    const auto legacyUpload = pack(*legacy);
+    REQUIRE(upload == legacyUpload);
+    CHECK(surface->width == legacy->width); CHECK(surface->height == legacy->height);
+    CHECK(surface->macroColor == legacy->macroColor);
+    REQUIRE(mc2terrain::storeCachedPackedSurface(dir.string(), *surface, srgb, upload));
+    const auto hit = mc2terrain::loadCachedPackedSurface(dir.string(), key, srgb);
     REQUIRE(hit);
     CHECK(hit->rgba == upload);
     CHECK(hit->width == surface->width); CHECK(hit->height == surface->height);
+    const auto legacyDir = dir / "legacy";
+    REQUIRE(mc2terrain::storeCachedPackedSurface(legacyDir.string(), *legacy, srgb, legacyUpload));
+    const auto legacyHit = mc2terrain::loadCachedPackedSurface(legacyDir.string(), legacyKey, srgb);
+    REQUIRE(legacyHit);
+    CHECK(hit->rgba == legacyHit->rgba);
+    CHECK(hit->materials.macroColor == legacyHit->materials.macroColor);
     CHECK(hit->materials.macroColor.size() == 1024 * 3);
     for (bool sand : {false, true})
-        CHECK(mc2terrain::cookSurfaceMaterials(*surface, {}, 0, {}, 0, 1024, 3, sand) ==
+        CHECK(mc2terrain::cookSurfaceMaterials(*legacy, {}, 0, {}, 0, 1024, 3, sand) ==
               mc2terrain::cookSurfaceMaterials(hit->materials, {}, 0, {}, 0, 1024, 3, sand));
-    CHECK_FALSE(mc2terrain::loadCachedPackedSurface(dir.string(), key + 1, true));
-    CHECK_FALSE(mc2terrain::loadCachedPackedSurface(dir.string(), key, false));
+    CHECK_FALSE(mc2terrain::loadCachedPackedSurface(dir.string(), key + 1, srgb));
+    CHECK_FALSE(mc2terrain::loadCachedPackedSurface(dir.string(), key, !srgb));
+    fs::remove_all(legacyDir);
     const auto path = fs::directory_iterator(dir)->path();
     const auto size = fs::file_size(path);
     for (long offset : {0L, 4L, 8L, 20L, 24L, 32L, 40L, 60L}) {
-        REQUIRE(mc2terrain::storeCachedPackedSurface(dir.string(), *surface, true, upload));
+        REQUIRE(mc2terrain::storeCachedPackedSurface(dir.string(), *surface, srgb, upload));
         auto* file = std::fopen(path.string().c_str(), "r+b");
         REQUIRE(file);
         std::fseek(file, offset, SEEK_SET); const int byte = std::fgetc(file);
         std::fseek(file, offset, SEEK_SET); std::fputc(byte ^ 1, file); std::fclose(file);
-        CHECK_FALSE(mc2terrain::loadCachedPackedSurface(dir.string(), key, true));
-        REQUIRE(mc2terrain::storeCachedPackedSurface(dir.string(), *surface, true, upload));
-        const auto healed = mc2terrain::loadCachedPackedSurface(dir.string(), key, true);
+        CHECK_FALSE(mc2terrain::loadCachedPackedSurface(dir.string(), key, srgb));
+        REQUIRE(mc2terrain::storeCachedPackedSurface(dir.string(), *surface, srgb, upload));
+        const auto healed = mc2terrain::loadCachedPackedSurface(dir.string(), key, srgb);
         REQUIRE(healed);
         CHECK(healed->rgba == hit->rgba);
         CHECK(mc2terrain::encodeSurfaceAsset(healed->materials) == mc2terrain::encodeSurfaceAsset(hit->materials));
     }
     for (uintmax_t length : {size - 1, uintmax_t(48), uintmax_t(0)}) {
-        REQUIRE(mc2terrain::storeCachedPackedSurface(dir.string(), *surface, true, upload));
+        REQUIRE(mc2terrain::storeCachedPackedSurface(dir.string(), *surface, srgb, upload));
         fs::resize_file(path, length);
-        CHECK_FALSE(mc2terrain::loadCachedPackedSurface(dir.string(), key, true));
+        CHECK_FALSE(mc2terrain::loadCachedPackedSurface(dir.string(), key, srgb));
     }
-    REQUIRE(mc2terrain::storeCachedPackedSurface(dir.string(), *surface, true, upload));
-    REQUIRE(mc2terrain::loadCachedPackedSurface(dir.string(), key, true));
+    REQUIRE(mc2terrain::storeCachedPackedSurface(dir.string(), *surface, srgb, upload));
+    REQUIRE(mc2terrain::loadCachedPackedSurface(dir.string(), key, srgb));
     fs::remove_all(dir);
+    }
+}
+
+// Optional large fixtures are resolved from an install by the offline proof, never by a game launch.
+TEST_CASE("packed surface mission fixtures: prepare resolved JPEG atlas") {
+    const char* root = std::getenv("TERRAIN_PARITY_FIXTURES");
+    if (!root) { MESSAGE("mission fixtures not supplied"); return; }
+    for (const char* mission : {"mc2_01", "mc2_10"}) {
+        const auto stem = std::filesystem::path(root) / mission;
+        int w = 0, h = 0, channels = 0;
+        // Same stb RGB decode as BurninJpeg_DecodeRGB; BGRA packing followed by the
+        // field-store RGBA swizzle cancels, leaving RGB plus opaque alpha.
+        auto* rgb = stbi_load((stem.string() + ".jpg").c_str(), &w, &h, &channels, 3);
+        REQUIRE(rgb); REQUIRE(w == h);
+        std::vector<uint8_t> rgba(static_cast<size_t>(w) * h * 4, 255);
+        for (size_t i = 0; i < rgba.size() / 4; ++i)
+            std::copy_n(rgb + i * 3, 3, rgba.data() + i * 4);
+        stbi_image_free(rgb);
+        std::ofstream out(stem.string() + ".rgba", std::ios::binary);
+        out.write(reinterpret_cast<const char*>(rgba.data()), static_cast<std::streamsize>(rgba.size()));
+        REQUIRE(out.good());
+        MESSAGE(mission, " resolved RGBA8 ", w, "x", h, " bytes=", rgba.size());
+    }
+}
+
+TEST_CASE("packed surface mission parity: independent base versus tip miss and hit") {
+    const char* root = std::getenv("TERRAIN_PARITY_FIXTURES");
+    if (!root) { MESSAGE("mission fixtures not supplied"); return; }
+    for (const char* mission : {"mc2_01", "mc2_10"}) {
+        INFO(mission);
+        const auto stem = (std::filesystem::path(root) / mission).string();
+        const auto read = [](const std::string& path) {
+            std::ifstream file(path, std::ios::binary);
+            REQUIRE(file.good());
+            return std::vector<uint8_t>(std::istreambuf_iterator<char>(file), {});
+        };
+        auto atlas = read(stem + ".rgba"), shoreBytes = read(stem + ".shore");
+        std::vector<float> shore(shoreBytes.size() / sizeof(float));
+        std::memcpy(shore.data(), shoreBytes.data(), shoreBytes.size());
+        SurfaceCookInput in;
+        uint32_t format = 0;
+        std::ifstream meta(stem + ".input");
+        meta >> in.colorWidth >> in.colorHeight >> format >> in.topLeftX >> in.topLeftY >> in.worldSpan
+             >> in.shoreWidth >> in.shoreHeight >> in.waterElevation;
+        for (auto& bound : in.shoreBounds) meta >> bound;
+        REQUIRE_FALSE(meta.fail()); REQUIRE(format == 37);
+        in.rgba = atlas; in.shore = shore; in.followCoast = in.staticBreakup = true;
+        in.outputWidth = std::min(in.colorWidth * 2, mc2terrain::SurfaceAsset::kMaxSide);
+        in.outputHeight = std::min(in.colorHeight * 2, mc2terrain::SurfaceAsset::kMaxSide);
+        REQUIRE(mc2terrain::validSurfaceCookInput(in));
+        // This file is independently emitted by terrain_cook compiled at bb820b946.
+        const auto baseline = mc2terrain::decodeSurfaceAsset(read(stem + ".base.tsf"), mc2terrain::surfaceCookSourceHash(in));
+        REQUIRE(baseline);
+        const auto cache = stem + ".cache";
+        REQUIRE_FALSE(std::filesystem::exists(cache));
+        const auto key = mc2terrain::packedSurfaceSourceHash(in, atlas, format);
+        REQUIRE_FALSE(mc2terrain::loadCachedPackedSurface(cache, key, in.srgb));
+        const char* origin = nullptr;
+        auto miss = mc2terrain::resolveSurfaceAsset(in, {}, cache, &origin);
+        REQUIRE(miss); REQUIRE(std::string(origin) == "cooked+stored");
+        const auto pack = [](const mc2terrain::SurfaceAsset& surface) {
+            std::vector<uint8_t> bytes(surface.macroColor.size() * 4);
+            for (size_t i = 0; i < surface.macroColor.size(); ++i) for (size_t c = 0; c < 4; ++c)
+                bytes[i * 4 + c] = static_cast<uint8_t>(std::lround(std::clamp(surface.macroColor[i][c], 0.0f, 1.0f) * 255.0f));
+            return bytes;
+        };
+        const auto baseUpload = pack(*baseline), missUpload = pack(*miss);
+        miss->sourceHash = key;
+        REQUIRE(mc2terrain::storeCachedPackedSurface(cache, *miss, in.srgb, missUpload));
+        const auto hit = mc2terrain::loadCachedPackedSurface(cache, key, in.srgb);
+        REQUIRE(hit);
+        for (const auto* upload : {&missUpload, &hit->rgba}) {
+            REQUIRE(upload->size() == baseUpload.size());
+            const auto first = std::mismatch(baseUpload.begin(), baseUpload.end(), upload->begin()).first;
+            const auto offset = static_cast<size_t>(first - baseUpload.begin());
+            INFO("first differing texel=", offset / 4, " x=", offset / 4 % baseline->width,
+                 " y=", offset / 4 / baseline->width, " channel=", offset % 4);
+            REQUIRE(first == baseUpload.end());
+        }
+        REQUIRE(baseline->width == miss->width); REQUIRE(baseline->height == miss->height);
+        REQUIRE(baseline->width == hit->width); REQUIRE(baseline->height == hit->height);
+        REQUIRE_FALSE(mc2terrain::loadCachedPackedSurface(cache, key, !in.srgb));
+        for (bool sand : {false, true}) {
+            const auto baseMaterial = mc2terrain::cookSurfaceMaterials(*baseline, {}, 0, {}, 0, 1024, 1024, sand);
+            const auto missMaterial = mc2terrain::cookSurfaceMaterials(*miss, {}, 0, {}, 0, 1024, 1024, sand);
+            const auto hitMaterial = mc2terrain::cookSurfaceMaterials(hit->materials, {}, 0, {}, 0, 1024, 1024, sand);
+            for (const auto* material : {&missMaterial, &hitMaterial}) {
+                REQUIRE(material->size() == baseMaterial.size());
+                const auto first = std::mismatch(baseMaterial.begin(), baseMaterial.end(), material->begin()).first;
+                INFO("first differing material texel=", (first - baseMaterial.begin()) / 4);
+                REQUIRE(first == baseMaterial.end());
+            }
+            MESSAGE(mission, " material sand=", sand, " base=", mc2terrain::surfaceHash(baseMaterial),
+                    " miss=", mc2terrain::surfaceHash(missMaterial), " hit=", mc2terrain::surfaceHash(hitMaterial));
+        }
+        MESSAGE(mission, " PASS all RGBA8 texels + material outputs; dimensions=", hit->width, "x", hit->height,
+                " format=37 srgb=", in.srgb, " coast=1 base_hash=", mc2terrain::surfaceHash(baseUpload),
+                " miss_hash=", mc2terrain::surfaceHash(missUpload), " hit_hash=", mc2terrain::surfaceHash(hit->rgba));
+    }
 }
 
 TEST_CASE("surface cook cache: roundtrip, stale key, corrupt and truncated files, bit-identical output") {

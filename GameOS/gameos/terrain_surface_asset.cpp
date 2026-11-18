@@ -1,4 +1,5 @@
 #include "terrain_surface_asset.h"
+#include "terrain_surface_cook.h"
 
 #include "cook_cache.h"
 
@@ -26,6 +27,29 @@ using mc2cache::getLE;
 uint64_t surfaceHash(std::span<const uint8_t> bytes, uint64_t seed) {
     for (uint8_t byte : bytes) { seed ^= byte; seed *= 1099511628211ull; }
     return seed;
+}
+
+uint64_t packedSurfaceSourceHash(const SurfaceCookInput& in, std::span<const uint8_t> atlas,
+    uint32_t atlasFormat, uint32_t evaluator, uint32_t packedVersion) {
+    if (atlas.empty() || in.colorWidth == 0 || in.colorHeight == 0 || !validSize(in.outputWidth, in.outputHeight) ||
+        (in.followCoast && (in.shoreWidth < 2 || in.shoreHeight < 2 ||
+            in.shore.size() != static_cast<uint64_t>(in.shoreWidth) * in.shoreHeight))) return 0;
+    auto hash = surfaceHash(atlas);
+    const auto word = [&](uint32_t value) {
+        for (unsigned shift = 0; shift < 32; shift += 8) {
+            hash ^= static_cast<uint8_t>(value >> shift); hash *= 1099511628211ull;
+        }
+    };
+    for (uint32_t value : {0x32534b50u, evaluator, packedVersion, atlasFormat, in.colorWidth, in.colorHeight,
+        in.outputWidth, in.outputHeight, static_cast<uint32_t>(in.srgb), static_cast<uint32_t>(in.followCoast),
+        static_cast<uint32_t>(in.staticBreakup)}) word(value);
+    for (float value : {in.topLeftX, in.topLeftY, in.worldSpan}) word(std::bit_cast<uint32_t>(value));
+    if (in.followCoast) {
+        word(in.shoreWidth); word(in.shoreHeight); word(std::bit_cast<uint32_t>(in.waterElevation));
+        for (float value : in.shoreBounds) word(std::bit_cast<uint32_t>(value));
+        for (float value : in.shore) word(std::bit_cast<uint32_t>(value));
+    }
+    return hash == 0 ? 1 : hash;
 }
 
 bool validSurfaceAsset(const SurfaceAsset& asset, uint64_t expectedSource) {
