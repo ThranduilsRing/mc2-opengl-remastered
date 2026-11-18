@@ -30,7 +30,8 @@ def test_a_held_real_lock_does_not_block_the_stubbed_builder(monkeypatch, tmp_pa
 def _child_acquires(root, env):
     code = "import sys; sys.path.insert(0, sys.argv[2]); import ninja_build; sys.exit(0 if ninja_build.TreeLock(sys.argv[1], 't').acquire(0) else 3)"
     import subprocess
-    return subprocess.run([sys.executable, "-B", "-c", code, str(root), str(ROOT / "scripts")], env=env, timeout=60).returncode
+    import console_child
+    return subprocess.run([sys.executable, "-B", "-c", code, str(root), str(ROOT / "scripts")], env=env, timeout=60, **console_child.child_kwargs(redirected=True)).returncode
 
 
 def test_env_switch_frees_a_subprocess_child_only_under_pytest(monkeypatch, tmp_path):
