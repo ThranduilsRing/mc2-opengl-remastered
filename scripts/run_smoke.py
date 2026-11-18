@@ -949,9 +949,20 @@ def main():
                                 kill_orphans=args.kill_existing,
                                 exclusive=True if args.show_window or args.tier == "resolution" else None)
         except _host_lease.HostLeaseBusy as _busy:
+            _waited = time.monotonic() - _t_lease
             print(f"[runner] ERROR: {_busy}", file=sys.stderr)
-            print(_smoke_stall.line(",".join(args.mission or []) or "-", "lease_wait", time.monotonic() - _t_lease,
+            print(_smoke_stall.line(",".join(args.mission or []) or "-", "lease_wait", _waited,
                                     _smoke_stall.lease_holders()), file=sys.stderr)
+            if os.environ.get("MC2_SMOKE_ARTIFACT_ROOT"):
+                # No run folder or report.json exists yet. A parent that set the artifact root (the merge gate) still has to
+                # see this wait, or it books a 20-minute lease timeout as stage time (merge_gate.child_lease_reports).
+                try:
+                    ARTIFACT_ROOT.mkdir(parents=True, exist_ok=True)
+                    (ARTIFACT_ROOT / f"lease-wait-{os.getpid()}-{time.time_ns()}.json").write_text(json.dumps(
+                        {"outcome": "host_lease_busy", "host_wait": {"lease_wait_s": round(_waited, 1), "host_load": None}}),
+                        encoding="utf-8")
+                except OSError as _exc:
+                    print(f"[runner] WARNING: lease wait not recorded: {_exc}", file=sys.stderr)
             sys.exit(getattr(_busy, "rc", 4))
         _host_wait["lease_wait_s"] = round(time.monotonic() - _t_lease, 1)
         if _host_lease.redirected():

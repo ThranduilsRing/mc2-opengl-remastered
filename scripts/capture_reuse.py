@@ -110,7 +110,7 @@ def identity(command: list, root: Path, gpu: str | None = None, env=None) -> dic
         "poses": poses,
         "args": [a for i, a in enumerate(command[2:], 2) if a not in ("--out", "--install") and command[i - 1] not in ("--out", "--install")],
         "harness": harness,
-        "env": {k: v for k, v in sorted((os.environ if env is None else env).items()) if k.startswith("MC2_") and k not in ("MC2_GATE_BASE", "MC2_CAPTURE_REUSE")},
+        "env": {k: v for k, v in sorted((os.environ if env is None else env).items()) if k.startswith("MC2_") and k not in ("MC2_GATE_BASE", "MC2_CAPTURE_REUSE", "MC2_GATE_REASON", "MC2_GATE_TIER", "MC2_SMOKE_ARTIFACT_ROOT")},
         "gpu": gpu,
     }
 
@@ -144,17 +144,25 @@ def _copy(src: Path, dst: Path) -> None:
     shutil.copytree(src, dst)
 
 
-def restore(command: list, root: Path, cache: Path = CACHE_ROOT, gpu: str | None = None, env=None) -> str | None:
-    """Copy a matching verified reference set to the command's --out. Returns a one-line note on reuse, None on a miss."""
-    out = _arg(command, "--out")
+def available(command: list, root: Path, cache: Path = CACHE_ROOT, gpu: str | None = None, env=None) -> Path | None:
+    """Read-only lookup of a matching, verified reference set."""
     if not enabled():
         return None
     ident = identity(command, root, gpu, env)
-    if not out or ident is None:
+    if not _arg(command, "--out") or ident is None:
         return None
     hit = cache / key_of(ident)
     if not hit.is_dir() or verify_artifacts(hit) is not None:
         return None
+    return hit
+
+
+def restore(command: list, root: Path, cache: Path = CACHE_ROOT, gpu: str | None = None, env=None) -> str | None:
+    """Copy a matching verified reference set to the command's --out. Returns a one-line note on reuse, None on a miss."""
+    hit = available(command, root, cache=cache, gpu=gpu, env=env)
+    if hit is None:
+        return None
+    out = _arg(command, "--out")
     _copy(hit, Path(out))
     # Poses record absolute paths inside the stored set; the restored copy must verify in its own place too.
     manifest_path = Path(out) / "capture_run.json"
@@ -163,12 +171,12 @@ def restore(command: list, root: Path, cache: Path = CACHE_ROOT, gpu: str | None
         pose["pose_dir"] = str(Path(out) / Path(pose["pose_dir"]).name)
         if pose.get("primary_png"):
             pose["primary_png"] = str(Path(pose["pose_dir"]) / Path(pose["primary_png"]).name)
-    manifest["reused_from_identity"] = key_of(ident)
+    manifest["reused_from_identity"] = hit.name
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8", newline="\n")
     if verify_artifacts(Path(out)) is not None:
         shutil.rmtree(out, ignore_errors=True)
         return None
-    return f"capture-before reused: identity {key_of(ident)[:16]} (exe, deployed files, options, poses, harness, GPU/driver all match)"
+    return f"capture-before reused: identity {hit.name[:16]} (exe, deployed files, options, poses, harness, GPU/driver all match)"
 
 
 def store(command: list, root: Path, cache: Path = CACHE_ROOT, gpu: str | None = None, env=None) -> bool:

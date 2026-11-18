@@ -1,16 +1,18 @@
-# Merge gate tiers (2026-11-06; updated 2026-11-08)
+# Merge gate tiers (2026-11-17)
 
 The gate is static tiers (`stage_tier` / `tier_includes` in `scripts/merge_gate.py`), plus a few diff promotions. A stage outside the requested tier is absent from the plan (not SKIP), so the verdict stays PASS and `lane_merge --promote` accepts it. Only an operator `--stages`/`--skip` filter makes a gate PARTIAL.
 
 | Command | Contents |
 |---|---|
-| `merge_gate.py --full` (every merge, target <= 15 min) | build (done at stage), harnesses/unit, contracts (rows that ever failed, plus the fast ones), deploy, ONE tier1 smoke batch on mc2_01 (day) + mc2_10 (night) with `MC2_VULKAN_VALIDATION=sync`, capture before/after plus compare |
-| `--nightly` | per-merge set + all contract rows (`check-contracts.sh --nightly`), determinism (all maps), saveload (mc2_01, mc2_10), player-path, and **mods-slim** (below) |
+| `merge_gate.py --full` (every merge, 20 min advisory budget) | editor (path-scoped), harnesses/unit, contracts (path-triggered rows, cache on), full-verify deploy, tier1 on mc2_01 (day) + mc2_10 (night) with `MC2_VULKAN_VALIDATION=sync`; one committed build precedes the gate |
+| `--nightly` | per-merge set + all contract rows (uncached), determinism (all nightly maps), saveload (mc2_01, mc2_10), player-path, captures before/after with blocking compare, and **mods-slim** (below) |
 | `--weekly` | nightly set + the full `mods` battery (replaces mods-slim) + video-decode + tier1-full (all five tier1 maps) + quiet + saveload mc2_03/16/24 |
 
-Diff promotions at a per-merge gate (`promoted_stages`): a sim-sensitive diff adds the determinism/saveload rows; a path naming a mission adds that map's rows; a front-end/video diff adds player-path; a mod-content diff (`data/`, `mods/`, `examples/mods/`, `tests/mods/`, `tools/mod_smoke*`, `tools/mod_*.py`, `tools/mc2x_import/`, `tools/mco_import/`) adds the full `mods` battery. Engine C++, shaders, the VFS and loaders never promote mods.
+Diff promotions at a per-merge gate (`promoted_stages`): a sim-sensitive diff adds exactly headless determinism-mc2_24 (a pair, 2600 ticks) and saveload-mc2_01. A front-end/logistics/video path adds player-path, which decodes real comm video through the player flow. Mission names and mod/data paths never promote additional rows. Visual capture and compare run per merge only with `--declared-view`: capture-after plus advisory compare when an explicitly validated `--before-dir` or verified automatic capture reuse supplies the before set. Otherwise the gate reports after-only. It never shoots capture-before at tier 0; nightly comparison remains blocking.
 
-Checks run by default only for touched logic: `scripts/contracts-cache-inputs.txt` is the single contract trigger table (also used by the input cache); unscoped rows run nightly, and explicit `--rows` still runs an offline proof. Precheck passes its comparison base to the Python suites, which select tests in the touched tool/source directories and named contract inputs; the full suites run nightly. Laptop sim evidence is required only for `sim_sensitive` diffs or mission rows selected by `promoted_stages`, using the same classification at promotion. Core doctest stays per merge; frozen VFX/oracle, package chassis and present stress cases run nightly. Capture-before reuses a verified capture set, including the preceding capture-after, only when its executable SHA and the existing content/options/poses/harness/GPU identity match.
+Checks run by default only for touched logic: `scripts/contracts-cache-inputs.txt` is the contract trigger table; unscoped rows run nightly, and explicit `--rows` still runs an offline proof. The comparison base selects Python modules; full suites run nightly. Precheck receipts are informational. Precheck links only with `--with-link` and records whether sim rows are required without starting games. The merged tree gets one build and the gate's sim rows. Ratchet debt, a loosened log-tag census and a lowered gate population floor are merge review notes; generators re-record the current baselines and must successfully recheck them. Generator/tool execution failures remain errors. Lane-tip lint still checks the lane's own ratchet delta. Stale generated outputs are deferred only for known stale-only diagnostics, then regenerated and successfully rechecked at batch end.
+
+`gate-verdict.json` records wall seconds, per-stage seconds, stage reasons and measured host lease wait separately. A tier-0 gate over 20 minutes excluding host lease wait prints advisory `[GATE_BUDGET] OVER` and its three longest stages; the orchestrator opens an infrastructure lane when it fires. Logs are UTF-8.
 
 ## Mods (owner 2026-11-08)
 
@@ -50,9 +52,9 @@ py -3 scripts/run_smoke.py --lite --keep-logs --deploy 0.4      # smoke-lite: mc
 MC2_DEBUG_STATE_DUMP=1 MC2_DIAG_TAGS=CONFIG,BUILD,DEVICE py -3 scripts/run_smoke.py --tier tier1 --keep-logs --deploy 0.4   # full tier1, before milestones
 ```
 
-`tier1` = mc2_01/03/10/17/24. Evidence is the `[DEPLOY_FINGERPRINT] OK: exe sha=... matches worktree HEAD` line plus 5/5 PASS. Don't set `MC2_DIAGNOSTIC_TRACE_FILE`: the runner owns it and refuses the run. GATE_QUIET applies only to the PC gate fallback.
+The merge gate's `tier1` covers mc2_01 and mc2_10 with synchronization validation. Evidence includes `[DEPLOY_FINGERPRINT] OK: exe sha=... matches worktree HEAD` and both missions passing. Don't set `MC2_DIAGNOSTIC_TRACE_FILE`: the runner owns it and refuses the run. GATE_QUIET applies only to the PC gate fallback.
 
-Removed: the separate syncval/validation stages (validation rides the tier1 smoke), kit-visibility, box-gate and the box route, diff scoping (`gate_scope.py`, last-full-gate mark), the cheap-rows preflight, the tightened-baseline follow-up commit (ratchets only CHECK now; derived inventories are still regenerated), `dup_check` in the gate (it stays in `lane_merge --lint`).
+Removed: the separate syncval/validation stages (validation rides the tier1 smoke), kit-visibility, box-gate and the box route, diff scoping (`gate_scope.py`, last-full-gate mark), the cheap-rows preflight, and `dup_check` in the gate (it stays in `lane_merge --lint`).
 
 Contracts: `run_nightly` rows and unscoped checks run nightly; the remaining rows run only on their declared trigger paths.
 

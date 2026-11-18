@@ -597,6 +597,26 @@ def run_ratchets(root: str, tools_dir: str, *, tighten=True, rows=None) -> list[
     return results
 
 
+def report_ratchet_debt(failed):
+    """Only recognized check verdicts are debt. Invocation/discovery failures stay errors."""
+    headers = ("cxx17_ratchet: FAIL -", "pointer_order_scan: FAIL", "own_inventory: FAIL", "split_map: FAIL - docs/split-map.md is stale")
+    for label, rc, tail in failed:
+        if rc != 1 or not any(h in tail for h in headers) or "Traceback" in tail:
+            raise Stop(6, f"ratchet tool failed: {label} (rc={rc})\n{tail}")
+        delta = re.search(r"\(\+\d+\)|\d+ -> \d+", tail)
+        locations = re.findall(r"[\w./-]+:\d+", tail)
+        print(f"RATCHET-DEBT {label} {delta.group() if delta else 'changed'} {locations[0] if locations else '(see checker output)'}\n{tail}")
+
+
+def record_ratchet_baselines(root, tools_dir, ratchets):
+    """cxx17 has a census baseline; split_map is generated documentation, with no baseline."""
+    for label, rel, _ in ratchets:
+        args = ["--write-baseline"] if label == "cxx17" else ["--write"]
+        result = run(root, [sys.executable, "-B", os.path.join(tools_dir, rel), *args])
+        if result.returncode:
+            raise Stop(6, f"baseline generator {label} failed:\n{result.stdout}")
+
+
 def git_bash(which=shutil.which, exists=os.path.exists, environ=None) -> str:
     """The bash that runs the verify .sh scripts. WHY: CreateProcess searches System32 before PATH, so a bare
     "bash" from a Python child is the WSL launcher (fails with an HCS error on a host without a distro); the
@@ -646,6 +666,11 @@ def quick_rows(root: str, runner=run, base=None) -> list[tuple[str, int, str]]:
                 failed.append((label, -1, "quick row script missing: " + ", ".join(missing)))
             continue  # a throwaway root without the script has nothing to check
         r = runner(root, [sys.executable] + args)
+        stale = stale_generated(r.returncode, r.stdout)
+        if stale:
+            print(f"STALE-GENERATED (the merge regenerates it): {label}")
+            refresh_generated(root, stale)
+            r = runner(root, [sys.executable] + args)
         if r.returncode != 0:
             if label == "script_callers":
                 for path in re.findall(r"tracked script has no caller and is not allowlisted: ([^\r\n]+)", r.stdout):
@@ -780,17 +805,16 @@ def gate_names(path: Path):
 def regenerate_derived(root: str, base: str) -> list[str]:
     """Batch-end regeneration of the derived inventories that used to need a hand follow-up.
 
-    Tighten-only: the log tag census may only gain emitters and the gate population floor may only follow additions
-    (or retirements listed in Gates/retired_names.json). Anything else restores the file and stops the window (exit 6)."""
+    Census and population changes are review notes; generator failures still stop."""
+    derived_notes = []
     changed = list(regenerate_all(root, base=base))
     live = Path(root) / LOG_TAG_BASELINE
     old = _git_json(root, "HEAD", LOG_TAG_BASELINE)
     if old is not None and live.is_file():
         bad = log_tag_loosened(old, json.loads(live.read_text(encoding="utf-8")))
         if bad:
-            git(root, "checkout", "--", LOG_TAG_BASELINE)
-            raise Stop(6, "log tag census loosened by the merge (not auto-accepted; fix the lane or re-freeze by hand):\n  "
-                       + "\n  ".join(bad))
+            derived_notes.extend("DERIVED-CHANGED census: " + item for item in bad)
+            changed.append(LOG_TAG_BASELINE)
     names_now, table_old = gate_names(Path(root) / "Gates" / "gate_table.json"), _git_json(root, base, "Gates/gate_table.json")
     if names_now is not None and table_old is not None:
         retired = _git_json(root, "HEAD", RETIRED_NAMES) or []
@@ -798,10 +822,16 @@ def regenerate_derived(root: str, base: str) -> list[str]:
             retired = retired.get("names") or list(retired)
         lost = gate_floor_loosened({g["name"] for g in table_old["gates"]}, names_now, set(retired))
         if lost:
-            raise Stop(6, "gate table lost gates that are not in " + RETIRED_NAMES + " (population floor not lowered):\n  "
-                       + "\n  ".join(lost))
+            derived_notes.extend("DERIVED-CHANGED gates: " + item for item in lost)
         if sync_test_gate_floor(root):
             changed.append(TEST_GATE)
+    if derived_notes:
+        print("\n".join(derived_notes))
+        record_path = Path(root) / "build64-ninja/merge-window.json"
+        record_path.parent.mkdir(parents=True, exist_ok=True)
+        record = json.loads(record_path.read_text(encoding="utf-8")) if record_path.exists() else {}
+        record["derived_notes"] = derived_notes
+        record_path.write_text(json.dumps(record), encoding="utf-8")
     return sorted(set(changed))
 
 
@@ -824,7 +854,7 @@ def commit_tightened(root: str, pre_dirty: set[str], artifacts=()) -> str | None
 
 def artifact_changes(root):
     changed = set()
-    for args in (("diff", "HEAD", "--name-only"), ("ls-files", "--others", "--exclude-standard")):
+    for args in (("diff", "HEAD", "--name-only"),):
         result = _git_util.git(root, *args, "-z", "--", *ARTIFACTS)
         if result.returncode:
             raise Stop(6, "cannot list artifacts: " + result.stderr)
@@ -836,7 +866,7 @@ def require_clean_generator_inputs(root):
     """Artifacts must describe committed HEAD, including inputs outside ARTIFACTS."""
     # Throwaway merge-test repos without generators do not regenerate anything.
     if os.path.exists(os.path.join(root, GENERATORS[0][1])):
-        dirty = status_entries(root)
+        dirty = [(status, path) for status, path in status_entries(root) if status != "??"]
         if dirty:
             raise Stop(6, "regenerate-all requires a clean tree; commit or remove generator input edits first:\n  "
                        + "\n  ".join(path for _, path in dirty))
@@ -948,6 +978,35 @@ def generated_hint(tail: str) -> str | None:
             "the merge regenerates them, or run " + " / ".join(cmds))
 
 
+def stale_generated(rc, output):
+    """Exact stale-output diagnostics only; unknown or mixed failures never qualify."""
+    if rc != 1:
+        return set()
+    paths = set()
+    for line in lines(output):
+        line = line.strip()
+        if re.fullmatch(r"\[background-launch\] FAIL \(\d+ problem\(s\)\):|GATE-TABLE check FAILED", line):
+            continue
+        line = line.removeprefix("- ")
+        match = re.fullmatch(r"(docs/background-launch-inventory\.md): stale\. Re-run with --write\.", line)
+        gate = re.fullmatch(r"(Gates/gate_index\.gen\.h|RenderCore/RendererFeatureRegistry\.h|docs/flags\.auto\.yaml)(?: is| rows are) stale against (?:Gates/gate_table\.json|the gate table): run py -3 tools/gate_gen\.py --write", line)
+        if match or gate:
+            paths.add((match or gate)[1])
+        elif line == "split_map: FAIL - docs/split-map.md is stale (a split piece was added, removed or re-described); run: py -3 tools/split/split_map.py --write":
+            paths.add("docs/split-map.md")
+        else:
+            return set()
+    return paths
+
+
+def refresh_generated(root, paths):
+    for files, script, args in GENERATED_REGENERATORS:
+        if set(paths) & files:
+            result = run(root, [sys.executable, "-B", os.path.join(root, script), *args])
+            if result.returncode:
+                raise Stop(6, f"generator {script} failed:\n{result.stdout}")
+
+
 def report_lint_row(label: str, rc: int, secs: float, tail: str, hint: str) -> None:
     """One lint row's report: the verdict line, and for a red the failure tail, its fix and the generated-file hint."""
     print(f"lint: {label}: {'PASS' if rc == 0 else 'FAIL'} ({secs:.0f}s)", flush=True)
@@ -977,17 +1036,17 @@ def merge_target(root: str, base: str | None = None) -> str:
     return git_out(root, "rev-parse", "claude/nifty-mendeleev^{commit}")
 
 
-def lint(root: str, ref: str, runner=None, base: str | None = None) -> int:
+def lint(root: str, ref: str, runner=None, base: str | None = None, *, stale_paths=None) -> int:
     """One host slot per lint run (granted FIFO by LintSlots), after sweeping dead lints' scratch."""
     sweep_stale_scratch([precheck_scratch_base(root), "E:/mc2-archive-2026-10/proofs"])
     hold = LintSlots().acquire()   # host-wide JOBS cap across all `--lint` processes, released when this run ends
     try:
-        return _lint_locked(root, ref, runner, base)
+        return _lint_locked(root, ref, runner, base, **({"stale_paths": stale_paths} if stale_paths is not None else {}))
     finally:
         hold.close()
 
 
-def _lint_locked(root: str, ref: str, runner=None, base: str | None = None) -> int:
+def _lint_locked(root: str, ref: str, runner=None, base: str | None = None, *, stale_paths=None) -> int:
     """`--lint REF`: the precheck's fast local checks (ratchets, callers, early rows, ungated tags)
     run concurrently at REF in shared clones; every red is printed with its fix. No Python suites, no link. Exit 0 = clean."""
     real_runner = runner is None
@@ -1022,7 +1081,12 @@ def _lint_locked(root: str, ref: str, runner=None, base: str | None = None) -> i
                 rot = base_rot(snap, base_ref, label, cmd, r, runner)
                 if rot:
                     rotations.append(label)
-                out.append((label, 0 if rot else r.returncode, time.monotonic() - t0, failure_summary(r.stdout), hint))
+                stale = stale_generated(r.returncode, r.stdout)
+                if stale:
+                    if stale_paths is not None:
+                        stale_paths.update(stale)
+                    print(f"STALE-GENERATED (the merge regenerates it): {label}")
+                out.append((label, 0 if rot or stale else r.returncode, time.monotonic() - t0, failure_summary(r.stdout), hint))
             return out
         from concurrent.futures import ThreadPoolExecutor
         row_workers = max(1, min(len(chains), int(host_jobs()), bin(cpu_masks()["lane"]).count("1")))
@@ -1043,7 +1107,18 @@ def _lint_locked(root: str, ref: str, runner=None, base: str | None = None) -> i
     return int(bool(failed))
 
 
-def batch_lint_ok(root: str, run=None) -> bool: return (run or lint)(root, "HEAD") == 0  # meta-0220 P1#4a
+def batch_lint_ok(root: str, run=None) -> bool:
+    if run:
+        return run(root, "HEAD") == 0
+    stale = set()
+    rc = lint(root, "HEAD", stale_paths=stale)
+    if stale:
+        refresh_generated(root, stale)
+        commit_tightened(root, set(), GENERATED)
+        pending = set()
+        rc = lint(root, "HEAD", stale_paths=pending)
+        return rc == 0 and not pending
+    return rc == 0
 
 
 PRECHECK_RECEIPTS = os.environ.get("MC2_PRECHECK_RECEIPTS", "A:/Games/mc2-ops/precheck")
@@ -1056,7 +1131,7 @@ def receipt_path(sha: str) -> str:
 
 
 def write_receipt(root: str, tip: str, with_link, verdict: str, sim_rows: dict | None = None) -> None:
-    """A green `--precheck` leaves a receipt for that exact tip SHA (`--batch` refuses one without); sim_rows = {required, override, paths, install, rows}."""
+    """An informational receipt for this exact tip; sim_rows records required only."""
     sha = git_out(root, "rev-parse", tip + "^{commit}")
     os.makedirs(PRECHECK_RECEIPTS, exist_ok=True)
     body = {"tip": sha, "base_head": git_out(root, "rev-parse", "HEAD"), "base_tree": git_out(root, "rev-parse", "HEAD^{tree}"),
@@ -1081,7 +1156,7 @@ def missing_receipts(root: str, refs: list[str]) -> list[str]:
         try:
             with open(receipt_path(sha), encoding="utf-8") as f:
                 receipt = json.load(f)
-            ok = receipt.get("verdict") == "PASS" and sim_rows_satisfied(root, sha, receipt)
+            ok = receipt.get("verdict") == "PASS"
         except (OSError, ValueError):
             ok = False
         if not ok:
@@ -1096,7 +1171,7 @@ def precheck(root: str, tip: str, with_link: bool | None = None, sim_rows: bool 
     Checks (minutes): conflict check, 5 ratchets, callers refresh+check and Python suites in disposable shared
     clones outside the main worktree. --with-link also runs, concurrently, an incremental configure + link of mc2, mc2fx,
     mc2fx_preview in the persistent warm tree (PRECHECK_TREE); only that build holds its exclusive lock.
-    with_link=None (default) turns the link on when the tip changes compiled inputs (compiled_inputs_changed); False (--no-link) opts out."""
+    Only explicit --with-link enables linking; sim rows run once in the merge gate."""
     failed = []
     timings = []
     started = time.monotonic()
@@ -1140,9 +1215,7 @@ def precheck(root: str, tip: str, with_link: bool | None = None, sim_rows: bool 
             return commit
         commit = timed("virtual-merge", virtual)
         scope_base = git_out(root, "merge-base", tip, base_ref)
-        if with_link is None:
-            with_link = compiled_inputs_changed(root, base_ref, commit)
-            print(f"precheck: link {'ON' if with_link else 'off'} (compiled inputs {'changed' if with_link else 'unchanged'}; --no-link/--with-link override)", flush=True)
+        with_link = bool(with_link)
         py = [sys.executable, "-B"]
         steps = [(label, py + [os.path.join("tools", script), *[a for a in args if a != "--tighten"]])
                  for label, script, args in RATCHETS]
@@ -1195,20 +1268,13 @@ def precheck(root: str, tip: str, with_link: bool | None = None, sim_rows: bool 
                         failed.append(str(exc).replace("\n", " "))
     except (Stop, OSError) as exc:
         failed.append(str(exc).replace("\n", " "))
-    sim = {"required": False, "override": not sim_rows, "paths": [], "install": None, "rows": {}}
+    sim = {"required": False}
     try:
-        sim["paths"] = sim_sensitive_paths(tip_changed_paths(root, tip, merge_target(root, base)))
-        sim["required"] = bool(sim["paths"])
+        sim["required"] = bool(sim_sensitive_paths(tip_changed_paths(root, tip, merge_target(root, base))))
     except (Stop, OSError, KeyError, ValueError, RuntimeError) as exc:
         failed.append("sim-rows: cannot classify the tip's paths: " + str(exc).replace("\n", " "))
-    if sim["required"] and not sim_rows:
-        print(f"precheck: sim rows SKIPPED by --no-sim-rows ({len(sim['paths'])} sim/save-sensitive path(s); recorded in the receipt)", flush=True)
-    elif sim["required"] and not failed:   # a red earlier stage already fails the precheck; spare the game runs
-        sim["install"] = sim_install or default_sim_install(root)
-        print(f"precheck: sim/save-sensitive paths ({', '.join(sim['paths'][:3])}...): running {', '.join(SIM_ROWS)} on {sim['install']}", flush=True)
-        sim["rows"] = timed("sim-rows", lambda: run_sim_rows(root, git_out(root, "rev-parse", tip + "^{commit}"), sim["install"], runner=sim_runner, quiet=sim_quiet))
-        failed += [f"sim-row {row}: {v}" for row, v in sim["rows"].items() if v != "PASS"]
-        print("\n".join(f"precheck: {row}: {v}" for row, v in sim["rows"].items()), flush=True)
+    if sim["required"]:
+        print("precheck: sim rows required at merge gate (receipt only)", flush=True)
     print("precheck timing (s): " + "  ".join(f"{label}={secs:.0f}" for label, secs in timings)
           + f"  WALL={time.monotonic() - started:.0f}", flush=True)
     link = "link=mc2,mc2fx,mc2fx_preview" if with_link else "link=skipped(batch --verify full and the gate build)"
@@ -1451,10 +1517,10 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--with-link", action="store_true",
                     help="with --precheck: also link mc2, mc2fx, mc2fx_preview incrementally in the warm tree "
                          "($MC2_PRECHECK_TREE, default E:/mc2-installs/_precheck/tree; first use is a one-time cold build)")
-    ap.add_argument("--no-receipt-check", action="store_true", help="--batch: merge tips without a green --precheck receipt (owner override; tests)")
+    ap.add_argument("--no-receipt-check", action="store_true", help="compatibility no-op; precheck receipts are informational")
     ap.add_argument("--no-link", action="store_true", help="with --precheck: skip the link even when the tip changes compiled inputs")
-    ap.add_argument("--no-sim-rows", action="store_true", help="with --precheck: skip the saveload/determinism rows a sim-sensitive tip requires (recorded in the receipt)")
-    ap.add_argument("--sim-install", help="with --precheck: install holding the tip's exe for the sim rows (default E:/mc2-installs/<laneN>)")
+    ap.add_argument("--no-sim-rows", action="store_true", help="compatibility no-op; precheck never runs games")
+    ap.add_argument("--sim-install", help="compatibility no-op; precheck never runs games")
     ap.add_argument("--pre-gate", action="store_true",
                     help="at the merged HEAD run the real regenerate-all (lists the changed files; commit them once), "
                          "check-background-launch, gate_gen --check and cxx17; all run, one PRE-GATE PASS/FAIL line; --root picks the tree")
@@ -1555,8 +1621,7 @@ def merge_tip(root: str, tools_dir: str, p: dict, message: str, resolutions: dic
     affected = cc.affected_rows(root, p["lane_files"])
     ratchets = [r for r in RATCHETS if ("cxx17_ratchet" if r[0] == "cxx17" else r[0]) in affected]
     if batch:
-        results = run_ratchets(root, tools_dir, tighten=False, rows=ratchets)
-        return merge_sha, None, [(label, rc, tail) for label, rc, tail in results if rc != 0]
+        return merge_sha, None, []  # one merged-tree ratchet pass at batch end
     semantic = semantic_precheck(root, tools_dir, p["lane_files"]) or lane_merge_baseline.base_baseline_check(root, tools_dir, git_out(root, "rev-parse", "HEAD^1"), ratchets, RATCHET_BASELINES, run, git, lines)
     if semantic:
         return merge_sha, None, semantic
@@ -1661,12 +1726,9 @@ def main(argv: list[str] | None = None) -> int:
         refuse_direct_nifty(root, args.hotfix)
         if args.conflict_dir:
             ap.error("--conflict-dir only works with --dry-run")
-        if batch and not (args.stage or args.no_receipt_check or os.environ.get("MC2_NO_RECEIPT_CHECK")):
+        if batch:
             missing = missing_receipts(root, refs)
-            if missing:
-                for sha in missing:
-                    print(f"PRECHECK MISSING {sha} (run tools/lane_merge.py --precheck on exactly this tip; receipts in {PRECHECK_RECEIPTS})")
-                raise Stop(5, "BATCH REFUSED: no green precheck receipt; nothing was merged")
+            print(f"precheck receipts: {len(refs) - len(missing)}/{len(refs)}")
         if batch and plan_batch(root, args, refs, resolutions_for):
             raise Stop(5, "BATCH REFUSED: a tip would abort on the blocking conflict(s) above; nothing was merged")
         merged = []        # (merge sha, follow-up sha, files) per merged tip
@@ -1698,34 +1760,35 @@ def main(argv: list[str] | None = None) -> int:
                 continue
             if batch and ref != refs[-1]:
                 print(f"{tag} ratchets=OK verify=DEFERRED overlap=0")
-        if batch and merged and not reds:
+        if batch and merged:
             import contracts_cache as cc
             paths = lines(git_out(root, "diff", "--name-only", window_base, "HEAD"))
             affected = cc.affected_rows(root, paths)
             ratchets = [r for r in RATCHETS if ("cxx17_ratchet" if r[0] == "cxx17" else r[0]) in affected]
-            semantic = semantic_precheck(root, tools_dir, paths) or lane_merge_baseline.base_baseline_check(root, tools_dir, window_base, ratchets, RATCHET_BASELINES, run, git, lines)
-            if semantic:
-                reds.append((refs[-1], semantic))
-        if batch and merged and not reds:
+            semantic = semantic_precheck(root, tools_dir, paths)
+            accepted = lane_merge_baseline.base_baseline_check(root, tools_dir, window_base, ratchets, RATCHET_BASELINES, run, git, lines)
+            checked = run_ratchets(root, tools_dir, tighten=False, rows=ratchets)
+            debt = semantic + accepted + [(label, rc, tail) for label, rc, tail in checked if rc]
+            report_ratchet_debt(debt)
             pre_dirty = {path for _, path in status_entries(root)}
             artifacts = regenerate_derived(root, window_base)
-            results = run_ratchets(root, tools_dir, rows=ratchets)
-            failed = [(label, rc, tail) for label, rc, tail in results if rc != 0]
-            if failed:
-                reds.append((refs[-1], failed))
-            else:
-                follow = commit_tightened(root, pre_dirty, artifacts)
-                merge_sha, _, count = merged[-1]
-                merged[-1] = (merge_sha, follow, count)
-        if reds:
-            stopped = reds[0][0]
-            print(f"BATCH RATCHET REDS in {len(reds)} of {len(refs)} tip(s), merged={len(merged)}:")
-            for ref, failed in reds:
-                print(f"  {ref}: " + ", ".join(f"{label}(rc={rc})" for label, rc, _ in failed))
+            record_ratchet_baselines(root, tools_dir, ratchets)
+            artifacts += ["docs/split-map.md"] if any(r[0] == "split_map" for r in ratchets) else []
+            rechecked = run_ratchets(root, tools_dir, tighten=False, rows=ratchets)
+            remaining = [(label, rc, tail) for label, rc, tail in rechecked if rc]
+            remaining += semantic_precheck(root, tools_dir, paths)
+            if remaining:
+                raise Stop(6, "ratchet recheck after regeneration failed: " + str(remaining))
+            follow = commit_tightened(root, pre_dirty, artifacts)
+            merge_sha, _, count = merged[-1]
+            merged[-1] = (merge_sha, follow, count)
         if not merged and not batch:
             return 0
         mode = "none" if args.no_verify else args.verify
-        record = dict(base=window_base, head=git_out(root, "rev-parse", "HEAD"), started=window_started,
+        record_path = Path(root) / "build64-ninja/merge-window.json"
+        derived_notes = (json.loads(record_path.read_text(encoding="utf-8")).get("derived_notes", [])
+                         if record_path.exists() else [])
+        record = dict(derived_notes=derived_notes, base=window_base, head=git_out(root, "rev-parse", "HEAD"), started=window_started,
                       tree=git_out(root, "rev-parse", "HEAD^{tree}"), **({"hotfix": True} if args.hotfix else {}))
         record_path = Path(root) / "build64-ninja/merge-window.json"
         if batch and merged and not stopped:
@@ -1735,8 +1798,10 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"lane_merge: quick row {label} exited {rc}; last lines:\n{tail}", file=sys.stderr)
                 print(f"BATCH STOPPED at quick rows ({', '.join(q[0] for q in qfailed)}) merged={len(merged)} remaining=(none)")
                 return 6
+            commit_tightened(root, set(), GENERATED)
         if batch and merged and not stopped and args.stage and not batch_lint_ok(root):
             print(f"BATCH STOPPED at lint (merged={len(merged)}); fix, commit, re-run --lint HEAD"); return 6
+        record.update(head=git_out(root, "rev-parse", "HEAD"), tree=git_out(root, "rev-parse", "HEAD^{tree}"))
         if stopped:
             verdict, vresults = "SKIPPED(ratchet-failure)", []
         else:

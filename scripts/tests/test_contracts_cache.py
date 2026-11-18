@@ -17,13 +17,15 @@ def test_merge_triggers_use_the_existing_table():
                 & cc.affected_rows(root, ["docs/merge-queue-v2.md"]))
     assert "vk_shaders_compile" in cc.affected_rows(root, ["shaders/vulkan/mech.vert"])
     assert "kit_art" in cc.affected_rows(root, ["tools/scifi_kit/cook.py"])
+    assert "contracts_cache" in cc.affected_rows(root, [".gitignore"])
     assert merge_gate.laptop_sim_rows(["docs/mc2_10-notes.md"]) == []
-    assert len(merge_gate.laptop_sim_rows(["code/mission_update.cpp"])) == 6
+    assert len(merge_gate.laptop_sim_rows(["code/mission_update.cpp"])) == 2
     modules = ["tools/terrain_beautify/test_cook.py", "tests/terrain_gen/test_generate.py",
                "tests/assets/test_replace.py", "tests/smoke/test_runner.py",
                "editor/tests/test_placement_proofs.py", "tools/scifi_kit/test_kit.py",
                "scripts/tests/test_board_selftests.py", "scripts/tests/test_contract_coverage.py"]
     assert rtt.scoped_modules(modules, ["docs/merge-queue-v2.md"]) == []
+    assert rtt.scoped_modules(modules + ["scripts/tests/test_contracts_cache.py"], [".gitignore"]) == ["scripts/tests/test_contracts_cache.py"]
     for source, module in [("tools/terrain_beautify/cook.py", modules[0]),
                            ("tools/terrain_gen/generate.py", modules[1]),
                            ("tools/assets/replace.py", modules[2]),

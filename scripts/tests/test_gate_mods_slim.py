@@ -109,3 +109,157 @@ def test_nightly_without_a_window_keeps_the_slim_row(monkeypatch):
     assert why is None
     cmd = plan["cmd"]
     assert cmd[cmd.index("--window") + 1] == "136" and "mods-slim" in cmd[cmd.index("--stages") + 1:]
+
+
+@pytest.mark.parametrize("paths,extra", [
+    (["docs/notes.md"], set()),
+    (["code/mission_update.cpp"], {"determinism-mc2_24", "saveload-mc2_01"}),
+    (["code/mc2movie.cpp"], {"player-path"}),
+    (["code/mission_update.cpp", "code/mainmenu.cpp", "data/defs/ui.fit"],
+     {"determinism-mc2_24", "saveload-mc2_01", "player-path"}),
+])
+def test_merge_stage_budget_pin(paths, extra):
+    scheduled = gate.plan(1)
+    planned = [s for s in scheduled if gate.tier_includes(s[0], 0)]
+    steps, _ = gate.promote_for_diff(planned, scheduled, planned, paths, [], False)
+    assert gate.promoted_stages(paths) == extra
+    assert {n for n, _, _ in steps} == {"editor", "contracts", "harnesses", "deploy", "tier1"} | extra
+
+
+@pytest.mark.parametrize("reused", [False, True])
+def test_declared_visuals_never_capture_before(monkeypatch, reused, capsys):
+    import capture_reuse
+    monkeypatch.setattr(capture_reuse, "available", lambda *a, **k: Path("verified") if reused else None)
+    monkeypatch.setattr(gate, "gate_env", lambda *a: {})
+    steps = gate.settle_capture_reference(gate.merge_visuals(gate.plan(1)))
+    assert "capture-before" not in [n for n, _, _ in steps]
+    assert [n for n, _, _ in steps] == ["capture-after", "compare-captures"] if reused else [n for n, _, _ in steps] == ["capture-after"]
+    if not reused:
+        assert "VISUAL after-only:" in capsys.readouterr().out
+    assert gate.advisory_status("compare-captures", "FAIL", 0).startswith(gate.ADVISORY_PREFIX)
+    assert gate.advisory_status("compare-captures", "FAIL", 1) == "FAIL"
+
+
+def test_gate_budget_is_advisory_and_excludes_lease_wait(monkeypatch, capsys):
+    monkeypatch.setattr(gate, "ROW_RESULTS", {"tier1": {"seconds": 900}})
+    gate.gate_budget(0, 1300, 200)
+    gate.gate_budget(1, 1300, 0)
+    assert not capsys.readouterr().out
+    gate.gate_budget(0, 1300, 0)
+    assert "[GATE_BUDGET] OVER" in capsys.readouterr().out
+
+
+def test_child_lease_wait_is_excluded_from_gate_budget(tmp_path, monkeypatch, capsys):
+    import json
+    monkeypatch.setattr(gate, "git", lambda *a: "head")
+    monkeypatch.setattr(gate, "log_lease_holders", lambda: None)
+    monkeypatch.setattr(gate, "TIMINGS", {})
+    monkeypatch.setattr(gate, "ROW_RESULTS", {})
+    monkeypatch.setattr(gate, "FAILED_STAGES", [])
+    # An old report in the same proof root must not inflate this run's wait.
+    (tmp_path / "report.json").write_text(json.dumps({"host_wait": {"lease_wait_s": 900}}))
+    def runner(*a, **k):
+        child = tmp_path / "new"
+        child.mkdir()
+        (child / "report.json").write_text(json.dumps({"host_wait": {"lease_wait_s": 200}}))
+        return types.SimpleNamespace(returncode=0, stdout="", gate_elapsed=1300)
+    assert gate.execute([("tier1", ["smoke"], {"MC2_SMOKE_ARTIFACT_ROOT": str(tmp_path)})],
+                        "head", runner=runner) == 0
+    assert gate.TIMINGS["host_lease_wait"] == 200
+    assert gate.ROW_RESULTS["tier1"]["host_lease_wait"] == 200
+    gate.gate_budget(0, 1300, gate.TIMINGS["host_lease_wait"])
+    assert "[GATE_BUDGET] OVER" not in capsys.readouterr().out
+
+
+class _SkewClock:
+    """The time module with a monotonic clock a fake lease wait can advance."""
+    skew = 0.0
+
+    def __getattr__(self, name):
+        import time
+        return getattr(time, name)
+
+    def monotonic(self):
+        import time
+        return time.monotonic() + self.skew
+
+
+def _budget_fixture(monkeypatch):
+    monkeypatch.setattr(gate, "git", lambda *a: "head")
+    monkeypatch.setattr(gate, "log_lease_holders", lambda: None)
+    monkeypatch.setattr(gate, "TIMINGS", {})
+    monkeypatch.setattr(gate, "ROW_RESULTS", {})
+    monkeypatch.setattr(gate, "FAILED_STAGES", [])
+
+
+def test_child_lease_timeout_wait_is_excluded_from_gate_budget(tmp_path, monkeypatch, capsys):
+    """The real run_smoke.main() lease-timeout exit (no report.json yet) under the real gate.execute()."""
+    from unittest.mock import patch
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    from scripts import run_smoke
+    from scripts.smoke_lib import host_lease
+    _budget_fixture(monkeypatch)
+    clock = _SkewClock()
+
+    def timed_out(*a, **k):
+        clock.skew += 1200.0   # the 20-minute bounded lease wait
+        raise host_lease.HostLeaseBusy("host game lease not granted after the wait")
+    exe = tmp_path / "mc2.exe"
+    exe.write_bytes(b"")
+    ok = type("V", (), {"ok": True, "banner": lambda self: ""})()
+
+    def runner(command, cwd, env):
+        root = env["MC2_SMOKE_ARTIFACT_ROOT"]
+        with patch.object(sys, "argv", ["run_smoke.py", "--exe", str(exe)]), \
+             patch.object(run_smoke._exe_guard, "check_exe", return_value=ok), \
+             patch.dict(run_smoke.os.environ, {"MC2_SMOKE_REQUIRE_FINGERPRINT": "0", "MC2_SMOKE_ARTIFACT_ROOT": root}), \
+             patch.object(run_smoke._fingerprint, "resolve_reference",
+                          side_effect=ValueError("cannot resolve fingerprint commit reference HEAD")), \
+             patch.object(run_smoke, "ARTIFACT_ROOT", Path(root)), \
+             patch.object(run_smoke, "time", clock), \
+             patch.object(host_lease, "acquire", side_effect=timed_out):
+            with pytest.raises(SystemExit) as exc:
+                run_smoke.main()
+        assert not list(Path(root).rglob("report.json"))   # the timeout exit is before any report
+        return types.SimpleNamespace(returncode=exc.value.code, stdout="", gate_elapsed=1300)
+    assert gate.execute([("tier1", ["smoke"], {"MC2_SMOKE_ARTIFACT_ROOT": str(tmp_path / "smokes")})],
+                        "head", runner=runner) != 0   # the row stays red
+    assert gate.TIMINGS["host_lease_wait"] == pytest.approx(1200, abs=10)
+    assert gate.ROW_RESULTS["tier1"]["host_lease_wait"] == pytest.approx(1200, abs=10)
+    gate.gate_budget(0, 1300, gate.TIMINGS["host_lease_wait"])
+    assert "[GATE_BUDGET] OVER" not in capsys.readouterr().out
+
+
+def test_gate_own_lease_timeout_is_lease_wait(tmp_path, monkeypatch, capsys):
+    """A capture row whose own host hold times out never runs its child: the wait is lease wait, not stage time."""
+    from smoke_lib import host_lease
+    _budget_fixture(monkeypatch)
+    monkeypatch.delenv(host_lease.BATCH_ENV, raising=False)
+    monkeypatch.setattr(gate, "check_capture_commit", lambda *a: None)
+    clock = _SkewClock()
+    monkeypatch.setattr(gate, "time", clock)
+
+    def timed_out(*a, **k):
+        clock.skew += 1200.0
+        raise host_lease.HostLeaseBusy("batch merge-gate: not held after the wait")
+    monkeypatch.setattr(host_lease, "hold", timed_out)
+    ran = []
+    row = ("capture-after", ["py", "capture.py", "--install", str(tmp_path), "--out", str(tmp_path / "after")], {})
+    assert gate.execute([row], "head", runner=lambda *a, **k: ran.append(1)) != 0
+    assert not ran
+    assert gate.TIMINGS["host_lease_wait"] == pytest.approx(1200, abs=10)
+    assert gate.ROW_RESULTS["capture-after"]["host_lease_wait"] == pytest.approx(1200, abs=10)
+    gate.gate_budget(0, 1300, gate.TIMINGS["host_lease_wait"])
+    assert "[GATE_BUDGET] OVER" not in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("tier", [0, 1])
+def test_visual_compare_only_blocks_nightly(monkeypatch, tier):
+    monkeypatch.setattr(gate, "git", lambda *a: "head")
+    monkeypatch.setattr(gate, "log_lease_holders", lambda: None)
+    monkeypatch.setattr(gate, "FAILED_STAGES", [])
+    monkeypatch.setattr(gate, "ROW_RESULTS", {})
+    result = types.SimpleNamespace(returncode=1, stdout="MAD and montage path")
+    assert gate.execute([("compare-captures", ["compare"], {"MC2_GATE_TIER": str(tier)})], "head",
+                        runner=lambda *a, **k: result) == tier
+    assert bool(gate.FAILED_STAGES) == bool(tier)

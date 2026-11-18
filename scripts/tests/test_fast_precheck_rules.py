@@ -1,4 +1,4 @@
-"""Fast-precheck rules: ungated new log tags, link-by-default for compiled inputs, perf_counter-only smoke verdicts (no game, no build)."""
+"""Fast-precheck rules: ungated new log tags, perf_counter-only smoke verdicts (no game, no build)."""
 import os
 import subprocess
 import sys
@@ -90,37 +90,10 @@ def test_compiled_inputs_changed_takes_an_end_ref(tmp_path):
 def test_precheck_link_defaults_and_flags():
     ap = lm.build_parser()
     a = ap.parse_args(["--precheck", "x"])
-    assert not a.with_link and not a.no_link  # neither flag => auto (None) in main()
+    assert not a.with_link and not a.no_link  # neither flag links; only --with-link opts in
     assert ap.parse_args(["--precheck", "x", "--no-link"]).no_link
 
 
-def test_precheck_auto_link_follows_compiled_inputs(monkeypatch):
-    seen = {}
-    monkeypatch.setattr(lm, "tip_changed_paths", lambda *a: [])
-    monkeypatch.setattr(lm, "git_out", lambda root, *a: "a" * 40)
-    monkeypatch.setattr(lm, "virtual_merge", lambda *a, **k: ("tree", []))
-    monkeypatch.setattr(lm, "virtual_head", lambda *a, **k: "vcommit")
-    monkeypatch.setattr(lm, "compiled_inputs_changed", lambda root, pre, post="HEAD": seen.setdefault("changed", True))
-
-    class Stop2(Exception):
-        pass
-
-    def tree_lock(*a, **k):
-        seen["linked"] = True
-        raise lm.Stop(9, "stop here")
-    monkeypatch.setattr(lm, "TreeLock", tree_lock)
-    monkeypatch.setattr(lm, "stage", lambda *a, **k: None, raising=False)
-    monkeypatch.setattr(lm, "run", lambda *a, **k: type("R", (), {"returncode": 0, "stdout": ""})())
-    assert lm.precheck(ROOT, "tip", None) == 1  # forced stop inside the linked branch
-    assert seen.get("linked")
-    seen.clear()
-    monkeypatch.setattr(lm, "compiled_inputs_changed", lambda root, pre, post="HEAD": False)
-    monkeypatch.setattr(lm, "precheck_scratch_base", lambda root: (_ for _ in ()).throw(lm.Stop(9, "stop here")))
-    assert lm.precheck(ROOT, "tip", None) == 1
-    assert "linked" not in seen
-    # explicit --no-link beats compiled-input changes
-    monkeypatch.setattr(lm, "compiled_inputs_changed", lambda root, pre, post="HEAD": True)
-    assert lm.precheck(ROOT, "tip", False) == 1 and "linked" not in seen
 
 
 def _verdict(perf_over, **mutate):

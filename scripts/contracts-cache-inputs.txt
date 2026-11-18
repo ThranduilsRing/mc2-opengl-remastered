@@ -64,7 +64,7 @@ placement_proofs: editor tools/editor tests/editor
 editor_smoke: editor scripts/editor_smoke.py scripts/tests/test_editor_smoke.py
 board_selftests: scripts/check-contracts.sh scripts/contracts_cache.py scripts/contracts-cache-inputs.txt
 contract_coverage: scripts/check-contracts.sh scripts/check-contract-coverage.py scripts/test_ownership.json
-contracts_cache: scripts/contracts_cache.py scripts/contracts-cache-inputs.txt scripts/run_tools_tests.py scripts/run_scripts_tests.py
+contracts_cache: .gitignore scripts/contracts_cache.py scripts/contracts-cache-inputs.txt scripts/run_tools_tests.py scripts/run_scripts_tests.py
 merge_speedups: tools/lane_merge.py tools/lane_merge_stage.py tools/laptop_gate.py scripts/merge_gate.py scripts/run_tools_tests.py
 module_test_cache: scripts/module_test_cache.py scripts/run_tools_tests.py scripts/run_scripts_tests.py
 run_scripts_tests_names: scripts/run_scripts_tests.py

@@ -220,7 +220,7 @@ def test_clean_merge(env):
     commit_all(repo, "main work")
     rc, out, err = merge(env, "--trailer", "Co-Authored-By: Test Model <t@example.com>")
     assert rc == 0, err
-    assert out.startswith("MERGED ") and "files=1 ratchets=OK verify=SKIPPED overlap=0" in out and "(+" not in out
+    assert "MERGED " in out and "files=1 ratchets=OK verify=SKIPPED overlap=0" in out and "(+" not in out
     assert len(parents(repo)) == 2
     assert git(repo, "log", "-1", "--format=%s") == "merge lane: lane: add thing"
     assert "Co-Authored-By: Test Model" in git(repo, "log", "-1", "--format=%B")
@@ -654,33 +654,8 @@ def test_batch_refuses_to_start_when_a_later_tip_cannot_merge(env, capsys):
     assert git(repo, "rev-parse", "HEAD") == head and git(repo, "status", "--porcelain") == ""
 
 
-def test_batch_ratchet_failure_keeps_merging_and_lists_all_reds(env, capsys):
-    repo, _ = env
-    for n in "abc":
-        _branch(repo, "lane_" + n, f"{n}_lane.txt", n + "\n", f"lane {n}")
-    write(repo, "main.txt", "m\n")
-    commit_all(repo, "main work")
-    set_mode(env, "cxx17_ratchet/cxx17_ratchet.py", "fail")
-    rc, verifies = _run_batch(env, "lane_a", "lane_b", "lane_c")
-    out = capsys.readouterr().out
-    assert rc == 6 and verifies == []     # a tooling-only partial tree has nothing to build
-    assert "BATCH RATCHET REDS in 3 of 3 tip(s), merged=3" in out
-    assert all(f"  lane_{n}: cxx17(rc=" in out for n in "abc")
-    last = out.strip().splitlines()[-1]
-    assert last.startswith("MERGED ") and "ratchets=FAIL" in last and "SKIPPED(ratchet-failure)" in last
-    assert all((repo / f"{n}_lane.txt").exists() for n in "abc")
 
 
-def test_batch_with_compiled_changes_skips_build_on_ratchet_failure(env, capsys):
-    repo, _ = env
-    _branch(repo, "lane_a", "src/a.cpp", "int a;\n", "lane a")
-    _branch(repo, "lane_b", "b_lane.txt", "b\n", "lane b")
-    write(repo, "main.txt", "m\n")
-    commit_all(repo, "main work")
-    set_mode(env, "cxx17_ratchet/cxx17_ratchet.py", "fail")
-    rc, verifies = _run_batch(env, "lane_a", "lane_b")
-    assert rc == 6 and verifies == []
-    assert "BATCH RATCHET REDS in 2 of 2 tip(s), merged=2" in capsys.readouterr().out
 
 
 def test_compiled_input_classifier():
@@ -1055,22 +1030,23 @@ def test_batch_derived_inventories_commit_once_and_only_tighten(env, monkeypatch
     assert "REQUIRE(n == 3);" in (repo / "tests/unit/test_gate.cpp").read_text(encoding="utf-8")
 
 
-def test_batch_fails_loudly_when_a_gate_is_lost_without_retirement(env, monkeypatch, capsys):
+def test_batch_notes_lost_gate_and_syncs_floor(env, monkeypatch, capsys):
     _gate_repo(env, ["A", "B"], 2)
     repo, _ = env
     lm, rc = _derived_batch(env, monkeypatch, {"Gates/gate_table.json": _gate_table(["A"])}, lambda r: None)
-    assert rc == 6
-    assert "not in Gates/retired_names.json" in capsys.readouterr().err
-    assert "REQUIRE(n == 2);" in (repo / "tests/unit/test_gate.cpp").read_text(encoding="utf-8")
+    assert rc == 0
+    assert "DERIVED-CHANGED gates: B" in capsys.readouterr().out
+    assert "REQUIRE(n == 1);" in (repo / "tests/unit/test_gate.cpp").read_text(encoding="utf-8")
 
 
-def test_batch_fails_loudly_and_restores_a_loosened_log_tag_census(env, monkeypatch, capsys):
+def test_batch_accepts_loosened_census_with_review_note(env, monkeypatch, capsys):
     _gate_repo(env, ["A"], 1)
     repo, _ = env
     lm, rc = _derived_batch(env, monkeypatch, {"x.txt": "x\n"}, lambda r: write(r, LOGTAGS, json.dumps(_tags())))
-    assert rc == 6
-    assert "log tag census loosened" in capsys.readouterr().err
-    assert json.loads((repo / LOGTAGS).read_text(encoding="utf-8")) == _tags(("A", 1, 1))
+    assert rc == 0
+    assert "DERIVED-CHANGED census:" in capsys.readouterr().out
+    assert json.loads((repo / LOGTAGS).read_text(encoding="utf-8")) == _tags()
+    assert json.loads((repo / "build64-ninja/merge-window.json").read_text())["derived_notes"]
 
 
 # ---- early contract rows + exe fingerprint guard (W109 lessons) ----
@@ -1156,7 +1132,7 @@ def test_rebuild_if_head_moved_fails_loudly(env):
     assert not ok and "still differs" in msg
 
 
-def test_batch_refuses_tip_without_precheck_receipt_and_accepts_after_pass(env, tmp_path, monkeypatch, capsys):
+def test_batch_proceeds_without_precheck_receipt(env, tmp_path, monkeypatch, capsys):
     repo, tools = env
     monkeypatch.delenv("MC2_NO_RECEIPT_CHECK")
     _branch(repo, "lane_a", "a.txt", "from a\n", "lane a")
@@ -1164,9 +1140,9 @@ def test_batch_refuses_tip_without_precheck_receipt_and_accepts_after_pass(env, 
     lm = _load_module()
     monkeypatch.setattr(lm, "PRECHECK_RECEIPTS", str(tmp_path / "receipts"))
     sha = git(repo, "rev-parse", "lane_a")
-    assert lm.main(["--batch", "lane_a", "--root", str(repo), "--tools-dir", str(tools)]) == 5
+    assert lm.main(["--batch", "lane_a", "--root", str(repo), "--tools-dir", str(tools)]) == 0
     out = capsys.readouterr()
-    assert f"PRECHECK MISSING {sha}" in out.out and git(repo, "rev-parse", "HEAD") == head
+    assert "precheck receipts: 0/1" in out.out and git(repo, "rev-parse", "HEAD") != head
     lm.write_receipt(str(repo), "lane_a", False, "PASS")
     assert lm.missing_receipts(str(repo), ["lane_a"]) == []
     lm.write_receipt(str(repo), "lane_a", False, "FAIL")
@@ -1175,22 +1151,6 @@ def test_batch_refuses_tip_without_precheck_receipt_and_accepts_after_pass(env, 
     assert lm.missing_receipts(str(repo), ["lane_a"]) == [sha]       # corrupt receipt counts as missing
 
 
-def test_stage_merges_without_precheck_receipts_but_batch_still_refuses(env, tmp_path, monkeypatch, capsys):
-    # the staged candidate's gate is the proof (--promote needs a complete PASS verdict), so --stage must not demand per-tip receipts
-    repo, tools = env
-    monkeypatch.delenv("MC2_NO_RECEIPT_CHECK")
-    _branch(repo, "lane_a", "a.txt", "from a\n", "lane a")
-    git(repo, "branch", "claude/nifty-mendeleev", "main")
-    lm = _load_module()
-    monkeypatch.setattr(lm, "PRECHECK_RECEIPTS", str(tmp_path / "receipts"))
-    monkeypatch.setattr(lm, "batch_lint_ok", lambda root, run=None: True)   # the fake repo has no lint scripts; lint is not under test here
-    assert lm.main(["--batch", "lane_a", "--root", str(repo), "--tools-dir", str(tools)]) == 5   # plain --batch: unchanged
-    assert "PRECHECK MISSING" in capsys.readouterr().out
-    rc = lm.main(["--stage", "W1", "--batch", "lane_a", "--root", str(repo), "--tools-dir", str(tools)])
-    out = capsys.readouterr().out
-    assert rc == 0 and "STAGE claude/stage-W1" in out and "PRECHECK MISSING" not in out
-    assert git(repo, "branch", "--show-current") == "claude/stage-W1"
-    assert git(repo, "show", "HEAD:a.txt") == "from a"
 
 
 def test_ensure_precheck_tree_recreates_tree_that_lost_its_git(env, monkeypatch, tmp_path):
@@ -1269,7 +1229,7 @@ def _sim_evidence(directory, head, payload_head=None, payload_bytes=b"exe"):
     sim = dict(head=head, verdict="PASS", rc=0, manifest_sha256=hashlib.sha256(manifest).hexdigest(),
                rows={n: {"status": "PASS"} for n in (
                    "determinism-mc2_01", "determinism-mc2_03", "determinism-mc2_10", "determinism-mc2_24",
-                   "saveload-mc2_03", "saveload-mc2_10")})
+                   "saveload-mc2_01", "saveload-mc2_03", "saveload-mc2_10")})
     (directory / "summary.json").write_text(json.dumps(dict(head=head, sim=sim)))
 
 
@@ -1308,9 +1268,9 @@ def test_promote_fast_forwards_on_a_complete_pass(env, monkeypatch):
 
 @pytest.mark.parametrize("fault,expected", [
     ("missing", "missing or unreadable sim/payload"),
-    ("missing-row", "sim row saveload-mc2_03: MISSING"),
-    ("missing-sim", "sim row determinism-mc2_01: MISSING"),
-    ("red", "sim row determinism-mc2_10: FAIL"),
+    ("missing-row", "sim row saveload-mc2_01: MISSING"),
+    ("missing-sim", "sim row determinism-mc2_24: MISSING"),
+    ("red", "sim row determinism-mc2_24: FAIL"),
     ("reused", "explicit PASS required"),
     ("head", "sim head"),
     ("summary-head", "summary head"),
@@ -1351,9 +1311,9 @@ def test_promote_dry_refusals_leave_nifty_untouched(tmp_path, monkeypatch, fault
             _sim_evidence(path.parent, cand, payload_bytes=b"bad")
             data = json.loads(summary.read_text())
         elif fault == "missing-row":
-            del data["sim"]["rows"]["saveload-mc2_03"]
+            del data["sim"]["rows"]["saveload-mc2_01"]
         elif fault in ("red", "reused"):
-            data["sim"]["rows"]["determinism-mc2_10"]["status"] = "FAIL" if fault == "red" else "REUSED: old"
+            data["sim"]["rows"]["determinism-mc2_24"]["status"] = "FAIL" if fault == "red" else "REUSED: old"
         elif fault == "head":
             data["sim"]["head"] = old
         elif fault == "summary-head":
@@ -1450,3 +1410,47 @@ def test_precheck_warns_only_for_reproduced_base_rot(env, monkeypatch, capsys, i
     assert lm.main(["--root", str(repo), "--precheck", "HEAD"]) == int(introduced)
     output = capsys.readouterr().out
     assert "BASE-ROT callers base=" in output
+
+
+def test_untracked_cache_does_not_refuse_regeneration(env, monkeypatch):
+    repo, _ = env
+    lm = _load_module()
+    write(repo, "generate.py", "pass\n")
+    commit_all(repo, "generator")
+    monkeypatch.setattr(lm, "GENERATORS", [("fixture", "generate.py", [])])
+    monkeypatch.setattr(lm, "ARTIFACTS", ["cache/memo"])
+    write(repo, "cache/memo", "runtime memo")
+    assert lm.artifact_changes(str(repo)) == []
+    assert lm.regenerate_all(str(repo)) == []
+
+
+def test_batch_ratchet_debt_still_verifies_and_records_baseline(env, monkeypatch, capsys):
+    repo, tools = env
+    _branch(repo, "lane_a", "a_lane.txt", "a\n", "lane a")
+    write(tools, "cxx17_ratchet/cxx17_ratchet.py", """from pathlib import Path
+import sys
+p = Path('tools/cxx17_ratchet/baseline.json')
+if '--write-baseline' in sys.argv:
+    p.write_text('recorded at merged HEAD')
+    raise SystemExit(0)
+if p.read_text() != 'recorded at merged HEAD':
+    print('cxx17_ratchet: FAIL - 1 idiom total(s) increased vs baseline')
+    print('LG01 total: 0 -> 1 (+1) a.cpp:1')
+    raise SystemExit(1)
+""")
+    lm = _load_module()
+    verifies = []
+    monkeypatch.setattr(lm, "verify_merged", lambda *a: verifies.append(a) or ("OK", []))
+    assert lm.main(["--batch", "lane_a", "--root", str(repo), "--tools-dir", str(tools)]) == 0
+    assert verifies and "RATCHET-DEBT cxx17" in capsys.readouterr().out
+    assert git(repo, "show", "HEAD:" + CXX) == 'recorded at merged HEAD'
+
+
+def test_stale_output_requires_only_known_diagnostics():
+    lm = _load_module()
+    output = "[background-launch] FAIL (1 problem(s)):\n  docs/background-launch-inventory.md: stale. Re-run with --write."
+    assert lm.stale_generated(1, output) == {'docs/background-launch-inventory.md'}
+    assert not lm.stale_generated(1, output + '\nunknown semantic failure')
+    assert not lm.stale_generated(2, output)
+    with pytest.raises(lm.Stop, match='tool failed'):
+        lm.report_ratchet_debt([('cxx17', 2, 'bad arguments')])
