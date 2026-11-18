@@ -158,7 +158,7 @@ bool aObject::renderTextBridged( aFont& font, const char* text,
 	// lives in the .fnt.  Measure the bitmap font's rendered height, then scale
 	// env->display like the defs UI (x sy).
 	DWORD mw = 0, mh = 0;
-	font.getSize( mw, mh, text );
+	font.getSize( mw, mh, "Ag" );
 	int fs = (int)mh;
 	if ( fs < 1 ) fs = 8;
 	const float fontScale = s_textBridgeActive ? s_textBridgeFontScale : 1.0f;

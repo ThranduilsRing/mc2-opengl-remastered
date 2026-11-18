@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <span>
 #include "doctest.h"
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"
 
 #include "texture_decode.h"
 #include "hud_texture_mips.h"
@@ -147,6 +149,31 @@ TEST_CASE("cursor image: keyed TGA decode clears magenta for RGB and RGBA art") 
         CHECK(decoded->layout == mc2tex::PixelLayout::RGBA8);
         CHECK(decoded->pixels == std::vector<uint8_t>{0,0,0,0, 10,20,30,static_cast<uint8_t>(bits == 24 ? 255 : 128)});
     }
+}
+
+// Trigger: GameOS/gameos/texture_decode.cpp (font coverage upload policy).
+TEST_CASE("texture decode: stock font red coverage remains byte-exact") {
+    const auto install = mc2::gate::str<"MC2_GATE_INSTALL">();
+    if (install.empty()) { MESSAGE("installed corpus unavailable; MC2_GATE_INSTALL unset"); return; }
+    const auto path = std::filesystem::path(install) / "assets/graphics/arial8.bmp";
+    if (!std::filesystem::exists(path)) { MESSAGE("installed stock font unavailable: " << path.string()); return; }
+    Image stock;
+    REQUIRE(stock.loadFromFile(path.string().c_str()));
+    REQUIRE(stock.getFormat() == FORMAT_RGBA8);
+    const auto decoded = mc2tex::decodeFile(path.string().c_str(), gos_Texture_Alpha, 0);
+    REQUIRE(decoded);
+    REQUIRE(decoded->width == stock.getWidth());
+    REQUIRE(decoded->height == stock.getHeight());
+    size_t changed = 0, clear = 0, ink = 0;
+    for (size_t i = 0; i < decoded->pixels.size(); i += 4) {
+        changed += decoded->pixels[i] != stock.getPixels()[i];
+        clear += stock.getPixels()[i] == 0;
+        ink += stock.getPixels()[i] == 255;
+    }
+    INFO("changed=" << changed << " clear=" << clear << " ink=" << ink);
+    CHECK(changed == 0);
+    CHECK(clear > 0);
+    CHECK(ink > 0);
 }
 
 TEST_CASE("texture decode: Detect resolves from the alpha channel") {

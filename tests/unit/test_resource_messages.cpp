@@ -97,6 +97,15 @@ bool compiles(const char* text, std::initializer_list<ArgKind> signature)
 
 }  // namespace
 
+// Trigger: GameOS/gameos/MC2Strings.cpp and data/defs/text/en_us/.
+TEST_CASE("stock promotion descriptions decode a clean title line")
+{
+    useRealCatalog();
+    const auto text = stockTemplate(27025);
+    CHECK(text.find("LASER SPECIALIST\n") == 0);
+    CHECK(text.find("\\\n") == std::string::npos);
+}
+
 TEST_CASE("stock templates format exactly like the old sprintf")
 {
     useRealCatalog();

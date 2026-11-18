@@ -4,6 +4,22 @@
 
 using mc2::textfit::fitLines;
 
+TEST_CASE("text fit: bounded line widths keep their original scale")
+{
+    CHECK(mc2::textfit::fitWidth(100, 80) == 1.f);
+    CHECK(mc2::textfit::fitWidth(100, 100) == 1.f);
+    CHECK(mc2::textfit::fitWidth(100, 0) == 1.f);
+}
+
+TEST_CASE("text fit: an overwide word fits its region and alignment")
+{
+    const float scale = mc2::textfit::fitWidth(100, 250);
+    CHECK(scale == doctest::Approx(0.4f));
+    CHECK(250 * scale == doctest::Approx(100.f));
+    CHECK((100 - 250 * scale) / 2 == doctest::Approx(0.f));
+    CHECK(mc2::textfit::fitWidth(0, 250) == 0.f);
+}
+
 TEST_CASE("text fit: text that fits is unchanged")
 {
     auto f = fitLines(3, 14, 60);

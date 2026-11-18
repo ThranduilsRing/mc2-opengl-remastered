@@ -14,6 +14,12 @@ struct Fit {
 
 inline constexpr int kMinPitchPercent = 85;
 
+// Broken lines can still contain a single word wider than the region.
+inline float fitWidth(int regionWidth, int widestLine)
+{
+    return std::clamp(static_cast<float>(regionWidth) / std::max(1, widestLine), 0.f, 1.f);
+}
+
 // regionHeight < fontHeight (no usable bounded region), a single line, and any block that already fits: unchanged.
 inline Fit fitLines(int numLines, int fontHeight, int regionHeight)
 {
