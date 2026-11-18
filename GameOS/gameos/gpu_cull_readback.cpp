@@ -58,7 +58,7 @@ ReadbackTier readback_tryConsume() {
     const auto tier=history.consume([](uint32_t slot,RenderCore::VisibilityHistory::Sample& sample) {
         if (forceNotReady || !pending[slot]) return false;
         NativeCullHeader header{}; uint32_t count=0;
-        if (!nativeCullPoll(slot,header,count,sample.bits,sample.ids)) return false;
+        if (!nativeCullPoll(slot,header,count,std::span<uint8_t>{sample.bits},sample.ids)) return false;
         sample.count=count; sample.visibleCount=header.visible;
         sample.dilatedAdmits=header.dilated; sample.frame=header.frame;
         pending[slot]=false;

@@ -3,6 +3,7 @@
 // Pure math plus one consumer counter. With no consumer registered every function here
 // returns the neutral value (jitter 0, mip bias log2(renderScale)), so the image is unchanged.
 #include <atomic>
+#include <cstddef>
 #include <cmath>
 #include <cstdint>
 
@@ -26,7 +27,11 @@ inline std::atomic<uint32_t>& providerPhases() {
 struct Projection {
     float nearZ = 1.0f, farZ = 20000.0f, fovY = 0.6f;
     bool perspective = true, reverseZ = true, infiniteFar = false;
+    uint8_t padding = 0;
 };
+static_assert(sizeof(Projection) == 16 && offsetof(Projection, padding) == 15);
+// Camera publication and the upscaler read need a coherent snapshot, not lock-free
+// progress. Retain atomic load/store semantics; all 16 bytes are explicit members.
 inline std::atomic<Projection>& projection() {
     static std::atomic<Projection> p{Projection{}};
     return p;

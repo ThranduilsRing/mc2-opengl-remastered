@@ -238,11 +238,70 @@ TEST_CASE("impact: presentation variation is a pure function of the event") {
     CHECK(presentationSeed(a) != presentationSeed(b));
 }
 
+namespace {
+using namespace impact::atlas;
+atlas::Layers originalSerialAtlas() {
+    atlas::Layers out;
+    const size_t layerBytes = static_cast<size_t>(kSize) * kSize * 4;
+    out.surface.resize(layerBytes * kTileCount);
+    out.normal.resize(layerBytes * kTileCount);
+    std::vector<float> height(static_cast<size_t>(kSize) * kSize);
+    for (uint32_t layer = 0; layer < kTileCount; ++layer) {
+        const Tile tile = static_cast<Tile>(layer);
+        uint8_t* s = out.surface.data() + layer * layerBytes;
+        uint8_t* nm = out.normal.data() + layer * layerBytes;
+        for (uint32_t y = 0; y < kSize; ++y) {
+            for (uint32_t x = 0; x < kSize; ++x) {
+                const float u = (static_cast<float>(x) + 0.5f) / kSize * 2.0f - 1.0f;
+                const float v = (static_cast<float>(y) + 0.5f) / kSize * 2.0f - 1.0f;
+                const detail::Texel t = detail::paint(tile, u, v);
+                const size_t i = (static_cast<size_t>(y) * kSize + x);
+                height[i] = t.height * t.coverage;
+                s[i * 4 + 0] = detail::u8(t.albedo * 0.5f);
+                s[i * 4 + 1] = detail::u8(t.emissive * t.coverage);
+                s[i * 4 + 2] = detail::u8(t.charAmt);
+                s[i * 4 + 3] = detail::u8(t.coverage);
+            }
+        }
+        // Tangent normal from the height field; the gain is 'how deep' a unit height reads across one tile.
+        const float gain = 6.0f;
+        for (uint32_t y = 0; y < kSize; ++y) {
+            for (uint32_t x = 0; x < kSize; ++x) {
+                auto H = [&](int xx, int yy) {
+                    xx = xx < 0 ? 0 : (xx >= static_cast<int>(kSize) ? static_cast<int>(kSize) - 1 : xx);
+                    yy = yy < 0 ? 0 : (yy >= static_cast<int>(kSize) ? static_cast<int>(kSize) - 1 : yy);
+                    return height[static_cast<size_t>(yy) * kSize + static_cast<size_t>(xx)];
+                };
+                const float dhx = (H(static_cast<int>(x) + 1, static_cast<int>(y)) - H(static_cast<int>(x) - 1, static_cast<int>(y))) * 0.5f * gain;
+                const float dhy = (H(static_cast<int>(x), static_cast<int>(y) + 1) - H(static_cast<int>(x), static_cast<int>(y) - 1)) * 0.5f * gain;
+                float nx = -dhx, ny = -dhy, nz = 1.0f;
+                const float l = std::sqrt(nx * nx + ny * ny + nz * nz);
+                nx /= l; ny /= l;
+                const size_t i = static_cast<size_t>(y) * kSize + x;
+                nm[i * 4 + 0] = detail::u8(nx * 0.5f + 0.5f);
+                nm[i * 4 + 1] = detail::u8(ny * 0.5f + 0.5f);
+                nm[i * 4 + 2] = detail::u8(height[i] * 0.5f + 0.5f);
+                nm[i * 4 + 3] = detail::u8(0.6f);
+            }
+        }
+    }
+    return out;
+}
+
+}
+
 TEST_CASE("impact: the procedural atlas is deterministic, edge-clean and readable") {
     const atlas::Layers a = atlas::generate();
-    const atlas::Layers b = atlas::generate();
+    const atlas::Layers b = originalSerialAtlas();
     CHECK(a.surface == b.surface);
     CHECK(a.normal == b.normal);
+    auto hash = [](const std::vector<uint8_t>& bytes) {
+        uint64_t h = 14695981039346656037ull;
+        for (uint8_t b : bytes) { h ^= b; h *= 1099511628211ull; }
+        return h;
+    };
+    CHECK(hash(a.surface) == hash(b.surface));
+    CHECK(hash(a.normal) == hash(b.normal));
     const uint32_t e = atlas::kSize;
     REQUIRE(a.surface.size() == size_t(e) * e * 4 * kTileCount);
     for (uint32_t layer = 0; layer < kTileCount; ++layer) {
