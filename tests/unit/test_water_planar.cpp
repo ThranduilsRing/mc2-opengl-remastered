@@ -462,6 +462,13 @@ TEST_CASE("water planar: each reflection quality level changes the bake and the 
     CHECK(wp::bakePlan(0).marchSteps == low.marchSteps);   // bakeLevel clamps to 1..3
 }
 
+TEST_CASE("water planar: High draws the live planar reflection, Low and Medium the bake") {
+    CHECK(wp::livePlanar(3));
+    CHECK_FALSE(wp::livePlanar(2));
+    CHECK_FALSE(wp::livePlanar(1));
+    CHECK_FALSE(wp::livePlanar(0));
+}
+
 TEST_CASE("water planar: Off is sky-only, never level 0, and never the full bake") {
     CHECK(wp::effectiveReflectionQuality(0, 2) == 1);
     CHECK(wp::effectiveReflectionQuality(3, 2) == 2);

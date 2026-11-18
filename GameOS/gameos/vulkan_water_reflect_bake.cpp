@@ -136,6 +136,12 @@ float halfFloat(uint16_t v) {
 
 // Bake level for this frame: the options value clamped to 1..3 (Off never reaches the bake).
 static int bakeLevel() { return std::clamp(mc2::options::current().reflectionQuality, 1, 3); }
+bool reflect_live_active() {
+    return gos_GetWaterReflectionQuality() == 2 && mc2::waterplanar::livePlanar(mc2::options::current().reflectionQuality);
+}
+bool reflect_bake_active() {
+    return gos_GetWaterReflectionQuality() == 2 && !mc2::waterplanar::livePlanar(mc2::options::current().reflectionQuality);
+}
 
 bool prepare_reflect_bake(WaterIsland* s, float water) {
     auto fail = [](std::string_view phase) {
@@ -145,8 +151,8 @@ bool prepare_reflect_bake(WaterIsland* s, float water) {
         return false;
     };
     if (!s->mapHasWater) return true;
-    if (gos_GetWaterReflectionQuality() != 2) {
-        // Off / sky-only: retire the bake (frees its images) and rebind the plain reflection view.
+    if (!reflect_bake_active()) {
+        // Off / sky-only / High (live planar): retire the bake (frees its images) and rebind the plain reflection view.
         if (s->reflectionBake) {
             mc2vk::getOrCreateEngineVulkanContext().retire(std::move(s->reflectionBake));
             for (auto& dirty : s->imageDescriptorsDirty) dirty = true;
@@ -299,8 +305,9 @@ bool prepare_reflect_bake(WaterIsland* s, float water) {
 }
 
 void bind_reflect_bake(WaterIsland* s, uint32_t par, WaterFsParams* params) {
+    if (!reflect_bake_active()) return;   // live planar keeps the divisor the run loop wrote
     params->DEEP_COLOR[3] = 0;
-    if (!s->reflectionBake || gos_GetWaterReflectionQuality() != 2) return;
+    if (!s->reflectionBake) return;
     const auto& b = *static_cast<ReflectBake*>(s->reflectionBake.get());
     if (!b.ready) return;
     params->DEEP_COLOR[3] = -1; // quality 2: camera-independent reflection

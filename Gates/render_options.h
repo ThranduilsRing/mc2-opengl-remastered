@@ -35,7 +35,7 @@ struct RenderOptions {
     int baseQuality = 2;   // 0 Potato, 1 Low, 2 Medium/High; bandwidth/ALU budget
     bool shorelineLegacySuppress = true;    // suppress the legacy shoreline post pass
     int waterReflections = 2; // 0 Off, 1 Sky only, 2 Half-res; spatial, no history
-    int reflectionQuality = 3; // 0 sky only, 1 quarter-res terrain, 2 half-res scene, 3 current full-res scene
+    int reflectionQuality = 3; // 0 sky only, 1 Low and 2 Medium baked reflection, 3 High live full-res planar
     int waterDetail = 1; // 0 cheap fallback, 1 current material
     bool cpuPhongRetire          = true;    // gameplay elevation follows the drawn terrain surface
 
