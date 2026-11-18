@@ -1,6 +1,7 @@
 #include "mc2_czstring.h"
 #include "../../code/net/runtime.h"
 #include "load_scope.h"
+#include "mclib/pak_zip.h"
 #include "loading_pump_meter.h"
 #include "../../GuiRuntime/PlayerFrontEnd.h"
 #include <memory>
@@ -797,6 +798,7 @@ namespace {
 
 extern "C" void mission_phase_begin()
 {
+    mc2::vfs::resetPakIo();
     graphics::begin_loading_events();
     mc2::loadpump::meter.mission.begin(SDL_GetTicks64(), "mission_load_start", SmokeMode::state().headless);
     mission_load_pump();
@@ -835,6 +837,7 @@ extern "C" void mission_phase_mark(mc2::czstring name)
 // for the first mark), so the numbers sum to the final mark's total.
 extern "C" void mission_phase_report()
 {
+    mc2::vfs::reportPakIo();
     graphics::end_loading_events();
     if (g_sdl_window)
         graphics::apply_os_cursor_policy("mission_ready", !g_focus_lost);

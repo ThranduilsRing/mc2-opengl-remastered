@@ -16,6 +16,7 @@
 // Include files
 #ifndef FILE_H
 #include"file.h"
+#include "pak_zip.h"
 #endif
 #include <algorithm>
 
@@ -112,12 +113,12 @@ long fileExists (mc2::czstring fName, long destination_mask)
 	fst_normalize_loose_key_inplace(normName);
 
 	// The same resolution as File::open (mclib/vfs.h): 1 = a mod or loose file, 2 = an FST member.
-	const mc2::vfs::OpenedFile opened = mc2::vfs::openRead(normName);
+	const mc2::vfs::OpenedFile opened = mc2::vfs::openRead(normName, nullptr, true);
 	if (opened.fd != -1) {
 		_close(opened.fd);
 		return 1 & destination_mask;
 	}
-	if (opened.fst)
+	if (opened.fst || opened.layer == "pak")
 		return 2 & destination_mask;
 	// A directory (or anything else that stats but does not open as a file) still "exists" for the probe.
 	struct _stat st;
@@ -266,13 +267,22 @@ long File::open (mc2::czstring fName, FileMode _mode, long numChild, bool doNotL
 		//----------------------------------------------------------------
 		//-- The merged VFS index resolves mod > loose > size-stripped loose > FST (mclib/vfs.h).
 		//-- Pass the original fName as req so the level-2 trace shows the caller's casing.
-		const mc2::vfs::OpenedFile opened = mc2::vfs::openRead(m_fileName.c_str(), fName);
+		mc2::vfs::OpenedFile opened = mc2::vfs::openRead(m_fileName.c_str(), fName);
 		if (opened.found())
 			++g_resolveOpens;
 		// Always assign: close() leaves CLOSED_HANDLE_VALUE behind, and a miss must read as INVALID_HANDLE_VALUE (the old _open() result),
 		// not as that stale value (a reopened File used to take the 'loose file opened' branch with no descriptor).
 		handle = opened.fd != -1 ? opened.fd : INVALID_HANDLE_VALUE;
 		const std::string looseOwner = opened.owner;
+		if (opened.pakBytes) {
+			length = physicalLength = static_cast<unsigned long>(opened.pakBytes->size());
+			m_ownedImage = std::move(*opened.pakBytes);
+			if (m_ownedImage.empty()) m_ownedImage.resize(1);
+			fileImage = m_writableImage = m_ownedImage.data();
+			inRAM = TRUE; logicalPosition = 0;
+			crashbundle_content_image(m_fileName.c_str(), m_ownedImage.data(), length);
+			return NO_ERR;
+		}
 
 		if (handle == INVALID_HANDLE_VALUE)
 		{
@@ -395,7 +405,12 @@ long File::open (mc2::czstring fName, FileMode _mode, long numChild, bool doNotL
 			fileImage = m_writableImage = m_ownedImage.data();
 			if (fileImage)
 			{
-				fastFile->readFast(fastFileHandle,m_ownedImage.data(),fileSize());
+				const auto ioBegin = mc2::vfs::ioNow();
+				++mc2::vfs::pakIo.fstOpens;
+				mc2::vfs::pakIo.fstIn += fastFile->lzSizeFast(fastFileHandle);
+				const auto ioRead = fastFile->readFast(fastFileHandle,m_ownedImage.data(),fileSize());
+				mc2::vfs::pakIo.fstOut += std::max<long>(ioRead, 0);
+				mc2::vfs::pakIo.fstNs += mc2::vfs::ioNow() - ioBegin;
 				crashbundle_content_image(m_fileName.c_str(), m_ownedImage.data(), fileSize());
 
 				physicalLength = getLength();

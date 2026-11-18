@@ -8,6 +8,7 @@ add_executable(editor_objective_reader_tests EXCLUDE_FROM_ALL
     "${CMAKE_SOURCE_DIR}/mclib/file.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/vfs.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/vfs_index.cpp"
+    "${CMAKE_SOURCE_DIR}/mclib/pak_zip.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/inifile.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/inifile_read.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/inifile_arrays.cpp"
@@ -24,4 +25,4 @@ target_include_directories(editor_objective_reader_tests PRIVATE
     "${CMAKE_SOURCE_DIR}/mclib" "${CMAKE_SOURCE_DIR}/code"
     "${CMAKE_SOURCE_DIR}/GameOS" "${CMAKE_SOURCE_DIR}/GameOS/include"
     "${CMAKE_SOURCE_DIR}/GameOS/gameos" "${CMAKE_SOURCE_DIR}/3rdparty/include")
-target_link_libraries(editor_objective_reader_tests PRIVATE editor_document mc2_gate ZLIB::ZLIB)
+target_link_libraries(editor_objective_reader_tests PRIVATE editor_document mc2_gate ZLIB::ZLIB basisu_transcoder)

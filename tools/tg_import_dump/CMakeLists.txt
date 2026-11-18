@@ -64,6 +64,7 @@ add_executable(tg_import_dump
     ${MC2_ROOT}/mclib/file.cpp
     ${MC2_ROOT}/mclib/vfs.cpp
     ${MC2_ROOT}/mclib/vfs_index.cpp
+    ${MC2_ROOT}/mclib/pak_zip.cpp
     ${MC2_ROOT}/mclib/fastfile.cpp
     ${MC2_ROOT}/mclib/ffile.cpp
     ${MC2_ROOT}/mclib/packet.cpp
@@ -110,5 +111,8 @@ target_include_directories(tg_import_dump PRIVATE
 )
 
 # assimp::assimp = importer; zlibstatic = the one zlib (FastFile + assimp share it).
-target_link_libraries(tg_import_dump PRIVATE assimp::assimp zlibstatic)
+if(NOT TARGET basisu_transcoder)
+    add_subdirectory("${MC2_ROOT}/3rdparty/basisu" "${CMAKE_BINARY_DIR}/basisu")
+endif()
+target_link_libraries(tg_import_dump PRIVATE assimp::assimp zlibstatic basisu_transcoder)
 target_compile_features(tg_import_dump PRIVATE cxx_std_20)

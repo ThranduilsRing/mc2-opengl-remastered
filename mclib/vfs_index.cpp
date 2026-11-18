@@ -34,6 +34,7 @@
 #include <fstream>
 #include <span>
 #include "vfs_internal.h"
+#include "pak_zip.h"
 
 // ===========================================================================
 // mc2::vfs -- mount table + ONE merged index (see vfs.h).
@@ -244,6 +245,58 @@ void buildLocked()
 			chain[i].source.authorityRank = static_cast<unsigned>(i);
 		}
 	}
+	// A representation replaces its source at that archive's rank. In particular a matching
+	// later source must never jump over an earlier FST that has since gained the same key.
+	std::error_code pakEc;
+	if (std::filesystem::is_regular_file("paks/stock.mc2pak", pakEc)) {
+		auto pak = std::make_shared<PakZip>("paks/stock.mc2pak");
+		if (pak->valid()) {
+			std::map<std::string, bool> eligible;
+			for (const auto& src : pak->sources()) {
+				bool matches = true;
+				for (long a = 0; fastFiles && a < numFastFiles; ++a) {
+					auto* ff = fastFiles[a];
+					if (!ff || key(std::filesystem::path(ff->getFileName()).filename().string()) != src.name) continue;
+					std::ifstream in(ff->getFileName(), std::ios::binary); // path-audit: loose-only (root FST container TOC hash)
+					const auto len = uint64_t{8} + static_cast<uint64_t>(ff->getNumFiles()) * 266;
+					std::vector<uint8_t> toc(static_cast<size_t>(len));
+					in.read(reinterpret_cast<char*>(toc.data()), static_cast<std::streamsize>(len));
+					const auto hash = std::format("{:016x}", mc2::content::fastHash(toc));
+					matches = matches && in.good() && static_cast<uint64_t>(ff->fileSize()) == src.size && src.tocHash == hash;
+				}
+				eligible[src.name] = matches;
+				if (!matches) {
+					size_t skipped = 0;
+					for (const auto& [k, e] : pak->entries()) if (e.source == src.name) ++skipped;
+					mc2::fmt::print_out("[PAK] source={} state=modified skipped={}\n", src.name, skipped);
+				}
+			}
+			size_t count = 0;
+			for (const auto& [k, pe] : pak->entries()) {
+				if (k == "mc2pak.json" || !eligible[pe.source]) continue;
+				auto& chain = ix.entries[k];
+				auto pos = chain.end();
+				bool registered = false;
+				for (long a = 0; fastFiles && a < numFastFiles; ++a)
+					if (fastFiles[a] && key(std::filesystem::path(fastFiles[a]->getFileName()).filename().string()) == pe.source) registered = true;
+				for (auto it = chain.begin(); it != chain.end(); ++it) {
+					if (it->provider != Provider::Fst) continue;
+					if (!registered || key(std::filesystem::path(it->mountName.substr(4)).filename().string()) == pe.source) { pos = it; break; }
+				}
+				// Absent sources are below every currently registered FST: absence cannot promote a representation.
+				if (!registered) pos = chain.end();
+				Entry e; e.key = k; e.provider = Provider::Pak; e.mountName = "pak";
+				e.name = k.substr(k.find_last_of('/') + 1); e.pak = pak;
+				chain.insert(pos, std::move(e)); ++count;
+			}
+			for (auto& [k, chain] : ix.entries) for (size_t i = 0; i < chain.size(); ++i) {
+				chain[i].source.authorityRank = static_cast<unsigned>(i);
+				chain[i].shadowed = static_cast<unsigned>(chain.size() - i - 1);
+			}
+			++mounts;
+			mc2::fmt::print_out("[VFS] mount pak name=paks/stock.mc2pak files={} eligible={}\n", pak->entries().size() - 1, count);
+		}
+	}
 	ix.st.entries = ix.entries.size();
 	ix.st.mounts = mounts;
 	ix.st.bytes = estimateBytes(ix);
@@ -260,7 +313,7 @@ void buildLocked()
 
 const char* providerName(Provider p)
 {
-	switch (p) { case Provider::Mod: return "mod"; case Provider::Loose: return "loose"; default: return "fst"; }
+	switch (p) { case Provider::Mod: return "mod"; case Provider::Loose: return "loose"; case Provider::Pak: return "pak"; default: return "fst"; }
 }
 
 std::string key(std::string_view path)
@@ -328,12 +381,15 @@ std::vector<Entry> candidates(std::string_view logicalKey)
 					a.key = k;
 					a.viaStripAlias = true;
 					size_t pos = 0;
-					while (pos < out.size() && out[pos].provider != Provider::Fst) ++pos;
+					while (pos < out.size() && out[pos].provider != Provider::Fst && out[pos].provider != Provider::Pak) ++pos;
 					out.insert(out.begin() + static_cast<std::ptrdiff_t>(pos), std::move(a));
 					break;
 				}
 		}
 	}
+	out.erase(std::remove_if(out.begin(), out.end(), [](const Entry& e) {
+		return e.provider == Provider::Pak && !e.pak->find(e.key);
+	}), out.end());
 	for (size_t i = 0; i < out.size(); ++i) {
 		out[i].shadowed = static_cast<unsigned>(out.size() - 1 - i);
 		out[i].source.authorityRank = static_cast<unsigned>(i);
@@ -372,10 +428,18 @@ uint64_t contentDigest(std::string_view path, bool verify)
 	bool fst = false;
 	std::string archive;
 	if (const auto e = resolve(k, [](const Entry& candidate) {
-		if (candidate.provider == Provider::Fst) return true;
+		if (candidate.provider == Provider::Fst || candidate.provider == Provider::Pak) return true;
 		std::error_code ec;
 		return std::filesystem::is_regular_file(candidate.physicalPath, ec) && std::ifstream(candidate.physicalPath, std::ios::binary).is_open(); // path-audit: loose-only; probe the normalized ladder candidate's physical file.
 	})) {
+		if (e->provider == Provider::Pak) {
+			// Hash the actual served bytes, including fallback after a corrupt pak entry.
+			File input;
+			if (input.open(std::string(path).c_str()) != NO_ERR) return 0;
+			std::vector<uint8_t> bytes(input.fileSize());
+			if (input.read(bytes.data(), static_cast<long>(bytes.size())) != static_cast<long>(bytes.size())) return 0;
+			return mc2::content::fastHash(bytes);
+		}
 		if (e->provider == Provider::Fst) {
 			fst = true;
 			archive = e->mountName.substr(4);
@@ -457,6 +521,7 @@ std::optional<Entry> resolve(std::string_view logicalKey, bool (*readable)(const
 	for (Entry& e : candidates(logicalKey)) {
 		bool ok = true;
 		if (readable) ok = readable(e);
+		else if (e.provider == Provider::Pak) ok = e.pak->find(e.key) != nullptr;
 		else if (e.provider != Provider::Fst) {
 			FILE* fp = e.physicalPath.empty() ? nullptr : fopen(e.physicalPath.c_str(), "rb"); // path-audit: loose-only; ladder probes its normalized candidate's physical file.
 			ok = fp != nullptr;
@@ -467,7 +532,7 @@ std::optional<Entry> resolve(std::string_view logicalKey, bool (*readable)(const
 	return std::nullopt;
 }
 
-OpenedFile openRead(const char* path, const char* req)
+OpenedFile openRead(const char* path, const char* req, bool probeOnly)
 {
 	OpenedFile r;
 	if (!path || !path[0]) return r;
@@ -492,6 +557,12 @@ OpenedFile openRead(const char* path, const char* req)
 		const std::vector<Entry> chain = candidates(path);
 		for (size_t i = 0; i < chain.size() && !done; ++i) {
 			const Entry& e = chain[i];
+			if (e.provider == Provider::Pak) {
+				if (probeOnly && e.pak->find(k)) { r.layer = r.owner = "pak"; done = true; continue; }
+				if (const auto* pe = e.pak->find(k)) r.pakBytes = e.pak->read(*pe);
+				if (r.pakBytes) { r.layer = r.owner = "pak"; done = true; }
+				continue;
+			}
 			if (e.provider == Provider::Fst) {
 				long member = -1;
 				if (FastFile* ff = FastFileFind(path, member)) {
