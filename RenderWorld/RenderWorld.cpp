@@ -427,9 +427,11 @@ void RunMechObjectIdSelfTest() {
     // Exercise the real table at the old overlap and the last valid prop slot.
     for (uint32_t propIndex : {65535u, 65536u, kMechHandleBase - 1u}) {
         RenderWorld::RenderObjectRecord saved;
+        uint32_t savedEnd;
         {
             std::lock_guard<std::mutex> lk(s_objectRecordsMutex);
             saved = s_objectRecords[propIndex];
+            savedEnd = s_staticPropRecordEnd;   // populateRecord raises it; the synthetic prop must not leave it at 0x40000
         }
         const auto prop = RenderWorld::detail::staticPropHandle(propIndex);
         populateRecord(prop.index(), 1u, propIndex);
@@ -440,6 +442,7 @@ void RunMechObjectIdSelfTest() {
                 && s_objectRecords[idx].kind == RenderWorld::RenderObjectKind::Mech
                 && s_objectRecords[idx].gameObjectId == desc.gameObjectId;
             s_objectRecords[propIndex] = saved;
+            s_staticPropRecordEnd = savedEnd;
         }
         if (!ok || RenderWorld::detail::staticPropHandle(kMechHandleBase).isValid()) {
             MC2_DIAGFE(stderr, "[MECH_OBJECT_ID_SELFTEST v1] result=FAIL step=boundary index=%u\n", propIndex);
