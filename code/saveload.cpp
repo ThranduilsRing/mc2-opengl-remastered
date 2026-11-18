@@ -26,6 +26,7 @@
 #include "mission_load_frame.h"
 #include "mc2_dialog.h"
 #include "../GameAdapters/MechRenderAdapter.h"
+#include "../GameOS/gameos/gpu_memory_report.h"
 extern float MaxExtractUnitDistance;
 // Old readers must reject extended warrior packets before reading their native prefix.
 static constexpr char orderSaveVersion[] = "MC2SAVE.WQT2";  // v1 stamp; v2 saves write mc2::save::saveStampV2
@@ -647,6 +648,10 @@ void Mission::loadDestroyAndRestore() {
 	GameAdapters::StaticProp::beginMissionEarly();
 	GpuMechBatcher::instance().onMapLoad();
 	GameAdapters::Mech::beginMission();
+
+	// The old map retired in this open frame is never drawn again; release it before restore allocates.
+	mc2::gpumem::log("reload_retire_begin");
+	mc2::gpumem::drainRetired("mission_reload");
 
 	loadProgress = 1.0f;
 }

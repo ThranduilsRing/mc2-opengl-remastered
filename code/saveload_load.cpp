@@ -21,6 +21,7 @@
 #include "../GameAdapters/VegetationAdapter.h"
 #include "../GameOS/gameos/visual_tuning_profile.h"
 #include "../GameOS/gameos/terrain_material_lib.h"
+#include "../GameOS/gameos/gpu_memory_report.h"
 #include <new>
 
 static void applySaveSections(std::string_view fileName, const mc2::save::SectionContainer& sections, mc2::sim::TacticalOrderQueue& orderQueue);
@@ -819,6 +820,7 @@ void Mission::loadActivateAndFinalize() {
 
 	eye->primeActiveLightsForPrewarm();
 	prewarmStaticPropLightBakes(*ObjectManager, eye);
+	ObjectManager->buildStaticShadowCasterSet(); // quickload cleared the static caster set in onMapLoad; rebuild it as mission_init_load does
 	GameAdapters::Vegetation::missionLoaded(land, GameMap);
 	// Quickload resumes without Mission::start, which normally arms input and HUD layout.
 	MissionInterfaceManager::armHoverTarget();
@@ -828,6 +830,7 @@ void Mission::loadActivateAndFinalize() {
 	if (missionInterface) missionInterface->getControlGui()->prepareHudFrame();
 	mc2::textures::prewarmCpuTextures();
 	mc2PrewarmMissionPipelines();
+	mc2::gpumem::log("reload_restore_complete");
 	{
 		static const bool s_mechRestoreTrace = false;
 		if (s_mechRestoreTrace)
