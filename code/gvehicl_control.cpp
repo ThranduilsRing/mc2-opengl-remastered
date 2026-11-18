@@ -81,7 +81,10 @@ void GroundVehicle::createVehiclePilot (void)
 	if (GameMap->getDeepWater(cellR, cellC) || GameMap->getShallowWater(cellR, cellC))
 		return;
 
-	vehiclePilot->init(true, objType);
+	{
+		ZoneScopedN("VehiclePilot.InitType");
+		vehiclePilot->init(true, objType);
+	}
 
 	if (ObjectTypeManager::objectFile->seekPacket(VEHICLEPILOT_ID) == NO_ERR) 
 	{
@@ -89,6 +92,7 @@ void GroundVehicle::createVehiclePilot (void)
 		long result = profileFile.open(ObjectTypeManager::objectFile,ObjectTypeManager::objectFile->getPacketSize());
 		if (result == NO_ERR) 
 		{
+			ZoneScopedN("VehiclePilot.InitProfile");
 			result = vehiclePilot->init(&profileFile);
 			if (result != NO_ERR)
 				return;
@@ -127,7 +131,10 @@ void GroundVehicle::createVehiclePilot (void)
 	vehiclePilot->setPosition(position);
 	vehiclePilot->setLastValidPosition(position);
 				
-	ObjectManager->buildMoverLists();					
+	{
+		ZoneScopedN("VehiclePilot.BuildMoverLists");
+		ObjectManager->buildMoverLists();
+	}
 
 	//---------------------------------------------------------------
 	// We need to override the TacOrder of the pilot so that the
@@ -140,9 +147,12 @@ void GroundVehicle::createVehiclePilot (void)
 	
 	pilot->orderMoveToPoint (false, true, ORDER_ORIGIN_PLAYER, location, -1, TACORDER_PARAM_RUN);
 
-	vehiclePilot->getAppearance()->resetPaintScheme(0x00ffffff,
+	{
+		ZoneScopedN("VehiclePilot.Paint");
+		vehiclePilot->getAppearance()->resetPaintScheme(0x00ffffff,
 													0x00ffffff,
 													0x00ff8000);
+	}
 	vehiclePilot->setTangible(true);
 	ObjectManager->rebuildCollidableList = true;
 }	
