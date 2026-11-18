@@ -13,6 +13,7 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <span>
 #include <vector>
 
 #include "gameos.hpp"
@@ -21,6 +22,9 @@
 namespace mc2tex {
 
 enum class PixelLayout : uint8_t { RGB8, RGBA8 };
+
+// Fill a distinct texture-lock buffer in BGRA order. A missing mirror is transparent black.
+void writeBgraLockPixels(std::span<uint8_t> destination, std::span<const uint8_t> rgba);
 
 struct DecodedTexture {
     bool isSrgb = false;
