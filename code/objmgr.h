@@ -559,6 +559,7 @@ class GameObjectManager {
 		void nearbyMoversInto(const glm::vec3& position, float radius, std::vector<mc2::world::SpatialGrid::Candidate>& out);	// nearbyMovers into caller scratch
 		int moverOrdinal(GameObjectHandle handle);	// index in moverList (the nearbyMovers ordinal), -1 if not a mover
 		std::vector<mc2::world::SpatialGrid::Candidate> nearbyBuildings(const glm::vec3& position, float radius);
+		void nearbyBuildingsInto(const glm::vec3& position, float radius, std::vector<mc2::world::SpatialGrid::Candidate>& out);
 
 		GameObjectPtr getByWatchID (unsigned long watchID) {
 			// OBJMGR-WATCH-POLICY-EXTRACT-1: shared resolve predicate (behavior-identical).

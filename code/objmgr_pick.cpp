@@ -48,6 +48,12 @@ int GameObjectManager::moverOrdinal(GameObjectHandle handle) {
 }
 
 std::vector<mc2::world::SpatialGrid::Candidate> GameObjectManager::nearbyBuildings(const glm::vec3& position, float radius) {
+	std::vector<mc2::world::SpatialGrid::Candidate> result;
+	nearbyBuildingsInto(position, radius, result);
+	return result;
+}
+
+void GameObjectManager::nearbyBuildingsInto(const glm::vec3& position, float radius, std::vector<mc2::world::SpatialGrid::Candidate>& out) {
 	if (buildingGridDirty) {
 		buildingGrid.clear();
 		for (long i = 0; i < numBuildings; ++i) {
@@ -58,7 +64,7 @@ std::vector<mc2::world::SpatialGrid::Candidate> GameObjectManager::nearbyBuildin
 		buildingGrid.finish();
 		buildingGridDirty = false;
 	}
-	return buildingGrid.query(position.x, position.y, radius);
+	buildingGrid.queryInto(position.x, position.y, radius, out);
 }
 
 
