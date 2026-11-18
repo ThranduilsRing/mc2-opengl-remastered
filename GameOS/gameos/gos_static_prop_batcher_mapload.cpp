@@ -12,6 +12,8 @@
 #include "meshoptimizer.h"
 #include "diagnostic_trace.h"
 #include "../../RenderCore/PropLodEvaluation.h"
+#include "prop_mesh_cache.h"
+#include "load_scope.h"
 
 namespace { PropLodEvaluation s_lodEvaluated; }
 
@@ -244,11 +246,43 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
     // preserving authored triangle order. Reuse byte-identical packed vertices:
     // corner UV seams, source vertex IDs/light tags and reversed card normals
     // remain separate, while dense imported meshes keep GPU vertex-cache reuse.
-    const bool laps = mc2_diag::tagRequested("LOAD_LAPS");
+    const bool laps = mc2_diag::tagRequested("LOAD_LAPS") || mc2::gate::get<"MC2_DEBUG_STATE_DUMP">();
+    uint64_t blobKey;
+    {
+        MC2_LOAD_SCOPE("cook.prop.key");
+        blobKey = mc2_prop::cache::key(std::span<const TG_TypeVertex>(typeShape->listOfTypeVertices, typeShape->numTypeVertices),
+            std::span<const TG_TypeTriangle>(typeShape->listOfTypeTriangles, numTris), selfLitTwoSided, typeShape->alphaTestOn);
+    }
+    const size_t firstIndex = s_stagingIbo.size(), firstPacket = s_packets.size();
+    std::optional<mc2_prop::cache::PropMeshBlob> cached;
+    {
+        MC2_LOAD_SCOPE("io.prop.blobRead");
+        if (auto bytes = mc2cache::readEntry(mc2_prop::cache::kDirectory, mc2_prop::cache::kKind, blobKey))
+            cached = mc2_prop::cache::decode(blobKey, *bytes);
+    }
+    if (cached && !mc2_prop::cache::canAppend(*cached, s_stagingVbo.size(), s_stagingIbo.size(), s_packets.size())) cached.reset();
+    uint32_t packetCountForThisType = 0;
+    if (cached) {
+        MC2_LOAD_SCOPE("upload.prop.append");
+        s_stagingVbo.insert(s_stagingVbo.end(), cached->vertices.begin(), cached->vertices.end());
+        s_stagingIbo.insert(s_stagingIbo.end(), cached->indices.begin(), cached->indices.end());
+        for (const auto& p : cached->packets)
+            s_packets.push_back({p.firstIndex + static_cast<uint32_t>(firstIndex), p.indexCount, static_cast<int32_t>(baseVertex),
+                                 p.textureSlot, p.materialFlags, newTypeID});
+        packetCountForThisType = static_cast<uint32_t>(cached->packets.size());
+        s_meshoptTris += cached->triangles;
+        s_meshoptMissesBefore += cached->missesBefore; s_meshoptMissesAfter += cached->missesAfter;
+        ++s_propStagingLaps.blobHits;
+        s_propStagingLaps.blobBytes += cached->vertices.size() + cached->indices.size() * 4;
+    } else {
+    ++s_propStagingLaps.blobMisses;
+    const auto before = s_meshoptMissesBefore, after = s_meshoptMissesAfter;
+    const auto trianglesBefore = s_meshoptTris;
     const auto dedupeStart = laps ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
+    {
+    MC2_LOAD_SCOPE("cook.prop.dedupe");
     auto vertexIndices = mc2_prop::makeVertexIndex(numTris, selfLitTwoSided);
     uint32_t runStart = 0;
-    uint32_t packetCountForThisType = 0;
     while (runStart < numTris) {
         const DWORD runTextureIdx =
             typeShape->listOfTypeTriangles[runStart].localTextureHandle;
@@ -328,12 +362,14 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
 
         runStart = runEnd;
     }
+    }
 
     const auto meshoptStart = laps ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
     if (laps) s_propStagingLaps.dedupeMs += std::chrono::duration<double, std::milli>(meshoptStart - dedupeStart).count();
     // Reorder GPU geometry for the vertex cache / overdraw / fetch. Only this GPU copy changes: triangle and vertex
     // sets are identical, and localVertIdx / aRGBLight travel with each vertex, so sim and hot-colour data are untouched.
     {
+        MC2_LOAD_SCOPE("cook.prop.meshopt");
         const uint32_t typeVertCount = static_cast<uint32_t>(s_stagingVbo.size() / kVertexStride) - baseVertex;
         uint8_t* const vboPtr = s_stagingVbo.data() + static_cast<size_t>(baseVertex) * kVertexStride;
         const uint32_t firstPkt = static_cast<uint32_t>(s_packets.size()) - packetCountForThisType;
@@ -365,11 +401,23 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
         }
     }
 
+    if (laps) s_propStagingLaps.meshoptMs += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - meshoptStart).count();
+    mc2_prop::cache::PropMeshBlob blob;
+    blob.vertices.assign(s_stagingVbo.begin() + static_cast<size_t>(baseVertex) * kVertexStride, s_stagingVbo.end());
+    blob.indices.assign(s_stagingIbo.begin() + firstIndex, s_stagingIbo.end());
+    for (size_t p = firstPacket; p < s_packets.size(); ++p) {
+        const auto& pk = s_packets[p];
+        blob.packets.push_back({pk.firstIndex - static_cast<uint32_t>(firstIndex), pk.indexCount, pk.textureSlot, pk.materialFlags});
+    }
+    blob.triangles = s_meshoptTris - trianglesBefore;
+    blob.missesBefore = s_meshoptMissesBefore - before; blob.missesAfter = s_meshoptMissesAfter - after;
+    auto bytes = mc2_prop::cache::encode(blobKey, blob);
+    if (!bytes.empty()) mc2cache::writeEntry(mc2_prop::cache::kDirectory, mc2_prop::cache::kKind, blobKey, bytes);
+    }
     if (laps) {
         ++s_propStagingLaps.types;
         s_propStagingLaps.tris += numTris;
         s_propStagingLaps.outVerts += s_stagingVbo.size() / kVertexStride - baseVertex;
-        s_propStagingLaps.meshoptMs += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - meshoptStart).count();
     }
     const uint32_t numVerts = typeShape->numTypeVertices;
 

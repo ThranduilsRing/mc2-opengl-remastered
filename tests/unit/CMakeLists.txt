@@ -277,6 +277,8 @@ add_executable(mc2_tests
     test_terrain_surface_asset.cpp
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/terrain_surface_asset.cpp
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/cook_cache.cpp
+    test_prop_mesh_cache.cpp
+    ${MC2_WORKTREE_ROOT}/GameOS/gameos/prop_mesh_cache.cpp
     test_shadow_mask_asset.cpp  # the shadow mask cook: header/payload validation, BC4 block packing, cold/warm/changed/healed cache
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/shadow_mask_asset.cpp
     test_terrain_surface_cook.cpp
