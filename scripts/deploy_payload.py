@@ -806,7 +806,58 @@ def check_hardlink_isolation(items, target):
              "MC2_DEPLOY_ALLOW_SHARED_LINKS=1 to bypass deliberately.")
 
 
+_ASIDES = []  # '<name>.old-<pid>' entries this process renamed aside and could not delete yet
+
+
+def retry_asides():
+    """Delete the asides this process created; one still held is logged and left."""
+    for path in list(_ASIDES):
+        try:
+            os.unlink(path)
+            _ASIDES.remove(path)
+        except FileNotFoundError:
+            _ASIDES.remove(path)
+        except OSError:
+            log(f"WARNING: old link still held, left in place: {path}")
+            _ASIDES.remove(path)
+
+
 def replace_file(src, dst):
+    """Replace a destination; a hardlinked one whose replace is refused is renamed aside, never written through.
+
+    The shared pool inode keeps its bytes: only this install's directory entry is swapped for a private copy.
+    """
+    try:
+        _replace_in_place(src, dst)
+        return
+    except PermissionError as first:
+        try:
+            shared = os.path.isfile(dst) and os.stat(dst).st_nlink > 1
+        except OSError:
+            shared = False
+        if not shared:
+            raise
+        aside = f"{dst}.old-{os.getpid()}"
+        try:
+            os.replace(dst, aside)
+        except OSError as e:
+            raise PermissionError(first.errno, f"{dst} is hardlinked and could not be renamed aside "
+                                  f"(in use by another process, open handle on this path): {e}") from e
+    try:
+        _replace_in_place(src, dst)
+    except OSError:
+        try:
+            os.replace(aside, dst)  # put the old entry back rather than leave the install without the file
+        except OSError:
+            pass
+        raise
+    try:
+        os.unlink(aside)
+    except OSError:
+        _ASIDES.append(aside)  # still held; retried once at the end of deploy()
+
+
+def _replace_in_place(src, dst):
     """Replace without changing attributes on a possibly shared destination inode."""
     try:
         os.replace(src, dst)
@@ -1741,8 +1792,8 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
                 if temporary and os.path.exists(temporary):
                     os.unlink(temporary)
             copy_seconds += time.perf_counter() - copy_started
-        except PermissionError:
-            fail(f"copy refused (file locked?): {dst}\n"
+        except PermissionError as e:
+            fail(f"copy refused (file locked?): {dst} ({e})\n"
                  "  A process is holding this file. Close it and re-run; "
                  "this script never taskkills.", 2)
         d_hash = receipts.digest(dst, force=True, hasher=sha256_file)
@@ -1783,6 +1834,7 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
     else:
         log("PDB check OK: deployed PDB matches source hash")
 
+    retry_asides()
     retire_unowned(target_dir, src_hashes, preserve,
                    deploying_target=deploying_target,
                    own_shaders=any(kind == "shader" and rel.startswith("shaders/vulkan/") and rel.endswith(".spv")
@@ -2428,6 +2480,9 @@ def main():
                     help="lane installs: FAIL instead of syncing data/assets/*.fst files that differ from v0.4 (asset parity)")
     ap.add_argument("--allow-unverified-exe", action="store_true",
                     help="--target game: publish an exe whose sha256 is not the one in the newest PASS gate verdict for HEAD")
+    ap.add_argument("--verdict", metavar="PATH",
+                    help="--target game: gate-verdict.json from a stage/lane tree; accepted only if PASS, its head is this tree's HEAD "
+                         "and its exe sha256 is the exe being deployed (default build64-ninja/gate-verdict.json)")
     ap.add_argument("--allow-stock-trees", action="store_true",
                     help="a failed deploy cook (concrete detail, cliff rock, detail normals) only warns and ships stock data (default: exit non-zero)")
     ap.add_argument("--allow-new-target", action="store_true",
@@ -2548,6 +2603,8 @@ def main():
     with deploy_phase("locks and folder lease", max(120, wait_s + 30)):
         check_locks(target, exe_name, wait_s)
         lease_held = take_folder_lease(target, wait_s)
+    if getattr(args, "verdict", None) and (args.from_payload or getattr(args, "target", None) != "game"):
+        print("WARNING: --verdict is ignored (it applies only to a --target game build deploy)", file=sys.stderr)
     try:
         if args.from_payload:
             head = args.payload_head or subprocess.check_output(['git', '-C', src_root, 'rev-parse', 'HEAD'],
@@ -2659,16 +2716,20 @@ def seed_build_dlls(build_dir, src_root, names=None):
     return copied
 
 
-def verdict_exe_refusal(src_root, exe_src, head):
-    """Why the v0.4 publish must stop: the exe on disk is not the one the gate PASSed for HEAD (verdict artifacts.exe_sha256), else None."""
+def verdict_exe_refusal(src_root, exe_src, head, verdict_path=None):
+    """Why the v0.4 publish must stop: the exe on disk is not the one the gate PASSed for HEAD (verdict artifacts.exe_sha256), else None.
+
+    verdict_path (--verdict) names a gate-verdict.json from another tree; it must satisfy the same PASS/head/exe-sha checks.
+    """
+    path = verdict_path or os.path.join(src_root, "build64-ninja", "gate-verdict.json")
     try:
-        with open(os.path.join(src_root, "build64-ninja", "gate-verdict.json"), encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             v = json.load(f)
         want = (v.get("artifacts") or {}).get("exe_sha256")
     except (OSError, ValueError, AttributeError):
-        return "no readable build64-ninja/gate-verdict.json"
+        return f"no readable gate verdict at {path}"
     if v.get("verdict") != "PASS" or v.get("head") != head:
-        return f"newest gate verdict is {v.get('verdict')} for {str(v.get('head'))[:9]}, not PASS for HEAD {head[:9]}"
+        return f"{'gate verdict ' + path if verdict_path else 'newest gate verdict'} is {v.get('verdict')} for {str(v.get('head'))[:9]}, not PASS for HEAD {head[:9]}"
     have = sha256_file(exe_src) if os.path.isfile(exe_src) else None
     if not want or have != want:
         return f"exe sha256 {str(have)[:12]} is not the gated {str(want)[:12]} (rebuilt after the gate?)"
@@ -2788,7 +2849,8 @@ def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
 
 def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     if getattr(args, "target", None) == "game" and not args.allow_new_target and not getattr(args, "allow_unverified_exe", False):
-        why = verdict_exe_refusal(src_root, os.path.join(build_dir, exe_name), git_head(src_root))
+        why = verdict_exe_refusal(src_root, os.path.join(build_dir, exe_name), git_head(src_root),
+                                  getattr(args, "verdict", None))
         if why:
             fail(f"v0.4 publish refused: {why}. Publish the exe the gate tested, or pass --allow-unverified-exe.")
     seed_build_dlls(build_dir, src_root)
