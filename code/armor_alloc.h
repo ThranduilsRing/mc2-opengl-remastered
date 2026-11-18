@@ -23,7 +23,7 @@ inline Allocation maxPerLocation(const std::array<int, 8>& structure, const Allo
     Allocation a{};
     for (int i = 0; i < 8; ++i) {
         const int legacy = full[i] + (partner(i) >= 0 ? full[partner(i)] : 0);
-        a[i] = std::min(255, std::max(i == 0 ? 9 : 2 * structure[i], legacy));
+        a[i] = std::clamp(legacy, std::min(255, i == 0 ? 9 : 2 * structure[i]), 255);
     }
     return a;
 }
@@ -32,7 +32,7 @@ inline int maxTotal(const Allocation& cap, int maxArmor) { return std::min(total
 inline int available(const Allocation& a, int i, const Allocation& cap, int pool) {
     const int other = partner(i);
     const int room = other < 0 ? cap[i] - a[i] : cap[i] + cap[other] - a[i] - a[other];
-    return std::max(0, std::min({pool - total(a), 255 - a[i], room}));
+    return std::clamp(std::min({pool - total(a), 255 - a[i], room}), 0, 255);
 }
 inline Allocation normalise(Allocation a, const Allocation& base, const Allocation& cap, int pool) {
     for (int i = 0; i < 11; ++i) a[i] = std::clamp(a[i], 0, partner(i) < 0 ? cap[i] : 255);
