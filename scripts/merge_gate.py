@@ -86,24 +86,52 @@ def tier_includes(name, tier):
 
 
 def merge_visuals(scheduled, before_dir=None):
-    """Declared tier-0 views use verified reuse only; never shoot a before set."""
-    before = next(c for n, c, _ in scheduled if n == "capture-after")
-    reference = None
-    if before_dir is None:
-        import capture_reuse
-        reference = next(c for n, c, _ in scheduled if n == "capture-before")
-        try:
-            reused = capture_reuse.available(reference, ROOT, env=dict(os.environ, **gate_env("capture-before")))
-        except (OSError, ValueError):
-            reused = None
-        if reused:
-            before_dir = Path(reference[reference.index("--out") + 1])
-    if before_dir is None:
-        print(f"VISUAL after-only: {before[before.index('--out') + 1]} (no reusable before set)")
-    return [(n, ([str(before_dir) if a == c[c.index('--compare-only') + 1] else a for a in c]
-                 if n == "compare-captures" else c), dict(e, MC2_GATE_TIER="0",
-                     **({"MC2_GATE_CAPTURE_REFERENCE": json.dumps(reference)} if reference and n == "compare-captures" else {})))
-            for n, c, e in scheduled if n == "capture-after" or (n == "compare-captures" and before_dir is not None)]
+    """Declared tier-0 views never shoot a before set: capture-after plus compare-captures against --before-dir (plan() already
+    aimed the compare row at it) or, without one, against automatic reuse. That compare row is only marked here; whether a stored
+    set exists is decided by settle_capture_reference() on the final plan."""
+    mark = {} if before_dir is not None else {"MC2_GATE_CAPTURE_REFERENCE": "1"}
+    return [(n, c, dict(e, MC2_GATE_TIER="0", **(mark if n == "compare-captures" else {})))
+            for n, c, e in scheduled if n in ("capture-after", "compare-captures")]
+
+
+def capture_env(name, overrides, device=None):
+    """The environment capture reuse keys a capture row on. Store, lookup and restore all build it here."""
+    return dict(os.environ, **overrides, **gate_env(name, device))
+
+
+def capture_reference(steps):
+    """(command, env) naming the stored set an automatic tier-0 compare row needs, or None when the plan has no such row.
+    It is the plan's FINAL capture-after row (what execute() stores under) aimed at the published install and the compare row's
+    before folder, so no later plan edit (affected_plan's --env-declare, install_plan) can split the lookup from the store."""
+    after = next(((c, e) for n, c, e in steps if n == "capture-after"), None)
+    compare = next((c for n, c, e in steps if n == "compare-captures" and e.get("MC2_GATE_CAPTURE_REFERENCE")), None)
+    if not after or not compare:
+        return None
+    command = list(after[0])
+    command[command.index("--install") + 1] = PUBLISHED.as_posix()
+    command[command.index("--out") + 1] = compare[compare.index("--compare-only") + 1]
+    return command, capture_env("capture-after", after[1])
+
+
+def settle_capture_reference(steps, restore=False):
+    """Keep the automatic compare row only when its reference set is stored and verifies; otherwise drop it and say after-only.
+    Planning (restore=False) only reads; execution (restore=True) copies the set into the before folder and clears the mark."""
+    if not any(e.get("MC2_GATE_CAPTURE_REFERENCE") for _, _, e in steps):
+        return steps
+    import capture_reuse
+    try:
+        reference = capture_reference(steps)
+        found = reference and (capture_reuse.restore if restore else capture_reuse.available)(reference[0], ROOT, env=reference[1])
+    except (OSError, ValueError):
+        found = None
+    if not found:
+        after = next((c[c.index("--out") + 1] for n, c, _ in steps if n == "capture-after"), "no capture-after row")
+        print(f"VISUAL after-only: {after} (no reusable before set)")
+        return [s for s in steps if not s[2].get("MC2_GATE_CAPTURE_REFERENCE")]
+    if not restore:
+        return steps
+    print(f"[merge_gate] {found}")
+    return [(n, c, {k: v for k, v in e.items() if k != "MC2_GATE_CAPTURE_REFERENCE"}) for n, c, e in steps]
 
 
 #: mod_smoke's closing table row: | mod | mission | result | health | content / budget | note |
@@ -1245,23 +1273,7 @@ def execute_window(steps, head, dry_run=False, keep_going=False, farm_determinis
     """Prove a private candidate. Publishing to v0.4 is a separate step (--publish) that runs after the montage has been viewed.
     on_result(rc) runs before the candidate cleanup, so the durable verdict exists even if cleanup fails or hangs."""
     if not dry_run:
-        restored = []
-        for name, command, env in steps:
-            reference = env.get("MC2_GATE_CAPTURE_REFERENCE")
-            if reference:
-                import capture_reuse
-                try:
-                    note = capture_reuse.restore(json.loads(reference), ROOT,
-                                                 env=dict(os.environ, **gate_env("capture-before")))
-                except (OSError, ValueError):
-                    note = None
-                if not note:
-                    print(f"VISUAL after-only: {command[command.index('--compare-only') + 2]} (no reusable before set)")
-                    continue
-                print(f"[merge_gate] {note}")
-                env = {k: v for k, v in env.items() if k != "MC2_GATE_CAPTURE_REFERENCE"}
-            restored.append((name, command, env))
-        steps = restored
+        steps = settle_capture_reference(steps, restore=True)
     if install is not None:
         if not dry_run:
             swap = any(n.startswith("capture-before") and not e.get("MC2_GATE_SKIP_REASON") for n, _, e in steps)
@@ -1778,10 +1790,11 @@ def log_lease_holders():
 
 
 def child_lease_reports(overrides):
-    """Snapshot only this row's original smoke reports, excluding copied evidence."""
+    """Snapshot only this row's original smoke reports, excluding copied evidence. lease-wait-*.json is what run_smoke leaves
+    when the host lease times out, before it has a run folder or a report."""
     root = overrides.get("MC2_SMOKE_ARTIFACT_ROOT")
     return {p: (p.stat().st_mtime_ns, p.stat().st_size)
-            for p in Path(root).rglob("report.json")} if root else {}
+            for pattern in ("report.json", "lease-wait-*.json") for p in Path(root).rglob(pattern)} if root else {}
 
 
 @contextmanager
@@ -1793,8 +1806,10 @@ def game_batch():
         return
     tag = f"merge-gate-{os.getpid()}"
     started = time.monotonic()
-    pid = host_lease.hold(tag, ttl_s=EXCLUSIVE_TTL_S, timeout_s=1200, exclusive=True)   # the PC fallback takes both lane GPUs
-    TIMINGS["host_lease_wait"] = TIMINGS.get("host_lease_wait", 0.0) + time.monotonic() - started
+    try:
+        pid = host_lease.hold(tag, ttl_s=EXCLUSIVE_TTL_S, timeout_s=1200, exclusive=True)   # the PC fallback takes both lane GPUs
+    finally:   # a hold that times out raises: that wait is lease wait too
+        TIMINGS["host_lease_wait"] = TIMINGS.get("host_lease_wait", 0.0) + time.monotonic() - started
     try:
         yield {host_lease.BATCH_ENV: tag}
     finally:
@@ -1928,7 +1943,7 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
                 reused_capture = None
                 if name == "capture-before":
                     import capture_reuse
-                    reused_capture = capture_reuse.restore(command, ROOT, env=dict(os.environ, **overrides, **gate_env(name, device)))
+                    reused_capture = capture_reuse.restore(command, ROOT, env=capture_env(name, overrides, device))
                 if reused_capture:
                     print(f"[merge_gate] {name}: REUSED: {reused_capture}", flush=True)
                     from types import SimpleNamespace
@@ -1937,10 +1952,15 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
                     # Only stages that need a quiet host hold every slot, and only for that stage.
                     lease_started = time.monotonic()
                     from smoke_lib import host_lease
-                    with game_batch() as batch_env, host_lease.gate_capture_lease(head, name):
-                        waited = time.monotonic() - lease_started
-                        held_started = time.monotonic()
-                        result = runner(command, cwd=ROOT, env=dict(os.environ, **overrides, **batch_env, **gate_env(name, device)))
+                    held_started = None
+                    try:
+                        with game_batch() as batch_env, host_lease.gate_capture_lease(head, name):
+                            waited = time.monotonic() - lease_started
+                            held_started = time.monotonic()
+                            result = runner(command, cwd=ROOT, env=dict(os.environ, **overrides, **batch_env, **gate_env(name, device)))
+                    finally:
+                        if held_started is None:   # the lease was never granted: the whole stage was a wait
+                            waited = time.monotonic() - lease_started
                     held = time.monotonic() - held_started
                     EXCLUSIVE_SECONDS.append(held)
                     print(f"[merge_gate] exclusive hold {name}: waited {waited:.0f}s, held {held:.0f}s", flush=True)
@@ -1948,7 +1968,7 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
                     result = runner(command, cwd=ROOT, env=dict(os.environ, **overrides, **gate_env(name, device)))
                 if name in ("capture-before", "capture-after") and result.returncode == 0 and not reused_capture:
                     import capture_reuse
-                    capture_reuse.store(command, ROOT, env=dict(os.environ, **overrides, **gate_env(name, device)))
+                    capture_reuse.store(command, ROOT, env=capture_env(name, overrides, device))
                 if result.returncode == 0 and name in ('deploy', 'publish-v0.4') and 'scripts/deploy_payload.py' in command:
                     from deploy_payload import verify_published_identity
                     target = (Path(command[command.index('--allow-new-target') - 1])
@@ -2132,7 +2152,7 @@ def main(argv=None):
         ap.error("MC2_IN_GATE is set: nested merge gates are forbidden")
     args = ap.parse_args(argv)
     import quiet_output
-    if quiet_output.wanted(args):
+    if quiet_output.wanted(args) and not args.dry_run:   # the quiet filter keeps a full log on disk; a dry run writes no file
         quiet_output.install_quiet(name="merge_gate")
     args.nightly = args.nightly or args.weekly
     args.full = args.full or args.nightly
@@ -2150,6 +2170,8 @@ def main(argv=None):
         DECLARED_VIEWS = parse_declared_views(args.declared_view)
     except argparse.ArgumentTypeError as exc:
         ap.error(str(exc))
+    if args.dry_run and (args.drop_candidate or args.clean_output):
+        ap.error("--dry-run writes and deletes nothing: it cannot be combined with --drop-candidate or --clean-output")
     if args.drop_candidate:
         drop_candidate()
         return 0
@@ -2276,6 +2298,7 @@ def main(argv=None):
     for name, command, _ in steps:
         if name in MOD_BATTERY_STAGES and window_number:
             command += ['--window', str(window_number)]
+    steps = settle_capture_reference(steps)   # last: the lookup reads the same final capture-after row execution stores under
     if args.expect_head and git("rev-parse", args.expect_head + "^{commit}") != head:
         ap.error("HEAD does not match --expect-head")
     if not args.dry_run:
@@ -2292,8 +2315,10 @@ def main(argv=None):
         print('PLAN preflight (offline inputs, clean game/viewer HEAD, fresh save policy, known failures)')
     for n, c, e in omitted:
         steps.append((n, c, dict(e, MC2_GATE_SKIP_REASON="operator stage filter; partial gate")))
-    log_path = args.log or proof / "gate.log"
-    log_path.parent.mkdir(parents=True, exist_ok=True)
+    # --dry-run writes nothing: no proof folder, no log (a "w" open would truncate a finished run's evidence), no journal, no verdict.
+    log_path = Path(os.devnull) if args.dry_run else args.log or proof / "gate.log"
+    if not args.dry_run:
+        log_path.parent.mkdir(parents=True, exist_ok=True)
     # Acquire before opening the log: a refused duplicate must not truncate it.
     try:
         journal = gate_journal(state_path, head, ROOT / "build64-ninja/mc2.exe", proof, steps, args.resume, args.dry_run)
@@ -2304,7 +2329,7 @@ def main(argv=None):
     try:
         with log_path.open("a" if args.resume else "w", encoding="utf-8") as log:
             with redirect_stdout(Tee(sys.stdout, log)), redirect_stderr(Tee(sys.stderr, log)):
-                print(f"[merge_gate] log: {log_path}", flush=True)
+                print(f"[merge_gate] log: {'none (--dry-run writes no files)' if args.dry_run else log_path}", flush=True)
                 started = window.get("started", time.time())
                 scheduling = dict(farm_determinism=True) if args.farm_determinism else {}
                 execute_gate = execute_window

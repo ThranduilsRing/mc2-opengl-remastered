@@ -505,7 +505,7 @@ def test_gate_proofs_dir_routes_log_and_commands(tmp_path, monkeypatch):
     seen = []
     monkeypatch.setattr(gate, "execute", lambda steps, *a: seen.extend(steps) or 0)
     assert gate.main(["--dry-run", "--nightly", "--base", "head", "--proofs-dir", str(tmp_path)]) == 0
-    assert (tmp_path / "gate.log").is_file()
+    assert not (tmp_path / "gate.log").exists()   # a dry run writes no log; the real route is pinned by the test below
     assert str(tmp_path / "before") in next(c for n, c, _ in seen if n == "capture-before")
 
 
@@ -696,15 +696,25 @@ def test_gate_logs_lease_holder_and_age(monkeypatch, capsys):
 
 def test_gate_log_includes_child_stdout_and_stderr(tmp_path, monkeypatch, capsys):
     import merge_gate as gate
+    from contextlib import nullcontext
+    from smoke_lib import host_lease
     monkeypatch.delenv("MC2_IN_GATE", raising=False)
-    monkeypatch.setattr(gate, "git", lambda *a: "head")
+    monkeypatch.setattr(gate, "ROOT", tmp_path)
+    monkeypatch.setattr(gate, "EROOT", str(tmp_path))
+    monkeypatch.setattr(gate, "git", lambda *a: "" if a[0] == "status" else "head")
     child = [sys.executable, "-c", "import sys; print('child-out'); print('child-err', file=sys.stderr)"]
     monkeypatch.setattr(gate, "plan", lambda *a: [("child", child, {})])
-    execute = gate.execute
-    # main is mocked at the execution boundary: it can only run the synthetic child above.
-    monkeypatch.setattr(gate, "execute", lambda steps, head, dry: execute(steps, head))
-    log = tmp_path / "gate.log"
-    assert gate.main(["--dry-run", "--base", "head", "--log", str(log)]) == 0
+    # A real (non-dry) run, since --dry-run writes no log. main is mocked at the execution boundary: it can only run the
+    # synthetic child above, with no journal, verdict, preflight, signal handler or host lease.
+    for name in ("install_stage_watchdog", "log_lease_holders", "write_verdict"):
+        monkeypatch.setattr(gate, name, lambda *a, **k: None)
+    monkeypatch.setattr(gate, "preflight", lambda *a, **k: 0)
+    monkeypatch.setattr(gate, "gate_journal", lambda *a: nullcontext())
+    monkeypatch.setattr(host_lease, "close_gate_window", lambda: None)
+    monkeypatch.setattr(gate, "execute_window", lambda steps, head, dry, **k: gate.execute(steps, head))
+    log = tmp_path / "proof" / "gate.log"   # --proofs-dir routes the log
+    assert gate.main(["--base", "head", "--install", str(tmp_path / "mc2-installs" / "logtest"),
+                      "--proofs-dir", str(tmp_path / "proof")]) == 0
     for output in (log.read_text(), capsys.readouterr().out):
         assert "child-out" in output and "child-err" in output and "| child | PASS" in output
 

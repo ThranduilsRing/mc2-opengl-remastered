@@ -278,6 +278,31 @@ def test_resume_preserves_original_log(tmp_path, monkeypatch):
     assert log.read_text().startswith('original evidence\n')
 
 
+@pytest.mark.parametrize('extra', [[], ['--full'], ['--nightly'], ['--resume'],
+                                   ['--full', '--declared-view', 'mc2_01_saved_205644']])
+def test_dry_run_main_writes_nothing(tmp_path, monkeypatch, extra):
+    """main() itself, real execute(): --dry-run creates no folder, log, journal or verdict and leaves old evidence alone."""
+    monkeypatch.delenv('MC2_IN_GATE', raising=False)
+    root = tmp_path / 'repo'
+    root.mkdir()
+    proof = tmp_path / 'proof'
+    proof.mkdir()
+    (proof / 'gate.log').write_text('original evidence\n')
+    (proof / 'gate-verdict.json').write_text('{"verdict": "PASS"}')
+    monkeypatch.setattr(gate, 'ROOT', root)
+    monkeypatch.setattr(gate, 'PUBLISHED', tmp_path / 'no-published-install')
+    monkeypatch.setattr(gate, 'git', lambda *a: 'head')
+    monkeypatch.chdir(tmp_path)
+
+    def tree():
+        return {str(p): (p.stat().st_mtime_ns, p.read_bytes()) if p.is_file() else None for p in sorted(tmp_path.rglob('*'))}
+    before = tree()
+    assert gate.main(['--dry-run', '--base', 'head', '--proofs-dir', str(proof), *extra]) == 0
+    assert gate.main(['--dry-run', '--base', 'head', '--proofs-dir', str(tmp_path / 'new-proof'),
+                      '--log', str(tmp_path / 'logs' / 'gate.log'), *extra]) == 0
+    assert tree() == before
+
+
 def test_determinism_retry_preserves_old_output_and_reuses_new_proof(journal, monkeypatch):
     output = journal[0].parent / 'night'
     (output / 'a').mkdir(parents=True)

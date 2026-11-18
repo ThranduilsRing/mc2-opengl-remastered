@@ -58,37 +58,81 @@ def test_round_trip_hits_and_the_restored_set_verifies_in_its_own_place(tmp_path
     assert json.loads((out / "capture_run.json").read_text())["reused_from_identity"]
 
 
-def test_gate_planning_is_read_only_and_execution_restores_previous_after(tmp_path, monkeypatch):
-    import merge_gate as gate
+def _tree(path):
+    return {str(p): (p.read_bytes() if p.is_file() else None) for p in sorted(path.rglob("*"))}
+
+
+def test_previous_after_set_is_found_through_the_real_gate_plan(tmp_path, monkeypatch):
+    """Window N stores capture-after from execute(); window N+1's main() plan must find it. Nothing here builds a
+    capture command by hand: both rows come out of main() -> plan() -> affected_plan() -> install_plan()."""
     import functools
-    import os
-    root, _install, out, cmd = _world(tmp_path)
+    import shutil
+    import types
+    from contextlib import nullcontext
+    import merge_gate as gate
+    from smoke_lib import host_lease
+    root, candidate, _out, _cmd = _world(tmp_path)
+    for pose in ("mc2_01_saved_205644", "mc2_10_saved_204523"):
+        (root / "tests" / (pose + ".json")).write_text("{}")
+    published = tmp_path / "published"
     cache = tmp_path / "cache"
-    _capture(out)
-    monkeypatch.setattr(capture_reuse, "gpu_identity", lambda: "gpuA")
-    assert capture_reuse.store(cmd, root, cache, env=dict(os.environ, MC2_IN_GATE="1",
-                              MC2_GATE_REASON="--declared-view", MC2_GATE_TIER="0",
-                              MC2_SMOKE_ARTIFACT_ROOT=str(tmp_path / "old-window")))
-    before = tmp_path / "before"
-    before.mkdir()
-    (before / "keep.txt").write_text("existing proof")
-    reference = [str(before) if arg == str(out) else arg for arg in cmd]
-    scheduled = [("capture-before", reference, {}), ("capture-after", cmd, {}),
-                 ("compare-captures", ["compare", "--compare-only", str(before), str(out)], {})]
+    monkeypatch.delenv("MC2_IN_GATE", raising=False)
     monkeypatch.setattr(gate, "ROOT", root)
+    monkeypatch.setattr(gate, "CANDIDATE", candidate)
+    monkeypatch.setattr(gate, "PUBLISHED", published)
+    monkeypatch.setattr(gate, "git", lambda *a: "head")
     monkeypatch.setattr(gate, "gate_env", lambda *a: {"MC2_IN_GATE": "1"})
-    monkeypatch.setattr(capture_reuse, "available", functools.partial(capture_reuse.available, cache=cache))
-    monkeypatch.setattr(capture_reuse, "restore", functools.partial(capture_reuse.restore, cache=cache))
-    snapshot = lambda: {str(p): p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()}
-    original = snapshot()
-    steps = gate.merge_visuals(scheduled)
-    assert [n for n, _, _ in steps] == ["capture-after", "compare-captures"]
-    gate.execute_window(steps, "head", dry_run=True)
-    assert snapshot() == original
-    monkeypatch.setattr(gate, "execute_parallel", lambda *a, **k: 0)
-    assert gate.execute_window(steps, "head") == 0
+    monkeypatch.setattr(gate, "check_capture_commit", lambda *a: None)
+    monkeypatch.setattr(gate, "log_lease_holders", lambda: None)
+    monkeypatch.setattr(gate, "game_batch", lambda: nullcontext({}))
+    monkeypatch.setattr(host_lease, "gate_capture_lease", lambda *a: nullcontext())
+    monkeypatch.setattr(capture_reuse, "gpu_identity", lambda: "gpuA")
+    for fn in ("available", "restore", "store"):
+        monkeypatch.setattr(capture_reuse, fn, functools.partial(getattr(capture_reuse, fn), cache=cache))
+    real_execute = gate.execute
+
+    def planned(proof):
+        seen = []
+        monkeypatch.setattr(gate, "execute", lambda steps, *a, **k: seen.extend(steps) or 0)
+        assert gate.main(["--dry-run", "--base", "head", "--declared-view", "mc2_01_saved_205644",
+                          "--proofs-dir", str(proof)]) == 0
+        monkeypatch.setattr(gate, "execute", real_execute)
+        return seen
+
+    # Window N: no stored set yet, so the plan is after-only; its capture-after row runs through the real execute().
+    first = planned(tmp_path / "proofN")
+    assert "compare-captures" not in [n for n, _, _ in first]
+    after = next(s for s in first if s[0] == "capture-after")
+    assert "--env-declare" in after[1]   # the plan edit that split store from lookup before this fix
+
+    def runner(command, cwd, env):
+        _capture(Path(command[command.index("--out") + 1]))
+        return types.SimpleNamespace(returncode=0, stdout="")
+    assert real_execute([after], "head", runner=runner) == 0
+    assert len(list(cache.iterdir())) == 1
+    shutil.copytree(candidate, published)   # the window is published: v0.4 now runs what capture-after ran
+
+    # Window N+1: the same planning path must now keep compare-captures, and a dry run must not write anything.
+    before_plan = _tree(tmp_path)
+    second = planned(tmp_path / "proofN1")
+    assert [n for n, _, _ in second if "capture" in n] == ["capture-after", "compare-captures"]
+    assert _tree(tmp_path) == before_plan
+    compare = next(c for n, c, _ in second if n == "compare-captures")
+    before = Path(compare[compare.index("--compare-only") + 1])
+    assert before == tmp_path / "proofN1" / "before" and not before.exists()
+
+    # Execution restores the set the plan found.
+    monkeypatch.setattr(gate, "stage_published", lambda *a, **k: None)
+    ran = []
+    monkeypatch.setattr(gate, "execute_parallel", lambda steps, *a, **k: ran.extend(steps) or 0)
+    assert gate.execute_window(second, "head", install=candidate) == 0
     assert capture_reuse.verify_artifacts(before) is None
-    assert not (before / "keep.txt").exists()
+    assert "compare-captures" in [n for n, _, _ in ran]
+    assert not any("MC2_GATE_CAPTURE_REFERENCE" in e for _, _, e in ran)
+
+    # A published install that no longer matches the stored run is after-only again.
+    (published / "mc2.exe").write_bytes(b"exe-other")
+    assert "compare-captures" not in [n for n, _, _ in planned(tmp_path / "proofN2")]
 
 
 def test_any_identity_change_is_a_miss(tmp_path):
