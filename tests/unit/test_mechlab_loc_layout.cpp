@@ -8,31 +8,32 @@
 
 using namespace mc2::mechlab_loc;
 
-TEST_CASE("mechlab loc: all six torso and twelve CT items are reachable") {
-    for (int p : {1, 2, 3, 4, 5}) {
-        const int count = p == 1 ? 12 : 6;
-        for (int k = 0; k < count; ++k) {
-            const Rect row = itemRowRect(p, k, count);
-            CHECK(panelRect(p).contains(row.x, row.y));
-            CHECK(row.y + row.h <= panelRect(p).y + panelRect(p).h - kRefusalH);
-            CHECK(row.h >= 10);
-            CHECK(itemRowAt(p, row.cx(), row.cy(), count).value_or(-1) == k);
+TEST_CASE("mechlab loc: record sheet uses the same contained geometry at every resolution") {
+    for (const Canvas cv : {Canvas{1,1,0,0},Canvas{2.4f,1.8f,0,0},Canvas{4.8f,3.6f,0,0}}) {
+        for (int p=0;p<8;++p) {
+            const auto box=panelRect(p);
+            CHECK(box.x >= 217); CHECK(box.x+box.w <= 533);
+            CHECK(box.y >= 150); CHECK(box.y+box.h <= 476);
+            for (int q=p+1;q<8;++q) {
+                const auto other=panelRect(q);
+                CHECK((box.x+box.w<=other.x || other.x+other.w<=box.x || box.y+box.h<=other.y || other.y+other.h<=box.y));
+            }
+            for (bool rear : {false,true}) {
+                if (rear && !torso(p)) continue;
+                for (bool plus : {false,true}) {
+                    const auto hit=stepperRect(p,rear,plus), draw=toScreen(hit,cv);
+                    CHECK(hit.contains(draw.cx()/cv.sx,draw.cy()/cv.sy));
+                    CHECK(box.contains(hit.x,hit.y)); CHECK(box.contains(hit.x+hit.w-.01f,hit.y+hit.h-.01f));
+                }
+            }
+            for (int row=0;row<visibleRows(p);++row) {
+                const auto hit=itemRowRect(p,row,visibleRows(p)),draw=toScreen(hit,cv);
+                CHECK(itemRowAt(p,draw.cx()/cv.sx,draw.cy()/cv.sy,visibleRows(p)) == row);
+                CHECK(hit.y+hit.h<=box.y+box.h);
+            }
         }
     }
 }
-
-TEST_CASE("mechlab loc: panels do not overlap and the last item row clears the refusal line") {
-    for (int a = 0; a < kPanelCount; ++a)
-        for (int b = a + 1; b < kPanelCount; ++b) {
-            const Rect ra = panelRect(a), rb = panelRect(b);
-            CHECK((ra.x + ra.w <= rb.x || rb.x + rb.w <= ra.x || ra.y + ra.h <= rb.y || rb.y + rb.h <= ra.y));
-        }
-    for (int p = 0; p < kPanelCount; ++p) {
-        const Rect last = itemRowRect(p, 11, 12);
-        CHECK(last.y + last.h <= panelRect(p).y + panelRect(p).h - kRefusalH);
-    }
-}
-
 namespace {
 mc2pkg::PackageChassis marauder6x6() {   // six-cell torso / twelve-cell CT fixture retained for capacity coverage
     mc2pkg::PackageChassis c;
@@ -71,27 +72,16 @@ TEST_CASE("mechlab loc: each panel names why it refuses a part") {
     CHECK(reasonText(e, mc2pkg::Mount::None, &c.regions[2], heavy) == "over payload by 3.0 t");
 }
 
-TEST_CASE("mechlab loc: column layout preserves scrolling beyond twelve visible items") {
-    CHECK(maxScroll(12) == 0);
-    CHECK(maxScroll(13) == 1);
-    CHECK(clampScroll(13, 9) == 1);
-    CHECK(clampScroll(13, -3) == 0);
-    CHECK(scrollByWheel(13, 0, 100) == 1);
-    CHECK(scrollByWheel(13, 1, 100) == 1);
-    CHECK(scrollByWheel(13, 1, -100) == 0);
-    CHECK(scrollToReveal(13, 0, 12) == 1);
-    CHECK(scrollToReveal(13, 1, 0) == 0);
-    const int ct = panelOfLocation("CenterTorso").value();
-    for (int scroll : {0, 1}) {
-        for (int row = 0; row < kMaxItemRows; ++row) {
-            const Rect r = itemRowRect(ct, row, kMaxItemRows);
-            CHECK(itemIndexAt(ct, 13, scroll, r.cx(), r.cy()).value() == scroll + row);
-        }
+TEST_CASE("mechlab loc: every record sheet item is reachable by scrolling") {
+    for (int p=0;p<8;++p) for (int item=0;item<20;++item) {
+        const int scroll=scrollToReveal(20,0,item,p);
+        const int row=item-scroll;
+        REQUIRE(row>=0); REQUIRE(row<visibleRows(p));
+        const auto r=itemRowRect(p,row,20);
+        CHECK(itemIndexAt(p,20,scroll,r.cx(),r.cy()) == item);
+        CHECK(scrollByWheel(20,scroll,100,p) <= maxScroll(20,p));
     }
-    const Rect empty = itemRowRect(ct, 3, 3);
-    CHECK(!itemIndexAt(ct, 3, 0, empty.cx(), empty.cy()));
 }
-
 TEST_CASE("mechlab loc: a dropped item selects its placed instance, so Remove targets the moved copy") {
     const mc2pkg::PackageChassis c = marauder6x6();
     std::vector<mc2pkg::Placed> have;   // three copies of one heat sink already sit in the centre torso

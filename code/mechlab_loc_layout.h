@@ -50,32 +50,36 @@ inline const char* panelTitle(int p) {
     return (p >= 0 && p < kPanelCount) ? n[p] : "";
 }
 
-// Dedicated loadout column; the mech owns the unobstructed column to its left.
-inline constexpr float kAreaX = 217, kAreaY = 150, kColW = 156, kRowH = 78, kGap = 4;
+// Record-sheet geometry, shared by drawing and input in legacy canvas coordinates.
+inline constexpr float kAreaX = 217, kAreaY = 150, kColW = 102, kGap = 5;
 inline constexpr int kCellW = 52;
-inline constexpr Rect kPreview{25, 116, 184, 377};
-// Title + mount badges, four normal-font item rows, then a refusal line.
-inline constexpr float kHeaderH = 28, kRowItemH = 12, kRefusalH = 10;
-inline constexpr int kRowsPerColumn = 4;
-inline constexpr int kMaxItemRows = 12;
-
+inline constexpr Rect kPreview{25,116,184,377};
+inline constexpr float kHeaderH = 58, kRowItemH = 11, kRefusalH = 0;
+inline constexpr int kRowsPerColumn = 8, kMaxItemRows = 8;
 inline Rect panelRect(int p) {
-    // Paired locations, then a compact mass/special-slot strip beneath them.
-    static constexpr int col[] = {0, 1, 0, 1, 0, 1, 0, 1};
-    static constexpr int row[] = {0, 0, 1, 1, 2, 2, 3, 3};
-    if (p < 0 || p >= kPanelCount) return {};
-    if (p == kDoll) return {kAreaX, 476, 316, 14};
-    return {kAreaX + col[p] * (kColW + kGap), kAreaY + row[p] * (kRowH + kGap), kColW, kRowH};
+    static constexpr Rect boxes[]{
+        {324,150,102,96}, {324,250,102,150},
+        {217,258,102,118}, {431,258,102,118},
+        {217,150,102,104}, {431,150,102,104},
+        {217,380,102,96}, {431,380,102,96}, {217,476,316,14}};
+    return p >= 0 && p < kPanelCount ? boxes[p] : Rect{};
 }
-inline Rect itemRowRect(int p, int k, int count) {
-    const Rect r = panelRect(p);
-    const int columns = std::max(1, (count + kRowsPerColumn - 1) / kRowsPerColumn);
-    const float width = (r.w - 4) / columns;
-    const float height = (r.h - kHeaderH - kRefusalH) / kRowsPerColumn;
-    return {r.x + 2 + (k / kRowsPerColumn) * width,
-            r.y + kHeaderH + (k % kRowsPerColumn) * height, width, height};
+inline constexpr Rect summaryRect() { return {324,404,102,72}; }
+inline bool torso(int p) { return p >= 1 && p <= 3; }
+inline int visibleRows(int p) { return p == 1 ? 8 : (torso(p) ? 5 : (p == 4 || p == 5 ? 4 : 3)); }
+inline float equipmentY(int p) { return torso(p) ? 68.f : 56.f; }
+inline Rect armorRowRect(int p, bool rear) {
+    const auto r = panelRect(p);
+    return {r.x+3, r.y+12+(rear ? 13.f : 0.f), r.w-6,13};
 }
-// LOCATIONS | CLASSIC switch, above the panels.
+inline Rect stepperRect(int p, bool rear, bool plus) {
+    const auto r = armorRowRect(p,rear);
+    return {r.x+(plus ? 65.f : 35.f),r.y,11,11};
+}
+inline Rect itemRowRect(int p, int k, int) {
+    const auto r = panelRect(p);
+    return {r.x+2,r.y+equipmentY(p)+k*(torso(p) ? 9.f : kRowItemH),r.w-4,torso(p) ? 9.f : kRowItemH};
+}// LOCATIONS | CLASSIC switch, above the panels.
 inline Rect toggleRect() { return {kAreaX, 113, 134, 15}; }
 
 // Panel under a legacy-canvas point. Doll is not a drop target but is hit-testable.
@@ -86,7 +90,7 @@ inline std::optional<int> panelAt(float lx, float ly) {
 }
 // Item row index under a point inside panel p.
 inline std::optional<int> itemRowAt(int p, float lx, float ly, int count) {
-    for (int k = 0; k < count; ++k)
+    for (int k = 0; k < std::min(count, visibleRows(p)); ++k)
         if (itemRowRect(p, k, count).contains(lx, ly)) return k;
     return std::nullopt;
 }
@@ -95,27 +99,27 @@ inline std::optional<int> itemRowAt(int p, float lx, float ly, int count) {
 // `scroll` is the index of the first visible item. Wheel over a panel, or the small arrows that
 // sit on the (empty) left of the mount-badge row, move it; items are addressed by (scroll + row),
 // so drawing and hit-testing cannot disagree.
-inline int maxScroll(int count) { return count > kMaxItemRows ? count - kMaxItemRows : 0; }
-inline int clampScroll(int count, int scroll) {
-    const int m = maxScroll(count);
+inline int maxScroll(int count, int p = 1) { return std::max(0, count - visibleRows(p)); }
+inline int clampScroll(int count, int scroll, int p = 1) {
+    const int m = maxScroll(count,p);
     return scroll < 0 ? 0 : (scroll > m ? m : scroll);
 }
-inline int scrollByWheel(int count, int scroll, long wheelDelta) {   // engine wheel: positive = back = later items
-    return clampScroll(count, scroll + (wheelDelta > 0 ? 1 : (wheelDelta < 0 ? -1 : 0)));
+inline int scrollByWheel(int count, int scroll, long wheelDelta, int p = 1) {   // engine wheel: positive = back = later items
+    return clampScroll(count, scroll + (wheelDelta > 0 ? 1 : (wheelDelta < 0 ? -1 : 0)),p);
 }
-inline int scrollToReveal(int count, int scroll, int index) {
-    scroll = std::clamp(scroll, index - kMaxItemRows + 1, index);
-    return clampScroll(count, scroll);
+inline int scrollToReveal(int count, int scroll, int index, int p = 1) {
+    scroll = std::clamp(scroll, index - visibleRows(p) + 1, index);
+    return clampScroll(count, scroll,p);
 }
 inline Rect scrollArrowRect(int p, bool down) {
     const Rect r = panelRect(p);
-    return {r.x + 3 + (down ? 12.0f : 0.0f), r.y + 15, 10, 11};
+    return {r.x + r.w - (down ? 12.f : 24.f), r.y + equipmentY(p)-10,10,9};
 }
 // Item index (not row) under a point inside panel p, honouring the scroll; nullopt when no item is there.
 inline std::optional<int> itemIndexAt(int p, int count, int scroll, float lx, float ly) {
-    const auto row = itemRowAt(p, lx, ly, std::min(count, kMaxItemRows));
+    const auto row = itemRowAt(p, lx, ly, std::min(count, visibleRows(p)));
     if (!row) return std::nullopt;
-    const int i = clampScroll(count, scroll) + *row;
+    const int i = clampScroll(count, scroll,p) + *row;
     return i < count ? std::optional<int>(i) : std::nullopt;
 }
 // The highlighted item is the placed INSTANCE (its cell), not every copy of the same component.

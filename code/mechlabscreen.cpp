@@ -1,4 +1,4 @@
-﻿#include "Gates/preferences_legacy.h"
+#include "Gates/preferences_legacy.h"
 #define MECHLABSCREEN_CPP
 /*************************************************************************************************\
 MechLabScreen.cpp			: Implementation of the MechLabScreen component.
@@ -672,7 +672,7 @@ void MechLabScreen::update()
 	if ( !MPlayer || !ChatWindow::instance()->pointInside(userInput->getMouseX(), userInput->getMouseY()) )
 		LogisticsScreen::update();
 
-	if (!previewOwnsInput && !variantList.pointInside(userInput->getMouseX(), userInput->getMouseY()) && !pDragComponent && isPackageChassis(pVariant) && userInput->isLeftClick() &&
+	if (!previewOwnsInput && !variantList.pointInside(userInput->getMouseX(), userInput->getMouseY()) && !pDragComponent && pVariant && userInput->isLeftClick() &&
 		mc2::mechlab_loc::toggleRect().contains(static_cast<float>(userInput->getMouseX()), static_cast<float>(userInput->getMouseY())))
 		setLocationView(userInput->getMouseX() < mc2::mechlab_loc::toggleRect().cx());
 	if (!previewOwnsInput && (pDragComponent || !variantList.pointInside(userInput->getMouseX(), userInput->getMouseY())))
@@ -2234,7 +2234,9 @@ bool MechLabScreen::canRemoveComponent( LogisticsComponent* pComp )
 // are the pure code/mechlab_loc_layout.h; every rect below is drawn AND hit-tested from it.
 //*************************************************************************************************
 namespace {
-struct LocItem { LogisticsComponent* comp; long x, y; };
+struct LocItem { LogisticsComponent* comp; long x, y; const char* label = nullptr; };
+int armorHeld = -1;
+float armorHoldTime = 0.f, armorRepeatTime = 0.f;
 int s_locHover = -1;
 bool s_locLegal[ml::kPanelCount] = {};
 std::string s_locReason[ml::kPanelCount];
@@ -2243,6 +2245,7 @@ ml::LocViewState s_locView;   // per-panel scroll offsets (first visible item) +
 void locResetViewState()   // lab entry/exit and variant swap: no stale scroll, hover, refusal text or icon key
 {
 	s_locView.reset();
+	armorHeld = -1;
 	s_locHover = -1;
 	for ( bool& b : s_locLegal ) b = false;
 	for ( std::string& r : s_locReason ) r.clear();
@@ -2287,23 +2290,31 @@ void gatherPlaced(LogisticsVariant* v, std::vector<mc2pkg::Placed>& placed, std:
 void gatherPanelItems(LogisticsVariant* v, int panel, std::vector<LocItem>& out)
 {
 	out.clear();
-	const mc2pkg::PackageChassis* pc = locPackage(v);
-	const int ri = regionOfPanel(pc, panel).value_or(-1);
-	if (ri < 0) return;
+	const auto* pc = locPackage(v);
+	const int ri = regionOfPanel(pc,panel).value_or(-1);
 	std::vector<mc2pkg::Placed> placed;
 	std::vector<LogisticsComponent*> comps;
-	gatherPlaced(v, placed, comps);
-	for (size_t i = 0; i < placed.size(); ++i)
-		if (placed[i].x >= 0 && pc->regions[ri].contains(placed[i].x, placed[i].y))
-			out.push_back({comps[i], placed[i].x, placed[i].y});
-}
-void refreshLocationVerdicts(LogisticsVariant* v, LogisticsComponent* cand)
+	gatherPlaced(v,placed,comps);
+	const auto record = v->locationRecord();
+	int used = 0;
+	for (size_t i=0; i<placed.size(); ++i) {
+		const bool here = pc ? ri >= 0 && placed[i].x >= 0 && pc->regions[ri].contains(placed[i].x,placed[i].y)
+			: i < record.items.size() && record.items[i].location == panel;
+		if (here) { out.push_back({comps[i],placed[i].x,placed[i].y}); used += placed[i].w * placed[i].h; }
+	}
+	static constexpr const char* fixed[8][2] = {{"Cockpit","Life support"},{"Engine","Gyro"},{nullptr,nullptr},{nullptr,nullptr},
+		{"Shoulder","Arm actuator"},{"Shoulder","Arm actuator"},{"Hip","Leg actuator"},{"Hip","Leg actuator"}};
+	for (const char* name : fixed[panel]) if (name) out.push_back({nullptr,-1,-1,name});
+	if (ri >= 0) for (int empty=used; empty<pc->regions[ri].w*pc->regions[ri].h; ++empty)
+		out.push_back({nullptr,-1,-1,"- empty -"});
+}void refreshLocationVerdicts(LogisticsVariant* v, LogisticsComponent* cand)
 {
 	const mc2pkg::PackageChassis* pc = locPackage(v);
 	for (int p = 0; p < ml::kPanelCount; ++p) {
 		s_locLegal[p] = false;
 		s_locReason[p].clear();
-		if (!cand || !pc || p >= ml::kLocationCount) continue;
+		if (!cand || p >= ml::kLocationCount) continue;
+		if (!pc) { s_locReason[p] = "Stock chassis: use CLASSIC to place"; continue; }
 		const int ri = regionOfPanel(pc, p).value_or(-1);
 		if (cand->getType() == COMPONENT_FORM_JUMPJET) {
 			long x = -1, y = -1;
@@ -2335,7 +2346,7 @@ const char* mountLetter(mc2pkg::Mount m)
 
 bool MechLabScreen::locationViewActive() const
 {
-	return locPackage(pVariant) && mc2::options::current().mechLabLocations;
+	return pVariant && mc2::options::current().mechLabLocations;
 }
 
 void MechLabScreen::setLocationView( bool on )
@@ -2377,7 +2388,7 @@ std::optional<MechLabScreen::PlacedAt> MechLabScreen::placeInPanel( LogisticsCom
 	gatherPanelItems( pVariant, panel, items );
 	for ( size_t k = 0; k < items.size(); ++k )
 		if ( ml::isSelectedInstance( items[k].x, items[k].y, x, y ) )
-			s_locView.scroll[panel] = ml::scrollToReveal( static_cast<int>( items.size() ), s_locView.scroll[panel], static_cast<int>( k ) );
+			s_locView.scroll[panel] = ml::scrollToReveal( static_cast<int>( items.size() ), s_locView.scroll[panel], static_cast<int>( k ), panel );
 	return PlacedAt{ x, y };
 }
 
@@ -2431,6 +2442,30 @@ void MechLabScreen::updateLocationInput()
 		return;
 	const float mx = static_cast<float>( userInput->getMouseX() );
 	const float my = static_cast<float>( userInput->getMouseY() );
+	int hitArmor = -1;
+	for (int p=0; p<8; ++p) for (bool rear : {false,true}) {
+		if (rear && !ml::torso(p)) continue;
+		for (bool plus : {false,true}) if (ml::stepperRect(p,rear,plus).contains(mx,my))
+			hitArmor = ((rear ? p+7 : p)*2) + (plus ? 1 : 0);
+	}
+	const bool down = gos_GetKeyStatus(KEY_LMOUSE) != KEY_FREE;
+	if (!down || pDragComponent) armorHeld = -1;
+	if (!pDragComponent && hitArmor >= 0) {
+		const bool enabled = !MPlayer && pVariant->getChassis()->armorEditable;
+		if (!enabled) showDropRefusal(MPlayer ? "Armor editing disabled in multiplayer" : "Armor display-only: invalid chassis data");
+		if (enabled && userInput->isLeftClick()) {
+			armorHeld = hitArmor; armorHoldTime = armorRepeatTime = 0.f;
+			pVariant->stepArmor(hitArmor/2,hitArmor%2 ? 1 : -1);
+		}
+		if (enabled && down && armorHeld == hitArmor) {
+			const float dt = std::clamp(frameLength,0.f,0.1f);
+			armorHoldTime += dt; armorRepeatTime += dt;
+			if (armorHoldTime > .3f && armorRepeatTime > .06f) {
+				pVariant->stepArmor(hitArmor/2,hitArmor%2 ? 1 : -1); armorRepeatTime = 0.f;
+			}
+		}
+		return;
+	}
 	LogisticsComponent* cand = pDragComponent ? pDragComponent
 		: ( pInspectedComponent ? pInspectedComponent : ( -1 != componentListBox.GetSelectedItem() ? componentListBox.getComponent() : nullptr ) );
 	refreshLocationVerdicts( pVariant, cand );
@@ -2442,7 +2477,7 @@ void MechLabScreen::updateLocationInput()
 	const int dragPanel = ml::panelAt( static_cast<float>( userInput->getMouseDragX() ), static_cast<float>( userInput->getMouseDragY() ) ).value_or( -1 );
 	// the press origin (not the current hover) picks the drag source: a fast move that leaves the panel before the threshold still drags
 	bool dragStarted = false;
-	if ( !pDragComponent && dragPanel >= 0 && dragPanel < ml::kLocationCount &&
+	if ( !pDragComponent && locPackage(pVariant) && dragPanel >= 0 && dragPanel < ml::kLocationCount &&
 		input::capture::startsWidgetDrag( userInput->isLeftDrag(), true ) )
 	{
 		std::vector<LocItem> origin;
@@ -2452,7 +2487,7 @@ void MechLabScreen::updateLocationInput()
 		if ( orow >= 0 && orow < static_cast<int>( origin.size() ) )
 		{
 			const LocItem it = origin[orow];
-			if ( canRemoveComponent( it.comp ) )
+			if ( it.comp && canRemoveComponent( it.comp ) )
 			{
 				selI = it.x;
 				selJ = it.y;
@@ -2473,30 +2508,30 @@ void MechLabScreen::updateLocationInput()
 	{
 		gatherPanelItems( pVariant, s_locHover, items );
 		const int count = static_cast<int>( items.size() );
-		s_locView.scroll[s_locHover] = ml::clampScroll( count, s_locView.scroll[s_locHover] );
+		s_locView.scroll[s_locHover] = ml::clampScroll( count, s_locView.scroll[s_locHover], s_locHover );
 		bool arrowClicked = false;
-		if ( count > ml::kMaxItemRows )
+		if ( count > ml::visibleRows(s_locHover) )
 		{
 			if ( const long wheel = userInput->getMouseWheelDelta() )
 			{
-				s_locView.scroll[s_locHover] = ml::scrollByWheel( count, s_locView.scroll[s_locHover], wheel );
+				s_locView.scroll[s_locHover] = ml::scrollByWheel( count, s_locView.scroll[s_locHover], wheel, s_locHover );
 				userInput->clearMouseWheelDelta();
 			}
 			if ( userInput->isLeftClick() )
 				for ( const bool down : { false, true } )
 					if ( ml::scrollArrowRect( s_locHover, down ).contains( mx, my ) )
 					{
-						s_locView.scroll[s_locHover] = ml::clampScroll( count, s_locView.scroll[s_locHover] + ( down ? 1 : -1 ) );
+						s_locView.scroll[s_locHover] = ml::clampScroll( count, s_locView.scroll[s_locHover] + ( down ? 1 : -1 ), s_locHover );
 						arrowClicked = true;
 					}
 		}
 		const int row = arrowClicked ? -1 : ml::itemIndexAt( s_locHover, count, s_locView.scroll[s_locHover], mx, my ).value_or( -1 );
-		const LocItem* item = ( row >= 0 && row < static_cast<int>( items.size() ) ) ? &items[row] : nullptr;
-		if ( item )
+		const LocItem* item = ( row >= 0 && row < static_cast<int>( items.size() ) && items[row].comp ) ? &items[row] : nullptr;
+		if ( item && item->comp )
 			::helpTextID = IDS_HELP_COMP0 + item->comp->getID();
 		if ( userInput->isLeftDoubleClick() )
 		{
-			if ( item )
+			if ( item && item->comp )
 			{
 				if ( canRemoveComponent( item->comp ) )
 				{
@@ -2513,7 +2548,7 @@ void MechLabScreen::updateLocationInput()
 		}
 		else if ( userInput->isLeftClick() )
 		{
-			if ( item )
+			if ( item && item->comp )
 			{
 				selI = item->x;
 				selJ = item->y;
@@ -2540,149 +2575,118 @@ void MechLabScreen::updateLocationInput()
 		endDrag();
 }
 
-void MechLabScreen::drawLocationView( float tbSx, float tbSy, float tbOx, float tbOy, int xOffset, int yOffset )
+void MechLabScreen::drawLocationView(float tbSx, float tbSy, float tbOx, float tbOy, int xOffset, int yOffset)
 {
-	const ml::Canvas cv{ tbSx, tbSy, tbOx, tbOy };
-	const mc2pkg::PackageChassis* pc = locPackage( pVariant );
-	if ( !pc )
-		return;
-	auto rectOf = [&]( ml::Rect r ) { r.x += xOffset; r.y += yOffset; return ml::toScreen( r, cv ); };
-	auto text = [&]( ml::Rect r, std::string s, std::uint32_t color, float px, int align ) {
-		const ml::Rect sr = rectOf( r );
-		GuiRuntime::DrawUiText( sr.x, sr.y, sr.w, sr.h, s.c_str(), color, static_cast<int>( px * tbSy ), align, "" );
+	if (!pVariant) return;
+	const ml::Canvas cv{tbSx,tbSy,tbOx,tbOy};
+	const auto* pc = locPackage(pVariant);
+	auto screen = [&](ml::Rect r) { r.x += xOffset; r.y += yOffset; return ml::toScreen(r,cv); };
+	auto fill = [&](ml::Rect r, std::uint32_t color, bool filled = true) {
+		r = screen(r); GuiRuntime::DrawUiRect(r.x,r.y,r.w,r.h,color,filled);
 	};
-	auto fill = [&]( ml::Rect r, std::uint32_t color, bool filled ) {
-		const ml::Rect sr = rectOf( r );
-		GuiRuntime::DrawUiRect( sr.x, sr.y, sr.w, sr.h, color, filled );
+	auto text = [&](ml::Rect r, std::string value, std::uint32_t color = 0xffa0b0c0, float size = 8.f, int align = 0) {
+		r = screen(r);
+		const int pixels = static_cast<int>(size*tbSy);
+		std::vector<std::string> lines;
+		bool truncated = false;
+		while (!value.empty() && GuiRuntime::CalcUiTextWrapLines((value+(truncated ? "..." : "")).c_str(),r.w,pixels,"",lines) && lines.size()>1) {
+			size_t cut = value.size()-1;
+			while (cut>0 && (static_cast<unsigned char>(value[cut])&0xc0)==0x80) --cut;
+			value.resize(cut); truncated = true;
+		}
+		if (truncated) value += "...";
+		GuiRuntime::DrawUiText(r.x,r.y,r.w,r.h,value.c_str(),color,pixels,align,"");
 	};
-	LogisticsComponent* cand = pDragComponent ? pDragComponent
-		: ( pInspectedComponent ? pInspectedComponent : ( -1 != componentListBox.GetSelectedItem() ? componentListBox.getComponent() : nullptr ) );
-
+	const auto toggle = ml::toggleRect();
+	const bool on = mc2::options::current().mechLabLocations;
+	fill(toggle,0xff15212c);
+	fill({toggle.x+(on ? 0.f : toggle.w*.5f),toggle.y,toggle.w*.5f,toggle.h},0xff2d6a8f);
+	fill(toggle,0xffd0d8e0,false);
+	text({toggle.x,toggle.y+2,toggle.w*.5f,toggle.h},"LOCATIONS",0xffffffff,11,2);
+	text({toggle.x+toggle.w*.5f,toggle.y+2,toggle.w*.5f,toggle.h},"CLASSIC",0xffffffff,11,2);
+	if (!on) return;
+	const auto allocation = pVariant->armorAllocation(MPlayer != nullptr);
+	const auto cap = pVariant->armorCapacity();
+	const int pool = pVariant->getArmor();
+	const bool editable = !MPlayer && pVariant->getChassis()->armorEditable;
 	std::vector<mc2pkg::Placed> placed;
 	std::vector<LogisticsComponent*> comps;
-	gatherPlaced( pVariant, placed, comps );
-	const float mass = mc2pkg::massUsed( placed );
-	// mounts in use per hardpoint: the same deterministic assignment deployment uses.
-	const std::vector<int> mountOf = mc2pkg::assignMounts( *pc, placed );
-	std::vector<bool> hpUsed( pc->hardpoints.size(), false );
-	for ( int m : mountOf )
-		if ( m >= 0 ) hpUsed[m] = true;
-
-	// toggle (package chassis only; stock chassis keep the grid and show none)
-	{
-		const ml::Rect t = ml::toggleRect();
-		const bool loc = mc2::options::current().mechLabLocations;
-		fill( t, 0xff15212c, true );
-		fill( { t.x, t.y, t.w * 0.5f, t.h }, loc ? 0xff2d6a8f : 0xff15212c, true );
-		fill( { t.x + t.w * 0.5f, t.y, t.w * 0.5f, t.h }, loc ? 0xff15212c : 0xff2d6a8f, true );
-		fill( t, 0xffd0d8e0, false );
-		text( { t.x, t.y + 2, t.w * 0.5f, t.h }, "LOCATIONS", 0xffffffff, 11.f, 2 );
-		text( { t.x + t.w * 0.5f, t.y + 2, t.w * 0.5f, t.h }, "CLASSIC", 0xffffffff, 11.f, 2 );
+	gatherPlaced(pVariant,placed,comps);
+	const auto mountOf = pc ? mc2pkg::assignMounts(*pc,placed) : std::vector<int>{};
+	for (int p=0; p<8; ++p) {
+		const auto r = ml::panelRect(p);
+		fill(r,0xe8101820);
+		const bool candidate = pDragComponent || pInspectedComponent || componentListBox.GetSelectedItem() != -1;
+		fill(r,candidate ? (s_locLegal[p] ? 0xff40ff80 : 0xffff4040) : p == s_locHover ? 0xffd0d8e0 : 0xff5a6a78,false);
+		text({r.x+3,r.y+1,r.w-6,11},ml::panelTitle(p),0xffffffff,9);
+		for (bool rear : {false,true}) {
+			if (rear && !ml::torso(p)) continue;
+			const int loc = rear ? p+7 : p;
+			const auto row = ml::armorRowRect(p,rear);
+			text({row.x,row.y,34,12},ml::torso(p) ? (rear ? "REAR" : "FRONT") : "ARMOR");
+			text({row.x+46,row.y,19,12},std::to_string(allocation[loc]),0xffffffff,9,2);
+			for (bool plus : {false,true}) {
+				const auto b = ml::stepperRect(p,rear,plus);
+				const bool can = editable && (plus ? mc2::armor::available(allocation,loc,cap,pool)>0 : allocation[loc]>0);
+				const bool hover = b.contains(static_cast<float>(userInput->getMouseX()),static_cast<float>(userInput->getMouseY()));
+				fill(b,can && hover ? 0xff56321a : 0xff17120d);
+				const auto color = can ? 0xffffb04a : 0xff805830;
+				fill(b,color,false); fill({b.x+3,b.y+5,5,1},color);
+				if (plus) fill({b.x+5,b.y+3,1,5},color);
+			}
+		}
+		const float statY = r.y+(ml::torso(p) ? 38.f : 25.f);
+		const int max = ml::torso(p) ? cap[p]+cap[p+7] : cap[p];
+		text({r.x+3,statY,r.w-6,10},"AVL "+std::to_string(mc2::armor::available(allocation,p,cap,pool))+"   MAX "+std::to_string(max));
+		text({r.x+3,statY+10,r.w-6,10},"STRUCTURE "+std::to_string(pVariant->getChassis()->structure[p]),0xff808890);
+		std::vector<LocItem> items; gatherPanelItems(pVariant,p,items);
+		const int count = static_cast<int>(items.size());
+		const int first = ml::clampScroll(count,s_locView.scroll[p],p);
+		text({r.x+3,r.y+ml::equipmentY(p)-10,50,10},"EQUIPPED",0xffa0b0c0,7);
+		// Existing package mount assignment, displayed in the equipment header.
+		float bx = r.x+53;
+		if (pc) for (size_t k=0; k<pc->hardpoints.size() && bx<r.x+r.w-25; ++k) {
+			if (pc->hardpoints[k].location != ml::panelName(p)) continue;
+			const bool used = std::find(mountOf.begin(),mountOf.end(),static_cast<int>(k)) != mountOf.end();
+			fill({bx,r.y+ml::equipmentY(p)-10,8,8},used ? 0xffb07020 : 0xff2a7a4a);
+			text({bx,r.y+ml::equipmentY(p)-10,8,8},mountLetter(pc->hardpoints[k].mount),0xffffffff,7,2); bx+=9;
+		}
+		if (count>ml::visibleRows(p)) for (bool down : {false,true}) {
+			const auto a = ml::scrollArrowRect(p,down); fill(a,0xff20303c);
+			text(a,down ? "v" : "^",0xffffffff,8,2);
+		}
+		for (int row=0; row<ml::visibleRows(p) && first+row<count; ++row) {
+			const auto rr = ml::itemRowRect(p,row,count);
+			const auto& item = items[first+row];
+			fill(rr,0xff20303c);
+			if (!item.comp) { text({rr.x+2,rr.y,rr.w-4,rr.h},item.label,0xff808890); continue; }
+			if (ml::isSelectedInstance(item.x,item.y,selI,selJ) && pSelectedComponent) fill(rr,0x802d6a8f);
+			std::uint32_t stripe = 0xff5a6a78;
+			switch (item.comp->getType()) {
+				case COMPONENT_FORM_WEAPON_ENERGY: case COMPONENT_FORM_WEAPON: stripe=0xffb07020; break;
+				case COMPONENT_FORM_WEAPON_BALLISTIC: stripe=0xff2a7a4a; break;
+				case COMPONENT_FORM_WEAPON_MISSILE: stripe=0xffa21600; break;
+				case COMPONENT_FORM_HEATSINK: stripe=0xff005392; break;
+				default: break;
+			}
+			fill({rr.x,rr.y,2,rr.h-1},stripe);
+			text({rr.x+4,rr.y,rr.w-27,rr.h},item.comp->getName(),0xffe8eef4);
+			char weight[24]; std::snprintf(weight,sizeof weight,"%.1ft",static_cast<double>(item.comp->getWeight()));
+			text({rr.x+rr.w-23,rr.y,22,rr.h},weight,0xffa0b0c0,7,2);
+		}
 	}
-	if ( !mc2::options::current().mechLabLocations )
-		return;
-
-	for ( int p = 0; p < ml::kPanelCount; ++p )
-	{
-		const ml::Rect r = ml::panelRect( p );
-		const bool doll = p == ml::kDoll;
-		const int ri = doll ? -1 : regionOfPanel( pc, p ).value_or( -1 );
-		const bool hasSlots = ri >= 0;
-		fill( r, 0xe8101820, true );
-		std::uint32_t edge = 0xff5a6a78;
-		if ( cand && !doll )
-			edge = s_locLegal[p] ? 0xff40ff80 : 0xffff4040;
-		else if ( p == s_locHover && !doll )
-			edge = 0xffd0d8e0;
-		fill( r, edge, false );
-		if ( doll )
-		{
-			int special = 0;
-			for ( const auto& it : placed ) if ( it.x < 0 || it.y < 0 ) ++special;
-			char buf[64];
-			std::snprintf( buf, sizeof buf, "MASS %.1f / %.1f t", static_cast<double>( mass ), static_cast<double>( pc->payload ) );
-			std::string strip = buf;
-			if ( special ) strip += " | " + std::to_string( special ) + " special: CLASSIC";
-			const ml::Rect stripRect = rectOf( { r.x + 3, r.y, r.w - 6, r.h } );
-			const int stripSize = static_cast<int>( 10.f * tbSy );
-			std::vector<std::string> lines;
-			while ( !strip.empty() && GuiRuntime::CalcUiTextWrapLines( strip.c_str(), stripRect.w, stripSize, "", lines ) && lines.size() > 1 )
-				strip.pop_back();
-			GuiRuntime::DrawUiText( stripRect.x, stripRect.y, stripRect.w, stripRect.h, strip.c_str(),
-				mass > pc->payload + 1e-3f ? 0xffff6060 : 0xffffd060, stripSize, 2, "" );
-			continue;
-		}
-		int cells = 0, used = 0;
-		if ( hasSlots ) {
-			cells = pc->regions[ri].w * pc->regions[ri].h;
-			for ( const mc2pkg::Placed& it : placed )
-				if ( it.x >= 0 && pc->regions[ri].contains( it.x, it.y ) ) used += it.w * it.h;
-		}
-		char head[48];
-		if ( hasSlots )
-			std::snprintf( head, sizeof head, "%s %d/%d", ml::panelTitle( p ), used, cells );
-		else
-			std::snprintf( head, sizeof head, "%s", ml::panelTitle( p ) );
-		text( { r.x + 3, r.y + 2, r.w - 6, 13 }, head, hasSlots ? 0xffffffff : 0xff808890, 11.f, 0 );
-		float bx = r.x + r.w - 3.f;
-		for ( size_t k = pc->hardpoints.size(); k-- > 0; )
-			if ( pc->hardpoints[k].location == ml::panelName( p ) )
-			{
-				bx -= 11.f;
-				const ml::Rect b{ bx, r.y + 15, 10, 11 };
-				fill( b, hpUsed[k] ? 0xffb07020 : 0xff2a7a4a, true );
-				text( { b.x, b.y - 1, b.w, b.h }, mountLetter( pc->hardpoints[k].mount ), 0xffffffff, 10.f, 2 );
-			}
-		if ( !hasSlots )
-		{
-			text( { r.x + 3, r.y + 30, r.w - 6, 13 }, "no equipment slots", 0xff808890, 10.f, 0 );
-			continue;
-		}
-		std::vector<LocItem> items;
-		gatherPanelItems( pVariant, p, items );
-		const int itemCount = static_cast<int>( items.size() );
-		const int first = ml::clampScroll( itemCount, s_locView.scroll[p] );
-		if ( itemCount > ml::kMaxItemRows )
-		{	// overflow: small arrows on the badge row and a "first-last/total" range
-			for ( const bool down : { false, true } )
-			{
-				const ml::Rect a = ml::scrollArrowRect( p, down );
-				const bool can = down ? first < ml::maxScroll( itemCount ) : first > 0;
-				fill( a, can ? 0xff2d6a8f : 0xff20303c, true );
-				text( { a.x, a.y - 1, a.w, a.h }, down ? "v" : "^", can ? 0xffffffff : 0xff607080, 10.f, 1 );
-			}
-			char rng[24];
-			std::snprintf( rng, sizeof rng, "%d-%d/%d", first + 1, first + ml::kMaxItemRows, itemCount );
-			text( { r.x + 28, r.y + 15, 38, 11 }, rng, 0xffa0b0c0, 9.f, 0 );
-		}
-		for ( int rowIndex = 0; rowIndex < ml::kMaxItemRows && first + rowIndex < itemCount; ++rowIndex )
-		{
-			const int k = first + rowIndex;
-			ml::Rect row = ml::itemRowRect( p, rowIndex, std::min( itemCount, ml::kMaxItemRows ) );
-			const bool sel = ml::isSelectedInstance( items[k].x, items[k].y, selI, selJ ) && pSelectedComponent && !pDragComponent;
-			if ( sel ) fill( row, 0x802d6a8f, true );
-			char line[64];
-			const bool showWeight = items.size() <= ml::kRowsPerColumn;
-			std::string name = items[k].comp->getName();
-			const ml::Rect nameRect = rectOf( { row.x + 1, row.y, row.w - ( showWeight ? 28 : 2 ), row.h } );
-			const int nameSize = static_cast<int>( 10.f * tbSy );
-			std::vector<std::string> nameLines;
-			bool truncated = false;
-			while ( !name.empty() && GuiRuntime::CalcUiTextWrapLines( ( name + ( truncated ? "..." : "" ) ).c_str(), nameRect.w, nameSize, "", nameLines ) && nameLines.size() > 1 ) {
-				size_t cut = name.size() - 1;
-				while ( cut > 0 && ( static_cast<unsigned char>( name[cut] ) & 0xc0 ) == 0x80 ) --cut;
-				name.resize( cut );
-				truncated = true;
-			}
-			if ( truncated ) name += "...";
-			GuiRuntime::DrawUiText( nameRect.x, nameRect.y, nameRect.w, nameRect.h,
-				name.c_str(), 0xffe8eef4, nameSize, 0, "" );
-			if ( showWeight ) {
-				std::snprintf( line, sizeof line, "%.1ft", static_cast<double>( items[k].comp->getWeight() ) );
-				text( { row.x + row.w - 28, row.y, 27, row.h }, line, 0xffa0b0c0, 10.f, 2 );
-			}
-		}
-		if ( cand )
-			text( { r.x + 2, r.y + r.h - ml::kRefusalH, r.w - 4, ml::kRefusalH }, s_locLegal[p] ? s_locReason[p].c_str() : "See status line", s_locLegal[p] ? 0xff60ff90 : 0xffff7070, 10.f, 0 );
-	}
+	const auto r = ml::summaryRect(); fill(r,0xe8101820); fill(r,0xff5a6a78,false);
+	text({r.x+3,r.y+2,r.w-6,11},pVariant->getName(),0xffffffff,9);
+	text({r.x+3,r.y+14,r.w-6,10},"COST "+std::to_string(pVariant->getCost()));
+	text({r.x+3,r.y+24,r.w-6,10},"ARMOR "+std::to_string(mc2::armor::total(allocation))+" / "+std::to_string(pool));
+	const int unallocated = std::max(0,pool-mc2::armor::total(allocation));
+	text({r.x+3,r.y+34,r.w-6,10},"UNALLOCATED "+std::to_string(unallocated));
+	text({r.x+3,r.y+44,r.w-6,10},"MAX "+std::to_string(pVariant->getMaxArmor()));
+	const std::string warning = !pVariant->getChassis()->armorEditable ? "ARMOR DISPLAY-ONLY" : pVariant->getWeight()>pVariant->getMaxWeight() ? "OVERWEIGHT" :
+		pVariant->getHeat()>pVariant->getMaxHeat() ? "TOO HOT" : pVariant->isLayoutGrandfathered() ? "LAYOUT WARNING" : unallocated ? "UNALLOCATED ARMOR" : "READY";
+	text({r.x+3,r.y+57,r.w-6,12},warning,warning=="READY" ? 0xffc8e100 : 0xffa21600,8);
+	const auto strip = ml::panelRect(ml::kDoll); fill(strip,0xe8101820);
+	int special = 0; for (const auto& item : placed) if (item.x<0 || item.y<0) ++special;
+	char mass[80]; std::snprintf(mass,sizeof mass,"MASS %.1f / %.1f t",static_cast<double>(mc2pkg::massUsed(placed)),static_cast<double>(pc ? pc->payload : pVariant->getMaxWeight()));
+	text(strip,std::string(mass)+(special ? " | "+std::to_string(special)+" special: CLASSIC" : ""),0xffffd060,9,2);
 }
