@@ -546,6 +546,7 @@ void drawMainMenu(bool showCredits) {
     ImGui::TableSetupColumn("Details");
     ImGui::TableNextColumn();
     ImGui::SeparatorText("INSTALLED MODS");
+    const auto choices = campaignChoices(packs, campaigns(""), importSource);
     if (ImGui::BeginListBox("##packs", ImVec2(-1, 375 * scale))) {
         if (ImGui::Selectable("Stock campaign", campaign.empty())) select("");
         for (const auto& pack : packs) {
@@ -553,7 +554,7 @@ void drawMainMenu(bool showCredits) {
             ImGui::PushID(pack.id.c_str());
             if (pack.kind == "campaign" && !pack.campaigns.empty()) {
                 for (const auto& [fit, info] : pack.campaigns) {
-                    const auto title = campaignTitle("", info.title, fit);
+                    const auto title = campaignChoiceTitle(choices, pack.id, fit, campaignTitle("", info.title, fit));
                     if (ImGui::Selectable(title.c_str(), campaign == pack.id && campaignFit == fit)) { select(pack.id); campaignFit = fit; }
                 }
             } else if (ImGui::Selectable(pack.name.c_str(), campaign == pack.id)) select(pack.id);
@@ -582,11 +583,11 @@ void drawMainMenu(bool showCredits) {
     if (!texture.empty()) ImGui::TextWrapped("Texture pack: %s", texture.c_str());
     std::string selectedTitle = campaign.empty() && campaignFit == "campaign" ? "Stock campaign" : campaignFit;
     for (const auto& pack : packs) if (pack.id == campaign && pack.campaigns.contains(campaignFit))
-        selectedTitle = campaignTitle("", pack.campaigns.at(campaignFit).title, campaignFit);
+        selectedTitle = campaignChoiceTitle(choices, pack.id, campaignFit, campaignTitle("", pack.campaigns.at(campaignFit).title, campaignFit));
     ImGui::SeparatorText("CAMPAIGN SETUP");
     ImGui::PushItemWidth(235 * scale);
     if (ImGui::BeginCombo("Campaign", selectedTitle.c_str())) {
-        for (const auto& choice : campaignChoices(packs, campaigns(""), importSource)) {
+        for (const auto& choice : choices) {
             ImGui::PushID(choice.pack.c_str());
             ImGui::PushID(choice.fit.c_str());
             if (ImGui::Selectable(choice.title.c_str(), campaign == choice.pack && campaignFit == choice.fit)) {
