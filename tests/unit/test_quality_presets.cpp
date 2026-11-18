@@ -241,3 +241,13 @@ TEST_CASE("TextureQuality option row: range -1..3, default Auto, text form valid
     CHECK(o.textureQuality == -1);
     CHECK(setFromText(o, *opt, "high") == Verdict::Garbage);
 }
+
+TEST_CASE("campaign picker/import-source folders are not listed as campaigns") {
+    using namespace PlayerFrontEnd;
+    struct Pack { std::string id, kind; std::map<std::string, CampaignInfo> campaigns; };
+    const std::vector<Pack> packs{{"exodus-dca4afc8", "campaign", {{"campaign", {"Exodus"}}}},
+        {"mcosetup628(1)", "campaign", {{"campaign", {"Exodus"}}}}};  // manifest-less source folder
+    const auto choices = campaignChoices(packs, {}, [](const std::string& id) { return id == "mcosetup628(1)"; });
+    REQUIRE(choices.size() == 2);
+    CHECK(choices[1].pack == "exodus-dca4afc8");
+}

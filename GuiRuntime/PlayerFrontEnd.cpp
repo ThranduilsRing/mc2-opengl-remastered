@@ -528,6 +528,9 @@ void drawMainMenu(bool showCredits) {
         const auto fits = campaigns(id);
         campaignFit = fits.empty() ? "" : fits.front();
     };
+    auto importSource = [&](const std::string& id) {
+        return importStatus.contains("sources") && importStatus["sources"].contains(id) && !importStatus["sources"][id].contains("error");
+    };
     ImGui::BeginTable("##campaignLayout", 2, ImGuiTableFlags_SizingStretchProp);
     ImGui::TableSetupColumn("Library", ImGuiTableColumnFlags_WidthFixed, 300 * scale);
     ImGui::TableSetupColumn("Details");
@@ -536,8 +539,7 @@ void drawMainMenu(bool showCredits) {
     if (ImGui::BeginListBox("##packs", ImVec2(-1, 375 * scale))) {
         if (ImGui::Selectable("Stock campaign", campaign.empty())) select("");
         for (const auto& pack : packs) {
-            if (importStatus.contains("sources") && importStatus["sources"].contains(pack.id) &&
-                !importStatus["sources"][pack.id].contains("error")) continue;
+            if (importSource(pack.id)) continue;
             ImGui::PushID(pack.id.c_str());
             if (pack.kind == "campaign" && !pack.campaigns.empty()) {
                 for (const auto& [fit, info] : pack.campaigns) {
@@ -574,7 +576,7 @@ void drawMainMenu(bool showCredits) {
     ImGui::SeparatorText("CAMPAIGN SETUP");
     ImGui::PushItemWidth(235 * scale);
     if (ImGui::BeginCombo("Campaign", selectedTitle.c_str())) {
-        for (const auto& choice : campaignChoices(packs, campaigns(""))) {
+        for (const auto& choice : campaignChoices(packs, campaigns(""), importSource)) {
             ImGui::PushID(choice.pack.c_str());
             ImGui::PushID(choice.fit.c_str());
             if (ImGui::Selectable(choice.title.c_str(), campaign == choice.pack && campaignFit == choice.fit)) {

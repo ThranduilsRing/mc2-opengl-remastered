@@ -120,7 +120,7 @@ def inspect_source(root):
         fallback = Path(name).stem
         if fallback == "campaign":
             fallback = "Carver V (legacy)" if mission[1].lower() == "mc2_01" else mission[1]
-        campaigns.append({"fit": Path(name).stem, "name": (title[1] if title else fallback).replace("MechWarriror", "MechWarrior"),
+        campaigns.append({"fit": Path(name).stem, "name": title[1] if title else fallback,
                           "first_mission": mission[1].lower()})
     if not campaigns:
         raise ValueError("No campaign FIT found in data/campaign or FSTs. Select the campaign root, not data/.")
@@ -169,7 +169,7 @@ def validate_mc2x_tables(root, files, campaigns, layers):
     full = "mc2xres.dll" in files or all(n in files for n in ("art.fst", "misc.fst", "tgl.fst"))
     packed = asset_bytes(layers[:1], table_name)
     if (full or own is not None) and (own is None or packed != own):
-        raise ValueError("Missing or different source object table data/objects/object2.pak in campaign pack; re-import it.")
+        raise ValueError("Missing or different source object table data/objects/object2.pak in campaign pack; re-import it from the original campaign download (tools/import_campaign.py) after removing this mod folder, keeping your saves.")
     for dep in layers[1:-1]:
         if asset_bytes([dep], table_name) is None:
             raise ValueError(f"Missing mc2x-compat object table: {dep / table_name}; re-import the full base.")
@@ -325,6 +325,8 @@ def import_campaign(source, deploy):
         identity = json.dumps(campaigns, sort_keys=True)
         slug = re.sub(r"[^a-z0-9]+", "-", campaigns[0]["name"].lower()).strip("-")[:45] or "campaign"
         mod_id = slug + "-" + hashlib.sha256(identity.encode()).hexdigest()[:8]
+        for c in campaigns:  # display only; the id above keeps the original spelling so installed packs stay matched
+            c["name"] = c["name"].replace("MechWarriror", "MechWarrior")
         target = mods / mod_id
         fingerprint = digest(files)
         if target.exists():

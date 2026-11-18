@@ -778,3 +778,15 @@ def test_fix1_case_insensitive_loose_fallback(tmp_path, monkeypatch):
     (tmp_path / "archive.fst").touch()
     monkeypatch.setattr(imp, "fst_entries", lambda _: pytest.fail("archive read before loose"))
     assert imp.asset_bytes([tmp_path], "data/objects/object2.pak") == b"loose wins"
+
+
+def test_exodus_mw2mercs_pack_id_stable_across_title_typo_fix(tmp_path):
+    # The installed v0.4 pack id exodus-dca4afc8 was hashed from the uncorrected title.
+    import hashlib
+    root = tmp_path / "root"
+    for fit, name, first in (("campaign", "Exodus", "a_0_1"), ("mw2mercs", "MechWarriror2Mercs", "mw2_0_1")):
+        p = root / f"data/campaign/{fit}.fit"
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_bytes(f'[Campaign]\nst CampaignName = "{name}"\n[Group0Mission0]\nst FileName = "{first}"\n'.encode())
+    _, _, campaigns = imp.inspect_source(root)
+    assert hashlib.sha256(json.dumps(campaigns, sort_keys=True).encode()).hexdigest()[:8] == "dca4afc8"

@@ -6,6 +6,7 @@
 #include <charconv>
 #include <cctype>
 #include <algorithm>
+#include <functional>
 
 namespace PlayerFrontEnd {
 inline bool contains(std::string_view list, std::string_view id) {
@@ -90,7 +91,8 @@ struct CampaignChoice {
     std::string pack, fit, title;
 };
 template<class Packs>
-std::vector<CampaignChoice> campaignChoices(const Packs& packs, const std::vector<std::string>& stockFits = {}) {
+std::vector<CampaignChoice> campaignChoices(const Packs& packs, const std::vector<std::string>& stockFits = {},
+                                           const std::function<bool(const std::string&)>& hidden = {}) {
     std::vector<CampaignChoice> choices{{"", "campaign", "Stock campaign"}};
     for (const auto& fit : stockFits) {
         bool found = false;
@@ -98,7 +100,7 @@ std::vector<CampaignChoice> campaignChoices(const Packs& packs, const std::vecto
         if (!found) choices.push_back({"", fit, fit});
     }
     for (const auto& pack : packs) {
-        if (pack.kind != "campaign") continue;
+        if (pack.kind != "campaign" || (hidden && hidden(pack.id))) continue;
         for (const auto& [fit, info] : pack.campaigns)
             choices.push_back({pack.id, fit, campaignTitle("", info.title, fit)});
     }
