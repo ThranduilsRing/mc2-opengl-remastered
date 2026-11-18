@@ -16,6 +16,7 @@
 // RenderWorld/legacy/static_prop_backend.cpp.
 #include "legacy/static_prop_backend.h"
 
+#include <algorithm>
 #include <atomic>
 #include <cstdio>
 #include <cstdlib>
@@ -63,6 +64,7 @@ std::atomic<uint64_t> s_upsertOk{0};
 std::atomic<uint64_t> s_upsertFail{0};
 std::atomic<uint64_t> s_destroyCalls{0};
 std::atomic<uint64_t> s_markVisibleCalls{0};
+uint32_t s_staticPropRecordEnd = 0; // Guarded by s_objectRecordsMutex; excludes mech storage.
 std::atomic<uint64_t> s_frameCounter{0};
 
 // M1.5: cached env-flag accessor. First call reads MC2_OBJECT_ID_BUFFER
@@ -115,10 +117,9 @@ using RenderWorld::detail::kMechHandleBase;
 // kTerrainHandleBase: M3 v1 reservation (2026-05-24). RESERVED — no code
 // allocates from this base in v1. If/when a future M3.1 implementation
 // slice ships per-quad terrain identity (editor-driven; see resolutions
-// sidecar), this is the base. Range [0x00040000, 0x000FFFFF] reserves
-// 786,431 slots — comfortably above the worst-case ~196K mission-total
-// terrain quads on GameVisibleVertices=200. Leaves
-// [0x00010000..0x0003FFFF] (~245K slots) as mech-expansion headroom.
+// sidecar), this is the base. Range [0x00070000, 0x0007FFFF] reserves
+// 65536 slots for a future terrain scheme (v1 has no terrain writer). Leaves
+// [0x00040000..0x0006FFFF] (196608 slots) as mech-expansion headroom.
 // Tripwire-protected: see lookupAtPixel below. Spec:
 // docs/superpowers/specs/2026-05-23-renderworld-slice-m3-terrain-spec.md.
 using RenderWorld::detail::kTerrainHandleBase;
@@ -137,9 +138,9 @@ using RenderWorld::detail::kTerrainHandleBase;
 // reserved base to use. The current recon recommends "never use this."
 //
 // Full corrected partitioning (do NOT re-derive; see migration guide §12):
-//   StaticProp:  0x00000..0x0FFFF   (max observed mc2_24 = 2641)
-//   Mech:        0x10000..0x3FFFF   (max observed mc2_24 = 46)
-//   Terrain:     0x40000..0x7FFFF   (reserved by M3; no writer in v1)
+//   StaticProp:  0x00000..0x3FFFF   (262144 slots; allocation refuses above)
+//   Mech:        0x40000..0x6FFFF   (196608 slots, unchanged capacity)
+//   Terrain:     0x70000..0x7FFFF   (reserved by M3; no writer in v1)
 //   Vfx:         0x80000..0xBFFFF   (this slot; PROHIBITED writers per §3.6)
 //   Overlay:     0xC0000..0xFFFFE   (reserved/deferred per M5 sidecar)
 //   Sentinel:    0xFFFFF            (bug-bait; never allocate)
@@ -162,6 +163,8 @@ void populateRecord(uint32_t handleIndex,
         s_objectRecords.resize(cap);
     }
     auto& rec = s_objectRecords[handleIndex];
+    if (handleIndex >= s_staticPropRecordEnd)
+        s_staticPropRecordEnd = handleIndex + 1;
     rec.generation         = generation;
     rec.flags              = RenderWorld::kRenderObjectFlagAlive;
     rec.meshHandleBits     = 0;           // M1.5: unknown (no MeshHandle producer)
@@ -188,7 +191,7 @@ void retireRecord(uint32_t handleIndex)
 }
 
 // M1.5 T9 / OBJECT-ID-1 (OBJECT_ID_PASSIVE_CANARY): real-rendering validator, one passive log line at canary
-// frame N (no gate: it only reads, and logs once). Samples a grid over the output, expects at least one valid
+// frame N under MC2_DIAG_VERBOSE. Samples a grid over the output, expects at least one valid
 // static-prop hit and at least one background miss, validates every valid handle against s_objectRecords
 // (generation match + alive), and proves recycled-handle rejection: a handle with the generation bumped must be
 // refused by getObjectRecordView (the record table is not mutated).
@@ -400,7 +403,8 @@ void runSubstrateSelfTest() {
 // FAIL is a STOP: the mech substrate is broken; M2.6 pickup will be
 // unreliable.
 void RunMechObjectIdSelfTest() {
-    if (true) {
+    // The old dedicated env switch was retired; use the existing smoke gate.
+    if (!mc2::gate::get<"MC2_SMOKE_ACTIVE">()) {
         MC2_DIAGFE(stderr,
             "[MECH_OBJECT_ID_SELFTEST v1] result=SKIPPED reason=env_disabled\n");
         return;
@@ -419,6 +423,30 @@ void RunMechObjectIdSelfTest() {
     }
     const uint32_t idx = h.index();
     const uint16_t gen = static_cast<uint16_t>(h.generation());
+
+    // Exercise the real table at the old overlap and the last valid prop slot.
+    for (uint32_t propIndex : {65535u, 65536u, kMechHandleBase - 1u}) {
+        RenderWorld::RenderObjectRecord saved;
+        {
+            std::lock_guard<std::mutex> lk(s_objectRecordsMutex);
+            saved = s_objectRecords[propIndex];
+        }
+        const auto prop = RenderWorld::detail::staticPropHandle(propIndex);
+        populateRecord(prop.index(), 1u, propIndex);
+        bool ok;
+        {
+            std::lock_guard<std::mutex> lk(s_objectRecordsMutex);
+            ok = s_objectRecords[propIndex].kind == RenderWorld::RenderObjectKind::StaticProp
+                && s_objectRecords[idx].kind == RenderWorld::RenderObjectKind::Mech
+                && s_objectRecords[idx].gameObjectId == desc.gameObjectId;
+            s_objectRecords[propIndex] = saved;
+        }
+        if (!ok || RenderWorld::detail::staticPropHandle(kMechHandleBase).isValid()) {
+            MC2_DIAGFE(stderr, "[MECH_OBJECT_ID_SELFTEST v1] result=FAIL step=boundary index=%u\n", propIndex);
+            RenderWorld::destroyMech(h);
+            return;
+        }
+    }
 
     // validate record kind=Mech and alive=true.
     {
@@ -458,14 +486,10 @@ void RunMechObjectIdSelfTest() {
         }
     }
 
-    // handle round-trip. handle.raw carries idx+gen; rebuilding
-    // via the canonical production constructor MUST recover the same raw bits.
-    // Per adversarial m3: RenderObjectHandle::make(idx, gen) is the
-    // production path (RenderCore/Handle.h:32); use it unconditionally rather
-    // than touching the `bits` field directly.
+    // Decode exactly as lookupAtPixel does, retaining both index and generation.
     const uint32_t raw = h.raw();
-    RenderCore::RenderObjectHandle h2 = RenderCore::RenderObjectHandle::make(idx, gen);
-    if (h2.raw() != raw) {
+    const auto h2 = RenderWorld::detail::decodeObjectId(raw);
+    if (h2.index() != idx || h2.generation() != gen || h2.raw() != raw) {
         MC2_DIAGFE(stderr,
             "[MECH_OBJECT_ID_SELFTEST v1] result=FAIL step=3 reason=roundtrip_raw_%08X_vs_%08X\n",
             (unsigned)h2.raw(), (unsigned)raw);
@@ -616,7 +640,7 @@ RenderCore::RenderObjectHandle adoptStaticPropRecipe(int32_t recipeIndex) {
     // m5 fix: wrap an existing registry slot in a Handle without
     // creating a new recipe entry. Counter is incremented so
     // [RENDER_WORLD v1] objects stays honest for the late-spawn path.
-    if (recipeIndex < 0) {
+    if (!detail::staticPropHandle(recipeIndex).isValid()) {
         return RenderCore::RenderObjectHandle::invalid();
     }
     s_upsertOk.fetch_add(1, std::memory_order_relaxed);
@@ -643,7 +667,7 @@ void markVisible(RenderCore::RenderObjectHandle h,
     if (!h.isValid()) return;
     legacy::markVisibleStaticProp(handleToRecipeIndex(h),
                                   lightDataIndex, extentRadius);
-    s_markVisibleCalls.fetch_add(1, std::memory_order_relaxed);
+    if (mc2DiagVerbose()) s_markVisibleCalls.fetch_add(1, std::memory_order_relaxed);
 }
 
 bool isReady(RenderCore::RenderObjectHandle h) {
@@ -673,6 +697,11 @@ static_assert(RenderCore::RenderObjectHandle::make(kHandleIndexMask + 1u, 0u).in
               "kHandleIndexMask is not the full index-field width — Handle.h layout drifted");
 static_assert(kMechHandleBase <= kHandleIndexMask,
               "kMechHandleBase must fit within the handle index field");
+static_assert(kMechHandleBase >= 0x40000u && kTerrainHandleBase - kMechHandleBase >= 0x30000u,
+              "static props need 4x headroom without shrinking mech capacity");
+static_assert(kMechHandleBase < kTerrainHandleBase && kTerrainHandleBase < kVfxHandleBase
+              && kVfxHandleBase < 0xC0000u && 0xC0000u < kHandleIndexMask,
+              "reserved ranges must remain ordered below the sentinel");
 uint32_t MechHandleIndexBase() {
     return kMechHandleBase;
 }
@@ -719,12 +748,8 @@ uint32_t objectIdRawForStaticPropRecipe(int32_t recipeIndex) {
     // M1.5 C1: centralized Handle bit encoding for the batcher
     // producer. Mirrors the recipeIndex -> Handle convention used by
     // upsertStaticProp/adoptStaticPropRecipe (generation=1, 20-bit
-    // index). Returns 0 (invalid raw) for negative recipeIndex.
-    if (recipeIndex < 0) return 0u;
-    return RenderCore::RenderObjectHandle::make(
-        static_cast<uint32_t>(recipeIndex) & 0x000FFFFFu,
-        1u
-    ).raw();
+    // index). Returns 0 (invalid raw) outside the static-prop range.
+    return detail::staticPropHandle(recipeIndex).raw();
 }
 
 VisibilityResult queryVisibility(VisibilityRequest req) {
@@ -749,8 +774,8 @@ void frameBannerTick() {
     const uint64_t f = s_frameCounter.fetch_add(1, std::memory_order_relaxed) + 1;
 
     // M1.5 T9: passive canary fires once at frame 60 (after mission stable).
-    // Must run regardless of trace/summary gating below.
-    if (f == 60u) {
+    // Each pixel lookup waits for the GPU; keep this diagnostic off the default path.
+    if (f == 60u && mc2DiagVerbose()) {
         runPassiveStableFrameCanary();
     }
 
@@ -833,8 +858,7 @@ LookupResult lookupAtPixel(int screenX, int screenY) {
         return out;
     }
 
-    RenderCore::RenderObjectHandle h;
-    h.bits = raw;
+    const auto h = detail::decodeObjectId(raw);
 
     // Look up the record under the mutex; copy out under the lock.
     RenderObjectRecord rec;
@@ -983,8 +1007,10 @@ uint64_t getMechsAliveCount() {
 
 uint32_t getStaticPropSlotCount() {
     std::lock_guard<std::mutex> lock(s_objectRecordsMutex);
+    const uint32_t end = std::min<uint32_t>(s_staticPropRecordEnd, static_cast<uint32_t>(s_objectRecords.size()));
     uint32_t count = 0;
-    for (const auto& rec : s_objectRecords) {
+    for (uint32_t i = 0; i < end; ++i) {
+        const auto& rec = s_objectRecords[i];
         if (rec.kind == RenderObjectKind::StaticProp) ++count;
     }
     return count;
@@ -992,9 +1018,10 @@ uint32_t getStaticPropSlotCount() {
 
 uint32_t fillStaticPropSlots(StaticPropRecordView* out, uint32_t capacity) {
     std::lock_guard<std::mutex> lock(s_objectRecordsMutex);
+    const uint32_t end = std::min<uint32_t>(s_staticPropRecordEnd, static_cast<uint32_t>(s_objectRecords.size()));
     uint32_t total   = 0;
     uint32_t written = 0;
-    for (uint32_t i = 0; i < static_cast<uint32_t>(s_objectRecords.size()); ++i) {
+    for (uint32_t i = 0; i < end; ++i) {
         const RenderObjectRecord& rec = s_objectRecords[i];
         if (rec.kind != RenderObjectKind::StaticProp) continue;
         ++total;

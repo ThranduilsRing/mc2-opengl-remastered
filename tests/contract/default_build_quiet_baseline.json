@@ -5,6 +5,10 @@
     "COMMAND_REPLAY": {"status": "keep", "reason": "Error-only: tools/command_replay.py requires record_failed reason= to reject a refused fixture during opt-in recording; silent outside a failed recording."},
     "AUDIO_START": {"status": "keep", "reason": "Owner-requested audio-double-2 per-start path/channel/caller evidence; AudioBackend/start log counts plays but not pause or resume tests the count."},
     "AUDIO_CUE": {"status": "keep", "reason": "Owner-requested audio-double-2 attribution of AUDIO_START memory-resource addresses to SFX, Betty and support packet IDs."},
+    "RENDER_WORLD": {
+      "status": "keep",
+      "reason": "Error-only: static-prop recipe allocation exhausted its handle partition; refusal must be loud before any registry mutation."
+    },
     "TREE_LOD_STATS": {
       "status": "keep",
       "reason": "Opt-in diagnostic: only prints under MC2_DIAG_TAGS=TREE_LOD_STATS (per-tier tree instance and triangle counts every 120 frames); silent in a default run."

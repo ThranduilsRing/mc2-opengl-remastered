@@ -1,4 +1,7 @@
 #include "static_prop_visible_set.h"
+#include "static_prop_recipe_admission.h"
+#include "../../RenderWorld/RenderWorld.h"
+#include <cstdio>
 #include "gos_static_prop_registry_internal.h"
 #include "mc2fmt.h"
 #include <functional>
@@ -134,6 +137,7 @@ static uint8_t s_popsEverTagged = 0u;
 // per-frame cost this targets.
 static std::vector<uint32_t>              s_recipeRangeFreeList;
 static const bool s_recipeRecycle = true;
+static StaticPropRecipeAdmission s_recipeAdmission;
 // The all-recipes persistent instance store still serves the population split.
 const bool s_staticFrozenReg = mc2::gate::get<"MC2_GPU_CULL_STATIC_FROZEN_RECORDS">();
 
@@ -332,6 +336,7 @@ void destroy() {
     // RECIPE-SLOT-RECYCLE: the free-list holds indices into s_recipeRanges; it MUST
     // be emptied in lockstep or a stale index would alias / go out of bounds next mission.
     s_recipeRangeFreeList.clear(); s_recipeRangeFreeList.shrink_to_fit();
+    s_recipeAdmission.reset();
     s_liveRangeIndices.clear(); s_liveRangeIndices.shrink_to_fit();
     s_typeMatCache.clear();          s_typeMatCache.shrink_to_fit();
     // unordered_map has no shrink_to_fit(); swap with empty to release bucket
@@ -381,7 +386,14 @@ uint32_t residentCount() {
 
 int32_t registerRecipe(TG_MultiShape* multi,
                        const std::vector<GpuStaticPropInstance>& batch) {
-    if (batch.empty() || !multi || !multi->usesTypeMaterials()) return -1;
+    const auto admittedIndex = s_recipeAdmission.admit(
+        !batch.empty() && multi && multi->usesTypeMaterials(),
+        s_recipeRanges.size(), s_recipeRecycle, s_recipeRangeFreeList,
+        [](size_t prospectiveIndex) {
+            std::fprintf(stderr, "[RENDER_WORLD] static_prop_recipe_exhausted index=%zu limit=%u\n",
+                         prospectiveIndex, RenderWorld::detail::kMechHandleBase);
+        });
+    if (!admittedIndex) return -1;
     RecipeRange rng;
     rng.begin = static_cast<uint32_t>(s_recipes.size());
     rng.count = static_cast<uint32_t>(batch.size());
@@ -546,7 +558,7 @@ void invalidate(int32_t regIdx) {
     if (mc2_diag::tagRequested("WATER_BAKE")) mc2::fmt::print_err("[WATER_CONTENT] revision={} source=invalidate regIdx={} name={} wasLive={}\n", s_contentRevision, regIdx, rng.shapeName, wasLive);
     // RECIPE-SLOT-RECYCLE: return the now-tombstoned slot to the free-list so the
     // next registerRecipe() reuses this regIdx instead of growing the array.
-    if (s_recipeRecycle && wasLive)
+    if (s_recipeAdmission.recycleSlot(s_recipeRecycle, wasLive))
         s_recipeRangeFreeList.push_back(static_cast<uint32_t>(regIdx));
 }
 

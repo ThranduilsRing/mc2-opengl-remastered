@@ -3,8 +3,79 @@
 // generations wrap past 0. The "GPU" is a completed-frame number advanced by hand.
 #include "doctest.h"
 #include "HandleSlots.h"
+#include "../../RenderWorld/RenderWorld.h"
+#include "../../GameOS/gameos/static_prop_recipe_admission.h"
 
 using namespace RenderCore;
+
+TEST_CASE("static prop exhaust admission and episode resets") {
+    GpuStaticPropRegistry::StaticPropRecipeAdmission policy;
+    const size_t full = RenderWorld::detail::kMechHandleBase;
+    std::vector<uint32_t> free;
+    int logs = 0;
+    auto admit = [&](bool eligible, size_t size) {
+        return policy.admit(eligible, size, true, free, [&](size_t index) {
+            CHECK(index == full);
+            ++logs;
+        });
+    };
+    for (int i = 0; i < 8; ++i) CHECK_FALSE(admit(false, full));
+    CHECK(logs == 0);
+    for (int i = 0; i < 8; ++i) CHECK_FALSE(admit(true, full));
+    CHECK(logs == 1);
+    CHECK_FALSE(policy.recycleSlot(true, false)); // invalid/repeated invalidation
+    CHECK_FALSE(policy.recycleSlot(false, true)); // recycling disabled
+    CHECK_FALSE(admit(true, full));
+    CHECK(logs == 1);
+    // Preserve append indices and LIFO reuse, including a completely full range.
+    REQUIRE(policy.recycleSlot(true, true));
+    free = {3u, 1u};
+    CHECK(admit(true, full) == 1);
+    free.pop_back();
+    CHECK(admit(true, full) == 3);
+    free.pop_back();
+    CHECK_FALSE(admit(true, full));
+    CHECK_FALSE(admit(true, full));
+    CHECK(logs == 2);
+    policy.reset(); // registry clear, then refill through the last accepted index
+    for (size_t i = 0; i < full; ++i) REQUIRE(admit(true, i) == i);
+    CHECK_FALSE(admit(true, full));
+    CHECK_FALSE(admit(true, full));
+    CHECK(logs == 3);
+}
+
+TEST_CASE("handle_partition_static_boundaries") {
+    using namespace RenderWorld::detail;
+    const auto mech = RenderObjectHandle::make(kMechHandleBase, 7u);
+    for (const uint32_t index : {65535u, 65536u, 65537u, kMechHandleBase - 1u}) {
+        const auto prop = staticPropHandle(index);
+        REQUIRE(prop.isValid());
+        CHECK(prop.index() == index);
+        CHECK(prop.index() != mech.index());
+        CHECK(decodeObjectId(prop.raw()) == prop);
+    }
+    CHECK_FALSE(staticPropHandle(-1).isValid());
+    CHECK_FALSE(staticPropRecipeIndexFits(kMechHandleBase));
+    CHECK_FALSE(staticPropHandle(kMechHandleBase).isValid());
+    CHECK_FALSE(staticPropHandle(0x100000u).isValid());
+    // A full append range still permits a valid recycled slot.
+    CHECK(staticPropRecipeIndexFits(kMechHandleBase - 1u));
+}
+
+TEST_CASE("handle_partition_mech_object_id_roundtrip") {
+    using namespace RenderWorld::detail;
+    CHECK(kTerrainHandleBase - kMechHandleBase >= 0x30000u);
+    for (const uint32_t index : {kMechHandleBase, kTerrainHandleBase - 1u}) {
+        for (const uint32_t generation : {1u, 7u, 0xFFFu}) {
+            const auto mech = RenderObjectHandle::make(index, generation);
+            const auto decoded = decodeObjectId(mech.raw());
+            CHECK(decoded == mech);
+            CHECK(decoded.index() == index);
+            CHECK(decoded.generation() == generation);
+            CHECK_FALSE(staticPropRecipeIndexFits(decoded.index()));
+        }
+    }
+}
 
 TEST_SUITE("HandleSlotTable") {
 
