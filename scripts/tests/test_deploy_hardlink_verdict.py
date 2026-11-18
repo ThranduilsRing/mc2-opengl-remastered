@@ -1,7 +1,9 @@
 """Trigger: deploy_payload.py; hardlinked-target replace under a lock, and the --verdict acceptance matrix."""
 import json
 import os
+import re
 import sys
+from types import SimpleNamespace
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -15,7 +17,6 @@ def linked(tmp_path):
     pool.write_bytes(b"old")
     os.link(pool, dst)
     src.write_bytes(b"new")
-    dp._ASIDES.clear()
     return pool, dst, src
 
 
@@ -40,7 +41,7 @@ def test_refused_hardlink_is_renamed_aside_and_pool_untouched(linked, monkeypatc
     assert not list(tmp_path.glob("x.dll.old-*"))
 
 
-def test_held_aside_is_kept_then_retried_and_foreign_old_files_survive(linked, monkeypatch, tmp_path):
+def test_held_aside_is_recorded_and_deleted_by_next_deploy_foreign_survives(linked, monkeypatch, tmp_path):
     pool, dst, src = linked
     foreign = [tmp_path / "mc2.exe.old-1234", tmp_path / "options.cfg.old-2024"]
     for f in foreign:
@@ -49,11 +50,57 @@ def test_held_aside_is_kept_then_retried_and_foreign_old_files_survive(linked, m
     real_unlink = os.unlink
     monkeypatch.setattr(os, "unlink", lambda p, *a, **k: (_ for _ in ()).throw(PermissionError(13, "held")))
     dp.replace_file(str(src), str(dst))
-    assert len(dp._ASIDES) == 1 and dst.read_bytes() == b"new"
+    assert dst.read_bytes() == b"new"
+    held = list(tmp_path.glob("x.dll.old-[0-9]*"))
+    assert len(held) == 1 and re.search(r"\.old-\d+-\d+$", held[0].name)
+    assert json.loads((tmp_path / dp.ASIDE_RECEIPT).read_text()) == [str(held[0])]
+    dp.sweep_asides(str(tmp_path))  # still held: stays listed
+    assert held[0].exists() and (tmp_path / dp.ASIDE_RECEIPT).exists()
     monkeypatch.setattr(os, "unlink", real_unlink)
-    dp.retry_asides()
-    assert not dp._ASIDES and not list(tmp_path.glob("x.dll.old-[0-9]*")) and pool.read_bytes() == b"old"
+    dp.sweep_asides(str(tmp_path))  # the next deploy
+    assert not list(tmp_path.glob("x.dll.old-[0-9]*")) and pool.read_bytes() == b"old"
+    assert not (tmp_path / dp.ASIDE_RECEIPT).exists()
     assert all(f.read_bytes() == b"owner" for f in foreign)
+
+
+def test_receipt_cannot_delete_foreign_or_outside_paths(tmp_path):
+    inside, other = tmp_path / "keep.txt", tmp_path.parent / f"{tmp_path.name}-outside.old-5"
+    inside.write_bytes(b"x")
+    other.write_bytes(b"y")
+    (tmp_path / dp.ASIDE_RECEIPT).write_text(json.dumps([str(inside), str(other)]))
+    dp.sweep_asides(str(tmp_path))
+    assert inside.exists() and other.exists()
+
+
+@pytest.mark.parametrize("shape", ["preset_target", "allow_new_target", "positional"])
+def test_v04_publish_needs_a_verdict_in_every_argument_shape(tmp_path, monkeypatch, shape):
+    v04 = tmp_path / "v04"
+    v04.mkdir()
+    monkeypatch.setitem(dp.TARGET_PRESETS["game"], "target_dir", str(v04))
+    assert dp.is_v04_game_publish(str(v04), "mc2.exe") and dp.is_v04_game_publish(str(v04), "MC2")
+    assert not dp.is_v04_game_publish(str(tmp_path / "other"), "mc2.exe")
+    assert not dp.is_v04_game_publish(str(v04), "Mission Editor.exe")
+    kw = {"target": "game" if shape == "preset_target" else None, "allow_new_target": shape == "allow_new_target",
+          "allow_unverified_exe": False, "verdict": None, "require_clean": False}
+    build = tmp_path / "build"
+    build.mkdir()
+    (build / "mc2.exe").write_bytes(b"exe")
+    monkeypatch.setattr(dp, "git_head", lambda *a: HEAD)
+    with pytest.raises(SystemExit):
+        dp.run_deploy(SimpleNamespace(**kw), str(tmp_path), str(build), str(v04), "mc2.exe", "mc2.pdb")
+
+
+def test_unverified_flag_on_v04_warns_and_forces_clean(tmp_path, monkeypatch, capsys):
+    v04 = tmp_path / "v04"
+    v04.mkdir()
+    monkeypatch.setitem(dp.TARGET_PRESETS["game"], "target_dir", str(v04))
+    monkeypatch.setattr(dp, "git_head", lambda *a: HEAD)
+    monkeypatch.setattr(dp, "seed_build_dlls", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("past the gate")))
+    args = SimpleNamespace(target="game", allow_new_target=False, allow_unverified_exe=True, verdict=None, require_clean=False)
+    with pytest.raises(RuntimeError, match="past the gate"):
+        dp.run_deploy(args, str(tmp_path), str(tmp_path), str(v04), "mc2.exe", "mc2.pdb")
+    assert args.require_clean and "WARNING: --allow-unverified-exe" in capsys.readouterr().out
+    assert json.loads((v04 / ".deployed_manifest.unverified.json").read_text())["allow_unverified_exe"] is True
 
 
 def test_failed_second_replace_puts_the_old_entry_back(linked, monkeypatch):
