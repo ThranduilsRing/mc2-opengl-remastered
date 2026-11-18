@@ -4,17 +4,35 @@
 using namespace mc2::armor;
 static constexpr Allocation atlas{9,11,9,9,8,8,9,9,4,2,2};
 static constexpr std::array<int,8> atlasStructure{3,31,21,21,17,17,21,21};
-static constexpr std::array<int,8> hunchbackStructure{3,20,15,15,8,8,15,15};
-TEST_CASE("armor capacity is two times structure, head nine") {
-    const auto a = maxPerLocation(atlasStructure);
-    CHECK(a[0] == 9); CHECK(a[1] == 62); CHECK(a[2] == 42); CHECK(a[4] == 34); CHECK(a[6] == 42); CHECK(a[8] == 0);
-    CHECK(total(a) == 307);
-    CHECK(maxTotal(a,432) == 307); CHECK(maxTotal(a,200) == 200);
-    const auto h = maxPerLocation(hunchbackStructure);
-    CHECK(h[0] == 9); CHECK(h[4] == 16); CHECK(h[5] == 16); CHECK(h[1] == 40);
-    Allocation x = atlas; x[1] = 62; x[8] = 0;
-    CHECK(available(x,1,a,432) == 0);   // front+rear share the torso limit
-    x[1] = 40; x[8] = 20; CHECK(available(x,8,a,432) == 2);
+struct Stock { Allocation base; std::array<int,8> structure; int baseArmor, maxArmor; };
+static const Stock stockPool[] = {   // base/structure/max from the stock chassis csv rows 12, 17, 18
+    {atlas, atlasStructure, 80, 432},
+    {{9,16,14,14,11,11,13,13,5,3,3}, {5,18,13,13,9,9,13,13}, 112, 240},   // Bushwacker
+    {{9,11,5,5,10,10,7,7,2,2,2}, {3,10,7,7,5,5,7,7}, 63, 185},   // Razorback-like (arm 10 < stock 11)
+};
+TEST_CASE("armor capacity: no stock loadout exceeds its displayed MAX") {
+    for (const auto& c : stockPool) {
+        const auto cap = maxPerLocation(c.structure, c.base, c.maxArmor - c.baseArmor);
+        CHECK(cap[0] >= 9);
+        for (int plating = 0; plating <= c.maxArmor - c.baseArmor; ++plating) {
+            const auto a = legacyDistribution(c.base, plating);
+            for (int i = 0; i < 8; ++i) {
+                const int p = partner(i);
+                CHECK(a[i] + (p >= 0 ? a[p] : 0) <= cap[i]);
+                if (i > 0) CHECK(cap[i] >= 2 * c.structure[i]);
+            }
+        }
+    }
+    const auto a = maxPerLocation(atlasStructure, atlas, 352);   // Atlas: arm 50, CT 84, LT/RT 62, head 9
+    CHECK(a[0] == 9); CHECK(a[4] == 50); CHECK(a[1] == 84); CHECK(a[2] == 62); CHECK(a[8] == 0);
+    // stock Atlas LT 37 front + 6 rear and Shootist arms 24 sit under the displayed MAX
+    CHECK(37 + 6 <= a[2]);
+    // Hunchback-like: structure alone (arm 8 -> 16) never lowers the limit below 2 x structure
+    CHECK(maxPerLocation({3,20,15,15,8,8,15,15}, {9,0,0,0,0,0,0,0,0,0,0}, 0)[4] == 16);
+    CHECK(maxTotal(a, 200) == 200);
+    Allocation x = atlas; x[1] = a[1]; x[8] = 0;
+    CHECK(available(x,1,a,1000) == 0);   // front+rear share the torso limit
+    x[1] = 40; x[8] = 20; CHECK(available(x,8,a,1000) == 24);
 }
 TEST_CASE("armor allocation preserves legacy arithmetic") {
     for (int n : {0,1,5,11}) {
@@ -29,7 +47,7 @@ TEST_CASE("armor allocation preserves legacy arithmetic") {
     CHECK(total(legacyDistribution(atlas,32)) == 107);
 }
 TEST_CASE("armor allocation limits shared torsos bytes and pool") {
-    const auto cap = maxPerLocation(atlasStructure);
+    const auto cap = maxPerLocation(atlasStructure,atlas,352);
     auto a = atlas;
     CHECK_FALSE(step(a,0,1,cap,432));
     CHECK_FALSE(step(a,1,1,cap,80));
@@ -45,7 +63,7 @@ TEST_CASE("armor allocation limits shared torsos bytes and pool") {
     CHECK(available(a,1,cap,80) == 0);
 }
 TEST_CASE("armor normalisation is deterministic after removing plating") {
-    const auto cap = maxPerLocation(atlasStructure);
+    const auto cap = maxPerLocation(atlasStructure,atlas,352);
     for (int plating : {0,32,64,352}) {
         auto a = legacyDistribution(atlas,plating);
         const int pool = 80 + std::max(0,plating-32);

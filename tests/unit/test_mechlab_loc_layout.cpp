@@ -310,3 +310,9 @@ TEST_CASE("mechlab loc U10: view state resets scrolls and re-keys the doll icon"
     CHECK(!v.needsIcon("mad"));
     CHECK(v.needsIcon("hunchback"));
 }
+
+TEST_CASE("overweight warning is package-only; stock Bushwacker 56/55 is not flagged") {
+    CHECK_FALSE(mc2::mechlab_loc::overweight(false, 38.f, 0.f));
+    CHECK(mc2::mechlab_loc::overweight(true, 34.5f, 34.f));
+    CHECK_FALSE(mc2::mechlab_loc::overweight(true, 34.f, 34.f));
+}

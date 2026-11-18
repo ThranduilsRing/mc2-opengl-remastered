@@ -2687,7 +2687,7 @@ void MechLabScreen::drawLocationView(float tbSx, float tbSy, float tbOx, float t
 	const int unallocated = std::max(0,pool-mc2::armor::total(allocation));
 	text({r.x+3,r.y+34,r.w-6,10},"UNALLOCATED "+std::to_string(unallocated));
 	text({r.x+3,r.y+44,r.w-6,10},"MAX "+std::to_string(mc2::armor::maxTotal(cap,static_cast<int>(pVariant->getMaxArmor()))));
-	const std::string warning = !pVariant->getChassis()->armorEditable ? "ARMOR DISPLAY-ONLY" : pVariant->getWeight()>pVariant->getMaxWeight() ? "OVERWEIGHT" :
+	const std::string warning = !pVariant->getChassis()->armorEditable ? "ARMOR DISPLAY-ONLY" : ml::overweight(pc != nullptr,mc2pkg::massUsed(placed),pc ? pc->payload : 0.f) ? "OVERWEIGHT" :
 		pVariant->getHeat()>pVariant->getMaxHeat() ? "TOO HOT" : pVariant->isLayoutGrandfathered() ? "LAYOUT WARNING" : unallocated ? "UNALLOCATED ARMOR" : "READY";
 	text({r.x+3,r.y+57,r.w-6,12},warning,warning=="READY" ? 0xffc8e100 : 0xffa21600,8);
 	const auto strip = ml::panelRect(ml::kDoll); fill(strip,0xe8101820);

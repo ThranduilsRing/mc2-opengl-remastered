@@ -139,6 +139,11 @@ inline std::optional<int> panelOfLocation(std::string_view name) {
 
 // ---- refusal reasons --------------------------------------------------------------------------
 
+// OVERWEIGHT applies to package chassis only (their payload rule is enforced). Stock MC2 does not
+// enforce weight ("weight no longer matters", canAddComponent) and its 20%+7 base is an estimate, so
+// shipped stock loadouts (Bushwacker Prime: 38 t equipment + 18 t base vs 55 t) can read over.
+inline bool overweight(bool packageChassis, float massUsed, float payload) { return packageChassis && massUsed > payload + 1e-3f; }
+
 enum class Reason : int { Legal = 0, NoRegion, TooBig, RegionFull, NoFreeMount, OverPayload };
 
 struct Candidate {

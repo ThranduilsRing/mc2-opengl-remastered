@@ -13,16 +13,22 @@ inline Allocation legacyDistribution(const Allocation& base, int plating) {
     for (int i = 0; i < 11; ++i) a[i] += static_cast<int>(shares[i] * plating);
     return a;
 }
-// Tabletop limit: 2 x internal structure per location, head 9. A torso's front and rear share the
-// front's limit (rear entries are 0; `available` sums the pair).
-inline Allocation maxPerLocation(const std::array<int, 8>& structure) {
+inline int partner(int i) { return i >= 1 && i <= 3 ? i + 7 : (i >= 8 ? i - 7 : -1); }
+// Per-location limit. MC2 data has no per-location maximum (only the chassis total "MAX Armor"), so
+// the limit is the larger of the tabletop rule (2 x structure, head 9) and the legacy distribution of
+// a fully plated chassis (base + shares * (maxArmor - baseArmor)), which every stock loadout stays
+// under. A torso's front and rear share the front's limit (rear entries are 0; `available` sums the pair).
+inline Allocation maxPerLocation(const std::array<int, 8>& structure, const Allocation& base, int maxPlating) {
+    const auto full = legacyDistribution(base, std::max(0, maxPlating));
     Allocation a{};
-    for (int i = 0; i < 8; ++i) a[i] = std::min(255, i == 0 ? 9 : 2 * structure[i]);
+    for (int i = 0; i < 8; ++i) {
+        const int legacy = full[i] + (partner(i) >= 0 ? full[partner(i)] : 0);
+        a[i] = std::min(255, std::max(i == 0 ? 9 : 2 * structure[i], legacy));
+    }
     return a;
 }
 // Most the sheet can hold: the location limits' sum, bounded by the chassis armor cap.
 inline int maxTotal(const Allocation& cap, int maxArmor) { return std::min(total(cap), maxArmor); }
-inline int partner(int i) { return i >= 1 && i <= 3 ? i + 7 : (i >= 8 ? i - 7 : -1); }
 inline int available(const Allocation& a, int i, const Allocation& cap, int pool) {
     const int other = partner(i);
     const int room = other < 0 ? cap[i] - a[i] : cap[i] + cap[other] - a[i] - a[other];
