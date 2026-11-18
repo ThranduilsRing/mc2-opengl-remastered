@@ -1129,7 +1129,9 @@ void MechLabScreen::render(int xOffset, int yOffset)
 		else
 			mc2::fmt::to_buf(value, "Heat {:.1f}  Damage {:.1f}", pCurComponent->getHeat(), pCurComponent->getDamage());
 		line(86, value, 0xffe8eef4);
-		mc2::fmt::to_buf(value, "Range {}  Cycle {:.1f}s", pCurComponent->getRange(), pCurComponent->getRecycleTime());
+		// LogisticsComponent::range is never loaded (garbage); the CSV carries only short/medium/long
+		static constexpr const char* kRange[] = { "Short", "Medium", "Long", "-" };
+		mc2::fmt::to_buf(value, "Range {}  Cycle {:.1f}s", kRange[std::clamp<int>(pCurComponent->getRangeType(), 0, 3)], pCurComponent->getRecycleTime());
 		line(99, pCurComponent->getType() == COMPONENT_FORM_HEATSINK ? "" : value, 0xffa0c8e0);
 		auto meter = [&](float x, float y, float fraction, std::uint32_t color) {
 			GuiRuntime::DrawUiRect((x + xOffset) * tbSx + tbOx, (y + yOffset) * tbSy + tbOy,
@@ -1140,7 +1142,7 @@ void MechLabScreen::render(int xOffset, int yOffset)
 		meter(195, 97, pCurComponent->getHeat() / LogisticsComponent::MAX_HEAT, 0xffff6040);
 		meter(270, 97, pCurComponent->getDamage() / LogisticsComponent::MAX_DAMAGE, 0xff80c8ff);
 		if (pCurComponent->getType() != COMPONENT_FORM_HEATSINK)
-			meter(195, 110, (pCurComponent->getRange() + 1) / 3.f, 0xff80c8ff);
+			meter(195, 110, (std::min<int>(pCurComponent->getRangeType(), 2) + 1) / 3.f, 0xff80c8ff);
 	}
 
 	if ( MPlayer && ChatWindow::instance() )
