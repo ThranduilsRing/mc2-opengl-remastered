@@ -641,6 +641,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 			terrainPresentationIsNight = isNight;
 		}
 		// Trigger evidence (terrain-walk-hitch-1): which invalidation fed this walk, plotted per frame.
+		const bool slowVisitDiag = mc2_diag::tagRequested("TERRAIN_WALK");
 		const auto drained = dirty.drain();
 		TracyPlot("Terrain.Walk.Drained", static_cast<int64_t>(drained.size()));
 		TracyPlot("Terrain.Walk.MarkAllCum", static_cast<int64_t>(dirty.markAllCount()));
@@ -650,6 +651,22 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 			GameObjectPtr walkObj = objList[objIndex];
 			if (!walkObj || walkObj->isMover()) continue;
 			const auto kind = walkObj->getObjectClass();
+			// Evidence (terrain-walk-hitch-1): name any single object whose visit costs >2 ms, with its phase split.
+			struct SlowVisit {
+				std::chrono::steady_clock::time_point t0 = std::chrono::steady_clock::now(), t1 = t0, t2 = t0;
+				long handle; int kind; bool on;
+				~SlowVisit() {
+					if (!on) return;
+					const auto t3 = std::chrono::steady_clock::now();
+					const double total = std::chrono::duration<double, std::milli>(t3 - t0).count();
+					if (total < 2.0) return;
+					char msg[200];
+					const int n = std::snprintf(msg, sizeof msg, "slow_visit handle=%ld kind=%d total=%.2f push_flush=%.2f recalc=%.2f rest=%.2f",
+						handle, kind, total, std::chrono::duration<double, std::milli>(t1 - t0).count(),
+						std::chrono::duration<double, std::milli>(t2 - t1).count(), std::chrono::duration<double, std::milli>(t3 - t2).count());
+					TracyMessage(msg, static_cast<size_t>(n));
+				}
+			} slowVisit{.handle = objIndex, .kind = static_cast<int>(kind), .on = slowVisitDiag};
 			// Turrets have a presentation owner in Other, including rotating types that cannot become static.
 			if (kind != TREE && kind != TERRAINOBJECT && kind != BRIDGE && kind != BUILDING && kind != GATE) continue;
 					// Dirty poses are refreshed even before the render cull admits their
@@ -667,8 +684,10 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 						appearance->flushSimEvents();
 						++walkVisited;
 						if (countVisits) ++walkByClass[kind];
+						slowVisit.t1 = std::chrono::steady_clock::now();
 						mc2::lastAngularTest.valid = false;
 						const bool inView = appearance->recalcBounds();
+						slowVisit.t2 = std::chrono::steady_clock::now();
 						const auto angularTest = mc2::lastAngularTest;
 						const bool terrainKind = kind == TERRAINOBJECT || kind == TREE || kind == BRIDGE || kind == BUILDING;
 
