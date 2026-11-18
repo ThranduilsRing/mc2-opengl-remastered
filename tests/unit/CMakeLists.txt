@@ -984,3 +984,5 @@ if(MC2_UNIT_ONLY_SOURCES)
 endif()
 # Mission-load exclusive accounting (standalone header).
 target_sources(mc2_tests PRIVATE test_load_scope.cpp)
+
+target_sources(mc2_tests PRIVATE test_tree_texture_bindings.cpp)

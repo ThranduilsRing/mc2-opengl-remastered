@@ -661,6 +661,8 @@ void BldgAppearanceType::setAnimation (TG_MultiShapePtr shape, DWORD animationNu
 
 void TreeAppearanceType::init (mc2::czstring fileName)
 {
+	loadInstanceObserved = false;
+	textureBindings.clear();
 	AppearanceType::init(fileName);
 
 	FullPathFileName iniName;
@@ -878,6 +880,7 @@ void TreeAppearanceType::registerRenderShapes()
 
 void TreeAppearanceType::destroy (void)
 {
+    textureBindings.clear();
     treeDmgRenderShape.reset();
     propMaterialSource = nullptr;
 	AppearanceType::destroy();

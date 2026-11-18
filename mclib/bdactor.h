@@ -16,6 +16,7 @@
 #include "mc2_czstring.h"
 #include <algorithm>
 #include <memory>
+#include "tree_texture_bindings.h"
 #ifndef APPEAR_H
 #include"appear.h"
 #endif
@@ -569,6 +570,8 @@ class BldgAppearance : public ObjectAppearance
 class TreeAppearanceType : public AppearanceType
 {
 	public:
+		bool loadInstanceObserved = false;
+		TreeTextureBindings textureBindings;
 	
 		std::unique_ptr<TG_TypeMultiShape> treeShape[MAX_LODS];
 		float						lodDistance[MAX_LODS];
@@ -615,6 +618,8 @@ class TreeAppearanceType : public AppearanceType
 			treeDmgShape = nullptr;
             treeDmgRenderShape.reset();
             propMaterialSource = nullptr;
+			textureBindings.clear();
+			loadInstanceObserved = false;
 		}
 	
 		TreeAppearanceType (void)

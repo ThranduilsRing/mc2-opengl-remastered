@@ -53,49 +53,44 @@ void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 
 	if (appearType)
 	{
+		const bool first = !appearType->loadInstanceObserved;
+		appearType->loadInstanceObserved = true;
+		static auto* cloneFirst = mc2::load::entry("tree.clone.first");
+		static auto* cloneRest = mc2::load::entry("tree.clone.further");
+		{
+		mc2::load::Scope scope(first ? cloneFirst : cloneRest);
 		// MODEL-OVERRIDE dual-shape: build the per-instance RENDER shape from the
 		// render accessor (override if present, else stock). Collision (markTerrain/
 		// markLOS) rebuilds this member from stock treeShape[lod] when needed.
-		{ MC2_LOAD_SCOPE("sim.tree.clone"); treeShapeOwner_.reset(appearType->getTreeRenderShape(0)->CreateFrom()); }
+		treeShapeOwner_.reset(appearType->getTreeRenderShape(0)->CreateFrom());
 		treeShape = treeShapeOwner_.get();
+		}
 
-		{ MC2_LOAD_SCOPE("sim.tree.textures");
-		for (long i=0;i<treeShape->GetNumTextures();i++)
+		static auto* texturesFirst = mc2::load::entry("tree.textures.first");
+		static auto* texturesRest = mc2::load::entry("tree.textures.further");
 		{
-			char txmName[1024];
-			treeShape->GetTextureName(i,txmName,256);
-	
+		mc2::load::Scope scope(first ? texturesFirst : texturesRest);
+		appearType->textureBindings.apply(*treeShape, [](mc2::czstring txmName, bool alpha) {
 			char texturePath[1024];
 			mc2::fmt::to_buf(texturePath, "{}{:d}" PATH_SEPARATOR "", mc2::fmt::safe(tglPath), mc2::fmt::as_i32(ObjectTextureSize));
-	
 			FullPathFileName textureName;
 			textureName.init(texturePath,txmName,"");
-	
-			if (textureOrKtxSidecarExists(textureName))
-			{
-				if (S_strnicmp(txmName,"a_",2) == 0)
-				{
-					DWORD gosTextureHandle = mc2::textures::load(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink);
-					gosASSERT(gosTextureHandle != 0xffffffff);
-					treeShape->SetTextureHandle(i,gosTextureHandle);
-					treeShape->SetTextureAlpha(i,true);
-				}
-				else
-				{
-					DWORD gosTextureHandle = mc2::textures::load(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink);
-					gosASSERT(gosTextureHandle != 0xffffffff);
-					treeShape->SetTextureHandle(i,gosTextureHandle);
-					treeShape->SetTextureAlpha(i,false);
-				}
+			TreeTextureBindings::Binding binding;
+			if (textureOrKtxSidecarExists(textureName)) {
+				binding.handle = mc2::textures::load(textureName, alpha ? gos_Texture_Alpha : gos_Texture_Solid,
+					gosHint_DisableMipmap | gosHint_DontShrink);
+				gosASSERT(binding.handle != 0xffffffff);
+				binding.present = true;
+				binding.alpha = alpha;
 			}
-			else
-			{
-				treeShape->SetTextureHandle(i,0xffffffff);
-			}
+			return binding;
+		});
+
 		}
-		
-		}
-		MC2_LOAD_SCOPE("sim.tree.bounds");
+		static auto* boundsFirst = mc2::load::entry("tree.bounds.first");
+		static auto* boundsRest = mc2::load::entry("tree.bounds.further");
+		{
+		mc2::load::Scope scope(first ? boundsFirst : boundsRest);
 		glm::vec3 boxCoords[8];
 		glm::vec3 nodeCenter = treeShape->GetRootNodeCenter();
 
@@ -162,6 +157,10 @@ void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		// getTreeRenderShape clamps unpopulated indices back to LOD0). Stock
 		// types keep the full MAX_LODS loop: getTreeRenderShape(i) returns the
 		// distinct stock treeShape[i] per LOD, all of which must register.
+		}
+		static auto* registerFirst = mc2::load::entry("tree.register.first");
+		static auto* registerRest = mc2::load::entry("tree.register.further");
+		mc2::load::Scope scope(first ? registerFirst : registerRest);
 		appearType->registerRenderShapes();
 	}
 
