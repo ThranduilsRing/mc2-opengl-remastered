@@ -5,6 +5,9 @@ import sys
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 import ninja_build  # noqa: E402
+import pytest  # noqa: E402
+
+pytestmark = pytest.mark.real_treelock   # tests the real lock (temp-dir roots only)
 
 
 def test_warm_base_takes_the_tree_lock_before_switching_the_checkout(tmp_path, monkeypatch):

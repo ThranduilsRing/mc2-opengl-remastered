@@ -79,3 +79,35 @@ def deploy_modules_named_by(module):
 def _no_inherited_gate_flag(monkeypatch):
     monkeypatch.delenv("MC2_IN_GATE", raising=False)
     monkeypatch.setenv("MC2_NO_RECEIPT_CHECK", "1")   # batch tests drive lane_merge without a precheck receipt (R2)
+
+
+class NoLock:
+    """Stand-in for ninja_build.TreeLock: never touches <repo>/build64-tests (merge_gate's harnesses row holds it ~17 min)."""
+    def __init__(self, *a, **k):
+        pass
+
+    def acquire(self, *_):
+        return True
+
+    def close(self):
+        pass
+
+    def holder(self):
+        return "test"
+
+
+@pytest.fixture(autouse=True)
+def stub_harness_tree_lock(request, monkeypatch):
+    """Tests reaching build_contract_harnesses never wait on the real build tree lock (stalled ~805 s twice in the gate).
+    Opt out with @pytest.mark.real_treelock (tests of the lock itself; they must use temp-dir locks)."""
+    if request.node.get_closest_marker("real_treelock"):
+        return
+    for name in ("tools.build_contract_harnesses", "build_contract_harnesses"):
+        mod = sys.modules.get(name)
+        if mod is None and name.startswith("tools."):
+            try:
+                mod = importlib.import_module(name)
+            except ImportError:
+                continue
+        if mod is not None and hasattr(mod, "TreeLock"):
+            monkeypatch.setattr(mod, "TreeLock", NoLock)

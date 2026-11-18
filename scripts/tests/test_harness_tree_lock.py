@@ -9,6 +9,9 @@ sys.path.insert(0, str(ROOT / "tools"))
 sys.path.insert(0, str(ROOT / "scripts"))
 import build_contract_harnesses as bch
 from ninja_build import TreeLock
+import pytest
+
+pytestmark = pytest.mark.real_treelock   # tests the real lock (temp-dir roots only)
 
 
 def _fake_build(monkeypatch):
