@@ -193,6 +193,12 @@ TEST_CASE("mechlab loc U2: a missile Marauder loses only the missile rack, and t
     CHECK(layoutRefund(250, 2) == 500);
 }
 
+TEST_CASE("mechlab loc U3b: an absent LayoutRev (read error, value 0) is grandfathered rev 1 and restores") {
+    CHECK(savedLayoutAction(savedLayoutRev(1, 0), 1) == SavedLayoutAction::Restore);
+    CHECK(savedLayoutAction(savedLayoutRev(0, 2), 3) == SavedLayoutAction::Migrate);
+    CHECK(savedLayoutAction(savedLayoutRev(0, 3), 3) == SavedLayoutAction::Restore);
+}
+
 TEST_CASE("mechlab loc U3: migration is idempotent, a legal loadout is returned unchanged") {
     CHECK(savedLayoutAction(2, 3) == SavedLayoutAction::Migrate);
     CHECK(savedLayoutAction(3, 3) == SavedLayoutAction::Restore);

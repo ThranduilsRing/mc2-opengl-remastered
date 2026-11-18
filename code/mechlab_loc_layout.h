@@ -212,6 +212,9 @@ inline SavedLayoutAction savedLayoutAction(long savedRev, int installedRev) {
         : savedRev < installedRev ? SavedLayoutAction::Migrate : SavedLayoutAction::Restore;
 }
 
+// readIdLong writes 0 and returns an error when the key is absent: an absent LayoutRev is the grandfathered rev 1.
+inline long savedLayoutRev(long readResult, long value) { return readResult == 0 ? value : 1; }
+
 struct LoadoutItem { mc2pkg::Placed p; bool slot = false; };   // slot = legacy -2/-3 item (jump jet, ECM, sensor): mass only
 struct LoadoutResult {
     std::vector<Cell> cells;     // parallel to the input; saved cell, new cell, or {-1,-1} when dropped

@@ -352,8 +352,9 @@ std::expected<void, long> LogisticsData::loadVariant( FitIniFile& file )
 		return std::unexpected(INVALID_FILE_NAME);
 	}
 
-	long savedRev = 1;
-	file.readIdLong("LayoutRev", savedRev);
+	long savedRev = 0;
+	const long revRead = file.readIdLong("LayoutRev", savedRev);
+	savedRev = mc2::mechlab_loc::savedLayoutRev(revRead, savedRev);
 	const auto* package = pChassis->getPackage();
 	const auto layoutAction = mc2::mechlab_loc::savedLayoutAction(savedRev, package ? package->layoutRev : 1);
 	if (layoutAction == mc2::mechlab_loc::SavedLayoutAction::PackDefault) {
