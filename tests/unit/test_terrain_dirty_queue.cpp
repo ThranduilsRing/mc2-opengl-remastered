@@ -422,3 +422,15 @@ TEST_CASE("terrain_walk_skip/off-view buildings and building-appearance terrain 
     CHECK(!mc2::terrainWalkSkips(TERRAINOBJECT, true, false, mc2::bldgRenderIsNoOp(false, false, false, true)));
     CHECK(!mc2::terrainWalkSkips(TERRAINOBJECT, false, true, mc2::bldgRenderIsNoOp(false, false, false, true)));
 }
+
+TEST_CASE("terrain_dirty_queue/requeue reasons preserve visible lights and offscreen blockers")
+{
+    CHECK(mc2::terrainRequeueReasons(false, true, false, true, false, false) == 0u);
+    CHECK(mc2::terrainRequeueReasons(true, true, false, true, false, false) == (1u << 2));
+    CHECK(mc2::terrainRequeueReasons(false, true, false, false, true, false) == (1u << 3));
+    CHECK(mc2::terrainRequeueReasons(true, true, false, false, false, false) == 0u);
+    CHECK(mc2::terrainRequeueReasons(false, true, true, false, false, false) == (1u << 1));
+    CHECK(mc2::terrainRequeueReasons(true, false, false, false, false, false) == (1u << 0));
+    CHECK(mc2::terrainRequeueReasons(false, false, false, false, false, true) == (1u << 4));
+    CHECK(mc2::terrainRequeueReasons(true, false, true, true, true, true) == 31u);
+}
