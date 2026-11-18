@@ -10,12 +10,11 @@ does not touch the stored stdout. So a hit in worktree X recorded the first work
 generated headers) in X's .ninja_deps: an edit to X's own header never rebuilt the object (silently stale), and a path that no
 longer exists made the object rebuild on every build (a deps path that is missing counts as dirty).
 
-This launcher runs sccache, rewrites every replayed include path that belongs to another checkout onto this one, and passes
-everything else (diagnostics, return code) through untouched. A path with no counterpart here is left as printed: the object then
-rebuilds every time, which is slow but never stale.
+This launcher runs sccache, rewrites every replayed include path outside this checkout onto its counterpart here (root-agnostic:
+the longest trailing path that exists under this checkout, so any former worktree or build root works), and passes everything
+else (diagnostics, return code) through untouched. A path with no counterpart here (system/SDK headers) is left as printed.
 """
 import os
-import re
 import subprocess
 import sys
 
@@ -26,22 +25,6 @@ PREFIX = b"Note: including file:"
 
 def norm(p):
     return os.path.normcase(os.path.normpath(p))
-
-
-def roots_from_env(own):
-    """Every checkout root the cache may have been filled from, own root excluded. Forward-slash, no trailing slash."""
-    own_n = norm(own)
-    roots = []
-    for r in os.environ.get("SCCACHE_BASEDIRS", "").split(";"):
-        r = r.strip().rstrip("/\\")
-        if r and norm(r) != own_n:
-            roots.append(r)
-    roots.sort(key=len, reverse=True)
-    return roots
-
-
-# A checkout that is no longer a live worktree (removed, moved, archived) still leaves its root in old cache entries.
-FOREIGN_ROOT = re.compile(r"^[A-Za-z]:/(?:Games/mc2-[^/]+|mc2-[^/]+/(?:builds|worktrees)/[^/]+|mc2-wt/[^/]+)(?=/)", re.I)  # matched on a slash-normalised path
 
 
 def include_dirs(args):
@@ -59,38 +42,35 @@ def include_dirs(args):
     return dirs
 
 
-def remap(path, own, roots, incs):
-    """path: one replayed include path (str). Returns the path in this checkout, or path unchanged when none is found."""
+def remap(path, own, incs):
+    """path: one replayed include path (str). Returns the path in this checkout, or path unchanged when none is found.
+
+    Root-agnostic: a path not under this checkout is mapped by its longest trailing part that exists here (>= 2 components
+    under the checkout root, any length under this command line's own -I directories for generated headers). System and SDK
+    headers have no counterpart and stay as printed."""
     path = path.replace("\\", "/")
-    if os.path.exists(path) and norm(path).startswith(norm(own)):
-        return path
+    own_n = norm(own) + os.sep
     n = norm(path)
-    dead = FOREIGN_ROOT.match(path.replace(os.sep, "/"))
-    if dead and not n.startswith(norm(own) + os.sep):
-        roots = roots + [dead.group(0)]
-    for r in roots:
-        rn = norm(r) + os.sep
-        if n.startswith(rn):
-            # norm lower-cased the text; take the tail from the original spelling instead.
-            tail = path[len(rn):]
-            cand = os.path.join(own, tail)
+    if n.startswith(own_n):
+        return path
+    parts = [p for p in path.split("/") if p]
+    if len(parts) > 1 and path[1:2] == ":":
+        parts = parts[1:]
+    for i in range(len(parts)):
+        sub = os.sep.join(parts[i:])
+        if len(parts) - i >= 2:
+            cand = os.path.join(own, sub)
             if os.path.exists(cand):
                 return cand
-            # A generated header of the other checkout's build directory: find it by its trailing components under this
-            # command line's own -I directories (e.g. <build>/generated/build_fingerprint.h).
-            parts = tail.replace("/", os.sep).split(os.sep)
-            for i in range(len(parts)):
-                sub = os.sep.join(parts[i:])
-                for d in incs:
-                    c = os.path.join(d, sub)
-                    if os.path.exists(c) and norm(c).startswith(norm(own)):
-                        return c
+        for d in incs:
+            cand = os.path.join(d, sub)
+            if os.path.exists(cand) and norm(cand).startswith(own_n):
+                return cand
     return path
 
 
 def main():
     own, sccache, cmd = sys.argv[1], sys.argv[2], sys.argv[3:]
-    roots = roots_from_env(own)
     incs = include_dirs(cmd)
     proc = subprocess.run([sccache] + cmd, stdout=subprocess.PIPE, **console_child.child_kwargs(redirected=True))
     out = proc.stdout
@@ -105,7 +85,7 @@ def main():
                     path = stripped.decode("mbcs")
                 except UnicodeDecodeError:
                     continue
-                new = remap(path, own, roots, incs)
+                new = remap(path, own, incs)
                 if new != path:
                     eol = b"\r" if ln.endswith(b"\r") else b""
                     lines[i] = PREFIX + lead + new.encode("mbcs") + eol

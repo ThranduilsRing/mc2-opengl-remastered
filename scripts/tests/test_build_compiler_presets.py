@@ -318,13 +318,11 @@ def test_cache_launcher_rewrites_replayed_include_paths(tmp_path, monkeypatch):
         (base / "mclib" / "a.h").write_text("x")
     (own / "bld" / "generated").mkdir(parents=True)
     (own / "bld" / "generated" / "fp.h").write_text("x")
-    monkeypatch.setenv("SCCACHE_BASEDIRS", f"{own};{other}")
-    roots = cl.roots_from_env(str(own))
-    assert roots == [str(other)]
+    monkeypatch.delenv("SCCACHE_BASEDIRS", raising=False)
     incs = cl.include_dirs(["/nologo", f"-I{own / 'bld' / 'generated'}", "/I", str(own / "mclib")])
-    assert Path(cl.remap(str(other / "mclib" / "a.h"), str(own), roots, incs)) == own / "mclib" / "a.h"
-    assert Path(cl.remap(str(other / "oldbld" / "generated" / "fp.h"), str(own), roots, incs)) == own / "bld" / "generated" / "fp.h"
-    assert cl.remap("C:/Program Files/sdk/x.h", str(own), roots, incs) == "C:/Program Files/sdk/x.h"
+    assert Path(cl.remap(str(other / "mclib" / "a.h"), str(own), incs)) == own / "mclib" / "a.h"
+    assert Path(cl.remap(str(other / "oldbld" / "generated" / "fp.h"), str(own), incs)) == own / "bld" / "generated" / "fp.h"
+    assert cl.remap("C:/Program Files/sdk/x.h", str(own), incs) == "C:/Program Files/sdk/x.h"
 
 
 def test_external_build_root_reaches_every_output_without_moving_sources(monkeypatch, tmp_path):
