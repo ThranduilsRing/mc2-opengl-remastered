@@ -763,8 +763,14 @@ mc2_height_slice(layout_mount_helpers code/logisticsvariant_package.cpp
     "namespace {" "int LogisticsVariant::packageCheck(")
 mc2_height_slice(layout_mounts code/logisticsvariant_package.cpp
     "int LogisticsVariant::getPackageMounts(" "LogisticsVariant::LocationPlace LogisticsVariant::packageLocationPlace(")
+mc2_height_slice(layout_armor_stats code/logisticsvariant_stats.cpp
+    "int LogisticsVariant::getCost(" "const std::string& LogisticsVariant::getMechClass()")
+mc2_height_slice(layout_armor_pool code/logisticsvariant_stats.cpp
+    "int LogisticsVariant::getArmor(" "bool LogisticsVariant::hasXLEngine() const")
+mc2_height_slice(layout_armor_edit code/logisticsvariant.cpp
+    "mc2::armor::Allocation LogisticsVariant::armorCapacity()" "// Armor allocation end.")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/layout_deployment.inc"
-    CONTENT "${layout_mount_helpers}\n${layout_flat}\n${layout_mounts}\n${layout_restore}")
+    CONTENT "${layout_mount_helpers}\n${layout_flat}\n${layout_mounts}\n${layout_restore}\n${layout_armor_stats}\n${layout_armor_pool}\n${layout_armor_edit}")
 mc2_height_slice(layout_accept code/logisticsdata_modify.cpp
     "std::expected<void, int> LogisticsData::acceptMechModifications(" "\n\tbool bFound = 0;")
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/layout_accept.inc" CONTENT "${layout_accept}\nreturn {};\n}\n")

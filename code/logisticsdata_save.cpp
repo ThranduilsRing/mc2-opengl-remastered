@@ -387,6 +387,7 @@ std::expected<void, long> LogisticsData::loadVariant( FitIniFile& file )
 		pVariant->setLoadout(saved, &report);
 		auto migrated = pVariant->locationRecord();
 		migrated.armor = record->armor;
+		migrated.armorExplicit = record->armorExplicit;
 		if (!pVariant->restoreLocationRecord(std::move(migrated))) {
 			variants.pop_back();
 			return std::unexpected(INVALID_FILE_NAME);

@@ -169,6 +169,7 @@ struct LocationVariant {
     int version = 1;
     std::vector<VariantItem> items; // always original order, including grandfathered items
     std::array<int, 11> armor{};
+    bool armorExplicit = false;
     bool grandfathered = false, edited = false, classicReadOnly = false;
 };
 inline bool canSaveLocationVariant(const LocationVariant& record) { return !record.grandfathered; }

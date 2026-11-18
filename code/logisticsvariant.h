@@ -20,6 +20,7 @@ class FitIniFile;
 #include <functional>
 #include <expected>
 #include "chassis_layout.h"
+#include "armor_alloc.h"
 
 #pragma warning (disable:4514)
 
@@ -68,6 +69,9 @@ public:
 	// BT2018-FIRST-CLASS P7: the package chassis record (regions, mounts, mass budget) when this
 	// chassis comes from a package; nullptr for every stock chassis.
 	const mc2pkg::PackageChassis* getPackage() const { return package; }
+	mc2::armor::Allocation baseArmorLoc{};
+	std::array<int, 8> structure{};
+	bool armorEditable = false;
 
 protected:
 
@@ -202,6 +206,10 @@ protected:
 
 		long			save( FitIniFile& file, long counter );
 		mc2pkg::LocationVariant locationRecord() const;
+		mc2::armor::Allocation armorAllocation(bool legacy = false) const;
+		mc2::armor::Allocation armorCapacity() const;
+		bool hasExplicitArmor() const { return chassis->armorEditable && layoutState.armorExplicit; }
+		bool stepArmor(int location, int delta);
 		bool restoreLocationRecord(mc2pkg::LocationVariant record);
 		bool isLayoutGrandfathered() const { return locationRecord().grandfathered; }
 

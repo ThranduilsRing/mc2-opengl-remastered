@@ -394,6 +394,7 @@ std::expected<void, int> LogisticsVariant::removeComponent( long xCoord, long yC
 	}
 
 	componentCount --;
+	if (hasExplicitArmor()) layoutState.armor = armorAllocation();
 	layoutState.version = 1;
 
 	return {};
