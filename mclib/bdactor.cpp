@@ -464,12 +464,14 @@ void BldgAppearance::setObjStatus (long oStatus)
 		// eventual outcome, no double-invalidate risk (the guard inside is
 		// `if (staticReg.registered ...)`).
 		if (oStatus == OBJECT_STATUS_DESTROYED) {
+			ZoneScopedN("Bldg.SetStatus.InvalidateStatic");
 			const bool wasRegistered = staticReg.registered;
 			invalidateStaticRegistration();
 		}
 
 		if ((oStatus == OBJECT_STATUS_DESTROYED) || (oStatus == OBJECT_STATUS_DISABLED))
 		{
+			ZoneScopedN("Bldg.SetStatus.ShapeSwap");
 			// Destroyed RENDER shape: the override's destroyed chain when cooked, else stock damage.
 			if (TG_TypeMultiShape* dmgRender = appearType->getBldgDmgRenderShape())
 			{
@@ -513,6 +515,7 @@ void BldgAppearance::setObjStatus (long oStatus)
 
 		if (bldgShape)
 		{
+			ZoneScopedN("Bldg.SetStatus.Textures");
 			// Load the texture and store its handle.
 			for (long i=0;i<bldgShape->GetNumTextures();i++)
 			{
