@@ -18,6 +18,10 @@ def production_seam(monkeypatch, tmp_path):
     monkeypatch.setattr(builder, "prepare_unit_tree", lambda *a: (False, tmp_path / "receipt", "[]"))
     # Hermetic: never run a real (possibly stale) mc2_tests_selected binary left in the build tree.
     monkeypatch.setattr(builder, "matched_case_count", lambda *a: 1)
+    # The real TreeLock on <repo>/build64-tests is held by the gate's concurrent harnesses row (~17 min); the default-tree
+    # cases waited ~800 s on it and failed. These command contracts never need it.
+    monkeypatch.setattr(builder, "TreeLock", lambda *a: SimpleNamespace(
+        acquire=lambda *_: True, close=lambda: None, holder=lambda: "test"))
     seam = Mock(return_value=True)
     monkeypatch.setattr(builder, "build_and_run_order_seam", seam)
     return seam
