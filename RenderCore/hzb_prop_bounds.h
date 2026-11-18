@@ -36,6 +36,7 @@ inline ProjectedProp project_prop(const GpuStaticPropInstance& inst, const float
     bool occlusionSafe = true;
     bool projectable = true;
     float maxClipW = -FLT_MAX, maxClipZ = -FLT_MAX, maxClipFar = -FLT_MAX;
+    float maxSide[4] = {-FLT_MAX, -FLT_MAX, -FLT_MAX, -FLT_MAX}; // w+x, w-x, w+y, w-y, padded (mirrors hzb_cull.comp)
     if ((inst.flags & 4u) != 0u)
         for (int a = 0; a < 4; ++a) swayPad[a] = 1.5f * (std::abs(worldToClip[a]) + 0.6f * std::abs(worldToClip[4+a]));
     for (int corner = 0; corner < 8; ++corner) {
@@ -55,6 +56,12 @@ inline ProjectedProp project_prop(const GpuStaticPropInstance& inst, const float
         maxClipW = (std::max)(maxClipW, clip[3] + swayPad[3]);
         maxClipZ = (std::max)(maxClipZ, biasedZ + padZ);
         maxClipFar = (std::max)(maxClipFar, clip[3] - biasedZ + swayPad[3] + padZ);
+        {   // side planes before the near-plane keep (mirrors hzb_cull.comp): all corners outside one side plane => cannot rasterize
+            const float pw = std::abs(clip[3]) + swayPad[3];
+            const float padX = swayPad[0] + pw * 4.0f / w + swayPad[3], padY = swayPad[1] + pw * 4.0f / h + swayPad[3];
+            maxSide[0] = (std::max)(maxSide[0], clip[3] + clip[0] + padX); maxSide[1] = (std::max)(maxSide[1], clip[3] - clip[0] + padX);
+            maxSide[2] = (std::max)(maxSide[2], clip[3] + clip[1] + padY); maxSide[3] = (std::max)(maxSide[3], clip[3] - clip[1] + padY);
+        }
         if (!(clip[3] > 1e-5f)) { projectable = false; continue; }
         const float x = clip[0]/clip[3], y = clip[1]/clip[3], z = clip[2]/clip[3] + depthBias;
         if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z) || z < 0 || z >= 1) { projectable = false; continue; }
@@ -69,7 +76,8 @@ inline ProjectedProp project_prop(const GpuStaticPropInstance& inst, const float
         y0 = (std::min)(y0, (y+1)*0.5f*h); y1 = (std::max)(y1, (y+1)*0.5f*h);
         nearest = (std::max)(nearest, z);
     }
-    if (maxClipW < -1e-5f || maxClipZ < -1e-5f || maxClipFar < -1e-5f) { out.keep = 0; out.tiny = 1; return out; }
+    if (maxClipW < -1e-5f || maxClipZ < -1e-5f || maxClipFar < -1e-5f ||
+        maxSide[0] < -1e-5f || maxSide[1] < -1e-5f || maxSide[2] < -1e-5f || maxSide[3] < -1e-5f) { out.keep = 0; out.tiny = 1; return out; }
     if (!projectable) return out;
     if (viewHi[0] < -1 || viewHi[1] < -1 || viewLo[0] > 1 || viewLo[1] > 1) { out.keep = 0; out.tiny = 1; return out; }
     if (!occlusionSafe) return out;
