@@ -1,4 +1,5 @@
 #include "RenderCore/PropLodState.h"
+#include "GameOS/gameos/static_prop_recipe_admission.h"
 #include "doctest.h"
 #include <cstdint>
 #include <random>
@@ -65,6 +66,8 @@ std::vector<RecipeRange> s_recipeRanges;
 std::vector<uint32_t> s_recipeRangeFreeList;
 std::unordered_map<uint32_t, int32_t> s_typeIDToRecipeIndex;
 bool s_recipeRecycle = true;
+// Production admission policy (real header); registerRecipe/invalidate depend on it.
+::GpuStaticPropRegistry::StaticPropRecipeAdmission s_recipeAdmission;
 uint64_t s_registryGeneration = 0, s_totalPinCalls = 0, s_contentRevision = 0;
 void releasePinsForRange(RecipeRange&) {}
 void staticPropRegistryClearMaterialCache() {}
@@ -88,6 +91,7 @@ struct PropLodLifecycle {
         GpuStaticPropRegistry::s_recipes.clear();
         GpuStaticPropRegistry::s_recipeRanges.clear();
         GpuStaticPropRegistry::s_recipeRangeFreeList.clear();
+        GpuStaticPropRegistry::s_recipeAdmission.reset();
         GpuStaticPropRegistry::s_typeIDToRecipeIndex.clear();
     }
     static GpuStaticPropInstance prop(float x) {
@@ -261,7 +265,7 @@ TEST_CASE("prop_lod_state: flat map matches std::unordered_map under insert, era
         const uint64_t key = ((rng() % 5000) << 8) | (rng() % 4);   // dense low bits like (position hash << 8) ^ typeID
         const int op = static_cast<int>(rng() % 4);
         if (op == 0) { flat.erase(key); ref.erase(key); }
-        else { const uint8_t v = static_cast<uint8_t>(rng() % 3); flat[key] = v; ref[key] = v; }
+        else { const uint8_t v = static_cast<uint8_t>(rng() % 256); flat[key] = v; ref[key] = v; }
         if (step % 20000 == 0) {
             CHECK(flat.size() == ref.size());
             for (const auto& [k, v] : ref) { const uint8_t* p = flat.find(k); REQUIRE(p); CHECK(*p == v); }
@@ -299,4 +303,18 @@ TEST_CASE("prop_lod_state: hysteresis band keeps an instance on its LOD at a bou
     propLodAdvance(lod, 95.f, d3, 0.08f);  CHECK(lod == 1);   // inside the -8% band
     propLodAdvance(lod, 91.f, d3, 0.08f);  CHECK(lod == 0);
     propLodAdvance(lod, 1000.f, d3, 0.08f); CHECK(lod == 2);
+}
+
+TEST_CASE("prop_lod_state: zero key and stale erases preserve all value bits") {
+    PropLodStateMap map;
+    map.erase(0); CHECK(map.find(0) == nullptr);
+    CHECK(map[0] == 0); map[0] = 255;
+    for (uint64_t k = 1; k < 3000; ++k) map[k] = static_cast<uint8_t>(k);
+    map.erase(0); map.erase(0);
+    CHECK(map.size() == 2999); CHECK(map.find(0) == nullptr);
+    for (uint64_t k = 1; k < 3000; ++k) {
+        REQUIRE(map.find(k)); CHECK(*map.find(k) == static_cast<uint8_t>(k));
+        map.erase(k); map.erase(k);
+    }
+    CHECK(map.size() == 0); CHECK(map[0] == 0);
 }

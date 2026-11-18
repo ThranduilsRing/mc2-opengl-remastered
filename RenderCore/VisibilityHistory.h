@@ -11,7 +11,8 @@ class VisibilityHistory {
 public:
     static constexpr uint32_t kSlots=3, kStaleLimit=10, kNone=UINT32_MAX;
     struct Sample {
-        std::vector<uint32_t> ids, bits;
+        std::vector<uint32_t> ids;
+        std::vector<uint8_t> bits;
         uint32_t count=0, visibleCount=0, dilatedAdmits=0, frame=0;
         bool valid=false;
     };
@@ -56,6 +57,7 @@ public:
         std::fill(visible_.begin(),visible_.end(),uint8_t{1}); SnapshotStats stats;
         if (lastGood_==kNone || !samples_[lastGood_].valid) return stats;
         const uint32_t cap=maxActorHandle;
+        if (countStats) stats.visible=cap ? cap-1 : 0;
         auto apply=[&](const Sample& sample, bool primary) {
             if (!sample.valid) return;
             for (uint32_t i=0;i<sample.count;++i) {
@@ -63,13 +65,18 @@ public:
                 if (!id) continue;
                 if (id>=cap) { if (!stats.overflow) stats.overflow=id; continue; }
                 const uint8_t bit=sample.bits[i]!=0;
+                const uint8_t before=visible_[id];
                 if (primary) visible_[id]=bit;
-                else if (bit && !visible_[id]) { visible_[id]=1; ++stats.orAdmits; }
+                else if (bit && !before) { visible_[id]=1; ++stats.orAdmits; }
+                // Account for transitions, including duplicate IDs and OR re-admission.
+                if (countStats && before!=visible_[id]) {
+                    if (visible_[id]) { ++stats.visible; --stats.invisible; }
+                    else { --stats.visible; ++stats.invisible; }
+                }
             }
         };
         apply(samples_[lastGood_],true);
         if (useOr) apply(samples_[(lastGood_+kSlots-1)%kSlots],false);
-        if (countStats) for (uint32_t id=1;id<cap;++id) { if (visible_[id]) ++stats.visible; else ++stats.invisible; }
         return stats;
     }
     bool isVisible(uint32_t id) const {

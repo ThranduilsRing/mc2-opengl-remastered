@@ -69,7 +69,8 @@ void FullPathFileName::init (mc2::czstring dir_path, mc2::czstring name, mc2::cz
 	strcat(fullName,name);
 
 	// don't append if its already there
-	if (ext && S_stricmp( fullName + strlen( fullName ) - strlen( ext ), ext ) != 0)
+	if (ext && (strlen(fullName) < strlen(ext) ||
+		S_stricmp(fullName + strlen(fullName) - strlen(ext), ext) != 0))
 		strcat(fullName,ext);
 
     if(!do_not_make_lower)

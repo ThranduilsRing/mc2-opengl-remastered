@@ -14,6 +14,13 @@ imp = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(imp)
 
 
+def table(path, payload=b"synthetic object", number=12):
+    sys.path.insert(0, str(ROOT / "tools/mco_import"))
+    from build_object2 import write_pak, RAW, NUL
+    path.parent.mkdir(parents=True, exist_ok=True)
+    write_pak(str(path), [(NUL, b"")] * number + [(RAW, payload)])
+
+
 @pytest.fixture
 def sample(tmp_path):
     source, deploy = tmp_path / "download", tmp_path / "game"
@@ -30,7 +37,164 @@ def sample(tmp_path):
     (deploy / "mods/mc2x-compat/data").mkdir(parents=True)
     (source / "data/objects").mkdir()
     (source / "data/objects/compbas.csv").write_bytes(b"shared ammo")
+    table(deploy / "mods/mc2x-compat/data/objects/object2.pak")
     return source, deploy
+
+
+def test_omnitech_logistics_portrait_icon_and_kitfox_name(tmp_path, sample):
+    from PIL import Image
+    original, deploy = sample
+    (deploy / "mc2.exe").rename(deploy / "mc2")
+    assert imp.import_campaign(original, deploy)["status"] == "installed"
+    source, out = tmp_path / "source", tmp_path / "mod"
+    art = source / "data/art"
+    (art / "mechicons").mkdir(parents=True)
+    (out / "data/objects").mkdir(parents=True)
+    (out / "data/objects/uller.csv").write_text(
+        "BaseChassisInfo,\nIdentification,\nMechName,Kitfox\nHouseID,4\nDescIndex,32072\n")
+    (art / "mcl_gn_deploymentteams.fit").write_text(
+        '[PilotIcon]\nl Width = 33 // authored size\nl Height = 46\nst FileName = "pilots_high"\n')
+    portrait = Image.new("RGBA", (512, 512), "red")
+    portrait.paste("blue", (33, 46, 66, 92))  # PictureIndex 13, twelve columns.
+    portrait.save(art / "pilots_high.tga")
+    Image.new("RGBA", (40, 48), "green").save(art / "mechicons/Kitfox.tga")
+    imp.import_logistics_art(source, out)
+    pilot = Image.open(out / "data/art/pilots/13.png")
+    assert pilot.size == (33, 46) and pilot.getpixel((16, 23)) == (0, 0, 255, 255)
+    mech = Image.open(out / "data/art/mechicons/uller.png")
+    assert mech.size == (40, 48) and mech.getpixel((20, 24)) == (0, 128, 0, 255)
+    names = (out / "data/defs/text/en_us/z_mco_mech_names.fit").read_text()
+    assert 'legacyId = 32072' in names and 'text = "Kitfox"' in names
+
+
+@pytest.mark.parametrize("payload", [b"synthetic object", b"different source one", b"different source two"])
+def test_pack_retains_source_table_even_identical_to_compat(sample, payload):
+    source, deploy = sample
+    own = source / "data/objects/object2.pak"
+    table(own, payload)
+    buildings = source / "data/art/buildings.csv"
+    buildings.parent.mkdir()
+    buildings.write_bytes(b"excluded logistics")
+    result = imp.import_campaign(source, deploy)
+    out = deploy / "mods" / result["mod"]
+    assert (out / "data/objects/object2.pak").read_bytes() == own.read_bytes()
+    assert not (out / "data/art/buildings.csv").exists()
+    assert imp.import_campaign(source, deploy)["status"] == "unchanged"
+
+
+@pytest.mark.parametrize("damage", ["empty", "out_of_range"])
+def test_mc2x_coverage_pack_over_compat_all_first_missions(sample, damage):
+    source, deploy = sample
+    # Second campaign's first mission must also be checked, even with a good compat table.
+    (source / "data/campaign/second.fit").write_bytes(
+        b'[Group0Mission0]\nst FileName = "second"')
+    (source / "data/missions/second.fit").write_bytes(b'ObjectNumber = 13')
+    (source / "data/missions/second.pak").write_bytes(b"fixture")
+    table(deploy / "mods/mc2x-compat/data/objects/object2.pak", number=13)
+    table(source / "data/objects/object2.pak", number=12 if damage == "out_of_range" else 14)
+    if damage == "empty":
+        from build_object2 import read_pak, write_pak, RAW
+        path = source / "data/objects/object2.pak"
+        _, slots = read_pak(str(path))
+        slots[12] = (RAW, b"synthetic object")
+        write_pak(str(path), slots)
+    with pytest.raises(ValueError, match="second.fit: unresolved object packets:.*13"):
+        imp.import_campaign(source, deploy)
+    assert not list((deploy / "mods").glob("synthetic-*"))
+
+
+def test_direct_import_compat_table_prefers_loose_over_archive(sample, monkeypatch):
+    import mc2x_import as mc2x
+    import transfer_mc2x_campaign as transfer
+    source, deploy = sample
+    deploy = deploy / "direct"
+    loose = source / "data/objects/object2.pak"
+    table(loose)
+    (source / "misc.fst").touch()
+    archived = b"stale archived table"
+    monkeypatch.setattr(transfer.fst, "fst_entries", lambda _: [
+        (0, 0, len(archived), "data/objects/object2.pak", False, archived)])
+    monkeypatch.setattr(transfer.fst, "decompress_entry", lambda *args: args[-1])
+    monkeypatch.setattr(mc2x, "validate_source", lambda _: ([], []))
+    monkeypatch.setattr(mc2x, "load_recipe", lambda: {"mods": {"mc2x-compat": [
+        {"t": "data/objects/object2.pak", "fst": "misc.fst", "s": "data/objects/object2.pak"}]}})
+    assert mc2x.main(["--source", str(source), "--deploy", str(deploy), "--force"]) == 0
+    assert (deploy / "mods/mc2x-compat/data/objects/object2.pak").read_bytes() == loose.read_bytes()
+
+
+@pytest.mark.parametrize("existing", [False, True])
+def test_missing_table_fails_new_and_unchanged_with_existing_compat(sample, existing):
+    source, deploy = sample
+    if existing:
+        imp.import_campaign(source, deploy)
+    (deploy / "mods/mc2x-compat/data/objects/object2.pak").unlink()
+    with pytest.raises(ValueError, match="Missing mc2x-compat object table"):
+        imp.import_campaign(source, deploy)
+    if not existing:
+        assert [p.name for p in (deploy / "mods").iterdir()] == ["mc2x-compat"]
+
+
+def test_full_source_cannot_inherit_shared_table(sample, monkeypatch):
+    source, deploy = sample
+    (source / "mc2xres.dll").write_bytes(b"synthetic marker")
+    monkeypatch.setattr(imp.legacy, "classify", lambda _: {"action": "transfer", "needs_compat": "mc2x-compat"})
+    with pytest.raises(ValueError, match="source object table"):
+        imp.import_campaign(source, deploy)
+
+
+def test_legacy_receipt_cannot_hide_missing_own_table(sample):
+    source, deploy = sample
+    table(source / "data/objects/object2.pak")
+    out = deploy / "mods" / imp.import_campaign(source, deploy)["mod"]
+    (out / "data/objects/object2.pak").unlink()
+    receipt = out / ".campaign-import.json"
+    saved = json.loads(receipt.read_text())
+    del saved["files"]["data/objects/object2.pak"]
+    receipt.write_text(json.dumps(saved))  # Model a receipt from the old table-less converter.
+    with pytest.raises(ValueError, match="source object table"):
+        imp.import_campaign(source, deploy)
+
+
+@pytest.mark.parametrize("archive_present", [False, True])
+def test_recipe_loose_fallback_and_missing_names(sample, monkeypatch, capsys, archive_present):
+    import mc2x_import as mc2x
+    source, deploy = sample
+    imp.shutil.rmtree(deploy / "mods/mc2x-compat")
+    table(source / "data/objects/object2.pak")
+    if archive_present:
+        (source / "misc.fst").write_bytes(struct.pack("<II", 0xFADDECAF, 0))
+    entries = [{"t": n, "fst": "misc.fst", "s": n} for n in
+               ("data/objects/object2.pak", "data/objects/missing.fit")]
+    monkeypatch.setattr(mc2x, "validate_source", lambda _: ([], []))
+    monkeypatch.setattr(mc2x, "load_recipe", lambda: {"mods": {"mc2x-compat": entries}})
+    assert mc2x.main(["--source", str(source), "--deploy", str(deploy), "--force"]) == 0
+    assert (deploy / "mods/mc2x-compat/data/objects/object2.pak").read_bytes() == (
+        source / "data/objects/object2.pak").read_bytes()
+    (source / "data/objects/object2.pak").unlink()
+    assert mc2x.main(["--source", str(source), "--deploy", str(deploy), "--force"]) == 2
+    assert "missing recipe file: data/objects/missing.fit" in capsys.readouterr().err
+
+
+def test_mco_transfer_keeps_generated_table_and_chassis_fallback(sample, monkeypatch):
+    source, deploy = sample
+    compat = deploy / "mods/mco-compat/data/objects/object2.pak"
+    table(compat)
+    table(source / "data/objects/object2.pak", b"short original table")
+    (source / "data/missions/demo01.fit").write_bytes(b"ObjectNumber = 2091")
+    monkeypatch.setattr(imp.legacy, "classify", lambda _: {"action": "transfer", "needs_compat": "mco-compat"})
+    result = imp.import_campaign(source, deploy)
+    assert not (deploy / "mods" / result["mod"] / "data/objects/object2.pak").exists()
+
+
+def test_misspelled_title_corrected_in_manifest_and_fit(sample):
+    source, deploy = sample
+    fit = source / "data/campaign/demo.fit"
+    fit.write_bytes(fit.read_bytes().replace(b"Synthetic Campaign", b"MechWarriror2Mercs"))
+    result = imp.import_campaign(source, deploy)
+    out = deploy / "mods" / result["mod"]
+    assert result["campaigns"][0]["name"] == "MechWarrior2Mercs"
+    assert json.loads((out / "mod.json").read_text())["name"] == "MechWarrior2Mercs"
+    assert b"MechWarrior2Mercs" in (out / "data/campaign/demo.fit").read_bytes()
 
 
 def test_folder_zip_same_identity_idempotent_and_read_only(sample, tmp_path):
@@ -233,7 +397,8 @@ def test_failed_transfer_is_never_published(sample, monkeypatch, failure):
     assert [p.name for p in (deploy / "mods").iterdir()] == ["mc2x-compat"]
 
 
-def test_new_compat_keeps_its_component_table(sample, monkeypatch):
+@pytest.mark.parametrize("missing_table", [False, True])
+def test_new_compat_keeps_its_component_table(sample, monkeypatch, missing_table):
     import shutil
     source, deploy = sample
     (source / "data/objects/compbas.csv").unlink()
@@ -249,11 +414,18 @@ def test_new_compat_keeps_its_component_table(sample, monkeypatch):
     def convert(step, args):
         if step["kind"] == "build":
             (Path(args[0]) / "mods/mc2x-compat/data").mkdir(parents=True)
+            if not missing_table:
+                table(Path(args[0]) / "mods/mc2x-compat/data/objects/object2.pak")
         else:
             destination = Path(args[args.index("--out") + 1])
             shutil.copytree(source / "data", destination / "data")
         return 0
     monkeypatch.setattr(imp.legacy, "_run_step", convert)
+    if missing_table:
+        with pytest.raises(ValueError, match="Missing mc2x-compat object table"):
+            imp.import_campaign(source, deploy)
+        assert not list((deploy / "mods").iterdir())
+        return
     imp.import_campaign(source, deploy)
     assert (deploy / "mods/mc2x-compat/data/objects/compbas.csv").read_bytes() == b"authored ammo"
 
@@ -452,6 +624,7 @@ def test_auto_real_converter_retries_after_base_appears_and_reaps_staging(sample
     assert "Missing mc2x-compat" in first["error"]
     assert not stale.parent.exists()
     compat.mkdir(parents=True)
+    table(compat / "objects/object2.pak")
     second = imp.auto_import(deploy)["sources"][raw.name]
     assert first["stamp"] == second["stamp"]
     assert second["status"] == "installed" and "error" not in second
@@ -473,3 +646,147 @@ def test_auto_preserves_foreign_and_live_staging(sample, monkeypatch):
         return original(root)
     monkeypatch.setattr(imp, "inspect_source", inspect)
     assert imp.import_campaign(sample[0], deploy)["status"] == "installed"
+
+
+@pytest.mark.parametrize("reverse", [False, True])
+@pytest.mark.parametrize("mode", ["loose", "archive", "both", "identical", "mco"])
+def test_fix1_source_table_resolution(sample, monkeypatch, mode, reverse):
+    import transfer_mc2x_campaign as transfer
+    source, deploy = sample
+    loose = source / "data/objects/object2.pak"
+    table(loose)
+    raw = loose.read_bytes()
+    if mode == "archive":
+        loose.unlink()
+    archives = [source / "z.fst", source / "a.fst"]
+    if reverse:
+        archives.reverse()
+    if mode in ("loose", "identical"):
+        archives = []
+    for archive in archives:
+        archive.touch()
+    entries = lambda path: [(0, 0, 0, "data/objects/object2.pak", False,
+                            raw if mode == "archive" and Path(path).name == "a.fst" else b"different archived bytes")]
+    monkeypatch.setattr(transfer.fst, "fst_entries", entries)
+    monkeypatch.setattr(imp, "fst_entries", entries)
+    monkeypatch.setattr(transfer.fst, "decompress_entry", lambda *args: args[-1])
+    original = Path.glob
+    monkeypatch.setattr(Path, "glob", lambda p, pattern: iter(archives) if p == source and pattern == "*.fst" else original(p, pattern))
+    ref = deploy / ("mods/mco-compat/data" if mode == "mco" else "mods/mc2x-compat/data")
+    out = deploy / "pack"
+    monkeypatch.setattr(sys, "argv", ["transfer", "--source", str(source), "--out", str(out), "--refs", str(ref), "--fsts", "--delta-fsts"])
+    transfer.main()
+    if mode == "mco":
+        assert not (out / "data/objects/object2.pak").exists()
+    else:
+        assert (out / "data/objects/object2.pak").read_bytes() == raw
+        imp.validate_mc2x_tables(source, imp.source_files(source), [{"first_mission": "demo01"}], [out, ref.parent, deploy])
+
+
+@pytest.mark.parametrize("existing", [False, True])
+@pytest.mark.parametrize("failure", ["missing", "extract", "provenance", "publish"])
+def test_fix1_direct_import_rollback(sample, monkeypatch, existing, failure):
+    import hashlib
+    import mc2x_import as mc2x
+    source, deploy = sample
+    imp.shutil.rmtree(deploy / "mods")
+    mods = deploy / "mods"
+    if existing:
+        for mod in ("mc2x-compat", "cveg"):
+            folder = mods / mod
+            folder.mkdir(parents=True)
+            (folder / "mc2x_import_report.json").write_text('{"generated_by":"mc2x_import"}')
+            (folder / "previous").write_bytes(mod.encode())
+        (mods / ".import_reports/old").mkdir(parents=True)
+        (mods / ".import_reports/old/report").write_bytes(b"old report")
+    snapshot = lambda: {p.relative_to(mods).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in mods.rglob("*") if p.is_file()}
+    before = snapshot()
+    table(source / "data/objects/object2.pak")
+    entries = [] if failure == "missing" else [{"t": "data/objects/object2.pak", "fst": "loose", "s": "data/objects/object2.pak"}]
+    monkeypatch.setattr(mc2x, "validate_source", lambda _: ([], []))
+    monkeypatch.setattr(mc2x, "load_recipe", lambda: {"mods": {"mc2x-compat": entries}})
+    def fail(*args, **kwargs):
+        raise OSError("injected failure")
+    if failure == "extract":
+        monkeypatch.setattr(mc2x, "extract_mod", fail)
+    if failure == "provenance":
+        provenance = mc2x._write_provenance
+        monkeypatch.setattr(mc2x, "_write_provenance", lambda *a: (provenance(*a), fail()))
+    if failure == "publish":
+        rename = mc2x.os.rename
+        def second(src, dst):
+            if Path(src).name == "cveg" and Path(dst) == mods / "cveg":
+                fail()
+            return rename(src, dst)
+        monkeypatch.setattr(mc2x.os, "rename", second)
+    try:
+        result = mc2x.main(["--source", str(source), "--deploy", str(deploy), "--force"])
+    except OSError:
+        result = 2
+    assert result == 2
+    assert snapshot() == before
+    assert not list(deploy.glob(".mc2x-import-*"))
+
+
+@pytest.mark.parametrize("damage", ["symlink", "junction", "dataless"])
+def test_fix1_dependency_rejected_before_validation(sample, monkeypatch, damage):
+    source, deploy = sample
+    imp.import_campaign(source, deploy)
+    dep = deploy / "mods/mc2x-compat"
+    method = "is_junction" if damage == "junction" else "is_symlink"
+    original = getattr(Path, method)
+    if damage == "dataless":
+        imp.shutil.rmtree(dep / "data")
+    else:
+        monkeypatch.setattr(Path, method, lambda p: p == dep or original(p))
+    read = imp.asset_bytes
+    def guarded(layers, name):
+        assert dep not in layers, "read linked dependency"
+        return read(layers, name)
+    monkeypatch.setattr(imp, "asset_bytes", guarded)
+    with pytest.raises(ValueError, match="Missing mc2x-compat; import the full compatibility base first"):
+        imp.import_campaign(source, deploy)
+
+
+@pytest.mark.parametrize("kind", ["layer", "directory", "file", "archive", "fallback"])
+def test_fix1_asset_rejects_links(tmp_path, monkeypatch, kind):
+    layer = tmp_path / "layer"
+    path = layer / ("a.fst" if kind == "archive" else "Data/Objects/Object2.PAK")
+    path.parent.mkdir(parents=True)
+    path.write_bytes(b"target must not be read")
+    linked = {"layer": layer, "directory": layer / "Data", "file": path, "archive": path, "fallback": path}[kind]
+    original = Path.is_symlink
+    monkeypatch.setattr(Path, "is_symlink", lambda p: p == linked or original(p))
+    def forbidden(*args):
+        pytest.fail("read linked target")
+    if kind == "fallback":
+        is_file = Path.is_file
+        exact = layer / "data/objects/object2.pak"
+        monkeypatch.setattr(Path, "is_file", lambda p: False if str(p) == str(exact) else is_file(p))
+    monkeypatch.setattr(Path, "read_bytes", forbidden)
+    monkeypatch.setattr(imp, "fst_entries", forbidden)
+    assert imp.asset_bytes([layer], "data/objects/object2.pak") is None
+
+
+def test_fix1_case_insensitive_loose_fallback(tmp_path, monkeypatch):
+    path = tmp_path / "Data/Objects/Object2.PAK"
+    path.parent.mkdir(parents=True)
+    path.write_bytes(b"loose wins")
+    exact = tmp_path / "data/objects/object2.pak"
+    original = Path.is_file
+    monkeypatch.setattr(Path, "is_file", lambda p: False if str(p) == str(exact) else original(p))
+    (tmp_path / "archive.fst").touch()
+    monkeypatch.setattr(imp, "fst_entries", lambda _: pytest.fail("archive read before loose"))
+    assert imp.asset_bytes([tmp_path], "data/objects/object2.pak") == b"loose wins"
+
+
+def test_exodus_mw2mercs_pack_id_stable_across_title_typo_fix(tmp_path):
+    # The installed v0.4 pack id exodus-dca4afc8 was hashed from the uncorrected title.
+    import hashlib
+    root = tmp_path / "root"
+    for fit, name, first in (("campaign", "Exodus", "a_0_1"), ("mw2mercs", "MechWarriror2Mercs", "mw2_0_1")):
+        p = root / f"data/campaign/{fit}.fit"
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_bytes(f'[Campaign]\nst CampaignName = "{name}"\n[Group0Mission0]\nst FileName = "{first}"\n'.encode())
+    _, _, campaigns = imp.inspect_source(root)
+    assert hashlib.sha256(json.dumps(campaigns, sort_keys=True).encode()).hexdigest()[:8] == "dca4afc8"

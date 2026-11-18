@@ -151,7 +151,6 @@ void gosRenderer::drawText(const char* text) {
     const int count = static_cast<int>(strlen(text));
 
 
-    // TODO: take text region into account!!!!
     
     gosASSERT(text_->getNumVertices() + 6 * count <= text_->getVertexCapacity());
 
@@ -177,13 +176,22 @@ void gosRenderer::drawText(const char* text) {
     const int region_width = getTextRegionWidth();
     const int region_height = getTextRegionHeight();
 
+    if (region_width <= 0 || region_height <= 0) return;
+    int widest_line = 0;
+    for (int p = 0, width = 0; p < count;) {
+        const int n = findTextBreak(text + p, count - p, font, region_width, &width);
+        if (n <= 0) return;
+        widest_line = std::max(widest_line, width);
+        p += n;
+    }
+    const float scale = mc2::textfit::fitWidth(region_width, widest_line);
     const int num_lines = calcTextHeight(text, count, font, region_width);
     // A bounded region that the wrapped block overflows: tighten the line pitch (floor 85%), then clip the last visible
     // line with an ellipsis. Text that fits, and an unusable region, draw exactly as before.
     const mc2::textfit::Fit fit = mc2::textfit::fitLines(num_lines, font_height, region_height);
     if(ta.WrapType == 3) { // center in Y direction as well
         const int block_height = fit.visibleLines > 0 ? (fit.visibleLines - 1) * fit.pitch + font_height : 0;
-        y += (region_height - block_height) / 2;
+        y += (region_height - block_height * scale) / 2;
     }
 
     int pos = 0;
@@ -224,10 +232,10 @@ void gosRenderer::drawText(const char* text) {
         // WrapType		- 0=Left aligned, 1=Right aligned, 2=Centered, 3=Centered in region (X and Y)
         switch(ta.WrapType) {
             case 0: break;
-            case 1: x += region_width - str_width; break;
-            case 2: x += (region_width - str_width) / 2; break;
+            case 1: x += region_width - str_width * scale; break;
+            case 2: x += (region_width - str_width * scale) / 2; break;
             case 3: // see vertical centering above
-                    x += (region_width - str_width) / 2;
+                    x += (region_width - str_width * scale) / 2;
                     break;
         }
 
@@ -266,11 +274,12 @@ void gosRenderer::drawText(const char* text) {
             float u1 = static_cast<float>(iu1) * oo_tex_width;
             float v1 = static_cast<float>(iv1) * oo_tex_height;
 
-            addCharacter(text_, u0, v0, u1, v1, (x + char_off_x), (y + char_off_y), (x + char_off_x + char_w), (y + char_off_y + char_h));
+            addCharacter(text_, u0, v0, u1, v1, (x + char_off_x * scale), (y + char_off_y * scale),
+                (x + (char_off_x + char_w) * scale), (y + (char_off_y + char_h) * scale));
 
-            x += font->getCharAdvance(c);
+            x += font->getCharAdvance(c) * scale;
         }
-        y += fit.pitch;
+        y += fit.pitch * scale;
         pos += num_chars;
         ++line_index;
         if(clip_line) break;

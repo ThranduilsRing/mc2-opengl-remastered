@@ -538,6 +538,19 @@ extern "C" void gos_particle_bridge_flush(const GpuParticle* records, unsigned c
     borrowedCapture->groups.insert(borrowedCapture->groups.end(), groups, groups + groupCount);
 }
 
+TEST_CASE_FIXTURE(FrozenPlatform, "carbon_mclib/empty and pre-first-key curves are bounded")
+{
+    unsigned count = 0;
+    Stuff::MemoryStream stream(&count, sizeof count);
+    gosFX::ComplexCurve curve(&stream, 15);
+    CHECK(curve.ComputeValue(0.0f, 0.0f) == 0.0f);
+    CHECK(curve.ComputeSlope(0.0f) == 0.0f);
+    curve.SetCurve(2.0f);
+    curve[0].SetLinearKey(0.5f, 2.0f, 6.0f, 1.0f);
+    CHECK(curve.ComputeValue(0.0f, 0.0f) == doctest::Approx(0.0f));
+    CHECK(curve.ComputeSlope(0.0f) == doctest::Approx(4.0f));
+}
+
 TEST_CASE_FIXTURE(FrozenPlatform, "vfx_mesh/submaterials and polygon fans preserve RNG")
 {
     mc2::gate::ScopedOverride<"MC2_VFX_ORACLE_SHAPE"> native{"1"};

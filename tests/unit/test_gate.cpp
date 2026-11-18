@@ -1,5 +1,9 @@
 #include <array>
 #include <atomic>
+#include <chrono>
+#include <filesystem>
+#include <cerrno>
+#include <csignal>
 // tests/unit/test_gate.cpp
 // GATE-REGISTRY-G1A: the typed gate table's parser, readers, cache and [CONFIG v1] dump.
 //
@@ -70,6 +74,11 @@ TEST_CASE("called shot/default floors and both aimed-hit paths; kill-switch rest
 #include <stdlib.h>
 #include <process.h>   // _spawnl: the strict-exit test runs this exe again
 #include <windows.h>   // GetModuleFileNameA
+#else
+#include <spawn.h>
+#include <sys/wait.h>
+#include <unistd.h>
+extern char** environ;
 #endif
 
 namespace gate = mc2::gate;
@@ -849,37 +858,91 @@ TEST_CASE("strict_exit_child") {
     if (std::getenv("MC2_CONFIG_STRICT") != nullptr) FAIL("dumpConfig returned under strict mode");
 }
 
+#endif
+
 TEST_CASE("diagnostic_trace/concurrent_shutdown") {
     constexpr const char* testName = "-tc=diagnostic_trace/concurrent_shutdown";
     if (!std::getenv("DIAG_TRACE_TEST_CHILD")) {
-        char exe[MAX_PATH]{};
-        REQUIRE(GetModuleFileNameA(nullptr, exe, MAX_PATH) > 0);
         EnvVar child("DIAG_TRACE_TEST_CHILD");
         child.set("1");
-        CHECK(_spawnl(_P_WAIT, exe, exe, testName, nullptr) == 0);
+#ifdef _WIN32
+        char exe[MAX_PATH]{};
+        REQUIRE(GetModuleFileNameA(nullptr, exe, MAX_PATH) > 0);
+        const intptr_t process = _spawnl(_P_NOWAIT, exe, exe, testName, nullptr);
+        REQUIRE(process != -1);
+        const HANDLE handle = reinterpret_cast<HANDLE>(process);
+        const DWORD waited = WaitForSingleObject(handle, 15000);
+        if (waited != WAIT_OBJECT_0) {
+            CHECK(TerminateProcess(handle, 1) != 0);
+            CHECK(WaitForSingleObject(handle, 5000) == WAIT_OBJECT_0);
+        }
+        DWORD status = 1;
+        CHECK(GetExitCodeProcess(handle, &status) != 0);
+        CloseHandle(handle);
+        REQUIRE(waited == WAIT_OBJECT_0);
+        CHECK(status == 0);
+#else
+        char* args[] = {const_cast<char*>("/proc/self/exe"), const_cast<char*>(testName), nullptr};
+        pid_t pid{};
+        REQUIRE(posix_spawn(&pid, args[0], nullptr, nullptr, args, environ) == 0);
+        int status{};
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(15);
+        pid_t waited;
+        do {
+            waited = waitpid(pid, &status, WNOHANG);
+            if (waited == pid || (waited < 0 && errno != EINTR)) break;
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        } while (std::chrono::steady_clock::now() < deadline);
+        if (waited != pid) {
+            CHECK(kill(pid, SIGKILL) == 0);
+            const auto cleanupDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+            do {
+                waited = waitpid(pid, &status, WNOHANG);
+                if (waited == pid || (waited < 0 && errno != EINTR)) break;
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            } while (std::chrono::steady_clock::now() < cleanupDeadline);
+            CHECK(waited == pid);
+            FAIL("diagnostic trace child failed to finish within 15 seconds");
+        }
+        CHECK(status == 0);
+#endif
         return;
     }
-    char temp[MAX_PATH]{};
-    REQUIRE(GetTempPathA(MAX_PATH, temp) > 0);
-    const std::string path = std::string(temp) + "mc2-diag-" + std::to_string(GetCurrentProcessId()) + ".jsonl";
+    std::error_code error;
+    const auto temp = std::filesystem::temp_directory_path(error);
+    REQUIRE_FALSE(error);
+    const std::string path = (temp / ("mc2-diag-" + std::to_string(
+#ifdef _WIN32
+        GetCurrentProcessId()
+#else
+        getpid()
+#endif
+        ) + ".jsonl")).string();
     EnvVar output("MC2_DIAGNOSTIC_TRACE_FILE"), tags("MC2_DIAG_TAGS");
     output.set(path.c_str()); tags.set("CONFIG");
     gate::invalidateAll();
-    std::atomic<bool> ready{false}, go{false};
+    mc2_diag::init("concurrent-shutdown", 0);
+    REQUIRE(mc2_diag::enabled());
+    std::atomic<bool> active{false}, stop{false};
     std::thread worker([&] {
-        ready.store(true);
-        while (!go.load()) std::this_thread::yield();
-        for (int i = 0; i < 256; ++i) {
+        for (uint64_t i = 0; !stop.load(); ++i) {
             (void)mc2_diag::enabled();
             (void)mc2_diag::tagEnabled("CONFIG");
-            mc2_diag::writeEvent("CONFIG", 1, i, "{}");
+            if (mc2_diag::writeEvent("CONFIG", 1, i, "{}")) active.store(true);
             mc2_diag::flush();
         }
     });
-    while (!ready.load()) std::this_thread::yield();
-    go.store(true);
-    mc2_diag::init("concurrent-shutdown", 0);
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    while (!active.load() && std::chrono::steady_clock::now() < deadline) std::this_thread::yield();
+    if (!active.load()) {
+        stop.store(true);
+        worker.join();
+        mc2_diag::shutdown();
+        std::remove(path.c_str());
+        FAIL("worker never observed an active trace write");
+    }
     mc2_diag::shutdown();
+    stop.store(true);
     worker.join();
     CHECK_FALSE(mc2_diag::enabled());
     CHECK_FALSE(mc2_diag::tagEnabled("CONFIG"));
@@ -887,6 +950,7 @@ TEST_CASE("diagnostic_trace/concurrent_shutdown") {
     CHECK(std::remove(path.c_str()) == 0);
 }
 
+#ifdef _WIN32
 TEST_CASE("an unregistered MC2_ variable under MC2_CONFIG_STRICT=1 ends the process with exit code 78") {
     char exe[MAX_PATH] = {0};
     REQUIRE(GetModuleFileNameA(nullptr, exe, MAX_PATH) > 0);

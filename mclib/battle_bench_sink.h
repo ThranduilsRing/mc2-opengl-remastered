@@ -38,6 +38,7 @@ enum class Field : unsigned {
     ExtractBytes, HeapAllocs,
     WalkVisited, WalkRecalc, WalkGround, WalkTouch, WalkUpdate, WalkPrefilterSkip, WalkPrefilterMiss,
     WalkDirtyDynamic, WalkDirtyFalling, WalkDirtyFrameLights, WalkDirtyLightBake, WalkDirtyEffects,
+    MoversInView, MoversOffscreen,
     // Counts must precede PresAcquireNs: the receipt formatter treats its suffix as timings.
     BldgUpdateType, BldgUpdateMarker, BldgUpdateSpin, BldgUpdateLegacyAnim,
     BldgUpdateFlash, BldgUpdateDestruct, BldgUpdateActivity, BldgUpdateRotation,
@@ -60,6 +61,7 @@ inline constexpr const char* kFieldNames[FieldCount] = {
     "extract.bytes", "heap_allocs",
     "walk.visited", "walk.recalc", "walk.ground", "walk.touch", "walk.update", "walk.prefilter_skip", "walk.prefilter_miss",
     "walk.dirty.dynamic", "walk.dirty.falling", "walk.dirty.frame_lights", "walk.dirty.light_bake", "walk.dirty.effects",
+    "movers.in_view", "movers.offscreen",
     "bldg.update.type", "bldg.update.marker", "bldg.update.spin", "bldg.update.legacy_anim",
     "bldg.update.flash", "bldg.update.destruct", "bldg.update.activity", "bldg.update.rotation",
     "bldg.update.animation", "bldg.update.unregistered", "bldg.update.lod", "bldg.update.shape",

@@ -324,6 +324,11 @@ long MoveMap::calcPath (const mc2_move::PathQuery& query, mc2_move::SolverScratc
 		}
 		#endif
 
+		if (numCells > MAX_STEPS_PER_MOVEPATH) {
+			path->init();
+			return 0;
+		}
+
 		path->init();
 		if (numCells) {
 			#ifdef _DEBUG			
@@ -676,6 +681,11 @@ long MoveMap::calcPathJUMP (const mc2_move::PathQuery& query, mc2_move::SolverSc
 			gosASSERT(numCells <= MAX_STEPS_PER_MOVEPATH);
 		}
 #endif
+
+		if (numCells > MAX_STEPS_PER_MOVEPATH) {
+			path->init();
+			return 0;
+		}
 
 		path->init();
 		if (numCells) {

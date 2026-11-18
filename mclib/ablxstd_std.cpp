@@ -320,6 +320,8 @@ void execStdFileWrite (void) {
 	int fileHandle = ABLi_popInteger();
 	char* string = ABLi_popCharPtr();
 
+	if (fileHandle < 0 || fileHandle >= MAX_USER_FILES || !UserFile::files[fileHandle])
+		return;
 	UserFile* userFile = UserFile::files[fileHandle];
 	if (userFile->inUse)
 		userFile->write(string);
@@ -331,6 +333,8 @@ void execStdFileClose (void) {
 
 	int fileHandle = ABLi_popInteger();
 
+	if (fileHandle < 0 || fileHandle >= MAX_USER_FILES || !UserFile::files[fileHandle])
+		return;
 	UserFile* userFile = UserFile::files[fileHandle];
 	if (userFile->inUse)
 		userFile->close();
@@ -515,8 +519,7 @@ void execStdResetOrders (void) {
 void execStdGetStateHandle (void) {
 
 	char* name = ABLi_popCharPtr();
-
-    int stateHandle = g_ablExec->CurFSM->findStateHandle(S_strlwr(name));
+	int stateHandle = g_ablExec->CurFSM ? g_ablExec->CurFSM->findStateHandle(S_strlwr(name)) : 0;
 	ABLi_pushInteger(stateHandle);
 }
 
@@ -524,6 +527,6 @@ void execStdGetStateHandle (void) {
 
 void execStdGetCurrentStateHandle (void) {
 
-	int stateHandle = g_ablExec->CurFSM->getStateHandle();
+	int stateHandle = g_ablExec->CurFSM ? g_ablExec->CurFSM->getStateHandle() : 0;
 	ABLi_pushInteger(stateHandle);
 }

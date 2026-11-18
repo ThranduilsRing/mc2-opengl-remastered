@@ -588,7 +588,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 		ZoneNamedN(walkZone, "Presentation.Terrain.Walk", true);
 		const mc2::battlebench::ScopeNs walkNs{mc2::battlebench::WalkPresNs};   // D2 census: the walk alone, not the sweeps above
 		uint64_t walkVisited = 0, walkRecalc = 0, walkGround = 0, walkTouch = 0, walkUpdate = 0;   // [PERF_COUNTERS v1] plain locals, folded once below
-		uint64_t dirtyCounts[5]{};
+		uint64_t dirtyCounts[mc2::TerrainRequeueReasonCount]{};
 		uint64_t prefilterSkip = 0, prefilterMiss = 0;
 		const bool cullParity = mc2_diag::tagRequested("CULL_PARITY");
 		if (terrainAngularSpheres.size() != static_cast<size_t>(getMaxObjects() + 1))
@@ -666,18 +666,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 						const bool inView = appearance->recalcBounds();
 						const auto angularTest = mc2::lastAngularTest;
 						const bool terrainKind = kind == TERRAINOBJECT || kind == TREE || kind == BRIDGE || kind == BUILDING;
-						auto dirtyReasons = [&]() {
-							auto* building = appearance->getAppearanceClass() == BUILDING_APPR_TYPE ? static_cast<BldgAppearance*>(appearance) : nullptr;
-							// Reasons overlap: an object is counted once under each reason that applies.
-							return static_cast<unsigned>(inView && !appearance->IsStaticNow()) |
-								(static_cast<unsigned>(walkObj->getFlag(OBJECT_FLAG_FALLING)) << 1) |
-								// Offscreen lights are persistent; only a visible owner emits frame-local effects.
-								// Camera invalidation revisits non-residents when they can become visible again.
-								(static_cast<unsigned>(inView && building && building->hasFrameLights()) << 2) |
-								// Keep frame-local light rows live until the permanent bake exists.
-								(static_cast<unsigned>(building && building->residentRenderBlocker() == BldgAppearance::ResidentBlocker::Light) << 3) |
-								(static_cast<unsigned>(terrainKind && static_cast<TerrainObject*>(walkObj)->hasPresentationEffects()) << 4);
-							};
+
 						if (inView)
 						{
 							++walkRecalc; ++walkGround;
@@ -712,14 +701,18 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 						}
 						// Offscreen bake recovery waits for camera invalidation, as update()
 						// above cannot service it until recalcBounds admits the object.
-						const unsigned requeueReasons = dirtyReasons();
+						auto* building = appearance->getAppearanceClass() == BUILDING_APPR_TYPE ? static_cast<BldgAppearance*>(appearance) : nullptr;
+						const unsigned requeueReasons = mc2::terrainRequeueReasons(inView, inView ? appearance->IsStaticNow() : true,
+							walkObj->getFlag(OBJECT_FLAG_FALLING), inView && building && building->hasFrameLights(),
+							building && building->residentRenderBlocker() == BldgAppearance::ResidentBlocker::Light,
+							terrainKind && static_cast<TerrainObject*>(walkObj)->hasPresentationEffects());
 						auto& sphere = terrainAngularSpheres[objIndex];
 						sphere = angularTest;
 						// Building collision helpers can replace bldgShape without a dirty mark outside this fence.
 						// Keep that class on the ordinary walk until those writers have a cache invalidation contract.
 						sphere.valid = appearance->getAppearanceClass() == TREE_APPR_TYPE &&
 							!inView && angularTest.valid && angularTest.outside && requeueReasons == 0;
-						for (unsigned reason = 0; reason < 5; ++reason)
+						for (unsigned reason = 0; reason < mc2::TerrainRequeueReasonCount; ++reason)
 							if (requeueReasons & (1u << reason)) ++dirtyCounts[reason];
 						if (requeueReasons)
 							dirty.mark(objIndex);
@@ -732,13 +725,15 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 		bb::add(bb::WalkVisited, walkVisited); bb::add(bb::WalkRecalc, walkRecalc); bb::add(bb::WalkGround, walkGround);
 		bb::add(bb::WalkTouch, walkTouch); bb::add(bb::WalkUpdate, walkUpdate);
 		bb::add(bb::WalkPrefilterSkip, prefilterSkip); bb::add(bb::WalkPrefilterMiss, prefilterMiss);
-		for (unsigned reason = 0; reason < 5; ++reason)
+		static_assert(std::to_underlying(bb::WalkDirtyEffects) - std::to_underlying(bb::WalkDirtyDynamic) == 4);
+		for (unsigned reason = 0; reason < mc2::TerrainRequeueReasonCount; ++reason)
 			bb::add(static_cast<bb::Field>(std::to_underlying(bb::WalkDirtyDynamic) + reason), dirtyCounts[reason]);
 	}
 
 	if (movers)
 	{
 		ZoneScopedN("GameLogic.Presentation.Movers");
+        uint64_t moversInView = 0, moversOffscreen = 0;
 		if (mechs) 
 		{
 			ZoneScopedN("GameLogic.Presentation.Mechs");
@@ -751,6 +746,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 					bool inView;
 					{
 					inView = mechs[i]->getAppearance()->recalcBounds();
+                    if (inView) ++moversInView; else ++moversOffscreen;
 					if (inView)
 						mechs[i]->windowsVisible = turn; }
 					
@@ -783,6 +779,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 					vehicles[i]->applyAppearancePush();
 					vehicles[i]->getAppearance()->flushSimEvents();
 					bool inView = vehicles[i]->getAppearance()->recalcBounds();
+                    if (inView) ++moversInView; else ++moversOffscreen;
 					vehicles[i]->windowsVisible = turn;
 
 					// Must force here as well.
@@ -799,6 +796,8 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 				}
 		}
 
+        mc2::battlebench::add(mc2::battlebench::MoversInView, moversInView);
+        mc2::battlebench::add(mc2::battlebench::MoversOffscreen, moversOffscreen);
 	}
 
 	if (other) {

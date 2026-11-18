@@ -1688,6 +1688,8 @@ gosFX::ComplexCurve::Load(
 		*stream >> duration;
 	}
 	Stuff::MemoryStreamIO_Read(stream, &m_keys);
+	if (m_keys.empty())
+		return;
 
 	//
 	//--------------------------------------------------------------------------

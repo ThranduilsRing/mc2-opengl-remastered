@@ -187,7 +187,7 @@ void Terrain::initObjBlockLists(volatile float& percent, float percentRange) {
 	objVertexActive = static_cast<bool *>(std::malloc(sizeof(bool) * realVerticesMapSide * realVerticesMapSide));
 	gosASSERT(objVertexActive != nullptr);
 	
-	memset(objVertexActive,0,sizeof(bool)*numObjBlocks);
+	memset(objVertexActive,0,sizeof(bool)*realVerticesMapSide*realVerticesMapSide);
 	
 	moverBlockList = static_cast<long *>(std::malloc(sizeof(long) * numberBlocks));
 	gosASSERT(moverBlockList != nullptr);

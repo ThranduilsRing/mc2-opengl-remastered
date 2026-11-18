@@ -800,6 +800,30 @@ std::string expectedProvider (const std::string &layer, const std::string &reque
 
 } // namespace
 
+// Trigger: automatic installed-pack policy in purchase_catalog.h and mclib/vfs.cpp.
+TEST_CASE("campaign dependencies/stock declared and metadata-less explicit assets") {
+    Corpus corpus("vfs_resolution.json");
+    Deploy deploy(corpus.fixture);
+    EnvRestore activeEnv(mc2::gate::name<"MC2_ACTIVE_MOD">()), depsEnv(mc2::gate::name<"MC2_MOD_DEPS">()), rebuildEnv(mc2::gate::name<"MC2_REBUILD_MOD_CACHE">());
+    CwdRestore cwd;
+    fs::current_path(deploy.root);
+    writeWholeFile("mods/mco-compat/mod.json", R"({"id":"mco-compat","type":"dependency"})");
+    writeWholeFile("mods/mco-compat/data/objects/hangar.fit", "MCO asset");
+    writeWholeFile("data/objects/hangar.fit", "stock asset");
+    writeWholeFile("mods/exodus/mod.json", R"({"id":"exodus","type":"campaign","dependencies":["mco-compat"]})");
+    writeWholeFile("mods/desert-fox/mod.json", R"({"id":"desert-fox","type":"campaign","dependencies":["mco-compat"]})");
+    fs::create_directories("mods/legacy-mco/data");
+    for (const auto* active : {"", "exodus", "desert-fox", "legacy-mco"}) {
+        corpus.active = active;
+        corpus.deps = corpus.active == "legacy-mco" ? "mco-compat" : "";
+        corpus.mount(deploy);
+        CHECK(resolveWithLadder("data/objects/hangar.fit").bytes == (corpus.active.empty() ? "stock asset" : "MCO asset"));
+    }
+    putEnv(mc2::gate::name<"MC2_ACTIVE_MOD">(), "");
+    putEnv(mc2::gate::name<"MC2_MOD_DEPS">(), "");
+    InitModSearchPaths("mods");
+}
+
 TEST_CASE("FC9 the resolver corpus hands back the provider and bytes it names")
 {
 	Corpus corpus("vfs_resolution.json");

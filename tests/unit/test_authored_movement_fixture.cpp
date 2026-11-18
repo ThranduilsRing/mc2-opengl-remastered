@@ -21,6 +21,8 @@
 #include "logisticsdata.h"
 #include "paths.h"
 #include "mc2video.h"
+#include "mech3d.h"
+#include "gosfxheaders.hpp"
 #include "multplyr.h"
 #include "save_fix_section.h"
 #include <chrono>
@@ -40,6 +42,32 @@
 #include <filesystem>
 
 extern long LastMoveCalcErr;
+
+TEST_CASE("CarbonSmoke/negative levels retain the normal effect start") {
+    struct ProbeEffect : gosFX::Effect {
+        int starts = 0;
+        ProbeEffect() : Effect(DefaultData, nullptr, 0) {}
+        void Start(ExecuteInfo*) override { ++starts; }
+    };
+    struct ProbeMech : Mech3DAppearance {
+        void bind(gosFX::Effect* effect) { (void)smokeEffect.release(); smokeEffect.reset(effect); isSmoking = -1; }
+        ~ProbeMech() { (void)smokeEffect.release(); }
+        glm::vec3 getNodePosition(long) override { return {}; }
+    };
+    extern bool useNonWeaponEffects;
+    const bool previous = useNonWeaponEffects;
+    useNonWeaponEffects = true;
+    {
+        ProbeEffect effect;
+        ProbeMech mech;
+        mech.bind(&effect);
+        mech.startSmoking(-2);
+        CHECK(effect.starts == 1);
+        mech.bind(nullptr);
+        CHECK_NOTHROW(mech.startSmoking(-2));
+    }
+    useNonWeaponEffects = previous;
+}
 
 struct ObjectiveObservationFixture {
     std::unique_ptr<aFont> previous = std::move(CObjective::s_markerFont);

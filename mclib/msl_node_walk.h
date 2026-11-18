@@ -28,6 +28,11 @@ struct NodeKey {
     bool valid = false;
 };
 
+// A paused simulation can still move the rendered shape (for example the compass).
+inline bool needsNodeEvaluation(std::int32_t calcedTurn, std::int32_t turn, const NodeKey& key, std::uint32_t originGen) {
+    return calcedTurn != turn || key.originGen != originGen;
+}
+
 inline bool sameInput(const NodeInput& a, const NodeInput& b) {
     return a.animated == b.animated && std::memcmp(&a.base, &b.base, sizeof(a.base)) == 0 &&
            std::memcmp(&a.animation, &b.animation, sizeof(a.animation)) == 0 &&

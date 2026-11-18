@@ -681,7 +681,7 @@ void MissionInterfaceManager::updateOldStyle( bool shiftDn, bool altDn, bool ctr
 		// M2.6: mech-pick consumer fires second. Both callers invoke the
 		// shared tryGameplayPick spine; each kind-guards on r.lookup.kind.
 		// At most one hit branch fires per click (handle ranges disjoint:
-		// static-prop indices < kMechHandleBase, mech indices >= 65536).
+		// static-prop indices < MechHandleIndexBase(), mech indices >= that base).
 		tryMechPick(moverSelectedThisFrame,
 		            shiftDn,
 		            leftClicked,

@@ -168,12 +168,32 @@ std::string toJson(const Snapshot& s) {
     return buf;
 }
 
+uint64_t drainRetired(std::string_view why) {
+#ifdef MC2_VULKAN
+    if (!mc2vk::engineVulkanContextValid()) return 0;
+    auto& ctx = mc2vk::getOrCreateEngineVulkanContext();
+    const auto before = mc2vk::infra::deferredBytes();
+    const auto entries = ctx.deferred().size();
+    ctx.flushUploads();
+    ctx.drainDeferred(why);
+    const auto after = mc2vk::infra::deferredBytes();
+    const auto released = before > after ? before - after : 0;
+    if (SmokeMode::state().enabled || mc2DiagVerbose())
+        std::fprintf(stderr, "[VK_RESIDENCY v1] phase=reload_drain why=%.*s entries=%zu released_bytes=%llu deferred_after=%llu\n",
+        static_cast<int>(why.size()), why.data(), entries, static_cast<unsigned long long>(released),
+        static_cast<unsigned long long>(after));
+    return released;
+#else
+    return 0;
+#endif
+}
+
 void log(std::string_view phase) {
     if (!SmokeMode::state().enabled && !mc2DiagVerbose()) return;
     const Snapshot snapshot = take();
 #ifdef MC2_VULKAN
-    if (phase == "run_end" && mc2vk::engineVulkanContextValid())
-        std::fprintf(stderr, "[VK_RESIDENCY v1] phase=run_end %s\n", mc2vk::infra::ledgerJson().c_str());
+    if (mc2vk::engineVulkanContextValid())
+        std::fprintf(stderr, "[VK_RESIDENCY v1] phase=%.*s %s\n", static_cast<int>(phase.size()), phase.data(), mc2vk::infra::ledgerJson().c_str());
     if (mc2vk::engineVulkanContextValid())
         std::fprintf(stderr,"[TEXTURE_RESIDENT] phase=%.*s bytes=%llu\n",static_cast<int>(phase.size()),phase.data(),
             static_cast<unsigned long long>(mc2vk::getOrCreateEngineVulkanContext().textures().residentBytes()));

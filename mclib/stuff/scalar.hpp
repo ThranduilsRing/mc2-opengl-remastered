@@ -10,6 +10,7 @@
 #include"stuff.hpp"
 #include"memorystream.hpp"
 #include <bit>
+#include <cstring>
 namespace Stuff {
 
 	#if !defined(M_PI)
@@ -67,7 +68,10 @@ namespace Stuff {
 		Verify(in >= 0.0f && in < 65536.0f);
 		in -= 0.5f;
 		in += 12582912.0f;
-		return *Cast_Pointer(WORD*, &in);
+		// Preserve the legacy rounding and native byte order without aliasing float as WORD.
+		WORD result;
+		std::memcpy(&result, &in, sizeof(result));
+		return result;
 	}
 
 	inline BYTE

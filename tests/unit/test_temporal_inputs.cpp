@@ -4,6 +4,7 @@
 #include "doctest.h"
 #include "RenderCore/TemporalInputs.h"
 #include <cmath>
+#include <type_traits>
 
 namespace T = RenderCore::temporal;
 
@@ -104,4 +105,12 @@ TEST_CASE("temporal: motion vector algebra") {
         CHECK(mv[0] == 0.0f);
         CHECK(mv[1] == 0.0f);
     }
+}
+
+TEST_CASE("temporal: projection has explicit zero padding and atomic storage") {
+    static_assert(std::is_same_v<decltype(T::projection()),std::atomic<T::Projection>&>);
+    const T::Projection a{};
+    const T::Projection b{2.0f,30000.0f,1.2f,false,false,true};
+    CHECK(a.padding==0); CHECK(b.padding==0);
+    CHECK(sizeof(T::Projection)==16); CHECK(offsetof(T::Projection,padding)==15);
 }

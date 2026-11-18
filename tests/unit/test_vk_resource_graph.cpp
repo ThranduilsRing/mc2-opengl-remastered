@@ -41,6 +41,18 @@ TEST_CASE("VkResourceGraph/imported read state seeds visibility") {
     REQUIRE(p.valid);
     CHECK(p.barriers[0].empty()); // initial read state already visible: no spurious barrier for an identical reader
 }
+TEST_CASE("VkResourceGraph/imported mip initialization is independent") {
+    Image image = scratch(); image.imported = true; image.mips = 2;
+    auto p = compile({image}, {{{{0, wrState, 1, 1}}}});
+    REQUIRE(p.valid); CHECK(p.slots == 0);
+    CHECK(p.finalStates[0].stages == 0);
+    CHECK(sameState(p.finalStates[1], wrState));
+    auto carry = p.finalStates;
+    p = compile({image}, {{{{0, rdState, 1, 1}}}}, &carry);
+    REQUIRE(p.valid); REQUIRE(p.barriers[0].size() == 1);
+    CHECK(sameState(p.barriers[0][0].before, wrState));
+    CHECK_FALSE(compile({image}, {{{{0, rdState, 0, 1}}}}, &carry).valid);
+}
 TEST_CASE("VkResourceGraph/readers accumulate and imported images never alias") {
     State secondReader{2, 4, 4, false};
     auto p = compile({{{}, true, wrState}},

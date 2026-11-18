@@ -2,6 +2,7 @@
 // VFX island draw packing: stable primitive order, descriptor-indexed pages and blend equivalence audit.
 #include "doctest.h"
 #include "vfx_draw_plan.h"
+#include "vulkan_vfx_island_algo.h"
 #include "vfx_native_batch.h"
 #include "vulkan_vfx_geometry.h"
 #include <array>
@@ -13,6 +14,30 @@
 #include <sstream>
 
 using namespace mc2vfx;
+
+TEST_CASE("R15 page ownership matches find_if for each parity") {
+    struct Page { uint64_t set[2]; uint64_t bound[2]; };
+    std::unordered_map<uint64_t, Page> pages;
+    for (uint64_t count : {1u, 97u}) {
+        pages.clear();
+        for (uint64_t i = 0; i < count; ++i) pages.emplace(i, Page{{i+1,i+1000},{i+2000,i+3000}});
+        for (unsigned parity : {0u, 1u}) {
+            const PageOwners<decltype(pages)> owners(pages, parity);
+            auto compare = [&](uint64_t set) {
+                const auto old = std::find_if(pages.begin(), pages.end(), [&](const auto& entry) { return entry.second.set[parity] == set; });
+                CHECK(owners.find(set) == (old == pages.end() ? nullptr : &old->second));
+            };
+            for (const auto& entry : pages) { compare(entry.second.set[parity]); compare(entry.second.set[parity]); }
+            compare(0); compare(999999);
+        }
+        // Also retain find_if's first-owner behaviour if a set has two owners.
+        const auto set = pages.begin()->second.set[0];
+        pages.emplace(999, pages.begin()->second);
+        const PageOwners<decltype(pages)> owners(pages, 0);
+        const auto old = std::find_if(pages.begin(), pages.end(), [&](const auto& entry) { return entry.second.set[0] == set; });
+        CHECK(owners.find(set) == &old->second);
+    }
+}
 
 namespace {
 PlanItem item(uint32_t src, uint32_t count, uint32_t blend, uint64_t page, uint32_t tag) {

@@ -19,6 +19,7 @@ struct DDSURFACEDESC2 {
 #include"mclib.h"
 #include"inifile.h"
 #include"logisticsdata.h"
+#include "prewarm.h"
 #include"logisticsdialog.h"
 #include"abutton.h"
 #include"optionsscreenwrapper.h"
@@ -510,6 +511,7 @@ void MainMenu::update()
         status = SKIPONENEXT;
         return;
     }
+    if (!introMovie) mc2::prewarm::pumpMain(4.0, mc2::prewarm::Screen::MainMenu, !bDrawBackground);
     const auto pickedCampaign = PlayerFrontEnd::takeCampaignStart();
     if (!pickedCampaign.empty() && LogisticsData::instance) {
         skipIntro();
@@ -580,6 +582,7 @@ void MainMenu::update()
 
 	if ( introMovie )
 	{
+		mc2::prewarm::pumpMain(4.0, mc2::prewarm::Screen::FrontEndMovie, false);
 		userInput->mouseOff();
 		if (!introMovie->getMovieName()) {
 			FullPathFileName path;

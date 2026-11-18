@@ -89,6 +89,7 @@ struct Sheet {
     int w = 0, h = 0;
     bool rgba = false;      // false: RGB sheet (uncovered texels become the FF00FF key)
     int pad = 0;            // each widget file carries this many authored neighbour texels around its rect (bilinear taps at the rect edge)
+    int scale = 1;          // texel density: size, rects and pad stay in 1x (FIT) units; widget files and the composed sheet are `scale` times larger
     std::vector<Widget> widgets;
 };
 

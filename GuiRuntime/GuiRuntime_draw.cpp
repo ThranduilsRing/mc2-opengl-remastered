@@ -177,12 +177,16 @@ bool GuiRuntime::DrawUiText(float x,
     if (!font)
         return false;
 
-    const float size = static_cast<float>(normalizeSize(fontSize));
+    float size = static_cast<float>(normalizeSize(fontSize));
     const float wrapWidth = (w > 0.0f) ? w : 0.0f;
     ImVec2 pos(x, y);
 
     const char* textEnd = nullptr;
     ImVec2 textSize = font->CalcTextSizeA(size, FLT_MAX, wrapWidth, text, textEnd);
+    if (h > 0.0f && textSize.y > h) {
+        size *= h / textSize.y;
+        textSize = font->CalcTextSizeA(size, FLT_MAX, wrapWidth, text, textEnd);
+    }
     if (align == 1 && w > 0.0f) {
         pos.x = x + std::max(0.0f, w - textSize.x);
     } else if (align == 2 && w > 0.0f) {

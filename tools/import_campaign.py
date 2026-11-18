@@ -155,6 +155,54 @@ def fill_campaign_object_slots(root, out, refs):
         write_pak(str(destination), slots)
 
 
+def asset_bytes(layers, name):
+    """Resolve safely with the same loose/archive precedence as the transfer."""
+    import transfer_mc2x_campaign as transfer
+    return transfer.asset_bytes(layers, name, archive_entries=fst_entries)
+
+
+def validate_mc2x_tables(root, files, campaigns, layers):
+    """Check ownership and packet occupancy; this does not prove appearance correctness."""
+    table_name = "data/objects/object2.pak"
+    # A full source must supply its own table; mission-only addons may inherit compat.
+    own = asset_bytes([root], table_name)
+    full = "mc2xres.dll" in files or all(n in files for n in ("art.fst", "misc.fst", "tgl.fst"))
+    packed = asset_bytes(layers[:1], table_name)
+    if (full or own is not None) and (own is None or packed != own):
+        raise ValueError("Missing or different source object table data/objects/object2.pak in campaign pack; re-import it from the original campaign download (tools/import_campaign.py) after removing this mod folder, keeping your saves.")
+    for dep in layers[1:-1]:
+        if asset_bytes([dep], table_name) is None:
+            raise ValueError(f"Missing mc2x-compat object table: {dep / table_name}; re-import the full base.")
+    raw = packed if packed is not None else asset_bytes(layers[1:], table_name)
+    if raw is None:
+        raise ValueError("Missing effective object table data/objects/object2.pak")
+    if len(raw) < 8:
+        raise ValueError("Invalid object table data/objects/object2.pak")
+    first = struct.unpack_from("<I", raw, 4)[0]
+    if first < 8 or first % 4 or first > len(raw):
+        raise ValueError("Invalid object table data/objects/object2.pak")
+    count = first // 4 - 2
+    slots = struct.unpack_from(f"<{count}I", raw, 8)
+    for campaign in campaigns:
+        name = f"data/missions/{campaign['first_mission']}.fit"
+        mission = asset_bytes(layers, name)
+        if mission is None:
+            raise ValueError(f"Missing first-mission asset: {name}")
+        ids = {int(n) for n in re.findall(rb"\bObjectNumber\s*=\s*(-?\d+)", mission, re.I)}
+        unresolved = []
+        for number in sorted(ids):
+            if not 0 <= number < count:
+                unresolved.append(number)
+                continue
+            entry = slots[number]
+            start = entry & 0x1fffffff
+            end = slots[number + 1] & 0x1fffffff if number + 1 < count else len(raw)
+            if entry >> 29 == 7 or not first <= start < end <= len(raw):
+                unresolved.append(number)
+        if unresolved:
+            raise ValueError(f"{name}: unresolved object packets: {unresolved}")
+
+
 def repair_shared_components(existing, root, scratch):
     """Validate shared ammo against its own source, including on unchanged imports."""
     report = existing / "mc2x_import_report.json"
@@ -224,8 +272,8 @@ def import_campaign(source, deploy):
     source, deploy = Path(source).resolve(), Path(deploy).resolve()
     if not source.exists():
         raise ValueError(f"Download or folder not found: {source}")
-    if not (deploy / "mc2.exe").is_file():
-        raise ValueError(f"Game folder has no mc2.exe: {deploy}; use --deploy with your game folder.")
+    if not any((deploy / name).is_file() for name in ("mc2.exe", "mc2")):
+        raise ValueError(f"Game folder has no mc2 executable: {deploy}; use --deploy with your game folder.")
     installed_source = source.parent == deploy / "mods"
     if source.is_dir() and (source == deploy or source in deploy.parents or
                             (deploy in source.parents and not installed_source)):
@@ -277,6 +325,8 @@ def import_campaign(source, deploy):
         identity = json.dumps(campaigns, sort_keys=True)
         slug = re.sub(r"[^a-z0-9]+", "-", campaigns[0]["name"].lower()).strip("-")[:45] or "campaign"
         mod_id = slug + "-" + hashlib.sha256(identity.encode()).hexdigest()[:8]
+        for c in campaigns:  # display only; the id above keeps the original spelling so installed packs stay matched
+            c["name"] = c["name"].replace("MechWarriror", "MechWarrior")
         target = mods / mod_id
         fingerprint = digest(files)
         if target.exists():
@@ -297,12 +347,24 @@ def import_campaign(source, deploy):
                 if not p.is_file() or p.is_symlink() or hashlib.sha256(p.read_bytes()).hexdigest() != expected:
                     raise ValueError(f"Installed mod has changed or is incomplete: {p}")
             metadata = json.loads((target / "mod.json").read_text())
-            for dependency in metadata.get("dependencies", []):
+            dependencies = metadata.get("dependencies", [])
+            for dependency in dependencies:
                 dep = mods / safe_path(dependency)
                 if dep.is_symlink() or dep.is_junction() or not (dep / "data").is_dir():
                     raise ValueError(f"Missing {dependency}; import the full compatibility base first.")
+            if "mc2x-compat" in dependencies:
+                validate_mc2x_tables(root, files, campaigns,
+                                    [target] + [mods / safe_path(d) for d in dependencies] + [deploy])
+            for dependency in dependencies:
                 if dependency == "mc2x-compat":
-                    repair_shared_components(dep, root, scratch)
+                    repair_shared_components(mods / dependency, root, scratch)
+            if "mco-compat" in metadata.get("dependencies", []) and saved.get("logistics_art_version") != LOGISTICS_ART_VERSION:
+                import_logistics_art(root, target)
+                saved["logistics_art_version"] = LOGISTICS_ART_VERSION
+                saved["files"] = {p.relative_to(target).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+                                  for p in target.rglob("*") if p.is_file() and not p.name.startswith(".")}
+                receipt.write_text(json.dumps(saved), encoding="utf-8")
+                return {"status": "installed", "mod": mod_id, "campaigns": campaigns}
             return {"status": "unchanged", "mod": mod_id, "campaigns": campaigns}
         probe = legacy.classify(str(root))
         if probe["action"] == "reject":
@@ -356,6 +418,10 @@ def import_campaign(source, deploy):
             raise ValueError(f"Campaign transfer failed: {rc}")
         if compat == "mco-compat":
             fill_campaign_object_slots(root, out, refs)
+            import_logistics_art(root, out)
+        if compat == "mc2x-compat":
+            validate_mc2x_tables(root, files, campaigns,
+                                [out] + [Path(ref).parent for ref in refs])
         available = available_assets(out) | available_assets(deploy)
         for ref in refs[:-1] if len(refs) > 1 else []:
             available |= available_assets(Path(ref).parent)
@@ -369,6 +435,10 @@ def import_campaign(source, deploy):
                                      "(MCOsetup628.exe for Omnitech; MC2X-CVE-G for Wolfman).")
         if not (out / "data" / "campaign").is_dir():
             raise ValueError("Converter produced no campaign; original download may be incomplete.")
+        for fit in (out / "data/campaign").glob("*.fit"):
+            raw = fit.read_bytes()
+            if b"MechWarriror" in raw:
+                fit.write_bytes(raw.replace(b"MechWarriror", b"MechWarrior"))
         metadata = {"id": mod_id, "name": " / ".join(c["name"] for c in campaigns),
                     "description": "Imported community campaigns: " + ", ".join(c["name"] for c in campaigns),
                     "author": "Original campaign authors (see the supplied campaign credits)",
@@ -377,7 +447,8 @@ def import_campaign(source, deploy):
         (out / "mod.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
         hashes = {p.relative_to(out).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
                   for p in out.rglob("*") if p.is_file()}
-        (out / ".campaign-import.json").write_text(json.dumps({"source_sha256": fingerprint, "files": hashes}), encoding="utf-8")
+        (out / ".campaign-import.json").write_text(json.dumps({"source_sha256": fingerprint, "files": hashes,
+            "logistics_art_version": LOGISTICS_ART_VERSION}), encoding="utf-8")
         for item in pending + [mod_id]:
             (staged / "mods" / item).rename(mods / item)
         return {"status": "installed", "mod": mod_id, "compat": compat, "campaigns": campaigns}
@@ -494,6 +565,48 @@ def main(argv=None):
     except (ValueError, OSError, zipfile.BadZipFile, RuntimeError, SystemExit) as exc:
         print(f"Import failed: {exc}", file=sys.stderr)
         return 1
+
+
+LOGISTICS_ART_VERSION = 2
+
+
+def import_logistics_art(root, out):
+    """Keep Omnitech's authored content independent of the stock UI's grid sizes."""
+    import csv
+    from PIL import Image
+    sys.path.insert(0, str(Path(__file__).resolve().parent / "mco_import"))
+    from build_mco_compat import build_mech_names_fit, _MECH_ICON_MAP
+    objects = out / "data/objects"
+    build_mech_names_fit(str(objects), str(out / "data/defs/text/en_us"))
+    art = root / "data/art"
+    icons = {p.stem.lower(): p for p in (art / "mechicons").glob("*.[tT][gG][aA]")}
+    for path in objects.glob("*.csv"):
+        rows = list(csv.reader(io.StringIO(path.read_text(encoding="latin1"))))
+        name = next((r[1].strip().lower() for r in rows if len(r) > 1 and r[0] == "MechName"), "")
+        source = icons.get(_MECH_ICON_MAP.get(path.stem.lower(), name))
+        if source:
+            dest = out / f"data/art/mechicons/{path.stem.lower()}.png"
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            Image.open(source).convert("RGBA").save(dest)
+    layout = art / "mcl_gn_deploymentteams.fit"
+    if not layout.is_file():
+        return
+    block = re.search(r"(?is)\[PilotIcon\](.*?)(?=\[|\Z)", layout.read_text(encoding="latin1"))
+    if not block:
+        return
+    def value(key):
+        return re.search(r"(?im)^\s*\w+\s+" + key + r'\s*=\s*("[^"]+"|\w+)', block[1])[1].strip('"')
+    source = art / (value("FileName").lower().removesuffix(".tga") + ".tga")
+    if source.is_file():
+        image = Image.open(source).convert("RGBA")
+        w, h = int(value("Width")), int(value("Height"))
+        dest = out / "data/art/pilots"
+        dest.mkdir(parents=True, exist_ok=True)
+        # Pilot PictureIndex uses twelve columns, including padded source sheets.
+        for index in range(12 * (image.height // h)):
+            x, y = index % 12 * w, index // 12 * h
+            image.crop((x, y, x + w, y + h)).save(dest / f"{index:02}.png")
+    print(f"[CAMPAIGN_ART] token={LOGISTICS_ART_VERSION} cache=miss")
 
 
 if __name__ == "__main__":

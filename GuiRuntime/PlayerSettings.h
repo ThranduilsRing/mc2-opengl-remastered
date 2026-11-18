@@ -6,6 +6,7 @@
 #include <charconv>
 #include <cctype>
 #include <algorithm>
+#include <functional>
 
 namespace PlayerFrontEnd {
 inline bool contains(std::string_view list, std::string_view id) {
@@ -85,6 +86,37 @@ inline CampaignInfo campaignInfo(std::string_view source) {
 }
 inline std::string campaignTitle(std::string_view name, std::string_view fitTitle, std::string_view folder) {
     return std::string(!name.empty() ? name : !fitTitle.empty() ? fitTitle : folder);
+}
+struct CampaignChoice {
+    std::string pack, fit, title;
+};
+template<class Packs>
+std::vector<CampaignChoice> campaignChoices(const Packs& packs, const std::vector<std::string>& stockFits = {},
+                                           const std::function<bool(std::string_view)>& hidden = {}) {
+    std::vector<CampaignChoice> choices{{"", "campaign", "Stock campaign"}};
+    for (const auto& fit : stockFits) {
+        bool found = false;
+        for (const auto& choice : choices) if (choice.fit == fit) found = true;
+        if (!found) choices.push_back({"", fit, fit});
+    }
+    for (const auto& pack : packs) {
+        if (pack.kind != "campaign" || (hidden && hidden(pack.id))) continue;
+        for (const auto& [fit, info] : pack.campaigns)
+            choices.push_back({pack.id, fit, campaignTitle("", info.title, fit)});
+    }
+    return choices;
+}
+// A saved last_campaign that is hidden (import source) or no longer installed falls back to stock ("").
+template<class Packs>
+std::string validSavedCampaign(const Packs& packs, std::string_view saved,
+                               const std::function<bool(std::string_view)>& hidden = {}) {
+    if (saved.empty()) return {};
+    for (const auto& pack : packs) if (pack.id == saved) return hidden && hidden(saved) ? std::string() : std::string(saved);
+    return {};
+}
+inline void selectCampaign(const CampaignChoice& choice, std::string& pack, std::string& fit) {
+    pack = choice.pack;
+    fit = choice.fit;
 }
 inline bool unrecognisedCampaign(std::string_view name, bool hasCampaignFit) {
     return name.empty() && !hasCampaignFit;

@@ -185,6 +185,7 @@ void LogisticsData::clearVariants()
 
 std::expected<void, long> LogisticsData::load( FitIniFile& file )
 {
+	ensureMechBayDataLoaded("save-load");
 	clearInventory();
 	resourcePoints = 0;
 	clearPilots();

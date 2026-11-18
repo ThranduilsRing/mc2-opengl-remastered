@@ -41,6 +41,9 @@ std::string toJson(const Snapshot& s);
 // Print the line when the smoke harness or MC2_DIAG_VERBOSE asked for diagnostics (a player's console stays quiet).
 void log(std::string_view phase);
 
+// Release retired mission resources before rebuilding the map; returns released bytes.
+uint64_t drainRetired(std::string_view why);
+
 // Once per `kPlotEveryFrames` frames: plot the process's dedicated video memory (MiB) to Tracy as "VRAM.Process.MB".
 void tick(unsigned long frame);
 

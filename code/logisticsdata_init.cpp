@@ -13,6 +13,7 @@
 #include "../GameOS/gameos/utils/mc2log.h"
 
 #include <chrono>
+#include <tracy/Tracy.hpp>
 
 
 // SMART-LOAD-1: defer mech-bay data (components/pilots/variants) until first mech-bay accessor.
@@ -86,6 +87,7 @@ void LogisticsData::initFast()
 	if ( !s_smartLoad ) { init(); return; }
 	SMART_LOAD_TRACE_LOG("initFast: Phase A only");
 	initPhaseA();
+	startPhaseB();
 }
 
 void LogisticsData::initPhaseA()
@@ -113,13 +115,38 @@ void LogisticsData::initPhaseA()
 // No-op if gate OFF or already done. Only marks success at the end (retry-safe).
 void LogisticsData::ensureMechBayDataLoaded( mc2::czstring trigger )
 {
+	ZoneScopedN("LogisticsData::ensureMechBayDataLoaded");
 	if ( !s_smartLoad || m_phaseBComplete ) return;
 	initPhaseA(); // must be done before Phase B
 	SMART_LOAD_TRACE_LOG("Phase B begin trigger=%s", trigger ? trigger : "?");
+	startPhaseB();
+	{
+		ZoneScopedN("Prewarm.Finish");
+		mc2::prewarm::finish(m_phaseBJob, [] { graphics::pump_loading_events(); });
+	}
+	if (mc2_diag::tagRequested("MECH_PARSE"))
+		std::printf("[PREWARM_LOGISTICS v1] trigger=%s max_step_ms=%.3f\n", trigger ? trigger : "?", m_phaseBJob->maxStepMs);
+}
 
-	initComponents();
-	initPilots();
-	initVariants();
+void LogisticsData::startPhaseB()
+{
+	if (m_phaseBComplete || m_phaseBJob) return;
+	auto sequence = std::make_shared<mc2::prewarm::Sequence>(loadPhaseB());
+	m_phaseBJob = mc2::prewarm::service().submitMain([sequence] {
+		ZoneScopedN("Prewarm.LogisticsStep");
+		return sequence->step();
+	});
+}
+
+mc2::prewarm::Sequence LogisticsData::loadPhaseB()
+{
+
+	auto components = loadComponents();
+	while (components.step()) co_yield 0;
+	auto pilots = loadPilots();
+	while (pilots.step()) co_yield 0;
+	auto sequence = loadVariants();
+	while (sequence.step()) co_yield 0;
 
 	// First availability pass now that variants/components are populated
 	updateAvailability();
@@ -132,6 +159,12 @@ void LogisticsData::ensureMechBayDataLoaded( mc2::czstring trigger )
 
 //*************************************************************************************************
 void LogisticsData::initComponents()
+{
+	auto sequence = loadComponents();
+	while (sequence.step()) {}
+}
+
+mc2::prewarm::Sequence LogisticsData::loadComponents()
 {
 	char componentPath[256];
 	strcpy( componentPath, objectPath );
@@ -181,6 +214,7 @@ void LogisticsData::initComponents()
 		}
 
 		counter++;
+		co_yield 0;
 	}
 	
 	// fix up ammo
@@ -297,6 +331,12 @@ void LogisticsData::clearPilots()
 //*************************************************************************************************
 void LogisticsData::initPilots()
 {
+	auto sequence = loadPilots();
+	while (sequence.step()) {}
+}
+
+mc2::prewarm::Sequence LogisticsData::loadPilots()
+{
 
 	clearPilots();
 
@@ -328,6 +368,7 @@ void LogisticsData::initPilots()
 			pilots.pop_back();
 
 		id++;
+		co_yield 0;
 
 	}
 
@@ -353,6 +394,12 @@ static bool readCsvFileName( CSVFile& f, int row, char* out, size_t cap )
 }
 
 void LogisticsData::initVariants()
+{
+	auto sequence = loadVariants();
+	while (sequence.step()) {}
+}
+
+mc2::prewarm::Sequence LogisticsData::loadVariants()
 {
 	graphics::begin_variant_load();
 	struct PumpReport { ~PumpReport() { graphics::end_variant_load(); } } pumpReport;
@@ -403,6 +450,7 @@ void LogisticsData::initVariants()
 	while( true )
 	{
 		graphics::pump_loading_events();
+		co_yield 0;
 		long fitID;
 		long nameID = 0;
 		variantFile.readLong( i, 3, nameID );
@@ -509,6 +557,7 @@ void LogisticsData::initVariants()
 		auto& lap = laps[job.package ? 1 : 0];
 		++lap.files;
 		graphics::pump_loading_events();
+		co_yield 0;
 		const auto openStart = Clock::now();
 		CSVFile mechFile;
 		const long openResult = mechFile.open(job.path.c_str());
@@ -544,9 +593,11 @@ void LogisticsData::initVariants()
 			}
 			varCount++;
 			row += 97;
-			lap.maxStep = std::max(lap.maxStep, Clock::now() - singleVariantStart);
+			const auto elapsed = Clock::now() - singleVariantStart;
+			lap.maxStep = std::max(lap.maxStep, elapsed);
+			lap.variants += elapsed;
+			co_yield 0;
 		}
-		lap.variants += Clock::now() - variantStart;
 	}
 	// One line per load: the serial parse is on the startup (or first mech-bay) path, so its cost stays visible.
 	MC2_LOG(Io, Info, "logistics: parsed {} mech files in {} ms", mechJobs.size(),

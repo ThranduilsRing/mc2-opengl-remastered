@@ -134,7 +134,7 @@ void violation(std::string_view kind, std::string_view site, bool hard = false) 
     }
 }
 
-const char* ownerName(Owner o) { return o == Owner::Main ? "main" : o == Owner::Sim ? "sim" : o == Owner::Present ? "present" : "render"; }
+const char* ownerName(Owner o) { return o == Owner::Main ? "main" : o == Owner::Sim ? "sim" : o == Owner::Present ? "present" : o == Owner::Prewarm ? "prewarm" : "render"; }
 
 // Bundle line written before a fast-fail so a worker CTD names its thread and the last audit site instead of a bare 0xC0000409.
 void logFatal(std::string_view what) {
@@ -178,6 +178,7 @@ bool owns(Owner domain) {
                                (me == Owner::Main && !g_renderThread.load(std::memory_order_acquire));
     case Owner::Present: return me == Owner::Present || (me == Owner::Main && !g_presentThread.load(std::memory_order_acquire));
     case Owner::Sim:    return me == Owner::Sim || (me == Owner::Main && !g_inFlight.load(std::memory_order_acquire));
+    case Owner::Prewarm: return me == Owner::Prewarm; // private decode only; no engine domain
     }
     return false;
 }

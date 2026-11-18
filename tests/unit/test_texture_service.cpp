@@ -86,6 +86,20 @@ TEST_CASE("shared-key aliases remain indexed across rebind and clear") {
     s.clear();
     CHECK_FALSE(s.handleOfNode(3).isValid()); CHECK_FALSE(s.isLive(h));
 }
+TEST_CASE("dense aliases survive swap removal rebind and entry reuse") {
+    TextureService s; const auto key = keyOf("base", "aliases", 1);
+    const auto h = s.acquire(key, 1);
+    for (uint32_t n = 2; n <= 64; ++n) REQUIRE(s.acquire(key, n) == h);
+    REQUIRE(s.rebind(h, 64)); CHECK(s.users(h) == 64);
+    for (uint32_t n = 2; n < 64; ++n) s.onNodeDestroyed(n);
+    CHECK(s.nodeOf(h) == 64); CHECK(s.users(h) == 2);
+    REQUIRE(s.retain(h)); s.onNodeDestroyed(64);
+    CHECK(s.isLive(h)); CHECK(s.nodeOf(h) == kNoTextureNode);
+    REQUIRE(s.retainSource(h, 7)); REQUIRE(s.rebind(h, kNoTextureNode));
+    CHECK_FALSE(s.handleOfNode(7).isValid());
+    s.clear(); const auto next = s.acquire(key, 8);
+    CHECK(next != h); s.onNodeDestroyed(8); CHECK_FALSE(s.isLive(next));
+}
 
 TEST_CASE("path spelling is folded: case and separators do not make a new key") {
     TextureKey a = keyOf("base", "Data\\TGL\\Mech.TGA", 0xAB);
@@ -181,6 +195,15 @@ MaterialKey matKey(uint64_t mesh, uint32_t slot, TextureHandle albedo, uint32_t 
 }  // namespace
 
 TEST_SUITE("MaterialRegistry") {
+
+TEST_CASE("MaterialRegistry refuses indices beyond the handle field") {
+    MaterialRegistry r;
+    for (uint32_t i = 0; i < 0x100000u; ++i)
+        REQUIRE(r.acquire(matKey(i, 0, TextureHandle::make(1, 1))).index() == i);
+    CHECK_FALSE(r.acquire(matKey(0x100000u, 0, TextureHandle::make(1, 1))).isValid());
+    CHECK(r.materialCount() == 0x100000u);
+    CHECK(r.acquire(matKey(0, 0, TextureHandle::make(1, 1))) == MaterialHandle::make(0, 1));
+}
 
 TEST_CASE("equal keys are one material; the semantic of the unified table is the descriptor index") {
     MaterialRegistry r;

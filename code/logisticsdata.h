@@ -18,6 +18,7 @@ LogisticsData.h			: Interface for the LogisticsData component.  This thing holds
 #include <vector>
 #include <deque>
 #include <memory>
+#include "prewarm.h"
 
 #include"logisticsmech.h"
 #include"logisticscomponent.h"
@@ -314,6 +315,12 @@ private:
 	void clearPilots();   // empties `pilots`; the inventory must be empty first (see the list contract above)
 	void initVariants();
 	void initPhaseA();
+	void startPhaseB();
+	mc2::prewarm::Sequence loadPhaseB();
+	mc2::prewarm::Sequence loadComponents();
+	mc2::prewarm::Sequence loadPilots();
+	mc2::prewarm::Sequence loadVariants();
+	mc2::prewarm::Job m_phaseBJob;
 	bool m_phaseAComplete = false;
 	bool m_phaseBComplete = false;
 

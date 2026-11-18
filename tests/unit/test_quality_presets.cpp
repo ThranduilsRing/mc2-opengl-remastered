@@ -3,8 +3,41 @@
 #include "Gates/render_options.h"
 #include "../../GuiRuntime/PlayerSettings.h"
 #include <cstring>
+#include <map>
+
+TEST_CASE("campaign picker/all pack FIT pairs select independently including stock") {
+    using namespace PlayerFrontEnd;
+    struct Pack { std::string id, kind; std::map<std::string, CampaignInfo> campaigns; };
+    const std::vector<Pack> packs{{"exodus", "campaign", {{"campaign", {"Exodus"}}, {"bonus", {"Bonus"}}}},
+        {"fox", "campaign", {{"campaign", {"Desert Fox"}}}},
+        {"base", "dependency", {{"hidden", {"Hidden"}}}}, {"mechs", "assets", {}}};
+    const auto choices = campaignChoices(packs);
+    REQUIRE(choices.size() == 4);
+    CHECK((choices[0].pack.empty() && choices[0].fit == "campaign"));
+    CHECK((choices[1].pack == "exodus" && choices[1].fit == "bonus"));
+    CHECK((choices[2].pack == "exodus" && choices[2].fit == "campaign" && choices[2].title == "Exodus"));
+    CHECK((choices[3].pack == "fox" && choices[3].fit == "campaign" && choices[3].title == "Desert Fox"));
+    std::string pack, fit;
+    for (const auto& choice : choices) {
+        selectCampaign(choice, pack, fit);
+        CHECK((pack == choice.pack && fit == choice.fit));
+    }
+    CHECK(campaignChoices(std::vector<Pack>{}).size() == 1);
+}
 
 // Trigger: GuiRuntime/PlayerSettings.h and PlayerFrontEnd.cpp selection/restart handling.
+TEST_CASE("campaign picker/discovered stock FITs retain archived fallback and deduplicate") {
+    using namespace PlayerFrontEnd;
+    struct Pack { std::string id, kind; std::map<std::string, CampaignInfo> campaigns; };
+    const auto choices = campaignChoices(std::vector<Pack>{}, {"campaign", "second", "second"});
+    REQUIRE(choices.size() == 2);
+    CHECK((choices[0].pack.empty() && choices[0].fit == "campaign"));
+    CHECK((choices[1].pack.empty() && choices[1].fit == "second" && choices[1].title == "second"));
+    std::string pack = "addon", fit;
+    selectCampaign(choices[1], pack, fit);
+    CHECK((pack.empty() && fit == "second"));
+}
+
 TEST_CASE("campaign picker/disable invalid enabled addon") {
     using namespace PlayerFrontEnd;
     CHECK(packToggleAllowed(true, "Missing dependency"));
@@ -207,4 +240,24 @@ TEST_CASE("TextureQuality option row: range -1..3, default Auto, text form valid
     CHECK(setFromText(o, *opt, "5") != Verdict::Ok);
     CHECK(o.textureQuality == -1);
     CHECK(setFromText(o, *opt, "high") == Verdict::Garbage);
+}
+
+TEST_CASE("campaign picker/import-source folders are not listed as campaigns") {
+    using namespace PlayerFrontEnd;
+    struct Pack { std::string id, kind; std::map<std::string, CampaignInfo> campaigns; };
+    const std::vector<Pack> packs{{"exodus-dca4afc8", "campaign", {{"campaign", {"Exodus"}}}},
+        {"mcosetup628(1)", "campaign", {{"campaign", {"Exodus"}}}}};  // manifest-less source folder
+    const auto choices = campaignChoices(packs, {}, [](std::string_view id) { return id == "mcosetup628(1)"; });
+    REQUIRE(choices.size() == 2);
+    CHECK(choices[1].pack == "exodus-dca4afc8");
+}
+
+TEST_CASE("campaign picker/saved import-source campaign resets to stock") {
+    using namespace PlayerFrontEnd;
+    struct Pack { std::string id; };
+    const std::vector<Pack> packs{{"exodus-dca4afc8"}, {"mcosetup628(1)"}};
+    const auto hidden = [](std::string_view id) { return id == "mcosetup628(1)"; };
+    CHECK(validSavedCampaign(packs, "mcosetup628(1)", hidden).empty());
+    CHECK(validSavedCampaign(packs, "exodus-dca4afc8", hidden) == "exodus-dca4afc8");
+    CHECK(validSavedCampaign(packs, "gone", hidden).empty());
 }

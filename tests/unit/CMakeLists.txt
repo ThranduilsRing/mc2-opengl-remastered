@@ -228,6 +228,7 @@ add_executable(mc2_tests
     test_prefs_init.cpp         # deterministic preference init: options.cfg x orgprefs.cfg presence matrix and resulting bytes
     test_path_permutations.cpp  # META-FIX design E: canonical-key permutation matrix (issue #8 family)
     test_csvfile.cpp        # MINIMAL-VIABLE-HARNESS-2: real csvfile.cpp (Buildings.csv-shaped)
+    test_prewarm.cpp
     test_memorystream.cpp   # Stuff::MemoryStream::ReadBytes bounds check (truncated mod .fx)
     test_objective_text.cpp # objective text reader/writer + boolean flag table (step 4 B1.1)
     test_score_sort_ties.cpp    # step 4 B2.4: the CRT qsort tie table recorded from the old SortList (golden/sortlist_ties.h) against the new rule

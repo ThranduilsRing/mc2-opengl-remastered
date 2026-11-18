@@ -9,7 +9,7 @@
 
 namespace mc2purchase {
 inline bool mountInstalled(std::string_view type, bool campaign, bool units) {
-    return type != "campaign" && !campaign && (type == "assets" || units);
+    return type != "campaign" && type != "dependency" && !campaign && (type == "assets" || units);
 }
 
 template<class File>

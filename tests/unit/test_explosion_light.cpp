@@ -1,7 +1,27 @@
 #include "doctest.h"
 #include "../../code/explosion_light.h"
 #include <limits>
+#include "../../code/launcher_light_budget.h"
+#include <map>
 using mc2::explosion_light::scale;
+
+TEST_CASE("launcher light: retained budget matches the per-frame map") {
+    mc2::LauncherLightBudget budget;
+    std::map<std::int32_t, unsigned> reference;
+    std::uint32_t lightFrame = ~0u;
+    const auto check = [&](std::uint32_t frame, std::int32_t wid) {
+        if (lightFrame != frame) {
+            lightFrame = frame;
+            reference.clear();
+        }
+        const bool expected = reference[wid]++ < 2;
+        CHECK(budget.allow(frame, wid, 2) == expected);
+    };
+    for (auto frame : {~0u, 0u, 0u, 1u, ~0u})
+        for (int repeat = 0; repeat < 4; ++repeat)
+            for (std::int32_t wid = 0; wid < 48; ++wid)
+                check(frame, wid);
+}
 
 TEST_CASE("explosion light: class and geometry scale the pool without a white plateau") {
     const auto vehicle = scale(40, 24, 1, 100, 600);

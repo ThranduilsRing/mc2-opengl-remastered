@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <span>
 #include "doctest.h"
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"
 
 #include "texture_decode.h"
 #include "hud_texture_mips.h"
@@ -15,6 +17,7 @@
 #include <filesystem>
 
 #include <cstdint>
+#include <cstring>
 #include <cstdio>
 #include <vector>
 
@@ -41,6 +44,29 @@ std::vector<uint8_t> tga(int w, int h, int bpp, const std::vector<uint8_t>& bgra
 }
 
 }  // namespace
+
+TEST_CASE("texture lock: fused BGRA copy matches the legacy word swizzle") {
+    std::vector<uint8_t> source(256 * 4), expected(source.size()), actual(source.size(), 0xcd);
+    for (uint32_t i = 0; i < 256; ++i) {
+        const uint32_t rgba = i | ((255 - i) << 8) | ((i ^ 0x5a) << 16) | ((i ^ 0xa5) << 24);
+        const uint32_t bgra = (rgba & 0xff00ff00u) | ((rgba & 0xffu) << 16) | ((rgba >> 16) & 0xffu);
+        std::memcpy(source.data() + i * 4, &rgba, 4);
+        std::memcpy(expected.data() + i * 4, &bgra, 4);
+    }
+    const auto original = source;
+    mc2tex::writeBgraLockPixels(actual, source);
+    CHECK(actual == expected);
+    CHECK(source == original);
+    for (const size_t size : {size_t{7}, size_t{12}}) {
+        actual.assign(size, 0xcd);
+        mc2tex::writeBgraLockPixels(actual, std::span<const uint8_t>(source).first(6));
+        CHECK(std::equal(actual.begin(), actual.begin() + 4, expected.begin()));
+        CHECK(std::all_of(actual.begin() + 4, actual.end(), [](uint8_t b) { return b == 0; }));
+    }
+    mc2tex::writeBgraLockPixels(actual, {});
+    CHECK(actual == std::vector<uint8_t>(actual.size(), 0));
+    mc2tex::writeBgraLockPixels({}, {});
+}
 
 TEST_CASE("StockPbr: every shipped actor atlas resolves and decodes through the texture service") {
     auto root = std::filesystem::current_path();
@@ -123,6 +149,31 @@ TEST_CASE("cursor image: keyed TGA decode clears magenta for RGB and RGBA art") 
         CHECK(decoded->layout == mc2tex::PixelLayout::RGBA8);
         CHECK(decoded->pixels == std::vector<uint8_t>{0,0,0,0, 10,20,30,static_cast<uint8_t>(bits == 24 ? 255 : 128)});
     }
+}
+
+// Trigger: GameOS/gameos/texture_decode.cpp (font coverage upload policy).
+TEST_CASE("texture decode: stock font red coverage remains byte-exact") {
+    const auto install = mc2::gate::str<"MC2_GATE_INSTALL">();
+    if (install.empty()) { MESSAGE("installed corpus unavailable; MC2_GATE_INSTALL unset"); return; }
+    const auto path = std::filesystem::path(install) / "assets/graphics/arial8.bmp";
+    if (!std::filesystem::exists(path)) { MESSAGE("installed stock font unavailable: " << path.string()); return; }
+    Image stock;
+    REQUIRE(stock.loadFromFile(path.string().c_str()));
+    REQUIRE(stock.getFormat() == FORMAT_RGBA8);
+    const auto decoded = mc2tex::decodeFile(path.string().c_str(), gos_Texture_Alpha, 0);
+    REQUIRE(decoded);
+    REQUIRE(decoded->width == stock.getWidth());
+    REQUIRE(decoded->height == stock.getHeight());
+    size_t changed = 0, clear = 0, ink = 0;
+    for (size_t i = 0; i < decoded->pixels.size(); i += 4) {
+        changed += decoded->pixels[i] != stock.getPixels()[i];
+        clear += stock.getPixels()[i] == 0;
+        ink += stock.getPixels()[i] == 255;
+    }
+    INFO("changed=" << changed << " clear=" << clear << " ink=" << ink);
+    CHECK(changed == 0);
+    CHECK(clear > 0);
+    CHECK(ink > 0);
 }
 
 TEST_CASE("texture decode: Detect resolves from the alpha channel") {
