@@ -12172,6 +12172,19 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [
+    "phase",
+    "why",
+    "entries",
+    "released_bytes",
+    "deferred_after"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RESIDENCY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
     "refused",
     "bytes",
     "live",

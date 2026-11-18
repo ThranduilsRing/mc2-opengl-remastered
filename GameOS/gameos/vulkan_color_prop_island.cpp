@@ -309,6 +309,7 @@ struct ColorPropIsland : mc2vk::IslandState {
     uint64_t recordedTopology = 0;
     uint32_t listStart[kListCount + 1]{}, listCounts[kListCount]{};
     unsigned long cachedTypeRuns = 0;
+    uint32_t planarRecordDiagnostics = 0;
     uint64_t cachedLeaves = 0;
     std::vector<PropPacketRow> pktScratch[kListCount];   // rows parallel to cmdScratch
     std::vector<PropRunRow> runScratch;
@@ -1438,7 +1439,12 @@ bool init_island(ColorPropIsland* s, int w, int h) {
 
 // Copy the shared static-prop VBO/IBO into VK-owned buffers ONCE per map, reusing the
 // shadow island's geometry feed (SAME shared buffers). Returns false if unavailable.
+static const ColorPropIsland& geometrySource(const ColorPropIsland* s) {
+    return s->imageSource ? *s->imageSource : *s;
+}
+
 bool upload_geometry_once(ColorPropIsland* s) {
+    if (s->imageSource && !s->imageSource->geomUploaded) return false;
     if (s->geomUploaded) return true;
     Mc2ShadowGeomFeed feed{};
     if (!mc2_shadow_island_get_geometry_feed(&feed)) return false;
@@ -1453,35 +1459,38 @@ bool upload_geometry_once(ColorPropIsland* s) {
              static_cast<unsigned long long>(feed.iboBytes));
         return false;
     }
-    // Static geometry is read every frame. Keep the identical bytes in device
-    // memory rather than the CPU-writable allocation createFilled() provides.
-    mc2vk::OwnedBuffer stageVertices, stageIndices;
-    // The RT scene (vk_rt_scene.h) builds the static-prop BLASes straight from this VBO.
-    const VkBufferUsageFlags rtBuildInput = mc2vk::getOrCreateEngineVulkanContext().rt().accel
-        ? VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR : 0;
-    if (!stageVertices.createFilled(s->allocator, s->device, vboCpu, vboBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "colorprop.stage.vertices") ||
-        !stageIndices.createFilled(s->allocator, s->device, iboCpu, iboBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "colorprop.stage.indices") ||
-        !s->vbo.createDeviceLocal(s->allocator, s->device, vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | rtBuildInput,
-                                  "colorprop.vbo") ||
-        !s->ibo.createDeviceLocal(s->allocator, s->device, iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, "colorprop.ibo")) {
-        vlog("geometry upload failed (buffer creation or map); retrying next frame.");
-        s->vbo.reset();
-        s->ibo.reset();
-        return false;
-    }
-    auto& ctx = mc2vk::getOrCreateEngineVulkanContext();
-    if (!mc2vk::submitOneShot(ctx, [&](VkCommandBuffer cb) {
-        const VkBufferCopy vertices{0, 0, vboBytes}, indices{0, 0, iboBytes};
-        vkCmdCopyBuffer(cb, stageVertices.get(), s->vbo.get(), 1, &vertices);
-        vkCmdCopyBuffer(cb, stageIndices.get(), s->ibo.get(), 1, &indices);
-        mc2vk::sync::cmdMemoryBarrier(ctx, cb, VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
-                                      VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT | VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT,
-                                      VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_2_INDEX_READ_BIT);
-    }, "colorprop_geometry_upload")) {
-        vlog("geometry upload failed (copy submit); retrying next frame.");
-        s->vbo.reset();
-        s->ibo.reset();
-        return false;
+    if (!s->imageSource) {
+        // Static geometry is read every frame. Keep the identical bytes in device
+        // memory rather than the CPU-writable allocation createFilled() provides.
+        mc2vk::OwnedBuffer stageVertices, stageIndices;
+        // The RT scene (vk_rt_scene.h) builds the static-prop BLASes straight from this VBO.
+        const VkBufferUsageFlags rtBuildInput = mc2vk::getOrCreateEngineVulkanContext().rt().accel
+            ? VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR : 0;
+        if (!stageVertices.createFilled(s->allocator, s->device, vboCpu, vboBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "colorprop.stage.vertices") ||
+            !stageIndices.createFilled(s->allocator, s->device, iboCpu, iboBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "colorprop.stage.indices") ||
+            !s->vbo.createDeviceLocal(s->allocator, s->device, vboBytes, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | rtBuildInput,
+                                      "colorprop.vbo") ||
+            !s->ibo.createDeviceLocal(s->allocator, s->device, iboBytes, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, "colorprop.ibo")) {
+            vlog("geometry upload failed (buffer creation or map); retrying next frame.");
+            s->vbo.reset();
+            s->ibo.reset();
+            return false;
+        }
+        auto& ctx = mc2vk::getOrCreateEngineVulkanContext();
+        if (!mc2vk::submitOneShot(ctx, [&](VkCommandBuffer cb) {
+            const VkBufferCopy vertices{0, 0, vboBytes}, indices{0, 0, iboBytes};
+            vkCmdCopyBuffer(cb, stageVertices.get(), s->vbo.get(), 1, &vertices);
+            vkCmdCopyBuffer(cb, stageIndices.get(), s->ibo.get(), 1, &indices);
+            mc2vk::sync::cmdMemoryBarrier(ctx, cb, VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                                          VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT | VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT,
+                                          VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_2_INDEX_READ_BIT);
+        }, "colorprop_geometry_upload")) {
+            vlog("geometry upload failed (copy submit); retrying next frame.");
+            s->vbo.reset();
+            s->ibo.reset();
+            return false;
+        }
+
     }
 
     s->packets.assign(feed.packets, feed.packets + feed.packetCount);
@@ -1504,7 +1513,8 @@ bool upload_geometry_once(ColorPropIsland* s) {
     }
     s->geomUploaded = true;
     ++s->resourceGeneration;
-    vlog("prop geometry uploaded once: vbo=%llu B ibo=%llu B stride=%u packets=%u types=%u.",
+    vlog(s->imageSource ? "prop geometry borrowed: vbo=%llu B ibo=%llu B stride=%u packets=%u types=%u kind=planar."
+                        : "prop geometry uploaded once: vbo=%llu B ibo=%llu B stride=%u packets=%u types=%u kind=main.",
          static_cast<unsigned long long>(feed.vboBytes), static_cast<unsigned long long>(feed.iboBytes),
          feed.vertexStride, feed.packetCount, feed.typeCount);
     return true;
@@ -1573,6 +1583,7 @@ extern "C" int mc2_vk_color_prop_island_enabled() {
 
 static bool prepare_mission_resources(ColorPropIsland* s) {
     ZoneScopedN("VKIsl.Props.MissionResources");
+    if (s->imageSource && !s->imageSource->geomUploaded) return false;
     if (!upload_geometry_once(s)) { setFallback("geometry_not_ready"); return false; }
 
     // VK-P11 STATIC-PROP MATERIAL: copy-once import the alpha-OFF albedo 2D_ARRAY +
@@ -1740,6 +1751,9 @@ struct PropRecPlan {
     VkQueryPool coreStats = VK_NULL_HANDLE;
     VkRect2D scissor{};
     bool embedded = false;
+    bool logPlanarRecord = false;
+    uint64_t frame = 0;
+    uint32_t mapGeneration = 0;
     VkImageView views[3], depthView; VkFormat depthFmt; VkPipeline cullPipe, opaquePipe, corePipe, fringePipe, opaqueDblPipe, coreDblPipe, fringeDblPipe;
     VkPipelineLayout cullLayout, playout; VkDescriptorSet set, groundSet; VkBuffer vbo, ibo, cmdBuf;
     VkDeviceAddress pktAddr; uint32_t nDyn, dynOffsets[3], groundOffsets[4], runCount, drawLimit, listStart[kListCount + 1], counts[kListCount];
@@ -1791,8 +1805,10 @@ static bool record_props_cmds(const PropRecPlan& plan, VkCommandBuffer cb) {
     vkCmdBindIndexBuffer(cb, plan.ibo, 0, VK_INDEX_TYPE_UINT32);
 
     // One indirect-count call per list; maxDrawCount is clamped to the device limit (a loop-wrap hazard on AMD when it is UINT32_MAX).
+    uint32_t drawCalls = 0;
     auto drawList = [&](VkPipeline pipe, uint32_t first, uint32_t n, uint32_t listWord) {
         if (n == 0) return;
+        ++drawCalls;
         mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipe);
         const PropPacketPush push{plan.pktAddr, first, 0};
         vkCmdPushConstants(cb, plan.playout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(push), &push);
@@ -1834,7 +1850,11 @@ static bool record_props_cmds(const PropRecPlan& plan, VkCommandBuffer cb) {
     mc2vk::dynrender::end(mc2vk::engineVulkanContextNoWait(), cb);
     gpuScope.end();
     if (!plan.embedded) vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_SpColor);
-    return plan.embedded || vkEndCommandBuffer(cb) == VK_SUCCESS;
+    const bool recorded = plan.embedded || vkEndCommandBuffer(cb) == VK_SUCCESS;
+    if (plan.logPlanarRecord)
+        vlog("kind=planar frame=%llu map_generation=%u recorded=%d draw_calls=%u",
+             static_cast<unsigned long long>(plan.frame), plan.mapGeneration, recorded ? 1 : 0, drawCalls);
+    return recorded;
 }
 
 static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std::function<bool(VkCommandBuffer)>& recordOut,
@@ -2058,7 +2078,8 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std
     plan.opaqueDblPipe = s->t1_opaqueDblPipe.get(); plan.coreDblPipe = s->t1_dblPipe.get(); plan.fringeDblPipe = s->t1_fringeDblPipe.get();
     plan.cullLayout = s->cullLayout.get(); plan.playout = s->playout.get();
     plan.set = s->set[par]; plan.groundSet = s->groundLighting.set(par);
-    plan.vbo = s->vbo.get(); plan.ibo = s->ibo.get(); plan.cmdBuf = cmdBuf; plan.pktAddr = s->gpu[par].pkt.deviceAddress();
+    const auto& geometry = geometrySource(s);
+    plan.vbo = geometry.vbo.get(); plan.ibo = geometry.ibo.get(); plan.cmdBuf = cmdBuf; plan.pktAddr = s->gpu[par].pkt.deviceAddress();
     plan.nDyn = nDyn; std::copy_n(dynOffsets, nDyn, plan.dynOffsets); std::copy_n(ground->offsets.data(), 4, plan.groundOffsets);
     plan.runCount = static_cast<uint32_t>(s->runScratch.size()); plan.drawLimit = s->drawIndirectLimit;
     std::copy_n(listStart, kListCount + 1, plan.listStart); std::copy_n(counts, kListCount, plan.counts);
@@ -2067,6 +2088,9 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std
     plan.scissor={{0,0},{static_cast<uint32_t>(w),static_cast<uint32_t>(h)}};
     if (target) {
         plan.embedded = true;
+        plan.logPlanarRecord = s->planarRecordDiagnostics++ < 3;
+        plan.frame = g_mc2RenderFrame;
+        plan.mapGeneration = geometry.mapGeneration;
         plan.w = (w + target->divisor - 1) / target->divisor; plan.h = (h + target->divisor - 1) / target->divisor;
         if (target->scissor.extent.width) plan.scissor=target->scissor;
         plan.views[0] = target->color; plan.views[1] = plan.views[2] = VK_NULL_HANDLE;
