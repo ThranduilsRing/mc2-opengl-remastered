@@ -6187,6 +6187,38 @@
    "count": 1
   },
   {
+   "tag": "MECH_PREWARM",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "guard",
+    "headroom_mb",
+    "reserve_mb"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MECH_PREWARM",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "headroom_mb",
+    "reserve_mb"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MECH_PREWARM",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "prewarmed",
+    "mechs",
+    "vehicles"
+   ],
+   "count": 1
+  },
+  {
    "tag": "MECH_SKEL",
    "ver": -1,
    "stream": "stdout",
