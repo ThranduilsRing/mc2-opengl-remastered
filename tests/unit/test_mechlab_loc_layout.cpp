@@ -20,6 +20,9 @@ TEST_CASE("mechlab loc: record sheet uses the same contained geometry at every r
             }
             for (bool rear : {false,true}) {
                 if (rear && !torso(p)) continue;
+                const auto value=armorValueRect(p,rear);   // armor number centred in the panel and between its steppers
+                CHECK(value.cx() == doctest::Approx(box.cx()));
+                CHECK(value.cx() == doctest::Approx((stepperRect(p,rear,false).cx()+stepperRect(p,rear,true).cx())*.5f));
                 for (bool plus : {false,true}) {
                     const auto hit=stepperRect(p,rear,plus), draw=toScreen(hit,cv);
                     CHECK(hit.contains(draw.cx()/cv.sx,draw.cy()/cv.sy));

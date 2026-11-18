@@ -512,7 +512,7 @@ mc2pkg::LayoutComponent layoutComponent(const LogisticsComponent& c) {
 		auto& master = MasterComponent::masterList[result.id];
 		result.size = static_cast<int>(master.getSize()); result.allowed = 0;
 		for (int loc = 0; loc < 8; ++loc)
-			if (master.getCriticalSpacesReq(loc) > 0) result.allowed |= 1u << loc;
+			if (master.getCriticalSpacesReq(loc) >= 0) result.allowed |= 1u << loc;
 		result.implicitAmmo = master.getWeaponAmmoMasterId() != 0;
 	}
 	using K = mc2pkg::EquipmentKind;

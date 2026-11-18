@@ -13,7 +13,6 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <cstdio>
 #include <limits>
 
 class FitIniFile;
@@ -191,8 +190,7 @@ inline bool validateLocations(const ChassisLayout& layout, LocationVariant& reco
     for (std::size_t i = 0; i < all.size(); ++i) {
         auto others = all;
         others.erase(others.begin() + static_cast<std::ptrdiff_t>(i));
-        { const auto vr = checkPlace(layout, others, all[i], all[i].location);
-          if (vr.verdict != PlaceVerdict::Legal) { legal = false; std::fprintf(stderr, "[LAYOUTDBG] item=%zu id=%d loc=%d slot=%d verdict=%d over=%f kind=%d\n", i, all[i].component.id, all[i].location, all[i].slot, static_cast<int>(vr.verdict), vr.overage, static_cast<int>(all[i].component.kind)); } }
+        if (checkPlace(layout, others, all[i], all[i].location).verdict != PlaceVerdict::Legal) legal = false;
     }
     record.grandfathered = !legal;
     return legal;
