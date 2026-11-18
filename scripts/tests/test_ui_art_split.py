@@ -143,3 +143,16 @@ def test_every_stock_fit_rect_of_a_listed_sheet_resolves_to_a_widget():
         screens = set(sh["screens"])   # a screen left out of the sheet on purpose (mcl_cm_standinop on MCL_CM_5) is not checked
         missing = {r for r, refs in uses[key].items() if any(stem in screens for stem, _, _ in refs)} - have
         assert not missing, (key, sorted(missing)[:3])
+
+
+def test_verify_applies_the_sheet_scale(tmp_path):
+    inst = make_install(tmp_path)
+    out = tmp_path / "o"
+    m, _, _ = split.build(str(inst), str(out), True)
+    m["sheets"]["sheet1"]["scale"] = 2
+    assert split.verify(str(inst), str(out), m) > 0   # 1x files no longer match the declared 2x size
+    for name in m["sheets"]["sheet1"]["widgets"]:
+        p = out / "sheet1" / (name + ".png")
+        with Image.open(p) as im:
+            im.resize((im.width * 2, im.height * 2), Image.NEAREST).save(p)
+    assert split.verify(str(inst), str(out), m) == 0

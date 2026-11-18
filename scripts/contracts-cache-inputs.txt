@@ -17,6 +17,7 @@
 
 # whole-repo scanners and the two test tiers
 log_tag_census: @CPP tools/log_tag_census.py tests/unit/log_tag_baseline.json
+campaign_marker: tools/gen_campaign_marker.py data/art/ui/mcl_cm_5
 script_callers: glob:scripts/*.py glob:tools/*.py glob:tests/*.py tests/callers_allowlist.json scripts/check-contracts.sh
 cxx_standard_floor: .
 cxx17_ratchet: @CPP tools/cxx17_ratchet
