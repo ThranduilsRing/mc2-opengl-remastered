@@ -1655,6 +1655,9 @@ void MissionBegin::updateSoakScreenWalk(LogisticsScreen* pCurScreen, bool& soakF
 				// single-screen capture harnesses hold any target screen.
 				int stopX = 2, stopY = 1;
 				mc2BootScreenXY( stopX, stopY );
+				// Player-path harness: MC2_BOOT_TO_SCREEN=column2 holds every logistics cell of column 2 (purchase, bay, loadout) so scripted input can walk them.
+				if ( curScreenX == 2 && mc2::gate::str<"MC2_BOOT_TO_SCREEN">() == "column2" )
+					stopY = curScreenY;
 				// Hold at the bay while auto-purchase and Modify Mech settle,
 				// then hold in mech_lab_loadout [2][2]. NEXT must not race Modify.
 				if ( mc2::gate::get<"MC2_BOOT_TO_MECHLAB">() )
