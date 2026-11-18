@@ -27,6 +27,8 @@
 #include <string>
 #include <climits>
 #include <type_traits>
+#include <array>
+#include <random>
 
 extern bool g_mc2TestStopFatal;   // tests/unit/heap_shim.cpp: STOP counts and continues instead of aborting
 extern int  g_mc2TestStopCount;
@@ -364,6 +366,69 @@ struct AblReadLog {
 		CHECK(logged.find(tag, first + 1) == std::string::npos);
 	}
 };
+}
+
+TEST_CASE("FileFamilyContract/ABL line callback reduction matches bounded reference") {
+	AblRamCallbacks restore;
+	AblReadLog log;
+	struct Input { std::string bytes; long pos = 0, fail = -1, advance = 0, result = 0; };
+	auto remaining = +[](void* h) -> long { auto& s = *static_cast<Input*>(h); return static_cast<long>(s.bytes.size()) - s.pos; };
+	auto read = +[](void* h, unsigned char* out, long) -> long {
+		auto& s = *static_cast<Input*>(h);
+		if (s.pos == s.fail) { s.pos += s.advance; return s.result; }
+		*out = static_cast<unsigned char>(s.bytes[s.pos++]); return 1;
+	};
+	// Original implementation, with its diagnostic represented by a counter.
+	int expectedBad = 0;
+	auto reference = [&](void* h, unsigned char* out, long cap) -> long {
+		if (out && cap > 0) out[0] = 0;
+		if (h && out && cap > 0 && ABLFile::remainingCB && ABLFile::readCB) {
+			long count = 0;
+			while (remaining(h) > 0 && count < cap - 1) {
+				unsigned char ch;
+				if (read(h, &ch, 1) != 1) break;
+				out[count++] = ch; out[count] = 0;
+				if (ch == '\n') return count + 1;
+			}
+			if (remaining(h) == 0) return count ? count + 1 : 0;
+		}
+		++expectedBad; return 0;
+	};
+	std::mt19937 rng(0x41424c);
+	for (int trial = 0; trial < 620; ++trial) {
+		Input actual;
+		long cap = 2 + rng() % 130;
+		if (trial < 6) {
+			const std::string edges[] = {"", "\r\n", "last", "x\n", std::string(MAXLEN_SOURCELINE - 1, 'a'), std::string(MAXLEN_SOURCELINE, 'a')};
+			actual.bytes = edges[trial]; cap = MAXLEN_SOURCELINE;
+		} else {
+			for (unsigned n = rng() % 260; n--; ) actual.bytes += "a\r\n\0"[rng() % 4];
+			if (trial % 3 == 0 && !actual.bytes.empty()) {
+				actual.fail = rng() % actual.bytes.size(); actual.advance = trial % 2;
+				actual.result = trial % 4 == 0 ? -1 : trial % 4 == 1 ? 2 : 0;
+			}
+		}
+		const int mode = trial < 6 ? 0 : trial % 17;
+		if (mode == 1) cap = 0;
+		if (mode == 2) cap = -1;
+		ABLFile::remainingCB = mode == 3 ? nullptr : remaining;
+		ABLFile::readCB = mode == 4 ? nullptr : read;
+		Input old = actual;
+		ABLFile file; file.set(mode == 5 ? nullptr : &actual);
+		for (int call = 0; call < 270; ++call) {
+			std::array<unsigned char, MAXLEN_SOURCELINE + 512> a, b;
+			a.fill(0x5a); b.fill(0x5a);
+			auto expected = reference(mode == 5 ? nullptr : &old, mode == 6 ? nullptr : b.data() + 1, cap);
+			CHECK(file.readLineEx(mode == 6 ? nullptr : a.data() + 1, cap) == expected);
+			CHECK(a == b); CHECK(actual.pos == old.pos);
+			if (call > 1 && (old.pos == static_cast<long>(old.bytes.size()) || old.pos == old.fail || mode)) break;
+		}
+	}
+	std::rewind(log.capture);
+	int observedBad = 0; char line[512];
+	while (std::fgets(line, sizeof(line), log.capture))
+		if (std::strstr(line, "[ABL_FILE_LINE_BAD]")) ++observedBad;
+	CHECK(observedBad == expectedBad);
 }
 
 TEST_CASE("FileFamilyContract/ABL final line stops at the RAM image boundary") {

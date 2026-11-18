@@ -568,6 +568,7 @@ CompileTransaction* activeCompile = nullptr;
 struct CompileTransaction {
 	struct Allocation { void* address; ABLPool heap; };
 	std::vector<Allocation> allocations;
+	ankerl::unordered_dense::map<void*, size_t> allocationIndex;
 	std::vector<SymTableNodePtr*> insertions;
 	std::vector<std::pair<TypePtr, long>> typeUses;
 	std::vector<char> savedCode;
@@ -575,13 +576,25 @@ struct CompileTransaction {
 	long savedEternalOffset = eternalOffset;
 	bool committed = false;
 	// Called by ABL_alloc / ABL_free while this compile is active.
-	void remember(void* address, ABLPool heap) { allocations.push_back({address, heap}); }
+	void remember(void* address, ABLPool heap) {
+		allocations.push_back({address, heap});
+		try {
+			allocationIndex.emplace(address, allocations.size() - 1);
+		} catch (...) {
+			// ABL_alloc frees the block if tracking fails; do not retain it.
+			allocations.pop_back();
+			throw;
+		}
+	}
 	void forget(void* address, ABLPool heap) {
-		for (auto& entry : allocations)
-			if (entry.address == address && entry.heap == heap) {
-				entry.address = nullptr;
-				break;
-			}
+		auto found = allocationIndex.find(address);
+		if (found == allocationIndex.end())
+			return;
+		auto& entry = allocations[found->second];
+		if (entry.heap == heap) {
+			entry.address = nullptr;
+			allocationIndex.erase(found);
+		}
 	}
 	CompileTransaction() : savedCode(static_cast<size_t>(MaxCodeBufferSize)) {
 		memcpy(savedCode.data(), codeBuffer, savedCode.size());

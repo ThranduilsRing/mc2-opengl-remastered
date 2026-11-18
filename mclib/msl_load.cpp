@@ -863,7 +863,10 @@ long TG_TypeMultiShape::DecodeStockASE (std::string_view sourcePath, bool forceM
 	
 			if (aseEnd)
 			{
-				char *aseData = static_cast<char *>(malloc(aseFileSize+1));
+				// Keep whole-file zero padding: legacy scans can pass NUL.
+				std::unique_ptr<char, decltype(&free)> aseOwner(
+					static_cast<char*>(malloc(aseFileSize+1)), &free);
+				char* aseData = aseOwner.get();
 				ZeroMemory(aseData, aseFileSize+1);
 				memcpy(aseData,aseScan,aseEnd - aseScan);
 				
@@ -874,7 +877,6 @@ long TG_TypeMultiShape::DecodeStockASE (std::string_view sourcePath, bool forceM
 					return(parseResult);
 				}
 	
-				free(aseData);
 			}
 			else
 			{

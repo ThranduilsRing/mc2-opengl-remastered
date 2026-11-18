@@ -150,16 +150,23 @@ long ABLFile::readLineEx (unsigned char* buffer, long maxLength) {
 		buffer[0] = 0;
 	if (file && buffer && maxLength > 0 && remainingCB && readCB) {
 		long count = 0;
-		while (remainingCB(file) > 0 && count < maxLength - 1) {
+		// Bindings report length minus logical position; a successful one-byte
+		// read advances that position by one (File::read, including RAM/fastfile).
+		long remaining = remainingCB(file);
+		while (remaining > 0 && count < maxLength - 1) {
 			unsigned char ch;
-			if (readCB(file, &ch, 1) != 1)
+			if (readCB(file, &ch, 1) != 1) {
+				// Failed/short reads may still advance the underlying position.
+				remaining = remainingCB(file);
 				break;
+			}
+			--remaining;
 			buffer[count++] = ch;
 			buffer[count] = 0;
 			if (ch == '\n')
 				return count + 1;
 		}
-		if (remainingCB(file) == 0)
+		if (remaining == 0)
 			return count ? count + 1 : 0;
 	}
 	MC2_LOG(Sim, Error, "[ABL_FILE_LINE_BAD] truncated or oversized line from {}", fileName);
