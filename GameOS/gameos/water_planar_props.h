@@ -100,8 +100,6 @@ class ReflectionPropsCache {
     struct Entry { size_t recipe, range; WorldPropBounds world; };
     std::vector<Entry> order_;
     std::vector<mc2hzb::PropBounds> geometry_;
-    static constexpr uint8_t kUnknown = 2;
-    std::vector<uint8_t> live_;
     const void *recipes_ = nullptr, *ranges_ = nullptr;
     size_t recipeCount_ = 0, rangeCount_ = 0;
     uint64_t generation_ = 0;
@@ -139,15 +137,10 @@ public:
         }
         out.clear();
         out.reserve(order_.size());
-        // A TGL borrow can expire independently of the recipe revision. Resolving it is a registry lookup,
-        // so do it lazily once per range per call, only for entries inside the view.
-        live_.assign(ranges.size(), kUnknown);
         for (const auto& e : order_) {
-            if (!e.world.valid || view.intersects(e.world.lo, e.world.hi)) {
-                uint8_t& live = live_[e.range];
-                if (live == kUnknown) live = ranges[e.range].multi() ? 1 : 0;
-                if (live) out.push_back(recipes[e.recipe]);
-            }
+            // A TGL borrow can expire independently of the recipe revision.
+            if (ranges[e.range].multi() && (!e.world.valid || view.intersects(e.world.lo, e.world.hi)))
+                out.push_back(recipes[e.recipe]);
         }
         return rebuild;
     }
