@@ -9,6 +9,7 @@
 #include "vegetation_cutout.h"
 #include "../../GameAdapters/vegetation_population_cache.h"
 #include "load_scope.h"
+#include "diagnostic_trace.h"
 #include <chrono>
 #include "../../RenderCore/KtxLoader.h"
 #include <optional>
@@ -231,7 +232,8 @@ bool GosVegetation::uploadPopulation(const mc2::vegetation::Population& populati
     }
     d.uploadMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now()-t).count();
     if(ok && afterUpload && mc2veg::State::instance().instanceCount()==population.instances.size()) afterUpload();
-    mc2::fmt::print_err("[VEG_GPU] population identity: cache={} reason={} key={:016x} instances={} regions={} inst_hash={:016x} region_hash={:016x} hs_hash={:016x} max_inst={} place_ms={:.3f} build_ms={:.3f} key_ms={:.3f} read_ms={:.3f} write_ms={:.3f} upload_ms={:.3f}\n",
+    // Quiet by default: the identity row hashes both full buffers (30-110 MB); MC2_DIAG_TAGS=VEG_GPU prints it.
+    if (mc2_diag::tagRequested("VEG_GPU")) mc2::fmt::print_err("[VEG_GPU] population identity: cache={} reason={} key={:016x} instances={} regions={} inst_hash={:016x} region_hash={:016x} hs_hash={:016x} max_inst={} place_ms={:.3f} build_ms={:.3f} key_ms={:.3f} read_ms={:.3f} write_ms={:.3f} upload_ms={:.3f}\n",
         d.cache, d.reason, d.key, population.instances.size(), population.regions.size(),
         mc2::vegetation::populationHash(population.instances), mc2::vegetation::populationHash(population.regions), d.hsHash,
         d.maxInst, d.placeMs, d.buildMs, d.keyMs, d.readMs, d.writeMs, d.uploadMs);
