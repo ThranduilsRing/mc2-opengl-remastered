@@ -129,7 +129,7 @@ def test_merge_stage_budget_pin(paths, extra):
 @pytest.mark.parametrize("reused", [False, True])
 def test_declared_visuals_never_capture_before(monkeypatch, reused, capsys):
     import capture_reuse
-    monkeypatch.setattr(capture_reuse, "restore", lambda *a, **k: "verified" if reused else None)
+    monkeypatch.setattr(capture_reuse, "available", lambda *a, **k: Path("verified") if reused else None)
     steps = gate.merge_visuals(gate.plan(1))
     assert [n for n, _, _ in steps] == ["capture-after", "compare-captures"] if reused else [n for n, _, _ in steps] == ["capture-after"]
     if not reused:
@@ -145,6 +145,28 @@ def test_gate_budget_is_advisory_and_excludes_lease_wait(monkeypatch, capsys):
     assert not capsys.readouterr().out
     gate.gate_budget(0, 1300, 0)
     assert "[GATE_BUDGET] OVER" in capsys.readouterr().out
+
+
+def test_child_lease_wait_is_excluded_from_gate_budget(tmp_path, monkeypatch, capsys):
+    import json
+    monkeypatch.setattr(gate, "git", lambda *a: "head")
+    monkeypatch.setattr(gate, "log_lease_holders", lambda: None)
+    monkeypatch.setattr(gate, "TIMINGS", {})
+    monkeypatch.setattr(gate, "ROW_RESULTS", {})
+    monkeypatch.setattr(gate, "FAILED_STAGES", [])
+    # An old report in the same proof root must not inflate this run's wait.
+    (tmp_path / "report.json").write_text(json.dumps({"host_wait": {"lease_wait_s": 900}}))
+    def runner(*a, **k):
+        child = tmp_path / "new"
+        child.mkdir()
+        (child / "report.json").write_text(json.dumps({"host_wait": {"lease_wait_s": 200}}))
+        return types.SimpleNamespace(returncode=0, stdout="", gate_elapsed=1300)
+    assert gate.execute([("tier1", ["smoke"], {"MC2_SMOKE_ARTIFACT_ROOT": str(tmp_path)})],
+                        "head", runner=runner) == 0
+    assert gate.TIMINGS["host_lease_wait"] == 200
+    assert gate.ROW_RESULTS["tier1"]["host_lease_wait"] == 200
+    gate.gate_budget(0, 1300, gate.TIMINGS["host_lease_wait"])
+    assert "[GATE_BUDGET] OVER" not in capsys.readouterr().out
 
 
 @pytest.mark.parametrize("tier", [0, 1])

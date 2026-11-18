@@ -88,11 +88,12 @@ def tier_includes(name, tier):
 def merge_visuals(scheduled, before_dir=None):
     """Declared tier-0 views use verified reuse only; never shoot a before set."""
     before = next(c for n, c, _ in scheduled if n == "capture-after")
+    reference = None
     if before_dir is None:
         import capture_reuse
         reference = next(c for n, c, _ in scheduled if n == "capture-before")
         try:
-            reused = capture_reuse.restore(reference, ROOT, env=dict(os.environ, **gate_env("capture-before")))
+            reused = capture_reuse.available(reference, ROOT, env=dict(os.environ, **gate_env("capture-before")))
         except (OSError, ValueError):
             reused = None
         if reused:
@@ -100,7 +101,8 @@ def merge_visuals(scheduled, before_dir=None):
     if before_dir is None:
         print(f"VISUAL after-only: {before[before.index('--out') + 1]} (no reusable before set)")
     return [(n, ([str(before_dir) if a == c[c.index('--compare-only') + 1] else a for a in c]
-                 if n == "compare-captures" else c), dict(e, MC2_GATE_TIER="0"))
+                 if n == "compare-captures" else c), dict(e, MC2_GATE_TIER="0",
+                     **({"MC2_GATE_CAPTURE_REFERENCE": json.dumps(reference)} if reference and n == "compare-captures" else {})))
             for n, c, e in scheduled if n == "capture-after" or (n == "compare-captures" and before_dir is not None)]
 
 
@@ -1242,6 +1244,24 @@ def keep_stock_copy(install, head, candidate=None, root=None):
 def execute_window(steps, head, dry_run=False, keep_going=False, farm_determinism=False, keep_candidate=False, on_result=None, install=None):
     """Prove a private candidate. Publishing to v0.4 is a separate step (--publish) that runs after the montage has been viewed.
     on_result(rc) runs before the candidate cleanup, so the durable verdict exists even if cleanup fails or hangs."""
+    if not dry_run:
+        restored = []
+        for name, command, env in steps:
+            reference = env.get("MC2_GATE_CAPTURE_REFERENCE")
+            if reference:
+                import capture_reuse
+                try:
+                    note = capture_reuse.restore(json.loads(reference), ROOT,
+                                                 env=dict(os.environ, **gate_env("capture-before")))
+                except (OSError, ValueError):
+                    note = None
+                if not note:
+                    print(f"VISUAL after-only: {command[command.index('--compare-only') + 2]} (no reusable before set)")
+                    continue
+                print(f"[merge_gate] {note}")
+                env = {k: v for k, v in env.items() if k != "MC2_GATE_CAPTURE_REFERENCE"}
+            restored.append((name, command, env))
+        steps = restored
     if install is not None:
         if not dry_run:
             swap = any(n.startswith("capture-before") and not e.get("MC2_GATE_SKIP_REASON") for n, _, e in steps)
@@ -1757,6 +1777,13 @@ def log_lease_holders():
         print("[merge_gate] lease slots free", flush=True)
 
 
+def child_lease_reports(overrides):
+    """Snapshot only this row's original smoke reports, excluding copied evidence."""
+    root = overrides.get("MC2_SMOKE_ARTIFACT_ROOT")
+    return {p: (p.stat().st_mtime_ns, p.stat().st_size)
+            for p in Path(root).rglob("report.json")} if root else {}
+
+
 @contextmanager
 def game_batch():
     """Reserve the existing host lease once for the serial game proof chain."""
@@ -1875,6 +1902,7 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
             started = time.monotonic()
             measured = None
             result = None
+            lease_reports = child_lease_reports(overrides)
             try:
                 if git("rev-parse", "HEAD") != head:
                     raise RuntimeError("HEAD changed during gate; rerun verification and gate")
@@ -1961,6 +1989,16 @@ def execute(steps, head, dry_run=False, runner=run_child, completed=None, device
                 kind = "INFRA: " if isinstance(exc, (OSError, subprocess.SubprocessError)) else "FAIL: "
                 status = kind + str(exc).replace("|", "/").replace("\n", " ")
             elapsed = time.monotonic() - started if measured is None else measured
+            child_wait = 0.0
+            for report, stamp in child_lease_reports(overrides).items():
+                if lease_reports.get(report) == stamp:
+                    continue
+                try:
+                    child_wait += max(0.0, float((json.loads(report.read_text(encoding="utf-8")).get("host_wait") or {}).get("lease_wait_s", 0)))
+                except (OSError, ValueError, TypeError):
+                    continue
+            TIMINGS["host_lease_wait"] = TIMINGS.get("host_lease_wait", 0.0) + child_wait
+            waited += child_wait
             if name in MOD_BATTERY_STAGES and (per_mod := mod_battery_results(getattr(result, "stdout", "") or "")):
                 mod_summary[name] = per_mod
                 print(f"[merge_gate] {name} per-mod: " + ", ".join(f"{m}={w}" for m, w in per_mod.items()), flush=True)

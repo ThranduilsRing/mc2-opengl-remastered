@@ -58,6 +58,39 @@ def test_round_trip_hits_and_the_restored_set_verifies_in_its_own_place(tmp_path
     assert json.loads((out / "capture_run.json").read_text())["reused_from_identity"]
 
 
+def test_gate_planning_is_read_only_and_execution_restores_previous_after(tmp_path, monkeypatch):
+    import merge_gate as gate
+    import functools
+    import os
+    root, _install, out, cmd = _world(tmp_path)
+    cache = tmp_path / "cache"
+    _capture(out)
+    monkeypatch.setattr(capture_reuse, "gpu_identity", lambda: "gpuA")
+    assert capture_reuse.store(cmd, root, cache, env=dict(os.environ, MC2_IN_GATE="1",
+                              MC2_GATE_REASON="--declared-view", MC2_GATE_TIER="0",
+                              MC2_SMOKE_ARTIFACT_ROOT=str(tmp_path / "old-window")))
+    before = tmp_path / "before"
+    before.mkdir()
+    (before / "keep.txt").write_text("existing proof")
+    reference = [str(before) if arg == str(out) else arg for arg in cmd]
+    scheduled = [("capture-before", reference, {}), ("capture-after", cmd, {}),
+                 ("compare-captures", ["compare", "--compare-only", str(before), str(out)], {})]
+    monkeypatch.setattr(gate, "ROOT", root)
+    monkeypatch.setattr(gate, "gate_env", lambda *a: {"MC2_IN_GATE": "1"})
+    monkeypatch.setattr(capture_reuse, "available", functools.partial(capture_reuse.available, cache=cache))
+    monkeypatch.setattr(capture_reuse, "restore", functools.partial(capture_reuse.restore, cache=cache))
+    snapshot = lambda: {str(p): p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()}
+    original = snapshot()
+    steps = gate.merge_visuals(scheduled)
+    assert [n for n, _, _ in steps] == ["capture-after", "compare-captures"]
+    gate.execute_window(steps, "head", dry_run=True)
+    assert snapshot() == original
+    monkeypatch.setattr(gate, "execute_parallel", lambda *a, **k: 0)
+    assert gate.execute_window(steps, "head") == 0
+    assert capture_reuse.verify_artifacts(before) is None
+    assert not (before / "keep.txt").exists()
+
+
 def test_any_identity_change_is_a_miss(tmp_path):
     root, install, out, cmd = _world(tmp_path)
     cache = tmp_path / "cache"
