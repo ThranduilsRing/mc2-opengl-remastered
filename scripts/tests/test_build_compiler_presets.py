@@ -21,6 +21,10 @@ def production_seam(monkeypatch, tmp_path):
     # These are MSVC command contracts even when pytest runs on the Linux box.
     monkeypatch.setattr(bd, "os", SimpleNamespace(name="nt", environ=sys.modules["os"].environ))
     monkeypatch.setattr(bch, "prepare_unit_tree", lambda *a: (False, tmp_path / "receipt", "[]"))
+    # The real TreeLock on <repo>/build64-tests is held for up to ~17 min by the gate's concurrent harnesses row,
+    # which stalled the default-tree cases here (947 s) and then failed them. The command contracts never need it.
+    monkeypatch.setattr(bch, "TreeLock", lambda *a: SimpleNamespace(
+        acquire=lambda *_: True, close=lambda: None, holder=lambda: "test"))
     seam = Mock(return_value=True)
     monkeypatch.setattr(bch, "build_and_run_order_seam", seam)
     return seam
