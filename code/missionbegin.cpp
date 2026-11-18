@@ -1362,6 +1362,9 @@ void MissionBegin::updateSoakAutoPurchase() {
 							const std::string needle = lower( want );
 							bool matched = false;
 							for ( int i = 0; i < mechCount; ++i )
+								mc2::log::event<"SOAK", -1>(mc2::log::Stream::Out,"preview-pool {:d} name={} tons={:d}", mc2::fmt::as_i32(i),
+									pool[ mechIdx[i] ]->getName().c_str(), mc2::fmt::as_i32(static_cast<int>(pool[ mechIdx[i] ]->getMaxWeight())));
+							for ( int i = 0; i < mechCount; ++i )
 							{
 								LogisticsVariant* v = pool[ mechIdx[i] ];
 								const mc2pkg::PackageChassis* pk = v->getChassis() ? v->getChassis()->getPackage() : nullptr;
