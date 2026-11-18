@@ -11,18 +11,21 @@ inline float weatherLight(float sun, float ambient, float rain) {
     return (sun + ambient) * (std::min)(rain, 1.0f);
 }
 
-// What each Reflection quality level (options.cfg ReflectionQuality 0 Off, 1 Low, 2 Medium, 3 High) asks of the
-// reflection bake: whether it exists, its resolution divisor, whether static props are drawn into it, and how many
-// ray-march steps the water shader takes through its height map.
-struct BakePlan { bool bake; int sizeDivisor; bool props; int marchSteps; };
+// Reflection quality the water code runs at. options.cfg ReflectionQuality 0 (Off) is SKY-ONLY (level 1: no bake), never
+// level 0, which drops the sky too. Otherwise the legacy tuning value stands.
+inline int effectiveReflectionQuality(int option, int legacy) { return option <= 0 ? (std::min)(legacy, 1) : legacy; }
+
+// What each baked Reflection quality level (options.cfg ReflectionQuality 1 Low, 2 Medium, 3 High; Off has no bake) asks
+// of the reflection bake: its resolution divisor, whether static props are drawn into it, and how many ray-march steps
+// the water shader takes through its height map.
+struct BakePlan { int sizeDivisor; bool props; int marchSteps; };
 // The shader march step count of the shipped bake; water_geom.frag falls back to this literal when debug.z is 0.
 constexpr int kHighSteps = 8;
 inline BakePlan bakePlan(int level) {
-    switch (level < 0 ? 0 : level > 3 ? 3 : level) {
-        case 0: return {false, 1, false, 0};
-        case 1: return {true, 4, false, 4};   // Low: quarter-size bake, terrain only
-        case 2: return {true, 2, true, 6};    // Medium: half-size bake with props
-        default: return {true, 1, true, kHighSteps};   // High: the shipped bake
+    switch (level < 1 ? 1 : level > 3 ? 3 : level) {
+        case 1: return {4, false, 4};   // Low: quarter-size bake, terrain only
+        case 2: return {2, true, 6};    // Medium: half-size bake with props
+        default: return {1, true, kHighSteps};   // High: the shipped bake
     }
 }
 // The value the water UBO carries in WaterFsParams::debug[2] (shader F.debug.z) for a plan.

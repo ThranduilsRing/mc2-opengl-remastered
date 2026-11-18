@@ -4,12 +4,14 @@
 #include "mdi_submit.h"                            // MDI-SUBMISSION-SCAFFOLD-1: this piece issues indirect draws
 #include "mc2fmt.h"
 #include "Gates/render_options.h"
+#include "water_planar_view.h"
 
 float mc2NightLightFactor();   // mclib/camera.cpp: 0 day .. 1 full night
 
 namespace { int waterReflectionQuality = -1; }
 int gos_GetWaterReflectionQuality() {
-    const int quality = waterReflectionQuality < 0 ? (mc2::options::current().reflectionQuality > 0 ? 2 : 0) : waterReflectionQuality;
+    const int option = mc2::options::current().reflectionQuality;
+    const int quality = mc2::waterplanar::effectiveReflectionQuality(option, waterReflectionQuality < 0 ? (option > 0 ? 2 : 0) : waterReflectionQuality);
     if (!mc2::gate::get<"MC2_WATER_REFLECTION">()) return 0;
     return quality == 2 && !mc2::gate::get<"MC2_WATER_REFLECTION_RT">() ? 1 : quality;
 }

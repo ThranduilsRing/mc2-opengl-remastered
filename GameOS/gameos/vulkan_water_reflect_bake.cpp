@@ -134,12 +134,8 @@ float halfFloat(uint16_t v) {
 }
 }
 
-// Reflection quality for this frame: the options value, except that a tuning-profile override that forces the bake on
-// while the option reads Off keeps the shipped full-quality bake.
-static int bakeLevel() {
-    const int level = mc2::options::current().reflectionQuality;
-    return level > 0 ? (std::min)(level, 3) : 3;
-}
+// Bake level for this frame: the options value clamped to 1..3 (Off never reaches the bake).
+static int bakeLevel() { return std::clamp(mc2::options::current().reflectionQuality, 1, 3); }
 
 bool prepare_reflect_bake(WaterIsland* s, float water) {
     auto fail = [](std::string_view phase) {
@@ -148,7 +144,15 @@ bool prepare_reflect_bake(WaterIsland* s, float water) {
         logged = true;
         return false;
     };
-    if (!s->mapHasWater || gos_GetWaterReflectionQuality() != 2) return true;
+    if (!s->mapHasWater) return true;
+    if (gos_GetWaterReflectionQuality() != 2) {
+        // Off / sky-only: retire the bake (frees its images) and rebind the plain reflection view.
+        if (s->reflectionBake) {
+            mc2vk::getOrCreateEngineVulkanContext().retire(std::move(s->reflectionBake));
+            for (auto& dirty : s->imageDescriptorsDirty) dirty = true;
+        }
+        return true;
+    }
     Mc2TerrainTier1Feed feed{};
     gos_terrain_lighting::VkProducerSnapshot lighting{};
     if (!mc2_terrain_tier1_get_load_feed(&feed) || !gos_terrain_lighting::GetVkProducerSnapshot(lighting)) return true;
