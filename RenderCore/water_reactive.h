@@ -124,13 +124,13 @@ public:
 
     void snapshot(float now, GpuFrame& out) {
         advance(now);
-        // `out` may be write-combined frame-ring memory: zero it in place (no stack temp) and keep the per-tile counts in a small local, so nothing is read back from it.
-        std::memset(&out, 0, sizeof(out));
+        // water_geom.frag:109-110 reads only indices below counts[tile], then their live stamps.
+        // Keep counts local for write-combined frame-ring memory; inactive indices/stamps are unread.
         std::array<uint32_t, kTiles> counts{};
         std::mdspan<uint32_t, std::extents<std::size_t, kTiles, kPerTile>> lists(out.indices.data());
         for (uint32_t i = 0; i < count_; ++i) {
             out.stamps[i] = events_[i].stamp;
-            const auto& p = out.stamps[i].positionRadiusAge;
+            const auto& p = events_[i].stamp.positionRadiusAge;
             const int x0 = static_cast<int>(std::floor((p[0] - kReach) / kTileWidth));
             const int x1 = static_cast<int>(std::floor((p[0] + kReach) / kTileWidth));
             const int y0 = static_cast<int>(std::floor((p[1] - kReach) / kTileWidth));

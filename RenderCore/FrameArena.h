@@ -70,11 +70,17 @@ public:
 
     void* allocBytes(size_t bytes, size_t alignment, const char* /*tag*/) {
         if (!base_ || bytes == 0) return nullptr;
-        size_t aligned = (offset_ + alignment - 1u) & ~(alignment - 1u);
-        if (aligned + bytes > capacity_) {
+        if (!alignment || (alignment & (alignment - 1u))) {
             ++stats_.overflowCount;
             return nullptr;
         }
+        const uintptr_t address = reinterpret_cast<uintptr_t>(base_ + offset_);
+        const size_t padding = (alignment - (address & (alignment - 1u))) & (alignment - 1u);
+        if (padding > capacity_ - offset_ || bytes > capacity_ - offset_ - padding) {
+            ++stats_.overflowCount;
+            return nullptr;
+        }
+        const size_t aligned = offset_ + padding;
         void* p  = base_ + aligned;
         offset_  = aligned + bytes;
         ++stats_.allocCount;
@@ -88,6 +94,7 @@ public:
         static_assert(std::is_trivially_destructible<T>::value,
                       "FrameArena only supports trivially-destructible records");
         if (count == 0) return {};
+        if (count > SIZE_MAX / sizeof(T)) { ++stats_.overflowCount; return {}; }
         void* p = allocBytes(static_cast<size_t>(count) * sizeof(T), alignof(T), tag);
         if (!p) return {};
         return Span<T>(static_cast<T*>(p), count);

@@ -106,8 +106,7 @@ inline Plan compile(const std::vector<Image>& images, const std::vector<Pass>& p
             states[plan.mipOffset[i] + m] = s;
             if (!s.write) visible[plan.mipOffset[i] + m] = s;   // an imported read state is already visible to what it names
         }
-        const State& s0 = states[plan.mipOffset[i]];
-        initialized[i] = s0.layout != 0 || s0.stages != 0;
+        initialized[i] = true; // Imported images never enter transient allocation/discard handling.
     }
     for (unsigned p = 0; p < passes.size(); ++p) {
         for (const auto& use : passes[p].uses) {
@@ -142,6 +141,8 @@ inline Plan compile(const std::vector<Image>& images, const std::vector<Pass>& p
                 auto& vis = visible[base + m];
                 bool need = false;
                 const State src = before;
+                // An undefined imported mip can be written independently, but cannot be read yet.
+                if (!use.state.write && before.layout == 0 && before.stages == 0) return plan;
                 if (fresh || before.layout != use.state.layout || before.write || use.state.write) {
                     need = true;
                     before = use.state;
