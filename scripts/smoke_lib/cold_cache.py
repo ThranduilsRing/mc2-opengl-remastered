@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import ctypes
 import os
+import stat
 import sys
 import time
 from dataclasses import dataclass, field
@@ -152,6 +153,45 @@ def evict_by_reading(skip_under: Path, gigabytes: float, roots: Iterable[Path]) 
 def make_cold(install_dir: Path, evict_roots: Iterable[Path] = (), evict_gb: Optional[float] = None) -> ColdResult:
     t0 = time.perf_counter()
     res = ColdResult()
+    if sys.platform.startswith("linux"):
+        errors: list[str] = []
+        files = []
+        for root, _dirs, names in os.walk(install_dir, onerror=lambda e: errors.append(str(e))):
+            for name in names:
+                p = Path(root) / name
+                try:
+                    if stat.S_ISREG(p.stat().st_mode): files.append(p)
+                except OSError as e:
+                    errors.append(str(e))
+        probe = pick_probe(files)
+        if probe is None:
+            res.note = "no probe file >= 8 MiB; cold not achieved"
+            res.extra["errors"] = errors
+            return res
+        def evict(paths):
+            for path in paths:
+                try:
+                    with open(path, "rb", buffering=0) as fh:
+                        os.fsync(fh.fileno())
+                        os.posix_fadvise(fh.fileno(), 0, 0, os.POSIX_FADV_DONTNEED)
+                except (OSError, AttributeError) as e:
+                    errors.append(f"{path}: {e}")
+        res.method = "posix_fadvise"
+        res.probe_file = str(probe)
+        _read_all(probe)
+        n, s = _read_all(probe)
+        res.probe_warm_mb_s = _mb_s(n, s)
+        evict(files)
+        n, s = _read_all(probe)
+        res.probe_after_mb_s = _mb_s(n, s)
+        evict([probe])  # verification warmed it; evict it again before launch
+        slowed = res.probe_after_mb_s > 0 and res.probe_warm_mb_s / res.probe_after_mb_s >= COLD_RATIO
+        res.ok = slowed and not errors
+        res.note = "probe slowed; whole mission input coldness unproven" if res.ok else "cold not achieved"
+        res.extra = {"files_advised": len(files), "errors": errors, "probe_slowed": slowed,
+                     "all_inputs_cold_proven": False}
+        res.seconds = time.perf_counter() - t0
+        return res
     probe = pick_probe(install_files(install_dir))
     if probe is None:
         res.note = "no probe file >= 8 MiB under the install; nothing to flush or verify"

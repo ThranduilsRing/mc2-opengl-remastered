@@ -727,7 +727,7 @@ void prewarm(int width,int height) {
     ready+=mc2_vk_impact_decals_prewarm(width,height);
     if(auto* post=getGosPostProcess()) { post->prewarmVkFog(); post->prewarmVkScreenFx(); post->prewarmVkHzb(); }
     ready+=getOrCreateEnginePresentVk().prewarmPipelines() ? 1 : 0;
-    getOrCreateEngineVulkanContext().textures().finishLoading();
+    { MC2_LOAD_SCOPE("finishLoading"); getOrCreateEngineVulkanContext().textures().finishLoading(); }
     warm("shadow_bake",mc2_vk_shadow_island_load_bake);   // F1: after every family, so the bake inputs (prop geometry, alpha array) are resident
     saveCache();
     (void)ledgerJson();  // Fresh driver counters for crashes before the first periodic snapshot.

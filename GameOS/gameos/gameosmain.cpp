@@ -851,17 +851,16 @@ extern "C" void mission_phase_report()
                          i + 1, mc2::fmt::safe(g_loadPhaseSamples[i].name), delta_ms);
         prev_ms = g_loadPhaseSamples[i].t_ms;
     }
-    // QUIET-DEFAULT-BUILD-1: the [LOAD_PHASES v1] line is assembled across
-    // several snprintf appends, so the tag literal is not the format string of
-    // the call that prints it -- gate the SINK.
-    MC2_DIAGF("%s\n", buf);
+    std::printf("%s\n", buf);
     const auto& pumpScope = mc2::loadpump::meter.mission;
     if (mc2_diag::tagRequested("LOAD_PUMP"))
         MC2_LOG(Io, Info, "[LOAD_PUMP v1] max_gap_ms={} phase={} scope=mission mode={} services={}",
             pumpScope.maxGap, pumpScope.worst, pumpScope.attempted ? "attempted-pump" : "actual-service", pumpScope.services);
     {
-        const std::string scopes = mc2::load::report();
-        MC2_DIAGF("[LOAD_SCOPES v1]%s\n", scopes.c_str());
+        const auto scopes = mc2::load::report();
+        std::printf("[LOAD_SCOPES v1]%s\n", scopes.scopes.c_str());
+        std::printf("[LOAD_SPLIT v1]%s phase_delta_ms=%.3f\n", scopes.split.c_str(), scopes.total / 1e6 - total_ms);
+        std::printf("[LOAD_TOP v1]%s\n", scopes.top.c_str());
     }
     fflush(stdout);
     // Mission load is over: the GPU memory every later frame starts from (the smoke report's load-end VRAM line).

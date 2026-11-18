@@ -1,6 +1,7 @@
 // VK water island: mc2_vk_water_island_run: the per-frame feed staging, draw and fence handling.
 // Declared in the class headers; shared names in vulkan_water_island_internal.h.
 #include "vulkan_water_island_internal.h"
+#include "load_scope.h"
 #include "vk_render_pass_timer.h"
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "vk_one_shot.h"
@@ -166,16 +167,18 @@ extern "C" int mc2_vk_water_island_prewarm(int w,int h) {
     if(!ctx.valid() || w<=0 || h<=0) return 0;
     auto& slot=ctx.islandSlot(mc2vk::IslandSlot::Water);
     if(!slot) {
+        MC2_LOAD_SCOPE("water.init");
         auto fresh=std::make_unique<WaterIsland>();
         if(!init_island(fresh.get(),w,h)) { ctx.waitIdle("water_prewarm_failure"); return 0; }
         slot=std::move(fresh);
     }
     auto* s=parkedIsland();
-    if (!ensure_hdri(s, mc2vk::hdriCpuGeneration()) || !ensure_shore(s)) return 0;
+    if (![&] { MC2_LOAD_SCOPE("water.hdriShore"); return ensure_hdri(s, mc2vk::hdriCpuGeneration()) && ensure_shore(s); }()) return 0;
     if(!s->native) s->native=std::make_unique<mc2vk::NativeProducers>();
-    if (!s->native->prewarmPipelines(ctx)) return 0;
-    if (!prepareNative(s, ctx)) return 0;
-    if (!mc2::waterplanar::prewarmProps(s->planarProps, w, h)) return 0;
+    if (![&] { MC2_LOAD_SCOPE("water.pipelines"); return s->native->prewarmPipelines(ctx); }()) return 0;
+    if (![&] { MC2_LOAD_SCOPE("water.native"); return prepareNative(s, ctx); }()) return 0;
+    if (![&] { MC2_LOAD_SCOPE("water.planarProps"); return mc2::waterplanar::prewarmProps(s->planarProps, w, h); }()) return 0;
+    MC2_LOAD_SCOPE("water.warmDispatch");
     // Exercise cull/args now as well as creating their pipelines: the first
     // gameplay dispatch must not pay driver first-use work or buffer clears.
     // This off-screen cull is never drawn; the real feed overwrites both slots.

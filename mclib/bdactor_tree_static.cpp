@@ -3,6 +3,7 @@
 #include <atomic>
 extern uint32_t mc2LightSlotBakedHighWater();
 #include "bdactor_internal.h"
+#include "../GameOS/gameos/load_scope.h"
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
 #include "../GameOS/gameos/static_caster_set.h"   // shadow-bake caster events
@@ -151,6 +152,7 @@ void TreeAppearance::invalidateStaticRegistration()
 // Task 5 (Track B): mission-load bulk static-prop registration (mirror of
 // BldgAppearance::registerStatic). HC-1: writes directly to typed staticReg.
 void TreeAppearance::registerStatic() {
+    MC2_LOAD_SCOPE("cook.tree.register");
 	if (shadowIsMoving()) return;
 	const bool seamProbe = (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">())
 		&& appearType && appearType->treeRenderShape[0];
@@ -169,7 +171,7 @@ void TreeAppearance::registerStatic() {
 	// TREE-OVERRIDE-LOD-MVP M-C: for override types iterate ONLY populated LODs
 	// (each distinct override LOD shape uploaded once); stock types keep the
 	// full MAX_LODS loop (distinct stock treeShape[i] per LOD).
-	appearType->registerRenderShapes();
+	{ MC2_LOAD_SCOPE("cook.tree.geometry"); appearType->registerRenderShapes(); }
 
 	if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">() && appearType->treeRenderShape[0]) {
 		TG_TypeMultiShape* rs = appearType->treeRenderShape[0].get();
@@ -219,7 +221,7 @@ void TreeAppearance::registerStatic() {
 		TG_MultiShape* lodShape = lod == 0 ? treeShape : temporaryLod.get();
 		if (!lodShape) { staticReg[lod].registered = false; continue; }
 
-		lodShape->TransformMultiShape_BuildRecipe(&xlatPosition, &rot);
+		{ MC2_LOAD_SCOPE("cook.tree.transform"); lodShape->TransformMultiShape_BuildRecipe(&xlatPosition, &rot); }
 
 		std::vector<GpuStaticPropInstance> batch;
 		const uint32_t tintByte = mc2::prop_light::packWord(land && eye ? land->getTerrainLight(position) : 1.0f, mc2::prop_light::kSunOff);

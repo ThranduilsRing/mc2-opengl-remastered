@@ -199,6 +199,8 @@ def render_json(rows: list[Row], *, tier: str, profile: str,
                 "avg_fps": r.summary.perf.avg_fps,
                 "p1low_fps": r.summary.perf.p1low_fps,
                 "mission_ready_ms": r.summary.mission_ready_ms,
+                **({"load_split": r.summary.load_split, "load_total_ms": r.summary.load_total_ms}
+                   if r.summary.load_split is not None else {}),
                 "destroys_delta": r.destroys_delta,
                 "simid_frames": r.summary.simid_frames,
                 "content_errors": r.summary.content_errors,

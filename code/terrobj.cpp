@@ -1,4 +1,5 @@
 #include "tick_commit.h"
+#include "../GameOS/gameos/load_scope.h"
 #include "sim_overlap.h"
 #include "Gates/preferences_legacy.h"
 //---------------------------------------------------------------------------
@@ -1182,8 +1183,9 @@ class InvisibleContentAppearance final : public Appearance {
 }
 
 void TerrainObject::init (bool create, ObjectTypePtr objType) {
+    MC2_LOAD_SCOPE("sim.terrainObject.init");
 
-	GameObject::init(true, objType);
+	{ MC2_LOAD_SCOPE("sim.terrainObject.base"); GameObject::init(true, objType); }
 	if (!objType->getAppearanceTypeName() && objType->getExtentRadius() == 0.0f) {
 		adoptAppearance(std::make_unique<InvisibleContentAppearance>());
 		appearance->init(nullptr, this);
@@ -1209,7 +1211,7 @@ void TerrainObject::init (bool create, ObjectTypePtr objType) {
 		// MechCmdr2 features much simpler objects which only use 1 type of sprite!
 		long appearanceType = (TREED_TYPE << 24);
 
-		AppearanceTypePtr terrainObjectAppearanceType = appearanceTypeList->getAppearance(appearanceType,appearanceName);
+		AppearanceTypePtr terrainObjectAppearanceType = [&] { MC2_LOAD_SCOPE("sim.terrainObject.type"); return appearanceTypeList->getAppearance(appearanceType,appearanceName); }();
 		if (!terrainObjectAppearanceType)
 		{
 			//------------------------------------------------------
@@ -1222,7 +1224,7 @@ void TerrainObject::init (bool create, ObjectTypePtr objType) {
 		adoptAppearance(std::make_unique_for_overwrite<TreeAppearance>());
 		gosASSERT(appearance != nullptr);
 
-		appearance->init(static_cast<TreeAppearanceType*>(terrainObjectAppearanceType), static_cast<GameObjectPtr>(this));
+		{ MC2_LOAD_SCOPE("sim.terrainObject.appearance"); appearance->init(static_cast<TreeAppearanceType*>(terrainObjectAppearanceType), static_cast<GameObjectPtr>(this)); }
 	}
 	else
 	{

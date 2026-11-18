@@ -5,6 +5,7 @@
 #include "msl_internal.h"
 #include "mc2fmt.h"
 #include "content_ir.h"
+#include "../GameOS/gameos/load_scope.h"
 #include <filesystem>
 
 
@@ -147,7 +148,7 @@ long TG_TypeMultiShape::LoadBinaryCopy(mc2::czstring fileName)
 {
     mc2::content::Asset cached;
     cached.legacyBounds = true;
-    if (mc2::content::loadCached(cached, fileName)) return BuildContentIR(std::move(cached), fileName);
+    if ([&] { MC2_LOAD_SCOPE("content.loadCached"); return mc2::content::loadCached(cached, fileName); }()) return BuildContentIR(std::move(cached), fileName);
     TG_TypeMultiShape frontend;
     const long result = frontend.DecodeStockBinary(fileName);
     return result == NO_ERR ? BuildContentIR(frontend.ExtractContentIR(), fileName) : result;
@@ -172,7 +173,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE(mc2::czstring fileName, bool for
         ? static_cast<const char*>(binary) : fileName;
     mc2::content::Asset cached;
     cached.legacyBounds = true;
-    if (mc2::content::loadCached(cached, source)) return BuildContentIR(std::move(cached), source);
+    if ([&] { MC2_LOAD_SCOPE("content.loadCached"); return mc2::content::loadCached(cached, source); }()) return BuildContentIR(std::move(cached), source);
     TG_TypeMultiShape frontend;
     const long result = frontend.DecodeStockASE(fileName, forceMakeBinary, armProvider);
     return result == NO_ERR ? BuildContentIR(frontend.ExtractContentIR(), source) : result;

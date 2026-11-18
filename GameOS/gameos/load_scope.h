@@ -1,80 +1,158 @@
 #pragma once
-// Mission-load sub-phase timers. MC2_LOAD_SCOPE("name") adds its wall time to a named accumulator while a mission
-// load is in progress (between mission_phase_begin and mission_phase_report); outside a load it costs one atomic
-// read. Times are inclusive (a scope nested in another is counted in both). One [LOAD_SCOPES v1] line per load.
+// Inclusive compatibility counters; exclusive accounting over begin-to-report.
+// Boundary-crossing scopes are discarded and remain in the unscoped residual.
 #include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
-#include <cstring>
 #include <mutex>
 #include <string>
 #include <string_view>
+#include <thread>
 
 namespace mc2::load {
-struct Entry {
-    std::string_view name;   // a string literal: the entry keeps the view
-    std::atomic<int64_t> ns{0};
-    std::atomic<uint32_t> calls{0};
+enum class Kind { io, decode, cook, upload, gpu_wait, sim, pump, other, count };
+inline constexpr const char* kindNames[] = {"io", "decode", "cook", "upload", "gpu_wait", "sim", "pump", "other"};
+struct Rule { std::string_view name; Kind kind; bool prefix = false; };
+inline constexpr Rule rules[] = {
+    {"sim.tree.bounds", Kind::other}, {"sim.tree.textures", Kind::other},
+    {"io.", Kind::io, true}, {"decode.", Kind::decode, true}, {"cook.", Kind::cook, true},
+    {"upload.", Kind::upload, true}, {"gpuwait.", Kind::gpu_wait, true}, {"sim.", Kind::sim, true},
+    {"pump.", Kind::pump, true}, {"TextureSource.Open", Kind::io}, {"TextureSource.Read", Kind::io},
+    {"TextureSource.Cooked.Read", Kind::io}, {"txm.hashInput", Kind::io},
+    {"TerrainColorMap::init colorMap read", Kind::io}, {"TerrainColorMap::init normalMap read", Kind::io},
+    {"TextureSource.Cooked.Parse", Kind::decode}, {"TextureSource.CreateCpuTexture", Kind::decode},
+    {"TextureSource.Cooked.Decode", Kind::decode}, {"TerrainColorMap::init colorMap decode", Kind::decode},
+    {"TerrainColorMap::init normalMap decode", Kind::decode}, {"txm.createTransition", Kind::cook},
+    {"finalize.vegetation", Kind::cook}, {"finalize.forestOcclusion", Kind::cook},
+    {"init.initAblCoreLibs", Kind::sim}, {"init.initMissionScript", Kind::sim},
+    {"init.initWarriorsHeader", Kind::sim}, {"init.loadWarriors", Kind::sim},
+    {"init.loadBrainParamsPhase", Kind::sim}, {"init.loadBrainRuntime", Kind::sim},
+    {"init.loadBrainDispatch", Kind::sim}, {"init.initPartsHeader", Kind::sim}, {"init.initPartsLoad", Kind::sim},
+    {"init.initSpawnActors", Kind::sim}
 };
-inline constexpr int kMaxEntries = 128;
+inline constexpr Kind kind(std::string_view name) {
+    for (const auto& r : rules)
+        if (r.prefix ? name.substr(0, r.name.size()) == r.name : name == r.name) return r.kind;
+    return Kind::other;
+}
+inline int64_t clockNs() {
+    return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+struct Entry {
+    std::string_view name;
+    int64_t ns = 0, exclusive[2]{};
+    uint32_t calls = 0, exclusiveCalls[2]{};
+};
+inline constexpr int kMaxEntries = 256;
 inline Entry g_entries[kMaxEntries];
-inline std::atomic<int> g_entryCount{0};
+inline int g_entryCount = 0;
+inline uint32_t g_capacityDrops = 0;
 inline std::atomic<bool> g_active{false};
 inline std::mutex g_entryMutex;
-
+inline uint64_t g_generation = 0;
+inline std::thread::id g_owner;
+inline int64_t g_start = 0, g_kinds[2][8]{}, g_bytes[8]{};
+inline uint32_t g_open = 0;
 inline Entry* entry(std::string_view name) {
     std::scoped_lock lock(g_entryMutex);
-    const int n = g_entryCount.load();
-    for (int i = 0; i < n; ++i)
+    for (int i = 0; i < g_entryCount; ++i)
         if (g_entries[i].name == name) return &g_entries[i];
-    if (n >= kMaxEntries) return nullptr;
-    g_entries[n].name = name;
-    g_entryCount.store(n + 1);
-    return &g_entries[n];
+    if (g_entryCount == kMaxEntries) { ++g_capacityDrops; return nullptr; }
+    auto* e = &g_entries[g_entryCount++]; e->name = name; return e;
 }
-inline void begin() {
-    const int n = g_entryCount.load();
-    for (int i = 0; i < n; ++i) { g_entries[i].ns.store(0); g_entries[i].calls.store(0); }
-    g_active.store(true);
-}
-// "name=ms(xcalls)" for every scope that ran, largest first; ends the load window.
-inline std::string report() {
-    g_active.store(false);
-    const int n = g_entryCount.load();
-    int order[kMaxEntries];
-    int used = 0;
-    for (int i = 0; i < n; ++i)
-        if (g_entries[i].calls.load()) order[used++] = i;
-    std::sort(order, order + used, [](int a, int b) { return g_entries[a].ns.load() > g_entries[b].ns.load(); });
-    std::string out;
-    for (int k = 0; k < used; ++k) {
-        const Entry& e = g_entries[order[k]];
-        char item[160];
-        std::snprintf(item, sizeof(item), " %.*s=%.1f(x%u)", static_cast<int>(e.name.size()), e.name.data(),
-                      static_cast<double>(e.ns.load()) / 1e6, e.calls.load());
-        out += item;
+inline void begin(int64_t now = -1) {
+    std::scoped_lock lock(g_entryMutex);
+    g_active.store(false); ++g_generation; g_owner = std::this_thread::get_id(); g_open = 0;
+    for (int i = 0; i < g_entryCount; ++i) {
+        auto name = g_entries[i].name; g_entries[i] = {}; g_entries[i].name = name;
     }
-    return out;
+    for (auto& thread : g_kinds) for (auto& value : thread) value = 0;
+    for (auto& value : g_bytes) value = 0;
+    g_start = now < 0 ? clockNs() : now; g_active.store(true);
 }
+inline void bytes(Kind k, uint64_t n) {
+    if (!g_active.load(std::memory_order_relaxed)) return;
+    std::scoped_lock lock(g_entryMutex);
+    if (g_active.load() && k != Kind::count) g_bytes[static_cast<int>(k)] += static_cast<int64_t>(n);
+}
+class Scope;
+inline thread_local Scope* g_parent = nullptr;
 class Scope {
-    Entry* entry_;
-    std::chrono::steady_clock::time_point start_;
+    Entry* entry_ = nullptr;
+    Scope* parent_ = nullptr;
+    uint64_t generation_ = 0;
+    int64_t start_ = 0, children_ = 0;
+    int worker_ = 0;
 public:
-    explicit Scope(Entry* e) : entry_(e && g_active.load(std::memory_order_relaxed) ? e : nullptr) {
-        if (entry_) start_ = std::chrono::steady_clock::now();
+    explicit Scope(Entry* e, int64_t now = -1) {
+        if (!e || !g_active.load(std::memory_order_relaxed)) return;
+        std::scoped_lock lock(g_entryMutex);
+        if (!g_active.load()) return;
+        entry_ = e; generation_ = g_generation; worker_ = std::this_thread::get_id() != g_owner;
+        start_ = now < 0 ? clockNs() : now; parent_ = g_parent; g_parent = this; ++g_open;
     }
-    ~Scope() {
+    void end(int64_t now) {
         if (!entry_) return;
-        entry_->ns.fetch_add(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - start_).count());
-        entry_->calls.fetch_add(1);
+        std::scoped_lock lock(g_entryMutex);
+        g_parent = parent_;
+        if (generation_ == g_generation && g_active.load()) {
+            const int64_t elapsed = (std::max)(int64_t{0}, now - start_);
+            const int64_t exclusive = (std::max)(int64_t{0}, elapsed - children_);
+            entry_->ns += elapsed; ++entry_->calls;
+            entry_->exclusive[worker_] += exclusive; ++entry_->exclusiveCalls[worker_];
+            g_kinds[worker_][static_cast<int>(kind(entry_->name))] += exclusive; --g_open;
+            if (parent_ && parent_->generation_ == generation_) parent_->children_ += elapsed;
+        }
+        entry_ = nullptr;
     }
+    ~Scope() { if (entry_) end(clockNs()); }
     Scope(const Scope&) = delete;
     Scope& operator=(const Scope&) = delete;
 };
+struct Results {
+    std::string scopes, split, top;
+    int64_t total = 0, kinds[2][8]{};
+};
+inline Results report(int64_t now = -1) {
+    std::scoped_lock lock(g_entryMutex);
+    g_active.store(false);
+    Results r; r.total = (now < 0 ? clockNs() : now) - g_start;
+    for (int t = 0; t < 2; ++t) for (int k = 0; k < 8; ++k) r.kinds[t][k] = g_kinds[t][k];
+    int64_t scoped = 0; for (int k = 0; k < 8; ++k) scoped += r.kinds[0][k];
+    r.kinds[0][7] += r.total - scoped;
+    char item[256];
+    std::snprintf(item, sizeof(item), " total=%.3f", r.total / 1e6); r.split = item;
+    for (int t = 0; t < 2; ++t) for (int k = 0; k < 8; ++k) {
+        std::snprintf(item, sizeof(item), " %s%s=%.3f", t ? "worker_" : "", kindNames[k], r.kinds[t][k] / 1e6);
+        r.split += item;
+    }
+    for (const auto k : {Kind::io, Kind::decode, Kind::upload}) {
+        std::snprintf(item, sizeof(item), " bytes_%s=%lld", kindNames[static_cast<int>(k)], static_cast<long long>(g_bytes[static_cast<int>(k)]));
+        r.split += item;
+    }
+    std::snprintf(item, sizeof(item), " bytes_coverage=unavailable scoped_ms=%.3f residual_ms=%.3f open_scopes=%u capacity_drops=%u",
+        scoped / 1e6, (r.total - scoped) / 1e6, g_open, g_capacityDrops); r.split += item;
+    int order[kMaxEntries], used = 0;
+    for (int i = 0; i < g_entryCount; ++i) if (g_entries[i].calls) order[used++] = i;
+    std::sort(order, order + used, [](int a, int b) { return g_entries[a].ns > g_entries[b].ns; });
+    for (int i = 0; i < used; ++i) {
+        const auto& e = g_entries[order[i]];
+        std::snprintf(item, sizeof(item), " %.*s=%.1f(x%u)", static_cast<int>(e.name.size()), e.name.data(), e.ns / 1e6, e.calls);
+        r.scopes += item;
+    }
+    for (int t = 0; t < 2; ++t) {
+        std::sort(order, order + used, [t](int a, int b) { return g_entries[a].exclusive[t] > g_entries[b].exclusive[t]; });
+        for (int i = 0; i < (std::min)(12, used); ++i) {
+            const auto& e = g_entries[order[i]]; if (!e.exclusiveCalls[t]) continue;
+            std::snprintf(item, sizeof(item), " %s%.*s=%.1f(x%u)", t ? "worker_" : "", static_cast<int>(e.name.size()), e.name.data(), e.exclusive[t] / 1e6, e.exclusiveCalls[t]);
+            r.top += item;
+        }
+    }
+    return r;
 }
-
+}
 #define MC2_LOAD_SCOPE_CAT2(a, b) a##b
 #define MC2_LOAD_SCOPE_CAT(a, b) MC2_LOAD_SCOPE_CAT2(a, b)
 #define MC2_LOAD_SCOPE(name) \

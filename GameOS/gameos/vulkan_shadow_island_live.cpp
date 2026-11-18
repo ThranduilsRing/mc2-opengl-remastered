@@ -4,6 +4,7 @@
 #define VK_USE_PLATFORM_WIN32_KHR
 #endif
 #include <volk.h>
+#include "load_scope.h"
 #include "Gates/gate.h"
 #include "hitch_stats.h"
 #include "vk_render_pass_timer.h"
@@ -1151,13 +1152,15 @@ extern "C" int mc2_vk_shadow_island_prewarm(int,int) {
     // No object shadows on Low/Potato: do not duplicate the entire prop VBO/IBO
     // (214 MiB on mc2_10) or prewarm unused bake products in the 512 MiB budget.
     if (mc2::options::lowCost()) return 1;
-    if (!ensure_island(mc2shadow::shadowQuality().mapSide)) return 0;
+    if (![&] { MC2_LOAD_SCOPE("shadows.init"); return ensure_island(mc2shadow::shadowQuality().mapSide); }()) return 0;
     auto* s=parkedIsland();
-    upload_geometry_once(s);
-    refresh_alpha_casters(s);
-    if (!s->bake.prewarmProducts()) return 0;
+    { MC2_LOAD_SCOPE("shadows.geometry"); upload_geometry_once(s); }
+    { MC2_LOAD_SCOPE("shadows.alpha"); refresh_alpha_casters(s); }
+    if (![&] { MC2_LOAD_SCOPE("shadows.products"); return s->bake.prewarmProducts(); }()) return 0;
     if (!s->geomUploaded) return 1;
-    std::vector<uint32_t> fp, pc; mc2vk::ShadowBakeInputs in; fill_bake_geometry(s, in, fp, pc);   // type boxes depend only on the uploaded geometry
+    std::vector<uint32_t> fp, pc; mc2vk::ShadowBakeInputs in;
+    { MC2_LOAD_SCOPE("shadows.inputs"); fill_bake_geometry(s, in, fp, pc); }
+    MC2_LOAD_SCOPE("shadows.bounds");
     return s->bake.prewarmTypeBounds(in) ? 1 : 0;
 }
 
