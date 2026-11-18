@@ -236,6 +236,7 @@ def verify(install, out_dir, manifest):
     bad = 0
     for key, sh in manifest["sheets"].items():
         pad = sh.get("pad", 0)
+        k = sh.get("scale", 1)   # mclib/ui_chrome_sheets.cpp composeSheet: widget files are `scale` x the 1x padded box
         src = Image.open(find_sheet(art_dir, key)).convert("RGBA")
         W, H = src.size
         canvas = Image.new("RGBA", src.size, (255, 0, 255, 255))
@@ -244,9 +245,11 @@ def verify(install, out_dir, manifest):
             x, y, w, h = ent["rect"]
             box = padded_box(x, y, x + w, y + h, W, H, pad)
             img = Image.open(os.path.join(out_dir, key, name + ".png")).convert("RGBA")
-            if img.size != (box[2] - box[0], box[3] - box[1]):
+            if img.size != ((box[2] - box[0]) * k, (box[3] - box[1]) * k):
                 bad += 1
                 continue
+            if k != 1:
+                continue   # scaled art is cooked at k x density (tools/gen_campaign_marker.py), not a crop of the 1x sheet: size is the contract
             canvas.paste(img, (box[0], box[1]))
             cov.paste(255, box)
         a, b, m = src.load(), canvas.load(), cov.load()
