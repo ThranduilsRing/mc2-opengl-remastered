@@ -226,7 +226,7 @@ def test_deploy_logs_hash_and_copy_phases(tmp_path, monkeypatch, capsys):
 
 
 @pytest.mark.parametrize("kit_enabled", [True, False])
-def test_run_deploy_logs_stock_receipts_and_kit_cook(tmp_path, monkeypatch, capsys, kit_enabled):
+def test_run_deploy_logs_stock_receipts_and_kit_cook(tmp_path, monkeypatch, capsys, kit_enabled, target_name="lane"):
     import asset_parity
     import kit_payload
     from smoke_lib import render_options_pin
@@ -257,7 +257,7 @@ def test_run_deploy_logs_stock_receipts_and_kit_cook(tmp_path, monkeypatch, caps
     # This synthetic deploy tests phase logging, independently of the host's stock assets.
     monkeypatch.setattr(asset_parity, "enforce", lambda *a, **kw: None)
     monkeypatch.setattr(dp.subprocess, "run", lambda *a, **kw: SimpleNamespace(stdout=""))
-    args = SimpleNamespace(target="game", allow_new_target=True, allow_stale_exe=False, build64_root=None, classic_assets=False, skip_kit=False,
+    args = SimpleNamespace(target=target_name, allow_new_target=True, allow_stale_exe=False, build64_root=None, classic_assets=False, skip_kit=False,
                            require_clean=False, full_verify=False, allow_stale_pdb=False, preserve=[], no_asset_sync=False)
     probes = ("mc2.private-99999999", ".deployed_manifest.csv.private-99999999", "owner.private",
               "mods/custom/model.private-12345", "savegame/owner.fit", "crashes/owner.dmp")
@@ -265,6 +265,11 @@ def test_run_deploy_logs_stock_receipts_and_kit_cook(tmp_path, monkeypatch, caps
         path = target / rel
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b"owner bytes")
+    if target_name == "game":  # a failed precook fails the v0.4 deploy
+        with pytest.raises(SystemExit):
+            dp.run_deploy(args, str(tmp_path), str(build), str(target), "mc2", "mc2.pdb")
+        assert "FAIL: tree model precook failed: bad tree" in capsys.readouterr().err
+        return
     dp.run_deploy(args, str(tmp_path), str(build), str(target), "mc2", "mc2.pdb")
     assert all((target / rel).read_bytes() == b"owner bytes" for rel in probes)
     out = capsys.readouterr().out
@@ -272,3 +277,7 @@ def test_run_deploy_logs_stock_receipts_and_kit_cook(tmp_path, monkeypatch, caps
     assert all(f"phase {phase} seconds=" in out for phase in ("hash/verify", "copy", "stock receipts", "kit cook"))
     assert phases == (["stock", "cook", "cook"] if kit_enabled else [])
 
+
+
+def test_run_deploy_game_target_fails_when_tree_precook_fails(tmp_path, monkeypatch, capsys):
+    test_run_deploy_logs_stock_receipts_and_kit_cook(tmp_path, monkeypatch, capsys, False, target_name="game")

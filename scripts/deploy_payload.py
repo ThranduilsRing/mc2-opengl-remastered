@@ -3003,6 +3003,8 @@ def _run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
                 kit_payload.finish_trees(target, kit_tool,
                     importer_key=kit_payload.importer_source_key(src_root, Path(kit_tool).parent))
         except (OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
+            if args.target == "game":  # v0.4 must ship precooked trees; lane installs keep the soft warning
+                fail(f"tree model precook failed: {exc}")
             log(f"WARN: tree model precook failed: {exc}; runtime will cook missing models")
     installed = os.path.join(target, exe_name)
     require_head_exe(installed, source_head, src_root)
