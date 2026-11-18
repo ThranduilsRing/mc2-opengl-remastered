@@ -377,6 +377,14 @@ void GameObjectManager::primeTerrainObjectsForMissionLoad (volatile float& progr
 		progress += increment;
 	}
 
+	// First kill of a building type loaded its rubble textures inside the presentation walk (6-25 ms hitch).
+	for (long i = 0; i < numBuildings; ++i)
+	{
+		auto* appearance = buildings[i] && buildings[i]->getExists() ? buildings[i]->getAppearance() : nullptr;
+		if (appearance && appearance->getAppearanceClass() == BUILDING_APPR_TYPE)
+			static_cast<BldgAppearance*>(appearance)->warmDestroyedTextures();
+	}
+
 	TracyPlot("Terrain object appearances warmed during mission load", static_cast<int64_t>(warmedAppearances));
 }
 

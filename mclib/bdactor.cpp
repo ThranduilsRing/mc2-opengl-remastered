@@ -437,6 +437,55 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 // in-game combat-destroy event is this function's OBJECT_STATUS_DESTROYED
 // transition, which runs long before that definition in file order.
 
+static void bldgBindShapeTextures(TG_MultiShape* shape)
+{
+	// Load the texture and store its handle.
+	for (long i=0;i<shape->GetNumTextures();i++)
+	{
+		char txmName[1024];
+		shape->GetTextureName(i,txmName,256);
+	
+		char texturePath[1024];
+		mc2::fmt::to_buf(texturePath, "{}{:d}" PATH_SEPARATOR "", mc2::fmt::safe(tglPath), mc2::fmt::as_i32(ObjectTextureSize));
+
+		FullPathFileName textureName;
+		textureName.init(texturePath,txmName,"");
+
+		if (textureOrKtxSidecarExists(textureName))
+		{
+			if (S_strnicmp(txmName,"a_",2) == 0)
+			{
+				DWORD gosTextureHandle = mc2::textures::load(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink);
+				gosASSERT(gosTextureHandle != 0xffffffff);
+				shape->SetTextureHandle(i,gosTextureHandle);
+				shape->SetTextureAlpha(i,true);
+			}
+			else
+			{
+				DWORD gosTextureHandle = mc2::textures::load(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink);
+				gosASSERT(gosTextureHandle != 0xffffffff);
+				shape->SetTextureHandle(i,gosTextureHandle);
+				shape->SetTextureAlpha(i,false);
+			}
+		}
+		else
+		{
+			//PAUSE(("Warning: %s texture name not found",textureName));
+			shape->SetTextureHandle(i,0xffffffff);
+		}
+	}
+}
+
+// The rubble shape's textures are first used when a building dies; loading them there cost 6-25 ms in the
+// presentation walk. Mission load binds them once per building (the texture store and probe cache make repeats cheap).
+void BldgAppearance::warmDestroyedTextures()
+{
+	TG_TypeMultiShape* dmgRender = appearType->getBldgDmgRenderShape();
+	if (!dmgRender) return;
+	std::unique_ptr<TG_MultiShape> scratch(dmgRender->CreateFrom());
+	if (scratch) bldgBindShapeTextures(scratch.get());
+}
+
 void BldgAppearance::setObjStatus (long oStatus)
 {
 	if (simulationOwned() && !simPresentationPass)
@@ -536,41 +585,7 @@ void BldgAppearance::setObjStatus (long oStatus)
 		if (bldgShape)
 		{
 			ZoneScopedN("Bldg.SetStatus.Textures");
-			// Load the texture and store its handle.
-			for (long i=0;i<bldgShape->GetNumTextures();i++)
-			{
-				char txmName[1024];
-				bldgShape->GetTextureName(i,txmName,256);
-	
-				char texturePath[1024];
-				mc2::fmt::to_buf(texturePath, "{}{:d}" PATH_SEPARATOR "", mc2::fmt::safe(tglPath), mc2::fmt::as_i32(ObjectTextureSize));
-		
-				FullPathFileName textureName;
-				textureName.init(texturePath,txmName,"");
-		
-				if (textureOrKtxSidecarExists(textureName))
-				{
-					if (S_strnicmp(txmName,"a_",2) == 0)
-					{
-						DWORD gosTextureHandle = mc2::textures::load(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink);
-						gosASSERT(gosTextureHandle != 0xffffffff);
-						bldgShape->SetTextureHandle(i,gosTextureHandle);
-						bldgShape->SetTextureAlpha(i,true);
-					}
-					else
-					{
-						DWORD gosTextureHandle = mc2::textures::load(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink);
-						gosASSERT(gosTextureHandle != 0xffffffff);
-						bldgShape->SetTextureHandle(i,gosTextureHandle);
-						bldgShape->SetTextureAlpha(i,false);
-					}
-				}
-				else
-				{
-					//PAUSE(("Warning: %s texture name not found",textureName));
-					bldgShape->SetTextureHandle(i,0xffffffff);
-				}
-			}
+			bldgBindShapeTextures(bldgShape);
 		}
 
 	}

@@ -1,7 +1,6 @@
 // vfs_index.cpp -- the mc2::vfs mount table and merged index, split from vfs.cpp (file-size ratchet; pure move).
 // The mod layer (InitModSearchPaths and its state) stays in vfs.cpp and is read through vfs_internal.h.
 #include "vfs.h"
-#include <tracy/Tracy.hpp>
 #include "file.h"
 #include "ffile.h"
 #include "fastfile.h"
@@ -361,7 +360,6 @@ std::vector<Entry> candidates(std::string_view logicalKey)
 		logicalKey.find('\0') != std::string_view::npos) return out;
 	// File::open runs on worker threads too: the chain is copied out under the lock, so a rebuild or noteWrite
 	// on another thread never invalidates it.
-	ZoneScopedN("Vfs.Candidates");
 	std::lock_guard<std::mutex> lk(g_indexMutex);
 	if (!g_index.built) buildLocked();
 	const std::string k = key(logicalKey);
@@ -547,7 +545,6 @@ OpenedFile openRead(const char* path, const char* req, bool probeOnly)
 	};
 	// A physical loose probe, File::open's historical order: the path itself, then the size-stripped alias.
 	auto looseProbe = [&] {
-		ZoneScopedN("Vfs.LooseProbe");
 		if (openPhysical(path, "base-loose", "loose")) return true;
 		const std::string stripped = stripSizeDir(path);
 		return openPhysical(stripped, "base-strip", "loose");
