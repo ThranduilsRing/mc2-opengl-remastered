@@ -181,7 +181,7 @@ void GameObjectManager::preloadTickSpawnTypes (void) {
 		preload(typeNum);
 	// The type load does not build its appearance type (Appearance.GetType 15 ms + Shape.Load, measured on the sim worker at the
 	// first vehicle death): load the ejected pilot's now, at mission load.
-	if (ObjectTypePtr pilotType = objTypeManager->get(VEHICLEPILOT_ID, false))
+	if (ObjectTypePtr pilotType = (VEHICLEPILOT_ID < objTypeManager->numObjectTypes) ? objTypeManager->get(VEHICLEPILOT_ID, false) : nullptr)
 		if (appearanceTypeList)
 			appearanceTypeList->getAppearance(GV_TYPE << 24, pilotType->getAppearanceTypeName());
 }

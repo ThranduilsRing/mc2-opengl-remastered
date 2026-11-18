@@ -770,10 +770,7 @@ void GameObjectManager::updateMoverWalk(MoverPtr (&removeList)[MAX_MOVERS], long
 					ZoneScopedN("GameLogic.Units.Vehicles Update");
 					updateRet_instr = mover->update();
 				}
-				{
-					ZoneScopedN("GameLogic.Units.Vehicles GridInval");
-					invalidateSpatialGrid(false);
-				}
+				invalidateSpatialGrid(false);
 				mover->lastUpdateRet = static_cast<int32_t>(updateRet_instr);
 				if (!updateRet_instr)
 				{

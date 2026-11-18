@@ -408,10 +408,7 @@ long GroundVehicle::update (void)
 	setPosition(newPosition);
 	updateTurret(NewRotation);
 
-	{
-		ZoneScopedN("GameLogic.Units.Vehicles Dynamics");
-		updateDynamics();
-	}
+	updateDynamics();
 
 	if (!isDisabled())
 	{
@@ -420,10 +417,7 @@ long GroundVehicle::update (void)
 	}
 
 	sweepTime += frameLength;
-	{
-		ZoneScopedN("GameLogic.Units.Vehicles MineCheck");
-		mineCheck();
-	}
+	mineCheck();
 	if (!MPlayer || MPlayer->isServer()) 
 	{
 		if (mineLayer != 0)

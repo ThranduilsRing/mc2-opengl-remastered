@@ -25,6 +25,7 @@
 #include <mutex>
 #include <string>
 #include <unordered_map>
+#include "vfs.h"
 
 void LoadOverrideRenderShapeTextures(TG_TypeMultiShape* shape);
 
@@ -41,6 +42,8 @@ bool gvTextureExistsCached(mc2::czstring path, bool orKtxSidecar)
     key += orKtxSidecar ? "|k" : "|t";
     {
         std::lock_guard<std::mutex> lock(mutex);
+        static uint64_t seen = 0;
+        if (seen != mc2::vfs::generation()) { cache.clear(); seen = mc2::vfs::generation(); }
         if (cache.contains(key))
             return cache.at(key);
     }
