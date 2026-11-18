@@ -531,6 +531,7 @@ extern "C" int mc2_vk_water_island_run(
             }()) {
             setFallback("planar_view_prepare_failed");
             reflectThisFrame = false;
+            s->reflectionValid = false;   // no image was rendered: a held frame must not sample it
             s->planarTerrainRecord = {}; s->planarPropsRecord = {};
             // Keep water visible with sky only, and rebuild failed owners on
             // the next frame instead of permanently disabling the water pass.

@@ -87,3 +87,6 @@ sampler_bindings: GameOS RenderCore RenderWorld GameAdapters mclib code shaders
 # shader-side (rows that run an external compiler -- glslang, slang -- are deliberately NOT declared: the toolchain is not in the key)
 vk_pipeline_layout: shaders GameOS RenderCore
 gpu_abi: RenderCore shaders
+
+# source pin test (tests/smoke/test_render_options_pin.py) reads these water sources
+render_options_pin: GameOS/gameos/vulkan_water_island_run.cpp GameOS/gameos/vulkan_water_island_images.cpp GameOS/gameos/water_planar_view.h GameOS/gameos/vulkan_water_reflect_bake.cpp
