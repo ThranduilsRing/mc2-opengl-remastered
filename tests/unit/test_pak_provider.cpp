@@ -14,6 +14,14 @@
 #include <set>
 #include <cstdlib>
 #include <cstring>
+#include <chrono>
+#ifdef _WIN32
+#include <process.h>
+#define PAK_TEST_PID _getpid()
+#else
+#include <unistd.h>
+#define PAK_TEST_PID getpid()
+#endif
 namespace fs = std::filesystem;
 namespace {
 using Bytes = std::vector<uint8_t>;
@@ -48,12 +56,17 @@ void author(const fs::path& p, bool changed=false) {
     toc.insert(toc.end(),body.begin(),body.end()); save(p,toc);
 }
 struct Scratch {
-    fs::path old=fs::current_path(), root=fs::temp_directory_path()/"mc2pak-unit";
+    fs::path old=fs::current_path(), root=fs::temp_directory_path()/("mc2pak-unit-"+std::to_string(PAK_TEST_PID)+"-"+std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
     Scratch() {
-        REQUIRE(!fs::exists(root)); fs::create_directories(root/"paks"); fs::current_path(root);
+        { std::error_code ec; fs::remove_all(root,ec); } fs::create_directories(root/"paks"); fs::current_path(root);
         maxFastFiles=16; numFastFiles=0; fastFiles=static_cast<FastFile**>(std::calloc(16,sizeof(FastFile*)));
         fs::copy_file(fixtures/"source-fst.bin","first.fst");
         fs::copy_file(fixtures/"source-fst.bin","second.fst");
+        // Same size and TOC (so the pak manifest still matches) but different payload bytes, so
+        // duplicate-key ordering between first.fst and second.fst is observable.
+        { auto b=load("second.fst"); Bytef raw[]={'a','b','d'}; Bytef z[64]; uLongf n=sizeof z;
+          REQUIRE(compress2(z,&n,raw,3,Z_DEFAULT_COMPRESSION)==Z_OK); REQUIRE(n==11);
+          const size_t off=8+payloads.size()*266; for(size_t i=0;i<n;++i) b.at(off+i)=z[i]; save("second.fst",b); }
         fs::copy_file(fixtures/"stock.mc2pak","paks/stock.mc2pak");
     }
     void mount() { REQUIRE(FastFileInit("first.fst")); REQUIRE(FastFileInit("second.fst")); mc2::vfs::rebuild(); }
@@ -163,7 +176,10 @@ TEST_CASE("pak/corruption structural bounds and unsupported fallback") {
     save("paks/stock.mc2pak",bytes); s.mount();
     if(!reject) REQUIRE(mc2::vfs::candidates(payloads[2].first)[0].provider==mc2::vfs::Provider::Pak);
     for(const auto& [name,raw]:payloads) { CHECK(read(name.c_str())==raw); CHECK(read(name.c_str())==raw); }
-    if(reject) for(const auto& e:mc2::vfs::candidates(k)) CHECK(e.provider!=mc2::vfs::Provider::Pak);
+    if(reject) {
+        CHECK(!mc2::vfs::PakZip("paks/stock.mc2pak").valid());  // the [PAK_REJECT] outcome
+        for(const auto& e:mc2::vfs::candidates(k)) CHECK(e.provider!=mc2::vfs::Provider::Pak);
+    }
     else {
         const auto& damaged=zstd ? payloads[1] : payloads[0];
         for(const auto& e:mc2::vfs::candidates(damaged.first)) CHECK(e.provider!=mc2::vfs::Provider::Pak);

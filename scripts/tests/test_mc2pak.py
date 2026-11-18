@@ -6,6 +6,11 @@ import sys
 import zipfile
 import zlib
 
+import pytest
+
+if sys.version_info < (3, 14):
+    pytest.skip('tools/mc2pak.py needs Python 3.14 (ZIP Zstandard)', allow_module_level=True)
+
 spec = importlib.util.spec_from_file_location('mc2pak', Path(__file__).resolve().parents[2] / 'tools/mc2pak.py')
 pak = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(pak)

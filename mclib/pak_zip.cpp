@@ -77,7 +77,7 @@ struct PakZip::Mapping {
     HANDLE file = INVALID_HANDLE_VALUE, map = nullptr;
     explicit Mapping(std::string_view path) {
         const std::string owned(path);
-        file = CreateFileA(owned.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_DELETE,
+        file = CreateFileA(owned.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_DELETE, // path-audit: loose-only (pak container itself, not a VFS key)
                            nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
         LARGE_INTEGER length{};
         if (file != INVALID_HANDLE_VALUE && GetFileSizeEx(file, &length) && length.QuadPart > 0) {

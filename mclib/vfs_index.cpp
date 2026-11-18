@@ -247,7 +247,8 @@ void buildLocked()
 	}
 	// A representation replaces its source at that archive's rank. In particular a matching
 	// later source must never jump over an earlier FST that has since gained the same key.
-	if (std::filesystem::is_regular_file("paks/stock.mc2pak")) {
+	std::error_code pakEc;
+	if (std::filesystem::is_regular_file("paks/stock.mc2pak", pakEc)) {
 		auto pak = std::make_shared<PakZip>("paks/stock.mc2pak");
 		if (pak->valid()) {
 			std::map<std::string, bool> eligible;
@@ -256,7 +257,7 @@ void buildLocked()
 				for (long a = 0; fastFiles && a < numFastFiles; ++a) {
 					auto* ff = fastFiles[a];
 					if (!ff || key(std::filesystem::path(ff->getFileName()).filename().string()) != src.name) continue;
-					std::ifstream in(ff->getFileName(), std::ios::binary);
+					std::ifstream in(ff->getFileName(), std::ios::binary); // path-audit: loose-only (root FST container TOC hash)
 					const auto len = uint64_t{8} + static_cast<uint64_t>(ff->getNumFiles()) * 266;
 					std::vector<uint8_t> toc(static_cast<size_t>(len));
 					in.read(reinterpret_cast<char*>(toc.data()), static_cast<std::streamsize>(len));
