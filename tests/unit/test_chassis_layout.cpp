@@ -369,6 +369,7 @@ struct Chassis {
     bool armorEditable = true;
     int baseCost = 100, maxWeight = 100, baseArmor = 80, maxArmor = 432;
     mc2::armor::Allocation baseArmorLoc{9,11,9,9,8,8,9,9,4,2,2};
+    std::array<int, 8> structure{3,31,21,21,17,17,21,21};
     const auto* getPackage() const { return &package; }
 };
 struct LogisticsVariant {

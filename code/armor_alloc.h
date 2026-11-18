@@ -13,12 +13,15 @@ inline Allocation legacyDistribution(const Allocation& base, int plating) {
     for (int i = 0; i < 11; ++i) a[i] += static_cast<int>(shares[i] * plating);
     return a;
 }
-inline Allocation maxPerLocation(const Allocation& base, int baseTotal, int maxArmor) {
-    auto a = base;
-    const int d = std::max(0, maxArmor - baseTotal);
-    for (int i = 0; i < 11; ++i) a[i] = std::min(255, base[i] + 2 * static_cast<int>(shares[i] * d));
+// Tabletop limit: 2 x internal structure per location, head 9. A torso's front and rear share the
+// front's limit (rear entries are 0; `available` sums the pair).
+inline Allocation maxPerLocation(const std::array<int, 8>& structure) {
+    Allocation a{};
+    for (int i = 0; i < 8; ++i) a[i] = std::min(255, i == 0 ? 9 : 2 * structure[i]);
     return a;
 }
+// Most the sheet can hold: the location limits' sum, bounded by the chassis armor cap.
+inline int maxTotal(const Allocation& cap, int maxArmor) { return std::min(total(cap), maxArmor); }
 inline int partner(int i) { return i >= 1 && i <= 3 ? i + 7 : (i >= 8 ? i - 7 : -1); }
 inline int available(const Allocation& a, int i, const Allocation& cap, int pool) {
     const int other = partner(i);

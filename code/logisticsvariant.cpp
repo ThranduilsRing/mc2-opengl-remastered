@@ -715,7 +715,7 @@ bool LogisticsVariant::addComponent( int idFromFitFile, long& x, long& y )
 }
 
 mc2::armor::Allocation LogisticsVariant::armorCapacity() const {
-	return mc2::armor::maxPerLocation(chassis->baseArmorLoc, mc2::armor::total(chassis->baseArmorLoc), static_cast<int>(chassis->maxArmor));
+	return mc2::armor::maxPerLocation(chassis->structure);
 }
 mc2::armor::Allocation LogisticsVariant::armorAllocation(bool legacy) const {
 	if (!legacy && hasExplicitArmor())

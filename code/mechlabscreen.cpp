@@ -2302,7 +2302,10 @@ void gatherPanelItems(LogisticsVariant* v, int panel, std::vector<LocItem>& out)
 	for (size_t i=0; i<placed.size(); ++i) {
 		const bool here = pc ? ri >= 0 && placed[i].x >= 0 && pc->regions[ri].contains(placed[i].x,placed[i].y)
 			: i < record.items.size() && record.items[i].location == panel;
-		if (here) { out.push_back({comps[i],placed[i].x,placed[i].y}); used += placed[i].w * placed[i].h; }
+		if (!here) continue;
+		used += placed[i].w * placed[i].h;
+		// Armor plating is a tonnage pseudo-component (counted in the pool and mass), not equipment.
+		if (comps[i]->getType() != COMPONENT_FORM_BULK) out.push_back({comps[i],placed[i].x,placed[i].y});
 	}
 	static constexpr const char* fixed[8][2] = {{"Cockpit","Life support"},{"Engine","Gyro"},{nullptr,nullptr},{nullptr,nullptr},
 		{"Shoulder","Arm actuator"},{"Shoulder","Arm actuator"},{"Hip","Leg actuator"},{"Hip","Leg actuator"}};
@@ -2683,12 +2686,14 @@ void MechLabScreen::drawLocationView(float tbSx, float tbSy, float tbOx, float t
 	text({r.x+3,r.y+24,r.w-6,10},"ARMOR "+std::to_string(mc2::armor::total(allocation))+" / "+std::to_string(pool));
 	const int unallocated = std::max(0,pool-mc2::armor::total(allocation));
 	text({r.x+3,r.y+34,r.w-6,10},"UNALLOCATED "+std::to_string(unallocated));
-	text({r.x+3,r.y+44,r.w-6,10},"MAX "+std::to_string(pVariant->getMaxArmor()));
+	text({r.x+3,r.y+44,r.w-6,10},"MAX "+std::to_string(mc2::armor::maxTotal(cap,static_cast<int>(pVariant->getMaxArmor()))));
 	const std::string warning = !pVariant->getChassis()->armorEditable ? "ARMOR DISPLAY-ONLY" : pVariant->getWeight()>pVariant->getMaxWeight() ? "OVERWEIGHT" :
 		pVariant->getHeat()>pVariant->getMaxHeat() ? "TOO HOT" : pVariant->isLayoutGrandfathered() ? "LAYOUT WARNING" : unallocated ? "UNALLOCATED ARMOR" : "READY";
 	text({r.x+3,r.y+57,r.w-6,12},warning,warning=="READY" ? 0xffc8e100 : 0xffa21600,8);
 	const auto strip = ml::panelRect(ml::kDoll); fill(strip,0xe8101820);
 	int special = 0; for (const auto& item : placed) if (item.x<0 || item.y<0) ++special;
-	char mass[80]; std::snprintf(mass,sizeof mass,"MASS %.1f / %.1f t",static_cast<double>(mc2pkg::massUsed(placed)),static_cast<double>(pc ? pc->payload : pVariant->getMaxWeight()));
+	// Package chassis: PAYLOAD = placed components (incl. armor plating) vs tonnage minus empty mass.
+	char mass[112]; int mn = std::snprintf(mass,sizeof mass,"%s %.1f / %.1f t",pc ? "PAYLOAD" : "MASS",static_cast<double>(mc2pkg::massUsed(placed)),static_cast<double>(pc ? pc->payload : pVariant->getMaxWeight()));
+	if (pc && mn > 0) std::snprintf(mass+mn,sizeof mass-mn," | TOTAL %.1f / %.1f t",static_cast<double>(pVariant->getWeight()),static_cast<double>(pVariant->getMaxWeight()));
 	text(strip,std::string(mass)+(special ? " | "+std::to_string(special)+" special: CLASSIC" : ""),0xffffd060,9,2);
 }
