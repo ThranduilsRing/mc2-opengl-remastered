@@ -7,6 +7,7 @@ LogisticsVariant.cpp			: Implementation of the LogisticsVariant component.
 \*************************************************************************************************/
 
 #include "logisticsvariant_internal.h"
+#include "chassis_vehicle_detect.h"
 #include "mc2fmt.h"
 #include "mc2str.h"
 #include "package_chassis.h"
@@ -163,17 +164,7 @@ int LogisticsChassis::init( CSVFile* file, int chassisID )
 	//  (2) rotor/air units (scoutcopter etc.) reuse the mech chassis layout verbatim, so the
 	//      only logistics-visible tell is the chassis filename token "copter".
 	{
-		bool isVeh = false;
-		char comp[256];
-		for ( int r = 26; r <= 48 && !isVeh; ++r )            // Item0..Item22 component rows, name in col 5
-		{
-			if ( NO_ERR == file->readString( r, 5, comp, 256 ) )
-			{
-				S_strlwr( comp );
-				if ( 0 == S_strncmp( comp, "vehicle", 7 ) )
-					isVeh = true;
-			}
-		}
+		bool isVeh = chassisCsvHasVehicleComponent( *file );  // Item rows 26..48, name in col 6
 		if ( !isVeh && fileName.find( "copter" ) != std::string::npos )
 			isVeh = true;
 		bIsVehicle = isVeh;

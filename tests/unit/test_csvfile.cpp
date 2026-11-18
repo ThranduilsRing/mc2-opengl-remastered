@@ -22,6 +22,7 @@
 #include "doctest.h"
 
 #include "csvfile.h"
+#include "../../code/chassis_vehicle_detect.h"
 
 #include <cstring>
 #include <string>
@@ -340,4 +341,33 @@ TEST_CASE("File RAM lines and parent CSV chunk boundaries match disk")
 			}
 		}
 	}
+}
+
+// Chassis classification (VEHICLE-AUTO-PILOT-1): Item rows are ItemNMasterId,Load#,X,Y,CompBas#,Name,...
+// The component name is column 6; column 5 is numeric. Rows 26..48 are the Item rows.
+static bool chassisCsvIsVehicle(const char *itemRow)
+{
+	const auto path = std::filesystem::temp_directory_path() / "mc2_chassis_classify_test.csv";
+	{
+		std::ofstream out(path);
+		for (int r = 1; r < 26; ++r)
+			out << "Filler" << r << ",0,0,0,0,0,0,0,0\n";   // total column count comes from the widest row
+		out << itemRow << "\n";
+		for (int r = 27; r <= 49; ++r)
+			out << "Item" << r << "MasterId,94,-1,-1,255,EMPTY!,NA\n";
+	}
+	CSVFile csv;
+	REQUIRE(csv.open(path.string().c_str()) == NO_ERR);
+	const bool v = chassisCsvHasVehicleComponent(csv);
+	csv.close();
+	std::error_code ec;
+	std::filesystem::remove(path, ec);
+	return v;
+}
+
+TEST_CASE("chassis classification reads component name from column 6")
+{
+	CHECK_FALSE(chassisCsvIsVehicle("Item0MasterId,12,-1,-1,36,Fusion Engine,NA"));      // mech row
+	CHECK(chassisCsvIsVehicle("Item12MasterId,69,-1,-1,36,Vehicle Sensors,200.00"));     // apc.csv:38
+	CHECK_FALSE(chassisCsvIsVehicle("Item1MasterId,12,-1,-1,1,Medium Laser,NA"));
 }

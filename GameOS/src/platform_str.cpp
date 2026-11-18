@@ -14,11 +14,11 @@ int S_strcmp(const char* s1, const char* s2)
 
 	int c1, c2, d;
 	do {
-		c1 = *s1++;
-		c2 = *s2++;
+		c1 = static_cast<unsigned char>(*s1++);
+		c2 = static_cast<unsigned char>(*s2++);
 		d = c1 - c2;
 		if(d) {
-			return ((d&0x70000000)>>30) - 1;
+			return d < 0 ? -1 : 1;   // the old bit trick returned 0 ("equal") for every s1 < s2
 		}
 	} while(c1);
 
@@ -35,11 +35,11 @@ int S_strncmp(const char* s1, const char* s2, size_t max_count)
 		if(!max_count--)
 			return 0;
 
-		c1 = *s1++;
-		c2 = *s2++;
+		c1 = static_cast<unsigned char>(*s1++);
+		c2 = static_cast<unsigned char>(*s2++);
 		d = c1 - c2;
 		if(d) {
-			return ((d&0x70000000)>>30) - 1;
+			return d < 0 ? -1 : 1;   // the old bit trick returned 0 ("equal") for every s1 < s2
 		}
 	} while(c1);
 
