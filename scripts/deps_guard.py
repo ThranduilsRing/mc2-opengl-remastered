@@ -62,7 +62,9 @@ def foreign_objects(deps, root):
 
 
 def dump_deps(tree_path):
-    out = subprocess.run([NINJA, "-C", tree_path, "-t", "deps"], capture_output=True, text=True, errors="replace", timeout=300)
+    import console_child  # same directory; imported here so cc_launcher (which needs only is_foreign) stays light
+    out = subprocess.run([NINJA, "-C", tree_path, "-t", "deps"], capture_output=True, text=True, errors="replace", timeout=300,
+                         **console_child.child_kwargs(redirected=True))
     if out.returncode != 0:
         raise RuntimeError(f"ninja -t deps failed rc={out.returncode}: {out.stderr.strip()[:300]}")
     return out.stdout
