@@ -155,6 +155,54 @@ def fill_campaign_object_slots(root, out, refs):
         write_pak(str(destination), slots)
 
 
+def asset_bytes(layers, name):
+    """Resolve safely with the same loose/archive precedence as the transfer."""
+    import transfer_mc2x_campaign as transfer
+    return transfer.asset_bytes(layers, name, archive_entries=fst_entries)
+
+
+def validate_mc2x_tables(root, files, campaigns, layers):
+    """Check ownership and packet occupancy; this does not prove appearance correctness."""
+    table_name = "data/objects/object2.pak"
+    # A full source must supply its own table; mission-only addons may inherit compat.
+    own = asset_bytes([root], table_name)
+    full = "mc2xres.dll" in files or all(n in files for n in ("art.fst", "misc.fst", "tgl.fst"))
+    packed = asset_bytes(layers[:1], table_name)
+    if (full or own is not None) and (own is None or packed != own):
+        raise ValueError("Missing or different source object table data/objects/object2.pak in campaign pack; re-import it from the original campaign download (tools/import_campaign.py) after removing this mod folder, keeping your saves.")
+    for dep in layers[1:-1]:
+        if asset_bytes([dep], table_name) is None:
+            raise ValueError(f"Missing mc2x-compat object table: {dep / table_name}; re-import the full base.")
+    raw = packed if packed is not None else asset_bytes(layers[1:], table_name)
+    if raw is None:
+        raise ValueError("Missing effective object table data/objects/object2.pak")
+    if len(raw) < 8:
+        raise ValueError("Invalid object table data/objects/object2.pak")
+    first = struct.unpack_from("<I", raw, 4)[0]
+    if first < 8 or first % 4 or first > len(raw):
+        raise ValueError("Invalid object table data/objects/object2.pak")
+    count = first // 4 - 2
+    slots = struct.unpack_from(f"<{count}I", raw, 8)
+    for campaign in campaigns:
+        name = f"data/missions/{campaign['first_mission']}.fit"
+        mission = asset_bytes(layers, name)
+        if mission is None:
+            raise ValueError(f"Missing first-mission asset: {name}")
+        ids = {int(n) for n in re.findall(rb"\bObjectNumber\s*=\s*(-?\d+)", mission, re.I)}
+        unresolved = []
+        for number in sorted(ids):
+            if not 0 <= number < count:
+                unresolved.append(number)
+                continue
+            entry = slots[number]
+            start = entry & 0x1fffffff
+            end = slots[number + 1] & 0x1fffffff if number + 1 < count else len(raw)
+            if entry >> 29 == 7 or not first <= start < end <= len(raw):
+                unresolved.append(number)
+        if unresolved:
+            raise ValueError(f"{name}: unresolved object packets: {unresolved}")
+
+
 def repair_shared_components(existing, root, scratch):
     """Validate shared ammo against its own source, including on unchanged imports."""
     report = existing / "mc2x_import_report.json"
@@ -277,6 +325,8 @@ def import_campaign(source, deploy):
         identity = json.dumps(campaigns, sort_keys=True)
         slug = re.sub(r"[^a-z0-9]+", "-", campaigns[0]["name"].lower()).strip("-")[:45] or "campaign"
         mod_id = slug + "-" + hashlib.sha256(identity.encode()).hexdigest()[:8]
+        for c in campaigns:  # display only; the id above keeps the original spelling so installed packs stay matched
+            c["name"] = c["name"].replace("MechWarriror", "MechWarrior")
         target = mods / mod_id
         fingerprint = digest(files)
         if target.exists():
@@ -297,12 +347,17 @@ def import_campaign(source, deploy):
                 if not p.is_file() or p.is_symlink() or hashlib.sha256(p.read_bytes()).hexdigest() != expected:
                     raise ValueError(f"Installed mod has changed or is incomplete: {p}")
             metadata = json.loads((target / "mod.json").read_text())
-            for dependency in metadata.get("dependencies", []):
+            dependencies = metadata.get("dependencies", [])
+            for dependency in dependencies:
                 dep = mods / safe_path(dependency)
                 if dep.is_symlink() or dep.is_junction() or not (dep / "data").is_dir():
                     raise ValueError(f"Missing {dependency}; import the full compatibility base first.")
+            if "mc2x-compat" in dependencies:
+                validate_mc2x_tables(root, files, campaigns,
+                                    [target] + [mods / safe_path(d) for d in dependencies] + [deploy])
+            for dependency in dependencies:
                 if dependency == "mc2x-compat":
-                    repair_shared_components(dep, root, scratch)
+                    repair_shared_components(mods / dependency, root, scratch)
             if "mco-compat" in metadata.get("dependencies", []) and saved.get("logistics_art_version") != LOGISTICS_ART_VERSION:
                 import_logistics_art(root, target)
                 saved["logistics_art_version"] = LOGISTICS_ART_VERSION
@@ -364,6 +419,9 @@ def import_campaign(source, deploy):
         if compat == "mco-compat":
             fill_campaign_object_slots(root, out, refs)
             import_logistics_art(root, out)
+        if compat == "mc2x-compat":
+            validate_mc2x_tables(root, files, campaigns,
+                                [out] + [Path(ref).parent for ref in refs])
         available = available_assets(out) | available_assets(deploy)
         for ref in refs[:-1] if len(refs) > 1 else []:
             available |= available_assets(Path(ref).parent)
@@ -377,6 +435,10 @@ def import_campaign(source, deploy):
                                      "(MCOsetup628.exe for Omnitech; MC2X-CVE-G for Wolfman).")
         if not (out / "data" / "campaign").is_dir():
             raise ValueError("Converter produced no campaign; original download may be incomplete.")
+        for fit in (out / "data/campaign").glob("*.fit"):
+            raw = fit.read_bytes()
+            if b"MechWarriror" in raw:
+                fit.write_bytes(raw.replace(b"MechWarriror", b"MechWarrior"))
         metadata = {"id": mod_id, "name": " / ".join(c["name"] for c in campaigns),
                     "description": "Imported community campaigns: " + ", ".join(c["name"] for c in campaigns),
                     "author": "Original campaign authors (see the supplied campaign credits)",

@@ -15,7 +15,7 @@ Emits:
 Never writes under <deploy>/data/. Python 3 stdlib only. No emoji.
 """
 from __future__ import annotations
-import argparse, json, os, shutil, sys
+import argparse, json, os, shutil, sys, tempfile
 
 # FROZEN-AWARE: when PyInstaller-frozen, bundled python modules + DATA (recipe, shims/)
 # live under sys._MEIPASS. Dev: they live next to this file.
@@ -25,6 +25,7 @@ _BASE = getattr(sys, "_MEIPASS", _HERE)   # bundle root when frozen, else this f
 sys.path.insert(0, _BASE if _FROZEN else _HERE)
 import fst        # local: FST/pak read helpers
 import manifest   # local: provenance + marker
+from transfer_mc2x_campaign import asset_bytes
 
 RECIPE_PATH = os.path.join(_BASE, "mc2x_recipe.json")
 SHIMS_DIR = os.path.join(_BASE, "shims")
@@ -72,6 +73,13 @@ def extract_mod(source, deploy, mod_id, entries):
     by_fst = {}   # fst_name -> {src_name_lower: [target_rel, ...]}
     for e in entries:
         fstn, src, tgt = e["fst"], e["s"], e["t"]
+        if tgt.lower() == "data/objects/object2.pak":
+            content = asset_bytes([source], src)
+            if content is None:
+                missing.append(tgt)
+            else:
+                written.append(_write(root, tgt, content))
+            continue
         if fstn == "loose":
             sp = os.path.join(source, src.replace("/", os.sep))
             if os.path.isfile(sp):
@@ -83,12 +91,8 @@ def extract_mod(source, deploy, mod_id, entries):
             by_fst.setdefault(fstn, {}).setdefault(src, []).append(tgt)
     for fstn, wanted in by_fst.items():
         p = os.path.join(source, fstn)
-        if not os.path.isfile(p):
-            for tgts in wanted.values():
-                missing.extend(tgts)
-            continue
         seen = set()
-        for off, comp, real, name, is_lz, data in fst.fst_entries(p):
+        for off, comp, real, name, is_lz, data in fst.fst_entries(p) if os.path.isfile(p) else []:
             key = name.replace("\\", "/").lower()
             tgts = wanted.get(key)
             if not tgts:
@@ -99,7 +103,14 @@ def extract_mod(source, deploy, mod_id, entries):
             seen.add(key)
         for k, tgts in wanted.items():
             if k not in seen:
-                missing.extend(tgts)
+                loose = os.path.join(source, k.replace("/", os.sep))
+                if os.path.isfile(loose):
+                    with open(loose, "rb") as stream:
+                        content = stream.read()
+                    for tgt in tgts:
+                        written.append(_write(root, tgt, content))
+                else:
+                    missing.extend(tgts)
     return written, missing
 
 def copy_shims(deploy, mod_id):
@@ -171,22 +182,48 @@ def main(argv=None):
     code = _guard(args)
     if code:
         return code
-    for m in ("mc2x-compat", "cveg"):
-        d = os.path.join(args.deploy, "mods", m)
-        if os.path.isdir(d):
-            shutil.rmtree(d)
-    written = {}
-    all_missing = {}
-    for m in ("mc2x-compat", "cveg"):
-        w, miss = extract_mod(args.source, args.deploy, m, recipe["mods"].get(m, []))
-        sh = copy_shims(args.deploy, m)
-        with open(os.path.join(args.deploy, "mods", m, "mod.json"), "w", encoding="utf-8") as f:
-            json.dump(MODJSON[m], f, indent=2)
-        written[m] = w
-        all_missing[m] = miss
-        print(f"  {m}: extracted {len(w)} + {sh} shims, {len(miss)} missing-from-install")
-    _write_provenance(args, written, all_missing)
+    os.makedirs(args.deploy, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=".mc2x-import-", dir=args.deploy) as scratch:
+        staged = argparse.Namespace(**vars(args))
+        staged.deploy = os.path.join(scratch, "install")
+        reports = os.path.join(args.deploy, "mods", ".import_reports")
+        actions = []
+        try:
+            if os.path.isdir(reports):
+                shutil.copytree(reports, os.path.join(staged.deploy, "mods", ".import_reports"))
+            written, all_missing = {}, {}
+            for m in ("mc2x-compat", "cveg"):
+                w, miss = extract_mod(args.source, staged.deploy, m, recipe["mods"].get(m, []))
+                sh = copy_shims(staged.deploy, m)
+                with open(os.path.join(staged.deploy, "mods", m, "mod.json"), "w", encoding="utf-8") as f:
+                    json.dump(MODJSON[m], f, indent=2)
+                written[m], all_missing[m] = w, miss
+                print(f"  {m}: extracted {len(w)} + {sh} shims, {len(miss)} missing-from-install")
+                for name in miss:
+                    print(f"WARNING: {m}: missing recipe file: {name}", file=sys.stderr)
+            if not os.path.isfile(os.path.join(staged.deploy, "mods", "mc2x-compat", "data/objects/object2.pak")):
+                print("ERROR: no data/objects/object2.pak produced for mc2x-compat", file=sys.stderr)
+                return 2
+            _write_provenance(staged, written, all_missing)
+            os.makedirs(os.path.join(args.deploy, "mods"), exist_ok=True)
+            for m in ("mc2x-compat", "cveg", ".import_reports"):
+                target = os.path.join(args.deploy, "mods", m)
+                backup = os.path.join(scratch, m)
+                existed = os.path.exists(target)
+                if existed:
+                    os.rename(target, backup)
+                actions.append((target, backup if existed else None))
+                os.rename(os.path.join(staged.deploy, "mods", m), target)
+        except Exception as exc:
+            for target, backup in reversed(actions):
+                if os.path.isdir(target):
+                    shutil.rmtree(target)
+                if backup is not None:
+                    os.replace(backup, target)
+            print(f"ERROR: import failed: {exc}", file=sys.stderr)
+            return 2
     return 0
+
 
 def _write_provenance(args, written, all_missing):
     import datetime
@@ -201,7 +238,7 @@ def _write_provenance(args, written, all_missing):
             rows.append([m, rel, size, sha, "import"])
         manifest.write_marker(args.deploy, m,
                               dict(base, mod=m, files_written=len(written[m]),
-                                   files_missing=len(all_missing[m]), files_skipped=0))
+                                   files_missing=len(all_missing[m]), missing=all_missing[m], files_skipped=0))
     manifest.write_reports(args.deploy, stamp,
                            dict(base, totals={m: len(written[m]) for m in written},
                                 missing={m: all_missing[m] for m in all_missing}),

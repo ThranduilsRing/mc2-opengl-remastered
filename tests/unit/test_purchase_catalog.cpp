@@ -48,6 +48,7 @@ TEST_CASE("purchase_catalog/installed assets mount without selecting a campaign"
     CHECK(mc2purchase::mountInstalled("", false, true));
     CHECK_FALSE(mc2purchase::mountInstalled("campaign", true, true));
     CHECK_FALSE(mc2purchase::mountInstalled("campaign", false, true));
+    CHECK_FALSE(mc2purchase::mountInstalled("dependency", false, true));
     CHECK_FALSE(mc2purchase::mountInstalled("assets", true, true));
     CHECK_FALSE(mc2purchase::mountInstalled("", false, false));
     CHECK(mc2purchase::identityMatches("pack-a", "Atlas", std::nullopt, "ATLAS"));
