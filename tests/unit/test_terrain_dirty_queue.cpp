@@ -434,3 +434,10 @@ TEST_CASE("terrain_dirty_queue/requeue reasons preserve visible lights and offsc
     CHECK(mc2::terrainRequeueReasons(false, false, false, false, false, true) == (1u << 4));
     CHECK(mc2::terrainRequeueReasons(true, false, true, true, true, true) == 31u);
 }
+
+TEST_CASE("terrain_dirty_queue/only a destroyed generator requeues the whole table")
+{
+    CHECK(mc2::terrainPowerLossRequeuesAll(true, true));
+    CHECK_FALSE(mc2::terrainPowerLossRequeuesAll(true, false));   // tree/building/turret kill: own mark only
+    CHECK_FALSE(mc2::terrainPowerLossRequeuesAll(false, true));   // generator damaged, not destroyed
+}

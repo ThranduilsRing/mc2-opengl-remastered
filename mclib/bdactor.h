@@ -408,6 +408,7 @@ class BldgAppearance : public ObjectAppearance
 		// STATIC-REG-PREWARM-QUEUE-1: off-screen light bake at mission load.
 		virtual bool prewarmStaticLightBake(Camera* cam) override;
 		virtual bool needsPrewarmBake() const override { return needsFullBakeNextFrame && staticReg.registered; }
+		void warmDestroyedTextures();   // mission load: bind the rubble shape's textures before the first kill needs them
 
 		~BldgAppearance (void)
 		{

@@ -645,7 +645,12 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 			terrainPresentationNightFactor = nightFactor;
 			terrainPresentationIsNight = isNight;
 		}
-		for (long objIndex : dirty.drain())
+		// Trigger evidence (terrain-walk-hitch-1): which invalidation fed this walk, plotted per frame.
+		const auto drained = dirty.drain();
+		TracyPlot("Terrain.Walk.Drained", static_cast<int64_t>(drained.size()));
+		TracyPlot("Terrain.Walk.MarkAllCum", static_cast<int64_t>(dirty.markAllCount()));
+		TracyPlot("Terrain.Walk.FullInvalidate", static_cast<int64_t>(fullInvalidate ? 1 : 0));
+		for (long objIndex : drained)
 		{
 			GameObjectPtr walkObj = objList[objIndex];
 			if (!walkObj || walkObj->isMover()) continue;

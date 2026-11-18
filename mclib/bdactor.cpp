@@ -10,6 +10,10 @@
 #include <bit>
 #include <cstdint>
 #include <utility>
+#include <mutex>
+#include <string>
+#include <unordered_map>
+#include "vfs.h"
 #include "texture_assets.h"
 #ifndef BDACTOR_H
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
@@ -47,8 +51,9 @@ uint32_t s_animStateToStateGesture = 0;
 // MC2_TEXMGR_KTX_PRIMARY is enabled). bdactor-only by design: mech/vehicle paint
 // (CPU_RGBA_REQUIRED, gos_LockTexture rewrite) must stay .tga and is NOT routed
 // here. See docs/texture-residency-registry-recon.md.
-bool textureOrKtxSidecarExists(mc2::czstring tgaPath)
+static bool textureOrKtxSidecarExistsUncached(mc2::czstring tgaPath)
 {
+	ZoneScopedN("Bldg.TextureExistsProbe");
 	if (fileExists(tgaPath))
 		return true;
 	const bool ktxPrimary = (1 != 0);   // default mode 1
@@ -62,6 +67,26 @@ bool textureOrKtxSidecarExists(mc2::czstring tgaPath)
 	if (dot && (!slash || dot > slash)) *dot = 0;
 	if (strlen(ktx) + 6 < sizeof(ktx)) strcat(ktx, ".ktx2");
 	return fileExists(ktx);
+}
+
+// fileExists opens the file through the VFS (disk or FST); the destroy path probed every texture of the rubble
+// shape for every building (6-25 ms on the presentation thread, one frame each; a missing texture costs a full
+// failed ladder every time). Both results are remembered per VFS index generation; vfs::noteWrite does not bump
+// the generation, so a texture dropped in after a remembered miss is seen only after a restart or mod reload.
+bool textureOrKtxSidecarExists(mc2::czstring tgaPath)
+{
+	static std::mutex memoMutex;
+	static std::unordered_map<std::string, bool> memo;
+	static uint64_t memoGeneration = ~uint64_t{0};
+	{
+		const std::lock_guard lock(memoMutex);
+		const uint64_t generation = mc2::vfs::generation();
+		if (generation != memoGeneration) { memo.clear(); memoGeneration = generation; }
+		if (memo.contains(tgaPath)) return memo.at(tgaPath);
+	}
+	const bool exists = textureOrKtxSidecarExistsUncached(tgaPath);
+	{ const std::lock_guard lock(memoMutex); if (mc2::vfs::generation() == memoGeneration) memo.insert_or_assign(tgaPath, exists); }
+	return exists;
 }
 
 bool staticRegIsNaturalBuildingName(mc2::czstring name)
@@ -417,6 +442,55 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 // in-game combat-destroy event is this function's OBJECT_STATUS_DESTROYED
 // transition, which runs long before that definition in file order.
 
+static void bldgBindShapeTextures(TG_MultiShape* shape)
+{
+	// Load the texture and store its handle.
+	for (long i=0;i<shape->GetNumTextures();i++)
+	{
+		char txmName[1024];
+		shape->GetTextureName(i,txmName,256);
+	
+		char texturePath[1024];
+		mc2::fmt::to_buf(texturePath, "{}{:d}" PATH_SEPARATOR "", mc2::fmt::safe(tglPath), mc2::fmt::as_i32(ObjectTextureSize));
+
+		FullPathFileName textureName;
+		textureName.init(texturePath,txmName,"");
+
+		if (textureOrKtxSidecarExists(textureName))
+		{
+			if (S_strnicmp(txmName,"a_",2) == 0)
+			{
+				DWORD gosTextureHandle = mc2::textures::load(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink);
+				gosASSERT(gosTextureHandle != 0xffffffff);
+				shape->SetTextureHandle(i,gosTextureHandle);
+				shape->SetTextureAlpha(i,true);
+			}
+			else
+			{
+				DWORD gosTextureHandle = mc2::textures::load(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink);
+				gosASSERT(gosTextureHandle != 0xffffffff);
+				shape->SetTextureHandle(i,gosTextureHandle);
+				shape->SetTextureAlpha(i,false);
+			}
+		}
+		else
+		{
+			//PAUSE(("Warning: %s texture name not found",textureName));
+			shape->SetTextureHandle(i,0xffffffff);
+		}
+	}
+}
+
+// The rubble shape's textures are first used when a building dies; loading them there cost 6-25 ms in the
+// presentation walk. Mission load binds them once per building (the texture store and probe cache make repeats cheap).
+void BldgAppearance::warmDestroyedTextures()
+{
+	TG_TypeMultiShape* dmgRender = appearType->getBldgDmgRenderShape();
+	if (!dmgRender) return;
+	std::unique_ptr<TG_MultiShape> scratch(dmgRender->CreateFrom());
+	if (scratch) bldgBindShapeTextures(scratch.get());
+}
+
 void BldgAppearance::setObjStatus (long oStatus)
 {
 	if (simulationOwned() && !simPresentationPass)
@@ -464,12 +538,14 @@ void BldgAppearance::setObjStatus (long oStatus)
 		// eventual outcome, no double-invalidate risk (the guard inside is
 		// `if (staticReg.registered ...)`).
 		if (oStatus == OBJECT_STATUS_DESTROYED) {
+			ZoneScopedN("Bldg.SetStatus.InvalidateStatic");
 			const bool wasRegistered = staticReg.registered;
 			invalidateStaticRegistration();
 		}
 
 		if ((oStatus == OBJECT_STATUS_DESTROYED) || (oStatus == OBJECT_STATUS_DISABLED))
 		{
+			ZoneScopedN("Bldg.SetStatus.ShapeSwap");
 			// Destroyed RENDER shape: the override's destroyed chain when cooked, else stock damage.
 			if (TG_TypeMultiShape* dmgRender = appearType->getBldgDmgRenderShape())
 			{
@@ -513,41 +589,8 @@ void BldgAppearance::setObjStatus (long oStatus)
 
 		if (bldgShape)
 		{
-			// Load the texture and store its handle.
-			for (long i=0;i<bldgShape->GetNumTextures();i++)
-			{
-				char txmName[1024];
-				bldgShape->GetTextureName(i,txmName,256);
-	
-				char texturePath[1024];
-				mc2::fmt::to_buf(texturePath, "{}{:d}" PATH_SEPARATOR "", mc2::fmt::safe(tglPath), mc2::fmt::as_i32(ObjectTextureSize));
-		
-				FullPathFileName textureName;
-				textureName.init(texturePath,txmName,"");
-		
-				if (textureOrKtxSidecarExists(textureName))
-				{
-					if (S_strnicmp(txmName,"a_",2) == 0)
-					{
-						DWORD gosTextureHandle = mc2::textures::load(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink);
-						gosASSERT(gosTextureHandle != 0xffffffff);
-						bldgShape->SetTextureHandle(i,gosTextureHandle);
-						bldgShape->SetTextureAlpha(i,true);
-					}
-					else
-					{
-						DWORD gosTextureHandle = mc2::textures::load(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink);
-						gosASSERT(gosTextureHandle != 0xffffffff);
-						bldgShape->SetTextureHandle(i,gosTextureHandle);
-						bldgShape->SetTextureAlpha(i,false);
-					}
-				}
-				else
-				{
-					//PAUSE(("Warning: %s texture name not found",textureName));
-					bldgShape->SetTextureHandle(i,0xffffffff);
-				}
-			}
+			ZoneScopedN("Bldg.SetStatus.Textures");
+			bldgBindShapeTextures(bldgShape);
 		}
 
 	}

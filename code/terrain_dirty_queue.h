@@ -40,6 +40,7 @@ class TerrainDirtyQueue {
     std::vector<unsigned char> renderResident_;
     bool lockedQuiescentReads_ = false;
     std::atomic<unsigned> quiescentViolations_{0};
+    std::atomic<unsigned> markAllCount_{0};
 public:
     void reset(std::size_t handleCount) {
         const std::lock_guard lock(mutex_);
@@ -111,6 +112,7 @@ public:
                 std::fputs("TerrainDirtyQueue: quiescent read while the sim job is in flight; falling back to locked reads\n", stderr);
         }
     }
+    unsigned markAllCount() const { return markAllCount_.load(std::memory_order_relaxed); }
     unsigned quiescentViolations() const { return quiescentViolations_.load(std::memory_order_relaxed); }
     // Render extract only: the sim is quiescent there (beginQuiescentRead), so the flag needs no lock.
     bool isRenderResidentQuiescent(long handle) {
@@ -133,6 +135,7 @@ public:
         return result;
     }
     void markAll() {
+        markAllCount_.fetch_add(1, std::memory_order_relaxed);
         const std::lock_guard lock(mutex_);
         for (std::size_t i = 1; i < marked_.size(); ++i) {
             resident_[i] = 0;
@@ -149,6 +152,10 @@ public:
 inline bool terrainNightFullInvalidate(float prevNightFactor, float nightFactor, bool prevIsNight, bool isNight) {
     return prevNightFactor < 0.0f || (nightFactor > 0.0f) != (prevNightFactor > 0.0f) || isNight != prevIsNight;
 }
+
+// Only a destroyed power generator changes objects outside its own block (lights out); any other kill dirties
+// itself alone. markAll() on every destruction re-walked the whole object table (~2 ms per kill on the box).
+inline bool terrainPowerLossRequeuesAll(bool destroyed, bool isPowerSource) { return destroyed && isPowerSource; }
 
 inline TerrainDirtyQueue& terrainDirtyQueue() {
     static TerrainDirtyQueue queue;
