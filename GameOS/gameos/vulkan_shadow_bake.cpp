@@ -902,7 +902,8 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
     recordedObjectGeneration_ = objectMapRecords_;
     cpuMs_ = std::chrono::duration<double, std::milli>(clk::now() - t0).count();
     warmReadMs_ = warmReadMs;
-    mc2_hitch2::stats().bakeCache.store(warm ? "hit" : "miss");
+    // Only a pass that records the mask consulted the cache; an object-map-only update has no cache read and must not overwrite the load's answer with "miss".
+    if (recordedMask_) mc2_hitch2::stats().bakeCache.store(warm ? "hit" : "miss");
     if (recordedMask_ && warm) {
         mc2::fmt::print_err("[SHADOW_BAKE] warm: mask {}^2 BC4 from the cook cache (key {:016x}, read {:.2f} ms), object map re-recorded, cpu_ms={:.2f}\n",
                             layout_.texels, mc2::fmt::as_u64(contentKey_), warmReadMs, cpuMs_);
