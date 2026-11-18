@@ -1542,13 +1542,15 @@ void prewarmMoverGpuTextures(GameObjectManager& objects)
 	ZoneScopedN("GameObjectManager::prewarmMoverGpuTextures"); MC2_LOAD_SCOPE("GameObjectManager::prewarmMoverGpuTextures");
 	// Stop when GPU headroom is short: the rest upload lazily with the first flush, in-view content first.
 	// Two passes: the player's own movers first, so a tripped guard never spends the headroom on undrawn enemies.
+	long done = 0;
 	for (int pass = 0; pass < 2; ++pass) {
 		const auto wanted = [pass](GameObject* o) { return (Team::home && o->getTeamId() == Team::home->getId()) == (pass == 0); };
 		for (long i = 0; objects.mechs && i < objects.numMechs && gpuMechPrewarmHasRoom(); ++i)
 			if (objects.mechs[i] && objects.mechs[i]->getExists() && wanted(objects.mechs[i]))
-				if (auto* app = dynamic_cast<Mech3DAppearance*>(objects.mechs[i]->getAppearance())) { app->prewarmGpuTextures(); graphics::pump_loading_events(); }
+				if (auto* app = dynamic_cast<Mech3DAppearance*>(objects.mechs[i]->getAppearance())) { app->prewarmGpuTextures(); ++done; graphics::pump_loading_events(); }
 		for (long i = 0; objects.vehicles && i < objects.numVehicles && gpuMechPrewarmHasRoom(); ++i)
 			if (objects.vehicles[i] && objects.vehicles[i]->getExists() && wanted(objects.vehicles[i]))
-				if (auto* app = dynamic_cast<GVAppearance*>(objects.vehicles[i]->getAppearance())) { app->prewarmGpuTextures(); graphics::pump_loading_events(); }
+				if (auto* app = dynamic_cast<GVAppearance*>(objects.vehicles[i]->getAppearance())) { app->prewarmGpuTextures(); ++done; graphics::pump_loading_events(); }
 	}
+	std::fprintf(stderr, "[MECH_PREWARM v1] prewarmed=%ld of mechs=%ld vehicles=%ld\n", done, objects.numMechs, objects.numVehicles);
 }
