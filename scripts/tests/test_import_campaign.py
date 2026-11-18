@@ -21,6 +21,15 @@ def table(path, payload=b"synthetic object", number=12):
     write_pak(str(path), [(NUL, b"")] * number + [(RAW, payload)])
 
 
+@pytest.fixture(autouse=True)
+def mc2x_script_module(monkeypatch):
+    # tools/mc2pak.py caches the tools/mc2x_import PACKAGE as sys.modules["mc2x_import"] in a shared xdist worker; the
+    # importer (and these tests) need the script module of the same name. Both are restored at teardown.
+    if not hasattr(sys.modules.get("mc2x_import"), "validate_source"):
+        monkeypatch.delitem(sys.modules, "mc2x_import", raising=False)
+    monkeypatch.syspath_prepend(str(ROOT / "tools/mc2x_import"))
+
+
 @pytest.fixture
 def sample(tmp_path):
     source, deploy = tmp_path / "download", tmp_path / "game"
