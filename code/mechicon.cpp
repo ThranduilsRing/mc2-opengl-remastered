@@ -723,9 +723,9 @@ void ForceGroupIcon::render()
 	drawRect( tmpRect, color);
 
 	char buffer[256];
-	strcpy( buffer, row.pilotName.c_str() );
-	for (int i = 0; i < strlen( buffer ); i++ )
-		CharUpper( buffer );
+	strncpy( buffer, row.pilotName.c_str(), sizeof(buffer) - 1 );
+	buffer[sizeof(buffer) - 1] = '\0';
+	CharUpper( buffer );
 
 	// Auto-shrink font size (rather than chop characters) when the pilot name
 	// is too wide for the slot. PALERIDEPSYCHO etc. render in full but at a
