@@ -633,7 +633,7 @@ class GameObject {
 			if (appearance) {
 				appearance->markTerrainPresentationDirty();
 				// A destroyed generator can power objects outside its own block; no other kill changes any other object.
-				if (mc2::terrainPowerLossRequeuesAll(powerChange, isPowerSource()) && appearance->terrainPresentationHandle >= 0) mc2::terrainDirtyQueue().markAll();
+				if (powerChange && appearance->terrainPresentationHandle >= 0 && mc2::terrainPowerLossRequeuesAll(powerChange, isPowerSource())) mc2::terrainDirtyQueue().markAll();
 			}
 		}
 		void markTerrainPoseDirty() {

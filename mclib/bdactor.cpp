@@ -71,8 +71,8 @@ static bool textureOrKtxSidecarExistsUncached(mc2::czstring tgaPath)
 
 // fileExists opens the file through the VFS (disk or FST); the destroy path probed every texture of the rubble
 // shape for every building (6-25 ms on the presentation thread, one frame each; a missing texture costs a full
-// failed ladder every time). The answer only changes when the VFS index is rebuilt, so both results are
-// remembered per index generation.
+// failed ladder every time). Both results are remembered per VFS index generation; vfs::noteWrite does not bump
+// the generation, so a texture dropped in after a remembered miss is seen only after a restart or mod reload.
 bool textureOrKtxSidecarExists(mc2::czstring tgaPath)
 {
 	static std::mutex memoMutex;
@@ -82,10 +82,10 @@ bool textureOrKtxSidecarExists(mc2::czstring tgaPath)
 		const std::lock_guard lock(memoMutex);
 		const uint64_t generation = mc2::vfs::generation();
 		if (generation != memoGeneration) { memo.clear(); memoGeneration = generation; }
-		if (const auto it = memo.find(tgaPath); it != memo.end()) return it->second;
+		if (memo.contains(tgaPath)) return memo.at(tgaPath);
 	}
 	const bool exists = textureOrKtxSidecarExistsUncached(tgaPath);
-	{ const std::lock_guard lock(memoMutex); memo.insert_or_assign(tgaPath, exists); }
+	{ const std::lock_guard lock(memoMutex); if (mc2::vfs::generation() == memoGeneration) memo.insert_or_assign(tgaPath, exists); }
 	return exists;
 }
 
