@@ -1552,5 +1552,5 @@ void prewarmMoverGpuTextures(GameObjectManager& objects)
 			if (objects.vehicles[i] && objects.vehicles[i]->getExists() && wanted(objects.vehicles[i]))
 				if (auto* app = dynamic_cast<GVAppearance*>(objects.vehicles[i]->getAppearance())) { app->prewarmGpuTextures(); ++done; graphics::pump_loading_events(); }
 	}
-	std::fprintf(stderr, "[MECH_PREWARM v1] prewarmed=%ld of mechs=%ld vehicles=%ld\n", done, objects.numMechs, objects.numVehicles);
+	if (mc2_diag::tagRequested("MECH_PREWARM")) std::fprintf(stderr, "[MECH_PREWARM v1] prewarmed=%ld of mechs=%ld vehicles=%ld\n", done, objects.numMechs, objects.numVehicles);
 }

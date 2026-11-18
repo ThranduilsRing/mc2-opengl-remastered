@@ -5,6 +5,7 @@
 #include "gos_mech_batcher_internal.h"
 #include "../../mclib/texture_assets.h"
 #include "mc2fmt.h"
+#include "diagnostic_trace.h"
 #include "../../mclib/battle_bench_sink.h"
 #include "ui_texture.h"
 #include "mech_run_cache.h"
@@ -472,7 +473,7 @@ bool gpuMechPrewarmHasRoom() {
     const uint64_t room = mc2vk::infra::headroom();
     if (room >= kReserve) return true;
     static bool s_logged = false;
-    if (!s_logged) { s_logged = true; mc2::fmt::print_err("[MECH_PREWARM v1] guard=tripped headroom_mb={:d} reserve_mb={:d}\n", mc2::fmt::as_u64(room >> 20), mc2::fmt::as_u64(kReserve >> 20)); }
+    if (!s_logged && mc2_diag::tagRequested("MECH_PREWARM")) { s_logged = true; mc2::fmt::print_err("[MECH_PREWARM v1] guard=tripped headroom_mb={:d} reserve_mb={:d}\n", mc2::fmt::as_u64(room >> 20), mc2::fmt::as_u64(kReserve >> 20)); }
     return false;
 }
 
