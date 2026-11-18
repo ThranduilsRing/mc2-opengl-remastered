@@ -369,9 +369,10 @@ struct ColorPropIsland : mc2vk::IslandState {
     mc2vk::OwnedBuffer materialBuf;
     mc2vk::OwnedShaderModule t1_vert, t1_frag;
     mc2vk::OwnedPipelineLayout playout;
-    mc2vk::OwnedPipeline t1_pipe;         // depthWrite ON GEQUAL, 2 outputs, no blend
+    mc2vk::OwnedPipeline t1_pipe;         // colour pass at depth EQUAL, no depth write (after the core depth pre-pass), 2 outputs, no blend
     mc2vk::OwnedPipeline t1_opaquePipe;   // t1_pipe with the FS discards compiled out (kOpaqueOnly), so early Z runs
     mc2vk::OwnedPipeline t1_fringePipe;   // PROP-COVERAGE-1: depth test only, MRT0 alpha-blended, MRT1 masked
+    mc2vk::OwnedPipeline t1_depthPipe, t1_depthDblPipe;   // core depth pre-pass (kDepthOnly: colour masked, depth write); t1_pipe/t1_dblPipe are the colour pass at depth EQUAL
     mc2vk::OwnedPipeline t1_dblPipe, t1_opaqueDblPipe, t1_fringeDblPipe;   // the three above with cull none and back-face lighting (kTwoSided)
     mc2vk::OwnedCommandPool cpool;   // one-shot command buffers only (allocated and freed per use)
     mc2vk::OwnedCommandPool slotPool[mc2vk::kMaxFramesInFlight];   // per-slot pools for cbuf: vkResetCommandPool instead of per-cb reset
@@ -1313,10 +1314,11 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         // Compile the small-EU preset without material detail/specular and long light walks.
         // Constant 2 (kOpaqueOnly) is 0 here; the opaque pipeline below sets it to 1.
         // Constant 11 (kTwoSided) is 0 for the single-sided pipelines, 1 for the double-sided variants; both stages read it.
-        int specData[4] = {mc2::options::lowCost() ? (mc2::options::current().baseQuality == 0 ? 0 : 1) : 2,
-                           static_cast<int>(s->propTexSlots), 0, 0};
-        const VkSpecializationMapEntry qualityEntry[4] = {{0, 0, sizeof(int)}, {1, sizeof(int), sizeof(int)}, {2, 2 * sizeof(int), sizeof(int)}, {11, 3 * sizeof(int), sizeof(int)}};
-        const VkSpecializationInfo qualityInfo{4, qualityEntry, sizeof(specData), specData};
+        int specData[5] = {mc2::options::lowCost() ? (mc2::options::current().baseQuality == 0 ? 0 : 1) : 2,
+                           static_cast<int>(s->propTexSlots), 0, 0, 0};
+        // Constant 15 (kDepthOnly) is 1 only for the core depth pre-pass pipelines.
+        const VkSpecializationMapEntry qualityEntry[5] = {{0, 0, sizeof(int)}, {1, sizeof(int), sizeof(int)}, {2, 2 * sizeof(int), sizeof(int)}, {11, 3 * sizeof(int), sizeof(int)}, {15, 4 * sizeof(int), sizeof(int)}};
+        const VkSpecializationInfo qualityInfo{5, qualityEntry, sizeof(specData), specData};
         stages[0].pSpecializationInfo = &qualityInfo;
         stages[1].pSpecializationInfo = &qualityInfo;
         VkGraphicsPipelineCreateInfo gp{};
@@ -1330,17 +1332,27 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         gp.pNext = &t1Rendering;
         gp.layout = s->playout.get(); gp.renderPass = VK_NULL_HANDLE; gp.subpass = 0;
         // opaque = FS discards compiled out (kOpaqueOnly) so early Z runs; dbl = cull none + back-face lighting (kTwoSided).
-        auto makePipe = [&](mc2vk::OwnedPipeline& dst, std::string_view name, bool opaque, bool dbl) {
+        auto makePipe = [&](mc2vk::OwnedPipeline& dst, std::string_view name, bool opaque, bool dbl, bool depthOnly = false) {
             rs.cullMode = dbl ? VK_CULL_MODE_NONE : VK_CULL_MODE_BACK_BIT;
-            specData[2] = opaque ? 1 : 0; specData[3] = dbl ? 1 : 0;
+            specData[2] = opaque ? 1 : 0; specData[3] = dbl ? 1 : 0; specData[4] = depthOnly ? 1 : 0;
             if (!mc2vk::create(dst, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
                 vlog("TIER-1 %s vkCreateGraphicsPipelines failed.", name.data()); setFallback("tier1_pipeline_failed"); return false;
             }
             mc2vk::nameObject(s->device, dst.get(), name.data());
             return true;
         };
-        if (!makePipe(s->t1_pipe, "colorprop.tier1Pipe", false, false) || !makePipe(s->t1_dblPipe, "colorprop.tier1DblPipe", false, true) ||
-            !makePipe(s->t1_opaquePipe, "colorprop.tier1OpaquePipe", true, false) || !makePipe(s->t1_opaqueDblPipe, "colorprop.tier1OpaqueDblPipe", true, true)) return false;
+        if (!makePipe(s->t1_opaquePipe, "colorprop.tier1OpaquePipe", true, false) || !makePipe(s->t1_opaqueDblPipe, "colorprop.tier1OpaqueDblPipe", true, true)) return false;
+        {   // Core depth pre-pass: the colour pass's discards and coverage cut, depth written, every colour output masked.
+            const VkColorComponentFlags masks[3] = {cba[0].colorWriteMask, cba[1].colorWriteMask, cba[2].colorWriteMask};
+            for (auto& a : cba) a.colorWriteMask = 0;
+            const bool ok = makePipe(s->t1_depthPipe, "colorprop.tier1DepthPipe", false, false, true) && makePipe(s->t1_depthDblPipe, "colorprop.tier1DepthDblPipe", false, true, true);
+            for (int k = 0; k < 3; ++k) cba[k].colorWriteMask = masks[k];
+            if (!ok) return false;
+        }
+        // Core colour pass: only the fragment that won the pre-pass depth (EQUAL, no write); the same discards, so a cut fragment never shades.
+        ds.depthWriteEnable = VK_FALSE; ds.depthCompareOp = VK_COMPARE_OP_EQUAL;
+        if (!makePipe(s->t1_pipe, "colorprop.tier1Pipe", false, false) || !makePipe(s->t1_dblPipe, "colorprop.tier1DblPipe", false, true)) return false;
+        ds.depthCompareOp = VK_COMPARE_OP_GREATER_OR_EQUAL;
 
         // PROP-COVERAGE-1 fringe pipeline: the second pass over the alpha-tested packets that
         // blends the coverage the core pass cut (see color_prop_tier1.frag). Same shaders and
@@ -1348,7 +1360,6 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         // over with the destination alpha kept, MRT1 (normal + shadow class, not blendable)
         // write-masked. Per-attachment state relies on independentBlend, which the device
         // profile requires.
-        ds.depthWriteEnable = VK_FALSE;
         cba[0].blendEnable = VK_TRUE;
         cba[0].srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
         cba[0].dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
@@ -1754,7 +1765,7 @@ struct PropRecPlan {
     bool logPlanarRecord = false;
     uint64_t frame = 0;
     uint32_t mapGeneration = 0;
-    VkImageView views[3], depthView; VkFormat depthFmt; VkPipeline cullPipe, opaquePipe, corePipe, fringePipe, opaqueDblPipe, coreDblPipe, fringeDblPipe;
+    VkImageView views[3], depthView; VkFormat depthFmt; VkPipeline cullPipe, opaquePipe, corePipe, fringePipe, opaqueDblPipe, coreDblPipe, fringeDblPipe, depthPipe = VK_NULL_HANDLE, depthDblPipe = VK_NULL_HANDLE;
     VkPipelineLayout cullLayout, playout; VkDescriptorSet set, groundSet; VkBuffer vbo, ibo, cmdBuf;
     VkDeviceAddress pktAddr; uint32_t nDyn, dynOffsets[3], groundOffsets[4], runCount, drawLimit, listStart[kListCount + 1], counts[kListCount];
     float jx, jy; int w, h; bool hzbCulled;
@@ -1823,7 +1834,11 @@ static bool record_props_cmds(const PropRecPlan& plan, VkCommandBuffer cb) {
         for (uint32_t d = 0; d < 2; ++d) drawList(d ? plan.opaqueDblPipe : plan.opaquePipe, plan.listStart[kListOpaque + d], plan.counts[kListOpaque + d], kListOpaque + d);
     }
     {
-        MC2_VK_GPU_SCOPE(coreScope, cb, "VKIsl.Props.Core");
+        MC2_VK_GPU_SCOPE(coreScope, cb, plan.embedded ? "VKIsl.Props.Refl.Core" : "VKIsl.Props.Core");
+        if (plan.depthPipe) {   // depth pre-pass over both core lists, then the colour pass below shades only the surviving fragment
+            MC2_VK_GPU_SCOPE(depthScope, cb, "VKIsl.Props.Core.Depth");
+            for (uint32_t d = 0; d < 2; ++d) drawList(d ? plan.depthDblPipe : plan.depthPipe, plan.listStart[kListCore + d], plan.counts[kListCore + d], kListCore + d);
+        }
         if (plan.coreStats) vkCmdBeginQuery(cb, plan.coreStats, 0, 0);
         for (uint32_t d = 0; d < 2; ++d) {
             const VkPipeline pipe = d ? plan.coreDblPipe : plan.corePipe;
@@ -2076,6 +2091,7 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std
     plan.depthView = reinterpret_cast<VkImageResource*>(s->t1_depthRes)->view.get(); plan.depthFmt = s->t1_depthFmt;
     plan.cullPipe = s->cullPipe.get(); plan.opaquePipe = s->t1_opaquePipe.get(); plan.corePipe = s->t1_pipe.get(); plan.fringePipe = s->t1_fringePipe.get();
     plan.opaqueDblPipe = s->t1_opaqueDblPipe.get(); plan.coreDblPipe = s->t1_dblPipe.get(); plan.fringeDblPipe = s->t1_fringeDblPipe.get();
+    plan.depthPipe = s->t1_depthPipe.get(); plan.depthDblPipe = s->t1_depthDblPipe.get();
     plan.cullLayout = s->cullLayout.get(); plan.playout = s->playout.get();
     plan.set = s->set[par]; plan.groundSet = s->groundLighting.set(par);
     const auto& geometry = geometrySource(s);
@@ -2097,6 +2113,7 @@ static bool record_props(const PropRecordIn& in, unsigned long& typeRunsOut, std
         plan.depthView = target->depth; plan.depthFmt = VK_FORMAT_D32_SFLOAT;
         plan.opaquePipe = s->planarOpaquePipe.get(); plan.corePipe = s->planarCorePipe.get(); plan.fringePipe = s->planarFringePipe.get();
         plan.opaqueDblPipe = s->planarOpaqueDblPipe.get(); plan.coreDblPipe = s->planarCoreDblPipe.get(); plan.fringeDblPipe = s->planarFringeDblPipe.get();
+        plan.depthPipe = plan.depthDblPipe = VK_NULL_HANDLE;   // the reflection Core keeps its single GREATER+write pass (follow-up)
         plan.jx = plan.jy = 0;
     }
 
@@ -2210,7 +2227,7 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
     // No cached slot data is overwritten until BOTH submissions above retire.
     if (!target && propPerfGateRequested()) {
         if (s->coreStats[par]) {
-            uint64_t values[3]{}; // result order follows the statistic bit order: IA primitives, clipping primitives, FS invocations
+            uint64_t values[3]{}; // result order follows the statistic bit order: IA primitives, clipping primitives, FS invocations (colour pass only: fragment_invocations excludes the depth pre-pass)
             if (s->coreStatsRecorded[par] && vkGetQueryPoolResults(s->device, s->coreStats[par].get(), 0, 1, sizeof(values), values, sizeof(values), VK_QUERY_RESULT_64_BIT) == VK_SUCCESS &&
                 g_mc2RenderFrame % 120 == 0 && mc2_diag::tagRequested("PROP_CORE_STATS"))
                 mc2::fmt::print_err("[PROP_CORE_STATS] frame={} slot={} ia_primitives={} raster_triangles={} fragment_invocations={} invocations_per_pixel={:.3f}\n",

@@ -31,7 +31,7 @@
    "mc2_10": {
     "draws.mech_depth": 0.05,
     "draws.mech_color": 0.05,
-    "draws.props": 4.0,
+    "draws.props": 4.3,
     "draws.terrain": 46.0,
     "draws.water": 2.0,
     "draws.legacy": 2.0,

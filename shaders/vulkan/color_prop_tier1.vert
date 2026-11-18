@@ -94,6 +94,8 @@ flat layout(location = 16) out uvec3 vTeam;   // team paint 0x00RRGGBB x3 (red, 
 flat layout(location = 17) out uint vPacketIdx; // this draw's PropPacket row (packetBase + gl_DrawID)
 // 1 = double-sided pipeline: the lighting runs for the back face too. 0 = single-sided (CULL_BACK): front lighting only.
 layout(constant_id = 11) const int kTwoSided = 1;
+// The core depth pre-pass and the colour pass (depth EQUAL) must produce bit-identical depth.
+invariant gl_Position;
 layout(location = 18) out vec3 vBackNormalStuff;
 layout(location = 19) out vec3 vBackArgb;
 

@@ -63,6 +63,8 @@ layout(constant_id = 0) const int kBaseQuality = 2; // Potato / Low / Medium+Hig
 // fringe rows, so every discard below is dead for them. Compiling the discards out lets the driver run early Z.
 layout(constant_id = 2) const int kOpaqueOnly = 0;
 layout(constant_id = 10) const int kPlanarReflection = 0;
+// 1 = the core depth pre-pass pipeline: the same discards and coverage cut as the colour pass, then no shading (colour writes are masked).
+layout(constant_id = 15) const int kDepthOnly = 0;
 // 1 = the double-sided pipeline (cull none; the packet's material has kDoubleSided): back faces are shaded with the back-face lighting.
 // 0 = the single-sided pipelines (CULL_BACK): only front faces reach the fragment shader, so there is no back-face branch or discard.
 layout(constant_id = 11) const int kTwoSided = 1;
@@ -255,6 +257,7 @@ void main() {
     }
     // PROP-COVERAGE-1: an opaque (non-alpha-tested) fragment belongs to the core pass only.
     if (kOpaqueOnly == 0 && uPacket.coverageFringePass != 0 && !alphaTestClass) discard;
+    if (kDepthOnly != 0) return;
     // One pool walk for both albedo groups (was inlined once per branch), after the fringe discard:
     // halves the shader's code and skips the walk for fragments the fringe pass drops.
     if (haveAlbedo) {
