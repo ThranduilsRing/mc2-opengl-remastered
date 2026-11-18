@@ -46,6 +46,7 @@ const std::unordered_set<std::string>& knownTags() {
         "CONFIG",
         "ENV",
         "FIRST60",  // [FIRST60 v1]: frame-time summary of the first 60 frames after mission_ready (gos_smoke.cpp). Opt-in; scripts/smoke_lib/via_menu.py sets it.
+        "MECH_PREWARM", // [MECH_PREWARM v1]: movers prewarmed at load and the one-shot guard trip line (objmgr_io.cpp, gos_mech_batcher_flush.cpp). Opt-in.
         "GRAVEYARD", // [GRAVEYARD v1]: graveyard drain/command counter every 10th non-empty drain (tick_commit.cpp). Opt-in; the video_decode graveyard row sets it.
         "HITCH",    // [HITCH v2]: one line per frame over 2x the running median (worst scopes, waitIdle/pipeline/upload/bake/sim-join deltas) plus the first waitIdle callers after mission_ready. Opt-in.
         "BUILD",

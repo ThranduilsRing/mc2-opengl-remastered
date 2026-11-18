@@ -653,6 +653,8 @@ class Mech3DAppearance: public ObjectAppearance
         static void beginSimPoseBatch (void);
         static void flushSimPoseBatch (void);
 
+		void prewarmGpuTextures (void);   // mission load: upload the textures the first GPU mech submit would
+
 		virtual void setPaintScheme (void);
 
 		virtual void setPaintScheme (DWORD red, DWORD green, DWORD blue);

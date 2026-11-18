@@ -5,10 +5,12 @@
 #include "gos_mech_batcher_internal.h"
 #include "../../mclib/texture_assets.h"
 #include "mc2fmt.h"
+#include "diagnostic_trace.h"
 #include "../../mclib/battle_bench_sink.h"
 #include "ui_texture.h"
 #include "mech_run_cache.h"
 #include "gos_profiler.h"
+#include "vk_render_infra.h"
 
 // ---------------------------------------------------------------------------
 // submitActor (Task 6) — bone staging + texture capture
@@ -462,6 +464,25 @@ void MechFlushFrame::validateMaterialTable() {
             MC2_DIAG_FPUTS(buf, stderr);
         }
     }
+}
+
+bool gpuMechPrewarmHasRoom() {
+    // Left free for terrain, props and the first frames. Inert on Low/Medium: their budget (shadowQuality 0: 512 MiB) is below this reserve,
+    // so mover prewarm never runs there and the textures upload lazily with the first flush.
+    constexpr uint64_t kReserve = 768ull << 20;
+    const uint64_t room = mc2vk::infra::headroom();
+    static bool s_first = true;
+    if (s_first && mc2_diag::tagRequested("MECH_PREWARM")) { s_first = false; mc2::fmt::print_err("[MECH_PREWARM v1] first_check headroom_mb={:d} reserve_mb={:d}\n", mc2::fmt::as_u64(room >> 20), mc2::fmt::as_u64(kReserve >> 20)); }
+    if (room >= kReserve) return true;
+    static bool s_logged = false;
+    if (!s_logged && mc2_diag::tagRequested("MECH_PREWARM")) { s_logged = true; mc2::fmt::print_err("[MECH_PREWARM v1] guard=tripped headroom_mb={:d} reserve_mb={:d}\n", mc2::fmt::as_u64(room >> 20), mc2::fmt::as_u64(kReserve >> 20)); }
+    return false;
+}
+
+void gpuMechPrewarmTextureSlot(uint32_t slot) {
+    if (slot == 0u || slot == UINT32_MAX || !mc2::textures::ready()) return;
+    ZoneScopedN("DSP.MechPack.PrewarmTexture");
+    if (const DWORD handle = mc2::textures::sourceId(slot)) gos_GetMaterialTextureId(handle);
 }
 
 // One run per draw call, with the LIVE slot-0 paint texture (and the per-type AO / normal maps) resolved this frame.

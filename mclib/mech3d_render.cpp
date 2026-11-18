@@ -1111,6 +1111,14 @@ long Mech3DAppearance::render (long depthFixup)
  	return NO_ERR;
 }
 
+// The slots submit() hands the batcher (paint, AO/ORM, normal), realized now so the first flush finds them uploaded.
+void Mech3DAppearance::prewarmGpuTextures (void)
+{
+	gpuMechPrewarmTextureSlot(static_cast<uint32_t>(localTextureHandle));
+	gpuMechPrewarmTextureSlot(stockPbr.orm ? stockPbr.orm.get() : (aoValid ? static_cast<uint32_t>(aoTextureHandle) : 0u));
+	gpuMechPrewarmTextureSlot(stockPbr.normal ? stockPbr.normal.get() : (normalValid ? static_cast<uint32_t>(normalTextureHandle) : 0u));
+}
+
 TG_MultiShape* Mech3DAppearance::previewShape (void)
 {
 	if (!mechShape)

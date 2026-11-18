@@ -4,6 +4,7 @@
 #include "mc2fmt.h"
 #include "net/runtime.h"
 #include "sim_speed.h"
+#include "static_prop_prewarm.h"
 #include "../GameOS/gameos/gos_visual_capture.h"
 #include "../GameOS/gameos/ui_texture.h"
 #include "../mclib/texture_assets.h"
@@ -11,6 +12,20 @@
 
 
 
+
+// The sim-speed button frame sheet. A static so the first call loads it; prewarmHudSheets() makes that call at mission load.
+static DWORD simSpeedFrameSource()
+{
+	static const auto frame = mc2::textures::load(
+		"data\\art\\gui\\MCUI_High3.png", gos_Texture_Alpha, 0, 0, 0x1);
+	return frame;
+}
+
+void prewarmHudSheets()
+{
+	ZoneScopedN("HudSheets.Prewarm");
+	gos_GetUiTextureId(mc2::textures::sourceId(simSpeedFrameSource()));
+}
 
 bool ControlGui::hudTabsGateOn() const
 {
@@ -123,9 +138,8 @@ void ControlGui::renderSimSpeedButton()
 		(selected ? ControlButton::PRESSED : (hover ? ControlButton::AMBIGUOUS : ControlButton::ENABLED));
 	// The repacked atlas omits the unused empty row at y=144. Use the stock
 	// Info command's frame at y=0, extending its side stripes over its icon.
-	static const auto frame = mc2::textures::load(
-		"data\\art\\gui\\MCUI_High3.png", gos_Texture_Alpha, 0, 0, 0x1);
-	const float u = static_cast<float>((disabled ? 2 : selected ? 1 : 0) * 42);
+	const auto frame = simSpeedFrameSource();
+	const float u =static_cast<float>((disabled ? 2 : selected ? 1 : 0) * 42);
 	const auto texture = gos_GetUiTextureId(mc2::textures::sourceId(frame));
 	constexpr float edges[] = {0.f, 12.f, 30.f, 42.f};
 	constexpr float sourceLeft[] = {0.f, 8.f, 30.f};

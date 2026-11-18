@@ -13,6 +13,8 @@
 #include <span>
 #include <map>
 #include "objmgr_internal.h"
+#include "mech3d.h"
+#include "gvactor.h"
 #include "static_prop_prewarm.h"
 #include "terrain_dirty_queue.h"
 #include "saved_objects_check.h"
@@ -22,6 +24,8 @@
 #include "mc2fmt.h"
 #include "../GameOS/gameos/static_caster_set.h"
 #include "../GameOS/gameos/load_scope.h"
+#include "../GameOS/gameos/gos_render.h"
+#include "../GameOS/gameos/gos_mech_batcher.h"
 
 extern "C" void mission_load_pump();
 
@@ -1541,4 +1545,24 @@ bool GameObjectManager::restoreAnimationState(const std::vector<uint8_t>& bytes,
     mc2RestoreSimRngState(state); RestoreSimRandomDraws(draws);
     mc2_anim_rng::restore(animState, animDraws);
     return true;
+}
+
+// Mission load: the first GPU mech flush uploads every mover's paint/AO/normal textures inside the first drawn frame
+// (110-256 ms on mc2_01/mc2_24). Realize them behind the loading screen; the lazy path stays as the fallback.
+void prewarmMoverGpuTextures(GameObjectManager& objects)
+{
+	ZoneScopedN("GameObjectManager::prewarmMoverGpuTextures"); MC2_LOAD_SCOPE("GameObjectManager::prewarmMoverGpuTextures");
+	// Stop when GPU headroom is short: the rest upload lazily with the first flush, in-view content first.
+	// Two passes: the player's own movers first, so a tripped guard never spends the headroom on undrawn enemies.
+	long done = 0;
+	for (int pass = 0; pass < 2; ++pass) {
+		const auto wanted = [pass](GameObject* o) { return (Team::home && o->getTeamId() == Team::home->getId()) == (pass == 0); };
+		for (long i = 0; objects.mechs && i < objects.numMechs && gpuMechPrewarmHasRoom(); ++i)
+			if (objects.mechs[i] && objects.mechs[i]->getExists() && wanted(objects.mechs[i]))
+				if (auto* app = dynamic_cast<Mech3DAppearance*>(objects.mechs[i]->getAppearance())) { app->prewarmGpuTextures(); ++done; graphics::pump_loading_events(); }
+		for (long i = 0; objects.vehicles && i < objects.numVehicles && gpuMechPrewarmHasRoom(); ++i)
+			if (objects.vehicles[i] && objects.vehicles[i]->getExists() && wanted(objects.vehicles[i]))
+				if (auto* app = dynamic_cast<GVAppearance*>(objects.vehicles[i]->getAppearance())) { app->prewarmGpuTextures(); ++done; graphics::pump_loading_events(); }
+	}
+	if (mc2_diag::tagRequested("MECH_PREWARM")) std::fprintf(stderr, "[MECH_PREWARM v1] prewarmed=%ld of mechs=%ld vehicles=%ld\n", done, objects.numMechs, objects.numVehicles);
 }
