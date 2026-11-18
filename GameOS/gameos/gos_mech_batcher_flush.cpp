@@ -471,6 +471,8 @@ bool gpuMechPrewarmHasRoom() {
     // so mover prewarm never runs there and the textures upload lazily with the first flush.
     constexpr uint64_t kReserve = 768ull << 20;
     const uint64_t room = mc2vk::infra::headroom();
+    static bool s_first = true;
+    if (s_first && mc2_diag::tagRequested("MECH_PREWARM")) { s_first = false; mc2::fmt::print_err("[MECH_PREWARM v1] first_check headroom_mb={:d} reserve_mb={:d}\n", mc2::fmt::as_u64(room >> 20), mc2::fmt::as_u64(kReserve >> 20)); }
     if (room >= kReserve) return true;
     static bool s_logged = false;
     if (!s_logged && mc2_diag::tagRequested("MECH_PREWARM")) { s_logged = true; mc2::fmt::print_err("[MECH_PREWARM v1] guard=tripped headroom_mb={:d} reserve_mb={:d}\n", mc2::fmt::as_u64(room >> 20), mc2::fmt::as_u64(kReserve >> 20)); }
