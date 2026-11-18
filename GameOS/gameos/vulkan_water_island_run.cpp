@@ -256,12 +256,16 @@ extern "C" int mc2_vk_water_island_run(
     // descriptor here: ensure_hdri device-idles before its descriptor update
     // (VK-WATER-FENCE-DEFER-1 — the old "previous frame's fence was waited
     // inline" guarantee is gone under the deferred retire).
-    if (!ensure_hdri(s, hdriGeneration)) {
+    bool hdriOk;
+    { ZoneScopedN("VKIsl.Water.EnsureHdri"); hdriOk = ensure_hdri(s, hdriGeneration); }
+    if (!hdriOk) {
         setFallback("hdri_binding_setup_failed"); s->disabled = true; return 0;
     }
 
     // VK-PARITY-WATER-SHORE-1: shore height/mask copy-once import (binding 3/4).
-    if (!ensure_shore(s)) {
+    bool shoreOk;
+    { ZoneScopedN("VKIsl.Water.EnsureShore"); shoreOk = ensure_shore(s); }
+    if (!shoreOk) {
         setFallback("shore_binding_setup_failed"); s->disabled = true; return 0;
     }
 
@@ -388,7 +392,9 @@ extern "C" int mc2_vk_water_island_run(
     s->maskView = (mc2_vk_shadow_island_bake_ready() && s->hdriSampler)
                       ? reinterpret_cast<VkImageView>(mc2_vk_shadow_island_get_bake_mask_view()) : VK_NULL_HANDLE;
     // The shore rebake rewrites every descriptor, so it runs after the mask refresh.
-    if (!ensure_shore_surface(s)) { setFallback("shore_surface_bake_failed"); s->disabled = true; return 0; }
+    bool shoreSurfOk;
+    { ZoneScopedN("VKIsl.Water.ShoreSurface"); shoreSurfOk = ensure_shore_surface(s); }
+    if (!shoreSurfOk) { setFallback("shore_surface_bake_failed"); s->disabled = true; return 0; }
 
     // Binding 6 of slot `par` must name the GPU-produced thin buffer (the island starts on the placeholder thinBuf until the native producers exist).
     if (!s->thinNative[par]) {
@@ -506,8 +512,12 @@ extern "C" int mc2_vk_water_island_run(
     }
     }   // VK-ISLAND-TRACY-1: close VKIsl.Water.Feed
 
-    if (!prepare_wave_packets(s, par)) { setFallback("wave_packet_bake_failed"); return 0; }
-    if (!prepare_reflect_bake(s, nat->waterElevation)) setFallback("reflection_bake_failed");
+    bool wavesOk;
+    { ZoneScopedN("VKIsl.Water.WavePackets"); wavesOk = prepare_wave_packets(s, par); }
+    if (!wavesOk) { setFallback("wave_packet_bake_failed"); return 0; }
+    bool bakeOk;
+    { ZoneScopedN("VKIsl.Water.ReflectBake"); bakeOk = prepare_reflect_bake(s, nat->waterElevation); }
+    if (!bakeOk) setFallback("reflection_bake_failed");
     if (reflect_bake_active()) reflectThisFrame = false;   // the bake replaces the live pass below High
     bind_reflect_bake(s, par, reinterpret_cast<WaterFsParams*>(static_cast<uint8_t*>(uboSpan.ptr) + fsUboOff));
     s->planarTerrainRecord = {}; s->planarPropsRecord = {};
@@ -577,7 +587,9 @@ extern "C" int mc2_vk_water_island_run(
             if (reflectThisFrame) {
                 mc2vk::gpuprof::noteWaterReflection(static_cast<uint32_t>(w), static_cast<uint32_t>(h));
             }
-            if (!s->native->record(cb, par, snap, wf, false)) {
+            bool nativeRecOk;
+            { ZoneScopedN("VKIsl.Water.NativeRecord"); nativeRecOk = s->native->record(cb, par, snap, wf, false); }
+            if (!nativeRecOk) {
                 // record() fails only before it records a command: close the begun buffer so it is never left open, then fail soft.
                 vkEndCommandBuffer(cb);
                 setFallback("native_record_failed"); s->disabled = true; return 0;
@@ -589,7 +601,9 @@ extern "C" int mc2_vk_water_island_run(
         const uint32_t uboOffsets[2] = {static_cast<uint32_t>(uboSpan.offset), static_cast<uint32_t>(uboSpan.offset + fsUboOff)};
         const auto maskGroundSet=s->groundLighting.set(par);
         vkCmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,s->playout.get(),1,1,&maskGroundSet,4,ground->offsets.data());
-        if (!record_reflection(s,cb,reflectThisFrame,par,uboOffsets)) {
+        bool reflRecOk;
+        { ZoneScopedN("VKIsl.Water.RecordReflection"); reflRecOk = record_reflection(s,cb,reflectThisFrame,par,uboOffsets); }
+        if (!reflRecOk) {
             vkEndCommandBuffer(cb); setFallback("planar_record_failed"); s->disabled = true; return 0;
         }
         if (profileMode >= 0) {
