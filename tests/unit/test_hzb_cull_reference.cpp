@@ -301,3 +301,23 @@ TEST_CASE("hzb ref: the 1/256 px grid rounds outward and tiny rejection never ap
     Pyramid empty(0.0f);
     CHECK_FALSE(hidden(project(boxNdc(0.5f, 1.5f, 0.0f, 0.001f)), empty));   // crosses x = 1: kept whole, never tiny-culled
 }
+
+TEST_CASE("hzb ref: side planes reject near-straddling boxes (props-cull-sideplanes)") {
+    Pyramid py(0.9f);
+    Mat m = flatMatrix();
+    m.m[2 * 4 + 3] = 1.0f; m.m[3 * 4 + 3] = 0.0f;   // clip.w = rz: rz -1..1 crosses the near plane
+    // Fully below the bottom plane (every corner has w + y < 0), one corner behind the eye: hidden, not kept.
+    for (const auto& b : {boxNdc(0, .1f, -5, -4, -1, 1), boxNdc(0, .1f, 4, 5, -1, 1),
+                          boxNdc(4, 5, 0, .1f, -1, 1), boxNdc(-5, -4, 0, .1f, -1, 1)}) {
+        const auto p = project(b, m);
+        CHECK(p.keep == 0);
+        CHECK(p.tiny == 1);
+    }
+    // Straddling near and inside the frustum: kept. Straddling near and ONE side plane: kept.
+    CHECK(project(boxNdc(0, .1f, 0, .1f, -1, 1), m).keep == 1);
+    CHECK(project(boxNdc(0, .5f, -2, 0.5f, -1, 1), m).keep == 1);
+    CHECK(project(boxNdc(.5f, 2, 0, .1f, -1, 1), m).keep == 1);
+    CHECK(project(boxNdc(-2, -.5f, 0, .1f, -1, 1), m).keep == 1);
+    // Just outside the plane by less than the 4 px pad stays kept; leaf sway widens the pad.
+    CHECK(project(boxNdc(0, .1f, -1.05f, -1.01f, -1, 1), m).keep == 1);
+}

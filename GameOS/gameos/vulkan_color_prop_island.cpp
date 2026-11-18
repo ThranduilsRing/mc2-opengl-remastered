@@ -2210,18 +2210,18 @@ static int run_props(int w, int h, ColorPropIsland* supplied = nullptr,
     // No cached slot data is overwritten until BOTH submissions above retire.
     if (!target && propPerfGateRequested()) {
         if (s->coreStats[par]) {
-            uint64_t values[2]{};
+            uint64_t values[3]{}; // result order follows the statistic bit order: IA primitives, clipping primitives, FS invocations
             if (s->coreStatsRecorded[par] && vkGetQueryPoolResults(s->device, s->coreStats[par].get(), 0, 1, sizeof(values), values, sizeof(values), VK_QUERY_RESULT_64_BIT) == VK_SUCCESS &&
                 g_mc2RenderFrame % 120 == 0 && mc2_diag::tagRequested("PROP_CORE_STATS"))
-                mc2::fmt::print_err("[PROP_CORE_STATS] frame={} slot={} raster_triangles={} fragment_invocations={} invocations_per_pixel={:.3f}\n",
-                    g_mc2RenderFrame, par, values[0], values[1], static_cast<double>(values[1]) / (w * static_cast<double>(h)));
+                mc2::fmt::print_err("[PROP_CORE_STATS] frame={} slot={} ia_primitives={} raster_triangles={} fragment_invocations={} invocations_per_pixel={:.3f}\n",
+                    g_mc2RenderFrame, par, values[0], values[1], values[2], static_cast<double>(values[2]) / (w * static_cast<double>(h)));
         } else {
             VkPhysicalDeviceFeatures features{};
             vkGetPhysicalDeviceFeatures(s->phys, &features);
             if (features.pipelineStatisticsQuery) {
                 VkQueryPoolCreateInfo qi{VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO};
                 qi.queryType = VK_QUERY_TYPE_PIPELINE_STATISTICS; qi.queryCount = 1;
-                qi.pipelineStatistics = VK_QUERY_PIPELINE_STATISTIC_CLIPPING_PRIMITIVES_BIT | VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT;
+                qi.pipelineStatistics = VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT | VK_QUERY_PIPELINE_STATISTIC_CLIPPING_PRIMITIVES_BIT | VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT;
                 VkQueryPool pool = VK_NULL_HANDLE;
                 if (vkCreateQueryPool(s->device, &qi, nullptr, &pool) == VK_SUCCESS) s->coreStats[par] = mc2vk::OwnedQueryPool(s->device, pool);
             }
