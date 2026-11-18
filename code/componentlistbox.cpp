@@ -69,8 +69,9 @@ ComponentListItem::ComponentListItem( LogisticsComponent* pComp )
 		outline.resize(outline.width(), outline.height()+deltaY);
 		iconOutline.resize(iconOutline.width()+deltaX, iconOutline.height()+deltaY);
 
-		disabledText.resize( outline.width(), outline.height() );
-		disabledText.moveTo( 0, 0 );
+		// Bottom strip of the cell: the warning (HEAT EXCEEDED) must not overlap the component name at the top.
+		disabledText.resize( outline.width(), 14 );
+		disabledText.moveTo( 0, outline.height() - 15 );
 		disabledText.alignment = 3;
 
 

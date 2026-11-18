@@ -311,6 +311,12 @@ TEST_CASE("mechlab loc U10: view state resets scrolls and re-keys the doll icon"
     CHECK(v.needsIcon("hunchback"));
 }
 
+TEST_CASE("layout/armor warnings: untouched stock none, edited layout or armor shows them") {
+    CHECK_FALSE(mc2::mechlab_loc::showLayoutArmorWarnings(false, false));
+    CHECK(mc2::mechlab_loc::showLayoutArmorWarnings(true, false));
+    CHECK(mc2::mechlab_loc::showLayoutArmorWarnings(false, true));
+}
+
 TEST_CASE("overweight warning is package-only; stock Bushwacker 56/55 is not flagged") {
     CHECK_FALSE(mc2::mechlab_loc::overweight(false, 38.f, 0.f));
     CHECK(mc2::mechlab_loc::overweight(true, 34.5f, 34.f));

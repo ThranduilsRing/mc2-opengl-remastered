@@ -2641,8 +2641,7 @@ void MechLabScreen::drawLocationView(float tbSx, float tbSy, float tbOx, float t
 			}
 		}
 		const float statY = r.y+(ml::torso(p) ? 38.f : 25.f);
-		const int max = ml::torso(p) ? cap[p]+cap[p+7] : cap[p];
-		text({r.x+3,statY,r.w-6,10},"AVL "+std::to_string(mc2::armor::available(allocation,p,cap,pool))+"   MAX "+std::to_string(max));
+		text({r.x+3,statY,r.w-6,10},"AVL "+std::to_string(mc2::armor::available(allocation,p,cap,pool)));
 		text({r.x+3,statY+10,r.w-6,10},"STRUCTURE "+std::to_string(pVariant->getChassis()->structure[p]),0xff808890);
 		std::vector<LocItem> items; gatherPanelItems(pVariant,p,items);
 		const int count = static_cast<int>(items.size());
@@ -2686,9 +2685,9 @@ void MechLabScreen::drawLocationView(float tbSx, float tbSy, float tbOx, float t
 	text({r.x+3,r.y+24,r.w-6,10},"ARMOR "+std::to_string(mc2::armor::total(allocation))+" / "+std::to_string(pool));
 	const int unallocated = std::max(0,pool-mc2::armor::total(allocation));
 	text({r.x+3,r.y+34,r.w-6,10},"UNALLOCATED "+std::to_string(unallocated));
-	text({r.x+3,r.y+44,r.w-6,10},"MAX "+std::to_string(mc2::armor::maxTotal(cap,static_cast<int>(pVariant->getMaxArmor()))));
-	const std::string warning = !pVariant->getChassis()->armorEditable ? "ARMOR DISPLAY-ONLY" : ml::overweight(pc != nullptr,mc2pkg::massUsed(placed),pc ? pc->payload : 0.f) ? "OVERWEIGHT" :
-		pVariant->getHeat()>pVariant->getMaxHeat() ? "TOO HOT" : pVariant->isLayoutGrandfathered() ? "LAYOUT WARNING" : unallocated ? "UNALLOCATED ARMOR" : "READY";
+	const bool touched = ml::showLayoutArmorWarnings(pVariant->locationRecord().edited,pVariant->hasExplicitArmor());
+	const std::string warning = touched && !pVariant->getChassis()->armorEditable ? "ARMOR DISPLAY-ONLY" : ml::overweight(pc != nullptr,mc2pkg::massUsed(placed),pc ? pc->payload : 0.f) ? "OVERWEIGHT" :
+		pVariant->getHeat()>pVariant->getMaxHeat() ? "TOO HOT" : touched && pVariant->isLayoutGrandfathered() ? "LAYOUT WARNING" : touched && unallocated ? "UNALLOCATED ARMOR" : "READY";
 	text({r.x+3,r.y+57,r.w-6,12},warning,warning=="READY" ? 0xffc8e100 : 0xffa21600,8);
 	const auto strip = ml::panelRect(ml::kDoll); fill(strip,0xe8101820);
 	int special = 0; for (const auto& item : placed) if (item.x<0 || item.y<0) ++special;
