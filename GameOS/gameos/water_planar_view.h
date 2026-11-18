@@ -15,7 +15,14 @@ inline float weatherLight(float sun, float ambient, float rain) {
 // reflection bake: whether it exists, its resolution divisor, whether static props are drawn into it, and how many
 // ray-march steps the water shader takes through its height map.
 struct BakePlan { bool bake; int sizeDivisor; bool props; int marchSteps; };
-inline BakePlan bakePlan(int) { return {true, 1, true, 8}; }
+inline BakePlan bakePlan(int level) {
+    switch (level < 0 ? 0 : level > 3 ? 3 : level) {
+        case 0: return {false, 1, false, 0};
+        case 1: return {true, 4, false, 4};   // Low: quarter-size bake, terrain only
+        case 2: return {true, 2, true, 6};    // Medium: half-size bake with props
+        default: return {true, 1, true, 8};   // High: the shipped bake
+    }
+}
 inline int bakeSize(int fullSize, const BakePlan& plan) { return (std::max)(1, fullSize / plan.sizeDivisor); }
 
 // Pixel bounds include every possible ripple lookup and bilinear neighbour.

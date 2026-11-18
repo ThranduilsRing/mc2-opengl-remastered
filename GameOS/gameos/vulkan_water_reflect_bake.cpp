@@ -7,6 +7,7 @@
 #include "vk_gpu_profile.h"
 #include "gos_static_prop_registry.h"
 #include "mc2fmt.h"
+#include "Gates/render_options.h"
 #include <cmath>
 #include <cstdio>
 #include <filesystem>
@@ -19,7 +20,8 @@ namespace vk_water_detail {
 namespace {
 constexpr float kHeightRange = 8192.0f;
 struct ReflectBake : mc2vk::IslandState {
-    int size = 0, levels = 0;
+    int size = 0, levels = 0, level = 0;
+    mc2::waterplanar::BakePlan plan{};
     float span = 0, halfMap = 0, water = 0;
     bool ready = false;
     std::array<uint64_t, 6> key{};
@@ -44,7 +46,7 @@ bool initBake(WaterIsland* s, ReflectBake& b) {
     // Include the optional diagnostic colour readback in the 64 MiB ceiling.
     // 8-byte colour + 4-byte depth + 8/3-byte height mips + 8-byte readback.
     const int cap = static_cast<int>(std::sqrt((64.0 * 1024 * 1024) / (68.0 / 3.0)));
-    b.size = std::clamp(static_cast<int>(std::ceil(b.span / 8)), 1, (std::min)(4096, cap));
+    b.size = mc2::waterplanar::bakeSize(std::clamp(static_cast<int>(std::ceil(b.span / 8)), 1, (std::min)(4096, cap)), b.plan);
     for (int n = b.size; n; n >>= 1) ++b.levels;
     auto image = [&](mc2vk::OwnedImage& out, mc2vk::OwnedImageView& view, VkFormat format,
                      VkImageUsageFlags usage, VkImageAspectFlags aspect, int levels) {
@@ -132,6 +134,13 @@ float halfFloat(uint16_t v) {
 }
 }
 
+// Reflection quality for this frame: the options value, except that a tuning-profile override that forces the bake on
+// while the option reads Off keeps the shipped full-quality bake.
+static int bakeLevel() {
+    const int level = mc2::options::current().reflectionQuality;
+    return level > 0 ? (std::min)(level, 3) : 3;
+}
+
 bool prepare_reflect_bake(WaterIsland* s, float water) {
     auto fail = [](std::string_view phase) {
         static bool logged = false;
@@ -161,6 +170,10 @@ bool prepare_reflect_bake(WaterIsland* s, float water) {
     const auto content = GpuStaticPropRegistry::getContentRevision();
     const auto now = std::chrono::steady_clock::now();
     auto& owner = s->reflectionBake;
+    const int level = bakeLevel();
+    const auto plan = mc2::waterplanar::bakePlan(level);
+    // A level change rebuilds the bake at its new resolution and prop set.
+    if (owner && static_cast<ReflectBake*>(owner.get())->level != level) mc2vk::getOrCreateEngineVulkanContext().retire(std::move(owner));
     std::string why = "load";
     std::string source = "mission";
     if (owner) {
@@ -197,7 +210,7 @@ bool prepare_reflect_bake(WaterIsland* s, float water) {
     }
     if (!owner) {
         auto b = std::make_unique<ReflectBake>();
-        b->span = 128.0f * (feed.mapSide - 1); b->halfMap = feed.halfMap;
+        b->span = 128.0f * (feed.mapSide - 1); b->halfMap = feed.halfMap; b->level = level; b->plan = plan;
         if (!initBake(s, *b)) return fail("init");
         owner = std::move(b);
     }
@@ -213,7 +226,7 @@ bool prepare_reflect_bake(WaterIsland* s, float water) {
     target.color = b.colorView.get(); target.depth = b.depthView.get();
     mc2vk::VulkanContext::RecordFn terrain, props;
     if (!mc2::waterplanar::prepareTerrain(b.terrain, target, terrain)) return fail("terrain");
-    if (!mc2::waterplanar::prepareProps(b.props, target, props)) return fail("props");
+    if (plan.props && !mc2::waterplanar::prepareProps(b.props, target, props)) return fail("props");
     mc2vk::OwnedBuffer readback;
     const bool dump = mc2::gate::get<"MC2_DEBUG_STATE_DUMP">();
     const VkDeviceSize bytes = static_cast<VkDeviceSize>(b.size) * b.size * 8;
@@ -259,7 +272,7 @@ bool prepare_reflect_bake(WaterIsland* s, float water) {
     VkPhysicalDeviceProperties properties{}; vkGetPhysicalDeviceProperties(s->phys, &properties);
     const double ms = (timestamps[1] - timestamps[0]) * properties.limits.timestampPeriod / 1.0e6;
     const double mb = static_cast<double>(b.size) * b.size * (12 + 8.0/3) / (1024*1024);
-    if (mc2_diag::tagRequested("WATER_BAKE")) mc2::fmt::print_err("[WATER_BAKE] size={}x{} ms={:.3f} MB={:.3f} registry={} why={} source={}\n", b.size, b.size, ms, mb, key[0], why, source);
+    if (mc2_diag::tagRequested("WATER_BAKE")) mc2::fmt::print_err("[WATER_BAKE] size={}x{} ms={:.3f} MB={:.3f} registry={} why={} source={} level={}\n", b.size, b.size, ms, mb, key[0], why, source, level);
     if (dump) {
         std::vector<uint16_t> pixels(static_cast<size_t>(bytes / 2));
         if (!readback.read(pixels.data(), bytes)) return false;
@@ -287,6 +300,7 @@ void bind_reflect_bake(WaterIsland* s, uint32_t par, WaterFsParams* params) {
     const auto& b = *static_cast<ReflectBake*>(s->reflectionBake.get());
     if (!b.ready) return;
     params->DEEP_COLOR[3] = -1; // quality 2: camera-independent reflection
+    params->debug[2] = static_cast<float>(b.plan.marchSteps);
     params->bake[0] = b.span; params->bake[1] = b.halfMap;
     params->bake[2] = b.scale[0]; params->bake[3] = b.scale[1]; params->SHALLOW_COLOR[3] = b.scale[2];
     const VkDescriptorImageInfo images[] = {

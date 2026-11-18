@@ -208,9 +208,10 @@ vec4 bakedReflection(vec3 origin, vec3 ray) {
     float reach = min(F.bake.x, maximum / ray.z);
     float previousT = 0;
     float previousGap = max(origin.z - F.f7.x, 0.0);
-    for (int i = 1; i <= 8; ++i) {
+    int steps = F.debug.z > 0.5 ? int(F.debug.z) : 8;   // reflection quality: Low 4, Medium 6, High 8
+    for (int i = 1; i <= steps; ++i) {
         // Shorter steps at the receiver retain nearby low banks.
-        float fraction = float(i) / 8.0;
+        float fraction = float(i) / float(steps);
         float t = reach * fraction * fraction;
         vec3 p = origin + ray * t;
         vec2 uv = bakedReflectionUV(p.xy);
