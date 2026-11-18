@@ -41,7 +41,7 @@ def roots_from_env(own):
 
 
 # A checkout that is no longer a live worktree (removed, moved, archived) still leaves its root in old cache entries.
-FOREIGN_ROOT = re.compile(r"^[A-Za-z]:/(?:Games/mc2-[^/]+|mc2-[^/]+/(?:builds|worktrees)/[^/]+)(?=/)", re.I)  # matched on a slash-normalised path
+FOREIGN_ROOT = re.compile(r"^[A-Za-z]:/(?:Games/mc2-[^/]+|mc2-[^/]+/(?:builds|worktrees)/[^/]+|mc2-wt/[^/]+)(?=/)", re.I)  # matched on a slash-normalised path
 
 
 def include_dirs(args):
