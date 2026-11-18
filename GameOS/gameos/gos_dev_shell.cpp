@@ -53,8 +53,8 @@ static std::string s_stubShotPath;
 void scheduleScreenshot(const char* name) {
     if (!name || !s_stubShotPath.empty()) return;
     std::string base;
-    for (const char* c = name; *c; ++c)
-        if ((*c >= 'a' && *c <= 'z') || (*c >= 'A' && *c <= 'Z') || (*c >= '0' && *c <= '9') || *c == '_' || *c == '-') base += *c;
+    for (const char c : std::string_view(name))
+        if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-') base += c;
     if (base.empty()) return;
     std::error_code ec; std::filesystem::create_directory("dev_shell_out", ec);
     s_stubShotPath = "dev_shell_out/" + base + ".tga";
