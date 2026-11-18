@@ -1538,9 +1538,7 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
             preview->clips.push_back({a->mName.C_Str(), clipDurationSec(e.scene, a->mName.C_Str()).value_or(0)});
         }
     } else if (advanceClock && motion.preview) {
-        mc2clip::Phase phase;
-        const auto gesture = mc2clip::select(motion.gestureId, 0, 0, 0, false, false, "", phase);
-        const auto clip = mc2clip::previewClip(e.showcaseClip, gesture.clip, e.scene->mNumAnimations ? e.scene->mAnimations[0]->mName.C_Str() : "",
+        const auto clip = mc2clip::previewClip(e.showcaseClip, e.scene->mNumAnimations ? e.scene->mAnimations[0]->mName.C_Str() : "",
             [&](std::string_view name) { return clipDurationSec(e.scene, std::string(name)).has_value(); });
         if (s.activeClip != clip) { s.activeClip = clip; s.clipTimeSec = 0; }
         s.durationSec = clipDurationSec(e.scene, s.activeClip).value_or(1.0f);
