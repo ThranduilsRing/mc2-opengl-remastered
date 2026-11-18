@@ -47,6 +47,7 @@
 #include"sensor_trace.h"		// SENSOR-SCAN-FACTS-1 (gated, default-OFF)
 #include "sim_trace.h"
 #include "mover_los_epoch.h"
+#include "sensor_los_cache.h"
 #include "mc2fmt.h"
 #include "score_sort.h"
 #include <cstdint>
@@ -61,19 +62,13 @@
 
 // Sensor-scoped endpoint memoization. Never reused across mover updates, terrain changes or mission loads.
 static bool s_sensorLosScan = false;
-static std::vector<std::pair<GameObjectPtr, glm::vec3>> s_sensorLosPositions;
+static mc2::SensorLosCache<GameObjectPtr, glm::vec3> s_sensorLosPositions;
 
 glm::vec3 SensorSystemManager::losPosition(GameObjectPtr object)
 {
 	const auto handle = static_cast<size_t>(object->getHandle());
-	if (!s_sensorLosScan || !object->isMover() || handle >= s_sensorLosPositions.size())
-		return object->getLOSPosition();
-	auto& [cachedObject, cachedPosition] = s_sensorLosPositions[handle];
-	if (cachedObject != object) {
-		cachedPosition = object->getLOSPosition();
-		cachedObject = object;
-	}
-	return cachedPosition;
+	return s_sensorLosPositions.get(handle, object, s_sensorLosScan && object->isMover(),
+		[&] { return object->getLOSPosition(); });
 }
 
 // SENSOR-SCAN-FACTS-1: TU-local telemetry accumulator (default-OFF).
@@ -1398,8 +1393,8 @@ void SensorSystemManager::removeTeamSensor (long teamId, SensorSystemPtr sensor)
 void SensorSystemManager::update (void) 
 {
 	{ ZoneScopedN("GameLogic.Sensors.ECM"); updateEcmEffects(); }
-	// Contact updates read poses and terrain; they do not advance either. Drop all entries before the next scan.
-	s_sensorLosPositions.assign(static_cast<size_t>(ObjectManager->maxMovers), {});
+	// Contact updates read poses and terrain; invalidate entries with a new scan epoch.
+	s_sensorLosPositions.beginScan(static_cast<size_t>(ObjectManager->maxMovers));
 	s_sensorLosScan = true;
 	struct EndScan { ~EndScan() { s_sensorLosScan = false; } } endScan;
 	{ ZoneScopedN("GameLogic.Sensors.Teams"); updateSensors(); }

@@ -6,6 +6,7 @@
 #include "mover_internal.h"
 #include "Gates/gate.h"
 #include "mc2fmt.h"
+#include "goal_area_memo.h"
 
 
 glm::vec3 Mover::calcOffsetMoveGoal (glm::vec3 target) {
@@ -528,6 +529,7 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 	startTime = GetCycles();
 	long deepWaterWeight = ((moveLevel == 1) ? 0 : 999999);
 
+	mc2::GoalAreaMemo goalAreaMemo(*GlobalMoveMap[moveLevel], curArea);
 	for (int r = 0; r < GOALMAP_CELL_DIM; r++)
 		for (long c = 0; c < GOALMAP_CELL_DIM; c++) {
 			long curCellRow = mapCellUL[0] + r;
@@ -554,24 +556,24 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 				long area = GlobalMoveMap[moveLevel]->calcArea(curCellRow, curCellCol);
 				if ((area != curArea) && (area != -1) && (curArea != -1)) {
 					if (moveLevel < 2) {
-						if (GlobalMoveMap[moveLevel]->getPathExists(curArea, area) == GLOBALPATH_EXISTS_UNKNOWN) {
+						if (goalAreaMemo.get(area) == GLOBALPATH_EXISTS_UNKNOWN) {
 							if (CalcValidAreaTable) {
 								GlobalPathStep globalPath[MAX_GLOBAL_PATH];
 								long numSteps = GlobalMoveMap[moveLevel]->calcPath(curArea, area, globalPath);
 								if (numSteps > 0) {
 									for (long j = 0; j < numSteps; j++)
 										for (long k = 0; k < numSteps; k++)
-											GlobalMoveMap[moveLevel]->setPathExists(globalPath[j].thruArea, globalPath[k].thruArea, GLOBALPATH_EXISTS_TRUE);
+											goalAreaMemo.set(globalPath[j].thruArea, globalPath[k].thruArea, GLOBALPATH_EXISTS_TRUE);
 									}
 								else {
-									GlobalMoveMap[moveLevel]->setPathExists(area, curArea, GLOBALPATH_EXISTS_FALSE);
-									GlobalMoveMap[moveLevel]->setPathExists(curArea, area, GLOBALPATH_EXISTS_FALSE);
+									goalAreaMemo.set(area, curArea, GLOBALPATH_EXISTS_FALSE);
+									goalAreaMemo.set(curArea, area, GLOBALPATH_EXISTS_FALSE);
 								}
 								}
 							else
-								GlobalMoveMap[moveLevel]->setPathExists(curArea, area, GLOBALPATH_EXISTS_FALSE);
+								goalAreaMemo.set(curArea, area, GLOBALPATH_EXISTS_FALSE);
 						}
-						if (GlobalMoveMap[moveLevel]->getPathExists(curArea, area) == GLOBALPATH_EXISTS_FALSE)
+						if (goalAreaMemo.get(area) == GLOBALPATH_EXISTS_FALSE)
 							goalMap[goalMapRowStart[r] + c] -= 50000;
 					}
 				}
