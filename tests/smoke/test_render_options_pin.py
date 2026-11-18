@@ -188,3 +188,12 @@ def test_smoke_report_records_the_options():
     plain = Row(stem="mc2_01", verdict=row.verdict, summary=row.summary, render_options=values())
     assert "Render options:** all defaults" in render_markdown([plain], tier="tier1", profile="stock", timestamp="t")
     assert "Render options:** not recorded" in render_markdown([Row(stem="x", verdict=row.verdict, summary=row.summary)], tier="tier1", profile="stock", timestamp="t")
+
+
+def test_high_reflection_stays_the_live_full_res_planar_pass():
+    """High (ReflectionQuality 3) renders the live planar pass into a full-res image; fc2ee9c34 once forced it off and shrank the image to 1x1."""
+    run = (ROOT / "GameOS/gameos/vulkan_water_island_run.cpp").read_text(encoding="utf-8")
+    images = (ROOT / "GameOS/gameos/vulkan_water_island_images.cpp").read_text(encoding="utf-8")
+    assert not re.search(r"^ {4}reflectThisFrame\s*=\s*false;", run, re.M)
+    assert re.search(r"if \(reflect_bake_active\(\)\) reflectThisFrame = false;", run)
+    assert "image.extent = live ? full : VkExtent3D{1,1,1};" in images

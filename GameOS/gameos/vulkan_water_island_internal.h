@@ -227,6 +227,7 @@ struct WaterIsland : mc2vk::IslandState {
     float reflectionCamera[33]{};
     int reflectionDivisor = 1;
     bool reflectionValid = false;
+    bool reflectionFull = false;   // reflectionImage is full-res (live planar tier) rather than the 1x1 stand-in
     bool reflectionInitialized = false;
     bool planarDepthInitialized = false;
     bool mapHasWater = false;
@@ -275,6 +276,8 @@ extern WaterIslandHealth g_health;
 extern int g_waterInitReachedBuild;   // 1 once init_island passed its readiness gates (vk_island_fail_policy.h)
 bool init_reflection(WaterIsland* s);
 bool prepare_wave_packets(WaterIsland* s, uint32_t par);
+bool reflect_bake_active();
+bool reflect_live_active();   // High: the live full-resolution planar reflection owns the reflection image
 bool prepare_reflect_bake(WaterIsland* s, float water);
 void bind_reflect_bake(WaterIsland* s, uint32_t par, WaterFsParams* params);
 bool record_reflection(WaterIsland* s, VkCommandBuffer cb, bool enabled, uint32_t par, const uint32_t (&offsets)[2]);

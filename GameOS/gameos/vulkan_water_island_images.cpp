@@ -174,7 +174,10 @@ bool prepare_wave_packets(WaterIsland* s, uint32_t par) {
 bool init_reflection(WaterIsland* s) {
     VkImageCreateInfo image{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
     image.imageType=VK_IMAGE_TYPE_2D; image.format=VK_FORMAT_R16G16B16A16_SFLOAT;
-    image.extent={1,1,1}; // descriptor stand-in; the bake owns reflection attachments
+    // Full resolution only while the live planar reflection (High) renders into it; every other tier keeps a 1x1 sampler stand-in.
+    const bool live = reflect_live_active();
+    const VkExtent3D full{static_cast<uint32_t>(s->w),static_cast<uint32_t>(s->h),1};
+    image.extent = live ? full : VkExtent3D{1,1,1};
     image.mipLevels=1; image.arrayLayers=1; image.samples=VK_SAMPLE_COUNT_1_BIT;
     image.tiling=VK_IMAGE_TILING_OPTIMAL;
     image.usage=VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
@@ -182,13 +185,21 @@ bool init_reflection(WaterIsland* s) {
     VkImageViewCreateInfo view{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
     view.viewType=VK_IMAGE_VIEW_TYPE_2D;
     view.subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,1};
+    if (s->reflectionImage && s->reflectionFull != live) {   // live tier switch: swap the colour image, bound descriptors rewrite next
+        auto& ctx = mc2vk::getOrCreateEngineVulkanContext();
+        ctx.retire(std::move(s->reflectionView)); ctx.retire(std::move(s->reflectionImage));
+        s->reflectionInitialized = false; s->reflectionValid = false;
+        for (auto& dirty : s->imageDescriptorsDirty) dirty = true;
+    }
     if (!s->reflectionImage) {
+        s->reflectionFull = live;
         if (!s->reflectionImage.create(s->allocator,s->device,image,allocation,"water.reflection.full")) return false;
         view.image=s->reflectionImage.get(); view.format=image.format;
         if (!mc2vk::create(s->reflectionView,s->device,[&](VkImageView* out){return vkCreateImageView(s->device,&view,nullptr,out);})) return false;
     }
     // Prewarm can run before water presence is known; dry maps need no depth.
-    if (!s->mapHasWater || s->planarDepthImage) return true;
+    if (!s->mapHasWater || !live || s->planarDepthImage) return true;
+    image.extent = full;
     // Coverage must not alias the reflection sampler bound by the water draw.
     if (!s->coverageImage.create(s->allocator,s->device,image,allocation,"water.reflection.coverage")) return false;
     view.image=s->coverageImage.get(); view.format=image.format;

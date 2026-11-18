@@ -14,6 +14,8 @@ inline float weatherLight(float sun, float ambient, float rain) {
 // Reflection quality the water code runs at. options.cfg ReflectionQuality 0 (Off) is SKY-ONLY (level 1: no bake), never
 // level 0, which drops the sky too. Otherwise the legacy tuning value stands.
 inline int effectiveReflectionQuality(int option, int legacy) { return option <= 0 ? (std::min)(legacy, 1) : legacy; }
+// High draws the live full-resolution planar reflection; Low and Medium use the cheaper camera-independent bake.
+inline bool livePlanar(int option) { return option >= 3; }
 
 // What each baked Reflection quality level (options.cfg ReflectionQuality 1 Low, 2 Medium, 3 High; Off has no bake) asks
 // of the reflection bake: its resolution divisor, whether static props are drawn into it, and how many ray-march steps

@@ -397,6 +397,9 @@ extern "C" int mc2_vk_water_island_run(
     }
     g_health.thinRecords = 0;   // GPU-produced: the count lives in the draw args
 
+    // Live tier switch (Low/Medium <-> High): swap the reflection colour image before this frame's descriptors are written,
+    // so the frame never samples a retired bake or a stale-size image.
+    if (s->mapHasWater && s->reflectionFull != reflect_live_active() && !init_reflection(s)) { setFallback("reflection_init_failed"); s->disabled = true; return 0; }
     refresh_hdri_sampler(s);
     const std::array<VkImageView,4> views{s->hdriTexture.view(),s->shHTexture.view(),s->shMTexture.view(),s->maskView};
     if (s->imageDescriptorsDirty[par] || s->boundTextures[par]!=views) {
@@ -450,13 +453,12 @@ extern "C" int mc2_vk_water_island_run(
         camera[32] = nat->waterElevation;
         static const bool hold = mc2::gate::get<"MC2_WATER_REFLECTION_HOLD">();
         const bool still = objectCamera && std::memcmp(camera,s->reflectionCamera,sizeof(camera))==0;
-        const int quality = mc2::options::current().reflectionQuality;
-        const int divisor = quality == 1 ? 4 : quality == 2 ? 2 : 1;
+        const int divisor = 1;   // only High renders the live pass (full resolution); Low and Medium use the bake
         fsLocal.debug[1] = mc2::options::current().waterDetail == 0 ? 1.0f : 0.0f;
         // No cheap bake/content epoch: bound stale light, scene and leaf sway to four frames.
         const bool reuse = hold && still && s->reflectionValid && s->reflectionDivisor==divisor && s->nativeFrames%4!=0;
         std::memcpy(s->reflectionCamera,camera,sizeof(camera));
-        s->reflectionValid = reflectThisFrame;
+        s->reflectionValid = reflectThisFrame && !reflect_bake_active();   // a frame served by the bake leaves no live image to reuse
         s->reflectionDivisor = divisor;
         fsLocal.DEEP_COLOR[3] = reflectThisFrame ? static_cast<float>(divisor) : 0.0f;
         reflectThisFrame = reflectThisFrame && !reuse;
@@ -506,7 +508,7 @@ extern "C" int mc2_vk_water_island_run(
 
     if (!prepare_wave_packets(s, par)) { setFallback("wave_packet_bake_failed"); return 0; }
     if (!prepare_reflect_bake(s, nat->waterElevation)) setFallback("reflection_bake_failed");
-    reflectThisFrame = false;
+    if (reflect_bake_active()) reflectThisFrame = false;   // the bake replaces the live pass below High
     bind_reflect_bake(s, par, reinterpret_cast<WaterFsParams*>(static_cast<uint8_t*>(uboSpan.ptr) + fsUboOff));
     s->planarTerrainRecord = {}; s->planarPropsRecord = {};
     if (reflectThisFrame) {
@@ -525,7 +527,6 @@ extern "C" int mc2_vk_water_island_run(
                 return mc2::waterplanar::prepareTerrain(s->planarTerrain, target, s->planarTerrainRecord);
             }() || ![&] {
                 ZoneScopedN("Water.PlanarPropsPrepare");
-                if (mc2::options::current().reflectionQuality == 1) return true;
                 return mc2::waterplanar::prepareProps(s->planarProps, target, s->planarPropsRecord);
             }()) {
             setFallback("planar_view_prepare_failed");
