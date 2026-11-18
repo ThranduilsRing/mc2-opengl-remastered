@@ -5491,7 +5491,10 @@
     "ibo_hash",
     "packets_hash",
     "lod_groups",
-    "lod_hash"
+    "lod_hash",
+    "blob_hits",
+    "blob_misses",
+    "blob_bytes"
    ],
    "count": 1
   },
@@ -5501,15 +5504,6 @@
    "stream": "buffer",
    "keys": [
     "total"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "LOAD_SPLIT",
-   "ver": 1,
-   "stream": "stdout",
-   "keys": [
-    "phase_delta_ms"
    ],
    "count": 1
   },
@@ -5547,6 +5541,22 @@
    "count": 2
   },
   {
+   "tag": "LOAD_SCOPES",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "LOAD_SPLIT",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "phase_delta_ms"
+   ],
+   "count": 1
+  },
+  {
    "tag": "LOAD_TIMING",
    "ver": -1,
    "stream": "stdout",
@@ -5555,6 +5565,13 @@
     "elapsed_ms"
    ],
    "count": 2
+  },
+  {
+   "tag": "LOAD_TOP",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 1
   },
   {
    "tag": "LOCAL_LIGHT_BEAM",
@@ -7232,6 +7249,64 @@
     "regions",
     "hardpoints",
     "payload"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PAK",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "entries",
+    "method"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PAK",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "source",
+    "state",
+    "skipped"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PAK_CORRUPT",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "key",
+    "file"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PAK_IO",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "pak_opens",
+    "pak_bytes_in",
+    "pak_bytes_out",
+    "pak_decode_ms",
+    "pak_crc_ms",
+    "fst_opens",
+    "fst_bytes_in",
+    "fst_bytes_out",
+    "fst_read_ms"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PAK_REJECT",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "file",
+    "reason"
    ],
    "count": 1
   },
@@ -11042,6 +11117,17 @@
    "keys": [
     "name",
     "files",
+    "eligible"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VFS",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "name",
+    "files",
     "priority"
    ],
    "count": 3
@@ -13472,6 +13558,7 @@
   "ISO_DEPLOY",
   "LIGHT_CONTRACT",
   "LINK_GUARD",
+  "LOAD_SPLIT",
   "MARAUDER",
   "MISSION",
   "MISSION_OBJECTIVES",

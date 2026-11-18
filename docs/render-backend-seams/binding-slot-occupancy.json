@@ -1,6 +1,6 @@
 {
   "summary": {
-    "glsl_blocks_with_binding": 289,
+    "glsl_blocks_with_binding": 292,
     "native_pairs": 4,
     "fails": 0,
     "warns": 1
@@ -815,7 +815,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
-        "line": 41,
+        "line": 67,
         "role": "TerrainHeightBuf",
         "std": "std430",
         "type": "buffer",
@@ -885,7 +885,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
-        "line": 162,
+        "line": 161,
         "role": "WaterFsParams",
         "std": "std140",
         "type": "uniform",
@@ -927,7 +927,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
-        "line": 70,
+        "line": 96,
         "role": "TerrainVisualHeightBuf",
         "std": "std430",
         "type": "buffer",
@@ -1131,7 +1131,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
-        "line": 199,
+        "line": 234,
         "role": "WaterReactive",
         "std": "std430",
         "type": "buffer",
@@ -1143,7 +1143,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 147,
+        "line": 149,
         "role": "uTreeObjectMap",
         "std": null,
         "type": "sampler2DShadow",
@@ -1153,11 +1153,21 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
-        "line": 45,
+        "line": 71,
         "role": "u_shorelineMask",
         "std": null,
         "type": "sampler2D",
         "source": "shaders/vulkan/terrain_tier1.frag",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/water_geom.frag",
+        "line": 34,
+        "role": "WaterShoreSurface",
+        "std": "std430",
+        "type": "buffer",
+        "source": "shaders/vulkan/water_geom.frag",
         "branch": {}
       }
     ],
@@ -1165,7 +1175,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
-        "line": 35,
+        "line": 61,
         "role": "u_materialWeights",
         "std": null,
         "type": "sampler2D",
@@ -1187,7 +1197,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
-        "line": 34,
+        "line": 60,
         "role": "u_macroGradient",
         "std": null,
         "type": "sampler2D",
@@ -1209,7 +1219,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 143,
+        "line": 145,
         "role": "Compact",
         "std": "std430",
         "type": "buffer",
@@ -1267,10 +1277,20 @@
         "type": "sampler2D",
         "source": "shaders/vulkan/include/ground_shadow.glsl",
         "branch": {
-          "2": 0,
-          "14": 0,
-          "15": 0
+          "3": 0,
+          "15": 0,
+          "16": 0
         }
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/water_geom.frag",
+        "line": 196,
+        "role": "u_wavePackets",
+        "std": null,
+        "type": "sampler2DArray",
+        "source": "shaders/vulkan/water_geom.frag",
+        "branch": {}
       }
     ],
     "set0:binding18": [
@@ -1596,7 +1616,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
-        "line": 184,
+        "line": 185,
         "role": "u_hdri",
         "std": null,
         "type": "sampler2D",
@@ -1702,8 +1722,8 @@
         "type": "sampler2D",
         "source": "shaders/vulkan/include/mover_shadow.glsl",
         "branch": {
-          "2": 0,
-          "8": 0
+          "3": 0,
+          "9": 0
         }
       },
       {
@@ -1715,8 +1735,8 @@
         "type": "sampler2D",
         "source": "shaders/vulkan/include/mover_shadow.glsl",
         "branch": {
-          "1": 0,
-          "7": 0
+          "2": 0,
+          "8": 0
         }
       }
     ],
@@ -1808,8 +1828,8 @@
         "type": "uniform",
         "source": "shaders/vulkan/include/mover_shadow.glsl",
         "branch": {
-          "2": 0,
-          "8": 0
+          "3": 0,
+          "9": 0
         }
       },
       {
@@ -1821,8 +1841,8 @@
         "type": "uniform",
         "source": "shaders/vulkan/include/mover_shadow.glsl",
         "branch": {
-          "1": 0,
-          "7": 0
+          "2": 0,
+          "8": 0
         }
       }
     ],
@@ -1871,7 +1891,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 77,
+        "line": 79,
         "role": "uAlbedo",
         "std": null,
         "type": "sampler2DArray",
@@ -2026,7 +2046,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
-        "line": 188,
+        "line": 189,
         "role": "u_shoreHeightTex",
         "std": null,
         "type": "sampler2D",
@@ -2143,7 +2163,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
-        "line": 189,
+        "line": 190,
         "role": "u_shoreMask",
         "std": null,
         "type": "sampler2D",
@@ -2266,7 +2286,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 80,
+        "line": 82,
         "role": "uAlbedoOn",
         "std": null,
         "type": "sampler2DArray",
@@ -2315,7 +2335,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/terrain_tier1.frag",
-        "line": 40,
+        "line": 66,
         "role": "u_matNormalArray",
         "std": null,
         "type": "sampler2DArray",
@@ -2367,7 +2387,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 100,
+        "line": 102,
         "role": "TypeHotColors",
         "std": "std430",
         "type": "buffer",
@@ -2446,7 +2466,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
-        "line": 192,
+        "line": 193,
         "role": "u_staticMask",
         "std": null,
         "type": "sampler2D",
@@ -2527,7 +2547,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
-        "line": 193,
+        "line": 194,
         "role": "u_waterReflection",
         "std": null,
         "type": "sampler2D",
@@ -2613,6 +2633,16 @@
         "std": "std430",
         "type": "buffer",
         "source": "shaders/vulkan/include/vegetation_cull_common.glsl",
+        "branch": {}
+      },
+      {
+        "side": "glsl",
+        "file": "shaders/vulkan/water_geom.frag",
+        "line": 195,
+        "role": "u_waterReflectHeight",
+        "std": null,
+        "type": "sampler2D",
+        "source": "shaders/vulkan/water_geom.frag",
         "branch": {}
       }
     ],
@@ -2701,7 +2731,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/vfx_vegetation.frag",
-        "line": 10,
+        "line": 14,
         "role": "uAtlas",
         "std": null,
         "type": "sampler2DArray",
@@ -2717,8 +2747,8 @@
         "type": "uniform",
         "source": "shaders/vulkan/include/terrain_frame_ubo_vk.glsl",
         "branch": {
-          "1": 0,
-          "3": 0
+          "2": 0,
+          "4": 0
         }
       }
     ],
@@ -2738,7 +2768,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
-        "line": 24,
+        "line": 28,
         "role": "TerrainHeightBuf",
         "std": "std430",
         "type": "buffer",
@@ -2750,7 +2780,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/water_geom.frag",
-        "line": 25,
+        "line": 29,
         "role": "TerrainVisualHeightBuf",
         "std": "std430",
         "type": "buffer",
@@ -2793,7 +2823,7 @@
         "type": "buffer",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "1": 0
+          "2": 0
         }
       }
     ],
@@ -2832,7 +2862,7 @@
         "type": "buffer",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "1": 0
+          "2": 0
         }
       }
     ],
@@ -2871,7 +2901,7 @@
         "type": "buffer",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "1": 0
+          "2": 0
         }
       }
     ],
@@ -2910,7 +2940,7 @@
         "type": "sampler2D",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "1": 0
+          "2": 0
         }
       }
     ],
@@ -2949,7 +2979,7 @@
         "type": "sampler2D",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "1": 0
+          "2": 0
         }
       }
     ],
@@ -3002,8 +3032,8 @@
         "type": "uniform",
         "source": "shaders/vulkan/include/environment_ubo_vk.glsl",
         "branch": {
-          "1": 0,
-          "5": 0
+          "2": 0,
+          "6": 0
         }
       }
     ],
@@ -3042,7 +3072,7 @@
         "type": "sampler2DArray",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "1": 0
+          "2": 0
         }
       }
     ],
@@ -3081,7 +3111,7 @@
         "type": "buffer",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "1": 0
+          "2": 0
         }
       }
     ],
@@ -3215,8 +3245,8 @@
         "type": "uniform",
         "source": "shaders/vulkan/include/terrain_frame_ubo_vk.glsl",
         "branch": {
-          "2": 0,
-          "4": 0
+          "3": 0,
+          "5": 0
         }
       }
     ],
@@ -3230,7 +3260,7 @@
         "type": "buffer",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "2": 0
+          "3": 0
         }
       }
     ],
@@ -3244,7 +3274,7 @@
         "type": "buffer",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "2": 0
+          "3": 0
         }
       }
     ],
@@ -3258,7 +3288,7 @@
         "type": "buffer",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "2": 0
+          "3": 0
         }
       }
     ],
@@ -3266,7 +3296,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/vfx_vegetation.frag",
-        "line": 11,
+        "line": 15,
         "role": "u_macroGradient",
         "std": null,
         "type": "sampler2D",
@@ -3284,7 +3314,7 @@
         "type": "sampler2D",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "2": 0
+          "3": 0
         }
       }
     ],
@@ -3298,7 +3328,7 @@
         "type": "sampler2D",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "2": 0
+          "3": 0
         }
       }
     ],
@@ -3312,8 +3342,8 @@
         "type": "uniform",
         "source": "shaders/vulkan/include/environment_ubo_vk.glsl",
         "branch": {
-          "2": 0,
-          "6": 0
+          "3": 0,
+          "7": 0
         }
       }
     ],
@@ -3327,7 +3357,7 @@
         "type": "sampler2DArray",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "2": 0
+          "3": 0
         }
       }
     ],
@@ -3341,7 +3371,7 @@
         "type": "buffer",
         "source": "shaders/vulkan/include/terrain_frame_vk.glsl",
         "branch": {
-          "2": 0
+          "3": 0
         }
       }
     ]
