@@ -26,6 +26,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from bootstrap_worktree_build import cache_args, find_cmake  # noqa: E402
 import console_child  # noqa: E402
+import hashlib  # noqa: E402
 
 VS = "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools"
 VCVARS = VS + "/VC/Auxiliary/Build/vcvars64.bat"
@@ -63,7 +64,8 @@ def compile_cache_env(root):
     legacy = SCCACHE_DIR.replace("\\", "/").rstrip("/").lower() == "e:/mc2-compile-cache"
     return {"SCCACHE_DIR": "G:/mc2-build/compile-cache" if legacy else SCCACHE_DIR,
             "SCCACHE_CACHE_SIZE": "50G" if legacy else os.environ.get("SCCACHE_CACHE_SIZE", "50G"),
-            "SCCACHE_BASEDIRS": ";".join(SCCACHE_FIXED_ROOTS)}
+            "SCCACHE_BASEDIRS": ";".join(SCCACHE_FIXED_ROOTS),
+            "SCCACHE_DIRECT": "false"}  # direct mode keys on source text and can replay another checkout's stored include list
 
 
 def server_base_dirs(shown):
@@ -122,15 +124,25 @@ def cache_cmake_args(root):
     env = compile_cache_env(root)
     ensure_cache_server(root.replace("\\", "/"), env)
     launcher = ";".join([sys.executable.replace("\\", "/"), "-S", "-E", LAUNCHER_SCRIPT, root.replace("\\", "/"), SCCACHE_EXE])
-    return ["-DMC2_COMPILE_CACHE=ON", f"-DCMAKE_C_COMPILER_LAUNCHER={launcher}",
+    return ["-DMC2_COMPILE_CACHE=ON", f"-DMC2_CC_LAUNCHER_REV:STRING={launcher_rev()}", f"-DCMAKE_C_COMPILER_LAUNCHER={launcher}",
             f"-DCMAKE_CXX_COMPILER_LAUNCHER={launcher}"], env
 
 
+def launcher_rev():
+    """Short hash of cc_launcher.py (+ deps_guard.py, which it imports); stamped into the tree so a launcher change forces a reconfigure."""
+    h = hashlib.sha256()
+    for name in ("cc_launcher.py", "deps_guard.py"):
+        with open(os.path.join(os.path.dirname(LAUNCHER_SCRIPT), name), "rb") as f:
+            h.update(f.read().replace(b"\r\n", b"\n"))
+    return h.hexdigest()[:16]
+
+
 def tree_cache_current(root, tree):
-    """True when the tree was configured with the include-path-rewriting launcher (a tree configured before it must be reconfigured)."""
+    """True when the tree was configured with the CURRENT include-path-rewriting launcher (revision stamp matches). A mismatch
+    means a reconfigure and a dropped .ninja_deps (ninja_build.py does both)."""
     try:
         with open(f"{root}/{tree}/CMakeCache.txt", encoding="utf-8", errors="replace") as f:
-            return "cc_launcher.py" in f.read()
+            return f"MC2_CC_LAUNCHER_REV:STRING={launcher_rev()}" in f.read()
     except OSError:
         return False
 

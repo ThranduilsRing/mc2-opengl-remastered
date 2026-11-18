@@ -19,6 +19,7 @@ import subprocess
 import sys
 
 import console_child  # same directory: python puts the script dir on sys.path even under -S -E
+import deps_guard  # same directory, stdlib only
 
 PREFIX = b"Note: including file:"
 
@@ -85,12 +86,9 @@ def remap(path, own, incs, outside=None):
     return path
 
 
-def main():
-    own, sccache, cmd = sys.argv[1], sys.argv[2], sys.argv[3:]
-    incs = include_dirs(cmd)
-    outside = outside_dirs(own, incs)
-    proc = subprocess.run([sccache] + cmd, stdout=subprocess.PIPE, **console_child.child_kwargs(redirected=True))
-    out = proc.stdout
+def rewrite_output(out, own, incs, outside):
+    """(rewritten stdout bytes, True when a replayed include path is another checkout's and has no counterpart here)."""
+    foreign = False
     if PREFIX in out:
         lines = out.split(b"\n")
         for i, ln in enumerate(lines):
@@ -103,10 +101,25 @@ def main():
                 except UnicodeDecodeError:
                     continue
                 new = remap(path, own, incs, outside)
+                if deps_guard.is_foreign(new, own):   # still another checkout's path: no counterpart here
+                    foreign = True
                 if new != path:
                     eol = b"\r" if ln.endswith(b"\r") else b""
                     lines[i] = PREFIX + lead + new.encode("mbcs") + eol
         out = b"\n".join(lines)
+    return out, foreign
+
+
+def main():
+    own, sccache, cmd = sys.argv[1], sys.argv[2], sys.argv[3:]
+    incs = include_dirs(cmd)
+    outside = outside_dirs(own, incs)
+    proc = subprocess.run([sccache] + cmd, stdout=subprocess.PIPE, **console_child.child_kwargs(redirected=True))
+    out, foreign = rewrite_output(proc.stdout, own, incs, outside)
+    if foreign:   # fail closed: a stored entry names another checkout's header that does not exist here; recompile and overwrite it
+        proc = subprocess.run([sccache] + cmd, stdout=subprocess.PIPE, env=dict(os.environ, SCCACHE_RECACHE="1"),
+                              **console_child.child_kwargs(redirected=True))
+        out, _ = rewrite_output(proc.stdout, own, incs, outside)
     sys.stdout.buffer.write(out)
     sys.stdout.buffer.flush()
     return proc.returncode

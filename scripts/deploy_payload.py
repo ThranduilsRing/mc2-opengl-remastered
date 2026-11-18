@@ -2622,6 +2622,16 @@ def main():
                             build64_root=args.build64_root, no_example_mods=args.no_example_mods)
         return
 
+    if os.path.isfile(os.path.join(build_dir, ".ninja_deps")):   # objects whose deps name another checkout ship stale code
+        import deps_guard
+        try:
+            refusal = deps_guard.refusal_after(build_dir)
+        except (OSError, RuntimeError, subprocess.SubprocessError) as exc:
+            refusal = None
+            log(f"[DEPS_GUARD] scan skipped: {exc}")
+        if refusal:
+            fail(refusal)
+
     # DEPLOY-TARGET-GUARD: force deploys to the canonical deploy folders; never create
     # or deploy into per-lane ~5GB installs that bloat A:/Games/mc2-opengl.
     if not args.allow_new_target:

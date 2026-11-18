@@ -25,8 +25,9 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import console_child  # noqa: E402
-from configure_ninja import (DEFAULT_TARGETS, DEFAULT_TREE, NINJA, compile_cache_env, configure, ensure_cache_server, tree_uses_cache,
-                             under_vcvars)  # noqa: E402
+import deps_guard  # noqa: E402
+from configure_ninja import (DEFAULT_TARGETS, DEFAULT_TREE, NINJA, compile_cache_env, configure, ensure_cache_server, tree_cache_current,
+                             tree_uses_cache, under_vcvars)  # noqa: E402
 
 
 # PDBs retain obsolete type records across links. Compact before gate copies
@@ -285,6 +286,14 @@ def main():
         if warning:
             print(warning, flush=True)
         drop_oversize_pdb(root, tree)
+        if tree_uses_cache(root, tree) and not tree_cache_current(root, tree):   # configured under an older cc_launcher: its deps records cannot be trusted
+            print("[DEPS_GUARD] cc_launcher revision changed: reconfiguring and dropping .ninja_deps", flush=True)
+            configure(root, tree)
+            try:
+                os.remove(f"{root}/{tree}/.ninja_deps")
+            except FileNotFoundError:
+                pass
+        deps_guard.guard_before(f"{root}/{tree}", root)
     env = compile_cache_env(root) if tree_uses_cache(root, tree) else None  # sccache tree (the default; configure_ninja.py --no-compile-cache opts out)
     if env:
         ensure_cache_server(root, env)
@@ -297,6 +306,11 @@ def main():
         rc = under_vcvars(command, env)  # Fresh full symbols from the same objects; no second compile.
     if rc == 0 and not dry_run:   # fresh build.ninja (cmake regenerated it): drop shader outputs whose source is gone
         prune_orphan_spv(root, tree, ninja_outputs(root, tree))
+    if rc == 0 and not dry_run:   # an object whose deps still name another checkout would never rebuild on a header edit here
+        refusal = deps_guard.refusal_after(f"{root}/{tree}", root)
+        if refusal:
+            print(refusal, file=sys.stderr, flush=True)
+            rc = 1
     if started is not None:
         print(f"[warm] done rc={rc} elapsed={time.monotonic() - started:.0f}s", flush=True)
     if tokens is not None:
