@@ -1143,7 +1143,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 149,
+        "line": 151,
         "role": "uTreeObjectMap",
         "std": null,
         "type": "sampler2DShadow",
@@ -1219,7 +1219,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 145,
+        "line": 147,
         "role": "Compact",
         "std": "std430",
         "type": "buffer",
@@ -1891,7 +1891,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 79,
+        "line": 81,
         "role": "uAlbedo",
         "std": null,
         "type": "sampler2DArray",
@@ -2286,7 +2286,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.frag",
-        "line": 82,
+        "line": 84,
         "role": "uAlbedoOn",
         "std": null,
         "type": "sampler2DArray",
@@ -2387,7 +2387,7 @@
       {
         "side": "glsl",
         "file": "shaders/vulkan/color_prop_tier1.vert",
-        "line": 102,
+        "line": 104,
         "role": "TypeHotColors",
         "std": "std430",
         "type": "buffer",

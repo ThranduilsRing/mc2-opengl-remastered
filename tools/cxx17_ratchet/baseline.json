@@ -1420,6 +1420,7 @@
   "code/carnage_value_codec.h": {},
   "code/chassis_layout.cpp": {},
   "code/chassis_layout.h": {},
+  "code/chassis_vehicle_detect.h": {},
   "code/chatwindow.cpp": {
    "LG03": 2,
    "LG06": 2
@@ -3461,7 +3462,7 @@
    "LG20": 1
   }
  },
- "head": "86534ca70",
+ "head": "13411d84f",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
