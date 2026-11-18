@@ -16,8 +16,18 @@ import zipfile
 import zlib
 from compression import zstd
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from mc2x_import.fst import fst_entries, decompress_entry
+import importlib.util
+
+def _load_fst():
+    # Load fst.py under a private module name: no sys.path edit and no 'mc2x_import' sys.modules entry, so the
+    # tools/mc2x_import package cannot shadow or be shadowed by the mc2x_import.py script module of the same name.
+    spec = importlib.util.spec_from_file_location('_mc2pak_fst', Path(__file__).resolve().parent / 'mc2x_import' / 'fst.py')
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+_fst = _load_fst()
+fst_entries, decompress_entry = _fst.fst_entries, _fst.decompress_entry
 
 COMMENT = b'MechCommander 2 asset pack (ZIP container, Zstandard entries). List/extract/pack with tools/mc2pak.py or the asset viewer.'
 
