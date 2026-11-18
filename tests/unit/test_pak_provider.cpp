@@ -25,7 +25,7 @@
 namespace fs = std::filesystem;
 namespace {
 using Bytes = std::vector<uint8_t>;
-const fs::path fixtures = fs::absolute(fs::path(__FILE__).parent_path().parent_path() / "fixtures/pak");
+const fs::path fixtures = fs::path(MC2_REPO_ROOT) / "tests/fixtures/pak";
 void le(Bytes& b, uint64_t v, unsigned n) { for (unsigned i=0; i<n; ++i) b.push_back(static_cast<uint8_t>(v >> (8*i))); }
 uint64_t get(const Bytes& b, size_t p, unsigned n) {
     uint64_t v=0; for (unsigned i=0; i<n; ++i) v |= uint64_t(b.at(p+i)) << (8*i); return v;
