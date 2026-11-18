@@ -406,4 +406,100 @@ TEST_CASE("OH6 an insert past the first reservation is counted once per realloca
 	CHECK(tiny.growths() >= 1); // clear() keeps the counter: it belongs to the heap object
 }
 
+// Frozen pre-index algorithm: lookup deliberately scans the live array, including duplicates.
+TEST_CASE("OH7 indexed rekey differential: 2000 seeded A-star scripts with linear reference")
+{
+	struct Linear {
+		std::vector<PQNode> n;
+		int misses = 0, growths = 0;
+		explicit Linear(int reserve) { n.reserve(reserve + 2); n.push_back({0, 0xFFFFFFFFu, 0, 0}); }
+		int size() const { return static_cast<int>(n.size()) - 1; }
+		int find(uint32_t id) const {
+			for (int i = 1; i <= size(); ++i) if (n[i].id == id) return i;
+			return 0;
+		}
+		void up(int i) {
+			const auto start = n[i];
+			while (i > 1 && n[i / 2].key >= start.key) { n[i] = n[i / 2]; i /= 2; }
+			n[i] = start;
+		}
+		void down(int i) {
+			const auto start = n[i];
+			while (i <= size() / 2) {
+				int next = i * 2;
+				if (next < size() && n[next].key > n[next + 1].key) ++next;
+				if (start.key <= n[next].key) break;
+				n[i] = n[next]; i = next;
+			}
+			n[i] = start;
+		}
+		void insert(PQNode node) { growths += n.size() == n.capacity(); n.push_back(node); up(size()); }
+		std::optional<PQNode> pop() {
+			if (!size()) return std::nullopt;
+			const auto result = n[1]; n[1] = n.back(); n.pop_back();
+			if (size()) down(1);
+			return result;
+		}
+		bool rekey(uint32_t id, int key) {
+			const int i = find(id);
+			if (!i) { ++misses; return false; }
+			const auto old = n[i].key; n[i].key = key;
+			if (key < old) up(i);
+			if (key > old) down(i);
+			return true;
+		}
+	};
+	for (uint64_t seed = 0; seed < 2000; ++seed) {
+		INFO("seed=", seed);
+		Rng rng(seed);
+		mc2::OpenHeap heap(2);
+		Linear ref(2);
+		uint32_t nextId = 0;
+		auto checkNode = [](const PQNode& a, const PQNode& b) {
+			REQUIRE(a.id == b.id); REQUIRE(a.key == b.key);
+			REQUIRE(a.row == b.row); REQUIRE(a.col == b.col);
+		};
+		auto verify = [&] {
+			REQUIRE(heap.size() == ref.size());
+			REQUIRE(heap.growths() == ref.growths);
+			REQUIRE(heap.rekeyMisses() == ref.misses);
+			for (int i = 1; i <= ref.size(); ++i) {
+				checkNode(heap.at(i), ref.n[i]);
+				REQUIRE(heap.find(ref.n[i].id) == ref.find(ref.n[i].id));
+			}
+			for (uint32_t id : {0u, nextId + 1, 100000u, 0xFFFFFFFFu, 0xFFFFFFFEu})
+				REQUIRE(heap.find(id) == ref.find(id));
+		};
+		auto pop = [&] {
+			const auto a = heap.popMin(), b = ref.pop();
+			REQUIRE(a.has_value() == b.has_value());
+			if (a) checkNode(*a, *b);
+		};
+		for (int step = 0; step < 192; ++step) {
+			INFO("step=", step);
+			const int phase = step % 64;
+			const auto r = rng.next();
+			if (phase == 63) { heap.clear(); ref.n.resize(1); }
+			else if (phase < 16 || phase == 28 || phase == 29 || phase == 30 || r % 10 < 4) {
+				uint32_t id = ++nextId;
+				if (phase == 28 && ref.size()) id = ref.n[1].id; // duplicate, lowest-position lookup
+				if (phase == 29) id = 0xFFFFFFFFu; // inserted filler remains searchable
+				if (phase == 30) id = 0xFFFFFFFEu; // no allocation from a large id
+				const PQNode node{static_cast<int32_t>(rng.next() % 16), id, step, static_cast<int32_t>(seed)};
+				heap.insert(node); ref.insert(node);
+			}
+			else if (r % 10 < 6) pop();
+			else {
+				const uint32_t id = phase == 31 ? 0xFFFFFFFFu : phase == 32 ? 0xFFFFFFFEu :
+					(r % 10 < 9 && ref.size() ? ref.n[1 + rng.next() % ref.size()].id : nextId + 1);
+				const int key = static_cast<int>(rng.next() % 24) - 4;
+				REQUIRE(heap.rekey(id, key) == ref.rekey(id, key));
+			}
+			verify();
+		}
+		while (ref.size()) { pop(); verify(); }
+		pop(); verify();
+	}
+}
+
 } // TEST_SUITE
