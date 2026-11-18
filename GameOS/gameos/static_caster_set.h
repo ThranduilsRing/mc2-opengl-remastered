@@ -66,7 +66,8 @@ public:
 
     // The registry leaves of every live entry, in entry order. Returns the content hash: the handles, kinds, damage states, type IDs and transforms of
     // the set, independent of registry slot numbering.
-    uint64_t resolve(std::vector<GpuStaticPropInstance>& leaves) const;
+    // wantHash=false skips the hashing (returns the empty-set seed) for callers that only need the leaves.
+    uint64_t resolve(std::vector<GpuStaticPropInstance>& leaves, bool wantHash = true) const;
     // The set as endRebuild() resolved it, before the mission ran a frame. The cold bake renders this (so its key does not depend on what combat did
     // before the bake ran); every event since is queued for the dirty path anyway.
     uint64_t loadSnapshot(std::vector<GpuStaticPropInstance>& leaves) const { leaves = loadLeaves_; return loadHash_; }

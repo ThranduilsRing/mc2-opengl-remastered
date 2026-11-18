@@ -674,15 +674,21 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
     mc2shadow::StaticCasterSet& casters=mc2shadow::staticCasterSet();
     if (recordedMask_) casters.logDriftSinceLoad(6);   // what changed since the load snapshot; settled into it below
     if (recordedMask_ && bakedSetVersion_ != casters.version()) casters.settleLoadSnapshot();   // load-time damage/shape swaps land during the first frames
-    const uint64_t casterHash=recordedMask_?casters.resolveForBake(bakedSetVersion_, leaves_):casters.resolve(leaves_);
-    mc2_static_prop_retype_far_tier(std::span<GpuStaticPropInstance>(leaves_), false);   // tree casters bake from the far tier
+    // An object-map-only rebuild (a caster event after the mask exists) needs neither the mask's caster list, its content hash nor its light boxes: only
+    // the object receivers below. Resolving and hashing the whole set twice cost 4-27 ms in one frame (hitch-hunt-1118 row 8).
+    uint64_t casterHash = 0;
+    if (recordedMask_) {
+        casterHash = casters.resolveForBake(bakedSetVersion_, leaves_);
+        mc2_static_prop_retype_far_tier(std::span<GpuStaticPropInstance>(leaves_), false);   // tree casters bake from the far tier
+    }
     cpuStage_[0] = std::chrono::duration<double, std::milli>(clk::now() - tResolve).count();
     std::vector<mc2shadow::LightBox> boxes;
     std::vector<float> tops;
     std::vector<uint32_t> live;
-    boxes.reserve(leaves_.size());
+    const uint32_t maskLeaves = recordedMask_ ? static_cast<uint32_t>(leaves_.size()) : 0u;
+    boxes.reserve(maskLeaves);
     float casterTop = -1e30f;
-    for (uint32_t i = 0; i < leaves_.size(); ++i) {
+    for (uint32_t i = 0; i < maskLeaves; ++i) {
         const GpuStaticPropInstance& leaf = leaves_[i];
         if (leaf.typeID >= typeBounds_.size() || !typeBounds_[leaf.typeID].valid) continue;
         mc2shadow::Vec3 lo, hi;
@@ -697,7 +703,7 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
 
     // Object receivers always use current gameplay leaves.
     std::vector<GpuStaticPropInstance> objInst;
-    casters.resolve(objInst);
+    casters.resolve(objInst, false);
     mc2_static_prop_retype_far_tier(std::span<GpuStaticPropInstance>(objInst), false);
     std::erase_if(objInst, [this](const auto& leaf) {
         return leaf.typeID >= typeBounds_.size() || !typeBounds_[leaf.typeID].valid;
@@ -915,7 +921,7 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
                             heightSpacing_, cpuMs_);
     } else {
         mc2::fmt::print_err("[SHADOW_BAKE] object map re-recorded: generation={} casters={} timings(ms): total {:.3f}, height {:.3f}, resolve {:.3f}, bin {:.3f}, record {:.3f}\n",
-                            mc2::fmt::as_u64(recordedObjectGeneration_), mc2::fmt::as_size(leaves_.size()), cpuMs_, heightMs, resolveMs, cpuStage_[2],
+                            mc2::fmt::as_u64(recordedObjectGeneration_), mc2::fmt::as_size(objInst.size()), cpuMs_, heightMs, resolveMs, cpuStage_[2],
                             std::chrono::duration<double, std::milli>(clk::now() - tRecord).count());
     }
     return true;
