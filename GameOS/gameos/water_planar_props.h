@@ -119,6 +119,7 @@ class ReflectionPropsCache {
     size_t recipeCount_ = 0, rangeCount_ = 0;
     uint64_t generation_ = 0;
     bool ready_ = false;
+    size_t bulkCells_ = 0;   // cells bulk-accepted by the last collect (test-visible)
 
     void buildGrid() {
         cellEntries_.clear(); cells_.clear(); unbounded_.clear();
@@ -184,6 +185,7 @@ class ReflectionPropsCache {
         return true;
     }
 public:
+    size_t bulkCells() const { return bulkCells_; }
     template <class Range>
     bool collect(std::span<const GpuStaticPropInstance> recipes, std::span<const Range> ranges,
                  uint64_t generation, const View& view, std::span<const mc2hzb::PropBounds> bounds,
@@ -217,6 +219,7 @@ public:
         }
         // A TGL borrow can expire independently of the recipe revision: resolve
         // it once per range per frame, not once per entry.
+        bulkCells_ = 0;
         rangeMulti_.assign(ranges.size(), 0);
         for (size_t r = 0; r < ranges.size(); ++r) rangeMulti_[r] = ranges[r].multi() ? 1 : 0;
         bits_.assign((order_.size() + 63) / 64, 0);
@@ -225,6 +228,7 @@ public:
         for (const auto& cell : cells_) {
             if (!view.intersects(cell.lo, cell.hi)) continue;
             const bool all = fullyInside(view, cell);
+            bulkCells_ += all;
             for (uint32_t k = cell.begin; k < cell.end; ++k) {
                 const auto& e = cellEntries_[k];
                 if (rangeMulti_[e.range] && (all || view.intersects(e.lo, e.hi))) set(e.idx);

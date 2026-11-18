@@ -508,14 +508,20 @@ TEST_CASE("water planar: grid collect matches the linear reference bit for bit")
     std::vector<RecipeRange> ranges{{0, 1000}, {1000, 500, false}, {1500, 700}, {2200, 0}, {2200, 800}};
     std::vector<GpuStaticPropInstance> out, expect;
     wp::ReflectionPropsCache cache;
-    size_t partial = 0, total = 0;
-    for (int v = 0; v < 24; ++v) {
+    size_t partial = 0, total = 0, bulkViews = 0, bulkCells = 0;
+    for (int v = 0; v < 32; ++v) {   // views 24..31: water below every prop, so interior cells are fully inside
         glm::mat4 main{1};
         const float s = 0.002f * (1.0f + 6.0f * rnd());
         main[0][0] = s; main[1][1] = s; main[2][2] = 0.001f + 0.01f * rnd();
         main[3][0] = (rnd() - 0.5f) * 1.5f; main[3][1] = (rnd() - 0.5f) * 1.5f; main[3][2] = -1.0f * rnd();
         if (v == 0) { main[0][0] = main[1][1] = 1e-5f; main[3][0] = main[3][1] = 0; }   // everything inside
-        const float water = 10.0f + 20.0f * rnd();
+        const bool low = v >= 24;
+        if (low) {   // reflected clip z = 0.6 - 0.01 z for z in -2..42: near/far contain every z; x/y partial
+            const float sl = 0.0008f * (1.0f + 1.5f * rnd());
+            main[0][0] = main[1][1] = sl; main[2][2] = 0.01f; main[3][2] = 0.7f;
+            main[3][0] = (rnd() - 0.5f) * 0.6f; main[3][1] = (rnd() - 0.5f) * 0.6f;
+        }
+        const float water = low ? -5.0f : 10.0f + 20.0f * rnd();
         const wp::View view(glm::value_ptr(main), water);
         struct Ent { size_t recipe, range; };
         std::vector<Ent> all;
@@ -528,9 +534,14 @@ TEST_CASE("water planar: grid collect matches the linear reference bit for bit")
         cache.collect(std::span<const GpuStaticPropInstance>(recipes), std::span<const RecipeRange>(ranges), 1, view, bounds, out);
         REQUIRE(out.size() == expect.size());
         CHECK(std::memcmp(out.data(), expect.data(), out.size() * sizeof(out[0])) == 0);
-        partial += !out.empty() && out.size() < all.size() - 500;
+        size_t live = 0, unbounded = 0;
+        for (const auto& e : all) if (ranges[e.range].multi()) { ++live; unbounded += !bounds[recipes[e.recipe].typeID].valid; }
+        partial += out.size() > unbounded && out.size() < live;
+        bulkViews += cache.bulkCells() > 0; bulkCells += cache.bulkCells();
         total += out.size();
     }
-    CHECK(partial >= 3);   // views that cull part of the set exercise cells and the per-entry path
+    CHECK(partial >= 3);   // views strictly between the unbounded count and the live count
+    CHECK(bulkViews >= 3); CHECK(bulkCells > 0);   // the fully-inside bulk-accept branch really ran
+    MESSAGE("grid collect: partial views=", partial, " bulk views=", bulkViews, " bulk cells=", bulkCells);
     CHECK(total > 0);
 }
