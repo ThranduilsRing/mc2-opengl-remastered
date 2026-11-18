@@ -7949,6 +7949,16 @@
    "count": 1
   },
   {
+   "tag": "PREWARM_LOGISTICS",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "trigger",
+    "max_step_ms"
+   ],
+   "count": 1
+  },
+  {
    "tag": "PROJECTZ",
    "ver": 1,
    "stream": "buffer",
@@ -8507,6 +8517,16 @@
     "idx",
     "cur",
     "ren"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RENDER_WORLD",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "index",
+    "limit"
    ],
    "count": 1
   },
