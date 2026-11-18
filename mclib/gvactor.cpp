@@ -22,8 +22,34 @@
 #include "assimp_importer.h"
 #include "loose_asset_priority.h"
 #include <filesystem>
+#include <mutex>
+#include <string>
+#include <unordered_map>
 
 void LoadOverrideRenderShapeTextures(TG_TypeMultiShape* shape);
+
+static bool textureOrKtxSidecarExists(mc2::czstring tgaPath);
+
+namespace {
+// GVAppearance::init probes each texture with fileExists (a full vfs open) per instance: 11 ms of sensor-shape probes per
+// ejected pilot on the sim worker (vehicle-hitch-1). Texture presence is fixed for the process, so each path is probed once.
+bool gvTextureExistsCached(const char* path, bool orKtxSidecar)
+{
+    static std::mutex mutex;
+    static std::unordered_map<std::string, bool> cache;
+    std::string key(path);
+    key += orKtxSidecar ? "|k" : "|t";
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        if (auto it = cache.find(key); it != cache.end())
+            return it->second;
+    }
+    const bool exists = orKtxSidecar ? textureOrKtxSidecarExists(path) : (fileExists(path) != 0);
+    std::lock_guard<std::mutex> lock(mutex);
+    cache.emplace(std::move(key), exists);
+    return exists;
+}
+} // namespace
 
 
 // C3: env-gated lifecycle routing killswitch (same env var as objmgr.cpp).
@@ -796,7 +822,7 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			FullPathFileName textureName;
 			textureName.init(texturePath,txmName,"");
 
-			if (fileExists(textureName))
+			if (gvTextureExistsCached(textureName, false))
 			{
 				if (S_strnicmp(txmName,"a_",2) == 0)
 				{
@@ -861,7 +887,7 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 				FullPathFileName textureName;
 				textureName.init(texturePath,txmName,"");
 		
-				if (fileExists(textureName))
+				if (gvTextureExistsCached(textureName, false))
 				{
 					if (S_strnicmp(txmName,"a_",2) == 0)
 					{
@@ -906,7 +932,7 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			FullPathFileName textureName;
 			textureName.init(texturePath,txmName,"");
 	
-			if (textureOrKtxSidecarExists(textureName))
+			if (gvTextureExistsCached(textureName, true))
 			{
 				if (S_strnicmp(txmName,"a_",2) == 0)
 				{
@@ -943,7 +969,7 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			FullPathFileName textureName;
 			textureName.init(texturePath,txmName,"");
 	
-			if (textureOrKtxSidecarExists(textureName))
+			if (gvTextureExistsCached(textureName, true))
 			{
 				if (S_strnicmp(txmName,"a_",2) == 0)
 				{
