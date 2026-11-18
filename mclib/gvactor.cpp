@@ -12,6 +12,7 @@
 
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "texture_assets.h"
+#include "../GameOS/gameos/gos_profiler.h"
 #include "gvactor_internal.h"
 #include "render_snap.h"
 #include "Gates/gate.h"
@@ -778,6 +779,7 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 
 	if (appearType)
 	{
+		{ ZoneScopedN("GVAppearance.init.BodyTex");
 		gvShapeOwner_.reset(appearType->gvShape[0]->CreateFrom());
 		gvShape = gvShapeOwner_.get();
 	
@@ -839,6 +841,8 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			}
 		}
 		
+		}
+		{ ZoneScopedN("GVAppearance.init.ShadowTex");
 		if (appearType->gvShadowShape)
 		{
 			gvShadowShapeOwner_.reset(appearType->gvShadowShape->CreateFrom());
@@ -885,6 +889,8 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			gvShadowShape = nullptr;
 		}
  		
+		}
+		{ ZoneScopedN("GVAppearance.init.SensorTex");
 		sensorTriangleShapeOwner_.reset(GVAppearanceType::SensorTriangleShape->CreateFrom());
 		sensorTriangleShape = sensorTriangleShapeOwner_.get();
 		//-------------------------------------------------
@@ -957,6 +963,7 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 				//PAUSE(("Warning: %s texture name not found",textureName));
 				sensorCircleShape->SetTextureHandle(i,0xffffffff);
 			}
+		}
 		}
     		 
  		glm::vec3 boxCoords[8];
@@ -1043,10 +1050,12 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 					
 					if (gosEffectSpec)
 					{
+						{ ZoneScopedN("GVAppearance.init.DustMake");
 						dustCloud = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-						gosASSERT(dustCloud != nullptr);
+						gosASSERT(dustCloud != nullptr); }
 
-						MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
+						{ ZoneScopedN("GVAppearance.init.DustLoadImages");
+						MidLevelRenderer::MLRTexturePool::Instance->LoadImages(); }
 					}
 				}
 			}
@@ -1074,6 +1083,7 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		// Removing these lines is NOT the fix either: registration is still
 		// consumed elsewhere in the batcher. Fix the eligibility predicate
 		// (submitted-ness, not registered-ness) if this ever goes live.
+		ZoneScopedN("GVAppearance.init.Register");
 		for (auto & gvShapeElem : appearType->gvShape)
 			GpuStaticPropBatcher::instance().registerMultiShape(gvShapeElem.get());
 		// An override body with object maps is one shared shape per LOD (paint is shader-side), so it joins the
