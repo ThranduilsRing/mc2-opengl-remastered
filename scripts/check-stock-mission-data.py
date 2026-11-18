@@ -192,6 +192,12 @@ PAK_VERIFY_EXEMPTIONS: dict[str, str] = {
         "its callers verify (scatter_tool cook verifies, then calls in). A "
         "stock-ness gate here would block the legitimate act of editing a "
         "non-stock pak, which is the tool's entire purpose.",
+    "tools/mc2pak.py":
+        "generic mc2pak ZIP packer/lister/extractor/verifier. list and extract "
+        "report the entries of whatever archive they are handed; verify compares "
+        "a pak against the install it is explicitly pointed at (--against-install). "
+        "None derives a stock-terrain verdict from the pak, so a non-stock "
+        "archive cannot make an output wrong.",
     "tools/pak_dump.py":
         "read-only pak inspector (list/dump/find-fit). Reports the raw packet "
         "structure of whatever it is given and derives no terrain verdict, so "
