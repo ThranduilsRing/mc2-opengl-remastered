@@ -17,7 +17,7 @@
 #   build64-tgdump/RelWithDebInfo/tg_import_dump.exe <model.glb> [--ground]
 
 cmake_minimum_required(VERSION 3.16)
-project(tg_import_dump CXX)
+project(tg_import_dump C CXX)  # C: 3rdparty/basisu compiles zstd/zstddeclib.c
 
 include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/Mc2Standalone.cmake")
 
