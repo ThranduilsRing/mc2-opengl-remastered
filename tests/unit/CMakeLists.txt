@@ -184,6 +184,7 @@ add_executable(mc2_tests
     test_prop_array_buckets.cpp  # PROP-ARRAY-BUCKETS: alpha-ON prop albedo size buckets + (bucket, layer) encoding (offline)
     test_startup_work.cpp  # PC night startup: bounded dedup, appearance noise, TGA scratch reuse
     test_hardpoint.cpp        # HARDPOINT-ID-SCHEMA-1: HardpointId join key + weapon-tag/damage-location link (offline)
+    test_armor_alloc.cpp
     test_mechlab_loc_layout.cpp  # MECHLAB-LOC-1: location-view rect table (draw == hit at 800x600/1080p/4K) + refusal reasons (offline)
     test_logistics_save_version.cpp  # MECHLAB-LOC-1: save version 10005 + variant chassis key boundary for revised layouts (offline)
     test_package_chassis.cpp  # BT2018-FIRST-CLASS P3/P7: package chassis regions/mounts/payload + type-number allocation (offline)
