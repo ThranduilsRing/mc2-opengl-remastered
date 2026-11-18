@@ -372,6 +372,10 @@ void GameObjectManager::primeTerrainObjectsForMissionLoad (volatile float& progr
 		{
 			obj->primeAppearanceForMissionLoad();
 			++warmedAppearances;
+			// A wall/bridge-class terrain object also renders through BldgAppearance (same rubble-texture first use).
+			auto* appearance = obj->getAppearance();
+			if (appearance && appearance->getAppearanceClass() == BUILDING_APPR_TYPE)
+				static_cast<BldgAppearance*>(appearance)->warmDestroyedTextures();
 		}
 
 		progress += increment;
