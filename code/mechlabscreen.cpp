@@ -1112,8 +1112,9 @@ void MechLabScreen::render(int xOffset, int yOffset)
 	}
 
 	for (int i : {6, 7, 8, 9, 10, 13, 15, 16}) textObjects[i].showGUIWindow(false);
-	for (int i : {16, 22, 23, 24, 26, 29, 30, 31, 34, 47, 48, 49, 50, 51, 52, 53, 54, 55})
-		statics[i].showGUIWindow(false);
+	// Bounded by the FIT's StaticCount (56 in the shipped mcl_mc.fit); statics[55] is the heat icon the update path shows.
+	for (int i : {16, 22, 23, 24, 26, 29, 30, 31, 34, 47, 48, 49, 50, 51, 52, 53, 54})
+		if (i < staticCount) statics[i].showGUIWindow(false);
 	LogisticsScreen::render(xOffset, yOffset );
 	if (pCurComponent) {
 		auto line = [&](float y, std::string_view value, std::uint32_t color) {
@@ -2304,8 +2305,8 @@ void gatherPanelItems(LogisticsVariant* v, int panel, std::vector<LocItem>& out)
 			: i < record.items.size() && record.items[i].location == panel;
 		if (!here) continue;
 		used += placed[i].w * placed[i].h;
-		// Armor plating is a tonnage pseudo-component (counted in the pool and mass), not equipment.
-		if (comps[i]->getType() != COMPONENT_FORM_BULK) out.push_back({comps[i],placed[i].x,placed[i].y});
+		// Armor plating (BULK) occupies cells and is listed like any item so it can be selected, dragged and removed.
+		out.push_back({comps[i],placed[i].x,placed[i].y});
 	}
 	static constexpr const char* fixed[8][2] = {{"Cockpit","Life support"},{"Engine","Gyro"},{nullptr,nullptr},{nullptr,nullptr},
 		{"Shoulder","Arm actuator"},{"Shoulder","Arm actuator"},{"Hip","Leg actuator"},{"Hip","Leg actuator"}};
@@ -2319,9 +2320,14 @@ void gatherPanelItems(LogisticsVariant* v, int panel, std::vector<LocItem>& out)
 		s_locLegal[p] = false;
 		s_locReason[p].clear();
 		if (!cand || p >= ml::kLocationCount) continue;
-		if (!pc) { s_locReason[p] = "Stock chassis: use CLASSIC to place"; continue; }
 		const int ri = regionOfPanel(pc, p).value_or(-1);
-		if (cand->getType() == COMPONENT_FORM_JUMPJET) {
+		if (!pc) {
+			long x = -1, y = -1;
+			const int refusal = v->canAddComponent(cand, x, y);
+			s_locLegal[p] = !refusal;
+			if (refusal) s_locReason[p] = mc2::components::placementRefusal(refusal);
+		}
+		else if (cand->getType() == COMPONENT_FORM_JUMPJET) {
 			long x = -1, y = -1;
 			const int refusal = v->canAddComponent(cand, x, y);
 			s_locLegal[p] = !refusal;
@@ -2380,7 +2386,18 @@ std::optional<MechLabScreen::PlacedAt> MechLabScreen::placeInPanel( LogisticsCom
 		reason = place.reason;
 	}
 	long x = place.x, y = place.y;
-	if ( ri < 0 || !place.legal )
+	if ( !pc )
+	{	// stock chassis have no slot table: any panel drop uses the legacy grid auto-placement and the item shows where the layout record puts it
+		x = y = -1;
+		const int refusal = pVariant->canAddComponent( pComponent, x, y );
+		if ( refusal )
+		{
+			showDropRefusal( mc2::components::placementRefusal( refusal ) );
+			soundSystem->playDigitalSample( LOG_WRONGBUTTON );
+			return std::nullopt;
+		}
+	}
+	else if ( ri < 0 || !place.legal )
 	{
 		showDropRefusal( std::string( ml::panelTitle( panel ) ) + ": " + ( ri < 0 ? "no equipment slots here." : reason ) );
 		soundSystem->playDigitalSample( LOG_WRONGBUTTON );
@@ -2482,7 +2499,7 @@ void MechLabScreen::updateLocationInput()
 	const int dragPanel = ml::panelAt( static_cast<float>( userInput->getMouseDragX() ), static_cast<float>( userInput->getMouseDragY() ) ).value_or( -1 );
 	// the press origin (not the current hover) picks the drag source: a fast move that leaves the panel before the threshold still drags
 	bool dragStarted = false;
-	if ( !pDragComponent && locPackage(pVariant) && dragPanel >= 0 && dragPanel < ml::kLocationCount &&
+	if ( !pDragComponent && dragPanel >= 0 && dragPanel < ml::kLocationCount &&
 		input::capture::startsWidgetDrag( userInput->isLeftDrag(), true ) )
 	{
 		std::vector<LocItem> origin;
