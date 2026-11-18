@@ -153,6 +153,10 @@ inline bool terrainNightFullInvalidate(float prevNightFactor, float nightFactor,
     return prevNightFactor < 0.0f || (nightFactor > 0.0f) != (prevNightFactor > 0.0f) || isNight != prevIsNight;
 }
 
+// Only a destroyed power generator changes objects outside its own block (lights out); any other kill dirties
+// itself alone. markAll() on every destruction re-walked the whole object table (16-24 ms frames in combat).
+inline bool terrainPowerLossRequeuesAll(bool destroyed, bool isPowerSource) { return destroyed && isPowerSource; }
+
 inline TerrainDirtyQueue& terrainDirtyQueue() {
     static TerrainDirtyQueue queue;
     return queue;
