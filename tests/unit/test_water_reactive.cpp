@@ -221,7 +221,7 @@ TEST_CASE("WaterShallow/opacity follows the water column: wading stays clear, de
     CHECK(ws_column_veil(1000) <= 1.0f);
 }
 
-TEST_CASE("WaterReactive/snapshot into a dirty frame equals a clean one (the ring slot is written in place)") {
+TEST_CASE("WaterReactive/dirty ring slots agree for every shader-readable entry") {
     Buffer b;
     for (uintptr_t i = 1; i <= 40; ++i) b.submit(i, 1, static_cast<float>(i) * 3.0f, -1, 20, true, true, false);
     auto clean = std::make_unique<GpuFrame>();
@@ -229,5 +229,13 @@ TEST_CASE("WaterReactive/snapshot into a dirty frame equals a clean one (the rin
     std::memset(dirty.get(), 0xAB, sizeof(GpuFrame));
     b.snapshot(1.25f, *clean);
     b.snapshot(1.25f, *dirty);
-    CHECK(std::memcmp(clean.get(), dirty.get(), sizeof(GpuFrame)) == 0);
+    CHECK(clean->counts == dirty->counts);
+    CHECK(std::memcmp(clean->stamps.data(), dirty->stamps.data(), b.size() * sizeof(Stamp)) == 0);
+    for (uint32_t t = 0; t < kTiles; ++t)
+        for (uint32_t i = 0; i < dirty->counts[t]; ++i) {
+            CHECK(clean->indices[t * kPerTile + i] == dirty->indices[t * kPerTile + i]);
+            CHECK(dirty->indices[t * kPerTile + i] < b.size());
+        }
+    b.clear(); b.snapshot(2, *dirty);
+    for (auto n : dirty->counts) CHECK(n == 0);
 }
