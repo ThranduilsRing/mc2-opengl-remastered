@@ -95,6 +95,12 @@ def _warm_locked(root, argv, tree, base):
     print(f"warm: pid {child.pid} building {tree} at {base or 'HEAD'}; log {log}")
 
 
+def lock_disabled_for_tests():
+    """MC2_TEST_NO_TREELOCK=1 turns the tree locks into no-ops for pytest children only (PYTEST_CURRENT_TEST is set by pytest and inherited);
+    the gate never sets both, so it always locks."""
+    return os.environ.get("MC2_TEST_NO_TREELOCK") == "1" and bool(os.environ.get("PYTEST_CURRENT_TEST"))
+
+
 class TreeLock:
     """One build per tree: an OS byte-range lock on <tree>/.build.lock (released when the holder exits, even if killed).
     The holder's pid/command is written at offset 16 so a waiter can name it. Two ninjas in one tree race sccache/LNK1104."""
@@ -122,6 +128,8 @@ class TreeLock:
 
     def acquire(self, wait_s):
         """True when held. Waits up to wait_s (0 = fail at once), saying who holds it every 60 s."""
+        if lock_disabled_for_tests():
+            return True
         os.makedirs(os.path.dirname(self.path), exist_ok=True)
         self.fh = open(self.path, "a+b")
         deadline = time.monotonic() + wait_s

@@ -25,3 +25,24 @@ def test_a_held_real_lock_does_not_block_the_stubbed_builder(monkeypatch, tmp_pa
         assert ok and time.monotonic() - start < 5, detail
     finally:
         holder.close()
+
+
+def _child_acquires(root, env):
+    code = "import sys; sys.path.insert(0, sys.argv[2]); import ninja_build; sys.exit(0 if ninja_build.TreeLock(sys.argv[1], 't').acquire(0) else 3)"
+    import subprocess
+    return subprocess.run([sys.executable, "-B", "-c", code, str(root), str(ROOT / "scripts")], env=env, timeout=60).returncode
+
+
+def test_env_switch_frees_a_subprocess_child_only_under_pytest(monkeypatch, tmp_path):
+    import os
+    monkeypatch.delenv("MC2_TEST_NO_TREELOCK", raising=False)   # the parent holds the REAL lock
+    holder = TreeLock(str(tmp_path), "t")
+    assert holder.acquire(0)
+    try:
+        env = dict(os.environ, MC2_TEST_NO_TREELOCK="1", PYTEST_CURRENT_TEST="x")
+        assert _child_acquires(tmp_path, env) == 0                      # pytest child: no-op lock
+        gate = {k: v for k, v in env.items() if k != "PYTEST_CURRENT_TEST"}
+        assert _child_acquires(tmp_path, gate) == 3                     # gate path (no pytest): lock honoured
+        assert _child_acquires(tmp_path, {k: v for k, v in gate.items() if k != "MC2_TEST_NO_TREELOCK"}) == 3
+    finally:
+        holder.close()
