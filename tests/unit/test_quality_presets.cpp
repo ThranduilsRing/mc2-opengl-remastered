@@ -41,7 +41,7 @@ TEST_CASE("campaign picker/discovered stock FITs retain archived fallback and de
 TEST_CASE("campaign picker/duplicate titles get the pack title, unique titles stay") {
     using namespace PlayerFrontEnd;
     struct Pack { std::string id, kind, name; std::map<std::string, CampaignInfo> campaigns; };
-    const std::vector<Pack> packs{{"dead-end", "campaign", "Dead End", {{"campaign", {"Metropolitan"}}}},
+    const std::vector<Pack> packs{{"dead-end", "campaign", "Dead End / Metropolitan",{{"campaign", {"Metropolitan"}}}},
         {"driftwood", "campaign", "Driftwood", {{"campaign", {"Metropolitan"}}}},
         {"fox", "campaign", "Fox Pack", {{"campaign", {"Desert Fox"}}}}};
     const auto choices = campaignChoices(packs);

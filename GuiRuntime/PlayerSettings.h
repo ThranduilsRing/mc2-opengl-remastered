@@ -111,7 +111,7 @@ std::vector<CampaignChoice> campaignChoices(const Packs& packs, const std::vecto
         if (choice.pack.empty() || std::count(labels.begin(), labels.end(), choice.title) < 2) continue;
         std::string label = choice.pack;
         for (const auto& pack : packs) if (pack.id == choice.pack) {
-            if constexpr (requires { pack.name; }) if (!pack.name.empty()) label = pack.name;
+            if constexpr (requires { pack.name; }) if (!pack.name.empty()) label = pack.name.substr(0, pack.name.find(" / "));
         }
         if (label != choice.title) choice.title += " (" + label + ")";
     }
