@@ -9941,6 +9941,15 @@
    "ver": -1,
    "stream": "stdout",
    "keys": [
+    "resolved"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SOAK",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
     "screen"
    ],
    "count": 4
