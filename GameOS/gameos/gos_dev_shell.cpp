@@ -50,7 +50,7 @@ void registerCommand(mc2::czstring name, CommandHandler fn)
 bool pollCommands(uint32_t) { return false; }
 // The UI-command `screenshot <name>` verb still works: it writes dev_shell_out/<name>.tga through the Vulkan present readback.
 static std::string s_stubShotPath;
-void scheduleScreenshot(const char* name) {
+void scheduleScreenshot(mc2::czstring name) {
     if (!name || !s_stubShotPath.empty()) return;
     std::string base;
     for (const char c : std::string_view(name))
