@@ -1,4 +1,5 @@
 #include "RenderCore/PropLodState.h"
+#include "GameOS/gameos/static_prop_recipe_admission.h"
 #include "doctest.h"
 #include <cstdint>
 #include <random>
@@ -65,6 +66,8 @@ std::vector<RecipeRange> s_recipeRanges;
 std::vector<uint32_t> s_recipeRangeFreeList;
 std::unordered_map<uint32_t, int32_t> s_typeIDToRecipeIndex;
 bool s_recipeRecycle = true;
+// Production admission policy (real header); registerRecipe/invalidate depend on it.
+::GpuStaticPropRegistry::StaticPropRecipeAdmission s_recipeAdmission;
 uint64_t s_registryGeneration = 0, s_totalPinCalls = 0, s_contentRevision = 0;
 void releasePinsForRange(RecipeRange&) {}
 void staticPropRegistryClearMaterialCache() {}
@@ -88,6 +91,7 @@ struct PropLodLifecycle {
         GpuStaticPropRegistry::s_recipes.clear();
         GpuStaticPropRegistry::s_recipeRanges.clear();
         GpuStaticPropRegistry::s_recipeRangeFreeList.clear();
+        GpuStaticPropRegistry::s_recipeAdmission.reset();
         GpuStaticPropRegistry::s_typeIDToRecipeIndex.clear();
     }
     static GpuStaticPropInstance prop(float x) {
