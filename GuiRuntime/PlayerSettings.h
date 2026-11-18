@@ -104,7 +104,24 @@ std::vector<CampaignChoice> campaignChoices(const Packs& packs, const std::vecto
         for (const auto& [fit, info] : pack.campaigns)
             choices.push_back({pack.id, fit, campaignTitle("", info.title, fit)});
     }
+    // Identical titles (e.g. three packs shipping "Metropolitan") get the pack title appended; unique titles stay.
+    std::vector<std::string> labels;
+    for (const auto& choice : choices) labels.push_back(choice.title);
+    for (auto& choice : choices) {
+        if (choice.pack.empty() || std::count(labels.begin(), labels.end(), choice.title) < 2) continue;
+        std::string label = choice.pack;
+        for (const auto& pack : packs) if (pack.id == choice.pack) {
+            if constexpr (requires { pack.name; }) if (!pack.name.empty()) label = pack.name;
+        }
+        if (label != choice.title) choice.title += " (" + label + ")";
+    }
     return choices;
+}
+// Label for one pack FIT in the picker list and dropdown (identical string in both).
+inline const std::string& campaignChoiceTitle(const std::vector<CampaignChoice>& choices, std::string_view pack,
+                                              std::string_view fit, const std::string& fallback) {
+    for (const auto& choice : choices) if (choice.pack == pack && choice.fit == fit) return choice.title;
+    return fallback;
 }
 // A saved last_campaign that is hidden (import source) or no longer installed falls back to stock ("").
 template<class Packs>

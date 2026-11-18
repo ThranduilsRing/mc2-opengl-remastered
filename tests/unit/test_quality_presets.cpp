@@ -38,6 +38,21 @@ TEST_CASE("campaign picker/discovered stock FITs retain archived fallback and de
     CHECK((pack.empty() && fit == "second"));
 }
 
+TEST_CASE("campaign picker/duplicate titles get the pack title, unique titles stay") {
+    using namespace PlayerFrontEnd;
+    struct Pack { std::string id, kind, name; std::map<std::string, CampaignInfo> campaigns; };
+    const std::vector<Pack> packs{{"dead-end", "campaign", "Dead End", {{"campaign", {"Metropolitan"}}}},
+        {"driftwood", "campaign", "Driftwood", {{"campaign", {"Metropolitan"}}}},
+        {"fox", "campaign", "Fox Pack", {{"campaign", {"Desert Fox"}}}}};
+    const auto choices = campaignChoices(packs);
+    REQUIRE(choices.size() == 4);
+    CHECK(choices[0].title == "Stock campaign");
+    CHECK(choices[1].title == "Metropolitan (Dead End)");
+    CHECK(choices[2].title == "Metropolitan (Driftwood)");
+    CHECK(choices[3].title == "Desert Fox");
+    CHECK(campaignChoiceTitle(choices, "driftwood", "campaign", "x") == "Metropolitan (Driftwood)");
+}
+
 TEST_CASE("campaign picker/disable invalid enabled addon") {
     using namespace PlayerFrontEnd;
     CHECK(packToggleAllowed(true, "Missing dependency"));
